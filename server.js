@@ -53,6 +53,7 @@ const recurring = require('./src/recurring');
 const production = require('./src/production');
 const validate = require('./src/validate');
 const decl = require('./src/declarations');
+const { sendMail, sendNotifMail, sendDeadlineDigests } = require('./src/notify');
 const efacturaImport = require('./src/efacturaImport');
 const fxreval = require('./src/fxreval');
 const plans = require('./src/plans');
@@ -851,12 +852,6 @@ app.post('/api/profile', (req, res) => {
 });
 
 // ───────────────────────── RESETARE PAROLA (email) ─────────────────────────
-function sendMail(smtp, to, subject, text) {
-  let nodemailer;
-  try { nodemailer = require('nodemailer'); } catch (_) { throw new Error('nodemailer neinstalat'); }
-  const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port || 587, secure: !!smtp.secure, auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined });
-  return t.sendMail({ from: smtp.from || smtp.user, to, subject, text });
-}
 // Notifica pe email administratorii la un mesaj nou de la utilizator, DOAR daca niciunul nu e online.
 function notifyAdminsOfNewMessage(fromUser, message, baseUrl) {
   const d = db.get();
@@ -2967,49 +2962,7 @@ app.get('/api/notifications', (req, res) => {
   res.json(decl.notifications(d, fids.map((id) => db.scoped(id))));
 });
 
-// ───────── Digest email cu termenele fiscale (zilnic, ~07:00) ─────────
-// Trimite prin SMTP-ul configurat in Setari; fara SMTP, cade pe API-ul Resend (RESEND_API_KEY).
-async function sendNotifMail(to, subject, text) {
-  const smtp = db.get().settings.smtp || {};
-  if (smtp.host) return sendMail(smtp, to, subject, text);
-  const key = process.env.RESEND_API_KEY;
-  if (!key) throw new Error('Nici SMTP, nici RESEND_API_KEY nu sunt configurate.');
-  const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json', 'User-Agent': 'contab-app/1.0' },
-    body: JSON.stringify({ from: 'Contab <comenzi@poetio.site>', to: [to], subject, text }),
-  });
-  const t = await r.text();
-  if (!r.ok || !t.includes('"id"')) throw new Error('Resend ' + r.status + ': ' + t.slice(0, 200));
-}
-function digestText(n) {
-  const line = (i) => '  • [' + (i.firma || 'firma') + '] ' + i.nume + ' — luna ' + i.period + ', termen ' + i.due;
-  const rest = n.items.filter((i) => i.kind === 'restanta');
-  const term = n.items.filter((i) => i.kind === 'termen');
-  let s = 'Ai ' + n.count + ' notificări de termene fiscale în Contab (' + billing.appUrl() + '):\n';
-  if (rest.length) s += '\nRESTANȚE (termen depășit):\n' + rest.map(line).join('\n') + '\n';
-  if (term.length) s += '\nTERMENE ÎN URMĂTOARELE 7 ZILE:\n' + term.map(line).join('\n') + '\n';
-  s += '\nMarchează depunerile în aplicație: Declarații ANAF → Registrul depunerilor.\n'
-    + 'Poți dezactiva aceste emailuri din Setări → Contul meu.\n';
-  return s;
-}
-/** Trimite digestul fiecarui utilizator cu email si notificari active. Returneaza sumarul. */
-async function sendDeadlineDigests() {
-  const d = db.get();
-  const out = { sent: [], skipped: 0, errors: [] };
-  for (const u of d.users) {
-    if (!u.email || u.notifyDeadlines === false || u.username === 'demo' || u.pending) { out.skipped++; continue; }
-    const fids = u.role === 'admin' ? d.firme.map((f) => f.id) : (u.firme || []);
-    if (!fids.length) { out.skipped++; continue; }
-    const n = decl.notifications(d, fids.map((id) => db.scoped(id)));
-    if (!n.count) { out.skipped++; continue; }
-    try {
-      await sendNotifMail(u.email, '[Contab] ' + n.count + ' termene fiscale / restanțe', digestText(n));
-      out.sent.push(u.email);
-    } catch (e) { out.errors.push(u.username + ': ' + e.message); }
-  }
-  return out;
-}
+// Digestul cu termene + trimiterea de emailuri: src/notify.js
 app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
   const r = await sendDeadlineDigests();
   logAudit('notificari.digest', 'trimis manual: ' + r.sent.length + ' emailuri', { req, firmaId: null });
