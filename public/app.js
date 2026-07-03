@@ -460,13 +460,23 @@ $('#restoreBtn').addEventListener('click', async () => {
 async function renderProfile() {
   try {
     const p = await api('/api/profile');
-    $('#profileForm').email.value = p.email || '';
-    $('#profileForm').notifyDeadlines.checked = p.notifyDeadlines !== false;
+    const f = $('#profileForm');
+    f.email.value = p.email || '';
+    f.notifyDeadlines.checked = p.notifyDeadlines !== false;
+    // datele personale: doar pentru abonati (necontabil = Start, contabil = Pro)
+    const abonat = p.tip === 'necontabil' || p.tip === 'contabil';
+    $('#profilPersonal').classList.toggle('hidden', !abonat);
+    $('#autorizatieRow').classList.toggle('hidden', p.tip !== 'contabil');
+    const pr = p.profil || {};
+    for (const k of ['numeComplet', 'telefon', 'adresa', 'oras', 'judet', 'autorizatie']) { if (f[k]) f[k].value = pr[k] || ''; }
   } catch (e) { /* */ }
 }
 $('#profileForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  await api('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: e.target.email.value, notifyDeadlines: e.target.notifyDeadlines.checked }) });
+  const f = e.target;
+  const profil = {};
+  for (const k of ['numeComplet', 'telefon', 'adresa', 'oras', 'judet', 'autorizatie']) { if (f[k]) profil[k] = f[k].value; }
+  await api('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: f.email.value, notifyDeadlines: f.notifyDeadlines.checked, profil }) });
   toast('Profil salvat');
 });
 async function renderSessions() {
@@ -954,6 +964,10 @@ async function init() {
   applySessionState(USER);
   startMsgPolling();
   if (USER.mustChange) toast('Schimbă parola implicită (admin/admin) din Setări!', true);
+  // abonatii (necontabil/contabil) isi completeaza datele personale in Setari -> Contul meu
+  if ((USER.tip === 'necontabil' || USER.tip === 'contabil') && !USER.profilComplet) {
+    toast('Completează-ți datele personale (nume, telefon) în Setări → Contul meu.', true);
+  }
   maybeWelcome();
   maybeTour();
   $('#companyName').textContent = (META.company && META.company.nume) || '';

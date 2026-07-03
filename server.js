@@ -180,7 +180,12 @@ function allowedFirme(u) {
   return u.role === 'admin' ? d.firme.map((f) => f.id) : (u.firme || []);
 }
 function publicUser(u) {
-  return { id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), firme: allowedFirme(u), mustChange: !!u.mustChange, twofa: !!u.twofa };
+  const p = u.profil || {};
+  return {
+    id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), firme: allowedFirme(u),
+    mustChange: !!u.mustChange, twofa: !!u.twofa,
+    profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?
+  };
 }
 
 // Igiena sesiunilor: elimina sesiunile vechi (peste TTL) si plafoneaza nr. de dispozitive active.
@@ -684,7 +689,11 @@ app.post('/api/change-password', (req, res) => {
   db.save();
   res.json({ ok: true });
 });
-app.get('/api/profile', (req, res) => res.json({ username: req.user.username, email: req.user.email || '', role: req.user.role, notifyDeadlines: req.user.notifyDeadlines !== false }));
+app.get('/api/profile', (req, res) => res.json({
+  username: req.user.username, email: req.user.email || '', role: req.user.role,
+  tip: plans.userKind(req.user), notifyDeadlines: req.user.notifyDeadlines !== false,
+  profil: req.user.profil || {},
+}));
 
 // ── Abonamente (planuri + trial) ──
 // Prețurile sunt publice (vizibile pe pagina de înscriere, fără autentificare).
@@ -787,10 +796,19 @@ app.post('/api/subscription/activate', requireAdmin, (req, res) => {
   res.json({ ok: true, current: plans.status(u.subscription) });
 });
 app.post('/api/profile', (req, res) => {
-  if ((req.body || {}).email != null) req.user.email = String(req.body.email);
-  if ((req.body || {}).notifyDeadlines != null) req.user.notifyDeadlines = !!req.body.notifyDeadlines;
+  const b = req.body || {};
+  if (b.email != null) req.user.email = String(b.email);
+  if (b.notifyDeadlines != null) req.user.notifyDeadlines = !!b.notifyDeadlines;
+  // date personale (necontabil / contabil): nume, telefon, adresa + autorizatia contabilului
+  if (b.profil && typeof b.profil === 'object') {
+    const p = req.user.profil || {};
+    for (const k of ['numeComplet', 'telefon', 'adresa', 'oras', 'judet', 'autorizatie']) {
+      if (b.profil[k] != null) p[k] = String(b.profil[k]).slice(0, 120).trim();
+    }
+    req.user.profil = p;
+  }
   db.save();
-  res.json({ ok: true, email: req.user.email, notifyDeadlines: req.user.notifyDeadlines !== false });
+  res.json({ ok: true, email: req.user.email, notifyDeadlines: req.user.notifyDeadlines !== false, profil: req.user.profil || {} });
 });
 
 // ───────────────────────── RESETARE PAROLA (email) ─────────────────────────

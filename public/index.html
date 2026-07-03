@@ -1352,6 +1352,15 @@ Cu stimă,
             <input name="notifyDeadlines" type="checkbox" checked style="width:auto" />
             Primește zilnic pe email termenele fiscale (restanțe + următoarele 7 zile)
           </label>
+          <div id="profilPersonal" class="full hidden" style="border-top:1px solid var(--line);margin-top:10px;padding-top:12px">
+            <p style="margin:0 0 8px"><b>Date personale</b> <span class="muted">(pentru contul tău de abonat — apar pe documentele emise către tine)</span></p>
+            <label>Nume și prenume <input name="numeComplet" placeholder="Ion Popescu" /></label>
+            <label>Telefon <input name="telefon" placeholder="07xx xxx xxx" /></label>
+            <label class="full">Adresă <input name="adresa" placeholder="Str. Exemplu nr. 1" /></label>
+            <label>Oraș <input name="oras" /></label>
+            <label>Județ <input name="judet" placeholder="ex. Cluj" /></label>
+            <label class="full hidden" id="autorizatieRow">Nr. autorizație / carnet CECCAR (contabil) <input name="autorizatie" placeholder="ex. 12345/2020" /></label>
+          </div>
           <button class="btn primary">Salvează</button>
         </form>
         <div id="sessionsList" class="tablewrap" style="margin-top:12px"></div>
