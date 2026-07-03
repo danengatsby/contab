@@ -30,6 +30,6 @@ if (demoBtn) demoBtn.addEventListener('click', async () => {
     window.location.href = '/';
   } catch (e) {
     demoBtn.textContent = 'Demo indisponibil momentan';
-    setTimeout(() => { demoBtn.disabled = false; demoBtn.textContent = '🔎 Vezi demo cu date reale'; }, 2500);
+    setTimeout(() => { demoBtn.disabled = false; demoBtn.textContent = 'Vezi demo cu date reale'; }, 2500);
   }
 });
