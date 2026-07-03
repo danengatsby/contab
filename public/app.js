@@ -813,6 +813,127 @@ $('#imperStop').addEventListener('click', async () => {
 });
 
 // ───────────────────────── INIT ─────────────────────────
+// ───────────────── ⓘ EXPLICATII PE PANOURI (hover / atingere) ─────────────────
+// Fiecare panou primeste un „i" langa titlu; la hover/focus apare ce contine si cum se citeste.
+// Cheile sunt prefixe ale titlurilor (h2/h3) din index.html — potrivire pe cel mai lung prefix.
+const PANEL_INFO = [
+  // Dashboard
+  ['Comparație an-la-an', 'Veniturile, cheltuielile și rezultatul anului curent față de anul precedent, cu variația procentuală pe fiecare indicator.'],
+  ['Previziune cash-flow', 'Estimarea banilor disponibili în lunile următoare, din soldul curent + mediile încasărilor și plăților. Orientativă, nu o garanție.'],
+  ['Evoluție lunară', 'Venituri, cheltuieli și profit pe fiecare lună a anului — vezi dintr-o privire lunile bune și cele slabe.'],
+  ['Structura soldurilor', 'Cât ai de încasat de la clienți față de cât ai de plătit furnizorilor — echilibrul creanțe vs datorii.'],
+  ['Top creanțe', 'Clienții cu cele mai mari sume neîncasate — cu ei începi urmărirea încasărilor.'],
+  ['Top datorii', 'Furnizorii cărora le datorezi cele mai mari sume — prioritizează plățile.'],
+  ['Aging — vechimea soldurilor', 'Soldurile restante pe intervale de vechime (0-30 / 31-60 / 61-90 / peste 90 de zile). Cele vechi cer ajustare sau scoatere din evidență.'],
+  // Documente
+  ['1 · Încarcă documentul', 'Tragi PDF-ul sau poza facturii primite; AI-ul citește furnizorul, CUI-ul, baza și TVA-ul și propune tipul de înregistrare.'],
+  ['2 · Verifică și salvează', 'Câmpurile extrase, editabile. Verifici sumele și tipul, apoi salvezi — articolul contabil se generează automat, cu previzualizare.'],
+  ['Import extras bancar', 'Încarci extrasul (CSV/MT940); tranzacțiile sunt potrivite cu partenerii după nume/CUI și propuse ca încasări/plăți de confirmat.'],
+  ['Facturi primite în SPV', 'Facturile electronice primite în SPV. „Importă" descarcă XML-ul și îl transformă într-o înregistrare de cumpărare, cu documentul atașat.'],
+  ['📥 Import direct e-Factura', 'Ai deja XML-ul e-Factura (de pe email etc.)? Îl încarci aici fără conexiune SPV.'],
+  ['Emite un document de ieșire', 'Factura ta către client: completezi liniile, numărul vine automat din serie, iar PDF-ul și e-Factura XML se generează singure.'],
+  ['Rapoarte generate automat', 'Scurtături către registrele și rapoartele generate din înregistrările tale.'],
+  ['🔁 Facturi recurente', 'Șabloane care emit automat facturi la interval fix (abonamente, chirii) — definești o dată, aplicația le generează la zi.'],
+  ['Toate înregistrările recente', 'Ultimele articole contabile, cu documentul-sursă, nota contabilă PDF și acțiuni (stornare, e-Factura, SPV).'],
+  ['📥 Documente de intrare introduse', 'Facturile și documentele primite, cu înregistrarea contabilă aferentă fiecăruia.'],
+  ['🖼️ Galerie documente primite', 'Fișierele încărcate (poze, PDF-uri) — documentul justificativ al fiecărei înregistrări, răsfoibil vizual.'],
+  ['📤 Documente de ieșire emise', 'Facturile emise de tine, cu starea trimiterii în SPV și recipisa.'],
+  ['🖼️ Galerie documente emise', 'PDF-urile facturilor emise, ca galerie.'],
+  // Registre
+  ['Toate operațiunile', 'Registrul-jurnal: toate articolele contabile în ordine cronologică, numerotate secvențial. Documentul legal de bază.'],
+  ['Fișa fiecărui cont', 'Cartea mare: mișcările fiecărui cont, cu sold inițial, rulaje și sold final.'],
+  ['Încasări & plăți', 'Jurnal de bancă / registru de casă: mișcările contului de trezorerie ales, cu sold curent după fiecare operațiune și controlul plafoanelor de numerar.'],
+  ['💱 Registru de casă în valută', 'Mișcările casei în valută (5314): sumele în valută și în lei, cu solduri pe ambele coloane.'],
+  ['Solduri conturi', 'Balanța de verificare cu cele patru egalități (SI, rulaje, total sume, SF). Dacă nu se închide, există o eroare de înregistrare.'],
+  // TVA
+  ['TVA de plată', 'Decontul D300 pe perioadă: TVA colectată minus deductibilă, defalcat pe cote, cu XML-ul gata de validat cu DUKIntegrator.'],
+  ['Jurnal de vânzări', 'Facturile emise cu TVA colectată în perioadă — baza decontului D300 și a D394.'],
+  ['Jurnal de cumpărări', 'Achizițiile cu TVA deductibilă în perioadă, cu taxarea inversă marcată.'],
+  ['TVA la încasare — exigibilitate', 'Regim TVA la încasare: introduci suma încasată/plătită și cota; TVA devenită exigibilă se calculează și se postează automat.'],
+  ['Închide TVA-ul lunii', 'Regularizarea lunară: 4427 se compensează cu 4426, diferența merge în 4423 (de plată) sau 4424 (de recuperat).'],
+  // Închideri
+  ['Impozit pe profit', 'Calculul anual: profit contabil + nedeductibile − deduceri − pierdere reportată, apoi cota de 16%. Postează 691 = 4411.'],
+  ['Închiderea anuală', 'Închide conturile de venituri și cheltuieli (clasele 6/7) în 121 „Profit și pierdere".'],
+  ['Repartizarea profitului', 'După aprobarea situațiilor financiare: soldul lui 121 se mută în 117 (rezultat reportat).'],
+  ['💱 Reevaluare valutară', 'Actualizează la cursul de referință soldurile în valută (bancă, clienți, furnizori) și postează diferențele pe 765/665.'],
+  // Situații financiare
+  ['Cont de profit și pierdere', 'F20: veniturile și cheltuielile anului, separate pe exploatare și financiar, până la rezultatul net.'],
+  ['Bilanț (simplificat)', 'F10: activele (imobilizări, stocuri, creanțe, bani) egale cu pasivele (capitaluri + datorii) la data aleasă.'],
+  ['Situația fluxurilor de trezorerie', 'F30: de unde au venit și unde s-au dus banii — exploatare, investiții, finanțare. Variația trebuie să bată cu soldul de trezorerie.'],
+  ['Situația modificărilor capitalurilor', 'F40: cum s-a mișcat fiecare element de capital propriu (capital, rezerve, rezultat) în cursul anului.'],
+  ['📊 Buget vs realizat', 'Compară sumele bugetate pe conturi (clasa 6/7) cu realizatul lunii/anului; abaterile sunt evidențiate.'],
+  ['Registrul de evidență fiscală', 'Trecerea de la rezultatul contabil la cel fiscal: cheltuieli nedeductibile, venituri neimpozabile, impozit micro vs profit.'],
+  ['Note explicative', 'Notele generate automat din bilanț și P&L: active, capitaluri, datorii, indicatori (lichiditate, solvabilitate, rentabilitate).'],
+  ['SAF-T', 'Fișierul standard de audit (D406): conturi, parteneri, facturi și toate articolele anului, în XML-ul cerut de ANAF.'],
+  // Livrabile + portofoliu
+  ['🏛 Fișa Rol', 'Soliciți de la ANAF fișa pe plătitor (obligațiile firmei din evidența fiscală) și descarci documentele din mesajele SPV.'],
+  ['📋 Registrul depunerilor', 'Declarațiile lunii cu termenul legal și starea lor: descărcarea XML-ului le marchează „generate", tu le marchezi „depuse" cu recipisa.'],
+  ['Status declarații', 'Distribuția declarațiilor lunii pe stări (depuse, generate, nedepuse, erori), pe tot portofoliul.'],
+  ['⚠️ Top firme cu atenționări', 'Firmele cu restanțe la depuneri sau erori — cele care cer intervenție primele.'],
+  ['Firme din portofoliu', 'Situația fiecărei firme: declarații așteptate, depuse, nedepuse, erori și atenționări pe luna selectată.'],
+  ['Activitate recentă', 'Ultimele acțiuni din jurnalul de audit, pe firmele la care ai acces.'],
+  // Reconciliere + analitic
+  ['Reconciliere parteneri', 'Fișa fiecărui partener: facturile potrivite automat cu încasările/plățile de aceeași sumă; soldul deschis rămas.'],
+  ['🔄 Compensare creanțe', 'Partenerii care îți sunt și clienți, și furnizori: compensezi soldurile reciproce printr-o notă contabilă.'],
+  ['Solduri inițiale pe partener', 'Împarți soldul inițial al conturilor de terți pe partenerii care îl compun; aplicația verifică concordanța cu sinteticul.'],
+  ['Scadențar — creanțe și datorii', 'Soldurile restante pe partener, pe intervale de vechime, prin stingere FIFO (factura cea mai veche se stinge prima).'],
+  ['Ajustare pentru deprecierea creanțelor', 'Pentru creanțele vechi (peste 90 de zile): constitui ajustarea 6814 = 491 sau scoți creanța din evidență (654 = 4111).'],
+  // Mijloace fixe
+  ['Registrul mijloacelor fixe', 'Toate imobilizările, cu valoare de intrare, amortizare cumulată și valoare rămasă la zi.'],
+  ['Adaugă mijloc fix', 'Introduci imobilizarea (cost, durată, metodă de amortizare); amortizarea începe automat din luna următoare punerii în funcțiune.'],
+  ['Grafic de rate leasing', 'Scadențar de leasing: rate lunare cu principal, dobândă și sold rămas — anuități constante sau rate egale de capital.'],
+  // Salarizare
+  ['Adaugă / modifică angajat', 'Datele angajatului: brut, spor, persoane în întreținere (pentru deducerea personală), tichete, avans, rețineri.'],
+  ['Sumar stat de plată', 'Totalurile lunii: brut, contribuții (CAS/CASS/CAM), impozit, net de plată și costul total al angajatorului.'],
+  ['Angajați și calcul', 'Statul de plată per angajat: CAS 25%, CASS 10%, impozit 10% cu deducerea personală, și restul de plată.'],
+  ['Registru anual de salarii', 'Cumulul anual per angajat (brut, contribuții, net) — baza adeverințelor de venit.'],
+  // Stocuri
+  ['Gestiuni (depozite)', 'Nomenclatorul de gestiuni; stocul și costul mediu ponderat se țin separat pe fiecare gestiune.'],
+  ['Adaugă produs', 'Nomenclatorul de produse: cod, denumire, UM și contul de stoc (371 mărfuri, 301 materii, 345 produse finite…).'],
+  ['Înregistrează mișcare', 'Recepții, ieșiri (descărcare la CMP) și transferuri între gestiuni; nota contabilă se poate posta automat.'],
+  ['🏭 Producție', 'Consumă materialele din rețetă și obține produsul finit în gestiune, la cost de producție.'],
+  ['Situație producție', 'Producția lunii de lucru: cantitățile obținute și costurile lor.'],
+  ['📋 Rețete / BOM', 'Rețetele de producție: ce materiale se consumă pentru o unitate de produs finit.'],
+  ['Mișcări de stoc', 'Istoricul mișcărilor, cu filtre pe tip, gestiune și lună; fiecare mișcare reține operatorul care a înregistrat-o.'],
+  ['Registrul documentelor emise', 'NIR-urile, bonurile de consum și avizele numerotate: serie/număr, dată, gestiune, valoare, operator.'],
+  ['Serii documente', 'Seria și numărul următor pentru NIR / bon de consum / aviz; numărul se atribuie la prima tipărire și rămâne fix.'],
+  // Parteneri + plan
+  ['Adaugă / modifică partener', 'CUI, denumire și adresă — folosite în e-Factura și în D394.'],
+  ['Parteneri salvați', 'Nomenclatorul de parteneri; se completează automat din facturi și se poate importa/exporta în CSV.'],
+  ['📧 Șabloane email', 'Textele emailurilor către clienți (trimitere factură, somație de plată).'],
+  ['Planul de conturi', 'Conturile disponibile (clasele 1–8), inclusiv cele personalizate importate din CSV.'],
+  // Setări (cele importante)
+  ['Contul meu', 'Email-ul de recuperare a parolei, notificările zilnice cu termene fiscale și dispozitivele conectate.'],
+  ['Utilizatori (administrator)', 'Conturile de acces: rol (admin/utilizator), firmele alocate și invitațiile prin link.'],
+  ['Backup baza de date', 'Copii de siguranță: manuale sau zilnice automate, cu restaurare dintr-un fișier. O arhivă completă pleacă zilnic și offsite.'],
+  ['Firme', 'Firmele gestionate în aceeași instanță: adaugi, activezi, exporți sau imporți o firmă întreagă.'],
+  ['Datele firmei active', 'CUI, adresă, regim TVA — folosite în declarații, e-Factura și rapoarte.'],
+  ['⚖️ Cote fiscale', 'Cotele folosite în calcule (TVA, CAS, impozite). Implicit sunt cele legale 2026; le poți suprascrie manual.'],
+  ['🔒 Blocare perioadă', 'Blochează lunile deja declarate: nu se mai pot adăuga sau modifica înregistrări în ele.'],
+  ['Extragere cu AI', 'Citirea automată a documentelor încărcate (PDF/poze) cu Claude API; se poate opri de aici.'],
+  ['Trimitere în SPV', 'Conexiunea OAuth cu ANAF pentru e-Factura și serviciile SPV; necesită aplicație înregistrată și certificat digital.'],
+  ['Date demonstrative', 'Încarcă exemplul din ghid (luna iunie) ca să explorezi aplicația cu date reale.'],
+  ['📋 Jurnal de audit', 'Cine a făcut ce și când: acțiunile importante, cu autor, firmă și dată.'],
+  ['📁 Arhivă documente', 'Toate fișierele încărcate, cu căutare și descărcare.'],
+];
+function addPanelInfo() {
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9ăâîșşțţ]/g, '');
+  const dict = PANEL_INFO.map(([t, info]) => [norm(t), info]).sort((a, b) => b[0].length - a[0].length);
+  $$('.card h2, .card h3, section .toolbar h2').forEach((h) => {
+    if (h.querySelector('.cinfo')) return;
+    const key = norm(h.textContent);
+    const hit = dict.find(([t]) => key.startsWith(t));
+    if (!hit) return;
+    const i = document.createElement('span');
+    i.className = 'cinfo'; i.tabIndex = 0; i.textContent = 'i';
+    i.setAttribute('role', 'note'); i.setAttribute('aria-label', hit[1]);
+    const pop = document.createElement('span');
+    pop.className = 'cpop'; pop.textContent = hit[1];
+    i.appendChild(pop);
+    h.appendChild(i);
+  });
+}
+
 async function init() {
   try {
     META = await api('/api/meta');
@@ -837,6 +958,7 @@ async function init() {
   fillPeriods();
   renderAI();
   refreshNotifBadge();
+  addPanelInfo(); // ⓘ cu explicatii pe fiecare panou
   loadDashboard();
   await loadEntries();
 }
@@ -876,21 +998,30 @@ async function loadDashboard() {
   $('#dashYear').textContent = 'Exercițiul ' + k.year;
   renderDashAlerts(k);
   const s = (c && c.monthly) || [];
-  const card = (ic, lbl, val, sub, cls, trend) => `<div class="kpi ${cls || ''}">
+  const cinfo = (info) => info ? `<span class="cinfo" tabindex="0" role="note" aria-label="${info}">i<span class="cpop">${info}</span></span>` : '';
+  const card = (ic, lbl, val, sub, cls, trend, info) => `<div class="kpi ${cls || ''}">
     <div class="kpi-top"><span class="kpi-ic">${ic}</span>${trend || ''}</div>
-    <div class="lbl">${lbl}</div><div class="val">${fmt(val)}</div><div class="sub">${sub || ''}</div></div>`;
+    <div class="lbl">${lbl}${cinfo(info)}</div><div class="val">${fmt(val)}</div><div class="sub">${sub || ''}</div></div>`;
   const tvaP = k.tvaDePlata >= k.tvaDeRecuperat;
   const yo = k.yoY || {};
   const yoySub = (delta) => delta == null ? ('vs ' + (yo.prevYear || '') + ': fără bază') : ('vs ' + yo.prevYear + ': ' + (delta >= 0 ? '▲ +' : '▼ ') + fmt(delta) + '%');
   $('#kpis').innerHTML =
-    card('👥', 'Sold clienți (4111)', k.soldClienti, 'de încasat', 'green') +
-    card('🏭', 'Sold furnizori (401)', k.soldFurnizori, 'de plătit', 'red') +
-    card('🧾', tvaP ? 'TVA de plată' : 'TVA de recuperat', tvaP ? k.tvaDePlata : k.tvaDeRecuperat, 'cumulat', 'blue') +
-    card('🏦', 'Disponibil bancă (5121)', k.banca, 'sold curent', 'blue') +
-    card('💵', 'Numerar casă (5311)', k.numerar, 'sold curent', 'blue') +
-    card('📈', 'Venituri ' + k.year, k.venituri, yoySub(yo.venituriDelta), 'green', trendChip(trendOf(s, 'venituri'), true)) +
-    card('📉', 'Cheltuieli ' + k.year, k.cheltuieli, yoySub(yo.cheltuieliDelta), 'red', trendChip(trendOf(s, 'cheltuieli'), false)) +
-    card('💰', 'Rezultat ' + k.year, k.profit, yoySub(yo.profitDelta), k.profit >= 0 ? 'green' : 'red', trendChip(trendOf(s, 'profit'), true));
+    card('👥', 'Sold clienți (4111)', k.soldClienti, 'de încasat', 'green', '',
+      'Cât au de plătit clienții tăi în total — soldul contului 4111 la zi. Detaliul pe fiecare client e în Scadențar.') +
+    card('🏭', 'Sold furnizori (401)', k.soldFurnizori, 'de plătit', 'red', '',
+      'Cât datorezi furnizorilor în total — soldul contului 401 la zi.') +
+    card('🧾', tvaP ? 'TVA de plată' : 'TVA de recuperat', tvaP ? k.tvaDePlata : k.tvaDeRecuperat, 'cumulat', 'blue', '',
+      'Soldul de TVA cumulat (4423/4424 după închideri + luna curentă neînchisă). Decontul exact, pe lună, e în tab-ul TVA.') +
+    card('🏦', 'Disponibil bancă (5121)', k.banca, 'sold curent', 'blue', '',
+      'Banii din contul bancar în lei, după toate încasările și plățile înregistrate.') +
+    card('💵', 'Numerar casă (5311)', k.numerar, 'sold curent', 'blue', '',
+      'Numerarul din casierie. Nu poate fi negativ — dacă e, lipsește o încasare din evidență.') +
+    card('📈', 'Venituri ' + k.year, k.venituri, yoySub(yo.venituriDelta), 'green', trendChip(trendOf(s, 'venituri'), true),
+      'Total venituri (clasa 7) pe anul curent, cu comparația față de anul trecut și tendința ultimelor luni.') +
+    card('📉', 'Cheltuieli ' + k.year, k.cheltuieli, yoySub(yo.cheltuieliDelta), 'red', trendChip(trendOf(s, 'cheltuieli'), false),
+      'Total cheltuieli (clasa 6) pe anul curent, cu comparația față de anul trecut.') +
+    card('💰', 'Rezultat ' + k.year, k.profit, yoySub(yo.profitDelta), k.profit >= 0 ? 'green' : 'red', trendChip(trendOf(s, 'profit'), true),
+      'Venituri minus cheltuieli pe anul curent — profitul brut contabil, înainte de impozit.');
   renderYoY(yo);
   renderForecast();
   const list = (arr) => arr.length
@@ -2860,14 +2991,19 @@ async function loadPortfolio() {
   const p = pget('portofoliu') || new Date().toISOString().slice(0, 7);
   const d = await api('/api/portfolio?period=' + p);
   const t = d.tot;
-  const kpi = (ic, lbl, val, sub, cls) => `<div class="kpi ${cls || ''}">
+  const pinfo = (info) => `<span class="cinfo" tabindex="0" role="note" aria-label="${info}">i<span class="cpop">${info}</span></span>`;
+  const kpi = (ic, lbl, val, sub, cls, info) => `<div class="kpi ${cls || ''}">
     <div class="kpi-top"><span class="kpi-ic">${ic}</span></div>
-    <div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub || ''}</div></div>`;
+    <div class="lbl">${lbl}${info ? pinfo(info) : ''}</div><div class="val">${val}</div><div class="sub">${sub || ''}</div></div>`;
   $('#portoKpis').innerHTML =
-    kpi('🏢', 'Firme în portofoliu', d.firms.length, 'cu acces', 'blue') +
-    kpi('📄', 'Declarații așteptate', t.asteptate, 'luna ' + p, 'blue') +
-    kpi('✅', 'Depuse', t.depuse, t.generate + ' generate · ' + t.nedepuse + ' nedepuse', 'green') +
-    kpi('🛡️', 'Conformitate', d.conformitate + '%', t.restante + ' restanțe · ' + t.erori + ' erori', t.restante || t.erori ? 'red' : 'green');
+    kpi('🏢', 'Firme în portofoliu', d.firms.length, 'cu acces', 'blue',
+      'Firmele la care ai acces și care intră în agregarea de mai jos.') +
+    kpi('📄', 'Declarații așteptate', t.asteptate, 'luna ' + p, 'blue',
+      'Câte declarații au de depus firmele tale pe luna selectată, după profilul fiecăreia (TVA, angajați, trimestru).') +
+    kpi('✅', 'Depuse', t.depuse, t.generate + ' generate · ' + t.nedepuse + ' nedepuse', 'green',
+      'Declarațiile marcate „depuse" în registrul depunerilor. „Generate" = XML descărcat dar încă nedepus.') +
+    kpi('🛡️', 'Conformitate', d.conformitate + '%', t.restante + ' restanțe · ' + t.erori + ' erori', t.restante || t.erori ? 'red' : 'green',
+      'Depuse împărțit la datorate (fără scutite). Restanțele = termen depășit fără depunere.');
   // bara de status (stacked) + legenda cu numarul pe fiecare stare
   const segs = [['depuse', '#0a7d33'], ['generate', '#1652d6'], ['nedepuse', '#b26a00'], ['erori', '#b00020'], ['scutite', '#8a93a3']];
   const total = Math.max(1, t.asteptate);

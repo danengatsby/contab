@@ -721,3 +721,23 @@ body.dark .imper-banner button{background:#ffd778;color:#2a2008}
 .login-overlay .login-box{position:relative;z-index:2}
 #loginOverlay .login-box{margin-top:12vh}
 @media (max-height:640px){.brand-hero{position:static;margin-bottom:16px}.login-overlay#loginOverlay{grid-auto-flow:row;align-content:center}#loginOverlay .login-box{margin-top:0}}
+
+/* ── ⓘ pe panouri: explicație la hover/atingere despre ce conține panoul ── */
+.cinfo{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;
+  border:1.5px solid var(--line-strong);color:#9a938a;font-size:11px;font-weight:700;font-style:normal;
+  margin-left:8px;vertical-align:2px;cursor:help;position:relative;outline:none;user-select:none;flex:none}
+.cinfo:hover,.cinfo:focus{border-color:var(--accent);color:var(--accent)}
+.cinfo .cpop{position:absolute;left:50%;top:calc(100% + 9px);transform:translateX(-50%) translateY(4px);
+  width:min(340px,80vw);background:var(--head);color:#f1ede3;font-size:12.5px;font-weight:400;line-height:1.55;
+  padding:11px 14px;border-radius:10px;box-shadow:var(--shadow-lg);z-index:80;text-align:left;letter-spacing:normal;
+  opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s,transform .15s;white-space:normal}
+.cinfo:hover .cpop,.cinfo:focus .cpop{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+/* aproape de marginea din stânga a cardului, nu iesi din ecran */
+h2 .cinfo .cpop,h3 .cinfo .cpop{left:0;transform:translateX(-12px) translateY(4px)}
+h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focus .cpop{transform:translateX(-12px) translateY(0)}
+.kpi .cinfo{width:15px;height:15px;font-size:10px;margin-left:6px;vertical-align:1px}
+/* corectii cinfo in KPI: fara uppercase mostenit, fara taiere de overflow-ul tile-ului */
+.cinfo .cpop{text-transform:none;font-weight:400}
+.kpi:has(.cinfo:hover),.kpi:has(.cinfo:focus){overflow:visible;position:relative;z-index:45}
+.kpi .cinfo .cpop{left:auto;right:-12px;transform:translateY(4px)}
+.kpi .cinfo:hover .cpop,.kpi .cinfo:focus .cpop{transform:translateY(0)}
