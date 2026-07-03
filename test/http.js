@@ -209,6 +209,15 @@ async function main() {
     ok('csv/balance: 200 cu antet de balanta', csvB.status === 200 && /Cont;Denumire;SI Debit/.test(csvB.text));
     ok('csv/partners: 200', (await req('GET', '/csv/partners', { cookie: c1 })).status === 200);
 
+    // ── XML declaratii: generare + marcarea "generata" in registru + validare ──
+    const xd300 = await req('GET', '/xml/d300?period=2026-06', { cookie: c1 });
+    ok('xml/d300: XML bine-format', xd300.status === 200 && /<declaratie300/.test(xd300.text));
+    await req('GET', '/xml/d394?period=2026-06', { cookie: c1 }); // marcheaza d394 (neatins anterior)
+    const regAfter = await req('GET', '/api/declarations?period=2026-06', { cookie: c1 });
+    ok('descarcarea XML marcheaza declaratia "generata" in registru', regAfter.json.rows.find((r) => r.tip === 'd394').status === 'generata');
+    const val = await req('GET', '/api/validate/d300?period=2026-06', { cookie: c1 });
+    ok('validare pre-depunere: raspuns cu ok/errors', val.json && typeof val.json.ok === 'boolean' && Array.isArray(val.json.errors));
+
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
