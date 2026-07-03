@@ -959,6 +959,9 @@ async function init() {
   renderAI();
   refreshNotifBadge();
   addPanelInfo(); // ⓘ cu explicatii pe fiecare panou
+  // /?register=1 functioneaza si cu o sesiune activa (ex. demo): deschide inscrierea
+  // peste aplicatie — dupa inregistrare, noul cont inlocuieste automat sesiunea curenta.
+  handleRegisterLink();
   loadDashboard();
   await loadEntries();
 }
