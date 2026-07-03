@@ -964,6 +964,13 @@ async function init() {
   applySessionState(USER);
   startMsgPolling();
   if (USER.mustChange) toast('Schimbă parola implicită (admin/admin) din Setări!', true);
+  // proba expirata: banner persistent + cont read-only (serverul blocheaza scrierile cu 402)
+  const seb = $('#subExpiredBar');
+  if (seb) {
+    seb.classList.toggle('hidden', !USER.subExpirat);
+    const go = $('#subExpiredGo');
+    if (go && !go._wired) { go._wired = true; go.addEventListener('click', () => goTab('abonament')); }
+  }
   // abonatii (necontabil/contabil) isi completeaza datele personale in Setari -> Contul meu
   if ((USER.tip === 'necontabil' || USER.tip === 'contabil') && !USER.profilComplet) {
     toast('Completează-ți datele personale (nume, telefon) în Setări → Contul meu.', true);

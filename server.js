@@ -185,6 +185,7 @@ function publicUser(u) {
     id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), firme: allowedFirme(u),
     mustChange: !!u.mustChange, twofa: !!u.twofa,
     profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?
+    subExpirat: plans.expiredLock(u), // proba expirata -> cont read-only (banner in UI)
   };
 }
 
@@ -277,6 +278,21 @@ function requireAdmin(req, res, next) {
   if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Necesita drepturi de administrator.' });
   next();
 }
+
+// ── Proba expirata => cont READ-ONLY: vede datele, dar nu mai inregistreaza si nu mai
+// genereaza livrabile (PDF/XML/CSV), pana la alegerea unui plan. Raman permise: citirile
+// din API, gestionarea contului/abonamentului, plata si mesajele catre suport.
+const SUB_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|subscription|checkout|stripe|2fa|messages)/;
+const EXPIRED_MSG = 'Perioada de probă a expirat. Alege un plan din Abonament pentru a continua să înregistrezi și să generezi documente — datele tale sunt intacte.';
+app.use((req, res, next) => {
+  if (!req.user) return next();
+  const isDeliverable = /^\/(pdf|xml|csv|efactura)/.test(req.path);
+  if (req.method === 'GET' && !isDeliverable) return next(); // citirile raman libere
+  if (SUB_EXEMPT.test(req.path)) return next();
+  if (!plans.expiredLock(req.user)) return next();
+  if (isDeliverable) return res.status(402).type('text/plain; charset=utf-8').send(EXPIRED_MSG);
+  res.status(402).json({ error: EXPIRED_MSG });
+});
 
 app.post('/api/login', (req, res) => {
   const mins = isLocked(req);

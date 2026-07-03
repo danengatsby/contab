@@ -1181,6 +1181,13 @@ const pend = [{ email: 'client@firma.ro', plan: 'pro', customerId: 'cus_1', subs
 eq('findPending: email potrivit (case-insensitive)', plansMod.findPending(pend, 'Client@Firma.RO'), 0);
 eq('findPending: email nepotrivit -> -1', plansMod.findPending(pend, 'altul@x.ro'), -1);
 eq('findPending: fara email -> -1', plansMod.findPending(pend, ''), -1);
+// blocarea probei expirate (cont read-only)
+const pastTrial = { plan: 'trial', status: 'trial', trialStartedAt: '2026-01-01', trialEndsAt: '2026-01-31' };
+ok('expiredLock: proba expirata -> blocat', plansMod.expiredLock({ role: 'user', subscription: pastTrial }));
+ok('expiredLock: proba activa -> liber', !plansMod.expiredLock({ role: 'user', subscription: plansMod.startTrial({}) }));
+ok('expiredLock: fara abonament (invitat/demo) -> liber', !plansMod.expiredLock({ role: 'user' }));
+ok('expiredLock: admin -> liber chiar cu proba expirata', !plansMod.expiredLock({ role: 'admin', subscription: pastTrial }));
+ok('expiredLock: plan activ -> liber', !plansMod.expiredLock({ role: 'user', subscription: { plan: 'pro', status: 'active' } }));
 // tipurile de utilizator: admin / tester (proba) / necontabil (Start) / contabil (Pro)
 eq('userKind: admin ramane admin indiferent de plan', plansMod.userKind({ role: 'admin', subscription: { plan: 'pro', status: 'active' } }), 'admin');
 eq('userKind: fara abonament -> tester', plansMod.userKind({ role: 'user' }), 'tester');

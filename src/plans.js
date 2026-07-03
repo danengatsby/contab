@@ -34,6 +34,17 @@ const PLANS = [
 ];
 
 /**
+ * Proba expirata si fara plan activ -> contul devine read-only (vede datele, nu mai
+ * inregistreaza si nu mai genereaza livrabile). NU se aplica adminilor si nici
+ * utilizatorilor fara abonament (personal invitat de admin, contul demo) — doar
+ * celor care AU folosit proba si nu au trecut pe un plan platit.
+ */
+function expiredLock(user) {
+  if (!user || user.role === 'admin') return false;
+  return status(user.subscription).status === 'expired';
+}
+
+/**
  * Tipul de utilizator, derivat din rol si abonament:
  *   admin — administratorul aplicatiei;
  *   tester — proba gratuita (sau inca fara plan);
@@ -114,4 +125,4 @@ function pendingToSubscription(rec, now) {
   return { plan: rec.plan, status: 'active', stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null, since: new Date(now || Date.now()).toISOString() };
 }
 
-module.exports = { PLANS, TRIAL_DAYS, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind };
+module.exports = { PLANS, TRIAL_DAYS, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock };
