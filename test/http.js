@@ -174,6 +174,25 @@ async function main() {
     ok('registru anual de salarii: cumuleaza luna postata', (await req('GET', '/api/registru-salarii?year=2026', { cookie: c1 })).json.angajati.some((a) => a.brut === 5000));
     ok('angajat sters', (await req('DELETE', '/api/angajati/' + angId, { cookie: c1 })).json.ok === true);
 
+    // ── Stocuri: produs, gestiune, receptie, descarcare de gestiune (nota), stoc curent ──
+    eq('produs fara cod -> 400', (await req('POST', '/api/products', { cookie: c1, body: { denumire: 'X' } })).status, 400);
+    const mkP = await req('POST', '/api/products', { cookie: c1, body: { cod: 'P1', denumire: 'Marfa A', um: 'buc', cont: '371' } });
+    ok('produs creat', mkP.json && mkP.json.ok && mkP.json.product.id);
+    const pid = mkP.json.product.id;
+    const mkG = await req('POST', '/api/gestiuni', { cookie: c1, body: { cod: 'G1', denumire: 'Depozit', gestionar: 'Ion' } });
+    ok('gestiune creata', mkG.json && mkG.json.ok && mkG.json.gestiune.id);
+    const gid = mkG.json.gestiune.id;
+    const recep = await req('POST', '/api/stock-movements', { cookie: c1, body: { tip: 'receptie', productId: pid, gestiuneId: gid, cantitate: 10, pretUnitar: 5, data: '2026-06-05', document: 'NIR1' } });
+    ok('receptie inregistrata', recep.json && recep.json.ok && recep.json.movement.id);
+    const mid = recep.json.movement.id;
+    const stoc = await req('GET', '/api/stocks?asOf=2026-06', { cookie: c1 });
+    ok('stoc curent: 10 buc la CMP 5', Array.isArray(stoc.json) && stoc.json.some((s) => s.stocQ === 10 && s.cmp === 5));
+    const postNota = await req('POST', '/api/stock-movements/' + mid + '/post', { cookie: c1 });
+    ok('receptie postata: nota 371=401', postNota.json && postNota.json.ok && postNota.json.entry && postNota.json.entry.lines.some((l) => l.debit === '371' && l.credit === '401'));
+    ok('lista miscari contine receptia', (await req('GET', '/api/stock-movements?period=2026-06', { cookie: c1 })).json.some((m) => m.id === mid));
+    ok('fisa de magazie: o intrare', (await req('GET', '/api/stocks/' + pid + '/ledger', { cookie: c1 })).json.rows.length >= 1);
+    ok('miscare stearsa', (await req('DELETE', '/api/stock-movements/' + mid, { cookie: c1 })).json.ok === true);
+
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
