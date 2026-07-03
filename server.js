@@ -1965,7 +1965,7 @@ app.delete('/api/angajati/:id', (req, res) => {
   db.save();
   res.json({ ok: true });
 });
-app.get('/api/stat-plata', (req, res) => res.json(statePlata(S(req).angajati)));
+app.get('/api/stat-plata', (req, res) => res.json(statePlata(S(req).angajati, req.query.period)));
 app.get('/api/registru-salarii', (req, res) => res.json(registruSalarii(S(req).payrollHistory, req.query.year || String(new Date().getFullYear()))));
 app.get('/pdf/registru-salarii', (req, res) => pdf.registruSalariiPdf(res, S(req).company, registruSalarii(S(req).payrollHistory, req.query.year || String(new Date().getFullYear()))));
 app.get('/pdf/adeverinta/:id', (req, res) => {
@@ -1982,7 +1982,7 @@ app.post('/api/stat-plata', (req, res) => {
   if (!v.angajati.length) return res.status(400).json({ error: 'Niciun angajat definit.' });
   const period = req.query.period;
   if (!period) return res.status(400).json({ error: 'Lipseste perioada (YYYY-MM).' });
-  const sp = statePlata(v.angajati);
+  const sp = statePlata(v.angajati, period);
   const data = period + '-30';
   // posteaza articolul de salarii cu sumele agregate din statul de plata (potrivite exact)
   const entry = buildEntry('stat_plata', {
@@ -2011,7 +2011,7 @@ app.post('/api/stat-plata/pay', (req, res) => {
   const v = S(req);
   const period = req.query.period;
   if (!period) return res.status(400).json({ error: 'Lipseste perioada (YYYY-MM).' });
-  const sp = statePlata(v.angajati);
+  const sp = statePlata(v.angajati, period);
   if (sp.totals.restPlata <= 0) return res.status(400).json({ error: 'Nimic de platit (rest de plata 0).' });
   const cont = ['5121', '5311'].includes(req.query.cont) ? req.query.cont : '5121';
   const entry = buildEntry('plata_salarii', { data: period + '-30', suma: sp.totals.restPlata, cont }, null, activeId(req));
@@ -2838,7 +2838,7 @@ app.get('/xml/d112', (req, res) => {
   const v = S(req);
   const period = req.query.period || new Date().toISOString().slice(0, 7);
   recordDecl(req, 'd112', period);
-  sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati)), 'd112-' + period + '.xml');
+  sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati, period)), 'd112-' + period + '.xml');
 });
 app.get('/xml/saft', (req, res) => {
   const v = S(req);
@@ -2942,7 +2942,7 @@ app.get('/api/validate/:type', (req, res) => {
     else if (type === 'd394') x = xml.d394Xml(v.company, period, acc.vatJournals(v, period));
     else if (type === 'd390') x = xml.d390Xml(v.company, period, rep.d390(v, period));
     else if (type === 'd205') x = xml.d205Xml(v.company, year, rep.d205(v, year));
-    else if (type === 'd112') x = xml.d112Xml(v.company, period, statePlata(v.angajati));
+    else if (type === 'd112') x = xml.d112Xml(v.company, period, statePlata(v.angajati, period));
     else if (type === 'saft') x = saft.saftXml(v, year);
     else return res.status(400).json({ error: 'Tip de declaratie necunoscut: ' + type });
   } catch (e) { return res.status(400).json({ error: e.message }); }
@@ -2965,12 +2965,12 @@ app.get('/pdf/bilant', (req, res) => {
 });
 app.get('/pdf/vat', (req, res) => pdf.vatPdf(res, S(req).company, acc.vatJournals(S(req), req.query.period || null)));
 app.get('/pdf/d112', (req, res) => pdf.d112Pdf(res, S(req).company, rep.d112(S(req), req.query.period || null)));
-app.get('/pdf/stat-plata', (req, res) => pdf.statePlataPdf(res, S(req).company, statePlata(S(req).angajati), req.query.period || null));
+app.get('/pdf/stat-plata', (req, res) => pdf.statePlataPdf(res, S(req).company, statePlata(S(req).angajati, req.query.period), req.query.period || null));
 app.get('/pdf/fluturas/:id', (req, res) => {
   const v = S(req);
   const ang = v.angajati.find((a) => a.id === req.params.id);
   if (!ang) return res.status(404).send('Angajat inexistent');
-  const row = statePlata([ang]).rows[0];
+  const row = statePlata([ang], req.query.period).rows[0];
   pdf.fluturasPdf(res, v.company, row, req.query.period || new Date().toISOString().slice(0, 7));
 });
 app.get('/pdf/d300', (req, res) => pdf.d300Pdf(res, S(req).company, rep.d300(S(req), req.query.period || null)));

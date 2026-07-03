@@ -7,8 +7,9 @@ const { round2 } = require('./util');
 const fiscal = require('./fiscal');
 
 /** Statul de plata pentru o lista de angajati: randuri per angajat + totaluri.
- *  `spor` se adauga la brut (impozabil); `avans` (425) si `retineri` (terti -> 427) se scad din net. */
-function statePlata(angajati) {
+ *  `spor` se adauga la brut (impozabil); `avans` (425) si `retineri` (terti -> 427) se scad din net.
+ *  `period` (YYYY-MM, optional) alege salariul minim S1/S2 pentru deducerea personala. */
+function statePlata(angajati, period) {
   const rows = [];
   const t = { brut: 0, neimpozabil: 0, deducere: 0, tichete: 0, spor: 0, cas: 0, cass: 0, impozit: 0, cam: 0, net: 0, avans: 0, retineri: 0, restPlata: 0, costTotal: 0 };
   for (const a of angajati || []) {
@@ -18,7 +19,7 @@ function statePlata(angajati) {
     // Deducerea personala se calculeaza cand angajatul are datele (persoane in intretinere / <=26 ani / copii);
     // altfel se pastreaza comportamentul anterior (doar suma neimpozabila manuala).
     const hasDP = a.persoane != null || a.sub26 || a.copii;
-    const dp = hasDP ? fiscal.deducerePersonala(brut, a.persoane, { salariuMinim: fiscal.FISCAL.salariuMinimS1, sub26: a.sub26, copii: a.copii }).total : 0;
+    const dp = hasDP ? fiscal.deducerePersonala(brut, a.persoane, { salariuMinim: fiscal.salariuMinimLa(period), sub26: a.sub26, copii: a.copii }).total : 0;
     const deducere = round2(dp + neimpozabil); // total scazut din baza de impozit
     const tichete = round2(Number(a.tichete) || 0);
     const sector = a.sector || 'normal';

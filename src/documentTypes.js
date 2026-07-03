@@ -593,15 +593,26 @@ const TYPES = [
       { name: 'cost', label: 'Cost marfa vanduta', type: 'number', default: 0 },
       { name: 'adaos', label: 'Adaos aferent vanzarii', type: 'number', default: 0 }],
     build: (d) => {
+      // Incasarea e bruta (cu TVA): venitul 707 primeste doar BAZA, TVA colectata merge pe 4427,
+      // iar descarcarea de gestiune scoate din 371 si TVA neexigibila aferenta (4428 = 371) —
+      // 371 e tinut la pret de vanzare cu amanuntul (cost + adaos + TVA neexigibila).
       const lines = [];
-      if (d.numerar > 0) lines.push(L('5311', '707', d.numerar, 'Incasare numerar'));
-      if (d.card > 0) lines.push(L('5121', '707', d.card, 'Incasare card'));
-      const totalInc = round2(d.numerar + d.card);
       const cota = Number(d.cota || fiscal.FISCAL.tvaRedus);
-      const tvaColectata = round2((totalInc * cota) / (100 + cota));
-      if (tvaColectata > 0) lines.push(L('4428', '4427', tvaColectata, 'TVA colectata (din neexigibila)'));
+      const tvaDin = (brut) => round2((brut * cota) / (100 + cota));
+      if (d.numerar > 0) {
+        const tvaN = tvaDin(d.numerar);
+        lines.push(L('5311', '707', round2(d.numerar - tvaN), 'Incasare numerar - venit (baza)'));
+        if (tvaN > 0) lines.push(L('5311', '4427', tvaN, 'TVA colectata (numerar)'));
+      }
+      if (d.card > 0) {
+        const tvaC = tvaDin(d.card);
+        lines.push(L('5121', '707', round2(d.card - tvaC), 'Incasare card - venit (baza)'));
+        if (tvaC > 0) lines.push(L('5121', '4427', tvaC, 'TVA colectata (card)'));
+      }
       if (d.cost > 0) lines.push(L('607', '371', d.cost, 'Descarcare gestiune - cost'));
       if (d.adaos > 0) lines.push(L('378', '371', d.adaos, 'Descarcare gestiune - adaos'));
+      const tvaNeexig = round2(((Number(d.cost) || 0) + (Number(d.adaos) || 0)) * cota / 100);
+      if (tvaNeexig > 0) lines.push(L('4428', '371', tvaNeexig, 'Descarcare gestiune - TVA neexigibila aferenta'));
       return lines;
     },
   },
@@ -1007,7 +1018,7 @@ const TYPES = [
       const net = round2((d.suma || 0) - (d.scont || 0));
       const lines = [];
       if (net > 0) lines.push(L('5121', '413', net, 'Suma neta incasata din scontarea efectului'));
-      if (d.scont > 0) lines.push(L('627', '413', d.scont, 'Taxa de scont si comisioane bancare'));
+      if (d.scont > 0) lines.push(L('667', '413', d.scont, 'Taxa de scont (cheltuiala financiara)'));
       return lines;
     },
   },
@@ -1058,11 +1069,13 @@ const TYPES = [
       { name: 'cota', label: 'Cota impozit (%)', type: 'number', default: 10 },
       { name: 'cont', label: 'Platit din', type: 'select', options: TROZ, default: '5121' }],
     build: (d) => {
-      const impozit = round2((d.baza || 0) * (d.cota || 10) / 100);
+      // Din 2024: venitul net din chirii = brut - 20% cota forfetara; impozitul (10%) se aplica
+      // la NET => efectiv 8% din brut (art. 84 Cod fiscal, OG 16/2022 rev.).
+      const impozit = round2((d.baza || 0) * 0.8 * (d.cota || 10) / 100);
       const net = round2((d.baza || 0) - impozit);
       const lines = [];
-      if (net > 0) lines.push(L('612', d.cont || '5121', net, 'Chirie platita persoanei fizice (net)'));
-      if (impozit > 0) lines.push(L('612', '446', impozit, 'Impozit pe chirie retinut la sursa'));
+      if (net > 0) lines.push(L('612', d.cont || '5121', net, 'Chirie platita persoanei fizice (dupa retinere)'));
+      if (impozit > 0) lines.push(L('612', '446', impozit, 'Impozit pe chirie retinut la sursa (10% din brut - 20% forfetar)'));
       return lines;
     },
   },
@@ -1089,8 +1102,14 @@ const TYPES = [
     id: 'aviz_livrare',
     nume: 'Aviz de insotire a marfii (livrare neînfacturata)',
     grup: 'Vanzari',
-    fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.stoc],
-    build: (d) => [L('418', '707', d.baza, 'Livrare pe aviz - clienti, facturi de intocmit (418 = 707)')],
+    fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota, F.stoc],
+    build: (d) => {
+      // 418 include si TVA neexigibila (OMFP 1802): exigibilitatea TVA e la LIVRARE,
+      // deci se recunoaste pe 4428 la aviz si devine 4427 la facturare.
+      const lines = [L('418', '707', d.baza, 'Livrare pe aviz - clienti, facturi de intocmit (418 = 707)')];
+      if (d.tva > 0) lines.push(L('418', '4428', d.tva, 'TVA neexigibila aferenta livrarii pe aviz'));
+      return lines;
+    },
   },
   {
     id: 'facturare_aviz',
@@ -1100,8 +1119,8 @@ const TYPES = [
       { name: 'refFactura', label: 'Aviz facturat (referinta)', type: 'text' },
       F.baza, F.tva, F.cota],
     build: (d) => {
-      const lines = [L('4111', '418', d.baza, 'Facturare aviz - creanta ferma (4111 = 418)')];
-      if (d.tva > 0) lines.push(L('4111', '4427', d.tva, 'TVA colectata la facturarea avizului'));
+      const lines = [L('4111', '418', round2((Number(d.baza) || 0) + (Number(d.tva) || 0)), 'Facturare aviz - creanta ferma (4111 = 418, cu TVA)')];
+      if (d.tva > 0) lines.push(L('4428', '4427', d.tva, 'TVA devenita exigibila la facturarea avizului'));
       return lines;
     },
   },

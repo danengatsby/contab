@@ -329,7 +329,7 @@ eq('tanar <=26 ani: +15% din salariul minim', fiscal.deducerePersonala(sm, 0, { 
 eq('100 lei x 2 copii in invatamant', fiscal.deducerePersonala(sm, 0, { salariuMinim: sm, copii: 2 }).suplimentara, 200);
 // integrare in statul de plata: angajat la salariul minim cu 1 persoana in intretinere
 const dpMin = fiscal.deducerePersonala(sm, 1, { salariuMinim: sm }).total; // 25% -> 1015 rotunjit
-const spDP = statePlata([{ id: 'z', nume: 'MinWage', salariuBrut: sm, persoane: 1 }]);
+const spDP = statePlata([{ id: 'z', nume: 'MinWage', salariuBrut: sm, persoane: 1 }], '2026-03'); // S1 explicit
 const payMin = fiscal.payroll(sm, dpMin);
 eq('impozit scade cu deducerea personala', spDP.rows[0].impozit, payMin.impozit);
 eq('deducerea apare in rand', spDP.rows[0].deducere, dpMin);
@@ -342,16 +342,20 @@ const pT = fiscal.payroll(5000, 0, { tichete: 500 });
 eq('CAS doar pe salariu (nu tichete)', pT.cas, 1250);
 eq('CASS pe brut+tichete (5500×10%)', pT.cass, 550);
 eq('impozit pe baza incl. tichete (370)', pT.impozit, 370);
+// Facilitatile sectoriale au fost ELIMINATE din ian. 2025 (OUG 156/2024): impozitare standard.
 const pIT = fiscal.payroll(8000, 500, { sector: 'it' });
-eq('IT: impozit 0 (scutit)', pIT.impozit, 0);
-ok('IT: CAS si CASS raman', pIT.cas > 0 && pIT.cass > 0);
+eq('IT: impozit standard (facilitate eliminata)', pIT.impozit, fiscal.payroll(8000, 500).impozit);
+ok('IT: fara scutiri', !pIT.scutImpozit && !pIT.scutCass && pIT.impozit > 0);
 const pC = fiscal.payroll(6000, 0, { sector: 'constructii' });
-eq('constructii: impozit 0', pC.impozit, 0);
-eq('constructii: CASS 0 (scutit)', pC.cass, 0);
-ok('constructii: CAS ramane', pC.cas > 0);
-const pOver = fiscal.payroll(15000, 0, { sector: 'it' });
-ok('peste plafon 10000: scutire NEaplicata + flag', pOver.impozit > 0 && pOver.overPlafon);
+eq('constructii: CASS standard 10%', pC.cass, 600);
+ok('constructii: impozit datorat', pC.impozit > 0);
 eq('compat: payroll(5000) neschimbat', fiscal.payroll(5000).impozit, 325);
+// salariul minim pe semestre: S1 pana in iunie, S2 de la 1 iulie
+eq('salariu minim ianuarie-iunie (S1)', fiscal.salariuMinimLa('2026-03'), fiscal.FISCAL.salariuMinimS1);
+eq('salariu minim iulie-decembrie (S2)', fiscal.salariuMinimLa('2026-09'), fiscal.FISCAL.salariuMinimS2);
+eq('neimpozabil S2 din iulie', fiscal.neimpozabilLa('2026-07'), fiscal.FISCAL.neimpozabilS2);
+ok('deducerea personala foloseste S2 dupa 1 iulie',
+  fiscal.deducerePersonala(fiscal.FISCAL.salariuMinimS2, 0, { period: '2026-08' }).baza === fiscal.FISCAL.salariuMinimS2 * 0.2);
 const gt2 = require('../src/documentTypes').getType;
 const dc = (id, s) => { const l = gt2(id).build({ suma: s })[0]; return l.debit + '=' + l.credit; };
 eq('tichete de masa: 642=5328', dc('tichete_masa', 500), '642=5328');
@@ -651,7 +655,7 @@ const efp = gt2('efect_primit_client').build({ suma: 1000 });
 eq('efect primit: 413=4111', efp[0].debit + '=' + efp[0].credit, '413=4111');
 const sc = gt2('scontare_efect').build({ suma: 1000, scont: 30 });
 eq('scontare: net 970 pe 5121', (sc.find((l) => l.debit === '5121') || {}).suma, 970);
-eq('scontare: scont 30 pe 627', (sc.find((l) => l.debit === '627') || {}).suma, 30);
+eq('scontare: scont 30 pe 667 (cheltuiala financiara)', (sc.find((l) => l.debit === '667') || {}).suma, 30);
 eq('scontare: total creditat pe 413 = nominal', sc.reduce((s, l) => s + (l.credit === '413' ? l.suma : 0), 0), 1000);
 eq('efect platit furnizor: 401=403', gt2('efect_platit_furnizor').build({ suma: 800 })[0].debit + '=' + gt2('efect_platit_furnizor').build({ suma: 800 })[0].credit, '401=403');
 eq('deschidere acreditiv: 541=5121', gt2('deschidere_acreditiv').build({ suma: 5000 })[0].debit + '=' + gt2('deschidere_acreditiv').build({ suma: 5000 })[0].credit, '541=5121');
@@ -689,9 +693,32 @@ eq('XLSX: celula numerica', xrows[1][2], '1500.5');
 
 section('D205 (retinere la sursa) + Intrastat + DBF');
 const chir = gt2('chirie_pf').build({ baza: 1000, cota: 10, cont: '5121' });
-eq('chirie_pf: impozit 10% pe 446', (chir.find((l) => l.credit === '446') || {}).suma, 100);
-eq('chirie_pf: net 900', (chir.find((l) => l.credit === '5121') || {}).suma, 900);
+eq('chirie_pf: impozit 10% din net (brut - 20% forfetar) = 80', (chir.find((l) => l.credit === '446') || {}).suma, 80);
+eq('chirie_pf: net platit 920', (chir.find((l) => l.credit === '5121') || {}).suma, 920);
 eq('chirie_pf: debit 612 = brut 1000', chir.reduce((s, l) => s + (l.debit === '612' ? l.suma : 0), 0), 1000);
+
+section('Monografii corectate (HoReCa, aviz, dividende, scont)');
+// HoReCa vanzare: 707 primeste doar baza; TVA colectata pe 4427; descarcarea scoate si 4428 din 371
+const hv = gt2('horeca_vanzare').build({ numerar: 555, card: 0, cota: 11, cost: 300, adaos: 200 });
+eq('horeca: venit 707 = baza (fara TVA)', (hv.find((l) => l.credit === '707') || {}).suma, 500);
+eq('horeca: TVA colectata 4427 = 55', (hv.find((l) => l.credit === '4427') || {}).suma, 55);
+eq('horeca: descarcare TVA neexigibila 4428=371', (hv.find((l) => l.debit === '4428' && l.credit === '371') || {}).suma, 55);
+const hvTotal371 = hv.filter((l) => l.credit === '371').reduce((s, l) => s + l.suma, 0);
+eq('horeca: 371 descarcat integral la pret de vanzare (cost+adaos+TVA)', Math.round(hvTotal371 * 100) / 100, 555);
+// Aviz: 418 include TVA neexigibila; facturarea stinge 418 la total si exigibilizeaza TVA
+const av = gt2('aviz_livrare').build({ baza: 1000, tva: 210 });
+eq('aviz: 418=707 baza', (av.find((l) => l.credit === '707') || {}).suma, 1000);
+eq('aviz: 418=4428 TVA neexigibila', (av.find((l) => l.credit === '4428') || {}).suma, 210);
+const fa = gt2('facturare_aviz').build({ baza: 1000, tva: 210 });
+eq('facturare aviz: 4111=418 cu tot cu TVA', (fa.find((l) => l.credit === '418') || {}).suma, 1210);
+eq('facturare aviz: 4428=4427 exigibilizare', (fa.find((l) => l.debit === '4428' && l.credit === '4427') || {}).suma, 210);
+// Dividende: cota implicita 16% din 2026 (Legea 141/2025)
+eq('impozit dividende implicit 16%', fiscal.FISCAL.impozitDividende, 16);
+const dvf = require('../src/documentTypes').typesForClient().find((t) => t.id === 'repartizare_dividende');
+eq('camp cota dividende: default 16', (dvf.fields.find((f) => f.name === 'cota') || {}).default, 16);
+// Scontare efect: taxa de scont e cheltuiala financiara (667)
+const sce = gt2('scontare_efect').build({ suma: 1000, scont: 50 });
+eq('scontare: taxa pe 667', (sce.find((l) => l.suma === 50) || {}).debit, '667');
 const d205db = { entries: [
   { id: '1', tip: 'chirie_pf', period: '2026-03', data: '2026-03-01', partener: 'Ion Pop', partenerCui: '1900101415236', lines: gt2('chirie_pf').build({ baza: 1000, cota: 10, cont: '5121' }) },
   { id: '2', tip: 'premiu_pf', period: '2026-05', data: '2026-05-01', partener: 'Maria I', partenerCui: '2900202535241', lines: gt2('premiu_pf').build({ baza: 500, cota: 10, cont: '5311' }) },
@@ -699,7 +726,7 @@ const d205db = { entries: [
 ] };
 const d205 = rep.d205(d205db, '2026');
 eq('D205: 3 beneficiari', d205.nr, 3);
-eq('D205: total impozit retinut (100+50+800)', d205.totalImpozit, 950);
+eq('D205: total impozit retinut (80+50+800; chirie 10% din net)', d205.totalImpozit, 930);
 ok('D205: dividend brut 10000 capturat', d205.rows.some((r) => r.tipVenit === 'Dividende' && r.venitBrut === 10000));
 ok('D205 XML bine-format', wellFormed(xml.d205Xml({ cui: 'RO1', nume: 'X' }, '2026', d205)));
 const intr = rep.intrastat({ entries: [
@@ -816,10 +843,10 @@ fcfg.applyConfig({});
 eq('reset complet: payroll CAS din nou 1250', fcfg.payroll(5000, 0, {}).cas, 1250);
 
 section('Avize si facturi simplificate');
-const avL = gt2('aviz_livrare').build({ baza: 1000 });
+const avL = gt2('aviz_livrare').build({ baza: 1000, tva: 210, cota: 21 });
 eq('aviz livrare: 418=707', avL[0].debit + '=' + avL[0].credit, '418=707');
 const facAv = gt2('facturare_aviz').build({ baza: 1000, tva: 210, cota: 21 });
-ok('facturare aviz: 4111=418 + 4111=4427', facAv.some((l) => l.debit === '4111' && l.credit === '418' && l.suma === 1000) && facAv.some((l) => l.credit === '4427' && l.suma === 210));
+ok('facturare aviz: 4111=418 (total cu TVA) + 4428=4427', facAv.some((l) => l.debit === '4111' && l.credit === '418' && l.suma === 1210) && facAv.some((l) => l.debit === '4428' && l.credit === '4427' && l.suma === 210));
 const facS = gt2('factura_simplificata').build({ baza: 500, tva: 105, cota: 21, cont: '5311' });
 ok('factura simplificata (cash): 5311=707 + 5311=4427', facS.some((l) => l.debit === '5311' && l.credit === '707' && l.suma === 500) && facS.some((l) => l.debit === '5311' && l.credit === '4427' && l.suma === 105));
 const net418 = (lines) => lines.reduce((s, l) => s + (l.credit === '418' ? l.suma : 0) - (l.debit === '418' ? l.suma : 0), 0);

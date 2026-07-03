@@ -381,8 +381,12 @@ Endpoint `/api/dashboard`.
 ## Aliniere la ghidul profesional (ediția 2026)
 
 - **Parametri fiscali 2026** (`src/fiscal.js`, tab „Ghid”): CAS 25%, CASS 10%, impozit 10%,
-  CAM 2,25%, salariu minim 4.050/4.325 (construcții 4.582), sumă neimpozabilă 300/200, TVA
-  21%/11%, micro 1%, profit 16%, dividende 10%. Cota TVA implicită este acum **21%**.
+  CAM 2,25%, salariu minim 4.050 (S1) / 4.325 (S2, de la 1 iulie — **comutare automată după lună**,
+  `salariuMinimLa()`), sumă neimpozabilă 300/200, TVA 21%/11%, micro 1%, profit 16%,
+  **dividende 16%** (Legea 141/2025, distribuiri din 2026). Cota TVA implicită este **21%**.
+  **Facilitățile sectoriale IT/construcții/agro au fost eliminate** din ian. 2025 (OUG 156/2024) —
+  câmpul „sector" pe angajat rămâne doar informativ, impozitarea e standard. Chiria plătită
+  persoanelor fizice reține impozit 10% aplicat la **net (brut − 20% forfetar)**, art. 84 Cod fiscal.
 - **Calcul automat al salariilor:** la „Stat de plata” introduci doar brutul (și opțional suma
   neimpozabilă); CAS/CASS/impozit/CAM se calculează automat (lași câmpurile goale).
 - **Plan de conturi extins** la lista din ghid (secțiunea 17): 211, 231, 267, 2678, 2813, 280,

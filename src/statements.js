@@ -38,10 +38,11 @@ function profitLoss(db, year) {
   const chelt = (cod) => round2((acc[cod] ? acc[cod].d - acc[cod].c : 0));
 
   const codes = Object.keys(acc);
-  const venitExpl = round2(codes.filter((c) => classOf(c) === 7 && !starts(c, '76')).reduce((s, c) => s + venit(c), 0));
-  const venitFin = round2(codes.filter((c) => starts(c, '76')).reduce((s, c) => s + venit(c), 0));
-  const cheltExpl = round2(codes.filter((c) => classOf(c) === 6 && !starts(c, '66', '665', '691', '698')).reduce((s, c) => s + chelt(c), 0));
-  const cheltFin = round2(codes.filter((c) => starts(c, '66', '665')).reduce((s, c) => s + chelt(c), 0));
+  // financiar = grupa 66 + 686 (ajustari financiare), respectiv 76 + 786 (venituri financiare din ajustari)
+  const venitExpl = round2(codes.filter((c) => classOf(c) === 7 && !starts(c, '76', '786')).reduce((s, c) => s + venit(c), 0));
+  const venitFin = round2(codes.filter((c) => starts(c, '76', '786')).reduce((s, c) => s + venit(c), 0));
+  const cheltExpl = round2(codes.filter((c) => classOf(c) === 6 && !starts(c, '66', '686', '691', '698')).reduce((s, c) => s + chelt(c), 0));
+  const cheltFin = round2(codes.filter((c) => starts(c, '66', '686')).reduce((s, c) => s + chelt(c), 0));
   const impozit = round2(codes.filter((c) => starts(c, '691', '698')).reduce((s, c) => s + chelt(c), 0));
 
   const rezExpl = round2(venitExpl - cheltExpl);
@@ -182,14 +183,14 @@ function profitLossF20(db, year) {
   const sv = (pred) => round2(codes.filter(pred).reduce((s, c) => s + venit(c), 0));
   const sc = (pred) => round2(codes.filter(pred).reduce((s, c) => s + chelt(c), 0));
 
-  // ── VENITURI din exploatare (toata clasa 7 mai putin grupa 76 = financiar)
-  const venitExpl = sv((c) => classOf(c) === 7 && !starts(c, '76'));
+  // ── VENITURI din exploatare (toata clasa 7 mai putin 76/786 = financiar)
+  const venitExpl = sv((c) => classOf(c) === 7 && !starts(c, '76', '786'));
   const cifraAfaceri = sv((c) => starts(c, '70'));                       // 701-708 (709 = reduceri, sold debitor -> scade)
   const venitProductie = sv((c) => starts(c, '711', '712', '721', '722')); // variatia stocurilor + productie imobilizata
   const alteVenitExpl = round2(venitExpl - cifraAfaceri - venitProductie); // 74x/75x/78x si rest
 
-  // ── CHELTUIELI de exploatare (toata clasa 6 mai putin grupa 66 = financiar si 691/698 = impozit)
-  const cheltExpl = sc((c) => classOf(c) === 6 && !starts(c, '66', '691', '698'));
+  // ── CHELTUIELI de exploatare (toata clasa 6 mai putin 66/686 = financiar si 691/698 = impozit)
+  const cheltExpl = sc((c) => classOf(c) === 6 && !starts(c, '66', '686', '691', '698'));
   const cheltMateriale = sc((c) => starts(c, '60'));   // 601-609 (materii, marfuri, energie)
   const cheltPersonal = sc((c) => starts(c, '64'));    // salarii + contributii angajator
   const amortizare = sc((c) => starts(c, '681'));      // ajustari de valoare (amortizari/ajustari exploatare)
@@ -198,8 +199,8 @@ function profitLossF20(db, year) {
   const rezExpl = round2(venitExpl - cheltExpl);
 
   // ── FINANCIAR
-  const venitFin = sv((c) => starts(c, '76'));
-  const cheltFin = sc((c) => starts(c, '66'));
+  const venitFin = sv((c) => starts(c, '76', '786'));
+  const cheltFin = sc((c) => starts(c, '66', '686'));
   const rezFin = round2(venitFin - cheltFin);
 
   // ── TOTALURI

@@ -900,12 +900,12 @@
             <label class="check"><input name="sub26" type="checkbox" /> Tânăr ≤ 26 ani (deducere +15% la salariul minim)</label>
             <label>Venit neimpozabil suplimentar <input name="neimpozabil" type="number" step="0.01" value="0" /></label>
             <label>Tichete de masă (valoare/lună) <input name="tichete" type="number" step="0.01" value="0" /></label>
-            <label>Sector (scutiri)
+            <label>Sector (informativ — facilitățile fiscale au fost eliminate din ian. 2025, OUG 156/2024)
               <select name="sector">
                 <option value="normal">Normal</option>
-                <option value="it">IT (scutire impozit)</option>
-                <option value="constructii">Construcții (scutire impozit + CASS)</option>
-                <option value="agro">Agroalimentar (scutire impozit + CASS)</option>
+                <option value="it">IT</option>
+                <option value="constructii">Construcții</option>
+                <option value="agro">Agroalimentar</option>
               </select>
             </label>
             <label>Avans acordat (425) <input name="avans" type="number" step="0.01" value="0" /></label>
@@ -1466,7 +1466,7 @@ Cu stimă,
           <label>Salariu minim S1 <input name="salariuMinimS1" type="number" /></label>
           <label>Salariu minim S2 <input name="salariuMinimS2" type="number" /></label>
           <label>Salariu minim construcții <input name="salariuMinimConstructii" type="number" /></label>
-          <label>Plafon scutiri sectoriale <input name="plafonScutire" type="number" /></label>
+          <label>Plafon scutiri sectoriale (istoric, eliminate din 2025) <input name="plafonScutire" type="number" /></label>
           <label>Deductibilitate TVA auto (%) <input name="deductibilitateTvaAutoLimitat" type="number" /></label>
           <button class="btn primary">Salvează cotele</button>
           <button type="button" id="fiscalReset" class="btn">↺ Reset la valori standard</button>
