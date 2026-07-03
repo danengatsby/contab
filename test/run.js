@@ -561,6 +561,15 @@ const lsE = leasingSchedule(12000, 12, 10, 'rate_egale');
 eq('rate egale: principal lunar constant', lsE.rows[0].principal, 1000);
 ok('rate egale: rata scade in timp', lsE.rows[0].rata > lsE.rows[11].rata);
 eq('dobanda 0 => rata = principal', leasingSchedule(12000, 12, 0, 'anuitati').rows[0].rata, 1000);
+// verificare contra formulei teoretice a anuitatii + inchidere exacta pe durata urata
+const lsB = leasingSchedule(50000, 60, 9.5, 'anuitati');
+const rTeo = (50000 * (0.095 / 12)) / (1 - Math.pow(1 + 0.095 / 12, -60));
+eq('anuitati: rata = formula teoretica', lsB.rows[0].rata, Math.round(rTeo * 100) / 100);
+eq('anuitati: dobanda totala = n×rata − P', lsB.totals.dobanda, Math.round((lsB.rows.reduce((s, r) => s + r.rata, 0) - 50000) * 100) / 100);
+ok('anuitati: nicio dobanda/principal negativ', lsB.rows.every((r) => r.dobanda >= 0 && r.principal >= 0));
+const lsU = leasingSchedule(10000, 7, 13, 'anuitati'); // durata „urata"
+eq('anuitati durata urata: principal = P (inchidere exacta)', lsU.totals.principal, 10000);
+eq('anuitati durata urata: sold final 0', lsU.rows[6].sold, 0);
 
 section('Provizioane pentru riscuri si cheltuieli (151)');
 const vProv = { entries: [

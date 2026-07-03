@@ -182,6 +182,15 @@ Fiecare raport are buton **⬇ PDF**, iar fiecare înregistrare poate fi exporta
 > depunere; recipisa se obține de la ANAF/SPV. La fel, **SAF-T (D406)** acoperă cartea mare,
 > nomenclatoarele și facturile (`SourceDocuments`); validarea oficială cere schema XSD D406
 > condiționate de specificul firmei.
+>
+> **SAF-T — stadiul conformității (verificat structural, nu XSD):** fișierul are cele 4 secțiuni
+> OECD SAF-T 2.0 corect imbricate (Header, MasterFiles, GeneralLedgerEntries, SourceDocuments),
+> tranzacțiile din cartea mare respectă `TotalDebit = TotalCredit`, iar MasterFiles/SourceDocuments
+> conțin secțiunile de bază. **Goluri cunoscute față de D406 v2.4.x** (de completat înainte de
+> depunerea reală, validând cu **modulul ANAF Soft-J / DUKIntegrator**): lipsesc `UOMTable`
+> (deși unitățile de măsură sunt folosite în `Products`/`MovementOfGoods`), `Owners`
+> (asociați/acționari) și `MovementTypeTable`; `AuditFileVersion` e `2.0` (verifică valoarea cerută
+> de XSD-ul curent). Aplicația generează o **ciornă structurată**, nu un fișier XSD-validat.
 
 **Gestiunea stocurilor (cantitativ-valoric, CMP, pe gestiuni):** tab-ul „Stocuri” ține un
 nomenclator de **gestiuni** (depozite: cod, denumire, gestionar, cont) și de **produse** (cod,
