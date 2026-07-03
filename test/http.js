@@ -193,6 +193,15 @@ async function main() {
     ok('fisa de magazie: o intrare', (await req('GET', '/api/stocks/' + pid + '/ledger', { cookie: c1 })).json.rows.length >= 1);
     ok('miscare stearsa', (await req('DELETE', '/api/stock-movements/' + mid, { cookie: c1 })).json.ok === true);
 
+    // ── Productie / retete (BOM) ──
+    eq('reteta fara nume -> 400', (await req('POST', '/api/recipes', { cookie: c1, body: { productId: 'x' } })).status, 400);
+    const mkR = await req('POST', '/api/recipes', { cookie: c1, body: { nume: 'Reteta A', productId: 'pf', cantitateBaza: 10, costUnitar: 5, materiale: [{ productId: 'm1', cantitate: 20 }] } });
+    ok('reteta creata', mkR.json && mkR.json.ok && mkR.json.recipe.id);
+    const rid = mkR.json.recipe.id;
+    ok('lista retete contine reteta', (await req('GET', '/api/recipes', { cookie: c1 })).json.some((t) => t.id === rid));
+    ok('raport productie: forma corecta', Array.isArray((await req('GET', '/api/production-report?period=2026-06', { cookie: c1 })).json.rows || []));
+    ok('reteta stearsa', (await req('DELETE', '/api/recipes/' + rid, { cookie: c1 })).json.ok === true);
+
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
