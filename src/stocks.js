@@ -59,7 +59,8 @@ function simulate(product, movements, asOf) {
       const ss = ensure(gs); const sd = ensure(gd);
       const cmp = ss.qty > 0 ? round2(ss.value / ss.qty) : 0;
       const c2 = Math.min(c, ss.qty);
-      const v = round2(c2 * cmp);
+      // la transferul INTREGULUI stoc, muta valoarea reziduala intreaga (evita drift de rotunjire)
+      const v = c2 >= ss.qty ? round2(ss.value) : round2(c2 * cmp);
       ss.qty = round2(ss.qty - c2); ss.value = round2(ss.value - v);
       sd.qty = round2(sd.qty + c2); sd.value = round2(sd.value + v);
       rows.push({ id: m.id, data: m.data, tip: 'transfer', gestiuneId: gs, gestiuneDestId: gd, document: m.document || '', intrareQ: 0, intrareV: 0, iesireQ: c2, iesireV: v, transferV: v, stocQ: ss.qty, cmp, stocV: ss.value });
@@ -67,7 +68,9 @@ function simulate(product, movements, asOf) {
       const g = gestKey(m); const s = ensure(g);
       const cmp = s.qty > 0 ? round2(s.value / s.qty) : 0;
       const c2 = Math.min(c, s.qty);
-      const v = round2(c2 * cmp);
+      // la iesirea INTREGULUI stoc, descarca valoarea reziduala intreaga: qty=0 <=> value=0 exact,
+      // iar COGS-ul iesit egaleaza costul intrat (fara ban fantoma din rotunjirea CMP)
+      const v = c2 >= s.qty ? round2(s.value) : round2(c2 * cmp);
       s.qty = round2(s.qty - c2); s.value = round2(s.value - v);
       rows.push({ id: m.id, data: m.data, tip: 'iesire', gestiuneId: g, document: m.document || '', intrareQ: 0, intrareV: 0, iesireQ: c2, iesireV: v, stocQ: s.qty, cmp, stocV: round2(s.value) });
     }

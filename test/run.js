@@ -92,6 +92,24 @@ eq('stoc MAG', byG.MAG.stocQ, 10);
 eq('valoare totala stoc', Math.round(st.reduce((s, x) => s + x.stocV, 0) * 100) / 100, 2000);
 eq('CMP DEP', byG.DEP.cmp, 100);
 
+// Regresie CMP: la iesirea/transferul INTREGULUI stoc, valoarea se descarca integral (fara ban fantoma din rotunjire)
+const _cmpProd = { id: 'cp' };
+const _cmpMov = [
+  { id: 'r1', productId: 'cp', tip: 'receptie', gestiuneId: 'g1', cantitate: 3, pretUnitar: 10, data: '2026-01-01' },
+  { id: 'r2', productId: 'cp', tip: 'receptie', gestiuneId: 'g1', cantitate: 4, pretUnitar: 11, data: '2026-01-02' },
+  { id: 'i1', productId: 'cp', tip: 'iesire', gestiuneId: 'g1', cantitate: 7, data: '2026-01-03' },
+];
+const _cmpLed = stocks.productLedger(_cmpProd, _cmpMov, null, 'g1');
+eq('CMP: dupa iesirea intregului stoc, cantitate 0', _cmpLed.stocQ, 0);
+eq('CMP: dupa iesirea intregului stoc, valoare 0 (fara reziduu)', _cmpLed.stocV, 0);
+eq('CMP: COGS iesit = cost intrat (74, nu 73.99)', Math.round(_cmpLed.rows.filter((r) => r.tip === 'iesire').reduce((s, r) => s + r.iesireV, 0) * 100) / 100, 74);
+const _cmpXfer = stocks.productLedger(_cmpProd, [
+  { id: 'r1', productId: 'cp', tip: 'receptie', gestiuneId: 'g1', cantitate: 3, pretUnitar: 10, data: '2026-01-01' },
+  { id: 'r2', productId: 'cp', tip: 'receptie', gestiuneId: 'g1', cantitate: 4, pretUnitar: 11, data: '2026-01-02' },
+  { id: 't1', productId: 'cp', tip: 'transfer', gestiuneId: 'g1', gestiuneDestId: 'g2', cantitate: 7, data: '2026-01-03' },
+], null, 'g1');
+eq('CMP: sursa golita complet la transfer (valoare 0)', _cmpXfer.stocV, 0);
+
 section('Descarcare automata de gestiune la vanzare (COGS la CMP)');
 const _prods = [{ id: 'p1', cod: 'M1', denumire: 'Marfa 1', um: 'buc', cont: '371' }];
 const _movs = [
