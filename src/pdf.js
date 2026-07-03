@@ -120,12 +120,15 @@ function table(doc, columns, rows, startY) {
 function footer(doc) {
   const range = doc.bufferedPageRange();
   const note = (doc._company && doc._company.pdfFooter) ? clean(String(doc._company.pdfFooter)).slice(0, 200) : '';
+  // intocmitorul (datele personale ale utilizatorului abonat) — pe fiecare pagina
+  const who = (doc._company && doc._company._intocmit) ? clean('Intocmit: ' + String(doc._company._intocmit)).slice(0, 120) : '';
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(range.start + i);
     const b = doc.page.margins.bottom;
     const w = doc.page.width;
     if (note) doc.fillColor(C.muted).font('Helvetica').fontSize(7.5).text(note, 40, doc.page.height - b + 4, { width: w - 80, align: 'center', lineBreak: false });
     doc.fillColor(C.muted).font('Helvetica').fontSize(7.5);
+    if (who) doc.text(who, 40, doc.page.height - b + 4, { width: w - 260, align: 'left', lineBreak: false });
     doc.text('Generat de Contabo • cifre conform inregistrarilor din aplicatie',
       40, doc.page.height - b + 14, { align: 'left', lineBreak: false });
     doc.text('Pagina ' + (i + 1) + ' / ' + range.count,

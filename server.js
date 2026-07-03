@@ -884,7 +884,18 @@ function activeId(req) {
   if (!allowed.includes(id)) id = allowed[0];
   return id || db.firmaActiva();
 }
-const S = (req) => db.scoped(activeId(req));
+const S = (req) => {
+  const v = db.scoped(activeId(req));
+  // Datele personale ale utilizatorului (necontabil/contabil) ajung in subsolul PDF-urilor
+  // („Intocmit: ..."). Copie a firmei per cerere — obiectul din DB nu se atinge.
+  const p = (req.user && req.user.profil) || {};
+  if (p.numeComplet) {
+    v.company = Object.assign({}, v.company, {
+      _intocmit: p.numeComplet + (p.autorizatie ? ' (aut. CECCAR ' + p.autorizatie + ')' : ''),
+    });
+  }
+  return v;
+};
 
 // ───────────────────────────── META ─────────────────────────────
 // Import plan de conturi personalizat din CSV: Cont;Denumire;Clasa;Tip (A/P/B/C/V) - header optional
