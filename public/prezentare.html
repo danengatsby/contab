@@ -163,17 +163,19 @@
     .hint::before{content:"i";width:18px;height:18px;border-radius:50%;border:1.5px solid #c9d3e4;color:#8a97ad;
       font-size:10.5px;font-weight:700;display:grid;place-items:center;flex:none}
     .porto .hint{color:#9fb0cd}
+    /* Ecrane tactile: panourile raman stranse, detaliile se deschid la ATINGERE (focus),
+       expandate sub titlu (nu suprapuse) — aceeasi informatie, acelasi aspect aerisit. */
     @media (hover:none){
-      .hv .pop{position:static;opacity:1;visibility:visible;transform:none;background:transparent;
-        color:var(--muted);box-shadow:none;border:0;padding:10px 0 0;pointer-events:auto;border-radius:0}
+      .hv{cursor:pointer}
+      .hv .pop{display:none;position:static;opacity:1;visibility:visible;transform:none;background:transparent;
+        color:var(--muted);box-shadow:none;border:0;padding:10px 0 0;pointer-events:auto;border-radius:0;transition:none}
+      .hv:focus .pop,.hv:focus-within .pop{display:block}
       .hv .pop b{color:var(--ink)}
       .hv .pop ul{color:var(--muted)}
       .hv .pop code{background:#eef2f9;color:var(--accent-dark)}
       .porto .hv .pop{color:#9fb0cd}
       .porto .hv .pop b{color:#fff}
       .hv .pop .pt{display:none}
-      .hv .hint-i{display:none}
-      .hint{display:none}
     }
 
     /* Cycle strip */
@@ -226,7 +228,7 @@
     ol.walk li .mut{display:block;color:var(--muted);max-height:0;overflow:hidden;
       transition:max-height .25s ease,margin .25s ease}
     ol.walk li:hover .mut,ol.walk li:focus .mut{max-height:120px;margin-top:6px}
-    @media (hover:none){ol.walk li .mut{max-height:none;margin-top:4px}}
+    @media (hover:none){ol.walk li{cursor:pointer}ol.walk li:focus .mut{max-height:200px;margin-top:6px}}
 
     /* Pricing */
     .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;margin-top:36px}
@@ -382,7 +384,7 @@
         după regulile contabilității românești (partidă dublă, OMFP 1802/2014). Orice greșeală se șterge
         și se reface în câteva secunde, cu explicații în limbaj simplu la fiecare pas.</p>
 
-      <p class="hint">Treci cu mouse-ul peste un panou pentru detalii.</p>
+      <p class="hint">Treci cu mouse-ul sau atinge un panou pentru detalii.</p>
       <div class="steps">
         <div class="step hv" tabindex="0"><i class="hint-i">i</i><div class="n">1</div><b class="t">Aduci documentul</b>
           <p>PDF, poză cu telefonul sau extras bancar — intră în aplicație în câteva secunde.</p>
@@ -449,7 +451,7 @@
     <div class="wrap">
       <p class="kicker">Tot ciclul contabil</p>
       <h2>Un singur loc pentru toată firma</h2>
-      <p class="hint">Treci cu mouse-ul peste un panou pentru detalii.</p>
+      <p class="hint">Treci cu mouse-ul sau atinge un panou pentru detalii.</p>
       <div class="grid">
         <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🤖</span><b>Documente citite cu AI</b><div class="pop">Încarci factura (PDF sau poză) — tipul, sumele și partenerul se completează singure.</div></div>
         <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🧾</span><b>e-Factura (CIUS-RO)</b><div class="pop">Emitere cu XML UBL pentru SPV, trimitere cu recipisă, import e-Factura primită.</div></div>
@@ -474,7 +476,7 @@
       <h2>Conformitatea, supravegheată dintr-un singur ecran</h2>
       <p class="lead">Dacă ții mai multe firme, Contabo îți arată în orice moment unde ești cu declarațiile:
         ce e depus, ce e restant, cine are erori — fără să deschizi fiecare firmă în parte.</p>
-      <p class="hint">Treci cu mouse-ul peste un panou pentru detalii.</p>
+      <p class="hint">Treci cu mouse-ul sau atinge un panou pentru detalii.</p>
       <div class="pillars">
         <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🗂</span><b>Portofoliu multi-firmă</b>
           <div class="pop">Vedere agregată peste toate firmele: declarații așteptate/depuse pe lună, % conformitate, top firme cu atenționări, activitate recentă.</div></div>
@@ -493,7 +495,7 @@
     <div class="wrap">
       <p class="kicker">Pas cu pas</p>
       <h2>O lună de contabilitate, de la A la Z</h2>
-      <p class="hint">Treci cu mouse-ul peste un pas pentru detalii.</p>
+      <p class="hint">Treci cu mouse-ul sau atinge un pas pentru detalii.</p>
       <ol class="walk">
         <li tabindex="0"><b>Configurezi o singură dată</b><span class="mut">Datele firmei (CUI, regim TVA, micro/profit); opțional imporți partenerii, planul de conturi și produsele din CSV.</span></li>
         <li tabindex="0"><b>Înregistrezi documentele primite</b><span class="mut">Tragi factura de la furnizor (PDF sau poză); AI-ul completează tipul, partenerul, baza și TVA-ul. Tu verifici și salvezi.</span></li>
