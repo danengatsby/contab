@@ -12,6 +12,7 @@ const TIPURI = {
   d300: { nume: 'D300 — decont TVA' },
   d394: { nume: 'D394 — declarație informativă' },
   d112: { nume: 'D112 — contribuții și impozit salarii' },
+  d390: { nume: 'D390 — recapitulativă intracomunitară (VIES)' },
   d100: { nume: 'D100 — impozit micro / avans profit (trimestrial)' },
   saft: { nume: 'D406 — SAF-T' },
 };
@@ -40,12 +41,16 @@ function dueDate(tip, period) {
  * pentru neplatitori / perioada trimestriala — regimul din 2025 pentru toti contribuabilii.
  * Firmele cu alt regim marcheaza lunile in plus drept „scutite" in registru.
  */
+const INTRACOM_TYPES = new Set(['livrare_intracomunitara', 'achizitie_intracomunitara']);
+
 function expectedForFirma(v, period) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   const m = Number(period.slice(5, 7));
   const tva = !!(v.company && v.company.tvaPlatitor);
   const tips = [];
   if (tva) tips.push('d300', 'd394');
+  // D390 doar in lunile cu operatiuni intracomunitare efective (LIC/AIC in jurnal)
+  if ((v.entries || []).some((e) => INTRACOM_TYPES.has(e.tip) && String(e.period || e.data || '').slice(0, 7) === period)) tips.push('d390');
   if ((v.angajati || []).length) tips.push('d112');
   if ([3, 6, 9, 12].includes(m)) tips.push('d100');
   if (tva || [3, 6, 9, 12].includes(m)) tips.push('saft');

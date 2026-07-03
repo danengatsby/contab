@@ -357,7 +357,8 @@ Endpoint `/api/dashboard`.
 **Registrul depunerilor + portofoliu + notificări de termene** (`src/declarations.js`):
 - **Registrul depunerilor** (card în „Declarații ANAF"): declarațiile **așteptate** pe luna
   selectată sunt derivate din profilul firmei (plătitor de TVA → D300/D394 + **D406 lunar**; are
-  angajați → D112; lună de trimestru → D100; neplătitorii de TVA → **D406 trimestrial**), cu
+  angajați → D112; lună de trimestru → D100; neplătitorii de TVA → **D406 trimestrial**;
+  **D390 apare automat** în lunile cu livrări/achiziții intracomunitare în jurnal), cu
   **termen de depunere** (25 ale lunii următoare; D406 — ultima zi a lunii următoare). Descărcarea XML-ului marchează automat „**generată**";
   manual se marchează „**depusă**" (cu nr. recipisă), „**eroare**" sau „**scutită**". Stările nu se
   retrogradează la re-descărcare. API: `GET /api/declarations?period=` · `POST /api/declarations/set`.
@@ -548,6 +549,12 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
 - **Politica de confidențialitate (GDPR):** `public/confidentialitate.html` — legată din
   prezentare și din panoul de înscriere; acoperă datele colectate, împuterniciții (Stripe,
   Anthropic, Resend, ANAF), duratele și drepturile utilizatorilor.
+- **Teste de integrare HTTP** (`test/http.js`, în `npm test`): pornește serverul pe un port de
+  test cu bază temporară și verifică 21 de puncte cap-coadă — autentificare, autorizarea pe
+  firmă, filtrul de upload, blocarea probei expirate, registrul depunerilor, portofoliul.
+- **Alerte operaționale pe email:** la ≥5 erori de server (5xx) în 15 minute se trimite o
+  alertă (max. una pe oră); la înscriere, utilizatorii cu email primesc un **mesaj de bun venit**
+  cu primii pași.
 - **E2E pe live:** `npm run e2e` (`scripts/e2e.mjs`, Playwright — pe acest server prin Docker,
   comanda e în antetul scriptului): 11 verificări cap-coadă pe instanța reală, cu contul demo.
 - **Arhivă completă + copie offsite (zilnic):** pe lângă copia `db.json`, cronul creează

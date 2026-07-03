@@ -1228,6 +1228,9 @@ eq('asteptate iunie: d300+d394+d112+d100+saft (TVA lunar)', expIun.map((x) => x.
 eq('asteptate mai: fara d100, dar cu saft lunar', declMod.expectedForFirma(vDecl, '2026-05').map((x) => x.tip).join(','), 'd300,d394,d112,saft');
 eq('neplatitor TVA: saft doar trimestrial', declMod.expectedForFirma({ company: { tvaPlatitor: false }, angajati: [] }, '2026-06').map((x) => x.tip).join(','), 'd100,saft');
 eq('neplatitor TVA: luna non-trimestriala fara obligatii', declMod.expectedForFirma({ company: { tvaPlatitor: false }, angajati: [] }, '2026-05').length, 0);
+const vIC = { company: { tvaPlatitor: true }, angajati: [], entries: [{ tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10' }] };
+ok('D390 asteptata DOAR in lunile cu operatiuni intracomunitare',
+  declMod.expectedForFirma(vIC, '2026-05').some((x) => x.tip === 'd390') && !declMod.expectedForFirma(vIC, '2026-04').some((x) => x.tip === 'd390'));
 ok('asteptate decembrie include saft', declMod.expectedForFirma(vDecl, '2026-12').some((x) => x.tip === 'saft'));
 const dDecl = { declarations: [] };
 let seqDecl = 100;

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "seed": "node scripts/seed.js",
-    "test": "node scripts/check-syntax.js && node test/run.js",
+    "test": "node scripts/check-syntax.js && node test/run.js && node test/http.js",
     "lint": "node scripts/check-syntax.js",
     "prestart": "npm test",
     "e2e": "node scripts/e2e.mjs"

@@ -145,6 +145,7 @@ const upload = multer({
 
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
   console.error(e);
+  try { trackServerError(req, e); } catch (_) { /* inainte de definirea trackerului: ignora */ }
   res.status(500).json({ error: String(e.message || e) });
 });
 
@@ -385,6 +386,18 @@ app.post('/api/register', (req, res) => {
   db.save();
   startSession(req, res, user); // autentificare automata dupa inscriere
   res.json({ ok: true, firma: { id: fid, nume: firma.nume }, user: publicUser(user) });
+  // email de bun venit (best-effort, nu blocheaza raspunsul)
+  if (user.email) {
+    sendNotifMail(user.email, 'Bun venit în Contabo!',
+      'Salut,\n\nContul tău („' + username + '") și firma „' + firma.nume + '" sunt gata.\n\n'
+      + 'Primii pași:\n'
+      + '  1. Încarcă prima factură primită (PDF sau poză) — articolul contabil se generează singur.\n'
+      + '  2. Emite o factură către un client — primești automat e-Factura XML + PDF.\n'
+      + '  3. La final de lună, descarcă declarațiile din „Declarații ANAF".\n\n'
+      + 'Ghidul pas cu pas e în aplicație (tab-ul Ghid), iar la orice întrebare ne scrii direct din Mesaje.\n\n'
+      + 'Intră în aplicație: ' + billing.appUrl() + '\n\nSpor la treabă!\nEchipa Contabo'
+    ).catch((e) => console.error('email bun venit:', e.message));
+  }
 });
 
 // ───────────────────────────── 2FA (TOTP) ─────────────────────────────
@@ -2889,6 +2902,7 @@ app.get('/xml/d394', (req, res) => {
 app.get('/api/d390', (req, res) => res.json(rep.d390(S(req), req.query.period || null)));
 app.get('/xml/d390', (req, res) => {
   const v = S(req);
+  recordDecl(req, 'd390', req.query.period);
   sendXml(res, xml.d390Xml(v.company, req.query.period || null, rep.d390(v, req.query.period || null)), 'd390.xml');
 });
 app.get('/api/d205', (req, res) => res.json(rep.d205(S(req), req.query.year || new Date().getFullYear())));
@@ -3319,12 +3333,27 @@ setInterval(() => {
   }
 }, 15 * 60 * 1000);
 
+// Alerta pe email cand se aduna erori de server: >=5 erori 5xx in 15 minute -> un email pe ora.
+const err5xx = [];
+let lastErrAlert = 0;
+function trackServerError(req, err) {
+  const now = Date.now();
+  err5xx.push({ t: now, m: req.method + ' ' + req.originalUrl + ': ' + String((err && err.message) || err).slice(0, 160) });
+  while (err5xx.length && err5xx[0].t < now - 15 * 60 * 1000) err5xx.shift();
+  if (err5xx.length >= 5 && now - lastErrAlert > 3600 * 1000) {
+    lastErrAlert = now;
+    sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] ALERTA: erori de server repetate',
+      err5xx.length + ' erori 5xx in ultimele 15 minute:\n\n' + err5xx.map((x) => '  • ' + x.m).join('\n')
+      + '\n\nVerifica: pm2 logs contab').catch(() => {});
+  }
+}
+
 // Handler global de erori — DUPA toate rutele. Raspuns curat (JSON), fara scurgere de stack
 // catre client; 4xx isi pastreaza mesajul, 5xx devin generice si se logheaza pe server.
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
   const status = err.status || err.statusCode || 500;
-  if (status >= 500) console.error('[eroare]', req.method, req.originalUrl, '-', (err && err.stack) || err);
+  if (status >= 500) { console.error('[eroare]', req.method, req.originalUrl, '-', (err && err.stack) || err); trackServerError(req, err); }
   const msg = status < 500 && err && err.message ? err.message : 'A aparut o eroare interna. Incearca din nou.';
   res.status(status).json({ error: msg });
 });
