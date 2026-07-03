@@ -132,7 +132,7 @@
     .lead{color:var(--muted);max-width:760px;font-size:17px;margin:.4em 0 0}
 
     /* Steps */
-    .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:36px}
+    .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:22px}
     .step{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px;box-shadow:var(--shadow)}
     .step .n{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;
       font-weight:800;font-size:15px;margin-bottom:14px;background:var(--accent)}
@@ -140,9 +140,41 @@
     .step:nth-child(3) .n{background:#7c3aed}
     .step b.t{font-size:17.5px;display:block;margin-bottom:6px}
     .step p{color:var(--muted);margin:.2em 0 0;font-size:14.5px}
-    .step ul{margin:.8em 0 0;padding-left:18px;color:var(--muted);font-size:13.5px}
-    .step ul li{margin:5px 0}
-    .step ul b{color:var(--ink)}
+
+    /* ── Panouri aerisite: detaliile apar intr-un popover la hover / focus ──
+       Pe ecrane tactile (hover:none) popover-ul devine text static, ca nimic sa nu se piarda. */
+    .hv{position:relative;outline:none;cursor:default}
+    .hv .hint-i{position:absolute;top:14px;right:14px;width:20px;height:20px;border-radius:50%;
+      border:1.5px solid #c9d3e4;color:#8a97ad;font-size:11.5px;font-weight:700;
+      display:grid;place-items:center;font-style:normal;transition:border-color .15s,color .15s}
+    .hv:hover .hint-i{border-color:var(--accent);color:var(--accent)}
+    .hv .pop{position:absolute;left:-8px;right:-8px;top:-8px;z-index:30;opacity:0;visibility:hidden;
+      transform:translateY(8px);background:var(--navy);color:#c9d5ea;border-radius:14px;padding:18px 20px;
+      font-size:13.5px;line-height:1.6;box-shadow:0 20px 56px rgba(4,10,26,.45);
+      border:1px solid rgba(126,162,255,.3);
+      transition:opacity .16s ease,transform .16s ease,visibility .16s;pointer-events:none}
+    .hv:hover .pop,.hv:focus .pop,.hv:focus-within .pop{opacity:1;visibility:visible;transform:translateY(0)}
+    .hv .pop b{color:#fff}
+    .hv .pop .pt{font-weight:700;color:#fff;display:block;margin-bottom:6px;font-size:14px}
+    .hv .pop ul{margin:6px 0 0;padding-left:16px;color:#c9d5ea;font-size:13px}
+    .hv .pop ul li{margin:5px 0}
+    .hv .pop code{background:rgba(255,255,255,.12);color:#9db8ff;border-radius:6px;padding:1px 7px;font-size:12.5px;font-weight:600}
+    .hint{color:var(--muted);font-size:13px;margin:18px 0 0;display:flex;align-items:center;gap:8px}
+    .hint::before{content:"i";width:18px;height:18px;border-radius:50%;border:1.5px solid #c9d3e4;color:#8a97ad;
+      font-size:10.5px;font-weight:700;display:grid;place-items:center;flex:none}
+    .porto .hint{color:#9fb0cd}
+    @media (hover:none){
+      .hv .pop{position:static;opacity:1;visibility:visible;transform:none;background:transparent;
+        color:var(--muted);box-shadow:none;border:0;padding:10px 0 0;pointer-events:auto;border-radius:0}
+      .hv .pop b{color:var(--ink)}
+      .hv .pop ul{color:var(--muted)}
+      .hv .pop code{background:#eef2f9;color:var(--accent-dark)}
+      .porto .hv .pop{color:#9fb0cd}
+      .porto .hv .pop b{color:#fff}
+      .hv .pop .pt{display:none}
+      .hv .hint-i{display:none}
+      .hint{display:none}
+    }
 
     /* Cycle strip */
     .cycle{display:flex;flex-wrap:wrap;align-items:stretch;justify-content:center;margin-top:40px;
@@ -190,7 +222,11 @@
       width:28px;height:28px;border-radius:9px;background:var(--navy);color:#fff;font-weight:700;
       display:grid;place-items:center;font-size:13.5px}
     ol.walk li b{color:var(--ink)}
-    ol.walk li .mut{color:var(--muted)}
+    ol.walk li{outline:none}
+    ol.walk li .mut{display:block;color:var(--muted);max-height:0;overflow:hidden;
+      transition:max-height .25s ease,margin .25s ease}
+    ol.walk li:hover .mut,ol.walk li:focus .mut{max-height:120px;margin-top:6px}
+    @media (hover:none){ol.walk li .mut{max-height:none;margin-top:4px}}
 
     /* Pricing */
     .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;margin-top:36px}
@@ -346,33 +382,40 @@
         după regulile contabilității românești (partidă dublă, OMFP 1802/2014). Orice greșeală se șterge
         și se reface în câteva secunde, cu explicații în limbaj simplu la fiecare pas.</p>
 
+      <p class="hint">Treci cu mouse-ul peste un panou pentru detalii.</p>
       <div class="steps">
-        <div class="step"><div class="n">1</div><b class="t">Aduci documentul</b>
-          <p>Orice hârtie a firmei intră în aplicație în câteva secunde:</p>
-          <ul>
-            <li><b>Facturi primite</b> — tragi PDF-ul sau o <b>poză cu telefonul</b>; AI-ul citește furnizorul, CUI-ul, baza, TVA-ul și totalul.</li>
-            <li><b>Facturi emise</b> — completezi clientul și liniile; primești <b>e-Factura XML</b> pentru SPV + PDF, cu număr în serie continuă.</li>
-            <li><b>Extras bancar</b> — CSV/MT940; încasările și plățile se potrivesc singure cu partenerii.</li>
-            <li><b>Bonuri și scanate</b> — inclusiv direct de la scanerul local.</li>
-          </ul>
+        <div class="step hv" tabindex="0"><i class="hint-i">i</i><div class="n">1</div><b class="t">Aduci documentul</b>
+          <p>PDF, poză cu telefonul sau extras bancar — intră în aplicație în câteva secunde.</p>
+          <div class="pop"><span class="pt">Ce poți aduce</span>
+            <ul>
+              <li><b>Facturi primite</b> — tragi PDF-ul sau o poză; AI-ul citește furnizorul, CUI-ul, baza, TVA-ul și totalul.</li>
+              <li><b>Facturi emise</b> — completezi clientul și liniile; primești e-Factura XML pentru SPV + PDF, cu număr în serie continuă.</li>
+              <li><b>Extras bancar</b> — CSV/MT940; încasările și plățile se potrivesc singure cu partenerii.</li>
+              <li><b>Bonuri și scanate</b> — inclusiv direct de la scanerul local.</li>
+            </ul>
+          </div>
         </div>
-        <div class="step"><div class="n">2</div><b class="t">Se contabilizează automat</b>
-          <p>Aplicația construiește articolul contabil — tu doar verifici și salvezi:</p>
-          <ul>
-            <li><b>~100 de tipuri de operațiuni</b>: vânzări, cumpărări, salarii, leasing, avansuri facturate, efecte de comerț, valută…</li>
-            <li><b>TVA pe cote</b> (21% / 11% / scutit), inclusiv taxare inversă, TVA la încasare și facturi de avans.</li>
-            <li><b>Stocurile se descarcă automat</b> la cost mediu ponderat, pe gestiuni.</li>
-            <li>Partenerii, seriile și analiticele se rețin singure.</li>
-          </ul>
+        <div class="step hv" tabindex="0"><i class="hint-i">i</i><div class="n">2</div><b class="t">Se contabilizează automat</b>
+          <p>Aplicația construiește articolul contabil — tu doar verifici și salvezi.</p>
+          <div class="pop"><span class="pt">Ce se întâmplă automat</span>
+            <ul>
+              <li><b>~100 de tipuri de operațiuni</b>: vânzări, cumpărări, salarii, leasing, avansuri facturate, efecte de comerț, valută…</li>
+              <li><b>TVA pe cote</b> (21% / 11% / scutit), inclusiv taxare inversă, TVA la încasare și facturi de avans.</li>
+              <li><b>Stocurile se descarcă automat</b> la cost mediu ponderat, pe gestiuni.</li>
+              <li>Partenerii, seriile și analiticele se rețin singure.</li>
+            </ul>
+          </div>
         </div>
-        <div class="step"><div class="n">3</div><b class="t">Rapoartele se generează singure</b>
-          <p>Din înregistrări se construiește tot ce cere legea — zero muncă dublă:</p>
-          <ul>
-            <li><b>Registre obligatorii</b>: registru-jurnal, cartea mare, balanță cu cele 4 egalități, jurnale de TVA.</li>
-            <li><b>Declarații ANAF</b>: D300, D394, D390, D205, D112, SAF-T — cu validare pre-depunere.</li>
-            <li><b>Situații financiare</b>: bilanț F10, P&L F20, fluxuri F30, capitaluri F40 + note explicative.</li>
-            <li><b>Management</b>: dashboard an-la-an, buget vs realizat, previziune cash-flow, scadențar.</li>
-          </ul>
+        <div class="step hv" tabindex="0"><i class="hint-i">i</i><div class="n">3</div><b class="t">Rapoartele se generează singure</b>
+          <p>Registre, declarații ANAF și situații financiare — zero muncă dublă.</p>
+          <div class="pop"><span class="pt">Ce primești gata făcut</span>
+            <ul>
+              <li><b>Registre obligatorii</b>: registru-jurnal, cartea mare, balanță cu cele 4 egalități, jurnale de TVA.</li>
+              <li><b>Declarații ANAF</b>: D300, D394, D390, D205, D112, SAF-T — cu validare pre-depunere.</li>
+              <li><b>Situații financiare</b>: bilanț F10, P&L F20, fluxuri F30, capitaluri F40 + note explicative.</li>
+              <li><b>Management</b>: dashboard an-la-an, buget vs realizat, previziune cash-flow, scadențar.</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -385,15 +428,18 @@
       </div>
 
       <div class="auto-ex">
-        <div class="aex"><b>Exemplu:</b> încarci poza unei facturi de marfă de 1.000 lei + TVA
-          <span class="arr">→</span> aplicația scrie singură <code>371 = 401</code> (1.000) și <code>4426 = 401</code> (210).
-          <span class="mut">Marfa intră în stoc, furnizorul la datorii, TVA-ul la deductibil — dintr-o poză.</span></div>
-        <div class="aex"><b>Exemplu:</b> emiți o factură de servicii de 500 lei
-          <span class="arr">→</span> primești e-Factura XML pentru SPV, PDF-ul pentru client și înregistrarea <code>4111 = 704 + 4427</code>.
-          <span class="mut">La încasare, un click închide creanța.</span></div>
-        <div class="aex"><b>Exemplu:</b> la sfârșit de lună apeși „Închide TVA"
-          <span class="arr">→</span> 4427 se compensează cu 4426 și afli exact <b>cât ai de plată</b> (<code>4423</code>) sau de recuperat (<code>4424</code>).
-          <span class="mut">Decontul D300 e deja completat, defalcat pe cote.</span></div>
+        <div class="aex hv" tabindex="0"><i class="hint-i">i</i><b>Exemplu:</b> încarci poza unei facturi de marfă de 1.000 lei + TVA
+          <div class="pop"><span class="pt">Ce face aplicația</span>
+            Scrie singură <code>371 = 401</code> (1.000) și <code>4426 = 401</code> (210).
+            Marfa intră în stoc, furnizorul la datorii, TVA-ul la deductibil — dintr-o poză.</div></div>
+        <div class="aex hv" tabindex="0"><i class="hint-i">i</i><b>Exemplu:</b> emiți o factură de servicii de 500 lei
+          <div class="pop"><span class="pt">Ce face aplicația</span>
+            Primești e-Factura XML pentru SPV, PDF-ul pentru client și înregistrarea <code>4111 = 704 + 4427</code>.
+            La încasare, un click închide creanța.</div></div>
+        <div class="aex hv" tabindex="0"><i class="hint-i">i</i><b>Exemplu:</b> la sfârșit de lună apeși „Închide TVA"
+          <div class="pop"><span class="pt">Ce face aplicația</span>
+            4427 se compensează cu 4426 și afli exact <b>cât ai de plată</b> (<code>4423</code>) sau de recuperat (<code>4424</code>).
+            Decontul D300 e deja completat, defalcat pe cote.</div></div>
       </div>
     </div>
   </section>
@@ -403,19 +449,20 @@
     <div class="wrap">
       <p class="kicker">Tot ciclul contabil</p>
       <h2>Un singur loc pentru toată firma</h2>
+      <p class="hint">Treci cu mouse-ul peste un panou pentru detalii.</p>
       <div class="grid">
-        <div class="feat"><span class="ic">🤖</span><b>Documente citite cu AI</b><span>Încarci factura (PDF sau poză) — tipul, sumele și partenerul se completează singure.</span></div>
-        <div class="feat"><span class="ic">🧾</span><b>e-Factura (CIUS-RO)</b><span>Emitere cu XML UBL pentru SPV, trimitere cu recipisă, import e-Factura primită.</span></div>
-        <div class="feat"><span class="ic">🏦</span><b>Bancă & reconciliere</b><span>Import extras (CSV/MT940), potrivire automată cu partenerii, control sold și plafoane numerar.</span></div>
-        <div class="feat"><span class="ic">🧮</span><b>TVA & declarații</b><span>Jurnale de vânzări/cumpărări, D300, D394, D390, D205 — defalcate pe cote, cu validare pre-depunere.</span></div>
-        <div class="feat"><span class="ic">📦</span><b>Stocuri & producție</b><span>Gestiuni la cost mediu ponderat, NIR, bon de consum, inventar cu PV, rețete/BOM.</span></div>
-        <div class="feat"><span class="ic">👥</span><b>Salarizare</b><span>State de plată cu cotele 2026, deducere personală, fluturași, adeverințe, D112.</span></div>
-        <div class="feat"><span class="ic">🏢</span><b>Mijloace fixe</b><span>Registru de imobilizări, amortizare liniară / degresivă / accelerată, fișa mijlocului fix.</span></div>
-        <div class="feat"><span class="ic">📈</span><b>Situații financiare</b><span>Bilanț F10, profit & pierdere F20, fluxuri F30, capitaluri F40 + note explicative, într-un PDF.</span></div>
-        <div class="feat"><span class="ic">🔒</span><b>Închideri de lună</b><span>Închidere TVA, amortizare, impozit pe profit cu pierdere reportată, închidere anuală, blocare perioadă.</span></div>
-        <div class="feat"><span class="ic">📊</span><b>SAF-T (D406)</b><span>Fișierul standard de audit generat din toate înregistrările, cu MasterFiles și SourceDocuments.</span></div>
-        <div class="feat"><span class="ic">🔮</span><b>Management financiar</b><span>Dashboard an-la-an, buget vs realizat, previziune de cash-flow, scadențar cu aging FIFO.</span></div>
-        <div class="feat"><span class="ic">🛡️</span><b>Siguranță</b><span>Multi-firmă, utilizatori cu 2FA, jurnal de audit, backup zilnic automat + copie offsite.</span></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🤖</span><b>Documente citite cu AI</b><div class="pop">Încarci factura (PDF sau poză) — tipul, sumele și partenerul se completează singure.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🧾</span><b>e-Factura (CIUS-RO)</b><div class="pop">Emitere cu XML UBL pentru SPV, trimitere cu recipisă, import e-Factura primită.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🏦</span><b>Bancă & reconciliere</b><div class="pop">Import extras (CSV/MT940), potrivire automată cu partenerii, control sold și plafoane numerar.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🧮</span><b>TVA & declarații</b><div class="pop">Jurnale de vânzări/cumpărări, D300, D394, D390, D205 — defalcate pe cote, cu validare pre-depunere.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">📦</span><b>Stocuri & producție</b><div class="pop">Gestiuni la cost mediu ponderat, NIR, bon de consum, inventar cu proces-verbal, rețete/BOM.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">👥</span><b>Salarizare</b><div class="pop">State de plată cu cotele 2026, deducere personală, fluturași, adeverințe, D112.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🏢</span><b>Mijloace fixe</b><div class="pop">Registru de imobilizări, amortizare liniară / degresivă / accelerată, fișa mijlocului fix.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">📈</span><b>Situații financiare</b><div class="pop">Bilanț F10, profit & pierdere F20, fluxuri F30, capitaluri F40 + note explicative, într-un PDF.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🔒</span><b>Închideri de lună</b><div class="pop">Închidere TVA, amortizare, impozit pe profit cu pierdere reportată, închidere anuală, blocare perioadă.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">📊</span><b>SAF-T (D406)</b><div class="pop">Fișierul standard de audit generat din toate înregistrările, cu MasterFiles și SourceDocuments.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🔮</span><b>Management financiar</b><div class="pop">Dashboard an-la-an, buget vs realizat, previziune de cash-flow, scadențar cu aging FIFO.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🛡️</span><b>Siguranță</b><div class="pop">Multi-firmă, utilizatori cu 2FA, jurnal de audit, backup zilnic automat + copie offsite.</div></div>
       </div>
     </div>
   </section>
@@ -427,15 +474,16 @@
       <h2>Conformitatea, supravegheată dintr-un singur ecran</h2>
       <p class="lead">Dacă ții mai multe firme, Contabo îți arată în orice moment unde ești cu declarațiile:
         ce e depus, ce e restant, cine are erori — fără să deschizi fiecare firmă în parte.</p>
+      <p class="hint">Treci cu mouse-ul peste un panou pentru detalii.</p>
       <div class="pillars">
-        <div class="pillar"><span class="ic">🗂</span><b>Portofoliu multi-firmă</b>
-          <span>Vedere agregată peste toate firmele: declarații așteptate/depuse pe lună, % conformitate, top firme cu atenționări, activitate recentă.</span></div>
-        <div class="pillar"><span class="ic">📋</span><b>Registrul depunerilor</b>
-          <span>Fiecare declarație cu termenul ei legal; descărcarea XML-ului o marchează „generată", tu o marchezi „depusă" cu numărul recipisei.</span></div>
-        <div class="pillar"><span class="ic">🔔</span><b>Notificări de termene</b>
-          <span>Restanțele și termenele din următoarele 7 zile, în aplicație și pe email, zilnic — pe toate firmele tale.</span></div>
-        <div class="pillar"><span class="ic">🏛</span><b>Fișa Rol din SPV</b>
-          <span>Soliciți fișa pe plătitor direct din aplicație (serviciile web SPV) și o atașezi ca document al firmei.</span></div>
+        <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🗂</span><b>Portofoliu multi-firmă</b>
+          <div class="pop">Vedere agregată peste toate firmele: declarații așteptate/depuse pe lună, % conformitate, top firme cu atenționări, activitate recentă.</div></div>
+        <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">📋</span><b>Registrul depunerilor</b>
+          <div class="pop">Fiecare declarație cu termenul ei legal; descărcarea XML-ului o marchează „generată", tu o marchezi „depusă" cu numărul recipisei.</div></div>
+        <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🔔</span><b>Notificări de termene</b>
+          <div class="pop">Restanțele și termenele din următoarele 7 zile, în aplicație și pe email, zilnic — pe toate firmele tale.</div></div>
+        <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🏛</span><b>Fișa Rol din SPV</b>
+          <div class="pop">Soliciți fișa pe plătitor direct din aplicație (serviciile web SPV) și o atașezi ca document al firmei.</div></div>
       </div>
     </div>
   </section>
@@ -445,13 +493,14 @@
     <div class="wrap">
       <p class="kicker">Pas cu pas</p>
       <h2>O lună de contabilitate, de la A la Z</h2>
+      <p class="hint">Treci cu mouse-ul peste un pas pentru detalii.</p>
       <ol class="walk">
-        <li><b>Configurezi o singură dată</b> — <span class="mut">datele firmei (CUI, regim TVA, micro/profit); opțional imporți partenerii, planul de conturi și produsele din CSV.</span></li>
-        <li><b>Înregistrezi documentele primite</b> — <span class="mut">tragi factura de la furnizor (PDF sau poză); AI-ul completează tipul, partenerul, baza și TVA-ul. Tu verifici și salvezi.</span></li>
-        <li><b>Emiți facturile tale</b> — <span class="mut">clientul + liniile (cantitate × preț × cotă); numărul vine în serie continuă, iar e-Factura XML + PDF se generează automat.</span></li>
-        <li><b>Bagi banca</b> — <span class="mut">încarci extrasul, aplicația potrivește încasările și plățile cu partenerii; în Reconciliere confirmi soldul.</span></li>
-        <li><b>Verifici rapoartele</b> — <span class="mut">registru-jurnal, cartea mare, balanța (debit = credit), decontul de TVA pe cote — toate deja generate.</span></li>
-        <li><b>Închizi luna</b> — <span class="mut">amortizare, închidere TVA, apoi descarci declarațiile: D300, D394, D112, SAF-T — și le bifezi „depuse" în registrul depunerilor.</span></li>
+        <li tabindex="0"><b>Configurezi o singură dată</b><span class="mut">Datele firmei (CUI, regim TVA, micro/profit); opțional imporți partenerii, planul de conturi și produsele din CSV.</span></li>
+        <li tabindex="0"><b>Înregistrezi documentele primite</b><span class="mut">Tragi factura de la furnizor (PDF sau poză); AI-ul completează tipul, partenerul, baza și TVA-ul. Tu verifici și salvezi.</span></li>
+        <li tabindex="0"><b>Emiți facturile tale</b><span class="mut">Clientul + liniile (cantitate × preț × cotă); numărul vine în serie continuă, iar e-Factura XML + PDF se generează automat.</span></li>
+        <li tabindex="0"><b>Bagi banca</b><span class="mut">Încarci extrasul, aplicația potrivește încasările și plățile cu partenerii; în Reconciliere confirmi soldul.</span></li>
+        <li tabindex="0"><b>Verifici rapoartele</b><span class="mut">Registru-jurnal, cartea mare, balanța (debit = credit), decontul de TVA pe cote — toate deja generate.</span></li>
+        <li tabindex="0"><b>Închizi luna</b><span class="mut">Amortizare, închidere TVA, apoi descarci declarațiile: D300, D394, D112, SAF-T — și le bifezi „depuse" în registrul depunerilor.</span></li>
       </ol>
     </div>
   </section>
