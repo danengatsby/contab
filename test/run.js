@@ -159,6 +159,11 @@ eq('TVA colectata (jurnal vanzari)', vj.totals.colectata, 2940);
 eq('baza cumparari', vj.totals.bazaC, 10000);
 eq('TVA deductibila (jurnal cumparari)', vj.totals.deductibila, 2100);
 ok('D300 bine-format', wellFormed(xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06'))));
+// declarantul (intocmitorul) in XML: atribute oficiale, doar cand exista datele
+const d300Cu = xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06'), { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
+ok('D300 cu declarant: nume/prenume/functie', d300Cu.includes('nume_declar="Popescu"') && d300Cu.includes('prenume_declar="Ion"') && d300Cu.includes('functie_declar="Contabil"'));
+ok('D300 cu declarant ramane bine-format', wellFormed(d300Cu));
+ok('D300 fara declarant: fara atribute', !xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06')).includes('nume_declar'));
 ok('D394 bine-format', wellFormed(xml.d394Xml(v.company, '2026-06', vj)));
 // defalcare pe cote
 eq('o singura cota la vanzari (21%)', vj.coteV.length, 1);

@@ -214,7 +214,16 @@ function ym(period) {
 /** D300 — decont TVA (structura ANAF, valori principale). */
 // Cod de rand D300 dupa cota (orientativ): 21% -> 1, 11% -> 2, 5% -> 3, scutit/0% -> 0
 function rdCota(cota) { return cota === 21 ? '1' : cota === 11 ? '2' : cota === 5 ? '3' : '0'; }
-function d300Xml(company, period, d) {
+/** Atributele declarantului (intocmitorului) — incluse doar cand datele exista. */
+function declarant(who) {
+  if (!who || !who.nume) return '';
+  let a = ` nume_declar="${esc(who.nume)}"`;
+  if (who.prenume) a += ` prenume_declar="${esc(who.prenume)}"`;
+  if (who.functie) a += ` functie_declar="${esc(who.functie)}"`;
+  return a;
+}
+
+function d300Xml(company, period, d, who) {
   const { an, luna } = ym(period);
   const randuri = (list, kind) => (list || []).map((c) =>
     `  <rand sectiune="${kind}" rd="${rdCota(c.cota)}" cota="${c.cota}" baza="${num2(c.baza)}" tva="${num2(c.tva)}"/>`).join('\n');
@@ -224,7 +233,7 @@ function d300Xml(company, period, d) {
 <!-- D300 (recapitulatie) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->
 <declaratie300 xmlns="mfp:anaf:dgti:d300:declaratie:v3"
   cif="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
-  luna="${esc(luna)}" an="${esc(an)}" sumactrl="0">
+  luna="${esc(luna)}" an="${esc(an)}" sumactrl="0"${declarant(who)}>
   <livrari_taxabile baza="${num2(d.bazaV)}" tva="${num2(d.colectata)}">
 ${liv || '    <!-- fara livrari -->'}
   </livrari_taxabile>
@@ -240,7 +249,7 @@ ${ach || '    <!-- fara achizitii -->'}
 }
 
 /** D112 — declaratia privind contributiile sociale, impozitul si evidenta nominala (din statul de plata). */
-function d112Xml(company, period, sp) {
+function d112Xml(company, period, sp, who) {
   const { an, luna } = ym(period);
   const t = sp.totals;
   const asigurati = sp.rows.map((r) => `    <asigurat nume="${esc(r.nume)}" cnp="${esc(r.cnp)}" functie="${esc(r.functie)}" `
@@ -250,7 +259,7 @@ function d112Xml(company, period, sp) {
 <!-- D112 (recapitulatie + evidenta nominala) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->
 <declaratie112 xmlns="mfp:anaf:dgti:d112:declaratie:v1"
   cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
-  luna="${esc(luna)}" an="${esc(an)}" nr_asigurati="${sp.rows.length}" tip_d="0">
+  luna="${esc(luna)}" an="${esc(an)}" nr_asigurati="${sp.rows.length}" tip_d="0"${declarant(who)}>
   <creante_fiscale>
     <total_salarii_brute>${num2(t.brut)}</total_salarii_brute>
     <CAS_asigurat>${num2(t.cas)}</CAS_asigurat>
@@ -267,7 +276,7 @@ ${asigurati}
 }
 
 /** D394 — declaratie informativa (structura ANAF, agregare pe partener). */
-function d394Xml(company, period, vj) {
+function d394Xml(company, period, vj, who) {
   const { an, luna } = ym(period);
   const agg = (rows) => {
     const map = new Map();
@@ -297,7 +306,7 @@ ${cote}
 <!-- D394 (recapitulatie) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->
 <declaratie394 xmlns="mfp:anaf:dgti:d394:declaratie:v2"
   cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
-  luna="${esc(luna)}" an="${esc(an)}">
+  luna="${esc(luna)}" an="${esc(an)}"${declarant(who)}>
   <rezumat_cote>
     <livrari>
 ${cote(vj.coteV) || '      <!-- - -->'}

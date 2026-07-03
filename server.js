@@ -2828,6 +2828,15 @@ app.get('/pdf/factura/:id', (req, res) => {
   const fid = e.firmaId || db.firmaActiva();
   pdf.facturaPdf(res, db.getFirma(fid) || {}, e, d.partners[fid] || {});
 });
+// Declarantul pentru XML-urile ANAF — din datele personale ale utilizatorului (Setari -> Contul meu)
+function declarantOf(req) {
+  const p = (req.user && req.user.profil) || {};
+  if (!p.numeComplet) return null;
+  const parts = String(p.numeComplet).trim().split(/\s+/);
+  const nume = parts.pop() || '';
+  return { nume, prenume: parts.join(' '), functie: plans.userKind(req.user) === 'contabil' ? 'Contabil' : 'Administrator' };
+}
+
 // Registrul depunerilor: descarcarea XML-ului marcheaza declaratia (firma, tip, luna) drept „generata"
 function recordDecl(req, tip, period) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return;
@@ -2840,12 +2849,12 @@ function recordDecl(req, tip, period) {
 app.get('/xml/d300', (req, res) => {
   const v = S(req);
   recordDecl(req, 'd300', req.query.period);
-  sendXml(res, xml.d300Xml(v.company, req.query.period || null, rep.d300(v, req.query.period || null)), 'd300.xml');
+  sendXml(res, xml.d300Xml(v.company, req.query.period || null, rep.d300(v, req.query.period || null), declarantOf(req)), 'd300.xml');
 });
 app.get('/xml/d394', (req, res) => {
   const v = S(req);
   recordDecl(req, 'd394', req.query.period);
-  sendXml(res, xml.d394Xml(v.company, req.query.period || null, acc.vatJournals(v, req.query.period || null)), 'd394.xml');
+  sendXml(res, xml.d394Xml(v.company, req.query.period || null, acc.vatJournals(v, req.query.period || null), declarantOf(req)), 'd394.xml');
 });
 app.get('/api/d390', (req, res) => res.json(rep.d390(S(req), req.query.period || null)));
 app.get('/xml/d390', (req, res) => {
@@ -2867,7 +2876,7 @@ app.get('/xml/d112', (req, res) => {
   const v = S(req);
   const period = req.query.period || new Date().toISOString().slice(0, 7);
   recordDecl(req, 'd112', period);
-  sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati, period)), 'd112-' + period + '.xml');
+  sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati, period), declarantOf(req)), 'd112-' + period + '.xml');
 });
 app.get('/xml/saft', (req, res) => {
   const v = S(req);
@@ -2967,11 +2976,11 @@ app.get('/api/validate/:type', (req, res) => {
   const year = req.query.year || String(new Date().getFullYear());
   let x = '';
   try {
-    if (type === 'd300') x = xml.d300Xml(v.company, period, rep.d300(v, period));
-    else if (type === 'd394') x = xml.d394Xml(v.company, period, acc.vatJournals(v, period));
+    if (type === 'd300') x = xml.d300Xml(v.company, period, rep.d300(v, period), declarantOf(req));
+    else if (type === 'd394') x = xml.d394Xml(v.company, period, acc.vatJournals(v, period), declarantOf(req));
     else if (type === 'd390') x = xml.d390Xml(v.company, period, rep.d390(v, period));
     else if (type === 'd205') x = xml.d205Xml(v.company, year, rep.d205(v, year));
-    else if (type === 'd112') x = xml.d112Xml(v.company, period, statePlata(v.angajati, period));
+    else if (type === 'd112') x = xml.d112Xml(v.company, period, statePlata(v.angajati, period), declarantOf(req));
     else if (type === 'saft') x = saft.saftXml(v, year);
     else return res.status(400).json({ error: 'Tip de declaratie necunoscut: ' + type });
   } catch (e) { return res.status(400).json({ error: e.message }); }
