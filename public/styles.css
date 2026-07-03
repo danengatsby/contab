@@ -741,3 +741,4 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 .kpi:has(.cinfo:hover),.kpi:has(.cinfo:focus){overflow:visible;position:relative;z-index:45}
 .kpi .cinfo .cpop{left:auto;right:-12px;transform:translateY(4px)}
 .kpi .cinfo:hover .cpop,.kpi .cinfo:focus .cpop{transform:translateY(0)}
+.warnbox.hidden{display:none}

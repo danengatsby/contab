@@ -2776,6 +2776,8 @@ $('#fxRevalPost') && $('#fxRevalPost').addEventListener('click', async () => {
 // ───────────────────────── STATEMENTS ─────────────────────────
 $('#stmtYear').addEventListener('change', loadStatements);
 async function loadStatements() {
+  // necontabilii isi depun singuri declaratiile, dar bilantul cere semnatura calificata (L82/1991)
+  $('#bilantWarn').classList.toggle('hidden', USER.tip !== 'necontabil');
   const y = $('#stmtYear').value;
   $('#plPdf').href = '/pdf/pl?year=' + y;
   $('#bilantPdf').href = '/pdf/bilant?period=' + y + '-12';
