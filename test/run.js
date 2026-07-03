@@ -1176,6 +1176,13 @@ const pend = [{ email: 'client@firma.ro', plan: 'pro', customerId: 'cus_1', subs
 eq('findPending: email potrivit (case-insensitive)', plansMod.findPending(pend, 'Client@Firma.RO'), 0);
 eq('findPending: email nepotrivit -> -1', plansMod.findPending(pend, 'altul@x.ro'), -1);
 eq('findPending: fara email -> -1', plansMod.findPending(pend, ''), -1);
+// tipurile de utilizator: admin / tester (proba) / necontabil (Start) / contabil (Pro)
+eq('userKind: admin ramane admin indiferent de plan', plansMod.userKind({ role: 'admin', subscription: { plan: 'pro', status: 'active' } }), 'admin');
+eq('userKind: fara abonament -> tester', plansMod.userKind({ role: 'user' }), 'tester');
+eq('userKind: proba gratuita -> tester', plansMod.userKind({ role: 'user', subscription: plansMod.startTrial({}) }), 'tester');
+eq('userKind: Start activ -> necontabil', plansMod.userKind({ role: 'user', subscription: { plan: 'start', status: 'active' } }), 'necontabil');
+eq('userKind: Pro activ -> contabil', plansMod.userKind({ role: 'user', subscription: { plan: 'pro', status: 'active' } }), 'contabil');
+eq('userKind: Pro anulat -> tester', plansMod.userKind({ role: 'user', subscription: { plan: 'pro', status: 'canceled' } }), 'tester');
 const linkedSub = plansMod.pendingToSubscription(pend[0]);
 eq('pendingToSubscription: plan', linkedSub.plan, 'pro');
 eq('pendingToSubscription: status active', linkedSub.status, 'active');

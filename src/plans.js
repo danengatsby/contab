@@ -18,20 +18,37 @@ const FEATURES = [
 const PLANS = [
   {
     id: 'trial', nume: 'Probă gratuită', pret: 0, moneda: 'lei', perioada: TRIAL_DAYS + ' zile', trial: true,
-    descriere: 'Testează tot, fără card bancar.',
+    tip: 'tester', descriere: 'Tester — testează tot, fără card bancar.',
     features: FEATURES.slice(),
   },
   {
     id: 'start', nume: 'Start', pret: 99, moneda: 'lei', perioada: 'lună',
-    descriere: 'Pentru o microîntreprindere.',
+    tip: 'necontabil', descriere: 'Necontabil — antreprenori care își țin singuri evidența.',
     features: FEATURES.slice(),
   },
   {
     id: 'pro', nume: 'Pro', pret: 199, moneda: 'lei', perioada: 'lună', recomandat: true,
-    descriere: 'Cel mai ales de contabili.',
+    tip: 'contabil', descriere: 'Contabil — profesioniști și portofolii de firme.',
     features: FEATURES.slice(),
   },
 ];
+
+/**
+ * Tipul de utilizator, derivat din rol si abonament:
+ *   admin — administratorul aplicatiei;
+ *   tester — proba gratuita (sau inca fara plan);
+ *   necontabil — abonament Start activ;
+ *   contabil — abonament Pro activ.
+ * Se actualizeaza automat cand se schimba abonamentul (nu se stocheaza separat).
+ */
+function userKind(user) {
+  if (!user) return 'tester';
+  if (user.role === 'admin') return 'admin';
+  const st = status(user.subscription);
+  if (st.status === 'active' && st.plan === 'start') return 'necontabil';
+  if (st.status === 'active' && st.plan === 'pro') return 'contabil';
+  return 'tester';
+}
 
 function daysLeft(endIso, now) {
   return Math.max(0, Math.ceil((new Date(endIso).getTime() - (now || Date.now())) / 86400000));
@@ -97,4 +114,4 @@ function pendingToSubscription(rec, now) {
   return { plan: rec.plan, status: 'active', stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null, since: new Date(now || Date.now()).toISOString() };
 }
 
-module.exports = { PLANS, TRIAL_DAYS, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription };
+module.exports = { PLANS, TRIAL_DAYS, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind };

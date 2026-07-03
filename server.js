@@ -180,7 +180,7 @@ function allowedFirme(u) {
   return u.role === 'admin' ? d.firme.map((f) => f.id) : (u.firme || []);
 }
 function publicUser(u) {
-  return { id: u.id, username: u.username, role: u.role, firme: allowedFirme(u), mustChange: !!u.mustChange, twofa: !!u.twofa };
+  return { id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), firme: allowedFirme(u), mustChange: !!u.mustChange, twofa: !!u.twofa };
 }
 
 // Igiena sesiunilor: elimina sesiunile vechi (peste TTL) si plafoneaza nr. de dispozitive active.
@@ -1089,7 +1089,7 @@ app.delete('/api/firme/:id', requireAdmin, (req, res) => {
 app.get('/api/users', requireAdmin, (req, res) => {
   const base = (req.protocol || 'http') + '://' + req.get('host');
   res.json(db.get().users.map((u) => ({
-    id: u.id, username: u.username, role: u.role, firme: u.firme || [],
+    id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), plan: plans.status(u.subscription).plan, firme: u.firme || [],
     pending: !!u.pending, inviteLink: u.pending && u.inviteToken ? base + '/?invite=' + u.inviteToken : null,
   })));
 });

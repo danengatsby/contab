@@ -323,8 +323,13 @@ async function renderUsers() {
   }
   $('#userFirmeChecks').innerHTML = firmeChecks([]);
   const users = await api('/api/users');
-  $('#usersList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Rol</th><th>Firme</th><th></th></tr></thead><tbody>${
-    users.map((u) => `<tr><td><b>${u.username}</b>${u.pending ? ' <span class="pill warn">invitație</span>' : ''}</td><td>${u.role}</td>
+  // tipul utilizatorului: admin / tester (proba) / necontabil (Start) / contabil (Pro)
+  const tipPill = (u) => {
+    const c = { admin: 'background:#2f2e2a;color:#fff', contabil: 'background:#e2f5e8;color:#0a7d33', necontabil: 'background:#e7eefc;color:#1652d6', tester: 'background:#fff4e0;color:#b26a00' }[u.tip] || '';
+    return `<span class="pill" style="${c}" title="${u.plan ? 'plan: ' + u.plan : 'fără plan (probă)'}">${u.tip || '—'}</span>`;
+  };
+  $('#usersList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th>Firme</th><th></th></tr></thead><tbody>${
+    users.map((u) => `<tr><td><b>${u.username}</b>${u.pending ? ' <span class="pill warn">invitație</span>' : ''}</td><td>${tipPill(u)}</td>
       <td>${u.role === 'admin' ? '<span class="muted">toate</span>' : u.firme.map((id) => { const f = (META.firme || []).find((x) => x.id === id); return f ? f.nume : id; }).join(', ') || '<span class="muted">—</span>'}</td>
       <td>${u.pending ? `<button class="linkbtn ulink" data-link="${u.inviteLink}">copiază link</button>` : `<button class="linkbtn ureset" data-id="${u.id}">resetează parola</button>${u.role !== 'admin' ? ` · <button class="linkbtn uimp" data-id="${u.id}">↪ intră pe cont</button>` : ''}`} · <button class="del udel" data-id="${u.id}">✕</button></td></tr>`).join('')}</tbody></table>`;
   $$('#usersList .ulink').forEach((b) => b.addEventListener('click', () => prompt('Link invitație (trimite-l utilizatorului):', b.dataset.link)));
@@ -943,7 +948,7 @@ async function init() {
   }
   hideLogin();
   USER = META.user || {};
-  $('#userBadge').textContent = USER.username ? (USER.username + (USER.role === 'admin' ? ' · admin' : '')) : '';
+  $('#userBadge').textContent = USER.username ? (USER.username + (USER.tip ? ' · ' + USER.tip : '')) : '';
   $('#usersCard').style.display = USER.role === 'admin' ? '' : 'none';
   $('#exportAllBtn') && ($('#exportAllBtn').style.display = USER.role === 'admin' ? '' : 'none');
   applySessionState(USER);
