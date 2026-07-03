@@ -54,6 +54,8 @@ const production = require('./src/production');
 const validate = require('./src/validate');
 const decl = require('./src/declarations');
 const { sendMail, sendNotifMail, sendDeadlineDigests } = require('./src/notify');
+const anafService = require('./src/anafService');
+const { saveRecipisa, pollSpv, extractInvoiceXml } = anafService;
 const efacturaImport = require('./src/efacturaImport');
 const fxreval = require('./src/fxreval');
 const plans = require('./src/plans');
@@ -2724,16 +2726,6 @@ app.post('/api/anaf/status/:id', wrap(async (req, res) => {
   res.json({ ok: true, spv: e.spv });
 }));
 
-async function saveRecipisa(d, e) {
-  const buf = await anaf.download(d.settings.anaf || {}, e.spv.idDescarcare);
-  const storedName = crypto.randomBytes(8).toString('hex') + '.zip';
-  fs.writeFileSync(path.join(db.UPLOAD_DIR, storedName), buf);
-  const docId = db.nextId('doc');
-  d.documents.push({ id: docId, fileName: 'recipisa-' + (e.document || e.id) + '.zip', storedName, uploadedAt: new Date().toISOString(), text: '' });
-  e.spv.recipisaDocId = docId; e.spv.recipisaAt = new Date().toISOString();
-  return docId;
-}
-
 // Descarca recipisa/ZIP pentru o factura trimisa si o salveaza ca document
 app.post('/api/anaf/download/:id', wrap(async (req, res) => {
   const d = db.get();
@@ -2744,26 +2736,6 @@ app.post('/api/anaf/download/:id', wrap(async (req, res) => {
   res.json({ ok: true, documentId: docId, spv: e.spv });
 }));
 
-// Verifica toate facturile trimise: actualizeaza starea si descarca recipisele disponibile
-async function pollSpv() {
-  const d = db.get();
-  const c = d.settings.anaf || {};
-  if (!anaf.connected(c)) return { connected: false, checked: 0, accepted: 0, downloaded: 0 };
-  const pending = d.entries.filter((e) => e.spv && !e.spv.recipisaDocId);
-  let accepted = 0; let downloaded = 0;
-  for (const e of pending) {
-    try {
-      const st = await anaf.status(c, e.spv.index);
-      e.spv.stare = st.stare;
-      if (st.idDescarcare) e.spv.idDescarcare = st.idDescarcare;
-      if (st.stare === 'ok') { e.spv.acceptat = true; accepted++; }
-      if (st.stare === 'ok' && e.spv.idDescarcare) { await saveRecipisa(d, e); downloaded++; }
-    } catch (err) { e.spv.error = String(err.message || err); }
-  }
-  d.settings.anaf = c;
-  db.save();
-  return { connected: true, checked: pending.length, accepted, downloaded };
-}
 app.post('/api/anaf/poll', wrap(async (req, res) => res.json(await pollSpv())));
 
 // Lista facturilor primite in SPV
@@ -2819,16 +2791,6 @@ app.post('/api/anaf/spv-descarca/:id', wrap(async (req, res) => {
   db.save();
   res.json({ ok: true, documentId: docId });
 }));
-
-function extractInvoiceXml(buf) {
-  const zip = new AdmZip(buf);
-  const entries = zip.getEntries();
-  // factura (nu fisierul de semnatura)
-  let pick = entries.find((en) => /\.xml$/i.test(en.entryName) && !/semnatura/i.test(en.entryName));
-  if (!pick) pick = entries.find((en) => /\.xml$/i.test(en.entryName));
-  if (!pick) throw new Error('Arhiva nu contine XML.');
-  return pick.getData().toString('utf8');
-}
 
 // Importa o factura primita: descarca, extrage UBL, pre-completeaza formularul
 app.post('/api/anaf/import/:msgId', wrap(async (req, res) => {

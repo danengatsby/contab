@@ -10,6 +10,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const auth = require('../src/auth');
+const xml = require('../src/xml');
 
 const PORT = 3891;
 const BASE = 'http://127.0.0.1:' + PORT;
@@ -122,6 +123,25 @@ async function main() {
     eq('expirat: scrierile blocate (402)', (await req('POST', '/api/declarations/set', { cookie: c3, body: { tip: 'd300', period: '2026-06', status: 'depusa' } })).status, 402);
     eq('expirat: PDF blocat (402)', (await req('GET', '/pdf/balance', { cookie: c3 })).status, 402);
     eq('expirat: alegerea planului merge (200)', (await req('POST', '/api/subscription/select', { cookie: c3, body: { plan: 'start' } })).status, 200);
+
+    // ── e-Factura: round-trip generare -> parsare -> import (fara conexiune SPV) ──
+    const ubl = xml.eFacturaXml(
+      { nume: 'UNU SRL', cui: 'RO11', adresa: 'Str. A', oras: 'Cluj', judet: 'RO-CJ' },
+      { tip: 'factura_vanzare_marfuri', data: '2026-06-10', partener: 'CLIENT SRL', partenerCui: 'RO22', document: 'F100',
+        lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '4111', credit: '4427', suma: 210 }] },
+      {},
+    );
+    const parse = await req('POST', '/api/efactura/parse', { cookie: c1, body: { xml: ubl } });
+    ok('efactura/parse: UBL propriu se citeste inapoi', parse.json && parse.json.ok && parse.json.invoice && parse.json.invoice.numar === 'F100');
+    eq('efactura/parse: XML invalid -> 400', (await req('POST', '/api/efactura/parse', { cookie: c1, body: { xml: '<nu>e ubl</nu>' } })).status, 400);
+    const imp = await req('POST', '/api/efactura/import', { cookie: c1, body: { xml: ubl, cont: '371' } });
+    ok('efactura/import: creeaza inregistrare de cumparare', imp.json && imp.json.ok && imp.json.entry && imp.json.entry.tip.indexOf('cumparare') >= 0);
+
+    // ── ANAF SPV: config + degradarea curata cand nu e conectat ──
+    const acfg = await req('GET', '/api/anaf/config', { cookie: c1 });
+    ok('anaf/config: forma cu connected=false', acfg.json && acfg.json.connected === false && acfg.json.configured === false);
+    const fisaRol = await req('POST', '/api/anaf/fisa-rol', { cookie: c1 });
+    ok('anaf/fisa-rol fara SPV -> refuz clar', fisaRol.status === 400 && /SPV|onect/i.test((fisaRol.json && fisaRol.json.error) || ''));
 
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
