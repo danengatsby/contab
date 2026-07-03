@@ -1220,11 +1220,14 @@ section('Registrul depunerilor + portofoliu');
 const declMod = require('../src/declarations');
 eq('termen D300 pentru iunie', declMod.dueDate('d300', '2026-06'), '2026-07-25');
 eq('termen D112 pentru decembrie (trece anul)', declMod.dueDate('d112', '2026-12'), '2027-01-25');
-eq('termen SAF-T anual (sfarsit de februarie)', declMod.dueDate('saft', '2026-12'), '2027-02-28');
+eq('termen SAF-T: ultima zi a lunii urmatoare', declMod.dueDate('saft', '2026-06'), '2026-07-31');
+eq('termen SAF-T decembrie: 31 ianuarie', declMod.dueDate('saft', '2026-12'), '2027-01-31');
 const vDecl = scopedSeed(); // firma platitoare de TVA, cu angajati
 const expIun = declMod.expectedForFirma(vDecl, '2026-06');
-eq('asteptate iunie: d300+d394+d112+d100 (trimestru)', expIun.map((x) => x.tip).join(','), 'd300,d394,d112,d100');
-eq('asteptate mai: fara d100/saft', declMod.expectedForFirma(vDecl, '2026-05').map((x) => x.tip).join(','), 'd300,d394,d112');
+eq('asteptate iunie: d300+d394+d112+d100+saft (TVA lunar)', expIun.map((x) => x.tip).join(','), 'd300,d394,d112,d100,saft');
+eq('asteptate mai: fara d100, dar cu saft lunar', declMod.expectedForFirma(vDecl, '2026-05').map((x) => x.tip).join(','), 'd300,d394,d112,saft');
+eq('neplatitor TVA: saft doar trimestrial', declMod.expectedForFirma({ company: { tvaPlatitor: false }, angajati: [] }, '2026-06').map((x) => x.tip).join(','), 'd100,saft');
+eq('neplatitor TVA: luna non-trimestriala fara obligatii', declMod.expectedForFirma({ company: { tvaPlatitor: false }, angajati: [] }, '2026-05').length, 0);
 ok('asteptate decembrie include saft', declMod.expectedForFirma(vDecl, '2026-12').some((x) => x.tip === 'saft'));
 const dDecl = { declarations: [] };
 let seqDecl = 100;
@@ -1240,17 +1243,35 @@ eq('registru: d300 depusa', regDecl.find((r) => r.tip === 'd300').status, 'depus
 ok('registru: d112 nedepusa cu termen depasit -> restanta', regDecl.find((r) => r.tip === 'd112').overdue);
 ok('registru: d300 depusa nu e restanta', !regDecl.find((r) => r.tip === 'd300').overdue);
 const portoDecl = declMod.portfolio(dDecl, [vDecl], '2026-06', '2026-08-01');
-eq('portofoliu: asteptate', portoDecl.tot.asteptate, 4);
+eq('portofoliu: asteptate (cu saft lunar)', portoDecl.tot.asteptate, 5);
 eq('portofoliu: depuse', portoDecl.tot.depuse, 1);
-eq('portofoliu: restante (d394+d112+d100)', portoDecl.tot.restante, 3);
-eq('portofoliu: conformitate 1/4 = 25%', portoDecl.conformitate, 25);
-eq('portofoliu: firma are atentionari', portoDecl.firms[0].natentionari, 3);
+eq('portofoliu: restante (d394+d112+d100+saft)', portoDecl.tot.restante, 4);
+eq('portofoliu: conformitate 1/5 = 20%', portoDecl.conformitate, 20);
+eq('portofoliu: firma are atentionari', portoDecl.firms[0].natentionari, 4);
 declMod.record(dDecl, vDecl.firmaId, 'd100', '2026-06', { status: 'scutita' }, nidDecl);
-eq('scutita iese din conformitate: 1/3 = 33%', declMod.portfolio(dDecl, [vDecl], '2026-06', '2026-08-01').conformitate, 33);
+eq('scutita iese din conformitate: 1/4 = 25%', declMod.portfolio(dDecl, [vDecl], '2026-06', '2026-08-01').conformitate, 25);
 const notifDecl = declMod.notifications(dDecl, [vDecl], '2026-07-20', 7, 3);
 ok('notificari: termen d112 iunie (25 iulie) e in fereastra de 7 zile', notifDecl.items.some((i) => i.tip === 'd112' && i.period === '2026-06' && i.kind === 'termen'));
 ok('notificari: d300 depusa nu apare', !notifDecl.items.some((i) => i.tip === 'd300' && i.period === '2026-06'));
 eq('notificari: restantele primele', declMod.notifications(dDecl, [vDecl], '2026-08-01', 7, 3).items[0].kind, 'restanta');
+
+section('e-Factura netrimisa in SPV + SAF-T lunar');
+eq('addBusinessDays: vineri + 5 zile lucratoare', declMod.addBusinessDays('2026-07-03', 5), '2026-07-10');
+const vEf = { firmaId: 9, company: { nume: 'EF SRL', tvaPlatitor: true }, angajati: [], entries: [
+  { id: 'e1', tip: 'factura_vanzare_servicii', partenerCui: 'RO123', partener: 'X', document: 'F1', data: '2026-07-18' },
+  { id: 'e2', tip: 'factura_vanzare_marfuri', partenerCui: 'RO1', document: 'F2', data: '2026-07-15', spv: { index: '5' } },
+  { id: 'e3', tip: 'factura_cumparare_marfuri', partenerCui: 'RO2', document: 'F3', data: '2026-07-15' },
+  { id: 'e4', tip: 'factura_vanzare_produse', partenerCui: 'RO4', document: 'F4', data: '2026-07-01' },
+  { id: 'e5', tip: 'factura_vanzare_produse', document: 'F5', data: '2026-07-15' },
+] };
+const efx = declMod.eFacturaNetrimise(vEf, '2026-07-20');
+eq('netrimise: doar vanzarile B2B fara spv', efx.count, 2);
+eq('netrimise: restante (termen depasit)', efx.overdue, 1);
+eq('netrimise: termen = data + 5 zile lucratoare', efx.items.find((x) => x.entryId === 'e1').due, '2026-07-24');
+const nEf = declMod.notifications({ declarations: [] }, [vEf], '2026-07-20');
+ok('notificari: e-Factura restanta prezenta (status netrimisa)', nEf.items.some((i) => i.tip === 'efactura' && i.kind === 'restanta' && i.status === 'netrimisa'));
+ok('notificari: e-Factura cu termen apropiat apare', nEf.items.some((i) => i.tip === 'efactura' && i.kind === 'termen'));
+ok('SAF-T lunar: bine-format si cu perioada corecta', (() => { const x = saft.saftXml(vDecl, '2026-06'); return x.includes('<PeriodStart>6</PeriodStart>') && x.includes('<PeriodEnd>6</PeriodEnd>') && x.includes('luna 2026-06'); })());
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

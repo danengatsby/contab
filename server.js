@@ -2411,7 +2411,11 @@ app.post('/api/compensations', (req, res) => {
   db.save();
   res.json({ ok: true, entry, compensat: suma });
 });
-app.get('/api/dashboard', (req, res) => res.json(rep.dashboard(S(req))));
+app.get('/api/dashboard', (req, res) => {
+  const v = S(req);
+  // e-Factura B2B: facturile emise netrimise in SPV (termen legal 5 zile lucratoare) — alerta pe dashboard
+  res.json(Object.assign(rep.dashboard(v), { efactura: decl.eFacturaNetrimise(v) }));
+});
 app.get('/api/cash-forecast', (req, res) => {
   const fid = activeId(req);
   const templates = (db.get().recurringInvoices || []).filter((t) => t.firmaId === fid && t.activ !== false);
@@ -2896,9 +2900,11 @@ app.get('/xml/d112', (req, res) => {
 });
 app.get('/xml/saft', (req, res) => {
   const v = S(req);
+  // D406 se depune lunar/trimestrial: ?period=YYYY-MM genereaza luna; ?year= ramane pentru anual
+  const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.period || '')) ? req.query.period : null;
   const year = req.query.year || String(new Date().getFullYear());
-  recordDecl(req, 'saft', year + '-12'); // SAF-T anual: inregistrat pe luna decembrie a anului
-  sendXml(res, saft.saftXml(v, year), 'saft-d406-' + year + '.xml');
+  recordDecl(req, 'saft', period || (year + '-12'));
+  sendXml(res, saft.saftXml(v, period || year), 'saft-d406-' + (period || year) + '.xml');
 });
 
 // ───────────────── REGISTRUL DEPUNERILOR + PORTOFOLIU + NOTIFICARI ─────────────────

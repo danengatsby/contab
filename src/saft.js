@@ -20,8 +20,9 @@ function esc(s) {
 const num2 = (x) => (Number(x) || 0).toFixed(2);
 const roCui = (cui) => 'RO' + String(cui || '').replace(/^ro/i, '').replace(/\s/g, '');
 
-function inYear(e, year) { return String(e.period || e.data || '').slice(0, 4) === String(year); }
-function beforeYear(e, year) { return String(e.period || e.data || '').slice(0, 4) < String(year); }
+// `p` poate fi un an ('YYYY') sau o luna ('YYYY-MM') — D406 se depune lunar/trimestrial din 2025.
+function inYear(e, p) { const s = String(e.period || e.data || ''); const q = String(p); return q.length === 7 ? s.slice(0, 7) === q : s.slice(0, 4) === q; }
+function beforeYear(e, p) { const s = String(e.period || e.data || ''); const q = String(p); return q.length === 7 ? s.slice(0, 7) < q : s.slice(0, 4) < q; }
 
 /** Net {d,c} acumulat pe cont dintr-o lista de inregistrari. */
 function accumulate(entries) {
@@ -133,12 +134,12 @@ function header(company, year) {
     '    </Company>',
     '    <DefaultCurrencyCode>RON</DefaultCurrencyCode>',
     '    <SelectionCriteria>',
-    `      <PeriodStart>1</PeriodStart>`,
-    `      <PeriodStartYear>${year}</PeriodStartYear>`,
-    `      <PeriodEnd>12</PeriodEnd>`,
-    `      <PeriodEndYear>${year}</PeriodEndYear>`,
+    `      <PeriodStart>${String(year).length === 7 ? Number(String(year).slice(5, 7)) : 1}</PeriodStart>`,
+    `      <PeriodStartYear>${String(year).slice(0, 4)}</PeriodStartYear>`,
+    `      <PeriodEnd>${String(year).length === 7 ? Number(String(year).slice(5, 7)) : 12}</PeriodEnd>`,
+    `      <PeriodEndYear>${String(year).slice(0, 4)}</PeriodEndYear>`,
     '    </SelectionCriteria>',
-    `    <HeaderComment>Declaratie informativa D406 - exercitiul ${year}</HeaderComment>`,
+    `    <HeaderComment>Declaratie informativa D406 - ${String(year).length === 7 ? 'luna ' + year : 'exercitiul ' + year}</HeaderComment>`,
     '    <TaxAccountingBasis>A</TaxAccountingBasis>',
     '    <TaxEntity>Company</TaxEntity>',
     '  </Header>',
@@ -316,7 +317,7 @@ function masterFiles(db, year) {
 function movementOfGoodsXml(db, year) {
   const byId = new Map((db.products || []).map((p) => [p.id, p]));
   const gCod = new Map((db.gestiuni || []).map((g) => [g.id, g.cod]));
-  const movs = stocksLib.sortMov((db.stockMovements || []).filter((m) => String(m.data || '').slice(0, 4) === String(year)));
+  const movs = stocksLib.sortMov((db.stockMovements || []).filter((m) => inYear({ data: m.data }, year)));
   let qIn = 0; let qOut = 0; const lines = [];
   movs.forEach((m, i) => {
     const p = byId.get(m.productId) || {};
@@ -652,7 +653,7 @@ function saftSummary(db, year) {
     payments: within.filter((e) => PAYMENT_TIP(e.tip)).length,
     assets: (db.assets || []).length,
     products: (db.products || []).length,
-    stockMovements: (db.stockMovements || []).filter((m) => String(m.data || '').slice(0, 4) === yr).length,
+    stockMovements: (db.stockMovements || []).filter((m) => inYear({ data: m.data }, yr)).length,
   };
 }
 

@@ -1141,6 +1141,10 @@ function renderYoY(yo) {
 function renderDashAlerts(k) {
   const box = $('#dashAlerts'); if (!box) return;
   const a = [];
+  const ef = k.efactura || {};
+  if (ef.count > 0) a.push({ ic: '📤', tone: ef.overdue > 0 ? 'bad' : 'warn',
+    txt: '<b>' + ef.count + '</b> facturi emise netrimise în SPV (e-Factura, termen 5 zile lucrătoare)' + (ef.overdue > 0 ? ' — <b>' + ef.overdue + ' cu termen depășit</b>' : ''),
+    go: 'iesite', cta: 'Trimite în SPV' });
   if (k.tvaDePlata > k.tvaDeRecuperat && k.tvaDePlata > 0) a.push({ ic: '🧾', tone: 'warn', txt: 'TVA de plată: <b>' + fmt(k.tvaDePlata) + '</b> lei', go: 'tva', cta: 'Decont TVA' });
   if (k.soldFurnizori > 0) a.push({ ic: '🏭', tone: 'warn', txt: '<b>' + fmt(k.soldFurnizori) + '</b> lei de plătit furnizorilor', go: 'cashbook', cta: 'Plăți' });
   if (k.soldClienti > 0) a.push({ ic: '👥', tone: 'info', txt: '<b>' + fmt(k.soldClienti) + '</b> lei de încasat de la clienți', go: 'analitic', cta: 'Scadențar' });
@@ -2794,6 +2798,7 @@ async function loadStatements() {
   $('#fiscalPdf').href = '/pdf/registru-fiscal?year=' + y;
   $('#notesPdf').href = '/pdf/note?year=' + y;
   $('#saftXml').href = '/xml/saft?year=' + y;
+  $('#saftXmlLuna') && ($('#saftXmlLuna').href = '/xml/saft?period=' + workMonth());
   api('/api/saft?year=' + y).then((s) => {
     $('#saftView').innerHTML = `<table>
       <tr><td>Articole contabile (tranzacții)</td><td class="num">${s.entries}</td></tr>
@@ -2962,6 +2967,7 @@ const DECL_ST = {
   depusa: { t: 'Depusă', c: '#0a7d33', bg: '#e2f5e8' },
   eroare: { t: 'Eroare', c: '#b00020', bg: '#fde7ea' },
   scutita: { t: 'Scutită', c: '#5a6472', bg: '#eceff3' },
+  netrimisa: { t: 'Netrimisă în SPV', c: '#b00020', bg: '#fde7ea' },
 };
 const declBadge = (st, overdue) => {
   const x = DECL_ST[st] || DECL_ST.nedepusa;

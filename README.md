@@ -163,7 +163,7 @@ Fiecare raport are buton **⬇ PDF**, iar fiecare înregistrare poate fi exporta
   (`/xml/d112?period=`): creanțe fiscale agregate (CAS/CASS/impozit/CAM, total de plată) și
   câte un element `<asigurat>` per angajat cu bazele și contribuțiile, generat din statul de plată.
 - **SAF-T — D406** (fișierul standard de audit fiscal, anual) — din tab-ul „10 · Situații
-  financiare” (`/xml/saft?year=`). Conține: `Header` (datele firmei, perioada, software),
+  financiare” (`/xml/saft?period=YYYY-MM` — **lunar/trimestrial**, regimul din 2025; `?year=` pentru anul întreg). Conține: `Header` (datele firmei, perioada, software),
   `MasterFiles` → `GeneralLedgerAccounts` (conturile cu solduri de deschidere/închidere
   pe an), `Customers`, `Suppliers`, `TaxTable` (cotele de TVA), `Products` (nomenclator),
   `Assets` (mijloace fixe), `PhysicalStock` (stoc final pe produs), `GeneralLedgerEntries`
@@ -356,9 +356,9 @@ Endpoint `/api/dashboard`.
 
 **Registrul depunerilor + portofoliu + notificări de termene** (`src/declarations.js`):
 - **Registrul depunerilor** (card în „Declarații ANAF"): declarațiile **așteptate** pe luna
-  selectată sunt derivate din profilul firmei (plătitor de TVA → D300/D394 + D406 anual; are
-  angajați → D112; lună de trimestru → D100), cu **termen de depunere** (25 ale lunii următoare;
-  SAF-T anual — sfârșit de februarie). Descărcarea XML-ului marchează automat „**generată**";
+  selectată sunt derivate din profilul firmei (plătitor de TVA → D300/D394 + **D406 lunar**; are
+  angajați → D112; lună de trimestru → D100; neplătitorii de TVA → **D406 trimestrial**), cu
+  **termen de depunere** (25 ale lunii următoare; D406 — ultima zi a lunii următoare). Descărcarea XML-ului marchează automat „**generată**";
   manual se marchează „**depusă**" (cu nr. recipisă), „**eroare**" sau „**scutită**". Stările nu se
   retrogradează la re-descărcare. API: `GET /api/declarations?period=` · `POST /api/declarations/set`.
 - **Portofoliu** (tab dedicat, vizibil cu ≥2 firme): vedere agregată peste toate firmele
@@ -367,7 +367,9 @@ Endpoint `/api/dashboard`.
   jurnalul de audit). `GET /api/portfolio?period=`.
 - **Notificări termene fiscale** (🔔 în bara de sus, cu badge): restanțele și termenele din
   următoarele 7 zile, pe toate firmele accesibile, scanând ultimele 3 luni. O declarație dispare
-  când e marcată depusă/scutită. `GET /api/notifications`.
+  când e marcată depusă/scutită. Include și **e-Facturile B2B netrimise în SPV** (termen legal
+  5 zile lucrătoare de la emitere) — semnalate și pe dashboard, cu alertă acționabilă.
+  `GET /api/notifications`.
 - **Digest zilnic pe email** (~07:00): fiecare utilizator cu email setat primește restanțele și
   termenele apropiate de pe firmele lui — prin SMTP-ul din Setări sau, în lipsă, prin **Resend**
   (`RESEND_API_KEY` din `.env`). Opt-out per utilizator din Setări → „Contul meu".

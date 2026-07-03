@@ -13,7 +13,7 @@ const TIPURI = {
   d394: { nume: 'D394 — declarație informativă' },
   d112: { nume: 'D112 — contribuții și impozit salarii' },
   d100: { nume: 'D100 — impozit micro / avans profit (trimestrial)' },
-  saft: { nume: 'D406 — SAF-T (anual)' },
+  saft: { nume: 'D406 — SAF-T' },
 };
 const STATUSES = ['nedepusa', 'generata', 'depusa', 'eroare', 'scutita'];
 
@@ -24,26 +24,67 @@ function lastDayOfMonth(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate();
 function dueDate(tip, period) {
   const y = Number(period.slice(0, 4));
   const m = Number(period.slice(5, 7));
-  if (tip === 'saft') {
-    // regim anual (contribuabili mici): pana la sfarsitul lui februarie anul urmator
-    return (y + 1) + '-02-' + pad2(lastDayOfMonth(y + 1, 2));
-  }
-  // lunare/trimestriale: 25 ale lunii urmatoare
   const ny = m === 12 ? y + 1 : y;
   const nm = m === 12 ? 1 : m + 1;
+  if (tip === 'saft') {
+    // D406: ultima zi calendaristica a lunii urmatoare perioadei raportate (fara gratie din 2026)
+    return ny + '-' + pad2(nm) + '-' + pad2(lastDayOfMonth(ny, nm));
+  }
+  // restul: 25 ale lunii urmatoare
   return ny + '-' + pad2(nm) + '-25';
 }
 
-/** Declaratiile asteptate pentru o firma (vedere scoped) in luna `period`. */
+/**
+ * Declaratiile asteptate pentru o firma (vedere scoped) in luna `period`.
+ * SAF-T (D406): LUNAR pentru platitorii de TVA (perioada fiscala lunara) si TRIMESTRIAL
+ * pentru neplatitori / perioada trimestriala — regimul din 2025 pentru toti contribuabilii.
+ * Firmele cu alt regim marcheaza lunile in plus drept „scutite" in registru.
+ */
 function expectedForFirma(v, period) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   const m = Number(period.slice(5, 7));
+  const tva = !!(v.company && v.company.tvaPlatitor);
   const tips = [];
-  if (v.company && v.company.tvaPlatitor) tips.push('d300', 'd394');
+  if (tva) tips.push('d300', 'd394');
   if ((v.angajati || []).length) tips.push('d112');
   if ([3, 6, 9, 12].includes(m)) tips.push('d100');
-  if (v.company && v.company.tvaPlatitor && m === 12) tips.push('saft');
+  if (tva || [3, 6, 9, 12].includes(m)) tips.push('saft');
   return tips.map((tip) => ({ tip, nume: TIPURI[tip].nume, period, due: dueDate(tip, period) }));
+}
+
+// ───────── e-Factura B2B: facturi emise netrimise in SPV (termen legal: 5 zile lucratoare) ─────────
+const EFACT_SEND_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare']);
+
+/** Data + n zile lucratoare (sambata/duminica sarite; sarbatorile legale nu sunt scazute). */
+function addBusinessDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  let left = n;
+  while (left > 0) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const wd = d.getUTCDay();
+    if (wd !== 0 && wd !== 6) left -= 1;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Facturile B2B emise (cu CUI de partener) care NU au fost trimise in SPV, din ultimele
+ * `lookbackDays` zile. `due` = data emiterii + 5 zile lucratoare (termenul legal e-Factura).
+ */
+function eFacturaNetrimise(v, today, lookbackDays) {
+  const t = today || new Date().toISOString().slice(0, 10);
+  const from = new Date(Date.parse(t) - (lookbackDays || 60) * 86400000).toISOString().slice(0, 10);
+  const items = [];
+  for (const e of (v.entries || [])) {
+    if (!EFACT_SEND_TYPES.has(e.tip)) continue;
+    if (!e.partenerCui) continue; // B2B: partener identificat prin CUI
+    if (e.spv && (e.spv.index || e.spv.stare)) continue; // deja trimisa
+    if (!e.data || e.data < from || e.data > t) continue;
+    const due = addBusinessDays(e.data, 5);
+    items.push({ entryId: e.id, document: e.document || '', partener: e.partener || '', data: e.data, due, overdue: due < t });
+  }
+  items.sort((a, b) => a.due.localeCompare(b.due));
+  return { count: items.length, overdue: items.filter((x) => x.overdue).length, items };
 }
 
 /** Gaseste inregistrarea (firmaId, tip, period) in colectia declarations. */
@@ -160,9 +201,15 @@ function notifications(d, scopedList, today, days, lookback) {
         }
       }
     }
+    // e-Factura B2B netrimisa in SPV: restanta cand termenul de 5 zile lucratoare e depasit
+    for (const f of eFacturaNetrimise(v, t).items) {
+      const nume = 'e-Factura ' + (f.document || f.entryId) + (f.partener ? ' — ' + f.partener : '');
+      if (f.overdue) items.push({ kind: 'restanta', firmaId: v.firmaId, firma: (v.company || {}).nume || '', tip: 'efactura', nume, period: f.data.slice(0, 7), due: f.due, status: 'netrimisa' });
+      else if (f.due <= horizon) items.push({ kind: 'termen', firmaId: v.firmaId, firma: (v.company || {}).nume || '', tip: 'efactura', nume, period: f.data.slice(0, 7), due: f.due, status: 'netrimisa' });
+    }
   }
   items.sort((a, b) => (a.kind === b.kind ? a.due.localeCompare(b.due) : (a.kind === 'restanta' ? -1 : 1)));
   return { count: items.length, items };
 }
 
-module.exports = { TIPURI, STATUSES, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, addMonths, find };
+module.exports = { TIPURI, STATUSES, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, addMonths, find, eFacturaNetrimise, addBusinessDays };
