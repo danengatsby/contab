@@ -1780,6 +1780,8 @@ app.post('/api/tva-incasare/exigibilitate', (req, res) => {
   const data = b.data && String(b.data).length === 10 ? b.data : new Date().toISOString().slice(0, 10);
   const entry = buildEntry(tip, { data, partener: b.partener || '', document: b.document || '', tva }, null, activeId(req));
   entry.system = true;
+  // baza aferenta TVA-ului devenit exigibil (pentru D300 in perioada exigibilitatii — TVA la incasare)
+  entry.tvaExig = { baza: round2(brut - tva), cota, side: b.tip === 'deductibila' ? 'deductibila' : 'colectata' };
   const d = db.get();
   d.entries.push(entry);
   logAudit('tva.exigibilitate', tip + ' ' + tva, { req });

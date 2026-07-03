@@ -418,6 +418,18 @@ const neex = acc.tvaNeexigibila(vNeex, null);
 eq('colectata neexigibila ramasa (incasata)', neex.colectataNeexigibila, 0);
 eq('deductibila neexigibila ramasa (neplatita)', neex.deductibilaNeexigibila, 420);
 
+// Ciclu complet TVA la incasare: la exigibilitate, BAZA aferenta intra in D300 (nu doar TVA)
+const exColectata = Object.assign(mkTva('exigibilitate_tva_colectata', { tva: 210 }, '2026-09-20'), { tvaExig: { baza: 1000, cota: 21, side: 'colectata' } });
+const vjExig = acc.vatJournals({ entries: [exColectata], openingBalances: {} }, '2026-09');
+eq('D300 exigibilitate: baza raportata (nu 0)', vjExig.totals.bazaV, 1000);
+eq('D300 exigibilitate: TVA colectata', vjExig.totals.colectata, 210);
+eq('D300 exigibilitate: cota derivata corect (21%)', vjExig.vanzari[0].cota, 21);
+eq('D300 exigibilitate: defalcare pe cota 21', (vjExig.coteV.find((x) => x.cota === 21) || {}).baza, 1000);
+const exDeduct = Object.assign(mkTva('exigibilitate_tva_deductibila', { tva: 420 }, '2026-09-21'), { tvaExig: { baza: 2000, cota: 21, side: 'deductibila' } });
+const vjDed = acc.vatJournals({ entries: [exDeduct], openingBalances: {} }, '2026-09');
+eq('D300 exigibilitate deductibila: baza cumparari raportata', vjDed.totals.bazaC, 2000);
+eq('D300 exigibilitate deductibila: TVA deductibila', vjDed.totals.deductibila, 420);
+
 section('CSV — export/import parteneri (round-trip)');
 const { toCsv, parseCsv } = require('../src/csv');
 const csvP = toCsv(['CUI', 'Denumire', 'Adresa'], [['RO123', 'Firma A; SRL', 'Str. 1'], ['456', 'Firma "B"', 'Str. 2']]);

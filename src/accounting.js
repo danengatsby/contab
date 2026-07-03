@@ -312,6 +312,12 @@ function vatJournals(db, period) {
     // baza de achizitie = liniile de debit, exclusiv conturile de TVA
     let bazaC = 0;
     for (const l of e.lines) if (l.debit !== '4426' && l.debit !== '4427' && l.debit !== '4428') bazaC = round2(bazaC + l.suma);
+    // TVA la incasare devenita exigibila: articolul (4428=4427 / 4426=4428) nu are baza pe linii,
+    // dar baza aferenta e memorata pe articol (e.tvaExig) si intra in D300 in perioada exigibilitatii.
+    if (e.tvaExig) {
+      if (e.tvaExig.side === 'deductibila') bazaC = round2(bazaC + (Number(e.tvaExig.baza) || 0));
+      else bazaV = round2(bazaV + (Number(e.tvaExig.baza) || 0));
+    }
     // La taxarea inversa interna aceeasi baza se raporteaza si la colectata, si la deductibila (D300).
     if (reverseCharge && bazaV === 0) bazaV = bazaC;
     if (ded !== 0) {
