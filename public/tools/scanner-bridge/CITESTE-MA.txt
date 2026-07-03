@@ -1,0 +1,37 @@
+CONTAB — Punte de scanare locală (Windows 11)
+=============================================
+
+De ce e nevoie de asta?
+  Browserele NU pot accesa direct un scaner (limitare de securitate). Această
+  mică „punte" rulează pe PC-ul tău, vorbește cu scanerul și oferă imaginea
+  aplicației Contab din browser.
+
+Pași (o singură dată):
+  1. Pune ambele fișiere în același folder:
+       - Start-Contab-Scanner.bat
+       - Contab-Scanner-Bridge.ps1
+  2. (Recomandat, pentru fiabilitate) Instalează NAPS2 — gratuit, open-source:
+       https://www.naps2.com/    (alege Download → Windows)
+     Dacă nu instalezi NAPS2, puntea folosește scanarea integrată Windows (WIA).
+
+De fiecare dată când vrei să scanezi:
+  1. Dublu-click pe „Start-Contab-Scanner.bat" — se deschide o fereastră neagră.
+     Lasă fereastra DESCHISĂ cât timp scanezi.
+     (Dacă Windows întreabă de firewall, alege „Permite acces" pe rețele private.)
+  2. În aplicația Contab → Documente → apasă „🖨️ Scanează (scaner local)".
+  3. Apare fereastra de scanare Windows / NAPS2 → scanezi → imaginea ajunge
+     automat în aplicație și e procesată (extragere AI).
+  4. Când termini, închide fereastra neagră.
+
+Test rapid că puntea merge:
+  Cu fereastra neagră pornită, deschide în browser:
+       http://127.0.0.1:8765/ping
+  Trebuie să apară:  {"ok":true,...}
+  Dacă apare -> puntea e OK. Dacă nu -> puntea nu rulează.
+
+Probleme frecvente:
+  - „Nu găsesc puntea": verifică dacă fereastra neagră e pornită (testează /ping mai sus).
+  - SmartScreen / „Windows protected your PC": click pe „More info" → „Run anyway".
+  - Scanerul nu apare: instalează NAPS2 și încearcă din nou (driver mai bun).
+
+Securitate: puntea ascultă DOAR pe localhost (PC-ul tău), nu pe internet.

@@ -1,0 +1,3026 @@
+'use strict';
+
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+
+// Incarca variabilele din .env (cheie AI etc.) inainte de orice require care le citeste
+(() => {
+  try {
+    const p = path.join(__dirname, '.env');
+    if (!fs.existsSync(p)) return;
+    for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+  } catch (e) { /* ignora */ }
+})();
+
+const db = require('./src/db');
+const coa = require('./src/chartOfAccounts');
+const { typesForClient, getType } = require('./src/documentTypes');
+const { extractFromPdf } = require('./src/extractor');
+const ai = require('./src/aiExtractor');
+const acc = require('./src/accounting');
+const stmt = require('./src/statements');
+const rep = require('./src/reporting');
+const { reconcile, compensablePartners } = require('./src/reconcile');
+const { analyticBalance, aging } = require('./src/analytic');
+const bank = require('./src/bank');
+const fiscal = require('./src/fiscal');
+const xml = require('./src/xml');
+const saft = require('./src/saft');
+const assets = require('./src/assets');
+const stocks = require('./src/stocks');
+const { statePlata, registruSalarii } = require('./src/payroll');
+const { leasingSchedule } = require('./src/leasing');
+const { toCsv, parseCsv } = require('./src/csv');
+const xlsx = require('./src/xlsx');
+const xls = require('./src/xls');
+const dbf = require('./src/dbf');
+const anaf = require('./src/anaf');
+const authlib = require('./src/auth');
+const totp = require('./src/totp');
+const backup = require('./src/backup');
+const AdmZip = require('adm-zip');
+const pdf = require('./src/pdf');
+const { seed } = require('./src/seed');
+const messages = require('./src/messages');
+const presence = require('./src/presence');
+const recurring = require('./src/recurring');
+const production = require('./src/production');
+const validate = require('./src/validate');
+const efacturaImport = require('./src/efacturaImport');
+const fxreval = require('./src/fxreval');
+const plans = require('./src/plans');
+const billing = require('./src/billing');
+const QRCode = require('qrcode-svg');
+const { round2, period: periodOf } = require('./src/util');
+
+db.load();
+coa.addAccounts(db.get().customAccounts); // inregistreaza conturile personalizate importate
+fiscal.applyConfig(db.get().settings.fiscal); // aplica cotele fiscale configurate (peste valorile implicite)
+
+const app = express();
+app.set('trust proxy', true); // citeste X-Forwarded-Proto de la reverse proxy (pentru cookie Secure pe HTTPS)
+
+// Anteturi de securitate (fara dependinte). CSP calibrat pentru aceasta aplicatie:
+//  - script-src 'self' (un singur /app.js, fara scripturi/handler-e inline)
+//  - style-src 'unsafe-inline' (atribute style= folosite pe larg in HTML)
+//  - img-src data:/blob: (favicon data-URI, canvas), connect-src include puntea de scanare locala
+//  - frame-src 'self' (vizualizatorul PDF/e-Factura ruleaza intr-un <iframe> same-origin)
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self' http://127.0.0.1:8765 http://localhost:8765",
+  "frame-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+].join('; ');
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', CSP);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000'); // 180 zile, doc HTTPS (fara subDomains, ca sa nu afecteze alte servicii)
+  next();
+});
+
+// Webhook-ul Stripe are nevoie de body-ul BRUT (pentru verificarea semnaturii) — inainte de express.json.
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders(res, p) {
+    // HTML/JS/CSS + uneltele puntii: revalidare mereu (actualizari fara cache)
+    if (/\.(html|js|css|ps1|bat|txt)$/.test(p)) res.setHeader('Cache-Control', 'no-cache');
+    // uneltele puntii: text UTF-8 (ca descarcarea sa decodeze corect, nu binar)
+    if (/\.(ps1|bat|txt)$/.test(p)) res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  },
+}));
+
+// Sanitizare parametri de perioada — accepta doar YYYY / YYYY-MM (luna 01-12); valorile invalide devin goale
+app.use((req, res, next) => {
+  const q = req.query || {};
+  if (q.period != null && !/^\d{4}(-(0[1-9]|1[0-2]))?$/.test(q.period)) q.period = '';
+  if (q.asOf != null && !/^\d{4}-(0[1-9]|1[0-2])$/.test(q.asOf)) q.asOf = '';
+  for (const k of ['year', 'an']) { if (q[k] != null && !/^\d{4}$/.test(q[k])) q[k] = ''; }
+  next();
+});
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, db.UPLOAD_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.pdf';
+    cb(null, crypto.randomBytes(8).toString('hex') + ext);
+  },
+});
+const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
+
+const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
+  console.error(e);
+  res.status(500).json({ error: String(e.message || e) });
+});
+
+// ───────────────────────── AUTENTIFICARE ─────────────────────────
+function currentUser(req) {
+  const d = db.get();
+  const token = authlib.parseCookies(req.headers.cookie).sid;
+  const p = authlib.verify(token, d.settings.authSecret);
+  if (!p) return null;
+  const u = d.users.find((x) => x.id === p.uid);
+  if (!u) return null;
+  // sesiuni server-side: tokenul trebuie sa corespunda unei sesiuni active
+  let sess = null;
+  if (p.sessId) {
+    sess = (u.sessions || []).find((x) => x.id === p.sessId);
+    if (!sess) return null; // sesiune revocata -> delogat
+    req._sessId = p.sessId;
+    if (Date.now() - Date.parse(sess.lastSeen || 0) > 5 * 60 * 1000) { sess.lastSeen = new Date().toISOString(); pruneSessions(u); db.save(); }
+  }
+  req.realUser = u;
+  req.impersonating = false;
+  // Impersonare: doar un admin, prin marcaj pe propria sesiune, devine efectiv utilizatorul-tinta.
+  // Toate rutele opereaza apoi ca acel utilizator; rutele requireAdmin raman blocate (sandbox).
+  if (sess && sess.impersonating != null && u.role === 'admin') {
+    const target = d.users.find((x) => x.id === sess.impersonating);
+    if (target && target.role !== 'admin') { req.impersonating = true; return target; }
+    delete sess.impersonating; // tinta a disparut/nevalida -> curata
+  }
+  return u;
+}
+function allowedFirme(u) {
+  const d = db.get();
+  return u.role === 'admin' ? d.firme.map((f) => f.id) : (u.firme || []);
+}
+function publicUser(u) {
+  return { id: u.id, username: u.username, role: u.role, firme: allowedFirme(u), mustChange: !!u.mustChange, twofa: !!u.twofa };
+}
+
+// Igiena sesiunilor: elimina sesiunile vechi (peste TTL) si plafoneaza nr. de dispozitive active.
+const SESSION_TTL = 7 * 24 * 3600 * 1000; // 7 zile (cat traieste cookie-ul/tokenul)
+const MAX_SESSIONS = 10;                   // dispozitive active maxime per utilizator
+function pruneSessions(u) {
+  if (!u || !u.sessions) return false;
+  const before = u.sessions.length;
+  const now = Date.now();
+  u.sessions = u.sessions.filter((s) => now - Date.parse(s.lastSeen || s.createdAt || 0) < SESSION_TTL);
+  if (u.sessions.length > MAX_SESSIONS) u.sessions = u.sessions.slice(-MAX_SESSIONS);
+  return u.sessions.length !== before;
+}
+function cookieFlags(req) { return `HttpOnly; Path=/; SameSite=Lax;${req.secure ? ' Secure;' : ''}`; }
+function setSession(req, res, uid, sessId) {
+  const d = db.get();
+  const token = authlib.sign({ uid, sessId, exp: Date.now() + 7 * 24 * 3600 * 1000 }, d.settings.authSecret);
+  res.setHeader('Set-Cookie', `sid=${token}; Max-Age=${7 * 24 * 3600}; ${cookieFlags(req)}`);
+}
+// creeaza o sesiune noua (inregistrata pe utilizator) si seteaza cookie-ul
+function startSession(req, res, u) {
+  const sessId = crypto.randomBytes(12).toString('hex');
+  u.sessions = u.sessions || [];
+  u.sessions.push({
+    id: sessId, ua: String(req.headers['user-agent'] || '').slice(0, 200),
+    ip: attemptKey(req), createdAt: new Date().toISOString(), lastSeen: new Date().toISOString(),
+  });
+  pruneSessions(u); // curata sesiunile vechi + plafoneaza la MAX_SESSIONS
+  setSession(req, res, u.id, sessId);
+}
+function setTrustedDevice(req, res, u) {
+  const d = db.get();
+  const token = authlib.sign({ uid: u.id, ep: u.tfdEpoch || 0, kind: 'tfd', exp: Date.now() + 30 * 24 * 3600 * 1000 }, d.settings.authSecret);
+  res.append('Set-Cookie', `tfd=${token}; Max-Age=${30 * 24 * 3600}; ${cookieFlags(req)}`);
+}
+function deviceTrusted(req, u) {
+  const tok = authlib.parseCookies(req.headers.cookie).tfd;
+  const p = authlib.verify(tok, db.get().settings.authSecret);
+  return !!(p && p.kind === 'tfd' && p.uid === u.id && (p.ep || 0) === (u.tfdEpoch || 0));
+}
+
+// anti-brute-force: blocheaza dupa prea multe esecuri (per IP), pe o fereastra de timp
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 8;
+const LOCK_MS = 15 * 60 * 1000;
+function attemptKey(req) { return String(req.ip || (req.headers['x-forwarded-for'] || '').split(',')[0] || 'unknown'); }
+function isLocked(req) {
+  const r = loginAttempts.get(attemptKey(req));
+  return r && r.count >= MAX_ATTEMPTS && r.until > Date.now() ? Math.ceil((r.until - Date.now()) / 60000) : 0;
+}
+function bumpFail(req) {
+  const k = attemptKey(req);
+  const r = loginAttempts.get(k) || { count: 0, until: 0 };
+  r.count += 1; r.until = Date.now() + LOCK_MS;
+  loginAttempts.set(k, r);
+}
+function clearFails(req) { loginAttempts.delete(attemptKey(req)); }
+
+// jurnal de audit (cine, ce actiune, pe ce firma)
+function logAudit(action, detail, opts) {
+  const d = db.get();
+  const o = opts || {};
+  d.audit = d.audit || [];
+  // daca actiunea e facuta de un admin in modul impersonare, pastreaza si numele real
+  const viaAdmin = o.req && o.req.impersonating && o.req.realUser ? o.req.realUser.username : null;
+  d.audit.push({
+    id: (d.audit[d.audit.length - 1] || {}).id + 1 || 1,
+    ts: new Date().toISOString(),
+    userId: o.userId != null ? o.userId : (o.req && o.req.user && o.req.user.id),
+    username: o.username || (o.req && o.req.user && o.req.user.username) || '',
+    firmaId: o.firmaId != null ? o.firmaId : (o.req && o.req.user ? activeId(o.req) : null),
+    action, detail: detail || '',
+    ...(viaAdmin ? { viaAdmin } : {}),
+  });
+  if (d.audit.length > 3000) d.audit = d.audit.slice(-3000);
+}
+
+const PUBLIC_PATHS = new Set(['/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest']);
+app.use((req, res, next) => {
+  if (PUBLIC_PATHS.has(req.path) || req.path.startsWith('/api/invite/') || req.path.startsWith('/api/reset/')) return next();
+  if (/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) {
+    const u = currentUser(req);
+    if (!u) return res.status(401).json({ error: 'Neautentificat' });
+    req.user = u;
+  }
+  next();
+});
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Necesita drepturi de administrator.' });
+  next();
+}
+
+app.post('/api/login', (req, res) => {
+  const mins = isLocked(req);
+  if (mins) return res.status(429).json({ error: 'Prea multe incercari esuate. Reincearca peste ~' + mins + ' min.' });
+  const { username, password, code, remember } = req.body || {};
+  const d = db.get();
+  const u = d.users.find((x) => x.username === username);
+  if (!u || u.pending || !authlib.verifyPassword(password, u.salt, u.hash)) { bumpFail(req); return res.status(401).json({ error: 'Utilizator sau parola gresita.' }); }
+  let rememberDevice = false;
+  if (u.twofa && !deviceTrusted(req, u)) {
+    if (!code) return res.json({ twofa: true }); // parola corecta, mai trebuie codul
+    if (!totp.verify(u.totpSecret, code)) { bumpFail(req); return res.status(401).json({ error: 'Cod 2FA gresit.', twofa: true }); }
+    rememberDevice = !!remember;
+  }
+  clearFails(req);
+  startSession(req, res, u); // creeaza sesiune + cookie sid
+  if (rememberDevice) setTrustedDevice(req, res, u); // append (tfd) DUPA setSession
+  logAudit('login', 'autentificare', { userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
+  db.save();
+  res.json({ ok: true, user: publicUser(u) });
+});
+
+// Intrare in contul demo cu un click (public) — doar contul „demo", fara parola in client.
+app.post('/api/demo-login', (req, res) => {
+  const d = db.get();
+  const u = d.users.find((x) => x.username === 'demo');
+  if (!u) return res.status(404).json({ error: 'Contul demo nu este disponibil momentan.' });
+  startSession(req, res, u);
+  logAudit('login', 'cont demo (public)', { userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
+  db.save();
+  res.json({ ok: true, user: publicUser(u) });
+});
+
+// ───────────────────────── INSCRIERE FIRMA (public) ─────────────────────────
+// Creeaza o firma NOUA GOALA (fara date contabile) + un utilizator care o administreaza.
+// Planul de conturi (si restul datelor globale) e partajat de toate firmele, deci e disponibil automat.
+const registerAttempts = new Map();
+function regCount(req) { const r = registerAttempts.get(attemptKey(req)); return (r && Date.now() <= r.reset) ? r.count : 0; }
+function regBump(req) {
+  const k = attemptKey(req); const now = Date.now();
+  let r = registerAttempts.get(k);
+  if (!r || now > r.reset) r = { count: 0, reset: now + 3600 * 1000 };
+  r.count += 1; registerAttempts.set(k, r);
+}
+app.get('/api/register', (req, res) => res.json({ enabled: db.get().settings.selfRegister !== false }));
+app.post('/api/register', (req, res) => {
+  const d = db.get();
+  if (d.settings.selfRegister === false) return res.status(403).json({ error: 'Inscrierea de firme noi este momentan dezactivata.' });
+  if (regCount(req) >= 5) return res.status(429).json({ error: 'Prea multe inscrieri de pe aceasta retea. Reincearca peste o ora.' });
+  const b = req.body || {};
+  const nume = String(b.nume || '').trim();
+  const username = String(b.username || '').trim();
+  const password = String(b.password || '');
+  if (!nume) return res.status(400).json({ error: 'Completeaza denumirea firmei.' });
+  if (username.length < 3) return res.status(400).json({ error: 'Utilizator prea scurt (minim 3 caractere).' });
+  if (password.length < 4) return res.status(400).json({ error: 'Parola prea scurta (minim 4 caractere).' });
+  if (d.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) return res.status(400).json({ error: 'Acest utilizator exista deja. Alege altul.' });
+  // firma noua GOALA — fara date contabile (entries/parteneri/solduri/stocuri etc.)
+  const fid = db.nextFirmaId();
+  const firma = Object.assign(db.defaultFirma(fid), {
+    nume, cui: String(b.cui || '').trim(), regCom: String(b.regCom || '').trim(),
+    adresa: String(b.adresa || '').trim(), oras: String(b.oras || '').trim(), judet: b.judet || 'RO-B',
+    tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
+  }, { id: fid });
+  d.firme.push(firma);
+  d.partners[fid] = {}; d.openingBalances[fid] = {};
+  const { salt, hash } = authlib.hashPassword(password);
+  const user = { id: db.nextUserId(), username, email: String(b.email || '').trim(), salt, hash, role: 'user', firme: [fid], firmaActiva: fid };
+  d.users.push(user);
+  // Daca a platit ca „guest" inainte de inscriere, leaga abonamentul dupa email (Stripe).
+  const pIdx = plans.findPending(d.settings.pendingSubs, user.email);
+  if (pIdx >= 0) {
+    const rec = d.settings.pendingSubs[pIdx];
+    user.subscription = plans.pendingToSubscription(rec);
+    d.settings.pendingSubs.splice(pIdx, 1);
+    logAudit('subscription.linked', 'abonament ' + rec.plan + ' legat la inscriere', { userId: user.id, username, firmaId: fid });
+  }
+  regBump(req);
+  logAudit('firma.register', nume + ' (utilizator ' + username + ')', { userId: user.id, username, firmaId: fid });
+  db.save();
+  startSession(req, res, user); // autentificare automata dupa inscriere
+  res.json({ ok: true, firma: { id: fid, nume: firma.nume }, user: publicUser(user) });
+});
+
+// ───────────────────────────── 2FA (TOTP) ─────────────────────────────
+app.post('/api/2fa/setup', (req, res) => {
+  const u = req.user;
+  if (u.twofa) return res.status(400).json({ error: '2FA este deja activat.' });
+  u.pending2fa = totp.generateSecret();
+  db.save();
+  const otpauth = totp.otpauthURL(u.username, u.pending2fa, 'Contabo');
+  let qrSvg = '';
+  try { qrSvg = new QRCode({ content: otpauth, padding: 2, width: 180, height: 180, color: '#1a1f36', background: '#ffffff', ecl: 'M', join: true }).svg(); } catch (e) { /* QR optional */ }
+  res.json({ secret: u.pending2fa, otpauth, qrSvg });
+});
+app.post('/api/2fa/enable', (req, res) => {
+  const u = req.user;
+  if (!u.pending2fa) return res.status(400).json({ error: 'Initiaza intai configurarea 2FA.' });
+  if (!totp.verify(u.pending2fa, (req.body || {}).code)) return res.status(400).json({ error: 'Cod gresit. Verifica ora dispozitivului.' });
+  u.totpSecret = u.pending2fa; u.twofa = true; delete u.pending2fa;
+  u.tfdEpoch = (u.tfdEpoch || 0) + 1; // invalideaza eventualele dispozitive de incredere vechi
+  logAudit('2fa.enable', u.username, { req, firmaId: null });
+  db.save();
+  res.json({ ok: true });
+});
+app.post('/api/2fa/disable', (req, res) => {
+  const u = req.user;
+  if (!u.twofa) return res.status(400).json({ error: '2FA nu este activat.' });
+  if (!totp.verify(u.totpSecret, (req.body || {}).code)) return res.status(400).json({ error: 'Cod gresit.' });
+  u.twofa = false; delete u.totpSecret; delete u.pending2fa;
+  u.tfdEpoch = (u.tfdEpoch || 0) + 1;
+  logAudit('2fa.disable', u.username, { req, firmaId: null });
+  db.save();
+  res.json({ ok: true });
+});
+app.post('/api/2fa/revoke-devices', (req, res) => {
+  const u = req.user;
+  u.tfdEpoch = (u.tfdEpoch || 0) + 1; // toate dispozitivele de incredere devin invalide
+  logAudit('2fa.revoke_devices', u.username, { req, firmaId: null });
+  db.save();
+  res.json({ ok: true });
+});
+
+// ───────────────────────────── BACKUP (admin) ─────────────────────────────
+function doBackup() {
+  const d = db.get();
+  const r = backup.backupNow(db.DB_FILE, db.DATA_DIR, 30);
+  d.settings.backup = d.settings.backup || {};
+  d.settings.backup.lastAt = new Date().toISOString();
+  db.save();
+  return r;
+}
+app.post('/api/backup', requireAdmin, (req, res) => {
+  const r = doBackup();
+  logAudit('backup.create', r.name, { req, firmaId: null });
+  res.json({ ok: true, file: r.name, count: r.count });
+});
+app.get('/api/backups', requireAdmin, (req, res) => {
+  const s = db.get().settings.backup || {};
+  res.json({ auto: s.auto !== false, lastAt: s.lastAt || null, list: backup.listBackups(db.DATA_DIR) });
+});
+app.post('/api/backups/auto', requireAdmin, (req, res) => {
+  const d = db.get();
+  d.settings.backup = d.settings.backup || {};
+  d.settings.backup.auto = !!(req.body || {}).auto;
+  db.save();
+  res.json({ ok: true, auto: d.settings.backup.auto });
+});
+app.get('/api/backup/file/:name', requireAdmin, (req, res) => {
+  const p = backup.backupPath(db.DATA_DIR, req.params.name);
+  if (!p) return res.status(404).send('Backup inexistent');
+  res.download(p);
+});
+// Restaurare: incarca un fisier db.json -> face backup curentului -> inlocuieste -> reincarca
+app.post('/api/restore', requireAdmin, upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
+  let parsed;
+  try { parsed = JSON.parse(fs.readFileSync(req.file.path, 'utf8')); } catch (e) { return res.status(400).json({ error: 'Fisier JSON invalid.' }); }
+  if (!Array.isArray(parsed.firme) || !parsed.firme.length || !Array.isArray(parsed.users)) {
+    return res.status(400).json({ error: 'Nu pare o baza de date Contabo valida (lipsesc firme/users).' });
+  }
+  logAudit('backup.restore', req.file.originalname, { req, firmaId: null });
+  doBackup(); // siguranta: salveaza starea curenta inainte de inlocuire
+  db.restoreFromJson(req.file.path); // seteaza in memorie + persista (SQLite + oglinda JSON)
+  res.json({ ok: true, message: 'Baza de date a fost restaurata. Va trebui sa te autentifici din nou.' });
+});
+
+// ───────────────────────────── SMTP (admin) ─────────────────────────────
+app.get('/api/smtp', requireAdmin, (req, res) => {
+  const s = db.get().settings.smtp || {};
+  res.json({ host: s.host || '', port: s.port || 587, secure: !!s.secure, user: s.user || '', from: s.from || '', configured: !!s.host, notifyNewMessage: s.notifyNewMessage !== false });
+});
+app.post('/api/smtp', requireAdmin, (req, res) => {
+  const d = db.get();
+  const s = d.settings.smtp || {};
+  const b = req.body || {};
+  ['host', 'user', 'from'].forEach((k) => { if (b[k] != null) s[k] = b[k]; });
+  if (b.port != null) s.port = Number(b.port) || 587;
+  if (b.secure != null) s.secure = !!b.secure;
+  if (b.pass) s.pass = b.pass;
+  if (b.notifyNewMessage != null) s.notifyNewMessage = !!b.notifyNewMessage;
+  d.settings.smtp = s;
+  db.save();
+  res.json({ ok: true, configured: !!s.host });
+});
+app.post('/api/logout', (req, res) => {
+  const u = currentUser(req);
+  if (u && req._sessId) { u.sessions = (u.sessions || []).filter((s) => s.id !== req._sessId); db.save(); }
+  res.setHeader('Set-Cookie', 'sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
+  res.json({ ok: true });
+});
+
+// ───────────────────────────── SESIUNI ACTIVE ─────────────────────────────
+app.get('/api/sessions', (req, res) => {
+  res.json((req.user.sessions || []).map((s) => ({
+    id: s.id, ua: s.ua, ip: s.ip, createdAt: s.createdAt, lastSeen: s.lastSeen, current: s.id === req._sessId,
+  })).reverse());
+});
+app.post('/api/sessions/logout-others', (req, res) => {
+  req.user.sessions = (req.user.sessions || []).filter((s) => s.id === req._sessId);
+  logAudit('session.logout_others', req.user.username, { req, firmaId: null });
+  db.save();
+  res.json({ ok: true });
+});
+app.delete('/api/sessions/:id', (req, res) => {
+  req.user.sessions = (req.user.sessions || []).filter((s) => s.id !== req.params.id);
+  db.save();
+  res.json({ ok: true });
+});
+
+app.get('/api/audit', (req, res) => {
+  const d = db.get();
+  const fid = activeId(req); // doar firma curenta (activeId e mereu o firma la care userul are acces)
+  const list = (d.audit || []).filter((a) => a.firmaId === fid);
+  res.json(list.slice(-300).reverse());
+});
+// Jurnal de sistem (global): actiuni fara firma — utilizatori, firme, impersonare, mesaje, backup, 2FA, sesiuni.
+app.get('/api/audit/system', requireAdmin, (req, res) => {
+  const list = (db.get().audit || []).filter((a) => a.firmaId == null);
+  res.json(list.slice(-300).reverse());
+});
+app.get('/api/me', (req, res) => {
+  const u = currentUser(req);
+  if (!u) return res.status(401).json({ error: 'Neautentificat' });
+  res.json(withSessionState(req, u));
+});
+// Imbogateste obiectul public al utilizatorului cu starea de impersonare si mesajele necitite.
+function withSessionState(req, u) {
+  const out = publicUser(u);
+  if (req.impersonating && req.realUser) out.impersonating = { adminId: req.realUser.id, adminName: req.realUser.username };
+  const d = db.get();
+  out.unreadMessages = (u.role === 'admin' && !req.impersonating)
+    ? messages.unreadForAdmin(d.messages || [])
+    : messages.unreadForUser(d.messages || [], u.id);
+  return out;
+}
+
+// ───────────────────────── IMPERSONARE (admin intra pe cont de user) ─────────────────────────
+// Adminul real (chiar daca impersoneaza deja pe cineva) e principalul care detine sesiunea.
+function adminPrincipal(req) {
+  if (req.realUser && req.realUser.role === 'admin') return req.realUser;
+  return req.user && req.user.role === 'admin' ? req.user : null;
+}
+app.post('/api/impersonate', (req, res) => {
+  const admin = adminPrincipal(req);
+  if (!admin) return res.status(403).json({ error: 'Doar administratorul poate intra pe conturi.' });
+  const d = db.get();
+  const target = d.users.find((x) => x.id === Number((req.body || {}).userId));
+  if (!target) return res.status(404).json({ error: 'Utilizator inexistent.' });
+  if (target.id === admin.id) return res.status(400).json({ error: 'Esti deja autentificat ca tine.' });
+  if (target.role === 'admin') return res.status(400).json({ error: 'Nu poti intra pe contul altui administrator.' });
+  if (target.pending) return res.status(400).json({ error: 'Contul nu e finalizat (invitatie in asteptare).' });
+  const sess = (admin.sessions || []).find((s) => s.id === req._sessId);
+  if (!sess) return res.status(400).json({ error: 'Sesiune invalida.' });
+  sess.impersonating = target.id;
+  logAudit('impersonate.start', admin.username + ' a intrat pe contul ' + target.username, { userId: admin.id, username: admin.username, firmaId: null });
+  db.save();
+  res.json({ ok: true, user: publicUser(target) });
+});
+app.post('/api/impersonate/stop', (req, res) => {
+  if (!req.impersonating || !req.realUser) return res.status(400).json({ error: 'Nu esti in modul impersonare.' });
+  const admin = req.realUser;
+  const sess = (admin.sessions || []).find((s) => s.id === req._sessId);
+  if (sess) delete sess.impersonating;
+  logAudit('impersonate.stop', 'revenire la ' + admin.username, { userId: admin.id, username: admin.username, firmaId: null });
+  db.save();
+  res.json({ ok: true, user: publicUser(admin) });
+});
+
+// ───────────────────────── MESAJE (suport user <-> admin) ─────────────────────────
+app.get('/api/messages', (req, res) => {
+  const d = db.get(); d.messages = d.messages || [];
+  if (req.user.role === 'admin' && !req.impersonating) {
+    return res.json({ admin: true, threads: messages.threadsSummary(d.messages, d.users) });
+  }
+  const changed = messages.markRead(d.messages, req.user.id, 'user');
+  if (changed) db.save();
+  res.json({ admin: false, thread: messages.thread(d.messages, req.user.id) });
+});
+app.get('/api/messages/thread/:userId', requireAdmin, (req, res) => {
+  const d = db.get(); d.messages = d.messages || [];
+  const uid = Number(req.params.userId);
+  const u = d.users.find((x) => x.id === uid);
+  if (!u) return res.status(404).json({ error: 'Utilizator inexistent.' });
+  const changed = messages.markRead(d.messages, uid, 'admin');
+  if (changed) db.save();
+  res.json({ userId: uid, username: u.username, archived: !!u.supportArchived, thread: messages.thread(d.messages, uid) });
+});
+app.post('/api/messages', upload.single('file'), (req, res) => {
+  const d = db.get(); d.messages = d.messages || [];
+  const text = String((req.body || {}).text || '').trim();
+  const att = req.file ? { name: req.file.originalname, storedName: req.file.filename, size: req.file.size, mime: req.file.mimetype } : null;
+  if (!text && !att) return res.status(400).json({ error: 'Scrie un mesaj sau ataseaza un fisier.' });
+  if (text.length > messages.MAX_LEN) return res.status(400).json({ error: 'Mesaj prea lung (max ' + messages.MAX_LEN + ' caractere).' });
+  let userId; let fromAdmin;
+  if (req.user.role === 'admin' && !req.impersonating) {
+    userId = Number((req.body || {}).userId);
+    if (!d.users.find((x) => x.id === userId)) return res.status(400).json({ error: 'Alege un utilizator destinatar.' });
+    fromAdmin = true;
+  } else {
+    userId = req.user.id; fromAdmin = false;
+  }
+  // un mesaj nou de la utilizator redeschide automat conversatia arhivata
+  if (!fromAdmin) { const tu = d.users.find((x) => x.id === userId); if (tu && tu.supportArchived) tu.supportArchived = false; }
+  const m = messages.newMessage(db.nextId('msg'), userId, fromAdmin, text, req.user.username, att);
+  d.messages.push(m);
+  logAudit('message.send', (fromAdmin ? 'raspuns catre utilizator #' + userId : 'cerere catre administrator') + (att ? ' [fisier atasat]' : ''), { req, firmaId: null });
+  db.save();
+  // mesaj de la utilizator + niciun admin online -> notificare pe email (best-effort, neblocant)
+  if (!fromAdmin) { try { notifyAdminsOfNewMessage(req.user, m, (req.protocol || 'http') + '://' + req.get('host')); } catch (e) { console.error('notify admin:', e.message); } }
+  res.json({ ok: true, message: m });
+});
+// Servire atasament: doar adminul real sau proprietarul conversatiei. Inline doar pentru tipuri sigure.
+const INLINE_OK = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'application/pdf']);
+app.get('/api/messages/:id/file', (req, res) => {
+  const d = db.get();
+  const m = (d.messages || []).find((x) => x.id === req.params.id);
+  if (!m || !m.attachment) return res.status(404).json({ error: 'Atasament inexistent.' });
+  const isAdmin = req.user.role === 'admin' && !req.impersonating;
+  if (!isAdmin && m.userId !== req.user.id) return res.status(403).json({ error: 'Nu ai acces la acest fisier.' });
+  const p = path.join(db.UPLOAD_DIR, path.basename(m.attachment.storedName));
+  if (!fs.existsSync(p)) return res.status(404).json({ error: 'Fisier negasit pe server.' });
+  const mime = String(m.attachment.mime || '').toLowerCase();
+  const inline = INLINE_OK.has(mime);
+  res.setHeader('Content-Type', mime || 'application/octet-stream');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Disposition', (inline ? 'inline' : 'attachment') + '; filename="' + encodeURIComponent(m.attachment.name) + '"');
+  res.sendFile(p);
+});
+// Stergerea unui mesaj — doar administratorul. Sterge si fisierul atasat de pe disc.
+app.delete('/api/messages/:id', requireAdmin, (req, res) => {
+  const d = db.get(); d.messages = d.messages || [];
+  const idx = d.messages.findIndex((m) => m.id === req.params.id);
+  if (idx < 0) return res.status(404).json({ error: 'Mesaj inexistent.' });
+  const [removed] = d.messages.splice(idx, 1);
+  if (removed.attachment && removed.attachment.storedName) {
+    try { fs.unlinkSync(path.join(db.UPLOAD_DIR, path.basename(removed.attachment.storedName))); } catch (_) { /* best-effort */ }
+  }
+  logAudit('message.delete', 'mesaj sters din conversatia utilizatorului #' + removed.userId, { req, firmaId: null });
+  db.save();
+  res.json({ ok: true });
+});
+// Editarea unui mesaj — doar AUTORUL: utilizatorul propriile mesaje, adminul propriile raspunsuri.
+app.patch('/api/messages/:id', (req, res) => {
+  const d = db.get(); d.messages = d.messages || [];
+  const m = (d.messages || []).find((x) => x.id === req.params.id);
+  if (!m) return res.status(404).json({ error: 'Mesaj inexistent.' });
+  const isAdmin = req.user.role === 'admin' && !req.impersonating;
+  const canEdit = isAdmin ? m.fromAdmin : (!m.fromAdmin && m.userId === req.user.id);
+  if (!canEdit) return res.status(403).json({ error: 'Poti edita doar propriile mesaje.' });
+  const text = String((req.body || {}).text || '').trim();
+  if (!text && !m.attachment) return res.status(400).json({ error: 'Mesajul nu poate ramane gol.' });
+  if (text.length > messages.MAX_LEN) return res.status(400).json({ error: 'Mesaj prea lung (max ' + messages.MAX_LEN + ' caractere).' });
+  m.text = text; m.editedAt = new Date().toISOString();
+  logAudit('message.edit', 'mesaj editat in conversatia utilizatorului #' + m.userId, { req, firmaId: null });
+  db.save();
+  res.json({ ok: true, message: m });
+});
+app.get('/api/messages/unread', (req, res) => {
+  const d = db.get(); d.messages = d.messages || [];
+  const n = (req.user.role === 'admin' && !req.impersonating)
+    ? messages.unreadForAdmin(d.messages)
+    : messages.unreadForUser(d.messages, req.user.id);
+  res.json({ unread: n });
+});
+// Cautare in conversatii (admin): dupa nume de utilizator sau text de mesaj
+app.get('/api/messages/search', requireAdmin, (req, res) => {
+  const d = db.get(); d.messages = d.messages || [];
+  res.json({ admin: true, threads: messages.searchThreads(d.messages, d.users, req.query.q || '') });
+});
+// Arhivarea/redeschiderea unei conversatii rezolvate (admin)
+app.post('/api/messages/archive', requireAdmin, (req, res) => {
+  const d = db.get();
+  const u = d.users.find((x) => x.id === Number((req.body || {}).userId));
+  if (!u) return res.status(404).json({ error: 'Utilizator inexistent.' });
+  u.supportArchived = !!(req.body || {}).archived;
+  logAudit('message.archive', (u.supportArchived ? 'arhivat' : 'redeschis') + ' conversatia utilizatorului ' + u.username, { req, firmaId: null });
+  db.save();
+  res.json({ ok: true, archived: u.supportArchived });
+});
+// Indicator „scrie acum…": stare efemera in memorie (nu se persista)
+const typingState = new Map(); // userId -> { user: tsExpira, admin: tsExpira }
+function setTyping(userId, who) { const s = typingState.get(userId) || { user: 0, admin: 0 }; s[who] = Date.now() + 6000; typingState.set(userId, s); }
+function isTyping(userId, who) { const s = typingState.get(userId); return !!(s && s[who] > Date.now()); }
+app.post('/api/messages/typing', (req, res) => {
+  const isAdmin = req.user.role === 'admin' && !req.impersonating;
+  if (isAdmin) { const uid = Number((req.body || {}).userId); if (uid) setTyping(uid, 'admin'); }
+  else setTyping(req.user.id, 'user');
+  res.json({ ok: true });
+});
+// Poll consolidat: necitite + „scrie acum…" (pentru conversatia indicata, la admin)
+app.get('/api/messages/poll', (req, res) => {
+  const d = db.get(); d.messages = d.messages || [];
+  const isAdmin = req.user.role === 'admin' && !req.impersonating;
+  const unread = isAdmin ? messages.unreadForAdmin(d.messages) : messages.unreadForUser(d.messages, req.user.id);
+  let typing = false;
+  if (isAdmin) { const uid = Number(req.query.userId); if (uid) typing = isTyping(uid, 'user'); }
+  else typing = isTyping(req.user.id, 'admin');
+  res.json({ unread, typing });
+});
+
+app.post('/api/change-password', (req, res) => {
+  const { oldPassword, newPassword } = req.body || {};
+  const u = req.user;
+  if (!authlib.verifyPassword(oldPassword, u.salt, u.hash)) return res.status(400).json({ error: 'Parola veche gresita.' });
+  if (!newPassword || String(newPassword).length < 4) return res.status(400).json({ error: 'Parola noua prea scurta (min. 4).' });
+  const h = authlib.hashPassword(newPassword);
+  u.salt = h.salt; u.hash = h.hash; u.mustChange = false;
+  db.save();
+  res.json({ ok: true });
+});
+app.get('/api/profile', (req, res) => res.json({ username: req.user.username, email: req.user.email || '', role: req.user.role }));
+
+// ── Abonamente (planuri + trial) ──
+// Prețurile sunt publice (vizibile pe pagina de înscriere, fără autentificare).
+app.get('/api/plans', (req, res) => res.json({ plans: plans.PLANS, trialDays: plans.TRIAL_DAYS }));
+// Checkout „guest" (plata înainte de înscriere). Fără Stripe configurat → semnalează degradarea.
+app.post('/api/checkout-guest', async (req, res) => {
+  const plan = (req.body || {}).plan;
+  if (!plans.PLANS.some((p) => p.id === plan && !p.trial)) return res.status(400).json({ error: 'Plan invalid.' });
+  if (!billing.configured()) return res.json({ notConfigured: true });
+  try {
+    const session = await billing.createGuestCheckoutSession(plan);
+    res.json({ url: session.url });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/subscription', (req, res) => {
+  const sub = req.user.subscription || {};
+  res.json({
+    plans: plans.PLANS, trialDays: plans.TRIAL_DAYS, current: plans.status(sub),
+    stripeEnabled: billing.configured(), manageable: !!sub.stripeCustomerId,
+  });
+});
+// Plata online: creeaza o sesiune Stripe Checkout si returneaza URL-ul de redirect.
+app.post('/api/subscription/checkout', async (req, res) => {
+  if (!billing.configured()) return res.status(400).json({ error: 'Plățile online nu sunt configurate momentan. Contactează-ne pentru activare manuală.' });
+  const u = db.get().users.find((x) => x.id === req.user.id);
+  if (!u) return res.status(404).json({ error: 'Utilizator inexistent.' });
+  try {
+    const session = await billing.createCheckoutSession(u, (req.body || {}).plan);
+    logAudit('subscription.checkout', 'a initiat plata pentru ' + (req.body || {}).plan, { req });
+    res.json({ url: session.url });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+// Billing Portal: clientul isi gestioneaza/anuleaza abonamentul pe Stripe.
+app.post('/api/subscription/portal', async (req, res) => {
+  const u = db.get().users.find((x) => x.id === req.user.id);
+  const cid = u && u.subscription && u.subscription.stripeCustomerId;
+  if (!cid) return res.status(400).json({ error: 'Nu există un abonament Stripe de gestionat.' });
+  try {
+    const session = await billing.createPortalSession(cid);
+    res.json({ url: session.url });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+// Webhook Stripe (public, body brut): activeaza/actualizeaza/anuleaza abonamentul dupa plata.
+app.post('/api/stripe/webhook', (req, res) => {
+  let event;
+  try { event = billing.constructEvent(req.body, req.headers['stripe-signature']); }
+  catch (e) { return res.status(400).send('Webhook error: ' + e.message); }
+  const info = billing.interpretEvent(event);
+  if (info.action === 'ignore') return res.json({ received: true });
+  const d = db.get();
+  let u = info.userId ? d.users.find((x) => String(x.id) === String(info.userId)) : null;
+  if (!u && info.customerId) u = d.users.find((x) => x.subscription && x.subscription.stripeCustomerId === info.customerId);
+  // Plata „guest" (fara cont inca): pastreaza abonamentul in asteptare, legat de email, pana la inscriere.
+  if (!u && info.guest && info.email && info.action === 'activate') {
+    d.settings.pendingSubs = d.settings.pendingSubs || [];
+    d.settings.pendingSubs = d.settings.pendingSubs.filter((x) => x.email !== String(info.email).toLowerCase());
+    d.settings.pendingSubs.push({ email: String(info.email).toLowerCase(), plan: info.plan, customerId: info.customerId, subscriptionId: info.subscriptionId, at: new Date().toISOString() });
+    db.save();
+    return res.json({ received: true, pending: true });
+  }
+  if (!u) return res.json({ received: true, note: 'utilizator negasit' });
+  const sub = Object.assign({}, u.subscription || {});
+  if (info.customerId) sub.stripeCustomerId = info.customerId;
+  if (info.subscriptionId) sub.stripeSubscriptionId = info.subscriptionId;
+  if (info.action === 'activate') {
+    sub.plan = info.plan || sub.requestedPlan || sub.plan; sub.status = 'active';
+    sub.since = sub.since || new Date().toISOString(); sub.requestedPlan = null; sub.requestedAt = null;
+  } else if (info.action === 'cancel') {
+    sub.status = 'canceled';
+  }
+  u.subscription = sub;
+  logAudit('subscription.stripe', event.type + ' -> ' + u.username + ' (' + (sub.plan || '-') + '/' + sub.status + ')', { firmaId: null, username: 'stripe-webhook' });
+  db.save();
+  res.json({ received: true });
+});
+app.post('/api/subscription/trial', (req, res) => {
+  const u = db.get().users.find((x) => x.id === req.user.id);
+  if (!u) return res.status(404).json({ error: 'Utilizator inexistent.' });
+  try { u.subscription = plans.startTrial(u.subscription); } catch (e) { return res.status(400).json({ error: e.message }); }
+  logAudit('subscription.trial', 'a pornit perioada de proba', { req });
+  db.save();
+  res.json({ ok: true, current: plans.status(u.subscription) });
+});
+app.post('/api/subscription/select', (req, res) => {
+  const u = db.get().users.find((x) => x.id === req.user.id);
+  if (!u) return res.status(404).json({ error: 'Utilizator inexistent.' });
+  try { u.subscription = plans.selectPlan(u.subscription, (req.body || {}).plan); } catch (e) { return res.status(400).json({ error: e.message }); }
+  logAudit('subscription.select', 'a ales planul ' + (req.body || {}).plan, { req });
+  db.save();
+  res.json({ ok: true, current: plans.status(u.subscription) });
+});
+// Admin: activeaza planul unui utilizator dupa confirmarea platii.
+app.post('/api/subscription/activate', requireAdmin, (req, res) => {
+  const b = req.body || {};
+  const u = db.get().users.find((x) => x.id === b.userId);
+  if (!u) return res.status(404).json({ error: 'Utilizator inexistent.' });
+  try { u.subscription = plans.activatePlan(u.subscription, b.plan); } catch (e) { return res.status(400).json({ error: e.message }); }
+  logAudit('subscription.activate', u.username + ' -> ' + b.plan, { req });
+  db.save();
+  res.json({ ok: true, current: plans.status(u.subscription) });
+});
+app.post('/api/profile', (req, res) => {
+  if ((req.body || {}).email != null) req.user.email = String(req.body.email);
+  db.save();
+  res.json({ ok: true, email: req.user.email });
+});
+
+// ───────────────────────── RESETARE PAROLA (email) ─────────────────────────
+function sendMail(smtp, to, subject, text) {
+  let nodemailer;
+  try { nodemailer = require('nodemailer'); } catch (_) { throw new Error('nodemailer neinstalat'); }
+  const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port || 587, secure: !!smtp.secure, auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined });
+  return t.sendMail({ from: smtp.from || smtp.user, to, subject, text });
+}
+// Notifica pe email administratorii la un mesaj nou de la utilizator, DOAR daca niciunul nu e online.
+function notifyAdminsOfNewMessage(fromUser, message, baseUrl) {
+  const d = db.get();
+  const smtp = d.settings.smtp;
+  if (!smtp || !smtp.host || smtp.notifyNewMessage === false) return; // SMTP neconfigurat / dezactivat
+  const now = Date.now();
+  const admins = presence.adminsToEmail(d.users, now); // gol daca vreun admin e online sau in cooldown
+  if (!admins.length) return;
+  const snippet = String(message.text || (message.attachment ? '[fisier atasat]' : '')).slice(0, 300);
+  const subject = 'Contabo — mesaj nou de la ' + (fromUser.username || 'un utilizator');
+  const body = (fromUser.username || 'Un utilizator') + ' ti-a trimis un mesaj in Contabo:\n\n' + snippet
+    + '\n\nIntra in aplicatie pentru a raspunde:\n' + (baseUrl || '')
+    + '\n\n(Primesti cel mult o notificare la ' + Math.round(presence.SUPPORT_EMAIL_COOLDOWN / 60000)
+    + ' min. O poti dezactiva din Setari → SMTP.)';
+  for (const a of admins) {
+    a.lastSupportEmailAt = now;
+    sendMail(smtp, a.email, subject, body).catch((e) => console.error('SMTP mesaj nou:', e.message));
+  }
+  db.save();
+}
+app.post('/api/forgot-password', wrap(async (req, res) => {
+  const login = String((req.body || {}).login || '').trim().toLowerCase();
+  const d = db.get();
+  const u = d.users.find((x) => !x.pending && (x.username.toLowerCase() === login || (x.email && x.email.toLowerCase() === login)));
+  // raspuns identic indiferent daca exista (sa nu dezvaluim conturile)
+  const generic = { ok: true, message: 'Daca exista un cont cu adresa de email setata, vei primi un link de resetare.' };
+  if (!u || !u.email || !(d.settings.smtp && d.settings.smtp.host)) return res.json(generic);
+  u.resetToken = crypto.randomBytes(24).toString('hex');
+  u.resetExp = Date.now() + 3600 * 1000; // 1 ora
+  db.save();
+  const link = (req.protocol || 'http') + '://' + req.get('host') + '/?reset=' + u.resetToken;
+  try { await sendMail(d.settings.smtp, u.email, 'Resetare parola Contabo', 'Reseteaza-ti parola (valabil 1 ora):\n' + link); } catch (e) { console.error('SMTP reset:', e.message); }
+  res.json(generic);
+}));
+function findReset(token) {
+  const u = db.get().users.find((x) => x.resetToken === token);
+  if (!u || (u.resetExp && u.resetExp < Date.now())) return null;
+  return u;
+}
+app.get('/api/reset/:token', (req, res) => {
+  const u = findReset(req.params.token);
+  if (!u) return res.status(404).json({ error: 'Link de resetare invalid sau expirat.' });
+  res.json({ username: u.username });
+});
+app.post('/api/reset/accept', (req, res) => {
+  const { token, password } = req.body || {};
+  const u = findReset(token);
+  if (!u) return res.status(404).json({ error: 'Link de resetare invalid sau expirat.' });
+  if (!password || String(password).length < 4) return res.status(400).json({ error: 'Parola prea scurta (min. 4).' });
+  const h = authlib.hashPassword(password);
+  u.salt = h.salt; u.hash = h.hash; u.mustChange = false; delete u.resetToken; delete u.resetExp;
+  u.sessions = []; // resetarea parolei deconecteaza celelalte sesiuni
+  startSession(req, res, u);
+  logAudit('password.reset', u.username, { userId: u.id, username: u.username, firmaId: null });
+  db.save();
+  res.json({ ok: true, user: publicUser(u) });
+});
+
+// firma activa (constransa la firmele utilizatorului) + vederea filtrata
+function activeId(req) {
+  const u = req.user;
+  const allowed = u ? allowedFirme(u) : db.get().firme.map((f) => f.id);
+  let id = Number(req.query.firma) || (u && u.firmaActiva) || allowed[0];
+  if (!allowed.includes(id)) id = allowed[0];
+  return id || db.firmaActiva();
+}
+const S = (req) => db.scoped(activeId(req));
+
+// ───────────────────────────── META ─────────────────────────────
+// Import plan de conturi personalizat din CSV: Cont;Denumire;Clasa;Tip (A/P/B/C/V) - header optional
+app.post('/api/accounts/import', (req, res) => {
+  const rows = parseCsv((req.body || {}).csv || '');
+  if (!rows.length) return res.status(400).json({ error: 'CSV gol sau invalid.' });
+  let start = 0;
+  if (/cont|cod|denumire/i.test((rows[0][0] || '') + (rows[0][1] || ''))) start = 1;
+  const d = db.get();
+  const list = [];
+  for (let i = start; i < rows.length; i++) {
+    const r = rows[i];
+    const cod = String(r[0] || '').trim();
+    if (!cod || !r[1]) continue;
+    list.push({ cod, nume: r[1], clasa: Number(r[2]) || Number(cod[0]) || 0, tip: (r[3] || 'B').toUpperCase() });
+  }
+  // upsert in customAccounts
+  for (const a of list) {
+    const ex = d.customAccounts.find((x) => x.cod === a.cod);
+    if (ex) Object.assign(ex, a); else d.customAccounts.push(a);
+  }
+  coa.addAccounts(list);
+  logAudit('accounts.import', list.length + ' conturi', { req });
+  db.save();
+  res.json({ ok: true, importati: list.length, totalConturi: coa.ACCOUNTS.length });
+});
+app.get('/api/meta', (req, res) => {
+  const d = db.get();
+  const v = S(req);
+  const periods = [...new Set(v.entries.map((e) => e.period || periodOf(e.data)))].filter(Boolean).sort();
+  const allowed = allowedFirme(req.user);
+  res.json({
+    user: withSessionState(req, req.user),
+    firme: d.firme.filter((f) => allowed.includes(f.id)),
+    firmaActiva: activeId(req),
+    company: v.company,
+    types: typesForClient(),
+    accounts: coa.ACCOUNTS,
+    classNames: coa.CLASS_NAMES,
+    periods,
+    counts: { documents: v.documents.length, entries: v.entries.length },
+    ai: { available: ai.aiAvailable(), enabled: d.settings.useAI !== false, model: ai.MODEL },
+    fiscal: fiscal.FISCAL,
+    selfRegister: d.settings.selfRegister !== false,
+  });
+});
+
+// ───────────────────────────── FIRME ─────────────────────────────
+function canAccess(req, id) { return allowedFirme(req.user).includes(Number(id)); }
+
+app.get('/api/firme', (req, res) => {
+  const d = db.get();
+  const allowed = allowedFirme(req.user);
+  res.json({ firme: d.firme.filter((f) => allowed.includes(f.id)), firmaActiva: activeId(req) });
+});
+app.post('/api/firme', (req, res) => {
+  const d = db.get();
+  const id = db.nextFirmaId();
+  const b = req.body || {};
+  const f = Object.assign(db.defaultFirma(id), {
+    nume: b.nume || ('Firma ' + id), cui: b.cui || '', regCom: b.regCom || '',
+    adresa: b.adresa || '', oras: b.oras || '', judet: b.judet || 'RO-B',
+  }, { id });
+  d.firme.push(f);
+  d.partners[id] = {}; d.openingBalances[id] = {};
+  // utilizatorul care creeaza firma capata acces (adminul are oricum)
+  if (req.user.role !== 'admin') { req.user.firme = req.user.firme || []; req.user.firme.push(id); }
+  req.user.firmaActiva = id;
+  logAudit('firma.create', f.nume, { req, firmaId: id });
+  db.save();
+  res.json({ ok: true, firma: f, firmaActiva: id });
+});
+// Export/import complet al unei firme (migrare/arhivare) — inainte de ruta /:id ca sa nu fie prinse de ea
+// mode=replace: SUPRASCRIE firma activa cu datele din copie (cu plasa de siguranta salvata pe server).
+// altfel: fisierul devine o firma NOUA (id-uri remapate), datele existente raman neatinse.
+function restoreTarget(req, res) {
+  if (req.query.mode !== 'replace') return { targetFid: null };
+  const fid = activeId(req);
+  if (!allowedFirme(req.user).includes(fid)) { res.status(403).json({ error: 'Fara acces la firma activa.' }); return null; }
+  // plasa de siguranta: starea curenta a firmei, salvata pe server inainte de suprascriere
+  try {
+    const dir = path.join(db.DATA_DIR, 'backups');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'pre-restore-firma' + fid + '-' + Date.now() + '.json'), JSON.stringify(db.exportFirma(fid)));
+  } catch (e) { console.error('pre-restore backup:', e.message); }
+  return { targetFid: fid };
+}
+app.post('/api/firme/import', (req, res) => {
+  try {
+    const bundle = (req.body && req.body.firma) ? req.body : (req.body && req.body.bundle);
+    const t = restoreTarget(req, res); if (!t) return;
+    const newFid = db.importFirma(bundle, { targetFid: t.targetFid });
+    if (!t.targetFid && req.user && req.user.role !== 'admin') { req.user.firme = req.user.firme || []; req.user.firme.push(newFid); }
+    if (req.user) req.user.firmaActiva = newFid;
+    logAudit('firma.import', (t.targetFid ? 'firma ' + newFid + ' SUPRASCRISA din copie' : 'firma noua ' + newFid + ' (restaurare din fisier)'), { req, firmaId: newFid });
+    db.save();
+    res.json({ ok: true, firmaId: newFid, replaced: !!t.targetFid });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+// Ramura de testare: cloneaza firma activa intr-o copie marcata [TEST] si comuta pe ea
+app.post('/api/firme/:id/test-clone', (req, res) => {
+  if (!canAccess(req, req.params.id)) return res.status(403).json({ error: 'Fara acces la aceasta firma.' });
+  try {
+    const src = db.getFirma(req.params.id) || {};
+    const newFid = db.importFirma(db.exportFirma(req.params.id));
+    const nf = db.getFirma(newFid);
+    if (nf) { nf.nume = '[TEST] ' + String(src.nume || 'Firma').replace(/^\[TEST\]\s*/, ''); nf.test = true; }
+    if (req.user) { req.user.firmaActiva = newFid; if (req.user.role !== 'admin') { req.user.firme = req.user.firme || []; req.user.firme.push(newFid); } }
+    logAudit('firma.test-clone', 'firma de test ' + newFid + ' din ' + req.params.id, { req, firmaId: newFid });
+    db.save();
+    res.json({ ok: true, firmaId: newFid, nume: nf ? nf.nume : '' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+function firmaSlug(bundle) {
+  return String((bundle.firma && bundle.firma.nume) || 'firma').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'firma';
+}
+app.get('/api/firme/:id/export', (req, res) => {
+  const id = Number(req.params.id);
+  if (!allowedFirme(req.user).includes(id)) return res.status(403).json({ error: 'Firma neautorizata.' });
+  const bundle = db.exportFirma(id);
+  const fname = 'contabo-' + firmaSlug(bundle) + '-' + new Date().toISOString().slice(0, 10) + '.json';
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="' + fname + '"');
+  res.send(JSON.stringify(bundle, null, 2));
+});
+// Construieste ZIP-ul complet al unei firme: firma.json + fisierele scanate atasate (files/*).
+function firmaZipBuffer(id) {
+  const bundle = db.exportFirma(id);
+  const zip = new AdmZip();
+  zip.addFile('firma.json', Buffer.from(JSON.stringify(bundle, null, 2), 'utf8'));
+  let nFiles = 0;
+  for (const doc of (bundle.documents || [])) {
+    if (!doc.storedName) continue;
+    const p = path.join(db.UPLOAD_DIR, path.basename(doc.storedName));
+    if (fs.existsSync(p)) { zip.addLocalFile(p, 'files'); nFiles++; }
+  }
+  return { buffer: zip.toBuffer(), slug: firmaSlug(bundle), nFiles };
+}
+// Copie completa (ZIP) a unei firme.
+app.get('/api/firme/:id/export-zip', (req, res) => {
+  const id = Number(req.params.id);
+  if (!allowedFirme(req.user).includes(id)) return res.status(403).json({ error: 'Firma neautorizata.' });
+  const z = firmaZipBuffer(id);
+  logAudit('firma.export', 'copie ZIP (' + z.nFiles + ' fisiere)', { req, firmaId: id });
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', 'attachment; filename="contabo-' + z.slug + '-' + new Date().toISOString().slice(0, 10) + '.zip"');
+  res.send(z.buffer);
+});
+// Admin: TOATE firmele intr-o singura arhiva — cate un ZIP separat per firma (fiecare restaurabil individual).
+app.get('/api/firme/export-all', requireAdmin, (req, res) => {
+  const outer = new AdmZip();
+  let n = 0;
+  for (const f of db.get().firme) {
+    const z = firmaZipBuffer(f.id);
+    outer.addFile('firma-' + f.id + '-' + z.slug + '.zip', z.buffer);
+    n++;
+  }
+  logAudit('firma.export', 'export toate firmele (' + n + ' ZIP-uri)', { req });
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', 'attachment; filename="contabo-toate-firmele-' + new Date().toISOString().slice(0, 10) + '.zip"');
+  res.send(outer.toBuffer());
+});
+// Restaurare din ZIP: extrage firma.json + scrie fisierele sub nume NOI (anti-coliziune), apoi importa.
+const uploadRestore = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
+app.post('/api/firme/import-zip', uploadRestore.single('file'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
+    const zip = new AdmZip(req.file.buffer);
+    const je = zip.getEntry('firma.json');
+    if (!je) return res.status(400).json({ error: 'Arhiva nu contine firma.json — nu pare o copie Contabo.' });
+    const bundle = JSON.parse(zip.readAsText(je));
+    const storedNameMap = {};
+    for (const en of zip.getEntries()) {
+      if (en.isDirectory || !en.entryName.startsWith('files/')) continue;
+      const base = path.basename(en.entryName);
+      if (!base) continue;
+      const newName = crypto.randomBytes(8).toString('hex') + (path.extname(base) || '.bin');
+      fs.writeFileSync(path.join(db.UPLOAD_DIR, newName), en.getData());
+      storedNameMap[base] = newName;
+    }
+    const t = restoreTarget(req, res); if (!t) return;
+    const newFid = db.importFirma(bundle, { storedNameMap, targetFid: t.targetFid });
+    if (!t.targetFid && req.user && req.user.role !== 'admin') { req.user.firme = req.user.firme || []; req.user.firme.push(newFid); }
+    if (req.user) req.user.firmaActiva = newFid;
+    logAudit('firma.import', (t.targetFid ? 'firma ' + newFid + ' SUPRASCRISA din ZIP' : 'firma noua ' + newFid) + ' (' + Object.keys(storedNameMap).length + ' fisiere)', { req, firmaId: newFid });
+    db.save();
+    res.json({ ok: true, firmaId: newFid, files: Object.keys(storedNameMap).length, replaced: !!t.targetFid });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/firme/:id', (req, res) => {
+  if (!canAccess(req, req.params.id)) return res.status(403).json({ error: 'Fara acces la aceasta firma.' });
+  const f = db.getFirma(req.params.id);
+  if (!f) return res.status(404).json({ error: 'Firma inexistenta' });
+  Object.assign(f, req.body || {}, { id: f.id });
+  db.save();
+  res.json({ ok: true, firma: f });
+});
+app.post('/api/firme/:id/activate', (req, res) => {
+  if (!canAccess(req, req.params.id)) return res.status(403).json({ error: 'Fara acces la aceasta firma.' });
+  req.user.firmaActiva = Number(req.params.id);
+  db.save();
+  res.json({ ok: true, firmaActiva: req.user.firmaActiva });
+});
+app.delete('/api/firme/:id', requireAdmin, (req, res) => {
+  const d = db.get();
+  const id = Number(req.params.id);
+  if (d.firme.length <= 1) return res.status(400).json({ error: 'Trebuie sa ramana cel putin o firma.' });
+  d.firme = d.firme.filter((f) => f.id !== id);
+  d.entries = d.entries.filter((e) => e.firmaId !== id);
+  d.documents = d.documents.filter((x) => x.firmaId !== id);
+  d.openingAnalytic = d.openingAnalytic.filter((o) => o.firmaId !== id);
+  delete d.partners[id]; delete d.openingBalances[id];
+  d.users.forEach((u) => { if (Array.isArray(u.firme)) u.firme = u.firme.filter((x) => x !== id); });
+  logAudit('firma.delete', 'firma ' + id, { req, firmaId: null });
+  db.save();
+  res.json({ ok: true });
+});
+
+// ───────────────────────────── UTILIZATORI (admin) ─────────────────────────────
+app.get('/api/users', requireAdmin, (req, res) => {
+  const base = (req.protocol || 'http') + '://' + req.get('host');
+  res.json(db.get().users.map((u) => ({
+    id: u.id, username: u.username, role: u.role, firme: u.firme || [],
+    pending: !!u.pending, inviteLink: u.pending && u.inviteToken ? base + '/?invite=' + u.inviteToken : null,
+  })));
+});
+app.post('/api/users', requireAdmin, (req, res) => {
+  const b = req.body || {};
+  if (!b.username || !b.password) return res.status(400).json({ error: 'Utilizator si parola obligatorii.' });
+  const d = db.get();
+  if (d.users.some((u) => u.username === b.username)) return res.status(400).json({ error: 'Utilizator deja existent.' });
+  const { salt, hash } = authlib.hashPassword(b.password);
+  const u = { id: db.nextUserId(), username: b.username, email: b.email || '', salt, hash, role: b.role === 'admin' ? 'admin' : 'user', firme: Array.isArray(b.firme) ? b.firme.map(Number) : [], firmaActiva: (b.firme && b.firme[0]) || null };
+  d.users.push(u);
+  logAudit('user.create', b.username + ' (' + u.role + ')', { req, firmaId: null });
+  db.save();
+  res.json({ ok: true, user: { id: u.id, username: u.username, role: u.role, firme: u.firme } });
+});
+app.post('/api/users/:id', requireAdmin, (req, res) => {
+  const u = db.getUser(req.params.id);
+  if (!u) return res.status(404).json({ error: 'Utilizator inexistent' });
+  const b = req.body || {};
+  if (b.role) u.role = b.role === 'admin' ? 'admin' : 'user';
+  if (Array.isArray(b.firme)) u.firme = b.firme.map(Number);
+  if (b.password) { const h = authlib.hashPassword(b.password); u.salt = h.salt; u.hash = h.hash; u.mustChange = false; }
+  logAudit('user.update', u.username, { req, firmaId: null });
+  db.save();
+  res.json({ ok: true });
+});
+app.delete('/api/users/:id', requireAdmin, (req, res) => {
+  const d = db.get();
+  const id = Number(req.params.id);
+  if (req.user.id === id) return res.status(400).json({ error: 'Nu te poti sterge pe tine.' });
+  if (d.users.filter((u) => u.role === 'admin').length <= 1 && db.getUser(id) && db.getUser(id).role === 'admin') {
+    return res.status(400).json({ error: 'Trebuie sa ramana cel putin un administrator.' });
+  }
+  const target = db.getUser(id);
+  d.users = d.users.filter((u) => u.id !== id);
+  logAudit('user.delete', target ? target.username : ('id ' + id), { req, firmaId: null });
+  db.save();
+  res.json({ ok: true });
+});
+
+// ───────────────────────────── INVITATII ─────────────────────────────
+// Adminul creeaza o invitatie; rezulta un link pe care il poate trimite (manual sau prin email).
+app.post('/api/invites', requireAdmin, async (req, res) => {
+  const b = req.body || {};
+  if (!b.username) return res.status(400).json({ error: 'Utilizator obligatoriu.' });
+  const d = db.get();
+  if (d.users.some((u) => u.username === b.username)) return res.status(400).json({ error: 'Utilizator deja existent.' });
+  const token = crypto.randomBytes(24).toString('hex');
+  const u = {
+    id: db.nextUserId(), username: b.username, email: b.email || '', salt: '', hash: '', pending: true, inviteToken: token,
+    inviteExp: Date.now() + 7 * 24 * 3600 * 1000, // expira in 7 zile
+    role: b.role === 'admin' ? 'admin' : 'user', firme: Array.isArray(b.firme) ? b.firme.map(Number) : [], firmaActiva: (b.firme && b.firme[0]) || null,
+  };
+  d.users.push(u);
+  logAudit('invite.create', b.username, { req, firmaId: null });
+  db.save();
+  const base = (req.protocol || 'http') + '://' + req.get('host');
+  const link = base + '/?invite=' + token;
+  // email optional (daca SMTP e configurat) — altfel adminul copiaza linkul
+  let emailed = false;
+  if (b.email && d.settings.smtp && d.settings.smtp.host) {
+    try { await sendInviteEmail(d.settings.smtp, b.email, link); emailed = true; } catch (e) { console.error('SMTP:', e.message); }
+  }
+  res.json({ ok: true, link, emailed });
+});
+function findInvite(token) {
+  const u = db.get().users.find((x) => x.pending && x.inviteToken === token);
+  if (!u) return { error: 'Invitatie invalida.' };
+  if (u.inviteExp && u.inviteExp < Date.now()) return { error: 'Invitatie expirata. Cere alta administratorului.' };
+  return { user: u };
+}
+// Public: detalii invitatie (numele de utilizator) pentru formularul de setare parola
+app.get('/api/invite/:token', (req, res) => {
+  const r = findInvite(req.params.token);
+  if (r.error) return res.status(404).json({ error: r.error });
+  res.json({ username: r.user.username, role: r.user.role });
+});
+// Public: acceptarea invitatiei (setarea parolei) + autentificare
+app.post('/api/invite/accept', (req, res) => {
+  const { token, password } = req.body || {};
+  const d = db.get();
+  const r = findInvite(token);
+  if (r.error) return res.status(404).json({ error: r.error });
+  const u = r.user;
+  if (!password || String(password).length < 4) return res.status(400).json({ error: 'Parola prea scurta (min. 4).' });
+  const h = authlib.hashPassword(password);
+  u.salt = h.salt; u.hash = h.hash; u.pending = false; delete u.inviteToken; delete u.inviteExp;
+  startSession(req, res, u);
+  logAudit('invite.accept', u.username, { userId: u.id, username: u.username, firmaId: null });
+  db.save();
+  res.json({ ok: true, user: publicUser(u) });
+});
+
+function sendInviteEmail(smtp, to, link) {
+  // hook simplu SMTP prin nodemailer daca e instalat; altfel arunca (adminul foloseste linkul).
+  let nodemailer;
+  try { nodemailer = require('nodemailer'); } catch (_) { throw new Error('nodemailer neinstalat'); }
+  const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port || 587, secure: !!smtp.secure, auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined });
+  return t.sendMail({ from: smtp.from || smtp.user, to, subject: 'Invitatie Contabo', text: 'Ai fost invitat in Contabo. Seteaza-ti parola aici:\n' + link });
+}
+
+app.post('/api/company', (req, res) => {
+  const f = db.getFirma(activeId(req));
+  if (f) Object.assign(f, req.body || {}, { id: f.id });
+  db.save();
+  res.json({ ok: true, company: f });
+});
+
+app.post('/api/settings', (req, res) => {
+  const d = db.get();
+  d.settings = Object.assign({}, d.settings, req.body || {});
+  db.save();
+  res.json({ ok: true, settings: d.settings });
+});
+
+// Cote fiscale configurabile (admin): CAS/CASS/impozit/TVA/profit/salariu minim etc.
+app.get('/api/fiscal-config', requireAdmin, (req, res) => res.json({ current: fiscal.FISCAL, defaults: fiscal.DEFAULTS, custom: db.get().settings.fiscal || {} }));
+app.post('/api/fiscal-config', requireAdmin, (req, res) => {
+  const d = db.get();
+  const b = req.body || {};
+  if (b.reset) { delete d.settings.fiscal; fiscal.applyConfig({}); logAudit('fiscal.config', 'reset la valori standard', { req, firmaId: null }); }
+  else {
+    const cfg = Object.assign({}, d.settings.fiscal || {});
+    for (const k of Object.keys(fiscal.DEFAULTS)) { if (b[k] != null && b[k] !== '' && Number.isFinite(Number(b[k]))) cfg[k] = Number(b[k]); }
+    d.settings.fiscal = cfg;
+    fiscal.applyConfig(cfg);
+    logAudit('fiscal.config', 'cote fiscale actualizate', { req, firmaId: null });
+  }
+  db.save();
+  res.json({ ok: true, current: fiscal.FISCAL });
+});
+
+app.get('/api/partners', (req, res) => res.json(S(req).partners));
+app.post('/api/partners', (req, res) => {
+  const p = req.body || {};
+  const key = String(p.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
+  if (!key) return res.status(400).json({ error: 'CUI lipsa.' });
+  const d = db.get();
+  const fid = activeId(req);
+  d.partners[fid] = d.partners[fid] || {};
+  const prev = d.partners[fid][key] || {};
+  d.partners[fid][key] = {
+    cui: key, den: p.den || '', adresa: p.adresa || '', oras: p.oras || '',
+    judet: p.judet || '', tara: p.tara || 'RO', tip: p.tip != null ? p.tip : (prev.tip || ''),
+  };
+  db.save();
+  res.json({ ok: true, partner: d.partners[fid][key] });
+});
+// Import parteneri din CSV: coloane CUI;Denumire;Adresa;Oras;Judet;Tara (header optional)
+// Conversie XLSX (Excel modern) / DBF (dBASE-FoxPro) -> CSV, pentru fluxurile de import (parteneri, conturi, produse).
+app.post('/api/xlsx-to-csv', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
+  let rows;
+  try {
+    const data = fs.readFileSync(req.file.path);
+    const name = req.file.originalname || '';
+    const isXlsx = (data.length > 1 && data[0] === 0x50 && data[1] === 0x4B) || /\.xlsx$/i.test(name); // "PK" -> zip
+    const isXls = (data.length > 1 && data[0] === 0xD0 && data[1] === 0xCF) || /\.xls$/i.test(name);   // OLE compound -> Excel vechi
+    const isDbf = /\.dbf$/i.test(name) || [0x03, 0x04, 0x05, 0x30, 0x31, 0x32, 0x83, 0x8b, 0xf5, 0xfb].includes(data[0]);
+    rows = isXlsx ? xlsx.parseXlsx(data) : isXls ? xls.parseXls(data) : isDbf ? dbf.parseDbf(data) : xlsx.parseXlsx(data);
+  } catch (e) { try { fs.unlinkSync(req.file.path); } catch (_) { /* */ } return res.status(400).json({ error: e.message }); }
+  try { fs.unlinkSync(req.file.path); } catch (_) { /* */ }
+  if (!rows.length) return res.status(400).json({ error: 'Fisierul este gol sau nerecunoscut.' });
+  res.json({ ok: true, rows: rows.length, csv: toCsv(rows[0], rows.slice(1)) });
+});
+app.post('/api/partners/import', (req, res) => {
+  const rows = parseCsv((req.body || {}).csv || '');
+  if (!rows.length) return res.status(400).json({ error: 'CSV gol sau invalid.' });
+  // sare peste randul de antet daca prima celula nu pare un CUI
+  let start = 0;
+  if (/cui|cod|denumire/i.test((rows[0][0] || '') + (rows[0][1] || ''))) start = 1;
+  const d = db.get();
+  const fid = activeId(req);
+  d.partners[fid] = d.partners[fid] || {};
+  let importati = 0; const erori = [];
+  for (let i = start; i < rows.length; i++) {
+    const r = rows[i];
+    const key = String(r[0] || '').replace(/^ro/i, '').replace(/\s/g, '');
+    if (!key) { erori.push('rand ' + (i + 1) + ': CUI lipsa'); continue; }
+    d.partners[fid][key] = { cui: key, den: r[1] || '', adresa: r[2] || '', oras: r[3] || '', judet: r[4] || '', tara: r[5] || 'RO', tip: (r[6] || '').toLowerCase().trim() };
+    importati += 1;
+  }
+  logAudit('partners.import', importati + ' parteneri', { req });
+  db.save();
+  res.json({ ok: true, importati, erori });
+});
+
+app.get('/api/opening-analytic', (req, res) => res.json(S(req).openingAnalytic));
+app.post('/api/opening-analytic', (req, res) => {
+  const b = req.body || {};
+  if (!b.cont) return res.status(400).json({ error: 'Lipseste contul.' });
+  const d = db.get();
+  const fid = activeId(req);
+  d.openingAnalytic = d.openingAnalytic || [];
+  const key = (p) => p.firmaId + '|' + p.cont + '|' + String(p.cui || p.partener || '').toUpperCase().replace(/^RO/i, '').replace(/\s/g, '');
+  const rec = { firmaId: fid, cont: String(b.cont), partener: b.partener || '', cui: b.cui || '', d: round2(parseFloat(b.d) || 0), c: round2(parseFloat(b.c) || 0) };
+  const i = d.openingAnalytic.findIndex((x) => key(x) === key(rec));
+  if (i >= 0) d.openingAnalytic[i] = rec; else d.openingAnalytic.push(rec);
+  db.save();
+  res.json({ ok: true, openingAnalytic: d.openingAnalytic.filter((o) => o.firmaId === fid) });
+});
+app.delete('/api/opening-analytic/:idx', (req, res) => {
+  const d = db.get();
+  const fid = activeId(req);
+  const list = d.openingAnalytic.filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === fid);
+  const rec = list[Number(req.params.idx)];
+  if (rec) { const gi = d.openingAnalytic.indexOf(rec); if (gi >= 0) d.openingAnalytic.splice(gi, 1); }
+  db.save();
+  res.json({ ok: true });
+});
+
+app.post('/api/opening', (req, res) => {
+  const d = db.get();
+  d.openingBalances[activeId(req)] = req.body && req.body.openingBalances ? req.body.openingBalances : {};
+  db.save();
+  res.json({ ok: true });
+});
+
+// ───────────────────────────── UPLOAD ─────────────────────────────
+app.post('/api/upload', upload.single('file'), wrap(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
+  const d = db.get();
+  const ownCui = (db.getFirma(activeId(req)) || {}).cui;
+  const buf = fs.readFileSync(req.file.path);
+
+  let extracted;
+  let source = 'heuristic';
+  let warning = null;
+  let extra = {};
+  const useAI = ai.aiAvailable() && d.settings.useAI !== false;
+  if (useAI) {
+    try {
+      const r = await ai.extractWithAI(buf, ownCui);
+      extracted = { suggestedType: r.suggestedType, fields: r.fields, cuis: r.cuis, text: '' };
+      source = 'ai';
+      extra = { incredere: r.incredere, motiv: r.motiv };
+    } catch (e) {
+      warning = 'Extragerea cu AI a esuat (' + (e.message || e) + '). S-au folosit reguli locale.';
+      console.error('AI extract failed:', e.message || e);
+    }
+  }
+  const mediaType = ai.detectMediaType(buf);
+  const isImage = mediaType && mediaType.startsWith('image/');
+  if (!extracted) {
+    if (isImage) {
+      // imaginile nu pot fi citite cu reguli locale (text) — necesita extragerea cu AI
+      extracted = { suggestedType: 'nota_contabila', fields: {}, cuis: [], text: '' };
+      if (!warning) warning = useAI ? warning : 'Pentru imagini (JPG/PNG) e nevoie de extragerea cu AI (configureaz-o in Setari). Completeaza manual campurile.';
+    } else {
+      extracted = await extractFromPdf(buf, ownCui);
+    }
+  }
+
+  const docId = db.nextId('doc');
+  d.documents.push({
+    id: docId,
+    firmaId: activeId(req),
+    fileName: req.file.originalname,
+    storedName: req.file.filename,
+    uploadedAt: new Date().toISOString(),
+    text: (extracted.text || '').slice(0, 20000),
+  });
+  db.save();
+  res.json(Object.assign({
+    documentId: docId,
+    fileName: req.file.originalname,
+    suggestedType: extracted.suggestedType,
+    fields: extracted.fields,
+    cuis: extracted.cuis,
+    source,
+    warning,
+  }, extra));
+}));
+
+// Document fara extragere (introducere manuala / atasament)
+app.post('/api/upload-only', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
+  const d = db.get();
+  const docId = db.nextId('doc');
+  d.documents.push({
+    id: docId, firmaId: activeId(req), fileName: req.file.originalname, storedName: req.file.filename,
+    uploadedAt: new Date().toISOString(), text: '',
+  });
+  db.save();
+  res.json({ documentId: docId, fileName: req.file.originalname });
+});
+
+app.get('/api/document/:id/file', (req, res) => {
+  const d = db.get();
+  const doc = d.documents.find((x) => x.id === req.params.id);
+  if (!doc) return res.status(404).send('Document inexistent');
+  res.sendFile(path.join(db.UPLOAD_DIR, doc.storedName));
+});
+
+app.get('/api/documents', (req, res) => {
+  res.json(S(req).documents.map((x) => ({ id: x.id, fileName: x.fileName, uploadedAt: x.uploadedAt })));
+});
+
+// Galerie documente primite: fiecare fisier incarcat, cu tipul (imagine/pdf) si articolul asociat.
+app.get('/api/documents/gallery', (req, res) => {
+  const v = S(req);
+  const byFile = {};
+  for (const e of v.entries) if (e.fileId) byFile[e.fileId] = e;
+  const typeOf = (name) => {
+    const x = (String(name || '').match(/\.([a-z0-9]+)$/i) || ['', ''])[1].toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic', 'tif', 'tiff'].includes(x)) return 'image';
+    if (x === 'pdf') return 'pdf';
+    return 'other';
+  };
+  const docs = v.documents.map((d) => {
+    const e = byFile[d.id];
+    return {
+      id: d.id, fileName: d.fileName, uploadedAt: d.uploadedAt, type: typeOf(d.storedName || d.fileName),
+      entry: e ? { id: e.id, tip: e.tip, tipNume: e.tipNume, data: e.data, partener: e.partener || '', document: e.document || '' } : null,
+    };
+  }).sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
+  res.json(docs);
+});
+
+// Galerie documente emise: facturile catre clienti (grup Vanzari), fiecare cu PDF vizual + e-Factura.
+app.get('/api/documents/emitted', (req, res) => {
+  const v = S(req);
+  const EFACT = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare']);
+  const rows = v.entries.filter((e) => { const t = getType(e.tip); return t && t.grup === 'Vanzari'; }).map((e) => {
+    let baza = 0; let tva = 0;
+    for (const l of e.lines) {
+      if (Number(String(l.credit)[0]) === 7) baza = round2(baza + l.suma);
+      if (Number(String(l.debit)[0]) === 7) baza = round2(baza - l.suma);
+      if (l.credit === '4427' || l.credit === '4428') tva = round2(tva + l.suma);
+      if (l.debit === '4427' || l.debit === '4428') tva = round2(tva - l.suma);
+    }
+    return { id: e.id, tip: e.tip, tipNume: e.tipNume, data: e.data, period: e.period || periodOf(e.data), partener: e.partener || '', document: e.document || '', baza, tva, total: round2(baza + tva), eFactura: EFACT.has(e.tip) };
+  }).sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
+  res.json(rows);
+});
+
+// ───────────────────────────── ENTRIES ─────────────────────────────
+/**
+ * Actualizeaza nomenclatorul de parteneri din datele unui articol DEJA validat si adaugat.
+ * Apelat de rute DUPA push (nu din buildEntry) ca o inregistrare esuata sa nu lase partenerul orfan.
+ */
+function upsertPartner(firmaId, entry) {
+  if (!entry || !entry.partenerCui) return;
+  const key = String(entry.partenerCui).replace(/^ro/i, '').replace(/\s/g, '');
+  if (!key) return;
+  const dd = db.get();
+  dd.partners[firmaId] = dd.partners[firmaId] || {};
+  const ex = dd.partners[firmaId][key] || { cui: key, den: '', adresa: '', oras: '', judet: '', tara: 'RO', tip: '' };
+  if (entry.partener) ex.den = entry.partener;
+  ex.cui = key;
+  // marcheaza automat rolul dupa tipul documentului (vanzare -> client, cumparare -> furnizor)
+  const role = /vanzare|^livrare_intra|^bon_fiscal/.test(entry.tip) ? 'client' : (/cumparare/.test(entry.tip) ? 'furnizor' : '');
+  if (role) { if (!ex.tip) ex.tip = role; else if (ex.tip !== role && ex.tip !== 'ambele') ex.tip = 'ambele'; }
+  dd.partners[firmaId][key] = ex;
+}
+
+function buildEntry(tipId, fields, fileId, firmaId) {
+  firmaId = firmaId || db.firmaActiva();
+  const type = getType(tipId);
+  if (!type) throw new Error('Tip de document necunoscut: ' + tipId);
+  const f = Object.assign({}, fields);
+  // coercitie numerica pentru campurile numerice
+  for (const fld of type.fields) {
+    if (fld.type === 'number') f[fld.name] = round2(parseFloat(f[fld.name]) || 0);
+  }
+  // linii detaliate (optional): daca exista, baza si TVA se calculeaza din ele
+  let items = [];
+  if (f.items) {
+    try { items = typeof f.items === 'string' ? JSON.parse(f.items) : f.items; } catch (_) { items = []; }
+    items = (Array.isArray(items) ? items : []).map((it) => ({
+      nume: String(it.nume || '').trim(),
+      cantitate: round2(parseFloat(it.cantitate) || 0),
+      um: String(it.um || 'buc').trim(),
+      pret: round2(parseFloat(it.pret) || 0),
+      cota: Number(it.cota) || 0,
+    })).filter((it) => it.nume && it.cantitate > 0);
+    if (items.length) {
+      let baza = 0; let tva = 0;
+      for (const it of items) { const b = round2(it.cantitate * it.pret); baza = round2(baza + b); tva = round2(tva + (b * it.cota) / 100); }
+      f.baza = baza; f.tva = round2(tva);
+    }
+  }
+  const lines = type.build(f).filter((l) => l.suma !== 0); // storno foloseste sume negative (in rosu)
+  if (!lines.length) throw new Error('Completeaza cel putin o suma (baza, TVA sau total) inainte de salvare.');
+  // Deductibilitate partiala auto 50% (art. 298 Cod fiscal): jumatate din TVA devine NEDEDUCTIBILA
+  // si se include in cost (vehicule fara utilizare exclusiv pentru afacere).
+  if (f.auto50) {
+    const vatL = lines.find((l) => l.debit === '4426');
+    if (vatL && vatL.suma > 0) {
+      const costL = lines.find((l) => l !== vatL && l.credit === vatL.credit); // linia de cost catre acelasi furnizor
+      const ded = round2(vatL.suma / 2);
+      const nedeq = round2(vatL.suma - ded);
+      vatL.suma = ded;
+      vatL.explicatie = (vatL.explicatie || 'TVA') + ' deductibila 50% (auto)';
+      if (costL) { costL.suma = round2(costL.suma + nedeq); costL.explicatie = (costL.explicatie || '') + ' (+50% TVA nedeductibil auto)'; }
+    }
+  }
+  // Regim „TVA la incasare": pe facturi, TVA devine NEEXIGIBILA (4428) pana la incasare/plata.
+  const firma = db.getFirma(firmaId) || {};
+  if (firma.tvaLaIncasare && /^factura_(vanzare|cumparare|utilitati|servicii|combustibil|imobilizare)/.test(tipId)) {
+    for (const l of lines) {
+      if (l.credit === '4427') { l.credit = '4428'; l.explicatie = (l.explicatie || 'TVA') + ' (neexigibila - la incasare)'; }
+      if (l.debit === '4426') { l.debit = '4428'; l.explicatie = (l.explicatie || 'TVA') + ' (neexigibila - la plata)'; }
+    }
+  }
+  for (const l of lines) {
+    if (!coa.getAccount(l.debit)) throw new Error('Cont debitor inexistent in plan: ' + l.debit);
+    if (!coa.getAccount(l.credit)) throw new Error('Cont creditor inexistent in plan: ' + l.credit);
+  }
+  const data = f.data || new Date().toISOString().slice(0, 10);
+  // Blocarea perioadei: nu se inregistreaza in luni inchise (protejeaza fata de declaratiile depuse).
+  if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) {
+    throw new Error('Perioada ' + periodOf(data) + ' este inchisa (blocata pana la ' + firma.lockedUntil + '). Un administrator o poate debloca din Setari → Blocare perioada.');
+  }
+  // nomenclatorul de parteneri se actualizeaza din ruta (upsertPartner), DUPA ce articolul e validat si adaugat
+  return {
+    id: db.nextId('e'),
+    firmaId,
+    data,
+    period: periodOf(data),
+    tip: tipId,
+    tipNume: type.nume,
+    partener: f.partener || '',
+    partenerCui: f.cuiPartener || '',
+    document: f.document || '',
+    refFactura: f.refFactura || '',
+    analitic: f.analitic || '',
+    explicatie: f.explicatie || '',
+    items,
+    ...((f.codNC || (f.masaNeta && Number(f.masaNeta) > 0) || f.conditieLivrare) ? {
+      intrastat: { codNC: String(f.codNC || '').trim(), masaNeta: round2(parseFloat(f.masaNeta) || 0), natura: String(f.naturaTranz || '11').trim(), conditie: String(f.conditieLivrare || '').trim() },
+    } : {}),
+    ...((f.moneda && Number(f.sumaValuta) > 0 && Number(f.curs) > 0) ? {
+      valutaInfo: { valuta: String(f.moneda).toUpperCase().trim(), sumaValuta: round2(parseFloat(f.sumaValuta) || 0), curs: round2(parseFloat(f.curs) || 0) },
+    } : {}),
+    fileId: fileId || null,
+    system: false,
+    lines,
+  };
+}
+
+app.post('/api/entries', (req, res) => {
+  const { tip, fields, fileId, spvMsgId } = req.body || {};
+  const f = Object.assign({}, fields || {});
+  const stocLines = Array.isArray(f.stoc) ? f.stoc.filter((s) => s && s.productId && Number(s.cantitate) > 0) : [];
+  if (stocLines.length) f.cost = 0; // descarcarea vine din stoc (la CMP), nu din campul manual — evita dubla inregistrare
+  let entry;
+  try { entry = buildEntry(tip, f, fileId, activeId(req)); }
+  catch (e) { return res.status(400).json({ error: e.message }); }
+  if (spvMsgId) entry.spvImport = { msgId: spvMsgId, at: new Date().toISOString() };
+  const d = db.get();
+  const fid = activeId(req);
+  // Descarcare automata de gestiune din liniile de stoc (cost marfa vanduta la CMP)
+  let stocInfo = null;
+  if (stocLines.length) {
+    const v = S(req);
+    let r;
+    try { r = stocks.saleCogs(v.products, v.stockMovements, stocLines, { fid, data: entry.data, document: entry.document, entryId: entry.id, nextId: () => db.nextId('sm') }); }
+    catch (e) { return res.status(400).json({ error: e.message }); }
+    for (const ln of r.cogsLines) {
+      if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) return res.status(400).json({ error: 'Cont de descarcare inexistent in plan: ' + ln.debit + '/' + ln.credit });
+    }
+    for (const mv of r.newMovements) d.stockMovements.push(mv);
+    for (const ln of r.cogsLines) entry.lines.push(ln);
+    entry.stocMovementIds = r.newMovements.map((m) => m.id);
+    stocInfo = { cogsTotal: r.total, warns: r.warns, movements: r.newMovements.length };
+  }
+  d.entries.push(entry);
+  upsertPartner(fid, entry);
+  logAudit('entry.create', entry.tipNume + ' ' + (entry.document || ''), { req, firmaId: entry.firmaId });
+  db.save();
+  res.json({ ok: true, entry, stoc: stocInfo });
+});
+
+app.get('/api/entries', (req, res) => {
+  const { period } = req.query;
+  let list = S(req).entries;
+  if (period) list = list.filter((e) => (e.period || periodOf(e.data)) === period);
+  res.json(acc.sortEntries(list));
+});
+
+// ───────────────────────── FACTURI RECURENTE ─────────────────────────
+app.get('/api/recurring', (req, res) => {
+  const fid = activeId(req);
+  res.json((db.get().recurringInvoices || []).filter((t) => t.firmaId === fid));
+});
+app.post('/api/recurring', (req, res) => {
+  const b = req.body || {};
+  if (!b.tip) return res.status(400).json({ error: 'Alege tipul de document.' });
+  const d = db.get(); const fid = activeId(req);
+  const t = b.id && (d.recurringInvoices || []).find((x) => x.id === b.id && x.firmaId === fid);
+  const rec = t || { id: db.nextId('rec'), firmaId: fid, createdAt: new Date().toISOString() };
+  Object.assign(rec, {
+    tip: String(b.tip), partener: b.partener || '', cuiPartener: b.cuiPartener || '', document: b.document || '',
+    fields: (b.fields && typeof b.fields === 'object') ? b.fields : {},
+    frecventa: ['lunar', 'trimestrial', 'anual'].includes(b.frecventa) ? b.frecventa : 'lunar',
+    ziua: Math.min(28, Math.max(1, Number(b.ziua) || 1)),
+    startDate: /^\d{4}-\d{2}$/.test(b.startDate || '') ? b.startDate : new Date().toISOString().slice(0, 7),
+    activ: b.activ != null ? !!b.activ : true,
+  });
+  if (!t) d.recurringInvoices.push(rec);
+  logAudit('recurring.save', rec.tip + ' (' + rec.frecventa + ')', { req });
+  db.save();
+  res.json({ ok: true, template: rec });
+});
+app.delete('/api/recurring/:id', (req, res) => {
+  const d = db.get(); const fid = activeId(req);
+  d.recurringInvoices = (d.recurringInvoices || []).filter((t) => !(t.id === req.params.id && t.firmaId === fid));
+  logAudit('recurring.delete', req.params.id, { req });
+  db.save();
+  res.json({ ok: true });
+});
+app.get('/api/recurring/due', (req, res) => {
+  const fid = activeId(req);
+  const period = req.query.period || new Date().toISOString().slice(0, 7);
+  res.json({ period, due: recurring.dueForPeriod((db.get().recurringInvoices || []).filter((t) => t.firmaId === fid), period) });
+});
+app.post('/api/recurring/generate', (req, res) => {
+  const d = db.get(); const fid = activeId(req);
+  const period = req.query.period || new Date().toISOString().slice(0, 7);
+  const due = recurring.dueForPeriod((d.recurringInvoices || []).filter((t) => t.firmaId === fid), period);
+  const created = []; const errors = [];
+  for (const t of due) {
+    const fields = Object.assign({}, t.fields, {
+      data: period + '-' + String(t.ziua || 1).padStart(2, '0'),
+      partener: t.partener, cuiPartener: t.cuiPartener, document: t.document,
+    });
+    try {
+      const entry = buildEntry(t.tip, fields, null, fid);
+      entry.recurringId = t.id;
+      d.entries.push(entry);
+      upsertPartner(fid, entry);
+      t.lastGenerated = period;
+      created.push({ id: entry.id, tip: entry.tipNume, partener: t.partener });
+    } catch (e) { errors.push((t.partener || t.tip) + ': ' + e.message); }
+  }
+  if (created.length) logAudit('recurring.generate', period + ': ' + created.length + ' generate', { req });
+  db.save();
+  res.json({ ok: true, period, created: created.length, errors, items: created });
+});
+
+// ───────────────────────── PRODUCTIE ─────────────────────────
+// Helper comun: dintr-o comanda de productie creeaza articolul contabil + miscarile de stoc.
+function doProduction(req, res, order, document, data) {
+  const d = db.get(); const fid = activeId(req); const v = S(req);
+  const firma = db.getFirma(fid) || {};
+  if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) return res.status(400).json({ error: 'Perioada ' + periodOf(data) + ' este inchisa (blocata pana la ' + firma.lockedUntil + ').' });
+  let r;
+  try {
+    r = production.buildProduction(v.products, v.stockMovements, order, { fid, data, document: document || '', nextId: () => db.nextId('sm') });
+  } catch (e) { return res.status(400).json({ error: e.message }); }
+  if (!r.lines.length) return res.status(400).json({ error: 'Nimic de inregistrat — verifica produsul finit, cantitatea si costul.' });
+  for (const ln of r.lines) if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) return res.status(400).json({ error: 'Cont inexistent in plan: ' + ln.debit + '/' + ln.credit });
+  const entry = {
+    id: db.nextId('e'), firmaId: fid, data, period: periodOf(data), tip: 'productie', tipNume: 'Productie (obtinere produse finite)',
+    partener: '', document: document || 'Bon productie', explicatie: 'Consum materiale + obtinere produse finite', fileId: null, system: false, lines: r.lines,
+  };
+  r.newMovements.forEach((m) => { m.entryId = entry.id; d.stockMovements.push(m); });
+  entry.stocMovementIds = r.newMovements.map((m) => m.id);
+  d.entries.push(entry);
+  logAudit('productie', 'cost obtinut ' + r.valoareObtinuta, { req });
+  db.save();
+  res.json({ ok: true, entry, costMateriale: r.costMateriale, valoareObtinuta: r.valoareObtinuta, warns: r.warns });
+}
+app.post('/api/production', (req, res) => {
+  const b = req.body || {};
+  const data = b.data || new Date().toISOString().slice(0, 10);
+  doProduction(req, res, {
+    productId: b.productId, gestiuneId: b.gestiuneId || null, cantitate: b.cantitate, costUnitar: b.costUnitar,
+    materiale: Array.isArray(b.materiale) ? b.materiale : [],
+  }, b.document || '', data);
+});
+app.get('/api/production-report', (req, res) => res.json(production.productionReport(S(req), req.query.period || null)));
+
+// ── Retete / BOM stocate ──
+app.get('/api/recipes', (req, res) => {
+  const fid = activeId(req);
+  res.json((db.get().recipes || []).filter((t) => t.firmaId === fid));
+});
+app.post('/api/recipes', (req, res) => {
+  const b = req.body || {};
+  if (!b.nume || !b.productId) return res.status(400).json({ error: 'Completeaza numele retetei si produsul finit.' });
+  const d = db.get(); const fid = activeId(req);
+  const t = b.id && (d.recipes || []).find((x) => x.id === b.id && x.firmaId === fid);
+  const rec = t || { id: db.nextId('bom'), firmaId: fid, createdAt: new Date().toISOString() };
+  Object.assign(rec, {
+    nume: String(b.nume), productId: b.productId, gestiuneId: b.gestiuneId || null,
+    cantitateBaza: Number(b.cantitateBaza) > 0 ? Number(b.cantitateBaza) : 1,
+    costUnitar: Number(b.costUnitar) || 0,
+    materiale: (Array.isArray(b.materiale) ? b.materiale : []).filter((m) => m && m.productId && Number(m.cantitate) > 0)
+      .map((m) => ({ productId: m.productId, gestiuneId: m.gestiuneId || null, cantitate: Number(m.cantitate) || 0 })),
+  });
+  if (!t) d.recipes.push(rec);
+  logAudit('reteta.save', rec.nume, { req });
+  db.save();
+  res.json({ ok: true, recipe: rec });
+});
+app.delete('/api/recipes/:id', (req, res) => {
+  const d = db.get(); const fid = activeId(req);
+  d.recipes = (d.recipes || []).filter((t) => !(t.id === req.params.id && t.firmaId === fid));
+  logAudit('reteta.delete', req.params.id, { req });
+  db.save();
+  res.json({ ok: true });
+});
+app.post('/api/recipes/:id/produce', (req, res) => {
+  const b = req.body || {}; const fid = activeId(req);
+  const rec = (db.get().recipes || []).find((t) => t.id === req.params.id && t.firmaId === fid);
+  if (!rec) return res.status(404).json({ error: 'Reteta inexistenta.' });
+  const data = b.data || new Date().toISOString().slice(0, 10);
+  const order = production.expandRecipe(rec, b.cantitate, b.costUnitar);
+  doProduction(req, res, order, b.document || ('Bon productie ' + rec.nume), data);
+});
+
+app.delete('/api/entries/:id', (req, res) => {
+  const d = db.get();
+  const e = d.entries.find((x) => x.id === req.params.id);
+  if (e) {
+    const firma = db.getFirma(e.firmaId == null ? activeId(req) : e.firmaId);
+    const per = e.period || periodOf(e.data);
+    if (firma && firma.lockedUntil && per <= firma.lockedUntil) {
+      return res.status(400).json({ error: 'Inregistrarea e in perioada inchisa ' + per + ' (blocata pana la ' + firma.lockedUntil + '). Deblocheaza perioada (admin) inainte de stergere.' });
+    }
+  }
+  const n = d.entries.length;
+  d.entries = d.entries.filter((x) => x.id !== req.params.id);
+  if (e) logAudit('entry.delete', e.tipNume + ' ' + (e.document || ''), { req, firmaId: e.firmaId });
+  db.save();
+  res.json({ ok: true, removed: n - d.entries.length });
+});
+
+// Blocare/deblocare perioada (admin): seteaza luna pana la care e read-only (sau goleste pentru deblocare).
+app.post('/api/period-lock', requireAdmin, (req, res) => {
+  const firma = db.getFirma(activeId(req));
+  if (!firma) return res.status(404).json({ error: 'Firma inexistenta.' });
+  const v = (req.body || {}).lockedUntil;
+  if (v == null || v === '') firma.lockedUntil = null;
+  else if (/^\d{4}-\d{2}$/.test(v) && Number(v.slice(5)) >= 1 && Number(v.slice(5)) <= 12) firma.lockedUntil = v;
+  else return res.status(400).json({ error: 'Format invalid. Foloseste YYYY-MM (ex. 2026-05) sau gol pentru deblocare.' });
+  logAudit('perioada.lock', firma.lockedUntil ? 'blocat pana la ' + firma.lockedUntil : 'deblocat complet', { req });
+  db.save();
+  res.json({ ok: true, lockedUntil: firma.lockedUntil });
+});
+
+// TVA la incasare: din suma bruta incasata/platita, calculeaza TVA exigibila si posteaza nota
+app.post('/api/tva-incasare/exigibilitate', (req, res) => {
+  const b = req.body || {};
+  const brut = round2(Number(b.brut) || 0);
+  const cota = Number(b.cota) || 0;
+  if (brut <= 0 || cota <= 0) return res.status(400).json({ error: 'Completeaza suma bruta si cota TVA.' });
+  const tva = round2((brut * cota) / (100 + cota));
+  const tip = b.tip === 'deductibila' ? 'exigibilitate_tva_deductibila' : 'exigibilitate_tva_colectata';
+  const data = b.data && String(b.data).length === 10 ? b.data : new Date().toISOString().slice(0, 10);
+  const entry = buildEntry(tip, { data, partener: b.partener || '', document: b.document || '', tva }, null, activeId(req));
+  entry.system = true;
+  const d = db.get();
+  d.entries.push(entry);
+  logAudit('tva.exigibilitate', tip + ' ' + tva, { req });
+  db.save();
+  res.json({ ok: true, tva, brut, cota, entry });
+});
+
+// ───────────────────────────── INCHIDERI ─────────────────────────────
+app.post('/api/close-vat', (req, res) => {
+  const period = req.query.period;
+  if (!period) return res.status(400).json({ error: 'Lipseste perioada (YYYY-MM).' });
+  const d = db.get();
+  const firma = db.getFirma(activeId(req));
+  const v = acc.vatClosing(S(req), period);
+  if (v.lines.length) {
+    d.entries.push({
+      id: db.nextId('e'), firmaId: activeId(req), data: period + '-28', period, tip: 'inchidere_tva', tipNume: 'Inchidere TVA',
+      partener: '', document: 'Nota TVA ' + period, explicatie: 'Regularizare TVA',
+      fileId: null, system: true, lines: v.lines,
+    });
+  }
+  // Inchiderea lunii BLOCHEAZA perioada (read-only) — nu se mai poate inregistra/sterge in ea fara deblocare (admin).
+  if (firma && (!firma.lockedUntil || period > firma.lockedUntil)) firma.lockedUntil = period;
+  logAudit('inchidere.tva', period + ' (perioada blocata)', { req });
+  db.save();
+  res.json({ ok: true, result: v, lockedUntil: firma ? firma.lockedUntil : null, message: v.lines.length ? undefined : 'Fara TVA de regularizat; perioada a fost blocata.' });
+});
+
+app.post('/api/close-year', (req, res) => {
+  const year = req.query.year;
+  if (!year) return res.status(400).json({ error: 'Lipseste anul (YYYY).' });
+  const d = db.get();
+  const c = acc.annualClosing(S(req), year);
+  if (!c.lines.length) return res.json({ ok: true, message: 'Nimic de inchis.', result: c });
+  const data = year + '-12-31';
+  d.entries.push({
+    id: db.nextId('e'), firmaId: activeId(req), data, period: year + '-12', tip: 'inchidere_an', tipNume: 'Inchidere conturi venituri/cheltuieli',
+    partener: '', document: 'Inchidere ' + year, explicatie: 'Inchidere clasa 6 si 7 in contul 121',
+    fileId: null, system: true, lines: c.lines,
+  });
+  logAudit('inchidere.an', year, { req });
+  db.save();
+  res.json({ ok: true, result: c });
+});
+
+// Impozit pe profit — calcul cu ajustari fiscale (nedeductibile, deduceri, pierdere reportata) + 691 = 4411.
+function profitTaxOpts(req, year) {
+  const firma = db.getFirma(activeId(req)) || {};
+  const losses = firma.pierdereFiscala || {};
+  const src = Object.assign({}, req.query, req.body || {});
+  const pr = (src.pierdereReportata != null && src.pierdereReportata !== '') ? Number(src.pierdereReportata) : (Number(losses[Number(year) - 1]) || 0);
+  return {
+    cota: fiscal.FISCAL.impozitProfit,
+    cheltNedeductibile: Number(src.cheltNedeductibile) || 0,
+    deduceri: Number(src.deduceri) || 0,
+    pierdereReportata: pr || 0,
+  };
+}
+app.get('/api/profit-tax-preview', (req, res) => {
+  const year = req.query.year || new Date().getFullYear();
+  res.json(acc.profitTax(S(req), year, profitTaxOpts(req, year)));
+});
+app.post('/api/close-profit-tax', (req, res) => {
+  const year = req.query.year || (req.body || {}).year;
+  if (!year) return res.status(400).json({ error: 'Lipseste anul (YYYY).' });
+  const d = db.get(); const fid = activeId(req);
+  const exists = d.entries.find((e) => e.firmaId === fid && e.tip === 'impozit_profit' && e.period === year + '-12');
+  if (exists) return res.status(400).json({ error: 'Impozitul pe profit pe ' + year + ' este deja inregistrat.' });
+  const pt = acc.profitTax(S(req), year, profitTaxOpts(req, year));
+  // memoreaza pierderea fiscala de reportat (chiar daca impozitul e 0), pentru anii urmatori
+  const firma = db.getFirma(fid);
+  if (firma) { firma.pierdereFiscala = firma.pierdereFiscala || {}; firma.pierdereFiscala[year] = pt.pierdereDeReportat; }
+  if (!pt.lines.length) { db.save(); return res.json({ ok: true, message: 'Profit impozabil 0 sau pierdere — niciun impozit. Pierdere fiscala de reportat: ' + pt.pierdereDeReportat + ' lei.', result: pt }); }
+  d.entries.push({
+    id: db.nextId('e'), firmaId: fid, data: year + '-12-31', period: year + '-12', tip: 'impozit_profit', tipNume: 'Impozit pe profit',
+    partener: '', document: 'Impozit profit ' + year, explicatie: 'Inregistrare impozit pe profit (' + pt.cota + '%)',
+    fileId: null, system: true, lines: pt.lines,
+  });
+  logAudit('impozit.profit', year + ': ' + pt.impozit, { req });
+  db.save();
+  res.json({ ok: true, result: pt });
+});
+
+// Repartizarea rezultatului: 121 -> 117 (profit) sau 117 -> 121 (pierdere)
+app.get('/api/distribute-preview', (req, res) => {
+  res.json(acc.resultDistribution(S(req), req.query.year || String(new Date().getFullYear())));
+});
+app.post('/api/distribute-result', (req, res) => {
+  const year = req.query.year;
+  if (!year) return res.status(400).json({ error: 'Lipseste anul (YYYY).' });
+  const d = db.get();
+  const r = acc.resultDistribution(S(req), year);
+  if (!r.lines.length) return res.json({ ok: true, message: 'Soldul contului 121 este zero — nimic de repartizat.', result: r });
+  for (const l of r.lines) {
+    if (!coa.getAccount(l.debit) || !coa.getAccount(l.credit)) return res.status(400).json({ error: 'Cont inexistent in plan: ' + l.debit + '/' + l.credit });
+  }
+  d.entries.push({
+    id: db.nextId('e'), firmaId: activeId(req), data: year + '-12-31', period: year + '-12', tip: 'repartizare_rezultat', tipNume: 'Repartizarea rezultatului',
+    partener: '', document: 'Repartizare ' + year, explicatie: r.profit ? 'Repartizarea profitului (121=117)' : 'Reportarea pierderii (117=121)',
+    fileId: null, system: true, lines: r.lines,
+  });
+  logAudit('repartizare.rezultat', year + ' ' + (r.profit ? 'profit ' + r.profit : 'pierdere ' + r.pierdere), { req });
+  db.save();
+  res.json({ ok: true, result: r });
+});
+
+// ───────────────────────────── MIJLOACE FIXE ─────────────────────────────
+app.get('/api/assets', (req, res) => {
+  const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
+  res.json(assets.register(S(req), asOf));
+});
+app.get('/api/assets/:id/schedule', (req, res) => {
+  const a = (S(req).assets || []).find((x) => x.id === req.params.id);
+  if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' });
+  res.json({ asset: a, schedule: assets.schedule(a) });
+});
+app.post('/api/assets', (req, res) => {
+  const b = req.body || {};
+  if (!b.denumire || !b.cont || !b.cost || !b.durataLuni || !b.dataPif) return res.status(400).json({ error: 'Completeaza denumire, cont, cost, durata si data punerii in functiune.' });
+  const d = db.get();
+  const a = {
+    id: db.nextId('mf'), firmaId: activeId(req),
+    denumire: String(b.denumire), cont: String(b.cont),
+    furnizor: b.furnizor || '', cui: b.cui || '',
+    cost: round2(Number(b.cost) || 0), valoareReziduala: round2(Number(b.valoareReziduala) || 0),
+    dataAchizitie: b.dataAchizitie || b.dataPif, dataPif: String(b.dataPif),
+    durataLuni: Math.max(1, Number(b.durataLuni) || 1),
+    metoda: assets.METHODS.includes(b.metoda) ? b.metoda : 'liniara', status: 'activ',
+  };
+  d.assets.push(a);
+  logAudit('asset.create', a.denumire + ' (' + a.cont + ')', { req });
+  db.save();
+  res.json({ ok: true, asset: a });
+});
+app.post('/api/assets/:id/scrap', (req, res) => {
+  const d = db.get();
+  const a = (d.assets || []).find((x) => x.id === req.params.id);
+  if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' });
+  a.status = 'casat'; a.dataCasare = (req.body || {}).dataCasare || new Date().toISOString().slice(0, 10);
+  logAudit('asset.scrap', a.denumire, { req });
+  db.save();
+  res.json({ ok: true, asset: a });
+});
+app.delete('/api/assets/:id', (req, res) => {
+  const d = db.get();
+  const a = (d.assets || []).find((x) => x.id === req.params.id);
+  d.assets = (d.assets || []).filter((x) => x.id !== req.params.id);
+  if (a) logAudit('asset.delete', a.denumire, { req });
+  db.save();
+  res.json({ ok: true });
+});
+// Inregistreaza amortizarea lunii (6811 = 281x), o linie pe mijloc fix
+app.post('/api/assets/depreciation', (req, res) => {
+  const period = req.query.period;
+  if (!period) return res.status(400).json({ error: 'Lipseste perioada (YYYY-MM).' });
+  const d = db.get();
+  const dep = assets.monthlyDepreciation(S(req).assets, period);
+  if (!dep.lines.length) return res.json({ ok: true, message: 'Nicio amortizare de inregistrat pentru ' + period + '.', result: dep });
+  const exists = d.entries.find((e) => e.firmaId === activeId(req) && e.tip === 'amortizare_lunara' && e.period === period);
+  if (exists) return res.status(400).json({ error: 'Amortizarea pentru ' + period + ' este deja inregistrata.' });
+  d.entries.push({
+    id: db.nextId('e'), firmaId: activeId(req), data: period + '-28', period, tip: 'amortizare_lunara', tipNume: 'Amortizare mijloace fixe',
+    partener: '', document: 'Nota amortizare ' + period, explicatie: 'Amortizarea lunara a imobilizarilor',
+    fileId: null, system: true,
+    lines: dep.lines.map((l) => ({ debit: '6811', credit: l.contAmortizare, suma: l.suma, explicatie: 'Amortizare ' + l.denumire })),
+  });
+  logAudit('amortizare.lunara', period + ' (' + dep.lines.length + ' MF)', { req });
+  db.save();
+  res.json({ ok: true, result: dep });
+});
+
+// ───────────────────────────── SALARIZARE ─────────────────────────────
+app.get('/api/angajati', (req, res) => res.json(S(req).angajati));
+app.post('/api/angajati', (req, res) => {
+  const b = req.body || {};
+  if (!b.nume || !b.salariuBrut) return res.status(400).json({ error: 'Completeaza numele si salariul brut.' });
+  const d = db.get();
+  const a = b.id && (d.angajati || []).find((x) => x.id === b.id && x.firmaId === activeId(req));
+  const rec = a || { id: db.nextId('ang'), firmaId: activeId(req) };
+  Object.assign(rec, { nume: String(b.nume), cnp: b.cnp || '', functie: b.functie || '', salariuBrut: round2(Number(b.salariuBrut) || 0), neimpozabil: round2(Number(b.neimpozabil) || 0), spor: round2(Number(b.spor) || 0), avans: round2(Number(b.avans) || 0), retineri: round2(Number(b.retineri) || 0), persoane: b.persoane === '' || b.persoane == null ? null : Math.max(0, Math.round(Number(b.persoane) || 0)), sub26: !!b.sub26, copii: Math.max(0, Math.round(Number(b.copii) || 0)), tichete: round2(Number(b.tichete) || 0), sector: ['it', 'constructii', 'agro'].includes(b.sector) ? b.sector : 'normal' });
+  if (!a) d.angajati.push(rec);
+  logAudit('angajat.save', rec.nume, { req });
+  db.save();
+  res.json({ ok: true, angajat: rec });
+});
+app.delete('/api/angajati/:id', (req, res) => {
+  const d = db.get();
+  d.angajati = (d.angajati || []).filter((a) => a.id !== req.params.id);
+  db.save();
+  res.json({ ok: true });
+});
+app.get('/api/stat-plata', (req, res) => res.json(statePlata(S(req).angajati)));
+app.get('/api/registru-salarii', (req, res) => res.json(registruSalarii(S(req).payrollHistory, req.query.year || String(new Date().getFullYear()))));
+app.get('/pdf/registru-salarii', (req, res) => pdf.registruSalariiPdf(res, S(req).company, registruSalarii(S(req).payrollHistory, req.query.year || String(new Date().getFullYear()))));
+app.get('/pdf/adeverinta/:id', (req, res) => {
+  const v = S(req);
+  const year = req.query.year || String(new Date().getFullYear());
+  const rs = registruSalarii(v.payrollHistory, year);
+  const e = rs.angajati.find((x) => x.angajatId === req.params.id);
+  if (!e) return res.status(404).send('Niciun venit inregistrat pentru acest angajat in anul ' + year);
+  const ang = v.angajati.find((a) => a.id === req.params.id);
+  pdf.adeverintaPdf(res, v.company, Object.assign({ functie: ang ? ang.functie : '' }, e), year);
+});
+app.post('/api/stat-plata', (req, res) => {
+  const v = S(req);
+  if (!v.angajati.length) return res.status(400).json({ error: 'Niciun angajat definit.' });
+  const period = req.query.period;
+  if (!period) return res.status(400).json({ error: 'Lipseste perioada (YYYY-MM).' });
+  const sp = statePlata(v.angajati);
+  const data = period + '-30';
+  // posteaza articolul de salarii cu sumele agregate din statul de plata (potrivite exact)
+  const entry = buildEntry('stat_plata', {
+    data, brut: sp.totals.brut, neimpozabil: sp.totals.neimpozabil,
+    cas: sp.totals.cas, cass: sp.totals.cass, impozit: sp.totals.impozit, cam: sp.totals.cam,
+    analitic: sp.rows.length + ' angajati',
+  }, null, activeId(req));
+  entry.system = true; entry.document = 'Stat plata ' + period;
+  if (sp.totals.avans > 0) entry.lines.push({ debit: '421', credit: '425', suma: sp.totals.avans, explicatie: 'Retinere avans acordat' });
+  if (sp.totals.retineri > 0) entry.lines.push({ debit: '421', credit: '427', suma: sp.totals.retineri, explicatie: 'Retineri din salarii (terti/popriri)' });
+  const d = db.get();
+  d.entries.push(entry);
+  // instantaneu in istoricul de salarizare (inlocuieste daca luna era deja inregistrata)
+  d.payrollHistory = (d.payrollHistory || []).filter((h) => !(h.firmaId === activeId(req) && h.period === period));
+  d.payrollHistory.push({
+    id: db.nextId('ph'), firmaId: activeId(req), period, ts: new Date().toISOString(),
+    rows: sp.rows.map((r) => ({ angajatId: r.id, nume: r.nume, cnp: r.cnp, brut: r.brut, cas: r.cas, cass: r.cass, impozit: r.impozit, cam: r.cam, net: r.net, restPlata: r.restPlata })),
+    totals: sp.totals,
+  });
+  logAudit('stat.plata', period + ' (' + sp.rows.length + ' ang., net ' + sp.totals.net + ')', { req });
+  db.save();
+  res.json({ ok: true, totals: sp.totals, entry });
+});
+// Plata efectiva a salariilor: rest de plata -> 421 = 5121/5311
+app.post('/api/stat-plata/pay', (req, res) => {
+  const v = S(req);
+  const period = req.query.period;
+  if (!period) return res.status(400).json({ error: 'Lipseste perioada (YYYY-MM).' });
+  const sp = statePlata(v.angajati);
+  if (sp.totals.restPlata <= 0) return res.status(400).json({ error: 'Nimic de platit (rest de plata 0).' });
+  const cont = ['5121', '5311'].includes(req.query.cont) ? req.query.cont : '5121';
+  const entry = buildEntry('plata_salarii', { data: period + '-30', suma: sp.totals.restPlata, cont }, null, activeId(req));
+  entry.system = true; entry.document = 'Plata salarii ' + period;
+  const d = db.get();
+  d.entries.push(entry);
+  logAudit('plata.salarii', period + ' ' + sp.totals.restPlata + ' din ' + cont, { req });
+  db.save();
+  res.json({ ok: true, suma: sp.totals.restPlata, cont, entry });
+});
+
+// ───────────────────────────── STOCURI ─────────────────────────────
+app.get('/api/products', (req, res) => res.json(S(req).products));
+app.post('/api/products', (req, res) => {
+  const b = req.body || {};
+  if (!b.cod || !b.denumire) return res.status(400).json({ error: 'Completeaza codul si denumirea produsului.' });
+  const d = db.get();
+  const existing = (d.products || []).find((p) => p.firmaId === activeId(req) && p.cod === b.cod);
+  if (existing) {
+    Object.assign(existing, { denumire: b.denumire, um: b.um || existing.um, grupa: b.grupa || '', cont: b.cont || existing.cont, codNC: b.codNC || '' });
+    db.save();
+    return res.json({ ok: true, product: existing });
+  }
+  const p = { id: db.nextId('prod'), firmaId: activeId(req), cod: String(b.cod), denumire: String(b.denumire), um: b.um || 'buc', grupa: b.grupa || '', cont: b.cont || '371', codNC: b.codNC || '' };
+  d.products.push(p);
+  logAudit('product.create', p.cod + ' ' + p.denumire, { req });
+  db.save();
+  res.json({ ok: true, product: p });
+});
+// Import produse din CSV: Cod;Denumire;UM;Cont;Grupa;CodNC (header optional)
+app.post('/api/products/import', (req, res) => {
+  const rows = parseCsv((req.body || {}).csv || '');
+  if (!rows.length) return res.status(400).json({ error: 'CSV gol sau invalid.' });
+  let start = 0;
+  if (/cod|denumire/i.test((rows[0][0] || '') + (rows[0][1] || ''))) start = 1;
+  const d = db.get();
+  const fid = activeId(req);
+  let importati = 0;
+  for (let i = start; i < rows.length; i++) {
+    const r = rows[i];
+    const cod = String(r[0] || '').trim();
+    if (!cod || !r[1]) continue;
+    const existing = (d.products || []).find((p) => p.firmaId === fid && p.cod === cod);
+    const rec = existing || { id: db.nextId('prod'), firmaId: fid, cod };
+    Object.assign(rec, { denumire: r[1], um: r[2] || 'buc', cont: r[3] || '371', grupa: r[4] || '', codNC: r[5] || '' });
+    if (!existing) d.products.push(rec);
+    importati += 1;
+  }
+  logAudit('products.import', importati + ' produse', { req });
+  db.save();
+  res.json({ ok: true, importati });
+});
+app.delete('/api/products/:id', (req, res) => {
+  const d = db.get();
+  d.products = (d.products || []).filter((p) => p.id !== req.params.id);
+  d.stockMovements = (d.stockMovements || []).filter((m) => m.productId !== req.params.id);
+  db.save();
+  res.json({ ok: true });
+});
+// gestiuni (depozite)
+app.get('/api/gestiuni', (req, res) => res.json(S(req).gestiuni));
+app.post('/api/gestiuni', (req, res) => {
+  const b = req.body || {};
+  if (!b.cod || !b.denumire) return res.status(400).json({ error: 'Completeaza codul si denumirea gestiunii.' });
+  const d = db.get();
+  const existing = (d.gestiuni || []).find((g) => g.firmaId === activeId(req) && g.cod === b.cod);
+  if (existing) { Object.assign(existing, { denumire: b.denumire, gestionar: b.gestionar || '', cont: b.cont || existing.cont }); db.save(); return res.json({ ok: true, gestiune: existing }); }
+  const g = { id: db.nextId('gest'), firmaId: activeId(req), cod: String(b.cod), denumire: String(b.denumire), gestionar: b.gestionar || '', cont: b.cont || '371' };
+  d.gestiuni.push(g);
+  logAudit('gestiune.create', g.cod + ' ' + g.denumire, { req });
+  db.save();
+  res.json({ ok: true, gestiune: g });
+});
+app.delete('/api/gestiuni/:id', (req, res) => {
+  const d = db.get();
+  if ((d.stockMovements || []).some((m) => m.firmaId === activeId(req) && (m.gestiuneId === req.params.id || m.gestiuneDestId === req.params.id))) {
+    return res.status(400).json({ error: 'Gestiunea are miscari de stoc — sterge-le intai.' });
+  }
+  d.gestiuni = (d.gestiuni || []).filter((g) => g.id !== req.params.id);
+  db.save();
+  res.json({ ok: true });
+});
+app.get('/api/stock-movements', (req, res) => res.json(stocks.movementsList(S(req), req.query.period || null)));
+app.post('/api/stock-movements', (req, res) => {
+  const b = req.body || {};
+  if (!b.productId || !b.tip || !b.cantitate || !b.data) return res.status(400).json({ error: 'Completeaza produsul, tipul, cantitatea si data.' });
+  if (!['receptie', 'iesire', 'transfer'].includes(b.tip)) return res.status(400).json({ error: 'Tip miscare invalid.' });
+  const d = db.get();
+  const fid = activeId(req);
+  if (!(d.products || []).find((p) => p.id === b.productId && p.firmaId === fid)) return res.status(400).json({ error: 'Produs inexistent.' });
+  const gOk = (id) => !id || (d.gestiuni || []).some((g) => g.id === id && g.firmaId === fid);
+  if (!gOk(b.gestiuneId) || !gOk(b.gestiuneDestId)) return res.status(400).json({ error: 'Gestiune inexistenta.' });
+  if (b.tip === 'transfer' && (!b.gestiuneId || !b.gestiuneDestId || b.gestiuneId === b.gestiuneDestId)) return res.status(400).json({ error: 'Transferul cere gestiune sursa si destinatie diferite.' });
+  const m = {
+    id: db.nextId('sm'), firmaId: fid, data: String(b.data), tip: b.tip, productId: b.productId,
+    gestiuneId: b.gestiuneId || null, gestiuneDestId: b.tip === 'transfer' ? b.gestiuneDestId : null,
+    cantitate: round2(Number(b.cantitate) || 0), pretUnitar: round2(Number(b.pretUnitar) || 0),
+    document: b.document || '', furnizor: b.tip === 'receptie' ? (b.furnizor || '') : '', operator: (req.user && req.user.username) || '',
+  };
+  d.stockMovements.push(m);
+  logAudit('stock.move', b.tip + ' ' + m.cantitate, { req });
+  db.save();
+  res.json({ ok: true, movement: m });
+});
+app.delete('/api/stock-movements/:id', (req, res) => {
+  const d = db.get();
+  const m = (d.stockMovements || []).find((x) => x.id === req.params.id);
+  if (m && m.entryId) d.entries = d.entries.filter((e) => e.id !== m.entryId); // sterge si nota contabila legata
+  d.stockMovements = (d.stockMovements || []).filter((x) => x.id !== req.params.id);
+  db.save();
+  res.json({ ok: true });
+});
+// Descarcarea de gestiune: genereaza nota contabila dintr-o miscare (receptie 3xx=401, iesire 60x=3xx la CMP)
+app.post('/api/stock-movements/:id/post', (req, res) => {
+  const d = db.get();
+  const v = S(req);
+  const m = v.stockMovements.find((x) => x.id === req.params.id);
+  if (!m) return res.status(404).json({ error: 'Miscare inexistenta.' });
+  if (m.entryId) return res.status(400).json({ error: 'Nota contabila este deja generata pentru aceasta miscare.' });
+  const p = v.products.find((x) => x.id === m.productId);
+  if (!p) return res.status(400).json({ error: 'Produs inexistent.' });
+  const suma = round2(stocks.movementValue(p, v.stockMovements, m.id));
+  if (suma <= 0) return res.status(400).json({ error: 'Valoare zero — nimic de inregistrat.' });
+  const contStoc = p.cont || '371';
+  let line; let tip; let tipNume;
+  if (m.tip === 'receptie') {
+    line = { debit: contStoc, credit: '401', suma, explicatie: 'Receptie ' + p.denumire };
+    tip = 'stoc_receptie'; tipNume = 'Receptie in gestiune';
+  } else {
+    line = { debit: stocks.cogsAccount(contStoc), credit: contStoc, suma, explicatie: 'Descarcare gestiune ' + p.denumire };
+    tip = 'stoc_descarcare'; tipNume = 'Descarcare de gestiune';
+  }
+  const entry = {
+    id: db.nextId('e'), firmaId: activeId(req), data: m.data, period: String(m.data).slice(0, 7),
+    tip, tipNume, partener: '', partenerCui: '', document: m.document || '', analitic: '', explicatie: line.explicatie,
+    fileId: null, system: true, movementId: m.id, lines: [line],
+  };
+  d.entries.push(entry);
+  const mm = d.stockMovements.find((x) => x.id === m.id);
+  mm.entryId = entry.id;
+  logAudit('stoc.descarcare', tipNume + ' ' + suma, { req });
+  db.save();
+  res.json({ ok: true, entry });
+});
+// inventariere: lista (scriptic) + inregistrarea diferentelor (plus/minus + imputare)
+app.get('/api/inventory', (req, res) => {
+  const v = S(req);
+  if (!req.query.gestiune) return res.status(400).json({ error: 'Alege o gestiune.' });
+  res.json(stocks.inventoryList(v, req.query.gestiune, req.query.asOf || null));
+});
+app.post('/api/inventory', (req, res) => {
+  const b = req.body || {};
+  if (!b.gestiuneId || !b.data || !Array.isArray(b.lines)) return res.status(400).json({ error: 'Lipsesc gestiunea, data sau liniile.' });
+  const d = db.get();
+  const v = S(req);
+  const g = v.gestiuni.find((x) => x.id === b.gestiuneId);
+  if (!g) return res.status(400).json({ error: 'Gestiune inexistenta.' });
+  const tvaRate = (fiscal.FISCAL && fiscal.FISCAL.tvaStandard) || 21;
+  const doc = 'Inventar ' + g.cod + ' ' + b.data;
+  const result = { plusuri: [], minusuri: [], imputari: [] };
+  const operator = (req.user && req.user.username) || '';
+  const inv = { id: db.nextId('inv'), firmaId: activeId(req), gestiuneId: g.id, gestiuneCod: g.cod, gestiuneDen: g.denumire, gestionar: g.gestionar || '', operator, data: b.data, ts: new Date().toISOString(), status: 'activ', lines: [], entryIds: [], movementIds: [], totalScriptic: 0, totalFaptic: 0, totalPlus: 0, totalMinus: 0, totalImputat: 0 };
+  const addEntry = (e) => { d.entries.push(e); inv.entryIds.push(e.id); };
+  const addMove = (mv) => { d.stockMovements.push(mv); inv.movementIds.push(mv.id); };
+  for (const ln of b.lines) {
+    const p = v.products.find((x) => x.id === ln.productId);
+    if (!p) continue;
+    const led = stocks.productLedger(p, v.stockMovements, b.data, b.gestiuneId); // scriptic = starea de dinainte de inventar
+    const scriptic = led.stocQ; const cmp = led.cmp;
+    const faptic = round2(Number(ln.faptic) || 0);
+    const diff = round2(faptic - scriptic);
+    const cont = p.cont || '371';
+    const ivLine = { productId: p.id, cod: p.cod, denumire: p.denumire, um: p.um || 'buc', scriptic, faptic, diff, cmp, valoare: round2(Math.abs(diff) * cmp), tip: diff > 0 ? 'plus' : diff < 0 ? 'minus' : 'ok', imputat: false, tvaImputare: 0 };
+    inv.totalScriptic = round2(inv.totalScriptic + led.stocV);
+    inv.totalFaptic = round2(inv.totalFaptic + round2(faptic * cmp));
+    inv.lines.push(ivLine);
+    if (diff === 0) continue;
+    if (diff > 0) {
+      // plus de inventar: intrare in stoc + 3xx = 758
+      const val = round2(diff * (cmp || Number(ln.pret) || 0));
+      addMove({ id: db.nextId('sm'), firmaId: activeId(req), data: b.data, tip: 'receptie', productId: p.id, gestiuneId: b.gestiuneId, gestiuneDestId: null, cantitate: diff, pretUnitar: cmp || Number(ln.pret) || 0, document: doc, operator });
+      if (val > 0) addEntry({ id: db.nextId('e'), firmaId: activeId(req), data: b.data, period: String(b.data).slice(0, 7), tip: 'inventar_plus', tipNume: 'Plus de inventar', partener: '', partenerCui: '', document: doc, analitic: '', explicatie: 'Plus inventar ' + p.denumire, fileId: null, system: true, lines: [{ debit: cont, credit: '758', suma: val, explicatie: 'Plus de inventar ' + p.cod }] });
+      ivLine.valoare = val; inv.totalPlus = round2(inv.totalPlus + val);
+      result.plusuri.push({ produs: p.cod, cantitate: diff, valoare: val });
+    } else {
+      const q = round2(-diff);
+      const val = round2(q * cmp);
+      addMove({ id: db.nextId('sm'), firmaId: activeId(req), data: b.data, tip: 'iesire', productId: p.id, gestiuneId: b.gestiuneId, gestiuneDestId: null, cantitate: q, pretUnitar: 0, document: doc, operator });
+      if (val > 0) addEntry({ id: db.nextId('e'), firmaId: activeId(req), data: b.data, period: String(b.data).slice(0, 7), tip: 'inventar_minus', tipNume: 'Minus de inventar (lipsa)', partener: '', partenerCui: '', document: doc, analitic: '', explicatie: 'Lipsa inventar ' + p.denumire, fileId: null, system: true, lines: [{ debit: stocks.cogsAccount(cont), credit: cont, suma: val, explicatie: 'Lipsa la inventar ' + p.cod }] });
+      // imputare gestionar: 4282 = 7588 + 4427
+      if (ln.imputa && val > 0) {
+        const tva = round2((val * tvaRate) / 100);
+        addEntry({ id: db.nextId('e'), firmaId: activeId(req), data: b.data, period: String(b.data).slice(0, 7), tip: 'imputare_lipsa', tipNume: 'Imputare lipsa gestionar', partener: g.gestionar || '', partenerCui: '', document: doc, analitic: '', explicatie: 'Imputare ' + p.denumire + ' catre ' + (g.gestionar || 'gestionar'), fileId: null, system: true, lines: [
+          { debit: '4282', credit: '7588', suma: val, explicatie: 'Imputare lipsa ' + p.cod },
+          { debit: '4282', credit: '4427', suma: tva, explicatie: 'TVA imputare lipsa ' + p.cod },
+        ] });
+        ivLine.imputat = true; ivLine.tvaImputare = tva; inv.totalImputat = round2(inv.totalImputat + val + tva);
+        result.imputari.push({ produs: p.cod, valoare: val, tva });
+      }
+      ivLine.valoare = val; inv.totalMinus = round2(inv.totalMinus + val);
+      result.minusuri.push({ produs: p.cod, cantitate: q, valoare: val });
+    }
+  }
+  d.inventories.push(inv);
+  logAudit('inventar', g.cod + ' ' + b.data + ' (+' + result.plusuri.length + '/-' + result.minusuri.length + ')', { req });
+  db.save();
+  res.json({ ok: true, id: inv.id, result });
+});
+app.get('/api/inventories', (req, res) => res.json(
+  (S(req).inventories || []).slice().sort((a, b) => (a.ts < b.ts ? 1 : -1))
+    .map((iv) => ({ id: iv.id, gestiuneCod: iv.gestiuneCod, gestiuneDen: iv.gestiuneDen, data: iv.data, ts: iv.ts, operator: iv.operator || '', status: iv.status || 'activ', stornoData: iv.stornoData || null, totalPlus: iv.totalPlus, totalMinus: iv.totalMinus, totalImputat: iv.totalImputat, nrPlus: iv.lines.filter((l) => l.tip === 'plus').length, nrMinus: iv.lines.filter((l) => l.tip === 'minus').length })),
+));
+// Stornarea unui inventar: reverseaza notele contabile (storno debit<->credit) si sterge miscarile de reglare
+app.post('/api/inventories/:id/storno', (req, res) => {
+  const d = db.get();
+  const iv = (d.inventories || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
+  if (!iv) return res.status(404).json({ error: 'Inventar inexistent.' });
+  if (iv.status === 'stornat') return res.status(400).json({ error: 'Inventarul este deja stornat.' });
+  const stornoOp = (req.user && req.user.username) || '';
+  const stornoData = String((req.body || {}).data || new Date().toISOString().slice(0, 10));
+  const docStorno = 'Storno inventar ' + iv.gestiuneCod + ' ' + iv.data;
+  const stornoEntryIds = [];
+  // 1) note de stornare (reversare debit<->credit, aceleasi sume)
+  for (const eid of (iv.entryIds || [])) {
+    const orig = d.entries.find((e) => e.id === eid);
+    if (!orig) continue;
+    const se = {
+      id: db.nextId('e'), firmaId: iv.firmaId, data: stornoData, period: String(stornoData).slice(0, 7),
+      tip: 'storno_inventar', tipNume: 'Storno ' + orig.tipNume, partener: orig.partener || '', partenerCui: '',
+      document: docStorno, analitic: '', explicatie: 'Stornare ' + (orig.explicatie || orig.tipNume), fileId: null, system: true,
+      lines: orig.lines.map((l) => ({ debit: l.credit, credit: l.debit, suma: l.suma, explicatie: 'Storno ' + (l.explicatie || '') })),
+    };
+    d.entries.push(se); stornoEntryIds.push(se.id);
+  }
+  // 2) sterge miscarile de reglare (readuce stocul la starea de dinainte de inventar)
+  d.stockMovements = (d.stockMovements || []).filter((m) => !(iv.movementIds || []).includes(m.id));
+  iv.status = 'stornat'; iv.stornoData = stornoData; iv.stornoOperator = stornoOp; iv.stornoEntryIds = stornoEntryIds;
+  logAudit('inventar.storno', iv.gestiuneCod + ' ' + iv.data, { req });
+  db.save();
+  res.json({ ok: true, stornoEntries: stornoEntryIds.length });
+});
+app.get('/api/stocks', (req, res) => res.json(stocks.currentStock(S(req), req.query.asOf || null, req.query.gestiune || null)));
+app.get('/api/stocks/:id/ledger', (req, res) => {
+  const v = S(req);
+  const p = v.products.find((x) => x.id === req.params.id);
+  if (!p) return res.status(404).json({ error: 'Produs inexistent.' });
+  res.json(stocks.productLedger(p, v.stockMovements, req.query.asOf || null, req.query.gestiune || null));
+});
+
+// ───────────────────────────── EXPORT CSV ─────────────────────────────
+function sendCsv(res, filename, str) {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
+  res.send(str);
+}
+app.get('/csv/stock-movements', (req, res) => {
+  const rows = stocks.movementsList(S(req), req.query.period || null).map((m) => [m.data, m.tip, m.gestiuneCod, m.gestiuneDestCod || '', m.cod, m.denumire, m.cantitate, m.um, m.pretUnitar || '', m.document || '', m.operator || '']);
+  sendCsv(res, 'miscari-stoc.csv', toCsv(['Data', 'Tip', 'Gestiune', 'Gestiune dest', 'Cod', 'Denumire', 'Cantitate', 'UM', 'Pret', 'Document', 'Operator'], rows));
+});
+app.get('/csv/stocks', (req, res) => {
+  const rows = stocks.currentStock(S(req), req.query.asOf || null, req.query.gestiune || null).map((s) => [s.gestiune.cod, s.product.cod, s.product.denumire, s.product.cont || '371', s.stocQ, s.product.um || 'buc', s.cmp, s.stocV]);
+  sendCsv(res, 'stocuri.csv', toCsv(['Gestiune', 'Cod', 'Denumire', 'Cont', 'Cantitate', 'UM', 'CMP', 'Valoare'], rows));
+});
+app.get('/csv/journal', (req, res) => {
+  const j = acc.journal(S(req), req.query.period || null);
+  const rows = j.rows.map((r) => [r.nr || '', r.data || '', r.document || '', r.explicatie || '', r.debit, r.credit, r.suma]);
+  sendCsv(res, 'registru-jurnal.csv', toCsv(['Nr', 'Data', 'Document', 'Explicatie', 'Cont debitor', 'Cont creditor', 'Suma'], rows));
+});
+app.get('/csv/vat-sales', (req, res) => {
+  const vj = acc.vatJournals(S(req), req.query.period || null);
+  const rows = vj.vanzari.map((r) => [r.data, r.document || '', r.partener || '', r.cui || '', r.cota ? r.cota + '%' : 'scutit', r.baza, r.tva, r.total, r.taxareInversa ? 'taxare inversa' : '']);
+  rows.push(['', '', 'TOTAL', '', '', vj.totals.bazaV, vj.totals.colectata, round2(vj.totals.bazaV + vj.totals.colectata), '']);
+  sendCsv(res, 'jurnal-vanzari.csv', toCsv(['Data', 'Document', 'Partener', 'CUI', 'Cota', 'Baza', 'TVA', 'Total', 'Observatii'], rows));
+});
+app.get('/csv/vat-purchases', (req, res) => {
+  const vj = acc.vatJournals(S(req), req.query.period || null);
+  const rows = vj.cumparari.map((r) => [r.data, r.document || '', r.partener || '', r.cui || '', r.cota ? r.cota + '%' : 'scutit', r.baza, r.tva, r.total, r.taxareInversa ? 'taxare inversa' : '']);
+  rows.push(['', '', 'TOTAL', '', '', vj.totals.bazaC, vj.totals.deductibila, round2(vj.totals.bazaC + vj.totals.deductibila), '']);
+  sendCsv(res, 'jurnal-cumparari.csv', toCsv(['Data', 'Document', 'Partener', 'CUI', 'Cota', 'Baza', 'TVA', 'Total', 'Observatii'], rows));
+});
+app.get('/csv/balance', (req, res) => {
+  const tb = acc.trialBalance(S(req), req.query.period || null);
+  const rows = tb.rows.map((r) => [r.cod, r.nume, r.siD, r.siC, r.rd, r.rc, r.tsD, r.tsC, r.sfD, r.sfC]);
+  rows.push(['', 'TOTAL', tb.tot.siD, tb.tot.siC, tb.tot.rd, tb.tot.rc, tb.tot.tsD, tb.tot.tsC, tb.tot.sfD, tb.tot.sfC]);
+  sendCsv(res, 'balanta.csv', toCsv(['Cont', 'Denumire', 'SI Debit', 'SI Credit', 'Rulaj Debit', 'Rulaj Credit', 'TSD', 'TSC', 'SF Debit', 'SF Credit'], rows));
+});
+app.get('/csv/ledger', (req, res) => {
+  const led = acc.ledger(S(req), req.query.period || null);
+  const rows = [];
+  for (const a of led) {
+    rows.push([a.cod, a.nume, '', '', 'Sold initial', a.siD || '', a.siC || '']);
+    for (const m of a.moves) rows.push([a.cod, a.nume, m.data, m.document || '', m.explicatie || '', m.debit || '', m.credit || '']);
+    rows.push([a.cod, a.nume, '', '', 'Sold final', a.sfD || '', a.sfC || '']);
+  }
+  sendCsv(res, 'cartea-mare.csv', toCsv(['Cont', 'Denumire', 'Data', 'Document', 'Explicatie', 'Debit', 'Credit'], rows));
+});
+app.get('/csv/analytic', (req, res) => {
+  const rows = [];
+  for (const s of analyticBalance(S(req))) for (const r of s.rows) rows.push([s.synth, s.nume, r.analitic, r.den, r.cui || '', r.siD || '', r.siC || '', r.rd || '', r.rc || '', r.sfD || '', r.sfC || '']);
+  sendCsv(res, 'balanta-analitica.csv', toCsv(['Cont sintetic', 'Denumire', 'Analitic', 'Partener/Eticheta', 'CUI', 'SI Debit', 'SI Credit', 'Rulaj Debit', 'Rulaj Credit', 'SF Debit', 'SF Credit'], rows));
+});
+app.get('/csv/partners', (req, res) => {
+  const rows = Object.values(S(req).partners || {}).map((p) => [p.cui, p.den || '', p.adresa || '', p.oras || '', p.judet || '', p.tara || '', p.tip || '']);
+  sendCsv(res, 'parteneri.csv', toCsv(['CUI', 'Denumire', 'Adresa', 'Oras', 'Judet', 'Tara', 'Tip'], rows));
+});
+app.get('/csv/aging', (req, res) => {
+  const a = aging(S(req), req.query.asOf || null);
+  const rows = [];
+  const add = (tip, list) => list.forEach((x) => rows.push([tip, x.partener, x.cui || '', x.total, x.b0_30, x.b31_60, x.b61_90, x.b90plus]));
+  add('Creanta', a.clienti); add('Datorie', a.furnizori);
+  sendCsv(res, 'aging.csv', toCsv(['Tip', 'Partener', 'CUI', 'Total', '0-30 zile', '31-60 zile', '61-90 zile', 'peste 90 zile'], rows));
+});
+
+// ───────────────────────────── RAPOARTE (JSON) ─────────────────────────────
+app.get('/api/journal', (req, res) => res.json(acc.journal(S(req), req.query.period || null)));
+app.get('/api/ledger', (req, res) => res.json(acc.ledger(S(req), req.query.period || null)));
+app.get('/api/balance', (req, res) => res.json(acc.trialBalance(S(req), req.query.period || null)));
+app.get('/api/statements/pl', (req, res) => res.json(stmt.profitLoss(S(req), req.query.year || String(new Date().getFullYear()))));
+app.get('/api/statements/pl-f20', (req, res) => res.json(stmt.profitLossF20(S(req), req.query.year || String(new Date().getFullYear()))));
+app.get('/api/statements/cashflow', (req, res) => res.json(stmt.cashFlow(S(req), req.query.year || String(new Date().getFullYear()))));
+app.get('/api/statements/equity', (req, res) => res.json(stmt.equityChanges(S(req), req.query.year || String(new Date().getFullYear()))));
+app.get('/api/statements/bilant', (req, res) => res.json(stmt.balanceSheet(S(req), req.query.period || null)));
+app.get('/api/statements/bilant-f10', (req, res) => res.json(stmt.balanceSheetF10(S(req), req.query.period || null)));
+app.get('/api/vat-preview', (req, res) => res.json(acc.vatClosing(S(req), req.query.period || null)));
+app.get('/api/vat-journals', (req, res) => res.json(acc.vatJournals(S(req), req.query.period || null)));
+app.get('/api/tva-neexigibila', (req, res) => res.json(acc.tvaNeexigibila(S(req), req.query.period || null)));
+app.get('/api/livrabile', (req, res) => res.json(rep.livrabile(S(req), req.query.period || new Date().toISOString().slice(0, 7))));
+app.get('/api/reconcile', (req, res) => res.json(reconcile(S(req))));
+
+// ── Compensare creante / datorii (partener client + furnizor) ──
+app.get('/api/compensations', (req, res) => res.json(compensablePartners(S(req))));
+app.post('/api/compensations', (req, res) => {
+  const b = req.body || {}; const fid = activeId(req); const d = db.get();
+  const cui = String(b.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
+  if (!cui) return res.status(400).json({ error: 'Lipseste CUI-ul partenerului.' });
+  const cand = compensablePartners(S(req)).find((p) => String(p.cui).replace(/^ro/i, '') === cui);
+  if (!cand) return res.status(400).json({ error: 'Partenerul nu are simultan creanta si datorie de compensat.' });
+  const suma = round2(Math.min(Number(b.suma) > 0 ? Number(b.suma) : cand.compensabil, cand.compensabil));
+  if (!(suma > 0)) return res.status(400).json({ error: 'Suma de compensat trebuie sa fie > 0.' });
+  const data = b.data || new Date().toISOString().slice(0, 10);
+  const firma = db.getFirma(fid) || {};
+  if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) return res.status(400).json({ error: 'Perioada ' + periodOf(data) + ' este inchisa.' });
+  const entry = {
+    id: db.nextId('e'), firmaId: fid, data, period: periodOf(data),
+    tip: 'compensare', tipNume: 'Compensare creanta/datorie (401 = 4111)',
+    partener: cand.den, partenerCui: cand.cui, document: b.document || 'Compensare ' + (cand.den || cand.cui),
+    explicatie: 'Compensare creanta clienti cu datorie furnizori', fileId: null, system: false,
+    lines: [{ debit: '401', credit: '4111', suma, explicatie: 'Compensare ' + (cand.den || cand.cui) }],
+  };
+  d.entries.push(entry);
+  logAudit('compensare', (cand.den || cand.cui) + ': ' + suma, { req });
+  db.save();
+  res.json({ ok: true, entry, compensat: suma });
+});
+app.get('/api/dashboard', (req, res) => res.json(rep.dashboard(S(req))));
+app.get('/api/cash-forecast', (req, res) => {
+  const fid = activeId(req);
+  const templates = (db.get().recurringInvoices || []).filter((t) => t.firmaId === fid && t.activ !== false);
+  res.json(rep.cashForecast(S(req), templates, { months: Number(req.query.months) || 6, startPeriod: req.query.start || null }));
+});
+
+// ── Buget vs realizat ──
+app.get('/api/budgets', (req, res) => {
+  const fid = activeId(req); const year = req.query.year;
+  res.json((db.get().budgets || []).filter((t) => t.firmaId === fid && (!year || String(t.an) === String(year))));
+});
+app.post('/api/budgets', (req, res) => {
+  const b = req.body || {}; const cont = String(b.cont || '').trim();
+  if (!coa.getAccount(cont)) return res.status(400).json({ error: 'Cont inexistent in plan: ' + cont });
+  const an = String(b.an || new Date().getFullYear());
+  const d = db.get(); const fid = activeId(req);
+  const t = (d.budgets || []).find((x) => x.firmaId === fid && String(x.an) === an && x.cont === cont);
+  const rec = t || { id: db.nextId('bud'), firmaId: fid, an, cont };
+  rec.an = an; rec.cont = cont; rec.suma = round2(Number(b.suma) || 0);
+  if (!t) d.budgets.push(rec);
+  logAudit('buget.save', an + ' ' + cont + ': ' + rec.suma, { req });
+  db.save();
+  res.json({ ok: true, budget: rec });
+});
+app.delete('/api/budgets/:id', (req, res) => {
+  const d = db.get(); const fid = activeId(req);
+  d.budgets = (d.budgets || []).filter((t) => !(t.id === req.params.id && t.firmaId === fid));
+  logAudit('buget.delete', req.params.id, { req });
+  db.save();
+  res.json({ ok: true });
+});
+app.get('/api/budget-report', (req, res) => {
+  const fid = activeId(req); const year = req.query.year || String(new Date().getFullYear());
+  const budgets = (db.get().budgets || []).filter((t) => t.firmaId === fid && String(t.an) === String(year));
+  res.json(rep.budgetReport(S(req), budgets, year));
+});
+
+// ── Reevaluare valutara la sfarsit de perioada ──
+app.get('/api/fx-reval/candidates', (req, res) => res.json(fxreval.candidates(S(req), req.query.asOf || null)));
+app.post('/api/fx-reval/preview', (req, res) => {
+  const b = req.body || {};
+  res.json(fxreval.buildRevaluation(S(req), b.asOf || null, Array.isArray(b.items) ? b.items : []));
+});
+app.post('/api/fx-reval/post', (req, res) => {
+  const b = req.body || {}; const fid = activeId(req); const d = db.get();
+  const asOf = b.asOf || new Date().toISOString().slice(0, 10);
+  const r = fxreval.buildRevaluation(S(req), asOf, Array.isArray(b.items) ? b.items : []);
+  if (!r.lines.length) return res.status(400).json({ error: 'Nicio diferenta de reevaluare de inregistrat.' });
+  for (const ln of r.lines) if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) return res.status(400).json({ error: 'Cont inexistent: ' + ln.debit + '/' + ln.credit });
+  const data = String(asOf).length === 7 ? asOf + '-28' : asOf;
+  const firma = db.getFirma(fid) || {};
+  if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) return res.status(400).json({ error: 'Perioada ' + periodOf(data) + ' este inchisa.' });
+  const entry = {
+    id: db.nextId('e'), firmaId: fid, data, period: periodOf(data),
+    tip: 'reevaluare_valutara', tipNume: 'Reevaluare valutara la sfarsit de perioada',
+    partener: '', document: 'Reevaluare ' + periodOf(data), explicatie: 'Diferente de curs din reevaluarea soldurilor in valuta',
+    fileId: null, system: false, lines: r.lines,
+  };
+  d.entries.push(entry);
+  logAudit('reevaluare.valutara', periodOf(data) + ': fav ' + r.totalFavorabil + ' / nefav ' + r.totalNefavorabil, { req });
+  db.save();
+  res.json({ ok: true, entry, totalFavorabil: r.totalFavorabil, totalNefavorabil: r.totalNefavorabil });
+});
+// Documente lipsa: furnizori care apareau lunar dar nu au document in luna selectata
+function shiftYM(ym, delta) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+app.get('/api/missing-docs', (req, res) => {
+  const s = S(req);
+  const ym = /^\d{4}-\d{2}$/.test(req.query.period) ? req.query.period : new Date().toISOString().slice(0, 7);
+  const per = (e) => e.period || periodOf(e.data);
+  const purchases = (s.entries || []).filter((e) => /cumparare/.test(e.tip) && e.partener);
+  const prev = [1, 2, 3].map((k) => shiftYM(ym, -k));
+  const seen = {}; const lastSeen = {};
+  purchases.forEach((e) => {
+    const m = per(e);
+    if (!lastSeen[e.partener] || m > lastSeen[e.partener]) lastSeen[e.partener] = m;
+    if (prev.includes(m)) { (seen[e.partener] = seen[e.partener] || new Set()).add(m); }
+  });
+  const thisSet = new Set(purchases.filter((e) => per(e) === ym).map((e) => e.partener));
+  const missing = Object.keys(seen).filter((p) => seen[p].size >= 2 && !thisSet.has(p))
+    .map((p) => ({ partener: p, luniPrezent: seen[p].size, ultimaLuna: lastSeen[p] }))
+    .sort((a, b) => b.luniPrezent - a.luniPrezent);
+  const countThis = thisSet.size ? purchases.filter((e) => per(e) === ym).length : 0;
+  const avgPrev = Math.round((prev.reduce((acc, m) => acc + purchases.filter((e) => per(e) === m).length, 0) / 3) * 10) / 10;
+  res.json({ period: ym, countThis, avgPrev, missing });
+});
+app.get('/api/dashboard-charts', (req, res) => {
+  const v = S(req);
+  const year = req.query.year || rep.dashboard(v).year;
+  const ag = aging(v, null);
+  res.json({ year, monthly: rep.monthlySeries(v, year), agingClienti: ag.totalClienti, agingFurnizori: ag.totalFurnizori });
+});
+app.get('/api/analytic', (req, res) => res.json(analyticBalance(S(req))));
+app.get('/api/aging', (req, res) => res.json(aging(S(req), req.query.asOf || null)));
+app.get('/pdf/aging', (req, res) => pdf.agingPdf(res, S(req).company, aging(S(req), req.query.asOf || null)));
+// Provizion (ajustare) pentru deprecierea creantelor vechi (>90 zile), 6814 = 491
+function computeProvizion(v, asOf, pct) {
+  const ag = aging(v, asOf);
+  const p = pct == null ? 100 : pct;
+  const detalii = ag.clienti.filter((c) => c.b90plus > 0).map((c) => ({ partener: c.partener, cui: c.cui, vechi: c.b90plus, provizion: round2((c.b90plus * p) / 100) }));
+  const base = round2(detalii.reduce((s, c) => s + c.vechi, 0));
+  const necesar = round2((base * p) / 100);
+  const m = acc.accumulate(acc.allLines(v.entries));
+  const c491 = m['491'] || { d: 0, c: 0 };
+  const existent = round2(c491.c - c491.d);
+  return { asOf: ag.asOf, pct: p, base, necesar, existent, deAjustat: round2(necesar - existent), detalii };
+}
+app.get('/api/provizion', (req, res) => res.json(computeProvizion(S(req), req.query.asOf || null, req.query.pct ? Number(req.query.pct) : 100)));
+// Scoaterea din evidenta a unei creante neincasabile: 654 = 4111 (pierdere) + reluare 491 = 7814
+app.post('/api/writeoff', (req, res) => {
+  const d = db.get();
+  const v = S(req);
+  const b = req.body || {};
+  const suma = round2(Number(b.suma) || 0);
+  if (!b.partener || suma <= 0) return res.status(400).json({ error: 'Completeaza partenerul si suma.' });
+  const data = b.data && String(b.data).length === 10 ? b.data : new Date().toISOString().slice(0, 10);
+  const period = String(data).slice(0, 7);
+  const lines = [{ debit: '654', credit: '4111', suma, explicatie: 'Creanta neincasabila ' + b.partener }];
+  const m = acc.accumulate(acc.allLines(v.entries));
+  const c491 = m['491'] || { d: 0, c: 0 };
+  const existing491 = round2(c491.c - c491.d);
+  const revers = round2(Math.min(suma, existing491));
+  if (revers > 0) lines.push({ debit: '491', credit: '7814', suma: revers, explicatie: 'Reluare ajustare ' + b.partener });
+  d.entries.push({
+    id: db.nextId('e'), firmaId: activeId(req), data, period, tip: 'scoatere_creanta', tipNume: 'Scoatere din evidenta creanta neincasabila',
+    partener: b.partener, partenerCui: b.cui || '', document: 'Nota scoatere ' + period, analitic: '', explicatie: 'Creanta neincasabila ' + b.partener, fileId: null, system: true, lines,
+  });
+  logAudit('writeoff', b.partener + ' ' + suma, { req });
+  db.save();
+  res.json({ ok: true, suma, reversProvizion: revers });
+});
+app.post('/api/provizion', (req, res) => {
+  const d = db.get();
+  const b = req.body || {};
+  const pct = b.pct != null ? Number(b.pct) : 100;
+  const p = computeProvizion(S(req), b.asOf || null, pct);
+  if (Math.abs(p.deAjustat) < 0.005) return res.json({ ok: true, message: 'Ajustarea este deja la nivelul necesar (' + p.necesar + ').', result: p });
+  const data = b.asOf && String(b.asOf).length === 10 ? b.asOf : (p.asOf || new Date().toISOString().slice(0, 10));
+  const period = String(data).slice(0, 7);
+  const up = p.deAjustat > 0;
+  const line = up
+    ? { debit: '6814', credit: '491', suma: p.deAjustat, explicatie: 'Ajustare depreciere creante' }
+    : { debit: '491', credit: '7814', suma: -p.deAjustat, explicatie: 'Reluare ajustare creante' };
+  d.entries.push({
+    id: db.nextId('e'), firmaId: activeId(req), data, period,
+    tip: up ? 'provizion_creante' : 'reluare_provizion', tipNume: up ? 'Ajustare depreciere creante (6814=491)' : 'Reluare ajustare creante (491=7814)',
+    partener: '', partenerCui: '', document: 'Nota ajustare ' + period, analitic: '', explicatie: line.explicatie, fileId: null, system: true, lines: [line],
+  });
+  logAudit('provizion', period + ' ' + p.deAjustat, { req });
+  db.save();
+  res.json({ ok: true, result: p });
+});
+app.get('/api/registru-fiscal', (req, res) => res.json(rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));
+app.get('/api/cashbook', (req, res) => res.json(acc.cashBankJournal(S(req), req.query.cont || '5121', req.query.period || null)));
+app.get('/api/cash-valuta', (req, res) => res.json(acc.cashRegisterValuta(S(req), req.query.period || null, req.query.moneda || 'EUR')));
+app.get('/api/cash-control', (req, res) => res.json(acc.cashControl(S(req), req.query.cont || '5311', req.query.period || null)));
+app.get('/api/notes', (req, res) => res.json(rep.notes(S(req), req.query.year || String(new Date().getFullYear()))));
+
+// ─────────────── Import extras bancar (CSV / MT940) ───────────────
+app.post('/api/bank/parse', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
+  const d = db.get();
+  const text = fs.readFileSync(req.file.path, 'utf8');
+  const transactions = bank.parseAndSuggest(S(req), text);
+  const docId = db.nextId('doc');
+  d.documents.push({ id: docId, firmaId: activeId(req), fileName: req.file.originalname, storedName: req.file.filename, uploadedAt: new Date().toISOString(), text: '' });
+  db.save();
+  res.json({ documentId: docId, count: transactions.length, transactions });
+});
+app.post('/api/bank/import', (req, res) => {
+  const { transactions, fileId } = req.body || {};
+  if (!Array.isArray(transactions)) return res.status(400).json({ error: 'Lipsesc tranzactiile.' });
+  const d = db.get();
+  const fid = activeId(req);
+  let created = 0; const errors = [];
+  for (const t of transactions) {
+    try { const e = buildEntry(t.tip, t.fields || {}, fileId || null, fid); d.entries.push(e); upsertPartner(fid, e); created++; }
+    catch (e) { errors.push(String(e.message || e)); }
+  }
+  db.save();
+  res.json({ ok: true, created, errors });
+});
+app.get('/api/efactura-list', (req, res) => {
+  const { period } = req.query;
+  let list = S(req).entries.filter((e) => xml.isEFacturaEligible(e));
+  if (period) list = list.filter((e) => (e.period || periodOf(e.data)) === period);
+  res.json(acc.sortEntries(list).map((e) => ({ id: e.id, data: e.data, document: e.document, partener: e.partener, partenerCui: e.partenerCui || '' })));
+});
+
+// ───────────────────────────── ANAF SPV ─────────────────────────────
+// ── Import e-Factura primita (UBL) ──
+app.post('/api/efactura/parse', (req, res) => {
+  try { res.json({ ok: true, invoice: efacturaImport.parseUBL((req.body || {}).xml || '') }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/efactura/import', (req, res) => {
+  const b = req.body || {}; const fid = activeId(req); const d = db.get();
+  let inv;
+  try { inv = efacturaImport.parseUBL(b.xml || ''); } catch (e) { return res.status(400).json({ error: e.message }); }
+  if (!inv.furnizor.cui && !inv.furnizor.nume) return res.status(400).json({ error: 'Nu am putut identifica furnizorul din e-Factura.' });
+  if (inv.moneda && inv.moneda !== 'RON') return res.status(400).json({ error: 'e-Factura este in ' + inv.moneda + '. Importul automat suporta deocamdata doar RON.' });
+  const cont = b.cont || '371'; // contul de cheltuiala/stoc (371 marfuri implicit)
+  if (!coa.getAccount(cont)) return res.status(400).json({ error: 'Cont inexistent in plan: ' + cont });
+  const data = b.data || inv.data || new Date().toISOString().slice(0, 10);
+  const firma = db.getFirma(fid) || {};
+  if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) return res.status(400).json({ error: 'Perioada ' + periodOf(data) + ' este inchisa.' });
+  const sign = inv.tip === 'creditnote' ? -1 : 1;
+  const baza = round2(sign * inv.baza); const tva = round2(sign * inv.tva);
+  const lines = [{ debit: cont, credit: '401', suma: baza, explicatie: 'Factura cumparare (import e-Factura)' }];
+  if (Math.abs(tva) >= 0.005) lines.push({ debit: '4426', credit: '401', suma: tva, explicatie: 'TVA deductibila' });
+  const entry = {
+    id: db.nextId('e'), firmaId: fid, data, period: periodOf(data),
+    tip: inv.tip === 'creditnote' ? 'factura_cumparare_storno' : 'factura_cumparare_marfuri',
+    tipNume: (inv.tip === 'creditnote' ? 'Storno factura cumparare' : 'Factura cumparare') + ' (import e-Factura)',
+    partener: inv.furnizor.nume, partenerCui: inv.furnizor.cui, document: inv.numar || '',
+    explicatie: 'Import e-Factura primita', fileId: null, system: false, lines,
+    items: inv.linii.map((l) => ({ nume: l.nume, cantitate: round2(sign * l.cantitate), pret: l.pret, cota: l.cota })),
+  };
+  d.entries.push(entry);
+  upsertPartner(fid, entry);
+  logAudit('efactura.import', (inv.numar || '') + ' / ' + (inv.furnizor.nume || inv.furnizor.cui), { req });
+  db.save();
+  res.json({ ok: true, entry, invoice: inv });
+});
+
+app.get('/api/anaf/config', (req, res) => {
+  const c = db.get().settings.anaf || {};
+  res.json({
+    env: c.env || 'test', cif: c.cif || '', redirectUri: c.redirectUri || '',
+    clientIdSet: !!c.clientId, configured: anaf.configured(c), connected: anaf.connected(c),
+    autoPoll: !!c.autoPoll, tokenExpiry: c.tokenExpiry || 0,
+  });
+});
+app.post('/api/anaf/config', (req, res) => {
+  const d = db.get();
+  const c = d.settings.anaf || {};
+  const b = req.body || {};
+  ['env', 'clientId', 'clientSecret', 'redirectUri', 'cif'].forEach((k) => { if (b[k] != null) c[k] = b[k]; });
+  if (b.autoPoll != null) c.autoPoll = !!b.autoPoll;
+  d.settings.anaf = c;
+  db.save();
+  res.json({ ok: true, configured: anaf.configured(c) });
+});
+app.get('/api/anaf/authorize', (req, res) => {
+  const c = db.get().settings.anaf || {};
+  if (!anaf.configured(c)) return res.status(400).json({ error: 'Completeaza intai client_id, client_secret si redirect_uri.' });
+  res.json({ url: anaf.authorizeUrl(c) });
+});
+app.get('/api/anaf/callback', wrap(async (req, res) => {
+  const d = db.get();
+  const c = d.settings.anaf || {};
+  if (req.query.error) return res.redirect('/?anaf=error');
+  if (!req.query.code) return res.status(400).send('Lipseste codul de autorizare.');
+  await anaf.exchangeCode(c, req.query.code);
+  d.settings.anaf = c;
+  db.save();
+  res.redirect('/?anaf=ok');
+}));
+app.post('/api/anaf/send/:id', wrap(async (req, res) => {
+  const d = db.get();
+  const e = d.entries.find((x) => x.id === req.params.id);
+  if (!e) return res.status(404).json({ error: 'Inregistrare inexistenta' });
+  if (!xml.isSendable(e)) return res.status(400).json({ error: 'Doar facturile emise pot fi trimise in SPV.' });
+  const c = d.settings.anaf || {};
+  const fid = e.firmaId || db.firmaActiva();
+  const company = db.getFirma(fid) || {};
+  const cif = (c.cif || company.cui || '').replace(/^ro/i, '');
+  const ubl = xml.eFacturaXml(company, e, d.partners[fid] || {});
+  const r = await anaf.upload(c, ubl, cif);
+  e.spv = { index: r.index, stare: 'in prelucrare', sentAt: new Date().toISOString() };
+  d.settings.anaf = c; // tokenul poate fi reimprospatat
+  db.save();
+  res.json({ ok: true, spv: e.spv });
+}));
+app.post('/api/anaf/status/:id', wrap(async (req, res) => {
+  const d = db.get();
+  const e = d.entries.find((x) => x.id === req.params.id);
+  if (!e || !e.spv) return res.status(400).json({ error: 'Factura nu a fost trimisa in SPV.' });
+  const c = d.settings.anaf || {};
+  const st = await anaf.status(c, e.spv.index);
+  e.spv.stare = st.stare; e.spv.idDescarcare = st.idDescarcare || e.spv.idDescarcare;
+  if (st.stare === 'ok') e.spv.acceptat = true;
+  d.settings.anaf = c;
+  db.save();
+  res.json({ ok: true, spv: e.spv });
+}));
+
+async function saveRecipisa(d, e) {
+  const buf = await anaf.download(d.settings.anaf || {}, e.spv.idDescarcare);
+  const storedName = crypto.randomBytes(8).toString('hex') + '.zip';
+  fs.writeFileSync(path.join(db.UPLOAD_DIR, storedName), buf);
+  const docId = db.nextId('doc');
+  d.documents.push({ id: docId, fileName: 'recipisa-' + (e.document || e.id) + '.zip', storedName, uploadedAt: new Date().toISOString(), text: '' });
+  e.spv.recipisaDocId = docId; e.spv.recipisaAt = new Date().toISOString();
+  return docId;
+}
+
+// Descarca recipisa/ZIP pentru o factura trimisa si o salveaza ca document
+app.post('/api/anaf/download/:id', wrap(async (req, res) => {
+  const d = db.get();
+  const e = d.entries.find((x) => x.id === req.params.id);
+  if (!e || !e.spv || !e.spv.idDescarcare) return res.status(400).json({ error: 'Recipisa indisponibila (verifica statusul intai).' });
+  const docId = await saveRecipisa(d, e);
+  db.save();
+  res.json({ ok: true, documentId: docId, spv: e.spv });
+}));
+
+// Verifica toate facturile trimise: actualizeaza starea si descarca recipisele disponibile
+async function pollSpv() {
+  const d = db.get();
+  const c = d.settings.anaf || {};
+  if (!anaf.connected(c)) return { connected: false, checked: 0, accepted: 0, downloaded: 0 };
+  const pending = d.entries.filter((e) => e.spv && !e.spv.recipisaDocId);
+  let accepted = 0; let downloaded = 0;
+  for (const e of pending) {
+    try {
+      const st = await anaf.status(c, e.spv.index);
+      e.spv.stare = st.stare;
+      if (st.idDescarcare) e.spv.idDescarcare = st.idDescarcare;
+      if (st.stare === 'ok') { e.spv.acceptat = true; accepted++; }
+      if (st.stare === 'ok' && e.spv.idDescarcare) { await saveRecipisa(d, e); downloaded++; }
+    } catch (err) { e.spv.error = String(err.message || err); }
+  }
+  d.settings.anaf = c;
+  db.save();
+  return { connected: true, checked: pending.length, accepted, downloaded };
+}
+app.post('/api/anaf/poll', wrap(async (req, res) => res.json(await pollSpv())));
+
+// Lista facturilor primite in SPV
+app.get('/api/anaf/inbox', wrap(async (req, res) => {
+  const d = db.get();
+  const c = d.settings.anaf || {};
+  const cif = (c.cif || (db.getFirma(activeId(req)) || {}).cui || '').replace(/^ro/i, '');
+  const msgs = await anaf.listMessages(c, cif, req.query.zile || 60, 'P');
+  d.settings.anaf = c; db.save();
+  res.json(msgs.map((m) => ({
+    id: m.id, data: m.data_creare || m.data, tip: m.tip, cif: m.cif_emitent || m.cif, detalii: m.detalii,
+    importat: d.entries.some((e) => e.spvImport && e.spvImport.msgId === m.id),
+  })));
+}));
+
+function extractInvoiceXml(buf) {
+  const zip = new AdmZip(buf);
+  const entries = zip.getEntries();
+  // factura (nu fisierul de semnatura)
+  let pick = entries.find((en) => /\.xml$/i.test(en.entryName) && !/semnatura/i.test(en.entryName));
+  if (!pick) pick = entries.find((en) => /\.xml$/i.test(en.entryName));
+  if (!pick) throw new Error('Arhiva nu contine XML.');
+  return pick.getData().toString('utf8');
+}
+
+// Importa o factura primita: descarca, extrage UBL, pre-completeaza formularul
+app.post('/api/anaf/import/:msgId', wrap(async (req, res) => {
+  const d = db.get();
+  const buf = await anaf.download(d.settings.anaf || {}, req.params.msgId);
+  const storedName = crypto.randomBytes(8).toString('hex') + '.zip';
+  fs.writeFileSync(path.join(db.UPLOAD_DIR, storedName), buf);
+  const docId = db.nextId('doc');
+  let parsed;
+  try { parsed = xml.parseUblInvoice(extractInvoiceXml(buf)); } catch (e) { parsed = { suggestedType: 'factura_cumparare_marfuri', fields: {}, cuis: [] }; }
+  d.documents.push({ id: docId, firmaId: activeId(req), fileName: 'spv-' + req.params.msgId + '.zip', storedName, uploadedAt: new Date().toISOString(), text: '', spvMsgId: req.params.msgId });
+  db.save();
+  res.json(Object.assign({ documentId: docId, fileName: 'SPV ' + req.params.msgId, source: 'spv', msgId: req.params.msgId }, parsed));
+}));
+
+function sendXml(res, str, filename) {
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Content-Disposition', 'inline; filename="' + filename + '"');
+  res.send(str);
+}
+
+app.get('/xml/efactura/:id', (req, res) => {
+  const d = db.get();
+  const e = d.entries.find((x) => x.id === req.params.id);
+  if (!e) return res.status(404).send('Inregistrare inexistenta');
+  if (!xml.isEFacturaEligible(e)) return res.status(400).send('Inregistrarea nu este o factura emisa.');
+  const fid = e.firmaId || db.firmaActiva();
+  sendXml(res, xml.eFacturaXml(db.getFirma(fid) || {}, e, d.partners[fid] || {}), 'efactura-' + (e.document || e.id) + '.xml');
+});
+// PDF vizual al unei facturi emise (generat din articolul contabil).
+app.get('/pdf/factura/:id', (req, res) => {
+  const d = db.get();
+  const e = d.entries.find((x) => x.id === req.params.id);
+  if (!e) return res.status(404).send('Inregistrare inexistenta');
+  const fid = e.firmaId || db.firmaActiva();
+  pdf.facturaPdf(res, db.getFirma(fid) || {}, e, d.partners[fid] || {});
+});
+app.get('/xml/d300', (req, res) => {
+  const v = S(req);
+  sendXml(res, xml.d300Xml(v.company, req.query.period || null, rep.d300(v, req.query.period || null)), 'd300.xml');
+});
+app.get('/xml/d394', (req, res) => {
+  const v = S(req);
+  sendXml(res, xml.d394Xml(v.company, req.query.period || null, acc.vatJournals(v, req.query.period || null)), 'd394.xml');
+});
+app.get('/api/d390', (req, res) => res.json(rep.d390(S(req), req.query.period || null)));
+app.get('/xml/d390', (req, res) => {
+  const v = S(req);
+  sendXml(res, xml.d390Xml(v.company, req.query.period || null, rep.d390(v, req.query.period || null)), 'd390.xml');
+});
+app.get('/api/d205', (req, res) => res.json(rep.d205(S(req), req.query.year || new Date().getFullYear())));
+app.get('/xml/d205', (req, res) => {
+  const v = S(req); const y = req.query.year || new Date().getFullYear();
+  sendXml(res, xml.d205Xml(v.company, y, rep.d205(v, y)), 'd205.xml');
+});
+app.get('/api/intrastat', (req, res) => res.json(rep.intrastat(S(req), req.query.period || null)));
+app.get('/csv/intrastat', (req, res) => {
+  const d = rep.intrastat(S(req), req.query.period || null);
+  const rows = d.rows.map((r) => [r.flux, r.tara, r.codNC || '', r.natura || '', r.conditie || '', r.masaNeta, r.valoare, r.nrop]);
+  sendCsv(res, 'intrastat.csv', toCsv(['Flux', 'Tara', 'Cod NC8', 'Natura tranzactiei', 'Conditie livrare', 'Masa neta (kg)', 'Valoare (lei)', 'Nr. operatiuni'], rows));
+});
+app.get('/xml/d112', (req, res) => {
+  const v = S(req);
+  const period = req.query.period || new Date().toISOString().slice(0, 7);
+  sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati)), 'd112-' + period + '.xml');
+});
+app.get('/xml/saft', (req, res) => {
+  const v = S(req);
+  const year = req.query.year || String(new Date().getFullYear());
+  sendXml(res, saft.saftXml(v, year), 'saft-d406-' + year + '.xml');
+});
+// Validare pre-depunere: genereaza XML-ul declaratiei si verifica bine-format + campuri obligatorii.
+app.get('/api/validate/:type', (req, res) => {
+  const v = S(req); const type = req.params.type;
+  const period = req.query.period || null;
+  const year = req.query.year || String(new Date().getFullYear());
+  let x = '';
+  try {
+    if (type === 'd300') x = xml.d300Xml(v.company, period, rep.d300(v, period));
+    else if (type === 'd394') x = xml.d394Xml(v.company, period, acc.vatJournals(v, period));
+    else if (type === 'd390') x = xml.d390Xml(v.company, period, rep.d390(v, period));
+    else if (type === 'd205') x = xml.d205Xml(v.company, year, rep.d205(v, year));
+    else if (type === 'd112') x = xml.d112Xml(v.company, period, statePlata(v.angajati));
+    else if (type === 'saft') x = saft.saftXml(v, year);
+    else return res.status(400).json({ error: 'Tip de declaratie necunoscut: ' + type });
+  } catch (e) { return res.status(400).json({ error: e.message }); }
+  res.json(Object.assign({ type, period }, validate.validateDeclaration(type, x, { cui: v.company.cui })));
+});
+app.get('/api/saft', (req, res) => res.json(saft.saftSummary(S(req), req.query.year || String(new Date().getFullYear()))));
+
+// ───────────────────────────── RAPOARTE (PDF) ─────────────────────────────
+app.get('/pdf/journal', (req, res) => pdf.journalPdf(res, S(req).company, acc.journal(S(req), req.query.period || null)));
+app.get('/pdf/ledger', (req, res) => pdf.ledgerPdf(res, S(req).company, acc.ledger(S(req), req.query.period || null), req.query.period || null));
+app.get('/pdf/balance', (req, res) => pdf.trialBalancePdf(res, S(req).company, acc.trialBalance(S(req), req.query.period || null)));
+app.get('/pdf/pl', (req, res) => {
+  const v = S(req); const year = req.query.year || String(new Date().getFullYear());
+  pdf.plPdf(res, v.company, stmt.profitLossF20(v, year), stmt.profitLossF20(v, Number(year) - 1), stmt.profitLoss(v, year));
+});
+app.get('/pdf/bilant', (req, res) => {
+  const v = S(req); const period = req.query.period || (String(new Date().getFullYear()) + '-12');
+  const yr = Number(String(period).slice(0, 4));
+  pdf.balanceSheetPdf(res, v.company, stmt.balanceSheetF10(v, period), stmt.balanceSheetF10(v, (yr - 1) + '-12'), stmt.balanceSheet(v, period));
+});
+app.get('/pdf/vat', (req, res) => pdf.vatPdf(res, S(req).company, acc.vatJournals(S(req), req.query.period || null)));
+app.get('/pdf/d112', (req, res) => pdf.d112Pdf(res, S(req).company, rep.d112(S(req), req.query.period || null)));
+app.get('/pdf/stat-plata', (req, res) => pdf.statePlataPdf(res, S(req).company, statePlata(S(req).angajati), req.query.period || null));
+app.get('/pdf/fluturas/:id', (req, res) => {
+  const v = S(req);
+  const ang = v.angajati.find((a) => a.id === req.params.id);
+  if (!ang) return res.status(404).send('Angajat inexistent');
+  const row = statePlata([ang]).rows[0];
+  pdf.fluturasPdf(res, v.company, row, req.query.period || new Date().toISOString().slice(0, 7));
+});
+app.get('/pdf/d300', (req, res) => pdf.d300Pdf(res, S(req).company, rep.d300(S(req), req.query.period || null)));
+app.get('/pdf/d100', (req, res) => pdf.d100Pdf(res, S(req).company, rep.d100micro(S(req), req.query.period || null)));
+app.get('/pdf/obligatii', (req, res) => pdf.obligatiiPdf(res, S(req).company, rep.obligatii(S(req), req.query.period || null)));
+app.get('/pdf/registru-inventar', (req, res) => pdf.registruInventarPdf(res, S(req).company, rep.registruInventar(S(req), req.query.period || null)));
+app.get('/pdf/registru-fiscal', (req, res) => pdf.registruFiscalPdf(res, S(req).company, rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));
+app.get('/pdf/analytic', (req, res) => pdf.analyticPdf(res, S(req).company, analyticBalance(S(req))));
+app.get('/pdf/cashbook', (req, res) => pdf.cashBookPdf(res, S(req).company, acc.cashBankJournal(S(req), req.query.cont || '5121', req.query.period || null)));
+app.get('/pdf/cash-valuta', (req, res) => pdf.cashValutaPdf(res, S(req).company, acc.cashRegisterValuta(S(req), req.query.period || null, req.query.moneda || 'EUR')));
+app.get('/pdf/note', (req, res) => pdf.notesPdf(res, S(req).company, rep.notes(S(req), req.query.year || String(new Date().getFullYear()))));
+app.get('/pdf/cashflow', (req, res) => pdf.cashFlowPdf(res, S(req).company, stmt.cashFlow(S(req), req.query.year || String(new Date().getFullYear()))));
+app.get('/pdf/capital', (req, res) => pdf.equityPdf(res, S(req).company, stmt.equityChanges(S(req), req.query.year || String(new Date().getFullYear()))));
+// Set complet de situatii financiare anuale (F20 + F10 + F30 + F40 + Note) intr-un singur PDF.
+app.get('/pdf/situatii', (req, res) => {
+  const v = S(req); const year = req.query.year || String(new Date().getFullYear()); const Y0 = Number(year) - 1;
+  pdf.setStatementsPdf(res, v.company, {
+    f20cur: stmt.profitLossF20(v, year), f20prev: stmt.profitLossF20(v, Y0), plDetail: stmt.profitLoss(v, year),
+    f10cur: stmt.balanceSheetF10(v, year + '-12'), f10prev: stmt.balanceSheetF10(v, Y0 + '-12'), bsDetail: stmt.balanceSheet(v, year + '-12'),
+    cashFlow: stmt.cashFlow(v, year),
+    equity: stmt.equityChanges(v, year),
+    notes: rep.notes(v, year),
+  });
+});
+app.get('/pdf/assets', (req, res) => {
+  const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
+  pdf.assetsRegisterPdf(res, S(req).company, assets.register(S(req), asOf), asOf);
+});
+app.get('/api/leasing-schedule', (req, res) => res.json(leasingSchedule(req.query.principal, req.query.months, req.query.rate, req.query.method)));
+app.get('/pdf/leasing-schedule', (req, res) => pdf.leasingSchedulePdf(res, S(req).company, leasingSchedule(req.query.principal, req.query.months, req.query.rate, req.query.method)));
+app.get('/pdf/asset/:id', (req, res) => {
+  const a = (S(req).assets || []).find((x) => x.id === req.params.id);
+  if (!a) return res.status(404).send('Mijloc fix inexistent');
+  const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
+  const asset = Object.assign({}, a, { contNume: coa.accountName(a.cont) });
+  pdf.assetFisaPdf(res, S(req).company, { asset, calc: assets.compute(a, asOf), schedule: assets.schedule(a) });
+});
+app.get('/pdf/stocks', (req, res) => {
+  const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
+  pdf.stocksPdf(res, S(req).company, stocks.currentStock(S(req), asOf), asOf);
+});
+app.get('/pdf/inventory', (req, res) => {
+  const v = S(req);
+  const g = v.gestiuni.find((x) => x.id === req.query.gestiune);
+  if (!g) return res.status(400).send('Alege o gestiune');
+  const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
+  pdf.inventoryListPdf(res, v.company, { gestiune: g.cod + ' — ' + g.denumire, asOf, lines: stocks.inventoryList(v, g.id, asOf) });
+});
+app.get('/pdf/inventory-pv/:id', (req, res) => {
+  const iv = (S(req).inventories || []).find((x) => x.id === req.params.id);
+  if (!iv) return res.status(404).send('Proces-verbal inexistent');
+  pdf.inventoryPvPdf(res, S(req).company, iv);
+});
+// numerotare secventiala a documentelor de stoc (serie + numar), per firma si tip
+function ensureDocSeries(d, fid) {
+  d.settings.docSeries = d.settings.docSeries || {};
+  if (!d.settings.docSeries[fid]) d.settings.docSeries[fid] = { NIR: { serie: 'NIR', next: 1 }, BC: { serie: 'BC', next: 1 }, AVIZ: { serie: 'AVZ', next: 1 } };
+  return d.settings.docSeries[fid];
+}
+// Atribuie (sau reutilizeaza) numarul de document pentru un grup de miscari
+function docNumberFor(req, type, movs) {
+  const d = db.get();
+  const fid = activeId(req);
+  const existing = movs.map((m) => m.docNr && m.docNr[type]).find(Boolean);
+  if (existing) return existing;
+  const s = ensureDocSeries(d, fid)[type];
+  const nr = s.serie + '-' + String(s.next).padStart(5, '0');
+  s.next += 1;
+  for (const m of movs) { m.docNr = m.docNr || {}; m.docNr[type] = nr; }
+  db.save();
+  return nr;
+}
+
+app.get('/api/doc-series', (req, res) => res.json(ensureDocSeries(db.get(), activeId(req))));
+app.post('/api/doc-series', (req, res) => {
+  const d = db.get();
+  const s = ensureDocSeries(d, activeId(req));
+  const b = req.body || {};
+  for (const t of ['NIR', 'BC', 'AVIZ']) {
+    if (b[t]) {
+      if (b[t].serie != null) s[t].serie = String(b[t].serie).slice(0, 10);
+      if (b[t].next != null && Number(b[t].next) > 0) s[t].next = Math.floor(Number(b[t].next));
+    }
+  }
+  db.save();
+  res.json({ ok: true, series: s });
+});
+
+// Registrul documentelor de stoc emise (numerotate): NIR / bon de consum / aviz
+function buildDocRegister(v) {
+  const byProd = new Map(v.products.map((p) => [p.id, p]));
+  const gById = new Map(v.gestiuni.map((g) => [g.id, g]));
+  const TYPE_LABEL = { NIR: 'NIR (receptie)', BC: 'Bon de consum', AVIZ: 'Aviz insotire' };
+  const groups = new Map();
+  for (const m of v.stockMovements) {
+    if (!m.docNr) continue;
+    const p = byProd.get(m.productId) || {};
+    const val = m.tip === 'receptie' ? Math.round(m.cantitate * m.pretUnitar * 100) / 100 : Math.round(stocks.movementValue(p, v.stockMovements, m.id) * 100) / 100;
+    for (const [type, nr] of Object.entries(m.docNr)) {
+      const key = type + '|' + nr;
+      if (!groups.has(key)) {
+        const g = gById.get(m.gestiuneId);
+        groups.set(key, { type, tip: TYPE_LABEL[type] || type, serieNr: nr, data: m.data, gestiune: g ? g.cod : '', document: m.document || '', operator: m.operator || '', valoare: 0, nrLinii: 0 });
+      }
+      const grp = groups.get(key);
+      grp.valoare = Math.round((grp.valoare + val) * 100) / 100;
+      grp.nrLinii += 1;
+      if (m.data < grp.data) grp.data = m.data;
+    }
+  }
+  return [...groups.values()].sort((a, b) => (a.type === b.type ? (a.serieNr < b.serieNr ? -1 : 1) : a.type < b.type ? -1 : 1));
+}
+app.get('/api/doc-register', (req, res) => res.json(buildDocRegister(S(req))));
+app.get('/pdf/doc-register', (req, res) => pdf.docRegisterPdf(res, S(req).company, buildDocRegister(S(req))));
+
+app.get('/pdf/nir', (req, res) => {
+  const v = S(req);
+  const byId = new Map(v.products.map((p) => [p.id, p]));
+  const gById = new Map(v.gestiuni.map((g) => [g.id, g]));
+  const recs = stocks.sortMov(v.stockMovements.filter((m) => m.tip === 'receptie'
+    && (req.query.document ? m.document === req.query.document : m.id === req.query.id)
+    && (!req.query.gestiune || m.gestiuneId === req.query.gestiune)));
+  if (!recs.length) return res.status(404).send('Receptie inexistenta');
+  const g = gById.get(recs[0].gestiuneId);
+  const lines = recs.map((m) => {
+    const p = byId.get(m.productId) || {};
+    return { cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc', cantitate: m.cantitate, pret: m.pretUnitar, valoare: Math.round(m.cantitate * m.pretUnitar * 100) / 100 };
+  });
+  pdf.nirPdf(res, v.company, {
+    serieNr: docNumberFor(req, 'NIR', recs),
+    document: recs[0].document, furnizor: recs[0].furnizor || '', gestiune: g ? g.cod + ' — ' + g.denumire : '',
+    data: recs[0].data, operator: recs[0].operator || '', lines, total: lines.reduce((s, l) => s + l.valoare, 0),
+  });
+});
+app.get('/pdf/bon-consum', (req, res) => {
+  const v = S(req);
+  const byId = new Map(v.products.map((p) => [p.id, p]));
+  const gById = new Map(v.gestiuni.map((g) => [g.id, g]));
+  const isd = stocks.sortMov(v.stockMovements.filter((m) => m.tip === 'iesire'
+    && (req.query.document ? m.document === req.query.document : m.id === req.query.id)
+    && (!req.query.gestiune || m.gestiuneId === req.query.gestiune)));
+  if (!isd.length) return res.status(404).send('Iesire inexistenta');
+  const g = gById.get(isd[0].gestiuneId);
+  const lines = isd.map((m) => {
+    const p = byId.get(m.productId) || {};
+    const valoare = round2(stocks.movementValue(p, v.stockMovements, m.id)); // valoare la CMP
+    const cmp = m.cantitate > 0 ? round2(valoare / m.cantitate) : 0;
+    return { cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc', cantitate: m.cantitate, cmp, valoare };
+  });
+  pdf.bonConsumPdf(res, v.company, {
+    serieNr: docNumberFor(req, 'BC', isd),
+    document: isd[0].document, gestiune: g ? g.cod + ' — ' + g.denumire : '',
+    data: isd[0].data, operator: isd[0].operator || '', lines, total: lines.reduce((s, l) => s + l.valoare, 0),
+  });
+});
+app.get('/pdf/aviz', (req, res) => {
+  const v = S(req);
+  const byId = new Map(v.products.map((p) => [p.id, p]));
+  const gById = new Map(v.gestiuni.map((g) => [g.id, g]));
+  const trs = stocks.sortMov(v.stockMovements.filter((m) => m.tip === 'transfer'
+    && (req.query.document ? m.document === req.query.document : m.id === req.query.id)));
+  if (!trs.length) return res.status(404).send('Transfer inexistent');
+  const src = gById.get(trs[0].gestiuneId); const dst = gById.get(trs[0].gestiuneDestId);
+  const nm = (g) => g ? (v.company.nume || '') + ' — gestiune ' + g.cod + ' ' + g.denumire : '';
+  const lines = trs.map((m) => {
+    const p = byId.get(m.productId) || {};
+    const valoare = round2(stocks.movementValue(p, v.stockMovements, m.id)); // valoare la CMP-ul sursei
+    const cmp = m.cantitate > 0 ? round2(valoare / m.cantitate) : 0;
+    return { cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc', cantitate: m.cantitate, cmp, valoare };
+  });
+  pdf.avizPdf(res, v.company, {
+    serieNr: docNumberFor(req, 'AVIZ', trs),
+    document: trs[0].document, expeditor: nm(src), destinatar: nm(dst),
+    data: trs[0].data, operator: trs[0].operator || '', lines, total: lines.reduce((s, l) => s + l.valoare, 0),
+  });
+});
+app.get('/pdf/stock-ledger/:id', (req, res) => {
+  const v = S(req);
+  const p = v.products.find((x) => x.id === req.params.id);
+  if (!p) return res.status(404).send('Produs inexistent');
+  pdf.stockLedgerPdf(res, v.company, stocks.productLedger(p, v.stockMovements, req.query.asOf || null, req.query.gestiune || null));
+});
+app.get('/pdf/note/:id', (req, res) => {
+  const e = db.get().entries.find((x) => x.id === req.params.id);
+  if (!e) return res.status(404).send('Nota inexistenta');
+  const fid = e.firmaId || db.firmaActiva();
+  const nr = acc.journalNr(db.scoped(fid), e.id);
+  pdf.notePdf(res, db.getFirma(fid) || {}, Object.assign({ nrJurnal: nr }, e));
+});
+
+app.post('/api/seed', requireAdmin, (req, res) => {
+  const r = seed();
+  res.json({ ok: true, message: 'Exemplu incarcat: ' + r.entries + ' inregistrari pentru ' + r.period + '.' });
+});
+
+const os = require('os');
+// Backup automat zilnic (daca e activat)
+setInterval(() => {
+  const s = db.get().settings.backup || {};
+  if (s.auto === false) return;
+  const last = s.lastAt ? Date.parse(s.lastAt) : 0;
+  if (Date.now() - last >= 24 * 3600 * 1000) {
+    try { const r = doBackup(); console.log('Backup automat:', r.name); } catch (e) { console.error('Backup:', e.message); }
+  }
+}, 3600 * 1000); // verifica din ora in ora
+
+// Job periodic: descarca automat recipisele (doar daca e activat si conectat)
+setInterval(() => {
+  const c = db.get().settings.anaf || {};
+  if (c.autoPoll && anaf.connected(c)) {
+    pollSpv().then((r) => { if (r.downloaded) console.log('Auto-poll SPV: ' + r.downloaded + ' recipise descarcate'); })
+      .catch((e) => console.error('Auto-poll SPV:', e.message || e));
+  }
+}, 15 * 60 * 1000);
+
+// Handler global de erori — DUPA toate rutele. Raspuns curat (JSON), fara scurgere de stack
+// catre client; 4xx isi pastreaza mesajul, 5xx devin generice si se logheaza pe server.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = err.status || err.statusCode || 500;
+  if (status >= 500) console.error('[eroare]', req.method, req.originalUrl, '-', (err && err.stack) || err);
+  const msg = status < 500 && err && err.message ? err.message : 'A aparut o eroare interna. Incearca din nou.';
+  res.status(status).json({ error: msg });
+});
+
+const PORT = process.env.PORT || 8080;
+const HOST = process.env.HOST || '0.0.0.0'; // asculta pe toate interfetele (acces din retea)
+app.listen(PORT, HOST, () => {
+  console.log('Contabo ruleaza (asculta pe ' + HOST + ':' + PORT + ')');
+  console.log('  Local:  http://localhost:' + PORT);
+  const ifaces = os.networkInterfaces();
+  for (const name of Object.keys(ifaces)) {
+    for (const i of ifaces[name]) {
+      if (i.family === 'IPv4' && !i.internal) {
+        console.log('  Retea:  http://' + i.address + ':' + PORT);
+      }
+    }
+  }
+});
+
+module.exports = { app, buildEntry, upsertPartner };

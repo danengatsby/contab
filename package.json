@@ -1,0 +1,27 @@
+{
+  "name": "contab",
+  "version": "1.0.0",
+  "description": "Aplicatie de contabilitate - ciclul contabil de la documente primare PDF la situatii financiare PDF (plan de conturi romanesc)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node scripts/seed.js",
+    "test": "node scripts/check-syntax.js && node test/run.js",
+    "lint": "node scripts/check-syntax.js",
+    "prestart": "npm test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
+    "adm-zip": "^0.5.16",
+    "express": "^4.21.2",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.3",
+    "pdf-parse": "^1.1.1",
+    "pdf2json": "^3.1.4",
+    "pdfkit": "^0.15.1",
+    "qrcode-svg": "^1.1.0",
+    "stripe": "^22.3.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  }
+}

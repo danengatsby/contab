@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contabo — Prezentare | Contabilitate completă, în cloud</title>
+  <meta name="description" content="Contabo: aduci documentele, aplicația face articolul contabil, iar registrele, TVA-ul și declarațiile ANAF se generează singure. e-Factura, SAF-T, stocuri, salarizare, situații financiare F10–F40." />
+  <style>
+    :root{--ink:#2c2b27;--muted:#76746c;--line:#e8e4d8;--bg:#f7f4ec;--card:#ffffff;--accent:#c2613c;--good:#0b6e4f;--head:#2f2e2a;--blue:#2563c9;--purple:#8a3ffc}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6;font-size:16px}
+    h1,h2,h3{font-family:Georgia,"Iowan Old Style",Palatino,serif;margin:0 0 .4em}
+    .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+    /* HERO */
+    .hero{position:relative;background:#14204a url(/login-bg.svg) center/cover no-repeat;color:#fff;text-align:center;padding:72px 16px 64px}
+    .hero::after{content:"";position:absolute;inset:0;background:rgba(5,8,22,.78)}
+    .hero>*{position:relative;z-index:1}
+    .hero .title{font-weight:900;font-size:clamp(38px,7vw,84px);line-height:1;letter-spacing:2px;margin:0;
+      background:linear-gradient(90deg,#ffd24a 0%,#ff7a59 26%,#ff4fa3 50%,#8a7bff 74%,#37e0c4 100%);
+      -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+      filter:drop-shadow(0 3px 10px rgba(0,0,0,.45))}
+    .hero .sub{font-size:clamp(15px,2.2vw,22px);margin:14px auto 6px;max-width:760px;color:#eef2ff;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+    .hero .tag{font-size:clamp(18px,2.8vw,30px);font-weight:900;letter-spacing:3px;text-transform:uppercase;color:#ffffff;margin:0 0 12px;text-shadow:0 3px 12px rgba(0,0,0,.6)}
+    .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+    .btn{display:inline-block;padding:13px 26px;border-radius:12px;font-weight:700;text-decoration:none;font-size:16px;border:0;cursor:pointer;transition:transform .12s, box-shadow .12s}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(0,0,0,.28)}
+    .btn.primary{background:linear-gradient(90deg,#ff7a59,#ff4fa3);color:#fff}
+    .btn.ghost{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.4)}
+    .btn.solid{background:var(--good);color:#fff}
+    .btn.back-btn{background:var(--card);color:var(--ink);border:1px solid var(--line);padding:9px 20px;font-size:14.5px;box-shadow:0 2px 8px rgba(60,50,35,.08)}
+    /* SECTIONS */
+    section{padding:56px 0}
+    section.alt{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .kicker{color:var(--accent);font-weight:800;text-transform:uppercase;letter-spacing:2px;font-size:12.5px;margin-bottom:6px}
+    h2{font-size:clamp(24px,3.6vw,34px)}
+    .lead{color:var(--muted);max-width:820px;font-size:17px}
+    /* 3 pasi */
+    .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-top:28px}
+    .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 4px 16px rgba(60,50,35,.06)}
+    .step .n{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:17px;margin-bottom:10px}
+    .step:nth-child(1) .n{background:var(--blue)}.step:nth-child(2) .n{background:var(--good)}.step:nth-child(3) .n{background:var(--purple)}
+    .step b{font-size:18px}
+    .step p{color:var(--muted);margin:.4em 0 0;font-size:14.5px}
+    .step ul{margin:.7em 0 0;padding-left:18px;color:var(--muted);font-size:13.5px}
+    .step ul li{margin:4px 0}
+    .step ul b{font-size:inherit;display:inline;color:var(--ink)}
+    /* banda ciclului complet */
+    .cycle{display:flex;flex-wrap:wrap;gap:0;align-items:stretch;justify-content:center;margin-top:34px;background:var(--head);border-radius:16px;padding:22px 14px;box-shadow:0 8px 26px rgba(40,35,25,.18)}
+    .cyc{flex:1;min-width:150px;text-align:center;color:#efe9dc;padding:6px 10px;position:relative}
+    .cyc .ci{font-size:30px}
+    .cyc b{display:block;color:#fff;font-size:14.5px;margin-top:4px}
+    .cyc span{font-size:12px;color:#b9b1a2}
+    .cyc:not(:last-child)::after{content:"→";position:absolute;right:-9px;top:50%;transform:translateY(-50%);color:#ffd24a;font-size:22px;font-weight:800}
+    @media(max-width:760px){.cyc:not(:last-child)::after{content:"↓";right:auto;left:50%;top:auto;bottom:-14px;transform:translateX(-50%)}}
+    /* exemple concrete */
+    .auto-ex{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:30px}
+    .aex{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--good);border-radius:12px;padding:16px 18px;font-size:14.5px}
+    .aex b{color:var(--head)}
+    .aex .arr{color:var(--good);font-weight:800}
+    .aex .mut{color:var(--muted);font-size:13px;display:block;margin-top:4px}
+    /* features */
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:26px}
+    .feat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 3px 10px rgba(60,50,35,.05)}
+    .feat .ic{font-size:24px}
+    .feat b{display:block;margin:6px 0 2px;font-size:15.5px}
+    .feat span{color:var(--muted);font-size:13.5px}
+    /* pasi detaliati */
+    ol.walk{counter-reset:s;list-style:none;padding:0;margin:26px 0 0;display:grid;gap:12px}
+    ol.walk li{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px 14px 58px;position:relative;font-size:15px}
+    ol.walk li::before{counter-increment:s;content:counter(s);position:absolute;left:16px;top:14px;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;display:grid;place-items:center;font-size:14px}
+    ol.walk li b{color:var(--head)}
+    ol.walk li .mut{color:var(--muted)}
+    /* pricing */
+    .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-top:28px}
+    .plan{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;box-shadow:0 4px 16px rgba(60,50,35,.06)}
+    .plan.reco{border-color:var(--good);box-shadow:0 8px 26px rgba(11,110,79,.16)}
+    .plan .badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--good);color:#fff;font-size:11px;font-weight:800;padding:3px 12px;border-radius:20px;letter-spacing:.4px}
+    .plan h3{font-size:19px;margin-bottom:4px}
+    .plan .price{color:var(--muted);font-size:14px;margin-bottom:8px}
+    .plan .price b{font-size:32px;color:var(--ink)}
+    .plan ul{list-style:none;margin:0 0 14px;padding:0;flex:1}
+    .plan li{padding:5px 0 5px 22px;position:relative;font-size:13.5px;border-bottom:1px solid #f2efe6}
+    .plan li::before{content:"✓";position:absolute;left:0;color:var(--good);font-weight:800}
+    .plan .btn{text-align:center;font-size:15px;padding:11px 18px}
+    .plan .btn.buy{background:var(--accent);color:#fff}
+    /* conformitate + faq */
+    .honest{background:var(--card);border-left:5px solid var(--accent);border-radius:12px;padding:18px 22px;margin-top:24px}
+    .honest ul{margin:.5em 0 0;padding-left:20px;color:var(--muted);font-size:14.5px}
+    details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-top:10px}
+    details summary{font-weight:700;cursor:pointer}
+    details p{color:var(--muted);margin:.5em 0 0;font-size:14.5px}
+    /* footer */
+    footer{background:var(--head);color:#cfc8ba;text-align:center;padding:44px 16px}
+    footer .title{font-weight:900;font-size:26px;color:#fff;font-family:Georgia,serif;letter-spacing:1px}
+    footer p{margin:.4em 0}
+    footer a{color:#ffd24a;text-decoration:none}
+    .fineprint{font-size:12.5px;color:#9a938a;max-width:720px;margin:14px auto 0}
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <p class="tag">Contabilitate completă, în cloud</p>
+    <h1 class="title">CONTABO SPACE</h1>
+    <p class="sub"><b>Aduci documentele → aplicația face articolul contabil → registrele, TVA-ul și declarațiile ANAF se generează singure.</b> Tu doar verifici și confirmi.</p>
+    <div class="cta">
+      <a class="btn primary" href="/">🚀 Începe proba gratuită — 30 zile</a>
+      <button class="btn solid" id="demoBtn">🔎 Vezi demo cu date reale</button>
+      <a class="btn ghost" href="#preturi">💳 Prețuri</a>
+    </div>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <p style="margin:0 0 18px"><a href="/" class="btn back-btn">← Înapoi</a></p>
+      <p class="kicker">Cum funcționează</p>
+      <h2>Nu trebuie să știi formula contabilă</h2>
+      <p class="lead">Regula de aur a aplicației: <b>alegi tipul documentului, Contabo pune conturile corecte</b> — după regulile contabilității românești (OMFP 1802/2014, partidă dublă). Orice greșeală se șterge și se reface în câteva secunde, iar la fiecare pas ai explicații în limbaj simplu, fără jargon.</p>
+      <div class="steps">
+        <div class="step"><div class="n">1</div><b>📥 Aduci documentul</b>
+          <p>Orice hârtie a firmei intră în aplicație în câteva secunde:</p>
+          <ul>
+            <li><b>Facturi primite</b> — tragi PDF-ul sau o simplă <b>poză cu telefonul</b>; AI-ul citește singur furnizorul, CUI-ul, baza, TVA-ul și totalul.</li>
+            <li><b>Facturi emise</b> — completezi clientul și liniile (cantitate × preț × cotă); primești automat <b>e-Factura XML</b> pentru SPV + PDF pentru client, cu număr în serie continuă.</li>
+            <li><b>Extras bancar</b> — încarci CSV/MT940 și aplicația potrivește încasările și plățile cu partenerii.</li>
+            <li><b>Bonuri, chitanțe, scanate</b> — chiar și de la scanerul local, prin puntea de scanare.</li>
+          </ul>
+        </div>
+        <div class="step"><div class="n">2</div><b>🧾 Se contabilizează automat</b>
+          <p>Aplicația construiește articolul contabil (cont debitor = cont creditor) — tu doar verifici și salvezi:</p>
+          <ul>
+            <li><b>~100 de tipuri de operațiuni</b> gata pregătite: vânzări, cumpărări, salarii, leasing, avansuri, efecte de comerț, operațiuni în valută…</li>
+            <li><b>TVA-ul se calculează singur</b>, pe cote (21% / 11% / scutit), inclusiv taxare inversă și TVA la încasare.</li>
+            <li><b>Stocurile se descarcă automat</b> la cost mediu ponderat (vânzarea scoate marfa din gestiune la costul ei).</li>
+            <li>Partenerii, seriile de documente și analiticele se completează și se rețin singure.</li>
+          </ul>
+        </div>
+        <div class="step"><div class="n">3</div><b>📊 Rapoartele se generează singure</b>
+          <p>Din înregistrări se construiește automat tot ce cere legea — zero muncă dublă:</p>
+          <ul>
+            <li><b>Registre obligatorii</b>: registru-jurnal, cartea mare, balanță (debit = credit, verificat mereu), jurnale de TVA.</li>
+            <li><b>Declarații ANAF</b>: D300, D394, D390, D205, D112, SAF-T (D406) — cu verificare pre-depunere.</li>
+            <li><b>Situații financiare complete</b>: bilanț F10, profit & pierdere F20, fluxuri F30, capitaluri F40 + note explicative, într-un singur PDF.</li>
+            <li><b>Management</b>: dashboard an-la-an, buget vs realizat, previziune de cash-flow, scadențar clienți/furnizori.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cycle">
+        <div class="cyc"><div class="ci">📄</div><b>Document</b><span>factură, bon, extras — încărcat sau emis</span></div>
+        <div class="cyc"><div class="ci">🧾</div><b>Articol contabil</b><span>debit = credit, pus automat</span></div>
+        <div class="cyc"><div class="ci">📚</div><b>Registre & balanță</b><span>jurnal, cartea mare, solduri</span></div>
+        <div class="cyc"><div class="ci">🧮</div><b>TVA & declarații</b><span>D300, D394, D112, SAF-T</span></div>
+        <div class="cyc"><div class="ci">📊</div><b>Situații financiare</b><span>bilanț, profit, fluxuri</span></div>
+      </div>
+
+      <div class="auto-ex">
+        <div class="aex"><b>Exemplu:</b> încarci poza unei facturi de marfă de 1.000 lei + TVA <span class="arr">→</span> aplicația scrie singură <b>371 = 401 (1.000)</b> și <b>4426 = 401 (210)</b>.<span class="mut">Marfa intră în stoc, furnizorul apare la datorii, TVA-ul la deductibil — toate dintr-o poză.</span></div>
+        <div class="aex"><b>Exemplu:</b> emiți o factură de servicii de 500 lei <span class="arr">→</span> primești <b>e-Factura XML</b> pentru SPV, PDF-ul pentru client și înregistrarea <b>4111 = 704 + 4427</b>.<span class="mut">La încasare, un click („Încasare de la client") închide creanța.</span></div>
+        <div class="aex"><b>Exemplu:</b> la sfârșit de lună apeși „Închide TVA" <span class="arr">→</span> 4427 se compensează cu 4426 și afli exact <b>cât ai de plată (4423)</b> sau de recuperat (4424).<span class="mut">Decontul D300 e deja completat, defalcat pe cote.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap">
+      <p class="kicker">Tot ciclul contabil</p>
+      <h2>Un singur loc pentru toată firma</h2>
+      <div class="grid">
+        <div class="feat"><span class="ic">🤖</span><b>Documente citite cu AI</b><span>Încarci factura (PDF sau poză) — tipul, sumele și partenerul se completează singure.</span></div>
+        <div class="feat"><span class="ic">🧾</span><b>e-Factura (CIUS-RO)</b><span>Emiți facturi cu XML UBL pentru SPV + PDF pentru client. Import e-Factura primită.</span></div>
+        <div class="feat"><span class="ic">🏦</span><b>Bancă & reconciliere</b><span>Import extras (CSV/MT940), potrivire automată cu partenerii, control sold.</span></div>
+        <div class="feat"><span class="ic">🧮</span><b>TVA & declarații</b><span>Jurnale de vânzări/cumpărări, decont D300, D394, D390, D205 — defalcate pe cote.</span></div>
+        <div class="feat"><span class="ic">📦</span><b>Stocuri & producție</b><span>Gestiuni cu cost mediu ponderat, NIR, inventar, rețete/BOM și bonuri de producție.</span></div>
+        <div class="feat"><span class="ic">👥</span><b>Salarizare</b><span>State de plată, contribuții 2026, fluturași, declarația D112.</span></div>
+        <div class="feat"><span class="ic">🏢</span><b>Mijloace fixe</b><span>Registru de imobilizări, amortizare liniară automată, fișa mijlocului fix.</span></div>
+        <div class="feat"><span class="ic">📈</span><b>Situații financiare complete</b><span>Bilanț F10, profit & pierdere F20, fluxuri F30, capitaluri F40 + note explicative — într-un singur PDF.</span></div>
+        <div class="feat"><span class="ic">🔒</span><b>Închideri de lună</b><span>Închidere TVA, amortizare, impozit pe profit cu pierdere reportată, închidere anuală.</span></div>
+        <div class="feat"><span class="ic">📊</span><b>SAF-T (D406)</b><span>Fișierul standard de audit generat din toate înregistrările, gata de validare.</span></div>
+        <div class="feat"><span class="ic">🔮</span><b>Management financiar</b><span>Dashboard an-la-an, buget vs realizat, previziune de cash-flow, scadențar.</span></div>
+        <div class="feat"><span class="ic">🛡️</span><b>Siguranță</b><span>Multi-firmă, utilizatori cu 2FA, jurnal de audit, backup zilnic automat.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="kicker">Pas cu pas — din ghidul aplicației</p>
+      <h2>O lună de contabilitate, de la A la Z</h2>
+      <ol class="walk">
+        <li><b>Configurezi o singură dată</b> — <span class="mut">datele firmei (CUI, regim TVA, micro/profit), apoi opțional imporți partenerii, planul de conturi și produsele din CSV.</span></li>
+        <li><b>Înregistrezi documentele primite</b> — <span class="mut">tragi factura de la furnizor (PDF sau poză) în aplicație; AI-ul completează tipul, partenerul, baza și TVA-ul. Tu verifici și salvezi.</span></li>
+        <li><b>Emiți facturile tale</b> — <span class="mut">clientul + liniile (cantitate × preț × cotă); aplicația calculează totul, dă număr în serie continuă și produce e-Factura XML + PDF.</span></li>
+        <li><b>Bagi banca</b> — <span class="mut">încarci extrasul, aplicația potrivește încasările și plățile cu partenerii; în Reconciliere confirmi soldul.</span></li>
+        <li><b>Verifici rapoartele</b> — <span class="mut">registru-jurnal, cartea mare, balanța (debit = credit), decontul de TVA pe cote, situațiile financiare — toate deja generate.</span></li>
+        <li><b>Închizi luna</b> — <span class="mut">amortizare, închidere TVA (4427/4426 → 4423/4424), apoi descarci declarațiile pentru ANAF: D300, D394, D112, SAF-T.</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="alt" id="preturi">
+    <div class="wrap">
+      <p class="kicker">Prețuri</p>
+      <h2>Simplu: toate funcțiile, în fiecare plan</h2>
+      <p class="lead">Începi cu <b>30 de zile gratuit, fără card</b>. Planurile plătite se diferențiază doar prin preț — funcțiile sunt aceleași, complete.</p>
+      <div class="plans" id="plansGrid"><p style="color:var(--muted)">Se încarcă prețurile…</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="kicker">Onest despre conformitate</p>
+      <h2>Ce face aplicația — și ce rămâne la tine</h2>
+      <p class="lead">Contabo te duce aproape de capăt: contabilitate corectă + formatele ANAF. Ultimii pași rămân, ca la orice soft, în grija ta:</p>
+      <div class="honest">
+        <ul>
+          <li><b>Validează declarațiile</b> (D300, D394, D112, SAF-T) cu <b>DUKIntegrator</b> / XSD ANAF înainte de depunere — până atunci sunt ciorne.</li>
+          <li><b>Verifică cu un contabil autorizat</b> sumele și încadrările fiscale.</li>
+          <li><b>e-Factura B2B</b> se trimite în SPV (necesită certificat digital ANAF).</li>
+          <li>Casa de marcat fiscală (încasări numerar de la populație) rămâne obligatorie separat.</li>
+          <li>Păstrează originalele pe hârtie: registre 10 ani, state de salarii 50 de ani.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap">
+      <p class="kicker">Întrebări frecvente</p>
+      <h2>Pe scurt</h2>
+      <details><summary>Trebuie să știu contabilitate ca să folosesc aplicația?</summary><p>Nu. Alegi tipul documentului în limbaj simplu („factură de la furnizor", „încasare de la client"), iar aplicația pune conturile corecte. Există și ghid pas cu pas + tur ghidat la prima logare.</p></details>
+      <details><summary>Ce se întâmplă după cele 30 de zile de probă?</summary><p>Datele rămân. Alegi un plan plătit și continui exact de unde ai rămas — nimic nu se pierde.</p></details>
+      <details><summary>Pot ține mai multe firme?</summary><p>Da — aplicația e multi-firmă: comuți între firme dintr-un selector, fiecare cu datele, partenerii și declarațiile ei.</p></details>
+      <details><summary>Micro sau impozit pe profit?</summary><p>Micro (1% din venituri) avantajează marjele mari; impozitul pe profit (16%) poate fi mai bun la marje mici. Aplicația îți arată comparativ ambele calcule, iar decizia o iei cu contabilul tău.</p></details>
+      <details><summary>Datele mele sunt în siguranță?</summary><p>Cont propriu cu parolă și opțional 2FA, jurnal de audit al acțiunilor, backup zilnic automat. Recomandăm și o copie off-site.</p></details>
+    </div>
+  </section>
+
+  <footer>
+    <div class="title">▦ CONTABO SPACE</div>
+    <p>Contabilitate completă, în cloud — de la documentul scanat până la declarația ANAF.</p>
+    <p><a href="/">Intră în aplicație →</a></p>
+    <p class="fineprint">Aplicația generează documente și declarații conform reglementărilor românești (OMFP 1802/2014, parametri fiscali 2026). Validați declarațiile cu instrumentele oficiale ANAF înainte de depunere și consultați un contabil autorizat pentru decizii fiscale.</p>
+  </footer>
+
+  <script src="/prezentare.js"></script>
+</body>
+</html>
