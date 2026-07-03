@@ -163,7 +163,9 @@ function load() {
       backupLegacyJson();
       console.log('[contab] Migrare unica db.json -> SQLite efectuata (copie de siguranta: data/db.pre-sqlite.json).');
     } else {
-      db = JSON.parse(JSON.stringify(DEFAULT_DB)); // instalare noua / teste
+      // instalare noua / teste — migrate() creeaza utilizatorul initial admin/admin + authSecret
+      // (fara el, prima pornire pe SQLite gol ramanea fara niciun cont de autentificare)
+      db = migrate(applyDefaults({}));
     }
     store.persist(db);
   } else {

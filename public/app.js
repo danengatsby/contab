@@ -453,12 +453,16 @@ $('#restoreBtn').addEventListener('click', async () => {
 
 // ───────────────────────── PROFIL + SESIUNI ─────────────────────────
 async function renderProfile() {
-  try { const p = await api('/api/profile'); $('#profileForm').email.value = p.email || ''; } catch (e) { /* */ }
+  try {
+    const p = await api('/api/profile');
+    $('#profileForm').email.value = p.email || '';
+    $('#profileForm').notifyDeadlines.checked = p.notifyDeadlines !== false;
+  } catch (e) { /* */ }
 }
 $('#profileForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  await api('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: e.target.email.value }) });
-  toast('Email salvat');
+  await api('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: e.target.email.value, notifyDeadlines: e.target.notifyDeadlines.checked }) });
+  toast('Profil salvat');
 });
 async function renderSessions() {
   let list;
@@ -2817,6 +2821,36 @@ async function loadDeclRegister(p) {
     toast('Stare salvată: ' + DECL_ST[sel.value].t);
     loadDeclRegister(sel.dataset.period);
     refreshNotifBadge();
+  }));
+}
+
+// ───────────────────────── FISA ROL / DOCUMENTE SPV ─────────────────────────
+$('#fisaRolBtn') && $('#fisaRolBtn').addEventListener('click', async () => {
+  $('#fisaRolStatus').textContent = 'se trimite cererea…';
+  try {
+    const r = await api('/api/anaf/fisa-rol', { method: 'POST' });
+    $('#fisaRolStatus').textContent = r.mesaj || 'Solicitare depusă.';
+    toast('Cerere Fișa Rol depusă în SPV');
+  } catch (e) { $('#fisaRolStatus').textContent = ''; toast(e.message, true); }
+});
+$('#spvMesajeBtn') && $('#spvMesajeBtn').addEventListener('click', loadSpvMesaje);
+async function loadSpvMesaje() {
+  const box = $('#spvMesajeList');
+  box.innerHTML = '<p class="muted">se încarcă…</p>';
+  let msgs;
+  try { msgs = await api('/api/anaf/spv-mesaje?zile=30'); }
+  catch (e) { box.innerHTML = ''; toast(e.message, true); return; }
+  box.innerHTML = msgs.length
+    ? `<table><thead><tr><th>Data</th><th>Tip</th><th>Detalii</th><th></th></tr></thead><tbody>${
+      msgs.map((m) => `<tr><td class="muted">${(m.data || '').slice(0, 16)}</td><td>${m.tip || ''}</td><td>${m.detalii || ''}</td>
+        <td><button class="linkbtn spv-dl" data-id="${m.id}" data-detalii="${(m.detalii || m.tip || 'Document SPV').replace(/"/g, '')}">descarcă</button></td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Niciun mesaj în SPV pe ultimele 30 de zile.</p>';
+  box.querySelectorAll('.spv-dl').forEach((b) => b.addEventListener('click', async () => {
+    try {
+      const r = await api('/api/anaf/spv-descarca/' + b.dataset.id, { method: 'POST', body: JSON.stringify({ detalii: b.dataset.detalii }) });
+      toast('Document atașat firmei');
+      window.open('/api/document/' + r.documentId + '/file', '_blank');
+    } catch (e) { toast(e.message, true); }
   }));
 }
 

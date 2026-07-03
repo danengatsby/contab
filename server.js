@@ -684,7 +684,7 @@ app.post('/api/change-password', (req, res) => {
   db.save();
   res.json({ ok: true });
 });
-app.get('/api/profile', (req, res) => res.json({ username: req.user.username, email: req.user.email || '', role: req.user.role }));
+app.get('/api/profile', (req, res) => res.json({ username: req.user.username, email: req.user.email || '', role: req.user.role, notifyDeadlines: req.user.notifyDeadlines !== false }));
 
 // ── Abonamente (planuri + trial) ──
 // Prețurile sunt publice (vizibile pe pagina de înscriere, fără autentificare).
@@ -788,8 +788,9 @@ app.post('/api/subscription/activate', requireAdmin, (req, res) => {
 });
 app.post('/api/profile', (req, res) => {
   if ((req.body || {}).email != null) req.user.email = String(req.body.email);
+  if ((req.body || {}).notifyDeadlines != null) req.user.notifyDeadlines = !!req.body.notifyDeadlines;
   db.save();
-  res.json({ ok: true, email: req.user.email });
+  res.json({ ok: true, email: req.user.email, notifyDeadlines: req.user.notifyDeadlines !== false });
 });
 
 // ───────────────────────── RESETARE PAROLA (email) ─────────────────────────
@@ -2711,6 +2712,47 @@ app.get('/api/anaf/inbox', wrap(async (req, res) => {
   })));
 }));
 
+// ───────── Fisa Rol / documente SPV (servicii web SPVWS2, github.com/MfpAnaf/ClientSPV) ─────────
+// Solicita fisa pe platitor pentru firma activa; ANAF o proceseaza asincron, iar PDF-ul apare
+// in mesajele SPV, de unde se descarca si se ataseaza ca document al firmei.
+app.post('/api/anaf/fisa-rol', wrap(async (req, res) => {
+  const d = db.get();
+  const c = d.settings.anaf || {};
+  if (!anaf.connected(c)) return res.status(400).json({ error: 'Neconectat la SPV. Conectează-te din Setări → Trimitere în SPV.' });
+  const cui = ((db.getFirma(activeId(req)) || {}).cui || c.cif || '').replace(/^ro/i, '');
+  if (!cui) return res.status(400).json({ error: 'Firma activă nu are CUI completat.' });
+  const r = await anaf.spvRequest(c, 'Fisa Rol', { cui });
+  d.settings.anaf = c; // token-ul se poate reimprospata in apel
+  logAudit('anaf.fisarol', 'solicitare Fisa Rol CUI ' + cui + (r.id_solicitare ? ' (#' + r.id_solicitare + ')' : ''), { req });
+  db.save();
+  res.json({ ok: true, id: r.id_solicitare || null, titlu: r.titlu || '', mesaj: 'Solicitare depusă. Documentul apare în mesajele SPV după procesare (de regulă în câteva minute).' });
+}));
+app.get('/api/anaf/spv-mesaje', wrap(async (req, res) => {
+  const d = db.get();
+  const c = d.settings.anaf || {};
+  if (!anaf.connected(c)) return res.status(400).json({ error: 'Neconectat la SPV.' });
+  const msgs = await anaf.spvMessages(c, Math.min(Number(req.query.zile) || 30, 500));
+  d.settings.anaf = c; db.save();
+  res.json(msgs.map((m) => ({ id: m.id, data: m.data_creare || m.data, tip: m.tip, detalii: m.detalii, cui: m.cui })));
+}));
+app.post('/api/anaf/spv-descarca/:id', wrap(async (req, res) => {
+  const d = db.get();
+  const c = d.settings.anaf || {};
+  if (!anaf.connected(c)) return res.status(400).json({ error: 'Neconectat la SPV.' });
+  const buf = await anaf.spvDownload(c, req.params.id);
+  const storedName = crypto.randomBytes(8).toString('hex') + '.pdf';
+  fs.writeFileSync(path.join(db.UPLOAD_DIR, storedName), buf);
+  const docId = db.nextId('doc');
+  const nume = String((req.body || {}).detalii || 'Document SPV').slice(0, 120);
+  d.documents.push({
+    id: docId, firmaId: activeId(req), fileName: nume.replace(/[^\w .-]+/g, ' ').trim() + '.pdf', storedName,
+    uploadedAt: new Date().toISOString(), text: '', spvMsgId: req.params.id,
+  });
+  logAudit('anaf.spvdoc', 'descarcat din SPV: ' + nume, { req });
+  db.save();
+  res.json({ ok: true, documentId: docId });
+}));
+
 function extractInvoiceXml(buf) {
   const zip = new AdmZip(buf);
   const entries = zip.getEntries();
@@ -2840,6 +2882,55 @@ app.get('/api/notifications', (req, res) => {
   const fids = allowedFirme(req.user);
   res.json(decl.notifications(d, fids.map((id) => db.scoped(id))));
 });
+
+// ───────── Digest email cu termenele fiscale (zilnic, ~07:00) ─────────
+// Trimite prin SMTP-ul configurat in Setari; fara SMTP, cade pe API-ul Resend (RESEND_API_KEY).
+async function sendNotifMail(to, subject, text) {
+  const smtp = db.get().settings.smtp || {};
+  if (smtp.host) return sendMail(smtp, to, subject, text);
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error('Nici SMTP, nici RESEND_API_KEY nu sunt configurate.');
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json', 'User-Agent': 'contab-app/1.0' },
+    body: JSON.stringify({ from: 'Contab <comenzi@poetio.site>', to: [to], subject, text }),
+  });
+  const t = await r.text();
+  if (!r.ok || !t.includes('"id"')) throw new Error('Resend ' + r.status + ': ' + t.slice(0, 200));
+}
+function digestText(n) {
+  const line = (i) => '  • [' + (i.firma || 'firma') + '] ' + i.nume + ' — luna ' + i.period + ', termen ' + i.due;
+  const rest = n.items.filter((i) => i.kind === 'restanta');
+  const term = n.items.filter((i) => i.kind === 'termen');
+  let s = 'Ai ' + n.count + ' notificări de termene fiscale în Contab (' + billing.appUrl() + '):\n';
+  if (rest.length) s += '\nRESTANȚE (termen depășit):\n' + rest.map(line).join('\n') + '\n';
+  if (term.length) s += '\nTERMENE ÎN URMĂTOARELE 7 ZILE:\n' + term.map(line).join('\n') + '\n';
+  s += '\nMarchează depunerile în aplicație: Declarații ANAF → Registrul depunerilor.\n'
+    + 'Poți dezactiva aceste emailuri din Setări → Contul meu.\n';
+  return s;
+}
+/** Trimite digestul fiecarui utilizator cu email si notificari active. Returneaza sumarul. */
+async function sendDeadlineDigests() {
+  const d = db.get();
+  const out = { sent: [], skipped: 0, errors: [] };
+  for (const u of d.users) {
+    if (!u.email || u.notifyDeadlines === false || u.username === 'demo' || u.pending) { out.skipped++; continue; }
+    const fids = u.role === 'admin' ? d.firme.map((f) => f.id) : (u.firme || []);
+    if (!fids.length) { out.skipped++; continue; }
+    const n = decl.notifications(d, fids.map((id) => db.scoped(id)));
+    if (!n.count) { out.skipped++; continue; }
+    try {
+      await sendNotifMail(u.email, '[Contab] ' + n.count + ' termene fiscale / restanțe', digestText(n));
+      out.sent.push(u.email);
+    } catch (e) { out.errors.push(u.username + ': ' + e.message); }
+  }
+  return out;
+}
+app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
+  const r = await sendDeadlineDigests();
+  logAudit('notificari.digest', 'trimis manual: ' + r.sent.length + ' emailuri', { req, firmaId: null });
+  res.json(r);
+}));
 // Validare pre-depunere: genereaza XML-ul declaratiei si verifica bine-format + campuri obligatorii.
 app.get('/api/validate/:type', (req, res) => {
   const v = S(req); const type = req.params.type;
@@ -3085,6 +3176,19 @@ setInterval(() => {
     try { const r = doBackup(); console.log('Backup automat:', r.name); } catch (e) { console.error('Backup:', e.message); }
   }
 }, 3600 * 1000); // verifica din ora in ora
+
+// Digest zilnic cu termenele fiscale: o singura data pe zi, dupa ora 07:00 (ora serverului)
+setInterval(() => {
+  const d = db.get();
+  const today = new Date().toISOString().slice(0, 10);
+  const s = d.settings.deadlineDigest || (d.settings.deadlineDigest = {});
+  if (s.lastDate === today || new Date().getHours() < 7) return;
+  s.lastDate = today;
+  db.save();
+  sendDeadlineDigests()
+    .then((r) => { if (r.sent.length || r.errors.length) console.log('Digest termene:', r.sent.length, 'trimise', r.errors.length ? ('; erori: ' + r.errors.join(' | ')) : ''); })
+    .catch((e) => console.error('Digest termene:', e.message));
+}, 15 * 60 * 1000);
 
 // Igiena rate-limit: fara curatare, map-urile ar creste nelimitat (cate o intrare per IP esuat)
 setInterval(() => {

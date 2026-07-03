@@ -150,4 +150,52 @@ async function listMessages(cfg, cif, zile, filtru) {
   return Array.isArray(j.mesaje) ? j.mesaje : [];
 }
 
-module.exports = { configured, connected, authorizeUrl, exchangeCode, refresh, ensureToken, upload, status, download, listMessages, apiBase };
+// ───────── Servicii web SPV generale (SPVWS2) — cereri de documente: Fisa Rol etc. ─────────
+// Documentate oficial in github.com/MfpAnaf/ClientSPV. Fluxul: /cerere depune solicitarea
+// (raspuns { id_solicitare, titlu... }), ANAF o proceseaza asincron si documentul apare in
+// /listaMesaje, de unde se descarca PDF-ul cu /descarcare?id=.
+const SPV_BASE = 'https://webserviced.anaf.ro/SPVWS2/rest';
+
+/** Depune o cerere de document in SPV (tip = 'Fisa Rol', 'Obligatii de plata', ...). */
+async function spvRequest(cfg, tip, params) {
+  const token = await ensureToken(cfg);
+  const q = new URLSearchParams(Object.assign({ tip }, params || {}));
+  const r = await fetch(SPV_BASE + '/cerere?' + q.toString(), {
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
+  });
+  const txt = await r.text();
+  if (!r.ok) throw new Error('SPV cerere ' + r.status + ': ' + txt.slice(0, 300));
+  let j;
+  try { j = JSON.parse(txt); } catch (_) { throw new Error('Raspuns SPV invalid: ' + txt.slice(0, 200)); }
+  if (j.eroare) throw new Error(j.eroare);
+  return j;
+}
+
+/** Mesajele din SPV (documente emise de ANAF ca raspuns la cereri) pe ultimele `zile` zile. */
+async function spvMessages(cfg, zile) {
+  const token = await ensureToken(cfg);
+  const r = await fetch(SPV_BASE + '/listaMesaje?zile=' + encodeURIComponent(zile || 30), {
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
+  });
+  const txt = await r.text();
+  if (!r.ok) throw new Error('SPV listaMesaje ' + r.status + ': ' + txt.slice(0, 200));
+  let j;
+  try { j = JSON.parse(txt); } catch (_) { throw new Error('Raspuns SPV invalid: ' + txt.slice(0, 200)); }
+  if (j.eroare) throw new Error(j.eroare);
+  return Array.isArray(j.mesaje) ? j.mesaje : [];
+}
+
+/** Descarca un mesaj SPV (PDF) dupa id. */
+async function spvDownload(cfg, id) {
+  const token = await ensureToken(cfg);
+  const r = await fetch(SPV_BASE + '/descarcare?id=' + encodeURIComponent(id), {
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  if (!r.ok) {
+    const txt = await r.text();
+    throw new Error('SPV descarcare ' + r.status + ': ' + txt.slice(0, 200));
+  }
+  return Buffer.from(await r.arrayBuffer());
+}
+
+module.exports = { configured, connected, authorizeUrl, exchangeCode, refresh, ensureToken, upload, status, download, listMessages, apiBase, spvRequest, spvMessages, spvDownload };

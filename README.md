@@ -368,6 +368,15 @@ Endpoint `/api/dashboard`.
 - **Notificări termene fiscale** (🔔 în bara de sus, cu badge): restanțele și termenele din
   următoarele 7 zile, pe toate firmele accesibile, scanând ultimele 3 luni. O declarație dispare
   când e marcată depusă/scutită. `GET /api/notifications`.
+- **Digest zilnic pe email** (~07:00): fiecare utilizator cu email setat primește restanțele și
+  termenele apropiate de pe firmele lui — prin SMTP-ul din Setări sau, în lipsă, prin **Resend**
+  (`RESEND_API_KEY` din `.env`). Opt-out per utilizator din Setări → „Contul meu".
+  Declanșare manuală (admin): `POST /api/notifications/digest`.
+- **Fișa Rol din SPV** (card în „Declarații ANAF"): solicită de la ANAF **fișa pe plătitor** prin
+  serviciile web SPV (`SPVWS2/rest/cerere?tip=Fisa Rol`, documentate în ClientSPV-ul oficial ANAF);
+  răspunsurile (PDF) se listează din mesajele SPV și se atașează ca documente ale firmei. Necesită
+  conexiunea SPV (OAuth) din Setări. API: `POST /api/anaf/fisa-rol` · `GET /api/anaf/spv-mesaje` ·
+  `POST /api/anaf/spv-descarca/:id`.
 
 ## Aliniere la ghidul profesional (ediția 2026)
 

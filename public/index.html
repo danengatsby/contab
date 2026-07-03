@@ -705,6 +705,16 @@
       <div class="explain"><span class="ei">📤</span><p><b>Ultimul pas:</b> ce predai mai departe. Aici găsești declarațiile și raportările pregătite pentru ANAF (D112, SAF-T, recapitulări) și borderoul lunar — gata de descărcat și depus. Se generează automat din tot ce ai înregistrat în lună.</p></div>
       <div class="warnbox"><span class="wi">⚠️</span><div><b>Înainte de depunere:</b> declarațiile (D112, D300, SAF-T…) sunt <b>ciorne</b>. Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică-l cu un contabil înainte de depunerea în SPV.</div></div>
       <div class="card">
+        <h3>🏛 Fișa Rol / documente din SPV</h3>
+        <p class="muted">Solicită de la ANAF <b>fișa pe plătitor</b> (obligațiile și plățile firmei, din evidența administrației fiscale). Necesită conexiunea SPV din Setări. ANAF procesează cererea în câteva minute — documentul apare mai jos și se atașează ca PDF al firmei.</p>
+        <div class="toolbar" style="margin-bottom:8px">
+          <button id="fisaRolBtn" class="btn primary small">📄 Solicită Fișa Rol</button>
+          <button id="spvMesajeBtn" class="btn small">🔄 Vezi răspunsurile din SPV</button>
+          <span id="fisaRolStatus" class="muted"></span>
+        </div>
+        <div id="spvMesajeList" class="tablewrap"></div>
+      </div>
+      <div class="card">
         <h3>📋 Registrul depunerilor <span class="muted" style="font-weight:400">(pe luna selectată)</span></h3>
         <p class="muted">Descărcarea unui XML marchează automat declarația „generată". Marchează manual „depusă" (cu nr. recipisă), „eroare" sau „scutită" — starea alimentează portofoliul și notificările de termene.</p>
         <div id="declRegister" class="tablewrap"></div>
@@ -1338,7 +1348,11 @@ Cu stimă,
         <p class="muted">Setează un email ca să poți recupera parola dacă o uiți (necesită SMTP configurat).</p>
         <form id="profileForm" class="dyn">
           <label class="full">Email <input name="email" type="email" placeholder="nume@exemplu.ro" /></label>
-          <button class="btn primary">Salvează email</button>
+          <label class="full" style="display:flex;align-items:center;gap:8px;font-weight:400">
+            <input name="notifyDeadlines" type="checkbox" checked style="width:auto" />
+            Primește zilnic pe email termenele fiscale (restanțe + următoarele 7 zile)
+          </label>
+          <button class="btn primary">Salvează</button>
         </form>
         <div id="sessionsList" class="tablewrap" style="margin-top:12px"></div>
         <button id="logoutOthers" class="btn ghost small" style="margin-top:8px">Deconectează celelalte dispozitive</button>
