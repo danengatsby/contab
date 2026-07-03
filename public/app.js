@@ -938,7 +938,7 @@ async function init() {
   try {
     META = await api('/api/meta');
   } catch (e) {
-    if (e.status === 401) { showLogin(); handleCheckoutReturn(); return; }
+    if (e.status === 401) { showLogin(); handleCheckoutReturn(); handleRegisterLink(); return; }
     throw e;
   }
   hideLogin();
@@ -969,6 +969,12 @@ function handleCheckoutReturn() {
   history.replaceState(null, '', location.pathname);
   if (m[1] === 'cancel') { toast('Plata a fost anulată.', true); return; }
   toast('✓ Plată reușită! Creează-ți contul cu același email folosit la plată.');
+  openRegisterPanel();
+}
+// Link direct la inscrierea firmei (ex. din pagina de prezentare): /?register=1
+function handleRegisterLink() {
+  if (!/[?&]register=1/.test(location.search)) return;
+  history.replaceState(null, '', location.pathname);
   openRegisterPanel();
 }
 function openRegisterPanel() {

@@ -13,7 +13,7 @@
         <h3>${p.nume}</h3>
         <div class="price">${p.pret === 0 ? '<b>Gratuit</b>' : '<b>' + p.pret + '</b> ' + p.moneda + ' / ' + p.perioada}</div>
         <ul>${(p.features || []).map((f) => '<li>' + f + '</li>').join('')}</ul>
-        <a class="btn ${p.trial ? 'solid' : 'buy'}" href="/">${p.trial ? 'Începe proba gratuită' : 'Alege ' + p.nume + ' →'}</a>
+        <a class="btn ${p.trial ? 'solid' : 'buy'}" href="/?register=1">${p.trial ? 'Începe proba gratuită' : 'Alege ' + p.nume + ' →'}</a>
       </div>`).join('');
   } catch (e) {
     box.innerHTML = '<p style="color:#76746c">Prețurile sunt disponibile în aplicație.</p>';
