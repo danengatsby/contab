@@ -84,6 +84,32 @@ const yearSum = (y) => assets.schedule(utilaj).filter((r) => r.period.startsWith
 eq('utilaj degresiv an 1 (2026)', Math.round(yearSum('2026') * 100) / 100, 3600);
 eq('utilaj total amortizat = cost', Math.round(assets.schedule(utilaj).reduce((s, r) => s + r.amount, 0) * 100) / 100, 12000);
 
+// Inchiderea prin rotunjire + corectitudinea economica pe toate metodele (fara ban fantoma, fara rate negative)
+const deprClose = (asset) => {
+  const sch = assets.schedule(asset);
+  const base = Math.round((asset.cost - (asset.valoareReziduala || 0)) * 100) / 100;
+  const tot = Math.round(sch.reduce((s, r) => s + r.amount, 0) * 100) / 100;
+  const ramasFinal = sch.length ? sch[sch.length - 1].ramas : asset.cost;
+  const negative = sch.filter((r) => r.amount < 0).length;
+  return { closes: tot === base, ramasOk: Math.abs(ramasFinal - (asset.valoareReziduala || 0)) < 0.005, negative };
+};
+for (const [nume, a] of [
+  ['liniara durata urata (7 luni)', { cost: 10000, durataLuni: 7, metoda: 'liniara', dataPif: '2026-01-15' }],
+  ['liniara cu reziduala', { cost: 10000, valoareReziduala: 1000, durataLuni: 36, metoda: 'liniara', dataPif: '2026-01-15' }],
+  ['degresiva coef 2.0 (8 ani)', { cost: 30000, durataLuni: 96, metoda: 'degresiva', dataPif: '2026-01-15' }],
+  ['accelerata 50% primul an', { cost: 12000, durataLuni: 60, metoda: 'accelerata', dataPif: '2026-01-15' }],
+]) {
+  const r = deprClose(a);
+  ok('amortizare „' + nume + '": cumulat = baza, ramas = reziduala, fara rate negative', r.closes && r.ramasOk && r.negative === 0);
+}
+eq('coeficient degresiv ≤5 ani', assets.degressiveCoef(5), 1.5);
+eq('coeficient degresiv 6-10 ani', assets.degressiveCoef(8), 2.0);
+eq('coeficient degresiv >10 ani', assets.degressiveCoef(12), 2.5);
+// degresiva e front-loaded: primul an > liniarul mediu
+const degSch = assets.schedule({ cost: 10000, durataLuni: 60, metoda: 'degresiva', dataPif: '2026-01-01' });
+const degAn1 = degSch.filter((r) => r.period.startsWith('2026')).reduce((s, r) => s + r.amount, 0) + degSch.filter((r) => r.period === '2027-01').reduce((s, r) => s + r.amount, 0);
+ok('degresiva front-loaded (an 1 = 3000 > liniar 2000)', Math.round(degAn1) === 3000);
+
 section('Stocuri (CMP, pe gestiuni)');
 const st = stocks.currentStock(v, '2026-06');
 const byG = Object.fromEntries(st.map((s) => [s.gestiune.cod, s]));
