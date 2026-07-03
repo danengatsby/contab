@@ -333,6 +333,8 @@ body.dark .c-si{color:#7fb3e6}body.dark .c-ru{color:#d9b65a}body.dark .c-sf{colo
 /* titluri/valori care foloseau navy (--head) ca text -> deschise pe fundal întunecat */
 body.dark .howto h3,body.dark .ledger-acc h4,body.dark .welcome-box h2,body.dark .login-logo,
 body.dark .pdf-title,body.dark .efact-doc h3,body.dark .efact-tot tr.grand td,body.dark .kpi.blue .val{color:#8aa0d8}
+/* Titlul principal al paginii (.toolbar>h2) si al wizard-ului: --head e bleumarin inchis, invizibil pe dark -> lumina */
+body.dark .toolbar>h2,body.dark .opw-head h3{color:var(--ink)}
 
 /* ───── Dashboard: KPI-uri cu iconita + tendinta + dunga de accent ───── */
 .kpi{position:relative;overflow:hidden}
