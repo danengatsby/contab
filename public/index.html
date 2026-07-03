@@ -541,7 +541,14 @@
     <!-- ─────────────── TVA / D300 ─────────────── -->
     <section id="tab-tva" class="tab">
       <div class="explain"><span class="ei">🧾</span><p><b>Ce e asta:</b> aici vezi TVA-ul lunii — cât ai colectat din vânzări, cât ai dedus din cumpărări și cât ai de plată (sau de recuperat) la stat. De aici pregătești deconturile D300 și D394.</p></div>
-      <div class="warnbox"><span class="wi">⚠️</span><div><b>Înainte de depunere:</b> XML-urile D300/D394 sunt <b>ciorne</b> generate de aplicație. Validează-le cu <b>DUKIntegrator</b> / schema <b>XSD ANAF</b> curentă (ideal, verificate de un contabil) înainte de a le depune în SPV.</div></div>
+      <div class="warnbox"><span class="wi">⚠️</span><div>
+        <b>D300 / D394 — ciorne, de validat înainte de depunere.</b> Aplicația completează rubricile
+        <b>uzuale</b>: <b>D300</b> — livrări și achiziții taxabile defalcate pe cote (21% / 11% / scutit),
+        TVA colectată/deductibilă, de plată/de recuperat; <b>D394</b> — agregarea facturilor pe partener,
+        cu defalcare pe cote. Rubricile speciale (ajustări, regularizări, taxare inversă intra-UE pe rânduri
+        dedicate, bonuri fiscale, facturi simplificate) se completează manual dacă e cazul. Validează cu
+        <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică cu un contabil înainte de depunerea în SPV.
+      </div></div>
       <div class="toolbar">
         <h2>TVA de plată <span class="muted" style="font-weight:400">(decont D300 / D394)</span></h2>
         <div class="spacer"></div>
@@ -891,7 +898,13 @@
     <!-- ─────────────── SALARIZARE ─────────────── -->
     <section id="tab-salarizare" class="tab">
       <div class="explain"><span class="ei">👥</span><p><b>Ce e asta:</b> aici calculezi salariile angajaților — salariul brut, taxele (CAS, CASS, impozit) și suma netă de plată. Generează statul de plată și datele pentru declarația D112.</p></div>
-      <div class="warnbox"><span class="wi">⚠️</span><div><b>Înainte de depunere:</b> D112 generat e o <b>ciornă</b>. Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b> și confirmă cu un contabil sumele și contribuțiile înainte de depunere.</div></div>
+      <div class="warnbox"><span class="wi">⚠️</span><div>
+        <b>D112 — ciornă, de validat înainte de depunere.</b> Aplicația completează creanțele fiscale
+        (CAS 25% / CASS 10% / impozit 10% / CAM 2,25%) și <b>evidența nominală per angajat</b> din statul
+        de plată. Situațiile speciale (concedii medicale și indemnizații, scutiri sectoriale, corecții,
+        avantaje în natură) se verifică separat. Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b>
+        și confirmă sumele cu un contabil înainte de depunere.
+      </div></div>
       <div class="toolbar">
         <h2>Salarii — stat de plată</h2>
         <div class="spacer"></div>
