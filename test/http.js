@@ -218,6 +218,25 @@ async function main() {
     const val = await req('GET', '/api/validate/d300?period=2026-06', { cookie: c1 });
     ok('validare pre-depunere: raspuns cu ok/errors', val.json && typeof val.json.ok === 'boolean' && Array.isArray(val.json.errors));
 
+    // ── Solduri initiale: echilibrul debit=credit e impus la salvare ──
+    eq('solduri initiale dezechilibrate -> 400', (await req('POST', '/api/opening', { cookie: c1, body: { openingBalances: { '5121': { d: 1000, c: 0 }, '1012': { d: 0, c: 800 } } } })).status, 400);
+    ok('solduri initiale echilibrate -> ok', (await req('POST', '/api/opening', { cookie: c1, body: { openingBalances: { '5121': { d: 1000, c: 0 }, '1012': { d: 0, c: 1000 } } } })).json.ok === true);
+
+    // ── Inchideri: ordinea impozit-profit vs inchidere anuala e irelevanta ──
+    // pregatim un an cu profit: o vanzare de servicii + inregistrarea ei
+    const vz = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2025-03-10', partener: 'X', cuiPartener: 'RO9', document: 'FS1', baza: 10000, tva: 2100, cota: 21 } } });
+    ok('vanzare 2025 inregistrata (venit 704)', vz.json && vz.json.ok);
+    // 1) inchidere anuala INTAI (691 nu exista inca)
+    await req('POST', '/api/close-year?year=2025', { cookie: c1 });
+    // 2) apoi impozitul pe profit -> trebuie sa inchida si 691 in 121
+    const pt = await req('POST', '/api/close-profit-tax?year=2025', { cookie: c1 });
+    ok('impozit pe profit dupa inchidere: articol cu 691=4411 + 121=691', pt.json && pt.json.ok);
+    // verificare: in balanta anului, 691 e ZERO (inchis) si 121 exista
+    const tb = await (await fetch(BASE + '/api/balance?period=2025', { headers: { Cookie: c1 } })).json();
+    const r691 = tb.rows.find((r) => r.cod === '691');
+    ok('691 inchis complet dupa impozit (sold final 0)', !r691 || (r691.sfD === 0 && r691.sfC === 0));
+    ok('balanta 2025 se inchide dupa ambele inchideri', tb.balanced === true);
+
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });

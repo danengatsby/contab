@@ -1366,9 +1366,19 @@ app.delete('/api/opening-analytic/:idx', (req, res) => {
 
 app.post('/api/opening', (req, res) => {
   const d = db.get();
-  d.openingBalances[activeId(req)] = req.body && req.body.openingBalances ? req.body.openingBalances : {};
+  const ob = (req.body && req.body.openingBalances) ? req.body.openingBalances : {};
+  // Soldurile initiale trebuie sa fie echilibrate (total debit = total credit), altfel balanta
+  // nu se va inchide niciodata. Verificam inainte de salvare si respingem cu diferenta exacta.
+  let totD = 0; let totC = 0;
+  for (const cod of Object.keys(ob)) { totD = round2(totD + (Number(ob[cod] && ob[cod].d) || 0)); totC = round2(totC + (Number(ob[cod] && ob[cod].c) || 0)); }
+  const dif = round2(totD - totC);
+  if (Math.abs(dif) >= 0.005) {
+    return res.status(400).json({ error: 'Soldurile inițiale sunt dezechilibrate: total debit ' + totD + ' ≠ total credit ' + totC + ' (diferență ' + dif + '). Corectează-le înainte de salvare.', totalDebit: totD, totalCredit: totC, diferenta: dif });
+  }
+  d.openingBalances[activeId(req)] = ob;
+  logAudit('opening.set', 'solduri initiale (' + Object.keys(ob).length + ' conturi, echilibrat)', { req });
   db.save();
-  res.json({ ok: true });
+  res.json({ ok: true, totalDebit: totD, totalCredit: totC });
 });
 
 // ───────────────────────────── UPLOAD ─────────────────────────────
@@ -1843,10 +1853,17 @@ app.post('/api/close-profit-tax', (req, res) => {
   const firma = db.getFirma(fid);
   if (firma) { firma.pierdereFiscala = firma.pierdereFiscala || {}; firma.pierdereFiscala[year] = pt.pierdereDeReportat; }
   if (!pt.lines.length) { db.save(); return res.json({ ok: true, message: 'Profit impozabil 0 sau pierdere — niciun impozit. Pierdere fiscala de reportat: ' + pt.pierdereDeReportat + ' lei.', result: pt }); }
+  const lines = pt.lines.slice();
+  // Ordinea inchiderilor devine IRELEVANTA: daca inchiderea anuala s-a facut deja, 691 (postat acum)
+  // ar ramane necuplat in 121 -> il inchidem aici (121 = 691), asa incat 121 arata rezultatul NET.
+  // Daca inchiderea anuala nu s-a facut inca, ea va inchide 691 cand se ruleaza (comportament normal).
+  const yearClosed = d.entries.some((e) => e.firmaId === fid && e.tip === 'inchidere_an' && e.period === year + '-12');
+  let alsoClosed691 = false;
+  if (yearClosed && pt.impozit > 0) { lines.push({ debit: '121', credit: '691', suma: pt.impozit, explicatie: 'Inchidere impozit pe profit in rezultat (dupa inchiderea anuala)' }); alsoClosed691 = true; }
   d.entries.push({
     id: db.nextId('e'), firmaId: fid, data: year + '-12-31', period: year + '-12', tip: 'impozit_profit', tipNume: 'Impozit pe profit',
-    partener: '', document: 'Impozit profit ' + year, explicatie: 'Inregistrare impozit pe profit (' + pt.cota + '%)',
-    fileId: null, system: true, lines: pt.lines,
+    partener: '', document: 'Impozit profit ' + year, explicatie: 'Inregistrare impozit pe profit (' + pt.cota + '%)' + (alsoClosed691 ? ' + inchidere 691 in 121' : ''),
+    fileId: null, system: true, lines,
   });
   logAudit('impozit.profit', year + ': ' + pt.impozit, { req });
   db.save();

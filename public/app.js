@@ -2448,9 +2448,23 @@ async function loadBalance() {
 $('#balOnlyMoves') && $('#balOnlyMoves').addEventListener('change', renderBalance);
 function renderBalance() {
   const tb = BALANCE_TB; if (!tb) return;
-  $('#balantaStatus').innerHTML = tb.balanced
-    ? '<p style="color:var(--accent);font-weight:600">✔ Balanța se închide — cele patru egalități sunt respectate.</p>'
-    : '<p style="color:var(--danger);font-weight:600">✘ Balanța NU se închide.</p>';
+  if (tb.balanced) {
+    $('#balantaStatus').innerHTML = '<p style="color:var(--accent);font-weight:600">✔ Balanța se închide — cele patru egalități sunt respectate.</p>';
+  } else {
+    // diagnostic: arata care egalitate nu se inchide si cu cat (de regula soldurile initiale)
+    const t = tb.tot;
+    const eqs = [
+      ['Sold inițial', t.siD, t.siC],
+      ['Rulaje', t.rd, t.rc],
+      ['Total sume', t.tsD, t.tsC],
+      ['Sold final', t.sfD, t.sfC],
+    ].map(([nume, d, c]) => ({ nume, d, c, dif: Math.round((d - c) * 100) / 100 })).filter((x) => x.dif !== 0);
+    const det = eqs.map((x) => `<b>${x.nume}</b>: debit ${fmt(x.d)} vs credit ${fmt(x.c)} — diferență <b>${fmt(x.dif)}</b>`).join('<br>');
+    const initDif = eqs.some((x) => x.nume === 'Sold inițial');
+    $('#balantaStatus').innerHTML = `<div style="color:var(--danger)"><p style="font-weight:600;margin:0 0 4px">✘ Balanța NU se închide:</p>
+      <p style="margin:0;font-size:13px">${det}</p>
+      ${initDif ? '<p style="margin:6px 0 0;font-size:13px">Diferența pornește de la <b>soldurile inițiale dezechilibrate</b> (total debit ≠ total credit la deschidere) — verifică-le în Setări / import.</p>' : '<p style="margin:6px 0 0;font-size:13px">Verifică ultimele înregistrări din lună.</p>'}</div>`;
+  }
   const onlyMoves = $('#balOnlyMoves') && $('#balOnlyMoves').checked;
   const visible = onlyMoves ? tb.rows.filter((r) => r.rd || r.rc) : tb.rows;
   if (!visible.length) { $('#balantaView').innerHTML = `<p class="muted">${onlyMoves ? 'Niciun cont cu mișcări în luna aleasă.' : 'Niciun cont.'}</p>`; return; }
