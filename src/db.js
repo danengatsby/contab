@@ -172,11 +172,29 @@ function load() {
   return db;
 }
 
+// Oglinda JSON se scrie cu intarziere (debounce): serializarea intregii baze la fiecare save()
+// ar deveni costisitoare pe masura ce datele cresc. SQLite ramane persistat sincron, la zi.
+const MIRROR_DELAY_MS = 30 * 1000;
+let mirrorTimer = null;
+function scheduleMirror() {
+  if (mirrorTimer) return;
+  mirrorTimer = setTimeout(() => {
+    mirrorTimer = null;
+    try { writeJson(JSON_FILE, db); } catch (e) { console.error('[contab] oglinda JSON:', e.message); }
+  }, MIRROR_DELAY_MS);
+  if (mirrorTimer.unref) mirrorTimer.unref(); // nu tine procesul in viata doar pentru oglinda
+}
+/** Scrie imediat oglinda JSON in asteptare (inainte de backup / la oprire). */
+function flushMirror() {
+  if (mirrorTimer) { clearTimeout(mirrorTimer); mirrorTimer = null; }
+  if (db && JSON_MIRROR) { try { writeJson(JSON_FILE, db); } catch (e) { console.error('[contab] oglinda JSON:', e.message); } }
+}
+
 function save() {
   ensureDir();
   if (DRIVER !== 'sqlite') { writeJson(JSON_FILE, db); return; }
   store.persist(db);
-  if (JSON_MIRROR) writeJson(JSON_FILE, db); // oglinda pentru backup/rollback
+  if (JSON_MIRROR) scheduleMirror(); // oglinda pentru backup/rollback, scrisa cu intarziere
 }
 
 // Restaurare dintr-un fisier JSON (folosita de ruta /api/restore): seteaza in memorie + persista in SQLite.
@@ -193,10 +211,12 @@ function get() {
   return db;
 }
 
+// Aloca un id; NU salveaza — apelantul persista oricum obiectul creat (seq e in `meta`).
+// Un id alocat dar nesalvat (crash inainte de save) se refoloseste fara conflict: nici
+// inregistrarea care l-ar fi purtat nu a fost persistata.
 function nextId(prefix) {
   const d = get();
   const id = d.seq++;
-  save();
   return (prefix || '') + id;
 }
 
@@ -350,6 +370,6 @@ const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 
 module.exports = {
   get, save, load, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma,
-  getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson,
+  getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

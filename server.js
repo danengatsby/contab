@@ -124,7 +124,23 @@ const storage = multer.diskStorage({
     cb(null, crypto.randomBytes(8).toString('hex') + ext);
   },
 });
-const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
+// Extensii acceptate la upload — blocheaza HTML/JS/SVG etc. (XSS stocat: un fisier activ
+// servit din origin-ul aplicatiei ar rula cu sesiunea utilizatorului care il deschide).
+const UPLOAD_EXT_OK = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.csv', '.txt',
+  '.xls', '.xlsx', '.dbf', '.xml', '.zip', '.json', '.sta', '.940', '.mt940']);
+const upload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (ext && !UPLOAD_EXT_OK.has(ext)) {
+      const err = new Error('Tip de fisier neacceptat (' + ext + '). Acceptate: PDF, imagini, CSV/TXT, XLS(X), DBF, XML, ZIP, JSON.');
+      err.status = 400;
+      return cb(err);
+    }
+    cb(null, true);
+  },
+});
 
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
   console.error(e);
@@ -381,6 +397,7 @@ app.post('/api/2fa/revoke-devices', (req, res) => {
 // ───────────────────────────── BACKUP (admin) ─────────────────────────────
 function doBackup() {
   const d = db.get();
+  db.flushMirror(); // oglinda JSON e scrisa cu intarziere — adu-o la zi inainte de copiere
   const r = backup.backupNow(db.DB_FILE, db.DATA_DIR, 30);
   d.settings.backup = d.settings.backup || {};
   d.settings.backup.lastAt = new Date().toISOString();
@@ -1290,6 +1307,22 @@ app.post('/api/opening', (req, res) => {
 });
 
 // ───────────────────────────── UPLOAD ─────────────────────────────
+// Plafon zilnic de extrageri AI per utilizator — fiecare apel costa bani; contul demo e public,
+// deci are o limita stricta. Peste plafon se revine automat la regulile locale (fara eroare).
+const AI_DAILY_LIMIT = Number(process.env.CONTAB_AI_DAILY_LIMIT) || 200;
+const AI_DAILY_LIMIT_DEMO = Number(process.env.CONTAB_AI_DAILY_LIMIT_DEMO) || 10;
+function aiQuotaLeft(u) {
+  const today = new Date().toISOString().slice(0, 10);
+  const used = u.aiUsage && u.aiUsage.date === today ? u.aiUsage.count : 0;
+  return (u.username === 'demo' ? AI_DAILY_LIMIT_DEMO : AI_DAILY_LIMIT) - used;
+}
+function bumpAiUsage(u) {
+  const today = new Date().toISOString().slice(0, 10);
+  u.aiUsage = u.aiUsage && u.aiUsage.date === today
+    ? { date: today, count: u.aiUsage.count + 1 }
+    : { date: today, count: 1 };
+}
+
 app.post('/api/upload', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
   const d = db.get();
@@ -1300,8 +1333,11 @@ app.post('/api/upload', upload.single('file'), wrap(async (req, res) => {
   let source = 'heuristic';
   let warning = null;
   let extra = {};
-  const useAI = ai.aiAvailable() && d.settings.useAI !== false;
+  const aiWanted = ai.aiAvailable() && d.settings.useAI !== false;
+  const useAI = aiWanted && aiQuotaLeft(req.user) > 0;
+  if (aiWanted && !useAI) warning = 'Limita zilnica de extrageri AI a fost atinsa — s-au folosit regulile locale.';
   if (useAI) {
+    bumpAiUsage(req.user); // numara si incercarile esuate (apelul se factureaza oricum)
     try {
       const r = await ai.extractWithAI(buf, ownCui);
       extracted = { suggestedType: r.suggestedType, fields: r.fields, cuis: r.cuis, text: '' };
@@ -1358,11 +1394,22 @@ app.post('/api/upload-only', upload.single('file'), (req, res) => {
   res.json({ documentId: docId, fileName: req.file.originalname });
 });
 
+// Inline doar tipurile inerte (viewer PDF/galerie); restul se descarca fortat, ca octeti,
+// ca sa nu se randeze niciodata continut incarcat de utilizatori in origin-ul aplicatiei.
+const DOC_INLINE_EXT = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif']);
 app.get('/api/document/:id/file', (req, res) => {
   const d = db.get();
   const doc = d.documents.find((x) => x.id === req.params.id);
   if (!doc) return res.status(404).send('Document inexistent');
-  res.sendFile(path.join(db.UPLOAD_DIR, doc.storedName));
+  const fid = doc.firmaId == null ? d.firmaActiva : doc.firmaId;
+  if (!allowedFirme(req.user).includes(fid)) return res.status(403).json({ error: 'Nu ai acces la acest document.' });
+  const p = path.join(db.UPLOAD_DIR, path.basename(doc.storedName || ''));
+  if (!fs.existsSync(p)) return res.status(404).send('Fisier negasit pe server');
+  const ext = path.extname(p).toLowerCase();
+  if (DOC_INLINE_EXT.has(ext)) return res.sendFile(p);
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(doc.fileName || doc.storedName) + '"');
+  fs.createReadStream(p).pipe(res);
 });
 
 app.get('/api/documents', (req, res) => {
@@ -2989,6 +3036,13 @@ setInterval(() => {
   }
 }, 3600 * 1000); // verifica din ora in ora
 
+// Igiena rate-limit: fara curatare, map-urile ar creste nelimitat (cate o intrare per IP esuat)
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, r] of loginAttempts) { if (r.until < now) loginAttempts.delete(k); }
+  for (const [k, r] of registerAttempts) { if (r.reset < now) registerAttempts.delete(k); }
+}, 3600 * 1000);
+
 // Job periodic: descarca automat recipisele (doar daca e activat si conectat)
 setInterval(() => {
   const c = db.get().settings.anaf || {};
@@ -3010,7 +3064,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 8080;
 const HOST = process.env.HOST || '0.0.0.0'; // asculta pe toate interfetele (acces din retea)
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log('Contabo ruleaza (asculta pe ' + HOST + ':' + PORT + ')');
   console.log('  Local:  http://localhost:' + PORT);
   const ifaces = os.networkInterfaces();
@@ -3022,5 +3076,19 @@ app.listen(PORT, HOST, () => {
     }
   }
 });
+
+// Oprire curata (pm2 restart/stop trimite SIGINT): scrie oglinda JSON in asteptare,
+// inchide SQLite si opreste ascultarea; plasa de siguranta de 3s daca ceva atarna.
+let shuttingDown = false;
+function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  try { db.flushMirror(); } catch (_) { /* ignora */ }
+  if (db.DRIVER === 'sqlite') { try { require('./src/store').close(); } catch (_) { /* ignora */ } }
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 3000).unref();
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 module.exports = { app, buildEntry, upsertPartner };

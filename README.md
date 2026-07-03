@@ -113,6 +113,9 @@ ANTHROPIC_API_KEY=sk-ant-... npm start
 Când cheia este prezentă, fiecare upload este trimis la Claude pentru a extrage
 câmpurile (CUI, nr./dată, bază, TVA, cotă, total) și a propune tipul de
 înregistrare; **dacă apelul eșuează, se revine automat la regulile locale**.
+Fiecare utilizator are un **plafon zilnic de extrageri AI** (`CONTAB_AI_DAILY_LIMIT`,
+implicit 200/zi; contul public „demo": `CONTAB_AI_DAILY_LIMIT_DEMO`, implicit 10/zi) —
+peste plafon se folosesc regulile locale, cu avertisment în formular.
 Avantajul față de regulile locale: citește facturi în orice format, inclusiv
 **PDF-uri scanate** (prin viziune). Poți activa/dezactiva din Setări. Modelul se
 poate schimba cu `CONTAB_AI_MODEL=...`.
@@ -525,6 +528,12 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
 ## Note
 
 - Datele se păstrează în `data/db.json`; fișierele PDF încărcate în `data/uploads/`.
+- **Uploadurile sunt validate** (allowlist de extensii: PDF, imagini, CSV/TXT, XLS(X), DBF, XML,
+  ZIP, JSON — HTML/JS/SVG sunt respinse, anti-XSS stocat). La descărcare, doar tipurile inerte
+  (PDF/imagini) se afișează inline; orice altceva se descarcă forțat ca octeți. Accesul la
+  `/api/document/:id/file` e restricționat la firmele alocate utilizatorului.
+- **Oglinda JSON** (`data/db.json`) se scrie cu întârziere de max. 30s după modificări (debounce);
+  SQLite e mereu la zi. Backupul manual și oprirea curată (SIGINT/SIGTERM) o aduc la zi întâi.
 - Cotele și tratamentele sunt simplificate pentru claritate; situațiile concrete pot
   necesita conturi și prelucrări suplimentare conform Codului fiscal.
 - Extragerea din PDF funcționează pe documente cu **text** (PDF-uri generate de programe
