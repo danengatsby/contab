@@ -700,7 +700,14 @@
           <a id="saftXmlLuna" class="btn small primary" target="_blank">⬇ XML luna de lucru</a>
           <a id="saftXml" class="btn small" target="_blank">⬇ XML an întreg</a>
         </div>
-        <p class="muted"><b>D406 se depune lunar</b> (firmele cu TVA lunară) sau <b>trimestrial</b> (TVA trimestrială / neplătitori), până la ultima zi a lunii următoare — folosește XML-ul pe luna de lucru. Fișierul conține: Header, conturile din planul contabil cu solduri, clienți, furnizori, cotele de TVA, nomenclatorul de produse, mijloacele fixe, stocul final, toate articolele contabile ca tranzacții, facturile de vânzare/cumpărare, plățile și mișcările de stoc (SourceDocuments). Validarea oficială ANAF necesită schema XSD D406 oficială.</p>
+        <p class="muted"><b>D406 se depune lunar</b> (firmele cu TVA lunară) sau <b>trimestrial</b> (TVA trimestrială / neplătitori), până la ultima zi a lunii următoare — folosește XML-ul pe luna de lucru. Fișierul conține: Header, conturile din planul contabil cu solduri, clienți, furnizori, cotele de TVA, nomenclatorul de produse, mijloacele fixe, stocul final, toate articolele contabile ca tranzacții, facturile de vânzare/cumpărare, plățile și mișcările de stoc (SourceDocuments).</p>
+        <div class="warnbox"><span class="wi">⚠️</span><div>
+          <b>SAF-T este o ciornă structurată, nu un fișier XSD-validat.</b> Are cele 4 secțiuni OECD SAF-T 2.0
+          și cartea mare echilibrată, dar față de schema oficială <b>D406 v2.4.x</b> îi lipsesc câteva elemente:
+          <b>UOMTable</b> (tabelul unităților de măsură), <b>Owners</b> (asociați/acționari) și <b>MovementTypeTable</b>;
+          iar <code>AuditFileVersion</code> este <code>2.0</code>. <b>Înainte de depunere, validează fișierul cu modulul
+          oficial ANAF (Soft-J / DUKIntegrator)</b> și completează elementele cerute de XSD-ul curent.
+        </div></div>
         <div id="saftView"></div>
       </div>
     </section>
