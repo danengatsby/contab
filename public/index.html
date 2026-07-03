@@ -92,6 +92,8 @@
         <button id="imperStop" type="button">↩ Revino la contul de admin</button>
       </div>
       <button data-tab="mesaje">💬 Mesaje<span id="msgBadge" class="navbadge hidden">0</span></button>
+      <button data-tab="portofoliu" id="navPortofoliu" class="hidden">🗂 Portofoliu</button>
+      <button data-tab="notificari" title="Notificări — termene fiscale">🔔<span id="notifBadge" class="navbadge hidden">0</span></button>
       <div class="navgroup">
         <button class="navlabel" type="button">📥 Documente & facturi</button>
         <div class="navmenu">
@@ -702,11 +704,41 @@
       <div class="cyclemap" data-step="livrabile"></div>
       <div class="explain"><span class="ei">📤</span><p><b>Ultimul pas:</b> ce predai mai departe. Aici găsești declarațiile și raportările pregătite pentru ANAF (D112, SAF-T, recapitulări) și borderoul lunar — gata de descărcat și depus. Se generează automat din tot ce ai înregistrat în lună.</p></div>
       <div class="warnbox"><span class="wi">⚠️</span><div><b>Înainte de depunere:</b> declarațiile (D112, D300, SAF-T…) sunt <b>ciorne</b>. Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică-l cu un contabil înainte de depunerea în SPV.</div></div>
+      <div class="card">
+        <h3>📋 Registrul depunerilor <span class="muted" style="font-weight:400">(pe luna selectată)</span></h3>
+        <p class="muted">Descărcarea unui XML marchează automat declarația „generată". Marchează manual „depusă" (cu nr. recipisă), „eroare" sau „scutită" — starea alimentează portofoliul și notificările de termene.</p>
+        <div id="declRegister" class="tablewrap"></div>
+      </div>
       <div id="livrabileSumar" class="grid2"></div>
       <div class="card">
         <div id="livrabileLegend" class="muted" style="margin-bottom:8px"></div>
         <div id="livrabileList" class="tablewrap"></div>
       </div>
+    </section>
+
+    <!-- ─────────────── PORTOFOLIU (multi-firma) ─────────────── -->
+    <section id="tab-portofoliu" class="tab">
+      <div class="toolbar">
+        <h2>Portofoliu — conformitate declarații</h2>
+        <div class="spacer"></div>
+        <select id="portofoliuLuna" class="period luna-req" aria-label="Luna"></select>
+        <select id="portofoliuAn" class="period an" aria-label="Anul"></select>
+      </div>
+      <div class="explain"><span class="ei">🗂</span><p><b>Vedere peste toate firmele tale:</b> ce declarații are de depus fiecare firmă în luna selectată, ce s-a depus, unde sunt erori sau termene depășite. Stările se setează în tab-ul „Declarații ANAF" al fiecărei firme.</p></div>
+      <div id="portoKpis" class="kpis"></div>
+      <div class="grid2">
+        <div class="card"><h3>Status declarații</h3><div id="portoStatus"></div></div>
+        <div class="card"><h3>⚠️ Top firme cu atenționări</h3><div id="portoTop"></div></div>
+      </div>
+      <div class="card"><h3>Firme din portofoliu</h3><div id="portoFirms" class="tablewrap"></div></div>
+      <div class="card"><h3>Activitate recentă</h3><div id="portoRecent" class="tablewrap"></div></div>
+    </section>
+
+    <!-- ─────────────── NOTIFICARI (termene fiscale) ─────────────── -->
+    <section id="tab-notificari" class="tab">
+      <div class="toolbar"><h2>🔔 Notificări — termene fiscale</h2></div>
+      <div class="explain"><span class="ei">⏰</span><p>Restanțe și termene de depunere din următoarele 7 zile, pe toate firmele la care ai acces. O declarație dispare de aici când e marcată „depusă" sau „scutită" în registrul depunerilor.</p></div>
+      <div class="card"><div id="notifList" class="tablewrap"></div></div>
     </section>
 
     <!-- ─────────────── RECONCILIERE ─────────────── -->

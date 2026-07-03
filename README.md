@@ -354,6 +354,21 @@ cu referința la factura inițială.
 plată, disponibil bancă/casă, venituri/cheltuieli/rezultat pe an, plus top creanțe și datorii.
 Endpoint `/api/dashboard`.
 
+**Registrul depunerilor + portofoliu + notificări de termene** (`src/declarations.js`):
+- **Registrul depunerilor** (card în „Declarații ANAF"): declarațiile **așteptate** pe luna
+  selectată sunt derivate din profilul firmei (plătitor de TVA → D300/D394 + D406 anual; are
+  angajați → D112; lună de trimestru → D100), cu **termen de depunere** (25 ale lunii următoare;
+  SAF-T anual — sfârșit de februarie). Descărcarea XML-ului marchează automat „**generată**";
+  manual se marchează „**depusă**" (cu nr. recipisă), „**eroare**" sau „**scutită**". Stările nu se
+  retrogradează la re-descărcare. API: `GET /api/declarations?period=` · `POST /api/declarations/set`.
+- **Portofoliu** (tab dedicat, vizibil cu ≥2 firme): vedere agregată peste toate firmele
+  utilizatorului — declarații așteptate/depuse/nedepuse/erori pe lună, **% conformitate**,
+  **top firme cu atenționări** (restanțe + erori), tabel per firmă și activitate recentă (din
+  jurnalul de audit). `GET /api/portfolio?period=`.
+- **Notificări termene fiscale** (🔔 în bara de sus, cu badge): restanțele și termenele din
+  următoarele 7 zile, pe toate firmele accesibile, scanând ultimele 3 luni. O declarație dispare
+  când e marcată depusă/scutită. `GET /api/notifications`.
+
 ## Aliniere la ghidul profesional (ediția 2026)
 
 - **Parametri fiscali 2026** (`src/fiscal.js`, tab „Ghid”): CAS 25%, CASS 10%, impozit 10%,

@@ -52,6 +52,7 @@ const presence = require('./src/presence');
 const recurring = require('./src/recurring');
 const production = require('./src/production');
 const validate = require('./src/validate');
+const decl = require('./src/declarations');
 const efacturaImport = require('./src/efacturaImport');
 const fxreval = require('./src/fxreval');
 const plans = require('./src/plans');
@@ -2756,12 +2757,23 @@ app.get('/pdf/factura/:id', (req, res) => {
   const fid = e.firmaId || db.firmaActiva();
   pdf.facturaPdf(res, db.getFirma(fid) || {}, e, d.partners[fid] || {});
 });
+// Registrul depunerilor: descarcarea XML-ului marcheaza declaratia (firma, tip, luna) drept „generata"
+function recordDecl(req, tip, period) {
+  if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return;
+  try {
+    decl.record(db.get(), activeId(req), tip, period, { status: 'generata', generatedAt: new Date().toISOString(), updatedBy: req.user && req.user.username }, db.nextId);
+    db.save();
+  } catch (e) { console.error('registru declaratii:', e.message); }
+}
+
 app.get('/xml/d300', (req, res) => {
   const v = S(req);
+  recordDecl(req, 'd300', req.query.period);
   sendXml(res, xml.d300Xml(v.company, req.query.period || null, rep.d300(v, req.query.period || null)), 'd300.xml');
 });
 app.get('/xml/d394', (req, res) => {
   const v = S(req);
+  recordDecl(req, 'd394', req.query.period);
   sendXml(res, xml.d394Xml(v.company, req.query.period || null, acc.vatJournals(v, req.query.period || null)), 'd394.xml');
 });
 app.get('/api/d390', (req, res) => res.json(rep.d390(S(req), req.query.period || null)));
@@ -2783,12 +2795,50 @@ app.get('/csv/intrastat', (req, res) => {
 app.get('/xml/d112', (req, res) => {
   const v = S(req);
   const period = req.query.period || new Date().toISOString().slice(0, 7);
+  recordDecl(req, 'd112', period);
   sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati)), 'd112-' + period + '.xml');
 });
 app.get('/xml/saft', (req, res) => {
   const v = S(req);
   const year = req.query.year || String(new Date().getFullYear());
+  recordDecl(req, 'saft', year + '-12'); // SAF-T anual: inregistrat pe luna decembrie a anului
   sendXml(res, saft.saftXml(v, year), 'saft-d406-' + year + '.xml');
+});
+
+// ───────────────── REGISTRUL DEPUNERILOR + PORTOFOLIU + NOTIFICARI ─────────────────
+app.get('/api/declarations', (req, res) => {
+  const period = req.query.period || new Date().toISOString().slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(period)) return res.status(400).json({ error: 'Perioada invalida (YYYY-MM).' });
+  res.json({ period, rows: decl.registerForFirma(db.get(), S(req), period) });
+});
+app.post('/api/declarations/set', (req, res) => {
+  const b = req.body || {};
+  if (!decl.TIPURI[b.tip]) return res.status(400).json({ error: 'Tip de declaratie necunoscut.' });
+  if (!/^\d{4}-\d{2}$/.test(String(b.period || ''))) return res.status(400).json({ error: 'Perioada invalida (YYYY-MM).' });
+  if (!decl.STATUSES.includes(b.status)) return res.status(400).json({ error: 'Stare invalida.' });
+  const d = db.get();
+  decl.record(d, activeId(req), b.tip, b.period, {
+    status: b.status, recipisa: b.recipisa, note: b.note, updatedBy: req.user.username,
+  }, db.nextId);
+  logAudit('declaratie.status', b.tip.toUpperCase() + ' ' + b.period + ' → ' + b.status + (b.recipisa ? ' (recipisa ' + b.recipisa + ')' : ''), { req });
+  db.save();
+  res.json({ ok: true, rows: decl.registerForFirma(d, S(req), b.period) });
+});
+app.get('/api/portfolio', (req, res) => {
+  const period = req.query.period || new Date().toISOString().slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(period)) return res.status(400).json({ error: 'Perioada invalida (YYYY-MM).' });
+  const d = db.get();
+  const fids = allowedFirme(req.user);
+  const p = decl.portfolio(d, fids.map((id) => db.scoped(id)), period);
+  // activitate recenta pe firmele accesibile (din jurnalul de audit)
+  const recent = (d.audit || []).filter((a) => a.firmaId != null && fids.includes(a.firmaId)).slice(-12).reverse()
+    .map((a) => ({ ts: a.ts, username: a.username, action: a.action, detail: a.detail, firma: (db.getFirma(a.firmaId) || {}).nume || '' }));
+  res.json(Object.assign(p, { recent }));
+});
+app.get('/api/notifications', (req, res) => {
+  const d = db.get();
+  const fids = allowedFirme(req.user);
+  res.json(decl.notifications(d, fids.map((id) => db.scoped(id))));
 });
 // Validare pre-depunere: genereaza XML-ul declaratiei si verifica bine-format + campuri obligatorii.
 app.get('/api/validate/:type', (req, res) => {

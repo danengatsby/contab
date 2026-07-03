@@ -53,6 +53,7 @@ const DEFAULT_DB = {
   recurringInvoices: [], // { id, firmaId, tip, partener, cuiPartener, fields, frecventa, ziua, activ, startDate, lastGenerated } - facturi recurente
   recipes: [],         // { id, firmaId, nume, productId, gestiuneId, cantitateBaza, costUnitar, materiale:[{productId, gestiuneId, cantitate}] } - retete/BOM productie
   budgets: [],         // { id, firmaId, an, cont, suma } - buget anual per cont (clasa 6/7)
+  declarations: [],    // { id, firmaId, tip, period, status, generatedAt, submittedAt, recipisa, note } - registrul depunerilor
   customAccounts: [],  // { cod, nume, clasa, tip } - conturi personalizate (import)
   settings: {
     useAI: true,
@@ -101,6 +102,7 @@ function migrate(d) {
   if (!Array.isArray(d.recipes)) d.recipes = [];
   if (!Array.isArray(d.budgets)) d.budgets = [];
   if (!Array.isArray(d.recurringInvoices)) d.recurringInvoices = [];
+  if (!Array.isArray(d.declarations)) d.declarations = [];
   if (!Array.isArray(d.customAccounts)) d.customAccounts = [];
   if (!Array.isArray(d.assets)) d.assets = [];
   if (!Array.isArray(d.angajati)) d.angajati = [];
@@ -285,6 +287,7 @@ function exportFirma(fid) {
     inventories: byFid(d.inventories),
     angajati: byFid(d.angajati),
     payrollHistory: byFid(d.payrollHistory),
+    declarations: byFid(d.declarations),
   };
 }
 
@@ -305,7 +308,7 @@ function importFirma(bundle, opts) {
     newFid = Number(o.targetFid);
     const f = d.firme.find((x) => x.id === newFid);
     if (!f) throw new Error('Firma tinta inexistenta.');
-    for (const k of ['entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products', 'gestiuni', 'stockMovements', 'inventories', 'openingAnalytic']) {
+    for (const k of ['entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products', 'gestiuni', 'stockMovements', 'inventories', 'openingAnalytic', 'declarations']) {
       d[k] = d[k].filter((x) => (x.firmaId == null ? d.firmaActiva : x.firmaId) !== newFid);
     }
     Object.assign(f, bundle.firma, { id: newFid }); // preia datele firmei din copie, pastreaza id-ul
@@ -361,6 +364,7 @@ function importFirma(bundle, opts) {
   for (const h of (bundle.payrollHistory || [])) {
     d.payrollHistory.push(Object.assign({}, h, { id: nextId('ph'), firmaId: newFid, rows: (h.rows || []).map((r) => Object.assign({}, r, { angajatId: ang.m[r.angajatId] || r.angajatId })) }));
   }
+  for (const dc of (bundle.declarations || [])) d.declarations.push(Object.assign({}, dc, { id: nextId('dcl'), firmaId: newFid }));
   d.firmaActiva = newFid;
   save();
   return newFid;

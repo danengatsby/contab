@@ -196,6 +196,8 @@ function onTab(t) {
   if (t === 'inchideri') loadClosings();
   if (t === 'situatii') loadStatements();
   if (t === 'livrabile') loadLivrabile();
+  if (t === 'portofoliu') loadPortfolio();
+  if (t === 'notificari') loadNotifications();
   if (t === 'reconciliere') loadReconcile();
   if (t === 'analitic') loadAnalytic();
   if (t === 'mijloace') loadAssets();
@@ -227,6 +229,8 @@ $$('#moreSheet button[data-go]').forEach((b) => b.addEventListener('click', () =
 function fillFirmaSelect() {
   const sel = $('#firmaSelect');
   sel.innerHTML = (META.firme || []).map((f) => `<option value="${f.id}" ${f.id === META.firmaActiva ? 'selected' : ''}>${f.nume}${f.cui ? ' (' + f.cui + ')' : ''}</option>`).join('');
+  // Portofoliul are sens doar cu mai multe firme in administrare
+  const np = $('#navPortofoliu'); if (np) np.classList.toggle('hidden', (META.firme || []).length < 2);
 }
 $('#firmaSelect').addEventListener('change', async (e) => {
   await api('/api/firme/' + e.target.value + '/activate', { method: 'POST' });
@@ -828,6 +832,7 @@ async function init() {
   fillTipSelect();
   fillPeriods();
   renderAI();
+  refreshNotifBadge();
   loadDashboard();
   await loadEntries();
 }
@@ -2775,6 +2780,100 @@ async function loadLivrabile() {
     return head + `<tr><td>${it.nr}</td><td>${it.nume}${it.obs ? `<br><span class="muted" style="font-size:11px">${it.obs}</span>` : ''}</td><td>${badge(it.status)}</td><td>${links}</td></tr>`;
   }).join('');
   $('#livrabileList').innerHTML = `<table><thead><tr><th>#</th><th>Document / declarație</th><th>Statut</th><th>Descărcare</th></tr></thead><tbody>${rows}</tbody></table>`;
+  loadDeclRegister(p);
+}
+
+// ───────────────────────── REGISTRUL DEPUNERILOR ─────────────────────────
+const DECL_ST = {
+  nedepusa: { t: 'Nedepusă', c: '#b26a00', bg: '#fff4e0' },
+  generata: { t: 'Generată', c: '#1652d6', bg: '#e7eefc' },
+  depusa: { t: 'Depusă', c: '#0a7d33', bg: '#e2f5e8' },
+  eroare: { t: 'Eroare', c: '#b00020', bg: '#fde7ea' },
+  scutita: { t: 'Scutită', c: '#5a6472', bg: '#eceff3' },
+};
+const declBadge = (st, overdue) => {
+  const x = DECL_ST[st] || DECL_ST.nedepusa;
+  return `<span style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${x.t}</span>`
+    + (overdue ? ' <span style="background:#fde7ea;color:#b00020;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">⏰ restanță</span>' : '');
+};
+async function loadDeclRegister(p) {
+  const box = $('#declRegister'); if (!box) return;
+  const data = await api('/api/declarations?period=' + p);
+  if (!data.rows.length) { box.innerHTML = '<p class="muted">Nicio declarație așteptată pe această lună (profil firmă: fără TVA / fără angajați).</p>'; return; }
+  const opts = (cur) => Object.keys(DECL_ST).map((k) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${DECL_ST[k].t}</option>`).join('');
+  box.innerHTML = `<table><thead><tr><th>Declarație</th><th>Termen</th><th>Stare</th><th>Schimbă starea</th><th>Recipisă / detalii</th></tr></thead><tbody>${
+    data.rows.map((r) => `<tr>
+      <td>${r.nume}</td>
+      <td class="${r.overdue ? '' : 'muted'}" ${r.overdue ? 'style="color:#b00020;font-weight:700"' : ''}>${r.due}</td>
+      <td>${declBadge(r.status, r.overdue)}</td>
+      <td><select class="decl-set" data-tip="${r.tip}" data-period="${r.period}">${opts(r.status)}</select></td>
+      <td class="muted" style="font-size:11px">${r.recipisa ? 'recipisă: ' + r.recipisa + '<br>' : ''}${r.submittedAt ? 'depusă: ' + r.submittedAt.slice(0, 10) : (r.generatedAt ? 'XML generat: ' + r.generatedAt.slice(0, 10) : '')}${r.note ? '<br>' + r.note : ''}</td>
+    </tr>`).join('')}</tbody></table>`;
+  box.querySelectorAll('.decl-set').forEach((sel) => sel.addEventListener('change', async () => {
+    const body = { tip: sel.dataset.tip, period: sel.dataset.period, status: sel.value };
+    if (sel.value === 'depusa') body.recipisa = prompt('Număr recipisă / index depunere (opțional):') || '';
+    if (sel.value === 'eroare') body.note = prompt('Descrierea erorii (opțional):') || '';
+    await api('/api/declarations/set', { method: 'POST', body: JSON.stringify(body) });
+    toast('Stare salvată: ' + DECL_ST[sel.value].t);
+    loadDeclRegister(sel.dataset.period);
+    refreshNotifBadge();
+  }));
+}
+
+// ───────────────────────── PORTOFOLIU (multi-firma) ─────────────────────────
+onPeriodChange('portofoliu', loadPortfolio);
+async function loadPortfolio() {
+  const p = pget('portofoliu') || new Date().toISOString().slice(0, 7);
+  const d = await api('/api/portfolio?period=' + p);
+  const t = d.tot;
+  const kpi = (ic, lbl, val, sub, cls) => `<div class="kpi ${cls || ''}">
+    <div class="kpi-top"><span class="kpi-ic">${ic}</span></div>
+    <div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub || ''}</div></div>`;
+  $('#portoKpis').innerHTML =
+    kpi('🏢', 'Firme în portofoliu', d.firms.length, 'cu acces', 'blue') +
+    kpi('📄', 'Declarații așteptate', t.asteptate, 'luna ' + p, 'blue') +
+    kpi('✅', 'Depuse', t.depuse, t.generate + ' generate · ' + t.nedepuse + ' nedepuse', 'green') +
+    kpi('🛡️', 'Conformitate', d.conformitate + '%', t.restante + ' restanțe · ' + t.erori + ' erori', t.restante || t.erori ? 'red' : 'green');
+  // bara de status (stacked) + legenda cu numarul pe fiecare stare
+  const segs = [['depuse', '#0a7d33'], ['generate', '#1652d6'], ['nedepuse', '#b26a00'], ['erori', '#b00020'], ['scutite', '#8a93a3']];
+  const total = Math.max(1, t.asteptate);
+  $('#portoStatus').innerHTML =
+    `<div style="display:flex;height:26px;border-radius:8px;overflow:hidden;background:#eceff3">${
+      segs.map(([k, c]) => t[k] ? `<div style="flex:${t[k]};background:${c}" title="${k}: ${t[k]}"></div>` : '').join('')}</div>
+     <table style="margin-top:10px">${segs.map(([k, c]) => `<tr><td><b style="color:${c}">●</b> ${k[0].toUpperCase() + k.slice(1)}</td><td class="num">${t[k]}</td><td class="num muted">${Math.round((t[k] / total) * 100)}%</td></tr>`).join('')}</table>`;
+  const warn = d.firms.filter((f) => f.natentionari > 0).slice(0, 5);
+  $('#portoTop').innerHTML = warn.length
+    ? `<table>${warn.map((f) => `<tr><td>${f.nume}<br><span class="muted" style="font-size:11px">${f.atentionari.slice(0, 3).join(' · ')}</span></td>
+        <td class="num"><span style="background:#b00020;color:#fff;border-radius:10px;padding:2px 9px;font-weight:700">${f.natentionari}</span></td></tr>`).join('')}</table>`
+    : '<p class="muted">✓ Nicio firmă cu atenționări pe luna selectată.</p>';
+  $('#portoFirms').innerHTML = `<table><thead><tr><th>Firma</th><th>CUI</th><th class="num">Așteptate</th><th class="num">Depuse</th><th class="num">Generate</th><th class="num">Nedepuse</th><th class="num">Erori</th><th class="num">Atenționări</th></tr></thead><tbody>${
+    d.firms.map((f) => `<tr><td>${f.nume}</td><td class="muted">${f.cui}</td><td class="num">${f.counts.asteptate}</td><td class="num" style="color:#0a7d33">${f.counts.depuse}</td><td class="num">${f.counts.generate}</td><td class="num" ${f.counts.nedepuse ? 'style="color:#b26a00;font-weight:700"' : ''}>${f.counts.nedepuse}</td><td class="num" ${f.counts.erori ? 'style="color:#b00020;font-weight:700"' : ''}>${f.counts.erori}</td><td class="num">${f.natentionari || ''}</td></tr>`).join('')}</tbody></table>`;
+  $('#portoRecent').innerHTML = (d.recent || []).length
+    ? `<table><thead><tr><th>Când</th><th>Firma</th><th>Cine</th><th>Acțiune</th></tr></thead><tbody>${
+      d.recent.map((a) => `<tr><td class="muted">${(a.ts || '').replace('T', ' ').slice(0, 16)}</td><td>${a.firma}</td><td>${a.username}</td><td>${a.action}${a.detail ? ' — <span class="muted">' + a.detail + '</span>' : ''}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Nicio activitate recentă.</p>';
+}
+
+// ───────────────────────── NOTIFICARI (termene fiscale) ─────────────────────────
+async function refreshNotifBadge() {
+  try {
+    const n = await api('/api/notifications');
+    const b = $('#notifBadge'); if (!b) return;
+    b.textContent = n.count;
+    b.classList.toggle('hidden', !n.count);
+  } catch (e) { /* ignora */ }
+}
+async function loadNotifications() {
+  const n = await api('/api/notifications');
+  $('#notifList').innerHTML = n.items.length
+    ? `<table><thead><tr><th></th><th>Firma</th><th>Declarația</th><th>Luna</th><th>Termen</th><th>Stare</th></tr></thead><tbody>${
+      n.items.map((i) => `<tr>
+        <td>${i.kind === 'restanta' ? '<span style="background:#fde7ea;color:#b00020;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">⏰ RESTANȚĂ</span>' : '<span style="background:#fff4e0;color:#b26a00;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">📅 termen apropiat</span>'}</td>
+        <td>${i.firma}</td><td>${i.nume}</td><td>${i.period}</td>
+        <td ${i.kind === 'restanta' ? 'style="color:#b00020;font-weight:700"' : ''}>${i.due}</td>
+        <td>${declBadge(i.status)}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">✓ Nicio restanță și niciun termen în următoarele 7 zile. Totul e la zi.</p>';
+  refreshNotifBadge();
 }
 
 // ───────────────────────── RECONCILIERE ─────────────────────────

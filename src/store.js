@@ -40,6 +40,7 @@ const ARRAY_COLLS = [
   { key: 'recurringInvoices', firma: true, hasId: true },
   { key: 'recipes', firma: true, hasId: true },
   { key: 'budgets', firma: true, hasId: true },
+  { key: 'declarations', firma: true, hasId: true },
 ];
 
 let sdb = null;
