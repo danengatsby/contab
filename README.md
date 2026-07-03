@@ -392,7 +392,10 @@ Endpoint `/api/dashboard`.
 - **Plan de conturi extins** la lista din ghid (secțiunea 17): 211, 231, 267, 2678, 2813, 280,
   331, 332, 106, 167, 1687, 4418, 457, 471, 472, 711, 712, 8031 etc. (108 conturi).
 - **Tipuri de document din monografii:** avans încasat client (419) / avans plătit furnizor
-  (409); construcții — lucrări în curs (332=712) și garanție de bună execuție (2678);
+  (409), plus **facturile de avans cu TVA** (art. 282: `4111 = 419 + 4427` la emitere,
+  `409 + 4426 = 401` la primire) cu **regularizare la factura finală** (storno în roșu —
+  419/409 se închid, iar jurnalul de TVA/D300 preia baza avansului și o scade la regularizare);
+  construcții — lucrări în curs (332=712) și garanție de bună execuție (2678);
   HoReCa — intrare la preț de vânzare (371/378/4428) și vânzare amănunt cu descărcare;
   comerț intracomunitar — diferențe de curs (765/665); transport — combustibil cu TVA 50%,
   amortizare transport (2813), rovinietă (635=446).

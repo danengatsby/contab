@@ -719,6 +719,27 @@ eq('camp cota dividende: default 16', (dvf.fields.find((f) => f.name === 'cota')
 // Scontare efect: taxa de scont e cheltuiala financiara (667)
 const sce = gt2('scontare_efect').build({ suma: 1000, scont: 50 });
 eq('scontare: taxa pe 667', (sce.find((l) => l.suma === 50) || {}).debit, '667');
+
+section('Avansuri facturate (factura de avans cu TVA + regularizare)');
+const favC = gt2('factura_avans_client').build({ baza: 1000, tva: 210, cota: 21 });
+eq('factura avans client: 4111=419 baza', (favC.find((l) => l.credit === '419') || {}).suma, 1000);
+eq('factura avans client: 4111=4427 TVA', (favC.find((l) => l.credit === '4427') || {}).suma, 210);
+const regC = gt2('regularizare_avans_client').build({ baza: 1000, tva: 210, cota: 21 });
+const netOn = (lines, cont) => lines.reduce((s, l) => s + (l.credit === cont ? l.suma : 0) - (l.debit === cont ? l.suma : 0), 0);
+eq('ciclu avans client: 419 se inchide', netOn([...favC, ...regC], '419'), 0);
+eq('ciclu avans client: TVA avansului se anuleaza la regularizare', netOn([...favC, ...regC], '4427'), 0);
+const favF = gt2('factura_avans_furnizor').build({ baza: 500, tva: 105, cota: 21 });
+ok('factura avans furnizor: 409=401 + 4426=401', favF.some((l) => l.debit === '409' && l.credit === '401' && l.suma === 500) && favF.some((l) => l.debit === '4426' && l.suma === 105));
+const regF = gt2('regularizare_avans_furnizor').build({ baza: 500, tva: 105, cota: 21 });
+eq('ciclu avans furnizor: 409 se inchide', [...favF, ...regF].reduce((s, l) => s + (l.debit === '409' ? l.suma : 0) - (l.credit === '409' ? l.suma : 0), 0), 0);
+// jurnalul de TVA: baza avansului (419) apare in vanzari; regularizarea o scade
+const mkAv = (lines, data) => ({ id: 'av' + data, data, period: data.slice(0, 7), tipNume: 'test', partener: 'X', document: 'AV1', lines });
+const jAv = acc.vatJournals({ entries: [mkAv(favC, '2026-05-10')], openingBalances: {} }, '2026-05');
+eq('jurnal TVA: factura de avans cu baza 1000', jAv.totals.bazaV, 1000);
+eq('jurnal TVA: TVA colectata avans 210', jAv.totals.colectata, 210);
+const jReg = acc.vatJournals({ entries: [mkAv(favC, '2026-05-10'), mkAv(regC, '2026-05-20')], openingBalances: {} }, '2026-05');
+eq('jurnal TVA: dupa regularizare baza neta 0', jReg.totals.bazaV, 0);
+eq('jurnal TVA: dupa regularizare TVA neta 0', jReg.totals.colectata, 0);
 const d205db = { entries: [
   { id: '1', tip: 'chirie_pf', period: '2026-03', data: '2026-03-01', partener: 'Ion Pop', partenerCui: '1900101415236', lines: gt2('chirie_pf').build({ baza: 1000, cota: 10, cont: '5121' }) },
   { id: '2', tip: 'premiu_pf', period: '2026-05', data: '2026-05-01', partener: 'Maria I', partenerCui: '2900202535241', lines: gt2('premiu_pf').build({ baza: 500, cota: 10, cont: '5311' }) },

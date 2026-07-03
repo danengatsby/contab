@@ -522,19 +522,75 @@ const TYPES = [
   },
   {
     id: 'avans_incasat_client',
-    nume: 'Avans incasat de la client (419)',
+    nume: 'Avans incasat de la client (419, fara factura de avans)',
     grup: 'Trezorerie',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Incasat in', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L(d.cont || '5121', '419', d.suma, 'Avans incasat de la client')],
+    build: (d) => [L(d.cont || '5121', '419', d.suma, 'Avans incasat de la client (fara factura de avans)')],
   },
   {
     id: 'avans_platit_furnizor',
-    nume: 'Avans platit catre furnizor (409)',
+    nume: 'Avans platit catre furnizor (409, fara factura de avans)',
     grup: 'Trezorerie',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Platit din', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L('409', d.cont || '5121', d.suma, 'Avans platit catre furnizor')],
+    build: (d) => [L('409', d.cont || '5121', d.suma, 'Avans platit catre furnizor (fara factura de avans)')],
+  },
+
+  // ─────────────── AVANSURI FACTURATE (factura de avans, cu TVA exigibila) ───────────────
+  // TVA e exigibila la incasarea avansului (art. 282 Cod fiscal) — factura de avans o colecteaza.
+  // Fluxul: factura de avans -> incasarea (tip "Incasare de la client", 5121 = 4111) -> la livrare,
+  // factura finala (tip normal de vanzare) + REGULARIZAREA avansului (storno in rosu, 419 se inchide).
+  {
+    id: 'factura_avans_client',
+    nume: 'Factura de avans emisa (client): 4111 = 419 + 4427',
+    grup: 'Vanzari',
+    fields: [F.data, F.partener, F.cuiPartener, F.document,
+      { name: 'baza', label: 'Avans facturat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
+    build: (d) => {
+      const lines = [L('4111', '419', d.baza, 'Factura de avans - avans facturat (fara TVA)')];
+      if (d.tva > 0) lines.push(L('4111', '4427', d.tva, 'TVA colectata aferenta avansului'));
+      return lines;
+    },
+  },
+  {
+    id: 'regularizare_avans_client',
+    nume: 'Regularizare avans client la factura finala (storno avans, in rosu)',
+    grup: 'Vanzari',
+    fields: [F.data, F.partener, F.cuiPartener, F.document,
+      { name: 'refFactura', label: 'Factura de avans stornata (referinta)', type: 'text' },
+      { name: 'baza', label: 'Avans stornat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
+    build: (d) => {
+      // se inregistreaza IMPREUNA cu factura finala de livrare (introdusa separat, ca vanzare normala)
+      const lines = [L('4111', '419', -d.baza, 'Storno avans facturat (in rosu)')];
+      if (d.tva > 0) lines.push(L('4111', '4427', -d.tva, 'Storno TVA aferenta avansului (in rosu)'));
+      return lines;
+    },
+  },
+  {
+    id: 'factura_avans_furnizor',
+    nume: 'Factura de avans primita (furnizor): 409 + 4426 = 401',
+    grup: 'Cumparari',
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document,
+      { name: 'baza', label: 'Avans facturat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
+    build: (d) => {
+      const lines = [L('409', '401', d.baza, 'Factura de avans primita - avans (fara TVA)')];
+      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibila aferenta avansului'));
+      return lines;
+    },
+  },
+  {
+    id: 'regularizare_avans_furnizor',
+    nume: 'Regularizare avans furnizor la factura finala (storno, in rosu)',
+    grup: 'Cumparari',
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document,
+      { name: 'refFactura', label: 'Factura de avans stornata (referinta)', type: 'text' },
+      { name: 'baza', label: 'Avans stornat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
+    build: (d) => {
+      const lines = [L('409', '401', -d.baza, 'Storno avans facturat furnizor (in rosu)')];
+      if (d.tva > 0) lines.push(L('4426', '401', -d.tva, 'Storno TVA aferenta avansului (in rosu)'));
+      return lines;
+    },
   },
   // ─────────────────── CONSTRUCTII ───────────────────
   {

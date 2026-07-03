@@ -302,6 +302,10 @@ function vatJournals(db, period) {
       if (l.credit === '4426') ded = round2(ded - l.suma);
       if (isClass7(l.credit)) bazaV = round2(bazaV + l.suma);
       if (isClass7(l.debit)) bazaV = round2(bazaV - l.suma);
+      // avansuri facturate: baza avansului (419) intra in jurnalul de vanzari cu semnul liniei
+      // (factura de avans: credit 419 pozitiv; regularizarea la factura finala: credit 419 negativ)
+      if (l.credit === '419') bazaV = round2(bazaV + l.suma);
+      if (l.debit === '419') bazaV = round2(bazaV - l.suma);
       // taxare inversa interna (art. 331): autolichidarea TVA pe acelasi articol (4426 = 4427)
       if (l.debit === '4426' && l.credit === '4427') reverseCharge = true;
     }
