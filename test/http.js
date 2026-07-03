@@ -202,6 +202,13 @@ async function main() {
     ok('raport productie: forma corecta', Array.isArray((await req('GET', '/api/production-report?period=2026-06', { cookie: c1 })).json.rows || []));
     ok('reteta stearsa', (await req('DELETE', '/api/recipes/' + rid, { cookie: c1 })).json.ok === true);
 
+    // ── Export CSV (text/csv cu antet) ──
+    const csvJ = await req('GET', '/csv/journal?period=2026-06', { cookie: c1 });
+    ok('csv/journal: 200 text/csv cu antet', csvJ.status === 200 && /Nr;Data;Document/.test(csvJ.text));
+    const csvB = await req('GET', '/csv/balance?period=2026-06', { cookie: c1 });
+    ok('csv/balance: 200 cu antet de balanta', csvB.status === 200 && /Cont;Denumire;SI Debit/.test(csvB.text));
+    ok('csv/partners: 200', (await req('GET', '/csv/partners', { cookie: c1 })).status === 200);
+
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
