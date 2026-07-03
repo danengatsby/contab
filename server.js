@@ -264,7 +264,7 @@ function logAudit(action, detail, opts) {
   if (d.audit.length > 3000) d.audit = d.audit.slice(-3000);
 }
 
-const PUBLIC_PATHS = new Set(['/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest']);
+const PUBLIC_PATHS = new Set(['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest']);
 app.use((req, res, next) => {
   if (PUBLIC_PATHS.has(req.path) || req.path.startsWith('/api/invite/') || req.path.startsWith('/api/reset/')) return next();
   if (/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) {
@@ -292,6 +292,16 @@ app.use((req, res, next) => {
   if (!plans.expiredLock(req.user)) return next();
   if (isDeliverable) return res.status(402).type('text/plain; charset=utf-8').send(EXPIRED_MSG);
   res.status(402).json({ error: EXPIRED_MSG });
+});
+
+// Health-check public (pentru monitorizare uptime): confirma ca procesul si baza raspund.
+app.get('/api/health', (req, res) => {
+  try {
+    const d = db.get();
+    res.json({ ok: true, ts: new Date().toISOString(), uptimeSec: Math.round(process.uptime()), firme: (d.firme || []).length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'db' });
+  }
 });
 
 app.post('/api/login', (req, res) => {
@@ -3221,6 +3231,38 @@ app.get('/pdf/note/:id', (req, res) => {
   pdf.notePdf(res, db.getFirma(fid) || {}, Object.assign({ nrJurnal: nr }, e));
 });
 
+// ───────── Reset zilnic al contului demo (din snapshot-ul data/demo-firma.json) ─────────
+const DEMO_SNAPSHOT = path.join(db.DATA_DIR, 'demo-firma.json');
+function resetDemo() {
+  const d = db.get();
+  const demo = d.users.find((u) => u.username === 'demo');
+  const fid = demo && (demo.firme || [])[0];
+  if (!fid || !fs.existsSync(DEMO_SNAPSHOT)) return { ok: false, reason: 'fara demo sau snapshot' };
+  const bundle = JSON.parse(fs.readFileSync(DEMO_SNAPSHOT, 'utf8'));
+  const keepActive = d.firmaActiva; // importFirma muta firma activa — o pastram
+  db.importFirma(bundle, { targetFid: fid });
+  d.firmaActiva = keepActive;
+  // igiena pe utilizatorul demo: contorul AI, datele personale, conversatiile de suport
+  delete demo.aiUsage; delete demo.profil; demo.email = '';
+  d.messages = (d.messages || []).filter((m) => m.userId !== demo.id);
+  db.save();
+  return { ok: true, firmaId: fid };
+}
+app.post('/api/demo/reset', requireAdmin, (req, res) => {
+  const r = resetDemo();
+  logAudit('demo.reset', r.ok ? 'resetat manual' : r.reason, { req, firmaId: null });
+  res.json(r);
+});
+// Regenereaza snapshot-ul din starea CURENTA a firmei demo (dupa o curatare manuala).
+app.post('/api/demo/snapshot', requireAdmin, (req, res) => {
+  const demo = db.get().users.find((u) => u.username === 'demo');
+  const fid = demo && (demo.firme || [])[0];
+  if (!fid) return res.status(400).json({ error: 'Nu exista firma demo.' });
+  fs.writeFileSync(DEMO_SNAPSHOT, JSON.stringify(db.exportFirma(fid)));
+  logAudit('demo.snapshot', 'snapshot demo regenerat', { req, firmaId: null });
+  res.json({ ok: true });
+});
+
 app.post('/api/seed', requireAdmin, (req, res) => {
   const r = seed();
   res.json({ ok: true, message: 'Exemplu incarcat: ' + r.entries + ' inregistrari pentru ' + r.period + '.' });
@@ -3248,6 +3290,17 @@ setInterval(() => {
   sendDeadlineDigests()
     .then((r) => { if (r.sent.length || r.errors.length) console.log('Digest termene:', r.sent.length, 'trimise', r.errors.length ? ('; erori: ' + r.errors.join(' | ')) : ''); })
     .catch((e) => console.error('Digest termene:', e.message));
+}, 15 * 60 * 1000);
+
+// Reset zilnic al contului demo (dupa ora 04:00): junk-ul vizitatorilor dispare peste noapte
+setInterval(() => {
+  const d = db.get();
+  const today = new Date().toISOString().slice(0, 10);
+  const s = d.settings.demoReset || (d.settings.demoReset = {});
+  if (s.lastDate === today || new Date().getHours() < 4) return;
+  s.lastDate = today;
+  try { const r = resetDemo(); if (r.ok) console.log('Demo resetat din snapshot.'); db.save(); }
+  catch (e) { console.error('Demo reset:', e.message); }
 }, 15 * 60 * 1000);
 
 // Igiena rate-limit: fara curatare, map-urile ar creste nelimitat (cate o intrare per IP esuat)

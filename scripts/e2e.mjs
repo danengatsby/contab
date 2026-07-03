@@ -1,0 +1,55 @@
+// Verificari end-to-end pe instanta LIVE (sau BASE_URL), cu browser real (Playwright).
+// Foloseste contul demo — nu creeaza si nu sterge date reale.
+//
+// Rulare pe acest server (fara biblioteci de sistem pentru Chromium, prin Docker):
+//   docker run --rm -v /var/www/contab/scripts:/w -w /w mcr.microsoft.com/playwright:v1.58.2-noble \
+//     sh -c "npm i --no-save playwright@1.58.2 >/dev/null 2>&1 && node e2e.mjs"
+// Local (cu playwright instalat):  BASE_URL=http://localhost:8080 node scripts/e2e.mjs
+
+import { chromium } from 'playwright';
+
+const BASE = process.env.BASE_URL || 'https://contabo.space';
+let pass = 0; let fail = 0;
+const ok = (name, cond) => { if (cond) { pass++; console.log('  ✓', name); } else { fail++; console.error('  ✗', name); } };
+
+const b = await chromium.launch();
+const pg = await b.newPage({ viewport: { width: 1440, height: 900 } });
+
+// 1. health + pagini publice
+const health = await (await pg.request.get(BASE + '/api/health')).json().catch(() => ({}));
+ok('/api/health raspunde ok', health.ok === true);
+await pg.goto(BASE + '/prezentare.html', { waitUntil: 'networkidle' });
+ok('prezentarea se incarca (hero vizibil)', await pg.locator('.hero h1').isVisible());
+ok('prezentarea are link de confidentialitate', (await pg.locator('a[href="/confidentialitate.html"]').count()) > 0);
+
+// 2. /?register=1 deschide inscrierea (fara sesiune)
+await pg.goto(BASE + '/?register=1', { waitUntil: 'networkidle' });
+await pg.waitForTimeout(1200);
+ok('/?register=1 deschide panoul de inscriere', await pg.locator('#registerOverlay').isVisible());
+
+// 3. demo login + aplicatie
+await pg.goto(BASE + '/', { waitUntil: 'networkidle' });
+await pg.evaluate(() => fetch('/api/demo-login', { method: 'POST' }));
+await pg.reload({ waitUntil: 'networkidle' });
+await pg.waitForTimeout(1500);
+await pg.evaluate(() => { document.querySelectorAll('#welcomeOverlay').forEach((e) => e.remove()); });
+ok('login demo functioneaza (badge cu tipul)', /demo/.test(await pg.locator('#userBadge').textContent()));
+ok('panourile au explicatii (ⓘ injectate)', (await pg.locator('.cinfo').count()) > 50);
+ok('dashboardul are banda de alerte', (await pg.locator('#dashAlerts .alert').count()) > 0);
+
+// 4. API-uri cheie cu sesiunea demo
+const notif = await (await pg.request.get(BASE + '/api/notifications')).json();
+ok('notificarile raspund cu items', Array.isArray(notif.items));
+const dash = await (await pg.request.get(BASE + '/api/dashboard')).json();
+ok('dashboard expune e-Factura netrimise', dash.efactura && typeof dash.efactura.count === 'number');
+const reg = await (await pg.request.get(BASE + '/api/declarations?period=2026-06')).json();
+ok('registrul depunerilor are randuri cu termene', (reg.rows || []).every((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.due)) && reg.rows.length > 0);
+
+// 5. un tab cu date (TVA) se randeaza
+await pg.evaluate(() => goTab('tva'));
+await pg.waitForTimeout(1200);
+ok('tab-ul TVA se randeaza (sumar decont)', /TVA/.test(await pg.locator('#tab-tva').textContent()));
+
+await b.close();
+console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari E2E trecute, ' + fail + ' esuate.');
+process.exit(fail ? 1 : 0);

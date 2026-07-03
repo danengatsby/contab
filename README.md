@@ -537,6 +537,19 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   `scripts/backup.js` printr-un **cron** (`30 3 * * * node /var/www/contab/scripts/backup.js`,
   log în `data/backups/backup.log`). API: `POST /api/backup` · `GET /api/backups` ·
   `GET /api/backup/file/:name` · `POST /api/backups/auto`.
+- **Monitorizare:** `GET /api/health` (public) confirmă că procesul și baza răspund;
+  `scripts/healthcheck.sh` rulează din cron la 5 minute și trimite **alertă pe email** (Resend)
+  când aplicația nu răspunde (max. una pe oră). Pentru căderi de server complet, adaugă și un
+  monitor extern (ex. UptimeRobot) pe același URL.
+- **Contul demo se resetează zilnic** (după 04:00) din snapshot-ul `data/demo-firma.json` —
+  junk-ul vizitatorilor dispare peste noapte, împreună cu mesajele și contorul AI al contului.
+  Admin: `POST /api/demo/reset` (manual) · `POST /api/demo/snapshot` (re-face snapshot-ul din
+  starea curentă, după o curatare manuală).
+- **Politica de confidențialitate (GDPR):** `public/confidentialitate.html` — legată din
+  prezentare și din panoul de înscriere; acoperă datele colectate, împuterniciții (Stripe,
+  Anthropic, Resend, ANAF), duratele și drepturile utilizatorilor.
+- **E2E pe live:** `npm run e2e` (`scripts/e2e.mjs`, Playwright — pe acest server prin Docker,
+  comanda e în antetul scriptului): 11 verificări cap-coadă pe instanța reală, cu contul demo.
 - **Arhivă completă + copie offsite (zilnic):** pe lângă copia `db.json`, cronul creează
   `data/backups/full-YYYYMMDD-HHMMSS.zip` — `db.json` + un **instantaneu consistent** al bazei
   SQLite (`VACUUM INTO`, sigur sub WAL) + **toate documentele din `data/uploads/`** — păstrează
