@@ -18,7 +18,7 @@ function attr(xml, name) {
 }
 function has(xml, frag) { return String(xml).indexOf(frag) >= 0; }
 
-const ROOTS = { d300: 'declaratie300', d394: 'declaratie394', d390: 'declaratie390', d205: 'declaratie205', d112: 'D112', saft: 'AuditFile' };
+const ROOTS = { d300: 'declaratie300', d394: 'declaratie394', d390: 'declaratie390', d205: 'declaratie205', d112: 'D112', saft: 'AuditFile', d100: 'declaratie100', intrastat: 'declaratieIntrastat' };
 
 /** @returns { ok, errors:[], warnings:[] } */
 function validateDeclaration(type, xml, ctx) {
@@ -35,7 +35,7 @@ function validateDeclaration(type, xml, ctx) {
   else if (!/^\d{2,10}$/.test(cui)) warnings.push('CUI-ul „' + cui + '" nu pare valid (asteptam 2-10 cifre, eventual prefix RO).');
 
   // perioada (luna/an) acolo unde se aplica
-  if (['d300', 'd394', 'd390'].includes(type)) {
+  if (['d300', 'd394', 'd390', 'd100', 'intrastat'].includes(type)) {
     if (!attr(s, 'luna') && !has(s, '<luna')) errors.push('Lipseste luna din declaratie.');
     if (!attr(s, 'an') && !has(s, '<an')) errors.push('Lipseste anul din declaratie.');
   }
@@ -44,6 +44,11 @@ function validateDeclaration(type, xml, ctx) {
   // continut gol -> avertisment (nu eroare)
   if (type === 'd390' && !has(s, '<operatiune ')) warnings.push('Nicio operatiune intracomunitara in perioada — declaratie goala.');
   if (type === 'd205' && !has(s, '<beneficiar ')) warnings.push('Niciun beneficiar cu retinere la sursa — declaratie goala.');
+  if (type === 'd100' && attr(s, 'total_plata') === '0.00') warnings.push('Impozit 0 in trimestru — verifica daca datorezi D100 pentru perioada.');
+  if (type === 'intrastat') {
+    if (!has(s, '<articol ')) warnings.push('Nicio operatiune intracomunitara cu bunuri in perioada — declaratie goala.');
+    if (has(s, 'codNC=""')) warnings.push('Exista articole fara cod NC8 — completeaza codurile inainte de depunere la INS.');
+  }
 
   return { ok: errors.length === 0, errors, warnings };
 }

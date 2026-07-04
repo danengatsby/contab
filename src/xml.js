@@ -275,8 +275,10 @@ ${asigurati}
 `;
 }
 
-/** D394 — declaratie informativa (structura ANAF, agregare pe partener). */
-function d394Xml(company, period, vj, who) {
+/** D394 — declaratie informativa (structura ANAF, agregare pe partener).
+ *  `pf` (optional): achizitiile de la producatori agricoli PF pe baza de fila de carnet /
+ *  borderou — apar in sectiunea dedicata <achizitii_pf_carnet>. */
+function d394Xml(company, period, vj, who, pf) {
   const { an, luna } = ym(period);
   const agg = (rows) => {
     const map = new Map();
@@ -321,7 +323,19 @@ ${liv || '    <!-- fara livrari -->'}
   <achizitii total_baza="${num2(vj.totals.bazaC)}" total_tva="${num2(vj.totals.deductibila)}">
 ${ach || '    <!-- fara achizitii -->'}
   </achizitii>
-</declaratie394>
+${pfCarnet(pf)}</declaratie394>
+`;
+}
+
+/** Sectiunea D394 pentru achizitiile de la persoane fizice pe baza de borderou / fila din
+ *  carnetul de comercializare a produselor agricole (Legea 145/2014) — fara TVA. */
+function pfCarnet(pf) {
+  if (!pf || !pf.rows || !pf.rows.length) return '';
+  const rows = pf.rows.map((r) =>
+    `    <producator nume="${esc(r.partener)}" cnp="${esc(r.cnp || '')}" nr_documente="${r.nr}" valoare="${num2(r.total)}" tip_doc="${esc(r.tipDoc || 'fila carnet')}"/>`).join('\n');
+  return `  <achizitii_pf_carnet total="${num2(pf.total)}" nr_producatori="${pf.rows.length}">
+${rows}
+  </achizitii_pf_carnet>
 `;
 }
 
@@ -485,6 +499,43 @@ ${rows || '    <!-- nicio operatiune intracomunitara in perioada -->'}
 </declaratie390>`;
 }
 
+// D100 — declaratia privind obligatiile de plata la bugetul de stat (aici: impozitul pe
+// veniturile microintreprinderilor, trimestrial — cod obligatie 620 in nomenclatorul ANAF)
+function d100Xml(company, period, d, who) {
+  const { an, luna } = ym(period);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- D100 (impozit pe veniturile microintreprinderilor) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->
+<declaratie100 xmlns="mfp:anaf:dgti:d100:declaratie:v1"
+  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
+  luna="${esc(luna)}" an="${esc(an)}" trimestru="${d.trimestru || ''}" total_plata="${num2(d.impozit)}"${declarant(who)}>
+  <obligatie cod="620" den="Impozit pe veniturile microintreprinderilor"
+    baza="${num2(d.venit)}" cota="${d.cota}" datorat="${num2(d.impozit)}" de_plata="${num2(d.impozit)}"/>
+</declaratie100>
+`;
+}
+
+// Intrastat — declaratia statistica lunara pentru comertul intra-UE cu bunuri.
+// Se depune la INS (aplicatia Intrastat online / www.intrastat.ro), NU la ANAF.
+function intrastatXml(company, period, d) {
+  const { an, luna } = ym(period);
+  const row = (r) => `    <articol codNC="${esc(r.codNC)}" tara="${esc(r.tara)}" natura="${esc(r.natura || '11')}"`
+    + ` conditie="${esc(r.conditie || '')}" valoare="${num2(r.valoare)}" masa_neta="${num2(r.masaNeta)}" nr_operatiuni="${r.nrop}"/>`;
+  const intro = (d.rows || []).filter((r) => r.flux === 'introducere').map(row).join('\n');
+  const exp = (d.rows || []).filter((r) => r.flux === 'expediere').map(row).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- Intrastat generat de Contabo. A se verifica/incarca in aplicatia Intrastat online (INS) inainte de depunere — obligatoriu doar peste pragul anual. -->
+<declaratieIntrastat cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
+  luna="${esc(luna)}" an="${esc(an)}" total_introduceri="${num2(d.totalIntroduceri)}" total_expedieri="${num2(d.totalExpedieri)}">
+  <introduceri total="${num2(d.totalIntroduceri)}" obligat="${d.obligatIntroduceri ? 'da' : 'nu'}">
+${intro || '    <!-- fara introduceri -->'}
+  </introduceri>
+  <expedieri total="${num2(d.totalExpedieri)}" obligat="${d.obligatExpedieri ? 'da' : 'nu'}">
+${exp || '    <!-- fara expedieri -->'}
+  </expedieri>
+</declaratieIntrastat>
+`;
+}
+
 // D205 — impozit pe venit retinut la sursa, pe beneficiar
 function d205Xml(company, year, d) {
   const rows = (d.rows || []).map((r) =>
@@ -500,5 +551,5 @@ ${rows || '    <!-- niciun venit cu retinere la sursa in an -->'}
 
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
-  d300Xml, d394Xml, d112Xml, d390Xml, d205Xml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  d300Xml, d394Xml, d112Xml, d390Xml, d205Xml, d100Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
 };

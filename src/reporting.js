@@ -1,6 +1,7 @@
 'use strict';
 
 const { round2, period: periodOf } = require('./util');
+const fiscal = require('./fiscal');
 const coa = require('./chartOfAccounts');
 const acc = require('./accounting');
 const stmt = require('./statements');
@@ -86,6 +87,26 @@ function d205(db, year) {
   return { year: String(year), rows, totalBrut: round2(rows.reduce((s, r) => s + r.venitBrut, 0)), totalImpozit: round2(rows.reduce((s, r) => s + r.impozit, 0)), nr: rows.length };
 }
 
+/** Achizitiile de la producatori agricoli PF pe baza de fila din carnetul de comercializare /
+ *  borderou de achizitie (Legea 145/2014) — fara TVA, agregat pe producator; sectiune in D394. */
+function achizitiiPfCarnet(db, period) {
+  const ent = (db.entries || []).filter((e) => e.tip === 'achizitie_produse_agricole' && (!period || String(e.period || periodOf(e.data)) === period));
+  const map = new Map();
+  for (const e of ent) {
+    let val = 0;
+    for (const l of e.lines) if (String(l.credit) === '462') val = round2(val + l.suma); // datoria fata de producator
+    if (!val) continue;
+    const cnp = String(e.partenerCui || '').replace(/\s/g, '').toUpperCase();
+    const key = cnp || (e.partener || '-').toUpperCase();
+    const r = map.get(key) || { partener: e.partener || '', cnp, nr: 0, total: 0 };
+    r.nr += 1; r.total = round2(r.total + val);
+    if (!r.partener && e.partener) r.partener = e.partener;
+    map.set(key, r);
+  }
+  const rows = [...map.values()].sort((a, b) => a.partener.localeCompare(b.partener));
+  return { period, rows, total: round2(rows.reduce((s, r) => s + r.total, 0)), nr: rows.length };
+}
+
 /** Intrastat (de baza) — fluxuri de bunuri intracomunitare pe tara: introduceri (achizitii) / expedieri (livrari). */
 function intrastat(db, period) {
   const FLUX = { livrare_intracomunitara: 'expediere', achizitie_intracomunitara: 'introducere' };
@@ -142,15 +163,22 @@ function obligatii(db, period) {
 
 /** Recap D100 — impozit pe veniturile microintreprinderii (1% din venituri). */
 function d100micro(db, period, cota) {
-  const r = periodRulaj(db, period);
+  // Impozitul micro e TRIMESTRIAL: veniturile se cumuleaza pe toate lunile trimestrului
+  // din care face parte `period` (ex. 2026-06 -> aprilie + mai + iunie).
+  const m = Number(String(period || '').slice(5, 7)) || 0;
+  const y = String(period || '').slice(0, 4);
+  const q0 = m ? m - ((m - 1) % 3) : 0;
+  const luni = m ? [q0, q0 + 1, q0 + 2].map((x) => y + '-' + String(x).padStart(2, '0')) : [];
+  const lines = acc.allLines((db.entries || []).filter((e) => luni.includes(String(e.period || periodOf(e.data)))));
+  const r = acc.accumulate(lines);
   let venit = 0;
   for (const cod of Object.keys(r)) {
     const a = coa.getAccount(cod);
     const clasa = a ? a.clasa : Number(String(cod)[0]);
     if (clasa === 7) venit = round2(venit + (r[cod].c - r[cod].d));
   }
-  const rate = cota || 1;
-  return { period, venit, cota: rate, impozit: round2((venit * rate) / 100) };
+  const rate = cota || fiscal.FISCAL.impozitMicro || 1;
+  return { period, trimestru: m ? Math.ceil(m / 3) : 0, luni, venit, cota: rate, impozit: round2((venit * rate) / 100) };
 }
 
 /** Registrul-inventar — soldurile finale la o data. */
@@ -182,7 +210,7 @@ function livrabile(db, period) {
     L('A. Lunar', 9, 'D406 SAF-T (+ recipisa)', 'regim', [], 'In functie de regim/termen'),
     L('A. Lunar', 10, 'D100 — retineri la sursa / dividende (+ recipisa)', 'regim', [], 'Daca e cazul'),
     L('A. Lunar', 11, 'Situatia sumelor de plata la ANAF', 'ok', [{ label: 'Obligatii', href: '/pdf/obligatii' + p }]),
-    L('B. Trimestrial', 12, 'D100 — impozit micro 1% / avans impozit profit (+ recipisa)', 'recap', [{ label: 'Recap D100', href: '/pdf/d100' + p }]),
+    L('B. Trimestrial', 12, 'D100 — impozit micro 1% / avans impozit profit (+ recipisa)', 'recap', [{ label: 'Recap D100', href: '/pdf/d100' + p }, { label: 'D100 XML', href: '/xml/d100' + p }]),
     L('B. Trimestrial', 13, 'D300 / D394 / D406 — regim trimestrial (+ recipisa)', 'regim', [], 'Daca firma e pe regim trimestrial'),
     L('B. Trimestrial', 14, 'Balanta de verificare la sfarsit de trimestru', 'ok', [{ label: 'Balanta', href: '/pdf/balance' + p }]),
     L('C. Anual', 15, 'Situatii financiare: bilant + cont de profit si pierdere + note', 'ok', [
@@ -512,4 +540,4 @@ function monthlySeries(db, year) {
   return out;
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, registruInventar, livrabile, dashboard, monthlySeries, registruFiscal, notes, budgetReport, cashForecast };
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, achizitiiPfCarnet, registruInventar, livrabile, dashboard, monthlySeries, registruFiscal, notes, budgetReport, cashForecast };

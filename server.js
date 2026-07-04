@@ -1364,6 +1364,7 @@ app.delete('/api/opening-analytic/:idx', (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/opening', (req, res) => res.json(S(req).openingBalances));
 app.post('/api/opening', (req, res) => {
   const d = db.get();
   const ob = (req.body && req.body.openingBalances) ? req.body.openingBalances : {};

@@ -1371,6 +1371,21 @@ Cu stimă,
         </div>
         <div id="firmaRestoreStatus" class="status"></div>
       </div>
+      <div class="card" id="openingCard">
+        <h2>⚖️ Solduri inițiale (preluare firmă cu istoric)</h2>
+        <p class="muted">Balanța de deschidere la preluarea firmei în aplicație: soldul <b>debitor sau creditor</b> al fiecărui cont la data preluării. <b>Totalul debit trebuie să fie egal cu totalul credit</b> — altfel balanța nu se va închide niciodată. Poți importa balanța exportată din vechiul program (<b>XLS / XLSX / DBF / CSV</b>, coloane <span class="acc">Cont;Denumire;SoldDebit;SoldCredit</span> — antetul e opțional). Soldurile pe partener le detaliezi în <b>Analitic</b>, iar stocul cantitativ-valoric în <b>Stocuri → Preluare stoc inițial</b>.</p>
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+          <input type="file" id="openFile" accept=".csv,.txt,.xlsx,.xls,.dbf" title="Încarcă balanța de deschidere din fișier" />
+          <button id="openAddRow" class="btn small ghost">+ adaugă cont</button>
+        </div>
+        <div id="openEditor" class="tablewrap"></div>
+        <div class="row" style="margin-top:8px;align-items:center;gap:12px;flex-wrap:wrap">
+          <div id="openTotals" class="muted"></div>
+          <span class="spacer"></span>
+          <button id="openSaveBtn" class="btn primary">Salvează soldurile inițiale</button>
+        </div>
+        <div id="openStatus" class="status"></div>
+      </div>
       <div class="card" id="usersCard" style="display:none">
         <h2>Utilizatori (administrator)</h2>
         <p class="muted">Fiecare contabil vede doar firmele bifate. Adminul vede toate firmele.</p>

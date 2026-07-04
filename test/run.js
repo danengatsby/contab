@@ -837,6 +837,42 @@ eq('Intrastat NC8: masa neta cumulata 120+80', deRow.masaNeta, 200);
 eq('Intrastat NC8: valoare cumulata 5000+2000', deRow.valoare, 7000);
 eq('Intrastat: pragul 1.000.000 lei', intrNC.pragExpedieri, 1000000);
 eq('Intrastat: sub prag -> neobligat la declarare', intrNC.obligatExpedieri, false);
+ok('Intrastat XML bine-format', wellFormed(xml.intrastatXml({ cui: 'RO1', nume: 'X' }, '2026-06', intrNC)));
+ok('Intrastat XML: articolul DE cu masa neta cumulata', xml.intrastatXml({ cui: 'RO1', nume: 'X' }, '2026-06', intrNC).includes('masa_neta="200.00"'));
+
+section('D100 — impozit micro trimestrial + XML');
+// veniturile se cumuleaza pe lunile trimestrului (apr+iun in T2), luna din alt trimestru e exclusa
+const d100db = { entries: [
+  { id: '1', tip: 'x', period: '2026-04', data: '2026-04-10', lines: [{ debit: '4111', credit: '704', suma: 10000 }] },
+  { id: '2', tip: 'x', period: '2026-06', data: '2026-06-10', lines: [{ debit: '4111', credit: '704', suma: 5000 }] },
+  { id: '3', tip: 'x', period: '2026-03', data: '2026-03-10', lines: [{ debit: '4111', credit: '704', suma: 77777 }] },
+] };
+const d100q = rep.d100micro(d100db, '2026-06');
+eq('D100: venit trimestrul II cumulat (apr+iun)', d100q.venit, 15000);
+eq('D100: trimestrul detectat', d100q.trimestru, 2);
+eq('D100: impozit micro 1% = 150', d100q.impozit, 150);
+ok('D100 XML bine-format', wellFormed(xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q)));
+ok('D100 XML: obligatia cod 620 cu baza si impozitul', (() => { const x = xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q); return x.includes('cod="620"') && x.includes('baza="15000.00"') && x.includes('de_plata="150.00"'); })());
+
+section('Produse agricole — fila carnet de comercializare (Legea 145/2014)');
+const agr = gt2('achizitie_produse_agricole').build({ suma: 750, cont: '371' });
+eq('achizitie pe carnet: 371=462, fara TVA', agr.map((l) => l.debit + '=' + l.credit).join(','), '371=462');
+const agrCash = gt2('achizitie_produse_agricole').build({ suma: 750, cont: '301', platitCash: true });
+ok('achizitie platita pe loc: 301=462 + 462=5311', agrCash.some((l) => l.debit === '301' && l.credit === '462') && agrCash.some((l) => l.debit === '462' && l.credit === '5311'));
+const agrDb = { entries: [
+  { id: '1', tip: 'achizitie_produse_agricole', period: '2026-06', data: '2026-06-05', partener: 'Ion Taranu', partenerCui: '1800101223344', document: 'Fila 12', lines: gt2('achizitie_produse_agricole').build({ suma: 750, cont: '371' }) },
+  { id: '2', tip: 'achizitie_produse_agricole', period: '2026-06', data: '2026-06-15', partener: 'Ion Taranu', partenerCui: '1800101223344', document: 'Fila 13', lines: gt2('achizitie_produse_agricole').build({ suma: 250, cont: '371', platitCash: true }) },
+  { id: '3', tip: 'achizitie_produse_agricole', period: '2026-05', data: '2026-05-15', partener: 'Alt Producator', lines: gt2('achizitie_produse_agricole').build({ suma: 999, cont: '301' }) },
+] };
+const agrRep = rep.achizitiiPfCarnet(agrDb, '2026-06');
+eq('carnet: un producator agregat in iunie (mai exclus)', agrRep.nr, 1);
+eq('carnet: 2 file cumulate, total 1000', agrRep.rows[0].nr + '|' + agrRep.rows[0].total, '2|1000');
+const vjGol = acc.vatJournals({ entries: [], openingBalances: {} }, '2026-06');
+const d394pf = xml.d394Xml({ cui: 'RO1', nume: 'X' }, '2026-06', vjGol, null, agrRep);
+ok('D394: sectiunea achizitii_pf_carnet cu totalul si CNP-ul', d394pf.includes('<achizitii_pf_carnet total="1000.00"') && d394pf.includes('cnp="1800101223344"'));
+ok('D394 bine-format cu sectiunea pf', wellFormed(d394pf));
+ok('D394 fara achizitii pe carnet: sectiunea lipseste', !xml.d394Xml({ cui: 'RO1', nume: 'X' }, '2026-06', vjGol).includes('achizitii_pf_carnet'));
+
 // DBF: construieste un DBF minimal si parseaza-l
 const dbfMod = require('../src/dbf');
 (() => {
@@ -951,6 +987,9 @@ ok('fara CUI -> eroare', !vNoCui.ok && vNoCui.errors.some((e) => /CUI/i.test(e))
 ok('declaratie goala -> avertisment (nu eroare)', validateMod.validateDeclaration('d205', '<?xml version="1.0"?><declaratie205 cui="123" an="2026"></declaratie205>').warnings.some((w) => /beneficiar/i.test(w)));
 ok('lipsa antet <?xml -> eroare bine-format', !validateMod.validateDeclaration('d300', '<declaratie300 cui="1" luna="6" an="2026"/>').ok);
 ok('d300 fara luna -> eroare', validateMod.validateDeclaration('d300', '<?xml version="1.0"?><declaratie300 cui="1" an="2026"/>').errors.some((e) => /luna/i.test(e)));
+ok('d100: impozit 0 -> avertisment', validateMod.validateDeclaration('d100', '<?xml version="1.0"?><declaratie100 cui="1" luna="6" an="2026" total_plata="0.00"/>').warnings.some((w) => /impozit 0/i.test(w)));
+ok('intrastat: declaratie goala -> avertisment', validateMod.validateDeclaration('intrastat', '<?xml version="1.0"?><declaratieIntrastat cui="1" luna="6" an="2026"></declaratieIntrastat>').warnings.some((w) => /goala/i.test(w)));
+ok('intrastat: articol fara cod NC8 -> avertisment', validateMod.validateDeclaration('intrastat', '<?xml version="1.0"?><declaratieIntrastat cui="1" luna="6" an="2026"><articol codNC=""/></declaratieIntrastat>').warnings.some((w) => /NC8/i.test(w)));
 
 section('Cont de profit si pierdere F20 (structura oficiala)');
 const stmtMod = require('../src/statements');

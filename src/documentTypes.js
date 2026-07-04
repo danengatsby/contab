@@ -1153,6 +1153,29 @@ const TYPES = [
     },
   },
 
+  // ───────────── PRODUSE AGRICOLE (CARNET DE COMERCIALIZARE) ─────────────
+  {
+    id: 'achizitie_produse_agricole',
+    nume: 'Achizitie produse agricole de la producator PF (fila carnet de comercializare / borderou)',
+    grup: 'Cumparari',
+    fields: [F.data,
+      { name: 'partener', label: 'Producator agricol (nume PF)', type: 'text', required: true },
+      { name: 'cuiPartener', label: 'CNP producator (pentru D394)', type: 'text' },
+      { name: 'document', label: 'Nr. fila carnet / borderou de achizitie', type: 'text' },
+      F.suma,
+      { name: 'cont', label: 'Destinatia produselor', type: 'select',
+        options: [{ value: '371', label: '371 Marfuri (revanzare)' }, { value: '301', label: '301 Materii prime (procesare)' }], default: '371' },
+      { name: 'platitCash', label: 'Platit pe loc in numerar (borderoul tine loc de chitanta)', type: 'checkbox' }],
+    build: (d) => {
+      // Achizitie de la producator agricol PF pe baza de fila din carnetul de comercializare
+      // (Legea 145/2014): fara TVA (PF neinregistrata), fara impozit retinut la sursa
+      // (venitul e impozitat la producator pe norma de venit). Datoria: 462 Creditori diversi.
+      const lines = [L(d.cont || '371', '462', d.suma, 'Achizitie produse agricole pe fila carnet (fara TVA, Legea 145/2014)')];
+      if (d.platitCash) lines.push(L('462', '5311', d.suma, 'Plata producator agricol in numerar (borderou)'));
+      return lines;
+    },
+  },
+
   // ───────────── AVIZE SI FACTURI SIMPLIFICATE ─────────────
   {
     id: 'aviz_livrare',

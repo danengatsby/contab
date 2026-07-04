@@ -245,9 +245,24 @@ async function main() {
     const val = await req('GET', '/api/validate/d300?period=2026-06', { cookie: c1 });
     ok('validare pre-depunere: raspuns cu ok/errors', val.json && typeof val.json.ok === 'boolean' && Array.isArray(val.json.errors));
 
+    // ── D100 XML + Intrastat XML + achizitii produse agricole pe carnet (D394) ──
+    const agrE = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'achizitie_produse_agricole', fields: { data: '2026-06-20', partener: 'Ion Taranu', cuiPartener: '1800101223344', document: 'Fila 12', suma: 1000, cont: '371' } } });
+    ok('achizitie produse agricole pe carnet: 371=462, fara TVA', agrE.json && agrE.json.ok && agrE.json.entry.lines.some((l) => l.debit === '371' && l.credit === '462') && !agrE.json.entry.lines.some((l) => l.debit === '4426'));
+    const x394pf = await req('GET', '/xml/d394?period=2026-06', { cookie: c1 });
+    ok('D394: sectiunea achizitii_pf_carnet cu CNP-ul producatorului', /achizitii_pf_carnet/.test(x394pf.text) && /1800101223344/.test(x394pf.text));
+    const x100 = await req('GET', '/xml/d100?period=2026-06', { cookie: c1 });
+    ok('xml/d100: bine-format cu obligatia 620', x100.status === 200 && /<declaratie100/.test(x100.text) && /cod="620"/.test(x100.text));
+    ok('descarcarea D100 XML marcheaza declaratia "generata"', (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd100').status === 'generata');
+    const xInt = await req('GET', '/xml/intrastat?period=2026-06', { cookie: c1 });
+    ok('xml/intrastat: bine-format', xInt.status === 200 && /<declaratieIntrastat/.test(xInt.text));
+    eq('validare d100 raspunde pe tipul cerut', (await req('GET', '/api/validate/d100?period=2026-06', { cookie: c1 })).json.type, 'd100');
+    eq('validare intrastat raspunde pe tipul cerut', (await req('GET', '/api/validate/intrastat?period=2026-06', { cookie: c1 })).json.type, 'intrastat');
+
     // ── Solduri initiale: echilibrul debit=credit e impus la salvare ──
     eq('solduri initiale dezechilibrate -> 400', (await req('POST', '/api/opening', { cookie: c1, body: { openingBalances: { '5121': { d: 1000, c: 0 }, '1012': { d: 0, c: 800 } } } })).status, 400);
     ok('solduri initiale echilibrate -> ok', (await req('POST', '/api/opening', { cookie: c1, body: { openingBalances: { '5121': { d: 1000, c: 0 }, '1012': { d: 0, c: 1000 } } } })).json.ok === true);
+    const og = await req('GET', '/api/opening', { cookie: c1 });
+    ok('GET /api/opening: soldurile salvate (pentru editorul din Setari)', og.json && og.json['5121'] && og.json['5121'].d === 1000 && og.json['1012'].c === 1000);
 
     // ── Inchideri: ordinea impozit-profit vs inchidere anuala e irelevanta ──
     // pregatim un an cu profit: o vanzare de servicii + inregistrarea ei

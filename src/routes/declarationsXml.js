@@ -66,8 +66,9 @@ module.exports = function register(app, ctx) {
   });
   app.get('/xml/d394', (req, res) => {
     const v = S(req);
-    recordDecl(req, 'd394', req.query.period);
-    sendXml(res, xml.d394Xml(v.company, req.query.period || null, acc.vatJournals(v, req.query.period || null), declarantOf(req)), 'd394.xml');
+    const period = req.query.period || null;
+    recordDecl(req, 'd394', period);
+    sendXml(res, xml.d394Xml(v.company, period, acc.vatJournals(v, period), declarantOf(req), rep.achizitiiPfCarnet(v, period)), 'd394.xml');
   });
   app.get('/api/d390', (req, res) => res.json(rep.d390(S(req), req.query.period || null)));
   app.get('/xml/d390', (req, res) => {
@@ -82,6 +83,19 @@ module.exports = function register(app, ctx) {
   });
   app.get('/api/intrastat', (req, res) => res.json(rep.intrastat(S(req), req.query.period || null)));
   // (csv/intrastat: src/routes/csv.js)
+  // Intrastat XML — se depune la INS (aplicatia Intrastat online), nu intra in registrul ANAF
+  app.get('/xml/intrastat', (req, res) => {
+    const v = S(req);
+    const period = req.query.period || null;
+    sendXml(res, xml.intrastatXml(v.company, period, rep.intrastat(v, period)), 'intrastat-' + (period || 'luna') + '.xml');
+  });
+  // D100 — impozit micro (trimestrial); descarcarea marcheaza declaratia "generata" in registru
+  app.get('/xml/d100', (req, res) => {
+    const v = S(req);
+    const period = req.query.period || null;
+    recordDecl(req, 'd100', period);
+    sendXml(res, xml.d100Xml(v.company, period, rep.d100micro(v, period), declarantOf(req)), 'd100-' + (period || 'trim') + '.xml');
+  });
   app.get('/xml/d112', (req, res) => {
     const v = S(req);
     const period = req.query.period || new Date().toISOString().slice(0, 7);
@@ -105,8 +119,10 @@ module.exports = function register(app, ctx) {
     let x = '';
     try {
       if (type === 'd300') x = xml.d300Xml(v.company, period, rep.d300(v, period), declarantOf(req));
-      else if (type === 'd394') x = xml.d394Xml(v.company, period, acc.vatJournals(v, period), declarantOf(req));
+      else if (type === 'd394') x = xml.d394Xml(v.company, period, acc.vatJournals(v, period), declarantOf(req), rep.achizitiiPfCarnet(v, period));
       else if (type === 'd390') x = xml.d390Xml(v.company, period, rep.d390(v, period));
+      else if (type === 'd100') x = xml.d100Xml(v.company, period, rep.d100micro(v, period), declarantOf(req));
+      else if (type === 'intrastat') x = xml.intrastatXml(v.company, period, rep.intrastat(v, period));
       else if (type === 'd205') x = xml.d205Xml(v.company, year, rep.d205(v, year));
       else if (type === 'd112') x = xml.d112Xml(v.company, period, statePlata(v.angajati, period), declarantOf(req));
       else if (type === 'saft') x = saft.saftXml(v, year);
