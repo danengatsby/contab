@@ -387,6 +387,7 @@ app.post('/api/register', (req, res) => {
     nume, cui: String(b.cui || '').trim(), regCom: String(b.regCom || '').trim(),
     adresa: String(b.adresa || '').trim(), oras: String(b.oras || '').trim(), judet: b.judet || 'RO-B',
     tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
+    tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
   }, { id: fid });
   d.firme.push(firma);
   d.partners[fid] = {}; d.openingBalances[fid] = {};
@@ -985,7 +986,8 @@ app.get('/api/meta', (req, res) => {
     firme: d.firme.filter((f) => allowed.includes(f.id)),
     firmaActiva: activeId(req),
     company: v.company,
-    types: typesForClient(),
+    // tipurile de documente marcate cu `entitate` apar doar la forma juridica potrivita (srl/pfa)
+    types: typesForClient().filter((t) => !t.entitate || t.entitate === (v.company.tipEntitate || 'srl')),
     accounts: coa.ACCOUNTS,
     classNames: coa.CLASS_NAMES,
     periods,
@@ -2275,6 +2277,9 @@ app.get('/pdf/d112', (req, res) => pdf.d112Pdf(res, S(req).company, rep.d112(S(r
 // (PDF stat de plata / fluturas: src/routes/payroll.js)
 app.get('/pdf/d300', (req, res) => pdf.d300Pdf(res, S(req).company, rep.d300(S(req), req.query.period || null)));
 app.get('/pdf/d100', (req, res) => pdf.d100Pdf(res, S(req).company, rep.d100micro(S(req), req.query.period || null)));
+// Declaratia Unica (PFA, sistem real): estimarea venitului net anual si a CAS/CASS/impozitului
+app.get('/api/declaratia-unica', (req, res) => res.json(rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));
+app.get('/pdf/declaratia-unica', (req, res) => pdf.declaratiaUnicaPdf(res, S(req).company, rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));
 app.get('/pdf/obligatii', (req, res) => pdf.obligatiiPdf(res, S(req).company, rep.obligatii(S(req), req.query.period || null)));
 app.get('/pdf/registru-inventar', (req, res) => pdf.registruInventarPdf(res, S(req).company, rep.registruInventar(S(req), req.query.period || null)));
 app.get('/pdf/registru-fiscal', (req, res) => pdf.registruFiscalPdf(res, S(req).company, rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));

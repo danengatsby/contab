@@ -959,6 +959,7 @@ const TYPES = [
     id: 'repartizare_dividende',
     nume: 'Repartizare profit la dividende (117 = 457) + impozit',
     grup: 'Dividende',
+    entitate: 'srl', // PFA nu distribuie dividende — intreprinzatorul isi retrage sumele direct
     fields: [F.data, F.document,
       { name: 'brut', label: 'Dividende brute', type: 'number', required: true },
       { name: 'cota', label: 'Cota impozit dividende (%)', type: 'number', default: fiscal.FISCAL.impozitDividende },
@@ -1153,6 +1154,29 @@ const TYPES = [
     },
   },
 
+  // ───────────── PFA / INTREPRINDERE INDIVIDUALA ─────────────
+  // PFA nu distribuie dividende: intreprinzatorul retrage/aporteaza sume prin contul
+  // curent al titularului (455) — fara impozit la retragere (venitul se impoziteaza
+  // anual, prin Declaratia Unica, pe venitul net al activitatii).
+  {
+    id: 'retragere_intreprinzator',
+    nume: 'Retragere de numerar / banca de catre intreprinzator (PFA)',
+    grup: 'Trezorerie',
+    entitate: 'pfa',
+    fields: [F.data, F.document, F.suma,
+      { name: 'cont', label: 'Din', type: 'select', options: TROZ, default: '5121' }],
+    build: (d) => [L('455', d.cont || '5121', d.suma, 'Retragere intreprinzator PFA (455 = trezorerie)')],
+  },
+  {
+    id: 'aport_intreprinzator',
+    nume: 'Aport de bani al intreprinzatorului in activitate (PFA)',
+    grup: 'Trezorerie',
+    entitate: 'pfa',
+    fields: [F.data, F.document, F.suma,
+      { name: 'cont', label: 'In', type: 'select', options: TROZ, default: '5121' }],
+    build: (d) => [L(d.cont || '5121', '455', d.suma, 'Aport intreprinzator PFA (trezorerie = 455)')],
+  },
+
   // ───────────── PRODUSE AGRICOLE (CARNET DE COMERCIALIZARE) ─────────────
   {
     id: 'achizitie_produse_agricole',
@@ -1225,9 +1249,9 @@ function getType(id) {
   return BY_ID.get(id);
 }
 
-/** Versiune "slim" pentru frontend (fara functia build). */
+/** Versiune "slim" pentru frontend (fara functia build). `entitate` = doar pentru srl/pfa. */
 function typesForClient() {
-  return TYPES.map((t) => ({ id: t.id, nume: t.nume, grup: t.grup, fields: t.fields }));
+  return TYPES.map((t) => ({ id: t.id, nume: t.nume, grup: t.grup, fields: t.fields, entitate: t.entitate }));
 }
 
 module.exports = { TYPES, getType, typesForClient };

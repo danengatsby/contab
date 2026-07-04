@@ -181,6 +181,22 @@ function d100micro(db, period, cota) {
   return { period, trimestru: m ? Math.ceil(m / 3) : 0, luni, venit, cota: rate, impozit: round2((venit * rate) / 100) };
 }
 
+/** Estimarea Declaratiei Unice pentru PFA (sistem real): venitul net anual + CAS/CASS/impozit. */
+function declaratiaUnica(db, year) {
+  const y = String(year);
+  const r = periodRulaj2(db, y);
+  let venituri = 0; let cheltuieli = 0;
+  for (const cod of Object.keys(r)) {
+    const a = coa.getAccount(cod);
+    const clasa = a ? a.clasa : Number(String(cod)[0]);
+    if (clasa === 7) venituri = round2(venituri + (r[cod].c - r[cod].d));
+    if (clasa === 6) cheltuieli = round2(cheltuieli + (r[cod].d - r[cod].c));
+  }
+  const venitNet = round2(venituri - cheltuieli);
+  const sm = fiscal.salariuMinimLa(y + '-01'); // plafoanele DU: salariul minim al anului de realizare
+  return Object.assign({ year: y, venituri, cheltuieli, venitNet }, fiscal.taxePfa(venitNet, { salariuMinim: sm }));
+}
+
 /** Registrul-inventar — soldurile finale la o data. */
 function registruInventar(db, asOf) {
   const tb = acc.trialBalance(db, asOf);
@@ -223,7 +239,17 @@ function livrabile(db, period) {
     L('D. La cerere', 21, 'Certificat de atestare fiscala', 'anaf', [], 'Emis de ANAF'),
     L('D. La cerere', 22, 'Balante si situatii pentru banca', 'ok', [{ label: 'Balanta', href: '/pdf/balance' + p }]),
   ];
-  return { period, list, sumar: { d112: d112(db, period), d300: d300(db, period), obligatii: obligatii(db, period), d100: d100micro(db, period) } };
+  const sumar = { d112: d112(db, period), d300: d300(db, period), obligatii: obligatii(db, period), d100: d100micro(db, period) };
+  // PFA: fara SAF-T / D100 micro / situatii financiare / D101 / AGA — in loc, Declaratia Unica anuala
+  if ((db.company && db.company.tipEntitate) === 'pfa') {
+    const drop = new Set([9, 12, 15, 16, 19]);
+    const listPfa = list.filter((x) => !drop.has(x.nr));
+    listPfa.push(L('C. Anual', 23, 'Declaratia Unica — venit net PFA + CAS/CASS/impozit (estimare)', 'recap',
+      [{ label: 'PDF', href: '/pdf/declaratia-unica?year=' + yr }], 'Se depune personal, din SPV, pana la termenul legal'));
+    sumar.du = declaratiaUnica(db, yr || String(new Date().getFullYear()));
+    return { period, list: listPfa, sumar };
+  }
+  return { period, list, sumar };
 }
 
 // Conturi de cheltuieli nedeductibile fiscal (uzual)
@@ -547,4 +573,4 @@ function monthlySeries(db, year) {
   return out;
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, achizitiiPfCarnet, registruInventar, livrabile, dashboard, monthlySeries, registruFiscal, notes, budgetReport, cashForecast };
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, declaratiaUnica, achizitiiPfCarnet, registruInventar, livrabile, dashboard, monthlySeries, registruFiscal, notes, budgetReport, cashForecast };

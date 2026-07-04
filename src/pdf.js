@@ -471,6 +471,26 @@ function d100Pdf(res, company, d) {
   });
 }
 
+/** Declaratia Unica (PFA, sistem real) — estimarea venitului net si a taxelor anuale. */
+function declaratiaUnicaPdf(res, company, d) {
+  recapPdf(res, company, {
+    title: 'Declaratia Unica (estimare) — taxe PFA, sistem real', subtitle: 'Anul ' + d.year,
+    filename: 'declaratia-unica-' + d.year + '.pdf',
+    rows: [
+      { k: 'Venituri din activitate', v: fmt(d.venituri) },
+      { k: '- Cheltuieli deductibile', v: fmt(d.cheltuieli) },
+      { k: '= VENIT NET ANUAL', v: fmt(d.venitNet), _bold: true, _fill: C.zebra },
+      { k: 'CAS 25% (baza: ' + (d.bazaCas ? fmt(d.bazaCas) : 'sub plafonul de 12 salarii minime — optionala') + ')', v: fmt(d.cas) },
+      { k: 'CASS 10% (baza: ' + fmt(d.bazaCass) + ', intre 6 si 60 salarii minime)', v: fmt(d.cass) },
+      { k: 'Impozit pe venit 10% (dupa deducerea CAS si CASS)', v: fmt(d.impozit) },
+      { k: 'TOTAL TAXE DE PLATA (Declaratia Unica)', v: fmt(d.total), _bold: true, _accent: true, _fill: C.zebra },
+    ],
+    note: 'Estimare pe salariul minim de ' + fmt(d.salariuMinim) + ' lei (plafoane: 6 SM = ' + fmt(d.plafon6) + ', 12 SM = ' + fmt(d.plafon12)
+      + ', 24 SM = ' + fmt(d.plafon24) + ', 60 SM = ' + fmt(d.plafon60) + '). Declaratia Unica se depune personal, din SPV. '
+      + 'Optiunile individuale (baza CAS mai mare, alte venituri asigurate, scutiri) pot modifica sumele — verifica-le cu contabilul tau.',
+  });
+}
+
 function obligatiiPdf(res, company, o) {
   const rows = o.items.map((i) => ({ k: i.cont + ' ' + i.nume, v: fmt(i.suma) }));
   rows.push({ k: 'TOTAL DE PLATA LA ANAF', v: fmt(o.total), _bold: true, _accent: true, _fill: C.zebra });
@@ -1506,6 +1526,6 @@ function leasingSchedulePdf(res, company, s) {
 
 module.exports = {
   clean, journalPdf, ledgerPdf, trialBalancePdf, plPdf, balanceSheetPdf, notePdf, vatPdf,
-  d112Pdf, d300Pdf, d100Pdf, obligatiiPdf, registruInventarPdf, registruFiscalPdf, analyticPdf,
+  d112Pdf, d300Pdf, d100Pdf, declaratiaUnicaPdf, obligatiiPdf, registruInventarPdf, registruFiscalPdf, analyticPdf,
   cashBookPdf, cashValutaPdf, notesPdf, cashFlowPdf, equityPdf, setStatementsPdf, facturaPdf, chitantaPdf, fisaContPdf, aprovizionariPdf, consumuriPdf, assetsRegisterPdf, assetFisaPdf, stocksPdf, stockLedgerPdf, inventoryListPdf, inventoryPvPdf, nirPdf, bonConsumPdf, avizPdf, docRegisterPdf, agingPdf, statePlataPdf, fluturasPdf, registruSalariiPdf, adeverintaPdf, leasingSchedulePdf,
 };

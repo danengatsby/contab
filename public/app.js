@@ -106,7 +106,7 @@ $('#faqSearch') && $('#faqSearch').addEventListener('input', (e) => {
 $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target; $('#registerErr').textContent = '';
-  const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaPlatitor: f.tvaPlatitor.checked, username: f.username.value, password: f.password.value, email: f.email.value };
+  const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaPlatitor: f.tvaPlatitor.checked, tipEntitate: f.tipEntitate.value, username: f.username.value, password: f.password.value, email: f.email.value };
   try {
     await api('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     f.password.value = '';
@@ -1232,6 +1232,7 @@ $('#aiToggle').addEventListener('change', async (e) => {
 function fillCompanyForm() {
   const f = $('#companyForm');
   ['nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'iban', 'banca', 'telefon', 'email', 'capitalSocial', 'pdfFooter'].forEach((k) => { if (f[k]) f[k].value = META.company[k] || ''; });
+  if (f.tipEntitate) f.tipEntitate.value = META.company.tipEntitate === 'pfa' ? 'pfa' : 'srl';
   if (f.tvaLaIncasare) f.tvaLaIncasare.checked = !!META.company.tvaLaIncasare;
   if (f.accentColor) f.accentColor.value = /^#[0-9a-fA-F]{6}$/.test(META.company.accentColor || '') ? META.company.accentColor : '#0b6e4f';
   if (f.pdfLayout) f.pdfLayout.value = ['clasic', 'compact', 'detaliat'].includes(META.company.pdfLayout) ? META.company.pdfLayout : 'clasic';
@@ -2850,6 +2851,22 @@ async function loadStatements() {
       ${er(Object.assign({ nume: 'TOTAL CAPITALURI PROPRII' }, eq.total), 'bold')}</table>
       <p class="${eq.echilibrat ? '' : 'status err'}" style="font-size:12px">${eq.echilibrat ? '✔ Control: total = capitalurile proprii din bilanț (F10)' : '✘ Totalul diferă de capitalurile din F10 (' + fmt(eq.capitalPropriiF10) + ')'}</p>`;
   }).catch(() => { $('#capitalView').innerHTML = ''; });
+  // PFA: in locul registrului fiscal SRL (profit vs micro), estimarea Declaratiei Unice
+  if (META.company && META.company.tipEntitate === 'pfa') {
+    api('/api/declaratia-unica?year=' + y).then((du) => {
+      $('#fiscalView').innerHTML = `<p class="muted" style="margin:0 0 8px"><b>PFA — sistem real:</b> impozitul se plătește anual prin <b>Declarația Unică</b>, pe venitul net. Estimare pe salariul minim de ${fmt(du.salariuMinim)} lei:</p>
+      <table>
+        <tr><td>Venituri din activitate</td><td class="num">${fmt(du.venituri)}</td></tr>
+        <tr><td>− Cheltuieli deductibile</td><td class="num">${fmt(du.cheltuieli)}</td></tr>
+        <tr class="total"><td>= Venit net anual</td><td class="num">${fmt(du.venitNet)}</td></tr>
+        <tr><td>CAS 25% ${du.bazaCas ? '(bază ' + fmt(du.bazaCas) + ')' : '<span class="muted">(sub 12 salarii minime — opțională)</span>'}</td><td class="num">${fmt(du.cas)}</td></tr>
+        <tr><td>CASS 10% (bază ${fmt(du.bazaCass)}, între 6 și 60 salarii minime)</td><td class="num">${fmt(du.cass)}</td></tr>
+        <tr><td>Impozit pe venit 10% (după deducerea CAS și CASS)</td><td class="num">${fmt(du.impozit)}</td></tr>
+        <tr class="total"><td>TOTAL taxe (Declarația Unică)</td><td class="num">${fmt(du.total)}</td></tr>
+      </table>
+      <p class="muted" style="margin:8px 0 0">Se depune personal, din SPV, până la termenul legal. <a class="linkbtn" href="/pdf/declaratia-unica?year=${y}" target="_blank">⬇ Recap PDF</a></p>`;
+    }).catch(() => {});
+  } else {
   api('/api/registru-fiscal?year=' + y).then((rf) => {
     const pctTxt = (c) => c.pct < 100 ? ` <span class="muted">(${c.pct}% din ${fmt(c.baza)})</span>` : '';
     $('#fiscalView').innerHTML = `<table>
@@ -2863,6 +2880,7 @@ async function loadStatements() {
       <tr><td class="muted">(comparativ) Impozit micro 1% din venituri</td><td class="num">${fmt(rf.impozitMicro)}</td></tr>
     </table>${(rf.mentiuni || []).map((m) => `<p class="muted" style="margin:6px 0 0">${m}</p>`).join('')}`;
   }).catch(() => {});
+  }
   const Y0 = Number(y) - 1;
   const [pl, pl0] = await Promise.all([
     api('/api/statements/pl-f20?year=' + y),
@@ -3957,7 +3975,7 @@ $('#openSaveBtn') && $('#openSaveBtn').addEventListener('click', async () => {
 $('#companyForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
-  const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaLaIncasare: f.tvaLaIncasare.checked,
+  const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaLaIncasare: f.tvaLaIncasare.checked, tipEntitate: f.tipEntitate.value,
     iban: f.iban.value.trim(), banca: f.banca.value.trim(), telefon: f.telefon.value.trim(), email: f.email.value.trim(), capitalSocial: f.capitalSocial.value.trim(), accentColor: f.accentColor.value, pdfLayout: f.pdfLayout.value, pdfFooter: f.pdfFooter.value.trim() };
   const r = await api('/api/company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   META.company = r.company || body; $('#companyName').textContent = body.nume; toast('Date firmă salvate' + (body.tvaLaIncasare ? ' · regim TVA la încasare ACTIV' : ''));

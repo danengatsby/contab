@@ -356,6 +356,27 @@ const spAv = statePlata([{ id: 'a1', nume: 'Test Av', salariuBrut: 5000, avantaj
 eq('stat de plata: avantajele apar pe rand si in totaluri', spAv.rows[0].avantaje + '|' + spAv.totals.avantaje, '1000|1000');
 ok('D112: baza_cas include avantajele (6000)', xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spAv).includes('baza_cas="6000.00"'));
 
+section('Taxe PFA — Declaratia Unica (plafoane pe salariu minim 4000)');
+const pfa = (vn) => fiscal.taxePfa(vn, { salariuMinim: 4000 }); // p6=24k p12=48k p24=96k p60=240k
+eq('venit 0: nimic datorat', pfa(0).total, 0);
+eq('venit 20000 (<6SM): CAS optionala 0, CASS la baza minima 6SM', pfa(20000).cas + '|' + pfa(20000).cass, '0|2400');
+eq('venit 20000: impozit 10% dupa CASS', pfa(20000).impozit, 1760);
+eq('venit 50000 (>=12SM): CAS la baza 12SM = 12000', pfa(50000).cas, 12000);
+eq('venit 50000: CASS pe venitul real 10%', pfa(50000).cass, 5000);
+eq('venit 100000 (>=24SM): CAS la baza 24SM = 24000', pfa(100000).cas, 24000);
+eq('venit 300000: CASS plafonata la 60SM (24000)', pfa(300000).cass, 24000);
+eq('venit 300000: impozit 10% pe net minus contributii', pfa(300000).impozit, 25200);
+const duDb = { entries: [
+  { period: '2026-03', data: '2026-03-10', lines: [{ debit: '4111', credit: '704', suma: 100000 }] },
+  { period: '2026-07', data: '2026-07-10', lines: [{ debit: '628', credit: '401', suma: 30000 }] },
+], openingBalances: {} };
+const du = rep.declaratiaUnica(duDb, '2026');
+eq('DU: venit net anual = venituri - cheltuieli', du.venitNet, 70000);
+ok('DU: taxele coincid cu taxePfa pe salariul minim al anului', (() => {
+  const t = fiscal.taxePfa(70000, { salariuMinim: fiscal.salariuMinimLa('2026-01') });
+  return du.cas === t.cas && du.cass === t.cass && du.impozit === t.impozit && du.total === t.total;
+})());
+
 section('Stat de plata (per angajat)');
 const sp = statePlata(v.angajati);
 eq('numar angajati', sp.rows.length, 1);
@@ -1401,6 +1422,12 @@ const expIun = declMod.expectedForFirma(vDecl, '2026-06');
 eq('asteptate iunie: d300+d394+d112+d100+saft (TVA lunar)', expIun.map((x) => x.tip).join(','), 'd300,d394,d112,d100,saft');
 eq('asteptate mai: fara d100, dar cu saft lunar', declMod.expectedForFirma(vDecl, '2026-05').map((x) => x.tip).join(','), 'd300,d394,d112,saft');
 eq('neplatitor TVA: saft doar trimestrial', declMod.expectedForFirma({ company: { tvaPlatitor: false }, angajati: [] }, '2026-06').map((x) => x.tip).join(','), 'd100,saft');
+// PFA: fara D100 (impozitul merge prin Declaratia Unica) si fara SAF-T
+eq('PFA platitor TVA: doar d300+d394 (fara d100/saft)', declMod.expectedForFirma({ company: { tvaPlatitor: true, tipEntitate: 'pfa' }, angajati: [], entries: [] }, '2026-06').map((x) => x.tip).join(','), 'd300,d394');
+eq('PFA neplatitor fara angajati: nicio declaratie lunara', declMod.expectedForFirma({ company: { tvaPlatitor: false, tipEntitate: 'pfa' }, angajati: [], entries: [] }, '2026-06').length, 0);
+const livPfa = rep.livrabile({ company: { tipEntitate: 'pfa' }, entries: [], openingBalances: {} }, '2026-06');
+ok('livrabile PFA: fara D100 micro / SAF-T / D101 / situatii financiare / AGA', !livPfa.list.some((x) => [9, 12, 15, 16, 19].includes(x.nr)));
+ok('livrabile PFA: Declaratia Unica prezenta cu sumarul ei', livPfa.list.some((x) => /Declaratia Unica/.test(x.nume)) && livPfa.sumar.du && livPfa.sumar.du.venitNet === 0);
 eq('neplatitor TVA: luna non-trimestriala fara obligatii', declMod.expectedForFirma({ company: { tvaPlatitor: false }, angajati: [] }, '2026-05').length, 0);
 const vIC = { company: { tvaPlatitor: true }, angajati: [], entries: [{ tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10' }] };
 ok('D390 asteptata DOAR in lunile cu operatiuni intracomunitare',

@@ -285,6 +285,25 @@ async function main() {
     eq('model detaliat din setarea firmei', (await req('GET', '/pdf/factura/' + fvE.json.entry.id, { cookie: c1 })).status, 200);
     await req('POST', '/api/company', { cookie: c1, body: { pdfLayout: 'clasic' } });
 
+    // ── Diferentierea PFA vs SRL ──
+    ok('firma trecuta pe PFA', (await req('POST', '/api/company', { cookie: c1, body: { tipEntitate: 'pfa' } })).json.ok === true);
+    const metaPfa = (await req('GET', '/api/meta', { cookie: c1 })).json;
+    ok('PFA: dividendele dispar din tipurile de documente', !metaPfa.types.some((t) => t.id === 'repartizare_dividende'));
+    ok('PFA: apar retragerea si aportul intreprinzatorului', metaPfa.types.some((t) => t.id === 'retragere_intreprinzator') && metaPfa.types.some((t) => t.id === 'aport_intreprinzator'));
+    // 2026-06 pastreaza d100 deja inregistrat (istoric) — verificarea se face pe o luna fara istoric
+    const declPfa = (await req('GET', '/api/declarations?period=2026-09', { cookie: c1 })).json.rows.map((r) => r.tip);
+    ok('PFA: calendarul unei luni de trimestru fara istoric nu contine d100/saft', !declPfa.includes('d100') && !declPfa.includes('saft'));
+    const retr = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'retragere_intreprinzator', fields: { data: '2026-06-25', suma: 500, cont: '5311' } } });
+    ok('retragere intreprinzator: 455 = 5311', retr.json && retr.json.ok && retr.json.entry.lines.some((l) => l.debit === '455' && l.credit === '5311'));
+    const duH = (await req('GET', '/api/declaratia-unica?year=2026', { cookie: c1 })).json;
+    ok('Declaratia Unica: venit net si total taxe numerice', typeof duH.venitNet === 'number' && typeof duH.total === 'number' && duH.total >= 0);
+    eq('Declaratia Unica PDF', (await req('GET', '/pdf/declaratia-unica?year=2026', { cookie: c1 })).status, 200);
+    const livH = (await req('GET', '/api/livrabile?period=2026-06', { cookie: c1 })).json;
+    ok('livrabile PFA: Declaratia Unica in lista, fara D100 micro',
+      livH.list.some((x) => /Declaratia Unica/.test(x.nume)) && !livH.list.some((x) => x.nr === 12) && livH.sumar.du && typeof livH.sumar.du.total === 'number');
+    ok('firma revenita pe SRL', (await req('POST', '/api/company', { cookie: c1, body: { tipEntitate: 'srl' } })).json.ok === true);
+    ok('SRL: d100 revine in calendar', (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.some((r) => r.tip === 'd100'));
+
     // ── Rezumat executiv (mod simplu): agregatele noi pe dashboard ──
     const dashH = (await req('GET', '/api/dashboard', { cookie: c1 })).json;
     ok('dashboard: rezumatul executiv are agregatele numerice',

@@ -45,6 +45,12 @@
         <label style="flex:1">Oraș <input name="oras" /></label>
         <label style="flex:1">Județ <input name="judet" placeholder="RO-B" /></label>
       </div>
+      <label>Formă juridică
+        <select name="tipEntitate">
+          <option value="srl">SRL / societate (partidă dublă, dividende, D100/SAF-T)</option>
+          <option value="pfa">PFA / Întreprindere individuală (Declarația Unică, fără dividende)</option>
+        </select>
+      </label>
       <label style="display:flex;align-items:center;gap:8px;font-weight:500;margin-top:10px"><input name="tvaPlatitor" type="checkbox" checked style="width:auto"> Plătitoare de TVA</label>
       <hr style="margin:14px 0;border:none;border-top:1px solid var(--line)">
       <label>Utilizator (login) * <input name="username" autocomplete="username" required minlength="3" /></label>
@@ -1594,6 +1600,12 @@ Cu stimă,
         <h2>Datele firmei active</h2>
         <form id="companyForm" class="dyn">
           <label>Denumire <input name="nume" /></label>
+          <label>Formă juridică
+            <select name="tipEntitate">
+              <option value="srl">SRL / societate</option>
+              <option value="pfa">PFA / Întreprindere individuală</option>
+            </select>
+          </label>
           <label>CUI <input name="cui" /></label>
           <label>Reg. Com. <input name="regCom" /></label>
           <label>Adresă <input name="adresa" /></label>

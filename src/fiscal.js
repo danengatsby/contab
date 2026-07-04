@@ -116,4 +116,28 @@ function payroll(brut, deducere, opts) {
   return { brut: b, tichete, avantaje, cas, cass, baza, impozit, cam, net, costTotal: round2(b + cam + tichete), sector, scutImpozit: false, scutCass: false, overPlafon: false };
 }
 
-module.exports = { FISCAL, DEFAULTS, applyConfig, payroll, deducerePersonala, salariuMinimLa, neimpozabilLa };
+/**
+ * Taxele PFA in sistem real (Declaratia Unica) — ESTIMARE:
+ *  - CAS 25%: datorata de la 12 salarii minime venit net (baza minima 12 SM;
+ *    de la 24 SM in sus baza minima 24 SM); sub 12 SM e optionala (aici 0).
+ *  - CASS 10%: pe venitul net, intre 6 SM (baza minima cand exista venit si nu
+ *    exista alte venituri asigurate) si plafonul de 60 SM.
+ *  - Impozit 10%: pe venitul net minus CAS si CASS datorate.
+ * Optiunile individuale (baza CAS mai mare, alte venituri) raman la contribuabil.
+ */
+function taxePfa(venitNet, opts) {
+  const o = opts || {};
+  const sm = round2(Number(o.salariuMinim) || FISCAL.salariuMinim);
+  const vn = Math.max(0, round2(venitNet) || 0);
+  const p6 = round2(sm * 6); const p12 = round2(sm * 12); const p24 = round2(sm * 24); const p60 = round2(sm * 60);
+  const bazaCas = vn >= p24 ? p24 : vn >= p12 ? p12 : 0;
+  const cas = round2((bazaCas * FISCAL.cas) / 100);
+  let bazaCass = 0;
+  if (vn > 0) bazaCass = vn < p6 ? (o.areAlteVenituri ? vn : p6) : Math.min(vn, p60);
+  bazaCass = round2(bazaCass);
+  const cass = round2((bazaCass * FISCAL.cass) / 100);
+  const impozit = round2((Math.max(0, vn - cas - cass) * FISCAL.impozitVenit) / 100);
+  return { venitNet: vn, salariuMinim: sm, plafon6: p6, plafon12: p12, plafon24: p24, plafon60: p60, bazaCas, cas, bazaCass, cass, impozit, total: round2(cas + cass + impozit) };
+}
+
+module.exports = { FISCAL, DEFAULTS, applyConfig, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa };

@@ -47,13 +47,16 @@ function expectedForFirma(v, period) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   const m = Number(period.slice(5, 7));
   const tva = !!(v.company && v.company.tvaPlatitor);
+  const pfa = !!(v.company && v.company.tipEntitate === 'pfa');
   const tips = [];
   if (tva) tips.push('d300', 'd394');
   // D390 doar in lunile cu operatiuni intracomunitare efective (LIC/AIC in jurnal)
   if ((v.entries || []).some((e) => INTRACOM_TYPES.has(e.tip) && String(e.period || e.data || '').slice(0, 7) === period)) tips.push('d390');
   if ((v.angajati || []).length) tips.push('d112');
-  if ([3, 6, 9, 12].includes(m)) tips.push('d100');
-  if (tva || [3, 6, 9, 12].includes(m)) tips.push('saft');
+  // PFA: impozitul pe venit merge prin Declaratia Unica (anuala, depusa personal),
+  // nu prin D100; persoanele fizice nu depun nici SAF-T (D406) deocamdata.
+  if (!pfa && [3, 6, 9, 12].includes(m)) tips.push('d100');
+  if (!pfa && (tva || [3, 6, 9, 12].includes(m))) tips.push('saft');
   return tips.map((tip) => ({ tip, nume: TIPURI[tip].nume, period, due: dueDate(tip, period) }));
 }
 
