@@ -519,6 +519,13 @@ function dashboard(db) {
     furnizoriDeschisi: rc.partners.filter((p) => p.cont === '401' && p.sold > 0).length,
     topCreante: topList('4111'),
     topDatorii: topList('401'),
+    // Rezumat executiv (modul simplu): agregate in limbaj de business.
+    // neg() = soldul creditor ca numar pozitiv (datorie), pos() = soldul debitor.
+    disponibilTotal: round2(pos('5121') + pos('5124') + pos('5311') + pos('5314')),
+    bancaTotal: round2(pos('5121') + pos('5124')),
+    casaTotal: round2(pos('5311') + pos('5314')),
+    taxeDatorate: round2(['4423', '4411', '444', '4315', '4316', '436', '446', '447', '4481'].reduce((s, c) => s + Math.max(round2(-(fb[c] || 0)), 0), 0)),
+    salariiDePlata: round2(['421', '425', '426', '427'].reduce((s, c) => s + Math.max(round2(-(fb[c] || 0)), 0), 0)),
   };
 }
 

@@ -1201,6 +1201,18 @@ eq('dashboard venituri 2025 (precedent)', dash.yoY.venituriPrev, 1000);
 eq('dashboard crestere venituri +50%', dash.yoY.venituriDelta, 50);
 eq('dashboard crestere cheltuieli +50%', dash.yoY.cheltuieliDelta, 50);
 eq('dashboard crestere profit +50%', dash.yoY.profitDelta, 50);
+// rezumatul executiv (mod simplu): bani disponibili, obligatii stat & salarii
+const rzDb = { openingBalances: {}, partners: {}, entries: [
+  { id: 'r1', period: '2026-06', data: '2026-06-01', lines: [{ debit: '5121', credit: '4111', suma: 3000 }] },
+  { id: 'r2', period: '2026-06', data: '2026-06-02', lines: [{ debit: '5311', credit: '4111', suma: 500 }] },
+  { id: 'r3', period: '2026-06', data: '2026-06-03', lines: [{ debit: '641', credit: '421', suma: 2000 }] },
+  { id: 'r4', period: '2026-06', data: '2026-06-04', lines: [{ debit: '421', credit: '444', suma: 300 }] },
+] };
+const rz = rep.dashboard(rzDb);
+eq('rezumat: bani disponibili = banca + casa', rz.disponibilTotal, 3500);
+eq('rezumat: defalcarea banca/casa', rz.bancaTotal + '|' + rz.casaTotal, '3000|500');
+eq('rezumat: salarii de plata (sold creditor 421)', rz.salariiDePlata, 1700);
+eq('rezumat: taxe datorate (444)', rz.taxeDatorate, 300);
 
 section('Buget vs realizat');
 const budDb = { entries: [{ period: '2026-04', lines: [

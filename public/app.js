@@ -969,6 +969,7 @@ async function loadDashboard() {
     card('💰', 'Rezultat ' + k.year, k.profit, yoySub(yo.profitDelta), k.profit >= 0 ? 'green' : 'red', trendChip(trendOf(s, 'profit'), true),
       'Venituri minus cheltuieli pe anul curent — profitul brut contabil, înainte de impozit.');
   renderYoY(yo);
+  renderRezumat(k);
   renderForecast();
   const list = (arr) => arr.length
     ? `<table><tbody>${arr.map((p) => `<tr><td>${p.den}</td><td class="num">${fmt(p.sold)}</td></tr>`).join('')}</tbody></table>`
@@ -977,6 +978,45 @@ async function loadDashboard() {
   $('#topDatorii').innerHTML = list(k.topDatorii);
   if (c) renderDashboardCharts(c); else loadDashboardCharts();
 }
+// Rezumatul executiv (mod simplu): situația firmei în limbaj de business, cu drill-down —
+// bani disponibili, de încasat, de plătit, obligații stat & salarii, rezultat + termene.
+async function renderRezumat(k) {
+  const box = $('#rezumatKpis'); if (!box) return;
+  $('#rezumatData').textContent = '· la zi, ' + new Date().toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' });
+  const tile = (ic, lbl, val, sub, cls, go, hint) => `<div class="kpi go ${cls}" data-go="${go}" role="link" tabindex="0" title="${hint}">
+    <div class="kpi-top"><span class="kpi-ic">${ic}</span></div>
+    <div class="lbl">${lbl}</div><div class="val">${fmt(val)}</div><div class="sub">${sub}</div></div>`;
+  const obligatii = Math.round(((k.taxeDatorate || 0) + (k.salariiDePlata || 0)) * 100) / 100;
+  box.innerHTML =
+    tile('💼', 'Bani disponibili', k.disponibilTotal, 'bancă ' + fmt(k.bancaTotal) + ' · casă ' + fmt(k.casaTotal), 'blue', 'cashbook', 'Deschide Încasări & plăți')
+    + tile('📥', 'De încasat de la clienți', k.soldClienti, (k.clientiDeschisi || 0) + (k.clientiDeschisi === 1 ? ' client cu facturi deschise' : ' clienți cu facturi deschise'), 'green', 'analitic', 'Deschide scadențarul pe clienți')
+    + tile('📤', 'De plătit către furnizori', k.soldFurnizori, (k.furnizoriDeschisi || 0) + (k.furnizoriDeschisi === 1 ? ' furnizor de plătit' : ' furnizori de plătit'), 'red', 'analitic', 'Deschide scadențarul pe furnizori')
+    + tile('🏛️', 'Obligații: stat & salarii', obligatii, 'taxe ' + fmt(k.taxeDatorate) + ' · salarii ' + fmt(k.salariiDePlata), 'red', 'livrabile', 'Deschide declarațiile și termenele');
+  $$('#rezumatKpis .kpi.go').forEach((el) => {
+    el.addEventListener('click', () => goTab(el.dataset.go));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goTab(el.dataset.go); } });
+  });
+  const f = $('#rezumatFooter'); if (!f) return;
+  const rez = k.profit >= 0
+    ? `<b style="color:var(--accent)">profit ${fmt(k.profit)} lei</b>`
+    : `<b style="color:#b00020">pierdere ${fmt(Math.abs(k.profit))} lei</b>`;
+  let termen = '';
+  try {
+    const n = await api('/api/notifications');
+    const rest = (n.items || []).filter((i) => i.kind === 'restanta');
+    const next = (n.items || []).find((i) => i.kind === 'termen');
+    termen = rest.length
+      ? ` · <span style="color:#b00020;font-weight:700">${rest.length} ${rest.length === 1 ? 'termen depășit' : 'termene depășite'}</span> — <button class="linkbtn" data-go="notificari">vezi notificările</button>`
+      : (next ? ` · următorul termen: <b>${next.nume}</b> — ${next.due}` : ' · niciun termen fiscal în următoarele 7 zile');
+  } catch (e) { /* notificarile sunt optionale aici */ }
+  f.innerHTML = `<span>Rezultatul anului ${k.year} până azi: ${rez}${termen}</span><span class="spacer"></span>
+    <button class="btn small" data-go="cashbook">Încasări & plăți →</button>
+    <button class="btn small" data-go="analitic">Scadențar →</button>
+    <button class="btn small" data-go="tva">TVA →</button>
+    <button class="btn small" data-go="livrabile">Declarații & termene →</button>`;
+  $$('#rezumatFooter [data-go]').forEach((b) => b.addEventListener('click', () => goTab(b.dataset.go)));
+}
+
 async function renderBudget(year) {
   const box = $('#budgetView'); if (!box) return;
   let r; try { r = await api('/api/budget-report?year=' + year); } catch (e) { box.innerHTML = ''; return; }

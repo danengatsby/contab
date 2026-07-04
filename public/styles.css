@@ -759,3 +759,10 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 .gloss-item{padding:9px 6px;border-bottom:1px solid var(--line)}
 .gloss-item b{color:var(--head,#2b3a67)}
 .gloss-item p{margin:3px 0 0;font-size:13px;color:var(--muted)}
+
+/* ── Rezumat executiv (mod simplu): tile-uri clicabile, KPI-urile tehnice ascunse ── */
+.simple-only{display:none!important}
+.simple-ui .simple-only{display:block!important}
+.simple-ui #kpis{display:none}
+.kpi.go{cursor:pointer}
+.kpi.go:hover,.kpi.go:focus{box-shadow:0 8px 22px rgba(0,0,0,.14);transform:translateY(-1px);outline:none}

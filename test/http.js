@@ -285,6 +285,11 @@ async function main() {
     eq('model detaliat din setarea firmei', (await req('GET', '/pdf/factura/' + fvE.json.entry.id, { cookie: c1 })).status, 200);
     await req('POST', '/api/company', { cookie: c1, body: { pdfLayout: 'clasic' } });
 
+    // ── Rezumat executiv (mod simplu): agregatele noi pe dashboard ──
+    const dashH = (await req('GET', '/api/dashboard', { cookie: c1 })).json;
+    ok('dashboard: rezumatul executiv are agregatele numerice',
+      typeof dashH.disponibilTotal === 'number' && typeof dashH.taxeDatorate === 'number' && typeof dashH.salariiDePlata === 'number');
+
     // ── Rapoarte dedicate: fisa de cont, situatie aprovizionari, situatie consumuri ──
     const fcH = await req('GET', '/api/fisa-cont?cont=4111&period=2026-06', { cookie: c1 });
     ok('fisa de cont 4111: raspuns cu miscari', fcH.json && fcH.json.cont === '4111' && Array.isArray(fcH.json.rows));
