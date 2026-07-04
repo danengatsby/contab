@@ -3347,7 +3347,7 @@ function renderStockMovements() {
     ? `<table><thead><tr><th>Data</th><th>Tip</th><th>Gestiune</th><th>Produs</th><th class="num">Cantitate</th><th class="num">Preț</th><th>Document</th><th>Operator</th><th>Notă contabilă</th><th></th></tr></thead><tbody>${
       movs.map((m) => `<tr><td>${m.data}</td><td>${tipLbl(m)}</td><td>${m.gestiuneCod || ''}</td><td>${m.cod} ${m.denumire}</td>
         <td class="num">${fmt(m.cantitate)} ${m.um}</td><td class="num">${m.pretUnitar ? fmt(m.pretUnitar) : '—'}</td><td>${m.document || ''}</td><td>${m.operator || '—'}</td>
-        <td>${m.tip === 'transfer' ? '<span class="muted">intern</span>' : m.entryId ? '<span class="pill">✓ contabilizat</span>' : `<button class="linkbtn mpost" data-id="${m.id}">postează nota</button>`}</td>
+        <td>${m.tip === 'transfer' ? '<span class="muted">intern</span>' : m.initial ? '<span class="pill" title="Stoc preluat la deschidere — valoarea e în soldurile inițiale, nu se contabilizează separat">sold inițial</span>' : m.entryId ? '<span class="pill">✓ contabilizat</span>' : `<button class="linkbtn mpost" data-id="${m.id}">postează nota</button>`}</td>
         <td>${m.tip === 'receptie' ? `<a class="linkbtn" href="/pdf/nir?id=${m.id}" target="_blank">NIR</a> · ` : m.tip === 'iesire' ? `<a class="linkbtn" href="/pdf/bon-consum?id=${m.id}" target="_blank">bon consum</a> · ` : `<a class="linkbtn" href="/pdf/aviz?id=${m.id}" target="_blank">aviz</a> · `}<button class="linkbtn mdel" data-id="${m.id}">șterge</button></td></tr>`).join('')}</tbody></table>
       <p class="muted" style="margin-top:6px">${movs.length} din ${STOCK_MOVS.length} mișcări. „Postează nota”: recepție <b>3xx = 401</b>, ieșire <b>60x = 3xx</b> la CMP. Transferul e mișcare internă.</p>`
     : '<p class="muted">Nicio mișcare (verifică filtrele).</p>';
@@ -3410,6 +3410,8 @@ async function loadStocks() {
   STOCK_MOVS = movs;
   $('#mvfGest').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${g.cod}">${g.cod} — ${g.denumire}</option>`).join('');
   renderStockMovements();
+  // verificarea stocului preluat vs. soldurile inițiale (daca exista o preluare)
+  try { renderInitialCheck((await api('/api/stocks/initial-check')).totaluri); } catch (e) { /* ignora */ }
   // procese-verbale de inventariere
   const invs = await api('/api/inventories');
   $('#inventoriesList').innerHTML = invs.length
@@ -3464,6 +3466,30 @@ $('#prodImportBtn').addEventListener('click', async () => {
   const csv = $('#prodCsvIn').value.trim(); if (!csv) return toast('Lipiește un CSV', true);
   try { const r = await api('/api/products/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }) }); toast(r.importati + ' produse importate'); $('#prodCsvIn').value = ''; loadStocks(); }
   catch (err) { toast(err.message, true); }
+});
+// Preluare stoc inițial (cantitativ-valoric) din CSV/XLS/XLSX/DBF, la data preluării firmei
+function renderInitialCheck(tot) {
+  const box = $('#initStocCheck'); if (!box) return;
+  box.innerHTML = (tot || []).length
+    ? `<table><thead><tr><th>Cont stoc</th><th class="num">Stoc inițial preluat</th><th class="num">Sold inițial cont</th><th class="num">Diferență</th></tr></thead><tbody>${
+      tot.map((t) => `<tr><td class="acc">${t.cont}</td><td class="num">${fmt(t.stocInitial)}</td><td class="num">${fmt(t.soldInitial)}</td><td class="num"${Math.abs(t.diferenta) >= 0.01 ? ' style="color:#b00020;font-weight:700"' : ''}>${fmt(t.diferenta)}</td></tr>`).join('')}</tbody></table>
+      <p class="muted" style="margin-top:6px">Verificare cantitativ-valoric vs. contabilitate: <b>Diferență ≠ 0</b> înseamnă că valoarea stocului preluat nu bate cu soldul inițial sintetic al contului — corectează soldurile inițiale sau cantitățile/valorile preluate.</p>`
+    : '';
+}
+$('#initStocFile').addEventListener('change', async (e) => { const f = e.target.files[0]; if (f) { try { $('#initStocCsv').value = await fileToCsv(f); } catch (err) { toast(err.message, true); } } });
+$('#initStocBtn').addEventListener('click', async () => {
+  const csv = $('#initStocCsv').value.trim(); if (!csv) return toast('Lipiește sau încarcă stocul (CSV/XLS/DBF)', true);
+  const data = $('#initStocData').value; if (!data) return toast('Alege data preluării', true);
+  try {
+    const r = await api('/api/stocks/import-initial', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv, data }) });
+    const s = $('#initStocStatus'); s.className = 'status ' + (r.erori.length ? 'err' : 'ok');
+    s.textContent = r.importate + ' poziții preluate'
+      + (r.produseNoi ? ', ' + r.produseNoi + ' produse noi' : '') + (r.gestiuniNoi ? ', ' + r.gestiuniNoi + ' gestiuni noi' : '')
+      + (r.erori.length ? ' — ' + r.erori.length + ' rânduri cu probleme: ' + r.erori.slice(0, 3).join('; ') + (r.erori.length > 3 ? '…' : '') : '.');
+    renderInitialCheck(r.totaluri);
+    $('#initStocCsv').value = '';
+    loadStocks();
+  } catch (err) { toast(err.message, true); }
 });
 // transfer => arată gestiunea destinație, ascunde prețul
 $('#movementForm').tip.addEventListener('change', (e) => {

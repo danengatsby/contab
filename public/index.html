@@ -1008,6 +1008,19 @@
         </div>
       </div>
       <div class="card">
+        <h2>📥 Preluare stoc inițial (societate cu istoric)</h2>
+        <p class="muted">Preiei o firmă care are deja marfă pe stoc? Încarcă stocul <b>cantitativ-valoric</b> la data preluării, dintr-un fișier <b>XLS / XLSX / DBF / CSV</b> exportat din vechiul program. Produsele și gestiunile lipsă se creează automat, iar costul mediu (CMP) pornește de la aceste cantități și valori. <b>Nu se generează note contabile</b> — valoarea stocului preluat o incluzi în <b>soldurile inițiale</b> ale conturilor de stoc (301/371/303…), altfel s-ar dubla.</p>
+        <p class="muted" style="margin:8px 0 4px">Coloane: <span class="acc">Cod;Denumire;UM;Cont;Gestiune;Cantitate;PrețUnitar;Valoare</span> — antetul e opțional; dacă dai <b>Valoare</b>, are prioritate față de preț.</p>
+        <textarea id="initStocCsv" rows="4" style="width:100%" placeholder="MARFA-001;Ciment 40kg;buc;371;DEP;120;25,50&#10;MP-01;Făină albă;kg;301;DEP;500;;1750"></textarea>
+        <div class="row" style="margin-top:6px;flex-wrap:wrap;align-items:center">
+          <input type="file" id="initStocFile" accept=".csv,.txt,.xlsx,.xls,.dbf" />
+          <label class="row" style="gap:6px;align-items:center">Data preluării <input type="date" id="initStocData" style="max-width:170px" /></label>
+          <button id="initStocBtn" class="btn primary">Importă stocul inițial</button>
+        </div>
+        <div id="initStocStatus" class="status"></div>
+        <div id="initStocCheck" class="tablewrap" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
         <h2>Înregistrează mișcare</h2>
         <form id="movementForm" class="dyn">
           <label>Produs <select name="productId" required></select></label>

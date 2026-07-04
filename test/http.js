@@ -193,6 +193,33 @@ async function main() {
     ok('fisa de magazie: o intrare', (await req('GET', '/api/stocks/' + pid + '/ledger', { cookie: c1 })).json.rows.length >= 1);
     ok('miscare stearsa', (await req('DELETE', '/api/stock-movements/' + mid, { cookie: c1 })).json.ok === true);
 
+    // ── Preluare stoc initial (cantitativ-valoric, societate cu istoric) ──
+    const initCsv = 'Cod;Denumire;UM;Cont;Gestiune;Cantitate;PretUnitar;Valoare\n'
+      + 'P1;;;;G1;10;12,50\n'            // produs existent, pret cu virgula romaneasca
+      + 'MP1;Faina;kg;301;DEPNOU;500;;1750'; // produs si gestiune noi, Valoare in loc de pret
+    eq('import stoc initial fara data -> 400', (await req('POST', '/api/stocks/import-initial', { cookie: c1, body: { csv: initCsv } })).status, 400);
+    const ii = await req('POST', '/api/stocks/import-initial', { cookie: c1, body: { csv: initCsv, data: '2025-12-31' } });
+    ok('import stoc initial: 2 pozitii, 1 produs nou, 1 gestiune noua, fara erori',
+      ii.json && ii.json.ok && ii.json.importate === 2 && ii.json.produseNoi === 1 && ii.json.gestiuniNoi === 1 && ii.json.erori.length === 0);
+    const iiStoc = (await req('GET', '/api/stocks?asOf=2026-06', { cookie: c1 })).json;
+    ok('stoc preluat: P1 10 buc la CMP 12.50', iiStoc.some((s) => s.product.cod === 'P1' && s.stocQ === 10 && s.cmp === 12.5));
+    ok('stoc preluat: MP1 500 kg la CMP 3.50 (din Valoare)', iiStoc.some((s) => s.product.cod === 'MP1' && s.stocQ === 500 && s.cmp === 3.5));
+    ok('verificare initiala: 301=1750 si 371=125, diferenta = tot (solduri initiale nesetate)',
+      ii.json.totaluri.length === 2 && ii.json.totaluri[0].cont === '301' && ii.json.totaluri[0].stocInitial === 1750
+      && ii.json.totaluri[1].cont === '371' && ii.json.totaluri[1].stocInitial === 125 && ii.json.totaluri[1].diferenta === 125);
+    // re-importul inlocuieste pozitiile (idempotent), nu dubleaza stocul
+    const ii2 = await req('POST', '/api/stocks/import-initial', { cookie: c1, body: { csv: initCsv, data: '2025-12-31' } });
+    ok('re-import: tot 2 pozitii, 0 produse noi', ii2.json && ii2.json.importate === 2 && ii2.json.produseNoi === 0);
+    ok('re-import: stocul NU se dubleaza', (await req('GET', '/api/stocks?asOf=2026-06', { cookie: c1 })).json.some((s) => s.product.cod === 'P1' && s.stocQ === 10));
+    // miscarea de preluare nu se contabilizeaza (valoarea traieste in soldurile initiale)
+    const iiMov = (await req('GET', '/api/stock-movements?period=2025-12', { cookie: c1 })).json.find((m) => m.initial && m.cod === 'P1');
+    ok('miscarea de preluare e marcata initial', !!iiMov);
+    eq('postarea notei pe miscarea de preluare -> 400', (await req('POST', '/api/stock-movements/' + iiMov.id + '/post', { cookie: c1 })).status, 400);
+    // dupa setarea soldurilor initiale pe conturile de stoc, verificarea inchide diferentele la 0
+    await req('POST', '/api/opening', { cookie: c1, body: { openingBalances: { '301': { d: 1750, c: 0 }, '371': { d: 125, c: 0 }, '1012': { d: 0, c: 1875 } } } });
+    const chk = (await req('GET', '/api/stocks/initial-check', { cookie: c1 })).json;
+    ok('verificare stoc initial vs solduri initiale: diferente 0', chk.totaluri.every((t) => t.diferenta === 0));
+
     // ── Productie / retete (BOM) ──
     eq('reteta fara nume -> 400', (await req('POST', '/api/recipes', { cookie: c1, body: { productId: 'x' } })).status, 400);
     const mkR = await req('POST', '/api/recipes', { cookie: c1, body: { nume: 'Reteta A', productId: 'pf', cantitateBaza: 10, costUnitar: 5, materiale: [{ productId: 'm1', cantitate: 20 }] } });

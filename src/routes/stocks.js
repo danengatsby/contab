@@ -7,6 +7,8 @@
 
 const db = require('../db');
 const { round2 } = require('../util');
+const { parseCsv } = require('../csv');
+const { parseRoNumber } = require('../extractor');
 const stocks = require('../stocks');
 const fiscal = require('../fiscal');
 
@@ -52,6 +54,72 @@ module.exports = function register(app, ctx) {
     logAudit('products.import', importati + ' produse', { req });
     db.save();
     res.json({ ok: true, importati });
+  });
+  // ── Preluare stoc initial (societate cu istoric precedent) ──
+  // CSV: Cod;Denumire;UM;Cont;Gestiune;Cantitate;PretUnitar[;Valoare] (header optional; Valoare
+  // are prioritate fata de pret). Creeaza produsele si gestiunile lipsa si inregistreaza receptii
+  // marcate `initial` la data preluarii — CMP-ul porneste de la aceste cantitati/valori.
+  // NU se genereaza note contabile: valoric, stocul preluat face parte din soldurile initiale ale
+  // conturilor de stoc (3xx), altfel s-ar dubla. Re-importul inlocuieste pozitia (produs, gestiune).
+  const num = (s) => { const n = parseRoNumber(s); return n == null ? 0 : round2(n); };
+  function initialTotals(view) {
+    const byCont = {};
+    for (const m of view.stockMovements || []) {
+      if (!m.initial) continue;
+      const p = (view.products || []).find((x) => x.id === m.productId);
+      const cont = (p && p.cont) || '371';
+      byCont[cont] = round2((byCont[cont] || 0) + round2((Number(m.cantitate) || 0) * (Number(m.pretUnitar) || 0)));
+    }
+    const opening = view.openingBalances || {};
+    return Object.keys(byCont).sort().map((cont) => {
+      const ob = opening[cont] || { d: 0, c: 0 };
+      const sold = round2((Number(ob.d) || 0) - (Number(ob.c) || 0));
+      return { cont, stocInitial: byCont[cont], soldInitial: sold, diferenta: round2(byCont[cont] - sold) };
+    });
+  }
+  app.get('/api/stocks/initial-check', (req, res) => res.json({ totaluri: initialTotals(S(req)) }));
+  app.post('/api/stocks/import-initial', (req, res) => {
+    const b = req.body || {};
+    const data = String(b.data || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return res.status(400).json({ error: 'Alege data preluarii (data bilantului de deschidere).' });
+    const rows = parseCsv(b.csv || '');
+    if (!rows.length) return res.status(400).json({ error: 'CSV gol sau invalid.' });
+    let start = 0;
+    if (/cod|denumire|cant/i.test((rows[0][0] || '') + (rows[0][1] || '') + (rows[0][5] || ''))) start = 1;
+    const d = db.get();
+    const fid = activeId(req);
+    const operator = (req.user && req.user.username) || '';
+    let importate = 0; let produseNoi = 0; let gestiuniNoi = 0; const erori = [];
+    for (let i = start; i < rows.length; i++) {
+      const r = rows[i];
+      const cod = String(r[0] || '').trim();
+      if (!cod) { erori.push('rand ' + (i + 1) + ': cod produs lipsa'); continue; }
+      let p = (d.products || []).find((x) => x.firmaId === fid && x.cod === cod);
+      if (!p) {
+        if (!r[1]) { erori.push('rand ' + (i + 1) + ': produs nou fara denumire (' + cod + ')'); continue; }
+        p = { id: db.nextId('prod'), firmaId: fid, cod, denumire: String(r[1]), um: r[2] || 'buc', grupa: '', cont: r[3] || '371', codNC: '' };
+        d.products.push(p); produseNoi += 1;
+      }
+      let gestiuneId = null;
+      const gcod = String(r[4] || '').trim();
+      if (gcod) {
+        let g = (d.gestiuni || []).find((x) => x.firmaId === fid && x.cod === gcod);
+        if (!g) { g = { id: db.nextId('gest'), firmaId: fid, cod: gcod, denumire: gcod, gestionar: '', cont: p.cont || '371' }; d.gestiuni.push(g); gestiuniNoi += 1; }
+        gestiuneId = g.id;
+      }
+      const cant = num(r[5]);
+      if (cant <= 0) { erori.push('rand ' + (i + 1) + ': cantitate invalida (' + cod + ')'); continue; }
+      const valoare = num(r[7]);
+      const pret = valoare > 0 ? round2(valoare / cant) : num(r[6]);
+      if (pret <= 0) { erori.push('rand ' + (i + 1) + ': pret/valoare lipsa (' + cod + ')'); continue; }
+      const prev = (d.stockMovements || []).find((m) => m.firmaId === fid && m.initial && m.productId === p.id && (m.gestiuneId || null) === gestiuneId);
+      if (prev) Object.assign(prev, { data, cantitate: cant, pretUnitar: pret, operator });
+      else d.stockMovements.push({ id: db.nextId('sm'), firmaId: fid, data, tip: 'receptie', initial: true, productId: p.id, gestiuneId, gestiuneDestId: null, cantitate: cant, pretUnitar: pret, document: 'Stoc initial (preluare)', furnizor: '', operator });
+      importate += 1;
+    }
+    logAudit('stocks.importInitial', importate + ' pozitii stoc initial la ' + data, { req });
+    db.save();
+    res.json({ ok: true, importate, produseNoi, gestiuniNoi, erori, totaluri: initialTotals(S(req)) });
   });
   app.delete('/api/products/:id', (req, res) => {
     const d = db.get();
@@ -119,6 +187,7 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     const m = v.stockMovements.find((x) => x.id === req.params.id);
     if (!m) return res.status(404).json({ error: 'Miscare inexistenta.' });
+    if (m.initial) return res.status(400).json({ error: 'Miscare de stoc initial (preluare): nu se contabilizeaza — valoarea intra in soldurile initiale ale contului de stoc, altfel s-ar dubla.' });
     if (m.entryId) return res.status(400).json({ error: 'Nota contabila este deja generata pentru aceasta miscare.' });
     const p = v.products.find((x) => x.id === m.productId);
     if (!p) return res.status(400).json({ error: 'Produs inexistent.' });
