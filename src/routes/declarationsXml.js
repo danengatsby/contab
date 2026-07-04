@@ -34,12 +34,13 @@ module.exports = function register(app, ctx) {
     sendXml(res, xml.eFacturaXml(db.getFirma(fid) || {}, e, d.partners[fid] || {}), 'efactura-' + (e.document || e.id) + '.xml');
   });
   // PDF vizual al unei facturi emise (generat din articolul contabil).
+  // Modelul vine din setarea firmei (pdfLayout) sau punctual din ?layout=clasic|compact|detaliat.
   app.get('/pdf/factura/:id', (req, res) => {
     const d = db.get();
     const e = d.entries.find((x) => x.id === req.params.id);
     if (!e) return res.status(404).send('Inregistrare inexistenta');
     const fid = e.firmaId || db.firmaActiva();
-    pdf.facturaPdf(res, db.getFirma(fid) || {}, e, d.partners[fid] || {});
+    pdf.facturaPdf(res, db.getFirma(fid) || {}, e, d.partners[fid] || {}, req.query.layout);
   });
   // Declarantul pentru XML-urile ANAF — din datele personale ale utilizatorului (Setari -> Contul meu)
   function declarantOf(req) {

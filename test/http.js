@@ -276,6 +276,15 @@ async function main() {
     eq('fisier care nu e PNG/JPEG -> 400', (await req('POST', '/api/company/logo', { cookie: c1, body: fdLogoBad })).status, 400);
     ok('logo sters', (await req('DELETE', '/api/company/logo', { cookie: c1 })).json.ok === true);
 
+    // ── Modele de factura: clasic / compact (A5) / detaliat ──
+    const fvE = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-06-22', partener: 'Client Layout', cuiPartener: 'RO55', document: 'FL-1', baza: 1000, tva: 210, cota: 21 } } });
+    ok('factura de vanzare pentru modele inregistrata', fvE.json && fvE.json.ok);
+    eq('model clasic (implicit)', (await req('GET', '/pdf/factura/' + fvE.json.entry.id, { cookie: c1 })).status, 200);
+    eq('model compact per tiparire (?layout=compact)', (await req('GET', '/pdf/factura/' + fvE.json.entry.id + '?layout=compact', { cookie: c1 })).status, 200);
+    ok('setarea firmei pdfLayout=detaliat salvata', (await req('POST', '/api/company', { cookie: c1, body: { pdfLayout: 'detaliat' } })).json.ok === true);
+    eq('model detaliat din setarea firmei', (await req('GET', '/pdf/factura/' + fvE.json.entry.id, { cookie: c1 })).status, 200);
+    await req('POST', '/api/company', { cookie: c1, body: { pdfLayout: 'clasic' } });
+
     // ── Rapoarte dedicate: fisa de cont, situatie aprovizionari, situatie consumuri ──
     const fcH = await req('GET', '/api/fisa-cont?cont=4111&period=2026-06', { cookie: c1 });
     ok('fisa de cont 4111: raspuns cu miscari', fcH.json && fcH.json.cont === '4111' && Array.isArray(fcH.json.rows));
