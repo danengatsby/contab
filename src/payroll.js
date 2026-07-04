@@ -11,7 +11,7 @@ const fiscal = require('./fiscal');
  *  `period` (YYYY-MM, optional) alege salariul minim S1/S2 pentru deducerea personala. */
 function statePlata(angajati, period) {
   const rows = [];
-  const t = { brut: 0, neimpozabil: 0, deducere: 0, tichete: 0, spor: 0, cas: 0, cass: 0, impozit: 0, cam: 0, net: 0, avans: 0, retineri: 0, restPlata: 0, costTotal: 0 };
+  const t = { brut: 0, neimpozabil: 0, deducere: 0, tichete: 0, avantaje: 0, spor: 0, cas: 0, cass: 0, impozit: 0, cam: 0, net: 0, avans: 0, retineri: 0, restPlata: 0, costTotal: 0 };
   for (const a of angajati || []) {
     const spor = round2(Number(a.spor) || 0);
     const brut = round2((Number(a.salariuBrut) || 0) + spor);
@@ -22,17 +22,18 @@ function statePlata(angajati, period) {
     const dp = hasDP ? fiscal.deducerePersonala(brut, a.persoane, { salariuMinim: fiscal.salariuMinimLa(period), sub26: a.sub26, copii: a.copii }).total : 0;
     const deducere = round2(dp + neimpozabil); // total scazut din baza de impozit
     const tichete = round2(Number(a.tichete) || 0);
+    const avantaje = round2(Number(a.avantaje) || 0); // avantaje in natura impozabile (auto, chirie...)
     const sector = a.sector || 'normal';
     const avans = round2(Number(a.avans) || 0);
     const retineri = round2(Number(a.retineri) || 0);
-    const p = fiscal.payroll(brut, deducere, { tichete, sector });
+    const p = fiscal.payroll(brut, deducere, { tichete, avantaje, sector });
     const restPlata = round2(p.net - avans - retineri);
     rows.push({
       id: a.id, nume: a.nume || '', cnp: a.cnp || '', functie: a.functie || '', persoane: a.persoane != null ? Number(a.persoane) : null, sub26: !!a.sub26, copii: Number(a.copii) || 0,
-      brut, spor, neimpozabil, deducere: dp, tichete, sector, scutire: p.scutImpozit || p.scutCass, overPlafon: p.overPlafon,
+      brut, spor, neimpozabil, deducere: dp, tichete, avantaje, sector, scutire: p.scutImpozit || p.scutCass, overPlafon: p.overPlafon,
       cas: p.cas, cass: p.cass, impozit: p.impozit, cam: p.cam, net: p.net, avans, retineri, restPlata, costTotal: p.costTotal,
     });
-    t.deducere = round2(t.deducere + dp); t.tichete = round2((t.tichete || 0) + tichete);
+    t.deducere = round2(t.deducere + dp); t.tichete = round2((t.tichete || 0) + tichete); t.avantaje = round2(t.avantaje + avantaje);
     t.brut = round2(t.brut + brut); t.neimpozabil = round2(t.neimpozabil + neimpozabil); t.spor = round2(t.spor + spor);
     t.cas = round2(t.cas + p.cas); t.cass = round2(t.cass + p.cass); t.impozit = round2(t.impozit + p.impozit);
     t.cam = round2(t.cam + p.cam); t.net = round2(t.net + p.net); t.costTotal = round2(t.costTotal + p.costTotal);

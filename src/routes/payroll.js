@@ -19,7 +19,7 @@ module.exports = function register(app, ctx) {
     const d = db.get();
     const a = b.id && (d.angajati || []).find((x) => x.id === b.id && x.firmaId === activeId(req));
     const rec = a || { id: db.nextId('ang'), firmaId: activeId(req) };
-    Object.assign(rec, { nume: String(b.nume), cnp: b.cnp || '', functie: b.functie || '', salariuBrut: round2(Number(b.salariuBrut) || 0), neimpozabil: round2(Number(b.neimpozabil) || 0), spor: round2(Number(b.spor) || 0), avans: round2(Number(b.avans) || 0), retineri: round2(Number(b.retineri) || 0), persoane: b.persoane === '' || b.persoane == null ? null : Math.max(0, Math.round(Number(b.persoane) || 0)), sub26: !!b.sub26, copii: Math.max(0, Math.round(Number(b.copii) || 0)), tichete: round2(Number(b.tichete) || 0), sector: ['it', 'constructii', 'agro'].includes(b.sector) ? b.sector : 'normal' });
+    Object.assign(rec, { nume: String(b.nume), cnp: b.cnp || '', functie: b.functie || '', salariuBrut: round2(Number(b.salariuBrut) || 0), neimpozabil: round2(Number(b.neimpozabil) || 0), spor: round2(Number(b.spor) || 0), avans: round2(Number(b.avans) || 0), retineri: round2(Number(b.retineri) || 0), persoane: b.persoane === '' || b.persoane == null ? null : Math.max(0, Math.round(Number(b.persoane) || 0)), sub26: !!b.sub26, copii: Math.max(0, Math.round(Number(b.copii) || 0)), tichete: round2(Number(b.tichete) || 0), avantaje: round2(Number(b.avantaje) || 0), sector: ['it', 'constructii', 'agro'].includes(b.sector) ? b.sector : 'normal' });
     if (!a) d.angajati.push(rec);
     logAudit('angajat.save', rec.nume, { req });
     db.save();

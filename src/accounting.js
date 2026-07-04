@@ -368,6 +368,28 @@ function cashBankJournal(db, cont, period) {
   return { cont, nume: coa.accountName(cont), period, siInitial, rows, rd, rc, sfFinal: sold };
 }
 
+/** Fisa de cont: toate miscarile unui cont in perioada, cu contul corespondent si sold curent.
+ *  Generalizarea jurnalului de banca/casa la orice cont din plan (401, 4111, 371, 601...). */
+function fisaCont(db, cont, period) {
+  cont = String(cont || '').trim();
+  const opening = (db.openingBalances || {})[cont] || { d: 0, c: 0 };
+  const before = accumulate(allLines(db.entries.filter((e) => beforePeriod(e, period))))[cont] || { d: 0, c: 0 };
+  let sold = round2((opening.d + before.d) - (opening.c + before.c));
+  const siInitial = sold;
+  const lines = allLines(db.entries.filter((e) => inPeriod(e, period)))
+    .filter((l) => l.debit === cont || l.credit === cont)
+    .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+  let rd = 0; let rc = 0;
+  const rows = lines.map((l) => {
+    const d = l.debit === cont ? l.suma : 0;
+    const c = l.credit === cont ? l.suma : 0;
+    rd = round2(rd + d); rc = round2(rc + c);
+    sold = round2(sold + d - c);
+    return { data: l.data, document: l.document, explicatie: l.explicatie, partener: l.partener, corespondent: l.debit === cont ? l.credit : l.debit, d, c, sold };
+  });
+  return { cont, nume: coa.accountName(cont), period, siInitial, rows, rd, rc, sfFinal: sold };
+}
+
 /**
  * Registru de casa in valuta (cont 5314): pentru fiecare miscare, suma in lei (din linie) si suma in
  * valuta (din e.valutaInfo), cu solduri curente in ambele. Soldul in valuta acumuleaza doar moneda
@@ -451,5 +473,5 @@ function cashControl(db, cont, period) {
 }
 
 module.exports = {
-  allLines, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, cashRegisterValuta, cashControl, tvaNeexigibila,
+  allLines, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, cashRegisterValuta, cashControl, tvaNeexigibila,
 };

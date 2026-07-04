@@ -185,6 +185,7 @@ function publicUser(u) {
   const p = u.profil || {};
   return {
     id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), firme: allowedFirme(u),
+    drepturi: u.drepturi || {},
     mustChange: !!u.mustChange, twofa: !!u.twofa,
     profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?
     subExpirat: plans.expiredLock(u), // proba expirata -> cont read-only (banner in UI)
@@ -294,6 +295,24 @@ app.use((req, res, next) => {
   if (!plans.expiredLock(req.user)) return next();
   if (isDeliverable) return res.status(402).type('text/plain; charset=utf-8').send(EXPIRED_MSG);
   res.status(402).json({ error: EXPIRED_MSG });
+});
+
+// ── Drepturi granulare per utilizator (Setari -> Utilizatori, setate de admin) ──
+//  - readonly:    doar vizualizare — blocheaza orice scriere pe date (raman permise rutele de cont)
+//  - faraSalarii: fara acces la modulul de salarizare (date sensibile), nici macar in citire
+const RO_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe)/;
+const RO_ALLOW = /^\/api\/firme\/\d+\/activate$/; // schimbarea firmei active e tot o "citire"
+const SALARII_RX = /^\/(api\/(angajati|stat-plata|registru-salarii)|pdf\/(stat-plata|fluturas|adeverinta|registru-salarii)|xml\/d112)/;
+app.use((req, res, next) => {
+  const dr = req.user && req.user.drepturi;
+  if (!dr || req.user.role === 'admin') return next();
+  if (dr.faraSalarii && SALARII_RX.test(req.path)) {
+    return res.status(403).json({ error: 'Nu ai acces la modulul de salarizare (drept restrictionat de administrator).' });
+  }
+  if (dr.readonly && req.method !== 'GET' && !RO_EXEMPT.test(req.path) && !RO_ALLOW.test(req.path)) {
+    return res.status(403).json({ error: 'Cont doar-citire: poti vizualiza datele, dar nu le poti modifica. Cere administratorului drept de operare.' });
+  }
+  next();
 });
 
 // Health-check public (pentru monitorizare uptime): confirma ca procesul si baza raspund.
@@ -1153,6 +1172,7 @@ app.get('/api/users', requireAdmin, (req, res) => {
   const base = (req.protocol || 'http') + '://' + req.get('host');
   res.json(db.get().users.map((u) => ({
     id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), plan: plans.status(u.subscription).plan, firme: u.firme || [],
+    drepturi: u.drepturi || {},
     pending: !!u.pending, inviteLink: u.pending && u.inviteToken ? base + '/?invite=' + u.inviteToken : null,
   })));
 });
@@ -1174,6 +1194,7 @@ app.post('/api/users/:id', requireAdmin, (req, res) => {
   const b = req.body || {};
   if (b.role) u.role = b.role === 'admin' ? 'admin' : 'user';
   if (Array.isArray(b.firme)) u.firme = b.firme.map(Number);
+  if (b.drepturi && typeof b.drepturi === 'object') u.drepturi = { readonly: !!b.drepturi.readonly, faraSalarii: !!b.drepturi.faraSalarii };
   if (b.password) { const h = authlib.hashPassword(b.password); u.salt = h.salt; u.hash = h.hash; u.mustChange = false; }
   logAudit('user.update', u.username, { req, firmaId: null });
   db.save();
@@ -1256,9 +1277,66 @@ function sendInviteEmail(smtp, to, link) {
 
 app.post('/api/company', (req, res) => {
   const f = db.getFirma(activeId(req));
-  if (f) Object.assign(f, req.body || {}, { id: f.id });
+  const b = Object.assign({}, req.body || {});
+  delete b.logoFile; // logo-ul se administreaza doar prin rutele dedicate (fisier validat)
+  if (f) Object.assign(f, b, { id: f.id });
   db.save();
   res.json({ ok: true, company: f });
+});
+
+// ── Logo firma (layout documente): apare in antetul tuturor PDF-urilor emise ──
+app.post('/api/company/logo', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
+  const p = req.file.path;
+  let head;
+  try { head = fs.readFileSync(p).slice(0, 4); } catch (e) { return res.status(400).json({ error: 'Fisier ilizibil.' }); }
+  const isPng = head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4E && head[3] === 0x47;
+  const isJpg = head[0] === 0xFF && head[1] === 0xD8 && head[2] === 0xFF;
+  if (!isPng && !isJpg) {
+    try { fs.unlinkSync(p); } catch (_) { /* */ }
+    return res.status(400).json({ error: 'Logo-ul trebuie sa fie PNG sau JPEG (PDF-urile nu accepta alte formate).' });
+  }
+  const f = db.getFirma(activeId(req));
+  if (!f) return res.status(400).json({ error: 'Firma inexistenta.' });
+  if (f.logoFile) { try { fs.unlinkSync(path.join(db.UPLOAD_DIR, f.logoFile)); } catch (_) { /* logo vechi deja sters */ } }
+  f.logoFile = path.basename(p);
+  logAudit('company.logo', 'logo incarcat (' + (isPng ? 'PNG' : 'JPEG') + ')', { req });
+  db.save();
+  res.json({ ok: true, logoFile: f.logoFile });
+});
+app.get('/api/company/logo', (req, res) => {
+  const f = db.getFirma(activeId(req));
+  if (!f || !f.logoFile) return res.status(404).send('Fara logo');
+  const p = path.join(db.UPLOAD_DIR, String(f.logoFile).replace(/[^a-zA-Z0-9._-]/g, ''));
+  if (!fs.existsSync(p)) return res.status(404).send('Fara logo');
+  res.setHeader('Content-Type', /\.png$/i.test(p) ? 'image/png' : 'image/jpeg');
+  res.sendFile(p);
+});
+app.delete('/api/company/logo', (req, res) => {
+  const f = db.getFirma(activeId(req));
+  if (f && f.logoFile) {
+    try { fs.unlinkSync(path.join(db.UPLOAD_DIR, f.logoFile)); } catch (_) { /* deja sters */ }
+    delete f.logoFile;
+    db.save();
+  }
+  res.json({ ok: true });
+});
+
+// Chitanta tiparibila pentru o incasare in numerar (531x): numarul se atribuie din seria CH la prima tiparire
+app.get('/pdf/chitanta/:id', (req, res) => {
+  const d = db.get();
+  const e = d.entries.find((x) => x.id === req.params.id && (x.firmaId == null ? d.firmaActiva : x.firmaId) === activeId(req));
+  if (!e) return res.status(404).send('Inregistrare inexistenta');
+  const suma = e.lines.reduce((s, l) => s + (/^531/.test(String(l.debit)) ? l.suma : 0), 0);
+  if (suma <= 0) return res.status(400).send('Inregistrarea nu este o incasare in numerar (531x) — chitanta se emite doar pentru incasari in casa.');
+  if (!e.chitantaNr) {
+    const s = ensureDocSeries(d, activeId(req)).CH;
+    e.chitantaNr = s.serie + '-' + String(s.next).padStart(5, '0');
+    s.next += 1;
+    logAudit('chitanta', e.chitantaNr + ' pentru ' + (e.partener || e.id), { req });
+    db.save();
+  }
+  pdf.chitantaPdf(res, S(req).company, e, Math.round(suma * 100) / 100, e.chitantaNr);
 });
 
 app.post('/api/settings', (req, res) => {
@@ -1915,6 +1993,15 @@ require('./src/routes/csv')(app, { S });
 // ───────────────────────────── RAPOARTE (JSON) ─────────────────────────────
 app.get('/api/journal', (req, res) => res.json(acc.journal(S(req), req.query.period || null)));
 app.get('/api/ledger', (req, res) => res.json(acc.ledger(S(req), req.query.period || null)));
+// Fisa de cont: miscarile unui cont cu contul corespondent si sold curent (orice cont din plan)
+app.get('/api/fisa-cont', (req, res) => {
+  if (!req.query.cont) return res.status(400).json({ error: 'Alege contul (ex. ?cont=4111).' });
+  res.json(acc.fisaCont(S(req), req.query.cont, req.query.period || null));
+});
+app.get('/pdf/fisa-cont', (req, res) => {
+  if (!req.query.cont) return res.status(400).send('Alege contul (ex. ?cont=4111).');
+  pdf.fisaContPdf(res, S(req).company, acc.fisaCont(S(req), req.query.cont, req.query.period || null));
+});
 app.get('/api/balance', (req, res) => res.json(acc.trialBalance(S(req), req.query.period || null)));
 app.get('/api/statements/pl', (req, res) => res.json(stmt.profitLoss(S(req), req.query.year || String(new Date().getFullYear()))));
 app.get('/api/statements/pl-f20', (req, res) => res.json(stmt.profitLossF20(S(req), req.query.year || String(new Date().getFullYear()))));
@@ -2225,6 +2312,11 @@ app.get('/pdf/stocks', (req, res) => {
   const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
   pdf.stocksPdf(res, S(req).company, stocks.currentStock(S(req), asOf), asOf);
 });
+// Situatia aprovizionarilor (receptii pe furnizori) si a consumurilor (iesiri la CMP pe cont)
+app.get('/api/aprovizionari', (req, res) => res.json(stocks.situatieAprovizionari(S(req), req.query.period || null)));
+app.get('/pdf/aprovizionari', (req, res) => pdf.aprovizionariPdf(res, S(req).company, stocks.situatieAprovizionari(S(req), req.query.period || null)));
+app.get('/api/consumuri', (req, res) => res.json(stocks.situatieConsumuri(S(req), req.query.period || null)));
+app.get('/pdf/consumuri', (req, res) => pdf.consumuriPdf(res, S(req).company, stocks.situatieConsumuri(S(req), req.query.period || null)));
 app.get('/pdf/inventory', (req, res) => {
   const v = S(req);
   const g = v.gestiuni.find((x) => x.id === req.query.gestiune);
@@ -2241,7 +2333,9 @@ app.get('/pdf/inventory-pv/:id', (req, res) => {
 function ensureDocSeries(d, fid) {
   d.settings.docSeries = d.settings.docSeries || {};
   if (!d.settings.docSeries[fid]) d.settings.docSeries[fid] = { NIR: { serie: 'NIR', next: 1 }, BC: { serie: 'BC', next: 1 }, AVIZ: { serie: 'AVZ', next: 1 } };
-  return d.settings.docSeries[fid];
+  const s = d.settings.docSeries[fid];
+  if (!s.CH) s.CH = { serie: 'CH', next: 1 }; // chitante (serie adaugata ulterior — migrare in-loc)
+  return s;
 }
 // Atribuie (sau reutilizeaza) numarul de document pentru un grup de miscari
 function docNumberFor(req, type, movs) {
@@ -2262,7 +2356,7 @@ app.post('/api/doc-series', (req, res) => {
   const d = db.get();
   const s = ensureDocSeries(d, activeId(req));
   const b = req.body || {};
-  for (const t of ['NIR', 'BC', 'AVIZ']) {
+  for (const t of ['NIR', 'BC', 'AVIZ', 'CH']) {
     if (b[t]) {
       if (b[t].serie != null) s[t].serie = String(b[t].serie).slice(0, 10);
       if (b[t].next != null && Number(b[t].next) > 0) s[t].next = Math.floor(Number(b[t].next));

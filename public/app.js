@@ -328,10 +328,19 @@ async function renderUsers() {
     const c = { admin: 'background:#2f2e2a;color:#fff', contabil: 'background:#e2f5e8;color:#0a7d33', necontabil: 'background:#e7eefc;color:#1652d6', tester: 'background:#fff4e0;color:#b26a00' }[u.tip] || '';
     return `<span class="pill" style="${c}" title="${u.plan ? 'plan: ' + u.plan : 'fără plan (probă)'}">${u.tip || '—'}</span>`;
   };
-  $('#usersList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th>Firme</th><th></th></tr></thead><tbody>${
+  const drCheck = (u, key, label, title) => u.role === 'admin' ? '' : `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap" title="${title}">
+      <input type="checkbox" class="udrept" data-id="${u.id}" data-drept="${key}" style="width:auto" ${u.drepturi && u.drepturi[key] ? 'checked' : ''} /> ${label}</label>`;
+  $('#usersList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th>Firme</th><th>Drepturi</th><th></th></tr></thead><tbody>${
     users.map((u) => `<tr><td><b>${u.username}</b>${u.pending ? ' <span class="pill warn">invitație</span>' : ''}</td><td>${tipPill(u)}</td>
       <td>${u.role === 'admin' ? '<span class="muted">toate</span>' : u.firme.map((id) => { const f = (META.firme || []).find((x) => x.id === id); return f ? f.nume : id; }).join(', ') || '<span class="muted">—</span>'}</td>
+      <td>${u.role === 'admin' ? '<span class="muted">complete</span>' : drCheck(u, 'readonly', 'doar citire', 'Vede toate datele, dar nu poate modifica nimic') + '<br>' + drCheck(u, 'faraSalarii', 'fără salarii', 'Fără acces la salarizare (angajați, state de plată, fluturași, D112)')}</td>
       <td>${u.pending ? `<button class="linkbtn ulink" data-link="${u.inviteLink}">copiază link</button>` : `<button class="linkbtn ureset" data-id="${u.id}">resetează parola</button>${u.role !== 'admin' ? ` · <button class="linkbtn uimp" data-id="${u.id}">↪ intră pe cont</button>` : ''}`} · <button class="del udel" data-id="${u.id}">✕</button></td></tr>`).join('')}</tbody></table>`;
+  $$('#usersList .udrept').forEach((cb) => cb.addEventListener('change', async () => {
+    const row = $$('#usersList .udrept').filter((x) => x.dataset.id === cb.dataset.id);
+    const drepturi = {}; row.forEach((x) => { drepturi[x.dataset.drept] = x.checked; });
+    try { await api('/api/users/' + cb.dataset.id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ drepturi }) }); toast('Drepturi salvate'); }
+    catch (e) { toast(e.message, true); cb.checked = !cb.checked; }
+  }));
   $$('#usersList .ulink').forEach((b) => b.addEventListener('click', () => prompt('Link invitație (trimite-l utilizatorului):', b.dataset.link)));
   $$('#usersList .uimp').forEach((b) => b.addEventListener('click', () => {
     if (confirm('Intri pe contul acestui utilizator? Vei vedea aplicația exact ca el. Toate acțiunile sunt jurnalizate.')) impersonate(Number(b.dataset.id));
@@ -861,6 +870,8 @@ async function init() {
   $('#usersCard').style.display = USER.role === 'admin' ? '' : 'none';
   $('#exportAllBtn') && ($('#exportAllBtn').style.display = USER.role === 'admin' ? '' : 'none');
   applySessionState(USER);
+  // drepturi granulare: utilizatorii fara acces la salarizare nu vad intrarea din meniu
+  $$('button[data-tab="salarizare"]').forEach((b) => { b.style.display = (USER.drepturi && USER.drepturi.faraSalarii) ? 'none' : ''; });
   startMsgPolling();
   if (USER.mustChange) toast('Schimbă parola implicită (admin/admin) din Setări!', true);
   // proba expirata: banner persistent + cont read-only (serverul blocheaza scrierile cu 402)
@@ -1171,7 +1182,27 @@ function fillCompanyForm() {
   ['nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'iban', 'banca', 'telefon', 'email', 'capitalSocial', 'pdfFooter'].forEach((k) => { if (f[k]) f[k].value = META.company[k] || ''; });
   if (f.tvaLaIncasare) f.tvaLaIncasare.checked = !!META.company.tvaLaIncasare;
   if (f.accentColor) f.accentColor.value = /^#[0-9a-fA-F]{6}$/.test(META.company.accentColor || '') ? META.company.accentColor : '#0b6e4f';
+  refreshLogo();
 }
+// Logo firma (apare in antetul PDF-urilor emise) — incarcare/stergere + previzualizare
+async function refreshLogo() {
+  const img = $('#logoPreview'); const del = $('#logoDeleteBtn');
+  if (!img) return;
+  try {
+    const r = await fetch('/api/company/logo?ts=' + Date.now());
+    if (r.ok) { img.src = URL.createObjectURL(await r.blob()); img.style.display = ''; if (del) del.style.display = ''; }
+    else { img.style.display = 'none'; if (del) del.style.display = 'none'; }
+  } catch (e) { /* fara logo */ }
+}
+$('#logoUploadBtn') && $('#logoUploadBtn').addEventListener('click', async () => {
+  const f = $('#logoFile').files[0]; if (!f) return toast('Alege un fișier PNG sau JPEG', true);
+  const fd = new FormData(); fd.append('file', f);
+  try { await api('/api/company/logo', { method: 'POST', body: fd }); toast('Logo încărcat — apare în antetul tuturor PDF-urilor'); $('#logoFile').value = ''; refreshLogo(); }
+  catch (err) { toast(err.message, true); }
+});
+$('#logoDeleteBtn') && $('#logoDeleteBtn').addEventListener('click', async () => {
+  await api('/api/company/logo', { method: 'DELETE' }); toast('Logo șters'); refreshLogo();
+});
 function renderLock() {
   const lu = META.company && META.company.lockedUntil;
   const st = $('#lockStatus'); const inp = $('#lockUntil');
@@ -2205,6 +2236,7 @@ function entryRowHtml(e) {
     <td class="acc">${formula}</td>
     <td class="num">${fmt(total)}</td>
     <td><a class="linkbtn" href="/pdf/note/${e.id}" target="_blank">PDF</a>
+        ${e.lines.some((l) => /^531/.test(String(l.debit))) ? ` · <a class="linkbtn" href="/pdf/chitanta/${e.id}" target="_blank" title="Chitanta pentru incasarea in numerar (numar din seria CH)">chitanță</a>` : ''}
         ${EFACT_TYPES.has(e.tip) ? ` · <a class="linkbtn" href="/xml/efactura/${e.id}" target="_blank">e-Factura</a>` : ''}
         ${SENDABLE_TYPES.has(e.tip) ? (e.spv
     ? ` · <button class="linkbtn spvstat" data-id="${e.id}">SPV: ${e.spv.stare}${e.spv.acceptat ? ' ✓' : ''}</button>${e.spv.idDescarcare ? ` · <button class="linkbtn spvdl" data-id="${e.id}">recipisă</button>` : ''}`
@@ -2381,7 +2413,7 @@ async function loadLedger() {
     const moves = a.moves.map((m) => `<tr><td>${m.data}</td><td>${m.explicatie}</td>
       <td class="num">${m.debit ? fmt(m.debit) : ''}</td><td class="num">${m.credit ? fmt(m.credit) : ''}</td></tr>`).join('');
     return `<div class="ledger-acc">
-      <h4><span class="acc">${a.cod}</span> — ${a.nume}</h4>
+      <h4><span class="acc">${a.cod}</span> — ${a.nume} <a class="linkbtn" href="/pdf/fisa-cont?cont=${a.cod}${p ? '&period=' + p : ''}" target="_blank" title="Fișa de cont: mișcări cu cont corespondent și sold curent">fișă de cont</a></h4>
       <p class="muted">Sold inițial: D ${fmt(a.siD)} / C ${fmt(a.siC)}</p>
       <div class="tablewrap"><table><thead><tr><th>Data</th><th>Explicație</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
       <tbody>${moves}
@@ -3269,7 +3301,7 @@ async function loadSalarizare() {
   const t = sp.totals;
   $('#angajatiList').innerHTML = sp.rows.length
     ? `<table><thead><tr><th>Nume</th><th>Funcție</th><th class="num">Brut</th><th class="num">CAS</th><th class="num">CASS</th><th class="num">Deducere</th><th class="num">Impozit</th><th class="num">Net</th><th class="num">Avans</th><th class="num">Rețineri</th><th class="num">Rest plată</th><th class="num">CAM</th><th></th></tr></thead><tbody>${
-      sp.rows.map((r) => `<tr><td>${r.nume}${r.spor ? ' <span class="muted">+spor ' + fmt(r.spor) + '</span>' : ''}${r.persoane ? ' <span class="muted">' + r.persoane + ' pers.</span>' : ''}${r.tichete ? ' <span class="muted">+tichete ' + fmt(r.tichete) + '</span>' : ''}${r.scutire ? ' <span class="muted">scutit (' + r.sector + ')</span>' : ''}${r.overPlafon ? ' <span style="color:var(--danger)">⚠ peste plafon scutire</span>' : ''}</td><td>${r.functie || ''}</td>
+      sp.rows.map((r) => `<tr><td>${r.nume}${r.spor ? ' <span class="muted">+spor ' + fmt(r.spor) + '</span>' : ''}${r.persoane ? ' <span class="muted">' + r.persoane + ' pers.</span>' : ''}${r.tichete ? ' <span class="muted">+tichete ' + fmt(r.tichete) + '</span>' : ''}${r.avantaje ? ' <span class="muted" title="Avantaje în natură impozabile — intră în CAS/CASS/impozit, nu se plătesc în bani">+avantaje ' + fmt(r.avantaje) + '</span>' : ''}${r.scutire ? ' <span class="muted">scutit (' + r.sector + ')</span>' : ''}${r.overPlafon ? ' <span style="color:var(--danger)">⚠ peste plafon scutire</span>' : ''}</td><td>${r.functie || ''}</td>
         <td class="num">${fmt(r.brut)}</td><td class="num">${fmt(r.cas)}</td><td class="num">${fmt(r.cass)}</td><td class="num">${r.deducere ? fmt(r.deducere) : ''}</td><td class="num">${fmt(r.impozit)}</td><td class="num">${fmt(r.net)}</td><td class="num">${r.avans ? fmt(r.avans) : ''}</td><td class="num">${r.retineri ? fmt(r.retineri) : ''}</td><td class="num">${fmt(r.restPlata)}</td><td class="num">${fmt(r.cam)}</td>
         <td><a class="linkbtn" href="/pdf/fluturas/${r.id}?period=${spPeriod()}" target="_blank">fluturaș</a> · <a class="linkbtn" href="/pdf/adeverinta/${r.id}?year=${($('#rsYear').value || new Date().getFullYear())}" target="_blank">adeverință</a> · <button class="linkbtn aedit" data-id="${r.id}">editează</button> · <button class="linkbtn adel" data-id="${r.id}">șterge</button></td></tr>`).join('')}
       <tr class="bold"><td colspan="2">TOTAL (${sp.rows.length} ang.)</td><td class="num">${fmt(t.brut)}</td><td class="num">${fmt(t.cas)}</td><td class="num">${fmt(t.cass)}</td><td class="num">${fmt(t.deducere)}</td><td class="num">${fmt(t.impozit)}</td><td class="num">${fmt(t.net)}</td><td class="num">${fmt(t.avans)}</td><td class="num">${fmt(t.retineri)}</td><td class="num">${fmt(t.restPlata)}</td><td class="num">${fmt(t.cam)}</td><td></td></tr></tbody></table>`
@@ -3294,7 +3326,7 @@ async function loadSalarizare() {
     f.id.value = r.id; f.nume.value = r.nume; f.cnp.value = r.cnp; f.functie.value = r.functie;
     f.salariuBrut.value = round2(r.brut - r.spor); f.spor.value = r.spor; f.neimpozabil.value = r.neimpozabil; f.avans.value = r.avans; f.retineri.value = r.retineri;
     f.persoane.value = r.persoane != null ? r.persoane : ''; f.copii.value = r.copii || 0; f.sub26.checked = !!r.sub26;
-    f.tichete.value = r.tichete || 0; f.sector.value = r.sector || 'normal';
+    f.tichete.value = r.tichete || 0; f.avantaje.value = r.avantaje || 0; f.sector.value = r.sector || 'normal';
   }));
 }
 onPeriodChange('sp', () => { $('#spPdf').href = '/pdf/stat-plata?period=' + spPeriod(); $('#spD112').href = '/xml/d112?period=' + spPeriod(); loadSalarizare(); });
@@ -3312,8 +3344,8 @@ $('#rsYear').addEventListener('change', renderRegistruSalarii);
 $('#angajatForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
-  const body = { id: f.id.value || undefined, nume: f.nume.value, cnp: f.cnp.value, functie: f.functie.value, salariuBrut: f.salariuBrut.value, spor: f.spor.value, persoane: f.persoane.value, copii: f.copii.value, sub26: f.sub26.checked, neimpozabil: f.neimpozabil.value, tichete: f.tichete.value, sector: f.sector.value, avans: f.avans.value, retineri: f.retineri.value };
-  try { await api('/api/angajati', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Angajat salvat'); f.reset(); f.id.value = ''; f.spor.value = '0'; f.copii.value = '0'; f.sub26.checked = false; f.neimpozabil.value = '0'; f.avans.value = '0'; f.retineri.value = '0'; loadSalarizare(); }
+  const body = { id: f.id.value || undefined, nume: f.nume.value, cnp: f.cnp.value, functie: f.functie.value, salariuBrut: f.salariuBrut.value, spor: f.spor.value, persoane: f.persoane.value, copii: f.copii.value, sub26: f.sub26.checked, neimpozabil: f.neimpozabil.value, tichete: f.tichete.value, avantaje: f.avantaje.value, sector: f.sector.value, avans: f.avans.value, retineri: f.retineri.value };
+  try { await api('/api/angajati', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Angajat salvat'); f.reset(); f.id.value = ''; f.spor.value = '0'; f.copii.value = '0'; f.sub26.checked = false; f.neimpozabil.value = '0'; f.avans.value = '0'; f.retineri.value = '0'; f.avantaje.value = '0'; loadSalarizare(); }
   catch (err) { toast(err.message, true); }
 });
 $('#spPost').addEventListener('click', async () => {
@@ -3368,6 +3400,9 @@ async function loadStocks() {
   $('#stocPdf').href = '/pdf/stocks?asOf=' + asOf;
   $('#stocCsv').href = '/csv/stocks?asOf=' + asOf + (gf ? '&gestiune=' + gf : '');
   $('#movCsv').href = '/csv/stock-movements';
+  const perioadaStoc = /^\d{4}-\d{2}$/.test(asOf) ? asOf : String(asOf).slice(0, 7);
+  $('#aprovPdf') && ($('#aprovPdf').href = '/pdf/aprovizionari?period=' + perioadaStoc);
+  $('#consumPdf') && ($('#consumPdf').href = '/pdf/consumuri?period=' + perioadaStoc);
   const [products, gestiuni, stock, movs] = await Promise.all([
     api('/api/products'), api('/api/gestiuni'), api('/api/stocks?asOf=' + asOf + (gf ? '&gestiune=' + gf : '')), api('/api/stock-movements'),
   ]);
@@ -3439,12 +3474,12 @@ $('#stocGestFilter').addEventListener('change', loadStocks);
 async function loadDocSeries() {
   let s; try { s = await api('/api/doc-series'); } catch (e) { return; }
   const f = $('#docSeriesForm');
-  ['NIR', 'BC', 'AVIZ'].forEach((t) => { if (s[t]) { f[t + '_serie'].value = s[t].serie; f[t + '_next'].value = s[t].next; } });
+  ['NIR', 'BC', 'AVIZ', 'CH'].forEach((t) => { if (s[t]) { f[t + '_serie'].value = s[t].serie; f[t + '_next'].value = s[t].next; } });
 }
 $('#docSeriesForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
-  const body = { NIR: { serie: f.NIR_serie.value, next: f.NIR_next.value }, BC: { serie: f.BC_serie.value, next: f.BC_next.value }, AVIZ: { serie: f.AVIZ_serie.value, next: f.AVIZ_next.value } };
+  const body = { NIR: { serie: f.NIR_serie.value, next: f.NIR_next.value }, BC: { serie: f.BC_serie.value, next: f.BC_next.value }, AVIZ: { serie: f.AVIZ_serie.value, next: f.AVIZ_next.value }, CH: { serie: f.CH_serie.value, next: f.CH_next.value } };
   await api('/api/doc-series', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   toast('Serii salvate'); loadDocSeries();
 });

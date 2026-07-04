@@ -33,4 +33,45 @@ function periodLabel(p) {
   return `${LUNI[Number(m[2])]} ${m[1]}`;
 }
 
-module.exports = { round2, fmt, fmtDate, period, periodLabel };
+// ── Suma in litere (pentru chitante) — fara diacritice, ca restul PDF-urilor ──
+const NUM_U = ['', 'unu', 'doi', 'trei', 'patru', 'cinci', 'sase', 'sapte', 'opt', 'noua', 'zece', 'unsprezece',
+  'doisprezece', 'treisprezece', 'paisprezece', 'cincisprezece', 'saisprezece', 'saptesprezece', 'optsprezece', 'nouasprezece'];
+const NUM_Z = ['', '', 'douazeci', 'treizeci', 'patruzeci', 'cincizeci', 'saizeci', 'saptezeci', 'optzeci', 'nouazeci'];
+function sub100(n, fem) {
+  if (n < 20) {
+    if (fem && n === 1) return 'una';
+    if (fem && n === 2) return 'doua';
+    if (fem && n === 12) return 'douasprezece';
+    return NUM_U[n];
+  }
+  const z = Math.floor(n / 10); const u = n % 10;
+  return NUM_Z[z] + (u ? ' si ' + (fem && u === 1 ? 'una' : fem && u === 2 ? 'doua' : NUM_U[u]) : '');
+}
+function grupa(n, fem) { // 1..999
+  const s = Math.floor(n / 100); const r = n % 100;
+  const out = [];
+  if (s === 1) out.push('o suta'); else if (s === 2) out.push('doua sute'); else if (s) out.push(NUM_U[s] + ' sute');
+  if (r) out.push(sub100(r, fem));
+  return out.join(' ');
+}
+function cuScala(n, formaUnu, plural, fem) { // '<grupa> [de] <plural>', cu forma speciala pentru 1
+  if (n === 1) return formaUnu;
+  const r2 = n % 100;
+  const de = (r2 === 0 || r2 > 19) ? ' de ' : ' ';
+  return grupa(n, fem) + de + plural;
+}
+/** Suma in litere pentru chitante: 1234.56 -> "o mie doua sute treizeci si patru lei si cincizeci si sase bani". */
+function sumaInLitere(x) {
+  const abs = Math.abs(Number(x) || 0);
+  const lei = Math.floor(abs);
+  const bani = Math.round((abs - lei) * 100);
+  const mil = Math.floor(lei / 1e6); const mii = Math.floor((lei % 1e6) / 1000); const rest = lei % 1000;
+  const parts = [];
+  if (mil) parts.push(cuScala(mil, 'un milion', 'milioane', true)); // "doua milioane", nu "doi"
+  if (mii) parts.push(cuScala(mii, 'o mie', 'mii', true));
+  if (rest) parts.push(grupa(rest, false));
+  const cuv = parts.length ? parts.join(' ') : 'zero';
+  return cuv + ' lei' + (bani ? ' si ' + sub100(bani, false) + ' bani' : '');
+}
+
+module.exports = { round2, fmt, fmtDate, period, periodLabel, sumaInLitere };

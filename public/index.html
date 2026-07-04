@@ -932,6 +932,7 @@
             <label class="check"><input name="sub26" type="checkbox" /> Tânăr ≤ 26 ani (deducere +15% la salariul minim)</label>
             <label>Venit neimpozabil suplimentar <input name="neimpozabil" type="number" step="0.01" value="0" /></label>
             <label>Tichete de masă (valoare/lună) <input name="tichete" type="number" step="0.01" value="0" /></label>
+            <label>Avantaje în natură impozabile (auto, chirie… — intră în CAS/CASS/impozit, nu se plătesc în bani) <input name="avantaje" type="number" step="0.01" value="0" /></label>
             <label>Sector (informativ — facilitățile fiscale au fost eliminate din ian. 2025, OUG 156/2024)
               <select name="sector">
                 <option value="normal">Normal</option>
@@ -973,6 +974,8 @@
         <select id="stocLuna" class="period luna-req" aria-label="Luna"></select>
         <select id="stocAn" class="period an" aria-label="Anul"></select>
         <a id="stocPdf" class="btn" target="_blank">⬇ Situație stocuri PDF</a>
+        <a id="aprovPdf" class="btn" target="_blank" title="Recepțiile perioadei, cu recapitulație pe furnizori">⬇ Situație aprovizionări</a>
+        <a id="consumPdf" class="btn" target="_blank" title="Ieșirile din gestiune la CMP, cu totaluri pe contul de descărcare">⬇ Situație consumuri</a>
         <a id="stocCsv" class="btn" target="_blank">⬇ Stoc CSV</a>
         <a id="movCsv" class="btn" target="_blank">⬇ Mișcări CSV</a>
         <a id="saftStockHint" class="btn ghost" href="#" title="Stocurile alimentează secțiunile Products / MovementOfGoods / PhysicalStock din SAF-T">SAF-T ↗</a>
@@ -1127,6 +1130,8 @@
           <label>Bon consum — următorul nr <input name="BC_next" type="number" min="1" /></label>
           <label>Aviz — serie <input name="AVIZ_serie" /></label>
           <label>Aviz — următorul nr <input name="AVIZ_next" type="number" min="1" /></label>
+          <label>Chitanță — serie <input name="CH_serie" /></label>
+          <label>Chitanță — următorul nr <input name="CH_next" type="number" min="1" /></label>
           <button class="btn primary">Salvează seriile</button>
         </form>
       </div>
@@ -1516,6 +1521,15 @@ Cu stimă,
           <label>Capital social <input name="capitalSocial" /></label>
           <label>Culoare accent PDF <input name="accentColor" type="color" value="#0b6e4f" style="height:42px;padding:3px" /></label>
           <label class="full">Text subsol documente (condiții, mulțumiri, mențiuni) <input name="pdfFooter" maxlength="200" placeholder="Mulțumim! Plata în 15 zile. Penalități 0,1%/zi întârziere." /></label>
+          <div class="full">
+            <label>Logo firmă (PNG/JPEG — apare în antetul facturilor, avizelor, chitanțelor și rapoartelor PDF)</label>
+            <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+              <img id="logoPreview" alt="" style="display:none;max-height:40px;max-width:150px;border:1px solid var(--line);border-radius:6px;padding:2px;background:#fff" />
+              <input type="file" id="logoFile" accept=".png,.jpg,.jpeg" style="max-width:260px" />
+              <button type="button" id="logoUploadBtn" class="btn small">Încarcă logo</button>
+              <button type="button" id="logoDeleteBtn" class="btn small ghost" style="display:none">Șterge logo</button>
+            </div>
+          </div>
           <button class="btn primary">Salvează</button>
         </form>
       </div>

@@ -258,6 +258,38 @@ async function main() {
     eq('validare d100 raspunde pe tipul cerut', (await req('GET', '/api/validate/d100?period=2026-06', { cookie: c1 })).json.type, 'd100');
     eq('validare intrastat raspunde pe tipul cerut', (await req('GET', '/api/validate/intrastat?period=2026-06', { cookie: c1 })).json.type, 'intrastat');
 
+    // ── Chitanta tiparibila (serie CH) + logo firma ──
+    const incE = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'incasare_client', fields: { data: '2026-06-21', partener: 'Client Cash', suma: 350.75, cont: '5311' } } });
+    ok('incasare in numerar inregistrata (5311=4111)', incE.json && incE.json.ok);
+    const chit = await req('GET', '/pdf/chitanta/' + incE.json.entry.id, { cookie: c1 });
+    eq('chitanta PDF generata', chit.status, 200);
+    ok('seria CH exista in seriile de documente', !!(await req('GET', '/api/doc-series', { cookie: c1 })).json.CH);
+    const incB = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'incasare_client', fields: { data: '2026-06-21', partener: 'Client Banca', suma: 100, cont: '5121' } } });
+    eq('chitanta pe incasare prin banca -> 400', (await req('GET', '/pdf/chitanta/' + incB.json.entry.id, { cookie: c1 })).status, 400);
+    const png1x1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    const fdLogo = new FormData();
+    fdLogo.append('file', new Blob([png1x1], { type: 'image/png' }), 'logo.png');
+    ok('logo PNG incarcat', (await req('POST', '/api/company/logo', { cookie: c1, body: fdLogo })).json.ok === true);
+    eq('logo servit', (await req('GET', '/api/company/logo', { cookie: c1 })).status, 200);
+    const fdLogoBad = new FormData();
+    fdLogoBad.append('file', new Blob(['nu-e-imagine'], { type: 'text/plain' }), 'logo.png');
+    eq('fisier care nu e PNG/JPEG -> 400', (await req('POST', '/api/company/logo', { cookie: c1, body: fdLogoBad })).status, 400);
+    ok('logo sters', (await req('DELETE', '/api/company/logo', { cookie: c1 })).json.ok === true);
+
+    // ── Rapoarte dedicate: fisa de cont, situatie aprovizionari, situatie consumuri ──
+    const fcH = await req('GET', '/api/fisa-cont?cont=4111&period=2026-06', { cookie: c1 });
+    ok('fisa de cont 4111: raspuns cu miscari', fcH.json && fcH.json.cont === '4111' && Array.isArray(fcH.json.rows));
+    eq('fisa de cont fara cont -> 400', (await req('GET', '/api/fisa-cont', { cookie: c1 })).status, 400);
+    ok('situatie aprovizionari: forma corecta', Array.isArray((await req('GET', '/api/aprovizionari?period=2026-06', { cookie: c1 })).json.rows));
+    ok('situatie consumuri: forma corecta', Array.isArray((await req('GET', '/api/consumuri?period=2026-06', { cookie: c1 })).json.rows));
+
+    // ── Avantaje in natura la salarizare (cap-coada) ──
+    const angAv = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Avantaj Ion', salariuBrut: 5000, avantaje: 1000 } });
+    const spAvH = (await req('GET', '/api/stat-plata?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.nume === 'Avantaj Ion');
+    ok('stat: CAS 25% pe brut+avantaje (1500) si avantajele pe rand', spAvH && spAvH.cas === 1500 && spAvH.avantaje === 1000);
+    ok('D112: baza_cas include avantajele (6000)', /baza_cas="6000\.00"/.test((await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).text));
+    ok('angajat de test sters', (await req('DELETE', '/api/angajati/' + angAv.json.angajat.id, { cookie: c1 })).json.ok === true);
+
     // ── Solduri initiale: echilibrul debit=credit e impus la salvare ──
     eq('solduri initiale dezechilibrate -> 400', (await req('POST', '/api/opening', { cookie: c1, body: { openingBalances: { '5121': { d: 1000, c: 0 }, '1012': { d: 0, c: 800 } } } })).status, 400);
     ok('solduri initiale echilibrate -> ok', (await req('POST', '/api/opening', { cookie: c1, body: { openingBalances: { '5121': { d: 1000, c: 0 }, '1012': { d: 0, c: 1000 } } } })).json.ok === true);
@@ -284,6 +316,15 @@ async function main() {
     const users = await req('GET', '/api/users', { cookie: la.cookie });
     ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 3 && users.json.every((u) => u.tip));
     eq('non-admin la ruta de admin -> 403', (await req('GET', '/api/users', { cookie: c1 })).status, 403);
+
+    // ── Drepturi granulare: doar-citire + fara salarii ──
+    ok('admin seteaza drepturi restrictive pe user1', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: true, faraSalarii: true } } })).json.ok === true);
+    eq('readonly: scrierea respinsa (403)', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO77', den: 'Blocat SRL' } })).status, 403);
+    eq('readonly: citirea ramane permisa', (await req('GET', '/api/entries', { cookie: c1 })).status, 200);
+    eq('faraSalarii: si citirea salarizarii e respinsa (403)', (await req('GET', '/api/angajati', { cookie: c1 })).status, 403);
+    eq('faraSalarii: D112 XML respins (403)', (await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).status, 403);
+    ok('drepturile pot fi ridicate inapoi', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: false, faraSalarii: false } } })).json.ok === true);
+    eq('dupa ridicare: scrierea functioneaza din nou', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO77', den: 'Deblocat SRL' } })).status, 200);
   } finally {
     clearTimeout(guard);
     killAll();

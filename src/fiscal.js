@@ -101,15 +101,19 @@ function payroll(brut, deducere, opts) {
   const b = round2(brut) || 0;
   const ded = round2(deducere) || 0;
   const tichete = round2(o.tichete) || 0;
+  // Avantaje in natura IMPOZABILE (auto in folosinta personala, chirie platita de firma, prime
+  // in natura): intra in baza CAS + CASS + impozit + CAM, dar NU se platesc in bani — netul cash
+  // scade doar cu contributiile/impozitul aferente avantajului.
+  const avantaje = round2(o.avantaje) || 0;
   const sector = o.sector || 'normal';
-  const cas = round2((b * FISCAL.cas) / 100);
+  const cas = round2(((b + avantaje) * FISCAL.cas) / 100);
   // tichetele de masa suporta CASS (din 2024) si impozit, dar NU CAS
-  const cass = round2(((b + tichete) * FISCAL.cass) / 100);
-  const baza = Math.max(0, round2(b + tichete - cas - cass - ded));
+  const cass = round2(((b + tichete + avantaje) * FISCAL.cass) / 100);
+  const baza = Math.max(0, round2(b + tichete + avantaje - cas - cass - ded));
   const impozit = round2((baza * FISCAL.impozitVenit) / 100);
-  const cam = round2((b * FISCAL.cam) / 100);
-  const net = round2(b - cas - cass - impozit); // tichetele se acorda ca valori, nu in numerar
-  return { brut: b, tichete, cas, cass, baza, impozit, cam, net, costTotal: round2(b + cam + tichete), sector, scutImpozit: false, scutCass: false, overPlafon: false };
+  const cam = round2(((b + avantaje) * FISCAL.cam) / 100);
+  const net = round2(b - cas - cass - impozit); // tichetele si avantajele se acorda ca valori, nu in numerar
+  return { brut: b, tichete, avantaje, cas, cass, baza, impozit, cam, net, costTotal: round2(b + cam + tichete), sector, scutImpozit: false, scutCass: false, overPlafon: false };
 }
 
 module.exports = { FISCAL, DEFAULTS, applyConfig, payroll, deducerePersonala, salariuMinimLa, neimpozabilLa };

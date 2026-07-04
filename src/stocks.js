@@ -128,6 +128,46 @@ function movementsList(db, period) {
   });
 }
 
+/** Situatia aprovizionarilor: receptiile perioadei (fara stocul initial preluat), cu total pe furnizor. */
+function situatieAprovizionari(db, period) {
+  const byId = new Map((db.products || []).map((p) => [p.id, p]));
+  const gById = new Map((db.gestiuni || []).map((g) => [g.id, g]));
+  const rows = sortMov((db.stockMovements || []).filter((m) => m.tip === 'receptie' && !m.initial && inPeriod(m, period)))
+    .map((m) => {
+      const p = byId.get(m.productId) || {};
+      return {
+        data: m.data, furnizor: m.furnizor || '(fara furnizor)', document: m.document || '',
+        cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc',
+        gestiune: (gById.get(m.gestiuneId) || {}).cod || '', cantitate: m.cantitate, pretUnitar: m.pretUnitar,
+        valoare: round2((Number(m.cantitate) || 0) * (Number(m.pretUnitar) || 0)),
+      };
+    });
+  const perFurnizor = {};
+  for (const r of rows) perFurnizor[r.furnizor] = round2((perFurnizor[r.furnizor] || 0) + r.valoare);
+  return { period, rows, perFurnizor, total: round2(rows.reduce((s, r) => s + r.valoare, 0)) };
+}
+
+/** Situatia consumurilor: iesirile perioadei la CMP, cu sursa (consum manual / vanzare / inventar)
+ *  si totaluri pe contul de descarcare (601/602/603/607/608...). */
+function situatieConsumuri(db, period) {
+  const byId = new Map((db.products || []).map((p) => [p.id, p]));
+  const gById = new Map((db.gestiuni || []).map((g) => [g.id, g]));
+  const movs = sortMov((db.stockMovements || []).filter((m) => m.tip === 'iesire' && inPeriod(m, period)));
+  const rows = movs.map((m) => {
+    const p = byId.get(m.productId) || {};
+    return {
+      data: m.data, document: m.document || '', cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc',
+      gestiune: (gById.get(m.gestiuneId) || {}).cod || '', cantitate: m.cantitate,
+      cont: cogsAccount(p.cont || '371'),
+      sursa: m.auto ? 'vanzare' : (/inventar/i.test(m.document || '') ? 'inventar' : 'consum'),
+      valoare: round2(movementValue(p, db.stockMovements || [], m.id)),
+    };
+  });
+  const perCont = {};
+  for (const r of rows) perCont[r.cont] = round2((perCont[r.cont] || 0) + r.valoare);
+  return { period, rows, perCont, total: round2(rows.reduce((s, r) => s + r.valoare, 0)) };
+}
+
 /** Lista de inventariere pentru o gestiune: stocul scriptic pe fiecare produs la o data. */
 function inventoryList(db, gestiuneId, asOf) {
   return (db.products || []).map((p) => {
@@ -186,4 +226,4 @@ function saleCogs(products, baseMovements, stocLines, opts) {
   return { newMovements, cogsLines, total, warns };
 }
 
-module.exports = { productLedger, currentStock, movementsList, sortMov, cogsAccount, movementValue, simulate, inventoryList, saleCogs };
+module.exports = { productLedger, currentStock, movementsList, sortMov, cogsAccount, movementValue, simulate, inventoryList, saleCogs, situatieAprovizionari, situatieConsumuri };

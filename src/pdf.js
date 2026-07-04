@@ -1,7 +1,21 @@
 'use strict';
 
 const PDFDocument = require('pdfkit');
-const { fmt, fmtDate, periodLabel, round2 } = require('./util');
+const fs = require('fs');
+const path = require('path');
+const { fmt, fmtDate, periodLabel, round2, sumaInLitere } = require('./util');
+
+// Logo-ul firmei (optional): incarcat in Setari -> Date firma, stocat in uploads/.
+// Rezolvarea cai se face aici ca sa nu depindem de server in restul functiilor.
+function logoPath(company) {
+  if (!company || !company.logoFile) return null;
+  try {
+    const safe = String(company.logoFile).replace(/[^a-zA-Z0-9._-]/g, '');
+    if (!/\.(png|jpe?g)$/i.test(safe)) return null; // PDFKit accepta doar PNG/JPEG
+    const p = path.join(require('./db').UPLOAD_DIR, safe);
+    return fs.existsSync(p) ? p : null;
+  } catch (e) { return null; }
+}
 
 /** Inlocuieste diacriticele si caracterele neacceptate de fonturile standard. */
 function clean(s) {
@@ -46,7 +60,11 @@ function header(doc, company, title, subtitle) {
   doc.moveDown(0.2);
   const right = doc.page.width - doc.page.margins.right;
   doc.fillColor(C.muted).font('Helvetica').fontSize(9);
-  const cy = 40;
+  let cy = 40;
+  const lp = logoPath(company);
+  if (lp) {
+    try { doc.image(lp, right - 130, 34, { fit: [130, 38] }); cy = 78; } catch (e) { /* logo corupt -> fara logo */ }
+  }
   doc.text(clean(company.nume || ''), left, cy, { width: right - left, align: 'right' });
   const meta = [company.cui ? 'CUI ' + company.cui : '', company.regCom || ''].filter(Boolean).join('  •  ');
   if (meta) doc.text(clean(meta), left, doc.y, { width: right - left, align: 'right' });
@@ -554,6 +572,93 @@ function cashBookPdf(res, company, cb) {
   finish(doc, res, 'jurnal-' + cb.cont + '.pdf');
 }
 
+/** Fisa de cont: miscarile unui cont cu contul corespondent si soldul curent. */
+function fisaContPdf(res, company, fc) {
+  const doc = newDoc(true);
+  header(doc, company, 'Fisa de cont ' + fc.cont, (fc.nume || '') + (fc.period ? '  •  ' + periodLabel(fc.period) : '  •  toate perioadele'));
+  doc.fillColor(C.muted).font('Helvetica').fontSize(9).text('Sold initial: ' + fmt(fc.siInitial) + ' lei');
+  doc.moveDown(0.3);
+  const rows = fc.rows.map((r) => ({
+    data: fmtDate(r.data), document: r.document, explicatie: (r.partener ? r.partener + ' — ' : '') + (r.explicatie || ''),
+    corespondent: r.corespondent, d: r.d ? fmt(r.d) : '', c: r.c ? fmt(r.c) : '', sold: fmt(r.sold),
+  }));
+  rows.push({ data: '', document: '', explicatie: 'Rulaje perioada / Sold final', corespondent: '', d: fmt(fc.rd), c: fmt(fc.rc), sold: fmt(fc.sfFinal), _bold: true, _fill: C.zebra });
+  table(doc, [
+    { label: 'Data', key: 'data', width: 55 },
+    { label: 'Document', key: 'document', width: 75 },
+    { label: 'Explicatie', key: 'explicatie', width: 250, wrap: true },
+    { label: 'Cont coresp.', key: 'corespondent', width: 60 },
+    { label: 'Debit', key: 'd', width: 75, align: 'right' },
+    { label: 'Credit', key: 'c', width: 75, align: 'right' },
+    { label: 'Sold', key: 'sold', width: 80, align: 'right' },
+  ], rows);
+  finish(doc, res, 'fisa-cont-' + fc.cont + '.pdf');
+}
+
+/** Situatia aprovizionarilor: receptiile perioadei, cu recapitulatie pe furnizor. */
+function aprovizionariPdf(res, company, s) {
+  const doc = newDoc(true);
+  header(doc, company, 'Situatia aprovizionarilor', s.period ? periodLabel(s.period) : 'toate perioadele');
+  const rows = s.rows.map((r) => ({
+    data: fmtDate(r.data), furnizor: r.furnizor, document: r.document, produs: r.cod + ' ' + r.denumire,
+    gest: r.gestiune, cant: fmt(r.cantitate) + ' ' + r.um, pret: fmt(r.pretUnitar), val: fmt(r.valoare),
+  }));
+  rows.push({ data: '', furnizor: '', document: '', produs: 'TOTAL APROVIZIONARI', gest: '', cant: '', pret: '', val: fmt(s.total), _bold: true, _fill: C.zebra });
+  table(doc, [
+    { label: 'Data', key: 'data', width: 55 },
+    { label: 'Furnizor', key: 'furnizor', width: 110, wrap: true },
+    { label: 'Document', key: 'document', width: 80 },
+    { label: 'Produs', key: 'produs', width: 170, wrap: true },
+    { label: 'Gestiune', key: 'gest', width: 55 },
+    { label: 'Cantitate', key: 'cant', width: 70, align: 'right' },
+    { label: 'Pret unitar', key: 'pret', width: 65, align: 'right' },
+    { label: 'Valoare', key: 'val', width: 75, align: 'right' },
+  ], rows);
+  const furn = Object.keys(s.perFurnizor).sort();
+  if (furn.length > 1) {
+    doc.moveDown(0.6);
+    doc.fillColor(C.head).font('Helvetica-Bold').fontSize(10).text('Recapitulatie pe furnizori', doc.page.margins.left, doc.y);
+    doc.moveDown(0.2);
+    table(doc, [
+      { label: 'Furnizor', key: 'f', width: 300 },
+      { label: 'Valoare', key: 'v', width: 100, align: 'right' },
+    ], furn.map((f) => ({ f: clean(f), v: fmt(s.perFurnizor[f]) })));
+  }
+  finish(doc, res, 'situatie-aprovizionari.pdf');
+}
+
+/** Situatia consumurilor: iesirile din gestiune la CMP, cu totaluri pe contul de descarcare. */
+function consumuriPdf(res, company, s) {
+  const doc = newDoc(true);
+  header(doc, company, 'Situatia consumurilor si iesirilor din gestiune', s.period ? periodLabel(s.period) : 'toate perioadele');
+  const rows = s.rows.map((r) => ({
+    data: fmtDate(r.data), document: r.document, produs: r.cod + ' ' + r.denumire, gest: r.gestiune,
+    cant: fmt(r.cantitate) + ' ' + r.um, cont: r.cont, sursa: r.sursa, val: fmt(r.valoare),
+  }));
+  rows.push({ data: '', document: '', produs: 'TOTAL IESIRI (la CMP)', gest: '', cant: '', cont: '', sursa: '', val: fmt(s.total), _bold: true, _fill: C.zebra });
+  table(doc, [
+    { label: 'Data', key: 'data', width: 55 },
+    { label: 'Document', key: 'document', width: 90 },
+    { label: 'Produs', key: 'produs', width: 180, wrap: true },
+    { label: 'Gestiune', key: 'gest', width: 55 },
+    { label: 'Cantitate', key: 'cant', width: 70, align: 'right' },
+    { label: 'Cont desc.', key: 'cont', width: 55 },
+    { label: 'Sursa', key: 'sursa', width: 55 },
+    { label: 'Valoare', key: 'val', width: 75, align: 'right' },
+  ], rows);
+  const conturi = Object.keys(s.perCont).sort();
+  if (conturi.length) {
+    doc.moveDown(0.6);
+    doc.fillColor(C.head).font('Helvetica-Bold').fontSize(10).text('Recapitulatie pe conturi de descarcare', doc.page.margins.left, doc.y);
+    doc.moveDown(0.2);
+    table(doc, [
+      { label: 'Cont', key: 'c', width: 80 },
+      { label: 'Valoare', key: 'v', width: 100, align: 'right' },
+    ], conturi.map((c) => ({ c, v: fmt(s.perCont[c]) })));
+  }
+  finish(doc, res, 'situatie-consumuri.pdf');
+}
+
 function notesBody(doc, n) {
   for (const s of n.sections) {
     if (doc.y > doc.page.height - 130) doc.addPage();
@@ -634,6 +739,34 @@ function facturaPdf(res, company, entry, partners) {
   rt('TVA', tva);
   rt('TOTAL DE PLATA', total, true);
   finish(doc, res, 'factura-' + clean(String(entry.document || entry.id)) + '.pdf');
+}
+
+/** Chitanta pentru o incasare in numerar (531x), cu suma in litere si numar din seria CH. */
+function chitantaPdf(res, company, entry, suma, nr) {
+  const doc = newDoc(false);
+  header(doc, company, 'CHITANTA', 'Seria/Nr. ' + (nr || entry.chitantaNr || '-') + '    Data: ' + fmtDate(entry.data));
+  const left = doc.page.margins.left;
+  const right = doc.page.width - doc.page.margins.right;
+  const top = doc.y + 10;
+  let y = top + 18;
+  const row = (label, value, bold) => {
+    doc.fillColor(C.muted).font('Helvetica').fontSize(9).text(label, left + 18, y);
+    doc.fillColor(C.ink).font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(bold ? 13 : 11)
+      .text(clean(value), left + 18, doc.y + 2, { width: right - left - 36 });
+    y = doc.y + 12;
+  };
+  row('Am primit de la', entry.partener || '-');
+  if (entry.partenerCui) row('CUI / CNP', entry.partenerCui);
+  row('Suma de', fmt(suma) + ' lei — adica ' + sumaInLitere(suma), true);
+  row('Reprezentand', entry.explicatie || entry.tipNume || (entry.document ? 'c/v ' + entry.document : 'contravaloare produse / servicii'));
+  doc.fillColor(C.muted).font('Helvetica').fontSize(9).text('Casier,', right - 170, y + 6);
+  doc.text('(semnatura si stampila)', right - 170, y + 34);
+  const boxH = (y + 56) - top;
+  doc.roundedRect(left, top, right - left, boxH, 8).lineWidth(1.2).strokeColor(C.head).stroke();
+  doc.y = top + boxH + 14;
+  doc.fillColor(C.muted).font('Helvetica').fontSize(8)
+    .text('Chitanta insoteste inregistrarea contabila ' + clean(String(entry.id)) + ' (' + clean(entry.tipNume || '') + ') din registrul de casa.', left, doc.y);
+  finish(doc, res, 'chitanta-' + clean(String(nr || entry.chitantaNr || entry.id)) + '.pdf');
 }
 
 // Situatia fluxurilor de trezorerie (F30), metoda directa.
@@ -1149,6 +1282,7 @@ function fluturasPdf(res, company, r, period) {
   const rows = [];
   if (r.spor) { rows.push({ k: 'Salariu de baza', v: fmt(round2(r.brut - r.spor)) }); rows.push({ k: '+ Spor', v: fmt(r.spor) }); }
   rows.push({ k: 'Salariu brut', v: fmt(r.brut), _bold: true });
+  if (r.avantaje) rows.push({ k: '+ Avantaje in natura impozabile (nu se platesc in bani)', v: fmt(r.avantaje) });
   rows.push({ k: '- CAS 25% (contributie asigurari sociale)', v: fmt(r.cas) });
   rows.push({ k: '- CASS 10% (contributie asigurari sociale de sanatate)', v: fmt(r.cass) });
   if (r.neimpozabil) rows.push({ k: '  din care neimpozabil', v: fmt(r.neimpozabil) });
@@ -1240,5 +1374,5 @@ function leasingSchedulePdf(res, company, s) {
 module.exports = {
   clean, journalPdf, ledgerPdf, trialBalancePdf, plPdf, balanceSheetPdf, notePdf, vatPdf,
   d112Pdf, d300Pdf, d100Pdf, obligatiiPdf, registruInventarPdf, registruFiscalPdf, analyticPdf,
-  cashBookPdf, cashValutaPdf, notesPdf, cashFlowPdf, equityPdf, setStatementsPdf, facturaPdf, assetsRegisterPdf, assetFisaPdf, stocksPdf, stockLedgerPdf, inventoryListPdf, inventoryPvPdf, nirPdf, bonConsumPdf, avizPdf, docRegisterPdf, agingPdf, statePlataPdf, fluturasPdf, registruSalariiPdf, adeverintaPdf, leasingSchedulePdf,
+  cashBookPdf, cashValutaPdf, notesPdf, cashFlowPdf, equityPdf, setStatementsPdf, facturaPdf, chitantaPdf, fisaContPdf, aprovizionariPdf, consumuriPdf, assetsRegisterPdf, assetFisaPdf, stocksPdf, stockLedgerPdf, inventoryListPdf, inventoryPvPdf, nirPdf, bonConsumPdf, avizPdf, docRegisterPdf, agingPdf, statePlataPdf, fluturasPdf, registruSalariiPdf, adeverintaPdf, leasingSchedulePdf,
 };

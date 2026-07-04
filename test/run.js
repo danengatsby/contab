@@ -345,6 +345,17 @@ eq('CAM 2,25% angajator', pay.cam, 112.5);
 eq('salariu net', pay.net, 2925);
 eq('cost total angajator', pay.costTotal, 5112.5);
 
+section('Avantaje in natura impozabile (brut 5000 + avantaje 1000)');
+const pAv = fiscal.payroll(5000, 0, { avantaje: 1000 });
+eq('CAS pe brut+avantaje: 25% din 6000', pAv.cas, 1500);
+eq('CASS pe brut+avantaje: 10% din 6000', pAv.cass, 600);
+eq('impozit pe baza cu avantaje: 10% din 3900', pAv.impozit, 390);
+eq('CAM pe brut+avantaje: 2,25% din 6000', pAv.cam, 135);
+eq('net cash: avantajul nu se plateste in bani, dar suporta retinerile', pAv.net, 2510);
+const spAv = statePlata([{ id: 'a1', nume: 'Test Av', salariuBrut: 5000, avantaje: 1000 }]);
+eq('stat de plata: avantajele apar pe rand si in totaluri', spAv.rows[0].avantaje + '|' + spAv.totals.avantaje, '1000|1000');
+ok('D112: baza_cas include avantajele (6000)', xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spAv).includes('baza_cas="6000.00"'));
+
 section('Stat de plata (per angajat)');
 const sp = statePlata(v.angajati);
 eq('numar angajati', sp.rows.length, 1);
@@ -872,6 +883,53 @@ const d394pf = xml.d394Xml({ cui: 'RO1', nume: 'X' }, '2026-06', vjGol, null, ag
 ok('D394: sectiunea achizitii_pf_carnet cu totalul si CNP-ul', d394pf.includes('<achizitii_pf_carnet total="1000.00"') && d394pf.includes('cnp="1800101223344"'));
 ok('D394 bine-format cu sectiunea pf', wellFormed(d394pf));
 ok('D394 fara achizitii pe carnet: sectiunea lipseste', !xml.d394Xml({ cui: 'RO1', nume: 'X' }, '2026-06', vjGol).includes('achizitii_pf_carnet'));
+
+section('Suma in litere (chitante)');
+const sil = require('../src/util').sumaInLitere;
+eq('zero', sil(0), 'zero lei');
+eq('12.50', sil(12.5), 'doisprezece lei si cincizeci bani');
+eq('121', sil(121), 'o suta douazeci si unu lei');
+eq('1000', sil(1000), 'o mie lei');
+eq('2500', sil(2500), 'doua mii cinci sute lei');
+eq('12000 (feminin)', sil(12000), 'douasprezece mii lei');
+eq('21000 (de + feminin)', sil(21000), 'douazeci si una de mii lei');
+eq('100000', sil(100000), 'o suta de mii lei');
+eq('2000000', sil(2000000), 'doua milioane lei');
+eq('1234567.89', sil(1234567.89), 'un milion doua sute treizeci si patru de mii cinci sute saizeci si sapte lei si optzeci si noua bani');
+
+section('Fisa de cont (miscari + corespondent + sold curent)');
+const fisaDb = { entries: [
+  { period: '2026-05', data: '2026-05-01', document: 'F0', explicatie: 'veche', partener: 'C', lines: [{ debit: '4111', credit: '707', suma: 250 }] },
+  { period: '2026-06', data: '2026-06-05', document: 'F1', explicatie: 'vanzare', partener: 'C', lines: [{ debit: '4111', credit: '707', suma: 1000 }] },
+  { period: '2026-06', data: '2026-06-10', document: 'OP1', explicatie: 'incasare', partener: 'C', lines: [{ debit: '5121', credit: '4111', suma: 400 }] },
+], openingBalances: { '4111': { d: 100, c: 0 } } };
+const fisa1 = acc.fisaCont(fisaDb, '4111', '2026-06');
+eq('sold initial = solduri deschidere + rulaj anterior', fisa1.siInitial, 350);
+eq('doua miscari in iunie', fisa1.rows.length, 2);
+eq('cont corespondent la vanzare', fisa1.rows[0].corespondent, '707');
+eq('sold final 350+1000-400', fisa1.sfFinal, 950);
+eq('rulaje perioada', fisa1.rd + '|' + fisa1.rc, '1000|400');
+
+section('Situatie aprovizionari si situatie consumuri');
+const stkDb = {
+  products: [{ id: 'p1', cod: 'M1', denumire: 'Marfa', um: 'buc', cont: '371' }, { id: 'p2', cod: 'MP', denumire: 'Faina', um: 'kg', cont: '301' }],
+  gestiuni: [{ id: 'g1', cod: 'DEP' }],
+  stockMovements: [
+    { id: 'sm0', data: '2026-06-01', tip: 'receptie', initial: true, productId: 'p2', gestiuneId: 'g1', cantitate: 100, pretUnitar: 2, document: 'Stoc initial (preluare)' },
+    { id: 'sm1', data: '2026-06-02', tip: 'receptie', productId: 'p1', gestiuneId: 'g1', cantitate: 10, pretUnitar: 5, furnizor: 'F SRL', document: 'NIR1' },
+    { id: 'sm2', data: '2026-06-10', tip: 'iesire', productId: 'p1', gestiuneId: 'g1', cantitate: 4, pretUnitar: 0, document: 'BC1' },
+    { id: 'sm3', data: '2026-06-15', tip: 'iesire', productId: 'p2', gestiuneId: 'g1', cantitate: 50, pretUnitar: 0, auto: true, document: 'F123' },
+  ],
+};
+const apr = stocks.situatieAprovizionari(stkDb, '2026-06');
+eq('aprovizionari: doar receptia reala (stocul initial preluat e exclus)', apr.rows.length, 1);
+eq('aprovizionari: total si recapitulatie pe furnizor', apr.total + '|' + apr.perFurnizor['F SRL'], '50|50');
+const cons = stocks.situatieConsumuri(stkDb, '2026-06');
+eq('consumuri: 2 iesiri in perioada', cons.rows.length, 2);
+eq('consumuri: M1 la CMP pe 607 (4 x 5)', cons.perCont['607'], 20);
+eq('consumuri: MP la CMP pe 601 (50 x 2)', cons.perCont['601'], 100);
+ok('consumuri: iesirea automata e marcata "vanzare"', cons.rows.some((r) => r.cod === 'MP' && r.sursa === 'vanzare'));
+ok('consumuri: bonul de consum manual e marcat "consum"', cons.rows.some((r) => r.cod === 'M1' && r.sursa === 'consum'));
 
 // DBF: construieste un DBF minimal si parseaza-l
 const dbfMod = require('../src/dbf');
