@@ -168,9 +168,17 @@ eq('clienti restanti (BETA achitat)', ag.clienti.length, 0);
 
 section('SAF-T (D406, 2026)');
 const xmlSaft = saft.saftXml(v, 2026);
-['<GeneralLedgerAccounts>', '<Customers>', '<Suppliers>', '<TaxTable>', '<Products>', '<Assets>', '<PhysicalStock>', '<GeneralLedgerEntries>', '<SalesInvoices>', '<PurchaseInvoices>', '<Payments>', '<MovementOfGoods>']
+['<GeneralLedgerAccounts>', '<Customers>', '<Suppliers>', '<TaxTable>', '<UOMTable>', '<MovementTypeTable>', '<Products>', '<Assets>', '<PhysicalStock>', '<GeneralLedgerEntries>', '<SalesInvoices>', '<PurchaseInvoices>', '<Payments>', '<MovementOfGoods>']
   .forEach((tag) => ok('contine ' + tag, xmlSaft.includes(tag)));
 ok('SAF-T bine-format', wellFormed(xmlSaft));
+ok('SAF-T: AuditFileVersion 2.4.8 (schema curenta)', xmlSaft.includes('<AuditFileVersion>2.4.8</AuditFileVersion>'));
+const vOwn = Object.assign({}, v, { company: Object.assign({}, v.company, { asociatiText: 'Ion Pop; 1800101223344; 60\nMaria I; 2900101223344; 40%' }) });
+ok('SAF-T Owners: asociatii din Datele firmei, cu procente', (() => {
+  const x = saft.saftXml(vOwn, 2026);
+  return x.includes('<Owners>') && x.includes('<Name>Ion Pop</Name>') && x.includes('<SharesQuantity>40</SharesQuantity>');
+})());
+ok('SAF-T Owners la PFA fara lista: titularul cu 100%', saft.saftXml(Object.assign({}, v, { company: Object.assign({}, v.company, { tipEntitate: 'pfa' }) }), 2026).includes('<SharesQuantity>100</SharesQuantity>'));
+ok('SAF-T fara asociati la SRL: sectiunea Owners lipseste (optionala)', !xmlSaft.includes('<Owners>'));
 eq('SAF-T TotalDebit = TotalCredit', (xmlSaft.match(/<TotalDebit>([\d.]+)<\/TotalDebit>/) || [])[1], (xmlSaft.match(/<TotalCredit>([\d.]+)<\/TotalCredit>/) || [])[1]);
 
 section('e-Factura UBL (factura de vanzare)');

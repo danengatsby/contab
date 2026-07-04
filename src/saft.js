@@ -108,7 +108,7 @@ function header(company, year) {
   const now = new Date().toISOString().slice(0, 10);
   return [
     '  <Header>',
-    '    <AuditFileVersion>2.0</AuditFileVersion>',
+    '    <AuditFileVersion>2.4.8</AuditFileVersion>',
     '    <AuditFileCountry>RO</AuditFileCountry>',
     '    <AuditFileRegion>RO</AuditFileRegion>',
     `    <AuditFileDateCreated>${now}</AuditFileDateCreated>`,
@@ -299,6 +299,59 @@ function physicalStockXml(db, year) {
   return out.join('\n');
 }
 
+/** UOMTable — unitatile de masura folosite in nomenclatorul de produse (cerut de XSD D406). */
+function uomTable(db) {
+  const ums = [...new Set((db.products || []).map((p) => String(p.um || 'buc').trim()).filter(Boolean))].sort();
+  if (!ums.length) ums.push('buc');
+  const out = ['    <UOMTable>'];
+  for (const u of ums) {
+    out.push('      <UOMTableEntry>',
+      `        <UnitOfMeasure>${esc(u)}</UnitOfMeasure>`,
+      `        <Description>${esc(u)}</Description>`,
+      '      </UOMTableEntry>');
+  }
+  out.push('    </UOMTable>');
+  return out.join('\n');
+}
+
+/** MovementTypeTable — tipurile de miscari de stoc emise in MovementOfGoods (cerut de XSD D406). */
+function movementTypeTable() {
+  const TYPES = [
+    ['Receptie', 'Intrare in gestiune (receptie / NIR / plus de inventar)'],
+    ['Iesire', 'Iesire din gestiune (consum / vanzare / minus de inventar)'],
+    ['Transfer', 'Transfer intre gestiuni (miscare interna)'],
+  ];
+  const out = ['    <MovementTypeTable>'];
+  for (const [t, d] of TYPES) {
+    out.push('      <MovementTypeTableEntry>',
+      `        <MovementType>${t}</MovementType>`,
+      `        <Description>${d}</Description>`,
+      '      </MovementTypeTableEntry>');
+  }
+  out.push('    </MovementTypeTable>');
+  return out.join('\n');
+}
+
+/** Owners — asociatii/actionarii firmei (Setari -> Datele firmei, un rand pe asociat:
+ *  "Nume; CNP/CUI; procent"). Pentru PFA fara lista: titularul cu 100%. */
+function ownersXml(db) {
+  const c = db.company || {};
+  const rows = String(c.asociatiText || '').trim()
+    ? String(c.asociatiText).trim().split(/\r?\n/).map((l) => l.split(';').map((s) => s.trim())).filter((a) => a[0])
+    : (c.tipEntitate === 'pfa' ? [[c.nume || 'Titular', String(c.cui || ''), '100']] : []);
+  if (!rows.length) return '';
+  const out = ['    <Owners>'];
+  rows.forEach((a, i) => out.push('      <Owner>',
+    `        <OwnerID>${i + 1}</OwnerID>`,
+    `        <AccountID>456</AccountID>`,
+    `        <RegistrationNumber>${esc(a[1] || '')}</RegistrationNumber>`,
+    `        <Name>${esc(a[0])}</Name>`,
+    `        <SharesQuantity>${esc((a[2] || '').replace('%', ''))}</SharesQuantity>`,
+    '      </Owner>'));
+  out.push('    </Owners>');
+  return out.join('\n');
+}
+
 function masterFiles(db, year) {
   const roles = partnerRoles(db, year);
   return [
@@ -307,11 +360,14 @@ function masterFiles(db, year) {
     partyXml('Customer', 'CustomerID', '4111', roles.customers, db),
     partyXml('Supplier', 'SupplierID', '401', roles.suppliers, db),
     taxTable(),
+    uomTable(db),
+    movementTypeTable(),
     productsXml(db),
     assetsXml(db, year),
     physicalStockXml(db, year),
+    ownersXml(db),
     '  </MasterFiles>',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 function movementOfGoodsXml(db, year) {
