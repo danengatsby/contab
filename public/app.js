@@ -91,6 +91,17 @@ async function showPricing() {
 $('#showPricingLogin') && $('#showPricingLogin').addEventListener('click', showPricing);
 $('#showPricingReg') && $('#showPricingReg').addEventListener('click', showPricing);
 $('#pricingClose') && $('#pricingClose').addEventListener('click', () => $('#pricingOverlay').classList.add('hidden'));
+// Întrebări frecvente (public, pe pagina de autentificare) — acordeoane + căutare
+$('#showFaqLogin') && $('#showFaqLogin').addEventListener('click', () => $('#faqOverlay').classList.remove('hidden'));
+$('#faqClose') && $('#faqClose').addEventListener('click', () => $('#faqOverlay').classList.add('hidden'));
+$('#faqSearch') && $('#faqSearch').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase().trim();
+  $$('#faqList .faq-item').forEach((it) => {
+    const hit = !q || it.textContent.toLowerCase().includes(q);
+    it.classList.toggle('hidden', !hit);
+    if (q && hit) it.open = true; else if (!q) it.open = false;
+  });
+});
 
 $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) => {
   e.preventDefault();

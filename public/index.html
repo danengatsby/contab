@@ -25,6 +25,7 @@
       <div style="display:flex;gap:8px;margin-top:8px">
         <button id="showPricingLogin" type="button" class="btn" style="flex:1">💳 Prețuri</button>
         <a href="/prezentare.html" target="_blank" rel="noopener" class="btn" style="flex:1;text-align:center">📽️ Prezentare</a>
+        <button id="showFaqLogin" type="button" class="btn" style="flex:1">❓ Întrebări frecvente</button>
       </div>
       <p style="margin-top:10px;text-align:center"><a id="forgotLink" class="link">Ai uitat parola?</a></p>
     </form>
@@ -63,6 +64,85 @@
       <p class="muted" style="text-align:center;margin-top:4px">Începe cu <b>30 zile gratuit</b>, fără card. Alegi planul după ce îți creezi contul.</p>
       <div id="pricingPlans" class="plan-grid" style="margin-top:16px"></div>
       <p style="margin-top:16px;text-align:center"><a id="pricingClose" class="link">← Înapoi</a></p>
+    </div>
+  </div>
+
+  <!-- Întrebări frecvente (public, pe pagina de autentificare) -->
+  <div id="faqOverlay" class="login-overlay hidden">
+    <div class="login-box" style="width:min(860px,94vw);max-height:92vh;overflow:auto">
+      <div class="login-logo" style="text-align:center">▦ Întrebări frecvente</div>
+      <p class="muted" style="text-align:center;margin-top:4px">Ghid de pornire pentru antreprenori — formă juridică, taxe, TVA, dividende și cum lucrezi în aplicație.</p>
+      <input id="faqSearch" placeholder="Caută în întrebări… (ex. dividende, TVA, PFA, CAEN)" autocomplete="off" style="width:100%;margin:12px 0 4px" />
+      <div id="faqList">
+        <details class="faq-item"><summary>Să aleg PFA sau SRL?</summary><div>
+          <p>Cea mai frecventă greșeală este alegerea formei juridice doar după nivelul taxelor, ignorând riscurile. La <b>PFA</b> răspunzi cu patrimoniul personal — casa sau mașina familiei pot fi executate pentru datoriile activității. La <b>SRL</b> răspunderea este limitată la capitalul social, dar banii firmei nu sunt banii tăi de buzunar: îi scoți doar pe căi legale (salariu, dividende, decontarea cheltuielilor făcute pentru firmă).</p>
+          <p>Regula practică: pune pe hârtie cifrele (venituri estimate, cheltuieli deductibile, taxele pe fiecare formă) și cere opinia unui contabil autorizat <i>înainte</i> de înființare — corecția ulterioară costă mult mai mult decât analiza inițială.</p>
+        </div></details>
+        <details class="faq-item"><summary>Ce coduri CAEN aleg — doar ce fac azi sau și ce aș putea face peste un an?</summary><div>
+          <p>Include de la început și activitățile pe care estimezi că le vei desfășura în viitorul apropiat: autorizarea lor odată cu înființarea nu costă nimic în plus, în timp ce modificarea ulterioară a actului constitutiv înseamnă timp și taxe la Registrul Comerțului. Un cod lipsă devine o barieră exact în momentul în care vrei să semnezi un contract sau să accesezi o finanțare.</p>
+        </div></details>
+        <details class="faq-item"><summary>Am deja o firmă cu istoric — o pot prelua în aplicație?</summary><div>
+          <p>Da — aplicația este construită pentru asta. Stabilești cu contabilul anterior ultima lună de care se ocupă, apoi preiei istoricul: <b>soldurile inițiale</b> (poți importa balanța din vechiul program — XLS, XLSX, DBF sau CSV), soldurile pe fiecare client și furnizor, <b>stocurile cantitativ-valoric</b> și mijloacele fixe parțial amortizate.</p>
+          <p>Aplicația verifică echilibrul balanței de deschidere (debit = credit) și îți arată orice neconcordanță între stocul preluat și soldurile contabile — ca să o corectezi înainte să devină o problemă reală.</p>
+        </div></details>
+        <details class="faq-item"><summary>Am obligații fiscale dacă nu am activitate?</summary><div>
+          <p>Da. Firma are obligații declarative din momentul înființării, chiar și fără nicio factură emisă — multe declarații se depun „pe zero". Nedepunerea aduce amenzi și, în timp, declararea inactivității fiscale. Aplicația îți arată calendarul declarațiilor așteptate pentru profilul firmei tale și te notifică înainte de termene.</p>
+        </div></details>
+        <details class="faq-item"><summary>Am nevoie de semnătură electronică?</summary><div>
+          <p>Pentru depunerea declarațiilor la ANAF ai nevoie de acces la Spațiul Privat Virtual (SPV) — fie cu certificat digital propriu, fie printr-un împuternicit (de regulă contabilul). Aplicația îți pregătește declarațiile în format XML gata de validat și depus, ține registrul depunerilor cu recipise, iar facturile electronice le trimite în SPV direct din aplicație.</p>
+        </div></details>
+        <details class="faq-item"><summary>De ce contabilitate online, în timp real?</summary><div>
+          <p>Cea mai mare problemă a contabilității clasice este că afli cum stai abia luna viitoare. Cu evidența în timp real ai: <b>vizibilitate</b> — cash-flow, profit și obligații la zi, direct pe dashboard; <b>control</b> — decizii pe cifre, nu pe estimări; <b>arhivă digitală completă</b> — fiecare înregistrare are documentul-sursă atașat, iar la un control ANAF ai totul organizat și disponibil imediat, fără stresul căutării prin dosare.</p>
+        </div></details>
+        <details class="faq-item"><summary>Cât de des pot să-mi scot banii din firmă (dividende)?</summary><div>
+          <p>Într-un SRL poți distribui dividende <b>trimestrial</b> (pe baza situațiilor financiare interimare și a hotărârii asociaților) sau <b>anual</b>, după aprobarea bilanțului. Retragerea banilor fără documentele potrivite este riscantă: Fiscul poate reclasifica sumele drept venituri salariale sau împrumuturi mascate, cu impozite și penalități.</p>
+          <p>Aplicația calculează impozitul pe dividende la cota în vigoare și îl include în recapitulațiile fiscale (D205, obligații de plată).</p>
+        </div></details>
+        <details class="faq-item"><summary>Aplicația are sistem de gestiune?</summary><div>
+          <p>Da, inclus: stocuri cantitativ-valoric pe gestiuni, cost mediu ponderat, NIR-uri, bonuri de consum, avize, transferuri între gestiuni, inventariere cu plusuri/minusuri și imputare, producție cu rețete — plus preluarea stocului inițial la migrarea de la alt program.</p>
+        </div></details>
+        <details class="faq-item"><summary>Este inclusă și facturarea?</summary><div>
+          <p>Da. Emiți facturi cu serii și numerotare automată, în trei modele de PDF (clasic, compact A5, detaliat), cu logo-ul firmei. e-Factura XML se generează automat și se trimite în SPV direct din aplicație, iar datele partenerilor se verifică după CUI. Facturile recurente (abonamente, chirii) se generează singure la scadență.</p>
+        </div></details>
+        <details class="faq-item"><summary>Cum văd că declarațiile au fost depuse?</summary><div>
+          <p>În registrul depunerilor: fiecare declarație a fiecărei luni are stare (nedepusă → generată → depusă), termen, recipisă și data depunerii. Restanțele apar cu roșu în notificări și, opțional, primești zilnic pe email termenele care se apropie.</p>
+        </div></details>
+        <details class="faq-item"><summary>Cum aflu ce taxe am de plată?</summary><div>
+          <p>Secțiunea de obligații îți arată, pe fiecare lună, ce datorezi la buget (TVA, impozit, contribuții pe salarii) — împreună cu recapitulațiile din care provin cifrele, ca să poți verifica oricând proveniența fiecărei sume. Înainte de termenele limită primești notificări.</p>
+        </div></details>
+        <details class="faq-item"><summary>Cum angajez pe cineva?</summary><div>
+          <p>Contractul de muncă se înregistrează în REGES <i>înainte</i> de prima zi de lucru — pasul acesta se face la instituții. În aplicație ții apoi tot restul: angajații cu salarii, sporuri, tichete și avantaje în natură, statul de plată cu CAS/CASS/impozit/CAM calculate automat, fluturași, adeverințe de venit și declarația D112.</p>
+        </div></details>
+        <details class="faq-item"><summary>Ce cheltuieli pot deduce pe firmă?</summary><div>
+          <p>Tot ce este legat de activitatea firmei, cu factură pe CUI și dovadă de plată: chiria și utilitățile biroului, echipamentele de lucru (laptop, telefon), serviciile (contabilitate, marketing, software), salariile și trainingurile, transportul și cazarea în deplasările de business.</p>
+          <p>Unele cheltuieli sunt parțial deductibile — de exemplu <b>50% pentru autovehiculul folosit și personal</b> (aplicația are opțiunea „auto 50%" direct pe factură). Cheltuielile personale și amenzile nu sunt deductibile.</p>
+        </div></details>
+        <details class="faq-item"><summary>Declarația Unică pentru dividende o depun eu?</summary><div>
+          <p>Declarația Unică pentru veniturile din dividende ale asociatului persoană fizică se depune personal, din SPV — durează câteva minute. Aplicația îți dă cifrele necesare: dividendele distribuite și impozitul reținut, în recapitulația D205.</p>
+        </div></details>
+        <details class="faq-item"><summary>Declarațiile se depun lunar sau trimestrial?</summary><div>
+          <p>Depinde de vectorul fiscal al firmei: perioada de TVA, existența angajaților, regimul de impozitare (micro sau profit). Aplicația derivă automat calendarul din profilul firmei — care declarații sunt așteptate în fiecare lună și cu ce termene — și marchează restanțele.</p>
+        </div></details>
+        <details class="faq-item"><summary>E mai bine să fiu plătitor de TVA sau neplătitor?</summary><div>
+          <p>Depinde de cine îți sunt clienții și ce achiziții faci. Regula practică: dacă vinzi mai ales către firme plătitoare de TVA și ai achiziții mari cu TVA (mărfuri, echipamente), înregistrarea ca plătitor îți permite să deduci taxa. Dacă vinzi către persoane fizice și ai cheltuieli mici, statutul de neplătitor îți ține prețurile finale mai mici. Peste plafonul legal de cifră de afaceri, înregistrarea devine oricum obligatorie.</p>
+        </div></details>
+        <details class="faq-item"><summary>Pot fi plătitor de TVA chiar de la înființare?</summary><div>
+          <p>Da, prin opțiune, pentru majoritatea activităților (cu excepții punctuale — de exemplu unele activități medicale sau de închiriere, care sunt scutite). Aleg această variantă de regulă firmele cu investiții mari la început sau cu tranzacții intracomunitare, pentru a-și deduce TVA-ul din prima zi.</p>
+        </div></details>
+        <details class="faq-item"><summary>Cât răspund cu patrimoniul personal (SRL vs. PFA)?</summary><div>
+          <p>La <b>SRL</b>, răspunderea este limitată la capitalul social — dar „limitată" nu înseamnă „inexistentă": dacă folosești bunurile firmei în interes personal și firma intră în insolvență, poți răspunde cu patrimoniul propriu; restituirea împrumuturilor către asociat este restricționată când activul net scade sub jumătate din capitalul social; iar vânzarea unei firme cu datorii la ANAF cere garanții.</p>
+          <p>La <b>PFA</b> nu există separare: răspunzi cu întregul patrimoniu personal, iar pentru taxele neplătite statul poate popri direct conturile persoanei fizice.</p>
+        </div></details>
+        <details class="faq-item"><summary>Banii firmei sunt banii mei?</summary><div>
+          <p>Nu. SRL-ul are personalitate juridică distinctă — banii lui îi încasezi doar ca salariu, dividende sau decont de cheltuieli făcute pentru firmă. Un test util: imaginează-ți lichidarea firmei. Ordinea legală de plată este: creditorii garantați (băncile), lichidatorul, salariații, statul, furnizorii și <b>abia la urmă asociații</b>. De aceea dividendele se ridică doar în condiții stricte — ca un eveniment neplăcut să nu îți afecteze patrimoniul propriu.</p>
+          <p>La PFA nu există separare: poți muta bani către persoana fizică oricând, dar și creditorii pot veni după bunurile tale personale.</p>
+        </div></details>
+        <details class="faq-item"><summary>Firma se închide singură dacă nu am activitate ani de zile?</summary><div>
+          <p>Nu. Statul nu „uită" de tine: dacă nu depui declarațiile și bilanțurile, firma poate fi declarată inactivă fiscal sau dizolvată din oficiu, dar datoriile și amenzile acumulate rămân. Închiderea corectă se face voluntar — lichidare și radiere la Registrul Comerțului — abia atunci scapi de orice obligații.</p>
+        </div></details>
+      </div>
+      <p class="muted" style="font-size:11.5px;margin-top:12px;text-align:center">Răspunsuri orientative, cu rol de educație antreprenorială — nu constituie consultanță fiscală sau juridică. Pentru situația ta concretă, consultă un contabil autorizat sau un avocat.</p>
+      <p style="margin-top:10px;text-align:center"><a id="faqClose" class="link">← Înapoi la autentificare</a></p>
     </div>
   </div>
 
