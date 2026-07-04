@@ -466,8 +466,10 @@ function d100Pdf(res, company, d) {
       { k: 'Venituri totale (baza)', v: fmt(d.venit), _bold: true },
       { k: 'Cota impozit micro', v: d.cota + '%' },
       { k: 'IMPOZIT DE PLATA', v: fmt(d.impozit), _bold: true, _accent: true, _fill: C.zebra },
+      ...(d.venitAn != null ? [{ k: 'Venituri cumulate an (control plafon micro)', v: fmt(d.venitAn) + ' / ' + fmt(d.plafonMicroLei) }] : []),
     ],
-    note: 'Estimare informativa la cota de ' + d.cota + '%. Cota efectiva si baza depind de regimul firmei (micro vs profit).',
+    note: 'Estimare informativa la cota de ' + d.cota + '%. Cota efectiva si baza depind de regimul firmei (micro vs profit).'
+      + ((d.avertismente || []).length ? ' ATENTIE: ' + d.avertismente.join(' ') : ''),
   });
 }
 

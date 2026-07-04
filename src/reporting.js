@@ -178,7 +178,27 @@ function d100micro(db, period, cota) {
     if (clasa === 7) venit = round2(venit + (r[cod].c - r[cod].d));
   }
   const rate = cota || fiscal.FISCAL.impozitMicro || 1;
-  return { period, trimestru: m ? Math.ceil(m / 3) : 0, luni, venit, cota: rate, impozit: round2((venit * rate) / 100) };
+  // Semnal de eligibilitate micro (art. 47 Cod fiscal): plafonul de venituri (EUR, configurabil)
+  // si conditia de salariat. Doar AVERTIZEAZA — incadrarea finala ramane la contribuabil.
+  const rAn = acc.accumulate(acc.allLines((db.entries || []).filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
+  let venitAn = 0;
+  for (const cod of Object.keys(rAn)) {
+    const a = coa.getAccount(cod);
+    if ((a ? a.clasa : Number(String(cod)[0])) === 7) venitAn = round2(venitAn + (rAn[cod].c - rAn[cod].d));
+  }
+  const plafonLei = round2((fiscal.FISCAL.plafonMicroEur || 0) * (fiscal.FISCAL.cursPlafonMicro || 0));
+  const avertismente = [];
+  if (plafonLei > 0 && venitAn > plafonLei) {
+    avertismente.push('Veniturile anului (' + venitAn + ' lei) DEPASESC plafonul micro de ' + fiscal.FISCAL.plafonMicroEur
+      + ' EUR (~' + plafonLei + ' lei): firma iese din regimul micro si datoreaza impozit pe profit — verifica incadrarea inainte de a depune D100 pe micro.');
+  } else if (plafonLei > 0 && venitAn >= round2(plafonLei * 0.8)) {
+    avertismente.push('Veniturile anului (' + venitAn + ' lei) au atins ' + Math.round((venitAn / plafonLei) * 100)
+      + '% din plafonul micro (~' + plafonLei + ' lei) — urmareste pragul; la depasire treci obligatoriu la impozit pe profit.');
+  }
+  if (!((db.angajati || []).length)) {
+    avertismente.push('Firma nu are salariati inregistrati in aplicatie: conditia de salariat (norma intreaga) pentru regimul micro nu pare indeplinita — fara salariat se datoreaza impozit pe profit.');
+  }
+  return { period, trimestru: m ? Math.ceil(m / 3) : 0, luni, venit, cota: rate, impozit: round2((venit * rate) / 100), venitAn, plafonMicroLei: plafonLei, plafonMicroEur: fiscal.FISCAL.plafonMicroEur, avertismente };
 }
 
 /** Estimarea Declaratiei Unice pentru PFA (sistem real): venitul net anual + CAS/CASS/impozit. */

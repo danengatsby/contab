@@ -885,6 +885,14 @@ eq('D100: trimestrul detectat', d100q.trimestru, 2);
 eq('D100: impozit micro 1% = 150', d100q.impozit, 150);
 ok('D100 XML bine-format', wellFormed(xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q)));
 ok('D100 XML: obligatia cod 620 cu baza si impozitul', (() => { const x = xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q); return x.includes('cod="620"') && x.includes('baza="15000.00"') && x.includes('de_plata="150.00"'); })());
+// eligibilitate micro (plafon implicit 100.000 EUR x curs 5 = 500.000 lei + conditia de salariat)
+ok('D100: fara salariati -> avertisment de eligibilitate', d100q.avertismente.some((w) => /salariat/i.test(w)));
+const d100over = rep.d100micro({ entries: [{ id: 'o1', period: '2026-02', data: '2026-02-01', lines: [{ debit: '4111', credit: '704', suma: 600000 }] }], angajati: [{ id: 'a' }] }, '2026-03');
+ok('D100: peste plafonul micro -> avertisment de iesire din regim', d100over.avertismente.some((w) => /DEPASESC/.test(w)));
+ok('D100: cu salariat -> fara avertismentul de salariat', !d100over.avertismente.some((w) => /salariat/i.test(w)));
+const d100warn = rep.d100micro({ entries: [{ id: 'w1', period: '2026-02', data: '2026-02-01', lines: [{ debit: '4111', credit: '704', suma: 450000 }] }], angajati: [{ id: 'a' }] }, '2026-03');
+ok('D100: peste 80% din plafon -> avertisment de urmarire (nu de depasire)', d100warn.avertismente.some((w) => /din plafonul micro/.test(w)) && !d100warn.avertismente.some((w) => /DEPASESC/.test(w)));
+eq('D100: venitul anual cumulat pentru controlul plafonului', d100over.venitAn, 600000);
 
 section('Produse agricole — fila carnet de comercializare (Legea 145/2014)');
 const agr = gt2('achizitie_produse_agricole').build({ suma: 750, cont: '371' });

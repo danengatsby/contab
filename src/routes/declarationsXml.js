@@ -129,7 +129,10 @@ module.exports = function register(app, ctx) {
       else if (type === 'saft') x = saft.saftXml(v, year);
       else return res.status(400).json({ error: 'Tip de declaratie necunoscut: ' + type });
     } catch (e) { return res.status(400).json({ error: e.message }); }
-    res.json(Object.assign({ type, period }, validate.validateDeclaration(type, x, { cui: v.company.cui })));
+    const result = validate.validateDeclaration(type, x, { cui: v.company.cui });
+    // D100: adauga avertismentele de eligibilitate micro (plafon venituri + conditia de salariat)
+    if (type === 'd100') result.warnings.push(...(rep.d100micro(v, period).avertismente || []));
+    res.json(Object.assign({ type, period }, result));
   });
   app.get('/api/saft', (req, res) => res.json(saft.saftSummary(S(req), req.query.year || String(new Date().getFullYear()))));
 };

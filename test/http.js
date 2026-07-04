@@ -256,6 +256,8 @@ async function main() {
     const xInt = await req('GET', '/xml/intrastat?period=2026-06', { cookie: c1 });
     ok('xml/intrastat: bine-format', xInt.status === 200 && /<declaratieIntrastat/.test(xInt.text));
     eq('validare d100 raspunde pe tipul cerut', (await req('GET', '/api/validate/d100?period=2026-06', { cookie: c1 })).json.type, 'd100');
+    ok('validare d100: avertismentele de eligibilitate micro sunt incluse',
+      (await req('GET', '/api/validate/d100?period=2026-06', { cookie: c1 })).json.warnings.some((w) => /salariat|plafon/i.test(w)));
     eq('validare intrastat raspunde pe tipul cerut', (await req('GET', '/api/validate/intrastat?period=2026-06', { cookie: c1 })).json.type, 'intrastat');
 
     // ── Chitanta tiparibila (serie CH) + logo firma ──

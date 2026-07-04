@@ -2957,8 +2957,13 @@ async function loadLivrabile() {
       <tr><td>Salarii brute</td><td class="num">${fmt(s.d112.brut)}</td></tr>
       <tr><td>Total de virat (D112)</td><td class="num">${fmt(s.d112.totalBuget)}</td></tr>
       <tr><td>${de[0]} (D300)</td><td class="num">${fmt(de[1])}</td></tr>
-      <tr><td>Impozit micro 1% (D100)</td><td class="num">${fmt(s.d100.impozit)}</td></tr>
-     </table></div>
+      ${s.du
+    ? `<tr><td>Taxe PFA — Declarația Unică (estimare an)</td><td class="num">${fmt(s.du.total)}</td></tr>`
+    : `<tr><td>Impozit micro ${s.d100.cota || 1}% (D100, trim.)</td><td class="num">${fmt(s.d100.impozit)}</td></tr>`}
+     </table>
+     ${!s.du && (s.d100.avertismente || []).length
+    ? `<div class="warnbox" style="margin-top:8px"><span class="wi">⚠️</span><div><b>Eligibilitate micro:</b> ${s.d100.avertismente.join('<br>')}</div></div>`
+    : ''}</div>
      <div class="card"><h3>Total de virat la ANAF (luna ${p})</h3><table>
       ${s.obligatii.items.map((i) => `<tr><td>${i.cont} ${i.nume}</td><td class="num">${fmt(i.suma)}</td></tr>`).join('') || '<tr><td class="muted">Fără obligații în perioadă</td><td></td></tr>'}
       <tr class="total"><td>TOTAL</td><td class="num">${fmt(s.obligatii.total)}</td></tr>

@@ -24,6 +24,10 @@ const FISCAL = {
   impozitProfit: 16,
   impozitDividende: 16, // 16% pentru dividendele distribuite de la 1 ianuarie 2026 (Legea 141/2025)
   deductibilitateTvaAutoLimitat: 50,
+  // Eligibilitate micro (art. 47 Cod fiscal, OUG 156/2024): plafon 100.000 EUR din 2026.
+  // Cursul pentru plafon e orientativ (legal: cursul de la inchiderea exercitiului precedent) — configurabil.
+  plafonMicroEur: 100000,
+  cursPlafonMicro: 5.0,
 };
 
 // Valorile implicite (instantaneu, inainte de orice suprascriere) — pentru „reset la valori standard".
