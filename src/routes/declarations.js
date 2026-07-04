@@ -25,8 +25,19 @@ module.exports = function register(app, ctx) {
       status: b.status, recipisa: b.recipisa, note: b.note, updatedBy: req.user.username,
     }, db.nextId);
     logAudit('declaratie.status', b.tip.toUpperCase() + ' ' + b.period + ' → ' + b.status + (b.recipisa ? ' (recipisa ' + b.recipisa + ')' : ''), { req });
+    // Declaratie DEPUSA => perioada se blocheaza automat (luna raportata nu se mai editeaza;
+    // corectiile ulterioare se fac prin stornare in luna curenta). Deblocare: Setari -> Blocare perioada.
+    let locked = null;
+    if (b.status === 'depusa') {
+      const firma = db.getFirma(activeId(req));
+      if (firma && (!firma.lockedUntil || firma.lockedUntil < b.period)) {
+        firma.lockedUntil = b.period;
+        locked = b.period;
+        logAudit('perioada.lock', 'blocata automat pana la ' + b.period + ' (' + b.tip.toUpperCase() + ' depusa)', { req });
+      }
+    }
     db.save();
-    res.json({ ok: true, rows: decl.registerForFirma(d, S(req), b.period) });
+    res.json({ ok: true, locked, rows: decl.registerForFirma(d, S(req), b.period) });
   });
 
   app.get('/api/portfolio', (req, res) => {

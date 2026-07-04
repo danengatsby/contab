@@ -486,6 +486,12 @@ function declaratiaUnicaPdf(res, company, d) {
       { k: 'CASS 10% (baza: ' + fmt(d.bazaCass) + ', intre 6 si 60 salarii minime)', v: fmt(d.cass) },
       { k: 'Impozit pe venit 10% (dupa deducerea CAS si CASS)', v: fmt(d.impozit) },
       { k: 'TOTAL TAXE DE PLATA (Declaratia Unica)', v: fmt(d.total), _bold: true, _accent: true, _fill: C.zebra },
+      ...(d.incasat ? [
+        { k: 'Varianta pe INCASAT / PLATIT (partida simpla)', v: '', _bold: true, _fill: C.zebra },
+        { k: 'Incasari din activitate − plati deductibile', v: fmt(d.incasat.incasari) + ' − ' + fmt(d.incasat.plati) },
+        { k: 'Venit net pe incasari', v: fmt(d.incasat.venitNet), _bold: true },
+        { k: 'Total taxe pe varianta incasata (CAS+CASS+impozit)', v: fmt(d.incasat.total), _bold: true },
+      ] : []),
     ],
     note: 'Estimare pe salariul minim de ' + fmt(d.salariuMinim) + ' lei (plafoane: 6 SM = ' + fmt(d.plafon6) + ', 12 SM = ' + fmt(d.plafon12)
       + ', 24 SM = ' + fmt(d.plafon24) + ', 60 SM = ' + fmt(d.plafon60) + '). Declaratia Unica se depune personal, din SPV. '
@@ -592,6 +598,39 @@ function cashBookPdf(res, company, cb) {
     { label: 'Sold', key: 'sold', width: 80, align: 'right' },
   ], rows);
   finish(doc, res, 'jurnal-' + cb.cont + '.pdf');
+}
+
+/** Registrul-jurnal de incasari si plati (partida simpla, PFA — OMFP 170/2015). */
+function registruIncasariPlatiPdf(res, company, r) {
+  const doc = newDoc(true);
+  const CAT = { fiscal: 'activitate', intern: 'virament intern', neutru: 'neutru (aport/credit)', taxe: 'taxe (nedeductibil)' };
+  header(doc, company, 'Registrul-jurnal de incasari si plati',
+    (r.period ? (String(r.period).length === 4 ? 'Anul ' + r.period : periodLabel(r.period)) : 'Toate perioadele') + '  •  partida simpla (PFA)');
+  const rows = r.rows.map((x) => ({
+    nr: String(x.nr), data: fmtDate(x.data), document: x.document, explicatie: x.explicatie, cat: CAT[x.cat] || x.cat,
+    incN: x.incNumerar ? fmt(x.incNumerar) : '', incB: x.incBanca ? fmt(x.incBanca) : '',
+    plN: x.platiNumerar ? fmt(x.platiNumerar) : '', plB: x.platiBanca ? fmt(x.platiBanca) : '',
+  }));
+  rows.push({ nr: '', data: '', document: '', explicatie: 'TOTALURI', cat: '', incN: fmt(r.tot.incNumerar), incB: fmt(r.tot.incBanca), plN: fmt(r.tot.platiNumerar), plB: fmt(r.tot.platiBanca), _bold: true, _fill: C.zebra });
+  table(doc, [
+    { label: 'Nr', key: 'nr', width: 28 },
+    { label: 'Data', key: 'data', width: 52 },
+    { label: 'Document', key: 'document', width: 70 },
+    { label: 'Explicatie', key: 'explicatie', width: 200, wrap: true },
+    { label: 'Fel operatiune', key: 'cat', width: 78 },
+    { label: 'Incasari numerar', key: 'incN', width: 68, align: 'right' },
+    { label: 'Incasari banca', key: 'incB', width: 68, align: 'right' },
+    { label: 'Plati numerar', key: 'plN', width: 68, align: 'right' },
+    { label: 'Plati banca', key: 'plB', width: 68, align: 'right' },
+  ], rows);
+  doc.moveDown(0.5);
+  doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(10)
+    .text('Incasari din activitate: ' + fmt(r.tot.incFiscale) + ' lei   •   Plati deductibile: ' + fmt(r.tot.platiFiscale)
+      + ' lei   •   VENIT NET PE INCASARI: ' + fmt(r.venitNetIncasat) + ' lei', doc.page.margins.left, doc.y);
+  doc.fillColor(C.muted).font('Helvetica').fontSize(8.5)
+    .text('Viramentele interne, aporturile/retragerile intreprinzatorului si creditele nu sunt venituri/cheltuieli; platile de TVA si impozit pe venit ('
+      + fmt(r.tot.taxePlatite) + ' lei) nu sunt deductibile. Clasificarea e orientativa — verifica pozitiile atipice cu contabilul.', doc.page.margins.left, doc.y + 4);
+  finish(doc, res, 'registru-incasari-plati.pdf');
 }
 
 /** Fisa de cont: miscarile unui cont cu contul corespondent si soldul curent. */
@@ -1529,5 +1568,5 @@ function leasingSchedulePdf(res, company, s) {
 module.exports = {
   clean, journalPdf, ledgerPdf, trialBalancePdf, plPdf, balanceSheetPdf, notePdf, vatPdf,
   d112Pdf, d300Pdf, d100Pdf, declaratiaUnicaPdf, obligatiiPdf, registruInventarPdf, registruFiscalPdf, analyticPdf,
-  cashBookPdf, cashValutaPdf, notesPdf, cashFlowPdf, equityPdf, setStatementsPdf, facturaPdf, chitantaPdf, fisaContPdf, aprovizionariPdf, consumuriPdf, assetsRegisterPdf, assetFisaPdf, stocksPdf, stockLedgerPdf, inventoryListPdf, inventoryPvPdf, nirPdf, bonConsumPdf, avizPdf, docRegisterPdf, agingPdf, statePlataPdf, fluturasPdf, registruSalariiPdf, adeverintaPdf, leasingSchedulePdf,
+  cashBookPdf, cashValutaPdf, notesPdf, cashFlowPdf, equityPdf, setStatementsPdf, facturaPdf, chitantaPdf, fisaContPdf, registruIncasariPlatiPdf, aprovizionariPdf, consumuriPdf, assetsRegisterPdf, assetFisaPdf, stocksPdf, stockLedgerPdf, inventoryListPdf, inventoryPvPdf, nirPdf, bonConsumPdf, avizPdf, docRegisterPdf, agingPdf, statePlataPdf, fluturasPdf, registruSalariiPdf, adeverintaPdf, leasingSchedulePdf,
 };

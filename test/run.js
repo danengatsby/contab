@@ -377,6 +377,28 @@ ok('DU: taxele coincid cu taxePfa pe salariul minim al anului', (() => {
   return du.cas === t.cas && du.cass === t.cass && du.impozit === t.impozit && du.total === t.total;
 })());
 
+section('Registrul de incasari si plati (partida simpla, PFA)');
+const ripDb = { entries: [
+  { id: 'r1', period: '2026-06', data: '2026-06-01', document: 'F1', partener: 'Client', lines: [{ debit: '5121', credit: '4111', suma: 1000, explicatie: 'incasare client' }] },
+  { id: 'r2', period: '2026-06', data: '2026-06-02', document: 'B2', lines: [{ debit: '605', credit: '5121', suma: 200, explicatie: 'utilitati' }] },
+  { id: 'r3', period: '2026-06', data: '2026-06-03', lines: [{ debit: '5311', credit: '5121', suma: 300, explicatie: 'ridicare numerar' }] },
+  { id: 'r4', period: '2026-06', data: '2026-06-04', lines: [{ debit: '5121', credit: '455', suma: 5000, explicatie: 'aport' }] },
+  { id: 'r5', period: '2026-06', data: '2026-06-05', lines: [{ debit: '4423', credit: '5121', suma: 150, explicatie: 'plata TVA' }] },
+  { id: 'r6', period: '2026-07', data: '2026-07-05', lines: [{ debit: '5311', credit: '704', suma: 400, explicatie: 'vanzare cash' }] },
+] };
+const rip = acc.registruIncasariPlati(ripDb, '2026-06');
+eq('RIP: 5 operatiuni in iunie', rip.rows.length, 5);
+eq('RIP: incasari din activitate (doar clientul)', rip.tot.incFiscale, 1000);
+eq('RIP: plati deductibile (doar utilitatile)', rip.tot.platiFiscale, 200);
+eq('RIP: venit net pe incasari', rip.venitNetIncasat, 800);
+eq('RIP: platile de TVA separate, nedeductibile', rip.tot.taxePlatite, 150);
+ok('RIP: viramentul intern marcat', rip.rows.some((r) => r.cat === 'intern'));
+ok('RIP: aportul intreprinzatorului marcat neutru', rip.rows.some((r) => r.cat === 'neutru' && r.contra === '455'));
+eq('RIP pe an: include si iulie (1000+400)', acc.registruIncasariPlati(ripDb, '2026').tot.incFiscale, 1400);
+const duRip = rep.declaratiaUnica(ripDb, '2026');
+eq('DU: baza pe angajamente (704 − 605)', duRip.venitNet, 200);
+eq('DU: varianta pe incasat/platit (1400 − 200)', duRip.incasat.venitNet, 1200);
+
 section('Stat de plata (per angajat)');
 const sp = statePlata(v.angajati);
 eq('numar angajati', sp.rows.length, 1);

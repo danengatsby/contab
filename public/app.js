@@ -2864,7 +2864,10 @@ async function loadStatements() {
         <tr><td>Impozit pe venit 10% (după deducerea CAS și CASS)</td><td class="num">${fmt(du.impozit)}</td></tr>
         <tr class="total"><td>TOTAL taxe (Declarația Unică)</td><td class="num">${fmt(du.total)}</td></tr>
       </table>
-      <p class="muted" style="margin:8px 0 0">Se depune personal, din SPV, până la termenul legal. <a class="linkbtn" href="/pdf/declaratia-unica?year=${y}" target="_blank">⬇ Recap PDF</a></p>`;
+      <p class="muted" style="margin:8px 0 4px"><b>Variantă pe încasat/plătit</b> (fiscalitatea PFA în sistem real e pe încasări): venit net ${fmt(du.incasat.venitNet)} lei → taxe ${fmt(du.incasat.total)} lei. Alege baza corectă împreună cu contabilul.</p>
+      <p class="muted" style="margin:0">Se depune personal, din SPV, până la termenul legal.
+        <a class="linkbtn" href="/pdf/declaratia-unica?year=${y}" target="_blank">⬇ Recap PDF</a> ·
+        <a class="linkbtn" href="/pdf/registru-incasari-plati?period=${y}" target="_blank" title="Registrul-jurnal de încasări și plăți (partidă simplă)">⬇ Registru încasări-plăți</a></p>`;
     }).catch(() => {});
   } else {
   api('/api/registru-fiscal?year=' + y).then((rf) => {
@@ -3012,8 +3015,9 @@ async function loadDeclRegister(p) {
     const body = { tip: sel.dataset.tip, period: sel.dataset.period, status: sel.value };
     if (sel.value === 'depusa') body.recipisa = prompt('Număr recipisă / index depunere (opțional):') || '';
     if (sel.value === 'eroare') body.note = prompt('Descrierea erorii (opțional):') || '';
-    await api('/api/declarations/set', { method: 'POST', body: JSON.stringify(body) });
+    const r = await api('/api/declarations/set', { method: 'POST', body: JSON.stringify(body) });
     toast('Stare salvată: ' + DECL_ST[sel.value].t);
+    if (r.locked) toast('🔒 Perioada ' + r.locked + ' a fost blocată automat (declarație depusă) — înregistrările din lunile raportate nu se mai modifică. Deblochezi din Setări → Blocare perioadă.');
     loadDeclRegister(sel.dataset.period);
     refreshNotifBadge();
   }));

@@ -214,7 +214,14 @@ function declaratiaUnica(db, year) {
   }
   const venitNet = round2(venituri - cheltuieli);
   const sm = fiscal.salariuMinimLa(y + '-01'); // plafoanele DU: salariul minim al anului de realizare
-  return Object.assign({ year: y, venituri, cheltuieli, venitNet }, fiscal.taxePfa(venitNet, { salariuMinim: sm }));
+  // Varianta pe INCASAT/PLATIT (fiscalitatea PFA in sistem real e pe incasari, nu pe facturat):
+  // din registrul-jurnal de incasari si plati, doar operatiunile activitatii (fara interne/aporturi/taxe).
+  const rjip = acc.registruIncasariPlati(db, y);
+  const tInc = fiscal.taxePfa(rjip.venitNetIncasat, { salariuMinim: sm });
+  return Object.assign({
+    year: y, venituri, cheltuieli, venitNet,
+    incasat: { incasari: rjip.tot.incFiscale, plati: rjip.tot.platiFiscale, venitNet: rjip.venitNetIncasat, cas: tInc.cas, cass: tInc.cass, impozit: tInc.impozit, total: tInc.total },
+  }, fiscal.taxePfa(venitNet, { salariuMinim: sm }));
 }
 
 /** Registrul-inventar — soldurile finale la o data. */
@@ -264,8 +271,10 @@ function livrabile(db, period) {
   if ((db.company && db.company.tipEntitate) === 'pfa') {
     const drop = new Set([9, 12, 15, 16, 19]);
     const listPfa = list.filter((x) => !drop.has(x.nr));
+    listPfa.push(L('A. Lunar', 24, 'Registrul-jurnal de incasari si plati (partida simpla)', 'ok',
+      [{ label: 'Registru', href: '/pdf/registru-incasari-plati' + p }]));
     listPfa.push(L('C. Anual', 23, 'Declaratia Unica — venit net PFA + CAS/CASS/impozit (estimare)', 'recap',
-      [{ label: 'PDF', href: '/pdf/declaratia-unica?year=' + yr }], 'Se depune personal, din SPV, pana la termenul legal'));
+      [{ label: 'PDF', href: '/pdf/declaratia-unica?year=' + yr }, { label: 'Registru incasari-plati (an)', href: '/pdf/registru-incasari-plati?period=' + yr }], 'Se depune personal, din SPV, pana la termenul legal'));
     sumar.du = declaratiaUnica(db, yr || String(new Date().getFullYear()));
     return { period, list: listPfa, sumar };
   }

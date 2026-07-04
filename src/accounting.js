@@ -368,6 +368,58 @@ function cashBankJournal(db, cont, period) {
   return { cont, nume: coa.accountName(cont), period, siInitial, rows, rd, rc, sfFinal: sold };
 }
 
+/**
+ * Registrul-jurnal de incasari si plati (OMFP 170/2015, partida simpla — pentru PFA):
+ * toate miscarile prin casa (531x) si banca (512x/581), cronologic, cu coloane separate
+ * numerar/banca si clasificarea fiecarei operatiuni:
+ *  - intern: viramente intre propriile conturi de trezorerie (nu sunt venit/cheltuiala)
+ *  - neutru: aporturi/retrageri intreprinzator (455-458), credite (16x/519), alte nefiscale
+ *  - taxe:   plati de TVA / impozit pe venit-profit (441x/442x) — nu sunt cheltuieli deductibile
+ *  - fiscal: restul — incasarile si platile activitatii (baza pentru venitul net pe incasari)
+ * `period` accepta luna (YYYY-MM), anul (YYYY) sau null (tot).
+ */
+function registruIncasariPlati(db, period) {
+  const TREZ = /^(512|531|581)/;
+  const NEUTRU = /^(45[5-8]|16\d|519|89)/;
+  const TAXE = /^44[12]/;
+  const q = String(period || '');
+  const ents = sortEntries(db.entries.filter((e) => {
+    const p = String(e.period || periodOf(e.data));
+    return !q || (q.length === 4 ? p.startsWith(q) : p === q);
+  }));
+  const rows = [];
+  const tot = { incNumerar: 0, incBanca: 0, platiNumerar: 0, platiBanca: 0, incFiscale: 0, platiFiscale: 0, taxePlatite: 0 };
+  let nr = 0;
+  for (const e of ents) {
+    for (const l of (e.lines || [])) {
+      const dT = TREZ.test(String(l.debit)); const cT = TREZ.test(String(l.credit));
+      if (!dT && !cT) continue;
+      const intern = dT && cT;
+      const inc = dT && !cT;
+      const contra = intern ? '' : String(inc ? l.credit : l.debit);
+      const trez = String(inc || intern ? l.debit : l.credit);
+      const numerar = /^531/.test(trez);
+      const cat = intern ? 'intern' : NEUTRU.test(contra) ? 'neutru' : TAXE.test(contra) ? 'taxe' : 'fiscal';
+      nr += 1;
+      const r = {
+        nr, data: e.data, document: e.document || '', cat, contra,
+        explicatie: (e.partener ? e.partener + ' — ' : '') + (l.explicatie || e.explicatie || e.tipNume || ''),
+        incNumerar: inc && numerar ? round2(l.suma) : 0, incBanca: inc && !numerar ? round2(l.suma) : 0,
+        platiNumerar: !inc && !intern && numerar ? round2(l.suma) : 0, platiBanca: !inc && !intern && !numerar ? round2(l.suma) : 0,
+      };
+      rows.push(r);
+      tot.incNumerar = round2(tot.incNumerar + r.incNumerar); tot.incBanca = round2(tot.incBanca + r.incBanca);
+      tot.platiNumerar = round2(tot.platiNumerar + r.platiNumerar); tot.platiBanca = round2(tot.platiBanca + r.platiBanca);
+      if (cat === 'fiscal') {
+        if (inc) tot.incFiscale = round2(tot.incFiscale + l.suma);
+        else tot.platiFiscale = round2(tot.platiFiscale + l.suma);
+      }
+      if (cat === 'taxe' && !inc && !intern) tot.taxePlatite = round2(tot.taxePlatite + l.suma);
+    }
+  }
+  return { period: q || null, rows, tot, venitNetIncasat: round2(tot.incFiscale - tot.platiFiscale) };
+}
+
 /** Fisa de cont: toate miscarile unui cont in perioada, cu contul corespondent si sold curent.
  *  Generalizarea jurnalului de banca/casa la orice cont din plan (401, 4111, 371, 601...). */
 function fisaCont(db, cont, period) {
@@ -473,5 +525,5 @@ function cashControl(db, cont, period) {
 }
 
 module.exports = {
-  allLines, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, cashRegisterValuta, cashControl, tvaNeexigibila,
+  allLines, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };
