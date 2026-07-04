@@ -254,9 +254,10 @@ function d112Xml(company, period, sp, who) {
   const t = sp.totals;
   const asigurati = sp.rows.map((r) => {
     const av = round2(r.avantaje || 0); // avantajele in natura intra in bazele CAS/CASS/impozit
+    const cm = round2(r.indemnizatieCM || 0); // indemnizatiile CM: CAS + impozit DA, CASS NU
     return `    <asigurat nume="${esc(r.nume)}" cnp="${esc(r.cnp)}" functie="${esc(r.functie)}" `
-    + `venit_brut="${num2(r.brut)}"${av ? ' avantaje="' + num2(av) + '"' : ''} baza_cas="${num2(round2(r.brut + av))}" cas="${num2(r.cas)}" baza_cass="${num2(round2(r.brut + (r.tichete || 0) + av))}" cass="${num2(r.cass)}" `
-    + `baza_impozit="${num2(round2(r.brut + (r.tichete || 0) + av - r.cas - r.cass - r.neimpozabil))}" impozit="${num2(r.impozit)}" venit_net="${num2(r.net)}"/>`;
+    + `venit_brut="${num2(r.brut)}"${av ? ' avantaje="' + num2(av) + '"' : ''}${cm ? ' zile_cm="' + (r.zileCM || 0) + '" indemnizatie_cm="' + num2(cm) + '"' : ''} baza_cas="${num2(round2(r.brut + av + cm))}" cas="${num2(r.cas)}" baza_cass="${num2(round2(r.brut + (r.tichete || 0) + av))}" cass="${num2(r.cass)}" `
+    + `baza_impozit="${num2(round2(r.brut + (r.tichete || 0) + av + cm - r.cas - r.cass - r.neimpozabil))}" impozit="${num2(r.impozit)}" venit_net="${num2(r.net)}"/>`;
   }).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- D112 (recapitulatie + evidenta nominala) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->

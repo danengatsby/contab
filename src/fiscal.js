@@ -109,15 +109,19 @@ function payroll(brut, deducere, opts) {
   // in natura): intra in baza CAS + CASS + impozit + CAM, dar NU se platesc in bani — netul cash
   // scade doar cu contributiile/impozitul aferente avantajului.
   const avantaje = round2(o.avantaje) || 0;
+  // Indemnizatii de concediu medical (OUG 158/2005): datoreaza CAS si impozit, dar NU CASS;
+  // CAM doar pe partea suportata de angajator (partea FNUASS o suporta fondul si se recupereaza).
+  const cmA = round2(o.cmAngajator) || 0;
+  const cmF = round2(o.cmFnuass) || 0;
   const sector = o.sector || 'normal';
-  const cas = round2(((b + avantaje) * FISCAL.cas) / 100);
-  // tichetele de masa suporta CASS (din 2024) si impozit, dar NU CAS
+  const cas = round2(((b + avantaje + cmA + cmF) * FISCAL.cas) / 100);
+  // tichetele de masa suporta CASS (din 2024) si impozit, dar NU CAS; indemnizatiile CM sunt exceptate de la CASS
   const cass = round2(((b + tichete + avantaje) * FISCAL.cass) / 100);
-  const baza = Math.max(0, round2(b + tichete + avantaje - cas - cass - ded));
+  const baza = Math.max(0, round2(b + tichete + avantaje + cmA + cmF - cas - cass - ded));
   const impozit = round2((baza * FISCAL.impozitVenit) / 100);
-  const cam = round2(((b + avantaje) * FISCAL.cam) / 100);
-  const net = round2(b - cas - cass - impozit); // tichetele si avantajele se acorda ca valori, nu in numerar
-  return { brut: b, tichete, avantaje, cas, cass, baza, impozit, cam, net, costTotal: round2(b + cam + tichete), sector, scutImpozit: false, scutCass: false, overPlafon: false };
+  const cam = round2(((b + avantaje + cmA) * FISCAL.cam) / 100);
+  const net = round2(b + cmA + cmF - cas - cass - impozit); // tichetele si avantajele se acorda ca valori, nu in numerar
+  return { brut: b, tichete, avantaje, cmAngajator: cmA, cmFnuass: cmF, cas, cass, baza, impozit, cam, net, costTotal: round2(b + cmA + cam + tichete), sector, scutImpozit: false, scutCass: false, overPlafon: false };
 }
 
 /**

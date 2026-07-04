@@ -1026,6 +1026,15 @@
             <label>Venit neimpozabil suplimentar <input name="neimpozabil" type="number" step="0.01" value="0" /></label>
             <label>Tichete de masă (valoare/lună) <input name="tichete" type="number" step="0.01" value="0" /></label>
             <label>Avantaje în natură impozabile (auto, chirie… — intră în CAS/CASS/impozit, nu se plătesc în bani) <input name="avantaje" type="number" step="0.01" value="0" /></label>
+            <label>Zile concediu medical în luna curentă <input name="zileCM" type="number" min="0" step="1" value="0" /></label>
+            <label>Procent indemnizație CM
+              <select name="procentCM">
+                <option value="75">75% — boală obișnuită</option>
+                <option value="85">85% — sarcină/lăuzie, urgențe</option>
+                <option value="100">100% — accident de muncă, boli speciale</option>
+              </select>
+            </label>
+            <label>Zile lucrătoare în lună <input name="zileLucratoare" type="number" min="1" max="23" step="1" value="21" /></label>
             <label>Sector (informativ — facilitățile fiscale au fost eliminate din ian. 2025, OUG 156/2024)
               <select name="sector">
                 <option value="normal">Normal</option>

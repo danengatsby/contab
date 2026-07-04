@@ -101,7 +101,7 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     const period = req.query.period || new Date().toISOString().slice(0, 7);
     recordDecl(req, 'd112', period);
-    sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati, period), declarantOf(req)), 'd112-' + period + '.xml');
+    sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarantOf(req)), 'd112-' + period + '.xml');
   });
   app.get('/xml/saft', (req, res) => {
     const v = S(req);
@@ -125,7 +125,7 @@ module.exports = function register(app, ctx) {
       else if (type === 'd100') x = xml.d100Xml(v.company, period, rep.d100micro(v, period), declarantOf(req));
       else if (type === 'intrastat') x = xml.intrastatXml(v.company, period, rep.intrastat(v, period));
       else if (type === 'd205') x = xml.d205Xml(v.company, year, rep.d205(v, year));
-      else if (type === 'd112') x = xml.d112Xml(v.company, period, statePlata(v.angajati, period), declarantOf(req));
+      else if (type === 'd112') x = xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarantOf(req));
       else if (type === 'saft') x = saft.saftXml(v, year);
       else return res.status(400).json({ error: 'Tip de declaratie necunoscut: ' + type });
     } catch (e) { return res.status(400).json({ error: e.message }); }

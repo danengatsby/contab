@@ -364,6 +364,32 @@ const spAv = statePlata([{ id: 'a1', nume: 'Test Av', salariuBrut: 5000, avantaj
 eq('stat de plata: avantajele apar pe rand si in totaluri', spAv.rows[0].avantaje + '|' + spAv.totals.avantaje, '1000|1000');
 ok('D112: baza_cas include avantajele (6000)', xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spAv).includes('baza_cas="6000.00"'));
 
+section('Concediu medical in statul de plata (OUG 158/2005, simplificat)');
+const pCm = fiscal.payroll(4000, 0, { cmAngajator: 500, cmFnuass: 700 });
+eq('CAS pe salariu + indemnizatii CM (25% din 5200)', pCm.cas, 1300);
+eq('CASS doar pe salariu (indemnizatiile CM sunt exceptate)', pCm.cass, 400);
+eq('impozit pe tot venitul, dupa contributii', pCm.impozit, 350);
+eq('CAM doar pe salariu + partea angajator', pCm.cam, 101.25);
+eq('netul include indemnizatiile', pCm.net, 3150);
+eq('costul angajatorului exclude partea FNUASS (recuperabila)', pCm.costTotal, 4601.25);
+const spCm = statePlata([{ id: 'cm1', nume: 'Bolnav Ion', salariuBrut: 4200, zileCM: 7, procentCM: 75, zileLucratoare: 21 }], '2026-06');
+const rCm = spCm.rows[0];
+eq('salariul redus proportional (14/21 din 4200)', rCm.brut, 2800);
+eq('baza CM fara istoric = brutul curent', rCm.mediaCM, 4200);
+eq('angajatorul suporta primele 5 zile (150/zi)', rCm.cmAngajator, 750);
+eq('FNUASS suporta restul de 2 zile', rCm.cmFnuass, 300);
+eq('totalurile cumuleaza indemnizatia', spCm.totals.indemnizatieCM, 1050);
+const histCm = [{ period: '2026-04', rows: [{ angajatId: 'cm1', brut: 4200 }] }, { period: '2026-05', rows: [{ angajatId: 'cm1', brut: 8400 }] }];
+const spH = statePlata([{ id: 'cm1', nume: 'B', salariuBrut: 4200, zileCM: 4, zileLucratoare: 21 }], '2026-06', histCm);
+eq('baza CM = media ultimelor luni postate (6300)', spH.rows[0].mediaCM, 6300);
+eq('indemnizatie 4 zile x 225 (toata la angajator)', spH.rows[0].cmAngajator, 900);
+const spPlaf = statePlata([{ id: 'x1', nume: 'P', salariuBrut: 4200, zileCM: 1, zileLucratoare: 21 }], '2026-06', [{ period: '2026-05', rows: [{ angajatId: 'x1', brut: 999999 }] }]);
+eq('baza CM plafonata la 12 salarii minime', spPlaf.rows[0].mediaCM, 12 * fiscal.salariuMinimLa('2026-06'));
+ok('D112: baza_cas include CM, baza_cass nu', (() => {
+  const x = xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spCm);
+  return x.includes('baza_cas="3850.00"') && x.includes('baza_cass="2800.00"') && x.includes('zile_cm="7"');
+})());
+
 section('Taxe PFA — Declaratia Unica (plafoane pe salariu minim 4000)');
 const pfa = (vn) => fiscal.taxePfa(vn, { salariuMinim: 4000 }); // p6=24k p12=48k p24=96k p60=240k
 eq('venit 0: nimic datorat', pfa(0).total, 0);
