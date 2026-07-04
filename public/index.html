@@ -82,6 +82,8 @@
       <button id="nextMonth" class="curnav" title="Luna următoare" aria-label="Luna următoare">▶</button>
     </span>
     <div class="spacer" style="flex:1"></div>
+    <button id="glossaryBtn" class="btn small" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)">❓ Dicționar</button>
+    <button id="uiModeBtn" class="btn small" title="Mod simplu: ascunde partea tehnic-contabilă din meniu (balanță, registre, plan de conturi, închideri). Contabilitatea rulează neschimbată în fundal. Mod expert: totul vizibil." style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)">🎓</button>
     <button id="themeBtn" class="btn small" title="Comută tema (clar / întunecat)" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)">🌙</button>
     <button id="densityBtn" class="btn small" title="Comută densitatea afișării" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)">⊟ Compact</button>
     <span id="userBadge" class="userbadge"></span>
@@ -125,25 +127,25 @@
         <div class="navmenu">
           <button data-tab="stocuri">Stocuri / gestiune</button>
           <button data-tab="salarizare">Salarii (state de plată)</button>
-          <button data-tab="mijloace">Mijloace fixe (amortizare)</button>
+          <button data-tab="mijloace" class="adv">Mijloace fixe (amortizare)</button>
         </div>
       </div>
       <div class="navgroup">
         <button class="navlabel" type="button">📊 Rapoarte</button>
         <div class="navmenu">
           <button data-tab="situatii">Situații financiare (bilanț, profit)</button>
-          <button data-tab="balanta">Solduri conturi (balanță)</button>
-          <button data-tab="jurnal">Toate operațiunile (jurnal)</button>
-          <button data-tab="carte">Fișa fiecărui cont (cartea mare)</button>
+          <button data-tab="balanta" class="adv">Solduri conturi (balanță)</button>
+          <button data-tab="jurnal" class="adv">Toate operațiunile (jurnal)</button>
+          <button data-tab="carte" class="adv">Fișa fiecărui cont (cartea mare)</button>
           <button data-tab="analitic">Scadențar clienți & furnizori</button>
-          <button data-tab="inchideri">Închideri de lună</button>
+          <button data-tab="inchideri" class="adv">Închideri de lună</button>
         </div>
       </div>
       <div class="navgroup">
         <button class="navlabel" type="button">📁 Date firmă</button>
         <div class="navmenu">
           <button data-tab="parteneri">Clienți & furnizori</button>
-          <button data-tab="plan">Plan de conturi</button>
+          <button data-tab="plan" class="adv">Plan de conturi</button>
         </div>
       </div>
       <button data-tab="ghid">📖 Ghid</button>
@@ -152,7 +154,7 @@
         <div class="navmenu">
           <button data-tab="setari">Setări generale</button>
           <button data-tab="arhiva">Arhivă documente</button>
-          <button data-tab="audit">Jurnal de audit</button>
+          <button data-tab="audit" class="adv">Jurnal de audit</button>
         </div>
       </div>
     </nav>
@@ -174,7 +176,7 @@
           <button class="qa in" data-go="documente"><span class="ic">📥</span><span class="t">Adaugă document primit</span><span class="d">Factură furnizor, bon, chitanță — PDF sau poză</span></button>
           <button class="qa out" data-go="documente" data-scroll="band-iesire"><span class="ic">📤</span><span class="t">Emite factură</span><span class="d">Factură către client + e-Factura</span></button>
           <button class="qa" data-go="cashbook"><span class="ic">🏦</span><span class="t">Bancă / Casă</span><span class="d">Încasări, plăți, extras bancar</span></button>
-          <button class="qa" data-go="balanta"><span class="ic">⚖️</span><span class="t">Vezi balanța</span><span class="d">Soldurile tuturor conturilor</span></button>
+          <button class="qa adv" data-go="balanta"><span class="ic">⚖️</span><span class="t">Vezi balanța</span><span class="d">Soldurile tuturor conturilor</span></button>
           <button class="qa" data-go="tva"><span class="ic">🧾</span><span class="t">Decont TVA</span><span class="d">D300 / D394 pe perioadă</span></button>
           <button class="qa" data-go="ghid"><span class="ic">📖</span><span class="t">Ghid de folosire</span><span class="d">Cum lucrezi, pas cu pas</span></button>
         </div>
@@ -1746,6 +1748,20 @@ Cu stimă,
 
   <div id="loadbar"></div>
   <div id="toast" class="toast"></div>
+
+  <!-- Dicționar contabil pe înțelesul tuturor (buton ❓ în bara de sus) -->
+  <div id="glossaryModal" class="gloss-overlay hidden" role="dialog" aria-modal="true" aria-label="Dicționar contabil">
+    <div class="gloss-panel">
+      <div class="gloss-head">
+        <h2>❓ Dicționar contabil — pe înțelesul tuturor</h2>
+        <button id="glossaryClose" class="btn small ghost" type="button">✕ Închide</button>
+      </div>
+      <input id="glossarySearch" placeholder="Caută un termen… (ex. balanță, TVA, storno, amortizare)" autocomplete="off" />
+      <div id="glossaryList" class="gloss-list"></div>
+      <p class="muted" style="margin:8px 0 0;font-size:12px">Sfat: fiecare panou din aplicație are și un ⓘ cu explicația lui, iar 📖 Ghid te plimbă prin fluxul de lucru pas cu pas.</p>
+    </div>
+  </div>
+
   <script src="/panel-info.js"></script>
   <script src="/app.js"></script>
 </body>

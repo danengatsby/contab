@@ -744,3 +744,18 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 .kpi .cinfo .cpop{left:auto;right:-12px;transform:translateY(4px)}
 .kpi .cinfo:hover .cpop,.kpi .cinfo:focus .cpop{transform:translateY(0)}
 .warnbox.hidden{display:none}
+
+/* ── Mod simplu (necontabil): ascunde partea tehnic-contabila din meniu ── */
+.simple-ui .adv{display:none!important}
+
+/* ── Dictionar contabil (modal ❓) ── */
+.gloss-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:220;display:flex;align-items:center;justify-content:center;padding:20px}
+.gloss-overlay.hidden{display:none}
+.gloss-panel{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.gloss-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.gloss-head h2{margin:0;font-size:17px}
+#glossarySearch{width:100%;margin-bottom:10px}
+.gloss-list{overflow:auto;flex:1;border-top:1px solid var(--line)}
+.gloss-item{padding:9px 6px;border-bottom:1px solid var(--line)}
+.gloss-item b{color:var(--head,#2b3a67)}
+.gloss-item p{margin:3px 0 0;font-size:13px;color:var(--muted)}
