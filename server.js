@@ -315,6 +315,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Proba firmei expirata: firma inscrisa „de proba" devine read-only dupa o luna, pana e
+// pastrata (1 clic) sau stearsa. Doar scrierile pe firma activa; conturile/citirile raman libere.
+const FIRMA_TRIAL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe)|^\/api\/firme(\/\d+\/(keep|activate))?$|^\/api\/firme\/\d+$/;
+app.use((req, res, next) => {
+  if (!req.user || req.user.role === 'admin') return next();
+  if (req.method === 'GET' && !/^\/(pdf|xml|csv|efactura)/.test(req.path)) return next(); // citirile libere
+  if (FIRMA_TRIAL_EXEMPT.test(req.path)) return next(); // cont + gestionarea firmei (keep/activate/delete/create)
+  const f = db.getFirma(activeId(req));
+  if (f && plans.firmaTrial(f).expired) {
+    return res.status(402).json({ error: 'Proba de o lună pentru firma „' + (f.nume || '') + '" a expirat. Apasă „Păstrează firma" (Setări → Firmele mele) ca să continui — datele rămân intacte.', firmaTrialExpired: true });
+  }
+  next();
+});
+
 // Health-check public (pentru monitorizare uptime): confirma ca procesul si baza raspund.
 app.get('/api/health', (req, res) => {
   try {
@@ -751,7 +765,7 @@ app.get('/api/meta', (req, res) => {
   const allowed = allowedFirme(req.user);
   res.json({
     user: withSessionState(req, req.user),
-    firme: d.firme.filter((f) => allowed.includes(f.id)),
+    firme: d.firme.filter((f) => allowed.includes(f.id)).map((f) => Object.assign({}, f, { _trial: plans.firmaTrial(f) })),
     firmaActiva: activeId(req),
     company: v.company,
     // tipurile de documente marcate cu `entitate` apar doar la forma juridica potrivita (srl/pfa)
@@ -772,7 +786,8 @@ function canAccess(req, id) { return allowedFirme(req.user).includes(Number(id))
 app.get('/api/firme', (req, res) => {
   const d = db.get();
   const allowed = allowedFirme(req.user);
-  res.json({ firme: d.firme.filter((f) => allowed.includes(f.id)), firmaActiva: activeId(req) });
+  const firme = d.firme.filter((f) => allowed.includes(f.id)).map((f) => Object.assign({}, f, { _trial: plans.firmaTrial(f) }));
+  res.json({ firme, firmaActiva: activeId(req) });
 });
 app.post('/api/firme', (req, res) => {
   const d = db.get();
@@ -784,6 +799,8 @@ app.post('/api/firme', (req, res) => {
     tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
     tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
   }, { id });
+  // Firma „de proba": gratuit o luna, independent de abonamentul contului (evaluare / onboarding).
+  if (b.proba) { f.trial = true; f.trialStartedAt = new Date().toISOString(); f.trialEndsAt = new Date(Date.now() + plans.TRIAL_DAYS * 86400000).toISOString(); }
   d.firme.push(f);
   d.partners[id] = {}; d.openingBalances[id] = {};
   // utilizatorul care creeaza firma capata acces (adminul are oricum)
@@ -923,6 +940,16 @@ app.post('/api/firme/:id/activate', (req, res) => {
   req.user.firmaActiva = Number(req.params.id);
   db.save();
   res.json({ ok: true, firmaActiva: req.user.firmaActiva });
+});
+// „Pastreaza firma" (dupa proba): scoate marcajul de proba, firma devine permanenta (acoperita de cont).
+app.post('/api/firme/:id/keep', (req, res) => {
+  if (!canAccess(req, req.params.id)) return res.status(403).json({ error: 'Fara acces la aceasta firma.' });
+  const f = db.getFirma(req.params.id);
+  if (!f) return res.status(404).json({ error: 'Firma inexistenta.' });
+  delete f.trial; delete f.trialStartedAt; delete f.trialEndsAt;
+  logAudit('firma.keep', 'firma ' + f.id + ' pastrata (proba incheiata)', { req, firmaId: f.id });
+  db.save();
+  res.json({ ok: true, firma: f });
 });
 app.delete('/api/firme/:id', (req, res) => {
   const d = db.get();

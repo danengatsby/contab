@@ -44,6 +44,15 @@ function expiredLock(user) {
   return status(user.subscription).status === 'expired';
 }
 
+/** Starea probei unei FIRME (independenta de abonamentul contului): o firma poate fi
+ *  inscrisa „de proba" pentru o luna. { trial, expired, zileRamase }. */
+function firmaTrial(firma, now) {
+  now = now || Date.now();
+  if (!firma || !firma.trial || !firma.trialEndsAt) return { trial: false, expired: false, zileRamase: null };
+  const left = daysLeft(firma.trialEndsAt, now);
+  return { trial: true, expired: left <= 0, zileRamase: left };
+}
+
 /**
  * Tipul de utilizator, derivat din rol si abonament:
  *   admin — administratorul aplicatiei;
@@ -125,4 +134,4 @@ function pendingToSubscription(rec, now) {
   return { plan: rec.plan, status: 'active', stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null, since: new Date(now || Date.now()).toISOString() };
 }
 
-module.exports = { PLANS, TRIAL_DAYS, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock };
+module.exports = { PLANS, TRIAL_DAYS, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock, firmaTrial };

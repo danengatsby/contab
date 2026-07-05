@@ -547,6 +547,25 @@ async function main() {
     eq('user fara firme: niciun partener vizibil', Object.keys((await req('GET', '/api/partners', { cookie: cNo })).json).length, 0);
     ok('user fara firme: lista lui de firme e goala', (await req('GET', '/api/firme', { cookie: cNo })).json.firme.length === 0);
 
+    // ── FIRMA DE PROBA (1 luna, per-firma, independent de abonamentul contului) ──
+    const tfR = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Firma Proba SRL', cui: 'RO900', proba: true } });
+    ok('firma de proba creata cu marcaj trial + data de expirare', tfR.json.ok && tfR.json.firma.trial === true && !!tfR.json.firma.trialEndsAt);
+    const tf = tfR.json.firma.id;
+    const tfInfo = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf);
+    ok('firma de proba: status trial activ cu ~30 zile ramase', tfInfo._trial.trial && !tfInfo._trial.expired && tfInfo._trial.zileRamase >= 28);
+    eq('scriere permisa cat timp proba e activa', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO901', den: 'Client Proba' } })).status, 200);
+    // simulez expirarea probei (setez trialEndsAt in trecut prin update-ul firmei)
+    await req('POST', '/api/firme/' + tf, { cookie: c1, body: { trialEndsAt: '2026-01-01T00:00:00Z' } });
+    const blocat = await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO902', den: 'Blocat' } });
+    eq('dupa expirare: scrierea pe firma de proba e blocata (402)', blocat.status, 402);
+    ok('mesajul de blocare semnaleaza proba expirata', blocat.json && blocat.json.firmaTrialExpired === true);
+    eq('dupa expirare: citirile raman libere', (await req('GET', '/api/partners', { cookie: c1 })).status, 200);
+    // „Pastreaza firma" scoate marcajul de proba -> firma devine permanenta
+    ok('pastreaza firma reuseste', (await req('POST', '/api/firme/' + tf + '/keep', { cookie: c1 })).json.ok === true);
+    ok('dupa pastrare: nu mai e firma de proba', !((await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf)._trial.trial));
+    eq('dupa pastrare: scrierea functioneaza din nou', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO903', den: 'Deblocat' } })).status, 200);
+    await req('POST', '/api/firme/1/activate', { cookie: c1 }); // curatenie: revin pe firma 1
+
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {

@@ -1443,6 +1443,13 @@ eq('plans: fara abonament -> none', plansMod.status({}).status, 'none');
 eq('plans: 3 planuri definite (fara Business)', plansMod.PLANS.length, 3);
 ok('plans: nu exista planul business', !plansMod.PLANS.some((p) => p.id === 'business'));
 ok('plans: toate au aceleasi 6 functii', plansMod.PLANS.every((p) => p.features.length === 6 && p.features[0] === 'Facturi + e-Factura'));
+// proba per-firma (independenta de abonamentul contului)
+const nowFt = Date.parse('2026-07-05T00:00:00Z');
+eq('firmaTrial: firma fara proba', plansMod.firmaTrial({}, nowFt).trial, false);
+const ftAct = plansMod.firmaTrial({ trial: true, trialEndsAt: '2026-07-20T00:00:00Z' }, nowFt);
+eq('firmaTrial: proba activa, 15 zile ramase', ftAct.zileRamase + '|' + ftAct.expired, '15|false');
+const ftExp = plansMod.firmaTrial({ trial: true, trialEndsAt: '2026-06-01T00:00:00Z' }, nowFt);
+ok('firmaTrial: proba expirata', ftExp.trial && ftExp.expired && ftExp.zileRamase <= 0);
 const nowSub = Date.parse('2026-06-01T00:00:00Z');
 const trial1 = plansMod.startTrial({}, nowSub);
 eq('trial: status trial', trial1.status, 'trial');
