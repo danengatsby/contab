@@ -1583,5 +1583,22 @@ ok('notificari: e-Factura restanta prezenta (status netrimisa)', nEf.items.some(
 ok('notificari: e-Factura cu termen apropiat apare', nEf.items.some((i) => i.tip === 'efactura' && i.kind === 'termen'));
 ok('SAF-T lunar: bine-format si cu perioada corecta', (() => { const x = saft.saftXml(vDecl, '2026-06'); return x.includes('<PeriodStart>6</PeriodStart>') && x.includes('<PeriodEnd>6</PeriodEnd>') && x.includes('luna 2026-06'); })());
 
+section('XSS: escaparea datelor externe la randare (public/app.js)');
+const appJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'app.js'), 'utf8');
+// helper-ul global de escapare exista si acopera toate caracterele periculoase
+ok('helper global H() definit', /const H = \(s\) =>/.test(appJs));
+ok('H() escapeaza < > & " \'', /'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'/.test(appJs));
+// verificarea H() efectiv (simulare)
+const Htest = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+eq('H() neutralizeaza un payload de script', Htest('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
+eq('H() escapeaza ghilimelele (spargere de atribut)', Htest('a" onmouseover="x'), 'a&quot; onmouseover=&quot;x');
+// punctele critice cu date de proveniente externa folosesc H() (poarta anti-regresie)
+ok('parteneri: numele si CUI-ul sunt escapate', /\$\{H\(p\.den\)\}/.test(appJs) && /\$\{H\(p\.cui\)\}/.test(appJs));
+ok('jurnal/entries: partenerul e escapat', /\$\{H\(e\.partener\)\}/.test(appJs));
+ok('utilizatori (admin): username-ul e escapat', /\$\{H\(u\.username\)\}/.test(appJs));
+ok('firme: denumirea firmei e escapata', /\$\{H\(f\.nume\)\}/.test(appJs));
+ok('stocuri: denumirea produsului e escapata', /\$\{H\(s\.product\.denumire\)\}/.test(appJs));
+ok('salarii: numele angajatului e escapat', /\$\{H\(r\.nume\)\}/.test(appJs));
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

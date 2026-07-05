@@ -9,6 +9,10 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const fmt = (n) => (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const accName = (c) => { const a = META.accounts.find((x) => x.cod === String(c)); return a ? a.nume : ''; };
+// Escapare HTML pentru datele de proveniente externa (parteneri din e-Factura/SPV, extrase
+// bancare, denumiri, explicatii) inainte de interpolarea in innterHTML — al doilea strat de
+// aparare dupa CSP. `H` = escapare completa (text + atribute), folosita la randare.
+const H = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function toast(msg, err) {
   const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
@@ -239,7 +243,7 @@ $$('#moreSheet button[data-go]').forEach((b) => b.addEventListener('click', () =
 // ───────────────────────── FIRME (multi-firma) ─────────────────────────
 function fillFirmaSelect() {
   const sel = $('#firmaSelect');
-  sel.innerHTML = (META.firme || []).map((f) => `<option value="${f.id}" ${f.id === META.firmaActiva ? 'selected' : ''}>${f.nume}${f.cui ? ' (' + f.cui + ')' : ''}</option>`).join('');
+  sel.innerHTML = (META.firme || []).map((f) => `<option value="${f.id}" ${f.id === META.firmaActiva ? 'selected' : ''}>${H(f.nume)}${f.cui ? ' (' + H(f.cui) + ')' : ''}</option>`).join('');
   // Portofoliul are sens doar cu mai multe firme in administrare
   const np = $('#navPortofoliu'); if (np) np.classList.toggle('hidden', (META.firme || []).length < 2);
 }
@@ -254,7 +258,7 @@ async function renderFirme() {
   $('#firmaExport').href = '/api/firme/' + data.firmaActiva + '/export-zip';
   $('#firmeList').innerHTML = `<table><thead><tr><th>Denumire</th><th>CUI</th><th></th></tr></thead><tbody>${
     data.firme.map((f) => `<tr>
-      <td>${f.id === data.firmaActiva ? '<b>● ' + f.nume + '</b>' : f.nume}</td><td>${f.cui || ''}</td>
+      <td>${f.id === data.firmaActiva ? '<b>● ' + H(f.nume) + '</b>' : H(f.nume)}</td><td>${H(f.cui)}</td>
       <td>${f.id === data.firmaActiva ? '<span class="pill">activă</span>' : `<button class="linkbtn fact" data-id="${f.id}">activează</button>`}
         ${data.firme.length > 1 ? ` · <button class="del fdel" data-id="${f.id}">✕</button>` : ''}</td></tr>`).join('')}</tbody></table>`;
   $$('#firmeList .fact').forEach((b) => b.addEventListener('click', async () => {
@@ -320,7 +324,7 @@ $('#firmaImportBtn').addEventListener('click', async () => {
 function firmeChecks(selected) {
   const sel = new Set((selected || []).map(Number));
   return (META.firme || []).map((f) => `<label style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-weight:500;color:var(--ink)">
-    <input type="checkbox" class="ufirma" value="${f.id}" ${sel.has(f.id) ? 'checked' : ''} style="width:auto"> ${f.nume}</label>`).join('');
+    <input type="checkbox" class="ufirma" value="${f.id}" ${sel.has(f.id) ? 'checked' : ''} style="width:auto"> ${H(f.nume)}</label>`).join('');
 }
 async function renderUsers() {
   if (USER.role !== 'admin') return;
@@ -342,8 +346,8 @@ async function renderUsers() {
   const drCheck = (u, key, label, title) => u.role === 'admin' ? '' : `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap" title="${title}">
       <input type="checkbox" class="udrept" data-id="${u.id}" data-drept="${key}" style="width:auto" ${u.drepturi && u.drepturi[key] ? 'checked' : ''} /> ${label}</label>`;
   $('#usersList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th>Firme</th><th>Drepturi</th><th></th></tr></thead><tbody>${
-    users.map((u) => `<tr><td><b>${u.username}</b>${u.pending ? ' <span class="pill warn">invitație</span>' : ''}</td><td>${tipPill(u)}</td>
-      <td>${u.role === 'admin' ? '<span class="muted">toate</span>' : u.firme.map((id) => { const f = (META.firme || []).find((x) => x.id === id); return f ? f.nume : id; }).join(', ') || '<span class="muted">—</span>'}</td>
+    users.map((u) => `<tr><td><b>${H(u.username)}</b>${u.pending ? ' <span class="pill warn">invitație</span>' : ''}</td><td>${tipPill(u)}</td>
+      <td>${u.role === 'admin' ? '<span class="muted">toate</span>' : u.firme.map((id) => { const f = (META.firme || []).find((x) => x.id === id); return f ? H(f.nume) : id; }).join(', ') || '<span class="muted">—</span>'}</td>
       <td>${u.role === 'admin' ? '<span class="muted">complete</span>' : drCheck(u, 'readonly', 'doar citire', 'Vede toate datele, dar nu poate modifica nimic') + '<br>' + drCheck(u, 'faraSalarii', 'fără salarii', 'Fără acces la salarizare (angajați, state de plată, fluturași, D112)')}</td>
       <td>${u.pending ? `<button class="linkbtn ulink" data-link="${u.inviteLink}">copiază link</button>` : `<button class="linkbtn ureset" data-id="${u.id}">resetează parola</button>${u.role !== 'admin' ? ` · <button class="linkbtn uimp" data-id="${u.id}">↪ intră pe cont</button>` : ''}`} · <button class="del udel" data-id="${u.id}">✕</button></td></tr>`).join('')}</tbody></table>`;
   $$('#usersList .udrept').forEach((cb) => cb.addEventListener('change', async () => {
@@ -983,7 +987,7 @@ async function loadDashboard() {
   renderRezumat(k);
   renderForecast();
   const list = (arr) => arr.length
-    ? `<table><tbody>${arr.map((p) => `<tr><td>${p.den}</td><td class="num">${fmt(p.sold)}</td></tr>`).join('')}</tbody></table>`
+    ? `<table><tbody>${arr.map((p) => `<tr><td>${H(p.den)}</td><td class="num">${fmt(p.sold)}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">—</p>';
   $('#topCreante').innerHTML = list(k.topCreante);
   $('#topDatorii').innerHTML = list(k.topDatorii);
@@ -2284,10 +2288,10 @@ function entryRowHtml(e) {
   const formula = e.lines.map((l) => `${l.debit}=${l.credit}`).join(', ');
   const total = e.lines.reduce((s, l) => s + l.suma, 0);
   return `<tr class="${e.system ? 'sys' : ''}">
-    <td>${e.data}</td>
-    <td>${e.tipNume}${e.system ? ' <span class="pill">auto</span>' : ''}</td>
-    <td>${e.partener || ''}</td>
-    <td class="acc">${formula}</td>
+    <td>${H(e.data)}</td>
+    <td>${H(e.tipNume)}${e.system ? ' <span class="pill">auto</span>' : ''}</td>
+    <td>${H(e.partener)}</td>
+    <td class="acc">${H(formula)}</td>
     <td class="num">${fmt(total)}</td>
     <td><a class="linkbtn" href="/pdf/note/${e.id}" target="_blank">PDF</a>
         ${e.lines.some((l) => /^531/.test(String(l.debit))) ? ` · <a class="linkbtn" href="/pdf/chitanta/${e.id}" target="_blank" title="Chitanta pentru incasarea in numerar (numar din seria CH)">chitanță</a>` : ''}
@@ -2391,7 +2395,7 @@ async function loadArhiva() {
   const intr = all.filter((e) => entryDir(e.tip) === 'in' && inPer(e));
   const ies = all.filter((e) => entryDir(e.tip) === 'out' && inPer(e));
   const total = (e) => fmt(e.lines.reduce((s, l) => s + l.suma, 0));
-  const row = (e, extra) => `<tr><td>${e.data}</td><td>${e.tipNume}</td><td>${e.partener || ''}</td><td class="num">${total(e)}</td>
+  const row = (e, extra) => `<tr><td>${H(e.data)}</td><td>${H(e.tipNume)}</td><td>${H(e.partener)}</td><td class="num">${total(e)}</td>
     <td><a class="linkbtn" href="/pdf/note/${e.id}" target="_blank">PDF</a>${e.fileId ? ` · <a class="linkbtn" href="/api/document/${e.fileId}/file" target="_blank">doc</a>` : ''}${extra ? extra(e) : ''}</td></tr>`;
   const tbl = (arr, extra, empty) => arr.length
     ? `<table><thead><tr><th>Data</th><th>Document</th><th>Partener</th><th class="num">Sumă</th><th>Fișiere</th></tr></thead><tbody>${arr.map((e) => row(e, extra)).join('')}</tbody></table>`
@@ -2496,7 +2500,7 @@ async function loadCashbook() {
       if (items.length) warnHtml = `<div class="warnbox"><span class="wi">⚠️</span><div><b>Control casă:</b><ul style="margin:4px 0 0 16px;padding:0">${items.join('')}</ul></div></div>`;
     } catch (_) { /* control optional */ }
   }
-  const rows = cb.rows.map((r) => `<tr><td>${r.data}</td><td>${r.document || ''}</td><td>${(r.partener ? r.partener + ' — ' : '') + r.explicatie}</td>
+  const rows = cb.rows.map((r) => `<tr><td>${H(r.data)}</td><td>${H(r.document)}</td><td>${H((r.partener ? r.partener + ' — ' : '') + r.explicatie)}</td>
     <td class="num">${r.incasare ? fmt(r.incasare) : ''}</td><td class="num">${r.plata ? fmt(r.plata) : ''}</td><td class="num">${fmt(r.sold)}</td></tr>`).join('');
   $('#cbView').innerHTML = warnHtml + `<p class="muted">Sold inițial: ${fmt(cb.siInitial)} lei</p>
     <table><thead><tr><th>Data</th><th>Document</th><th>Explicație</th><th class="num">Încasări</th><th class="num">Plăți</th><th class="num">Sold</th></tr></thead>
@@ -2509,7 +2513,7 @@ async function loadCashValuta() {
   const q = '?moneda=' + encodeURIComponent(moneda) + (p ? '&period=' + p : '');
   $('#cvPdf').href = '/pdf/cash-valuta' + q;
   let reg; try { reg = await api('/api/cash-valuta' + q); } catch (e) { box.innerHTML = ''; return; }
-  const rows = reg.rows.map((r) => `<tr><td>${r.data}</td><td>${r.document || ''}</td><td>${r.explicatie}</td>
+  const rows = reg.rows.map((r) => `<tr><td>${H(r.data)}</td><td>${H(r.document)}</td><td>${H(r.explicatie)}</td>
     <td>${r.moneda || ''}</td><td class="num">${r.curs ? fmt(r.curs) : ''}</td>
     <td class="num">${r.incasareVal ? fmt(r.incasareVal) : ''}</td><td class="num">${r.plataVal ? fmt(r.plataVal) : ''}</td><td class="num">${fmt(r.soldVal)}</td>
     <td class="num">${r.incasareLei ? fmt(r.incasareLei) : ''}</td><td class="num">${r.plataLei ? fmt(r.plataLei) : ''}</td><td class="num">${fmt(r.soldLei)}</td></tr>`).join('');
@@ -2624,7 +2628,7 @@ async function renderNeexigibila() {
     <tr><td>TVA colectată încă neexigibilă (4428)</td><td class="num">${fmt(n.colectataNeexigibila)}</td></tr>
     <tr><td>TVA deductibilă încă neexigibilă (4428)</td><td class="num">${fmt(n.deductibilaNeexigibila)}</td></tr></tbody></table>
     ${n.facturi.length ? `<div class="tablewrap" style="margin-top:6px"><table><thead><tr><th>Data</th><th>Document</th><th>Partener</th><th>Tip</th><th>Stadiu</th><th class="num">TVA</th></tr></thead><tbody>${
-      n.facturi.map((f) => `<tr><td>${f.data}</td><td>${f.document || ''}</td><td>${f.partener || ''}</td><td>${f.tip}</td><td>${f.stadiu === 'neexigibila' ? 'neexigibilă' : 'exigibilă'}</td><td class="num">${fmt(f.suma)}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+      n.facturi.map((f) => `<tr><td>${H(f.data)}</td><td>${H(f.document)}</td><td>${H(f.partener)}</td><td>${H(f.tip)}</td><td>${f.stadiu === 'neexigibila' ? 'neexigibilă' : 'exigibilă'}</td><td class="num">${fmt(f.suma)}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
 }
 async function loadVat() {
   const p = pget('tva');
@@ -2658,7 +2662,7 @@ async function loadVat() {
        })()}</tbody></table></div>`;
   const tbl = (rows, totBaza, totTva) => {
     if (!rows.length) return '<p class="muted">Niciun document.</p>';
-    const body = rows.map((r) => `<tr><td>${r.data}</td><td>${r.document || ''}</td><td>${r.partener || ''}${r.cui ? ' <span class="muted" style="font-size:11px">' + r.cui + '</span>' : ''}${r.taxareInversa ? ' <span class="muted" style="font-size:11px">↹ taxare inversă</span>' : ''}</td>
+    const body = rows.map((r) => `<tr><td>${H(r.data)}</td><td>${H(r.document)}</td><td>${H(r.partener)}${r.cui ? ' <span class="muted" style="font-size:11px">' + H(r.cui) + '</span>' : ''}${r.taxareInversa ? ' <span class="muted" style="font-size:11px">↹ taxare inversă</span>' : ''}</td>
       <td class="num">${r.cota ? r.cota + '%' : '—'}</td><td class="num">${fmt(r.baza)}</td><td class="num">${fmt(r.tva)}</td><td class="num">${fmt(r.total)}</td></tr>`).join('');
     return `<table><thead><tr><th>Data</th><th>Document</th><th>Partener</th><th class="num">Cotă</th><th class="num">Bază</th><th class="num">TVA</th><th class="num">Total</th></tr></thead>
       <tbody>${body}<tr class="total"><td colspan="4">TOTAL</td><td class="num">${fmt(totBaza)}</td><td class="num">${fmt(totTva)}</td><td class="num">${fmt(totBaza + totTva)}</td></tr></tbody></table>`;
@@ -3100,11 +3104,11 @@ async function loadPortfolio() {
      <table style="margin-top:10px">${segs.map(([k, c]) => `<tr><td><b style="color:${c}">●</b> ${k[0].toUpperCase() + k.slice(1)}</td><td class="num">${t[k]}</td><td class="num muted">${Math.round((t[k] / total) * 100)}%</td></tr>`).join('')}</table>`;
   const warn = d.firms.filter((f) => f.natentionari > 0).slice(0, 5);
   $('#portoTop').innerHTML = warn.length
-    ? `<table>${warn.map((f) => `<tr><td>${f.nume}<br><span class="muted" style="font-size:11px">${f.atentionari.slice(0, 3).join(' · ')}</span></td>
+    ? `<table>${warn.map((f) => `<tr><td>${H(f.nume)}<br><span class="muted" style="font-size:11px">${H(f.atentionari.slice(0, 3).join(' · '))}</span></td>
         <td class="num"><span style="background:#b00020;color:#fff;border-radius:10px;padding:2px 9px;font-weight:700">${f.natentionari}</span></td></tr>`).join('')}</table>`
     : '<p class="muted">✓ Nicio firmă cu atenționări pe luna selectată.</p>';
   $('#portoFirms').innerHTML = `<table><thead><tr><th>Firma</th><th>CUI</th><th class="num">Așteptate</th><th class="num">Depuse</th><th class="num">Generate</th><th class="num">Nedepuse</th><th class="num">Erori</th><th class="num">Atenționări</th></tr></thead><tbody>${
-    d.firms.map((f) => `<tr><td>${f.nume}</td><td class="muted">${f.cui}</td><td class="num">${f.counts.asteptate}</td><td class="num" style="color:#0a7d33">${f.counts.depuse}</td><td class="num">${f.counts.generate}</td><td class="num" ${f.counts.nedepuse ? 'style="color:#b26a00;font-weight:700"' : ''}>${f.counts.nedepuse}</td><td class="num" ${f.counts.erori ? 'style="color:#b00020;font-weight:700"' : ''}>${f.counts.erori}</td><td class="num">${f.natentionari || ''}</td></tr>`).join('')}</tbody></table>`;
+    d.firms.map((f) => `<tr><td>${H(f.nume)}</td><td class="muted">${H(f.cui)}</td><td class="num">${f.counts.asteptate}</td><td class="num" style="color:#0a7d33">${f.counts.depuse}</td><td class="num">${f.counts.generate}</td><td class="num" ${f.counts.nedepuse ? 'style="color:#b26a00;font-weight:700"' : ''}>${f.counts.nedepuse}</td><td class="num" ${f.counts.erori ? 'style="color:#b00020;font-weight:700"' : ''}>${f.counts.erori}</td><td class="num">${f.natentionari || ''}</td></tr>`).join('')}</tbody></table>`;
   $('#portoRecent').innerHTML = (d.recent || []).length
     ? `<table><thead><tr><th>Când</th><th>Firma</th><th>Cine</th><th>Acțiune</th></tr></thead><tbody>${
       d.recent.map((a) => `<tr><td class="muted">${(a.ts || '').replace('T', ' ').slice(0, 16)}</td><td>${a.firma}</td><td>${a.username}</td><td>${a.action}${a.detail ? ' — <span class="muted">' + a.detail + '</span>' : ''}</td></tr>`).join('')}</tbody></table>`
@@ -3180,7 +3184,7 @@ async function renderAging() {
   let a; try { a = await api('/api/aging'); } catch (e) { return; }
   const tbl = (titlu, list, t, lbl, wo) => `<div class="card"><h4>${titlu} <span class="muted" style="font-weight:400">la ${a.asOf}</span></h4>${
     list.length ? `<table><thead><tr><th>Partener</th><th class="num">Total</th><th class="num">0-30</th><th class="num">31-60</th><th class="num">61-90</th><th class="num">&gt;90</th>${wo ? '<th></th>' : ''}</tr></thead><tbody>${
-      list.map((x) => `<tr><td>${x.partener}${x.cui ? ' <span class="muted">(' + x.cui + ')</span>' : ''}</td><td class="num">${fmt(x.total)}</td><td class="num">${x.b0_30 ? fmt(x.b0_30) : ''}</td><td class="num">${x.b31_60 ? fmt(x.b31_60) : ''}</td><td class="num">${x.b61_90 ? fmt(x.b61_90) : ''}</td><td class="num">${x.b90plus ? fmt(x.b90plus) : ''}</td>${wo ? `<td><button class="linkbtn woff" data-p="${encodeURIComponent(x.partener)}" data-c="${x.cui || ''}" data-s="${x.total}">scoate</button></td>` : ''}</tr>`).join('')}
+      list.map((x) => `<tr><td>${H(x.partener)}${x.cui ? ' <span class="muted">(' + H(x.cui) + ')</span>' : ''}</td><td class="num">${fmt(x.total)}</td><td class="num">${x.b0_30 ? fmt(x.b0_30) : ''}</td><td class="num">${x.b31_60 ? fmt(x.b31_60) : ''}</td><td class="num">${x.b61_90 ? fmt(x.b61_90) : ''}</td><td class="num">${x.b90plus ? fmt(x.b90plus) : ''}</td>${wo ? `<td><button class="linkbtn woff" data-p="${encodeURIComponent(x.partener)}" data-c="${H(x.cui)}" data-s="${x.total}">scoate</button></td>` : ''}</tr>`).join('')}
       <tr class="bold"><td>TOTAL ${lbl}</td><td class="num">${fmt(t.total)}</td><td class="num">${fmt(t.b0_30)}</td><td class="num">${fmt(t.b31_60)}</td><td class="num">${fmt(t.b61_90)}</td><td class="num">${fmt(t.b90plus)}</td>${wo ? '<td></td>' : ''}</tr></tbody></table>`
       : '<p class="muted">Niciun sold restant.</p>'}</div>`;
   $('#agingView').innerHTML = tbl('De încasat (clienți)', a.clienti, a.totalClienti, 'creanțe', true) + tbl('De plătit (furnizori)', a.furnizori, a.totalFurnizori, 'datorii', false);
@@ -3198,7 +3202,7 @@ async function renderProvizion() {
   let p; try { p = await api('/api/provizion?pct=' + pct); } catch (e) { return; }
   const det = p.detalii.length
     ? `<table><thead><tr><th>Partener</th><th class="num">Creanțe &gt;90 zile</th><th class="num">Provizion ${p.pct}%</th></tr></thead><tbody>${
-      p.detalii.map((c) => `<tr><td>${c.partener}${c.cui ? ' <span class="muted">(' + c.cui + ')</span>' : ''}</td><td class="num">${fmt(c.vechi)}</td><td class="num">${fmt(c.provizion)}</td></tr>`).join('')}</tbody></table>`
+      p.detalii.map((c) => `<tr><td>${H(c.partener)}${c.cui ? ' <span class="muted">(' + H(c.cui) + ')</span>' : ''}</td><td class="num">${fmt(c.vechi)}</td><td class="num">${fmt(c.provizion)}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Nicio creanță mai veche de 90 de zile.</p>';
   $('#provView').innerHTML = det + `<table style="margin-top:8px"><tbody>
     <tr><td>Provizion necesar (${p.pct}%)</td><td class="num">${fmt(p.necesar)}</td></tr>
@@ -3235,7 +3239,7 @@ async function loadOpeningAnalytic() {
   const arr = await api('/api/opening-analytic');
   $('#oaList').innerHTML = arr.length
     ? `<table><thead><tr><th>Cont</th><th>Partener</th><th>CUI</th><th class="num">Debit</th><th class="num">Credit</th><th></th></tr></thead><tbody>${
-      arr.map((o, i) => `<tr><td class="acc">${o.cont}</td><td>${o.partener || ''}</td><td>${o.cui || ''}</td>
+      arr.map((o, i) => `<tr><td class="acc">${H(o.cont)}</td><td>${H(o.partener)}</td><td>${H(o.cui)}</td>
         <td class="num">${fmt(o.d)}</td><td class="num">${fmt(o.c)}</td><td><button class="del oadel" data-i="${i}">✕</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Niciun sold inițial analitic.</p>';
   $$('#oaList .oadel').forEach((b) => b.addEventListener('click', async () => {
@@ -3266,7 +3270,7 @@ function renderPartners() {
   if (ft) arr = arr.filter((p) => p.tip === ft || (ft !== 'ambele' && p.tip === 'ambele'));
   $('#partnersList').innerHTML = arr.length
     ? `<table><thead><tr><th>CUI</th><th>Denumire</th><th>Tip</th><th>Oraș</th><th>Județ</th><th></th></tr></thead><tbody>${
-      arr.map((p) => `<tr><td class="acc">${p.cui}</td><td>${p.den || ''}</td><td>${tipBadge(p.tip)}</td><td>${p.oras || ''}</td><td>${p.judet || ''}</td>
+      arr.map((p) => `<tr><td class="acc">${H(p.cui)}</td><td>${H(p.den)}</td><td>${tipBadge(p.tip)}</td><td>${H(p.oras)}</td><td>${H(p.judet)}</td>
         <td><button class="linkbtn pedit" data-cui="${p.cui}">editează</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Niciun partener pentru filtrul ales. Partenerii se adaugă automat când introduci CUI pe o factură.</p>';
   $$('#partnersList .pedit').forEach((b) => b.addEventListener('click', () => {
@@ -3400,7 +3404,7 @@ async function loadSalarizare() {
   const t = sp.totals;
   $('#angajatiList').innerHTML = sp.rows.length
     ? `<table><thead><tr><th>Nume</th><th>Funcție</th><th class="num">Brut</th><th class="num">CAS</th><th class="num">CASS</th><th class="num">Deducere</th><th class="num">Impozit</th><th class="num">Net</th><th class="num">Avans</th><th class="num">Rețineri</th><th class="num">Rest plată</th><th class="num">CAM</th><th></th></tr></thead><tbody>${
-      sp.rows.map((r) => `<tr><td>${r.nume}${r.spor ? ' <span class="muted">+spor ' + fmt(r.spor) + '</span>' : ''}${r.persoane ? ' <span class="muted">' + r.persoane + ' pers.</span>' : ''}${r.tichete ? ' <span class="muted">+tichete ' + fmt(r.tichete) + '</span>' : ''}${r.avantaje ? ' <span class="muted" title="Avantaje în natură impozabile — intră în CAS/CASS/impozit, nu se plătesc în bani">+avantaje ' + fmt(r.avantaje) + '</span>' : ''}${r.zileCM ? ' <span class="muted" title="Concediu medical: ' + r.zileCM + ' zile, indemnizație ' + fmt(r.indemnizatieCM) + ' lei (angajator ' + fmt(r.cmAngajator) + ' + FNUASS ' + fmt(r.cmFnuass) + '), salariu redus proporțional">🏥 CM ' + r.zileCM + 'z</span>' : ''}${r.zileCO ? ' <span class="muted" title="Concediu de odihnă: ' + r.zileCO + ' zile, indemnizație ' + fmt(r.indemnizatieCO) + ' lei pe media 3 luni (' + fmt(r.mediaCO) + ')">🏖 CO ' + r.zileCO + 'z</span>' : ''}${r.normaPartiala ? ' <span class="muted" title="Normă parțială sub salariul minim: CAS ' + fmt(r.casAngajator) + ' + CASS ' + fmt(r.cassAngajator) + ' suportate suplimentar de firmă (OUG 16/2022)">⏱ parțial</span>' : ''}${r.scutire ? ' <span class="muted">scutit (' + r.sector + ')</span>' : ''}${r.overPlafon ? ' <span style="color:var(--danger)">⚠ peste plafon scutire</span>' : ''}</td><td>${r.functie || ''}</td>
+      sp.rows.map((r) => `<tr><td>${H(r.nume)}${r.spor ? ' <span class="muted">+spor ' + fmt(r.spor) + '</span>' : ''}${r.persoane ? ' <span class="muted">' + r.persoane + ' pers.</span>' : ''}${r.tichete ? ' <span class="muted">+tichete ' + fmt(r.tichete) + '</span>' : ''}${r.avantaje ? ' <span class="muted" title="Avantaje în natură impozabile — intră în CAS/CASS/impozit, nu se plătesc în bani">+avantaje ' + fmt(r.avantaje) + '</span>' : ''}${r.zileCM ? ' <span class="muted" title="Concediu medical: ' + r.zileCM + ' zile, indemnizație ' + fmt(r.indemnizatieCM) + ' lei (angajator ' + fmt(r.cmAngajator) + ' + FNUASS ' + fmt(r.cmFnuass) + '), salariu redus proporțional">🏥 CM ' + r.zileCM + 'z</span>' : ''}${r.zileCO ? ' <span class="muted" title="Concediu de odihnă: ' + r.zileCO + ' zile, indemnizație ' + fmt(r.indemnizatieCO) + ' lei pe media 3 luni (' + fmt(r.mediaCO) + ')">🏖 CO ' + r.zileCO + 'z</span>' : ''}${r.normaPartiala ? ' <span class="muted" title="Normă parțială sub salariul minim: CAS ' + fmt(r.casAngajator) + ' + CASS ' + fmt(r.cassAngajator) + ' suportate suplimentar de firmă (OUG 16/2022)">⏱ parțial</span>' : ''}${r.scutire ? ' <span class="muted">scutit (' + H(r.sector) + ')</span>' : ''}${r.overPlafon ? ' <span style="color:var(--danger)">⚠ peste plafon scutire</span>' : ''}</td><td>${H(r.functie)}</td>
         <td class="num">${fmt(r.brut)}</td><td class="num">${fmt(r.cas)}</td><td class="num">${fmt(r.cass)}</td><td class="num">${r.deducere ? fmt(r.deducere) : ''}</td><td class="num">${fmt(r.impozit)}</td><td class="num">${fmt(r.net)}</td><td class="num">${r.avans ? fmt(r.avans) : ''}</td><td class="num">${r.retineri ? fmt(r.retineri) : ''}</td><td class="num">${fmt(r.restPlata)}</td><td class="num">${fmt(r.cam)}</td>
         <td><a class="linkbtn" href="/pdf/fluturas/${r.id}?period=${spPeriod()}" target="_blank">fluturaș</a> · <a class="linkbtn" href="/pdf/adeverinta/${r.id}?year=${($('#rsYear').value || new Date().getFullYear())}" target="_blank">adeverință</a> · <button class="linkbtn aedit" data-id="${r.id}">editează</button> · <button class="linkbtn adel" data-id="${r.id}">șterge</button></td></tr>`).join('')}
       <tr class="bold"><td colspan="2">TOTAL (${sp.rows.length} ang.)</td><td class="num">${fmt(t.brut)}</td><td class="num">${fmt(t.cas)}</td><td class="num">${fmt(t.cass)}</td><td class="num">${fmt(t.deducere)}</td><td class="num">${fmt(t.impozit)}</td><td class="num">${fmt(t.net)}</td><td class="num">${fmt(t.avans)}</td><td class="num">${fmt(t.retineri)}</td><td class="num">${fmt(t.restPlata)}</td><td class="num">${fmt(t.cam)}</td><td></td></tr></tbody></table>`
@@ -3437,7 +3441,7 @@ async function renderRegistruSalarii() {
   const rs = await api('/api/registru-salarii?year=' + y);
   $('#rsList').innerHTML = rs.angajati.length
     ? `<table><thead><tr><th>Nume</th><th>CNP</th><th class="num">Luni</th><th class="num">Brut anual</th><th class="num">CAS</th><th class="num">CASS</th><th class="num">Impozit</th><th class="num">Net anual</th></tr></thead><tbody>${
-      rs.angajati.map((e) => `<tr><td>${e.nume}</td><td class="acc">${e.cnp || ''}</td><td class="num">${e.luni}</td><td class="num">${fmt(e.brut)}</td><td class="num">${fmt(e.cas)}</td><td class="num">${fmt(e.cass)}</td><td class="num">${fmt(e.impozit)}</td><td class="num">${fmt(e.net)}</td></tr>`).join('')}
+      rs.angajati.map((e) => `<tr><td>${H(e.nume)}</td><td class="acc">${H(e.cnp)}</td><td class="num">${e.luni}</td><td class="num">${fmt(e.brut)}</td><td class="num">${fmt(e.cas)}</td><td class="num">${fmt(e.cass)}</td><td class="num">${fmt(e.impozit)}</td><td class="num">${fmt(e.net)}</td></tr>`).join('')}
       <tr class="bold"><td colspan="3">TOTAL (${rs.nrLuni} luni)</td><td class="num">${fmt(rs.totals.brut)}</td><td class="num">${fmt(rs.totals.cas)}</td><td class="num">${fmt(rs.totals.cass)}</td><td class="num">${fmt(rs.totals.impozit)}</td><td class="num">${fmt(rs.totals.net)}</td></tr></tbody></table>`
     : '<p class="muted">Niciun stat de plată înregistrat pentru anul selectat.</p>';
 }
@@ -3478,8 +3482,8 @@ function renderStockMovements() {
   const tipLbl = (m) => m.tip === 'receptie' ? 'recepție' : m.tip === 'transfer' ? `transfer ${m.gestiuneCod}→${m.gestiuneDestCod}` : 'ieșire';
   $('#movementsList').innerHTML = movs.length
     ? `<table><thead><tr><th>Data</th><th>Tip</th><th>Gestiune</th><th>Produs</th><th class="num">Cantitate</th><th class="num">Preț</th><th>Document</th><th>Operator</th><th>Notă contabilă</th><th></th></tr></thead><tbody>${
-      movs.map((m) => `<tr><td>${m.data}</td><td>${tipLbl(m)}</td><td>${m.gestiuneCod || ''}</td><td>${m.cod} ${m.denumire}</td>
-        <td class="num">${fmt(m.cantitate)} ${m.um}</td><td class="num">${m.pretUnitar ? fmt(m.pretUnitar) : '—'}</td><td>${m.document || ''}</td><td>${m.operator || '—'}</td>
+      movs.map((m) => `<tr><td>${H(m.data)}</td><td>${tipLbl(m)}</td><td>${H(m.gestiuneCod)}</td><td>${H(m.cod)} ${H(m.denumire)}</td>
+        <td class="num">${fmt(m.cantitate)} ${H(m.um)}</td><td class="num">${m.pretUnitar ? fmt(m.pretUnitar) : '—'}</td><td>${H(m.document)}</td><td>${m.operator ? H(m.operator) : '—'}</td>
         <td>${m.tip === 'transfer' ? '<span class="muted">intern</span>' : m.initial ? '<span class="pill" title="Stoc preluat la deschidere — valoarea e în soldurile inițiale, nu se contabilizează separat">sold inițial</span>' : m.entryId ? '<span class="pill">✓ contabilizat</span>' : `<button class="linkbtn mpost" data-id="${m.id}">postează nota</button>`}</td>
         <td>${m.tip === 'receptie' ? `<a class="linkbtn" href="/pdf/nir?id=${m.id}" target="_blank">NIR</a> · ` : m.tip === 'iesire' ? `<a class="linkbtn" href="/pdf/bon-consum?id=${m.id}" target="_blank">bon consum</a> · ` : `<a class="linkbtn" href="/pdf/aviz?id=${m.id}" target="_blank">aviz</a> · `}<button class="linkbtn mdel" data-id="${m.id}">șterge</button></td></tr>`).join('')}</tbody></table>
       <p class="muted" style="margin-top:6px">${movs.length} din ${STOCK_MOVS.length} mișcări. „Postează nota”: recepție <b>3xx = 401</b>, ieșire <b>60x = 3xx</b> la CMP. Transferul e mișcare internă.</p>`
@@ -3510,16 +3514,16 @@ async function loadStocks() {
   // gestiuni: listă + selecturi
   $('#gestiuniList').innerHTML = gestiuni.length
     ? `<table><thead><tr><th>Cod</th><th>Denumire</th><th>Gestionar</th><th>Cont</th><th></th></tr></thead><tbody>${
-      gestiuni.map((g) => `<tr><td class="acc">${g.cod}</td><td>${g.denumire}</td><td>${g.gestionar || ''}</td><td class="acc">${g.cont || '371'}</td>
+      gestiuni.map((g) => `<tr><td class="acc">${H(g.cod)}</td><td>${H(g.denumire)}</td><td>${H(g.gestionar)}</td><td class="acc">${H(g.cont || '371')}</td>
         <td><button class="linkbtn gdel" data-id="${g.id}">șterge</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Nicio gestiune. Adaugă cel puțin un depozit.</p>';
   $$('#gestiuniList .gdel').forEach((b) => b.addEventListener('click', async () => {
     try { await api('/api/gestiuni/' + b.dataset.id, { method: 'DELETE' }); loadStocks(); toast('Gestiune ștearsă'); }
     catch (e) { toast(e.message, true); }
   }));
-  const gestOpts = gestiuni.map((g) => `<option value="${g.id}">${g.cod} — ${g.denumire}</option>`).join('');
+  const gestOpts = gestiuni.map((g) => `<option value="${g.id}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('');
   const mf = $('#movementForm');
-  mf.productId.innerHTML = products.map((p) => `<option value="${p.id}">${p.cod} — ${p.denumire}</option>`).join('') || '<option value="">(niciun produs)</option>';
+  mf.productId.innerHTML = products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
   mf.gestiuneId.innerHTML = gestOpts || '<option value="">(nicio gestiune)</option>';
   mf.gestiuneDestId.innerHTML = gestOpts || '<option value="">(nicio gestiune)</option>';
   $('#stocGestFilter').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${g.id}"${g.id === gf ? ' selected' : ''}>${g.cod} — ${g.denumire}</option>`).join('');
@@ -3533,8 +3537,8 @@ async function loadStocks() {
   const totV = stock.reduce((t, s) => t + s.stocV, 0);
   $('#stocksList').innerHTML = stock.length
     ? `<table><thead><tr><th>Gestiune</th><th>Cod</th><th>Denumire</th><th class="num">Cantitate</th><th>UM</th><th class="num">CMP</th><th class="num">Valoare</th><th></th></tr></thead><tbody>${
-      stock.map((s) => `<tr><td>${s.gestiune.cod}</td><td class="acc">${s.product.cod}</td><td>${s.product.denumire}</td>
-        <td class="num">${fmt(s.stocQ)}</td><td>${s.product.um || 'buc'}</td><td class="num">${fmt(s.cmp)}</td><td class="num">${fmt(s.stocV)}</td>
+      stock.map((s) => `<tr><td>${H(s.gestiune.cod)}</td><td class="acc">${H(s.product.cod)}</td><td>${H(s.product.denumire)}</td>
+        <td class="num">${fmt(s.stocQ)}</td><td>${H(s.product.um || 'buc')}</td><td class="num">${fmt(s.cmp)}</td><td class="num">${fmt(s.stocV)}</td>
         <td><a class="linkbtn" href="/pdf/stock-ledger/${s.product.id}?asOf=${asOf}&gestiune=${s.gestiune.id}" target="_blank">fișă</a> · <button class="linkbtn pdel" data-id="${s.product.id}">șterge</button></td></tr>`).join('')}
       <tr class="bold"><td colspan="6">TOTAL VALOARE STOC</td><td class="num">${fmt(round2(totV))}</td><td></td></tr></tbody></table>`
     : '<p class="muted">Niciun stoc. Adaugă produse/gestiuni și înregistrează recepții.</p>';
@@ -3567,7 +3571,7 @@ async function loadStocks() {
   const reg = await api('/api/doc-register');
   $('#docRegisterList').innerHTML = reg.length
     ? `<table><thead><tr><th>Tip</th><th>Serie/Nr</th><th>Data</th><th>Gestiune</th><th>Referință</th><th class="num">Valoare</th><th>Operator</th></tr></thead><tbody>${
-      reg.map((r) => `<tr><td>${r.tip}</td><td class="acc">${r.serieNr}</td><td>${r.data}</td><td>${r.gestiune}</td><td>${r.document || ''}</td><td class="num">${fmt(r.valoare)}</td><td>${r.operator || '—'}</td></tr>`).join('')}</tbody></table>`
+      reg.map((r) => `<tr><td>${H(r.tip)}</td><td class="acc">${H(r.serieNr)}</td><td>${H(r.data)}</td><td>${H(r.gestiune)}</td><td>${H(r.document)}</td><td class="num">${fmt(r.valoare)}</td><td>${r.operator ? H(r.operator) : '—'}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Niciun document emis încă (numerele se atribuie la prima tipărire a unui NIR/bon/aviz).</p>';
 }
 onPeriodChange('stoc', loadStocks);
@@ -3658,7 +3662,7 @@ function prodMatRow() {
 function fillProduction(products, gestiuni) {
   PROD_OPTS = { products: products || [], gestiuni: gestiuni || [] };
   const f = $('#prodForm'); if (!f) return;
-  f.productId.innerHTML = PROD_OPTS.products.map((p) => `<option value="${p.id}">${p.cod} — ${p.denumire}</option>`).join('') || '<option value="">(niciun produs)</option>';
+  f.productId.innerHTML = PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
   f.gestiuneId.innerHTML = PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${g.cod} — ${g.denumire}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
   if (!f.data.value) f.data.value = new Date().toISOString().slice(0, 10);
   if (!$('#prodMaterials').children.length) $('#prodMaterials').appendChild(prodMatRow());
@@ -3715,7 +3719,7 @@ function recipeResetForm() {
 }
 function fillRecipes(products, gestiuni) {
   const f = $('#recipeForm'); if (!f) return;
-  f.productId.innerHTML = (products || []).map((p) => `<option value="${p.id}">${p.cod} — ${p.denumire}</option>`).join('') || '<option value="">(niciun produs)</option>';
+  f.productId.innerHTML = (products || []).map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
   f.gestiuneId.innerHTML = (gestiuni || []).map((g) => `<option value="${g.id}">${g.cod} — ${g.denumire}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
   if (!$('#recipeMaterials').children.length) $('#recipeMaterials').appendChild(recipeMatRow());
   renderRecipes(products);
