@@ -686,8 +686,21 @@ app.post('/api/reset/accept', (req, res) => {
 });
 
 // firma activa (constransa la firmele utilizatorului) + vederea filtrata
+// Firma activa pentru cerere. STRICT pentru utilizatorii non-admin (necontabili/contabili):
+// doar firmele proprii (cele inscrise/create de ei sau alocate lor). Un ?firma= din afara listei
+// e ignorat; daca nu au nicio firma, se intoarce o santinela care produce o vedere GOALA (nu se
+// cade niciodata pe firma globala implicita — altfel s-ar scurge datele altcuiva).
+const NO_FIRMA = -1;
 function activeId(req) {
   const u = req.user;
+  if (u && u.role !== 'admin') {
+    const allowed = allowedFirme(u);
+    if (!allowed.length) return NO_FIRMA; // niciun acces -> vedere goala
+    let id = Number(req.query.firma) || u.firmaActiva || allowed[0];
+    if (!allowed.includes(id)) id = allowed[0]; // firma straina in query/firmaActiva -> constrans la a lui
+    return id;
+  }
+  // admin (sau contexte interne fara user): acces la toate firmele
   const allowed = u ? allowedFirme(u) : db.get().firme.map((f) => f.id);
   let id = Number(req.query.firma) || (u && u.firmaActiva) || allowed[0];
   if (!allowed.includes(id)) id = allowed[0];

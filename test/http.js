@@ -533,6 +533,20 @@ async function main() {
     ok('user isi sterge propria firma secundara', (await req('DELETE', '/api/firme/' + f2, { cookie: c1 })).json.ok === true);
     ok('dupa stergere, firma nu mai apare in lista lui', !(await req('GET', '/api/firme', { cookie: c1 })).json.firme.some((f) => f.id === f2));
 
+    // ── ACCES STRICT: userii vad DOAR firmele lor, niciodata a altcuiva ──
+    // ?firma= din afara listei proprii e ignorat (constrans la firma userului), nu se scurge firma 2
+    const foreignView = await req('GET', '/api/meta?firma=2', { cookie: c1 });
+    eq('user1: ?firma=2 (straina) e ignorat -> ramane pe firma 1', foreignView.json.firmaActiva, 1);
+    ok('user1: datele raman ale firmei 1 (partenerul lui), nu ale firmei 2', !!(await req('GET', '/api/partners?firma=2', { cookie: c1 })).json['4242']);
+    // un user FARA nicio firma nu vede firma globala implicita — vedere goala
+    await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'fara_firma', password: 'parola3', firme: [] } });
+    const cNo = (await req('POST', '/api/login', { body: { username: 'fara_firma', password: 'parola3' } })).cookie;
+    const noMeta = (await req('GET', '/api/meta', { cookie: cNo })).json;
+    ok('user fara firme: firma activa NU e o firma reala (santinela negativa)', typeof noMeta.firmaActiva === 'number' && noMeta.firmaActiva < 1);
+    eq('user fara firme: nicio inregistrare vizibila (fara scurgere globala)', (await req('GET', '/api/entries', { cookie: cNo })).json.length, 0);
+    eq('user fara firme: niciun partener vizibil', Object.keys((await req('GET', '/api/partners', { cookie: cNo })).json).length, 0);
+    ok('user fara firme: lista lui de firme e goala', (await req('GET', '/api/firme', { cookie: cNo })).json.firme.length === 0);
+
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
