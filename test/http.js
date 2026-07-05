@@ -238,6 +238,13 @@ async function main() {
     ok('csv/journal: 200 text/csv cu antet', csvJ.status === 200 && /Nr;Data;Document/.test(csvJ.text));
     const csvB = await req('GET', '/csv/balance?period=2026-06', { cookie: c1 });
     ok('csv/balance: 200 cu antet de balanta', csvB.status === 200 && /Cont;Denumire;SI Debit/.test(csvB.text));
+
+    // ── Situatii & raportare (src/routes/reports.js) ──
+    ok('situatii JSON: cont de profit si pierdere F20', typeof (await req('GET', '/api/statements/pl-f20?year=2026', { cookie: c1 })).json.cifraAfaceri === 'number');
+    ok('situatii JSON: bilant F10 raspunde', !!(await req('GET', '/api/statements/bilant-f10?year=2026', { cookie: c1 })).json);
+    for (const p of ['/pdf/situatii?year=2026', '/pdf/bilant?period=2026-12', '/pdf/pl?year=2026', '/pdf/cashflow?year=2026', '/pdf/capital?year=2026', '/pdf/note?year=2026']) {
+      eq('PDF raportare ' + p + ' -> 200', (await req('GET', p, { cookie: c1 })).status, 200);
+    }
     ok('csv/partners: 200', (await req('GET', '/csv/partners', { cookie: c1 })).status === 200);
 
     // ── XML declaratii: generare + marcarea "generata" in registru + validare ──
