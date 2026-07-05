@@ -775,3 +775,10 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 .faq-item>div{padding:0 10px 12px 22px}
 .faq-item p{margin:6px 0;font-size:13.5px;line-height:1.55;color:var(--ink)}
 .faq-item.hidden{display:none}
+
+/* Panoul „Înscrie o firmă" — compact (mai putine randuri, spatiere stransa) */
+.login-box.reg-compact{padding:20px 24px}
+.reg-compact label{margin-top:7px;font-size:13.5px}
+.reg-compact .login-logo{margin-bottom:2px}
+.reg-compact .btn{margin-top:12px}
+.reg-compact select,.reg-compact input{margin-top:2px}

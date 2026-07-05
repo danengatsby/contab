@@ -32,34 +32,36 @@
   </div>
 
   <div id="registerOverlay" class="login-overlay hidden">
-    <form id="registerForm" class="login-box" style="width:440px">
+    <form id="registerForm" class="login-box reg-compact" style="width:480px">
       <div class="login-logo">▦ Înscrie o firmă</div>
-      <p class="muted">Creezi contul tău și firma ta. Începi cu planul de conturi complet și zero înregistrări contabile.</p>
+      <p class="muted" style="margin:2px 0 0;font-size:13px">Contul tău și firma ta — plan de conturi complet, zero înregistrări.</p>
       <label>Denumire firmă * <input name="nume" required maxlength="120" placeholder="S.C. EXEMPLU S.R.L." /></label>
       <div style="display:flex;gap:8px">
         <label style="flex:1">CUI <input name="cui" placeholder="RO12345678" /></label>
         <label style="flex:1">Reg. Com. <input name="regCom" placeholder="J40/123/2026" /></label>
       </div>
-      <label>Adresă <input name="adresa" /></label>
       <div style="display:flex;gap:8px">
+        <label style="flex:2">Adresă <input name="adresa" /></label>
         <label style="flex:1">Oraș <input name="oras" /></label>
         <label style="flex:1">Județ <input name="judet" placeholder="RO-B" /></label>
       </div>
-      <label>Formă juridică
-        <select name="tipEntitate">
-          <option value="srl">SRL / societate (partidă dublă, dividende, D100/SAF-T)</option>
-          <option value="pfa">PFA / Întreprindere individuală (Declarația Unică, fără dividende)</option>
-        </select>
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:500;margin-top:10px"><input name="tvaPlatitor" type="checkbox" checked style="width:auto"> Plătitoare de TVA</label>
-      <hr style="margin:14px 0;border:none;border-top:1px solid var(--line)">
-      <label>Utilizator (login) * <input name="username" autocomplete="username" required minlength="3" /></label>
-      <label>Parolă * <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
-      <label>Email <span class="muted" style="font-weight:400">(pentru recuperarea parolei; <b>același email ca la plată</b>, dacă ai achitat un abonament)</span> <input name="email" type="email" autocomplete="email" /></label>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <label style="flex:1">Formă juridică
+          <select name="tipEntitate">
+            <option value="srl">SRL / societate</option>
+            <option value="pfa">PFA / Întreprindere individuală</option>
+          </select>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:500;white-space:nowrap;padding-bottom:9px"><input name="tvaPlatitor" type="checkbox" checked style="width:auto"> Plătitoare de TVA</label>
+      </div>
+      <div style="display:flex;gap:8px">
+        <label style="flex:1">Utilizator (login) * <input name="username" autocomplete="username" required minlength="3" /></label>
+        <label style="flex:1">Parolă * <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
+      </div>
+      <label>Email <span class="muted" style="font-weight:400;font-size:11.5px">(recuperare parolă; același email ca la plată)</span> <input name="email" type="email" autocomplete="email" /></label>
       <div id="registerErr" class="status err"></div>
       <button class="btn primary" style="width:100%">Creează firma și contul</button>
-      <p class="muted" style="font-size:11.5px;margin:8px 0 0;text-align:center">Prin crearea contului ești de acord cu <a href="/confidentialitate.html" target="_blank" rel="noopener">politica de confidențialitate</a>.</p>
-      <p style="margin-top:10px;text-align:center"><a id="showPricingReg" class="link">💳 Vezi prețurile</a> · <a id="registerCancel" class="link">← Înapoi la autentificare</a></p>
+      <p style="margin-top:10px;text-align:center;font-size:12.5px"><a id="showPricingReg" class="link">💳 Vezi prețurile</a> · <a id="registerCancel" class="link">← Înapoi</a> · <a href="/confidentialitate.html" target="_blank" rel="noopener" class="muted">confidențialitate</a></p>
     </form>
   </div>
 
