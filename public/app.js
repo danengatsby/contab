@@ -44,7 +44,8 @@ async function checkRegisterEnabled() {
   catch (e) { /* ignora */ }
 }
 $('#registerBtn') && $('#registerBtn').addEventListener('click', () => {
-  $('#registerErr').textContent = ''; $('#loginOverlay').classList.add('hidden'); $('#registerOverlay').classList.remove('hidden');
+  pendingPaidPlan = null; // „Testeaza gratuit" = inscriere simpla, fara plan platit in asteptare
+  $('#registerErr').textContent = ''; openRegisterPanel();
 });
 // „Demo": intra in contul demo public (explorare libera, date resetate zilnic)
 $('#demoLoginBtn') && $('#demoLoginBtn').addEventListener('click', async (e) => {
@@ -53,8 +54,11 @@ $('#demoLoginBtn') && $('#demoLoginBtn').addEventListener('click', async (e) => 
   catch (err) { toast(err.message, true); b.disabled = false; }
 });
 $('#registerCancel') && $('#registerCancel').addEventListener('click', () => {
+  pendingPaidPlan = null;
   $('#registerOverlay').classList.add('hidden'); $('#loginOverlay').classList.remove('hidden');
 });
+// Planul plătit ales din panoul de prețuri — reținut până la crearea contului, apoi lansează Stripe.
+let pendingPaidPlan = null;
 // Prețuri publice (pe pagina de autentificare/înscriere)
 async function showPricing() {
   const box = $('#pricingPlans'); if (!box) return;
@@ -77,16 +81,12 @@ async function showPricing() {
       <div class="plan-action">${cta}${demo}</div>
     </div>`;
   }).join('');
-  $$('#pricingPlans .pricing-start').forEach((b) => b.addEventListener('click', async () => {
-    // Proba gratuită → direct la înscriere. Plan plătit → lansează plata, apoi la întoarcere se deschide înscrierea.
-    if (b.dataset.trial === '1') { openRegisterPanel(); return; }
-    b.disabled = true;
-    try {
-      const r = await api('/api/checkout-guest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: b.dataset.plan }) });
-      if (r.url) { window.location.href = r.url; return; } // redirect către Stripe Checkout
-      if (r.notConfigured) { toast('Plata online nu e activată încă — creezi contul acum, activăm abonamentul ulterior.'); openRegisterPanel(); return; }
-      b.disabled = false;
-    } catch (e) { toast(e.message, true); b.disabled = false; }
+  $$('#pricingPlans .pricing-start').forEach((b) => b.addEventListener('click', () => {
+    // Intai INSCRIEREA firmei; plata Stripe se lanseaza dupa completarea formularului (vezi registerForm).
+    // Proba gratuita nu are plata; planul platit e retinut in pendingPaidPlan.
+    pendingPaidPlan = b.dataset.trial === '1' ? null : b.dataset.plan;
+    const label = b.textContent.replace(/→/g, '').replace(/^\s*Alege\s+/i, '').trim();
+    openRegisterPanel(b.dataset.trial === '1' ? null : label);
   }));
   $$('#pricingPlans .pricing-demo').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true;
@@ -120,6 +120,16 @@ $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) =>
   try {
     await api('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     f.password.value = '';
+    // Plan platit ales din preturi -> dupa crearea contului, lanseaza plata Stripe
+    if (pendingPaidPlan) {
+      const plan = pendingPaidPlan; pendingPaidPlan = null;
+      try {
+        const r = await api('/api/subscription/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }) });
+        if (r.url) { window.location.href = r.url; return; } // redirect catre Stripe Checkout
+      } catch (e) {
+        toast('Firma a fost creată. Plata online nu e disponibilă acum — te ajutăm să activezi abonamentul din Abonament.', true);
+      }
+    }
     $('#registerOverlay').classList.add('hidden'); $('#loginOverlay').classList.add('hidden');
     await init();
     toast('Bine ai venit! Firma „' + body.nume + '" a fost creată.');
@@ -938,10 +948,18 @@ function handleRegisterLink() {
   history.replaceState(null, '', location.pathname);
   openRegisterPanel();
 }
-function openRegisterPanel() {
+function openRegisterPanel(planLabel) {
   $('#pricingOverlay') && $('#pricingOverlay').classList.add('hidden');
   $('#loginOverlay') && $('#loginOverlay').classList.add('hidden');
   if ($('#registerErr')) $('#registerErr').textContent = '';
+  // indiciu: dupa crearea contului urmeaza plata planului ales
+  const hint = $('#regPlanHint');
+  if (hint) {
+    if (pendingPaidPlan && planLabel) { hint.textContent = '💳 Plan ales: ' + planLabel + '. După crearea contului treci la plată.'; hint.classList.remove('hidden'); }
+    else hint.classList.add('hidden');
+  }
+  const submitBtn = $('#registerForm') && $('#registerForm').querySelector('button.primary');
+  if (submitBtn) submitBtn.textContent = pendingPaidPlan ? 'Creează firma și continuă la plată →' : 'Creează firma și contul';
   $('#registerOverlay') && $('#registerOverlay').classList.remove('hidden');
 }
 // ───────────────────────── DASHBOARD ─────────────────────────
