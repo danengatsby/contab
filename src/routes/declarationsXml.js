@@ -17,7 +17,7 @@ const validate = require('../validate');
 const { statePlata } = require('../payroll');
 
 module.exports = function register(app, ctx) {
-  const { S, activeId } = ctx;
+  const { S, activeId, canAccess } = ctx;
 
   function sendXml(res, str, filename) {
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
@@ -31,6 +31,7 @@ module.exports = function register(app, ctx) {
     if (!e) return res.status(404).send('Inregistrare inexistenta');
     if (!xml.isEFacturaEligible(e)) return res.status(400).send('Inregistrarea nu este o factura emisa.');
     const fid = e.firmaId || db.firmaActiva();
+    if (!canAccess(req, fid)) return res.status(404).send('Inregistrare inexistenta'); // izolare multi-firma
     sendXml(res, xml.eFacturaXml(db.getFirma(fid) || {}, e, d.partners[fid] || {}), 'efactura-' + (e.document || e.id) + '.xml');
   });
   // PDF vizual al unei facturi emise (generat din articolul contabil).
@@ -40,6 +41,7 @@ module.exports = function register(app, ctx) {
     const e = d.entries.find((x) => x.id === req.params.id);
     if (!e) return res.status(404).send('Inregistrare inexistenta');
     const fid = e.firmaId || db.firmaActiva();
+    if (!canAccess(req, fid)) return res.status(404).send('Inregistrare inexistenta'); // izolare multi-firma
     pdf.facturaPdf(res, db.getFirma(fid) || {}, e, d.partners[fid] || {}, req.query.layout);
   });
   // Declarantul pentru XML-urile ANAF — din datele personale ale utilizatorului (Setari -> Contul meu)

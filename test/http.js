@@ -405,6 +405,50 @@ async function main() {
     eq('inregistrare in luna blocata -> respinsa (400)', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-01-10', partener: 'X', baza: 100, tva: 21, cota: 21 } } })).status, 400);
     const setDep2 = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd394', period: '2026-01', status: 'depusa' } });
     ok('a doua declaratie depusa pe aceeasi luna nu re-blocheaza', setDep2.json.ok === true && setDep2.json.locked == null);
+
+    // ── IZOLARE MULTI-FIRMA: utilizatorul firmei 2 nu poate citi/sterge resursele firmei 1 ──
+    // resurse proaspete in firma 1
+    const isoP = (await req('POST', '/api/products', { cookie: c1, body: { cod: 'ISO-1', denumire: 'Produs izolare', um: 'buc', cont: '371' } })).json.product;
+    const isoG = (await req('POST', '/api/gestiuni', { cookie: c1, body: { cod: 'GIZO', denumire: 'Gestiune izolare' } })).json.gestiune;
+    const isoM = (await req('POST', '/api/stock-movements', { cookie: c1, body: { tip: 'receptie', productId: isoP.id, gestiuneId: isoG.id, cantitate: 5, pretUnitar: 10, data: '2026-08-05', document: 'ISO' } })).json.movement;
+    const isoA = (await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Izolat Ion', salariuBrut: 4000 } })).json.angajat;
+    const isoE = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-08-06', partener: 'Iso Client', cuiPartener: 'RO99', document: 'ISO-9', baza: 500, tva: 105, cota: 21 } } })).json.entry;
+    const isoAs = (await req('POST', '/api/assets', { cookie: c1, body: { denumire: 'Utilaj izolare', cont: '2131', cost: 5000, durataLuni: 60, dataPif: '2026-01-15' } })).json.asset || {};
+    // utilizator nou, DOAR pe firma 2
+    await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'izolat', password: 'parola2', firme: [2] } });
+    const c2 = (await req('POST', '/api/login', { body: { username: 'izolat', password: 'parola2' } })).cookie;
+    const deny = (r) => [400, 402, 403, 404].includes(r.status);
+    eq('nota contabila straina: refuzata', (await req('GET', '/pdf/note/' + isoE.id, { cookie: c2 })).status, 404);
+    eq('factura PDF straina: refuzata', (await req('GET', '/pdf/factura/' + isoE.id, { cookie: c2 })).status, 404);
+    eq('e-Factura straina: refuzata', (await req('GET', '/xml/efactura/' + isoE.id, { cookie: c2 })).status, 404);
+    ok('stergerea inregistrarii straine: refuzata', deny(await req('DELETE', '/api/entries/' + isoE.id, { cookie: c2 })));
+    ok('stergerea produsului strain: refuzata', deny(await req('DELETE', '/api/products/' + isoP.id, { cookie: c2 })));
+    ok('stergerea gestiunii straine: refuzata', deny(await req('DELETE', '/api/gestiuni/' + isoG.id, { cookie: c2 })));
+    ok('stergerea miscarii de stoc straine: refuzata', deny(await req('DELETE', '/api/stock-movements/' + isoM.id, { cookie: c2 })));
+    ok('stergerea angajatului strain: refuzata', deny(await req('DELETE', '/api/angajati/' + isoA.id, { cookie: c2 })));
+    ok('stergerea mijlocului fix strain: refuzata', deny(await req('DELETE', '/api/assets/' + isoAs.id, { cookie: c2 })));
+    ok('casarea mijlocului fix strain: refuzata', deny(await req('POST', '/api/assets/' + isoAs.id + '/scrap', { cookie: c2, body: {} })));
+    ok('fisa de magazie straina: refuzata', (await req('GET', '/api/stocks/' + isoP.id + '/ledger', { cookie: c2 })).status !== 200);
+    ok('fluturasul strain: refuzat', (await req('GET', '/pdf/fluturas/' + isoA.id + '?period=2026-08', { cookie: c2 })).status !== 200);
+    ok('trimiterea in SPV a facturii straine: refuzata', deny(await req('POST', '/api/anaf/send/' + isoE.id, { cookie: c2 })));
+    // decisiv: resursele firmei 1 sunt INTACTE dupa toate incercarile
+    ok('resursele firmei 1 sunt intacte dupa sweep', (
+      (await req('GET', '/api/products', { cookie: c1 })).json.some((p) => p.id === isoP.id)
+      && (await req('GET', '/api/gestiuni', { cookie: c1 })).json.some((g) => g.id === isoG.id)
+      && (await req('GET', '/api/angajati', { cookie: c1 })).json.some((a) => a.id === isoA.id)
+      && (await req('GET', '/api/entries', { cookie: c1 })).json.some((e) => e.id === isoE.id)
+      && (await req('GET', '/api/stock-movements', { cookie: c1 })).json.some((m) => m.id === isoM.id)
+      && (await req('GET', '/api/assets', { cookie: c1 })).json.some((x) => x.id === isoAs.id)
+    ));
+    // proprietarul isi poate sterge propriile resurse (guard-ul nu blocheaza firma corecta)
+    ok('proprietarul sterge propriile resurse', (
+      (await req('DELETE', '/api/entries/' + isoE.id, { cookie: c1 })).json.ok === true
+      && (await req('DELETE', '/api/angajati/' + isoA.id, { cookie: c1 })).json.ok === true
+      && (await req('DELETE', '/api/assets/' + isoAs.id, { cookie: c1 })).json.ok === true
+      && (await req('DELETE', '/api/stock-movements/' + isoM.id, { cookie: c1 })).json.ok === true
+      && (await req('DELETE', '/api/products/' + isoP.id, { cookie: c1 })).json.ok === true
+      && (await req('DELETE', '/api/gestiuni/' + isoG.id, { cookie: c1 })).json.ok === true
+    ));
   } finally {
     clearTimeout(guard);
     killAll();

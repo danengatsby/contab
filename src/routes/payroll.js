@@ -27,7 +27,9 @@ module.exports = function register(app, ctx) {
   });
   app.delete('/api/angajati/:id', (req, res) => {
     const d = db.get();
-    d.angajati = (d.angajati || []).filter((a) => a.id !== req.params.id);
+    const a = (d.angajati || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
+    if (!a) return res.status(404).json({ error: 'Angajat inexistent.' }); // izolare multi-firma
+    d.angajati = (d.angajati || []).filter((x) => x !== a);
     db.save();
     res.json({ ok: true });
   });

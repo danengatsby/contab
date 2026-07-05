@@ -40,8 +40,8 @@ module.exports = function register(app, ctx) {
   });
   app.post('/api/assets/:id/scrap', (req, res) => {
     const d = db.get();
-    const a = (d.assets || []).find((x) => x.id === req.params.id);
-    if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' });
+    const a = (d.assets || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
+    if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' }); // izolare multi-firma
     a.status = 'casat'; a.dataCasare = (req.body || {}).dataCasare || new Date().toISOString().slice(0, 10);
     logAudit('asset.scrap', a.denumire, { req });
     db.save();
@@ -49,9 +49,10 @@ module.exports = function register(app, ctx) {
   });
   app.delete('/api/assets/:id', (req, res) => {
     const d = db.get();
-    const a = (d.assets || []).find((x) => x.id === req.params.id);
-    d.assets = (d.assets || []).filter((x) => x.id !== req.params.id);
-    if (a) logAudit('asset.delete', a.denumire, { req });
+    const a = (d.assets || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
+    if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' }); // izolare multi-firma
+    d.assets = (d.assets || []).filter((x) => x !== a);
+    logAudit('asset.delete', a.denumire, { req });
     db.save();
     res.json({ ok: true });
   });

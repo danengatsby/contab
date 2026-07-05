@@ -1839,6 +1839,8 @@ require('./src/routes/production')(app, { S, activeId, logAudit });
 app.delete('/api/entries/:id', (req, res) => {
   const d = db.get();
   const e = d.entries.find((x) => x.id === req.params.id);
+  // izolare multi-firma: nu stergi inregistrari ale firmelor la care nu ai acces
+  if (e && !canAccess(req, e.firmaId == null ? d.firmaActiva : e.firmaId)) return res.status(404).json({ error: 'Inregistrare inexistenta.' });
   if (e) {
     const firma = db.getFirma(e.firmaId == null ? activeId(req) : e.firmaId);
     const per = e.period || periodOf(e.data);
@@ -2257,11 +2259,11 @@ app.get('/api/efactura-list', (req, res) => {
 
 // ───────────────────────────── ANAF SPV ─────────────────────────────
 // ── Import e-Factura primita (UBL) ──
-require('./src/routes/anaf')(app, { activeId, wrap, logAudit, upsertPartner });
+require('./src/routes/anaf')(app, { activeId, wrap, logAudit, upsertPartner, canAccess });
 
 
 // Generarea XML declaratii (e-Factura, D300/D394/D390/D205/D112, SAF-T) + validare: src/routes/declarationsXml.js
-require('./src/routes/declarationsXml')(app, { S, activeId });
+require('./src/routes/declarationsXml')(app, { S, activeId, canAccess });
 
 // ───────────────── REGISTRUL DEPUNERILOR + PORTOFOLIU + NOTIFICARI ─────────────────
 // Registrul depunerilor, portofoliul si notificarile: src/routes/declarations.js
@@ -2490,6 +2492,7 @@ app.get('/pdf/note/:id', (req, res) => {
   const e = db.get().entries.find((x) => x.id === req.params.id);
   if (!e) return res.status(404).send('Nota inexistenta');
   const fid = e.firmaId || db.firmaActiva();
+  if (!canAccess(req, fid)) return res.status(404).send('Nota inexistenta'); // izolare multi-firma
   const nr = acc.journalNr(db.scoped(fid), e.id);
   pdf.notePdf(res, db.getFirma(fid) || {}, Object.assign({ nrJurnal: nr }, e));
 });

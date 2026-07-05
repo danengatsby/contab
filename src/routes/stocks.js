@@ -123,8 +123,10 @@ module.exports = function register(app, ctx) {
   });
   app.delete('/api/products/:id', (req, res) => {
     const d = db.get();
-    d.products = (d.products || []).filter((p) => p.id !== req.params.id);
-    d.stockMovements = (d.stockMovements || []).filter((m) => m.productId !== req.params.id);
+    const p = (d.products || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
+    if (!p) return res.status(404).json({ error: 'Produs inexistent.' }); // izolare multi-firma
+    d.products = (d.products || []).filter((x) => x !== p);
+    d.stockMovements = (d.stockMovements || []).filter((m) => m.productId !== p.id);
     db.save();
     res.json({ ok: true });
   });
@@ -144,10 +146,12 @@ module.exports = function register(app, ctx) {
   });
   app.delete('/api/gestiuni/:id', (req, res) => {
     const d = db.get();
-    if ((d.stockMovements || []).some((m) => m.firmaId === activeId(req) && (m.gestiuneId === req.params.id || m.gestiuneDestId === req.params.id))) {
+    const g = (d.gestiuni || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
+    if (!g) return res.status(404).json({ error: 'Gestiune inexistenta.' }); // izolare multi-firma
+    if ((d.stockMovements || []).some((m) => m.firmaId === activeId(req) && (m.gestiuneId === g.id || m.gestiuneDestId === g.id))) {
       return res.status(400).json({ error: 'Gestiunea are miscari de stoc — sterge-le intai.' });
     }
-    d.gestiuni = (d.gestiuni || []).filter((g) => g.id !== req.params.id);
+    d.gestiuni = (d.gestiuni || []).filter((x) => x !== g);
     db.save();
     res.json({ ok: true });
   });
@@ -175,9 +179,10 @@ module.exports = function register(app, ctx) {
   });
   app.delete('/api/stock-movements/:id', (req, res) => {
     const d = db.get();
-    const m = (d.stockMovements || []).find((x) => x.id === req.params.id);
-    if (m && m.entryId) d.entries = d.entries.filter((e) => e.id !== m.entryId); // sterge si nota contabila legata
-    d.stockMovements = (d.stockMovements || []).filter((x) => x.id !== req.params.id);
+    const m = (d.stockMovements || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
+    if (!m) return res.status(404).json({ error: 'Miscare inexistenta.' }); // izolare multi-firma
+    if (m.entryId) d.entries = d.entries.filter((e) => e.id !== m.entryId); // sterge si nota contabila legata
+    d.stockMovements = (d.stockMovements || []).filter((x) => x !== m);
     db.save();
     res.json({ ok: true });
   });

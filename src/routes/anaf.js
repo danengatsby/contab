@@ -15,7 +15,9 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = function register(app, ctx) {
-  const { activeId, wrap, logAudit, upsertPartner } = ctx;
+  const { activeId, wrap, logAudit, upsertPartner, canAccess } = ctx;
+  // izolare multi-firma: operatiunile SPV pe o inregistrare cer acces la firma acesteia
+  const entryAccess = (req, e, d) => canAccess(req, e.firmaId == null ? d.firmaActiva : e.firmaId);
 
   app.post('/api/efactura/parse', (req, res) => {
     try { res.json({ ok: true, invoice: efacturaImport.parseUBL((req.body || {}).xml || '') }); }
@@ -87,7 +89,7 @@ module.exports = function register(app, ctx) {
   app.post('/api/anaf/send/:id', wrap(async (req, res) => {
     const d = db.get();
     const e = d.entries.find((x) => x.id === req.params.id);
-    if (!e) return res.status(404).json({ error: 'Inregistrare inexistenta' });
+    if (!e || !entryAccess(req, e, d)) return res.status(404).json({ error: 'Inregistrare inexistenta' });
     if (!xml.isSendable(e)) return res.status(400).json({ error: 'Doar facturile emise pot fi trimise in SPV.' });
     const c = d.settings.anaf || {};
     const fid = e.firmaId || db.firmaActiva();
@@ -103,7 +105,8 @@ module.exports = function register(app, ctx) {
   app.post('/api/anaf/status/:id', wrap(async (req, res) => {
     const d = db.get();
     const e = d.entries.find((x) => x.id === req.params.id);
-    if (!e || !e.spv) return res.status(400).json({ error: 'Factura nu a fost trimisa in SPV.' });
+    if (!e || !entryAccess(req, e, d)) return res.status(404).json({ error: 'Inregistrare inexistenta' });
+    if (!e.spv) return res.status(400).json({ error: 'Factura nu a fost trimisa in SPV.' });
     const c = d.settings.anaf || {};
     const st = await anaf.status(c, e.spv.index);
     e.spv.stare = st.stare; e.spv.idDescarcare = st.idDescarcare || e.spv.idDescarcare;
@@ -117,7 +120,8 @@ module.exports = function register(app, ctx) {
   app.post('/api/anaf/download/:id', wrap(async (req, res) => {
     const d = db.get();
     const e = d.entries.find((x) => x.id === req.params.id);
-    if (!e || !e.spv || !e.spv.idDescarcare) return res.status(400).json({ error: 'Recipisa indisponibila (verifica statusul intai).' });
+    if (!e || !entryAccess(req, e, d)) return res.status(404).json({ error: 'Inregistrare inexistenta' });
+    if (!e.spv || !e.spv.idDescarcare) return res.status(400).json({ error: 'Recipisa indisponibila (verifica statusul intai).' });
     const docId = await saveRecipisa(d, e);
     db.save();
     res.json({ ok: true, documentId: docId, spv: e.spv });
