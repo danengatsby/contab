@@ -547,7 +547,7 @@ async function main() {
     eq('user fara firme: niciun partener vizibil', Object.keys((await req('GET', '/api/partners', { cookie: cNo })).json).length, 0);
     ok('user fara firme: lista lui de firme e goala', (await req('GET', '/api/firme', { cookie: cNo })).json.firme.length === 0);
 
-    // ── FIRMA DE PROBA (1 luna, per-firma, independent de abonamentul contului) ──
+    // ── FIRMA DE PROBA (1 luna) + abonare la expirare ──
     const tfR = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Firma Proba SRL', cui: 'RO900', proba: true } });
     ok('firma de proba creata cu marcaj trial + data de expirare', tfR.json.ok && tfR.json.firma.trial === true && !!tfR.json.firma.trialEndsAt);
     const tf = tfR.json.firma.id;
@@ -558,12 +558,21 @@ async function main() {
     await req('POST', '/api/firme/' + tf, { cookie: c1, body: { trialEndsAt: '2026-01-01T00:00:00Z' } });
     const blocat = await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO902', den: 'Blocat' } });
     eq('dupa expirare: scrierea pe firma de proba e blocata (402)', blocat.status, 402);
-    ok('mesajul de blocare semnaleaza proba expirata', blocat.json && blocat.json.firmaTrialExpired === true);
+    ok('402 semnaleaza proba expirata + firma pentru promptul de abonare', blocat.json && blocat.json.firmaTrialExpired === true && blocat.json.firmaId === tf);
     eq('dupa expirare: citirile raman libere', (await req('GET', '/api/partners', { cookie: c1 })).status, 200);
-    // „Pastreaza firma" scoate marcajul de proba -> firma devine permanenta
-    ok('pastreaza firma reuseste', (await req('POST', '/api/firme/' + tf + '/keep', { cookie: c1 })).json.ok === true);
-    ok('dupa pastrare: nu mai e firma de proba', !((await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf)._trial.trial));
-    eq('dupa pastrare: scrierea functioneaza din nou', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO903', den: 'Deblocat' } })).status, 200);
+    // abonare: seteaza flagul Abonament pe luna curenta + deblocheaza (fara Stripe in teste)
+    const lunaCur = new Date().toISOString().slice(0, 7);
+    const sub = await req('POST', '/api/firme/' + tf + '/subscribe', { cookie: c1, body: {} });
+    ok('abonare: plan Start (necontabil), luna curenta', sub.json.ok && sub.json.plan === 'start' && sub.json.luna === lunaCur);
+    ok('abonare: deschide plata Stripe cand e configurata, altfel activare directa', sub.json.stripe ? (typeof sub.json.url === 'string' && /stripe|checkout/.test(sub.json.url)) : (sub.json.url == null));
+    const tfDupa = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf);
+    ok('firma are flagul Abonament=Start pe luna curenta', tfDupa.abonamente && tfDupa.abonamente[lunaCur] === 'start');
+    ok('dupa abonare: nu mai e firma de proba', !tfDupa._trial.trial);
+    eq('dupa abonare: scrierea functioneaza din nou', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO903', den: 'Deblocat' } })).status, 200);
+    ok('abonare respinsa pe firma straina -> 403', [403, 404].includes((await req('POST', '/api/firme/2/subscribe', { cookie: c1, body: {} })).status));
+    // „Pastreaza" ramane disponibil pentru o firma de proba inca activa
+    const tf2 = (await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Proba 2', proba: true } })).json.firma.id;
+    ok('keep pe firma de proba activa scoate proba', (await req('POST', '/api/firme/' + tf2 + '/keep', { cookie: c1 })).json.ok === true);
     await req('POST', '/api/firme/1/activate', { cookie: c1 }); // curatenie: revin pe firma 1
 
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──

@@ -30,9 +30,31 @@ async function api(url, opts) {
     const r = await fetch(url, opts);
     const ct = r.headers.get('content-type') || '';
     const data = ct.includes('json') ? await r.json() : await r.text();
-    if (!r.ok) { const err = new Error((data && data.error) || ('Eroare ' + r.status)); err.status = r.status; throw err; }
+    if (!r.ok) {
+      // Firma de proba expirata: propune abonarea in loc de o simpla eroare
+      if (r.status === 402 && data && data.firmaTrialExpired) { promptFirmaSubscribe(data.firmaId, data.firmaNume); }
+      const err = new Error((data && data.error) || ('Eroare ' + r.status)); err.status = r.status; throw err;
+    }
     return data;
   } finally { setLoad(false); }
+}
+// Dupa expirarea probei unei firme: avertisment + intrebare de abonare; la „Da" -> plata Stripe
+// (Start pentru necontabili / Pro pentru contabili) si deblocarea firmei pe luna curenta.
+let firmaSubPromptOpen = false;
+async function promptFirmaSubscribe(firmaId, firmaNume) {
+  if (firmaSubPromptOpen || !firmaId) return;
+  firmaSubPromptOpen = true;
+  const planNume = (USER && USER.tip === 'contabil') ? 'Pro' : 'Start';
+  const da = confirm('Proba de o lună pentru firma „' + (firmaNume || '') + '" a expirat.\n\n'
+    + 'Continuarea lucrului pe luna următoare se face cu abonament (' + planNume + ' pentru ' + ((USER && USER.tip === 'contabil') ? 'contabili' : 'necontabili') + ').\n\nTe abonezi acum?');
+  firmaSubPromptOpen = false;
+  if (!da) return;
+  try {
+    const r = await api('/api/firme/' + firmaId + '/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    if (r.url) { window.location.href = r.url; return; } // plata Stripe
+    await init(); onTab('setari');
+    toast('Firma „' + (firmaNume || '') + '" e abonată pe luna curentă — poți continua.');
+  } catch (e) { /* eroarea a fost deja aratata */ }
 }
 
 // ───────────────────────── AUTENTIFICARE ─────────────────────────
@@ -281,17 +303,21 @@ $('#firmaSelect').addEventListener('change', async (e) => {
 async function renderFirme() {
   const data = await api('/api/firme');
   $('#firmaExport').href = '/api/firme/' + data.firmaActiva + '/export-zip';
+  const lunaCurenta = new Date().toISOString().slice(0, 7);
   const trialBadge = (f) => {
+    const abonat = f.abonamente && f.abonamente[lunaCurenta];
+    if (abonat) return ` <span class="pill" style="background:#eaf4ef;color:#0b6e4f" title="Abonată pe luna curentă (${abonat === 'pro' ? 'Pro' : 'Start'})">✓ abonat ${abonat === 'pro' ? 'Pro' : 'Start'}</span>`;
     const t = f._trial; if (!t || !t.trial) return '';
     return t.expired
-      ? ' <span class="pill warn" title="Proba de o lună a expirat — păstreaz-o ca să continui">🎁 probă expirată</span>'
+      ? ' <span class="pill warn" title="Proba de o lună a expirat — abonează-te ca să continui">🎁 probă expirată</span>'
       : ` <span class="pill" style="background:#eaf4ef;color:#0b6e4f" title="Firmă de probă">🎁 probă: ${t.zileRamase} ${t.zileRamase === 1 ? 'zi' : 'zile'}</span>`;
   };
   $('#firmeList').innerHTML = `<table><thead><tr><th>Denumire</th><th>CUI</th><th></th></tr></thead><tbody>${
     data.firme.map((f) => `<tr>
       <td>${f.id === data.firmaActiva ? '<b>● ' + H(f.nume) + '</b>' : H(f.nume)}${trialBadge(f)}</td><td>${H(f.cui)}</td>
       <td>${f.id === data.firmaActiva ? '<span class="pill">activă</span>' : `<button class="linkbtn fact" data-id="${f.id}">activează</button>`}
-        ${f._trial && f._trial.trial ? ` · <button class="linkbtn fkeep" data-id="${f.id}">păstrează</button>` : ''}
+        ${f._trial && f._trial.expired ? ` · <button class="linkbtn fsub" data-id="${f.id}" data-nume="${H(f.nume)}" style="color:var(--accent);font-weight:700">abonează-te →</button>` : ''}
+        ${f._trial && f._trial.trial && !f._trial.expired ? ` · <button class="linkbtn fkeep" data-id="${f.id}">păstrează</button>` : ''}
         ${data.firme.length > 1 ? ` · <button class="del fdel" data-id="${f.id}">✕</button>` : ''}</td></tr>`).join('')}</tbody></table>`;
   $$('#firmeList .fact').forEach((b) => b.addEventListener('click', async () => {
     await api('/api/firme/' + b.dataset.id + '/activate', { method: 'POST' }); await init(); onTab('setari'); toast('Firmă activată');
@@ -300,6 +326,7 @@ async function renderFirme() {
     try { await api('/api/firme/' + b.dataset.id + '/keep', { method: 'POST' }); await init(); onTab('setari'); toast('Firmă păstrată — proba s-a încheiat, firma rămâne permanentă.'); }
     catch (e) { toast(e.message, true); }
   }));
+  $$('#firmeList .fsub').forEach((b) => b.addEventListener('click', () => promptFirmaSubscribe(Number(b.dataset.id), b.dataset.nume)));
   $$('#firmeList .fdel').forEach((b) => b.addEventListener('click', async () => {
     if (!confirm('Ștergi această firmă și toate datele ei?')) return;
     try { await api('/api/firme/' + b.dataset.id, { method: 'DELETE' }); await init(); onTab('setari'); toast('Firmă ștearsă'); }
