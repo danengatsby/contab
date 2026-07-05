@@ -255,8 +255,10 @@ function d112Xml(company, period, sp, who) {
   const asigurati = sp.rows.map((r) => {
     const av = round2(r.avantaje || 0); // avantajele in natura intra in bazele CAS/CASS/impozit
     const cm = round2(r.indemnizatieCM || 0); // indemnizatiile CM: CAS + impozit DA, CASS NU
+    const np = (r.casAngajator || 0) + (r.cassAngajator || 0) > 0; // norma partiala sub salariul minim
     return `    <asigurat nume="${esc(r.nume)}" cnp="${esc(r.cnp)}" functie="${esc(r.functie)}" `
-    + `venit_brut="${num2(r.brut)}"${av ? ' avantaje="' + num2(av) + '"' : ''}${cm ? ' zile_cm="' + (r.zileCM || 0) + '" indemnizatie_cm="' + num2(cm) + '"' : ''} baza_cas="${num2(round2(r.brut + av + cm))}" cas="${num2(r.cas)}" baza_cass="${num2(round2(r.brut + (r.tichete || 0) + av))}" cass="${num2(r.cass)}" `
+    + `venit_brut="${num2(r.brut)}"${av ? ' avantaje="' + num2(av) + '"' : ''}${cm ? ' zile_cm="' + (r.zileCM || 0) + '" indemnizatie_cm="' + num2(cm) + '"' : ''}${r.zileCO ? ' zile_co="' + r.zileCO + '" indemnizatie_co="' + num2(r.indemnizatieCO) + '"' : ''} baza_cas="${num2(round2(r.brut + av + cm))}" cas="${num2(r.cas)}" baza_cass="${num2(round2(r.brut + (r.tichete || 0) + av))}" cass="${num2(r.cass)}" `
+    + (np ? `cas_angajator="${num2(r.casAngajator)}" cass_angajator="${num2(r.cassAngajator)}" ` : '')
     + `baza_impozit="${num2(round2(r.brut + (r.tichete || 0) + av + cm - r.cas - r.cass - r.neimpozabil))}" impozit="${num2(r.impozit)}" venit_net="${num2(r.net)}"/>`;
   }).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>

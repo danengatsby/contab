@@ -19,7 +19,7 @@ module.exports = function register(app, ctx) {
     const d = db.get();
     const a = b.id && (d.angajati || []).find((x) => x.id === b.id && x.firmaId === activeId(req));
     const rec = a || { id: db.nextId('ang'), firmaId: activeId(req) };
-    Object.assign(rec, { nume: String(b.nume), cnp: b.cnp || '', functie: b.functie || '', salariuBrut: round2(Number(b.salariuBrut) || 0), neimpozabil: round2(Number(b.neimpozabil) || 0), spor: round2(Number(b.spor) || 0), avans: round2(Number(b.avans) || 0), retineri: round2(Number(b.retineri) || 0), persoane: b.persoane === '' || b.persoane == null ? null : Math.max(0, Math.round(Number(b.persoane) || 0)), sub26: !!b.sub26, copii: Math.max(0, Math.round(Number(b.copii) || 0)), tichete: round2(Number(b.tichete) || 0), avantaje: round2(Number(b.avantaje) || 0), zileCM: Math.max(0, Math.round(Number(b.zileCM) || 0)), procentCM: [75, 85, 100].includes(Number(b.procentCM)) ? Number(b.procentCM) : 75, zileLucratoare: Math.max(1, Math.round(Number(b.zileLucratoare) || 21)), sector: ['it', 'constructii', 'agro'].includes(b.sector) ? b.sector : 'normal' });
+    Object.assign(rec, { nume: String(b.nume), cnp: b.cnp || '', functie: b.functie || '', salariuBrut: round2(Number(b.salariuBrut) || 0), neimpozabil: round2(Number(b.neimpozabil) || 0), spor: round2(Number(b.spor) || 0), avans: round2(Number(b.avans) || 0), retineri: round2(Number(b.retineri) || 0), persoane: b.persoane === '' || b.persoane == null ? null : Math.max(0, Math.round(Number(b.persoane) || 0)), sub26: !!b.sub26, copii: Math.max(0, Math.round(Number(b.copii) || 0)), tichete: round2(Number(b.tichete) || 0), avantaje: round2(Number(b.avantaje) || 0), zileCM: Math.max(0, Math.round(Number(b.zileCM) || 0)), procentCM: [75, 85, 100].includes(Number(b.procentCM)) ? Number(b.procentCM) : 75, zileCO: Math.max(0, Math.round(Number(b.zileCO) || 0)), zileLucratoare: Math.max(1, Math.round(Number(b.zileLucratoare) || 21)), normaPartiala: !!b.normaPartiala, scutitNormaPartiala: !!b.scutitNormaPartiala, sector: ['it', 'constructii', 'agro'].includes(b.sector) ? b.sector : 'normal' });
     if (!a) d.angajati.push(rec);
     logAudit('angajat.save', rec.nume, { req });
     db.save();
@@ -63,6 +63,10 @@ module.exports = function register(app, ctx) {
     // partea FNUASS e creanta de recuperat (4373 debit). Alternativa cu 423 exista ca tipuri manuale.
     if (sp.totals.cmAngajator > 0) entry.lines.push({ debit: '6458', credit: '421', suma: sp.totals.cmAngajator, explicatie: 'Indemnizatii CM suportate de angajator (primele 5 zile lucratoare)' });
     if (sp.totals.cmFnuass > 0) entry.lines.push({ debit: '4373', credit: '421', suma: sp.totals.cmFnuass, explicatie: 'Indemnizatii CM suportate de FNUASS (de recuperat)' });
+    // Norma partiala sub salariul minim (OUG 16/2022): diferentele de CAS/CASS pana la nivelul
+    // salariului minim sunt CHELTUIALA a angajatorului (nu retinere din salariat).
+    if (sp.totals.casAngajator > 0) entry.lines.push({ debit: '6458', credit: '4315', suma: sp.totals.casAngajator, explicatie: 'CAS suportat de angajator — norma partiala sub salariul minim' });
+    if (sp.totals.cassAngajator > 0) entry.lines.push({ debit: '6458', credit: '4316', suma: sp.totals.cassAngajator, explicatie: 'CASS suportat de angajator — norma partiala sub salariul minim' });
     const d = db.get();
     d.entries.push(entry);
     // instantaneu in istoricul de salarizare (inlocuieste daca luna era deja inregistrata)

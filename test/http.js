@@ -349,6 +349,16 @@ async function main() {
       && postCm.json.entry.lines.some((l) => l.debit === '4373' && l.credit === '421' && l.suma === 300));
     ok('angajat CM sters', (await req('DELETE', '/api/angajati/' + angCm.json.angajat.id, { cookie: c1 })).json.ok === true);
 
+    // ── Norma partiala (OUG 16/2022): suprataxarea pe angajator, cap-coada ──
+    const angNp = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Partial Pop', salariuBrut: 2000, normaPartiala: true } });
+    const spNpH = (await req('GET', '/api/stat-plata?period=2026-09', { cookie: c1 })).json.rows.find((r) => r.nume === 'Partial Pop');
+    ok('stat: diferentele CAS/CASS pana la salariul minim, pe angajator', spNpH && spNpH.casAngajator > 0 && spNpH.cassAngajator > 0 && spNpH.net === 2000 - spNpH.cas - spNpH.cass - spNpH.impozit);
+    const postNp = await req('POST', '/api/stat-plata?period=2026-09', { cookie: c1 });
+    ok('postare: 6458=4315 si 6458=4316 cu diferentele angajatorului',
+      postNp.json.entry.lines.some((l) => l.debit === '6458' && l.credit === '4315')
+      && postNp.json.entry.lines.some((l) => l.debit === '6458' && l.credit === '4316'));
+    ok('angajat norma partiala sters', (await req('DELETE', '/api/angajati/' + angNp.json.angajat.id, { cookie: c1 })).json.ok === true);
+
     // ── Solduri initiale: echilibrul debit=credit e impus la salvare ──
     eq('solduri initiale dezechilibrate -> 400', (await req('POST', '/api/opening', { cookie: c1, body: { openingBalances: { '5121': { d: 1000, c: 0 }, '1012': { d: 0, c: 800 } } } })).status, 400);
     ok('solduri initiale echilibrate -> ok', (await req('POST', '/api/opening', { cookie: c1, body: { openingBalances: { '5121': { d: 1000, c: 0 }, '1012': { d: 0, c: 1000 } } } })).json.ok === true);

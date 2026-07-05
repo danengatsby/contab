@@ -1475,11 +1475,18 @@ function fluturasPdf(res, company, r, period) {
   doc.moveDown(0.5);
   const rows = [];
   if (r.spor) { rows.push({ k: 'Salariu de baza', v: fmt(round2(r.brut - r.spor)) }); rows.push({ k: '+ Spor', v: fmt(r.spor) }); }
-  rows.push({ k: r.zileCM ? 'Salariu aferent zilelor lucrate' : 'Salariu brut', v: fmt(r.brut), _bold: true });
+  if (r.zileCM || r.zileCO) {
+    rows.push({ k: 'Salariu aferent zilelor lucrate', v: fmt(r.salariuZileLucrate != null ? r.salariuZileLucrate : r.brut) });
+    if (r.zileCO) rows.push({ k: '+ Indemnizatie concediu de odihna (' + r.zileCO + ' zile, media 3 luni ' + fmt(r.mediaCO) + ')', v: fmt(r.indemnizatieCO) });
+    rows.push({ k: 'Total brut impozabil', v: fmt(r.brut), _bold: true });
+  } else {
+    rows.push({ k: 'Salariu brut', v: fmt(r.brut), _bold: true });
+  }
   if (r.zileCM) {
     rows.push({ k: '+ Indemnizatie CM angajator (' + Math.min(5, r.zileCM) + ' zile, ' + (r.procentCM || 75) + '% din media ' + fmt(r.mediaCM) + ')', v: fmt(r.cmAngajator) });
     if (r.cmFnuass) rows.push({ k: '+ Indemnizatie CM FNUASS (' + Math.max(0, r.zileCM - 5) + ' zile)', v: fmt(r.cmFnuass) });
   }
+  if (r.normaPartiala && (r.casAngajator || r.cassAngajator)) rows.push({ k: 'Norma partiala: CAS+CASS pana la salariul minim, suportate de ANGAJATOR', v: fmt(round2((r.casAngajator || 0) + (r.cassAngajator || 0))) });
   if (r.avantaje) rows.push({ k: '+ Avantaje in natura impozabile (nu se platesc in bani)', v: fmt(r.avantaje) });
   rows.push({ k: '- CAS 25% (contributie asigurari sociale)', v: fmt(r.cas) });
   rows.push({ k: '- CASS 10% (contributie asigurari sociale de sanatate)', v: fmt(r.cass) });

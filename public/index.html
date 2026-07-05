@@ -1031,6 +1031,9 @@
             <label>Venit neimpozabil suplimentar <input name="neimpozabil" type="number" step="0.01" value="0" /></label>
             <label>Tichete de masă (valoare/lună) <input name="tichete" type="number" step="0.01" value="0" /></label>
             <label>Avantaje în natură impozabile (auto, chirie… — intră în CAS/CASS/impozit, nu se plătesc în bani) <input name="avantaje" type="number" step="0.01" value="0" /></label>
+            <label>Zile concediu de odihnă în luna curentă (indemnizație pe media ultimelor 3 luni) <input name="zileCO" type="number" min="0" step="1" value="0" /></label>
+            <label class="check"><input name="normaPartiala" type="checkbox" /> Normă parțială sub salariul minim (OUG 16/2022 — CAS/CASS la nivelul salariului minim, diferența o suportă firma)</label>
+            <label class="check"><input name="scutitNormaPartiala" type="checkbox" /> Excepție de la suprataxare (elev/student, pensionar, ucenic, dizabilitate, normă întreagă la alt angajator)</label>
             <label>Zile concediu medical în luna curentă <input name="zileCM" type="number" min="0" step="1" value="0" /></label>
             <label>Procent indemnizație CM
               <select name="procentCM">

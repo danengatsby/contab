@@ -390,6 +390,31 @@ ok('D112: baza_cas include CM, baza_cass nu', (() => {
   return x.includes('baza_cas="3850.00"') && x.includes('baza_cass="2800.00"') && x.includes('zile_cm="7"');
 })());
 
+section('Norma partiala (OUG 16/2022) + concediu de odihna');
+// salariul minim S1 2026 = 4050: diferentele pana la nivelul minim le suporta ANGAJATORUL
+const pNp = fiscal.payroll(2000, 0, { bazaMinima: 4050 });
+eq('CAS angajat pe venitul real (25% din 2000)', pNp.cas, 500);
+eq('CAS angajator = diferenta pana la salariul minim (25% din 2050)', pNp.casAngajator, 512.5);
+eq('CASS angajator = diferenta (10% din 2050)', pNp.cassAngajator, 205);
+eq('netul angajatului NU scade din suprataxare', pNp.net, 1170);
+eq('costul angajatorului include suprataxarea', pNp.costTotal, 2762.5);
+const spNp = statePlata([{ id: 'np1', nume: 'Partial', salariuBrut: 2000, normaPartiala: true }], '2026-06');
+eq('stat: suprataxarea apare pe rand si in totaluri', spNp.rows[0].casAngajator + '|' + spNp.totals.cassAngajator, '512.5|205');
+eq('stat: total de virat include partea angajatorului', spNp.totals.totalBuget, 500 + 200 + 130 + 45 + 512.5 + 205);
+eq('exceptia legala (student/pensionar/cumul) anuleaza suprataxarea', statePlata([{ id: 'np2', nume: 'S', salariuBrut: 2000, normaPartiala: true, scutitNormaPartiala: true }], '2026-06').rows[0].casAngajator, 0);
+ok('D112: atributele cas_angajator/cass_angajator la norma partiala', (() => {
+  const x = xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spNp);
+  return x.includes('cas_angajator="512.50"') && x.includes('cass_angajator="205.00"');
+})());
+const histCo = [{ period: '2026-03', rows: [{ angajatId: 'co1', brut: 6000 }] }, { period: '2026-04', rows: [{ angajatId: 'co1', brut: 6000 }] }, { period: '2026-05', rows: [{ angajatId: 'co1', brut: 6300 }] }];
+const spCo = statePlata([{ id: 'co1', nume: 'Vacanta', salariuBrut: 4200, zileCO: 7, zileLucratoare: 21 }], '2026-06', histCo);
+eq('CO: media ultimelor 3 luni', spCo.rows[0].mediaCO, 6100);
+eq('CO: indemnizatia pe 7 zile din media', spCo.rows[0].indemnizatieCO, 2033.33);
+eq('CO: salariul zilelor lucrate (14/21 din 4200)', spCo.rows[0].salariuZileLucrate, 2800);
+eq('CO: brutul impozabil = salariu + indemnizatie', spCo.rows[0].brut, 4833.33);
+eq('CO fara istoric: media = brutul curent (echivalent salariului)', statePlata([{ id: 'c2', nume: 'V2', salariuBrut: 4200, zileCO: 7, zileLucratoare: 21 }], '2026-06').rows[0].brut, 4200);
+eq('CO + CM: zilele de CO plafonate la zilele ramase', statePlata([{ id: 'c3', nume: 'V3', salariuBrut: 4200, zileCM: 18, zileCO: 10, zileLucratoare: 21 }], '2026-06').rows[0].zileCO, 3);
+
 section('Taxe PFA — Declaratia Unica (plafoane pe salariu minim 4000)');
 const pfa = (vn) => fiscal.taxePfa(vn, { salariuMinim: 4000 }); // p6=24k p12=48k p24=96k p60=240k
 eq('venit 0: nimic datorat', pfa(0).total, 0);

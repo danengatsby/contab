@@ -114,14 +114,22 @@ function payroll(brut, deducere, opts) {
   const cmA = round2(o.cmAngajator) || 0;
   const cmF = round2(o.cmFnuass) || 0;
   const sector = o.sector || 'normal';
-  const cas = round2(((b + avantaje + cmA + cmF) * FISCAL.cas) / 100);
+  const bazaCasReala = round2(b + avantaje + cmA + cmF);
+  const cas = round2((bazaCasReala * FISCAL.cas) / 100);
   // tichetele de masa suporta CASS (din 2024) si impozit, dar NU CAS; indemnizatiile CM sunt exceptate de la CASS
-  const cass = round2(((b + tichete + avantaje) * FISCAL.cass) / 100);
+  const bazaCassReala = round2(b + tichete + avantaje);
+  const cass = round2((bazaCassReala * FISCAL.cass) / 100);
+  // Norma partiala (OUG 16/2022, art. 146 Cod fiscal): cand venitul brut e sub salariul minim,
+  // CAS si CASS se datoreaza la nivelul salariului minim (o.bazaMinima); DIFERENTA fata de
+  // contributiile retinute angajatului o SUPORTA ANGAJATORUL (nu se retine din net).
+  const bmin = round2(o.bazaMinima) || 0;
+  const casAngajator = bmin > bazaCasReala ? round2(((bmin - bazaCasReala) * FISCAL.cas) / 100) : 0;
+  const cassAngajator = bmin > bazaCassReala ? round2(((bmin - bazaCassReala) * FISCAL.cass) / 100) : 0;
   const baza = Math.max(0, round2(b + tichete + avantaje + cmA + cmF - cas - cass - ded));
   const impozit = round2((baza * FISCAL.impozitVenit) / 100);
   const cam = round2(((b + avantaje + cmA) * FISCAL.cam) / 100);
   const net = round2(b + cmA + cmF - cas - cass - impozit); // tichetele si avantajele se acorda ca valori, nu in numerar
-  return { brut: b, tichete, avantaje, cmAngajator: cmA, cmFnuass: cmF, cas, cass, baza, impozit, cam, net, costTotal: round2(b + cmA + cam + tichete), sector, scutImpozit: false, scutCass: false, overPlafon: false };
+  return { brut: b, tichete, avantaje, cmAngajator: cmA, cmFnuass: cmF, cas, cass, casAngajator, cassAngajator, baza, impozit, cam, net, costTotal: round2(b + cmA + cam + tichete + casAngajator + cassAngajator), sector, scutImpozit: false, scutCass: false, overPlafon: false };
 }
 
 /**
