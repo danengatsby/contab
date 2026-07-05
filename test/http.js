@@ -511,6 +511,28 @@ async function main() {
     ok('dupa restaurare: BKP-DOC este inapoi', (await req('GET', '/api/entries?firma=' + newFid, { cookie: c1 })).json.some((e) => e.document === 'BKP-DOC'));
     await req('POST', '/api/firme/1/activate', { cookie: c1 }); // revin pe firma 1
 
+    // ── MULTI-FIRMA pentru un user obisnuit: adauga si comuta intre firme (ca la admin) ──
+    const firmeInainte = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.length;
+    const nouaFirma = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'A Doua Firma PFA', cui: 'RO7788', tipEntitate: 'pfa', tvaPlatitor: false } });
+    ok('user obisnuit: creeaza o firma noua, devine activa', nouaFirma.json && nouaFirma.json.ok && nouaFirma.json.firmaActiva === nouaFirma.json.firma.id);
+    const f2 = nouaFirma.json.firma.id;
+    ok('firma noua pastreaza forma juridica si statutul TVA', nouaFirma.json.firma.tipEntitate === 'pfa' && nouaFirma.json.firma.tvaPlatitor === false);
+    const lista = (await req('GET', '/api/firme', { cookie: c1 })).json;
+    ok('user vede ACUM toate firmele lui (una in plus)', lista.firme.length === firmeInainte + 1 && lista.firme.some((f) => f.id === f2) && lista.firme.some((f) => f.id === 1));
+    ok('meta reflecta firma activa noua', (await req('GET', '/api/meta', { cookie: c1 })).json.firmaActiva === f2);
+    // datele sunt separate pe firma: partenerul creat in firma 1 NU apare in firma noua
+    ok('firma noua e goala (izolare fata de firma 1)', Object.keys((await req('GET', '/api/partners?firma=' + f2, { cookie: c1 })).json).length === 0);
+    // comuta inapoi pe firma 1 din selector (activate) — ca la admin
+    ok('comutarea pe firma 1 reuseste', (await req('POST', '/api/firme/1/activate', { cookie: c1 })).json.ok === true);
+    eq('dupa comutare, firma activa e 1', (await req('GET', '/api/meta', { cookie: c1 })).json.firmaActiva, 1);
+    ok('firma 1 isi are inapoi partenerii ei (RO4242)', !!(await req('GET', '/api/partners', { cookie: c1 })).json['4242']);
+    // NU poate activa o firma la care nu are acces (a altui user)
+    ok('user NU poate activa o firma straina', (await req('POST', '/api/firme/2/activate', { cookie: c1 })).status >= 400 || (await req('GET', '/api/meta', { cookie: c1 })).json.firmaActiva !== 2);
+    // isi poate STERGE o firma proprie (ca la admin), dar nu una straina
+    eq('user NU poate sterge o firma straina -> 403', (await req('DELETE', '/api/firme/2', { cookie: c1 })).status, 403);
+    ok('user isi sterge propria firma secundara', (await req('DELETE', '/api/firme/' + f2, { cookie: c1 })).json.ok === true);
+    ok('dupa stergere, firma nu mai apare in lista lui', !(await req('GET', '/api/firme', { cookie: c1 })).json.firme.some((f) => f.id === f2));
+
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {

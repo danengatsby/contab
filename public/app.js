@@ -259,11 +259,19 @@ $$('#moreSheet button[data-go]').forEach((b) => b.addEventListener('click', () =
 // ───────────────────────── FIRME (multi-firma) ─────────────────────────
 function fillFirmaSelect() {
   const sel = $('#firmaSelect');
-  sel.innerHTML = (META.firme || []).map((f) => `<option value="${f.id}" ${f.id === META.firmaActiva ? 'selected' : ''}>${H(f.nume)}${f.cui ? ' (' + H(f.cui) + ')' : ''}</option>`).join('');
+  const opts = (META.firme || []).map((f) => `<option value="${f.id}" ${f.id === META.firmaActiva ? 'selected' : ''}>${H(f.nume)}${f.cui ? ' (' + H(f.cui) + ')' : ''}</option>`).join('');
+  // optiune de adaugare direct din selector (discoverability) — duce la Setari -> Firmele mele
+  sel.innerHTML = opts + '<option value="__add__">＋ Adaugă / gestionează firme…</option>';
   // Portofoliul are sens doar cu mai multe firme in administrare
   const np = $('#navPortofoliu'); if (np) np.classList.toggle('hidden', (META.firme || []).length < 2);
 }
 $('#firmaSelect').addEventListener('change', async (e) => {
+  if (e.target.value === '__add__') { // nu e o firma — deschide gestionarea firmelor
+    e.target.value = String(META.firmaActiva || '');
+    goTab('setari');
+    setTimeout(() => { const c = $('#firmaNewForm'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.nume.focus(); } }, 150);
+    return;
+  }
   await api('/api/firme/' + e.target.value + '/activate', { method: 'POST' });
   await init();
   const active = $('#tabs button[data-tab].active'); onTab(active ? active.dataset.tab : 'dashboard');
@@ -306,8 +314,8 @@ $('#testCloneBtn') && $('#testCloneBtn').addEventListener('click', async () => {
 $('#firmaNewForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
-  await api('/api/firme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, oras: f.oras.value }) });
-  f.reset(); await init(); onTab('setari'); toast('Firmă adăugată (acum activă)');
+  await api('/api/firme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, oras: f.oras.value, tipEntitate: f.tipEntitate.value, tvaPlatitor: f.tvaPlatitor.checked }) });
+  f.reset(); if (f.tvaPlatitor) f.tvaPlatitor.checked = true; await init(); onTab('setari'); toast('Firmă adăugată (acum activă). Comuți între firme din selectorul de sus.');
 });
 $('#firmaImportBtn').addEventListener('click', async () => {
   const file = $('#firmaImportFile').files[0];

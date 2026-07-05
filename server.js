@@ -768,6 +768,8 @@ app.post('/api/firme', (req, res) => {
   const f = Object.assign(db.defaultFirma(id), {
     nume: b.nume || ('Firma ' + id), cui: b.cui || '', regCom: b.regCom || '',
     adresa: b.adresa || '', oras: b.oras || '', judet: b.judet || 'RO-B',
+    tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
+    tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
   }, { id });
   d.firme.push(f);
   d.partners[id] = {}; d.openingBalances[id] = {};
@@ -909,16 +911,23 @@ app.post('/api/firme/:id/activate', (req, res) => {
   db.save();
   res.json({ ok: true, firmaActiva: req.user.firmaActiva });
 });
-app.delete('/api/firme/:id', requireAdmin, (req, res) => {
+app.delete('/api/firme/:id', (req, res) => {
   const d = db.get();
   const id = Number(req.params.id);
-  if (d.firme.length <= 1) return res.status(400).json({ error: 'Trebuie sa ramana cel putin o firma.' });
+  const isAdmin = req.user.role === 'admin' && !req.impersonating;
+  // Un utilizator obisnuit isi poate sterge doar propriile firme; adminul, orice firma.
+  if (!isAdmin && !(req.user.firme || []).includes(id)) return res.status(403).json({ error: 'Fara acces la aceasta firma.' });
+  // Garda „cel putin o firma ramane": global pentru admin, respectiv in contul utilizatorului.
+  const remaining = isAdmin ? d.firme.length : (req.user.firme || []).length;
+  if (remaining <= 1) return res.status(400).json({ error: 'Trebuie sa ramana cel putin o firma.' });
   d.firme = d.firme.filter((f) => f.id !== id);
   d.entries = d.entries.filter((e) => e.firmaId !== id);
   d.documents = d.documents.filter((x) => x.firmaId !== id);
   d.openingAnalytic = d.openingAnalytic.filter((o) => o.firmaId !== id);
   delete d.partners[id]; delete d.openingBalances[id];
   d.users.forEach((u) => { if (Array.isArray(u.firme)) u.firme = u.firme.filter((x) => x !== id); });
+  // daca firma stearsa era cea activa a utilizatorului, muta-l pe prima ramasa a lui
+  if (req.user.firmaActiva === id) req.user.firmaActiva = (req.user.firme || [])[0] || (d.firme[0] && d.firme[0].id) || null;
   logAudit('firma.delete', 'firma ' + id, { req, firmaId: null });
   db.save();
   res.json({ ok: true });

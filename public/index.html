@@ -1600,14 +1600,25 @@ Cu stimă,
         </form>
       </div>
       <div class="card">
-        <h2>Firme</h2>
-        <p class="muted">Gestionează firmele. Firma activă (sus, în bară) determină ce date vezi în toată aplicația.</p>
+        <h2>Firmele mele</h2>
+        <p class="muted">Poți administra <b>mai multe firme din același cont</b>. Comuți între ele din selectorul de sus (bara albastră) — exact ca la administrator. Firma activă determină ce date vezi în toată aplicația.</p>
         <div id="firmeList" class="tablewrap"></div>
         <form id="firmaNewForm" class="dyn" style="margin-top:10px">
           <label>Denumire <input name="nume" placeholder="S.C. NOUA S.R.L." required /></label>
-          <label>CUI <input name="cui" /></label>
-          <label>Reg. Com. <input name="regCom" /></label>
-          <label>Oraș <input name="oras" /></label>
+          <div style="display:flex;gap:8px">
+            <label style="flex:1">CUI <input name="cui" /></label>
+            <label style="flex:1">Reg. Com. <input name="regCom" /></label>
+            <label style="flex:1">Oraș <input name="oras" /></label>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <label style="flex:1">Formă juridică
+              <select name="tipEntitate">
+                <option value="srl">SRL / societate</option>
+                <option value="pfa">PFA / Întreprindere individuală</option>
+              </select>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-weight:500;white-space:nowrap;padding-bottom:9px"><input name="tvaPlatitor" type="checkbox" checked style="width:auto"> Plătitoare de TVA</label>
+          </div>
           <button class="btn primary">+ Adaugă firmă</button>
         </form>
       </div>
