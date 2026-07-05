@@ -386,6 +386,23 @@ async function main() {
     ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 3 && users.json.every((u) => u.tip));
     eq('non-admin la ruta de admin -> 403', (await req('GET', '/api/users', { cookie: c1 })).status, 403);
 
+    // ── Mesaje (suport user <-> admin): src/routes/messages.js ──
+    ok('utilizatorul trimite un mesaj', (await req('POST', '/api/messages', { cookie: c1, body: { text: 'Am o intrebare despre TVA' } })).json.ok === true);
+    const myThread = await req('GET', '/api/messages', { cookie: c1 });
+    ok('utilizatorul isi vede conversatia cu mesajul trimis', myThread.json && myThread.json.admin === false && myThread.json.thread.some((m) => m.text === 'Am o intrebare despre TVA'));
+    ok('adminul vede conversatiile cu fir neterminat', (await req('GET', '/api/messages', { cookie: la.cookie })).json.admin === true);
+    ok('adminul are necitite de la utilizator', (await req('GET', '/api/messages/unread', { cookie: la.cookie })).json.unread >= 1);
+    const reply = await req('POST', '/api/messages', { cookie: la.cookie, body: { userId: 2, text: 'Iti raspund imediat' } });
+    ok('adminul raspunde in conversatia utilizatorului', reply.json && reply.json.ok && reply.json.message.fromAdmin === true);
+    const edited = await req('PATCH', '/api/messages/' + reply.json.message.id, { cookie: la.cookie, body: { text: 'Raspuns corectat' } });
+    ok('adminul isi editeaza propriul raspuns', edited.json && edited.json.message.text === 'Raspuns corectat' && edited.json.message.editedAt);
+    eq('utilizatorul NU poate edita raspunsul adminului -> 403', (await req('PATCH', '/api/messages/' + reply.json.message.id, { cookie: c1, body: { text: 'hack' } })).status, 403);
+    ok('adminul poate sterge un mesaj', (await req('DELETE', '/api/messages/' + reply.json.message.id, { cookie: la.cookie })).json.ok === true);
+    eq('utilizatorul NU poate sterge mesaje (doar admin) -> 403', (await req('DELETE', '/api/messages/x', { cookie: c1 })).status, 403);
+    const poll = await req('GET', '/api/messages/poll', { cookie: c1 });
+    ok('poll consolidat raspunde cu unread + typing', poll.json && typeof poll.json.unread === 'number' && typeof poll.json.typing === 'boolean');
+    ok('cautarea in conversatii (admin) raspunde', Array.isArray((await req('GET', '/api/messages/search?q=TVA', { cookie: la.cookie })).json.threads));
+
     // ── Drepturi granulare: doar-citire + fara salarii ──
     ok('admin seteaza drepturi restrictive pe user1', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: true, faraSalarii: true } } })).json.ok === true);
     eq('readonly: scrierea respinsa (403)', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO77', den: 'Blocat SRL' } })).status, 403);
