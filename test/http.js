@@ -128,6 +128,14 @@ async function main() {
     eq('expirat: PDF blocat (402)', (await req('GET', '/pdf/balance', { cookie: c3 })).status, 402);
     eq('expirat: alegerea planului merge (200)', (await req('POST', '/api/subscription/select', { cookie: c3, body: { plan: 'start' } })).status, 200);
 
+    // ── Abonament / plati (src/routes/billing.js) ──
+    const plansPub = await req('GET', '/api/plans'); // public (fara sesiune)
+    ok('planuri publice: lista + zile de proba', plansPub.status === 200 && Array.isArray(plansPub.json.plans) && typeof plansPub.json.trialDays === 'number');
+    const subInfo = await req('GET', '/api/subscription', { cookie: c1 });
+    ok('abonament: starea curenta + flag Stripe', subInfo.json && subInfo.json.current && typeof subInfo.json.stripeEnabled === 'boolean');
+    eq('checkout-guest cu plan invalid -> 400', (await req('POST', '/api/checkout-guest', { body: { plan: 'inexistent' } })).status, 400);
+    eq('non-admin la activarea de plan (admin) -> 403', (await req('POST', '/api/subscription/activate', { cookie: c1, body: { userId: 2, plan: 'pro' } })).status, 403);
+
     // ── e-Factura: round-trip generare -> parsare -> import (fara conexiune SPV) ──
     const ubl = xml.eFacturaXml(
       { nume: 'UNU SRL', cui: 'RO11', adresa: 'Str. A', oras: 'Cluj', judet: 'RO-CJ' },
