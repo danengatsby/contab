@@ -2610,6 +2610,43 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: msg });
 });
 
+// ── Guard single-instance: DOUA procese pe aceeasi baza = pierdere de date (starea traieste
+// in RAM, ultima scriere invinge). Lock-ul e cheiat pe FISIERUL de baza (nu pe director), deci
+// serverul de test cu baza temporara nu se ciocneste cu instanta live. Toleranta la restartul
+// pm2 (suprapunere scurta a proceselor): retry ~2s inainte de a refuza; lock invechit (proces
+// mort) -> preluat automat. Rollback: CONTAB_SKIP_LOCK=1.
+const LOCK_FILE = db.DB_FILE + '.lock';
+function pidAlive(pid) { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } }
+function sleepMs(ms) { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch (_) { /* fara SAB */ } }
+function acquireDbLock() {
+  if (process.env.CONTAB_SKIP_LOCK === '1') return;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    try {
+      const fd = fs.openSync(LOCK_FILE, 'wx'); // O_CREAT|O_EXCL — atomic
+      fs.writeSync(fd, String(process.pid)); fs.closeSync(fd);
+      return; // lock obtinut
+    } catch (e) {
+      if (e.code !== 'EEXIST') { console.error('Nu pot scrie lockfile-ul bazei (' + LOCK_FILE + '): ' + e.message); return; }
+      let pid = 0; try { pid = Number(String(fs.readFileSync(LOCK_FILE, 'utf8')).trim()) || 0; } catch (_) { /* gol */ }
+      if (pid && pid !== process.pid && pidAlive(pid)) {
+        if (attempt < 19) { sleepMs(100); continue; } // suprapunere de restart — mai asteapta
+        console.error('\n⛔ O alta instanta Contabo (PID ' + pid + ') foloseste deja aceeasi baza (' + db.DB_FILE + ').');
+        console.error('   Doua procese pe aceeasi baza corup datele. Opreste cealalta instanta sau ruleaza pe alt CONTAB_DB_FILE.');
+        console.error('   (bypass, pe propriul risc: CONTAB_SKIP_LOCK=1)\n');
+        process.exit(1);
+      }
+      try { fs.unlinkSync(LOCK_FILE); } catch (_) { /* preluat de altcineva intre timp */ }
+    }
+  }
+}
+function releaseDbLock() {
+  try {
+    if (fs.existsSync(LOCK_FILE) && Number(String(fs.readFileSync(LOCK_FILE, 'utf8')).trim()) === process.pid) fs.unlinkSync(LOCK_FILE);
+  } catch (_) { /* ignora */ }
+}
+acquireDbLock();
+process.on('exit', releaseDbLock);
+
 const PORT = process.env.PORT || 8080;
 const HOST = process.env.HOST || '0.0.0.0'; // asculta pe toate interfetele (acces din retea)
 const server = app.listen(PORT, HOST, () => {
@@ -2633,6 +2670,7 @@ function shutdown() {
   shuttingDown = true;
   try { db.flushMirror(); } catch (_) { /* ignora */ }
   if (db.DRIVER === 'sqlite') { try { require('./src/store').close(); } catch (_) { /* ignora */ } }
+  releaseDbLock();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 3000).unref();
 }

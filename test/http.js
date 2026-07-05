@@ -449,6 +449,18 @@ async function main() {
       && (await req('DELETE', '/api/products/' + isoP.id, { cookie: c1 })).json.ok === true
       && (await req('DELETE', '/api/gestiuni/' + isoG.id, { cookie: c1 })).json.ok === true
     ));
+
+    // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
+    const secondExit = await new Promise((resolve) => {
+      const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
+        env: Object.assign({}, process.env, { PORT: String(PORT + 1), CONTAB_DB_DRIVER: 'json', CONTAB_DB_FILE: DBF, CONTAB_JSON_MIRROR: '0' }),
+        stdio: 'ignore',
+      });
+      const t = setTimeout(() => { try { c2p.kill(); } catch (_) { /* */ } resolve('timeout'); }, 8000);
+      c2p.on('exit', (code) => { clearTimeout(t); resolve(code); });
+    });
+    eq('a doua instanta pe aceeasi baza iese cu cod 1', secondExit, 1);
+    ok('prima instanta ramane vie dupa refuzul celei de-a doua', (await req('GET', '/api/health')).status === 200);
   } finally {
     clearTimeout(guard);
     killAll();
