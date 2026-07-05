@@ -18,7 +18,7 @@ creditează, cu aceeași sumă) și pe **planul de conturi românesc** (clasele 
 ```bash
 npm install
 npm start            # porneste pe http://localhost:3000  (sau PORT=3787 npm start)
-npm test             # ruleaza suita de teste (44 verificari pe numerele cheie)
+npm test             # ruleaza suita completa: lint + ~750 verificari de module + ~140 verificari HTTP
 ```
 
 Apoi deschide `http://localhost:8080` în browser.
@@ -28,15 +28,26 @@ Navigarea e organizată pe categorii (meniuri în bara de sus): **Dashboard**, *
 carte mare, balanță, analitic/scadențar), **Declarații & situații** (TVA/D300/D394, închideri,
 situații financiare, livrabile), **Nomenclatoare** (parteneri, plan de conturi, ghid) și **Setări**.
 
-**Teste automate** (`test/run.js`, `npm test`): rulează verificarea sintaxei tuturor fișierelor
-(`npm run lint`) + **193 de verificări** pe datele exemplului din ghid construite pur (fără a atinge
-`data/db.json`, prin `seed.scopedSeed()`) — balanța (echilibrată, SF 84.327,50), TVA de plată 840,
-rezultat brut 687,50, registrul-jurnal (7 articole numerotate), amortizarea (liniară/degresivă),
-stocurile (CMP, pe gestiuni), aging-ul FIFO, registrul fiscal, **e-Factura UBL** (total 16.940, TVA
-2.940, bine-format), **D300/D394** (bine-format), **închiderea TVA** (de plată 840) și **anuală**
-(rezultat 687,50), **reconcilierea** factură-plată, **bilanțul** (echilibrat, activ=pasiv 70.815),
-**payroll** (net 2.925, CAS/CASS/impozit/CAM), **notele explicative** (7 note), și că SAF-T-ul e
-bine-format cu toate secțiunile. Blochează regresiile.
+Aplicația diferențiază **SRL vs PFA** (formă juridică pe firmă — taxe, calendar de declarații și
+documente specifice: Declarația Unică cu variantă pe încasat, registrul de încasări și plăți,
+retrageri/aporturi întreprinzător), acoperă **preluarea unei firme cu istoric** (import balanță,
+solduri pe parteneri și stoc cantitativ-valoric din XLS/XLSX/DBF/CSV, cu verificarea echilibrului)
+și oferă un **mod simplu pentru necontabili** (rezumat executiv „Situația firmei pe scurt",
+dicționar contabil, meniu fără jargon) + **întrebări frecvente publice** pe pagina de autentificare.
+Facturile se emit în **trei modele de PDF** cu logo-ul firmei, cu **chitanță tipăribilă** (sumă în
+litere, serie proprie), iar utilizatorii pot primi **drepturi granulare** (doar-citire / fără salarii).
+
+**Teste automate** (`npm test`): verificarea sintaxei tuturor fișierelor (`npm run lint`) +
+**~750 de verificări de module** (`test/run.js`, pe date construite pur, fără a atinge `data/db.json`)
++ **~140 de verificări HTTP** (`test/http.js`, server pornit pe o bază temporară) — balanța și cele
+4 egalități, TVA (decont, la încasare, taxare inversă, **pro-rata art. 300**, ajustări **art. 305**),
+amortizarea (liniară/degresivă/accelerată), stocurile (CMP pe gestiuni, preluare stoc inițial,
+inventariere, producție), salarizarea (CAS/CASS/impozit/CAM, deducerea personală, tichete, avantaje
+în natură, **concedii medicale** cu media pe 6 luni și split angajator/FNUASS, **concediu de odihnă**
+pe media pe 3 luni, **normă parțială suprataxată** OUG 16/2022), declarațiile (D300/D394/D390/D205/
+D112/D100/Intrastat/SAF-T bine-formate + validare pre-depunere), **taxele PFA** (Declarația Unică cu
+plafoane, registrul de încasări și plăți), e-Factura UBL, drepturile granulare pe utilizatori și
+blocarea perioadelor raportate. Blochează regresiile.
 
 - **Hook pre-pornire:** scriptul `prestart` rulează `npm test` înainte de `npm start` (pornirea
   locală e blocată dacă testele pică). Sub **pm2** (`node server.js` direct) hook-ul e ocolit — pentru
@@ -565,7 +576,9 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   alertă (max. una pe oră); la înscriere, utilizatorii cu email primesc un **mesaj de bun venit**
   cu primii pași.
 - **E2E pe live:** `npm run e2e` (`scripts/e2e.mjs`, Playwright — pe acest server prin Docker,
-  comanda e în antetul scriptului): 11 verificări cap-coadă pe instanța reală, cu contul demo.
+  comanda e în antetul scriptului): 18 verificări cap-coadă pe instanța reală, cu contul demo —
+  inclusiv FAQ-ul public de pe login, dicționarul contabil, modul simplu cu rezumatul executiv
+  și cardul de pro-rata din tab-ul TVA.
 - **Arhivă completă + copie offsite (zilnic):** pe lângă copia `db.json`, cronul creează
   `data/backups/full-YYYYMMDD-HHMMSS.zip` — `db.json` + un **instantaneu consistent** al bazei
   SQLite (`VACUUM INTO`, sigur sub WAL) + **toate documentele din `data/uploads/`** — păstrează

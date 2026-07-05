@@ -27,6 +27,16 @@ await pg.goto(BASE + '/?register=1', { waitUntil: 'networkidle' });
 await pg.waitForTimeout(1200);
 ok('/?register=1 deschide panoul de inscriere', await pg.locator('#registerOverlay').isVisible());
 
+// 2b. intrebarile frecvente publice pe pagina de login
+await pg.goto(BASE + '/', { waitUntil: 'networkidle' });
+await pg.waitForTimeout(800);
+await pg.click('#showFaqLogin');
+ok('FAQ-ul public se deschide pe login', await pg.locator('#faqOverlay').isVisible());
+await pg.fill('#faqSearch', 'dividende');
+await pg.waitForTimeout(200);
+ok('cautarea in FAQ filtreaza si deschide potrivirile', (await pg.locator('#faqList .faq-item:not(.hidden)').count()) > 0);
+await pg.click('#faqClose');
+
 // 3. demo login + aplicatie
 await pg.goto(BASE + '/', { waitUntil: 'networkidle' });
 await pg.evaluate(() => fetch('/api/demo-login', { method: 'POST' }));
@@ -36,6 +46,22 @@ await pg.evaluate(() => { document.querySelectorAll('#welcomeOverlay').forEach((
 ok('login demo functioneaza (badge cu tipul)', /demo/.test(await pg.locator('#userBadge').textContent()));
 ok('panourile au explicatii (ⓘ injectate)', (await pg.locator('.cinfo').count()) > 50);
 ok('dashboardul are banda de alerte', (await pg.locator('#dashAlerts .alert').count()) > 0);
+
+// 3b. dictionarul contabil + modul simplu (rezumatul executiv)
+await pg.click('#glossaryBtn');
+ok('dictionarul contabil se deschide', await pg.locator('#glossaryModal').isVisible());
+await pg.fill('#glossarySearch', 'storno');
+await pg.waitForTimeout(200);
+ok('cautarea in dictionar gaseste termenul', (await pg.locator('#glossaryList .gloss-item').count()) >= 1);
+await pg.keyboard.press('Escape');
+const wasSimple = await pg.evaluate(() => document.body.classList.contains('simple-ui'));
+await pg.click('#uiModeBtn');
+ok('comutatorul simplu/expert schimba modul', (await pg.evaluate(() => document.body.classList.contains('simple-ui'))) !== wasSimple);
+if (!(await pg.evaluate(() => document.body.classList.contains('simple-ui')))) await pg.click('#uiModeBtn');
+await pg.evaluate(() => goTab('dashboard'));
+await pg.waitForTimeout(1000);
+ok('rezumatul executiv e vizibil in modul simplu', await pg.locator('#rezumatCard').isVisible());
+await pg.click('#uiModeBtn'); // inapoi la modul expert pentru restul verificarilor
 
 // 4. API-uri cheie cu sesiunea demo
 const notif = await (await pg.request.get(BASE + '/api/notifications')).json();
@@ -49,6 +75,7 @@ ok('registrul depunerilor are randuri cu termene', (reg.rows || []).every((r) =>
 await pg.evaluate(() => goTab('tva'));
 await pg.waitForTimeout(1200);
 ok('tab-ul TVA se randeaza (sumar decont)', /TVA/.test(await pg.locator('#tab-tva').textContent()));
+ok('cardul pro-rata (art. 300) e prezent in tab-ul TVA', (await pg.locator('#proRataView').count()) === 1);
 
 await b.close();
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari E2E trecute, ' + fail + ' esuate.');
