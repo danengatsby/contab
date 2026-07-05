@@ -450,6 +450,35 @@ async function main() {
       && (await req('DELETE', '/api/gestiuni/' + isoG.id, { cookie: c1 })).json.ok === true
     ));
 
+    // ── BACKUP / RESTORE round-trip: un backup nerestaurat e o speranta, nu un backup ──
+    // 1) date-marker in firma 1
+    await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO4242', den: 'Backup Test SRL', oras: 'Cluj' } });
+    await req('POST', '/api/products', { cookie: c1, body: { cod: 'BKP-1', denumire: 'Produs backup', um: 'buc', cont: '371' } });
+    await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-08-20', partener: 'Backup Test SRL', cuiPartener: 'RO4242', document: 'BKP-DOC', baza: 1234, tva: 259.14, cota: 21 } } });
+    const nrEntriesF1 = (await req('GET', '/api/entries?firma=1', { cookie: c1 })).json.length;
+    ok('marker inainte de backup: factura BKP-DOC exista in firma 1', (await req('GET', '/api/entries?firma=1', { cookie: c1 })).json.some((e) => e.document === 'BKP-DOC'));
+    // 2) export firma 1 (pachetul de backup)
+    const bundle = (await req('GET', '/api/firme/1/export', { cookie: c1 })).json;
+    ok('exportul contine firma, entries si parteneri', bundle && bundle.firma && Array.isArray(bundle.entries) && bundle.partners);
+    // 3) restaurare ca firma NOUA — fidelitatea copiei
+    const impBkp = await req('POST', '/api/firme/import', { cookie: c1, body: bundle });
+    ok('restaurare ca firma noua reusita', impBkp.json && impBkp.json.ok && impBkp.json.firmaId && !impBkp.json.replaced);
+    const newFid = impBkp.json.firmaId;
+    const restEntries = (await req('GET', '/api/entries?firma=' + newFid, { cookie: c1 })).json;
+    ok('firma restaurata: acelasi numar de inregistrari', restEntries.length === nrEntriesF1);
+    ok('firma restaurata: factura BKP-DOC prezenta cu aceeasi baza', restEntries.some((e) => e.document === 'BKP-DOC' && e.lines.some((l) => l.suma === 1234)));
+    ok('firma restaurata: partenerul RO4242 recuperat', (await req('GET', '/api/partners?firma=' + newFid, { cookie: c1 })).json['4242']);
+    ok('firma restaurata: produsul BKP-1 recuperat', (await req('GET', '/api/products?firma=' + newFid, { cookie: c1 })).json.some((p) => p.cod === 'BKP-1'));
+    // 4) recuperare prin SUPRASCRIERE (mode=replace): simulez pierderea, apoi restaurez
+    const bkpInNew = restEntries.find((e) => e.document === 'BKP-DOC');
+    await req('POST', '/api/firme/' + newFid + '/activate', { cookie: c1 });
+    await req('DELETE', '/api/entries/' + bkpInNew.id, { cookie: c1 });
+    ok('dupa "pierderea" datelor: BKP-DOC lipseste', !(await req('GET', '/api/entries?firma=' + newFid, { cookie: c1 })).json.some((e) => e.document === 'BKP-DOC'));
+    const restore = await req('POST', '/api/firme/import?mode=replace', { cookie: c1, body: bundle });
+    ok('restaurare prin suprascriere reusita (replaced)', restore.json && restore.json.ok && restore.json.replaced);
+    ok('dupa restaurare: BKP-DOC este inapoi', (await req('GET', '/api/entries?firma=' + newFid, { cookie: c1 })).json.some((e) => e.document === 'BKP-DOC'));
+    await req('POST', '/api/firme/1/activate', { cookie: c1 }); // revin pe firma 1
+
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
