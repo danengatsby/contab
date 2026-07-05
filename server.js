@@ -1671,8 +1671,23 @@ function buildEntry(tipId, fields, fileId, firmaId) {
       if (costL) { costL.suma = round2(costL.suma + nedeq); costL.explicatie = (costL.explicatie || '') + ' (+50% TVA nedeductibil auto)'; }
     }
   }
-  // Regim „TVA la incasare": pe facturi, TVA devine NEEXIGIBILA (4428) pana la incasare/plata.
   const firma = db.getFirma(firmaId) || {};
+  // Pro-rata (art. 300 Cod fiscal): la achizitiile cu destinatie mixta ale platitorilor cu regim
+  // mixt, TVA e deductibila doar in procentul pro-rata provizoriu al firmei; restul intra in cost.
+  // Se aplica DUPA auto50 (compunere corecta) si INAINTE de TVA la incasare (care redenumeste 4426).
+  const prTva = Number(firma.proRataTva);
+  if (f.proRataMixt && Number.isFinite(prTva) && prTva > 0 && prTva < 100) {
+    const vatL = lines.find((l) => l.debit === '4426');
+    if (vatL && vatL.suma > 0) {
+      const costL = lines.find((l) => l !== vatL && l.credit === vatL.credit);
+      const ded = round2((vatL.suma * prTva) / 100);
+      const neded = round2(vatL.suma - ded);
+      vatL.suma = ded;
+      vatL.explicatie = (vatL.explicatie || 'TVA') + ' deductibila pro-rata ' + prTva + '%';
+      if (costL) { costL.suma = round2(costL.suma + neded); costL.explicatie = (costL.explicatie || '') + ' (+TVA nedeductibila pro-rata)'; }
+    }
+  }
+  // Regim „TVA la incasare": pe facturi, TVA devine NEEXIGIBILA (4428) pana la incasare/plata.
   if (firma.tvaLaIncasare && /^factura_(vanzare|cumparare|utilitati|servicii|combustibil|imobilizare)/.test(tipId)) {
     for (const l of lines) {
       if (l.credit === '4427') { l.credit = '4428'; l.explicatie = (l.explicatie || 'TVA') + ' (neexigibila - la incasare)'; }
@@ -1709,6 +1724,7 @@ function buildEntry(tipId, fields, fileId, firmaId) {
     ...((f.moneda && Number(f.sumaValuta) > 0 && Number(f.curs) > 0) ? {
       valutaInfo: { valuta: String(f.moneda).toUpperCase().trim(), sumaValuta: round2(parseFloat(f.sumaValuta) || 0), curs: round2(parseFloat(f.curs) || 0) },
     } : {}),
+    ...(f.proRataMixt ? { proRataMixt: true } : {}), // marcaj pentru regularizarea anuala a pro-ratei
     fileId: fileId || null,
     system: false,
     lines,
@@ -2280,6 +2296,8 @@ app.get('/pdf/d100', (req, res) => pdf.d100Pdf(res, S(req).company, rep.d100micr
 // Declaratia Unica (PFA, sistem real): estimarea venitului net anual si a CAS/CASS/impozitului
 app.get('/api/declaratia-unica', (req, res) => res.json(rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));
 app.get('/pdf/declaratia-unica', (req, res) => pdf.declaratiaUnicaPdf(res, S(req).company, rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));
+// Pro-rata TVA (art. 300): definitiva calculata din jurnal + regularizarea achizitiilor mixte
+app.get('/api/pro-rata', (req, res) => res.json(rep.proRataTva(S(req), req.query.year || String(new Date().getFullYear()))));
 // Registrul-jurnal de incasari si plati (partida simpla, PFA)
 app.get('/api/registru-incasari-plati', (req, res) => res.json(acc.registruIncasariPlati(S(req), req.query.period || null)));
 app.get('/pdf/registru-incasari-plati', (req, res) => pdf.registruIncasariPlatiPdf(res, S(req).company, acc.registruIncasariPlati(S(req), req.query.period || null)));

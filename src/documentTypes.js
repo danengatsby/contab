@@ -41,6 +41,7 @@ const F = {
   items: { name: 'items', label: 'Linii factura (optional, pentru e-Factura)', type: 'items' },
   stoc: { name: 'stoc', label: 'Descarcare din stoc (produs + gestiune + cantitate) — cost la CMP, automat', type: 'stoc' },
   auto50: { name: 'auto50', label: 'Deductibilitate auto 50% (vehicul fara uz exclusiv): 50% din TVA devine nedeductibil si intra in cost', type: 'checkbox' },
+  proRataMixt: { name: 'proRataMixt', label: 'Achizitie cu destinatie mixta (pro-rata, art. 300): TVA deductibila doar in procentul pro-rata setat pe firma, restul intra in cost', type: 'checkbox' },
   // Intrastat (doar pentru operatiuni intracomunitare de bunuri)
   codNC: { name: 'codNC', label: 'Cod NC8 (Intrastat)', type: 'text' },
   masaNeta: { name: 'masaNeta', label: 'Masa neta kg (Intrastat)', type: 'number', default: 0 },
@@ -117,7 +118,7 @@ const TYPES = [
     id: 'factura_cumparare_marfuri',
     nume: 'Factura cumparare marfuri',
     grup: 'Cumparari',
-    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota],
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.proRataMixt],
     build: (d) => {
       const lines = [L('371', '401', d.baza, 'Cumparare marfuri (intrare in stoc)')];
       if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibila'));
@@ -128,7 +129,7 @@ const TYPES = [
     id: 'factura_cumparare_materii',
     nume: 'Factura cumparare materii prime/materiale',
     grup: 'Cumparari',
-    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota,
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.proRataMixt,
       { name: 'contStoc', label: 'Cont stoc', type: 'account', default: '301' }],
     build: (d) => {
       const lines = [L(d.contStoc || '301', '401', d.baza, 'Cumparare materii/materiale')];
@@ -140,7 +141,7 @@ const TYPES = [
     id: 'factura_utilitati',
     nume: 'Factura utilitati (energie, apa)',
     grup: 'Cumparari',
-    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota],
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.proRataMixt],
     build: (d) => {
       const lines = [L('605', '401', d.baza, 'Cheltuieli cu energia si apa')];
       if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibila'));
@@ -151,7 +152,7 @@ const TYPES = [
     id: 'factura_servicii_primita',
     nume: 'Factura servicii primita (chirie, telecom, onorarii...)',
     grup: 'Cumparari',
-    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.auto50,
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.auto50, F.proRataMixt,
       { name: 'contChelt', label: 'Cont cheltuiala', type: 'account', default: '628' }],
     build: (d) => {
       const lines = [L(d.contChelt || '628', '401', d.baza, 'Cheltuieli cu servicii primite')];
@@ -1151,6 +1152,40 @@ const TYPES = [
       if (net > 0) lines.push(L('623', d.cont || '5311', net, 'Premiu acordat persoanei fizice (net)'));
       if (impozit > 0) lines.push(L('623', '446', impozit, 'Impozit pe premii retinut la sursa'));
       return lines;
+    },
+  },
+
+  // ───────────── TVA AVANSAT: PRO-RATA (art. 300) + BUNURI DE CAPITAL (art. 305) ─────────────
+  {
+    id: 'regularizare_pro_rata',
+    nume: 'Regularizare anuala pro-rata TVA (art. 300): definitiva vs provizorie',
+    grup: 'Regularizari',
+    fields: [F.data, F.document,
+      { name: 'suma', label: 'Diferenta de TVA (din raportul Pro-rata)', type: 'number', required: true },
+      { name: 'sens', label: 'Sensul regularizarii', type: 'select',
+        options: [{ value: 'firma', label: 'In favoarea firmei (mai ai de dedus: 4426 = 635)' }, { value: 'stat', label: 'In favoarea statului (dai TVA inapoi: 635 = 4426)' }], default: 'firma' }],
+    build: (d) => (d.sens === 'stat'
+      ? [L('635', '4426', d.suma, 'Regularizare pro-rata anuala in favoarea statului (art. 300)')]
+      : [L('4426', '635', d.suma, 'Regularizare pro-rata anuala in favoarea firmei (art. 300)')]),
+  },
+  {
+    id: 'ajustare_tva_bunuri_capital',
+    nume: 'Ajustare TVA bunuri de capital (art. 305, schimbarea destinatiei/regimului)',
+    grup: 'Regularizari',
+    fields: [F.data, F.document,
+      { name: 'tvaDedusa', label: 'TVA dedusa initial la achizitie', type: 'number', required: true },
+      { name: 'durata', label: 'Perioada de ajustare', type: 'select',
+        options: [{ value: '5', label: '5 ani (bunuri de capital mobile)' }, { value: '20', label: '20 de ani (bunuri imobile)' }], default: '5' },
+      { name: 'aniRamasi', label: 'Ani ramasi din perioada de ajustare (inclusiv anul schimbarii)', type: 'number', required: true },
+      { name: 'sens', label: 'Sensul ajustarii', type: 'select',
+        options: [{ value: 'stat', label: 'In favoarea statului (dai TVA inapoi: 635 = 4426)' }, { value: 'firma', label: 'In favoarea firmei (mai deduci: 4426 = 635)' }], default: 'stat' }],
+    build: (d) => {
+      // ajustarea = TVA dedusa x anii ramasi / perioada de ajustare (art. 305 Cod fiscal)
+      const durata = Number(d.durata) || 5;
+      const ani = Math.max(0, Math.min(Number(d.aniRamasi) || 0, durata));
+      const suma = round2(((Number(d.tvaDedusa) || 0) * ani) / durata);
+      const expl = 'Ajustare TVA bunuri de capital (art. 305): ' + ani + '/' + durata + ' din TVA dedusa';
+      return d.sens === 'firma' ? [L('4426', '635', suma, expl + ' — in favoarea firmei')] : [L('635', '4426', suma, expl + ' — in favoarea statului')];
     },
   },
 

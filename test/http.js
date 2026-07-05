@@ -291,6 +291,16 @@ async function main() {
     eq('model detaliat din setarea firmei', (await req('GET', '/pdf/factura/' + fvE.json.entry.id, { cookie: c1 })).status, 200);
     await req('POST', '/api/company', { cookie: c1, body: { pdfLayout: 'clasic' } });
 
+    // ── Pro-rata TVA (art. 300): split automat al TVA-ului pe achizitiile mixte ──
+    ok('pro-rata provizorie setata pe firma (40%)', (await req('POST', '/api/company', { cookie: c1, body: { proRataTva: 40 } })).json.ok === true);
+    const prE = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_utilitati', fields: { data: '2026-06-23', partener: 'EnergoMix', cuiPartener: 'RO88', document: 'U-77', baza: 1000, tva: 210, cota: 21, proRataMixt: true } } });
+    ok('achizitie mixta: TVA dedusa 40% (84), restul in cost (605 = 1126)',
+      prE.json && prE.json.entry.lines.some((l) => l.debit === '4426' && l.suma === 84)
+      && prE.json.entry.lines.some((l) => l.debit === '605' && l.suma === 1126));
+    const prH = (await req('GET', '/api/pro-rata?year=2026', { cookie: c1 })).json;
+    ok('raport pro-rata: achizitia mixta numarata si regularizarea calculata', prH.nrMixte >= 1 && prH.dedusaProvizoriu >= 84 && typeof prH.definitiva === 'number');
+    await req('POST', '/api/company', { cookie: c1, body: { proRataTva: '' } });
+
     // ── Diferentierea PFA vs SRL ──
     ok('firma trecuta pe PFA', (await req('POST', '/api/company', { cookie: c1, body: { tipEntitate: 'pfa' } })).json.ok === true);
     const metaPfa = (await req('GET', '/api/meta', { cookie: c1 })).json;

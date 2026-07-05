@@ -969,6 +969,23 @@ ok('D394: sectiunea achizitii_pf_carnet cu totalul si CNP-ul', d394pf.includes('
 ok('D394 bine-format cu sectiunea pf', wellFormed(d394pf));
 ok('D394 fara achizitii pe carnet: sectiunea lipseste', !xml.d394Xml({ cui: 'RO1', nume: 'X' }, '2026-06', vjGol).includes('achizitii_pf_carnet'));
 
+section('TVA avansat: pro-rata (art. 300) + bunuri de capital (art. 305)');
+const prDb = { company: { proRataTva: 40 }, entries: [
+  { id: 'p1', period: '2026-02', data: '2026-02-01', tip: 'factura_vanzare_servicii', lines: [{ debit: '4111', credit: '704', suma: 6000 }, { debit: '4111', credit: '4427', suma: 1260 }] },
+  { id: 'p2', period: '2026-03', data: '2026-03-01', tip: 'vanzare_scutita_fara_drept', lines: [{ debit: '4111', credit: '704', suma: 4000 }] },
+  { id: 'p3', period: '2026-04', data: '2026-04-01', tip: 'factura_utilitati', proRataMixt: true, lines: [{ debit: '605', credit: '401', suma: 1126 }, { debit: '4426', credit: '401', suma: 84 }] },
+] };
+const prR = rep.proRataTva(prDb, '2026');
+eq('pro-rata: livrari cu drept / fara drept', prR.cuDrept + '|' + prR.faraDrept, '6000|4000');
+eq('pro-rata definitiva rotunjita in sus', prR.definitiva, 60);
+eq('TVA dedusa provizoriu pe achizitiile mixte', prR.dedusaProvizoriu, 84);
+eq('regularizare anuala: 210 x 60% - 84 = +42 (de dedus)', prR.regularizare, 42);
+const ajS = gt2('ajustare_tva_bunuri_capital').build({ tvaDedusa: 10000, durata: '5', aniRamasi: 3, sens: 'stat' });
+eq('ajustare art. 305 in favoarea statului: 635=4426 cu 3/5 din TVA', ajS[0].debit + '=' + ajS[0].credit + '|' + ajS[0].suma, '635=4426|6000');
+const ajF = gt2('ajustare_tva_bunuri_capital').build({ tvaDedusa: 10000, durata: '20', aniRamasi: 5, sens: 'firma' });
+eq('ajustare art. 305 in favoarea firmei: 4426=635 cu 5/20 din TVA', ajF[0].debit + '=' + ajF[0].credit + '|' + ajF[0].suma, '4426=635|2500');
+eq('regularizare pro-rata in favoarea firmei: 4426=635', gt2('regularizare_pro_rata').build({ suma: 42, sens: 'firma' })[0].debit + '=' + gt2('regularizare_pro_rata').build({ suma: 42, sens: 'firma' })[0].credit, '4426=635');
+
 section('Suma in litere (chitante)');
 const sil = require('../src/util').sumaInLitere;
 eq('zero', sil(0), 'zero lei');

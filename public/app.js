@@ -1231,7 +1231,7 @@ $('#aiToggle').addEventListener('change', async (e) => {
 });
 function fillCompanyForm() {
   const f = $('#companyForm');
-  ['nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'iban', 'banca', 'telefon', 'email', 'capitalSocial', 'pdfFooter', 'asociatiText'].forEach((k) => { if (f[k]) f[k].value = META.company[k] || ''; });
+  ['nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'iban', 'banca', 'telefon', 'email', 'capitalSocial', 'pdfFooter', 'asociatiText', 'proRataTva'].forEach((k) => { if (f[k]) f[k].value = META.company[k] || ''; });
   if (f.tipEntitate) f.tipEntitate.value = META.company.tipEntitate === 'pfa' ? 'pfa' : 'srl';
   if (f.tvaLaIncasare) f.tvaLaIncasare.checked = !!META.company.tvaLaIncasare;
   if (f.accentColor) f.accentColor.value = /^#[0-9a-fA-F]{6}$/.test(META.company.accentColor || '') ? META.company.accentColor : '#0b6e4f';
@@ -2587,6 +2587,24 @@ function renderBalance() {
 
 // ───────────────────────── TVA / D300 ─────────────────────────
 onPeriodChange('tva', loadVat);
+// Pro-rata TVA (art. 300): definitiva calculata din jurnal + regularizarea achizitiilor mixte
+async function renderProRata(year) {
+  const box = $('#proRataView'); if (!box) return;
+  let r; try { r = await api('/api/pro-rata?year=' + year); } catch (e) { box.innerHTML = ''; return; }
+  if (!r.provizorie && !r.faraDrept && !r.nrMixte) {
+    box.innerHTML = '<p class="muted">Nu e cazul: nu ai pro-rata setată, operațiuni scutite fără drept sau achiziții marcate mixte. Firmele cu deducere integrală sar peste această secțiune.</p>';
+    return;
+  }
+  box.innerHTML = `<table>
+    <tr><td>Livrări CU drept de deducere (taxabile + LIC)</td><td class="num">${fmt(r.cuDrept)}</td></tr>
+    <tr><td>Livrări FĂRĂ drept de deducere (scutite)</td><td class="num">${fmt(r.faraDrept)}</td></tr>
+    <tr class="total"><td>Pro-rata DEFINITIVĂ ${r.year} (rotunjită în sus)</td><td class="num">${r.definitiva}%</td></tr>
+    <tr><td>Pro-rata provizorie (setarea firmei)</td><td class="num">${r.provizorie ? r.provizorie + '%' : '—'}</td></tr>
+    <tr><td>Achiziții mixte marcate / TVA dedusă provizoriu</td><td class="num">${r.nrMixte} / ${fmt(r.dedusaProvizoriu)}</td></tr>
+    ${r.regularizare != null ? `<tr class="total"><td>Regularizare anuală ${r.regularizare >= 0 ? '(mai ai de dedus — 4426 = 635)' : '(dai înapoi — 635 = 4426)'}</td><td class="num"${Math.abs(r.regularizare) >= 0.01 ? ' style="font-weight:700"' : ''}>${fmt(Math.abs(r.regularizare))}</td></tr>` : ''}
+  </table>
+  <p class="muted" style="margin-top:6px">Postezi regularizarea din Documente → „Regularizare anuală pro-rata TVA"; la schimbarea destinației unui mijloc fix folosește „Ajustare TVA bunuri de capital (art. 305)". Clasificarea livrărilor e orientativă — verifică pozițiile atipice cu contabilul.</p>`;
+}
 $('#exigForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -2611,6 +2629,7 @@ async function renderNeexigibila() {
 async function loadVat() {
   const p = pget('tva');
   $('#tvaPdf').href = '/pdf/vat' + (p ? '?period=' + p : '');
+  renderProRata((p || '').slice(0, 4) || new Date().getFullYear());
   // D300/D394 se generează pe o lună anume; dacă e ales tot anul, dezactivăm link-urile
   const monthly = p && p.length === 7;
   [['#d300Xml', '/xml/d300'], ['#d394Xml', '/xml/d394']].forEach(([id, url]) => {
@@ -3986,7 +4005,7 @@ $('#companyForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaLaIncasare: f.tvaLaIncasare.checked, tipEntitate: f.tipEntitate.value,
-    iban: f.iban.value.trim(), banca: f.banca.value.trim(), telefon: f.telefon.value.trim(), email: f.email.value.trim(), capitalSocial: f.capitalSocial.value.trim(), accentColor: f.accentColor.value, pdfLayout: f.pdfLayout.value, pdfFooter: f.pdfFooter.value.trim(), asociatiText: f.asociatiText.value.trim() };
+    iban: f.iban.value.trim(), banca: f.banca.value.trim(), telefon: f.telefon.value.trim(), email: f.email.value.trim(), capitalSocial: f.capitalSocial.value.trim(), accentColor: f.accentColor.value, pdfLayout: f.pdfLayout.value, pdfFooter: f.pdfFooter.value.trim(), asociatiText: f.asociatiText.value.trim(), proRataTva: f.proRataTva.value ? Number(f.proRataTva.value) : '' };
   const r = await api('/api/company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   META.company = r.company || body; $('#companyName').textContent = body.nume; toast('Date firmă salvate' + (body.tvaLaIncasare ? ' · regim TVA la încasare ACTIV' : ''));
 });

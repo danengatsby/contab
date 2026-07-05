@@ -201,6 +201,43 @@ function d100micro(db, period, cota) {
   return { period, trimestru: m ? Math.ceil(m / 3) : 0, luni, venit, cota: rate, impozit: round2((venit * rate) / 100), venitAn, plafonMicroLei: plafonLei, plafonMicroEur: fiscal.FISCAL.plafonMicroEur, avertismente };
 }
 
+/** Pro-rata TVA (art. 300): ponderea livrarilor CU drept de deducere in totalul livrarilor (anual).
+ *  Clasificare aproximativa din jurnal: cu drept = vanzari taxabile (TVA > 0) + scutite cu drept
+ *  (LIC/export); fara drept = vanzari cu TVA 0 care nu sunt LIC/export. Pro-rata definitiva se
+ *  rotunjeste IN SUS la unitati (art. 300 alin. 9). Include si regularizarea estimata pentru
+ *  achizitiile marcate „destinatie mixta" in cursul anului. */
+function proRataTva(db, year) {
+  const SCUTITE_CU_DREPT = new Set(['livrare_intracomunitara']);
+  const y = String(year);
+  let cuDrept = 0; let faraDrept = 0; let dedusaProvizoriu = 0; let nrMixte = 0;
+  for (const e of (db.entries || []).filter((x) => String(x.period || periodOf(x.data)).startsWith(y))) {
+    let baza = 0; let tva = 0;
+    for (const l of e.lines || []) {
+      if (/^7/.test(String(l.credit))) baza = round2(baza + l.suma);
+      if (/^7/.test(String(l.debit))) baza = round2(baza - l.suma);
+      if (l.credit === '4427' || l.credit === '4428') tva = round2(tva + l.suma);
+    }
+    if (baza > 0) {
+      if (tva > 0 || SCUTITE_CU_DREPT.has(e.tip)) cuDrept = round2(cuDrept + baza);
+      else faraDrept = round2(faraDrept + baza);
+    }
+    if (e.proRataMixt) {
+      nrMixte += 1;
+      for (const l of e.lines || []) if (l.debit === '4426' || l.debit === '4428') dedusaProvizoriu = round2(dedusaProvizoriu + l.suma);
+    }
+  }
+  const total = round2(cuDrept + faraDrept);
+  const definitiva = total > 0 ? Math.min(100, Math.ceil((cuDrept / total) * 100)) : 100;
+  const provizorie = Number((db.company || {}).proRataTva) || null;
+  // regularizarea: TVA totala pe achizitiile mixte, redeductibila la pro-rata definitiva
+  let regularizare = null;
+  if (provizorie && nrMixte) {
+    const tvaTotalaMixta = round2((dedusaProvizoriu * 100) / provizorie);
+    regularizare = round2(round2((tvaTotalaMixta * definitiva) / 100) - dedusaProvizoriu);
+  }
+  return { year: y, cuDrept, faraDrept, total, definitiva, provizorie, nrMixte, dedusaProvizoriu, regularizare };
+}
+
 /** Estimarea Declaratiei Unice pentru PFA (sistem real): venitul net anual + CAS/CASS/impozit. */
 function declaratiaUnica(db, year) {
   const y = String(year);
@@ -602,4 +639,4 @@ function monthlySeries(db, year) {
   return out;
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, declaratiaUnica, achizitiiPfCarnet, registruInventar, livrabile, dashboard, monthlySeries, registruFiscal, notes, budgetReport, cashForecast };
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, monthlySeries, registruFiscal, notes, budgetReport, cashForecast };
