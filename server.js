@@ -285,18 +285,6 @@ function requireAdmin(req, res, next) {
 // ── Proba expirata => cont READ-ONLY: vede datele, dar nu mai inregistreaza si nu mai
 // genereaza livrabile (PDF/XML/CSV), pana la alegerea unui plan. Raman permise: citirile
 // din API, gestionarea contului/abonamentului, plata si mesajele catre suport.
-const SUB_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|subscription|checkout|stripe|2fa|messages)/;
-const EXPIRED_MSG = 'Perioada de probă a expirat. Alege un plan din Abonament pentru a continua să înregistrezi și să generezi documente — datele tale sunt intacte.';
-app.use((req, res, next) => {
-  if (!req.user) return next();
-  const isDeliverable = /^\/(pdf|xml|csv|efactura)/.test(req.path);
-  if (req.method === 'GET' && !isDeliverable) return next(); // citirile raman libere
-  if (SUB_EXEMPT.test(req.path)) return next();
-  if (!plans.expiredLock(req.user)) return next();
-  if (isDeliverable) return res.status(402).type('text/plain; charset=utf-8').send(EXPIRED_MSG);
-  res.status(402).json({ error: EXPIRED_MSG });
-});
-
 // ── Drepturi granulare per utilizator (Setari -> Utilizatori, setate de admin) ──
 //  - readonly:    doar vizualizare — blocheaza orice scriere pe date (raman permise rutele de cont)
 //  - faraSalarii: fara acces la modulul de salarizare (date sensibile), nici macar in citire
@@ -315,18 +303,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Proba firmei expirata: firma inscrisa „de proba" devine read-only dupa o luna, pana e
-// pastrata (1 clic) sau stearsa. Doar scrierile pe firma activa; conturile/citirile raman libere.
-const FIRMA_TRIAL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe)|^\/api\/firme(\/\d+\/(keep|activate|subscribe))?$|^\/api\/firme\/\d+$/;
+// ── Billing STRICT per-firma: fiecare firma are propriul abonament. Scrierile pe FIRMA ACTIVA
+// sunt permise doar daca firma are abonament activ sau proba nefinalizata; altfel read-only pana
+// la abonare (plata pe firma). Citirile si rutele de cont/gestionare firma raman libere.
+const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe)|^\/api\/firme(\/\d+\/(keep|activate|subscribe))?$|^\/api\/firme\/\d+$/;
 app.use((req, res, next) => {
   if (!req.user || req.user.role === 'admin') return next();
   if (req.method === 'GET' && !/^\/(pdf|xml|csv|efactura)/.test(req.path)) return next(); // citirile libere
-  if (FIRMA_TRIAL_EXEMPT.test(req.path)) return next(); // cont + gestionarea firmei (keep/activate/delete/create)
+  if (FIRMA_BILL_EXEMPT.test(req.path)) return next(); // cont + gestionarea firmei (activate/subscribe/delete/create)
   const f = db.getFirma(activeId(req));
-  if (f && plans.firmaTrial(f).expired) {
+  if (f && plans.firmaLocked(f)) {
+    const st = plans.firmaStatus(f).status;
     return res.status(402).json({
-      error: 'Proba de o lună pentru firma „' + (f.nume || '') + '" a expirat. Continuarea lucrului pe luna următoare se face cu abonament. Te abonezi acum?',
-      firmaTrialExpired: true, firmaId: f.id, firmaNume: f.nume || '',
+      error: (st === 'expired' ? 'Proba pentru firma „' + (f.nume || '') + '" a expirat.' : 'Firma „' + (f.nume || '') + '" nu are abonament activ.')
+        + ' Continuarea lucrului se face cu abonament (plata pe firmă). Te abonezi acum?',
+      firmaTrialExpired: true, firmaId: f.id, firmaNume: f.nume || '', firmaStatus: st,
     });
   }
   next();
@@ -360,7 +351,8 @@ app.post('/api/login', (req, res) => {
   if (rememberDevice) setTrustedDevice(req, res, u); // append (tfd) DUPA setSession
   logAudit('login', 'autentificare', { userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
   db.save();
-  res.json({ ok: true, user: publicUser(u) });
+  req.user = u; // pentru withSessionState (starea abonamentului firmei active)
+  res.json({ ok: true, user: withSessionState(req, u) });
 });
 
 // Intrare in contul demo cu un click (public) — doar contul „demo", fara parola in client.
@@ -406,16 +398,19 @@ app.post('/api/register', (req, res) => {
     tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
     tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
   }, { id: fid });
+  // Billing per-firma: prima firma primeste o proba de 30 de zile.
+  firma.subscription = plans.firmaTrialSub();
   d.firme.push(firma);
   d.partners[fid] = {}; d.openingBalances[fid] = {};
   const { salt, hash } = authlib.hashPassword(password);
   const user = { id: db.nextUserId(), username, email: String(b.email || '').trim(), salt, hash, role: 'user', firme: [fid], firmaActiva: fid };
   d.users.push(user);
-  // Daca a platit ca „guest" inainte de inscriere, leaga abonamentul dupa email (Stripe).
+  // Daca a platit ca „guest" inainte de inscriere, leaga abonamentul dupa email (Stripe) — firma devine activa.
   const pIdx = plans.findPending(d.settings.pendingSubs, user.email);
   if (pIdx >= 0) {
     const rec = d.settings.pendingSubs[pIdx];
     user.subscription = plans.pendingToSubscription(rec);
+    firma.subscription = { status: 'active', plan: rec.plan, since: new Date().toISOString(), stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null };
     d.settings.pendingSubs.splice(pIdx, 1);
     logAudit('subscription.linked', 'abonament ' + rec.plan + ' legat la inscriere', { userId: user.id, username, firmaId: fid });
   }
@@ -589,6 +584,12 @@ function withSessionState(req, u) {
   out.unreadMessages = (u.role === 'admin' && !req.impersonating)
     ? messages.unreadForAdmin(d.messages || [])
     : messages.unreadForUser(d.messages || [], u.id);
+  // Billing per-firma: starea abonamentului FIRMEI active + semnalul de read-only pentru banner.
+  if (u.role !== 'admin') {
+    const f = db.getFirma(activeId(req));
+    out.firmaSub = plans.firmaStatus(f);
+    out.subExpirat = plans.firmaLocked(f);
+  }
   return out;
 }
 
@@ -768,7 +769,7 @@ app.get('/api/meta', (req, res) => {
   const allowed = allowedFirme(req.user);
   res.json({
     user: withSessionState(req, req.user),
-    firme: d.firme.filter((f) => allowed.includes(f.id)).map((f) => Object.assign({}, f, { _trial: plans.firmaTrial(f) })),
+    firme: d.firme.filter((f) => allowed.includes(f.id)).map((f) => Object.assign({}, f, { _sub: plans.firmaStatus(f) })),
     firmaActiva: activeId(req),
     company: v.company,
     // tipurile de documente marcate cu `entitate` apar doar la forma juridica potrivita (srl/pfa)
@@ -789,7 +790,7 @@ function canAccess(req, id) { return allowedFirme(req.user).includes(Number(id))
 app.get('/api/firme', (req, res) => {
   const d = db.get();
   const allowed = allowedFirme(req.user);
-  const firme = d.firme.filter((f) => allowed.includes(f.id)).map((f) => Object.assign({}, f, { _trial: plans.firmaTrial(f) }));
+  const firme = d.firme.filter((f) => allowed.includes(f.id)).map((f) => Object.assign({}, f, { _sub: plans.firmaStatus(f) }));
   res.json({ firme, firmaActiva: activeId(req) });
 });
 app.post('/api/firme', (req, res) => {
@@ -802,8 +803,11 @@ app.post('/api/firme', (req, res) => {
     tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
     tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
   }, { id });
-  // Firma „de proba": gratuit o luna, independent de abonamentul contului (evaluare / onboarding).
-  if (b.proba) { f.trial = true; f.trialStartedAt = new Date().toISOString(); f.trialEndsAt = new Date(Date.now() + plans.TRIAL_DAYS * 86400000).toISOString(); }
+  // Billing per-firma: firma noua a unui utilizator porneste cu proba de 30 de zile (apoi abonament).
+  // Firmele create de admin sunt active direct (adminul nu e taxat).
+  f.subscription = req.user.role === 'admin'
+    ? { status: 'active', plan: 'grandfathered', since: new Date().toISOString() }
+    : plans.firmaTrialSub();
   d.firme.push(f);
   d.partners[id] = {}; d.openingBalances[id] = {};
   // utilizatorul care creeaza firma capata acces (adminul are oricum)
@@ -944,19 +948,9 @@ app.post('/api/firme/:id/activate', (req, res) => {
   db.save();
   res.json({ ok: true, firmaActiva: req.user.firmaActiva });
 });
-// „Pastreaza firma" (dupa proba): scoate marcajul de proba, firma devine permanenta (acoperita de cont).
-app.post('/api/firme/:id/keep', (req, res) => {
-  if (!canAccess(req, req.params.id)) return res.status(403).json({ error: 'Fara acces la aceasta firma.' });
-  const f = db.getFirma(req.params.id);
-  if (!f) return res.status(404).json({ error: 'Firma inexistenta.' });
-  delete f.trial; delete f.trialStartedAt; delete f.trialEndsAt;
-  logAudit('firma.keep', 'firma ' + f.id + ' pastrata (proba incheiata)', { req, firmaId: f.id });
-  db.save();
-  res.json({ ok: true, firma: f });
-});
-// Abonare pentru continuarea lucrului pe firma de proba (dupa expirarea lunii): deschide plata
-// Stripe pentru planul potrivit (Start pentru necontabili / Pro pentru contabili) si marcheaza pe
-// firma flagul de abonament pe luna curenta, deblocand-o.
+// Abonare pe FIRMA (billing strict per-firma): deschide plata Stripe pentru planul potrivit
+// (Start pentru necontabili / Pro pentru contabili) si activeaza abonamentul FIRMEI pe luna curenta,
+// deblocand scrierile. Fiecare firma se plateste separat.
 app.post('/api/firme/:id/subscribe', wrap(async (req, res) => {
   if (!canAccess(req, req.params.id)) return res.status(403).json({ error: 'Fara acces la aceasta firma.' });
   const f = db.getFirma(req.params.id);
@@ -965,20 +959,19 @@ app.post('/api/firme/:id/subscribe', wrap(async (req, res) => {
   const b = req.body || {};
   const plan = b.plan === 'pro' ? 'pro' : b.plan === 'start' ? 'start' : (plans.userKind(req.user) === 'contabil' ? 'pro' : 'start');
   const luna = new Date().toISOString().slice(0, 7);
-  // marcheaza firma abonata pe luna curenta + scoate proba (deblocheaza scrierile)
-  f.abonamente = f.abonamente || {};
-  f.abonamente[luna] = plan;
-  delete f.trial; delete f.trialStartedAt; delete f.trialEndsAt;
+  // activeaza abonamentul FIRMEI (per-firma) + noteaza luna
+  const prev = f.subscription || {};
+  f.subscription = {
+    status: 'active', plan, since: prev.since || new Date().toISOString(),
+    trialEndsAt: prev.trialEndsAt || null,
+    abonamente: Object.assign({}, prev.abonamente || {}, { [luna]: plan }),
+  };
   logAudit('firma.subscribe', 'firma ' + f.id + ' abonata (' + plan + ') pe ' + luna, { req, firmaId: f.id });
-  // plata: Stripe daca e configurat (abonamentul contului), altfel activare directa
+  // plata: Stripe pentru firma (checkout), daca e configurat
   let url = null;
   if (billing.configured()) {
     const u = db.get().users.find((x) => x.id === req.user.id);
-    try { const s = await billing.createCheckoutSession(u, plan); url = s.url; } catch (e) { console.error('checkout firma-subscribe:', e.message); }
-  } else if (req.user.subscription && req.user.subscription.status === 'active') {
-    // contul are deja abonament activ — firma e acoperita, nimic de platit
-  } else {
-    req.user.subscription = plans.selectPlan(req.user.subscription, plan);
+    try { const s = await billing.createCheckoutSession(u, plan); url = s.url; f.subscription.stripeCustomerId = u.subscription && u.subscription.stripeCustomerId || null; } catch (e) { console.error('checkout firma-subscribe:', e.message); }
   }
   db.save();
   res.json({ ok: true, plan, luna, url, stripe: billing.configured() });

@@ -30,13 +30,14 @@ function buildDb() {
     firme: [
       { id: 1, nume: 'UNU SRL', cui: '11', tvaPlatitor: true },
       { id: 2, nume: 'DOI SRL', cui: '22', tvaPlatitor: true },
+      // firma cu proba EXPIRATA (billing per-firma) — pentru testele „expirat"
+      { id: 3, nume: 'EXPIRAT SRL', cui: '33', tvaPlatitor: true, subscription: { plan: 'trial', trialStartedAt: '2026-01-01T00:00:00Z', trialEndsAt: '2026-02-01T00:00:00Z' } },
     ],
     firmaActiva: 1,
     users: [
       { id: 1, username: 'admin', salt: a.salt, hash: a.hash, role: 'admin', firme: [] },
       { id: 2, username: 'user1', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
-      { id: 3, username: 'expirat', salt: u.salt, hash: u.hash, role: 'user', firme: [2], firmaActiva: 2,
-        subscription: { plan: 'trial', status: 'trial', trialStartedAt: '2026-01-01', trialEndsAt: '2026-01-31' } },
+      { id: 3, username: 'expirat', salt: u.salt, hash: u.hash, role: 'user', firme: [3], firmaActiva: 3 },
     ],
     documents: [{ id: 'docA', firmaId: 2, fileName: 'secret.pdf', storedName: 'nu-exista-pe-disc.pdf', uploadedAt: 'x', text: '' }],
     settings: { authSecret: 'x'.repeat(64) },
@@ -547,32 +548,29 @@ async function main() {
     eq('user fara firme: niciun partener vizibil', Object.keys((await req('GET', '/api/partners', { cookie: cNo })).json).length, 0);
     ok('user fara firme: lista lui de firme e goala', (await req('GET', '/api/firme', { cookie: cNo })).json.firme.length === 0);
 
-    // ── FIRMA DE PROBA (1 luna) + abonare la expirare ──
-    const tfR = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Firma Proba SRL', cui: 'RO900', proba: true } });
-    ok('firma de proba creata cu marcaj trial + data de expirare', tfR.json.ok && tfR.json.firma.trial === true && !!tfR.json.firma.trialEndsAt);
+    // ── BILLING STRICT PER-FIRMA: firma noua porneste cu proba de 30 zile, apoi abonament ──
+    const tfR = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Firma Proba SRL', cui: 'RO900' } });
+    ok('firma noua porneste cu abonament de proba (30 zile)', tfR.json.ok && tfR.json.firma.subscription && tfR.json.firma.subscription.plan === 'trial' && !!tfR.json.firma.subscription.trialEndsAt);
     const tf = tfR.json.firma.id;
     const tfInfo = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf);
-    ok('firma de proba: status trial activ cu ~30 zile ramase', tfInfo._trial.trial && !tfInfo._trial.expired && tfInfo._trial.zileRamase >= 28);
+    ok('firma noua: stare trial activa cu ~30 zile ramase', tfInfo._sub.status === 'trial' && tfInfo._sub.zileRamase >= 28);
     eq('scriere permisa cat timp proba e activa', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO901', den: 'Client Proba' } })).status, 200);
-    // simulez expirarea probei (setez trialEndsAt in trecut prin update-ul firmei)
-    await req('POST', '/api/firme/' + tf, { cookie: c1, body: { trialEndsAt: '2026-01-01T00:00:00Z' } });
+    // simulez expirarea probei (trecutul lui trialEndsAt din subscription, prin update-ul firmei)
+    await req('POST', '/api/firme/' + tf, { cookie: c1, body: { subscription: { plan: 'trial', trialEndsAt: '2026-01-01T00:00:00Z' } } });
+    ok('firma cu proba expirata e blocata (status expired)', (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf)._sub.status === 'expired');
     const blocat = await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO902', den: 'Blocat' } });
-    eq('dupa expirare: scrierea pe firma de proba e blocata (402)', blocat.status, 402);
-    ok('402 semnaleaza proba expirata + firma pentru promptul de abonare', blocat.json && blocat.json.firmaTrialExpired === true && blocat.json.firmaId === tf);
+    eq('dupa expirare: scrierea pe firma e blocata (402)', blocat.status, 402);
+    ok('402 semnaleaza firma pentru promptul de abonare', blocat.json && blocat.json.firmaTrialExpired === true && blocat.json.firmaId === tf && blocat.json.firmaStatus === 'expired');
     eq('dupa expirare: citirile raman libere', (await req('GET', '/api/partners', { cookie: c1 })).status, 200);
-    // abonare: seteaza flagul Abonament pe luna curenta + deblocheaza (fara Stripe in teste)
+    // abonare pe FIRMA: activeaza abonamentul firmei pe luna curenta + deblocheaza
     const lunaCur = new Date().toISOString().slice(0, 7);
     const sub = await req('POST', '/api/firme/' + tf + '/subscribe', { cookie: c1, body: {} });
     ok('abonare: plan Start (necontabil), luna curenta', sub.json.ok && sub.json.plan === 'start' && sub.json.luna === lunaCur);
     ok('abonare: deschide plata Stripe cand e configurata, altfel activare directa', sub.json.stripe ? (typeof sub.json.url === 'string' && /stripe|checkout/.test(sub.json.url)) : (sub.json.url == null));
     const tfDupa = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf);
-    ok('firma are flagul Abonament=Start pe luna curenta', tfDupa.abonamente && tfDupa.abonamente[lunaCur] === 'start');
-    ok('dupa abonare: nu mai e firma de proba', !tfDupa._trial.trial);
+    ok('firma are abonament ACTIV (Start) + nota lunii', tfDupa._sub.status === 'active' && tfDupa.subscription.plan === 'start' && tfDupa.subscription.abonamente[lunaCur] === 'start');
     eq('dupa abonare: scrierea functioneaza din nou', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO903', den: 'Deblocat' } })).status, 200);
     ok('abonare respinsa pe firma straina -> 403', [403, 404].includes((await req('POST', '/api/firme/2/subscribe', { cookie: c1, body: {} })).status));
-    // „Pastreaza" ramane disponibil pentru o firma de proba inca activa
-    const tf2 = (await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Proba 2', proba: true } })).json.firma.id;
-    ok('keep pe firma de proba activa scoate proba', (await req('POST', '/api/firme/' + tf2 + '/keep', { cookie: c1 })).json.ok === true);
     await req('POST', '/api/firme/1/activate', { cookie: c1 }); // curatenie: revin pe firma 1
 
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──

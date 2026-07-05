@@ -44,13 +44,41 @@ function expiredLock(user) {
   return status(user.subscription).status === 'expired';
 }
 
-/** Starea probei unei FIRME (independenta de abonamentul contului): o firma poate fi
- *  inscrisa „de proba" pentru o luna. { trial, expired, zileRamase }. */
-function firmaTrial(firma, now) {
+/** Abonament de PROBA per firma (30 zile). */
+function firmaTrialSub(now) {
   now = now || Date.now();
-  if (!firma || !firma.trial || !firma.trialEndsAt) return { trial: false, expired: false, zileRamase: null };
-  const left = daysLeft(firma.trialEndsAt, now);
-  return { trial: true, expired: left <= 0, zileRamase: left };
+  return { plan: 'trial', trialStartedAt: new Date(now).toISOString(), trialEndsAt: new Date(now + TRIAL_DAYS * 86400000).toISOString() };
+}
+
+/**
+ * Starea abonamentului unei FIRME (billing strict per-firma): fiecare firma are propriul
+ * abonament (`firma.subscription`). { status, plan, zileRamase, trialEndsAt }.
+ *   active     — abonament platit activ (sau firma veche „grandfathered");
+ *   trial      — in proba de 30 de zile;
+ *   expired    — proba a expirat, fara abonament -> read-only pana la abonare;
+ *   none       — fara abonament si fara proba -> read-only.
+ */
+function firmaStatus(firma, now) {
+  now = now || Date.now();
+  const s = (firma && firma.subscription) || {};
+  if (s.status === 'active') return { status: 'active', plan: s.plan || 'activ', since: s.since || null, zileRamase: null };
+  if (s.trialEndsAt) {
+    const left = daysLeft(s.trialEndsAt, now);
+    return { status: left > 0 ? 'trial' : 'expired', plan: 'trial', trialEndsAt: s.trialEndsAt, zileRamase: left };
+  }
+  return { status: 'none', plan: null, zileRamase: null };
+}
+
+/** Firma blocata (read-only): proba expirata sau fara abonament. */
+function firmaLocked(firma, now) {
+  const st = firmaStatus(firma, now).status;
+  return st === 'expired' || st === 'none';
+}
+
+/** Compat: „proba activa/expirata" a firmei, derivata din firmaStatus. */
+function firmaTrial(firma, now) {
+  const st = firmaStatus(firma, now);
+  return { trial: st.status === 'trial' || st.status === 'expired', expired: st.status === 'expired', zileRamase: st.zileRamase };
 }
 
 /**
@@ -134,4 +162,4 @@ function pendingToSubscription(rec, now) {
   return { plan: rec.plan, status: 'active', stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null, since: new Date(now || Date.now()).toISOString() };
 }
 
-module.exports = { PLANS, TRIAL_DAYS, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock, firmaTrial };
+module.exports = { PLANS, TRIAL_DAYS, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock, firmaTrial, firmaTrialSub, firmaStatus, firmaLocked };

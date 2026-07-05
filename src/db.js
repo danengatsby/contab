@@ -92,6 +92,19 @@ function migrate(d) {
   for (const f of d.firme) {
     if (!d.partners[f.id]) d.partners[f.id] = {};
     if (!d.openingBalances[f.id]) d.openingBalances[f.id] = {};
+    // Billing strict per-firma: fiecare firma are propriul abonament (firma.subscription).
+    if (!f.subscription) {
+      if (f.trial && f.trialEndsAt) {
+        // convertesc proba per-firma introdusa anterior (f.trial/trialEndsAt/abonamente)
+        f.subscription = { plan: 'trial', trialStartedAt: f.trialStartedAt || null, trialEndsAt: f.trialEndsAt, abonamente: f.abonamente || {} };
+      } else if (f.abonamente && Object.keys(f.abonamente).length) {
+        f.subscription = { status: 'active', plan: Object.values(f.abonamente).pop() || 'activ', since: new Date().toISOString(), abonamente: f.abonamente };
+      } else {
+        // firma existenta (dinainte de billing per-firma) -> pastrata activa („grandfathered")
+        f.subscription = { status: 'active', plan: 'grandfathered', since: new Date().toISOString() };
+      }
+    }
+    delete f.trial; delete f.trialStartedAt; delete f.trialEndsAt; delete f.abonamente;
   }
   d.openingAnalytic = (d.openingAnalytic || []).map((o) => (o.firmaId == null ? Object.assign({ firmaId: d.firmaActiva }, o) : o));
   // utilizatori + secret de sesiune

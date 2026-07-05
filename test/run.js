@@ -1445,11 +1445,16 @@ ok('plans: nu exista planul business', !plansMod.PLANS.some((p) => p.id === 'bus
 ok('plans: toate au aceleasi 6 functii', plansMod.PLANS.every((p) => p.features.length === 6 && p.features[0] === 'Facturi + e-Factura'));
 // proba per-firma (independenta de abonamentul contului)
 const nowFt = Date.parse('2026-07-05T00:00:00Z');
-eq('firmaTrial: firma fara proba', plansMod.firmaTrial({}, nowFt).trial, false);
-const ftAct = plansMod.firmaTrial({ trial: true, trialEndsAt: '2026-07-20T00:00:00Z' }, nowFt);
-eq('firmaTrial: proba activa, 15 zile ramase', ftAct.zileRamase + '|' + ftAct.expired, '15|false');
-const ftExp = plansMod.firmaTrial({ trial: true, trialEndsAt: '2026-06-01T00:00:00Z' }, nowFt);
-ok('firmaTrial: proba expirata', ftExp.trial && ftExp.expired && ftExp.zileRamase <= 0);
+// billing strict per-firma: firmaStatus / firmaLocked
+eq('firmaStatus: firma fara abonament -> none (blocata)', plansMod.firmaStatus({}, nowFt).status, 'none');
+ok('firmaLocked: fara abonament -> blocata', plansMod.firmaLocked({}, nowFt) === true);
+eq('firmaStatus: activa (grandfathered) -> nu e blocata', plansMod.firmaLocked({ subscription: { status: 'active', plan: 'grandfathered' } }, nowFt), false);
+const ftAct = plansMod.firmaStatus({ subscription: { plan: 'trial', trialEndsAt: '2026-07-20T00:00:00Z' } }, nowFt);
+eq('firmaStatus: proba activa, 15 zile ramase', ftAct.status + '|' + ftAct.zileRamase, 'trial|15');
+const ftExp = plansMod.firmaStatus({ subscription: { plan: 'trial', trialEndsAt: '2026-06-01T00:00:00Z' } }, nowFt);
+ok('firmaStatus: proba expirata -> expired + blocata', ftExp.status === 'expired' && plansMod.firmaLocked({ subscription: { plan: 'trial', trialEndsAt: '2026-06-01T00:00:00Z' } }, nowFt));
+const ftSub = plansMod.firmaTrialSub(nowFt);
+ok('firmaTrialSub: proba de 30 zile', ftSub.plan === 'trial' && plansMod.daysLeft(ftSub.trialEndsAt, nowFt) === 30);
 const nowSub = Date.parse('2026-06-01T00:00:00Z');
 const trial1 = plansMod.startTrial({}, nowSub);
 eq('trial: status trial', trial1.status, 'trial');

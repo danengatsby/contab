@@ -281,8 +281,8 @@ $$('#moreSheet button[data-go]').forEach((b) => b.addEventListener('click', () =
 // ───────────────────────── FIRME (multi-firma) ─────────────────────────
 function fillFirmaSelect() {
   const sel = $('#firmaSelect');
-  const trialTag = (f) => (f._trial && f._trial.trial) ? (f._trial.expired ? ' 🎁 probă expirată' : ' 🎁 probă ' + f._trial.zileRamase + 'z') : '';
-  const opts = (META.firme || []).map((f) => `<option value="${f.id}" ${f.id === META.firmaActiva ? 'selected' : ''}>${H(f.nume)}${f.cui ? ' (' + H(f.cui) + ')' : ''}${trialTag(f)}</option>`).join('');
+  const subTag = (f) => { const s = f._sub || {}; return s.status === 'trial' ? ' 🎁 probă ' + s.zileRamase + 'z' : s.status === 'expired' ? ' 🎁 expirată' : s.status === 'none' ? ' ⚠ fără abonament' : ''; };
+  const opts = (META.firme || []).map((f) => `<option value="${f.id}" ${f.id === META.firmaActiva ? 'selected' : ''}>${H(f.nume)}${f.cui ? ' (' + H(f.cui) + ')' : ''}${subTag(f)}</option>`).join('');
   // optiune de adaugare direct din selector (discoverability) — duce la Setari -> Firmele mele
   sel.innerHTML = opts + '<option value="__add__">＋ Adaugă / gestionează firme…</option>';
   // Portofoliul are sens doar cu mai multe firme in administrare
@@ -303,28 +303,24 @@ $('#firmaSelect').addEventListener('change', async (e) => {
 async function renderFirme() {
   const data = await api('/api/firme');
   $('#firmaExport').href = '/api/firme/' + data.firmaActiva + '/export-zip';
-  const lunaCurenta = new Date().toISOString().slice(0, 7);
-  const trialBadge = (f) => {
-    const abonat = f.abonamente && f.abonamente[lunaCurenta];
-    if (abonat) return ` <span class="pill" style="background:#eaf4ef;color:#0b6e4f" title="Abonată pe luna curentă (${abonat === 'pro' ? 'Pro' : 'Start'})">✓ abonat ${abonat === 'pro' ? 'Pro' : 'Start'}</span>`;
-    const t = f._trial; if (!t || !t.trial) return '';
-    return t.expired
-      ? ' <span class="pill warn" title="Proba de o lună a expirat — abonează-te ca să continui">🎁 probă expirată</span>'
-      : ` <span class="pill" style="background:#eaf4ef;color:#0b6e4f" title="Firmă de probă">🎁 probă: ${t.zileRamase} ${t.zileRamase === 1 ? 'zi' : 'zile'}</span>`;
+  // Billing per-firma: fiecare firma are propria stare de abonament (f._sub).
+  const subBadge = (f) => {
+    const s = f._sub || {};
+    if (s.status === 'trial') return ` <span class="pill" style="background:#eaf4ef;color:#0b6e4f" title="Probă gratuită">🎁 probă: ${s.zileRamase} ${s.zileRamase === 1 ? 'zi' : 'zile'}</span>`;
+    if (s.status === 'expired') return ' <span class="pill warn" title="Proba a expirat — abonează-te ca să continui">🎁 probă expirată</span>';
+    if (s.status === 'none') return ' <span class="pill warn" title="Fără abonament">fără abonament</span>';
+    if (s.status === 'active' && s.plan && s.plan !== 'grandfathered') return ` <span class="pill" style="background:#eaf4ef;color:#0b6e4f" title="Abonament activ">✓ ${s.plan === 'pro' ? 'Pro' : s.plan === 'start' ? 'Start' : 'activ'}</span>`;
+    return '';
   };
+  const needsSub = (f) => f._sub && (f._sub.status === 'expired' || f._sub.status === 'none');
   $('#firmeList').innerHTML = `<table><thead><tr><th>Denumire</th><th>CUI</th><th></th></tr></thead><tbody>${
     data.firme.map((f) => `<tr>
-      <td>${f.id === data.firmaActiva ? '<b>● ' + H(f.nume) + '</b>' : H(f.nume)}${trialBadge(f)}</td><td>${H(f.cui)}</td>
+      <td>${f.id === data.firmaActiva ? '<b>● ' + H(f.nume) + '</b>' : H(f.nume)}${subBadge(f)}</td><td>${H(f.cui)}</td>
       <td>${f.id === data.firmaActiva ? '<span class="pill">activă</span>' : `<button class="linkbtn fact" data-id="${f.id}">activează</button>`}
-        ${f._trial && f._trial.expired ? ` · <button class="linkbtn fsub" data-id="${f.id}" data-nume="${H(f.nume)}" style="color:var(--accent);font-weight:700">abonează-te →</button>` : ''}
-        ${f._trial && f._trial.trial && !f._trial.expired ? ` · <button class="linkbtn fkeep" data-id="${f.id}">păstrează</button>` : ''}
+        ${needsSub(f) ? ` · <button class="linkbtn fsub" data-id="${f.id}" data-nume="${H(f.nume)}" style="color:var(--accent);font-weight:700">abonează-te →</button>` : ''}
         ${data.firme.length > 1 ? ` · <button class="del fdel" data-id="${f.id}">✕</button>` : ''}</td></tr>`).join('')}</tbody></table>`;
   $$('#firmeList .fact').forEach((b) => b.addEventListener('click', async () => {
     await api('/api/firme/' + b.dataset.id + '/activate', { method: 'POST' }); await init(); onTab('setari'); toast('Firmă activată');
-  }));
-  $$('#firmeList .fkeep').forEach((b) => b.addEventListener('click', async () => {
-    try { await api('/api/firme/' + b.dataset.id + '/keep', { method: 'POST' }); await init(); onTab('setari'); toast('Firmă păstrată — proba s-a încheiat, firma rămâne permanentă.'); }
-    catch (e) { toast(e.message, true); }
   }));
   $$('#firmeList .fsub').forEach((b) => b.addEventListener('click', () => promptFirmaSubscribe(Number(b.dataset.id), b.dataset.nume)));
   $$('#firmeList .fdel').forEach((b) => b.addEventListener('click', async () => {
@@ -353,10 +349,9 @@ $('#testCloneBtn') && $('#testCloneBtn').addEventListener('click', async () => {
 $('#firmaNewForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
-  const proba = f.proba && f.proba.checked;
-  await api('/api/firme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, oras: f.oras.value, tipEntitate: f.tipEntitate.value, tvaPlatitor: f.tvaPlatitor.checked, proba }) });
+  await api('/api/firme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, oras: f.oras.value, tipEntitate: f.tipEntitate.value, tvaPlatitor: f.tvaPlatitor.checked }) });
   f.reset(); if (f.tvaPlatitor) f.tvaPlatitor.checked = true; await init(); onTab('setari');
-  toast(proba ? 'Firmă de probă adăugată — gratuit o lună. O păstrezi oricând din lista de firme.' : 'Firmă adăugată (acum activă). Comuți între firme din selectorul de sus.');
+  toast('Firmă adăugată cu o lună de probă gratuită (acum activă). Comuți între firme din selectorul de sus.');
 });
 $('#firmaImportBtn').addEventListener('click', async () => {
   const file = $('#firmaImportFile').files[0];
