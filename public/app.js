@@ -40,11 +40,17 @@ function showLogin() { $('#loginOverlay').classList.remove('hidden'); checkRegis
 function hideLogin() { $('#loginOverlay').classList.add('hidden'); }
 // ── Inscriere firma (pagina publica de pe login) ──
 async function checkRegisterEnabled() {
-  try { const r = await fetch('/api/register'); if (!r.ok) return; const d = await r.json(); $('#registerCta') && $('#registerCta').classList.toggle('hidden', !d.enabled); }
+  try { const r = await fetch('/api/register'); if (!r.ok) return; const d = await r.json(); $('#registerBtn') && $('#registerBtn').classList.toggle('hidden', !d.enabled); }
   catch (e) { /* ignora */ }
 }
 $('#registerBtn') && $('#registerBtn').addEventListener('click', () => {
   $('#registerErr').textContent = ''; $('#loginOverlay').classList.add('hidden'); $('#registerOverlay').classList.remove('hidden');
+});
+// „Demo": intra in contul demo public (explorare libera, date resetate zilnic)
+$('#demoLoginBtn') && $('#demoLoginBtn').addEventListener('click', async (e) => {
+  const b = e.currentTarget; b.disabled = true;
+  try { await api('/api/demo-login', { method: 'POST' }); $('#loginOverlay').classList.add('hidden'); await init(); toast('Ai intrat în contul demo — explorează liber!'); }
+  catch (err) { toast(err.message, true); b.disabled = false; }
 });
 $('#registerCancel') && $('#registerCancel').addEventListener('click', () => {
   $('#registerOverlay').classList.add('hidden'); $('#loginOverlay').classList.remove('hidden');

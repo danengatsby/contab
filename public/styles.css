@@ -782,3 +782,7 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 .reg-compact .login-logo{margin-bottom:2px}
 .reg-compact .btn{margin-top:12px}
 .reg-compact select,.reg-compact input{margin-top:2px}
+
+/* Butonul „Testează gratuit" pe login — accent verde (calea utilizatorului nou) */
+.btn.trial-btn{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.btn.trial-btn:hover{filter:brightness(1.06)}
