@@ -381,6 +381,18 @@ async function main() {
     const og = await req('GET', '/api/opening', { cookie: c1 });
     ok('GET /api/opening: soldurile salvate (pentru editorul din Setari)', og.json && og.json['5121'] && og.json['5121'].d === 1000 && og.json['1012'].c === 1000);
 
+    // ── Gestiunea lunilor: inchidere TVA lunara (validare + blocare + avans) ──
+    await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2025-09-10', partener: 'LunaTest', cuiPartener: 'RO7', document: 'FL9', baza: 1000, tva: 210, cota: 21 } } });
+    eq('close-vat fara luna (an) respins -> 400', (await req('POST', '/api/close-vat?period=2025', { cookie: c1 })).status, 400);
+    eq('close-vat cu perioada invalida respins -> 400', (await req('POST', '/api/close-vat?period=garbage', { cookie: c1 })).status, 400);
+    const cv = await req('POST', '/api/close-vat?period=2025-09', { cookie: c1 });
+    ok('close-vat pe luna valida: inchide TVA + blocheaza perioada', cv.json.ok && cv.json.lockedUntil === '2025-09');
+    eq('inregistrare in luna inchisa (blocata) -> 400', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2025-09-15', partener: 'X', baza: 100, tva: 21, cota: 21 } } })).status, 400);
+    eq('inregistrare in luna urmatoare (nedublocata) merge', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2025-10-05', partener: 'X', baza: 100, tva: 21, cota: 21 } } })).status, 200);
+    ok('re-inchiderea aceleiasi luni e idempotenta (fara dublura)', (await req('POST', '/api/close-vat?period=2025-09', { cookie: c1 })).json.ok === true);
+    const laMonth = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
+    await req('POST', '/api/period-lock', { cookie: laMonth.cookie, body: { lockedUntil: null } }); // deblochez pentru restul testelor
+
     // ── Inchideri: ordinea impozit-profit vs inchidere anuala e irelevanta ──
     // pregatim un an cu profit: o vanzare de servicii + inregistrarea ei
     const vz = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2025-03-10', partener: 'X', cuiPartener: 'RO9', document: 'FS1', baza: 10000, tva: 2100, cota: 21 } } });

@@ -1720,7 +1720,9 @@ app.post('/api/tva-incasare/exigibilitate', (req, res) => {
 // ───────────────────────────── INCHIDERI ─────────────────────────────
 app.post('/api/close-vat', (req, res) => {
   const period = req.query.period;
-  if (!period) return res.status(400).json({ error: 'Lipseste perioada (YYYY-MM).' });
+  // Inchiderea TVA e strict LUNARA/trimestriala: cere o luna (YYYY-MM), nu un an — altfel data
+  // notei ar fi malformata (YYYY-28) si blocarea perioadei ineficienta.
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period || ''))) return res.status(400).json({ error: 'Perioada trebuie sa fie o luna (YYYY-MM).' });
   const d = db.get();
   const firma = db.getFirma(activeId(req));
   const v = acc.vatClosing(S(req), period);
