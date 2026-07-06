@@ -7,6 +7,29 @@ const EFACT_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse
 const SENDABLE_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare']);
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+// Buton „arată/ascunde" pe fiecare camp de parola (login, inscriere, schimbare parola, admin…)
+function enhancePasswordFields() {
+  $$('input[type="password"]').forEach((inp) => {
+    if (inp.dataset.pwToggle) return;
+    inp.dataset.pwToggle = '1';
+    const wrap = document.createElement('span');
+    wrap.className = 'pw-wrap';
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'pw-toggle'; btn.textContent = 'arată';
+    btn.setAttribute('aria-label', 'Arată sau ascunde parola'); btn.tabIndex = -1;
+    wrap.appendChild(btn);
+    btn.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'ascunde' : 'arată';
+    });
+  });
+}
+document.addEventListener('DOMContentLoaded', enhancePasswordFields);
+enhancePasswordFields();
 const fmt = (n) => (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const accName = (c) => { const a = META.accounts.find((x) => x.cod === String(c)); return a ? a.nume : ''; };
 // Escapare HTML pentru datele de proveniente externa (parteneri din e-Factura/SPV, extrase

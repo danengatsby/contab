@@ -787,3 +787,10 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 /* Butonul „Testează gratuit" pe login — accent verde (calea utilizatorului nou) */
 .btn.trial-btn{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
 .btn.trial-btn:hover{filter:brightness(1.06)}
+
+/* Buton „arată/ascunde" pentru campurile de parola */
+.pw-wrap{position:relative;display:block}
+.pw-wrap input{width:100%;padding-right:70px}
+.pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;
+  color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:3px 8px;border-radius:6px}
+.pw-toggle:hover{color:var(--accent);background:rgba(0,0,0,.05)}
