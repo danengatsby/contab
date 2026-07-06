@@ -81,7 +81,23 @@ module.exports = function register(app, ctx) {
       sub.status = 'canceled';
     }
     u.subscription = sub;
-    logAudit('subscription.stripe', event.type + ' -> ' + u.username + ' (' + (sub.plan || '-') + '/' + sub.status + ')', { firmaId: null, username: 'stripe-webhook' });
+    // Billing per-firma: activeaza/dezactiveaza abonamentul FIRMEI din metadata (plata confirmata).
+    const firma = info.firmaId ? d.firme.find((f) => String(f.id) === String(info.firmaId)) : null;
+    if (firma) {
+      const fp = firma.subscription || {};
+      if (info.action === 'activate') {
+        const luna = new Date().toISOString().slice(0, 7);
+        const plan = info.plan || fp.pendingPlan || fp.plan || 'start';
+        firma.subscription = {
+          status: 'active', plan, since: fp.since || new Date().toISOString(),
+          stripeCustomerId: info.customerId || fp.stripeCustomerId || null, stripeSubscriptionId: info.subscriptionId || fp.stripeSubscriptionId || null,
+          abonamente: Object.assign({}, fp.abonamente || {}, { [luna]: plan }),
+        };
+      } else if (info.action === 'cancel') {
+        firma.subscription = Object.assign({}, fp, { status: 'canceled' });
+      }
+    }
+    logAudit('subscription.stripe', event.type + ' -> ' + u.username + ' (' + (sub.plan || '-') + '/' + sub.status + ')' + (firma ? ' [firma ' + firma.id + ']' : ''), { firmaId: firma ? firma.id : null, username: 'stripe-webhook' });
     db.save();
     res.json({ received: true });
   });

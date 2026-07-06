@@ -61,12 +61,13 @@ function firmaTrialSub(now) {
 function firmaStatus(firma, now) {
   now = now || Date.now();
   const s = (firma && firma.subscription) || {};
-  if (s.status === 'active') return { status: 'active', plan: s.plan || 'activ', since: s.since || null, zileRamase: null };
+  const pending = !!s.pendingPlan && s.status !== 'active'; // checkout initiat, in asteptarea platii
+  if (s.status === 'active') return { status: 'active', plan: s.plan || 'activ', since: s.since || null, zileRamase: null, pending: false };
   if (s.trialEndsAt) {
     const left = daysLeft(s.trialEndsAt, now);
-    return { status: left > 0 ? 'trial' : 'expired', plan: 'trial', trialEndsAt: s.trialEndsAt, zileRamase: left };
+    return { status: left > 0 ? 'trial' : 'expired', plan: 'trial', trialEndsAt: s.trialEndsAt, zileRamase: left, pending, pendingPlan: pending ? s.pendingPlan : null };
   }
-  return { status: 'none', plan: null, zileRamase: null };
+  return { status: 'none', plan: null, zileRamase: null, pending, pendingPlan: pending ? s.pendingPlan : null };
 }
 
 /** Firma blocata (read-only): proba expirata sau fara abonament. */

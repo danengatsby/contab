@@ -1478,6 +1478,11 @@ eq('webhook checkout -> activate', evCheckout.action, 'activate');
 eq('webhook checkout plan pro', evCheckout.plan, 'pro');
 eq('webhook checkout userId', evCheckout.userId, '7');
 eq('webhook checkout customerId', evCheckout.customerId, 'cus_1');
+// billing per-firma: firmaId din metadata se propaga in evenimentul de activare (webhook -> firma)
+eq('webhook checkout: fara firmaId -> null', evCheckout.firmaId, null);
+const evFirma = billing.interpretEvent({ type: 'checkout.session.completed', data: { object: { metadata: { userId: '7', plan: 'pro', firmaId: '42' }, customer: 'cus_1', subscription: 'sub_1' } } });
+eq('webhook checkout: firmaId din metadata (per-firma)', evFirma.firmaId, '42');
+eq('webhook subscription.updated: firmaId propagat', billing.interpretEvent({ type: 'customer.subscription.updated', data: { object: { metadata: { userId: '7', plan: 'start', firmaId: '9' }, id: 'sub_1', status: 'active' } } }).firmaId, '9');
 const evDel = billing.interpretEvent({ type: 'customer.subscription.deleted', data: { object: { metadata: { userId: '7' }, id: 'sub_1', customer: 'cus_1', status: 'canceled' } } });
 eq('webhook subscription deleted -> cancel', evDel.action, 'cancel');
 const evUpd = billing.interpretEvent({ type: 'customer.subscription.updated', data: { object: { metadata: { userId: '7', plan: 'start' }, id: 'sub_1', customer: 'cus_1', status: 'active' } } });

@@ -309,8 +309,8 @@ async function renderFirme() {
   const subBadge = (f) => {
     const s = f._sub || {};
     if (s.status === 'trial') return ` <span class="pill" style="background:#eaf4ef;color:#0b6e4f" title="Probă gratuită">🎁 probă: ${s.zileRamase} ${s.zileRamase === 1 ? 'zi' : 'zile'}</span>`;
-    if (s.status === 'expired') return ' <span class="pill warn" title="Proba a expirat — abonează-te ca să continui">🎁 probă expirată</span>';
-    if (s.status === 'none') return ' <span class="pill warn" title="Fără abonament">fără abonament</span>';
+    if (s.status === 'expired') return ' <span class="pill warn" title="Proba a expirat — abonează-te ca să continui">🎁 probă expirată</span>' + (s.pending ? ' <span class="pill" style="background:#fff4e0;color:#b26a00">⏳ plată în așteptare</span>' : '');
+    if (s.status === 'none') return ' <span class="pill warn" title="Fără abonament">fără abonament</span>' + (s.pending ? ' <span class="pill" style="background:#fff4e0;color:#b26a00">⏳ plată în așteptare</span>' : '');
     if (s.status === 'active' && s.plan && s.plan !== 'grandfathered') return ` <span class="pill" style="background:#eaf4ef;color:#0b6e4f" title="Abonament activ">✓ ${s.plan === 'pro' ? 'Pro' : s.plan === 'start' ? 'Start' : 'activ'}</span>`;
     return '';
   };
@@ -950,6 +950,13 @@ async function init() {
   // drepturi granulare: utilizatorii fara acces la salarizare nu vad intrarea din meniu
   $$('button[data-tab="salarizare"]').forEach((b) => { b.style.display = (USER.drepturi && USER.drepturi.faraSalarii) ? 'none' : ''; });
   initUiMode(); // mod simplu implicit pentru necontabili (ascunde partea tehnica din meniu)
+  // Intoarcere de la Stripe (user logat) dupa abonarea unei firme: confirmare + starea se activeaza la webhook
+  const cr = /[?&]checkout=(success|cancel)/.exec(location.search);
+  if (cr) {
+    history.replaceState(null, '', location.pathname);
+    if (cr[1] === 'cancel') toast('Plata a fost anulată — firma rămâne neschimbată.', true);
+    else { toast('✓ Plată primită! Abonamentul firmei se activează în câteva momente (după confirmarea Stripe).'); goTab('abonament'); }
+  }
   startMsgPolling();
   if (USER.mustChange) toast('Schimbă parola implicită (admin/admin) din Setări!', true);
   // proba expirata: banner persistent + cont read-only (serverul blocheaza scrierile cu 402)
@@ -2051,10 +2058,11 @@ async function renderFirmeBilling() {
   const box = $('#firmeBilling'); if (!box) return;
   let data; try { data = await api('/api/firme'); } catch (e) { box.innerHTML = ''; return; }
   const stLabel = (s) => {
-    if (s.status === 'trial') return `<span class="pill" style="background:#eaf4ef;color:#0b6e4f">🎁 probă · ${s.zileRamase} ${s.zileRamase === 1 ? 'zi' : 'zile'}</span>`;
+    const pend = s.pending ? ' <span class="pill" style="background:#fff4e0;color:#b26a00" title="Ai inițiat plata — se activează după confirmarea Stripe">⏳ plată în așteptare</span>' : '';
+    if (s.status === 'trial') return `<span class="pill" style="background:#eaf4ef;color:#0b6e4f">🎁 probă · ${s.zileRamase} ${s.zileRamase === 1 ? 'zi' : 'zile'}</span>${pend}`;
     if (s.status === 'active') return `<span class="pill" style="background:#eaf4ef;color:#0b6e4f">✓ activ${s.plan && s.plan !== 'grandfathered' ? ' · ' + (s.plan === 'pro' ? 'Pro' : 'Start') : ''}</span>`;
-    if (s.status === 'expired') return '<span class="pill warn">probă expirată</span>';
-    return '<span class="pill warn">fără abonament</span>';
+    if (s.status === 'expired') return `<span class="pill warn">probă expirată</span>${pend}`;
+    return `<span class="pill warn">fără abonament</span>${pend}`;
   };
   box.innerHTML = `<table><thead><tr><th>Firmă</th><th>Stare abonament</th><th></th></tr></thead><tbody>${
     data.firme.map((f) => { const s = f._sub || {}; const needs = s.status === 'expired' || s.status === 'none';

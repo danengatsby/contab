@@ -31,21 +31,25 @@ function planForPrice(pid) {
 }
 function appUrl() { return String(process.env.APP_URL || 'https://contabo.space').replace(/\/+$/, ''); }
 
-/** Creeaza o sesiune de Checkout (abonament recurent) si returneaza obiectul cu .url de redirect. */
-async function createCheckoutSession(user, plan) {
+/** Creeaza o sesiune de Checkout (abonament recurent) si returneaza obiectul cu .url de redirect.
+ *  `firmaId` (optional): billing per-firma — se propaga in metadata ca webhook-ul sa activeze
+ *  abonamentul FIRMEI corecte dupa confirmarea platii. */
+async function createCheckoutSession(user, plan, firmaId) {
   const s = client();
   if (!s) throw new Error('Plățile online nu sunt configurate (lipsește STRIPE_SECRET_KEY).');
   const price = priceId(plan);
   if (!price) throw new Error('Planul „' + plan + '" nu are un preț Stripe configurat.');
   const sub = user.subscription || {};
+  const meta = { userId: String(user.id), plan };
+  if (firmaId != null) meta.firmaId = String(firmaId);
   return s.checkout.sessions.create({
     mode: 'subscription',
     line_items: [{ price, quantity: 1 }],
     customer: sub.stripeCustomerId || undefined,
     customer_email: sub.stripeCustomerId ? undefined : (user.email || undefined),
     client_reference_id: String(user.id),
-    metadata: { userId: String(user.id), plan },
-    subscription_data: { metadata: { userId: String(user.id), plan } },
+    metadata: meta,
+    subscription_data: { metadata: meta },
     allow_promotion_codes: true,
     success_url: appUrl() + '/?checkout=success#abonament',
     cancel_url: appUrl() + '/?checkout=cancel#abonament',
@@ -92,7 +96,7 @@ function interpretEvent(event) {
   switch (event && event.type) {
     case 'checkout.session.completed':
       return {
-        action: 'activate', userId: meta.userId || o.client_reference_id || null, plan: meta.plan || null,
+        action: 'activate', userId: meta.userId || o.client_reference_id || null, plan: meta.plan || null, firmaId: meta.firmaId || null,
         customerId: o.customer || null, subscriptionId: o.subscription || null, status: 'active',
         guest: meta.guest === '1', email: (o.customer_details && o.customer_details.email) || o.customer_email || null,
       };
@@ -101,7 +105,7 @@ function interpretEvent(event) {
       const line = o.items && o.items.data && o.items.data[0];
       const plan = meta.plan || planForPrice(line && line.price && line.price.id);
       const active = o.status === 'active' || o.status === 'trialing';
-      return { action: active ? 'activate' : 'update', userId: meta.userId || null, plan, customerId: o.customer || null, subscriptionId: o.id || null, status: o.status || null };
+      return { action: active ? 'activate' : 'update', userId: meta.userId || null, plan, firmaId: meta.firmaId || null, customerId: o.customer || null, subscriptionId: o.id || null, status: o.status || null };
     }
     case 'customer.subscription.deleted':
       return { action: 'cancel', userId: meta.userId || null, customerId: o.customer || null, subscriptionId: o.id || null, status: o.status || 'canceled' };

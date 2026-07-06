@@ -13,7 +13,8 @@ const crypto = require('crypto');
     if (!fs.existsSync(p)) return;
     for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
       const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+      // nu suprascrie o variabila deja prezenta in mediu (chiar goala) — permite dezactivarea explicita (ex. STRIPE_SECRET_KEY='')
+      if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
     }
   } catch (e) { /* ignora */ }
 })();
@@ -959,22 +960,28 @@ app.post('/api/firme/:id/subscribe', wrap(async (req, res) => {
   const b = req.body || {};
   const plan = b.plan === 'pro' ? 'pro' : b.plan === 'start' ? 'start' : (plans.userKind(req.user) === 'contabil' ? 'pro' : 'start');
   const luna = new Date().toISOString().slice(0, 7);
-  // activeaza abonamentul FIRMEI (per-firma) + noteaza luna
   const prev = f.subscription || {};
+  if (billing.configured()) {
+    // PLATA-GATED: NU deblocam optimist. Firma se activeaza abia dupa confirmarea platii (webhook).
+    // Marcam doar intentia (pendingPlan) — starea/proba raman neschimbate pana la plata.
+    const u = db.get().users.find((x) => x.id === req.user.id);
+    let url;
+    try { const s = await billing.createCheckoutSession(u, plan, f.id); url = s.url; }
+    catch (e) { return res.status(400).json({ error: e.message }); }
+    f.subscription = Object.assign({}, prev, { pendingPlan: plan, pendingSince: new Date().toISOString() });
+    logAudit('firma.subscribe', 'firma ' + f.id + ' -> checkout ' + plan + ' (in asteptarea platii)', { req, firmaId: f.id });
+    db.save();
+    return res.json({ ok: true, plan, url, stripe: true, pending: true });
+  }
+  // Fara Stripe (dev/manual): activare directa a abonamentului firmei.
   f.subscription = {
     status: 'active', plan, since: prev.since || new Date().toISOString(),
     trialEndsAt: prev.trialEndsAt || null,
     abonamente: Object.assign({}, prev.abonamente || {}, { [luna]: plan }),
   };
-  logAudit('firma.subscribe', 'firma ' + f.id + ' abonata (' + plan + ') pe ' + luna, { req, firmaId: f.id });
-  // plata: Stripe pentru firma (checkout), daca e configurat
-  let url = null;
-  if (billing.configured()) {
-    const u = db.get().users.find((x) => x.id === req.user.id);
-    try { const s = await billing.createCheckoutSession(u, plan); url = s.url; f.subscription.stripeCustomerId = u.subscription && u.subscription.stripeCustomerId || null; } catch (e) { console.error('checkout firma-subscribe:', e.message); }
-  }
+  logAudit('firma.subscribe', 'firma ' + f.id + ' abonata (' + plan + ') pe ' + luna + ' (fara Stripe)', { req, firmaId: f.id });
   db.save();
-  res.json({ ok: true, plan, luna, url, stripe: billing.configured() });
+  res.json({ ok: true, plan, luna, url: null, stripe: false });
 }));
 app.delete('/api/firme/:id', (req, res) => {
   const d = db.get();
