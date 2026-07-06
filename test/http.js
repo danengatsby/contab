@@ -117,6 +117,12 @@ async function main() {
     ok('deblocarea perioadei (admin) reuseste', (await req('POST', '/api/period-lock', { cookie: laLock.cookie, body: { lockedUntil: null } })).status === 200);
     const porto = await req('GET', '/api/portfolio?period=2026-06', { cookie: c1 });
     ok('portofoliu: doar firmele utilizatorului', porto.json && porto.json.firms.length === 1 && porto.json.firms[0].firmaId === 1);
+    ok('portofoliu: fiecare firma are forma juridica + starea abonamentului',
+      porto.json.firms.every((f) => (f.tipEntitate === 'srl' || f.tipEntitate === 'pfa') && typeof f.tvaPlatitor === 'boolean' && f.sub && typeof f.sub.status === 'string'));
+    // admin vede toate firmele in portofoliu, cu forma+abonament (firma 3 = proba expirata din buildDb)
+    const laPorto = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
+    const portoAdmin = (await req('GET', '/api/portfolio?period=2026-06', { cookie: laPorto.cookie })).json;
+    ok('portofoliu admin: firma cu proba expirata apare cu status expired', portoAdmin.firms.some((f) => f.firmaId === 3 && f.sub.status === 'expired'));
     const notif = await req('GET', '/api/notifications', { cookie: c1 });
     ok('notificari: raspund cu items', notif.json && Array.isArray(notif.json.items));
 

@@ -3228,8 +3228,22 @@ async function loadPortfolio() {
     ? `<table>${warn.map((f) => `<tr><td>${H(f.nume)}<br><span class="muted" style="font-size:11px">${H(f.atentionari.slice(0, 3).join(' · '))}</span></td>
         <td class="num"><span style="background:#b00020;color:#fff;border-radius:10px;padding:2px 9px;font-weight:700">${f.natentionari}</span></td></tr>`).join('')}</table>`
     : '<p class="muted">✓ Nicio firmă cu atenționări pe luna selectată.</p>';
-  $('#portoFirms').innerHTML = `<table><thead><tr><th>Firma</th><th>CUI</th><th class="num">Așteptate</th><th class="num">Depuse</th><th class="num">Generate</th><th class="num">Nedepuse</th><th class="num">Erori</th><th class="num">Atenționări</th></tr></thead><tbody>${
-    d.firms.map((f) => `<tr><td>${H(f.nume)}</td><td class="muted">${H(f.cui)}</td><td class="num">${f.counts.asteptate}</td><td class="num" style="color:#0a7d33">${f.counts.depuse}</td><td class="num">${f.counts.generate}</td><td class="num" ${f.counts.nedepuse ? 'style="color:#b26a00;font-weight:700"' : ''}>${f.counts.nedepuse}</td><td class="num" ${f.counts.erori ? 'style="color:#b00020;font-weight:700"' : ''}>${f.counts.erori}</td><td class="num">${f.natentionari || ''}</td></tr>`).join('')}</tbody></table>`;
+  // forma juridica (SRL/PFA + TVA) si starea abonamentului (billing per-firma)
+  const formaBadge = (f) => {
+    const t = f.tipEntitate === 'pfa'
+      ? '<span class="pill" style="background:#f3ecfb;color:#6b3fa0" title="Persoană fizică autorizată / întreprindere individuală">PFA</span>'
+      : '<span class="pill" style="background:#e7eefc;color:#1652d6" title="Societate cu răspundere limitată">SRL</span>';
+    return t + (f.tvaPlatitor ? ' <span class="pill" style="background:#eef1f7;color:#5a6472" title="Plătitoare de TVA">TVA</span>' : '');
+  };
+  const abonBadge = (s) => {
+    s = s || {};
+    if (s.status === 'trial') return `<span class="pill" style="background:#fff4e0;color:#b26a00" title="În probă (testare)">🎁 testare · ${s.zileRamase}z</span>`;
+    if (s.status === 'active') { const pl = s.plan === 'pro' ? 'ab.Pro' : s.plan === 'start' ? 'ab.Start' : 'activ'; return `<span class="pill" style="background:#eaf4ef;color:#0a7d33">✓ ${pl}</span>`; }
+    if (s.status === 'expired') return '<span class="pill warn">probă expirată</span>' + (s.pending ? ' <span class="pill" style="background:#fff4e0;color:#b26a00">⏳ plată</span>' : '');
+    return '<span class="pill warn">fără abonament</span>' + (s.pending ? ' <span class="pill" style="background:#fff4e0;color:#b26a00">⏳ plată</span>' : '');
+  };
+  $('#portoFirms').innerHTML = `<table><thead><tr><th>Firma</th><th>CUI</th><th>Formă</th><th>Abonament</th><th class="num">Așteptate</th><th class="num">Depuse</th><th class="num">Generate</th><th class="num">Nedepuse</th><th class="num">Erori</th><th class="num">Atenționări</th></tr></thead><tbody>${
+    d.firms.map((f) => `<tr><td>${H(f.nume)}</td><td class="muted">${H(f.cui)}</td><td>${formaBadge(f)}</td><td>${abonBadge(f.sub)}</td><td class="num">${f.counts.asteptate}</td><td class="num" style="color:#0a7d33">${f.counts.depuse}</td><td class="num">${f.counts.generate}</td><td class="num" ${f.counts.nedepuse ? 'style="color:#b26a00;font-weight:700"' : ''}>${f.counts.nedepuse}</td><td class="num" ${f.counts.erori ? 'style="color:#b00020;font-weight:700"' : ''}>${f.counts.erori}</td><td class="num">${f.natentionari || ''}</td></tr>`).join('')}</tbody></table>`;
   $('#portoRecent').innerHTML = (d.recent || []).length
     ? `<table><thead><tr><th>Când</th><th>Firma</th><th>Cine</th><th>Acțiune</th></tr></thead><tbody>${
       d.recent.map((a) => `<tr><td class="muted">${(a.ts || '').replace('T', ' ').slice(0, 16)}</td><td>${a.firma}</td><td>${a.username}</td><td>${a.action}${a.detail ? ' — <span class="muted">' + a.detail + '</span>' : ''}</td></tr>`).join('')}</tbody></table>`

@@ -5,6 +5,7 @@
 // din server.js (context injectat), ca sa nu duplice starea globala.
 
 const decl = require('../declarations');
+const plans = require('../plans');
 
 module.exports = function register(app, ctx) {
   const { db, S, activeId, allowedFirme, logAudit } = ctx;
@@ -46,6 +47,13 @@ module.exports = function register(app, ctx) {
     const d = db.get();
     const fids = allowedFirme(req.user);
     const p = decl.portfolio(d, fids.map((id) => db.scoped(id)), period);
+    // Imbogatire per firma: forma juridica (SRL/PFA), TVA si starea abonamentului (billing per-firma).
+    p.firms.forEach((f) => {
+      const firma = db.getFirma(f.firmaId) || {};
+      f.tipEntitate = firma.tipEntitate === 'pfa' ? 'pfa' : 'srl';
+      f.tvaPlatitor = !!firma.tvaPlatitor;
+      f.sub = plans.firmaStatus(firma);
+    });
     // activitate recenta pe firmele accesibile (din jurnalul de audit)
     const recent = (d.audit || []).filter((a) => a.firmaId != null && fids.includes(a.firmaId)).slice(-12).reverse()
       .map((a) => ({ ts: a.ts, username: a.username, action: a.action, detail: a.detail, firma: (db.getFirma(a.firmaId) || {}).nume || '' }));
