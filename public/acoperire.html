@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contabo — ce face aplicația și ce rămâne serviciu uman</title>
+<meta name="description" content="Fișă de acoperire: serviciile tipice ale unei firme de contabilitate, mapate onest pe ce face aplicația Contabo.">
+<style>
+  :root {
+    --ground: #f6f5f1;
+    --surface: #ffffff;
+    --surface-2: #fbfaf7;
+    --ink: #1c2030;
+    --muted: #5b6070;
+    --faint: #8a8f9d;
+    --line: #e6e4dc;
+    --line-strong: #d6d3c8;
+    --brand: #38415c;
+    --covered: #2f8f63;
+    --covered-bg: #e8f3ec;
+    --partial: #b07a1e;
+    --partial-bg: #f6efdf;
+    --human: #6a6486;
+    --human-bg: #edebf2;
+    --new: #b2472e;
+    --shadow: 0 1px 2px rgba(28,32,48,.05), 0 8px 28px rgba(28,32,48,.05);
+    --measure: 66ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #14161d;
+      --surface: #1b1e27;
+      --surface-2: #20242f;
+      --ink: #eceae4;
+      --muted: #9ba0ae;
+      --faint: #757b8a;
+      --line: #2a2e3a;
+      --line-strong: #363b49;
+      --brand: #aeb8d8;
+      --covered: #5cbb8d;
+      --covered-bg: #16302433;
+      --partial: #d9a54a;
+      --partial-bg: #33280f33;
+      --human: #a49ec4;
+      --human-bg: #26233333;
+      --new: #e37b60;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #f6f5f1; --surface: #ffffff; --surface-2: #fbfaf7;
+    --ink: #1c2030; --muted: #5b6070; --faint: #8a8f9d;
+    --line: #e6e4dc; --line-strong: #d6d3c8; --brand: #38415c;
+    --covered: #2f8f63; --covered-bg: #e8f3ec; --partial: #b07a1e; --partial-bg: #f6efdf;
+    --human: #6a6486; --human-bg: #edebf2; --new: #b2472e;
+    --shadow: 0 1px 2px rgba(28,32,48,.05), 0 8px 28px rgba(28,32,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #14161d; --surface: #1b1e27; --surface-2: #20242f;
+    --ink: #eceae4; --muted: #9ba0ae; --faint: #757b8a;
+    --line: #2a2e3a; --line-strong: #363b49; --brand: #aeb8d8;
+    --covered: #5cbb8d; --covered-bg: #16302433; --partial: #d9a54a; --partial-bg: #33280f33;
+    --human: #a49ec4; --human-bg: #26233333; --new: #e37b60;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.28);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: clamp(28px, 6vw, 72px) clamp(18px, 5vw, 40px) 96px;
+  }
+  .serif { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  .mono { font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; }
+
+  /* ── Masthead ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 26px;
+  }
+  .brandmark {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 18px; font-weight: 700; letter-spacing: -.01em; color: var(--ink);
+  }
+  .brandmark .glyph {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px;
+    background: var(--brand); color: var(--ground);
+    font-size: 16px; line-height: 1;
+  }
+  .btn-print {
+    display: inline-flex; align-items: center; gap: 7px;
+    font: inherit; font-size: 13px; font-weight: 600; letter-spacing: .01em;
+    color: var(--muted); background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    padding: 8px 14px; cursor: pointer; box-shadow: var(--shadow);
+    transition: color .15s, border-color .15s, transform .05s;
+  }
+  .btn-print:hover { color: var(--ink); border-color: var(--brand); }
+  .btn-print:active { transform: translateY(1px); }
+  .btn-print:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .btn-print svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+
+  .eyebrow {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: 12.5px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--faint); font-weight: 600;
+  }
+  .eyebrow .arrow { color: var(--brand); }
+  .eyebrow b { color: var(--muted); font-weight: 700; letter-spacing: .06em; }
+  h1 {
+    margin: 18px 0 0;
+    font-weight: 600;
+    font-size: clamp(30px, 5.4vw, 46px);
+    line-height: 1.08;
+    letter-spacing: -.012em;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  h1 .accent { color: var(--brand); font-style: italic; }
+  .lede {
+    margin: 20px 0 0;
+    max-width: var(--measure);
+    font-size: 17.5px;
+    color: var(--muted);
+  }
+  .lede b { color: var(--ink); font-weight: 600; }
+  .rule {
+    height: 1px; background: var(--line-strong);
+    border: 0; margin: 34px 0;
+  }
+
+  /* ── Summary ── */
+  .summary {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    background: var(--line); border: 1px solid var(--line);
+    border-radius: 14px; overflow: hidden; box-shadow: var(--shadow);
+  }
+  .stat { background: var(--surface); padding: 20px 22px; }
+  .stat .n { font-size: 40px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat .k { margin-top: 8px; font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+  .stat .d { margin-top: 3px; font-size: 12.5px; color: var(--faint); line-height: 1.45; }
+  .stat.cov .n { color: var(--covered); } .stat.cov .k { color: var(--covered); }
+  .stat.par .n { color: var(--partial); } .stat.par .k { color: var(--partial); }
+  .stat.hum .n { color: var(--human); }   .stat.hum .k { color: var(--human); }
+
+  .bar {
+    display: flex; height: 12px; border-radius: 999px; overflow: hidden;
+    margin: 16px 0 6px; border: 1px solid var(--line);
+  }
+  .bar span { display: block; height: 100%; }
+  .bar .b-cov { background: var(--covered); }
+  .bar .b-par { background: var(--partial); }
+  .bar .b-hum { background: var(--human); }
+  .bar-note { font-size: 12.5px; color: var(--faint); }
+
+  /* ── Sections ── */
+  .group { margin-top: 46px; }
+  .group > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+  .group h2 {
+    margin: 0; font-family: Georgia, "Iowan Old Style", serif;
+    font-weight: 600; font-size: 22px; letter-spacing: -.01em; color: var(--ink);
+  }
+  .group .cnt { font-size: 12.5px; color: var(--faint); white-space: nowrap; }
+  .group .sub { margin: 2px 0 18px; font-size: 14px; color: var(--muted); }
+
+  .rows { display: flex; flex-direction: column; gap: 10px; }
+  .row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 7px 16px;
+    align-items: start;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left-width: 3px;
+    border-radius: 12px;
+    padding: 15px 18px 15px 20px;
+    box-shadow: var(--shadow);
+  }
+  .row.cov { border-left-color: var(--covered); }
+  .row.par { border-left-color: var(--partial); }
+  .row.hum { border-left-color: var(--human); }
+
+  .svc { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .svc .name { font-size: 16.5px; font-weight: 600; color: var(--ink); letter-spacing: -.005em; }
+  .note { grid-column: 1 / -1; margin: 0; font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .note code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; color: var(--ink); }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill.cov { color: var(--covered); background: var(--covered-bg); }
+  .pill.par { color: var(--partial); background: var(--partial-bg); }
+  .pill.hum { color: var(--human); background: var(--human-bg); }
+
+  .tag-new {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--new); border: 1px solid var(--new); border-radius: 5px;
+    padding: 1px 6px; line-height: 1.5;
+  }
+
+  /* ── Thesis / closing ── */
+  .thesis {
+    margin-top: 52px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, var(--surface-2), var(--surface));
+    padding: clamp(26px, 5vw, 40px);
+    box-shadow: var(--shadow);
+  }
+  .thesis .q {
+    font-family: Georgia, serif; font-size: clamp(21px, 3.4vw, 27px);
+    line-height: 1.32; letter-spacing: -.01em; margin: 0; text-wrap: balance;
+  }
+  .thesis .q .mark { color: var(--brand); }
+  .thesis p { margin: 18px 0 0; color: var(--muted); font-size: 15.5px; max-width: var(--measure); }
+  .thesis p b { color: var(--ink); font-weight: 600; }
+  .split {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    margin-top: 26px; border: 1px solid var(--line); background: var(--line);
+    border-radius: 12px; overflow: hidden;
+  }
+  .split > div { background: var(--surface); padding: 18px 20px; }
+  .split .lbl { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .split .app .lbl { color: var(--covered); }
+  .split .human .lbl { color: var(--human); }
+  .split .val { margin-top: 6px; font-size: 15px; color: var(--ink); }
+
+  footer {
+    margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--line);
+    font-size: 12.5px; color: var(--faint); line-height: 1.6;
+  }
+  footer .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
+  footer .legend span { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-weight: 500; }
+  footer .legend i { width: 9px; height: 9px; border-radius: 50%; }
+
+  @media (max-width: 620px) {
+    .summary { grid-template-columns: 1fr; }
+    .split { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+
+  @media print {
+    :root {
+      --ground: #ffffff; --surface: #ffffff; --surface-2: #ffffff;
+      --ink: #1c2030; --muted: #444; --faint: #666;
+      --line: #ccc; --line-strong: #bbb; --shadow: none;
+    }
+    body { background: #fff; font-size: 11.5pt; }
+    .wrap { max-width: none; padding: 0; }
+    .btn-print { display: none; }
+    .row, .thesis, .summary, .split { box-shadow: none; break-inside: avoid; }
+    .group { break-inside: avoid-page; }
+    .thesis { break-before: auto; }
+    a { color: inherit; text-decoration: none; }
+    .pill, .bar span, .stat.cov .n, .stat.par .n, .stat.hum .n,
+    .row.cov, .row.par, .row.hum { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brandmark" href="/prezentare.html" style="text-decoration:none"><span class="glyph">▦</span> Contabo</a>
+    <button class="btn-print" type="button" onclick="window.print()" aria-label="Printează sau salvează ca PDF">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
+      Printează / PDF
+    </button>
+  </div>
+
+  <div class="eyebrow">
+    <span>Aplicația <b>Contabo</b></span>
+    <span class="arrow">⟷</span>
+    <span>oferta tipică a unei <b>firme de contabilitate</b></span>
+    <span class="arrow">·</span>
+    <span>autorizată CECCAR</span>
+  </div>
+
+  <h1 class="serif">Ce ține <span class="accent">software-ul</span>,<br>și ce rămâne <span class="accent">munca omului</span></h1>
+
+  <p class="lede">Oferta unei firme de contabilitate amestecă două lucruri diferite: <b>operațiuni de software</b> — evidența, registrele, declarațiile, situațiile, salarizarea — și <b>servicii profesionale umane</b> — consultanță, dosare depuse la ghișeu, relația telefonică. Mai jos, serviciile tipice dintr-o astfel de ofertă, mapate onest pe ce face Contabo.</p>
+
+  <hr class="rule">
+
+  <div class="summary">
+    <div class="stat cov">
+      <div class="n">8</div>
+      <div class="k">Acoperit integral</div>
+      <div class="d">Aplicația face operațiunea cap-coadă.</div>
+    </div>
+    <div class="stat par">
+      <div class="n">7</div>
+      <div class="k">Acoperit parțial</div>
+      <div class="d">Dă baza/cifrele; formalitatea rămâne umană.</div>
+    </div>
+    <div class="stat hum">
+      <div class="n">9</div>
+      <div class="k">Serviciu uman</div>
+      <div class="d">Prin definiție peste software — diferențiatorul firmei.</div>
+    </div>
+  </div>
+  <div class="bar" role="img" aria-label="Proporție: 8 acoperit, 7 parțial, 9 serviciu uman din 24">
+    <span class="b-cov" style="width:33.3%"></span>
+    <span class="b-par" style="width:29.2%"></span>
+    <span class="b-hum" style="width:37.5%"></span>
+  </div>
+  <div class="bar-note">24 de servicii tipice dintr-o ofertă de contabilitate · „parțial" și „uman" nu sunt lipsuri — sunt exact stratul pe care o firmă CECCAR îl oferă <em>peste</em> orice software.</div>
+
+  <!-- ── Servicii contabile ── -->
+  <section class="group">
+    <header>
+      <h2 class="serif">Servicii contabile</h2>
+      <span class="cnt">nucleul recurent lunar</span>
+    </header>
+    <p class="sub">Munca lunară, consumatoare de timp — motorul oricărei firme de contabilitate.</p>
+    <div class="rows">
+
+      <div class="row cov">
+        <div class="svc"><span class="name">Evidență financiar-contabilă</span> <span class="pill cov">Acoperit</span></div>
+        <p class="note">Partidă dublă, plan de conturi OMFP 1802/2014, articole contabile generate automat din documente.</p>
+      </div>
+
+      <div class="row cov">
+        <div class="svc"><span class="name">Registre contabile obligatorii</span> <span class="pill cov">Acoperit</span></div>
+        <p class="note">Registru-jurnal, Cartea mare, Registru-inventar, registru de evidență fiscală, fișe de cont.</p>
+      </div>
+
+      <div class="row par">
+        <div class="svc"><span class="name">Întocmire și depunere declarații fiscale</span> <span class="pill par">Parțial</span></div>
+        <p class="note"><b>Întocmirea</b> e completă — <code>D112</code> <code>D300</code> <code>D390</code> <code>D394</code> <code>D205</code> <code>D100</code> Intrastat SAF-T, cu XML, validare și registrul depunerilor cu recipise. <b>Depunerea</b> în SPV e manuală — excepție: <code>e-Factura</code> se trimite direct din aplicație.</p>
+      </div>
+
+      <div class="row cov">
+        <div class="svc"><span class="name">Situații financiare semestriale / anuale</span> <span class="pill cov">Acoperit</span></div>
+        <p class="note">Bilanț <code>F10</code>, Cont de profit și pierdere <code>F20</code>, Flux de trezorerie <code>F30</code>, Capitaluri <code>F40</code>, Note explicative.</p>
+      </div>
+
+      <div class="row cov">
+        <div class="svc"><span class="name">Situații financiare interimare</span> <span class="pill cov">Acoperit</span></div>
+        <p class="note">Bilanț la orice dată — exact ce cere distribuirea trimestrială de dividende (profitul distribuibil la zi).</p>
+      </div>
+
+      <div class="row cov">
+        <div class="svc"><span class="name">Raport de performanță financiară (trimestrial)</span> <span class="pill cov">Acoperit</span></div>
+        <p class="note">Dashboard cu venituri / cheltuieli / profit, comparație an-la-an, cash-flow și aging — pe orice perioadă.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Administrare personal ── -->
+  <section class="group">
+    <header>
+      <h2 class="serif">Administrare personal</h2>
+      <span class="cnt">salarizare lunară completă</span>
+    </header>
+    <p class="sub">Salarizarea completă, cu toate cazurile speciale de anul acesta.</p>
+    <div class="rows">
+
+      <div class="row cov">
+        <div class="svc"><span class="name">Salarizare și administrare de personal</span> <span class="pill cov">Acoperit</span></div>
+        <p class="note">State de plată, fluturași, CAS / CASS / impozit / CAM, deducere personală, tichete, <b>avantaje în natură</b>, <b>concedii medicale cu recuperare FNUASS</b>, concediu de odihnă, normă parțială suprataxată, <code>D112</code>, registru anual de salarii, adeverințe.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── PREMIUM: advisory ── -->
+  <section class="group">
+    <header>
+      <h2 class="serif">Consultanță și relație</h2>
+      <span class="cnt">diferențiatorul firmei</span>
+    </header>
+    <p class="sub">Exact ce nu poate face niciun software — și nici nu ar trebui.</p>
+    <div class="rows">
+
+      <div class="row hum">
+        <div class="svc"><span class="name">Consultanță fiscală</span> <span class="pill hum">Serviciu uman</span></div>
+        <p class="note">Advisory uman. Aplicația oferă suport pasiv: cote fiscale configurabile, ghid pas cu pas, dicționar contabil, semnale automate (eligibilitate micro, plafoane, termene).</p>
+      </div>
+
+      <div class="row par">
+        <div class="svc"><span class="name">Noutăți fiscale generale</span> <span class="pill par">Parțial</span></div>
+        <p class="note">Nu difuzează știri, dar semnalează automat schimbări relevante: plafon micro, praguri TVA, termene de depunere, cote actualizate.</p>
+      </div>
+
+      <div class="row hum">
+        <div class="svc"><span class="name">Noutăți fiscale personalizate pe domeniu</span> <span class="pill hum">Serviciu uman</span></div>
+        <p class="note">Interpretare umană, specifică activității clientului. În afara scopului unui software.</p>
+      </div>
+
+      <div class="row par">
+        <div class="svc"><span class="name">Asistență e-mail / WhatsApp</span> <span class="pill par">Parțial</span></div>
+        <p class="note">Aplicația are un modul de mesaje utilizator ↔ administrator, dar orele de asistență umană rămân serviciu.</p>
+      </div>
+
+      <div class="row hum">
+        <div class="svc"><span class="name">Suport telefonic</span> <span class="pill hum">Serviciu uman</span></div>
+        <p class="note">Relația umană — „răspundem la telefon". Nu e un call-center.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Alte servicii ── -->
+  <section class="group">
+    <header>
+      <h2 class="serif">Alte servicii</h2>
+      <span class="cnt">la cerere</span>
+    </header>
+    <p class="sub">Formulare deterministe (le face aplicația) vs. demersuri la ghișeu (le face omul).</p>
+    <div class="rows">
+
+      <div class="row hum">
+        <div class="svc"><span class="name">Depunere documentație înregistrare casă de marcat</span> <span class="pill hum">Serviciu uman</span></div>
+        <p class="note">Demers administrativ la ANAF. Aplicația nu înlocuiește casa de marcat.</p>
+      </div>
+
+      <div class="row cov">
+        <div class="svc"><span class="name">Declarație lunară neutilizare casă de marcat (F4109)</span> <span class="pill cov">Acoperit</span></div>
+        <p class="note">Formular determinist generat din aplicație — <code>/pdf/f4109</code>, seria fiscală și luna, gata de semnat și depus prin SPV.</p>
+      </div>
+
+      <div class="row hum">
+        <div class="svc"><span class="name">Declarare punct de lucru ANAF</span> <span class="pill hum">Serviciu uman</span></div>
+        <p class="note">Demers la ANAF, în numele clientului.</p>
+      </div>
+
+      <div class="row hum">
+        <div class="svc"><span class="name">Reactivare societate ANAF</span> <span class="pill hum">Serviciu uman</span></div>
+        <p class="note">Procedură administrativă la organul fiscal.</p>
+      </div>
+
+      <div class="row hum">
+        <div class="svc"><span class="name">Obținere cod special de TVA · Înregistrare în scopuri de TVA</span> <span class="pill hum">Serviciu uman</span></div>
+        <p class="note">Înregistrare la ANAF. Aplicația gestionează TVA-ul după înregistrare (jurnale, <code>D300</code>, <code>D394</code>, pro-rata, ajustări art. 305).</p>
+      </div>
+
+      <div class="row par">
+        <div class="svc"><span class="name">Declarații cod special TVA · rectificative</span> <span class="pill par">Parțial</span></div>
+        <p class="note">Motorul TVA calculează corect; formularele speciale/rectificative marcate ca atare nu sunt dedicate — se preiau din cifrele aplicației.</p>
+      </div>
+
+      <div class="row par">
+        <div class="svc"><span class="name">Documentație bancă / leasing</span> <span class="pill par">Parțial</span></div>
+        <p class="note">Produce balanțe și situații pentru bancă (buton dedicat) plus graficul de leasing; asamblarea dosarului rămâne muncă umană.</p>
+      </div>
+
+      <div class="row cov">
+        <div class="svc"><span class="name">Dosar recuperare concedii medicale (FNUASS)</span> <span class="pill cov">Acoperit</span></div>
+        <p class="note">Agregă indemnizațiile din statul de plată — primele 5 zile angajator (<code>6458</code>), restul FNUASS de recuperat (<code>4373</code>) — și tipărește dosarul cu suma de recuperat. <code>/pdf/dosar-cm</code>.</p>
+      </div>
+
+      <div class="row par">
+        <div class="svc"><span class="name">Declarație unică asociați (dividende) + asistență depunere</span> <span class="pill par">Parțial</span></div>
+        <p class="note">Dă cifrele — <code>D205</code> pentru reținerea la sursă, iar pentru PFA estimarea Declarației Unice; depunerea DU rămâne personală, din SPV.</p>
+      </div>
+
+      <div class="row hum">
+        <div class="svc"><span class="name">Transmitere diverse solicitări ANAF</span> <span class="pill hum">Serviciu uman</span></div>
+        <p class="note">Corespondență și demersuri la organul fiscal, în numele clientului.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Thesis ── -->
+  <div class="thesis">
+    <p class="q serif">Granița e simplă: <span class="mark">contabilitatea se ține; afacerile se cresc.</span></p>
+    <p><b>Contabo</b> acoperă complet <b>motorul</b> unei oferte de contabilitate — tot ce înseamnă „ținut contabilitatea": munca recurentă, consumatoare de timp. Ce rămâne sunt exact diferențiatoarele premium ale unei firme CECCAR: consultanța, noutățile personalizate, dosarele depuse la ghișeu și relația telefonică.</p>
+    <div class="split">
+      <div class="app">
+        <div class="lbl">Contabo</div>
+        <div class="val">Ține contabilitatea — evidență, registre, declarații, situații, salarizare.</div>
+      </div>
+      <div class="human">
+        <div class="lbl">Firma umană</div>
+        <div class="val">Adaugă strategia — consultanță, interpretare, demersuri și relația directă.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="legend">
+      <span><i style="background:var(--covered)"></i> Acoperit integral</span>
+      <span><i style="background:var(--partial)"></i> Parțial — baza în aplicație, formalitatea umană</span>
+      <span><i style="background:var(--human)"></i> Serviciu uman — peste software</span>
+    </div>
+    Mapare a serviciilor tipice dintr-o ofertă de contabilitate autorizată CECCAR pe funcționalitatea aplicației Contabo. Declarațiile XML sunt ciorne cu cifre corecte, de validat în DUKIntegrator / de depus în SPV.
+    <div style="margin-top:10px"><a href="/prezentare.html" style="color:var(--brand)">← Înapoi la prezentare</a> · <a href="/" style="color:var(--brand)">Intră în aplicație</a></div>
+  </footer>
+
+</div>
+</body>
+</html>
