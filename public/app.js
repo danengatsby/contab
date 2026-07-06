@@ -44,9 +44,11 @@ let firmaSubPromptOpen = false;
 async function promptFirmaSubscribe(firmaId, firmaNume) {
   if (firmaSubPromptOpen || !firmaId) return;
   firmaSubPromptOpen = true;
-  const planNume = (USER && USER.tip === 'contabil') ? 'Pro' : 'Start';
-  const da = confirm('Proba de o lună pentru firma „' + (firmaNume || '') + '" a expirat.\n\n'
-    + 'Continuarea lucrului pe luna următoare se face cu abonament (' + planNume + ' pentru ' + ((USER && USER.tip === 'contabil') ? 'contabili' : 'necontabili') + ').\n\nTe abonezi acum?');
+  const contabil = USER && USER.tip === 'contabil';
+  const planNume = contabil ? 'Pro' : 'Start';
+  const da = confirm('Abonezi firma „' + (firmaNume || '') + '"?\n\n'
+    + 'Fiecare firmă are propriul abonament (' + planNume + ' pentru ' + (contabil ? 'contabili' : 'necontabili') + '). '
+    + 'Se deschide plata online — datele firmei rămân intacte.');
   firmaSubPromptOpen = false;
   if (!da) return;
   try {
@@ -2040,8 +2042,28 @@ $('#subToMsg') && $('#subToMsg').addEventListener('click', () => goTab('mesaje')
 async function loadSubscription() {
   const statusBox = $('#subStatus'); const plansBox = $('#subPlans');
   if (!statusBox || !plansBox) return;
+  renderFirmeBilling();
   let data; try { data = await api('/api/subscription'); } catch (e) { statusBox.innerHTML = `<p class="status err">${e.message}</p>`; return; }
   renderSubscription(data);
+}
+// Billing per-firma: tabelul cu starea abonamentului fiecarei firme + abonare directa.
+async function renderFirmeBilling() {
+  const box = $('#firmeBilling'); if (!box) return;
+  let data; try { data = await api('/api/firme'); } catch (e) { box.innerHTML = ''; return; }
+  const stLabel = (s) => {
+    if (s.status === 'trial') return `<span class="pill" style="background:#eaf4ef;color:#0b6e4f">🎁 probă · ${s.zileRamase} ${s.zileRamase === 1 ? 'zi' : 'zile'}</span>`;
+    if (s.status === 'active') return `<span class="pill" style="background:#eaf4ef;color:#0b6e4f">✓ activ${s.plan && s.plan !== 'grandfathered' ? ' · ' + (s.plan === 'pro' ? 'Pro' : 'Start') : ''}</span>`;
+    if (s.status === 'expired') return '<span class="pill warn">probă expirată</span>';
+    return '<span class="pill warn">fără abonament</span>';
+  };
+  box.innerHTML = `<table><thead><tr><th>Firmă</th><th>Stare abonament</th><th></th></tr></thead><tbody>${
+    data.firme.map((f) => { const s = f._sub || {}; const needs = s.status === 'expired' || s.status === 'none';
+      return `<tr><td>${H(f.nume)}${f.cui ? ' <span class="muted">(' + H(f.cui) + ')</span>' : ''}</td>
+        <td>${stLabel(s)}</td>
+        <td>${needs ? `<button class="linkbtn fbsub" data-id="${f.id}" data-nume="${H(f.nume)}" style="color:var(--accent);font-weight:700">abonează-te →</button>` : (s.status === 'trial' ? `<button class="linkbtn fbsub" data-id="${f.id}" data-nume="${H(f.nume)}">abonează firma acum</button>` : '')}</td></tr>`;
+    }).join('')}</tbody></table>
+    <p class="muted" style="font-size:12px;margin-top:6px">Firma activă acum: <b>${H((data.firme.find((f) => f.id === data.firmaActiva) || {}).nume || '—')}</b>. Abonarea deschide plata (Stripe) pentru planul potrivit tipului tău.</p>`;
+  $$('#firmeBilling .fbsub').forEach((b) => b.addEventListener('click', () => promptFirmaSubscribe(Number(b.dataset.id), b.dataset.nume)));
 }
 function renderSubscription(data) {
   const c = data.current || {}; const plans = data.plans || [];

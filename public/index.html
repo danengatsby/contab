@@ -1352,7 +1352,12 @@ Cu stimă,
     <!-- ─────────────── ABONAMENT ─────────────── -->
     <section id="tab-abonament" class="tab">
       <div class="toolbar"><h2>💳 Abonament</h2></div>
-      <div class="explain"><span class="ei">💳</span><p><b>Alege planul potrivit</b> pentru firma ta. Poți începe cu o <b>perioadă de probă gratuită de 30 zile</b>, fără card bancar — toate funcțiile deblocate.</p></div>
+      <div class="explain"><span class="ei">💳</span><p><b>Fiecare firmă are propriul abonament.</b> Firmele noi încep cu <b>o lună de probă gratuită</b>, fără card. La final abonezi firma (Start pentru necontabili, Pro pentru contabili) ca să continui.</p></div>
+      <div class="card" id="firmeBillingCard">
+        <h3>Abonamentele firmelor tale</h3>
+        <div id="firmeBilling" class="tablewrap"></div>
+      </div>
+      <h3 style="margin-top:18px">Planuri</h3>
       <div id="subStatus"></div>
       <div id="subPlans" class="plan-grid"></div>
       <p class="muted" style="font-size:12px;margin-top:12px">Planurile plătite se activează după confirmarea plății. Pentru activare sau facturare, contactează-ne prin <a id="subToMsg" style="cursor:pointer;color:var(--accent)">💬 Mesaje</a>.</p>
