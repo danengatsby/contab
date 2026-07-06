@@ -19,7 +19,8 @@ const PLANS = [
   {
     id: 'trial', nume: 'Probă gratuită', pret: 0, moneda: 'lei', perioada: TRIAL_DAYS + ' zile', trial: true,
     tip: 'tester', descriere: 'Tester — testează tot, fără card bancar.',
-    features: FEATURES.slice(),
+    // proba are toate functiile, dar fara suport prioritar (doar planurile platite)
+    features: FEATURES.filter((f) => f !== 'Suport prioritar'),
   },
   {
     id: 'start', nume: 'Start', pret: 99, moneda: 'lei', perioada: 'lună',

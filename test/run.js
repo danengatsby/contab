@@ -1442,7 +1442,8 @@ const plansMod = require('../src/plans');
 eq('plans: fara abonament -> none', plansMod.status({}).status, 'none');
 eq('plans: 3 planuri definite (fara Business)', plansMod.PLANS.length, 3);
 ok('plans: nu exista planul business', !plansMod.PLANS.some((p) => p.id === 'business'));
-ok('plans: toate au aceleasi 6 functii', plansMod.PLANS.every((p) => p.features.length === 6 && p.features[0] === 'Facturi + e-Factura'));
+ok('plans: platite au 6 functii, proba 5 (fara Suport prioritar)', plansMod.PLANS.every((p) => p.features[0] === 'Facturi + e-Factura'
+  && (p.trial ? p.features.length === 5 && !p.features.includes('Suport prioritar') : p.features.length === 6 && p.features.includes('Suport prioritar'))));
 // proba per-firma (independenta de abonamentul contului)
 const nowFt = Date.parse('2026-07-05T00:00:00Z');
 // billing strict per-firma: firmaStatus / firmaLocked
