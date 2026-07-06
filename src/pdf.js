@@ -473,6 +473,71 @@ function d100Pdf(res, company, d) {
   });
 }
 
+/** F4109 — Declaratie privind neutilizarea aparatului de marcat electronic fiscal (o luna).
+ *  d = { period, aparate: [{ serie, nrOrdine }] }. Formular pe propria raspundere. */
+function f4109Pdf(res, company, d) {
+  const doc = newDoc(false);
+  header(doc, company, 'DECLARATIE (F4109)', 'Neutilizarea aparatelor de marcat electronice fiscale — ' + periodLabel(d.period));
+  const left = doc.page.margins.left; const right = doc.page.width - doc.page.margins.right;
+  doc.moveDown(0.4);
+  doc.fillColor(C.ink).font('Helvetica').fontSize(10);
+  const cui = String(company.cui || '').replace(/^ro/i, '');
+  doc.text('Subscrisa ' + clean(company.nume || '') + ', cu sediul in ' + clean([company.adresa, company.oras, company.judet].filter(Boolean).join(', ') || '-')
+    + ', cod de identificare fiscala ' + cui + (company.regCom ? ', inregistrata la Registrul Comertului cu nr. ' + clean(company.regCom) : '') + ',', { align: 'justify' });
+  doc.moveDown(0.4);
+  doc.font('Helvetica-Bold').text('declar pe propria raspundere', { continued: true }).font('Helvetica')
+    .text(' ca aparatele de marcat electronice fiscale detinute nu au fost utilizate in perioada de raportare ' + periodLabel(d.period) + ':');
+  doc.moveDown(0.4);
+  const aparate = (d.aparate && d.aparate.length) ? d.aparate : [{ serie: '(completeaza seria fiscala)', nrOrdine: '' }];
+  table(doc, [
+    { label: 'Nr. crt.', key: 'nr', width: 60 },
+    { label: 'Seria fiscala a aparatului de marcat', key: 'serie', width: 300 },
+    { label: 'Nr. de ordine / NUI', key: 'nrOrdine', width: 140 },
+  ], aparate.map((a, i) => ({ nr: String(i + 1), serie: clean(a.serie || ''), nrOrdine: clean(a.nrOrdine || '') })));
+  doc.moveDown(0.8);
+  doc.fillColor(C.muted).font('Helvetica').fontSize(9)
+    .text('Declaratia se depune pentru fiecare luna in care aparatul de marcat electronic fiscal nu a fost utilizat (OpANAF — formular F4109). '
+      + 'Genereaza-o pentru luna respectiva, semneaza-o si depune-o electronic, prin SPV. Cunosc prevederile Codului penal privind falsul in declaratii.', { width: right - left });
+  doc.moveDown(1.2);
+  const ys = doc.y;
+  doc.fillColor(C.ink).font('Helvetica').fontSize(9);
+  doc.text('Data: ' + fmtDate(new Date().toISOString().slice(0, 10)), left, ys);
+  doc.text('Reprezentant legal,', right - 200, ys);
+  doc.text('___________________________', right - 200, ys + 26);
+  finish(doc, res, 'f4109-' + d.period + '.pdf');
+}
+
+/** Dosar de recuperare a indemnizatiilor de concediu medical de la FNUASS (o luna).
+ *  d = { period, rows: [{ nume, cnp, zileCM, mediaCM, cmAngajator, cmFnuass }], totalAngajator, totalFnuass }. */
+function dosarCmPdf(res, company, d) {
+  const doc = newDoc(true);
+  header(doc, company, 'Dosar recuperare concedii medicale (FNUASS)', periodLabel(d.period));
+  doc.fillColor(C.muted).font('Helvetica').fontSize(9)
+    .text('Situatia indemnizatiilor de concediu medical si a sumelor de recuperat de la Fondul National Unic de Asigurari Sociale de Sanatate (OUG 158/2005).');
+  doc.moveDown(0.3);
+  const rows = (d.rows || []).map((r) => ({
+    nume: clean(r.nume), cnp: clean(r.cnp || ''), zile: String(r.zileCM || 0), media: fmt(r.mediaCM || 0),
+    ang: fmt(r.cmAngajator || 0), fnuass: fmt(r.cmFnuass || 0), total: fmt(round2((r.cmAngajator || 0) + (r.cmFnuass || 0))),
+  }));
+  rows.push({ nume: 'TOTAL', cnp: '', zile: '', media: '', ang: fmt(d.totalAngajator || 0), fnuass: fmt(d.totalFnuass || 0), total: fmt(round2((d.totalAngajator || 0) + (d.totalFnuass || 0))), _bold: true, _fill: C.zebra });
+  table(doc, [
+    { label: 'Angajat', key: 'nume', width: 150, wrap: true },
+    { label: 'CNP', key: 'cnp', width: 110 },
+    { label: 'Zile CM', key: 'zile', width: 55, align: 'right' },
+    { label: 'Baza (media)', key: 'media', width: 80, align: 'right' },
+    { label: 'Suportat angajator', key: 'ang', width: 90, align: 'right' },
+    { label: 'De recuperat FNUASS', key: 'fnuass', width: 95, align: 'right' },
+    { label: 'Total indemnizatie', key: 'total', width: 90, align: 'right' },
+  ], rows);
+  doc.moveDown(0.5);
+  doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(11)
+    .text('SUMA DE RECUPERAT DE LA FNUASS: ' + fmt(d.totalFnuass || 0) + ' lei', doc.page.margins.left, doc.y);
+  doc.fillColor(C.muted).font('Helvetica').fontSize(8.5)
+    .text('Primele 5 zile lucratoare ale fiecarui concediu medical sunt suportate de angajator (cont 6458); restul se suporta din FNUASS si se recupereaza (cont 4373). '
+      + 'Dosarul de recuperare se depune la casa de asigurari de sanatate, insotit de cererea de restituire si certificatele medicale.', doc.page.margins.left, doc.y + 4);
+  finish(doc, res, 'dosar-cm-' + d.period + '.pdf');
+}
+
 /** Declaratia Unica (PFA, sistem real) — estimarea venitului net si a taxelor anuale. */
 function declaratiaUnicaPdf(res, company, d) {
   recapPdf(res, company, {
@@ -1578,6 +1643,6 @@ function leasingSchedulePdf(res, company, s) {
 
 module.exports = {
   clean, journalPdf, ledgerPdf, trialBalancePdf, plPdf, balanceSheetPdf, notePdf, vatPdf,
-  d112Pdf, d300Pdf, d100Pdf, declaratiaUnicaPdf, obligatiiPdf, registruInventarPdf, registruFiscalPdf, analyticPdf,
+  d112Pdf, d300Pdf, d100Pdf, declaratiaUnicaPdf, f4109Pdf, dosarCmPdf, obligatiiPdf, registruInventarPdf, registruFiscalPdf, analyticPdf,
   cashBookPdf, cashValutaPdf, notesPdf, cashFlowPdf, equityPdf, setStatementsPdf, facturaPdf, chitantaPdf, fisaContPdf, registruIncasariPlatiPdf, aprovizionariPdf, consumuriPdf, assetsRegisterPdf, assetFisaPdf, stocksPdf, stockLedgerPdf, inventoryListPdf, inventoryPvPdf, nirPdf, bonConsumPdf, avizPdf, docRegisterPdf, agingPdf, statePlataPdf, fluturasPdf, registruSalariiPdf, adeverintaPdf, leasingSchedulePdf,
 };

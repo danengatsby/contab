@@ -855,6 +855,14 @@
         <div id="livrabileLegend" class="muted" style="margin-bottom:8px"></div>
         <div id="livrabileList" class="tablewrap"></div>
       </div>
+      <div class="card">
+        <h3>🧾 F4109 — declarație de neutilizare casă de marcat</h3>
+        <p class="muted">Dacă în luna de lucru <b>nu ai folosit casa de marcat</b>, generează declarația de neutilizare (F4109). Completează seria fiscală a aparatului (o poți separa cu virgulă dacă ai mai multe), apoi descarcă PDF-ul pentru luna aleasă. Se semnează și se depune electronic, prin SPV.</p>
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="f4109Serie" placeholder="Seria fiscală a casei de marcat (ex. AMEF12345678)" style="max-width:360px" />
+          <a id="f4109Pdf" class="btn primary" target="_blank">⬇ Generează F4109 (luna de lucru)</a>
+        </div>
+      </div>
     </section>
 
     <!-- ─────────────── PORTOFOLIU (multi-firma) ─────────────── -->
@@ -1017,6 +1025,7 @@
         <select id="spAn" class="period an" aria-label="Anul"></select>
         <a id="spPdf" class="btn" target="_blank">⬇ Stat plată PDF</a>
         <a id="spD112" class="btn" target="_blank">⬇ D112 XML</a>
+        <a id="spDosarCm" class="btn" target="_blank" title="Dosar de recuperare a indemnizațiilor de concediu medical de la FNUASS">🏥 Dosar recuperare CM</a>
         <button id="spPost" class="btn primary">Înregistrează salariile lunii</button>
         <select id="spCont" class="period" title="Cont de plată"><option value="5121">Bancă (5121)</option><option value="5311">Casă (5311)</option></select>
         <button id="spPay" class="btn">Plătește salariile</button>

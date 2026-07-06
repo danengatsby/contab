@@ -3094,8 +3094,16 @@ const STATUS = {
   anaf: { t: 'emis de ANAF', c: '#6b7280', bg: '#eef1f7' },
   manual: { t: 'pregătit de firmă', c: '#6b7280', bg: '#eef1f7' },
 };
+function updateF4109Link() {
+  const a = $('#f4109Pdf'); if (!a) return;
+  const p = pget('livrabile') || new Date().toISOString().slice(0, 7);
+  const serie = encodeURIComponent(($('#f4109Serie') && $('#f4109Serie').value.trim()) || '');
+  a.href = '/pdf/f4109?period=' + p + (serie ? '&serie=' + serie : '');
+}
+$('#f4109Serie') && $('#f4109Serie').addEventListener('input', updateF4109Link);
 async function loadLivrabile() {
   const p = pget('livrabile') || new Date().toISOString().slice(0, 7);
+  updateF4109Link();
   const data = await api('/api/livrabile?period=' + p);
   const s = data.sumar;
   const de = s.d300.deplata > 0 ? ['TVA de plată', s.d300.deplata] : ['TVA de recuperat', s.d300.derecuperat];
@@ -3535,6 +3543,7 @@ function spPeriod() { return pget('sp') || new Date().toISOString().slice(0, 7);
 async function loadSalarizare() {
   $('#spPdf').href = '/pdf/stat-plata?period=' + spPeriod();
   $('#spD112').href = '/xml/d112?period=' + spPeriod();
+  $('#spDosarCm') && ($('#spDosarCm').href = '/pdf/dosar-cm?period=' + spPeriod());
   const sp = await api('/api/stat-plata');
   const t = sp.totals;
   $('#angajatiList').innerHTML = sp.rows.length
@@ -3569,7 +3578,7 @@ async function loadSalarizare() {
     f.zileCO.value = r.zileCO || 0; f.normaPartiala.checked = !!r.normaPartiala; f.scutitNormaPartiala.checked = false;
   }));
 }
-onPeriodChange('sp', () => { $('#spPdf').href = '/pdf/stat-plata?period=' + spPeriod(); $('#spD112').href = '/xml/d112?period=' + spPeriod(); loadSalarizare(); });
+onPeriodChange('sp', () => { $('#spPdf').href = '/pdf/stat-plata?period=' + spPeriod(); $('#spD112').href = '/xml/d112?period=' + spPeriod(); $('#spDosarCm') && ($('#spDosarCm').href = '/pdf/dosar-cm?period=' + spPeriod()); loadSalarizare(); });
 async function renderRegistruSalarii() {
   const y = $('#rsYear').value || (new Date()).getFullYear();
   $('#rsPdf').href = '/pdf/registru-salarii?year=' + y;

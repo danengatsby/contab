@@ -34,6 +34,15 @@ module.exports = function register(app, ctx) {
     res.json({ ok: true });
   });
   app.get('/api/stat-plata', (req, res) => { const v = S(req); res.json(statePlata(v.angajati, req.query.period, v.payrollHistory)); });
+  // Dosar de recuperare a concediilor medicale de la FNUASS (o luna): angajatii cu CM + suma de recuperat.
+  function dosarCm(v, period) {
+    const sp = statePlata(v.angajati, period, v.payrollHistory);
+    const rows = sp.rows.filter((r) => (r.indemnizatieCM || 0) > 0)
+      .map((r) => ({ nume: r.nume, cnp: r.cnp, zileCM: r.zileCM, mediaCM: r.mediaCM, cmAngajator: r.cmAngajator, cmFnuass: r.cmFnuass }));
+    return { period, rows, totalAngajator: sp.totals.cmAngajator, totalFnuass: sp.totals.cmFnuass };
+  }
+  app.get('/api/dosar-cm', (req, res) => res.json(dosarCm(S(req), req.query.period)));
+  app.get('/pdf/dosar-cm', (req, res) => { const v = S(req); pdf.dosarCmPdf(res, v.company, dosarCm(v, req.query.period)); });
   app.get('/api/registru-salarii', (req, res) => res.json(registruSalarii(S(req).payrollHistory, req.query.year || String(new Date().getFullYear()))));
   app.get('/pdf/registru-salarii', (req, res) => pdf.registruSalariiPdf(res, S(req).company, registruSalarii(S(req).payrollHistory, req.query.year || String(new Date().getFullYear()))));
   app.get('/pdf/adeverinta/:id', (req, res) => {

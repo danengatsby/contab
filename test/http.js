@@ -369,7 +369,14 @@ async function main() {
     ok('postare stat: 6458=421 (angajator) si 4373=421 (FNUASS de recuperat)',
       postCm.json.entry.lines.some((l) => l.debit === '6458' && l.credit === '421' && l.suma === 750)
       && postCm.json.entry.lines.some((l) => l.debit === '4373' && l.credit === '421' && l.suma === 300));
+    // dosar de recuperare CM (FNUASS): angajatul cu CM + suma de recuperat
+    const dosar = (await req('GET', '/api/dosar-cm?period=2026-08', { cookie: c1 })).json;
+    ok('dosar CM: angajatul cu CM listat + total FNUASS de recuperat (300)', dosar.rows.some((r) => r.nume === 'CM Ion' && r.cmFnuass === 300) && dosar.totalFnuass === 300);
+    eq('dosar CM PDF', (await req('GET', '/pdf/dosar-cm?period=2026-08', { cookie: c1 })).status, 200);
     ok('angajat CM sters', (await req('DELETE', '/api/angajati/' + angCm.json.angajat.id, { cookie: c1 })).json.ok === true);
+    // F4109 — declaratie de neutilizare casa de marcat (PDF pentru o luna)
+    eq('F4109 PDF cu seria data', (await req('GET', '/pdf/f4109?period=2026-08&serie=AMEF12345678', { cookie: c1 })).status, 200);
+    eq('F4109 PDF fara serie (placeholder)', (await req('GET', '/pdf/f4109?period=2026-08', { cookie: c1 })).status, 200);
 
     // ── Norma partiala (OUG 16/2022): suprataxarea pe angajator, cap-coada ──
     const angNp = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Partial Pop', salariuBrut: 2000, normaPartiala: true } });

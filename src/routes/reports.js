@@ -48,6 +48,14 @@ module.exports = function register(app, ctx) {
   // Registrul-jurnal de incasari si plati (partida simpla, PFA)
   app.get('/api/registru-incasari-plati', (req, res) => res.json(acc.registruIncasariPlati(S(req), req.query.period || null)));
   app.get('/pdf/registru-incasari-plati', (req, res) => pdf.registruIncasariPlatiPdf(res, S(req).company, acc.registruIncasariPlati(S(req), req.query.period || null)));
+  // F4109 — declaratie de neutilizare a casei de marcat (o luna). Seria fiscala din ?serie= (sau setarea firmei).
+  app.get('/pdf/f4109', (req, res) => {
+    const v = S(req);
+    const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.period || '')) ? req.query.period : new Date().toISOString().slice(0, 7);
+    const seriiRaw = req.query.serie || (v.company && v.company.casaMarcatSerie) || '';
+    const aparate = String(seriiRaw).split(',').map((s) => s.trim()).filter(Boolean).map((s) => ({ serie: s }));
+    pdf.f4109Pdf(res, v.company, { period, aparate });
+  });
   app.get('/pdf/obligatii', (req, res) => pdf.obligatiiPdf(res, S(req).company, rep.obligatii(S(req), req.query.period || null)));
   app.get('/pdf/registru-inventar', (req, res) => pdf.registruInventarPdf(res, S(req).company, rep.registruInventar(S(req), req.query.period || null)));
   app.get('/pdf/registru-fiscal', (req, res) => pdf.registruFiscalPdf(res, S(req).company, rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));
