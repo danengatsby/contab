@@ -582,6 +582,12 @@ async function main() {
     eq('demo: NU poate abona firma -> 403', (await req('POST', '/api/firme/1/subscribe', { cookie: cDemo, body: { plan: 'start' } })).status, 403);
     eq('demo: NU poate sterge firma -> 403', (await req('DELETE', '/api/firme/1', { cookie: cDemo })).status, 403);
     eq('demo: NU poate restaura/importa firma -> 403', (await req('POST', '/api/firme/import', { cookie: cDemo, body: { firma: { nume: 'X' } } })).status, 403);
+    // cont public partajat: datele de cont si setarile globale raman neatinse
+    eq('demo: NU isi schimba parola -> 403', (await req('POST', '/api/change-password', { cookie: cDemo, body: { oldPassword: 'parola-demo', newPassword: 'alta' } })).status, 403);
+    eq('demo: NU activeaza 2FA -> 403', (await req('POST', '/api/2fa/setup', { cookie: cDemo })).status, 403);
+    eq('demo: NU isi schimba profilul/emailul -> 403', (await req('POST', '/api/profile', { cookie: cDemo, body: { email: 'spam@x.ro' } })).status, 403);
+    eq('demo: NU modifica conexiunea SPV (setare globala) -> 403', (await req('POST', '/api/anaf/config', { cookie: cDemo, body: { clientId: 'x' } })).status, 403);
+    eq('user normal: profilul ramane editabil', (await req('POST', '/api/profile', { cookie: c1, body: { notifyDeadlines: true } })).status, 200);
 
     // ── BILLING STRICT PER-FIRMA: firma noua porneste cu proba de 30 zile, apoi abonament ──
     const tfR = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Firma Proba SRL', cui: 'RO900' } });

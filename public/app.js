@@ -330,11 +330,14 @@ function isDemo() { return USER && USER.username === 'demo'; }
 async function renderFirme() {
   const data = await api('/api/firme');
   $('#firmaExport').href = '/api/firme/' + data.firmaActiva + '/export-zip';
-  // Contul demo nu adauga/gestioneaza firme: fara cardul Firmele mele, mediul de test sau restaurare.
+  // Contul demo (public, partajat) nu gestioneaza firme si nici setarile contului:
+  // fara Firmele mele / mediu de test / restaurare, si fara profil / parola / 2FA / conexiune SPV.
   if (isDemo()) {
-    const formCard = $('#firmaNewForm') && $('#firmaNewForm').closest('.card');
-    const testCard = $('#testCloneBtn') && $('#testCloneBtn').closest('.card');
-    [formCard, testCard, $('#firmaRestoreZone')].forEach((el) => el && el.classList.add('hidden'));
+    ['#firmaNewForm', '#testCloneBtn', '#profileForm', '#pwForm', '#twofaStatus', '#anafForm'].forEach((sel) => {
+      const el = $(sel); const card = el && el.closest('.card');
+      if (card) card.classList.add('hidden');
+    });
+    $('#firmaRestoreZone') && $('#firmaRestoreZone').classList.add('hidden');
   }
   // Billing per-firma: fiecare firma are propria stare de abonament (f._sub).
   const subBadge = (f) => {

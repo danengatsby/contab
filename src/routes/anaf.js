@@ -15,7 +15,7 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = function register(app, ctx) {
-  const { activeId, wrap, logAudit, upsertPartner, canAccess } = ctx;
+  const { activeId, wrap, logAudit, upsertPartner, canAccess, demoContLock } = ctx;
   // izolare multi-firma: operatiunile SPV pe o inregistrare cer acces la firma acesteia
   const entryAccess = (req, e, d) => canAccess(req, e.firmaId == null ? d.firmaActiva : e.firmaId);
 
@@ -62,6 +62,8 @@ module.exports = function register(app, ctx) {
     });
   });
   app.post('/api/anaf/config', (req, res) => {
+    // conexiunea SPV e o setare GLOBALA — contul demo (public) nu o atinge
+    if (demoContLock(req, res)) return;
     const d = db.get();
     const c = d.settings.anaf || {};
     const b = req.body || {};

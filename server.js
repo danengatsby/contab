@@ -436,6 +436,7 @@ app.post('/api/register', (req, res) => {
 
 // ───────────────────────────── 2FA (TOTP) ─────────────────────────────
 app.post('/api/2fa/setup', (req, res) => {
+  if (demoContLock(req, res)) return;
   const u = req.user;
   if (u.twofa) return res.status(400).json({ error: '2FA este deja activat.' });
   u.pending2fa = totp.generateSecret();
@@ -446,6 +447,7 @@ app.post('/api/2fa/setup', (req, res) => {
   res.json({ secret: u.pending2fa, otpauth, qrSvg });
 });
 app.post('/api/2fa/enable', (req, res) => {
+  if (demoContLock(req, res)) return;
   const u = req.user;
   if (!u.pending2fa) return res.status(400).json({ error: 'Initiaza intai configurarea 2FA.' });
   if (!totp.verify(u.pending2fa, (req.body || {}).code)) return res.status(400).json({ error: 'Cod gresit. Verifica ora dispozitivului.' });
@@ -456,6 +458,7 @@ app.post('/api/2fa/enable', (req, res) => {
   res.json({ ok: true });
 });
 app.post('/api/2fa/disable', (req, res) => {
+  if (demoContLock(req, res)) return;
   const u = req.user;
   if (!u.twofa) return res.status(400).json({ error: '2FA nu este activat.' });
   if (!totp.verify(u.totpSecret, (req.body || {}).code)) return res.status(400).json({ error: 'Cod gresit.' });
@@ -466,6 +469,7 @@ app.post('/api/2fa/disable', (req, res) => {
   res.json({ ok: true });
 });
 app.post('/api/2fa/revoke-devices', (req, res) => {
+  if (demoContLock(req, res)) return;
   const u = req.user;
   u.tfdEpoch = (u.tfdEpoch || 0) + 1; // toate dispozitivele de incredere devin invalide
   logAudit('2fa.revoke_devices', u.username, { req, firmaId: null });
@@ -630,6 +634,7 @@ app.post('/api/impersonate/stop', (req, res) => {
 require('./src/routes/messages')(app, { requireAdmin, upload, logAudit });
 
 app.post('/api/change-password', (req, res) => {
+  if (demoContLock(req, res)) return;
   const { oldPassword, newPassword } = req.body || {};
   const u = req.user;
   if (!authlib.verifyPassword(oldPassword, u.salt, u.hash)) return res.status(400).json({ error: 'Parola veche gresita.' });
@@ -650,6 +655,7 @@ app.get('/api/profile', (req, res) => res.json({
 // Abonament / plati Stripe (planuri, checkout, portal, webhook, proba/select, activare admin): src/routes/billing.js
 require('./src/routes/billing')(app, { requireAdmin, logAudit });
 app.post('/api/profile', (req, res) => {
+  if (demoContLock(req, res)) return;
   const b = req.body || {};
   if (b.email != null) req.user.email = String(b.email);
   if (b.notifyDeadlines != null) req.user.notifyDeadlines = !!b.notifyDeadlines;
@@ -799,6 +805,15 @@ app.get('/api/firme', (req, res) => {
 function demoFirmeLock(req, res) {
   if (req.user && req.user.username === 'demo') {
     res.status(403).json({ error: 'Contul demo nu poate adăuga sau gestiona firme. Înscrie-ți firma ta (gratuit 30 de zile) dintr-un cont propriu.' });
+    return true;
+  }
+  return false;
+}
+// Demo e un cont public PARTAJAT intre vizitatori: datele de cont (parola, 2FA, email/profil)
+// si setarile globale (conexiunea SPV) nu se modifica din el.
+function demoContLock(req, res) {
+  if (req.user && req.user.username === 'demo') {
+    res.status(403).json({ error: 'Contul demo este public și partajat — setările contului nu se pot modifica. Înscrie-ți un cont propriu.' });
     return true;
   }
   return false;
@@ -2106,7 +2121,7 @@ app.get('/api/efactura-list', (req, res) => {
 
 // ───────────────────────────── ANAF SPV ─────────────────────────────
 // ── Import e-Factura primita (UBL) ──
-require('./src/routes/anaf')(app, { activeId, wrap, logAudit, upsertPartner, canAccess });
+require('./src/routes/anaf')(app, { activeId, wrap, logAudit, upsertPartner, canAccess, demoContLock });
 
 
 // Generarea XML declaratii (e-Factura, D300/D394/D390/D205/D112, SAF-T) + validare: src/routes/declarationsXml.js
