@@ -794,7 +794,17 @@ app.get('/api/firme', (req, res) => {
   const firme = d.firme.filter((f) => allowed.includes(f.id)).map((f) => Object.assign({}, f, { _sub: plans.firmaStatus(f) }));
   res.json({ firme, firmaActiva: activeId(req) });
 });
+// Contul demo (public) nu adauga si nu gestioneaza firme: lucreaza doar pe firma demo,
+// care se reseteaza periodic. Pentru o firma proprie: cont propriu (Inscrie firma).
+function demoFirmeLock(req, res) {
+  if (req.user && req.user.username === 'demo') {
+    res.status(403).json({ error: 'Contul demo nu poate adăuga sau gestiona firme. Înscrie-ți firma ta (gratuit 30 de zile) dintr-un cont propriu.' });
+    return true;
+  }
+  return false;
+}
 app.post('/api/firme', (req, res) => {
+  if (demoFirmeLock(req, res)) return;
   const d = db.get();
   const id = db.nextFirmaId();
   const b = req.body || {};
@@ -834,6 +844,7 @@ function restoreTarget(req, res) {
   return { targetFid: fid };
 }
 app.post('/api/firme/import', (req, res) => {
+  if (demoFirmeLock(req, res)) return;
   try {
     const bundle = (req.body && req.body.firma) ? req.body : (req.body && req.body.bundle);
     const t = restoreTarget(req, res); if (!t) return;
@@ -847,6 +858,7 @@ app.post('/api/firme/import', (req, res) => {
 });
 // Ramura de testare: cloneaza firma activa intr-o copie marcata [TEST] si comuta pe ea
 app.post('/api/firme/:id/test-clone', (req, res) => {
+  if (demoFirmeLock(req, res)) return;
   if (!canAccess(req, req.params.id)) return res.status(403).json({ error: 'Fara acces la aceasta firma.' });
   try {
     const src = db.getFirma(req.params.id) || {};
@@ -911,6 +923,7 @@ app.get('/api/firme/export-all', requireAdmin, (req, res) => {
 // Restaurare din ZIP: extrage firma.json + scrie fisierele sub nume NOI (anti-coliziune), apoi importa.
 const uploadRestore = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 app.post('/api/firme/import-zip', uploadRestore.single('file'), (req, res) => {
+  if (demoFirmeLock(req, res)) return;
   try {
     if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
     const zip = new AdmZip(req.file.buffer);
@@ -953,6 +966,7 @@ app.post('/api/firme/:id/activate', (req, res) => {
 // (Start pentru necontabili / Pro pentru contabili) si activeaza abonamentul FIRMEI pe luna curenta,
 // deblocand scrierile. Fiecare firma se plateste separat.
 app.post('/api/firme/:id/subscribe', wrap(async (req, res) => {
+  if (demoFirmeLock(req, res)) return;
   if (!canAccess(req, req.params.id)) return res.status(403).json({ error: 'Fara acces la aceasta firma.' });
   const f = db.getFirma(req.params.id);
   if (!f) return res.status(404).json({ error: 'Firma inexistenta.' });
@@ -984,6 +998,7 @@ app.post('/api/firme/:id/subscribe', wrap(async (req, res) => {
   res.json({ ok: true, plan, luna, url: null, stripe: false });
 }));
 app.delete('/api/firme/:id', (req, res) => {
+  if (demoFirmeLock(req, res)) return;
   const d = db.get();
   const id = Number(req.params.id);
   const isAdmin = req.user.role === 'admin' && !req.impersonating;

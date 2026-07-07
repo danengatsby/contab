@@ -308,8 +308,9 @@ function fillFirmaSelect() {
   const sel = $('#firmaSelect');
   const subTag = (f) => { const s = f._sub || {}; return s.status === 'trial' ? ' 🎁 probă ' + s.zileRamase + 'z' : s.status === 'expired' ? ' 🎁 expirată' : s.status === 'none' ? ' ⚠ fără abonament' : ''; };
   const opts = (META.firme || []).map((f) => `<option value="${f.id}" ${f.id === META.firmaActiva ? 'selected' : ''}>${H(f.nume)}${f.cui ? ' (' + H(f.cui) + ')' : ''}${subTag(f)}</option>`).join('');
-  // optiune de adaugare direct din selector (discoverability) — duce la Setari -> Firmele mele
-  sel.innerHTML = opts + '<option value="__add__">＋ Adaugă / gestionează firme…</option>';
+  // optiune de adaugare direct din selector (discoverability) — duce la Setari -> Firmele mele.
+  // Contul demo nu adauga/gestioneaza firme (lucreaza doar pe firma demo, resetata periodic).
+  sel.innerHTML = opts + (isDemo() ? '' : '<option value="__add__">＋ Adaugă / gestionează firme…</option>');
   // Portofoliul are sens doar cu mai multe firme in administrare
   const np = $('#navPortofoliu'); if (np) np.classList.toggle('hidden', (META.firme || []).length < 2);
 }
@@ -325,9 +326,16 @@ $('#firmaSelect').addEventListener('change', async (e) => {
   const active = $('#tabs button[data-tab].active'); onTab(active ? active.dataset.tab : 'dashboard');
   toast('Firmă activă schimbată');
 });
+function isDemo() { return USER && USER.username === 'demo'; }
 async function renderFirme() {
   const data = await api('/api/firme');
   $('#firmaExport').href = '/api/firme/' + data.firmaActiva + '/export-zip';
+  // Contul demo nu adauga/gestioneaza firme: fara cardul Firmele mele, mediul de test sau restaurare.
+  if (isDemo()) {
+    const formCard = $('#firmaNewForm') && $('#firmaNewForm').closest('.card');
+    const testCard = $('#testCloneBtn') && $('#testCloneBtn').closest('.card');
+    [formCard, testCard, $('#firmaRestoreZone')].forEach((el) => el && el.classList.add('hidden'));
+  }
   // Billing per-firma: fiecare firma are propria stare de abonament (f._sub).
   const subBadge = (f) => {
     const s = f._sub || {};

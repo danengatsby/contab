@@ -1499,13 +1499,15 @@ Cu stimă,
           <a id="firmaExport" class="btn primary" target="_blank">⬇ Descarcă copia completă (ZIP, pe PC)</a>
           <a id="exportAllBtn" href="/api/firme/export-all" class="btn" target="_blank" style="display:none" title="Doar pentru administrator">⬇ Descarcă TOATE firmele (ZIP-uri separate)</a>
         </div>
-        <hr style="margin:14px 0;border:none;border-top:1px solid var(--line)">
-        <p class="muted"><b>↩ Restaurare din fișier:</b> alege o copie salvată anterior (ZIP sau JSON) — datele firmei active sunt <b>înlocuite complet</b> cu cele din copie (inclusiv fișierele atașate). Înainte de înlocuire, aplicația păstrează automat o <b>plasă de siguranță</b> pe server.</p>
-        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">
-          <input type="file" id="firmaImportFile" accept=".json,.zip" style="max-width:320px" />
-          <button id="firmaImportBtn" class="btn primary">↩ Restaurează din fișier</button>
+        <div id="firmaRestoreZone">
+          <hr style="margin:14px 0;border:none;border-top:1px solid var(--line)">
+          <p class="muted"><b>↩ Restaurare din fișier:</b> alege o copie salvată anterior (ZIP sau JSON) — datele firmei active sunt <b>înlocuite complet</b> cu cele din copie (inclusiv fișierele atașate). Înainte de înlocuire, aplicația păstrează automat o <b>plasă de siguranță</b> pe server.</p>
+          <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">
+            <input type="file" id="firmaImportFile" accept=".json,.zip" style="max-width:320px" />
+            <button id="firmaImportBtn" class="btn primary">↩ Restaurează din fișier</button>
+          </div>
+          <div id="firmaRestoreStatus" class="status"></div>
         </div>
-        <div id="firmaRestoreStatus" class="status"></div>
       </div>
       <div class="card" id="openingCard">
         <h2>⚖️ Solduri inițiale (preluare firmă cu istoric)</h2>

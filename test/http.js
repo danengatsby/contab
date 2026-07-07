@@ -573,6 +573,16 @@ async function main() {
     eq('user fara firme: niciun partener vizibil', Object.keys((await req('GET', '/api/partners', { cookie: cNo })).json).length, 0);
     ok('user fara firme: lista lui de firme e goala', (await req('GET', '/api/firme', { cookie: cNo })).json.firme.length === 0);
 
+    // ── CONTUL DEMO: nu adauga si nu gestioneaza firme (doar lucreaza pe firma demo) ──
+    await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'demo', password: 'parola-demo', firme: [1] } });
+    const cDemo = (await req('POST', '/api/demo-login', {})).cookie;
+    ok('demo: vede firma lui', (await req('GET', '/api/firme', { cookie: cDemo })).json.firme.length === 1);
+    eq('demo: NU poate adauga firma -> 403', (await req('POST', '/api/firme', { cookie: cDemo, body: { nume: 'Firma Demo Noua' } })).status, 403);
+    eq('demo: NU poate clona firma de test -> 403', (await req('POST', '/api/firme/1/test-clone', { cookie: cDemo })).status, 403);
+    eq('demo: NU poate abona firma -> 403', (await req('POST', '/api/firme/1/subscribe', { cookie: cDemo, body: { plan: 'start' } })).status, 403);
+    eq('demo: NU poate sterge firma -> 403', (await req('DELETE', '/api/firme/1', { cookie: cDemo })).status, 403);
+    eq('demo: NU poate restaura/importa firma -> 403', (await req('POST', '/api/firme/import', { cookie: cDemo, body: { firma: { nume: 'X' } } })).status, 403);
+
     // ── BILLING STRICT PER-FIRMA: firma noua porneste cu proba de 30 zile, apoi abonament ──
     const tfR = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Firma Proba SRL', cui: 'RO900' } });
     ok('firma noua porneste cu abonament de proba (30 zile)', tfR.json.ok && tfR.json.firma.subscription && tfR.json.firma.subscription.plan === 'trial' && !!tfR.json.firma.subscription.trialEndsAt);
