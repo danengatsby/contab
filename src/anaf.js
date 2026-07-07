@@ -27,13 +27,15 @@ function connected(cfg) {
   return !!(cfg && cfg.accessToken);
 }
 
-function authorizeUrl(cfg) {
+function authorizeUrl(cfg, state) {
   const q = new URLSearchParams({
     response_type: 'code',
     client_id: cfg.clientId,
     redirect_uri: cfg.redirectUri,
     token_content_type: 'jwt',
   });
+  // state = firmaId: callback-ul OAuth afla pe CE firma se leaga conexiunea (SPV per-firma)
+  if (state != null) q.set('state', String(state));
   return AUTH_URL + '?' + q.toString();
 }
 

@@ -18,6 +18,12 @@ module.exports = function register(app, ctx) {
   const { activeId, wrap, logAudit, upsertPartner, canAccess, demoContLock } = ctx;
   // izolare multi-firma: operatiunile SPV pe o inregistrare cer acces la firma acesteia
   const entryAccess = (req, e, d) => canAccess(req, e.firmaId == null ? d.firmaActiva : e.firmaId);
+  // Conexiunea SPV e PER-FIRMA (firma.anaf): fiecare firma isi are propriile credentiale
+  // OAuth si token-uri. Config-ul e o referinta vie in obiectul firmei — reimprospatarea
+  // token-ului in timpul unui apel se persista cu simplul db.save().
+  const anafCfg = (fid) => (db.getFirma(fid) || {}).anaf || {};
+  const anafCfgW = (fid) => { const f = db.getFirma(fid); if (!f) return {}; return (f.anaf = f.anaf || {}); };
+  const entryCfg = (e, d) => anafCfgW(e.firmaId == null ? d.firmaActiva : e.firmaId);
 
   app.post('/api/efactura/parse', (req, res) => {
     try { res.json({ ok: true, invoice: efacturaImport.parseUBL((req.body || {}).xml || '') }); }
@@ -54,37 +60,39 @@ module.exports = function register(app, ctx) {
   });
 
   app.get('/api/anaf/config', (req, res) => {
-    const c = db.get().settings.anaf || {};
+    const fid = activeId(req);
+    const c = anafCfg(fid);
     res.json({
       env: c.env || 'test', cif: c.cif || '', redirectUri: c.redirectUri || '',
       clientIdSet: !!c.clientId, configured: anaf.configured(c), connected: anaf.connected(c),
       autoPoll: !!c.autoPoll, tokenExpiry: c.tokenExpiry || 0,
+      firma: (db.getFirma(fid) || {}).nume || '',
     });
   });
   app.post('/api/anaf/config', (req, res) => {
-    // conexiunea SPV e o setare GLOBALA — contul demo (public) nu o atinge
+    // contul demo (public, partajat) nu configureaza conexiunea SPV nici pe firma demo
     if (demoContLock(req, res)) return;
-    const d = db.get();
-    const c = d.settings.anaf || {};
+    const c = anafCfgW(activeId(req));
     const b = req.body || {};
     ['env', 'clientId', 'clientSecret', 'redirectUri', 'cif'].forEach((k) => { if (b[k] != null) c[k] = b[k]; });
     if (b.autoPoll != null) c.autoPoll = !!b.autoPoll;
-    d.settings.anaf = c;
     db.save();
     res.json({ ok: true, configured: anaf.configured(c) });
   });
   app.get('/api/anaf/authorize', (req, res) => {
-    const c = db.get().settings.anaf || {};
+    const fid = activeId(req);
+    const c = anafCfg(fid);
     if (!anaf.configured(c)) return res.status(400).json({ error: 'Completeaza intai client_id, client_secret si redirect_uri.' });
-    res.json({ url: anaf.authorizeUrl(c) });
+    // state = firmaId: la intoarcerea din ANAF, callback-ul stie pe ce firma leaga token-ul
+    res.json({ url: anaf.authorizeUrl(c, fid) });
   });
   app.get('/api/anaf/callback', wrap(async (req, res) => {
-    const d = db.get();
-    const c = d.settings.anaf || {};
     if (req.query.error) return res.redirect('/?anaf=error');
     if (!req.query.code) return res.status(400).send('Lipseste codul de autorizare.');
+    const fid = req.query.state ? Number(req.query.state) : activeId(req);
+    if (!canAccess(req, fid)) return res.status(403).send('Fara acces la aceasta firma.');
+    const c = anafCfgW(fid);
     await anaf.exchangeCode(c, req.query.code);
-    d.settings.anaf = c;
     db.save();
     res.redirect('/?anaf=ok');
   }));
@@ -93,14 +101,13 @@ module.exports = function register(app, ctx) {
     const e = d.entries.find((x) => x.id === req.params.id);
     if (!e || !entryAccess(req, e, d)) return res.status(404).json({ error: 'Inregistrare inexistenta' });
     if (!xml.isSendable(e)) return res.status(400).json({ error: 'Doar facturile emise pot fi trimise in SPV.' });
-    const c = d.settings.anaf || {};
     const fid = e.firmaId || db.firmaActiva();
+    const c = anafCfgW(fid); // conexiunea SPV a firmei careia ii apartine factura
     const company = db.getFirma(fid) || {};
     const cif = (c.cif || company.cui || '').replace(/^ro/i, '');
     const ubl = xml.eFacturaXml(company, e, d.partners[fid] || {});
     const r = await anaf.upload(c, ubl, cif);
     e.spv = { index: r.index, stare: 'in prelucrare', sentAt: new Date().toISOString() };
-    d.settings.anaf = c; // tokenul poate fi reimprospatat
     db.save();
     res.json({ ok: true, spv: e.spv });
   }));
@@ -109,11 +116,10 @@ module.exports = function register(app, ctx) {
     const e = d.entries.find((x) => x.id === req.params.id);
     if (!e || !entryAccess(req, e, d)) return res.status(404).json({ error: 'Inregistrare inexistenta' });
     if (!e.spv) return res.status(400).json({ error: 'Factura nu a fost trimisa in SPV.' });
-    const c = d.settings.anaf || {};
+    const c = entryCfg(e, d);
     const st = await anaf.status(c, e.spv.index);
     e.spv.stare = st.stare; e.spv.idDescarcare = st.idDescarcare || e.spv.idDescarcare;
     if (st.stare === 'ok') e.spv.acceptat = true;
-    d.settings.anaf = c;
     db.save();
     res.json({ ok: true, spv: e.spv });
   }));
@@ -129,15 +135,22 @@ module.exports = function register(app, ctx) {
     res.json({ ok: true, documentId: docId, spv: e.spv });
   }));
 
-  app.post('/api/anaf/poll', wrap(async (req, res) => res.json(await pollSpv())));
+  app.post('/api/anaf/poll', wrap(async (req, res) => {
+    const r = await pollSpv();
+    // butonul e apasat in contextul firmei active: fara facturi de verificat,
+    // "connected" reflecta conexiunea ei (nu ramane fals doar pentru ca n-a rulat nimic)
+    r.connected = r.connected || anaf.connected(anafCfg(activeId(req)));
+    res.json(r);
+  }));
 
   // Lista facturilor primite in SPV
   app.get('/api/anaf/inbox', wrap(async (req, res) => {
     const d = db.get();
-    const c = d.settings.anaf || {};
-    const cif = (c.cif || (db.getFirma(activeId(req)) || {}).cui || '').replace(/^ro/i, '');
+    const fid = activeId(req);
+    const c = anafCfgW(fid);
+    const cif = (c.cif || (db.getFirma(fid) || {}).cui || '').replace(/^ro/i, '');
     const msgs = await anaf.listMessages(c, cif, req.query.zile || 60, 'P');
-    d.settings.anaf = c; db.save();
+    db.save();
     res.json(msgs.map((m) => ({
       id: m.id, data: m.data_creare || m.data, tip: m.tip, cif: m.cif_emitent || m.cif, detalii: m.detalii,
       importat: d.entries.some((e) => e.spvImport && e.spvImport.msgId === m.id),
@@ -148,28 +161,26 @@ module.exports = function register(app, ctx) {
   // Solicita fisa pe platitor pentru firma activa; ANAF o proceseaza asincron, iar PDF-ul apare
   // in mesajele SPV, de unde se descarca si se ataseaza ca document al firmei.
   app.post('/api/anaf/fisa-rol', wrap(async (req, res) => {
-    const d = db.get();
-    const c = d.settings.anaf || {};
+    const fid = activeId(req);
+    const c = anafCfgW(fid);
     if (!anaf.connected(c)) return res.status(400).json({ error: 'Neconectat la SPV. Conectează-te din Setări → Trimitere în SPV.' });
-    const cui = ((db.getFirma(activeId(req)) || {}).cui || c.cif || '').replace(/^ro/i, '');
+    const cui = ((db.getFirma(fid) || {}).cui || c.cif || '').replace(/^ro/i, '');
     if (!cui) return res.status(400).json({ error: 'Firma activă nu are CUI completat.' });
     const r = await anaf.spvRequest(c, 'Fisa Rol', { cui });
-    d.settings.anaf = c; // token-ul se poate reimprospata in apel
     logAudit('anaf.fisarol', 'solicitare Fisa Rol CUI ' + cui + (r.id_solicitare ? ' (#' + r.id_solicitare + ')' : ''), { req });
     db.save();
     res.json({ ok: true, id: r.id_solicitare || null, titlu: r.titlu || '', mesaj: 'Solicitare depusă. Documentul apare în mesajele SPV după procesare (de regulă în câteva minute).' });
   }));
   app.get('/api/anaf/spv-mesaje', wrap(async (req, res) => {
-    const d = db.get();
-    const c = d.settings.anaf || {};
+    const c = anafCfgW(activeId(req));
     if (!anaf.connected(c)) return res.status(400).json({ error: 'Neconectat la SPV.' });
     const msgs = await anaf.spvMessages(c, Math.min(Number(req.query.zile) || 30, 500));
-    d.settings.anaf = c; db.save();
+    db.save();
     res.json(msgs.map((m) => ({ id: m.id, data: m.data_creare || m.data, tip: m.tip, detalii: m.detalii, cui: m.cui })));
   }));
   app.post('/api/anaf/spv-descarca/:id', wrap(async (req, res) => {
     const d = db.get();
-    const c = d.settings.anaf || {};
+    const c = anafCfgW(activeId(req));
     if (!anaf.connected(c)) return res.status(400).json({ error: 'Neconectat la SPV.' });
     const buf = await anaf.spvDownload(c, req.params.id);
     const storedName = crypto.randomBytes(8).toString('hex') + '.pdf';
@@ -188,7 +199,7 @@ module.exports = function register(app, ctx) {
   // Importa o factura primita: descarca, extrage UBL, pre-completeaza formularul
   app.post('/api/anaf/import/:msgId', wrap(async (req, res) => {
     const d = db.get();
-    const buf = await anaf.download(d.settings.anaf || {}, req.params.msgId);
+    const buf = await anaf.download(anafCfgW(activeId(req)), req.params.msgId);
     const storedName = crypto.randomBytes(8).toString('hex') + '.zip';
     fs.writeFileSync(path.join(db.UPLOAD_DIR, storedName), buf);
     const docId = db.nextId('doc');

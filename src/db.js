@@ -110,6 +110,16 @@ function migrate(d) {
   // utilizatori + secret de sesiune
   if (!d.settings) d.settings = JSON.parse(JSON.stringify(DEFAULT_DB.settings));
   if (!d.settings.authSecret) d.settings.authSecret = crypto.randomBytes(32).toString('hex');
+  // Conexiunea SPV a devenit PER-FIRMA (multi-tenant): config-ul global istoric se muta
+  // pe firma cu CUI-ul potrivit (altfel pe firma activa) si dispare din settings.
+  if (d.settings.anaf) {
+    const a = d.settings.anaf;
+    const digits = (s) => String(s || '').replace(/\D/g, '');
+    const target = (digits(a.cif) && d.firme.find((f) => digits(f.cui) === digits(a.cif)))
+      || d.firme.find((f) => f.id === d.firmaActiva) || d.firme[0];
+    if (target && !target.anaf && (a.clientId || a.cif)) target.anaf = a;
+    delete d.settings.anaf;
+  }
   if (!Array.isArray(d.audit)) d.audit = [];
   if (!Array.isArray(d.messages)) d.messages = [];
   if (!Array.isArray(d.recipes)) d.recipes = [];
@@ -287,9 +297,13 @@ function exportFirma(fid) {
   const d = get();
   const id = Number(fid);
   const byFid = (arr) => (arr || []).filter((x) => (x.firmaId == null ? d.firmaActiva : x.firmaId) === id);
+  // firma.anaf (credentiale OAuth + token-uri SPV) NU pleaca in export: secretele
+  // raman pe instanta; o copie restaurata isi reface conexiunea din Setari.
+  const firma = Object.assign({}, getFirma(id) || {});
+  delete firma.anaf;
   return {
     _format: 'contab-firma-v1',
-    firma: getFirma(id) || {},
+    firma,
     entries: byFid(d.entries),
     documents: byFid(d.documents),
     partners: d.partners[id] || {},

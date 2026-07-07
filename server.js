@@ -2398,11 +2398,11 @@ setInterval(() => {
   for (const [k, r] of registerAttempts) { if (r.reset < now) registerAttempts.delete(k); }
 }, 3600 * 1000);
 
-// Job periodic: descarca automat recipisele (doar daca e activat si conectat)
+// Job periodic: descarca automat recipisele — SPV per-firma, doar firmele cu autoPoll bifat
 setInterval(() => {
-  const c = db.get().settings.anaf || {};
-  if (c.autoPoll && anaf.connected(c)) {
-    pollSpv().then((r) => { if (r.downloaded) console.log('Auto-poll SPV: ' + r.downloaded + ' recipise descarcate'); })
+  const vreoFirma = db.get().firme.some((f) => f.anaf && f.anaf.autoPoll && anaf.connected(f.anaf));
+  if (vreoFirma) {
+    pollSpv({ auto: true }).then((r) => { if (r.downloaded) console.log('Auto-poll SPV: ' + r.downloaded + ' recipise descarcate'); })
       .catch((e) => console.error('Auto-poll SPV:', e.message || e));
   }
 }, 15 * 60 * 1000);

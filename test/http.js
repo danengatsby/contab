@@ -548,6 +548,11 @@ async function main() {
     ok('meta reflecta firma activa noua', (await req('GET', '/api/meta', { cookie: c1 })).json.firmaActiva === f2);
     // datele sunt separate pe firma: partenerul creat in firma 1 NU apare in firma noua
     ok('firma noua e goala (izolare fata de firma 1)', Object.keys((await req('GET', '/api/partners?firma=' + f2, { cookie: c1 })).json).length === 0);
+    // Conexiunea SPV e PER-FIRMA: configurarea pe firma noua NU se vede pe firma 1
+    const spvSet = await req('POST', '/api/anaf/config', { cookie: c1, body: { cif: '7788', clientId: 'id-f2', clientSecret: 's', redirectUri: 'http://x/cb' } });
+    ok('SPV: config salvat pe firma activa (noua)', spvSet.json && spvSet.json.ok && spvSet.json.configured === true);
+    ok('SPV: firma noua il vede (configured)', (await req('GET', '/api/anaf/config', { cookie: c1 })).json.configured === true);
+    ok('SPV: firma 1 NU il vede (izolare per-firma)', (await req('GET', '/api/anaf/config?firma=1', { cookie: c1 })).json.configured === false);
     // comuta inapoi pe firma 1 din selector (activate) — ca la admin
     ok('comutarea pe firma 1 reuseste', (await req('POST', '/api/firme/1/activate', { cookie: c1 })).json.ok === true);
     eq('dupa comutare, firma activa e 1', (await req('GET', '/api/meta', { cookie: c1 })).json.firmaActiva, 1);

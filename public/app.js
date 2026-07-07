@@ -3967,9 +3967,10 @@ async function renderAnaf() {
   f.env.value = c.env || 'test'; f.cif.value = c.cif || ''; f.redirectUri.value = c.redirectUri || '';
   f.autoPoll.checked = !!c.autoPoll;
   const st = $('#anafStatus');
-  if (c.connected) { st.className = 'status ok'; st.textContent = '✔ Conectat la SPV (' + c.env + ').'; }
-  else if (c.configured) { st.className = 'status'; st.textContent = 'Configurat — apasă „Conectează” pentru autorizare.'; }
-  else { st.className = 'status'; st.textContent = 'Necompletat — introdu client_id, client_secret și redirect_uri.'; }
+  const cine = c.firma ? ' — firma ' + c.firma : '';
+  if (c.connected) { st.className = 'status ok'; st.textContent = '✔ Conectat la SPV (' + c.env + ')' + cine + '.'; }
+  else if (c.configured) { st.className = 'status'; st.textContent = 'Configurat' + cine + ' — apasă „Conectează” pentru autorizare.'; }
+  else { st.className = 'status'; st.textContent = 'Necompletat' + cine + ' — introdu client_id, client_secret și redirect_uri.'; }
 }
 $('#anafForm').addEventListener('submit', async (e) => {
   e.preventDefault();

@@ -11,25 +11,36 @@ const AdmZip = require('adm-zip');
 const db = require('./db');
 const anaf = require('./anaf');
 
+/** Conexiunea SPV a firmei careia ii apartine inregistrarea (SPV per-firma). */
+function entryAnafCfg(d, e) {
+  const fid = e.firmaId == null ? d.firmaActiva : e.firmaId;
+  const f = db.getFirma(fid);
+  if (!f) return {};
+  return (f.anaf = f.anaf || {});
+}
+
 /** Descarca recipisa/ZIP pentru o factura trimisa si o ataseaza ca document. Muteaza `e.spv` si `d`. */
 async function saveRecipisa(d, e) {
-  const buf = await anaf.download(d.settings.anaf || {}, e.spv.idDescarcare);
+  const buf = await anaf.download(entryAnafCfg(d, e), e.spv.idDescarcare);
   const storedName = crypto.randomBytes(8).toString('hex') + '.zip';
   fs.writeFileSync(path.join(db.UPLOAD_DIR, storedName), buf);
   const docId = db.nextId('doc');
-  d.documents.push({ id: docId, fileName: 'recipisa-' + (e.document || e.id) + '.zip', storedName, uploadedAt: new Date().toISOString(), text: '' });
+  d.documents.push({ id: docId, firmaId: e.firmaId == null ? d.firmaActiva : e.firmaId, fileName: 'recipisa-' + (e.document || e.id) + '.zip', storedName, uploadedAt: new Date().toISOString(), text: '' });
   e.spv.recipisaDocId = docId; e.spv.recipisaAt = new Date().toISOString();
   return docId;
 }
 
-/** Verifica toate facturile trimise: actualizeaza starea si descarca recipisele disponibile. */
-async function pollSpv() {
+/** Verifica facturile trimise (pe conexiunea SPV a fiecarei firme): actualizeaza starea
+ *  si descarca recipisele. opts.auto: doar firmele cu autoPoll bifat (jobul periodic). */
+async function pollSpv(opts) {
+  const auto = !!(opts && opts.auto);
   const d = db.get();
-  const c = d.settings.anaf || {};
-  if (!anaf.connected(c)) return { connected: false, checked: 0, accepted: 0, downloaded: 0 };
   const pending = d.entries.filter((e) => e.spv && !e.spv.recipisaDocId);
-  let accepted = 0; let downloaded = 0;
+  let connected = false; let checked = 0; let accepted = 0; let downloaded = 0;
   for (const e of pending) {
+    const c = entryAnafCfg(d, e);
+    if (!anaf.connected(c) || (auto && !c.autoPoll)) continue;
+    connected = true; checked++;
     try {
       const st = await anaf.status(c, e.spv.index);
       e.spv.stare = st.stare;
@@ -38,9 +49,8 @@ async function pollSpv() {
       if (st.stare === 'ok' && e.spv.idDescarcare) { await saveRecipisa(d, e); downloaded++; }
     } catch (err) { e.spv.error = String(err.message || err); }
   }
-  d.settings.anaf = c;
-  db.save();
-  return { connected: true, checked: pending.length, accepted, downloaded };
+  if (checked) db.save();
+  return { connected, checked, accepted, downloaded };
 }
 
 /** Extrage XML-ul facturii dintr-un ZIP SPV (sare peste fisierul de semnatura). */
