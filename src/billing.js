@@ -51,6 +51,13 @@ async function createCheckoutSession(user, plan, firmaId) {
     metadata: meta,
     subscription_data: { metadata: meta },
     allow_promotion_codes: true,
+    // Facturare legala: Stripe emite factura fiecarei plati; colectam adresa de facturare
+    // si CUI-ul (tax ID) ca factura sa fie completa. customer_update e cerut de Stripe
+    // cand tax_id_collection e activ pe un customer existent.
+    billing_address_collection: 'required',
+    tax_id_collection: { enabled: true },
+    customer_update: sub.stripeCustomerId ? { name: 'auto', address: 'auto' } : undefined,
+    locale: 'ro',
     success_url: appUrl() + '/?checkout=success#abonament',
     cancel_url: appUrl() + '/?checkout=cancel#abonament',
   });
@@ -68,6 +75,10 @@ async function createGuestCheckoutSession(plan) {
     metadata: { plan, guest: '1' },
     subscription_data: { metadata: { plan, guest: '1' } },
     allow_promotion_codes: true,
+    // Facturare legala: adresa de facturare + CUI pe factura emisa de Stripe
+    billing_address_collection: 'required',
+    tax_id_collection: { enabled: true },
+    locale: 'ro',
     success_url: appUrl() + '/?checkout=success&register=1',
     cancel_url: appUrl() + '/?checkout=cancel',
   });
