@@ -767,6 +767,24 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 .kpi.go{cursor:pointer}
 .kpi.go:hover,.kpi.go:focus{box-shadow:0 8px 22px rgba(0,0,0,.14);transform:translateY(-1px);outline:none}
 
+/* ── Primii pasi (onboarding firme proaspete): checklist cu bife vii ── */
+.firststeps{display:flex;flex-direction:column;gap:8px}
+.fstep{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
+  background:var(--card,#fff);border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+  font:inherit;color:inherit;transition:border-color .15s,box-shadow .15s}
+.fstep:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.fstep-check{flex:0 0 30px;height:30px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:50%;font-weight:800;font-size:14px;background:var(--bg,#f2f4f8);border:2px solid var(--line);color:var(--muted)}
+.fstep.done .fstep-check{background:#e8f3ec;border-color:#2f8f63;color:#2f8f63}
+.fstep.done{opacity:.75}
+.fstep.done .fstep-body b{text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:#2f8f63}
+.fstep-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fstep-body b{font-size:14.5px}
+.fstep-body .d{font-size:12.5px;color:var(--muted);line-height:1.45}
+.fstep-go{margin-left:auto;font-size:18px;color:var(--accent);font-weight:700}
+body.dark .fstep.done .fstep-check{background:#16302433;border-color:#5cbb8d;color:#5cbb8d}
+body.dark .fstep.done .fstep-body b{text-decoration-color:#5cbb8d}
+
 /* ── Intrebari frecvente (pagina de autentificare) ── */
 .faq-item{border-bottom:1px solid var(--line);padding:2px 0}
 .faq-item summary{cursor:pointer;font-weight:700;padding:10px 4px;list-style-position:inside;color:var(--ink)}

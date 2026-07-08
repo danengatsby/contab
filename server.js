@@ -1924,8 +1924,16 @@ app.post('/api/compensations', (req, res) => {
 });
 app.get('/api/dashboard', (req, res) => {
   const v = S(req);
+  // Primii pasi (onboarding pentru firme proaspete): starea reala a pasilor de inceput,
+  // ca dashboard-ul sa ghideze un tester necontabil in loc sa-i arate doar zerouri.
+  const primiiPasi = {
+    firmaCompletata: !!(v.company && v.company.cui),
+    documentInregistrat: (v.entries || []).some((e) => !e.system),
+    facturaEmisa: (v.entries || []).some((e) => /^factura_vanzare/.test(e.tip || '')),
+    nrInregistrari: (v.entries || []).length,
+  };
   // e-Factura B2B: facturile emise netrimise in SPV (termen legal 5 zile lucratoare) — alerta pe dashboard
-  res.json(Object.assign(rep.dashboard(v), { efactura: decl.eFacturaNetrimise(v) }));
+  res.json(Object.assign(rep.dashboard(v), { efactura: decl.eFacturaNetrimise(v), primiiPasi }));
 });
 app.get('/api/cash-forecast', (req, res) => {
   const fid = activeId(req);

@@ -263,6 +263,11 @@
     <section id="tab-dashboard" class="tab active">
       <div class="toolbar"><h2>Acasă</h2><div class="spacer"></div><span id="dashYear" class="badge"></span></div>
       <div id="dashAlerts" class="dash-alerts"></div>
+      <div class="card hidden" id="primiiPasiCard">
+        <h3>🌱 Primii pași — pornește de aici</h3>
+        <p class="muted" style="margin:2px 0 10px">Nu trebuie să știi contabilitate: bifezi pașii de mai jos în ordinea ta, iar aplicația face înregistrările corecte în fundal.</p>
+        <div id="primiiPasiList" class="firststeps"></div>
+      </div>
       <div class="card simple-only" id="rezumatCard">
         <h3>📋 Situația firmei — pe scurt <span id="rezumatData" class="muted" style="font-weight:400"></span></h3>
         <div id="rezumatKpis" class="kpis" style="margin-top:8px"></div>
@@ -1837,7 +1842,8 @@ Cu stimă,
         <div><span class="ws-ic">📊</span><div><b>2. Se face singur</b><br><span class="muted">Registrele, soldurile, TVA-ul și rapoartele se generează automat din documentele tale.</span></div></div>
         <div><span class="ws-ic out">🧾</span><div><b>3. Vezi & raportezi</b><br><span class="muted">Vezi cât ai de plată la stat și descarci declarațiile pentru ANAF.</span></div></div>
       </div>
-      <p class="muted" style="margin-top:6px">Meniul de sus e organizat pe activități. Hai să ți-l arăt rapid.</p>
+      <p class="muted simple-only" style="margin-top:6px;background:#eaf4ef;border-radius:8px;padding:8px 12px">🎓 Ești pe <b>meniul simplu</b> — partea tehnic-contabilă (balanță, registre, închideri) e ascunsă, dar rulează automat în fundal. Orice termen neclar are explicație în <b>❓ Dicționar</b>.</p>
+      <p class="muted" style="margin-top:6px">Meniul e organizat pe activități. Hai să ți-l arăt rapid.</p>
       <div class="row" style="justify-content:center">
         <button id="welcomeGuide" class="btn">📖 Vezi ghidul</button>
         <button id="welcomeStart" class="btn primary">Începe turul →</button>

@@ -346,6 +346,9 @@ async function main() {
     const dashH = (await req('GET', '/api/dashboard', { cookie: c1 })).json;
     ok('dashboard: rezumatul executiv are agregatele numerice',
       typeof dashH.disponibilTotal === 'number' && typeof dashH.taxeDatorate === 'number' && typeof dashH.salariiDePlata === 'number');
+    // Primii pasi (onboarding): starea pasilor reflecta datele reale ale firmei
+    ok('dashboard: primii pasi prezenti si bifati din date (document inregistrat)',
+      dashH.primiiPasi && dashH.primiiPasi.documentInregistrat === true && typeof dashH.primiiPasi.nrInregistrari === 'number');
 
     // ── Rapoarte dedicate: fisa de cont, situatie aprovizionari, situatie consumuri ──
     const fcH = await req('GET', '/api/fisa-cont?cont=4111&period=2026-06', { cookie: c1 });

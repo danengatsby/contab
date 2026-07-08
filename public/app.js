@@ -1069,6 +1069,7 @@ async function loadDashboard() {
   let c = null; try { c = await api('/api/dashboard-charts'); } catch (e) { /* grafice optionale */ }
   $('#dashYear').textContent = 'Exercițiul ' + k.year;
   renderDashAlerts(k);
+  renderPrimiiPasi(k.primiiPasi);
   const s = (c && c.monthly) || [];
   const cinfo = (info) => info ? `<span class="cinfo" tabindex="0" role="note" aria-label="${info}">i<span class="cpop">${info}</span></span>` : '';
   const card = (ic, lbl, val, sub, cls, trend, info) => `<div class="kpi ${cls || ''}">
@@ -1103,6 +1104,32 @@ async function loadDashboard() {
   $('#topCreante').innerHTML = list(k.topCreante);
   $('#topDatorii').innerHTML = list(k.topDatorii);
   if (c) renderDashboardCharts(c); else loadDashboardCharts();
+}
+// Primii pași (onboarding): checklist viu pentru firmele proaspete — dispare singur după
+// ce firma are câteva înregistrări. Fiecare pas se bifează din starea REALĂ a datelor.
+function renderPrimiiPasi(p) {
+  const card = $('#primiiPasiCard'); if (!card) return;
+  // firma are deja activitate -> nu mai e nevoie de ghidaj
+  if (!p || (p.nrInregistrari >= 5 && p.firmaCompletata)) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  const pasi = [
+    { done: p.firmaCompletata, ic: '🏢', t: 'Completează datele firmei', d: 'Denumirea, CUI-ul și dacă e plătitoare de TVA — apar pe facturi și în declarații.', go: 'setari' },
+    { done: p.documentInregistrat, ic: '📥', t: 'Înregistrează primul document', d: 'O factură primită, un bon sau o chitanță — poză sau PDF; aplicația citește singură cifrele.', go: 'documente' },
+    { done: p.facturaEmisa, ic: '📤', t: 'Emite prima factură', d: 'Client + ce vinzi; numărul, PDF-ul și e-Factura se generează automat.', go: 'documente', scroll: 'band-iesire' },
+    { done: p.nrInregistrari >= 3, ic: '✅', t: 'Vezi ce a rezultat', d: 'Situația firmei se construiește singură din documente — banii, TVA-ul, profitul.', go: 'ghid' },
+  ];
+  const gata = pasi.filter((x) => x.done).length;
+  $('#primiiPasiList').innerHTML = pasi.map((x, i) => `
+    <button class="fstep ${x.done ? 'done' : ''}" data-go="${x.go}" ${x.scroll ? `data-scroll="${x.scroll}"` : ''} aria-label="Pasul ${i + 1}: ${x.t}${x.done ? ' — gata' : ''}">
+      <span class="fstep-check" aria-hidden="true">${x.done ? '✔' : i + 1}</span>
+      <span class="fstep-body"><b>${x.ic} ${x.t}</b><span class="d">${x.d}</span></span>
+      <span class="fstep-go" aria-hidden="true">${x.done ? '' : '→'}</span>
+    </button>`).join('')
+    + `<div class="muted" style="font-size:12.5px;margin-top:6px">${gata} din ${pasi.length} pași făcuți · Nu știi ce tip de document ai? Folosește <b>🧭 Înregistrează ghidat</b> de mai jos.</div>`;
+  $$('#primiiPasiList .fstep').forEach((b) => b.addEventListener('click', () => {
+    goTab(b.dataset.go);
+    if (b.dataset.scroll) setTimeout(() => { const el = document.getElementById(b.dataset.scroll); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
+  }));
 }
 // Rezumatul executiv (mod simplu): situația firmei în limbaj de business, cu drill-down —
 // bani disponibili, de încasat, de plătit, obligații stat & salarii, rezultat + termene.
@@ -4064,12 +4091,20 @@ function uiModeKey() { return 'contabo-uimode-' + ((USER && USER.username) || ''
 function applyUiMode(mode) {
   document.body.classList.toggle('simple-ui', mode === 'simplu');
   const b = $('#uiModeBtn');
-  if (b) b.textContent = mode === 'simplu' ? '🎓 Simplu' : '🛠 Expert';
+  if (b) {
+    b.textContent = mode === 'simplu' ? '🎓 Simplu' : '🛠 Expert';
+    b.setAttribute('aria-label', mode === 'simplu'
+      ? 'Mod simplu activ — apasă pentru modul expert (arată și partea tehnic-contabilă)'
+      : 'Mod expert activ — apasă pentru modul simplu (ascunde partea tehnic-contabilă)');
+  }
 }
 function initUiMode() {
   let saved = null;
   try { saved = localStorage.getItem(uiModeKey()); } catch (e) { /* privat */ }
-  applyUiMode(saved || (USER && USER.tip === 'necontabil' ? 'simplu' : 'expert'));
+  // Implicit SIMPLU pentru cine nu e contabil: necontabili si testeri (inclusiv contul demo).
+  // Contabilii si adminul pornesc in expert. Preferinta salvata a userului bate oricum implicitul.
+  const simpluImplicit = USER && (USER.tip === 'necontabil' || USER.tip === 'tester') && USER.role !== 'admin';
+  applyUiMode(saved || (simpluImplicit ? 'simplu' : 'expert'));
 }
 $('#uiModeBtn') && $('#uiModeBtn').addEventListener('click', () => {
   const mode = document.body.classList.contains('simple-ui') ? 'expert' : 'simplu';

@@ -166,7 +166,9 @@ function loadJson() {
     try { db = migrate(applyDefaults(JSON.parse(fs.readFileSync(JSON_FILE, 'utf8')))); }
     catch (e) { db = JSON.parse(JSON.stringify(DEFAULT_DB)); }
   } else {
-    db = JSON.parse(JSON.stringify(DEFAULT_DB));
+    // fisier nou: migrate() creeaza utilizatorul initial admin/admin + authSecret
+    // (fara el, prima pornire ramanea fara cont si fara semnarea sesiunilor)
+    db = migrate(applyDefaults({}));
     writeJson(JSON_FILE, db);
   }
   return db;
