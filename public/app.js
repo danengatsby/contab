@@ -56,7 +56,7 @@ async function api(url, opts) {
     if (!r.ok) {
       // Firma de proba expirata: propune abonarea in loc de o simpla eroare
       if (r.status === 402 && data && data.firmaTrialExpired) { promptFirmaSubscribe(data.firmaId, data.firmaNume); }
-      const err = new Error((data && data.error) || ('Eroare ' + r.status)); err.status = r.status; throw err;
+      const err = new Error((data && data.error) || ('Eroare ' + r.status)); err.status = r.status; err.data = data; throw err;
     }
     return data;
   } finally { setLoad(false); }
@@ -203,6 +203,26 @@ $('#loginForm').addEventListener('submit', async (e) => {
 $('#logoutBtn').addEventListener('click', async () => {
   await api('/api/logout', { method: 'POST' });
   location.reload();
+});
+// Schimbare de parola fortata (cont cu parola implicita): overlay care blocheaza aplicatia.
+function showForcePw() {
+  hideLogin();
+  const ov = $('#forcePwOverlay'); if (!ov) return;
+  ov.classList.remove('hidden');
+  const inp = $('#forcePwForm') && $('#forcePwForm').oldPassword; if (inp) inp.focus();
+}
+$('#forcePwForm') && $('#forcePwForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target; const err = $('#forcePwErr'); err.textContent = '';
+  if (f.newPassword.value !== f.newPassword2.value) { err.textContent = 'Cele două parole noi nu coincid.'; return; }
+  try {
+    await api('/api/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword: f.oldPassword.value, newPassword: f.newPassword.value }) });
+    $('#forcePwOverlay').classList.add('hidden');
+    toast('Parolă schimbată. Îți recomandăm să activezi și 2FA din Setări.');
+    await init();
+    goTab('setari');
+    setTimeout(() => { const t = $('#twofaStart'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 250);
+  } catch (ex) { err.textContent = ex.message; }
 });
 $('#forgotLink').addEventListener('click', () => {
   const box = $('#loginForm');
@@ -973,10 +993,14 @@ async function init() {
     META = await api('/api/meta');
   } catch (e) {
     if (e.status === 401) { showLogin(); handleCheckoutReturn(); handleRegisterLink(); return; }
+    // Cont cu parola implicita: serverul blocheaza pana la schimbare (inclusiv /api/meta).
+    if (e.status === 403 && e.data && e.data.mustChange) { showForcePw(); return; }
     throw e;
   }
   hideLogin();
   USER = META.user || {};
+  // Plasa de siguranta (daca meta ar fi permisa candva): acelasi ecran de schimbare fortata.
+  if (USER.mustChange) { showForcePw(); return; }
   $('#userBadge').textContent = USER.username ? (USER.username + (USER.tip ? ' · ' + USER.tip : '')) : '';
   $('#usersCard').style.display = USER.role === 'admin' ? '' : 'none';
   $('#exportAllBtn') && ($('#exportAllBtn').style.display = USER.role === 'admin' ? '' : 'none');
@@ -992,7 +1016,6 @@ async function init() {
     else { toast('✓ Plată primită! Abonamentul firmei se activează în câteva momente (după confirmarea Stripe).'); goTab('abonament'); }
   }
   startMsgPolling();
-  if (USER.mustChange) toast('Schimbă parola implicită (admin/admin) din Setări!', true);
   // proba expirata: banner persistent + cont read-only (serverul blocheaza scrierile cu 402)
   const seb = $('#subExpiredBar');
   if (seb) {

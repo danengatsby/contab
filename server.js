@@ -283,6 +283,17 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// Schimbare de parola OBLIGATORIE (cont cu parola implicita): pana cand utilizatorul isi
+// pune o parola noua, orice actiune e blocata — raman permise doar identitatea, delogarea
+// si chiar schimbarea parolei. UI-ul afiseaza un ecran care nu se poate inchide.
+const MUSTCHANGE_ALLOW = new Set(['/api/me', '/api/logout', '/api/change-password']);
+app.use((req, res, next) => {
+  if (req.user && req.user.mustChange && !MUSTCHANGE_ALLOW.has(req.path)) {
+    return res.status(403).json({ error: 'Trebuie să îți schimbi parola implicită înainte de a continua.', mustChange: true });
+  }
+  next();
+});
+
 // ── Proba expirata => cont READ-ONLY: vede datele, dar nu mai inregistreaza si nu mai
 // genereaza livrabile (PDF/XML/CSV), pana la alegerea unui plan. Raman permise: citirile
 // din API, gestionarea contului/abonamentului, plata si mesajele catre suport.
@@ -638,9 +649,11 @@ app.post('/api/change-password', (req, res) => {
   const { oldPassword, newPassword } = req.body || {};
   const u = req.user;
   if (!authlib.verifyPassword(oldPassword, u.salt, u.hash)) return res.status(400).json({ error: 'Parola veche gresita.' });
-  if (!newPassword || String(newPassword).length < 4) return res.status(400).json({ error: 'Parola noua prea scurta (min. 4).' });
+  if (!newPassword || String(newPassword).length < 6) return res.status(400).json({ error: 'Parola noua prea scurta (min. 6 caractere).' });
+  if (String(newPassword) === String(oldPassword)) return res.status(400).json({ error: 'Parola noua trebuie sa fie diferita de cea veche.' });
   const h = authlib.hashPassword(newPassword);
   u.salt = h.salt; u.hash = h.hash; u.mustChange = false;
+  logAudit('parola.schimbata', u.username, { req, firmaId: null });
   db.save();
   res.json({ ok: true });
 });

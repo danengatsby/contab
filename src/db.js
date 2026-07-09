@@ -140,6 +140,14 @@ function migrate(d) {
     d.users.push({ id: 1, username: 'admin', salt, hash, role: 'admin', firme: [], firmaActiva: d.firmaActiva, mustChange: true });
     console.log('[contab] utilizator initial creat: admin / admin — schimba parola din Setari!');
   }
+  // Securitate: orice cont care are INCA parola implicita „admin" este obligat sa o schimbe
+  // (re-armeaza flagul chiar daca a fost stins candva fara schimbarea reala a parolei).
+  for (const u of d.users) {
+    if (auth.verifyPassword('admin', u.salt, u.hash)) {
+      if (!u.mustChange) console.log('[contab] cont cu parola implicita „admin": ' + u.username + ' — schimbare fortata la urmatoarea autentificare.');
+      u.mustChange = true;
+    }
+  }
   return d;
 }
 

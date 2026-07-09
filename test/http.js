@@ -23,9 +23,13 @@ function eq(name, got, exp) {
 }
 function ok(name, cond) { if (cond) pass += 1; else { fail += 1; console.error('  ✗ ' + name); } }
 
+// adminul de test are o parola NON-implicita: nu declanseaza schimbarea fortata (mustChange),
+// ca sa exercite fluxul normal de admin. mustChange e testat separat, pe un cont dedicat.
+const ADMIN_PW = 'admin-real-pw';
 function buildDb() {
-  const a = auth.hashPassword('admin');
+  const a = auth.hashPassword(ADMIN_PW);
   const u = auth.hashPassword('parola1');
+  const def = auth.hashPassword('admin'); // parola implicita — migrarea trebuie sa forteze schimbarea
   return {
     firme: [
       { id: 1, nume: 'UNU SRL', cui: '11', tvaPlatitor: true },
@@ -38,6 +42,8 @@ function buildDb() {
       { id: 1, username: 'admin', salt: a.salt, hash: a.hash, role: 'admin', firme: [] },
       { id: 2, username: 'user1', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
       { id: 3, username: 'expirat', salt: u.salt, hash: u.hash, role: 'user', firme: [3], firmaActiva: 3 },
+      // cont cu parola IMPLICITA „admin", FARA flagul mustChange — migrarea trebuie sa-l re-armeze
+      { id: 4, username: 'defpw', salt: def.salt, hash: def.hash, role: 'user', firme: [1], firmaActiva: 1 },
     ],
     documents: [{ id: 'docA', firmaId: 2, fileName: 'secret.pdf', storedName: 'nu-exista-pe-disc.pdf', uploadedAt: 'x', text: '' }],
     settings: { authSecret: 'x'.repeat(64) },
@@ -113,14 +119,14 @@ async function main() {
     ok('registru: marcare depusa cu recipisa', d300v2 && d300v2.status === 'depusa' && d300v2.recipisa === 'R1');
     eq('marcarea depusa a blocat automat luna', set.json.locked, '2026-06');
     // deblocam (admin) — fluxul de test completeaza intentionat date in iunie in continuare
-    const laLock = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
+    const laLock = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     ok('deblocarea perioadei (admin) reuseste', (await req('POST', '/api/period-lock', { cookie: laLock.cookie, body: { lockedUntil: null } })).status === 200);
     const porto = await req('GET', '/api/portfolio?period=2026-06', { cookie: c1 });
     ok('portofoliu: doar firmele utilizatorului', porto.json && porto.json.firms.length === 1 && porto.json.firms[0].firmaId === 1);
     ok('portofoliu: fiecare firma are forma juridica + starea abonamentului',
       porto.json.firms.every((f) => (f.tipEntitate === 'srl' || f.tipEntitate === 'pfa') && typeof f.tvaPlatitor === 'boolean' && f.sub && typeof f.sub.status === 'string'));
     // admin vede toate firmele in portofoliu, cu forma+abonament (firma 3 = proba expirata din buildDb)
-    const laPorto = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
+    const laPorto = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     const portoAdmin = (await req('GET', '/api/portfolio?period=2026-06', { cookie: laPorto.cookie })).json;
     ok('portofoliu admin: firma cu proba expirata apare cu status expired', portoAdmin.firms.some((f) => f.firmaId === 3 && f.sub.status === 'expired'));
     const notif = await req('GET', '/api/notifications', { cookie: c1 });
@@ -406,7 +412,7 @@ async function main() {
     eq('inregistrare in luna inchisa (blocata) -> 400', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2025-09-15', partener: 'X', baza: 100, tva: 21, cota: 21 } } })).status, 400);
     eq('inregistrare in luna urmatoare (nedublocata) merge', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2025-10-05', partener: 'X', baza: 100, tva: 21, cota: 21 } } })).status, 200);
     ok('re-inchiderea aceleiasi luni e idempotenta (fara dublura)', (await req('POST', '/api/close-vat?period=2025-09', { cookie: c1 })).json.ok === true);
-    const laMonth = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
+    const laMonth = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     await req('POST', '/api/period-lock', { cookie: laMonth.cookie, body: { lockedUntil: null } }); // deblochez pentru restul testelor
 
     // ── Inchideri: ordinea impozit-profit vs inchidere anuala e irelevanta ──
@@ -425,10 +431,25 @@ async function main() {
     ok('balanta 2025 se inchide dupa ambele inchideri', tb.balanced === true);
 
     // admin
-    const la = await req('POST', '/api/login', { body: { username: 'admin', password: 'admin' } });
+    const la = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
-    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 3 && users.json.every((u) => u.tip));
+    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 4 && users.json.every((u) => u.tip));
     eq('non-admin la ruta de admin -> 403', (await req('GET', '/api/users', { cookie: c1 })).status, 403);
+
+    // ── Schimbare de parola OBLIGATORIE (cont cu parola implicita „admin") ──
+    const laDef = await req('POST', '/api/login', { body: { username: 'defpw', password: 'admin' } });
+    ok('cont cu parola implicita: login reuseste (schimbarea vine dupa)', laDef.status === 200 && laDef.cookie);
+    ok('/api/me semnaleaza mustChange (migrarea a re-armat flagul)', (await req('GET', '/api/me', { cookie: laDef.cookie })).json.mustChange === true);
+    const blocked = await req('GET', '/api/dashboard', { cookie: laDef.cookie });
+    ok('mustChange: orice actiune e blocata (403 + flag)', blocked.status === 403 && blocked.json.mustChange === true);
+    eq('mustChange: scriere blocata', (await req('POST', '/api/partners', { cookie: laDef.cookie, body: { cui: 'RO1', den: 'X' } })).status, 403);
+    eq('mustChange: parola noua = cea veche -> refuz', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'admin' } })).status, 400);
+    eq('mustChange: parola noua prea scurta -> refuz', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'ab1' } })).status, 400);
+    ok('mustChange: schimbarea valida reuseste', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'parola-noua-2026' } })).json.ok === true);
+    ok('dupa schimbare: mustChange stins', (await req('GET', '/api/me', { cookie: laDef.cookie })).json.mustChange === false);
+    eq('dupa schimbare: actiunile merg (200)', (await req('GET', '/api/dashboard', { cookie: laDef.cookie })).status, 200);
+    eq('parola implicita nu mai merge la login', (await req('POST', '/api/login', { body: { username: 'defpw', password: 'admin' } })).status, 401);
+    ok('parola noua functioneaza la login', (await req('POST', '/api/login', { body: { username: 'defpw', password: 'parola-noua-2026' } })).status === 200);
 
     // ── Mesaje (suport user <-> admin): src/routes/messages.js ──
     ok('utilizatorul trimite un mesaj', (await req('POST', '/api/messages', { cookie: c1, body: { text: 'Am o intrebare despre TVA' } })).json.ok === true);

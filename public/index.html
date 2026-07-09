@@ -1832,6 +1832,22 @@ Cu stimă,
   </main>
   </div>
 
+  <div id="forcePwOverlay" class="login-overlay hidden">
+    <div class="welcome-box" style="max-width:420px">
+      <div class="welcome-emoji">🔒</div>
+      <h2>Schimbă parola înainte de a continua</h2>
+      <p class="muted">Contul tău încă folosește <b>parola implicită</b>. Din motive de securitate, alege o parolă nouă (minim 6 caractere) ca să poți lucra.</p>
+      <form id="forcePwForm" class="login-box" style="box-shadow:none;padding:0;margin-top:6px">
+        <label>Parola actuală <input name="oldPassword" type="password" autocomplete="current-password" required /></label>
+        <label>Parola nouă <input name="newPassword" type="password" autocomplete="new-password" minlength="6" required /></label>
+        <label>Confirmă parola nouă <input name="newPassword2" type="password" autocomplete="new-password" minlength="6" required /></label>
+        <div id="forcePwErr" class="status err" style="min-height:0"></div>
+        <button class="btn primary" type="submit">Setează parola nouă</button>
+      </form>
+      <p class="muted" style="font-size:12px;margin-top:8px">După schimbare îți recomandăm să activezi și autentificarea în doi pași (2FA) din Setări.</p>
+    </div>
+  </div>
+
   <div id="welcomeOverlay" class="login-overlay hidden">
     <div class="welcome-box">
       <div class="welcome-emoji">👋</div>
