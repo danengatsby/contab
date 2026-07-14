@@ -26,13 +26,10 @@ const ai = require('./src/aiExtractor');
 const stmt = require('./src/statements');
 const fiscal = require('./src/fiscal');
 const saft = require('./src/saft');
-const assets = require('./src/assets');
 const { statePlata } = require('./src/payroll'); // registruSalarii + rutele de salarizare: src/routes/payroll.js
-const { leasingSchedule } = require('./src/leasing');
 const anaf = require('./src/anaf');
 const authlib = require('./src/auth');
 const totp = require('./src/totp');
-const backup = require('./src/backup');
 const pdf = require('./src/pdf');
 const messages = require('./src/messages');
 const presence = require('./src/presence');
@@ -137,102 +134,8 @@ const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
 });
 
 // ───────────────────────── AUTENTIFICARE ─────────────────────────
-function currentUser(req) {
-  const d = db.get();
-  const token = authlib.parseCookies(req.headers.cookie).sid;
-  const p = authlib.verify(token, d.settings.authSecret);
-  if (!p) return null;
-  const u = d.users.find((x) => x.id === p.uid);
-  if (!u) return null;
-  // sesiuni server-side: tokenul trebuie sa corespunda unei sesiuni active
-  let sess = null;
-  if (p.sessId) {
-    sess = (u.sessions || []).find((x) => x.id === p.sessId);
-    if (!sess) return null; // sesiune revocata -> delogat
-    req._sessId = p.sessId;
-    if (Date.now() - Date.parse(sess.lastSeen || 0) > 5 * 60 * 1000) { sess.lastSeen = new Date().toISOString(); pruneSessions(u); db.save(); }
-  }
-  req.realUser = u;
-  req.impersonating = false;
-  // Impersonare: doar un admin, prin marcaj pe propria sesiune, devine efectiv utilizatorul-tinta.
-  // Toate rutele opereaza apoi ca acel utilizator; rutele requireAdmin raman blocate (sandbox).
-  if (sess && sess.impersonating != null && u.role === 'admin') {
-    const target = d.users.find((x) => x.id === sess.impersonating);
-    if (target && target.role !== 'admin') { req.impersonating = true; return target; }
-    delete sess.impersonating; // tinta a disparut/nevalida -> curata
-  }
-  return u;
-}
-function allowedFirme(u) {
-  const d = db.get();
-  return u.role === 'admin' ? d.firme.map((f) => f.id) : (u.firme || []);
-}
-function publicUser(u) {
-  const p = u.profil || {};
-  return {
-    id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), firme: allowedFirme(u),
-    drepturi: u.drepturi || {},
-    mustChange: !!u.mustChange, twofa: !!u.twofa,
-    profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?
-    subExpirat: plans.expiredLock(u), // proba expirata -> cont read-only (banner in UI)
-  };
-}
-
-// Igiena sesiunilor: elimina sesiunile vechi (peste TTL) si plafoneaza nr. de dispozitive active.
-const SESSION_TTL = 7 * 24 * 3600 * 1000; // 7 zile (cat traieste cookie-ul/tokenul)
-const MAX_SESSIONS = 10;                   // dispozitive active maxime per utilizator
-function pruneSessions(u) {
-  if (!u || !u.sessions) return false;
-  const before = u.sessions.length;
-  const now = Date.now();
-  u.sessions = u.sessions.filter((s) => now - Date.parse(s.lastSeen || s.createdAt || 0) < SESSION_TTL);
-  if (u.sessions.length > MAX_SESSIONS) u.sessions = u.sessions.slice(-MAX_SESSIONS);
-  return u.sessions.length !== before;
-}
-function cookieFlags(req) { return `HttpOnly; Path=/; SameSite=Lax;${req.secure ? ' Secure;' : ''}`; }
-function setSession(req, res, uid, sessId) {
-  const d = db.get();
-  const token = authlib.sign({ uid, sessId, exp: Date.now() + 7 * 24 * 3600 * 1000 }, d.settings.authSecret);
-  res.setHeader('Set-Cookie', `sid=${token}; Max-Age=${7 * 24 * 3600}; ${cookieFlags(req)}`);
-}
-// creeaza o sesiune noua (inregistrata pe utilizator) si seteaza cookie-ul
-function startSession(req, res, u) {
-  const sessId = crypto.randomBytes(12).toString('hex');
-  u.sessions = u.sessions || [];
-  u.sessions.push({
-    id: sessId, ua: String(req.headers['user-agent'] || '').slice(0, 200),
-    ip: attemptKey(req), createdAt: new Date().toISOString(), lastSeen: new Date().toISOString(),
-  });
-  pruneSessions(u); // curata sesiunile vechi + plafoneaza la MAX_SESSIONS
-  setSession(req, res, u.id, sessId);
-}
-function setTrustedDevice(req, res, u) {
-  const d = db.get();
-  const token = authlib.sign({ uid: u.id, ep: u.tfdEpoch || 0, kind: 'tfd', exp: Date.now() + 30 * 24 * 3600 * 1000 }, d.settings.authSecret);
-  res.append('Set-Cookie', `tfd=${token}; Max-Age=${30 * 24 * 3600}; ${cookieFlags(req)}`);
-}
-function deviceTrusted(req, u) {
-  const tok = authlib.parseCookies(req.headers.cookie).tfd;
-  const p = authlib.verify(tok, db.get().settings.authSecret);
-  return !!(p && p.kind === 'tfd' && p.uid === u.id && (p.ep || 0) === (u.tfdEpoch || 0));
-}
-
-// anti-brute-force: blocheaza dupa prea multe esecuri (per IP), pe o fereastra de timp
-const loginAttempts = new Map();
-const MAX_ATTEMPTS = 8;
-const LOCK_MS = 15 * 60 * 1000;
-function attemptKey(req) { return String(req.ip || (req.headers['x-forwarded-for'] || '').split(',')[0] || 'unknown'); }
-function isLocked(req) {
-  const r = loginAttempts.get(attemptKey(req));
-  return r && r.count >= MAX_ATTEMPTS && r.until > Date.now() ? Math.ceil((r.until - Date.now()) / 60000) : 0;
-}
-function bumpFail(req) {
-  const k = attemptKey(req);
-  const r = loginAttempts.get(k) || { count: 0, until: 0 };
-  r.count += 1; r.until = Date.now() + LOCK_MS;
-  loginAttempts.set(k, r);
-}
-function clearFails(req) { loginAttempts.delete(attemptKey(req)); }
+// Primitive de sesiune/auth/anti-brute-force (partajate cu rutele de cont): src/session.js
+const { currentUser, allowedFirme, publicUser, startSession, setTrustedDevice, deviceTrusted, isLocked, bumpFail, clearFails, attemptKey } = require('./src/session');
 
 // jurnal de audit (cine, ce actiune, pe ce firma)
 function logAudit(action, detail, opts) {
@@ -433,69 +336,8 @@ app.post('/api/register', (req, res) => {
 // Setari de cont si securitate (2FA, sesiuni, parola, profil): src/routes/account.js
 require('./src/routes/account')(app, { demoContLock, logAudit });
 
-// ───────────────────────────── BACKUP (admin) ─────────────────────────────
-function doBackup() {
-  const d = db.get();
-  db.flushMirror(); // oglinda JSON e scrisa cu intarziere — adu-o la zi inainte de copiere
-  const r = backup.backupNow(db.DB_FILE, db.DATA_DIR, 30);
-  d.settings.backup = d.settings.backup || {};
-  d.settings.backup.lastAt = new Date().toISOString();
-  db.save();
-  return r;
-}
-app.post('/api/backup', requireAdmin, (req, res) => {
-  const r = doBackup();
-  logAudit('backup.create', r.name, { req, firmaId: null });
-  res.json({ ok: true, file: r.name, count: r.count });
-});
-app.get('/api/backups', requireAdmin, (req, res) => {
-  const s = db.get().settings.backup || {};
-  res.json({ auto: s.auto !== false, lastAt: s.lastAt || null, list: backup.listBackups(db.DATA_DIR) });
-});
-app.post('/api/backups/auto', requireAdmin, (req, res) => {
-  const d = db.get();
-  d.settings.backup = d.settings.backup || {};
-  d.settings.backup.auto = !!(req.body || {}).auto;
-  db.save();
-  res.json({ ok: true, auto: d.settings.backup.auto });
-});
-app.get('/api/backup/file/:name', requireAdmin, (req, res) => {
-  const p = backup.backupPath(db.DATA_DIR, req.params.name);
-  if (!p) return res.status(404).send('Backup inexistent');
-  res.download(p);
-});
-// Restaurare: incarca un fisier db.json -> face backup curentului -> inlocuieste -> reincarca
-app.post('/api/restore', requireAdmin, upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
-  let parsed;
-  try { parsed = JSON.parse(fs.readFileSync(req.file.path, 'utf8')); } catch (e) { return res.status(400).json({ error: 'Fisier JSON invalid.' }); }
-  if (!Array.isArray(parsed.firme) || !parsed.firme.length || !Array.isArray(parsed.users)) {
-    return res.status(400).json({ error: 'Nu pare o baza de date Contabo valida (lipsesc firme/users).' });
-  }
-  logAudit('backup.restore', req.file.originalname, { req, firmaId: null });
-  doBackup(); // siguranta: salveaza starea curenta inainte de inlocuire
-  db.restoreFromJson(req.file.path); // seteaza in memorie + persista (SQLite + oglinda JSON)
-  res.json({ ok: true, message: 'Baza de date a fost restaurata. Va trebui sa te autentifici din nou.' });
-});
-
-// ───────────────────────────── SMTP (admin) ─────────────────────────────
-app.get('/api/smtp', requireAdmin, (req, res) => {
-  const s = db.get().settings.smtp || {};
-  res.json({ host: s.host || '', port: s.port || 587, secure: !!s.secure, user: s.user || '', from: s.from || '', configured: !!s.host, notifyNewMessage: s.notifyNewMessage !== false });
-});
-app.post('/api/smtp', requireAdmin, (req, res) => {
-  const d = db.get();
-  const s = d.settings.smtp || {};
-  const b = req.body || {};
-  ['host', 'user', 'from'].forEach((k) => { if (b[k] != null) s[k] = b[k]; });
-  if (b.port != null) s.port = Number(b.port) || 587;
-  if (b.secure != null) s.secure = !!b.secure;
-  if (b.pass) s.pass = b.pass;
-  if (b.notifyNewMessage != null) s.notifyNewMessage = !!b.notifyNewMessage;
-  d.settings.smtp = s;
-  db.save();
-  res.json({ ok: true, configured: !!s.host });
-});
+// Backup/restaurare + SMTP (admin): src/routes/backup.js — intoarce doBackup (folosit si de jobul zilnic).
+const { doBackup } = require('./src/routes/backup')(app, { requireAdmin, upload, logAudit });
 app.post('/api/logout', (req, res) => {
   const u = currentUser(req);
   if (u && req._sessId) { u.sessions = (u.sessions || []).filter((s) => s.id !== req._sessId); db.save(); }
@@ -878,19 +720,6 @@ app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
 
 // Situatii financiare + recapitulatii declaratii + registre (PDF/JSON): src/routes/reports.js
 require('./src/routes/reports')(app, { S });
-app.get('/pdf/assets', (req, res) => {
-  const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
-  pdf.assetsRegisterPdf(res, S(req).company, assets.register(S(req), asOf), asOf);
-});
-app.get('/api/leasing-schedule', (req, res) => res.json(leasingSchedule(req.query.principal, req.query.months, req.query.rate, req.query.method)));
-app.get('/pdf/leasing-schedule', (req, res) => pdf.leasingSchedulePdf(res, S(req).company, leasingSchedule(req.query.principal, req.query.months, req.query.rate, req.query.method)));
-app.get('/pdf/asset/:id', (req, res) => {
-  const a = (S(req).assets || []).find((x) => x.id === req.params.id);
-  if (!a) return res.status(404).send('Mijloc fix inexistent');
-  const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
-  const asset = Object.assign({}, a, { contNume: coa.accountName(a.cont) });
-  pdf.assetFisaPdf(res, S(req).company, { asset, calc: assets.compute(a, asOf), schedule: assets.schedule(a) });
-});
 // numerotare secventiala a documentelor de stoc (serie + numar), per firma si tip
 function ensureDocSeries(d, fid) {
   d.settings.docSeries = d.settings.docSeries || {};

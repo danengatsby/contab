@@ -1,0 +1,115 @@
+'use strict';
+
+// Primitive de autentificare si sesiune (partajate de server.js si de rutele de cont):
+// identificarea utilizatorului din cookie (cu suport de impersonare), obiectul public al
+// utilizatorului, igiena sesiunilor server-side, cookie-urile semnate (sesiune + dispozitiv de
+// incredere 2FA) si protectia anti-brute-force per IP. Logica de audit si scoping pe firma
+// (logAudit, activeId, withSessionState) ramane in server.js — depinde de firma activa/mesaje.
+
+const crypto = require('crypto');
+const db = require('./db');
+const authlib = require('./auth');
+const plans = require('./plans');
+
+function currentUser(req) {
+  const d = db.get();
+  const token = authlib.parseCookies(req.headers.cookie).sid;
+  const p = authlib.verify(token, d.settings.authSecret);
+  if (!p) return null;
+  const u = d.users.find((x) => x.id === p.uid);
+  if (!u) return null;
+  // sesiuni server-side: tokenul trebuie sa corespunda unei sesiuni active
+  let sess = null;
+  if (p.sessId) {
+    sess = (u.sessions || []).find((x) => x.id === p.sessId);
+    if (!sess) return null; // sesiune revocata -> delogat
+    req._sessId = p.sessId;
+    if (Date.now() - Date.parse(sess.lastSeen || 0) > 5 * 60 * 1000) { sess.lastSeen = new Date().toISOString(); pruneSessions(u); db.save(); }
+  }
+  req.realUser = u;
+  req.impersonating = false;
+  // Impersonare: doar un admin, prin marcaj pe propria sesiune, devine efectiv utilizatorul-tinta.
+  // Toate rutele opereaza apoi ca acel utilizator; rutele requireAdmin raman blocate (sandbox).
+  if (sess && sess.impersonating != null && u.role === 'admin') {
+    const target = d.users.find((x) => x.id === sess.impersonating);
+    if (target && target.role !== 'admin') { req.impersonating = true; return target; }
+    delete sess.impersonating; // tinta a disparut/nevalida -> curata
+  }
+  return u;
+}
+function allowedFirme(u) {
+  const d = db.get();
+  return u.role === 'admin' ? d.firme.map((f) => f.id) : (u.firme || []);
+}
+function publicUser(u) {
+  const p = u.profil || {};
+  return {
+    id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), firme: allowedFirme(u),
+    drepturi: u.drepturi || {},
+    mustChange: !!u.mustChange, twofa: !!u.twofa,
+    profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?
+    subExpirat: plans.expiredLock(u), // proba expirata -> cont read-only (banner in UI)
+  };
+}
+
+// Igiena sesiunilor: elimina sesiunile vechi (peste TTL) si plafoneaza nr. de dispozitive active.
+const SESSION_TTL = 7 * 24 * 3600 * 1000; // 7 zile (cat traieste cookie-ul/tokenul)
+const MAX_SESSIONS = 10;                   // dispozitive active maxime per utilizator
+function pruneSessions(u) {
+  if (!u || !u.sessions) return false;
+  const before = u.sessions.length;
+  const now = Date.now();
+  u.sessions = u.sessions.filter((s) => now - Date.parse(s.lastSeen || s.createdAt || 0) < SESSION_TTL);
+  if (u.sessions.length > MAX_SESSIONS) u.sessions = u.sessions.slice(-MAX_SESSIONS);
+  return u.sessions.length !== before;
+}
+function cookieFlags(req) { return `HttpOnly; Path=/; SameSite=Lax;${req.secure ? ' Secure;' : ''}`; }
+function setSession(req, res, uid, sessId) {
+  const d = db.get();
+  const token = authlib.sign({ uid, sessId, exp: Date.now() + 7 * 24 * 3600 * 1000 }, d.settings.authSecret);
+  res.setHeader('Set-Cookie', `sid=${token}; Max-Age=${7 * 24 * 3600}; ${cookieFlags(req)}`);
+}
+// creeaza o sesiune noua (inregistrata pe utilizator) si seteaza cookie-ul
+function startSession(req, res, u) {
+  const sessId = crypto.randomBytes(12).toString('hex');
+  u.sessions = u.sessions || [];
+  u.sessions.push({
+    id: sessId, ua: String(req.headers['user-agent'] || '').slice(0, 200),
+    ip: attemptKey(req), createdAt: new Date().toISOString(), lastSeen: new Date().toISOString(),
+  });
+  pruneSessions(u); // curata sesiunile vechi + plafoneaza la MAX_SESSIONS
+  setSession(req, res, u.id, sessId);
+}
+function setTrustedDevice(req, res, u) {
+  const d = db.get();
+  const token = authlib.sign({ uid: u.id, ep: u.tfdEpoch || 0, kind: 'tfd', exp: Date.now() + 30 * 24 * 3600 * 1000 }, d.settings.authSecret);
+  res.append('Set-Cookie', `tfd=${token}; Max-Age=${30 * 24 * 3600}; ${cookieFlags(req)}`);
+}
+function deviceTrusted(req, u) {
+  const tok = authlib.parseCookies(req.headers.cookie).tfd;
+  const p = authlib.verify(tok, db.get().settings.authSecret);
+  return !!(p && p.kind === 'tfd' && p.uid === u.id && (p.ep || 0) === (u.tfdEpoch || 0));
+}
+
+// anti-brute-force: blocheaza dupa prea multe esecuri (per IP), pe o fereastra de timp
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 8;
+const LOCK_MS = 15 * 60 * 1000;
+function attemptKey(req) { return String(req.ip || (req.headers['x-forwarded-for'] || '').split(',')[0] || 'unknown'); }
+function isLocked(req) {
+  const r = loginAttempts.get(attemptKey(req));
+  return r && r.count >= MAX_ATTEMPTS && r.until > Date.now() ? Math.ceil((r.until - Date.now()) / 60000) : 0;
+}
+function bumpFail(req) {
+  const k = attemptKey(req);
+  const r = loginAttempts.get(k) || { count: 0, until: 0 };
+  r.count += 1; r.until = Date.now() + LOCK_MS;
+  loginAttempts.set(k, r);
+}
+function clearFails(req) { loginAttempts.delete(attemptKey(req)); }
+
+module.exports = {
+  currentUser, allowedFirme, publicUser,
+  startSession, setTrustedDevice, deviceTrusted,
+  isLocked, bumpFail, clearFails, attemptKey,
+};

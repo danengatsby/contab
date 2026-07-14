@@ -1,11 +1,14 @@
 'use strict';
 
-// Rutele mijloacelor fixe (registru, plan de amortizare, inregistrarea amortizarii lunii).
-// Modul de rute: register(app, ctx). Livrabilele PDF (/pdf/asset, /pdf/assets, leasing)
-// raman in clusterul de deliverables din server.js.
+// Rutele mijloacelor fixe: registru, plan de amortizare, inregistrarea amortizarii lunii,
+// livrabilele PDF (registrul, fisa mijlocului fix) si scadentarul de leasing (JSON + PDF).
+// Modul de rute: register(app, ctx).
 
 const assets = require('../assets');
 const db = require('../db');
+const pdf = require('../pdf');
+const coa = require('../chartOfAccounts');
+const { leasingSchedule } = require('../leasing');
 const { round2 } = require('../util');
 
 module.exports = function register(app, ctx) {
@@ -74,5 +77,20 @@ module.exports = function register(app, ctx) {
     logAudit('amortizare.lunara', period + ' (' + dep.lines.length + ' MF)', { req });
     db.save();
     res.json({ ok: true, result: dep });
+  });
+
+  // ── Livrabile PDF + leasing ──
+  app.get('/pdf/assets', (req, res) => {
+    const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
+    pdf.assetsRegisterPdf(res, S(req).company, assets.register(S(req), asOf), asOf);
+  });
+  app.get('/api/leasing-schedule', (req, res) => res.json(leasingSchedule(req.query.principal, req.query.months, req.query.rate, req.query.method)));
+  app.get('/pdf/leasing-schedule', (req, res) => pdf.leasingSchedulePdf(res, S(req).company, leasingSchedule(req.query.principal, req.query.months, req.query.rate, req.query.method)));
+  app.get('/pdf/asset/:id', (req, res) => {
+    const a = (S(req).assets || []).find((x) => x.id === req.params.id);
+    if (!a) return res.status(404).send('Mijloc fix inexistent');
+    const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
+    const asset = Object.assign({}, a, { contNume: coa.accountName(a.cont) });
+    pdf.assetFisaPdf(res, S(req).company, { asset, calc: assets.compute(a, asOf), schedule: assets.schedule(a) });
   });
 };
