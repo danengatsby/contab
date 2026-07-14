@@ -1155,23 +1155,7 @@ require('./src/routes/stocks')(app, { S, activeId, logAudit });
 // Export CSV (sendCsv + toate csv/*): src/routes/csv.js
 require('./src/routes/csv')(app, { S });
 
-// ───────────────────────────── RAPOARTE (JSON) ─────────────────────────────
-app.get('/api/journal', (req, res) => res.json(acc.journal(S(req), req.query.period || null)));
-app.get('/api/ledger', (req, res) => res.json(acc.ledger(S(req), req.query.period || null)));
-// Fisa de cont: miscarile unui cont cu contul corespondent si sold curent (orice cont din plan)
-app.get('/api/fisa-cont', (req, res) => {
-  if (!req.query.cont) return res.status(400).json({ error: 'Alege contul (ex. ?cont=4111).' });
-  res.json(acc.fisaCont(S(req), req.query.cont, req.query.period || null));
-});
-app.get('/pdf/fisa-cont', (req, res) => {
-  if (!req.query.cont) return res.status(400).send('Alege contul (ex. ?cont=4111).');
-  pdf.fisaContPdf(res, S(req).company, acc.fisaCont(S(req), req.query.cont, req.query.period || null));
-});
-app.get('/api/balance', (req, res) => res.json(acc.trialBalance(S(req), req.query.period || null)));
-app.get('/api/vat-preview', (req, res) => res.json(acc.vatClosing(S(req), req.query.period || null)));
-app.get('/api/vat-journals', (req, res) => res.json(acc.vatJournals(S(req), req.query.period || null)));
-app.get('/api/tva-neexigibila', (req, res) => res.json(acc.tvaNeexigibila(S(req), req.query.period || null)));
-app.get('/api/livrabile', (req, res) => res.json(rep.livrabile(S(req), req.query.period || new Date().toISOString().slice(0, 7))));
+// Registre, jurnale si rapoarte financiare (JSON+PDF): src/routes/reports.js (mai jos)
 app.get('/api/reconcile', (req, res) => res.json(reconcile(S(req))));
 
 // ── Compensare creante / datorii (partener client + furnizor) ──
@@ -1367,11 +1351,6 @@ app.post('/api/provizion', (req, res) => {
   db.save();
   res.json({ ok: true, result: p });
 });
-app.get('/api/registru-fiscal', (req, res) => res.json(rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));
-app.get('/api/cashbook', (req, res) => res.json(acc.cashBankJournal(S(req), req.query.cont || '5121', req.query.period || null)));
-app.get('/api/cash-valuta', (req, res) => res.json(acc.cashRegisterValuta(S(req), req.query.period || null, req.query.moneda || 'EUR')));
-app.get('/api/cash-control', (req, res) => res.json(acc.cashControl(S(req), req.query.cont || '5311', req.query.period || null)));
-app.get('/api/notes', (req, res) => res.json(rep.notes(S(req), req.query.year || String(new Date().getFullYear()))));
 
 // ─────────────── Import extras bancar (CSV / MT940) ───────────────
 app.post('/api/bank/parse', upload.single('file'), (req, res) => {
@@ -1424,10 +1403,6 @@ app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
 }));
 // Validare pre-depunere + api/saft: src/routes/declarationsXml.js
 
-// ───────────────────────────── RAPOARTE (PDF) ─────────────────────────────
-app.get('/pdf/journal', (req, res) => pdf.journalPdf(res, S(req).company, acc.journal(S(req), req.query.period || null)));
-app.get('/pdf/ledger', (req, res) => pdf.ledgerPdf(res, S(req).company, acc.ledger(S(req), req.query.period || null), req.query.period || null));
-app.get('/pdf/balance', (req, res) => pdf.trialBalancePdf(res, S(req).company, acc.trialBalance(S(req), req.query.period || null)));
 // Situatii financiare + recapitulatii declaratii + registre (PDF/JSON): src/routes/reports.js
 require('./src/routes/reports')(app, { S });
 app.get('/pdf/assets', (req, res) => {
