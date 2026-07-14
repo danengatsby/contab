@@ -7,11 +7,15 @@ Două straturi, complementare:
 
 ## 1. Watchdog local (deja activ) — `scripts/healthcheck.sh`
 
-Rulează din cron la fiecare 5 minute (utilizatorul `dan`):
+Rulează din cron la fiecare 5 minute (utilizatorul `contab`, cel sub care rulează și pm2):
 
 ```
 */5 * * * * /usr/bin/bash /var/www/contab/scripts/healthcheck.sh
 ```
+
+Notă (migrarea serverului, iulie 2026): cât timp DNS-ul `contabo.space` nu arată încă
+spre serverul curent, cron-ul setează `CONTAB_HEALTH_URL=http://127.0.0.1:8080/api/health`;
+după mutarea DNS + nginx/TLS, scoate variabila ca watchdog-ul să verifice iar domeniul public.
 
 Ce face:
 - verifică `/api/health` (prin domeniul public → prinde și nginx/TLS căzut, nu doar node);
