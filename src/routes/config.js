@@ -86,7 +86,7 @@ module.exports = function register(app, ctx) {
   });
 
   // Cote fiscale configurabile (admin): CAS/CASS/impozit/TVA/profit/salariu minim etc.
-  app.get('/api/fiscal-config', requireAdmin, (req, res) => res.json({ current: fiscal.FISCAL, defaults: fiscal.DEFAULTS, custom: db.get().settings.fiscal || {} }));
+  app.get('/api/fiscal-config', requireAdmin, (req, res) => res.json({ current: fiscal.FISCAL, defaults: fiscal.DEFAULTS, custom: db.get().settings.fiscal || {}, vechime: fiscal.fiscalStaleness(new Date().getFullYear()) }));
   app.post('/api/fiscal-config', requireAdmin, (req, res) => {
     const d = db.get();
     const b = req.body || {};

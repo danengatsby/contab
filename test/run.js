@@ -1168,6 +1168,14 @@ fcfg.applyConfig({ cas: 'abc' });
 eq('suprascriere invalida -> revine la default (25)', fcfg.FISCAL.cas, 25);
 fcfg.applyConfig({});
 eq('reset complet: payroll CAS din nou 1250', fcfg.payroll(5000, 0, {}).cas, 1250);
+// Vechimea cotelor: semnal cand anul calendaristic depaseste anul de referinta al cotelor.
+const anRef = fcfg.FISCAL.an;
+eq('an de referinta al cotelor este setat', typeof anRef === 'number' && anRef > 0, true);
+eq('acelasi an -> cote la zi (nu stale)', fcfg.fiscalStaleness(anRef).stale, false);
+eq('an anterior -> nu e stale', fcfg.fiscalStaleness(anRef - 1).stale, false);
+eq('an ulterior -> stale (cote potential expirate)', fcfg.fiscalStaleness(anRef + 1).stale, true);
+eq('vechime expune an + anCurent', fcfg.fiscalStaleness(anRef + 2).anCurent, anRef + 2);
+eq('an lipsa (0) -> nu declara stale', fcfg.fiscalStaleness(0).stale, false);
 
 section('Avize si facturi simplificate');
 const avL = gt2('aviz_livrare').build({ baza: 1000, tva: 210, cota: 21 });

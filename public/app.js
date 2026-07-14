@@ -661,6 +661,14 @@ async function renderFiscal() {
   let c; try { c = await api('/api/fiscal-config'); } catch (e) { return; }
   const f = $('#fiscalForm');
   Object.keys(c.current || {}).forEach((k) => { if (f[k]) f[k].value = c.current[k]; });
+  // Semnal de vechime: cotele implicite sunt fixate pentru un an fiscal si trebuie revizuite la lege.
+  const vn = $('#fiscalVechime');
+  if (vn) {
+    const v = c.vechime || {};
+    vn.innerHTML = v.stale
+      ? `<div class="warnbox"><span class="wi">⚠️</span><div>Cotele sunt configurate pentru anul <b>${v.an}</b>, dar anul curent este <b>${v.anCurent}</b>. Verifică modificările legislative și actualizează cotele afectate — calculele folosesc valorile de mai jos ca atare.</div></div>`
+      : (v.an ? `<p class="muted">Cote de referință: anul fiscal <b>${v.an}</b>.</p>` : '');
+  }
 }
 $('#fiscalForm') && $('#fiscalForm').addEventListener('submit', async (e) => {
   e.preventDefault();

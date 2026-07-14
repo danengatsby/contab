@@ -47,6 +47,18 @@ function applyConfig(cfg) {
   return FISCAL;
 }
 
+/**
+ * Vechimea cotelor: cotele implicite sunt fixate pentru un an fiscal (`FISCAL.an`) si trebuie
+ * revizuite manual la modificari legislative. Semnaleaza cand anul calendaristic a depasit anul
+ * de referinta al cotelor — riscul principal al valorilor hardcodate. Functie pura (an dat).
+ * @returns {{ an:number, anCurent:number, stale:boolean }}
+ */
+function fiscalStaleness(anCurent) {
+  const cur = Number(anCurent) || 0;
+  const ref = Number(FISCAL.an) || 0;
+  return { an: ref, anCurent: cur, stale: !!(cur && ref && cur > ref) };
+}
+
 // Procentele MAXIME ale deducerii personale de baza (la nivelul salariului minim),
 // dupa numarul de persoane in intretinere: 0, 1, 2, 3, 4+ (art. 77 Cod fiscal, Legea 34/2023).
 const DP_PCT_MAX = [20, 25, 30, 35, 45];
@@ -156,4 +168,4 @@ function taxePfa(venitNet, opts) {
   return { venitNet: vn, salariuMinim: sm, plafon6: p6, plafon12: p12, plafon24: p24, plafon60: p60, bazaCas, cas, bazaCass, cass, impozit, total: round2(cas + cass + impozit) };
 }
 
-module.exports = { FISCAL, DEFAULTS, applyConfig, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa };
+module.exports = { FISCAL, DEFAULTS, applyConfig, fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa };
