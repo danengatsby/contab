@@ -65,7 +65,7 @@ Serverul ascultă implicit pe `0.0.0.0` (toate interfețele), deci este accesibi
 
 ```bash
 PORT=8080 HOST=0.0.0.0 node server.js
-# → http://161.97.152.82:8080
+# → http://159.69.200.202:8080
 ```
 
 Pentru ca accesul din exterior să funcționeze, portul trebuie deschis în
@@ -82,7 +82,7 @@ deja `nginx` pe portul 80. Adaugă un reverse proxy către aplicație:
 # /etc/nginx/sites-available/contab  (apoi: ln -s ... sites-enabled && nginx -t && systemctl reload nginx)
 server {
     listen 80;
-    server_name 161.97.152.82;   # sau domeniul tău
+    server_name 159.69.200.202;   # sau domeniul tău
     client_max_body_size 25m;     # pentru upload de PDF-uri
     location / { proxy_pass http://127.0.0.1:8080; proxy_set_header Host $host; }
 }
@@ -334,7 +334,7 @@ mediul (test/prod), CIF, `client_id`, `client_secret` și `redirect_uri` (înreg
 SPV), apoi „Conectează” (autorizare cu certificat digital pe logincert.anaf.ro). După
 conectare, fiecare factură emisă are butonul **„trimite SPV”** (upload UBL) și
 **„SPV: <stare>”** (verificare `stareMesaj`). Tokenul se reîmprospătează automat.
-`redirect_uri` trebuie să fie accesibil public (ex: `http://161.97.152.82:8080/api/anaf/callback`).
+`redirect_uri` trebuie să fie accesibil public (ex: `http://159.69.200.202:8080/api/anaf/callback`).
 
 **Recipisă + acceptare:** după trimitere, „SPV: <stare>” interoghează `stareMesaj`; când
 starea e `ok` factura e marcată **acceptată** și apare butonul **„recipisă”** care descarcă
