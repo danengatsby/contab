@@ -2911,8 +2911,12 @@ async function previewProfitTax() {
   try {
     const p = await api('/api/profit-tax-preview?' + ptQuery());
     if ($('#ptPierdere') && $('#ptPierdere').value === '') $('#ptPierdere').placeholder = 'auto: ' + fmt(p.pierdereReportata) + ' (din anul precedent)';
+    // Plafonul de 70% (Legea 296/2023) chiar limitează recuperarea când pierderea reportată depășește limita.
+    const plafonat = p.plafonReportarePct < 100 && p.pierdereRecuperabilaMax != null && p.pierdereReportata > p.pierdereRecuperabilaMax && p.pierdereRecuperabilaMax > 0;
     const adj = `Profit contabil (venituri − cheltuieli): <b>${fmt(p.profitContabil)}</b>\n+ Nedeductibile: <b>${fmt(p.cheltNedeductibile)}</b> · − Deduceri: <b>${fmt(p.deduceri)}</b> · − Pierdere reportată folosită: <b>${fmt(p.pierdereFolosita)}</b>\n`;
-    $('#ptPreview').innerHTML = adj + `──────────\nProfit impozabil: <b>${fmt(p.profitImpozabil)}</b> × ${p.cota}% = Impozit: <b>${fmt(p.impozit)}</b> lei`
+    $('#ptPreview').innerHTML = adj
+      + (plafonat ? `<span class="muted">Pierderea recuperabilă e plafonată la ${p.plafonReportarePct}% din profitul impozabil (max ${fmt(p.pierdereRecuperabilaMax)}) — Legea 296/2023.</span>\n` : '')
+      + `──────────\nProfit impozabil: <b>${fmt(p.profitImpozabil)}</b> × ${p.cota}% = Impozit: <b>${fmt(p.impozit)}</b> lei`
       + (p.impozit > 0 ? ` → <span class="pd">691</span> = <span class="pc">4411</span>` : ' (pierdere/zero — niciun impozit)')
       + (p.pierdereDeReportat > 0 ? `\n⚠ Pierdere fiscală de reportat în anii următori: <b>${fmt(p.pierdereDeReportat)}</b> lei` : '');
   } catch (e) { /* ignora */ }

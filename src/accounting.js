@@ -232,12 +232,22 @@ function annualClosing(db, year) {
   return { lines: [...linesVen, ...linesChelt], totalVen, totalChelt, rezultat };
 }
 
+// Plafonul de recuperare a pierderii fiscale (Legea 296/2023): din anul fiscal 2024, pierderea
+// reportata se recupereaza in limita a 70% din profitul impozabil al anului; pentru anii <= 2023
+// se pastreaza regimul vechi (100%). Plafonul se aplica dupa ANUL recuperarii, deci norma
+// tranzitorie il extinde si asupra pierderilor pre-2024 ramase de recuperat dupa 31.12.2023.
+const CAP_PIERDERE_AN = 2024;
+const CAP_PIERDERE_PCT = 70;
+
 /**
  * Impozitul pe profit pentru un an, cu ajustari fiscale:
  *   profit impozabil = profit contabil + cheltuieli nedeductibile − deduceri − pierdere fiscala reportata
  *   impozit = max(0, profit impozabil) × cota%   →   691 = 4411
- * Pierderea fiscala reportata reduce baza doar pana la 0; restul + pierderea anului curent se reporteaza.
- * `opts` = { cota, cheltNedeductibile, deduceri, pierdereReportata } (sau un numar = cota, pentru compat.).
+ * Pierderea reportata reduce baza pana la 0 (regim vechi, <= 2023) sau doar pana la limita de 70%
+ * din profitul impozabil (Legea 296/2023, de la anul fiscal 2024). Restul neacoperit + pierderea
+ * anului curent se reporteaza mai departe.
+ * `opts` = { cota, cheltNedeductibile, deduceri, pierdereReportata, pierdereRecuperabilaPct }
+ * (sau un numar = cota, pentru compat.). `pierdereRecuperabilaPct` suprascrie plafonul de 70%.
  */
 function profitTax(db, year, opts) {
   opts = (typeof opts === 'number') ? { cota: opts } : (opts || {});
@@ -256,13 +266,18 @@ function profitTax(db, year, opts) {
   }
   const profitContabil = round2(venit - chelt);
   const bazaInainteReportare = round2(profitContabil + nedeductibile - deduceri);
-  const pierdereFolosita = bazaInainteReportare > 0 ? round2(Math.min(bazaInainteReportare, pierdereReportata)) : 0;
+  // Plafonul de 70% (configurabil) se aplica doar pentru anii fiscali >= 2024; altfel recuperare 100%.
+  const capPct = (opts.pierdereRecuperabilaPct != null && Number.isFinite(Number(opts.pierdereRecuperabilaPct)))
+    ? Number(opts.pierdereRecuperabilaPct) : CAP_PIERDERE_PCT;
+  const plafonReportarePct = Number(year) >= CAP_PIERDERE_AN ? capPct : 100;
+  const pierdereRecuperabilaMax = bazaInainteReportare > 0 ? round2(bazaInainteReportare * plafonReportarePct / 100) : 0;
+  const pierdereFolosita = bazaInainteReportare > 0 ? round2(Math.min(pierdereReportata, pierdereRecuperabilaMax)) : 0;
   const profitImpozabil = round2(bazaInainteReportare - pierdereFolosita);
   const impozit = profitImpozabil > 0 ? round2(profitImpozabil * cota / 100) : 0;
   const pierdereCurenta = bazaInainteReportare < 0 ? round2(-bazaInainteReportare) : 0;
   const pierdereDeReportat = round2(pierdereReportata - pierdereFolosita + pierdereCurenta);
   const lines = impozit > 0 ? [{ debit: '691', credit: '4411', suma: impozit, explicatie: 'Impozit pe profit (' + cota + '%)' }] : [];
-  return { year: String(year), venit, chelt, profitContabil, cheltNedeductibile: nedeductibile, deduceri, pierdereReportata, pierdereFolosita, profitImpozabil, cota, impozit, pierdereCurenta, pierdereDeReportat, lines };
+  return { year: String(year), venit, chelt, profitContabil, cheltNedeductibile: nedeductibile, deduceri, pierdereReportata, plafonReportarePct, pierdereRecuperabilaMax, pierdereFolosita, profitImpozabil, cota, impozit, pierdereCurenta, pierdereDeReportat, lines };
 }
 
 /**

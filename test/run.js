@@ -1119,12 +1119,27 @@ eq('impozit = 4500 × 16% = 720', ptAdj.impozit, 720);
 const ptAdj2 = acc.profitTax({ entries: ptAdjEnt }, '2026', { cota: 16, pierdereReportata: 2000 });
 eq('pierdere reportata 2000 -> profit impozabil 2000', ptAdj2.profitImpozabil, 2000);
 eq('impozit = 320, pierdere de reportat = 0', ptAdj2.impozit, 320);
+// Plafonul de 70% la recuperarea pierderii (Legea 296/2023), aplicabil din anul fiscal 2024.
 const ptAdj3 = acc.profitTax({ entries: ptAdjEnt }, '2026', { cota: 16, pierdereReportata: 5000 });
-eq('pierdere 5000 > profit 4000 -> impozit 0', ptAdj3.impozit, 0);
-eq('pierdere folosita 4000 (doar pana la 0)', ptAdj3.pierdereFolosita, 4000);
-eq('pierdere de reportat ramasa = 1000', ptAdj3.pierdereDeReportat, 1000);
+eq('2026: pierdere recuperabila plafonata la 70% din 4000 = 2800', ptAdj3.pierdereFolosita, 2800);
+eq('2026: profit impozabil = 4000 − 2800 = 1200', ptAdj3.profitImpozabil, 1200);
+eq('2026: impozit = 1200 × 16% = 192 (nu 0, plafonul lasa 30% impozabil)', ptAdj3.impozit, 192);
+eq('2026: pierdere de reportat = 5000 − 2800 = 2200', ptAdj3.pierdereDeReportat, 2200);
+eq('2026: plafonReportarePct expus = 70', ptAdj3.plafonReportarePct, 70);
+// Sub plafon: o pierdere mai mica decat 70% din baza se foloseste integral (fara efect de plafon).
+const ptCapSub = acc.profitTax({ entries: ptAdjEnt }, '2026', { cota: 16, pierdereReportata: 2000 });
+eq('2026: pierdere 2000 < plafon 2800 -> folosita integral', ptCapSub.pierdereFolosita, 2000);
+eq('2026: profit impozabil 2000, impozit 320', ptCapSub.impozit, 320);
+// Regim vechi pentru anii fiscali <= 2023: recuperare 100% (pana la baza).
+const ptOld = acc.profitTax({ entries: [{ id: '1', period: '2023-03', data: '2023-03-01', lines: [{ debit: '4111', credit: '707', suma: 10000 }] }, { id: '2', period: '2023-04', data: '2023-04-01', lines: [{ debit: '607', credit: '371', suma: 6000 }] }] }, '2023', { cota: 16, pierdereReportata: 5000 });
+eq('2023: regim vechi -> pierdere recuperata 100% pana la baza (4000)', ptOld.pierdereFolosita, 4000);
+eq('2023: profit impozabil 0 -> impozit 0', ptOld.impozit, 0);
+eq('2023: plafonReportarePct expus = 100', ptOld.plafonReportarePct, 100);
+// Suprascriere manuala a plafonului (opts.pierdereRecuperabilaPct).
+const ptOverride = acc.profitTax({ entries: ptAdjEnt }, '2026', { cota: 16, pierdereReportata: 5000, pierdereRecuperabilaPct: 100 });
+eq('2026 + override 100% -> pierdere folosita 4000 (ca regimul vechi)', ptOverride.pierdereFolosita, 4000);
 const ptLossYr = acc.profitTax({ entries: [{ id: '1', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 3000 }] }, { id: '2', period: '2026-04', data: '2026-04-01', lines: [{ debit: '607', credit: '371', suma: 8000 }] }] }, '2026', { cota: 16, pierdereReportata: 1000 });
-eq('an pe pierdere -> impozit 0', ptLossYr.impozit, 0);
+eq('an pe pierdere -> impozit 0 (plafonul nu se aplica pe baza negativa)', ptLossYr.impozit, 0);
 eq('pierdere curenta 5000 + reportata 1000 = 6000 de reportat', ptLossYr.pierdereDeReportat, 6000);
 
 section('Productie (consum materiale + obtinere produse finite)');
