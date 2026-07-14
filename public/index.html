@@ -450,18 +450,23 @@
       <div class="grid2">
         <div class="card">
           <h2>Emite un document de ieșire</h2>
-          <p class="muted">Alege ce emiți: se deschide formularul de mai sus (pasul 2) cu tipul potrivit, completezi și salvezi. Facturile emise se descarcă apoi ca <b>e-Factura (XML)</b> sau PDF din „Înregistrări recente”.</p>
-          <div class="emitgrid">
-            <button class="btn primary emit" data-tip="factura_vanzare_marfuri">＋ Factură vânzare mărfuri</button>
-            <button class="btn emit" data-tip="factura_vanzare_produse">Factură produse</button>
-            <button class="btn emit" data-tip="factura_vanzare_servicii">Factură servicii</button>
-            <button class="btn emit" data-tip="factura_storno_vanzare">Storno vânzare</button>
-            <button class="btn emit" data-tip="bon_fiscal_z">Bon fiscal / Raport Z</button>
-            <button class="btn emit" data-tip="factura_simplificata">Factură simplificată</button>
-            <button class="btn emit" data-tip="aviz_livrare">Aviz de livrare</button>
-            <button class="btn emit" data-tip="facturare_aviz">Facturează aviz</button>
-            <button class="btn emit" data-tip="livrare_intracomunitara">Livrare intracom.</button>
+          <p class="muted">Spune în cuvinte simple <b>ce vinzi</b> — aplicația alege singură tipul contabil potrivit și deschide formularul (pasul 2). Facturile emise se descarcă apoi ca <b>e-Factura (XML)</b> sau PDF din „Înregistrări recente”.</p>
+          <div class="emitgrid guided">
+            <button class="btn emit emit-guided" data-tip="factura_vanzare_marfuri"><span class="gt">🛒 Marfă cumpărată</span><span class="gd">Produse pe care le cumperi și le revinzi ca atare (comerț, magazin).</span></button>
+            <button class="btn emit emit-guided" data-tip="factura_vanzare_produse"><span class="gt">🏭 Produs făcut de tine</span><span class="gd">Bunuri pe care le fabrici sau le produci tu (producție).</span></button>
+            <button class="btn emit emit-guided" data-tip="factura_vanzare_servicii"><span class="gt">🧰 Serviciu / manoperă</span><span class="gd">Muncă, consultanță, reparații, abonamente — fără marfă fizică.</span></button>
           </div>
+          <details class="emit-more">
+            <summary>Alte tipuri de documente (storno, bon fiscal, aviz, factură simplificată, livrare intracom.)</summary>
+            <div class="emitgrid">
+              <button class="btn emit" data-tip="factura_storno_vanzare">Storno vânzare</button>
+              <button class="btn emit" data-tip="bon_fiscal_z">Bon fiscal / Raport Z</button>
+              <button class="btn emit" data-tip="factura_simplificata">Factură simplificată</button>
+              <button class="btn emit" data-tip="aviz_livrare">Aviz de livrare</button>
+              <button class="btn emit" data-tip="facturare_aviz">Facturează aviz</button>
+              <button class="btn emit" data-tip="livrare_intracomunitara">Livrare intracom.</button>
+            </div>
+          </details>
         </div>
         <div class="card">
           <h2>Rapoarte generate automat</h2>
