@@ -213,7 +213,7 @@
         <button class="navlabel" type="button">🧾 Taxe</button>
         <div class="navmenu">
           <button data-tab="tva">TVA de plată (decont)</button>
-          <button data-tab="livrabile">Declarații ANAF (D112, SAF-T)</button>
+          <button data-tab="livrabile">Declarații ANAF (<abbr title="Declarația privind contribuțiile sociale și impozitul pe salarii">D112</abbr>, <abbr title="Standard Audit File for Tax — declarația D406 cu datele contabile detaliate">SAF-T</abbr>)</button>
         </div>
       </div>
       <div class="navgroup">
@@ -281,7 +281,7 @@
           <button class="qa out" data-go="documente" data-scroll="band-iesire"><span class="ic">📤</span><span class="t">Emite factură</span><span class="d">Factură către client + e-Factura</span></button>
           <button class="qa" data-go="cashbook"><span class="ic">🏦</span><span class="t">Bancă / Casă</span><span class="d">Încasări, plăți, extras bancar</span></button>
           <button class="qa adv" data-go="balanta"><span class="ic">⚖️</span><span class="t">Vezi balanța</span><span class="d">Soldurile tuturor conturilor</span></button>
-          <button class="qa" data-go="tva"><span class="ic">🧾</span><span class="t">Decont TVA</span><span class="d">D300 / D394 pe perioadă</span></button>
+          <button class="qa" data-go="tva"><span class="ic">🧾</span><span class="t">Decont TVA</span><span class="d"><abbr title="Decontul de TVA (lunar sau trimestrial)">D300</abbr> / <abbr title="Declarația informativă privind livrările și achizițiile pe teritoriul României">D394</abbr> pe perioadă</span></button>
           <button class="qa" data-go="ghid"><span class="ic">📖</span><span class="t">Ghid de folosire</span><span class="d">Cum lucrezi, pas cu pas</span></button>
         </div>
       </div>
@@ -359,7 +359,7 @@
     <section id="tab-documente" class="tab">
       <div class="cyclemap" data-step="documente"></div>
       <div class="explain"><span class="ei">📥</span><p><b>Primul pas:</b> aici aduci documentele în firmă. <b>Primite</b> (de la furnizori) — le încarci, aplicația le citește. <b>Emise</b> (de tine, către clienți) — le creezi mai jos. Din ele se construiește automat tot restul contabilității.</p></div>
-      <div class="docband intrare" id="band-intrare"><b>📥 Documente de INTRARE</b><small>primite de la furnizori / bancă / SPV — le încarci, aplicația extrage datele și le contabilizează</small></div>
+      <div class="docband intrare" id="band-intrare"><b>📥 Documente de INTRARE</b><small>primite de la furnizori / bancă / <abbr title="Spațiul Privat Virtual — portalul ANAF unde se depun declarațiile și circulă e-Factura">SPV</abbr> — le încarci, aplicația extrage datele și le contabilizează</small></div>
       <div class="grid2">
         <div class="card">
           <h2>1 · Încarcă documentul primit (PDF sau imagine)</h2>
@@ -407,7 +407,7 @@
       </div>
 
       <div class="card">
-        <h2>Import extras bancar (CSV / MT940)</h2>
+        <h2>Import extras bancar (CSV / <abbr title="Format standard de extras bancar (SWIFT), exportat de aplicațiile bancare">MT940</abbr>)</h2>
         <p class="muted">Încarcă extrasul bancar; aplicația citește tranzacțiile, potrivește partenerul după descriere și propune încasări/plăți care alimentează reconcilierea.</p>
         <input type="file" id="bankFile" accept=".csv,.txt,.sta,.mt940" />
         <div id="bankStatus" class="status"></div>
@@ -417,7 +417,7 @@
 
       <div class="card">
         <div class="card-head">
-          <h2>Facturi primite în SPV</h2>
+          <h2>Facturi primite în <abbr title="Spațiul Privat Virtual — portalul ANAF unde se depun declarațiile și circulă e-Factura">SPV</abbr></h2>
           <button id="inboxRefresh" class="btn small">⟳ Reîmprospătează</button>
         </div>
         <p class="muted">Importă facturile primite prin e-Factura: descarcă XML-ul, îl citește și deschide formularul de confirmare ca o cumpărare.</p>
@@ -476,14 +476,15 @@
             <a data-go="balanta">⚖️ Solduri conturi (balanță)</a>
             <a data-go="jurnal">📘 Toate operațiunile (jurnal)</a>
             <a data-go="carte">📗 Fișa fiecărui cont (cartea mare)</a>
-            <a data-go="tva">🧾 TVA de plată (D300 / D394)</a>
-            <a data-go="livrabile">📦 Declarații ANAF (D112, SAF-T)</a>
+            <a data-go="tva">🧾 TVA de plată (<abbr title="Decontul de TVA (lunar sau trimestrial)">D300</abbr> / <abbr title="Declarația informativă privind livrările și achizițiile pe teritoriul României">D394</abbr>)</a>
+            <a data-go="livrabile">📦 Declarații ANAF (<abbr title="Declarația privind contribuțiile sociale și impozitul pe salarii">D112</abbr>, <abbr title="Standard Audit File for Tax — declarația D406 cu datele contabile detaliate">SAF-T</abbr>)</a>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="toolbar" style="margin-bottom:8px"><h2 style="margin:0">🔁 Facturi recurente</h2><div class="spacer"></div><span class="muted">facturi care se repetă: chirie, abonament, mentenanță…</span></div>
+        <details class="rec-more">
+        <summary><span class="rec-sum-t">🔁 Facturi recurente</span> <span class="muted">— pentru facturi care se repetă (chirie, abonament, mentenanță). Opțional — apasă pentru a configura.</span></summary>
         <p class="muted">Definești o dată șablonul, apoi în fiecare lună apeși <b>„Generează"</b> și factura se creează automat (cu data și contabilizarea potrivite).</p>
         <form id="recForm" class="dyn">
           <label class="full">Tip document <select id="recTip" name="tip"></select></label>
@@ -503,6 +504,7 @@
           <button id="recGenBtn" class="btn primary" type="button">▶ Generează facturile scadente</button>
           <span id="recGenStatus" class="muted"></span>
         </div>
+        </details>
       </div>
 
       <div class="card">
@@ -661,7 +663,7 @@
         <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică cu un contabil înainte de depunerea în SPV.
       </div></div>
       <div class="toolbar">
-        <h2>TVA de plată <span class="muted" style="font-weight:400">(decont D300 / D394)</span></h2>
+        <h2>TVA de plată <span class="muted" style="font-weight:400">(decont <abbr title="Decontul de TVA (lunar sau trimestrial)">D300</abbr> / <abbr title="Declarația informativă privind livrările și achizițiile pe teritoriul României">D394</abbr>)</span></h2>
         <div class="spacer"></div>
         <select id="tvaLuna" class="period luna" aria-label="Luna"></select>
         <select id="tvaAn" class="period an" aria-label="Anul"></select>

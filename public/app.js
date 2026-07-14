@@ -1906,18 +1906,21 @@ $('#opWizard') && $('#opWizard').addEventListener('click', (e) => { if (e.target
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#opWizard').classList.contains('hidden')) closeWizard(); });
 
 // Harta ciclului contabil — afisata in capul ecranelor din ciclu, cu pasul curent evidentiat
+// Pasii marcati `adv` sunt tehnic-contabili si duc spre taburi ascunse in modul simplu; ei
+// (si sagetile lor) primesc clasa `adv`, deci `.simple-ui .adv` ii ascunde — in modul simplu
+// bara ramane „Documente → Declarații", fara jargon.
 const CYCLE = [
   { go: 'documente', ic: '📥', t: 'Documente' },
-  { go: 'jurnal', ic: '📘', t: 'Operațiuni' },
-  { go: 'carte', ic: '📗', t: 'Fișe conturi' },
-  { go: 'balanta', ic: '⚖️', t: 'Solduri' },
-  { go: 'inchideri', ic: '🔒', t: 'Închideri' },
+  { go: 'jurnal', ic: '📘', t: 'Operațiuni', adv: true },
+  { go: 'carte', ic: '📗', t: 'Fișe conturi', adv: true },
+  { go: 'balanta', ic: '⚖️', t: 'Solduri', adv: true },
+  { go: 'inchideri', ic: '🔒', t: 'Închideri', adv: true },
   { go: 'livrabile', ic: '📤', t: 'Declarații' },
 ];
 $$('.cyclemap').forEach((m) => {
   const cur = m.dataset.step;
   m.innerHTML = CYCLE.map((s, i) =>
-    `${i ? '<span class="cyclearrow" aria-hidden="true">→</span>' : ''}<button class="cyclestep${s.go === cur ? ' active' : ''}" data-go="${s.go}"${s.go === cur ? ' aria-current="page"' : ''}><span class="ci" aria-hidden="true">${s.ic}</span>${s.t}</button>`
+    `${i ? `<span class="cyclearrow${s.adv ? ' adv' : ''}" aria-hidden="true">→</span>` : ''}<button class="cyclestep${s.adv ? ' adv' : ''}${s.go === cur ? ' active' : ''}" data-go="${s.go}"${s.go === cur ? ' aria-current="page"' : ''}><span class="ci" aria-hidden="true">${s.ic}</span>${s.t}</button>`
   ).join('');
   m.querySelectorAll('.cyclestep').forEach((b) => b.addEventListener('click', () => goTab(b.dataset.go)));
 });

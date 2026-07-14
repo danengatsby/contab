@@ -241,6 +241,16 @@ body.dark .stoc-editor{background:#121a2b}
 .emit-guided .gd{font-size:12px;font-weight:400;color:var(--muted);white-space:normal;line-height:1.35}
 .emit-more{margin-top:12px}
 .emit-more>summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;padding:4px 0}
+/* Facturi recurente: colapsat implicit, ca fluxul principal de emitere sa fie proeminent */
+.rec-more>summary{cursor:pointer;padding:2px 0;list-style:none}
+.rec-more>summary::-webkit-details-marker{display:none}
+.rec-more>summary .rec-sum-t{font-weight:800;font-size:17px;color:var(--ink)}
+.rec-more>summary::before{content:"▸ ";color:var(--muted)}
+.rec-more[open]>summary::before{content:"▾ "}
+/* Colapsare deterministica: ascunde continutul cand e inchis, chiar daca .dyn (display:grid) ar invinge regula UA */
+.rec-more:not([open])>*:not(summary){display:none!important}
+/* Abrevieri fiscale: subliniere punctata + cursor de ajutor -> hover arata explicatia */
+abbr[title]{text-decoration:underline dotted;text-underline-offset:2px;cursor:help;text-decoration-thickness:1px}
 .linklist a{display:block;padding:7px 0;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:700}
 .linklist a:hover{color:var(--accent)}
 .linklist a:last-child{border-bottom:0}
