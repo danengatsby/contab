@@ -25,18 +25,13 @@ const { typesForClient, getType } = require('./src/documentTypes');
 const ai = require('./src/aiExtractor');
 const acc = require('./src/accounting');
 const stmt = require('./src/statements');
-const bank = require('./src/bank');
 const fiscal = require('./src/fiscal');
-const xml = require('./src/xml');
 const saft = require('./src/saft');
 const assets = require('./src/assets');
 const stocks = require('./src/stocks');
 const { statePlata } = require('./src/payroll'); // registruSalarii + rutele de salarizare: src/routes/payroll.js
 const { leasingSchedule } = require('./src/leasing');
-const { toCsv, parseCsv } = require('./src/csv');
-const xlsx = require('./src/xlsx');
-const xls = require('./src/xls');
-const dbf = require('./src/dbf');
+const { parseCsv } = require('./src/csv');
 const anaf = require('./src/anaf');
 const authlib = require('./src/auth');
 const totp = require('./src/totp');
@@ -905,102 +900,8 @@ app.post('/api/fiscal-config', requireAdmin, (req, res) => {
   res.json({ ok: true, current: fiscal.FISCAL });
 });
 
-app.get('/api/partners', (req, res) => res.json(S(req).partners));
-app.post('/api/partners', (req, res) => {
-  const p = req.body || {};
-  const key = String(p.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
-  if (!key) return res.status(400).json({ error: 'CUI lipsa.' });
-  const d = db.get();
-  const fid = activeId(req);
-  d.partners[fid] = d.partners[fid] || {};
-  const prev = d.partners[fid][key] || {};
-  d.partners[fid][key] = {
-    cui: key, den: p.den || '', adresa: p.adresa || '', oras: p.oras || '',
-    judet: p.judet || '', tara: p.tara || 'RO', tip: p.tip != null ? p.tip : (prev.tip || ''),
-  };
-  db.save();
-  res.json({ ok: true, partner: d.partners[fid][key] });
-});
-// Import parteneri din CSV: coloane CUI;Denumire;Adresa;Oras;Judet;Tara (header optional)
-// Conversie XLSX (Excel modern) / DBF (dBASE-FoxPro) -> CSV, pentru fluxurile de import (parteneri, conturi, produse).
-app.post('/api/xlsx-to-csv', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
-  let rows;
-  try {
-    const data = fs.readFileSync(req.file.path);
-    const name = req.file.originalname || '';
-    const isXlsx = (data.length > 1 && data[0] === 0x50 && data[1] === 0x4B) || /\.xlsx$/i.test(name); // "PK" -> zip
-    const isXls = (data.length > 1 && data[0] === 0xD0 && data[1] === 0xCF) || /\.xls$/i.test(name);   // OLE compound -> Excel vechi
-    const isDbf = /\.dbf$/i.test(name) || [0x03, 0x04, 0x05, 0x30, 0x31, 0x32, 0x83, 0x8b, 0xf5, 0xfb].includes(data[0]);
-    rows = isXlsx ? xlsx.parseXlsx(data) : isXls ? xls.parseXls(data) : isDbf ? dbf.parseDbf(data) : xlsx.parseXlsx(data);
-  } catch (e) { try { fs.unlinkSync(req.file.path); } catch (_) { /* */ } return res.status(400).json({ error: e.message }); }
-  try { fs.unlinkSync(req.file.path); } catch (_) { /* */ }
-  if (!rows.length) return res.status(400).json({ error: 'Fisierul este gol sau nerecunoscut.' });
-  res.json({ ok: true, rows: rows.length, csv: toCsv(rows[0], rows.slice(1)) });
-});
-app.post('/api/partners/import', (req, res) => {
-  const rows = parseCsv((req.body || {}).csv || '');
-  if (!rows.length) return res.status(400).json({ error: 'CSV gol sau invalid.' });
-  // sare peste randul de antet daca prima celula nu pare un CUI
-  let start = 0;
-  if (/cui|cod|denumire/i.test((rows[0][0] || '') + (rows[0][1] || ''))) start = 1;
-  const d = db.get();
-  const fid = activeId(req);
-  d.partners[fid] = d.partners[fid] || {};
-  let importati = 0; const erori = [];
-  for (let i = start; i < rows.length; i++) {
-    const r = rows[i];
-    const key = String(r[0] || '').replace(/^ro/i, '').replace(/\s/g, '');
-    if (!key) { erori.push('rand ' + (i + 1) + ': CUI lipsa'); continue; }
-    d.partners[fid][key] = { cui: key, den: r[1] || '', adresa: r[2] || '', oras: r[3] || '', judet: r[4] || '', tara: r[5] || 'RO', tip: (r[6] || '').toLowerCase().trim() };
-    importati += 1;
-  }
-  logAudit('partners.import', importati + ' parteneri', { req });
-  db.save();
-  res.json({ ok: true, importati, erori });
-});
-
-app.get('/api/opening-analytic', (req, res) => res.json(S(req).openingAnalytic));
-app.post('/api/opening-analytic', (req, res) => {
-  const b = req.body || {};
-  if (!b.cont) return res.status(400).json({ error: 'Lipseste contul.' });
-  const d = db.get();
-  const fid = activeId(req);
-  d.openingAnalytic = d.openingAnalytic || [];
-  const key = (p) => p.firmaId + '|' + p.cont + '|' + String(p.cui || p.partener || '').toUpperCase().replace(/^RO/i, '').replace(/\s/g, '');
-  const rec = { firmaId: fid, cont: String(b.cont), partener: b.partener || '', cui: b.cui || '', d: round2(parseFloat(b.d) || 0), c: round2(parseFloat(b.c) || 0) };
-  const i = d.openingAnalytic.findIndex((x) => key(x) === key(rec));
-  if (i >= 0) d.openingAnalytic[i] = rec; else d.openingAnalytic.push(rec);
-  db.save();
-  res.json({ ok: true, openingAnalytic: d.openingAnalytic.filter((o) => o.firmaId === fid) });
-});
-app.delete('/api/opening-analytic/:idx', (req, res) => {
-  const d = db.get();
-  const fid = activeId(req);
-  const list = d.openingAnalytic.filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === fid);
-  const rec = list[Number(req.params.idx)];
-  if (rec) { const gi = d.openingAnalytic.indexOf(rec); if (gi >= 0) d.openingAnalytic.splice(gi, 1); }
-  db.save();
-  res.json({ ok: true });
-});
-
-app.get('/api/opening', (req, res) => res.json(S(req).openingBalances));
-app.post('/api/opening', (req, res) => {
-  const d = db.get();
-  const ob = (req.body && req.body.openingBalances) ? req.body.openingBalances : {};
-  // Soldurile initiale trebuie sa fie echilibrate (total debit = total credit), altfel balanta
-  // nu se va inchide niciodata. Verificam inainte de salvare si respingem cu diferenta exacta.
-  let totD = 0; let totC = 0;
-  for (const cod of Object.keys(ob)) { totD = round2(totD + (Number(ob[cod] && ob[cod].d) || 0)); totC = round2(totC + (Number(ob[cod] && ob[cod].c) || 0)); }
-  const dif = round2(totD - totC);
-  if (Math.abs(dif) >= 0.005) {
-    return res.status(400).json({ error: 'Soldurile inițiale sunt dezechilibrate: total debit ' + totD + ' ≠ total credit ' + totC + ' (diferență ' + dif + '). Corectează-le înainte de salvare.', totalDebit: totD, totalCredit: totC, diferenta: dif });
-  }
-  d.openingBalances[activeId(req)] = ob;
-  logAudit('opening.set', 'solduri initiale (' + Object.keys(ob).length + ' conturi, echilibrat)', { req });
-  db.save();
-  res.json({ ok: true, totalDebit: totD, totalCredit: totC });
-});
+// Nomenclatoare (parteneri, import CSV, conversie XLSX/XLS/DBF) + solduri initiale: src/routes/partners.js
+require('./src/routes/partners')(app, { upload, S, activeId, logAudit });
 
 // Documente primare: upload (extragere AI/reguli locale), servire fisier, galerii primite/emise: src/routes/documents.js
 require('./src/routes/documents')(app, { upload, wrap, S, activeId, allowedFirme, logAudit });
@@ -1156,36 +1057,8 @@ require('./src/routes/dashboard')(app, { S, activeId, logAudit });
 // Evaluari si ajustari (buget, reevaluare valutara, provizion creante, scoatere din evidenta): src/routes/adjustments.js
 require('./src/routes/adjustments')(app, { S, activeId, logAudit });
 
-// ─────────────── Import extras bancar (CSV / MT940) ───────────────
-app.post('/api/bank/parse', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
-  const d = db.get();
-  const text = fs.readFileSync(req.file.path, 'utf8');
-  const transactions = bank.parseAndSuggest(S(req), text);
-  const docId = db.nextId('doc');
-  d.documents.push({ id: docId, firmaId: activeId(req), fileName: req.file.originalname, storedName: req.file.filename, uploadedAt: new Date().toISOString(), text: '' });
-  db.save();
-  res.json({ documentId: docId, count: transactions.length, transactions });
-});
-app.post('/api/bank/import', (req, res) => {
-  const { transactions, fileId } = req.body || {};
-  if (!Array.isArray(transactions)) return res.status(400).json({ error: 'Lipsesc tranzactiile.' });
-  const d = db.get();
-  const fid = activeId(req);
-  let created = 0; const errors = [];
-  for (const t of transactions) {
-    try { const e = buildEntry(t.tip, t.fields || {}, fileId || null, fid); d.entries.push(e); upsertPartner(fid, e); created++; }
-    catch (e) { errors.push(String(e.message || e)); }
-  }
-  db.save();
-  res.json({ ok: true, created, errors });
-});
-app.get('/api/efactura-list', (req, res) => {
-  const { period } = req.query;
-  let list = S(req).entries.filter((e) => xml.isEFacturaEligible(e));
-  if (period) list = list.filter((e) => (e.period || periodOf(e.data)) === period);
-  res.json(acc.sortEntries(list).map((e) => ({ id: e.id, data: e.data, document: e.document, partener: e.partener, partenerCui: e.partenerCui || '' })));
-});
+// Import extras bancar (CSV/MT940) + lista e-Factura eligibila: src/routes/bank.js
+require('./src/routes/bank')(app, { upload, S, activeId, buildEntry, upsertPartner });
 
 // ───────────────────────────── ANAF SPV ─────────────────────────────
 // ── Import e-Factura primita (UBL) ──
