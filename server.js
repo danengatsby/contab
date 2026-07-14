@@ -61,9 +61,12 @@ const billing = require('./src/billing');
 const QRCode = require('qrcode-svg');
 const { round2, period: periodOf } = require('./src/util');
 
-db.load();
-coa.addAccounts(db.get().customAccounts); // inregistreaza conturile personalizate importate
-fiscal.applyConfig(db.get().settings.fiscal); // aplica cotele fiscale configurate (peste valorile implicite)
+// Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
+// sa asculte (app.listen, la finalul fisierului) abia dupa ce baza e hidratata.
+const dbReady = Promise.resolve(db.load()).then(() => {
+  coa.addAccounts(db.get().customAccounts); // inregistreaza conturile personalizate importate
+  fiscal.applyConfig(db.get().settings.fiscal); // aplica cotele fiscale configurate (peste valorile implicite)
+});
 
 const app = express();
 app.set('trust proxy', true); // citeste X-Forwarded-Proto de la reverse proxy (pentru cookie Secure pe HTTPS)
@@ -2157,29 +2160,40 @@ process.on('exit', releaseDbLock);
 
 const PORT = process.env.PORT || 8080;
 const HOST = process.env.HOST || '0.0.0.0'; // asculta pe toate interfetele (acces din retea)
-const server = app.listen(PORT, HOST, () => {
-  console.log('Contabo ruleaza (asculta pe ' + HOST + ':' + PORT + ')');
-  console.log('  Local:  http://localhost:' + PORT);
-  const ifaces = os.networkInterfaces();
-  for (const name of Object.keys(ifaces)) {
-    for (const i of ifaces[name]) {
-      if (i.family === 'IPv4' && !i.internal) {
-        console.log('  Retea:  http://' + i.address + ':' + PORT);
+let server = null; // atribuit dupa hidratarea bazei (dbReady)
+dbReady.then(() => {
+  server = app.listen(PORT, HOST, () => {
+    console.log('Contabo ruleaza (asculta pe ' + HOST + ':' + PORT + ')');
+    console.log('  Local:  http://localhost:' + PORT);
+    const ifaces = os.networkInterfaces();
+    for (const name of Object.keys(ifaces)) {
+      for (const i of ifaces[name]) {
+        if (i.family === 'IPv4' && !i.internal) {
+          console.log('  Retea:  http://' + i.address + ':' + PORT);
+        }
       }
     }
-  }
+  });
+}).catch((e) => {
+  console.error('⛔ Pornire esuata — baza de date nu s-a putut incarca:', e.message);
+  releaseDbLock();
+  process.exit(1);
 });
 
 // Oprire curata (pm2 restart/stop trimite SIGINT): scrie oglinda JSON in asteptare,
-// inchide SQLite si opreste ascultarea; plasa de siguranta de 3s daca ceva atarna.
+// asteapta coada de scrieri (pg), inchide driverul si opreste ascultarea;
+// plasa de siguranta de 3s daca ceva atarna.
 let shuttingDown = false;
 function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   try { db.flushMirror(); } catch (_) { /* ignora */ }
-  if (db.DRIVER === 'sqlite') { try { require('./src/store').close(); } catch (_) { /* ignora */ } }
-  releaseDbLock();
-  server.close(() => process.exit(0));
+  Promise.resolve(db.flushStore()).catch(() => { /* ignora */ }).then(() => {
+    if (db.DRIVER === 'sqlite') { try { require('./src/store').close(); } catch (_) { /* ignora */ } }
+    if (db.DRIVER === 'pg') { try { require('./src/storePg').close(); } catch (_) { /* ignora */ } }
+    releaseDbLock();
+    if (server) server.close(() => process.exit(0)); else process.exit(0);
+  });
   setTimeout(() => process.exit(0), 3000).unref();
 }
 process.on('SIGINT', shutdown);

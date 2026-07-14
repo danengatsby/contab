@@ -57,10 +57,13 @@ function fullBackup(dbFile, dataDir, keep) {
   const zip = new AdmZip();
   if (fs.existsSync(dbFile)) zip.addLocalFile(dbFile, '', 'db.json');
 
-  // instantaneu SQLite — best-effort (db.json ramane autoritar pentru restaurare)
+  const driver = (process.env.CONTAB_DB_DRIVER || 'sqlite').toLowerCase();
+
+  // instantaneu SQLite — best-effort (db.json ramane autoritar pentru restaurare).
+  // Sarit pe driverul pg: un contab.sqlite ramas de la instalarea veche ar fi invechit.
   const sqliteFile = path.join(dataDir, 'contab.sqlite');
   let snap = null;
-  if (fs.existsSync(sqliteFile)) {
+  if (driver !== 'pg' && driver !== 'postgres' && fs.existsSync(sqliteFile)) {
     try {
       const { DatabaseSync } = require('node:sqlite');
       snap = path.join(dir, '.snapshot-' + ts + '.sqlite');
@@ -71,10 +74,26 @@ function fullBackup(dbFile, dataDir, keep) {
     } catch (_) { snap = null; }
   }
 
+  // dump nativ PostgreSQL — best-effort (db.json ramane autoritar pentru restaurare)
+  let pgDump = null;
+  if (driver === 'pg' || driver === 'postgres') {
+    try {
+      const { spawnSync } = require('child_process');
+      pgDump = path.join(dir, '.snapshot-' + ts + '.sql');
+      const args = process.env.CONTAB_PG_URL
+        ? ['--dbname=' + process.env.CONTAB_PG_URL, '-f', pgDump]
+        : ['-d', process.env.PGDATABASE || 'contab', '-f', pgDump];
+      const rc = spawnSync('pg_dump', args, { encoding: 'utf8', timeout: 5 * 60 * 1000 });
+      if (rc.status === 0 && fs.existsSync(pgDump)) zip.addLocalFile(pgDump, '', 'contab.sql');
+      else pgDump = null;
+    } catch (_) { pgDump = null; }
+  }
+
   const uploads = path.join(dataDir, 'uploads');
   if (fs.existsSync(uploads)) zip.addLocalFolder(uploads, 'uploads');
   zip.writeZip(path.join(dir, name));
   if (snap) { try { fs.unlinkSync(snap); } catch (_) { /* ignora */ } }
+  if (pgDump) { try { fs.unlinkSync(pgDump); } catch (_) { /* ignora */ } }
 
   // rotatie arhive complete
   const zips = fs.readdirSync(dir)

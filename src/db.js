@@ -7,16 +7,17 @@ const auth = require('./auth');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 
-// Driver de persistenta: 'sqlite' (implicit, relational) sau 'json' (vechi — rollback rapid).
-const DRIVER = (process.env.CONTAB_DB_DRIVER || 'sqlite').toLowerCase();
+// Driver de persistenta: 'pg'/'postgres' (PostgreSQL), 'sqlite' sau 'json' (vechi — rollback rapid).
+const DRIVER_RAW = (process.env.CONTAB_DB_DRIVER || 'sqlite').toLowerCase();
+const DRIVER = DRIVER_RAW === 'postgres' ? 'pg' : DRIVER_RAW;
 // Fisierul JSON ramane: oglinda pentru backup (cron) + rollback. Calea SQLite e derivata.
 const JSON_FILE = process.env.CONTAB_DB_FILE || path.join(DATA_DIR, 'db.json');
 const SQLITE_FILE = process.env.CONTAB_DB_FILE
   ? process.env.CONTAB_DB_FILE.replace(/\.json$/i, '') + '.sqlite'
   : path.join(DATA_DIR, 'contab.sqlite');
 // Oglinda JSON doar pe instalarea live (nu in teste, unde CONTAB_DB_FILE e setat).
-const JSON_MIRROR = DRIVER === 'sqlite' && !process.env.CONTAB_DB_FILE && process.env.CONTAB_JSON_MIRROR !== '0';
-const store = DRIVER === 'sqlite' ? require('./store') : null;
+const JSON_MIRROR = (DRIVER === 'sqlite' || DRIVER === 'pg') && !process.env.CONTAB_DB_FILE && process.env.CONTAB_JSON_MIRROR !== '0';
+const store = DRIVER === 'sqlite' ? require('./store') : DRIVER === 'pg' ? require('./storePg') : null;
 const DB_FILE = JSON_FILE; // pastrat pentru compatibilitate (backup/restore folosesc oglinda JSON)
 
 function defaultFirma(id) {
@@ -163,7 +164,7 @@ function writeJson(file, data) {
 }
 function backupLegacyJson() {
   try {
-    const bak = path.join(DATA_DIR, 'db.pre-sqlite.json');
+    const bak = path.join(DATA_DIR, DRIVER === 'pg' ? 'db.pre-pg.json' : 'db.pre-sqlite.json');
     if (!fs.existsSync(bak) && fs.existsSync(JSON_FILE)) fs.copyFileSync(JSON_FILE, bak);
   } catch (_) { /* best-effort */ }
 }
@@ -182,19 +183,48 @@ function loadJson() {
   return db;
 }
 
+// Driver PostgreSQL (async): load() intoarce o PROMISIUNE — serverul o asteapta la pornire
+// (bootstrap in server.js). Aceeasi migrare unica din db.json ca la trecerea pe SQLite.
+async function loadPg() {
+  await store.open();
+  if (await store.isEmpty()) {
+    if (fs.existsSync(JSON_FILE)) {
+      // Migrare unica din fisierul JSON (instalare live sau baza de test pregatita cu CONTAB_DB_FILE).
+      let legacy = {};
+      try { legacy = JSON.parse(fs.readFileSync(JSON_FILE, 'utf8')); } catch (_) { legacy = {}; }
+      db = migrate(applyDefaults(legacy));
+      if (!process.env.CONTAB_DB_FILE) {
+        backupLegacyJson();
+        console.log('[contab] Migrare unica db.json -> PostgreSQL efectuata (copie de siguranta: data/db.pre-pg.json).');
+      }
+    } else {
+      db = migrate(applyDefaults({}));
+    }
+    await store.persist(db);
+  } else {
+    db = migrate(applyDefaults(await store.hydrate(DEFAULT_DB)));
+    await store.persist(db); // persista eventualele normalizari migrate() + initializeaza dirty-tracking
+  }
+  if (JSON_MIRROR) writeJson(JSON_FILE, db);
+  return db;
+}
+
 function load() {
   ensureDir();
+  if (DRIVER === 'pg') return loadPg();
   if (DRIVER !== 'sqlite') return loadJson();
   store.open(SQLITE_FILE);
   if (store.isEmpty()) {
     // Baza SQLite proaspata.
-    if (!process.env.CONTAB_DB_FILE && fs.existsSync(JSON_FILE)) {
-      // Migrare unica din baza JSON existenta (instalare live).
+    if (fs.existsSync(JSON_FILE)) {
+      // Import unic din fisierul JSON (instalare live sau baza de test pregatita cu CONTAB_DB_FILE).
       let legacy = {};
       try { legacy = JSON.parse(fs.readFileSync(JSON_FILE, 'utf8')); } catch (_) { legacy = {}; }
       db = migrate(applyDefaults(legacy));
-      backupLegacyJson();
-      console.log('[contab] Migrare unica db.json -> SQLite efectuata (copie de siguranta: data/db.pre-sqlite.json).');
+      if (!process.env.CONTAB_DB_FILE) {
+        backupLegacyJson();
+        console.log('[contab] Migrare unica db.json -> SQLite efectuata (copie de siguranta: data/db.pre-sqlite.json).');
+      }
     } else {
       // instalare noua / teste — migrate() creeaza utilizatorul initial admin/admin + authSecret
       // (fara el, prima pornire pe SQLite gol ramanea fara niciun cont de autentificare)
@@ -229,22 +259,30 @@ function flushMirror() {
 
 function save() {
   ensureDir();
-  if (DRIVER !== 'sqlite') { writeJson(JSON_FILE, db); return; }
-  store.persist(db);
+  if (DRIVER === 'json') { writeJson(JSON_FILE, db); return; }
+  store.persist(db); // sqlite: sincron; pg: fotografiaza sincron + scrie printr-o coada seriala
   if (JSON_MIRROR) scheduleMirror(); // oglinda pentru backup/rollback, scrisa cu intarziere
 }
 
-// Restaurare dintr-un fisier JSON (folosita de ruta /api/restore): seteaza in memorie + persista in SQLite.
+/** Asteapta scrierile in zbor ale driverului (pg are coada async; sqlite/json scriu sincron). */
+function flushStore() {
+  return DRIVER === 'pg' ? store.flush() : Promise.resolve();
+}
+
+// Restaurare dintr-un fisier JSON (folosita de ruta /api/restore): seteaza in memorie + persista in driver.
 function restoreFromJson(jsonPath) {
   const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
   db = migrate(applyDefaults(parsed));
-  if (DRIVER === 'sqlite') { store.resetDirty(); store.persist(db); }
-  if (JSON_MIRROR || DRIVER !== 'sqlite') writeJson(JSON_FILE, db);
+  if (DRIVER !== 'json') { store.resetDirty(); store.persist(db); }
+  if (JSON_MIRROR || DRIVER === 'json') writeJson(JSON_FILE, db);
   return db;
 }
 
 function get() {
-  if (!db) load();
+  if (!db) {
+    if (DRIVER === 'pg') throw new Error('Baza PostgreSQL nu e inca hidratata — porneste prin db.load() (asincron) inainte de primul get().');
+    load();
+  }
   return db;
 }
 
@@ -413,6 +451,6 @@ const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 
 module.exports = {
   get, save, load, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma,
-  getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror,
+  getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

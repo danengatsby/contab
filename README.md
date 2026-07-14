@@ -494,7 +494,11 @@ comisioane), salarii (stat de plată cu CAS/CASS/impozit/CAM, plata netă), amor
   stoc curent, registrul-jurnal, balanță, **cartea mare** (cu sold inițial/final și mișcări),
   **balanța analitică** și **parteneri** (`/csv/stock-movements`, `/csv/stocks`, `/csv/journal`,
   `/csv/balance`, `/csv/ledger`, `/csv/analytic`, `/csv/partners`); butoane „⬇ CSV” în tab-uri.
-- `src/db.js` — stocare în `data/db.json` (fără server de bază de date).
+- `src/db.js` — stratul de persistență, cu driver comutabil prin `CONTAB_DB_DRIVER`:
+  **`sqlite`** (implicit, `src/store.js`, `node:sqlite`), **`pg`** (PostgreSQL, `src/storePg.js`,
+  pachetul `pg`) sau **`json`** (vechi, doar `data/db.json` — rollback rapid). Indiferent de driver,
+  aplicația lucrează pe același graf în memorie; driverele relaționale păstrează în plus o
+  **oglindă `data/db.json`** pentru backup și rollback. Vezi „Baze de date” mai jos.
 - `public/` — interfața web (HTML/CSS/JS vanilla).
 
 ## Multi-firmă
@@ -581,7 +585,8 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   și cardul de pro-rata din tab-ul TVA.
 - **Arhivă completă + copie offsite (zilnic):** pe lângă copia `db.json`, cronul creează
   `data/backups/full-YYYYMMDD-HHMMSS.zip` — `db.json` + un **instantaneu consistent** al bazei
-  SQLite (`VACUUM INTO`, sigur sub WAL) + **toate documentele din `data/uploads/`** — păstrează
+  relaționale (SQLite prin `VACUUM INTO`, sigur sub WAL; sau `contab.sql` prin `pg_dump` pe
+  driverul PostgreSQL) + **toate documentele din `data/uploads/`** — păstrează
   ultimele 14 și o trimite **în afara serverului**: pe email (Resend, `CONTAB_BACKUP_EMAIL_TO` +
   `RESEND_API_KEY` în `.env`) și/sau cu **rclone** (`RCLONE_REMOTE`, obligatoriu peste 20MB).
   Restaurare după dezastru: dezarhivezi zip-ul → `db.json` prin Setări → Backup → Restaurează,
@@ -608,7 +613,33 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   (PDF/imagini) se afișează inline; orice altceva se descarcă forțat ca octeți. Accesul la
   `/api/document/:id/file` e restricționat la firmele alocate utilizatorului.
 - **Oglinda JSON** (`data/db.json`) se scrie cu întârziere de max. 30s după modificări (debounce);
-  SQLite e mereu la zi. Backupul manual și oprirea curată (SIGINT/SIGTERM) o aduc la zi întâi.
+  baza relațională (SQLite/PostgreSQL) e mereu la zi. Backupul manual și oprirea curată
+  (SIGINT/SIGTERM) o aduc la zi întâi.
+
+### Baze de date (driver comutabil)
+
+`CONTAB_DB_DRIVER` alege stratul de persistență, fără nicio schimbare în restul aplicației:
+
+- **`sqlite`** (implicit) — `node:sqlite` sincron, fișier `data/contab.sqlite`, WAL. Zero configurare.
+- **`pg`** (PostgreSQL) — pentru concurență reală și scalare. Se conectează implicit pe socketul
+  local `/var/run/postgresql` cu autentificare **peer** (rolul = utilizatorul OS, ex. `contab`) și
+  baza `contab`; sau explicit prin `CONTAB_PG_URL=postgres://user:parola@host:5432/contab`.
+  Layout identic cu SQLite: câte un tabel per colecție, cu coloane `id`/`firmaId` indexate + o
+  coloană `data` **JSONB**. Clientul `pg` e asincron, dar `save()`-ul aplicației rămâne sincron:
+  driverul fotografiază sincron colecțiile modificate și scrie printr-o **coadă serială** (o
+  singură tranzacție în zbor); oprirea curată așteaptă golirea cozii.
+- **`json`** — doar `data/db.json` (fără server de bază de date); util pentru rollback rapid și teste.
+
+**Migrare între drivere:** la prima pornire pe o bază relațională goală, dacă există `data/db.json`,
+conținutul e importat automat o singură dată (copie de siguranță în `data/db.pre-sqlite.json`,
+respectiv `data/db.pre-pg.json`). Fiindcă oglinda JSON e comună tuturor driverelor, comutarea se
+face doar schimbând `CONTAB_DB_DRIVER` și repornind. Setup PostgreSQL pe acest server:
+
+```bash
+sudo -u postgres psql -c "CREATE ROLE contab LOGIN" -c "CREATE DATABASE contab OWNER contab"
+# în .env:  CONTAB_DB_DRIVER=pg
+sudo -u contab pm2 restart contab --update-env
+```
 - Cotele și tratamentele sunt simplificate pentru claritate; situațiile concrete pot
   necesita conturi și prelucrări suplimentare conform Codului fiscal.
 - Extragerea din PDF funcționează pe documente cu **text** (PDF-uri generate de programe
