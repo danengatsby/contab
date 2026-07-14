@@ -31,13 +31,11 @@ const assets = require('./src/assets');
 const stocks = require('./src/stocks');
 const { statePlata } = require('./src/payroll'); // registruSalarii + rutele de salarizare: src/routes/payroll.js
 const { leasingSchedule } = require('./src/leasing');
-const { parseCsv } = require('./src/csv');
 const anaf = require('./src/anaf');
 const authlib = require('./src/auth');
 const totp = require('./src/totp');
 const backup = require('./src/backup');
 const pdf = require('./src/pdf');
-const { seed } = require('./src/seed');
 const messages = require('./src/messages');
 const presence = require('./src/presence');
 const validate = require('./src/validate');
@@ -749,29 +747,6 @@ const S = (req) => {
 
 // ───────────────────────────── META ─────────────────────────────
 // Import plan de conturi personalizat din CSV: Cont;Denumire;Clasa;Tip (A/P/B/C/V) - header optional
-app.post('/api/accounts/import', (req, res) => {
-  const rows = parseCsv((req.body || {}).csv || '');
-  if (!rows.length) return res.status(400).json({ error: 'CSV gol sau invalid.' });
-  let start = 0;
-  if (/cont|cod|denumire/i.test((rows[0][0] || '') + (rows[0][1] || ''))) start = 1;
-  const d = db.get();
-  const list = [];
-  for (let i = start; i < rows.length; i++) {
-    const r = rows[i];
-    const cod = String(r[0] || '').trim();
-    if (!cod || !r[1]) continue;
-    list.push({ cod, nume: r[1], clasa: Number(r[2]) || Number(cod[0]) || 0, tip: (r[3] || 'B').toUpperCase() });
-  }
-  // upsert in customAccounts
-  for (const a of list) {
-    const ex = d.customAccounts.find((x) => x.cod === a.cod);
-    if (ex) Object.assign(ex, a); else d.customAccounts.push(a);
-  }
-  coa.addAccounts(list);
-  logAudit('accounts.import', list.length + ' conturi', { req });
-  db.save();
-  res.json({ ok: true, importati: list.length, totalConturi: coa.ACCOUNTS.length });
-});
 app.get('/api/meta', (req, res) => {
   const d = db.get();
   const v = S(req);
@@ -1171,42 +1146,9 @@ app.get('/pdf/note/:id', (req, res) => {
   pdf.notePdf(res, db.getFirma(fid) || {}, Object.assign({ nrJurnal: nr }, e));
 });
 
-// ───────── Reset zilnic al contului demo (din snapshot-ul data/demo-firma.json) ─────────
-const DEMO_SNAPSHOT = path.join(db.DATA_DIR, 'demo-firma.json');
-function resetDemo() {
-  const d = db.get();
-  const demo = d.users.find((u) => u.username === 'demo');
-  const fid = demo && (demo.firme || [])[0];
-  if (!fid || !fs.existsSync(DEMO_SNAPSHOT)) return { ok: false, reason: 'fara demo sau snapshot' };
-  const bundle = JSON.parse(fs.readFileSync(DEMO_SNAPSHOT, 'utf8'));
-  const keepActive = d.firmaActiva; // importFirma muta firma activa — o pastram
-  db.importFirma(bundle, { targetFid: fid });
-  d.firmaActiva = keepActive;
-  // igiena pe utilizatorul demo: contorul AI, datele personale, conversatiile de suport
-  delete demo.aiUsage; delete demo.profil; demo.email = '';
-  d.messages = (d.messages || []).filter((m) => m.userId !== demo.id);
-  db.save();
-  return { ok: true, firmaId: fid };
-}
-app.post('/api/demo/reset', requireAdmin, (req, res) => {
-  const r = resetDemo();
-  logAudit('demo.reset', r.ok ? 'resetat manual' : r.reason, { req, firmaId: null });
-  res.json(r);
-});
-// Regenereaza snapshot-ul din starea CURENTA a firmei demo (dupa o curatare manuala).
-app.post('/api/demo/snapshot', requireAdmin, (req, res) => {
-  const demo = db.get().users.find((u) => u.username === 'demo');
-  const fid = demo && (demo.firme || [])[0];
-  if (!fid) return res.status(400).json({ error: 'Nu exista firma demo.' });
-  fs.writeFileSync(DEMO_SNAPSHOT, JSON.stringify(db.exportFirma(fid)));
-  logAudit('demo.snapshot', 'snapshot demo regenerat', { req, firmaId: null });
-  res.json({ ok: true });
-});
-
-app.post('/api/seed', requireAdmin, (req, res) => {
-  const r = seed();
-  res.json({ ok: true, message: 'Exemplu incarcat: ' + r.entries + ' inregistrari pentru ' + r.period + '.' });
-});
+// Utilitare demo (reset/snapshot) + incarcarea exemplului din ghid (admin): src/routes/demo.js
+// Intoarce resetDemo, folosit si de jobul zilnic de reset al contului demo (mai jos).
+const { resetDemo } = require('./src/routes/demo')(app, { requireAdmin, logAudit });
 
 const os = require('os');
 // Backup automat zilnic (daca e activat)

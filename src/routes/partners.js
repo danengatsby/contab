@@ -1,12 +1,13 @@
 'use strict';
 
 // Nomenclatoare si solduri initiale: partenerii (nomenclator per firma, adaugare + import CSV),
-// conversia XLSX/XLS/DBF -> CSV pentru fluxurile de import, soldurile initiale sintetice (cu
-// verificarea echilibrului debit=credit) si analitice (pe partener). Modul de rute:
-// register(app, ctx).
+// planul de conturi personalizat (import CSV), conversia XLSX/XLS/DBF -> CSV pentru fluxurile de
+// import, soldurile initiale sintetice (cu verificarea echilibrului debit=credit) si analitice
+// (pe partener). Modul de rute: register(app, ctx).
 
 const fs = require('fs');
 const db = require('../db');
+const coa = require('../chartOfAccounts');
 const xlsx = require('../xlsx');
 const xls = require('../xls');
 const dbf = require('../dbf');
@@ -15,6 +16,31 @@ const { round2 } = require('../util');
 
 module.exports = function register(app, ctx) {
   const { upload, S, activeId, logAudit } = ctx;
+
+  // Import plan de conturi personalizat din CSV: Cod;Denumire;Clasa;Tip (upsert in customAccounts)
+  app.post('/api/accounts/import', (req, res) => {
+    const rows = parseCsv((req.body || {}).csv || '');
+    if (!rows.length) return res.status(400).json({ error: 'CSV gol sau invalid.' });
+    let start = 0;
+    if (/cont|cod|denumire/i.test((rows[0][0] || '') + (rows[0][1] || ''))) start = 1;
+    const d = db.get();
+    const list = [];
+    for (let i = start; i < rows.length; i++) {
+      const r = rows[i];
+      const cod = String(r[0] || '').trim();
+      if (!cod || !r[1]) continue;
+      list.push({ cod, nume: r[1], clasa: Number(r[2]) || Number(cod[0]) || 0, tip: (r[3] || 'B').toUpperCase() });
+    }
+    // upsert in customAccounts
+    for (const a of list) {
+      const ex = d.customAccounts.find((x) => x.cod === a.cod);
+      if (ex) Object.assign(ex, a); else d.customAccounts.push(a);
+    }
+    coa.addAccounts(list);
+    logAudit('accounts.import', list.length + ' conturi', { req });
+    db.save();
+    res.json({ ok: true, importati: list.length, totalConturi: coa.ACCOUNTS.length });
+  });
 
   app.get('/api/partners', (req, res) => res.json(S(req).partners));
   app.post('/api/partners', (req, res) => {
