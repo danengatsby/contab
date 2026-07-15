@@ -1664,6 +1664,23 @@ ok('audit (admin): username-ul e escapat', /\$\{H\(a\.username/.test(adminJs));
 ok('fara gestiune neescapata in optiuni', !/>\$\{g\.cod\} — \$\{g\.denumire\}</.test(appJs));
 ok('fara descriere extras neescapata', !/<td>\$\{\(r\.descriere \|\| ''\)\.slice\(0, 40\)\}<\/td>/.test(bankJs));
 
+section('Config fiscal centralizat & datat (src/fiscalConfig.js)');
+const fconf = require('../src/fiscalConfig');
+const dtSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'documentTypes.js'), 'utf8');
+ok('fiscalConfig are AN si DATA_ACTUALIZARE', typeof fconf.AN === 'number' && /^\d{4}-\d{2}-\d{2}$/.test(fconf.DATA_ACTUALIZARE));
+eq('FISCAL provine din fiscalConfig.RATES (sursa unica) — cas', fiscal.FISCAL.cas, fconf.RATES.cas);
+eq('FISCAL provine din fiscalConfig.RATES — tvaStandard', fiscal.FISCAL.tvaStandard, fconf.RATES.tvaStandard);
+eq('anul FISCAL == fiscalConfig.AN', fiscal.FISCAL.an, fconf.AN);
+// bug reparat: taxePfa fara salariuMinim explicit nu mai da NaN (folosea FISCAL.salariuMinim inexistent)
+const pfaCfg = fiscal.taxePfa(120000, { period: '2026-03' });
+ok('taxePfa fara salariuMinim explicit: valori finite (nu NaN)', Number.isFinite(pfaCfg.cas) && Number.isFinite(pfaCfg.cass) && Number.isFinite(pfaCfg.impozit));
+eq('taxePfa: salariul minim implicit = S1 (martie)', pfaCfg.salariuMinim, fconf.RATES.salariuMinimS1);
+// tipul „import vamal" isi ia cota TVA din config, nu dintr-un 21 hardcodat
+const vam = getType('import_vamal');
+eq('import vamal: cota TVA implicita = tvaStandard', (vam.fields.find((f) => f.name === 'cota') || {}).default, fiscal.FISCAL.tvaStandard);
+// poarta negativa: TVA-ul standard nu mai e hardcodat ca 21 in documentTypes
+ok('documentTypes: fara cota TVA hardcodata (default: 21 / || 21)', !/default: 21\b/.test(dtSrc) && !/\|\| 21\)/.test(dtSrc));
+
 section('Modularizare frontend: vizualizator documente (Etapa 8, public/viewer.js)');
 const viewerJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'viewer.js'), 'utf8');
 ok('viewer.js importa $ si toast din core.js', /import \{[^}]*\btoast\b[^}]*\} from '\.\/core\.js'/.test(viewerJs));

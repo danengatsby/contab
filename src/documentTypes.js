@@ -454,11 +454,11 @@ const TYPES = [
     fields: [F.data, F.partener, F.cuiFurnizor, F.document,
       { name: 'valoareBunuri', label: 'Valoarea in vama a bunurilor (lei)', type: 'number', required: true },
       { name: 'taxeVamale', label: 'Taxe vamale (lei)', type: 'number', default: 0 },
-      { name: 'cota', label: 'Cota TVA in vama (%)', type: 'number', default: 21 },
+      { name: 'cota', label: 'Cota TVA in vama (%)', type: 'number', default: fiscal.FISCAL.tvaStandard },
       { name: 'contBun', label: 'Cont bunuri (stoc/imobilizare)', type: 'account', default: '371' }],
     build: (d) => {
       const baza = round2(d.valoareBunuri + (d.taxeVamale || 0));
-      const tva = round2((baza * (Number(d.cota) || 21)) / 100);
+      const tva = round2((baza * (Number(d.cota) || fiscal.FISCAL.tvaStandard)) / 100);
       const lines = [L(d.contBun || '371', '401', d.valoareBunuri, 'Import - valoarea bunurilor')];
       if (d.taxeVamale > 0) lines.push(L(d.contBun || '371', '446', d.taxeVamale, 'Taxe vamale (in costul bunurilor)'));
       lines.push(L('4426', '446', tva, 'TVA in vama (deductibila)'));
@@ -485,11 +485,11 @@ const TYPES = [
     grup: 'Stocuri',
     fields: [F.data, F.partener, F.document,
       { name: 'valoareImputata', label: 'Valoare imputata (fara TVA)', type: 'number', required: true },
-      { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: 21 },
+      { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: fiscal.FISCAL.tvaStandard },
       { name: 'contCreanta', label: 'Cont creanta', type: 'select',
         options: [{ value: '4282', label: '4282 Alte creante personal' }, { value: '461', label: '461 Debitori diversi' }], default: '4282' }],
     build: (d) => {
-      const tva = round2((d.valoareImputata * (Number(d.cota) || 21)) / 100);
+      const tva = round2((d.valoareImputata * (Number(d.cota) || fiscal.FISCAL.tvaStandard)) / 100);
       const o = [L(d.contCreanta || '4282', '7588', d.valoareImputata, 'Imputare lipsa la inventar - venit')];
       if (tva > 0) o.push(L(d.contCreanta || '4282', '4427', tva, 'TVA aferenta imputarii'));
       return o;

@@ -1,37 +1,15 @@
 'use strict';
 
 const { round2 } = require('./util');
+// Parametrii fiscali (cote, praguri, grile) traiesc intr-o sursa unica datata, cu referinta
+// legala pe fiecare valoare: src/fiscalConfig.js. Aici e DOAR logica de calcul.
+const cfg = require('./fiscalConfig');
 
-/** Parametri fiscali 2026 (orientativi — conform ghidului, ed. 2026). */
-const FISCAL = {
-  an: 2026,
-  // contributii si impozit pe salarii
-  cas: 25, // %
-  cass: 10,
-  impozitVenit: 10,
-  cam: 2.25,
-  // salariul minim si suma neimpozabila
-  salariuMinimS1: 4050,
-  salariuMinimS2: 4325,
-  salariuMinimConstructii: 4582,
-  neimpozabilS1: 300,
-  neimpozabilS2: 200,
-  // TVA si impozite la nivelul firmei
-  plafonScutire: 10000, // istoric (scutirile sectoriale au fost eliminate din 2025) — pastrat pt. compat. setari
-  tvaStandard: 21, // %
-  tvaRedus: 11,
-  impozitMicro: 1,
-  impozitProfit: 16,
-  impozitDividende: 16, // 16% pentru dividendele distribuite de la 1 ianuarie 2026 (Legea 141/2025)
-  deductibilitateTvaAutoLimitat: 50,
-  // Eligibilitate micro (art. 47 Cod fiscal, OUG 156/2024): plafon 100.000 EUR din 2026.
-  // Cursul pentru plafon e orientativ (legal: cursul de la inchiderea exercitiului precedent) — configurabil.
-  plafonMicroEur: 100000,
-  cursPlafonMicro: 5.0,
-};
+/** Parametri fiscali (an `cfg.AN`) — mutabili la runtime prin applyConfig (suprascrieri din Setari). */
+const FISCAL = Object.assign({}, cfg.RATES);
 
 // Valorile implicite (instantaneu, inainte de orice suprascriere) — pentru „reset la valori standard".
-const DEFAULTS = Object.freeze(Object.assign({}, FISCAL));
+const DEFAULTS = Object.freeze(Object.assign({}, cfg.RATES));
 
 /**
  * Aplica cotele configurate de utilizator peste valorile implicite, mutand obiectul FISCAL in loc
@@ -59,10 +37,10 @@ function fiscalStaleness(anCurent) {
   return { an: ref, anCurent: cur, stale: !!(cur && ref && cur > ref) };
 }
 
-// Procentele MAXIME ale deducerii personale de baza (la nivelul salariului minim),
-// dupa numarul de persoane in intretinere: 0, 1, 2, 3, 4+ (art. 77 Cod fiscal, Legea 34/2023).
-const DP_PCT_MAX = [20, 25, 30, 35, 45];
-const DP_PLAFON_PESTE_MINIM = 2000; // se acorda pana la salariul minim + 2000 lei
+// Procentele MAXIME ale deducerii personale de baza (la nivelul salariului minim), dupa numarul
+// de persoane in intretinere: 0, 1, 2, 3, 4+ (art. 77 Cod fiscal, Legea 34/2023) — vezi fiscalConfig.
+const DP_PCT_MAX = cfg.DEDUCERE.pctMax;
+const DP_PLAFON_PESTE_MINIM = cfg.DEDUCERE.plafonPesteMinim; // se acorda pana la salariul minim + acest plafon
 
 /**
  * Deducerea personala (art. 77 Cod fiscal): de baza (functie de venit + persoane in intretinere)
@@ -86,9 +64,10 @@ function deducerePersonala(brut, persoane, opts) {
     baza = round2(((sm * DP_PCT_MAX[p]) / 100) * factor);
   }
   let supl = 0;
-  if (o.sub26 && b <= sm) supl = round2(supl + (sm * 15) / 100); // 15% din salariul minim, tineri <=26 ani
-  if (o.copii) supl = round2(supl + 100 * (Number(o.copii) || 0)); // 100 lei/copil in invatamant (un singur parinte)
-  const total = baza + supl > 0 ? Math.ceil(round2(baza + supl) / 10) * 10 : 0; // rotunjire la 10 lei
+  if (o.sub26 && b <= sm) supl = round2(supl + (sm * cfg.DEDUCERE.suplTineriPct) / 100); // % din SM, tineri <=26 ani
+  if (o.copii) supl = round2(supl + cfg.DEDUCERE.suplCopilLei * (Number(o.copii) || 0)); // lei/copil in invatamant
+  const rot = cfg.DEDUCERE.rotunjireLei;
+  const total = baza + supl > 0 ? Math.ceil(round2(baza + supl) / rot) * rot : 0; // rotunjire in favoarea angajatului
   return { baza, suplimentara: supl, total };
 }
 
@@ -155,9 +134,10 @@ function payroll(brut, deducere, opts) {
  */
 function taxePfa(venitNet, opts) {
   const o = opts || {};
-  const sm = round2(Number(o.salariuMinim) || FISCAL.salariuMinim);
+  // salariul minim: cel dat explicit, altfel cel aplicabil lunii (FISCAL nu are un camp `salariuMinim` unic — e S1/S2)
+  const sm = round2(Number(o.salariuMinim) || salariuMinimLa(o.period));
   const vn = Math.max(0, round2(venitNet) || 0);
-  const p6 = round2(sm * 6); const p12 = round2(sm * 12); const p24 = round2(sm * 24); const p60 = round2(sm * 60);
+  const p6 = round2(sm * cfg.PFA.plafonCassInf); const p12 = round2(sm * cfg.PFA.cas12); const p24 = round2(sm * cfg.PFA.cas24); const p60 = round2(sm * cfg.PFA.plafonCassSup);
   const bazaCas = vn >= p24 ? p24 : vn >= p12 ? p12 : 0;
   const cas = round2((bazaCas * FISCAL.cas) / 100);
   let bazaCass = 0;
