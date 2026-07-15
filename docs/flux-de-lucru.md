@@ -198,6 +198,12 @@ conectare, fiecare factură emisă are butonul **„trimite SPV”** (upload UBL
 **„SPV: <stare>”** (verificare `stareMesaj`). Tokenul se reîmprospătează automat.
 `redirect_uri` trebuie să fie accesibil public (ex: `http://159.69.200.202:8080/api/anaf/callback`).
 
+> Reziliență: fiecare apel către ANAF/SPV are timeout (`CONTAB_ANAF_TIMEOUT_MS`, implicit
+> 30000), iar cererile idempotente (GET) se reîncearcă automat cu backoff la erori tranzitorii
+> — rețea, timeout, 429, 5xx (`CONTAB_ANAF_RETRIES`, implicit 2). Upload-ul și schimbul de
+> token-uri (POST) nu se reîncearcă niciodată, ca să nu se dubleze o încărcare al cărei
+> răspuns s-a pierdut; reîncercările apar în log ca avertismente.
+
 **Recipisă + acceptare:** după trimitere, „SPV: <stare>” interoghează `stareMesaj`; când
 starea e `ok` factura e marcată **acceptată** și apare butonul **„recipisă”** care descarcă
 arhiva ZIP (`descarcare`) și o atașează ca document.
