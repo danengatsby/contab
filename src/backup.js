@@ -15,6 +15,24 @@ function stamp() {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
+/**
+ * Igiena data/: sterge backup-urile ad-hoc `db.json.bak-*` din radacina data/ peste ultimele
+ * `keep` (dupa data modificarii). NU atinge `db.pre-*.json` — acelea sunt backup-uri UNICE de
+ * migrare (rollback) si trebuie pastrate. Best-effort. Configurabil prin CONTAB_BACKUP_KEEP_ADHOC.
+ */
+function pruneStrayBackups(dataDir, keep) {
+  const max = keep || 10;
+  let files;
+  try { files = fs.readdirSync(dataDir); } catch (_) { return { removed: 0 }; }
+  const stray = files
+    .filter((f) => /^db\.json\.bak-/.test(f))
+    .map((f) => ({ name: f, mtime: fs.statSync(path.join(dataDir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime); // cele mai noi primele
+  let removed = 0;
+  for (const s of stray.slice(max)) { try { fs.unlinkSync(path.join(dataDir, s.name)); removed += 1; } catch (_) { /* ignora */ } }
+  return { removed, kept: Math.min(stray.length, max) };
+}
+
 /** Copiaza db.json intr-o arhiva datata; pastreaza ultimele `keep` copii. */
 function backupNow(dbFile, dataDir, keep) {
   if (!fs.existsSync(dbFile)) throw new Error('Baza de date nu exista inca.');
@@ -24,6 +42,8 @@ function backupNow(dbFile, dataDir, keep) {
   const list = listBackups(dataDir);
   const max = keep || 30;
   for (const b of list.slice(max)) { try { fs.unlinkSync(path.join(dir, b.name)); } catch (_) { /* ignora */ } }
+  // igiena radacinii data/: nu lasa backup-urile ad-hoc db.json.bak-* sa se acumuleze la nesfarsit
+  try { pruneStrayBackups(dataDir, Number(process.env.CONTAB_BACKUP_KEEP_ADHOC) || 10); } catch (_) { /* ignora */ }
   return { name, count: Math.min(list.length, max) };
 }
 
@@ -105,4 +125,4 @@ function fullBackup(dbFile, dataDir, keep) {
   return { name, path: path.join(dir, name), size: fs.statSync(path.join(dir, name)).size };
 }
 
-module.exports = { backupNow, listBackups, backupPath, fullBackup };
+module.exports = { backupNow, listBackups, backupPath, fullBackup, pruneStrayBackups };

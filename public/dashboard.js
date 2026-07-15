@@ -118,7 +118,7 @@ async function renderRezumat(k) {
     const next = (n.items || []).find((i) => i.kind === 'termen');
     termen = rest.length
       ? ` · <span style="color:#b00020;font-weight:700">${rest.length} ${rest.length === 1 ? 'termen depășit' : 'termene depășite'}</span> — <button class="linkbtn" data-go="notificari">vezi notificările</button>`
-      : (next ? ` · următorul termen: <b>${next.nume}</b> — ${next.due}` : ' · niciun termen fiscal în următoarele 7 zile');
+      : (next ? ` · următorul termen: <b>${H(next.nume)}</b> — ${next.due}` : ' · niciun termen fiscal în următoarele 7 zile');
   } catch (e) { /* notificarile sunt optionale aici */ }
   f.innerHTML = `<span>Rezultatul anului ${k.year} până azi: ${rez}${termen}</span><span class="spacer"></span>
     <button class="btn small" data-go="cashbook">Încasări & plăți →</button>
@@ -138,7 +138,7 @@ export async function renderBudget(year) {
     return `<span style="color:${good ? 'var(--accent)' : 'var(--danger)'};font-weight:600">${row.variatie >= 0 ? '+' : ''}${fmt(row.variatie)}</span>`;
   };
   const tipLbl = { venit: 'Venit', cheltuiala: 'Cheltuială', alt: 'Alt' };
-  const rows = r.rows.map((row) => `<tr><td class="acc">${row.cont}</td><td>${row.nume}</td><td>${tipLbl[row.tip]}</td>
+  const rows = r.rows.map((row) => `<tr><td class="acc">${row.cont}</td><td>${H(row.nume)}</td><td>${tipLbl[row.tip]}</td>
     <td class="num">${fmt(row.buget)}</td><td class="num">${fmt(row.actual)}</td><td class="num">${vCell(row)}</td>
     <td class="num">${row.realizarePct == null ? '—' : fmt(row.realizarePct) + '%'}</td>
     <td><button class="del budDel" data-id="${row.id}" title="Șterge">✕</button></td></tr>`).join('');

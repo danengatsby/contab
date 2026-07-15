@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "seed": "node scripts/seed.js",
-    "test": "node scripts/check-syntax.js && node test/run.js && node test/http.js",
+    "test": "node scripts/check-syntax.js && node test/run.js && node test/store.js && node test/http.js",
     "lint": "node scripts/check-syntax.js",
     "prestart": "npm test",
     "e2e": "node scripts/e2e.mjs"
@@ -16,6 +16,7 @@
     "@anthropic-ai/sdk": "^0.105.0",
     "adm-zip": "^0.5.16",
     "express": "^4.21.2",
+    "helmet": "^8.3.0",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.3",
     "pdf-parse": "^1.1.1",

@@ -1647,6 +1647,82 @@ ok('utilizatori (admin): username-ul e escapat', /\$\{H\(u\.username\)\}/.test(a
 ok('firme: denumirea firmei e escapata', /\$\{H\(f\.nume\)\}/.test(adminJs));
 ok('stocuri: denumirea produsului e escapata', /\$\{H\(s\.product\.denumire\)\}/.test(appJs));
 ok('salarii: numele angajatului e escapat', /\$\{H\(r\.nume\)\}/.test(appJs));
+// puncte hardenizate suplimentar (audit XSS): date editabile de utilizator / provenite din e-Factura
+const bankJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'bank.js'), 'utf8');
+const dashJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'dashboard.js'), 'utf8');
+ok('compensare: CUI/denumire partener escapate', /\$\{H\(c\.cui\)\}/.test(appJs) && /\$\{H\(c\.den\)\}/.test(appJs));
+ok('analitic terti: denumirea partenerului e escapata', /\$\{H\(r\.den\)\}/.test(appJs));
+ok('inventar: numele furnizorului (e-Factura) e escapat', /\$\{H\(inv\.furnizor\.nume/.test(appJs));
+ok('gestiuni: denumirea e escapata in optiuni', /\$\{H\(g\.denumire\)\}/.test(appJs));
+ok('productie/retete: denumirea produsului e escapata', /\$\{H\(p\.denumire\)\}/.test(appJs));
+ok('extras bancar: descrierea (externa) e escapata', /\$\{H\(\(r\.descriere/.test(bankJs));
+ok('extras bancar: partenerul din extras e escapat', /value="\$\{H\(r\.fields\.partener/.test(bankJs));
+ok('parteneri: atributul data-cui e escapat', /data-cui="\$\{H\(p\.cui\)\}"/.test(partnersJs));
+ok('buget: numele contului e escapat', /\$\{H\(row\.nume\)\}/.test(dashJs));
+ok('audit (admin): username-ul e escapat', /\$\{H\(a\.username/.test(adminJs));
+// porti negative: variantele NEescapate nu trebuie sa revina
+ok('fara gestiune neescapata in optiuni', !/>\$\{g\.cod\} — \$\{g\.denumire\}</.test(appJs));
+ok('fara descriere extras neescapata', !/<td>\$\{\(r\.descriere \|\| ''\)\.slice\(0, 40\)\}<\/td>/.test(bankJs));
+
+section('Logging structurat (src/log.js)');
+const logger = require('../src/log');
+ok('log expune info/warn/error/debug + ctx', ['info', 'warn', 'error', 'debug', 'ctx'].every((k) => typeof logger[k] === 'function'));
+const lctx = logger.ctx({ reqId: 'ab12cd34', method: 'POST', originalUrl: '/api/entries', user: { id: 9, username: 'gigel' } }, { status: 500 });
+eq('ctx: reqId din cerere', lctx.reqId, 'ab12cd34');
+eq('ctx: userId din req.user', lctx.userId, 9);
+eq('ctx: username din req.user', lctx.user, 'gigel');
+eq('ctx: ruta', lctx.url, '/api/entries');
+eq('ctx: extra (status) pastrat', lctx.status, 500);
+ok('ctx fara cerere: nu arunca', typeof logger.ctx(null, { job: 'x' }) === 'object');
+
+section('Config fiscal centralizat & datat (src/fiscalConfig.js)');
+const fconf = require('../src/fiscalConfig');
+const dtSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'documentTypes.js'), 'utf8');
+ok('fiscalConfig are AN si DATA_ACTUALIZARE', typeof fconf.AN === 'number' && /^\d{4}-\d{2}-\d{2}$/.test(fconf.DATA_ACTUALIZARE));
+eq('FISCAL provine din fiscalConfig.RATES (sursa unica) — cas', fiscal.FISCAL.cas, fconf.RATES.cas);
+eq('FISCAL provine din fiscalConfig.RATES — tvaStandard', fiscal.FISCAL.tvaStandard, fconf.RATES.tvaStandard);
+eq('anul FISCAL == fiscalConfig.AN', fiscal.FISCAL.an, fconf.AN);
+// bug reparat: taxePfa fara salariuMinim explicit nu mai da NaN (folosea FISCAL.salariuMinim inexistent)
+const pfaCfg = fiscal.taxePfa(120000, { period: '2026-03' });
+ok('taxePfa fara salariuMinim explicit: valori finite (nu NaN)', Number.isFinite(pfaCfg.cas) && Number.isFinite(pfaCfg.cass) && Number.isFinite(pfaCfg.impozit));
+eq('taxePfa: salariul minim implicit = S1 (martie)', pfaCfg.salariuMinim, fconf.RATES.salariuMinimS1);
+// tipul „import vamal" isi ia cota TVA din config, nu dintr-un 21 hardcodat
+const vam = getType('import_vamal');
+eq('import vamal: cota TVA implicita = tvaStandard', (vam.fields.find((f) => f.name === 'cota') || {}).default, fiscal.FISCAL.tvaStandard);
+// poarta negativa: TVA-ul standard nu mai e hardcodat ca 21 in documentTypes
+ok('documentTypes: fara cota TVA hardcodata (default: 21 / || 21)', !/default: 21\b/.test(dtSrc) && !/\|\| 21\)/.test(dtSrc));
+
+section('Modularizare frontend: vizualizator documente (Etapa 8, public/viewer.js)');
+const viewerJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'viewer.js'), 'utf8');
+ok('viewer.js importa $ si toast din core.js', /import \{[^}]*\btoast\b[^}]*\} from '\.\/core\.js'/.test(viewerJs));
+ok('viewer.js contine functiile vizualizatorului', /function openViewer\b/.test(viewerJs) && /function renderEfactura\b/.test(viewerJs) && /function openXmlViewer\b/.test(viewerJs));
+ok('viewer.js intercepteaza click-urile pe link-uri (/pdf, /csv, /xml)', /addEventListener\('click'/.test(viewerJs) && /efactura/.test(viewerJs) && /openXmlViewer\(/.test(viewerJs));
+ok('app.js importa viewer.js (efect secundar)', /import '\.\/viewer\.js'/.test(appJs));
+ok('app.js NU mai defineste vizualizatorul (mutat in viewer.js)', !/function openViewer\b/.test(appJs) && !/function renderEfactura\b/.test(appJs));
+
+section('Politica de parole (validatePassword)');
+const authlib = require('../src/auth');
+ok('parola de 8+ caractere e acceptata', authlib.validatePassword('parolabuna1') === null);
+ok('parola prea scurta e respinsa', /prea scurta/i.test(authlib.validatePassword('scurt1') || ''));
+ok('parola comuna „password" e respinsa', /prea comuna/i.test(authlib.validatePassword('password') || ''));
+ok('parola implicita „admin" e respinsa (prea scurta sau comuna)', authlib.validatePassword('admin') !== null);
+ok('parola = utilizator e respinsa', /identica cu numele/i.test(authlib.validatePassword('gigelgigel', { username: 'gigelgigel' }) || ''));
+ok('parola diferita de utilizator trece', authlib.validatePassword('altaparola9', { username: 'gigel' }) === null);
+
+section('Igiena data/: rotatia backup-urilor ad-hoc (src/backup.js)');
+const backupMod = require('../src/backup');
+const fsB = require('fs'); const osB = require('os'); const pathB = require('path');
+const tmpB = fsB.mkdtempSync(pathB.join(osB.tmpdir(), 'contab-bak-'));
+// 12 backup-uri ad-hoc + 2 fisiere de migrare (de pastrat)
+for (let k = 0; k < 12; k++) { const f = pathB.join(tmpB, 'db.json.bak-op' + k); fsB.writeFileSync(f, 'x'); const t = Date.now() - (12 - k) * 1000; fsB.utimesSync(f, t / 1000, t / 1000); }
+fsB.writeFileSync(pathB.join(tmpB, 'db.pre-pg.json'), 'x');
+fsB.writeFileSync(pathB.join(tmpB, 'db.pre-sqlite.json'), 'x');
+const rB = backupMod.pruneStrayBackups(tmpB, 10);
+eq('rotatie: sterge peste ultimele 10', rB.removed, 2);
+eq('rotatie: pastreaza 10', fsB.readdirSync(tmpB).filter((f) => /^db\.json\.bak-/.test(f)).length, 10);
+ok('rotatie: NU atinge db.pre-*.json (migrare)', fsB.existsSync(pathB.join(tmpB, 'db.pre-pg.json')) && fsB.existsSync(pathB.join(tmpB, 'db.pre-sqlite.json')));
+ok('rotatie: pastreaza cele mai NOI', fsB.existsSync(pathB.join(tmpB, 'db.json.bak-op11')) && !fsB.existsSync(pathB.join(tmpB, 'db.json.bak-op0')));
+try { fsB.rmSync(tmpB, { recursive: true, force: true }); } catch (_) { /* ignora */ }
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

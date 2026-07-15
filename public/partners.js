@@ -19,7 +19,7 @@ function renderPartners() {
   $('#partnersList').innerHTML = arr.length
     ? `<table><thead><tr><th>CUI</th><th>Denumire</th><th>Tip</th><th>Oraș</th><th>Județ</th><th></th></tr></thead><tbody>${
       arr.map((p) => `<tr><td class="acc">${H(p.cui)}</td><td>${H(p.den)}</td><td>${tipBadge(p.tip)}</td><td>${H(p.oras)}</td><td>${H(p.judet)}</td>
-        <td><button class="linkbtn pedit" data-cui="${p.cui}">editează</button></td></tr>`).join('')}</tbody></table>`
+        <td><button class="linkbtn pedit" data-cui="${H(p.cui)}">editează</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Niciun partener pentru filtrul ales. Partenerii se adaugă automat când introduci CUI pe o factură.</p>';
   $$('#partnersList .pedit').forEach((b) => b.addEventListener('click', () => {
     const p = map[b.dataset.cui]; const f = $('#partnerForm');

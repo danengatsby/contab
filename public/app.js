@@ -7,6 +7,7 @@ import { renderFirme, renderUsers, renderAudit, setAdminDeps } from './admin.js'
 import { loadDashboard, renderBudget, setDashboardDeps } from './dashboard.js';
 import { initUiMode } from './simplemode.js';
 import { loadPartners } from './partners.js';
+import './viewer.js'; // vizualizatorul de documente (PDF/CSV/XML/e-Factura) — se activeaza prin efect secundar
 
 let CURRENT = null; // { documentId, fields, suggestedType }
 
@@ -601,150 +602,7 @@ function shiftMonth(m, delta) {
 function nextMonth(m) { return shiftMonth(m, 1); }
 function prevMonth(m) { return shiftMonth(m, -1); }
 function lunaLabel(m) { const [y, mo] = m.split('-').map(Number); return LUNI[mo - 1] + ' ' + y; }
-// ───────── Vizualizator PDF/document/e-Factura in aplicatie ─────────
-let VIEWER_TEXT = '';
-function openViewer(url, title) {
-  $('#pdfTitle').textContent = title || 'Document';
-  $('#pdfOpen').href = url; $('#pdfDownload').href = url;
-  if ($('#pdfCopy')) $('#pdfCopy').classList.add('hidden');
-  $('#viewerHtml').classList.add('hidden');
-  $('#pdfFrame').classList.remove('hidden');
-  $('#pdfFrame').src = url;
-  $('#pdfModal').classList.remove('hidden');
-}
-function openViewerHtml(html, title, url) {
-  $('#pdfTitle').textContent = title || 'Document';
-  $('#pdfOpen').href = url; $('#pdfDownload').href = url;
-  if ($('#pdfCopy')) $('#pdfCopy').classList.add('hidden');
-  $('#pdfFrame').classList.add('hidden'); $('#pdfFrame').src = 'about:blank';
-  $('#viewerHtml').innerHTML = html; $('#viewerHtml').classList.remove('hidden');
-  $('#pdfModal').classList.remove('hidden');
-}
-// Vedere text simplu (ca în Notepad) — pentru CSV
-async function openCsvViewer(url, title) {
-  try {
-    const res = await fetch(url, { credentials: 'same-origin' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    let text = await res.text();
-    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // scoate BOM la afisare
-    VIEWER_TEXT = text;
-    const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-    openViewerHtml(`<pre class="txtview">${esc(text)}</pre>`, title || 'Fișier CSV', url);
-    if ($('#pdfCopy')) $('#pdfCopy').classList.remove('hidden');
-  } catch (e) { window.open(url, '_blank'); }
-}
-function closeViewer() {
-  const m = $('#pdfModal'); if (!m || m.classList.contains('hidden')) return false;
-  m.classList.add('hidden'); $('#pdfFrame').src = 'about:blank'; return true;
-}
-// Parseaza UBL si construieste o factura lizibila (e-Factura)
-async function openEfacturaViewer(url, title) {
-  try {
-    const res = await fetch(url, { credentials: 'same-origin' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const doc = new DOMParser().parseFromString(await res.text(), 'application/xml');
-    if (doc.getElementsByTagName('parsererror').length) throw new Error('XML invalid');
-    openViewerHtml(renderEfactura(doc), title || 'e-Factura', url);
-  } catch (e) { openViewer(url, title || 'e-Factura'); } // fallback: XML brut in iframe
-}
-// Vizualizator XML ANAF (D300/D394/D112/SAF-T) — pretty-print + colorare usoara, in aplicatie
-function prettyXml(xml) {
-  try {
-    let out = ''; let pad = 0;
-    const s = xml.replace(/>\s+</g, '><').replace(/(>)(<)(\/*)/g, '$1\n$2$3');
-    s.split('\n').forEach((ln) => {
-      ln = ln.trim(); if (!ln) return;
-      if (/^<\/\w/.test(ln)) pad = Math.max(pad - 1, 0);
-      out += '  '.repeat(pad) + ln + '\n';
-      if (/^<\w[^>]*>$/.test(ln) && !/^<\?/.test(ln) && !/\/>$/.test(ln)) pad += 1;
-    });
-    return out.trim() || xml;
-  } catch (e) { return xml; }
-}
-function highlightXml(esc) {
-  return esc
-    .replace(/(&lt;[!?/]?)([\w:.-]+)/g, '$1<span class="xtag">$2</span>')
-    .replace(/([\w:.-]+)(=)(&quot;[^&]*?&quot;)/g, '<span class="xattr">$1</span>$2<span class="xval">$3</span>');
-}
-function xmlTitle(href) {
-  const m = (href || '').match(/\/xml\/([a-z0-9]+)/i);
-  const map = { d300: 'D300 — Decont TVA (XML ANAF)', d394: 'D394 — Declarație informativă (XML ANAF)', d112: 'D112 — Salarii / contribuții (XML ANAF)', saft: 'SAF-T / D406 (XML ANAF)' };
-  return (m && map[(m[1] || '').toLowerCase()]) || 'XML ANAF';
-}
-async function openXmlViewer(url) {
-  try {
-    const res = await fetch(url, { credentials: 'same-origin' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const pretty = prettyXml(await res.text());
-    VIEWER_TEXT = pretty;
-    const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-    openViewerHtml(`<pre class="txtview xmlview">${highlightXml(esc(pretty))}</pre>`, xmlTitle(url), url);
-    if ($('#pdfCopy')) $('#pdfCopy').classList.remove('hidden');
-  } catch (e) { window.open(url, '_blank'); }
-}
-function renderEfactura(doc) {
-  const root = doc.documentElement;
-  const T = (el, tag) => { const x = el && el.getElementsByTagName(tag)[0]; return x ? x.textContent.trim() : ''; };
-  const party = (sel) => doc.getElementsByTagName(sel)[0];
-  const sup = party('cac:AccountingSupplierParty'); const cus = party('cac:AccountingCustomerParty');
-  const pName = (p) => T(p, 'cbc:RegistrationName') || T(p, 'cbc:Name');
-  const cur = T(root, 'cbc:DocumentCurrencyCode') || 'RON';
-  const isCN = /CreditNote/.test(root.tagName);
-  const lineTags = isCN ? 'cac:CreditNoteLine' : 'cac:InvoiceLine';
-  const qtyTag = isCN ? 'cbc:CreditedQuantity' : 'cbc:InvoicedQuantity';
-  const lines = [...doc.getElementsByTagName(lineTags)].map((ln) => ({
-    nume: T(ln, 'cbc:Name'), qty: T(ln, qtyTag), pret: T(ln.getElementsByTagName('cac:Price')[0], 'cbc:PriceAmount'),
-    val: T(ln, 'cbc:LineExtensionAmount'), cota: T(ln, 'cbc:Percent'),
-  }));
-  const tt = party('cac:TaxTotal');
-  const baza = T(root, 'cbc:TaxExclusiveAmount'); const tva = T(tt, 'cbc:TaxAmount');
-  const total = T(root, 'cbc:PayableAmount') || T(root, 'cbc:TaxInclusiveAmount');
-  const esc = (s) => (s || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  const money = (v) => v ? Number(v).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur : '';
-  const idDirect = (() => { for (const c of root.children) if (c.tagName === 'cbc:ID') return c.textContent.trim(); return ''; })();
-  return `<div class="efact-doc">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div><h3>${isCN ? 'Factură storno (CreditNote)' : 'Factură (e-Factura)'}</h3>
-        <div class="muted">Serie/nr: <b>${esc(idDirect)}</b> · Data: <b>${esc(T(root, 'cbc:IssueDate'))}</b></div></div>
-      <div class="pill">UBL · CIUS-RO</div>
-    </div>
-    <div class="efact-parties">
-      <div><div class="lbl">Furnizor</div><b>${esc(pName(sup))}</b><br><span class="muted">CUI: ${esc(T(sup, 'cbc:CompanyID'))}</span></div>
-      <div><div class="lbl">Cumpărător</div><b>${esc(pName(cus))}</b><br><span class="muted">CUI: ${esc(T(cus, 'cbc:CompanyID'))}</span></div>
-    </div>
-    <table><thead><tr><th>Denumire</th><th class="num">Cant.</th><th class="num">Preț</th><th class="num">Cotă</th><th class="num">Valoare</th></tr></thead>
-      <tbody>${lines.map((l) => `<tr><td>${esc(l.nume)}</td><td class="num">${esc(l.qty)}</td><td class="num">${money(l.pret)}</td><td class="num">${l.cota ? l.cota + '%' : '—'}</td><td class="num">${money(l.val)}</td></tr>`).join('')}</tbody>
-    </table>
-    <table class="efact-tot"><tbody>
-      <tr><td>Bază impozabilă</td><td class="num">${money(baza)}</td></tr>
-      <tr><td>TVA</td><td class="num">${money(tva)}</td></tr>
-      <tr class="grand"><td>Total de plată</td><td class="num">${money(total)}</td></tr>
-    </tbody></table>
-  </div>`;
-}
-if ($('#pdfClose')) {
-  $('#pdfClose').addEventListener('click', closeViewer);
-  $('#pdfModal').addEventListener('click', (e) => { if (e.target.id === 'pdfModal') closeViewer(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewer(); });
-  if ($('#pdfCopy')) {
-    $('#pdfCopy').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(VIEWER_TEXT); toast('Copiat în clipboard'); }
-      catch (e) { toast('Nu s-a putut copia', true); }
-    });
-  }
-  // Intercepteaza link-urile -> deschide in aplicatie
-  document.addEventListener('click', (e) => {
-    const a = e.target.closest('a'); if (!a) return;
-    const href = a.getAttribute('href') || '';
-    if (/\/xml\/efactura\//.test(href)) { e.preventDefault(); openEfacturaViewer(a.href, 'e-Factura'); return; }
-    if (/^\/xml\//.test(href)) { e.preventDefault(); openXmlViewer(a.href); return; }
-    if (/^\/csv\//.test(href)) { e.preventDefault(); openCsvViewer(a.href, (a.textContent || '').replace(/[⬇\s]/g, ' ').trim() || 'Fișier CSV'); return; }
-    if (/^\/pdf\//.test(href) || /\/api\/document\/[^/]+\/file/.test(href)) {
-      e.preventDefault();
-      openViewer(a.href, (a.textContent || '').trim() || a.getAttribute('title') || 'Document');
-    }
-  });
-}
+// Vizualizatorul de documente in aplicatie (PDF/CSV/XML/e-Factura) a fost extras in public/viewer.js (Etapa 8).
 // Afiseaza luna de lucru in bara de sus (langa firma)
 function setCurrentPeriod() {
   const el = $('#currentPeriod'); if (!el) return;
@@ -1193,12 +1051,12 @@ $('#efParseBtn') && $('#efParseBtn').addEventListener('click', async () => {
     const inv = r.invoice;
     const liniiHtml = (inv.linii || []).length
       ? `<table style="margin-top:6px"><thead><tr><th>Denumire</th><th class="num">Cant.</th><th class="num">Preț</th><th class="num">Valoare</th><th class="num">TVA%</th></tr></thead><tbody>${
-        inv.linii.map((l) => `<tr><td>${l.nume}</td><td class="num">${fmt(l.cantitate)}</td><td class="num">${fmt(l.pret)}</td><td class="num">${fmt(l.valoare)}</td><td class="num">${l.cota}</td></tr>`).join('')}</tbody></table>`
+        inv.linii.map((l) => `<tr><td>${H(l.nume)}</td><td class="num">${fmt(l.cantitate)}</td><td class="num">${fmt(l.pret)}</td><td class="num">${fmt(l.valoare)}</td><td class="num">${l.cota}</td></tr>`).join('')}</tbody></table>`
       : '';
     box.innerHTML = `<div class="card">
       <p style="margin:0 0 6px">${inv.tip === 'creditnote' ? '↩️ <b>Notă de credit (storno)</b>' : '🧾 <b>Factură de cumpărare</b>'} ${inv.moneda !== 'RON' ? '<span class="status err">— monedă ' + inv.moneda + ' (neacceptat automat)</span>' : ''}</p>
       <table>
-        <tr><td>Furnizor</td><td><b>${inv.furnizor.nume || '—'}</b> ${inv.furnizor.cui ? '(CUI ' + inv.furnizor.cui + ')' : ''}</td></tr>
+        <tr><td>Furnizor</td><td><b>${H(inv.furnizor.nume || '—')}</b> ${inv.furnizor.cui ? '(CUI ' + H(inv.furnizor.cui) + ')' : ''}</td></tr>
         <tr><td>Număr / Data</td><td>${inv.numar || '—'} · ${inv.data || '—'}</td></tr>
         <tr><td>Bază impozabilă</td><td class="num">${fmt(inv.baza)}</td></tr>
         <tr><td>TVA (${inv.cota}%)</td><td class="num">${fmt(inv.tva)}</td></tr>
@@ -1427,7 +1285,7 @@ function renderFields(values) {
 function addItemRow(ed, it) {
   const row = document.createElement('div');
   row.className = 'item-row';
-  row.innerHTML = `<input class="it-nume" placeholder="Denumire" value="${(it.nume || '').toString().replace(/"/g, '&quot;')}">
+  row.innerHTML = `<input class="it-nume" placeholder="Denumire" value="${H(it.nume)}">
     <input class="it-cant" type="number" step="0.001" placeholder="Cant." value="${it.cantitate != null ? it.cantitate : ''}">
     <input class="it-um" placeholder="UM" value="${it.um || 'buc'}">
     <input class="it-pret" type="number" step="0.01" placeholder="Preț" value="${it.pret != null ? it.pret : ''}">
@@ -2321,7 +2179,7 @@ async function loadLivrabile() {
   const rows = data.list.map((it) => {
     const head = it.sectiune !== sec ? (sec = it.sectiune, `<tr><td colspan="4" style="background:#f2f5fb;font-weight:700;color:#42506f">${it.sectiune}</td></tr>`) : '';
     const links = it.links.map((l) => `<a class="linkbtn" href="${l.href}" target="_blank">${l.label}</a>`).join(' · ') || '<span class="muted">—</span>';
-    return head + `<tr><td>${it.nr}</td><td>${it.nume}${it.obs ? `<br><span class="muted" style="font-size:11px">${it.obs}</span>` : ''}</td><td>${badge(it.status)}</td><td>${links}</td></tr>`;
+    return head + `<tr><td>${it.nr}</td><td>${H(it.nume)}${it.obs ? `<br><span class="muted" style="font-size:11px">${H(it.obs)}</span>` : ''}</td><td>${badge(it.status)}</td><td>${links}</td></tr>`;
   }).join('');
   $('#livrabileList').innerHTML = `<table><thead><tr><th>#</th><th>Document / declarație</th><th>Statut</th><th>Descărcare</th></tr></thead><tbody>${rows}</tbody></table>`;
   loadDeclRegister(p);
@@ -2486,7 +2344,7 @@ async function loadReconcile() {
       <td>${it.matched ? '<span class="pill">✓ potrivit</span>' : '<span class="pill warn">deschis</span>'}</td></tr>`).join('');
     const lbl = p.cont === '4111' ? 'client' : 'furnizor';
     return `<div class="ledger-acc">
-      <h4><span class="acc">${p.cont}</span> ${p.den} ${p.cui ? '<span class="muted">(' + p.cui + ')</span>' : ''} <span class="pill">${lbl}</span></h4>
+      <h4><span class="acc">${p.cont}</span> ${H(p.den)} ${p.cui ? '<span class="muted">(' + H(p.cui) + ')</span>' : ''} <span class="pill">${lbl}</span></h4>
       <p class="muted">Facturat: ${fmt(p.facturat)} · Decontat: ${fmt(p.decontat)} · <b>Sold: ${fmt(p.sold)}</b> · Potriviri: ${p.potriviri} · Deschise: ${p.nepotrivite}</p>
       <div class="tablewrap"><table><thead><tr><th>Data</th><th>Document</th><th>Tip</th><th class="num">Debit</th><th class="num">Credit</th><th>Stare</th></tr></thead><tbody>${rows}</tbody></table></div>
     </div>`;
@@ -2499,9 +2357,9 @@ async function renderCompensations() {
   if (!list.length) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
   $('#compensView').innerHTML = `<table><thead><tr><th>Partener</th><th class="num">Creanță (4111)</th><th class="num">Datorie (401)</th><th class="num">Compensabil</th><th></th></tr></thead>
-    <tbody>${list.map((c) => `<tr data-cui="${c.cui}"><td>${c.den}${c.cui ? ' <span class="muted">(' + c.cui + ')</span>' : ''}</td>
+    <tbody>${list.map((c) => `<tr data-cui="${H(c.cui)}"><td>${H(c.den)}${c.cui ? ' <span class="muted">(' + H(c.cui) + ')</span>' : ''}</td>
       <td class="num">${fmt(c.creanta)}</td><td class="num">${fmt(c.datorie)}</td><td class="num"><b>${fmt(c.compensabil)}</b></td>
-      <td><button class="btn small primary compBtn" data-cui="${c.cui}" data-max="${c.compensabil}">Compensează</button></td></tr>`).join('')}</tbody></table>`;
+      <td><button class="btn small primary compBtn" data-cui="${H(c.cui)}" data-max="${c.compensabil}">Compensează</button></td></tr>`).join('')}</tbody></table>`;
   $$('#compensView .compBtn').forEach((b) => b.addEventListener('click', async () => {
     if (!confirm('Compensezi ' + fmt(Number(b.dataset.max)) + ' lei (401 = 4111) pentru acest partener?')) return;
     b.disabled = true;
@@ -2558,12 +2416,12 @@ async function loadAnalytic() {
   const sections = await api('/api/analytic');
   if (!sections.length) { $('#analyticList').innerHTML = '<div class="card"><p class="muted">Niciun cont de terți cu solduri sau mișcări.</p></div>'; return; }
   $('#analyticList').innerHTML = sections.map((s) => {
-    const rows = s.rows.map((r) => `<tr><td class="acc">${r.analitic}</td><td>${r.den}${r.cui ? ' <span class="muted">(' + r.cui + ')</span>' : ''}</td>
+    const rows = s.rows.map((r) => `<tr><td class="acc">${r.analitic}</td><td>${H(r.den)}${r.cui ? ' <span class="muted">(' + H(r.cui) + ')</span>' : ''}</td>
       <td class="num">${r.siD ? fmt(r.siD) : ''}</td><td class="num">${r.siC ? fmt(r.siC) : ''}</td>
       <td class="num">${fmt(r.rd)}</td><td class="num">${fmt(r.rc)}</td>
       <td class="num">${r.sfD ? fmt(r.sfD) : ''}</td><td class="num">${r.sfC ? fmt(r.sfC) : ''}</td></tr>`).join('');
     return `<div class="ledger-acc">
-      <h4><span class="acc">${s.synth}</span> — ${s.nume} ${s.concorda ? '' : '<span class="pill warn">SI ≠ sintetic</span>'}</h4>
+      <h4><span class="acc">${s.synth}</span> — ${H(s.nume)} ${s.concorda ? '' : '<span class="pill warn">SI ≠ sintetic</span>'}</h4>
       <div class="tablewrap"><table><thead><tr><th>Analitic</th><th>Partener</th><th class="num">SI D</th><th class="num">SI C</th><th class="num">Rulaj D</th><th class="num">Rulaj C</th><th class="num">SF D</th><th class="num">SF C</th></tr></thead>
       <tbody>${rows}<tr class="total"><td colspan="2">TOTAL ${s.synth}</td><td class="num">${fmt(s.totalSiD)}</td><td class="num">${fmt(s.totalSiC)}</td><td class="num">${fmt(s.totalRd)}</td><td class="num">${fmt(s.totalRc)}</td><td class="num">${fmt(s.totalSfD)}</td><td class="num">${fmt(s.totalSfC)}</td></tr></tbody></table></div>
     </div>`;
@@ -2812,11 +2670,11 @@ async function loadStocks() {
   mf.productId.innerHTML = products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
   mf.gestiuneId.innerHTML = gestOpts || '<option value="">(nicio gestiune)</option>';
   mf.gestiuneDestId.innerHTML = gestOpts || '<option value="">(nicio gestiune)</option>';
-  $('#stocGestFilter').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${g.id}"${g.id === gf ? ' selected' : ''}>${g.cod} — ${g.denumire}</option>`).join('');
+  $('#stocGestFilter').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${g.id}"${g.id === gf ? ' selected' : ''}>${H(g.cod)} — ${H(g.denumire)}</option>`).join('');
   fillProduction(products, gestiuni);
   fillRecipes(products, gestiuni);
   const ig = $('#invGest'); const prevIg = ig.value;
-  ig.innerHTML = gestiuni.map((g) => `<option value="${g.id}">${g.cod} — ${g.denumire}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
+  ig.innerHTML = gestiuni.map((g) => `<option value="${g.id}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
   if (prevIg) ig.value = prevIg;
   $('#invPdf').href = '/pdf/inventory?asOf=' + asOf + '&gestiune=' + (ig.value || '');
   // stoc curent (pe gestiune)
@@ -2834,7 +2692,7 @@ async function loadStocks() {
   }));
   // mișcări (cu filtre)
   STOCK_MOVS = movs;
-  $('#mvfGest').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${g.cod}">${g.cod} — ${g.denumire}</option>`).join('');
+  $('#mvfGest').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${H(g.cod)}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('');
   renderStockMovements();
   // verificarea stocului preluat vs. soldurile inițiale (daca exista o preluare)
   try { renderInitialCheck((await api('/api/stocks/initial-check')).totaluri); } catch (e) { /* ignora */ }
@@ -2938,7 +2796,7 @@ let PROD_OPTS = { products: [], gestiuni: [] };
 function prodMatRow() {
   const div = document.createElement('div');
   div.className = 'row'; div.style.cssText = 'gap:6px;margin-top:4px;align-items:center';
-  div.innerHTML = `<select class="pm-prod" style="flex:2">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${p.cod} — ${p.denumire}</option>`).join('')}</select>
+  div.innerHTML = `<select class="pm-prod" style="flex:2">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('')}</select>
     <select class="pm-gest" style="flex:1">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${g.cod}</option>`).join('')}</select>
     <input class="pm-qty" type="number" step="0.001" placeholder="cantitate" style="flex:1">
     <button type="button" class="del pm-del" title="Elimină">✕</button>`;
@@ -2949,7 +2807,7 @@ function fillProduction(products, gestiuni) {
   PROD_OPTS = { products: products || [], gestiuni: gestiuni || [] };
   const f = $('#prodForm'); if (!f) return;
   f.productId.innerHTML = PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
-  f.gestiuneId.innerHTML = PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${g.cod} — ${g.denumire}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
+  f.gestiuneId.innerHTML = PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
   if (!f.data.value) f.data.value = new Date().toISOString().slice(0, 10);
   if (!$('#prodMaterials').children.length) $('#prodMaterials').appendChild(prodMatRow());
   renderProductionReport();
@@ -2960,7 +2818,7 @@ async function renderProductionReport() {
     const r = await api('/api/production-report?period=' + workMonth());
     box.innerHTML = (r.rows || []).length
       ? `<table><thead><tr><th>Data</th><th>Cod</th><th>Produs</th><th class="num">Cant.</th><th class="num">Cost unit.</th><th class="num">Valoare</th></tr></thead><tbody>${
-        r.rows.map((x) => `<tr><td>${x.data}</td><td class="acc">${x.cod}</td><td>${x.denumire}</td><td class="num">${fmt(x.cantitate)}</td><td class="num">${fmt(x.cost)}</td><td class="num">${fmt(x.valoare)}</td></tr>`).join('')
+        r.rows.map((x) => `<tr><td>${x.data}</td><td class="acc">${H(x.cod)}</td><td>${H(x.denumire)}</td><td class="num">${fmt(x.cantitate)}</td><td class="num">${fmt(x.cost)}</td><td class="num">${fmt(x.valoare)}</td></tr>`).join('')
       }<tr class="total"><td colspan="3">TOTAL</td><td class="num">${fmt(r.totalCantitate)}</td><td></td><td class="num">${fmt(r.totalValoare)}</td></tr></tbody></table>`
       : '<p class="muted">Nicio producție înregistrată în luna de lucru.</p>';
   } catch (e) { /* ignora */ }
@@ -2985,8 +2843,8 @@ $('#prodForm') && $('#prodForm').addEventListener('submit', async (e) => {
 function recipeMatRow(mat) {
   const div = document.createElement('div');
   div.className = 'row'; div.style.cssText = 'gap:6px;margin-top:4px;align-items:center';
-  div.innerHTML = `<select class="rm-prod" style="flex:2">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${p.cod} — ${p.denumire}</option>`).join('')}</select>
-    <select class="rm-gest" style="flex:1">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${g.cod}</option>`).join('')}</select>
+  div.innerHTML = `<select class="rm-prod" style="flex:2">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('')}</select>
+    <select class="rm-gest" style="flex:1">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${H(g.cod)}</option>`).join('')}</select>
     <input class="rm-qty" type="number" step="0.001" placeholder="cantitate" style="flex:1">
     <button type="button" class="del rm-del" title="Elimină">✕</button>`;
   if (mat) {
@@ -3006,7 +2864,7 @@ function recipeResetForm() {
 function fillRecipes(products, gestiuni) {
   const f = $('#recipeForm'); if (!f) return;
   f.productId.innerHTML = (products || []).map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
-  f.gestiuneId.innerHTML = (gestiuni || []).map((g) => `<option value="${g.id}">${g.cod} — ${g.denumire}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
+  f.gestiuneId.innerHTML = (gestiuni || []).map((g) => `<option value="${g.id}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
   if (!$('#recipeMaterials').children.length) $('#recipeMaterials').appendChild(recipeMatRow());
   renderRecipes(products);
 }
@@ -3074,7 +2932,7 @@ $('#invLoad').addEventListener('click', async () => {
   const list = await api('/api/inventory?gestiune=' + gid + '&asOf=' + stocAsOf());
   if (!list.length) { $('#inventoryArea').innerHTML = '<p class="muted">Niciun produs în nomenclator.</p>'; return; }
   $('#inventoryArea').innerHTML = `<table><thead><tr><th>Cod</th><th>Denumire</th><th class="num">Scriptic</th><th class="num">CMP</th><th class="num">Faptic</th><th>Imputare</th></tr></thead><tbody>${
-    list.map((l) => `<tr data-pid="${l.product.id}"><td class="acc">${l.product.cod}</td><td>${l.product.denumire}</td>
+    list.map((l) => `<tr data-pid="${l.product.id}"><td class="acc">${H(l.product.cod)}</td><td>${H(l.product.denumire)}</td>
       <td class="num scr">${fmt(l.scripticQty)} ${l.product.um || ''}</td><td class="num">${fmt(l.cmp)}</td>
       <td class="num"><input class="inv-fapt" type="number" step="0.001" value="${l.scripticQty}" style="width:90px;text-align:right"></td>
       <td><input class="inv-imp" type="checkbox" title="Impută lipsa gestionarului"></td></tr>`).join('')}</tbody></table>
@@ -3251,7 +3109,7 @@ async function startInvite(token) {
   const box = $('#loginForm');
   box.innerHTML = `<div class="login-logo">▦ Contabo</div>
     <p class="muted">Bun venit, <b>${info.username}</b>. Setează-ți parola.</p>
-    <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
+    <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
     <div id="loginErr" class="status err"></div>
     <button class="btn primary" style="width:100%">Activează contul</button>`;
   box.onsubmit = async (e) => {
@@ -3272,7 +3130,7 @@ async function startReset(token) {
   const box = $('#loginForm');
   box.innerHTML = `<div class="login-logo">▦ Contabo</div>
     <p class="muted">Resetare parolă pentru <b>${info.username}</b>.</p>
-    <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
+    <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
     <div id="loginErr" class="status err"></div>
     <button class="btn primary" style="width:100%">Salvează parola</button>`;
   box.onsubmit = async (e) => {

@@ -63,7 +63,7 @@ async function req(method, p, opts) {
   const text = await r.text();
   let json = null;
   try { json = JSON.parse(text); } catch (_) { /* non-JSON */ }
-  return { status: r.status, json, text, cookie: (r.headers.get('set-cookie') || '').split(';')[0] };
+  return { status: r.status, json, text, cookie: (r.headers.get('set-cookie') || '').split(';')[0], reqId: r.headers.get('x-request-id') };
 }
 
 async function waitUp(tries) {
@@ -89,6 +89,20 @@ async function main() {
     // public + autentificare
     const h = await req('GET', '/api/health');
     ok('health public: ok', h.status === 200 && h.json && h.json.ok === true);
+    // logging structurat: fiecare raspuns poarta un identificator de cerere (corelare eroare<->cerere)
+    ok('X-Request-Id prezent pe raspuns', /^[0-9a-f]{8}$/.test(h.reqId || ''));
+    // anteturi de securitate (helmet, cu CSP calibrat): paritate cu configuratia precedenta
+    const hdrs = (await fetch(BASE + '/api/health')).headers;
+    const csp = hdrs.get('content-security-policy') || '';
+    ok('CSP: script-src self', /script-src 'self'/.test(csp));
+    ok('CSP: connect-src include puntea locala', /connect-src[^;]*127\.0\.0\.1:8765/.test(csp));
+    ok('CSP: frame-src self blob (vizualizator PDF)', /frame-src 'self' blob:/.test(csp));
+    eq('X-Content-Type-Options nosniff', hdrs.get('x-content-type-options'), 'nosniff');
+    eq('Referrer-Policy pastrat', hdrs.get('referrer-policy'), 'strict-origin-when-cross-origin');
+    eq('Cross-Origin-Opener-Policy same-origin', hdrs.get('cross-origin-opener-policy'), 'same-origin');
+    ok('Permissions-Policy pastrat', /camera=\(\)/.test(hdrs.get('permissions-policy') || ''));
+    ok('COEP dezactivat (nu rupe iframe PDF/punte)', !hdrs.get('cross-origin-embedder-policy'));
+    ok('CORP dezactivat (comportament pastrat)', !hdrs.get('cross-origin-resource-policy'));
     eq('date fara login -> 401', (await req('GET', '/api/dashboard')).status, 401);
     eq('login cu parola gresita -> 401', (await req('POST', '/api/login', { body: { username: 'user1', password: 'nu' } })).status, 401);
     const l1 = await req('POST', '/api/login', { body: { username: 'user1', password: 'parola1' } });
@@ -96,6 +110,10 @@ async function main() {
     const c1 = l1.cookie;
     const me = await req('GET', '/api/me', { cookie: c1 });
     ok('/api/me: identitate si tip', me.json && me.json.username === 'user1' && me.json.tip === 'tester');
+
+    // politica de parole: inscrierea respinge o parola prea scurta (respingerea nu creeaza nimic)
+    const regWeak = await req('POST', '/api/register', { body: { nume: 'Firma Noua SRL', username: 'noureg', password: 'scurt' } });
+    ok('register: parola prea scurta -> 400', regWeak.status === 400 && /prea scurta/i.test((regWeak.json || {}).error || ''));
 
     // autorizare pe firma: user1 (firma 1) nu vede documentul firmei 2
     eq('document al altei firme -> 403', (await req('GET', '/api/document/docA/file', { cookie: c1 })).status, 403);

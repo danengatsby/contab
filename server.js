@@ -39,6 +39,7 @@ const { pollSpv } = require('./src/anafService'); // auto-poll job; restul e in 
 const efacturaImport = require('./src/efacturaImport');
 const plans = require('./src/plans');
 const billing = require('./src/billing');
+const log = require('./src/log');
 const { round2, period: periodOf } = require('./src/util');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
@@ -49,35 +50,56 @@ const dbReady = Promise.resolve(db.load()).then(() => {
 });
 
 const app = express();
-app.set('trust proxy', true); // citeste X-Forwarded-Proto de la reverse proxy (pentru cookie Secure pe HTTPS)
+// Reverse proxy: avem incredere DOAR in proxy-ul local (nginx pe 127.0.0.1) ca sa citim
+// X-Forwarded-For / X-Forwarded-Proto (pentru req.ip corect + cookie Secure pe HTTPS). NU
+// folosi `true` (incredere in ORICE hop): un client care atinge direct portul aplicatiei ar
+// putea falsifica X-Forwarded-For si ocoli blocarea anti-brute-force (rate-limit cheiat pe IP).
+// Configurabil prin TRUST_PROXY pentru alte topologii: un numar de hop-uri ("2") sau o subretea.
+const TRUST_PROXY = process.env.TRUST_PROXY || 'loopback';
+app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
 
-// Anteturi de securitate (fara dependinte). CSP calibrat pentru aceasta aplicatie:
+// Anteturi de securitate via helmet, cu CSP calibrat pentru aceasta aplicatie:
 //  - script-src 'self' (un singur /app.js, fara scripturi/handler-e inline)
 //  - style-src 'unsafe-inline' (atribute style= folosite pe larg in HTML)
 //  - img-src data:/blob: (favicon data-URI, canvas), connect-src include puntea de scanare locala
-//  - frame-src 'self' (vizualizatorul PDF/e-Factura ruleaza intr-un <iframe> same-origin)
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self'",
-  "connect-src 'self' http://127.0.0.1:8765 http://localhost:8765",
-  "frame-src 'self' blob:",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'self'",
-].join('; ');
+//  - frame-src 'self' blob: (vizualizatorul PDF/e-Factura ruleaza intr-un <iframe> same-origin)
+// COEP/CORP sunt DEZACTIVATE intentionat: ar rupe vizualizatorul PDF (iframe blob:) si puntea
+// locala. HSTS ramane manual (conditionat de req.secure) si Permissions-Policy manual (helmet
+// nu-l seteaza) — mai jos.
+const helmet = require('helmet');
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'blob:'],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'", 'http://127.0.0.1:8765', 'http://localhost:8765'],
+      frameSrc: ["'self'", 'blob:'],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // ar rupe iframe-ul PDF (blob:) si puntea locala
+  crossOriginResourcePolicy: false, // pastreaza comportamentul actual (fara restrictie noua)
+  hsts: false,                      // HSTS ramane manual, conditionat de req.secure
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+}));
 app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy', CSP);
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
-  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000'); // 180 zile, doc HTTPS (fara subDomains, ca sa nu afecteze alte servicii)
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000'); // 180 zile, fara subDomains (sa nu afecteze alte servicii)
+  next();
+});
+
+// Identificator scurt per cerere: leaga logurile de eroare de cererea concreta si ajunge in
+// raspunsul 5xx (utilizatorul il poate raporta suportului pentru corelare rapida).
+app.use((req, res, next) => {
+  req.reqId = crypto.randomBytes(4).toString('hex');
+  res.setHeader('X-Request-Id', req.reqId);
   next();
 });
 
@@ -128,9 +150,9 @@ const upload = multer({
 });
 
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
-  console.error(e);
+  log.error('eroare necuprinsa in ruta', log.ctx(req, { status: 500, err: e }));
   try { trackServerError(req, e); } catch (_) { /* inainte de definirea trackerului: ignora */ }
-  res.status(500).json({ error: String(e.message || e) });
+  res.status(500).json({ error: String(e.message || e), reqId: req.reqId });
 });
 
 // ───────────────────────── AUTENTIFICARE ─────────────────────────
@@ -288,7 +310,8 @@ app.post('/api/register', (req, res) => {
   const password = String(b.password || '');
   if (!nume) return res.status(400).json({ error: 'Completeaza denumirea firmei.' });
   if (username.length < 3) return res.status(400).json({ error: 'Utilizator prea scurt (minim 3 caractere).' });
-  if (password.length < 4) return res.status(400).json({ error: 'Parola prea scurta (minim 4 caractere).' });
+  const pwErr = authlib.validatePassword(password, { username });
+  if (pwErr) return res.status(400).json({ error: pwErr });
   if (d.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) return res.status(400).json({ error: 'Acest utilizator exista deja. Alege altul.' });
   // firma noua GOALA — fara date contabile (entries/parteneri/solduri/stocuri etc.)
   const fid = db.nextFirmaId();
@@ -449,7 +472,8 @@ app.post('/api/reset/accept', (req, res) => {
   const { token, password } = req.body || {};
   const u = findReset(token);
   if (!u) return res.status(404).json({ error: 'Link de resetare invalid sau expirat.' });
-  if (!password || String(password).length < 4) return res.status(400).json({ error: 'Parola prea scurta (min. 4).' });
+  const pwErr = authlib.validatePassword(password, { username: u.username });
+  if (pwErr) return res.status(400).json({ error: pwErr });
   const h = authlib.hashPassword(password);
   u.salt = h.salt; u.hash = h.hash; u.mustChange = false; delete u.resetToken; delete u.resetExp;
   u.sessions = []; // resetarea parolei deconecteaza celelalte sesiuni
@@ -744,7 +768,7 @@ function safeInterval(label, fn, ms) {
   return setInterval(() => {
     try { fn(); }
     catch (e) {
-      console.error('[job:' + label + ']', (e && e.stack) || e);
+      log.error('eroare in job periodic', { job: label, err: e });
       try { trackServerError({ method: 'JOB', originalUrl: label }, e); } catch (_) { /* ignora */ }
     }
   }, ms);
@@ -805,7 +829,8 @@ const err5xx = [];
 let lastErrAlert = 0;
 function trackServerError(req, err) {
   const now = Date.now();
-  err5xx.push({ t: now, m: req.method + ' ' + req.originalUrl + ': ' + String((err && err.message) || err).slice(0, 160) });
+  const rid = req.reqId ? '[' + req.reqId + '] ' : '';
+  err5xx.push({ t: now, m: rid + req.method + ' ' + req.originalUrl + ': ' + String((err && err.message) || err).slice(0, 160) });
   while (err5xx.length && err5xx[0].t < now - 15 * 60 * 1000) err5xx.shift();
   if (err5xx.length >= 5 && now - lastErrAlert > 3600 * 1000) {
     lastErrAlert = now;
@@ -820,9 +845,9 @@ function trackServerError(req, err) {
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
   const status = err.status || err.statusCode || 500;
-  if (status >= 500) { console.error('[eroare]', req.method, req.originalUrl, '-', (err && err.stack) || err); trackServerError(req, err); }
+  if (status >= 500) { log.error('eroare de server', log.ctx(req, { status, err })); trackServerError(req, err); }
   const msg = status < 500 && err && err.message ? err.message : 'A aparut o eroare interna. Incearca din nou.';
-  res.status(status).json({ error: msg });
+  res.status(status).json(status >= 500 ? { error: msg, reqId: req.reqId } : { error: msg });
 });
 
 // ── Guard single-instance: DOUA procese pe aceeasi baza = pierdere de date (starea traieste
@@ -879,7 +904,7 @@ dbReady.then(() => {
     }
   });
 }).catch((e) => {
-  console.error('⛔ Pornire esuata — baza de date nu s-a putut incarca:', e.message);
+  log.error('pornire esuata — baza de date nu s-a putut incarca', { err: e });
   releaseDbLock();
   process.exit(1);
 });
@@ -907,11 +932,11 @@ process.on('SIGTERM', shutdown);
 // doboare tot procesul. Logam si continuam — pm2 nu mai e nevoit sa reporneasca, iar cererile in
 // zbor nu se pierd. (Erorile din rute sunt deja tratate de wrap()/handlerul Express de mai sus.)
 process.on('uncaughtException', (err) => {
-  console.error('[uncaughtException]', (err && err.stack) || err);
+  log.error('uncaughtException', { err });
   try { trackServerError({ method: 'PROC', originalUrl: 'uncaughtException' }, err); } catch (_) { /* ignora */ }
 });
 process.on('unhandledRejection', (reason) => {
-  console.error('[unhandledRejection]', (reason && reason.stack) || reason);
+  log.error('unhandledRejection', { err: reason });
 });
 
 module.exports = { app, buildEntry, upsertPartner };

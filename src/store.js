@@ -14,11 +14,18 @@ process.emitWarning = function (w, ...rest) {
 const { DatabaseSync } = require('node:sqlite');
 const crypto = require('crypto');
 
-// Dirty-tracking: amprenta ultimei stari persistate, per colectie. La save() rescriem DOAR
-// colectiile a caror amprenta s-a schimbat (de obicei 2-3, nu toate 14+).
-let lastHash = {};
+// ── Dirty-tracking ──
+// Colectiile cu `id` (entries, audit, stockMovements…) cresc nelimitat, deci NU le mai rescriem
+// integral la fiecare save(). `snap[colectie]` = Map(id -> JSON persistat la ultimul commit); la
+// persist calculam diferenta fata de memorie si aplicam DOAR randurile schimbate (INSERT/UPDATE/
+// DELETE per id). Colectiile fara `id` (openingAnalytic, customAccounts) + partners/opening/meta
+// raman pe rescriere completa, dar doar cand amprenta (`lastHash`) lor s-a schimbat.
+let snap = {};        // { [colectie hasId]: Map(id -> json) } — starea persistata, per rand
+let lastHash = {};    // amprenta ultimei stari persistate pt. colectiile rescrise integral
+let forceFull = false; // dupa resetDirty(): urmatorul persist rescrie tot (init/restore)
 let lastWritten = []; // colectiile scrise la ultimul persist (pentru diagnostic/teste)
 function sha(s) { return crypto.createHash('sha1').update(s).digest('hex'); }
+const EMPTY = new Map();
 
 // Colectii-array: { cheie, are firmaId?, are camp id? } -> fiecare devine un tabel.
 const ARRAY_COLLS = [
@@ -84,48 +91,100 @@ function isEmpty() {
 }
 
 function asInt(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
+function firmaOf(c, item) { return c.firma && item && item.firmaId != null ? asInt(item.firmaId) : null; }
 
-/** Reseteaza amprentele -> urmatorul persist rescrie tot (dupa hydrate/restore). */
-function resetDirty() { lastHash = {}; }
+/** Reseteaza starea persistata -> urmatorul persist rescrie tot (dupa hydrate/restore). */
+function resetDirty() { snap = {}; lastHash = {}; forceFull = true; }
 
 /**
- * Scrie in tabele DOAR colectiile schimbate de la ultimul persist, intr-o singura tranzactie
- * (atomic, durabil prin WAL). Daca nimic nu s-a schimbat, nu face niciun I/O.
+ * Scrie in tabele DOAR ce s-a schimbat de la ultimul persist, intr-o singura tranzactie (atomic,
+ * durabil prin WAL). Colectiile cu `id` primesc INSERT/UPDATE/DELETE per rand (diff fata de snap);
+ * restul se rescriu integral doar daca amprenta lor s-a schimbat. Nimic schimbat -> zero I/O.
  */
 function persist(db) {
-  // 1) serializeaza si calculeaza amprentele; aduna doar ce s-a schimbat
+  const full = forceFull;
   const work = [];
+
+  // ── 1) Colectiile-array: diff incremental (hasId) sau rescriere completa (fara id / forceFull) ──
   for (const c of ARRAY_COLLS) {
     const arr = Array.isArray(db[c.key]) ? db[c.key] : [];
-    const items = arr.map((item) => [
-      c.hasId && item && item.id != null ? String(item.id) : null,
-      c.firma && item && item.firmaId != null ? asInt(item.firmaId) : null,
-      JSON.stringify(item),
-    ]);
-    const h = sha(items.map((x) => x[2]).join(''));
-    if (lastHash['a:' + c.key] !== h) work.push({ kind: 'array', c, items, h, hk: 'a:' + c.key });
+
+    if (c.hasId && !full) {
+      // Construieste starea curenta cheiata pe id; id lipsa/duplicat -> cade pe rescriere completa.
+      const cur = new Map();   // id -> json (pt. diff + snapshot)
+      const fid = new Map();   // id -> firmaId (pt. coloana indexata)
+      let bad = false;
+      for (const item of arr) {
+        const key = item && item.id != null ? String(item.id) : null;
+        if (key == null || cur.has(key)) { bad = true; break; }
+        cur.set(key, JSON.stringify(item));
+        fid.set(key, firmaOf(c, item));
+      }
+      if (!bad) {
+        const prev = snap[c.key];
+        if (prev === undefined) {
+          // fara snapshot (colectie noua): daca e goala, fixeaza snapshot gol si mergi mai departe;
+          // altfel se rescrie integral mai jos, ca sa initializam corect tabelul + snapshot-ul.
+          if (cur.size === 0) { snap[c.key] = cur; continue; }
+        } else {
+          const inserts = []; const updates = [];
+          for (const [id, json] of cur) {
+            const before = prev.get(id);
+            if (before === undefined) inserts.push([id, fid.get(id), json]);
+            else if (before !== json) updates.push([id, fid.get(id), json]);
+          }
+          const deletes = [];
+          for (const id of prev.keys()) if (!cur.has(id)) deletes.push(id);
+          if (inserts.length || updates.length || deletes.length) work.push({ kind: 'incr', c, inserts, updates, deletes, snap: cur });
+          continue;
+        }
+      }
+      // fallback: id-uri stricate SAU initializare fara snapshot -> rescriere completa
+      const items = arr.map((it) => [String(it.id), firmaOf(c, it), JSON.stringify(it)]);
+      const m = new Map(); for (const it of items) if (it[0] != null) m.set(it[0], it[2]);
+      work.push({ kind: 'full', c, items, snap: m });
+      continue;
+    }
+
+    // hasId:false, sau forceFull: rescriere completa, portita de amprenta (lastHash).
+    const items = arr.map((it) => [c.hasId && it && it.id != null ? String(it.id) : null, firmaOf(c, it), JSON.stringify(it)]);
+    const h = sha(items.map((x) => x[2]).join(''));
+    if (full || lastHash['a:' + c.key] !== h) {
+      const w = { kind: 'full', c, items };
+      if (c.hasId) { const m = new Map(); for (const it of items) if (it[0] != null) m.set(it[0], it[2]); w.snap = m; }
+      else { w.h = h; w.hk = 'a:' + c.key; }
+      work.push(w);
+    }
   }
+
+  // ── 2) Mapari cheiate (partners/opening) + meta: rescriere completa portita de amprenta ──
   const ph = sha(JSON.stringify(db.partners || {}));
-  if (lastHash.partners !== ph) work.push({ kind: 'partners', h: ph, hk: 'partners' });
+  if (full || lastHash.partners !== ph) work.push({ kind: 'partners', h: ph, hk: 'partners' });
   const oh = sha(JSON.stringify(db.openingBalances || {}));
-  if (lastHash.opening !== oh) work.push({ kind: 'opening', h: oh, hk: 'opening' });
+  if (full || lastHash.opening !== oh) work.push({ kind: 'opening', h: oh, hk: 'opening' });
   const mh = sha(JSON.stringify({ s: db.settings || {}, f: db.firmaActiva, q: db.seq }));
-  if (lastHash.meta !== mh) work.push({ kind: 'meta', h: mh, hk: 'meta' });
+  if (full || lastHash.meta !== mh) work.push({ kind: 'meta', h: mh, hk: 'meta' });
 
   lastWritten = [];
-  if (!work.length) return; // nimic schimbat -> zero scrieri pe disc
+  if (!work.length) { forceFull = false; return; } // nimic schimbat -> zero scrieri pe disc
 
-  // 2) aplica intr-o tranzactie
+  // ── 3) Aplica intr-o tranzactie ──
   sdb.exec('BEGIN');
   try {
     for (const w of work) {
-      if (w.kind === 'array') {
+      if (w.kind === 'full') {
         sdb.exec(`DELETE FROM ${w.c.key}`);
         if (w.items.length) {
           const ins = sdb.prepare(`INSERT INTO ${w.c.key} (id, firmaId, data) VALUES (?, ?, ?)`);
           for (const it of w.items) ins.run(it[0], it[1], it[2]);
         }
         lastWritten.push(w.c.key);
+      } else if (w.kind === 'incr') {
+        const t = w.c.key;
+        if (w.deletes.length) { const del = sdb.prepare(`DELETE FROM ${t} WHERE id = ?`); for (const id of w.deletes) del.run(id); }
+        if (w.inserts.length) { const ins = sdb.prepare(`INSERT INTO ${t} (id, firmaId, data) VALUES (?, ?, ?)`); for (const r of w.inserts) ins.run(r[0], r[1], r[2]); }
+        if (w.updates.length) { const upd = sdb.prepare(`UPDATE ${t} SET firmaId = ?, data = ? WHERE id = ?`); for (const r of w.updates) upd.run(r[1], r[2], r[0]); }
+        lastWritten.push(t);
       } else if (w.kind === 'partners') {
         sdb.exec('DELETE FROM partners');
         const ins = sdb.prepare('INSERT INTO partners (firmaId, cui, data) VALUES (?, ?, ?)');
@@ -158,8 +217,12 @@ function persist(db) {
     sdb.exec('ROLLBACK');
     throw e;
   }
-  // 3) actualizeaza amprentele DOAR dupa commit reusit
-  for (const w of work) lastHash[w.hk] = w.h;
+  // ── 4) Actualizeaza starea persistata (snapshot / amprente) DOAR dupa commit reusit ──
+  for (const w of work) {
+    if (w.snap) snap[w.c.key] = w.snap;   // colectii cu id (incr/full)
+    if (w.hk) lastHash[w.hk] = w.h;       // colectii fara id + partners/opening/meta
+  }
+  forceFull = false;
 }
 
 /** Colectiile scrise la ultimul persist (diagnostic). */
@@ -168,9 +231,16 @@ function written() { return lastWritten.slice(); }
 /** Reconstruieste graful in memorie din tabele (forma identica cu cea folosita de aplicatie). */
 function hydrate(defaults) {
   const db = {};
+  snap = {}; // starea persistata pornita din tabele: primul persist va scrie doar diferentele (ex. normalizari migrate)
   for (const c of ARRAY_COLLS) {
     const rows = sdb.prepare(`SELECT data FROM ${c.key} ORDER BY rowid`).all();
     db[c.key] = rows.map((r) => JSON.parse(r.data));
+    if (c.hasId) {
+      const m = new Map();
+      // Snapshot re-serializat din obiectul parsat -> se potriveste exact cu JSON.stringify din persist.
+      for (const it of db[c.key]) if (it && it.id != null) m.set(String(it.id), JSON.stringify(it));
+      snap[c.key] = m;
+    }
   }
   db.partners = {};
   for (const r of sdb.prepare('SELECT firmaId, cui, data FROM partners').all()) {
