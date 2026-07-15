@@ -1626,9 +1626,12 @@ ok('SAF-T lunar: bine-format si cu perioada corecta', (() => { const x = saft.sa
 
 section('XSS: escaparea datelor externe la randare (public/app.js)');
 const appJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'app.js'), 'utf8');
-// helper-ul global de escapare exista si acopera toate caracterele periculoase
-ok('helper global H() definit', /const H = \(s\) =>/.test(appJs));
-ok('H() escapeaza < > & " \'', /'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'/.test(appJs));
+// nucleul partajat (Etapa 0 a modularizarii frontendului): helperii comuni traiesc in core.js
+const coreJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'core.js'), 'utf8');
+// helper-ul de escapare exista (in core.js, exportat) si acopera toate caracterele periculoase
+ok('helper H() definit (core.js)', /export const H = \(s\) =>/.test(coreJs));
+ok('H() escapeaza < > & " \'', /'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'/.test(coreJs));
+ok('app.js importa H din core.js', /import \{[^}]*\bH\b[^}]*\} from '\.\/core\.js'/.test(appJs));
 // verificarea H() efectiv (simulare)
 const Htest = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 eq('H() neutralizeaza un payload de script', Htest('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');

@@ -1,12 +1,11 @@
 'use strict';
-let META = { types: [], accounts: [], company: {}, periods: [] };
-let USER = {};
+import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUser, setOn402 } from './core.js';
+
 let CURRENT = null; // { documentId, fields, suggestedType }
 
 const EFACT_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare', 'factura_storno_cumparare']);
 const SENDABLE_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare']);
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+// $, $$ mutati in core.js (importate mai sus)
 // Buton „arată/ascunde" pe fiecare camp de parola (login, inscriere, schimbare parola, admin…)
 function enhancePasswordFields() {
   $$('input[type="password"]').forEach((inp) => {
@@ -30,37 +29,10 @@ function enhancePasswordFields() {
 }
 document.addEventListener('DOMContentLoaded', enhancePasswordFields);
 enhancePasswordFields();
-const fmt = (n) => (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const accName = (c) => { const a = META.accounts.find((x) => x.cod === String(c)); return a ? a.nume : ''; };
-// Escapare HTML pentru datele de proveniente externa (parteneri din e-Factura/SPV, extrase
-// bancare, denumiri, explicatii) inainte de interpolarea in innterHTML — al doilea strat de
-// aparare dupa CSP. `H` = escapare completa (text + atribute), folosita la randare.
-const H = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-function toast(msg, err) {
-  const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
-  setTimeout(() => (t.className = 'toast'), 3200);
-}
-let pendingReq = 0;
-function setLoad(on) {
-  pendingReq = Math.max(0, pendingReq + (on ? 1 : -1));
-  const b = document.getElementById('loadbar');
-  if (b) b.classList.toggle('on', pendingReq > 0);
-}
-async function api(url, opts) {
-  setLoad(true);
-  try {
-    const r = await fetch(url, opts);
-    const ct = r.headers.get('content-type') || '';
-    const data = ct.includes('json') ? await r.json() : await r.text();
-    if (!r.ok) {
-      // Firma de proba expirata: propune abonarea in loc de o simpla eroare
-      if (r.status === 402 && data && data.firmaTrialExpired) { promptFirmaSubscribe(data.firmaId, data.firmaNume); }
-      const err = new Error((data && data.error) || ('Eroare ' + r.status)); err.status = r.status; err.data = data; throw err;
-    }
-    return data;
-  } finally { setLoad(false); }
-}
+// fmt, accName, H, toast, setLoad, api mutati in core.js (importate mai sus).
+// Inregistram hook-ul pentru raspunsul 402 (proba firmei expirata) — promptFirmaSubscribe e
+// declaratie de functie (hoisted), deci referirea ei aici, inainte de definitie, e valida.
+setOn402((data) => promptFirmaSubscribe(data.firmaId, data.firmaNume));
 // Dupa expirarea probei unei firme: avertisment + intrebare de abonare; la „Da" -> plata Stripe
 // (Start pentru necontabili / Pro pentru contabili) si deblocarea firmei pe luna curenta.
 let firmaSubPromptOpen = false;
@@ -674,12 +646,12 @@ $('#fiscalForm') && $('#fiscalForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const body = {};
   [...e.target.elements].forEach((el) => { if (el.name && el.value !== '') body[el.name] = el.value; });
-  try { await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); $('#fiscalStatus').className = 'status ok'; $('#fiscalStatus').textContent = 'Cote salvate — calculele folosesc noile valori.'; META = await api('/api/meta'); toast('Cote fiscale actualizate'); }
+  try { await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); $('#fiscalStatus').className = 'status ok'; $('#fiscalStatus').textContent = 'Cote salvate — calculele folosesc noile valori.'; setMeta(await api('/api/meta')); toast('Cote fiscale actualizate'); }
   catch (err) { $('#fiscalStatus').className = 'status err'; $('#fiscalStatus').textContent = err.message; }
 });
 $('#fiscalReset') && $('#fiscalReset').addEventListener('click', async () => {
   if (!confirm('Revii la cotele fiscale standard din aplicație?')) return;
-  try { await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reset: true }) }); await renderFiscal(); META = await api('/api/meta'); toast('Cote resetate la valori standard'); }
+  try { await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reset: true }) }); await renderFiscal(); setMeta(await api('/api/meta')); toast('Cote resetate la valori standard'); }
   catch (e) { toast(e.message, true); }
 });
 function renderGhid() {
@@ -998,7 +970,7 @@ function addPanelInfo() {
 
 async function init() {
   try {
-    META = await api('/api/meta');
+    setMeta(await api('/api/meta'));
   } catch (e) {
     if (e.status === 401) { showLogin(); handleCheckoutReturn(); handleRegisterLink(); return; }
     // Cont cu parola implicita: serverul blocheaza pana la schimbare (inclusiv /api/meta).
@@ -1006,7 +978,7 @@ async function init() {
     throw e;
   }
   hideLogin();
-  USER = META.user || {};
+  setUser(META.user || {});
   // Plasa de siguranta (daca meta ar fi permisa candva): acelasi ecran de schimbare fortata.
   if (USER.mustChange) { showForcePw(); return; }
   $('#userBadge').textContent = USER.username ? (USER.username + (USER.tip ? ' · ' + USER.tip : '')) : '';
@@ -1376,7 +1348,7 @@ $('#bankImport').addEventListener('click', async () => {
     const r = await api('/api/bank/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transactions, fileId: BANK.fileId }) });
     toast(r.created + ' înregistrări create' + (r.errors.length ? ', ' + r.errors.length + ' erori' : ''));
     BANK = { fileId: null, rows: [] }; $('#bankResult').innerHTML = ''; $('#bankImport').classList.add('hidden'); $('#bankFile').value = '';
-    META = await api('/api/meta'); fillPeriods(); loadEntries(); loadDashboard();
+    setMeta(await api('/api/meta')); fillPeriods(); loadEntries(); loadDashboard();
   } catch (e) { toast(e.message, true); }
 });
 function renderAI() {
@@ -2463,7 +2435,7 @@ $('#entryForm').addEventListener('submit', async (e) => {
     });
     toast('Înregistrare salvată: ' + res.entry.id);
     closeForm();
-    META = await api('/api/meta'); fillPeriods();
+    setMeta(await api('/api/meta')); fillPeriods();
     await loadEntries();
   } catch (err) { toast(err.message, true); }
 });
@@ -2509,7 +2481,7 @@ function bindEntryActions(root) {
     if (!confirm('Ștergi această înregistrare?')) return;
     await api('/api/entries/' + b.dataset.id, { method: 'DELETE' });
     toast('Înregistrare ștearsă');
-    META = await api('/api/meta'); fillPeriods(); loadEntries();
+    setMeta(await api('/api/meta')); fillPeriods(); loadEntries();
   }));
   root.querySelectorAll('.spvsend').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true; b.textContent = 'se trimite…';
@@ -2887,7 +2859,7 @@ $('#closeVat').addEventListener('click', async () => {
   const p = pget('vc'); if (!p) return toast('Alege o perioadă', true);
   try {
     await api('/api/close-vat?period=' + p, { method: 'POST' });
-    META = await api('/api/meta');
+    setMeta(await api('/api/meta'));
     // avanseaza la luna urmatoare si muta TOATE filtrele (jurnal, balanta etc.) pe noua luna
     const nm = nextMonth(p);
     setWorkMonth(nm);
@@ -2907,7 +2879,7 @@ async function previewYear() {
 }
 $('#closeYear').addEventListener('click', async () => {
   const y = $('#yearInput').value;
-  try { const r = await api('/api/close-year?year=' + y, { method: 'POST' }); toast('Închidere anuală: rezultat ' + fmt(r.result.rezultat) + ' lei'); META = await api('/api/meta'); loadEntries(); }
+  try { const r = await api('/api/close-year?year=' + y, { method: 'POST' }); toast('Închidere anuală: rezultat ' + fmt(r.result.rezultat) + ' lei'); setMeta(await api('/api/meta')); loadEntries(); }
   catch (e) { toast(e.message, true); }
 });
 function ptQuery() {
@@ -2937,7 +2909,7 @@ $('#ptYear') && $('#ptYear').addEventListener('change', previewProfitTax);
 $('#closeProfitTax') && $('#closeProfitTax').addEventListener('click', async () => {
   const body = { year: $('#ptYear').value, cheltNedeductibile: Number(($('#ptNed') || {}).value) || 0, deduceri: Number(($('#ptDed') || {}).value) || 0 };
   if ($('#ptPierdere') && $('#ptPierdere').value !== '') body.pierdereReportata = Number($('#ptPierdere').value) || 0;
-  try { const r = await api('/api/close-profit-tax', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast(r.message || ('Impozit pe profit înregistrat: ' + fmt(r.result.impozit) + ' lei')); META = await api('/api/meta'); loadEntries(); previewProfitTax(); }
+  try { const r = await api('/api/close-profit-tax', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast(r.message || ('Impozit pe profit înregistrat: ' + fmt(r.result.impozit) + ' lei')); setMeta(await api('/api/meta')); loadEntries(); previewProfitTax(); }
   catch (e) { toast(e.message, true); }
 });
 $('#distYear') && $('#distYear').addEventListener('change', previewDistribution);
@@ -2954,7 +2926,7 @@ $('#distResult') && $('#distResult').addEventListener('click', async () => {
   try {
     const r = await api('/api/distribute-result?year=' + y, { method: 'POST' });
     toast(r.message || (r.result.profit ? 'Profit repartizat (121→117): ' + fmt(r.result.profit) + ' lei' : 'Pierdere reportată (117→121): ' + fmt(r.result.pierdere) + ' lei'));
-    META = await api('/api/meta'); loadEntries();
+    setMeta(await api('/api/meta')); loadEntries();
   } catch (e) { toast(e.message, true); }
 });
 
@@ -4063,7 +4035,7 @@ $('#accImportBtn').addEventListener('click', async () => {
   try {
     const r = await api('/api/accounts/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }) });
     toast(r.importati + ' conturi importate (' + r.totalConturi + ' total)');
-    $('#accCsvIn').value = ''; META = await api('/api/meta'); renderPlan();
+    $('#accCsvIn').value = ''; setMeta(await api('/api/meta')); renderPlan();
   } catch (err) { toast(err.message, true); }
 });
 function renderPlan() {
@@ -4245,7 +4217,7 @@ $('#companyForm').addEventListener('submit', async (e) => {
 });
 $('#seedBtn').addEventListener('click', async () => {
   $('#seedStatus').textContent = 'Se încarcă…';
-  try { const r = await api('/api/seed', { method: 'POST' }); $('#seedStatus').textContent = r.message; META = await api('/api/meta'); fillPeriods(); loadEntries(); toast('Exemplu încărcat'); }
+  try { const r = await api('/api/seed', { method: 'POST' }); $('#seedStatus').textContent = r.message; setMeta(await api('/api/meta')); fillPeriods(); loadEntries(); toast('Exemplu încărcat'); }
   catch (e) { $('#seedStatus').textContent = e.message; }
 });
 

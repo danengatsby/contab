@@ -18,10 +18,17 @@ function walk(dir) {
 ['src', 'scripts', 'test', 'public'].forEach((d) => { if (fs.existsSync(d)) walk(d); });
 if (fs.existsSync('server.js')) files.push('server.js');
 
+// Fisierele frontend cu import/export sunt module ES (public/*.js incarcate cu
+// <script type="module">). package.json e "commonjs", deci `node --check <fisier>` le-ar
+// respinge — le validam ca module, prin stdin cu --input-type=module.
+const isEsm = (src) => /^\s*(import|export)\s/m.test(src);
 let bad = 0;
 for (const f of files) {
-  try { cp.execSync('node --check ' + JSON.stringify(f), { stdio: 'pipe' }); }
-  catch (e) { bad += 1; console.error('  ✗ ' + f + ': ' + String(e.stderr || e.message).split('\n')[0]); }
+  try {
+    const src = fs.readFileSync(f, 'utf8');
+    if (isEsm(src)) cp.execSync('node --check --input-type=module', { input: src, stdio: ['pipe', 'pipe', 'pipe'] });
+    else cp.execSync('node --check ' + JSON.stringify(f), { stdio: 'pipe' });
+  } catch (e) { bad += 1; console.error('  ✗ ' + f + ': ' + String(e.stderr || e.message).split('\n')[0]); }
 }
 console.log((bad ? '✗ ' : '✓ ') + files.length + ' fisiere verificate sintactic, ' + bad + ' erori.');
 process.exit(bad ? 1 : 0);
