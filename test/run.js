@@ -1628,6 +1628,8 @@ section('XSS: escaparea datelor externe la randare (public/app.js)');
 const appJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'app.js'), 'utf8');
 // nucleul partajat (Etapa 0 a modularizarii frontendului): helperii comuni traiesc in core.js
 const coreJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'core.js'), 'utf8');
+// administrarea (firme + utilizatori) a fost extrasa in admin.js (Etapa 4)
+const adminJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'admin.js'), 'utf8');
 // helper-ul de escapare exista (in core.js, exportat) si acopera toate caracterele periculoase
 ok('helper H() definit (core.js)', /export const H = \(s\) =>/.test(coreJs));
 ok('H() escapeaza < > & " \'', /'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'/.test(coreJs));
@@ -1639,8 +1641,8 @@ eq('H() escapeaza ghilimelele (spargere de atribut)', Htest('a" onmouseover="x')
 // punctele critice cu date de proveniente externa folosesc H() (poarta anti-regresie)
 ok('parteneri: numele si CUI-ul sunt escapate', /\$\{H\(p\.den\)\}/.test(appJs) && /\$\{H\(p\.cui\)\}/.test(appJs));
 ok('jurnal/entries: partenerul e escapat', /\$\{H\(e\.partener\)\}/.test(appJs));
-ok('utilizatori (admin): username-ul e escapat', /\$\{H\(u\.username\)\}/.test(appJs));
-ok('firme: denumirea firmei e escapata', /\$\{H\(f\.nume\)\}/.test(appJs));
+ok('utilizatori (admin): username-ul e escapat', /\$\{H\(u\.username\)\}/.test(adminJs));
+ok('firme: denumirea firmei e escapata', /\$\{H\(f\.nume\)\}/.test(adminJs));
 ok('stocuri: denumirea produsului e escapata', /\$\{H\(s\.product\.denumire\)\}/.test(appJs));
 ok('salarii: numele angajatului e escapat', /\$\{H\(r\.nume\)\}/.test(appJs));
 

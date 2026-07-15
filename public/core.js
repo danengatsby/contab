@@ -24,6 +24,8 @@ export function setMeta(m) { META = m; }
 export function setUser(u) { USER = u; }
 
 export const accName = (c) => { const a = META.accounts.find((x) => x.cod === String(c)); return a ? a.nume : ''; };
+// Contul demo (public, partajat): unele UI-uri se ascund. Partajat de app.js si admin.js.
+export const isDemo = () => !!(USER && USER.username === 'demo');
 
 export function toast(msg, err) {
   const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
