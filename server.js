@@ -737,8 +737,21 @@ require('./src/routes/stockdocs')(app, { S, activeId, canAccess, ensureDocSeries
 const { resetDemo } = require('./src/routes/demo')(app, { requireAdmin, logAudit });
 
 const os = require('os');
+// Ruleaza un job periodic cu plasa de siguranta: o eroare SINCRONA in callback (ex. un db.save()
+// care arunca) e prinsa si logata — nu doboara procesul si nu impiedica rulele urmatoare. Erorile
+// ASINCRONE raman tratate pe .catch-ul promisiunilor din interior (retea/ANAF/SMTP).
+function safeInterval(label, fn, ms) {
+  return setInterval(() => {
+    try { fn(); }
+    catch (e) {
+      console.error('[job:' + label + ']', (e && e.stack) || e);
+      try { trackServerError({ method: 'JOB', originalUrl: label }, e); } catch (_) { /* ignora */ }
+    }
+  }, ms);
+}
+
 // Backup automat zilnic (daca e activat)
-setInterval(() => {
+safeInterval('backup', () => {
   const s = db.get().settings.backup || {};
   if (s.auto === false) return;
   const last = s.lastAt ? Date.parse(s.lastAt) : 0;
@@ -748,7 +761,7 @@ setInterval(() => {
 }, 3600 * 1000); // verifica din ora in ora
 
 // Digest zilnic cu termenele fiscale: o singura data pe zi, dupa ora 07:00 (ora serverului)
-setInterval(() => {
+safeInterval('digest-termene', () => {
   const d = db.get();
   const today = new Date().toISOString().slice(0, 10);
   const s = d.settings.deadlineDigest || (d.settings.deadlineDigest = {});
@@ -761,7 +774,7 @@ setInterval(() => {
 }, 15 * 60 * 1000);
 
 // Reset zilnic al contului demo (dupa ora 04:00): junk-ul vizitatorilor dispare peste noapte
-setInterval(() => {
+safeInterval('demo-reset', () => {
   const d = db.get();
   const today = new Date().toISOString().slice(0, 10);
   const s = d.settings.demoReset || (d.settings.demoReset = {});
@@ -772,14 +785,14 @@ setInterval(() => {
 }, 15 * 60 * 1000);
 
 // Igiena rate-limit: fara curatare, map-urile ar creste nelimitat (cate o intrare per IP esuat)
-setInterval(() => {
+safeInterval('rate-limit-hygiene', () => {
   const now = Date.now();
   pruneLoginAttempts(now); // loginAttempts traieste in src/session.js (incapsulat)
   for (const [k, r] of registerAttempts) { if (r.reset < now) registerAttempts.delete(k); }
 }, 3600 * 1000);
 
 // Job periodic: descarca automat recipisele — SPV per-firma, doar firmele cu autoPoll bifat
-setInterval(() => {
+safeInterval('spv-poll', () => {
   const vreoFirma = db.get().firme.some((f) => f.anaf && f.anaf.autoPoll && anaf.connected(f.anaf));
   if (vreoFirma) {
     pollSpv({ auto: true }).then((r) => { if (r.downloaded) console.log('Auto-poll SPV: ' + r.downloaded + ' recipise descarcate'); })
