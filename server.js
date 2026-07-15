@@ -49,7 +49,13 @@ const dbReady = Promise.resolve(db.load()).then(() => {
 });
 
 const app = express();
-app.set('trust proxy', true); // citeste X-Forwarded-Proto de la reverse proxy (pentru cookie Secure pe HTTPS)
+// Reverse proxy: avem incredere DOAR in proxy-ul local (nginx pe 127.0.0.1) ca sa citim
+// X-Forwarded-For / X-Forwarded-Proto (pentru req.ip corect + cookie Secure pe HTTPS). NU
+// folosi `true` (incredere in ORICE hop): un client care atinge direct portul aplicatiei ar
+// putea falsifica X-Forwarded-For si ocoli blocarea anti-brute-force (rate-limit cheiat pe IP).
+// Configurabil prin TRUST_PROXY pentru alte topologii: un numar de hop-uri ("2") sau o subretea.
+const TRUST_PROXY = process.env.TRUST_PROXY || 'loopback';
+app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
 
 // Anteturi de securitate (fara dependinte). CSP calibrat pentru aceasta aplicatie:
 //  - script-src 'self' (un singur /app.js, fara scripturi/handler-e inline)
