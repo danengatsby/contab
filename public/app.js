@@ -811,6 +811,9 @@ function goTab(name, scrollId) {
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+// Hook public pentru E2E (scripts/e2e.mjs navigheaza prin goTab): modulele ES nu mai expun
+// functiile global, deci navigarea programatica are nevoie de acest export explicit pe window.
+window.goTab = goTab;
 // Scurtaturi „Ce vrei sa faci?” de pe Dashboard
 $$('.qa[data-go]').forEach((b) => b.addEventListener('click', () => goTab(b.dataset.go, b.dataset.scroll)));
 
