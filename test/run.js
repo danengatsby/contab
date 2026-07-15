@@ -1664,6 +1664,14 @@ ok('audit (admin): username-ul e escapat', /\$\{H\(a\.username/.test(adminJs));
 ok('fara gestiune neescapata in optiuni', !/>\$\{g\.cod\} — \$\{g\.denumire\}</.test(appJs));
 ok('fara descriere extras neescapata', !/<td>\$\{\(r\.descriere \|\| ''\)\.slice\(0, 40\)\}<\/td>/.test(bankJs));
 
+section('Modularizare frontend: vizualizator documente (Etapa 8, public/viewer.js)');
+const viewerJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'viewer.js'), 'utf8');
+ok('viewer.js importa $ si toast din core.js', /import \{[^}]*\btoast\b[^}]*\} from '\.\/core\.js'/.test(viewerJs));
+ok('viewer.js contine functiile vizualizatorului', /function openViewer\b/.test(viewerJs) && /function renderEfactura\b/.test(viewerJs) && /function openXmlViewer\b/.test(viewerJs));
+ok('viewer.js intercepteaza click-urile pe link-uri (/pdf, /csv, /xml)', /addEventListener\('click'/.test(viewerJs) && /efactura/.test(viewerJs) && /openXmlViewer\(/.test(viewerJs));
+ok('app.js importa viewer.js (efect secundar)', /import '\.\/viewer\.js'/.test(appJs));
+ok('app.js NU mai defineste vizualizatorul (mutat in viewer.js)', !/function openViewer\b/.test(appJs) && !/function renderEfactura\b/.test(appJs));
+
 section('Politica de parole (validatePassword)');
 const authlib = require('../src/auth');
 ok('parola de 8+ caractere e acceptata', authlib.validatePassword('parolabuna1') === null);
