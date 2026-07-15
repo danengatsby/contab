@@ -107,9 +107,13 @@ function bumpFail(req) {
   loginAttempts.set(k, r);
 }
 function clearFails(req) { loginAttempts.delete(attemptKey(req)); }
+// Igiena rate-limit: fara curatare, map-ul ar creste nelimitat (cate o intrare per IP esuat).
+function pruneLoginAttempts(now = Date.now()) {
+  for (const [k, r] of loginAttempts) { if (r.until < now) loginAttempts.delete(k); }
+}
 
 module.exports = {
   currentUser, allowedFirme, publicUser,
   startSession, setTrustedDevice, deviceTrusted,
-  isLocked, bumpFail, clearFails, attemptKey,
+  isLocked, bumpFail, clearFails, attemptKey, pruneLoginAttempts,
 };

@@ -135,7 +135,7 @@ const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
 
 // ───────────────────────── AUTENTIFICARE ─────────────────────────
 // Primitive de sesiune/auth/anti-brute-force (partajate cu rutele de cont): src/session.js
-const { currentUser, allowedFirme, publicUser, startSession, setTrustedDevice, deviceTrusted, isLocked, bumpFail, clearFails, attemptKey } = require('./src/session');
+const { currentUser, allowedFirme, publicUser, startSession, setTrustedDevice, deviceTrusted, isLocked, bumpFail, clearFails, attemptKey, pruneLoginAttempts } = require('./src/session');
 
 // jurnal de audit (cine, ce actiune, pe ce firma)
 function logAudit(action, detail, opts) {
@@ -774,7 +774,7 @@ setInterval(() => {
 // Igiena rate-limit: fara curatare, map-urile ar creste nelimitat (cate o intrare per IP esuat)
 setInterval(() => {
   const now = Date.now();
-  for (const [k, r] of loginAttempts) { if (r.until < now) loginAttempts.delete(k); }
+  pruneLoginAttempts(now); // loginAttempts traieste in src/session.js (incapsulat)
   for (const [k, r] of registerAttempts) { if (r.reset < now) registerAttempts.delete(k); }
 }, 3600 * 1000);
 
@@ -889,5 +889,16 @@ function shutdown() {
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+
+// Plasa de siguranta: o eroare intr-un timer/callback async (ex. un job periodic) NU trebuie sa
+// doboare tot procesul. Logam si continuam — pm2 nu mai e nevoit sa reporneasca, iar cererile in
+// zbor nu se pierd. (Erorile din rute sunt deja tratate de wrap()/handlerul Express de mai sus.)
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', (err && err.stack) || err);
+  try { trackServerError({ method: 'PROC', originalUrl: 'uncaughtException' }, err); } catch (_) { /* ignora */ }
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', (reason && reason.stack) || reason);
+});
 
 module.exports = { app, buildEntry, upsertPartner };
