@@ -1,0 +1,152 @@
+# Arhitectură, multi-firmă și utilizatori
+
+## Arhitectură
+
+- `server.js` — server Express + rute API și PDF.
+- `src/chartOfAccounts.js` — planul de conturi (clasele 1–8) + regula debit/credit.
+- `src/documentTypes.js` — tipurile de documente și formulele contabile.
+- `src/extractor.js` — extragere text din PDF (pdf-parse + pdf2json) și euristici RO.
+- `src/fiscal.js` — parametri fiscali 2026 + calculul salariului din brut (CAS/CASS/impozit/CAM).
+- `src/aiExtractor.js` — extragere cu Claude API (document PDF + ieșire structurată).
+- `src/reporting.js` — livrabile (oglinda borderoului de primire): recap D112/D300/D100, obligații ANAF, registru-inventar.
+- `src/xml.js` — generare XML: e-Factura UBL 2.1 (CIUS-RO) pentru facturi emise, D300 și D394 (format ANAF).
+- `src/saft.js` — generare SAF-T (D406): Header + MasterFiles (conturi, clienți, furnizori, TVA, mijloace fixe) + GeneralLedgerEntries + SourceDocuments.
+- `src/assets.js` — registrul de mijloace fixe + amortizare liniară/degresivă/accelerată (calcul lunar, plan, înregistrare 6811=281x).
+- `src/stocks.js` — gestiunea stocurilor cantitativ-valoric la cost mediu ponderat (CMP): fișă de magazie, stoc curent.
+- `src/payroll.js` — salarizare: nomenclator angajați (cu **spor** impozabil, **avans** → 425 și
+  **rețineri** din net → 427) + stat de plată per angajat (CAS/CASS/impozit/CAM, rest de plată),
+  PDF stat + **fluturaș per
+  angajat** (`/pdf/fluturas/:id`) + articol contabil agregat + **D112 XML** (tab „Salarizare").
+  API: `GET/POST/DELETE /api/angajati`, `GET/POST /api/stat-plata`. **Plata efectivă** a salariilor
+  (rest de plată → `421 = 5121`/`5311`) cu un click: `POST /api/stat-plata/pay?period=&cont=`.
+  La fiecare înregistrare a statului se salvează un **instantaneu lunar** (`payrollHistory`), din care
+  se construiește **registrul anual de salarii** (cumul per angajat, bază pentru adeverințe de venit):
+  `/api/registru-salarii?year=`, `/pdf/registru-salarii?year=`. Din registru se generează
+  **adeverința de venit** per angajat (`/pdf/adeverinta/:id?year=`) — venit brut/net anual + contribuții,
+  cu formular oficial și rubrici de semnătură.
+- `src/accounting.js` — jurnal, carte mare, balanță, închideri TVA/anuală.
+- `src/analytic.js` — balanță analitică pe partener/etichetă + **scadențar cu vechimea soldurilor (aging)**:
+  solduri restante per partener, repartizate pe intervale **0-30 / 31-60 / 61-90 / >90 zile** prin
+  stingere FIFO a facturilor cu plățile (factura cea mai veche se stinge prima), la o dată de referință
+  (`?asOf=`). `/api/aging`, `/pdf/aging`, `/csv/aging`, card în tab-ul Analitic.
+  Pe baza creanțelor &gt;90 zile se poate înregistra **ajustarea pentru deprecierea creanțelor**
+  (`6814 = 491`, sau reluare `491 = 7814` la diminuare), cu procent configurabil; `/api/provizion`.
+  Creanțele neîncasabile se pot **scoate din evidență** direct din scadențar (buton „scoate"):
+  `654 = 4111` (pierdere) + reluarea automată a ajustării aferente `491 = 7814`; `/api/writeoff`.
+- `src/statements.js` — cont de profit și pierdere, bilanț.
+- `src/pdf.js` — generarea rapoartelor PDF (PDFKit).
+- `src/csv.js` — export CSV compatibil Excel (separator `;`, BOM UTF-8) pentru mișcări de stoc,
+  stoc curent, registrul-jurnal, balanță, **cartea mare** (cu sold inițial/final și mișcări),
+  **balanța analitică** și **parteneri** (`/csv/stock-movements`, `/csv/stocks`, `/csv/journal`,
+  `/csv/balance`, `/csv/ledger`, `/csv/analytic`, `/csv/partners`); butoane „⬇ CSV” în tab-uri.
+- `src/db.js` — stratul de persistență, cu driver comutabil prin `CONTAB_DB_DRIVER`:
+  **`sqlite`** (implicit, `src/store.js`, `node:sqlite`), **`pg`** (PostgreSQL, `src/storePg.js`,
+  pachetul `pg`) sau **`json`** (vechi, doar `data/db.json` — rollback rapid). Indiferent de driver,
+  aplicația lucrează pe același graf în memorie; driverele relaționale păstrează în plus o
+  **oglindă `data/db.json`** pentru backup și rollback. Vezi „Baze de date” mai jos.
+- `public/` — interfața web (HTML/CSS/JS vanilla).
+
+## Multi-firmă
+
+Aplicația gestionează **mai multe firme** în aceeași instanță:
+- Tabelul `firme` (în `data/db.json`) ține firmele; câmpul **`firmaId`** este adăugat la
+  toate înregistrările (entries, documents, partners, solduri inițiale sintetice și analitice).
+- **Firma activă** se alege din selectorul din bara de sus; toată aplicația (rapoarte, jurnale,
+  balanță, declarații, parteneri, reconciliere, dashboard) este filtrată automat pe ea, printr-o
+  „vedere” scoped — modulele de raportare nu au fost modificate.
+- Gestionarea firmelor (adăugare, activare, ștergere) e în Setări → „Firme”.
+- Bazele vechi (o singură firmă, fără `firmaId`) sunt **migrate automat** la prima pornire.
+- e-Factura, D300/D394 și trimiterea în SPV folosesc datele firmei căreia îi aparține înregistrarea.
+- API: `GET/POST /api/firme`, `POST /api/firme/:id`, `POST /api/firme/:id/activate`,
+  `DELETE /api/firme/:id`; orice rută acceptă și `?firma=ID` pentru a forța o firmă anume.
+- **Export / import firmă** (migrare/arhivare): `GET /api/firme/:id/export` descarcă un pachet JSON cu
+  toate datele firmei; `POST /api/firme/import` îl încarcă **ca firmă nouă**, remapând toate id-urile
+  și referințele interne (entries↔mișcări, produse, gestiuni, mijloace fixe, angajați, inventare,
+  istoric salarii). Buton în Setări → Firme.
+
+## Utilizatori și autentificare
+
+Aplicația cere **login** și aplică **drepturi pe firmă**:
+- Tabelul `users` în `data/db.json`: `{ id, username, salt, hash, role, firme[] }`. Parolele sunt
+  hash-uite cu **scrypt** + salt; sesiunea e un **cookie semnat HMAC** (`sid`, HttpOnly, 7 zile).
+- Roluri: **admin** (vede toate firmele, gestionează utilizatori) și **user** (vede doar firmele
+  alocate). Toate rutele `/api`, `/pdf`, `/xml` sunt protejate; rapoartele sunt filtrate pe firma
+  activă a utilizatorului, iar `?firma=ID` e ignorat dacă nu are acces.
+- La prima pornire se creează automat **admin / admin** (schimbă parola imediat din Setări →
+  „Schimbă parola”; aplicația te avertizează).
+- Gestionarea utilizatorilor (adăugare, rol, firme alocate, resetare parolă) e în Setări →
+  „Utilizatori” (doar admin). Module: `src/auth.js`.
+- API: `POST /api/login` · `POST /api/logout` · `GET /api/me` · `POST /api/change-password` ·
+  `GET/POST /api/users` · `POST /api/users/:id` · `DELETE /api/users/:id`.
+- **Cookie Secure automat pe HTTPS:** serverul citește `X-Forwarded-Proto` de la reverse proxy
+  (`trust proxy`); pe HTTPS cookie-ul de sesiune primește flag-ul `Secure`, pe HTTP nu (ca să
+  funcționeze și acum, înainte de certificat).
+- **Jurnal de audit** (`audit` în db): acțiunile importante (creare/ștergere înregistrări,
+  închideri, firme, utilizatori, login) cu autor, firmă și dată. Vizibil în Setări → „Jurnal de
+  audit” (adminul vede tot, userul doar firmele lui). `GET /api/audit`.
+- **Invitații prin link:** adminul creează o invitație (Setări → „Utilizatori” → „Trimite
+  invitație”); rezultă un link `/?invite=TOKEN` pe care îl trimite (manual sau pe email dacă SMTP
+  e configurat în `settings.smtp`). Invitatul deschide linkul, își setează parola și e autentificat.
+  API: `POST /api/invites` · `GET /api/invite/:token` · `POST /api/invite/accept`.
+- **SMTP real:** Setări → „Server email (SMTP)” (admin) configurează host/port/SSL/user/parolă/from;
+  când e completat, invitațiile se trimit automat pe email (prin `nodemailer`). `GET/POST /api/smtp`.
+- **Expirarea invitațiilor:** fiecare invitație expiră în **7 zile** (`inviteExp`); după expirare
+  linkul nu mai funcționează și adminul trebuie să trimită altul.
+- **2FA (TOTP):** Setări → „Autentificare în doi pași” — activezi cu o aplicație de autentificator
+  (Google Authenticator/Authy/FreeOTP), scanezi codul (sau introduci secretul) și confirmi cu un cod.
+  La login se cere și codul de 6 cifre. Implementare standard RFC 6238 fără dependențe externe
+  (`src/totp.js`). API: `POST /api/2fa/setup` · `/api/2fa/enable` · `/api/2fa/disable`.
+- **Anti-brute-force la login:** după 8 încercări eșuate de pe același IP, login-ul e blocat ~15
+  minute (răspuns `429`). Contorul se resetează la prima autentificare reușită.
+- **„Remember device” pentru 2FA:** la login cu cod poți bifa „Ține minte acest dispozitiv 30 de
+  zile” → un cookie semnat `tfd` sare peste codul 2FA pe acel dispozitiv. „Revocă dispozitivele de
+  încredere” (sau dezactivarea 2FA) le invalidează pe toate (`tfdEpoch`).
+- **Backup automat al bazei de date:** Setări → „Backup” (admin) — buton „Fă backup acum”, listă cu
+  descărcare, și **backup automat zilnic**. Mecanism: `src/backup.js` (`backupNow`) copiază `data/db.json`
+  în `data/backups/db-YYYYMMDD-HHMMSS.json` și păstrează ultimele 30. Rularea zilnică e făcută de
+  `scripts/backup.js` printr-un **cron** (`30 3 * * * node /var/www/contab/scripts/backup.js`,
+  log în `data/backups/backup.log`). API: `POST /api/backup` · `GET /api/backups` ·
+  `GET /api/backup/file/:name` · `POST /api/backups/auto`.
+- **Monitorizare:** `GET /api/health` (public) confirmă că procesul și baza răspund;
+  `scripts/healthcheck.sh` rulează din cron la 5 minute și trimite **alertă pe email** (Resend)
+  când aplicația nu răspunde (max. una pe oră). Pentru căderi de server complet, adaugă și un
+  monitor extern (ex. UptimeRobot) pe același URL.
+- **Contul demo se resetează zilnic** (după 04:00) din snapshot-ul `data/demo-firma.json` —
+  junk-ul vizitatorilor dispare peste noapte, împreună cu mesajele și contorul AI al contului.
+  Admin: `POST /api/demo/reset` (manual) · `POST /api/demo/snapshot` (re-face snapshot-ul din
+  starea curentă, după o curatare manuală).
+- **Politica de confidențialitate (GDPR):** `public/confidentialitate.html` — legată din
+  prezentare și din panoul de înscriere; acoperă datele colectate, împuterniciții (Stripe,
+  Anthropic, Resend, ANAF), duratele și drepturile utilizatorilor.
+- **Teste de integrare HTTP** (`test/http.js`, în `npm test`): pornește serverul pe un port de
+  test cu bază temporară și verifică 21 de puncte cap-coadă — autentificare, autorizarea pe
+  firmă, filtrul de upload, blocarea probei expirate, registrul depunerilor, portofoliul.
+- **Alerte operaționale pe email:** la ≥5 erori de server (5xx) în 15 minute se trimite o
+  alertă (max. una pe oră); la înscriere, utilizatorii cu email primesc un **mesaj de bun venit**
+  cu primii pași.
+- **E2E pe live:** `npm run e2e` (`scripts/e2e.mjs`, Playwright — pe acest server prin Docker,
+  comanda e în antetul scriptului): 18 verificări cap-coadă pe instanța reală, cu contul demo —
+  inclusiv FAQ-ul public de pe login, dicționarul contabil, modul simplu cu rezumatul executiv
+  și cardul de pro-rata din tab-ul TVA.
+- **Arhivă completă + copie offsite (zilnic):** pe lângă copia `db.json`, cronul creează
+  `data/backups/full-YYYYMMDD-HHMMSS.zip` — `db.json` + un **instantaneu consistent** al bazei
+  relaționale (SQLite prin `VACUUM INTO`, sigur sub WAL; sau `contab.sql` prin `pg_dump` pe
+  driverul PostgreSQL) + **toate documentele din `data/uploads/`** — păstrează
+  ultimele 14 și o trimite **în afara serverului**: pe email (Resend, `CONTAB_BACKUP_EMAIL_TO` +
+  `RESEND_API_KEY` în `.env`) și/sau cu **rclone** (`RCLONE_REMOTE`, obligatoriu peste 20MB).
+  Restaurare după dezastru: dezarhivezi zip-ul → `db.json` prin Setări → Backup → Restaurează,
+  `uploads/*` înapoi în `data/uploads/`.
+- **Restaurare backup din UI:** Setări → „Backup” → încarcă un fișier `db.json`; serverul îl
+  validează (trebuie să conțină `firme`/`users`), face automat un backup al stării curente, apoi
+  înlocuiește baza și o reîncarcă. `POST /api/restore` (admin, multipart).
+- **Resetare parolă prin email:** „Ai uitat parola?” pe ecranul de login → introduci utilizator/email
+  → primești un link `/?reset=TOKEN` (valabil 1 oră) dacă ai email setat și SMTP e configurat.
+  Răspunsul e identic indiferent dacă există contul (nu dezvăluie utilizatorii). Setezi emailul în
+  Setări → „Contul meu”. API: `POST /api/forgot-password` · `GET /api/reset/:token` ·
+  `POST /api/reset/accept` · `GET/POST /api/profile`.
+- **Sesiuni active + „deconectează peste tot”:** sesiunile sunt înregistrate server-side (dispozitiv,
+  IP, ultima activitate); cookie-ul de sesiune e legat de un `sessId` — dacă sesiunea e revocată,
+  cookie-ul devine invalid. Setări → „Contul meu” arată sesiunile, cu „deconectează” per dispozitiv și
+  „Deconectează celelalte dispozitive”. Resetarea parolei deconectează automat toate sesiunile.
+  API: `GET /api/sessions` · `POST /api/sessions/logout-others` · `DELETE /api/sessions/:id`.
+
