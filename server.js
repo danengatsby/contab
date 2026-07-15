@@ -58,33 +58,40 @@ const app = express();
 const TRUST_PROXY = process.env.TRUST_PROXY || 'loopback';
 app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
 
-// Anteturi de securitate (fara dependinte). CSP calibrat pentru aceasta aplicatie:
+// Anteturi de securitate via helmet, cu CSP calibrat pentru aceasta aplicatie:
 //  - script-src 'self' (un singur /app.js, fara scripturi/handler-e inline)
 //  - style-src 'unsafe-inline' (atribute style= folosite pe larg in HTML)
 //  - img-src data:/blob: (favicon data-URI, canvas), connect-src include puntea de scanare locala
-//  - frame-src 'self' (vizualizatorul PDF/e-Factura ruleaza intr-un <iframe> same-origin)
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self'",
-  "connect-src 'self' http://127.0.0.1:8765 http://localhost:8765",
-  "frame-src 'self' blob:",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'self'",
-].join('; ');
+//  - frame-src 'self' blob: (vizualizatorul PDF/e-Factura ruleaza intr-un <iframe> same-origin)
+// COEP/CORP sunt DEZACTIVATE intentionat: ar rupe vizualizatorul PDF (iframe blob:) si puntea
+// locala. HSTS ramane manual (conditionat de req.secure) si Permissions-Policy manual (helmet
+// nu-l seteaza) — mai jos.
+const helmet = require('helmet');
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'blob:'],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'", 'http://127.0.0.1:8765', 'http://localhost:8765'],
+      frameSrc: ["'self'", 'blob:'],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // ar rupe iframe-ul PDF (blob:) si puntea locala
+  crossOriginResourcePolicy: false, // pastreaza comportamentul actual (fara restrictie noua)
+  hsts: false,                      // HSTS ramane manual, conditionat de req.secure
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+}));
 app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy', CSP);
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
-  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000'); // 180 zile, doc HTTPS (fara subDomains, ca sa nu afecteze alte servicii)
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000'); // 180 zile, fara subDomains (sa nu afecteze alte servicii)
   next();
 });
 
