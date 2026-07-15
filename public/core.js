@@ -8,6 +8,9 @@ export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 export const fmt = (n) => (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Rotunjire la 2 zecimale (bani), aceeasi semantica cu src/util.js. Folosita in stocuri
+// (total valoare stoc) si la auto-completarea salariilor — lipsea din frontend (ReferenceError).
+export const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
 // Escapare HTML pentru datele de provenienta externa (parteneri din e-Factura/SPV, extrase
 // bancare, denumiri, explicatii) inainte de interpolarea in innerHTML — al doilea strat de
