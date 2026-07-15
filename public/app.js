@@ -1,11 +1,12 @@
 'use strict';
-import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUser, setOn402, escMsg, escAttr, isDemo } from './core.js';
+import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUser, setOn402, escMsg, escAttr, isDemo, fileToCsv } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, setSettingsDeps } from './settings.js';
 import { renderFirme, renderUsers, renderAudit, setAdminDeps } from './admin.js';
 import { loadDashboard, renderBudget, setDashboardDeps } from './dashboard.js';
 import { initUiMode } from './simplemode.js';
+import { loadPartners } from './partners.js';
 
 let CURRENT = null; // { documentId, fields, suggestedType }
 
@@ -2589,56 +2590,7 @@ $('#oaForm').addEventListener('submit', async (e) => {
 });
 
 // ───────────────────────── PARTENERI ─────────────────────────
-const TIP_PARTENER = { client: { t: 'Client', c: '#0b6e4f', bg: '#eaf4ef' }, furnizor: { t: 'Furnizor', c: '#b00020', bg: '#fdeef0' }, ambele: { t: 'Ambele', c: '#42506f', bg: '#eef1f7' } };
-function tipBadge(tip) { const x = TIP_PARTENER[tip]; return x ? `<span style="background:${x.bg};color:${x.c};border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700">${x.t}</span>` : '<span class="muted">—</span>'; }
-let PARTNERS_MAP = {};
-async function loadPartners() {
-  PARTNERS_MAP = await api('/api/partners');
-  renderPartners();
-}
-function renderPartners() {
-  const map = PARTNERS_MAP;
-  const ft = ($('#partnerTipFilter') && $('#partnerTipFilter').value) || '';
-  let arr = Object.values(map);
-  if (ft) arr = arr.filter((p) => p.tip === ft || (ft !== 'ambele' && p.tip === 'ambele'));
-  $('#partnersList').innerHTML = arr.length
-    ? `<table><thead><tr><th>CUI</th><th>Denumire</th><th>Tip</th><th>Oraș</th><th>Județ</th><th></th></tr></thead><tbody>${
-      arr.map((p) => `<tr><td class="acc">${H(p.cui)}</td><td>${H(p.den)}</td><td>${tipBadge(p.tip)}</td><td>${H(p.oras)}</td><td>${H(p.judet)}</td>
-        <td><button class="linkbtn pedit" data-cui="${p.cui}">editează</button></td></tr>`).join('')}</tbody></table>`
-    : '<p class="muted">Niciun partener pentru filtrul ales. Partenerii se adaugă automat când introduci CUI pe o factură.</p>';
-  $$('#partnersList .pedit').forEach((b) => b.addEventListener('click', () => {
-    const p = map[b.dataset.cui]; const f = $('#partnerForm');
-    ['cui', 'den', 'tip', 'adresa', 'oras', 'judet', 'tara'].forEach((k) => { if (f[k]) f[k].value = p[k] || ''; });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }));
-}
-$('#partnerTipFilter') && $('#partnerTipFilter').addEventListener('change', renderPartners);
-$('#partnerForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const f = e.target;
-  const body = { cui: f.cui.value, den: f.den.value, tip: f.tip.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tara: f.tara.value };
-  try { await api('/api/partners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Partener salvat'); f.reset(); f.tara.value = 'RO'; loadPartners(); }
-  catch (err) { toast(err.message, true); }
-});
-// Citeste un fisier de import: .xlsx -> convertit la CSV pe server; .csv -> citit direct.
-async function fileToCsv(file) {
-  if (/\.(xlsx|xls|dbf)$/i.test(file.name)) {
-    const fd = new FormData(); fd.append('file', file);
-    const r = await api('/api/xlsx-to-csv', { method: 'POST', body: fd });
-    return r.csv || '';
-  }
-  return await file.text();
-}
-$('#partnersCsvFile').addEventListener('change', async (e) => { const f = e.target.files[0]; if (f) { try { $('#partnersCsvIn').value = await fileToCsv(f); } catch (err) { toast(err.message, true); } } });
-$('#partnersImportBtn').addEventListener('click', async () => {
-  const csv = $('#partnersCsvIn').value.trim();
-  if (!csv) return toast('Lipiește sau încarcă un CSV', true);
-  try {
-    const r = await api('/api/partners/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }) });
-    toast(r.importati + ' parteneri importați' + (r.erori.length ? ' (' + r.erori.length + ' erori)' : ''));
-    $('#partnersCsvIn').value = ''; loadPartners();
-  } catch (err) { toast(err.message, true); }
-});
+// ── Nomenclator parteneri (clienti/furnizori) → public/partners.js ──
 // Șabloane email pentru clienți (solicitare lunară / reminder scurt)
 const EMAIL_TPL = {
   full: ($('#emailTemplate') && $('#emailTemplate').defaultValue) || '',

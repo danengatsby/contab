@@ -1630,6 +1630,8 @@ const appJs = require('fs').readFileSync(require('path').join(__dirname, '..', '
 const coreJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'core.js'), 'utf8');
 // administrarea (firme + utilizatori) a fost extrasa in admin.js (Etapa 4)
 const adminJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'admin.js'), 'utf8');
+// nomenclatorul de parteneri a fost extras in partners.js (Etapa 7)
+const partnersJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'partners.js'), 'utf8');
 // helper-ul de escapare exista (in core.js, exportat) si acopera toate caracterele periculoase
 ok('helper H() definit (core.js)', /export const H = \(s\) =>/.test(coreJs));
 ok('H() escapeaza < > & " \'', /'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'/.test(coreJs));
@@ -1639,7 +1641,7 @@ const Htest = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&
 eq('H() neutralizeaza un payload de script', Htest('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
 eq('H() escapeaza ghilimelele (spargere de atribut)', Htest('a" onmouseover="x'), 'a&quot; onmouseover=&quot;x');
 // punctele critice cu date de proveniente externa folosesc H() (poarta anti-regresie)
-ok('parteneri: numele si CUI-ul sunt escapate', /\$\{H\(p\.den\)\}/.test(appJs) && /\$\{H\(p\.cui\)\}/.test(appJs));
+ok('parteneri: numele si CUI-ul sunt escapate', /\$\{H\(p\.den\)\}/.test(partnersJs) && /\$\{H\(p\.cui\)\}/.test(partnersJs));
 ok('jurnal/entries: partenerul e escapat', /\$\{H\(e\.partener\)\}/.test(appJs));
 ok('utilizatori (admin): username-ul e escapat', /\$\{H\(u\.username\)\}/.test(adminJs));
 ok('firme: denumirea firmei e escapata', /\$\{H\(f\.nume\)\}/.test(adminJs));

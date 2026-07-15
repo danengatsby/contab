@@ -58,3 +58,14 @@ export async function api(url, opts) {
     return data;
   } finally { setLoad(false); }
 }
+
+// Citeste un fisier de import: .xlsx/.xls/.dbf -> convertit la CSV pe server; .csv -> citit direct.
+// Partajat de importurile de parteneri, produse, stoc initial si plan de conturi.
+export async function fileToCsv(file) {
+  if (/\.(xlsx|xls|dbf)$/i.test(file.name)) {
+    const fd = new FormData(); fd.append('file', file);
+    const r = await api('/api/xlsx-to-csv', { method: 'POST', body: fd });
+    return r.csv || '';
+  }
+  return await file.text();
+}
