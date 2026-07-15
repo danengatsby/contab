@@ -13,6 +13,10 @@ export const fmt = (n) => (Number(n) || 0).toLocaleString('ro-RO', { minimumFrac
 // bancare, denumiri, explicatii) inainte de interpolarea in innerHTML — al doilea strat de
 // aparare dupa CSP. `H` = escapare completa (text + atribute), folosita la randare.
 export const H = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Varianta usoara (doar & < >) + varianta pentru atribute (adauga escaparea ghilimelelor).
+// Partajate: mesageria le foloseste la randarea firului, iar app.js la galeriile de documente.
+export const escMsg = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+export const escAttr = (s) => escMsg(s).replace(/"/g, '&quot;');
 
 export let META = { types: [], accounts: [], company: {}, periods: [] };
 export let USER = {};
