@@ -1709,5 +1709,20 @@ ok('parola implicita „admin" e respinsa (prea scurta sau comuna)', authlib.val
 ok('parola = utilizator e respinsa', /identica cu numele/i.test(authlib.validatePassword('gigelgigel', { username: 'gigelgigel' }) || ''));
 ok('parola diferita de utilizator trece', authlib.validatePassword('altaparola9', { username: 'gigel' }) === null);
 
+section('Igiena data/: rotatia backup-urilor ad-hoc (src/backup.js)');
+const backupMod = require('../src/backup');
+const fsB = require('fs'); const osB = require('os'); const pathB = require('path');
+const tmpB = fsB.mkdtempSync(pathB.join(osB.tmpdir(), 'contab-bak-'));
+// 12 backup-uri ad-hoc + 2 fisiere de migrare (de pastrat)
+for (let k = 0; k < 12; k++) { const f = pathB.join(tmpB, 'db.json.bak-op' + k); fsB.writeFileSync(f, 'x'); const t = Date.now() - (12 - k) * 1000; fsB.utimesSync(f, t / 1000, t / 1000); }
+fsB.writeFileSync(pathB.join(tmpB, 'db.pre-pg.json'), 'x');
+fsB.writeFileSync(pathB.join(tmpB, 'db.pre-sqlite.json'), 'x');
+const rB = backupMod.pruneStrayBackups(tmpB, 10);
+eq('rotatie: sterge peste ultimele 10', rB.removed, 2);
+eq('rotatie: pastreaza 10', fsB.readdirSync(tmpB).filter((f) => /^db\.json\.bak-/.test(f)).length, 10);
+ok('rotatie: NU atinge db.pre-*.json (migrare)', fsB.existsSync(pathB.join(tmpB, 'db.pre-pg.json')) && fsB.existsSync(pathB.join(tmpB, 'db.pre-sqlite.json')));
+ok('rotatie: pastreaza cele mai NOI', fsB.existsSync(pathB.join(tmpB, 'db.json.bak-op11')) && !fsB.existsSync(pathB.join(tmpB, 'db.json.bak-op0')));
+try { fsB.rmSync(tmpB, { recursive: true, force: true }); } catch (_) { /* ignora */ }
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);
