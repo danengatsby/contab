@@ -1647,6 +1647,23 @@ ok('utilizatori (admin): username-ul e escapat', /\$\{H\(u\.username\)\}/.test(a
 ok('firme: denumirea firmei e escapata', /\$\{H\(f\.nume\)\}/.test(adminJs));
 ok('stocuri: denumirea produsului e escapata', /\$\{H\(s\.product\.denumire\)\}/.test(appJs));
 ok('salarii: numele angajatului e escapat', /\$\{H\(r\.nume\)\}/.test(appJs));
+// puncte hardenizate suplimentar (audit XSS): date editabile de utilizator / provenite din e-Factura
+const bankJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'bank.js'), 'utf8');
+const dashJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'dashboard.js'), 'utf8');
+ok('compensare: CUI/denumire partener escapate', /\$\{H\(c\.cui\)\}/.test(appJs) && /\$\{H\(c\.den\)\}/.test(appJs));
+ok('analitic terti: denumirea partenerului e escapata', /\$\{H\(r\.den\)\}/.test(appJs));
+ok('inventar: numele furnizorului (e-Factura) e escapat', /\$\{H\(inv\.furnizor\.nume/.test(appJs));
+ok('gestiuni: denumirea e escapata in optiuni', /\$\{H\(g\.denumire\)\}/.test(appJs));
+ok('productie/retete: denumirea produsului e escapata', /\$\{H\(p\.denumire\)\}/.test(appJs));
+ok('extras bancar: descrierea (externa) e escapata', /\$\{H\(\(r\.descriere/.test(bankJs));
+ok('extras bancar: partenerul din extras e escapat', /value="\$\{H\(r\.fields\.partener/.test(bankJs));
+ok('parteneri: atributul data-cui e escapat', /data-cui="\$\{H\(p\.cui\)\}"/.test(partnersJs));
+ok('buget: numele contului e escapat', /\$\{H\(row\.nume\)\}/.test(dashJs));
+ok('audit (admin): username-ul e escapat', /\$\{H\(a\.username/.test(adminJs));
+// porti negative: variantele NEescapate nu trebuie sa revina
+ok('fara gestiune neescapata in optiuni', !/>\$\{g\.cod\} — \$\{g\.denumire\}</.test(appJs));
+ok('fara descriere extras neescapata', !/<td>\$\{\(r\.descriere \|\| ''\)\.slice\(0, 40\)\}<\/td>/.test(bankJs));
+
 section('Politica de parole (validatePassword)');
 const authlib = require('../src/auth');
 ok('parola de 8+ caractere e acceptata', authlib.validatePassword('parolabuna1') === null);

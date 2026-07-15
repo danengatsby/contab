@@ -28,10 +28,10 @@ function renderBank() {
     <th class="num">Sumă</th><th>Sens</th><th>Tip înregistrare</th><th>Partener</th></tr></thead><tbody>${
     BANK.rows.map((r, i) => `<tr>
       <td><input type="checkbox" class="bsel" data-i="${i}" checked></td>
-      <td>${r.data}</td><td>${(r.descriere || '').slice(0, 40)}</td>
+      <td>${r.data}</td><td>${H((r.descriere || '').slice(0, 40))}</td>
       <td class="num">${fmt(r.suma)}</td><td>${r.sens === 'in' ? '↓ încasare' : '↑ plată'}</td>
       <td><select class="btip" data-i="${i}">${tipOpts(r.tip)}</select></td>
-      <td><input class="bpart" data-i="${i}" value="${(r.fields.partener || '').replace(/"/g, '&quot;')}" />${r.matched ? ' <span class="pill">potrivit</span>' : ''}</td>
+      <td><input class="bpart" data-i="${i}" value="${H(r.fields.partener || '')}" />${r.matched ? ' <span class="pill">potrivit</span>' : ''}</td>
     </tr>`).join('')}</tbody></table>`;
   $('#bankImport').classList.remove('hidden');
   $('#bankAll').addEventListener('change', (e) => $$('.bsel').forEach((c) => { c.checked = e.target.checked; }));

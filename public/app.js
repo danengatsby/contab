@@ -1193,12 +1193,12 @@ $('#efParseBtn') && $('#efParseBtn').addEventListener('click', async () => {
     const inv = r.invoice;
     const liniiHtml = (inv.linii || []).length
       ? `<table style="margin-top:6px"><thead><tr><th>Denumire</th><th class="num">Cant.</th><th class="num">Preț</th><th class="num">Valoare</th><th class="num">TVA%</th></tr></thead><tbody>${
-        inv.linii.map((l) => `<tr><td>${l.nume}</td><td class="num">${fmt(l.cantitate)}</td><td class="num">${fmt(l.pret)}</td><td class="num">${fmt(l.valoare)}</td><td class="num">${l.cota}</td></tr>`).join('')}</tbody></table>`
+        inv.linii.map((l) => `<tr><td>${H(l.nume)}</td><td class="num">${fmt(l.cantitate)}</td><td class="num">${fmt(l.pret)}</td><td class="num">${fmt(l.valoare)}</td><td class="num">${l.cota}</td></tr>`).join('')}</tbody></table>`
       : '';
     box.innerHTML = `<div class="card">
       <p style="margin:0 0 6px">${inv.tip === 'creditnote' ? '↩️ <b>Notă de credit (storno)</b>' : '🧾 <b>Factură de cumpărare</b>'} ${inv.moneda !== 'RON' ? '<span class="status err">— monedă ' + inv.moneda + ' (neacceptat automat)</span>' : ''}</p>
       <table>
-        <tr><td>Furnizor</td><td><b>${inv.furnizor.nume || '—'}</b> ${inv.furnizor.cui ? '(CUI ' + inv.furnizor.cui + ')' : ''}</td></tr>
+        <tr><td>Furnizor</td><td><b>${H(inv.furnizor.nume || '—')}</b> ${inv.furnizor.cui ? '(CUI ' + H(inv.furnizor.cui) + ')' : ''}</td></tr>
         <tr><td>Număr / Data</td><td>${inv.numar || '—'} · ${inv.data || '—'}</td></tr>
         <tr><td>Bază impozabilă</td><td class="num">${fmt(inv.baza)}</td></tr>
         <tr><td>TVA (${inv.cota}%)</td><td class="num">${fmt(inv.tva)}</td></tr>
@@ -1427,7 +1427,7 @@ function renderFields(values) {
 function addItemRow(ed, it) {
   const row = document.createElement('div');
   row.className = 'item-row';
-  row.innerHTML = `<input class="it-nume" placeholder="Denumire" value="${(it.nume || '').toString().replace(/"/g, '&quot;')}">
+  row.innerHTML = `<input class="it-nume" placeholder="Denumire" value="${H(it.nume)}">
     <input class="it-cant" type="number" step="0.001" placeholder="Cant." value="${it.cantitate != null ? it.cantitate : ''}">
     <input class="it-um" placeholder="UM" value="${it.um || 'buc'}">
     <input class="it-pret" type="number" step="0.01" placeholder="Preț" value="${it.pret != null ? it.pret : ''}">
@@ -2321,7 +2321,7 @@ async function loadLivrabile() {
   const rows = data.list.map((it) => {
     const head = it.sectiune !== sec ? (sec = it.sectiune, `<tr><td colspan="4" style="background:#f2f5fb;font-weight:700;color:#42506f">${it.sectiune}</td></tr>`) : '';
     const links = it.links.map((l) => `<a class="linkbtn" href="${l.href}" target="_blank">${l.label}</a>`).join(' · ') || '<span class="muted">—</span>';
-    return head + `<tr><td>${it.nr}</td><td>${it.nume}${it.obs ? `<br><span class="muted" style="font-size:11px">${it.obs}</span>` : ''}</td><td>${badge(it.status)}</td><td>${links}</td></tr>`;
+    return head + `<tr><td>${it.nr}</td><td>${H(it.nume)}${it.obs ? `<br><span class="muted" style="font-size:11px">${H(it.obs)}</span>` : ''}</td><td>${badge(it.status)}</td><td>${links}</td></tr>`;
   }).join('');
   $('#livrabileList').innerHTML = `<table><thead><tr><th>#</th><th>Document / declarație</th><th>Statut</th><th>Descărcare</th></tr></thead><tbody>${rows}</tbody></table>`;
   loadDeclRegister(p);
@@ -2486,7 +2486,7 @@ async function loadReconcile() {
       <td>${it.matched ? '<span class="pill">✓ potrivit</span>' : '<span class="pill warn">deschis</span>'}</td></tr>`).join('');
     const lbl = p.cont === '4111' ? 'client' : 'furnizor';
     return `<div class="ledger-acc">
-      <h4><span class="acc">${p.cont}</span> ${p.den} ${p.cui ? '<span class="muted">(' + p.cui + ')</span>' : ''} <span class="pill">${lbl}</span></h4>
+      <h4><span class="acc">${p.cont}</span> ${H(p.den)} ${p.cui ? '<span class="muted">(' + H(p.cui) + ')</span>' : ''} <span class="pill">${lbl}</span></h4>
       <p class="muted">Facturat: ${fmt(p.facturat)} · Decontat: ${fmt(p.decontat)} · <b>Sold: ${fmt(p.sold)}</b> · Potriviri: ${p.potriviri} · Deschise: ${p.nepotrivite}</p>
       <div class="tablewrap"><table><thead><tr><th>Data</th><th>Document</th><th>Tip</th><th class="num">Debit</th><th class="num">Credit</th><th>Stare</th></tr></thead><tbody>${rows}</tbody></table></div>
     </div>`;
@@ -2499,9 +2499,9 @@ async function renderCompensations() {
   if (!list.length) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
   $('#compensView').innerHTML = `<table><thead><tr><th>Partener</th><th class="num">Creanță (4111)</th><th class="num">Datorie (401)</th><th class="num">Compensabil</th><th></th></tr></thead>
-    <tbody>${list.map((c) => `<tr data-cui="${c.cui}"><td>${c.den}${c.cui ? ' <span class="muted">(' + c.cui + ')</span>' : ''}</td>
+    <tbody>${list.map((c) => `<tr data-cui="${H(c.cui)}"><td>${H(c.den)}${c.cui ? ' <span class="muted">(' + H(c.cui) + ')</span>' : ''}</td>
       <td class="num">${fmt(c.creanta)}</td><td class="num">${fmt(c.datorie)}</td><td class="num"><b>${fmt(c.compensabil)}</b></td>
-      <td><button class="btn small primary compBtn" data-cui="${c.cui}" data-max="${c.compensabil}">Compensează</button></td></tr>`).join('')}</tbody></table>`;
+      <td><button class="btn small primary compBtn" data-cui="${H(c.cui)}" data-max="${c.compensabil}">Compensează</button></td></tr>`).join('')}</tbody></table>`;
   $$('#compensView .compBtn').forEach((b) => b.addEventListener('click', async () => {
     if (!confirm('Compensezi ' + fmt(Number(b.dataset.max)) + ' lei (401 = 4111) pentru acest partener?')) return;
     b.disabled = true;
@@ -2558,12 +2558,12 @@ async function loadAnalytic() {
   const sections = await api('/api/analytic');
   if (!sections.length) { $('#analyticList').innerHTML = '<div class="card"><p class="muted">Niciun cont de terți cu solduri sau mișcări.</p></div>'; return; }
   $('#analyticList').innerHTML = sections.map((s) => {
-    const rows = s.rows.map((r) => `<tr><td class="acc">${r.analitic}</td><td>${r.den}${r.cui ? ' <span class="muted">(' + r.cui + ')</span>' : ''}</td>
+    const rows = s.rows.map((r) => `<tr><td class="acc">${r.analitic}</td><td>${H(r.den)}${r.cui ? ' <span class="muted">(' + H(r.cui) + ')</span>' : ''}</td>
       <td class="num">${r.siD ? fmt(r.siD) : ''}</td><td class="num">${r.siC ? fmt(r.siC) : ''}</td>
       <td class="num">${fmt(r.rd)}</td><td class="num">${fmt(r.rc)}</td>
       <td class="num">${r.sfD ? fmt(r.sfD) : ''}</td><td class="num">${r.sfC ? fmt(r.sfC) : ''}</td></tr>`).join('');
     return `<div class="ledger-acc">
-      <h4><span class="acc">${s.synth}</span> — ${s.nume} ${s.concorda ? '' : '<span class="pill warn">SI ≠ sintetic</span>'}</h4>
+      <h4><span class="acc">${s.synth}</span> — ${H(s.nume)} ${s.concorda ? '' : '<span class="pill warn">SI ≠ sintetic</span>'}</h4>
       <div class="tablewrap"><table><thead><tr><th>Analitic</th><th>Partener</th><th class="num">SI D</th><th class="num">SI C</th><th class="num">Rulaj D</th><th class="num">Rulaj C</th><th class="num">SF D</th><th class="num">SF C</th></tr></thead>
       <tbody>${rows}<tr class="total"><td colspan="2">TOTAL ${s.synth}</td><td class="num">${fmt(s.totalSiD)}</td><td class="num">${fmt(s.totalSiC)}</td><td class="num">${fmt(s.totalRd)}</td><td class="num">${fmt(s.totalRc)}</td><td class="num">${fmt(s.totalSfD)}</td><td class="num">${fmt(s.totalSfC)}</td></tr></tbody></table></div>
     </div>`;
@@ -2812,11 +2812,11 @@ async function loadStocks() {
   mf.productId.innerHTML = products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
   mf.gestiuneId.innerHTML = gestOpts || '<option value="">(nicio gestiune)</option>';
   mf.gestiuneDestId.innerHTML = gestOpts || '<option value="">(nicio gestiune)</option>';
-  $('#stocGestFilter').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${g.id}"${g.id === gf ? ' selected' : ''}>${g.cod} — ${g.denumire}</option>`).join('');
+  $('#stocGestFilter').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${g.id}"${g.id === gf ? ' selected' : ''}>${H(g.cod)} — ${H(g.denumire)}</option>`).join('');
   fillProduction(products, gestiuni);
   fillRecipes(products, gestiuni);
   const ig = $('#invGest'); const prevIg = ig.value;
-  ig.innerHTML = gestiuni.map((g) => `<option value="${g.id}">${g.cod} — ${g.denumire}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
+  ig.innerHTML = gestiuni.map((g) => `<option value="${g.id}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
   if (prevIg) ig.value = prevIg;
   $('#invPdf').href = '/pdf/inventory?asOf=' + asOf + '&gestiune=' + (ig.value || '');
   // stoc curent (pe gestiune)
@@ -2834,7 +2834,7 @@ async function loadStocks() {
   }));
   // mișcări (cu filtre)
   STOCK_MOVS = movs;
-  $('#mvfGest').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${g.cod}">${g.cod} — ${g.denumire}</option>`).join('');
+  $('#mvfGest').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${H(g.cod)}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('');
   renderStockMovements();
   // verificarea stocului preluat vs. soldurile inițiale (daca exista o preluare)
   try { renderInitialCheck((await api('/api/stocks/initial-check')).totaluri); } catch (e) { /* ignora */ }
@@ -2938,7 +2938,7 @@ let PROD_OPTS = { products: [], gestiuni: [] };
 function prodMatRow() {
   const div = document.createElement('div');
   div.className = 'row'; div.style.cssText = 'gap:6px;margin-top:4px;align-items:center';
-  div.innerHTML = `<select class="pm-prod" style="flex:2">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${p.cod} — ${p.denumire}</option>`).join('')}</select>
+  div.innerHTML = `<select class="pm-prod" style="flex:2">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('')}</select>
     <select class="pm-gest" style="flex:1">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${g.cod}</option>`).join('')}</select>
     <input class="pm-qty" type="number" step="0.001" placeholder="cantitate" style="flex:1">
     <button type="button" class="del pm-del" title="Elimină">✕</button>`;
@@ -2949,7 +2949,7 @@ function fillProduction(products, gestiuni) {
   PROD_OPTS = { products: products || [], gestiuni: gestiuni || [] };
   const f = $('#prodForm'); if (!f) return;
   f.productId.innerHTML = PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
-  f.gestiuneId.innerHTML = PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${g.cod} — ${g.denumire}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
+  f.gestiuneId.innerHTML = PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
   if (!f.data.value) f.data.value = new Date().toISOString().slice(0, 10);
   if (!$('#prodMaterials').children.length) $('#prodMaterials').appendChild(prodMatRow());
   renderProductionReport();
@@ -2960,7 +2960,7 @@ async function renderProductionReport() {
     const r = await api('/api/production-report?period=' + workMonth());
     box.innerHTML = (r.rows || []).length
       ? `<table><thead><tr><th>Data</th><th>Cod</th><th>Produs</th><th class="num">Cant.</th><th class="num">Cost unit.</th><th class="num">Valoare</th></tr></thead><tbody>${
-        r.rows.map((x) => `<tr><td>${x.data}</td><td class="acc">${x.cod}</td><td>${x.denumire}</td><td class="num">${fmt(x.cantitate)}</td><td class="num">${fmt(x.cost)}</td><td class="num">${fmt(x.valoare)}</td></tr>`).join('')
+        r.rows.map((x) => `<tr><td>${x.data}</td><td class="acc">${H(x.cod)}</td><td>${H(x.denumire)}</td><td class="num">${fmt(x.cantitate)}</td><td class="num">${fmt(x.cost)}</td><td class="num">${fmt(x.valoare)}</td></tr>`).join('')
       }<tr class="total"><td colspan="3">TOTAL</td><td class="num">${fmt(r.totalCantitate)}</td><td></td><td class="num">${fmt(r.totalValoare)}</td></tr></tbody></table>`
       : '<p class="muted">Nicio producție înregistrată în luna de lucru.</p>';
   } catch (e) { /* ignora */ }
@@ -2985,8 +2985,8 @@ $('#prodForm') && $('#prodForm').addEventListener('submit', async (e) => {
 function recipeMatRow(mat) {
   const div = document.createElement('div');
   div.className = 'row'; div.style.cssText = 'gap:6px;margin-top:4px;align-items:center';
-  div.innerHTML = `<select class="rm-prod" style="flex:2">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${p.cod} — ${p.denumire}</option>`).join('')}</select>
-    <select class="rm-gest" style="flex:1">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${g.cod}</option>`).join('')}</select>
+  div.innerHTML = `<select class="rm-prod" style="flex:2">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('')}</select>
+    <select class="rm-gest" style="flex:1">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${H(g.cod)}</option>`).join('')}</select>
     <input class="rm-qty" type="number" step="0.001" placeholder="cantitate" style="flex:1">
     <button type="button" class="del rm-del" title="Elimină">✕</button>`;
   if (mat) {
@@ -3006,7 +3006,7 @@ function recipeResetForm() {
 function fillRecipes(products, gestiuni) {
   const f = $('#recipeForm'); if (!f) return;
   f.productId.innerHTML = (products || []).map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
-  f.gestiuneId.innerHTML = (gestiuni || []).map((g) => `<option value="${g.id}">${g.cod} — ${g.denumire}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
+  f.gestiuneId.innerHTML = (gestiuni || []).map((g) => `<option value="${g.id}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
   if (!$('#recipeMaterials').children.length) $('#recipeMaterials').appendChild(recipeMatRow());
   renderRecipes(products);
 }
@@ -3074,7 +3074,7 @@ $('#invLoad').addEventListener('click', async () => {
   const list = await api('/api/inventory?gestiune=' + gid + '&asOf=' + stocAsOf());
   if (!list.length) { $('#inventoryArea').innerHTML = '<p class="muted">Niciun produs în nomenclator.</p>'; return; }
   $('#inventoryArea').innerHTML = `<table><thead><tr><th>Cod</th><th>Denumire</th><th class="num">Scriptic</th><th class="num">CMP</th><th class="num">Faptic</th><th>Imputare</th></tr></thead><tbody>${
-    list.map((l) => `<tr data-pid="${l.product.id}"><td class="acc">${l.product.cod}</td><td>${l.product.denumire}</td>
+    list.map((l) => `<tr data-pid="${l.product.id}"><td class="acc">${H(l.product.cod)}</td><td>${H(l.product.denumire)}</td>
       <td class="num scr">${fmt(l.scripticQty)} ${l.product.um || ''}</td><td class="num">${fmt(l.cmp)}</td>
       <td class="num"><input class="inv-fapt" type="number" step="0.001" value="${l.scripticQty}" style="width:90px;text-align:right"></td>
       <td><input class="inv-imp" type="checkbox" title="Impută lipsa gestionarului"></td></tr>`).join('')}</tbody></table>
