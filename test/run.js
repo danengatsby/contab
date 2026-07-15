@@ -1664,6 +1664,17 @@ ok('audit (admin): username-ul e escapat', /\$\{H\(a\.username/.test(adminJs));
 ok('fara gestiune neescapata in optiuni', !/>\$\{g\.cod\} — \$\{g\.denumire\}</.test(appJs));
 ok('fara descriere extras neescapata', !/<td>\$\{\(r\.descriere \|\| ''\)\.slice\(0, 40\)\}<\/td>/.test(bankJs));
 
+section('Logging structurat (src/log.js)');
+const logger = require('../src/log');
+ok('log expune info/warn/error/debug + ctx', ['info', 'warn', 'error', 'debug', 'ctx'].every((k) => typeof logger[k] === 'function'));
+const lctx = logger.ctx({ reqId: 'ab12cd34', method: 'POST', originalUrl: '/api/entries', user: { id: 9, username: 'gigel' } }, { status: 500 });
+eq('ctx: reqId din cerere', lctx.reqId, 'ab12cd34');
+eq('ctx: userId din req.user', lctx.userId, 9);
+eq('ctx: username din req.user', lctx.user, 'gigel');
+eq('ctx: ruta', lctx.url, '/api/entries');
+eq('ctx: extra (status) pastrat', lctx.status, 500);
+ok('ctx fara cerere: nu arunca', typeof logger.ctx(null, { job: 'x' }) === 'object');
+
 section('Config fiscal centralizat & datat (src/fiscalConfig.js)');
 const fconf = require('../src/fiscalConfig');
 const dtSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'documentTypes.js'), 'utf8');

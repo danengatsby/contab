@@ -39,6 +39,7 @@ const { pollSpv } = require('./src/anafService'); // auto-poll job; restul e in 
 const efacturaImport = require('./src/efacturaImport');
 const plans = require('./src/plans');
 const billing = require('./src/billing');
+const log = require('./src/log');
 const { round2, period: periodOf } = require('./src/util');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
@@ -84,6 +85,14 @@ app.use((req, res, next) => {
   res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
   if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000'); // 180 zile, doc HTTPS (fara subDomains, ca sa nu afecteze alte servicii)
+  next();
+});
+
+// Identificator scurt per cerere: leaga logurile de eroare de cererea concreta si ajunge in
+// raspunsul 5xx (utilizatorul il poate raporta suportului pentru corelare rapida).
+app.use((req, res, next) => {
+  req.reqId = crypto.randomBytes(4).toString('hex');
+  res.setHeader('X-Request-Id', req.reqId);
   next();
 });
 
@@ -134,9 +143,9 @@ const upload = multer({
 });
 
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
-  console.error(e);
+  log.error('eroare necuprinsa in ruta', log.ctx(req, { status: 500, err: e }));
   try { trackServerError(req, e); } catch (_) { /* inainte de definirea trackerului: ignora */ }
-  res.status(500).json({ error: String(e.message || e) });
+  res.status(500).json({ error: String(e.message || e), reqId: req.reqId });
 });
 
 // ───────────────────────── AUTENTIFICARE ─────────────────────────
@@ -752,7 +761,7 @@ function safeInterval(label, fn, ms) {
   return setInterval(() => {
     try { fn(); }
     catch (e) {
-      console.error('[job:' + label + ']', (e && e.stack) || e);
+      log.error('eroare in job periodic', { job: label, err: e });
       try { trackServerError({ method: 'JOB', originalUrl: label }, e); } catch (_) { /* ignora */ }
     }
   }, ms);
@@ -813,7 +822,8 @@ const err5xx = [];
 let lastErrAlert = 0;
 function trackServerError(req, err) {
   const now = Date.now();
-  err5xx.push({ t: now, m: req.method + ' ' + req.originalUrl + ': ' + String((err && err.message) || err).slice(0, 160) });
+  const rid = req.reqId ? '[' + req.reqId + '] ' : '';
+  err5xx.push({ t: now, m: rid + req.method + ' ' + req.originalUrl + ': ' + String((err && err.message) || err).slice(0, 160) });
   while (err5xx.length && err5xx[0].t < now - 15 * 60 * 1000) err5xx.shift();
   if (err5xx.length >= 5 && now - lastErrAlert > 3600 * 1000) {
     lastErrAlert = now;
@@ -828,9 +838,9 @@ function trackServerError(req, err) {
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
   const status = err.status || err.statusCode || 500;
-  if (status >= 500) { console.error('[eroare]', req.method, req.originalUrl, '-', (err && err.stack) || err); trackServerError(req, err); }
+  if (status >= 500) { log.error('eroare de server', log.ctx(req, { status, err })); trackServerError(req, err); }
   const msg = status < 500 && err && err.message ? err.message : 'A aparut o eroare interna. Incearca din nou.';
-  res.status(status).json({ error: msg });
+  res.status(status).json(status >= 500 ? { error: msg, reqId: req.reqId } : { error: msg });
 });
 
 // ── Guard single-instance: DOUA procese pe aceeasi baza = pierdere de date (starea traieste
@@ -887,7 +897,7 @@ dbReady.then(() => {
     }
   });
 }).catch((e) => {
-  console.error('⛔ Pornire esuata — baza de date nu s-a putut incarca:', e.message);
+  log.error('pornire esuata — baza de date nu s-a putut incarca', { err: e });
   releaseDbLock();
   process.exit(1);
 });
@@ -915,11 +925,11 @@ process.on('SIGTERM', shutdown);
 // doboare tot procesul. Logam si continuam — pm2 nu mai e nevoit sa reporneasca, iar cererile in
 // zbor nu se pierd. (Erorile din rute sunt deja tratate de wrap()/handlerul Express de mai sus.)
 process.on('uncaughtException', (err) => {
-  console.error('[uncaughtException]', (err && err.stack) || err);
+  log.error('uncaughtException', { err });
   try { trackServerError({ method: 'PROC', originalUrl: 'uncaughtException' }, err); } catch (_) { /* ignora */ }
 });
 process.on('unhandledRejection', (reason) => {
-  console.error('[unhandledRejection]', (reason && reason.stack) || reason);
+  log.error('unhandledRejection', { err: reason });
 });
 
 module.exports = { app, buildEntry, upsertPartner };

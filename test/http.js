@@ -63,7 +63,7 @@ async function req(method, p, opts) {
   const text = await r.text();
   let json = null;
   try { json = JSON.parse(text); } catch (_) { /* non-JSON */ }
-  return { status: r.status, json, text, cookie: (r.headers.get('set-cookie') || '').split(';')[0] };
+  return { status: r.status, json, text, cookie: (r.headers.get('set-cookie') || '').split(';')[0], reqId: r.headers.get('x-request-id') };
 }
 
 async function waitUp(tries) {
@@ -89,6 +89,8 @@ async function main() {
     // public + autentificare
     const h = await req('GET', '/api/health');
     ok('health public: ok', h.status === 200 && h.json && h.json.ok === true);
+    // logging structurat: fiecare raspuns poarta un identificator de cerere (corelare eroare<->cerere)
+    ok('X-Request-Id prezent pe raspuns', /^[0-9a-f]{8}$/.test(h.reqId || ''));
     eq('date fara login -> 401', (await req('GET', '/api/dashboard')).status, 401);
     eq('login cu parola gresita -> 401', (await req('POST', '/api/login', { body: { username: 'user1', password: 'nu' } })).status, 401);
     const l1 = await req('POST', '/api/login', { body: { username: 'user1', password: 'parola1' } });
