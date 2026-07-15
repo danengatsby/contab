@@ -97,6 +97,10 @@ async function main() {
     const me = await req('GET', '/api/me', { cookie: c1 });
     ok('/api/me: identitate si tip', me.json && me.json.username === 'user1' && me.json.tip === 'tester');
 
+    // politica de parole: inscrierea respinge o parola prea scurta (respingerea nu creeaza nimic)
+    const regWeak = await req('POST', '/api/register', { body: { nume: 'Firma Noua SRL', username: 'noureg', password: 'scurt' } });
+    ok('register: parola prea scurta -> 400', regWeak.status === 400 && /prea scurta/i.test((regWeak.json || {}).error || ''));
+
     // autorizare pe firma: user1 (firma 1) nu vede documentul firmei 2
     eq('document al altei firme -> 403', (await req('GET', '/api/document/docA/file', { cookie: c1 })).status, 403);
 

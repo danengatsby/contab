@@ -100,7 +100,8 @@ module.exports = function register(app, ctx) {
     const r = findInvite(token);
     if (r.error) return res.status(404).json({ error: r.error });
     const u = r.user;
-    if (!password || String(password).length < 4) return res.status(400).json({ error: 'Parola prea scurta (min. 4).' });
+    const pwErr = authlib.validatePassword(password, { username: u.username });
+    if (pwErr) return res.status(400).json({ error: pwErr });
     const h = authlib.hashPassword(password);
     u.salt = h.salt; u.hash = h.hash; u.pending = false; delete u.inviteToken; delete u.inviteExp;
     startSession(req, res, u);

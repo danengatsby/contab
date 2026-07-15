@@ -61,7 +61,7 @@
       </div>
       <div style="display:flex;gap:8px">
         <label style="flex:1">Utilizator (login) * <input name="username" autocomplete="username" required minlength="3" /></label>
-        <label style="flex:1">Parolă * <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
+        <label style="flex:1">Parolă * <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
       </div>
       <label>Email <span class="muted" style="font-weight:400;font-size:11.5px">(recuperare parolă; același email ca la plată)</span> <input name="email" type="email" autocomplete="email" /></label>
       <div id="registerErr" class="status err"></div>
@@ -1844,11 +1844,11 @@ Cu stimă,
     <div class="welcome-box" style="max-width:420px">
       <div class="welcome-emoji">🔒</div>
       <h2>Schimbă parola înainte de a continua</h2>
-      <p class="muted">Contul tău încă folosește <b>parola implicită</b>. Din motive de securitate, alege o parolă nouă (minim 6 caractere) ca să poți lucra.</p>
+      <p class="muted">Contul tău încă folosește <b>parola implicită</b>. Din motive de securitate, alege o parolă nouă (minim 8 caractere) ca să poți lucra.</p>
       <form id="forcePwForm" class="login-box" style="box-shadow:none;padding:0;margin-top:6px">
         <label>Parola actuală <input name="oldPassword" type="password" autocomplete="current-password" required /></label>
-        <label>Parola nouă <input name="newPassword" type="password" autocomplete="new-password" minlength="6" required /></label>
-        <label>Confirmă parola nouă <input name="newPassword2" type="password" autocomplete="new-password" minlength="6" required /></label>
+        <label>Parola nouă <input name="newPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <label>Confirmă parola nouă <input name="newPassword2" type="password" autocomplete="new-password" minlength="8" required /></label>
         <div id="forcePwErr" class="status err" style="min-height:0"></div>
         <button class="btn primary" type="submit">Setează parola nouă</button>
       </form>

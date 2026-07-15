@@ -82,7 +82,8 @@ module.exports = function register(app, ctx) {
     const { oldPassword, newPassword } = req.body || {};
     const u = req.user;
     if (!authlib.verifyPassword(oldPassword, u.salt, u.hash)) return res.status(400).json({ error: 'Parola veche gresita.' });
-    if (!newPassword || String(newPassword).length < 6) return res.status(400).json({ error: 'Parola noua prea scurta (min. 6 caractere).' });
+    const pwErr = authlib.validatePassword(newPassword, { username: u.username });
+    if (pwErr) return res.status(400).json({ error: pwErr });
     if (String(newPassword) === String(oldPassword)) return res.status(400).json({ error: 'Parola noua trebuie sa fie diferita de cea veche.' });
     const h = authlib.hashPassword(newPassword);
     u.salt = h.salt; u.hash = h.hash; u.mustChange = false;

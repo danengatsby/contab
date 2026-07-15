@@ -1647,6 +1647,14 @@ ok('utilizatori (admin): username-ul e escapat', /\$\{H\(u\.username\)\}/.test(a
 ok('firme: denumirea firmei e escapata', /\$\{H\(f\.nume\)\}/.test(adminJs));
 ok('stocuri: denumirea produsului e escapata', /\$\{H\(s\.product\.denumire\)\}/.test(appJs));
 ok('salarii: numele angajatului e escapat', /\$\{H\(r\.nume\)\}/.test(appJs));
+section('Politica de parole (validatePassword)');
+const authlib = require('../src/auth');
+ok('parola de 8+ caractere e acceptata', authlib.validatePassword('parolabuna1') === null);
+ok('parola prea scurta e respinsa', /prea scurta/i.test(authlib.validatePassword('scurt1') || ''));
+ok('parola comuna „password" e respinsa', /prea comuna/i.test(authlib.validatePassword('password') || ''));
+ok('parola implicita „admin" e respinsa (prea scurta sau comuna)', authlib.validatePassword('admin') !== null);
+ok('parola = utilizator e respinsa', /identica cu numele/i.test(authlib.validatePassword('gigelgigel', { username: 'gigelgigel' }) || ''));
+ok('parola diferita de utilizator trece', authlib.validatePassword('altaparola9', { username: 'gigel' }) === null);
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

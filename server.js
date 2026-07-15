@@ -294,7 +294,8 @@ app.post('/api/register', (req, res) => {
   const password = String(b.password || '');
   if (!nume) return res.status(400).json({ error: 'Completeaza denumirea firmei.' });
   if (username.length < 3) return res.status(400).json({ error: 'Utilizator prea scurt (minim 3 caractere).' });
-  if (password.length < 4) return res.status(400).json({ error: 'Parola prea scurta (minim 4 caractere).' });
+  const pwErr = authlib.validatePassword(password, { username });
+  if (pwErr) return res.status(400).json({ error: pwErr });
   if (d.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) return res.status(400).json({ error: 'Acest utilizator exista deja. Alege altul.' });
   // firma noua GOALA — fara date contabile (entries/parteneri/solduri/stocuri etc.)
   const fid = db.nextFirmaId();
@@ -455,7 +456,8 @@ app.post('/api/reset/accept', (req, res) => {
   const { token, password } = req.body || {};
   const u = findReset(token);
   if (!u) return res.status(404).json({ error: 'Link de resetare invalid sau expirat.' });
-  if (!password || String(password).length < 4) return res.status(400).json({ error: 'Parola prea scurta (min. 4).' });
+  const pwErr = authlib.validatePassword(password, { username: u.username });
+  if (pwErr) return res.status(400).json({ error: pwErr });
   const h = authlib.hashPassword(password);
   u.salt = h.salt; u.hash = h.hash; u.mustChange = false; delete u.resetToken; delete u.resetExp;
   u.sessions = []; // resetarea parolei deconecteaza celelalte sesiuni

@@ -3251,7 +3251,7 @@ async function startInvite(token) {
   const box = $('#loginForm');
   box.innerHTML = `<div class="login-logo">▦ Contabo</div>
     <p class="muted">Bun venit, <b>${info.username}</b>. Setează-ți parola.</p>
-    <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
+    <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
     <div id="loginErr" class="status err"></div>
     <button class="btn primary" style="width:100%">Activează contul</button>`;
   box.onsubmit = async (e) => {
@@ -3272,7 +3272,7 @@ async function startReset(token) {
   const box = $('#loginForm');
   box.innerHTML = `<div class="login-logo">▦ Contabo</div>
     <p class="muted">Resetare parolă pentru <b>${info.username}</b>.</p>
-    <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
+    <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
     <div id="loginErr" class="status err"></div>
     <button class="btn primary" style="width:100%">Salvează parola</button>`;
   box.onsubmit = async (e) => {

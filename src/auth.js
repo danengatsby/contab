@@ -15,6 +15,28 @@ function verifyPassword(password, salt, hash) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+// Politica de parole (centralizata) pentru fluxurile self-service — unde proprietarul contului
+// isi alege singur parola: inscriere, resetare, acceptare invitatie, schimbare parola. Intoarce
+// un mesaj de eroare (string) sau null daca parola e acceptabila. Fara dependinte: lungime minima
+// + o lista mica de parole prea comune (inclusiv parola implicita „admin") + interdictia ca parola
+// sa fie identica cu numele de utilizator. Nu se aplica la login (conturile vechi raman valide).
+const MIN_PASSWORD = 8;
+const WEAK_PASSWORDS = new Set([
+  'password', 'passw0rd', 'password1', 'password123', 'parola', 'parola123', 'parolamea',
+  '12345678', '123456789', '1234567890', 'qwerty', 'qwertyui', 'qwerty123', 'qwertyuiop',
+  'admin', 'admin123', 'administrator', 'contab', 'contabo', 'contabil', 'contabilitate',
+  'iloveyou', 'welcome', 'welcome1', 'letmein', 'abc12345', 'abcd1234', '11111111', '00000000',
+  'aaaaaaaa', 'baseball', 'football', 'sunshine', 'princess', 'dragon123', 'monkey12',
+]);
+function validatePassword(password, opts) {
+  const p = String(password == null ? '' : password);
+  const o = opts || {};
+  if (p.length < MIN_PASSWORD) return 'Parola prea scurta (minim ' + MIN_PASSWORD + ' caractere).';
+  if (WEAK_PASSWORDS.has(p.toLowerCase())) return 'Parola aleasa este prea comuna — alege una mai greu de ghicit.';
+  if (o.username && p.toLowerCase() === String(o.username).toLowerCase()) return 'Parola nu poate fi identica cu numele de utilizator.';
+  return null;
+}
+
 function b64url(buf) {
   return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -50,4 +72,4 @@ function parseCookies(header) {
   return out;
 }
 
-module.exports = { hashPassword, verifyPassword, sign, verify, parseCookies };
+module.exports = { hashPassword, verifyPassword, validatePassword, sign, verify, parseCookies, MIN_PASSWORD };
