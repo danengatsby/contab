@@ -1,6 +1,7 @@
 'use strict';
 import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUser, setOn402, escMsg, escAttr } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
+import { setBankRefresh } from './bank.js';
 
 let CURRENT = null; // { documentId, fields, suggestedType }
 
@@ -1069,46 +1070,8 @@ async function loadDashboardCharts() {
 }
 
 // ───────────────────────── IMPORT EXTRAS BANCAR ─────────────────────────
-let BANK = { fileId: null, rows: [] };
-$('#bankFile').addEventListener('change', async () => {
-  const file = $('#bankFile').files[0]; if (!file) return;
-  const st = $('#bankStatus'); st.className = 'status'; st.textContent = 'Se citește extrasul…';
-  const fd = new FormData(); fd.append('file', file);
-  try {
-    const res = await api('/api/bank/parse', { method: 'POST', body: fd });
-    BANK = { fileId: res.documentId, rows: res.transactions };
-    st.className = 'status ok'; st.textContent = res.count + ' tranzacții găsite. Verifică și importă.';
-    renderBank();
-  } catch (e) { st.className = 'status err'; st.textContent = e.message; }
-});
-function renderBank() {
-  if (!BANK.rows.length) { $('#bankResult').innerHTML = '<p class="muted">Nicio tranzacție.</p>'; $('#bankImport').classList.add('hidden'); return; }
-  const tipOpts = (sel) => META.types.map((t) => `<option value="${t.id}" ${t.id === sel ? 'selected' : ''}>${t.nume}</option>`).join('');
-  $('#bankResult').innerHTML = `<table><thead><tr><th><input type="checkbox" id="bankAll" checked></th><th>Data</th><th>Descriere</th>
-    <th class="num">Sumă</th><th>Sens</th><th>Tip înregistrare</th><th>Partener</th></tr></thead><tbody>${
-    BANK.rows.map((r, i) => `<tr>
-      <td><input type="checkbox" class="bsel" data-i="${i}" checked></td>
-      <td>${r.data}</td><td>${(r.descriere || '').slice(0, 40)}</td>
-      <td class="num">${fmt(r.suma)}</td><td>${r.sens === 'in' ? '↓ încasare' : '↑ plată'}</td>
-      <td><select class="btip" data-i="${i}">${tipOpts(r.tip)}</select></td>
-      <td><input class="bpart" data-i="${i}" value="${(r.fields.partener || '').replace(/"/g, '&quot;')}" />${r.matched ? ' <span class="pill">potrivit</span>' : ''}</td>
-    </tr>`).join('')}</tbody></table>`;
-  $('#bankImport').classList.remove('hidden');
-  $('#bankAll').addEventListener('change', (e) => $$('.bsel').forEach((c) => { c.checked = e.target.checked; }));
-  $$('.btip').forEach((s) => s.addEventListener('change', () => { BANK.rows[s.dataset.i].tip = s.value; }));
-  $$('.bpart').forEach((inp) => inp.addEventListener('input', () => { BANK.rows[inp.dataset.i].fields.partener = inp.value; }));
-}
-$('#bankImport').addEventListener('click', async () => {
-  const sel = $$('.bsel').filter((c) => c.checked).map((c) => Number(c.dataset.i));
-  const transactions = sel.map((i) => ({ tip: BANK.rows[i].tip, fields: BANK.rows[i].fields }));
-  if (!transactions.length) return toast('Selectează cel puțin o tranzacție', true);
-  try {
-    const r = await api('/api/bank/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transactions, fileId: BANK.fileId }) });
-    toast(r.created + ' înregistrări create' + (r.errors.length ? ', ' + r.errors.length + ' erori' : ''));
-    BANK = { fileId: null, rows: [] }; $('#bankResult').innerHTML = ''; $('#bankImport').classList.add('hidden'); $('#bankFile').value = '';
-    setMeta(await api('/api/meta')); fillPeriods(); loadEntries(); loadDashboard();
-  } catch (e) { toast(e.message, true); }
-});
+// Extras in public/bank.js. Ii injectam reimprospatarea de dupa import (functiile traiesc aici).
+setBankRefresh(() => { fillPeriods(); loadEntries(); loadDashboard(); });
 function renderAI() {
   const ai = META.ai || { available: false, enabled: false };
   const st = $('#aiStatus');
