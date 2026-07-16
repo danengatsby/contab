@@ -1,6 +1,7 @@
 'use strict';
 
 const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 const { round2 } = require('./util');
 const { typesForClient } = require('./documentTypes');
 const coa = require('./chartOfAccounts');
@@ -8,14 +9,48 @@ const coa = require('./chartOfAccounts');
 const MODEL = process.env.CONTAB_AI_MODEL || 'claude-opus-4-8';
 
 let client = null;
-function getClient() {
-  if (!process.env.ANTHROPIC_API_KEY) return null;
-  if (!client) client = new Anthropic(); // citeste ANTHROPIC_API_KEY din mediu
-  return client;
+let openaiClient = null;
+
+/** Alegerea furnizorului AI. Reguli, in ordine:
+ *  1. CONTAB_AI_PROVIDER explicit BATE prezenta cheilor (dar fara cheia lui => 'none',
+ *     nu cadere tacuta pe celalalt furnizor — o configurare gresita trebuie sa se vada);
+ *  2. fara setare explicita, Anthropic are prioritate (comportamentul istoric al aplicatiei;
+ *     OpenAI e opt-in) — simpla aparitie a unei chei OpenAI in mediu nu deturneaza extragerea.
+ *  Modelele sunt per furnizor: CONTAB_AI_MODEL ramane al Anthropic (semantica existenta,
+ *  productia il are deja setat pe un model Claude), CONTAB_AI_MODEL_OPENAI e al OpenAI —
+ *  un singur camp partajat ar trimite id de model Claude catre OpenAI la comutare. */
+function resolveProvider() {
+  const forced = (process.env.CONTAB_AI_PROVIDER || '').toLowerCase();
+  const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
+  const hasOpenai = !!process.env.OPENAI_API_KEY;
+  let provider = (forced === 'anthropic' || forced === 'openai')
+    ? forced
+    : (hasAnthropic ? 'anthropic' : hasOpenai ? 'openai' : 'none');
+  if (provider === 'anthropic' && !hasAnthropic) provider = 'none';
+  if (provider === 'openai' && !hasOpenai) provider = 'none';
+  const model = provider === 'openai'
+    ? (process.env.CONTAB_AI_MODEL_OPENAI || 'gpt-4.1-mini')
+    : (process.env.CONTAB_AI_MODEL || 'claude-opus-4-8');
+  return { provider, model };
 }
 
+function getClient() {
+  const { provider } = resolveProvider();
+  if (provider === 'openai') {
+    if (!openaiClient) openaiClient = new OpenAI(); // citeste OPENAI_API_KEY din mediu
+    return openaiClient;
+  }
+  if (provider === 'anthropic') {
+    if (!client) client = new Anthropic(); // citeste ANTHROPIC_API_KEY din mediu
+    return client;
+  }
+  return null;
+}
+
+/** Disponibil = furnizorul ALES are cheia lui — aliniat cu resolveProvider, altfel un
+ *  provider fortat fara cheie ar consuma cota zilnica pe apeluri care esueaza garantat. */
 function aiAvailable() {
-  return !!process.env.ANTHROPIC_API_KEY;
+  return resolveProvider().provider !== 'none';
 }
 
 /** Construieste schema JSON pentru output-ul structurat. */
@@ -82,38 +117,70 @@ function detectMediaType(b) {
 
 async function extractWithAI(buffer, ownCui) {
   const c = getClient();
-  if (!c) throw new Error('ANTHROPIC_API_KEY nu este setat.');
+  const providerInfo = resolveProvider();
+  if (!c) throw new Error('Niciun furnizor AI configurat (ANTHROPIC_API_KEY sau OPENAI_API_KEY).');
 
   const b64 = buffer.toString('base64'); // fara newline-uri
   const mediaType = detectMediaType(buffer) || 'application/pdf';
   const docBlock = mediaType === 'application/pdf'
     ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
     : { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } };
-  // `effort` e suportat doar de modelele Opus/Sonnet; Haiku il respinge
-  const outputConfig = { format: { type: 'json_schema', schema: buildSchema() } };
-  if (/opus|sonnet/i.test(MODEL)) outputConfig.effort = 'low';
-  const response = await c.messages.create({
-    model: MODEL,
-    max_tokens: 2048,
-    system: systemPrompt(ownCui),
-    output_config: outputConfig,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          docBlock,
-          { type: 'text', text: 'Extrage datele din acest document (PDF sau imagine scanata/fotografiata) conform schemei.' },
-        ],
-      },
-    ],
-  });
 
-  if (response.stop_reason === 'refusal') {
-    throw new Error('Cererea a fost refuzata de model.');
+  let response;
+  let data;
+  if (providerInfo.provider === 'openai') {
+    // Responses API: PDF-urile merg ca input_file (cu filename obligatoriu la file_data),
+    // imaginile ca input_image — un singur tip pentru ambele ar respinge pozele de bonuri.
+    const docBlockOpenai = mediaType === 'application/pdf'
+      ? { type: 'input_file', filename: 'document.pdf', file_data: `data:application/pdf;base64,${b64}` }
+      : { type: 'input_image', image_url: `data:${mediaType};base64,${b64}` };
+    const responseObj = await c.responses.create({
+      model: providerInfo.model,
+      input: [
+        { role: 'system', content: systemPrompt(ownCui) },
+        { role: 'user', content: [
+          { type: 'input_text', text: 'Extrage datele din acest document (PDF sau imagine scanata/fotografiata) conform schemei.' },
+          docBlockOpenai,
+        ] },
+      ],
+      text: { format: { type: 'json_schema', name: 'extragere_document', schema: buildSchema() } },
+    });
+    response = responseObj;
+    // echivalentul lui stop_reason==='refusal' de pe Anthropic: fara astea, un refuz ar iesi
+    // ca o eroare criptica de JSON.parse
+    if (response.status === 'incomplete') throw new Error('Raspuns incomplet de la model (' + ((response.incomplete_details || {}).reason || 'motiv necunoscut') + ').');
+    const refusal = (response.output || []).flatMap((o) => o.content || []).find((x) => x.type === 'refusal');
+    if (refusal) throw new Error('Cererea a fost refuzata de model.');
+    const outputText = response.output_text || '';
+    if (!outputText) throw new Error('Raspuns gol de la model.');
+    data = JSON.parse(outputText);
+  } else {
+    // `effort` e suportat doar de modelele Opus/Sonnet; Haiku il respinge
+    const outputConfig = { format: { type: 'json_schema', schema: buildSchema() } };
+    if (/opus|sonnet/i.test(providerInfo.model)) outputConfig.effort = 'low';
+    response = await c.messages.create({
+      model: providerInfo.model,
+      max_tokens: 2048,
+      system: systemPrompt(ownCui),
+      output_config: outputConfig,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            docBlock,
+            { type: 'text', text: 'Extrage datele din acest document (PDF sau imagine scanata/fotografiata) conform schemei.' },
+          ],
+        },
+      ],
+    });
+
+    if (response.stop_reason === 'refusal') {
+      throw new Error('Cererea a fost refuzata de model.');
+    }
+    const textBlock = (response.content || []).find((b) => b.type === 'text');
+    if (!textBlock) throw new Error('Raspuns gol de la model.');
+    data = JSON.parse(textBlock.text);
   }
-  const textBlock = (response.content || []).find((b) => b.type === 'text');
-  if (!textBlock) throw new Error('Raspuns gol de la model.');
-  const data = JSON.parse(textBlock.text);
 
   const cota = Number(data.cota) || 0;
   const fields = {
@@ -140,4 +207,4 @@ async function extractWithAI(buffer, ownCui) {
   };
 }
 
-module.exports = { extractWithAI, aiAvailable, detectMediaType, MODEL };
+module.exports = { extractWithAI, aiAvailable, detectMediaType, MODEL, resolveProvider };

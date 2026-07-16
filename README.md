@@ -24,8 +24,8 @@ npm test             # suita completa: lint + verificari de module + verificari 
 Apoi deschide `http://localhost:8080` în browser. Pe prima pornire se creează contul
 `admin` / `admin` (ți se cere schimbarea parolei la prima autentificare).
 
-Extragerea cu AI a documentelor e opțională: pune `ANTHROPIC_API_KEY` în `.env`
-(vezi [`.env.example`](.env.example)). Fără ea, extragerea cade grațios pe reguli locale.
+Extragerea cu AI a documentelor e opțională: pune `ANTHROPIC_API_KEY` sau `OPENAI_API_KEY`
+în `.env` (vezi [`.env.example`](.env.example)). Fără ea, extragerea cade grațios pe reguli locale.
 
 ## Documentație
 

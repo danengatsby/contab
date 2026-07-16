@@ -38,6 +38,29 @@ function wellFormed(x) {
   return stack.length === 0;
 }
 
+section('AI extractor: alegerea furnizorului (src/aiExtractor.js resolveProvider)');
+// izolare de mediul masinii: salveaza si curata cheile, restaureaza la final — altfel un
+// ANTHROPIC_API_KEY exportat in shell ar face aserttiile sa minta
+const envAiPrev = { a: process.env.ANTHROPIC_API_KEY, o: process.env.OPENAI_API_KEY, p: process.env.CONTAB_AI_PROVIDER, m: process.env.CONTAB_AI_MODEL_OPENAI };
+delete process.env.ANTHROPIC_API_KEY; delete process.env.OPENAI_API_KEY; delete process.env.CONTAB_AI_PROVIDER; delete process.env.CONTAB_AI_MODEL_OPENAI;
+delete require.cache[require.resolve('../src/aiExtractor')];
+const aiExtractor = require('../src/aiExtractor');
+ok('fara nicio cheie: indisponibil', !aiExtractor.aiAvailable() && aiExtractor.resolveProvider().provider === 'none');
+process.env.OPENAI_API_KEY = 'test-openai-key';
+ok('doar cheia OpenAI: disponibil, provider openai cu modelul lui implicit', aiExtractor.aiAvailable() && aiExtractor.resolveProvider().provider === 'openai' && /^gpt/.test(aiExtractor.resolveProvider().model));
+process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
+eq('ambele chei, fara setare explicita: Anthropic are prioritate (comportamentul istoric)', aiExtractor.resolveProvider().provider, 'anthropic');
+process.env.CONTAB_AI_PROVIDER = 'openai';
+eq('CONTAB_AI_PROVIDER=openai bate prioritatea implicita', aiExtractor.resolveProvider().provider, 'openai');
+process.env.CONTAB_AI_PROVIDER = 'anthropic';
+eq('CONTAB_AI_PROVIDER=anthropic ramane anthropic si cu cheia OpenAI prezenta', aiExtractor.resolveProvider().provider, 'anthropic');
+process.env.CONTAB_AI_PROVIDER = 'openai'; delete process.env.OPENAI_API_KEY;
+ok('provider fortat fara cheia lui: indisponibil (nu cade tacut pe celalalt)', !aiExtractor.aiAvailable() && aiExtractor.resolveProvider().provider === 'none');
+// restaurare completa a mediului
+for (const [k, v] of [['ANTHROPIC_API_KEY', envAiPrev.a], ['OPENAI_API_KEY', envAiPrev.o], ['CONTAB_AI_PROVIDER', envAiPrev.p], ['CONTAB_AI_MODEL_OPENAI', envAiPrev.m]]) {
+  if (v === undefined) delete process.env[k]; else process.env[k] = v;
+}
+
 const v = scopedSeed();
 
 section('Balanta de verificare (2026-06)');
