@@ -1775,6 +1775,50 @@ eq('seria avanseaza', ssvc.docSeries(fidOk).NIR.next, nrStart + 1);
 eq('retiparirea REFOLOSESTE numarul (nu consuma serie)', ssvc.assignDocNumber(fidOk, 'NIR', [mv1, mv2]), nr1);
 eq('seria nu a avansat la refolosire', ssvc.docSeries(fidOk).NIR.next, nrStart + 1);
 
+section('Service layer cont (src/accountService.js)');
+const asvc = require('../src/accountService');
+const authT = require('../src/auth');
+const totpT = require('../src/totp');
+// garda pe contul demo: refuzata la nivel de serviciu, nu doar in ruta
+const demoAcc = { username: 'demo' };
+eq('demo: setup 2FA -> 403', errStatus(() => asvc.setup2fa(demoAcc)), 403);
+eq('demo: schimbare parola -> 403', errStatus(() => asvc.changePassword(demoAcc, 'a', 'parola-noua-2026')), 403);
+eq('demo: actualizare profil -> 403', errStatus(() => asvc.updateProfile(demoAcc, { email: 'spam@x.ro' })), 403);
+eq('demo: revocare dispozitive -> 403', errStatus(() => asvc.revokeTrustedDevices(demoAcc)), 403);
+// schimbarea parolei: gardele si efectul
+const hpT = authT.hashPassword('parola-veche-123');
+const u1 = { username: 'tester-cont', salt: hpT.salt, hash: hpT.hash, mustChange: true, sessions: [{ id: 's1' }, { id: 's2' }, { id: 's3' }] };
+eq('parola veche gresita -> 400', errStatus(() => asvc.changePassword(u1, 'gresita', 'parola-noua-2026')), 400);
+eq('parola noua slaba -> 400', errStatus(() => asvc.changePassword(u1, 'parola-veche-123', 'ab1')), 400);
+eq('parola noua = cea veche -> 400', errStatus(() => asvc.changePassword(u1, 'parola-veche-123', 'parola-veche-123')), 400);
+asvc.changePassword(u1, 'parola-veche-123', 'parola-noua-2026');
+ok('schimbare valida: hash nou + mustChange resetat', authT.verifyPassword('parola-noua-2026', u1.salt, u1.hash) && u1.mustChange === false);
+// fluxul 2FA: setup -> enable (cod real) -> disable, cu gardele de stare
+eq('enable fara setup -> 400', errStatus(() => asvc.enable2fa(u1, '123456')), 400);
+const s2fa = asvc.setup2fa(u1);
+ok('setup: secret + otpauth + QR', !!s2fa.secret && /^otpauth:\/\/totp\//.test(s2fa.otpauth) && /<svg/.test(s2fa.qrSvg));
+eq('enable cu cod gresit -> 400', errStatus(() => asvc.enable2fa(u1, '000000')), 400);
+const codeNowT = () => totpT.codeForCounter(s2fa.secret, Math.floor(Date.now() / 1000 / 30));
+const epoch0 = u1.tfdEpoch || 0;
+asvc.enable2fa(u1, codeNowT());
+ok('enable: activat, pending consumat, dispozitivele vechi invalidate', u1.twofa === true && !u1.pending2fa && u1.totpSecret === s2fa.secret && u1.tfdEpoch === epoch0 + 1);
+eq('setup cu 2FA deja activ -> 400', errStatus(() => asvc.setup2fa(u1)), 400);
+eq('disable cu cod gresit -> 400', errStatus(() => asvc.disable2fa(u1, '000000')), 400);
+asvc.disable2fa(u1, codeNowT());
+ok('disable: dezactivat + secret sters', u1.twofa === false && !u1.totpSecret);
+eq('disable cand nu e activ -> 400', errStatus(() => asvc.disable2fa(u1, '000000')), 400);
+// sesiuni: listare (curenta marcata, ordinea inversata) + logout-others + revocare
+const sess = asvc.listSessions(u1, 's2');
+ok('listare: cea mai noua prima + sesiunea curenta marcata', sess[0].id === 's3' && sess[0].current === false && sess.find((s) => s.id === 's2').current === true);
+asvc.logoutOtherSessions(u1, 's2');
+ok('logout-others pastreaza doar sesiunea curenta', u1.sessions.length === 1 && u1.sessions[0].id === 's2');
+asvc.revokeSession(u1, 's2');
+eq('revocare individuala: sesiunea dispare', u1.sessions.length, 0);
+// profil: campuri albe curatate, cheile necunoscute ignorate, email + notificari
+const prof = asvc.updateProfile(u1, { email: 'x@exemplu.ro', notifyDeadlines: false, profil: { numeComplet: '  Ion Pop  ', telefon: '0712', necunoscut: 'ignorat' } });
+ok('profil: email + notificari + campuri curatate', prof.email === 'x@exemplu.ro' && prof.notifyDeadlines === false && prof.profil.numeComplet === 'Ion Pop' && prof.profil.necunoscut === undefined);
+ok('getProfile reflecta starea', asvc.getProfile(u1).email === 'x@exemplu.ro' && asvc.getProfile(u1).notifyDeadlines === false);
+
 section('Metrici de performanta pe ruta (src/metrics.js)');
 const metricsMod = require('../src/metrics');
 metricsMod.reset();
