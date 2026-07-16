@@ -5,7 +5,8 @@ const path = require('path');
 const crypto = require('crypto');
 const auth = require('./auth');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+// CONTAB_DATA_DIR: izolare pentru teste (backup/restore, uploads) — implicit data/ din repo.
+const DATA_DIR = process.env.CONTAB_DATA_DIR || path.join(__dirname, '..', 'data');
 
 // Driver de persistenta: 'pg'/'postgres' (PostgreSQL), 'sqlite' sau 'json' (vechi — rollback rapid).
 const DRIVER_RAW = (process.env.CONTAB_DB_DRIVER || 'sqlite').toLowerCase();
@@ -251,10 +252,12 @@ function scheduleMirror() {
   }, MIRROR_DELAY_MS);
   if (mirrorTimer.unref) mirrorTimer.unref(); // nu tine procesul in viata doar pentru oglinda
 }
-/** Scrie imediat oglinda JSON in asteptare (inainte de backup / la oprire). */
-function flushMirror() {
+/** Scrie imediat oglinda JSON in asteptare (inainte de backup / la oprire). `force`: scrie
+ *  chiar si cu oglinda dezactivata — backup-ul copiaza ACEST fisier, deci trebuie adus la zi,
+ *  altfel arhiva ar fi un instantaneu vechi (sau inexistent) al bazei. */
+function flushMirror(force) {
   if (mirrorTimer) { clearTimeout(mirrorTimer); mirrorTimer = null; }
-  if (db && JSON_MIRROR) { try { writeJson(JSON_FILE, db); } catch (e) { console.error('[contab] oglinda JSON:', e.message); } }
+  if (db && (JSON_MIRROR || force)) { try { writeJson(JSON_FILE, db); } catch (e) { console.error('[contab] oglinda JSON:', e.message); } }
 }
 
 function save() {

@@ -15,6 +15,8 @@ const xml = require('../src/xml');
 const PORT = 3891;
 const BASE = 'http://127.0.0.1:' + PORT;
 const DBF = path.join(os.tmpdir(), 'contab-http-' + process.pid + '.json');
+// data/ temporar al serverului de test: backup-urile si uploads NU ating data/ real
+const DATA_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'contab-http-data-'));
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -77,10 +79,10 @@ async function waitUp(tries) {
 async function main() {
   fs.writeFileSync(DBF, JSON.stringify(buildDb()));
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'json', CONTAB_DB_FILE: DBF, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '' }),
+    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'json', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '' }),
     stdio: 'ignore',
   });
-  const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } };
+  const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
   const guard = setTimeout(() => { console.error('  ✗ timeout global teste HTTP'); killAll(); process.exit(1); }, 45000);
 
   try {
@@ -661,10 +663,52 @@ async function main() {
     ok('abonare respinsa pe firma straina -> 403', [403, 404].includes((await req('POST', '/api/firme/2/subscribe', { cookie: c1, body: {} })).status));
     await req('POST', '/api/firme/1/activate', { cookie: c1 }); // curatenie: revin pe firma 1
 
+    // ── BACKUP / RESTORE COMPLET (admin, src/routes/backup.js): rutele care suprascriu TOATA baza ──
+    const cAdm = la.cookie;
+    eq('backup: non-admin -> 403', (await req('POST', '/api/backup', { cookie: c1 })).status, 403);
+    eq('restore: non-admin -> 403', (await req('POST', '/api/restore', { cookie: c1 })).status, 403);
+    eq('lista backup: non-admin -> 403', (await req('GET', '/api/backups', { cookie: c1 })).status, 403);
+    // marker "inainte": intra in snapshot si trebuie sa supravietuiasca restaurarii
+    await req('POST', '/api/partners', { cookie: cAdm, body: { cui: 'RO-SNAP-1', den: 'Inainte de snapshot' } });
+    const bk = await req('POST', '/api/backup', { cookie: cAdm });
+    ok('backup: creat, nume datat db-*.json', bk.json && bk.json.ok && /^db-.*\.json$/.test(bk.json.file));
+    const bkList = await req('GET', '/api/backups', { cookie: cAdm });
+    ok('backup: apare in lista + lastAt setat', bkList.json && bkList.json.lastAt && bkList.json.list.some((b) => b.name === bk.json.file));
+    const auto0 = await req('POST', '/api/backups/auto', { cookie: cAdm, body: { auto: false } });
+    ok('backup auto: comutat pe oprit', auto0.json.ok && (await req('GET', '/api/backups', { cookie: cAdm })).json.auto === false);
+    await req('POST', '/api/backups/auto', { cookie: cAdm, body: { auto: true } }); // curatenie: la loc
+    const snap = await req('GET', '/api/backup/file/' + bk.json.file, { cookie: cAdm });
+    ok('backup: fisierul se descarca si e un JSON de baza valid', snap.status === 200 && (() => { try { const j = JSON.parse(snap.text); return Array.isArray(j.firme) && Array.isArray(j.users); } catch (_) { return false; } })());
+    eq('backup: traversarea de cale respinsa (404)', (await req('GET', '/api/backup/file/..%2F..%2Fdb.json', { cookie: cAdm })).status, 404);
+    eq('backup: nume in afara tiparului db-*.json respins (404)', (await req('GET', '/api/backup/file/evil.txt', { cookie: cAdm })).status, 404);
+    // restaurare: validarea refuza gunoiul INAINTE sa atinga baza
+    const fdBadJson = new FormData();
+    fdBadJson.append('file', new Blob(['nu e json'], { type: 'application/json' }), 'stricat.json');
+    eq('restore: fisier ne-JSON -> 400', (await req('POST', '/api/restore', { cookie: cAdm, body: fdBadJson })).status, 400);
+    const fdNotDb = new FormData();
+    fdNotDb.append('file', new Blob([JSON.stringify({ altceva: 1 })], { type: 'application/json' }), 'altceva.json');
+    eq('restore: JSON care nu e baza Contabo -> 400', (await req('POST', '/api/restore', { cookie: cAdm, body: fdNotDb })).status, 400);
+    // partenerii sunt un obiect indexat pe CUI, nu un array
+    const dens = async () => Object.values((await req('GET', '/api/partners', { cookie: cAdm })).json || {}).map((p) => p.den);
+    ok('restore respins: baza e neatinsa (markerul exista)', (await dens()).includes('Inainte de snapshot'));
+    // round-trip: mutatie DUPA snapshot -> restaurare -> mutatia dispare, markerul ramane
+    await req('POST', '/api/partners', { cookie: cAdm, body: { cui: 'RO-DUPA-1', den: 'Dupa snapshot' } });
+    ok('mutatia de dupa snapshot exista inainte de restaurare', (await dens()).includes('Dupa snapshot'));
+    const fdSnap = new FormData();
+    fdSnap.append('file', new Blob([snap.text], { type: 'application/json' }), 'db.json');
+    const rst = await req('POST', '/api/restore', { cookie: cAdm, body: fdSnap });
+    ok('restore: reusit', rst.status === 200 && rst.json && rst.json.ok);
+    // sesiunea era in snapshot (users[].sessions), deci cookie-ul admin ramane valabil dupa restaurare
+    ok('dupa restaurare: sesiunea din snapshot e valabila', (await req('GET', '/api/me', { cookie: cAdm })).status === 200);
+    const densAfter = await dens();
+    ok('dupa restaurare: starea e cea din snapshot (markerul exista)', densAfter.includes('Inainte de snapshot'));
+    ok('dupa restaurare: mutatia de dupa snapshot A DISPARUT', !densAfter.includes('Dupa snapshot'));
+    ok('restore: backup de siguranta creat automat inainte de inlocuire', (await req('GET', '/api/backups', { cookie: cAdm })).json.list.length >= 1);
+
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-        env: Object.assign({}, process.env, { PORT: String(PORT + 1), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'json', CONTAB_DB_FILE: DBF, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '' }),
+        env: Object.assign({}, process.env, { PORT: String(PORT + 1), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'json', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '' }),
         stdio: 'ignore',
       });
       const t = setTimeout(() => { try { c2p.kill(); } catch (_) { /* */ } resolve('timeout'); }, 8000);
