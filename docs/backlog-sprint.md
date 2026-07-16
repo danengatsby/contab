@@ -68,9 +68,16 @@ omisiune).
 
 ---
 
-## 2. Protecție upload: validare de conținut + rate limit
+## 2. Protecție upload: validare de conținut + rate limit — ✅ ÎNCHIS 2026-07-16
 
-**Estimare:** 1–2 zile · **Prioritate:** 2
+**Estimare:** 1–2 zile · **Realizat:** ~2 ore · **Prioritate:** 2
+
+> Implementat în `src/uploadGuard.js`: magic bytes pentru PDF/imagini + verificare
+> „fără NUL" pentru text; containerele (.xlsx/.xls/.zip/.dbf) rămân deliberat pe
+> validarea parserului (variante istorice multe, nu se servesc inline). Plafoane per
+> utilizator: upload 60/oră (`CONTAB_RATE_UPLOAD`), exporturi mari 10/oră
+> (`CONTAB_RATE_EXPORT`, pe SAF-T + backup + export firmă). Plafonul AI exista deja
+> (zilnic, per utilizator, în documents.js) — punctul din plan era deja acoperit.
 
 ### Descriere
 
@@ -97,11 +104,11 @@ Upload-ul are deja limită de 20 MB și allowlist de extensii care blochează HT
 
 ### Acceptanță
 
-- [ ] Un fișier `.pdf` cu conținut non-PDF e respins cu 400 și nu ajunge la extractor
+- [x] Un fișier `.pdf` cu conținut non-PDF e respins cu 400 și nu ajunge la extractor
       (nici pe disc după respingere).
-- [ ] Depășirea plafonului răspunde 429; sub plafon, comportamentul e neschimbat.
-- [ ] Teste în `test/http.js`: fișier deghizat respins, al N+1-lea upload primește 429.
-- [ ] Map-urile noi de rate limit sunt curățate de jobul de igienă existent.
+- [x] Depășirea plafonului răspunde 429; sub plafon, comportamentul e neschimbat.
+- [x] Teste în `test/http.js`: fișier deghizat respins, al N+1-lea upload primește 429.
+- [x] Map-urile noi de rate limit sunt curățate de jobul de igienă existent.
 
 ---
 
