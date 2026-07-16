@@ -61,6 +61,14 @@ export async function loadDashboard() {
     : '<p class="muted">—</p>';
   $('#topCreante').innerHTML = list(k.topCreante);
   $('#topDatorii').innerHTML = list(k.topDatorii);
+  // ultimele operatiuni + stocurile valoroase (cardul de stocuri dispare la firmele fara stocuri)
+  const ops = k.ultimeleOperatiuni || [];
+  $('#ultimeleOps').innerHTML = ops.length
+    ? `<table><tbody>${ops.map((o) => `<tr><td class="muted">${o.data}</td><td>${H(o.tipNume)}${o.partener ? ' · ' + H(o.partener) : ''}</td><td class="num">${fmt(o.suma)}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Nicio operațiune încă — înregistrează primul document.</p>';
+  const sv = k.stocuriValoroase || [];
+  $('#stocValCard').classList.toggle('hidden', !sv.length);
+  if (sv.length) $('#stocuriValoroase').innerHTML = `<table><tbody>${sv.map((x) => `<tr><td>${H(x.denumire)}</td><td class="num">${fmt(x.stocV)}</td></tr>`).join('')}</tbody></table>`;
   if (c) renderDashboardCharts(c); else loadDashboardCharts();
 }
 // Primii pași (onboarding): checklist viu pentru firmele proaspete — dispare singur după

@@ -421,6 +421,11 @@ async function main() {
       dashH.primiiPasi && dashH.primiiPasi.documentInregistrat === true && typeof dashH.primiiPasi.nrInregistrari === 'number');
     ok('dashboard: pasii noi de onboarding (partener/produs) + starea wizardului',
       typeof dashH.primiiPasi.arePartener === 'boolean' && typeof dashH.primiiPasi.areProdus === 'boolean' && dashH.primiiPasi.wizardAscuns === false);
+    ok('dashboard: ultimele operatiuni (max 5, cele mai noi primele, cu total)',
+      Array.isArray(dashH.ultimeleOperatiuni) && dashH.ultimeleOperatiuni.length >= 1 && dashH.ultimeleOperatiuni.length <= 5
+      && dashH.ultimeleOperatiuni.every((o) => o.data && o.tipNume && typeof o.suma === 'number')
+      && dashH.ultimeleOperatiuni[0].data >= dashH.ultimeleOperatiuni[dashH.ultimeleOperatiuni.length - 1].data);
+    ok('dashboard: stocurile valoroase (lista, posibil goala)', Array.isArray(dashH.stocuriValoroase));
     // „mai tarziu" persista PE CONT (nu in localStorage): dupa dismiss si o autentificare noua
     // (alta „sesiune de browser"), wizardul ramane ascuns
     ok('dismiss wizard: ok', (await req('POST', '/api/onboarding/dismiss', { cookie: c1 })).json.ok === true);
