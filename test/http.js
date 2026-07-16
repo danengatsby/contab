@@ -767,6 +767,14 @@ async function main() {
     ok('dupa restaurare: mutatia de dupa snapshot A DISPARUT', !densAfter.includes('Dupa snapshot'));
     ok('restore: backup de siguranta creat automat inainte de inlocuire', (await req('GET', '/api/backups', { cookie: cAdm })).json.list.length >= 1);
 
+    // ── METRICI DE PERFORMANTA (admin): duratele pe ruta se aduna din mers ──
+    eq('metrici: non-admin -> 403', (await req('GET', '/api/metrics', { cookie: c1 })).status, 403);
+    const met = await req('GET', '/api/metrics', { cookie: cAdm });
+    ok('metrici: snapshot cu prag si rute', met.status === 200 && met.json.slowThresholdMs > 0 && Array.isArray(met.json.routes) && met.json.routes.length > 0);
+    const mHealth = met.json.routes.find((r) => r.route === '/api/health');
+    ok('metrici: /api/health e masurat (n, avgMs, maxMs)', mHealth && mHealth.n >= 1 && mHealth.avgMs >= 0 && mHealth.maxMs >= 0);
+    ok('metrici: id-urile sunt normalizate in tipar (nicio ruta cu hex brut)', met.json.routes.every((r) => !/[0-9a-f]{16}/i.test(r.route)));
+
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {

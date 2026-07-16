@@ -104,6 +104,19 @@ app.use((req, res, next) => {
   next();
 });
 
+// Durata fiecarui raspuns: agregata pe ruta (GET /api/metrics, admin) + avertisment in log
+// pentru cererile lente (CONTAB_SLOW_MS) — baza de decizie a optimizarilor de performanta.
+const metrics = require('./src/metrics');
+app.use((req, res, next) => {
+  const t0 = process.hrtime.bigint();
+  res.on('finish', () => {
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    metrics.record(metrics.routePattern(req), ms, res.statusCode);
+    if (ms >= metrics.SLOW_MS) log.warn('cerere lenta', log.ctx(req, { status: res.statusCode, ms: Math.round(ms) }));
+  });
+  next();
+});
+
 // Webhook-ul Stripe are nevoie de body-ul BRUT (pentru verificarea semnaturii) — inainte de express.json.
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '5mb' }));
@@ -384,6 +397,8 @@ app.get('/api/audit/system', requireAdmin, (req, res) => {
   const list = (db.get().audit || []).filter((a) => a.firmaId == null);
   res.json(list.slice(-300).reverse());
 });
+// Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare primii.
+app.get('/api/metrics', requireAdmin, (req, res) => res.json(metrics.snapshot()));
 app.get('/api/me', (req, res) => {
   const u = currentUser(req);
   if (!u) return res.status(401).json({ error: 'Neautentificat' });
