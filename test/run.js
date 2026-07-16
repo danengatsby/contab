@@ -1966,6 +1966,56 @@ const obOk = psvc.setOpening(fidOk, { 5121: { d: 1000, c: 0 }, 1012: { d: 0, c: 
 ok('echilibrat: salvat cu totalurile', obOk.totalDebit === 1000 && obOk.totalCredit === 1000);
 if (prevOB === undefined) delete db.get().openingBalances[fidOk]; else db.get().openingBalances[fidOk] = prevOB; // restaurare
 
+section('Service layer configurare (src/configService.js)');
+const cfsvc = require('../src/configService');
+const fiscalT = require('../src/fiscal');
+// gardele de firma
+eq('date firma pe firma inexistenta -> 403', errStatus(() => cfsvc.updateCompany(9999, { nume: 'X' })), 403);
+eq('chitanta pe firma lipsa -> 403', errStatus(() => cfsvc.assignChitanta(null, 'e1')), 403);
+// datele firmei: logoFile e ignorat (se administreaza doar prin functiile dedicate), id-ul nu se suprascrie
+const firmaCfg = db.getFirma(fidOk);
+cfsvc.updateCompany(fidOk, { testCampSvc: 'da', logoFile: 'furat.png', id: 424242 });
+ok('camp salvat + logoFile ignorat + id pastrat', firmaCfg.testCampSvc === 'da' && firmaCfg.logoFile !== 'furat.png' && firmaCfg.id === fidOk);
+delete firmaCfg.testCampSvc; // curatenie
+// logo: validare pe magic bytes, nu pe extensie
+const tmpLogoBad = path.join(os.tmpdir(), 'contab-logo-bad-' + process.pid + '.png');
+fsT.writeFileSync(tmpLogoBad, 'nu e imagine');
+eq('fisier care nu e PNG/JPEG -> 400', errStatus(() => cfsvc.setLogo(fidOk, tmpLogoBad)), 400);
+ok('fisierul invalid e sters', !fsT.existsSync(tmpLogoBad));
+eq('fisier ilizibil -> 400', errStatus(() => cfsvc.setLogo(fidOk, path.join(os.tmpdir(), 'nu-exista-' + process.pid))), 400);
+const prevLogo = firmaCfg.logoFile;
+const tmpLogoOk = path.join(os.tmpdir(), 'contab-logo-ok-' + process.pid + '.png');
+fsT.writeFileSync(tmpLogoOk, Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]));
+const logoR = cfsvc.setLogo(fidOk, tmpLogoOk);
+ok('PNG valid: logoFile setat pe basename + format detectat', firmaCfg.logoFile === path.basename(tmpLogoOk) && logoR.format === 'PNG');
+cfsvc.deleteLogo(fidOk);
+ok('stergerea logo-ului goleste campul (fisier lipsa = best-effort)', firmaCfg.logoFile === undefined);
+eq('stergerea fara logo NU e eroare (contract istoric)', errStatus(() => cfsvc.deleteLogo(fidOk)), null);
+if (prevLogo !== undefined) firmaCfg.logoFile = prevLogo; // restaurare
+try { fsT.unlinkSync(tmpLogoOk); } catch (_) { /* posibil mutat/sters */ }
+// chitanta: doar incasari in numerar (531x); numarul se atribuie o data si se refoloseste
+const dCfg = db.get();
+dCfg.entries.push({ id: 'chit-svc-1', firmaId: fidOk, data: '2026-06-01', period: '2026-06', tip: 'incasare_client', tipNume: 'Incasare', partener: 'Casa SRL', document: 'CH-T', lines: [{ debit: '5311', credit: '4111', suma: 150 }] });
+dCfg.entries.push({ id: 'chit-svc-2', firmaId: fidOk, data: '2026-06-01', period: '2026-06', tip: 'incasare_client', tipNume: 'Incasare', partener: 'Banca SRL', document: 'CH-B', lines: [{ debit: '5121', credit: '4111', suma: 150 }] });
+eq('chitanta pe inregistrare inexistenta -> 404', errStatus(() => cfsvc.assignChitanta(fidOk, 'chit-inexistent')), 404);
+eq('chitanta pe incasare prin banca -> 400', errStatus(() => cfsvc.assignChitanta(fidOk, 'chit-svc-2')), 400);
+const chNext = ssvc.docSeries(fidOk).CH.next;
+const ch1 = cfsvc.assignChitanta(fidOk, 'chit-svc-1');
+ok('prima tiparire: numar atribuit din seria CH + suma 531x', ch1.justAssigned && ch1.nr.startsWith(ssvc.docSeries(fidOk).CH.serie + '-') && ch1.suma === 150);
+const ch2 = cfsvc.assignChitanta(fidOk, 'chit-svc-1');
+ok('retiparirea refoloseste numarul (seria nu avanseaza)', !ch2.justAssigned && ch2.nr === ch1.nr && ssvc.docSeries(fidOk).CH.next === chNext + 1);
+dCfg.entries = dCfg.entries.filter((e) => e.id !== 'chit-svc-1' && e.id !== 'chit-svc-2'); // curatenie
+// setari globale (merge) + cote fiscale (doar chei cunoscute, numerice; reset la standard)
+cfsvc.updateSettings({ testSetareSvc: 7 });
+eq('setarile se imbina, nu se inlocuiesc', dCfg.settings.testSetareSvc, 7);
+delete dCfg.settings.testSetareSvc; // curatenie
+const prevFiscalCfg = dCfg.settings.fiscal;
+const fc1 = cfsvc.setFiscalConfig({ tvaStandard: 19, invalid: 'abc', necunoscut: 5 });
+ok('cota valida aplicata imediat, cheile necunoscute ignorate', fc1.current.tvaStandard === 19 && dCfg.settings.fiscal.necunoscut === undefined);
+const fc2 = cfsvc.setFiscalConfig({ reset: true });
+ok('reset: custom sters + valorile standard revin', fc2.reset && dCfg.settings.fiscal === undefined && fc2.current.tvaStandard === fiscalT.DEFAULTS.tvaStandard);
+if (prevFiscalCfg !== undefined) { dCfg.settings.fiscal = prevFiscalCfg; fiscalT.applyConfig(prevFiscalCfg); } // restaurare
+
 section('Metrici de performanta pe ruta (src/metrics.js)');
 const metricsMod = require('../src/metrics');
 metricsMod.reset();

@@ -36,7 +36,6 @@ const presence = require('./src/presence');
 const validate = require('./src/validate');
 const { sendMail, sendNotifMail, sendDeadlineDigests } = require('./src/notify');
 const { pollSpv } = require('./src/anafService'); // auto-poll job; restul e in src/routes/anaf.js
-const { ensureDocSeries } = require('./src/stocksService'); // serii de documente (ctx pentru config.js/chitante)
 const efacturaImport = require('./src/efacturaImport');
 const plans = require('./src/plans');
 const billing = require('./src/billing');
@@ -618,7 +617,7 @@ require('./src/routes/firme')(app, { activeId, allowedFirme, canAccess, requireA
 require('./src/routes/users')(app, { requireAdmin, logAudit, startSession, publicUser });
 
 // Configurare (companie, logo, chitanta, setari, cote fiscale): src/routes/config.js
-require('./src/routes/config')(app, { S, activeId, logAudit, requireAdmin, upload, ensureDocSeries });
+require('./src/routes/config')(app, { S, activeId, logAudit, requireAdmin, upload });
 
 // Nomenclatoare (parteneri, import CSV, conversie XLSX/XLS/DBF) + solduri initiale: src/routes/partners.js
 require('./src/routes/partners')(app, { upload, S, activeId, logAudit });
