@@ -486,12 +486,21 @@ require('./src/routes/messages')(app, { requireAdmin, upload, logAudit });
 require('./src/routes/billing')(app, { requireAdmin, logAudit });
 
 // ───────────────────────── RESETARE PAROLA (email) ─────────────────────────
+// Rate limit pe IP (5/ora): ruta e publica si trimite email — fara plafon ar fi un vector de
+// spam catre utilizator si de consum al cotei de email. Peste plafon raspundem tot generic
+// (fara enumerare de conturi), doar nu mai trimitem.
+const forgotAttempts = new Map();
 app.post('/api/forgot-password', wrap(async (req, res) => {
   const login = String((req.body || {}).login || '').trim().toLowerCase();
   const d = db.get();
   const u = d.users.find((x) => !x.pending && (x.username.toLowerCase() === login || (x.email && x.email.toLowerCase() === login)));
   // raspuns identic indiferent daca exista (sa nu dezvaluim conturile)
   const generic = { ok: true, message: 'Daca exista un cont cu adresa de email setata, vei primi un link de resetare.' };
+  const k = attemptKey(req); const now = Date.now();
+  let fa = forgotAttempts.get(k);
+  if (!fa || now > fa.reset) fa = { count: 0, reset: now + 3600 * 1000 };
+  fa.count += 1; forgotAttempts.set(k, fa);
+  if (fa.count > 5) return res.json(generic);
   if (!u || !u.email || !(d.settings.smtp && d.settings.smtp.host)) return res.json(generic);
   u.resetToken = crypto.randomBytes(24).toString('hex');
   u.resetExp = Date.now() + 3600 * 1000; // 1 ora
@@ -501,7 +510,14 @@ app.post('/api/forgot-password', wrap(async (req, res) => {
   res.json(generic);
 }));
 function findReset(token) {
-  const u = db.get().users.find((x) => x.resetToken === token);
+  // comparatie in timp constant: tokenul vine din URL, egalitatea `===` s-ar scurta la primul
+  // octet diferit (teoretic masurabil). Lungimea se verifica intai (timingSafeEqual o cere egala).
+  const t = Buffer.from(String(token || ''));
+  const u = db.get().users.find((x) => {
+    if (!x.resetToken) return false;
+    const a = Buffer.from(String(x.resetToken));
+    return a.length === t.length && crypto.timingSafeEqual(a, t);
+  });
   if (!u || (u.resetExp && u.resetExp < Date.now())) return null;
   return u;
 }
@@ -854,6 +870,7 @@ safeInterval('rate-limit-hygiene', () => {
   const now = Date.now();
   pruneLoginAttempts(now); // loginAttempts traieste in src/session.js (incapsulat)
   for (const [k, r] of registerAttempts) { if (r.reset < now) registerAttempts.delete(k); }
+  for (const [k, r] of forgotAttempts) { if (r.reset < now) forgotAttempts.delete(k); }
 }, 3600 * 1000);
 
 // Job periodic: descarca automat recipisele — SPV per-firma, doar firmele cu autoPoll bifat
