@@ -1761,6 +1761,20 @@ ssvc.deleteProduct(fidOk, rp.product.id);
 ok('acelasi id, firma corecta: stergerea merge', !db.get().products.some((p) => p.id === rp.product.id));
 dbx.firme = dbx.firme.filter((f) => f.id !== 7777); // curatenie (doar in memorie)
 
+section('Serii de documente prin service layer (docSeries / assignDocNumber)');
+eq('seriile firmei inexistente -> 403', errStatus(() => ssvc.docSeries(9999)), 403);
+eq('actualizarea seriilor pe firma invalida -> 403', errStatus(() => ssvc.updateDocSeries(null, { NIR: { serie: 'X' } })), 403);
+eq('numerotare pe firma invalida -> 403', errStatus(() => ssvc.assignDocNumber(-1, 'NIR', [])), 403);
+const serii = ssvc.docSeries(fidOk);
+ok('seriile implicite exista (NIR/BC/AVIZ/CH)', serii.NIR && serii.BC && serii.AVIZ && serii.CH);
+const mv1 = { id: 'dn1' }; const mv2 = { id: 'dn2' };
+const nrStart = serii.NIR.next;
+const nr1 = ssvc.assignDocNumber(fidOk, 'NIR', [mv1, mv2]);
+ok('numarul e atribuit intregului grup', mv1.docNr.NIR === nr1 && mv2.docNr.NIR === nr1 && nr1.startsWith(serii.NIR.serie + '-'));
+eq('seria avanseaza', ssvc.docSeries(fidOk).NIR.next, nrStart + 1);
+eq('retiparirea REFOLOSESTE numarul (nu consuma serie)', ssvc.assignDocNumber(fidOk, 'NIR', [mv1, mv2]), nr1);
+eq('seria nu a avansat la refolosire', ssvc.docSeries(fidOk).NIR.next, nrStart + 1);
+
 section('Service layer firme: autorizarea dublata (src/firmeService.js)');
 const fsvc = require('../src/firmeService');
 const fidPrima = dbx.firme[0].id;
