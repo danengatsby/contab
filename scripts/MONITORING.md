@@ -3,11 +3,18 @@
 Endpoint public de sănătate: **`https://contabo.space/api/health`** → `{"ok":true,...,"firme":N}`.
 Nu cere autentificare, nu expune date — doar confirmă că procesul și baza răspund.
 
-Performanță și diagnostic: **`/api/metrics`** (doar admin) — duratele agregate pe rută de la
-ultimul restart (n, avg, max, câte au depășit pragul `CONTAB_SLOW_MS`, implicit 500 ms), ordonate
-după timpul total consumat, plus secțiunea `process` (memorie RSS/heap, versiune Node, PID,
-driver DB, număr firme/utilizatori). Cererile peste prag apar și în log ca avertismente
-`cerere lenta`, cu `reqId` pentru corelare. Optimizările pornesc de aici, nu din instinct.
+Performanță și diagnostic: **`/api/metrics`** (doar admin) — de la ultimul restart:
+- `routes` — duratele agregate pe rută (n, avg, max, câte au depășit pragul `CONTAB_SLOW_MS`,
+  implicit 500 ms), ordonate după timpul total consumat;
+- `recentErrors` — ultimele 20 de erori 5xx (cu `reqId`), cele mai noi primele — complementar
+  alertei pe email, care vede doar fereastra de 15 minute;
+- `jobs` — starea job-urilor de background (backup, digest-termene, demo-reset, spv-poll,
+  rate-limit-hygiene): ultimul tick, ultimul rezultat, ultima eroare; pentru backup/digest/demo
+  și ultima rulare reușită din settings (supraviețuiește restartului);
+- `process` — memorie RSS/heap, versiune Node, PID, driver DB, număr firme/utilizatori.
+
+Cererile peste prag apar și în log ca avertismente `cerere lenta`, cu `reqId` pentru corelare.
+Optimizările pornesc de aici, nu din instinct.
 
 Intenționat, `/api/health` rămâne minimal: e public, iar detaliile de proces pe un endpoint
 neautentificat ar însemna fingerprinting gratuit al serverului (există test care impune asta).
