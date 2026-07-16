@@ -100,6 +100,27 @@ function constructEvent(rawBody, signature) {
   return s.webhooks.constructEvent(rawBody, signature, secret);
 }
 
+// Deduplicare webhook: Stripe retrimite acelasi eveniment (acelasi event.id) la orice raspuns
+// non-2xx sau timeout, deci o livrare dubla NU trebuie sa re-proceseze abonamentul (audit dublat,
+// re-activare dupa o anulare ulterioara). Id-urile procesate stau in settings.stripeEventIds
+// (id -> data procesarii); istoricul se taie la cele mai vechi peste MAX_SEEN_EVENTS — cheile
+// obiectului pastreaza ordinea inserarii, care e chiar ordinea cronologica a procesarii.
+const MAX_SEEN_EVENTS = 500;
+
+/** True daca evenimentul a fost deja procesat (livrare dubla). Functie pura. */
+function seenEvent(settings, eventId) {
+  return !!(eventId && settings && settings.stripeEventIds && settings.stripeEventIds[eventId]);
+}
+
+/** Marcheaza evenimentul ca procesat si taie istoricul la ultimele MAX_SEEN_EVENTS. */
+function rememberEvent(settings, eventId) {
+  if (!eventId) return;
+  const seen = settings.stripeEventIds = settings.stripeEventIds || {};
+  seen[eventId] = new Date().toISOString();
+  const ids = Object.keys(seen);
+  for (const old of ids.slice(0, Math.max(0, ids.length - MAX_SEEN_EVENTS))) delete seen[old];
+}
+
 /** Traduce un eveniment Stripe intr-o actiune de abonament aplicabila pe user. Functie pura. */
 function interpretEvent(event) {
   const o = (event && event.data && event.data.object) || {};
@@ -125,4 +146,4 @@ function interpretEvent(event) {
   }
 }
 
-module.exports = { configured, client, priceId, planForPrice, appUrl, createCheckoutSession, createGuestCheckoutSession, createPortalSession, constructEvent, interpretEvent };
+module.exports = { configured, client, priceId, planForPrice, appUrl, createCheckoutSession, createGuestCheckoutSession, createPortalSession, constructEvent, interpretEvent, seenEvent, rememberEvent, MAX_SEEN_EVENTS };

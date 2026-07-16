@@ -60,6 +60,8 @@ module.exports = function register(app, ctx) {
     const info = billing.interpretEvent(event);
     if (info.action === 'ignore') return res.json({ received: true });
     const d = db.get();
+    // Livrare dubla (retry Stripe): confirmam fara re-procesare.
+    if (billing.seenEvent(d.settings, event.id)) return res.json({ received: true, duplicate: true });
     let u = info.userId ? d.users.find((x) => String(x.id) === String(info.userId)) : null;
     if (!u && info.customerId) u = d.users.find((x) => x.subscription && x.subscription.stripeCustomerId === info.customerId);
     // Plata „guest" (fara cont inca): pastreaza abonamentul in asteptare, legat de email, pana la inscriere.
@@ -67,6 +69,7 @@ module.exports = function register(app, ctx) {
       d.settings.pendingSubs = d.settings.pendingSubs || [];
       d.settings.pendingSubs = d.settings.pendingSubs.filter((x) => x.email !== String(info.email).toLowerCase());
       d.settings.pendingSubs.push({ email: String(info.email).toLowerCase(), plan: info.plan, customerId: info.customerId, subscriptionId: info.subscriptionId, at: new Date().toISOString() });
+      billing.rememberEvent(d.settings, event.id);
       db.save();
       return res.json({ received: true, pending: true });
     }
@@ -98,6 +101,7 @@ module.exports = function register(app, ctx) {
       }
     }
     logAudit('subscription.stripe', event.type + ' -> ' + u.username + ' (' + (sub.plan || '-') + '/' + sub.status + ')' + (firma ? ' [firma ' + firma.id + ']' : ''), { firmaId: firma ? firma.id : null, username: 'stripe-webhook' });
+    billing.rememberEvent(d.settings, event.id);
     db.save();
     res.json({ received: true });
   });

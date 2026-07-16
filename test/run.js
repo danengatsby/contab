@@ -1724,5 +1724,22 @@ ok('rotatie: NU atinge db.pre-*.json (migrare)', fsB.existsSync(pathB.join(tmpB,
 ok('rotatie: pastreaza cele mai NOI', fsB.existsSync(pathB.join(tmpB, 'db.json.bak-op11')) && !fsB.existsSync(pathB.join(tmpB, 'db.json.bak-op0')));
 try { fsB.rmSync(tmpB, { recursive: true, force: true }); } catch (_) { /* ignora */ }
 
+section('Stripe webhook: deduplicare pe event.id (src/billing.js)');
+const billingMod = require('../src/billing');
+const stgs = {};
+ok('eveniment nou: nevazut', !billingMod.seenEvent(stgs, 'evt_1'));
+billingMod.rememberEvent(stgs, 'evt_1');
+ok('dupa procesare: vazut (livrarea dubla se sare)', billingMod.seenEvent(stgs, 'evt_1'));
+ok('alt eveniment: nevazut', !billingMod.seenEvent(stgs, 'evt_2'));
+billingMod.rememberEvent(stgs, null);
+ok('id lipsa: nu crapa si nu se inregistreaza', !stgs.stripeEventIds.null && Object.keys(stgs.stripeEventIds).length === 1);
+ok('seenEvent tolereaza settings gol/necunoscut', !billingMod.seenEvent({}, 'evt_1') && !billingMod.seenEvent(null, 'evt_1'));
+// rotatia istoricului: peste MAX_SEEN_EVENTS se taie cele mai VECHI (ordinea inserarii)
+const stgs2 = {};
+for (let k = 0; k < billingMod.MAX_SEEN_EVENTS + 10; k++) billingMod.rememberEvent(stgs2, 'evt_' + k);
+eq('rotatie: istoricul e plafonat', Object.keys(stgs2.stripeEventIds).length, billingMod.MAX_SEEN_EVENTS);
+ok('rotatie: cele mai vechi au iesit', !billingMod.seenEvent(stgs2, 'evt_0') && !billingMod.seenEvent(stgs2, 'evt_9'));
+ok('rotatie: cele mai noi raman', billingMod.seenEvent(stgs2, 'evt_10') && billingMod.seenEvent(stgs2, 'evt_' + (billingMod.MAX_SEEN_EVENTS + 9)));
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);
