@@ -16,6 +16,11 @@ Performanță și diagnostic: **`/api/metrics`** (doar admin) — de la ultimul 
 Cererile peste prag apar și în log ca avertismente `cerere lenta`, cu `reqId` pentru corelare.
 Optimizările pornesc de aici, nu din instinct.
 
+Raport zilnic prin email: `scripts/perf-report.sh` (cron la 07:45, utilizatorul `contab`) numără
+în log-urile pm2 avertismentele `cerere lenta` și erorile de server din ultimele 24h și trimite
+email (Resend, către `CONTAB_BACKUP_EMAIL_TO`) **doar dacă a găsit ceva** — liniște = totul e ok.
+Rulare manuală fără email: `CONTAB_PERF_NOMAIL=1 bash scripts/perf-report.sh`.
+
 Intenționat, `/api/health` rămâne minimal: e public, iar detaliile de proces pe un endpoint
 neautentificat ar însemna fingerprinting gratuit al serverului (există test care impune asta).
 
