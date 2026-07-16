@@ -680,6 +680,11 @@ async function main() {
     const generic1 = await req('POST', '/api/forgot-password', { body: { login: 'nu-exista-deloc' } });
     const generic2 = await req('POST', '/api/forgot-password', { body: { login: 'user1' } });
     ok('forgot: raspuns identic pentru cont inexistent si cont real (fara enumerare)', generic1.status === 200 && generic2.status === 200 && generic1.text === generic2.text);
+    // rate limit (5/ora pe IP): peste plafon raspunsul ramane TOT generic — anti-enumerarea
+    // se pastreaza si sub limitare (doar trimiterea de email se opreste, neobservabil din exterior)
+    let genericLimited = null;
+    for (let k = 0; k < 6; k++) genericLimited = await req('POST', '/api/forgot-password', { body: { login: 'user1' } });
+    ok('forgot: peste plafon, raspunsul ramane generic (fara enumerare)', genericLimited.status === 200 && genericLimited.text === generic1.text);
     eq('reset: token expirat -> 404', (await req('GET', '/api/reset/tok-resetare-expirata')).status, 404);
     eq('reset: token inexistent -> 404', (await req('GET', '/api/reset/complet-gresit')).status, 404);
     const rTok = await req('GET', '/api/reset/' + TOK_OK);
