@@ -11,6 +11,8 @@ const db = require('../db');
 const rep = require('../reporting');
 const decl = require('../declarations');
 const pdf = require('../pdf');
+const acc = require('../accounting');
+const stocks = require('../stocks');
 const { reconcile, compensablePartners } = require('../reconcile');
 const { analyticBalance, aging } = require('../analytic');
 const { round2, period: periodOf } = require('../util');
@@ -67,8 +69,23 @@ module.exports = function register(app, ctx) {
       nrInregistrari: (v.entries || []).length,
       wizardAscuns: !!req.user.wizardAscuns,
     };
+    // Ultimele operatiuni: cele mai recente 5 articole (orice tip), cu totalul liniilor —
+    // dashboard-ul raspunde la "ce s-a intamplat ultima data" fara drum prin jurnal.
+    const ultimeleOperatiuni = acc.sortEntries(v.entries || []).slice(-5).reverse().map((e) => ({
+      id: e.id, data: e.data, tipNume: e.tipNume, partener: e.partener || '', document: e.document || '',
+      suma: round2((e.lines || []).reduce((s, l) => s + (Number(l.suma) || 0), 0)),
+    }));
+    // Stocuri valoroase: top 5 produse dupa valoarea la CMP (agregat pe gestiuni);
+    // lista goala = firma fara activitate de stocuri, frontend-ul ascunde cardul.
+    const byProd = new Map();
+    for (const r of stocks.currentStock(v, null, null)) {
+      const cur = byProd.get(r.product.id) || { cod: r.product.cod, denumire: r.product.denumire, stocV: 0 };
+      cur.stocV = round2(cur.stocV + r.stocV);
+      byProd.set(r.product.id, cur);
+    }
+    const stocuriValoroase = [...byProd.values()].filter((x) => x.stocV > 0).sort((a, b) => b.stocV - a.stocV).slice(0, 5);
     // e-Factura B2B: facturile emise netrimise in SPV (termen legal 5 zile lucratoare) — alerta pe dashboard
-    res.json(Object.assign(rep.dashboard(v), { efactura: decl.eFacturaNetrimise(v), primiiPasi }));
+    res.json(Object.assign(rep.dashboard(v), { efactura: decl.eFacturaNetrimise(v), primiiPasi, ultimeleOperatiuni, stocuriValoroase }));
   });
   app.get('/api/cash-forecast', (req, res) => {
     const fid = activeId(req);
