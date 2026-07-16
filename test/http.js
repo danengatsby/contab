@@ -11,6 +11,7 @@ const os = require('os');
 const fs = require('fs');
 const auth = require('../src/auth');
 const xml = require('../src/xml');
+const totp = require('../src/totp');
 
 const PORT = 3891;
 const BASE = 'http://127.0.0.1:' + PORT;
@@ -46,6 +47,14 @@ function buildDb() {
       { id: 3, username: 'expirat', salt: u.salt, hash: u.hash, role: 'user', firme: [3], firmaActiva: 3 },
       // cont cu parola IMPLICITA „admin", FARA flagul mustChange — migrarea trebuie sa-l re-armeze
       { id: 4, username: 'defpw', salt: def.salt, hash: def.hash, role: 'user', firme: [1], firmaActiva: 1 },
+      // conturi pentru fluxul de resetare a parolei: token valabil / token expirat (seed-uite,
+      // ca testul sa nu depinda de SMTP sau de citirea bazei serverului)
+      { id: 5, username: 'resetme', email: 'resetme@example.com', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1, resetToken: 'tok-resetare-valida', resetExp: Date.now() + 3600 * 1000 },
+      { id: 6, username: 'resetexp', email: 'resetexp@example.com', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1, resetToken: 'tok-resetare-expirata', resetExp: Date.now() - 1000 },
+      // cont dedicat fluxului 2FA (setup -> enable -> login in doi pasi -> disable)
+      { id: 7, username: 'doifa', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
+      // al doilea admin: tinta interzisa pentru impersonare
+      { id: 8, username: 'admin2', salt: a.salt, hash: a.hash, role: 'admin', firme: [] },
     ],
     documents: [{ id: 'docA', firmaId: 2, fileName: 'secret.pdf', storedName: 'nu-exista-pe-disc.pdf', uploadedAt: 'x', text: '' }],
     settings: { authSecret: 'x'.repeat(64) },
@@ -453,7 +462,7 @@ async function main() {
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
-    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 4 && users.json.every((u) => u.tip));
+    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 8 && users.json.every((u) => u.tip));
     eq('non-admin la ruta de admin -> 403', (await req('GET', '/api/users', { cookie: c1 })).status, 403);
 
     // ── Schimbare de parola OBLIGATORIE (cont cu parola implicita „admin") ──
@@ -662,6 +671,59 @@ async function main() {
     eq('dupa abonare: scrierea functioneaza din nou', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO903', den: 'Deblocat' } })).status, 200);
     ok('abonare respinsa pe firma straina -> 403', [403, 404].includes((await req('POST', '/api/firme/2/subscribe', { cookie: c1, body: {} })).status));
     await req('POST', '/api/firme/1/activate', { cookie: c1 }); // curatenie: revin pe firma 1
+
+    // ── RESETARE PAROLA (token seed-uit: valabil + expirat; fara dependenta de SMTP) ──
+    const TOK_OK = 'tok-resetare-valida';
+    const generic1 = await req('POST', '/api/forgot-password', { body: { login: 'nu-exista-deloc' } });
+    const generic2 = await req('POST', '/api/forgot-password', { body: { login: 'user1' } });
+    ok('forgot: raspuns identic pentru cont inexistent si cont real (fara enumerare)', generic1.status === 200 && generic2.status === 200 && generic1.text === generic2.text);
+    eq('reset: token expirat -> 404', (await req('GET', '/api/reset/tok-resetare-expirata')).status, 404);
+    eq('reset: token inexistent -> 404', (await req('GET', '/api/reset/complet-gresit')).status, 404);
+    const rTok = await req('GET', '/api/reset/' + TOK_OK);
+    ok('reset: token valabil -> identitatea contului', rTok.status === 200 && rTok.json.username === 'resetme');
+    eq('reset accept: parola slaba respinsa (400)', (await req('POST', '/api/reset/accept', { body: { token: TOK_OK, password: 'scurt' } })).status, 400);
+    const lOld = await req('POST', '/api/login', { body: { username: 'resetme', password: 'parola1' } });
+    ok('resetme: sesiune veche activa inainte de reset', lOld.status === 200 && (await req('GET', '/api/me', { cookie: lOld.cookie })).status === 200);
+    const acc = await req('POST', '/api/reset/accept', { body: { token: TOK_OK, password: 'parola-noua-9' } });
+    ok('reset accept: reusit + autentificare directa', acc.status === 200 && acc.json.ok && /^sid=/.test(acc.cookie));
+    eq('reset accept: tokenul e consumat (refolosire -> 404)', (await req('POST', '/api/reset/accept', { body: { token: TOK_OK, password: 'alta-parola-9' } })).status, 404);
+    eq('dupa reset: sesiunile vechi sunt deconectate', (await req('GET', '/api/me', { cookie: lOld.cookie })).status, 401);
+    eq('dupa reset: parola veche nu mai merge', (await req('POST', '/api/login', { body: { username: 'resetme', password: 'parola1' } })).status, 401);
+    ok('dupa reset: parola noua merge', (await req('POST', '/api/login', { body: { username: 'resetme', password: 'parola-noua-9' } })).json.ok === true);
+
+    // ── IMPERSONARE (admin intra pe cont de user; sesiune de admin dedicata) ──
+    const cImp = (await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } })).cookie;
+    eq('impersonare: non-admin -> 403', (await req('POST', '/api/impersonate', { cookie: c1, body: { userId: 3 } })).status, 403);
+    eq('impersonare: tinta inexistenta -> 404', (await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 999 } })).status, 404);
+    eq('impersonare: propriul cont -> 400', (await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 1 } })).status, 400);
+    eq('impersonare: alt admin -> 400', (await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 8 } })).status, 400);
+    const impR = await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 2 } });
+    ok('impersonare pornita: raspunde cu userul tinta', impR.status === 200 && impR.json.user.username === 'user1');
+    const meImp = await req('GET', '/api/me', { cookie: cImp });
+    ok('/api/me sub impersonare: identitatea tintei + insigna adminului real', meImp.json.username === 'user1' && meImp.json.impersonating && meImp.json.impersonating.adminName === 'admin');
+    eq('sub impersonare: rutele de admin raman blocate (403)', (await req('GET', '/api/users', { cookie: cImp })).status, 403);
+    eq('comutare directa pe alta tinta (adminul real detine sesiunea)', (await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 3 } })).status, 200);
+    // regresie: userId 3 are firma EXPIRATA — paywall-ul (402) nu are voie sa blocheze iesirea
+    const stop = await req('POST', '/api/impersonate/stop', { cookie: cImp });
+    ok('oprire impersonare (chiar de pe firma expirata): revii adminul', stop.status === 200 && stop.json.user.username === 'admin');
+    eq('oprire fara impersonare activa -> 400', (await req('POST', '/api/impersonate/stop', { cookie: cImp })).status, 400);
+    ok('auditul de sistem consemneaza impersonarea', (await req('GET', '/api/audit/system', { cookie: cImp })).json.some((a) => a.action === 'impersonate.start'));
+
+    // ── 2FA / TOTP: setup -> enable -> login in doi pasi -> disable (cap-coada) ──
+    const c2f = (await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1' } })).cookie;
+    const setup = await req('POST', '/api/2fa/setup', { cookie: c2f });
+    ok('2fa setup: secret + otpauth + QR', setup.json.secret && /^otpauth:\/\/totp\//.test(setup.json.otpauth) && /<svg/.test(setup.json.qrSvg));
+    const codeNow = () => totp.codeForCounter(setup.json.secret, Math.floor(Date.now() / 1000 / 30));
+    eq('2fa enable: cod gresit -> 400', (await req('POST', '/api/2fa/enable', { cookie: c2f, body: { code: '000000' } })).status, 400);
+    ok('2fa enable: cod corect -> activat', (await req('POST', '/api/2fa/enable', { cookie: c2f, body: { code: codeNow() } })).json.ok === true);
+    const lNoCode = await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1' } });
+    ok('login cu 2FA: parola corecta fara cod -> cere codul, FARA sesiune', lNoCode.status === 200 && lNoCode.json.twofa === true && !/^sid=/.test(lNoCode.cookie));
+    eq('login cu 2FA: cod gresit -> 401', (await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1', code: '000000' } })).status, 401);
+    const lCode = await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1', code: codeNow() } });
+    ok('login cu 2FA: parola + cod -> sesiune', lCode.status === 200 && lCode.json.ok && /^sid=/.test(lCode.cookie));
+    eq('2fa disable: cod gresit -> 400', (await req('POST', '/api/2fa/disable', { cookie: lCode.cookie, body: { code: '000000' } })).status, 400);
+    ok('2fa disable: cod corect -> dezactivat', (await req('POST', '/api/2fa/disable', { cookie: lCode.cookie, body: { code: codeNow() } })).json.ok === true);
+    ok('dupa dezactivare: login simplu functioneaza din nou', (await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1' } })).json.ok === true);
 
     // ── BACKUP / RESTORE COMPLET (admin, src/routes/backup.js): rutele care suprascriu TOATA baza ──
     const cAdm = la.cookie;

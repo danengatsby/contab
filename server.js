@@ -228,7 +228,10 @@ app.use((req, res, next) => {
 // ── Billing STRICT per-firma: fiecare firma are propriul abonament. Scrierile pe FIRMA ACTIVA
 // sunt permise doar daca firma are abonament activ sau proba nefinalizata; altfel read-only pana
 // la abonare (plata pe firma). Citirile si rutele de cont/gestionare firma raman libere.
-const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe)|^\/api\/firme(\/\d+\/(keep|activate|subscribe))?$|^\/api\/firme\/\d+$/;
+// `impersonate` e exceptat: altfel adminul care impersoneaza un user cu firma expirata ar fi
+// BLOCAT in impersonare (402 chiar pe /api/impersonate/stop). Paywall-ul ramane pe restul
+// rutelor si sub impersonare — adminul vede exact ce vede utilizatorul.
+const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe|impersonate)|^\/api\/firme(\/\d+\/(keep|activate|subscribe))?$|^\/api\/firme\/\d+$/;
 app.use((req, res, next) => {
   if (!req.user || req.user.role === 'admin') return next();
   if (req.method === 'GET' && !/^\/(pdf|xml|csv|efactura)/.test(req.path)) return next(); // citirile libere
