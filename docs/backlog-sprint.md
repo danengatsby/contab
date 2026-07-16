@@ -112,9 +112,16 @@ Upload-ul are deja limită de 20 MB și allowlist de extensii care blochează HT
 
 ---
 
-## 3. Wizard de primă autentificare
+## 3. Wizard de primă autentificare — ✅ ÎNCHIS 2026-07-16
 
-**Estimare:** 1–2 zile · **Prioritate:** 3
+**Estimare:** 1–2 zile · **Realizat:** ~2 ore · **Prioritate:** 3
+
+> Overlay de bun venit peste dashboard pentru firmele fără nicio înregistrare,
+> cu pașii checklist-ului „Primii pași" (extins cu „Adaugă primul partener");
+> `primiiPasi` expune în plus `arePartener`/`areProdus`/`wizardAscuns`. „Mai târziu"
+> persistă pe cont prin `POST /api/onboarding/dismiss` (accountService). Verificat
+> vizual pe instanță dev izolată cu Playwright în Docker (overlay apare / se
+> ascunde / rămâne ascuns după reload).
 
 ### Descriere
 
@@ -141,13 +148,13 @@ care **leagă** pașii pentru un utilizator nou, în loc să-l lase să-i descop
 
 ### Acceptanță
 
-- [ ] Un utilizator nou cu firmă goală vede wizard-ul la autentificare și poate ajunge
+- [x] Un utilizator nou cu firmă goală vede wizard-ul la autentificare și poate ajunge
       la primul document înregistrat în sub 10 minute doar urmând pașii.
-- [ ] Wizard-ul nu apare pentru firme cu date suficiente și nici după ce a fost închis
+- [x] Wizard-ul nu apare pentru firme cu date suficiente și nici după ce a fost închis
       explicit (persistent între sesiuni/browsere).
-- [ ] Test în `test/http.js` pentru pașii noi din `primiiPasi` (pe modelul testului
+- [x] Test în `test/http.js` pentru pașii noi din `primiiPasi` (pe modelul testului
       existent de onboarding).
-- [ ] Verificare vizuală prin skill-ul `run-app` (instanță dev izolată, nu producția).
+- [x] Verificare vizuală prin skill-ul `run-app` (instanță dev izolată, nu producția).
 
 ---
 
