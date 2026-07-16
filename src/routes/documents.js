@@ -10,9 +10,14 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../db');
 const ai = require('../aiExtractor');
+const log = require('../log');
+const metrics = require('../metrics');
 const { extractFromPdf } = require('../extractor');
 const { getType } = require('../documentTypes');
 const { round2, period: periodOf } = require('../util');
+
+// Detaliul de audit al unui upload: DOAR metadate (nume, dimensiune) — niciodata continut.
+const uploadDetail = (f) => f.originalname + ' (' + Math.max(1, Math.round(f.size / 1024)) + ' KB)';
 
 // Plafon zilnic de extrageri AI per utilizator — fiecare apel costa bani; contul demo e public,
 // deci are o limita stricta. Peste plafon se revine automat la regulile locale (fara eroare).
@@ -48,14 +53,20 @@ module.exports = function register(app, ctx) {
     if (aiWanted && !useAI) warning = 'Limita zilnica de extrageri AI a fost atinsa — s-au folosit regulile locale.';
     if (useAI) {
       bumpAiUsage(req.user); // numara si incercarile esuate (apelul se factureaza oricum)
+      // instrumentare: fiecare apel costa bani — durata/succes in metrici (/api/metrics) si in
+      // logul structurat cu reqId (corelabil cu utilizatorul/firma); DOAR metadate, fara continut
+      const t0 = Date.now();
       try {
         const r = await ai.extractWithAI(buf, ownCui);
         extracted = { suggestedType: r.suggestedType, fields: r.fields, cuis: r.cuis, text: '' };
         source = 'ai';
         extra = { incredere: r.incredere, motiv: r.motiv };
+        metrics.aiCall(Date.now() - t0, true);
+        log.info('extragere AI reusita', log.ctx(req, { ms: Date.now() - t0, kb: Math.round(buf.length / 1024), tip: r.suggestedType, incredere: r.incredere }));
       } catch (e) {
         warning = 'Extragerea cu AI a esuat (' + (e.message || e) + '). S-au folosit reguli locale.';
-        console.error('AI extract failed:', e.message || e);
+        metrics.aiCall(Date.now() - t0, false, e.message || e);
+        log.warn('extragere AI esuata — revenire pe reguli locale', log.ctx(req, { ms: Date.now() - t0, kb: Math.round(buf.length / 1024), err: e }));
       }
     }
     const mediaType = ai.detectMediaType(buf);
@@ -79,6 +90,7 @@ module.exports = function register(app, ctx) {
       uploadedAt: new Date().toISOString(),
       text: (extracted.text || '').slice(0, 20000),
     });
+    logAudit('document.upload', uploadDetail(req.file) + ', extragere: ' + source, { req });
     db.save();
     res.json(Object.assign({
       documentId: docId,
@@ -100,6 +112,7 @@ module.exports = function register(app, ctx) {
       id: docId, firmaId: activeId(req), fileName: req.file.originalname, storedName: req.file.filename,
       uploadedAt: new Date().toISOString(), text: '',
     });
+    logAudit('document.upload', uploadDetail(req.file) + ', fara extragere', { req });
     db.save();
     res.json({ documentId: docId, fileName: req.file.originalname });
   });

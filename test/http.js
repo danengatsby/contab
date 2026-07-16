@@ -818,6 +818,12 @@ async function main() {
       met.json.process && typeof met.json.process.nodeVersion === 'string' && typeof met.json.process.memoryRssMb === 'number'
       && typeof met.json.process.driver === 'string' && typeof met.json.process.users === 'number' && met.json.process.uptimeSec >= 0);
     ok('metrici: erorile recente si joburile sunt expuse', Array.isArray(met.json.recentErrors) && met.json.jobs && typeof met.json.jobs === 'object');
+    ok('metrici: contoarele extragerilor AI sunt expuse (n/fail/avgMs)',
+      met.json.ai && typeof met.json.ai.n === 'number' && typeof met.json.ai.fail === 'number' && typeof met.json.ai.avgMs === 'number');
+    // auditul de business: upload-urile facute mai devreme in suita au urma cu metadate
+    const audit = await req('GET', '/api/audit', { cookie: cAdm });
+    const upAudit = (audit.json || []).find((a) => a.action === 'document.upload');
+    ok('auditul consemneaza upload-ul de document (nume + KB, fara continut)', !!upAudit && /KB\)/.test(upAudit.detail));
     // un backup proaspat isi noteaza lastAt in settings -> apare la joburi ca lastDoneAt
     // (restore-ul din sectiunea anterioara l-a sters: snapshot-ul e copiat INAINTE de setarea lui)
     await req('POST', '/api/backup', { cookie: cAdm });

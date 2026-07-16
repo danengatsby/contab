@@ -42,7 +42,19 @@ function snapshot() {
     sinceTs: new Date(startedAt).toISOString(), slowThresholdMs: SLOW_MS, routes: list.slice(0, 100),
     recentErrors: recentErrors.slice().reverse(), // cele mai noi primele
     jobs: jobsSnapshot(),
+    ai: aiSnapshot(),
   };
+}
+
+// ── Extragerile AI (cost extern per apel — contorizate separat de rutele HTTP, ca sa se
+// vada dintr-o privire cate au fost, cate au esuat si cat dureaza in medie) ──
+const ai = { n: 0, fail: 0, totalMs: 0, lastError: null, lastErrorAt: null };
+function aiCall(ms, okCall, errMsg) {
+  ai.n += 1; ai.totalMs += ms;
+  if (!okCall) { ai.fail += 1; ai.lastError = String(errMsg || '').slice(0, 200); ai.lastErrorAt = new Date().toISOString(); }
+}
+function aiSnapshot() {
+  return { n: ai.n, fail: ai.fail, avgMs: ai.n ? Math.round(ai.totalMs / ai.n) : 0, lastError: ai.lastError, lastErrorAt: ai.lastErrorAt };
 }
 
 // ── Erorile recente (inel, ultimele MAX_ERRORS indiferent de vechime) ──
@@ -72,9 +84,13 @@ function jobsSnapshot() {
 }
 
 /** Doar pentru teste: goleste agregatele. */
-function reset() { routes.clear(); recentErrors.length = 0; jobs.clear(); }
+function reset() {
+  routes.clear(); recentErrors.length = 0; jobs.clear();
+  ai.n = 0; ai.fail = 0; ai.totalMs = 0; ai.lastError = null; ai.lastErrorAt = null;
+}
 
 module.exports = {
   SLOW_MS, routePattern, record, snapshot, reset,
   recordError, recentErrors, jobTick, jobResult, jobError, jobsSnapshot,
+  aiCall, aiSnapshot,
 };
