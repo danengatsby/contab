@@ -2116,6 +2116,19 @@ const rDupa = mkRes(); let nextDupa = false;
 limT(reqLim, rDupa, () => { nextDupa = true; });
 ok('dupa igiena (fereastra expirata): plafonul se reseteaza', nextDupa);
 
+section('Contoarele extragerilor AI (src/metrics.js aiCall/aiSnapshot)');
+const metAi = require('../src/metrics');
+metAi.reset();
+eq('snapshot gol: zero apeluri', metAi.aiSnapshot().n, 0);
+metAi.aiCall(100, true);
+metAi.aiCall(300, false, 'timeout la model');
+const aiSnap = metAi.aiSnapshot();
+ok('agregare: n/fail/avgMs corecte', aiSnap.n === 2 && aiSnap.fail === 1 && aiSnap.avgMs === 200);
+ok('ultima eroare e retinuta (mesaj, nu continut)', aiSnap.lastError === 'timeout la model' && !!aiSnap.lastErrorAt);
+ok('snapshot() expune sectiunea ai', metAi.snapshot().ai && metAi.snapshot().ai.n === 2);
+metAi.reset();
+eq('reset goleste si contoarele AI', metAi.aiSnapshot().n, 0);
+
 section('Metrici de performanta pe ruta (src/metrics.js)');
 const metricsMod = require('../src/metrics');
 metricsMod.reset();

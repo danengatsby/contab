@@ -793,7 +793,7 @@ require('./src/routes/dashboard')(app, { S, activeId, logAudit });
 require('./src/routes/adjustments')(app, { S, activeId, logAudit });
 
 // Import extras bancar (CSV/MT940) + lista e-Factura eligibila: src/routes/bank.js
-require('./src/routes/bank')(app, { upload, S, activeId, buildEntry, upsertPartner });
+require('./src/routes/bank')(app, { upload, S, activeId, buildEntry, upsertPartner, logAudit });
 
 // ───────────────────────────── ANAF SPV ─────────────────────────────
 // ── Import e-Factura primita (UBL) ──

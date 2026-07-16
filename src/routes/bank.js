@@ -12,7 +12,7 @@ const acc = require('../accounting');
 const { period: periodOf } = require('../util');
 
 module.exports = function register(app, ctx) {
-  const { upload, S, activeId, buildEntry, upsertPartner } = ctx;
+  const { upload, S, activeId, buildEntry, upsertPartner, logAudit } = ctx;
 
   app.post('/api/bank/parse', upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
@@ -21,6 +21,7 @@ module.exports = function register(app, ctx) {
     const transactions = bankLib.parseAndSuggest(S(req), text);
     const docId = db.nextId('doc');
     d.documents.push({ id: docId, firmaId: activeId(req), fileName: req.file.originalname, storedName: req.file.filename, uploadedAt: new Date().toISOString(), text: '' });
+    logAudit('bank.parse', req.file.originalname + ' (' + transactions.length + ' tranzactii)', { req });
     db.save();
     res.json({ documentId: docId, count: transactions.length, transactions });
   });
@@ -34,6 +35,7 @@ module.exports = function register(app, ctx) {
       try { const e = buildEntry(t.tip, t.fields || {}, fileId || null, fid); d.entries.push(e); upsertPartner(fid, e); created++; }
       catch (e) { errors.push(String(e.message || e)); }
     }
+    if (created) logAudit('bank.import', created + ' tranzactii inregistrate', { req });
     db.save();
     res.json({ ok: true, created, errors });
   });
