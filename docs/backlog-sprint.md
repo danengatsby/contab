@@ -13,9 +13,17 @@ ambele drivere (`node test/http.js` și `CONTAB_TEST_DRIVER=sqlite node test/htt
 
 ---
 
-## 1. Refactorizare rute → servicii (subsetul cu scrieri)
+## 1. Refactorizare rute → servicii (subsetul cu scrieri) — ✅ ÎNCHIS 2026-07-16
 
-**Estimare:** 5–7 zile · **Prioritate:** 1
+**Estimare:** 5–7 zile · **Realizat:** 1 zi · **Prioritate:** 1
+
+> Toate cele 7 rute au service layer (câte o ramură + merge `--no-ff` per rută):
+> `accountService`, `entriesService`, `messagesService`, `partnersService`,
+> `configService`, `closingsService`, `payrollService`. Suita `test/run.js` a crescut
+> de la 899 la 1003 verificări; contractele istorice sunt conservate și documentate
+> în comentarii. Abateri deliberate față de plan: mesageria a primit serviciu NOU
+> (`src/messages.js` rămâne pur, nu se extinde), iar `buildEntry`/`upsertPartner`
+> rămân în server.js (folosite de bancă/ANAF) și intră ca dependențe.
 
 ### Descriere
 
@@ -53,10 +61,10 @@ omisiune).
 
 ### Acceptanță
 
-- [ ] Cele 7 rute din tabel nu mai conțin logică de business — doar parse/apel/răspuns.
-- [ ] Fiecare serviciu are teste directe în `test/run.js` (inclusiv gărzile de autorizare).
-- [ ] `npm test` verde, plus `test/http.js` pe ambele drivere.
-- [ ] Niciun endpoint nu-și schimbă contractul (verificabil prin testele HTTP existente).
+- [x] Cele 7 rute din tabel nu mai conțin logică de business — doar parse/apel/răspuns.
+- [x] Fiecare serviciu are teste directe în `test/run.js` (inclusiv gărzile de autorizare).
+- [x] `npm test` verde, plus `test/http.js` pe ambele drivere.
+- [x] Niciun endpoint nu-și schimbă contractul (verificabil prin testele HTTP existente).
 
 ---
 
