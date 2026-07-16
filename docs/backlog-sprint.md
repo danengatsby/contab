@@ -151,9 +151,15 @@ care **leagă** pașii pentru un utilizator nou, în loc să-l lase să-i descop
 
 ---
 
-## 4. Loguri de business: upload + extragere AI
+## 4. Loguri de business: upload + extragere AI — ✅ ÎNCHIS 2026-07-16
 
-**Estimare:** 1 zi · **Prioritate:** 4
+**Estimare:** 1 zi · **Realizat:** ~1 oră · **Prioritate:** 4
+
+> `document.upload` în audit (nume + KB + sursa extragerii, fără conținut), plus
+> `bank.parse`/`bank.import` pentru extrasul bancar. Apelurile AI sunt cronometrate:
+> contoare `n/fail/avgMs/lastError` în `/api/metrics` (secțiunea `ai`) și log
+> structurat cu `reqId` la succes/eșec. Instrumentarea stă în rută, în jurul
+> apelului — `aiExtractor.js` neatins.
 
 ### Descriere
 
@@ -175,10 +181,10 @@ logul generic de cereri.
 
 ### Acceptanță
 
-- [ ] Fiecare upload apare în audit cu utilizator, firmă și metadatele fișierului.
-- [ ] O extragere AI eșuată e localizabilă în log după `reqId`, cu motivul eșecului.
-- [ ] `/api/metrics` expune contoarele AI; testul de metrics din `test/http.js` extins.
-- [ ] Zero conținut de document în loguri (verificat în review).
+- [x] Fiecare upload apare în audit cu utilizator, firmă și metadatele fișierului.
+- [x] O extragere AI eșuată e localizabilă în log după `reqId`, cu motivul eșecului.
+- [x] `/api/metrics` expune contoarele AI; testul de metrics din `test/http.js` extins.
+- [x] Zero conținut de document în loguri (verificat în review).
 
 ---
 
