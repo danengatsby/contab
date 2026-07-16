@@ -1741,5 +1741,25 @@ eq('rotatie: istoricul e plafonat', Object.keys(stgs2.stripeEventIds).length, bi
 ok('rotatie: cele mai vechi au iesit', !billingMod.seenEvent(stgs2, 'evt_0') && !billingMod.seenEvent(stgs2, 'evt_9'));
 ok('rotatie: cele mai noi raman', billingMod.seenEvent(stgs2, 'evt_10') && billingMod.seenEvent(stgs2, 'evt_' + (billingMod.MAX_SEEN_EVENTS + 9)));
 
+section('Service layer stocuri: autorizarea dublata pe firma (src/stocksService.js)');
+const ssvc = require('../src/stocksService');
+const dbx = db.get();
+const fidOk = dbx.firme[0].id;
+/** ruleaza fn si intoarce statusul erorii de business (sau null daca nu arunca) */
+const errStatus = (fn) => { try { fn(); return null; } catch (e) { return e.status || 500; } };
+eq('firma inexistenta -> 403', errStatus(() => ssvc.upsertProduct(9999, { cod: 'X', denumire: 'X' })), 403);
+eq('firma lipsa (null) -> 403', errStatus(() => ssvc.addMovement(null, 'op', { productId: 'p1', tip: 'receptie', cantitate: 1, data: '2026-01-01' })), 403);
+eq('santinela NO_FIRMA (-1) -> 403, fara fallback pe firma activa', errStatus(() => ssvc.upsertGestiune(-1, { cod: 'G', denumire: 'G' })), 403);
+const rp = ssvc.upsertProduct(fidOk, { cod: 'SVC-1', denumire: 'Produs service', um: 'buc', cont: '371' });
+ok('creare produs prin serviciu (firma valida)', rp.created && rp.product.firmaId === fidOk);
+// izolare: aceeasi resursa, ceruta din ALTA firma — serviciul refuza indiferent de apelant
+dbx.firme.push({ id: 7777, nume: 'ALT SRL', cui: '77' });
+eq('stergerea produsului din alta firma -> 404', errStatus(() => ssvc.deleteProduct(7777, rp.product.id)), 404);
+eq('miscare pe produsul altei firme -> 400 (produs inexistent)', errStatus(() => ssvc.addMovement(7777, 'op', { productId: rp.product.id, tip: 'receptie', cantitate: 1, data: '2026-01-01' })), 400);
+eq('storno pe inventarul altei firme -> 404', errStatus(() => ssvc.stornoInventory(7777, 'op', 'inv-inexistent', null)), 404);
+ssvc.deleteProduct(fidOk, rp.product.id);
+ok('acelasi id, firma corecta: stergerea merge', !db.get().products.some((p) => p.id === rp.product.id));
+dbx.firme = dbx.firme.filter((f) => f.id !== 7777); // curatenie (doar in memorie)
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);
