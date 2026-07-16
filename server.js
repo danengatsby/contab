@@ -277,6 +277,20 @@ const EXPORT_LIMITED = /^\/(xml\/saft|api\/backup|api\/firme\/\d+\/export-zip|ap
 const exportLimiter = uploadGuard.userLimit('export', RATE_EXPORT, 'Prea multe exporturi mari.');
 app.use((req, res, next) => (EXPORT_LIMITED.test(req.path) ? exportLimiter(req, res, next) : next()));
 
+// Urma de business pe exporturi: cine a descarcat ce. XML-urile fiscale (declaratii/SAF-T/
+// e-Factura) intra in AUDIT — sunt rare si relevante legal; PDF/CSV raman doar in logul
+// structurat (frecvente: in audit ar impinge afara actiunile reale, plafonul e 3000).
+app.use((req, res, next) => {
+  if (req.method === 'GET' && /^\/(xml|pdf|csv)\//.test(req.path)) {
+    res.on('finish', () => {
+      if (res.statusCode !== 200) return;
+      log.info('export servit', log.ctx(req, { status: 200 }));
+      if (req.path.startsWith('/xml/')) logAudit('export.xml', String(req.originalUrl || req.path).slice(0, 120), { req });
+    });
+  }
+  next();
+});
+
 // Health-check public (pentru monitorizare uptime): confirma ca procesul si baza raspund.
 // PUBLIC si minimal INTENTIONAT: confirma doar ca procesul si baza raspund. Diagnosticele
 // de proces (memorie, versiune Node, driver, PID) sunt in /api/metrics, DOAR pentru admin —

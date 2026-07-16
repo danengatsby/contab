@@ -837,6 +837,12 @@ async function main() {
     const audit = await req('GET', '/api/audit', { cookie: cAdm });
     const upAudit = (audit.json || []).find((a) => a.action === 'document.upload');
     ok('auditul consemneaza upload-ul de document (nume + KB, fara continut)', !!upAudit && /KB\)/.test(upAudit.detail));
+    // exporturile XML fiscale lasa urma in audit (cine a descarcat ce); PDF/CSV nu (doar log)
+    await req('GET', '/xml/d300?period=2026-06', { cookie: c1 });
+    await req('GET', '/pdf/balance?period=2026-06', { cookie: c1 });
+    const audit2 = (await req('GET', '/api/audit', { cookie: cAdm })).json || [];
+    ok('export XML: urma export.xml cu calea si perioada', audit2.some((a) => a.action === 'export.xml' && /d300.*2026-06/.test(a.detail)));
+    ok('export PDF: fara intrare in audit (doar in logul structurat)', !audit2.some((a) => a.action === 'export.xml' && /pdf/.test(a.detail)));
     // un backup proaspat isi noteaza lastAt in settings -> apare la joburi ca lastDoneAt
     // (restore-ul din sectiunea anterioara l-a sters: snapshot-ul e copiat INAINTE de setarea lui)
     await req('POST', '/api/backup', { cookie: cAdm });
