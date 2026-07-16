@@ -2051,6 +2051,39 @@ ok('121 zero: posted=false, fara nota', clsvc.distributeResult(fidOk, '2035').po
 firmaCl.lockedUntil = prevLockCl;
 if (prevLossCl === undefined) delete firmaCl.pierdereFiscala; else firmaCl.pierdereFiscala = prevLossCl;
 
+section('Service layer salarizare (src/payrollService.js)');
+const paysvc = require('../src/payrollService');
+// firma dedicata, ca testele sa nu depinda de angajatii din seed
+db.get().firme.push({ id: 7788, nume: 'PAY SRL', cui: '7788' });
+// gardele
+eq('angajat pe firma inexistenta -> 403', errStatus(() => paysvc.upsertAngajat(9999, { nume: 'X', salariuBrut: 5000 })), 403);
+eq('angajat fara nume/brut -> 400', errStatus(() => paysvc.upsertAngajat(7788, { nume: 'X' })), 400);
+eq('stergere angajat inexistent -> 404', errStatus(() => paysvc.deleteAngajat(7788, 'ang-inexistent')), 404);
+eq('stat de plata fara angajati -> 400 (inaintea perioadei)', errStatus(() => paysvc.postStatPlata(7788, null, stubDeps)), 400);
+// nomenclator: valori implicite igienizate + actualizare pe id
+const angR = paysvc.upsertAngajat(7788, { nume: 'Ion Salariat', salariuBrut: 5000, avans: 500, procentCM: 99, sector: 'gresit' }).angajat;
+ok('valori implicite: procentCM 75, sector normal, 21 zile lucratoare', angR.procentCM === 75 && angR.sector === 'normal' && angR.zileLucratoare === 21);
+const angR2 = paysvc.upsertAngajat(7788, { id: angR.id, nume: 'Ion Salariat', salariuBrut: 6000, avans: 500 }).angajat;
+ok('actualizarea pe id pastreaza identitatea', angR2.id === angR.id && angR2.salariuBrut === 6000 && db.get().angajati.filter((a) => a.firmaId === 7788).length === 1);
+// postarea statului: perioada obligatorie; liniile de retineri + instantaneul lunar
+eq('stat de plata fara perioada -> 400', errStatus(() => paysvc.postStatPlata(7788, null, stubDeps)), 400);
+const spR = paysvc.postStatPlata(7788, '2026-06', stubDeps);
+ok('avansul intra ca retinere 421=425 in articolul agregat', spR.entry.lines.some((l) => l.debit === '421' && l.credit === '425' && l.suma === 500));
+eq('instantaneul lunar e salvat in payrollHistory', db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06').length, 1);
+paysvc.postStatPlata(7788, '2026-06', stubDeps);
+eq('repostarea aceleiasi luni INLOCUIESTE instantaneul (nu dubleaza)', db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06').length, 1);
+// plata neta: perioada obligatorie, contul necunoscut cade pe banca (5121)
+eq('plata fara perioada -> 400', errStatus(() => paysvc.paySalaries(7788, null, '5121', stubDeps)), 400);
+const payR = paysvc.paySalaries(7788, '2026-06', 'cont-gresit', stubDeps);
+ok('plata: suma = restul de plata, cont implicit 5121', payR.suma > 0 && payR.suma === spR.totals.restPlata && payR.cont === '5121');
+eq('plata din casa (5311) e respectata', paysvc.paySalaries(7788, '2026-06', '5311', stubDeps).cont, '5311');
+// curatenie: firma de test + tot ce a produs
+const dPay = db.get();
+dPay.angajati = dPay.angajati.filter((a) => a.firmaId !== 7788);
+dPay.entries = dPay.entries.filter((e) => e.firmaId !== 7788);
+dPay.payrollHistory = dPay.payrollHistory.filter((h) => h.firmaId !== 7788);
+dPay.firme = dPay.firme.filter((f) => f.id !== 7788);
+
 section('Metrici de performanta pe ruta (src/metrics.js)');
 const metricsMod = require('../src/metrics');
 metricsMod.reset();

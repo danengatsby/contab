@@ -1,38 +1,37 @@
 'use strict';
 
-// Rutele de salarizare: nomenclator angajati, statul de plata (+ postare articol contabil),
-// plata neta, registrul anual + PDF-urile (stat de plata, fluturas, registru, adeverinta).
-// Modul de rute: register(app, ctx).
+// Rutele de salarizare — strat SUBTIRE peste src/payrollService.js pentru scrieri (angajati,
+// postarea statului, plata neta); citirile (stat de plata, dosar CM, registru anual) si
+// PDF-urile raman aici, pure pe vederea scoped. buildEntry e infrastructura partajata
+// (ramane in server.js) si se da serviciului ca dependenta.
 
-const db = require('../db');
-const { round2 } = require('../util');
 const { statePlata, registruSalarii } = require('../payroll');
 const pdf = require('../pdf');
+const svc = require('../payrollService');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit, buildEntry } = ctx;
+  const deps = { buildEntry };
+
+  // Erorile de business poarta `status` (400/403/404); restul urca la handlerul global (500 + log).
+  const run = (res, fn) => {
+    try { res.json(fn()); } catch (e) {
+      if (!e.status) throw e;
+      res.status(e.status).json({ error: e.message });
+    }
+  };
 
   app.get('/api/angajati', (req, res) => res.json(S(req).angajati));
-  app.post('/api/angajati', (req, res) => {
-    const b = req.body || {};
-    if (!b.nume || !b.salariuBrut) return res.status(400).json({ error: 'Completeaza numele si salariul brut.' });
-    const d = db.get();
-    const a = b.id && (d.angajati || []).find((x) => x.id === b.id && x.firmaId === activeId(req));
-    const rec = a || { id: db.nextId('ang'), firmaId: activeId(req) };
-    Object.assign(rec, { nume: String(b.nume), cnp: b.cnp || '', functie: b.functie || '', salariuBrut: round2(Number(b.salariuBrut) || 0), neimpozabil: round2(Number(b.neimpozabil) || 0), spor: round2(Number(b.spor) || 0), avans: round2(Number(b.avans) || 0), retineri: round2(Number(b.retineri) || 0), persoane: b.persoane === '' || b.persoane == null ? null : Math.max(0, Math.round(Number(b.persoane) || 0)), sub26: !!b.sub26, copii: Math.max(0, Math.round(Number(b.copii) || 0)), tichete: round2(Number(b.tichete) || 0), avantaje: round2(Number(b.avantaje) || 0), zileCM: Math.max(0, Math.round(Number(b.zileCM) || 0)), procentCM: [75, 85, 100].includes(Number(b.procentCM)) ? Number(b.procentCM) : 75, zileCO: Math.max(0, Math.round(Number(b.zileCO) || 0)), zileLucratoare: Math.max(1, Math.round(Number(b.zileLucratoare) || 21)), normaPartiala: !!b.normaPartiala, scutitNormaPartiala: !!b.scutitNormaPartiala, sector: ['it', 'constructii', 'agro'].includes(b.sector) ? b.sector : 'normal' });
-    if (!a) d.angajati.push(rec);
-    logAudit('angajat.save', rec.nume, { req });
-    db.save();
-    res.json({ ok: true, angajat: rec });
-  });
-  app.delete('/api/angajati/:id', (req, res) => {
-    const d = db.get();
-    const a = (d.angajati || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
-    if (!a) return res.status(404).json({ error: 'Angajat inexistent.' }); // izolare multi-firma
-    d.angajati = (d.angajati || []).filter((x) => x !== a);
-    db.save();
-    res.json({ ok: true });
-  });
+  app.post('/api/angajati', (req, res) => run(res, () => {
+    const r = svc.upsertAngajat(activeId(req), req.body);
+    logAudit('angajat.save', r.angajat.nume, { req });
+    return { ok: true, angajat: r.angajat };
+  }));
+  app.delete('/api/angajati/:id', (req, res) => run(res, () => {
+    svc.deleteAngajat(activeId(req), req.params.id);
+    return { ok: true };
+  }));
+
   app.get('/api/stat-plata', (req, res) => { const v = S(req); res.json(statePlata(v.angajati, req.query.period, v.payrollHistory)); });
   // Dosar de recuperare a concediilor medicale de la FNUASS (o luna): angajatii cu CM + suma de recuperat.
   function dosarCm(v, period) {
@@ -54,59 +53,18 @@ module.exports = function register(app, ctx) {
     const ang = v.angajati.find((a) => a.id === req.params.id);
     pdf.adeverintaPdf(res, v.company, Object.assign({ functie: ang ? ang.functie : '' }, e), year);
   });
-  app.post('/api/stat-plata', (req, res) => {
-    const v = S(req);
-    if (!v.angajati.length) return res.status(400).json({ error: 'Niciun angajat definit.' });
-    const period = req.query.period;
-    if (!period) return res.status(400).json({ error: 'Lipseste perioada (YYYY-MM).' });
-    const sp = statePlata(v.angajati, period, v.payrollHistory);
-    const data = period + '-30';
-    // posteaza articolul de salarii cu sumele agregate din statul de plata (potrivite exact)
-    const entry = buildEntry('stat_plata', {
-      data, brut: sp.totals.brut, neimpozabil: sp.totals.neimpozabil,
-      cas: sp.totals.cas, cass: sp.totals.cass, impozit: sp.totals.impozit, cam: sp.totals.cam,
-      analitic: sp.rows.length + ' angajati',
-    }, null, activeId(req));
-    entry.system = true; entry.document = 'Stat plata ' + period;
-    if (sp.totals.avans > 0) entry.lines.push({ debit: '421', credit: '425', suma: sp.totals.avans, explicatie: 'Retinere avans acordat' });
-    if (sp.totals.retineri > 0) entry.lines.push({ debit: '421', credit: '427', suma: sp.totals.retineri, explicatie: 'Retineri din salarii (terti/popriri)' });
-    // Concedii medicale: drepturile trec tot prin 421 (retinerile si plata raman pe un singur cont);
-    // partea FNUASS e creanta de recuperat (4373 debit). Alternativa cu 423 exista ca tipuri manuale.
-    if (sp.totals.cmAngajator > 0) entry.lines.push({ debit: '6458', credit: '421', suma: sp.totals.cmAngajator, explicatie: 'Indemnizatii CM suportate de angajator (primele 5 zile lucratoare)' });
-    if (sp.totals.cmFnuass > 0) entry.lines.push({ debit: '4373', credit: '421', suma: sp.totals.cmFnuass, explicatie: 'Indemnizatii CM suportate de FNUASS (de recuperat)' });
-    // Norma partiala sub salariul minim (OUG 16/2022): diferentele de CAS/CASS pana la nivelul
-    // salariului minim sunt CHELTUIALA a angajatorului (nu retinere din salariat).
-    if (sp.totals.casAngajator > 0) entry.lines.push({ debit: '6458', credit: '4315', suma: sp.totals.casAngajator, explicatie: 'CAS suportat de angajator — norma partiala sub salariul minim' });
-    if (sp.totals.cassAngajator > 0) entry.lines.push({ debit: '6458', credit: '4316', suma: sp.totals.cassAngajator, explicatie: 'CASS suportat de angajator — norma partiala sub salariul minim' });
-    const d = db.get();
-    d.entries.push(entry);
-    // instantaneu in istoricul de salarizare (inlocuieste daca luna era deja inregistrata)
-    d.payrollHistory = (d.payrollHistory || []).filter((h) => !(h.firmaId === activeId(req) && h.period === period));
-    d.payrollHistory.push({
-      id: db.nextId('ph'), firmaId: activeId(req), period, ts: new Date().toISOString(),
-      rows: sp.rows.map((r) => ({ angajatId: r.id, nume: r.nume, cnp: r.cnp, brut: r.brut, cas: r.cas, cass: r.cass, impozit: r.impozit, cam: r.cam, net: r.net, restPlata: r.restPlata })),
-      totals: sp.totals,
-    });
-    logAudit('stat.plata', period + ' (' + sp.rows.length + ' ang., net ' + sp.totals.net + ')', { req });
-    db.save();
-    res.json({ ok: true, totals: sp.totals, entry });
-  });
+
+  app.post('/api/stat-plata', (req, res) => run(res, () => {
+    const r = svc.postStatPlata(activeId(req), req.query.period, deps);
+    logAudit('stat.plata', req.query.period + ' (' + r.angajati + ' ang., net ' + r.totals.net + ')', { req });
+    return { ok: true, totals: r.totals, entry: r.entry };
+  }));
   // Plata efectiva a salariilor: rest de plata -> 421 = 5121/5311
-  app.post('/api/stat-plata/pay', (req, res) => {
-    const v = S(req);
-    const period = req.query.period;
-    if (!period) return res.status(400).json({ error: 'Lipseste perioada (YYYY-MM).' });
-    const sp = statePlata(v.angajati, period, v.payrollHistory);
-    if (sp.totals.restPlata <= 0) return res.status(400).json({ error: 'Nimic de platit (rest de plata 0).' });
-    const cont = ['5121', '5311'].includes(req.query.cont) ? req.query.cont : '5121';
-    const entry = buildEntry('plata_salarii', { data: period + '-30', suma: sp.totals.restPlata, cont }, null, activeId(req));
-    entry.system = true; entry.document = 'Plata salarii ' + period;
-    const d = db.get();
-    d.entries.push(entry);
-    logAudit('plata.salarii', period + ' ' + sp.totals.restPlata + ' din ' + cont, { req });
-    db.save();
-    res.json({ ok: true, suma: sp.totals.restPlata, cont, entry });
-  });
+  app.post('/api/stat-plata/pay', (req, res) => run(res, () => {
+    const r = svc.paySalaries(activeId(req), req.query.period, req.query.cont, deps);
+    logAudit('plata.salarii', req.query.period + ' ' + r.suma + ' din ' + r.cont, { req });
+    return { ok: true, suma: r.suma, cont: r.cont, entry: r.entry };
+  }));
 
   app.get('/pdf/stat-plata', (req, res) => { const v = S(req); pdf.statePlataPdf(res, v.company, statePlata(v.angajati, req.query.period, v.payrollHistory), req.query.period || null); });
   app.get('/pdf/fluturas/:id', (req, res) => {
