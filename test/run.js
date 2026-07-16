@@ -1819,6 +1819,61 @@ const prof = asvc.updateProfile(u1, { email: 'x@exemplu.ro', notifyDeadlines: fa
 ok('profil: email + notificari + campuri curatate', prof.email === 'x@exemplu.ro' && prof.notifyDeadlines === false && prof.profil.numeComplet === 'Ion Pop' && prof.profil.necunoscut === undefined);
 ok('getProfile reflecta starea', asvc.getProfile(u1).email === 'x@exemplu.ro' && asvc.getProfile(u1).notifyDeadlines === false);
 
+section('Service layer articole contabile (src/entriesService.js)');
+const esvc = require('../src/entriesService');
+// buildEntry/upsertPartner sunt infrastructura din server.js (nu se poate require aici — porneste
+// serverul); stub-uri minimale, serviciul e testat pe gardele si scrierile proprii
+let partnerCalls = 0;
+const stubDeps = {
+  buildEntry: (tip, f, fileId, fid) => ({
+    id: db.nextId('e'), firmaId: fid, data: f.data || '2026-06-15', period: String(f.data || '2026-06-15').slice(0, 7),
+    tip, tipNume: 'Stub ' + tip, document: f.document || '', partener: f.partener || '', partenerCui: f.cuiPartener || '',
+    explicatie: '', fileId: fileId || null, system: false, lines: [],
+  }),
+  upsertPartner: () => { partnerCalls += 1; },
+};
+const throwDeps = { buildEntry: () => { throw new Error('tip invalid'); }, upsertPartner: () => {} };
+// gardele de firma (reqFirma refolosit din stocksService)
+eq('creare pe firma inexistenta -> 403', errStatus(() => esvc.createEntry(9999, { tip: 'x' }, stubDeps)), 403);
+eq('sablon recurent pe firma lipsa -> 403', errStatus(() => esvc.saveRecurring(null, { tip: 'x' })), 403);
+eq('generare pe santinela NO_FIRMA -> 403', errStatus(() => esvc.generateRecurring(-1, '2026-06', stubDeps)), 403);
+eq('exigibilitate TVA pe firma inexistenta -> 403', errStatus(() => esvc.tvaExigibilitate(9999, { brut: 100, cota: 21 }, stubDeps)), 403);
+// creare: eroarea din buildEntry devine 400; succesul scrie si actualizeaza partenerul
+eq('buildEntry esueaza -> 400', errStatus(() => esvc.createEntry(fidOk, { tip: 'necunoscut' }, throwDeps)), 400);
+const ce = esvc.createEntry(fidOk, { tip: 'test_svc', fields: { data: '2026-06-10', document: 'SVC-E1' } }, stubDeps);
+ok('creare: articolul e scris + upsertPartner apelat', db.get().entries.some((e) => e.id === ce.entry.id) && partnerCalls === 1 && ce.stoc === null);
+// stergere: 404 pentru apelant fara acces la firma articolului, 400 in perioada inchisa
+eq('stergere fara acces la firma -> 404', errStatus(() => esvc.deleteEntry(ce.entry.id, fidOk, () => false)), 404);
+const firmaLockT = db.getFirma(fidOk); const lockPrev = firmaLockT.lockedUntil || null;
+firmaLockT.lockedUntil = '2026-06';
+eq('stergere in perioada inchisa -> 400', errStatus(() => esvc.deleteEntry(ce.entry.id, fidOk, () => true)), 400);
+firmaLockT.lockedUntil = lockPrev;
+eq('stergere valida: removed=1', esvc.deleteEntry(ce.entry.id, fidOk, () => true).removed, 1);
+eq('id inexistent NU e eroare: removed=0 (contract istoric)', esvc.deleteEntry('e-inexistent', fidOk, () => true).removed, 0);
+// recurente: validare + valori implicite + generare idempotenta pe perioada
+eq('sablon fara tip -> 400', errStatus(() => esvc.saveRecurring(fidOk, {})), 400);
+const rt = esvc.saveRecurring(fidOk, { tip: 'test_svc', partener: 'Chirias SRL', frecventa: 'gresita', ziua: 99, startDate: '2026-01' }).template;
+ok('sablon: frecventa implicita + ziua plafonata la 28', rt.frecventa === 'lunar' && rt.ziua === 28 && rt.activ === true);
+const gen1 = esvc.generateRecurring(fidOk, '2026-06', stubDeps);
+ok('generare: 1 articol + lastGenerated setat', gen1.created.length === 1 && rt.lastGenerated === '2026-06' && db.get().entries.some((e) => e.recurringId === rt.id));
+eq('regenerarea aceleiasi perioade nu dubleaza', esvc.generateRecurring(fidOk, '2026-06', stubDeps).created.length, 0);
+const genErr = esvc.generateRecurring(fidOk, '2026-07', throwDeps);
+ok('eroarea per sablon se aduna in errors, nu opreste generarea', genErr.created.length === 0 && genErr.errors.length === 1 && /tip invalid/.test(genErr.errors[0]));
+esvc.deleteRecurring(fidOk, rt.id);
+ok('stergerea sablonului', !(db.get().recurringInvoices || []).some((t) => t.id === rt.id));
+db.get().entries = db.get().entries.filter((e) => e.recurringId !== rt.id); // curatenie
+// blocarea perioadei: 404 pe firma inexistenta (contract istoric, nu 403), validare format
+eq('period-lock pe firma inexistenta -> 404', errStatus(() => esvc.setPeriodLock(9999, '2026-05')), 404);
+eq('period-lock cu format invalid -> 400', errStatus(() => esvc.setPeriodLock(fidOk, '05-2026')), 400);
+eq('period-lock cu luna invalida -> 400', errStatus(() => esvc.setPeriodLock(fidOk, '2026-13')), 400);
+eq('blocare valida', esvc.setPeriodLock(fidOk, '2026-05').lockedUntil, '2026-05');
+eq('deblocare cu null', esvc.setPeriodLock(fidOk, null).lockedUntil, null);
+// TVA la incasare: validare + calculul sutei marite + baza exigibila
+eq('exigibilitate fara suma -> 400', errStatus(() => esvc.tvaExigibilitate(fidOk, { brut: 0, cota: 21 }, stubDeps)), 400);
+const tvaR = esvc.tvaExigibilitate(fidOk, { brut: 1210, cota: 21 }, stubDeps);
+ok('TVA din suta marita: 1210 la 21% -> 210, baza 1000, nota system', tvaR.tva === 210 && tvaR.entry.tvaExig.baza === 1000 && tvaR.entry.system === true && tvaR.entry.tip === 'exigibilitate_tva_colectata');
+db.get().entries = db.get().entries.filter((e) => e.id !== tvaR.entry.id); // curatenie
+
 section('Metrici de performanta pe ruta (src/metrics.js)');
 const metricsMod = require('../src/metrics');
 metricsMod.reset();
