@@ -172,6 +172,21 @@ function stubFetch(script) {
   ok('eroarea e notata pe inregistrarea ei', /stareMesaj 500/.test(e2.spv.error || ''));
   ok('urmatoarea factura e totusi verificata', e3.spv.stare === 'in prelucrare' && !e3.spv.error);
 
+  section('Autorizare dublata la nivel de serviciu (reqEntry / reqFirma / demo)');
+  const strain = { id: 950, username: 'strain', role: 'user', firme: [] };
+  const aErr = async (p) => { try { await p; return null; } catch (e) { return e.status || 500; } };
+  eq('inregistrarea altei firme -> 404 (identic cu inexistenta)', await aErr(svc.checkStatus(strain, 'e3')), 404);
+  eq('inregistrare inexistenta -> 404', await aErr(svc.sendToSpv(strain, 'nu-exista')), 404);
+  eq('recipisa pe inregistrare straina -> 404', await aErr(svc.downloadRecipisa(strain, 'e1')), 404);
+  eq('demo nu configureaza SPV -> 403', await aErr(Promise.resolve().then(() => svc.setConfig({ username: 'demo' }, f1.id, { cif: '1' }))), 403);
+  eq('config pe firma inexistenta -> 403', await aErr(Promise.resolve().then(() => svc.setConfig({ username: 'x' }, 9999, {}))), 403);
+  eq('import e-Factura pe firma inexistenta -> 403', await aErr(Promise.resolve().then(() => svc.importEfactura(9999, { xml: '<Invoice/>' }))), 403);
+  // proprietarul trece de garda si opereaza normal
+  const owner = { id: 951, username: 'owner', role: 'user', firme: [f1.id] };
+  statusScript = async () => ({ stare: 'in prelucrare' });
+  const stOwn = await svc.checkStatus(owner, 'e3');
+  ok('proprietarul verifica statusul inregistrarii lui', stOwn.spv.stare === 'in prelucrare');
+
   // extragerea XML-ului din arhiva SPV
   eq('extractInvoiceXml: sare peste fisierul de semnatura', svc.extractInvoiceXml(zipOk.toBuffer()), '<Invoice><ID>F-001</ID></Invoice>');
   const zipSemn = new AdmZip();
