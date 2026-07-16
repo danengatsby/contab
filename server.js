@@ -1,23 +1,7 @@
 'use strict';
 
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
-
-// Incarca variabilele din .env (cheie AI etc.) inainte de orice require care le citeste
-(() => {
-  try {
-    const p = path.join(__dirname, '.env');
-    if (!fs.existsSync(p)) return;
-    for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-      // nu suprascrie o variabila deja prezenta in mediu (chiar goala) — permite dezactivarea explicita (ex. STRIPE_SECRET_KEY='')
-      if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
-    }
-  } catch (e) { /* ignora */ }
-})();
+const bootstrap = require('./src/bootstrap');
+bootstrap.loadDotEnv(__dirname);
 
 const db = require('./src/db');
 const coa = require('./src/chartOfAccounts');
@@ -40,6 +24,8 @@ const efacturaImport = require('./src/efacturaImport');
 const plans = require('./src/plans');
 const billing = require('./src/billing');
 const log = require('./src/log');
+const metrics = require('./src/metrics');
+const uploadGuard = require('./src/uploadGuard');
 const { round2, period: periodOf } = require('./src/util');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
@@ -49,7 +35,8 @@ const dbReady = Promise.resolve(db.load()).then(() => {
   fiscal.applyConfig(db.get().settings.fiscal); // aplica cotele fiscale configurate (peste valorile implicite)
 });
 
-const app = express();
+const app = bootstrap.createApp({ rootDir: __dirname, db, log, metrics, uploadGuard });
+const upload = app.locals.bootstrap.upload;
 // Reverse proxy: avem incredere DOAR in proxy-ul local (nginx pe 127.0.0.1) ca sa citim
 // X-Forwarded-For / X-Forwarded-Proto (pentru req.ip corect + cookie Secure pe HTTPS). NU
 // folosi `true` (incredere in ORICE hop): un client care atinge direct portul aplicatiei ar
@@ -66,106 +53,6 @@ app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_P
 // COEP/CORP sunt DEZACTIVATE intentionat: ar rupe vizualizatorul PDF (iframe blob:) si puntea
 // locala. HSTS ramane manual (conditionat de req.secure) si Permissions-Policy manual (helmet
 // nu-l seteaza) — mai jos.
-const helmet = require('helmet');
-app.use(helmet({
-  contentSecurityPolicy: {
-    useDefaults: false,
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'blob:'],
-      fontSrc: ["'self'"],
-      connectSrc: ["'self'", 'http://127.0.0.1:8765', 'http://localhost:8765'],
-      frameSrc: ["'self'", 'blob:'],
-      objectSrc: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"],
-      frameAncestors: ["'self'"],
-    },
-  },
-  crossOriginEmbedderPolicy: false, // ar rupe iframe-ul PDF (blob:) si puntea locala
-  crossOriginResourcePolicy: false, // pastreaza comportamentul actual (fara restrictie noua)
-  hsts: false,                      // HSTS ramane manual, conditionat de req.secure
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-}));
-app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
-  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000'); // 180 zile, fara subDomains (sa nu afecteze alte servicii)
-  next();
-});
-
-// Identificator scurt per cerere: leaga logurile de eroare de cererea concreta si ajunge in
-// raspunsul 5xx (utilizatorul il poate raporta suportului pentru corelare rapida).
-app.use((req, res, next) => {
-  req.reqId = crypto.randomBytes(4).toString('hex');
-  res.setHeader('X-Request-Id', req.reqId);
-  next();
-});
-
-// Durata fiecarui raspuns: agregata pe ruta (GET /api/metrics, admin) + avertisment in log
-// pentru cererile lente (CONTAB_SLOW_MS) — baza de decizie a optimizarilor de performanta.
-const metrics = require('./src/metrics');
-app.use((req, res, next) => {
-  const t0 = process.hrtime.bigint();
-  res.on('finish', () => {
-    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-    metrics.record(metrics.routePattern(req), ms, res.statusCode);
-    if (ms >= metrics.SLOW_MS) log.warn('cerere lenta', log.ctx(req, { status: res.statusCode, ms: Math.round(ms) }));
-  });
-  next();
-});
-
-// Webhook-ul Stripe are nevoie de body-ul BRUT (pentru verificarea semnaturii) — inainte de express.json.
-app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json({ limit: '5mb' }));
-app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders(res, p) {
-    // HTML/JS/CSS + uneltele puntii: revalidare mereu (actualizari fara cache)
-    if (/\.(html|js|css|ps1|bat|txt)$/.test(p)) res.setHeader('Cache-Control', 'no-cache');
-    // uneltele puntii: text UTF-8 (ca descarcarea sa decodeze corect, nu binar)
-    if (/\.(ps1|bat|txt)$/.test(p)) res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  },
-}));
-
-// Sanitizare parametri de perioada — accepta doar YYYY / YYYY-MM (luna 01-12); valorile invalide devin goale
-app.use((req, res, next) => {
-  const q = req.query || {};
-  if (q.period != null && !/^\d{4}(-(0[1-9]|1[0-2]))?$/.test(q.period)) q.period = '';
-  if (q.asOf != null && !/^\d{4}-(0[1-9]|1[0-2])$/.test(q.asOf)) q.asOf = '';
-  for (const k of ['year', 'an']) { if (q[k] != null && !/^\d{4}$/.test(q[k])) q[k] = ''; }
-  next();
-});
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, db.UPLOAD_DIR),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.pdf';
-    cb(null, crypto.randomBytes(8).toString('hex') + ext);
-  },
-});
-// Extensii acceptate la upload — blocheaza HTML/JS/SVG etc. (XSS stocat: un fisier activ
-// servit din origin-ul aplicatiei ar rula cu sesiunea utilizatorului care il deschide).
-const UPLOAD_EXT_OK = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.csv', '.txt',
-  '.xls', '.xlsx', '.dbf', '.xml', '.zip', '.json', '.sta', '.940', '.mt940']);
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    if (ext && !UPLOAD_EXT_OK.has(ext)) {
-      const err = new Error('Tip de fisier neacceptat (' + ext + '). Acceptate: PDF, imagini, CSV/TXT, XLS(X), DBF, XML, ZIP, JSON.');
-      err.status = 400;
-      return cb(err);
-    }
-    cb(null, true);
-  },
-});
-// Extensia nu garanteaza continutul: dupa salvarea multer se verifica magic bytes
-// (src/uploadGuard.js) si se plafoneaza upload-urile per UTILIZATOR (rutele sunt
-// autentificate — abuzul vine de la conturi, nu de la IP-uri). upload.single ramane
-// interfata rutelor: intoarce lantul [plafon, multer, verificare continut].
-const uploadGuard = require('./src/uploadGuard');
 const RATE_UPLOAD = Number(process.env.CONTAB_RATE_UPLOAD || 60);  // upload-uri/ora/utilizator
 const RATE_EXPORT = Number(process.env.CONTAB_RATE_EXPORT || 10);  // exporturi mari/ora/utilizator
 const uploadLimiter = uploadGuard.userLimit('upload', RATE_UPLOAD, 'Prea multe fisiere incarcate.');
@@ -201,132 +88,244 @@ function logAudit(action, detail, opts) {
   if (d.audit.length > 3000) d.audit = d.audit.slice(-3000);
 }
 
-const PUBLIC_PATHS = new Set(['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest']);
-app.use((req, res, next) => {
-  if (PUBLIC_PATHS.has(req.path) || req.path.startsWith('/api/invite/') || req.path.startsWith('/api/reset/')) return next();
-  if (/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) {
-    const u = currentUser(req);
-    if (!u) return res.status(401).json({ error: 'Neautentificat' });
-    req.user = u;
-  }
-  next();
-});
+bootstrap.applySecurityGuards(app, { db, log, logAudit, currentUser, allowedFirme, plans, activeId, uploadGuard });
 function requireAdmin(req, res, next) {
   if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Necesita drepturi de administrator.' });
   next();
 }
 
-// Schimbare de parola OBLIGATORIE (cont cu parola implicita): pana cand utilizatorul isi
-// pune o parola noua, orice actiune e blocata — raman permise doar identitatea, delogarea
-// si chiar schimbarea parolei. UI-ul afiseaza un ecran care nu se poate inchide.
-const MUSTCHANGE_ALLOW = new Set(['/api/me', '/api/logout', '/api/change-password']);
-app.use((req, res, next) => {
-  if (req.user && req.user.mustChange && !MUSTCHANGE_ALLOW.has(req.path)) {
-    return res.status(403).json({ error: 'Trebuie să îți schimbi parola implicită înainte de a continua.', mustChange: true });
-  }
-  next();
+const authRoutes = require('./src/authRoutes');
+authRoutes(app, {
+  db, log, logAudit,
+  authlib, totp, messages, plans, billing,
+  wrap, upload,
+  currentUser, allowedFirme, publicUser, startSession,
+  setTrustedDevice, deviceTrusted, isLocked, bumpFail, clearFails, attemptKey,
+  pruneLoginAttempts,
+  periodOf: periodOf,
+  coa, typesForClient, ai, fiscal, sendMail, sendNotifMail,
 });
 
-// ── Proba expirata => cont READ-ONLY: vede datele, dar nu mai inregistreaza si nu mai
-// genereaza livrabile (PDF/XML/CSV), pana la alegerea unui plan. Raman permise: citirile
-// din API, gestionarea contului/abonamentului, plata si mesajele catre suport.
-// ── Drepturi granulare per utilizator (Setari -> Utilizatori, setate de admin) ──
-//  - readonly:    doar vizualizare — blocheaza orice scriere pe date (raman permise rutele de cont)
-//  - faraSalarii: fara acces la modulul de salarizare (date sensibile), nici macar in citire
-const RO_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe)/;
-const RO_ALLOW = /^\/api\/firme\/\d+\/activate$/; // schimbarea firmei active e tot o "citire"
-const SALARII_RX = /^\/(api\/(angajati|stat-plata|registru-salarii)|pdf\/(stat-plata|fluturas|adeverinta|registru-salarii)|xml\/d112)/;
-app.use((req, res, next) => {
-  const dr = req.user && req.user.drepturi;
-  if (!dr || req.user.role === 'admin') return next();
-  if (dr.faraSalarii && SALARII_RX.test(req.path)) {
-    return res.status(403).json({ error: 'Nu ai acces la modulul de salarizare (drept restrictionat de administrator).' });
-  }
-  if (dr.readonly && req.method !== 'GET' && !RO_EXEMPT.test(req.path) && !RO_ALLOW.test(req.path)) {
-    return res.status(403).json({ error: 'Cont doar-citire: poti vizualiza datele, dar nu le poti modifica. Cere administratorului drept de operare.' });
-  }
-  next();
-});
+// Setari de cont si securitate (2FA, sesiuni, parola, profil): src/routes/account.js
+require('./src/routes/account')(app, { logAudit });
 
-// ── Billing STRICT per-firma: fiecare firma are propriul abonament. Scrierile pe FIRMA ACTIVA
-// sunt permise doar daca firma are abonament activ sau proba nefinalizata; altfel read-only pana
-// la abonare (plata pe firma). Citirile si rutele de cont/gestionare firma raman libere.
-// `impersonate` e exceptat: altfel adminul care impersoneaza un user cu firma expirata ar fi
-// BLOCAT in impersonare (402 chiar pe /api/impersonate/stop). Paywall-ul ramane pe restul
-// rutelor si sub impersonare — adminul vede exact ce vede utilizatorul.
-const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe|impersonate)|^\/api\/firme(\/\d+\/(keep|activate|subscribe))?$|^\/api\/firme\/\d+$/;
-app.use((req, res, next) => {
-  if (!req.user || req.user.role === 'admin') return next();
-  if (req.method === 'GET' && !/^\/(pdf|xml|csv|efactura)/.test(req.path)) return next(); // citirile libere
-  if (FIRMA_BILL_EXEMPT.test(req.path)) return next(); // cont + gestionarea firmei (activate/subscribe/delete/create)
-  const f = db.getFirma(activeId(req));
-  if (f && plans.firmaLocked(f)) {
-    const st = plans.firmaStatus(f).status;
-    return res.status(402).json({
-      error: (st === 'expired' ? 'Proba pentru firma „' + (f.nume || '') + '" a expirat.' : 'Firma „' + (f.nume || '') + '" nu are abonament activ.')
-        + ' Continuarea lucrului se face cu abonament (plata pe firmă). Te abonezi acum?',
-      firmaTrialExpired: true, firmaId: f.id, firmaNume: f.nume || '', firmaStatus: st,
+// Backup/restaurare + SMTP (admin): src/routes/backup.js — intoarce doBackup (folosit si de jobul zilnic).
+const { doBackup } = require('./src/routes/backup')(app, { requireAdmin, upload, logAudit });
+
+// Mesaje (suport user <-> admin): src/routes/messages.js
+require('./src/routes/messages')(app, { requireAdmin, upload, logAudit });
+
+// ── Abonamente (planuri + trial) ──
+// Prețurile sunt publice (vizibile pe pagina de înscriere, fără autentificare).
+// Abonament / plati Stripe (planuri, checkout, portal, webhook, proba/select, activare admin): src/routes/billing.js
+require('./src/routes/billing')(app, { requireAdmin, logAudit });
+
+// firma activa (constransa la firmele utilizatorului) + vederea filtrata
+// Firma activa pentru cerere. STRICT pentru utilizatorii non-admin (necontabili/contabili):
+// doar firmele proprii (cele inscrise/create de ei sau alocate lor). Un ?firma= din afara listei
+// e ignorat; daca nu au nicio firma, se intoarce o santinela care produce o vedere GOALA (nu se
+// cade niciodata pe firma globala implicita — altfel s-ar scurge datele altcuiva).
+const NO_FIRMA = -1;
+function activeId(req) {
+  const u = req.user;
+  if (u && u.role !== 'admin') {
+    const allowed = allowedFirme(u);
+    if (!allowed.length) return NO_FIRMA; // niciun acces -> vedere goala
+    let id = Number(req.query.firma) || u.firmaActiva || allowed[0];
+    if (!allowed.includes(id)) id = allowed[0]; // firma straina in query/firmaActiva -> constrans la a lui
+    return id;
+  }
+  // admin (sau contexte interne fara user): acces la toate firmele
+  const allowed = u ? allowedFirme(u) : db.get().firme.map((f) => f.id);
+  let id = Number(req.query.firma) || (u && u.firmaActiva) || allowed[0];
+  if (!allowed.includes(id)) id = allowed[0];
+  return id || db.firmaActiva();
+}
+const S = (req) => {
+  const v = db.scoped(activeId(req));
+  // Datele personale ale utilizatorului (necontabil/contabil) ajung in subsolul PDF-urilor
+  // („Intocmit: ...”). Copie a firmei per cerere — obiectul din DB nu se atinge.
+  const p = (req.user && req.user.profil) || {};
+  if (p.numeComplet) {
+    v.company = Object.assign({}, v.company, {
+      _intocmit: p.numeComplet + (p.autorizatie ? ' (aut. CECCAR ' + p.autorizatie + ')' : ''),
     });
   }
-  next();
-});
+  return v;
+};
 
-// Plafon per utilizator pe exporturile costisitoare (CPU/IO la fiecare cerere): SAF-T,
-// crearea de backup si exportul de firma. Descarcarile mici (CSV/PDF punctuale) raman libere.
-const EXPORT_LIMITED = /^\/(xml\/saft|api\/backup|api\/firme\/\d+\/export-zip|api\/firme\/export-all)$/;
-const exportLimiter = uploadGuard.userLimit('export', RATE_EXPORT, 'Prea multe exporturi mari.');
-app.use((req, res, next) => (EXPORT_LIMITED.test(req.path) ? exportLimiter(req, res, next) : next()));
-
-// Urma de business pe exporturi: cine a descarcat ce. XML-urile fiscale (declaratii/SAF-T/
-// e-Factura) intra in AUDIT — sunt rare si relevante legal; PDF/CSV raman doar in logul
-// structurat (frecvente: in audit ar impinge afara actiunile reale, plafonul e 3000).
-app.use((req, res, next) => {
-  if (req.method === 'GET' && /^\/(xml|pdf|csv)\//.test(req.path)) {
-    res.on('finish', () => {
-      if (res.statusCode !== 200) return;
-      log.info('export servit', log.ctx(req, { status: 200 }));
-      if (req.path.startsWith('/xml/')) logAudit('export.xml', String(req.originalUrl || req.path).slice(0, 120), { req });
-    });
-  }
-  next();
-});
-
-// Health-check public (pentru monitorizare uptime): confirma ca procesul si baza raspund.
-// PUBLIC si minimal INTENTIONAT: confirma doar ca procesul si baza raspund. Diagnosticele
-// de proces (memorie, versiune Node, driver, PID) sunt in /api/metrics, DOAR pentru admin —
-// pe un endpoint neautentificat ar insemna fingerprinting gratuit al serverului.
-app.get('/api/health', (req, res) => {
-  try {
-    const d = db.get();
-    res.json({ ok: true, ts: new Date().toISOString(), uptimeSec: Math.round(process.uptime()), firme: (d.firme || []).length });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: 'db', ts: new Date().toISOString(), uptimeSec: Math.round(process.uptime()) });
-  }
-});
-
-app.post('/api/login', (req, res) => {
-  const mins = isLocked(req);
-  if (mins) return res.status(429).json({ error: 'Prea multe incercari esuate. Reincearca peste ~' + mins + ' min.' });
-  const { username, password, code, remember } = req.body || {};
+// ───────────────────────────── META ─────────────────────────────
+// Import plan de conturi personalizat din CSV: Cont;Denumire;Clasa;Tip (A/P/B/C/V) - header optional
+app.get('/api/meta', (req, res) => {
   const d = db.get();
-  const u = d.users.find((x) => x.username === username);
-  if (!u || u.pending || !authlib.verifyPassword(password, u.salt, u.hash)) { bumpFail(req); return res.status(401).json({ error: 'Utilizator sau parola gresita.' }); }
-  let rememberDevice = false;
-  if (u.twofa && !deviceTrusted(req, u)) {
-    if (!code) return res.json({ twofa: true }); // parola corecta, mai trebuie codul
-    if (!totp.verify(u.totpSecret, code)) { bumpFail(req); return res.status(401).json({ error: 'Cod 2FA gresit.', twofa: true }); }
-    rememberDevice = !!remember;
-  }
-  clearFails(req);
-  startSession(req, res, u); // creeaza sesiune + cookie sid
-  if (rememberDevice) setTrustedDevice(req, res, u); // append (tfd) DUPA setSession
-  logAudit('login', 'autentificare', { userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
-  db.save();
-  req.user = u; // pentru withSessionState (starea abonamentului firmei active)
-  res.json({ ok: true, user: withSessionState(req, u) });
+  const v = S(req);
+  const periods = [...new Set(v.entries.map((e) => e.period || periodOf(e.data)))].filter(Boolean).sort();
+  const allowed = allowedFirme(req.user);
+  res.json({
+    user: withSessionState(req, req.user),
+    firme: d.firme.filter((f) => allowed.includes(f.id)).map((f) => Object.assign({}, f, { _sub: plans.firmaStatus(f) })),
+    firmaActiva: activeId(req),
+    company: v.company,
+    // tipurile de documente marcate cu `entitate` apar doar la forma juridica potrivita (srl/pfa)
+    types: typesForClient().filter((t) => !t.entitate || t.entitate === (v.company.tipEntitate || 'srl')),
+    accounts: coa.ACCOUNTS,
+    classNames: coa.CLASS_NAMES,
+    periods,
+    counts: { documents: v.documents.length, entries: v.entries.length },
+    ai: { available: ai.aiAvailable(), enabled: d.settings.useAI !== false, model: ai.MODEL },
+    fiscal: fiscal.FISCAL,
+    selfRegister: d.settings.selfRegister !== false,
+  });
 });
 
-// Intrare in contul demo cu un click (public) — doar contul „demo", fara parola in client.
+// ───────────────────────────── FIRME ─────────────────────────────
+function canAccess(req, id) { return allowedFirme(req.user).includes(Number(id)); }
+
+// Demo e un cont public PARTAJAT intre vizitatori: datele de cont (parola, 2FA, email/profil)
+// si setarile globale (conexiunea SPV) nu se modifica din el.
+function demoContLock(req, res) {
+  if (req.user && req.user.username === 'demo') {
+    res.status(403).json({ error: 'Contul demo este public și partajat — setările contului nu se pot modifica. Înscrie-ți un cont propriu.' });
+    return true;
+  }
+  return false;
+}
+// Firme: listare/creare/editare/activare/stergere, abonare, export/import JSON+ZIP: src/routes/firme.js
+require('./src/routes/firme')(app, { activeId, allowedFirme, canAccess, requireAdmin, wrap, logAudit });
+
+// Utilizatori (admin) + invitatii (link setare parola, email optional): src/routes/users.js
+require('./src/routes/users')(app, { requireAdmin, logAudit, startSession, publicUser });
+
+// Configurare (companie, logo, chitanta, setari, cote fiscale): src/routes/config.js
+require('./src/routes/config')(app, { S, activeId, logAudit, requireAdmin, upload });
+
+// Nomenclatoare (parteneri, import CSV, conversie XLSX/XLS/DBF) + solduri initiale: src/routes/partners.js
+require('./src/routes/partners')(app, { upload, S, activeId, logAudit });
+
+// Documente primare: upload (extragere AI/reguli locale), servire fisier, galerii primite/emise: src/routes/documents.js
+require('./src/routes/documents')(app, { upload, wrap, S, activeId, allowedFirme, logAudit });
+
+// ───────────────────────────── ENTRIES ─────────────────────────────
+/**
+ * Actualizeaza nomenclatorul de parteneri din datele unui articol DEJA validat si adaugat.
+ * Apelat de rute DUPA push (nu din buildEntry) ca o inregistrare esuata sa nu lase partenerul orfan.
+ */
+function upsertPartner(firmaId, entry) {
+  if (!entry || !entry.partenerCui) return;
+  const key = String(entry.partenerCui).replace(/^ro/i, '').replace(/\s/g, '');
+  if (!key) return;
+  const dd = db.get();
+  dd.partners[firmaId] = dd.partners[firmaId] || {};
+  const ex = dd.partners[firmaId][key] || { cui: key, den: '', adresa: '', oras: '', judet: '', tara: 'RO', tip: '' };
+  if (entry.partener) ex.den = entry.partener;
+  ex.cui = key;
+  // marcheaza automat rolul dupa tipul documentului (vanzare -> client, cumparare -> furnizor)
+  const role = /vanzare|^livrare_intra|^bon_fiscal/.test(entry.tip) ? 'client' : (/cumparare/.test(entry.tip) ? 'furnizor' : '');
+  if (role) { if (!ex.tip) ex.tip = role; else if (ex.tip !== role && ex.tip !== 'ambele') ex.tip = 'ambele'; }
+  dd.partners[firmaId][key] = ex;
+}
+
+function buildEntry(tipId, fields, fileId, firmaId) {
+  firmaId = firmaId || db.firmaActiva();
+  const type = getType(tipId);
+  if (!type) throw new Error('Tip de document necunoscut: ' + tipId);
+  const f = Object.assign({}, fields);
+  // coercitie numerica pentru campurile numerice
+  for (const fld of type.fields) {
+    if (fld.type === 'number') f[fld.name] = round2(parseFloat(f[fld.name]) || 0);
+  }
+  // linii detaliate (optional): daca exista, baza si TVA se calculeaza din ele
+  let items = [];
+  if (f.items) {
+    try { items = typeof f.items === 'string' ? JSON.parse(f.items) : f.items; } catch (_) { items = []; }
+    items = (Array.isArray(items) ? items : []).map((it) => ({
+      nume: String(it.nume || '').trim(),
+      cantitate: round2(parseFloat(it.cantitate) || 0),
+      um: String(it.um || 'buc').trim(),
+      pret: round2(parseFloat(it.pret) || 0),
+      cota: Number(it.cota) || 0,
+    })).filter((it) => it.nume && it.cantitate > 0);
+    if (items.length) {
+      let baza = 0; let tva = 0;
+      for (const it of items) { const b = round2(it.cantitate * it.pret); baza = round2(baza + b); tva = round2(tva + (b * it.cota) / 100); }
+      f.baza = baza; f.tva = round2(tva);
+    }
+  }
+  const lines = type.build(f).filter((l) => l.suma !== 0); // storno foloseste sume negative (in rosu)
+  if (!lines.length) throw new Error('Completeaza cel putin o suma (baza, TVA sau total) inainte de salvare.');
+  // Deductibilitate partiala auto 50% (art. 298 Cod fiscal): jumatate din TVA devine NEDEDUCTIBILA
+  // si se include in cost (vehicule fara utilizare exclusiv pentru afacere).
+  if (f.auto50) {
+    const vatL = lines.find((l) => l.debit === '4426');
+    if (vatL && vatL.suma > 0) {
+      const costL = lines.find((l) => l !== vatL && l.credit === vatL.credit); // linia de cost catre acelasi furnizor
+      const ded = round2(vatL.suma / 2);
+      const nedeq = round2(vatL.suma - ded);
+      vatL.suma = ded;
+      vatL.explicatie = (vatL.explicatie || 'TVA') + ' deductibila 50% (auto)';
+      if (costL) { costL.suma = round2(costL.suma + nedeq); costL.explicatie = (costL.explicatie || '') + ' (+50% TVA nedeductibil auto)'; }
+    }
+  }
+  const firma = db.getFirma(firmaId) || {};
+  // Pro-rata (art. 300 Cod fiscal): la achizitiile cu destinatie mixta ale platitorilor cu regim
+  // mixt, TVA e deductibila doar in procentul pro-rata provizoriu al firmei; restul intra in cost.
+  // Se aplica DUPA auto50 (compunere corecta) si INAINTE de TVA la incasare (care redenumeste 4426).
+  const prTva = Number(firma.proRataTva);
+  if (f.proRataMixt && Number.isFinite(prTva) && prTva > 0 && prTva < 100) {
+    const vatL = lines.find((l) => l.debit === '4426');
+    if (vatL && vatL.suma > 0) {
+      const costL = lines.find((l) => l !== vatL && l.credit === vatL.credit);
+      const ded = round2((vatL.suma * prTva) / 100);
+      const neded = round2(vatL.suma - ded);
+      vatL.suma = ded;
+      vatL.explicatie = (vatL.explicatie || 'TVA') + ' deductibila pro-rata ' + prTva + '%';
+      if (costL) { costL.suma = round2(costL.suma + neded); costL.explicatie = (costL.explicatie || '') + ' (+TVA nedeductibila pro-rata)'; }
+    }
+  }
+  // Regim „TVA la incasare”: pe facturi, TVA devine NEEXIGIBILA (4428) pana la incasare/plata.
+  if (firma.tvaLaIncasare && /^factura_(vanzare|cumparare|utilitati|servicii|combustibil|imobilizare)/.test(tipId)) {
+    for (const l of lines) {
+      if (l.credit === '4427') { l.credit = '4428'; l.explicatie = (l.explicatie || 'TVA') + ' (neexigibila - la incasare)'; }
+      if (l.debit === '4426') { l.debit = '4428'; l.explicatie = (l.explicatie || 'TVA') + ' (neexigibila - la plata)'; }
+    }
+  }
+  for (const l of lines) {
+    if (!coa.getAccount(l.debit)) throw new Error('Cont debitor inexistent in plan: ' + l.debit);
+    if (!coa.getAccount(l.credit)) throw new Error('Cont creditor inexistent in plan: ' + l.credit);
+  }
+  const data = f.data || new Date().toISOString().slice(0, 10);
+  // Blocarea perioadei: nu se inregistreaza in luni inchise (protejeaza fata de declaratiile depuse).
+  if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) {
+    throw new Error('Perioada ' + periodOf(data) + ' este inchisa (blocata pana la ' + firma.lockedUntil + '). Un administrator o poate debloca din Setari → Blocare perioada.');
+  }
+  // nomenclatorul de parteneri se actualizeaza din ruta (upsertPartner), DUPA ce articolul e validat si adaugat
+  return {
+    id: db.nextId('e'),
+    firmaId,
+    data,
+    period: periodOf(data),
+    tip: tipId,
+    tipNume: type.nume,
+    partener: f.partener || '',
+    partenerCui: f.cuiPartener || '',
+    document: f.document || '',
+    refFactura: f.refFactura || '',
+    analitic: f.analitic || '',
+    explicatie: f.explicatie || '',
+    items,
+    ...((f.codNC || (f.masaNeta && Number(f.masaNeta) > 0) || f.conditieLivrare) ? {
+      intrastat: { codNC: String(f.codNC || '').trim(), masaNeta: round2(parseFloat(f.masaNeta) || 0), natura: String(f.naturaTranz || '11').trim(), conditie: String(f.conditieLivrare || '').trim() },
+    } : {}),
+    ...((f.moneda && Number(f.sumaValuta) > 0 && Number(f.curs) > 0) ? {
+      valutaInfo: { valuta: String(f.moneda).toUpperCase().trim(), sumaValuta: round2(parseFloat(f.sumaValuta) || 0), curs: round2(parseFloat(f.curs) || 0) },
+    } : {}),
+    ...(f.proRataMixt ? { proRataMixt: true } : {}), // marcaj pentru regularizarea anuala a pro-ratei
+    fileId: fileId || null,
+    system: false,
+    lines,
+  };
+}
+", fara parola in client.
 app.post('/api/demo-login', (req, res) => {
   const d = db.get();
   const u = d.users.find((x) => x.username === 'demo');
