@@ -195,9 +195,18 @@ logul generic de cereri.
 
 ---
 
-## 5. Documentare API / contracte
+## 5. Documentare API / contracte — ✅ ÎNCHIS 2026-07-16
 
-**Estimare:** 2–3 zile · **Prioritate:** 5 (poate aluneca în sprintul următor)
+**Estimare:** 2–3 zile · **Realizat:** ~1 oră · **Prioritate:** 5
+
+> `docs/api.md`: convențiile transversale o dată (sesiuni, scoping, erori, plafoane),
+> fluxul cap-coadă login → upload → articol → rapoarte, contractele per modul —
+> inclusiv contractele istorice conservate la refactorizare. Fără OpenAPI (decizie
+> documentată în antet). Făcut ultimul, cum era planificat: documentează contractele
+> stabilizate de itemul 1.
+
+**SPRINTUL E COMPLET: 5/5 iteme închise pe 2026-07-16, într-o singură zi**
+(estimarea inițială: 10–15 zile).
 
 ### Descriere
 
@@ -220,10 +229,10 @@ există un contract per endpoint (parametri, formatul răspunsului, erori). De f
 
 ### Acceptanță
 
-- [ ] Rutele principale au contract documentat (parametri, răspuns, erori).
-- [ ] Un dezvoltator nou poate urmări fluxul upload → extragere → articol contabil →
+- [x] Rutele principale au contract documentat (parametri, răspuns, erori).
+- [x] Un dezvoltator nou poate urmări fluxul upload → extragere → articol contabil →
       raport doar din document.
-- [ ] Convențiile transversale sunt descrise o dată, nu repetate per endpoint.
+- [x] Convențiile transversale sunt descrise o dată, nu repetate per endpoint.
 
 ---
 
