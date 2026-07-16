@@ -1919,6 +1919,53 @@ ok('arhivare + redeschidere', msvc.archiveThread(9101, true).archived === true &
 dMsg.messages = dMsg.messages.filter((m) => m.userId !== 9101);
 dMsg.users = dMsg.users.filter((x) => x.id !== 9101 && x.id !== 9102);
 
+section('Service layer parteneri si solduri initiale (src/partnersService.js)');
+const psvc = require('../src/partnersService');
+const coaT = require('../src/chartOfAccounts');
+const fsT = require('fs');
+// gardele de firma
+eq('partener pe firma inexistenta -> 403', errStatus(() => psvc.upsertPartner(9999, { cui: '123' })), 403);
+eq('import parteneri pe firma lipsa -> 403', errStatus(() => psvc.importPartners(null, 'a;b')), 403);
+eq('solduri pe santinela NO_FIRMA -> 403', errStatus(() => psvc.setOpening(-1, {})), 403);
+// parteneri: normalizarea CUI + pastrarea tipului la actualizare
+eq('partener fara CUI -> 400', errStatus(() => psvc.upsertPartner(fidOk, { den: 'X' })), 400);
+const ppS = psvc.upsertPartner(fidOk, { cui: 'RO 4242', den: 'Partener SVC', tip: 'client' }).partner;
+ok('CUI normalizat (fara RO/spatii)', ppS.cui === '4242' && ppS.tip === 'client');
+ok('actualizarea fara tip pastreaza tipul anterior', psvc.upsertPartner(fidOk, { cui: '4242', den: 'Alt nume' }).partner.tip === 'client');
+// import CSV: antetul e sarit, randurile fara CUI ajung in erori
+eq('CSV parteneri gol -> 400', errStatus(() => psvc.importPartners(fidOk, '')), 400);
+const piS = psvc.importPartners(fidOk, 'CUI;Denumire\n111;Firma Unu\n;Fara Cui\nRO222;Firma Doi');
+ok('import: 2 importati + 1 eroare de rand + CUI normalizat', piS.importati === 2 && piS.erori.length === 1 && db.get().partners[fidOk]['222'].den === 'Firma Doi');
+delete db.get().partners[fidOk]['4242']; delete db.get().partners[fidOk]['111']; delete db.get().partners[fidOk]['222']; // curatenie
+// plan de conturi personalizat (global, partajat intre firme)
+eq('CSV conturi gol -> 400', errStatus(() => psvc.importAccounts('')), 400);
+const aiS = psvc.importAccounts('Cont;Denumire\n8991;Cont test service;8;B');
+ok('cont adaugat in plan + customAccounts', aiS.importati === 1 && !!coaT.getAccount('8991') && db.get().customAccounts.some((a) => a.cod === '8991'));
+db.get().customAccounts = db.get().customAccounts.filter((a) => a.cod !== '8991'); // curatenie in baza (in planul din memorie ramane pe durata suitei)
+// conversia de fisiere: fisierul temporar se sterge si la eroare
+const tmpConv = path.join(os.tmpdir(), 'contab-conv-' + process.pid + '.bin');
+fsT.writeFileSync(tmpConv, 'nu e un fisier excel');
+eq('fisier nerecunoscut -> 400', errStatus(() => psvc.convertUploadToCsv(tmpConv, 'date.xlsx')), 400);
+ok('fisierul temporar e sters si la eroare', !fsT.existsSync(tmpConv));
+// solduri initiale analitice: upsert pe cheia cont+CUI, stergere dupa index
+eq('analitic fara cont -> 400', errStatus(() => psvc.saveOpeningAnalytic(fidOk, { partener: 'X' })), 400);
+psvc.saveOpeningAnalytic(fidOk, { cont: '4111', partener: 'Client A', cui: 'RO500', d: 100 });
+const oa2 = psvc.saveOpeningAnalytic(fidOk, { cont: '4111', cui: '500', d: 250 });
+const oaMine = oa2.openingAnalytic.filter((o) => o.cont === '4111' && String(o.cui).replace(/^RO/i, '') === '500');
+ok('acelasi cont+CUI se inlocuieste (nu se dubleaza)', oaMine.length === 1 && oaMine[0].d === 250);
+const listOA = db.get().openingAnalytic.filter((o) => (o.firmaId == null ? db.get().firmaActiva : o.firmaId) === fidOk);
+psvc.deleteOpeningAnalytic(fidOk, listOA.findIndex((o) => o.cont === '4111' && o.cui === '500'));
+ok('stergerea analiticului dupa index', !db.get().openingAnalytic.some((o) => o.firmaId === fidOk && o.cui === '500'));
+eq('index invalid NU e eroare (contract istoric)', errStatus(() => psvc.deleteOpeningAnalytic(fidOk, 9999)), null);
+// solduri initiale sintetice: dezechilibrul respins cu detaliile in extra
+const prevOB = db.get().openingBalances[fidOk];
+let obErr = null;
+try { psvc.setOpening(fidOk, { 5121: { d: 1000, c: 0 }, 1012: { d: 0, c: 800 } }); } catch (e) { obErr = e; }
+ok('dezechilibru -> 400 cu totalurile si diferenta in extra', !!obErr && obErr.status === 400 && obErr.extra && obErr.extra.diferenta === 200 && obErr.extra.totalDebit === 1000 && obErr.extra.totalCredit === 800);
+const obOk = psvc.setOpening(fidOk, { 5121: { d: 1000, c: 0 }, 1012: { d: 0, c: 1000 } });
+ok('echilibrat: salvat cu totalurile', obOk.totalDebit === 1000 && obOk.totalCredit === 1000);
+if (prevOB === undefined) delete db.get().openingBalances[fidOk]; else db.get().openingBalances[fidOk] = prevOB; // restaurare
+
 section('Metrici de performanta pe ruta (src/metrics.js)');
 const metricsMod = require('../src/metrics');
 metricsMod.reset();
