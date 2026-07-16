@@ -263,12 +263,15 @@ app.use((req, res, next) => {
 });
 
 // Health-check public (pentru monitorizare uptime): confirma ca procesul si baza raspund.
+// PUBLIC si minimal INTENTIONAT: confirma doar ca procesul si baza raspund. Diagnosticele
+// de proces (memorie, versiune Node, driver, PID) sunt in /api/metrics, DOAR pentru admin —
+// pe un endpoint neautentificat ar insemna fingerprinting gratuit al serverului.
 app.get('/api/health', (req, res) => {
   try {
     const d = db.get();
     res.json({ ok: true, ts: new Date().toISOString(), uptimeSec: Math.round(process.uptime()), firme: (d.firme || []).length });
   } catch (e) {
-    res.status(500).json({ ok: false, error: 'db' });
+    res.status(500).json({ ok: false, error: 'db', ts: new Date().toISOString(), uptimeSec: Math.round(process.uptime()) });
   }
 });
 
@@ -397,8 +400,20 @@ app.get('/api/audit/system', requireAdmin, (req, res) => {
   const list = (db.get().audit || []).filter((a) => a.firmaId == null);
   res.json(list.slice(-300).reverse());
 });
-// Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare primii.
-app.get('/api/metrics', requireAdmin, (req, res) => res.json(metrics.snapshot()));
+// Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare
+// primii. Include si diagnosticele de proces (memorie, Node, driver) — DOAR pentru admin.
+app.get('/api/metrics', requireAdmin, (req, res) => {
+  const d = db.get();
+  const mem = process.memoryUsage();
+  const mb = (b) => Math.round((b / (1024 * 1024)) * 100) / 100;
+  res.json(Object.assign(metrics.snapshot(), {
+    process: {
+      nodeVersion: process.version, pid: process.pid, driver: db.DRIVER,
+      uptimeSec: Math.round(process.uptime()), firme: (d.firme || []).length, users: (d.users || []).length,
+      memoryRssMb: mb(mem.rss), memoryHeapUsedMb: mb(mem.heapUsed), memoryHeapTotalMb: mb(mem.heapTotal),
+    },
+  }));
+});
 app.get('/api/me', (req, res) => {
   const u = currentUser(req);
   if (!u) return res.status(401).json({ error: 'Neautentificat' });

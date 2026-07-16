@@ -99,7 +99,10 @@ async function main() {
 
     // public + autentificare
     const h = await req('GET', '/api/health');
-    ok('health public: ok', h.status === 200 && h.json && h.json.ok === true);
+    ok('health public: ok', h.status === 200 && h.json && h.json.ok === true && typeof h.json.uptimeSec === 'number' && typeof h.json.firme === 'number');
+    // health e PUBLIC: nu are voie sa scurga detalii de proces/infrastructura (fingerprinting)
+    ok('health public NU expune diagnostice (nodeVersion/pid/memorie/driver/users)',
+      !('nodeVersion' in h.json) && !('pid' in h.json) && !('memoryRssMb' in h.json) && !('driver' in h.json) && !('users' in h.json));
     // logging structurat: fiecare raspuns poarta un identificator de cerere (corelare eroare<->cerere)
     ok('X-Request-Id prezent pe raspuns', /^[0-9a-f]{8}$/.test(h.reqId || ''));
     // anteturi de securitate (helmet, cu CSP calibrat): paritate cu configuratia precedenta
@@ -774,6 +777,9 @@ async function main() {
     const mHealth = met.json.routes.find((r) => r.route === '/api/health');
     ok('metrici: /api/health e masurat (n, avgMs, maxMs)', mHealth && mHealth.n >= 1 && mHealth.avgMs >= 0 && mHealth.maxMs >= 0);
     ok('metrici: id-urile sunt normalizate in tipar (nicio ruta cu hex brut)', met.json.routes.every((r) => !/[0-9a-f]{16}/i.test(r.route)));
+    ok('metrici: diagnosticele de proces sunt AICI (admin), nu pe health',
+      met.json.process && typeof met.json.process.nodeVersion === 'string' && typeof met.json.process.memoryRssMb === 'number'
+      && typeof met.json.process.driver === 'string' && typeof met.json.process.users === 'number' && met.json.process.uptimeSec >= 0);
 
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
