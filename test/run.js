@@ -1775,6 +1775,23 @@ eq('seria avanseaza', ssvc.docSeries(fidOk).NIR.next, nrStart + 1);
 eq('retiparirea REFOLOSESTE numarul (nu consuma serie)', ssvc.assignDocNumber(fidOk, 'NIR', [mv1, mv2]), nr1);
 eq('seria nu a avansat la refolosire', ssvc.docSeries(fidOk).NIR.next, nrStart + 1);
 
+section('Metrici de performanta pe ruta (src/metrics.js)');
+const metricsMod = require('../src/metrics');
+metricsMod.reset();
+eq('tipar: id numeric -> :id', metricsMod.routePattern({ url: '/api/firme/123' }), '/api/firme/:id');
+eq('tipar: id hex lung -> :id', metricsMod.routePattern({ url: '/api/document/a1b2c3d4e5f6a7b8/file' }), '/api/document/:id/file');
+eq('tipar: query-ul se taie', metricsMod.routePattern({ url: '/xml/saft?period=2026-06' }), '/xml/saft');
+eq('tipar: ruta Express are prioritate', metricsMod.routePattern({ route: { path: '/api/firme/:id' }, baseUrl: '', url: '/api/firme/9' }), '/api/firme/:id');
+metricsMod.record('/xml/saft', 120, 200);
+metricsMod.record('/xml/saft', 700, 200);
+metricsMod.record('/api/health', 3, 200);
+metricsMod.record('/xml/saft', 80, 500);
+const snap = metricsMod.snapshot();
+eq('agregare: ruta cu cel mai mare timp total e prima', snap.routes[0].route, '/xml/saft');
+ok('agregare: n/avg/max corecte', snap.routes[0].n === 3 && snap.routes[0].totalMs === 900 && snap.routes[0].avgMs === 300 && snap.routes[0].maxMs === 700);
+ok('agregare: numara lente si 5xx', snap.routes[0].slow === 1 && snap.routes[0].err5xx === 1);
+metricsMod.reset();
+
 section('Service layer firme: autorizarea dublata (src/firmeService.js)');
 const fsvc = require('../src/firmeService');
 const fidPrima = dbx.firme[0].id;

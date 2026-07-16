@@ -3,6 +3,11 @@
 Endpoint public de sănătate: **`https://contabo.space/api/health`** → `{"ok":true,...,"firme":N}`.
 Nu cere autentificare, nu expune date — doar confirmă că procesul și baza răspund.
 
+Performanță: **`/api/metrics`** (doar admin) — duratele agregate pe rută de la ultimul restart
+(n, avg, max, câte au depășit pragul `CONTAB_SLOW_MS`, implicit 500 ms), ordonate după timpul
+total consumat. Cererile peste prag apar și în log ca avertismente `cerere lenta`, cu `reqId`
+pentru corelare. Optimizările de performanță pornesc de aici, nu din instinct.
+
 Două straturi, complementare:
 
 ## 1. Watchdog local (deja activ) — `scripts/healthcheck.sh`

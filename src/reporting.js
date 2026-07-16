@@ -575,9 +575,16 @@ function cashForecast(db, templates, opts) {
 }
 
 /** KPI pentru dashboard. */
+/** Anul ultimei inregistrari (implicit anul curent) — o singura trecere, fara sortare.
+ *  Folosit si direct de /api/dashboard-charts: anul implicit NU merita un dashboard() intreg. */
+function latestYear(db) {
+  let max = '';
+  for (const e of db.entries) { const p = e.period || periodOf(e.data); if (p && p > max) max = p; }
+  return max ? max.slice(0, 4) : String(new Date().getFullYear());
+}
+
 function dashboard(db) {
-  const periods = db.entries.map((e) => e.period || periodOf(e.data)).filter(Boolean).sort();
-  const year = periods.length ? periods[periods.length - 1].slice(0, 4) : String(new Date().getFullYear());
+  const year = latestYear(db);
   const rc = reconcile(db);
   const vat = acc.vatJournals(db, null).totals;
   const pl = stmt.profitLoss(db, year);
@@ -623,20 +630,30 @@ function dashboard(db) {
 
 /** Serie lunara venituri/cheltuieli/profit pentru un an (pentru grafice). */
 function monthlySeries(db, year) {
+  // O singura trecere prin inregistrari (nu 12 filtrari repetate — conteaza la volume mari).
+  // Acumularea ramane per luna, in ordinea inregistrarilor, cu round2 la fiecare pas —
+  // exact rotunjirea versiunii precedente.
+  const y = String(year);
+  const sums = new Map(); // luna (1-12) -> { ven, chelt }
+  for (let m = 1; m <= 12; m++) sums.set(m, { ven: 0, chelt: 0 });
+  for (const e of db.entries) {
+    const p = e.period || periodOf(e.data);
+    if (!p || p.slice(0, 4) !== y) continue;
+    const s = sums.get(Number(p.slice(5, 7)));
+    if (!s) continue;
+    for (const l of acc.allLines([e])) {
+      if (/^7/.test(l.credit)) s.ven = round2(s.ven + l.suma);
+      if (/^7/.test(l.debit)) s.ven = round2(s.ven - l.suma);
+      if (/^6/.test(l.debit)) s.chelt = round2(s.chelt + l.suma);
+      if (/^6/.test(l.credit)) s.chelt = round2(s.chelt - l.suma);
+    }
+  }
   const out = [];
   for (let m = 1; m <= 12; m++) {
-    const p = year + '-' + String(m).padStart(2, '0');
-    const lines = acc.allLines(db.entries.filter((e) => (e.period || periodOf(e.data)) === p));
-    let ven = 0; let chelt = 0;
-    for (const l of lines) {
-      if (/^7/.test(l.credit)) ven = round2(ven + l.suma);
-      if (/^7/.test(l.debit)) ven = round2(ven - l.suma);
-      if (/^6/.test(l.debit)) chelt = round2(chelt + l.suma);
-      if (/^6/.test(l.credit)) chelt = round2(chelt - l.suma);
-    }
-    out.push({ period: p, luna: m, venituri: ven, cheltuieli: chelt, profit: round2(ven - chelt) });
+    const s = sums.get(m);
+    out.push({ period: y + '-' + String(m).padStart(2, '0'), luna: m, venituri: s.ven, cheltuieli: s.chelt, profit: round2(s.ven - s.chelt) });
   }
   return out;
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, monthlySeries, registruFiscal, notes, budgetReport, cashForecast };
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast };

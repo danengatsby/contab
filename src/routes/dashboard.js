@@ -94,7 +94,7 @@ module.exports = function register(app, ctx) {
   });
   app.get('/api/dashboard-charts', (req, res) => {
     const v = S(req);
-    const year = req.query.year || rep.dashboard(v).year;
+    const year = req.query.year || rep.latestYear(v);
     const ag = aging(v, null);
     res.json({ year, monthly: rep.monthlySeries(v, year), agingClienti: ag.totalClienti, agingFurnizori: ag.totalFurnizori });
   });
