@@ -161,6 +161,16 @@ const upload = multer({
     cb(null, true);
   },
 });
+// Extensia nu garanteaza continutul: dupa salvarea multer se verifica magic bytes
+// (src/uploadGuard.js) si se plafoneaza upload-urile per UTILIZATOR (rutele sunt
+// autentificate — abuzul vine de la conturi, nu de la IP-uri). upload.single ramane
+// interfata rutelor: intoarce lantul [plafon, multer, verificare continut].
+const uploadGuard = require('./src/uploadGuard');
+const RATE_UPLOAD = Number(process.env.CONTAB_RATE_UPLOAD || 60);  // upload-uri/ora/utilizator
+const RATE_EXPORT = Number(process.env.CONTAB_RATE_EXPORT || 10);  // exporturi mari/ora/utilizator
+const uploadLimiter = uploadGuard.userLimit('upload', RATE_UPLOAD, 'Prea multe fisiere incarcate.');
+const rawUploadSingle = upload.single.bind(upload);
+upload.single = (field) => [uploadLimiter, rawUploadSingle(field), uploadGuard.verifyUploadContent];
 
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
   log.error('eroare necuprinsa in ruta', log.ctx(req, { status: 500, err: e }));
@@ -260,6 +270,12 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Plafon per utilizator pe exporturile costisitoare (CPU/IO la fiecare cerere): SAF-T,
+// crearea de backup si exportul de firma. Descarcarile mici (CSV/PDF punctuale) raman libere.
+const EXPORT_LIMITED = /^\/(xml\/saft|api\/backup|api\/firme\/\d+\/export-zip|api\/firme\/export-all)$/;
+const exportLimiter = uploadGuard.userLimit('export', RATE_EXPORT, 'Prea multe exporturi mari.');
+app.use((req, res, next) => (EXPORT_LIMITED.test(req.path) ? exportLimiter(req, res, next) : next()));
 
 // Health-check public (pentru monitorizare uptime): confirma ca procesul si baza raspund.
 // PUBLIC si minimal INTENTIONAT: confirma doar ca procesul si baza raspund. Diagnosticele
@@ -870,6 +886,7 @@ safeInterval('rate-limit-hygiene', () => {
   pruneLoginAttempts(now); // loginAttempts traieste in src/session.js (incapsulat)
   for (const [k, r] of registerAttempts) { if (r.reset < now) registerAttempts.delete(k); }
   for (const [k, r] of forgotAttempts) { if (r.reset < now) forgotAttempts.delete(k); }
+  uploadGuard.pruneRateBuckets(now); // bucket-urile de upload/export per utilizator
 }, 3600 * 1000);
 
 // Job periodic: descarca automat recipisele — SPV per-firma, doar firmele cu autoPoll bifat

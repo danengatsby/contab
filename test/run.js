@@ -2084,6 +2084,38 @@ dPay.entries = dPay.entries.filter((e) => e.firmaId !== 7788);
 dPay.payrollHistory = dPay.payrollHistory.filter((h) => h.firmaId !== 7788);
 dPay.firme = dPay.firme.filter((f) => f.id !== 7788);
 
+section('Protectie upload: continut pe magic bytes + plafon per utilizator (src/uploadGuard.js)');
+const ug = require('../src/uploadGuard');
+ok('pdf real acceptat', ug.contentMatches('.pdf', Buffer.from('%PDF-1.4 continut')));
+ok('pdf cu junk inaintea antetului acceptat (spec permite)', ug.contentMatches('.pdf', Buffer.concat([Buffer.alloc(16, 0x41), Buffer.from('%PDF-1.7')])));
+ok('pdf deghizat (text/html) respins', !ug.contentMatches('.pdf', Buffer.from('<html>nu e pdf</html>')));
+ok('png real acceptat', ug.contentMatches('.png', Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])));
+ok('png deghizat respins', !ug.contentMatches('.png', Buffer.from('GIF89a')));
+ok('jpeg real acceptat', ug.contentMatches('.jpg', Buffer.from([0xFF, 0xD8, 0xFF, 0xE0])));
+ok('gif real acceptat', ug.contentMatches('.gif', Buffer.from('GIF89a...')));
+ok('webp real acceptat', ug.contentMatches('.webp', Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBP')])));
+ok('fisier gol pe extensie de imagine respins', !ug.contentMatches('.png', Buffer.alloc(0)));
+ok('csv text acceptat', ug.contentMatches('.csv', Buffer.from('CUI;Denumire\n1;X')));
+ok('csv cu octeti NUL respins (binar deghizat)', !ug.contentMatches('.csv', Buffer.from([0x41, 0x00, 0x42])));
+ok('containerele raman pe validarea parserului (.xlsx trece)', ug.contentMatches('.xlsx', Buffer.from('orice-continut')));
+// plafonul per utilizator: bucket-uri separate, 429 peste plafon, resetare la igiena
+const mkRes = () => { const r = { code: 0, body: null }; r.status = (c) => { r.code = c; return r; }; r.json = (b) => { r.body = b; return r; }; return r; };
+const limT = ug.userLimit('test-svc', 2, 'Prea multe.');
+const reqLim = { user: { id: 424242 } };
+let trecute = 0;
+for (let i = 0; i < 2; i++) limT(reqLim, mkRes(), () => { trecute += 1; });
+eq('sub plafon: cererile trec', trecute, 2);
+const rOver = mkRes(); let nextOver = false;
+limT(reqLim, rOver, () => { nextOver = true; });
+ok('peste plafon: 429 cu mesaj si minutele ramase', !nextOver && rOver.code === 429 && /Reincearca peste ~\d+ min/.test(rOver.body.error));
+const rAlt = mkRes(); let nextAlt = false;
+limT({ user: { id: 424243 } }, rAlt, () => { nextAlt = true; });
+ok('alt utilizator: bucket separat, trece', nextAlt);
+ug.pruneRateBuckets(Date.now() + 2 * 3600 * 1000);
+const rDupa = mkRes(); let nextDupa = false;
+limT(reqLim, rDupa, () => { nextDupa = true; });
+ok('dupa igiena (fereastra expirata): plafonul se reseteaza', nextDupa);
+
 section('Metrici de performanta pe ruta (src/metrics.js)');
 const metricsMod = require('../src/metrics');
 metricsMod.reset();

@@ -55,6 +55,9 @@ function buildDb() {
       { id: 7, username: 'doifa', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
       // al doilea admin: tinta interzisa pentru impersonare
       { id: 8, username: 'admin2', salt: a.salt, hash: a.hash, role: 'admin', firme: [] },
+      // cont dedicat testelor de plafon upload/export (bucket-urile sunt per utilizator —
+      // un cont separat nu consuma plafonul conturilor folosite de restul suitei)
+      { id: 9, username: 'uploader', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
     ],
     documents: [{ id: 'docA', firmaId: 2, fileName: 'secret.pdf', storedName: 'nu-exista-pe-disc.pdf', uploadedAt: 'x', text: '' }],
     settings: { authSecret: 'x'.repeat(64) },
@@ -88,7 +91,9 @@ async function waitUp(tries) {
 async function main() {
   fs.writeFileSync(DBF, JSON.stringify(buildDb()));
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'json', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '' }),
+    // plafoane de upload/export mici, ca testele 429 sa nu faca zeci de cereri; conturile
+    // din restul suitei raman sub ele (bucket-urile sunt per utilizator)
+    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'json', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5' }),
     stdio: 'ignore',
   });
   const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
@@ -139,6 +144,33 @@ async function main() {
     const fdOk = new FormData();
     fdOk.append('file', new Blob(['CUI;Den\n1;X'], { type: 'text/csv' }), 'date.csv');
     eq('upload .csv acceptat', (await req('POST', '/api/upload-only', { cookie: c1, body: fdOk })).status, 200);
+
+    // protectia de continut: extensia nu garanteaza continutul — un .pdf cu text e respins
+    // si fisierul salvat de multer nu ramane pe disc
+    const upDir = path.join(DATA_TMP, 'uploads');
+    const nrFisiere = () => (fs.existsSync(upDir) ? fs.readdirSync(upDir).length : 0);
+    const inainte = nrFisiere();
+    const fdFake = new FormData();
+    fdFake.append('file', new Blob(['doar text, nu e pdf'], { type: 'application/pdf' }), 'deghizat.pdf');
+    const rFake = await req('POST', '/api/upload-only', { cookie: c1, body: fdFake });
+    ok('pdf deghizat (continut text) -> 400 cu mesaj clar', rFake.status === 400 && /nu corespunde extensiei/.test(rFake.json.error));
+    eq('fisierul deghizat nu ramane pe disc', nrFisiere(), inainte);
+
+    // plafonul de upload per utilizator (CONTAB_RATE_UPLOAD=8 in env-ul de test): al 9-lea -> 429
+    const lUp = await req('POST', '/api/login', { body: { username: 'uploader', password: 'parola1' } });
+    let ultimul;
+    for (let i = 0; i < 9; i++) {
+      const fd = new FormData();
+      fd.append('file', new Blob(['a;b\n1;2'], { type: 'text/csv' }), 'plafon-' + i + '.csv');
+      ultimul = await req('POST', '/api/upload-only', { cookie: lUp.cookie, body: fd });
+    }
+    eq('al 9-lea upload intr-o ora -> 429', ultimul.status, 429);
+    ok('mesajul 429 spune cand sa revina', /Reincearca peste/.test(ultimul.json.error));
+
+    // plafonul de export per utilizator (CONTAB_RATE_EXPORT=5): al 6-lea SAF-T -> 429
+    let ultimulX;
+    for (let i = 0; i < 6; i++) ultimulX = await req('GET', '/xml/saft?year=2026', { cookie: lUp.cookie });
+    eq('al 6-lea export SAF-T intr-o ora -> 429', ultimulX.status, 429);
 
     // registrul depunerilor + portofoliu + notificari
     const reg = await req('GET', '/api/declarations?period=2026-06', { cookie: c1 });
@@ -465,7 +497,7 @@ async function main() {
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
-    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 8 && users.json.every((u) => u.tip));
+    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 9 && users.json.every((u) => u.tip));
     eq('non-admin la ruta de admin -> 403', (await req('GET', '/api/users', { cookie: c1 })).status, 403);
 
     // ── Schimbare de parola OBLIGATORIE (cont cu parola implicita „admin") ──
