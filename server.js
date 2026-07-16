@@ -1,45 +1,22 @@
 'use strict';
 
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
+// Incarcarea .env + constructia aplicatiei Express (middleware de infrastructura si gardurile
+// de acces) stau in src/bootstrap.js; nucleul de autentificare/cont in src/authRoutes.js.
+// Aici raman: asamblarea rutelor (ctx), buildEntry, joburile periodice si pornirea serverului.
+const bootstrap = require('./src/bootstrap');
+bootstrap.loadDotEnv(__dirname); // inainte de orice require care citeste variabile (cheie AI etc.)
+
 const fs = require('fs');
-const crypto = require('crypto');
-
-// Incarca variabilele din .env (cheie AI etc.) inainte de orice require care le citeste
-(() => {
-  try {
-    const p = path.join(__dirname, '.env');
-    if (!fs.existsSync(p)) return;
-    for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-      // nu suprascrie o variabila deja prezenta in mediu (chiar goala) — permite dezactivarea explicita (ex. STRIPE_SECRET_KEY='')
-      if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
-    }
-  } catch (e) { /* ignora */ }
-})();
-
 const db = require('./src/db');
 const coa = require('./src/chartOfAccounts');
-const { typesForClient, getType } = require('./src/documentTypes');
-const ai = require('./src/aiExtractor');
-const stmt = require('./src/statements');
+const { getType } = require('./src/documentTypes');
 const fiscal = require('./src/fiscal');
-const saft = require('./src/saft');
-const { statePlata } = require('./src/payroll'); // registruSalarii + rutele de salarizare: src/routes/payroll.js
 const anaf = require('./src/anaf');
-const authlib = require('./src/auth');
-const totp = require('./src/totp');
-const pdf = require('./src/pdf');
-const messages = require('./src/messages');
-const presence = require('./src/presence');
-const validate = require('./src/validate');
-const { sendMail, sendNotifMail, sendDeadlineDigests } = require('./src/notify');
+const { sendNotifMail, sendDeadlineDigests } = require('./src/notify');
 const { pollSpv } = require('./src/anafService'); // auto-poll job; restul e in src/routes/anaf.js
-const efacturaImport = require('./src/efacturaImport');
-const plans = require('./src/plans');
-const billing = require('./src/billing');
 const log = require('./src/log');
+const metrics = require('./src/metrics');
+const uploadGuard = require('./src/uploadGuard');
 const { round2, period: periodOf } = require('./src/util');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
@@ -49,128 +26,10 @@ const dbReady = Promise.resolve(db.load()).then(() => {
   fiscal.applyConfig(db.get().settings.fiscal); // aplica cotele fiscale configurate (peste valorile implicite)
 });
 
-const app = express();
-// Reverse proxy: avem incredere DOAR in proxy-ul local (nginx pe 127.0.0.1) ca sa citim
-// X-Forwarded-For / X-Forwarded-Proto (pentru req.ip corect + cookie Secure pe HTTPS). NU
-// folosi `true` (incredere in ORICE hop): un client care atinge direct portul aplicatiei ar
-// putea falsifica X-Forwarded-For si ocoli blocarea anti-brute-force (rate-limit cheiat pe IP).
-// Configurabil prin TRUST_PROXY pentru alte topologii: un numar de hop-uri ("2") sau o subretea.
-const TRUST_PROXY = process.env.TRUST_PROXY || 'loopback';
-app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
-
-// Anteturi de securitate via helmet, cu CSP calibrat pentru aceasta aplicatie:
-//  - script-src 'self' (un singur /app.js, fara scripturi/handler-e inline)
-//  - style-src 'unsafe-inline' (atribute style= folosite pe larg in HTML)
-//  - img-src data:/blob: (favicon data-URI, canvas), connect-src include puntea de scanare locala
-//  - frame-src 'self' blob: (vizualizatorul PDF/e-Factura ruleaza intr-un <iframe> same-origin)
-// COEP/CORP sunt DEZACTIVATE intentionat: ar rupe vizualizatorul PDF (iframe blob:) si puntea
-// locala. HSTS ramane manual (conditionat de req.secure) si Permissions-Policy manual (helmet
-// nu-l seteaza) — mai jos.
-const helmet = require('helmet');
-app.use(helmet({
-  contentSecurityPolicy: {
-    useDefaults: false,
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'blob:'],
-      fontSrc: ["'self'"],
-      connectSrc: ["'self'", 'http://127.0.0.1:8765', 'http://localhost:8765'],
-      frameSrc: ["'self'", 'blob:'],
-      objectSrc: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"],
-      frameAncestors: ["'self'"],
-    },
-  },
-  crossOriginEmbedderPolicy: false, // ar rupe iframe-ul PDF (blob:) si puntea locala
-  crossOriginResourcePolicy: false, // pastreaza comportamentul actual (fara restrictie noua)
-  hsts: false,                      // HSTS ramane manual, conditionat de req.secure
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-}));
-app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
-  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000'); // 180 zile, fara subDomains (sa nu afecteze alte servicii)
-  next();
-});
-
-// Identificator scurt per cerere: leaga logurile de eroare de cererea concreta si ajunge in
-// raspunsul 5xx (utilizatorul il poate raporta suportului pentru corelare rapida).
-app.use((req, res, next) => {
-  req.reqId = crypto.randomBytes(4).toString('hex');
-  res.setHeader('X-Request-Id', req.reqId);
-  next();
-});
-
-// Durata fiecarui raspuns: agregata pe ruta (GET /api/metrics, admin) + avertisment in log
-// pentru cererile lente (CONTAB_SLOW_MS) — baza de decizie a optimizarilor de performanta.
-const metrics = require('./src/metrics');
-app.use((req, res, next) => {
-  const t0 = process.hrtime.bigint();
-  res.on('finish', () => {
-    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-    metrics.record(metrics.routePattern(req), ms, res.statusCode);
-    if (ms >= metrics.SLOW_MS) log.warn('cerere lenta', log.ctx(req, { status: res.statusCode, ms: Math.round(ms) }));
-  });
-  next();
-});
-
-// Webhook-ul Stripe are nevoie de body-ul BRUT (pentru verificarea semnaturii) — inainte de express.json.
-app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json({ limit: '5mb' }));
-app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders(res, p) {
-    // HTML/JS/CSS + uneltele puntii: revalidare mereu (actualizari fara cache)
-    if (/\.(html|js|css|ps1|bat|txt)$/.test(p)) res.setHeader('Cache-Control', 'no-cache');
-    // uneltele puntii: text UTF-8 (ca descarcarea sa decodeze corect, nu binar)
-    if (/\.(ps1|bat|txt)$/.test(p)) res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  },
-}));
-
-// Sanitizare parametri de perioada — accepta doar YYYY / YYYY-MM (luna 01-12); valorile invalide devin goale
-app.use((req, res, next) => {
-  const q = req.query || {};
-  if (q.period != null && !/^\d{4}(-(0[1-9]|1[0-2]))?$/.test(q.period)) q.period = '';
-  if (q.asOf != null && !/^\d{4}-(0[1-9]|1[0-2])$/.test(q.asOf)) q.asOf = '';
-  for (const k of ['year', 'an']) { if (q[k] != null && !/^\d{4}$/.test(q[k])) q[k] = ''; }
-  next();
-});
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, db.UPLOAD_DIR),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.pdf';
-    cb(null, crypto.randomBytes(8).toString('hex') + ext);
-  },
-});
-// Extensii acceptate la upload — blocheaza HTML/JS/SVG etc. (XSS stocat: un fisier activ
-// servit din origin-ul aplicatiei ar rula cu sesiunea utilizatorului care il deschide).
-const UPLOAD_EXT_OK = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.csv', '.txt',
-  '.xls', '.xlsx', '.dbf', '.xml', '.zip', '.json', '.sta', '.940', '.mt940']);
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    if (ext && !UPLOAD_EXT_OK.has(ext)) {
-      const err = new Error('Tip de fisier neacceptat (' + ext + '). Acceptate: PDF, imagini, CSV/TXT, XLS(X), DBF, XML, ZIP, JSON.');
-      err.status = 400;
-      return cb(err);
-    }
-    cb(null, true);
-  },
-});
-// Extensia nu garanteaza continutul: dupa salvarea multer se verifica magic bytes
-// (src/uploadGuard.js) si se plafoneaza upload-urile per UTILIZATOR (rutele sunt
-// autentificate — abuzul vine de la conturi, nu de la IP-uri). upload.single ramane
-// interfata rutelor: intoarce lantul [plafon, multer, verificare continut].
-const uploadGuard = require('./src/uploadGuard');
-const RATE_UPLOAD = Number(process.env.CONTAB_RATE_UPLOAD || 60);  // upload-uri/ora/utilizator
-const RATE_EXPORT = Number(process.env.CONTAB_RATE_EXPORT || 10);  // exporturi mari/ora/utilizator
-const uploadLimiter = uploadGuard.userLimit('upload', RATE_UPLOAD, 'Prea multe fisiere incarcate.');
-const rawUploadSingle = upload.single.bind(upload);
-upload.single = (field) => [uploadLimiter, rawUploadSingle(field), uploadGuard.verifyUploadContent];
+// Instanta Express cu tot middleware-ul de infrastructura (trust proxy, helmet/CSP, reqId,
+// metrici, parsare body, static, sanitizare, multer + garda de upload): src/bootstrap.js.
+const app = bootstrap.createApp({ rootDir: __dirname });
+const upload = app.locals.bootstrap.upload;
 
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
   log.error('eroare necuprinsa in ruta', log.ctx(req, { status: 500, err: e }));
@@ -179,8 +38,9 @@ const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
 });
 
 // ───────────────────────── AUTENTIFICARE ─────────────────────────
-// Primitive de sesiune/auth/anti-brute-force (partajate cu rutele de cont): src/session.js
-const { currentUser, allowedFirme, publicUser, startSession, setTrustedDevice, deviceTrusted, isLocked, bumpFail, clearFails, attemptKey, pruneLoginAttempts } = require('./src/session');
+// Primitive de sesiune/auth/anti-brute-force: src/session.js. Rutele de login/cont/impersonare/
+// resetare (nucleul de securitate) stau in src/authRoutes.js si isi fac singure require-urile.
+const { currentUser, allowedFirme, publicUser, startSession, pruneLoginAttempts } = require('./src/session');
 
 // jurnal de audit (cine, ce actiune, pe ce firma)
 function logAudit(action, detail, opts) {
@@ -201,310 +61,20 @@ function logAudit(action, detail, opts) {
   if (d.audit.length > 3000) d.audit = d.audit.slice(-3000);
 }
 
-const PUBLIC_PATHS = new Set(['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest']);
-app.use((req, res, next) => {
-  if (PUBLIC_PATHS.has(req.path) || req.path.startsWith('/api/invite/') || req.path.startsWith('/api/reset/')) return next();
-  if (/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) {
-    const u = currentUser(req);
-    if (!u) return res.status(401).json({ error: 'Neautentificat' });
-    req.user = u;
-  }
-  next();
-});
+// Gardurile transversale de acces, in ordinea: autentificare (rute publice exceptate),
+// mustChange, drepturi granulare (readonly/faraSalarii), paywall per-firma, plafon pe
+// exporturile mari, urma de business pe exporturi: src/bootstrap.js (applySecurityGuards).
+bootstrap.applySecurityGuards(app, { logAudit, activeId });
 function requireAdmin(req, res, next) {
   if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Necesita drepturi de administrator.' });
   next();
 }
-
-// Schimbare de parola OBLIGATORIE (cont cu parola implicita): pana cand utilizatorul isi
-// pune o parola noua, orice actiune e blocata — raman permise doar identitatea, delogarea
-// si chiar schimbarea parolei. UI-ul afiseaza un ecran care nu se poate inchide.
-const MUSTCHANGE_ALLOW = new Set(['/api/me', '/api/logout', '/api/change-password']);
-app.use((req, res, next) => {
-  if (req.user && req.user.mustChange && !MUSTCHANGE_ALLOW.has(req.path)) {
-    return res.status(403).json({ error: 'Trebuie să îți schimbi parola implicită înainte de a continua.', mustChange: true });
-  }
-  next();
-});
-
-// ── Proba expirata => cont READ-ONLY: vede datele, dar nu mai inregistreaza si nu mai
-// genereaza livrabile (PDF/XML/CSV), pana la alegerea unui plan. Raman permise: citirile
-// din API, gestionarea contului/abonamentului, plata si mesajele catre suport.
-// ── Drepturi granulare per utilizator (Setari -> Utilizatori, setate de admin) ──
-//  - readonly:    doar vizualizare — blocheaza orice scriere pe date (raman permise rutele de cont)
-//  - faraSalarii: fara acces la modulul de salarizare (date sensibile), nici macar in citire
-const RO_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe)/;
-const RO_ALLOW = /^\/api\/firme\/\d+\/activate$/; // schimbarea firmei active e tot o "citire"
-const SALARII_RX = /^\/(api\/(angajati|stat-plata|registru-salarii)|pdf\/(stat-plata|fluturas|adeverinta|registru-salarii)|xml\/d112)/;
-app.use((req, res, next) => {
-  const dr = req.user && req.user.drepturi;
-  if (!dr || req.user.role === 'admin') return next();
-  if (dr.faraSalarii && SALARII_RX.test(req.path)) {
-    return res.status(403).json({ error: 'Nu ai acces la modulul de salarizare (drept restrictionat de administrator).' });
-  }
-  if (dr.readonly && req.method !== 'GET' && !RO_EXEMPT.test(req.path) && !RO_ALLOW.test(req.path)) {
-    return res.status(403).json({ error: 'Cont doar-citire: poti vizualiza datele, dar nu le poti modifica. Cere administratorului drept de operare.' });
-  }
-  next();
-});
-
-// ── Billing STRICT per-firma: fiecare firma are propriul abonament. Scrierile pe FIRMA ACTIVA
-// sunt permise doar daca firma are abonament activ sau proba nefinalizata; altfel read-only pana
-// la abonare (plata pe firma). Citirile si rutele de cont/gestionare firma raman libere.
-// `impersonate` e exceptat: altfel adminul care impersoneaza un user cu firma expirata ar fi
-// BLOCAT in impersonare (402 chiar pe /api/impersonate/stop). Paywall-ul ramane pe restul
-// rutelor si sub impersonare — adminul vede exact ce vede utilizatorul.
-const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe|impersonate)|^\/api\/firme(\/\d+\/(keep|activate|subscribe))?$|^\/api\/firme\/\d+$/;
-app.use((req, res, next) => {
-  if (!req.user || req.user.role === 'admin') return next();
-  if (req.method === 'GET' && !/^\/(pdf|xml|csv|efactura)/.test(req.path)) return next(); // citirile libere
-  if (FIRMA_BILL_EXEMPT.test(req.path)) return next(); // cont + gestionarea firmei (activate/subscribe/delete/create)
-  const f = db.getFirma(activeId(req));
-  if (f && plans.firmaLocked(f)) {
-    const st = plans.firmaStatus(f).status;
-    return res.status(402).json({
-      error: (st === 'expired' ? 'Proba pentru firma „' + (f.nume || '') + '" a expirat.' : 'Firma „' + (f.nume || '') + '" nu are abonament activ.')
-        + ' Continuarea lucrului se face cu abonament (plata pe firmă). Te abonezi acum?',
-      firmaTrialExpired: true, firmaId: f.id, firmaNume: f.nume || '', firmaStatus: st,
-    });
-  }
-  next();
-});
-
-// Plafon per utilizator pe exporturile costisitoare (CPU/IO la fiecare cerere): SAF-T,
-// crearea de backup si exportul de firma. Descarcarile mici (CSV/PDF punctuale) raman libere.
-const EXPORT_LIMITED = /^\/(xml\/saft|api\/backup|api\/firme\/\d+\/export-zip|api\/firme\/export-all)$/;
-const exportLimiter = uploadGuard.userLimit('export', RATE_EXPORT, 'Prea multe exporturi mari.');
-app.use((req, res, next) => (EXPORT_LIMITED.test(req.path) ? exportLimiter(req, res, next) : next()));
-
-// Urma de business pe exporturi: cine a descarcat ce. XML-urile fiscale (declaratii/SAF-T/
-// e-Factura) intra in AUDIT — sunt rare si relevante legal; PDF/CSV raman doar in logul
-// structurat (frecvente: in audit ar impinge afara actiunile reale, plafonul e 3000).
-app.use((req, res, next) => {
-  if (req.method === 'GET' && /^\/(xml|pdf|csv)\//.test(req.path)) {
-    res.on('finish', () => {
-      if (res.statusCode !== 200) return;
-      log.info('export servit', log.ctx(req, { status: 200 }));
-      if (req.path.startsWith('/xml/')) logAudit('export.xml', String(req.originalUrl || req.path).slice(0, 120), { req });
-    });
-  }
-  next();
-});
-
-// Health-check public (pentru monitorizare uptime): confirma ca procesul si baza raspund.
-// PUBLIC si minimal INTENTIONAT: confirma doar ca procesul si baza raspund. Diagnosticele
-// de proces (memorie, versiune Node, driver, PID) sunt in /api/metrics, DOAR pentru admin —
-// pe un endpoint neautentificat ar insemna fingerprinting gratuit al serverului.
-app.get('/api/health', (req, res) => {
-  try {
-    const d = db.get();
-    res.json({ ok: true, ts: new Date().toISOString(), uptimeSec: Math.round(process.uptime()), firme: (d.firme || []).length });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: 'db', ts: new Date().toISOString(), uptimeSec: Math.round(process.uptime()) });
-  }
-});
-
-app.post('/api/login', (req, res) => {
-  const mins = isLocked(req);
-  if (mins) return res.status(429).json({ error: 'Prea multe incercari esuate. Reincearca peste ~' + mins + ' min.' });
-  const { username, password, code, remember } = req.body || {};
-  const d = db.get();
-  const u = d.users.find((x) => x.username === username);
-  if (!u || u.pending || !authlib.verifyPassword(password, u.salt, u.hash)) { bumpFail(req); return res.status(401).json({ error: 'Utilizator sau parola gresita.' }); }
-  let rememberDevice = false;
-  if (u.twofa && !deviceTrusted(req, u)) {
-    if (!code) return res.json({ twofa: true }); // parola corecta, mai trebuie codul
-    if (!totp.verify(u.totpSecret, code)) { bumpFail(req); return res.status(401).json({ error: 'Cod 2FA gresit.', twofa: true }); }
-    rememberDevice = !!remember;
-  }
-  clearFails(req);
-  startSession(req, res, u); // creeaza sesiune + cookie sid
-  if (rememberDevice) setTrustedDevice(req, res, u); // append (tfd) DUPA setSession
-  logAudit('login', 'autentificare', { userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
-  db.save();
-  req.user = u; // pentru withSessionState (starea abonamentului firmei active)
-  res.json({ ok: true, user: withSessionState(req, u) });
-});
-
-// Intrare in contul demo cu un click (public) — doar contul „demo", fara parola in client.
-app.post('/api/demo-login', (req, res) => {
-  const d = db.get();
-  const u = d.users.find((x) => x.username === 'demo');
-  if (!u) return res.status(404).json({ error: 'Contul demo nu este disponibil momentan.' });
-  startSession(req, res, u);
-  logAudit('login', 'cont demo (public)', { userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
-  db.save();
-  res.json({ ok: true, user: publicUser(u) });
-});
-
-// ───────────────────────── INSCRIERE FIRMA (public) ─────────────────────────
-// Creeaza o firma NOUA GOALA (fara date contabile) + un utilizator care o administreaza.
-// Planul de conturi (si restul datelor globale) e partajat de toate firmele, deci e disponibil automat.
-const registerAttempts = new Map();
-function regCount(req) { const r = registerAttempts.get(attemptKey(req)); return (r && Date.now() <= r.reset) ? r.count : 0; }
-function regBump(req) {
-  const k = attemptKey(req); const now = Date.now();
-  let r = registerAttempts.get(k);
-  if (!r || now > r.reset) r = { count: 0, reset: now + 3600 * 1000 };
-  r.count += 1; registerAttempts.set(k, r);
-}
-app.get('/api/register', (req, res) => res.json({ enabled: db.get().settings.selfRegister !== false }));
-app.post('/api/register', (req, res) => {
-  const d = db.get();
-  if (d.settings.selfRegister === false) return res.status(403).json({ error: 'Inscrierea de firme noi este momentan dezactivata.' });
-  if (regCount(req) >= 5) return res.status(429).json({ error: 'Prea multe inscrieri de pe aceasta retea. Reincearca peste o ora.' });
-  const b = req.body || {};
-  const nume = String(b.nume || '').trim();
-  const username = String(b.username || '').trim();
-  const password = String(b.password || '');
-  if (!nume) return res.status(400).json({ error: 'Completeaza denumirea firmei.' });
-  if (username.length < 3) return res.status(400).json({ error: 'Utilizator prea scurt (minim 3 caractere).' });
-  const pwErr = authlib.validatePassword(password, { username });
-  if (pwErr) return res.status(400).json({ error: pwErr });
-  if (d.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) return res.status(400).json({ error: 'Acest utilizator exista deja. Alege altul.' });
-  // firma noua GOALA — fara date contabile (entries/parteneri/solduri/stocuri etc.)
-  const fid = db.nextFirmaId();
-  const firma = Object.assign(db.defaultFirma(fid), {
-    nume, cui: String(b.cui || '').trim(), regCom: String(b.regCom || '').trim(),
-    adresa: String(b.adresa || '').trim(), oras: String(b.oras || '').trim(), judet: b.judet || 'RO-B',
-    tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
-    tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
-  }, { id: fid });
-  // Billing per-firma: prima firma primeste o proba de 30 de zile.
-  firma.subscription = plans.firmaTrialSub();
-  d.firme.push(firma);
-  d.partners[fid] = {}; d.openingBalances[fid] = {};
-  const { salt, hash } = authlib.hashPassword(password);
-  const user = { id: db.nextUserId(), username, email: String(b.email || '').trim(), salt, hash, role: 'user', firme: [fid], firmaActiva: fid };
-  d.users.push(user);
-  // Daca a platit ca „guest" inainte de inscriere, leaga abonamentul dupa email (Stripe) — firma devine activa.
-  const pIdx = plans.findPending(d.settings.pendingSubs, user.email);
-  if (pIdx >= 0) {
-    const rec = d.settings.pendingSubs[pIdx];
-    user.subscription = plans.pendingToSubscription(rec);
-    firma.subscription = { status: 'active', plan: rec.plan, since: new Date().toISOString(), stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null };
-    d.settings.pendingSubs.splice(pIdx, 1);
-    logAudit('subscription.linked', 'abonament ' + rec.plan + ' legat la inscriere', { userId: user.id, username, firmaId: fid });
-  }
-  regBump(req);
-  logAudit('firma.register', nume + ' (utilizator ' + username + ')', { userId: user.id, username, firmaId: fid });
-  db.save();
-  startSession(req, res, user); // autentificare automata dupa inscriere
-  res.json({ ok: true, firma: { id: fid, nume: firma.nume }, user: publicUser(user) });
-  // email de bun venit (best-effort, nu blocheaza raspunsul)
-  if (user.email) {
-    sendNotifMail(user.email, 'Bun venit în Contabo!',
-      'Salut,\n\nContul tău („' + username + '") și firma „' + firma.nume + '" sunt gata.\n\n'
-      + 'Primii pași:\n'
-      + '  1. Încarcă prima factură primită (PDF sau poză) — articolul contabil se generează singur.\n'
-      + '  2. Emite o factură către un client — primești automat e-Factura XML + PDF.\n'
-      + '  3. La final de lună, descarcă declarațiile din „Declarații ANAF".\n\n'
-      + 'Ghidul pas cu pas e în aplicație (tab-ul Ghid), iar la orice întrebare ne scrii direct din Mesaje.\n\n'
-      + 'Intră în aplicație: ' + billing.appUrl() + '\n\nSpor la treabă!\nEchipa Contabo'
-    ).catch((e) => console.error('email bun venit:', e.message));
-  }
-});
 
 // Setari de cont si securitate (2FA, sesiuni, parola, profil): src/routes/account.js
 require('./src/routes/account')(app, { logAudit });
 
 // Backup/restaurare + SMTP (admin): src/routes/backup.js — intoarce doBackup (folosit si de jobul zilnic).
 const { doBackup } = require('./src/routes/backup')(app, { requireAdmin, upload, logAudit });
-app.post('/api/logout', (req, res) => {
-  const u = currentUser(req);
-  if (u && req._sessId) { u.sessions = (u.sessions || []).filter((s) => s.id !== req._sessId); db.save(); }
-  res.setHeader('Set-Cookie', 'sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
-  res.json({ ok: true });
-});
-
-
-app.get('/api/audit', (req, res) => {
-  const d = db.get();
-  const fid = activeId(req); // doar firma curenta (activeId e mereu o firma la care userul are acces)
-  const list = (d.audit || []).filter((a) => a.firmaId === fid);
-  res.json(list.slice(-300).reverse());
-});
-// Jurnal de sistem (global): actiuni fara firma — utilizatori, firme, impersonare, mesaje, backup, 2FA, sesiuni.
-app.get('/api/audit/system', requireAdmin, (req, res) => {
-  const list = (db.get().audit || []).filter((a) => a.firmaId == null);
-  res.json(list.slice(-300).reverse());
-});
-// Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare
-// primii. Include si diagnosticele de proces (memorie, Node, driver) — DOAR pentru admin.
-app.get('/api/metrics', requireAdmin, (req, res) => {
-  const d = db.get();
-  const mem = process.memoryUsage();
-  const mb = (b) => Math.round((b / (1024 * 1024)) * 100) / 100;
-  // starea job-urilor: tick/rezultat/eroare din memorie + ultima rulare REUSITA din settings
-  // (aceea supravietuieste restartului — backup/digest/demo-reset si-o noteaza in db)
-  const jobs = metrics.jobsSnapshot();
-  const put = (label, k, v) => { if (v) (jobs[label] = jobs[label] || {})[k] = v; };
-  put('backup', 'lastDoneAt', (d.settings.backup || {}).lastAt);
-  put('digest-termene', 'lastDoneDate', (d.settings.deadlineDigest || {}).lastDate);
-  put('demo-reset', 'lastDoneDate', (d.settings.demoReset || {}).lastDate);
-  res.json(Object.assign(metrics.snapshot(), {
-    jobs,
-    process: {
-      nodeVersion: process.version, pid: process.pid, driver: db.DRIVER,
-      uptimeSec: Math.round(process.uptime()), firme: (d.firme || []).length, users: (d.users || []).length,
-      memoryRssMb: mb(mem.rss), memoryHeapUsedMb: mb(mem.heapUsed), memoryHeapTotalMb: mb(mem.heapTotal),
-    },
-  }));
-});
-app.get('/api/me', (req, res) => {
-  const u = currentUser(req);
-  if (!u) return res.status(401).json({ error: 'Neautentificat' });
-  res.json(withSessionState(req, u));
-});
-// Imbogateste obiectul public al utilizatorului cu starea de impersonare si mesajele necitite.
-function withSessionState(req, u) {
-  const out = publicUser(u);
-  if (req.impersonating && req.realUser) out.impersonating = { adminId: req.realUser.id, adminName: req.realUser.username };
-  const d = db.get();
-  out.unreadMessages = (u.role === 'admin' && !req.impersonating)
-    ? messages.unreadForAdmin(d.messages || [])
-    : messages.unreadForUser(d.messages || [], u.id);
-  // Billing per-firma: starea abonamentului FIRMEI active + semnalul de read-only pentru banner.
-  if (u.role !== 'admin') {
-    const f = db.getFirma(activeId(req));
-    out.firmaSub = plans.firmaStatus(f);
-    out.subExpirat = plans.firmaLocked(f);
-  }
-  return out;
-}
-
-// ───────────────────────── IMPERSONARE (admin intra pe cont de user) ─────────────────────────
-// Adminul real (chiar daca impersoneaza deja pe cineva) e principalul care detine sesiunea.
-function adminPrincipal(req) {
-  if (req.realUser && req.realUser.role === 'admin') return req.realUser;
-  return req.user && req.user.role === 'admin' ? req.user : null;
-}
-app.post('/api/impersonate', (req, res) => {
-  const admin = adminPrincipal(req);
-  if (!admin) return res.status(403).json({ error: 'Doar administratorul poate intra pe conturi.' });
-  const d = db.get();
-  const target = d.users.find((x) => x.id === Number((req.body || {}).userId));
-  if (!target) return res.status(404).json({ error: 'Utilizator inexistent.' });
-  if (target.id === admin.id) return res.status(400).json({ error: 'Esti deja autentificat ca tine.' });
-  if (target.role === 'admin') return res.status(400).json({ error: 'Nu poti intra pe contul altui administrator.' });
-  if (target.pending) return res.status(400).json({ error: 'Contul nu e finalizat (invitatie in asteptare).' });
-  const sess = (admin.sessions || []).find((s) => s.id === req._sessId);
-  if (!sess) return res.status(400).json({ error: 'Sesiune invalida.' });
-  sess.impersonating = target.id;
-  logAudit('impersonate.start', admin.username + ' a intrat pe contul ' + target.username, { userId: admin.id, username: admin.username, firmaId: null });
-  db.save();
-  res.json({ ok: true, user: publicUser(target) });
-});
-app.post('/api/impersonate/stop', (req, res) => {
-  if (!req.impersonating || !req.realUser) return res.status(400).json({ error: 'Nu esti in modul impersonare.' });
-  const admin = req.realUser;
-  const sess = (admin.sessions || []).find((s) => s.id === req._sessId);
-  if (sess) delete sess.impersonating;
-  logAudit('impersonate.stop', 'revenire la ' + admin.username, { userId: admin.id, username: admin.username, firmaId: null });
-  db.save();
-  res.json({ ok: true, user: publicUser(admin) });
-});
-
 // Mesaje (suport user <-> admin): src/routes/messages.js
 require('./src/routes/messages')(app, { requireAdmin, upload, logAudit });
 
@@ -513,62 +83,6 @@ require('./src/routes/messages')(app, { requireAdmin, upload, logAudit });
 // Prețurile sunt publice (vizibile pe pagina de înscriere, fără autentificare).
 // Abonament / plati Stripe (planuri, checkout, portal, webhook, proba/select, activare admin): src/routes/billing.js
 require('./src/routes/billing')(app, { requireAdmin, logAudit });
-
-// ───────────────────────── RESETARE PAROLA (email) ─────────────────────────
-// Rate limit pe IP (5/ora): ruta e publica si trimite email — fara plafon ar fi un vector de
-// spam catre utilizator si de consum al cotei de email. Peste plafon raspundem tot generic
-// (fara enumerare de conturi), doar nu mai trimitem.
-const forgotAttempts = new Map();
-app.post('/api/forgot-password', wrap(async (req, res) => {
-  const login = String((req.body || {}).login || '').trim().toLowerCase();
-  const d = db.get();
-  const u = d.users.find((x) => !x.pending && (x.username.toLowerCase() === login || (x.email && x.email.toLowerCase() === login)));
-  // raspuns identic indiferent daca exista (sa nu dezvaluim conturile)
-  const generic = { ok: true, message: 'Daca exista un cont cu adresa de email setata, vei primi un link de resetare.' };
-  const k = attemptKey(req); const now = Date.now();
-  let fa = forgotAttempts.get(k);
-  if (!fa || now > fa.reset) fa = { count: 0, reset: now + 3600 * 1000 };
-  fa.count += 1; forgotAttempts.set(k, fa);
-  if (fa.count > 5) return res.json(generic);
-  if (!u || !u.email || !(d.settings.smtp && d.settings.smtp.host)) return res.json(generic);
-  u.resetToken = crypto.randomBytes(24).toString('hex');
-  u.resetExp = Date.now() + 3600 * 1000; // 1 ora
-  db.save();
-  const link = (req.protocol || 'http') + '://' + req.get('host') + '/?reset=' + u.resetToken;
-  try { await sendMail(d.settings.smtp, u.email, 'Resetare parola Contabo', 'Reseteaza-ti parola (valabil 1 ora):\n' + link); } catch (e) { console.error('SMTP reset:', e.message); }
-  res.json(generic);
-}));
-function findReset(token) {
-  // comparatie in timp constant: tokenul vine din URL, egalitatea `===` s-ar scurta la primul
-  // octet diferit (teoretic masurabil). Lungimea se verifica intai (timingSafeEqual o cere egala).
-  const t = Buffer.from(String(token || ''));
-  const u = db.get().users.find((x) => {
-    if (!x.resetToken) return false;
-    const a = Buffer.from(String(x.resetToken));
-    return a.length === t.length && crypto.timingSafeEqual(a, t);
-  });
-  if (!u || (u.resetExp && u.resetExp < Date.now())) return null;
-  return u;
-}
-app.get('/api/reset/:token', (req, res) => {
-  const u = findReset(req.params.token);
-  if (!u) return res.status(404).json({ error: 'Link de resetare invalid sau expirat.' });
-  res.json({ username: u.username });
-});
-app.post('/api/reset/accept', (req, res) => {
-  const { token, password } = req.body || {};
-  const u = findReset(token);
-  if (!u) return res.status(404).json({ error: 'Link de resetare invalid sau expirat.' });
-  const pwErr = authlib.validatePassword(password, { username: u.username });
-  if (pwErr) return res.status(400).json({ error: pwErr });
-  const h = authlib.hashPassword(password);
-  u.salt = h.salt; u.hash = h.hash; u.mustChange = false; delete u.resetToken; delete u.resetExp;
-  u.sessions = []; // resetarea parolei deconecteaza celelalte sesiuni
-  startSession(req, res, u);
-  logAudit('password.reset', u.username, { userId: u.id, username: u.username, firmaId: null });
-  db.save();
-  res.json({ ok: true, user: publicUser(u) });
-});
 
 // firma activa (constransa la firmele utilizatorului) + vederea filtrata
 // Firma activa pentru cerere. STRICT pentru utilizatorii non-admin (necontabili/contabili):
@@ -604,29 +118,11 @@ const S = (req) => {
   return v;
 };
 
-// ───────────────────────────── META ─────────────────────────────
-// Import plan de conturi personalizat din CSV: Cont;Denumire;Clasa;Tip (A/P/B/C/V) - header optional
-app.get('/api/meta', (req, res) => {
-  const d = db.get();
-  const v = S(req);
-  const periods = [...new Set(v.entries.map((e) => e.period || periodOf(e.data)))].filter(Boolean).sort();
-  const allowed = allowedFirme(req.user);
-  res.json({
-    user: withSessionState(req, req.user),
-    firme: d.firme.filter((f) => allowed.includes(f.id)).map((f) => Object.assign({}, f, { _sub: plans.firmaStatus(f) })),
-    firmaActiva: activeId(req),
-    company: v.company,
-    // tipurile de documente marcate cu `entitate` apar doar la forma juridica potrivita (srl/pfa)
-    types: typesForClient().filter((t) => !t.entitate || t.entitate === (v.company.tipEntitate || 'srl')),
-    accounts: coa.ACCOUNTS,
-    classNames: coa.CLASS_NAMES,
-    periods,
-    counts: { documents: v.documents.length, entries: v.entries.length },
-    ai: { available: ai.aiAvailable(), enabled: d.settings.useAI !== false, model: ai.MODEL },
-    fiscal: fiscal.FISCAL,
-    selfRegister: d.settings.selfRegister !== false,
-  });
-});
+// ─────────────────── AUTENTIFICARE SI CONT: src/authRoutes.js ───────────────────
+// login/2FA, demo, inscriere firma, logout, resetare parola, impersonare, /api/me,
+// /api/meta, health, metrics, audit. Intoarce map-urile de rate-limit (inscriere +
+// resetare parola), curatate periodic de jobul rate-limit-hygiene (mai jos).
+const { registerAttempts, forgotAttempts } = require('./src/authRoutes')(app, { logAudit, wrap, requireAdmin, activeId, S });
 
 // ───────────────────────────── FIRME ─────────────────────────────
 function canAccess(req, id) { return allowedFirme(req.user).includes(Number(id)); }

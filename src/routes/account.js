@@ -3,7 +3,7 @@
 // Setari de cont si securitate — strat SUBTIRE peste src/accountService.js: parseaza cererea,
 // apeleaza serviciul (care valideaza si scrie, inclusiv garda pe contul demo) si traduce
 // erorile lui (`err.status`) in raspunsuri HTTP. Nucleul de securitate (login/register/logout/
-// me/impersonare/resetare, cookie-uri, anti-brute-force, crearea sesiunii) ramane in server.js.
+// me/impersonare/resetare, cookie-uri, anti-brute-force, crearea sesiunii) sta in src/authRoutes.js.
 
 const svc = require('../accountService');
 
