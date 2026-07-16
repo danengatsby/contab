@@ -90,6 +90,14 @@ function changePassword(u, oldPassword, newPassword) {
   db.save();
 }
 
+/** Ascunde definitiv wizard-ul de prima autentificare pentru acest utilizator (checklist-ul
+ *  discret de pe dashboard ramane). Persistat pe cont — supravietuieste schimbarii de browser. */
+function dismissWizard(u) {
+  reqNotDemo(u);
+  u.wizardAscuns = true;
+  db.save();
+}
+
 function getProfile(u) {
   return {
     username: u.username, email: u.email || '', role: u.role,
@@ -118,5 +126,5 @@ module.exports = {
   reqNotDemo,
   setup2fa, enable2fa, disable2fa, revokeTrustedDevices,
   listSessions, logoutOtherSessions, revokeSession,
-  changePassword, getProfile, updateProfile,
+  changePassword, getProfile, updateProfile, dismissWizard,
 };

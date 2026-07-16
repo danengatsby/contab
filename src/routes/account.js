@@ -56,6 +56,11 @@ module.exports = function register(app, ctx) {
     return { ok: true };
   }));
   app.get('/api/profile', (req, res) => res.json(svc.getProfile(req.user)));
+  // Wizard-ul de prima autentificare: „mai tarziu" il ascunde definitiv pentru utilizator
+  app.post('/api/onboarding/dismiss', (req, res) => run(res, () => {
+    svc.dismissWizard(req.user);
+    return { ok: true };
+  }));
   app.post('/api/profile', (req, res) => run(res, () => {
     const r = svc.updateProfile(req.user, req.body);
     return { ok: true, email: r.email, notifyDeadlines: r.notifyDeadlines, profil: r.profil };
