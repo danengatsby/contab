@@ -377,7 +377,7 @@ app.post('/api/register', (req, res) => {
 });
 
 // Setari de cont si securitate (2FA, sesiuni, parola, profil): src/routes/account.js
-require('./src/routes/account')(app, { demoContLock, logAudit });
+require('./src/routes/account')(app, { logAudit });
 
 // Backup/restaurare + SMTP (admin): src/routes/backup.js — intoarce doBackup (folosit si de jobul zilnic).
 const { doBackup } = require('./src/routes/backup')(app, { requireAdmin, upload, logAudit });
