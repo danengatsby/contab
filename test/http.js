@@ -780,6 +780,13 @@ async function main() {
     ok('metrici: diagnosticele de proces sunt AICI (admin), nu pe health',
       met.json.process && typeof met.json.process.nodeVersion === 'string' && typeof met.json.process.memoryRssMb === 'number'
       && typeof met.json.process.driver === 'string' && typeof met.json.process.users === 'number' && met.json.process.uptimeSec >= 0);
+    ok('metrici: erorile recente si joburile sunt expuse', Array.isArray(met.json.recentErrors) && met.json.jobs && typeof met.json.jobs === 'object');
+    // un backup proaspat isi noteaza lastAt in settings -> apare la joburi ca lastDoneAt
+    // (restore-ul din sectiunea anterioara l-a sters: snapshot-ul e copiat INAINTE de setarea lui)
+    await req('POST', '/api/backup', { cookie: cAdm });
+    const met2 = await req('GET', '/api/metrics', { cookie: cAdm });
+    ok('metrici: jobul de backup arata ultima rulare reusita (din settings)',
+      met2.json.jobs.backup && typeof met2.json.jobs.backup.lastDoneAt === 'string');
 
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {

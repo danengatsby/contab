@@ -38,10 +38,43 @@ function snapshot() {
     route, n: r.n, totalMs: Math.round(r.totalMs), avgMs: Math.round(r.totalMs / r.n),
     maxMs: Math.round(r.maxMs), slow: r.slow, err5xx: r.err5xx,
   })).sort((a, b) => b.totalMs - a.totalMs);
-  return { sinceTs: new Date(startedAt).toISOString(), slowThresholdMs: SLOW_MS, routes: list.slice(0, 100) };
+  return {
+    sinceTs: new Date(startedAt).toISOString(), slowThresholdMs: SLOW_MS, routes: list.slice(0, 100),
+    recentErrors: recentErrors.slice().reverse(), // cele mai noi primele
+    jobs: jobsSnapshot(),
+  };
+}
+
+// ── Erorile recente (inel, ultimele MAX_ERRORS indiferent de vechime) ──
+// Complementar alertei pe email din server.js (aceea vede doar fereastra de 15 minute):
+// aici raman vizibile in /api/metrics si erorile rare, pana le impinge altele afara.
+const MAX_ERRORS = 20;
+const recentErrors = [];
+function recordError(msg) {
+  recentErrors.push({ ts: new Date().toISOString(), msg: String(msg).slice(0, 200) });
+  if (recentErrors.length > MAX_ERRORS) recentErrors.shift();
+}
+
+// ── Starea job-urilor de background (tick = a rulat verificarea; result/error = ce a facut) ──
+const jobs = new Map(); // label -> { lastTickAt, lastResult, lastResultAt, lastError, lastErrorAt, errors }
+function job(label) {
+  let j = jobs.get(label);
+  if (!j) { j = { lastTickAt: null, lastResult: null, lastResultAt: null, lastError: null, lastErrorAt: null, errors: 0 }; jobs.set(label, j); }
+  return j;
+}
+function jobTick(label) { job(label).lastTickAt = new Date().toISOString(); }
+function jobResult(label, info) { const j = job(label); j.lastResult = String(info).slice(0, 200); j.lastResultAt = new Date().toISOString(); }
+function jobError(label, msg) { const j = job(label); j.lastError = String(msg).slice(0, 200); j.lastErrorAt = new Date().toISOString(); j.errors += 1; }
+function jobsSnapshot() {
+  const out = {};
+  for (const [label, j] of jobs) out[label] = Object.assign({}, j);
+  return out;
 }
 
 /** Doar pentru teste: goleste agregatele. */
-function reset() { routes.clear(); }
+function reset() { routes.clear(); recentErrors.length = 0; jobs.clear(); }
 
-module.exports = { SLOW_MS, routePattern, record, snapshot, reset };
+module.exports = {
+  SLOW_MS, routePattern, record, snapshot, reset,
+  recordError, recentErrors, jobTick, jobResult, jobError, jobsSnapshot,
+};

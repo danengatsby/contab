@@ -406,7 +406,15 @@ app.get('/api/metrics', requireAdmin, (req, res) => {
   const d = db.get();
   const mem = process.memoryUsage();
   const mb = (b) => Math.round((b / (1024 * 1024)) * 100) / 100;
+  // starea job-urilor: tick/rezultat/eroare din memorie + ultima rulare REUSITA din settings
+  // (aceea supravietuieste restartului — backup/digest/demo-reset si-o noteaza in db)
+  const jobs = metrics.jobsSnapshot();
+  const put = (label, k, v) => { if (v) (jobs[label] = jobs[label] || {})[k] = v; };
+  put('backup', 'lastDoneAt', (d.settings.backup || {}).lastAt);
+  put('digest-termene', 'lastDoneDate', (d.settings.deadlineDigest || {}).lastDate);
+  put('demo-reset', 'lastDoneDate', (d.settings.demoReset || {}).lastDate);
   res.json(Object.assign(metrics.snapshot(), {
+    jobs,
     process: {
       nodeVersion: process.version, pid: process.pid, driver: db.DRIVER,
       uptimeSec: Math.round(process.uptime()), firme: (d.firme || []).length, users: (d.users || []).length,
@@ -793,8 +801,10 @@ const os = require('os');
 // ASINCRONE raman tratate pe .catch-ul promisiunilor din interior (retea/ANAF/SMTP).
 function safeInterval(label, fn, ms) {
   return setInterval(() => {
+    metrics.jobTick(label); // starea job-urilor apare in /api/metrics (admin)
     try { fn(); }
     catch (e) {
+      metrics.jobError(label, e.message || e);
       log.error('eroare in job periodic', { job: label, err: e });
       try { trackServerError({ method: 'JOB', originalUrl: label }, e); } catch (_) { /* ignora */ }
     }
@@ -807,7 +817,8 @@ safeInterval('backup', () => {
   if (s.auto === false) return;
   const last = s.lastAt ? Date.parse(s.lastAt) : 0;
   if (Date.now() - last >= 24 * 3600 * 1000) {
-    try { const r = doBackup(); console.log('Backup automat:', r.name); } catch (e) { console.error('Backup:', e.message); }
+    try { const r = doBackup(); metrics.jobResult('backup', r.name); console.log('Backup automat:', r.name); }
+    catch (e) { metrics.jobError('backup', e.message); console.error('Backup:', e.message); }
   }
 }, 3600 * 1000); // verifica din ora in ora
 
@@ -820,8 +831,11 @@ safeInterval('digest-termene', () => {
   s.lastDate = today;
   db.save();
   sendDeadlineDigests()
-    .then((r) => { if (r.sent.length || r.errors.length) console.log('Digest termene:', r.sent.length, 'trimise', r.errors.length ? ('; erori: ' + r.errors.join(' | ')) : ''); })
-    .catch((e) => console.error('Digest termene:', e.message));
+    .then((r) => {
+      metrics.jobResult('digest-termene', r.sent.length + ' trimise' + (r.errors.length ? ', ' + r.errors.length + ' erori' : ''));
+      if (r.sent.length || r.errors.length) console.log('Digest termene:', r.sent.length, 'trimise', r.errors.length ? ('; erori: ' + r.errors.join(' | ')) : '');
+    })
+    .catch((e) => { metrics.jobError('digest-termene', e.message); console.error('Digest termene:', e.message); });
 }, 15 * 60 * 1000);
 
 // Reset zilnic al contului demo (dupa ora 04:00): junk-ul vizitatorilor dispare peste noapte
@@ -831,8 +845,8 @@ safeInterval('demo-reset', () => {
   const s = d.settings.demoReset || (d.settings.demoReset = {});
   if (s.lastDate === today || new Date().getHours() < 4) return;
   s.lastDate = today;
-  try { const r = resetDemo(); if (r.ok) console.log('Demo resetat din snapshot.'); db.save(); }
-  catch (e) { console.error('Demo reset:', e.message); }
+  try { const r = resetDemo(); if (r.ok) { metrics.jobResult('demo-reset', 'resetat din snapshot'); console.log('Demo resetat din snapshot.'); } db.save(); }
+  catch (e) { metrics.jobError('demo-reset', e.message); console.error('Demo reset:', e.message); }
 }, 15 * 60 * 1000);
 
 // Igiena rate-limit: fara curatare, map-urile ar creste nelimitat (cate o intrare per IP esuat)
@@ -846,8 +860,12 @@ safeInterval('rate-limit-hygiene', () => {
 safeInterval('spv-poll', () => {
   const vreoFirma = db.get().firme.some((f) => f.anaf && f.anaf.autoPoll && anaf.connected(f.anaf));
   if (vreoFirma) {
-    pollSpv({ auto: true }).then((r) => { if (r.downloaded) console.log('Auto-poll SPV: ' + r.downloaded + ' recipise descarcate'); })
-      .catch((e) => console.error('Auto-poll SPV:', e.message || e));
+    pollSpv({ auto: true })
+      .then((r) => {
+        metrics.jobResult('spv-poll', 'verificate ' + r.checked + ', descarcate ' + r.downloaded);
+        if (r.downloaded) console.log('Auto-poll SPV: ' + r.downloaded + ' recipise descarcate');
+      })
+      .catch((e) => { metrics.jobError('spv-poll', e.message || e); console.error('Auto-poll SPV:', e.message || e); });
   }
 }, 15 * 60 * 1000);
 
@@ -858,6 +876,7 @@ function trackServerError(req, err) {
   const now = Date.now();
   const rid = req.reqId ? '[' + req.reqId + '] ' : '';
   err5xx.push({ t: now, m: rid + req.method + ' ' + req.originalUrl + ': ' + String((err && err.message) || err).slice(0, 160) });
+  metrics.recordError(err5xx[err5xx.length - 1].m); // vizibila in /api/metrics, nu doar in fereastra de alerta
   while (err5xx.length && err5xx[0].t < now - 15 * 60 * 1000) err5xx.shift();
   if (err5xx.length >= 5 && now - lastErrAlert > 3600 * 1000) {
     lastErrAlert = now;

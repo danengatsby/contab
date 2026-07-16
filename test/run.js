@@ -1790,7 +1790,21 @@ const snap = metricsMod.snapshot();
 eq('agregare: ruta cu cel mai mare timp total e prima', snap.routes[0].route, '/xml/saft');
 ok('agregare: n/avg/max corecte', snap.routes[0].n === 3 && snap.routes[0].totalMs === 900 && snap.routes[0].avgMs === 300 && snap.routes[0].maxMs === 700);
 ok('agregare: numara lente si 5xx', snap.routes[0].slow === 1 && snap.routes[0].err5xx === 1);
+// inelul de erori recente: plafonat, cele mai noi primele
+for (let k = 0; k < 25; k++) metricsMod.recordError('eroare ' + k);
+const snapE = metricsMod.snapshot();
+eq('erori recente: plafonate la 20', snapE.recentErrors.length, 20);
+eq('erori recente: cea mai noua prima', snapE.recentErrors[0].msg, 'eroare 24');
+eq('erori recente: cele mai vechi au iesit', snapE.recentErrors[19].msg, 'eroare 5');
+// starea job-urilor: tick / rezultat / eroare
+metricsMod.jobTick('backup');
+metricsMod.jobResult('backup', 'db-x.json');
+metricsMod.jobError('spv-poll', 'ANAF 503');
+const snapJ = metricsMod.snapshot().jobs;
+ok('job: tick + rezultat notate', snapJ.backup.lastTickAt && snapJ.backup.lastResult === 'db-x.json' && snapJ.backup.errors === 0);
+ok('job: eroarea notata si numarata', snapJ['spv-poll'].lastError === 'ANAF 503' && snapJ['spv-poll'].errors === 1);
 metricsMod.reset();
+ok('reset: erori si joburi golite', metricsMod.snapshot().recentErrors.length === 0 && Object.keys(metricsMod.snapshot().jobs).length === 0);
 
 section('Service layer firme: autorizarea dublata (src/firmeService.js)');
 const fsvc = require('../src/firmeService');
