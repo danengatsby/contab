@@ -2016,6 +2016,41 @@ const fc2 = cfsvc.setFiscalConfig({ reset: true });
 ok('reset: custom sters + valorile standard revin', fc2.reset && dCfg.settings.fiscal === undefined && fc2.current.tvaStandard === fiscalT.DEFAULTS.tvaStandard);
 if (prevFiscalCfg !== undefined) { dCfg.settings.fiscal = prevFiscalCfg; fiscalT.applyConfig(prevFiscalCfg); } // restaurare
 
+section('Service layer inchideri fiscale (src/closingsService.js)');
+const clsvc = require('../src/closingsService');
+const firmaCl = db.getFirma(fidOk);
+const prevLockCl = firmaCl.lockedUntil || null;
+const prevLossCl = firmaCl.pierdereFiscala;
+firmaCl.lockedUntil = null;
+// gardele de firma si de format
+eq('inchidere TVA pe firma inexistenta -> 403', errStatus(() => clsvc.closeVat(9999, '2026-06')), 403);
+eq('inchidere TVA pe un AN intreg -> 400 (doar luna)', errStatus(() => clsvc.closeVat(fidOk, '2026')), 400);
+eq('inchidere TVA pe luna 13 -> 400', errStatus(() => clsvc.closeVat(fidOk, '2026-13')), 400);
+eq('inchidere anuala fara an -> 400', errStatus(() => clsvc.closeYear(fidOk, null)), 400);
+eq('impozit pe profit fara an -> 400', errStatus(() => clsvc.closeProfitTax(fidOk, {}, null)), 400);
+// blocarea perioadei la inchiderea TVA: se blocheaza si fara TVA de regularizat, doar inainte
+const cv1 = clsvc.closeVat(fidOk, '2035-01');
+ok('perioada blocata chiar si fara TVA de regularizat', cv1.lockedUntil === '2035-01' && cv1.posted === false);
+eq('inchiderea lunii urmatoare avanseaza blocajul', clsvc.closeVat(fidOk, '2035-02').lockedUntil, '2035-02');
+eq('inchiderea unei luni mai VECHI nu da blocajul inapoi', clsvc.closeVat(fidOk, '2034-12').lockedUntil, '2035-02');
+// inchiderea anuala pe un an fara rulaje: nimic postat
+ok('an fara rulaje: posted=false, fara nota', clsvc.closeYear(fidOk, '2035').posted === false && !db.get().entries.some((e) => e.firmaId === fidOk && e.tip === 'inchidere_an' && e.period === '2035-12'));
+// optiunile impozitului: pierderea explicita bate pierderea memorata pe firma
+firmaCl.pierdereFiscala = { 2034: 500 };
+eq('pierderea memorata pe anul precedent se preia implicit', clsvc.profitTaxOptions(fidOk, {}, 2035).pierdereReportata, 500);
+eq('pierderea explicita are prioritate', clsvc.profitTaxOptions(fidOk, { pierdereReportata: 100 }, 2035).pierdereReportata, 100);
+// impozitul pe profit: dubla inregistrare refuzata; pierderea se memoreaza si la impozit 0
+db.get().entries.push({ id: 'cl-svc-dbl', firmaId: fidOk, data: '2036-12-31', period: '2036-12', tip: 'impozit_profit', tipNume: 'Impozit pe profit', lines: [], system: true });
+eq('impozitul deja inregistrat pe an -> 400', errStatus(() => clsvc.closeProfitTax(fidOk, {}, '2036')), 400);
+db.get().entries = db.get().entries.filter((e) => e.id !== 'cl-svc-dbl');
+const cpt = clsvc.closeProfitTax(fidOk, {}, '2035');
+ok('an fara profit: posted=false + pierderea de reportat memorata pe firma', cpt.posted === false && firmaCl.pierdereFiscala['2035'] !== undefined);
+// repartizarea rezultatului: sold 121 zero -> nimic de repartizat
+ok('121 zero: posted=false, fara nota', clsvc.distributeResult(fidOk, '2035').posted === false && !db.get().entries.some((e) => e.firmaId === fidOk && e.tip === 'repartizare_rezultat' && e.period === '2035-12'));
+// restaurare
+firmaCl.lockedUntil = prevLockCl;
+if (prevLossCl === undefined) delete firmaCl.pierdereFiscala; else firmaCl.pierdereFiscala = prevLossCl;
+
 section('Metrici de performanta pe ruta (src/metrics.js)');
 const metricsMod = require('../src/metrics');
 metricsMod.reset();
