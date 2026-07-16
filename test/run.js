@@ -1874,6 +1874,51 @@ const tvaR = esvc.tvaExigibilitate(fidOk, { brut: 1210, cota: 21 }, stubDeps);
 ok('TVA din suta marita: 1210 la 21% -> 210, baza 1000, nota system', tvaR.tva === 210 && tvaR.entry.tvaExig.baza === 1000 && tvaR.entry.system === true && tvaR.entry.tip === 'exigibilitate_tva_colectata');
 db.get().entries = db.get().entries.filter((e) => e.id !== tvaR.entry.id); // curatenie
 
+section('Service layer mesagerie (src/messagesService.js)');
+const msvc = require('../src/messagesService');
+const msgsPure = require('../src/messages');
+const dMsg = db.get(); dMsg.messages = dMsg.messages || []; dMsg.users = dMsg.users || [];
+dMsg.users.push({ id: 9101, username: 'u-msg' }, { id: 9102, username: 'alt-user' });
+const aUserM = { user: { id: 9101, username: 'u-msg' }, isAdmin: false };
+const aAltM = { user: { id: 9102, username: 'alt-user' }, isAdmin: false };
+const aAdminM = { user: { id: 1, username: 'admin' }, isAdmin: true };
+// trimitere: validari + destinatar
+eq('mesaj gol fara atasament -> 400', errStatus(() => msvc.sendMessage(aUserM, { text: '  ' }, null)), 400);
+eq('mesaj peste MAX_LEN -> 400', errStatus(() => msvc.sendMessage(aUserM, { text: 'x'.repeat(msgsPure.MAX_LEN + 1) }, null)), 400);
+eq('adminul fara destinatar valid -> 400', errStatus(() => msvc.sendMessage(aAdminM, { text: 'salut', userId: 424242 }, null)), 400);
+// utilizatorul trimite; conversatia arhivata se redeschide automat
+dMsg.users.find((x) => x.id === 9101).supportArchived = true;
+const sm1 = msvc.sendMessage(aUserM, { text: 'am o intrebare' }, null);
+ok('trimitere utilizator: mesaj scris, necitit de admin, conversatia redeschisa', !sm1.fromAdmin && !sm1.message.readByAdmin && dMsg.users.find((x) => x.id === 9101).supportArchived === false);
+// adminul deschide firul -> cererile devin citite; utilizator inexistent -> 404
+eq('fir pentru utilizator inexistent -> 404', errStatus(() => msvc.threadForAdmin(424242)), 404);
+msvc.threadForAdmin(9101);
+eq('deschiderea firului marcheaza cererile citite', msgsPure.unreadForAdmin(dMsg.messages), 0);
+// raspunsul adminului + inbox-ul utilizatorului il marcheaza citit
+const sm2 = msvc.sendMessage(aAdminM, { userId: 9101, text: 'raspuns' }, null);
+ok('raspuns admin: fromAdmin + necitit de utilizator', sm2.fromAdmin && !sm2.message.readByUser);
+msvc.inbox(aUserM);
+eq('inbox-ul utilizatorului marcheaza raspunsurile citite', msgsPure.unreadForUser(dMsg.messages, 9101), 0);
+// editare: doar propriile mesaje; golirea e refuzata
+eq('utilizatorul editeaza mesajul adminului -> 403', errStatus(() => msvc.editMessage(aUserM, sm2.message.id, 'hack')), 403);
+eq('editare mesaj inexistent -> 404', errStatus(() => msvc.editMessage(aAdminM, 'msg-inexistent', 'x')), 404);
+eq('golirea unui mesaj fara atasament -> 400', errStatus(() => msvc.editMessage(aAdminM, sm2.message.id, '  ')), 400);
+ok('adminul isi editeaza raspunsul', !!msvc.editMessage(aAdminM, sm2.message.id, 'raspuns corectat').message.editedAt);
+// atasamente: accesul altui utilizator -> 403, fisier lipsa pe disc -> 404
+const smAtt = msvc.sendMessage(aUserM, { text: 'cu fisier' }, { name: 'f.pdf', storedName: 'test-inexistent-9101.pdf', size: 1, mime: 'application/pdf' });
+eq('mesaj fara atasament -> 404', errStatus(() => msvc.attachmentFile(aUserM, sm1.message.id)), 404);
+eq('atasamentul altui utilizator -> 403', errStatus(() => msvc.attachmentFile(aAltM, smAtt.message.id)), 403);
+eq('fisier lipsa pe disc -> 404 (dupa ce accesul a trecut)', errStatus(() => msvc.attachmentFile(aUserM, smAtt.message.id)), 404);
+// stergere (admin) + arhivare
+eq('stergere mesaj inexistent -> 404', errStatus(() => msvc.deleteMessage('msg-inexistent')), 404);
+eq('stergerea cu atasament lipsa pe disc nu crapa (best-effort)', errStatus(() => msvc.deleteMessage(smAtt.message.id)), null);
+ok('mesajul a disparut', !dMsg.messages.some((m) => m.id === smAtt.message.id));
+eq('arhivare pentru utilizator inexistent -> 404', errStatus(() => msvc.archiveThread(424242, true)), 404);
+ok('arhivare + redeschidere', msvc.archiveThread(9101, true).archived === true && msvc.archiveThread(9101, false).archived === false);
+// curatenie
+dMsg.messages = dMsg.messages.filter((m) => m.userId !== 9101);
+dMsg.users = dMsg.users.filter((x) => x.id !== 9101 && x.id !== 9102);
+
 section('Metrici de performanta pe ruta (src/metrics.js)');
 const metricsMod = require('../src/metrics');
 metricsMod.reset();
