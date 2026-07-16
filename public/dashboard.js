@@ -65,29 +65,60 @@ export async function loadDashboard() {
 }
 // Primii pași (onboarding): checklist viu pentru firmele proaspete — dispare singur după
 // ce firma are câteva înregistrări. Fiecare pas se bifează din starea REALĂ a datelor.
+function pasiOnboarding(p) {
+  return [
+    { done: p.firmaCompletata, ic: '🏢', t: 'Completează datele firmei', d: 'Denumirea, CUI-ul și dacă e plătitoare de TVA — apar pe facturi și în declarații.', go: 'setari' },
+    { done: p.arePartener, ic: '🤝', t: 'Adaugă primul partener', d: 'Un client sau un furnizor cu care lucrezi — CUI-ul e de ajuns, restul se completează singur.', go: 'parteneri' },
+    { done: p.documentInregistrat, ic: '📥', t: 'Înregistrează primul document', d: 'O factură primită, un bon sau o chitanță — poză sau PDF; aplicația citește singură cifrele.', go: 'documente' },
+    { done: p.facturaEmisa, ic: '📤', t: 'Emite prima factură', d: 'Client + ce vinzi; numărul, PDF-ul și e-Factura se generează automat.', go: 'documente', scroll: 'band-iesire' },
+    { done: p.nrInregistrari >= 3, ic: '✅', t: 'Vezi ce a rezultat', d: 'Situația firmei se construiește singură din documente — banii, TVA-ul, profitul.', go: 'ghid' },
+  ];
+}
+function stepsHtml(pasi) {
+  return pasi.map((x, i) => `
+    <button class="fstep ${x.done ? 'done' : ''}" data-go="${x.go}" ${x.scroll ? `data-scroll="${x.scroll}"` : ''} aria-label="Pasul ${i + 1}: ${x.t}${x.done ? ' — gata' : ''}">
+      <span class="fstep-check" aria-hidden="true">${x.done ? '✔' : i + 1}</span>
+      <span class="fstep-body"><b>${x.ic} ${x.t}</b><span class="d">${x.d}</span></span>
+      <span class="fstep-go" aria-hidden="true">${x.done ? '' : '→'}</span>
+    </button>`).join('');
+}
+function wireSteps(rootSel, after) {
+  $$(rootSel + ' .fstep').forEach((b) => b.addEventListener('click', () => {
+    deps.goTab(b.dataset.go);
+    if (b.dataset.scroll) setTimeout(() => { const el = document.getElementById(b.dataset.scroll); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
+    if (after) after();
+  }));
+}
 function renderPrimiiPasi(p) {
   const card = $('#primiiPasiCard'); if (!card) return;
   // firma are deja activitate -> nu mai e nevoie de ghidaj
   if (!p || (p.nrInregistrari >= 5 && p.firmaCompletata)) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
-  const pasi = [
-    { done: p.firmaCompletata, ic: '🏢', t: 'Completează datele firmei', d: 'Denumirea, CUI-ul și dacă e plătitoare de TVA — apar pe facturi și în declarații.', go: 'setari' },
-    { done: p.documentInregistrat, ic: '📥', t: 'Înregistrează primul document', d: 'O factură primită, un bon sau o chitanță — poză sau PDF; aplicația citește singură cifrele.', go: 'documente' },
-    { done: p.facturaEmisa, ic: '📤', t: 'Emite prima factură', d: 'Client + ce vinzi; numărul, PDF-ul și e-Factura se generează automat.', go: 'documente', scroll: 'band-iesire' },
-    { done: p.nrInregistrari >= 3, ic: '✅', t: 'Vezi ce a rezultat', d: 'Situația firmei se construiește singură din documente — banii, TVA-ul, profitul.', go: 'ghid' },
-  ];
+  const pasi = pasiOnboarding(p);
   const gata = pasi.filter((x) => x.done).length;
-  $('#primiiPasiList').innerHTML = pasi.map((x, i) => `
-    <button class="fstep ${x.done ? 'done' : ''}" data-go="${x.go}" ${x.scroll ? `data-scroll="${x.scroll}"` : ''} aria-label="Pasul ${i + 1}: ${x.t}${x.done ? ' — gata' : ''}">
-      <span class="fstep-check" aria-hidden="true">${x.done ? '✔' : i + 1}</span>
-      <span class="fstep-body"><b>${x.ic} ${x.t}</b><span class="d">${x.d}</span></span>
-      <span class="fstep-go" aria-hidden="true">${x.done ? '' : '→'}</span>
-    </button>`).join('')
+  $('#primiiPasiList').innerHTML = stepsHtml(pasi)
     + `<div class="muted" style="font-size:12.5px;margin-top:6px">${gata} din ${pasi.length} pași făcuți · Nu știi ce tip de document ai? Folosește <b>🧭 Înregistrează ghidat</b> de mai jos.</div>`;
-  $$('#primiiPasiList .fstep').forEach((b) => b.addEventListener('click', () => {
-    deps.goTab(b.dataset.go);
-    if (b.dataset.scroll) setTimeout(() => { const el = document.getElementById(b.dataset.scroll); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
-  }));
+  wireSteps('#primiiPasiList');
+  maybeShowWizard(p, pasi);
+}
+// Wizard-ul de primă autentificare: overlay peste checklist, DOAR pentru firma complet goală
+// (nicio înregistrare) și doar dacă utilizatorul nu l-a închis vreodată („Mai târziu" persistă
+// pe cont, prin /api/onboarding/dismiss — nu în localStorage). Pașii sunt aceiași cu checklist-ul;
+// alegerea unui pas doar închide overlay-ul (checklist-ul rămâne), ✕/„Mai târziu" îl ascund definitiv.
+let fwShown = false;
+function maybeShowWizard(p, pasi) {
+  const w = $('#fwWizard'); if (!w) return;
+  if (fwShown || p.wizardAscuns || p.nrInregistrari > 0) return;
+  fwShown = true; // o singură dată per sesiune de pagină, chiar dacă dashboard-ul se reîncarcă
+  $('#fwSteps').innerHTML = stepsHtml(pasi);
+  wireSteps('#fwSteps', () => w.classList.add('hidden'));
+  const dismiss = async () => {
+    w.classList.add('hidden');
+    try { await api('/api/onboarding/dismiss', { method: 'POST' }); } catch (e) { /* demo sau offline: ramane doar pe sesiune */ }
+  };
+  $('#fwLater').addEventListener('click', dismiss, { once: true });
+  $('#fwClose').addEventListener('click', dismiss, { once: true });
+  w.classList.remove('hidden');
 }
 // Rezumatul executiv (mod simplu): situația firmei în limbaj de business, cu drill-down —
 // bani disponibili, de încasat, de plătit, obligații stat & salarii, rezultat + termene.

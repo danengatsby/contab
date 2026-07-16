@@ -419,6 +419,14 @@ async function main() {
     // Primii pasi (onboarding): starea pasilor reflecta datele reale ale firmei
     ok('dashboard: primii pasi prezenti si bifati din date (document inregistrat)',
       dashH.primiiPasi && dashH.primiiPasi.documentInregistrat === true && typeof dashH.primiiPasi.nrInregistrari === 'number');
+    ok('dashboard: pasii noi de onboarding (partener/produs) + starea wizardului',
+      typeof dashH.primiiPasi.arePartener === 'boolean' && typeof dashH.primiiPasi.areProdus === 'boolean' && dashH.primiiPasi.wizardAscuns === false);
+    // „mai tarziu" persista PE CONT (nu in localStorage): dupa dismiss si o autentificare noua
+    // (alta „sesiune de browser"), wizardul ramane ascuns
+    ok('dismiss wizard: ok', (await req('POST', '/api/onboarding/dismiss', { cookie: c1 })).json.ok === true);
+    ok('dupa dismiss: wizardAscuns=true', (await req('GET', '/api/dashboard', { cookie: c1 })).json.primiiPasi.wizardAscuns === true);
+    const reLog = await req('POST', '/api/login', { body: { username: 'user1', password: 'parola1' } });
+    ok('persistat intre sesiuni: ascuns si dupa o autentificare noua', (await req('GET', '/api/dashboard', { cookie: reLog.cookie })).json.primiiPasi.wizardAscuns === true);
 
     // ── Rapoarte dedicate: fisa de cont, situatie aprovizionari, situatie consumuri ──
     const fcH = await req('GET', '/api/fisa-cont?cont=4111&period=2026-06', { cookie: c1 });

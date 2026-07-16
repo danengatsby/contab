@@ -56,11 +56,16 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     // Primii pasi (onboarding pentru firme proaspete): starea reala a pasilor de inceput,
     // ca dashboard-ul sa ghideze un tester necontabil in loc sa-i arate doar zerouri.
+    // wizardAscuns e per UTILIZATOR (persistat pe cont, nu in localStorage — supravietuieste
+    // schimbarii de browser); conditiile de afisare deriva insa din datele reale ale firmei.
     const primiiPasi = {
       firmaCompletata: !!(v.company && v.company.cui),
+      arePartener: Object.keys(v.partners || {}).length > 0,
+      areProdus: (v.products || []).length > 0,
       documentInregistrat: (v.entries || []).some((e) => !e.system),
       facturaEmisa: (v.entries || []).some((e) => /^factura_vanzare/.test(e.tip || '')),
       nrInregistrari: (v.entries || []).length,
+      wizardAscuns: !!req.user.wizardAscuns,
     };
     // e-Factura B2B: facturile emise netrimise in SPV (termen legal 5 zile lucratoare) — alerta pe dashboard
     res.json(Object.assign(rep.dashboard(v), { efactura: decl.eFacturaNetrimise(v), primiiPasi }));
