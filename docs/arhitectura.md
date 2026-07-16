@@ -13,6 +13,10 @@
 - `src/saft.js` — generare SAF-T (D406): Header + MasterFiles (conturi, clienți, furnizori, TVA, mijloace fixe) + GeneralLedgerEntries + SourceDocuments.
 - `src/assets.js` — registrul de mijloace fixe + amortizare liniară/degresivă/accelerată (calcul lunar, plan, înregistrare 6811=281x).
 - `src/stocks.js` — gestiunea stocurilor cantitativ-valoric la cost mediu ponderat (CMP): fișă de magazie, stoc curent.
+- `src/stocksService.js` — **service layer** pentru scrierile de stocuri (nomenclatoare, mișcări,
+  postare notă, stoc inițial, inventariere/storno): rutele din `src/routes/stocks.js` sunt doar
+  puncte de intrare; validarea, regulile și **autorizarea pe firmă** (`reqFirma` + căutări doar în
+  firma dată, erori cu `status` HTTP) stau în serviciu — model de urmat la extragerea altor rute groase.
 - `src/payroll.js` — salarizare: nomenclator angajați (cu **spor** impozabil, **avans** → 425 și
   **rețineri** din net → 427) + stat de plată per angajat (CAS/CASS/impozit/CAM, rest de plată),
   PDF stat + **fluturaș per
