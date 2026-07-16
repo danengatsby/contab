@@ -241,6 +241,76 @@ function importInitialStock(fid, operator, b) {
   return { importate, produseNoi, gestiuniNoi, erori, totaluri: initialTotals(db.scoped(fid)) };
 }
 
+// ── Serii de documente (NIR/BC/AVIZ/CH) + numerotare ──
+
+/** Seriile per firma, cu valorile implicite create la prima folosire (migrare in-loc pentru CH). */
+function ensureDocSeries(d, fid) {
+  d.settings.docSeries = d.settings.docSeries || {};
+  if (!d.settings.docSeries[fid]) d.settings.docSeries[fid] = { NIR: { serie: 'NIR', next: 1 }, BC: { serie: 'BC', next: 1 }, AVIZ: { serie: 'AVZ', next: 1 } };
+  const s = d.settings.docSeries[fid];
+  if (!s.CH) s.CH = { serie: 'CH', next: 1 }; // chitante (serie adaugata ulterior — migrare in-loc)
+  return s;
+}
+
+function docSeries(fid) {
+  fid = reqFirma(fid);
+  return ensureDocSeries(db.get(), fid);
+}
+
+function updateDocSeries(fid, b) {
+  fid = reqFirma(fid); b = b || {};
+  const d = db.get();
+  const s = ensureDocSeries(d, fid);
+  for (const t of ['NIR', 'BC', 'AVIZ', 'CH']) {
+    if (b[t]) {
+      if (b[t].serie != null) s[t].serie = String(b[t].serie).slice(0, 10);
+      if (b[t].next != null && Number(b[t].next) > 0) s[t].next = Math.floor(Number(b[t].next));
+    }
+  }
+  db.save();
+  return { series: s };
+}
+
+/** Atribuie (sau reutilizeaza) numarul de document pentru un grup de miscari — un grup
+ *  numerotat o data pastreaza numarul la retiparire. */
+function assignDocNumber(fid, type, movs) {
+  fid = reqFirma(fid);
+  const d = db.get();
+  const existing = movs.map((m) => m.docNr && m.docNr[type]).find(Boolean);
+  if (existing) return existing;
+  const s = ensureDocSeries(d, fid)[type];
+  const nr = s.serie + '-' + String(s.next).padStart(5, '0');
+  s.next += 1;
+  for (const m of movs) { m.docNr = m.docNr || {}; m.docNr[type] = nr; }
+  db.save();
+  return nr;
+}
+
+/** Registrul documentelor de stoc emise (numerotate): NIR / bon de consum / aviz. Citire pura pe view. */
+function buildDocRegister(v) {
+  const byProd = new Map(v.products.map((p) => [p.id, p]));
+  const gById = new Map(v.gestiuni.map((g) => [g.id, g]));
+  const TYPE_LABEL = { NIR: 'NIR (receptie)', BC: 'Bon de consum', AVIZ: 'Aviz insotire' };
+  const groups = new Map();
+  for (const m of v.stockMovements) {
+    if (!m.docNr) continue;
+    const p = byProd.get(m.productId) || {};
+    const val = m.tip === 'receptie' ? Math.round(m.cantitate * m.pretUnitar * 100) / 100 : Math.round(stocks.movementValue(p, v.stockMovements, m.id) * 100) / 100;
+    for (const [type, nr] of Object.entries(m.docNr)) {
+      const key = type + '|' + nr;
+      if (!groups.has(key)) {
+        const g = gById.get(m.gestiuneId);
+        groups.set(key, { type, tip: TYPE_LABEL[type] || type, serieNr: nr, data: m.data, gestiune: g ? g.cod : '', document: m.document || '', operator: m.operator || '', valoare: 0, nrLinii: 0 });
+      }
+      const grp = groups.get(key);
+      grp.valoare = Math.round((grp.valoare + val) * 100) / 100;
+      grp.nrLinii += 1;
+      if (m.data < grp.data) grp.data = m.data;
+    }
+  }
+  return [...groups.values()].sort((a, b) => (a.type === b.type ? (a.serieNr < b.serieNr ? -1 : 1) : a.type < b.type ? -1 : 1));
+}
+
 // ── Inventariere ──
 
 /** Inregistreaza un inventar: liniile cu scriptic/faptic, miscarile de reglare si notele
@@ -338,4 +408,5 @@ module.exports = {
   addMovement, deleteMovement, postMovement,
   initialTotals, importInitialStock,
   createInventory, stornoInventory,
+  ensureDocSeries, docSeries, updateDocSeries, assignDocNumber, buildDocRegister,
 };

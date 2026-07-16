@@ -4,55 +4,26 @@
 // inventar + proces-verbal), seriile de documente (NIR/BC/AVIZ/CH), registrul documentelor de
 // stoc si documentele numerotate NIR (receptie) / bon de consum / aviz de insotire, plus fisa
 // de magazie a produsului si nota contabila in PDF. Modul de rute: register(app, ctx).
-// ensureDocSeries e infrastructura partajata (si cu chitanta din config.js), primita prin ctx.
+// Rutele raman bogate doar in PREZENTARE (asamblarea payload-ului PDF); scrierile — seriile de
+// documente si numerotarea — stau in src/stocksService.js, sub garda de firma (reqFirma).
 
 const db = require('../db');
 const pdf = require('../pdf');
 const stocks = require('../stocks');
 const acc = require('../accounting');
 const { round2 } = require('../util');
+const svc = require('../stocksService');
 
 module.exports = function register(app, ctx) {
-  const { S, activeId, canAccess, ensureDocSeries } = ctx;
+  const { S, activeId, canAccess } = ctx;
 
-  // Atribuie (sau reutilizeaza) numarul de document pentru un grup de miscari
-  function docNumberFor(req, type, movs) {
-    const d = db.get();
-    const fid = activeId(req);
-    const existing = movs.map((m) => m.docNr && m.docNr[type]).find(Boolean);
-    if (existing) return existing;
-    const s = ensureDocSeries(d, fid)[type];
-    const nr = s.serie + '-' + String(s.next).padStart(5, '0');
-    s.next += 1;
-    for (const m of movs) { m.docNr = m.docNr || {}; m.docNr[type] = nr; }
-    db.save();
-    return nr;
-  }
-
-  // Registrul documentelor de stoc emise (numerotate): NIR / bon de consum / aviz
-  function buildDocRegister(v) {
-    const byProd = new Map(v.products.map((p) => [p.id, p]));
-    const gById = new Map(v.gestiuni.map((g) => [g.id, g]));
-    const TYPE_LABEL = { NIR: 'NIR (receptie)', BC: 'Bon de consum', AVIZ: 'Aviz insotire' };
-    const groups = new Map();
-    for (const m of v.stockMovements) {
-      if (!m.docNr) continue;
-      const p = byProd.get(m.productId) || {};
-      const val = m.tip === 'receptie' ? Math.round(m.cantitate * m.pretUnitar * 100) / 100 : Math.round(stocks.movementValue(p, v.stockMovements, m.id) * 100) / 100;
-      for (const [type, nr] of Object.entries(m.docNr)) {
-        const key = type + '|' + nr;
-        if (!groups.has(key)) {
-          const g = gById.get(m.gestiuneId);
-          groups.set(key, { type, tip: TYPE_LABEL[type] || type, serieNr: nr, data: m.data, gestiune: g ? g.cod : '', document: m.document || '', operator: m.operator || '', valoare: 0, nrLinii: 0 });
-        }
-        const grp = groups.get(key);
-        grp.valoare = Math.round((grp.valoare + val) * 100) / 100;
-        grp.nrLinii += 1;
-        if (m.data < grp.data) grp.data = m.data;
-      }
+  // Erorile de business poarta `status`; restul urca la handlerul global (500 + log).
+  const run = (res, fn) => {
+    try { const out = fn(); if (out !== undefined) res.json(out); } catch (e) {
+      if (!e.status) throw e;
+      res.status(e.status).json({ error: e.message });
     }
-    return [...groups.values()].sort((a, b) => (a.type === b.type ? (a.serieNr < b.serieNr ? -1 : 1) : a.type < b.type ? -1 : 1));
-  }
+  };
 
   // ── Situatii de stoc (PDF/JSON) ──
   app.get('/pdf/stocks', (req, res) => {
@@ -78,24 +49,15 @@ module.exports = function register(app, ctx) {
   });
 
   // ── Serii de documente (NIR/BC/AVIZ/CH) ──
-  app.get('/api/doc-series', (req, res) => res.json(ensureDocSeries(db.get(), activeId(req))));
-  app.post('/api/doc-series', (req, res) => {
-    const d = db.get();
-    const s = ensureDocSeries(d, activeId(req));
-    const b = req.body || {};
-    for (const t of ['NIR', 'BC', 'AVIZ', 'CH']) {
-      if (b[t]) {
-        if (b[t].serie != null) s[t].serie = String(b[t].serie).slice(0, 10);
-        if (b[t].next != null && Number(b[t].next) > 0) s[t].next = Math.floor(Number(b[t].next));
-      }
-    }
-    db.save();
-    res.json({ ok: true, series: s });
-  });
+  app.get('/api/doc-series', (req, res) => run(res, () => svc.docSeries(activeId(req))));
+  app.post('/api/doc-series', (req, res) => run(res, () => {
+    const r = svc.updateDocSeries(activeId(req), req.body);
+    return { ok: true, series: r.series };
+  }));
 
   // ── Registrul documentelor de stoc + documentele numerotate ──
-  app.get('/api/doc-register', (req, res) => res.json(buildDocRegister(S(req))));
-  app.get('/pdf/doc-register', (req, res) => pdf.docRegisterPdf(res, S(req).company, buildDocRegister(S(req))));
+  app.get('/api/doc-register', (req, res) => res.json(svc.buildDocRegister(S(req))));
+  app.get('/pdf/doc-register', (req, res) => pdf.docRegisterPdf(res, S(req).company, svc.buildDocRegister(S(req))));
 
   app.get('/pdf/nir', (req, res) => {
     const v = S(req);
@@ -111,7 +73,7 @@ module.exports = function register(app, ctx) {
       return { cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc', cantitate: m.cantitate, pret: m.pretUnitar, valoare: Math.round(m.cantitate * m.pretUnitar * 100) / 100 };
     });
     pdf.nirPdf(res, v.company, {
-      serieNr: docNumberFor(req, 'NIR', recs),
+      serieNr: svc.assignDocNumber(activeId(req), 'NIR', recs),
       document: recs[0].document, furnizor: recs[0].furnizor || '', gestiune: g ? g.cod + ' — ' + g.denumire : '',
       data: recs[0].data, operator: recs[0].operator || '', lines, total: lines.reduce((s, l) => s + l.valoare, 0),
     });
@@ -132,7 +94,7 @@ module.exports = function register(app, ctx) {
       return { cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc', cantitate: m.cantitate, cmp, valoare };
     });
     pdf.bonConsumPdf(res, v.company, {
-      serieNr: docNumberFor(req, 'BC', isd),
+      serieNr: svc.assignDocNumber(activeId(req), 'BC', isd),
       document: isd[0].document, gestiune: g ? g.cod + ' — ' + g.denumire : '',
       data: isd[0].data, operator: isd[0].operator || '', lines, total: lines.reduce((s, l) => s + l.valoare, 0),
     });
@@ -153,7 +115,7 @@ module.exports = function register(app, ctx) {
       return { cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc', cantitate: m.cantitate, cmp, valoare };
     });
     pdf.avizPdf(res, v.company, {
-      serieNr: docNumberFor(req, 'AVIZ', trs),
+      serieNr: svc.assignDocNumber(activeId(req), 'AVIZ', trs),
       document: trs[0].document, expeditor: nm(src), destinatar: nm(dst),
       data: trs[0].data, operator: trs[0].operator || '', lines, total: lines.reduce((s, l) => s + l.valoare, 0),
     });

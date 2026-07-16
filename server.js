@@ -36,6 +36,7 @@ const presence = require('./src/presence');
 const validate = require('./src/validate');
 const { sendMail, sendNotifMail, sendDeadlineDigests } = require('./src/notify');
 const { pollSpv } = require('./src/anafService'); // auto-poll job; restul e in src/routes/anaf.js
+const { ensureDocSeries } = require('./src/stocksService'); // serii de documente (ctx pentru config.js/chitante)
 const efacturaImport = require('./src/efacturaImport');
 const plans = require('./src/plans');
 const billing = require('./src/billing');
@@ -748,16 +749,9 @@ app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
 // Situatii financiare + recapitulatii declaratii + registre (PDF/JSON): src/routes/reports.js
 require('./src/routes/reports')(app, { S });
 // numerotare secventiala a documentelor de stoc (serie + numar), per firma si tip
-function ensureDocSeries(d, fid) {
-  d.settings.docSeries = d.settings.docSeries || {};
-  if (!d.settings.docSeries[fid]) d.settings.docSeries[fid] = { NIR: { serie: 'NIR', next: 1 }, BC: { serie: 'BC', next: 1 }, AVIZ: { serie: 'AVZ', next: 1 } };
-  const s = d.settings.docSeries[fid];
-  if (!s.CH) s.CH = { serie: 'CH', next: 1 }; // chitante (serie adaugata ulterior — migrare in-loc)
-  return s;
-}
 // Documente de gestiune (situatii stoc, serii NIR/BC/AVIZ, NIR/bon/aviz, fisa magazie, nota PDF): src/routes/stockdocs.js
-// ensureDocSeries (mai sus) ramane in server.js: partajat cu chitanta din config.js.
-require('./src/routes/stockdocs')(app, { S, activeId, canAccess, ensureDocSeries });
+// Seriile de documente stau in service layer (src/stocksService.js); config.js le primeste prin ctx (chitanta CH).
+require('./src/routes/stockdocs')(app, { S, activeId, canAccess });
 
 // Utilitare demo (reset/snapshot) + incarcarea exemplului din ghid (admin): src/routes/demo.js
 // Intoarce resetDemo, folosit si de jobul zilnic de reset al contului demo (mai jos).
