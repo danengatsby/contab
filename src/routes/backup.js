@@ -14,7 +14,7 @@ module.exports = function register(app, ctx) {
 
   function doBackup() {
     const d = db.get();
-    db.flushMirror(); // oglinda JSON e scrisa cu intarziere — adu-o la zi inainte de copiere
+    db.flushMirror(true); // adu db.json la zi inainte de copiere (chiar si cu oglinda dezactivata)
     const r = backupLib.backupNow(db.DB_FILE, db.DATA_DIR, 30);
     d.settings.backup = d.settings.backup || {};
     d.settings.backup.lastAt = new Date().toISOString();
