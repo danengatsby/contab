@@ -1761,5 +1761,27 @@ ssvc.deleteProduct(fidOk, rp.product.id);
 ok('acelasi id, firma corecta: stergerea merge', !db.get().products.some((p) => p.id === rp.product.id));
 dbx.firme = dbx.firme.filter((f) => f.id !== 7777); // curatenie (doar in memorie)
 
+section('Service layer firme: autorizarea dublata (src/firmeService.js)');
+const fsvc = require('../src/firmeService');
+const fidPrima = dbx.firme[0].id;
+// gărzile refuza indiferent de apelant — nu depind de middleware-ul rutei
+const demoU = { id: 900, username: 'demo', role: 'user', firme: [fidPrima] };
+eq('demo nu creeaza firme -> 403', errStatus(() => fsvc.createFirma(demoU, { nume: 'X' })), 403);
+eq('demo nu sterge firme -> 403', errStatus(() => fsvc.deleteFirma(demoU, fidPrima, null)), 403);
+const strainU = { id: 901, username: 'strain', role: 'user', firme: [] };
+eq('firma straina: editare -> 403', errStatus(() => fsvc.updateFirma(strainU, fidPrima, { nume: 'Hack' })), 403);
+eq('firma straina: export JSON -> 403', errStatus(() => fsvc.exportBundle(strainU, fidPrima)), 403);
+eq('firma straina: export ZIP -> 403', errStatus(() => fsvc.exportZip(strainU, fidPrima)), 403);
+eq('firma straina: activare -> 403', errStatus(() => fsvc.activateFirma(strainU, fidPrima)), 403);
+eq('firma straina: clona de test -> 403', errStatus(() => fsvc.testClone(strainU, fidPrima)), 403);
+eq('import peste firma la care nu ai acces -> 403', errStatus(() => fsvc.importBundle(strainU, { firma: { nume: 'X' } }, { replace: true, activeFid: fidPrima })), 403);
+eq('export toate firmele fara admin -> 403', errStatus(() => fsvc.exportAllZip(strainU)), 403);
+// adminul aflat sub impersonare NU are drepturile lui de admin la stergere
+const admU = { id: 902, username: 'boss', role: 'admin', firme: [] };
+eq('admin sub impersonare: stergere firma straina -> 403', errStatus(() => fsvc.deleteFirma(admU, fidPrima, 55)), 403);
+// garda „cel putin o firma ramane" pentru utilizatorul cu o singura firma
+const unicU = { id: 903, username: 'unic', role: 'user', firme: [fidPrima], firmaActiva: fidPrima };
+eq('stergerea ultimei firme a utilizatorului -> 400', errStatus(() => fsvc.deleteFirma(unicU, fidPrima, null)), 400);
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);
