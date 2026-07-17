@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const auth = require('./auth');
+const migrations = require('./migrations');
 const { stringifyDb } = require('./util');
 
 // CONTAB_DATA_DIR: izolare pentru teste (backup/restore, uploads) — implicit data/ din repo.
@@ -151,6 +152,9 @@ function migrate(d) {
       u.mustChange = true;
     }
   }
+  // Dupa normalizarea de baza (idempotenta), aplica pasii de migrare VERSIONATI (o singura data,
+  // urmariti prin d.schemaVersion). migrate() e apelat pe toate caile de load -> un singur hook.
+  migrations.runMigrations(d);
   return d;
 }
 

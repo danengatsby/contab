@@ -2409,6 +2409,35 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   eq('restart dupa stop: tot 6 joburi, curatate din nou', jobs.stop(), 6);
 }
 
+section('Migrari DB versionate (src/migrations.js)');
+{
+  const mig = require('../src/migrations');
+  const quiet = { info: () => {} }; // fara zgomot in log din testele de migrare
+  // baza VECHE (fara schemaVersion): aplica pasii in ordine, stampileaza LATEST
+  const dOld = { entries: [{ id: 'e1', data: '2026-03-15' }, { id: 'e2', data: '2026-04-01', period: '2026-04' }] };
+  const applied = mig.runMigrations(dOld, { log: quiet });
+  eq('baza veche -> schemaVersion stampilat la LATEST', dOld.schemaVersion, mig.LATEST);
+  eq('v1 backfill: period derivat din data unde lipsea', dOld.entries[0].period, '2026-03');
+  eq('v1 backfill: period existent NU se atinge', dOld.entries[1].period, '2026-04');
+  ok('v1 a raportat inregistrarea atinsa', applied.some((a) => a.v === 1 && a.changed === 1));
+  // re-rulare pe baza deja migrata: idempotent prin VERSIUNE (niciun pas)
+  const applied2 = mig.runMigrations(dOld, { log: quiet });
+  eq('re-rulare: niciun pas aplicat', applied2.length, 0);
+  // baza deja la LATEST: pasii <= schemaVersion nu ruleaza
+  const dNew = { entries: [{ id: 'x', data: '2026-01-01' }], schemaVersion: mig.LATEST };
+  mig.runMigrations(dNew, { log: quiet });
+  ok('baza la zi: backfill nu ruleaza (period ramane absent)', dNew.entries[0].period === undefined);
+  // forward-only: o baza mai noua decat codul NU se coboara
+  const dFuture = { entries: [], schemaVersion: mig.LATEST + 5 };
+  mig.runMigrations(dFuture, { log: quiet });
+  eq('forward-only: versiunea mai noua nu se coboara', dFuture.schemaVersion, mig.LATEST + 5);
+  // versiuni strict crescatoare, fara duplicate (contract pentru autorii de pasi)
+  const vs = mig.MIGRATIONS.map((m) => m.v);
+  ok('versiunile migrarilor sunt strict crescatoare', vs.every((v, i) => i === 0 || v > vs[i - 1]));
+  // integrare: baza reala incarcata de db.js a primit schemaVersion prin hook-ul din migrate()
+  eq('db incarcata: schemaVersion = LATEST (hook in migrate)', require('../src/db').get().schemaVersion, mig.LATEST);
+}
+
 section('Fiscal — payroll & taxePfa ca functii pure (src/fiscal.js)');
 {
   const F = require('../src/fiscal');

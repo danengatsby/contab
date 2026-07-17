@@ -158,7 +158,7 @@ function persist(db) {
     if (lastHash.opening !== h) work.push({ kind: 'opening', json, h, hk: 'opening', name: 'opening_balances' });
   }
   {
-    const h = sha(stringifyDb({ s: db.settings || {}, f: db.firmaActiva, q: db.seq }));
+    const h = sha(stringifyDb({ s: db.settings || {}, f: db.firmaActiva, q: db.seq, v: db.schemaVersion != null ? db.schemaVersion : 0 }));
     if (lastHash.meta !== h) {
       work.push({
         kind: 'meta', h, hk: 'meta', name: 'meta',
@@ -166,6 +166,7 @@ function persist(db) {
           ['settings', stringifyDb(db.settings || {})],
           ['firmaActiva', stringifyDb(db.firmaActiva != null ? db.firmaActiva : 1)],
           ['seq', stringifyDb(db.seq != null ? db.seq : 1)],
+          ['schemaVersion', stringifyDb(db.schemaVersion != null ? db.schemaVersion : 0)],
         ],
       });
     }
@@ -214,6 +215,7 @@ async function hydrate(defaults) {
   db.settings = meta.settings || (defaults ? JSON.parse(JSON.stringify(defaults.settings)) : {});
   db.firmaActiva = meta.firmaActiva != null ? meta.firmaActiva : 1;
   db.seq = meta.seq != null ? meta.seq : 1;
+  if (meta.schemaVersion != null) db.schemaVersion = meta.schemaVersion;
   return db;
 }
 
