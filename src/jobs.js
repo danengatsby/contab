@@ -18,8 +18,12 @@ const { trackServerError } = require('./serverErrors');
 // Ruleaza un job periodic cu plasa de siguranta: o eroare SINCRONA in callback (ex. un db.save()
 // care arunca) e prinsa si logata — nu doboara procesul si nu impiedica rulele urmatoare. Erorile
 // ASINCRONE raman tratate pe .catch-ul promisiunilor din interior (retea/ANAF/SMTP).
+// Intervalele sunt unref() si tinute in `handles`: joburile nu au voie sa tina procesul in viata
+// (serverul traieste prin app.listen) si nici sa supravietuiasca unui stop() — altfel un test sau
+// un embedding care porneste joburile ar atarna la nesfarsit dupa inchiderea serverului.
+const handles = [];
 function safeInterval(label, fn, ms) {
-  return setInterval(() => {
+  const t = setInterval(() => {
     metrics.jobTick(label); // starea job-urilor apare in /api/metrics (admin)
     try { fn(); }
     catch (e) {
@@ -28,6 +32,16 @@ function safeInterval(label, fn, ms) {
       try { trackServerError({ method: 'JOB', originalUrl: label }, e); } catch (_) { /* ignora */ }
     }
   }, ms);
+  if (t.unref) t.unref();
+  handles.push(t);
+  return t;
+}
+
+/** Opreste toate joburile pornite; intoarce cate intervale a curatat (idempotent). */
+function stop() {
+  let n = 0;
+  while (handles.length) { clearInterval(handles.pop()); n += 1; }
+  return n;
 }
 
 function start(ctx) {
@@ -92,6 +106,8 @@ function start(ctx) {
         .catch((e) => { metrics.jobError('spv-poll', e.message || e); console.error('Auto-poll SPV:', e.message || e); });
     }
   }, 15 * 60 * 1000);
+
+  return { stop };
 }
 
-module.exports = { start };
+module.exports = { start, stop };
