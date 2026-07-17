@@ -949,6 +949,11 @@ async function main() {
     const audit = await req('GET', '/api/audit', { cookie: cAdm });
     const upAudit = (audit.json || []).find((a) => a.action === 'document.upload');
     ok('auditul consemneaza upload-ul de document (nume + KB, fara continut)', !!upAudit && /KB\)/.test(upAudit.detail));
+    // export CSV al auditului (arhiva/GDPR): antet CSV + coloane; sistemul e admin-only
+    const acsv = await req('GET', '/csv/audit', { cookie: cAdm });
+    ok('/csv/audit: text/csv cu antetul de coloane', acsv.status === 200 && /Data \(UTC\);Utilizator;Actiune/.test(acsv.text));
+    eq('/csv/audit/system: non-admin -> 403', (await req('GET', '/csv/audit/system', { cookie: c1 })).status, 403);
+    eq('/csv/audit/system: admin -> 200 CSV', (await req('GET', '/csv/audit/system', { cookie: cAdm })).status, 200);
     // exporturile XML fiscale lasa urma in audit (cine a descarcat ce); PDF/CSV nu (doar log)
     await req('GET', '/xml/d300?period=2026-06', { cookie: c1 });
     await req('GET', '/pdf/balance?period=2026-06', { cookie: c1 });

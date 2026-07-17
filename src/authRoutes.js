@@ -21,6 +21,7 @@ const billing = require('./billing');
 const metrics = require('./metrics');
 const { sendMail, sendNotifMail } = require('./notify');
 const { sendList } = require('./paginate');
+const { toCsv } = require('./csv');
 const { currentUser, allowedFirme, publicUser, startSession, setTrustedDevice, deviceTrusted, isLocked, bumpFail, clearFails, attemptKey } = require('./session');
 const { period: periodOf } = require('./util');
 
@@ -179,6 +180,16 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (req.query.limit != null && req.query.limit !== '') return sendList(req, res, list, { label: '/api/audit/system' });
     res.json(list.slice(0, 300));
   });
+  // Export CSV al jurnalului de audit (arhiva / control intern / GDPR): TOT ce e retinut (plafon
+  // 3000 in memorie), nu doar cele 300 afisate. Firma curenta pt oricine; sistemul doar admin.
+  function auditCsv(res, list, filename) {
+    const rows = list.map((a) => [a.ts, a.username || '', a.action, a.detail || '', a.viaAdmin || '']);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
+    res.send(toCsv(['Data (UTC)', 'Utilizator', 'Actiune', 'Detaliu', 'Prin admin'], rows));
+  }
+  app.get('/csv/audit', (req, res) => auditCsv(res, auditList(req, activeId(req)), 'audit-firma.csv'));
+  app.get('/csv/audit/system', requireAdmin, (req, res) => auditCsv(res, auditList(req, null), 'audit-sistem.csv'));
 
   // Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare
   // primii. Include si diagnosticele de proces (memorie, Node, driver) — DOAR pentru admin.

@@ -186,6 +186,8 @@ export async function renderAudit() {
   if (!isAdmin) AUDIT_SCOPE = 'firma';
   $('#auditScopeFirma') && $('#auditScopeFirma').classList.toggle('active', AUDIT_SCOPE === 'firma');
   $('#auditScopeSystem') && $('#auditScopeSystem').classList.toggle('active', AUDIT_SCOPE === 'system');
+  // exportul CSV urmeaza scope-ul curent (firma / sistem)
+  const exp = $('#auditExport'); if (exp) exp.href = AUDIT_SCOPE === 'system' ? '/csv/audit/system' : '/csv/audit';
   let list;
   try { list = await api(AUDIT_SCOPE === 'system' ? '/api/audit/system' : '/api/audit'); } catch (e) { return; }
   if (!list.length) { $('#auditList').innerHTML = '<p class="muted">Nicio acțiune înregistrată ' + (AUDIT_SCOPE === 'system' ? 'la nivel de sistem.' : 'pentru firma curentă.') + '</p>'; return; }
