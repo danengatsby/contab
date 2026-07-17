@@ -2,7 +2,10 @@
 
 ## Arhitectură
 
-- `server.js` — server Express + rute API și PDF.
+- `server.js` — asamblarea aplicației: înregistrarea modulelor de rute cu ctx + `buildEntry`.
+  Infrastructura stă în module dedicate: `src/bootstrap.js` (middleware + garduri de acces),
+  `src/authRoutes.js` (nucleul de autentificare), `src/jobs.js` (joburile periodice),
+  `src/serverErrors.js` (erori globale + alertă), `src/lifecycle.js` (lock, listen, oprire curată).
 - `src/chartOfAccounts.js` — planul de conturi (clasele 1–8) + regula debit/credit.
 - `src/documentTypes/` — tipurile de documente și formulele contabile, pe module tematice
   (vânzări, cumpărări, trezorerie, salarii…); `index.js` le asamblează în ordinea din UI,
