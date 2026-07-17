@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const auth = require('./auth');
+const { stringifyDb } = require('./util');
 
 // CONTAB_DATA_DIR: izolare pentru teste (backup/restore, uploads) — implicit data/ din repo.
 const DATA_DIR = process.env.CONTAB_DATA_DIR || path.join(__dirname, '..', 'data');
@@ -160,7 +161,7 @@ function applyDefaults(d) {
 }
 function writeJson(file, data) {
   const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+  fs.writeFileSync(tmp, stringifyDb(data, 2));
   fs.renameSync(tmp, file);
 }
 function backupLegacyJson() {

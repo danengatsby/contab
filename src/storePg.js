@@ -1,6 +1,7 @@
 'use strict';
 
 // Strat relational PostgreSQL (pg, async). Acelasi layout ca src/store.js (SQLite):
+const { stringifyDb } = require('./util');
 // tabele reale per-colectie cu coloane id/"firmaId" indexate + coloana `data` JSONB
 // pentru restul campurilor. Aplicatia lucreaza tot pe graful in memorie: `hydrate()`
 // il construieste din tabele, `persist(db)` il scrie inapoi.
@@ -129,7 +130,7 @@ function persist(db) {
       firmaId: c.firma && item && item.firmaId != null ? asInt(item.firmaId) : null,
       data: item,
     }));
-    const json = JSON.stringify(rows);
+    const json = stringifyDb(rows);
     const h = sha(json);
     if (lastHash['a:' + c.key] !== h) work.push({ kind: 'array', c, items: rows, json, h, hk: 'a:' + c.key, name: c.key.toLowerCase() });
   }
@@ -139,8 +140,8 @@ function persist(db) {
       const byCui = db.partners[fid] || {};
       for (const cui of Object.keys(byCui)) rows.push({ firmaId: asInt(fid), cui: String(cui), data: byCui[cui] });
     }
-    const json = JSON.stringify(rows);
-    const h = sha(JSON.stringify(db.partners || {}));
+    const json = stringifyDb(rows);
+    const h = sha(stringifyDb(db.partners || {}));
     if (lastHash.partners !== h) work.push({ kind: 'partners', json, h, hk: 'partners', name: 'partners' });
   }
   {
@@ -152,19 +153,19 @@ function persist(db) {
         rows.push({ firmaId: asInt(fid), cont: String(cont), d: Number(v.d) || 0, c: Number(v.c) || 0 });
       }
     }
-    const json = JSON.stringify(rows);
-    const h = sha(JSON.stringify(db.openingBalances || {}));
+    const json = stringifyDb(rows);
+    const h = sha(stringifyDb(db.openingBalances || {}));
     if (lastHash.opening !== h) work.push({ kind: 'opening', json, h, hk: 'opening', name: 'opening_balances' });
   }
   {
-    const h = sha(JSON.stringify({ s: db.settings || {}, f: db.firmaActiva, q: db.seq }));
+    const h = sha(stringifyDb({ s: db.settings || {}, f: db.firmaActiva, q: db.seq }));
     if (lastHash.meta !== h) {
       work.push({
         kind: 'meta', h, hk: 'meta', name: 'meta',
         entries: [
-          ['settings', JSON.stringify(db.settings || {})],
-          ['firmaActiva', JSON.stringify(db.firmaActiva != null ? db.firmaActiva : 1)],
-          ['seq', JSON.stringify(db.seq != null ? db.seq : 1)],
+          ['settings', stringifyDb(db.settings || {})],
+          ['firmaActiva', stringifyDb(db.firmaActiva != null ? db.firmaActiva : 1)],
+          ['seq', stringifyDb(db.seq != null ? db.seq : 1)],
         ],
       });
     }
