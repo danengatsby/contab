@@ -21,6 +21,11 @@ npm start            # porneste pe http://localhost:8080  (sau PORT=3787 npm sta
 npm test             # suita completa: lint + verificari de module + verificari HTTP
 ```
 
+**Cerință Node:** driverul implicit `sqlite` folosește `node:sqlite`, deci cere **Node ≥ 22.13**
+(sau 22.5+ pornit cu `--experimental-sqlite`). Pe un Node mai vechi, pornirea eșuează cu un mesaj
+clar — folosește atunci `CONTAB_DB_DRIVER=pg` (PostgreSQL) sau `CONTAB_DB_DRIVER=json`, care merg
+pe orice Node. Producția rulează pe PostgreSQL. (Declarat și în `package.json` → `engines`.)
+
 Apoi deschide `http://localhost:8080` în browser. Pe prima pornire se creează contul
 `admin` / `admin` (ți se cere schimbarea parolei la prima autentificare).
 
