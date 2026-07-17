@@ -2,11 +2,13 @@
 
 // Bootstrap-ul aplicatiei, scos din server.js ca sa poata fi construit si in teste:
 //  - loadDotEnv:          incarca .env inainte de require-urile care citesc variabile
-//  - createApp:           instanta Express cu middleware-ul de infrastructura (helmet/CSP,
-//                         reqId, metrici, parsare body, static, sanitizare, multer + garda upload)
+//  - createApp:           intoarce { app, upload } — instanta Express cu middleware-ul de
+//                         infrastructura (helmet/CSP, reqId, metrici, parsare body, static,
+//                         sanitizare, multer + garda upload)
 //  - applySecurityGuards: gardurile transversale de acces (autentificare, mustChange,
 //                         drepturi granulare, paywall per-firma, plafon exporturi, urma exporturi)
-// Dependintele vin prin optiuni/ctx cu fallback pe modulele reale (seam de injectare).
+// Modulele aplicatiei (db/log/metrics/...) se require-uiesc IN functii, nu aici: bootstrap e
+// incarcat inainte de loadDotEnv, iar acele module isi citesc configuratia din env la incarcare.
 
 const express = require('express');
 const multer = require('multer');
@@ -27,13 +29,13 @@ function loadDotEnv(rootDir) {
   } catch (e) { /* ignora */ }
 }
 
-function createApp(options = {}) {
+function createApp() {
   const app = express();
-  const rootDir = options.rootDir || path.join(__dirname, '..');
-  const db = options.db || require('./db');
-  const log = options.log || require('./log');
-  const metrics = options.metrics || require('./metrics');
-  const uploadGuard = options.uploadGuard || require('./uploadGuard');
+  const rootDir = path.join(__dirname, '..');
+  const db = require('./db');
+  const log = require('./log');
+  const metrics = require('./metrics');
+  const uploadGuard = require('./uploadGuard');
   const helmet = require('helmet');
 
   // Reverse proxy: avem incredere DOAR in proxy-ul local (nginx pe 127.0.0.1) ca sa citim
@@ -41,7 +43,7 @@ function createApp(options = {}) {
   // folosi `true` (incredere in ORICE hop): un client care atinge direct portul aplicatiei ar
   // putea falsifica X-Forwarded-For si ocoli blocarea anti-brute-force (rate-limit cheiat pe IP).
   // Configurabil prin TRUST_PROXY pentru alte topologii: un numar de hop-uri ("2") sau o subretea.
-  const TRUST_PROXY = options.trustProxy || process.env.TRUST_PROXY || 'loopback';
+  const TRUST_PROXY = process.env.TRUST_PROXY || 'loopback';
   app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
 
   // Anteturi de securitate via helmet, cu CSP calibrat pentru aceasta aplicatie:
@@ -154,17 +156,16 @@ function createApp(options = {}) {
   const rawUploadSingle = upload.single.bind(upload);
   upload.single = (field) => [uploadLimiter, rawUploadSingle(field), uploadGuard.verifyUploadContent];
 
-  app.locals.bootstrap = { upload, uploadGuard, db, log, metrics };
-  return app;
+  return { app, upload };
 }
 
-function applySecurityGuards(app, ctx = {}) {
+function applySecurityGuards(app, ctx) {
   const { logAudit, activeId } = ctx;
-  const db = ctx.db || require('./db');
-  const log = ctx.log || require('./log');
-  const plans = ctx.plans || require('./plans');
-  const uploadGuard = ctx.uploadGuard || require('./uploadGuard');
-  const currentUser = ctx.currentUser || require('./session').currentUser;
+  const db = require('./db');
+  const log = require('./log');
+  const plans = require('./plans');
+  const uploadGuard = require('./uploadGuard');
+  const { currentUser } = require('./session');
 
   // Orice ruta de API/livrabile (pdf/xml/csv/efactura) cere sesiune, cu exceptia celor publice.
   const PUBLIC_PATHS = new Set(['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest']);

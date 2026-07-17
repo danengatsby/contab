@@ -24,14 +24,15 @@ const { statePlata, registruSalarii } = require('../src/payroll');
 
 let pass = 0; let fail = 0;
 
-section('Bootstrap: seam de injectare');
+section('Bootstrap: constructia aplicatiei');
 try {
   const bootstrap = require('../src/bootstrap');
   ok('modulul de bootstrap exista', typeof bootstrap === 'object');
   ok('bootstrap expune createApp', typeof bootstrap.createApp === 'function');
   ok('bootstrap expune loadDotEnv', typeof bootstrap.loadDotEnv === 'function');
-  const created = bootstrap.createApp();
-  ok('createApp intoarce o instanta express', !!created && typeof created.use === 'function');
+  const { app: createdApp, upload } = bootstrap.createApp();
+  ok('createApp intoarce o instanta express', !!createdApp && typeof createdApp.use === 'function');
+  ok('createApp intoarce upload cu lantul de garda', typeof upload.single === 'function' && Array.isArray(upload.single('f')));
 } catch (e) {
   ok('bootstrap init: fara exceptie', false);
   console.error(e && e.stack || e);
