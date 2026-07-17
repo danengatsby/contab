@@ -1672,7 +1672,7 @@ ok('SAF-T lunar: bine-format si cu perioada corecta', (() => { const x = saft.sa
 section('XSS: escaparea datelor externe la randare (public/app.js)');
 // app.js + ecranele extrase din el (periods/rapoarte/livrabile/mijloace/salarizare/stocuri/plan):
 // portile de escapare acopera tot codul de randare, indiferent in ce modul a ajuns
-const appJs = ['app', 'periods', 'rapoarte', 'livrabile', 'mijloace', 'salarizare', 'stocuri', 'plan']
+const appJs = ['app', 'periods', 'rapoarte', 'livrabile', 'mijloace', 'salarizare', 'stocuri', 'plan', 'authui', 'docflow', 'entries']
   .map((n) => require('fs').readFileSync(require('path').join(__dirname, '..', 'public', n + '.js'), 'utf8')).join('\n');
 // nucleul partajat (Etapa 0 a modularizarii frontendului): helperii comuni traiesc in core.js
 const coreJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'core.js'), 'utf8');
