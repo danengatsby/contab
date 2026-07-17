@@ -76,7 +76,9 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
 - Commit-uri tematice în română (titlu scurt + corp explicativ), o ramură pe temă, merge în `main`
   cu `--no-ff` (nu squash). `gh` nu e autentificat — PR-urile se deschid manual dacă e nevoie de review.
 - Teste: `test/run.js` e sincron (helper-ele `eq/ok/section`; `errStatus` pentru gărzile de serviciu);
-  `test/http.js` pornește serverul real (seed în `buildDb()`, cookie-uri prin `req()`, FormData nativ);
+  `test/http.js` pornește serverul real pe un **port efemer** (`freePort()` — nu mai fix; suita e
+  paralelizabilă, DBF e per-pid) și include un test de concurență (scrieri paralele pe `/api/entries`);
+  seed în `buildDb()`, cookie-uri prin `req()`, FormData nativ;
   `test/anaf.js` e async (stub pe `global.fetch` și pe funcțiile modulului `anaf`). La teste noi de
   rute HTTP, atenție: restore-ul din suita de backup readuce baza la snapshot.
 - Orice scriere externă (ANAF) trece prin `anafFetch` (timeout + retry doar pe GET); webhook-ul
