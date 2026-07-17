@@ -331,6 +331,16 @@ async function main() {
     for (const p of ['/pdf/situatii?year=2026', '/pdf/bilant?period=2026-12', '/pdf/pl?year=2026', '/pdf/cashflow?year=2026', '/pdf/capital?year=2026', '/pdf/note?year=2026']) {
       eq('PDF raportare ' + p + ' -> 200', (await req('GET', p, { cookie: c1 })).status, 200);
     }
+
+    // ── Fum pe generatoarele PDF (src/pdf/*): raspuns 200 cu continut PDF real (magic %PDF) ──
+    // Acopera cate un reprezentant din fiecare modul tematic al directorului src/pdf/.
+    for (const p of ['/pdf/journal?period=2026-06', '/pdf/ledger?period=2026-06', '/pdf/balance?period=2026-06',
+      '/pdf/cashbook?period=2026-06', '/pdf/fisa-cont?cont=4111&year=2026', '/pdf/analytic', '/pdf/aging',
+      '/pdf/registru-inventar?year=2026', '/pdf/registru-fiscal?year=2026', '/pdf/obligatii?year=2026',
+      '/pdf/assets?asOf=2026-12', '/pdf/doc-register']) {
+      const r = await req('GET', p, { cookie: c1 });
+      ok('PDF ' + p + ': 200 + magic %PDF', r.status === 200 && r.text.startsWith('%PDF'));
+    }
     ok('csv/partners: 200', (await req('GET', '/csv/partners', { cookie: c1 })).status === 200);
 
     // ── XML declaratii: generare + marcarea "generata" in registru + validare ──
