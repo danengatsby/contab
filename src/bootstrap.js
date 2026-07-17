@@ -170,6 +170,22 @@ function applySecurityGuards(app, ctx) {
   const uploadGuard = require('./uploadGuard');
   const { currentUser } = require('./session');
 
+  // ── CSRF (aparare in adancime peste SameSite=Lax): cererile MUTANTE catre API trebuie sa
+  // vina din propria origine. Browserele trimit Origin pe POST; LIPSA antetului e permisa
+  // (curl, teste, integrari server-to-server — CSRF cu cookie presupune un browser, iar acela
+  // trimite antetul). Webhook-ul Stripe e exceptat: vine extern si e autentificat prin
+  // semnatura, nu prin cookie. Rollback: CONTAB_CSRF=0.
+  const CSRF_OFF = process.env.CONTAB_CSRF === '0';
+  app.use((req, res, next) => {
+    if (CSRF_OFF || req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+    if (!/^\/(api|pdf|xml|csv|efactura)/.test(req.path) || req.path === '/api/stripe/webhook') return next();
+    const src = req.headers.origin || req.headers.referer;
+    if (!src) return next();
+    let host = null; try { host = new URL(src).host; } catch (_) { host = null; }
+    if (host && host === req.headers.host) return next();
+    return res.status(403).json({ error: 'Cerere respinsă (origine străină).' });
+  });
+
   // Orice ruta de API/livrabile (pdf/xml/csv/efactura) cere sesiune, cu exceptia celor publice.
   const PUBLIC_PATHS = new Set(['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest']);
   app.use((req, res, next) => {
@@ -181,6 +197,14 @@ function applySecurityGuards(app, ctx) {
     }
     next();
   });
+
+  // ── Plafon GENERAL pe API: per utilizator (per IP inainte de autentificare), fereastra de
+  // un minut. Plasa contra buclelor de client si scanarilor — generos fata de utilizarea
+  // normala (un dashboard incarca zeci de cereri, nu sute pe minut). CONTAB_RATE_API=0 il
+  // dezactiveaza; plafoanele SPECIFICE (login, register, upload, export) raman separate.
+  const RATE_API = Number(process.env.CONTAB_RATE_API || 600); // cereri/minut
+  const apiLimiter = uploadGuard.generalLimit(RATE_API, 60 * 1000);
+  app.use((req, res, next) => (/^\/(api|pdf|xml|csv|efactura)/.test(req.path) ? apiLimiter(req, res, next) : next()));
 
   // Schimbare de parola OBLIGATORIE (cont cu parola implicita): pana cand utilizatorul isi
   // pune o parola noua, orice actiune e blocata — raman permise doar identitatea, delogarea

@@ -38,8 +38,10 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
   `ctx = { S, activeId, canAccess, requireAdmin, logAudit… }`, `buildEntry`/`upsertPartner`
   (partajate de entries/bank/anaf/payroll) și `activeId`/`S` (izolarea pe firmă — sursa unică).
   Restul e spart pe module: **src/bootstrap.js** (`.env`, `createApp` cu helmet/CSP calibrat,
-  reqId, metrici, multer + garda upload; `applySecurityGuards` cu autentificare, mustChange,
-  drepturi granulare, paywall per-firmă `FIRMA_BILL_EXEMPT`, plafon exporturi),
+  reqId, metrici, multer + garda upload; `applySecurityGuards` cu garda CSRF pe origine
+  (`CONTAB_CSRF=0` rollback), autentificare, mustChange, drepturi granulare, paywall per-firmă
+  `FIRMA_BILL_EXEMPT`, plafon general de API (`CONTAB_RATE_API`, implicit 600/min per
+  utilizator/IP) și plafon exporturi),
   **src/authRoutes.js** (login/2FA, înscriere, resetare, impersonare, me/meta/health/metrics/audit),
   **src/jobs.js** (`safeInterval`: backup, digest, demo-reset, spv-poll, rate-limit-hygiene),
   **src/serverErrors.js** (fereastra 5xx + alertă email, handlerul global de erori, plasele pe
