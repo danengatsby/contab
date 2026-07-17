@@ -933,6 +933,10 @@ async function main() {
       met.json.process && typeof met.json.process.nodeVersion === 'string' && typeof met.json.process.memoryRssMb === 'number'
       && typeof met.json.process.driver === 'string' && typeof met.json.process.users === 'number' && met.json.process.uptimeSec >= 0);
     ok('metrici: erorile recente si joburile sunt expuse', Array.isArray(met.json.recentErrors) && met.json.jobs && typeof met.json.jobs === 'object');
+    // distributia per-firma (semnalul pentru partitionare — vezi docs/scalare-crestere.md)
+    ok('metrici: firmeLoad cu maxEntries + top pe firma', met.json.firmeLoad
+      && typeof met.json.firmeLoad.maxEntries === 'number' && Array.isArray(met.json.firmeLoad.top)
+      && met.json.firmeLoad.top.every((f) => typeof f.entries === 'number' && 'nume' in f));
     ok('metrici: contoarele extragerilor AI sunt expuse (n/fail/avgMs)',
       met.json.ai && typeof met.json.ai.n === 'number' && typeof met.json.ai.fail === 'number' && typeof met.json.ai.avgMs === 'number');
     // auditul de business: upload-urile facute mai devreme in suita au urma cu metadate
