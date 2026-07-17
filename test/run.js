@@ -1722,7 +1722,10 @@ ok('ctx fara cerere: nu arunca', typeof logger.ctx(null, { job: 'x' }) === 'obje
 
 section('Config fiscal centralizat & datat (src/fiscalConfig.js)');
 const fconf = require('../src/fiscalConfig');
-const dtSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'documentTypes.js'), 'utf8');
+// documentTypes e un director de module: poarta negativa scaneaza toate fisierele lui
+const dtDir = require('path').join(__dirname, '..', 'src', 'documentTypes');
+const dtSrc = require('fs').readdirSync(dtDir).filter((f) => f.endsWith('.js'))
+  .map((f) => require('fs').readFileSync(require('path').join(dtDir, f), 'utf8')).join('\n');
 ok('fiscalConfig are AN si DATA_ACTUALIZARE', typeof fconf.AN === 'number' && /^\d{4}-\d{2}-\d{2}$/.test(fconf.DATA_ACTUALIZARE));
 eq('FISCAL provine din fiscalConfig.RATES (sursa unica) — cas', fiscal.FISCAL.cas, fconf.RATES.cas);
 eq('FISCAL provine din fiscalConfig.RATES — tvaStandard', fiscal.FISCAL.tvaStandard, fconf.RATES.tvaStandard);
