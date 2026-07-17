@@ -6,13 +6,25 @@ const { stringifyDb } = require('./util');
 // `data` JSON pentru restul campurilor. Aplicatia continua sa lucreze pe graful in memorie:
 // `hydrate()` construieste obiectul din tabele, `persist(db)` il scrie inapoi intr-o tranzactie.
 
-// Ascunde avertismentul "SQLite is experimental" ca sa nu polueze logurile pm2.
+// Ascunde DOAR avertismentul "SQLite is experimental" ca sa nu polueze logurile pm2
+// (restul avertismentelor trec nefiltrate).
 const _emitWarning = process.emitWarning;
 process.emitWarning = function (w, ...rest) {
   if (String(w).includes('SQLite is an experimental')) return;
   return _emitWarning.call(process, w, ...rest);
 };
-const { DatabaseSync } = require('node:sqlite');
+// node:sqlite exista abia din Node 22.5 (sub flag pana la 22.13/23.4); pe Node mai vechi
+// require-ul arunca o eroare criptica DESI sqlite e driverul IMPLICIT. Garda de mai jos
+// transforma caderea intr-un mesaj actionabil (cerinta de Node + driverele alternative).
+function checkSqlite(mod, version) {
+  if (mod && mod.DatabaseSync) return mod;
+  throw new Error('Driverul sqlite are nevoie de node:sqlite (DatabaseSync), indisponibil pe Node '
+    + (version || process.version) + '. Cerinta: Node >= 22.13 (sau 22.5+ pornit cu --experimental-sqlite). '
+    + 'Alternative: CONTAB_DB_DRIVER=pg (PostgreSQL) sau CONTAB_DB_DRIVER=json (rollback).');
+}
+let sqliteMod = null;
+try { sqliteMod = require('node:sqlite'); } catch (e) { /* modul absent (Node < 22.5) -> mesajul gardei */ }
+const { DatabaseSync } = checkSqlite(sqliteMod);
 const crypto = require('crypto');
 
 // ── Dirty-tracking ──
@@ -263,4 +275,4 @@ function hydrate(defaults) {
 
 function close() { if (sdb) { try { sdb.close(); } catch (_) { /* ignore */ } sdb = null; } }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, checkSqlite };
