@@ -15,6 +15,7 @@ const metrics = require('../metrics');
 const { extractFromPdf } = require('../extractor');
 const { getType } = require('../documentTypes');
 const { round2, period: periodOf } = require('../util');
+const { sendList } = require('../paginate');
 
 // Detaliul de audit al unui upload: DOAR metadate (nume, dimensiune) — niciodata continut.
 const uploadDetail = (f) => f.originalname + ' (' + Math.max(1, Math.round(f.size / 1024)) + ' KB)';
@@ -136,7 +137,7 @@ module.exports = function register(app, ctx) {
   });
 
   app.get('/api/documents', (req, res) => {
-    res.json(S(req).documents.map((x) => ({ id: x.id, fileName: x.fileName, uploadedAt: x.uploadedAt })));
+    sendList(req, res, S(req).documents.map((x) => ({ id: x.id, fileName: x.fileName, uploadedAt: x.uploadedAt })), { label: '/api/documents' });
   });
 
   // Galerie documente primite: fiecare fisier incarcat, cu tipul (imagine/pdf) si articolul asociat.
@@ -157,7 +158,7 @@ module.exports = function register(app, ctx) {
         entry: e ? { id: e.id, tip: e.tip, tipNume: e.tipNume, data: e.data, partener: e.partener || '', document: e.document || '' } : null,
       };
     }).sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
-    res.json(docs);
+    sendList(req, res, docs, { label: '/api/documents/gallery' });
   });
 
   // Galerie documente emise: facturile catre clienti (grup Vanzari), fiecare cu PDF vizual + e-Factura.
@@ -174,6 +175,6 @@ module.exports = function register(app, ctx) {
       }
       return { id: e.id, tip: e.tip, tipNume: e.tipNume, data: e.data, period: e.period || periodOf(e.data), partener: e.partener || '', document: e.document || '', baza, tva, total: round2(baza + tva), eFactura: EFACT.has(e.tip) };
     }).sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
-    res.json(rows);
+    sendList(req, res, rows, { label: '/api/documents/emitted' });
   });
 };

@@ -640,6 +640,12 @@ async function main() {
     ok('cu limit: plic paginat (items/total/offset/limit)', Array.isArray(pg1.items) && pg1.items.length <= 2 && pg1.total === bare.length && pg1.limit === 2 && pg1.offset === 0);
     const pg2 = (await req('GET', '/api/entries?limit=2&offset=1', { cookie: c1 })).json;
     ok('offset decaleaza fereastra', pg2.offset === 1 && pg2.total === bare.length && (bare.length < 2 || pg2.items[0].id !== pg1.items[0].id));
+    // aceeasi garda pe rutele de documente (galerii): array simplu fara ?limit, plic cu ?limit
+    for (const p of ['/api/documents', '/api/documents/gallery', '/api/documents/emitted']) {
+      ok('doc ' + p + ': fara limit -> array (compatibil)', Array.isArray((await req('GET', p, { cookie: c1 })).json));
+      const dp = (await req('GET', p + '?limit=1', { cookie: c1 })).json;
+      ok('doc ' + p + ': cu limit -> plic { items, total }', Array.isArray(dp.items) && typeof dp.total === 'number');
+    }
     eq('faraSalarii: si citirea salarizarii e respinsa (403)', (await req('GET', '/api/angajati', { cookie: c1 })).status, 403);
     eq('faraSalarii: D112 XML respins (403)', (await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).status, 403);
     ok('drepturile pot fi ridicate inapoi', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: false, faraSalarii: false } } })).json.ok === true);
