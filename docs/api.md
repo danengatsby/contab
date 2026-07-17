@@ -193,7 +193,7 @@ Citiri pure pe firma activă; parametrii uzuali `?period=` / `?year=`.
 - `GET /api/livrabile?period=` — borderoul lunar: ce declarații se depun și termenele.
 - `GET /xml/d300|d394|d390|d112|d100|d205|saft?period=/an=` — XML-urile de declarații
   (validate structural înainte de servire; `/xml/saft` intră sub plafonul de export).
-- `GET /api/declarations` + `POST /api/declarations/status` — registrul depunerilor.
+- `GET /api/declarations` + `POST /api/declarations/set` — registrul depunerilor.
 - `GET /xml/efactura/:id` — factura UBL 2.1 (CIUS-RO); `GET /api/efactura-list?period=`.
 - ANAF/SPV (OAuth per firmă): `GET /api/anaf/authorize|callback|config`,
   `POST /api/anaf/upload|verify`, `GET /api/anaf/inbox|spv-mesaje`,
