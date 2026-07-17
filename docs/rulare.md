@@ -149,7 +149,9 @@ npm run seed         # din linia de comanda
   coloană `data` **JSONB**. Clientul `pg` e asincron, dar `save()`-ul aplicației rămâne sincron:
   driverul fotografiază sincron colecțiile modificate și scrie printr-o **coadă serială** (o
   singură tranzacție în zbor); oprirea curată așteaptă golirea cozii.
-- **`json`** — doar `data/db.json` (fără server de bază de date); util pentru rollback rapid și teste.
+- **`json`** — VECHI, păstrat doar ca rollback rapid de urgență (doar `data/db.json`, fără server de
+  bază de date). Nimic nu mai rulează implicit pe el — testele și instanțele de dev folosesc `sqlite`
+  (`CONTAB_TEST_DRIVER=json` există pentru verificarea căii de rollback); la pornire avertizează.
 
 **Migrare între drivere:** la prima pornire pe o bază relațională goală, dacă există `data/db.json`,
 conținutul e importat automat o singură dată (copie de siguranță în `data/db.pre-sqlite.json`,

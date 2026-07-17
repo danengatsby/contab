@@ -12,7 +12,7 @@ process.env.CONTAB_LOG_LEVEL = 'error'; // fara zgomot de la avertismentele de r
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-process.env.CONTAB_DB_DRIVER = 'json';
+process.env.CONTAB_DB_DRIVER = 'sqlite'; // ca in restul suitei; calea .sqlite e derivata din CONTAB_DB_FILE
 process.env.CONTAB_DB_FILE = process.env.CONTAB_DB_FILE || path.join(os.tmpdir(), 'contab-anaf-' + process.pid + '.json');
 
 const anafMod = require('../src/anaf');

@@ -171,7 +171,10 @@ function backupLegacyJson() {
 }
 
 // Driver vechi (rollback prin CONTAB_DB_DRIVER=json): persistenta pur JSON, atomica.
+// Nimic nu mai ruleaza implicit pe el (teste/dev/productie sunt pe sqlite/pg) — doar cale
+// de intoarcere de urgenta; avertizeaza ca sa nu ramana o instanta uitata pe el.
 function loadJson() {
+  console.warn('[contab] ATENTIE: driverul JSON e pastrat doar ca rollback (vechi). Foloseste sqlite (implicit) sau pg.');
   if (fs.existsSync(JSON_FILE)) {
     try { db = migrate(applyDefaults(JSON.parse(fs.readFileSync(JSON_FILE, 'utf8')))); }
     catch (e) { db = JSON.parse(JSON.stringify(DEFAULT_DB)); }

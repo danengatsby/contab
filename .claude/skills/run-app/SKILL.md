@@ -24,10 +24,11 @@ curl -s http://127.0.0.1:8080/api/health   # {"ok":true,...,"firme":N}
 
 ## 2. Instanță de dev izolată (fără să atingi datele live)
 
-Cum o pornesc și testele HTTP (DB temporar JSON, Stripe dezactivat determinist):
+Cum o pornesc și testele HTTP (DB temporar sqlite — calea `.sqlite` e derivată din
+`CONTAB_DB_FILE`; Stripe dezactivat determinist):
 
 ```bash
-PORT=3891 CONTAB_DB_DRIVER=json CONTAB_DB_FILE=/tmp/contab-dev.json \
+PORT=3891 CONTAB_DB_DRIVER=sqlite CONTAB_DB_FILE=/tmp/contab-dev.json \
   CONTAB_JSON_MIRROR=0 STRIPE_SECRET_KEY='' node server.js &
 timeout 20 bash -c 'until curl -sf http://127.0.0.1:3891/api/health >/dev/null; do sleep 1; done'
 ```

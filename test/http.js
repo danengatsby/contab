@@ -1,7 +1,8 @@
 'use strict';
 
 // Teste de integrare HTTP: porneste serverul pe un port de test cu o baza temporara
-// (driver JSON, fara oglinda) si verifica rutele critice cap-coada: autentificare,
+// (driver sqlite implicit, ca in productie de dinainte de pg; CONTAB_TEST_DRIVER=json
+// pentru calea de rollback) si verifica rutele critice cap-coada: autentificare,
 // autorizarea pe firma, filtrul de upload, blocarea probei expirate, registrul
 // depunerilor si portofoliul. Ruleaza in `npm test`, dupa suita de module.
 
@@ -93,7 +94,7 @@ async function main() {
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     // plafoane de upload/export mici, ca testele 429 sa nu faca zeci de cereri; conturile
     // din restul suitei raman sub ele (bucket-urile sunt per utilizator)
-    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'json', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5' }),
+    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5' }),
     stdio: 'ignore',
   });
   const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
@@ -853,7 +854,7 @@ async function main() {
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-        env: Object.assign({}, process.env, { PORT: String(PORT + 1), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'json', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '' }),
+        env: Object.assign({}, process.env, { PORT: String(PORT + 1), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '' }),
         stdio: 'ignore',
       });
       const t = setTimeout(() => { try { c2p.kill(); } catch (_) { /* */ } resolve('timeout'); }, 8000);

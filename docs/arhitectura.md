@@ -45,7 +45,8 @@
   `/csv/balance`, `/csv/ledger`, `/csv/analytic`, `/csv/partners`); butoane „⬇ CSV” în tab-uri.
 - `src/db.js` — stratul de persistență, cu driver comutabil prin `CONTAB_DB_DRIVER`:
   **`sqlite`** (implicit, `src/store.js`, `node:sqlite`), **`pg`** (PostgreSQL, `src/storePg.js`,
-  pachetul `pg`) sau **`json`** (vechi, doar `data/db.json` — rollback rapid). Indiferent de driver,
+  pachetul `pg`) sau **`json`** (vechi, doar `data/db.json` — exclusiv rollback de urgență; testele
+  și instanțele de dev rulează implicit pe `sqlite`). Indiferent de driver,
   aplicația lucrează pe același graf în memorie; driverele relaționale păstrează în plus o
   **oglindă `data/db.json`** pentru backup și rollback. Vezi „Baze de date” mai jos.
 - `public/` — interfața web (HTML/CSS/JS vanilla).
