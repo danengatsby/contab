@@ -142,6 +142,24 @@ npm run seed         # din linia de comanda
 ```
 
 
+### Validarea oficială ANAF a declarațiilor (opt-in, prin Docker)
+
+Aplicația face o pre-validare rapidă la generare (`src/validate.js`: bine-format + câmpuri
+obligatorii + CUI/perioadă). Pentru validarea **oficială** — aceeași pe care o face ANAF la
+depunere — există un script care rulează DUKIntegrator (validatorul oficial) prin Docker,
+fără să instaleze Java pe server:
+
+```bash
+scripts/valideaza-duk.sh D300 decont.xml     # 0 = valid, 1 = erori (afișate), 2 = tip greșit
+```
+
+La prima rulare descarcă distribuția DUKIntegrator și validatorul declarației din manifestul
+oficial (`versiuni.xml`); validatoarele se reîmprospătează automat după 7 zile (ANAF le
+actualizează frecvent). Cache-ul stă în `/var/tmp/contab-duk` (reglabil cu `CONTAB_DUK_DIR`),
+în afara repo-ului. Validarea e deliberat **în afara fluxului de generare**: nu legăm serverul
+de un runtime Java și de ciclul de update-uri ANAF, iar validarea oficială oricum se repetă
+obligatoriu la depunerea în SPV.
+
 ## Note
 
 - Datele se păstrează în `data/db.json`; fișierele PDF încărcate în `data/uploads/`.
