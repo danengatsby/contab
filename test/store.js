@@ -103,6 +103,17 @@ const h5 = store.hydrate(DEF);
 eq('dupa resetDirty: entries inlocuite', h5.entries.map((e) => e.id).join(','), 'z1');
 eq('dupa resetDirty: audit golit', h5.audit.length, 0);
 
+section('Persistenta schemaVersion (migrari DB) — round-trip meta');
+{
+  const dv = base();
+  dv.schemaVersion = 7; // valoare arbitrara ca sa nu se confunde cu implicitul
+  dv.users = [{ id: 'u1', username: 'x' }];
+  store.resetDirty();
+  store.persist(dv);
+  const hy = store.hydrate({ settings: {} });
+  eq('schemaVersion supravietuieste persist -> hydrate', hy.schemaVersion, 7);
+}
+
 store.close();
 rm();
 

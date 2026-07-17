@@ -84,6 +84,12 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
 - Orice scriere externă (ANAF) trece prin `anafFetch` (timeout + retry doar pe GET); webhook-ul
   Stripe e idempotent pe `event.id` (`seenEvent`/`rememberEvent`).
 - Parametrii fiscali stau centralizat în `src/fiscalConfig.js` (datați); nu hardcoda cote.
+- Migrări DB: `src/db.js` `migrate()` = normalizarea idempotentă de bază (rulează integral la
+  fiecare load); deasupra, `src/migrations.js` = pași **versionați** (numerotați, aplicați o
+  singură dată, urmăriți prin `db.schemaVersion`, persistat în meta pe toate driverele). Hook unic
+  la finalul `migrate()`. Un pas nou = o intrare `{ v, desc, up(d) }` cu `v` strict crescător;
+  `up(d)` mută graful în loc și **trebuie** să fie idempotent + data-driven (rulează și pe bază
+  goală, și pe date deja migrate), poate întoarce nr. de înregistrări atinse (pentru log).
 - Rutele care întorc colecții vii din memorie trec prin `src/paginate.js` (`sendList`): fără
   `?limit` → array simplu, dar **plafonat** la `CONTAB_MAX_ROWS` (implicit 20000, gardă contra
   OOM, cu antet `X-Rows-Truncated` când taie); cu `?limit`/`?offset` → plic `{ items, total,
