@@ -74,4 +74,26 @@ function sumaInLitere(x) {
   return cuv + ' lei' + (bani ? ' si ' + sub100(bani, false) + ' bani' : '');
 }
 
-module.exports = { round2, fmt, fmtDate, period, periodLabel, sumaInLitere };
+// Serializarea grafului bazei nu are voie sa DOBOARE persistenta: JSON.stringify arunca
+// TypeError pe BigInt (strecurat de o biblioteca, node:sqlite cu readBigInts, hrtime etc.),
+// iar dupa prima aparitie TOATE save()-urile ar esua pana la restart — memoria si stocul
+// diverg si datele nesalvate se pierd. BigInt devine numar (sau string peste MAX_SAFE_INTEGER);
+// valorile nefinite (NaN/Infinity) devin null oricum (comportamentul JSON standard) — le
+// pastram, dar ambele cazuri se SEMNALEAZA in log (o data per cheie): sunt bug-uri de amonte.
+// Referintele circulare raman erori: nu au reprezentare corecta si trebuie sa se vada.
+const jsonWarned = new Set();
+function jsonReplacer(key, value) {
+  if (typeof value === 'bigint') {
+    if (!jsonWarned.has('b:' + key)) { jsonWarned.add('b:' + key); console.error('[contab] serializare: BigInt la cheia "' + key + '" — convertit; verifica sursa valorii'); }
+    return value >= Number.MIN_SAFE_INTEGER && value <= Number.MAX_SAFE_INTEGER ? Number(value) : value.toString();
+  }
+  if (typeof value === 'number' && !Number.isFinite(value) && !jsonWarned.has('n:' + key)) {
+    jsonWarned.add('n:' + key);
+    console.error('[contab] serializare: numar nefinit la cheia "' + key + '" (devine null) — verifica calculul din amonte');
+  }
+  return value;
+}
+/** JSON.stringify tolerant pentru graful bazei (folosit de toate driverele + oglinda). */
+function stringifyDb(value, space) { return JSON.stringify(value, jsonReplacer, space); }
+
+module.exports = { round2, fmt, fmtDate, period, periodLabel, sumaInLitere, stringifyDb };

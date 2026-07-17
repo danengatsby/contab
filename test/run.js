@@ -2352,5 +2352,32 @@ section('Extractor — euristici pe text de factura (src/extractor.js)');
   eq('doar total: TVA derivat', only.fields.tva, 21);
 }
 
+section('Serializare sigura a bazei (stringifyDb: BigInt / valori nefinite)');
+{
+  const { stringifyDb } = require('../src/util');
+  // BigInt: nu mai arunca TypeError; sub MAX_SAFE_INTEGER devine numar, peste devine string
+  eq('BigInt mic -> numar JSON', stringifyDb({ suma: 42n }), '{"suma":42}');
+  eq('BigInt peste MAX_SAFE_INTEGER -> string (fara pierdere de precizie)', stringifyDb({ id: 9007199254740993n }), '{"id":"9007199254740993"}');
+  // valorile nefinite pastreaza comportamentul JSON standard (null), dar sunt semnalate in log
+  eq('NaN -> null (ca JSON standard)', stringifyDb({ x: NaN }), '{"x":null}');
+  eq('Infinity -> null (ca JSON standard)', stringifyDb({ x: Infinity }), '{"x":null}');
+  ok('pretty-print cu spatiere functioneaza', /\n  "a": 1/.test(stringifyDb({ a: 1 }, 2)));
+  // referintele circulare raman erori vizibile (nu au reprezentare corecta)
+  const circ = {}; circ.self = circ;
+  ok('referinta circulara arunca in continuare', (() => { try { stringifyDb(circ); return false; } catch (e) { return true; } })());
+
+  // scenariul grav de dinainte: un BigInt in graf facea ca TOATE save()-urile sa esueze.
+  // Acum save() pe driverul real (sqlite in teste) supravietuieste si persista valoarea convertita.
+  const dbx = require('../src/db');
+  const d = dbx.get();
+  d.audit = d.audit || [];
+  d.audit.push({ id: (d.audit[d.audit.length - 1] || {}).id + 1 || 1, ts: new Date().toISOString(), action: 'test.bigint', detail: '', userId: 1, username: 'x', firmaId: null, durataNs: 12345n });
+  let saved = true;
+  try { dbx.save(); } catch (e) { saved = false; }
+  ok('save() cu BigInt in graf nu mai arunca (persistenta supravietuieste)', saved);
+  d.audit = d.audit.filter((a) => a.action !== 'test.bigint');
+  dbx.save();
+}
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

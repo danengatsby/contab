@@ -1,6 +1,7 @@
 'use strict';
 
 // Strat relational SQLite (node:sqlite, sincron — se potriveste cu modelul sincron al aplicatiei).
+const { stringifyDb } = require('./util');
 // Tabele reale per-colectie, cu coloane id/firmaId indexate (interogabile in SQL) + o coloana
 // `data` JSON pentru restul campurilor. Aplicatia continua sa lucreze pe graful in memorie:
 // `hydrate()` construieste obiectul din tabele, `persist(db)` il scrie inapoi intr-o tranzactie.
@@ -117,7 +118,7 @@ function persist(db) {
       for (const item of arr) {
         const key = item && item.id != null ? String(item.id) : null;
         if (key == null || cur.has(key)) { bad = true; break; }
-        cur.set(key, JSON.stringify(item));
+        cur.set(key, stringifyDb(item));
         fid.set(key, firmaOf(c, item));
       }
       if (!bad) {
@@ -140,14 +141,14 @@ function persist(db) {
         }
       }
       // fallback: id-uri stricate SAU initializare fara snapshot -> rescriere completa
-      const items = arr.map((it) => [String(it.id), firmaOf(c, it), JSON.stringify(it)]);
+      const items = arr.map((it) => [String(it.id), firmaOf(c, it), stringifyDb(it)]);
       const m = new Map(); for (const it of items) if (it[0] != null) m.set(it[0], it[2]);
       work.push({ kind: 'full', c, items, snap: m });
       continue;
     }
 
     // hasId:false, sau forceFull: rescriere completa, portita de amprenta (lastHash).
-    const items = arr.map((it) => [c.hasId && it && it.id != null ? String(it.id) : null, firmaOf(c, it), JSON.stringify(it)]);
+    const items = arr.map((it) => [c.hasId && it && it.id != null ? String(it.id) : null, firmaOf(c, it), stringifyDb(it)]);
     const h = sha(items.map((x) => x[2]).join(''));
     if (full || lastHash['a:' + c.key] !== h) {
       const w = { kind: 'full', c, items };
@@ -158,11 +159,11 @@ function persist(db) {
   }
 
   // ── 2) Mapari cheiate (partners/opening) + meta: rescriere completa portita de amprenta ──
-  const ph = sha(JSON.stringify(db.partners || {}));
+  const ph = sha(stringifyDb(db.partners || {}));
   if (full || lastHash.partners !== ph) work.push({ kind: 'partners', h: ph, hk: 'partners' });
-  const oh = sha(JSON.stringify(db.openingBalances || {}));
+  const oh = sha(stringifyDb(db.openingBalances || {}));
   if (full || lastHash.opening !== oh) work.push({ kind: 'opening', h: oh, hk: 'opening' });
-  const mh = sha(JSON.stringify({ s: db.settings || {}, f: db.firmaActiva, q: db.seq }));
+  const mh = sha(stringifyDb({ s: db.settings || {}, f: db.firmaActiva, q: db.seq }));
   if (full || lastHash.meta !== mh) work.push({ kind: 'meta', h: mh, hk: 'meta' });
 
   lastWritten = [];
@@ -190,7 +191,7 @@ function persist(db) {
         const ins = sdb.prepare('INSERT INTO partners (firmaId, cui, data) VALUES (?, ?, ?)');
         for (const fid of Object.keys(db.partners || {})) {
           const byCui = db.partners[fid] || {};
-          for (const cui of Object.keys(byCui)) ins.run(asInt(fid), String(cui), JSON.stringify(byCui[cui]));
+          for (const cui of Object.keys(byCui)) ins.run(asInt(fid), String(cui), stringifyDb(byCui[cui]));
         }
         lastWritten.push('partners');
       } else if (w.kind === 'opening') {
@@ -206,9 +207,9 @@ function persist(db) {
         lastWritten.push('opening_balances');
       } else if (w.kind === 'meta') {
         const insM = sdb.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
-        insM.run('settings', JSON.stringify(db.settings || {}));
-        insM.run('firmaActiva', JSON.stringify(db.firmaActiva != null ? db.firmaActiva : 1));
-        insM.run('seq', JSON.stringify(db.seq != null ? db.seq : 1));
+        insM.run('settings', stringifyDb(db.settings || {}));
+        insM.run('firmaActiva', stringifyDb(db.firmaActiva != null ? db.firmaActiva : 1));
+        insM.run('seq', stringifyDb(db.seq != null ? db.seq : 1));
         lastWritten.push('meta');
       }
     }
@@ -237,8 +238,8 @@ function hydrate(defaults) {
     db[c.key] = rows.map((r) => JSON.parse(r.data));
     if (c.hasId) {
       const m = new Map();
-      // Snapshot re-serializat din obiectul parsat -> se potriveste exact cu JSON.stringify din persist.
-      for (const it of db[c.key]) if (it && it.id != null) m.set(String(it.id), JSON.stringify(it));
+      // Snapshot re-serializat din obiectul parsat -> se potriveste exact cu stringifyDb din persist.
+      for (const it of db[c.key]) if (it && it.id != null) m.set(String(it.id), stringifyDb(it));
       snap[c.key] = m;
     }
   }
