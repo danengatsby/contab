@@ -2379,5 +2379,26 @@ section('Serializare sigura a bazei (stringifyDb: BigInt / valori nefinite)');
   dbx.save();
 }
 
+section('CSP: drumul spre style-src fara unsafe-inline (ratchet)');
+{
+  // Nonce-urile CSP se aplica doar elementelor <style>/<link>, NU atributelor style="...".
+  // Planul (documentat in src/bootstrap.js): 1) zero elemente <style> in HTML — FACUT, raman
+  // externe; 2) atributele inline doar SCAD (plafoanele de mai jos se coboara odata cu migrarile
+  // spre clase); 3) cand ajung ~0, styleSrc trece pe nonce si unsafe-inline dispare.
+  const fsx = require('fs'); const pth = require('path');
+  const pub = pth.join(__dirname, '..', 'public');
+  const files = fsx.readdirSync(pub);
+  const count = (ext, re) => files.filter((f) => f.endsWith(ext))
+    .map((f) => (fsx.readFileSync(pth.join(pub, f), 'utf8').match(re) || []).length)
+    .reduce((a, b) => a + b, 0);
+  eq('zero elemente <style> in paginile HTML (nonce-ready)', count('.html', /<style[\s>]/g), 0);
+  const attrHtml = count('.html', /style="/g);
+  const attrJs = count('.js', /style=\\?"/g);
+  // RATCHET: plafoanele sunt numarul curent — pot doar sa SCADA. Daca testul pica pentru ca ai
+  // ADAUGAT stiluri inline noi, foloseste clase in styles.css; nu ridica plafonul.
+  ok('atribute style= in HTML: ' + attrHtml + ' (plafon 251, doar in scadere)', attrHtml <= 251);
+  ok('atribute style= in JS: ' + attrJs + ' (plafon 159, doar in scadere)', attrJs <= 159);
+}
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);
