@@ -4,11 +4,18 @@
 # de server din ultimele 24h. Trimite email DOAR daca a gasit ceva — liniste = totul e ok
 # (acelasi stil ca healthcheck.sh). Detaliile pe rute: /api/metrics (admin), in aplicatie.
 #
+# Veghe de SCALARE: anumite rute (dashboard-ul agregat, SAF-T) sunt O(n) pe numarul de
+# inregistrari — inofensive la volumul actual, dar cresc cu datele. Cand una dintre ele apare
+# printre cererile lente, raportul o SEMNALEAZA distinct (cu latenta maxima si actiunea de
+# optimizare pregatita: cache pe dashboard / streaming SAF-T), ca decizia de scalare sa se ia
+# pe un semnal real din productie, nu pe volum ipotetic. Lista: CONTAB_PERF_SCALE_ROUTES.
+#
 # Variabile (din mediu sau .env):
-#   CONTAB_BACKUP_EMAIL_TO   destinatarul raportului
-#   RESEND_API_KEY           cheia Resend pentru email
-#   CONTAB_PM2_LOG_DIR       directorul log-urilor pm2 (implicit <repo>/logs, vezi ecosystem.config.js)
-#   CONTAB_PERF_NOMAIL       1 = nu trimite email, doar afiseaza (teste / rulare manuala)
+#   CONTAB_BACKUP_EMAIL_TO    destinatarul raportului
+#   RESEND_API_KEY            cheia Resend pentru email
+#   CONTAB_PM2_LOG_DIR        directorul log-urilor pm2 (implicit <repo>/logs, vezi ecosystem.config.js)
+#   CONTAB_PERF_SCALE_ROUTES  rute urmarite pentru scalare (implicit "dashboard saft")
+#   CONTAB_PERF_NOMAIL        1 = nu trimite email, doar afiseaza (teste / rulare manuala)
 set -u
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 envval() { grep -E "^$1=" "$DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | sed 's/^["'\'']//;s/["'\'']$//'; }
@@ -42,6 +49,25 @@ echo "$(date -Is) lente=$NL erori5xx=$NE" >> "$LOG"
 # rezumat pe rute pentru cererile lente (tiparul url=... din logul structurat)
 TOP=$(printf '%s\n' "$LENTE" | grep -o 'url=[^ ]*' | sed 's/url=//; s/?.*//' | sort | uniq -c | sort -rn | head -10)
 
+# ── Veghe de scalare: printre cererile lente, sunt rutele O(n) cunoscute? Daca da, cu ce latenta
+# maxima si ce actiune de optimizare le corespunde. (Sub-pragul CONTAB_SLOW_MS nu ajunge in log,
+# deci semnalul e chiar traversarea pragului de catre o ruta care ar trebui sa ramana rapida.)
+SCALE_ROUTES="${CONTAB_PERF_SCALE_ROUTES:-dashboard saft}"
+scale_action() { case "$1" in
+  *dashboard*) echo "cache pe /api/dashboard (memoizare per-firma, invalidat la db.save)";;
+  *saft*)      echo "streaming la /xml/saft (fara buffer integral), evita blocarea event loop-ului";;
+  *)           echo "vezi src/reporting.js / generatorul rutei";;
+esac; }
+SCALE=""
+for rt in $SCALE_ROUTES; do
+  hits=$(printf '%s\n' "$LENTE" | grep "url=/[^ ]*$rt")
+  [ -z "$hits" ] && continue
+  n=$(printf '%s\n' "$hits" | grep -c .)
+  maxms=$(printf '%s\n' "$hits" | grep -o 'ms=[0-9]*' | sed 's/ms=//' | sort -rn | head -1)
+  SCALE="$SCALE  • $rt: $n cereri lente, maxim ${maxms}ms — actiune: $(scale_action "$rt")
+"
+done
+
 BODY="Raport performanta Contabo — ultimele 24h ($(date -Is)):
 
 Cereri lente (peste prag): $NL
@@ -51,6 +77,9 @@ Erori de server (5xx): $NE
 Rute cu cereri lente:
 $TOP
 "
+[ -n "$SCALE" ] && BODY="$BODY
+⚠ Semnal de SCALARE (rute care cresc cu volumul — timpul e sa optimizezi):
+$SCALE"
 [ "$NE" -gt 0 ] && BODY="$BODY
 Ultimele erori:
 $(printf '%s\n' "$ERORI" | tail -5)
