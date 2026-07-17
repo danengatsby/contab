@@ -2233,5 +2233,124 @@ eq('admin sub impersonare: stergere firma straina -> 403', errStatus(() => fsvc.
 const unicU = { id: 903, username: 'unic', role: 'user', firme: [fidPrima], firmaActiva: fidPrima };
 eq('stergerea ultimei firme a utilizatorului -> 400', errStatus(() => fsvc.deleteFirma(unicU, fidPrima, null)), 400);
 
+section('Sesiuni & anti-brute-force (src/session.js)');
+{
+  const sess = require('../src/session');
+  const dbx = require('../src/db');
+  const mkRes = () => ({ headers: {}, setHeader(k, v) { this.headers[k] = v; }, append(k, v) { this.headers[k] = this.headers[k] ? [].concat(this.headers[k], v) : v; } });
+  const mkReq = (cookie, ip) => ({ headers: { cookie: cookie || '', 'user-agent': 'test-agent' }, ip: ip || '203.0.113.9' });
+  const sidOf = (res) => String([].concat(res.headers['Set-Cookie']).find((c) => c.startsWith('sid=')) || '').split(';')[0];
+
+  // utilizator dedicat, curatat la final (baza e temporara oricum)
+  const d = dbx.get();
+  const su = { id: 7777, username: 'sesiuni-test', role: 'user', firme: [1], firmaActiva: 1, salt: 'x', hash: 'x' };
+  d.users.push(su);
+
+  // login -> cookie sid -> currentUser regaseste utilizatorul; sesiunea e inregistrata server-side
+  const res1 = mkRes(); const req1 = mkReq();
+  sess.startSession(req1, res1, su);
+  const sid = sidOf(res1);
+  ok('startSession seteaza cookie sid semnat', /^sid=[^;]{20,}$/.test(sid));
+  eq('cookie-ul e HttpOnly + SameSite=Lax', /HttpOnly/.test(String(res1.headers['Set-Cookie'])) && /SameSite=Lax/.test(String(res1.headers['Set-Cookie'])), true);
+  const found = sess.currentUser(mkReq(sid));
+  eq('currentUser din cookie-ul emis', found && found.id, 7777);
+  ok('token falsificat -> null', sess.currentUser(mkReq(sid + 'x')) === null);
+  // revocarea sesiunii (logout pe alt dispozitiv) invalideaza tokenul inca valid criptografic
+  su.sessions = [];
+  ok('sesiune revocata server-side -> null (tokenul singur nu ajunge)', sess.currentUser(mkReq(sid)) === null);
+
+  // plafonul de dispozitive: peste MAX_SESSIONS (10), cele mai vechi cad
+  for (let i = 0; i < 13; i++) sess.startSession(mkReq(), mkRes(), su);
+  eq('sesiunile sunt plafonate la 10 dispozitive', su.sessions.length, 10);
+
+  // dispozitiv de incredere (2FA): valid pentru utilizator, invalidat de schimbarea epocii
+  const res2 = mkRes();
+  sess.setTrustedDevice(mkReq(), res2, su);
+  const tfd = String([].concat(res2.headers['Set-Cookie']).find((c) => String(c).startsWith('tfd='))).split(';')[0];
+  ok('setTrustedDevice emite cookie tfd', /^tfd=.{20,}/.test(tfd));
+  ok('deviceTrusted recunoaste dispozitivul', sess.deviceTrusted(mkReq(tfd), su) === true);
+  su.tfdEpoch = (su.tfdEpoch || 0) + 1; // „deconecteaza celelalte dispozitive"
+  ok('schimbarea epocii invalideaza dispozitivele vechi', sess.deviceTrusted(mkReq(tfd), su) === false);
+  const alt = { id: 7778 };
+  ok('tfd nu e transferabil intre utilizatori', sess.deviceTrusted(mkReq(tfd), alt) === false);
+
+  // anti-brute-force per IP: 8 esecuri -> blocat ~15 min; alt IP nu e afectat; prune curata
+  const atkIp = '198.51.100.77';
+  eq('atacatorul porneste deblocat', sess.isLocked(mkReq('', atkIp)), 0);
+  for (let i = 0; i < 8; i++) sess.bumpFail(mkReq('', atkIp));
+  ok('dupa 8 esecuri: blocat (minute ramase > 0)', sess.isLocked(mkReq('', atkIp)) > 0);
+  eq('alt IP nu e blocat', sess.isLocked(mkReq('', '198.51.100.78')), 0);
+  sess.clearFails(mkReq('', atkIp));
+  eq('clearFails deblocheaza (login reusit)', sess.isLocked(mkReq('', atkIp)), 0);
+  for (let i = 0; i < 8; i++) sess.bumpFail(mkReq('', atkIp));
+  sess.pruneLoginAttempts(Date.now() + 16 * 60 * 1000); // dupa expirarea ferestrei
+  eq('pruneLoginAttempts curata blocajele expirate', sess.isLocked(mkReq('', atkIp)), 0);
+  eq('attemptKey cade pe x-forwarded-for cand req.ip lipseste', sess.attemptKey({ headers: { 'x-forwarded-for': '192.0.2.5, 10.0.0.1' } }), '192.0.2.5');
+
+  d.users = d.users.filter((x) => x.id !== 7777);
+}
+
+section('Extras bancar — parsere CSV / MT940 + sugestii (src/bank.js)');
+{
+  const bank = require('../src/bank');
+  const csv = 'Data;Descriere;Debit;Credit\n'
+    + '03.06.2026;Incasare factura CLIENT ALFA SRL;;1190,00\n'
+    + '04.06.2026;Plata furnizor BETA COM;500,50;\n'
+    + '05.06.2026;Comision administrare cont;12,00;\n'
+    + 'rand fara data valida;x;y;z\n';
+  const t = bank.parseCsv(csv);
+  eq('CSV: 3 tranzactii valide (randul invalid e sarit)', t.length, 3);
+  eq('CSV: data RO dd.mm.yyyy -> ISO', t[0].data, '2026-06-03');
+  eq('CSV: creditul e incasare (sens in)', t[0].sens, 'in');
+  eq('CSV: suma cu virgula zecimala', t[0].suma, 1190);
+  eq('CSV: debitul e plata (sens out)', t[1].sens, 'out');
+  // fara antet si cu o singura coloana de suma: semnul da sensul
+  const t2 = bank.parseCsv('2026-06-07,POS Kaufland,-89.90\n2026-06-08,Incasare ramburs,25.00\n');
+  eq('CSV fara antet: suma negativa -> out', t2[0].sens, 'out');
+  eq('CSV fara antet: suma pozitiva -> in', t2[1].sens, 'in');
+
+  const mt = ':61:2606030603C1190,00NTRF\n:86:Incasare CLIENT ALFA SRL factura 101\n:61:2606040604D500,50NTRF\n:86:Plata BETA COM\n';
+  const m = bank.parseMt940(mt);
+  eq('MT940: 2 tranzactii din :61:', m.length, 2);
+  eq('MT940: data din YYMMDD', m[0].data, '2026-06-03');
+  eq('MT940: C -> incasare', m[0].sens, 'in');
+  eq('MT940: descrierea din :86:', /CLIENT ALFA/.test(m[0].descriere), true);
+  eq('parseStatement detecteaza MT940 dupa :61:', bank.parseStatement(mt).length, 2);
+
+  // sugestii: comisionul are tip dedicat; partenerul cunoscut e potrivit dupa denumire
+  const fakeDb = { partners: { 12345678: { cui: '12345678', den: 'CLIENT ALFA SRL' } }, entries: [] };
+  const sug = bank.parseAndSuggest(fakeDb, csv);
+  eq('sugestie: incasarea de la partener cunoscut -> incasare_client potrivit', sug[0].tip + '|' + sug[0].matched, 'incasare_client|true');
+  eq('sugestie: CUI-ul partenerului potrivit e completat', sug[0].fields.cuiPartener, 'RO12345678');
+  eq('sugestie: comisionul bancar are tipul lui', sug[2].tip, 'comision_bancar');
+}
+
+section('Extractor — euristici pe text de factura (src/extractor.js)');
+{
+  const ex = require('../src/extractor');
+  eq('parseRoNumber: 1.234,56 (RO)', ex.parseRoNumber('1.234,56'), 1234.56);
+  eq('parseRoNumber: 1,234.56 (EN)', ex.parseRoNumber('1,234.56'), 1234.56);
+  eq('parseRoNumber: sufixul lei e ignorat', ex.parseRoNumber('250 lei'), 250);
+  eq('parseRoNumber: text gol -> null', ex.parseRoNumber('  '), null);
+
+  const fct = 'FACTURA FISCALA seria ABC nr. 1234 din 05.06.2026\n'
+    + 'Furnizor: BETA COM SRL, CUI RO23456789\nCumparator: FIRMA MEA SRL, CUI RO12345678\n'
+    + 'Marfuri conform anexa\nTotal fara TVA: 1.000,00\nTotal TVA: 210,00\nTotal de plata: 1.210,00 lei';
+  const r = ex.extractFromText(fct, '12345678');
+  eq('factura primita: tipul sugerat e cumparare', r.suggestedType, 'factura_cumparare_marfuri');
+  eq('extractie: baza dupa eticheta „fara TVA"', r.fields.baza, 1000);
+  eq('extractie: TVA reconciliat din total - baza', r.fields.tva, 210);
+  eq('extractie: totalul de plata', r.fields.suma, 1210);
+  eq('extractie: data documentului', r.fields.data, '2026-06-05');
+  ok('extractie: ambele CUI-uri gasite', r.cuis.includes('23456789') && r.cuis.includes('12345678'));
+  // sens invers: daca PRIMUL CUI din text e al firmei proprii, e o vanzare
+  const out = ex.extractFromText('FACTURA nr 7 din 05.06.2026\nFurnizor: FIRMA MEA SRL CUI RO12345678\nClient: X SRL CUI RO23456789\nPrestari servicii\nTotal de plata: 119,00', '12345678');
+  eq('factura emisa (CUI-ul propriu primul): vanzare de servicii', out.suggestedType, 'factura_vanzare_servicii');
+  // doar total -> baza si TVA derivate din cota implicita
+  const only = ex.extractFromText('FACTURA nr 9 din 05.06.2026\nTotal de plata: 121,00', '');
+  eq('doar total: baza derivata din cota standard', only.fields.baza, 100);
+  eq('doar total: TVA derivat', only.fields.tva, 21);
+}
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);
