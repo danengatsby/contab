@@ -94,7 +94,7 @@ async function main() {
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     // plafoane de upload/export mici, ca testele 429 sa nu faca zeci de cereri; conturile
     // din restul suitei raman sub ele (bucket-urile sunt per utilizator)
-    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5' }),
+    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000' }),
     stdio: 'ignore',
   });
   const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
@@ -205,6 +205,15 @@ async function main() {
     eq('expirat: scrierile blocate (402)', (await req('POST', '/api/declarations/set', { cookie: c3, body: { tip: 'd300', period: '2026-06', status: 'depusa' } })).status, 402);
     eq('expirat: PDF blocat (402)', (await req('GET', '/pdf/balance', { cookie: c3 })).status, 402);
     eq('expirat: alegerea planului merge (200)', (await req('POST', '/api/subscription/select', { cookie: c3, body: { plan: 'start' } })).status, 200);
+
+    // ── CSRF: garda de origine pe cererile mutante (aparare in adancime peste SameSite=Lax) ──
+    const evil = await req('POST', '/api/login', { headers: { Origin: 'https://atacator.example' }, body: { username: 'x', password: 'y' } });
+    eq('POST cu Origin strain -> 403 (CSRF)', evil.status, 403);
+    const own = await req('POST', '/api/login', { headers: { Origin: BASE }, body: { username: 'x', password: 'y' } });
+    eq('POST cu Origin propriu trece de garda (401 = parola, nu 403)', own.status, 401);
+    eq('Referer strain e respins la fel', (await req('POST', '/api/logout', { headers: { Referer: 'https://atacator.example/pagina' } })).status, 403);
+    // lipsa Origin/Referer e permisa (curl/integrari) — intreaga suita ruleaza asa; GET nu e atins
+    eq('GET cu Origin strain ramane permis (nu e mutant)', (await req('GET', '/api/health', { headers: { Origin: 'https://atacator.example' } })).status, 200);
 
     // ── Abonament / plati (src/routes/billing.js) ──
     const plansPub = await req('GET', '/api/plans'); // public (fara sesiune)
@@ -864,7 +873,7 @@ async function main() {
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-        env: Object.assign({}, process.env, { PORT: String(PORT + 1), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '' }),
+        env: Object.assign({}, process.env, { PORT: String(PORT + 1), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_API: '100000' }),
         stdio: 'ignore',
       });
       const t = setTimeout(() => { try { c2p.kill(); } catch (_) { /* */ } resolve('timeout'); }, 8000);

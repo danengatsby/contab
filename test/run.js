@@ -2409,6 +2409,22 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   eq('restart dupa stop: tot 6 joburi, curatate din nou', jobs.stop(), 6);
 }
 
+section('Plafon general de API (uploadGuard.generalLimit)');
+{
+  const ug = require('../src/uploadGuard');
+  const mk = (uid, ip) => ({ user: uid != null ? { id: uid } : null, ip: ip || '203.0.113.1' });
+  const run = (mw, req) => { let out = null; const res = { status(c) { out = c; return this; }, json() { return this; } }; let passed = false; mw(req, res, () => { passed = true; }); return passed ? 'next' : out; };
+  const lim = ug.generalLimit(3, 60 * 1000);
+  eq('sub plafon: cererile trec (3/3)', [run(lim, mk(501)), run(lim, mk(501)), run(lim, mk(501))].join(','), 'next,next,next');
+  eq('peste plafon: 429', run(lim, mk(501)), 429);
+  eq('alt utilizator nu e afectat', run(lim, mk(502)), 'next');
+  eq('anonimii sunt plafonati per IP', [run(lim, mk(null, '198.51.100.1')), run(lim, mk(null, '198.51.100.1')), run(lim, mk(null, '198.51.100.1')), run(lim, mk(null, '198.51.100.1'))].pop(), 429);
+  eq('alt IP anonim nu e afectat', run(lim, mk(null, '198.51.100.2')), 'next');
+  eq('plafon 0 = dezactivat', run(ug.generalLimit(0, 60000), mk(501)), 'next');
+  ug.pruneRateBuckets(Date.now() + 61 * 1000); // igiena: bucket-urile de test dispar
+  eq('dupa expirarea ferestrei, contorul porneste de la zero', run(lim, mk(501)), 'next');
+}
+
 section('CSP: style-src FARA unsafe-inline (poarta zero)');
 {
   // styleSrc e doar 'self' (src/bootstrap.js): orice element <style> sau atribut style= din

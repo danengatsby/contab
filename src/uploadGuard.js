@@ -84,9 +84,28 @@ function userLimit(name, max, msg) {
   };
 }
 
+/** Plafon GENERAL pe rutele de API: `max` cereri pe fereastra `windowMs`, per utilizator
+ *  (sau per IP inainte de autentificare). Plasa contra buclelor de client si scanarilor —
+ *  generos fata de utilizarea normala; max=0 (CONTAB_RATE_API=0) il dezactiveaza. */
+function generalLimit(max, windowMs) {
+  return (req, res, next) => {
+    if (!(max > 0)) return next();
+    const key = 'api|' + (req.user && req.user.id != null ? 'u' + req.user.id : 'ip' + String(req.ip || 'necunoscut'));
+    const now = Date.now();
+    let b = buckets.get(key);
+    if (!b || now > b.reset) b = { count: 0, reset: now + windowMs };
+    b.count += 1;
+    buckets.set(key, b);
+    if (b.count > max) {
+      return res.status(429).json({ error: 'Prea multe cereri într-un timp scurt. Reîncearcă în câteva secunde.' });
+    }
+    next();
+  };
+}
+
 /** Curatare pentru jobul rate-limit-hygiene: bucket-urile expirate se arunca. */
 function pruneRateBuckets(now) {
   for (const [k, b] of buckets) { if (b.reset < now) buckets.delete(k); }
 }
 
-module.exports = { contentMatches, verifyUploadContent, userLimit, pruneRateBuckets };
+module.exports = { contentMatches, verifyUploadContent, userLimit, generalLimit, pruneRateBuckets };
