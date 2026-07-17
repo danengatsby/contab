@@ -47,10 +47,39 @@ export function setLoad(on) {
 let on402TrialExpired = null;
 export function setOn402(fn) { on402TrialExpired = fn; }
 
+// ── Degradare gratioasa la pierderea conexiunii (NU offline-first) ──
+// Datele contabile NU se cacheaza si NU se scriu offline: numerotarea documentelor in serie
+// continua, blocarea perioadei, stocul la CMP sunt invariante validate DOAR pe server; iar un
+// cache client pe un dispozitiv partajat (birou contabil) ar scurge date intre conturi. In schimb,
+// cand conexiunea pica: bara de status informeaza clar, cererea esuata pe RETEA arunca un mesaj
+// util (nu „Failed to fetch"), iar la revenire se reincarca vederea curenta. Nimic tiparit nu se
+// pierde — datele din formular raman in DOM pana la salvare reusita.
+function setOffline(on) {
+  const b = document.getElementById('offlineBanner');
+  if (b) b.classList.toggle('hidden', !on);
+  document.body.classList.toggle('is-offline', on);
+}
+let onReconnect = null;
+export function setOnReconnect(fn) { onReconnect = fn; } // app.js: reincarca tab-ul curent la revenire
+if (typeof window !== 'undefined') {
+  window.addEventListener('offline', () => setOffline(true));
+  window.addEventListener('online', () => { setOffline(false); if (onReconnect) { try { onReconnect(); } catch (_) { /* */ } } });
+  if (!navigator.onLine) setOffline(true);
+}
+
 export async function api(url, opts) {
   setLoad(true);
   try {
-    const r = await fetch(url, opts);
+    let r;
+    try {
+      r = await fetch(url, opts);
+    } catch (netErr) {
+      // Esec de RETEA (offline / server inaccesibil), NU un raspuns HTTP de eroare.
+      setOffline(true);
+      const err = new Error('Ești offline sau conexiunea e instabilă. Nimic nu s-a pierdut — reîncearcă după ce revii online.');
+      err.offline = true; throw err;
+    }
+    setOffline(false); // un raspuns (chiar si 4xx/5xx) inseamna ca reteaua merge
     const ct = r.headers.get('content-type') || '';
     const data = ct.includes('json') ? await r.json() : await r.text();
     if (!r.ok) {
