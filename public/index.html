@@ -217,11 +217,23 @@
         </div>
       </div>
       <div class="navgroup">
-        <button class="navlabel" type="button">📦 Stoc & salarii</button>
+        <button class="navlabel" type="button">📦 Stocuri</button>
         <div class="navmenu">
           <button data-tab="stocuri">Stocuri / gestiune</button>
+        </div>
+      </div>
+      <!-- grupul intreg se ascunde pentru utilizatorii cu dreptul „faraSalarii" (app.js) -->
+      <div class="navgroup" id="navgrupSalarii">
+        <button class="navlabel" type="button">👥 Salarii</button>
+        <div class="navmenu">
           <button data-tab="salarizare">Salarii (state de plată)</button>
-          <button data-tab="mijloace" class="adv">Mijloace fixe (amortizare)</button>
+        </div>
+      </div>
+      <!-- adv pe tot grupul: singura lui intrare e tehnica, in modul simplu ar ramane o eticheta goala -->
+      <div class="navgroup adv">
+        <button class="navlabel" type="button">🏢 Mijloace fixe</button>
+        <div class="navmenu">
+          <button data-tab="mijloace">Mijloace fixe (amortizare)</button>
         </div>
       </div>
       <div class="navgroup">

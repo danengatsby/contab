@@ -422,7 +422,9 @@ async function init() {
   $('#exportAllBtn') && ($('#exportAllBtn').style.display = USER.role === 'admin' ? '' : 'none');
   applySessionState(USER);
   // drepturi granulare: utilizatorii fara acces la salarizare nu vad intrarea din meniu
-  $$('button[data-tab="salarizare"]').forEach((b) => { b.style.display = (USER.drepturi && USER.drepturi.faraSalarii) ? 'none' : ''; });
+  const faraSalarii = !!(USER.drepturi && USER.drepturi.faraSalarii);
+  $$('button[data-tab="salarizare"]').forEach((b) => { b.style.display = faraSalarii ? 'none' : ''; });
+  const gs = $('#navgrupSalarii'); if (gs) gs.style.display = faraSalarii ? 'none' : ''; // tot meniul, nu doar intrarea
   initUiMode(); // mod simplu implicit pentru necontabili (ascunde partea tehnica din meniu)
   // Intoarcere de la Stripe (user logat) dupa abonarea unei firme: confirmare + starea se activeaza la webhook
   const cr = /[?&]checkout=(success|cancel)/.exec(location.search);
@@ -925,7 +927,7 @@ const TOUR = [
   { group: 'Documente', ic: '📥', title: 'Documente & facturi', text: 'Adaugi documentele primite (le încarci, aplicația le citește) și emiți facturi către clienți.' },
   { group: 'Bani', ic: '🏦', title: 'Bani', text: 'Încasările și plățile prin bancă și casă, plus verificarea extrasului bancar.' },
   { group: 'Taxe', ic: '🧾', title: 'Taxe', text: 'TVA-ul de plată și declarațiile pentru ANAF.' },
-  { group: 'Stoc & salarii', ic: '📦', title: 'Stoc & salarii', text: 'Stocuri, salarii și mijloace fixe — dacă firma ta are nevoie de ele.' },
+  { group: 'Stocuri', ic: '📦', title: 'Stocuri, salarii, mijloace fixe', text: 'Fiecare cu meniul lui — le folosești doar dacă firma ta are nevoie de ele (mijloacele fixe apar în modul expert).' },
   { group: 'Rapoarte', ic: '📊', title: 'Rapoarte', text: 'Toate rapoartele contabile la un loc (situații, solduri, operațiuni). Se fac singure din documentele tale.' },
   { sel: '#tabs [data-tab="mesaje"]', ic: '💬', title: 'Mesaje', text: 'Ai o întrebare? Scrie-i administratorului direct de aici — îți răspunde în aplicație.' },
   { ic: '🎉', title: 'Gata!', text: 'Începe din 🏠 Acasă → „Ce vrei să faci?". Poți relua oricând turul din 📖 Ghid.' },
