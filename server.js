@@ -28,8 +28,7 @@ const dbReady = Promise.resolve(db.load()).then(() => {
 
 // Instanta Express cu tot middleware-ul de infrastructura (trust proxy, helmet/CSP, reqId,
 // metrici, parsare body, static, sanitizare, multer + garda de upload): src/bootstrap.js.
-const app = bootstrap.createApp({ rootDir: __dirname });
-const upload = app.locals.bootstrap.upload;
+const { app, upload } = bootstrap.createApp();
 
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
   log.error('eroare necuprinsa in ruta', log.ctx(req, { status: 500, err: e }));
