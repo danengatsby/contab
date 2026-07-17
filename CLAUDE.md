@@ -16,7 +16,7 @@ sunt izolate pe `firmaId`. **Acest director (`/var/www/contab`) este și instala
 npm test                      # suita completă: sintaxă + module + store + HTTP (rulează și la `prestart`)
 node test/run.js              # doar verificările de module (sincron, eq/ok, secțiuni)
 node test/http.js             # doar integrarea HTTP (pornește serverul pe portul 3891, DB temporar)
-CONTAB_TEST_DRIVER=sqlite node test/http.js   # aceeași suită pe driverul sqlite (rulează ambele la schimbări de persistență!)
+CONTAB_TEST_DRIVER=json node test/http.js     # aceeași suită pe driverul json (vechi, doar rollback; rulează ambele la schimbări de persistență!)
 node test/anaf.js             # reziliență ANAF + poll SPV (async, stub-uri, fără apeluri reale)
 npm run seed                  # încarcă exemplul din ghid (S.C. EXEMPLU PROD S.R.L., 2026-06)
 npm run e2e                   # E2E pe live; pe acest server rulează prin Docker (vezi antetul scripts/e2e.mjs)
@@ -47,7 +47,8 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
   (404 identic pentru inexistent și străin), `reqNotDemo`/`reqAdmin`. Erorile de business poartă
   `err.status`. Extinde acest model dacă o rută crește; rutele rămase sunt majoritar citiri.
 - **src/db.js** — persistență cu driver comutabil `CONTAB_DB_DRIVER`: `sqlite` (implicit, incremental),
-  `pg` (producția reală; async la load), `json` (fallback/teste). `db.get()` = obiectul viu; mutează-l
+  `pg` (producția reală; async la load), `json` (VECHI — doar rollback de urgență; nimic nu mai
+  rulează implicit pe el, iar la pornire avertizează). `db.get()` = obiectul viu; mutează-l
   și cheamă `db.save()`. `db.scoped(fid)` = vederea filtrată pe firmă (folosită prin `S(req)` în rute).
   Oglinda JSON (`flushMirror(true)` înainte de backup) e fișierul copiat de backup.
 - **Module de domeniu** (`src/accounting|stocks|payroll|fiscal|xml|saft|reporting…`) — funcții pure
