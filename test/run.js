@@ -2379,6 +2379,21 @@ section('Serializare sigura a bazei (stringifyDb: BigInt / valori nefinite)');
   dbx.save();
 }
 
+section('Joburi periodice opribile (src/jobs.js: unref + stop)');
+{
+  // Intervalele joburilor nu au voie sa tina un proces in viata sau sa "scape" dintr-un test:
+  // sunt unref() la creare, iar start() intoarce un stop() care le curata pe toate.
+  const jobs = require('../src/jobs');
+  const stubs = { doBackup: () => ({ name: 'x' }), resetDemo: () => ({ ok: true }), registerAttempts: new Map(), forgotAttempts: new Map() };
+  const h = jobs.start(stubs);
+  ok('start() intoarce un handle cu stop()', h && typeof h.stop === 'function');
+  eq('stop() curata toate cele 5 joburi', h.stop(), 5);
+  eq('stop() e idempotent (a doua oara: nimic de curatat)', jobs.stop(), 0);
+  // dupa stop, un nou start functioneaza si se curata la fel (nu ramane stare blocata)
+  jobs.start(stubs);
+  eq('restart dupa stop: tot 5 joburi, curatate din nou', jobs.stop(), 5);
+}
+
 section('CSP: drumul spre style-src fara unsafe-inline (ratchet)');
 {
   // Nonce-urile CSP se aplica doar elementelor <style>/<link>, NU atributelor style="...".
