@@ -766,6 +766,9 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 
 /* ── Mod simplu (necontabil): ascunde partea tehnic-contabila din meniu ── */
 .simple-ui .adv{display:none!important}
+/* grupurile intregi marcate adv (ex. Mijloace fixe): regula de mai sus e batuta de
+   `#tabs .navgroup{display:block !important}` din sidebar (specificitate cu id) */
+.simple-ui #tabs .navgroup.adv{display:none!important}
 
 /* ── Dictionar contabil (modal ❓) ── */
 .gloss-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:220;display:flex;align-items:center;justify-content:center;padding:20px}
