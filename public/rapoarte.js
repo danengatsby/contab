@@ -13,7 +13,7 @@ async function loadJournal() {
   $('#jurnalCsv').href = '/csv/journal' + (p ? '?period=' + p : '');
   const j = await api('/api/journal' + (p ? '?period=' + p : ''));
   if (!j.rows.length) { $('#jurnalView').innerHTML = '<p class="muted">Nicio înregistrare în perioada selectată.</p>'; return; }
-  const rows = j.rows.map((r) => `<tr${r.nr ? ' style="border-top:2px solid var(--line)"' : ''}>
+  const rows = j.rows.map((r) => `<tr${r.nr ? ' data-u="u170"' : ''}>
     <td class="num">${r.nr || ''}</td><td>${r.data}</td><td>${r.document}</td><td>${r.explicatie}</td>
     <td class="acc">${r.debit}</td><td class="acc">${r.credit}</td><td class="num">${fmt(r.suma)}</td></tr>`).join('');
   $('#jurnalView').innerHTML = `<table><thead><tr>
@@ -60,7 +60,7 @@ async function loadCashbook() {
       cc.negative.forEach((n) => items.push(`<li><b>Sold de casă NEGATIV</b> (${fmt(n.sold)} lei) la ${n.data} — imposibil fizic; verifică ordinea operațiunilor sau o încasare lipsă.</li>`));
       cc.plafon.forEach((w) => items.push(`<li><b>Plafon numerar depășit</b> (Legea 70/2015): ${w.tip === 'plata' ? 'plăți' : 'încasări'} de ${fmt(w.suma)} lei cu „${w.partener}" la ${w.data} — limita ${fmt(w.limita)} lei/zi (${w.juridic ? 'pers. juridică' : 'pers. fizică'}).</li>`));
       if (cc.soldPesteLimita) items.push(`<li>Sold de casierie ${fmt(cc.soldPesteLimita.sold)} lei peste plafonul de ${fmt(cc.soldPesteLimita.limita)} lei — depune excedentul la bancă.</li>`);
-      if (items.length) warnHtml = `<div class="warnbox"><span class="wi">⚠️</span><div><b>Control casă:</b><ul style="margin:4px 0 0 16px;padding:0">${items.join('')}</ul></div></div>`;
+      if (items.length) warnHtml = `<div class="warnbox"><span class="wi">⚠️</span><div><b>Control casă:</b><ul data-u="u171">${items.join('')}</ul></div></div>`;
     } catch (_) { /* control optional */ }
   }
   const rows = cb.rows.map((r) => `<tr><td>${H(r.data)}</td><td>${H(r.document)}</td><td>${H((r.partener ? r.partener + ' — ' : '') + r.explicatie)}</td>
@@ -102,7 +102,7 @@ $('#balOnlyMoves') && $('#balOnlyMoves').addEventListener('change', renderBalanc
 function renderBalance() {
   const tb = BALANCE_TB; if (!tb) return;
   if (tb.balanced) {
-    $('#balantaStatus').innerHTML = '<p style="color:var(--accent);font-weight:600">✔ Balanța se închide — cele patru egalități sunt respectate.</p>';
+    $('#balantaStatus').innerHTML = '<p data-u="u172">✔ Balanța se închide — cele patru egalități sunt respectate.</p>';
   } else {
     // diagnostic: arata care egalitate nu se inchide si cu cat (de regula soldurile initiale)
     const t = tb.tot;
@@ -114,9 +114,9 @@ function renderBalance() {
     ].map(([nume, d, c]) => ({ nume, d, c, dif: Math.round((d - c) * 100) / 100 })).filter((x) => x.dif !== 0);
     const det = eqs.map((x) => `<b>${x.nume}</b>: debit ${fmt(x.d)} vs credit ${fmt(x.c)} — diferență <b>${fmt(x.dif)}</b>`).join('<br>');
     const initDif = eqs.some((x) => x.nume === 'Sold inițial');
-    $('#balantaStatus').innerHTML = `<div style="color:var(--danger)"><p style="font-weight:600;margin:0 0 4px">✘ Balanța NU se închide:</p>
-      <p style="margin:0;font-size:13px">${det}</p>
-      ${initDif ? '<p style="margin:6px 0 0;font-size:13px">Diferența pornește de la <b>soldurile inițiale dezechilibrate</b> (total debit ≠ total credit la deschidere) — verifică-le în Setări / import.</p>' : '<p style="margin:6px 0 0;font-size:13px">Verifică ultimele înregistrări din lună.</p>'}</div>`;
+    $('#balantaStatus').innerHTML = `<div data-u="u13"><p data-u="u173">✘ Balanța NU se închide:</p>
+      <p data-u="u174">${det}</p>
+      ${initDif ? '<p data-u="u175">Diferența pornește de la <b>soldurile inițiale dezechilibrate</b> (total debit ≠ total credit la deschidere) — verifică-le în Setări / import.</p>' : '<p data-u="u175">Verifică ultimele înregistrări din lună.</p>'}</div>`;
   }
   const onlyMoves = $('#balOnlyMoves') && $('#balOnlyMoves').checked;
   const visible = onlyMoves ? tb.rows.filter((r) => r.rd || r.rc) : tb.rows;
@@ -168,9 +168,9 @@ async function renderProRata(year) {
     <tr class="total"><td>Pro-rata DEFINITIVĂ ${r.year} (rotunjită în sus)</td><td class="num">${r.definitiva}%</td></tr>
     <tr><td>Pro-rata provizorie (setarea firmei)</td><td class="num">${r.provizorie ? r.provizorie + '%' : '—'}</td></tr>
     <tr><td>Achiziții mixte marcate / TVA dedusă provizoriu</td><td class="num">${r.nrMixte} / ${fmt(r.dedusaProvizoriu)}</td></tr>
-    ${r.regularizare != null ? `<tr class="total"><td>Regularizare anuală ${r.regularizare >= 0 ? '(mai ai de dedus — 4426 = 635)' : '(dai înapoi — 635 = 4426)'}</td><td class="num"${Math.abs(r.regularizare) >= 0.01 ? ' style="font-weight:700"' : ''}>${fmt(Math.abs(r.regularizare))}</td></tr>` : ''}
+    ${r.regularizare != null ? `<tr class="total"><td>Regularizare anuală ${r.regularizare >= 0 ? '(mai ai de dedus — 4426 = 635)' : '(dai înapoi — 635 = 4426)'}</td><td class="num"${Math.abs(r.regularizare) >= 0.01 ? ' data-u="u176"' : ''}>${fmt(Math.abs(r.regularizare))}</td></tr>` : ''}
   </table>
-  <p class="muted" style="margin-top:6px">Postezi regularizarea din Documente → „Regularizare anuală pro-rata TVA"; la schimbarea destinației unui mijloc fix folosește „Ajustare TVA bunuri de capital (art. 305)". Clasificarea livrărilor e orientativă — verifică pozițiile atipice cu contabilul.</p>`;
+  <p class="muted" data-u="u18">Postezi regularizarea din Documente → „Regularizare anuală pro-rata TVA"; la schimbarea destinației unui mijloc fix folosește „Ajustare TVA bunuri de capital (art. 305)". Clasificarea livrărilor e orientativă — verifică pozițiile atipice cu contabilul.</p>`;
 }
 $('#exigForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -190,7 +190,7 @@ async function renderNeexigibila() {
   $('#neexigView').innerHTML = `<table><tbody>
     <tr><td>TVA colectată încă neexigibilă (4428)</td><td class="num">${fmt(n.colectataNeexigibila)}</td></tr>
     <tr><td>TVA deductibilă încă neexigibilă (4428)</td><td class="num">${fmt(n.deductibilaNeexigibila)}</td></tr></tbody></table>
-    ${n.facturi.length ? `<div class="tablewrap" style="margin-top:6px"><table><thead><tr><th>Data</th><th>Document</th><th>Partener</th><th>Tip</th><th>Stadiu</th><th class="num">TVA</th></tr></thead><tbody>${
+    ${n.facturi.length ? `<div class="tablewrap" data-u="u18"><table><thead><tr><th>Data</th><th>Document</th><th>Partener</th><th>Tip</th><th>Stadiu</th><th class="num">TVA</th></tr></thead><tbody>${
       n.facturi.map((f) => `<tr><td>${H(f.data)}</td><td>${H(f.document)}</td><td>${H(f.partener)}</td><td>${H(f.tip)}</td><td>${f.stadiu === 'neexigibila' ? 'neexigibilă' : 'exigibilă'}</td><td class="num">${fmt(f.suma)}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
 }
 async function loadVat() {
@@ -225,7 +225,7 @@ async function loadVat() {
        })()}</tbody></table></div>`;
   const tbl = (rows, totBaza, totTva) => {
     if (!rows.length) return '<p class="muted">Niciun document.</p>';
-    const body = rows.map((r) => `<tr><td>${H(r.data)}</td><td>${H(r.document)}</td><td>${H(r.partener)}${r.cui ? ' <span class="muted" style="font-size:11px">' + H(r.cui) + '</span>' : ''}${r.taxareInversa ? ' <span class="muted" style="font-size:11px">↹ taxare inversă</span>' : ''}</td>
+    const body = rows.map((r) => `<tr><td>${H(r.data)}</td><td>${H(r.document)}</td><td>${H(r.partener)}${r.cui ? ' <span class="muted" data-u="u148">' + H(r.cui) + '</span>' : ''}${r.taxareInversa ? ' <span class="muted" data-u="u148">↹ taxare inversă</span>' : ''}</td>
       <td class="num">${r.cota ? r.cota + '%' : '—'}</td><td class="num">${fmt(r.baza)}</td><td class="num">${fmt(r.tva)}</td><td class="num">${fmt(r.total)}</td></tr>`).join('');
     return `<table><thead><tr><th>Data</th><th>Document</th><th>Partener</th><th class="num">Cotă</th><th class="num">Bază</th><th class="num">TVA</th><th class="num">Total</th></tr></thead>
       <tbody>${body}<tr class="total"><td colspan="4">TOTAL</td><td class="num">${fmt(totBaza)}</td><td class="num">${fmt(totTva)}</td><td class="num">${fmt(totBaza + totTva)}</td></tr></tbody></table>`;
@@ -339,9 +339,9 @@ $('#fxLoad') && $('#fxLoad').addEventListener('click', async () => {
   area.innerHTML = `<table><thead><tr><th>Cont</th><th>Denumire</th><th>Tip</th><th class="num">Sold contabil (lei)</th><th>Mon.</th><th class="num">Sold în valută</th><th class="num">Curs închidere</th></tr></thead>
     <tbody>${list.map((c) => `<tr data-cont="${c.cont}" data-asset="${c.isAsset ? 1 : 0}">
       <td class="acc">${c.cont}</td><td>${c.nume}</td><td>${c.isAsset ? 'Activ' : 'Datorie'}</td><td class="num">${fmt(c.bookLei)}</td><td>${c.moneda}</td>
-      <td class="num"><input class="fx-val" type="number" step="0.01" value="${c.foreignBalance || ''}" style="width:110px;text-align:right"></td>
-      <td class="num"><input class="fx-curs" type="number" step="0.0001" placeholder="ex. 4.97" style="width:90px;text-align:right"></td></tr>`).join('')}</tbody></table>
-    <button id="fxPreviewBtn" class="btn" style="margin-top:8px">Previzualizează diferențele</button>`;
+      <td class="num"><input class="fx-val" type="number" step="0.01" value="${c.foreignBalance || ''}" data-u="u177"></td>
+      <td class="num"><input class="fx-curs" type="number" step="0.0001" placeholder="ex. 4.97" data-u="u178"></td></tr>`).join('')}</tbody></table>
+    <button id="fxPreviewBtn" class="btn" data-u="u23">Previzualizează diferențele</button>`;
   $('#fxPreviewBtn').addEventListener('click', fxPreview);
 });
 function fxItems() {
@@ -357,7 +357,7 @@ async function fxPreview() {
   if (!r.lines.length) { box.innerHTML = '<p class="muted">Nicio diferență de reevaluare (soldurile coincid cu cursul indicat).</p>'; $('#fxRevalPost').classList.add('hidden'); return; }
   box.innerHTML = `<table><thead><tr><th>Cont</th><th>Sold contabil</th><th>Reevaluat</th><th>Diferență</th><th>Sens</th><th>Notă</th></tr></thead>
     <tbody>${r.results.filter((x) => x.lines.length).map((x) => `<tr><td class="acc">${x.account}</td><td class="num">${fmt(x.book)}</td><td class="num">${fmt(x.revaluedLei)}</td>
-      <td class="num" style="color:${x.sens === 'favorabila' ? 'var(--accent)' : 'var(--danger)'}">${x.diff >= 0 ? '+' : ''}${fmt(x.diff)}</td>
+      <td class="num" data-style="color:${x.sens === 'favorabila' ? 'var(--accent)' : 'var(--danger)'}">${x.diff >= 0 ? '+' : ''}${fmt(x.diff)}</td>
       <td>${x.sens}</td><td class="acc">${x.lines[0].debit} = ${x.lines[0].credit}</td></tr>`).join('')}
     <tr class="total"><td colspan="3">Total favorabil (765) / nefavorabil (665)</td><td class="num">+${fmt(r.totalFavorabil)} / −${fmt(r.totalNefavorabil)}</td><td colspan="2"></td></tr></tbody></table>`;
   $('#fxRevalPost').classList.remove('hidden');
@@ -402,22 +402,22 @@ async function loadStatements() {
     const noteSec = (s) => {
       let body;
       if (s.tabel) {
-        const head = '<tr>' + s.tabel.cols.map((c) => `<th class="${c.num ? 'num' : ''}" style="text-align:${c.num ? 'right' : 'left'}">${c.label}</th>`).join('') + '</tr>';
+        const head = '<tr>' + s.tabel.cols.map((c) => `<th class="${c.num ? 'num' : ''}" data-style="text-align:${c.num ? 'right' : 'left'}">${c.label}</th>`).join('') + '</tr>';
         const body2 = s.tabel.rows.map((row) => '<tr' + (row._bold ? ' class="total"' : '') + '>' + s.tabel.cols.map((c) =>
           `<td class="${c.num ? 'num' : ''}">${c.num ? (row[c.k] == null ? '—' : fmt(row[c.k])) : (row[c.k] == null ? '' : row[c.k])}</td>`).join('') + '</tr>').join('');
         body = head + body2;
       } else {
         body = s.linii.map((l) => `<tr${l._bold ? ' class="total"' : ''}><td>${l.k}</td><td class="num">${l.v == null ? '—' : (l.raw ? l.v : fmt(l.v))}</td></tr>`).join('');
       }
-      return `<p style="margin:6px 0 2px"><b>${s.titlu}</b></p><table>${body}</table>`;
+      return `<p data-u="u179"><b>${s.titlu}</b></p><table>${body}</table>`;
     };
     $('#notesView').innerHTML = n.sections.map(noteSec).join('')
-      + '<p style="margin:8px 0 2px"><b>Nota 7 — Principii și politici contabile</b></p><ul class="muted" style="margin:0;padding-left:18px">'
+      + '<p data-u="u180"><b>Nota 7 — Principii și politici contabile</b></p><ul class="muted" data-u="u181">'
       + n.principii.map((p) => `<li>${p}</li>`).join('') + '</ul>';
   }).catch(() => {});
   api('/api/statements/cashflow?year=' + y).then((cf) => {
     const cr = (label, val, cls) => `<tr class="${cls || ''}"><td>${label}</td><td class="num">${fmt(val)}</td></tr>`;
-    const cs = (label, val) => `<tr><td style="padding-left:18px" class="muted">${label}</td><td class="num">${fmt(val)}</td></tr>`;
+    const cs = (label, val) => `<tr><td data-u="u182" class="muted">${label}</td><td class="num">${fmt(val)}</td></tr>`;
     $('#cashflowView').innerHTML = `<table>
       ${cr('Activitatea de exploatare', '', 'total')}
       ${cs('Încasări de la clienți', cf.ex_clienti)}${cs('Plăți către furnizori și angajați', cf.ex_furnizoriAngajati)}${cs('Plăți impozite, taxe și TVA', cf.ex_impozite)}${cs('Dobânzi plătite', cf.ex_dobanzi)}${cs('Alte încasări/plăți din exploatare', cf.ex_altele)}
@@ -430,21 +430,21 @@ async function loadStatements() {
       ${cr('= Numerar net din finanțare', cf.fin_net, 'total')}
       ${cr('VARIAȚIA NETĂ A NUMERARULUI', cf.variatie, 'bold')}
       ${cs('Numerar la începutul exercițiului', cf.numerarInitial)}${cs('Numerar la sfârșitul exercițiului', cf.numerarFinal)}</table>
-      <p class="${cf.echilibrat ? '' : 'status err'}" style="font-size:12px">${cf.echilibrat ? '✔ Control: variația = numerar final − inițial (' + fmt(cf.variatieControl) + ')' : '✘ Variația calculată diferă de variația soldurilor de numerar'}</p>`;
+      <p class="${cf.echilibrat ? '' : 'status err'}" data-u="u35">${cf.echilibrat ? '✔ Control: variația = numerar final − inițial (' + fmt(cf.variatieControl) + ')' : '✘ Variația calculată diferă de variația soldurilor de numerar'}</p>`;
   }).catch(() => { $('#cashflowView').innerHTML = ''; });
   renderBudget(y);
   api('/api/statements/equity?year=' + y).then((eq) => {
     const er = (r, cls) => `<tr class="${cls || ''}"><td>${r.nume}</td><td class="num">${fmt(r.soldI)}</td><td class="num">${fmt(r.cresteri)}</td><td class="num">${fmt(r.reduceri)}</td><td class="num">${fmt(r.soldF)}</td></tr>`;
     $('#capitalView').innerHTML = `<table>
-      <tr><th style="text-align:left">Element</th><th class="num">Sold ${Number(y) - 1}-12-31</th><th class="num">Creșteri</th><th class="num">Reduceri</th><th class="num">Sold ${y}-12-31</th></tr>
+      <tr><th data-u="u183">Element</th><th class="num">Sold ${Number(y) - 1}-12-31</th><th class="num">Creșteri</th><th class="num">Reduceri</th><th class="num">Sold ${y}-12-31</th></tr>
       ${eq.rows.map((r) => er(r)).join('')}
       ${er(Object.assign({ nume: 'TOTAL CAPITALURI PROPRII' }, eq.total), 'bold')}</table>
-      <p class="${eq.echilibrat ? '' : 'status err'}" style="font-size:12px">${eq.echilibrat ? '✔ Control: total = capitalurile proprii din bilanț (F10)' : '✘ Totalul diferă de capitalurile din F10 (' + fmt(eq.capitalPropriiF10) + ')'}</p>`;
+      <p class="${eq.echilibrat ? '' : 'status err'}" data-u="u35">${eq.echilibrat ? '✔ Control: total = capitalurile proprii din bilanț (F10)' : '✘ Totalul diferă de capitalurile din F10 (' + fmt(eq.capitalPropriiF10) + ')'}</p>`;
   }).catch(() => { $('#capitalView').innerHTML = ''; });
   // PFA: in locul registrului fiscal SRL (profit vs micro), estimarea Declaratiei Unice
   if (META.company && META.company.tipEntitate === 'pfa') {
     api('/api/declaratia-unica?year=' + y).then((du) => {
-      $('#fiscalView').innerHTML = `<p class="muted" style="margin:0 0 8px"><b>PFA — sistem real:</b> impozitul se plătește anual prin <b>Declarația Unică</b>, pe venitul net. Estimare pe salariul minim de ${fmt(du.salariuMinim)} lei:</p>
+      $('#fiscalView').innerHTML = `<p class="muted" data-u="u88"><b>PFA — sistem real:</b> impozitul se plătește anual prin <b>Declarația Unică</b>, pe venitul net. Estimare pe salariul minim de ${fmt(du.salariuMinim)} lei:</p>
       <table>
         <tr><td>Venituri din activitate</td><td class="num">${fmt(du.venituri)}</td></tr>
         <tr><td>− Cheltuieli deductibile</td><td class="num">${fmt(du.cheltuieli)}</td></tr>
@@ -454,8 +454,8 @@ async function loadStatements() {
         <tr><td>Impozit pe venit 10% (după deducerea CAS și CASS)</td><td class="num">${fmt(du.impozit)}</td></tr>
         <tr class="total"><td>TOTAL taxe (Declarația Unică)</td><td class="num">${fmt(du.total)}</td></tr>
       </table>
-      <p class="muted" style="margin:8px 0 4px"><b>Variantă pe încasat/plătit</b> (fiscalitatea PFA în sistem real e pe încasări): venit net ${fmt(du.incasat.venitNet)} lei → taxe ${fmt(du.incasat.total)} lei. Alege baza corectă împreună cu contabilul.</p>
-      <p class="muted" style="margin:0">Se depune personal, din SPV, până la termenul legal.
+      <p class="muted" data-u="u98"><b>Variantă pe încasat/plătit</b> (fiscalitatea PFA în sistem real e pe încasări): venit net ${fmt(du.incasat.venitNet)} lei → taxe ${fmt(du.incasat.total)} lei. Alege baza corectă împreună cu contabilul.</p>
+      <p class="muted" data-u="u73">Se depune personal, din SPV, până la termenul legal.
         <a class="linkbtn" href="/pdf/declaratia-unica?year=${y}" target="_blank">⬇ Recap PDF</a> ·
         <a class="linkbtn" href="/pdf/registru-incasari-plati?period=${y}" target="_blank" title="Registrul-jurnal de încasări și plăți (partidă simplă)">⬇ Registru încasări-plăți</a></p>`;
     }).catch(() => {});
@@ -471,7 +471,7 @@ async function loadStatements() {
       <tr class="total"><td>= Rezultat fiscal</td><td class="num">${fmt(rf.rezultatFiscal)}</td></tr>
       <tr class="total"><td>Impozit pe profit ${rf.rateProfit}%</td><td class="num">${fmt(rf.impozitProfit)}</td></tr>
       <tr><td class="muted">(comparativ) Impozit micro 1% din venituri</td><td class="num">${fmt(rf.impozitMicro)}</td></tr>
-    </table>${(rf.mentiuni || []).map((m) => `<p class="muted" style="margin:6px 0 0">${m}</p>`).join('')}`;
+    </table>${(rf.mentiuni || []).map((m) => `<p class="muted" data-u="u184">${m}</p>`).join('')}`;
   }).catch(() => {});
   }
   const Y0 = Number(y) - 1;
@@ -482,7 +482,7 @@ async function loadStatements() {
   const pcell = (o, k) => (o ? fmt(o[k]) : '—');
   const pr = (label, key, cls) => `<tr class="${cls || ''}"><td>${label}</td><td class="num">${pcell(pl0, key)}</td><td class="num">${fmt(pl[key])}</td></tr>`;
   $('#plView').innerHTML = `<table>
-    <tr><th style="text-align:left"></th><th class="num">Ex. precedent ${Y0}</th><th class="num">Ex. curent ${y}</th></tr>
+    <tr><th data-u="u183"></th><th class="num">Ex. precedent ${Y0}</th><th class="num">Ex. curent ${y}</th></tr>
     ${pr('1. Cifra de afaceri netă', 'cifraAfaceri')}
     ${pr('2. Variația stocurilor / producția imobilizată', 'venitProductie')}
     ${pr('3. Alte venituri din exploatare', 'alteVenitExpl')}
@@ -501,17 +501,17 @@ async function loadStatements() {
     ${pr('REZULTAT BRUT', 'rezBrut', 'bold')}
     ${pr('10. Impozit pe profit / venit', 'impozit')}
     ${pr('REZULTAT NET AL EXERCIȚIULUI', 'rezNet', 'bold')}</table>
-    <p class="muted" style="font-size:11.5px">Structură F20 prescurtat (cont de profit și pierdere, OMFP 1802/2014), cu două coloane: exercițiul precedent și cel curent. Rândurile „Alte..." sunt reziduale, astfel încât totalurile coincid cu rulajul claselor 6 și 7.</p>`;
+    <p class="muted" data-u="u185">Structură F20 prescurtat (cont de profit și pierdere, OMFP 1802/2014), cu două coloane: exercițiul precedent și cel curent. Rândurile „Alte..." sunt reziduale, astfel încât totalurile coincid cu rulajul claselor 6 și 7.</p>`;
   const [bs, bs0] = await Promise.all([
     api('/api/statements/bilant-f10?period=' + y + '-12'),
     api('/api/statements/bilant-f10?period=' + Y0 + '-12').catch(() => null),
   ]);
   const r = bs.randuri; const r0 = bs0 ? bs0.randuri : null;
   const row = (label, key, cls) => `<tr class="${cls || ''}"><td>${label}</td><td class="num">${pcell(r0, key)}</td><td class="num">${fmt(r[key])}</td></tr>`;
-  const sub = (label, key) => `<tr><td style="padding-left:18px" class="muted">${label}</td><td class="num">${pcell(r0, key)}</td><td class="num">${fmt(r[key])}</td></tr>`;
+  const sub = (label, key) => `<tr><td data-u="u182" class="muted">${label}</td><td class="num">${pcell(r0, key)}</td><td class="num">${fmt(r[key])}</td></tr>`;
   const rowT = (label, cur, prev, cls) => `<tr class="${cls || ''}"><td>${label}</td><td class="num">${prev == null ? '—' : fmt(prev)}</td><td class="num">${fmt(cur)}</td></tr>`;
   $('#bilantView').innerHTML = `<table>
-    <tr><th style="text-align:left"></th><th class="num">Început ex. (${Y0})</th><th class="num">Sfârșit ex. (${y})</th></tr>
+    <tr><th data-u="u183"></th><th class="num">Început ex. (${Y0})</th><th class="num">Sfârșit ex. (${y})</th></tr>
     ${row('A. Active imobilizate', 'A', 'total')}
     ${sub('Imobilizări necorporale', 'A_necorp')}${sub('Imobilizări corporale', 'A_corp')}${sub('Imobilizări financiare', 'A_financ')}
     ${row('B. Active circulante', 'B', 'total')}
@@ -528,7 +528,7 @@ async function loadStatements() {
     ${sub('din care rezultatul exercițiului', 'rezultatCurent')}
     ${rowT('TOTAL PASIV (J+D+G+H+I)', bs.totalPasiv, bs0 ? bs0.totalPasiv : null, 'bold')}</table>
     <p class="${bs.echilibrat ? '' : 'status err'}">${bs.echilibrat ? '✔ Activ = Pasiv (bilanț echilibrat)' : '✘ Activ ≠ Pasiv'}</p>
-    <p class="muted" style="font-size:11.5px">Structură F10 prescurtat (OMFP 1802/2014), cu două coloane: sold la începutul exercițiului (31 dec. ${Y0}) și la sfârșit (31 dec. ${y}). Conturile bifuncționale (clasa 4) se clasifică după sold; datoriile pe termen lung = grupa 16.</p>`;
+    <p class="muted" data-u="u185">Structură F10 prescurtat (OMFP 1802/2014), cu două coloane: sold la începutul exercițiului (31 dec. ${Y0}) și la sfârșit (31 dec. ${y}). Conturile bifuncționale (clasa 4) se clasifică după sold; datoriile pe termen lung = grupa 16.</p>`;
 }
 
 

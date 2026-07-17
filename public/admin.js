@@ -24,10 +24,10 @@ export async function renderFirme() {
   // Billing per-firma: fiecare firma are propria stare de abonament (f._sub).
   const subBadge = (f) => {
     const s = f._sub || {};
-    if (s.status === 'trial') return ` <span class="pill" style="background:#eaf4ef;color:#0b6e4f" title="Probă gratuită">🎁 probă: ${s.zileRamase} ${s.zileRamase === 1 ? 'zi' : 'zile'}</span>`;
-    if (s.status === 'expired') return ' <span class="pill warn" title="Proba a expirat — abonează-te ca să continui">🎁 probă expirată</span>' + (s.pending ? ' <span class="pill" style="background:#fff4e0;color:#b26a00">⏳ plată în așteptare</span>' : '');
-    if (s.status === 'none') return ' <span class="pill warn" title="Fără abonament">fără abonament</span>' + (s.pending ? ' <span class="pill" style="background:#fff4e0;color:#b26a00">⏳ plată în așteptare</span>' : '');
-    if (s.status === 'active' && s.plan && s.plan !== 'grandfathered') return ` <span class="pill" style="background:#eaf4ef;color:#0b6e4f" title="Abonament activ">✓ ${s.plan === 'pro' ? 'Pro' : s.plan === 'start' ? 'Start' : 'activ'}</span>`;
+    if (s.status === 'trial') return ` <span class="pill" data-u="u10" title="Probă gratuită">🎁 probă: ${s.zileRamase} ${s.zileRamase === 1 ? 'zi' : 'zile'}</span>`;
+    if (s.status === 'expired') return ' <span class="pill warn" title="Proba a expirat — abonează-te ca să continui">🎁 probă expirată</span>' + (s.pending ? ' <span class="pill" data-u="u11">⏳ plată în așteptare</span>' : '');
+    if (s.status === 'none') return ' <span class="pill warn" title="Fără abonament">fără abonament</span>' + (s.pending ? ' <span class="pill" data-u="u11">⏳ plată în așteptare</span>' : '');
+    if (s.status === 'active' && s.plan && s.plan !== 'grandfathered') return ` <span class="pill" data-u="u10" title="Abonament activ">✓ ${s.plan === 'pro' ? 'Pro' : s.plan === 'start' ? 'Start' : 'activ'}</span>`;
     return '';
   };
   const needsSub = (f) => f._sub && (f._sub.status === 'expired' || f._sub.status === 'none');
@@ -35,7 +35,7 @@ export async function renderFirme() {
     data.firme.map((f) => `<tr>
       <td>${f.id === data.firmaActiva ? '<b>● ' + H(f.nume) + '</b>' : H(f.nume)}${subBadge(f)}</td><td>${H(f.cui)}</td>
       <td>${f.id === data.firmaActiva ? '<span class="pill">activă</span>' : `<button class="linkbtn fact" data-id="${f.id}">activează</button>`}
-        ${needsSub(f) ? ` · <button class="linkbtn fsub" data-id="${f.id}" data-nume="${H(f.nume)}" style="color:var(--accent);font-weight:700">abonează-te →</button>` : ''}
+        ${needsSub(f) ? ` · <button class="linkbtn fsub" data-id="${f.id}" data-nume="${H(f.nume)}" data-u="u12">abonează-te →</button>` : ''}
         ${data.firme.length > 1 ? ` · <button class="del fdel" data-id="${f.id}">✕</button>` : ''}</td></tr>`).join('')}</tbody></table>`;
   $$('#firmeList .fact').forEach((b) => b.addEventListener('click', async () => {
     await api('/api/firme/' + b.dataset.id + '/activate', { method: 'POST' }); await deps.init(); deps.onTab('setari'); toast('Firmă activată');
@@ -50,7 +50,7 @@ export async function renderFirme() {
   const isTest = /^\[TEST\]/.test(active.nume || '') || active.test;
   const info = $('#testEnvInfo');
   if (info) info.innerHTML = isTest
-    ? '🧪 <b style="color:var(--danger)">Ești pe o firmă de TEST</b> — modificările de aici NU afectează firma reală.'
+    ? '🧪 <b data-u="u13">Ești pe o firmă de TEST</b> — modificările de aici NU afectează firma reală.'
     : 'Firma activă acum: <b>' + (active.nume || '—') + '</b> (reală).';
 }
 $('#testCloneBtn') && $('#testCloneBtn').addEventListener('click', async () => {
@@ -101,8 +101,8 @@ $('#firmaImportBtn').addEventListener('click', async () => {
 // ───────────────────────── UTILIZATORI (admin) ─────────────────────────
 function firmeChecks(selected) {
   const sel = new Set((selected || []).map(Number));
-  return (META.firme || []).map((f) => `<label style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-weight:500;color:var(--ink)">
-    <input type="checkbox" class="ufirma" value="${f.id}" ${sel.has(f.id) ? 'checked' : ''} style="width:auto"> ${H(f.nume)}</label>`).join('');
+  return (META.firme || []).map((f) => `<label data-u="u14">
+    <input type="checkbox" class="ufirma" value="${f.id}" ${sel.has(f.id) ? 'checked' : ''} data-u="u15"> ${H(f.nume)}</label>`).join('');
 }
 export async function renderUsers() {
   if (USER.role !== 'admin') return;
@@ -119,10 +119,10 @@ export async function renderUsers() {
   // tipul utilizatorului: admin / tester (proba) / necontabil (Start) / contabil (Pro)
   const tipPill = (u) => {
     const c = { admin: 'background:#2f2e2a;color:#fff', contabil: 'background:#e2f5e8;color:#0a7d33', necontabil: 'background:#e7eefc;color:#1652d6', tester: 'background:#fff4e0;color:#b26a00' }[u.tip] || '';
-    return `<span class="pill" style="${c}" title="${u.plan ? 'plan: ' + u.plan : 'fără plan (probă)'}">${u.tip || '—'}</span>`;
+    return `<span class="pill" data-style="${c}" title="${u.plan ? 'plan: ' + u.plan : 'fără plan (probă)'}">${u.tip || '—'}</span>`;
   };
-  const drCheck = (u, key, label, title) => u.role === 'admin' ? '' : `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap" title="${title}">
-      <input type="checkbox" class="udrept" data-id="${u.id}" data-drept="${key}" style="width:auto" ${u.drepturi && u.drepturi[key] ? 'checked' : ''} /> ${label}</label>`;
+  const drCheck = (u, key, label, title) => u.role === 'admin' ? '' : `<label data-u="u16" title="${title}">
+      <input type="checkbox" class="udrept" data-id="${u.id}" data-drept="${key}" data-u="u15" ${u.drepturi && u.drepturi[key] ? 'checked' : ''} /> ${label}</label>`;
   $('#usersList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th>Firme</th><th>Drepturi</th><th></th></tr></thead><tbody>${
     users.map((u) => `<tr><td><b>${H(u.username)}</b>${u.pending ? ' <span class="pill warn">invitație</span>' : ''}</td><td>${tipPill(u)}</td>
       <td>${u.role === 'admin' ? '<span class="muted">toate</span>' : u.firme.map((id) => { const f = (META.firme || []).find((x) => x.id === id); return f ? H(f.nume) : id; }).join(', ') || '<span class="muted">—</span>'}</td>

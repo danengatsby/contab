@@ -41,10 +41,10 @@ async function renderOpening() {
 }
 function drawOpening() {
   const rows = OPEN_ROWS.map((r, i) => `<tr>
-    <td><input class="op-cont acc" data-i="${i}" value="${r.cont}" placeholder="cont" style="width:90px" /></td>
+    <td><input class="op-cont acc" data-i="${i}" value="${r.cont}" placeholder="cont" data-u="u90" /></td>
     <td class="muted op-nume">${accName(r.cont) || ''}</td>
-    <td><input class="op-d num" data-i="${i}" type="number" step="0.01" value="${r.d || ''}" placeholder="0" style="width:120px;text-align:right" /></td>
-    <td><input class="op-c num" data-i="${i}" type="number" step="0.01" value="${r.c || ''}" placeholder="0" style="width:120px;text-align:right" /></td>
+    <td><input class="op-d num" data-i="${i}" type="number" step="0.01" value="${r.d || ''}" placeholder="0" data-u="u162" /></td>
+    <td><input class="op-c num" data-i="${i}" type="number" step="0.01" value="${r.c || ''}" placeholder="0" data-u="u162" /></td>
     <td><button class="linkbtn op-del" data-i="${i}">șterge</button></td></tr>`).join('');
   $('#openEditor').innerHTML = OPEN_ROWS.length
     ? `<table><thead><tr><th>Cont</th><th>Denumire</th><th class="num">Sold debit</th><th class="num">Sold credit</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
@@ -53,7 +53,7 @@ function drawOpening() {
   const totC = Math.round(OPEN_ROWS.reduce((s, r) => s + (r.c || 0), 0) * 100) / 100;
   const dif = Math.round((totD - totC) * 100) / 100;
   $('#openTotals').innerHTML = OPEN_ROWS.length
-    ? `Total debit: <b>${fmt(totD)}</b> · Total credit: <b>${fmt(totC)}</b> · ${dif === 0 ? '<span style="color:var(--accent);font-weight:700">echilibrat ✓</span>' : `<span style="color:#b00020;font-weight:700">diferență ${fmt(dif)}</span>`}`
+    ? `Total debit: <b>${fmt(totD)}</b> · Total credit: <b>${fmt(totC)}</b> · ${dif === 0 ? '<span data-u="u12">echilibrat ✓</span>' : `<span data-u="u33">diferență ${fmt(dif)}</span>`}`
     : '';
   $$('#openEditor .op-cont').forEach((inp) => inp.addEventListener('input', (e) => {
     const r = OPEN_ROWS[Number(e.target.dataset.i)]; r.cont = e.target.value.trim();
@@ -67,7 +67,7 @@ function drawOpeningTotals() {
   const totD = Math.round(OPEN_ROWS.reduce((s, r) => s + (r.d || 0), 0) * 100) / 100;
   const totC = Math.round(OPEN_ROWS.reduce((s, r) => s + (r.c || 0), 0) * 100) / 100;
   const dif = Math.round((totD - totC) * 100) / 100;
-  $('#openTotals').innerHTML = `Total debit: <b>${fmt(totD)}</b> · Total credit: <b>${fmt(totC)}</b> · ${dif === 0 ? '<span style="color:var(--accent);font-weight:700">echilibrat ✓</span>' : `<span style="color:#b00020;font-weight:700">diferență ${fmt(dif)}</span>`}`;
+  $('#openTotals').innerHTML = `Total debit: <b>${fmt(totD)}</b> · Total credit: <b>${fmt(totC)}</b> · ${dif === 0 ? '<span data-u="u12">echilibrat ✓</span>' : `<span data-u="u33">diferență ${fmt(dif)}</span>`}`;
 }
 $('#openAddRow') && $('#openAddRow').addEventListener('click', () => { OPEN_ROWS.push({ cont: '', d: 0, c: 0 }); drawOpening(); });
 $('#openFile') && $('#openFile').addEventListener('change', async (e) => {

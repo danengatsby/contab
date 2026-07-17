@@ -48,11 +48,10 @@ function createApp() {
 
   // Anteturi de securitate via helmet, cu CSP calibrat pentru aceasta aplicatie:
   //  - script-src 'self' (un singur /app.js, fara scripturi/handler-e inline)
-  //  - style-src 'unsafe-inline' — DOAR pentru atributele style= (~400 in HTML+JS); nonce-ul
-  //    CSP nu se aplica atributelor, deci nu ajuta pana nu migreaza la clase. Elementele
-  //    <style> au fost deja eliminate (CSS extern), iar testul-ratchet din test/run.js
-  //    plafoneaza atributele ca sa scada; la ~0, styleSrc trece pe nonce. Exfiltrarea prin
-  //    CSS injectat e oricum taiata de img-src/font-src/connect-src restrictive.
+  //  - style-src 'self' FARA unsafe-inline: zero elemente <style> si zero atribute style= in
+  //    markup (poarta din test/run.js le tine la zero). Stilurile statice = utilitare generate
+  //    in u.css (data-u); cele dinamice = data-style transferat pe el.style.cssText in core.js
+  //    (CSSOM — nepenalizat de CSP). Un XSS de injectie HTML nu mai poate injecta nici stiluri.
   //  - img-src data:/blob: (favicon data-URI, canvas), connect-src include puntea de scanare locala
   //  - frame-src 'self' blob: (vizualizatorul PDF/e-Factura ruleaza intr-un <iframe> same-origin)
   // COEP/CORP sunt DEZACTIVATE intentionat: ar rupe vizualizatorul PDF (iframe blob:) si puntea
@@ -64,7 +63,7 @@ function createApp() {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'"],
         imgSrc: ["'self'", 'data:', 'blob:'],
         fontSrc: ["'self'"],
         connectSrc: ["'self'", 'http://127.0.0.1:8765', 'http://localhost:8765'],

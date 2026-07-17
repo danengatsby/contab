@@ -5,7 +5,7 @@
 import { $, $$, api, toast, H, fileToCsv } from './core.js';
 
 const TIP_PARTENER = { client: { t: 'Client', c: '#0b6e4f', bg: '#eaf4ef' }, furnizor: { t: 'Furnizor', c: '#b00020', bg: '#fdeef0' }, ambele: { t: 'Ambele', c: '#42506f', bg: '#eef1f7' } };
-function tipBadge(tip) { const x = TIP_PARTENER[tip]; return x ? `<span style="background:${x.bg};color:${x.c};border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700">${x.t}</span>` : '<span class="muted">—</span>'; }
+function tipBadge(tip) { const x = TIP_PARTENER[tip]; return x ? `<span data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700">${x.t}</span>` : '<span class="muted">—</span>'; }
 let PARTNERS_MAP = {};
 export async function loadPartners() {
   PARTNERS_MAP = await api('/api/partners');

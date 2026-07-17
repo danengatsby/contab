@@ -47,7 +47,7 @@ function renderGlossary(q) {
   const items = GLOSAR.filter(([t, e]) => !s || (t + ' ' + e).toLowerCase().includes(s));
   box.innerHTML = items.length
     ? items.map(([t, e]) => `<div class="gloss-item"><b>${t}</b><p>${e}</p></div>`).join('')
-    : '<p class="muted" style="padding:10px 6px">Niciun termen găsit — încearcă alt cuvânt.</p>';
+    : '<p class="muted" data-u="u188">Niciun termen găsit — încearcă alt cuvânt.</p>';
 }
 $('#glossaryBtn') && $('#glossaryBtn').addEventListener('click', () => { renderGlossary(''); $('#glossarySearch').value = ''; $('#glossaryModal').classList.remove('hidden'); $('#glossarySearch').focus(); });
 $('#glossaryClose') && $('#glossaryClose').addEventListener('click', () => $('#glossaryModal').classList.add('hidden'));
