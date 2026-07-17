@@ -37,6 +37,33 @@ function validatePassword(password, opts) {
   return null;
 }
 
+// Verifica parola contra bazei HaveIBeenPwned prin k-ANONIMITATE: se trimite DOAR primele 5
+// caractere din SHA1 (hex majuscul); serverul intoarce sufixele + nr. aparitii. Parola intreaga
+// NU pleaca niciodata (antetul Add-Padding maschează si dimensiunea raspunsului). Suplimenteaza
+// validatePassword (sincron: lungime + blacklist) cu o verificare de COMPROMITERE reala.
+// FAIL-OPEN: orice eroare (retea/timeout/non-200) -> permite; nu blocam auth pe un serviciu
+// extern indisponibil. Dezactivabil: CONTAB_HIBP=0 (ex. instalari izolate, fara internet).
+const HIBP_ON = process.env.CONTAB_HIBP !== '0';
+const HIBP_TIMEOUT_MS = Number(process.env.CONTAB_HIBP_TIMEOUT_MS) || 2500;
+async function breachCheck(password) {
+  if (!HIBP_ON) return null;
+  try {
+    const sha1 = crypto.createHash('sha1').update(String(password == null ? '' : password)).digest('hex').toUpperCase();
+    const prefix = sha1.slice(0, 5); const suffix = sha1.slice(5);
+    const r = await fetch('https://api.pwnedpasswords.com/range/' + prefix, {
+      headers: { 'Add-Padding': 'true', 'User-Agent': 'contab-password-check' },
+      signal: AbortSignal.timeout(HIBP_TIMEOUT_MS),
+    });
+    if (!r.ok) return null; // fail-open
+    const text = await r.text();
+    for (const line of text.split('\n')) {
+      const [suf, count] = line.trim().split(':');
+      if (suf === suffix && Number(count) > 0) return 'Parola apare in liste publice de parole compromise — alege alta.';
+    }
+    return null;
+  } catch (_) { return null; } // fail-open: HIBP indisponibil nu blocheaza autentificarea
+}
+
 function b64url(buf) {
   return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -72,4 +99,4 @@ function parseCookies(header) {
   return out;
 }
 
-module.exports = { hashPassword, verifyPassword, validatePassword, sign, verify, parseCookies, MIN_PASSWORD };
+module.exports = { hashPassword, verifyPassword, validatePassword, breachCheck, sign, verify, parseCookies, MIN_PASSWORD };

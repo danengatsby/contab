@@ -6,6 +6,7 @@
 // me/impersonare/resetare, cookie-uri, anti-brute-force, crearea sesiunii) sta in src/authRoutes.js.
 
 const svc = require('../accountService');
+const authlib = require('../auth');
 
 module.exports = function register(app, ctx) {
   const { logAudit } = ctx;
@@ -49,12 +50,17 @@ module.exports = function register(app, ctx) {
   }));
 
   // ───────────────────────────── PAROLA + PROFIL ─────────────────────────────
-  app.post('/api/change-password', (req, res) => run(res, () => {
+  app.post('/api/change-password', async (req, res) => {
     const b = req.body || {};
-    svc.changePassword(req.user, b.oldPassword, b.newPassword);
-    logAudit('parola.schimbata', req.user.username, { req, firmaId: null });
-    return { ok: true };
-  }));
+    // validarea sincrona (oldPassword, lungime/blacklist) e in serviciu; verificarea HIBP e async
+    const breachErr = b.newPassword ? await authlib.breachCheck(String(b.newPassword)) : null;
+    if (breachErr) return res.status(400).json({ error: breachErr });
+    run(res, () => {
+      svc.changePassword(req.user, b.oldPassword, b.newPassword);
+      logAudit('parola.schimbata', req.user.username, { req, firmaId: null });
+      return { ok: true };
+    });
+  });
   app.get('/api/profile', (req, res) => res.json(svc.getProfile(req.user)));
   // Wizard-ul de prima autentificare: „mai tarziu" il ascunde definitiv pentru utilizator
   app.post('/api/onboarding/dismiss', (req, res) => run(res, () => {

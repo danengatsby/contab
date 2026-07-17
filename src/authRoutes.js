@@ -103,7 +103,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
     r.count += 1; registerAttempts.set(k, r);
   }
   app.get('/api/register', (req, res) => res.json({ enabled: db.get().settings.selfRegister !== false }));
-  app.post('/api/register', (req, res) => {
+  app.post('/api/register', async (req, res) => {
     const d = db.get();
     if (d.settings.selfRegister === false) return res.status(403).json({ error: 'Inscrierea de firme noi este momentan dezactivata.' });
     if (regCount(req) >= 5) return res.status(429).json({ error: 'Prea multe inscrieri de pe aceasta retea. Reincearca peste o ora.' });
@@ -115,6 +115,8 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (username.length < 3) return res.status(400).json({ error: 'Utilizator prea scurt (minim 3 caractere).' });
     const pwErr = authlib.validatePassword(password, { username });
     if (pwErr) return res.status(400).json({ error: pwErr });
+    const breachErr = await authlib.breachCheck(password); // HIBP (fail-open), inainte de a crea firma+user
+    if (breachErr) return res.status(400).json({ error: breachErr });
     if (d.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) return res.status(400).json({ error: 'Acest utilizator exista deja. Alege altul.' });
     // firma noua GOALA — fara date contabile (entries/parteneri/solduri/stocuri etc.)
     const fid = db.nextFirmaId();
@@ -305,12 +307,14 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (!u) return res.status(404).json({ error: 'Link de resetare invalid sau expirat.' });
     res.json({ username: u.username });
   });
-  app.post('/api/reset/accept', (req, res) => {
+  app.post('/api/reset/accept', async (req, res) => {
     const { token, password } = req.body || {};
     const u = findReset(token);
     if (!u) return res.status(404).json({ error: 'Link de resetare invalid sau expirat.' });
     const pwErr = authlib.validatePassword(password, { username: u.username });
     if (pwErr) return res.status(400).json({ error: pwErr });
+    const breachErr = await authlib.breachCheck(password);
+    if (breachErr) return res.status(400).json({ error: breachErr });
     const h = authlib.hashPassword(password);
     u.salt = h.salt; u.hash = h.hash; u.mustChange = false; delete u.resetToken; delete u.resetExp;
     u.sessions = []; // resetarea parolei deconecteaza celelalte sesiuni

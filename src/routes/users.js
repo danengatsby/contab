@@ -95,13 +95,15 @@ module.exports = function register(app, ctx) {
     res.json({ username: r.user.username, role: r.user.role });
   });
   // Public: acceptarea invitatiei (setarea parolei) + autentificare
-  app.post('/api/invite/accept', (req, res) => {
+  app.post('/api/invite/accept', async (req, res) => {
     const { token, password } = req.body || {};
     const r = findInvite(token);
     if (r.error) return res.status(404).json({ error: r.error });
     const u = r.user;
     const pwErr = authlib.validatePassword(password, { username: u.username });
     if (pwErr) return res.status(400).json({ error: pwErr });
+    const breachErr = await authlib.breachCheck(password);
+    if (breachErr) return res.status(400).json({ error: breachErr });
     const h = authlib.hashPassword(password);
     u.salt = h.salt; u.hash = h.hash; u.pending = false; delete u.inviteToken; delete u.inviteExp;
     startSession(req, res, u);
