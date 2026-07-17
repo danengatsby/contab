@@ -67,26 +67,40 @@ function bindEntryActions(root) {
     catch (e) { toast(e.message, true); }
   }));
 }
-let ENTRIES_CACHE = [];
+// Cache PE PERIOADA SELECTATA (luna sau an): la volume mari, „toate inregistrarile" inseamna
+// zeci de MB pe fiecare schimbare de tab (masurat: 19MB la 50k; luna curenta = 1.7MB). Se cere
+// de la server exact perioada fiecarui filtru (?period=YYYY-MM sau YYYY); implicit = luna de lucru.
+let ENTRIES_CACHE = {}; // cheie de perioada -> lista sortata a perioadei
 function inPeriodClient(e, period) {
   if (!period) return true;
   return (e.period || (e.data || '').slice(0, 7)).startsWith(period);
 }
+function periodKey(prefix) {
+  const p = pget(prefix);
+  return /^\d{4}(-\d{2})?$/.test(p) ? p : String(new Date().getFullYear());
+}
+function periodKeys() { return [...new Set(['intrate', 'iesite', 'toate'].map(periodKey))]; }
 async function loadEntries() {
-  ENTRIES_CACHE = await api('/api/entries');
+  const ks = periodKeys();
+  const got = await Promise.all(ks.map((k) => api('/api/entries?period=' + k)));
+  ENTRIES_CACHE = {};
+  ks.forEach((k, i) => { ENTRIES_CACHE[k] = got[i]; });
   renderEntryLists();
 }
 function renderEntryLists() {
-  const ordered = ENTRIES_CACHE.slice().reverse();
+  // o perioada nou-selectata, absenta din cache -> refetch (loadEntries re-randeaza la final)
+  if (periodKeys().some((k) => !ENTRIES_CACHE[k])) { loadEntries(); return; }
+  const orderedFor = (prefix) => (ENTRIES_CACHE[periodKey(prefix)] || []).slice().reverse();
+  const ordered = orderedFor('toate');
   // 📥 intrate (filtrate pe Lună+An)
   const pi = pget('intrate');
-  let intr = ordered.filter((e) => entryDir(e.tip) === 'in');
+  let intr = orderedFor('intrate').filter((e) => entryDir(e.tip) === 'in');
   if (pi) intr = intr.filter((e) => inPeriodClient(e, pi));
   if ($('#countIntrare')) $('#countIntrare').textContent = intr.length + ' documente';
   renderEntryTable('entriesIntrare', intr.map(entryRowHtml).join(''), 'Niciun document de intrare în perioada aleasă.');
   // 📤 ieșite
   const po = pget('iesite');
-  let ies = ordered.filter((e) => entryDir(e.tip) === 'out');
+  let ies = orderedFor('iesite').filter((e) => entryDir(e.tip) === 'out');
   if (po) ies = ies.filter((e) => inPeriodClient(e, po));
   if ($('#countIesire')) $('#countIesire').textContent = ies.length + ' documente';
   renderEntryTable('entriesIesire', ies.map(entryRowHtml).join(''), 'Niciun document de ieșire în perioada aleasă.');

@@ -31,9 +31,17 @@ module.exports = function register(app, ctx) {
   }));
 
   app.get('/api/entries', (req, res) => {
+    // ?period=YYYY-MM (luna exacta) sau ?period=YYYY (tot anul). Fara parametru intoarce tot —
+    // compatibil, dar clientul cere pe ANI (la volume mari, "tot" inseamna zeci de MB).
     const { period } = req.query;
     let list = S(req).entries;
-    if (period) list = list.filter((e) => (e.period || periodOf(e.data)) === period);
+    if (period) {
+      const anual = /^\d{4}$/.test(period);
+      list = list.filter((e) => {
+        const p = e.period || periodOf(e.data);
+        return anual ? String(p).startsWith(period + '-') : p === period;
+      });
+    }
     res.json(acc.sortEntries(list));
   });
 
