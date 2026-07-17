@@ -12,6 +12,9 @@
     "prestart": "npm test",
     "e2e": "node scripts/e2e.mjs"
   },
+  "engines": {
+    "node": ">=22.13"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
     "adm-zip": "^0.5.16",

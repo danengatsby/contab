@@ -2379,6 +2379,21 @@ section('Serializare sigura a bazei (stringifyDb: BigInt / valori nefinite)');
   dbx.save();
 }
 
+section('Garda node:sqlite (driverul implicit cere Node >= 22.13)');
+{
+  // node:sqlite nu exista pe Node < 22.5 (si e sub flag pana la 22.13): fara garda, driverul
+  // IMPLICIT ar cadea cu o eroare criptica la require. checkSqlite transforma caderea intr-un
+  // mesaj actionabil, iar package.json declara cerinta (npm avertizeaza la install).
+  const storeMod = require('../src/store');
+  ok('pe Node curent, checkSqlite trece (DatabaseSync disponibil)', !!storeMod.checkSqlite(require('node:sqlite')));
+  const msg = (() => { try { storeMod.checkSqlite({}, 'v18.19.0'); return ''; } catch (e) { return e.message; } })();
+  ok('fara DatabaseSync: mesajul numeste versiunea gasita', /v18\.19\.0/.test(msg));
+  ok('mesajul numeste cerinta si flagul istoric', /22\.13/.test(msg) && /--experimental-sqlite/.test(msg));
+  ok('mesajul ofera driverele alternative', /CONTAB_DB_DRIVER=pg/.test(msg) && /CONTAB_DB_DRIVER=json/.test(msg));
+  const pkg = require('../package.json');
+  ok('package.json declara engines.node >= 22.13', !!(pkg.engines && pkg.engines.node === '>=22.13'));
+}
+
 section('Joburi periodice opribile (src/jobs.js: unref + stop)');
 {
   // Intervalele joburilor nu au voie sa tina un proces in viata sau sa "scape" dintr-un test:

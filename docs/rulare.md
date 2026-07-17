@@ -142,6 +142,8 @@ npm run seed         # din linia de comanda
 `CONTAB_DB_DRIVER` alege stratul de persistență, fără nicio schimbare în restul aplicației:
 
 - **`sqlite`** (implicit) — `node:sqlite` sincron, fișier `data/contab.sqlite`, WAL. Zero configurare.
+  **Cere Node ≥ 22.13** (`node:sqlite` nu există înainte de 22.5 și e sub flag până la 22.13);
+  pe un Node mai vechi pornirea eșuează cu un mesaj clar care indică alternativa (`pg`/`json`).
 - **`pg`** (PostgreSQL) — pentru concurență reală și scalare. Se conectează implicit pe socketul
   local `/var/run/postgresql` cu autentificare **peer** (rolul = utilizatorul OS, ex. `contab`) și
   baza `contab`; sau explicit prin `CONTAB_PG_URL=postgres://user:parola@host:5432/contab`.
