@@ -193,6 +193,17 @@ module.exports = function registerAuthRoutes(app, ctx) {
     put('backup', 'lastDoneAt', (d.settings.backup || {}).lastAt);
     put('digest-termene', 'lastDoneDate', (d.settings.deadlineDigest || {}).lastDate);
     put('demo-reset', 'lastDoneDate', (d.settings.demoReset || {}).lastDate);
+    // Distributia incarcarii PE FIRMA (o singura trecere): axa reala de crestere a acestei aplicatii
+    // e volumul per firma (firmele sunt deja izolate prin firmaId/scoped). `maxEntries` e semnalul
+    // care ar declansa partitionarea pe instante — vezi docs/scalare-crestere.md pentru praguri.
+    const perFirma = new Map();
+    for (const e of (d.entries || [])) perFirma.set(e.firmaId, (perFirma.get(e.firmaId) || { entries: 0, documents: 0 }));
+    for (const e of (d.entries || [])) perFirma.get(e.firmaId).entries += 1;
+    for (const x of (d.documents || [])) { const f = perFirma.get(x.firmaId) || { entries: 0, documents: 0 }; f.documents += 1; perFirma.set(x.firmaId, f); }
+    const nume = new Map((d.firme || []).map((f) => [f.id, f.nume]));
+    const topFirme = [...perFirma.entries()]
+      .map(([id, s]) => ({ id, nume: nume.get(id) || String(id), entries: s.entries, documents: s.documents }))
+      .sort((a, b) => b.entries - a.entries).slice(0, 10);
     res.json(Object.assign(metrics.snapshot(), {
       jobs,
       process: {
@@ -200,6 +211,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
         uptimeSec: Math.round(process.uptime()), firme: (d.firme || []).length, users: (d.users || []).length,
         memoryRssMb: mb(mem.rss), memoryHeapUsedMb: mb(mem.heapUsed), memoryHeapTotalMb: mb(mem.heapTotal),
       },
+      firmeLoad: { maxEntries: topFirme.length ? topFirme[0].entries : 0, top: topFirme },
     }));
   });
 
