@@ -3,6 +3,7 @@
 const pdfParse = require('pdf-parse/lib/pdf-parse.js');
 const PDFParser = require('pdf2json');
 const { round2 } = require('./util');
+const fiscal = require('./fiscal');
 
 /** Extrage textul cu pdf2json (motor pdf.js mai nou) - reconstruieste randurile dupa pozitie. */
 function extractWithPdf2json(buffer) {
@@ -109,12 +110,14 @@ function extractCUIs(text) {
 }
 
 function guessCota(text) {
+  // lista acopera si cotele istorice: pe document poate scrie o cota veche (factura din alt an)
   const m = text.match(/(?:T\.?V\.?A\.?|cot[aă])[^0-9%]{0,6}(\d{1,2})\s*%/i) || text.match(/(\d{1,2})\s*%/);
   if (m) {
     const v = parseInt(m[1], 10);
     if ([5, 9, 11, 19, 21].includes(v)) return v;
   }
-  return 19;
+  // fara cota pe document: cota standard CURENTA din config (nu hardcodata — se schimba prin lege)
+  return fiscal.FISCAL.tvaStandard;
 }
 
 /**
