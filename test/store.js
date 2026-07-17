@@ -106,5 +106,37 @@ eq('dupa resetDirty: audit golit', h5.audit.length, 0);
 store.close();
 rm();
 
+// ── Contractul node:sqlite (API experimental Node): exact suprafata folosita de src/store.js
+// si src/backup.js, enumerata explicit. Daca un upgrade de Node schimba API-ul, pica ACEST
+// test cu nume clar (nu un test de persistenta cu simptom obscur) — si pica la `prestart`,
+// deci INAINTE ca serverul sa porneasca pe noul Node. Planul de schimb e in antetul store.js.
+section('Contract node:sqlite (suprafata API folosita)');
+{
+  const { DatabaseSync } = require('node:sqlite');
+  const f = path.join(os.tmpdir(), 'contab-contract-' + process.pid + '.sqlite');
+  const rmC = () => { for (const x of [f, f + '-wal', f + '-shm', f + '.copy']) { try { fs.unlinkSync(x); } catch (_) { /* nu exista */ } } };
+  rmC();
+  const c = new DatabaseSync(f);
+  ok('constructor + exec(PRAGMA journal_mode=WAL)', (() => { c.exec('PRAGMA journal_mode = WAL'); return true; })());
+  c.exec('PRAGMA busy_timeout = 5000'); c.exec('PRAGMA foreign_keys = ON');
+  c.exec('CREATE TABLE t (id TEXT PRIMARY KEY, data TEXT)');
+  const ins = c.prepare('INSERT INTO t (id, data) VALUES (?, ?)');
+  ok('prepare(...).run cu parametri pozitionali', (() => { ins.run('1', '{"a":1}'); ins.run('2', '{"a":2}'); return true; })());
+  eq('prepare(...).get intoarce randul ca obiect', c.prepare('SELECT data FROM t WHERE id = ?').get('1').data, '{"a":1}');
+  eq('prepare(...).all intoarce toate randurile', c.prepare('SELECT id FROM t ORDER BY id').all().length, 2);
+  // tranzactii prin exec (BEGIN/COMMIT/ROLLBACK) — exact cum face persist()
+  c.exec('BEGIN'); ins.run('3', '{}'); c.exec('ROLLBACK');
+  eq('ROLLBACK anuleaza scrierea din tranzactie', c.prepare('SELECT COUNT(*) AS n FROM t').get().n, 2);
+  c.exec('BEGIN'); ins.run('3', '{}'); c.exec('COMMIT');
+  eq('COMMIT pastreaza scrierea', c.prepare('SELECT COUNT(*) AS n FROM t').get().n, 3);
+  // readOnly + VACUUM INTO — folosite de snapshotul din src/backup.js (fullBackup)
+  const ro = new DatabaseSync(f, { readOnly: true });
+  ok('deschidere readOnly + VACUUM INTO (snapshot de backup)', (() => { ro.exec("VACUUM INTO '" + (f + '.copy').replace(/'/g, "''") + "'"); return fs.existsSync(f + '.copy'); })());
+  ro.close();
+  c.close();
+  ok('close() inchide fara eroare', true);
+  rmC();
+}
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari store trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

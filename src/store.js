@@ -1,6 +1,17 @@
 'use strict';
 
 // Strat relational SQLite (node:sqlite, sincron — se potriveste cu modelul sincron al aplicatiei).
+//
+// DEPENDENTA PE API EXPERIMENTAL, tinuta sub control prin trei plase:
+//  1. suprafata folosita e mica si enumerata intr-un test de CONTRACT (test/store.js):
+//     new DatabaseSync(file[, {readOnly}]), exec, prepare -> run/get/all, close, PRAGMA,
+//     tranzactii prin exec(BEGIN/COMMIT/ROLLBACK); orice schimbare la un upgrade de Node
+//     pica testul cu nume clar — si la `prestart`, deci inainte de pornirea serverului;
+//  2. utilizarea e izolata: acest fisier + snapshotul VACUUM INTO din src/backup.js
+//     (care are deja fallback gratios); schimbul pe better-sqlite3 (API sincron compatibil)
+//     ar atinge doar aceste doua locuri;
+//  3. productia ruleaza pe PostgreSQL (CONTAB_DB_DRIVER=pg) — nu e expusa deloc;
+//     sqlite e implicitul pentru dev/teste, iar json ramane rollback.
 const { stringifyDb } = require('./util');
 // Tabele reale per-colectie, cu coloane id/firmaId indexate (interogabile in SQL) + o coloana
 // `data` JSON pentru restul campurilor. Aplicatia continua sa lucreze pe graful in memorie:
