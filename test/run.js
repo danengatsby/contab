@@ -630,6 +630,14 @@ eq('cont personalizat adaugat', coaMod.accountName('6028'), 'Cheltuieli cu alte 
 ok('contul nou apare in lista', coaMod.ACCOUNTS.some((a) => a.cod === '6028'));
 coaMod.addAccounts([{ cod: '6028', nume: 'Redenumit' }]); // upsert
 eq('upsert cont existent', coaMod.accountName('6028'), 'Redenumit');
+// normalSide (singura functie exportata fara test direct): sensul normal al contului dupa natura
+eq('normalSide: activ (411 clienti) -> Debit', coaMod.normalSide('4111'), 'D');
+eq('normalSide: pasiv (401 furnizori) -> Credit', coaMod.normalSide('401'), 'C');
+eq('normalSide: cheltuiala (clasa 6) -> Debit', coaMod.normalSide('607'), 'D');
+eq('normalSide: venit (clasa 7) -> Credit', coaMod.normalSide('707'), 'C');
+eq('normalSide: bifunctional (121 rezultat) -> B', coaMod.normalSide('121'), 'B');
+eq('normalSide: cont necunoscut -> D (implicit prudent)', coaMod.normalSide('9999'), 'D');
+ok('accountName: cont necunoscut -> fallback lizibil, fara throw', /necunoscut/.test(coaMod.accountName('9999')));
 
 section('Export/import firma (remapare id-uri)');
 // construieste un mini-bundle cu referinte interne (movement -> product/gestiune; transfer)
