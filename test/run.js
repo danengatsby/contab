@@ -2409,6 +2409,72 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   eq('restart dupa stop: tot 6 joburi, curatate din nou', jobs.stop(), 6);
 }
 
+section('Fiscal — payroll & taxePfa ca functii pure (src/fiscal.js)');
+{
+  const F = require('../src/fiscal');
+  const { round2 } = require('../src/util');
+  const R = F.FISCAL;
+  const rate2026 = R.cas === 25 && R.cass === 10 && R.impozitVenit === 10 && R.cam === 2.25;
+
+  // ── payroll: INVARIANTI STRUCTURALI (nu depind de cotele exacte — nu se sparg la schimbari legale) ──
+  const P0 = F.payroll(5000, 0);
+  // tichetele intra in baza CASS + impozit, dar NU in CAS
+  const Ptk = F.payroll(5000, 0, { tichete: 300 });
+  eq('tichete NU maresc CAS (baza CAS = doar brutul)', Ptk.cas, P0.cas);
+  ok('tichete maresc CASS', Ptk.cass > P0.cass);
+  // concediu medical (OUG 158): datoreaza CAS + impozit, dar NU CASS
+  const Pcm = F.payroll(4000, 0, { cmAngajator: 500, cmFnuass: 500 });
+  const Pbase = F.payroll(4000, 0);
+  ok('concediul medical mareste baza CAS', Pcm.cas > Pbase.cas);
+  eq('concediul medical NU intra in CASS', Pcm.cass, Pbase.cass);
+  // norma partiala (OUG 16/2022): sub salariul minim, diferenta de contributii o suporta ANGAJATORUL
+  const Pnp = F.payroll(2000, 0, { bazaMinima: 4050 });
+  ok('norma partiala: angajatorul suporta diferenta CAS (casAngajator > 0)', Pnp.casAngajator > 0);
+  ok('norma partiala: si diferenta CASS (cassAngajator > 0)', Pnp.cassAngajator > 0);
+  eq('norma partiala: netul angajatului NU scade cu partea angajatorului', Pnp.net, round2(2000 - Pnp.cas - Pnp.cass - Pnp.impozit));
+  // avantaje in natura: intra in baze, dar netul CASH nu creste cu avantajul (nu se plateste in bani)
+  const Pav = F.payroll(5000, 0, { avantaje: 1000 });
+  ok('avantajele maresc baza (CAS creste)', Pav.cas > P0.cas);
+  eq('avantajul nu se plateste in numerar (net = brut - contributii - impozit)', Pav.net, round2(5000 - Pav.cas - Pav.cass - Pav.impozit));
+  // deducerea reduce baza de impozit -> creste netul
+  ok('deducerea personala creste netul', F.payroll(5000, 500).net > P0.net);
+  // margine: brut 0 -> totul zero
+  const Pz = F.payroll(0, 0);
+  ok('brut 0 -> toate componentele zero', Pz.cas === 0 && Pz.cass === 0 && Pz.impozit === 0 && Pz.net === 0);
+
+  // ── payroll: VALORI DE REFERINTA (doar sub cotele 2026; altfel se sar, invariantii de sus raman) ──
+  if (rate2026) {
+    eq('2026 payroll(5000,0): CAS 25%', P0.cas, 1250);
+    eq('2026 payroll(5000,0): CASS 10%', P0.cass, 500);
+    eq('2026 payroll(5000,0): baza impozabila 3250', P0.baza, 3250);
+    eq('2026 payroll(5000,0): impozit 10%', P0.impozit, 325);
+    eq('2026 payroll(5000,0): CAM 2.25%', P0.cam, 112.5);
+    eq('2026 payroll(5000,0): net 2925', P0.net, 2925);
+    eq('2026 payroll(5000,0): cost total angajator', P0.costTotal, 5112.5);
+  }
+
+  // ── taxePfa: PRAGURILE (6/12/24/60 salarii minime) — miezul calcularii ──
+  const sm = 4050;
+  const pfa = (vn, extra) => F.taxePfa(vn, Object.assign({ salariuMinim: sm }, extra));
+  eq('PFA venit 0 -> total 0', pfa(0).total, 0);
+  eq('PFA sub 12 SM: CAS = 0 (optionala)', pfa(40000).cas, 0);
+  eq('PFA la/peste 12 SM: baza CAS = 12 SM', pfa(60000).bazaCas, round2(sm * 12));
+  eq('PFA la/peste 24 SM: baza CAS = 24 SM (nu creste peste)', pfa(300000).bazaCas, round2(sm * 24));
+  eq('PFA sub 6 SM fara alte venituri: CASS la baza minima 6 SM', pfa(20000).bazaCass, round2(sm * 6));
+  eq('PFA sub 6 SM CU alte venituri: CASS pe venitul real', pfa(20000, { areAlteVenituri: true }).bazaCass, 20000);
+  eq('PFA peste 60 SM: CASS plafonata la 60 SM', pfa(300000).bazaCass, round2(sm * 60));
+  // impozit = 10% din (venit net - CAS - CASS datorate)
+  const T = pfa(60000);
+  eq('PFA impozit = 10% din (venit - CAS - CASS)', T.impozit, round2((60000 - T.cas - T.cass) * (R.impozitVenit / 100)));
+  if (rate2026) {
+    const G = pfa(100000);
+    eq('2026 PFA(100k): CAS pe 24 SM = 24300', G.cas, 24300);
+    eq('2026 PFA(100k): CASS pe venit = 10000', G.cass, 10000);
+    eq('2026 PFA(100k): impozit 6570', G.impozit, 6570);
+    eq('2026 PFA(100k): total 40870', G.total, 40870);
+  }
+}
+
 section('Paginare + garda OOM (src/paginate.js sendList)');
 {
   const { sendList } = require('../src/paginate');

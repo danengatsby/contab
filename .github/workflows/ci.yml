@@ -24,6 +24,22 @@ jobs:
       - name: Suita de teste
         run: node test/run.js
 
+  # Audit de securitate al dependentelor: pica pe vulnerabilitati HIGH/CRITICAL (moderate/low
+  # sunt doar raportate, nu blocheaza). Ruleaza pe fiecare push/PR ca un pachet vulnerabil sa fie
+  # prins imediat, nu la urmatorul deploy. NU se pune in `npm test`/prestart local (cere reteaua
+  # si nu trebuie sa blocheze pornirea serverului de productie).
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: npm audit (high/critical)
+        run: npm audit --audit-level=high
+
   # Suita HTTP pe driverul PostgreSQL (paritate cu productia).
   test-postgres:
     runs-on: ubuntu-latest
