@@ -34,10 +34,16 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
 
 ## Arhitectură
 
-- **server.js** (~950 linii) — bootstrap: middleware (helmet/CSP calibrat, reqId, metrici,
-  paywall per-firmă `FIRMA_BILL_EXEMPT`, mustChange), autentificare/sesiuni, impersonare,
-  înregistrarea modulelor de rute cu `ctx = { S, activeId, canAccess, requireAdmin, logAudit… }`,
-  joburi periodice (`safeInterval`: backup, digest, demo-reset, spv-poll, rate-limit-hygiene).
+- **server.js** (~350 linii) — doar ASAMBLAREA: înregistrarea modulelor de rute cu
+  `ctx = { S, activeId, canAccess, requireAdmin, logAudit… }`, `buildEntry`/`upsertPartner`
+  (partajate de entries/bank/anaf/payroll) și `activeId`/`S` (izolarea pe firmă — sursa unică).
+  Restul e spart pe module: **src/bootstrap.js** (`.env`, `createApp` cu helmet/CSP calibrat,
+  reqId, metrici, multer + garda upload; `applySecurityGuards` cu autentificare, mustChange,
+  drepturi granulare, paywall per-firmă `FIRMA_BILL_EXEMPT`, plafon exporturi),
+  **src/authRoutes.js** (login/2FA, înscriere, resetare, impersonare, me/meta/health/metrics/audit),
+  **src/jobs.js** (`safeInterval`: backup, digest, demo-reset, spv-poll, rate-limit-hygiene),
+  **src/serverErrors.js** (fereastra 5xx + alertă email, handlerul global de erori, plasele pe
+  proces), **src/lifecycle.js** (lock single-instance, listen după `dbReady`, oprirea curată).
 - **src/routes/*.js** — puncte de intrare subțiri: `register(app, ctx)`; parsează cererea, apelează
   serviciul, scriu auditul, traduc erorile. Tipar: `run(res, fn)` trimite JSON doar dacă `fn` nu a
   răspuns deja singur (export/PDF) și lasă erorile fără `status` să urce la handlerul global (500 + log).

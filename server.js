@@ -1,22 +1,19 @@
 'use strict';
 
-// Incarcarea .env + constructia aplicatiei Express (middleware de infrastructura si gardurile
-// de acces) stau in src/bootstrap.js; nucleul de autentificare/cont in src/authRoutes.js.
-// Aici raman: asamblarea rutelor (ctx), buildEntry, joburile periodice si pornirea serverului.
+// server.js = doar ASAMBLAREA: .env + instanta Express (src/bootstrap.js), nucleul de
+// autentificare (src/authRoutes.js), inregistrarea modulelor de rute cu ctx, buildEntry/
+// upsertPartner (folosite de mai multe rute), apoi joburile periodice (src/jobs.js),
+// handlerul global de erori (src/serverErrors.js) si ciclul de viata (src/lifecycle.js).
 const bootstrap = require('./src/bootstrap');
 bootstrap.loadDotEnv(__dirname); // inainte de orice require care citeste variabile (cheie AI etc.)
 
-const fs = require('fs');
 const db = require('./src/db');
 const coa = require('./src/chartOfAccounts');
 const { getType } = require('./src/documentTypes');
 const fiscal = require('./src/fiscal');
-const anaf = require('./src/anaf');
-const { sendNotifMail, sendDeadlineDigests } = require('./src/notify');
-const { pollSpv } = require('./src/anafService'); // auto-poll job; restul e in src/routes/anaf.js
+const { sendDeadlineDigests } = require('./src/notify'); // ruta de digest manual; jobul zilnic e in src/jobs.js
 const log = require('./src/log');
-const metrics = require('./src/metrics');
-const uploadGuard = require('./src/uploadGuard');
+const serverErrors = require('./src/serverErrors');
 const { round2, period: periodOf } = require('./src/util');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
@@ -32,14 +29,14 @@ const { app, upload } = bootstrap.createApp();
 
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
   log.error('eroare necuprinsa in ruta', log.ctx(req, { status: 500, err: e }));
-  try { trackServerError(req, e); } catch (_) { /* inainte de definirea trackerului: ignora */ }
+  serverErrors.trackServerError(req, e);
   res.status(500).json({ error: String(e.message || e), reqId: req.reqId });
 });
 
 // ───────────────────────── AUTENTIFICARE ─────────────────────────
 // Primitive de sesiune/auth/anti-brute-force: src/session.js. Rutele de login/cont/impersonare/
 // resetare (nucleul de securitate) stau in src/authRoutes.js si isi fac singure require-urile.
-const { currentUser, allowedFirme, publicUser, startSession, pruneLoginAttempts } = require('./src/session');
+const { currentUser, allowedFirme, publicUser, startSession } = require('./src/session');
 
 // jurnal de audit (cine, ce actiune, pe ce firma)
 function logAudit(action, detail, opts) {
@@ -335,196 +332,16 @@ require('./src/routes/stockdocs')(app, { S, activeId, canAccess });
 // Intoarce resetDemo, folosit si de jobul zilnic de reset al contului demo (mai jos).
 const { resetDemo } = require('./src/routes/demo')(app, { requireAdmin, logAudit });
 
-const os = require('os');
-// Ruleaza un job periodic cu plasa de siguranta: o eroare SINCRONA in callback (ex. un db.save()
-// care arunca) e prinsa si logata — nu doboara procesul si nu impiedica rulele urmatoare. Erorile
-// ASINCRONE raman tratate pe .catch-ul promisiunilor din interior (retea/ANAF/SMTP).
-function safeInterval(label, fn, ms) {
-  return setInterval(() => {
-    metrics.jobTick(label); // starea job-urilor apare in /api/metrics (admin)
-    try { fn(); }
-    catch (e) {
-      metrics.jobError(label, e.message || e);
-      log.error('eroare in job periodic', { job: label, err: e });
-      try { trackServerError({ method: 'JOB', originalUrl: label }, e); } catch (_) { /* ignora */ }
-    }
-  }, ms);
-}
+// Joburile periodice (backup zilnic, digest termene, demo-reset, igiena rate-limit,
+// auto-poll SPV): src/jobs.js — primeste doar dependintele de stare ale aplicatiei.
+require('./src/jobs').start({ doBackup, resetDemo, registerAttempts, forgotAttempts });
 
-// Backup automat zilnic (daca e activat)
-safeInterval('backup', () => {
-  const s = db.get().settings.backup || {};
-  if (s.auto === false) return;
-  const last = s.lastAt ? Date.parse(s.lastAt) : 0;
-  if (Date.now() - last >= 24 * 3600 * 1000) {
-    try { const r = doBackup(); metrics.jobResult('backup', r.name); console.log('Backup automat:', r.name); }
-    catch (e) { metrics.jobError('backup', e.message); console.error('Backup:', e.message); }
-  }
-}, 3600 * 1000); // verifica din ora in ora
+// Handler global de erori — DUPA toate rutele — si plasele de siguranta pe proces
+// (uncaughtException/unhandledRejection): src/serverErrors.js.
+serverErrors.installErrorHandler(app);
+serverErrors.installProcessGuards();
 
-// Digest zilnic cu termenele fiscale: o singura data pe zi, dupa ora 07:00 (ora serverului)
-safeInterval('digest-termene', () => {
-  const d = db.get();
-  const today = new Date().toISOString().slice(0, 10);
-  const s = d.settings.deadlineDigest || (d.settings.deadlineDigest = {});
-  if (s.lastDate === today || new Date().getHours() < 7) return;
-  s.lastDate = today;
-  db.save();
-  sendDeadlineDigests()
-    .then((r) => {
-      metrics.jobResult('digest-termene', r.sent.length + ' trimise' + (r.errors.length ? ', ' + r.errors.length + ' erori' : ''));
-      if (r.sent.length || r.errors.length) console.log('Digest termene:', r.sent.length, 'trimise', r.errors.length ? ('; erori: ' + r.errors.join(' | ')) : '');
-    })
-    .catch((e) => { metrics.jobError('digest-termene', e.message); console.error('Digest termene:', e.message); });
-}, 15 * 60 * 1000);
-
-// Reset zilnic al contului demo (dupa ora 04:00): junk-ul vizitatorilor dispare peste noapte
-safeInterval('demo-reset', () => {
-  const d = db.get();
-  const today = new Date().toISOString().slice(0, 10);
-  const s = d.settings.demoReset || (d.settings.demoReset = {});
-  if (s.lastDate === today || new Date().getHours() < 4) return;
-  s.lastDate = today;
-  try { const r = resetDemo(); if (r.ok) { metrics.jobResult('demo-reset', 'resetat din snapshot'); console.log('Demo resetat din snapshot.'); } db.save(); }
-  catch (e) { metrics.jobError('demo-reset', e.message); console.error('Demo reset:', e.message); }
-}, 15 * 60 * 1000);
-
-// Igiena rate-limit: fara curatare, map-urile ar creste nelimitat (cate o intrare per IP esuat)
-safeInterval('rate-limit-hygiene', () => {
-  const now = Date.now();
-  pruneLoginAttempts(now); // loginAttempts traieste in src/session.js (incapsulat)
-  for (const [k, r] of registerAttempts) { if (r.reset < now) registerAttempts.delete(k); }
-  for (const [k, r] of forgotAttempts) { if (r.reset < now) forgotAttempts.delete(k); }
-  uploadGuard.pruneRateBuckets(now); // bucket-urile de upload/export per utilizator
-}, 3600 * 1000);
-
-// Job periodic: descarca automat recipisele — SPV per-firma, doar firmele cu autoPoll bifat
-safeInterval('spv-poll', () => {
-  const vreoFirma = db.get().firme.some((f) => f.anaf && f.anaf.autoPoll && anaf.connected(f.anaf));
-  if (vreoFirma) {
-    pollSpv({ auto: true })
-      .then((r) => {
-        metrics.jobResult('spv-poll', 'verificate ' + r.checked + ', descarcate ' + r.downloaded);
-        if (r.downloaded) console.log('Auto-poll SPV: ' + r.downloaded + ' recipise descarcate');
-      })
-      .catch((e) => { metrics.jobError('spv-poll', e.message || e); console.error('Auto-poll SPV:', e.message || e); });
-  }
-}, 15 * 60 * 1000);
-
-// Alerta pe email cand se aduna erori de server: >=5 erori 5xx in 15 minute -> un email pe ora.
-const err5xx = [];
-let lastErrAlert = 0;
-function trackServerError(req, err) {
-  const now = Date.now();
-  const rid = req.reqId ? '[' + req.reqId + '] ' : '';
-  err5xx.push({ t: now, m: rid + req.method + ' ' + req.originalUrl + ': ' + String((err && err.message) || err).slice(0, 160) });
-  metrics.recordError(err5xx[err5xx.length - 1].m); // vizibila in /api/metrics, nu doar in fereastra de alerta
-  while (err5xx.length && err5xx[0].t < now - 15 * 60 * 1000) err5xx.shift();
-  if (err5xx.length >= 5 && now - lastErrAlert > 3600 * 1000) {
-    lastErrAlert = now;
-    sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] ALERTA: erori de server repetate',
-      err5xx.length + ' erori 5xx in ultimele 15 minute:\n\n' + err5xx.map((x) => '  • ' + x.m).join('\n')
-      + '\n\nVerifica: pm2 logs contab').catch(() => {});
-  }
-}
-
-// Handler global de erori — DUPA toate rutele. Raspuns curat (JSON), fara scurgere de stack
-// catre client; 4xx isi pastreaza mesajul, 5xx devin generice si se logheaza pe server.
-app.use((err, req, res, next) => {
-  if (res.headersSent) return next(err);
-  const status = err.status || err.statusCode || 500;
-  if (status >= 500) { log.error('eroare de server', log.ctx(req, { status, err })); trackServerError(req, err); }
-  const msg = status < 500 && err && err.message ? err.message : 'A aparut o eroare interna. Incearca din nou.';
-  res.status(status).json(status >= 500 ? { error: msg, reqId: req.reqId } : { error: msg });
-});
-
-// ── Guard single-instance: DOUA procese pe aceeasi baza = pierdere de date (starea traieste
-// in RAM, ultima scriere invinge). Lock-ul e cheiat pe FISIERUL de baza (nu pe director), deci
-// serverul de test cu baza temporara nu se ciocneste cu instanta live. Toleranta la restartul
-// pm2 (suprapunere scurta a proceselor): retry ~2s inainte de a refuza; lock invechit (proces
-// mort) -> preluat automat. Rollback: CONTAB_SKIP_LOCK=1.
-const LOCK_FILE = db.DB_FILE + '.lock';
-function pidAlive(pid) { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } }
-function sleepMs(ms) { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch (_) { /* fara SAB */ } }
-function acquireDbLock() {
-  if (process.env.CONTAB_SKIP_LOCK === '1') return;
-  for (let attempt = 0; attempt < 20; attempt++) {
-    try {
-      const fd = fs.openSync(LOCK_FILE, 'wx'); // O_CREAT|O_EXCL — atomic
-      fs.writeSync(fd, String(process.pid)); fs.closeSync(fd);
-      return; // lock obtinut
-    } catch (e) {
-      if (e.code !== 'EEXIST') { console.error('Nu pot scrie lockfile-ul bazei (' + LOCK_FILE + '): ' + e.message); return; }
-      let pid = 0; try { pid = Number(String(fs.readFileSync(LOCK_FILE, 'utf8')).trim()) || 0; } catch (_) { /* gol */ }
-      if (pid && pid !== process.pid && pidAlive(pid)) {
-        if (attempt < 19) { sleepMs(100); continue; } // suprapunere de restart — mai asteapta
-        console.error('\n⛔ O alta instanta Contabo (PID ' + pid + ') foloseste deja aceeasi baza (' + db.DB_FILE + ').');
-        console.error('   Doua procese pe aceeasi baza corup datele. Opreste cealalta instanta sau ruleaza pe alt CONTAB_DB_FILE.');
-        console.error('   (bypass, pe propriul risc: CONTAB_SKIP_LOCK=1)\n');
-        process.exit(1);
-      }
-      try { fs.unlinkSync(LOCK_FILE); } catch (_) { /* preluat de altcineva intre timp */ }
-    }
-  }
-}
-function releaseDbLock() {
-  try {
-    if (fs.existsSync(LOCK_FILE) && Number(String(fs.readFileSync(LOCK_FILE, 'utf8')).trim()) === process.pid) fs.unlinkSync(LOCK_FILE);
-  } catch (_) { /* ignora */ }
-}
-acquireDbLock();
-process.on('exit', releaseDbLock);
-
-const PORT = process.env.PORT || 8080;
-const HOST = process.env.HOST || '0.0.0.0'; // asculta pe toate interfetele (acces din retea)
-let server = null; // atribuit dupa hidratarea bazei (dbReady)
-dbReady.then(() => {
-  server = app.listen(PORT, HOST, () => {
-    console.log('Contabo ruleaza (asculta pe ' + HOST + ':' + PORT + ')');
-    console.log('  Local:  http://localhost:' + PORT);
-    const ifaces = os.networkInterfaces();
-    for (const name of Object.keys(ifaces)) {
-      for (const i of ifaces[name]) {
-        if (i.family === 'IPv4' && !i.internal) {
-          console.log('  Retea:  http://' + i.address + ':' + PORT);
-        }
-      }
-    }
-  });
-}).catch((e) => {
-  log.error('pornire esuata — baza de date nu s-a putut incarca', { err: e });
-  releaseDbLock();
-  process.exit(1);
-});
-
-// Oprire curata (pm2 restart/stop trimite SIGINT): scrie oglinda JSON in asteptare,
-// asteapta coada de scrieri (pg), inchide driverul si opreste ascultarea;
-// plasa de siguranta de 3s daca ceva atarna.
-let shuttingDown = false;
-function shutdown() {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  try { db.flushMirror(); } catch (_) { /* ignora */ }
-  Promise.resolve(db.flushStore()).catch(() => { /* ignora */ }).then(() => {
-    if (db.DRIVER === 'sqlite') { try { require('./src/store').close(); } catch (_) { /* ignora */ } }
-    if (db.DRIVER === 'pg') { try { require('./src/storePg').close(); } catch (_) { /* ignora */ } }
-    releaseDbLock();
-    if (server) server.close(() => process.exit(0)); else process.exit(0);
-  });
-  setTimeout(() => process.exit(0), 3000).unref();
-}
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
-
-// Plasa de siguranta: o eroare intr-un timer/callback async (ex. un job periodic) NU trebuie sa
-// doboare tot procesul. Logam si continuam — pm2 nu mai e nevoit sa reporneasca, iar cererile in
-// zbor nu se pierd. (Erorile din rute sunt deja tratate de wrap()/handlerul Express de mai sus.)
-process.on('uncaughtException', (err) => {
-  log.error('uncaughtException', { err });
-  try { trackServerError({ method: 'PROC', originalUrl: 'uncaughtException' }, err); } catch (_) { /* ignora */ }
-});
-process.on('unhandledRejection', (reason) => {
-  log.error('unhandledRejection', { err: reason });
-});
+// Guard single-instance pe fisierul bazei + listen dupa hidratare + oprire curata: src/lifecycle.js
+require('./src/lifecycle').start({ app, dbReady });
 
 module.exports = { app, buildEntry, upsertPartner };
