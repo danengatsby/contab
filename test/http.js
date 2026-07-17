@@ -569,6 +569,14 @@ async function main() {
     ok('admin seteaza drepturi restrictive pe user1', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: true, faraSalarii: true } } })).json.ok === true);
     eq('readonly: scrierea respinsa (403)', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO77', den: 'Blocat SRL' } })).status, 403);
     eq('readonly: citirea ramane permisa', (await req('GET', '/api/entries', { cookie: c1 })).status, 200);
+
+    // ── /api/entries cu filtrare pe perioada (clientul cere pe ANI — plati de MB la volume mari) ──
+    const eAll = (await req('GET', '/api/entries', { cookie: c1 })).json;
+    const eLuna = (await req('GET', '/api/entries?period=2026-06', { cookie: c1 })).json;
+    const eAn = (await req('GET', '/api/entries?period=2026', { cookie: c1 })).json;
+    ok('filtrarea pe luna intoarce doar luna ceruta', eLuna.length > 0 && eLuna.every((e) => (e.period || '').startsWith('2026-06')));
+    ok('filtrarea pe an cuprinde luna si e sub/egal cu totul', eAn.length >= eLuna.length && eAn.length <= eAll.length && eAn.every((e) => (e.period || '').startsWith('2026-')));
+    eq('perioada straina -> lista goala', (await req('GET', '/api/entries?period=1999', { cookie: c1 })).json.length, 0);
     eq('faraSalarii: si citirea salarizarii e respinsa (403)', (await req('GET', '/api/angajati', { cookie: c1 })).status, 403);
     eq('faraSalarii: D112 XML respins (403)', (await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).status, 403);
     ok('drepturile pot fi ridicate inapoi', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: false, faraSalarii: false } } })).json.ok === true);
