@@ -1,5 +1,5 @@
 'use strict';
-import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUser, setOn402, escMsg, escAttr, isDemo, fileToCsv, round2 } from './core.js';
+import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUser, setOn402, setOnReconnect, escMsg, escAttr, isDemo, fileToCsv, round2 } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, setSettingsDeps } from './settings.js';
@@ -438,6 +438,8 @@ function goTab(name, scrollId) {
 // Hook public pentru E2E (scripts/e2e.mjs navigheaza prin goTab): modulele ES nu mai expun
 // functiile global, deci navigarea programatica are nevoie de acest export explicit pe window.
 window.goTab = goTab;
+// La revenirea online: reincarca vederea curenta (datele vin doar de la server — nu se cacheaza).
+setOnReconnect(() => { const active = $('#tabs button[data-tab].active'); if (active) { toast('Conexiune revenită — reîncarc datele.'); onTab(active.dataset.tab); } });
 // Scurtaturi „Ce vrei sa faci?” de pe Dashboard
 $$('.qa[data-go]').forEach((b) => b.addEventListener('click', () => goTab(b.dataset.go, b.dataset.scroll)));
 
