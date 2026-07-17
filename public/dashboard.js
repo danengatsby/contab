@@ -78,7 +78,7 @@ function pasiOnboarding(p) {
     { done: p.firmaCompletata, ic: '🏢', t: 'Completează datele firmei', d: 'Denumirea, CUI-ul și dacă e plătitoare de TVA — apar pe facturi și în declarații.', go: 'setari' },
     { done: p.arePartener, ic: '🤝', t: 'Adaugă primul partener', d: 'Un client sau un furnizor cu care lucrezi — CUI-ul e de ajuns, restul se completează singur.', go: 'parteneri' },
     { done: p.documentInregistrat, ic: '📥', t: 'Înregistrează primul document', d: 'O factură primită, un bon sau o chitanță — poză sau PDF; aplicația citește singură cifrele.', go: 'documente' },
-    { done: p.facturaEmisa, ic: '📤', t: 'Emite prima factură', d: 'Client + ce vinzi; numărul, PDF-ul și e-Factura se generează automat.', go: 'documente', scroll: 'band-iesire' },
+    { done: p.facturaEmisa, ic: '📤', t: 'Emite prima factură', d: 'Client + ce vinzi; numărul, PDF-ul și e-Factura se generează automat.', go: 'emite' },
     { done: p.nrInregistrari >= 3, ic: '✅', t: 'Vezi ce a rezultat', d: 'Situația firmei se construiește singură din documente — banii, TVA-ul, profitul.', go: 'ghid' },
   ];
 }
