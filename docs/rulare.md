@@ -75,6 +75,22 @@ server {
 }
 ```
 
+**Compresie (în `nginx.conf`, blocul `http`):** frontendul e ~344KB de JS/CSS necomprimat
+(21 module ES). `gzip on` singur NU ajunge — totul trece prin `proxy_pass`, deci nginx NU
+comprimă răspunsurile fără `gzip_proxied`. Activează (câștig real ~69%: app.js 50KB→15KB):
+
+```nginx
+gzip on;
+gzip_vary on;
+gzip_proxied any;                 # ESENȚIAL: altfel răspunsurile proxied rămân necomprimate
+gzip_comp_level 6;
+gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+```
+
+Aceasta e alternativa corectă la bundling: încărcarea e deja rapidă (~230ms, 21 fișiere mici
+same-origin), iar compresia reduce octeții pe conexiuni lente **fără build step** — proiectul
+rămâne servit direct de `node server.js`, fără pipeline de build (decizie deliberată).
+
 **Pornire automată (recomandat, necesită root):** rulează ca serviciu systemd
 ca să repornească la boot și să nu depindă de o sesiune:
 
