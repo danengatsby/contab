@@ -2603,5 +2603,32 @@ section('CSP: style-src FARA unsafe-inline (poarta zero)');
   ok('CSP: styleSrc nu mai contine unsafe-inline', !/styleSrc[^\]]*unsafe-inline/.test(fsx.readFileSync(pth.join(__dirname, '..', 'src', 'bootstrap.js'), 'utf8')));
 }
 
+section('Docs API: rutele documentate exista in cod (fara drift)');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const root = pth.join(__dirname, '..');
+  const norm = (m, p) => m.toUpperCase() + ' ' + p.replace(/\?.*$/, '').replace(/:[a-zA-Z0-9_]+|\{[a-zA-Z0-9_]+\}/g, ':_').replace(/\/$/, '');
+  // rutele DOCUMENTATE in docs/api.md: `METHOD /path`
+  const apiMd = fsx.readFileSync(pth.join(root, 'docs', 'api.md'), 'utf8');
+  const documented = new Set();
+  for (const m of apiMd.matchAll(/`(GET|POST|PUT|DELETE)\s+(\/[a-zA-Z0-9/_:{}?=.&-]+)`/g)) {
+    const r = norm(m[1], m[2]);
+    // docs foloseste forma prescurtata `DELETE /:id` relativa la ruta precedenta (ex. dupa
+    // `GET/POST /api/products`) — nu e o ruta de sine statatoare, deci o sarim.
+    if (/ \/:_$/.test(r)) continue;
+    documented.add(r);
+  }
+  // rutele INREGISTRATE in cod: app.method('/path'
+  const codeFiles = ['server.js', 'src/authRoutes.js', ...fsx.readdirSync(pth.join(root, 'src', 'routes')).map((f) => 'src/routes/' + f)];
+  const registered = new Set();
+  for (const f of codeFiles) {
+    const s = fsx.readFileSync(pth.join(root, f), 'utf8');
+    for (const m of s.matchAll(/app\.(get|post|put|delete)\('(\/[a-zA-Z0-9/_:.-]+)'/g)) registered.add(norm(m[1], m[2]));
+  }
+  ok('docs/api.md are rute documentate (grep-abile)', documented.size > 50);
+  const drifted = [...documented].filter((r) => !registered.has(r));
+  ok('fiecare ruta documentata exista in cod (drift = ' + drifted.length + ')' + (drifted.length ? ': ' + drifted.slice(0, 5).join(', ') : ''), drifted.length === 0);
+}
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);
