@@ -195,7 +195,7 @@
         <button class="navlabel" type="button">📥 Documente & facturi</button>
         <div class="navmenu">
           <button data-tab="documente">➕ Adaugă document primit</button>
-          <button data-tab="documente" data-scroll="band-iesire">🧾 Emite factură</button>
+          <button data-tab="emite">🧾 Emite factură</button>
           <button data-tab="intrate">📥 Documente primite (listă)</button>
           <button data-tab="galerie">🖼️ Galerie documente primite</button>
           <button data-tab="iesite">📤 Documente emise (listă)</button>
@@ -278,7 +278,7 @@
         <div class="quickacts">
           <button class="qa qa-primary" id="qaWizard"><span class="ic">🧭</span><span class="t">Înregistrează ghidat</span><span class="d">Nu știi ce tip? Te ghidez în câțiva pași simpli</span></button>
           <button class="qa in" data-go="documente"><span class="ic">📥</span><span class="t">Adaugă document primit</span><span class="d">Factură furnizor, bon, chitanță — PDF sau poză</span></button>
-          <button class="qa out" data-go="documente" data-scroll="band-iesire"><span class="ic">📤</span><span class="t">Emite factură</span><span class="d">Factură către client + e-Factura</span></button>
+          <button class="qa out" data-go="emite"><span class="ic">📤</span><span class="t">Emite factură</span><span class="d">Factură către client + e-Factura</span></button>
           <button class="qa" data-go="cashbook"><span class="ic">🏦</span><span class="t">Bancă / Casă</span><span class="d">Încasări, plăți, extras bancar</span></button>
           <button class="qa adv" data-go="balanta"><span class="ic">⚖️</span><span class="t">Vezi balanța</span><span class="d">Soldurile tuturor conturilor</span></button>
           <button class="qa" data-go="tva"><span class="ic">🧾</span><span class="t">Decont TVA</span><span class="d"><abbr title="Decontul de TVA (lunar sau trimestrial)">D300</abbr> / <abbr title="Declarația informativă privind livrările și achizițiile pe teritoriul României">D394</abbr> pe perioadă</span></button>
@@ -362,7 +362,7 @@
     <!-- ─────────────── DOCUMENTE ─────────────── -->
     <section id="tab-documente" class="tab">
       <div class="cyclemap" data-step="documente"></div>
-      <div class="explain"><span class="ei">📥</span><p><b>Primul pas:</b> aici aduci documentele în firmă. <b>Primite</b> (de la furnizori) — le încarci, aplicația le citește. <b>Emise</b> (de tine, către clienți) — le creezi mai jos. Din ele se construiește automat tot restul contabilității.</p></div>
+      <div class="explain"><span class="ei">📥</span><p><b>Primul pas:</b> aici aduci în firmă documentele <b>primite</b> (de la furnizori, bancă, SPV) — le încarci, aplicația le citește și le contabilizează. Facturile către clienți le creezi în pagina <b>„🧾 Emite factură"</b>. Din documente se construiește automat tot restul contabilității.</p></div>
       <div class="docband intrare" id="band-intrare"><b>📥 Documente de INTRARE</b><small>primite de la furnizori / bancă / <abbr title="Spațiul Privat Virtual — portalul ANAF unde se depun declarațiile și circulă e-Factura">SPV</abbr> — le încarci, aplicația extrage datele și le contabilizează</small></div>
       <div class="grid2">
         <div class="card">
@@ -394,6 +394,8 @@
         <div class="card">
           <h2>2 · Verifică și salvează</h2>
           <p class="muted">Verifică tipul documentului și sumele (extrase automat din fișier sau completate de tine), apoi salvează. Contabilitatea din spate (debit = credit) se face singură — nu trebuie să o știi.</p>
+          <!-- formularul e UNIC in aplicatie: JS il muta intre gazda de aici si cea din „Emite factura" -->
+          <div id="formHostDoc">
           <form id="entryForm" class="hidden">
             <label>Tip document
               <select id="tipSelect"></select>
@@ -405,6 +407,7 @@
               <button type="button" id="cancelEntry" class="btn ghost">Renunță</button>
             </div>
           </form>
+          </div>
           <p id="noDoc" class="muted">Încarcă un document ca să începi — sau adaugă o înregistrare manuală mai jos.</p>
           <button id="manualBtn" class="btn ghost small">✏️ Adaugă manual (fără document)</button>
         </div>
@@ -450,6 +453,25 @@
         <div id="efPreview" style="margin-top:8px"></div>
       </div>
 
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Toate înregistrările recente</h2>
+          <span class="toolbar" style="margin:0">
+            <select id="toateLuna" class="period luna" aria-label="Luna"></select>
+            <select id="toateAn" class="period an" aria-label="Anul"></select>
+            <span id="entriesCount" class="badge"></span>
+          </span>
+        </div>
+        <p class="muted">Include și operațiunile interne (bancă, casă, salarii, închideri, note contabile).</p>
+        <div id="entriesList" class="tablewrap"></div>
+      </div>
+    </section>
+
+    <!-- ─────────────── EMITE FACTURĂ (documente de ieșire) ─────────────── -->
+    <section id="tab-emite" class="tab">
+      <div class="cyclemap" data-step="emite"></div>
+      <div class="explain"><span class="ei">🧾</span><p><b>Aici emiți documentele firmei tale</b> — facturi către clienți, bonuri, avize. Alegi ce vinzi, verifici formularul și salvezi: numărul în serie, articolul contabil și e-Factura / PDF-ul se generează automat.</p></div>
       <div class="docband iesire" id="band-iesire"><b>📤 Documente de IEȘIRE</b><small>emise de firma ta — le creezi aici, aplicația le contabilizează și generează e-Factura / PDF</small></div>
       <div class="grid2">
         <div class="card">
@@ -473,16 +495,11 @@
           </details>
         </div>
         <div class="card">
-          <h2>Rapoarte generate automat</h2>
-          <p class="muted">Se construiesc singure din documentele tale — nu completezi nimic:</p>
-          <div class="linklist">
-            <a data-go="situatii">📊 Situații financiare (bilanț, profit)</a>
-            <a data-go="balanta">⚖️ Solduri conturi (balanță)</a>
-            <a data-go="jurnal">📘 Toate operațiunile (jurnal)</a>
-            <a data-go="carte">📗 Fișa fiecărui cont (cartea mare)</a>
-            <a data-go="tva">🧾 TVA de plată (<abbr title="Decontul de TVA (lunar sau trimestrial)">D300</abbr> / <abbr title="Declarația informativă privind livrările și achizițiile pe teritoriul României">D394</abbr>)</a>
-            <a data-go="livrabile">📦 Declarații ANAF (<abbr title="Declarația privind contribuțiile sociale și impozitul pe salarii">D112</abbr>, <abbr title="Standard Audit File for Tax — declarația D406 cu datele contabile detaliate">SAF-T</abbr>)</a>
-          </div>
+          <h2>2 · Verifică și salvează</h2>
+          <p class="muted">Alege în stânga ce emiți; formularul se deschide aici, cu tipul contabil potrivit și numărul de factură dat automat în serie continuă.</p>
+          <!-- formularul e UNIC in aplicatie: JS il muta intre gazda de aici si cea din „Adaugă document primit" -->
+          <div id="formHostEmite"></div>
+          <p id="noDocEmit" class="muted">Alege din stânga ce vrei să emiți ca să se deschidă formularul.</p>
         </div>
       </div>
 
@@ -511,18 +528,18 @@
         </details>
       </div>
 
-      <div class="card">
-        <div class="card-head">
-          <h2>Toate înregistrările recente</h2>
-          <span class="toolbar" style="margin:0">
-            <select id="toateLuna" class="period luna" aria-label="Luna"></select>
-            <select id="toateAn" class="period an" aria-label="Anul"></select>
-            <span id="entriesCount" class="badge"></span>
-          </span>
+        <div class="card">
+          <h2>Rapoarte generate automat</h2>
+          <p class="muted">Se construiesc singure din documentele tale — nu completezi nimic:</p>
+          <div class="linklist">
+            <a data-go="situatii">📊 Situații financiare (bilanț, profit)</a>
+            <a data-go="balanta">⚖️ Solduri conturi (balanță)</a>
+            <a data-go="jurnal">📘 Toate operațiunile (jurnal)</a>
+            <a data-go="carte">📗 Fișa fiecărui cont (cartea mare)</a>
+            <a data-go="tva">🧾 TVA de plată (<abbr title="Decontul de TVA (lunar sau trimestrial)">D300</abbr> / <abbr title="Declarația informativă privind livrările și achizițiile pe teritoriul României">D394</abbr>)</a>
+            <a data-go="livrabile">📦 Declarații ANAF (<abbr title="Declarația privind contribuțiile sociale și impozitul pe salarii">D112</abbr>, <abbr title="Standard Audit File for Tax — declarația D406 cu datele contabile detaliate">SAF-T</abbr>)</a>
+          </div>
         </div>
-        <p class="muted">Include și operațiunile interne (bancă, casă, salarii, închideri, note contabile).</p>
-        <div id="entriesList" class="tablewrap"></div>
-      </div>
     </section>
 
     <!-- ─────────────── DOCUMENTE INTRATE (lista) ─────────────── -->
@@ -562,7 +579,7 @@
         <span id="countIesire" class="badge"></span>
       </div>
       <div class="explain"><span class="ei">📤</span><p><b>Ce vezi aici:</b> toate documentele <b>emise</b> de firmă (facturi către clienți, bonuri, livrări), fiecare cu link la <b>e-Factura (XML)</b> și PDF.</p></div>
-      <div class="row" style="margin:0 0 14px"><button class="btn primary qa" data-go="documente" data-scroll="band-iesire">📤 Emite o factură</button></div>
+      <div class="row" style="margin:0 0 14px"><button class="btn primary qa" data-go="emite">📤 Emite o factură</button></div>
       <div id="entriesIesire" class="tablewrap"></div>
     </section>
 
@@ -1452,7 +1469,7 @@ Cu stimă,
         <p class="lead">A factura = a cere oficial banii pentru ce ai vândut. Vinzi → <b>emiți factura</b> → o <b>trimiți</b> (client + ANAF) → clientul <b>plătește</b> → tu <b>bifezi încasarea</b>.</p>
         <ol>
           <li><b>Pregătește datele clientului</b> — denumire + CUI (și adresa, pentru e-Factura). Le salvezi o dată în <kbd>Nomenclatoare → Parteneri</kbd>.</li>
-          <li><b>Emite factura</b> — din <kbd>📤 Ieșiri → Emite factură</kbd>: ce ai vândut, cantitate × preț, cota de TVA (21% / 11% / scutit). Aplicația calculează singură baza, TVA-ul și totalul, și dă un <b>număr în serie continuă</b>.</li>
+          <li><b>Emite factura</b> — din pagina <kbd>🧾 Emite factură</kbd>: ce ai vândut, cantitate × preț, cota de TVA (21% / 11% / scutit). Aplicația calculează singură baza, TVA-ul și totalul, și dă un <b>număr în serie continuă</b>.</li>
           <li><b>Trimite factura</b> — pentru firme (B2B) e obligatoriu prin <b>e-Factura (SPV)</b>. Descarci <b>XML-ul</b> și trimiți și un <b>PDF</b> clientului, cu scadența.</li>
           <li><b>Urmărește încasarea</b> — vezi cine ți-a plătit și cine întârzie în <kbd>Reconciliere</kbd> / <kbd>Analitic</kbd>, ca să nu uiți banii pe drum.</li>
           <li><b>Înregistrează plata</b> — când banii intră, alegi <kbd>Încasare de la client</kbd> (5311/5121 = 4111). Abia acum creanța devine bani reali și clientul nu-ți mai datorează nimic.</li>

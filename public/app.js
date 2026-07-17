@@ -264,7 +264,7 @@ $('#tabs').addEventListener('click', (e) => {
 function onTab(t) {
   if (t === 'dashboard') loadDashboard();
   if (t === 'documente' || t === 'intrate' || t === 'iesite') loadEntries();
-  if (t === 'documente') renderRecurring();
+  if (t === 'emite') renderRecurring();
   if (t === 'intrate') loadMissingDocs();
   if (t === 'jurnal') loadJournal();
   if (t === 'carte') loadLedger();
@@ -867,12 +867,15 @@ function renderWizard() {
 }
 function openWizard() { opwCat = null; renderWizard(); $('#opWizard').classList.remove('hidden'); }
 function closeWizard() { $('#opWizard').classList.add('hidden'); }
+// Tipurile de IESIRE (emise de firma) se deschid in pagina „Emite factura"; restul in „Adauga document primit"
+const IESIRE_TIPS = /^(factura_vanzare|factura_storno_vanzare|bon_fiscal_z|factura_simplificata|aviz_livrare|facturare_aviz|livrare_intracomunitara)/;
 function pickWizardType(tip) {
   closeWizard();
-  goTab('documente');
   const real = tip === '__all__' ? 'nota_contabila' : tip;
+  const dest = IESIRE_TIPS.test(real) ? 'emite' : 'documente';
+  goTab(dest);
   CURRENT = { documentId: null, fields: {}, suggestedType: real };
-  openForm(real, { data: new Date().toISOString().slice(0, 10) });
+  openForm(real, { data: new Date().toISOString().slice(0, 10) }, dest);
   setTimeout(() => { const el = $('#entryForm'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (tip === '__all__') { const t = $('#tipSelect'); if (t) t.focus(); } }, 80);
 }
 $('#qaWizard') && $('#qaWizard').addEventListener('click', openWizard);
@@ -887,6 +890,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#opW
 // bara ramane „Documente → Declarații", fara jargon.
 const CYCLE = [
   { go: 'documente', ic: '📥', t: 'Documente' },
+  { go: 'emite', ic: '🧾', t: 'Emite' },
   { go: 'jurnal', ic: '📘', t: 'Operațiuni', adv: true },
   { go: 'carte', ic: '📗', t: 'Fișe conturi', adv: true },
   { go: 'balanta', ic: '⚖️', t: 'Solduri', adv: true },
@@ -960,12 +964,12 @@ $('#tourSkip').addEventListener('click', endTour);
 $('#tourReplay') && $('#tourReplay').addEventListener('click', startTour);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#tourCard').classList.contains('hidden')) endTour(); });
 
-// Documente de IESIRE — butoane „emite” deschid formularul cu tipul potrivit
+// Documente de IESIRE — butoane „emite” deschid formularul (in pagina Emite factura) cu tipul potrivit
 $$('.emit').forEach((btn) => btn.addEventListener('click', () => {
   const tip = btn.dataset.tip;
   CURRENT = { documentId: null, fields: {}, suggestedType: tip };
-  openForm(tip, { data: new Date().toISOString().slice(0, 10) });
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  openForm(tip, { data: new Date().toISOString().slice(0, 10) }, 'emite');
+  setTimeout(() => $('#entryForm').scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
 }));
 // Linkuri catre registrele/situatiile generate
 $$('.linklist a[data-go]').forEach((a) => { a.style.cursor = 'pointer'; a.addEventListener('click', () => goTab(a.dataset.go)); });
@@ -1238,13 +1242,27 @@ function renderGalerieEmise() {
 }
 $('#geSearch') && $('#geSearch').addEventListener('input', renderGalerieEmise);
 
-function openForm(tipId, fields) {
+// Formularul de inregistrare e UNIC (id-uri unice in pagina), dar e folosit de doua pagini:
+// „Adauga document primit" si „Emite factura". Se muta in gazda paginii care il deschide.
+function mountForm(host) {
+  const target = $(host === 'emite' ? '#formHostEmite' : '#formHostDoc');
+  const f = $('#entryForm');
+  if (target && f.parentElement !== target) target.appendChild(f);
+}
+function openForm(tipId, fields, host) {
+  mountForm(host);
   $('#noDoc').classList.add('hidden');
+  const ne = $('#noDocEmit'); if (ne) ne.classList.add('hidden');
   $('#entryForm').classList.remove('hidden');
   $('#tipSelect').value = tipId || 'nota_contabila';
   renderFields(fields || {});
 }
-function closeForm() { $('#entryForm').classList.add('hidden'); $('#noDoc').classList.remove('hidden'); CURRENT = null; }
+function closeForm() {
+  $('#entryForm').classList.add('hidden');
+  $('#noDoc').classList.remove('hidden');
+  const ne = $('#noDocEmit'); if (ne) ne.classList.remove('hidden');
+  CURRENT = null;
+}
 
 $('#tipSelect').addEventListener('change', () => renderFields(collectFields()));
 
