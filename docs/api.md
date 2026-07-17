@@ -218,6 +218,8 @@ Citiri pure pe firma activă; parametrii uzuali `?period=` / `?year=`.
 - `POST /api/backup`, `GET /api/backups`, `GET /api/backup/file/:name`,
   `POST /api/restore` (multipart) — backup/restaurare completă.
 - `GET /api/metrics` — durate pe rută, `recentErrors`, starea joburilor, contoare AI,
-  proces. `GET /api/audit` / `/api/audit/system` — jurnalul de audit.
+  proces. `GET /api/audit` / `/api/audit/system` — jurnalul de audit (JSON, ultimele 300;
+  `?limit/offset` pentru istoric). `GET /csv/audit` / `/csv/audit/system` — export CSV (tot ce
+  e reținut, plafon 3000; arhivă / control intern / GDPR; sistemul doar admin).
 - `GET/POST /api/fiscal-config` — cotele fiscale configurabile (reset la standard cu
   `{ reset: true }`). `GET /api/health` e public și intenționat minimal.
