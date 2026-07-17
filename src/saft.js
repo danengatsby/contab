@@ -10,6 +10,13 @@ const { round2 } = require('./util');
 const coa = require('./chartOfAccounts');
 const fiscal = require('./fiscal');
 const assetsLib = require('./assets');
+
+// Generarea la volume mari (zeci de mii de articole) e CPU-bound si ar bloca event loop-ul cateva
+// sute de ms — adica ar ingheta TOATE celelalte cereri cat timp ruleaza. Variantele *Async cedeaza
+// event loop-ul la fiecare SAFT_YIELD_EVERY iteratii (fara infra, fara worker), pastrand output-ul
+// byte-identic cu cel sincron. La volume mici (productia normala) yield-ul e neglijabil.
+const SAFT_YIELD_EVERY = Number(process.env.CONTAB_SAFT_YIELD_EVERY || 2000);
+const microYield = () => new Promise((resolve) => setImmediate(resolve));
 const stocksLib = require('./stocks');
 
 function esc(s) {
@@ -407,58 +414,60 @@ function movementOfGoodsXml(db, year) {
   ].join('\n');
 }
 
-function generalLedgerEntries(db, year) {
-  const entries = (db.entries || []).filter((e) => inYear(e, year))
-    .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : String(a.id).localeCompare(String(b.id))));
-  let nEntries = 0; let totalD = 0; let totalC = 0;
-  const txs = [];
-  for (const e of entries) {
-    nEntries += 1;
-    const month = Number(String(e.period || e.data).slice(5, 7)) || 1;
-    const sysDate = String(e.data);
-    let rec = 0;
-    const lines = [];
-    for (const l of e.lines) {
-      totalD = round2(totalD + l.suma); totalC = round2(totalC + l.suma);
-      rec += 1;
-      lines.push(
-        '          <DebitLine>',
-        `            <RecordID>${esc(e.id)}-${rec}D</RecordID>`,
-        `            <AccountID>${esc(l.debit)}</AccountID>`,
-        `            <SystemEntryDate>${sysDate}</SystemEntryDate>`,
-        `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
-        `            <DebitAmount><Amount>${num2(l.suma)}</Amount></DebitAmount>`,
-        '          </DebitLine>',
-      );
-      rec += 1;
-      lines.push(
-        '          <CreditLine>',
-        `            <RecordID>${esc(e.id)}-${rec}C</RecordID>`,
-        `            <AccountID>${esc(l.credit)}</AccountID>`,
-        `            <SystemEntryDate>${sysDate}</SystemEntryDate>`,
-        `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
-        `            <CreditAmount><Amount>${num2(l.suma)}</Amount></CreditAmount>`,
-        '          </CreditLine>',
-      );
-    }
-    txs.push(
-      '        <Transaction>',
-      `          <TransactionID>${esc(e.id)}</TransactionID>`,
-      `          <Period>${month}</Period>`,
-      `          <PeriodYear>${year}</PeriodYear>`,
-      `          <TransactionDate>${sysDate}</TransactionDate>`,
-      `          <Description>${esc(e.tipNume + (e.document ? ' ' + e.document : ''))}</Description>`,
-      `          <SystemEntryDate>${sysDate}</SystemEntryDate>`,
-      `          <GLPostingDate>${sysDate}</GLPostingDate>`,
-      '          <Lines>',
-      lines.join('\n'),
-      '          </Lines>',
-      '        </Transaction>',
+// Construieste blocul <Transaction> pentru un articol (folosit identic de calea sincrona si cea
+// asincrona — extras ca sa nu existe doua implementari care pot diverge).
+function glTx(e, year) {
+  const month = Number(String(e.period || e.data).slice(5, 7)) || 1;
+  const sysDate = String(e.data);
+  let rec = 0;
+  const lines = [];
+  for (const l of e.lines) {
+    rec += 1;
+    lines.push(
+      '          <DebitLine>',
+      `            <RecordID>${esc(e.id)}-${rec}D</RecordID>`,
+      `            <AccountID>${esc(l.debit)}</AccountID>`,
+      `            <SystemEntryDate>${sysDate}</SystemEntryDate>`,
+      `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
+      `            <DebitAmount><Amount>${num2(l.suma)}</Amount></DebitAmount>`,
+      '          </DebitLine>',
+    );
+    rec += 1;
+    lines.push(
+      '          <CreditLine>',
+      `            <RecordID>${esc(e.id)}-${rec}C</RecordID>`,
+      `            <AccountID>${esc(l.credit)}</AccountID>`,
+      `            <SystemEntryDate>${sysDate}</SystemEntryDate>`,
+      `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
+      `            <CreditAmount><Amount>${num2(l.suma)}</Amount></CreditAmount>`,
+      '          </CreditLine>',
     );
   }
   return [
+    '        <Transaction>',
+    `          <TransactionID>${esc(e.id)}</TransactionID>`,
+    `          <Period>${month}</Period>`,
+    `          <PeriodYear>${year}</PeriodYear>`,
+    `          <TransactionDate>${sysDate}</TransactionDate>`,
+    `          <Description>${esc(e.tipNume + (e.document ? ' ' + e.document : ''))}</Description>`,
+    `          <SystemEntryDate>${sysDate}</SystemEntryDate>`,
+    `          <GLPostingDate>${sysDate}</GLPostingDate>`,
+    '          <Lines>',
+    lines.join('\n'),
+    '          </Lines>',
+    '        </Transaction>',
+  ];
+}
+function glEntriesSorted(db, year) {
+  return (db.entries || []).filter((e) => inYear(e, year))
+    .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : String(a.id).localeCompare(String(b.id))));
+}
+function glWrap(entries, year, txs) {
+  let totalD = 0; let totalC = 0;
+  for (const e of entries) for (const l of e.lines) { totalD = round2(totalD + l.suma); totalC = round2(totalC + l.suma); }
+  return [
     '  <GeneralLedgerEntries>',
-    `    <NumberOfEntries>${nEntries}</NumberOfEntries>`,
+    `    <NumberOfEntries>${entries.length}</NumberOfEntries>`,
     `    <TotalDebit>${num2(totalD)}</TotalDebit>`,
     `    <TotalCredit>${num2(totalC)}</TotalCredit>`,
     '    <Journal>',
@@ -469,6 +478,24 @@ function generalLedgerEntries(db, year) {
     '    </Journal>',
     '  </GeneralLedgerEntries>',
   ].join('\n');
+}
+function generalLedgerEntries(db, year) {
+  const entries = glEntriesSorted(db, year);
+  const txs = [];
+  for (const e of entries) txs.push(glTx(e, year).join('\n'));
+  return glWrap(entries, year, txs);
+}
+// Varianta asincrona: cedeaza event loop-ul periodic (bucla dominanta la volume mari). Output
+// byte-identic cu cel sincron (acelasi glTx/glWrap) — verificat in teste.
+async function generalLedgerEntriesAsync(db, year) {
+  const entries = glEntriesSorted(db, year);
+  const txs = [];
+  let i = 0;
+  for (const e of entries) {
+    txs.push(glTx(e, year).join('\n'));
+    if ((i += 1) % SAFT_YIELD_EVERY === 0) await microYield();
+  }
+  return glWrap(entries, year, txs);
 }
 
 // ───────────────────────── SourceDocuments (facturi) ─────────────────────────
@@ -674,6 +701,48 @@ function sourceDocuments(db, year) {
   ].join('\n');
 }
 
+// Varianta asincrona a sourceDocuments: cedeaza in bucla de facturi (blocul dominant din sectiune).
+// Wrapper-ul si invoiceXml sunt aceleasi ca la calea sincrona -> output byte-identic.
+async function sourceDocumentsAsync(db, year) {
+  const roles = partnerRoles(db, year);
+  const idOf = (list) => {
+    const m = new Map();
+    list.forEach((p, i) => m.set((p.den || '').toUpperCase().trim(), 'P' + String(i + 1).padStart(4, '0')));
+    return m;
+  };
+  const custId = idOf(roles.customers);
+  const supId = idOf(roles.suppliers);
+  const within = (db.entries || []).filter((e) => inYear(e, year));
+  const blockAsync = async (tag, filter, kind, partyTag, partyIdTag, idMap, account) => {
+    const invs = within.filter(filter);
+    let net = 0; const xmls = []; let i = 0;
+    for (const e of invs) {
+      const pid = idMap.get((e.partener || '').toUpperCase().trim()) || 'P0001';
+      const r = invoiceXml(e, kind, partyTag, partyIdTag, pid, account);
+      xmls.push(r.xml); net = round2(net + r.net);
+      if ((i += 1) % SAFT_YIELD_EVERY === 0) await microYield();
+    }
+    return [
+      `    <${tag}>`,
+      `      <NumberOfEntries>${invs.length}</NumberOfEntries>`,
+      `      <TotalDebit>${num2(kind === 'purchase' ? net : 0)}</TotalDebit>`,
+      `      <TotalCredit>${num2(kind === 'sale' ? net : 0)}</TotalCredit>`,
+      xmls.join('\n'),
+      `    </${tag}>`,
+    ].join('\n');
+  };
+  const sales = await blockAsync('SalesInvoices', (e) => SALE_TIP(e.tip), 'sale', 'CustomerInfo', 'CustomerID', custId, '4111');
+  const purch = await blockAsync('PurchaseInvoices', (e) => PURCHASE_TIP(e.tip), 'purchase', 'SupplierInfo', 'SupplierID', supId, '401');
+  return [
+    '  <SourceDocuments>',
+    sales,
+    purch,
+    paymentsXml(db, year),
+    movementOfGoodsXml(db, year),
+    '  </SourceDocuments>',
+  ].join('\n');
+}
+
 /** Genereaza fisierul SAF-T (D406) pentru un an. */
 function saftXml(db, year) {
   const yr = String(year || new Date().getFullYear());
@@ -685,6 +754,26 @@ function saftXml(db, year) {
     masterFiles(db, yr),
     generalLedgerEntries(db, yr),
     sourceDocuments(db, yr),
+    '</AuditFile>',
+    '',
+  ].join('\n');
+}
+
+/** Varianta ASINCRONA a saftXml: output byte-identic, dar cedeaza event loop-ul periodic in buclele
+ *  grele (GL + facturi) — nu blocheaza celelalte cereri la volume mari. Ruta o foloseste in locul
+ *  celei sincrone; saftXml sincron ramane pentru teste (referinta byte-identica) si apeluri simple. */
+async function saftXmlAsync(db, year) {
+  const yr = String(year || new Date().getFullYear());
+  const company = db.company || {};
+  const gl = await generalLedgerEntriesAsync(db, yr);
+  const sd = await sourceDocumentsAsync(db, yr);
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    header(company, yr),
+    masterFiles(db, yr),
+    gl,
+    sd,
     '</AuditFile>',
     '',
   ].join('\n');
@@ -713,4 +802,4 @@ function saftSummary(db, year) {
   };
 }
 
-module.exports = { saftXml, saftSummary, accountBalances, partnerRoles };
+module.exports = { saftXml, saftXmlAsync, saftSummary, accountBalances, partnerRoles };

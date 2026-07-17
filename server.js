@@ -307,7 +307,7 @@ require('./src/routes/anaf')(app, { activeId, wrap, logAudit, upsertPartner, can
 
 
 // Generarea XML declaratii (e-Factura, D300/D394/D390/D205/D112, SAF-T) + validare: src/routes/declarationsXml.js
-require('./src/routes/declarationsXml')(app, { S, activeId, canAccess });
+require('./src/routes/declarationsXml')(app, { S, activeId, canAccess, wrap });
 
 // ───────────────── REGISTRUL DEPUNERILOR + PORTOFOLIU + NOTIFICARI ─────────────────
 // Registrul depunerilor, portofoliul si notificarile: src/routes/declarations.js
@@ -322,7 +322,7 @@ app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
 // Validare pre-depunere + api/saft: src/routes/declarationsXml.js
 
 // Situatii financiare + recapitulatii declaratii + registre (PDF/JSON): src/routes/reports.js
-require('./src/routes/reports')(app, { S });
+require('./src/routes/reports')(app, { S, wrap });
 // numerotare secventiala a documentelor de stoc (serie + numar), per firma si tip
 // Documente de gestiune (situatii stoc, serii NIR/BC/AVIZ, NIR/bon/aviz, fisa magazie, nota PDF): src/routes/stockdocs.js
 // Seriile de documente stau in service layer (src/stocksService.js); config.js le primeste prin ctx (chitanta CH).

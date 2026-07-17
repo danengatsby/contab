@@ -13,7 +13,8 @@ const pdf = require('../pdf');
 const { analyticBalance } = require('../analytic');
 
 module.exports = function register(app, ctx) {
-  const { S } = ctx;
+  const { S, wrap } = ctx;
+  const microYield = () => new Promise((resolve) => setImmediate(resolve));
 
   // ── Registre si jurnale de baza (JSON) ──
   app.get('/api/journal', (req, res) => res.json(acc.journal(S(req), req.query.period || null)));
@@ -93,14 +94,20 @@ module.exports = function register(app, ctx) {
   app.get('/pdf/cashflow', (req, res) => pdf.cashFlowPdf(res, S(req).company, stmt.cashFlow(S(req), req.query.year || String(new Date().getFullYear()))));
   app.get('/pdf/capital', (req, res) => pdf.equityPdf(res, S(req).company, stmt.equityChanges(S(req), req.query.year || String(new Date().getFullYear()))));
   // Set complet de situatii financiare anuale (F20 + F10 + F30 + F40 + Note) intr-un singur PDF.
-  app.get('/pdf/situatii', (req, res) => {
+  // Setul complet de situatii financiare = 8 calcule grele (fiecare o trecere peste inregistrari)
+  // + randare. La volume mari, secventa ar bloca event loop-ul; cedam intre calcule (aceleasi
+  // date, doar timing-ul se schimba — PDF-ul e identic), deci alte cereri sunt servite intre ele.
+  app.get('/pdf/situatii', wrap(async (req, res) => {
     const v = S(req); const year = req.query.year || String(new Date().getFullYear()); const Y0 = Number(year) - 1;
-    pdf.setStatementsPdf(res, v.company, {
-      f20cur: stmt.profitLossF20(v, year), f20prev: stmt.profitLossF20(v, Y0), plDetail: stmt.profitLoss(v, year),
-      f10cur: stmt.balanceSheetF10(v, year + '-12'), f10prev: stmt.balanceSheetF10(v, Y0 + '-12'), bsDetail: stmt.balanceSheet(v, year + '-12'),
-      cashFlow: stmt.cashFlow(v, year),
-      equity: stmt.equityChanges(v, year),
-      notes: rep.notes(v, year),
-    });
-  });
+    const f20cur = stmt.profitLossF20(v, year); await microYield();
+    const f20prev = stmt.profitLossF20(v, Y0); await microYield();
+    const plDetail = stmt.profitLoss(v, year); await microYield();
+    const f10cur = stmt.balanceSheetF10(v, year + '-12'); await microYield();
+    const f10prev = stmt.balanceSheetF10(v, Y0 + '-12'); await microYield();
+    const bsDetail = stmt.balanceSheet(v, year + '-12'); await microYield();
+    const cashFlow = stmt.cashFlow(v, year); await microYield();
+    const equity = stmt.equityChanges(v, year); await microYield();
+    const notes = rep.notes(v, year);
+    pdf.setStatementsPdf(res, v.company, { f20cur, f20prev, plDetail, f10cur, f10prev, bsDetail, cashFlow, equity, notes });
+  }));
 };
