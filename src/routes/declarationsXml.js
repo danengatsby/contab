@@ -17,7 +17,7 @@ const validate = require('../validate');
 const { statePlata } = require('../payroll');
 
 module.exports = function register(app, ctx) {
-  const { S, activeId, canAccess } = ctx;
+  const { S, activeId, canAccess, wrap } = ctx;
 
   function sendXml(res, str, filename) {
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
@@ -105,14 +105,16 @@ module.exports = function register(app, ctx) {
     recordDecl(req, 'd112', period);
     sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarantOf(req)), 'd112-' + period + '.xml');
   });
-  app.get('/xml/saft', (req, res) => {
+  app.get('/xml/saft', wrap(async (req, res) => {
     const v = S(req);
     // D406 se depune lunar/trimestrial: ?period=YYYY-MM genereaza luna; ?year= ramane pentru anual
     const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.period || '')) ? req.query.period : null;
     const year = req.query.year || String(new Date().getFullYear());
     recordDecl(req, 'saft', period || (year + '-12'));
-    sendXml(res, saft.saftXml(v, period || year), 'saft-d406-' + (period || year) + '.xml');
-  });
+    // saftXmlAsync: output byte-identic cu saftXml, dar cedeaza event loop-ul in buclele grele
+    // (nu blocheaza celelalte cereri cat timp se genereaza SAF-T-ul la volume mari).
+    sendXml(res, await saft.saftXmlAsync(v, period || year), 'saft-d406-' + (period || year) + '.xml');
+  }));
 
   // Validare pre-depunere: genereaza XML-ul declaratiei si verifica bine-format + campuri obligatorii.
   app.get('/api/validate/:type', (req, res) => {
