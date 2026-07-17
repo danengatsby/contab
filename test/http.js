@@ -319,6 +319,11 @@ async function main() {
     const postNota = await req('POST', '/api/stock-movements/' + mid + '/post', { cookie: c1 });
     ok('receptie postata: nota 371=401', postNota.json && postNota.json.ok && postNota.json.entry && postNota.json.entry.lines.some((l) => l.debit === '371' && l.credit === '401'));
     ok('lista miscari contine receptia', (await req('GET', '/api/stock-movements?period=2026-06', { cookie: c1 })).json.some((m) => m.id === mid));
+    ok('stock-movements: fara limit e array, cu limit e plic paginat', Array.isArray((await req('GET', '/api/stock-movements', { cookie: c1 })).json)
+      && Array.isArray((await req('GET', '/api/stock-movements?limit=1', { cookie: c1 })).json.items));
+    const auditPg = (await req('GET', '/api/audit?limit=3', { cookie: c1 })).json;
+    ok('audit: cu limit -> plic; fara limit -> array (implicit ultimele 300)', Array.isArray(auditPg.items) && typeof auditPg.total === 'number'
+      && Array.isArray((await req('GET', '/api/audit', { cookie: c1 })).json));
     ok('fisa de magazie: o intrare', (await req('GET', '/api/stocks/' + pid + '/ledger', { cookie: c1 })).json.rows.length >= 1);
     ok('miscare stearsa', (await req('DELETE', '/api/stock-movements/' + mid, { cookie: c1 })).json.ok === true);
 
@@ -607,6 +612,14 @@ async function main() {
     ok('filtrarea pe luna intoarce doar luna ceruta', eLuna.length > 0 && eLuna.every((e) => (e.period || '').startsWith('2026-06')));
     ok('filtrarea pe an cuprinde luna si e sub/egal cu totul', eAn.length >= eLuna.length && eAn.length <= eAll.length && eAn.every((e) => (e.period || '').startsWith('2026-')));
     eq('perioada straina -> lista goala', (await req('GET', '/api/entries?period=1999', { cookie: c1 })).json.length, 0);
+
+    // ── Paginare optionala + garda OOM: ?limit -> plic { items, total, offset, limit } ──
+    const bare = (await req('GET', '/api/entries', { cookie: c1 })).json;
+    ok('fara limit: contract compatibil (array simplu)', Array.isArray(bare));
+    const pg1 = (await req('GET', '/api/entries?limit=2', { cookie: c1 })).json;
+    ok('cu limit: plic paginat (items/total/offset/limit)', Array.isArray(pg1.items) && pg1.items.length <= 2 && pg1.total === bare.length && pg1.limit === 2 && pg1.offset === 0);
+    const pg2 = (await req('GET', '/api/entries?limit=2&offset=1', { cookie: c1 })).json;
+    ok('offset decaleaza fereastra', pg2.offset === 1 && pg2.total === bare.length && (bare.length < 2 || pg2.items[0].id !== pg1.items[0].id));
     eq('faraSalarii: si citirea salarizarii e respinsa (403)', (await req('GET', '/api/angajati', { cookie: c1 })).status, 403);
     eq('faraSalarii: D112 XML respins (403)', (await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).status, 403);
     ok('drepturile pot fi ridicate inapoi', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: false, faraSalarii: false } } })).json.ok === true);

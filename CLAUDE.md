@@ -84,3 +84,7 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
 - Orice scriere externă (ANAF) trece prin `anafFetch` (timeout + retry doar pe GET); webhook-ul
   Stripe e idempotent pe `event.id` (`seenEvent`/`rememberEvent`).
 - Parametrii fiscali stau centralizat în `src/fiscalConfig.js` (datați); nu hardcoda cote.
+- Rutele care întorc colecții vii din memorie trec prin `src/paginate.js` (`sendList`): fără
+  `?limit` → array simplu, dar **plafonat** la `CONTAB_MAX_ROWS` (implicit 20000, gardă contra
+  OOM, cu antet `X-Rows-Truncated` când taie); cu `?limit`/`?offset` → plic `{ items, total,
+  offset, limit }`. Extinde acest tipar la orice rută nouă care serializează o listă mare.

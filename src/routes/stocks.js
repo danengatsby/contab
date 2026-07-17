@@ -8,6 +8,7 @@
 
 const stocks = require('../stocks');
 const svc = require('../stocksService');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit } = ctx;
@@ -59,7 +60,7 @@ module.exports = function register(app, ctx) {
   }));
 
   // ── miscari de stoc + nota contabila ──
-  app.get('/api/stock-movements', (req, res) => res.json(stocks.movementsList(S(req), req.query.period || null)));
+  app.get('/api/stock-movements', (req, res) => sendList(req, res, stocks.movementsList(S(req), req.query.period || null), { label: '/api/stock-movements' }));
   app.post('/api/stock-movements', (req, res) => run(res, () => {
     const r = svc.addMovement(activeId(req), operator(req), req.body);
     logAudit('stock.move', r.movement.tip + ' ' + r.movement.cantitate, { req });
