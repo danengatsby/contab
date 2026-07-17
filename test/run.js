@@ -1670,7 +1670,10 @@ ok('notificari: e-Factura cu termen apropiat apare', nEf.items.some((i) => i.tip
 ok('SAF-T lunar: bine-format si cu perioada corecta', (() => { const x = saft.saftXml(vDecl, '2026-06'); return x.includes('<PeriodStart>6</PeriodStart>') && x.includes('<PeriodEnd>6</PeriodEnd>') && x.includes('luna 2026-06'); })());
 
 section('XSS: escaparea datelor externe la randare (public/app.js)');
-const appJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'app.js'), 'utf8');
+// app.js + ecranele extrase din el (periods/rapoarte/livrabile/mijloace/salarizare/stocuri/plan):
+// portile de escapare acopera tot codul de randare, indiferent in ce modul a ajuns
+const appJs = ['app', 'periods', 'rapoarte', 'livrabile', 'mijloace', 'salarizare', 'stocuri', 'plan']
+  .map((n) => require('fs').readFileSync(require('path').join(__dirname, '..', 'public', n + '.js'), 'utf8')).join('\n');
 // nucleul partajat (Etapa 0 a modularizarii frontendului): helperii comuni traiesc in core.js
 const coreJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'core.js'), 'utf8');
 // administrarea (firme + utilizatori) a fost extrasa in admin.js (Etapa 4)
