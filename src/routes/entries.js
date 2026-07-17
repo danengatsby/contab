@@ -10,6 +10,7 @@ const db = require('../db');
 const acc = require('../accounting');
 const recurring = require('../recurring');
 const svc = require('../entriesService');
+const { sendList } = require('../paginate');
 const { period: periodOf } = require('../util');
 
 module.exports = function register(app, ctx) {
@@ -42,7 +43,9 @@ module.exports = function register(app, ctx) {
         return anual ? String(p).startsWith(period + '-') : p === period;
       });
     }
-    res.json(acc.sortEntries(list));
+    // period-scoping e mecanismul principal (clientul cere pe an/luna); sendList adauga garda de
+    // OOM (plafon absolut) + paginare optionala ?limit/?offset pentru cine cere colectia intreaga.
+    sendList(req, res, acc.sortEntries(list), { label: '/api/entries' });
   });
 
   app.delete('/api/entries/:id', (req, res) => run(res, () => {

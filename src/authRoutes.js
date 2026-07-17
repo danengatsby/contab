@@ -20,6 +20,7 @@ const plans = require('./plans');
 const billing = require('./billing');
 const metrics = require('./metrics');
 const { sendMail, sendNotifMail } = require('./notify');
+const { sendList } = require('./paginate');
 const { currentUser, allowedFirme, publicUser, startSession, setTrustedDevice, deviceTrusted, isLocked, bumpFail, clearFails, attemptKey } = require('./session');
 const { period: periodOf } = require('./util');
 
@@ -164,16 +165,19 @@ module.exports = function registerAuthRoutes(app, ctx) {
     res.json({ ok: true });
   });
 
+  // Implicit: ultimele 300 (deja marginit — fara risc OOM). Cu ?limit/?offset se pagineaza in
+  // istoric (peste cele 300), pe lista in ordine descrescatoare (cele mai recente primele).
+  const auditList = (req, fid) => (db.get().audit || []).filter((a) => (fid === null ? a.firmaId == null : a.firmaId === fid)).reverse();
   app.get('/api/audit', (req, res) => {
-    const d = db.get();
-    const fid = activeId(req); // doar firma curenta (activeId e mereu o firma la care userul are acces)
-    const list = (d.audit || []).filter((a) => a.firmaId === fid);
-    res.json(list.slice(-300).reverse());
+    const list = auditList(req, activeId(req)); // activeId e mereu o firma la care userul are acces
+    if (req.query.limit != null && req.query.limit !== '') return sendList(req, res, list, { label: '/api/audit' });
+    res.json(list.slice(0, 300));
   });
   // Jurnal de sistem (global): actiuni fara firma — utilizatori, firme, impersonare, mesaje, backup, 2FA, sesiuni.
   app.get('/api/audit/system', requireAdmin, (req, res) => {
-    const list = (db.get().audit || []).filter((a) => a.firmaId == null);
-    res.json(list.slice(-300).reverse());
+    const list = auditList(req, null);
+    if (req.query.limit != null && req.query.limit !== '') return sendList(req, res, list, { label: '/api/audit/system' });
+    res.json(list.slice(0, 300));
   });
 
   // Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare

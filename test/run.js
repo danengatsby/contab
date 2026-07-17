@@ -2409,6 +2409,28 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   eq('restart dupa stop: tot 6 joburi, curatate din nou', jobs.stop(), 6);
 }
 
+section('Paginare + garda OOM (src/paginate.js sendList)');
+{
+  const { sendList } = require('../src/paginate');
+  const mkRes = () => ({ headers: {}, body: undefined, setHeader(k, v) { this.headers[k] = v; }, json(x) { this.body = x; return this; } });
+  const big = Array.from({ length: 50 }, (_, i) => ({ id: i }));
+  // fara limit, sub plafon: array simplu, neschimbat (compatibil)
+  let r = mkRes(); sendList({ query: {}, path: '/x' }, r, big.slice(0, 10), { max: 20 });
+  ok('fara limit sub plafon: array simplu neschimbat', Array.isArray(r.body) && r.body.length === 10);
+  // fara limit, PESTE plafon: garda OOM -> ultimele `max` + antet X-Rows-Truncated (nu tacut)
+  r = mkRes(); sendList({ query: {}, path: '/x' }, r, big, { max: 20 });
+  ok('peste plafon: trunchiat la max, cele mai RECENTE', Array.isArray(r.body) && r.body.length === 20 && r.body[0].id === 30);
+  eq('antet X-Rows-Truncated = totalul real (trunchiere vizibila)', r.headers['X-Rows-Truncated'], '50');
+  // cu limit: plic { items, total, offset, limit }
+  r = mkRes(); sendList({ query: { limit: '5' }, path: '/x' }, r, big, { max: 20 });
+  ok('cu limit: plic paginat cu total', r.body && Array.isArray(r.body.items) && r.body.items.length === 5 && r.body.total === 50);
+  eq('cu limit: fereastra de la offset 0', r.body.items[0].id, 0);
+  r = mkRes(); sendList({ query: { limit: '5', offset: '10' }, path: '/x' }, r, big, { max: 20 });
+  eq('offset: fereastra decalata', r.body.items[0].id, 10);
+  r = mkRes(); sendList({ query: { limit: '9999' }, path: '/x' }, r, big, { max: 20 });
+  eq('limit prins in [1, max] (nu poate depasi plafonul)', r.body.limit, 20);
+}
+
 section('PWA: manifest + service worker (instalabilitate + siguranta cache)');
 {
   const fsx = require('fs'); const pth = require('path');
