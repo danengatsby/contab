@@ -2409,6 +2409,40 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   eq('restart dupa stop: tot 6 joburi, curatate din nou', jobs.stop(), 6);
 }
 
+section('PWA: manifest + service worker (instalabilitate + siguranta cache)');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const pub = pth.join(__dirname, '..', 'public');
+  const man = JSON.parse(fsx.readFileSync(pth.join(pub, 'manifest.webmanifest'), 'utf8'));
+  ok('manifest: name + short_name', !!man.name && !!man.short_name);
+  eq('manifest: start_url = /', man.start_url, '/');
+  eq('manifest: display standalone (instalabil)', man.display, 'standalone');
+  ok('manifest: are icoana 192 si 512', man.icons.some((i) => i.sizes === '192x192') && man.icons.some((i) => i.sizes === '512x512'));
+  ok('manifest: are o icoana maskable', man.icons.some((i) => i.purpose === 'maskable'));
+  ok('manifest: theme/background din brand', man.theme_color === '#2f2e2a' && man.background_color === '#f0ede4');
+  // iconitele referite exista si sunt PNG-uri reale
+  for (const ic of man.icons) {
+    const f = pth.join(pub, ic.src.replace(/^\//, ''));
+    ok('iconita exista: ' + ic.src, fsx.existsSync(f));
+    const head = fsx.readFileSync(f).subarray(0, 4);
+    ok('iconita e PNG valid: ' + ic.src, head[0] === 0x89 && head.subarray(1, 4).toString() === 'PNG');
+  }
+  const sw = fsx.readFileSync(pth.join(pub, 'sw.js'), 'utf8');
+  ok('SW: are handler de fetch (cerinta de instalabilitate)', /addEventListener\('fetch'/.test(sw));
+  ok('SW: doar GET', /req\.method !== 'GET'/.test(sw));
+  ok('SW: ocoleste datele de utilizator (/api|/pdf|/xml|/csv|/efactura)', /api\|pdf\|xml\|csv\|efactura/.test(sw));
+  ok('SW: doar same-origin', /url\.origin !== self\.location\.origin/.test(sw));
+  ok('SW: cache versionat (activate sterge ce e vechi)', /contab-shell-v\d/.test(sw));
+  // index.html leaga manifestul + theme-color
+  const idx = fsx.readFileSync(pth.join(pub, 'index.html'), 'utf8');
+  ok('index.html: <link rel="manifest">', /rel="manifest"[^>]*manifest\.webmanifest/.test(idx));
+  ok('index.html: meta theme-color', /name="theme-color"/.test(idx));
+  // inregistrarea SW e in core.js, in context sigur
+  const core = fsx.readFileSync(pth.join(pub, 'core.js'), 'utf8');
+  ok('core.js: inregistreaza sw.js', /serviceWorker'?\s* in navigator/.test(core) && /register\('\/sw\.js'/.test(core));
+  ok('core.js: doar in context sigur (https/localhost)', /https:|localhost|127\.0\.0\.1/.test(core.split('serviceWorker')[1] || ''));
+}
+
 section('Plafon general de API (uploadGuard.generalLimit)');
 {
   const ug = require('../src/uploadGuard');

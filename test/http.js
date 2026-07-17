@@ -132,6 +132,21 @@ async function main() {
     ok('CSP: script-src self', /script-src 'self'/.test(csp));
     ok('CSP: connect-src include puntea locala', /connect-src[^;]*127\.0\.0\.1:8765/.test(csp));
     ok('CSP: frame-src self blob (vizualizator PDF)', /frame-src 'self' blob:/.test(csp));
+    ok('CSP: worker-src self (service worker PWA)', /worker-src 'self'/.test(csp));
+
+    // ── PWA: manifest + service worker + iconite servite corect ──
+    const man = await fetch(BASE + '/manifest.webmanifest');
+    ok('manifest: 200 cu content-type de manifest', man.status === 200 && /application\/manifest\+json/.test(man.headers.get('content-type') || ''));
+    const manJson = JSON.parse(await man.text());
+    ok('manifest: campuri de instalabilitate (name/start_url/display/icons)',
+      manJson.name && manJson.start_url === '/' && manJson.display === 'standalone' && Array.isArray(manJson.icons) && manJson.icons.length >= 2);
+    const sw = await fetch(BASE + '/sw.js');
+    ok('service worker: 200 cu no-cache (revalidat, nu servit vechi)', sw.status === 200 && /no-cache/.test(sw.headers.get('cache-control') || ''));
+    const swBody = await sw.text();
+    ok('service worker: ocoleste datele (/api|/pdf|/xml|/csv|/efactura nu se cacheaza)', /api\|pdf\|xml\|csv\|efactura/.test(swBody) && /BYPASS/.test(swBody));
+    const icon = await fetch(BASE + '/icon-192.png');
+    const iconBuf = Buffer.from(await icon.arrayBuffer());
+    ok('iconita 192: 200 image/png cu magic PNG', icon.status === 200 && iconBuf[0] === 0x89 && iconBuf.slice(1, 4).toString() === 'PNG');
     eq('X-Content-Type-Options nosniff', hdrs.get('x-content-type-options'), 'nosniff');
     eq('Referrer-Policy pastrat', hdrs.get('referrer-policy'), 'strict-origin-when-cross-origin');
     eq('Cross-Origin-Opener-Policy same-origin', hdrs.get('cross-origin-opener-policy'), 'same-origin');

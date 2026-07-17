@@ -89,3 +89,12 @@ new MutationObserver((muts) => {
   }
 }).observe(document.documentElement, { childList: true, subtree: true });
 document.querySelectorAll('[data-style]').forEach(applyDataStyle);
+
+// ── PWA: inregistrarea service worker-ului (instalare pe homescreen + rezilidenta offline) ──
+// Doar in context sigur (https sau localhost); pe http simplu register() e refuzat de browser,
+// deci il sarim tacut. SW-ul e conservator (public/sw.js): nu cacheaza niciodata date de utilizator.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { /* instalarea PWA e optionala */ });
+  });
+}

@@ -63,6 +63,8 @@ function createApp() {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
+        workerSrc: ["'self'"],   // service worker-ul PWA (public/sw.js) — same-origin
+        manifestSrc: ["'self'"], // manifest.webmanifest
         styleSrc: ["'self'"],
         imgSrc: ["'self'", 'data:', 'blob:'],
         fontSrc: ["'self'"],
@@ -110,10 +112,13 @@ function createApp() {
   app.use(express.json({ limit: '5mb' }));
   app.use(express.static(path.join(rootDir, 'public'), {
     setHeaders(res, p) {
-      // HTML/JS/CSS + uneltele puntii: revalidare mereu (actualizari fara cache)
+      // HTML/JS/CSS + uneltele puntii: revalidare mereu (actualizari fara cache). sw.js intra
+      // aici (.js) — corect: service worker-ul trebuie revalidat, nu servit dintr-un cache vechi.
       if (/\.(html|js|css|ps1|bat|txt)$/.test(p)) res.setHeader('Cache-Control', 'no-cache');
       // uneltele puntii: text UTF-8 (ca descarcarea sa decodeze corect, nu binar)
       if (/\.(ps1|bat|txt)$/.test(p)) res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      // manifestul PWA: content-type standard + revalidare (poate schimba icoane/culori la deploy)
+      if (/\.webmanifest$/.test(p)) { res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8'); res.setHeader('Cache-Control', 'no-cache'); }
     },
   }));
 
