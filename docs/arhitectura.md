@@ -4,7 +4,9 @@
 
 - `server.js` — server Express + rute API și PDF.
 - `src/chartOfAccounts.js` — planul de conturi (clasele 1–8) + regula debit/credit.
-- `src/documentTypes.js` — tipurile de documente și formulele contabile.
+- `src/documentTypes/` — tipurile de documente și formulele contabile, pe module tematice
+  (vânzări, cumpărări, trezorerie, salarii…); `index.js` le asamblează în ordinea din UI,
+  `helpers.js` ține câmpurile comune și constructorul de linii contabile.
 - `src/extractor.js` — extragere text din PDF (pdf-parse + pdf2json) și euristici RO.
 - `src/fiscal.js` — parametri fiscali 2026 + calculul salariului din brut (CAS/CASS/impozit/CAM).
 - `src/aiExtractor.js` — extragere cu Claude API (document PDF + ieșire structurată).
