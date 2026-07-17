@@ -20,7 +20,7 @@ $('#twofaStart').addEventListener('click', async () => {
   try {
     const r = await api('/api/2fa/setup', { method: 'POST' });
     $('#twofaSecret').textContent = 'Secret: ' + r.secret;
-    $('#twofaQr').innerHTML = `${r.qrSvg ? `<div style="display:inline-block;margin-top:6px;border:1px solid var(--line);border-radius:8px;padding:6px;background:#fff">${r.qrSvg}</div><br>` : ''}<a href="${r.otpauth}" style="word-break:break-all;font-size:12px">${r.otpauth}</a>`;
+    $('#twofaQr').innerHTML = `${r.qrSvg ? `<div data-u="u186">${r.qrSvg}</div><br>` : ''}<a href="${r.otpauth}" data-u="u187">${r.otpauth}</a>`;
     $('#twofaSetup').classList.remove('hidden');
   } catch (e) { toast(e.message, true); }
 });

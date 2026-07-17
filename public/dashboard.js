@@ -105,7 +105,7 @@ function renderPrimiiPasi(p) {
   const pasi = pasiOnboarding(p);
   const gata = pasi.filter((x) => x.done).length;
   $('#primiiPasiList').innerHTML = stepsHtml(pasi)
-    + `<div class="muted" style="font-size:12.5px;margin-top:6px">${gata} din ${pasi.length} pași făcuți · Nu știi ce tip de document ai? Folosește <b>🧭 Înregistrează ghidat</b> de mai jos.</div>`;
+    + `<div class="muted" data-u="u30">${gata} din ${pasi.length} pași făcuți · Nu știi ce tip de document ai? Folosește <b>🧭 Înregistrează ghidat</b> de mai jos.</div>`;
   wireSteps('#primiiPasiList');
   maybeShowWizard(p, pasi);
 }
@@ -148,15 +148,15 @@ async function renderRezumat(k) {
   });
   const f = $('#rezumatFooter'); if (!f) return;
   const rez = k.profit >= 0
-    ? `<b style="color:var(--accent)">profit ${fmt(k.profit)} lei</b>`
-    : `<b style="color:#b00020">pierdere ${fmt(Math.abs(k.profit))} lei</b>`;
+    ? `<b data-u="u31">profit ${fmt(k.profit)} lei</b>`
+    : `<b data-u="u32">pierdere ${fmt(Math.abs(k.profit))} lei</b>`;
   let termen = '';
   try {
     const n = await api('/api/notifications');
     const rest = (n.items || []).filter((i) => i.kind === 'restanta');
     const next = (n.items || []).find((i) => i.kind === 'termen');
     termen = rest.length
-      ? ` · <span style="color:#b00020;font-weight:700">${rest.length} ${rest.length === 1 ? 'termen depășit' : 'termene depășite'}</span> — <button class="linkbtn" data-go="notificari">vezi notificările</button>`
+      ? ` · <span data-u="u33">${rest.length} ${rest.length === 1 ? 'termen depășit' : 'termene depășite'}</span> — <button class="linkbtn" data-go="notificari">vezi notificările</button>`
       : (next ? ` · următorul termen: <b>${H(next.nume)}</b> — ${next.due}` : ' · niciun termen fiscal în următoarele 7 zile');
   } catch (e) { /* notificarile sunt optionale aici */ }
   f.innerHTML = `<span>Rezultatul anului ${k.year} până azi: ${rez}${termen}</span><span class="spacer"></span>
@@ -174,7 +174,7 @@ export async function renderBudget(year) {
   const vCell = (row) => {
     // pentru venituri, peste buget = bine; pentru cheltuieli, peste buget = rau
     const good = row.tip === 'venit' ? row.variatie >= 0 : row.variatie <= 0;
-    return `<span style="color:${good ? 'var(--accent)' : 'var(--danger)'};font-weight:600">${row.variatie >= 0 ? '+' : ''}${fmt(row.variatie)}</span>`;
+    return `<span data-style="color:${good ? 'var(--accent)' : 'var(--danger)'};font-weight:600">${row.variatie >= 0 ? '+' : ''}${fmt(row.variatie)}</span>`;
   };
   const tipLbl = { venit: 'Venit', cheltuiala: 'Cheltuială', alt: 'Alt' };
   const rows = r.rows.map((row) => `<tr><td class="acc">${row.cont}</td><td>${H(row.nume)}</td><td>${tipLbl[row.tip]}</td>
@@ -206,19 +206,19 @@ async function renderForecast() {
   const months = ($('#fcMonths') && $('#fcMonths').value) || 6;
   let f; try { f = await api('/api/cash-forecast?months=' + months); } catch (e) { box.innerHTML = ''; return; }
   const sign = (v) => (v > 0 ? '+' : '') + fmt(v);
-  const rows = f.rows.map((r) => `<tr${r.closing < 0 ? ' style="background:#fdecea;color:#7a1f1f"' : ''}>
+  const rows = f.rows.map((r) => `<tr${r.closing < 0 ? ' data-u="u34"' : ''}>
     <td>${r.period}</td><td class="num">${fmt(r.opening)}</td>
     <td class="num">${r.incClienti ? '+' + fmt(r.incClienti) : ''}</td>
     <td class="num">${r.recIn ? '+' + fmt(r.recIn) : ''}</td>
     <td class="num">${r.platiFurnizori ? '−' + fmt(r.platiFurnizori) : ''}</td>
     <td class="num">${r.recOut ? '−' + fmt(r.recOut) : ''}</td>
-    <td class="num" style="color:${r.net >= 0 ? 'var(--accent)' : 'var(--danger)'}">${sign(r.net)}</td>
-    <td class="num" style="font-weight:600;color:${r.closing < 0 ? 'var(--danger)' : 'inherit'}">${fmt(r.closing)}</td></tr>`).join('');
+    <td class="num" data-style="color:${r.net >= 0 ? 'var(--accent)' : 'var(--danger)'}">${sign(r.net)}</td>
+    <td class="num" data-style="font-weight:600;color:${r.closing < 0 ? 'var(--danger)' : 'inherit'}">${fmt(r.closing)}</td></tr>`).join('');
   box.innerHTML = `<p class="muted">Numerar acum: <b>${fmt(f.cashNow)}</b> lei · de încasat: ${fmt(f.openReceivables)} · de plătit: ${fmt(f.openPayables)}</p>
     ${f.riscLichiditate ? `<div class="warnbox"><span class="wi">⚠️</span><div><b>Risc de lichiditate:</b> soldul de numerar proiectat scade până la <b>${fmt(f.minClosing)}</b> lei. Urmărește încasările sau amână plăți.</div></div>` : ''}
     <table><thead><tr><th>Luna</th><th class="num">Sold inițial</th><th class="num">Înc. clienți</th><th class="num">Venit recurent</th><th class="num">Plăți furnizori</th><th class="num">Chelt. recurentă</th><th class="num">Flux net</th><th class="num">Sold final</th></tr></thead>
     <tbody>${rows}</tbody></table>
-    <p class="muted" style="font-size:12px">Model: luna curentă încasează soldurile deschise de clienți și plătește datoriile către furnizori; toate lunile adaugă facturile recurente scadente. Estimare orientativă, nu garanție.</p>`;
+    <p class="muted" data-u="u35">Model: luna curentă încasează soldurile deschise de clienți și plătește datoriile către furnizori; toate lunile adaugă facturile recurente scadente. Estimare orientativă, nu garanție.</p>`;
 }
 $('#fcMonths') && $('#fcMonths').addEventListener('change', renderForecast);
 function renderYoY(yo) {
@@ -227,7 +227,7 @@ function renderYoY(yo) {
   const delta = (d, goodUp) => {
     if (d == null) return '<span class="muted">fără bază</span>';
     const good = goodUp ? d >= 0 : d <= 0;
-    return `<span style="color:${good ? 'var(--accent)' : 'var(--danger)'};font-weight:600">${d >= 0 ? '▲ +' : '▼ '}${fmt(d)}%</span>`;
+    return `<span data-style="color:${good ? 'var(--accent)' : 'var(--danger)'};font-weight:600">${d >= 0 ? '▲ +' : '▼ '}${fmt(d)}%</span>`;
   };
   const row = (lbl, cur, prev, d, goodUp) => `<tr><td>${lbl}</td><td class="num">${fmt(prev)}</td><td class="num">${fmt(cur)}</td><td class="num">${delta(d, goodUp)}</td></tr>`;
   box.innerHTML = `<table><thead><tr><th>Indicator</th><th class="num">${yo.prevYear}</th><th class="num">${yo.year}</th><th class="num">Variație</th></tr></thead><tbody>
@@ -236,7 +236,7 @@ function renderYoY(yo) {
     ${row('Rezultat net', yo.profit, yo.profitPrev, yo.profitDelta, true)}
     <tr><td>Marjă netă (%)</td><td class="num">${yo.marjaPrev == null ? '—' : fmt(yo.marjaPrev) + '%'}</td><td class="num">${yo.marja == null ? '—' : fmt(yo.marja) + '%'}</td><td class="num">${yo.marja != null && yo.marjaPrev != null ? delta(Math.round((yo.marja - yo.marjaPrev) * 100) / 100, true) : '—'}</td></tr>
     </tbody></table>
-    <p class="muted" style="font-size:12px">Comparația cumulează tot exercițiul curent față de cel precedent. La marjă, variația e în puncte procentuale.</p>`;
+    <p class="muted" data-u="u35">Comparația cumulează tot exercițiul curent față de cel precedent. La marjă, variația e în puncte procentuale.</p>`;
 }
 // Bandă de alerte acționabile (stil command-center) — calculată din datele deja primite
 function renderDashAlerts(k) {
@@ -280,24 +280,24 @@ function svgMonthly(monthly) {
   });
   let grid = '';
   for (let g = 0; g <= 2; g++) { const val = (max / 2) * g; const yy = y(val); grid += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}" class="cgrid"/><text x="${padL - 6}" y="${(yy + 3).toFixed(1)}" font-size="9" text-anchor="end" class="ctxt">${fmt(val)}</text>`; }
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:260px">${grid}<line x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}" class="caxis"/>${bars}</svg>
-    <div class="muted" style="font-size:12px"><span style="color:#1a9c6b">■</span> Venituri &nbsp; <span style="color:#e0436a">■</span> Cheltuieli</div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" data-u="u36">${grid}<line x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}" class="caxis"/>${bars}</svg>
+    <div class="muted" data-u="u35"><span data-u="u37">■</span> Venituri &nbsp; <span data-u="u38">■</span> Cheltuieli</div>`;
 }
 function svgCompare(creante, datorii) {
   const max = Math.max(1, creante, datorii);
-  const bar = (lbl, v, col) => `<div style="margin:10px 0"><div style="display:flex;justify-content:space-between"><span>${lbl}</span><b>${fmt(v)}</b></div><div style="height:20px;background:var(--line);border-radius:6px;overflow:hidden"><div style="width:${(v / max * 100).toFixed(1)}%;height:100%;background:${col}"></div></div></div>`;
+  const bar = (lbl, v, col) => `<div data-u="u39"><div data-u="u40"><span>${lbl}</span><b>${fmt(v)}</b></div><div data-u="u41"><div data-style="width:${(v / max * 100).toFixed(1)}%;height:100%;background:${col}"></div></div></div>`;
   return bar('Creanțe de încasat', creante, '#1a9c6b') + bar('Datorii de plătit', datorii, '#e0436a');
 }
 function svgAging(c) {
   const seg = [['0-30 zile', '#0b6e4f', 'b0_30'], ['31-60', '#b8860b', 'b31_60'], ['61-90', '#d98300', 'b61_90'], ['>90 zile', '#b00020', 'b90plus']];
   const row = (label, t) => {
     const total = (t && t.total) || 0;
-    if (total <= 0) return `<div style="margin:8px 0"><b>${label}</b> <span class="muted">— niciun sold</span></div>`;
-    const bar = seg.map((s) => { const w = (t[s[2]] / total) * 100; return w > 0 ? `<div title="${s[0]}: ${fmt(t[s[2]])}" style="width:${w.toFixed(1)}%;background:${s[1]}"></div>` : ''; }).join('');
-    return `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><b>${label}</b><span>${fmt(total)}</span></div><div style="display:flex;height:18px;border-radius:6px;overflow:hidden;background:var(--line)">${bar}</div></div>`;
+    if (total <= 0) return `<div data-u="u42"><b>${label}</b> <span class="muted">— niciun sold</span></div>`;
+    const bar = seg.map((s) => { const w = (t[s[2]] / total) * 100; return w > 0 ? `<div title="${s[0]}: ${fmt(t[s[2]])}" data-style="width:${w.toFixed(1)}%;background:${s[1]}"></div>` : ''; }).join('');
+    return `<div data-u="u42"><div data-u="u40"><b>${label}</b><span>${fmt(total)}</span></div><div data-u="u43">${bar}</div></div>`;
   };
-  const legend = seg.map((s) => `<span style="color:${s[1]}">■</span> ${s[0]}`).join(' &nbsp; ');
-  return row('Creanțe (clienți)', c.agingClienti) + row('Datorii (furnizori)', c.agingFurnizori) + `<div class="muted" style="font-size:12px;margin-top:6px">${legend}</div>`;
+  const legend = seg.map((s) => `<span data-style="color:${s[1]}">■</span> ${s[0]}`).join(' &nbsp; ');
+  return row('Creanțe (clienți)', c.agingClienti) + row('Datorii (furnizori)', c.agingFurnizori) + `<div class="muted" data-u="u24">${legend}</div>`;
 }
 async function loadDashboardCharts() {
   let c; try { c = await api('/api/dashboard-charts'); } catch (e) { return; }

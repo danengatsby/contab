@@ -109,7 +109,7 @@ function renderEfactura(doc) {
   const money = (v) => v ? Number(v).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur : '';
   const idDirect = (() => { for (const c of root.children) if (c.tagName === 'cbc:ID') return c.textContent.trim(); return ''; })();
   return `<div class="efact-doc">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div data-u="u191">
       <div><h3>${isCN ? 'Factură storno (CreditNote)' : 'Factură (e-Factura)'}</h3>
         <div class="muted">Serie/nr: <b>${esc(idDirect)}</b> · Data: <b>${esc(T(root, 'cbc:IssueDate'))}</b></div></div>
       <div class="pill">UBL · CIUS-RO</div>

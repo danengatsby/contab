@@ -106,8 +106,8 @@ async function showPricing() {
   box.innerHTML = (data.plans || []).map((p) => {
     const cta = canRegister
       ? `<button class="btn primary pricing-start" data-plan="${p.id}" data-trial="${p.trial ? 1 : 0}">${p.trial ? 'Începe proba gratuită' : 'Alege ' + p.nume + ' →'}</button>`
-      : '<div class="muted" style="font-size:12px;text-align:center">Autentifică-te pentru a alege planul</div>';
-    const demo = p.trial ? '<button class="btn pricing-demo" style="margin-top:6px">🔎 Intră în contul demo</button>' : '';
+      : '<div class="muted" data-u="u17">Autentifică-te pentru a alege planul</div>';
+    const demo = p.trial ? '<button class="btn pricing-demo" data-u="u18">🔎 Intră în contul demo</button>' : '';
     return `<div class="plan-card${p.recomandat ? ' recomandat' : ''}">
       ${p.recomandat ? '<div class="plan-badge">Recomandat</div>' : ''}
       <h3>${p.nume}</h3>
@@ -219,8 +219,8 @@ $('#forgotLink').addEventListener('click', () => {
     <p class="muted">Recuperare parolă — introdu utilizatorul sau emailul.</p>
     <label>Utilizator / email <input name="login" required /></label>
     <div id="loginErr" class="status"></div>
-    <button class="btn primary" style="width:100%">Trimite link de resetare</button>
-    <p style="margin-top:10px;text-align:center"><a id="forgotBack" class="link">← Înapoi la autentificare</a></p>`;
+    <button class="btn primary" data-u="u19">Trimite link de resetare</button>
+    <p data-u="u20"><a id="forgotBack" class="link">← Înapoi la autentificare</a></p>`;
   $('#forgotBack').addEventListener('click', () => location.reload());
   box.onsubmit = async (e) => {
     e.preventDefault();
@@ -719,7 +719,7 @@ async function uploadFile(file) {
       : '⚙️ reguli locale';
     st.innerHTML = 'Extras din „' + res.fileName + '” prin ' + via + '. CUI: ' + ((res.cuis || []).join(', ') || '—')
       + (res.motiv ? '<br><span class="muted">' + res.motiv + '</span>' : '')
-      + (res.warning ? '<br><span style="color:var(--danger)">' + res.warning + '</span>' : '');
+      + (res.warning ? '<br><span data-u="u13">' + res.warning + '</span>' : '');
     CURRENT = { documentId: res.documentId, fields: res.fields, suggestedType: res.suggestedType };
     openForm(res.suggestedType, res.fields);
   } catch (e) { st.className = 'status err'; st.textContent = e.message; }
@@ -916,7 +916,7 @@ async function renderRecurring() {
   if (!list.length) { box.innerHTML = '<p class="muted">Niciun șablon recurent definit încă.</p>'; return; }
   const tname = (id) => ((META.types || []).find((t) => t.id === id) || {}).nume || id;
   box.innerHTML = `<table><thead><tr><th>Document</th><th>Partener</th><th class="num">Bază</th><th>Frecvență</th><th>Din</th><th>Ultima</th><th></th></tr></thead><tbody>${
-    list.map((t) => `<tr${t.activ ? '' : ' style="opacity:.5"'}><td>${tname(t.tip)}</td><td>${t.partener || '—'}</td>
+    list.map((t) => `<tr${t.activ ? '' : ' data-u="u21"'}><td>${tname(t.tip)}</td><td>${t.partener || '—'}</td>
       <td class="num">${fmt((t.fields || {}).baza || 0)}</td><td>${t.frecventa}</td><td>${t.startDate || ''}</td><td>${t.lastGenerated || '—'}</td>
       <td><button class="linkbtn rectog" data-id="${t.id}" data-activ="${t.activ ? 1 : 0}">${t.activ ? 'dezactivează' : 'activează'}</button> · <button class="del recdel" data-id="${t.id}">✕</button></td></tr>`).join('')}</tbody></table>`;
   $$('#recList .recdel').forEach((b) => b.addEventListener('click', async () => { if (confirm('Ștergi șablonul recurent?')) { await api('/api/recurring/' + b.dataset.id, { method: 'DELETE' }); renderRecurring(); } }));
@@ -988,11 +988,11 @@ $('#efParseBtn') && $('#efParseBtn').addEventListener('click', async () => {
     const r = await api('/api/efactura/parse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ xml }) });
     const inv = r.invoice;
     const liniiHtml = (inv.linii || []).length
-      ? `<table style="margin-top:6px"><thead><tr><th>Denumire</th><th class="num">Cant.</th><th class="num">Preț</th><th class="num">Valoare</th><th class="num">TVA%</th></tr></thead><tbody>${
+      ? `<table data-u="u18"><thead><tr><th>Denumire</th><th class="num">Cant.</th><th class="num">Preț</th><th class="num">Valoare</th><th class="num">TVA%</th></tr></thead><tbody>${
         inv.linii.map((l) => `<tr><td>${H(l.nume)}</td><td class="num">${fmt(l.cantitate)}</td><td class="num">${fmt(l.pret)}</td><td class="num">${fmt(l.valoare)}</td><td class="num">${l.cota}</td></tr>`).join('')}</tbody></table>`
       : '';
     box.innerHTML = `<div class="card">
-      <p style="margin:0 0 6px">${inv.tip === 'creditnote' ? '↩️ <b>Notă de credit (storno)</b>' : '🧾 <b>Factură de cumpărare</b>'} ${inv.moneda !== 'RON' ? '<span class="status err">— monedă ' + inv.moneda + ' (neacceptat automat)</span>' : ''}</p>
+      <p data-u="u22">${inv.tip === 'creditnote' ? '↩️ <b>Notă de credit (storno)</b>' : '🧾 <b>Factură de cumpărare</b>'} ${inv.moneda !== 'RON' ? '<span class="status err">— monedă ' + inv.moneda + ' (neacceptat automat)</span>' : ''}</p>
       <table>
         <tr><td>Furnizor</td><td><b>${H(inv.furnizor.nume || '—')}</b> ${inv.furnizor.cui ? '(CUI ' + H(inv.furnizor.cui) + ')' : ''}</td></tr>
         <tr><td>Număr / Data</td><td>${inv.numar || '—'} · ${inv.data || '—'}</td></tr>
@@ -1000,7 +1000,7 @@ $('#efParseBtn') && $('#efParseBtn').addEventListener('click', async () => {
         <tr><td>TVA (${inv.cota}%)</td><td class="num">${fmt(inv.tva)}</td></tr>
         <tr class="total"><td>Total de plată</td><td class="num">${fmt(inv.total)}</td></tr>
       </table>${liniiHtml}
-      <button id="efImportBtn" class="btn primary" style="margin-top:8px" ${inv.moneda !== 'RON' ? 'disabled' : ''}>✓ Importă ca factură de cumpărare</button>
+      <button id="efImportBtn" class="btn primary" data-u="u23" ${inv.moneda !== 'RON' ? 'disabled' : ''}>✓ Importă ca factură de cumpărare</button>
     </div>`;
     const ib = $('#efImportBtn');
     if (ib) ib.addEventListener('click', async () => {
@@ -1064,9 +1064,9 @@ async function renderFirmeBilling() {
   const box = $('#firmeBilling'); if (!box) return;
   let data; try { data = await api('/api/firme'); } catch (e) { box.innerHTML = ''; return; }
   const stLabel = (s) => {
-    const pend = s.pending ? ' <span class="pill" style="background:#fff4e0;color:#b26a00" title="Ai inițiat plata — se activează după confirmarea Stripe">⏳ plată în așteptare</span>' : '';
-    if (s.status === 'trial') return `<span class="pill" style="background:#eaf4ef;color:#0b6e4f">🎁 probă · ${s.zileRamase} ${s.zileRamase === 1 ? 'zi' : 'zile'}</span>${pend}`;
-    if (s.status === 'active') return `<span class="pill" style="background:#eaf4ef;color:#0b6e4f">✓ activ${s.plan && s.plan !== 'grandfathered' ? ' · ' + (s.plan === 'pro' ? 'Pro' : 'Start') : ''}</span>`;
+    const pend = s.pending ? ' <span class="pill" data-u="u11" title="Ai inițiat plata — se activează după confirmarea Stripe">⏳ plată în așteptare</span>' : '';
+    if (s.status === 'trial') return `<span class="pill" data-u="u10">🎁 probă · ${s.zileRamase} ${s.zileRamase === 1 ? 'zi' : 'zile'}</span>${pend}`;
+    if (s.status === 'active') return `<span class="pill" data-u="u10">✓ activ${s.plan && s.plan !== 'grandfathered' ? ' · ' + (s.plan === 'pro' ? 'Pro' : 'Start') : ''}</span>`;
     if (s.status === 'expired') return `<span class="pill warn">probă expirată</span>${pend}`;
     return `<span class="pill warn">fără abonament</span>${pend}`;
   };
@@ -1074,9 +1074,9 @@ async function renderFirmeBilling() {
     data.firme.map((f) => { const s = f._sub || {}; const needs = s.status === 'expired' || s.status === 'none';
       return `<tr><td>${H(f.nume)}${f.cui ? ' <span class="muted">(' + H(f.cui) + ')</span>' : ''}</td>
         <td>${stLabel(s)}</td>
-        <td>${needs ? `<button class="linkbtn fbsub" data-id="${f.id}" data-nume="${H(f.nume)}" style="color:var(--accent);font-weight:700">abonează-te →</button>` : (s.status === 'trial' ? `<button class="linkbtn fbsub" data-id="${f.id}" data-nume="${H(f.nume)}">abonează firma acum</button>` : '')}</td></tr>`;
+        <td>${needs ? `<button class="linkbtn fbsub" data-id="${f.id}" data-nume="${H(f.nume)}" data-u="u12">abonează-te →</button>` : (s.status === 'trial' ? `<button class="linkbtn fbsub" data-id="${f.id}" data-nume="${H(f.nume)}">abonează firma acum</button>` : '')}</td></tr>`;
     }).join('')}</tbody></table>
-    <p class="muted" style="font-size:12px;margin-top:6px">Firma activă acum: <b>${H((data.firme.find((f) => f.id === data.firmaActiva) || {}).nume || '—')}</b>. Abonarea deschide plata (Stripe) pentru planul potrivit tipului tău.</p>`;
+    <p class="muted" data-u="u24">Firma activă acum: <b>${H((data.firme.find((f) => f.id === data.firmaActiva) || {}).nume || '—')}</b>. Abonarea deschide plata (Stripe) pentru planul potrivit tipului tău.</p>`;
   $$('#firmeBilling .fbsub').forEach((b) => b.addEventListener('click', () => promptFirmaSubscribe(Number(b.dataset.id), b.dataset.nume)));
 }
 function renderSubscription(data) {
@@ -1089,7 +1089,7 @@ function renderSubscription(data) {
   else if (c.status === 'expired') banner = `<div class="sub-banner warn"><b>⚠ Perioada de probă a expirat.</b> Alege un plan pentru a continua.</div>`;
   else banner = `<div class="sub-banner"><b>Niciun abonament activ.</b> Începe cu proba gratuită de 30 zile.</div>`;
   if (c.requestedPlan && c.status !== 'active') banner += `<div class="sub-banner">⏳ Ai solicitat planul <b>${nameOf(c.requestedPlan)}</b> — în așteptarea activării (după confirmarea plății).</div>`;
-  if (c.status === 'active' && data.manageable) banner += `<div style="margin-top:8px"><button id="subPortal" class="btn">Gestionează / anulează abonamentul</button></div>`;
+  if (c.status === 'active' && data.manageable) banner += `<div data-u="u23"><button id="subPortal" class="btn">Gestionează / anulează abonamentul</button></div>`;
   if (c.status === 'canceled') banner = `<div class="sub-banner warn"><b>Abonament anulat.</b> Alege din nou un plan pentru a reactiva.</div>` + banner;
   $('#subStatus').innerHTML = banner;
   const pb = $('#subPortal');
@@ -1212,8 +1212,8 @@ function renderFields(values) {
     else if (f.type === 'date') input = `<input id="${id}" type="date" value="${v || ''}" />`;
     else if (f.type === 'number') input = `<input id="${id}" type="number" step="0.01" value="${v === '' ? '' : v}" />`;
     else if (f.type === 'items') input = `<div class="items-editor" id="${id}"><div class="items-rows"></div><button type="button" class="btn ghost small additem">＋ adaugă linie</button></div>`;
-    else if (f.type === 'stoc') input = `<div class="stoc-editor" id="${id}"><div class="stoc-rows"></div><button type="button" class="btn ghost small addstoc">＋ produs din stoc</button><div class="muted" style="font-size:11.5px;margin-top:4px">Costul mărfii vândute (607=371) se calculează automat la <b>CMP</b>, la salvare.</div></div>`;
-    else if (f.type === 'checkbox') input = `<input id="${id}" type="checkbox" ${v && v !== 'false' ? 'checked' : ''} style="width:auto;margin-left:8px;vertical-align:middle" />`;
+    else if (f.type === 'stoc') input = `<div class="stoc-editor" id="${id}"><div class="stoc-rows"></div><button type="button" class="btn ghost small addstoc">＋ produs din stoc</button><div class="muted" data-u="u25">Costul mărfii vândute (607=371) se calculează automat la <b>CMP</b>, la salvare.</div></div>`;
+    else if (f.type === 'checkbox') input = `<input id="${id}" type="checkbox" ${v && v !== 'false' ? 'checked' : ''} data-u="u26" />`;
     else input = `<input id="${id}" type="text" value="${(v || '').toString().replace(/"/g, '&quot;')}" />`;
     const wide = (f.name === 'explicatie' || f.type === 'account' || f.type === 'select' || f.type === 'items' || f.type === 'stoc' || f.type === 'checkbox') ? ' full' : '';
     box.insertAdjacentHTML('beforeend', `<label class="${wide ? 'full' : ''}">${f.label}${input}</label>`);
@@ -1496,9 +1496,9 @@ async function loadMissingDocs() {
     <span class="wi">${alert ? '⚠️' : '✅'}</span>
     <div><b>${lbl}:</b> ${d.countThis} documente intrate · media ultimelor 3 luni: <b>${d.avgPrev}</b>${d.countThis < d.avgPrev ? ' <span class="muted">(sub medie — verifică ce lipsește)</span>' : ''}
       ${d.missing.length
-    ? `<div style="margin-top:8px"><b>Posibil lipsă</b> — furnizori care apăreau lunar, dar fără document în ${lbl}:</div>
-           <ul class="checklist todo" style="margin-top:4px">${d.missing.map((m) => `<li>${m.partener} <span class="muted">— ultima oară: ${lunaLabel(m.ultimaLuna)} · ${m.luniPrezent}/3 luni anterioare</span></li>`).join('')}</ul>`
-    : '<div style="margin-top:6px">✓ Nu pare să lipsească niciun document recurent.</div>'}
+    ? `<div data-u="u23"><b>Posibil lipsă</b> — furnizori care apăreau lunar, dar fără document în ${lbl}:</div>
+           <ul class="checklist todo" data-u="u27">${d.missing.map((m) => `<li>${m.partener} <span class="muted">— ultima oară: ${lunaLabel(m.ultimaLuna)} · ${m.luniPrezent}/3 luni anterioare</span></li>`).join('')}</ul>`
+    : '<div data-u="u18">✓ Nu pare să lipsească niciun document recurent.</div>'}
     </div></div>`;
 }
 
@@ -1535,8 +1535,8 @@ async function loadArhiva() {
       <p class="muted">State de plată și declarația D112.</p>${monthly ? L('/pdf/stat-plata' + pq, '⬇ Stat de plată PDF') + L('/xml/d112' + pq, 'D112 XML') : '<span class="muted">Alege o lună pentru statul de plată.</span>'}</div>
     <div class="card"><h3>🧾 06 · Declarații ANAF</h3>
       <p class="muted">Declarațiile fiscale ale perioadei.${monthly ? '' : ' <b>Alege o lună</b> pentru declarațiile lunare (D300/D394/D112).'}</p>${monthly ? declMonthly : L('/xml/saft' + yq, 'SAF-T XML (an întreg)')}
-      ${monthly ? `<div style="margin-top:8px"><button id="validateDecl" class="btn small" data-p="${p}" data-yr="${yr}">🔍 Verifică declarațiile (pre-depunere)</button><div id="validateResult" style="margin-top:6px"></div></div>` : ''}
-      <p class="muted" style="font-size:12px;margin-top:8px">⚠️ Ciorne — verificarea de mai sus prinde erorile frecvente, dar validează final cu <b>DUKIntegrator</b> / XSD ANAF înainte de depunere.</p></div>
+      ${monthly ? `<div data-u="u23"><button id="validateDecl" class="btn small" data-p="${p}" data-yr="${yr}">🔍 Verifică declarațiile (pre-depunere)</button><div id="validateResult" data-u="u18"></div></div>` : ''}
+      <p class="muted" data-u="u28">⚠️ Ciorne — verificarea de mai sus prinde erorile frecvente, dar validează final cu <b>DUKIntegrator</b> / XSD ANAF înainte de depunere.</p></div>
     <div class="card"><h3>📚 07 · Registre & Bilanț</h3>
       <p class="muted">Registrele obligatorii și situațiile financiare.</p>
       ${L('/pdf/journal' + pq, '⬇ Registru-jurnal PDF')}${L('/csv/journal' + pq, 'Jurnal CSV')}${L('/pdf/ledger' + pq, '⬇ Cartea mare PDF')}${L('/pdf/balance' + pq, '⬇ Balanță PDF')}${L('/csv/balance' + pq, 'Balanță CSV')}${L('/pdf/pl' + yq, '⬇ Cont P&P PDF')}${L('/pdf/bilant' + pq, '⬇ Bilanț PDF')}</div>`;
@@ -1552,8 +1552,8 @@ async function loadArhiva() {
     }
     out.innerHTML = results.map((r) => {
       const icon = r.ok ? (r.warnings.length ? '⚠️' : '✅') : '❌';
-      const msgs = [...r.errors.map((m) => `<span style="color:var(--danger)">✗ ${m}</span>`), ...r.warnings.map((m) => `<span class="muted">⚠ ${m}</span>`)];
-      return `<div style="margin:3px 0;font-size:13px"><b>${icon} ${r.label}</b>${msgs.length ? ': ' + msgs.join(' · ') : ' — fără probleme'}</div>`;
+      const msgs = [...r.errors.map((m) => `<span data-u="u13">✗ ${m}</span>`), ...r.warnings.map((m) => `<span class="muted">⚠ ${m}</span>`)];
+      return `<div data-u="u29"><b>${icon} ${r.label}</b>${msgs.length ? ': ' + msgs.join(' · ') : ' — fără probleme'}</div>`;
     }).join('');
     vb.disabled = false;
   });
@@ -1662,7 +1662,7 @@ async function startInvite(token) {
     <p class="muted">Bun venit, <b>${info.username}</b>. Setează-ți parola.</p>
     <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
     <div id="loginErr" class="status err"></div>
-    <button class="btn primary" style="width:100%">Activează contul</button>`;
+    <button class="btn primary" data-u="u19">Activează contul</button>`;
   box.onsubmit = async (e) => {
     e.preventDefault();
     try {
@@ -1683,7 +1683,7 @@ async function startReset(token) {
     <p class="muted">Resetare parolă pentru <b>${info.username}</b>.</p>
     <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
     <div id="loginErr" class="status err"></div>
-    <button class="btn primary" style="width:100%">Salvează parola</button>`;
+    <button class="btn primary" data-u="u19">Salvează parola</button>`;
   box.onsubmit = async (e) => {
     e.preventDefault();
     try {

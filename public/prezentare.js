@@ -16,7 +16,7 @@
         <a class="btn ${p.trial ? 'solid' : 'buy'}" href="/?register=1">${p.trial ? 'Începe proba gratuită' : 'Alege ' + p.nume + ' →'}</a>
       </div>`).join('');
   } catch (e) {
-    box.innerHTML = '<p style="color:#76746c">Prețurile sunt disponibile în aplicație.</p>';
+    box.innerHTML = '<p data-u="u169">Prețurile sunt disponibile în aplicație.</p>';
   }
 })();
 

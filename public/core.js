@@ -72,3 +72,20 @@ export async function fileToCsv(file) {
   }
   return await file.text();
 }
+
+// ── Stiluri dinamice sub CSP fara unsafe-inline ──
+// Atributele style= din markup sunt blocate de CSP (style-src 'self'); valorile calculate in
+// template-uri se scriu ca data-style="prop:val;..." iar aici se transfera pe el.style.cssText —
+// manipulare CSSOM, pe care CSP NU o blocheaza. Observerul acopera orice innerHTML ulterior,
+// fara hook per ecran; la incarcare se aplica si celor deja prezente in DOM.
+function applyDataStyle(el) { if (el.dataset && el.dataset.style != null) el.style.cssText = el.dataset.style; }
+new MutationObserver((muts) => {
+  for (const m of muts) {
+    for (const n of m.addedNodes) {
+      if (n.nodeType !== 1) continue;
+      applyDataStyle(n);
+      if (n.querySelectorAll) n.querySelectorAll('[data-style]').forEach(applyDataStyle);
+    }
+  }
+}).observe(document.documentElement, { childList: true, subtree: true });
+document.querySelectorAll('[data-style]').forEach(applyDataStyle);

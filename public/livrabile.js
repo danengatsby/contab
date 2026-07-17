@@ -36,20 +36,20 @@ async function loadLivrabile() {
     : `<tr><td>Impozit micro ${s.d100.cota || 1}% (D100, trim.)</td><td class="num">${fmt(s.d100.impozit)}</td></tr>`}
      </table>
      ${!s.du && (s.d100.avertismente || []).length
-    ? `<div class="warnbox" style="margin-top:8px"><span class="wi">⚠️</span><div><b>Eligibilitate micro:</b> ${s.d100.avertismente.join('<br>')}</div></div>`
+    ? `<div class="warnbox" data-u="u23"><span class="wi">⚠️</span><div><b>Eligibilitate micro:</b> ${s.d100.avertismente.join('<br>')}</div></div>`
     : ''}</div>
      <div class="card"><h3>Total de virat la ANAF (luna ${p})</h3><table>
       ${s.obligatii.items.map((i) => `<tr><td>${i.cont} ${i.nume}</td><td class="num">${fmt(i.suma)}</td></tr>`).join('') || '<tr><td class="muted">Fără obligații în perioadă</td><td></td></tr>'}
       <tr class="total"><td>TOTAL</td><td class="num">${fmt(s.obligatii.total)}</td></tr>
      </table></div>`;
   $('#livrabileLegend').innerHTML = Object.keys(STATUS).map((k) =>
-    `<span style="display:inline-block;margin-right:10px"><b style="color:${STATUS[k].c}">●</b> ${STATUS[k].t}</span>`).join('');
-  const badge = (st) => { const x = STATUS[st] || STATUS.manual; return `<span style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${x.t}</span>`; };
+    `<span data-u="u146"><b data-style="color:${STATUS[k].c}">●</b> ${STATUS[k].t}</span>`).join('');
+  const badge = (st) => { const x = STATUS[st] || STATUS.manual; return `<span data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${x.t}</span>`; };
   let sec = '';
   const rows = data.list.map((it) => {
-    const head = it.sectiune !== sec ? (sec = it.sectiune, `<tr><td colspan="4" style="background:#f2f5fb;font-weight:700;color:#42506f">${it.sectiune}</td></tr>`) : '';
+    const head = it.sectiune !== sec ? (sec = it.sectiune, `<tr><td colspan="4" data-u="u147">${it.sectiune}</td></tr>`) : '';
     const links = it.links.map((l) => `<a class="linkbtn" href="${l.href}" target="_blank">${l.label}</a>`).join(' · ') || '<span class="muted">—</span>';
-    return head + `<tr><td>${it.nr}</td><td>${H(it.nume)}${it.obs ? `<br><span class="muted" style="font-size:11px">${H(it.obs)}</span>` : ''}</td><td>${badge(it.status)}</td><td>${links}</td></tr>`;
+    return head + `<tr><td>${it.nr}</td><td>${H(it.nume)}${it.obs ? `<br><span class="muted" data-u="u148">${H(it.obs)}</span>` : ''}</td><td>${badge(it.status)}</td><td>${links}</td></tr>`;
   }).join('');
   $('#livrabileList').innerHTML = `<table><thead><tr><th>#</th><th>Document / declarație</th><th>Statut</th><th>Descărcare</th></tr></thead><tbody>${rows}</tbody></table>`;
   loadDeclRegister(p);
@@ -66,8 +66,8 @@ const DECL_ST = {
 };
 const declBadge = (st, overdue) => {
   const x = DECL_ST[st] || DECL_ST.nedepusa;
-  return `<span style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${x.t}</span>`
-    + (overdue ? ' <span style="background:#fde7ea;color:#b00020;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">⏰ restanță</span>' : '');
+  return `<span data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${x.t}</span>`
+    + (overdue ? ' <span data-u="u149">⏰ restanță</span>' : '');
 };
 async function loadDeclRegister(p) {
   const box = $('#declRegister'); if (!box) return;
@@ -77,10 +77,10 @@ async function loadDeclRegister(p) {
   box.innerHTML = `<table><thead><tr><th>Declarație</th><th>Termen</th><th>Stare</th><th>Schimbă starea</th><th>Recipisă / detalii</th></tr></thead><tbody>${
     data.rows.map((r) => `<tr>
       <td>${r.nume}</td>
-      <td class="${r.overdue ? '' : 'muted'}" ${r.overdue ? 'style="color:#b00020;font-weight:700"' : ''}>${r.due}</td>
+      <td class="${r.overdue ? '' : 'muted'}" ${r.overdue ? 'data-u="u33"' : ''}>${r.due}</td>
       <td>${declBadge(r.status, r.overdue)}</td>
       <td><select class="decl-set" data-tip="${r.tip}" data-period="${r.period}">${opts(r.status)}</select></td>
-      <td class="muted" style="font-size:11px">${r.recipisa ? 'recipisă: ' + r.recipisa + '<br>' : ''}${r.submittedAt ? 'depusă: ' + r.submittedAt.slice(0, 10) : (r.generatedAt ? 'XML generat: ' + r.generatedAt.slice(0, 10) : '')}${r.note ? '<br>' + r.note : ''}</td>
+      <td class="muted" data-u="u148">${r.recipisa ? 'recipisă: ' + r.recipisa + '<br>' : ''}${r.submittedAt ? 'depusă: ' + r.submittedAt.slice(0, 10) : (r.generatedAt ? 'XML generat: ' + r.generatedAt.slice(0, 10) : '')}${r.note ? '<br>' + r.note : ''}</td>
     </tr>`).join('')}</tbody></table>`;
   box.querySelectorAll('.decl-set').forEach((sel) => sel.addEventListener('change', async () => {
     const body = { tip: sel.dataset.tip, period: sel.dataset.period, status: sel.value };
@@ -147,30 +147,30 @@ async function loadPortfolio() {
   const segs = [['depuse', '#0a7d33'], ['generate', '#1652d6'], ['nedepuse', '#b26a00'], ['erori', '#b00020'], ['scutite', '#8a93a3']];
   const total = Math.max(1, t.asteptate);
   $('#portoStatus').innerHTML =
-    `<div style="display:flex;height:26px;border-radius:8px;overflow:hidden;background:#eceff3">${
-      segs.map(([k, c]) => t[k] ? `<div style="flex:${t[k]};background:${c}" title="${k}: ${t[k]}"></div>` : '').join('')}</div>
-     <table style="margin-top:10px">${segs.map(([k, c]) => `<tr><td><b style="color:${c}">●</b> ${k[0].toUpperCase() + k.slice(1)}</td><td class="num">${t[k]}</td><td class="num muted">${Math.round((t[k] / total) * 100)}%</td></tr>`).join('')}</table>`;
+    `<div data-u="u150">${
+      segs.map(([k, c]) => t[k] ? `<div data-style="flex:${t[k]};background:${c}" title="${k}: ${t[k]}"></div>` : '').join('')}</div>
+     <table data-u="u8">${segs.map(([k, c]) => `<tr><td><b data-style="color:${c}">●</b> ${k[0].toUpperCase() + k.slice(1)}</td><td class="num">${t[k]}</td><td class="num muted">${Math.round((t[k] / total) * 100)}%</td></tr>`).join('')}</table>`;
   const warn = d.firms.filter((f) => f.natentionari > 0).slice(0, 5);
   $('#portoTop').innerHTML = warn.length
-    ? `<table>${warn.map((f) => `<tr><td>${H(f.nume)}<br><span class="muted" style="font-size:11px">${H(f.atentionari.slice(0, 3).join(' · '))}</span></td>
-        <td class="num"><span style="background:#b00020;color:#fff;border-radius:10px;padding:2px 9px;font-weight:700">${f.natentionari}</span></td></tr>`).join('')}</table>`
+    ? `<table>${warn.map((f) => `<tr><td>${H(f.nume)}<br><span class="muted" data-u="u148">${H(f.atentionari.slice(0, 3).join(' · '))}</span></td>
+        <td class="num"><span data-u="u151">${f.natentionari}</span></td></tr>`).join('')}</table>`
     : '<p class="muted">✓ Nicio firmă cu atenționări pe luna selectată.</p>';
   // forma juridica (SRL/PFA + TVA) si starea abonamentului (billing per-firma)
   const formaBadge = (f) => {
     const t = f.tipEntitate === 'pfa'
-      ? '<span class="pill" style="background:#f3ecfb;color:#6b3fa0" title="Persoană fizică autorizată / întreprindere individuală">PFA</span>'
-      : '<span class="pill" style="background:#e7eefc;color:#1652d6" title="Societate cu răspundere limitată">SRL</span>';
-    return t + (f.tvaPlatitor ? ' <span class="pill" style="background:#eef1f7;color:#5a6472" title="Plătitoare de TVA">TVA</span>' : '');
+      ? '<span class="pill" data-u="u152" title="Persoană fizică autorizată / întreprindere individuală">PFA</span>'
+      : '<span class="pill" data-u="u153" title="Societate cu răspundere limitată">SRL</span>';
+    return t + (f.tvaPlatitor ? ' <span class="pill" data-u="u154" title="Plătitoare de TVA">TVA</span>' : '');
   };
   const abonBadge = (s) => {
     s = s || {};
-    if (s.status === 'trial') return `<span class="pill" style="background:#fff4e0;color:#b26a00" title="În probă (testare)">🎁 testare · ${s.zileRamase}z</span>`;
-    if (s.status === 'active') { const pl = s.plan === 'pro' ? 'ab.Pro' : s.plan === 'start' ? 'ab.Start' : 'activ'; return `<span class="pill" style="background:#eaf4ef;color:#0a7d33">✓ ${pl}</span>`; }
-    if (s.status === 'expired') return '<span class="pill warn">probă expirată</span>' + (s.pending ? ' <span class="pill" style="background:#fff4e0;color:#b26a00">⏳ plată</span>' : '');
-    return '<span class="pill warn">fără abonament</span>' + (s.pending ? ' <span class="pill" style="background:#fff4e0;color:#b26a00">⏳ plată</span>' : '');
+    if (s.status === 'trial') return `<span class="pill" data-u="u11" title="În probă (testare)">🎁 testare · ${s.zileRamase}z</span>`;
+    if (s.status === 'active') { const pl = s.plan === 'pro' ? 'ab.Pro' : s.plan === 'start' ? 'ab.Start' : 'activ'; return `<span class="pill" data-u="u155">✓ ${pl}</span>`; }
+    if (s.status === 'expired') return '<span class="pill warn">probă expirată</span>' + (s.pending ? ' <span class="pill" data-u="u11">⏳ plată</span>' : '');
+    return '<span class="pill warn">fără abonament</span>' + (s.pending ? ' <span class="pill" data-u="u11">⏳ plată</span>' : '');
   };
   $('#portoFirms').innerHTML = `<table><thead><tr><th>Firma</th><th>CUI</th><th>Formă</th><th>Abonament</th><th class="num">Așteptate</th><th class="num">Depuse</th><th class="num">Generate</th><th class="num">Nedepuse</th><th class="num">Erori</th><th class="num">Atenționări</th></tr></thead><tbody>${
-    d.firms.map((f) => `<tr><td>${H(f.nume)}</td><td class="muted">${H(f.cui)}</td><td>${formaBadge(f)}</td><td>${abonBadge(f.sub)}</td><td class="num">${f.counts.asteptate}</td><td class="num" style="color:#0a7d33">${f.counts.depuse}</td><td class="num">${f.counts.generate}</td><td class="num" ${f.counts.nedepuse ? 'style="color:#b26a00;font-weight:700"' : ''}>${f.counts.nedepuse}</td><td class="num" ${f.counts.erori ? 'style="color:#b00020;font-weight:700"' : ''}>${f.counts.erori}</td><td class="num">${f.natentionari || ''}</td></tr>`).join('')}</tbody></table>`;
+    d.firms.map((f) => `<tr><td>${H(f.nume)}</td><td class="muted">${H(f.cui)}</td><td>${formaBadge(f)}</td><td>${abonBadge(f.sub)}</td><td class="num">${f.counts.asteptate}</td><td class="num" data-u="u156">${f.counts.depuse}</td><td class="num">${f.counts.generate}</td><td class="num" ${f.counts.nedepuse ? 'data-u="u157"' : ''}>${f.counts.nedepuse}</td><td class="num" ${f.counts.erori ? 'data-u="u33"' : ''}>${f.counts.erori}</td><td class="num">${f.natentionari || ''}</td></tr>`).join('')}</tbody></table>`;
   $('#portoRecent').innerHTML = (d.recent || []).length
     ? `<table><thead><tr><th>Când</th><th>Firma</th><th>Cine</th><th>Acțiune</th></tr></thead><tbody>${
       d.recent.map((a) => `<tr><td class="muted">${(a.ts || '').replace('T', ' ').slice(0, 16)}</td><td>${a.firma}</td><td>${a.username}</td><td>${a.action}${a.detail ? ' — <span class="muted">' + a.detail + '</span>' : ''}</td></tr>`).join('')}</tbody></table>`
@@ -191,9 +191,9 @@ async function loadNotifications() {
   $('#notifList').innerHTML = n.items.length
     ? `<table><thead><tr><th></th><th>Firma</th><th>Declarația</th><th>Luna</th><th>Termen</th><th>Stare</th></tr></thead><tbody>${
       n.items.map((i) => `<tr>
-        <td>${i.kind === 'restanta' ? '<span style="background:#fde7ea;color:#b00020;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">⏰ RESTANȚĂ</span>' : '<span style="background:#fff4e0;color:#b26a00;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">📅 termen apropiat</span>'}</td>
+        <td>${i.kind === 'restanta' ? '<span data-u="u158">⏰ RESTANȚĂ</span>' : '<span data-u="u159">📅 termen apropiat</span>'}</td>
         <td>${i.firma}</td><td>${i.nume}</td><td>${i.period}</td>
-        <td ${i.kind === 'restanta' ? 'style="color:#b00020;font-weight:700"' : ''}>${i.due}</td>
+        <td ${i.kind === 'restanta' ? 'data-u="u33"' : ''}>${i.due}</td>
         <td>${declBadge(i.status)}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">✓ Nicio restanță și niciun termen în următoarele 7 zile. Totul e la zi.</p>';
   refreshNotifBadge();
@@ -204,8 +204,8 @@ $('#reconRefresh').addEventListener('click', loadReconcile);
 async function loadReconcile() {
   const r = await api('/api/reconcile');
   $('#reconSummary').innerHTML =
-    `<div class="card"><h3>Sold clienți (4111)</h3><p style="font-size:22px;font-weight:700;color:var(--accent)">${fmt(r.totalClienti)} lei</p><p class="muted">de încasat (net)</p></div>
-     <div class="card"><h3>Sold furnizori (401)</h3><p style="font-size:22px;font-weight:700;color:#b00020">${fmt(r.totalFurnizori)} lei</p><p class="muted">de plătit (net)</p></div>`;
+    `<div class="card"><h3>Sold clienți (4111)</h3><p data-u="u160">${fmt(r.totalClienti)} lei</p><p class="muted">de încasat (net)</p></div>
+     <div class="card"><h3>Sold furnizori (401)</h3><p data-u="u161">${fmt(r.totalFurnizori)} lei</p><p class="muted">de plătit (net)</p></div>`;
   renderCompensations();
   if (!r.partners.length) { $('#reconList').innerHTML = '<div class="card"><p class="muted">Nicio mișcare pe parteneri.</p></div>'; return; }
   $('#reconList').innerHTML = r.partners.map((p) => {
@@ -244,7 +244,7 @@ async function renderCompensations() {
 const ANALYTIC_ACCOUNTS = ['401', '404', '408', '409', '419', '4111', '418', '461', '462', '5121', '5124', '5311', '5314', '542', '421', '425'];
 async function renderAging() {
   let a; try { a = await api('/api/aging'); } catch (e) { return; }
-  const tbl = (titlu, list, t, lbl, wo) => `<div class="card"><h4>${titlu} <span class="muted" style="font-weight:400">la ${a.asOf}</span></h4>${
+  const tbl = (titlu, list, t, lbl, wo) => `<div class="card"><h4>${titlu} <span class="muted" data-u="u70">la ${a.asOf}</span></h4>${
     list.length ? `<table><thead><tr><th>Partener</th><th class="num">Total</th><th class="num">0-30</th><th class="num">31-60</th><th class="num">61-90</th><th class="num">&gt;90</th>${wo ? '<th></th>' : ''}</tr></thead><tbody>${
       list.map((x) => `<tr><td>${H(x.partener)}${x.cui ? ' <span class="muted">(' + H(x.cui) + ')</span>' : ''}</td><td class="num">${fmt(x.total)}</td><td class="num">${x.b0_30 ? fmt(x.b0_30) : ''}</td><td class="num">${x.b31_60 ? fmt(x.b31_60) : ''}</td><td class="num">${x.b61_90 ? fmt(x.b61_90) : ''}</td><td class="num">${x.b90plus ? fmt(x.b90plus) : ''}</td>${wo ? `<td><button class="linkbtn woff" data-p="${encodeURIComponent(x.partener)}" data-c="${H(x.cui)}" data-s="${x.total}">scoate</button></td>` : ''}</tr>`).join('')}
       <tr class="bold"><td>TOTAL ${lbl}</td><td class="num">${fmt(t.total)}</td><td class="num">${fmt(t.b0_30)}</td><td class="num">${fmt(t.b31_60)}</td><td class="num">${fmt(t.b61_90)}</td><td class="num">${fmt(t.b90plus)}</td>${wo ? '<td></td>' : ''}</tr></tbody></table>`
@@ -266,7 +266,7 @@ async function renderProvizion() {
     ? `<table><thead><tr><th>Partener</th><th class="num">Creanțe &gt;90 zile</th><th class="num">Provizion ${p.pct}%</th></tr></thead><tbody>${
       p.detalii.map((c) => `<tr><td>${H(c.partener)}${c.cui ? ' <span class="muted">(' + H(c.cui) + ')</span>' : ''}</td><td class="num">${fmt(c.vechi)}</td><td class="num">${fmt(c.provizion)}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Nicio creanță mai veche de 90 de zile.</p>';
-  $('#provView').innerHTML = det + `<table style="margin-top:8px"><tbody>
+  $('#provView').innerHTML = det + `<table data-u="u23"><tbody>
     <tr><td>Provizion necesar (${p.pct}%)</td><td class="num">${fmt(p.necesar)}</td></tr>
     <tr><td>Ajustare existentă (sold 491)</td><td class="num">${fmt(p.existent)}</td></tr>
     <tr class="bold"><td>De înregistrat ${p.deAjustat >= 0 ? '(6814 = 491)' : '(491 = 7814, reluare)'}</td><td class="num">${fmt(Math.abs(p.deAjustat))}</td></tr></tbody></table>`;

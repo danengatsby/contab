@@ -24,7 +24,7 @@ function renderStockMovements() {
         <td class="num">${fmt(m.cantitate)} ${H(m.um)}</td><td class="num">${m.pretUnitar ? fmt(m.pretUnitar) : '—'}</td><td>${H(m.document)}</td><td>${m.operator ? H(m.operator) : '—'}</td>
         <td>${m.tip === 'transfer' ? '<span class="muted">intern</span>' : m.initial ? '<span class="pill" title="Stoc preluat la deschidere — valoarea e în soldurile inițiale, nu se contabilizează separat">sold inițial</span>' : m.entryId ? '<span class="pill">✓ contabilizat</span>' : `<button class="linkbtn mpost" data-id="${m.id}">postează nota</button>`}</td>
         <td>${m.tip === 'receptie' ? `<a class="linkbtn" href="/pdf/nir?id=${m.id}" target="_blank">NIR</a> · ` : m.tip === 'iesire' ? `<a class="linkbtn" href="/pdf/bon-consum?id=${m.id}" target="_blank">bon consum</a> · ` : `<a class="linkbtn" href="/pdf/aviz?id=${m.id}" target="_blank">aviz</a> · `}<button class="linkbtn mdel" data-id="${m.id}">șterge</button></td></tr>`).join('')}</tbody></table>
-      <p class="muted" style="margin-top:6px">${movs.length} din ${STOCK_MOVS.length} mișcări. „Postează nota”: recepție <b>3xx = 401</b>, ieșire <b>60x = 3xx</b> la CMP. Transferul e mișcare internă.</p>`
+      <p class="muted" data-u="u18">${movs.length} din ${STOCK_MOVS.length} mișcări. „Postează nota”: recepție <b>3xx = 401</b>, ieșire <b>60x = 3xx</b> la CMP. Transferul e mișcare internă.</p>`
     : '<p class="muted">Nicio mișcare (verifică filtrele).</p>';
   $$('#movementsList .mdel').forEach((b) => b.addEventListener('click', async () => {
     await api('/api/stock-movements/' + b.dataset.id, { method: 'DELETE' }); loadStocks(); toast('Mișcare ștearsă');
@@ -150,8 +150,8 @@ function renderInitialCheck(tot) {
   const box = $('#initStocCheck'); if (!box) return;
   box.innerHTML = (tot || []).length
     ? `<table><thead><tr><th>Cont stoc</th><th class="num">Stoc inițial preluat</th><th class="num">Sold inițial cont</th><th class="num">Diferență</th></tr></thead><tbody>${
-      tot.map((t) => `<tr><td class="acc">${t.cont}</td><td class="num">${fmt(t.stocInitial)}</td><td class="num">${fmt(t.soldInitial)}</td><td class="num"${Math.abs(t.diferenta) >= 0.01 ? ' style="color:#b00020;font-weight:700"' : ''}>${fmt(t.diferenta)}</td></tr>`).join('')}</tbody></table>
-      <p class="muted" style="margin-top:6px">Verificare cantitativ-valoric vs. contabilitate: <b>Diferență ≠ 0</b> înseamnă că valoarea stocului preluat nu bate cu soldul inițial sintetic al contului — corectează soldurile inițiale sau cantitățile/valorile preluate.</p>`
+      tot.map((t) => `<tr><td class="acc">${t.cont}</td><td class="num">${fmt(t.stocInitial)}</td><td class="num">${fmt(t.soldInitial)}</td><td class="num"${Math.abs(t.diferenta) >= 0.01 ? ' data-u="u33"' : ''}>${fmt(t.diferenta)}</td></tr>`).join('')}</tbody></table>
+      <p class="muted" data-u="u18">Verificare cantitativ-valoric vs. contabilitate: <b>Diferență ≠ 0</b> înseamnă că valoarea stocului preluat nu bate cu soldul inițial sintetic al contului — corectează soldurile inițiale sau cantitățile/valorile preluate.</p>`
     : '';
 }
 $('#initStocFile').addEventListener('change', async (e) => { const f = e.target.files[0]; if (f) { try { $('#initStocCsv').value = await fileToCsv(f); } catch (err) { toast(err.message, true); } } });
@@ -190,9 +190,9 @@ let PROD_OPTS = { products: [], gestiuni: [] };
 function prodMatRow() {
   const div = document.createElement('div');
   div.className = 'row'; div.style.cssText = 'gap:6px;margin-top:4px;align-items:center';
-  div.innerHTML = `<select class="pm-prod" style="flex:2">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('')}</select>
-    <select class="pm-gest" style="flex:1">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${g.cod}</option>`).join('')}</select>
-    <input class="pm-qty" type="number" step="0.001" placeholder="cantitate" style="flex:1">
+  div.innerHTML = `<select class="pm-prod" data-u="u52">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('')}</select>
+    <select class="pm-gest" data-u="u46">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${g.cod}</option>`).join('')}</select>
+    <input class="pm-qty" type="number" step="0.001" placeholder="cantitate" data-u="u46">
     <button type="button" class="del pm-del" title="Elimină">✕</button>`;
   div.querySelector('.pm-del').addEventListener('click', () => div.remove());
   return div;
@@ -237,9 +237,9 @@ $('#prodForm') && $('#prodForm').addEventListener('submit', async (e) => {
 function recipeMatRow(mat) {
   const div = document.createElement('div');
   div.className = 'row'; div.style.cssText = 'gap:6px;margin-top:4px;align-items:center';
-  div.innerHTML = `<select class="rm-prod" style="flex:2">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('')}</select>
-    <select class="rm-gest" style="flex:1">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${H(g.cod)}</option>`).join('')}</select>
-    <input class="rm-qty" type="number" step="0.001" placeholder="cantitate" style="flex:1">
+  div.innerHTML = `<select class="rm-prod" data-u="u52">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('')}</select>
+    <select class="rm-gest" data-u="u46">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${H(g.cod)}</option>`).join('')}</select>
+    <input class="rm-qty" type="number" step="0.001" placeholder="cantitate" data-u="u46">
     <button type="button" class="del rm-del" title="Elimină">✕</button>`;
   if (mat) {
     div.querySelector('.rm-prod').value = mat.productId;
@@ -269,8 +269,8 @@ async function renderRecipes(products) {
   if (!list.length) { box.innerHTML = '<p class="muted">Nicio rețetă salvată.</p>'; return; }
   box.innerHTML = `<table><thead><tr><th>Rețetă</th><th>Produs finit</th><th class="num">Cant. bază</th><th class="num">Materiale</th><th>Acțiuni</th></tr></thead><tbody>${
     list.map((r) => `<tr data-id="${r.id}"><td><b>${r.nume}</b></td><td>${pName(r.productId)}</td><td class="num">${fmt(r.cantitateBaza)}</td><td class="num">${(r.materiale || []).length}</td>
-      <td class="row" style="gap:4px">
-        <input class="rc-qty" type="number" step="0.001" placeholder="cant." style="width:80px" title="Cantitate de produs">
+      <td class="row" data-u="u189">
+        <input class="rc-qty" type="number" step="0.001" placeholder="cant." data-u="u190" title="Cantitate de produs">
         <button class="btn small primary rc-produce" title="Produce această cantitate">▶ Produce</button>
         <button class="btn small ghost rc-edit">Editează</button>
         <button class="del rc-del" title="Șterge">✕</button>
@@ -328,9 +328,9 @@ $('#invLoad').addEventListener('click', async () => {
   $('#inventoryArea').innerHTML = `<table><thead><tr><th>Cod</th><th>Denumire</th><th class="num">Scriptic</th><th class="num">CMP</th><th class="num">Faptic</th><th>Imputare</th></tr></thead><tbody>${
     list.map((l) => `<tr data-pid="${l.product.id}"><td class="acc">${H(l.product.cod)}</td><td>${H(l.product.denumire)}</td>
       <td class="num scr">${fmt(l.scripticQty)} ${l.product.um || ''}</td><td class="num">${fmt(l.cmp)}</td>
-      <td class="num"><input class="inv-fapt" type="number" step="0.001" value="${l.scripticQty}" style="width:90px;text-align:right"></td>
+      <td class="num"><input class="inv-fapt" type="number" step="0.001" value="${l.scripticQty}" data-u="u178"></td>
       <td><input class="inv-imp" type="checkbox" title="Impută lipsa gestionarului"></td></tr>`).join('')}</tbody></table>
-    <div class="row" style="margin-top:10px"><input id="invData" type="date" value="${stocAsOf()}-28" style="max-width:160px"> <button id="invPost" class="btn primary">Înregistrează diferențele</button></div>`;
+    <div class="row" data-u="u8"><input id="invData" type="date" value="${stocAsOf()}-28" data-u="u120"> <button id="invPost" class="btn primary">Înregistrează diferențele</button></div>`;
   $('#invPost').addEventListener('click', async () => {
     const lines = $$('#inventoryArea tbody tr').map((tr) => ({ productId: tr.dataset.pid, faptic: tr.querySelector('.inv-fapt').value, imputa: tr.querySelector('.inv-imp').checked }));
     try {
