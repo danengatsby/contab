@@ -48,7 +48,11 @@ function createApp() {
 
   // Anteturi de securitate via helmet, cu CSP calibrat pentru aceasta aplicatie:
   //  - script-src 'self' (un singur /app.js, fara scripturi/handler-e inline)
-  //  - style-src 'unsafe-inline' (atribute style= folosite pe larg in HTML)
+  //  - style-src 'unsafe-inline' — DOAR pentru atributele style= (~400 in HTML+JS); nonce-ul
+  //    CSP nu se aplica atributelor, deci nu ajuta pana nu migreaza la clase. Elementele
+  //    <style> au fost deja eliminate (CSS extern), iar testul-ratchet din test/run.js
+  //    plafoneaza atributele ca sa scada; la ~0, styleSrc trece pe nonce. Exfiltrarea prin
+  //    CSS injectat e oricum taiata de img-src/font-src/connect-src restrictive.
   //  - img-src data:/blob: (favicon data-URI, canvas), connect-src include puntea de scanare locala
   //  - frame-src 'self' blob: (vizualizatorul PDF/e-Factura ruleaza intr-un <iframe> same-origin)
   // COEP/CORP sunt DEZACTIVATE intentionat: ar rupe vizualizatorul PDF (iframe blob:) si puntea
