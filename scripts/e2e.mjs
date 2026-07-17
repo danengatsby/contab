@@ -1,8 +1,11 @@
 // Verificari end-to-end pe instanta LIVE (sau BASE_URL), cu browser real (Playwright).
 // Foloseste contul demo — nu creeaza si nu sterge date reale.
 //
-// Rulare pe acest server (fara biblioteci de sistem pentru Chromium, prin Docker):
-//   docker run --rm -v /var/www/contab/scripts:/w -w /w mcr.microsoft.com/playwright:v1.58.2-noble \
+// Rulare pe acest server (fara biblioteci de sistem pentru Chromium, prin Docker).
+// Se monteaza DOAR fisierul, read-only: npm i ruleaza in containerul efemer, nu lasa
+// node_modules pe host (un mount pe tot scripts/ ar scrie ~500 fisiere inapoi in repo).
+//   docker run --rm -v /var/www/contab/scripts/e2e.mjs:/w/e2e.mjs:ro -w /w \
+//     mcr.microsoft.com/playwright:v1.58.2-noble \
 //     sh -c "npm i --no-save playwright@1.58.2 >/dev/null 2>&1 && node e2e.mjs"
 // Local (cu playwright instalat):  BASE_URL=http://localhost:8080 node scripts/e2e.mjs
 
