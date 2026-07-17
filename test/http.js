@@ -7,6 +7,7 @@
 // depunerilor si portofoliul. Ruleaza in `npm test`, dupa suita de module.
 
 const { spawn } = require('child_process');
+const net = require('net');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -14,8 +15,19 @@ const auth = require('../src/auth');
 const xml = require('../src/xml');
 const totp = require('../src/totp');
 
-const PORT = 3891;
-const BASE = 'http://127.0.0.1:' + PORT;
+// Port EFEMER, nu unul fix: un 3891 hardcodat se ciocnea cu o instanta uitata (fals-pozitive,
+// vezi CLAUDE.md) si impiedica rularea in paralel. Cerem OS-ului un port liber (bind pe 0),
+// il eliberam si il pasam serverului-copil; impreuna cu DBF per-pid, suita devine paralelizabila.
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.on('error', reject);
+    srv.listen(0, '127.0.0.1', () => { const p = srv.address().port; srv.close(() => resolve(p)); });
+  });
+}
+let PORT = 0;    // atribuit in main() inainte de orice cerere
+let PORT2 = 0;   // a doua instanta (testul de guard single-instance)
+let BASE = '';   // req()/waitUp() capteaza variabila, nu valoarea — vad reasignarea din main()
 const DBF = path.join(os.tmpdir(), 'contab-http-' + process.pid + '.json');
 // data/ temporar al serverului de test: backup-urile si uploads NU ating data/ real
 const DATA_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'contab-http-data-'));
@@ -90,6 +102,9 @@ async function waitUp(tries) {
 }
 
 async function main() {
+  PORT = await freePort();
+  PORT2 = await freePort();
+  BASE = 'http://127.0.0.1:' + PORT;
   fs.writeFileSync(DBF, JSON.stringify(buildDb()));
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     // plafoane de upload/export mici, ca testele 429 sa nu faca zeci de cereri; conturile
@@ -580,6 +595,17 @@ async function main() {
     eq('faraSalarii: si citirea salarizarii e respinsa (403)', (await req('GET', '/api/angajati', { cookie: c1 })).status, 403);
     eq('faraSalarii: D112 XML respins (403)', (await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).status, 403);
     ok('drepturile pot fi ridicate inapoi', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: false, faraSalarii: false } } })).json.ok === true);
+
+    // ── Concurenta: scrieri PARALELE pe starea partajata (calea async a cererilor) nu pierd date ──
+    // Restul suitei trimite cererile secvential; aici fortam interleaving-ul, unde traiesc bug-urile
+    // async (secventa de id-uri, save() care se calca). Perioada 2026-09 nu e blocata; c1 e read-write.
+    const concBase = (await req('GET', '/api/entries?period=2026-09', { cookie: c1 })).json.length;
+    const CONC = 12;
+    const concPosts = await Promise.all(Array.from({ length: CONC }, (_, i) =>
+      req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', fields: { data: '2026-09-15', explicatie: 'conc-' + i, debit: '5311', credit: '5121', suma: 10 + i } } })));
+    ok('toate cele ' + CONC + ' scrieri concurente au reusit (200)', concPosts.every((p) => p.status === 200 && p.json && p.json.ok));
+    eq('fiecare scriere a primit un id UNIC (fara coliziune de secventa)', new Set(concPosts.map((p) => p.json.entry && p.json.entry.id)).size, CONC);
+    eq('toate scrierile s-au persistat (niciuna suprascrisa)', (await req('GET', '/api/entries?period=2026-09', { cookie: c1 })).json.length - concBase, CONC);
     eq('dupa ridicare: scrierea functioneaza din nou', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO77', den: 'Deblocat SRL' } })).status, 200);
 
     // ── Registrul de incasari si plati + auto-blocarea perioadei la "depusa" ──
@@ -881,7 +907,7 @@ async function main() {
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-        env: Object.assign({}, process.env, { PORT: String(PORT + 1), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_API: '100000' }),
+        env: Object.assign({}, process.env, { PORT: String(PORT2), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_API: '100000' }),
         stdio: 'ignore',
       });
       const t = setTimeout(() => { try { c2p.kill(); } catch (_) { /* */ } resolve('timeout'); }, 8000);
