@@ -11,7 +11,7 @@ const metrics = require('./metrics');
 const uploadGuard = require('./uploadGuard');
 const anaf = require('./anaf');
 const { pollSpv } = require('./anafService');
-const { sendDeadlineDigests } = require('./notify');
+const { sendDeadlineDigests, sendNotifMail } = require('./notify');
 const { pruneLoginAttempts } = require('./session');
 const { trackServerError } = require('./serverErrors');
 
@@ -93,6 +93,26 @@ function start(ctx) {
     for (const [k, r] of forgotAttempts) { if (r.reset < now) forgotAttempts.delete(k); }
     uploadGuard.pruneRateBuckets(now); // bucket-urile de upload/export per utilizator
   }, 3600 * 1000);
+
+  // Veghe pe memorie: avertizeaza INAINTE ca pm2 sa ucida procesul la max_memory_restart.
+  // Baza in RAM e prin design (graful de date e minuscul; RSS-ul e dominat de runtime) —
+  // o crestere sustinuta peste prag inseamna leak sau varfuri repetate si trebuie VAZUTA,
+  // nu descoperita din restarturi. Email cel mult o data pe zi (acelasi tipar ca alerta 5xx).
+  const MEM_WARN_MB = Number(process.env.CONTAB_MEM_WARN_MB || 700);
+  let lastMemAlert = 0;
+  safeInterval('memory-watch', () => {
+    const rssMb = Math.round(process.memoryUsage().rss / 1048576);
+    metrics.jobResult('memory-watch', rssMb + ' MB (prag ' + MEM_WARN_MB + ')');
+    if (rssMb < MEM_WARN_MB) return;
+    log.error('memorie ridicata', { rssMb, pragMb: MEM_WARN_MB });
+    const now = Date.now();
+    if (now - lastMemAlert > 24 * 3600 * 1000) {
+      lastMemAlert = now;
+      sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] ATENTIE: memorie ridicata',
+        'RSS ' + rssMb + ' MB (prag ' + MEM_WARN_MB + ' MB; pm2 restarteaza la max_memory_restart).\n'
+        + 'Verifica /api/metrics (admin) si pm2 logs contab.').catch(() => {});
+    }
+  }, 5 * 60 * 1000);
 
   // Job periodic: descarca automat recipisele — SPV per-firma, doar firmele cu autoPoll bifat
   safeInterval('spv-poll', () => {

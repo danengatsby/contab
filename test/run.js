@@ -2402,11 +2402,11 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   const stubs = { doBackup: () => ({ name: 'x' }), resetDemo: () => ({ ok: true }), registerAttempts: new Map(), forgotAttempts: new Map() };
   const h = jobs.start(stubs);
   ok('start() intoarce un handle cu stop()', h && typeof h.stop === 'function');
-  eq('stop() curata toate cele 5 joburi', h.stop(), 5);
+  eq('stop() curata toate cele 6 joburi', h.stop(), 6);
   eq('stop() e idempotent (a doua oara: nimic de curatat)', jobs.stop(), 0);
   // dupa stop, un nou start functioneaza si se curata la fel (nu ramane stare blocata)
   jobs.start(stubs);
-  eq('restart dupa stop: tot 5 joburi, curatate din nou', jobs.stop(), 5);
+  eq('restart dupa stop: tot 6 joburi, curatate din nou', jobs.stop(), 6);
 }
 
 section('CSP: drumul spre style-src fara unsafe-inline (ratchet)');
