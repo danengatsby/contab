@@ -157,7 +157,7 @@ function header(company, year) {
     `      <PeriodEnd>${String(year).length === 7 ? Number(String(year).slice(5, 7)) : 12}</PeriodEnd>`,
     `      <PeriodEndYear>${String(year).slice(0, 4)}</PeriodEndYear>`,
     '    </SelectionCriteria>',
-    `    <HeaderComment>${String(year).length === 7 ? 'L' : 'A'}</HeaderComment>`,
+    `    <HeaderComment>${company._saftTip || (String(year).length === 7 ? 'L' : 'A')}</HeaderComment>`,
     '    <SegmentIndex>1</SegmentIndex>',
     '    <TotalSegmentsInsequence>1</TotalSegmentsInsequence>',
     '    <TaxAccountingBasis>A</TaxAccountingBasis>',
@@ -317,18 +317,19 @@ function productsXml(db) {
 }
 
 function physicalStockXml(db, year) {
-  if (String(year).length === 7) return ''; // doar in declaratia de stocuri (C), nu in lunar
+  if (db._saftTip !== 'C') return ''; // PhysicalStock apartine DOAR declaratiei de stocuri (C)
   const stock = stocksLib.currentStock(db, year + '-12');
   const out = ['    <PhysicalStock>'];
   for (const s of stock) {
     out.push(
       '      <PhysicalStockEntry>',
+      `        <WarehouseID>${esc((s.gestiune && s.gestiune.cod) || 'GEST')}</WarehouseID>`,
       `        <ProductCode>${esc(s.product.cod)}</ProductCode>`,
       `        <StockAccountNo>${esc(s.product.cont || '371')}</StockAccountNo>`,
       '        <ProductType>P</ProductType>',
       '        <ProductStatus>IN_STOCK</ProductStatus>',
       '        <StockAccountCommodityCode>0</StockAccountCommodityCode>',
-      '        <OwnerID>1</OwnerID>',
+      `        <OwnerID>${esc('00' + String((db.company && db.company.cui) || '').replace(/^ro/i, '').replace(/\s/g, ''))}</OwnerID>`,
       `        <UOMPhysicalStock>${umCode(s.product.um)}</UOMPhysicalStock>`,
       '        <UOMToUOMBaseConversionFactor>1</UOMToUOMBaseConversionFactor>',
       `        <UnitPrice>${num2(s.cmp)}</UnitPrice>`,
@@ -384,20 +385,24 @@ function ownersXml(db) {
 }
 
 function masterFiles(db, year) {
+  const lunar = String(year).length === 7;
   const roles = partnerRoles(db, year);
+  // varianta ANUALA (A = declaratia de Active): dictionarul validatorului dezactiveaza
+  // continutul sectiunilor de parteneri/taxe/produse — raman GOALE; pline sunt doar
+  // planul de conturi si Assets. In lunar (L) e invers: totul plin, Assets/Owners goale.
   return [
     '  <MasterFiles>',
     generalLedgerAccounts(db, year),
-    partyXml('Customer', 'CustomerID', '4111', roles.customers, db),
-    partyXml('Supplier', 'SupplierID', '401', roles.suppliers, db),
-    taxTable(),
-    uomTable(db),
+    lunar ? partyXml('Customer', 'CustomerID', '4111', roles.customers, db) : '    <Customers/>',
+    lunar ? partyXml('Supplier', 'SupplierID', '401', roles.suppliers, db) : '    <Suppliers/>',
+    lunar ? taxTable() : '    <TaxTable/>',
+    lunar ? uomTable(db) : '    <UOMTable/>',
     '    <AnalysisTypeTable/>',
     movementTypeTable(),
-    productsXml(db),
+    lunar ? productsXml(db) : '    <Products/>',
     physicalStockXml(db, year),
-    String(year).length === 7 ? '    <Owners/>' : ownersXml(db),
-    String(year).length === 7 ? '    <Assets/>' : assetsXml(db, year),
+    '    <Owners/>',
+    lunar || db._saftTip === 'C' ? '    <Assets/>' : assetsXml(db, year),
     '  </MasterFiles>',
   ].filter(Boolean).join('\n');
 }
@@ -411,7 +416,7 @@ function movementOfGoodsXml(db, year) {
   movs.forEach((m, i) => {
     const p = byId.get(m.productId) || {};
     const c = round2(Number(m.cantitate) || 0);
-    const type = m.tip === 'receptie' ? 'Receptie' : m.tip === 'transfer' ? 'Transfer' : 'Iesire';
+    const type = m.tip === 'receptie' ? '10' : m.tip === 'transfer' ? '40' : '20';
     if (m.tip === 'receptie') qIn = round2(qIn + c);
     else if (m.tip === 'iesire') qOut = round2(qOut + c); // transferurile = interne, nu in totaluri
     const wh = gCod.get(m.gestiuneId) || 'GEST';
@@ -423,13 +428,14 @@ function movementOfGoodsXml(db, year) {
       '          <StockMovementLine>',
       `            <LineNumber>${i + 1}</LineNumber>`,
       '            <AccountID>371</AccountID>',
-
+      `            <CustomerID>${pid00({}, db)}</CustomerID>`,
+      `            <SupplierID>${pid00({}, db)}</SupplierID>`,
       `            <ProductCode>${esc(p.cod || m.productId)}</ProductCode>`,
       `            <Quantity>${num2(c)}</Quantity>`,
       `            <UnitOfMeasure>${umCode(p.um)}</UnitOfMeasure>`,
       '            <UOMToUOMPhysicalStockConversionFactor>1</UOMToUOMPhysicalStockConversionFactor>',
       `            <BookValue>${num2((m.cantitate || 0) * (m.pretUnitar || 0))}</BookValue>`,
-      '            <MovementSubType>-</MovementSubType>',
+      `            <MovementSubType>${type}</MovementSubType>`,
       '          </StockMovementLine>',
       '        </StockMovement>',
     );
@@ -497,6 +503,7 @@ function glEntriesSorted(db, year) {
     .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : String(a.id).localeCompare(String(b.id))));
 }
 function glWrap(entries, year, txs) {
+  if (String(year).length !== 7) return '  <GeneralLedgerEntries/>'; // gol in varianta A
   let totalD = 0; let totalC = 0;
   for (const e of entries) for (const l of e.lines) { totalD = round2(totalD + l.suma); totalC = round2(totalC + l.suma); }
   return [
@@ -710,6 +717,15 @@ function paymentsXml(db, year) {
 }
 
 function sourceDocuments(db, year) {
+  // A (Active): documente-sursa dezactivate + AssetTransactions cu contor;
+  // C (Stocuri): la fel, dar FARA AssetTransactions si cu MovementOfGoods PLIN
+  if (String(year).length !== 7) {
+    return ['  <SourceDocuments>', '    <SalesInvoices/>', '    <PurchaseInvoices/>',
+      '    <Payments/>',
+      db._saftTip === 'C' ? movementOfGoodsXml(db, year) : '    <MovementOfGoods/>',
+      db._saftTip === 'C' ? '' : '    <AssetTransactions><NumberOfAssetTransactions>0</NumberOfAssetTransactions></AssetTransactions>',
+      '  </SourceDocuments>'].filter(Boolean).join('\n');
+  }
   const roles = partnerRoles(db, year);
   const idOf = (list) => {
     const m = new Map();
@@ -751,6 +767,15 @@ function sourceDocuments(db, year) {
 // Varianta asincrona a sourceDocuments: cedeaza in bucla de facturi (blocul dominant din sectiune).
 // Wrapper-ul si invoiceXml sunt aceleasi ca la calea sincrona -> output byte-identic.
 async function sourceDocumentsAsync(db, year) {
+  // A (Active): documente-sursa dezactivate + AssetTransactions cu contor;
+  // C (Stocuri): la fel, dar FARA AssetTransactions si cu MovementOfGoods PLIN
+  if (String(year).length !== 7) {
+    return ['  <SourceDocuments>', '    <SalesInvoices/>', '    <PurchaseInvoices/>',
+      '    <Payments/>',
+      db._saftTip === 'C' ? movementOfGoodsXml(db, year) : '    <MovementOfGoods/>',
+      db._saftTip === 'C' ? '' : '    <AssetTransactions><NumberOfAssetTransactions>0</NumberOfAssetTransactions></AssetTransactions>',
+      '  </SourceDocuments>'].filter(Boolean).join('\n');
+  }
   const roles = partnerRoles(db, year);
   const idOf = (list) => {
     const m = new Map();
@@ -791,7 +816,9 @@ async function sourceDocumentsAsync(db, year) {
 }
 
 /** Genereaza fisierul SAF-T (D406) pentru un an. */
-function saftXml(db, year) {
+function saftXml(db, year, tip) {
+  // tip: implicit L (perioada 'YYYY-MM') sau A (an); 'C' = declaratia de STOCURI (la cerere)
+  if (tip === 'C') db = Object.assign(Object.create(db), { _saftTip: 'C', company: Object.assign({}, db.company, { _saftTip: 'C' }) });
   const yr = String(year || new Date().getFullYear());
   const company = db.company || {};
   return [
@@ -809,7 +836,8 @@ function saftXml(db, year) {
 /** Varianta ASINCRONA a saftXml: output byte-identic, dar cedeaza event loop-ul periodic in buclele
  *  grele (GL + facturi) — nu blocheaza celelalte cereri la volume mari. Ruta o foloseste in locul
  *  celei sincrone; saftXml sincron ramane pentru teste (referinta byte-identica) si apeluri simple. */
-async function saftXmlAsync(db, year) {
+async function saftXmlAsync(db, year, tip) {
+  if (tip === 'C') db = Object.assign(Object.create(db), { _saftTip: 'C', company: Object.assign({}, db.company, { _saftTip: 'C' }) });
   const yr = String(year || new Date().getFullYear());
   const company = db.company || {};
   const gl = await generalLedgerEntriesAsync(db, yr);
@@ -916,6 +944,15 @@ module.exports = { saftXml, saftXmlAsync, saftSummary, accountBalances, partnerR
 }
 
 function sourceDocuments(db, year) {
+  // A (Active): documente-sursa dezactivate + AssetTransactions cu contor;
+  // C (Stocuri): la fel, dar FARA AssetTransactions si cu MovementOfGoods PLIN
+  if (String(year).length !== 7) {
+    return ['  <SourceDocuments>', '    <SalesInvoices/>', '    <PurchaseInvoices/>',
+      '    <Payments/>',
+      db._saftTip === 'C' ? movementOfGoodsXml(db, year) : '    <MovementOfGoods/>',
+      db._saftTip === 'C' ? '' : '    <AssetTransactions><NumberOfAssetTransactions>0</NumberOfAssetTransactions></AssetTransactions>',
+      '  </SourceDocuments>'].filter(Boolean).join('\n');
+  }
   const roles = partnerRoles(db, year);
   const idOf = (list) => {
     const m = new Map();
@@ -957,6 +994,15 @@ function sourceDocuments(db, year) {
 // Varianta asincrona a sourceDocuments: cedeaza in bucla de facturi (blocul dominant din sectiune).
 // Wrapper-ul si invoiceXml sunt aceleasi ca la calea sincrona -> output byte-identic.
 async function sourceDocumentsAsync(db, year) {
+  // A (Active): documente-sursa dezactivate + AssetTransactions cu contor;
+  // C (Stocuri): la fel, dar FARA AssetTransactions si cu MovementOfGoods PLIN
+  if (String(year).length !== 7) {
+    return ['  <SourceDocuments>', '    <SalesInvoices/>', '    <PurchaseInvoices/>',
+      '    <Payments/>',
+      db._saftTip === 'C' ? movementOfGoodsXml(db, year) : '    <MovementOfGoods/>',
+      db._saftTip === 'C' ? '' : '    <AssetTransactions><NumberOfAssetTransactions>0</NumberOfAssetTransactions></AssetTransactions>',
+      '  </SourceDocuments>'].filter(Boolean).join('\n');
+  }
   const roles = partnerRoles(db, year);
   const idOf = (list) => {
     const m = new Map();
@@ -997,7 +1043,9 @@ async function sourceDocumentsAsync(db, year) {
 }
 
 /** Genereaza fisierul SAF-T (D406) pentru un an. */
-function saftXml(db, year) {
+function saftXml(db, year, tip) {
+  // tip: implicit L (perioada 'YYYY-MM') sau A (an); 'C' = declaratia de STOCURI (la cerere)
+  if (tip === 'C') db = Object.assign(Object.create(db), { _saftTip: 'C', company: Object.assign({}, db.company, { _saftTip: 'C' }) });
   const yr = String(year || new Date().getFullYear());
   const company = db.company || {};
   return [
@@ -1015,7 +1063,8 @@ function saftXml(db, year) {
 /** Varianta ASINCRONA a saftXml: output byte-identic, dar cedeaza event loop-ul periodic in buclele
  *  grele (GL + facturi) — nu blocheaza celelalte cereri la volume mari. Ruta o foloseste in locul
  *  celei sincrone; saftXml sincron ramane pentru teste (referinta byte-identica) si apeluri simple. */
-async function saftXmlAsync(db, year) {
+async function saftXmlAsync(db, year, tip) {
+  if (tip === 'C') db = Object.assign(Object.create(db), { _saftTip: 'C', company: Object.assign({}, db.company, { _saftTip: 'C' }) });
   const yr = String(year || new Date().getFullYear());
   const company = db.company || {};
   const gl = await generalLedgerEntriesAsync(db, yr);

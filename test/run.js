@@ -211,21 +211,32 @@ eq('ALFA 0-30 zile', alfa.b0_30, 12100);
 eq('ALFA >90 zile', alfa.b90plus, 2900);
 eq('clienti restanti (BETA achitat)', ag.clienti.length, 0);
 
-section('SAF-T (D406, 2026)');
-const xmlSaft = saft.saftXml(v, 2026);
-['<GeneralLedgerAccounts>', '<Customers>', '<Suppliers>', '<TaxTable>', '<UOMTable>', '<AnalysisTypeTable/>', '<Products>', '<Assets>', '<PhysicalStock>', '<GeneralLedgerEntries>', '<SalesInvoices>', '<PurchaseInvoices>', '<Payments>', '<MovementOfGoods>']
-  .forEach((tag) => ok('contine ' + tag, xmlSaft.includes(tag)));
-ok('SAF-T bine-format', wellFormed(xmlSaft));
+section('SAF-T (D406) — variantele LUNARA (L) si ANUALA (A, Active)');
+// varianta LUNARA: sectiunile de activitate PLINE; Assets/Owners/MovementOfGoods goale
+const xmlSaft = saft.saftXml(v, '2026-06');
+['<GeneralLedgerAccounts>', '<Customers>', '<Suppliers>', '<TaxTable>', '<UOMTable>', '<AnalysisTypeTable/>', '<MovementTypeTable/>', '<Products>', '<Owners/>', '<Assets/>', '<GeneralLedgerEntries>', '<SalesInvoices>', '<PurchaseInvoices>', '<Payments>', '<MovementOfGoods/>']
+  .forEach((tag) => ok('lunar contine ' + tag, xmlSaft.includes(tag)));
+ok('SAF-T lunar bine-format', wellFormed(xmlSaft));
 ok('SAF-T: AuditFileVersion 2.4.9 (schema curenta)', xmlSaft.includes('<AuditFileVersion>2.4.9</AuditFileVersion>'));
-const vOwn = Object.assign({}, v, { company: Object.assign({}, v.company, { asociatiText: 'Ion Pop; 1800101223344; 60\nMaria I; 2900101223344; 40%' }) });
-ok('SAF-T Owners: asociatii din Datele firmei, cu procente', (() => {
-  const x = saft.saftXml(vOwn, 2026);
-  // schema D406T: Owner = doar OwnerID + AccountID (fara nume/procente in XML)
-  return x.includes('<Owners>') && x.includes('<OwnerID>1</OwnerID>');
-})());
-ok('SAF-T Owners la PFA fara lista: titularul prezent', saft.saftXml(Object.assign({}, v, { company: Object.assign({}, v.company, { tipEntitate: 'pfa' }) }), 2026).includes('<OwnerID>1</OwnerID>'));
-ok('SAF-T: Owners prezent si fara lista de asociati (obligatoriu in D406T)', xmlSaft.includes('<Owners>'));
+ok('SAF-T lunar: coduri de taxa numerice si BaseRate factor', xmlSaft.includes('<TaxCode>300101</TaxCode>') && xmlSaft.includes('<BaseRate>1</BaseRate>'));
+ok('SAF-T lunar: UOM pe coduri UN/ECE', xmlSaft.includes('<UnitOfMeasure>C62</UnitOfMeasure>'));
+ok('SAF-T lunar: ID parteneri 00+CUI', xmlSaft.includes('<CustomerID>0099887760</CustomerID>') && xmlSaft.includes('<SupplierID>0011223342</SupplierID>'));
 eq('SAF-T TotalDebit = TotalCredit', (xmlSaft.match(/<TotalDebit>([\d.]+)<\/TotalDebit>/) || [])[1], (xmlSaft.match(/<TotalCredit>([\d.]+)<\/TotalCredit>/) || [])[1]);
+// varianta ANUALA = declaratia de ACTIVE: doar planul de conturi si Assets pline,
+// restul sectiunilor goale + AssetTransactions (structura ceruta de validatorul oficial)
+const xmlSaftA = saft.saftXml(v, 2026);
+ok('anual bine-format', wellFormed(xmlSaftA));
+ok('anual: Assets PLIN, cu valuarile pe secventa oficiala', xmlSaftA.includes('<Asset>') && xmlSaftA.includes('<Valuations>') && xmlSaftA.includes('<AssetLifeMonth>36</AssetLifeMonth>'));
+ok('anual: sectiunile de activitate goale', xmlSaftA.includes('<Customers/>') && xmlSaftA.includes('<SalesInvoices/>') && xmlSaftA.includes('<GeneralLedgerEntries/>'));
+ok('anual: AssetTransactions cu contor', xmlSaftA.includes('<AssetTransactions><NumberOfAssetTransactions>0</NumberOfAssetTransactions></AssetTransactions>'));
+// varianta STOCURI (C, la cerere): PhysicalStock si MovementOfGoods PLINE, Assets gol,
+// fara AssetTransactions; tipuri de miscare numerice (10/20/40)
+const xmlSaftC = saft.saftXml(v, 2026, 'C');
+ok('stocuri (C) bine-format', wellFormed(xmlSaftC));
+ok('stocuri: HeaderComment C', xmlSaftC.includes('<HeaderComment>C</HeaderComment>'));
+ok('stocuri: PhysicalStock plin cu depozit si proprietar 00+CUI', xmlSaftC.includes('<WarehouseID>DEP</WarehouseID>') && xmlSaftC.includes('<OwnerID>0012345674</OwnerID>'));
+ok('stocuri: miscari cu tipuri numerice si subtip', xmlSaftC.includes('<MovementType>10</MovementType>') && xmlSaftC.includes('<MovementSubType>40</MovementSubType>'));
+ok('stocuri: Assets gol si fara AssetTransactions', xmlSaftC.includes('<Assets/>') && !xmlSaftC.includes('<AssetTransactions>'));
 
 section('e-Factura UBL (factura de vanzare)');
 const facturaVanz = v.entries.find((e) => e.tip === 'factura_vanzare_marfuri');
