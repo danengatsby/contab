@@ -1049,7 +1049,12 @@ eq('D100: venit trimestrul II cumulat (apr+iun)', d100q.venit, 15000);
 eq('D100: trimestrul detectat', d100q.trimestru, 2);
 eq('D100: impozit micro 1% = 150', d100q.impozit, 150);
 ok('D100 XML bine-format', wellFormed(xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q)));
-ok('D100 XML: obligatia cod 620 cu baza si impozitul', (() => { const x = xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q); return x.includes('cod="620"') && x.includes('baza="15000.00"') && x.includes('de_plata="150.00"'); })());
+ok('D100 XML v2: obligatia 620 cu cod bugetar, scadenta si nr_evid pe 23 cifre', (() => {
+  const x = xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q);
+  return x.includes('cod_oblig="620"') && x.includes('cod_bugetar="20A031800"')
+    && x.includes('scadenta="25.07.2026"') && x.includes('suma_plata="150"')
+    && /nr_evid="\d{23}"/.test(x) && x.includes('xmlns="mfp:anaf:dgti:d100:declaratie:v2"');
+})());
 // eligibilitate micro (plafon implicit 100.000 EUR x curs 5 = 500.000 lei + conditia de salariat)
 ok('D100: fara salariati -> avertisment de eligibilitate', d100q.avertismente.some((w) => /salariat/i.test(w)));
 const d100over = rep.d100micro({ entries: [{ id: 'o1', period: '2026-02', data: '2026-02-01', lines: [{ debit: '4111', credit: '704', suma: 600000 }] }], angajati: [{ id: 'a' }] }, '2026-03');
@@ -1709,7 +1714,7 @@ eq('netrimise: termen = data + 5 zile lucratoare', efx.items.find((x) => x.entry
 const nEf = declMod.notifications({ declarations: [] }, [vEf], '2026-07-20');
 ok('notificari: e-Factura restanta prezenta (status netrimisa)', nEf.items.some((i) => i.tip === 'efactura' && i.kind === 'restanta' && i.status === 'netrimisa'));
 ok('notificari: e-Factura cu termen apropiat apare', nEf.items.some((i) => i.tip === 'efactura' && i.kind === 'termen'));
-ok('SAF-T lunar: bine-format si cu perioada corecta', (() => { const x = saft.saftXml(vDecl, '2026-06'); return x.includes('<PeriodStart>6</PeriodStart>') && x.includes('<PeriodEnd>6</PeriodEnd>') && x.includes('luna 2026-06'); })());
+ok('SAF-T lunar: bine-format, perioada corecta si codul L in HeaderComment', (() => { const x = saft.saftXml(vDecl, '2026-06'); return x.includes('<PeriodStart>6</PeriodStart>') && x.includes('<PeriodEnd>6</PeriodEnd>') && x.includes('<HeaderComment>L</HeaderComment>'); })());
 
 section('XSS: escaparea datelor externe la randare (public/app.js)');
 // app.js + ecranele extrase din el (periods/rapoarte/livrabile/mijloace/salarizare/stocuri/plan):
