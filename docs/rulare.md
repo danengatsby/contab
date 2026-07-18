@@ -149,6 +149,9 @@ npm run seed         # din linia de comanda
 
 ### Validarea oficială ANAF a declarațiilor (opt-in, prin Docker)
 
+Guvernanța regulilor fiscale (sursă unică datată, fluxul schimbărilor legislative,
+statusurile pre-depunere, jurnalul reviziilor): vezi **docs/guvernanta-fiscala.md**.
+
 Aplicația face o pre-validare rapidă la generare (`src/validate.js`: bine-format + câmpuri
 obligatorii + CUI/perioadă). Pentru validarea **oficială** — aceeași pe care o face ANAF la
 depunere — există un script care rulează DUKIntegrator (validatorul oficial) prin Docker,
