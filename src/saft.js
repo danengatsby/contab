@@ -238,6 +238,7 @@ function taxTable() {
       `          <TaxCode>${r.code}</TaxCode>`,
       `          <Description>${esc(r.desc)}</Description>`,
       `          <TaxPercentage>${num2(r.pct)}</TaxPercentage>`,
+      '          <BaseRate>100.00</BaseRate>',
       '          <Country>RO</Country>',
       '        </TaxCodeDetails>',
     );
@@ -382,7 +383,7 @@ function masterFiles(db, year) {
     partyXml('Supplier', 'SupplierID', '401', roles.suppliers, db),
     taxTable(),
     uomTable(db),
-    movementTypeTable(),
+    '    <AnalysisTypeTable/>',
     productsXml(db),
     assetsXml(db, year),
     physicalStockXml(db, year),
@@ -406,15 +407,17 @@ function movementOfGoodsXml(db, year) {
     lines.push(
       '        <StockMovement>',
       `          <MovementReference>${esc(m.document || m.id)}</MovementReference>`,
-      `          <MovementType>${type}</MovementType>`,
       `          <MovementDate>${esc(m.data)}</MovementDate>`,
-      `          <LineNumber>${i + 1}</LineNumber>`,
-      `          <ProductCode>${esc(p.cod || m.productId)}</ProductCode>`,
-      `          <Description>${esc(p.denumire || '')}</Description>`,
-      `          <Quantity>${num2(c)}</Quantity>`,
-      `          <UnitOfMeasure>${esc(p.um || 'buc')}</UnitOfMeasure>`,
-      `          <WarehouseID>${esc(wh)}</WarehouseID>`,
-      ...(m.tip === 'transfer' ? [`          <WarehouseIDTo>${esc(gCod.get(m.gestiuneDestId) || 'GEST')}</WarehouseIDTo>`] : []),
+      `          <MovementType>${type}</MovementType>`,
+      '          <StockMovementLine>',
+      `            <LineNumber>${i + 1}</LineNumber>`,
+      `            <ProductCode>${esc(p.cod || m.productId)}</ProductCode>`,
+      `            <Description>${esc(p.denumire || '')}</Description>`,
+      `            <Quantity>${num2(c)}</Quantity>`,
+      `            <UnitOfMeasure>${esc(p.um || 'buc')}</UnitOfMeasure>`,
+      `            <WarehouseID>${esc(wh)}</WarehouseID>`,
+      ...(m.tip === 'transfer' ? [`            <WarehouseIDTo>${esc(gCod.get(m.gestiuneDestId) || 'GEST')}</WarehouseIDTo>`] : []),
+      '          </StockMovementLine>',
       '        </StockMovement>',
     );
   });
@@ -438,23 +441,21 @@ function glTx(e, year) {
   for (const l of e.lines) {
     rec += 1;
     lines.push(
-      '          <DebitLine>',
+      '          <Line>',
       `            <RecordID>${esc(e.id)}-${rec}D</RecordID>`,
       `            <AccountID>${esc(l.debit)}</AccountID>`,
-      `            <SystemEntryDate>${sysDate}</SystemEntryDate>`,
       `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
       `            <DebitAmount><Amount>${num2(l.suma)}</Amount></DebitAmount>`,
-      '          </DebitLine>',
+      '          </Line>',
     );
     rec += 1;
     lines.push(
-      '          <CreditLine>',
+      '          <Line>',
       `            <RecordID>${esc(e.id)}-${rec}C</RecordID>`,
       `            <AccountID>${esc(l.credit)}</AccountID>`,
-      `            <SystemEntryDate>${sysDate}</SystemEntryDate>`,
       `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
       `            <CreditAmount><Amount>${num2(l.suma)}</Amount></CreditAmount>`,
-      '          </CreditLine>',
+      '          </Line>',
     );
   }
   return [
@@ -466,9 +467,7 @@ function glTx(e, year) {
     `          <Description>${esc(e.tipNume + (e.document ? ' ' + e.document : ''))}</Description>`,
     `          <SystemEntryDate>${sysDate}</SystemEntryDate>`,
     `          <GLPostingDate>${sysDate}</GLPostingDate>`,
-    '          <Lines>',
     lines.join('\n'),
-    '          </Lines>',
     '        </Transaction>',
   ];
 }
@@ -568,6 +567,10 @@ function invoiceXml(e, kind, partyTag, partyIdTag, partyId, defaultAccount) {
     `        <InvoiceNo>${esc(e.document || e.id)}</InvoiceNo>`,
     `        <${partyTag}>`,
     `          <${partyIdTag}>${esc(partyId)}</${partyIdTag}>`,
+    '          <BillingAddress>',
+    addressXml({}, '            '),
+    '            <AddressType>StreetAddress</AddressType>',
+    '          </BillingAddress>',
     `          <AccountID>${defaultAccount}</AccountID>`,
     `        </${partyTag}>`,
     `        <Period>${month}</Period>`,
@@ -651,12 +654,13 @@ function paymentsXml(db, year) {
     out.push(
       '        <Payment>',
       `          <PaymentRefNo>${esc(e.document || e.id)}</PaymentRefNo>`,
+      `          <PaymentRefNo>${esc(e.document || e.id)}</PaymentRefNo>`,
+      `          <Period>${month}</Period>`,
+      `          <PeriodYear>${String(e.data || '').slice(0, 4)}</PeriodYear>`,
       `          <TransactionID>${esc(e.id)}</TransactionID>`,
       `          <TransactionDate>${date}</TransactionDate>`,
       `          <PaymentMethod>${paymentMethod(e)}</PaymentMethod>`,
       `          <Description>${esc(e.tipNume + (e.partener ? ' - ' + e.partener : ''))}</Description>`,
-      `          <SystemEntryDate>${date}</SystemEntryDate>`,
-      `          <Period>${month}</Period>`,
       lines.join('\n'),
       '          <DocumentTotals>',
       `            <TaxPayable>0.00</TaxPayable>`,
