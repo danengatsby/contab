@@ -784,5 +784,5 @@ ${rows}
 
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
-  d300Xml, d394Xml, d112Xml, d390Xml, d205Xml, d100Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d394Xml, d112Xml, d390Xml, d205Xml, d100Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
 };
