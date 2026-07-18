@@ -19,10 +19,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
-      - name: Verificare sintaxa
-        run: npm run lint
-      - name: Suita de teste
-        run: node test/run.js
+      # SUITA COMPLETA — identica cu `npm test` local: sintaxa + garda DB + breachCheck
+      # (fetch stub, fara apeluri externe) + module + ANAF (stub) + store + HTTP pe sqlite.
+      # Paritate CI <-> local: ce trece local trece si aici, si invers.
+      - name: Suita completa (npm test)
+        run: npm test
 
   # Audit de securitate al dependentelor: pica pe vulnerabilitati HIGH/CRITICAL (moderate/low
   # sunt doar raportate, nu blocheaza). Ruleaza pe fiecare push/PR ca un pachet vulnerabil sa fie
