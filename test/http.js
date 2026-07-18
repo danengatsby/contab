@@ -519,7 +519,7 @@ async function main() {
     const angAv = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Avantaj Ion', salariuBrut: 5000, avantaje: 1000 } });
     const spAvH = (await req('GET', '/api/stat-plata?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.nume === 'Avantaj Ion');
     ok('stat: CAS 25% pe brut+avantaje (1500) si avantajele pe rand', spAvH && spAvH.cas === 1500 && spAvH.avantaje === 1000);
-    ok('D112: baza_cas include avantajele (6000)', /baza_cas="6000\.00"/.test((await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).text));
+    ok('D112 v7: baza CAS (A_13) include avantajele (6000)', /A_13="6000"/.test((await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).text));
     ok('angajat de test sters', (await req('DELETE', '/api/angajati/' + angAv.json.angajat.id, { cookie: c1 })).json.ok === true);
 
     // ── Concediu medical in stat: salariu redus + indemnizatii + postare 6458/4373 ──

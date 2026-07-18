@@ -67,7 +67,7 @@ function buildSeedData(nextEntryId) {
       { id: 'prod1', firmaId: FID, cod: 'MARFA-001', denumire: 'Marfa generala', um: 'buc', grupa: 'Marfuri', cont: '371', codNC: '' },
     ],
     angajati: [
-      { id: 'ang1', firmaId: FID, nume: 'Ion Popescu', cnp: '1900101415236', functie: 'Vanzator', salariuBrut: 5000, neimpozabil: 0 },
+      { id: 'ang1', firmaId: FID, nume: 'Ion Popescu', cnp: '1900101415238', functie: 'Vanzator', salariuBrut: 5000, neimpozabil: 0 },
     ],
     stockMovements: [
       { id: 'sm1', firmaId: FID, data: '2026-06-10', tip: 'receptie', productId: 'prod1', gestiuneId: 'g1', cantitate: 100, pretUnitar: 100, document: 'AFD 1001', furnizor: 'ALFA DISTRIBUTIE SRL', operator: 'admin' },
