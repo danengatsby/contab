@@ -45,22 +45,27 @@ blocarea perioadelor raportate. Blochează regresiile.
 **Dashboard cu grafice** (SVG, fără dependențe): evoluția lunară venituri/cheltuieli/profit (bare
 grupate), comparația creanțe vs datorii și structura aging pe intervale de vechime. `/api/dashboard-charts`.
 
-### Acces din rețea / lansare pe IP public
+### Acces din rețea și expunerea în producție
 
-Serverul ascultă implicit pe `0.0.0.0` (toate interfețele), deci este accesibil
-și pe IP-ul public al mașinii. Pe acest server:
+Implicit serverul ascultă pe `0.0.0.0` (toate interfețele) — util în dezvoltare, pe rețele
+de încredere. **În producție NU expuneți portul Node direct**: pe HTTP simplu cookie-ul de
+sesiune nu primește flag-ul `Secure`, iar traficul ocolește TLS-ul și antetele de securitate
+din nginx.
 
-```bash
-PORT=8080 HOST=0.0.0.0 node server.js
-# → http://159.69.200.202:8080
-```
-
-Pentru ca accesul din exterior să funcționeze, portul trebuie deschis în
-firewall (provider VPS + `ufw` dacă e activ), de ex.:
+Configurația de producție (checklist la fiecare deploy):
 
 ```bash
-sudo ufw allow 8080/tcp
+# .env de producție:
+HOST=127.0.0.1            # aplicația ascultă DOAR pe loopback; accesul vine prin nginx (HTTPS)
+CONTAB_FORCE_HTTPS=1      # plasă suplimentară: HTTP din exterior → redirect 308 / 403 pe POST
+
+# verificare după restart:
+ss -tlnp | grep 8080      # trebuie să arate 127.0.0.1:8080, NU 0.0.0.0:8080
+curl -s http://127.0.0.1:8080/api/health   # loopback-ul rămâne permis (nginx + health check)
 ```
+
+Pentru testare rapidă pe IP public (doar dezvoltare, niciodată cu date reale):
+`PORT=8080 HOST=0.0.0.0 node server.js`
 
 **URL curat pe portul 80 (recomandat, necesită root):** pe această mașină rulează
 deja `nginx` pe portul 80. Adaugă un reverse proxy către aplicație:
@@ -101,7 +106,7 @@ Description=Contab
 After=network.target
 [Service]
 WorkingDirectory=/var/www/contab
-Environment=PORT=8080 HOST=0.0.0.0
+Environment=PORT=8080 HOST=127.0.0.1
 # Environment=ANTHROPIC_API_KEY=sk-ant-...   # optional, pentru extragerea cu AI
 ExecStart=/usr/bin/node server.js
 Restart=always

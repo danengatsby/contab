@@ -238,6 +238,33 @@ ok('stocuri: PhysicalStock plin cu depozit si proprietar 00+CUI', xmlSaftC.inclu
 ok('stocuri: miscari cu tipuri numerice si subtip', xmlSaftC.includes('<MovementType>10</MovementType>') && xmlSaftC.includes('<MovementSubType>40</MovementSubType>'));
 ok('stocuri: Assets gol si fara AssetTransactions', xmlSaftC.includes('<Assets/>') && !xmlSaftC.includes('<AssetTransactions>'));
 
+section('zipGuard — garda anti zip-bomb la importuri');
+const zipGuard = require('../src/zipGuard');
+const AdmZipT = require('adm-zip');
+const zOk = new AdmZipT();
+zOk.addFile('firma.json', Buffer.from('{}'));
+ok('arhiva legitima trece garda', !!zipGuard.openGuarded(zOk.toBuffer()).zip);
+const zBomb = new AdmZipT();
+zBomb.addFile('bomb.bin', Buffer.alloc(2 * 1024 * 1024, 0)); // 2MB de zerouri -> raport urias
+ok('zip-bomb (raport de compresie) respins cu 400', (() => {
+  try { zipGuard.openGuarded(zBomb.toBuffer(), { maxRatio: 50 }); return false; }
+  catch (e) { return e.status === 400 && /suspect/.test(e.message); }
+})());
+const zMany = new AdmZipT();
+for (let i = 0; i < 20; i++) zMany.addFile('f' + i + '.txt', Buffer.from('x'));
+ok('prea multe intrari respins cu 400', (() => {
+  try { zipGuard.openGuarded(zMany.toBuffer(), { maxEntries: 10 }); return false; }
+  catch (e) { return e.status === 400 && /prea multe/.test(e.message); }
+})());
+ok('fisier peste limita per-intrare respins', (() => {
+  try { zipGuard.openGuarded(zBomb.toBuffer(), { maxEntrySize: 1024, maxRatio: 1e9 }); return false; }
+  catch (e) { return e.status === 400 && /prea mare/.test(e.message); }
+})());
+ok('buffer corupt respins cu 400 (nu crapa)', (() => {
+  try { zipGuard.openGuarded(Buffer.from('nu-e-zip')); return false; }
+  catch (e) { return e.status === 400; }
+})());
+
 section('e-Factura UBL (factura de vanzare)');
 const facturaVanz = v.entries.find((e) => e.tip === 'factura_vanzare_marfuri');
 const ef = xml.eFacturaXml(v.company, facturaVanz, v.partners);

@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const AdmZip = require('adm-zip');
+const zipGuard = require('./zipGuard');
 const db = require('./db');
 const plans = require('./plans');
 const billing = require('./billing');
@@ -88,23 +89,31 @@ function importBundle(user, bundle, opts) {
 function importZip(user, fileBuffer, opts) {
   reqNotDemo(user);
   if (!fileBuffer) fail(400, 'Niciun fisier primit.');
+  const scrise = []; // fisierele deja salvate pe disc — sterse la orice esec ulterior
   try {
-    const zip = new AdmZip(fileBuffer);
+    // garda anti zip-bomb: limitele se verifica INAINTE de a citi vreun octet dezarhivat
+    const { zip, entries } = zipGuard.openGuarded(fileBuffer);
     const je = zip.getEntry('firma.json');
     if (!je) fail(400, 'Arhiva nu contine firma.json — nu pare o copie Contabo.');
     const bundle = JSON.parse(zip.readAsText(je));
     const storedNameMap = {};
-    for (const en of zip.getEntries()) {
+    for (const en of entries) {
       if (en.isDirectory || !en.entryName.startsWith('files/')) continue;
       const base = path.basename(en.entryName);
       if (!base) continue;
       const newName = crypto.randomBytes(8).toString('hex') + (path.extname(base) || '.bin');
-      fs.writeFileSync(path.join(db.UPLOAD_DIR, newName), en.getData());
+      const dest = path.join(db.UPLOAD_DIR, newName);
+      fs.writeFileSync(dest, en.getData());
+      scrise.push(dest);
       storedNameMap[base] = newName;
     }
     const r = importBundle(user, bundle, Object.assign({}, opts, { storedNameMap }));
     return Object.assign(r, { files: Object.keys(storedNameMap).length });
-  } catch (e) { if (e.status) throw e; fail(400, e.message); }
+  } catch (e) {
+    for (const f of scrise) { try { fs.unlinkSync(f); } catch (_) { /* deja sters */ } }
+    if (e.status) throw e;
+    fail(400, e.message);
+  }
 }
 
 /** Ramura de testare: cloneaza firma intr-o copie marcata [TEST] si comuta utilizatorul pe ea. */
