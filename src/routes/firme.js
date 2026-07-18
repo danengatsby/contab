@@ -81,8 +81,13 @@ module.exports = function register(app, ctx) {
   }));
 
   // Restaurare din ZIP: firma.json + fisierele scanate, importate ca firma noua sau peste cea activa.
+  // Plafon DEDICAT per utilizator: arhiva sta in RAM (pana la 200MB) cat se proceseaza —
+  // importurile sunt rare prin natura lor, deci plafonul strans nu deranjeaza pe nimeni legitim.
+  const uploadGuard = require('../uploadGuard');
+  const RATE_IMPORT = Number(process.env.CONTAB_RATE_IMPORT || 10); // importuri/ora/utilizator
+  const importLimiter = uploadGuard.userLimit('import-zip', RATE_IMPORT, 'Prea multe importuri de arhive.');
   const uploadRestore = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
-  app.post('/api/firme/import-zip', uploadRestore.single('file'), (req, res) => run(res, () => {
+  app.post('/api/firme/import-zip', importLimiter, uploadRestore.single('file'), (req, res) => run(res, () => {
     const r = svc.importZip(req.user, req.file && req.file.buffer, { replace: req.query.mode === 'replace', activeFid: activeId(req) });
     logAudit('firma.import', (r.replaced ? 'firma ' + r.firmaId + ' SUPRASCRISA din ZIP' : 'firma noua ' + r.firmaId) + ' (' + r.files + ' fisiere)', { req, firmaId: r.firmaId });
     return { ok: true, firmaId: r.firmaId, files: r.files, replaced: r.replaced };

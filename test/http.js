@@ -109,7 +109,7 @@ async function main() {
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     // plafoane de upload/export mici, ca testele 429 sa nu faca zeci de cereri; conturile
     // din restul suitei raman sub ele (bucket-urile sunt per utilizator)
-    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0' }),
+    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_RATE_IMPORT: '7' }),
     stdio: 'ignore',
   });
   const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
@@ -244,6 +244,10 @@ async function main() {
 
     const rNoJ = await req('POST', '/api/firme/import-zip', { cookie: c1, body: mkZip(null, [['files/c.pdf', 'x']]) });
     ok('arhiva fara firma.json -> 400', rNoJ.status === 400 && /firma\.json/.test(rNoJ.json.error));
+    // plafonul DEDICAT de importuri (CONTAB_RATE_IMPORT=7 in test): urmatoarele lovesc 429
+    let impUltim;
+    for (let i = 0; i < 3; i++) impUltim = await req('POST', '/api/firme/import-zip', { cookie: c1, body: mkZip(null, []) });
+    eq('plafonul dedicat de importuri -> 429', impUltim.status, 429);
     // curatenie: firma importata se sterge (testele de portofoliu conteaza firmele lui c1)
     eq('firma importata se poate sterge', (await req('DELETE', '/api/firme/' + rImp.json.firmaId, { cookie: c1 })).status, 200);
     await req('POST', '/api/firme/1/activate', { cookie: c1 });
