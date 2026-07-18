@@ -129,11 +129,11 @@ async function main() {
       const dset = { company: { nume: 'T SRL', cui: '12345678', tvaPlatitor: true }, openingBalances: {}, partners: {}, entries: [], products: [], assets: [], stockMovements: [] };
       for (let i = 0; i < 15; i++) {
         dset.entries.push(mkE('s' + i, 'factura_vanzare_marfuri', '2026-03-10', [{ debit: '4111', credit: '707', suma: 100 + i }, { debit: '4111', credit: '4427', suma: 19 }], { partener: 'CLIENT ' + i, document: 'F' + i }));
-        dset.entries.push(mkE('p' + i, 'factura_cumparare_marfuri', '2026-04-05', [{ debit: '371', credit: '401', suma: 50 + i }, { debit: '4426', credit: '401', suma: 9 }], { partener: 'FURNIZOR ' + i, document: 'A' + i }));
-        dset.entries.push(mkE('inc' + i, 'incasare_client', '2026-05-01', [{ debit: '5121', credit: '4111', suma: 100 }], { partener: 'CLIENT ' + i }));
+        dset.entries.push(mkE('p' + i, 'factura_cumparare_marfuri', '2026-03-05', [{ debit: '371', credit: '401', suma: 50 + i }, { debit: '4426', credit: '401', suma: 9 }], { partener: 'FURNIZOR ' + i, document: 'A' + i }));
+        dset.entries.push(mkE('inc' + i, 'incasare_client', '2026-03-20', [{ debit: '5121', credit: '4111', suma: 100 }], { partener: 'CLIENT ' + i }));
       }
-      const syncOut = saft.saftXml(dset, 2026);
-      const asyncOut = await saft.saftXmlAsync(dset, 2026);
+      const syncOut = saft.saftXml(dset, '2026-03');
+      const asyncOut = await saft.saftXmlAsync(dset, '2026-03');
       eq('SAF-T async byte-identic cu sincron (45 entries, yield la 5)', asyncOut, syncOut);
       ok('SAF-T async: XML bine-format cu GL si facturi', /<GeneralLedgerEntries>/.test(asyncOut) && /<SalesInvoices>/.test(asyncOut) && /<PurchaseInvoices>/.test(asyncOut));
     }

@@ -113,7 +113,9 @@ module.exports = function register(app, ctx) {
     recordDecl(req, 'saft', period || (year + '-12'));
     // saftXmlAsync: output byte-identic cu saftXml, dar cedeaza event loop-ul in buclele grele
     // (nu blocheaza celelalte cereri cat timp se genereaza SAF-T-ul la volume mari).
-    sendXml(res, await saft.saftXmlAsync(v, period || year), 'saft-d406-' + (period || year) + '.xml');
+    // ?tip=C genereaza declaratia de STOCURI (la cerere ANAF); implicit L (lunar) / A (anual)
+    const tip = req.query.tip === 'C' ? 'C' : undefined;
+    sendXml(res, await saft.saftXmlAsync(v, period || year, tip), 'saft-d406' + (tip ? '-stocuri' : '') + '-' + (period || year) + '.xml');
   }));
 
   // Validare pre-depunere: genereaza XML-ul declaratiei si verifica bine-format + campuri obligatorii.
