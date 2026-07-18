@@ -225,7 +225,8 @@ async function main() {
     ok('import valid: 200 cu firma noua', rImp.status === 200 && rImp.json.firmaId > 0 && rImp.json.files === 1);
     eq('import valid: fisierul atasat a ajuns in uploads', nrFisiere(), nUp0 + 1);
     ok('import valid: stagingul a disparut dupa commit', faraStaging());
-    // firma importata devine activa dar N-ARE abonament — revenim pe firma 1 ca sa nu lovim paywall-ul
+    // firma importata primeste proba de 30 de zile (ca la creare) — fara paywall imediat
+    ok('firma importata are abonament de proba (fara 402)', (await req('GET', '/api/entries', { cookie: c1 })).status === 200);
     await req('POST', '/api/firme/1/activate', { cookie: c1 });
 
     const nUp1 = nrFisiere();
