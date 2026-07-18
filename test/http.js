@@ -420,7 +420,7 @@ async function main() {
     const agrE = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'achizitie_produse_agricole', fields: { data: '2026-06-20', partener: 'Ion Taranu', cuiPartener: '1800101223344', document: 'Fila 12', suma: 1000, cont: '371' } } });
     ok('achizitie produse agricole pe carnet: 371=462, fara TVA', agrE.json && agrE.json.ok && agrE.json.entry.lines.some((l) => l.debit === '371' && l.credit === '462') && !agrE.json.entry.lines.some((l) => l.debit === '4426'));
     const x394pf = await req('GET', '/xml/d394?period=2026-06', { cookie: c1 });
-    ok('D394: sectiunea achizitii_pf_carnet cu CNP-ul producatorului', /achizitii_pf_carnet/.test(x394pf.text) && /1800101223344/.test(x394pf.text));
+    ok('D394 v5: fila carnet ca op1 tip N cu CNP-ul producatorului', /<op1 tip="N"/.test(x394pf.text) && /1800101223344/.test(x394pf.text));
     const x100 = await req('GET', '/xml/d100?period=2026-06', { cookie: c1 });
     ok('xml/d100: bine-format cu obligatia 620', x100.status === 200 && /<declaratie100/.test(x100.text) && /cod="620"/.test(x100.text));
     ok('descarcarea D100 XML marcheaza declaratia "generata"', (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd100').status === 'generata');

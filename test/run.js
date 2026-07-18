@@ -233,11 +233,11 @@ ok('este document Invoice', ef.includes('<Invoice'));
 eq('total de plata (PayableAmount)', (ef.match(/PayableAmount[^>]*>([\d.]+)/) || [])[1], '16940.00');
 eq('TVA (TaxAmount)', (ef.match(/cbc:TaxAmount[^>]*>([\d.]+)/) || [])[1], '2940.00');
 ok('contine CUI furnizor (RO12345674)', ef.includes('RO12345674'));
-ok('contine CUI client (RO99887766)', ef.includes('99887766'));
+ok('contine CUI client (RO99887760)', ef.includes('99887760'));
 ok('e-Factura bine-format', wellFormed(ef));
 // e-Factura cu cote multiple pe linii (21% / 11% / 0%)
 const efMulti = xml.eFacturaXml(v.company, {
-  tip: 'factura_vanzare_marfuri', data: '2026-06-15', partener: 'BETA', partenerCui: 'RO99887766', document: 'FM1',
+  tip: 'factura_vanzare_marfuri', data: '2026-06-15', partener: 'BETA', partenerCui: 'RO99887760', document: 'FM1',
   items: [{ nume: 'A', cantitate: 10, pret: 100, um: 'buc', cota: 21 }, { nume: 'B', cantitate: 5, pret: 50, um: 'buc', cota: 11 }, { nume: 'C', cantitate: 1, pret: 200, um: 'buc', cota: 0 }],
 }, v.partners);
 ok('e-Factura multi-cota bine-format', wellFormed(efMulti));
@@ -273,7 +273,20 @@ ok('D300: firma completa in antet (banca/cont/caen/tip_decont)', d300v12.include
 ok('D300 cu declarant: nume/prenume/functie', d300v12.includes('nume_declar="Popescu"') && d300v12.includes('prenume_declar="Ion"') && d300v12.includes('functie_declar="Contabil"'));
 // fara declarant explicit, atributele obligatorii primesc valoarea implicita (schema le cere)
 ok('D300 fara declarant: implicit Administrator', xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06')).includes('nume_declar="Administrator"'));
-ok('D394 bine-format', wellFormed(xml.d394Xml(v.company, '2026-06', vj)));
+// D394 pe schema OFICIALA v5 — validata cu DUKIntegrator (scripts/valideaza-duk.sh)
+const d394v5 = xml.d394Xml(v.company, '2026-06', vj, { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
+ok('D394 bine-format', wellFormed(d394v5));
+ok('D394 pe namespace-ul curent v5', d394v5.includes('xmlns="mfp:anaf:dgti:d394:declaratie:v5"'));
+ok('D394: op1 livrare cu CUI partener si tva', /<op1 tip="L" tip_partener="1" cota="21" cuiP="99887760"[^/]*baza="14000" tva="2940"/.test(d394v5));
+ok('D394: op1 achizitie cu CUI partener', /<op1 tip="A" tip_partener="1" cota="21" cuiP="11223342"/.test(d394v5));
+ok('D394: rezumat1 cu toate coloanele obligatorii (L/A/AI/C)', /rezumat1 tip_partener="1" cota="21" facturiL="1" bazaL="14000" tvaL="2940"[^/]*facturiAI="0"[^/]*facturiC="0"/.test(d394v5));
+ok('D394: rezumat2 pe cota cu incasari zero', /rezumat2 cota="21"[^/]*baza_incasari_i1="0"/.test(d394v5));
+ok('D394: serie facturi alocata+emisa (EXP 2001)', /serieFacturi tip="1" serieI="EXP" nrI="2001"/.test(d394v5) && /serieFacturi tip="2" serieI="EXP" nrI="2001"/.test(d394v5));
+ok('D394: contoare parteneri (nrCui1=2)', d394v5.includes('nrCui1="2"'));
+ok('D394: suma de control (2 parteneri + baze)', d394v5.includes('totalPlata_A="24002"'));
+ok('D394: fara tvaCol/tvaDed cand nu e TVA la incasare', !/tvaCol21=/.test(d394v5));
+const d394ai = xml.d394Xml(Object.assign({}, v.company, { tvaLaIncasare: true }), '2026-06', vj);
+ok('D394 cu TVA la incasare: toate cotele tvaCol/tvaDed prezente', /sistemTVA="1"/.test(d394ai) && /tvaCol21="2940"/.test(d394ai) && /tvaCol5="0"/.test(d394ai) && /tvaDed21="2100"/.test(d394ai));
 // defalcare pe cote
 eq('o singura cota la vanzari (21%)', vj.coteV.length, 1);
 eq('cota vanzari 21%', vj.coteV[0].cota, 21);
@@ -289,8 +302,9 @@ ok('D300 XML: cota 11 pe randul 10', /R10_1="1000"/.test(d300xmlMix) && /R10_2="
 ok('D300 XML: totalul colectat insumeaza cotele (R17)', /R17_2="3050"/.test(d300xmlMix));
 const d394xmlMix = xml.d394Xml(v.company, '2026-06', vjMix);
 ok('D394 XML cu cote ramane bine-format', wellFormed(d394xmlMix));
-ok('D394 XML are rezumat pe cote', /<rezumat_cote>/.test(d394xmlMix));
-ok('D394 XML are nod cota per partener', /<cota cota="11"/.test(d394xmlMix));
+// vanzarea de 1000 la 11% e fara CUI de partener => nu intra in op1 (D394 e B2B pe CUI),
+// dar rezumat2 pe cota 21 ramane
+ok('D394 XML: rezumat2 pe cota 21 prezent', /rezumat2 cota="21"/.test(d394xmlMix));
 
 section('Inchiderea TVA (2026-06)');
 const vc = acc.vatClosing(v, '2026-06');
@@ -1055,10 +1069,13 @@ const agrRep = rep.achizitiiPfCarnet(agrDb, '2026-06');
 eq('carnet: un producator agregat in iunie (mai exclus)', agrRep.nr, 1);
 eq('carnet: 2 file cumulate, total 1000', agrRep.rows[0].nr + '|' + agrRep.rows[0].total, '2|1000');
 const vjGol = acc.vatJournals({ entries: [], openingBalances: {} }, '2026-06');
+// in schema v5, achizitiile pe fila de carnet devin op1 tip="N" (tip_partener=2, CNP drept
+// cuiP) cu detaliul op11 pe nomenclatorul de bunuri + oglinda in rezumat1/detaliu
 const d394pf = xml.d394Xml({ cui: 'RO1', nume: 'X' }, '2026-06', vjGol, null, agrRep);
-ok('D394: sectiunea achizitii_pf_carnet cu totalul si CNP-ul', d394pf.includes('<achizitii_pf_carnet total="1000.00"') && d394pf.includes('cnp="1800101223344"'));
+ok('D394: fila carnet ca op1 tip N cu CNP si op11', /<op1 tip="N" tip_partener="2" cota="0" cuiP="1800101223344"[^>]*nrFact="2" baza="1000"/.test(d394pf) && /<op11 nrFactPR="2" codPR="35" bazaPR="1000"\/>/.test(d394pf));
+ok('D394: rezumat1 pentru PF cu document_N si detaliu', /rezumat1 tip_partener="2" cota="0"[^>]*facturiN="2" document_N="1" bazaN="1000"/.test(d394pf) && /<detaliu bun="35" nrN="2" valN="1000"\/>/.test(d394pf));
 ok('D394 bine-format cu sectiunea pf', wellFormed(d394pf));
-ok('D394 fara achizitii pe carnet: sectiunea lipseste', !xml.d394Xml({ cui: 'RO1', nume: 'X' }, '2026-06', vjGol).includes('achizitii_pf_carnet'));
+ok('D394 fara achizitii pe carnet: fara op1 tip N', !/<op1 tip="N"/.test(xml.d394Xml({ cui: 'RO1', nume: 'X' }, '2026-06', vjGol)));
 
 section('TVA avansat: pro-rata (art. 300) + bunuri de capital (art. 305)');
 const prDb = { company: { proRataTva: 40 }, entries: [

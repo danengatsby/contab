@@ -21,8 +21,8 @@ function make(tipId, fields, nid) {
 }
 
 const SPEC = [
-  ['factura_cumparare_marfuri', { data: '2026-06-10', partener: 'ALFA DISTRIBUTIE SRL', cuiPartener: 'RO11223344', document: 'AFD 1001', baza: 10000, tva: 2100, cota: 21 }],
-  ['factura_vanzare_marfuri', { data: '2026-06-15', partener: 'BETA RETAIL SRL', cuiPartener: 'RO99887766', document: 'EXP 2001', baza: 14000, tva: 2940, cota: 21, cost: 8000 }],
+  ['factura_cumparare_marfuri', { data: '2026-06-10', partener: 'ALFA DISTRIBUTIE SRL', cuiPartener: 'RO11223342', document: 'AFD 1001', baza: 10000, tva: 2100, cota: 21 }],
+  ['factura_vanzare_marfuri', { data: '2026-06-15', partener: 'BETA RETAIL SRL', cuiPartener: 'RO99887760', document: 'EXP 2001', baza: 14000, tva: 2940, cota: 21, cost: 8000 }],
   ['incasare_client', { data: '2026-06-15', partener: 'BETA RETAIL SRL', document: 'CH 17', suma: 16940, cont: '5311' }],
   ['plata_furnizor', { data: '2026-06-20', partener: 'ALFA DISTRIBUTIE SRL', document: 'OP 44', suma: 12100, cont: '5121', contFz: '401' }],
   ['stat_plata', { data: '2026-06-30', brut: 5000 }],
@@ -42,8 +42,8 @@ function buildSeedData(nextEntryId) {
     }],
     partners: {
       [FID]: {
-        '99887766': { cui: '99887766', den: 'BETA RETAIL SRL', adresa: 'Bd. Clientului 5', oras: 'Cluj-Napoca', judet: 'RO-CJ', tara: 'RO' },
-        '11223344': { cui: '11223344', den: 'ALFA DISTRIBUTIE SRL', adresa: 'Str. Furnizorului 10', oras: 'Timisoara', judet: 'RO-TM', tara: 'RO' },
+        '99887760': { cui: '99887760', den: 'BETA RETAIL SRL', adresa: 'Bd. Clientului 5', oras: 'Cluj-Napoca', judet: 'RO-CJ', tara: 'RO' },
+        '11223342': { cui: '11223342', den: 'ALFA DISTRIBUTIE SRL', adresa: 'Str. Furnizorului 10', oras: 'Timisoara', judet: 'RO-TM', tara: 'RO' },
       },
     },
     openingBalances: {
@@ -53,11 +53,11 @@ function buildSeedData(nextEntryId) {
       },
     },
     openingAnalytic: [
-      { firmaId: FID, cont: '401', partener: 'ALFA DISTRIBUTIE SRL', cui: 'RO11223344', d: 0, c: 15000 },
+      { firmaId: FID, cont: '401', partener: 'ALFA DISTRIBUTIE SRL', cui: 'RO11223342', d: 0, c: 15000 },
     ],
     assets: [
-      { id: 'mf1', firmaId: FID, denumire: 'Laptop Dell Latitude', cont: '2131', furnizor: 'ALFA DISTRIBUTIE SRL', cui: 'RO11223344', cost: 6000, valoareReziduala: 0, dataAchizitie: '2026-01-10', dataPif: '2026-01-15', durataLuni: 36, metoda: 'liniara', status: 'activ' },
-      { id: 'mf2', firmaId: FID, denumire: 'Utilaj productie', cont: '2131', furnizor: 'ALFA DISTRIBUTIE SRL', cui: 'RO11223344', cost: 12000, valoareReziduala: 0, dataAchizitie: '2025-12-15', dataPif: '2025-12-20', durataLuni: 60, metoda: 'degresiva', status: 'activ' },
+      { id: 'mf1', firmaId: FID, denumire: 'Laptop Dell Latitude', cont: '2131', furnizor: 'ALFA DISTRIBUTIE SRL', cui: 'RO11223342', cost: 6000, valoareReziduala: 0, dataAchizitie: '2026-01-10', dataPif: '2026-01-15', durataLuni: 36, metoda: 'liniara', status: 'activ' },
+      { id: 'mf2', firmaId: FID, denumire: 'Utilaj productie', cont: '2131', furnizor: 'ALFA DISTRIBUTIE SRL', cui: 'RO11223342', cost: 12000, valoareReziduala: 0, dataAchizitie: '2025-12-15', dataPif: '2025-12-20', durataLuni: 60, metoda: 'degresiva', status: 'activ' },
     ],
     gestiuni: [
       { id: 'g1', firmaId: FID, cod: 'DEP', denumire: 'Depozit central', gestionar: 'Ionescu Maria', cont: '371' },
