@@ -33,6 +33,18 @@ if [ ! -f "$DUK/dist/DUKIntegrator.jar" ]; then
   (cd "$DUK" && unzip -qo dist.zip)
 fi
 
+# 2a) jar-urile de BAZA din manifest (DUKIntegrator/DecValidation/Validator...) — cele din
+#     distributia veche nu pot rula validatoarele noi (NoClassDefFoundError); tot la 7 zile
+MARKER="$DUK/.jars-de-baza"
+if [ ! -f "$MARKER" ] || [ -n "$(find "$MARKER" -mtime +7 2>/dev/null)" ]; then
+  curl -s --max-time 30 "$MANIFEST" | grep -o 'http://[^<]*update5/[a-z0-9]*/[A-Za-z.]*jar' | sort -u | while read -r U; do
+    F=$(basename "$U")
+    DEST=$([ "$F" = "DUKIntegrator.jar" ] && echo "$DUK/dist/$F" || echo "$DUK/dist/lib/$F")
+    curl -s --max-time 120 -o "$DEST" "$U" || true
+  done
+  touch "$MARKER"
+fi
+
 # 2) validatorul declaratiei, din manifestul oficial (reimprospatat dupa 7 zile)
 JAR="$DUK/dist/lib/${TIP}Validator.jar"
 if [ ! -f "$JAR" ] || [ -n "$(find "$JAR" -mtime +7 2>/dev/null)" ]; then
