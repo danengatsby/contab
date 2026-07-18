@@ -85,32 +85,66 @@ function importBundle(user, bundle, opts) {
   return { firmaId: newFid, replaced: !!targetFid };
 }
 
-/** Restaurare din ZIP: extrage firma.json + scrie fisierele sub nume NOI (anti-coliziune), apoi importa. */
+/** Validarea pachetului firma.json INAINTE de orice scriere: structura minima + limite
+ *  (colectiile trebuie sa fie array-uri, plafonate — un JSON malitios nu ajunge in graf). */
+const BUNDLE_COLLS = ['entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products',
+  'gestiuni', 'stockMovements', 'inventories', 'openingAnalytic', 'declarations'];
+const BUNDLE_MAX_ITEMS = 500000; // total elemente in toate colectiile
+function validateBundle(bundle) {
+  if (!bundle || typeof bundle !== 'object' || Array.isArray(bundle)) fail(400, 'Pachet de firma invalid.');
+  if (!bundle.firma || typeof bundle.firma !== 'object' || Array.isArray(bundle.firma)) fail(400, 'Pachetul nu contine obiectul firma.');
+  let total = 0;
+  for (const k of BUNDLE_COLLS) {
+    if (bundle[k] == null) continue;
+    if (!Array.isArray(bundle[k])) fail(400, `Colectia "${k}" din pachet nu este o lista.`);
+    total += bundle[k].length;
+  }
+  if (total > BUNDLE_MAX_ITEMS) fail(400, 'Pachetul depaseste limita de elemente importabile.');
+}
+
+/** Restaurare din ZIP — TRANZACTIONAL: (1) garda anti zip-bomb, (2) validarea pachetului
+ *  inainte de orice scriere, (3) fisierele intra intr-un director de STAGING din uploads
+ *  si sunt mutate la loc doar dupa ce importul in baza a reusit; la orice esec staging-ul
+ *  dispare integral (fara atasamente orfane). */
 function importZip(user, fileBuffer, opts) {
   reqNotDemo(user);
   if (!fileBuffer) fail(400, 'Niciun fisier primit.');
-  const scrise = []; // fisierele deja salvate pe disc — sterse la orice esec ulterior
+  let staging = null;
   try {
-    // garda anti zip-bomb: limitele se verifica INAINTE de a citi vreun octet dezarhivat
+    // (1) limitele arhivei se verifica INAINTE de a citi vreun octet dezarhivat
     const { zip, entries } = zipGuard.openGuarded(fileBuffer);
     const je = zip.getEntry('firma.json');
     if (!je) fail(400, 'Arhiva nu contine firma.json — nu pare o copie Contabo.');
-    const bundle = JSON.parse(zip.readAsText(je));
-    const storedNameMap = {};
+    let bundle;
+    try { bundle = JSON.parse(zip.readAsText(je)); } catch (e) { fail(400, 'firma.json din arhiva nu este JSON valid.'); }
+    validateBundle(bundle); // (2) nimic pe disc pana nu stim ca pachetul e sanatos
+    // colecteaza fisierele; numele duplicate ar produce atasamente orfane -> respinse
+    const fileEntries = []; const seen = new Set();
     for (const en of entries) {
       if (en.isDirectory || !en.entryName.startsWith('files/')) continue;
       const base = path.basename(en.entryName);
       if (!base) continue;
+      if (seen.has(base)) fail(400, `Arhiva contine fisierul "${base}" de mai multe ori.`);
+      seen.add(base);
+      fileEntries.push({ en, base });
+    }
+    // (3) staging in acelasi filesystem cu uploads => mutarea finala e rename, nu copiere
+    staging = fs.mkdtempSync(path.join(db.UPLOAD_DIR, '.import-'));
+    const storedNameMap = {}; const mutari = [];
+    for (const { en, base } of fileEntries) {
       const newName = crypto.randomBytes(8).toString('hex') + (path.extname(base) || '.bin');
-      const dest = path.join(db.UPLOAD_DIR, newName);
-      fs.writeFileSync(dest, en.getData());
-      scrise.push(dest);
+      fs.writeFileSync(path.join(staging, newName), en.getData());
+      mutari.push(newName);
       storedNameMap[base] = newName;
     }
     const r = importBundle(user, bundle, Object.assign({}, opts, { storedNameMap }));
-    return Object.assign(r, { files: Object.keys(storedNameMap).length });
+    // commit: abia acum fisierele devin vizibile in uploads (rename pe acelasi fs)
+    for (const n of mutari) fs.renameSync(path.join(staging, n), path.join(db.UPLOAD_DIR, n));
+    fs.rmSync(staging, { recursive: true, force: true });
+    staging = null;
+    return Object.assign(r, { files: mutari.length });
   } catch (e) {
-    for (const f of scrise) { try { fs.unlinkSync(f); } catch (_) { /* deja sters */ } }
+    if (staging) { try { fs.rmSync(staging, { recursive: true, force: true }); } catch (_) { /* best effort */ } }
     if (e.status) throw e;
     fail(400, e.message);
   }

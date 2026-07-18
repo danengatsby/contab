@@ -207,6 +207,47 @@ async function main() {
     ok('pdf deghizat (continut text) -> 400 cu mesaj clar', rFake.status === 400 && /nu corespunde extensiei/.test(rFake.json.error));
     eq('fisierul deghizat nu ramane pe disc', nrFisiere(), inainte);
 
+    // ── importul ZIP de firma: TRANZACTIONAL (staging + rollback fara urme) ──
+    const AdmZipT = require('adm-zip');
+    const mkZip = (bundleJson, files) => {
+      const z = new AdmZipT();
+      if (bundleJson != null) z.addFile('firma.json', Buffer.from(bundleJson));
+      for (const [nume, cont] of files || []) z.addFile(nume, Buffer.from(cont));
+      const fd = new FormData();
+      fd.append('file', new Blob([z.toBuffer()], { type: 'application/zip' }), 'firma.zip');
+      return fd;
+    };
+    const faraStaging = () => !fs.readdirSync(upDir).some((n) => n.startsWith('.import-'));
+    const okBundle = JSON.stringify({ firma: { nume: 'Import SRL', cui: '111' }, entries: [], documents: [] });
+
+    const nUp0 = nrFisiere();
+    const rImp = await req('POST', '/api/firme/import-zip', { cookie: c1, body: mkZip(okBundle, [['files/a.pdf', '%PDF-fals']]) });
+    ok('import valid: 200 cu firma noua', rImp.status === 200 && rImp.json.firmaId > 0 && rImp.json.files === 1);
+    eq('import valid: fisierul atasat a ajuns in uploads', nrFisiere(), nUp0 + 1);
+    ok('import valid: stagingul a disparut dupa commit', faraStaging());
+    // firma importata devine activa dar N-ARE abonament — revenim pe firma 1 ca sa nu lovim paywall-ul
+    await req('POST', '/api/firme/1/activate', { cookie: c1 });
+
+    const nUp1 = nrFisiere();
+    const rDup = await req('POST', '/api/firme/import-zip', { cookie: c1, body: mkZip(okBundle, [['files/a.pdf', 'unu'], ['files/sub/a.pdf', 'doi']]) });
+    ok('nume duplicate in arhiva -> 400 cu mesaj clar', rDup.status === 400 && /de mai multe ori/.test(rDup.json.error));
+    eq('duplicate: niciun fisier nu ramane pe disc', nrFisiere(), nUp1);
+
+    const rBad = await req('POST', '/api/firme/import-zip', { cookie: c1, body: mkZip('{"x":1}', [['files/b.pdf', 'date']]) });
+    ok('pachet fara obiectul firma -> 400 inainte de orice scriere', rBad.status === 400 && /obiectul firma/.test(rBad.json.error));
+    eq('rollback fara urme: uploads neschimbat', nrFisiere(), nUp1);
+    ok('rollback fara urme: fara directoare de staging', faraStaging());
+
+    const rArr = await req('POST', '/api/firme/import-zip', { cookie: c1, body: mkZip(JSON.stringify({ firma: { nume: 'X' }, entries: {} }), []) });
+    ok('colectie care nu e lista -> 400', rArr.status === 400 && /nu este o lista/.test(rArr.json.error));
+
+    const rNoJ = await req('POST', '/api/firme/import-zip', { cookie: c1, body: mkZip(null, [['files/c.pdf', 'x']]) });
+    ok('arhiva fara firma.json -> 400', rNoJ.status === 400 && /firma\.json/.test(rNoJ.json.error));
+    // curatenie: firma importata se sterge (testele de portofoliu conteaza firmele lui c1)
+    eq('firma importata se poate sterge', (await req('DELETE', '/api/firme/' + rImp.json.firmaId, { cookie: c1 })).status, 200);
+    await req('POST', '/api/firme/1/activate', { cookie: c1 });
+    ok('firma activa restaurata dupa testele de import', (await req('GET', '/api/meta', { cookie: c1 })).json.firmaActiva === 1);
+
     // plafonul de upload per utilizator (CONTAB_RATE_UPLOAD=8 in env-ul de test): al 9-lea -> 429
     const lUp = await req('POST', '/api/login', { body: { username: 'uploader', password: 'parola1' } });
     let ultimul;
@@ -217,6 +258,7 @@ async function main() {
     }
     eq('al 9-lea upload intr-o ora -> 429', ultimul.status, 429);
     ok('mesajul 429 spune cand sa revina', /Reincearca peste/.test(ultimul.json.error));
+
 
     // plafonul de export per utilizator (CONTAB_RATE_EXPORT=5): al 6-lea SAF-T -> 429
     let ultimulX;
