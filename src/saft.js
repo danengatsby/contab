@@ -115,7 +115,7 @@ function header(company, year) {
   const now = new Date().toISOString().slice(0, 10);
   return [
     '  <Header>',
-    '    <AuditFileVersion>2.4.8</AuditFileVersion>',
+    '    <AuditFileVersion>2.4.9</AuditFileVersion>',
     '    <AuditFileCountry>RO</AuditFileCountry>',
     `    <AuditFileRegion>${esc(/^RO-/.test(String(company.judet)) ? company.judet : 'RO-B')}</AuditFileRegion>`,
     `    <AuditFileDateCreated>${now}</AuditFileDateCreated>`,
@@ -225,9 +225,9 @@ function taxTable() {
   const std = f.tvaStandard || 21;
   const red = f.tvaRedus || 11;
   const rates = [
-    { code: 'S', pct: std, desc: 'TVA cota standard' },
-    { code: 'R', pct: red, desc: 'TVA cota redusa' },
-    { code: 'Z', pct: 0, desc: 'TVA cota zero / scutit' },
+    { code: '300104', pct: std, desc: 'TVA cota standard' },
+    { code: '300105', pct: red, desc: 'TVA cota redusa' },
+    { code: '300901', pct: 0, desc: 'TVA scutit' },
   ];
   const out = ['    <TaxTable>', '      <TaxTableEntry>',
     '        <TaxType>300</TaxType>',
@@ -238,7 +238,7 @@ function taxTable() {
       `          <TaxCode>${r.code}</TaxCode>`,
       `          <Description>${esc(r.desc)}</Description>`,
       `          <TaxPercentage>${num2(r.pct)}</TaxPercentage>`,
-      '          <BaseRate>100.00</BaseRate>',
+      '          <BaseRate>100</BaseRate>',
       '          <Country>RO</Country>',
       '        </TaxCodeDetails>',
     );
@@ -465,7 +465,7 @@ function glTx(e, year) {
       `            <SupplierID>${esc('00' + String(e.partenerCui || '').replace(/^ro/i, '').replace(/\s/g, ''))}</SupplierID>`,
       `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
       `            <DebitAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></DebitAmount>`,
-      '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+      '            <TaxInformation><TaxType>300</TaxType><TaxCode>300104</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
       '          </TransactionLine>',
     );
     rec += 1;
@@ -477,7 +477,7 @@ function glTx(e, year) {
       `            <SupplierID>${esc('00' + String(e.partenerCui || '').replace(/^ro/i, '').replace(/\s/g, ''))}</SupplierID>`,
       `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
       `            <CreditAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></CreditAmount>`,
-      '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+      '            <TaxInformation><TaxType>300</TaxType><TaxCode>300104</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
       '          </TransactionLine>',
     );
   }
@@ -620,7 +620,7 @@ function invoiceXml(e, kind, partyTag, partyIdTag, partyId, defaultAccount) {
       `          <DebitCreditIndicator>${amtTag === 'DebitAmount' ? 'D' : 'C'}</DebitCreditIndicator>`,
       '          <TaxInformation>',
       '            <TaxType>300</TaxType>',
-      `            <TaxCode>${l.cota >= 19 ? 'S' : l.cota > 0 ? 'R' : 'Z'}</TaxCode>`,
+      `            <TaxCode>${l.cota >= 19 ? '300104' : l.cota > 0 ? '300105' : '300901'}</TaxCode>`,
       `            <TaxPercentage>${num2(l.cota)}</TaxPercentage>`,
       `            <TaxAmount><Amount>${num2(l.tax)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount>`,
       '          </TaxInformation>',
@@ -666,7 +666,7 @@ function paymentsXml(db, year) {
         `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
         '            <DebitCreditIndicator>D</DebitCreditIndicator>',
         `            <PaymentLineAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></PaymentLineAmount>`,
-        '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+        '            <TaxInformation><TaxType>300</TaxType><TaxCode>300104</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
         '          </PaymentLine>',
       );
       rec += 1;
@@ -679,7 +679,7 @@ function paymentsXml(db, year) {
         `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
         '            <DebitCreditIndicator>C</DebitCreditIndicator>',
         `            <PaymentLineAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></PaymentLineAmount>`,
-        '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+        '            <TaxInformation><TaxType>300</TaxType><TaxCode>300104</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
         '          </PaymentLine>',
       );
     }
@@ -798,7 +798,7 @@ function saftXml(db, year) {
   const company = db.company || {};
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<AuditFile xmlns="mfp:anaf:dgti:d406t:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    '<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
     header(company, yr),
     masterFiles(db, yr),
     generalLedgerEntries(db, yr),
@@ -818,7 +818,7 @@ async function saftXmlAsync(db, year) {
   const sd = await sourceDocumentsAsync(db, yr);
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<AuditFile xmlns="mfp:anaf:dgti:d406t:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    '<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
     header(company, yr),
     masterFiles(db, yr),
     gl,
@@ -870,7 +870,7 @@ module.exports = { saftXml, saftXmlAsync, saftSummary, accountBalances, partnerR
         `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
         '            <DebitCreditIndicator>D</DebitCreditIndicator>',
         `            <PaymentLineAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></PaymentLineAmount>`,
-        '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+        '            <TaxInformation><TaxType>300</TaxType><TaxCode>300104</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
         '          </PaymentLine>',
       );
       rec += 1;
@@ -883,7 +883,7 @@ module.exports = { saftXml, saftXmlAsync, saftSummary, accountBalances, partnerR
         `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
         '            <DebitCreditIndicator>C</DebitCreditIndicator>',
         `            <PaymentLineAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></PaymentLineAmount>`,
-        '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+        '            <TaxInformation><TaxType>300</TaxType><TaxCode>300104</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
         '          </PaymentLine>',
       );
     }
@@ -1002,7 +1002,7 @@ function saftXml(db, year) {
   const company = db.company || {};
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<AuditFile xmlns="mfp:anaf:dgti:d406t:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    '<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
     header(company, yr),
     masterFiles(db, yr),
     generalLedgerEntries(db, yr),
@@ -1022,7 +1022,7 @@ async function saftXmlAsync(db, year) {
   const sd = await sourceDocumentsAsync(db, yr);
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<AuditFile xmlns="mfp:anaf:dgti:d406t:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    '<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
     header(company, yr),
     masterFiles(db, yr),
     gl,
