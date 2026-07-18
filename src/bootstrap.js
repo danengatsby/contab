@@ -46,6 +46,20 @@ function createApp() {
   const TRUST_PROXY = process.env.TRUST_PROXY || 'loopback';
   app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
 
+  // CONTAB_FORCE_HTTPS=1 (recomandat in productie): traficul HTTP din exterior este
+  // redirectionat la HTTPS (GET/HEAD) sau refuzat (restul metodelor — un POST redirectionat
+  // si-ar pierde corpul). Loopback-ul ramane permis pe HTTP: nginx-ul local si health check-ul
+  // din deploy vorbesc cu aplicatia direct pe 127.0.0.1.
+  if (process.env.CONTAB_FORCE_HTTPS === '1') {
+    app.use((req, res, next) => {
+      if (req.secure || req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1') return next();
+      if (req.method === 'GET' || req.method === 'HEAD') {
+        return res.redirect(308, 'https://' + (req.headers.host || '').replace(/:\d+$/, '') + req.originalUrl);
+      }
+      return res.status(403).json({ error: 'HTTPS obligatoriu.' });
+    });
+  }
+
   // Anteturi de securitate via helmet, cu CSP calibrat pentru aceasta aplicatie:
   //  - script-src 'self' (un singur /app.js, fara scripturi/handler-e inline)
   //  - style-src 'self' FARA unsafe-inline: zero elemente <style> si zero atribute style= in
