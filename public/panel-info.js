@@ -31,7 +31,7 @@ var PANEL_INFO = [
   ['💱 Registru de casă în valută', 'Mișcările casei în valută (5314): sumele în valută și în lei, cu solduri pe ambele coloane.'],
   ['Solduri conturi', 'Balanța de verificare cu cele patru egalități (SI, rulaje, total sume, SF). Dacă nu se închide, există o eroare de înregistrare.'],
   // TVA
-  ['TVA de plată', 'Decontul D300 pe perioadă: TVA colectată minus deductibilă, defalcat pe cote, cu XML-ul gata de validat cu DUKIntegrator.'],
+  ['TVA de plată', 'Decontul D300 pe perioadă: TVA colectată minus deductibilă, defalcat pe cote, cu XML-ul generat pe schema oficială curentă (verificat cu validatorul ANAF).'],
   ['Jurnal de vânzări', 'Facturile emise cu TVA colectată în perioadă — baza decontului D300 și a D394.'],
   ['Jurnal de cumpărări', 'Achizițiile cu TVA deductibilă în perioadă, cu taxarea inversă marcată.'],
   ['TVA la încasare — exigibilitate', 'Regim TVA la încasare: introduci suma încasată/plătită și cota; TVA devenită exigibilă se calculează și se postează automat.'],
