@@ -1715,6 +1715,10 @@ Cu stimă,
           <label>Județ (cod, ex: RO-B) <input name="judet" /></label>
           <label class="check"><input name="tvaLaIncasare" type="checkbox" /> TVA la încasare (exigibilitate la încasare/plată — prin contul 4428)</label>
           <label>Pro-rata TVA provizorie % (doar regim mixt — gol = deducere integrală) <input name="proRataTva" type="number" min="1" max="99" step="1" placeholder="ex. 40" /></label>
+          <label>Cod CAEN (activitatea principală — apare în D300) <input name="caen" maxlength="4" placeholder="ex. 1071" /></label>
+          <label>Perioada fiscală TVA (decontul D300)
+            <select name="perioadaTva"><option value="L">Lunar</option><option value="T">Trimestrial</option></select>
+          </label>
           <div class="full" data-u="u126"><b data-u="u127">Personalizare documente & facturi</b></div>
           <label>IBAN (apare pe documente + în e-Factura) <input name="iban" placeholder="RO49AAAA1B31007593840000" /></label>
           <label>Banca <input name="banca" placeholder="Banca Transilvania" /></label>
