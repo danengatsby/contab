@@ -220,10 +220,11 @@ ok('SAF-T: AuditFileVersion 2.4.8 (schema curenta)', xmlSaft.includes('<AuditFil
 const vOwn = Object.assign({}, v, { company: Object.assign({}, v.company, { asociatiText: 'Ion Pop; 1800101223344; 60\nMaria I; 2900101223344; 40%' }) });
 ok('SAF-T Owners: asociatii din Datele firmei, cu procente', (() => {
   const x = saft.saftXml(vOwn, 2026);
-  return x.includes('<Owners>') && x.includes('<Name>Ion Pop</Name>') && x.includes('<SharesQuantity>40</SharesQuantity>');
+  // schema D406T: Owner = doar OwnerID + AccountID (fara nume/procente in XML)
+  return x.includes('<Owners>') && x.includes('<OwnerID>1</OwnerID>');
 })());
-ok('SAF-T Owners la PFA fara lista: titularul cu 100%', saft.saftXml(Object.assign({}, v, { company: Object.assign({}, v.company, { tipEntitate: 'pfa' }) }), 2026).includes('<SharesQuantity>100</SharesQuantity>'));
-ok('SAF-T fara asociati la SRL: sectiunea Owners lipseste (optionala)', !xmlSaft.includes('<Owners>'));
+ok('SAF-T Owners la PFA fara lista: titularul prezent', saft.saftXml(Object.assign({}, v, { company: Object.assign({}, v.company, { tipEntitate: 'pfa' }) }), 2026).includes('<OwnerID>1</OwnerID>'));
+ok('SAF-T: Owners prezent si fara lista de asociati (obligatoriu in D406T)', xmlSaft.includes('<Owners>'));
 eq('SAF-T TotalDebit = TotalCredit', (xmlSaft.match(/<TotalDebit>([\d.]+)<\/TotalDebit>/) || [])[1], (xmlSaft.match(/<TotalCredit>([\d.]+)<\/TotalCredit>/) || [])[1]);
 
 section('e-Factura UBL (factura de vanzare)');
