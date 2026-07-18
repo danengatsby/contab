@@ -36,8 +36,9 @@ function buildSeedData(nextEntryId) {
   const nid = nextEntryId || (() => 'e' + (++i));
   return {
     firme: [{
-      id: FID, nume: 'S.C. EXEMPLU PROD S.R.L.', cui: '12345678',
+      id: FID, nume: 'S.C. EXEMPLU PROD S.R.L.', cui: '12345674',
       regCom: 'J40/1234/2020', adresa: 'Str. Exemplu nr. 1, sector 1', oras: 'Bucuresti', judet: 'RO-B', tvaPlatitor: true,
+      caen: '1071', perioadaTva: 'L', iban: 'RO49AAAA1B31007593840000', banca: 'Banca Exemplu',
     }],
     partners: {
       [FID]: {

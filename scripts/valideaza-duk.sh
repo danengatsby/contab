@@ -51,12 +51,17 @@ cp "$XML" "$W/in.xml"
 docker run --rm -v "$DUK/dist":/duk -v "$W":/w -w /duk "$IMG" \
   java -jar /duk/DUKIntegrator.jar -v "$TIP" /w/in.xml /w/erori.txt >"$W/out.txt" 2>&1 || true
 
-if [ -s "$W/erori.txt" ]; then
+# la succes DUKIntegrator scrie "Validare fara erori" in stdout si "ok" in fisierul de erori
+if grep -q "Validare fara erori" "$W/out.txt"; then
+  echo "✓ $TIP: valid conform validatorului oficial ANAF."
+  exit 0
+fi
+if [ -s "$W/erori.txt" ] && ! grep -qx "ok" "$W/erori.txt"; then
   cat "$W/erori.txt"
   echo ""
   echo "✗ $TIP: INVALID conform validatorului oficial ANAF ($(grep -c '^[EF]:' "$W/erori.txt") erori)." >&2
   exit 1
 fi
-# fara fisier de erori, dar cu mesaj de esec in stdout (ex. validator lipsa) = tot esec
-if grep -qi "eroare\|nu gasesc" "$W/out.txt"; then cat "$W/out.txt" >&2; exit 2; fi
-echo "✓ $TIP: valid conform validatorului oficial ANAF."
+# nici succes explicit, nici erori de validare (ex. validator lipsa, jar corupt) = esec tehnic
+cat "$W/out.txt" >&2
+exit 2

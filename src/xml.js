@@ -211,9 +211,6 @@ function ym(period) {
   return m ? { an: m[1], luna: String(Number(m[2])) } : { an: String(new Date().getFullYear()), luna: '1' };
 }
 
-/** D300 — decont TVA (structura ANAF, valori principale). */
-// Cod de rand D300 dupa cota (orientativ): 21% -> 1, 11% -> 2, 5% -> 3, scutit/0% -> 0
-function rdCota(cota) { return cota === 21 ? '1' : cota === 11 ? '2' : cota === 5 ? '3' : '0'; }
 /** Atributele declarantului (intocmitorului) — incluse doar cand datele exista. */
 function declarant(who) {
   if (!who || !who.nume) return '';
@@ -223,28 +220,69 @@ function declarant(who) {
   return a;
 }
 
+/** D300 — decont TVA pe schema OFICIALA v12 (mfp:anaf:dgti:d300:declaratie:v12).
+ *  Forma e plata: toate valorile sunt atribute pe radacina, randurile decontului sunt Rn_1
+ *  (baza) / Rn_2 (TVA), in LEI INTREGI (tip N(15) in XSD — nu zecimale). Maparea cota->rand
+ *  si formulele de total urmeaza structura_D300_v12 + verificarile DUKIntegrator. */
+// Randurile pe cote (dupa 01.08.2025): livrari 21->R9, 11->R10, 9(art.III L141/2025)->R11;
+// istorice (perioade vechi): 19->R69, 5->R71. Achizitii: 21->R22, 11->R23, 5->R24, 9->R74, 19->R75.
+const D300_RAND_V = { 21: 'R9', 11: 'R10', 9: 'R11', 19: 'R69', 5: 'R71' };
+const D300_RAND_C = { 21: 'R22', 11: 'R23', 5: 'R24', 9: 'R74', 19: 'R75' };
 function d300Xml(company, period, d, who) {
   const { an, luna } = ym(period);
-  const randuri = (list, kind) => (list || []).map((c) =>
-    `  <rand sectiune="${kind}" rd="${rdCota(c.cota)}" cota="${c.cota}" baza="${num2(c.baza)}" tva="${num2(c.tva)}"/>`).join('\n');
-  const liv = randuri(d.coteV, 'livrari');
-  const ach = randuri(d.coteC, 'achizitii');
+  const lei = (v) => String(Math.round(Number(v) || 0));
+  const A = {}; // atributele-randuri, doar cele cu valoare
+  const put = (rand, baza, tva) => {
+    if (!rand) return;
+    A[rand + '_1'] = (Number(A[rand + '_1']) || 0) + Math.round(baza || 0);
+    A[rand + '_2'] = (Number(A[rand + '_2']) || 0) + Math.round(tva || 0);
+  };
+  for (const c of d.coteV || []) put(D300_RAND_V[c.cota], c.baza, c.tva);
+  for (const c of d.coteC || []) put(D300_RAND_C[c.cota], c.baza, c.tva);
+  // Totaluri (formulele oficiale): R17 = total taxa colectata, R27 = total taxa deductibila.
+  const sum = (rows, col) => rows.reduce((s, r) => s + (Number(A[r + col]) || 0), 0);
+  const RV = Object.values(D300_RAND_V); const RC = Object.values(D300_RAND_C);
+  A.R17_1 = sum(RV, '_1'); A.R17_2 = sum(RV, '_2');
+  A.R27_1 = sum(RC, '_1'); A.R27_2 = sum(RC, '_2');
+  // Sold: R28 = taxa dedusa (fara regularizari => R27); R32 = total dedus; apoi inchiderea
+  // R33/R34 (suma negativa / taxa de plata) si cumulat R37/R40 -> R41 (plata) / R42 (recuperat).
+  A.R28_2 = A.R27_2; A.R32_2 = A.R28_2;
+  A.R33_2 = Math.max(A.R32_2 - A.R17_2, 0); A.R34_2 = Math.max(A.R17_2 - A.R32_2, 0);
+  A.R37_2 = A.R34_2; A.R40_2 = A.R33_2;
+  A.R41_2 = Math.max(A.R37_2 - A.R40_2, 0); A.R42_2 = Math.max(A.R40_2 - A.R37_2, 0);
+  const emise = Object.keys(A).filter((k) => A[k] !== 0 || /^R(17|27|41|42)_/.test(k));
+  const randuri = emise.map((k) => `  ${k}="${lei(A[k])}"`).join('\n');
+  // totalPlata_A NU e plata, ci SUMA DE CONTROL: suma tuturor campurilor-rand emise.
+  const sumaControl = emise.reduce((s, k) => s + Math.round(A[k] || 0), 0);
+  // nr_evid (nr. de evidenta a platii), structura oficiala pe 23 de cifre:
+  // "10" + 301..304 (dupa tip_decont L/T/S/A) + "01" + LLAA (sfarsitul perioadei)
+  // + ZZLLAA (scadenta = 25 a lunii urmatoare) + "0000" + suma de control (ultimele 2 cifre
+  // ale sumei primelor 21 de cifre).
+  const tipDecont = company.perioadaTva || 'L';
+  const nrEvid = (() => {
+    const cod = { L: '301', T: '302', S: '303', A: '304' }[tipDecont] || '301';
+    const mm = String(luna).padStart(2, '0'); const aa = String(an).slice(-2);
+    const next = Number(luna) === 12 ? { mm: '01', aa: String(Number(aa) + 1).padStart(2, '0') } : { mm: String(Number(luna) + 1).padStart(2, '0'), aa };
+    const p21 = '10' + cod + '01' + mm + aa + '25' + next.mm + next.aa + '0000';
+    const ctl = String(p21.split('').reduce((s, c) => s + Number(c), 0)).slice(-2).padStart(2, '0');
+    return p21 + ctl;
+  })();
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '', functie: 'Administrator' };
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- D300 (recapitulatie) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->
-<declaratie300 xmlns="mfp:anaf:dgti:d300:declaratie:v3"
-  cif="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
-  luna="${esc(luna)}" an="${esc(an)}" sumactrl="0"${declarant(who)}>
-  <livrari_taxabile baza="${num2(d.bazaV)}" tva="${num2(d.colectata)}">
-${liv || '    <!-- fara livrari -->'}
-  </livrari_taxabile>
-  <achizitii_taxabile baza="${num2(d.bazaC)}" tva="${num2(d.deductibila)}">
-${ach || '    <!-- fara achizitii -->'}
-  </achizitii_taxabile>
-  <tva_colectata>${num2(d.colectata)}</tva_colectata>
-  <tva_deductibila>${num2(d.deductibila)}</tva_deductibila>
-  <tva_de_plata>${num2(d.deplata)}</tva_de_plata>
-  <tva_de_recuperat>${num2(d.derecuperat)}</tva_de_recuperat>
-</declaratie300>
+<!-- D300 v12 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D300 fisier.xml -->
+<declaratie300 xmlns="mfp:anaf:dgti:d300:declaratie:v12"
+  luna="${esc(luna)}" an="${esc(an)}" depusReprezentant="0" bifa_interne="0" temei="0"
+  nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
+  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
+  adresa="${esc(adresa || '-')}"${company.telefon ? `\n  telefon="${esc(company.telefon)}"` : ''}${company.email ? `\n  mail="${esc(company.email)}"` : ''}
+  banca="${esc(company.banca || '-')}" cont="${esc(String(company.iban || '-').replace(/\s/g, ''))}"
+  caen="${esc(company.caen || '0000')}" tip_decont="${esc(tipDecont)}"
+  pro_rata="${esc(company.proRataTva || 100)}"
+  bifa_cereale="N" bifa_mob="N" bifa_disp="N" bifa_cons="N" solicit_ramb="N"
+  nr_evid="${nrEvid}" totalPlata_A="${lei(sumaControl)}"
+${randuri}
+/>
 `;
 }
 

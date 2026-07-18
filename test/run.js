@@ -232,7 +232,7 @@ const ef = xml.eFacturaXml(v.company, facturaVanz, v.partners);
 ok('este document Invoice', ef.includes('<Invoice'));
 eq('total de plata (PayableAmount)', (ef.match(/PayableAmount[^>]*>([\d.]+)/) || [])[1], '16940.00');
 eq('TVA (TaxAmount)', (ef.match(/cbc:TaxAmount[^>]*>([\d.]+)/) || [])[1], '2940.00');
-ok('contine CUI furnizor (RO12345678)', ef.includes('RO12345678'));
+ok('contine CUI furnizor (RO12345674)', ef.includes('RO12345674'));
 ok('contine CUI client (RO99887766)', ef.includes('99887766'));
 ok('e-Factura bine-format', wellFormed(ef));
 // e-Factura cu cote multiple pe linii (21% / 11% / 0%)
@@ -255,12 +255,24 @@ eq('baza vanzari', vj.totals.bazaV, 14000);
 eq('TVA colectata (jurnal vanzari)', vj.totals.colectata, 2940);
 eq('baza cumparari', vj.totals.bazaC, 10000);
 eq('TVA deductibila (jurnal cumparari)', vj.totals.deductibila, 2100);
-ok('D300 bine-format', wellFormed(xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06'))));
-// declarantul (intocmitorul) in XML: atribute oficiale, doar cand exista datele
-const d300Cu = xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06'), { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
-ok('D300 cu declarant: nume/prenume/functie', d300Cu.includes('nume_declar="Popescu"') && d300Cu.includes('prenume_declar="Ion"') && d300Cu.includes('functie_declar="Contabil"'));
-ok('D300 cu declarant ramane bine-format', wellFormed(d300Cu));
-ok('D300 fara declarant: fara atribute', !xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06')).includes('nume_declar'));
+// D300 pe schema OFICIALA v12 — validata cu DUKIntegrator (scripts/valideaza-duk.sh):
+// forma plata (atribute pe radacina), valori in lei intregi, suma de control + nr_evid.
+const d300v12 = xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06'), { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
+ok('D300 bine-format', wellFormed(d300v12));
+ok('D300 pe namespace-ul curent v12', d300v12.includes('xmlns="mfp:anaf:dgti:d300:declaratie:v12"'));
+ok('D300: livrari 21% pe randul 9 (lei intregi)', d300v12.includes('R9_1="14000"') && d300v12.includes('R9_2="2940"'));
+ok('D300: achizitii 21% pe randul 22', d300v12.includes('R22_1="10000"') && d300v12.includes('R22_2="2100"'));
+ok('D300: total colectata (R17) si deductibila (R27)', d300v12.includes('R17_2="2940"') && d300v12.includes('R27_2="2100"'));
+ok('D300: TVA de plata pe R41 (2940-2100)', d300v12.includes('R41_2="840"'));
+ok('D300: suma de control totalPlata_A', d300v12.includes('totalPlata_A="64800"'));
+// nr_evid pe 23 de cifre cu structura oficiala: 10 + 301(L) + 01 + LLAA + scadenta 25 + 0000 + ctl
+const nrEvid = (d300v12.match(/nr_evid="(\d+)"/) || [])[1] || '';
+eq('D300: nr_evid are 23 de cifre', nrEvid.length, 23);
+ok('D300: nr_evid incepe cu 10-301-01 si perioada 0626', nrEvid.startsWith('103010106'));
+ok('D300: firma completa in antet (banca/cont/caen/tip_decont)', d300v12.includes('banca="Banca Exemplu"') && d300v12.includes('caen="1071"') && d300v12.includes('tip_decont="L"'));
+ok('D300 cu declarant: nume/prenume/functie', d300v12.includes('nume_declar="Popescu"') && d300v12.includes('prenume_declar="Ion"') && d300v12.includes('functie_declar="Contabil"'));
+// fara declarant explicit, atributele obligatorii primesc valoarea implicita (schema le cere)
+ok('D300 fara declarant: implicit Administrator', xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06')).includes('nume_declar="Administrator"'));
 ok('D394 bine-format', wellFormed(xml.d394Xml(v.company, '2026-06', vj)));
 // defalcare pe cote
 eq('o singura cota la vanzari (21%)', vj.coteV.length, 1);
@@ -272,8 +284,9 @@ eq('doua cote dupa adaugarea unei vanzari 11%', vjMix.coteV.length, 2);
 eq('TVA la cota 11%', (vjMix.coteV.find((c) => c.cota === 11) || {}).tva, 110);
 const d300xmlMix = xml.d300Xml(v.company, '2026-06', rep.d300(vMix, '2026-06'));
 ok('D300 XML cu cote ramane bine-format', wellFormed(d300xmlMix));
-ok('D300 XML are rand cota 21 (rd=1)', /rd="1" cota="21"/.test(d300xmlMix));
-ok('D300 XML are rand cota 11 (rd=2)', /rd="2" cota="11"/.test(d300xmlMix));
+ok('D300 XML: cota 21 pe randul 9', /R9_1="14000"/.test(d300xmlMix) && /R9_2="2940"/.test(d300xmlMix));
+ok('D300 XML: cota 11 pe randul 10', /R10_1="1000"/.test(d300xmlMix) && /R10_2="110"/.test(d300xmlMix));
+ok('D300 XML: totalul colectat insumeaza cotele (R17)', /R17_2="3050"/.test(d300xmlMix));
 const d394xmlMix = xml.d394Xml(v.company, '2026-06', vjMix);
 ok('D394 XML cu cote ramane bine-format', wellFormed(d394xmlMix));
 ok('D394 XML are rezumat pe cote', /<rezumat_cote>/.test(d394xmlMix));
