@@ -319,67 +319,146 @@ ${asigurati}
 `;
 }
 
-/** D394 — declaratie informativa (structura ANAF, agregare pe partener).
- *  `pf` (optional): achizitiile de la producatori agricoli PF pe baza de fila de carnet /
- *  borderou — apar in sectiunea dedicata <achizitii_pf_carnet>. */
+/** D394 — declaratie informativa pe schema OFICIALA v5 (mfp:anaf:dgti:d394:declaratie:v5).
+ *  Structura: atribute pe radacina (identificare + suma de control), apoi <informatii>
+ *  (contoare + TVA pe cote), <rezumat1> (pe tip partener x cota), <rezumat2> (pe cota),
+ *  <op1> (detaliu pe partener). Valori in LEI INTREGI. Operatiunile fara CUI de partener
+ *  nu intra in detaliu (D394 e lista B2B pe CUI); achizitiile de la producatori PF pe fila
+ *  de carnet (`pf`) intra ca op1 tip="N" cu tip_partener=2.
+ *  Verificare oficiala: scripts/valideaza-duk.sh D394 fisier.xml */
 function d394Xml(company, period, vj, who, pf) {
   const { an, luna } = ym(period);
-  const agg = (rows) => {
-    const map = new Map();
-    for (const r of rows) {
-      const key = (r.cui || r.partener || '-').toUpperCase();
-      const e = map.get(key) || { cui: r.cui || '', den: r.partener || '', baza: 0, tva: 0, nr: 0, cote: {} };
-      e.baza = round2(e.baza + r.baza); e.tva = round2(e.tva + r.tva); e.nr += 1;
-      const cota = r.baza > 0 && r.tva > 0 ? Math.round((r.tva / r.baza) * 100) : 0;
-      e.cote[cota] = e.cote[cota] || { baza: 0, tva: 0 };
-      e.cote[cota].baza = round2(e.cote[cota].baza + r.baza); e.cote[cota].tva = round2(e.cote[cota].tva + r.tva);
-      if (!e.den && r.partener) e.den = r.partener;
-      map.set(key, e);
+  const lei = (v) => String(Math.round(Number(v) || 0));
+  const cuiDigits = (c) => String(c || '').replace(/^ro/i, '').replace(/\s/g, '');
+  // agregare op1 pe (tip, partener, cota); taxarea inversa are tipuri proprii (V/C)
+  const ops = new Map();
+  const addOp = (tip, tp, cota, cui, den, baza, tva, nrDoc) => {
+    const k = tip + '|' + cui + '|' + cota;
+    const e = ops.get(k) || { tip, tp, cota, cui, den, nr: 0, baza: 0, tva: 0 };
+    e.nr += nrDoc || 1; e.baza += baza; e.tva += tva || 0;
+    if (!e.den && den) e.den = den;
+    ops.set(k, e);
+  };
+  for (const r of vj.vanzari || []) {
+    const cui = cuiDigits(r.cui); if (!cui) continue;
+    addOp(r.taxareInversa ? 'V' : 'L', 1, r.cota, cui, r.partener, r.baza, r.tva);
+  }
+  for (const r of vj.cumparari || []) {
+    const cui = cuiDigits(r.cui); if (!cui) continue;
+    addOp(r.taxareInversa ? 'C' : 'A', 1, r.cota, cui, r.partener, r.baza, r.tva);
+  }
+  for (const r of (pf && pf.rows) || []) addOp('N', 2, 0, r.cnp || '', r.partener, r.total, 0, r.nr);
+  const opList = [...ops.values()];
+  // rezumat1: totaluri pe (tip_partener, cota), cu coloane pe tipul operatiunii
+  const rez1 = new Map();
+  for (const o of opList) {
+    const k = o.tp + '|' + o.cota;
+    const e = rez1.get(k) || { tp: o.tp, cota: o.cota, L: null, V: null, A: null, C: null, N: null };
+    e[o.tip] = e[o.tip] || { nr: 0, baza: 0, tva: 0 };
+    e[o.tip].nr += o.nr; e[o.tip].baza += o.baza; e[o.tip].tva += o.tva;
+    rez1.set(k, e);
+  }
+  const rez1Xml = [...rez1.values()].map((e) => {
+    const z = { nr: 0, baza: 0, tva: 0 };
+    let a = `tip_partener="${e.tp}" cota="${e.cota}"`;
+    // pentru tip_partener 1/3/4 cu cota <> 0, coloanele L/A/AI/C sunt OBLIGATORII,
+    // chiar si pe zero (regulile R40-R58 din validator)
+    if (e.cota !== 0 && [1, 3, 4].includes(e.tp)) {
+      const L = e.L || z; a += ` facturiL="${L.nr}" bazaL="${lei(L.baza)}" tvaL="${lei(L.tva)}"`;
+      if (e.V) a += ` facturiV="${e.V.nr}" bazaV="${lei(e.V.baza)}"`;
+      const A = e.A || z; a += ` facturiA="${A.nr}" bazaA="${lei(A.baza)}" tvaA="${lei(A.tva)}"`;
+      const ai = e.AI || z; a += ` facturiAI="${ai.nr}" bazaAI="${lei(ai.baza)}" tvaAI="${lei(ai.tva)}"`;
+      const c = e.C || z; a += ` facturiC="${c.nr}" bazaC="${lei(c.baza)}" tvaC="${lei(c.tva)}"`;
+    } else {
+      if (e.L) a += ` facturiL="${e.L.nr}" bazaL="${lei(e.L.baza)}" tvaL="${lei(e.L.tva)}"`;
+      if (e.V) a += ` facturiV="${e.V.nr}" bazaV="${lei(e.V.baza)}"`;
+      if (e.A) a += ` facturiA="${e.A.nr}" bazaA="${lei(e.A.baza)}" tvaA="${lei(e.A.tva)}"`;
+      if (e.C) a += ` facturiC="${e.C.nr}" bazaC="${lei(e.C.baza)}" tvaC="${lei(e.C.tva)}"`;
     }
-    return [...map.values()];
+    if (e.N) {
+      // achizitii de la PF (document_N=1 fila carnet): coloanele LS obligatorii (R41/R42)
+      // + detaliul pe nomenclatorul de bunuri (R35), oglinda op11 (codPR 35 = alte produse)
+      a += ` facturiLS="0" bazaLS="0" facturiN="${e.N.nr}" document_N="1" bazaN="${lei(e.N.baza)}"`;
+      return `  <rezumat1 ${a}>\n    <detaliu bun="35" nrN="${e.N.nr}" valN="${lei(e.N.baza)}"/>\n  </rezumat1>`;
+    }
+    return `  <rezumat1 ${a}/>`;
+  }).join('\n');
+  // rezumat2: totaluri pe cota (facturile simplificate nu sunt urmarite separat => 0)
+  const cote = [...new Set(opList.filter((o) => 'LA'.includes(o.tip)).map((o) => o.cota))].sort((a, b) => b - a).slice(0, 5);
+  const rez2Of = (cota) => {
+    const t = { nrL: 0, bazaL: 0, tvaL: 0, nrA: 0, bazaA: 0, tvaA: 0 };
+    for (const o of opList) {
+      if (o.cota !== cota) continue;
+      if (o.tip === 'L') { t.nrL += o.nr; t.bazaL += o.baza; t.tvaL += o.tva; }
+      if (o.tip === 'A') { t.nrA += o.nr; t.bazaA += o.baza; t.tvaA += o.tva; }
+    }
+    return t;
   };
-  const part = (p) => {
-    const cote = Object.keys(p.cote).sort((a, b) => b - a).map((c) =>
-      `      <cota cota="${c}" baza="${num2(p.cote[c].baza)}" tva="${num2(p.cote[c].tva)}"/>`).join('\n');
-    return `    <partener cui="${esc(p.cui)}" den="${esc(p.den)}" nr_facturi="${p.nr}" baza="${num2(p.baza)}" tva="${num2(p.tva)}">
-${cote}
-    </partener>`;
-  };
-  const liv = agg(vj.vanzari).map(part).join('\n');
-  const ach = agg(vj.cumparari).map(part).join('\n');
-  const cote = (list) => (list || []).map((c) => `    <rand cota="${c.cota}" baza="${num2(c.baza)}" tva="${num2(c.tva)}"/>`).join('\n');
+  const rez2 = cote.map((c) => ({ cota: c, t: rez2Of(c) }));
+  const rez2Xml = rez2.map(({ cota, t }) =>
+    `  <rezumat2 cota="${cota}" bazaFSLcod="0" TVAFSLcod="0" bazaFSL="0" TVAFSL="0" bazaFSA="0" TVAFSA="0" bazaFSAI="0" TVAFSAI="0" bazaBFAI="0" TVABFAI="0"`
+    + ` nrFacturiL="${t.nrL}" bazaL="${lei(t.bazaL)}" tvaL="${lei(t.tvaL)}" nrFacturiA="${t.nrA}" bazaA="${lei(t.bazaA)}" tvaA="${lei(t.tvaA)}"`
+    + ` nrFacturiAI="0" bazaAI="0" tvaAI="0" baza_incasari_i1="0" tva_incasari_i1="0" baza_incasari_i2="0" tva_incasari_i2="0" bazaL_PF="0" tvaL_PF="0"/>`).join('\n');
+  // informatii: contoare de parteneri pe tip + TVA colectata/dedusa pe cote
+  const nrCui = [1, 2, 3, 4].map((tp) => new Set(opList.filter((o) => o.tp === tp).map((o) => o.cui)).size);
+  const tvaCote = { col: {}, ded: {} };
+  for (const o of opList) {
+    if (o.tip === 'L') tvaCote.col[o.cota] = (tvaCote.col[o.cota] || 0) + o.tva;
+    if (o.tip === 'A') tvaCote.ded[o.cota] = (tvaCote.ded[o.cota] || 0) + o.tva;
+  }
+  // tvaCol/tvaDed pe cote se completeaza DOAR la sistemul de TVA la incasare (R135B/R143B);
+  // atunci insa TOATE cotele sunt obligatorii, si cele fara operatiuni (pe zero) — R135-R146
+  const tvaAttr = !company.tvaLaIncasare ? '' : ['col', 'ded'].map((f) => [24, 21, 20, 19, 11, 9, 5]
+    .map((c) => ` tva${f === 'col' ? 'Col' : 'Ded'}${c}="${lei(tvaCote[f][c] || 0)}"`).join('')).join('');
+  const nrFacturi = opList.filter((o) => o.tip === 'L' || o.tip === 'V').reduce((s, o) => s + o.nr, 0);
+  // serieFacturi tip=2 (facturi emise): plaja pe fiecare serie, derivata din documentele emise
+  // (regula R131: nrFacturi > 0 <=> exista serieFacturi cu tip 2)
+  const serii = new Map();
+  for (const r of vj.vanzari || []) {
+    const m = String(r.document || '').trim().match(/^(.*?)\s*(\d+)$/);
+    const serie = m ? m[1].trim() : String(r.document || '').trim();
+    const nr = m ? Number(m[2]) : null;
+    const e = serii.get(serie) || { min: nr, max: nr };
+    if (nr != null) { e.min = e.min == null ? nr : Math.min(e.min, nr); e.max = e.max == null ? nr : Math.max(e.max, nr); }
+    serii.set(serie, e);
+  }
+  // regula R112: emisele (tip 2) cer si plaja alocata (tip 1) — o emitem identica cu plaja emisa
+  const seriiXml = nrFacturi === 0 ? '' : [...serii.entries()].map(([serie, e]) => ['1', '2'].map((tip) =>
+    `  <serieFacturi tip="${tip}"${serie ? ` serieI="${esc(serie)}"` : ''} nrI="${e.min != null ? e.min : 1}"${e.max != null ? ` nrF="${e.max}"` : ''}/>`).join('\n')).join('\n');
+  const zeroAI = [24, 21, 11, 20, 19, 9, 5].map((c) => ` tvaDedAI${c}="0"`).join('');
+  // suma de control (formula oficiala): parteneri + bazele din rezumat2
+  const sumaControl = nrCui.reduce((s, n) => s + n, 0)
+    + rez2.reduce((s, { t }) => s + Math.round(t.bazaL) + Math.round(t.bazaA), 0);
+  const op1Xml = opList.map((o) => {
+    const attrs = `tip="${o.tip}" tip_partener="${o.tp}" cota="${o.cota}"${o.cui ? ` cuiP="${esc(o.cui)}"` : ''} denP="${esc(o.den || '-')}"`
+      + `${o.tip === 'N' ? ' tip_document="1"' : ''} nrFact="${o.nr}" baza="${lei(o.baza)}"${o.tip === 'L' || o.tip === 'A' || o.tip === 'C' ? ` tva="${lei(o.tva)}"` : ''}`;
+    // achizitiile de la PF (tip N) cer detaliul op11 pe categorii de produse (R233.6);
+    // fara categorie in datele-sursa, totul intra la codPR 35 (alte produse)
+    if (o.tip !== 'N') return `  <op1 ${attrs}/>`;
+    return `  <op1 ${attrs}>\n    <op11 nrFactPR="${o.nr}" codPR="35" bazaPR="${lei(o.baza)}"/>\n  </op1>`;
+  }).join('\n');
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '', functie: 'Administrator' };
+  const numeIntocmit = [w.prenume, w.nume].filter(Boolean).join(' ') || 'Administrator';
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
+  const cui = cuiDigits(company.cui);
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- D394 (recapitulatie) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->
-<declaratie394 xmlns="mfp:anaf:dgti:d394:declaratie:v2"
-  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
-  luna="${esc(luna)}" an="${esc(an)}"${declarant(who)}>
-  <rezumat_cote>
-    <livrari>
-${cote(vj.coteV) || '      <!-- - -->'}
-    </livrari>
-    <achizitii>
-${cote(vj.coteC) || '      <!-- - -->'}
-    </achizitii>
-  </rezumat_cote>
-  <livrari total_baza="${num2(vj.totals.bazaV)}" total_tva="${num2(vj.totals.colectata)}">
-${liv || '    <!-- fara livrari -->'}
-  </livrari>
-  <achizitii total_baza="${num2(vj.totals.bazaC)}" total_tva="${num2(vj.totals.deductibila)}">
-${ach || '    <!-- fara achizitii -->'}
-  </achizitii>
-${pfCarnet(pf)}</declaratie394>
-`;
-}
-
-/** Sectiunea D394 pentru achizitiile de la persoane fizice pe baza de borderou / fila din
- *  carnetul de comercializare a produselor agricole (Legea 145/2014) — fara TVA. */
-function pfCarnet(pf) {
-  if (!pf || !pf.rows || !pf.rows.length) return '';
-  const rows = pf.rows.map((r) =>
-    `    <producator nume="${esc(r.partener)}" cnp="${esc(r.cnp || '')}" nr_documente="${r.nr}" valoare="${num2(r.total)}" tip_doc="${esc(r.tipDoc || 'fila carnet')}"/>`).join('\n');
-  return `  <achizitii_pf_carnet total="${num2(pf.total)}" nr_producatori="${pf.rows.length}">
-${rows}
-  </achizitii_pf_carnet>
+<!-- D394 v5 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D394 fisier.xml -->
+<declaratie394 xmlns="mfp:anaf:dgti:d394:declaratie:v5"
+  luna="${esc(luna)}" an="${esc(an)}" tip_D394="${esc(company.perioadaTva || 'L')}"
+  sistemTVA="${company.tvaLaIncasare ? 1 : 0}" op_efectuate="${opList.length ? 1 : 0}"
+  cui="${esc(cui)}" caen="${esc(company.caen || '0000')}" den="${esc(company.nume)}"
+  adresa="${esc(adresa || '-')}" telefon="${esc(company.telefon || '-')}"
+  totalPlata_A="${lei(sumaControl)}"
+  denR="${esc(numeIntocmit)}" functie_reprez="${esc(w.functie || 'Administrator')}" adresaR="${esc(adresa || '-')}"
+  tip_intocmit="0" den_intocmit="${esc(numeIntocmit)}" cif_intocmit="${esc(cui)}" calitate_intocmit="${esc(w.functie || 'Administrator')}"
+  optiune="0" prsAfiliat="0">
+  <informatii nrCui1="${nrCui[0]}" nrCui2="${nrCui[1]}" nrCui3="${nrCui[2]}" nrCui4="${nrCui[3]}"
+    nr_BF_i1="0" incasari_i1="0" incasari_i2="0" nrFacturi_terti="0" nrFacturi_benef="0"
+    nrFacturi="${nrFacturi}" nrFacturiL_PF="0" nrFacturiLS_PF="0" val_LS_PF="0"${zeroAI}${tvaAttr} solicit="0"/>
+${rez1Xml}
+${rez2Xml}${seriiXml ? '\n' + seriiXml : ''}
+${op1Xml}
+</declaratie394>
 `;
 }
 
