@@ -259,21 +259,29 @@ function assetsXml(db, year) {
       `        <AssetID>${esc(a.id)}</AssetID>`,
       `        <AccountID>${esc(a.cont)}</AccountID>`,
       `        <Description>${esc(a.denumire)}</Description>`,
-      `        <SupplierName>${esc(a.furnizor || 'N/A')}</SupplierName>`,
       `        <DateOfAcquisition>${esc(a.dataAchizitie || a.dataPif)}</DateOfAcquisition>`,
       `        <StartUpDate>${esc(a.dataPif)}</StartUpDate>`,
-      `        <AssetLifeNumberOfYear>${num2((a.durataLuni || 0) / 12)}</AssetLifeNumberOfYear>`,
-      '        <AssetValuations>',
-      '          <AssetValuation>',
+      '        <Valuations>',
+      '          <Valuation>',
       '            <AssetValuationType>CST</AssetValuationType>',
+      '            <ValuationClass>CST</ValuationClass>',
       `            <AcquisitionAndProductionCostsBegin>${num2(a.cost)}</AcquisitionAndProductionCostsBegin>`,
       `            <AcquisitionAndProductionCostsEnd>${num2(a.cost)}</AcquisitionAndProductionCostsEnd>`,
+      '            <InvestmentSupport>0.00</InvestmentSupport>',
+      `            <AssetLifeMonth>${a.durataLuni || 0}</AssetLifeMonth>`,
+      '            <AssetAddition>0.00</AssetAddition>',
+      '            <Transfers>0.00</Transfers>',
+      '            <AssetDisposal>0.00</AssetDisposal>',
+      `            <BookValueBegin>${num2(a.cost)}</BookValueBegin>`,
       `            <DepreciationMethod>${a.metoda === 'degresiva' ? 'D' : a.metoda === 'accelerata' ? 'A' : 'L'}</DepreciationMethod>`,
+      '            <DepreciationPercentage>0.00</DepreciationPercentage>',
       `            <DepreciationForPeriod>${num2(depYear)}</DepreciationForPeriod>`,
+      '            <AppreciationForPeriod>0.00</AppreciationForPeriod>',
+      '            <ExtraordinaryDepreciationsForPeriod><ExtraordinaryDepreciationForPeriod><ExtraordinaryDepreciationMethod>-</ExtraordinaryDepreciationMethod><ExtraordinaryDepreciationAmountForPeriod>0.00</ExtraordinaryDepreciationAmountForPeriod></ExtraordinaryDepreciationForPeriod></ExtraordinaryDepreciationsForPeriod>',
       `            <AccumulatedDepreciation>${num2(cEnd.amortizareCumulata)}</AccumulatedDepreciation>`,
-      `            <BookValue>${num2(cEnd.valoareRamasa)}</BookValue>`,
-      '          </AssetValuation>',
-      '        </AssetValuations>',
+      `            <BookValueEnd>${num2(cEnd.valoareRamasa)}</BookValueEnd>`,
+      '          </Valuation>',
+      '        </Valuations>',
       '      </Asset>',
     );
   });
@@ -289,7 +297,7 @@ function productsXml(db) {
       `        <ProductCode>${esc(p.cod)}</ProductCode>`,
       `        <ProductGroup>${esc(p.grupa || 'Marfuri')}</ProductGroup>`,
       `        <Description>${esc(p.denumire)}</Description>`,
-      `        <ProductNumberCode>${esc(p.codNC || p.cod)}</ProductNumberCode>`,
+      `        <ProductCommodityCode>${esc(p.codNC || p.cod)}</ProductCommodityCode>`,
       '        <ValuationMethod>CMP</ValuationMethod>',
       `        <UOMBase>${esc(p.um || 'buc')}</UOMBase>`,
       `        <UOMStandard>${esc(p.um || 'buc')}</UOMStandard>`,
@@ -306,15 +314,23 @@ function physicalStockXml(db, year) {
   const out = ['    <PhysicalStock>'];
   for (const s of stock) {
     out.push(
-      '      <Product>',
+      '      <PhysicalStockEntry>',
       `        <WarehouseID>${esc((s.gestiune && s.gestiune.cod) || 'GEST')}</WarehouseID>`,
       `        <ProductCode>${esc(s.product.cod)}</ProductCode>`,
-      `        <StockAccountID>${esc(s.product.cont || '371')}</StockAccountID>`,
-      `        <ClosingStockQuantity>${num2(s.stocQ)}</ClosingStockQuantity>`,
-      `        <UnitOfMeasure>${esc(s.product.um || 'buc')}</UnitOfMeasure>`,
-      `        <ClosingStockValue>${num2(s.stocV)}</ClosingStockValue>`,
+      `        <StockAccountNo>${esc(s.product.cont || '371')}</StockAccountNo>`,
+      '        <ProductType>P</ProductType>',
+      '        <ProductStatus>IN_STOCK</ProductStatus>',
+      '        <StockAccountCommodityCode>0</StockAccountCommodityCode>',
+      '        <OwnerID>1</OwnerID>',
+      `        <UOMPhysicalStock>${esc(s.product.um || 'buc')}</UOMPhysicalStock>`,
+      '        <UOMToUOMBaseConversionFactor>1</UOMToUOMBaseConversionFactor>',
       `        <UnitPrice>${num2(s.cmp)}</UnitPrice>`,
-      '      </Product>',
+      '        <OpeningStockQuantity>0.00</OpeningStockQuantity>',
+      '        <OpeningStockValue>0.00</OpeningStockValue>',
+      `        <ClosingStockQuantity>${num2(s.stocQ)}</ClosingStockQuantity>`,
+      `        <ClosingStockValue>${num2(s.stocV)}</ClosingStockValue>`,
+      '        <StockCharacteristics><StockCharacteristic>-</StockCharacteristic><StockCharacteristicValue>-</StockCharacteristicValue></StockCharacteristics>',
+      '      </PhysicalStockEntry>',
     );
   }
   out.push('    </PhysicalStock>');
@@ -361,14 +377,11 @@ function ownersXml(db) {
   const rows = String(c.asociatiText || '').trim()
     ? String(c.asociatiText).trim().split(/\r?\n/).map((l) => l.split(';').map((s) => s.trim())).filter((a) => a[0])
     : (c.tipEntitate === 'pfa' ? [[c.nume || 'Titular', String(c.cui || ''), '100']] : []);
-  if (!rows.length) return '';
+  if (!rows.length) rows.push([c.nume || 'Titular', String(c.cui || ''), '100']);
   const out = ['    <Owners>'];
   rows.forEach((a, i) => out.push('      <Owner>',
     `        <OwnerID>${i + 1}</OwnerID>`,
     `        <AccountID>456</AccountID>`,
-    `        <RegistrationNumber>${esc(a[1] || '')}</RegistrationNumber>`,
-    `        <Name>${esc(a[0])}</Name>`,
-    `        <SharesQuantity>${esc((a[2] || '').replace('%', ''))}</SharesQuantity>`,
     '      </Owner>'));
   out.push('    </Owners>');
   return out.join('\n');
@@ -384,10 +397,11 @@ function masterFiles(db, year) {
     taxTable(),
     uomTable(db),
     '    <AnalysisTypeTable/>',
+    movementTypeTable(),
     productsXml(db),
-    assetsXml(db, year),
     physicalStockXml(db, year),
     ownersXml(db),
+    assetsXml(db, year),
     '  </MasterFiles>',
   ].filter(Boolean).join('\n');
 }
@@ -411,12 +425,15 @@ function movementOfGoodsXml(db, year) {
       `          <MovementType>${type}</MovementType>`,
       '          <StockMovementLine>',
       `            <LineNumber>${i + 1}</LineNumber>`,
+      '            <AccountID>371</AccountID>',
+      '            <CustomerID>00</CustomerID>',
+      '            <SupplierID>00</SupplierID>',
       `            <ProductCode>${esc(p.cod || m.productId)}</ProductCode>`,
-      `            <Description>${esc(p.denumire || '')}</Description>`,
       `            <Quantity>${num2(c)}</Quantity>`,
       `            <UnitOfMeasure>${esc(p.um || 'buc')}</UnitOfMeasure>`,
-      `            <WarehouseID>${esc(wh)}</WarehouseID>`,
-      ...(m.tip === 'transfer' ? [`            <WarehouseIDTo>${esc(gCod.get(m.gestiuneDestId) || 'GEST')}</WarehouseIDTo>`] : []),
+      '            <UOMToUOMPhysicalStockConversionFactor>1</UOMToUOMPhysicalStockConversionFactor>',
+      `            <BookValue>${num2((m.cantitate || 0) * (m.pretUnitar || 0))}</BookValue>`,
+      '            <MovementSubType>-</MovementSubType>',
       '          </StockMovementLine>',
       '        </StockMovement>',
     );
@@ -441,21 +458,27 @@ function glTx(e, year) {
   for (const l of e.lines) {
     rec += 1;
     lines.push(
-      '          <Line>',
+      '          <TransactionLine>',
       `            <RecordID>${esc(e.id)}-${rec}D</RecordID>`,
       `            <AccountID>${esc(l.debit)}</AccountID>`,
+      `            <CustomerID>${esc('00' + String(e.partenerCui || '').replace(/^ro/i, '').replace(/\s/g, ''))}</CustomerID>`,
+      `            <SupplierID>${esc('00' + String(e.partenerCui || '').replace(/^ro/i, '').replace(/\s/g, ''))}</SupplierID>`,
       `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
-      `            <DebitAmount><Amount>${num2(l.suma)}</Amount></DebitAmount>`,
-      '          </Line>',
+      `            <DebitAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></DebitAmount>`,
+      '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+      '          </TransactionLine>',
     );
     rec += 1;
     lines.push(
-      '          <Line>',
+      '          <TransactionLine>',
       `            <RecordID>${esc(e.id)}-${rec}C</RecordID>`,
       `            <AccountID>${esc(l.credit)}</AccountID>`,
+      `            <CustomerID>${esc('00' + String(e.partenerCui || '').replace(/^ro/i, '').replace(/\s/g, ''))}</CustomerID>`,
+      `            <SupplierID>${esc('00' + String(e.partenerCui || '').replace(/^ro/i, '').replace(/\s/g, ''))}</SupplierID>`,
       `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
-      `            <CreditAmount><Amount>${num2(l.suma)}</Amount></CreditAmount>`,
-      '          </Line>',
+      `            <CreditAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></CreditAmount>`,
+      '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+      '          </TransactionLine>',
     );
   }
   return [
@@ -467,6 +490,8 @@ function glTx(e, year) {
     `          <Description>${esc(e.tipNume + (e.document ? ' ' + e.document : ''))}</Description>`,
     `          <SystemEntryDate>${sysDate}</SystemEntryDate>`,
     `          <GLPostingDate>${sysDate}</GLPostingDate>`,
+    `          <CustomerID>${esc('00' + String(e.partenerCui || '').replace(/^ro/i, '').replace(/\s/g, ''))}</CustomerID>`,
+    `          <SupplierID>${esc('00' + String(e.partenerCui || '').replace(/^ro/i, '').replace(/\s/g, ''))}</SupplierID>`,
     lines.join('\n'),
     '        </Transaction>',
   ];
@@ -571,42 +596,42 @@ function invoiceXml(e, kind, partyTag, partyIdTag, partyId, defaultAccount) {
     addressXml({}, '            '),
     '            <AddressType>StreetAddress</AddressType>',
     '          </BillingAddress>',
-    `          <AccountID>${defaultAccount}</AccountID>`,
     `        </${partyTag}>`,
+    `        <AccountID>${defaultAccount}</AccountID>`,
     `        <Period>${month}</Period>`,
     `        <InvoiceDate>${date}</InvoiceDate>`,
     `        <InvoiceType>${invType}</InvoiceType>`,
     '        <SelfBillingIndicator>0</SelfBillingIndicator>',
-    `        <SystemEntryDate>${date}</SystemEntryDate>`,
+    `        <GLPostingDate>${date}</GLPostingDate>`,
     `        <TransactionID>${esc(e.id)}</TransactionID>`,
   ];
   for (const l of data.lines) {
     out.push(
-      '        <Line>',
+      '        <InvoiceLine>',
       `          <LineNumber>${l.n}</LineNumber>`,
       `          <AccountID>${esc(l.acc)}</AccountID>`,
       `          <ProductDescription>${esc(l.desc)}</ProductDescription>`,
       `          <Quantity>${num2(l.qty)}</Quantity>`,
-      `          <UnitOfMeasure>${esc(l.um)}</UnitOfMeasure>`,
+      `          <InvoiceUOM>${esc(l.um)}</InvoiceUOM>`,
       `          <UnitPrice>${num2(l.price)}</UnitPrice>`,
       `          <TaxPointDate>${date}</TaxPointDate>`,
       `          <Description>${esc(l.desc)}</Description>`,
-      `          <${amtTag}><Amount>${num2(l.amount)}</Amount></${amtTag}>`,
-      '          <Tax>',
+      `          <InvoiceLineAmount><Amount>${num2(l.amount)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></InvoiceLineAmount>`,
+      `          <DebitCreditIndicator>${amtTag === 'DebitAmount' ? 'D' : 'C'}</DebitCreditIndicator>`,
+      '          <TaxInformation>',
       '            <TaxType>300</TaxType>',
       `            <TaxCode>${l.cota >= 19 ? 'S' : l.cota > 0 ? 'R' : 'Z'}</TaxCode>`,
       `            <TaxPercentage>${num2(l.cota)}</TaxPercentage>`,
-      `            <TaxAmount><Amount>${num2(l.tax)}</Amount></TaxAmount>`,
-      '          </Tax>',
-      '        </Line>',
+      `            <TaxAmount><Amount>${num2(l.tax)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount>`,
+      '          </TaxInformation>',
+      '        </InvoiceLine>',
     );
   }
   out.push(
-    '        <DocumentTotals>',
-    `          <TaxPayable>${num2(data.tax)}</TaxPayable>`,
+    '        <InvoiceDocumentTotals>',
     `          <NetTotal>${num2(data.net)}</NetTotal>`,
     `          <GrossTotal>${num2(data.total)}</GrossTotal>`,
-    '        </DocumentTotals>',
+    '        </InvoiceDocumentTotals>',
     '      </Invoice>',
   );
   return { xml: out.join('\n'), net: data.net };
@@ -633,27 +658,34 @@ function paymentsXml(db, year) {
       totalD = round2(totalD + l.suma); totalC = round2(totalC + l.suma);
       rec += 1;
       lines.push(
-        '          <Line>',
+        '          <PaymentLine>',
         `            <LineNumber>${rec}</LineNumber>`,
         `            <AccountID>${esc(l.debit)}</AccountID>`,
+        '            <CustomerID>00</CustomerID>',
+        '            <SupplierID>00</SupplierID>',
         `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
-        `            <DebitAmount><Amount>${num2(l.suma)}</Amount></DebitAmount>`,
-        '          </Line>',
+        '            <DebitCreditIndicator>D</DebitCreditIndicator>',
+        `            <PaymentLineAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></PaymentLineAmount>`,
+        '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+        '          </PaymentLine>',
       );
       rec += 1;
       lines.push(
-        '          <Line>',
+        '          <PaymentLine>',
         `            <LineNumber>${rec}</LineNumber>`,
         `            <AccountID>${esc(l.credit)}</AccountID>`,
+        '            <CustomerID>00</CustomerID>',
+        '            <SupplierID>00</SupplierID>',
         `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
-        `            <CreditAmount><Amount>${num2(l.suma)}</Amount></CreditAmount>`,
-        '          </Line>',
+        '            <DebitCreditIndicator>C</DebitCreditIndicator>',
+        `            <PaymentLineAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></PaymentLineAmount>`,
+        '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+        '          </PaymentLine>',
       );
     }
     const total = round2(e.lines.reduce((s, l) => s + l.suma, 0));
     out.push(
       '        <Payment>',
-      `          <PaymentRefNo>${esc(e.document || e.id)}</PaymentRefNo>`,
       `          <PaymentRefNo>${esc(e.document || e.id)}</PaymentRefNo>`,
       `          <Period>${month}</Period>`,
       `          <PeriodYear>${String(e.data || '').slice(0, 4)}</PeriodYear>`,
@@ -662,11 +694,214 @@ function paymentsXml(db, year) {
       `          <PaymentMethod>${paymentMethod(e)}</PaymentMethod>`,
       `          <Description>${esc(e.tipNume + (e.partener ? ' - ' + e.partener : ''))}</Description>`,
       lines.join('\n'),
-      '          <DocumentTotals>',
-      `            <TaxPayable>0.00</TaxPayable>`,
+      '          <PaymentDocumentTotals>',
       `            <NetTotal>${num2(total)}</NetTotal>`,
       `            <GrossTotal>${num2(total)}</GrossTotal>`,
-      '          </DocumentTotals>',
+      '          </PaymentDocumentTotals>',
+      '        </Payment>',
+    );
+  }
+  return [
+    '    <Payments>',
+    `      <NumberOfEntries>${pays.length}</NumberOfEntries>`,
+    `      <TotalDebit>${num2(totalD)}</TotalDebit>`,
+    `      <TotalCredit>${num2(totalC)}</TotalCredit>`,
+    out.join('\n'),
+    '    </Payments>',
+  ].join('\n');
+}
+
+function sourceDocuments(db, year) {
+  const roles = partnerRoles(db, year);
+  const idOf = (list) => {
+    const m = new Map();
+    list.forEach((p, i) => m.set((p.den || '').toUpperCase().trim(), 'P' + String(i + 1).padStart(4, '0')));
+    return m;
+  };
+  const custId = idOf(roles.customers);
+  const supId = idOf(roles.suppliers);
+  const within = (db.entries || []).filter((e) => inYear(e, year));
+
+  const block = (tag, filter, kind, partyTag, partyIdTag, idMap, account) => {
+    const invs = within.filter(filter);
+    let net = 0; const xmls = [];
+    for (const e of invs) {
+      const pid = idMap.get((e.partener || '').toUpperCase().trim()) || 'P0001';
+      const r = invoiceXml(e, kind, partyTag, partyIdTag, pid, account);
+      xmls.push(r.xml); net = round2(net + r.net);
+    }
+    return [
+      `    <${tag}>`,
+      `      <NumberOfEntries>${invs.length}</NumberOfEntries>`,
+      `      <TotalDebit>${num2(kind === 'purchase' ? net : 0)}</TotalDebit>`,
+      `      <TotalCredit>${num2(kind === 'sale' ? net : 0)}</TotalCredit>`,
+      xmls.join('\n'),
+      `    </${tag}>`,
+    ].join('\n');
+  };
+
+  return [
+    '  <SourceDocuments>',
+    block('SalesInvoices', (e) => SALE_TIP(e.tip), 'sale', 'CustomerInfo', 'CustomerID', custId, '4111'),
+    block('PurchaseInvoices', (e) => PURCHASE_TIP(e.tip), 'purchase', 'SupplierInfo', 'SupplierID', supId, '401'),
+    paymentsXml(db, year),
+    movementOfGoodsXml(db, year),
+    '  </SourceDocuments>',
+  ].join('\n');
+}
+
+// Varianta asincrona a sourceDocuments: cedeaza in bucla de facturi (blocul dominant din sectiune).
+// Wrapper-ul si invoiceXml sunt aceleasi ca la calea sincrona -> output byte-identic.
+async function sourceDocumentsAsync(db, year) {
+  const roles = partnerRoles(db, year);
+  const idOf = (list) => {
+    const m = new Map();
+    list.forEach((p, i) => m.set((p.den || '').toUpperCase().trim(), 'P' + String(i + 1).padStart(4, '0')));
+    return m;
+  };
+  const custId = idOf(roles.customers);
+  const supId = idOf(roles.suppliers);
+  const within = (db.entries || []).filter((e) => inYear(e, year));
+  const blockAsync = async (tag, filter, kind, partyTag, partyIdTag, idMap, account) => {
+    const invs = within.filter(filter);
+    let net = 0; const xmls = []; let i = 0;
+    for (const e of invs) {
+      const pid = idMap.get((e.partener || '').toUpperCase().trim()) || 'P0001';
+      const r = invoiceXml(e, kind, partyTag, partyIdTag, pid, account);
+      xmls.push(r.xml); net = round2(net + r.net);
+      if ((i += 1) % SAFT_YIELD_EVERY === 0) await microYield();
+    }
+    return [
+      `    <${tag}>`,
+      `      <NumberOfEntries>${invs.length}</NumberOfEntries>`,
+      `      <TotalDebit>${num2(kind === 'purchase' ? net : 0)}</TotalDebit>`,
+      `      <TotalCredit>${num2(kind === 'sale' ? net : 0)}</TotalCredit>`,
+      xmls.join('\n'),
+      `    </${tag}>`,
+    ].join('\n');
+  };
+  const sales = await blockAsync('SalesInvoices', (e) => SALE_TIP(e.tip), 'sale', 'CustomerInfo', 'CustomerID', custId, '4111');
+  const purch = await blockAsync('PurchaseInvoices', (e) => PURCHASE_TIP(e.tip), 'purchase', 'SupplierInfo', 'SupplierID', supId, '401');
+  return [
+    '  <SourceDocuments>',
+    sales,
+    purch,
+    paymentsXml(db, year),
+    movementOfGoodsXml(db, year),
+    '  </SourceDocuments>',
+  ].join('\n');
+}
+
+/** Genereaza fisierul SAF-T (D406) pentru un an. */
+function saftXml(db, year) {
+  const yr = String(year || new Date().getFullYear());
+  const company = db.company || {};
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<AuditFile xmlns="mfp:anaf:dgti:d406t:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    header(company, yr),
+    masterFiles(db, yr),
+    generalLedgerEntries(db, yr),
+    sourceDocuments(db, yr),
+    '</AuditFile>',
+    '',
+  ].join('\n');
+}
+
+/** Varianta ASINCRONA a saftXml: output byte-identic, dar cedeaza event loop-ul periodic in buclele
+ *  grele (GL + facturi) — nu blocheaza celelalte cereri la volume mari. Ruta o foloseste in locul
+ *  celei sincrone; saftXml sincron ramane pentru teste (referinta byte-identica) si apeluri simple. */
+async function saftXmlAsync(db, year) {
+  const yr = String(year || new Date().getFullYear());
+  const company = db.company || {};
+  const gl = await generalLedgerEntriesAsync(db, yr);
+  const sd = await sourceDocumentsAsync(db, yr);
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<AuditFile xmlns="mfp:anaf:dgti:d406t:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    header(company, yr),
+    masterFiles(db, yr),
+    gl,
+    sd,
+    '</AuditFile>',
+    '',
+  ].join('\n');
+}
+
+/** Sumar pentru UI (fara a genera tot XML-ul). */
+function saftSummary(db, year) {
+  const yr = String(year || new Date().getFullYear());
+  const within = (db.entries || []).filter((e) => inYear(e, yr));
+  let total = 0;
+  for (const e of within) for (const l of e.lines) total = round2(total + l.suma);
+  const roles = partnerRoles(db, yr);
+  return {
+    year: yr,
+    accounts: accountBalances(db, yr).length,
+    entries: within.length,
+    totalDebit: total,
+    customers: roles.customers.length,
+    suppliers: roles.suppliers.length,
+    salesInvoices: within.filter((e) => SALE_TIP(e.tip)).length,
+    purchaseInvoices: within.filter((e) => PURCHASE_TIP(e.tip)).length,
+    payments: within.filter((e) => PAYMENT_TIP(e.tip)).length,
+    assets: (db.assets || []).length,
+    products: (db.products || []).length,
+    stockMovements: (db.stockMovements || []).filter((m) => inYear({ data: m.data }, yr)).length,
+  };
+}
+
+module.exports = { saftXml, saftXmlAsync, saftSummary, accountBalances, partnerRoles };function paymentsXml(db, year) {
+  const pays = (db.entries || []).filter((e) => inYear(e, year) && PAYMENT_TIP(e.tip));
+  let totalD = 0; let totalC = 0; const out = [];
+  for (const e of pays) {
+    const date = String(e.data);
+    const month = Number(String(e.period || e.data).slice(5, 7)) || 1;
+    let rec = 0; const lines = [];
+    for (const l of e.lines) {
+      totalD = round2(totalD + l.suma); totalC = round2(totalC + l.suma);
+      rec += 1;
+      lines.push(
+        '          <PaymentLine>',
+        `            <LineNumber>${rec}</LineNumber>`,
+        `            <AccountID>${esc(l.debit)}</AccountID>`,
+        '            <CustomerID>00</CustomerID>',
+        '            <SupplierID>00</SupplierID>',
+        `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
+        '            <DebitCreditIndicator>D</DebitCreditIndicator>',
+        `            <PaymentLineAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></PaymentLineAmount>`,
+        '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+        '          </PaymentLine>',
+      );
+      rec += 1;
+      lines.push(
+        '          <PaymentLine>',
+        `            <LineNumber>${rec}</LineNumber>`,
+        `            <AccountID>${esc(l.credit)}</AccountID>`,
+        '            <CustomerID>00</CustomerID>',
+        '            <SupplierID>00</SupplierID>',
+        `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
+        '            <DebitCreditIndicator>C</DebitCreditIndicator>',
+        `            <PaymentLineAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></PaymentLineAmount>`,
+        '            <TaxInformation><TaxType>300</TaxType><TaxCode>310309</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
+        '          </PaymentLine>',
+      );
+    }
+    const total = round2(e.lines.reduce((s, l) => s + l.suma, 0));
+    out.push(
+      '        <Payment>',
+      `          <PaymentRefNo>${esc(e.document || e.id)}</PaymentRefNo>`,
+      `          <Period>${month}</Period>`,
+      `          <PeriodYear>${String(e.data || '').slice(0, 4)}</PeriodYear>`,
+      `          <TransactionID>${esc(e.id)}</TransactionID>`,
+      `          <TransactionDate>${date}</TransactionDate>`,
+      `          <PaymentMethod>${paymentMethod(e)}</PaymentMethod>`,
+      `          <Description>${esc(e.tipNume + (e.partener ? ' - ' + e.partener : ''))}</Description>`,
+      lines.join('\n'),
+      '          <PaymentDocumentTotals>',
+      `            <NetTotal>${num2(total)}</NetTotal>`,
+      `            <GrossTotal>${num2(total)}</GrossTotal>`,
+      '          </PaymentDocumentTotals>',
       '        </Payment>',
     );
   }
