@@ -71,3 +71,25 @@ Alternative echivalente: HetrixTools, BetterStack (Better Uptime), Pingdom.
 Ține-le pe amândouă: watchdog-ul local repară singur procesul (cazul frecvent),
 monitorul extern acoperă căderea totală a serverului. Împreună = și auto-vindecare,
 și notificare garantată.
+
+## RPO / RTO asumate + exercițiul de restaurare
+
+**RPO (pierdere maximă de date):**
+- local: ≤ 30 s (oglinda JSON e scrisă cu debounce 30 s; baza relațională e sincronă);
+- la dezastru total al mașinii: ≤ 24 h (arhiva zilnică offsite de la 03:30).
+
+**RTO (timp de repunere):** ≤ 30 min — instalare Node + `npm ci`, dezarhivarea ultimei
+arhive offsite, `db.json` → `data/`, `uploads/*` → `data/uploads/`, pornire.
+
+**Backup restaurabil, nu doar creat:** `scripts/backup.js` VERIFICĂ fiecare arhivă după
+creare (se deschide, `db.json` valid cu firmele numărate) și scrie starea în
+`data/backups/last-backup.json` — vizibilă în `/api/metrics` (`ops.ultimulBackup`),
+alături de spațiul liber pe disc. La eșec: alertă pe email + exit 1 (vizibil în cron).
+
+**Offsite criptat:** cu `CONTAB_BACKUP_KEY` setat, copiile offsite (email/rclone) pleacă
+AES-256. Restaurare: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in f.zip.enc -out f.zip -pass env:CONTAB_BACKUP_KEY`.
+
+**Exercițiu de restaurare (trimestrial, manual, ~10 min):** ia ultima arhivă offsite,
+dezarhiveaz-o pe o mașină curată (sau `CONTAB_DATA_DIR` temporar), pornește instanța
+izolată și verifică balanța unei firme contra producției. Restaurarea la nivel de firmă
+(bundle) e testată AUTOMAT la fiecare rulare a suitei HTTP și în CI.

@@ -265,6 +265,23 @@ ok('buffer corupt respins cu 400 (nu crapa)', (() => {
   catch (e) { return e.status === 400; }
 })());
 
+section('backup: verificarea restaurabilitatii arhivei');
+const bkp = require('../src/backup');
+const fsBk = require('fs');
+const zGood = new AdmZipT();
+zGood.addFile('db.json', Buffer.from(JSON.stringify({ firme: [{ id: 1 }], entries: [] })));
+zGood.addFile('contab.sqlite', Buffer.from('sqlite-fals'));
+const tmpZ = path.join(os.tmpdir(), 'bkp-test-' + process.pid + '.zip');
+fsBk.writeFileSync(tmpZ, zGood.toBuffer());
+const vOkB = bkp.verifyArchive(tmpZ);
+ok('arhiva valida: ok cu firmele numarate', vOkB.ok === true && vOkB.firme === 1 && vOkB.sqlite === true);
+const zNoDb = new AdmZipT(); zNoDb.addFile('altceva.txt', Buffer.from('x'));
+fsBk.writeFileSync(tmpZ, zNoDb.toBuffer());
+ok('arhiva fara db.json: respinsa cu motiv', bkp.verifyArchive(tmpZ).ok === false && /db\.json/.test(bkp.verifyArchive(tmpZ).motiv));
+fsBk.writeFileSync(tmpZ, Buffer.from('nu-e-zip'));
+ok('fisier corupt: respins fara crash', bkp.verifyArchive(tmpZ).ok === false);
+fsBk.unlinkSync(tmpZ);
+
 section('e-Factura UBL (factura de vanzare)');
 const facturaVanz = v.entries.find((e) => e.tip === 'factura_vanzare_marfuri');
 const ef = xml.eFacturaXml(v.company, facturaVanz, v.partners);
