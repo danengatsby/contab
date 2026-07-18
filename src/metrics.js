@@ -43,7 +43,24 @@ function snapshot() {
     recentErrors: recentErrors.slice().reverse(), // cele mai noi primele
     jobs: jobsSnapshot(),
     ai: aiSnapshot(),
+    ops: opsSnapshot(),
   };
+}
+
+// ── Operational: spatiul liber pe discul de date + starea ultimului backup VERIFICAT
+// ca restaurabil (scrisa de scripts/backup.js in data/backups/last-backup.json) ──
+function opsSnapshot() {
+  const fs = require('fs');
+  const path = require('path');
+  const out = {};
+  try {
+    const dataDir = process.env.CONTAB_DATA_DIR || path.join(__dirname, '..', 'data');
+    const st = fs.statfsSync(dataDir);
+    out.discLiberMB = Math.round((st.bavail * st.bsize) / 1048576);
+    try { out.ultimulBackup = JSON.parse(fs.readFileSync(path.join(dataDir, 'backups', 'last-backup.json'), 'utf8')); }
+    catch (_) { out.ultimulBackup = null; }
+  } catch (e) { out.eroare = e.message; }
+  return out;
 }
 
 // ── Extragerile AI (cost extern per apel — contorizate separat de rutele HTTP, ca sa se

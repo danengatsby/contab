@@ -125,4 +125,21 @@ function fullBackup(dbFile, dataDir, keep) {
   return { name, path: path.join(dir, name), size: fs.statSync(path.join(dir, name)).size };
 }
 
-module.exports = { backupNow, listBackups, backupPath, fullBackup, pruneStrayBackups };
+/** Verificarea RESTAURABILITATII unei arhive complete: se deschide, db.json trebuie sa fie
+ *  JSON valid cu lista de firme, iar instantaneul sqlite sa fie prezent si nenul. Ruleaza
+ *  dupa fiecare backup — un backup care nu se poate restaura e doar zgomot pe disc. */
+function verifyArchive(zipPath) {
+  const AdmZip = require('adm-zip');
+  try {
+    const zip = new AdmZip(zipPath);
+    const je = zip.getEntry('db.json');
+    if (!je) return { ok: false, motiv: 'db.json lipseste din arhiva' };
+    const d = JSON.parse(zip.readAsText(je));
+    if (!Array.isArray(d.firme)) return { ok: false, motiv: 'db.json nu contine lista de firme' };
+    const sq = zip.getEntry('contab.sqlite');
+    const size = fs.statSync(zipPath).size;
+    return { ok: true, firme: d.firme.length, sqlite: !!(sq && sq.header.size > 0), size };
+  } catch (e) { return { ok: false, motiv: e.message }; }
+}
+
+module.exports = { backupNow, listBackups, backupPath, fullBackup, pruneStrayBackups, verifyArchive };
