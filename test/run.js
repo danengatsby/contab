@@ -434,7 +434,7 @@ eq('CAM pe brut+avantaje: 2,25% din 6000', pAv.cam, 135);
 eq('net cash: avantajul nu se plateste in bani, dar suporta retinerile', pAv.net, 2510);
 const spAv = statePlata([{ id: 'a1', nume: 'Test Av', salariuBrut: 5000, avantaje: 1000 }]);
 eq('stat de plata: avantajele apar pe rand si in totaluri', spAv.rows[0].avantaje + '|' + spAv.totals.avantaje, '1000|1000');
-ok('D112: baza_cas include avantajele (6000)', xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spAv).includes('baza_cas="6000.00"'));
+ok('D112: baza CAS (A_13) include avantajele (6000)', xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spAv).includes('A_13="6000"'));
 
 section('Concediu medical in statul de plata (OUG 158/2005, simplificat)');
 const pCm = fiscal.payroll(4000, 0, { cmAngajator: 500, cmFnuass: 700 });
@@ -457,9 +457,9 @@ eq('baza CM = media ultimelor luni postate (6300)', spH.rows[0].mediaCM, 6300);
 eq('indemnizatie 4 zile x 225 (toata la angajator)', spH.rows[0].cmAngajator, 900);
 const spPlaf = statePlata([{ id: 'x1', nume: 'P', salariuBrut: 4200, zileCM: 1, zileLucratoare: 21 }], '2026-06', [{ period: '2026-05', rows: [{ angajatId: 'x1', brut: 999999 }] }]);
 eq('baza CM plafonata la 12 salarii minime', spPlaf.rows[0].mediaCM, 12 * fiscal.salariuMinimLa('2026-06'));
-ok('D112: baza_cas include CM, baza_cass nu', (() => {
+ok('D112: baza CAS (A_13) include CM, baza CASS (A_11) nu', (() => {
   const x = xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spCm);
-  return x.includes('baza_cas="3850.00"') && x.includes('baza_cass="2800.00"') && x.includes('zile_cm="7"');
+  return x.includes('A_13="3850"') && x.includes('A_11="2800"');
 })());
 
 section('Norma partiala (OUG 16/2022) + concediu de odihna');
@@ -474,9 +474,10 @@ const spNp = statePlata([{ id: 'np1', nume: 'Partial', salariuBrut: 2000, normaP
 eq('stat: suprataxarea apare pe rand si in totaluri', spNp.rows[0].casAngajator + '|' + spNp.totals.cassAngajator, '512.5|205');
 eq('stat: total de virat include partea angajatorului', spNp.totals.totalBuget, 500 + 200 + 130 + 45 + 512.5 + 205);
 eq('exceptia legala (student/pensionar/cumul) anuleaza suprataxarea', statePlata([{ id: 'np2', nume: 'S', salariuBrut: 2000, normaPartiala: true, scutitNormaPartiala: true }], '2026-06').rows[0].casAngajator, 0);
-ok('D112: atributele cas_angajator/cass_angajator la norma partiala', (() => {
+ok('D112: suprataxarea normei partiale intra in obligatiile 412/432', (() => {
+  // CAS: 500 (angajat) + 512.5 (angajator) = 1013; CASS: 200 + 205 = 405
   const x = xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spNp);
-  return x.includes('cas_angajator="512.50"') && x.includes('cass_angajator="205.00"');
+  return /A_codOblig="412" A_datorat="1013"/.test(x) && /A_codOblig="432" A_datorat="405"/.test(x);
 })());
 const histCo = [{ period: '2026-03', rows: [{ angajatId: 'co1', brut: 6000 }] }, { period: '2026-04', rows: [{ angajatId: 'co1', brut: 6000 }] }, { period: '2026-05', rows: [{ angajatId: 'co1', brut: 6300 }] }];
 const spCo = statePlata([{ id: 'co1', nume: 'Vacanta', salariuBrut: 4200, zileCO: 7, zileLucratoare: 21 }], '2026-06', histCo);
@@ -540,8 +541,11 @@ eq('cost total angajator', sp.totals.costTotal, 5112.5);
 eq('angajat net = payroll net', sp.rows[0].net, fiscal.payroll(5000).net);
 const d112 = xml.d112Xml(v.company, '2026-06', sp);
 ok('D112 bine-format', wellFormed(d112));
-ok('D112 contine asigurat (Ion Popescu)', d112.includes('Ion Popescu'));
-eq('D112 total de plata', (d112.match(/<total_de_plata>([\d.]+)<\/total_de_plata>/) || [])[1], '2187.50');
+ok('D112 pe schema curenta (declaratieUnica v7)', d112.includes('xmlns="mfp:anaf:dgti:declaratie_unica:declaratie:v7"'));
+ok('D112 contine asiguratul (nume/prenume separate + CNP)', d112.includes('numeAsig="Popescu"') && d112.includes('prenAsig="Ion"') && d112.includes('cnpAsig="1900101415238"'));
+ok('D112: obligatiile pe coduri (602/412/432/480) cu totalul de plata', /A_codOblig="602" A_datorat="325"/.test(d112) && /A_codOblig="480" A_datorat="113"/.test(d112) && d112.includes('totalPlata_A="2188"'));
+ok('D112: impozitul per asigurat in E3 (E3_15) si Timp_E3', d112.includes('E3_15="325"') && d112.includes('Timp_E3="325"'));
+ok('D112: NZL cu sarbatorile legale (iunie 2026 = 21 zile, 1 iunie Rusalii)', d112.includes('A_8="21"') && d112.includes('A_6="168"'));
 // spor (impozabil) + retineri (din net)
 const sp2 = statePlata([{ id: 'x', nume: 'Test', salariuBrut: 4700, spor: 300, retineri: 500 }]);
 eq('brut cu spor (4700+300)', sp2.totals.brut, 5000);
@@ -1004,7 +1008,7 @@ const jReg = acc.vatJournals({ entries: [mkAv(favC, '2026-05-10'), mkAv(regC, '2
 eq('jurnal TVA: dupa regularizare baza neta 0', jReg.totals.bazaV, 0);
 eq('jurnal TVA: dupa regularizare TVA neta 0', jReg.totals.colectata, 0);
 const d205db = { entries: [
-  { id: '1', tip: 'chirie_pf', period: '2026-03', data: '2026-03-01', partener: 'Ion Pop', partenerCui: '1900101415236', lines: gt2('chirie_pf').build({ baza: 1000, cota: 10, cont: '5121' }) },
+  { id: '1', tip: 'chirie_pf', period: '2026-03', data: '2026-03-01', partener: 'Ion Pop', partenerCui: '1900101415238', lines: gt2('chirie_pf').build({ baza: 1000, cota: 10, cont: '5121' }) },
   { id: '2', tip: 'premiu_pf', period: '2026-05', data: '2026-05-01', partener: 'Maria I', partenerCui: '2900202535241', lines: gt2('premiu_pf').build({ baza: 500, cota: 10, cont: '5311' }) },
   { id: '3', tip: 'repartizare_dividende', period: '2026-04', data: '2026-04-01', partener: 'Asociat A', partenerCui: '1800303646352', lines: [{ debit: '117', credit: '457', suma: 10000 }, { debit: '457', credit: '446', suma: 800 }] },
 ] };

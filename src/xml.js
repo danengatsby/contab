@@ -286,36 +286,94 @@ ${randuri}
 `;
 }
 
-/** D112 — declaratia privind contributiile sociale, impozitul si evidenta nominala (din statul de plata). */
+/** Zile lucratoare intr-o luna: luni-vineri minus sarbatorile legale romanesti (inclusiv
+ *  cele mobile — Pastele ortodox prin algoritmul iulian Meeus + 13 zile, Vinerea Mare,
+ *  a doua zi de Pasti, Rusaliile). Validatorul D112 verifica orele/zilele contra NZL. */
+function zileLucratoareLuna(an, luna) {
+  const a = an % 4; const b = an % 7; const c = an % 19;
+  const d = (19 * c + 15) % 30;
+  const e = (2 * a + 4 * b - d + 34) % 7;
+  const paste = new Date(Date.UTC(an, Math.floor((d + e + 114) / 31) - 1, ((d + e + 114) % 31) + 1 + 13));
+  const rel = (ofs) => { const x = new Date(paste); x.setUTCDate(x.getUTCDate() + ofs); return x; };
+  const libere = new Set([[0, 1], [0, 2], [0, 6], [0, 7], [0, 24], [4, 1], [5, 1], [7, 15], [10, 30], [11, 1], [11, 25], [11, 26]]
+    .map(([m, z]) => m + '-' + z));
+  for (const ofs of [-2, 0, 1, 49, 50]) { const x = rel(ofs); libere.add(x.getUTCMonth() + '-' + x.getUTCDate()); }
+  let z = 0;
+  for (const dt = new Date(Date.UTC(an, luna - 1, 1)); dt.getUTCMonth() === luna - 1; dt.setUTCDate(dt.getUTCDate() + 1)) {
+    if (dt.getUTCDay() === 0 || dt.getUTCDay() === 6) continue;
+    if (libere.has(dt.getUTCMonth() + '-' + dt.getUTCDate())) continue;
+    z += 1;
+  }
+  return z;
+}
+
+/** D112 — declaratia unica angajator, pe schema OFICIALA curenta (declaratieUnica,
+ *  mfp:anaf:dgti:declaratie_unica:declaratie:v7). Structura: <angajator> cu obligatiile de
+ *  plata pe coduri (angajatorA: 602 impozit, 412 CAS, 432 CASS, 480 CAM — Nomenclator 3)
+ *  + contoarele angajatorB; apoi cate un <asigurat> per salariat, cu sectiunea A (baze si
+ *  contributii) si E3 (impozitul retinut). Valori in LEI INTREGI.
+ *  Verificare oficiala: scripts/valideaza-duk.sh D112 fisier.xml */
 function d112Xml(company, period, sp, who) {
   const { an, luna } = ym(period);
+  const lei = (v) => String(Math.round(Number(v) || 0));
   const t = sp.totals;
-  const asigurati = sp.rows.map((r) => {
-    const av = round2(r.avantaje || 0); // avantajele in natura intra in bazele CAS/CASS/impozit
-    const cm = round2(r.indemnizatieCM || 0); // indemnizatiile CM: CAS + impozit DA, CASS NU
-    const np = (r.casAngajator || 0) + (r.cassAngajator || 0) > 0; // norma partiala sub salariul minim
-    return `    <asigurat nume="${esc(r.nume)}" cnp="${esc(r.cnp)}" functie="${esc(r.functie)}" `
-    + `venit_brut="${num2(r.brut)}"${av ? ' avantaje="' + num2(av) + '"' : ''}${cm ? ' zile_cm="' + (r.zileCM || 0) + '" indemnizatie_cm="' + num2(cm) + '"' : ''}${r.zileCO ? ' zile_co="' + r.zileCO + '" indemnizatie_co="' + num2(r.indemnizatieCO) + '"' : ''} baza_cas="${num2(round2(r.brut + av + cm))}" cas="${num2(r.cas)}" baza_cass="${num2(round2(r.brut + (r.tichete || 0) + av))}" cass="${num2(r.cass)}" `
-    + (np ? `cas_angajator="${num2(r.casAngajator)}" cass_angajator="${num2(r.cassAngajator)}" ` : '')
-    + `baza_impozit="${num2(round2(r.brut + (r.tichete || 0) + av + cm - r.cas - r.cass - r.neimpozabil))}" impozit="${num2(r.impozit)}" venit_net="${num2(r.net)}"/>`;
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  // obligatiile angajatorului — codurile bugetare sunt cele pre-completate de PDF-ul
+  // inteligent ANAF: contul unic 5503 pentru impozit/CAS/CASS, 204703 pentru CAM
+  const oblig = [
+    { cod: '602', bugetar: '5503XXXXXX', suma: t.impozit }, // impozit pe venit din salarii
+    // CAS/CASS retinute de la asigurati + partea ANGAJATORULUI la norma partiala sub minim
+    { cod: '412', bugetar: '5503XXXXXX', suma: t.cas + (t.casAngajator || 0) },
+    { cod: '432', bugetar: '5503XXXXXX', suma: t.cass + (t.cassAngajator || 0) },
+    { cod: '480', bugetar: '20470300XX', suma: t.cam },     // contributia asiguratorie pt. munca
+  ].filter((o) => Math.round(o.suma) > 0);
+  const totalPlata = oblig.reduce((s, o) => s + Math.round(o.suma), 0);
+  // total venit realizat in conditii normale de munca (C1_11; C1_T1 = totalul pe conditii)
+  const bazaCasTotal = sp.rows.reduce((s, r) => s + Math.round(r.brut + (r.avantaje || 0) + (r.indemnizatieCM || 0)), 0);
+  // casa de sanatate din judetul firmei (Nomenclator 2): coduri de judet; Bucuresti = "_B"
+  const jud = String(company.judet || '').replace(/^RO-/i, '').toUpperCase();
+  const casaAng = jud === 'B' || !jud ? '_B' : jud;
+  const obligXml = oblig.map((o) =>
+    `    <angajatorA A_codBugetar="${o.bugetar}" A_codOblig="${o.cod}" A_datorat="${lei(o.suma)}" A_scutit="0" A_plata="${lei(o.suma)}"/>`).join('\n');
+  const zileLucratoare = zileLucratoareLuna(Number(an), Number(luna));
+  // data in format romanesc ZZ.LL.AAAA (validatorul respinge ISO)
+  const dataRo = (iso) => {
+    const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? m[3] + '.' + m[2] + '.' + m[1] : iso;
+  };
+  const asigurati = sp.rows.map((r, i) => {
+    const parts = String(r.nume || '').trim().split(/\s+/);
+    const numeFam = parts.pop() || '-'; const pren = parts.join(' ') || '-';
+    const bazaCass = Math.round(r.brut + (r.tichete || 0) + (r.avantaje || 0));
+    const bazaCas = Math.round(r.brut + (r.avantaje || 0) + (r.indemnizatieCM || 0));
+    const venitImpozabil = Math.max(Math.round(bazaCas - r.cas - r.cass - (r.deducere || 0)), 0);
+    const ded = Math.round(r.deducere || 0);
+    return `  <asigurat idAsig="${i + 1}" cnpAsig="${esc(r.cnp)}" cisAsig="${esc(r.cnp)}" numeAsig="${esc(numeFam)}" prenAsig="${esc(pren)}"
+    dataAng="${esc(dataRo(r.dataAngajare || an + '-01-01'))}" casaSn="${esc(casaAng)}" asigCI="1" asigSO="1" Timp_E3="${lei(r.impozit)}">
+    <asiguratA A_1="1" A_2="0" A_3="N" A_4="8" A_5="${lei(r.brut)}" A_6="${zileLucratoare * 8}" A_7="0" A_8="${zileLucratoare}"
+      A_9="${lei(r.brut)}" A_sal1="${lei(r.salariuBaza || r.brut)}" A_sal2="${lei(r.brut)}"
+      A_11="${bazaCass}" A_12="${lei(r.cass)}" A_13="${bazaCas}" A_14="${lei(r.cas)}"/>
+    <asiguratE1 E1_1="${lei(r.brut)}" E1_2="${lei(r.cas + r.cass)}" E1_3="${r.persoane || 0}" E1_4="${ded}"
+      E1_41="${ded}" E1_42="0" E1_421="0" E1_422="0" E1_5="0" E1_6="${venitImpozabil}" E1_7="${lei(r.impozit)}"/>
+    <asiguratE3 E3_1="A" E3_2="1" E3_3="1" E3_4="P" E3_8="${lei(r.brut)}" E3_9="${lei(r.cas + r.cass)}"
+      E3_14="${venitImpozabil}" E3_15="${lei(r.impozit)}" E3_16="0" E3_19="0" E3_21="0"/>
+  </asigurat>`;
   }).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- D112 (recapitulatie + evidenta nominala) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->
-<declaratie112 xmlns="mfp:anaf:dgti:d112:declaratie:v1"
-  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
-  luna="${esc(luna)}" an="${esc(an)}" nr_asigurati="${sp.rows.length}" tip_d="0"${declarant(who)}>
-  <creante_fiscale>
-    <total_salarii_brute>${num2(t.brut)}</total_salarii_brute>
-    <CAS_asigurat>${num2(t.cas)}</CAS_asigurat>
-    <CASS_asigurat>${num2(t.cass)}</CASS_asigurat>
-    <impozit_salarii>${num2(t.impozit)}</impozit_salarii>
-    <CAM_angajator>${num2(t.cam)}</CAM_angajator>
-    <total_de_plata>${num2(t.totalBuget)}</total_de_plata>
-  </creante_fiscale>
-  <asigurati>
+<!-- D112 (declaratieUnica v6) generat de Contabo. Verificare: scripts/valideaza-duk.sh D112 fisier.xml -->
+<declaratieUnica xmlns="mfp:anaf:dgti:declaratie_unica:declaratie:v7"
+  luna_r="${esc(luna)}" an_r="${esc(an)}"
+  nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}">
+  <angajator cif="${esc(String(company.cui).replace(/^ro/i, ''))}" caen="${esc(company.caen || '0000')}" den="${esc(company.nume)}"
+    casaAng="${esc(casaAng)}" datCAM="1" bifa_CAM="0" totalPlata_A="${lei(totalPlata)}">
+${obligXml}
+    <angajatorB B_cnp="${sp.rows.length}" B_sanatate="${sp.rows.length}" B_pensie="${sp.rows.filter((r) => r.cas > 0).length}" B_brutSalarii="${lei(t.brut)}" B_sal="${sp.rows.length}"/>
+    <angajatorC1 C1_11="${bazaCasTotal}" C1_T1="${bazaCasTotal}"/>
+    <angajatorC3/>
+    <angajatorC4 C4_baza="${lei(t.brut)}" C4_ct="${lei(t.cam)}"/>
+  </angajator>
 ${asigurati}
-  </asigurati>
-</declaratie112>
+</declaratieUnica>
 `;
 }
 
