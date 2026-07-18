@@ -117,7 +117,7 @@ function header(company, year) {
     '  <Header>',
     '    <AuditFileVersion>2.4.8</AuditFileVersion>',
     '    <AuditFileCountry>RO</AuditFileCountry>',
-    '    <AuditFileRegion>RO</AuditFileRegion>',
+    `    <AuditFileRegion>${esc(/^RO-/.test(String(company.judet)) ? company.judet : 'RO-B')}</AuditFileRegion>`,
     `    <AuditFileDateCreated>${now}</AuditFileDateCreated>`,
     '    <SoftwareCompanyName>Contabo</SoftwareCompanyName>',
     '    <SoftwareID>Contabo</SoftwareID>',
@@ -134,10 +134,14 @@ function header(company, year) {
     '          <FirstName>N/A</FirstName>',
     `          <LastName>${esc(company.nume)}</LastName>`,
     '        </ContactPerson>',
+    `        <Telephone>${esc(company.telefon || '-')}</Telephone>`,
     '      </Contact>',
     '      <TaxRegistration>',
     `        <TaxRegistrationNumber>${esc(company.tvaPlatitor ? roCui(company.cui) : company.cui)}</TaxRegistrationNumber>`,
     '      </TaxRegistration>',
+    '      <BankAccount>',
+    `        <IBANNumber>${esc(String(company.iban || 'RO00XXXX0000000000000000').replace(/\s/g, ''))}</IBANNumber>`,
+    '      </BankAccount>',
     '    </Company>',
     '    <DefaultCurrencyCode>RON</DefaultCurrencyCode>',
     '    <SelectionCriteria>',
@@ -146,7 +150,9 @@ function header(company, year) {
     `      <PeriodEnd>${String(year).length === 7 ? Number(String(year).slice(5, 7)) : 12}</PeriodEnd>`,
     `      <PeriodEndYear>${String(year).slice(0, 4)}</PeriodEndYear>`,
     '    </SelectionCriteria>',
-    `    <HeaderComment>Declaratie informativa D406 - ${String(year).length === 7 ? 'luna ' + year : 'exercitiul ' + year}</HeaderComment>`,
+    `    <HeaderComment>${String(year).length === 7 ? 'L' : 'A'}</HeaderComment>`,
+    '    <SegmentIndex>1</SegmentIndex>',
+    '    <TotalSegmentsInsequence>1</TotalSegmentsInsequence>',
     '    <TaxAccountingBasis>A</TaxAccountingBasis>',
     '    <TaxEntity>Company</TaxEntity>',
     '  </Header>',
@@ -167,10 +173,8 @@ function generalLedgerAccounts(db, year) {
       `        <AccountDescription>${esc(coa.accountName(b.cod))}</AccountDescription>`,
       `        <StandardAccountID>${esc(b.cod)}</StandardAccountID>`,
       `        <AccountType>${at}</AccountType>`,
-      `        <OpeningDebitBalance>${opD}</OpeningDebitBalance>`,
-      `        <OpeningCreditBalance>${opC}</OpeningCreditBalance>`,
-      `        <ClosingDebitBalance>${clD}</ClosingDebitBalance>`,
-      `        <ClosingCreditBalance>${clC}</ClosingCreditBalance>`,
+      Number(opC) > 0 && Number(opD) === 0 ? `        <OpeningCreditBalance>${opC}</OpeningCreditBalance>` : `        <OpeningDebitBalance>${opD}</OpeningDebitBalance>`,
+      Number(clC) > 0 && Number(clD) === 0 ? `        <ClosingCreditBalance>${clC}</ClosingCreditBalance>` : `        <ClosingDebitBalance>${clD}</ClosingDebitBalance>`,
       '      </Account>',
     );
   }
@@ -182,23 +186,33 @@ function partyXml(tag, idTag, accountId, list, db) {
   const out = [`    <${tag}s>`];
   list.forEach((p, i) => {
     const info = partnerInfo(db, p.cui);
-    const reg = p.cui ? (/^ro/i.test(p.cui) ? roCui(p.cui) : (info.tara === 'RO' || !info.tara ? roCui(p.cui) : p.cui)) : 'N/A';
+    // RegistrationNumber in SAF-T: "00" + CUI numeric pentru RO; "01" + cod tara + cod TVA
+    // pentru UE (ghidul oficial D406 — prefixul fiscal "RO" NU se scrie)
+    const cuiCurat = String(p.cui || '').replace(/\s/g, '');
+    const reg = !cuiCurat ? '00' : /^ro/i.test(cuiCurat) || /^\d+$/.test(cuiCurat)
+      ? '00' + cuiCurat.replace(/^ro/i, '')
+      : '01' + cuiCurat;
     const balD = p.bal >= 0 ? num2(p.bal) : '0.00';
     const balC = p.bal < 0 ? num2(-p.bal) : '0.00';
+    // ordinea ceruta de parserul DUK: ID + cont + solduri intai, identitatea (CompanyStructure)
+    // la final; ID-ul partenerului este chiar codul 00/01+CUI (ghidul oficial D406)
     out.push(
       `      <${tag}>`,
-      `        <RegistrationNumber>${esc(reg)}</RegistrationNumber>`,
-      `        <Name>${esc(p.den)}</Name>`,
-      '        <Address>',
-      addressXml(info, '          '),
-      '          <AddressType>StreetAddress</AddressType>',
-      '        </Address>',
-      `        <${idTag}>${esc('P' + String(i + 1).padStart(4, '0'))}</${idTag}>`,
+      // structura ceruta de validatorul D406: CompanyStructure = DOAR nr. inregistrare + nume
+      '        <CompanyStructure>',
+      `          <RegistrationNumber>${esc(reg)}</RegistrationNumber>`,
+      `          <Name>${esc(p.den)}</Name>`,
+      '          <Address>',
+      addressXml(info, '            '),
+      '            <AddressType>StreetAddress</AddressType>',
+      '          </Address>',
+      '        </CompanyStructure>',
+      `        <${idTag}>${esc(reg)}</${idTag}>`,
       `        <AccountID>${accountId}</AccountID>`,
       `        <OpeningDebitBalance>0.00</OpeningDebitBalance>`,
-      `        <OpeningCreditBalance>0.00</OpeningCreditBalance>`,
-      `        <ClosingDebitBalance>${tag === 'Customer' ? balD : '0.00'}</ClosingDebitBalance>`,
-      `        <ClosingCreditBalance>${tag === 'Supplier' ? (p.bal <= 0 ? num2(-p.bal) : '0.00') : balC}</ClosingCreditBalance>`,
+      tag === 'Customer'
+        ? `        <ClosingDebitBalance>${balD}</ClosingDebitBalance>`
+        : `        <ClosingCreditBalance>${p.bal <= 0 ? num2(-p.bal) : '0.00'}</ClosingCreditBalance>`,
       `      </${tag}>`,
     );
   });
@@ -749,7 +763,7 @@ function saftXml(db, year) {
   const company = db.company || {};
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    '<AuditFile xmlns="mfp:anaf:dgti:d406t:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
     header(company, yr),
     masterFiles(db, yr),
     generalLedgerEntries(db, yr),
@@ -769,7 +783,7 @@ async function saftXmlAsync(db, year) {
   const sd = await sourceDocumentsAsync(db, yr);
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    '<AuditFile xmlns="mfp:anaf:dgti:d406t:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
     header(company, yr),
     masterFiles(db, yr),
     gl,

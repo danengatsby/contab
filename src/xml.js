@@ -211,6 +211,17 @@ function ym(period) {
   return m ? { an: m[1], luna: String(Number(m[2])) } : { an: String(new Date().getFullYear()), luna: '1' };
 }
 
+/** Nr. de evidenta a platii (23 de cifre, structura oficiala): "10" + codul creantei pe 3
+ *  cifre + "01" + LLAA (sfarsitul perioadei) + ZZLLAA (scadenta = 25 a lunii urmatoare)
+ *  + "0000" + suma de control (ultimele 2 cifre ale sumei primelor 21 de cifre). */
+function nrEvidPlata(cod3, luna, an) {
+  const mm = String(luna).padStart(2, '0'); const aa = String(an).slice(-2);
+  const next = Number(luna) === 12 ? { mm: '01', aa: String(Number(aa) + 1).padStart(2, '0') } : { mm: String(Number(luna) + 1).padStart(2, '0'), aa };
+  const p21 = '10' + cod3 + '01' + mm + aa + '25' + next.mm + next.aa + '0000';
+  const ctl = String(p21.split('').reduce((s, c) => s + Number(c), 0)).slice(-2).padStart(2, '0');
+  return p21 + ctl;
+}
+
 /** Atributele declarantului (intocmitorului) — incluse doar cand datele exista. */
 function declarant(who) {
   if (!who || !who.nume) return '';
@@ -259,14 +270,7 @@ function d300Xml(company, period, d, who) {
   // + ZZLLAA (scadenta = 25 a lunii urmatoare) + "0000" + suma de control (ultimele 2 cifre
   // ale sumei primelor 21 de cifre).
   const tipDecont = company.perioadaTva || 'L';
-  const nrEvid = (() => {
-    const cod = { L: '301', T: '302', S: '303', A: '304' }[tipDecont] || '301';
-    const mm = String(luna).padStart(2, '0'); const aa = String(an).slice(-2);
-    const next = Number(luna) === 12 ? { mm: '01', aa: String(Number(aa) + 1).padStart(2, '0') } : { mm: String(Number(luna) + 1).padStart(2, '0'), aa };
-    const p21 = '10' + cod + '01' + mm + aa + '25' + next.mm + next.aa + '0000';
-    const ctl = String(p21.split('').reduce((s, c) => s + Number(c), 0)).slice(-2).padStart(2, '0');
-    return p21 + ctl;
-  })();
+  const nrEvid = nrEvidPlata({ L: '301', T: '302', S: '303', A: '304' }[tipDecont] || '301', luna, an);
   const w = who && who.nume ? who : { nume: 'Administrator', prenume: '', functie: 'Administrator' };
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -667,30 +671,53 @@ function parseUblInvoice(xmlStr) {
 }
 
 // D390 VIES — declaratia recapitulativa pentru operatiuni intracomunitare
-function d390Xml(company, period, d) {
+/** D390 VIES — recapitulativ intracomunitar pe schema OFICIALA v3: radacina cu identificare
+ *  + declarant, <rezumat> (bazele pe tip de operatiune, in lei intregi) si cate o <operatie>
+ *  per partener (tip L/A/P/S/T/R, tara + cod operator fara prefixul de tara). */
+function d390Xml(company, period, d, who) {
   const { an, luna } = ym(period);
-  const rows = (d.rows || []).map((r) =>
-    `    <operatiune cod="${esc(r.cod)}" tara="${esc(r.tara || (r.cui || '').slice(0, 2))}" cod_operator="${esc(r.cui)}" denumire="${esc(r.denumire)}" baza="${num2(r.baza)}" nr_op="${r.nrop}"/>`).join('\n');
+  const lei = (v) => String(Math.round(Number(v) || 0));
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
+  const rows = (d.rows || []).map((r) => {
+    const tara = r.tara || String(r.cui || '').slice(0, 2);
+    const codO = String(r.cui || '').replace(new RegExp('^' + tara, 'i'), '');
+    return `  <operatie tip="${esc(r.cod)}" tara="${esc(tara)}" codO="${esc(codO)}" denO="${esc(r.denumire || '-')}" baza="${lei(r.baza)}"/>`;
+  }).join('\n');
+  const bazaL = lei(d.totalL); const bazaA = lei(d.totalA);
+  const totalBaza = Math.round(d.totalL || 0) + Math.round(d.totalA || 0);
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- D390 VIES (recapitulativ intracomunitar) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->
-<declaratie390 xmlns="mfp:anaf:dgti:d390:declaratie:v1"
-  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
-  luna="${esc(luna)}" an="${esc(an)}" total_livrari="${num2(d.totalL)}" total_achizitii="${num2(d.totalA)}" nr_operatori="${d.nr || 0}">
-${rows || '    <!-- nicio operatiune intracomunitara in perioada -->'}
-</declaratie390>`;
+<!-- D390 VIES v3 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D390 fisier.xml -->
+<declaratie390 xmlns="mfp:anaf:dgti:d390:declaratie:v3"
+  luna="${esc(luna)}" an="${esc(an)}" d_rec="0"
+  nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
+  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}" adresa="${esc(adresa || '-')}"
+  totalPlata_A="${lei(totalBaza + (d.nr || 0))}">
+  <rezumat nr_pag="1" nrOPI="${d.nr || 0}" bazaL="${bazaL}" bazaT="0" bazaA="${bazaA}" bazaP="0" bazaS="0" bazaR="0" total_baza="${lei(totalBaza)}"/>
+${rows}
+</declaratie390>
+`;
 }
 
-// D100 — declaratia privind obligatiile de plata la bugetul de stat (aici: impozitul pe
-// veniturile microintreprinderilor, trimestrial — cod obligatie 620 in nomenclatorul ANAF)
+// D100 — declaratia privind obligatiile de plata la bugetul de stat pe schema OFICIALA v2
+// (aici: impozitul pe veniturile microintreprinderilor, trimestrial — cod obligatie 620).
 function d100Xml(company, period, d, who) {
   const { an, luna } = ym(period);
+  const lei = (v) => String(Math.round(Number(v) || 0));
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
+  // scadenta: 25 a lunii urmatoare perioadei (format romanesc ZZ.LL.AAAA)
+  const next = Number(luna) === 12 ? { l: 1, a: Number(an) + 1 } : { l: Number(luna) + 1, a: Number(an) };
+  const scadenta = '25.' + String(next.l).padStart(2, '0') + '.' + next.a;
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- D100 (impozit pe veniturile microintreprinderilor) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->
-<declaratie100 xmlns="mfp:anaf:dgti:d100:declaratie:v1"
-  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
-  luna="${esc(luna)}" an="${esc(an)}" trimestru="${d.trimestru || ''}" total_plata="${num2(d.impozit)}"${declarant(who)}>
-  <obligatie cod="620" den="Impozit pe veniturile microintreprinderilor"
-    baza="${num2(d.venit)}" cota="${d.cota}" datorat="${num2(d.impozit)}" de_plata="${num2(d.impozit)}"/>
+<!-- D100 v2 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D100 fisier.xml -->
+<declaratie100 xmlns="mfp:anaf:dgti:d100:declaratie:v2"
+  luna="${esc(luna)}" an="${esc(an)}" d_anulare="0"
+  nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
+  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}" adresa="${esc(adresa || '-')}"
+  totalPlata_A="${lei(Math.round(d.impozit || 0) * 2)}">
+  <obligatie cod_oblig="620" cod_bugetar="20A031800" scadenta="${scadenta}" nr_evid="${nrEvidPlata('620', luna, an)}"
+    suma_dat="${lei(d.impozit)}" suma_plata="${lei(d.impozit)}"/>
 </declaratie100>
 `;
 }
@@ -717,17 +744,42 @@ ${exp || '    <!-- fara expedieri -->'}
 `;
 }
 
-// D205 — impozit pe venit retinut la sursa, pe beneficiar
-function d205Xml(company, year, d) {
-  const rows = (d.rows || []).map((r) =>
-    `    <beneficiar tip_venit="${esc(r.tipVenit)}" cnp="${esc(r.cnp)}" nume="${esc(r.beneficiar)}" venit_brut="${num2(r.venitBrut)}" impozit_retinut="${num2(r.impozit)}"/>`).join('\n');
+// D205 — impozit pe venit retinut la sursa, pe beneficiar, pe schema OFICIALA v2 (anuala:
+// se depune in anul urmator celui raportat). Beneficiarii intra ca <benef> (rezidenti, CNP
+// drept cifR), cu recapitulatia pe tip de venit in <sect_II>.
+function d205Xml(company, year, d, who) {
+  const lei = (v) => String(Math.round(Number(v) || 0));
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
+  // nomenclatorul tipurilor de venit (D205, OPANAF): 08 = dividende, 11 = premii, 04 = alte
+  const tipCod = (t) => (/divid/i.test(t) ? '08' : /premi/i.test(t) ? '11' : '04');
+  const rows = (d.rows || []).map((r, i) => {
+    const tip = tipCod(r.tipVenit);
+    const divid = tip === '08' ? ` divid_D="${lei(r.venitBrut)}" divid_P="${lei(r.venitBrut)}"` : '';
+    return `  <benef id_inreg="${i + 1}" tip_venit1="${tip}" den1="${esc(r.beneficiar)}" cifR="${esc(r.cnp || '0')}" tip_plata="${tip === '08' ? '2' : '0'}" Rezid="1" baza1="${lei(r.venitBrut)}" imp1="${lei(r.impozit)}"${divid}/>`;
+  }).join('\n');
+  const sect2 = new Map();
+  for (const r of d.rows || []) {
+    const t = tipCod(r.tipVenit);
+    const e = sect2.get(t) || { nr: 0, baza: 0, imp: 0 };
+    e.nr += 1; e.baza += Math.round(r.venitBrut || 0); e.imp += Math.round(r.impozit || 0);
+    sect2.set(t, e);
+  }
+  const sect2Xml = [...sect2.entries()].map(([t, e]) =>
+    `  <sect_II tip_venit="${t}" nrben="${e.nr}" Tcastig="0" Tpierd="0" Tbaza="${lei(e.baza)}" Timp="${lei(e.imp)}" T_VB="0" T_GAR="0"/>`).join('\n');
+  // suma de control (formula oficiala): doar campurile recapitulative din sect_II
+  const sumaControl205 = [...sect2.values()].reduce((s, e) => s + e.nr + e.baza + e.imp, 0);
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- D205 (impozit retinut la sursa) generat de Contabo. A se valida cu DUKIntegrator / XSD ANAF curent inainte de depunere. -->
-<declaratie205 xmlns="mfp:anaf:dgti:d205:declaratie:v1"
-  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}" an="${esc(String(year))}"
-  total_venit="${num2(d.totalBrut)}" total_impozit="${num2(d.totalImpozit)}" nr_beneficiari="${d.nr || 0}">
-${rows || '    <!-- niciun venit cu retinere la sursa in an -->'}
-</declaratie205>`;
+<!-- D205 v2 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D205 fisier.xml -->
+<declaratie205 xmlns="mfp:anaf:dgti:d205:declaratie:v3"
+  luna="12" an="${esc(String(year))}" d_rec="0" d_succ="0"
+  nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
+  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}" adresa="${esc(adresa || '-')}"
+  totalPlata_A="${lei(sumaControl205)}">
+${sect2Xml}
+${rows}
+</declaratie205>
+`;
 }
 
 module.exports = {

@@ -422,7 +422,7 @@ async function main() {
     const x394pf = await req('GET', '/xml/d394?period=2026-06', { cookie: c1 });
     ok('D394 v5: fila carnet ca op1 tip N cu CNP-ul producatorului', /<op1 tip="N"/.test(x394pf.text) && /1800101223344/.test(x394pf.text));
     const x100 = await req('GET', '/xml/d100?period=2026-06', { cookie: c1 });
-    ok('xml/d100: bine-format cu obligatia 620', x100.status === 200 && /<declaratie100/.test(x100.text) && /cod="620"/.test(x100.text));
+    ok('xml/d100: bine-format cu obligatia 620', x100.status === 200 && /<declaratie100/.test(x100.text) && /cod_oblig="620"/.test(x100.text));
     ok('descarcarea D100 XML marcheaza declaratia "generata"', (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd100').status === 'generata');
     const xInt = await req('GET', '/xml/intrastat?period=2026-06', { cookie: c1 });
     ok('xml/intrastat: bine-format', xInt.status === 200 && /<declaratieIntrastat/.test(xInt.text));
