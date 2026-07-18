@@ -80,6 +80,22 @@ await pg.waitForTimeout(1200);
 ok('tab-ul TVA se randeaza (sumar decont)', /TVA/.test(await pg.locator('#tab-tva').textContent()));
 ok('cardul pro-rata (art. 300) e prezent in tab-ul TVA', (await pg.locator('#proRataView').count()) === 1);
 
+// 6. trecere pe VIEWPORT MOBIL (iPhone-ish). Aplicatia e DESKTOP-ONLY prin decizie
+// (blocul mobil din styles.css e dezactivat explicit) — pe app verificam doar ca se
+// incarca si login-ul merge; pagina PUBLICA de prezentare insa trebuie sa fie curata.
+const pm = await b.newPage({ viewport: { width: 390, height: 844 } });
+await pm.goto(BASE + '/prezentare.html', { waitUntil: 'networkidle' });
+await pm.waitForTimeout(500);
+ok('mobil: prezentarea publica fara scroll orizontal', await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+await pm.goto(BASE + '/', { waitUntil: 'networkidle' });
+await pm.evaluate(() => fetch('/api/demo-login', { method: 'POST' }));
+await pm.reload({ waitUntil: 'networkidle' });
+await pm.waitForTimeout(1500);
+await pm.evaluate(() => { document.querySelectorAll('#welcomeOverlay').forEach((e) => e.remove()); });
+ok('mobil: login demo functioneaza', /demo/.test(await pm.locator('#userBadge').textContent()));
+ok('mobil: dashboardul se randeaza (continut prezent)', (await pm.locator('#kpis .kpi').count()) > 0);
+await pm.close();
+
 await b.close();
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari E2E trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

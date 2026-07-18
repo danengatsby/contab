@@ -80,6 +80,17 @@ function importBundle(user, bundle, opts) {
   try { newFid = db.importFirma(bundle, { storedNameMap: o.storedNameMap, targetFid }); }
   catch (e) { fail(400, e.message); }
   if (!targetFid && user && user.role !== 'admin') { user.firme = user.firme || []; user.firme.push(newFid); }
+  // firma importata ca FIRMA NOUA fara abonament in pachet ar lovi paywall-ul imediat;
+  // primeste aceleasi conditii ca la creare (proba 30 zile; adminul — activa direct).
+  // La replace sau cand pachetul aduce abonamentul propriu (migrare), nu se atinge nimic.
+  if (!targetFid && user) {
+    const nf = db.getFirma(newFid);
+    if (nf && !nf.subscription) {
+      nf.subscription = user.role === 'admin'
+        ? { status: 'active', plan: 'grandfathered', since: new Date().toISOString() }
+        : plans.firmaTrialSub();
+    }
+  }
   if (user) user.firmaActiva = newFid;
   db.save();
   return { firmaId: newFid, replaced: !!targetFid };
