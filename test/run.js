@@ -213,7 +213,7 @@ eq('clienti restanti (BETA achitat)', ag.clienti.length, 0);
 
 section('SAF-T (D406, 2026)');
 const xmlSaft = saft.saftXml(v, 2026);
-['<GeneralLedgerAccounts>', '<Customers>', '<Suppliers>', '<TaxTable>', '<UOMTable>', '<MovementTypeTable>', '<Products>', '<Assets>', '<PhysicalStock>', '<GeneralLedgerEntries>', '<SalesInvoices>', '<PurchaseInvoices>', '<Payments>', '<MovementOfGoods>']
+['<GeneralLedgerAccounts>', '<Customers>', '<Suppliers>', '<TaxTable>', '<UOMTable>', '<AnalysisTypeTable/>', '<Products>', '<Assets>', '<PhysicalStock>', '<GeneralLedgerEntries>', '<SalesInvoices>', '<PurchaseInvoices>', '<Payments>', '<MovementOfGoods>']
   .forEach((tag) => ok('contine ' + tag, xmlSaft.includes(tag)));
 ok('SAF-T bine-format', wellFormed(xmlSaft));
 ok('SAF-T: AuditFileVersion 2.4.8 (schema curenta)', xmlSaft.includes('<AuditFileVersion>2.4.8</AuditFileVersion>'));
