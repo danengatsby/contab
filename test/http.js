@@ -758,6 +758,12 @@ async function main() {
       && (await req('DELETE', '/api/products/' + isoP.id, { cookie: c1 })).json.ok === true
       && (await req('DELETE', '/api/gestiuni/' + isoG.id, { cookie: c1 })).json.ok === true
     ));
+    // auditul stergerii pastreaza inregistrarea INTREAGA (liniile debit/credit reconstructibile)
+    {
+      const aud = await req('GET', '/api/audit?limit=50', { cookie: c1 });
+      const del = (aud.json.items || aud.json).find((a) => a.action === 'entry.delete' && a.detail.includes(String(isoE.id)));
+      ok('audit entry.delete contine snapshotul complet (linii cu debit/credit)', !!del && /"lines":\[/.test(del.detail) && /"debit"/.test(del.detail));
+    }
 
     // ── BACKUP / RESTORE round-trip: un backup nerestaurat e o speranta, nu un backup ──
     // 1) date-marker in firma 1
