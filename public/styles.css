@@ -379,13 +379,22 @@ body.dark .kpi .trend.bad{background:#2a1620;color:#ff8a9c}
 /* ───────────────── MOBIL: bară de jos + panou „Mai mult" + tabele ───────────────── */
 .bottomnav{display:none}
 .more-sheet{display:none}
-@media(max-width:0px){ /* DEZACTIVAT — aplicatie doar desktop (fara versiune mobil) */
+@media(max-width:700px){ /* MOBIL: activ sub 700px (bara de jos inlocuieste meniul) */
+  .alert{flex-wrap:wrap}
+  .al-cta{margin-left:0}
+  .topbar{flex-wrap:wrap}
+  #companyName{max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .badge{white-space:nowrap}
   #tabs{display:none}                 /* meniul desktop ascuns pe mobil (inlocuit de bara de jos) */
   .topbar{gap:10px;padding:8px 12px}
   main{margin:14px auto;padding:0 12px;padding-bottom:70px}  /* loc pentru bara de jos */
   .card{padding:13px}
   h1{font-size:17px}
   .kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .quickacts{grid-template-columns:1fr}
+  .cinfo .cpop{display:none}   /* pop-up-urile de hover n-au sens pe touch si latesc pagina */
+  .warnbox{flex-wrap:wrap}
+  .period,select,input{max-width:100%}
   .toolbar{flex-wrap:wrap}
   .period{min-width:120px}
   /* tabele: derulare orizontala fluida + mai compacte pe mobil */
@@ -838,3 +847,22 @@ body.dark .fstep.done .fstep-body b{text-decoration-color:#5cbb8d}
 .pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;
   color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:3px 8px;border-radius:6px}
 .pw-toggle:hover{color:var(--accent);background:rgba(0,0,0,.05)}
+
+/* ============ MOBIL (<700px): sidebar-ul redevine bară de sus compactă ============ */
+/* Plasat la FINAL ca să bată blocul „LAYOUT SIDEBAR (min-width:1px)" din cascadă. */
+@media(max-width:700px){
+  .shell{display:block}
+  .topbar{flex-direction:row;flex-wrap:wrap;align-items:center;width:100%;flex:initial;height:auto;
+    position:sticky;top:0;z-index:50;overflow:visible;padding:8px 12px;gap:8px;
+    border-right:0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .topbar .brand{order:0;padding:0;border-bottom:0;margin:0}
+  .topbar #tabs{display:none}
+  .topbar .firma-select{order:1;width:auto;max-width:44vw}
+  .topbar .curgroup,.topbar #themeBtn,.topbar #densityBtn{order:2}
+  .topbar #userBadge{order:3;margin:0}
+  .topbar #logoutBtn{order:4;width:auto}
+  .shell>main{margin:0;padding:14px 12px calc(80px + env(safe-area-inset-bottom,0))}
+  .shell>main>.tab{max-width:none}
+  /* tabelele late deruleaza in propriul container, pagina ramane fixa (conventia repo-ului) */
+  .tab table{display:block;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+}

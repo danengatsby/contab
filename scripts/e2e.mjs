@@ -80,9 +80,8 @@ await pg.waitForTimeout(1200);
 ok('tab-ul TVA se randeaza (sumar decont)', /TVA/.test(await pg.locator('#tab-tva').textContent()));
 ok('cardul pro-rata (art. 300) e prezent in tab-ul TVA', (await pg.locator('#proRataView').count()) === 1);
 
-// 6. trecere pe VIEWPORT MOBIL (iPhone-ish). Aplicatia e DESKTOP-ONLY prin decizie
-// (blocul mobil din styles.css e dezactivat explicit) — pe app verificam doar ca se
-// incarca si login-ul merge; pagina PUBLICA de prezentare insa trebuie sa fie curata.
+// 6. trecere pe VIEWPORT MOBIL (390x844): UI-ul mobil e ACTIV (bara de jos + panoul
+// „Mai mult"; sidebar-ul devine bara de sus) — fara scroll orizontal nicaieri.
 const pm = await b.newPage({ viewport: { width: 390, height: 844 } });
 await pm.goto(BASE + '/prezentare.html', { waitUntil: 'networkidle' });
 await pm.waitForTimeout(500);
@@ -94,6 +93,13 @@ await pm.waitForTimeout(1500);
 await pm.evaluate(() => { document.querySelectorAll('#welcomeOverlay').forEach((e) => e.remove()); });
 ok('mobil: login demo functioneaza', /demo/.test(await pm.locator('#userBadge').textContent()));
 ok('mobil: dashboardul se randeaza (continut prezent)', (await pm.locator('#kpis .kpi').count()) > 0);
+ok('mobil: bara de jos vizibila, meniul desktop ascuns', (await pm.locator('#bottomnav').isVisible()) && !(await pm.locator('#tabs').isVisible()));
+ok('mobil: dashboardul FARA scroll orizontal', await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+await pm.click('#moreBtn');
+ok('mobil: panoul „Mai mult" se deschide', await pm.locator('#moreSheet .more-grid').isVisible());
+await pm.click('#moreSheet .more-grid button[data-go="tva"]');
+await pm.waitForTimeout(1200);
+ok('mobil: navigarea din panou merge (TVA) si pagina ramane fixa', (await pm.locator('#tab-tva').isVisible()) && (await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)));
 await pm.close();
 
 await b.close();

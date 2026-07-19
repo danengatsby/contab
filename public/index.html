@@ -2008,5 +2008,33 @@ Cu stimă,
 
   <script src="/panel-info.js"></script>
   <script type="module" src="/app.js"></script>
+
+  <!-- MOBIL: bara de navigare de jos + panoul „Mai mult" (vizibile doar sub 700px, din CSS) -->
+  <nav class="bottomnav" id="bottomnav" aria-label="Meniu mobil">
+    <button data-go="dashboard" data-tabs="dashboard">🏠<span>Acasă</span></button>
+    <button data-go="documente" data-tabs="documente,intrate,galerie">📥<span>Primite</span></button>
+    <button data-go="emite" data-tabs="emite,iesite,galerie-emise">📤<span>Emise</span></button>
+    <button data-go="cashbook" data-tabs="cashbook,reconciliere">🏦<span>Bancă</span></button>
+    <button id="moreBtn">☰<span>Mai mult</span></button>
+  </nav>
+  <div class="more-sheet hidden" id="moreSheet">
+    <div class="more-box">
+      <div class="more-head"><b>Toate secțiunile</b><button class="btn ghost" id="moreClose">Închide</button></div>
+      <div class="more-grid">
+        <button data-go="tva">🧾 TVA / Declarații</button>
+        <button data-go="balanta">⚖️ Balanța</button>
+        <button data-go="jurnal">📘 Jurnal</button>
+        <button data-go="carte">📗 Cartea mare</button>
+        <button data-go="situatii">📊 Situații</button>
+        <button data-go="stocuri">📦 Stocuri</button>
+        <button data-go="salarii">👥 Salarii</button>
+        <button data-go="parteneri">🤝 Parteneri</button>
+        <button data-go="livrabile">📁 Livrabile</button>
+        <button data-go="mesaje">💬 Mesaje</button>
+        <button data-go="portofoliu">🗂️ Portofoliu</button>
+        <button data-go="setari">⚙️ Setări</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
