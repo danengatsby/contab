@@ -30,6 +30,7 @@ module.exports = function register(app, ctx) {
     const e = d.entries.find((x) => x.id === req.params.id);
     if (!e) return res.status(404).send('Inregistrare inexistenta');
     if (!xml.isEFacturaEligible(e)) return res.status(400).send('Inregistrarea nu este o factura emisa.');
+    if (e.status && e.status !== 'postat') return res.status(400).send('Factura e ciorna — posteaz-o inainte de a emite e-Factura.');
     const fid = e.firmaId || db.firmaActiva();
     if (!canAccess(req, fid)) return res.status(404).send('Inregistrare inexistenta'); // izolare multi-firma
     sendXml(res, xml.eFacturaXml(db.getFirma(fid) || {}, e, d.partners[fid] || {}), 'efactura-' + (e.document || e.id) + '.xml');

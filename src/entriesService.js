@@ -68,9 +68,9 @@ function deleteEntry(id, fallbackFid, canFid) {
   if (e && !canFid(e.firmaId == null ? d.firmaActiva : e.firmaId)) fail(404, 'Inregistrare inexistenta.');
   if (e) {
     db.assertPeriodOpen(e.firmaId == null ? fallbackFid : e.firmaId, e.period || periodOf(e.data), 'Stergerea inregistrarii');
-    // integritatea lantului de storno: un articol deja STORNAT nu se sterge (ar orfani stornul);
-    // corectia e reversibila prin storno, nu prin stergere distructiva.
-    if (e.stornat) fail(400, 'Inregistrarea a fost stornata (nota ' + e.stornoBy + ') — nu se sterge. Corectia e deja reversibila prin storno.');
+    // Jurnal append-only: doar CIORNELE se sterg. Un articol POSTAT (inclusiv cele vechi, fara
+    // status) nu se sterge — corectia se face prin STORNO, documentata si reversibila.
+    if (entryState(e) === 'postat') fail(400, 'Articol postat — nu se sterge. Corecteaza prin storno (buton ↩ storno).');
   }
   const n = d.entries.length;
   d.entries = d.entries.filter((x) => x.id !== id);

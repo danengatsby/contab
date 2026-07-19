@@ -754,6 +754,8 @@ async function main() {
     const isoM = (await req('POST', '/api/stock-movements', { cookie: c1, body: { tip: 'receptie', productId: isoP.id, gestiuneId: isoG.id, cantitate: 5, pretUnitar: 10, data: '2026-08-05', document: 'ISO' } })).json.movement;
     const isoA = (await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Izolat Ion', salariuBrut: 4000 } })).json.angajat;
     const isoE = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-08-06', partener: 'Iso Client', cuiPartener: 'RO99', document: 'ISO-9', baza: 500, tva: 105, cota: 21 } } })).json.entry;
+    // ciorna dedicata pentru cazul pozitiv de stergere (doar ciornele se sterg; postatele = storno)
+    const isoED = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: '2026-08-06', explicatie: 'Ciorna de sters', debit: '5311', credit: '5121', suma: 42 } } })).json.entry;
     const isoAs = (await req('POST', '/api/assets', { cookie: c1, body: { denumire: 'Utilaj izolare', cont: '2131', cost: 5000, durataLuni: 60, dataPif: '2026-01-15' } })).json.asset || {};
     // utilizator nou, DOAR pe firma 2
     await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'izolat', password: 'parola2', firme: [2] } });
@@ -781,9 +783,13 @@ async function main() {
       && (await req('GET', '/api/stock-movements', { cookie: c1 })).json.some((m) => m.id === isoM.id)
       && (await req('GET', '/api/assets', { cookie: c1 })).json.some((x) => x.id === isoAs.id)
     ));
-    // proprietarul isi poate sterge propriile resurse (guard-ul nu blocheaza firma corecta)
+    // un articol POSTAT nu se sterge (jurnal append-only) — corectia se face prin storno
+    eq('stergerea unui articol postat -> 400 (corecteaza prin storno)', (await req('DELETE', '/api/entries/' + isoE.id, { cookie: c1 })).status, 400);
+    ok('articolul postat e inca prezent dupa incercarea de stergere', (await req('GET', '/api/entries', { cookie: c1 })).json.some((e) => e.id === isoE.id));
+    // proprietarul isi poate sterge propriile resurse (guard-ul nu blocheaza firma corecta);
+    // pentru articole se sterge CIORNA (postatele = storno-only)
     ok('proprietarul sterge propriile resurse', (
-      (await req('DELETE', '/api/entries/' + isoE.id, { cookie: c1 })).json.ok === true
+      (await req('DELETE', '/api/entries/' + isoED.id, { cookie: c1 })).json.ok === true
       && (await req('DELETE', '/api/angajati/' + isoA.id, { cookie: c1 })).json.ok === true
       && (await req('DELETE', '/api/assets/' + isoAs.id, { cookie: c1 })).json.ok === true
       && (await req('DELETE', '/api/stock-movements/' + isoM.id, { cookie: c1 })).json.ok === true
@@ -793,7 +799,7 @@ async function main() {
     // auditul stergerii pastreaza inregistrarea INTREAGA (liniile debit/credit reconstructibile)
     {
       const aud = await req('GET', '/api/audit?limit=50', { cookie: c1 });
-      const del = (aud.json.items || aud.json).find((a) => a.action === 'entry.delete' && a.detail.includes(String(isoE.id)));
+      const del = (aud.json.items || aud.json).find((a) => a.action === 'entry.delete' && a.detail.includes(String(isoED.id)));
       ok('audit entry.delete contine snapshotul complet (linii cu debit/credit)', !!del && /"lines":\[/.test(del.detail) && /"debit"/.test(del.detail));
     }
 
@@ -864,6 +870,11 @@ async function main() {
       // audit: tranzitiile de stare sunt inregistrate
       const audL = await req('GET', '/api/audit?limit=80', { cookie: c1 });
       ok('audit entry.status inregistrat (postare)', (audL.json.items || audL.json).some((a) => a.action === 'entry.status' && a.detail.includes('postat')));
+      // o factura CIORNA nu se emite ca e-Factura si nu apare in lista de trimis in SPV
+      const dfi = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', ciorna: true, fields: { data: per + '-14', partener: 'Ciorna SPV', cuiPartener: 'RO123', document: 'DRAFT-1', baza: 100, tva: 21, cota: 21 } } })).json.entry;
+      eq('e-Factura pentru o ciorna -> 400', (await req('GET', '/xml/efactura/' + dfi.id, { cookie: c1 })).status, 400);
+      ok('ciorna de factura NU apare in lista e-Factura', !(await req('GET', '/api/efactura-list', { cookie: c1 })).json.some((x) => x.id === dfi.id));
+      eq('trimiterea unei ciorne in SPV -> respinsa', (await req('POST', '/api/anaf/send/' + dfi.id, { cookie: c1 })).status >= 400 ? 400 : 200, 400);
     }
 
     // ── BACKUP / RESTORE round-trip: un backup nerestaurat e o speranta, nu un backup ──
@@ -885,11 +896,12 @@ async function main() {
     ok('firma restaurata: factura BKP-DOC prezenta cu aceeasi baza', restEntries.some((e) => e.document === 'BKP-DOC' && e.lines.some((l) => l.suma === 1234)));
     ok('firma restaurata: partenerul RO4242 recuperat', (await req('GET', '/api/partners?firma=' + newFid, { cookie: c1 })).json['4242']);
     ok('firma restaurata: produsul BKP-1 recuperat', (await req('GET', '/api/products?firma=' + newFid, { cookie: c1 })).json.some((p) => p.cod === 'BKP-1'));
-    // 4) recuperare prin SUPRASCRIERE (mode=replace): simulez pierderea, apoi restaurez
-    const bkpInNew = restEntries.find((e) => e.document === 'BKP-DOC');
+    // 4) recuperare prin SUPRASCRIERE (mode=replace): simulez pierderea printr-un import PARTIAL
+    // (articolele postate nu se sterg prin API — pierderea reala e coruptie/suprascriere), apoi restaurez
     await req('POST', '/api/firme/' + newFid + '/activate', { cookie: c1 });
-    await req('DELETE', '/api/entries/' + bkpInNew.id, { cookie: c1 });
-    ok('dupa "pierderea" datelor: BKP-DOC lipseste', !(await req('GET', '/api/entries?firma=' + newFid, { cookie: c1 })).json.some((e) => e.document === 'BKP-DOC'));
+    const partialBundle = Object.assign({}, bundle, { entries: bundle.entries.filter((e) => e.document !== 'BKP-DOC') });
+    await req('POST', '/api/firme/import?mode=replace', { cookie: c1, body: partialBundle });
+    ok('dupa "pierderea" datelor (suprascriere partiala): BKP-DOC lipseste', !(await req('GET', '/api/entries?firma=' + newFid, { cookie: c1 })).json.some((e) => e.document === 'BKP-DOC'));
     const restore = await req('POST', '/api/firme/import?mode=replace', { cookie: c1, body: bundle });
     ok('restaurare prin suprascriere reusita (replaced)', restore.json && restore.json.ok && restore.json.replaced);
     ok('dupa restaurare: BKP-DOC este inapoi', (await req('GET', '/api/entries?firma=' + newFid, { cookie: c1 })).json.some((e) => e.document === 'BKP-DOC'));

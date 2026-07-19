@@ -2153,13 +2153,28 @@ eq('exigibilitate TVA pe firma inexistenta -> 403', errStatus(() => esvc.tvaExig
 eq('buildEntry esueaza -> 400', errStatus(() => esvc.createEntry(fidOk, { tip: 'necunoscut' }, throwDeps)), 400);
 const ce = esvc.createEntry(fidOk, { tip: 'test_svc', fields: { data: '2026-06-10', document: 'SVC-E1' } }, stubDeps);
 ok('creare: articolul e scris + upsertPartner apelat', db.get().entries.some((e) => e.id === ce.entry.id) && partnerCalls === 1 && ce.stoc === null);
-// stergere: 404 pentru apelant fara acces la firma articolului, 400 in perioada inchisa
+// stergere: 404 fara acces, 400 in perioada inchisa; POSTAT nu se sterge (storno), doar ciornele
 eq('stergere fara acces la firma -> 404', errStatus(() => esvc.deleteEntry(ce.entry.id, fidOk, () => false)), 404);
 const firmaLockT = db.getFirma(fidOk); const lockPrev = firmaLockT.lockedUntil || null;
 firmaLockT.lockedUntil = '2026-06';
 eq('stergere in perioada inchisa -> 400', errStatus(() => esvc.deleteEntry(ce.entry.id, fidOk, () => true)), 400);
 firmaLockT.lockedUntil = lockPrev;
-eq('stergere valida: removed=1', esvc.deleteEntry(ce.entry.id, fidOk, () => true).removed, 1);
+eq('stergerea unui articol POSTAT -> 400 (corectie prin storno)', errStatus(() => esvc.deleteEntry(ce.entry.id, fidOk, () => true)), 400);
+// storno generic: reversare legata + originalul marcat; re-storno refuzat
+const stRes = esvc.stornoEntry(ce.entry.id, fidOk, () => true, '2026-06-30');
+ok('storno: nota de reversare legata (stornoOf) + original marcat stornat', stRes.storno.stornoOf === ce.entry.id && stRes.original.stornat === true && stRes.storno.system === true);
+eq('re-storno al aceluiasi articol -> 400', errStatus(() => esvc.stornoEntry(ce.entry.id, fidOk, () => true)), 400);
+// ciorna: se creeaza cu status, NU intra in contabilitate si SE STERGE liber
+const dr = esvc.createEntry(fidOk, { tip: 'test_svc', ciorna: true, fields: { data: '2026-06-11', document: 'SVC-DRAFT' } }, stubDeps);
+eq('creare cu ciorna:true -> status ciorna', dr.entry.status, 'ciorna');
+eq('storno pe o ciorna -> 400 (se sterge direct)', errStatus(() => esvc.stornoEntry(dr.entry.id, fidOk, () => true)), 400);
+eq('stergerea unei ciorne: removed=1', esvc.deleteEntry(dr.entry.id, fidOk, () => true).removed, 1);
+// flux de stare: ciorna -> validat -> postat; postat = ireversibil
+const dr2 = esvc.createEntry(fidOk, { tip: 'test_svc', ciorna: true, fields: { data: '2026-06-11', document: 'SVC-DRAFT2' } }, stubDeps);
+eq('avans ciorna->validat', esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'validat').status, 'validat');
+eq('avans validat->postat', esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'postat').status, 'postat');
+eq('postat: schimbarea starii -> 400', errStatus(() => esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'ciorna')), 400);
+eq('stare invalida -> 400', errStatus(() => esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'xyz')), 400);
 eq('id inexistent NU e eroare: removed=0 (contract istoric)', esvc.deleteEntry('e-inexistent', fidOk, () => true).removed, 0);
 // recurente: validare + valori implicite + generare idempotenta pe perioada
 eq('sablon fara tip -> 400', errStatus(() => esvc.saveRecurring(fidOk, {})), 400);
