@@ -94,6 +94,17 @@ function start(ctx) {
     uploadGuard.pruneRateBuckets(now); // bucket-urile de upload/export per utilizator
   }, 3600 * 1000);
 
+  // Igiena uploads (zilnic): staging-urile de import ramase dupa un crash se sterg
+  // (gunoi cert, peste 24h); fisierele ORFANE doar se numara si se vad in /api/metrics
+  // (ops) — stergerea lor ramane decizia operatorului.
+  safeInterval('uploads-hygiene', () => {
+    const uh = require('./uploadsHygiene');
+    const sterse = uh.sweepStaging(db.UPLOAD_DIR);
+    const rap = uh.orphanReport(db.get(), db.UPLOAD_DIR);
+    metrics.jobResult('uploads-hygiene', sterse + ' staging sterse; ' + rap.orfane + '/' + rap.total + ' fisiere orfane');
+    if (sterse || rap.orfane) console.log('[uploads-hygiene]', sterse, 'staging sterse;', rap.orfane, 'orfane din', rap.total);
+  }, 24 * 3600 * 1000);
+
   // Veghe pe memorie: avertizeaza INAINTE ca pm2 sa ucida procesul la max_memory_restart.
   // Baza in RAM e prin design (graful de date e minuscul; RSS-ul e dominat de runtime) —
   // o crestere sustinuta peste prag inseamna leak sau varfuri repetate si trebuie VAZUTA,

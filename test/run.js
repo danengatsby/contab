@@ -238,6 +238,26 @@ ok('stocuri: PhysicalStock plin cu depozit si proprietar 00+CUI', xmlSaftC.inclu
 ok('stocuri: miscari cu tipuri numerice si subtip', xmlSaftC.includes('<MovementType>10</MovementType>') && xmlSaftC.includes('<MovementSubType>40</MovementSubType>'));
 ok('stocuri: Assets gol si fara AssetTransactions', xmlSaftC.includes('<Assets/>') && !xmlSaftC.includes('<AssetTransactions>'));
 
+section('uploadsHygiene — staging orfan + raport de fisiere nereferentiate');
+{
+  const uh = require('../src/uploadsHygiene');
+  const fsH = require('fs'); const osH = require('os'); const pathH = require('path');
+  const dir = fsH.mkdtempSync(pathH.join(osH.tmpdir(), 'uph-'));
+  fsH.mkdirSync(pathH.join(dir, '.import-vechi'));
+  fsH.writeFileSync(pathH.join(dir, '.import-vechi', 'f.bin'), 'x');
+  fsH.mkdirSync(pathH.join(dir, '.import-proaspat'));
+  fsH.writeFileSync(pathH.join(dir, 'doc1.pdf'), 'a');
+  fsH.writeFileSync(pathH.join(dir, 'orfan.pdf'), 'b');
+  // "vechi" = mtime impins in trecut
+  const vechi = new Date(Date.now() - 48 * 3600 * 1000);
+  fsH.utimesSync(pathH.join(dir, '.import-vechi'), vechi, vechi);
+  eq('staging-ul vechi e sters, cel proaspat ramane', uh.sweepStaging(dir), 1);
+  ok('directorul proaspat a supravietuit', fsH.existsSync(pathH.join(dir, '.import-proaspat')));
+  const rap = uh.orphanReport({ documents: [{ storedName: 'doc1.pdf' }], firme: [], messages: [] }, dir);
+  eq('raport: 1 orfan din 2 fisiere (staging-ul nu se numara)', rap.orfane + '/' + rap.total, '1/2');
+  fsH.rmSync(dir, { recursive: true, force: true });
+}
+
 section('secretbox — criptarea secretelor cu cheie externa');
 const sbox = require('../src/secretbox');
 {
@@ -2531,11 +2551,11 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   const stubs = { doBackup: () => ({ name: 'x' }), resetDemo: () => ({ ok: true }), registerAttempts: new Map(), forgotAttempts: new Map() };
   const h = jobs.start(stubs);
   ok('start() intoarce un handle cu stop()', h && typeof h.stop === 'function');
-  eq('stop() curata toate cele 6 joburi', h.stop(), 6);
+  eq('stop() curata toate cele 7 joburi', h.stop(), 7);
   eq('stop() e idempotent (a doua oara: nimic de curatat)', jobs.stop(), 0);
   // dupa stop, un nou start functioneaza si se curata la fel (nu ramane stare blocata)
   jobs.start(stubs);
-  eq('restart dupa stop: tot 6 joburi, curatate din nou', jobs.stop(), 6);
+  eq('restart dupa stop: tot 7 joburi, curatate din nou', jobs.stop(), 7);
 }
 
 section('Migrari DB versionate (src/migrations.js)');
