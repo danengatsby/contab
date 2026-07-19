@@ -362,7 +362,18 @@ async function refreshFiscalProfile() {
     const regim = p.pfa ? 'PFA (Declarația Unică)' : (p.profit ? 'impozit pe profit (D101)' : 'micro (D100)');
     const tva = p.tvaPlatitor ? ('plătitoare TVA — ' + (p.perioadaTva === 'T' ? 'trimestrial' : 'lunar') + (p.tvaLaIncasare ? ', la încasare' : '')) : 'neplătitoare de TVA';
     const scutiri = Object.keys(p.scutiri || {}).filter((k) => p.scutiri[k]);
-    box.innerHTML = `<span class="ei">⚙️</span><p><b>Profil calculat:</b> ${tva} · ${regim} · D406 <b>${{ L: 'lunar', T: 'trimestrial', A: 'anual' }[p.d406] || p.d406}</b> · Intrastat ${p.intrastat ? '<b>da</b>' : 'nu'} · salariați ${p.areAngajati ? 'da' : 'nu'}${scutiri.length ? ' · scutiri: ' + scutiri.join(', ').toUpperCase() : ''}<br><span class="muted">Declarațiile, termenele și alertele se generează din acest profil.</span></p>`;
+    let ctrlHtml = '';
+    try {
+      const c = await api('/api/fiscal-controls');
+      if (c.findings && c.findings.length) {
+        const icon = { eroare: '⛔', atentie: '⚠️', info: 'ℹ️' };
+        ctrlHtml = '<div data-u="ctrl"><b>Controale de coerență:</b><ul class="checklist todo">'
+          + c.findings.map((f) => `<li>${icon[f.nivel] || '•'} ${f.mesaj}</li>`).join('') + '</ul></div>';
+      } else {
+        ctrlHtml = '<div class="muted">✓ Controale de coerență: nicio problemă pe anul curent.</div>';
+      }
+    } catch (_) { /* controalele sunt best-effort */ }
+    box.innerHTML = `<span class="ei">⚙️</span><p><b>Profil calculat:</b> ${tva} · ${regim} · D406 <b>${{ L: 'lunar', T: 'trimestrial', A: 'anual' }[p.d406] || p.d406}</b> · Intrastat ${p.intrastat ? '<b>da</b>' : 'nu'} · salariați ${p.areAngajati ? 'da' : 'nu'}${scutiri.length ? ' · scutiri: ' + scutiri.join(', ').toUpperCase() : ''}<br><span class="muted">Declarațiile, termenele, alertele și controalele se generează din acest profil.</span></p>${ctrlHtml}`;
   } catch (e) { box.innerHTML = `<span class="ei">⚙️</span><p class="muted">Profilul fiscal se calculează după salvarea firmei.</p>`; }
 }
 // Logo firma (apare in antetul PDF-urilor emise) — incarcare/stergere + previzualizare

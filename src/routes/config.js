@@ -11,6 +11,7 @@ const db = require('../db');
 const pdf = require('../pdf');
 const fiscal = require('../fiscal');
 const fiscalProfile = require('../fiscalProfile');
+const fiscalControls = require('../fiscalControls');
 const svc = require('../configService');
 
 module.exports = function register(app, ctx) {
@@ -34,6 +35,13 @@ module.exports = function register(app, ctx) {
   app.get('/api/fiscal-profile', (req, res) => {
     const v = S(req);
     res.json(fiscalProfile.build(v.company, { angajati: v.angajati }));
+  });
+
+  // Controale de coerenta derivate din profil (al treilea pilon, langa declaratii si alerte):
+  // semnaleaza date incompatibile cu regimul declarat (neplatitor care colecteaza TVA, micro peste
+  // plafon, plafon Intrastat...). ?year=YYYY (implicit anul curent).
+  app.get('/api/fiscal-controls', (req, res) => {
+    res.json(fiscalControls.check(S(req), { year: req.query.year || String(new Date().getFullYear()) }));
   });
 
   // ── Logo firma (layout documente): apare in antetul tuturor PDF-urilor emise ──
