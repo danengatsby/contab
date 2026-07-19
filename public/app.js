@@ -9,7 +9,7 @@ import { initUiMode } from './simplemode.js';
 import { loadPartners } from './partners.js';
 import './viewer.js'; // vizualizatorul de documente (PDF/CSV/XML/e-Factura) — se activeaza prin efect secundar
 import { pget, workMonth, setWorkMonth, lunaLabel, applyWorkMonth, onPeriodChange, fillPeriods, setPeriodsDeps } from './periods.js';
-import { loadJournal, loadLedger, loadCashbook, loadBalance, loadVat, loadClosings, loadStatements } from './rapoarte.js';
+import { loadJournal, loadLedger, loadCashbook, loadBalance, loadVat, loadClosings, loadStatements, loadStorno } from './rapoarte.js';
 import { loadLivrabile, loadPortfolio, loadNotifications, loadReconcile, loadAnalytic, refreshNotifBadge } from './livrabile.js';
 import { loadAssets } from './mijloace.js';
 import { loadSalarizare } from './salarizare.js';
@@ -102,6 +102,7 @@ function onTab(t) {
   if (t === 'carte') loadLedger();
   if (t === 'cashbook') loadCashbook();
   if (t === 'balanta') loadBalance();
+  if (t === 'storno') loadStorno();
   if (t === 'tva') loadVat();
   if (t === 'inchideri') loadClosings();
   if (t === 'situatii') loadStatements();

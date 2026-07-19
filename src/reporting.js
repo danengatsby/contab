@@ -656,4 +656,29 @@ function monthlySeries(db, year) {
   return out;
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast };
+// Raportul articolelor STORNATE: perechile (original stornat -> nota de storno), pentru control
+// intern si trasabilitatea corectiilor. Filtreaza pe perioada dupa data originalului sau a stornului
+// (o corectie apare daca oricare pica in perioada ceruta). period = YYYY | YYYY-MM | null (tot).
+function stornoReport(db, period) {
+  const ents = db.entries || [];
+  const byId = new Map(ents.map((e) => [e.id, e]));
+  const inPer = (p) => !period || (String(period).length === 4 ? String(p || '').startsWith(period) : String(p || '') === period);
+  const total = (arr) => round2((arr || []).reduce((s, l) => s + l.suma, 0));
+  const rows = [];
+  for (const e of ents) {
+    if (!e.stornat || !e.stornoBy) continue; // doar originalele reversate
+    const sn = byId.get(e.stornoBy);
+    const oPer = e.period || periodOf(e.data);
+    const sPer = sn ? (sn.period || periodOf(sn.data)) : null;
+    if (!(inPer(oPer) || inPer(sPer))) continue;
+    rows.push({
+      id: e.id, data: e.data, tip: e.tipNume, document: e.document || '', partener: e.partener || '',
+      total: total(e.lines),
+      stornoId: e.stornoBy, stornoData: (sn && sn.data) || e.stornoData || '', stornoTotal: sn ? total(sn.lines) : total(e.lines),
+    });
+  }
+  rows.sort((a, b) => String(b.stornoData || '').localeCompare(String(a.stornoData || '')));
+  return { period: period || null, rows, total: round2(rows.reduce((s, r) => s + r.total, 0)) };
+}
+
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport };

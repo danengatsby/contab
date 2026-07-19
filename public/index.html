@@ -247,6 +247,7 @@
           <button data-tab="balanta" class="adv">Solduri conturi (balanță)</button>
           <button data-tab="jurnal" class="adv">Toate operațiunile (jurnal)</button>
           <button data-tab="carte" class="adv">Fișa fiecărui cont (cartea mare)</button>
+          <button data-tab="storno" class="adv">Articole stornate (corecții)</button>
           <button data-tab="analitic">Scadențar clienți & furnizori</button>
           <button data-tab="inchideri" class="adv">Închideri de lună</button>
         </div>
@@ -687,6 +688,19 @@
       <div class="explain"><span class="ei">⚖️</span><p><b>Ce vezi aici:</b> situația tuturor conturilor pe luna aleasă, pe coloane: <b class="c-si">Sold inițial (reportat din luna precedentă)</b> + <b class="c-ru">Rulaj lună (mișcările lunii)</b> = <b class="c-sf">Sold final</b>. Soldul inițial nu e o eroare — soldurile de bilanț (bani, clienți, furnizori, stoc) se <b>reportează</b> firesc dintr-o lună în alta. <b>Regula de aur:</b> totalul pe <b>Debit</b> = totalul pe <b>Credit</b> ⇒ contabilitate echilibrată.</p></div>
       <div id="balantaStatus"></div>
       <div id="balantaView" class="tablewrap"></div>
+    </section>
+
+    <!-- ─────────────── ARTICOLE STORNATE ─────────────── -->
+    <section id="tab-storno" class="tab">
+      <div class="toolbar">
+        <h2>Articole stornate <span class="muted">(corecții reversibile)</span></h2>
+        <div class="spacer"></div>
+        <select id="stornoLuna" class="period luna" aria-label="Luna"></select>
+        <select id="stornoAn" class="period an" aria-label="Anul"></select>
+        <a id="stornoCsv" class="btn" target="_blank">⬇ CSV</a>
+      </div>
+      <div class="explain"><span class="ei">↩️</span><p><b>Ce vezi aici:</b> fiecare articol postat care a fost <b>stornat</b> (corectat printr-o notă de reversare, nu șters), împreună cu nota de storno legată. Rămâne astfel urma completă a corecțiilor — cerință de control intern. Suma afișată e a documentului original.</p></div>
+      <div id="stornoView" class="tablewrap"></div>
     </section>
 
     <!-- ─────────────── TVA / D300 ─────────────── -->

@@ -141,6 +141,19 @@ tr.sys td{color:#8a6d00}
 tr.draft td{opacity:.72;font-style:italic}
 tr.draft td:first-child{box-shadow:inset 3px 0 0 #c79a3a}
 body.dark tr.draft td:first-child{box-shadow:inset 3px 0 0 #d9b65a}
+/* Insigne pentru coloana "Stare" (ciclul de viata + storno) */
+.st{display:inline-block;padding:1px 8px;border-radius:10px;font-size:.78em;font-weight:600;white-space:nowrap;border:1px solid transparent}
+.st-postat{background:#e4f4e8;color:#1c7a3e;border-color:#bfe6ca}
+.st-ciorna,.st-validat,.st-aprobat{background:#fbf1d8;color:#8a6d00;border-color:#ecd9a3}
+.st-validat{background:#fdf6e3}
+.st-aprobat{background:#eef6dd;color:#5c7a1c;border-color:#d3e6ac}
+.st-stornat{background:#fbe4e4;color:#a12b2b;border-color:#eec2c2}
+.st-storno{background:#e6edf7;color:#2f5aa8;border-color:#c5d4ec}
+body.dark .st-postat{background:#123020;color:#7ed6a0;border-color:#1e5236}
+body.dark .st-ciorna,body.dark .st-validat,body.dark .st-aprobat{background:#2e2610;color:#e6c56a;border-color:#514012}
+body.dark .st-aprobat{background:#28300f;color:#bcd97a;border-color:#455514}
+body.dark .st-stornat{background:#331515;color:#e88a8a;border-color:#5a2020}
+body.dark .st-storno{background:#161f2e;color:#8fb0e6;border-color:#2a3b57}
 /* Polish tabele: zebra discret + evidentiere rand la hover (cromatica caldă, neutră la dark) */
 tbody tr:nth-child(2n):not(.total):not(.sys) td{background:rgba(120,90,50,.035)}
 tbody tr:not(.total):hover td{background:rgba(194,97,60,.07)}
