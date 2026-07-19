@@ -523,6 +523,26 @@ async function main() {
     const vjL = await req('GET', '/api/vat-journals?period=2026-06', { cookie: c1 });
     ok('vat-journals la regim L: perioada efectiva = luna', vjL.json.period === '2026-06' && !vjL.json.trimestrial);
 
+    // ── MOTOR DE PROFIL FISCAL: sursa unica pentru declaratii/alerte/controale ──
+    {
+      const fp0 = await req('GET', '/api/fiscal-profile', { cookie: c1 });
+      ok('fiscal-profile: profil coerent pentru firma platitoare de TVA', fp0.status === 200 && fp0.json.tvaPlatitor === true && fp0.json.perioadaTva === 'L' && fp0.json.d406 === 'L');
+      // setarea campurilor de profil prin /api/company (allowlist) se reflecta in profil
+      await req('POST', '/api/company', { cookie: c1, body: { regimImpozit: 'profit', d406Cadenta: 'T', intrastatObligat: true, scutiri: { d394: true } } });
+      const fp1 = (await req('GET', '/api/fiscal-profile', { cookie: c1 })).json;
+      ok('fiscal-profile: regim profit + D406 trimestrial reflectate', fp1.regim === 'profit' && fp1.profit === true && fp1.d406 === 'T' && fp1.intrastat === true);
+      // controlul e derivat din profil: scutirea suprima D394 din declaratiile asteptate
+      // (perioada 2026-09 = sfarsit de T3, fara inregistrari manuale care sa reapara in registru)
+      const dreg = (await req('GET', '/api/declarations?period=2026-09', { cookie: c1 })).json;
+      const tips09 = (dreg.rows || []).map((x) => x.tip);
+      ok('declaratii conduse de profil: D394 scutit nu apare', tips09.length > 0 && !tips09.includes('d394'));
+      ok('declaratii conduse de profil: D406 la regim trimestrial e prezent la sfarsit de T3', tips09.includes('saft'));
+      // restaurez profilul firmei pentru restul suitei
+      await req('POST', '/api/company', { cookie: c1, body: { regimImpozit: 'micro', d406Cadenta: '', intrastatObligat: false, scutiri: {} } });
+      const fp2 = (await req('GET', '/api/fiscal-profile', { cookie: c1 })).json;
+      ok('fiscal-profile: revenit la micro + D406 lunar (derivat)', fp2.regim === 'micro' && fp2.d406 === 'L' && fp2.intrastat === false);
+    }
+
     // ── Pro-rata TVA (art. 300): split automat al TVA-ului pe achizitiile mixte ──
     ok('pro-rata provizorie setata pe firma (40%)', (await req('POST', '/api/company', { cookie: c1, body: { proRataTva: 40 } })).json.ok === true);
     const prE = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_utilitati', fields: { data: '2026-06-23', partener: 'EnergoMix', cuiPartener: 'RO88', document: 'U-77', baza: 1000, tva: 210, cota: 21, proRataMixt: true } } });

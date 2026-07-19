@@ -1,6 +1,7 @@
 'use strict';
 
 const { postedEntries } = require('./accounting'); // ciornele nu declanseaza asteptari de declaratii/e-Factura
+const fiscalProfile = require('./fiscalProfile'); // motorul de profil fiscal (sursa unica)
 
 // Registrul depunerilor de declaratii + termene fiscale + agregarea pe portofoliu (multi-firma).
 //
@@ -17,6 +18,7 @@ const TIPURI = {
   d390: { nume: 'D390 — recapitulativă intracomunitară (VIES)' },
   d100: { nume: 'D100 — impozit micro / avans profit (trimestrial)' },
   saft: { nume: 'D406 — SAF-T' },
+  intrastat: { nume: 'Intrastat — declarație statistică (INS)' },
 };
 const STATUSES = ['nedepusa', 'generata', 'depusa', 'eroare', 'scutita'];
 
@@ -33,6 +35,8 @@ function dueDate(tip, period) {
     // D406: ultima zi calendaristica a lunii urmatoare perioadei raportate (fara gratie din 2026)
     return ny + '-' + pad2(nm) + '-' + pad2(lastDayOfMonth(ny, nm));
   }
+  // Intrastat: pana pe 15 ale lunii urmatoare (termen INS)
+  if (tip === 'intrastat') return ny + '-' + pad2(nm) + '-15';
   // restul: 25 ale lunii urmatoare
   return ny + '-' + pad2(nm) + '-25';
 }
@@ -47,24 +51,11 @@ const INTRACOM_TYPES = new Set(['livrare_intracomunitara', 'achizitie_intracomun
 
 function expectedForFirma(v, period) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
-  const m = Number(period.slice(5, 7));
-  const tva = !!(v.company && v.company.tvaPlatitor);
-  const pfa = !!(v.company && v.company.tipEntitate === 'pfa');
-  // perioada fiscala TVA (Setari firma): 'T' = trimestrial -> D300/D394/D406 doar la sfarsit
-  // de trimestru (lunile 3/6/9/12); implicit lunar. D406 urmeaza perioada TVA.
-  const trimestrialTva = tva && v.company.perioadaTva === 'T';
-  const sfarsitTrim = [3, 6, 9, 12].includes(m);
-  const tips = [];
-  if (tva && (!trimestrialTva || sfarsitTrim)) tips.push('d300', 'd394');
-  // D390 doar in lunile cu operatiuni intracomunitare efective (LIC/AIC in jurnal)
-  if (postedEntries(v).some((e) => INTRACOM_TYPES.has(e.tip) && String(e.period || e.data || '').slice(0, 7) === period)) tips.push('d390');
-  if ((v.angajati || []).length) tips.push('d112');
-  // PFA: impozitul pe venit merge prin Declaratia Unica (anuala, depusa personal),
-  // nu prin D100; persoanele fizice nu depun nici SAF-T (D406) deocamdata.
-  if (!pfa && sfarsitTrim) tips.push('d100');
-  // D406: platitor TVA lunar -> lunar; trimestrial (sau neplatitor) -> la sfarsit de trimestru
-  if (!pfa && (tva ? (!trimestrialTva || sfarsitTrim) : sfarsitTrim)) tips.push('saft');
-  return tips.map((tip) => ({ tip, nume: TIPURI[tip].nume, period, due: dueDate(tip, period) }));
+  // Sursa UNICA: profilul fiscal al firmei deriva lista (nu boolean-uri citite inline aici).
+  const profile = fiscalProfile.build((v || {}).company, { angajati: (v || {}).angajati });
+  const hasIntracom = (per) => postedEntries(v).some((e) => INTRACOM_TYPES.has(e.tip) && String(e.period || e.data || '').slice(0, 7) === per);
+  return fiscalProfile.expected(profile, period, hasIntracom)
+    .map((tip) => ({ tip, nume: (TIPURI[tip] || {}).nume || tip, period, due: dueDate(tip, period) }));
 }
 
 // ── e-Factura B2B: facturi emise netrimise in SPV (termen legal: 5 zile CALENDARISTICE, OUG 89/2025) ──
