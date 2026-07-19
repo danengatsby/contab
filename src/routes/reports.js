@@ -9,6 +9,7 @@
 const stmt = require('../statements');
 const rep = require('../reporting');
 const acc = require('../accounting');
+const fiscalProfile = require('../fiscalProfile');
 const pdf = require('../pdf');
 const { analyticBalance } = require('../analytic');
 
@@ -72,7 +73,12 @@ module.exports = function register(app, ctx) {
   app.get('/pdf/vat', (req, res) => { const v = S(req); return pdf.vatPdf(res, v.company, acc.vatJournals(v, acc.vatPeriod(v.company, req.query.period || null))); });
   app.get('/pdf/d112', (req, res) => pdf.d112Pdf(res, S(req).company, rep.d112(S(req), req.query.period || null)));
   // (PDF stat de plata / fluturas: src/routes/payroll.js)
-  app.get('/pdf/d300', (req, res) => { const v = S(req); const pd = acc.vatPeriod(v.company, req.query.period || null); return pdf.d300Pdf(res, v.company, rep.d300(v, pd)); });
+  app.get('/pdf/d300', (req, res) => {
+    const v = S(req);
+    if (!fiscalProfile.build(v.company).tvaPlatitor) return res.status(400).send('Firma nu e plătitoare de TVA — nu depune D300.');
+    const pd = acc.vatPeriod(v.company, req.query.period || null);
+    return pdf.d300Pdf(res, v.company, rep.d300(v, pd));
+  });
   app.get('/pdf/d100', (req, res) => pdf.d100Pdf(res, S(req).company, rep.d100micro(S(req), req.query.period || null)));
   // Declaratia Unica (PFA, sistem real): estimarea venitului net anual si a CAS/CASS/impozitului
   app.get('/api/declaratia-unica', (req, res) => res.json(rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));

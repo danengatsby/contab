@@ -172,6 +172,7 @@ function generateRecurring(fid, period, deps) {
   period = period || new Date().toISOString().slice(0, 7);
   const due = recurring.dueForPeriod((d.recurringInvoices || []).filter((t) => t.firmaId === fid), period);
   const created = []; const errors = [];
+  const profile = fiscalProfile.build(db.getFirma(fid)); // guard de profil, aplicat si aici (nu doar in createEntry)
   for (const t of due) {
     const fields = Object.assign({}, t.fields, {
       data: period + '-' + String(t.ziua || 1).padStart(2, '0'),
@@ -179,6 +180,8 @@ function generateRecurring(fid, period, deps) {
     });
     try {
       const entry = deps.buildEntry(t.tip, fields, null, fid);
+      const gViol = fiscalProfile.entryGuard(profile, entry);
+      if (gViol) throw new Error(gViol); // se aduna in errors, ca orice esec per sablon
       entry.recurringId = t.id;
       d.entries.push(entry);
       deps.upsertPartner(fid, entry);
@@ -217,6 +220,8 @@ function tvaExigibilitate(fid, b, deps) {
   const data = b.data && String(b.data).length === 10 ? b.data : new Date().toISOString().slice(0, 10);
   const entry = deps.buildEntry(tip, { data, partener: b.partener || '', document: b.document || '', tva }, null, fid);
   entry.system = true;
+  const gViol = fiscalProfile.entryGuard(fiscalProfile.build(db.getFirma(fid)), entry);
+  if (gViol) fail(400, gViol); // neplatitor nu poate exigibiliza TVA colectata
   // baza aferenta TVA-ului devenit exigibil (pentru D300 in perioada exigibilitatii — TVA la incasare)
   entry.tvaExig = { baza: round2(brut - tva), cota, side: b.tip === 'deductibila' ? 'deductibila' : 'colectata' };
   db.get().entries.push(entry);

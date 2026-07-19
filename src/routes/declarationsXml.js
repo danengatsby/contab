@@ -14,10 +14,18 @@ const pdf = require('../pdf');
 const decl = require('../declarations');
 const plans = require('../plans');
 const validate = require('../validate');
+const fiscalProfile = require('../fiscalProfile');
 const { statePlata } = require('../payroll');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, canAccess, wrap } = ctx;
+
+  // Guard de profil: D300/D394 (decontul TVA) nu se genereaza pentru o firma NEPLATITOARE de TVA.
+  function requireVatPayer(v, res) {
+    if (fiscalProfile.build(v.company).tvaPlatitor) return true;
+    res.status(400).send('Firma nu e plătitoare de TVA — nu depune D300/D394. Activează regimul TVA în Setări dacă e cazul.');
+    return false;
+  }
 
   function sendXml(res, str, filename) {
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
@@ -65,12 +73,14 @@ module.exports = function register(app, ctx) {
 
   app.get('/xml/d300', (req, res) => {
     const v = S(req);
+    if (!requireVatPayer(v, res)) return;
     recordDecl(req, 'd300', req.query.period);
     const pd300 = acc.vatPeriod(v.company, req.query.period || null); // agrega trimestrul la regim 'T'
     sendXml(res, xml.d300Xml(v.company, pd300, rep.d300(v, pd300), declarantOf(req)), 'd300.xml');
   });
   app.get('/xml/d394', (req, res) => {
     const v = S(req);
+    if (!requireVatPayer(v, res)) return;
     const period = req.query.period || null;
     recordDecl(req, 'd394', period);
     const pd394 = acc.vatPeriod(v.company, period); // agrega trimestrul la regim 'T'
