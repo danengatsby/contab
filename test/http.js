@@ -825,6 +825,15 @@ async function main() {
       // audit: evenimentul de storno e inregistrat
       const audS = await req('GET', '/api/audit?limit=50', { cookie: c1 });
       ok('audit entry.storno inregistrat', (audS.json.items || audS.json).some((a) => a.action === 'entry.storno' && a.detail.includes(String(stE.id))));
+      // raportul articolelor stornate: perechea original -> nota de storno
+      const srep = (await req('GET', '/api/storno-report?period=2026-08', { cookie: c1 })).json;
+      const srow = srep.rows.find((r) => r.id === stE.id);
+      ok('raportul de storno contine perechea original->nota', !!srow && srow.stornoId === so.id && srow.stornoData === '2026-08-10');
+      // izolare pe firma: raportul altei firme nu vede stornul firmei 1
+      ok('raportul de storno e izolat pe firma', !(await req('GET', '/api/storno-report?period=2026-08', { cookie: c2 })).json.rows.some((r) => r.id === stE.id));
+      // export CSV al raportului
+      const scsv = await req('GET', '/csv/storno-report?period=2026-08', { cookie: c1 });
+      ok('CSV raport storno: 200 cu antet', scsv.status === 200 && /Data;Document;Partener;Tip;Suma/.test(scsv.text));
       // articolele cu impact pe stoc au corectie dedicata — storno generic blocat (anti-desincronizare)
       const sg = (await req('POST', '/api/gestiuni', { cookie: c1, body: { cod: 'STG', denumire: 'Storno gest' } })).json.gestiune;
       const sp = (await req('POST', '/api/products', { cookie: c1, body: { cod: 'STP', denumire: 'Storno prod', um: 'buc', cont: '371' } })).json.product;

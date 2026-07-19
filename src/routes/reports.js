@@ -29,6 +29,8 @@ module.exports = function register(app, ctx) {
     pdf.fisaContPdf(res, S(req).company, acc.fisaCont(S(req), req.query.cont, req.query.period || null));
   });
   app.get('/api/balance', (req, res) => res.json(acc.trialBalance(S(req), req.query.period || null)));
+  // Raportul articolelor stornate (perechi original -> nota de storno) pentru control intern
+  app.get('/api/storno-report', (req, res) => res.json(rep.stornoReport(S(req), req.query.period || null)));
   app.get('/api/vat-preview', (req, res) => { const v = S(req); return res.json(acc.vatClosing(v, acc.vatPeriod(v.company, req.query.period || null))); });
   app.get('/api/vat-journals', (req, res) => {
     const v = S(req);

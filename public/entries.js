@@ -21,19 +21,26 @@ function entryDir(tip) {
 }
 // Fluxul de stare: ciorna -> validat -> aprobat -> postat. Butonul avanseaza un pas.
 const NEXT_STATE = { ciorna: 'validat', validat: 'aprobat', aprobat: 'postat' };
-const STATE_LABEL = { ciorna: 'ciornă', validat: 'validat', aprobat: 'aprobat' };
+const STATE_LABEL = { ciorna: 'ciornă', validat: 'validat', aprobat: 'aprobat', postat: 'postat' };
 const NEXT_LABEL = { validat: '✓ validează', aprobat: '✓ aprobă', postat: '▶ postează' };
-function entryActionsHtml(e) {
-  if (e.stornat) return `<span class="pill" title="Corectat prin nota de storno ${H(String(e.stornoBy))}">stornat</span>`;
-  if (e.stornoOf) return `<span class="pill" title="Notă de stornare a articolului ${H(String(e.stornoOf))}">storno</span>`;
+// Insigna pentru coloana "Stare": ciclul de viata + marcajele de storno.
+function entryStateBadge(e) {
+  if (e.stornat) return `<span class="st st-stornat" title="Corectat prin nota de storno ${H(String(e.stornoBy))}">stornat</span>`;
+  if (e.stornoOf) return `<span class="st st-storno" title="Notă de stornare a articolului ${H(String(e.stornoOf))}">↩ storno</span>`;
   const st = e.status || 'postat';
-  if (st !== 'postat') { // ciorna in flux: eticheta stare + avans + stergere (nu intra in contabilitate)
+  const title = st === 'postat' ? 'Postat — intră în contabilitate' : 'Ciornă — nu intră încă în contabilitate';
+  return `<span class="st st-${st}" title="${title}">${STATE_LABEL[st] || st}</span>`;
+}
+function entryActionsHtml(e) {
+  if (e.stornat || e.stornoOf) return ''; // marcajul e in coloana Stare; nicio actiune
+  const st = e.status || 'postat';
+  if (st !== 'postat') { // ciorna in flux: avans + stergere (nu intra in contabilitate)
     const next = NEXT_STATE[st];
-    return `<span class="pill" title="Ciornă — nu intră încă în contabilitate">${STATE_LABEL[st]}</span>
-      <button class="advst" data-id="${e.id}" data-next="${next}" title="Avansează în flux">${NEXT_LABEL[next]}</button>
-      <button class="del" data-id="${e.id}" title="Șterge ciorna">✕</button>`;
+    return `<button class="advst" data-id="${e.id}" data-next="${next}" title="Avansează în flux">${NEXT_LABEL[next]}</button>
+      <button class="del" data-id="${e.id}" data-draft="1" title="Șterge ciorna">✕</button>`;
   }
-  return `<button class="storno" data-id="${e.id}" title="Stornează (corecție reversibilă, fără ștergere)">↩ storno</button> <button class="del" data-id="${e.id}" title="Șterge">✕</button>`;
+  // postat: nu se sterge (jurnal append-only) — doar storno
+  return `<button class="storno" data-id="${e.id}" title="Stornează (corecție reversibilă, fără ștergere)">↩ storno</button>`;
 }
 function entryRowHtml(e) {
   const formula = e.lines.map((l) => `${l.debit}=${l.credit}`).join(', ');
@@ -45,6 +52,7 @@ function entryRowHtml(e) {
     <td>${H(e.partener)}</td>
     <td class="acc">${H(formula)}</td>
     <td class="num">${fmt(total)}</td>
+    <td>${entryStateBadge(e)}</td>
     <td><a class="linkbtn" href="/pdf/note/${e.id}" target="_blank">PDF</a>
         ${e.lines.some((l) => /^531/.test(String(l.debit))) ? ` · <a class="linkbtn" href="/pdf/chitanta/${e.id}" target="_blank" title="Chitanta pentru incasarea in numerar (numar din seria CH)">chitanță</a>` : ''}
         ${EFACT_TYPES.has(e.tip) ? ` · <a class="linkbtn" href="/xml/efactura/${e.id}" target="_blank">e-Factura</a>` : ''}
@@ -59,16 +67,18 @@ function renderEntryTable(containerId, rowsHtml, emptyMsg) {
   const el = $('#' + containerId); if (!el) return;
   if (!rowsHtml) { el.innerHTML = `<p class="muted">${emptyMsg}</p>`; return; }
   el.innerHTML = `<table><thead><tr>
-    <th>Data</th><th>Tip</th><th>Partener</th><th>Formulă</th><th class="num">Sumă</th><th>Fișiere</th><th></th>
+    <th>Data</th><th>Tip</th><th>Partener</th><th>Formulă</th><th class="num">Sumă</th><th>Stare</th><th>Fișiere</th><th></th>
     </tr></thead><tbody>${rowsHtml}</tbody></table>`;
   bindEntryActions(el);
 }
 function bindEntryActions(root) {
   root.querySelectorAll('.del').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ștergi această înregistrare?')) return;
-    await api('/api/entries/' + b.dataset.id, { method: 'DELETE' });
-    toast('Înregistrare ștearsă');
-    setMeta(await api('/api/meta')); fillPeriods(); loadEntries();
+    if (!confirm(b.dataset.draft ? 'Ștergi această ciornă?' : 'Ștergi această înregistrare?')) return;
+    try {
+      await api('/api/entries/' + b.dataset.id, { method: 'DELETE' });
+      toast('Înregistrare ștearsă');
+      setMeta(await api('/api/meta')); fillPeriods(); loadEntries();
+    } catch (e) { toast(e.message, true); }
   }));
   root.querySelectorAll('.advst').forEach((b) => b.addEventListener('click', async () => {
     const next = b.dataset.next;

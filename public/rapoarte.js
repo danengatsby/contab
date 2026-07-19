@@ -152,6 +152,22 @@ function renderBalance() {
     <td class="num grpsep">${fmt(t.sfD)}</td><td class="num">${fmt(t.sfC)}</td></tr></tbody></table>`;
 }
 
+// ───────────────────────── ARTICOLE STORNATE ─────────────────────────
+onPeriodChange('storno', loadStorno);
+async function loadStorno() {
+  const p = pget('storno');
+  if ($('#stornoCsv')) $('#stornoCsv').href = '/csv/storno-report' + (p ? '?period=' + p : '');
+  const r = await api('/api/storno-report' + (p ? '?period=' + p : ''));
+  if (!r.rows.length) { $('#stornoView').innerHTML = '<p class="muted">Niciun articol stornat în perioada selectată.</p>'; return; }
+  $('#stornoView').innerHTML = `<table><thead><tr>
+    <th>Data</th><th>Document</th><th>Partener</th><th>Tip</th><th class="num">Sumă</th><th>Notă storno</th><th>Data storno</th>
+    </tr></thead><tbody>${r.rows.map((x) => `<tr>
+      <td>${H(x.data)}</td><td>${H(x.document)}</td><td>${H(x.partener)}</td><td>${H(x.tip)}</td>
+      <td class="num">${fmt(x.total)}</td><td><span class="st st-storno">#${H(String(x.stornoId))}</span></td><td>${H(x.stornoData)}</td>
+    </tr>`).join('')}</tbody></table>
+    <p class="muted">Total stornat: <b>${fmt(r.total)}</b> lei · ${r.rows.length} ${r.rows.length === 1 ? 'articol' : 'articole'}</p>`;
+}
+
 // ───────────────────────── TVA / D300 ─────────────────────────
 onPeriodChange('tva', loadVat);
 // Pro-rata TVA (art. 300): definitiva calculata din jurnal + regularizarea achizitiilor mixte
@@ -534,4 +550,4 @@ async function loadStatements() {
 }
 
 
-export { loadBalance, loadCashbook, loadClosings, loadJournal, loadLedger, loadStatements, loadVat };
+export { loadBalance, loadCashbook, loadClosings, loadJournal, loadLedger, loadStatements, loadStorno, loadVat };

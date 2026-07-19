@@ -19,6 +19,11 @@ module.exports = function register(app, ctx) {
     res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
     res.send(str);
   }
+  app.get('/csv/storno-report', (req, res) => {
+    const r = rep.stornoReport(S(req), req.query.period || null);
+    const rows = r.rows.map((x) => [x.data, x.document, x.partener, x.tip, x.total, x.stornoId, x.stornoData]);
+    sendCsv(res, 'articole-stornate.csv', toCsv(['Data', 'Document', 'Partener', 'Tip', 'Suma', 'Nota storno', 'Data storno'], rows));
+  });
   app.get('/csv/stock-movements', (req, res) => {
     const rows = stocks.movementsList(S(req), req.query.period || null).map((m) => [m.data, m.tip, m.gestiuneCod, m.gestiuneDestCod || '', m.cod, m.denumire, m.cantitate, m.um, m.pretUnitar || '', m.document || '', m.operator || '']);
     sendCsv(res, 'miscari-stoc.csv', toCsv(['Data', 'Tip', 'Gestiune', 'Gestiune dest', 'Cod', 'Denumire', 'Cantitate', 'UM', 'Pret', 'Document', 'Operator'], rows));
