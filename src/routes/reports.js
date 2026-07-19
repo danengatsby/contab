@@ -80,6 +80,8 @@ module.exports = function register(app, ctx) {
     return pdf.d300Pdf(res, v.company, rep.d300(v, pd));
   });
   app.get('/pdf/d100', (req, res) => pdf.d100Pdf(res, S(req).company, rep.d100micro(S(req), req.query.period || null)));
+  // D101 — calculul impozitului pe profit anual (figuri semantice; XML-ul oficial nu e inca generat)
+  app.get('/api/d101', (req, res) => res.json(rep.d101(S(req), req.query.year || String(new Date().getFullYear()))));
   // Declaratia Unica (PFA, sistem real): estimarea venitului net anual si a CAS/CASS/impozitului
   app.get('/api/declaratia-unica', (req, res) => res.json(rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));
   app.get('/pdf/declaratia-unica', (req, res) => pdf.declaratiaUnicaPdf(res, S(req).company, rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));

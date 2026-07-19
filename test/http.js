@@ -541,6 +541,9 @@ async function main() {
       const dregDec = (await req('GET', '/api/declarations?period=2026-12', { cookie: c1 })).json;
       const tipsDec = (dregDec.rows || []).map((x) => x.tip);
       ok('profil profit: D101 apare in decembrie', tipsDec.includes('d101') && tipsDec.includes('d100'));
+      // calculul D101 (figuri semantice) disponibil via /api/d101
+      const d101c = await req('GET', '/api/d101?year=2026', { cookie: c1 });
+      ok('/api/d101: calcul coerent (rezultat brut + impozit + scadenta)', d101c.status === 200 && typeof d101c.json.rezultatBrut === 'number' && typeof d101c.json.impozit === 'number' && d101c.json.scadenta === '2027-03-25');
       // restaurez profilul firmei pentru restul suitei
       await req('POST', '/api/company', { cookie: c1, body: { regimImpozit: 'micro', d406Cadenta: '', intrastatObligat: false, scutiri: {} } });
       const fp2 = (await req('GET', '/api/fiscal-profile', { cookie: c1 })).json;

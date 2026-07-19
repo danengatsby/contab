@@ -1345,6 +1345,18 @@ eq('691 exclus din baza (re-rulare cu impozit deja inregistrat -> tot 640)', acc
 const ptLoss = acc.profitTax({ entries: [{ id: '1', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 5000 }] }, { id: '2', period: '2026-04', data: '2026-04-01', lines: [{ debit: '607', credit: '371', suma: 8000 }] }] }, '2026', 16);
 eq('pierdere -> impozit 0', ptLoss.impozit, 0);
 eq('pierdere -> niciun articol', ptLoss.lines.length, 0);
+// D101 (calculul anual): split exploatare/financiar (76x/66x) + figuri peste profitTax
+const d101ent = [
+  { id: 'a', period: '2025-06', data: '2025-06-10', lines: [{ debit: '4111', credit: '707', suma: 100000 }, { debit: '627', credit: '401', suma: 5000 }] },
+  { id: 'b', period: '2025-07', data: '2025-07-10', lines: [{ debit: '5121', credit: '766', suma: 3000 }, { debit: '666', credit: '5121', suma: 2000 }] },
+];
+const d101r = rep.d101({ entries: d101ent, openingBalances: {} }, '2025', { cheltNedeductibile: 1000 });
+eq('D101: venituri exploatare = 100000', d101r.venituriExploatare, 100000);
+eq('D101: rezultat financiar = 766 - 666 = 1000', d101r.rezFinanciar, 1000);
+eq('D101: rezultat brut = exploatare 95000 + financiar 1000', d101r.rezultatBrut, 96000);
+eq('D101: profit impozabil = brut 96000 + nedeductibile 1000', d101r.profitImpozabil, 97000);
+eq('D101: impozit = 97000 × 16% = 15520', d101r.impozit, 15520);
+eq('D101: scadenta = 25 martie anul urmator', d101r.scadenta, '2026-03-25');
 
 section('Impozit pe profit — ajustari fiscale + reportare pierdere');
 const ptAdjEnt = [
