@@ -45,6 +45,7 @@ function postStatPlata(fid, period, deps) {
   const v = db.scoped(fid);
   if (!v.angajati.length) fail(400, 'Niciun angajat definit.');
   if (!period) fail(400, 'Lipseste perioada (YYYY-MM).');
+  db.assertPeriodOpen(fid, period, 'Postarea statului de plata');
   const sp = statePlata(v.angajati, period, v.payrollHistory);
   const data = period + '-30';
   // posteaza articolul de salarii cu sumele agregate din statul de plata (potrivite exact)

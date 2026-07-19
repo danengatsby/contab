@@ -347,6 +347,21 @@ function firmaActiva() {
 function getFirma(id) {
   return get().firme.find((f) => f.id === Number(id));
 }
+
+// PERIOADA INCHISA — garda unica pentru TOATE serviciile de scriere datata (articole, stocuri,
+// inventare, amortizare, salarii). O luna raportata/inchisa (firma.lockedUntil, setata de admin
+// prin /api/period-lock sau la inchiderea de TVA) nu se mai modifica: corectiile se fac EXCLUSIV
+// prin storno intr-o perioada deschisa. `dataOriPerioada` accepta 'YYYY-MM-DD' sau 'YYYY-MM'.
+function assertPeriodOpen(fid, dataOriPerioada, actiune) {
+  const firma = getFirma(fid);
+  const per = String(dataOriPerioada || '').slice(0, 7);
+  if (firma && firma.lockedUntil && per && per <= firma.lockedUntil) {
+    const e = new Error('Perioada ' + per + ' este inchisa (blocata pana la ' + firma.lockedUntil + '). '
+      + (actiune || 'Operatiunea') + ' intr-o perioada inchisa se corecteaza prin STORNO intr-o perioada deschisa.');
+    e.status = 400;
+    throw e;
+  }
+}
 function nextFirmaId() {
   const d = get();
   return d.firme.reduce((m, f) => Math.max(m, f.id), 0) + 1;
@@ -495,7 +510,7 @@ function importFirma(bundle, opts) {
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 
 module.exports = {
-  get, save, load, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE,
+  get, save, load, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

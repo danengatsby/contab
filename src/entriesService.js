@@ -29,6 +29,7 @@ function createEntry(fid, b, deps) {
   let entry;
   try { entry = deps.buildEntry(b.tip, f, b.fileId, fid); }
   catch (e) { fail(400, e.message); }
+  db.assertPeriodOpen(fid, entry.data, 'Inregistrarea'); // nu se posteaza intr-o luna inchisa
   if (b.spvMsgId) entry.spvImport = { msgId: b.spvMsgId, at: new Date().toISOString() };
   const d = db.get();
   let stocInfo = null;
@@ -58,13 +59,7 @@ function deleteEntry(id, fallbackFid, canFid) {
   const d = db.get();
   const e = d.entries.find((x) => x.id === id);
   if (e && !canFid(e.firmaId == null ? d.firmaActiva : e.firmaId)) fail(404, 'Inregistrare inexistenta.');
-  if (e) {
-    const firma = db.getFirma(e.firmaId == null ? fallbackFid : e.firmaId);
-    const per = e.period || periodOf(e.data);
-    if (firma && firma.lockedUntil && per <= firma.lockedUntil) {
-      fail(400, 'Inregistrarea e in perioada inchisa ' + per + ' (blocata pana la ' + firma.lockedUntil + '). Deblocheaza perioada (admin) inainte de stergere.');
-    }
-  }
+  if (e) db.assertPeriodOpen(e.firmaId == null ? fallbackFid : e.firmaId, e.period || periodOf(e.data), 'Stergerea inregistrarii');
   const n = d.entries.length;
   d.entries = d.entries.filter((x) => x.id !== id);
   db.save();
