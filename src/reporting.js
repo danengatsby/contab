@@ -685,4 +685,42 @@ function stornoReport(db, period) {
   return { period: period || null, rows, total: round2(rows.reduce((s, r) => s + r.total, 0)) };
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport };
+// D101 — CALCULUL declaratiei anuale de impozit pe profit (figuri semantice, independente de
+// versiunea schemei XML): rezultat pe exploatare/financiar, rezultat brut, profit impozabil,
+// impozit. Peste accounting.profitTax (baza fiscala, pierdere reportata, impozit). Splitul
+// exploatare/financiar: veniturile/cheltuielile financiare = conturile 76x/66x.
+// NB: generarea XML-ului oficial D101 nu e (inca) inclusa — schema ANAF e versionata pe an
+// (namespace d101:declaratie:vN), cu layout de indicatori si aritmetica specifice fiecarei
+// versiuni; se adauga cand maparea pe versiunea curenta e verificata cu DUKIntegrator.
+function d101(db, year, opts) {
+  opts = opts || {};
+  const pt = acc.profitTax(db, year, opts);
+  const yearEntries = acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
+  const r = acc.accumulate(acc.allLines(yearEntries));
+  let vExpl = 0; let vFin = 0; let cExpl = 0; let cFin = 0;
+  for (const cod of Object.keys(r)) {
+    const c = String(cod);
+    const clasa = (coa.getAccount(cod) || {}).clasa || Number(c[0]);
+    if (clasa === 7) { const net = round2(r[cod].c - r[cod].d); if (/^76/.test(c)) vFin = round2(vFin + net); else vExpl = round2(vExpl + net); }
+    else if (clasa === 6 && !/^(691|698)/.test(c)) { const net = round2(r[cod].d - r[cod].c); if (/^66/.test(c)) cFin = round2(cFin + net); else cExpl = round2(cExpl + net); }
+  }
+  const rezExploatare = round2(vExpl - cExpl);
+  const rezFinanciar = round2(vFin - cFin);
+  const rezultatBrut = round2(rezExploatare + rezFinanciar); // = profit contabil (venituri - cheltuieli)
+  return {
+    year: String(year), cota: pt.cota,
+    venituriExploatare: vExpl, cheltuieliExploatare: cExpl, rezExploatare,
+    venituriFinanciare: vFin, cheltuieliFinanciare: cFin, rezFinanciar,
+    rezultatBrut,
+    cheltuieliNedeductibile: round2(pt.cheltNedeductibile || 0),
+    deduceriFiscale: round2(pt.deduceri || 0),
+    pierdereReportata: round2(pt.pierdereReportata || 0),
+    pierdereFolosita: round2(pt.pierdereFolosita || 0),
+    profitImpozabil: round2(pt.profitImpozabil || 0),
+    impozit: round2(pt.impozit || 0),
+    impozitDePlata: round2(pt.impozit || 0), // fara plati anticipate/credite fiscale modelate
+    scadenta: (Number(String(year).slice(0, 4)) + 1) + '-03-25',
+  };
+}
+
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport };
