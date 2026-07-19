@@ -634,6 +634,14 @@ async function main() {
     const users = await req('GET', '/api/users', { cookie: la.cookie });
     ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 9 && users.json.every((u) => u.tip));
     eq('non-admin la ruta de admin -> 403', (await req('GET', '/api/users', { cookie: c1 })).status, 403);
+    // ── /api/settings: allowlist strict (fix escaladare la admin prin authSecret) ──
+    eq('non-admin nu poate scrie authSecret -> 403', (await req('POST', '/api/settings', { cookie: c1, body: { authSecret: 'forjat' } })).status, 403);
+    ok('authSecret RAMANE neschimbat dupa incercare', (await req('GET', '/api/me', { cookie: c1 })).status === 200);
+    eq('non-admin nu poate scrie selfRegister (cheie de admin) -> 403', (await req('POST', '/api/settings', { cookie: c1, body: { selfRegister: true } })).status, 403);
+    eq('cheie necunoscuta -> 403 (nu se scrie nimic)', (await req('POST', '/api/settings', { cookie: c1, body: { smtp: { host: 'x' } } })).status, 403);
+    const rUseAI = await req('POST', '/api/settings', { cookie: c1, body: { useAI: false } });
+    ok('useAI ramane comutabil de orice utilizator', rUseAI.status === 200 && rUseAI.json.settings && !('authSecret' in rUseAI.json.settings));
+    eq('adminul poate scrie selfRegister', (await req('POST', '/api/settings', { cookie: la.cookie, body: { selfRegister: true } })).status, 200);
 
     // ── Schimbare de parola OBLIGATORIE (cont cu parola implicita „admin") ──
     const laDef = await req('POST', '/api/login', { body: { username: 'defpw', password: 'admin' } });
