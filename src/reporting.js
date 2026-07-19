@@ -4,6 +4,7 @@ const { round2, period: periodOf } = require('./util');
 const fiscal = require('./fiscal');
 const coa = require('./chartOfAccounts');
 const acc = require('./accounting');
+const fiscalProfile = require('./fiscalProfile'); // regimul firmei (micro/profit) pentru livrabile
 const stmt = require('./statements');
 const { reconcile } = require('./reconcile');
 const recurring = require('./recurring');
@@ -315,7 +316,10 @@ function livrabile(db, period) {
     sumar.du = declaratiaUnica(db, yr || String(new Date().getFullYear()));
     return { period, list: listPfa, sumar };
   }
-  return { period, list, sumar };
+  // micro/profit: D101 (nr 16) apare DOAR la regimul de impozit pe profit (micro nu depune D101)
+  const prof = fiscalProfile.build(db.company);
+  const listFinal = prof.profit ? list : list.filter((x) => x.nr !== 16);
+  return { period, list: listFinal, sumar };
 }
 
 // Conturi de cheltuieli nedeductibile fiscal (uzual)

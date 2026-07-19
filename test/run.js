@@ -1811,6 +1811,9 @@ eq('PFA neplatitor fara angajati: nicio declaratie lunara', declMod.expectedForF
 const livPfa = rep.livrabile({ company: { tipEntitate: 'pfa' }, entries: [], openingBalances: {} }, '2026-06');
 ok('livrabile PFA: fara D100 micro / SAF-T / D101 / situatii financiare / AGA', !livPfa.list.some((x) => [9, 12, 15, 16, 19].includes(x.nr)));
 ok('livrabile PFA: Declaratia Unica prezenta cu sumarul ei', livPfa.list.some((x) => /Declaratia Unica/.test(x.nume)) && livPfa.sumar.du && livPfa.sumar.du.venitNet === 0);
+// livrabile micro/profit: D101 (nr 16) apare doar la regimul de profit
+ok('livrabile micro: fara D101 in checklist', !rep.livrabile({ company: { tipEntitate: 'srl', regimImpozit: 'micro' }, entries: [], openingBalances: {} }, '2026-06').list.some((x) => x.nr === 16));
+ok('livrabile profit: cu D101 in checklist', rep.livrabile({ company: { tipEntitate: 'srl', regimImpozit: 'profit' }, entries: [], openingBalances: {} }, '2026-06').list.some((x) => x.nr === 16));
 eq('neplatitor TVA: luna non-trimestriala fara obligatii', declMod.expectedForFirma({ company: { tvaPlatitor: false }, angajati: [] }, '2026-05').length, 0);
 const vIC = { company: { tvaPlatitor: true }, angajati: [], entries: [{ tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10' }] };
 ok('D390 asteptata DOAR in lunile cu operatiuni intracomunitare',
@@ -1869,6 +1872,13 @@ ok('expected: fara Intrastat cand nu are miscari intracom in luna', !fp.expected
 ok('expected: scutirea suprima declaratia (d394 scutit)', !fp.expected(fp.build({ tvaPlatitor: true, scutiri: { d394: true } }, {}), '2026-06', noIntra).includes('d394'));
 eq('expected: D406 cadenta anuala -> doar decembrie', [fp.expected(fp.build({ tvaPlatitor: true, d406Cadenta: 'A' }, {}), '2026-06', noIntra).includes('saft'), fp.expected(fp.build({ tvaPlatitor: true, d406Cadenta: 'A' }, {}), '2026-12', noIntra).includes('saft')].join(','), 'false,true');
 eq('termen Intrastat: 15 ale lunii urmatoare', declMod.dueDate('intrastat', '2026-06'), '2026-07-15');
+// micro/profit -> D100/D101: micro depune D100 trimestrial; profit depune si D101 anual (decembrie)
+eq('micro: D100 la sfarsit de trimestru, fara D101', fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'micro' }, {}), '2026-12', noIntra).filter((t) => t === 'd100' || t === 'd101').join(','), 'd100');
+eq('profit: D100 (avans) + D101 in decembrie', fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'profit' }, {}), '2026-12', noIntra).filter((t) => t === 'd100' || t === 'd101').join(','), 'd100,d101');
+ok('profit: D101 NU apare in afara lunii de sfarsit de an', !fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'profit' }, {}), '2026-09', noIntra).includes('d101'));
+ok('PFA: nici D100 nici D101', (() => { const t = fp.expected(fp.build({ tvaPlatitor: true, tipEntitate: 'pfa', regimImpozit: 'profit' }, {}), '2026-12', noIntra); return !t.includes('d100') && !t.includes('d101'); })());
+eq('termen D101: 25 martie anul urmator anului fiscal', declMod.dueDate('d101', '2025-12'), '2026-03-25');
+ok('expectedForFirma: firma pe profit vede D101 in decembrie', declMod.expectedForFirma({ firmaId: 8, company: { tvaPlatitor: true, regimImpozit: 'profit' }, angajati: [], entries: [] }, '2026-12').some((x) => x.tip === 'd101'));
 // expectedForFirma deleaga spre motor -> Intrastat vizibil in registru cand firma e obligata
 const vIntra = { firmaId: 7, company: { tvaPlatitor: true, intrastatObligat: true }, angajati: [], entries: [{ tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10' }] };
 ok('expectedForFirma: Intrastat apare pentru firma obligata cu miscari intracom', declMod.expectedForFirma(vIntra, '2026-05').some((x) => x.tip === 'intrastat'));

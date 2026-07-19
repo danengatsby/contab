@@ -17,6 +17,7 @@ const TIPURI = {
   d112: { nume: 'D112 — contribuții și impozit salarii' },
   d390: { nume: 'D390 — recapitulativă intracomunitară (VIES)' },
   d100: { nume: 'D100 — impozit micro / avans profit (trimestrial)' },
+  d101: { nume: 'D101 — impozit pe profit (anual)' },
   saft: { nume: 'D406 — SAF-T' },
   intrastat: { nume: 'Intrastat — declarație statistică (INS)' },
 };
@@ -37,6 +38,8 @@ function dueDate(tip, period) {
   }
   // Intrastat: pana pe 15 ale lunii urmatoare (termen INS)
   if (tip === 'intrastat') return ny + '-' + pad2(nm) + '-15';
+  // D101 (impozit pe profit anual): 25 martie anul URMATOR anului fiscal (perioada = Y-12)
+  if (tip === 'd101') return (y + 1) + '-03-25';
   // restul: 25 ale lunii urmatoare
   return ny + '-' + pad2(nm) + '-25';
 }
