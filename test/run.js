@@ -1817,7 +1817,7 @@ ok('notificari: d300 depusa nu apare', !notifDecl.items.some((i) => i.tip === 'd
 eq('notificari: restantele primele', declMod.notifications(dDecl, [vDecl], '2026-08-01', 7, 3).items[0].kind, 'restanta');
 
 section('e-Factura netrimisa in SPV + SAF-T lunar');
-eq('addBusinessDays: vineri + 5 zile lucratoare', declMod.addBusinessDays('2026-07-03', 5), '2026-07-10');
+eq('addCalendarDays: vineri + 5 zile calendaristice', declMod.addCalendarDays('2026-07-03', 5), '2026-07-08');
 const vEf = { firmaId: 9, company: { nume: 'EF SRL', tvaPlatitor: true }, angajati: [], entries: [
   { id: 'e1', tip: 'factura_vanzare_servicii', partenerCui: 'RO123', partener: 'X', document: 'F1', data: '2026-07-18' },
   { id: 'e2', tip: 'factura_vanzare_marfuri', partenerCui: 'RO1', document: 'F2', data: '2026-07-15', spv: { index: '5' } },
@@ -1828,10 +1828,21 @@ const vEf = { firmaId: 9, company: { nume: 'EF SRL', tvaPlatitor: true }, angaja
 const efx = declMod.eFacturaNetrimise(vEf, '2026-07-20');
 eq('netrimise: doar vanzarile B2B fara spv', efx.count, 2);
 eq('netrimise: restante (termen depasit)', efx.overdue, 1);
-eq('netrimise: termen = data + 5 zile lucratoare', efx.items.find((x) => x.entryId === 'e1').due, '2026-07-24');
+eq('netrimise: termen = data + 5 zile CALENDARISTICE (OUG 89/2025)', efx.items.find((x) => x.entryId === 'e1').due, '2026-07-23');
 const nEf = declMod.notifications({ declarations: [] }, [vEf], '2026-07-20');
 ok('notificari: e-Factura restanta prezenta (status netrimisa)', nEf.items.some((i) => i.tip === 'efactura' && i.kind === 'restanta' && i.status === 'netrimisa'));
 ok('notificari: e-Factura cu termen apropiat apare', nEf.items.some((i) => i.tip === 'efactura' && i.kind === 'termen'));
+// perioada TVA TRIMESTRIALA: D300/D394/D406 doar la sfarsit de trimestru
+{
+  const vLun = { company: { tvaPlatitor: true, perioadaTva: 'L' }, angajati: [], entries: [] };
+  const vTri = { company: { tvaPlatitor: true, perioadaTva: 'T' }, angajati: [], entries: [] };
+  const tipuri = (v, per) => declMod.expectedForFirma(v, per).map((x) => x.tip);
+  ok('lunar: D300/D394 in luna 5 (non-trimestru)', tipuri(vLun, '2026-05').includes('d300') && tipuri(vLun, '2026-05').includes('d394'));
+  ok('trimestrial: FARA D300/D394 in luna 5', !tipuri(vTri, '2026-05').includes('d300') && !tipuri(vTri, '2026-05').includes('d394'));
+  ok('trimestrial: CU D300/D394 in luna 6 (sfarsit de trimestru)', tipuri(vTri, '2026-06').includes('d300') && tipuri(vTri, '2026-06').includes('d394'));
+  ok('trimestrial: D406 urmeaza perioada TVA (nu in luna 5, da in luna 6)', !tipuri(vTri, '2026-05').includes('saft') && tipuri(vTri, '2026-06').includes('saft'));
+  ok('lunar: D406 in fiecare luna', tipuri(vLun, '2026-05').includes('saft'));
+}
 ok('SAF-T lunar: bine-format, perioada corecta si codul L in HeaderComment', (() => { const x = saft.saftXml(vDecl, '2026-06'); return x.includes('<PeriodStart>6</PeriodStart>') && x.includes('<PeriodEnd>6</PeriodEnd>') && x.includes('<HeaderComment>L</HeaderComment>'); })());
 
 section('XSS: escaparea datelor externe la randare (public/app.js)');

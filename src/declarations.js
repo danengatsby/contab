@@ -48,22 +48,27 @@ function expectedForFirma(v, period) {
   const m = Number(period.slice(5, 7));
   const tva = !!(v.company && v.company.tvaPlatitor);
   const pfa = !!(v.company && v.company.tipEntitate === 'pfa');
+  // perioada fiscala TVA (Setari firma): 'T' = trimestrial -> D300/D394/D406 doar la sfarsit
+  // de trimestru (lunile 3/6/9/12); implicit lunar. D406 urmeaza perioada TVA.
+  const trimestrialTva = tva && v.company.perioadaTva === 'T';
+  const sfarsitTrim = [3, 6, 9, 12].includes(m);
   const tips = [];
-  if (tva) tips.push('d300', 'd394');
+  if (tva && (!trimestrialTva || sfarsitTrim)) tips.push('d300', 'd394');
   // D390 doar in lunile cu operatiuni intracomunitare efective (LIC/AIC in jurnal)
   if ((v.entries || []).some((e) => INTRACOM_TYPES.has(e.tip) && String(e.period || e.data || '').slice(0, 7) === period)) tips.push('d390');
   if ((v.angajati || []).length) tips.push('d112');
   // PFA: impozitul pe venit merge prin Declaratia Unica (anuala, depusa personal),
   // nu prin D100; persoanele fizice nu depun nici SAF-T (D406) deocamdata.
-  if (!pfa && [3, 6, 9, 12].includes(m)) tips.push('d100');
-  if (!pfa && (tva || [3, 6, 9, 12].includes(m))) tips.push('saft');
+  if (!pfa && sfarsitTrim) tips.push('d100');
+  // D406: platitor TVA lunar -> lunar; trimestrial (sau neplatitor) -> la sfarsit de trimestru
+  if (!pfa && (tva ? (!trimestrialTva || sfarsitTrim) : sfarsitTrim)) tips.push('saft');
   return tips.map((tip) => ({ tip, nume: TIPURI[tip].nume, period, due: dueDate(tip, period) }));
 }
 
-// ───────── e-Factura B2B: facturi emise netrimise in SPV (termen legal: 5 zile lucratoare) ─────────
+// ── e-Factura B2B: facturi emise netrimise in SPV (termen legal: 5 zile CALENDARISTICE, OUG 89/2025) ──
 const EFACT_SEND_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare']);
 
-/** Data + n zile lucratoare (sambata/duminica sarite; sarbatorile legale nu sunt scazute). */
+/** Data + n zile lucratoare (sambata/duminica sarite). Pastrat pentru compatibilitate. */
 function addBusinessDays(dateStr, n) {
   const d = new Date(dateStr + 'T00:00:00Z');
   let left = n;
@@ -74,10 +79,16 @@ function addBusinessDays(dateStr, n) {
   }
   return d.toISOString().slice(0, 10);
 }
+/** Data + n zile CALENDARISTICE. */
+function addCalendarDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
 
 /**
  * Facturile B2B emise (cu CUI de partener) care NU au fost trimise in SPV, din ultimele
- * `lookbackDays` zile. `due` = data emiterii + 5 zile lucratoare (termenul legal e-Factura).
+ * `lookbackDays` zile. `due` = data emiterii + 5 zile CALENDARISTICE (termenul legal e-Factura, OUG 89/2025).
  */
 function eFacturaNetrimise(v, today, lookbackDays) {
   const t = today || new Date().toISOString().slice(0, 10);
@@ -88,7 +99,7 @@ function eFacturaNetrimise(v, today, lookbackDays) {
     if (!e.partenerCui) continue; // B2B: partener identificat prin CUI
     if (e.spv && (e.spv.index || e.spv.stare)) continue; // deja trimisa
     if (!e.data || e.data < from || e.data > t) continue;
-    const due = addBusinessDays(e.data, 5);
+    const due = addCalendarDays(e.data, 5);
     items.push({ entryId: e.id, document: e.document || '', partener: e.partener || '', data: e.data, due, overdue: due < t });
   }
   items.sort((a, b) => a.due.localeCompare(b.due));
@@ -220,4 +231,4 @@ function notifications(d, scopedList, today, days, lookback) {
   return { count: items.length, items };
 }
 
-module.exports = { TIPURI, STATUSES, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, addMonths, find, eFacturaNetrimise, addBusinessDays };
+module.exports = { TIPURI, STATUSES, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays };

@@ -54,7 +54,11 @@ function logAudit(action, detail, opts) {
     action, detail: detail || '',
     ...(viaAdmin ? { viaAdmin } : {}),
   });
-  if (d.audit.length > 3000) d.audit = d.audit.slice(-3000);
+  // Plafon in baza vie (rulaj) — configurabil. Durabilitatea de PROBA nu se bazeaza pe aceasta
+  // fereastra: auditul intra in backupul zilnic offsite (verificat restaurabil) si se poate
+  // exporta oricand ca CSV (/csv/audit, admin). Marirea plafonului e ieftina (randuri mici).
+  const AUDIT_MAX = Number(process.env.CONTAB_AUDIT_MAX) || 20000;
+  if (d.audit.length > AUDIT_MAX) d.audit = d.audit.slice(-AUDIT_MAX);
 }
 
 // Gardurile transversale de acces, in ordinea: autentificare (rute publice exceptate),
