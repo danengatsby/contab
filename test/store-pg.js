@@ -130,6 +130,27 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
     eq('documents_meta are exact d2+d3', Number(nDocs), 2);
   }
 
+  section('Proiectie audit APPEND-ONLY (durabila, decuplata de plafonul RAM)');
+  {
+    for (const t of ARRAY_COLLS) await pool.query('TRUNCATE ' + t.key.toLowerCase() + ' RESTART IDENTITY');
+    await pool.query('TRUNCATE audit_log');
+    store.resetDirty();
+    const au = base();
+    for (let i = 1; i <= 5; i++) au.audit.push({ id: i, ts: '2026-03-0' + i + 'T10:00:00Z', firmaId: 1, userId: 1, username: 'admin', action: 'login', detail: 'ev' + i });
+    store.persist(au); await store.flush();
+    eq('audit_log dupa 5 evenimente', await store.auditCount(), 5);
+    au.audit = au.audit.slice(-2);
+    au.audit.push({ id: 6, ts: '2026-03-06T10:00:00Z', firmaId: 1, userId: 1, username: 'admin', action: 'entry.create', detail: 'ev6' });
+    au.audit.push({ id: 7, ts: '2026-03-07T10:00:00Z', firmaId: 2, userId: 2, username: 'x', action: 'login', detail: 'ev7' });
+    store.persist(au); await store.flush();
+    eq('audit_log NU se plafoneaza: toate cele 7 (durabil)', await store.auditCount(), 7);
+    eq('numararea pe firma 1', await store.auditCount(1), 6);
+    eq('blob audit (mirror RAM, plafonat) = 4 vs audit_log durabil = 7', (await pool.query('SELECT COUNT(*) n FROM audit')).rows[0].n + '/' + (await store.auditCount()), '4/7');
+    eq('filtrare pe actiune login', (await store.auditRecent({ action: 'login' })).map((r) => Number(r.id)).sort((a, b) => a - b).join(','), '1,2,3,4,5,7');
+    store.persist(au); await store.flush();
+    eq('re-persist nu dubleaza (ON CONFLICT DO NOTHING)', await store.auditCount(), 7);
+  }
+
   await pool.end(); await store.close();
   console.log('\n' + (fail ? '✗' : '✓') + ' ' + pass + ' verificari store-pg trecute, ' + fail + ' esuate.');
   process.exit(fail ? 1 : 0);

@@ -161,6 +161,27 @@ section('Proiectie normalizata documents_meta + cautare/stats SQL');
   ok('proiectia scrisa doar la persist-ul documentelor (nu la entries)', store.written().join(',') === 'documents');
 }
 
+section('Proiectie audit APPEND-ONLY (durabila, decuplata de plafonul RAM)');
+{
+  // firmaId 99 izoleaza acest test de audit-ul acumulat in sectiunile anterioare (audit_log e append-only)
+  store.resetDirty();
+  const au = base();
+  for (let i = 101; i <= 105; i++) au.audit.push({ id: i, ts: '2026-03-' + i + 'T10:00:00Z', firmaId: 99, userId: 1, username: 'admin', action: 'ev_login', detail: 'ev' + i });
+  store.persist(au);
+  eq('audit_log firma 99 dupa 5 evenimente', store.auditCount(99), 5);
+  // simuleaza PLAFONAREA bazei vii: RAM pastreaza doar ultimele 2 + apar 2 noi
+  au.audit = au.audit.slice(-2);
+  au.audit.push({ id: 106, ts: '2026-03-106T10:00:00Z', firmaId: 99, userId: 1, username: 'admin', action: 'ev_create', detail: 'ev106' });
+  au.audit.push({ id: 107, ts: '2026-03-107T10:00:00Z', firmaId: 98, userId: 2, username: 'x', action: 'ev_login', detail: 'ev107' });
+  store.persist(au);
+  eq('audit_log NU se plafoneaza: firma 99 pastreaza toate cele 6 (durabil)', store.auditCount(99), 6);
+  eq('alta firma (98) are 1 eveniment', store.auditCount(98), 1);
+  eq('filtrare firma+actiune (99, ev_login) -> id 101..105', store.auditRecent({ firmaId: 99, action: 'ev_login' }).map((r) => r.id).sort().join(','), '101,102,103,104,105');
+  // re-persist idempotent: acelasi audit nu se dubleaza (dedup pe id)
+  store.persist(au);
+  eq('re-persist nu dubleaza (dedup pe id)', store.auditCount(99), 6);
+}
+
 store.close();
 rm();
 

@@ -34,9 +34,16 @@ fără schimbări în modulele de domeniu.
   nou (ex. audit) = o intrare în registru + o metodă de interogare, fără cod nou de sincronizare. Metode:
   `store.documentsStats(firmaId)` (numărători SQL) și `store.documentsSearch(firmaId, q)` (căutare în SQL
   pe nume fișier + text extras — analitică peste graf fără a-l încărca în RAM).
-- **Pași următori (neîncepuți):** proiecție audit append-only normalizată; citiri per-cerere din pg pentru
-  firmele mari (ex. balanță via `linesTurnover`, listă/căutare documente via `documents_meta`, peste un
-  prag); lock/versionare optimistă pentru multi-instanță reală. Fiecare cu testele lui pe pg (job CI `test-postgres`).
+- **Pas 4 — LIVRAT: proiecția audit `audit_log`, APPEND-ONLY (durabilă, decuplată de plafonul RAM).**
+  Registrul de proiecții a căpătat un mod `append` (mod separat de „oglindă"): inserează doar rânduri noi
+  (dedup pe id: `INSERT OR IGNORE` / `ON CONFLICT DO NOTHING`), **nu șterge niciodată**. Baza vie `d.audit`
+  rămâne plafonată (RAM/UI), tabelul blob `audit` o oglindește (plafonat), dar `audit_log` păstrează TOT —
+  probă durabilă nativă în DB, interogabilă în SQL (`store.auditCount`, `store.auditRecent({firmaId, action}`)),
+  complementară jurnalului NDJSON offsite. Coloane reale: audit_id, firmaId, ts, userId, username, action,
+  detail, viaAdmin. Dovedit în teste: după plafonarea RAM, `audit_log` păstrează evenimentele ieșite din RAM.
+- **Pași următori (neîncepuți):** citiri per-cerere din pg pentru firmele mari (balanță via `linesTurnover`,
+  documente via `documents_meta`, audit via `audit_log`, peste un prag); lock/versionare optimistă pentru
+  multi-instanță reală. Cele patru entități din plan (articole, linii, documente, audit) sunt acum normalizate.
 
 Restul documentului rămâne analiza anterioară (partiționare pe firmă etc.), încă validă ca alternativă
 complementară — migrarea la pg tranzacțional și partiționarea pe `firmaId` nu se exclud.
