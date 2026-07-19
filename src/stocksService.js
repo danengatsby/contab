@@ -118,6 +118,7 @@ function addMovement(fid, operator, b) {
   const gOk = (id) => !id || (d.gestiuni || []).some((g) => g.id === id && g.firmaId === fid);
   if (!gOk(b.gestiuneId) || !gOk(b.gestiuneDestId)) fail(400, 'Gestiune inexistenta.');
   if (b.tip === 'transfer' && (!b.gestiuneId || !b.gestiuneDestId || b.gestiuneId === b.gestiuneDestId)) fail(400, 'Transferul cere gestiune sursa si destinatie diferite.');
+  db.assertPeriodOpen(fid, b.data, 'Miscarea de stoc'); // perioada inchisa -> refuz
   const m = {
     id: db.nextId('sm'), firmaId: fid, data: String(b.data), tip: b.tip, productId: b.productId,
     gestiuneId: b.gestiuneId || null, gestiuneDestId: b.tip === 'transfer' ? b.gestiuneDestId : null,
@@ -134,6 +135,7 @@ function deleteMovement(fid, id) {
   const d = db.get();
   const m = (d.stockMovements || []).find((x) => x.id === id && x.firmaId === fid);
   if (!m) fail(404, 'Miscare inexistenta.'); // izolare multi-firma
+  db.assertPeriodOpen(fid, m.data, 'Stergerea miscarii de stoc'); // nu rupe o luna inchisa (nici nota legata)
   if (m.entryId) d.entries = d.entries.filter((e) => e.id !== m.entryId); // sterge si nota contabila legata
   d.stockMovements = (d.stockMovements || []).filter((x) => x !== m);
   db.save();
@@ -204,6 +206,7 @@ function importInitialStock(fid, operator, b) {
   fid = reqFirma(fid); b = b || {};
   const data = String(b.data || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) fail(400, 'Alege data preluarii (data bilantului de deschidere).');
+  db.assertPeriodOpen(fid, data, 'Preluarea stocului initial');
   const rows = parseCsv(b.csv || '');
   if (!rows.length) fail(400, 'CSV gol sau invalid.');
   let start = 0;
@@ -323,6 +326,7 @@ function createInventory(fid, operator, b) {
   const g = v.gestiuni.find((x) => x.id === b.gestiuneId);
   if (!g) fail(400, 'Gestiune inexistenta.');
   const tvaRate = (fiscal.FISCAL && fiscal.FISCAL.tvaStandard) || 21;
+  db.assertPeriodOpen(fid, b.data, 'Inventarierea'); // reglarile de stoc + notele nu ating o luna inchisa
   const doc = 'Inventar ' + g.cod + ' ' + b.data;
   const result = { plusuri: [], minusuri: [], imputari: [] };
   const inv = { id: db.nextId('inv'), firmaId: fid, gestiuneId: g.id, gestiuneCod: g.cod, gestiuneDen: g.denumire, gestionar: g.gestionar || '', operator: operator || '', data: b.data, ts: new Date().toISOString(), status: 'activ', lines: [], entryIds: [], movementIds: [], totalScriptic: 0, totalFaptic: 0, totalPlus: 0, totalMinus: 0, totalImputat: 0 };
@@ -381,6 +385,7 @@ function stornoInventory(fid, operator, id, dataStorno) {
   if (!iv) fail(404, 'Inventar inexistent.'); // izolare multi-firma
   if (iv.status === 'stornat') fail(400, 'Inventarul este deja stornat.');
   const stornoData = String(dataStorno || new Date().toISOString().slice(0, 10));
+  db.assertPeriodOpen(fid, stornoData, 'Stornarea inventarului'); // stornul intra intr-o perioada deschisa
   const docStorno = 'Storno inventar ' + iv.gestiuneCod + ' ' + iv.data;
   const stornoEntryIds = [];
   // 1) note de stornare (reversare debit<->credit, aceleasi sume)

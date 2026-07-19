@@ -1977,6 +1977,31 @@ ssvc.deleteProduct(fidOk, rp.product.id);
 ok('acelasi id, firma corecta: stergerea merge', !db.get().products.some((p) => p.id === rp.product.id));
 dbx.firme = dbx.firme.filter((f) => f.id !== 7777); // curatenie (doar in memorie)
 
+// ── PERIOADA INCHISA: garda unica (db.assertPeriodOpen) uniforma pe serviciile datate ──
+{
+  const firmaLk = db.getFirma(fidOk);
+  const lkPrev = firmaLk.lockedUntil;
+  firmaLk.lockedUntil = '2026-03'; // luni <= 2026-03 sunt inchise
+  const pLk = ssvc.upsertProduct(fidOk, { cod: 'LK-1', denumire: 'Prod lock', um: 'buc', cont: '371' }).product;
+  eq('stoc: miscare in luna INCHISA -> 400', errStatus(() => ssvc.addMovement(fidOk, 'op', { productId: pLk.id, tip: 'receptie', cantitate: 5, data: '2026-02-10', pretUnitar: 10 })), 400);
+  ok('mesajul indruma spre storno', (() => { try { ssvc.addMovement(fidOk, 'op', { productId: pLk.id, tip: 'receptie', cantitate: 5, data: '2026-02-10' }); return false; } catch (e) { return /STORNO/i.test(e.message); } })());
+  const mvDeschis = ssvc.addMovement(fidOk, 'op', { productId: pLk.id, tip: 'receptie', cantitate: 5, data: '2026-06-10', pretUnitar: 10 }).movement;
+  ok('stoc: miscare in luna DESCHISA -> merge', !!mvDeschis.id);
+  // stergerea unei miscari dintr-o luna inchisa -> blocata (nu rupe nici nota legata)
+  const mvInchis = { id: db.nextId('sm'), firmaId: fidOk, data: '2026-02-15', tip: 'receptie', productId: pLk.id, cantitate: 1, pretUnitar: 1 };
+  db.get().stockMovements.push(mvInchis);
+  eq('stoc: stergere miscare din luna inchisa -> 400', errStatus(() => ssvc.deleteMovement(fidOk, mvInchis.id)), 400);
+  eq('inventar in luna inchisa -> 400', errStatus(() => ssvc.createInventory(fidOk, 'op', { gestiuneId: 'nope', data: '2026-02-01', lines: [] })), 400);
+  eq('preluare stoc initial in luna inchisa -> 400', errStatus(() => ssvc.importInitialStock(fidOk, 'op', { data: '2026-02-01', csv: 'cod;den\nX;Y' })), 400);
+  // salarii postate intr-o luna inchisa -> blocate
+  const psvc = require('../src/payrollService');
+  eq('salarii: postare in luna inchisa -> 400', errStatus(() => psvc.postStatPlata(fidOk, '2026-02', { buildEntry: () => ({ lines: [] }) })), 400);
+  // curatenie
+  db.get().stockMovements = db.get().stockMovements.filter((m) => m.id !== mvDeschis.id && m.id !== mvInchis.id);
+  db.get().products = db.get().products.filter((p) => p.id !== pLk.id);
+  firmaLk.lockedUntil = lkPrev;
+}
+
 section('Serii de documente prin service layer (docSeries / assignDocNumber)');
 eq('seriile firmei inexistente -> 403', errStatus(() => ssvc.docSeries(9999)), 403);
 eq('actualizarea seriilor pe firma invalida -> 403', errStatus(() => ssvc.updateDocSeries(null, { NIR: { serie: 'X' } })), 403);
