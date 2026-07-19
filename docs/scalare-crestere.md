@@ -19,9 +19,17 @@ fără schimbări în modulele de domeniu.
   insert idempotent (sigur la persist-uri concurente). Rândurile neschimbate nu se mai ating (dovadă:
   `test/store-pg.js` verifică stabilitatea `rowid`). Reduce amplificarea scrierilor și e prima cărămidă
   pentru multi-instanță pe colecțiile cu `id`.
-- **Pași următori (neîncepuți):** tabele normalizate pentru linii (interogabile în SQL), citiri
-  per-cerere din pg pentru firmele mari, lock/versionare optimistă pentru multi-instanță reală.
-  Se iau incremental, fiecare cu testele lui pe driverul pg (job CI `test-postgres`).
+- **Pas 2 — LIVRAT: tabelul normalizat `entry_lines` (o linie contabilă = un rând), interogabil în SQL.**
+  Proiecție derivată din blob-ul articolului, scrisă **tranzacțional în aceeași tranzacție** cu articolul
+  (pe ambele drivere), sincronizată la insert/update/delete. Blob-ul `entries` rămâne **sursa de adevăr**
+  (hydrate NU folosește `entry_lines`), deci e non-breaking și reversibil (drop tabel). Coloane: `entry_id,
+  firmaId, period, status, seq, debit, credit, suma, explicatie`. Metodă `store.linesTurnover(firmaId,
+  period)` calculează rulajul pe conturi **direct în SQL** (SUM/GROUP BY, doar articole postate) — dovedit
+  în teste **identic** cu `accounting.accumulate` din RAM. E prima capacitate de analitică fără a încărca
+  graful în RAM (fundația pentru citiri per-cerere la firmele mari).
+- **Pași următori (neîncepuți):** tabele normalizate pentru documente + audit append-only; citiri
+  per-cerere din pg pentru firmele mari (ex. balanță via `linesTurnover` în locul RAM, peste un prag);
+  lock/versionare optimistă pentru multi-instanță reală. Fiecare cu testele lui pe pg (job CI `test-postgres`).
 
 Restul documentului rămâne analiza anterioară (partiționare pe firmă etc.), încă validă ca alternativă
 complementară — migrarea la pg tranzacțional și partiționarea pe `firmaId` nu se exclud.

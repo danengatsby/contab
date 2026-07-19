@@ -74,6 +74,23 @@ const ARRAY_COLLS = [
   { key: 'declarations', firma: true, hasId: true },
 ];
 
+// Proiectie NORMALIZATA a liniilor articolelor: tabelul `entry_lines` (o linie contabila = un rand),
+// scris tranzactional din blob-ul articolului (blob-ul ramane sursa de adevar; hydrate NU foloseste
+// entry_lines). Permite interogari SQL pe linii (rulaje pe cont, fara a incarca graful in RAM).
+// `status` = starea articolului (postat/ciorna...) ca sa se poata filtra ce intra in contabilitate.
+function entryLineRows(id, firmaId, entry) {
+  const lines = (entry && entry.lines) || [];
+  const period = entry ? (entry.period || String(entry.data || '').slice(0, 7)) : '';
+  const status = entry && entry.status ? String(entry.status) : null;
+  return lines.map((l, i) => ({
+    entry_id: String(id), firmaId: firmaId != null ? firmaId : null, period, status, seq: i,
+    debit: l && l.debit != null ? String(l.debit) : null,
+    credit: l && l.credit != null ? String(l.credit) : null,
+    suma: Number(l && l.suma) || 0,
+    explicatie: l && l.explicatie != null ? String(l.explicatie) : null,
+  }));
+}
+
 let sdb = null;
 
 function open(file) {
@@ -106,6 +123,41 @@ function schema() {
     PRIMARY KEY (firmaId, cont)
   )`);
   sdb.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
+  // proiectie normalizata a liniilor (interogabila in SQL); derivata din blob-ul entries
+  sdb.exec(`CREATE TABLE IF NOT EXISTS entry_lines (
+    rowid INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id TEXT NOT NULL, firmaId INTEGER, period TEXT, status TEXT, seq INTEGER,
+    debit TEXT, credit TEXT, suma REAL DEFAULT 0, explicatie TEXT
+  )`);
+  sdb.exec('CREATE INDEX IF NOT EXISTS idx_entry_lines_entry ON entry_lines(entry_id)');
+  sdb.exec('CREATE INDEX IF NOT EXISTS idx_entry_lines_firma ON entry_lines(firmaId, period)');
+}
+
+/** Sincronizeaza proiectia entry_lines pentru work-ul colectiei `entries` (in aceeasi tranzactie). */
+function syncEntryLines(w) {
+  const del = sdb.prepare('DELETE FROM entry_lines WHERE entry_id = ?');
+  const ins = sdb.prepare('INSERT INTO entry_lines (entry_id, firmaId, period, status, seq, debit, credit, suma, explicatie) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const put = (row) => { // row = [id, firmaId, json]
+    del.run(row[0]);
+    const entry = JSON.parse(row[2]);
+    for (const l of entryLineRows(row[0], row[1], entry)) ins.run(l.entry_id, l.firmaId, l.period, l.status, l.seq, l.debit, l.credit, l.suma, l.explicatie);
+  };
+  if (w.kind === 'full') { sdb.exec('DELETE FROM entry_lines'); for (const row of w.items) put(row); }
+  else { for (const id of w.deletes) del.run(id); for (const row of w.inserts) put(row); for (const row of w.updates) put(row); }
+}
+
+/** Rulajul pe conturi calculat DIRECT in SQL din entry_lines (doar articole postate), pentru o firma
+ *  si optional o perioada (YYYY sau YYYY-MM). Intoarce { cont: { d, c } } — aceeasi forma ca
+ *  accounting.accumulate. Demonstreaza calcul analitic fara a incarca graful in RAM. */
+function linesTurnover(firmaId, period) {
+  const acc = {};
+  const bump = (cont, side, s) => { if (cont == null) return; acc[cont] = acc[cont] || { d: 0, c: 0 }; acc[cont][side] += s; };
+  let where = 'firmaId = ? AND (status IS NULL OR status = ?)';
+  const params = [asInt(firmaId), 'postat'];
+  if (period) { if (String(period).length === 4) { where += ' AND period LIKE ?'; params.push(period + '-%'); } else { where += ' AND period = ?'; params.push(period); } }
+  for (const r of sdb.prepare(`SELECT debit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND debit IS NOT NULL GROUP BY debit`).all(...params)) bump(r.cont, 'd', Number(r.s) || 0);
+  for (const r of sdb.prepare(`SELECT credit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND credit IS NOT NULL GROUP BY credit`).all(...params)) bump(r.cont, 'c', Number(r.s) || 0);
+  return acc;
 }
 
 /** Baza e proaspata (fara date persistate)? */
@@ -202,12 +254,14 @@ function persist(db) {
           const ins = sdb.prepare(`INSERT INTO ${w.c.key} (id, firmaId, data) VALUES (?, ?, ?)`);
           for (const it of w.items) ins.run(it[0], it[1], it[2]);
         }
+        if (w.c.key === 'entries') syncEntryLines(w);
         lastWritten.push(w.c.key);
       } else if (w.kind === 'incr') {
         const t = w.c.key;
         if (w.deletes.length) { const del = sdb.prepare(`DELETE FROM ${t} WHERE id = ?`); for (const id of w.deletes) del.run(id); }
         if (w.inserts.length) { const ins = sdb.prepare(`INSERT INTO ${t} (id, firmaId, data) VALUES (?, ?, ?)`); for (const r of w.inserts) ins.run(r[0], r[1], r[2]); }
         if (w.updates.length) { const upd = sdb.prepare(`UPDATE ${t} SET firmaId = ?, data = ? WHERE id = ?`); for (const r of w.updates) upd.run(r[1], r[2], r[0]); }
+        if (w.c.key === 'entries') syncEntryLines(w);
         lastWritten.push(t);
       } else if (w.kind === 'partners') {
         sdb.exec('DELETE FROM partners');
@@ -288,4 +342,4 @@ function hydrate(defaults) {
 
 function close() { if (sdb) { try { sdb.close(); } catch (_) { /* ignore */ } sdb = null; } }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, checkSqlite };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, entryLineRows, linesTurnover, checkSqlite };

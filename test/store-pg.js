@@ -77,6 +77,34 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
   eq('hydrate: 3 entries (e1,e2,e4)', (h.entries || []).length, 3);
   ok('hydrate: e2 are suma modificata 999', (h.entries || []).some((e) => e.id === 'e2' && e.suma === 999));
 
+  section('Proiectie normalizata entry_lines + rulaj SQL = rulaj RAM');
+  {
+    const acc = require('../src/accounting');
+    for (const t of ARRAY_COLLS) await pool.query('TRUNCATE ' + t.key.toLowerCase() + ' RESTART IDENTITY');
+    await pool.query('TRUNCATE entry_lines RESTART IDENTITY');
+    store.resetDirty();
+    const el = base();
+    el.entries = [
+      { id: 'l1', firmaId: 1, period: '2026-03', data: '2026-03-10', lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '4111', credit: '4427', suma: 210 }] },
+      { id: 'l2', firmaId: 1, period: '2026-03', data: '2026-03-20', lines: [{ debit: '5121', credit: '4111', suma: 500 }] },
+      { id: 'l3', firmaId: 1, period: '2026-03', data: '2026-03-21', status: 'ciorna', lines: [{ debit: '5311', credit: '707', suma: 999 }] },
+      { id: 'l4', firmaId: 2, period: '2026-03', data: '2026-03-15', lines: [{ debit: '371', credit: '401', suma: 800 }] },
+    ];
+    store.persist(el); await store.flush();
+    const sql = await store.linesTurnover(1, '2026-03');
+    const ram = acc.accumulate(acc.allLines(acc.postedEntries({ entries: el.entries.filter((e) => e.firmaId === 1) })));
+    eq('rulaj SQL(entry_lines) = rulaj RAM(accumulate) pe firma 1', JSON.stringify(sql), JSON.stringify(ram));
+    ok('ciorna l3 exclusa din rulajul SQL (5311 absent)', !sql['5311']);
+    ok('izolare pe firma: 371 (firma 2) absent din rulajul firmei 1', !sql['371']);
+    const t2 = await store.linesTurnover(2, '2026-03');
+    ok('rulaj firma 2 vede 371/401', t2['371'] && t2['371'].d === 800 && t2['401'] && t2['401'].c === 800);
+    el.entries = el.entries.filter((e) => e.id !== 'l2');
+    store.persist(el); await store.flush();
+    ok('dupa stergere l2: 5121 dispare din rulaj', !(await store.linesTurnover(1, '2026-03'))['5121']);
+    const nLines = (await pool.query('SELECT COUNT(*) n FROM entry_lines')).rows[0].n;
+    eq('entry_lines are exact liniile ramase (l1:2 + l3:1 + l4:1)', Number(nLines), 4);
+  }
+
   await pool.end(); await store.close();
   console.log('\n' + (fail ? '✗' : '✓') + ' ' + pass + ' verificari store-pg trecute, ' + fail + ' esuate.');
   process.exit(fail ? 1 : 0);
