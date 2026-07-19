@@ -1,5 +1,7 @@
 'use strict';
 
+const secretbox = require('../secretbox');
+
 // Rutele de administrare a utilizatorilor + invitatii (link de setare a parolei,
 // optional trimis pe email daca SMTP e configurat). Modul de rute: register(app, ctx).
 
@@ -116,7 +118,7 @@ module.exports = function register(app, ctx) {
     // hook simplu SMTP prin nodemailer daca e instalat; altfel arunca (adminul foloseste linkul).
     let nodemailer;
     try { nodemailer = require('nodemailer'); } catch (_) { throw new Error('nodemailer neinstalat'); }
-    const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port || 587, secure: !!smtp.secure, auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined });
+    const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port || 587, secure: !!smtp.secure, auth: smtp.user ? { user: smtp.user, pass: secretbox.open(smtp.pass) } : undefined });
     return t.sendMail({ from: smtp.from || smtp.user, to, subject: 'Invitatie Contabo', text: 'Ai fost invitat in Contabo. Seteaza-ti parola aici:\n' + link });
   }
 };
