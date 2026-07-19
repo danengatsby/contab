@@ -1125,6 +1125,8 @@ eq('facturare aviz: 4111=418 cu tot cu TVA', (fa.find((l) => l.credit === '418')
 eq('facturare aviz: 4428=4427 exigibilizare', (fa.find((l) => l.debit === '4428' && l.credit === '4427') || {}).suma, 210);
 // Dividende: cota implicita 16% din 2026 (Legea 141/2025)
 eq('impozit dividende implicit 16%', fiscal.FISCAL.impozitDividende, 16);
+eq('prag Intrastat introduceri 1.000.000 lei (Ordin INS 2024-2026)', fiscal.FISCAL.pragIntrastatIntroduceri, 1000000);
+eq('prag Intrastat expedieri 1.000.000 lei (Ordin INS 2024-2026)', fiscal.FISCAL.pragIntrastatExpedieri, 1000000);
 const dvf = require('../src/documentTypes').typesForClient().find((t) => t.id === 'repartizare_dividende');
 eq('camp cota dividende: default 16', (dvf.fields.find((f) => f.name === 'cota') || {}).default, 16);
 // Scontare efect: taxa de scont e cheltuiala financiara (667)
@@ -1890,7 +1892,10 @@ ok('control: micro peste plafonul de venituri -> atentie', fctrl.check({ company
 // platitor TVA fara CAEN -> atentie
 ok('control: platitor TVA fara CAEN -> atentie', fctrl.check({ company: { tvaPlatitor: true, regimImpozit: 'profit' }, angajati: [{ id: 'a' }], entries: [] }, { year: '2026' }).findings.some((f) => f.cod === 'tva-fara-caen'));
 // operatiuni intracom fara Intrastat marcat -> info
-ok('control: intracom fara Intrastat marcat -> info', fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-04', data: '2026-04-10', tip: 'livrare_intracomunitara', lines: [{ debit: '4111', credit: '707', suma: 5000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'intracom-fara-intrastat' && f.nivel === 'info'));
+// Intrastat auto-detect din rulaj: sub prag -> info monitorizare; peste prag -> atentie obligat
+ok('control: intracom sub pragul Intrastat -> info monitorizare', fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-04', data: '2026-04-10', tip: 'livrare_intracomunitara', lines: [{ debit: '4111', credit: '707', suma: 5000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'intracom-sub-prag' && f.nivel === 'info'));
+ok('control: rulaj intracom PESTE prag + nemarcat -> atentie obligat', fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-04', data: '2026-04-10', tip: 'livrare_intracomunitara', lines: [{ debit: '4111', credit: '707', suma: 1200000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'intrastat-prag-depasit' && f.nivel === 'atentie'));
+ok('control: rulaj peste prag dar Intrastat deja marcat -> fara constatare de prag', !fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro', intrastatObligat: true }, angajati: [{ id: 'a' }], entries: [{ period: '2026-04', data: '2026-04-10', tip: 'livrare_intracomunitara', lines: [{ debit: '4111', credit: '707', suma: 1200000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'intrastat-prag-depasit'));
 // firma coerenta -> nicio constatare, ok=true
 const fcOk = fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-05', data: '2026-05-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 1000 }] }] }, { year: '2026' });
 eq('control: firma coerenta -> 0 constatari, ok=true', fcOk.findings.length + '/' + fcOk.ok, '0/true');
