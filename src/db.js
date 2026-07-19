@@ -144,6 +144,10 @@ function migrate(d) {
     delete f.trial; delete f.trialStartedAt; delete f.trialEndsAt; delete f.abonamente;
   }
   d.openingAnalytic = (d.openingAnalytic || []).map((o) => (o.firmaId == null ? Object.assign({ firmaId: d.firmaActiva }, o) : o));
+  // Produsele au acum un statut explicit `activ` (dezactivarea inlocuieste stergerea distructiva).
+  // Backfill idempotent: cele fara camp devin active — datele raman consistente, nu se bazeaza pe
+  // `activ === false` implicit (undefined).
+  for (const p of d.products || []) { if (p.activ == null) p.activ = true; }
   // utilizatori + secret de sesiune
   if (!d.settings) d.settings = JSON.parse(JSON.stringify(DEFAULT_DB.settings));
   if (!d.settings.authSecret) d.settings.authSecret = crypto.randomBytes(32).toString('hex');
@@ -510,7 +514,7 @@ function importFirma(bundle, opts) {
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 
 module.exports = {
-  get, save, load, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen,
+  get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

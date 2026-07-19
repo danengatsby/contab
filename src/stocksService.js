@@ -38,7 +38,7 @@ function upsertProduct(fid, b) {
     db.save();
     return { product: existing, created: false };
   }
-  const p = { id: db.nextId('prod'), firmaId: fid, cod: String(b.cod), denumire: String(b.denumire), um: b.um || 'buc', grupa: b.grupa || '', cont: b.cont || '371', codNC: b.codNC || '' };
+  const p = { id: db.nextId('prod'), firmaId: fid, cod: String(b.cod), denumire: String(b.denumire), um: b.um || 'buc', grupa: b.grupa || '', cont: b.cont || '371', codNC: b.codNC || '', activ: true };
   d.products.push(p);
   db.save();
   return { product: p, created: true };
@@ -58,7 +58,7 @@ function importProducts(fid, csv) {
     const cod = String(r[0] || '').trim();
     if (!cod || !r[1]) continue;
     const existing = (d.products || []).find((p) => p.firmaId === fid && p.cod === cod);
-    const rec = existing || { id: db.nextId('prod'), firmaId: fid, cod };
+    const rec = existing || { id: db.nextId('prod'), firmaId: fid, cod, activ: true };
     Object.assign(rec, { denumire: r[1], um: r[2] || 'buc', cont: r[3] || '371', grupa: r[4] || '', codNC: r[5] || '' });
     if (!existing) d.products.push(rec);
     importati += 1;
