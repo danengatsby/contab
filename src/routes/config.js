@@ -61,7 +61,7 @@ module.exports = function register(app, ctx) {
   });
 
   app.post('/api/settings', (req, res) => run(res, () => {
-    const r = svc.updateSettings(req.body);
+    const r = svc.updateSettings(req.body, req.user && req.user.role === 'admin');
     return { ok: true, settings: r.settings };
   }));
 

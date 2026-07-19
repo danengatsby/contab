@@ -258,6 +258,22 @@ section('uploadsHygiene — staging orfan + raport de fisiere nereferentiate');
   fsH.rmSync(dir, { recursive: true, force: true });
 }
 
+section('sesiune: token FARA sessId respins (fix escaladare prin secret compromis)');
+{
+  const session = require('../src/session');
+  const authlibS = require('../src/auth');
+  const dS = db.get();
+  const secret = process.env.CONTAB_AUTH_SECRET || dS.settings.authSecret;
+  const uid = dS.users[0].id;
+  // token forjat sessionless {uid} — semnat CORECT, dar fara sessId
+  const fara = authlibS.sign({ uid, exp: Date.now() + 3600000 }, secret);
+  const reqFara = { headers: { cookie: 'sid=' + fara } };
+  eq('token valid dar FARA sessId -> neautentificat', session.currentUser(reqFara), null);
+  // token cu sessId inexistent -> tot respins (sesiune revocata)
+  const inv = authlibS.sign({ uid, sessId: 'nu-exista', exp: Date.now() + 3600000 }, secret);
+  eq('token cu sessId inexistent -> neautentificat', session.currentUser({ headers: { cookie: 'sid=' + inv } }), null);
+}
+
 section('secretbox — criptarea secretelor cu cheie externa');
 const sbox = require('../src/secretbox');
 {
@@ -2167,6 +2183,7 @@ ok('echilibrat: salvat cu totalurile', obOk.totalDebit === 1000 && obOk.totalCre
 if (prevOB === undefined) delete db.get().openingBalances[fidOk]; else db.get().openingBalances[fidOk] = prevOB; // restaurare
 
 section('Service layer configurare (src/configService.js)');
+const errStatusCfg = (fn) => { try { fn(); return null; } catch (e) { return e.status || 500; } };
 const cfsvc = require('../src/configService');
 const fiscalT = require('../src/fiscal');
 // gardele de firma
@@ -2205,10 +2222,14 @@ ok('prima tiparire: numar atribuit din seria CH + suma 531x', ch1.justAssigned &
 const ch2 = cfsvc.assignChitanta(fidOk, 'chit-svc-1');
 ok('retiparirea refoloseste numarul (seria nu avanseaza)', !ch2.justAssigned && ch2.nr === ch1.nr && ssvc.docSeries(fidOk).CH.next === chNext + 1);
 dCfg.entries = dCfg.entries.filter((e) => e.id !== 'chit-svc-1' && e.id !== 'chit-svc-2'); // curatenie
-// setari globale (merge) + cote fiscale (doar chei cunoscute, numerice; reset la standard)
-cfsvc.updateSettings({ testSetareSvc: 7 });
-eq('setarile se imbina, nu se inlocuiesc', dCfg.settings.testSetareSvc, 7);
-delete dCfg.settings.testSetareSvc; // curatenie
+// setari globale: ALLOWLIST STRICT (fix escaladare — authSecret/chei arbitrare interzise)
+cfsvc.updateSettings({ useAI: false });
+eq('setarile permise se imbina (useAI)', dCfg.settings.useAI, false);
+eq('cheia interzisa (authSecret) -> 403, nu se scrie', errStatusCfg(() => cfsvc.updateSettings({ authSecret: 'x' })), 403);
+ok('authSecret NU a fost atins', dCfg.settings.authSecret !== 'x');
+eq('cheia de admin fara rol -> 403', errStatusCfg(() => cfsvc.updateSettings({ selfRegister: true }, false)), 403);
+eq('cheia de admin CU rol -> permisa', (cfsvc.updateSettings({ selfRegister: true }, true), dCfg.settings.selfRegister), true);
+ok('raspunsul nu contine authSecret (fara leak)', !('authSecret' in cfsvc.updateSettings({ useAI: true }, true).settings));
 const prevFiscalCfg = dCfg.settings.fiscal;
 const fc1 = cfsvc.setFiscalConfig({ tvaStandard: 19, invalid: 'abc', necunoscut: 5 });
 ok('cota valida aplicata imediat, cheile necunoscute ignorate', fc1.current.tvaStandard === 19 && dCfg.settings.fiscal.necunoscut === undefined);

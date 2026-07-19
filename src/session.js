@@ -11,21 +11,25 @@ const db = require('./db');
 const authlib = require('./auth');
 const plans = require('./plans');
 
+// Cheia de semnare a token-urilor: env-ul (CONTAB_AUTH_SECRET) e AUTORITATEA daca e setat
+// (nu sta in baza/backup, nu e scriabil din aplicatie); altfel fallback-ul aleator din baza.
+function signingSecret(d) { return process.env.CONTAB_AUTH_SECRET || d.settings.authSecret; }
+
 function currentUser(req) {
   const d = db.get();
   const token = authlib.parseCookies(req.headers.cookie).sid;
-  const p = authlib.verify(token, d.settings.authSecret);
+  const p = authlib.verify(token, signingSecret(d));
   if (!p) return null;
   const u = d.users.find((x) => x.id === p.uid);
   if (!u) return null;
-  // sesiuni server-side: tokenul trebuie sa corespunda unei sesiuni active
-  let sess = null;
-  if (p.sessId) {
-    sess = (u.sessions || []).find((x) => x.id === p.sessId);
-    if (!sess) return null; // sesiune revocata -> delogat
-    req._sessId = p.sessId;
-    if (Date.now() - Date.parse(sess.lastSeen || 0) > 5 * 60 * 1000) { sess.lastSeen = new Date().toISOString(); pruneSessions(u); db.save(); }
-  }
+  // sesiuni server-side OBLIGATORII: orice token de sesiune (sid) e emis cu sessId
+  // (setSession); un token FARA sessId e forjat -> respins. Fara aceasta garda, un secret
+  // compromis permitea un token {uid} sessionless care sarea peste verificarea de revocare.
+  if (!p.sessId) return null;
+  const sess = (u.sessions || []).find((x) => x.id === p.sessId);
+  if (!sess) return null; // sesiune revocata -> delogat
+  req._sessId = p.sessId;
+  if (Date.now() - Date.parse(sess.lastSeen || 0) > 5 * 60 * 1000) { sess.lastSeen = new Date().toISOString(); pruneSessions(u); db.save(); }
   req.realUser = u;
   req.impersonating = false;
   // Impersonare: doar un admin, prin marcaj pe propria sesiune, devine efectiv utilizatorul-tinta.
@@ -66,7 +70,7 @@ function pruneSessions(u) {
 function cookieFlags(req) { return `HttpOnly; Path=/; SameSite=Lax;${req.secure ? ' Secure;' : ''}`; }
 function setSession(req, res, uid, sessId) {
   const d = db.get();
-  const token = authlib.sign({ uid, sessId, exp: Date.now() + 7 * 24 * 3600 * 1000 }, d.settings.authSecret);
+  const token = authlib.sign({ uid, sessId, exp: Date.now() + 7 * 24 * 3600 * 1000 }, signingSecret(d));
   res.setHeader('Set-Cookie', `sid=${token}; Max-Age=${7 * 24 * 3600}; ${cookieFlags(req)}`);
 }
 // creeaza o sesiune noua (inregistrata pe utilizator) si seteaza cookie-ul
@@ -82,12 +86,12 @@ function startSession(req, res, u) {
 }
 function setTrustedDevice(req, res, u) {
   const d = db.get();
-  const token = authlib.sign({ uid: u.id, ep: u.tfdEpoch || 0, kind: 'tfd', exp: Date.now() + 30 * 24 * 3600 * 1000 }, d.settings.authSecret);
+  const token = authlib.sign({ uid: u.id, ep: u.tfdEpoch || 0, kind: 'tfd', exp: Date.now() + 30 * 24 * 3600 * 1000 }, signingSecret(d));
   res.append('Set-Cookie', `tfd=${token}; Max-Age=${30 * 24 * 3600}; ${cookieFlags(req)}`);
 }
 function deviceTrusted(req, u) {
   const tok = authlib.parseCookies(req.headers.cookie).tfd;
-  const p = authlib.verify(tok, db.get().settings.authSecret);
+  const p = authlib.verify(tok, signingSecret(db.get()));
   return !!(p && p.kind === 'tfd' && p.uid === u.id && (p.ep || 0) === (u.tfdEpoch || 0));
 }
 

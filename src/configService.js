@@ -78,12 +78,30 @@ function assignChitanta(fid, entryId) {
   return { entry: e, suma: Math.round(suma * 100) / 100, nr: e.chitantaNr, justAssigned };
 }
 
-/** Setarile aplicatiei (globale): merge peste cele existente. */
-function updateSettings(b) {
+// Setarile aplicatiei (globale) scriabile prin /api/settings — ALLOWLIST STRICT.
+// Restul (authSecret, smtp, fiscal, docSeries, backup...) se ating DOAR prin rutele
+// lor dedicate (cu requireAdmin) sau deloc; un Object.assign brut ar fi permis unui
+// utilizator autentificat sa scrie authSecret si sa forjeze token-uri de admin.
+const USER_SETTINGS = new Set(['useAI']);          // orice utilizator autentificat
+const ADMIN_SETTINGS = new Set(['selfRegister']);  // doar administratorul
+const PUBLIC_SETTINGS = ['useAI', 'selfRegister', 'tvaStandard', 'tvaRedus']; // ce se intoarce clientului
+
+/** Setarile aplicatiei (globale): merge peste cele existente, DOAR chei din allowlist.
+ *  Cheile de admin cer rol de admin; orice cheie necunoscuta -> 403 (nu se scrie nimic). */
+function updateSettings(b, isAdmin) {
   const d = db.get();
-  d.settings = Object.assign({}, d.settings, b || {});
+  const src = (b && typeof b === 'object' && !Array.isArray(b)) ? b : {};
+  const upd = {};
+  for (const k of Object.keys(src)) {
+    if (USER_SETTINGS.has(k) || (isAdmin && ADMIN_SETTINGS.has(k))) upd[k] = src[k];
+    else { const e = new Error('Setare nepermisa: ' + k); e.status = 403; throw e; }
+  }
+  d.settings = Object.assign({}, d.settings, upd);
   db.save();
-  return { settings: d.settings };
+  // NU intoarce obiectul intreg (contine authSecret/smtp.pass) — doar cheile publice
+  const safe = {};
+  for (const k of PUBLIC_SETTINGS) if (d.settings[k] !== undefined) safe[k] = d.settings[k];
+  return { settings: safe };
 }
 
 /** Cotele fiscale configurabile (admin): doar cheile din DEFAULTS, numerice; `reset` revine
