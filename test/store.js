@@ -114,6 +114,31 @@ section('Persistenta schemaVersion (migrari DB) — round-trip meta');
   eq('schemaVersion supravietuieste persist -> hydrate', hy.schemaVersion, 7);
 }
 
+section('Proiectie normalizata entry_lines + rulaj SQL = rulaj RAM');
+{
+  const acc = require('../src/accounting');
+  store.resetDirty();
+  const el = base();
+  el.entries = [
+    { id: 'l1', firmaId: 1, period: '2026-03', data: '2026-03-10', lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '4111', credit: '4427', suma: 210 }] },
+    { id: 'l2', firmaId: 1, period: '2026-03', data: '2026-03-20', lines: [{ debit: '5121', credit: '4111', suma: 500 }] },
+    { id: 'l3', firmaId: 1, period: '2026-03', data: '2026-03-21', status: 'ciorna', lines: [{ debit: '5311', credit: '707', suma: 999 }] }, // ciorna: exclusa
+    { id: 'l4', firmaId: 2, period: '2026-03', data: '2026-03-15', lines: [{ debit: '371', credit: '401', suma: 800 }] }, // alta firma
+  ];
+  store.persist(el);
+  // rulajul din SQL (entry_lines) trebuie sa fie IDENTIC cu cel din RAM (accounting.accumulate pe postate)
+  const sql = store.linesTurnover(1, '2026-03');
+  const ram = acc.accumulate(acc.allLines(acc.postedEntries({ entries: el.entries.filter((e) => e.firmaId === 1) })));
+  eq('rulaj SQL(entry_lines) = rulaj RAM(accumulate) pe firma 1', JSON.stringify(sql), JSON.stringify(ram));
+  ok('ciorna l3 exclusa din rulajul SQL (contul 5311 absent)', !sql['5311']);
+  ok('izolare pe firma: contul 371 (firma 2) absent din rulajul firmei 1', !sql['371']);
+  ok('rulaj firma 2 vede 371/401', (() => { const t = store.linesTurnover(2, '2026-03'); return t['371'] && t['371'].d === 800 && t['401'] && t['401'].c === 800; })());
+  // stergerea unui articol propaga in entry_lines
+  el.entries = el.entries.filter((e) => e.id !== 'l2');
+  store.persist(el);
+  ok('dupa stergere l2: contul 5121 dispare din rulaj', !store.linesTurnover(1, '2026-03')['5121']);
+}
+
 store.close();
 rm();
 

@@ -18,7 +18,7 @@ const { stringifyDb } = require('./util');
 
 const crypto = require('crypto');
 const { Pool } = require('pg');
-const { ARRAY_COLLS } = require('./store'); // sursa unica a listei de colectii (identica cu SQLite)
+const { ARRAY_COLLS, entryLineRows } = require('./store'); // sursa unica a listei de colectii + proiectia liniilor (identica cu SQLite)
 
 let pool = null;
 let queue = Promise.resolve(); // coada seriala de tranzactii persist
@@ -66,6 +66,14 @@ async function schema() {
     PRIMARY KEY ("firmaId", cont)
   )`);
   await pool.query('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value JSONB)');
+  // proiectie normalizata a liniilor (interogabila in SQL); derivata din blob-ul entries
+  await pool.query(`CREATE TABLE IF NOT EXISTS entry_lines (
+    rowid BIGSERIAL PRIMARY KEY,
+    entry_id TEXT NOT NULL, "firmaId" INTEGER, period TEXT, status TEXT, seq INTEGER,
+    debit TEXT, credit TEXT, suma DOUBLE PRECISION DEFAULT 0, explicatie TEXT
+  )`);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_entry_lines_entry ON entry_lines(entry_id)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_entry_lines_firma ON entry_lines("firmaId", period)');
 }
 
 /** Baza e proaspata (fara date persistate)? */
@@ -97,6 +105,7 @@ async function applyWork(work) {
             [stringifyDb(upserts)]
           );
         }
+        if (w.c.key === 'entries') await projectLines(client, w);
       } else if (w.kind === 'array') {
         const t = w.c.key.toLowerCase();
         await client.query(`DELETE FROM ${t}`);
@@ -108,6 +117,7 @@ async function applyWork(work) {
             [w.json]
           );
         }
+        if (w.c.key === 'entries') await projectLines(client, w);
       } else if (w.kind === 'partners') {
         await client.query('DELETE FROM partners');
         await client.query(
@@ -238,6 +248,45 @@ function persist(db) {
   return queue;
 }
 
+/** Sincronizeaza proiectia entry_lines pentru work-ul colectiei `entries` (in aceeasi tranzactie). */
+async function projectLines(client, w) {
+  const rows = [];
+  let ids = [];
+  if (w.kind === 'incr') {
+    const upserts = w.inserts.concat(w.updates); // [{id, firmaId, data}]
+    ids = upserts.map((r) => r.id).concat(w.deletes);
+    for (const r of upserts) for (const lr of entryLineRows(r.id, r.firmaId, r.data)) rows.push(lr);
+    if (ids.length) await client.query('DELETE FROM entry_lines WHERE entry_id = ANY($1::text[])', [ids]);
+  } else { // 'array' = rescriere completa a colectiei entries
+    await client.query('DELETE FROM entry_lines');
+    for (const r of w.items) for (const lr of entryLineRows(r.id, r.firmaId, r.data)) rows.push(lr);
+  }
+  if (rows.length) {
+    await client.query(
+      `INSERT INTO entry_lines (entry_id, "firmaId", period, status, seq, debit, credit, suma, explicatie)
+       SELECT x.entry_id, x."firmaId", x.period, x.status, x.seq, x.debit, x.credit, x.suma, x.explicatie
+       FROM jsonb_to_recordset($1::jsonb) AS x(entry_id TEXT, "firmaId" INTEGER, period TEXT, status TEXT, seq INTEGER, debit TEXT, credit TEXT, suma DOUBLE PRECISION, explicatie TEXT)`,
+      [stringifyDb(rows)]
+    );
+  }
+}
+
+/** Rulajul pe conturi calculat DIRECT in SQL din entry_lines (doar articole postate), pentru o firma
+ *  si optional o perioada (YYYY sau YYYY-MM). Intoarce { cont: { d, c } } — aceeasi forma ca
+ *  accounting.accumulate. Demonstreaza calcul analitic fara a incarca graful in RAM. */
+async function linesTurnover(firmaId, period) {
+  const acc = {};
+  const bump = (cont, side, s) => { if (cont == null) return; acc[cont] = acc[cont] || { d: 0, c: 0 }; acc[cont][side] += s; };
+  const params = [asInt(firmaId), 'postat'];
+  let where = '"firmaId" = $1 AND (status IS NULL OR status = $2)';
+  if (period) { params.push(String(period).length === 4 ? period + '-%' : period); where += String(period).length === 4 ? ' AND period LIKE $3' : ' AND period = $3'; }
+  const dq = await pool.query(`SELECT debit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND debit IS NOT NULL GROUP BY debit`, params);
+  const cq = await pool.query(`SELECT credit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND credit IS NOT NULL GROUP BY credit`, params);
+  for (const r of dq.rows) bump(r.cont, 'd', Number(r.s) || 0);
+  for (const r of cq.rows) bump(r.cont, 'c', Number(r.s) || 0);
+  return acc;
+}
+
 /** Colectiile scrise la ultimul persist reusit (diagnostic). */
 function written() { return lastWritten.slice(); }
 
@@ -277,4 +326,4 @@ async function close() {
   try { await p.end(); } catch (_) { /* ignora */ }
 }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover };
