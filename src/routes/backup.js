@@ -1,5 +1,7 @@
 'use strict';
 
+const secretbox = require('../secretbox');
+
 // Administrare (admin): backup (creare/listare/descarcare + comutator auto), restaurare dintr-un
 // fisier db.json (cu backup de siguranta al starii curente inainte de inlocuire) si configurarea
 // SMTP (trimiterea de emailuri). Modul de rute: register(app, ctx) -> { doBackup }; helperul
@@ -69,7 +71,7 @@ module.exports = function register(app, ctx) {
     ['host', 'user', 'from'].forEach((k) => { if (b[k] != null) s[k] = b[k]; });
     if (b.port != null) s.port = Number(b.port) || 587;
     if (b.secure != null) s.secure = !!b.secure;
-    if (b.pass) s.pass = b.pass;
+    if (b.pass) s.pass = secretbox.seal(b.pass);
     if (b.notifyNewMessage != null) s.notifyNewMessage = !!b.notifyNewMessage;
     d.settings.smtp = s;
     db.save();

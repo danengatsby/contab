@@ -1,5 +1,7 @@
 'use strict';
 
+const secretbox = require('./secretbox');
+
 // Service layer ANAF/SPV, independent de request-ul HTTP: configurarea conexiunii per-firma,
 // OAuth, trimiterea/verificarea/recipisa facturilor, inbox-ul si documentele SPV (Fisa Rol),
 // importul e-Factura. Rutele (src/routes/anaf.js) sunt puncte de intrare subtiri; jobul de
@@ -120,7 +122,7 @@ function setConfig(user, fid, b) {
   fid = reqFirma(fid);
   const c = anafCfgW(fid);
   b = b || {};
-  ['env', 'clientId', 'clientSecret', 'redirectUri', 'cif'].forEach((k) => { if (b[k] != null) c[k] = b[k]; });
+  ['env', 'clientId', 'clientSecret', 'redirectUri', 'cif'].forEach((k) => { if (b[k] != null) c[k] = k === 'clientSecret' ? secretbox.seal(b[k]) : b[k]; });
   if (b.autoPoll != null) c.autoPoll = !!b.autoPoll;
   db.save();
   return { configured: anaf.configured(c) };

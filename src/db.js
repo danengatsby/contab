@@ -78,6 +78,21 @@ function ensureDir() {
 }
 
 /** Migreaza o baza veche (o singura firma, fara firmaId) la structura multi-firma. */
+// Sigilarea secretelor operationale (parola SMTP, credentialele/token-urile SPV) cu cheia
+// externa CONTAB_SECRETS_KEY. Ruleaza la FIECARE incarcare (idempotent — valorile deja
+// sigilate trec neatinse), ca sa prinda si secretele salvate inainte de setarea cheii.
+function sealSecrets(d) {
+  const secretbox = require('./secretbox');
+  if (!secretbox.hasKey()) return;
+  if (d.settings && d.settings.smtp && d.settings.smtp.pass) d.settings.smtp.pass = secretbox.seal(d.settings.smtp.pass);
+  for (const f of d.firme || []) {
+    if (!f.anaf) continue;
+    for (const k of ['clientSecret', 'accessToken', 'refreshToken']) {
+      if (f.anaf[k]) f.anaf[k] = secretbox.seal(f.anaf[k]);
+    }
+  }
+}
+
 function migrate(d) {
   if (!d.firme && d.company) {
     const f = Object.assign({ id: 1 }, d.company);
@@ -155,6 +170,7 @@ function migrate(d) {
   // Dupa normalizarea de baza (idempotenta), aplica pasii de migrare VERSIONATI (o singura data,
   // urmariti prin d.schemaVersion). migrate() e apelat pe toate caile de load -> un singur hook.
   migrations.runMigrations(d);
+  sealSecrets(d);
   return d;
 }
 

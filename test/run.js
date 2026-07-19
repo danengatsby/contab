@@ -238,6 +238,32 @@ ok('stocuri: PhysicalStock plin cu depozit si proprietar 00+CUI', xmlSaftC.inclu
 ok('stocuri: miscari cu tipuri numerice si subtip', xmlSaftC.includes('<MovementType>10</MovementType>') && xmlSaftC.includes('<MovementSubType>40</MovementSubType>'));
 ok('stocuri: Assets gol si fara AssetTransactions', xmlSaftC.includes('<Assets/>') && !xmlSaftC.includes('<AssetTransactions>'));
 
+section('secretbox — criptarea secretelor cu cheie externa');
+const sbox = require('../src/secretbox');
+{
+  const K = 'CONTAB_SECRETS_KEY';
+  const veche = process.env[K];
+  delete process.env[K];
+  eq('fara cheie: seal e passthrough', sbox.seal('parola'), 'parola');
+  process.env[K] = 'a'.repeat(64);
+  const sigilat = sbox.seal('parola-smtp');
+  ok('cu cheie: sigilat (enc:v1:...)', sbox.isSealed(sigilat) && sigilat !== 'parola-smtp');
+  eq('open intoarce textul original', sbox.open(sigilat), 'parola-smtp');
+  eq('valorile in clar trec neatinse prin open', sbox.open('text-vechi'), 'text-vechi');
+  eq('sigilarea e idempotenta (nu dubleaza)', sbox.seal(sigilat), sigilat);
+  // rotatie: cheia veche ramane acceptata prin CONTAB_SECRETS_KEY_OLD
+  process.env.CONTAB_SECRETS_KEY_OLD = process.env[K];
+  process.env[K] = 'b'.repeat(64);
+  eq('rotatie: secretul sigilat cu cheia veche se deschide', sbox.open(sigilat), 'parola-smtp');
+  ok('re-sigilarea foloseste cheia noua', sbox.open(sbox.seal('nou')) === 'nou');
+  delete process.env.CONTAB_SECRETS_KEY_OLD;
+  ok('fara nicio cheie potrivita: eroare clara, nu text gresit', (() => {
+    process.env[K] = 'c'.repeat(64);
+    try { sbox.open(sigilat); return false; } catch (e) { return /CONTAB_SECRETS_KEY/.test(e.message); }
+  })());
+  if (veche === undefined) delete process.env[K]; else process.env[K] = veche;
+}
+
 section('zipGuard — garda anti zip-bomb la importuri');
 const zipGuard = require('../src/zipGuard');
 const AdmZipT = require('adm-zip');

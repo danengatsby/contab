@@ -1,5 +1,7 @@
 'use strict';
 
+const secretbox = require('./secretbox');
+
 // Trimiterea de emailuri: SMTP-ul configurat in Setari sau, in lipsa, API-ul Resend
 // (RESEND_API_KEY din .env). Tot aici: digestul zilnic cu termenele fiscale.
 
@@ -11,7 +13,7 @@ const billing = require('./billing');
 function sendMail(smtp, to, subject, text) {
   let nodemailer;
   try { nodemailer = require('nodemailer'); } catch (_) { throw new Error('nodemailer neinstalat'); }
-  const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port || 587, secure: !!smtp.secure, auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined });
+  const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port || 587, secure: !!smtp.secure, auth: smtp.user ? { user: smtp.user, pass: secretbox.open(smtp.pass) } : undefined });
   return t.sendMail({ from: smtp.from || smtp.user, to, subject, text });
 }
 

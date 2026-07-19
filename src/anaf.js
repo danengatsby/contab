@@ -1,5 +1,7 @@
 'use strict';
 
+const secretbox = require('./secretbox');
+
 /**
  * Integrare ANAF e-Factura (SPV) prin OAuth2.
  * Necesita o aplicatie OAuth inregistrata in SPV (client_id/secret) si un
@@ -83,9 +85,9 @@ function authorizeUrl(cfg, state) {
 async function postToken(cfg, params) {
   const body = new URLSearchParams(Object.assign({
     client_id: cfg.clientId,
-    client_secret: cfg.clientSecret,
+    client_secret: secretbox.open(cfg.clientSecret),
   }, params));
-  const auth = Buffer.from(cfg.clientId + ':' + cfg.clientSecret).toString('base64');
+  const auth = Buffer.from(cfg.clientId + ':' + secretbox.open(cfg.clientSecret)).toString('base64');
   const r = await anafFetch('ANAF token', TOKEN_URL, {
     method: 'POST',
     headers: {
@@ -111,14 +113,14 @@ async function exchangeCode(cfg, code) {
 
 async function refresh(cfg) {
   if (!cfg.refreshToken) throw new Error('Lipseste refresh_token (reconecteaza-te).');
-  const j = await postToken(cfg, { grant_type: 'refresh_token', refresh_token: cfg.refreshToken });
+  const j = await postToken(cfg, { grant_type: 'refresh_token', refresh_token: secretbox.open(cfg.refreshToken) });
   applyToken(cfg, j);
   return cfg;
 }
 
 function applyToken(cfg, j) {
-  cfg.accessToken = j.access_token || cfg.accessToken;
-  if (j.refresh_token) cfg.refreshToken = j.refresh_token;
+  cfg.accessToken = j.access_token ? secretbox.seal(j.access_token) : cfg.accessToken;
+  if (j.refresh_token) cfg.refreshToken = secretbox.seal(j.refresh_token);
   const ttl = Number(j.expires_in) || 0;
   cfg.tokenExpiry = ttl ? Date.now() + ttl * 1000 : Date.now() + 3600 * 1000;
 }
@@ -129,7 +131,7 @@ async function ensureToken(cfg) {
   if (cfg.tokenExpiry && cfg.tokenExpiry < Date.now() + 60000) {
     await refresh(cfg);
   }
-  return cfg.accessToken;
+  return secretbox.open(cfg.accessToken);
 }
 
 /** Incarca o factura UBL in SPV. Returneaza index_incarcare. */
