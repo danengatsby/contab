@@ -237,6 +237,10 @@ ok('stocuri: HeaderComment C', xmlSaftC.includes('<HeaderComment>C</HeaderCommen
 ok('stocuri: PhysicalStock plin cu depozit si proprietar 00+CUI', xmlSaftC.includes('<WarehouseID>DEP</WarehouseID>') && xmlSaftC.includes('<OwnerID>0012345674</OwnerID>'));
 ok('stocuri: miscari cu tipuri numerice si subtip', xmlSaftC.includes('<MovementType>10</MovementType>') && xmlSaftC.includes('<MovementSubType>40</MovementSubType>'));
 ok('stocuri: Assets gol si fara AssetTransactions', xmlSaftC.includes('<Assets/>') && !xmlSaftC.includes('<AssetTransactions>'));
+// varianta TRIMESTRIALA (D406 pentru platitor TVA trimestrial): agrega 3 luni, HeaderComment T
+const xmlSaftQ = saft.saftXml(Object.assign({}, v, { company: Object.assign({}, v.company, { perioadaTva: 'T' }) }), '2026-Q2');
+ok('trimestrial: HeaderComment T si interval 4-6', xmlSaftQ.includes('<HeaderComment>T</HeaderComment>') && /<PeriodStart>4<\/PeriodStart>/.test(xmlSaftQ) && /<PeriodEnd>6<\/PeriodEnd>/.test(xmlSaftQ));
+ok('trimestrial bine-format', wellFormed(xmlSaftQ));
 
 section('uploadsHygiene — staging orfan + raport de fisiere nereferentiate');
 {
@@ -1842,6 +1846,21 @@ ok('notificari: e-Factura cu termen apropiat apare', nEf.items.some((i) => i.tip
   ok('trimestrial: CU D300/D394 in luna 6 (sfarsit de trimestru)', tipuri(vTri, '2026-06').includes('d300') && tipuri(vTri, '2026-06').includes('d394'));
   ok('trimestrial: D406 urmeaza perioada TVA (nu in luna 5, da in luna 6)', !tipuri(vTri, '2026-05').includes('saft') && tipuri(vTri, '2026-06').includes('saft'));
   ok('lunar: D406 in fiecare luna', tipuri(vLun, '2026-05').includes('saft'));
+}
+
+// agregarea CONTINUTULUI pe trimestru (nu doar registrul): D300/D394 aduna cele 3 luni
+{
+  const accMod = require('../src/accounting');
+  const repMod = require('../src/reporting');
+  eq('vatPeriod: regim T -> trimestrul lunii', accMod.vatPeriod({ perioadaTva: 'T' }, '2026-05'), '2026-Q2');
+  eq('vatPeriod: regim L -> luna ca atare', accMod.vatPeriod({ perioadaTva: 'L' }, '2026-05'), '2026-05');
+  const mkV = (data, doc) => ({ id: doc, data, period: data.slice(0, 7), tip: 'factura_vanzare_marfuri', tipNume: 'V', partener: 'C', partenerCui: 'RO99887760', document: doc, lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '4111', credit: '4427', suma: 210 }] });
+  const vT = { company: { perioadaTva: 'T' }, entries: [mkV('2026-04-10', 'A'), mkV('2026-05-10', 'B'), mkV('2026-06-10', 'C'), mkV('2026-07-10', 'D')], openingBalances: {} };
+  const dQ2 = repMod.d300(vT, '2026-Q2');
+  eq('D300 trimestrial: baza = suma celor 3 luni (Apr+Mai+Iun)', dQ2.bazaV, 3000);
+  eq('D300 trimestrial: TVA colectata pe trimestru', dQ2.colectata, 630);
+  eq('D300 lunar (o luna) NU aduna trimestrul', repMod.d300(vT, '2026-05').bazaV, 1000);
+  eq('trimestrul exclude luna din alt trimestru (iulie)', repMod.d300(vT, '2026-Q3').bazaV, 1000);
 }
 ok('SAF-T lunar: bine-format, perioada corecta si codul L in HeaderComment', (() => { const x = saft.saftXml(vDecl, '2026-06'); return x.includes('<PeriodStart>6</PeriodStart>') && x.includes('<PeriodEnd>6</PeriodEnd>') && x.includes('<HeaderComment>L</HeaderComment>'); })());
 

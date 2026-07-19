@@ -207,6 +207,8 @@ ${lineXml}</Invoice>
 }
 
 function ym(period) {
+  const q = String(period || '').match(/^(\d{4})-Q([1-4])$/);
+  if (q) return { an: q[1], luna: String(Number(q[2]) * 3) }; // trimestru: luna finala (D300/D394 trimestrial)
   const m = String(period || '').match(/^(\d{4})-(\d{2})$/);
   return m ? { an: m[1], luna: String(Number(m[2])) } : { an: String(new Date().getFullYear()), luna: '1' };
 }

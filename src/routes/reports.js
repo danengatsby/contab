@@ -66,7 +66,7 @@ module.exports = function register(app, ctx) {
   app.get('/pdf/vat', (req, res) => pdf.vatPdf(res, S(req).company, acc.vatJournals(S(req), req.query.period || null)));
   app.get('/pdf/d112', (req, res) => pdf.d112Pdf(res, S(req).company, rep.d112(S(req), req.query.period || null)));
   // (PDF stat de plata / fluturas: src/routes/payroll.js)
-  app.get('/pdf/d300', (req, res) => pdf.d300Pdf(res, S(req).company, rep.d300(S(req), req.query.period || null)));
+  app.get('/pdf/d300', (req, res) => { const v = S(req); const pd = acc.vatPeriod(v.company, req.query.period || null); return pdf.d300Pdf(res, v.company, rep.d300(v, pd)); });
   app.get('/pdf/d100', (req, res) => pdf.d100Pdf(res, S(req).company, rep.d100micro(S(req), req.query.period || null)));
   // Declaratia Unica (PFA, sistem real): estimarea venitului net anual si a CAS/CASS/impozitului
   app.get('/api/declaratia-unica', (req, res) => res.json(rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));
