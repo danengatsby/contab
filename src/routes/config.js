@@ -10,6 +10,7 @@ const path = require('path');
 const db = require('../db');
 const pdf = require('../pdf');
 const fiscal = require('../fiscal');
+const fiscalProfile = require('../fiscalProfile');
 const svc = require('../configService');
 
 module.exports = function register(app, ctx) {
@@ -27,6 +28,13 @@ module.exports = function register(app, ctx) {
     const r = svc.updateCompany(activeId(req), req.body);
     return { ok: true, company: r.company };
   }));
+
+  // Profilul fiscal COMPUT al firmei active — sursa unica din care se deriva declaratiile,
+  // alertele si controalele (consumat de UI si de restul aplicatiei, nu boolean-uri ad-hoc).
+  app.get('/api/fiscal-profile', (req, res) => {
+    const v = S(req);
+    res.json(fiscalProfile.build(v.company, { angajati: v.angajati }));
+  });
 
   // ── Logo firma (layout documente): apare in antetul tuturor PDF-urilor emise ──
   app.post('/api/company/logo', upload.single('file'), (req, res) => run(res, () => {

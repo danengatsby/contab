@@ -35,6 +35,24 @@ Regula de aur: **nicio cotă hardcodată în afara acestui fișier.** (Convenți
 Istoricul git al `fiscalConfig.js` este astfel **jurnalul versiunilor de reguli**:
 cine, când, ce act normativ, ce teste însoțesc schimbarea.
 
+## 2. Profilul fiscal pe firmă (`src/fiscalProfile.js`)
+
+Dacă `fiscalConfig.js` ține **cotele** (aceleași pentru toți), profilul fiscal ține
+**regimul fiecărei firme** și e **sursa unică** din care se derivă declarațiile așteptate,
+alertele (termene) și controalele — nu boolean-uri (`tvaPlatitor`) citite ad-hoc prin cod.
+
+`fiscalProfile.build(company, { angajați })` normalizează firma într-un profil structurat:
+plătitor TVA + **perioadă L/T**, **TVA la încasare**, **regim** (`micro`/`profit`/`pfa`),
+**are angajați**, **cadență D406** (L/T/A), **obligație Intrastat**, **excepții** (scutiri
+per declarație). Toate câmpurile au implicite compatibile cu firmele existente: un profil
+construit dintr-o firmă veche dă exact comportamentul de dinainte.
+
+`fiscalProfile.expected(profile, period, hasIntracom)` derivă lista de declarații din profil;
+`declarations.expectedForFirma` (și, prin ea, registrul, portofoliul și notificările) **deleagă**
+aici. Câmpurile de profil se editează prin `/api/company` (allowlist `FIRMA_EDITABLE`) și profilul
+calculat se citește la `GET /api/fiscal-profile`. Un regim nou (ex. D100 micro vs D101 profit,
+prag Intrastat) se adaugă în acest motor, cu teste în secțiunea „Motor de profil fiscal".
+
 Jurnalul dovezilor de validare (versiuni de schemă/validator, dată, rezultat):
 **docs/validare-oficiala.md**.
 

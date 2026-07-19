@@ -1842,6 +1842,37 @@ ok('notificari: termen d112 iunie (25 iulie) e in fereastra de 7 zile', notifDec
 ok('notificari: d300 depusa nu apare', !notifDecl.items.some((i) => i.tip === 'd300' && i.period === '2026-06'));
 eq('notificari: restantele primele', declMod.notifications(dDecl, [vDecl], '2026-08-01', 7, 3).items[0].kind, 'restanta');
 
+section('Motor de profil fiscal (src/fiscalProfile.js)');
+const fp = require('../src/fiscalProfile');
+// implicite compatibile: firma veche (doar tvaPlatitor) => profil coerent
+const pSrl = fp.build({ tvaPlatitor: true }, {});
+eq('profil: platitor TVA implicit lunar', pSrl.perioadaTva, 'L');
+eq('profil: non-PFA implicit micro', pSrl.regim, 'micro');
+eq('profil: D406 lunar la TVA lunar', pSrl.d406, 'L');
+eq('profil: neplatitor -> perioadaTva null', fp.build({ tvaPlatitor: false }, {}).perioadaTva, null);
+eq('profil: neplatitor -> D406 trimestrial', fp.build({ tvaPlatitor: false }, {}).d406, 'T');
+eq('profil: TVA trimestrial -> D406 trimestrial', fp.build({ tvaPlatitor: true, perioadaTva: 'T' }, {}).d406, 'T');
+eq('profil: PFA -> regim pfa (ignora regimImpozit)', fp.build({ tipEntitate: 'pfa', regimImpozit: 'profit' }, {}).regim, 'pfa');
+eq('profil: regim profit explicit', fp.build({ tvaPlatitor: true, regimImpozit: 'profit' }, {}).profit, true);
+eq('profil: areAngajati din ctx', fp.build({}, { angajati: [{ id: 'a' }] }).areAngajati, true);
+eq('profil: cadenta D406 explicita bate derivarea', fp.build({ tvaPlatitor: true, d406Cadenta: 'T' }, {}).d406, 'T');
+// declaratii derivate din profil (echivalente cu expectedForFirma, dar profil-driven)
+const noIntra = () => false;
+eq('expected: TVA lunar + angajati, iunie', fp.expected(fp.build({ tvaPlatitor: true }, { angajati: [{ id: 'a' }] }), '2026-06', noIntra).join(','), 'd300,d394,d112,d100,saft');
+eq('expected: TVA lunar, mai (fara d100)', fp.expected(fp.build({ tvaPlatitor: true }, {}), '2026-05', noIntra).join(','), 'd300,d394,saft');
+eq('expected: neplatitor -> saft doar trimestrial', fp.expected(fp.build({ tvaPlatitor: false }, {}), '2026-06', noIntra).join(','), 'd100,saft');
+eq('expected: PFA -> fara d100/saft', fp.expected(fp.build({ tvaPlatitor: true, tipEntitate: 'pfa' }, {}), '2026-06', noIntra).join(','), 'd300,d394');
+// EXTINDERI noi ale motorului: Intrastat + scutiri + cadenta D406 anuala
+const withIntra = () => true;
+ok('expected: Intrastat cand firma e obligata + are miscari intracom', fp.expected(fp.build({ tvaPlatitor: true, intrastatObligat: true }, {}), '2026-05', withIntra).includes('intrastat'));
+ok('expected: fara Intrastat cand nu are miscari intracom in luna', !fp.expected(fp.build({ tvaPlatitor: true, intrastatObligat: true }, {}), '2026-05', noIntra).includes('intrastat'));
+ok('expected: scutirea suprima declaratia (d394 scutit)', !fp.expected(fp.build({ tvaPlatitor: true, scutiri: { d394: true } }, {}), '2026-06', noIntra).includes('d394'));
+eq('expected: D406 cadenta anuala -> doar decembrie', [fp.expected(fp.build({ tvaPlatitor: true, d406Cadenta: 'A' }, {}), '2026-06', noIntra).includes('saft'), fp.expected(fp.build({ tvaPlatitor: true, d406Cadenta: 'A' }, {}), '2026-12', noIntra).includes('saft')].join(','), 'false,true');
+eq('termen Intrastat: 15 ale lunii urmatoare', declMod.dueDate('intrastat', '2026-06'), '2026-07-15');
+// expectedForFirma deleaga spre motor -> Intrastat vizibil in registru cand firma e obligata
+const vIntra = { firmaId: 7, company: { tvaPlatitor: true, intrastatObligat: true }, angajati: [], entries: [{ tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10' }] };
+ok('expectedForFirma: Intrastat apare pentru firma obligata cu miscari intracom', declMod.expectedForFirma(vIntra, '2026-05').some((x) => x.tip === 'intrastat'));
+
 section('e-Factura netrimisa in SPV + SAF-T lunar');
 eq('addCalendarDays: vineri + 5 zile calendaristice', declMod.addCalendarDays('2026-07-03', 5), '2026-07-08');
 const vEf = { firmaId: 9, company: { nume: 'EF SRL', tvaPlatitor: true }, angajati: [], entries: [

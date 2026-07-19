@@ -31,6 +31,7 @@ const DB_FILE = JSON_FILE; // pastrat pentru compatibilitate (backup/restore fol
 const FIRMA_EDITABLE = new Set([
   'nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'tara',                       // identificare
   'tvaPlatitor', 'tvaLaIncasare', 'tipEntitate', 'proRataTva', 'caen', 'perioadaTva', 'capitalSocial', // profil fiscal
+  'regimImpozit', 'd406Cadenta', 'intrastatObligat', 'scutiri',                     // motor profil fiscal (regim, cadenta D406, Intrastat, exceptii)
   'iban', 'banca', 'cont', 'telefon', 'email', 'numeComplet', 'autorizatie',        // banca / contact / reprezentant
   'accentColor', 'pdfLayout', 'pdfFooter', 'asociatiText',                          // prezentare facturi/PDF
 ]);
