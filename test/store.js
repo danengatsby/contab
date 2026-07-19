@@ -139,6 +139,28 @@ section('Proiectie normalizata entry_lines + rulaj SQL = rulaj RAM');
   ok('dupa stergere l2: contul 5121 dispare din rulaj', !store.linesTurnover(1, '2026-03')['5121']);
 }
 
+section('Proiectie normalizata documents_meta + cautare/stats SQL');
+{
+  store.resetDirty();
+  const dm = base();
+  dm.documents = [
+    { id: 'd1', firmaId: 1, fileName: 'factura-101.pdf', uploadedAt: '2026-03-10T10:00:00Z', text: 'Factura catre ACME cu TVA' },
+    { id: 'd2', firmaId: 1, fileName: 'chitanta.pdf', uploadedAt: '2026-03-11T10:00:00Z', text: '' },
+    { id: 'd3', firmaId: 2, fileName: 'contract.pdf', uploadedAt: '2026-03-12T10:00:00Z', text: 'contract prestari' },
+  ];
+  store.persist(dm);
+  const st = store.documentsStats(1);
+  eq('documente firma 1: total 2, cu text 1', st.total + '/' + st.cuText, '2/1');
+  ok('cautare pe TEXT extras ("acme") -> gaseste d1', store.documentsSearch(1, 'acme').some((r) => r.id === 'd1'));
+  ok('cautare pe nume fisier ("factura") -> gaseste d1', store.documentsSearch(1, 'factura').some((r) => r.id === 'd1'));
+  ok('izolare pe firma: "contract" (firma 2) NU apare la firma 1', store.documentsSearch(1, 'contract').length === 0);
+  ok('firma 2 gaseste contractul', store.documentsSearch(2, 'contract').some((r) => r.id === 'd3'));
+  dm.documents = dm.documents.filter((d) => d.id !== 'd1');
+  store.persist(dm);
+  eq('dupa stergere d1: total firma 1 scade la 1', store.documentsStats(1).total, 1);
+  ok('proiectia scrisa doar la persist-ul documentelor (nu la entries)', store.written().join(',') === 'documents');
+}
+
 store.close();
 rm();
 

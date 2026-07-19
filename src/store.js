@@ -74,10 +74,10 @@ const ARRAY_COLLS = [
   { key: 'declarations', firma: true, hasId: true },
 ];
 
-// Proiectie NORMALIZATA a liniilor articolelor: tabelul `entry_lines` (o linie contabila = un rand),
-// scris tranzactional din blob-ul articolului (blob-ul ramane sursa de adevar; hydrate NU foloseste
-// entry_lines). Permite interogari SQL pe linii (rulaje pe cont, fara a incarca graful in RAM).
-// `status` = starea articolului (postat/ciorna...) ca sa se poata filtra ce intra in contabilitate.
+// PROIECTII NORMALIZATE: tabele derivate din blob-uri, scrise tranzactional in aceeasi tranzactie cu
+// colectia-sursa (blob-ul ramane sursa de adevar; hydrate NU le foloseste). Permit interogari SQL fara
+// a incarca graful in RAM. Fiecare proiectie: colectia-sursa -> functie care intoarce randurile.
+// Registrul e SURSA UNICA (folosit identic de SQLite si PostgreSQL).
 function entryLineRows(id, firmaId, entry) {
   const lines = (entry && entry.lines) || [];
   const period = entry ? (entry.period || String(entry.data || '').slice(0, 7)) : '';
@@ -90,6 +90,35 @@ function entryLineRows(id, firmaId, entry) {
     explicatie: l && l.explicatie != null ? String(l.explicatie) : null,
   }));
 }
+function documentMetaRow(id, firmaId, doc) {
+  const text = doc && typeof doc.text === 'string' ? doc.text : '';
+  return [{
+    doc_id: String(id), firmaId: firmaId != null ? firmaId : null,
+    fileName: doc && doc.fileName != null ? String(doc.fileName) : null,
+    uploadedAt: doc && doc.uploadedAt != null ? String(doc.uploadedAt) : null,
+    spvMsgId: doc && doc.spvMsgId != null ? String(doc.spvMsgId) : null,
+    textLen: text.length,
+    text: text.slice(0, 20000),
+  }];
+}
+
+// Registru de proiectii. `cols` = coloanele (in ordine) pt SQLite; `pgRecordset`/`pgSelect` = spec.
+// jsonb_to_recordset + lista de SELECT pt PostgreSQL (cu "firmaId" citat). `rows(id,firmaId,obj)`
+// intoarce 0..N randuri (o linie -> N; un document -> 1). Ordinea coloanelor e aceeasi peste tot.
+const PROJECTIONS = [
+  {
+    coll: 'entries', table: 'entry_lines', idCol: 'entry_id', rows: entryLineRows,
+    cols: ['entry_id', 'firmaId', 'period', 'status', 'seq', 'debit', 'credit', 'suma', 'explicatie'],
+    pgSelect: 'x.entry_id, x."firmaId", x.period, x.status, x.seq, x.debit, x.credit, x.suma, x.explicatie',
+    pgRecordset: 'entry_id TEXT, "firmaId" INTEGER, period TEXT, status TEXT, seq INTEGER, debit TEXT, credit TEXT, suma DOUBLE PRECISION, explicatie TEXT',
+  },
+  {
+    coll: 'documents', table: 'documents_meta', idCol: 'doc_id', rows: documentMetaRow,
+    cols: ['doc_id', 'firmaId', 'fileName', 'uploadedAt', 'spvMsgId', 'textLen', 'text'],
+    pgSelect: 'x.doc_id, x."firmaId", x."fileName", x."uploadedAt", x."spvMsgId", x."textLen", x.text',
+    pgRecordset: 'doc_id TEXT, "firmaId" INTEGER, "fileName" TEXT, "uploadedAt" TEXT, "spvMsgId" TEXT, "textLen" INTEGER, text TEXT',
+  },
+];
 
 let sdb = null;
 
@@ -131,19 +160,40 @@ function schema() {
   )`);
   sdb.exec('CREATE INDEX IF NOT EXISTS idx_entry_lines_entry ON entry_lines(entry_id)');
   sdb.exec('CREATE INDEX IF NOT EXISTS idx_entry_lines_firma ON entry_lines(firmaId, period)');
+  // proiectie normalizata a documentelor (metadate interogabile + text pentru cautare SQL)
+  sdb.exec(`CREATE TABLE IF NOT EXISTS documents_meta (
+    doc_id TEXT PRIMARY KEY, firmaId INTEGER, fileName TEXT, uploadedAt TEXT, spvMsgId TEXT,
+    textLen INTEGER DEFAULT 0, text TEXT
+  )`);
+  sdb.exec('CREATE INDEX IF NOT EXISTS idx_documents_meta_firma ON documents_meta(firmaId, uploadedAt)');
 }
 
-/** Sincronizeaza proiectia entry_lines pentru work-ul colectiei `entries` (in aceeasi tranzactie). */
-function syncEntryLines(w) {
-  const del = sdb.prepare('DELETE FROM entry_lines WHERE entry_id = ?');
-  const ins = sdb.prepare('INSERT INTO entry_lines (entry_id, firmaId, period, status, seq, debit, credit, suma, explicatie) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+/** Sincronizeaza o proiectie (din PROJECTIONS) pentru work-ul colectiei sursa (in aceeasi tranzactie). */
+function syncProjection(p, w) {
+  const del = sdb.prepare(`DELETE FROM ${p.table} WHERE ${p.idCol} = ?`);
+  const ins = sdb.prepare(`INSERT INTO ${p.table} (${p.cols.join(', ')}) VALUES (${p.cols.map(() => '?').join(', ')})`);
   const put = (row) => { // row = [id, firmaId, json]
     del.run(row[0]);
-    const entry = JSON.parse(row[2]);
-    for (const l of entryLineRows(row[0], row[1], entry)) ins.run(l.entry_id, l.firmaId, l.period, l.status, l.seq, l.debit, l.credit, l.suma, l.explicatie);
+    const obj = JSON.parse(row[2]);
+    for (const r of p.rows(row[0], row[1], obj)) ins.run(...p.cols.map((c) => r[c]));
   };
-  if (w.kind === 'full') { sdb.exec('DELETE FROM entry_lines'); for (const row of w.items) put(row); }
+  if (w.kind === 'full') { sdb.exec(`DELETE FROM ${p.table}`); for (const row of w.items) put(row); }
   else { for (const id of w.deletes) del.run(id); for (const row of w.inserts) put(row); for (const row of w.updates) put(row); }
+}
+
+/** Statistici pe documente calculate in SQL din documents_meta (fara graful in RAM), per firma. */
+function documentsStats(firmaId) {
+  const r = sdb.prepare('SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN textLen > 0 THEN 1 ELSE 0 END), 0) AS cuText, COALESCE(SUM(CASE WHEN spvMsgId IS NOT NULL THEN 1 ELSE 0 END), 0) AS dinSpv FROM documents_meta WHERE firmaId = ?').get(asInt(firmaId));
+  return { total: Number(r.total) || 0, cuText: Number(r.cuText) || 0, dinSpv: Number(r.dinSpv) || 0 };
+}
+
+/** Cautare documente in SQL (nume fisier sau text extras), per firma. Fara a incarca graful in RAM. */
+function documentsSearch(firmaId, q, limit) {
+  const like = '%' + String(q || '').toLowerCase() + '%';
+  const rows = sdb.prepare(`SELECT doc_id, fileName, uploadedAt FROM documents_meta
+    WHERE firmaId = ? AND (LOWER(fileName) LIKE ? OR LOWER(text) LIKE ?) ORDER BY uploadedAt DESC LIMIT ?`)
+    .all(asInt(firmaId), like, like, Math.min(200, Math.max(1, Number(limit) || 50)));
+  return rows.map((r) => ({ id: r.doc_id, fileName: r.fileName, uploadedAt: r.uploadedAt }));
 }
 
 /** Rulajul pe conturi calculat DIRECT in SQL din entry_lines (doar articole postate), pentru o firma
@@ -254,14 +304,14 @@ function persist(db) {
           const ins = sdb.prepare(`INSERT INTO ${w.c.key} (id, firmaId, data) VALUES (?, ?, ?)`);
           for (const it of w.items) ins.run(it[0], it[1], it[2]);
         }
-        if (w.c.key === 'entries') syncEntryLines(w);
+        for (const p of PROJECTIONS) if (p.coll === w.c.key) syncProjection(p, w);
         lastWritten.push(w.c.key);
       } else if (w.kind === 'incr') {
         const t = w.c.key;
         if (w.deletes.length) { const del = sdb.prepare(`DELETE FROM ${t} WHERE id = ?`); for (const id of w.deletes) del.run(id); }
         if (w.inserts.length) { const ins = sdb.prepare(`INSERT INTO ${t} (id, firmaId, data) VALUES (?, ?, ?)`); for (const r of w.inserts) ins.run(r[0], r[1], r[2]); }
         if (w.updates.length) { const upd = sdb.prepare(`UPDATE ${t} SET firmaId = ?, data = ? WHERE id = ?`); for (const r of w.updates) upd.run(r[1], r[2], r[0]); }
-        if (w.c.key === 'entries') syncEntryLines(w);
+        for (const p of PROJECTIONS) if (p.coll === w.c.key) syncProjection(p, w);
         lastWritten.push(t);
       } else if (w.kind === 'partners') {
         sdb.exec('DELETE FROM partners');
@@ -342,4 +392,4 @@ function hydrate(defaults) {
 
 function close() { if (sdb) { try { sdb.close(); } catch (_) { /* ignore */ } sdb = null; } }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, entryLineRows, linesTurnover, checkSqlite };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, linesTurnover, documentsStats, documentsSearch, checkSqlite };

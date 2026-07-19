@@ -18,7 +18,7 @@ const { stringifyDb } = require('./util');
 
 const crypto = require('crypto');
 const { Pool } = require('pg');
-const { ARRAY_COLLS, entryLineRows } = require('./store'); // sursa unica a listei de colectii + proiectia liniilor (identica cu SQLite)
+const { ARRAY_COLLS, PROJECTIONS } = require('./store'); // sursa unica a listei de colectii + registrul de proiectii (identice cu SQLite)
 
 let pool = null;
 let queue = Promise.resolve(); // coada seriala de tranzactii persist
@@ -74,6 +74,12 @@ async function schema() {
   )`);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_entry_lines_entry ON entry_lines(entry_id)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_entry_lines_firma ON entry_lines("firmaId", period)');
+  // proiectie normalizata a documentelor (metadate interogabile + text pentru cautare SQL)
+  await pool.query(`CREATE TABLE IF NOT EXISTS documents_meta (
+    doc_id TEXT PRIMARY KEY, "firmaId" INTEGER, "fileName" TEXT, "uploadedAt" TEXT, "spvMsgId" TEXT,
+    "textLen" INTEGER DEFAULT 0, text TEXT
+  )`);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_documents_meta_firma ON documents_meta("firmaId", "uploadedAt")');
 }
 
 /** Baza e proaspata (fara date persistate)? */
@@ -105,7 +111,7 @@ async function applyWork(work) {
             [stringifyDb(upserts)]
           );
         }
-        if (w.c.key === 'entries') await projectLines(client, w);
+        for (const p of PROJECTIONS) if (p.coll === w.c.key) await projectInto(client, p, w);
       } else if (w.kind === 'array') {
         const t = w.c.key.toLowerCase();
         await client.query(`DELETE FROM ${t}`);
@@ -117,7 +123,7 @@ async function applyWork(work) {
             [w.json]
           );
         }
-        if (w.c.key === 'entries') await projectLines(client, w);
+        for (const p of PROJECTIONS) if (p.coll === w.c.key) await projectInto(client, p, w);
       } else if (w.kind === 'partners') {
         await client.query('DELETE FROM partners');
         await client.query(
@@ -248,24 +254,22 @@ function persist(db) {
   return queue;
 }
 
-/** Sincronizeaza proiectia entry_lines pentru work-ul colectiei `entries` (in aceeasi tranzactie). */
-async function projectLines(client, w) {
+/** Sincronizeaza o proiectie (din PROJECTIONS) pentru work-ul colectiei sursa (in aceeasi tranzactie). */
+async function projectInto(client, p, w) {
   const rows = [];
-  let ids = [];
+  const insertCols = p.cols.map((c) => (/[A-Z]/.test(c) ? '"' + c + '"' : c)).join(', '); // "firmaId","fileName"... citate
   if (w.kind === 'incr') {
     const upserts = w.inserts.concat(w.updates); // [{id, firmaId, data}]
-    ids = upserts.map((r) => r.id).concat(w.deletes);
-    for (const r of upserts) for (const lr of entryLineRows(r.id, r.firmaId, r.data)) rows.push(lr);
-    if (ids.length) await client.query('DELETE FROM entry_lines WHERE entry_id = ANY($1::text[])', [ids]);
-  } else { // 'array' = rescriere completa a colectiei entries
-    await client.query('DELETE FROM entry_lines');
-    for (const r of w.items) for (const lr of entryLineRows(r.id, r.firmaId, r.data)) rows.push(lr);
+    const ids = upserts.map((r) => r.id).concat(w.deletes);
+    for (const r of upserts) for (const pr of p.rows(r.id, r.firmaId, r.data)) rows.push(pr);
+    if (ids.length) await client.query(`DELETE FROM ${p.table} WHERE ${p.idCol} = ANY($1::text[])`, [ids]);
+  } else { // 'array' = rescriere completa a colectiei sursa
+    await client.query(`DELETE FROM ${p.table}`);
+    for (const r of w.items) for (const pr of p.rows(r.id, r.firmaId, r.data)) rows.push(pr);
   }
   if (rows.length) {
     await client.query(
-      `INSERT INTO entry_lines (entry_id, "firmaId", period, status, seq, debit, credit, suma, explicatie)
-       SELECT x.entry_id, x."firmaId", x.period, x.status, x.seq, x.debit, x.credit, x.suma, x.explicatie
-       FROM jsonb_to_recordset($1::jsonb) AS x(entry_id TEXT, "firmaId" INTEGER, period TEXT, status TEXT, seq INTEGER, debit TEXT, credit TEXT, suma DOUBLE PRECISION, explicatie TEXT)`,
+      `INSERT INTO ${p.table} (${insertCols}) SELECT ${p.pgSelect} FROM jsonb_to_recordset($1::jsonb) AS x(${p.pgRecordset})`,
       [stringifyDb(rows)]
     );
   }
@@ -285,6 +289,28 @@ async function linesTurnover(firmaId, period) {
   for (const r of dq.rows) bump(r.cont, 'd', Number(r.s) || 0);
   for (const r of cq.rows) bump(r.cont, 'c', Number(r.s) || 0);
   return acc;
+}
+
+/** Statistici pe documente calculate in SQL din documents_meta (fara graful in RAM), per firma. */
+async function documentsStats(firmaId) {
+  const r = await pool.query(
+    `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE "textLen" > 0) AS cutext, COUNT(*) FILTER (WHERE "spvMsgId" IS NOT NULL) AS dinspv
+     FROM documents_meta WHERE "firmaId" = $1`, [asInt(firmaId)]
+  );
+  const x = r.rows[0] || {};
+  return { total: Number(x.total) || 0, cuText: Number(x.cutext) || 0, dinSpv: Number(x.dinspv) || 0 };
+}
+
+/** Cautare documente in SQL (nume fisier sau text extras), per firma. Fara a incarca graful in RAM. */
+async function documentsSearch(firmaId, q, limit) {
+  const like = '%' + String(q || '').toLowerCase() + '%';
+  const lim = Math.min(200, Math.max(1, Number(limit) || 50));
+  const r = await pool.query(
+    `SELECT doc_id, "fileName", "uploadedAt" FROM documents_meta
+     WHERE "firmaId" = $1 AND (LOWER("fileName") LIKE $2 OR LOWER(text) LIKE $2) ORDER BY "uploadedAt" DESC LIMIT $3`,
+    [asInt(firmaId), like, lim]
+  );
+  return r.rows.map((x) => ({ id: x.doc_id, fileName: x.fileName, uploadedAt: x.uploadedAt }));
 }
 
 /** Colectiile scrise la ultimul persist reusit (diagnostic). */
@@ -326,4 +352,4 @@ async function close() {
   try { await p.end(); } catch (_) { /* ignora */ }
 }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover, documentsStats, documentsSearch };
