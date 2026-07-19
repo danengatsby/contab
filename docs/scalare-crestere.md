@@ -3,6 +3,29 @@
 > Document de decizie (ADR). Capturează analiza căilor de creștere ca să nu fie re-litigate și ca
 > fiecare pas să pornească pe un semnal real, nu pe o presupunere. Actualizează-l când un prag e atins.
 
+## Direcție (2026-07): migrare graduală spre PostgreSQL tranzacțional
+
+Decizie de conducere: se migrează **treptat** de la graful integral în RAM spre persistență
+PostgreSQL tranzacțională, cu scrieri per-rând (și, ulterior, tabele normalizate pentru articole/
+linii/documente/audit), ca să susțină **concurență reală și mai multe instanțe**. Migrarea e
+incrementală și reversibilă; fiecare pas rămâne în spatele abstracției de store (`src/store*.js`),
+fără schimbări în modulele de domeniu.
+
+- **Pas 1 — LIVRAT: scrieri incrementale per-rând în `storePg` (paritate cu SQLite).** Înainte,
+  driverul PostgreSQL (producția) făcea `DELETE FROM <tabel>` + `INSERT`-tot la fiecare `save()`
+  pentru fiecare colecție murdară — rescria tabele întregi și, esențial, **ar fi șters rândurile
+  altei instanțe**. Acum face `INSERT/UPDATE/DELETE` doar pe rândurile schimbate (diff față de un
+  snapshot per rând, `snap[colecție] = Map(id→json)`), într-o singură tranzacție, cu delete-then-
+  insert idempotent (sigur la persist-uri concurente). Rândurile neschimbate nu se mai ating (dovadă:
+  `test/store-pg.js` verifică stabilitatea `rowid`). Reduce amplificarea scrierilor și e prima cărămidă
+  pentru multi-instanță pe colecțiile cu `id`.
+- **Pași următori (neîncepuți):** tabele normalizate pentru linii (interogabile în SQL), citiri
+  per-cerere din pg pentru firmele mari, lock/versionare optimistă pentru multi-instanță reală.
+  Se iau incremental, fiecare cu testele lui pe driverul pg (job CI `test-postgres`).
+
+Restul documentului rămâne analiza anterioară (partiționare pe firmă etc.), încă validă ca alternativă
+complementară — migrarea la pg tranzacțional și partiționarea pe `firmaId` nu se exclud.
+
 ## Contextul: de ce arhitectura actuală e o alegere, nu o limitare
 
 Contabo e un **monolit modular** cu întreaga bază în RAM-ul unui singur proces:

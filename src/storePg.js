@@ -22,11 +22,17 @@ const { ARRAY_COLLS } = require('./store'); // sursa unica a listei de colectii 
 
 let pool = null;
 let queue = Promise.resolve(); // coada seriala de tranzactii persist
-let lastHash = {}; // dirty-tracking per colectie, ca in store.js
+// Dirty-tracking, ca in store.js (SQLite): colectiile cu `id` primesc INSERT/UPDATE/DELETE per rand
+// (diff fata de `snap`), nu DELETE+INSERT integral. `snap[colectie]` = Map(id -> json persistat la
+// ultimul commit reusit. Restul (colectii fara id, partners/opening/meta) raman pe rescriere completa
+// portita de amprenta (`lastHash`). Starea se actualizeaza DOAR dupa commit -> esec = retry idempotent.
+let snap = {};     // { [colectie hasId]: Map(id -> json) }
+let lastHash = {}; // amprenta pt colectiile rescrise integral
 let lastWritten = [];
 
 function sha(s) { return crypto.createHash('sha1').update(s).digest('hex'); }
 function asInt(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
+function firmaOf(c, item) { return c.firma && item && item.firmaId != null ? asInt(item.firmaId) : null; }
 
 async function open() {
   if (pool) return pool;
@@ -68,8 +74,8 @@ async function isEmpty() {
   return !r.rows[0] || Number(r.rows[0].n) === 0;
 }
 
-/** Reseteaza amprentele -> urmatorul persist rescrie tot (dupa hydrate/restore). */
-function resetDirty() { lastHash = {}; }
+/** Reseteaza starea persistata -> urmatorul persist rescrie tot (dupa hydrate/restore). */
+function resetDirty() { snap = {}; lastHash = {}; }
 
 /** Aplica un set de colectii fotografiate, intr-o singura tranzactie. */
 async function applyWork(work) {
@@ -77,7 +83,21 @@ async function applyWork(work) {
   try {
     await client.query('BEGIN');
     for (const w of work) {
-      if (w.kind === 'array') {
+      if (w.kind === 'incr') {
+        // diff per rand: sterge randurile schimbate/scoase, apoi (re)insereaza cele curente.
+        // delete-then-insert = idempotent (sigur si daca un persist concurent a rescris deja randul).
+        const t = w.c.key.toLowerCase();
+        const upserts = w.inserts.concat(w.updates);
+        const delIds = upserts.map((r) => r.id).concat(w.deletes);
+        if (delIds.length) await client.query(`DELETE FROM ${t} WHERE id = ANY($1::text[])`, [delIds]);
+        if (upserts.length) {
+          await client.query(
+            `INSERT INTO ${t} (id, "firmaId", data)
+             SELECT x.id, x."firmaId", x.data FROM jsonb_to_recordset($1::jsonb) AS x(id TEXT, "firmaId" INTEGER, data JSONB)`,
+            [stringifyDb(upserts)]
+          );
+        }
+      } else if (w.kind === 'array') {
         const t = w.c.key.toLowerCase();
         await client.query(`DELETE FROM ${t}`);
         if (w.items.length) {
@@ -125,11 +145,39 @@ function persist(db) {
   const work = [];
   for (const c of ARRAY_COLLS) {
     const arr = Array.isArray(db[c.key]) ? db[c.key] : [];
-    const rows = arr.map((item) => ({
-      id: c.hasId && item && item.id != null ? String(item.id) : null,
-      firmaId: c.firma && item && item.firmaId != null ? asInt(item.firmaId) : null,
-      data: item,
-    }));
+
+    // Colectiile cu `id`: diff incremental per rand fata de snapshot-ul persistat.
+    if (c.hasId) {
+      const cur = new Map();      // id -> json (pt. diff + snapshot)
+      const rowById = new Map();  // id -> { id, firmaId, data } (pt. INSERT)
+      let bad = false;
+      for (const item of arr) {
+        const key = item && item.id != null ? String(item.id) : null;
+        if (key == null || cur.has(key)) { bad = true; break; } // id lipsa/duplicat -> rescriere completa
+        cur.set(key, stringifyDb(item));
+        rowById.set(key, { id: key, firmaId: firmaOf(c, item), data: item });
+      }
+      const prev = snap[c.key];
+      if (!bad && prev !== undefined) {
+        const inserts = []; const updates = []; const deletes = [];
+        for (const [id, json] of cur) {
+          const before = prev.get(id);
+          if (before === undefined) inserts.push(rowById.get(id));
+          else if (before !== json) updates.push(rowById.get(id));
+        }
+        for (const id of prev.keys()) if (!cur.has(id)) deletes.push(id);
+        if (inserts.length || updates.length || deletes.length) work.push({ kind: 'incr', c, inserts, updates, deletes, cur, snapKey: c.key, name: c.key.toLowerCase() });
+        continue;
+      }
+      if (!bad && prev === undefined && cur.size === 0) { snap[c.key] = cur; continue; } // colectie goala: fixeaza snapshot
+      // fallback: fara snapshot (init) SAU id-uri stricate -> rescriere completa + (re)initializare snapshot
+      const rows = arr.map((item) => ({ id: item && item.id != null ? String(item.id) : null, firmaId: firmaOf(c, item), data: item }));
+      work.push({ kind: 'array', c, items: rows, json: stringifyDb(rows), cur, snapKey: c.key, name: c.key.toLowerCase() });
+      continue;
+    }
+
+    // Colectii fara `id` (openingAnalytic, customAccounts): rescriere completa portita de amprenta.
+    const rows = arr.map((item) => ({ id: null, firmaId: firmaOf(c, item), data: item }));
     const json = stringifyDb(rows);
     const h = sha(json);
     if (lastHash['a:' + c.key] !== h) work.push({ kind: 'array', c, items: rows, json, h, hk: 'a:' + c.key, name: c.key.toLowerCase() });
@@ -172,13 +220,16 @@ function persist(db) {
     }
   }
 
-  if (!work.length) return queue; // nimic schimbat -> nicio tranzactie
+  if (!work.length) { lastWritten = []; return queue; } // nimic schimbat -> nicio tranzactie
 
   queue = queue
     .then(() => applyWork(work))
     .then(() => {
-      // amprentele se actualizeaza DOAR dupa commit reusit (esec -> retry la urmatorul save)
-      for (const w of work) lastHash[w.hk] = w.h;
+      // starea persistata se actualizeaza DOAR dupa commit reusit (esec -> retry idempotent la urmatorul save)
+      for (const w of work) {
+        if (w.snapKey) snap[w.snapKey] = w.cur;   // colectii cu id: snapshot per rand
+        else if (w.hk) lastHash[w.hk] = w.h;       // colectii fara id + partners/opening/meta
+      }
       lastWritten = work.map((w) => w.name);
     })
     .catch((e) => {
