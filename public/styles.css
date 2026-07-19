@@ -864,6 +864,8 @@ body.dark .fstep.done .fstep-body b{text-decoration-color:#5cbb8d}
   .shell>main{margin:0;padding:14px 12px calc(80px + env(safe-area-inset-bottom,0))}
   .shell>main>.tab{max-width:none}
   .grid2,.grid3{grid-template-columns:1fr}   /* cardurile multi-coloana colapseaza pe telefon */
+  .grid2>*,.grid3>*,.kpis>*{min-width:0}     /* itemele de grila se pot strange sub continut */
+  .card{min-width:0;overflow-x:auto}         /* orice card devine bariera de scroll propriu */
   /* tabelele late deruleaza in propriul container, pagina ramane fixa (conventia repo-ului) */
   .tab table{display:block;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
 }
