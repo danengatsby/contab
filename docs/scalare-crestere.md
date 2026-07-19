@@ -27,9 +27,16 @@ fără schimbări în modulele de domeniu.
   period)` calculează rulajul pe conturi **direct în SQL** (SUM/GROUP BY, doar articole postate) — dovedit
   în teste **identic** cu `accounting.accumulate` din RAM. E prima capacitate de analitică fără a încărca
   graful în RAM (fundația pentru citiri per-cerere la firmele mari).
-- **Pași următori (neîncepuți):** tabele normalizate pentru documente + audit append-only; citiri
-  per-cerere din pg pentru firmele mari (ex. balanță via `linesTurnover` în locul RAM, peste un prag);
-  lock/versionare optimistă pentru multi-instanță reală. Fiecare cu testele lui pe pg (job CI `test-postgres`).
+- **Pas 3 — LIVRAT: tabelul normalizat `documents_meta` + registru de proiecții generic.** Metadatele
+  documentelor (id, firmaId, fileName, uploadedAt, spvMsgId, textLen) + textul extras sunt proiectate în
+  `documents_meta`, dual-write tranzacțional (blob-ul `documents` rămâne sursa de adevăr). Mecanismul de
+  proiecție e acum un **registru unic** (`store.PROJECTIONS`) folosit identic de ambele drivere — un pas
+  nou (ex. audit) = o intrare în registru + o metodă de interogare, fără cod nou de sincronizare. Metode:
+  `store.documentsStats(firmaId)` (numărători SQL) și `store.documentsSearch(firmaId, q)` (căutare în SQL
+  pe nume fișier + text extras — analitică peste graf fără a-l încărca în RAM).
+- **Pași următori (neîncepuți):** proiecție audit append-only normalizată; citiri per-cerere din pg pentru
+  firmele mari (ex. balanță via `linesTurnover`, listă/căutare documente via `documents_meta`, peste un
+  prag); lock/versionare optimistă pentru multi-instanță reală. Fiecare cu testele lui pe pg (job CI `test-postgres`).
 
 Restul documentului rămâne analiza anterioară (partiționare pe firmă etc.), încă validă ca alternativă
 complementară — migrarea la pg tranzacțional și partiționarea pe `firmaId` nu se exclud.

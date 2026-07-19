@@ -105,6 +105,31 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
     eq('entry_lines are exact liniile ramase (l1:2 + l3:1 + l4:1)', Number(nLines), 4);
   }
 
+  section('Proiectie normalizata documents_meta + cautare/stats SQL');
+  {
+    for (const t of ARRAY_COLLS) await pool.query('TRUNCATE ' + t.key.toLowerCase() + ' RESTART IDENTITY');
+    await pool.query('TRUNCATE documents_meta'); await pool.query('TRUNCATE entry_lines');
+    store.resetDirty();
+    const dm = base();
+    dm.documents = [
+      { id: 'd1', firmaId: 1, fileName: 'factura-101.pdf', uploadedAt: '2026-03-10T10:00:00Z', text: 'Factura catre ACME cu TVA' },
+      { id: 'd2', firmaId: 1, fileName: 'chitanta.pdf', uploadedAt: '2026-03-11T10:00:00Z', text: '' },
+      { id: 'd3', firmaId: 2, fileName: 'contract.pdf', uploadedAt: '2026-03-12T10:00:00Z', text: 'contract prestari' },
+    ];
+    store.persist(dm); await store.flush();
+    const st = await store.documentsStats(1);
+    eq('documente firma 1: total 2, cu text 1', st.total + '/' + st.cuText, '2/1');
+    ok('cautare pe TEXT extras ("acme") -> gaseste d1', (await store.documentsSearch(1, 'acme')).some((r) => r.id === 'd1'));
+    ok('cautare pe nume fisier ("factura") -> gaseste d1', (await store.documentsSearch(1, 'factura')).some((r) => r.id === 'd1'));
+    ok('izolare pe firma: "contract" (firma 2) NU apare la firma 1', (await store.documentsSearch(1, 'contract')).length === 0);
+    ok('firma 2 gaseste contractul', (await store.documentsSearch(2, 'contract')).some((r) => r.id === 'd3'));
+    dm.documents = dm.documents.filter((d) => d.id !== 'd1');
+    store.persist(dm); await store.flush();
+    eq('dupa stergere d1: total firma 1 scade la 1', (await store.documentsStats(1)).total, 1);
+    const nDocs = (await pool.query('SELECT COUNT(*) n FROM documents_meta')).rows[0].n;
+    eq('documents_meta are exact d2+d3', Number(nDocs), 2);
+  }
+
   await pool.end(); await store.close();
   console.log('\n' + (fail ? '✗' : '✓') + ' ' + pass + ' verificari store-pg trecute, ' + fail + ' esuate.');
   process.exit(fail ? 1 : 0);
