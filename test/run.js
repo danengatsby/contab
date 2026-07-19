@@ -2223,12 +2223,11 @@ const ch2 = cfsvc.assignChitanta(fidOk, 'chit-svc-1');
 ok('retiparirea refoloseste numarul (seria nu avanseaza)', !ch2.justAssigned && ch2.nr === ch1.nr && ssvc.docSeries(fidOk).CH.next === chNext + 1);
 dCfg.entries = dCfg.entries.filter((e) => e.id !== 'chit-svc-1' && e.id !== 'chit-svc-2'); // curatenie
 // setari globale: ALLOWLIST STRICT (fix escaladare — authSecret/chei arbitrare interzise)
-cfsvc.updateSettings({ useAI: false });
-eq('setarile permise se imbina (useAI)', dCfg.settings.useAI, false);
 eq('cheia interzisa (authSecret) -> 403, nu se scrie', errStatusCfg(() => cfsvc.updateSettings({ authSecret: 'x' })), 403);
 ok('authSecret NU a fost atins', dCfg.settings.authSecret !== 'x');
-eq('cheia de admin fara rol -> 403', errStatusCfg(() => cfsvc.updateSettings({ selfRegister: true }, false)), 403);
-eq('cheia de admin CU rol -> permisa', (cfsvc.updateSettings({ selfRegister: true }, true), dCfg.settings.selfRegister), true);
+eq('setare GLOBALA (useAI) fara rol de admin -> 403', errStatusCfg(() => cfsvc.updateSettings({ useAI: false }, false)), 403);
+eq('setare GLOBALA (useAI) CU rol de admin -> permisa', (cfsvc.updateSettings({ useAI: false }, true), dCfg.settings.useAI), false);
+eq('selfRegister CU rol de admin -> permisa', (cfsvc.updateSettings({ selfRegister: true }, true), dCfg.settings.selfRegister), true);
 ok('raspunsul nu contine authSecret (fara leak)', !('authSecret' in cfsvc.updateSettings({ useAI: true }, true).settings));
 const prevFiscalCfg = dCfg.settings.fiscal;
 const fc1 = cfsvc.setFiscalConfig({ tvaStandard: 19, invalid: 'abc', necunoscut: 5 });
