@@ -14,6 +14,7 @@ const db = require('./db');
 const coa = require('./chartOfAccounts');
 const stocks = require('./stocks');
 const recurring = require('./recurring');
+const fiscalProfile = require('./fiscalProfile'); // guard de scriere derivat din profilul fiscal
 const { reqFirma } = require('./stocksService');
 const { round2, period: periodOf } = require('./util');
 
@@ -36,6 +37,10 @@ function createEntry(fid, b, deps) {
   try { entry = deps.buildEntry(b.tip, f, b.fileId, fid); }
   catch (e) { fail(400, e.message); }
   db.assertPeriodOpen(fid, entry.data, 'Inregistrarea'); // nu se posteaza intr-o luna inchisa
+  // Guard de scriere derivat din profilul fiscal: opreste datele clar incompatibile cu regimul
+  // (ex. neplatitor de TVA care colecteaza TVA). Advisory-ul ramane in fiscalControls.
+  const gViol = fiscalProfile.entryGuard(fiscalProfile.build(db.getFirma(fid)), entry);
+  if (gViol) fail(400, gViol);
   if (b.ciorna) entry.status = 'ciorna'; // salvat ca CIORNA: vizibil in liste, dar NU inca in contabilitate
   if (b.spvMsgId) entry.spvImport = { msgId: b.spvMsgId, at: new Date().toISOString() };
   const d = db.get();

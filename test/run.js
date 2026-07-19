@@ -1899,6 +1899,13 @@ ok('control: rulaj peste prag dar Intrastat deja marcat -> fara constatare de pr
 // firma coerenta -> nicio constatare, ok=true
 const fcOk = fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-05', data: '2026-05-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 1000 }] }] }, { year: '2026' });
 eq('control: firma coerenta -> 0 constatari, ok=true', fcOk.findings.length + '/' + fcOk.ok, '0/true');
+// GUARD de scriere (fiscalProfile.entryGuard): neplatitor nu poate COLECTA TVA, dar taxarea inversa (net 0) e permisa
+const gNepl = fp.build({ tvaPlatitor: false });
+const gPlat = fp.build({ tvaPlatitor: true });
+ok('guard: neplatitor + vanzare cu TVA (4427 net>0) -> blocat', !!fp.entryGuard(gNepl, { lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '4111', credit: '4427', suma: 210 }] }));
+ok('guard: platitor + vanzare cu TVA -> permis (null)', fp.entryGuard(gPlat, { lines: [{ debit: '4111', credit: '4427', suma: 210 }] }) === null);
+ok('guard: neplatitor + taxare inversa (4426=4427, net 0) -> permis', fp.entryGuard(gNepl, { lines: [{ debit: '4426', credit: '4427', suma: 210 }] }) === null);
+ok('guard: neplatitor + document fara TVA -> permis', fp.entryGuard(gNepl, { lines: [{ debit: '5311', credit: '707', suma: 500 }] }) === null);
 // expectedForFirma deleaga spre motor -> Intrastat vizibil in registru cand firma e obligata
 const vIntra = { firmaId: 7, company: { tvaPlatitor: true, intrastatObligat: true }, angajati: [], entries: [{ tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10' }] };
 ok('expectedForFirma: Intrastat apare pentru firma obligata cu miscari intracom', declMod.expectedForFirma(vIntra, '2026-05').some((x) => x.tip === 'intrastat'));

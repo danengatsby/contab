@@ -556,6 +556,15 @@ async function main() {
       const ctrl2 = (await req('GET', '/api/fiscal-controls?year=2026', { cookie: c1 })).json;
       ok('fiscal-controls: platitor TVA fara CAEN semnalat (atentie)', ctrl2.findings.some((f) => f.cod === 'tva-fara-caen' && f.nivel === 'atentie'));
       await req('POST', '/api/company', { cookie: c1, body: { caen: '1071' } }); // restaurez CAEN
+      // GUARD de scriere: neplatitor de TVA nu poate COLECTA TVA (vanzare cu TVA) -> 400
+      await req('POST', '/api/company', { cookie: c1, body: { tvaPlatitor: false } });
+      const gSale = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-10-05', partener: 'Guard X', cuiPartener: 'RO1', document: 'G-1', baza: 1000, tva: 210, cota: 21 } } });
+      eq('guard: neplatitor TVA + vanzare cu TVA -> 400', gSale.status, 400);
+      // document fara TVA permis (ciorna, ca sa nu polueze balanta si sa fie stergibila)
+      const gNota = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: '2026-10-05', explicatie: 'Guard fara TVA', debit: '5311', credit: '707', suma: 500 } } });
+      ok('guard: neplatitor TVA + document fara TVA -> permis', gNota.status === 200 && gNota.json.ok);
+      if (gNota.json.entry) await req('DELETE', '/api/entries/' + gNota.json.entry.id, { cookie: c1 }); // ciorna -> stergibila
+      await req('POST', '/api/company', { cookie: c1, body: { tvaPlatitor: true } }); // restaurez regimul TVA
     }
 
     // ── Pro-rata TVA (art. 300): split automat al TVA-ului pe achizitiile mixte ──
