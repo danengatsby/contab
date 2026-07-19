@@ -33,13 +33,13 @@ module.exports = function register(app, ctx) {
     sendCsv(res, 'registru-jurnal.csv', toCsv(['Nr', 'Data', 'Document', 'Explicatie', 'Cont debitor', 'Cont creditor', 'Suma'], rows));
   });
   app.get('/csv/vat-sales', (req, res) => {
-    const vj = acc.vatJournals(S(req), req.query.period || null);
+    const vS = S(req); const vj = acc.vatJournals(vS, acc.vatPeriod(vS.company, req.query.period || null));
     const rows = vj.vanzari.map((r) => [r.data, r.document || '', r.partener || '', r.cui || '', r.cota ? r.cota + '%' : 'scutit', r.baza, r.tva, r.total, r.taxareInversa ? 'taxare inversa' : '']);
     rows.push(['', '', 'TOTAL', '', '', vj.totals.bazaV, vj.totals.colectata, round2(vj.totals.bazaV + vj.totals.colectata), '']);
     sendCsv(res, 'jurnal-vanzari.csv', toCsv(['Data', 'Document', 'Partener', 'CUI', 'Cota', 'Baza', 'TVA', 'Total', 'Observatii'], rows));
   });
   app.get('/csv/vat-purchases', (req, res) => {
-    const vj = acc.vatJournals(S(req), req.query.period || null);
+    const vP = S(req); const vj = acc.vatJournals(vP, acc.vatPeriod(vP.company, req.query.period || null));
     const rows = vj.cumparari.map((r) => [r.data, r.document || '', r.partener || '', r.cui || '', r.cota ? r.cota + '%' : 'scutit', r.baza, r.tva, r.total, r.taxareInversa ? 'taxare inversa' : '']);
     rows.push(['', '', 'TOTAL', '', '', vj.totals.bazaC, vj.totals.deductibila, round2(vj.totals.bazaC + vj.totals.deductibila), '']);
     sendCsv(res, 'jurnal-cumparari.csv', toCsv(['Data', 'Document', 'Partener', 'CUI', 'Cota', 'Baza', 'TVA', 'Total', 'Observatii'], rows));

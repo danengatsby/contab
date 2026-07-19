@@ -29,8 +29,12 @@ module.exports = function register(app, ctx) {
     pdf.fisaContPdf(res, S(req).company, acc.fisaCont(S(req), req.query.cont, req.query.period || null));
   });
   app.get('/api/balance', (req, res) => res.json(acc.trialBalance(S(req), req.query.period || null)));
-  app.get('/api/vat-preview', (req, res) => res.json(acc.vatClosing(S(req), req.query.period || null)));
-  app.get('/api/vat-journals', (req, res) => res.json(acc.vatJournals(S(req), req.query.period || null)));
+  app.get('/api/vat-preview', (req, res) => { const v = S(req); return res.json(acc.vatClosing(v, acc.vatPeriod(v.company, req.query.period || null))); });
+  app.get('/api/vat-journals', (req, res) => {
+    const v = S(req);
+    const eff = acc.vatPeriod(v.company, req.query.period || null); // trimestru la regim 'T'
+    return res.json(Object.assign(acc.vatJournals(v, eff), { period: eff, trimestrial: /^\d{4}-Q[1-4]$/.test(String(eff)) }));
+  });
   app.get('/api/tva-neexigibila', (req, res) => res.json(acc.tvaNeexigibila(S(req), req.query.period || null)));
   app.get('/api/livrabile', (req, res) => res.json(rep.livrabile(S(req), req.query.period || new Date().toISOString().slice(0, 7))));
   app.get('/api/registru-fiscal', (req, res) => res.json(rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));
@@ -63,7 +67,7 @@ module.exports = function register(app, ctx) {
   });
 
   // ── Recapitulatii declaratii + registre/jurnale (PDF) ──
-  app.get('/pdf/vat', (req, res) => pdf.vatPdf(res, S(req).company, acc.vatJournals(S(req), req.query.period || null)));
+  app.get('/pdf/vat', (req, res) => { const v = S(req); return pdf.vatPdf(res, v.company, acc.vatJournals(v, acc.vatPeriod(v.company, req.query.period || null))); });
   app.get('/pdf/d112', (req, res) => pdf.d112Pdf(res, S(req).company, rep.d112(S(req), req.query.period || null)));
   // (PDF stat de plata / fluturas: src/routes/payroll.js)
   app.get('/pdf/d300', (req, res) => { const v = S(req); const pd = acc.vatPeriod(v.company, req.query.period || null); return pdf.d300Pdf(res, v.company, rep.d300(v, pd)); });

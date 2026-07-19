@@ -515,6 +515,14 @@ async function main() {
     ok('lockedUntil NU s-a setat prin profil', mDupa.lockedUntil !== '2030-01');
     await req('POST', '/api/company', { cookie: c1, body: { nume: numeInit } }); // restaureaza
 
+    // ── TVA trimestrial: vizualizarea urmeaza perioada TVA (agrega trimestrul) ──
+    await req('POST', '/api/company', { cookie: c1, body: { perioadaTva: 'T' } });
+    const vjT = await req('GET', '/api/vat-journals?period=2026-06', { cookie: c1 });
+    ok('vat-journals la regim T: perioada efectiva = trimestrul', vjT.json.period === '2026-Q2' && vjT.json.trimestrial === true);
+    await req('POST', '/api/company', { cookie: c1, body: { perioadaTva: 'L' } });
+    const vjL = await req('GET', '/api/vat-journals?period=2026-06', { cookie: c1 });
+    ok('vat-journals la regim L: perioada efectiva = luna', vjL.json.period === '2026-06' && !vjL.json.trimestrial);
+
     // ── Pro-rata TVA (art. 300): split automat al TVA-ului pe achizitiile mixte ──
     ok('pro-rata provizorie setata pe firma (40%)', (await req('POST', '/api/company', { cookie: c1, body: { proRataTva: 40 } })).json.ok === true);
     const prE = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_utilitati', fields: { data: '2026-06-23', partener: 'EnergoMix', cuiPartener: 'RO88', document: 'U-77', baza: 1000, tva: 210, cota: 21, proRataMixt: true } } });
