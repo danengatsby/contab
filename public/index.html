@@ -1734,6 +1734,27 @@ Cu stimă,
           <label>Perioada fiscală TVA (decontul D300)
             <select name="perioadaTva"><option value="L">Lunar</option><option value="T">Trimestrial</option></select>
           </label>
+          <div class="full"><b>Profil fiscal — motorul declarațiilor & alertelor</b>
+            <p class="muted">De aici se derivă declarațiile așteptate, termenele și alertele — nu dintr-un simplu „plătitoare de TVA".</p></div>
+          <label>Regim de impozitare
+            <select name="regimImpozit"><option value="micro">Microîntreprindere (D100 trimestrial)</option><option value="profit">Impozit pe profit (D101 anual)</option></select>
+          </label>
+          <label>Cadență D406 (SAF-T)
+            <select name="d406Cadenta"><option value="">Automat (după perioada TVA)</option><option value="L">Lunar</option><option value="T">Trimestrial</option><option value="A">Anual</option></select>
+          </label>
+          <label class="check"><input name="intrastatObligat" type="checkbox" /> Obligată la Intrastat (peste pragul INS — declarație statistică lunară la mișcări intracomunitare)</label>
+          <div class="full">
+            <label>Scutiri — declarații pe care firma NU le datorează (rar; oprește alertele pentru ele)</label>
+            <div class="row" id="scutiriBox">
+              <label class="check"><input type="checkbox" data-scutire="d300" /> D300</label>
+              <label class="check"><input type="checkbox" data-scutire="d394" /> D394</label>
+              <label class="check"><input type="checkbox" data-scutire="d390" /> D390</label>
+              <label class="check"><input type="checkbox" data-scutire="d112" /> D112</label>
+              <label class="check"><input type="checkbox" data-scutire="d100" /> D100</label>
+              <label class="check"><input type="checkbox" data-scutire="saft" /> D406</label>
+            </div>
+          </div>
+          <div class="full explain" id="fiscalProfileSummary"><span class="ei">⚙️</span><p class="muted">Se încarcă profilul calculat…</p></div>
           <div class="full" data-u="u126"><b data-u="u127">Personalizare documente & facturi</b></div>
           <label>IBAN (apare pe documente + în e-Factura) <input name="iban" placeholder="RO49AAAA1B31007593840000" /></label>
           <label>Banca <input name="banca" placeholder="Banca Transilvania" /></label>

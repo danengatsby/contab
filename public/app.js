@@ -345,7 +345,25 @@ function fillCompanyForm() {
   if (f.tvaLaIncasare) f.tvaLaIncasare.checked = !!META.company.tvaLaIncasare;
   if (f.accentColor) f.accentColor.value = /^#[0-9a-fA-F]{6}$/.test(META.company.accentColor || '') ? META.company.accentColor : '#0b6e4f';
   if (f.pdfLayout) f.pdfLayout.value = ['clasic', 'compact', 'detaliat'].includes(META.company.pdfLayout) ? META.company.pdfLayout : 'clasic';
+  // profil fiscal (motor)
+  if (f.regimImpozit) f.regimImpozit.value = ['micro', 'profit'].includes(META.company.regimImpozit) ? META.company.regimImpozit : 'micro';
+  if (f.d406Cadenta) f.d406Cadenta.value = ['L', 'T', 'A'].includes(META.company.d406Cadenta) ? META.company.d406Cadenta : '';
+  if (f.intrastatObligat) f.intrastatObligat.checked = !!META.company.intrastatObligat;
+  const scut = (META.company.scutiri && typeof META.company.scutiri === 'object') ? META.company.scutiri : {};
+  document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { c.checked = !!scut[c.dataset.scutire]; });
   refreshLogo();
+  refreshFiscalProfile();
+}
+// Rezumatul profilului fiscal CALCULAT (motorul) — arata ce declaratii/alerte deriva din setari
+async function refreshFiscalProfile() {
+  const box = $('#fiscalProfileSummary'); if (!box) return;
+  try {
+    const p = await api('/api/fiscal-profile');
+    const regim = p.pfa ? 'PFA (Declarația Unică)' : (p.profit ? 'impozit pe profit (D101)' : 'micro (D100)');
+    const tva = p.tvaPlatitor ? ('plătitoare TVA — ' + (p.perioadaTva === 'T' ? 'trimestrial' : 'lunar') + (p.tvaLaIncasare ? ', la încasare' : '')) : 'neplătitoare de TVA';
+    const scutiri = Object.keys(p.scutiri || {}).filter((k) => p.scutiri[k]);
+    box.innerHTML = `<span class="ei">⚙️</span><p><b>Profil calculat:</b> ${tva} · ${regim} · D406 <b>${{ L: 'lunar', T: 'trimestrial', A: 'anual' }[p.d406] || p.d406}</b> · Intrastat ${p.intrastat ? '<b>da</b>' : 'nu'} · salariați ${p.areAngajati ? 'da' : 'nu'}${scutiri.length ? ' · scutiri: ' + scutiri.join(', ').toUpperCase() : ''}<br><span class="muted">Declarațiile, termenele și alertele se generează din acest profil.</span></p>`;
+  } catch (e) { box.innerHTML = `<span class="ei">⚙️</span><p class="muted">Profilul fiscal se calculează după salvarea firmei.</p>`; }
 }
 // Logo firma (apare in antetul PDF-urilor emise) — incarcare/stergere + previzualizare
 async function refreshLogo() {
@@ -790,8 +808,17 @@ $('#companyForm').addEventListener('submit', async (e) => {
   const f = e.target;
   const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaLaIncasare: f.tvaLaIncasare.checked, tipEntitate: f.tipEntitate.value,
     iban: f.iban.value.trim(), banca: f.banca.value.trim(), telefon: f.telefon.value.trim(), email: f.email.value.trim(), capitalSocial: f.capitalSocial.value.trim(), accentColor: f.accentColor.value, pdfLayout: f.pdfLayout.value, pdfFooter: f.pdfFooter.value.trim(), asociatiText: f.asociatiText.value.trim(), proRataTva: f.proRataTva.value ? Number(f.proRataTva.value) : '', caen: f.caen.value.trim(), perioadaTva: f.perioadaTva.value };
+  // profil fiscal (motor): regim, cadenta D406, Intrastat, scutiri
+  body.regimImpozit = f.regimImpozit ? f.regimImpozit.value : 'micro';
+  body.d406Cadenta = f.d406Cadenta ? f.d406Cadenta.value : '';
+  body.intrastatObligat = f.intrastatObligat ? f.intrastatObligat.checked : false;
+  body.scutiri = {};
+  document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { if (c.checked) body.scutiri[c.dataset.scutire] = true; });
   const r = await api('/api/company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  META.company = r.company || body; $('#companyName').textContent = body.nume; toast('Date firmă salvate' + (body.tvaLaIncasare ? ' · regim TVA la încasare ACTIV' : ''));
+  META.company = r.company || body;
+  refreshFiscalProfile(); // recalculeaza rezumatul profilului — inaintea DOM-ului care ar putea arunca
+  const cn = $('#companyName'); if (cn) cn.textContent = body.nume; // absent in modul simplu — nu bloca restul
+  toast('Date firmă salvate' + (body.tvaLaIncasare ? ' · regim TVA la încasare ACTIV' : ''));
 });
 $('#seedBtn').addEventListener('click', async () => {
   $('#seedStatus').textContent = 'Se încarcă…';
