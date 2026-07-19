@@ -56,6 +56,14 @@ module.exports = function register(app, ctx) {
     return { ok: true, removed: r.removed };
   }));
 
+  // STORNO generic: corectie reversibila a oricarui articol (reversare debit<->credit, legata),
+  // intr-o perioada deschisa. Alternativa DOCUMENTATA la stergere pentru date deja postate.
+  app.post('/api/entries/:id/storno', (req, res) => run(res, () => {
+    const r = svc.stornoEntry(req.params.id, activeId(req), (fid) => canAccess(req, fid), (req.body || {}).data);
+    logAudit('entry.storno', 'articol ' + r.original.id + ' (' + r.original.tipNume + ' ' + (r.original.document || '') + ') -> nota storno ' + r.storno.id, { req, firmaId: r.storno.firmaId });
+    return { ok: true, storno: r.storno, original: { id: r.original.id, stornat: true, stornoBy: r.storno.id } };
+  }));
+
   // ───────────────────────── FACTURI RECURENTE ─────────────────────────
   app.get('/api/recurring', (req, res) => {
     const fid = activeId(req);

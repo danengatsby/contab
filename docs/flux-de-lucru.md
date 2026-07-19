@@ -16,6 +16,15 @@
 **Închideri**: regularizarea lunară a TVA (4427 ↔ 4426 → 4423/4424) și închiderea
 anuală a conturilor de venituri și cheltuieli în 121 „Profit și pierdere”.
 
+**Corecții reversibile (storno)**: orice articol se poate **storna** — `POST /api/entries/:id/storno`
+(opțional `{data}`, care trebuie într-o **perioadă deschisă**). Se generează o notă de reversare
+(debit↔credit, aceleași sume), legată de original prin `stornoOf`, marcată `system`; originalul
+primește `stornat`/`stornoBy` și devine **imutabil** (nu se mai șterge și nu se re-stornează). Ambele
+note rămân în jurnal (append-only) — corecția e **documentată și reversibilă**, nu o ștergere care
+pierde urma. Articolele cu impact pe **stoc** au corecția dedicată (mișcare/inventar), ca fișa de
+magazie și cartea mare să nu diveargă. Într-o perioadă **închisă** (`lockedUntil`) ștergerea și
+înregistrarea sunt refuzate; corecția se face exclusiv prin storno într-o lună deschisă.
+
 **Situații financiare**: contul de profit și pierdere și bilanțul (simplificat),
 descărcabile în PDF.
 

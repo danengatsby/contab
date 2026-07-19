@@ -35,7 +35,11 @@ function entryRowHtml(e) {
     ? ` · <button class="linkbtn spvstat" data-id="${e.id}">SPV: ${e.spv.stare}${e.spv.acceptat ? ' ✓' : ''}</button>${e.spv.idDescarcare ? ` · <button class="linkbtn spvdl" data-id="${e.id}">recipisă</button>` : ''}`
     : ` · <button class="linkbtn spvsend" data-id="${e.id}">trimite SPV</button>`) : ''}
         ${e.fileId ? ` · <a class="linkbtn" href="/api/document/${e.fileId}/file" target="_blank">doc</a>` : ''}</td>
-    <td><button class="del" data-id="${e.id}" title="Șterge">✕</button></td>
+    <td>${e.stornat
+    ? `<span class="pill" title="Corectat prin nota de storno ${H(String(e.stornoBy))}">stornat</span>`
+    : (e.stornoOf
+      ? `<span class="pill" title="Notă de stornare a articolului ${H(String(e.stornoOf))}">storno</span>`
+      : `<button class="storno" data-id="${e.id}" title="Stornează (corecție reversibilă, fără ștergere)">↩ storno</button> <button class="del" data-id="${e.id}" title="Șterge">✕</button>`)}</td>
   </tr>`;
 }
 function renderEntryTable(containerId, rowsHtml, emptyMsg) {
@@ -52,6 +56,15 @@ function bindEntryActions(root) {
     await api('/api/entries/' + b.dataset.id, { method: 'DELETE' });
     toast('Înregistrare ștearsă');
     setMeta(await api('/api/meta')); fillPeriods(); loadEntries();
+  }));
+  root.querySelectorAll('.storno').forEach((b) => b.addEventListener('click', async () => {
+    const data = prompt('Data notei de storno (YYYY-MM-DD) — trebuie într-o perioadă deschisă:', new Date().toISOString().slice(0, 10));
+    if (data == null) return;
+    try {
+      await api('/api/entries/' + b.dataset.id + '/storno', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }) });
+      toast('Articol stornat (corecție reversibilă înregistrată)');
+      setMeta(await api('/api/meta')); fillPeriods(); loadEntries();
+    } catch (e) { toast(e.message, true); }
   }));
   root.querySelectorAll('.spvsend').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true; b.textContent = 'se trimite…';

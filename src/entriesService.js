@@ -59,11 +59,46 @@ function deleteEntry(id, fallbackFid, canFid) {
   const d = db.get();
   const e = d.entries.find((x) => x.id === id);
   if (e && !canFid(e.firmaId == null ? d.firmaActiva : e.firmaId)) fail(404, 'Inregistrare inexistenta.');
-  if (e) db.assertPeriodOpen(e.firmaId == null ? fallbackFid : e.firmaId, e.period || periodOf(e.data), 'Stergerea inregistrarii');
+  if (e) {
+    db.assertPeriodOpen(e.firmaId == null ? fallbackFid : e.firmaId, e.period || periodOf(e.data), 'Stergerea inregistrarii');
+    // integritatea lantului de storno: un articol deja STORNAT nu se sterge (ar orfani stornul);
+    // corectia e reversibila prin storno, nu prin stergere distructiva.
+    if (e.stornat) fail(400, 'Inregistrarea a fost stornata (nota ' + e.stornoBy + ') — nu se sterge. Corectia e deja reversibila prin storno.');
+  }
   const n = d.entries.length;
   d.entries = d.entries.filter((x) => x.id !== id);
   db.save();
   return { removed: n - d.entries.length, entry: e || null };
+}
+
+/** STORNO generic al oricarui articol contabil: creeaza o nota de reversare (debit<->credit,
+ *  aceleasi sume), legata de original (stornoOf), datata intr-o perioada DESCHISA; marcheaza
+ *  originalul `stornat`. Corectie DOCUMENTATA si REVERSIBILA, in locul stergerii distructive.
+ *  Articolele cu impact pe stoc au corectia dedicata (stoc/inventar) — aici sunt blocate ca sa
+ *  nu desincronizeze fisa de magazie de cartea mare. */
+function stornoEntry(id, fallbackFid, canFid, dataStorno) {
+  const d = db.get();
+  const e = d.entries.find((x) => x.id === id);
+  if (!e || !canFid(e.firmaId == null ? d.firmaActiva : e.firmaId)) fail(404, 'Inregistrare inexistenta.');
+  if (e.stornoOf) fail(400, 'Nu se storneaza o nota de storno.');
+  if (e.stornat) fail(400, 'Inregistrarea e deja stornata (nota ' + e.stornoBy + ').');
+  if ((e.stocMovementIds && e.stocMovementIds.length) || e.stocMovementId) {
+    fail(400, 'Articolul are miscari de stoc — corecteaza prin stornarea documentului de stoc/inventar (altfel fisa de magazie si cartea mare ar diverge).');
+  }
+  const fid = e.firmaId == null ? fallbackFid : e.firmaId;
+  const stornoData = String(dataStorno || new Date().toISOString().slice(0, 10));
+  db.assertPeriodOpen(fid, stornoData, 'Stornarea'); // stornul intra intr-o perioada deschisa
+  const se = {
+    id: db.nextId('e'), firmaId: e.firmaId, data: stornoData, period: stornoData.slice(0, 7),
+    tip: 'storno', tipNume: 'Storno ' + (e.tipNume || e.tip), partener: e.partener || '', partenerCui: e.partenerCui || '',
+    document: 'Storno ' + (e.document || e.id), analitic: e.analitic || '',
+    explicatie: 'Stornare: ' + (e.explicatie || e.tipNume || e.tip), fileId: null, system: true, stornoOf: e.id,
+    lines: (e.lines || []).map((l) => ({ debit: l.credit, credit: l.debit, suma: l.suma, explicatie: 'Storno ' + (l.explicatie || '') })),
+  };
+  d.entries.push(se);
+  e.stornat = true; e.stornoBy = se.id; e.stornoData = stornoData;
+  db.save();
+  return { storno: se, original: e };
 }
 
 // ── Facturi recurente (sabloane + generare pe perioada) ──
@@ -155,7 +190,7 @@ function tvaExigibilitate(fid, b, deps) {
 }
 
 module.exports = {
-  createEntry, deleteEntry,
+  createEntry, deleteEntry, stornoEntry,
   saveRecurring, deleteRecurring, generateRecurring,
   setPeriodLock, tvaExigibilitate,
 };
