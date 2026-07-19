@@ -797,6 +797,37 @@ async function main() {
       ok('audit entry.delete contine snapshotul complet (linii cu debit/credit)', !!del && /"lines":\[/.test(del.detail) && /"debit"/.test(del.detail));
     }
 
+    // ── STORNO generic: corectie reversibila a oricarui articol (nu stergere distructiva) ──
+    {
+      const stE = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', fields: { data: '2026-08-07', explicatie: 'De stornat', debit: '5311', credit: '5121', suma: 250 } } })).json.entry;
+      const st = await req('POST', '/api/entries/' + stE.id + '/storno', { cookie: c1, body: { data: '2026-08-10' } });
+      ok('storno reuseste si intoarce nota de reversare', st.status === 200 && st.json.ok && st.json.storno && st.json.storno.stornoOf === stE.id);
+      const so = st.json.storno;
+      // reversare exacta: debit<->credit, aceleasi sume
+      ok('nota de storno inverseaza debit/credit cu aceleasi sume', so.lines.length === stE.lines.length
+        && so.lines[0].debit === stE.lines[0].credit && so.lines[0].credit === stE.lines[0].debit && so.lines[0].suma === stE.lines[0].suma);
+      ok('nota de storno e marcata system + legata (stornoOf)', so.system === true && so.stornoOf === stE.id);
+      // originalul devine imutabil: nu se mai storneaza si nu se mai sterge
+      eq('re-stornarea aceluiasi articol -> 400', (await req('POST', '/api/entries/' + stE.id + '/storno', { cookie: c1, body: {} })).status, 400);
+      eq('stergerea unui articol deja stornat -> 400', (await req('DELETE', '/api/entries/' + stE.id, { cookie: c1 })).status, 400);
+      eq('stornarea unei note de storno -> 400', (await req('POST', '/api/entries/' + so.id + '/storno', { cookie: c1, body: {} })).status, 400);
+      // storno strain: refuzat (acelasi guard de firma ca la stergere)
+      ok('stornarea unui articol strain: refuzata', deny(await req('POST', '/api/entries/' + stE.id + '/storno', { cookie: c2, body: {} })));
+      // efect contabil net zero: original + storno se anuleaza in balanta
+      const eList = (await req('GET', '/api/entries?period=2026-08', { cookie: c1 })).json;
+      ok('originalul si stornul coexista (jurnal append-only, nu stergere)', eList.some((e) => e.id === stE.id) && eList.some((e) => e.id === so.id));
+      // audit: evenimentul de storno e inregistrat
+      const audS = await req('GET', '/api/audit?limit=50', { cookie: c1 });
+      ok('audit entry.storno inregistrat', (audS.json.items || audS.json).some((a) => a.action === 'entry.storno' && a.detail.includes(String(stE.id))));
+      // articolele cu impact pe stoc au corectie dedicata — storno generic blocat (anti-desincronizare)
+      const sg = (await req('POST', '/api/gestiuni', { cookie: c1, body: { cod: 'STG', denumire: 'Storno gest' } })).json.gestiune;
+      const sp = (await req('POST', '/api/products', { cookie: c1, body: { cod: 'STP', denumire: 'Storno prod', um: 'buc', cont: '371' } })).json.product;
+      await req('POST', '/api/stock-movements', { cookie: c1, body: { tip: 'receptie', productId: sp.id, gestiuneId: sg.id, cantitate: 10, pretUnitar: 20, data: '2026-08-08', document: 'REC' } });
+      const stocE = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2026-08-09', partener: 'Stoc Client', cuiPartener: 'RO7', document: 'FS-STOC', baza: 100, tva: 21, cota: 21, stoc: [{ productId: sp.id, cantitate: 2 }] } } })).json.entry;
+      ok('articolul de vanzare are miscari de stoc legate', Array.isArray(stocE.stocMovementIds) && stocE.stocMovementIds.length > 0);
+      eq('storno pe articol cu miscari de stoc -> 400 (corectie prin stoc/inventar)', (await req('POST', '/api/entries/' + stocE.id + '/storno', { cookie: c1, body: {} })).status, 400);
+    }
+
     // ── BACKUP / RESTORE round-trip: un backup nerestaurat e o speranta, nu un backup ──
     // 1) date-marker in firma 1
     await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO4242', den: 'Backup Test SRL', oras: 'Cluj' } });
