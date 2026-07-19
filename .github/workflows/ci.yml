@@ -3,6 +3,9 @@ name: CI
 on:
   push:
   pull_request:
+  schedule:
+    - cron: '17 4 * * 1'   # saptamanal (luni 04:17 UTC): prinde driftul de schema ANAF
+  workflow_dispatch:        # rulare manuala la cerere
 
 jobs:
   test:
@@ -70,3 +73,28 @@ jobs:
           CONTAB_TEST_DRIVER: pg
           CONTAB_PG_URL: postgres://contab:contab@localhost:5432/contab_test
         run: node test/http.js
+
+  # Validarea OFICIALA ANAF (DUKIntegrator) pe fisierele de referinta generate din seed.
+  # Ruleaza: saptamanal (drift de schema ANAF), manual, si cand se ating generatoarele/validarea.
+  # Nu blocheaza fiecare push (descarca validatoarele de pe static.anaf.ro + ruleaza Java prin Docker).
+  validare-anaf:
+    runs-on: ubuntu-latest
+    # NU pe fiecare PR: o cadere temporara a static.anaf.ro nu trebuie sa blocheze PR-urile.
+    # Regresiile de generator le prinde suita de teste (asertii pe continutul XML); acest job
+    # adauga validarea OFICIALA — periodic (drift de schema), manual, si post-merge pe main.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # cache pentru distributia DUKIntegrator (~36MB) — validatoarele se reimprospateaza singure
+      - name: Cache DUKIntegrator
+        uses: actions/cache@v4
+        with:
+          path: /var/tmp/contab-duk
+          key: dukintegrator-dist-v1
+      - name: Genereaza + valideaza referintele cu validatorul oficial ANAF
+        run: sh scripts/valideaza-referinte.sh

@@ -31,5 +31,16 @@ validatoarele curente din manifestul oficial ANAF (`versiuni.xml`).
 scripts/valideaza-duk.sh D300 fișier.xml     # 0 = valid, 1 = erori (afișate), 2 = tip greșit
 ```
 
+## Automatizare (CI)
+
+Validarea oficială rulează și în **CI** (`.github/workflows/ci.yml`, jobul `validare-anaf`):
+generează toate ieșirile din seed (`scripts/genereaza-referinte.js`) și le trece prin
+DUKIntegrator (`scripts/valideaza-referinte.sh`) — **săptămânal** (prinde driftul de schemă
+când ANAF actualizează validatoarele), **manual** (`workflow_dispatch`) și **post-merge pe
+main**. Nu rulează pe fiecare PR: o cădere temporară a `static.anaf.ro` nu trebuie să
+blocheze PR-urile, iar regresiile de generator le prinde oricum suita de teste.
+
+Local: `sh scripts/valideaza-referinte.sh` (generează + validează toate; 0 = toate valide).
+
 Validarea oficială se repetă **obligatoriu** la depunerea în SPV — acest jurnal atestă că
 fișierele generate trec validatorul, nu înlocuiește depunerea.
