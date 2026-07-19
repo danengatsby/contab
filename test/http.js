@@ -564,7 +564,13 @@ async function main() {
       const gNota = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: '2026-10-05', explicatie: 'Guard fara TVA', debit: '5311', credit: '707', suma: 500 } } });
       ok('guard: neplatitor TVA + document fara TVA -> permis', gNota.status === 200 && gNota.json.ok);
       if (gNota.json.entry) await req('DELETE', '/api/entries/' + gNota.json.entry.id, { cookie: c1 }); // ciorna -> stergibila
+      // guard de generare: neplatitor nu depune D300/D394
+      eq('guard: /xml/d300 la neplatitor TVA -> 400', (await req('GET', '/xml/d300?period=2026-06', { cookie: c1 })).status, 400);
+      eq('guard: /xml/d394 la neplatitor TVA -> 400', (await req('GET', '/xml/d394?period=2026-06', { cookie: c1 })).status, 400);
+      eq('guard: /pdf/d300 la neplatitor TVA -> 400', (await req('GET', '/pdf/d300?period=2026-06', { cookie: c1 })).status, 400);
       await req('POST', '/api/company', { cookie: c1, body: { tvaPlatitor: true } }); // restaurez regimul TVA
+      // dupa restaurare, D300 se genereaza din nou
+      eq('dupa restaurare platitor: /xml/d300 -> 200', (await req('GET', '/xml/d300?period=2026-06', { cookie: c1 })).status, 200);
     }
 
     // ── Pro-rata TVA (art. 300): split automat al TVA-ului pe achizitiile mixte ──
