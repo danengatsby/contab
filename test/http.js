@@ -504,6 +504,16 @@ async function main() {
     ok('setarea firmei pdfLayout=detaliat salvata', (await req('POST', '/api/company', { cookie: c1, body: { pdfLayout: 'detaliat' } })).json.ok === true);
     eq('model detaliat din setarea firmei', (await req('GET', '/pdf/factura/' + fvE.json.entry.id, { cookie: c1 })).status, 200);
     await req('POST', '/api/company', { cookie: c1, body: { pdfLayout: 'clasic' } });
+    // ── /api/company: allowlist de profil — un utilizator al firmei NU poate injecta
+    // campuri sensibile (abonament, credentiale ANAF, blocarea perioadei) prin ruta de profil
+    const numeInit = (await req('GET', '/api/meta', { cookie: c1 })).json.company.nume;
+    await req('POST', '/api/company', { cookie: c1, body: { subscription: { plan: 'gratis-forjat' }, anaf: { clientSecret: 'furat' }, lockedUntil: '2030-01', nume: 'Profil Nou SRL' } });
+    const mDupa = (await req('GET', '/api/meta', { cookie: c1 })).json.company;
+    ok('numele (profil) s-a actualizat', mDupa.nume === 'Profil Nou SRL');
+    ok('abonamentul NU s-a injectat prin profil', !mDupa.subscription || mDupa.subscription.plan !== 'gratis-forjat');
+    ok('credentialele ANAF NU s-au injectat prin profil', !mDupa.anaf || mDupa.anaf.clientSecret !== 'furat');
+    ok('lockedUntil NU s-a setat prin profil', mDupa.lockedUntil !== '2030-01');
+    await req('POST', '/api/company', { cookie: c1, body: { nume: numeInit } }); // restaureaza
 
     // ── Pro-rata TVA (art. 300): split automat al TVA-ului pe achizitiile mixte ──
     ok('pro-rata provizorie setata pe firma (40%)', (await req('POST', '/api/company', { cookie: c1, body: { proRataTva: 40 } })).json.ok === true);
@@ -872,8 +882,11 @@ async function main() {
     const tfInfo = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf);
     ok('firma noua: stare trial activa cu ~30 zile ramase', tfInfo._sub.status === 'trial' && tfInfo._sub.zileRamase >= 28);
     eq('scriere permisa cat timp proba e activa', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO901', den: 'Client Proba' } })).status, 200);
-    // simulez expirarea probei (trecutul lui trialEndsAt din subscription, prin update-ul firmei)
-    await req('POST', '/api/firme/' + tf, { cookie: c1, body: { subscription: { plan: 'trial', trialEndsAt: '2026-01-01T00:00:00Z' } } });
+    // simulez expirarea probei prin RUTA DEDICATA de admin (updateFirma NU mai accepta subscription)
+    const expR = await req('POST', '/api/firme/' + tf + '/subscription', { cookie: la.cookie, body: { subscription: { plan: 'trial', trialEndsAt: '2026-01-01T00:00:00Z' } } });
+    eq('ruta de abonament (admin) reuseste', expR.status, 200);
+    ok('utilizatorul firmei NU poate seta abonament prin ruta dedicata (blocat)', [402, 403].includes((await req('POST', '/api/firme/' + tf + '/subscription', { cookie: c1, body: { subscription: { plan: 'gratis' } } })).status));
+    ok('abonamentul NU se poate seta prin editarea de profil (updateFirma)', (await req('POST', '/api/firme/' + tf, { cookie: c1, body: { subscription: { plan: 'gratis' } } })).json.ok && (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf)._sub.status === 'expired');
     ok('firma cu proba expirata e blocata (status expired)', (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf)._sub.status === 'expired');
     const blocat = await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO902', den: 'Blocat' } });
     eq('dupa expirare: scrierea pe firma e blocata (402)', blocat.status, 402);
