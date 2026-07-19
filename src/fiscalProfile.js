@@ -65,8 +65,12 @@ function expected(profile, period, hasIntracom) {
   if (profile.intrastat && intracom) add('intrastat');
   // D112: firme cu salariati
   if (profile.areAngajati) add('d112');
-  // D100 (impozit micro / avans profit): trimestrial, non-PFA
+  // D100 (impozit micro / avans profit): trimestrial, non-PFA (micro = impozit micro;
+  // profit = plata anticipata trimestriala)
   if (!profile.pfa && sfarsitTrim) add('d100');
+  // D101 (impozit pe profit, ANUAL): doar regimul de profit, la sfarsitul anului (termen 25 martie
+  // anul urmator). Micro NU depune D101.
+  if (profile.profit && Number(period.slice(5, 7)) === 12) add('d101');
   // D406 (SAF-T): dupa cadenta profilului, non-PFA
   if (!profile.pfa && (profile.d406 === 'L'
     || (profile.d406 === 'T' && sfarsitTrim)

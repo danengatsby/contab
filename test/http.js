@@ -537,10 +537,17 @@ async function main() {
       const tips09 = (dreg.rows || []).map((x) => x.tip);
       ok('declaratii conduse de profil: D394 scutit nu apare', tips09.length > 0 && !tips09.includes('d394'));
       ok('declaratii conduse de profil: D406 la regim trimestrial e prezent la sfarsit de T3', tips09.includes('saft'));
+      // micro/profit -> D100/D101: firma pe profit vede D101 in decembrie
+      const dregDec = (await req('GET', '/api/declarations?period=2026-12', { cookie: c1 })).json;
+      const tipsDec = (dregDec.rows || []).map((x) => x.tip);
+      ok('profil profit: D101 apare in decembrie', tipsDec.includes('d101') && tipsDec.includes('d100'));
       // restaurez profilul firmei pentru restul suitei
       await req('POST', '/api/company', { cookie: c1, body: { regimImpozit: 'micro', d406Cadenta: '', intrastatObligat: false, scutiri: {} } });
       const fp2 = (await req('GET', '/api/fiscal-profile', { cookie: c1 })).json;
       ok('fiscal-profile: revenit la micro + D406 lunar (derivat)', fp2.regim === 'micro' && fp2.d406 === 'L' && fp2.intrastat === false);
+      // micro: in decembrie NU apare D101
+      const dregDecMicro = (await req('GET', '/api/declarations?period=2026-12', { cookie: c1 })).json;
+      ok('profil micro: D101 nu apare in decembrie', !(dregDecMicro.rows || []).map((x) => x.tip).includes('d101'));
     }
 
     // ── Pro-rata TVA (art. 300): split automat al TVA-ului pe achizitiile mixte ──
