@@ -16,14 +16,13 @@ const { reqFirma, ensureDocSeries } = require('./stocksService');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 
-/** Actualizeaza datele firmei; logo-ul se administreaza doar prin functiile dedicate
- *  (fisier validat), deci campul e ignorat aici. */
+/** Actualizeaza datele de PROFIL ale firmei (allowlist strict: db.pickFirmaFields). Campurile
+ *  sensibile — lockedUntil, subscription, anaf, logoFile — NU se pot scrie de aici; au rute
+ *  dedicate (period-lock/admin, billing, anaf/config, upload de logo validat). */
 function updateCompany(fid, b) {
   fid = reqFirma(fid);
   const f = db.getFirma(fid);
-  b = Object.assign({}, b || {});
-  delete b.logoFile;
-  Object.assign(f, b, { id: f.id });
+  Object.assign(f, db.pickFirmaFields(b), { id: f.id });
   db.save();
   return { company: f };
 }

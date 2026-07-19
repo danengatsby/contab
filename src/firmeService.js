@@ -225,7 +225,8 @@ function updateFirma(user, id, body) {
   reqAccess(user, id);
   const f = db.getFirma(id);
   if (!f) fail(404, 'Firma inexistenta');
-  Object.assign(f, body || {}, { id: f.id });
+  // allowlist de profil — la fel ca updateCompany; campurile sensibile au rute dedicate
+  Object.assign(f, db.pickFirmaFields(body), { id: f.id });
   db.save();
   return { firma: f };
 }
@@ -235,6 +236,19 @@ function activateFirma(user, id) {
   user.firmaActiva = Number(id);
   db.save();
   return { firmaActiva: user.firmaActiva };
+}
+
+/** ADMIN: seteaza/suprascrie abonamentul unei firme (suport, migrare, corectii) — pe ruta
+ *  proprie, cu garda de admin si audit. Restul cailor (updateFirma/updateCompany) NU ating
+ *  abonamentul: e camp sensibil, in afara allowlist-ului de profil. */
+function setFirmaSubscription(user, id, sub) {
+  reqAdmin(user);
+  const f = db.getFirma(Number(id));
+  if (!f) fail(404, 'Firma inexistenta');
+  if (!sub || typeof sub !== 'object') fail(400, 'Abonament invalid.');
+  f.subscription = Object.assign({}, sub);
+  db.save();
+  return { firmaId: f.id, subscription: f.subscription };
 }
 
 /** Abonare pe FIRMA (billing strict per-firma): cu Stripe configurat deschide plata (PLATA-GATED —
@@ -294,5 +308,5 @@ module.exports = {
   reqNotDemo, reqAccess, reqAdmin,
   createFirma, importBundle, importZip, testClone,
   exportBundle, exportZip, exportAllZip, firmaSlug,
-  updateFirma, activateFirma, subscribeFirma, deleteFirma,
+  updateFirma, activateFirma, setFirmaSubscription, subscribeFirma, deleteFirma,
 };

@@ -23,6 +23,24 @@ const JSON_MIRROR = (DRIVER === 'sqlite' || DRIVER === 'pg') && !process.env.CON
 const store = DRIVER === 'sqlite' ? require('./store') : DRIVER === 'pg' ? require('./storePg') : null;
 const DB_FILE = JSON_FILE; // pastrat pentru compatibilitate (backup/restore folosesc oglinda JSON)
 
+// Campurile firmei EDITABILE prin rutele generice de profil (/api/company, /api/firme/:id).
+// Restul — lockedUntil (perioada inchisa), subscription (abonament), anaf (credentiale SPV),
+// id/test/logoFile/timestamps — se ating DOAR prin rutele lor dedicate (period-lock cu
+// requireAdmin, billing, anaf/config). Un Object.assign brut ar fi permis ocolirea perioadei
+// inchise sau a paywall-ului si injectarea de credentiale.
+const FIRMA_EDITABLE = new Set([
+  'nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'tara',                       // identificare
+  'tvaPlatitor', 'tvaLaIncasare', 'tipEntitate', 'proRataTva', 'caen', 'perioadaTva', 'capitalSocial', // profil fiscal
+  'iban', 'banca', 'cont', 'telefon', 'email', 'numeComplet', 'autorizatie',        // banca / contact / reprezentant
+  'accentColor', 'pdfLayout', 'pdfFooter', 'asociatiText',                          // prezentare facturi/PDF
+]);
+/** Pastreaza din `body` DOAR campurile de profil permise (allowlist). */
+function pickFirmaFields(body) {
+  const out = {};
+  if (body && typeof body === 'object') for (const k of Object.keys(body)) if (FIRMA_EDITABLE.has(k)) out[k] = body[k];
+  return out;
+}
+
 function defaultFirma(id) {
   return {
     id: id || 1,
@@ -477,7 +495,7 @@ function importFirma(bundle, opts) {
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 
 module.exports = {
-  get, save, load, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma,
+  get, save, load, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

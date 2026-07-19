@@ -2189,11 +2189,20 @@ const fiscalT = require('../src/fiscal');
 // gardele de firma
 eq('date firma pe firma inexistenta -> 403', errStatus(() => cfsvc.updateCompany(9999, { nume: 'X' })), 403);
 eq('chitanta pe firma lipsa -> 403', errStatus(() => cfsvc.assignChitanta(null, 'e1')), 403);
-// datele firmei: logoFile e ignorat (se administreaza doar prin functiile dedicate), id-ul nu se suprascrie
+// datele firmei: ALLOWLIST de profil — campurile de identificare se salveaza, cele
+// sensibile (lockedUntil/subscription/anaf) si tehnice (id/logoFile/camp necunoscut) NU
 const firmaCfg = db.getFirma(fidOk);
-cfsvc.updateCompany(fidOk, { testCampSvc: 'da', logoFile: 'furat.png', id: 424242 });
-ok('camp salvat + logoFile ignorat + id pastrat', firmaCfg.testCampSvc === 'da' && firmaCfg.logoFile !== 'furat.png' && firmaCfg.id === fidOk);
-delete firmaCfg.testCampSvc; // curatenie
+firmaCfg.lockedUntil = '2026-05'; const subInit = firmaCfg.subscription;
+cfsvc.updateCompany(fidOk, {
+  nume: 'Firma Editata SRL', caen: '6201',                 // profil — permise
+  logoFile: 'furat.png', id: 424242, campNecunoscut: 'x',  // tehnice — ignorate
+  lockedUntil: null, subscription: { plan: 'gratis-forjat' }, anaf: { clientSecret: 'furat' }, // sensibile — ignorate
+});
+ok('profil salvat (nume/caen)', firmaCfg.nume === 'Firma Editata SRL' && firmaCfg.caen === '6201');
+ok('campurile tehnice ignorate (id/logoFile/necunoscut)', firmaCfg.id === fidOk && firmaCfg.logoFile !== 'furat.png' && firmaCfg.campNecunoscut === undefined);
+ok('perioada inchisa NU se poate deschide prin /api/company', firmaCfg.lockedUntil === '2026-05');
+ok('abonamentul si credentialele ANAF NU se pot injecta', firmaCfg.subscription === subInit && firmaCfg.anaf === undefined);
+delete firmaCfg.lockedUntil; // curatenie
 // logo: validare pe magic bytes, nu pe extensie
 const tmpLogoBad = path.join(os.tmpdir(), 'contab-logo-bad-' + process.pid + '.png');
 fsT.writeFileSync(tmpLogoBad, 'nu e imagine');

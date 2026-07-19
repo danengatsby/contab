@@ -98,6 +98,13 @@ module.exports = function register(app, ctx) {
     return { ok: true, firma: r.firma };
   }));
 
+  // Abonamentul firmei — ruta DEDICATA, doar admin + audit (nu prin editarea de profil).
+  app.post('/api/firme/:id/subscription', requireAdmin, (req, res) => run(res, () => {
+    const r = svc.setFirmaSubscription(req.user, req.params.id, (req.body || {}).subscription);
+    logAudit('firma.subscription', 'firma ' + r.firmaId + ' -> ' + (r.subscription.plan || '?') + '/' + (r.subscription.status || '?'), { req, firmaId: r.firmaId });
+    return { ok: true, subscription: r.subscription };
+  }));
+
   app.post('/api/firme/:id/activate', (req, res) => run(res, () => {
     const r = svc.activateFirma(req.user, req.params.id);
     return { ok: true, firmaActiva: r.firmaActiva };
