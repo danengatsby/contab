@@ -13,6 +13,17 @@ const { period: periodOf, round2 } = require('./util');
 
 const INTRACOM_TYPES = new Set(['livrare_intracomunitara', 'achizitie_intracomunitara']);
 
+/** Rulajul intracomunitar al anului, pe flux: expedieri (livrari, baza clasa 70) si introduceri
+ *  (achizitii, valoarea bunurilor vs furnizor 401) — aceeasi extractie ca la D390. */
+function intracomTurnover(yearEntries) {
+  let expedieri = 0; let introduceri = 0;
+  for (const e of yearEntries) {
+    if (e.tip === 'livrare_intracomunitara') for (const l of (e.lines || [])) { if (/^70/.test(String(l.credit))) expedieri = round2(expedieri + Number(l.suma || 0)); }
+    else if (e.tip === 'achizitie_intracomunitara') for (const l of (e.lines || [])) { if (String(l.credit) === '401') introduceri = round2(introduceri + Number(l.suma || 0)); }
+  }
+  return { expedieri, introduceri };
+}
+
 function venituriClasa7(entries) {
   const r = acc.accumulate(acc.allLines(entries));
   let venit = 0;
@@ -56,10 +67,28 @@ function check(v, opts) {
       'Regim micro fără salariat înregistrat — condiția de salariat (normă întreagă) nu pare îndeplinită; fără salariat se datorează impozit pe profit.');
   }
 
-  // 5) Operatiuni intracomunitare fara obligatie Intrastat marcata -> verifica pragul
+  // 5) Intrastat AUTO-DETECT: compara rulajul intracomunitar cu pragurile INS (pe flux). Peste
+  //    prag si nemarcat -> obligat (atentie); sub prag dar cu operatiuni -> monitorizeaza (info);
+  //    marcat dar sub prag pe ambele fluxuri -> poate iesi din obligatie (info).
   const areIntracom = yearEntries.some((e) => INTRACOM_TYPES.has(e.tip));
-  if (areIntracom && !profile.intrastat) add('info', 'intracom-fara-intrastat',
-    'Ai operațiuni intracomunitare în ' + year + ', dar Intrastat nu e marcat — verifică dacă ai depășit pragul INS și, dacă da, bifează „Obligată la Intrastat".');
+  const rulaj = intracomTurnover(yearEntries);
+  const pragIntro = Number(fiscal.FISCAL.pragIntrastatIntroduceri) || 0;
+  const pragExp = Number(fiscal.FISCAL.pragIntrastatExpedieri) || 0;
+  const depasesteIntro = pragIntro > 0 && rulaj.introduceri > pragIntro;
+  const depasesteExp = pragExp > 0 && rulaj.expedieri > pragExp;
+  if (depasesteIntro || depasesteExp) {
+    if (!profile.intrastat) {
+      const fluxuri = [depasesteIntro ? 'introduceri ' + rulaj.introduceri + ' lei' : null, depasesteExp ? 'expedieri ' + rulaj.expedieri + ' lei' : null].filter(Boolean).join(' și ');
+      add('atentie', 'intrastat-prag-depasit',
+        'Ai depășit pragul Intrastat (' + fluxuri + ' > ' + pragIntro + ' lei) în ' + year + ' — ești OBLIGAT la declarația Intrastat. Bifează „Obligată la Intrastat".');
+    }
+  } else if (areIntracom && !profile.intrastat) {
+    add('info', 'intracom-sub-prag',
+      'Ai operațiuni intracomunitare în ' + year + ' (introduceri ' + rulaj.introduceri + ' / expedieri ' + rulaj.expedieri + ' lei), sub pragul Intrastat (' + pragIntro + ' lei) — monitorizează; la depășire devii obligat.');
+  } else if (profile.intrastat && !depasesteIntro && !depasesteExp) {
+    add('info', 'intrastat-marcat-sub-prag',
+      'Intrastat e marcat, dar rulajul intracomunitar din ' + year + ' e sub prag pe ambele fluxuri — verifică dacă mai ești obligat.');
+  }
 
   // 6) Regim profit cu venituri, dar fara inregistrarea impozitului pe profit pe an -> reminder D101
   if (profile.profit) {

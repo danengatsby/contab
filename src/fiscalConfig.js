@@ -40,6 +40,10 @@ const RATES = {
   // Eligibilitate micro (art. 47 Cod fiscal, OUG 156/2024): plafon 100.000 EUR din 2026.
   plafonMicroEur: 100000,
   cursPlafonMicro: 5.0,   // orientativ (legal: cursul de la inchiderea exercitiului precedent)
+  // Praguri Intrastat (lei/an, separat pe flux) — Ordin INS (valabile 2024-2026): peste prag,
+  // firma devine obligata la declaratia statistica Intrastat pentru fluxul respectiv.
+  pragIntrastatIntroduceri: 1000000, // achizitii intracomunitare (arrivals)
+  pragIntrastatExpedieri: 1000000,   // livrari intracomunitare (dispatches)
 };
 
 // Deducerea personala de baza (art. 77 Cod fiscal, Legea 34/2023): procentele MAXIME la nivelul
@@ -74,6 +78,7 @@ const SURSE = {
   pfa: 'Art. 148 & 170 Cod fiscal — plafoane 6 / 12 / 24 / 60 salarii minime',
   concediiMedicale: 'OUG 158/2005 — CAS + impozit, fara CASS; CAM doar pe partea angajatorului',
   deductibilitateAuto: 'Art. 298 Cod fiscal — TVA deductibila 50% (vehicule fara uz exclusiv business)',
+  pragIntrastat: 'Ordin INS — praguri Intrastat 1.000.000 lei/an pe flux (introduceri / expedieri), 2024-2026',
 };
 
 module.exports = { AN, DATA_ACTUALIZARE, RATES, DEDUCERE, PFA, SURSE };
