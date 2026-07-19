@@ -31,8 +31,13 @@ O **ciornă** nu se stornează — se șterge direct.
 primește `stornat`/`stornoBy` și devine **imutabil** (nu se mai șterge și nu se re-stornează). Ambele
 note rămân în jurnal (append-only) — corecția e **documentată și reversibilă**, nu o ștergere care
 pierde urma. Articolele cu impact pe **stoc** au corecția dedicată (mișcare/inventar), ca fișa de
-magazie și cartea mare să nu diveargă. Într-o perioadă **închisă** (`lockedUntil`) ștergerea și
-înregistrarea sunt refuzate; corecția se face exclusiv prin storno într-o lună deschisă.
+magazie și cartea mare să nu diveargă.
+
+**Ștergerea nu se aplică datelor postate**: un articol **postat** (inclusiv cele vechi, fără `status`)
+**nu se șterge** prin API — `DELETE /api/entries/:id` întoarce 400 și trimite la storno. Doar **ciornele**
+se șterg. O factură **ciornă** nu se emite ca e-Factura și nu apare în lista de trimis în SPV (se postează
+întâi). Într-o perioadă **închisă** (`lockedUntil`) și înregistrarea, și postarea, și ștergerea ciornelor
+sunt refuzate; corecția se face exclusiv prin storno într-o lună deschisă.
 
 **Situații financiare**: contul de profit și pierdere și bilanțul (simplificat),
 descărcabile în PDF.

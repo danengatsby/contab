@@ -41,7 +41,7 @@ module.exports = function register(app, ctx) {
   });
   app.get('/api/efactura-list', (req, res) => {
     const { period } = req.query;
-    let list = S(req).entries.filter((e) => xml.isEFacturaEligible(e));
+    let list = S(req).entries.filter((e) => acc.isPosted(e) && xml.isEFacturaEligible(e));
     if (period) list = list.filter((e) => (e.period || periodOf(e.data)) === period);
     res.json(acc.sortEntries(list).map((e) => ({ id: e.id, data: e.data, document: e.document, partener: e.partener, partenerCui: e.partenerCui || '' })));
   });

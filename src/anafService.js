@@ -149,6 +149,7 @@ async function oauthCallback(user, fid, code) {
 async function sendToSpv(user, entryId) {
   const d = db.get();
   const e = reqEntry(user, d, entryId);
+  if (e.status && e.status !== 'postat') fail(400, 'Factura e ciorna — posteaz-o inainte de a o trimite in SPV.');
   if (!xml.isSendable(e)) fail(400, 'Doar facturile emise pot fi trimise in SPV.');
   const fid = e.firmaId || db.firmaActiva();
   const c = anafCfgW(fid); // conexiunea SPV a firmei careia ii apartine factura
