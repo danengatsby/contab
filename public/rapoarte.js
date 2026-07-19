@@ -207,10 +207,12 @@ async function loadVat() {
   renderNeexigibila();
   const vj = await api('/api/vat-journals' + (p ? '?period=' + p : ''));
   const t = vj.totals;
+  // plătitor TVA trimestrial: decontul agregă întreg trimestrul — arată clar perioada
+  const trimNota = vj.trimestrial ? ` <span class="badge" title="TVA trimestrial: decontul agregă cele 3 luni ale trimestrului">${H(vj.period)} (trimestru)</span>` : '';
   const deLabel = t.deplata > 0 ? 'TVA de plată (4423)' : 'TVA de recuperat (4424)';
   const deVal = t.deplata > 0 ? t.deplata : t.derecuperat;
   $('#tvaSummary').innerHTML =
-    `<div class="card"><h3>Sumar decont (D300)</h3><table>
+    `<div class="card"><h3>Sumar decont (D300)${trimNota}</h3><table>
       <tr><td>TVA colectată (4427)</td><td class="num">${fmt(t.colectata)}</td></tr>
       <tr><td>TVA deductibilă (4426)</td><td class="num">${fmt(t.deductibila)}</td></tr>
       <tr class="total"><td>${deLabel}</td><td class="num">${fmt(deVal)}</td></tr>
