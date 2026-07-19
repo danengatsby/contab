@@ -10,7 +10,7 @@ const recurring = require('./recurring');
 
 /** Rulajele perioadei pe cont {cod:{d,c}}. */
 function periodRulaj(db, period) {
-  const lines = acc.allLines(db.entries.filter((e) => (e.period || periodOf(e.data)) === period));
+  const lines = acc.allLines(acc.postedEntries(db).filter((e) => (e.period || periodOf(e.data)) === period));
   return acc.accumulate(lines);
 }
 
@@ -38,7 +38,7 @@ function d300(db, period) {
 /** Recap D390 — declaratia recapitulativa VIES (livrari/achizitii intracomunitare de bunuri). */
 function d390(db, period) {
   const INTRACOM = { livrare_intracomunitara: 'L', achizitie_intracomunitara: 'A' };
-  const ent = (db.entries || []).filter((e) => INTRACOM[e.tip]
+  const ent = acc.postedEntries(db).filter((e) => INTRACOM[e.tip]
     && (!period || String(e.period || periodOf(e.data)).startsWith(period)));
   const map = new Map();
   for (const e of ent) {
@@ -64,7 +64,7 @@ function d390(db, period) {
 /** Recap D205 — impozit pe venit retinut la sursa (dividende, chirii, premii), pe beneficiar. */
 function d205(db, year) {
   const TIPURI = { repartizare_dividende: 'Dividende', chirie_pf: 'Chirii', premiu_pf: 'Premii' };
-  const ent = (db.entries || []).filter((e) => TIPURI[e.tip] && String(e.period || periodOf(e.data)).startsWith(String(year)));
+  const ent = acc.postedEntries(db).filter((e) => TIPURI[e.tip] && String(e.period || periodOf(e.data)).startsWith(String(year)));
   const map = new Map();
   for (const e of ent) {
     const tip = TIPURI[e.tip];
@@ -90,7 +90,7 @@ function d205(db, year) {
 /** Achizitiile de la producatori agricoli PF pe baza de fila din carnetul de comercializare /
  *  borderou de achizitie (Legea 145/2014) — fara TVA, agregat pe producator; sectiune in D394. */
 function achizitiiPfCarnet(db, period) {
-  const ent = (db.entries || []).filter((e) => e.tip === 'achizitie_produse_agricole' && (!period || String(e.period || periodOf(e.data)) === period));
+  const ent = acc.postedEntries(db).filter((e) => e.tip === 'achizitie_produse_agricole' && (!period || String(e.period || periodOf(e.data)) === period));
   const map = new Map();
   for (const e of ent) {
     let val = 0;
@@ -110,7 +110,7 @@ function achizitiiPfCarnet(db, period) {
 /** Intrastat (de baza) — fluxuri de bunuri intracomunitare pe tara: introduceri (achizitii) / expedieri (livrari). */
 function intrastat(db, period) {
   const FLUX = { livrare_intracomunitara: 'expediere', achizitie_intracomunitara: 'introducere' };
-  const ent = (db.entries || []).filter((e) => FLUX[e.tip] && (!period || String(e.period || periodOf(e.data)).startsWith(period)));
+  const ent = acc.postedEntries(db).filter((e) => FLUX[e.tip] && (!period || String(e.period || periodOf(e.data)).startsWith(period)));
   const map = new Map();
   for (const e of ent) {
     const flux = FLUX[e.tip];
@@ -169,7 +169,7 @@ function d100micro(db, period, cota) {
   const y = String(period || '').slice(0, 4);
   const q0 = m ? m - ((m - 1) % 3) : 0;
   const luni = m ? [q0, q0 + 1, q0 + 2].map((x) => y + '-' + String(x).padStart(2, '0')) : [];
-  const lines = acc.allLines((db.entries || []).filter((e) => luni.includes(String(e.period || periodOf(e.data)))));
+  const lines = acc.allLines(acc.postedEntries(db).filter((e) => luni.includes(String(e.period || periodOf(e.data)))));
   const r = acc.accumulate(lines);
   let venit = 0;
   for (const cod of Object.keys(r)) {
@@ -180,7 +180,7 @@ function d100micro(db, period, cota) {
   const rate = cota || fiscal.FISCAL.impozitMicro || 1;
   // Semnal de eligibilitate micro (art. 47 Cod fiscal): plafonul de venituri (EUR, configurabil)
   // si conditia de salariat. Doar AVERTIZEAZA — incadrarea finala ramane la contribuabil.
-  const rAn = acc.accumulate(acc.allLines((db.entries || []).filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
+  const rAn = acc.accumulate(acc.allLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
   let venitAn = 0;
   for (const cod of Object.keys(rAn)) {
     const a = coa.getAccount(cod);
@@ -210,7 +210,7 @@ function proRataTva(db, year) {
   const SCUTITE_CU_DREPT = new Set(['livrare_intracomunitara']);
   const y = String(year);
   let cuDrept = 0; let faraDrept = 0; let dedusaProvizoriu = 0; let nrMixte = 0;
-  for (const e of (db.entries || []).filter((x) => String(x.period || periodOf(x.data)).startsWith(y))) {
+  for (const e of acc.postedEntries(db).filter((x) => String(x.period || periodOf(x.data)).startsWith(y))) {
     let baza = 0; let tva = 0;
     for (const l of e.lines || []) {
       if (/^7/.test(String(l.credit))) baza = round2(baza + l.suma);
@@ -373,7 +373,7 @@ function registruFiscal(db, year, cota) {
 }
 
 function periodRulaj2(db, year) {
-  const lines = acc.allLines(db.entries.filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year))));
+  const lines = acc.allLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year))));
   return acc.accumulate(lines);
 }
 
@@ -389,7 +389,7 @@ function notes(db, year) {
   const Y0 = String(Number(y) - 1);
   const open = stmt.finalBalances(db, Y0 + '-12');   // solduri la inceputul exercitiului (= sfarsit an precedent)
   const close = stmt.finalBalances(db, y + '-12');    // solduri la sfarsitul exercitiului
-  const ru = acc.accumulate(acc.allLines(db.entries.filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
+  const ru = acc.accumulate(acc.allLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
   const f20 = stmt.profitLossF20(db, y);
   const f10 = stmt.balanceSheetF10(db, y + '-12');
   const r = f10.randuri;
@@ -500,7 +500,7 @@ function notes(db, year) {
  * compara suma bugetata cu rulajul efectiv si calculeaza variatia si gradul de realizare.
  */
 function budgetReport(db, budgets, year) {
-  const ru = acc.accumulate(acc.allLines((db.entries || []).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)))));
+  const ru = acc.accumulate(acc.allLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)))));
   const actualOf = (cod) => {
     const a = ru[cod] || { d: 0, c: 0 };
     const cl = Number(String(cod)[0]);
@@ -579,7 +579,7 @@ function cashForecast(db, templates, opts) {
  *  Folosit si direct de /api/dashboard-charts: anul implicit NU merita un dashboard() intreg. */
 function latestYear(db) {
   let max = '';
-  for (const e of db.entries) { const p = e.period || periodOf(e.data); if (p && p > max) max = p; }
+  for (const e of acc.postedEntries(db)) { const p = e.period || periodOf(e.data); if (p && p > max) max = p; }
   return max ? max.slice(0, 4) : String(new Date().getFullYear());
 }
 
@@ -636,7 +636,7 @@ function monthlySeries(db, year) {
   const y = String(year);
   const sums = new Map(); // luna (1-12) -> { ven, chelt }
   for (let m = 1; m <= 12; m++) sums.set(m, { ven: 0, chelt: 0 });
-  for (const e of db.entries) {
+  for (const e of acc.postedEntries(db)) {
     const p = e.period || periodOf(e.data);
     if (!p || p.slice(0, 4) !== y) continue;
     const s = sums.get(Number(p.slice(5, 7)));

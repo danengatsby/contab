@@ -8,6 +8,7 @@
 
 const { round2 } = require('./util');
 const { umCode } = require('./xml');
+const { postedEntries } = require('./accounting'); // ciornele nu intra in SAF-T (doar articole postate)
 
 // id de partener in format oficial 00+CUI; fara partener, firma insasi (validatorul cere campul)
 function pid00(e, db) {
@@ -72,8 +73,8 @@ function accountType(cod) {
 /** Soldurile de deschidere/inchidere ale anului, pe cont. */
 function accountBalances(db, year) {
   const opening = db.openingBalances || {};
-  const before = accumulate((db.entries || []).filter((e) => beforeYear(e, year)));
-  const within = accumulate((db.entries || []).filter((e) => inYear(e, year)));
+  const before = accumulate(postedEntries(db).filter((e) => beforeYear(e, year)));
+  const within = accumulate(postedEntries(db).filter((e) => inYear(e, year)));
   const codes = new Set([...Object.keys(opening), ...Object.keys(before), ...Object.keys(within)]);
   const rows = [];
   for (const cod of [...codes].sort()) {
@@ -100,7 +101,7 @@ function partnerRoles(db, year) {
     if (!map.has(key)) map.set(key, { den: e.partener || key, cui: e.partenerCui || '', bal: 0 });
     return map.get(key);
   };
-  for (const e of (db.entries || [])) {
+  for (const e of postedEntries(db)) {
     if (!inYear(e, year)) continue;
     for (const l of e.lines) {
       if (ofClient.includes(l.debit) || ofClient.includes(l.credit)) {
@@ -527,7 +528,7 @@ function glTx(e, year, db) {
   ];
 }
 function glEntriesSorted(db, year) {
-  return (db.entries || []).filter((e) => inYear(e, year))
+  return postedEntries(db).filter((e) => inYear(e, year))
     .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : String(a.id).localeCompare(String(b.id))));
 }
 function glWrap(entries, year, txs) {
@@ -679,7 +680,7 @@ function paymentMethod(e) {
   return 'Alte';
 }
 function paymentsXml(db, year) {
-  const pays = (db.entries || []).filter((e) => inYear(e, year) && PAYMENT_TIP(e.tip));
+  const pays = postedEntries(db).filter((e) => inYear(e, year) && PAYMENT_TIP(e.tip));
   let totalD = 0; let totalC = 0; const out = [];
   for (const e of pays) {
     const date = String(e.data);
@@ -762,7 +763,7 @@ function sourceDocuments(db, year) {
   };
   const custId = idOf(roles.customers);
   const supId = idOf(roles.suppliers);
-  const within = (db.entries || []).filter((e) => inYear(e, year));
+  const within = postedEntries(db).filter((e) => inYear(e, year));
 
   const block = (tag, filter, kind, partyTag, partyIdTag, idMap, account) => {
     const invs = within.filter(filter);
@@ -812,7 +813,7 @@ async function sourceDocumentsAsync(db, year) {
   };
   const custId = idOf(roles.customers);
   const supId = idOf(roles.suppliers);
-  const within = (db.entries || []).filter((e) => inYear(e, year));
+  const within = postedEntries(db).filter((e) => inYear(e, year));
   const blockAsync = async (tag, filter, kind, partyTag, partyIdTag, idMap, account) => {
     const invs = within.filter(filter);
     let net = 0; const xmls = []; let i = 0;
@@ -885,7 +886,7 @@ async function saftXmlAsync(db, year, tip) {
 /** Sumar pentru UI (fara a genera tot XML-ul). */
 function saftSummary(db, year) {
   const yr = String(year || new Date().getFullYear());
-  const within = (db.entries || []).filter((e) => inYear(e, yr));
+  const within = postedEntries(db).filter((e) => inYear(e, yr));
   let total = 0;
   for (const e of within) for (const l of e.lines) total = round2(total + l.suma);
   const roles = partnerRoles(db, yr);
@@ -906,7 +907,7 @@ function saftSummary(db, year) {
 }
 
 module.exports = { saftXml, saftXmlAsync, saftSummary, accountBalances, partnerRoles };function paymentsXml(db, year) {
-  const pays = (db.entries || []).filter((e) => inYear(e, year) && PAYMENT_TIP(e.tip));
+  const pays = postedEntries(db).filter((e) => inYear(e, year) && PAYMENT_TIP(e.tip));
   let totalD = 0; let totalC = 0; const out = [];
   for (const e of pays) {
     const date = String(e.data);
@@ -989,7 +990,7 @@ function sourceDocuments(db, year) {
   };
   const custId = idOf(roles.customers);
   const supId = idOf(roles.suppliers);
-  const within = (db.entries || []).filter((e) => inYear(e, year));
+  const within = postedEntries(db).filter((e) => inYear(e, year));
 
   const block = (tag, filter, kind, partyTag, partyIdTag, idMap, account) => {
     const invs = within.filter(filter);
@@ -1039,7 +1040,7 @@ async function sourceDocumentsAsync(db, year) {
   };
   const custId = idOf(roles.customers);
   const supId = idOf(roles.suppliers);
-  const within = (db.entries || []).filter((e) => inYear(e, year));
+  const within = postedEntries(db).filter((e) => inYear(e, year));
   const blockAsync = async (tag, filter, kind, partyTag, partyIdTag, idMap, account) => {
     const invs = within.filter(filter);
     let net = 0; const xmls = []; let i = 0;
@@ -1112,7 +1113,7 @@ async function saftXmlAsync(db, year, tip) {
 /** Sumar pentru UI (fara a genera tot XML-ul). */
 function saftSummary(db, year) {
   const yr = String(year || new Date().getFullYear());
-  const within = (db.entries || []).filter((e) => inYear(e, yr));
+  const within = postedEntries(db).filter((e) => inYear(e, yr));
   let total = 0;
   for (const e of within) for (const l of e.lines) total = round2(total + l.suma);
   const roles = partnerRoles(db, yr);

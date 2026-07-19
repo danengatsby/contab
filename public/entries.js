@@ -19,10 +19,27 @@ function entryDir(tip) {
   if (grup === 'Cumparari' || /cumparare/.test(tip)) return 'in';
   return 'other';
 }
+// Fluxul de stare: ciorna -> validat -> aprobat -> postat. Butonul avanseaza un pas.
+const NEXT_STATE = { ciorna: 'validat', validat: 'aprobat', aprobat: 'postat' };
+const STATE_LABEL = { ciorna: 'ciornă', validat: 'validat', aprobat: 'aprobat' };
+const NEXT_LABEL = { validat: '✓ validează', aprobat: '✓ aprobă', postat: '▶ postează' };
+function entryActionsHtml(e) {
+  if (e.stornat) return `<span class="pill" title="Corectat prin nota de storno ${H(String(e.stornoBy))}">stornat</span>`;
+  if (e.stornoOf) return `<span class="pill" title="Notă de stornare a articolului ${H(String(e.stornoOf))}">storno</span>`;
+  const st = e.status || 'postat';
+  if (st !== 'postat') { // ciorna in flux: eticheta stare + avans + stergere (nu intra in contabilitate)
+    const next = NEXT_STATE[st];
+    return `<span class="pill" title="Ciornă — nu intră încă în contabilitate">${STATE_LABEL[st]}</span>
+      <button class="advst" data-id="${e.id}" data-next="${next}" title="Avansează în flux">${NEXT_LABEL[next]}</button>
+      <button class="del" data-id="${e.id}" title="Șterge ciorna">✕</button>`;
+  }
+  return `<button class="storno" data-id="${e.id}" title="Stornează (corecție reversibilă, fără ștergere)">↩ storno</button> <button class="del" data-id="${e.id}" title="Șterge">✕</button>`;
+}
 function entryRowHtml(e) {
   const formula = e.lines.map((l) => `${l.debit}=${l.credit}`).join(', ');
   const total = e.lines.reduce((s, l) => s + l.suma, 0);
-  return `<tr class="${e.system ? 'sys' : ''}">
+  const draft = e.status && e.status !== 'postat';
+  return `<tr class="${e.system ? 'sys' : ''}${draft ? ' draft' : ''}">
     <td>${H(e.data)}</td>
     <td>${H(e.tipNume)}${e.system ? ' <span class="pill">auto</span>' : ''}</td>
     <td>${H(e.partener)}</td>
@@ -35,11 +52,7 @@ function entryRowHtml(e) {
     ? ` · <button class="linkbtn spvstat" data-id="${e.id}">SPV: ${e.spv.stare}${e.spv.acceptat ? ' ✓' : ''}</button>${e.spv.idDescarcare ? ` · <button class="linkbtn spvdl" data-id="${e.id}">recipisă</button>` : ''}`
     : ` · <button class="linkbtn spvsend" data-id="${e.id}">trimite SPV</button>`) : ''}
         ${e.fileId ? ` · <a class="linkbtn" href="/api/document/${e.fileId}/file" target="_blank">doc</a>` : ''}</td>
-    <td>${e.stornat
-    ? `<span class="pill" title="Corectat prin nota de storno ${H(String(e.stornoBy))}">stornat</span>`
-    : (e.stornoOf
-      ? `<span class="pill" title="Notă de stornare a articolului ${H(String(e.stornoOf))}">storno</span>`
-      : `<button class="storno" data-id="${e.id}" title="Stornează (corecție reversibilă, fără ștergere)">↩ storno</button> <button class="del" data-id="${e.id}" title="Șterge">✕</button>`)}</td>
+    <td>${entryActionsHtml(e)}</td>
   </tr>`;
 }
 function renderEntryTable(containerId, rowsHtml, emptyMsg) {
@@ -56,6 +69,14 @@ function bindEntryActions(root) {
     await api('/api/entries/' + b.dataset.id, { method: 'DELETE' });
     toast('Înregistrare ștearsă');
     setMeta(await api('/api/meta')); fillPeriods(); loadEntries();
+  }));
+  root.querySelectorAll('.advst').forEach((b) => b.addEventListener('click', async () => {
+    const next = b.dataset.next;
+    try {
+      await api('/api/entries/' + b.dataset.id + '/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: next }) });
+      toast(next === 'postat' ? 'Articol postat (intră în contabilitate)' : 'Ciornă avansată: ' + next);
+      setMeta(await api('/api/meta')); fillPeriods(); loadEntries();
+    } catch (e) { toast(e.message, true); }
   }));
   root.querySelectorAll('.storno').forEach((b) => b.addEventListener('click', async () => {
     const data = prompt('Data notei de storno (YYYY-MM-DD) — trebuie într-o perioadă deschisă:', new Date().toISOString().slice(0, 10));

@@ -19,6 +19,12 @@ const { round2, period: periodOf } = require('./util');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 
+// Fluxul de stare al unui articol: ciorna -> validat -> aprobat -> POSTAT. Doar postat intra in
+// contabilitate (vezi accounting.isPosted). Articolele vechi/create direct n-au `status` => postat.
+// Odata postat, starea nu se mai schimba: corectia se face prin STORNO (nu retrogradare).
+const ENTRY_STATES = ['ciorna', 'validat', 'aprobat', 'postat'];
+function entryState(e) { return e.status || 'postat'; }
+
 /** Creeaza un articol contabil; liniile de stoc genereaza si descarcarea de gestiune la CMP
  *  (miscarile + liniile COGS intra atomic cu articolul — nicio scriere la eroare). */
 function createEntry(fid, b, deps) {
@@ -30,6 +36,7 @@ function createEntry(fid, b, deps) {
   try { entry = deps.buildEntry(b.tip, f, b.fileId, fid); }
   catch (e) { fail(400, e.message); }
   db.assertPeriodOpen(fid, entry.data, 'Inregistrarea'); // nu se posteaza intr-o luna inchisa
+  if (b.ciorna) entry.status = 'ciorna'; // salvat ca CIORNA: vizibil in liste, dar NU inca in contabilitate
   if (b.spvMsgId) entry.spvImport = { msgId: b.spvMsgId, at: new Date().toISOString() };
   const d = db.get();
   let stocInfo = null;
@@ -80,6 +87,7 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno) {
   const d = db.get();
   const e = d.entries.find((x) => x.id === id);
   if (!e || !canFid(e.firmaId == null ? d.firmaActiva : e.firmaId)) fail(404, 'Inregistrare inexistenta.');
+  if (entryState(e) !== 'postat') fail(400, 'Doar articolele POSTATE se storneaza; o ciorna se sterge direct.');
   if (e.stornoOf) fail(400, 'Nu se storneaza o nota de storno.');
   if (e.stornat) fail(400, 'Inregistrarea e deja stornata (nota ' + e.stornoBy + ').');
   if ((e.stocMovementIds && e.stocMovementIds.length) || e.stocMovementId) {
@@ -99,6 +107,28 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno) {
   e.stornat = true; e.stornoBy = se.id; e.stornoData = stornoData;
   db.save();
   return { storno: se, original: e };
+}
+
+/** Tranzitie de stare in fluxul ciorna -> validat -> aprobat -> postat. Inainte de postat e
+ *  liber (inainte si inapoi); POSTAT e ireversibil (corectia = storno). Postarea verifica
+ *  perioada deschisa (o ciorna dintr-o luna intre timp inchisa nu se mai poate posta acolo). */
+function setEntryStatus(id, fallbackFid, canFid, target) {
+  if (!ENTRY_STATES.includes(target)) fail(400, 'Stare invalida (ciorna/validat/aprobat/postat).');
+  const d = db.get();
+  const e = d.entries.find((x) => x.id === id);
+  if (!e || !canFid(e.firmaId == null ? d.firmaActiva : e.firmaId)) fail(404, 'Inregistrare inexistenta.');
+  if (e.stornoOf || e.stornat) fail(400, 'Nota de/din storno — starea nu se schimba.');
+  const cur = entryState(e);
+  if (cur === 'postat') fail(400, 'Articol deja postat — starea nu se mai schimba. Corectia se face prin storno.');
+  if (target === cur) return { entry: e, status: cur }; // idempotent
+  const fid = e.firmaId == null ? fallbackFid : e.firmaId;
+  if (target === 'postat') {
+    db.assertPeriodOpen(fid, e.period || periodOf(e.data), 'Postarea'); // nu se posteaza intr-o luna inchisa
+    e.postedAt = new Date().toISOString();
+  }
+  e.status = target;
+  db.save();
+  return { entry: e, status: target };
 }
 
 // ── Facturi recurente (sabloane + generare pe perioada) ──
@@ -190,7 +220,7 @@ function tvaExigibilitate(fid, b, deps) {
 }
 
 module.exports = {
-  createEntry, deleteEntry, stornoEntry,
+  createEntry, deleteEntry, stornoEntry, setEntryStatus,
   saveRecurring, deleteRecurring, generateRecurring,
   setPeriodLock, tvaExigibilitate,
 };

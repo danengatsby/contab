@@ -64,6 +64,14 @@ module.exports = function register(app, ctx) {
     return { ok: true, storno: r.storno, original: { id: r.original.id, stornat: true, stornoBy: r.storno.id } };
   }));
 
+  // Tranzitie de stare in fluxul contabil: ciorna -> validat -> aprobat -> postat (POST {status}).
+  // Doar articolele postate intra in contabilitate; postarea verifica perioada deschisa.
+  app.post('/api/entries/:id/status', (req, res) => run(res, () => {
+    const r = svc.setEntryStatus(req.params.id, activeId(req), (fid) => canAccess(req, fid), (req.body || {}).status);
+    logAudit('entry.status', 'articol ' + r.entry.id + ' -> ' + r.status, { req, firmaId: r.entry.firmaId });
+    return { ok: true, id: r.entry.id, status: r.status };
+  }));
+
   // ───────────────────────── FACTURI RECURENTE ─────────────────────────
   app.get('/api/recurring', (req, res) => {
     const fid = activeId(req);

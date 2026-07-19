@@ -2,12 +2,12 @@
 
 const { round2, period: periodOf } = require('./util');
 const coa = require('./chartOfAccounts');
-const { allLines, accumulate } = require('./accounting');
+const { allLines, accumulate, postedEntries } = require('./accounting');
 
 /** Solduri finale nete (cont -> net) la sfarsitul unei perioade (inclusiv), cumulat. */
 function finalBalances(db, asOf) {
   const opening = db.openingBalances || {};
-  const ent = db.entries.filter((e) => !asOf || (e.period || periodOf(e.data)) <= asOf);
+  const ent = postedEntries(db).filter((e) => !asOf || (e.period || periodOf(e.data)) <= asOf);
   const acc = accumulate(allLines(ent));
   const codes = new Set([...Object.keys(opening), ...Object.keys(acc)]);
   const net = {};
@@ -32,7 +32,7 @@ const starts = (cod, ...pre) => pre.some((p) => String(cod).startsWith(p));
 
 /** Contul de profit si pierdere pentru un an (din rulajele claselor 6 si 7). */
 function profitLoss(db, year) {
-  const ent = db.entries.filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
+  const ent = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
   const acc = accumulate(allLines(ent));
   const venit = (cod) => round2((acc[cod] ? acc[cod].c - acc[cod].d : 0));
   const chelt = (cod) => round2((acc[cod] ? acc[cod].d - acc[cod].c : 0));
@@ -175,7 +175,7 @@ function balanceSheetF10(db, asOf) {
  * Sumele „alte..." sunt reziduale, ca totalurile sa fie garantat consistente cu rulajul total.
  */
 function profitLossF20(db, year) {
-  const ent = db.entries.filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
+  const ent = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
   const acc = accumulate(allLines(ent));
   const venit = (cod) => round2((acc[cod] ? acc[cod].c - acc[cod].d : 0));
   const chelt = (cod) => round2((acc[cod] ? acc[cod].d - acc[cod].c : 0));
@@ -254,7 +254,7 @@ function cashFlow(db, year) {
     return 'ex_altele';
   };
 
-  const ents = db.entries.filter((e) => String(e.period || periodOf(e.data)).startsWith(y));
+  const ents = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(y));
   for (const e of ents) {
     for (const ln of (e.lines || [])) {
       const dCash = isCash(ln.debit); const cCash = isCash(ln.credit);
@@ -285,7 +285,7 @@ function equityChanges(db, year) {
   const Y0 = String(Number(y) - 1);
   const open = finalBalances(db, Y0 + '-12');
   const close = finalBalances(db, y + '-12');
-  const ru = accumulate(allLines(db.entries.filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
+  const ru = accumulate(allLines(postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
   const sumO = (o, m) => round2(Object.keys(o).filter(m).reduce((s, c) => s + o[c], 0));
   const sumRu = (m, k) => round2(Object.keys(ru).filter(m).reduce((s, c) => s + ((ru[c] && ru[c][k]) || 0), 0));
   const st = (c, ...p) => p.some((x) => String(c).startsWith(x));

@@ -7,11 +7,12 @@
 const { round2, period: periodOf } = require('./util');
 const coa = require('./chartOfAccounts');
 const stmt = require('./statements');
+const { postedEntries } = require('./accounting'); // reevaluarea vede doar soldurile din articole postate
 
 /** Soldul in valuta al unui cont la o data (din e.valutaInfo): debit pe cont +, credit -. */
 function foreignBalance(db, account, asOf, moneda) {
   let bal = 0;
-  for (const e of (db.entries || [])) {
+  for (const e of postedEntries(db)) {
     if (asOf && String(e.period || periodOf(e.data)) > asOf) continue;
     const vi = e.valutaInfo; if (!vi) continue;
     if (moneda && vi.valuta !== moneda) continue;
@@ -27,7 +28,7 @@ function foreignBalance(db, account, asOf, moneda) {
 function candidates(db, asOf) {
   const fb = stmt.finalBalances(db, asOf);
   const curByAcct = {};
-  for (const e of (db.entries || [])) {
+  for (const e of postedEntries(db)) {
     if (asOf && String(e.period || periodOf(e.data)) > asOf) continue;
     const vi = e.valutaInfo; if (!vi) continue;
     for (const l of (e.lines || [])) { for (const c of [l.debit, l.credit]) if (!curByAcct[c]) curByAcct[c] = vi.valuta; }

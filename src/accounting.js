@@ -42,6 +42,13 @@ function vatPeriod(company, monthPeriod) {
   return monthPeriod;
 }
 
+// Un articol intra in CONTABILITATE (balanta, jurnale, cartea mare, declaratii) doar cand e
+// POSTAT. Ciornele (status ciorna/validat/aprobat) sunt vizibile in liste, dar NU se agrega —
+// filtrarea se face aici, la sursa, pentru toate agregarile. Articolele vechi si cele create
+// direct nu au `status` => tratate ca postate (compatibilitate: zero schimbare pe date existente).
+function isPosted(e) { return !e.status || e.status === 'postat'; }
+function postedEntries(view) { return (view.entries || []).filter(isPosted); }
+
 function inPeriod(e, period) {
   if (!period) return true;
   const q = String(period).match(/^(\d{4})-Q([1-4])$/);
@@ -73,7 +80,7 @@ function accumulate(lines) {
 
 /** Registrul-jurnal: liniile in ordine cronologica pentru o perioada (sau toate). */
 function journal(db, period) {
-  const entries = sortEntries(db.entries.filter((e) => inPeriod(e, period)));
+  const entries = sortEntries(postedEntries(db).filter((e) => inPeriod(e, period)));
   const rows = [];
   let total = 0;
   let nr = 0; // numar curent al articolului contabil (Nr. crt. din registrul-jurnal)
@@ -99,7 +106,7 @@ function journal(db, period) {
 function tvaNeexigibila(db, period) {
   let colIn = 0; let colOut = 0; let dedIn = 0; let dedOut = 0;
   const facturi = [];
-  for (const e of db.entries.filter((x) => inPeriod(x, period) || !period)) {
+  for (const e of postedEntries(db).filter((x) => inPeriod(x, period) || !period)) {
     for (const l of e.lines) {
       // colectata neexigibila: la vanzare 4111 = 4428 ; devine exigibila 4428 = 4427
       if (l.credit === '4428' && /^411/.test(l.debit)) { colIn = round2(colIn + l.suma); facturi.push({ data: e.data, document: e.document, partener: e.partener, tip: 'colectata', stadiu: 'neexigibila', suma: l.suma }); }
@@ -120,7 +127,7 @@ function tvaNeexigibila(db, period) {
 
 /** Numarul de inregistrare al unui articol in registrul-jurnal (pozitia cronologica, toate articolele). */
 function journalNr(db, entryId) {
-  const sorted = sortEntries(db.entries);
+  const sorted = sortEntries(postedEntries(db));
   const idx = sorted.findIndex((e) => e.id === entryId);
   return idx < 0 ? null : idx + 1;
 }
@@ -128,11 +135,11 @@ function journalNr(db, entryId) {
 /** Cartea mare: pentru fiecare cont, soldul initial, miscarile perioadei si soldul final. */
 function ledger(db, period) {
   // solduri initiale = opening + miscari inainte de perioada
-  const before = accumulate(allLines(db.entries.filter((e) => beforePeriod(e, period))));
+  const before = accumulate(allLines(postedEntries(db).filter((e) => beforePeriod(e, period))));
   const opening = db.openingBalances || {};
   const accounts = new Set([...Object.keys(opening), ...Object.keys(before)]);
 
-  const periodLines = allLines(db.entries.filter((e) => inPeriod(e, period)));
+  const periodLines = allLines(postedEntries(db).filter((e) => inPeriod(e, period)));
   for (const ln of periodLines) { accounts.add(ln.debit); accounts.add(ln.credit); }
 
   const result = [];
@@ -165,9 +172,9 @@ function ledger(db, period) {
 
 /** Balanta de verificare cu patru egalitati. */
 function trialBalance(db, period) {
-  const before = accumulate(allLines(db.entries.filter((e) => beforePeriod(e, period))));
+  const before = accumulate(allLines(postedEntries(db).filter((e) => beforePeriod(e, period))));
   const opening = db.openingBalances || {};
-  const periodLines = allLines(db.entries.filter((e) => inPeriod(e, period)));
+  const periodLines = allLines(postedEntries(db).filter((e) => inPeriod(e, period)));
   const rulaj = accumulate(periodLines);
 
   const accounts = new Set([
@@ -205,7 +212,7 @@ function trialBalance(db, period) {
 
 /** Calculeaza articolul de inchidere TVA pentru o perioada (nu il salveaza). */
 function vatClosing(db, period) {
-  const rulaj = accumulate(allLines(db.entries.filter((e) => inPeriod(e, period))));
+  const rulaj = accumulate(allLines(postedEntries(db).filter((e) => inPeriod(e, period))));
   const c4427 = rulaj['4427'] || { d: 0, c: 0 };
   const c4426 = rulaj['4426'] || { d: 0, c: 0 };
   const colectata = round2(c4427.c - c4427.d);
@@ -221,7 +228,7 @@ function vatClosing(db, period) {
 
 /** Calculeaza articolele de inchidere a conturilor de venituri si cheltuieli (clasa 6/7) intr-un an. */
 function annualClosing(db, year) {
-  const yearEntries = db.entries.filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
+  const yearEntries = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
   const acc = accumulate(allLines(yearEntries));
   const linesChelt = [];
   const linesVen = [];
@@ -271,7 +278,7 @@ function profitTax(db, year, opts) {
   const nedeductibile = round2(Number(opts.cheltNedeductibile) || 0);
   const deduceri = round2(Number(opts.deduceri) || 0);
   const pierdereReportata = round2(Number(opts.pierdereReportata) || 0);
-  const yearEntries = db.entries.filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
+  const yearEntries = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
   const acc = accumulate(allLines(yearEntries));
   let venit = 0; let chelt = 0;
   for (const cod of Object.keys(acc)) {
@@ -304,7 +311,7 @@ function profitTax(db, year, opts) {
  * Calculat pe soldul CUMULAT al lui 121 la sfarsitul anului (dupa inchiderea conturilor 6/7).
  */
 function resultDistribution(db, year) {
-  const upTo = db.entries.filter((e) => String(e.period || periodOf(e.data)) <= year + '-12');
+  const upTo = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)) <= year + '-12');
   const c121 = accumulate(allLines(upTo))['121'] || { d: 0, c: 0 };
   const net = round2(c121.c - c121.d); // > 0 = profit (sold creditor)
   const lines = [];
@@ -315,7 +322,7 @@ function resultDistribution(db, year) {
 
 /** Jurnalele de TVA (vanzari/cumparari) si sumarul pentru decontul D300. */
 function vatJournals(db, period) {
-  const entries = sortEntries(db.entries.filter((e) => inPeriod(e, period)));
+  const entries = sortEntries(postedEntries(db).filter((e) => inPeriod(e, period)));
   const isClass7 = (cod) => {
     const a = coa.getAccount(cod);
     return (a ? a.clasa : Number(String(cod)[0])) === 7;
@@ -382,10 +389,10 @@ function vatJournals(db, period) {
 function cashBankJournal(db, cont, period) {
   cont = cont || '5121';
   const opening = (db.openingBalances || {})[cont] || { d: 0, c: 0 };
-  const before = accumulate(allLines(db.entries.filter((e) => beforePeriod(e, period))))[cont] || { d: 0, c: 0 };
+  const before = accumulate(allLines(postedEntries(db).filter((e) => beforePeriod(e, period))))[cont] || { d: 0, c: 0 };
   let sold = round2((opening.d + before.d) - (opening.c + before.c)); // sold initial
   const siInitial = sold;
-  const periodLines = allLines(db.entries.filter((e) => inPeriod(e, period)))
+  const periodLines = allLines(postedEntries(db).filter((e) => inPeriod(e, period)))
     .filter((l) => l.debit === cont || l.credit === cont)
     .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
   let rd = 0; let rc = 0;
@@ -414,7 +421,7 @@ function registruIncasariPlati(db, period) {
   const NEUTRU = /^(45[5-8]|16\d|519|89)/;
   const TAXE = /^44[12]/;
   const q = String(period || '');
-  const ents = sortEntries(db.entries.filter((e) => {
+  const ents = sortEntries(postedEntries(db).filter((e) => {
     const p = String(e.period || periodOf(e.data));
     return !q || (q.length === 4 ? p.startsWith(q) : p === q);
   }));
@@ -456,10 +463,10 @@ function registruIncasariPlati(db, period) {
 function fisaCont(db, cont, period) {
   cont = String(cont || '').trim();
   const opening = (db.openingBalances || {})[cont] || { d: 0, c: 0 };
-  const before = accumulate(allLines(db.entries.filter((e) => beforePeriod(e, period))))[cont] || { d: 0, c: 0 };
+  const before = accumulate(allLines(postedEntries(db).filter((e) => beforePeriod(e, period))))[cont] || { d: 0, c: 0 };
   let sold = round2((opening.d + before.d) - (opening.c + before.c));
   const siInitial = sold;
-  const lines = allLines(db.entries.filter((e) => inPeriod(e, period)))
+  const lines = allLines(postedEntries(db).filter((e) => inPeriod(e, period)))
     .filter((l) => l.debit === cont || l.credit === cont)
     .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
   let rd = 0; let rc = 0;
@@ -484,13 +491,13 @@ function cashRegisterValuta(db, period, moneda) {
   moneda = String(moneda || 'EUR').toUpperCase();
   const opening = (db.openingBalances || {})[cont] || { d: 0, c: 0 };
   let soldLei = round2(opening.d - opening.c);
-  for (const e of db.entries.filter((x) => beforePeriod(x, period))) {
+  for (const e of postedEntries(db).filter((x) => beforePeriod(x, period))) {
     for (const l of (e.lines || [])) { if (l.debit === cont) soldLei = round2(soldLei + l.suma); if (l.credit === cont) soldLei = round2(soldLei - l.suma); }
   }
   const siLei = soldLei;
   let soldVal = 0; const rows = [];
   let rdLei = 0; let rcLei = 0; let rdVal = 0; let rcVal = 0;
-  const ents = db.entries.filter((e) => inPeriod(e, period) && (e.lines || []).some((l) => l.debit === cont || l.credit === cont))
+  const ents = postedEntries(db).filter((e) => inPeriod(e, period) && (e.lines || []).some((l) => l.debit === cont || l.credit === cont))
     .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
   for (const e of ents) {
     for (const l of (e.lines || [])) {
@@ -518,10 +525,10 @@ function cashRegisterValuta(db, period, moneda) {
 function cashControl(db, cont, period) {
   cont = cont || '5311';
   const opening = (db.openingBalances || {})[cont] || { d: 0, c: 0 };
-  const before = accumulate(allLines(db.entries.filter((e) => beforePeriod(e, period))))[cont] || { d: 0, c: 0 };
+  const before = accumulate(allLines(postedEntries(db).filter((e) => beforePeriod(e, period))))[cont] || { d: 0, c: 0 };
   let sold = round2((opening.d + before.d) - (opening.c + before.c));
   const movs = [];
-  for (const e of db.entries.filter((x) => inPeriod(x, period))) {
+  for (const e of postedEntries(db).filter((x) => inPeriod(x, period))) {
     for (const l of e.lines) {
       if (l.debit === cont || l.credit === cont) {
         movs.push({ data: e.data, partener: e.partener || '', cui: e.partenerCui || '', document: e.document || '',
@@ -555,6 +562,6 @@ function cashControl(db, cont, period) {
   return { cont, period, soldFinal: sold, negative, plafon, soldPesteLimita, ok: !negative.length && !plafon.length && !soldPesteLimita };
 }
 
-module.exports = { vatPeriod,
+module.exports = { vatPeriod, isPosted, postedEntries,
   allLines, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };

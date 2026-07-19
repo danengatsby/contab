@@ -2,6 +2,7 @@
 
 const { round2 } = require('./util');
 const coa = require('./chartOfAccounts');
+const { postedEntries } = require('./accounting'); // registrele analitice numara doar articole postate
 
 // Conturi care se detaliaza pe partener (dimensiunea = partenerul)
 const PARTNER_SYNTH = ['401', '404', '408', '409', '419', '4111', '418', '461', '462'];
@@ -48,7 +49,7 @@ function analyticBalance(db) {
   }
 
   // rulaje din inregistrari
-  for (const e of db.entries) {
+  for (const e of postedEntries(db)) {
     const ctx = { partener: e.partener, cui: e.partenerCui, analitic: e.analitic };
     for (const l of e.lines) {
       if (ANALYTIC_ACCOUNTS.includes(l.debit)) { const r = ensure(l.debit, dimKey(l.debit, ctx), dimName(l.debit, ctx), e.partenerCui); r.rd = round2(r.rd + l.suma); }
@@ -132,7 +133,7 @@ function aging(db, asOf) {
       if (net > 0) r.charges.push({ date: '1900-01-01', amount: round2(net) });
       else if (net < 0) r.paid = round2(r.paid - net);
     }
-    for (const e of (db.entries || [])) {
+    for (const e of postedEntries(db)) {
       const key = partnerKey(e.partener, e.partenerCui);
       for (const l of e.lines) {
         const onDebit = accounts.includes(l.debit);
