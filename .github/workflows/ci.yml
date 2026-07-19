@@ -68,6 +68,10 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Store incremental pe PostgreSQL (paritate cu SQLite)
+        env:
+          CONTAB_PG_URL: postgres://contab:contab@localhost:5432/contab_test
+        run: node test/store-pg.js
       - name: Suita HTTP pe PostgreSQL
         env:
           CONTAB_TEST_DRIVER: pg
