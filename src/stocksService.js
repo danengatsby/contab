@@ -67,14 +67,32 @@ function importProducts(fid, csv) {
   return { importati };
 }
 
+/** Sterge un produs — DOAR daca n-a avut nicio miscare de stoc (produs creat din greseala).
+ *  Cu miscari, stergerea ar sterge fisa de magazie dar ar lasa notele contabile (cartea mare)
+ *  fara acoperire -> divergenta. Un produs folosit se DEZACTIVEAZA (setProductActive), pastrand
+ *  istoricul intact; corectiile de valoare se fac prin storno. */
 function deleteProduct(fid, id) {
   fid = reqFirma(fid);
   const d = db.get();
   const p = (d.products || []).find((x) => x.id === id && x.firmaId === fid);
   if (!p) fail(404, 'Produs inexistent.'); // izolare multi-firma
+  if ((d.stockMovements || []).some((m) => m.firmaId === fid && m.productId === p.id)) {
+    fail(400, 'Produsul are miscari de stoc — nu se poate sterge (ar lasa notele contabile fara acoperire). Dezactiveaza-l in schimb (istoricul ramane, dar nu mai primeste miscari noi).');
+  }
   d.products = (d.products || []).filter((x) => x !== p);
-  d.stockMovements = (d.stockMovements || []).filter((m) => m.productId !== p.id);
   db.save();
+}
+
+/** Dezactiveaza/reactiveaza un produs. Cel inactiv ramane in listari si rapoarte (istoricul e
+ *  intact), dar nu mai poate primi miscari de stoc noi — echivalentul soft-delete corect contabil. */
+function setProductActive(fid, id, activ) {
+  fid = reqFirma(fid);
+  const d = db.get();
+  const p = (d.products || []).find((x) => x.id === id && x.firmaId === fid);
+  if (!p) fail(404, 'Produs inexistent.');
+  p.activ = activ !== false; // implicit reactivare; false = dezactivare
+  db.save();
+  return { product: p };
 }
 
 // ── Gestiuni (depozite) ──
@@ -114,7 +132,9 @@ function addMovement(fid, operator, b) {
   if (!b.productId || !b.tip || !b.cantitate || !b.data) fail(400, 'Completeaza produsul, tipul, cantitatea si data.');
   if (!['receptie', 'iesire', 'transfer'].includes(b.tip)) fail(400, 'Tip miscare invalid.');
   const d = db.get();
-  if (!(d.products || []).find((p) => p.id === b.productId && p.firmaId === fid)) fail(400, 'Produs inexistent.');
+  const prodMv = (d.products || []).find((p) => p.id === b.productId && p.firmaId === fid);
+  if (!prodMv) fail(400, 'Produs inexistent.');
+  if (prodMv.activ === false) fail(400, 'Produsul este dezactivat — reactiveaza-l inainte de a inregistra miscari noi.');
   const gOk = (id) => !id || (d.gestiuni || []).some((g) => g.id === id && g.firmaId === fid);
   if (!gOk(b.gestiuneId) || !gOk(b.gestiuneDestId)) fail(400, 'Gestiune inexistenta.');
   if (b.tip === 'transfer' && (!b.gestiuneId || !b.gestiuneDestId || b.gestiuneId === b.gestiuneDestId)) fail(400, 'Transferul cere gestiune sursa si destinatie diferite.');
@@ -408,7 +428,7 @@ function stornoInventory(fid, operator, id, dataStorno) {
 }
 
 module.exports = {
-  reqFirma, upsertProduct, importProducts, deleteProduct,
+  reqFirma, upsertProduct, importProducts, deleteProduct, setProductActive,
   upsertGestiune, deleteGestiune,
   addMovement, deleteMovement, postMovement,
   initialTotals, importInitialStock,

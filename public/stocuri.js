@@ -75,14 +75,20 @@ async function loadStocks() {
   const totV = stock.reduce((t, s) => t + s.stocV, 0);
   $('#stocksList').innerHTML = stock.length
     ? `<table><thead><tr><th>Gestiune</th><th>Cod</th><th>Denumire</th><th class="num">Cantitate</th><th>UM</th><th class="num">CMP</th><th class="num">Valoare</th><th></th></tr></thead><tbody>${
-      stock.map((s) => `<tr><td>${H(s.gestiune.cod)}</td><td class="acc">${H(s.product.cod)}</td><td>${H(s.product.denumire)}</td>
+      stock.map((s) => `<tr><td>${H(s.gestiune.cod)}</td><td class="acc">${H(s.product.cod)}</td><td>${H(s.product.denumire)}${s.product.activ === false ? ' <span class="badge" title="Produs dezactivat — nu mai primește mișcări noi">inactiv</span>' : ''}</td>
         <td class="num">${fmt(s.stocQ)}</td><td>${H(s.product.um || 'buc')}</td><td class="num">${fmt(s.cmp)}</td><td class="num">${fmt(s.stocV)}</td>
-        <td><a class="linkbtn" href="/pdf/stock-ledger/${s.product.id}?asOf=${asOf}&gestiune=${s.gestiune.id}" target="_blank">fișă</a> · <button class="linkbtn pdel" data-id="${s.product.id}">șterge</button></td></tr>`).join('')}
+        <td><a class="linkbtn" href="/pdf/stock-ledger/${s.product.id}?asOf=${asOf}&gestiune=${s.gestiune.id}" target="_blank">fișă</a> · <button class="linkbtn pdel" data-id="${s.product.id}">șterge</button> · <button class="linkbtn ptoggle" data-id="${s.product.id}" data-activ="${s.product.activ === false ? '0' : '1'}">${s.product.activ === false ? 'reactivează' : 'dezactivează'}</button></td></tr>`).join('')}
       <tr class="bold"><td colspan="6">TOTAL VALOARE STOC</td><td class="num">${fmt(round2(totV))}</td><td></td></tr></tbody></table>`
     : '<p class="muted">Niciun stoc. Adaugă produse/gestiuni și înregistrează recepții.</p>';
   $$('#stocksList .pdel').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ștergi produsul și toate mișcările lui?')) return;
-    await api('/api/products/' + b.dataset.id, { method: 'DELETE' }); loadStocks(); toast('Produs șters');
+    if (!confirm('Ștergi produsul? (permis doar dacă nu are nicio mișcare)')) return;
+    try { await api('/api/products/' + b.dataset.id, { method: 'DELETE' }); loadStocks(); toast('Produs șters'); }
+    catch (e) { toast(e.message || 'Nu se poate șterge', true); }
+  }));
+  $$('#stocksList .ptoggle').forEach((b) => b.addEventListener('click', async () => {
+    const activ = b.dataset.activ === '0'; // reactivare dacă era inactiv
+    await api('/api/products/' + b.dataset.id + '/active', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activ }) });
+    loadStocks(); toast(activ ? 'Produs reactivat' : 'Produs dezactivat');
   }));
   // mișcări (cu filtre)
   STOCK_MOVS = movs;

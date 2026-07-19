@@ -38,6 +38,11 @@ module.exports = function register(app, ctx) {
     svc.deleteProduct(activeId(req), req.params.id);
     return { ok: true };
   }));
+  // dezactivare/reactivare (soft-delete corect contabil pentru produse cu istoric)
+  app.post('/api/products/:id/active', (req, res) => run(res, () => {
+    const r = svc.setProductActive(activeId(req), req.params.id, (req.body || {}).activ !== false);
+    return { ok: true, product: r.product };
+  }));
 
   // ── preluare stoc initial ──
   app.get('/api/stocks/initial-check', (req, res) => res.json({ totaluri: svc.initialTotals(S(req)) }));

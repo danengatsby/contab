@@ -1973,9 +1973,27 @@ dbx.firme.push({ id: 7777, nume: 'ALT SRL', cui: '77' });
 eq('stergerea produsului din alta firma -> 404', errStatus(() => ssvc.deleteProduct(7777, rp.product.id)), 404);
 eq('miscare pe produsul altei firme -> 400 (produs inexistent)', errStatus(() => ssvc.addMovement(7777, 'op', { productId: rp.product.id, tip: 'receptie', cantitate: 1, data: '2026-01-01' })), 400);
 eq('storno pe inventarul altei firme -> 404', errStatus(() => ssvc.stornoInventory(7777, 'op', 'inv-inexistent', null)), 404);
-ssvc.deleteProduct(fidOk, rp.product.id);
-ok('acelasi id, firma corecta: stergerea merge', !db.get().products.some((p) => p.id === rp.product.id));
+ssvc.deleteProduct(fidOk, rp.product.id); // produs FARA miscari -> stergere permisa (creat din greseala)
+ok('produs fara miscari: stergerea merge', !db.get().products.some((p) => p.id === rp.product.id));
 dbx.firme = dbx.firme.filter((f) => f.id !== 7777); // curatenie (doar in memorie)
+
+// ── STERGERE PRODUS vs DEZACTIVARE (fisa de magazie / cartea mare nu diverg) ──
+{
+  const pu = ssvc.upsertProduct(fidOk, { cod: 'USE-1', denumire: 'Produs folosit', um: 'buc', cont: '371' }).product;
+  const gU = ssvc.upsertGestiune(fidOk, { cod: 'GU', denumire: 'Gest U' }).gestiune;
+  ssvc.addMovement(fidOk, 'op', { productId: pu.id, tip: 'receptie', cantitate: 3, data: '2026-06-05', pretUnitar: 10, gestiuneId: gU.id });
+  eq('produs CU miscari: stergerea e refuzata (400)', errStatus(() => ssvc.deleteProduct(fidOk, pu.id)), 400);
+  ok('mesajul indruma spre dezactivare', (() => { try { ssvc.deleteProduct(fidOk, pu.id); return false; } catch (e) { return /[Dd]ezactiveaza/.test(e.message); } })());
+  ssvc.setProductActive(fidOk, pu.id, false);
+  ok('produsul dezactivat ramane in nomenclator (istoric intact)', db.get().products.some((p) => p.id === pu.id && p.activ === false));
+  eq('produs dezactivat: miscare noua refuzata (400)', errStatus(() => ssvc.addMovement(fidOk, 'op', { productId: pu.id, tip: 'receptie', cantitate: 1, data: '2026-06-06', gestiuneId: gU.id })), 400);
+  ssvc.setProductActive(fidOk, pu.id, true);
+  ok('reactivat: miscarile noi merg din nou', !!ssvc.addMovement(fidOk, 'op', { productId: pu.id, tip: 'receptie', cantitate: 1, data: '2026-06-07', pretUnitar: 10, gestiuneId: gU.id }).movement);
+  // curatenie
+  db.get().stockMovements = db.get().stockMovements.filter((m) => m.productId !== pu.id);
+  db.get().products = db.get().products.filter((p) => p.id !== pu.id);
+  db.get().gestiuni = db.get().gestiuni.filter((g) => g.id !== gU.id);
+}
 
 // ── PERIOADA INCHISA: garda unica (db.assertPeriodOpen) uniforma pe serviciile datate ──
 {
