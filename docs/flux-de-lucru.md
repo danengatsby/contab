@@ -56,14 +56,16 @@ Fiecare raport are buton **⬇ PDF**, iar fiecare înregistrare poate fi exporta
 > nomenclatoarele și facturile (`SourceDocuments`); validarea oficială cere schema XSD D406
 > condiționate de specificul firmei.
 >
-> **SAF-T — stadiul conformității (verificat structural, nu XSD):** fișierul are cele 4 secțiuni
-> OECD SAF-T 2.0 corect imbricate (Header, MasterFiles, GeneralLedgerEntries, SourceDocuments),
-> tranzacțiile din cartea mare respectă `TotalDebit = TotalCredit`, iar MasterFiles/SourceDocuments
-> conțin secțiunile de bază. **Goluri cunoscute față de D406 v2.4.x** (de completat înainte de
-> depunerea reală, validând cu **modulul ANAF Soft-J / DUKIntegrator**): lipsesc `UOMTable`
-> (deși unitățile de măsură sunt folosite în `Products`/`MovementOfGoods`), `Owners`
-> (asociați/acționari) și `MovementTypeTable`; `AuditFileVersion` e `2.0` (verifică valoarea cerută
-> de XSD-ul curent). Aplicația generează o **ciornă structurată**, nu un fișier XSD-validat.
+> **SAF-T (D406) — VALIDAT oficial.** Fișierul generat trece validatorul ANAF
+> (**DUKIntegrator**) cu „Validare fără erori" în toate cele trei variante — lunară (L),
+> de active (A) și de stocuri (C) — și, structural, XSD-ul oficial `Ro_SAFT_Schema` (v2.4.9,
+> `AuditFileVersion` 2.4.9). Conține toate secțiunile cerute (inclusiv `UOMTable` pe coduri
+> UN/ECE, `Owners`, `MovementTypeTable`, `Assets`, `PhysicalStock`) cu nomenclatoarele numerice
+> ANAF (coduri de taxă 3001xx, tipuri de mișcare 10/20/40 etc.).
+>
+> Verificare oficială, la cerere: `scripts/valideaza-duk.sh D406 fișier.xml` (validatorul ANAF
+> prin Docker). Detalii și lecțiile de conformitate: `docs/guvernanta-fiscala.md`. Validarea
+> oficială se repetă oricum obligatoriu la depunerea în SPV.
 
 **Gestiunea stocurilor (cantitativ-valoric, CMP, pe gestiuni):** tab-ul „Stocuri” ține un
 nomenclator de **gestiuni** (depozite: cod, denumire, gestionar, cont) și de **produse** (cod,
