@@ -1879,6 +1879,21 @@ ok('profit: D101 NU apare in afara lunii de sfarsit de an', !fp.expected(fp.buil
 ok('PFA: nici D100 nici D101', (() => { const t = fp.expected(fp.build({ tvaPlatitor: true, tipEntitate: 'pfa', regimImpozit: 'profit' }, {}), '2026-12', noIntra); return !t.includes('d100') && !t.includes('d101'); })());
 eq('termen D101: 25 martie anul urmator anului fiscal', declMod.dueDate('d101', '2025-12'), '2026-03-25');
 ok('expectedForFirma: firma pe profit vede D101 in decembrie', declMod.expectedForFirma({ firmaId: 8, company: { tvaPlatitor: true, regimImpozit: 'profit' }, angajati: [], entries: [] }, '2026-12').some((x) => x.tip === 'd101'));
+
+section('Controale fiscale derivate din profil (src/fiscalControls.js)');
+const fctrl = require('../src/fiscalControls');
+// neplatitor TVA care colecteaza TVA (4427) -> EROARE, ok=false
+const fcNepl = fctrl.check({ company: { tvaPlatitor: false, tipEntitate: 'srl' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-03', data: '2026-03-10', tip: 'f', lines: [{ debit: '4111', credit: '4427', suma: 210 }] }] }, { year: '2026' });
+ok('control: neplatitor TVA care colecteaza 4427 -> eroare + ok=false', fcNepl.findings.some((f) => f.cod === 'tva-neplatitor-colecteaza' && f.nivel === 'eroare') && fcNepl.ok === false);
+// micro peste plafon -> atentie
+ok('control: micro peste plafonul de venituri -> atentie', fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-05', data: '2026-05-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 600000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'micro-peste-plafon' && f.nivel === 'atentie'));
+// platitor TVA fara CAEN -> atentie
+ok('control: platitor TVA fara CAEN -> atentie', fctrl.check({ company: { tvaPlatitor: true, regimImpozit: 'profit' }, angajati: [{ id: 'a' }], entries: [] }, { year: '2026' }).findings.some((f) => f.cod === 'tva-fara-caen'));
+// operatiuni intracom fara Intrastat marcat -> info
+ok('control: intracom fara Intrastat marcat -> info', fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-04', data: '2026-04-10', tip: 'livrare_intracomunitara', lines: [{ debit: '4111', credit: '707', suma: 5000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'intracom-fara-intrastat' && f.nivel === 'info'));
+// firma coerenta -> nicio constatare, ok=true
+const fcOk = fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-05', data: '2026-05-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 1000 }] }] }, { year: '2026' });
+eq('control: firma coerenta -> 0 constatari, ok=true', fcOk.findings.length + '/' + fcOk.ok, '0/true');
 // expectedForFirma deleaga spre motor -> Intrastat vizibil in registru cand firma e obligata
 const vIntra = { firmaId: 7, company: { tvaPlatitor: true, intrastatObligat: true }, angajati: [], entries: [{ tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10' }] };
 ok('expectedForFirma: Intrastat apare pentru firma obligata cu miscari intracom', declMod.expectedForFirma(vIntra, '2026-05').some((x) => x.tip === 'intrastat'));

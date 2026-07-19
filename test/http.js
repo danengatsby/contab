@@ -548,6 +548,14 @@ async function main() {
       // micro: in decembrie NU apare D101
       const dregDecMicro = (await req('GET', '/api/declarations?period=2026-12', { cookie: c1 })).json;
       ok('profil micro: D101 nu apare in decembrie', !(dregDecMicro.rows || []).map((x) => x.tip).includes('d101'));
+      // controale de coerenta derivate din profil (al treilea pilon)
+      const ctrl = (await req('GET', '/api/fiscal-controls?year=2026', { cookie: c1 })).json;
+      ok('fiscal-controls: structura coerenta (byLevel + ok + findings)', ctrl.byLevel && typeof ctrl.ok === 'boolean' && Array.isArray(ctrl.findings));
+      // fortez un control determinist: platitor TVA fara CAEN -> atentie
+      await req('POST', '/api/company', { cookie: c1, body: { caen: '' } });
+      const ctrl2 = (await req('GET', '/api/fiscal-controls?year=2026', { cookie: c1 })).json;
+      ok('fiscal-controls: platitor TVA fara CAEN semnalat (atentie)', ctrl2.findings.some((f) => f.cod === 'tva-fara-caen' && f.nivel === 'atentie'));
+      await req('POST', '/api/company', { cookie: c1, body: { caen: '1071' } }); // restaurez CAEN
     }
 
     // ── Pro-rata TVA (art. 300): split automat al TVA-ului pe achizitiile mixte ──
