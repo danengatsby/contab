@@ -134,6 +134,7 @@ $$('#bottomnav button[data-go]').forEach((b) => b.addEventListener('click', () =
 $('#moreBtn') && $('#moreBtn').addEventListener('click', () => $('#moreSheet').classList.remove('hidden'));
 $('#moreClose') && $('#moreClose').addEventListener('click', closeMore);
 $('#moreSheet') && $('#moreSheet').addEventListener('click', (e) => { if (e.target.id === 'moreSheet') closeMore(); });
+$('#moreClose') && $('#moreClose').addEventListener('click', closeMore);
 $$('#moreSheet button[data-go]').forEach((b) => b.addEventListener('click', () => { goTab(b.dataset.go); closeMore(); }));
 // ───────────────────────── FIRME (multi-firma) ─────────────────────────
 function fillFirmaSelect() {
