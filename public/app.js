@@ -327,7 +327,10 @@ function renderAI() {
     help.textContent = 'Pentru a activa extragerea cu AI, pornește serverul cu cheia setată:\n\n  ANTHROPIC_API_KEY=sk-ant-... npm start';
   }
   toggle.checked = !!ai.enabled;
-  toggle.disabled = !ai.available;
+  // setare GLOBALA — doar adminul o comuta (ceilalti o vad, dezactivata)
+  const adminAI = USER.role === 'admin';
+  toggle.disabled = !ai.available || !adminAI;
+  if (!adminAI && ai.available) { st.textContent += ' · comutarea o face administratorul'; }
 }
 $('#aiToggle').addEventListener('change', async (e) => {
   await api('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ useAI: e.target.checked }) });

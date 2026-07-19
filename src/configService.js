@@ -82,8 +82,8 @@ function assignChitanta(fid, entryId) {
 // Restul (authSecret, smtp, fiscal, docSeries, backup...) se ating DOAR prin rutele
 // lor dedicate (cu requireAdmin) sau deloc; un Object.assign brut ar fi permis unui
 // utilizator autentificat sa scrie authSecret si sa forjeze token-uri de admin.
-const USER_SETTINGS = new Set(['useAI']);          // orice utilizator autentificat
-const ADMIN_SETTINGS = new Set(['selfRegister']);  // doar administratorul
+const USER_SETTINGS = new Set([]);                          // (niciuna deocamdata)
+const ADMIN_SETTINGS = new Set(['useAI', 'selfRegister']);  // setari GLOBALE — doar admin
 const PUBLIC_SETTINGS = ['useAI', 'selfRegister', 'tvaStandard', 'tvaRedus']; // ce se intoarce clientului
 
 /** Setarile aplicatiei (globale): merge peste cele existente, DOAR chei din allowlist.
