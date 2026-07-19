@@ -65,13 +65,15 @@ module.exports = function register(app, ctx) {
   app.get('/xml/d300', (req, res) => {
     const v = S(req);
     recordDecl(req, 'd300', req.query.period);
-    sendXml(res, xml.d300Xml(v.company, req.query.period || null, rep.d300(v, req.query.period || null), declarantOf(req)), 'd300.xml');
+    const pd300 = acc.vatPeriod(v.company, req.query.period || null); // agrega trimestrul la regim 'T'
+    sendXml(res, xml.d300Xml(v.company, pd300, rep.d300(v, pd300), declarantOf(req)), 'd300.xml');
   });
   app.get('/xml/d394', (req, res) => {
     const v = S(req);
     const period = req.query.period || null;
     recordDecl(req, 'd394', period);
-    sendXml(res, xml.d394Xml(v.company, period, acc.vatJournals(v, period), declarantOf(req), rep.achizitiiPfCarnet(v, period)), 'd394.xml');
+    const pd394 = acc.vatPeriod(v.company, period); // agrega trimestrul la regim 'T'
+    sendXml(res, xml.d394Xml(v.company, pd394, acc.vatJournals(v, pd394), declarantOf(req), rep.achizitiiPfCarnet(v, pd394)), 'd394.xml');
   });
   app.get('/api/d390', (req, res) => res.json(rep.d390(S(req), req.query.period || null)));
   app.get('/xml/d390', (req, res) => {
@@ -108,9 +110,11 @@ module.exports = function register(app, ctx) {
   app.get('/xml/saft', wrap(async (req, res) => {
     const v = S(req);
     // D406 se depune lunar/trimestrial: ?period=YYYY-MM genereaza luna; ?year= ramane pentru anual
-    const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.period || '')) ? req.query.period : null;
+    const monthReq = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.period || '')) ? req.query.period : null;
+    // D406 urmeaza perioada TVA: platitor trimestrial -> trimestrul; altfel luna ceruta
+    const period = monthReq ? acc.vatPeriod(v.company, monthReq) : null;
     const year = req.query.year || String(new Date().getFullYear());
-    recordDecl(req, 'saft', period || (year + '-12'));
+    recordDecl(req, 'saft', monthReq || (year + '-12'));
     // saftXmlAsync: output byte-identic cu saftXml, dar cedeaza event loop-ul in buclele grele
     // (nu blocheaza celelalte cereri cat timp se genereaza SAF-T-ul la volume mari).
     // ?tip=C genereaza declaratia de STOCURI (la cerere ANAF); implicit L (lunar) / A (anual)
@@ -125,8 +129,9 @@ module.exports = function register(app, ctx) {
     const year = req.query.year || String(new Date().getFullYear());
     let x = '';
     try {
-      if (type === 'd300') x = xml.d300Xml(v.company, period, rep.d300(v, period), declarantOf(req));
-      else if (type === 'd394') x = xml.d394Xml(v.company, period, acc.vatJournals(v, period), declarantOf(req), rep.achizitiiPfCarnet(v, period));
+      const pv = acc.vatPeriod(v.company, period); // D300/D394: agrega trimestrul la regim 'T'
+      if (type === 'd300') x = xml.d300Xml(v.company, pv, rep.d300(v, pv), declarantOf(req));
+      else if (type === 'd394') x = xml.d394Xml(v.company, pv, acc.vatJournals(v, pv), declarantOf(req), rep.achizitiiPfCarnet(v, pv));
       else if (type === 'd390') x = xml.d390Xml(v.company, period, rep.d390(v, period));
       else if (type === 'd100') x = xml.d100Xml(v.company, period, rep.d100micro(v, period), declarantOf(req));
       else if (type === 'intrastat') x = xml.intrastatXml(v.company, period, rep.intrastat(v, period));

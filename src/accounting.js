@@ -33,8 +33,24 @@ function sortEntries(entries) {
   });
 }
 
+// Perioada fiscala TVA a firmei pentru o luna: regim 'T' (trimestrial) -> trimestrul care
+// contine luna ('YYYY-Qn'); altfel luna ca atare. Declaratiile TVA (D300/D394/D406) agrega
+// astfel intreg trimestrul pentru platitorii trimestriali.
+function vatPeriod(company, monthPeriod) {
+  const m = String(monthPeriod || '').match(/^(\d{4})-(\d{2})$/);
+  if (m && company && company.perioadaTva === 'T') return m[1] + '-Q' + Math.ceil(Number(m[2]) / 3);
+  return monthPeriod;
+}
+
 function inPeriod(e, period) {
   if (!period) return true;
+  const q = String(period).match(/^(\d{4})-Q([1-4])$/);
+  if (q) { // trimestru: cele 3 luni ale lui
+    const ep = String(e.period || e.data || '').slice(0, 7);
+    const yr = q[1]; const qn = Number(q[2]);
+    const luni = [qn * 3 - 2, qn * 3 - 1, qn * 3].map((x) => yr + '-' + String(x).padStart(2, '0'));
+    return luni.includes(ep);
+  }
   const ep = e.period || periodOf(e.data);
   if (period.length === 4) return ep.slice(0, 4) === period; // an intreg (YYYY)
   return ep === period; // luna exacta (YYYY-MM)
@@ -539,6 +555,6 @@ function cashControl(db, cont, period) {
   return { cont, period, soldFinal: sold, negative, plafon, soldPesteLimita, ok: !negative.length && !plafon.length && !soldPesteLimita };
 }
 
-module.exports = {
+module.exports = { vatPeriod,
   allLines, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };

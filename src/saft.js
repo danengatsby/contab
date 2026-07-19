@@ -35,8 +35,18 @@ const num2 = (x) => (Number(x) || 0).toFixed(2);
 const roCui = (cui) => 'RO' + String(cui || '').replace(/^ro/i, '').replace(/\s/g, '');
 
 // `p` poate fi un an ('YYYY') sau o luna ('YYYY-MM') — D406 se depune lunar/trimestrial din 2025.
-function inYear(e, p) { const s = String(e.period || e.data || ''); const q = String(p); return q.length === 7 ? s.slice(0, 7) === q : s.slice(0, 4) === q; }
-function beforeYear(e, p) { const s = String(e.period || e.data || ''); const q = String(p); return q.length === 7 ? s.slice(0, 7) < q : s.slice(0, 4) < q; }
+function inYear(e, p) {
+  const s = String(e.period || e.data || ''); const q = String(p);
+  const tr = q.match(/^(\d{4})-Q([1-4])$/);
+  if (tr) { const n = Number(tr[2]); const luni = [n * 3 - 2, n * 3 - 1, n * 3].map((x) => tr[1] + '-' + String(x).padStart(2, '0')); return luni.includes(s.slice(0, 7)); }
+  return q.length === 7 ? s.slice(0, 7) === q : s.slice(0, 4) === q;
+}
+function beforeYear(e, p) {
+  const s = String(e.period || e.data || ''); const q = String(p);
+  const tr = q.match(/^(\d{4})-Q([1-4])$/);
+  if (tr) return s.slice(0, 7) < (tr[1] + '-' + String(Number(tr[2]) * 3 - 2).padStart(2, '0'));
+  return q.length === 7 ? s.slice(0, 7) < q : s.slice(0, 4) < q;
+}
 
 /** Net {d,c} acumulat pe cont dintr-o lista de inregistrari. */
 function accumulate(entries) {
@@ -118,6 +128,24 @@ function addressXml(p, pad) {
   ].join('\n');
 }
 
+// D406 acopera o LUNA sau un TRIMESTRU ('YYYY-Qn', pentru platitorii TVA trimestriali) — ambele
+// sunt varianta periodica (L); anul intreg ('YYYY') e varianta anuala (A).
+function saftIsPeriodic(year) { return /^\d{4}-(\d{2}|Q[1-4])$/.test(String(year)); }
+// Codul tipului de declaratie (HeaderComment): L = lunar, T = trimestrial, A = anual.
+// Validatorul verifica potrivirea cu intervalul PeriodStart..PeriodEnd.
+function saftHeaderCode(year) {
+  if (/^\d{4}-Q[1-4]$/.test(String(year))) return 'T';
+  if (/^\d{4}-\d{2}$/.test(String(year))) return 'L';
+  return 'A';
+}
+function saftPeriodRange(year) {
+  const q = String(year).match(/^\d{4}-Q([1-4])$/);
+  if (q) { const n = Number(q[1]); return { start: n * 3 - 2, end: n * 3 }; }
+  const m = String(year).match(/^\d{4}-(\d{2})$/);
+  if (m) return { start: Number(m[1]), end: Number(m[1]) };
+  return { start: 1, end: 12 };
+}
+
 function header(company, year) {
   const now = new Date().toISOString().slice(0, 10);
   return [
@@ -152,12 +180,12 @@ function header(company, year) {
     '    </Company>',
     '    <DefaultCurrencyCode>RON</DefaultCurrencyCode>',
     '    <SelectionCriteria>',
-    `      <PeriodStart>${String(year).length === 7 ? Number(String(year).slice(5, 7)) : 1}</PeriodStart>`,
+    `      <PeriodStart>${saftPeriodRange(year).start}</PeriodStart>`,
     `      <PeriodStartYear>${String(year).slice(0, 4)}</PeriodStartYear>`,
-    `      <PeriodEnd>${String(year).length === 7 ? Number(String(year).slice(5, 7)) : 12}</PeriodEnd>`,
+    `      <PeriodEnd>${saftPeriodRange(year).end}</PeriodEnd>`,
     `      <PeriodEndYear>${String(year).slice(0, 4)}</PeriodEndYear>`,
     '    </SelectionCriteria>',
-    `    <HeaderComment>${company._saftTip || (String(year).length === 7 ? 'L' : 'A')}</HeaderComment>`,
+    `    <HeaderComment>${company._saftTip || saftHeaderCode(year)}</HeaderComment>`,
     '    <SegmentIndex>1</SegmentIndex>',
     '    <TotalSegmentsInsequence>1</TotalSegmentsInsequence>',
     '    <TaxAccountingBasis>A</TaxAccountingBasis>',
@@ -385,7 +413,7 @@ function ownersXml(db) {
 }
 
 function masterFiles(db, year) {
-  const lunar = String(year).length === 7;
+  const lunar = saftIsPeriodic(year);
   const roles = partnerRoles(db, year);
   // varianta ANUALA (A = declaratia de Active): dictionarul validatorului dezactiveaza
   // continutul sectiunilor de parteneri/taxe/produse — raman GOALE; pline sunt doar
@@ -408,7 +436,7 @@ function masterFiles(db, year) {
 }
 
 function movementOfGoodsXml(db, year) {
-  if (String(year).length === 7) return '    <MovementOfGoods/>'; // gol in lunar (vezi mai sus)
+  if (saftIsPeriodic(year)) return '    <MovementOfGoods/>'; // gol in varianta periodica (vezi mai sus)
   const byId = new Map((db.products || []).map((p) => [p.id, p]));
   const gCod = new Map((db.gestiuni || []).map((g) => [g.id, g.cod]));
   const movs = stocksLib.sortMov((db.stockMovements || []).filter((m) => inYear({ data: m.data }, year)));
@@ -503,7 +531,7 @@ function glEntriesSorted(db, year) {
     .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : String(a.id).localeCompare(String(b.id))));
 }
 function glWrap(entries, year, txs) {
-  if (String(year).length !== 7) return '  <GeneralLedgerEntries/>'; // gol in varianta A
+  if (!saftIsPeriodic(year)) return '  <GeneralLedgerEntries/>'; // gol in varianta A
   let totalD = 0; let totalC = 0;
   for (const e of entries) for (const l of e.lines) { totalD = round2(totalD + l.suma); totalC = round2(totalC + l.suma); }
   return [
@@ -719,7 +747,7 @@ function paymentsXml(db, year) {
 function sourceDocuments(db, year) {
   // A (Active): documente-sursa dezactivate + AssetTransactions cu contor;
   // C (Stocuri): la fel, dar FARA AssetTransactions si cu MovementOfGoods PLIN
-  if (String(year).length !== 7) {
+  if (!saftIsPeriodic(year)) {
     return ['  <SourceDocuments>', '    <SalesInvoices/>', '    <PurchaseInvoices/>',
       '    <Payments/>',
       db._saftTip === 'C' ? movementOfGoodsXml(db, year) : '    <MovementOfGoods/>',
@@ -769,7 +797,7 @@ function sourceDocuments(db, year) {
 async function sourceDocumentsAsync(db, year) {
   // A (Active): documente-sursa dezactivate + AssetTransactions cu contor;
   // C (Stocuri): la fel, dar FARA AssetTransactions si cu MovementOfGoods PLIN
-  if (String(year).length !== 7) {
+  if (!saftIsPeriodic(year)) {
     return ['  <SourceDocuments>', '    <SalesInvoices/>', '    <PurchaseInvoices/>',
       '    <Payments/>',
       db._saftTip === 'C' ? movementOfGoodsXml(db, year) : '    <MovementOfGoods/>',
@@ -946,7 +974,7 @@ module.exports = { saftXml, saftXmlAsync, saftSummary, accountBalances, partnerR
 function sourceDocuments(db, year) {
   // A (Active): documente-sursa dezactivate + AssetTransactions cu contor;
   // C (Stocuri): la fel, dar FARA AssetTransactions si cu MovementOfGoods PLIN
-  if (String(year).length !== 7) {
+  if (!saftIsPeriodic(year)) {
     return ['  <SourceDocuments>', '    <SalesInvoices/>', '    <PurchaseInvoices/>',
       '    <Payments/>',
       db._saftTip === 'C' ? movementOfGoodsXml(db, year) : '    <MovementOfGoods/>',
@@ -996,7 +1024,7 @@ function sourceDocuments(db, year) {
 async function sourceDocumentsAsync(db, year) {
   // A (Active): documente-sursa dezactivate + AssetTransactions cu contor;
   // C (Stocuri): la fel, dar FARA AssetTransactions si cu MovementOfGoods PLIN
-  if (String(year).length !== 7) {
+  if (!saftIsPeriodic(year)) {
     return ['  <SourceDocuments>', '    <SalesInvoices/>', '    <PurchaseInvoices/>',
       '    <Payments/>',
       db._saftTip === 'C' ? movementOfGoodsXml(db, year) : '    <MovementOfGoods/>',
