@@ -64,7 +64,7 @@ function buildSeedData(nextEntryId) {
       { id: 'g2', firmaId: FID, cod: 'MAG', denumire: 'Magazin', gestionar: 'Popa Ion', cont: '371' },
     ],
     products: [
-      { id: 'prod1', firmaId: FID, cod: 'MARFA-001', denumire: 'Marfa generala', um: 'buc', grupa: 'Marfuri', cont: '371', codNC: '' },
+      { id: 'prod1', firmaId: FID, cod: 'MARFA-001', denumire: 'Marfa generala', um: 'buc', grupa: 'Marfuri', cont: '371', codNC: '', activ: true },
     ],
     angajati: [
       { id: 'ang1', firmaId: FID, nume: 'Ion Popescu', cnp: '1900101415238', functie: 'Vanzator', salariuBrut: 5000, neimpozabil: 0 },

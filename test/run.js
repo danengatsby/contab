@@ -2631,6 +2631,15 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
 }
 
 section('Migrari DB versionate (src/migrations.js)');
+// backfill idempotent al statutului `activ` pe produse (dezactivarea inlocuieste stergerea)
+{
+  const dMig = { firme: [{ id: 1 }], products: [{ id: 'x1', cod: 'A' }, { id: 'x2', cod: 'B', activ: false }, { id: 'x3', cod: 'C', activ: true }], partners: {}, openingBalances: {}, settings: {} };
+  db.migrate(dMig);
+  eq('produs fara camp -> activ:true', dMig.products[0].activ, true);
+  eq('produs dezactivat -> ramane false', dMig.products[1].activ, false);
+  eq('produs activ -> ramane true (idempotent)', dMig.products[2].activ, true);
+}
+
 {
   const mig = require('../src/migrations');
   const quiet = { info: () => {} }; // fara zgomot in log din testele de migrare
