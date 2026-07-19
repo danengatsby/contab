@@ -111,6 +111,9 @@ function fullBackup(dbFile, dataDir, keep) {
 
   const uploads = path.join(dataDir, 'uploads');
   if (fs.existsSync(uploads)) zip.addLocalFolder(uploads, 'uploads');
+  // jurnalul de audit DURABIL (append-only) — proba pentru control intern, offsite cu backupul
+  const auditDir = path.join(dataDir, 'audit');
+  if (fs.existsSync(auditDir)) zip.addLocalFolder(auditDir, 'audit');
   zip.writeZip(path.join(dir, name));
   if (snap) { try { fs.unlinkSync(snap); } catch (_) { /* ignora */ } }
   if (pgDump) { try { fs.unlinkSync(pgDump); } catch (_) { /* ignora */ } }
