@@ -102,9 +102,23 @@ function documentMetaRow(id, firmaId, doc) {
   }];
 }
 
+function auditRow(id, firmaId, rec) {
+  return [{
+    audit_id: String(id), firmaId: firmaId != null ? firmaId : null,
+    ts: rec && rec.ts != null ? String(rec.ts) : null,
+    userId: rec && rec.userId != null ? String(rec.userId) : null,
+    username: rec && rec.username != null ? String(rec.username) : null,
+    action: rec && rec.action != null ? String(rec.action) : null,
+    detail: rec && rec.detail != null ? String(rec.detail) : null,
+    viaAdmin: rec && rec.viaAdmin != null ? String(rec.viaAdmin) : null,
+  }];
+}
+
 // Registru de proiectii. `cols` = coloanele (in ordine) pt SQLite; `pgRecordset`/`pgSelect` = spec.
 // jsonb_to_recordset + lista de SELECT pt PostgreSQL (cu "firmaId" citat). `rows(id,firmaId,obj)`
-// intoarce 0..N randuri (o linie -> N; un document -> 1). Ordinea coloanelor e aceeasi peste tot.
+// intoarce 0..N randuri (o linie -> N; un document -> 1). `append:true` = APPEND-ONLY: insereaza doar
+// randuri noi (dedup pe id), nu sterge NICIODATA -> proiectia e durabila, decuplata de plafonul RAM
+// (pt audit: baza vie e plafonata, dar tabelul audit_log pastreaza totul). Ordinea coloanelor identica.
 const PROJECTIONS = [
   {
     coll: 'entries', table: 'entry_lines', idCol: 'entry_id', rows: entryLineRows,
@@ -117,6 +131,12 @@ const PROJECTIONS = [
     cols: ['doc_id', 'firmaId', 'fileName', 'uploadedAt', 'spvMsgId', 'textLen', 'text'],
     pgSelect: 'x.doc_id, x."firmaId", x."fileName", x."uploadedAt", x."spvMsgId", x."textLen", x.text',
     pgRecordset: 'doc_id TEXT, "firmaId" INTEGER, "fileName" TEXT, "uploadedAt" TEXT, "spvMsgId" TEXT, "textLen" INTEGER, text TEXT',
+  },
+  {
+    coll: 'audit', table: 'audit_log', idCol: 'audit_id', rows: auditRow, append: true,
+    cols: ['audit_id', 'firmaId', 'ts', 'userId', 'username', 'action', 'detail', 'viaAdmin'],
+    pgSelect: 'x.audit_id, x."firmaId", x.ts, x."userId", x.username, x.action, x.detail, x."viaAdmin"',
+    pgRecordset: 'audit_id TEXT, "firmaId" INTEGER, ts TEXT, "userId" TEXT, username TEXT, action TEXT, detail TEXT, "viaAdmin" TEXT',
   },
 ];
 
@@ -166,10 +186,25 @@ function schema() {
     textLen INTEGER DEFAULT 0, text TEXT
   )`);
   sdb.exec('CREATE INDEX IF NOT EXISTS idx_documents_meta_firma ON documents_meta(firmaId, uploadedAt)');
+  // proiectie audit APPEND-ONLY, durabila (decuplata de plafonul RAM); PK pe audit_id (dedup)
+  sdb.exec(`CREATE TABLE IF NOT EXISTS audit_log (
+    audit_id TEXT PRIMARY KEY, firmaId INTEGER, ts TEXT, userId TEXT, username TEXT,
+    action TEXT, detail TEXT, viaAdmin TEXT
+  )`);
+  sdb.exec('CREATE INDEX IF NOT EXISTS idx_audit_log_firma ON audit_log(firmaId, ts)');
+  sdb.exec('CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)');
 }
 
 /** Sincronizeaza o proiectie (din PROJECTIONS) pentru work-ul colectiei sursa (in aceeasi tranzactie). */
 function syncProjection(p, w) {
+  // APPEND-ONLY (audit): insereaza doar randuri noi (OR IGNORE pe id), nu sterge niciodata.
+  if (p.append) {
+    const ins = sdb.prepare(`INSERT OR IGNORE INTO ${p.table} (${p.cols.join(', ')}) VALUES (${p.cols.map(() => '?').join(', ')})`);
+    const src = w.kind === 'full' ? w.items : w.inserts.concat(w.updates); // deletes (plafonate) IGNORATE
+    for (const row of src) { const obj = JSON.parse(row[2]); for (const r of p.rows(row[0], row[1], obj)) ins.run(...p.cols.map((c) => r[c])); }
+    return;
+  }
+  // OGLINDA (entries/documents): reflecta exact starea din RAM (delete-then-insert + full-DELETE).
   const del = sdb.prepare(`DELETE FROM ${p.table} WHERE ${p.idCol} = ?`);
   const ins = sdb.prepare(`INSERT INTO ${p.table} (${p.cols.join(', ')}) VALUES (${p.cols.map(() => '?').join(', ')})`);
   const put = (row) => { // row = [id, firmaId, json]
@@ -179,6 +214,23 @@ function syncProjection(p, w) {
   };
   if (w.kind === 'full') { sdb.exec(`DELETE FROM ${p.table}`); for (const row of w.items) put(row); }
   else { for (const id of w.deletes) del.run(id); for (const row of w.inserts) put(row); for (const row of w.updates) put(row); }
+}
+
+/** Jurnalul de audit DURABIL (append-only) interogat in SQL: numar total + eventual pe firma/actiune.
+ *  Decuplat de plafonul RAM -> total poate depasi CONTAB_AUDIT_MAX. */
+function auditCount(firmaId) {
+  if (firmaId == null) return Number(sdb.prepare('SELECT COUNT(*) AS n FROM audit_log').get().n) || 0;
+  return Number(sdb.prepare('SELECT COUNT(*) AS n FROM audit_log WHERE firmaId = ?').get(asInt(firmaId)).n) || 0;
+}
+function auditRecent(opts) {
+  const o = opts || {};
+  const cond = []; const params = [];
+  if (o.firmaId != null) { cond.push('firmaId = ?'); params.push(asInt(o.firmaId)); }
+  if (o.action) { cond.push('action = ?'); params.push(String(o.action)); }
+  const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+  params.push(Math.min(1000, Math.max(1, Number(o.limit) || 100)));
+  return sdb.prepare(`SELECT audit_id, firmaId, ts, userId, username, action, detail, viaAdmin FROM audit_log ${where} ORDER BY ts DESC LIMIT ?`)
+    .all(...params).map((r) => ({ id: r.audit_id, firmaId: r.firmaId, ts: r.ts, userId: r.userId, username: r.username, action: r.action, detail: r.detail, viaAdmin: r.viaAdmin }));
 }
 
 /** Statistici pe documente calculate in SQL din documents_meta (fara graful in RAM), per firma. */
@@ -392,4 +444,4 @@ function hydrate(defaults) {
 
 function close() { if (sdb) { try { sdb.close(); } catch (_) { /* ignore */ } sdb = null; } }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, linesTurnover, documentsStats, documentsSearch, checkSqlite };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, auditRow, linesTurnover, documentsStats, documentsSearch, auditCount, auditRecent, checkSqlite };

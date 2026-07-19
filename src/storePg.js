@@ -80,6 +80,13 @@ async function schema() {
     "textLen" INTEGER DEFAULT 0, text TEXT
   )`);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_documents_meta_firma ON documents_meta("firmaId", "uploadedAt")');
+  // proiectie audit APPEND-ONLY, durabila (decuplata de plafonul RAM); PK pe audit_id (dedup)
+  await pool.query(`CREATE TABLE IF NOT EXISTS audit_log (
+    audit_id TEXT PRIMARY KEY, "firmaId" INTEGER, ts TEXT, "userId" TEXT, username TEXT,
+    action TEXT, detail TEXT, "viaAdmin" TEXT
+  )`);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_audit_log_firma ON audit_log("firmaId", ts)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)');
 }
 
 /** Baza e proaspata (fara date persistate)? */
@@ -258,6 +265,19 @@ function persist(db) {
 async function projectInto(client, p, w) {
   const rows = [];
   const insertCols = p.cols.map((c) => (/[A-Z]/.test(c) ? '"' + c + '"' : c)).join(', '); // "firmaId","fileName"... citate
+  if (p.append) {
+    // APPEND-ONLY (audit): insereaza doar randuri noi (ON CONFLICT DO NOTHING), nu sterge niciodata.
+    const src = w.kind === 'incr' ? w.inserts.concat(w.updates) : w.items; // deletes (plafonate) IGNORATE
+    for (const r of src) for (const pr of p.rows(r.id, r.firmaId, r.data)) rows.push(pr);
+    if (rows.length) {
+      await client.query(
+        `INSERT INTO ${p.table} (${insertCols}) SELECT ${p.pgSelect} FROM jsonb_to_recordset($1::jsonb) AS x(${p.pgRecordset}) ON CONFLICT (${p.idCol}) DO NOTHING`,
+        [stringifyDb(rows)]
+      );
+    }
+    return;
+  }
+  // OGLINDA (entries/documents): reflecta exact starea din RAM.
   if (w.kind === 'incr') {
     const upserts = w.inserts.concat(w.updates); // [{id, firmaId, data}]
     const ids = upserts.map((r) => r.id).concat(w.deletes);
@@ -313,6 +333,25 @@ async function documentsSearch(firmaId, q, limit) {
   return r.rows.map((x) => ({ id: x.doc_id, fileName: x.fileName, uploadedAt: x.uploadedAt }));
 }
 
+/** Jurnalul de audit DURABIL (append-only) interogat in SQL: numar total (per firma optional).
+ *  Decuplat de plafonul RAM -> total poate depasi CONTAB_AUDIT_MAX. */
+async function auditCount(firmaId) {
+  const r = firmaId == null
+    ? await pool.query('SELECT COUNT(*) AS n FROM audit_log')
+    : await pool.query('SELECT COUNT(*) AS n FROM audit_log WHERE "firmaId" = $1', [asInt(firmaId)]);
+  return Number(r.rows[0] && r.rows[0].n) || 0;
+}
+async function auditRecent(opts) {
+  const o = opts || {};
+  const cond = []; const params = [];
+  if (o.firmaId != null) { params.push(asInt(o.firmaId)); cond.push('"firmaId" = $' + params.length); }
+  if (o.action) { params.push(String(o.action)); cond.push('action = $' + params.length); }
+  const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+  params.push(Math.min(1000, Math.max(1, Number(o.limit) || 100)));
+  const r = await pool.query(`SELECT audit_id, "firmaId", ts, "userId", username, action, detail, "viaAdmin" FROM audit_log ${where} ORDER BY ts DESC LIMIT $${params.length}`, params);
+  return r.rows.map((x) => ({ id: x.audit_id, firmaId: x.firmaId, ts: x.ts, userId: x.userId, username: x.username, action: x.action, detail: x.detail, viaAdmin: x.viaAdmin }));
+}
+
 /** Colectiile scrise la ultimul persist reusit (diagnostic). */
 function written() { return lastWritten.slice(); }
 
@@ -352,4 +391,4 @@ async function close() {
   try { await p.end(); } catch (_) { /* ignora */ }
 }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover, documentsStats, documentsSearch };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover, documentsStats, documentsSearch, auditCount, auditRecent };
