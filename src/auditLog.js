@@ -14,7 +14,8 @@ const db = require('./db');
 
 let warned = false;
 
-function auditDir() { return path.join(db.DATA_DIR, 'audit'); }
+// Directorul jurnalului: CONTAB_AUDIT_DIR (volum separat, durabil) sau data/audit implicit.
+function auditDir() { return process.env.CONTAB_AUDIT_DIR || path.join(db.DATA_DIR, 'audit'); }
 
 /** Adauga o inregistrare de audit in fisierul lunar append-only. Best-effort. */
 function append(record) {

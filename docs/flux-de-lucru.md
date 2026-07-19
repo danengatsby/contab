@@ -48,7 +48,8 @@ Fiecare raport are buton **⬇ PDF**, iar fiecare înregistrare poate fi exporta
   `Payments` conține încasările/plățile (`incasare_*`/`plata_*`) cu metoda de plată (Numerar/
   Virament dedusă din contul de trezorerie), linii debit/credit echilibrate și `DocumentTotals`;
   iar `MovementOfGoods` conține mișcările de stoc (recepții/ieșiri) cu cantități și unități de măsură.
-  Generat de `src/saft.js`, aliniat la structura OECD SAF-T 2.0 adaptată RO.
+  Generat de `src/saft.js`, pe standardul OECD SAF-T (v2.0) în implementarea românească
+  **D406 / `Ro_SAFT_Schema` v2.4.9** (`AuditFileVersion` 2.4.9) — validat oficial (vezi mai jos).
 
 > Notă: XML-urile D300/D394 folosesc rădăcina și namespace-ul ANAF și conțin cifrele
 > corecte, dar trebuie **validate cu DUKIntegrator / XSD-ul ANAF curent** înainte de
@@ -64,7 +65,7 @@ Fiecare raport are buton **⬇ PDF**, iar fiecare înregistrare poate fi exporta
 > ANAF (coduri de taxă 3001xx, tipuri de mișcare 10/20/40 etc.).
 >
 > Verificare oficială, la cerere: `scripts/valideaza-duk.sh D406 fișier.xml` (validatorul ANAF
-> prin Docker). Detalii și lecțiile de conformitate: `docs/guvernanta-fiscala.md`. Validarea
+> prin Docker). Detalii: `docs/guvernanta-fiscala.md`; dovada validării per versiune: `docs/validare-oficiala.md`. Validarea
 > oficială se repetă oricum obligatoriu la depunerea în SPV.
 
 **Gestiunea stocurilor (cantitativ-valoric, CMP, pe gestiuni):** tab-ul „Stocuri” ține un
