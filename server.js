@@ -39,13 +39,14 @@ const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
 const { currentUser, allowedFirme, publicUser, startSession } = require('./src/session');
 
 // jurnal de audit (cine, ce actiune, pe ce firma)
+const auditLog = require('./src/auditLog');
 function logAudit(action, detail, opts) {
   const d = db.get();
   const o = opts || {};
   d.audit = d.audit || [];
   // daca actiunea e facuta de un admin in modul impersonare, pastreaza si numele real
   const viaAdmin = o.req && o.req.impersonating && o.req.realUser ? o.req.realUser.username : null;
-  d.audit.push({
+  const record = {
     id: (d.audit[d.audit.length - 1] || {}).id + 1 || 1,
     ts: new Date().toISOString(),
     userId: o.userId != null ? o.userId : (o.req && o.req.user && o.req.user.id),
@@ -53,10 +54,13 @@ function logAudit(action, detail, opts) {
     firmaId: o.firmaId != null ? o.firmaId : (o.req && o.req.user ? activeId(o.req) : null),
     action, detail: detail || '',
     ...(viaAdmin ? { viaAdmin } : {}),
-  });
-  // Plafon in baza vie (rulaj) — configurabil. Durabilitatea de PROBA nu se bazeaza pe aceasta
-  // fereastra: auditul intra in backupul zilnic offsite (verificat restaurabil) si se poate
-  // exporta oricand ca CSV (/csv/audit, admin). Marirea plafonului e ieftina (randuri mici).
+  };
+  d.audit.push(record);
+  auditLog.append(record); // proba DURABILA append-only pe disc (supravietuieste rolarii + pierderii bazei)
+  // Plafon in baza VIE (rulaj) — doar pentru RAM/UI. Proba DURABILA nu depinde de el:
+  // fiecare eveniment e deja scris append-only in data/audit/*.ndjson (auditLog.append),
+  // fisiere lunare incluse in backupul zilnic offsite si descarcabile prin /api/audit/durable.
+  // Rolarea de aici NU pierde proba.
   const AUDIT_MAX = Number(process.env.CONTAB_AUDIT_MAX) || 20000;
   if (d.audit.length > AUDIT_MAX) d.audit = d.audit.slice(-AUDIT_MAX);
 }

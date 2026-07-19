@@ -182,8 +182,10 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (req.query.limit != null && req.query.limit !== '') return sendList(req, res, list, { label: '/api/audit/system' });
     res.json(list.slice(0, 300));
   });
-  // Export CSV al jurnalului de audit (arhiva / control intern / GDPR): TOT ce e retinut (plafon
-  // 3000 in memorie), nu doar cele 300 afisate. Firma curenta pt oricine; sistemul doar admin.
+  // Export CSV al jurnalului de audit (control intern / GDPR): TOT ce e retinut in baza vie
+  // (plafon CONTAB_AUDIT_MAX), nu doar cele 300 afisate. Proba DURABILA (append-only, in afara
+  // rolarii si a bazei) e in fisierele lunare data/audit/*.ndjson — /api/audit/durable (admin).
+  // Firma curenta pt oricine; sistemul + jurnalul durabil doar admin.
   function auditCsv(res, list, filename) {
     const rows = list.map((a) => [a.ts, a.username || '', a.action, a.detail || '', a.viaAdmin || '']);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -192,6 +194,20 @@ module.exports = function registerAuthRoutes(app, ctx) {
   }
   app.get('/csv/audit', (req, res) => auditCsv(res, auditList(req, activeId(req)), 'audit-firma.csv'));
   app.get('/csv/audit/system', requireAdmin, (req, res) => auditCsv(res, auditList(req, null), 'audit-sistem.csv'));
+  // Jurnalul DURABIL (append-only, pe disc): listeaza fisierele lunare sau descarca unul.
+  const auditLog = require('../src/auditLog');
+  const path = require('path'); const fs = require('fs');
+  app.get('/api/audit/durable', requireAdmin, (req, res) => {
+    const files = auditLog.listFiles();
+    if (!req.query.file) return res.json({ files });
+    const name = String(req.query.file);
+    if (!/^audit-\d{4}-\d{2}\.ndjson$/.test(name)) return res.status(400).json({ error: 'Nume de fisier invalid.' });
+    const p = path.join(auditLog.auditDir(), name);
+    if (!fs.existsSync(p)) return res.status(404).json({ error: 'Fisier inexistent.' });
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + name + '"');
+    res.send(fs.readFileSync(p));
+  });
 
   // Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare
   // primii. Include si diagnosticele de proces (memorie, Node, driver) — DOAR pentru admin.

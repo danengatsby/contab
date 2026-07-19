@@ -278,6 +278,25 @@ section('sesiune: token FARA sessId respins (fix escaladare prin secret compromi
   eq('token cu sessId inexistent -> neautentificat', session.currentUser({ headers: { cookie: 'sid=' + inv } }), null);
 }
 
+section('auditLog — jurnal DURABIL append-only pe disc');
+{
+  const auditLog = require('../src/auditLog');
+  const fsA = require('fs'); const pathA = require('path');
+  const rec1 = { id: 1, ts: '2026-07-15T10:00:00.000Z', username: 'u', action: 'test.a', detail: 'x' };
+  const rec2 = { id: 2, ts: '2026-07-15T10:01:00.000Z', username: 'u', action: 'test.b', detail: 'y' };
+  const rec3 = { id: 3, ts: '2026-08-01T09:00:00.000Z', username: 'v', action: 'test.c', detail: 'z' };
+  auditLog.append(rec1); auditLog.append(rec2); auditLog.append(rec3);
+  const dir = auditLog.auditDir();
+  const iul = pathA.join(dir, 'audit-2026-07.ndjson');
+  const aug = pathA.join(dir, 'audit-2026-08.ndjson');
+  ok('fisier lunar creat (rotatie pe luna)', fsA.existsSync(iul) && fsA.existsSync(aug));
+  const linii = fsA.readFileSync(iul, 'utf8').trim().split('\n');
+  eq('append-only: ambele evenimente ale lunii, in ordine', linii.length, 2);
+  eq('linia e NDJSON valid, reconstructibila', JSON.parse(linii[0]).action, 'test.a');
+  ok('listFiles le vede pe amandoua, noile primele', (() => { const f = auditLog.listFiles(); return f[0] === 'audit-2026-08.ndjson' && f.includes('audit-2026-07.ndjson'); })());
+  fsA.unlinkSync(iul); fsA.unlinkSync(aug); // curatenie
+}
+
 section('secretbox — criptarea secretelor cu cheie externa');
 const sbox = require('../src/secretbox');
 {

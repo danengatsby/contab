@@ -93,3 +93,14 @@ AES-256. Restaurare: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in f.zip
 dezarhiveaz-o pe o mașină curată (sau `CONTAB_DATA_DIR` temporar), pornește instanța
 izolată și verifică balanța unei firme contra producției. Restaurarea la nivel de firmă
 (bundle) e testată AUTOMAT la fiecare rulare a suitei HTTP și în CI.
+
+## Jurnal de audit — proba durabilă
+
+Auditul are DOUĂ straturi:
+- **baza vie** (`d.audit`, plafon `CONTAB_AUDIT_MAX`, implicit 20.000) — pentru UI/API,
+  în RAM; se rotește la depășire.
+- **jurnal DURABIL append-only** (`data/audit/audit-YYYY-MM.ndjson`) — fiecare eveniment
+  scris pe disc la producere (o linie NDJSON), fișiere lunare. Nu se rescrie niciodată,
+  supraviețuiește rolării din baza vie ȘI unei coruperi/pierderi a bazei. Inclus în
+  backupul zilnic offsite (folderul `audit/` din arhiva completă). Descărcabil (admin):
+  `GET /api/audit/durable` (listă fișiere) și `?file=audit-2026-07.ndjson` (conținut).
