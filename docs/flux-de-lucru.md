@@ -16,7 +16,16 @@
 **Închideri**: regularizarea lunară a TVA (4427 ↔ 4426 → 4423/4424) și închiderea
 anuală a conturilor de venituri și cheltuieli în 121 „Profit și pierdere”.
 
-**Corecții reversibile (storno)**: orice articol se poate **storna** — `POST /api/entries/:id/storno`
+**Flux de stare (ciornă → validat → aprobat → postat)**: un articol poate fi salvat ca **ciornă**
+(`POST /api/entries {ciorna:true}`) — **vizibil în liste, dar exclus din contabilitate** (balanță,
+registre, jurnale TVA, declarații, SAF-T). Se avansează pas cu pas cu `POST /api/entries/:id/status
+{status}` prin `validat` → `aprobat` → `postat`. Doar la **postat** articolul intră în contabilitate
+(`accounting.isPosted` = fără `status` sau `status==='postat'`; articolele vechi/create direct sunt
+implicit postate — zero schimbare pe datele existente). Postarea verifică **perioada deschisă**.
+Odată **postat**, starea nu se mai schimbă: corecția se face exclusiv prin **storno** (nu retrogradare).
+O **ciornă** nu se stornează — se șterge direct.
+
+**Corecții reversibile (storno)**: orice articol **postat** se poate **storna** — `POST /api/entries/:id/storno`
 (opțional `{data}`, care trebuie într-o **perioadă deschisă**). Se generează o notă de reversare
 (debit↔credit, aceleași sume), legată de original prin `stornoOf`, marcată `system`; originalul
 primește `stornat`/`stornoBy` și devine **imutabil** (nu se mai șterge și nu se re-stornează). Ambele

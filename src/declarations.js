@@ -1,5 +1,7 @@
 'use strict';
 
+const { postedEntries } = require('./accounting'); // ciornele nu declanseaza asteptari de declaratii/e-Factura
+
 // Registrul depunerilor de declaratii + termene fiscale + agregarea pe portofoliu (multi-firma).
 //
 // Modelul: declaratiile ASTEPTATE pentru o firma/luna sunt derivate din profilul firmei
@@ -55,7 +57,7 @@ function expectedForFirma(v, period) {
   const tips = [];
   if (tva && (!trimestrialTva || sfarsitTrim)) tips.push('d300', 'd394');
   // D390 doar in lunile cu operatiuni intracomunitare efective (LIC/AIC in jurnal)
-  if ((v.entries || []).some((e) => INTRACOM_TYPES.has(e.tip) && String(e.period || e.data || '').slice(0, 7) === period)) tips.push('d390');
+  if (postedEntries(v).some((e) => INTRACOM_TYPES.has(e.tip) && String(e.period || e.data || '').slice(0, 7) === period)) tips.push('d390');
   if ((v.angajati || []).length) tips.push('d112');
   // PFA: impozitul pe venit merge prin Declaratia Unica (anuala, depusa personal),
   // nu prin D100; persoanele fizice nu depun nici SAF-T (D406) deocamdata.
@@ -94,7 +96,7 @@ function eFacturaNetrimise(v, today, lookbackDays) {
   const t = today || new Date().toISOString().slice(0, 10);
   const from = new Date(Date.parse(t) - (lookbackDays || 60) * 86400000).toISOString().slice(0, 10);
   const items = [];
-  for (const e of (v.entries || [])) {
+  for (const e of postedEntries(v)) {
     if (!EFACT_SEND_TYPES.has(e.tip)) continue;
     if (!e.partenerCui) continue; // B2B: partener identificat prin CUI
     if (e.spv && (e.spv.index || e.spv.stare)) continue; // deja trimisa

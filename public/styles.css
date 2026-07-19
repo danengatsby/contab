@@ -137,6 +137,10 @@ th{background:var(--soft2);position:sticky;top:0;font-size:11.5px;color:var(--mu
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 tr.total td{font-weight:700;background:var(--soft)}
 tr.sys td{color:#8a6d00}
+/* Ciorna (nu inca in contabilitate): rand estompat, cu bara de accent la stanga */
+tr.draft td{opacity:.72;font-style:italic}
+tr.draft td:first-child{box-shadow:inset 3px 0 0 #c79a3a}
+body.dark tr.draft td:first-child{box-shadow:inset 3px 0 0 #d9b65a}
 /* Polish tabele: zebra discret + evidentiere rand la hover (cromatica caldă, neutră la dark) */
 tbody tr:nth-child(2n):not(.total):not(.sys) td{background:rgba(120,90,50,.035)}
 tbody tr:not(.total):hover td{background:rgba(194,97,60,.07)}

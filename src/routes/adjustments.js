@@ -82,7 +82,7 @@ module.exports = function register(app, ctx) {
     const detalii = ag.clienti.filter((c) => c.b90plus > 0).map((c) => ({ partener: c.partener, cui: c.cui, vechi: c.b90plus, provizion: round2((c.b90plus * p) / 100) }));
     const base = round2(detalii.reduce((s, c) => s + c.vechi, 0));
     const necesar = round2((base * p) / 100);
-    const m = acc.accumulate(acc.allLines(v.entries));
+    const m = acc.accumulate(acc.allLines(acc.postedEntries(v)));
     const c491 = m['491'] || { d: 0, c: 0 };
     const existent = round2(c491.c - c491.d);
     return { asOf: ag.asOf, pct: p, base, necesar, existent, deAjustat: round2(necesar - existent), detalii };
@@ -98,7 +98,7 @@ module.exports = function register(app, ctx) {
     const data = b.data && String(b.data).length === 10 ? b.data : new Date().toISOString().slice(0, 10);
     const period = String(data).slice(0, 7);
     const lines = [{ debit: '654', credit: '4111', suma, explicatie: 'Creanta neincasabila ' + b.partener }];
-    const m = acc.accumulate(acc.allLines(v.entries));
+    const m = acc.accumulate(acc.allLines(acc.postedEntries(v)));
     const c491 = m['491'] || { d: 0, c: 0 };
     const existing491 = round2(c491.c - c491.d);
     const revers = round2(Math.min(suma, existing491));

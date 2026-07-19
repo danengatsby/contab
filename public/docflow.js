@@ -496,18 +496,19 @@ function updatePreview() {
       + `\n──────────\nTotal articol: <b>${fmt(total)}</b> lei`
     : 'Completează câmpurile pentru a vedea articolul contabil.';
 }
-$('#entryForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+async function submitEntry(ciorna) {
   try {
     const res = await api('/api/entries', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tip: $('#tipSelect').value, fields: collectFields(), fileId: CURRENT && CURRENT.documentId, spvMsgId: CURRENT && CURRENT.spvMsgId }),
+      body: JSON.stringify({ tip: $('#tipSelect').value, fields: collectFields(), fileId: CURRENT && CURRENT.documentId, spvMsgId: CURRENT && CURRENT.spvMsgId, ciorna: !!ciorna }),
     });
-    toast('Înregistrare salvată: ' + res.entry.id);
+    toast(ciorna ? 'Ciornă salvată: ' + res.entry.id + ' (o postezi din listă)' : 'Înregistrare salvată: ' + res.entry.id);
     closeForm();
     setMeta(await api('/api/meta')); fillPeriods();
     await loadEntries();
   } catch (err) { toast(err.message, true); }
-});
+}
+$('#entryForm').addEventListener('submit', (e) => { e.preventDefault(); submitEntry(false); });
+$('#saveDraft') && $('#saveDraft').addEventListener('click', () => submitEntry(true));
 
 export { fillTipSelect, renderRecurring, setDocflowDeps };

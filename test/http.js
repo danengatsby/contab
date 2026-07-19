@@ -828,6 +828,44 @@ async function main() {
       eq('storno pe articol cu miscari de stoc -> 400 (corectie prin stoc/inventar)', (await req('POST', '/api/entries/' + stocE.id + '/storno', { cookie: c1, body: {} })).status, 400);
     }
 
+    // ── FLUX DE STARE: ciorna -> validat -> aprobat -> postat; ciorna NU intra in contabilitate ──
+    {
+      const per = '2026-11';
+      const has5311 = (b) => (b.rows || []).some((r) => r.cod === '5311' && r.rd > 0);
+      const inJournal = (j, expl) => (j.rows || []).some((r) => (r.explicatie || '').includes(expl));
+      // creare ca CIORNA
+      const dr = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: per + '-10', explicatie: 'Ciorna flux', debit: '5311', credit: '5121', suma: 500 } } });
+      const drE = dr.json.entry;
+      ok('articolul creat cu ciorna:true are status=ciorna', dr.status === 200 && drE.status === 'ciorna');
+      // VIZIBILA in lista, dar EXCLUSA din contabilitate
+      ok('ciorna apare in lista de articole', (await req('GET', '/api/entries?period=' + per, { cookie: c1 })).json.some((e) => e.id === drE.id));
+      ok('ciorna NU intra in balanta', !has5311((await req('GET', '/api/balance?period=' + per, { cookie: c1 })).json));
+      ok('ciorna NU intra in registrul-jurnal', !inJournal((await req('GET', '/api/journal?period=' + per, { cookie: c1 })).json, 'Ciorna flux'));
+      // storno pe ciorna -> refuzat (se sterge direct)
+      eq('storno pe ciorna -> 400 (se sterge direct)', (await req('POST', '/api/entries/' + drE.id + '/storno', { cookie: c1, body: {} })).status, 400);
+      // tranzitii pas cu pas
+      eq('avans ciorna->validat', (await req('POST', '/api/entries/' + drE.id + '/status', { cookie: c1, body: { status: 'validat' } })).json.status, 'validat');
+      ok('inca in afara contabilitatii dupa validat', !has5311((await req('GET', '/api/balance?period=' + per, { cookie: c1 })).json));
+      eq('avans validat->aprobat', (await req('POST', '/api/entries/' + drE.id + '/status', { cookie: c1, body: { status: 'aprobat' } })).json.status, 'aprobat');
+      eq('avans aprobat->postat', (await req('POST', '/api/entries/' + drE.id + '/status', { cookie: c1, body: { status: 'postat' } })).json.status, 'postat');
+      // ACUM intra in contabilitate
+      ok('dupa postare INTRA in balanta', has5311((await req('GET', '/api/balance?period=' + per, { cookie: c1 })).json));
+      ok('dupa postare INTRA in registrul-jurnal', inJournal((await req('GET', '/api/journal?period=' + per, { cookie: c1 })).json, 'Ciorna flux'));
+      // postat = ireversibil (corectie doar prin storno)
+      eq('postat -> nu se mai retrograda (400)', (await req('POST', '/api/entries/' + drE.id + '/status', { cookie: c1, body: { status: 'ciorna' } })).status, 400);
+      eq('stare invalida -> 400', (await req('POST', '/api/entries/' + drE.id + '/status', { cookie: c1, body: { status: 'xyz' } })).status, 400);
+      // postarea unei ciorne intr-o luna INCHISA -> refuzata
+      const dr2 = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: per + '-12', explicatie: 'Ciorna blocata', debit: '5311', credit: '5121', suma: 60 } } })).json.entry;
+      await req('POST', '/api/period-lock', { cookie: la.cookie, body: { lockedUntil: per } });
+      eq('postarea unei ciorne in luna inchisa -> 400', (await req('POST', '/api/entries/' + dr2.id + '/status', { cookie: c1, body: { status: 'postat' } })).status, 400);
+      await req('POST', '/api/period-lock', { cookie: la.cookie, body: { lockedUntil: null } }); // deblochez pentru restul suitei
+      // storno pe articol strain (flux de stare) ramane blocat de guardul de firma
+      ok('schimbarea de stare a unui articol strain: refuzata', deny(await req('POST', '/api/entries/' + drE.id + '/status', { cookie: c2, body: { status: 'ciorna' } })));
+      // audit: tranzitiile de stare sunt inregistrate
+      const audL = await req('GET', '/api/audit?limit=80', { cookie: c1 });
+      ok('audit entry.status inregistrat (postare)', (audL.json.items || audL.json).some((a) => a.action === 'entry.status' && a.detail.includes('postat')));
+    }
+
     // ── BACKUP / RESTORE round-trip: un backup nerestaurat e o speranta, nu un backup ──
     // 1) date-marker in firma 1
     await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO4242', den: 'Backup Test SRL', oras: 'Cluj' } });
