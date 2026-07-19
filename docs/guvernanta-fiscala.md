@@ -35,6 +35,9 @@ Regula de aur: **nicio cotă hardcodată în afara acestui fișier.** (Convenți
 Istoricul git al `fiscalConfig.js` este astfel **jurnalul versiunilor de reguli**:
 cine, când, ce act normativ, ce teste însoțesc schimbarea.
 
+Jurnalul dovezilor de validare (versiuni de schemă/validator, dată, rezultat):
+**docs/validare-oficiala.md**.
+
 ## 3. Statusul „pre-depunere" al unei declarații
 
 Trei trepte, în ordinea încrederii:

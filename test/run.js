@@ -281,7 +281,9 @@ section('sesiune: token FARA sessId respins (fix escaladare prin secret compromi
 section('auditLog — jurnal DURABIL append-only pe disc');
 {
   const auditLog = require('../src/auditLog');
-  const fsA = require('fs'); const pathA = require('path');
+  const fsA = require('fs'); const pathA = require('path'); const osA = require('os');
+  const prevAuditDir = process.env.CONTAB_AUDIT_DIR;
+  process.env.CONTAB_AUDIT_DIR = fsA.mkdtempSync(pathA.join(osA.tmpdir(), 'audit-test-')); // izolat de data/ real
   const rec1 = { id: 1, ts: '2026-07-15T10:00:00.000Z', username: 'u', action: 'test.a', detail: 'x' };
   const rec2 = { id: 2, ts: '2026-07-15T10:01:00.000Z', username: 'u', action: 'test.b', detail: 'y' };
   const rec3 = { id: 3, ts: '2026-08-01T09:00:00.000Z', username: 'v', action: 'test.c', detail: 'z' };
@@ -294,7 +296,8 @@ section('auditLog — jurnal DURABIL append-only pe disc');
   eq('append-only: ambele evenimente ale lunii, in ordine', linii.length, 2);
   eq('linia e NDJSON valid, reconstructibila', JSON.parse(linii[0]).action, 'test.a');
   ok('listFiles le vede pe amandoua, noile primele', (() => { const f = auditLog.listFiles(); return f[0] === 'audit-2026-08.ndjson' && f.includes('audit-2026-07.ndjson'); })());
-  fsA.unlinkSync(iul); fsA.unlinkSync(aug); // curatenie
+  fsA.rmSync(process.env.CONTAB_AUDIT_DIR, { recursive: true, force: true }); // curatenie (dir izolat)
+  if (prevAuditDir === undefined) delete process.env.CONTAB_AUDIT_DIR; else process.env.CONTAB_AUDIT_DIR = prevAuditDir;
 }
 
 section('secretbox — criptarea secretelor cu cheie externa');
