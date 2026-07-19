@@ -6,6 +6,8 @@
 // citite ad-hoc prin cod. Toate campurile au implicite compatibile cu firmele existente:
 // un profil construit dintr-o firma veche (fara campurile noi) da exact comportamentul de dinainte.
 
+const { round2 } = require('./util');
+
 const REGIMURI = ['micro', 'profit', 'pfa'];  // impozit pe venit/profit
 const CADENTE = ['L', 'T', 'A'];              // cadenta de raportare (lunar/trimestrial/anual)
 const TRIM_END = [3, 6, 9, 12];               // lunile de sfarsit de trimestru
@@ -85,4 +87,22 @@ function vatPeriod(profile, monthPeriod) {
   return monthPeriod;
 }
 
-module.exports = { build, expected, vatPeriod, endOfQuarter, REGIMURI, CADENTE };
+/** GUARD de SCRIERE: reguli HARD derivate din profil, verificate pe articolul concret la creare.
+ *  Intoarce un mesaj de BLOCARE (string) sau null daca articolul e permis. Spre deosebire de
+ *  controalele advisory (fiscalControls), guardul OPRESTE scrierea datelor clar incorecte. */
+function entryGuard(profile, entry) {
+  const lines = (entry && entry.lines) || [];
+  const sumBy = (test) => round2(lines.reduce((s, l) => s + (test(l) ? Number(l.suma) || 0 : 0), 0));
+  // Neplatitor de TVA nu poate COLECTA TVA (vanzare cu TVA). Taxarea inversa (4426=4427, net 0)
+  // ramane permisa: se blocheaza doar colectarea NETA pozitiva, nu prezenta conturilor de TVA.
+  if (profile && !profile.tvaPlatitor) {
+    const colectata = sumBy((l) => /^442[78]/.test(String(l.credit)));
+    const deductibila = sumBy((l) => /^442[68]/.test(String(l.debit)));
+    if (round2(colectata - deductibila) > 0) {
+      return 'Firma nu e plătitoare de TVA — nu poți înregistra TVA colectată (' + round2(colectata - deductibila) + ' lei). Emite documentul fără TVA sau schimbă regimul TVA în Setări.';
+    }
+  }
+  return null;
+}
+
+module.exports = { build, expected, vatPeriod, endOfQuarter, entryGuard, REGIMURI, CADENTE };
