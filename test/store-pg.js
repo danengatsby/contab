@@ -90,10 +90,15 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
       { id: 'l3', firmaId: 1, period: '2026-03', data: '2026-03-21', status: 'ciorna', lines: [{ debit: '5311', credit: '707', suma: 999 }] },
       { id: 'l4', firmaId: 2, period: '2026-03', data: '2026-03-15', lines: [{ debit: '371', credit: '401', suma: 800 }] },
     ];
+    el.entries.push({ id: 'l0', firmaId: 1, period: '2026-01', data: '2026-01-15', lines: [{ debit: '5121', credit: '419', suma: 700 }] });
     store.persist(el); await store.flush();
     const sql = await store.linesTurnover(1, '2026-03');
-    const ram = acc.accumulate(acc.allLines(acc.postedEntries({ entries: el.entries.filter((e) => e.firmaId === 1) })));
+    const ram = acc.accumulate(acc.allLines(acc.postedEntries({ entries: el.entries.filter((e) => e.firmaId === 1 && e.period === '2026-03') })));
     eq('rulaj SQL(entry_lines) = rulaj RAM(accumulate) pe firma 1', JSON.stringify(sql), JSON.stringify(ram));
+    const sqlBefore = await store.linesTurnover(1, '2026-03', { before: true });
+    const ramBefore = acc.accumulate(acc.allLines(acc.postedEntries({ entries: el.entries.filter((e) => e.firmaId === 1) }).filter((e) => (e.period || '') < '2026-03')));
+    eq('rulaj SQL before = rulaj RAM beforePeriod (firma 1)', JSON.stringify(sqlBefore), JSON.stringify(ramBefore));
+    ok('before include perioada anterioara (419 din 2026-01)', !!sqlBefore['419'] && !sql['419']);
     ok('ciorna l3 exclusa din rulajul SQL (5311 absent)', !sql['5311']);
     ok('izolare pe firma: 371 (firma 2) absent din rulajul firmei 1', !sql['371']);
     const t2 = await store.linesTurnover(2, '2026-03');
@@ -102,7 +107,7 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
     store.persist(el); await store.flush();
     ok('dupa stergere l2: 5121 dispare din rulaj', !(await store.linesTurnover(1, '2026-03'))['5121']);
     const nLines = (await pool.query('SELECT COUNT(*) n FROM entry_lines')).rows[0].n;
-    eq('entry_lines are exact liniile ramase (l1:2 + l3:1 + l4:1)', Number(nLines), 4);
+    eq('entry_lines are exact liniile ramase (l0:1 + l1:2 + l3:1 + l4:1)', Number(nLines), 5);
   }
 
   section('Proiectie normalizata documents_meta + cautare/stats SQL');

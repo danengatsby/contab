@@ -6,6 +6,9 @@
 // handlerul global de erori (src/serverErrors.js) si ciclul de viata (src/lifecycle.js).
 const bootstrap = require('./src/bootstrap');
 bootstrap.loadDotEnv(__dirname); // inainte de orice require care citeste variabile (cheie AI etc.)
+// Orice fisier nou (upload, backup, jurnal) porneste privat; modulele de date aplica si chmod
+// pentru instalari/fisiere vechi. Nu afecteaza activele publice, servite din public/.
+process.umask(0o077);
 
 const db = require('./src/db');
 const coa = require('./src/chartOfAccounts');
@@ -330,7 +333,7 @@ app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
 // Validare pre-depunere + api/saft: src/routes/declarationsXml.js
 
 // Situatii financiare + recapitulatii declaratii + registre (PDF/JSON): src/routes/reports.js
-require('./src/routes/reports')(app, { S, wrap });
+require('./src/routes/reports')(app, { S, wrap, activeId });
 // numerotare secventiala a documentelor de stoc (serie + numar), per firma si tip
 // Documente de gestiune (situatii stoc, serii NIR/BC/AVIZ, NIR/bon/aviz, fisa magazie, nota PDF): src/routes/stockdocs.js
 // Seriile de documente stau in service layer (src/stocksService.js); config.js le primeste prin ctx (chitanta CH).

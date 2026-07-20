@@ -699,6 +699,16 @@ async function main() {
     const r691 = tb.rows.find((r) => r.cod === '691');
     ok('691 inchis complet dupa impozit (sold final 0)', !r691 || (r691.sfD === 0 && r691.sfC === 0));
     ok('balanta 2025 se inchide dupa ambele inchideri', tb.balanced === true);
+    // pas 5 (citiri SQL pt firme mari): sub prag (seed mic) -> calea RAM implicita; header de diagnostic.
+    // CI ruleaza suita si cu CONTAB_SQL_READ_THRESHOLD=0 -> calea SQL, cu ACELEASI aserttii de balanta.
+    {
+      const bs = await fetch(BASE + '/api/balance?period=2025', { headers: { Cookie: c1 } });
+      const src = bs.headers.get('x-balance-source');
+      // json n-are SQL -> mereu RAM; sqlite/pg cu pragul 0 -> SQL. Continutul e identic pe ambele cai.
+      const sqlCapable = process.env.CONTAB_TEST_DRIVER !== 'json';
+      const forced = process.env.CONTAB_SQL_READ_THRESHOLD === '0';
+      ok('balanta: sursa reflecta pragul + capabilitatea driverului', src === (forced && sqlCapable ? 'sql' : 'ram'));
+    }
 
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });

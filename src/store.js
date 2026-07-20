@@ -251,12 +251,13 @@ function documentsSearch(firmaId, q, limit) {
 /** Rulajul pe conturi calculat DIRECT in SQL din entry_lines (doar articole postate), pentru o firma
  *  si optional o perioada (YYYY sau YYYY-MM). Intoarce { cont: { d, c } } — aceeasi forma ca
  *  accounting.accumulate. Demonstreaza calcul analitic fara a incarca graful in RAM. */
-function linesTurnover(firmaId, period) {
+function linesTurnover(firmaId, period, opts) {
   const acc = {};
   const bump = (cont, side, s) => { if (cont == null) return; acc[cont] = acc[cont] || { d: 0, c: 0 }; acc[cont][side] += s; };
   let where = 'firmaId = ? AND (status IS NULL OR status = ?)';
   const params = [asInt(firmaId), 'postat'];
-  if (period) { if (String(period).length === 4) { where += ' AND period LIKE ?'; params.push(period + '-%'); } else { where += ' AND period = ?'; params.push(period); } }
+  if (opts && opts.before) { if (period) { where += ' AND period < ?'; params.push(period); } } // rulaj INAINTE de perioada (solduri initiale)
+  else if (period) { if (String(period).length === 4) { where += ' AND period LIKE ?'; params.push(period + '-%'); } else { where += ' AND period = ?'; params.push(period); } }
   for (const r of sdb.prepare(`SELECT debit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND debit IS NOT NULL GROUP BY debit`).all(...params)) bump(r.cont, 'd', Number(r.s) || 0);
   for (const r of sdb.prepare(`SELECT credit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND credit IS NOT NULL GROUP BY credit`).all(...params)) bump(r.cont, 'c', Number(r.s) || 0);
   return acc;

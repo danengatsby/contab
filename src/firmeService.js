@@ -16,6 +16,7 @@ const zipGuard = require('./zipGuard');
 const db = require('./db');
 const plans = require('./plans');
 const billing = require('./billing');
+const backup = require('./backup');
 const { allowedFirme } = require('./session');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
@@ -73,7 +74,11 @@ function importBundle(user, bundle, opts) {
     try {
       const dir = path.join(db.DATA_DIR, 'backups');
       fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, 'pre-restore-firma' + targetFid + '-' + Date.now() + '.json'), JSON.stringify(db.exportFirma(targetFid)));
+      try { fs.chmodSync(dir, 0o700); } catch (_) { /* best-effort */ }
+      const preRestore = path.join(dir, 'pre-restore-firma' + targetFid + '-' + Date.now() + '.json');
+      fs.writeFileSync(preRestore, JSON.stringify(db.exportFirma(targetFid)), { mode: 0o600 });
+      try { fs.chmodSync(preRestore, 0o600); } catch (_) { /* best-effort */ }
+      backup.prunePreRestoreBackups(db.DATA_DIR, Number(process.env.CONTAB_BACKUP_KEEP_PRE_RESTORE) || 10);
     } catch (e) { console.error('pre-restore backup:', e.message); }
   }
   let newFid;

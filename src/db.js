@@ -90,10 +90,21 @@ const DEFAULT_DB = {
 
 let db = null;
 
+function chmodSafe(p, mode) {
+  try { fs.chmodSync(p, mode); } catch (_) { /* platforma/permisiuni: nu masca pornirea */ }
+}
+
 function ensureDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   const up = path.join(DATA_DIR, 'uploads');
   if (!fs.existsSync(up)) fs.mkdirSync(up, { recursive: true });
+  // Date fiscale, salariale si documente justificative: accesibile doar contului serviciului.
+  // Corecteaza si instalari vechi, nu doar fisierele create dupa acest patch.
+  chmodSafe(DATA_DIR, 0o700);
+  chmodSafe(up, 0o700);
+  chmodSafe(path.join(DATA_DIR, 'backups'), 0o700);
+  chmodSafe(path.join(DATA_DIR, 'audit'), 0o700);
+  for (const f of [JSON_FILE, SQLITE_FILE]) if (fs.existsSync(f)) chmodSafe(f, 0o600);
 }
 
 /** Migreaza o baza veche (o singura firma, fara firmaId) la structura multi-firma. */
@@ -206,6 +217,7 @@ function writeJson(file, data) {
   const tmp = file + '.tmp';
   fs.writeFileSync(tmp, stringifyDb(data, 2));
   fs.renameSync(tmp, file);
+  chmodSafe(file, 0o600);
 }
 function backupLegacyJson() {
   try {
@@ -514,8 +526,43 @@ function importFirma(bundle, opts) {
 
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 
+// ── Citiri per-cerere din SQL pentru firmele MARI (pas 5 al migrarii; RAM ramane implicit) ──
+// Peste un prag de articole/firma, agregarile grele (ex. balanta) se pot calcula direct in SQL prin
+// proiectia entry_lines, in loc de a itera graful din RAM. Gate pe prag REAL: sub prag, RAM e mai
+// simplu si mai rapid. Driverul json (fara SQL) cade mereu pe RAM. Rezultatul e IDENTIC (dovedit in teste).
+const SQL_READ_THRESHOLD = Number.isFinite(Number(process.env.CONTAB_SQL_READ_THRESHOLD)) && process.env.CONTAB_SQL_READ_THRESHOLD !== ''
+  ? Number(process.env.CONTAB_SQL_READ_THRESHOLD) : 20000; // 0 e valid (forteaza SQL); gol/absent -> 20000
+
+/** Driverul suporta citiri SQL din proiectii (pg/sqlite au linesTurnover; json nu)? */
+function canSqlRead() { return !!(store && typeof store.linesTurnover === 'function'); }
+
+/** Firma are destule articole ca sa merite calculul in SQL (peste prag)? Scurt-circuit la prag. */
+function largeFirma(fid) {
+  if (!canSqlRead()) return false;
+  const target = Number(fid);
+  if (!Number.isFinite(target)) return false;
+  const d = get(); let n = 0;
+  for (const e of (d.entries || [])) if (Number(e.firmaId == null ? firmaActiva() : e.firmaId) === target) { n += 1; if (n > SQL_READ_THRESHOLD) return true; }
+  return false;
+}
+
+/** Perioada suportata de calea SQL a balantei: YYYY sau YYYY-MM (trimestrele/gol -> RAM). */
+function sqlBalancePeriodOk(period) { return typeof period === 'string' && /^\d{4}(-\d{2})?$/.test(period); }
+
+/** Balanta calculata DIRECT in SQL (rulaj perioada + rulaj inainte, din entry_lines) + soldurile de
+ *  preluare din RAM. Acelasi rezultat ca accounting.trialBalance, dar fara a itera graful. Async
+ *  (pg e asincron; sqlite sincron -> await pe valoare). */
+async function trialBalanceSql(fid, period) {
+  const acc = require('./accounting');
+  const opening = (get().openingBalances || {})[fid] || {};
+  const before = await store.linesTurnover(fid, period, { before: true });
+  const rulaj = await store.linesTurnover(fid, period);
+  return acc.buildBalanceRows(before, opening, rulaj, period);
+}
+
 module.exports = {
   get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
+  canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

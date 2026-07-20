@@ -22,8 +22,11 @@ function append(record) {
   try {
     const dir = auditDir();
     fs.mkdirSync(dir, { recursive: true });
+    try { fs.chmodSync(dir, 0o700); } catch (_) { /* best-effort */ }
     const luna = String(record.ts || new Date().toISOString()).slice(0, 7); // YYYY-MM
-    fs.appendFileSync(path.join(dir, 'audit-' + luna + '.ndjson'), JSON.stringify(record) + '\n');
+    const file = path.join(dir, 'audit-' + luna + '.ndjson');
+    fs.appendFileSync(file, JSON.stringify(record) + '\n', { mode: 0o600 });
+    try { fs.chmodSync(file, 0o600); } catch (_) { /* best-effort */ }
     warned = false;
   } catch (e) {
     // nu bloca cererea; avertizeaza o singura data pana la urmatorul succes
