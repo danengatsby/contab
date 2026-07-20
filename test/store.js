@@ -195,6 +195,40 @@ section('Proiectie audit APPEND-ONLY (durabila, decuplata de plafonul RAM)');
   eq('re-persist nu dubleaza (dedup pe id)', store.auditCount(99), 6);
 }
 
+// ULTIMA sectiune (dupa conflict, persistenta ramane INGHETATA — nimic nu mai scrie dupa ea)
+section('Fencing multi-scriitor (dbEpoch): alt proces detectat -> refuz, nu clobber');
+{
+  const fdb = base();
+  fdb.entries = [mkEntry('f1', 1, 10)];
+  store.resetDirty();
+  store.persist(fdb);
+  ok('inainte de conflict: persist normal functioneaza', store.written().includes('entries') && !store.conflicted());
+  // simulez AL DOILEA scriitor: alt proces avanseaza dbEpoch + scrie un rand propriu
+  {
+    const raw = new (require('node:sqlite').DatabaseSync)(FILE);
+    const cur = Number(JSON.parse(raw.prepare("SELECT value FROM meta WHERE key='dbEpoch'").get().value));
+    raw.prepare("UPDATE meta SET value = ? WHERE key='dbEpoch'").run(String(cur + 1));
+    raw.prepare('INSERT INTO entries (id, firmaId, data) VALUES (?, ?, ?)').run('strain-1', 2, JSON.stringify({ id: 'strain-1', firmaId: 2, lines: [] }));
+    raw.close();
+  }
+  fdb.entries.push(mkEntry('f2', 1, 20));
+  let conflictErr = null;
+  try { store.persist(fdb); } catch (e) { conflictErr = e; }
+  ok('persist dupa alt scriitor -> aruncat CONTAB_WRITER_CONFLICT', !!conflictErr && conflictErr.code === 'CONTAB_WRITER_CONFLICT');
+  ok('starea de conflict e expusa (conflicted)', store.conflicted());
+  // datele celuilalt scriitor sunt INTACTE (f2 al nostru NU s-a scris)
+  {
+    const raw = new (require('node:sqlite').DatabaseSync)(FILE);
+    ok('randul scriitorului strain e intact', !!raw.prepare("SELECT id FROM entries WHERE id='strain-1'").get());
+    ok('scrierea noastra (f2) NU a intrat (rollback)', !raw.prepare("SELECT id FROM entries WHERE id='f2'").get());
+    raw.close();
+  }
+  // inghetat: si urmatorul persist e refuzat
+  let frozenErr = null;
+  try { store.persist(fdb); } catch (e) { frozenErr = e; }
+  ok('persist ulterior refuzat (inghetat pana la restart)', !!frozenErr && frozenErr.code === 'CONTAB_WRITER_CONFLICT');
+}
+
 store.close();
 rm();
 
