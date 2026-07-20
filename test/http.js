@@ -708,6 +708,17 @@ async function main() {
       const sqlCapable = process.env.CONTAB_TEST_DRIVER !== 'json';
       const forced = process.env.CONTAB_SQL_READ_THRESHOLD === '0';
       ok('balanta: sursa reflecta pragul + capabilitatea driverului', src === (forced && sqlCapable ? 'sql' : 'ram'));
+      // invariante INCRUCISATE jurnal/cartea mare/balanta — valabile identic pe RAM si pe SQL
+      // (rulate in CI si cu prag 0 => dovedesc echivalenta cailor pentru jurnal si ledger)
+      const jj = (await req('GET', '/api/journal?period=2026-06', { cookie: c1 })).json;
+      const ll = (await req('GET', '/api/ledger?period=2026-06', { cookie: c1 })).json;
+      const bb = (await req('GET', '/api/balance?period=2026-06', { cookie: c1 })).json;
+      ok('jurnal: total == rulajul debit al balantei (aceeasi perioada)', jj.total === bb.tot.rd && jj.total > 0);
+      ok('jurnal: primul rand are nr=1 si data', jj.rows.length > 0 && jj.rows[0].nr === 1 && !!jj.rows[0].data);
+      const l4111 = ll.find((a) => a.cod === '4111');
+      const b4111 = bb.rows.find((r) => r.cod === '4111');
+      ok('cartea mare 4111 == randul balantei 4111 (rd/rc identice)', !!l4111 && !!b4111 && l4111.rd === b4111.rd && l4111.rc === b4111.rc);
+      ok('cartea mare: miscarile au data si explicatie', l4111.moves.length > 0 && l4111.moves.every((m) => !!m.data && m.explicatie !== undefined));
     }
 
     // admin

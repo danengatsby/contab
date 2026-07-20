@@ -91,13 +91,15 @@ function entryLineRows(id, firmaId, entry) {
   const data = entry && entry.data != null ? String(entry.data) : null;
   const document = entry && entry.document != null ? String(entry.document) : null;
   const partener = entry && entry.partener != null ? String(entry.partener) : null;
+  const tipNume = String((entry && entry.tipNume) || ''); // niciodata NULL (NULL = rand pre-migrare -> backfill)
   return lines.map((l, i) => ({
     entry_id: String(id), firmaId: firmaId != null ? firmaId : null, period, status, seq: i,
-    data, document, partener,
+    data, document, partener, tipNume,
     debit: l && l.debit != null ? String(l.debit) : null,
     credit: l && l.credit != null ? String(l.credit) : null,
     suma: Number(l && l.suma) || 0,
-    explicatie: l && l.explicatie != null ? String(l.explicatie) : (entry && entry.explicatie != null ? String(entry.explicatie) : null),
+    // acelasi lant de fallback ca accounting.allLines (echivalenta cu calea RAM)
+    explicatie: String((l && l.explicatie) || (entry && entry.explicatie) || ''),
   }));
 }
 function documentMetaRow(id, firmaId, doc) {
@@ -132,9 +134,9 @@ function auditRow(id, firmaId, rec) {
 const PROJECTIONS = [
   {
     coll: 'entries', table: 'entry_lines', idCol: 'entry_id', rows: entryLineRows,
-    cols: ['entry_id', 'firmaId', 'period', 'status', 'seq', 'data', 'document', 'partener', 'debit', 'credit', 'suma', 'explicatie'],
-    pgSelect: 'x.entry_id, x."firmaId", x.period, x.status, x.seq, x.data, x.document, x.partener, x.debit, x.credit, x.suma, x.explicatie',
-    pgRecordset: 'entry_id TEXT, "firmaId" INTEGER, period TEXT, status TEXT, seq INTEGER, data TEXT, document TEXT, partener TEXT, debit TEXT, credit TEXT, suma DOUBLE PRECISION, explicatie TEXT',
+    cols: ['entry_id', 'firmaId', 'period', 'status', 'seq', 'data', 'document', 'partener', 'tipNume', 'debit', 'credit', 'suma', 'explicatie'],
+    pgSelect: 'x.entry_id, x."firmaId", x.period, x.status, x.seq, x.data, x.document, x.partener, x."tipNume", x.debit, x.credit, x.suma, x.explicatie',
+    pgRecordset: 'entry_id TEXT, "firmaId" INTEGER, period TEXT, status TEXT, seq INTEGER, data TEXT, document TEXT, partener TEXT, "tipNume" TEXT, debit TEXT, credit TEXT, suma DOUBLE PRECISION, explicatie TEXT',
   },
   {
     coll: 'documents', table: 'documents_meta', idCol: 'doc_id', rows: documentMetaRow,
@@ -186,17 +188,17 @@ function schema() {
   sdb.exec(`CREATE TABLE IF NOT EXISTS entry_lines (
     rowid INTEGER PRIMARY KEY AUTOINCREMENT,
     entry_id TEXT NOT NULL, firmaId INTEGER, period TEXT, status TEXT, seq INTEGER,
-    data TEXT, document TEXT, partener TEXT,
+    data TEXT, document TEXT, partener TEXT, tipNume TEXT,
     debit TEXT, credit TEXT, suma REAL DEFAULT 0, explicatie TEXT
   )`);
-  // migrare aditiva pt tabelele entry_lines create inainte de coloanele data/document/partener
-  for (const col of ['data TEXT', 'document TEXT', 'partener TEXT']) {
+  // migrare aditiva pt tabelele entry_lines create inainte de coloanele data/document/partener/tipNume
+  for (const col of ['data TEXT', 'document TEXT', 'partener TEXT', 'tipNume TEXT']) {
     try { sdb.exec('ALTER TABLE entry_lines ADD COLUMN ' + col); } catch (_) { /* coloana exista deja */ }
   }
   // BACKFILL (conditionat pe date, fara marker): randurile proiectate inainte de coloanele noi au
-  // NULL in `data` -> reproiecteaza integral din blob-ul entries. Idempotent: dupa backfill nu mai
-  // exista NULL, deci nu mai ruleaza. Pe DB proaspat entry_lines e gol -> no-op.
-  if (sdb.prepare('SELECT 1 AS x FROM entry_lines WHERE data IS NULL LIMIT 1').get()) {
+  // NULL in `data`/`tipNume` (proiectia noua scrie mereu tipNume >= '') -> reproiecteaza integral
+  // din blob-ul entries. Idempotent: dupa backfill nu mai exista NULL. Pe DB proaspat -> no-op.
+  if (sdb.prepare('SELECT 1 AS x FROM entry_lines WHERE data IS NULL OR tipNume IS NULL LIMIT 1').get()) {
     sdb.exec('DELETE FROM entry_lines');
     const p = PROJECTIONS.find((x) => x.coll === 'entries');
     const insB = sdb.prepare(`INSERT INTO entry_lines (${p.cols.join(', ')}) VALUES (${p.cols.map(() => '?').join(', ')})`);
@@ -290,6 +292,17 @@ function linesTurnover(firmaId, period, opts) {
   for (const r of sdb.prepare(`SELECT debit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND debit IS NOT NULL GROUP BY debit`).all(...params)) bump(r.cont, 'd', Number(r.s) || 0);
   for (const r of sdb.prepare(`SELECT credit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND credit IS NOT NULL GROUP BY credit`).all(...params)) bump(r.cont, 'c', Number(r.s) || 0);
   return acc;
+}
+
+/** TOATE liniile perioadei, DIRECT din SQL (entry_lines) — pentru registrul-jurnal si cartea mare
+ *  fara a itera graful. Doar articole postate. Ordinea finala (data + id natural) se face in
+ *  apelant (localeCompare numeric nu se reproduce in SQL). Perioada YYYY sau YYYY-MM. */
+function linesForPeriod(firmaId, period) {
+  const params = [asInt(firmaId), 'postat'];
+  let where = 'firmaId = ? AND (status IS NULL OR status = ?)';
+  if (period) { if (String(period).length === 4) { where += ' AND period LIKE ?'; params.push(period + '-%'); } else { where += ' AND period = ?'; params.push(period); } }
+  return sdb.prepare(`SELECT entry_id, seq, data, document, partener, tipNume, explicatie, debit, credit, suma FROM entry_lines WHERE ${where}`)
+    .all(...params).map((r) => ({ entry_id: r.entry_id, seq: r.seq, data: r.data, document: r.document, partener: r.partener, tipNume: r.tipNume, explicatie: r.explicatie, debit: r.debit, credit: r.credit, suma: Number(r.suma) || 0 }));
 }
 
 /** Miscarile unui cont in perioada, DIRECT din SQL (entry_lines), ordonate cronologic — pentru fisa de
@@ -512,4 +525,4 @@ function hydrate(defaults) {
 
 function close() { if (sdb) { try { sdb.close(); } catch (_) { /* ignore */ } sdb = null; } }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, auditRow, linesTurnover, linesForAccount, documentsStats, documentsSearch, auditCount, auditRecent, conflicted, checkSqlite };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, auditRow, linesTurnover, linesForAccount, linesForPeriod, documentsStats, documentsSearch, auditCount, auditRecent, conflicted, checkSqlite };

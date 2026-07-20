@@ -69,8 +69,18 @@ fără schimbări în modulele de domeniu.
   care funcționează **peste mașini** — fundația de siguranță pentru multi-instanță: două instanțe pe
   aceeași bază nu se mai pot suprascrie una pe alta neobservat. Dovedit în teste pe ambele drivere
   (al doilea scriitor simulat: conflict detectat, rândul străin intact, scrierea proprie rollback, freeze).
-- **Pași următori (neîncepuți):** extinderea căii SQL la jurnal/cartea mare (întorc TOATE mișcările — de
-  regândit ca paginare SQL, nu doar agregare); multi-instanță reală (necesită citiri per-cerere, nu doar
+- **Pas 8 — LIVRAT: registrul-jurnal + cartea mare pe calea SQL.** `entry_lines` a primit `tipNume`
+  (fallback-ul explicației din jurnal), iar `explicatie` a fost aliniat exact la lanțul `allLines`
+  (`ln.explicatie || e.explicatie || ''`) — backfill condiționat extins (`data IS NULL OR tipNume IS
+  NULL`). `store.linesForPeriod(fid, period)` întoarce toate liniile perioadei din SQL; ordinea finală
+  (data + **id natural** — `localeCompare numeric`, nereproductibil în SQL) se face în JS cu exact
+  comparatorul din `sortEntries`. `db.journalSql`/`db.ledgerSql` reconstruiesc identic ieșirile;
+  `/api/journal` + `/api/ledger` gate-uite pe același prag (headere `X-Journal-Source`/`X-Ledger-Source`).
+  Schimbare de comportament asumată (îmbunătățire): mișcările din cartea mare (RAM) sunt acum ordonate
+  **cronologic** (înainte: ordinea colecției). Dovadă: invariante încrucișate în suită (jurnal.total ==
+  balanță.tot.rd; cartea mare 4111 == rândul balanței), rulate pe ambele căi (prag 0) pe sqlite și pg.
+  Toate cele patru agregări grele (balanță, fișă de cont, jurnal, cartea mare) au acum cale SQL.
+- **Pași următori (neîncepuți):** multi-instanță reală (necesită citiri per-cerere generalizate, nu doar
   fencing — fencing-ul actual protejează, nu partajează); eventual hidratare lazy (a nu încărca tot
   graful) — pasul care reduce efectiv RAM-ul, luat doar pe semnal real (`firmeLoad`).
 
