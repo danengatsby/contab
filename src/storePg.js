@@ -70,10 +70,43 @@ async function schema() {
   await pool.query(`CREATE TABLE IF NOT EXISTS entry_lines (
     rowid BIGSERIAL PRIMARY KEY,
     entry_id TEXT NOT NULL, "firmaId" INTEGER, period TEXT, status TEXT, seq INTEGER,
+    data TEXT, document TEXT, partener TEXT,
     debit TEXT, credit TEXT, suma DOUBLE PRECISION DEFAULT 0, explicatie TEXT
   )`);
+  // migrare aditiva pt tabelele entry_lines create inainte de coloanele data/document/partener
+  await pool.query('ALTER TABLE entry_lines ADD COLUMN IF NOT EXISTS data TEXT');
+  await pool.query('ALTER TABLE entry_lines ADD COLUMN IF NOT EXISTS document TEXT');
+  await pool.query('ALTER TABLE entry_lines ADD COLUMN IF NOT EXISTS partener TEXT');
+  // BACKFILL (conditionat pe date, fara marker): randurile proiectate inainte de coloanele noi au
+  // NULL in `data` -> reproiecteaza integral din blob-ul entries. Idempotent; pe DB proaspat no-op.
+  const hasNull = await pool.query('SELECT 1 FROM entry_lines WHERE data IS NULL LIMIT 1');
+  if (hasNull.rows.length) {
+    const p = PROJECTIONS.find((x) => x.coll === 'entries');
+    const rows = [];
+    for (const r of (await pool.query('SELECT id, "firmaId", data FROM entries')).rows) {
+      for (const lr of p.rows(r.id, r.firmaId, r.data)) rows.push(lr);
+    }
+    const insertCols = p.cols.map((c) => (/[A-Z]/.test(c) ? '"' + c + '"' : c)).join(', ');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM entry_lines');
+      if (rows.length) {
+        await client.query(
+          `INSERT INTO entry_lines (${insertCols}) SELECT ${p.pgSelect} FROM jsonb_to_recordset($1::jsonb) AS x(${p.pgRecordset})`,
+          [stringifyDb(rows)]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) { /* ignora */ }
+      throw e;
+    } finally { client.release(); }
+  }
   await pool.query('CREATE INDEX IF NOT EXISTS idx_entry_lines_entry ON entry_lines(entry_id)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_entry_lines_firma ON entry_lines("firmaId", period)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_entry_lines_debit ON entry_lines("firmaId", debit)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_entry_lines_credit ON entry_lines("firmaId", credit)');
   // proiectie normalizata a documentelor (metadate interogabile + text pentru cautare SQL)
   await pool.query(`CREATE TABLE IF NOT EXISTS documents_meta (
     doc_id TEXT PRIMARY KEY, "firmaId" INTEGER, "fileName" TEXT, "uploadedAt" TEXT, "spvMsgId" TEXT,
@@ -312,6 +345,18 @@ async function linesTurnover(firmaId, period, opts) {
   return acc;
 }
 
+/** Miscarile unui cont in perioada, DIRECT din SQL (entry_lines), ordonate cronologic — pentru fisa de
+ *  cont fara a itera graful. Doar articole postate. Perioada YYYY sau YYYY-MM. */
+async function linesForAccount(firmaId, cont, period) {
+  const params = [asInt(firmaId), 'postat'];
+  let where = '"firmaId" = $1 AND (status IS NULL OR status = $2)';
+  if (period) { params.push(String(period).length === 4 ? period + '-%' : period); where += String(period).length === 4 ? ' AND period LIKE $3' : ' AND period = $3'; }
+  params.push(String(cont));
+  where += ` AND (debit = $${params.length} OR credit = $${params.length})`;
+  const r = await pool.query(`SELECT data, document, partener, explicatie, debit, credit, suma FROM entry_lines WHERE ${where} ORDER BY data, seq`, params);
+  return r.rows.map((x) => ({ data: x.data, document: x.document, partener: x.partener, explicatie: x.explicatie, debit: x.debit, credit: x.credit, suma: Number(x.suma) || 0 }));
+}
+
 /** Statistici pe documente calculate in SQL din documents_meta (fara graful in RAM), per firma. */
 async function documentsStats(firmaId) {
   const r = await pool.query(
@@ -392,4 +437,4 @@ async function close() {
   try { await p.end(); } catch (_) { /* ignora */ }
 }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover, documentsStats, documentsSearch, auditCount, auditRecent };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover, linesForAccount, documentsStats, documentsSearch, auditCount, auditRecent };

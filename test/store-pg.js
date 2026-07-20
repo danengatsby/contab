@@ -99,6 +99,12 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
     const ramBefore = acc.accumulate(acc.allLines(acc.postedEntries({ entries: el.entries.filter((e) => e.firmaId === 1) }).filter((e) => (e.period || '') < '2026-03')));
     eq('rulaj SQL before = rulaj RAM beforePeriod (firma 1)', JSON.stringify(sqlBefore), JSON.stringify(ramBefore));
     ok('before include perioada anterioara (419 din 2026-01)', !!sqlBefore['419'] && !sql['419']);
+    // fisa de cont: miscarile din SQL (linesForAccount) = miscarile din RAM (allLines filtrat pe cont)
+    const sqlMoves = (await store.linesForAccount(1, '4111', '2026-03')).map((l) => l.debit + '/' + l.credit + '/' + l.suma);
+    const ramMoves = acc.allLines(acc.postedEntries({ entries: el.entries.filter((e) => e.firmaId === 1 && e.period === '2026-03') }))
+      .filter((l) => l.debit === '4111' || l.credit === '4111').map((l) => l.debit + '/' + l.credit + '/' + l.suma).sort();
+    eq('miscari SQL(4111) = miscari RAM(4111) pe firma 1', sqlMoves.slice().sort().join('|'), ramMoves.join('|'));
+    ok('fisa cont: ciorna l3 (5311/707) exclusa din miscari', !(await store.linesForAccount(1, '707', '2026-03')).some((l) => l.debit === '5311' || l.credit === '5311'));
     ok('ciorna l3 exclusa din rulajul SQL (5311 absent)', !sql['5311']);
     ok('izolare pe firma: 371 (firma 2) absent din rulajul firmei 1', !sql['371']);
     const t2 = await store.linesTurnover(2, '2026-03');

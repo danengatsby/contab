@@ -21,11 +21,19 @@ module.exports = function register(app, ctx) {
   // ── Registre si jurnale de baza (JSON) ──
   app.get('/api/journal', (req, res) => res.json(acc.journal(S(req), req.query.period || null)));
   app.get('/api/ledger', (req, res) => res.json(acc.ledger(S(req), req.query.period || null)));
-  // Fisa de cont: miscarile unui cont cu contul corespondent si sold curent (orice cont din plan)
-  app.get('/api/fisa-cont', (req, res) => {
-    if (!req.query.cont) return res.status(400).json({ error: 'Alege contul (ex. ?cont=4111).' });
-    res.json(acc.fisaCont(S(req), req.query.cont, req.query.period || null));
-  });
+  // Fisa de cont: miscarile unui cont cu contul corespondent si sold curent (orice cont din plan).
+  // Pentru firmele MARI (peste prag) se interogheaza direct SQL (entry_lines), altfel RAM. Rezultat identic.
+  app.get('/api/fisa-cont', wrap(async (req, res) => {
+    const cont = req.query.cont; const period = req.query.period || null;
+    if (!cont) return res.status(400).json({ error: 'Alege contul (ex. ?cont=4111).' });
+    const fid = activeId(req);
+    if (db.sqlBalancePeriodOk(period) && db.largeFirma(fid)) {
+      res.setHeader('X-FisaCont-Source', 'sql');
+      return res.json(await db.trialFisaContSql(fid, cont, period));
+    }
+    res.setHeader('X-FisaCont-Source', 'ram');
+    res.json(acc.fisaCont(S(req), cont, period));
+  }));
   app.get('/pdf/fisa-cont', (req, res) => {
     if (!req.query.cont) return res.status(400).send('Alege contul (ex. ?cont=4111).');
     pdf.fisaContPdf(res, S(req).company, acc.fisaCont(S(req), req.query.cont, req.query.period || null));
