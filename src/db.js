@@ -560,9 +560,31 @@ async function trialBalanceSql(fid, period) {
   return acc.buildBalanceRows(before, opening, rulaj, period);
 }
 
+/** Fisa unui cont calculata DIRECT in SQL (miscarile contului + rulaj inainte, din entry_lines) +
+ *  soldul de preluare din RAM. Acelasi rezultat ca accounting.fisaCont, dar fara a itera graful. */
+async function trialFisaContSql(fid, cont, period) {
+  const coa = require('./chartOfAccounts');
+  const { round2 } = require('./util');
+  cont = String(cont || '').trim();
+  const openingAll = (get().openingBalances || {})[fid] || {};
+  const opening = openingAll[cont] || { d: 0, c: 0 };
+  const before = (await store.linesTurnover(fid, period, { before: true }))[cont] || { d: 0, c: 0 };
+  let sold = round2((opening.d + before.d) - (opening.c + before.c));
+  const siInitial = sold;
+  const moves = await store.linesForAccount(fid, cont, period);
+  let rd = 0; let rc = 0;
+  const rows = moves.map((l) => {
+    const d = l.debit === cont ? l.suma : 0;
+    const c = l.credit === cont ? l.suma : 0;
+    rd = round2(rd + d); rc = round2(rc + c); sold = round2(sold + d - c);
+    return { data: l.data, document: l.document, explicatie: l.explicatie, partener: l.partener, corespondent: l.debit === cont ? l.credit : l.debit, d, c, sold };
+  });
+  return { cont, nume: coa.accountName(cont), period, siInitial, rows, rd, rc, sfFinal: sold };
+}
+
 module.exports = {
   get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
-  canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, SQL_READ_THRESHOLD,
+  canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

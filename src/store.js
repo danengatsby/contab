@@ -82,12 +82,16 @@ function entryLineRows(id, firmaId, entry) {
   const lines = (entry && entry.lines) || [];
   const period = entry ? (entry.period || String(entry.data || '').slice(0, 7)) : '';
   const status = entry && entry.status ? String(entry.status) : null;
+  const data = entry && entry.data != null ? String(entry.data) : null;
+  const document = entry && entry.document != null ? String(entry.document) : null;
+  const partener = entry && entry.partener != null ? String(entry.partener) : null;
   return lines.map((l, i) => ({
     entry_id: String(id), firmaId: firmaId != null ? firmaId : null, period, status, seq: i,
+    data, document, partener,
     debit: l && l.debit != null ? String(l.debit) : null,
     credit: l && l.credit != null ? String(l.credit) : null,
     suma: Number(l && l.suma) || 0,
-    explicatie: l && l.explicatie != null ? String(l.explicatie) : null,
+    explicatie: l && l.explicatie != null ? String(l.explicatie) : (entry && entry.explicatie != null ? String(entry.explicatie) : null),
   }));
 }
 function documentMetaRow(id, firmaId, doc) {
@@ -122,9 +126,9 @@ function auditRow(id, firmaId, rec) {
 const PROJECTIONS = [
   {
     coll: 'entries', table: 'entry_lines', idCol: 'entry_id', rows: entryLineRows,
-    cols: ['entry_id', 'firmaId', 'period', 'status', 'seq', 'debit', 'credit', 'suma', 'explicatie'],
-    pgSelect: 'x.entry_id, x."firmaId", x.period, x.status, x.seq, x.debit, x.credit, x.suma, x.explicatie',
-    pgRecordset: 'entry_id TEXT, "firmaId" INTEGER, period TEXT, status TEXT, seq INTEGER, debit TEXT, credit TEXT, suma DOUBLE PRECISION, explicatie TEXT',
+    cols: ['entry_id', 'firmaId', 'period', 'status', 'seq', 'data', 'document', 'partener', 'debit', 'credit', 'suma', 'explicatie'],
+    pgSelect: 'x.entry_id, x."firmaId", x.period, x.status, x.seq, x.data, x.document, x.partener, x.debit, x.credit, x.suma, x.explicatie',
+    pgRecordset: 'entry_id TEXT, "firmaId" INTEGER, period TEXT, status TEXT, seq INTEGER, data TEXT, document TEXT, partener TEXT, debit TEXT, credit TEXT, suma DOUBLE PRECISION, explicatie TEXT',
   },
   {
     coll: 'documents', table: 'documents_meta', idCol: 'doc_id', rows: documentMetaRow,
@@ -176,10 +180,29 @@ function schema() {
   sdb.exec(`CREATE TABLE IF NOT EXISTS entry_lines (
     rowid INTEGER PRIMARY KEY AUTOINCREMENT,
     entry_id TEXT NOT NULL, firmaId INTEGER, period TEXT, status TEXT, seq INTEGER,
+    data TEXT, document TEXT, partener TEXT,
     debit TEXT, credit TEXT, suma REAL DEFAULT 0, explicatie TEXT
   )`);
+  // migrare aditiva pt tabelele entry_lines create inainte de coloanele data/document/partener
+  for (const col of ['data TEXT', 'document TEXT', 'partener TEXT']) {
+    try { sdb.exec('ALTER TABLE entry_lines ADD COLUMN ' + col); } catch (_) { /* coloana exista deja */ }
+  }
+  // BACKFILL (conditionat pe date, fara marker): randurile proiectate inainte de coloanele noi au
+  // NULL in `data` -> reproiecteaza integral din blob-ul entries. Idempotent: dupa backfill nu mai
+  // exista NULL, deci nu mai ruleaza. Pe DB proaspat entry_lines e gol -> no-op.
+  if (sdb.prepare('SELECT 1 AS x FROM entry_lines WHERE data IS NULL LIMIT 1').get()) {
+    sdb.exec('DELETE FROM entry_lines');
+    const p = PROJECTIONS.find((x) => x.coll === 'entries');
+    const insB = sdb.prepare(`INSERT INTO entry_lines (${p.cols.join(', ')}) VALUES (${p.cols.map(() => '?').join(', ')})`);
+    for (const r of sdb.prepare('SELECT id, firmaId, data FROM entries').all()) {
+      let e; try { e = JSON.parse(r.data); } catch (_) { continue; }
+      for (const lr of p.rows(r.id, r.firmaId, e)) insB.run(...p.cols.map((c) => lr[c]));
+    }
+  }
   sdb.exec('CREATE INDEX IF NOT EXISTS idx_entry_lines_entry ON entry_lines(entry_id)');
   sdb.exec('CREATE INDEX IF NOT EXISTS idx_entry_lines_firma ON entry_lines(firmaId, period)');
+  sdb.exec('CREATE INDEX IF NOT EXISTS idx_entry_lines_debit ON entry_lines(firmaId, debit)');
+  sdb.exec('CREATE INDEX IF NOT EXISTS idx_entry_lines_credit ON entry_lines(firmaId, credit)');
   // proiectie normalizata a documentelor (metadate interogabile + text pentru cautare SQL)
   sdb.exec(`CREATE TABLE IF NOT EXISTS documents_meta (
     doc_id TEXT PRIMARY KEY, firmaId INTEGER, fileName TEXT, uploadedAt TEXT, spvMsgId TEXT,
@@ -261,6 +284,17 @@ function linesTurnover(firmaId, period, opts) {
   for (const r of sdb.prepare(`SELECT debit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND debit IS NOT NULL GROUP BY debit`).all(...params)) bump(r.cont, 'd', Number(r.s) || 0);
   for (const r of sdb.prepare(`SELECT credit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND credit IS NOT NULL GROUP BY credit`).all(...params)) bump(r.cont, 'c', Number(r.s) || 0);
   return acc;
+}
+
+/** Miscarile unui cont in perioada, DIRECT din SQL (entry_lines), ordonate cronologic — pentru fisa de
+ *  cont fara a itera graful. Doar articole postate. Perioada YYYY sau YYYY-MM. */
+function linesForAccount(firmaId, cont, period) {
+  const params = [asInt(firmaId), 'postat'];
+  let where = 'firmaId = ? AND (status IS NULL OR status = ?)';
+  if (period) { if (String(period).length === 4) { where += ' AND period LIKE ?'; params.push(period + '-%'); } else { where += ' AND period = ?'; params.push(period); } }
+  where += ' AND (debit = ? OR credit = ?)'; params.push(String(cont), String(cont));
+  return sdb.prepare(`SELECT data, document, partener, explicatie, debit, credit, suma FROM entry_lines WHERE ${where} ORDER BY data, seq`)
+    .all(...params).map((r) => ({ data: r.data, document: r.document, partener: r.partener, explicatie: r.explicatie, debit: r.debit, credit: r.credit, suma: Number(r.suma) || 0 }));
 }
 
 /** Baza e proaspata (fara date persistate)? */
@@ -445,4 +479,4 @@ function hydrate(defaults) {
 
 function close() { if (sdb) { try { sdb.close(); } catch (_) { /* ignore */ } sdb = null; } }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, auditRow, linesTurnover, documentsStats, documentsSearch, auditCount, auditRecent, checkSqlite };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, auditRow, linesTurnover, linesForAccount, documentsStats, documentsSearch, auditCount, auditRecent, checkSqlite };

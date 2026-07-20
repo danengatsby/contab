@@ -51,9 +51,18 @@ fără schimbări în modulele de domeniu.
   (toate firmele actuale, inclusiv producția), calea rămâne RAM — zero schimbare de comportament. Acesta e
   **seam-ul** pentru per-request SQL: reduce CPU/latența agregărilor grele la firmele mari (nu reduce încă
   RAM-ul — graful e tot hidratat integral; hidratarea lazy e un pas ulterior, mai mare).
-- **Pași următori (neîncepuți):** extinderea căii SQL la alte agregări grele (jurnale, cartea mare) peste
-  prag; lock/versionare optimistă pentru multi-instanță reală; eventual hidratare lazy (a nu încărca tot
-  graful) — pasul care reduce efectiv RAM-ul, luat doar pe semnal real (`firmeLoad`).
+- **Pas 6 — LIVRAT: fișa de cont pe calea SQL + îmbogățirea proiecției.** `entry_lines` a primit coloanele
+  `data`, `document`, `partener` (migrare aditivă `ALTER TABLE ... IF NOT EXISTS` + **backfill fără marker**:
+  rândurile vechi au `data IS NULL` → reproiectare integrală din blob la boot, idempotent, no-op pe DB
+  proaspăt) + indecși pe `(firmaId, debit)` / `(firmaId, credit)`. `store.linesForAccount(fid, cont, period)`
+  întoarce mișcările unui cont direct din SQL, cronologic; `db.trialFisaContSql` reconstruiește fișa de cont
+  identic cu `accounting.fisaCont`. `/api/fisa-cont` folosește calea SQL peste același prag (header
+  `X-FisaCont-Source`). Dovada de echivalență: suita HTTP trece cu aceleași aserții pe RAM și pe SQL forțat
+  (prag 0), pe sqlite și pg; testele de store compară mișcările SQL cu `allLines` din RAM.
+- **Pași următori (neîncepuți):** extinderea căii SQL la jurnal/cartea mare (întorc TOATE mișcările — de
+  regândit ca paginare SQL, nu doar agregare); lock/versionare optimistă pentru multi-instanță reală;
+  eventual hidratare lazy (a nu încărca tot graful) — pasul care reduce efectiv RAM-ul, luat doar pe semnal
+  real (`firmeLoad`).
 
 Restul documentului rămâne analiza anterioară (partiționare pe firmă etc.), încă validă ca alternativă
 complementară — migrarea la pg tranzacțional și partiționarea pe `firmaId` nu se exclud.
