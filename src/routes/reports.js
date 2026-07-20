@@ -19,8 +19,26 @@ module.exports = function register(app, ctx) {
   const microYield = () => new Promise((resolve) => setImmediate(resolve));
 
   // ── Registre si jurnale de baza (JSON) ──
-  app.get('/api/journal', (req, res) => res.json(acc.journal(S(req), req.query.period || null)));
-  app.get('/api/ledger', (req, res) => res.json(acc.ledger(S(req), req.query.period || null)));
+  // Registrul-jurnal + cartea mare: pentru firmele MARI (peste prag) se calculeaza direct in SQL
+  // (proiectia entry_lines), altfel din RAM. Rezultat identic; header de diagnostic pe fiecare.
+  app.get('/api/journal', wrap(async (req, res) => {
+    const fid = activeId(req); const period = req.query.period || null;
+    if (db.sqlBalancePeriodOk(period) && db.largeFirma(fid)) {
+      res.setHeader('X-Journal-Source', 'sql');
+      return res.json(await db.journalSql(fid, period));
+    }
+    res.setHeader('X-Journal-Source', 'ram');
+    res.json(acc.journal(S(req), period));
+  }));
+  app.get('/api/ledger', wrap(async (req, res) => {
+    const fid = activeId(req); const period = req.query.period || null;
+    if (db.sqlBalancePeriodOk(period) && db.largeFirma(fid)) {
+      res.setHeader('X-Ledger-Source', 'sql');
+      return res.json(await db.ledgerSql(fid, period));
+    }
+    res.setHeader('X-Ledger-Source', 'ram');
+    res.json(acc.ledger(S(req), period));
+  }));
   // Fisa de cont: miscarile unui cont cu contul corespondent si sold curent (orice cont din plan).
   // Pentru firmele MARI (peste prag) se interogheaza direct SQL (entry_lines), altfel RAM. Rezultat identic.
   app.get('/api/fisa-cont', wrap(async (req, res) => {

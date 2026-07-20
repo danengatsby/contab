@@ -563,6 +563,67 @@ async function trialBalanceSql(fid, period) {
   return acc.buildBalanceRows(before, opening, rulaj, period);
 }
 
+// Comparatorul cronologic al liniilor din SQL: acelasi ca accounting.sortEntries (data, apoi id
+// NATURAL — localeCompare numeric, nereproductibil in SQL), apoi seq (pozitia liniei in articol).
+function lineChrono(a, b) {
+  if (a.data !== b.data) return (a.data || '') < (b.data || '') ? -1 : 1;
+  const c = String(a.entry_id).localeCompare(String(b.entry_id), undefined, { numeric: true });
+  return c !== 0 ? c : (a.seq - b.seq);
+}
+
+/** Registrul-jurnal calculat DIRECT in SQL (liniile perioadei din entry_lines). Acelasi rezultat
+ *  ca accounting.journal, fara a itera graful. */
+async function journalSql(fid, period) {
+  const { round2 } = require('./util');
+  const lines = (await store.linesForPeriod(fid, period)).sort(lineChrono);
+  const rows = []; let total = 0; let nr = 0; let lastEntry = null;
+  for (const l of lines) {
+    const first = l.entry_id !== lastEntry;
+    if (first) { nr += 1; lastEntry = l.entry_id; }
+    rows.push({
+      nr: first ? nr : '',
+      data: first ? l.data : '',
+      document: first ? (l.document || '') : '',
+      explicatie: l.explicatie || l.tipNume,
+      debit: String(l.debit), credit: String(l.credit), suma: round2(l.suma),
+    });
+    total = round2(total + l.suma);
+  }
+  return { rows, total, period };
+}
+
+/** Cartea mare calculata DIRECT in SQL (rulaj inainte + liniile perioadei din entry_lines) +
+ *  soldurile de preluare din RAM. Acelasi rezultat ca accounting.ledger, fara a itera graful. */
+async function ledgerSql(fid, period) {
+  const coa = require('./chartOfAccounts');
+  const { round2 } = require('./util');
+  const opening = (get().openingBalances || {})[fid] || {};
+  const before = await store.linesTurnover(fid, period, { before: true });
+  const periodLines = (await store.linesForPeriod(fid, period)).sort(lineChrono);
+  const accounts = new Set([...Object.keys(opening), ...Object.keys(before)]);
+  for (const ln of periodLines) { accounts.add(ln.debit); accounts.add(ln.credit); }
+  const result = [];
+  for (const cod of [...accounts].sort()) {
+    const op = opening[cod] || { d: 0, c: 0 };
+    const bf = before[cod] || { d: 0, c: 0 };
+    const siNet = round2((op.d + bf.d) - (op.c + bf.c));
+    const moves = periodLines
+      .filter((l) => l.debit === cod || l.credit === cod)
+      .map((l) => ({ data: l.data, explicatie: l.explicatie, document: l.document, debit: l.debit === cod ? l.suma : 0, credit: l.credit === cod ? l.suma : 0 }));
+    const rd = round2(moves.reduce((s, m) => s + m.debit, 0));
+    const rc = round2(moves.reduce((s, m) => s + m.credit, 0));
+    const sfNet = round2(siNet + rd - rc);
+    if (siNet === 0 && rd === 0 && rc === 0 && sfNet === 0) continue;
+    result.push({
+      cod, nume: coa.accountName(cod),
+      siD: siNet > 0 ? siNet : 0, siC: siNet < 0 ? -siNet : 0,
+      moves, rd, rc,
+      sfD: sfNet > 0 ? sfNet : 0, sfC: sfNet < 0 ? -sfNet : 0,
+    });
+  }
+  return result;
+}
+
 /** Fisa unui cont calculata DIRECT in SQL (miscarile contului + rulaj inainte, din entry_lines) +
  *  soldul de preluare din RAM. Acelasi rezultat ca accounting.fisaCont, dar fara a itera graful. */
 async function trialFisaContSql(fid, cont, period) {
@@ -588,6 +649,6 @@ async function trialFisaContSql(fid, cont, period) {
 module.exports = {
   get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
-  canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, storeConflicted, SQL_READ_THRESHOLD,
+  canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

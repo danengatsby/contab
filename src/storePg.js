@@ -74,16 +74,17 @@ async function schema() {
   await pool.query(`CREATE TABLE IF NOT EXISTS entry_lines (
     rowid BIGSERIAL PRIMARY KEY,
     entry_id TEXT NOT NULL, "firmaId" INTEGER, period TEXT, status TEXT, seq INTEGER,
-    data TEXT, document TEXT, partener TEXT,
+    data TEXT, document TEXT, partener TEXT, "tipNume" TEXT,
     debit TEXT, credit TEXT, suma DOUBLE PRECISION DEFAULT 0, explicatie TEXT
   )`);
-  // migrare aditiva pt tabelele entry_lines create inainte de coloanele data/document/partener
+  // migrare aditiva pt tabelele entry_lines create inainte de coloanele data/document/partener/tipNume
   await pool.query('ALTER TABLE entry_lines ADD COLUMN IF NOT EXISTS data TEXT');
   await pool.query('ALTER TABLE entry_lines ADD COLUMN IF NOT EXISTS document TEXT');
   await pool.query('ALTER TABLE entry_lines ADD COLUMN IF NOT EXISTS partener TEXT');
+  await pool.query('ALTER TABLE entry_lines ADD COLUMN IF NOT EXISTS "tipNume" TEXT');
   // BACKFILL (conditionat pe date, fara marker): randurile proiectate inainte de coloanele noi au
-  // NULL in `data` -> reproiecteaza integral din blob-ul entries. Idempotent; pe DB proaspat no-op.
-  const hasNull = await pool.query('SELECT 1 FROM entry_lines WHERE data IS NULL LIMIT 1');
+  // NULL in `data`/`tipNume` (proiectia noua scrie mereu tipNume >= '') -> reproiecteaza integral.
+  const hasNull = await pool.query('SELECT 1 FROM entry_lines WHERE data IS NULL OR "tipNume" IS NULL LIMIT 1');
   if (hasNull.rows.length) {
     const p = PROJECTIONS.find((x) => x.coll === 'entries');
     const rows = [];
@@ -376,6 +377,17 @@ async function linesTurnover(firmaId, period, opts) {
   return acc;
 }
 
+/** TOATE liniile perioadei, DIRECT din SQL (entry_lines) — pentru registrul-jurnal si cartea mare
+ *  fara a itera graful. Doar articole postate. Ordinea finala (data + id natural) se face in
+ *  apelant (localeCompare numeric nu se reproduce in SQL). Perioada YYYY sau YYYY-MM. */
+async function linesForPeriod(firmaId, period) {
+  const params = [asInt(firmaId), 'postat'];
+  let where = '"firmaId" = $1 AND (status IS NULL OR status = $2)';
+  if (period) { params.push(String(period).length === 4 ? period + '-%' : period); where += String(period).length === 4 ? ' AND period LIKE $3' : ' AND period = $3'; }
+  const r = await pool.query(`SELECT entry_id, seq, data, document, partener, "tipNume", explicatie, debit, credit, suma FROM entry_lines WHERE ${where}`, params);
+  return r.rows.map((x) => ({ entry_id: x.entry_id, seq: x.seq, data: x.data, document: x.document, partener: x.partener, tipNume: x.tipNume, explicatie: x.explicatie, debit: x.debit, credit: x.credit, suma: Number(x.suma) || 0 }));
+}
+
 /** Miscarile unui cont in perioada, DIRECT din SQL (entry_lines), ordonate cronologic — pentru fisa de
  *  cont fara a itera graful. Doar articole postate. Perioada YYYY sau YYYY-MM. */
 async function linesForAccount(firmaId, cont, period) {
@@ -469,4 +481,4 @@ async function close() {
   try { await p.end(); } catch (_) { /* ignora */ }
 }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover, linesForAccount, documentsStats, documentsSearch, auditCount, auditRecent, conflicted };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover, linesForAccount, linesForPeriod, documentsStats, documentsSearch, auditCount, auditRecent, conflicted };

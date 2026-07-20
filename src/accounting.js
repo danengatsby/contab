@@ -139,7 +139,9 @@ function ledger(db, period) {
   const opening = db.openingBalances || {};
   const accounts = new Set([...Object.keys(opening), ...Object.keys(before)]);
 
-  const periodLines = allLines(postedEntries(db).filter((e) => inPeriod(e, period)));
+  // miscarile in ordine CRONOLOGICA (data + id natural), nu in ordinea colectiei — cartea mare
+  // se citeste cronologic; ordinea identica face si calea SQL (ledgerSql) echivalenta bit cu bit
+  const periodLines = allLines(sortEntries(postedEntries(db).filter((e) => inPeriod(e, period))));
   for (const ln of periodLines) { accounts.add(ln.debit); accounts.add(ln.credit); }
 
   const result = [];
