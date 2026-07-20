@@ -536,6 +536,9 @@ const SQL_READ_THRESHOLD = Number.isFinite(Number(process.env.CONTAB_SQL_READ_TH
 /** Driverul suporta citiri SQL din proiectii (pg/sqlite au linesTurnover; json nu)? */
 function canSqlRead() { return !!(store && typeof store.linesTurnover === 'function'); }
 
+/** Fencing multi-scriitor: alt proces a scris in baza (persistenta inghetata)? json -> false. */
+function storeConflicted() { return !!(store && typeof store.conflicted === 'function' && store.conflicted()); }
+
 /** Firma are destule articole ca sa merite calculul in SQL (peste prag)? Scurt-circuit la prag. */
 function largeFirma(fid) {
   if (!canSqlRead()) return false;
@@ -585,6 +588,6 @@ async function trialFisaContSql(fid, cont, period) {
 module.exports = {
   get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
-  canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, SQL_READ_THRESHOLD,
+  canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, storeConflicted, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

@@ -162,6 +162,32 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
     eq('re-persist nu dubleaza (ON CONFLICT DO NOTHING)', await store.auditCount(), 7);
   }
 
+  // ULTIMA sectiune (dupa conflict, persistenta ramane INGHETATA — nimic nu mai scrie dupa ea)
+  section('Fencing multi-scriitor (dbEpoch): alt proces detectat -> refuz, nu clobber');
+  {
+    const fdb = base();
+    fdb.entries = [mkEntry('f1', 1, 10)];
+    store.resetDirty();
+    store.persist(fdb); await store.flush();
+    ok('inainte de conflict: persist normal functioneaza', store.written().includes('entries') && !store.conflicted());
+    // simulez AL DOILEA scriitor: alt proces avanseaza dbEpoch + scrie un rand propriu
+    {
+      const cur = Number((await pool.query("SELECT value FROM meta WHERE key='dbEpoch'")).rows[0].value);
+      await pool.query("UPDATE meta SET value = $1 WHERE key='dbEpoch'", [String(cur + 1)]);
+      await pool.query('INSERT INTO entries (id, "firmaId", data) VALUES ($1, $2, $3)', ['strain-1', 2, JSON.stringify({ id: 'strain-1', firmaId: 2, lines: [] })]);
+    }
+    fdb.entries.push(mkEntry('f2', 1, 20));
+    store.persist(fdb); await store.flush();
+    ok('persist dupa alt scriitor -> conflict detectat (conflicted)', store.conflicted());
+    ok('randul scriitorului strain e intact', (await pool.query("SELECT 1 FROM entries WHERE id='strain-1'")).rows.length === 1);
+    ok('scrierea noastra (f2) NU a intrat (rollback)', (await pool.query("SELECT 1 FROM entries WHERE id='f2'")).rows.length === 0);
+    // inghetat: urmatorul persist e refuzat fara sa atinga baza
+    fdb.entries.push(mkEntry('f3', 1, 30));
+    store.persist(fdb); await store.flush();
+    eq('persist ulterior refuzat (written gol, inghetat pana la restart)', store.written().length, 0);
+    ok('f3 NU a intrat in baza', (await pool.query("SELECT 1 FROM entries WHERE id='f3'")).rows.length === 0);
+  }
+
   await pool.end(); await store.close();
   console.log('\n' + (fail ? '✗' : '✓') + ' ' + pass + ' verificari store-pg trecute, ' + fail + ' esuate.');
   process.exit(fail ? 1 : 0);

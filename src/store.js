@@ -48,6 +48,12 @@ let snap = {};        // { [colectie hasId]: Map(id -> json) } — starea persis
 let lastHash = {};    // amprenta ultimei stari persistate pt. colectiile rescrise integral
 let forceFull = false; // dupa resetDirty(): urmatorul persist rescrie tot (init/restore)
 let lastWritten = []; // colectiile scrise la ultimul persist (pentru diagnostic/teste)
+// FENCING multi-scriitor: `dbEpoch` (meta) e versiunea bazei, verificata si avansata in ACEEASI
+// tranzactie cu fiecare persist. Daca alt proces a scris intre timp (epoch avansat), scrierea
+// noastra ar suprascrie randurile lui pornind din RAM invechit -> se REFUZA (fail-loud, inghetat),
+// nu se reincearca. Completeaza lock-ul single-instance local (lifecycle) peste masini/DB partajat.
+let epoch = 0;         // versiunea la ultimul commit reusit al ACESTUI proces
+let conflictedFlag = false; // detectat alt scriitor -> toate persist-urile urmatoare refuzate
 function sha(s) { return crypto.createHash('sha1').update(s).digest('hex'); }
 const EMPTY = new Map();
 
@@ -381,9 +387,27 @@ function persist(db) {
   lastWritten = [];
   if (!work.length) { forceFull = false; return; } // nimic schimbat -> zero scrieri pe disc
 
+  // Inghetat dupa un conflict de scriitor: RAM-ul nostru e invechit fata de baza — orice scriere
+  // ar suprascrie datele celuilalt proces. Esec zgomotos, nu corupere tacuta.
+  if (conflictedFlag) {
+    const e = new Error('Persistenta blocata: alt proces a scris in baza (conflict dbEpoch). Reporneste procesul ca sa rehidrateze starea curenta.');
+    e.code = 'CONTAB_WRITER_CONFLICT';
+    throw e;
+  }
+
   // ── 3) Aplica intr-o tranzactie ──
   sdb.exec('BEGIN');
   try {
+    // FENCING: verifica si avanseaza dbEpoch in aceeasi tranzactie cu datele.
+    const er = sdb.prepare("SELECT value FROM meta WHERE key = 'dbEpoch'").get();
+    const curEpoch = er ? Number(JSON.parse(er.value)) : 0;
+    if (curEpoch !== epoch) {
+      const e = new Error('Conflict de scriitor: dbEpoch in baza este ' + curEpoch + ', procesul curent are ' + epoch + ' — alt proces a scris intre timp.');
+      e.code = 'CONTAB_WRITER_CONFLICT';
+      throw e;
+    }
+    sdb.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+      .run('dbEpoch', stringifyDb(epoch + 1));
     for (const w of work) {
       if (w.kind === 'full') {
         sdb.exec(`DELETE FROM ${w.c.key}`);
@@ -431,8 +455,13 @@ function persist(db) {
     sdb.exec('COMMIT');
   } catch (e) {
     sdb.exec('ROLLBACK');
+    if (e && e.code === 'CONTAB_WRITER_CONFLICT') {
+      conflictedFlag = true; // ingheata scrierile: RAM-ul e invechit, reincercarea ar suprascrie
+      console.error('[contab] CONFLICT DE SCRIITOR (sqlite): ' + e.message);
+    }
     throw e;
   }
+  epoch += 1; // versiunea avansata odata cu commit-ul
   // ── 4) Actualizeaza starea persistata (snapshot / amprente) DOAR dupa commit reusit ──
   for (const w of work) {
     if (w.snap) snap[w.c.key] = w.snap;   // colectii cu id (incr/full)
@@ -440,6 +469,9 @@ function persist(db) {
   }
   forceFull = false;
 }
+
+/** A fost detectat alt scriitor (persistenta inghetata)? Diagnostic pentru metrici/teste. */
+function conflicted() { return conflictedFlag; }
 
 /** Colectiile scrise la ultimul persist (diagnostic). */
 function written() { return lastWritten.slice(); }
@@ -470,6 +502,7 @@ function hydrate(defaults) {
   }
   const meta = {};
   for (const r of sdb.prepare('SELECT key, value FROM meta').all()) meta[r.key] = JSON.parse(r.value);
+  epoch = Number(meta.dbEpoch) || 0; // sincronizeaza fence-ul cu versiunea persistata
   db.settings = meta.settings || (defaults ? JSON.parse(JSON.stringify(defaults.settings)) : {});
   db.firmaActiva = meta.firmaActiva != null ? meta.firmaActiva : 1;
   db.seq = meta.seq != null ? meta.seq : 1;
@@ -479,4 +512,4 @@ function hydrate(defaults) {
 
 function close() { if (sdb) { try { sdb.close(); } catch (_) { /* ignore */ } sdb = null; } }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, auditRow, linesTurnover, linesForAccount, documentsStats, documentsSearch, auditCount, auditRecent, checkSqlite };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, auditRow, linesTurnover, linesForAccount, documentsStats, documentsSearch, auditCount, auditRecent, conflicted, checkSqlite };

@@ -59,10 +59,20 @@ fără schimbări în modulele de domeniu.
   identic cu `accounting.fisaCont`. `/api/fisa-cont` folosește calea SQL peste același prag (header
   `X-FisaCont-Source`). Dovada de echivalență: suita HTTP trece cu aceleași aserții pe RAM și pe SQL forțat
   (prag 0), pe sqlite și pg; testele de store compară mișcările SQL cu `allLines` din RAM.
+- **Pas 7 — LIVRAT: fencing multi-scriitor (versionare optimistă `dbEpoch`).** Fiecare persist verifică
+  și avansează `dbEpoch` (meta) **în aceeași tranzacție** cu datele. Dacă alt proces a scris între timp
+  (epoch avansat), scrierea noastră ar porni din RAM învechit și ar suprascrie rândurile lui — deci e
+  **refuzată** (rollback) și persistența se **îngheață** până la restart (fail-loud, nu clobber silențios;
+  reîncercarea ar fi coruperea). Implementat identic pe sqlite (throw sincron → 500 vizibil pe rută) și pg
+  (log CRITIC + refuz în coada serială). Expus în `/api/metrics` (`process.storeConflict`) și
+  `store.conflicted()`. Completează lock-ul single-instance local (lifecycle) cu o gardă la nivel de DB
+  care funcționează **peste mașini** — fundația de siguranță pentru multi-instanță: două instanțe pe
+  aceeași bază nu se mai pot suprascrie una pe alta neobservat. Dovedit în teste pe ambele drivere
+  (al doilea scriitor simulat: conflict detectat, rândul străin intact, scrierea proprie rollback, freeze).
 - **Pași următori (neîncepuți):** extinderea căii SQL la jurnal/cartea mare (întorc TOATE mișcările — de
-  regândit ca paginare SQL, nu doar agregare); lock/versionare optimistă pentru multi-instanță reală;
-  eventual hidratare lazy (a nu încărca tot graful) — pasul care reduce efectiv RAM-ul, luat doar pe semnal
-  real (`firmeLoad`).
+  regândit ca paginare SQL, nu doar agregare); multi-instanță reală (necesită citiri per-cerere, nu doar
+  fencing — fencing-ul actual protejează, nu partajează); eventual hidratare lazy (a nu încărca tot
+  graful) — pasul care reduce efectiv RAM-ul, luat doar pe semnal real (`firmeLoad`).
 
 Restul documentului rămâne analiza anterioară (partiționare pe firmă etc.), încă validă ca alternativă
 complementară — migrarea la pg tranzacțional și partiționarea pe `firmaId` nu se exclud.

@@ -239,6 +239,8 @@ module.exports = function registerAuthRoutes(app, ctx) {
         nodeVersion: process.version, pid: process.pid, driver: db.DRIVER,
         uptimeSec: Math.round(process.uptime()), firme: (d.firme || []).length, users: (d.users || []).length,
         memoryRssMb: mb(mem.rss), memoryHeapUsedMb: mb(mem.heapUsed), memoryHeapTotalMb: mb(mem.heapTotal),
+        // fencing multi-scriitor: true = alt proces a scris in baza, persistenta e INGHETATA (restart necesar)
+        storeConflict: db.storeConflicted(),
       },
       firmeLoad: { maxEntries: topFirme.length ? topFirme[0].entries : 0, top: topFirme },
     }));

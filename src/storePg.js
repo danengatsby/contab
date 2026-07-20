@@ -29,6 +29,10 @@ let queue = Promise.resolve(); // coada seriala de tranzactii persist
 let snap = {};     // { [colectie hasId]: Map(id -> json) }
 let lastHash = {}; // amprenta pt colectiile rescrise integral
 let lastWritten = [];
+// FENCING multi-scriitor (paritate cu store.js): `dbEpoch` (meta) verificat si avansat in aceeasi
+// tranzactie cu datele. Alt scriitor detectat -> persistenta INGHETATA (fail-loud, nu clobber).
+let epoch = 0;
+let conflictedFlag = false;
 
 function sha(s) { return crypto.createHash('sha1').update(s).digest('hex'); }
 function asInt(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
@@ -136,6 +140,16 @@ async function applyWork(work) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // FENCING: verifica si avanseaza dbEpoch in aceeasi tranzactie cu datele. Coada e seriala,
+    // deci `epoch` la momentul executiei reflecta toate commit-urile anterioare ale procesului.
+    const er = await client.query("SELECT value FROM meta WHERE key = 'dbEpoch'");
+    const curEpoch = er.rows.length ? Number(er.rows[0].value) : 0;
+    if (curEpoch !== epoch) {
+      const e = new Error('Conflict de scriitor: dbEpoch in baza este ' + curEpoch + ', procesul curent are ' + epoch + ' — alt proces a scris intre timp.');
+      e.code = 'CONTAB_WRITER_CONFLICT';
+      throw e;
+    }
+    await client.query('INSERT INTO meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', ['dbEpoch', stringifyDb(epoch + 1)]);
     for (const w of work) {
       if (w.kind === 'incr') {
         // diff per rand: sterge randurile schimbate/scoase, apoi (re)insereaza cele curente.
@@ -278,9 +292,18 @@ function persist(db) {
 
   if (!work.length) { lastWritten = []; return queue; } // nimic schimbat -> nicio tranzactie
 
+  // Inghetat dupa un conflict de scriitor: RAM-ul nostru e invechit — reincercarea ar suprascrie
+  // datele celuilalt proces. Refuza zgomotos (o data pe apel), pana la restart + rehidratare.
+  if (conflictedFlag) {
+    lastWritten = [];
+    console.error('[contab] persist REFUZAT: conflict de scriitor detectat anterior (dbEpoch). Reporneste procesul.');
+    return queue;
+  }
+
   queue = queue
     .then(() => applyWork(work))
     .then(() => {
+      epoch += 1; // versiunea avansata odata cu commit-ul
       // starea persistata se actualizeaza DOAR dupa commit reusit (esec -> retry idempotent la urmatorul save)
       for (const w of work) {
         if (w.snapKey) snap[w.snapKey] = w.cur;   // colectii cu id: snapshot per rand
@@ -289,10 +312,18 @@ function persist(db) {
       lastWritten = work.map((w) => w.name);
     })
     .catch((e) => {
+      if (e && e.code === 'CONTAB_WRITER_CONFLICT') {
+        conflictedFlag = true; // ingheata scrierile viitoare (nu retry — ar suprascrie alt proces)
+        console.error('[contab] CONFLICT DE SCRIITOR (pg): ' + e.message + ' Persistenta e inghetata pana la restart.');
+        return;
+      }
       console.error('[contab] persist PostgreSQL ESUAT (se reincearca la urmatorul save):', e.message);
     });
   return queue;
 }
+
+/** A fost detectat alt scriitor (persistenta inghetata)? Diagnostic pentru metrici/teste. */
+function conflicted() { return conflictedFlag; }
 
 /** Sincronizeaza o proiectie (din PROJECTIONS) pentru work-ul colectiei sursa (in aceeasi tranzactie). */
 async function projectInto(client, p, w) {
@@ -423,6 +454,7 @@ async function hydrate(defaults) {
   }
   const meta = {};
   for (const r of (await pool.query('SELECT key, value FROM meta')).rows) meta[r.key] = r.value;
+  epoch = Number(meta.dbEpoch) || 0; // sincronizeaza fence-ul cu versiunea persistata
   db.settings = meta.settings || (defaults ? JSON.parse(JSON.stringify(defaults.settings)) : {});
   db.firmaActiva = meta.firmaActiva != null ? meta.firmaActiva : 1;
   db.seq = meta.seq != null ? meta.seq : 1;
@@ -437,4 +469,4 @@ async function close() {
   try { await p.end(); } catch (_) { /* ignora */ }
 }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover, linesForAccount, documentsStats, documentsSearch, auditCount, auditRecent };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover, linesForAccount, documentsStats, documentsSearch, auditCount, auditRecent, conflicted };
