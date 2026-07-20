@@ -6,6 +6,7 @@
 // si de modulele de raportare — extrase din server.js fara schimbare de comportament.
 // Modul de rute: register(app, ctx), ctx = { S }.
 
+const db = require('../db');
 const stmt = require('../statements');
 const rep = require('../reporting');
 const acc = require('../accounting');
@@ -14,7 +15,7 @@ const pdf = require('../pdf');
 const { analyticBalance } = require('../analytic');
 
 module.exports = function register(app, ctx) {
-  const { S, wrap } = ctx;
+  const { S, wrap, activeId } = ctx;
   const microYield = () => new Promise((resolve) => setImmediate(resolve));
 
   // ── Registre si jurnale de baza (JSON) ──
@@ -29,7 +30,17 @@ module.exports = function register(app, ctx) {
     if (!req.query.cont) return res.status(400).send('Alege contul (ex. ?cont=4111).');
     pdf.fisaContPdf(res, S(req).company, acc.fisaCont(S(req), req.query.cont, req.query.period || null));
   });
-  app.get('/api/balance', (req, res) => res.json(acc.trialBalance(S(req), req.query.period || null)));
+  // Balanta: pentru firmele MARI (peste prag) se calculeaza direct in SQL (proiectia entry_lines),
+  // altfel din RAM. Rezultat identic; header X-Balance-Source expune calea folosita (diagnostic).
+  app.get('/api/balance', wrap(async (req, res) => {
+    const fid = activeId(req); const period = req.query.period || null;
+    if (db.sqlBalancePeriodOk(period) && db.largeFirma(fid)) {
+      res.setHeader('X-Balance-Source', 'sql');
+      return res.json(await db.trialBalanceSql(fid, period));
+    }
+    res.setHeader('X-Balance-Source', 'ram');
+    res.json(acc.trialBalance(S(req), period));
+  }));
   // Raportul articolelor stornate (perechi original -> nota de storno) pentru control intern
   app.get('/api/storno-report', (req, res) => res.json(rep.stornoReport(S(req), req.query.period || null)));
   app.get('/api/vat-preview', (req, res) => { const v = S(req); return res.json(acc.vatClosing(v, acc.vatPeriod(v.company, req.query.period || null))); });

@@ -48,7 +48,8 @@ function start({ app, dbReady }) {
   process.on('exit', releaseDbLock);
 
   const PORT = process.env.PORT || 8080;
-  const HOST = process.env.HOST || '0.0.0.0'; // asculta pe toate interfetele (acces din retea)
+  // Nginx este endpointul public; bind-ul local previne expunerea accidentala a portului Node.
+  const HOST = process.env.HOST || '127.0.0.1';
   let server = null; // atribuit dupa hidratarea bazei (dbReady)
   dbReady.then(() => {
     server = app.listen(PORT, HOST, () => {

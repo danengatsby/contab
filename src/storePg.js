@@ -298,12 +298,13 @@ async function projectInto(client, p, w) {
 /** Rulajul pe conturi calculat DIRECT in SQL din entry_lines (doar articole postate), pentru o firma
  *  si optional o perioada (YYYY sau YYYY-MM). Intoarce { cont: { d, c } } — aceeasi forma ca
  *  accounting.accumulate. Demonstreaza calcul analitic fara a incarca graful in RAM. */
-async function linesTurnover(firmaId, period) {
+async function linesTurnover(firmaId, period, opts) {
   const acc = {};
   const bump = (cont, side, s) => { if (cont == null) return; acc[cont] = acc[cont] || { d: 0, c: 0 }; acc[cont][side] += s; };
   const params = [asInt(firmaId), 'postat'];
   let where = '"firmaId" = $1 AND (status IS NULL OR status = $2)';
-  if (period) { params.push(String(period).length === 4 ? period + '-%' : period); where += String(period).length === 4 ? ' AND period LIKE $3' : ' AND period = $3'; }
+  if (opts && opts.before) { if (period) { params.push(period); where += ' AND period < $3'; } } // rulaj INAINTE de perioada
+  else if (period) { params.push(String(period).length === 4 ? period + '-%' : period); where += String(period).length === 4 ? ' AND period LIKE $3' : ' AND period = $3'; }
   const dq = await pool.query(`SELECT debit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND debit IS NOT NULL GROUP BY debit`, params);
   const cq = await pool.query(`SELECT credit AS cont, SUM(suma) AS s FROM entry_lines WHERE ${where} AND credit IS NOT NULL GROUP BY credit`, params);
   for (const r of dq.rows) bump(r.cont, 'd', Number(r.s) || 0);

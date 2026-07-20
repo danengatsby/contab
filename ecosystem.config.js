@@ -22,7 +22,9 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         PORT: 8080,
-        HOST: '0.0.0.0',
+        // Nginx este singurul punct public. Node nu trebuie expus direct pe 8080,
+        // altfel se ocolesc HTTPS si controalele reverse-proxy-ului.
+        HOST: '127.0.0.1',
         // Pentru extragerea cu AI, decomenteaza si completeaza:
         // ANTHROPIC_API_KEY: 'sk-ant-...',
       },

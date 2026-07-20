@@ -27,6 +27,12 @@ jobs:
       # Paritate CI <-> local: ce trece local trece si aici, si invers.
       - name: Suita completa (npm test)
         run: npm test
+      # Exercita calea de citire SQL a balantei (pas 5): prag 0 -> orice firma foloseste SQL, cu
+      # ACELEASI aserttii de balanta (dovada de echivalenta SQL == RAM pe sqlite).
+      - name: Balanta pe calea SQL (prag 0, sqlite)
+        env:
+          CONTAB_SQL_READ_THRESHOLD: '0'
+        run: node test/http.js
 
   # Audit de securitate al dependentelor: pica pe vulnerabilitati HIGH/CRITICAL (moderate/low
   # sunt doar raportate, nu blocheaza). Ruleaza pe fiecare push/PR ca un pachet vulnerabil sa fie
@@ -76,6 +82,12 @@ jobs:
         env:
           CONTAB_TEST_DRIVER: pg
           CONTAB_PG_URL: postgres://contab:contab@localhost:5432/contab_test
+        run: node test/http.js
+      - name: Balanta pe calea SQL (prag 0, PostgreSQL)
+        env:
+          CONTAB_TEST_DRIVER: pg
+          CONTAB_PG_URL: postgres://contab:contab@localhost:5432/contab_test
+          CONTAB_SQL_READ_THRESHOLD: '0'
         run: node test/http.js
 
   # Validarea OFICIALA ANAF (DUKIntegrator) pe fisierele de referinta generate din seed.

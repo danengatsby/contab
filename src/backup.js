@@ -6,6 +6,7 @@ const path = require('path');
 function backupDir(dataDir) {
   const dir = path.join(dataDir, 'backups');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  try { fs.chmodSync(dir, 0o700); } catch (_) { /* best-effort */ }
   return dir;
 }
 
@@ -33,17 +34,36 @@ function pruneStrayBackups(dataDir, keep) {
   return { removed, kept: Math.min(stray.length, max) };
 }
 
+/** Copiile create inainte de inlocuirea unei firme la import. Sunt plasa de siguranta
+ * pe termen scurt, nu arhiva permanenta de date personale. */
+function prunePreRestoreBackups(dataDir, keep) {
+  const max = keep || 10;
+  const dir = backupDir(dataDir);
+  let list;
+  try {
+    list = fs.readdirSync(dir)
+      .filter((f) => /^pre-restore-firma\d+-\d+\.json$/.test(f))
+      .map((name) => ({ name, mtime: fs.statSync(path.join(dir, name)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+  } catch (_) { return { removed: 0, kept: 0 }; }
+  let removed = 0;
+  for (const x of list.slice(max)) { try { fs.unlinkSync(path.join(dir, x.name)); removed += 1; } catch (_) { /* best-effort */ } }
+  return { removed, kept: Math.min(list.length, max) };
+}
+
 /** Copiaza db.json intr-o arhiva datata; pastreaza ultimele `keep` copii. */
 function backupNow(dbFile, dataDir, keep) {
   if (!fs.existsSync(dbFile)) throw new Error('Baza de date nu exista inca.');
   const dir = backupDir(dataDir);
   const name = 'db-' + stamp() + '.json';
   fs.copyFileSync(dbFile, path.join(dir, name));
+  try { fs.chmodSync(path.join(dir, name), 0o600); } catch (_) { /* best-effort */ }
   const list = listBackups(dataDir);
   const max = keep || 30;
   for (const b of list.slice(max)) { try { fs.unlinkSync(path.join(dir, b.name)); } catch (_) { /* ignora */ } }
   // igiena radacinii data/: nu lasa backup-urile ad-hoc db.json.bak-* sa se acumuleze la nesfarsit
   try { pruneStrayBackups(dataDir, Number(process.env.CONTAB_BACKUP_KEEP_ADHOC) || 10); } catch (_) { /* ignora */ }
+  try { prunePreRestoreBackups(dataDir, Number(process.env.CONTAB_BACKUP_KEEP_PRE_RESTORE) || 10); } catch (_) { /* ignora */ }
   return { name, count: Math.min(list.length, max) };
 }
 
@@ -115,6 +135,7 @@ function fullBackup(dbFile, dataDir, keep) {
   const auditDir = path.join(dataDir, 'audit');
   if (fs.existsSync(auditDir)) zip.addLocalFolder(auditDir, 'audit');
   zip.writeZip(path.join(dir, name));
+  try { fs.chmodSync(path.join(dir, name), 0o600); } catch (_) { /* best-effort */ }
   if (snap) { try { fs.unlinkSync(snap); } catch (_) { /* ignora */ } }
   if (pgDump) { try { fs.unlinkSync(pgDump); } catch (_) { /* ignora */ } }
 
@@ -145,4 +166,4 @@ function verifyArchive(zipPath) {
   } catch (e) { return { ok: false, motiv: e.message }; }
 }
 
-module.exports = { backupNow, listBackups, backupPath, fullBackup, pruneStrayBackups, verifyArchive };
+module.exports = { backupNow, listBackups, backupPath, fullBackup, pruneStrayBackups, prunePreRestoreBackups, verifyArchive };

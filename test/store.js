@@ -127,9 +127,16 @@ section('Proiectie normalizata entry_lines + rulaj SQL = rulaj RAM');
   ];
   store.persist(el);
   // rulajul din SQL (entry_lines) trebuie sa fie IDENTIC cu cel din RAM (accounting.accumulate pe postate)
+  el.entries.push({ id: 'l0', firmaId: 1, period: '2026-01', data: '2026-01-15', lines: [{ debit: '5121', credit: '419', suma: 700 }] }); // perioada ANTERIOARA
+  store.persist(el);
   const sql = store.linesTurnover(1, '2026-03');
-  const ram = acc.accumulate(acc.allLines(acc.postedEntries({ entries: el.entries.filter((e) => e.firmaId === 1) })));
+  const ram = acc.accumulate(acc.allLines(acc.postedEntries({ entries: el.entries.filter((e) => e.firmaId === 1 && e.period === '2026-03') })));
   eq('rulaj SQL(entry_lines) = rulaj RAM(accumulate) pe firma 1', JSON.stringify(sql), JSON.stringify(ram));
+  // modul `before`: rulajul INAINTE de perioada (soldurile initiale) — trebuie sa fie egal cu RAM
+  const sqlBefore = store.linesTurnover(1, '2026-03', { before: true });
+  const ramBefore = acc.accumulate(acc.allLines(acc.postedEntries({ entries: el.entries.filter((e) => e.firmaId === 1) }).filter((e) => (e.period || '') < '2026-03')));
+  eq('rulaj SQL before = rulaj RAM beforePeriod (firma 1)', JSON.stringify(sqlBefore), JSON.stringify(ramBefore));
+  ok('before include perioada anterioara (419 din 2026-01)', !!sqlBefore['419'] && !sql['419']);
   ok('ciorna l3 exclusa din rulajul SQL (contul 5311 absent)', !sql['5311']);
   ok('izolare pe firma: contul 371 (firma 2) absent din rulajul firmei 1', !sql['371']);
   ok('rulaj firma 2 vede 371/401', (() => { const t = store.linesTurnover(2, '2026-03'); return t['371'] && t['371'].d === 800 && t['401'] && t['401'].c === 800; })());

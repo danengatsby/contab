@@ -41,9 +41,19 @@ fără schimbări în modulele de domeniu.
   probă durabilă nativă în DB, interogabilă în SQL (`store.auditCount`, `store.auditRecent({firmaId, action}`)),
   complementară jurnalului NDJSON offsite. Coloane reale: audit_id, firmaId, ts, userId, username, action,
   detail, viaAdmin. Dovedit în teste: după plafonarea RAM, `audit_log` păstrează evenimentele ieșite din RAM.
-- **Pași următori (neîncepuți):** citiri per-cerere din pg pentru firmele mari (balanță via `linesTurnover`,
-  documente via `documents_meta`, audit via `audit_log`, peste un prag); lock/versionare optimistă pentru
-  multi-instanță reală. Cele patru entități din plan (articole, linii, documente, audit) sunt acum normalizate.
+- **Pas 5 — LIVRAT (seam, gated pe prag): citiri per-cerere din SQL pentru firmele MARI.** `/api/balance`
+  se calculează acum **direct în SQL** (proiecția `entry_lines`, prin `db.trialBalanceSql`) când firma
+  depășește `CONTAB_SQL_READ_THRESHOLD` articole (implicit **20.000**) și driverul suportă SQL (pg/sqlite);
+  altfel din RAM. Rezultat **identic** (dovedit: suita HTTP trece cu ACELEASI aserttii de balanță și pe
+  calea RAM, și pe cea SQL forțată cu prag 0 — rulat în CI pe sqlite și pg). `accounting.buildBalanceRows`
+  a fost extras ca să fie alimentabil din ambele surse; `store.linesTurnover(fid, period, {before})` dă
+  rulajul dinainte de perioadă (solduri inițiale). Header diagnostic `X-Balance-Source: ram|sql`. Sub prag
+  (toate firmele actuale, inclusiv producția), calea rămâne RAM — zero schimbare de comportament. Acesta e
+  **seam-ul** pentru per-request SQL: reduce CPU/latența agregărilor grele la firmele mari (nu reduce încă
+  RAM-ul — graful e tot hidratat integral; hidratarea lazy e un pas ulterior, mai mare).
+- **Pași următori (neîncepuți):** extinderea căii SQL la alte agregări grele (jurnale, cartea mare) peste
+  prag; lock/versionare optimistă pentru multi-instanță reală; eventual hidratare lazy (a nu încărca tot
+  graful) — pasul care reduce efectiv RAM-ul, luat doar pe semnal real (`firmeLoad`).
 
 Restul documentului rămâne analiza anterioară (partiționare pe firmă etc.), încă validă ca alternativă
 complementară — migrarea la pg tranzacțional și partiționarea pe `firmaId` nu se exclud.

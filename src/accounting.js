@@ -176,7 +176,14 @@ function trialBalance(db, period) {
   const opening = db.openingBalances || {};
   const periodLines = allLines(postedEntries(db).filter((e) => inPeriod(e, period)));
   const rulaj = accumulate(periodLines);
+  return buildBalanceRows(before, opening, rulaj, period);
+}
 
+/** Construieste randurile+totalurile balantei din cele trei acumulari {cont:{d,c}}: `before`
+ *  (rulaj inainte de perioada), `opening` (solduri de preluare), `rulaj` (rulajul perioadei).
+ *  Extras din trialBalance ca sa fie alimentabil SI din SQL (store.linesTurnover), nu doar din RAM. */
+function buildBalanceRows(before, opening, rulaj, period) {
+  before = before || {}; opening = opening || {}; rulaj = rulaj || {};
   const accounts = new Set([
     ...Object.keys(opening), ...Object.keys(before), ...Object.keys(rulaj),
   ]);
@@ -562,6 +569,6 @@ function cashControl(db, cont, period) {
   return { cont, period, soldFinal: sold, negative, plafon, soldPesteLimita, ok: !negative.length && !plafon.length && !soldPesteLimita };
 }
 
-module.exports = { vatPeriod, isPosted, postedEntries,
+module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows,
   allLines, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };
