@@ -11,6 +11,7 @@ const net = require('net');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const crypto = require('crypto');
 const auth = require('../src/auth');
 const xml = require('../src/xml');
 const totp = require('../src/totp');
@@ -528,6 +529,31 @@ async function main() {
     ok('tva-reconciliere: structura coerenta (pozitie + findings + coteAnormale + netrimise)', rec.status === 200
       && typeof rec.json.colectata === 'number' && typeof rec.json.deductibila === 'number' && Array.isArray(rec.json.findings)
       && Array.isArray(rec.json.coteAnormale) && Array.isArray(rec.json.netrimise) && typeof rec.json.ok === 'boolean');
+
+    // ── DOSAR ANUAL: arhiva imutabila (ZIP) + manifest cu amprente SHA-256 ──
+    { // fetch binar direct (req() decodeaza text si ar corupe zip-ul)
+      const AdmZip = require('adm-zip');
+      const rz = await fetch(BASE + '/dosar-anual?year=2026', { headers: { Cookie: c1 } });
+      ok('dosar-anual: 200 + application/zip + attachment', rz.status === 200
+        && /application\/zip/.test(rz.headers.get('content-type') || '') && /attachment/.test(rz.headers.get('content-disposition') || ''));
+      const buf = Buffer.from(await rz.arrayBuffer());
+      const zip = new AdmZip(buf);
+      const man = JSON.parse(zip.getEntry('manifest.json').getData().toString('utf8'));
+      ok('dosar-anual: manifest cu firma/an/fisiere + registre si situatii', man.an === '2026' && Array.isArray(man.fisiere) && man.fisiere.length >= 5
+        && man.fisiere.some((f) => f.cale === 'registre/registru-jurnal.pdf') && man.fisiere.some((f) => /situatii\/bilant\.pdf/.test(f.cale)));
+      // integritate: recalculeaza amprentele fisierelor si verifica hashDosar (tamper-evidence)
+      const rec2 = zip.getEntries().filter((e) => e.entryName !== 'manifest.json' && e.entryName !== 'README.txt')
+        .map((e) => e.entryName + ':' + crypto.createHash('sha256').update(e.getData()).digest('hex')).sort();
+      const h = crypto.createHash('sha256').update(Buffer.from(rec2.join('\n'), 'utf8')).digest('hex');
+      ok('dosar-anual: hashDosar verificabil = amprenta combinata a fisierelor', h === man.hashDosar);
+      // fiecare amprenta de fisier din manifest se potriveste cu continutul real
+      ok('dosar-anual: amprenta fiecarui fisier corecta', man.fisiere.every((f) => {
+        const e = zip.getEntry(f.cale); return e && crypto.createHash('sha256').update(e.getData()).digest('hex') === f.sha256;
+      }));
+      // an garbage: sanitizat global la gol -> cade pe anul curent, nu strica ruta (200)
+      const rgar = await fetch(BASE + '/dosar-anual?year=abcd', { headers: { Cookie: c1 } });
+      ok('dosar-anual: an garbage sanitizat -> tot 200 (anul curent)', rgar.status === 200);
+    }
 
     // ── MOTOR DE PROFIL FISCAL: sursa unica pentru declaratii/alerte/controale ──
     {

@@ -12,11 +12,21 @@ const rep = require('../reporting');
 const acc = require('../accounting');
 const fiscalProfile = require('../fiscalProfile');
 const pdf = require('../pdf');
+const dosarAnual = require('../dosarAnual');
 const { analyticBalance } = require('../analytic');
 
 module.exports = function register(app, ctx) {
   const { S, wrap, activeId } = ctx;
   const microYield = () => new Promise((resolve) => setImmediate(resolve));
+
+  // Declarantul (intocmitorul) pentru XML-urile din dosar — din datele personale ale utilizatorului.
+  function declarantFromReq(req) {
+    const p = (req.user && req.user.profil) || {};
+    if (!p.numeComplet) return null;
+    const parts = String(p.numeComplet).trim().split(/\s+/);
+    const nume = parts.pop() || '';
+    return { nume, prenume: parts.join(' '), functie: 'Contabil' };
+  }
 
   // ── Registre si jurnale de baza (JSON) ──
   // Registrul-jurnal + cartea mare: pentru firmele MARI (peste prag) se calculeaza direct in SQL
@@ -142,6 +152,16 @@ module.exports = function register(app, ctx) {
     pdf.f4109Pdf(res, v.company, { period, aparate });
   });
   app.get('/pdf/obligatii', (req, res) => pdf.obligatiiPdf(res, S(req).company, rep.obligatii(S(req), req.query.period || null)));
+  // Dosarul contabil anual: arhiva imutabila (ZIP) a exercitiului — registre + balanta + situatii +
+  // declaratii (XML) + manifest cu amprente SHA-256. Export mare (plafonat prin EXPORT_LIMITED).
+  app.get('/dosar-anual', wrap(async (req, res) => {
+    // `year` e deja sanitizat global (bootstrap): ori 4 cifre, ori gol -> anul curent.
+    const year = String(req.query.year || new Date().getFullYear());
+    const r = await dosarAnual.build(S(req), year, { username: req.user && req.user.username, who: declarantFromReq(req) });
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + r.name + '"');
+    res.send(r.buffer);
+  }));
   app.get('/pdf/registru-inventar', (req, res) => pdf.registruInventarPdf(res, S(req).company, rep.registruInventar(S(req), req.query.period || null)));
   app.get('/pdf/registru-fiscal', (req, res) => pdf.registruFiscalPdf(res, S(req).company, rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));
   app.get('/pdf/analytic', (req, res) => pdf.analyticPdf(res, S(req).company, analyticBalance(S(req))));
