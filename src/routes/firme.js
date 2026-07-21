@@ -10,6 +10,7 @@ const plans = require('../plans');
 const db = require('../db');
 const svc = require('../firmeService');
 const notify = require('../notify');
+const { isDemoUser } = require('../session');
 
 module.exports = function register(app, ctx) {
   const { activeId, allowedFirme, requireAdmin, wrap, logAudit } = ctx;
@@ -135,29 +136,35 @@ module.exports = function register(app, ctx) {
   // ── Colaboratori pe firma ACTIVA (contabil <-> necontabil) ──────────────────────────────
   // Lucreaza pe firma activa (mereu in allowedFirme -> apartenenta implicita). Adaugarea/scoaterea
   // sunt POST/DELETE => garda readonly (un colaborator doar-citire nu poate) si paywall-ul per-firma
-  // se aplica automat. VIZUALIZAREA (GET) e permisa si pe demo (firma partajata) — panoul e vizibil
-  // pentru demonstratie; doar GESTIONAREA (POST/DELETE) e blocata pe demo.
+  // se aplica automat. VIZUALIZAREA (GET) e libera si pe demo. GESTIONAREA pe conturile demo e
+  // permisa DOAR pe perechea demo<->demo-contabil (demonstratia patron<->contabil) — nu invitatii
+  // noi, nu conturi arbitrare.
   function activeFirma(req) {
     const fid = activeId(req);
     if (!fid) { const e = new Error('Nicio firmă activă.'); e.status = 400; throw e; }
     return fid;
   }
-  function reqManageFirma(req) {
-    const fid = activeFirma(req);
-    if (req.user && req.user.username === 'demo') { const e = new Error('Contul demo nu gestionează colaboratori.'); e.status = 403; throw e; }
-    return fid;
+  // Pe demo: tinta trebuie sa fie contul demo pereche; conturile reale nu au restrictia.
+  function demoManageGuard(req, targetUsername) {
+    if (!isDemoUser(req.user)) return;
+    const counterpart = req.user.username === 'demo' ? 'demo-contabil' : 'demo';
+    if (String(targetUsername || '').toLowerCase() !== counterpart) {
+      const e = new Error('În contul demo poți gestiona doar contul „' + counterpart + '" (demonstrația patron↔contabil). Într-un cont propriu adaugi pe oricine.');
+      e.status = 403; throw e;
+    }
   }
 
   app.get('/api/colaboratori', (req, res) => run(res, () => {
     const fid = activeFirma(req);
-    return { firmaActiva: fid, colaboratori: svc.listCollaborators(fid), eu: req.user && req.user.id, demo: !!(req.user && req.user.username === 'demo') };
+    return { firmaActiva: fid, colaboratori: svc.listCollaborators(fid), eu: req.user && req.user.id, demo: isDemoUser(req.user) };
   }));
 
   app.post('/api/colaboratori', wrap(async (req, res) => {
     try {
-      const fid = reqManageFirma(req);
+      const fid = activeFirma(req);
       const b = req.body || {};
       if (b.mod === 'invite') {
+        if (isDemoUser(req.user)) { const e = new Error('În contul demo nu poți crea invitații noi. Adaugă contul demo pereche pentru demonstrație.'); e.status = 403; throw e; }
         const r = svc.inviteCollaborator(fid, b);
         logAudit('colaborator.invite', r.user.username + ' -> firma ' + fid, { req, firmaId: fid });
         const link = (req.protocol || 'http') + '://' + req.get('host') + '/?invite=' + r.token;
@@ -169,6 +176,7 @@ module.exports = function register(app, ctx) {
         }
         return res.json({ ok: true, invite: r.user, link, emailed });
       }
+      demoManageGuard(req, b.username || b.email); // demo: doar contul pereche
       const u = svc.addExistingCollaborator(fid, b);
       logAudit('colaborator.add', u.username + ' -> firma ' + fid, { req, firmaId: fid });
       return res.json({ ok: true, colaborator: u });
@@ -179,7 +187,8 @@ module.exports = function register(app, ctx) {
   }));
 
   app.delete('/api/colaboratori/:uid', (req, res) => run(res, () => {
-    const fid = reqManageFirma(req);
+    const fid = activeFirma(req);
+    if (isDemoUser(req.user)) { const t = db.get().users.find((u) => u.id === Number(req.params.uid)); demoManageGuard(req, t && t.username); }
     const r = svc.removeCollaborator(fid, req.params.uid);
     logAudit('colaborator.remove', r.username + ' <- firma ' + fid, { req, firmaId: fid });
     return { ok: true, removed: r };

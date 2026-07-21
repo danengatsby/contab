@@ -83,10 +83,12 @@ module.exports = function registerAuthRoutes(app, ctx) {
   // Intrare in contul demo cu un click (public) — doar contul „demo", fara parola in client.
   app.post('/api/demo-login', (req, res) => {
     const d = db.get();
-    const u = d.users.find((x) => x.username === 'demo');
-    if (!u) return res.status(404).json({ error: 'Contul demo nu este disponibil momentan.' });
+    // as='contabil' -> contul demo-contabil (contabilul); implicit -> demo (patronul)
+    const uname = (req.body || {}).as === 'contabil' ? 'demo-contabil' : 'demo';
+    const u = d.users.find((x) => x.username === uname);
+    if (!u) return res.status(404).json({ error: 'Contul ' + (uname === 'demo-contabil' ? 'demo-contabil' : 'demo') + ' nu este disponibil momentan.' });
     startSession(req, res, u);
-    logAudit('login', 'cont demo (public)', { userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
+    logAudit('login', 'cont ' + uname + ' (public)', { userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
     db.save();
     res.json({ ok: true, user: publicUser(u) });
   });

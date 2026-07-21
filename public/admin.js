@@ -158,18 +158,28 @@ export async function renderColaboratori() {
   let data;
   try { data = await api('/api/colaboratori'); } catch (e) { $('#colaboratoriList').innerHTML = `<p class="muted">${H(e.message || 'Indisponibil')}</p>`; return; }
   const cols = data.colaboratori || [];
-  const demo = !!data.demo; // pe contul demo: panoul e VIZIBIL pentru demonstratie, dar actiunile sunt dezactivate
+  const demo = !!data.demo;
   const pill = (c) => `<span class="pill" data-style="${COLAB_PILL[c.tip] || ''}">${c.tip || '—'}</span>`;
   $('#colaboratoriList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th></th></tr></thead><tbody>${
     cols.map((c) => `<tr><td><b>${H(c.username)}</b>${c.id === data.eu ? ' <span class="muted">(tu)</span>' : ''}${c.pending ? ' <span class="pill warn">invitație</span>' : ''}${c.email ? ` <span class="muted" data-u="u148">${H(c.email)}</span>` : ''}</td><td>${pill(c)}</td>
-      <td>${(c.id === data.eu || demo) ? '' : `<button class="del colremove" data-id="${c.id}" data-nume="${H(c.username)}">✕ scoate</button>`}</td></tr>`).join('')
+      <td>${c.id === data.eu ? '' : `<button class="del colremove" data-id="${c.id}" data-nume="${H(c.username)}">✕ scoate</button>`}</td></tr>`).join('')
     || '<tr><td colspan="3" class="muted">Deocamdată ești singurul cu acces la această firmă.</td></tr>'}</tbody></table>`;
-  // pe demo: dezactiveaza formularul + nota; pe cont real: activ
   const form = $('#colaboratorForm');
-  if (form) form.querySelectorAll('input,button').forEach((el) => { el.disabled = demo; });
+  if (form) form.querySelectorAll('input,button').forEach((el) => { el.disabled = false; });
   const note = $('#colaboratorInviteResult');
-  if (note) note.innerHTML = demo ? '🔒 În contul demo vezi funcția, dar adăugarea de colaboratori e dezactivată. Într-un <b>cont propriu</b> poți adăuga administratorul firmei sau un contabil.' : '';
-  if (demo) return;
+  const invBtn = $('#colaboratorInvite');
+  if (demo) {
+    // pe demo: colaborarea patron<->contabil se demonstreaza pe perechea demo/demo-contabil;
+    // invitatiile de persoane noi sunt dezactivate, iar campul e pre-completat cu contul pereche
+    const me = (cols.find((c) => c.id === data.eu) || {}).username || 'demo';
+    const pereche = me === 'demo' ? 'demo-contabil' : 'demo';
+    if (invBtn) invBtn.style.display = 'none';
+    if (note) note.innerHTML = `🎭 Cont demo (<b>${H(me)}</b>): aici vezi colaborarea <b>patron↔contabil</b> pe aceeași firmă. Poți adăuga sau scoate contul pereche <b>${H(pereche)}</b>. Într-un cont propriu adaugi pe oricine (și inviți persoane noi prin link).`;
+    if ($('#colaboratorKey') && !cols.some((c) => c.username === pereche)) $('#colaboratorKey').value = pereche;
+  } else {
+    if (invBtn) invBtn.style.display = '';
+    if (note) note.innerHTML = '';
+  }
   $$('#colaboratoriList .colremove').forEach((b) => b.addEventListener('click', async () => {
     if (!confirm('Scoți accesul lui „' + b.dataset.nume + '" la firma activă?')) return;
     try { await api('/api/colaboratori/' + b.dataset.id, { method: 'DELETE' }); renderColaboratori(); toast('Colaborator scos'); }

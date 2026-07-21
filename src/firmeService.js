@@ -17,13 +17,13 @@ const db = require('./db');
 const plans = require('./plans');
 const billing = require('./billing');
 const backup = require('./backup');
-const { allowedFirme } = require('./session');
+const { allowedFirme, isDemoUser } = require('./session');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 
-/** Contul demo (public, partajat) nu adauga si nu gestioneaza firme. */
+/** Conturile demo (public, partajate) nu adauga si nu gestioneaza firme. */
 function reqNotDemo(user) {
-  if (user && user.username === 'demo') fail(403, 'Contul demo nu poate adăuga sau gestiona firme. Înscrie-ți firma ta (gratuit 30 de zile) dintr-un cont propriu.');
+  if (isDemoUser(user)) fail(403, 'Contul demo nu poate adăuga sau gestiona firme. Înscrie-ți firma ta (gratuit 30 de zile) dintr-un cont propriu.');
 }
 
 /** Apartenenta utilizatorului la firma (adminul le are pe toate). `msg` pastreaza textele istorice per ruta. */

@@ -116,8 +116,15 @@ function pruneLoginAttempts(now = Date.now()) {
   for (const [k, r] of loginAttempts) { if (r.until < now) loginAttempts.delete(k); }
 }
 
+// Conturile demonstrative publice (partajate, resetate zilnic): patronul (`demo`) si contabilul
+// (`demo-contabil`). Ambele sunt „demo" — blocate de la gestionarea contului/firmelor; folosite
+// pentru a demonstra colaborarea patron<->contabil pe firma demo.
+const DEMO_USERS = ['demo', 'demo-contabil'];
+function isDemoUser(user) { return !!(user && DEMO_USERS.includes(user.username)); }
+
 module.exports = {
   currentUser, allowedFirme, publicUser,
   startSession, setTrustedDevice, deviceTrusted,
   isLocked, bumpFail, clearFails, attemptKey, pruneLoginAttempts,
+  DEMO_USERS, isDemoUser,
 };
