@@ -31,6 +31,8 @@ const RATES = {
   neimpozabilS2: 200, // lei neimpozabili din salariul minim (S2)
   // TVA si impozite la nivelul firmei
   plafonScutire: 10000,   // istoric (scutirile sectoriale eliminate din 2025) — pastrat pt. compat. setari
+  plafonScutireTvaLei: 395000, // lei — plafonul regimului special de scutire TVA (cifra de afaceri anuala);
+                               // art. 310 Cod fiscal, majorat de la 300.000 la 395.000 de la 1 sept. 2025 (OG 22/2025)
   tvaStandard: 21,        // % — Legea 141/2025 (de la 1 august 2025)
   tvaRedus: 11,           // % — Legea 141/2025
   impozitMicro: 1,        // % — art. 51 Cod fiscal
@@ -74,6 +76,7 @@ const SURSE = {
   impozitProfit: 'Art. 17 Cod fiscal (16%)',
   impozitDividende: 'Legea 141/2025 — 16% pentru dividende distribuite de la 1 ianuarie 2026',
   plafonMicroEur: 'Art. 47 Cod fiscal, OUG 156/2024 — 100.000 EUR din 2026',
+  plafonScutireTva: 'Art. 310 Cod fiscal, OG 22/2025 — plafon scutire TVA 395.000 lei de la 1 sept. 2025 (Directiva UE 2020/285)',
   deducerePersonala: 'Art. 77 Cod fiscal, Legea 34/2023',
   pfa: 'Art. 148 & 170 Cod fiscal — plafoane 6 / 12 / 24 / 60 salarii minime',
   concediiMedicale: 'OUG 158/2005 — CAS + impozit, fara CASS; CAM doar pe partea angajatorului',

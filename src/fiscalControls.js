@@ -34,6 +34,16 @@ function venituriClasa7(entries) {
   return venit;
 }
 
+/** Cifra de afaceri neta (conturile 70x: 701-708 minus reducerile 709) — baza plafonului de
+ *  scutire TVA (art. 310) si a cifrei de afaceri din bilant. Net (credit-debit): 709 (sold
+ *  debitor) scade automat. Nu include 74x/75x/76x/78x (subventii, alte venituri, financiare). */
+function cifraAfaceri(entries) {
+  const r = acc.accumulate(acc.allLines(entries));
+  let ca = 0;
+  for (const cod of Object.keys(r)) if (/^70/.test(String(cod))) ca = round2(ca + (r[cod].c - r[cod].d));
+  return ca;
+}
+
 /** Ruleaza controalele de coerenta pentru firma (vedere scoped) pe anul `opts.year`. */
 function check(v, opts) {
   opts = opts || {};
@@ -50,6 +60,16 @@ function check(v, opts) {
     const colecteaza = yearEntries.some((e) => (e.lines || []).some((l) => String(l.credit).startsWith('4427') && Number(l.suma) > 0));
     if (colecteaza) add('eroare', 'tva-neplatitor-colecteaza',
       'Firma nu e plătitoare de TVA, dar în ' + year + ' există TVA colectată (cont 4427). Verifică regimul TVA sau facturile emise.');
+
+    // 1b) Neplatitor aproape de / peste plafonul de scutire TVA (art. 310) -> obligatie de inregistrare.
+    //     La depasire, inregistrarea se cere in 10 zile de la finalul lunii depasirii; altfel ANAF
+    //     inregistreaza din oficiu retroactiv. Advisory pe cifra de afaceri (70x) cumulata pe an.
+    const plafonTva = Number(fiscal.FISCAL.plafonScutireTvaLei) || 0;
+    const ca = cifraAfaceri(yearEntries);
+    if (plafonTva > 0 && ca > plafonTva) add('atentie', 'tva-plafon-scutire-depasit',
+      'Cifra de afaceri a anului ' + year + ' (' + ca + ' lei) depășește plafonul de scutire TVA (' + plafonTva + ' lei) — ești obligat să ceri înregistrarea în scopuri de TVA în 10 zile de la finalul lunii depășirii (art. 310 Cod fiscal).');
+    else if (plafonTva > 0 && ca > round2(plafonTva * 0.9)) add('info', 'tva-plafon-scutire-aproape',
+      'Cifra de afaceri a anului ' + year + ' (' + ca + ' lei) se apropie de plafonul de scutire TVA (' + plafonTva + ' lei) — urmărește; la depășire ai 10 zile să ceri înregistrarea în scopuri de TVA.');
   }
 
   // 2) Platitor TVA fara cod CAEN — D300 il cere
