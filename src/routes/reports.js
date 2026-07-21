@@ -76,6 +76,12 @@ module.exports = function register(app, ctx) {
     return res.json(Object.assign(acc.vatJournals(v, eff), { period: eff, trimestrial: /^\d{4}-Q[1-4]$/.test(String(eff)) }));
   });
   app.get('/api/tva-neexigibila', (req, res) => res.json(acc.tvaNeexigibila(S(req), req.query.period || null)));
+  // Reconciliere TVA (pregatire e-TVA): pozitia perioadei + constatari (cote neconforme, e-Factura netrimise)
+  app.get('/api/tva-reconciliere', (req, res) => {
+    const v = S(req);
+    const eff = acc.vatPeriod(v.company, req.query.period || null); // trimestru la regim 'T'
+    return res.json(Object.assign(rep.tvaReconciliation(v, eff), { trimestrial: /^\d{4}-Q[1-4]$/.test(String(eff)) }));
+  });
   app.get('/api/livrabile', (req, res) => res.json(rep.livrabile(S(req), req.query.period || new Date().toISOString().slice(0, 7))));
   app.get('/api/registru-fiscal', (req, res) => res.json(rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));
   app.get('/api/cashbook', (req, res) => res.json(acc.cashBankJournal(S(req), req.query.cont || '5121', req.query.period || null)));

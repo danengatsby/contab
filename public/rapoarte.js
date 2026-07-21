@@ -253,6 +253,26 @@ async function loadVat() {
   const cq = p ? '?period=' + p : '';
   $('#tvaVanzariCsv').href = '/csv/vat-sales' + cq;
   $('#tvaCumparariCsv').href = '/csv/vat-purchases' + cq;
+  renderReconciliere(p);
+}
+
+// Reconciliere TVA (pregatire e-TVA): constatarile care ar produce o discrepanta la decontul
+// precompletat — cote neconforme si e-Factura emise netrimise in SPV.
+async function renderReconciliere(p) {
+  const box = $('#tvaReconciliere'); if (!box) return;
+  let r; try { r = await api('/api/tva-reconciliere' + (p ? '?period=' + p : '')); } catch (e) { box.innerHTML = ''; return; }
+  const icon = { eroare: '⛔', atentie: '⚠️', info: 'ℹ️' };
+  const findings = r.findings || [];
+  const deta = [];
+  if ((r.coteAnormale || []).length) deta.push(`<div class="tablewrap" data-u="u18"><table><thead><tr><th>Tip</th><th>Document</th><th>Partener</th><th class="num">Bază</th><th class="num">TVA</th><th class="num">Cotă</th></tr></thead><tbody>${
+    r.coteAnormale.map((a) => `<tr><td>${H(a.tip)}</td><td>${H(a.document)}</td><td>${H(a.partener)}</td><td class="num">${fmt(a.baza)}</td><td class="num">${fmt(a.tva)}</td><td class="num">${a.cota < 0 ? '—' : a.cota + '%'}</td></tr>`).join('')}</tbody></table></div>`);
+  if ((r.netrimise || []).length) deta.push(`<div class="tablewrap" data-u="u18"><table><thead><tr><th>Data</th><th>Document</th><th>Partener</th></tr></thead><tbody>${
+    r.netrimise.map((n) => `<tr><td>${H(n.data)}</td><td>${H(n.document)}</td><td>${H(n.partener)}</td></tr>`).join('')}</tbody></table></div>`);
+  box.innerHTML = `<div class="card"><h3>Reconciliere e-TVA</h3>`
+    + (findings.length
+      ? `<ul class="checklist todo">${findings.map((f) => `<li>${icon[f.nivel] || '•'} ${f.mesaj}</li>`).join('')}</ul>${deta.join('')}`
+      : '<div class="muted">✓ Poziția TVA a perioadei e coerentă — cotele se potrivesc și facturile emise sunt trimise în SPV. Nimic care să producă o discrepanță la decontul precompletat e-TVA.</div>')
+    + '<p class="muted" data-u="u28">Verificare internă orientativă: confruntă poziția ta cu ce vede ANAF prin RO e-Factura. Reconcilierea oficială o face decontul precompletat e-TVA după depunere.</p></div>';
 }
 
 // ───────────────────────── CLOSINGS ─────────────────────────

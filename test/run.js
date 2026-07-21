@@ -399,6 +399,27 @@ eq('baza vanzari', vj.totals.bazaV, 14000);
 eq('TVA colectata (jurnal vanzari)', vj.totals.colectata, 2940);
 eq('baza cumparari', vj.totals.bazaC, 10000);
 eq('TVA deductibila (jurnal cumparari)', vj.totals.deductibila, 2100);
+// Reconciliere TVA (pregatire e-TVA): pozitia perioadei + constatarile care ar crea discrepante
+const mkVat = (entries) => ({ entries, openingBalances: {} });
+const recOk = rep.tvaReconciliation(mkVat([
+  { id: 'v1', tip: 'factura_vanzare_marfuri', partenerCui: 'RO1', document: 'F1', period: '2026-06', data: '2026-06-10', spv: { index: '9' }, lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '4111', credit: '4427', suma: 210 }] },
+]), '2026-06');
+eq('reconciliere: TVA coerent 21% + trimisa -> 0 constatari, colectata 210', recOk.findings.length + '/' + recOk.colectata + '/' + recOk.ok, '0/210/true');
+const recBad = rep.tvaReconciliation(mkVat([
+  { id: 'v2', tip: 'factura_vanzare_servicii', partenerCui: 'RO2', document: 'F2', period: '2026-06', data: '2026-06-11', lines: [{ debit: '4111', credit: '704', suma: 1000 }, { debit: '4111', credit: '4427', suma: 150 }] },
+]), '2026-06');
+ok('reconciliere: cota neconforma (15%) semnalata', recBad.findings.some((f) => f.cod === 'tva-cota-neconforma') && recBad.coteAnormale[0].cota === 15);
+ok('reconciliere: vanzare cu TVA netrimisa in SPV semnalata', recBad.findings.some((f) => f.cod === 'efactura-netrimisa') && recBad.netrimise.length === 1);
+// taxarea inversa (4426=4427) NU declanseaza cota neconforma (TVA autolichidata pe aceeasi baza)
+const recTi = rep.tvaReconciliation(mkVat([
+  { id: 'v3', tip: 'achizitie_intracomunitara', partenerCui: 'DE1', document: 'IC1', period: '2026-06', data: '2026-06-12', lines: [{ debit: '371', credit: '401', suma: 2000 }, { debit: '4426', credit: '4427', suma: 420 }] },
+]), '2026-06');
+ok('reconciliere: taxarea inversa nu e semnalata drept cota neconforma', !recTi.findings.some((f) => f.cod === 'tva-cota-neconforma'));
+// vanzare fara CUI de partener (B2C) nu intra la e-Factura netrimisa
+const recB2c = rep.tvaReconciliation(mkVat([
+  { id: 'v4', tip: 'factura_vanzare_marfuri', document: 'BON1', period: '2026-06', data: '2026-06-13', lines: [{ debit: '4111', credit: '707', suma: 500 }, { debit: '4111', credit: '4427', suma: 105 }] },
+]), '2026-06');
+ok('reconciliere: vanzare B2C (fara CUI) nu e semnalata ca netrimisa', !recB2c.findings.some((f) => f.cod === 'efactura-netrimisa'));
 // D300 pe schema OFICIALA v12 — validata cu DUKIntegrator (scripts/valideaza-duk.sh):
 // forma plata (atribute pe radacina), valori in lei intregi, suma de control + nr_evid.
 const d300v12 = xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06'), { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
