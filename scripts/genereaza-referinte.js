@@ -34,6 +34,8 @@ w('D390', xml.d390Xml(v.company, '2026-06', rep.d390(vIC, '2026-06'), who));
 w('D112', xml.d112Xml(v.company, '2026-06', statePlata(v.angajati), who));
 // D100 (micro trimestrial)
 w('D100', xml.d100Xml(v.company, '2026-06', rep.d100micro(v, '2026-06'), who));
+// D101 (impozit pe profit, anual) — schema v10; exemplul are profit mic in 2026
+w('D101', xml.d101Xml(v.company, rep.d101(v, '2026'), who));
 // D205 (retineri la sursa) — an incheiat, cu un beneficiar de dividende
 const vDiv = { entries: [{ id: 'd1', data: '2025-08-10', period: '2025-08', tip: 'repartizare_dividende', tipNume: 'Div', partener: 'Ion', partenerCui: '1900101415238', lines: [{ debit: '457', credit: '5121', suma: 9200 }, { debit: '457', credit: '446', suma: 800 }, { debit: '117', credit: '457', suma: 10000 }] }], openingBalances: {} };
 w('D205', xml.d205Xml(v.company, '2025', rep.d205(vDiv, '2025'), who));

@@ -724,6 +724,81 @@ function d100Xml(company, period, d, who) {
 `;
 }
 
+/** D101 — impozitul pe profit anual, pe schema OFICIALA v10 (an sfarsit exercitiu >=2024:
+ *  mfp:anaf:dgti:d101:declaratie:v10, root <declaratie101>, structura PLATA cu indicatorii
+ *  P1..P53 ca atribute pe radacina). Validatorul ALEGE singur versiunea dupa anul din Data_S
+ *  (tabelul intern _dateVersionTable din D101Validator): un exercitiu incheiat in 2024/2025/2026
+ *  -> idValidator 8 -> schema v10. Aritmetica si regulile (R34..R111, V1..V8, nr_evid, scadenta)
+ *  sunt cele extrase din d101validator.v8 (verificate cu DUKIntegrator). Modeleaza cazul uzual:
+ *  PJ romana platitoare de impozit pe profit (cod_obligatie 103), exercitiu = an calendaristic.
+ *  Sumele sunt in LEI INTREGI (N(15)); indicatorii DERIVATI se recalculeaza din cei rotunjiti,
+ *  ca sa treaca verificarile de calcul EXACT (P3=P1-P2, P16, P22, P35, P38a, P41, P48, P52...). */
+function d101Xml(company, d, who) {
+  const lei = (v) => Math.round(Number(v) || 0);
+  const year = Number(String((d && d.year) || new Date().getFullYear()).slice(0, 4));
+  const cota = Number((d && d.cota) || 16);
+  const codObligatie = '103'; // impozit pe profit datorat de PJ romane (nomenclatorul D101)
+  // Exercitiu = an calendaristic: Data_I = 01.01.an, Data_S = 31.12.an
+  const dataI = '01.01.' + year;
+  const dataS = '31.12.' + year;
+  // Scadenta platii (regula validatorului, derivata din Data_S): ZZ=25, LL=Luna(Data_S)=12, AA=Anul.
+  // Pentru exercitiile 2021-12..2025 termenul e extins (LL+6); altfel LL+3 (LL+2 pentru cod 104).
+  let ll = 12; let aa = year;
+  if ((aa === 2021 && ll === 12) || (aa >= 2022 && aa <= 2025)) ll += 6;
+  else if (codObligatie === '104') ll += 2; else ll += 3;
+  if (ll > 12) { ll -= 12; aa += 1; }
+  const scadenta = '25' + String(ll).padStart(2, '0') + String(aa).slice(-2); // ZZLLAA (6 cifre)
+  // Nr. evidenta a platii (23): poz1-2="11", poz3-5=cod_obligatie, poz6-7="01", poz8-11=LLAA(Data_S),
+  // poz12-17=scadenta, poz18="0" (fara data lichidare), poz19-21="000", poz22-23=control (suma primelor 21).
+  const p21 = '11' + codObligatie + '01' + '12' + String(year).slice(-2) + scadenta + '0' + '000';
+  const ctl = String(p21.split('').reduce((s, c) => s + Number(c), 0)).slice(-2).padStart(2, '0');
+  const nrEvid = p21 + ctl;
+
+  // Indicatorii P1..P53 (LEI INTREGI). Derivatele se calculeaza din valorile rotunjite ale bazelor.
+  const P1 = lei(d.venituriExploatare); const P2 = lei(d.cheltuieliExploatare); const P3 = P1 - P2;
+  const P4 = lei(d.venituriFinanciare); const P5 = lei(d.cheltuieliFinanciare); const P6 = P4 - P5;
+  const P7 = P3 + P6;                       // rezultat brut (P8=P9=0 -> P10=P7)
+  const P10 = P7;
+  const P15 = lei(d.deduceriFiscale); const P16 = P15; // toate deducerile la "alte sume deductibile"
+  const P21 = 0;
+  const P22 = P10 - P16 - P21;
+  const P33 = lei(d.cheltuieliNedeductibile); const P34 = P33; // toate nedeductibilele la "alte cheltuieli"
+  const P35 = P22 + P34;                    // profit impozabil/pierdere inainte de reportarea pierderilor
+  const P36 = P35 < 0 ? -P35 : 0;           // pierderea curenta de reportat (P37=P38=0)
+  const P38a = P35 + P36;                   // = max(P35, 0)
+  const P39 = lei(d.pierdereReportata);
+  const P39a = Math.min(lei(d.pierdereFolosita), P39); // V1: P39a <= P39
+  const P40 = (P38a >= 0 && P39a >= 0 && P38a - P39a > 0) ? P38a - P39a : 0; // profit impozabil
+  const P40a = P38a < 0 ? -P38a : 0;        // mereu 0 aici (P38a>=0)
+  const P41 = P40 > 0 ? Math.round(P40 * cota / 100) : 0; // impozit pe profit anual
+  const P411 = P41; const P412 = 0;
+  const P481 = P41; const P482 = 0; const P48 = P481 + P482; // fara credite/reduceri => P48 = P41
+  const P52 = P48;                          // impozit de plata = (P48+P51)-(P49+P50) = P48
+  const vals = { P1, P2, P3, P4, P5, P6, P7, P10, P15, P16, P21, P22, P33, P34, P35, P36, P38a, P39, P39a, P40, P40a, P41, P411, P412, P481, P482, P48, P52 };
+  // Suma de control (totalPlata_A) = suma DOAR a indicatorilor principali P1..P53 (regula R19 din
+  // validator); variantele "a" (P38a/P40a) si sub-indicatorii (P411/P412/P481/P482/P39a) NU intra.
+  const checksumKeys = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P10', 'P15', 'P16', 'P21', 'P22', 'P33', 'P34', 'P35', 'P36', 'P39', 'P40', 'P41', 'P48', 'P52'];
+  const totalPlata = checksumKeys.reduce((s, k) => s + vals[k], 0);
+  const cui = String(company.cui).replace(/^ro/i, '').replace(/\s/g, '');
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  const P = (name) => `${name}="${vals[name]}"`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- D101 v10 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D101 fisier.xml -->
+<declaratie101 xmlns="mfp:anaf:dgti:d101:declaratie:v10"
+  d_rec="0" d_reg="0" d_anulare="0" d_alte="0" d_reglem="0"
+  cod_obligatie="${codObligatie}" an_i="${year}" luna_i="1" an="${year}" luna="12"
+  Data_I="${esc(dataI)}" Data_S="${esc(dataS)}" scadenta="${esc(scadenta)}" cod_bug="2047010103" nr_evid="${esc(nrEvid)}"
+  totalPlata_A="${totalPlata}"
+  nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
+  cif="${esc(cui)}" caen="${esc(company.caen || '0000')}" denumire="${esc(company.nume)}" adresa="${esc(adresa || '-')}"
+  ${P('P1')} ${P('P2')} ${P('P3')} ${P('P4')} ${P('P5')} ${P('P6')} ${P('P7')} ${P('P10')}
+  ${P('P15')} ${P('P16')} ${P('P21')} ${P('P22')} ${P('P33')} ${P('P34')} ${P('P35')} ${P('P36')}
+  ${P('P38a')} ${P('P39')} ${P('P39a')} ${P('P40')} ${P('P40a')} ${P('P41')} ${P('P411')} ${P('P412')}
+  ${P('P481')} ${P('P482')} ${P('P48')} ${P('P52')}/>
+`;
+}
+
 // Intrastat — declaratia statistica lunara pentru comertul intra-UE cu bunuri.
 // Se depune la INS (aplicatia Intrastat online / www.intrastat.ro), NU la ANAF.
 function intrastatXml(company, period, d) {
@@ -786,5 +861,5 @@ ${rows}
 
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
-  umCode, d300Xml, d394Xml, d112Xml, d390Xml, d205Xml, d100Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d394Xml, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
 };
