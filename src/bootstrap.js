@@ -280,7 +280,7 @@ function applySecurityGuards(app, ctx) {
   // Plafon per utilizator pe exporturile costisitoare (CPU/IO la fiecare cerere): SAF-T,
   // crearea de backup si exportul de firma. Descarcarile mici (CSV/PDF punctuale) raman libere.
   const RATE_EXPORT = Number(process.env.CONTAB_RATE_EXPORT || 10); // exporturi mari/ora/utilizator
-  const EXPORT_LIMITED = /^\/(xml\/saft|api\/backup|api\/firme\/\d+\/export-zip|api\/firme\/export-all|dosar-anual)$/;
+  const EXPORT_LIMITED = /^\/(xml\/saft|api\/backup|api\/firme\/\d+\/export-zip|api\/firme\/export-all|api\/dosar-anual)$/;
   const exportLimiter = uploadGuard.userLimit('export', RATE_EXPORT, 'Prea multe exporturi mari.');
   app.use((req, res, next) => (EXPORT_LIMITED.test(req.path) ? exportLimiter(req, res, next) : next()));
 
