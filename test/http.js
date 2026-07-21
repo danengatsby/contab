@@ -531,9 +531,10 @@ async function main() {
       && Array.isArray(rec.json.coteAnormale) && Array.isArray(rec.json.netrimise) && typeof rec.json.ok === 'boolean');
 
     // ── DOSAR ANUAL: arhiva imutabila (ZIP) + manifest cu amprente SHA-256 ──
+    eq('dosar-anual: fara sesiune -> 401 (sub garda de auth /api)', (await req('GET', '/api/dosar-anual?year=2026')).status, 401);
     { // fetch binar direct (req() decodeaza text si ar corupe zip-ul)
       const AdmZip = require('adm-zip');
-      const rz = await fetch(BASE + '/dosar-anual?year=2026', { headers: { Cookie: c1 } });
+      const rz = await fetch(BASE + '/api/dosar-anual?year=2026', { headers: { Cookie: c1 } });
       ok('dosar-anual: 200 + application/zip + attachment', rz.status === 200
         && /application\/zip/.test(rz.headers.get('content-type') || '') && /attachment/.test(rz.headers.get('content-disposition') || ''));
       const buf = Buffer.from(await rz.arrayBuffer());
@@ -551,7 +552,7 @@ async function main() {
         const e = zip.getEntry(f.cale); return e && crypto.createHash('sha256').update(e.getData()).digest('hex') === f.sha256;
       }));
       // an garbage: sanitizat global la gol -> cade pe anul curent, nu strica ruta (200)
-      const rgar = await fetch(BASE + '/dosar-anual?year=abcd', { headers: { Cookie: c1 } });
+      const rgar = await fetch(BASE + '/api/dosar-anual?year=abcd', { headers: { Cookie: c1 } });
       ok('dosar-anual: an garbage sanitizat -> tot 200 (anul curent)', rgar.status === 200);
     }
 

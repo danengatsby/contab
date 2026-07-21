@@ -153,8 +153,9 @@ module.exports = function register(app, ctx) {
   });
   app.get('/pdf/obligatii', (req, res) => pdf.obligatiiPdf(res, S(req).company, rep.obligatii(S(req), req.query.period || null)));
   // Dosarul contabil anual: arhiva imutabila (ZIP) a exercitiului — registre + balanta + situatii +
-  // declaratii (XML) + manifest cu amprente SHA-256. Export mare (plafonat prin EXPORT_LIMITED).
-  app.get('/dosar-anual', wrap(async (req, res) => {
+  // declaratii (XML) + manifest cu amprente SHA-256. Sub /api (ca /api/firme/N/export-zip): mostenește
+  // garda de sesiune + plafonul de export (EXPORT_LIMITED). Export mare, per firma activa.
+  app.get('/api/dosar-anual', wrap(async (req, res) => {
     // `year` e deja sanitizat global (bootstrap): ori 4 cifre, ori gol -> anul curent.
     const year = String(req.query.year || new Date().getFullYear());
     const r = await dosarAnual.build(S(req), year, { username: req.user && req.user.username, who: declarantFromReq(req) });

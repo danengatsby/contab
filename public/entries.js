@@ -211,7 +211,7 @@ async function loadArhiva() {
     <div class="card"><h3>📚 07 · Registre & Bilanț</h3>
       <p class="muted">Registrele obligatorii și situațiile financiare.</p>
       ${L('/pdf/journal' + pq, '⬇ Registru-jurnal PDF')}${L('/csv/journal' + pq, 'Jurnal CSV')}${L('/pdf/ledger' + pq, '⬇ Cartea mare PDF')}${L('/pdf/balance' + pq, '⬇ Balanță PDF')}${L('/csv/balance' + pq, 'Balanță CSV')}${L('/pdf/pl' + yq, '⬇ Cont P&P PDF')}${L('/pdf/bilant' + pq, '⬇ Bilanț PDF')}
-      <hr class="soft" data-u="u18"><p class="muted" data-u="u18">Dosarul anului într-o arhivă imutabilă (registre + balanță + situații + declarații XML), cu amprente SHA-256 pentru integritate — pentru păstrare și control.</p>${L('/dosar-anual' + yq, '📦 Dosar anual (ZIP)')}</div>`;
+      <hr class="soft" data-u="u18"><p class="muted" data-u="u18">Dosarul anului într-o arhivă imutabilă (registre + balanță + situații + declarații XML), cu amprente SHA-256 pentru integritate — pentru păstrare și control.</p>${L('/api/dosar-anual' + yq, '📦 Dosar anual (ZIP)')}</div>`;
   $$('#arhivaView [data-go]').forEach((b) => b.addEventListener('click', () => D.goTab(b.dataset.go)));
   const vb = $('#validateDecl');
   if (vb) vb.addEventListener('click', async () => {
