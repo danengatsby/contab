@@ -522,6 +522,12 @@ async function main() {
     await req('POST', '/api/company', { cookie: c1, body: { perioadaTva: 'L' } });
     const vjL = await req('GET', '/api/vat-journals?period=2026-06', { cookie: c1 });
     ok('vat-journals la regim L: perioada efectiva = luna', vjL.json.period === '2026-06' && !vjL.json.trimestrial);
+    // reconciliere TVA (pregatire e-TVA): pozitia perioadei + constatari (detectarea per-regula e
+    // acoperita in test/run.js cu date controlate; aici verificam contractul rutei end-to-end)
+    const rec = await req('GET', '/api/tva-reconciliere?period=2026-06', { cookie: c1 });
+    ok('tva-reconciliere: structura coerenta (pozitie + findings + coteAnormale + netrimise)', rec.status === 200
+      && typeof rec.json.colectata === 'number' && typeof rec.json.deductibila === 'number' && Array.isArray(rec.json.findings)
+      && Array.isArray(rec.json.coteAnormale) && Array.isArray(rec.json.netrimise) && typeof rec.json.ok === 'boolean');
 
     // ── MOTOR DE PROFIL FISCAL: sursa unica pentru declaratii/alerte/controale ──
     {

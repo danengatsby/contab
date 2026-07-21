@@ -36,6 +36,60 @@ function d300(db, period) {
   return Object.assign({ period, coteV: vj.coteV, coteC: vj.coteC }, vj.totals);
 }
 
+// Cote de TVA acceptate (RO, curente + istorice recente): 21/11/9 curente, 19/5 istorice, 0 scutit.
+const COTE_TVA_VALIDE = new Set([0, 5, 9, 11, 19, 21]);
+// Tipurile care se EMIT in SPV (RO e-Factura) — trebuie sa se regaseasca in decontul precompletat.
+const EFACT_EMISE = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare']);
+
+/**
+ * Reconciliere TVA — pregatire pentru decontul precompletat e-TVA. Confrunta pozitia TVA a perioadei
+ * (jurnale = D300) cu sursele pe care ANAF le vede si prinde exact ce ar produce o discrepanta la
+ * notificarea de conformare:
+ *   - COTE NECONFORME: randuri de jurnal cu TVA/baza in afara cotelor valide (eroare de inregistrare);
+ *   - e-FACTURA EMISE NETRIMISE: vanzari cu TVA in perioada care nu au plecat in SPV — ANAF le vede
+ *     prin RO e-Factura si le include in decontul precompletat, dar D300-ul tau nu le-ar reflecta.
+ * Intoarce pozitia (colectata/deductibila/net), defalcarea pe cote si constatarile { nivel, cod, mesaj }.
+ */
+function tvaReconciliation(db, period) {
+  const vj = acc.vatJournals(db, period);
+  const t = vj.totals;
+  const findings = [];
+
+  // 1) Cote neconforme (taxarea inversa are TVA autolichidata pe aceeasi baza -> exclusa)
+  const coteAnormale = [];
+  for (const [tip, rows] of [['vanzare', vj.vanzari], ['cumparare', vj.cumparari]]) {
+    for (const r of rows) {
+      if (r.taxareInversa || r.tva === 0) continue;
+      const cota = r.baza > 0 ? Math.round((r.tva / r.baza) * 100) : -1; // baza 0 cu TVA > 0 = anormal
+      if (!COTE_TVA_VALIDE.has(cota)) coteAnormale.push({ tip, document: r.document || '', partener: r.partener || '', baza: r.baza, tva: r.tva, cota });
+    }
+  }
+  if (coteAnormale.length) findings.push({ nivel: 'atentie', cod: 'tva-cota-neconforma',
+    mesaj: coteAnormale.length + ' înregistrare/înregistrări cu cotă TVA neconformă (nu se potrivește 21/11/9/5/0%) — verifică; ANAF le compară cu e-Factura.' });
+
+  // 2) e-Factura emise cu TVA, netrimise in SPV, in perioada
+  const netrimise = [];
+  for (const e of acc.postedEntries(db)) {
+    if (!EFACT_EMISE.has(e.tip) || !acc.inPeriod(e, period)) continue;
+    if (e.spv && (e.spv.index || e.spv.stare)) continue; // deja trimisa
+    if (!e.partenerCui) continue; // B2B identificat prin CUI (doar acestea intra in e-Factura)
+    const areTva = (e.lines || []).some((l) => String(l.credit) === '4427' && Number(l.suma) > 0);
+    if (!areTva) continue;
+    netrimise.push({ entryId: e.id, document: e.document || '', partener: e.partener || '', data: e.data });
+  }
+  if (netrimise.length) findings.push({ nivel: 'atentie', cod: 'efactura-netrimisa',
+    mesaj: netrimise.length + ' factură/facturi emise cu TVA NEtrimise în SPV — ANAF le include în decontul precompletat; trimite-le ca D300 să se potrivească.' });
+
+  return {
+    period,
+    colectata: t.colectata, deductibila: t.deductibila, deplata: t.deplata, derecuperat: t.derecuperat,
+    coteV: vj.coteV, coteC: vj.coteC,
+    coteAnormale, netrimise,
+    findings,
+    ok: findings.every((f) => f.nivel !== 'eroare'),
+  };
+}
+
 /** Recap D390 — declaratia recapitulativa VIES (livrari/achizitii intracomunitare de bunuri). */
 function d390(db, period) {
   const INTRACOM = { livrare_intracomunitara: 'L', achizitie_intracomunitara: 'A' };
@@ -723,4 +777,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport };
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation };

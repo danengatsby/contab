@@ -571,6 +571,6 @@ function cashControl(db, cont, period) {
   return { cont, period, soldFinal: sold, negative, plafon, soldPesteLimita, ok: !negative.length && !plafon.length && !soldPesteLimita };
 }
 
-module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows,
+module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
   allLines, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };
