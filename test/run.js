@@ -2223,6 +2223,47 @@ dbx.firme = dbx.firme.filter((f) => f.id !== 7777); // curatenie (doar in memori
   db.get().gestiuni = db.get().gestiuni.filter((g) => g.id !== gU.id);
 }
 
+// ── COLABORATORI PE FIRMA (contabil <-> necontabil): firmeService ──
+section('Colaboratori pe firmă (src/firmeService.js)');
+{
+  const fsvc = require('../src/firmeService');
+  const dC = db.get();
+  const fidC = db.nextFirmaId();
+  dC.firme.push({ id: fidC, nume: 'Colab SRL', subscription: { status: 'active', plan: 'grandfathered' } });
+  // id-uri manuale unice (db.nextUserId() citeste starea curenta; 3 apeluri inainte de push ar da acelasi id)
+  const owner = { id: 90001, username: 'proprietar', role: 'user', firme: [fidC], firmaActiva: fidC };
+  const acc = { id: 90002, username: 'contabilx', email: 'c@x.ro', role: 'user', firme: [999], subscription: { status: 'active', plan: 'pro' } };
+  const adminU = { id: 90003, username: 'adminx', role: 'admin' };
+  dC.users.push(owner, acc, adminU);
+  db.save();
+  eq('list: initial doar proprietarul', fsvc.listCollaborators(fidC).map((c) => c.username).join(','), 'proprietar');
+  // adaugare cont existent (dupa email) -> capata acces
+  const added = fsvc.addExistingCollaborator(fidC, { email: 'c@x.ro' });
+  eq('addExisting: contabilx capata firma', added.username + ':' + db.get().users.find((u) => u.id === acc.id).firme.includes(fidC), 'contabilx:true');
+  eq('addExisting: contabil recunoscut ca tip', added.tip, 'contabil');
+  eq('addExisting: dubla -> 400', errStatus(() => fsvc.addExistingCollaborator(fidC, { username: 'contabilx' })), 400);
+  eq('addExisting: cont inexistent -> 404', errStatus(() => fsvc.addExistingCollaborator(fidC, { username: 'nimeni' })), 404);
+  eq('addExisting: adminul deja are acces -> 400', errStatus(() => fsvc.addExistingCollaborator(fidC, { username: 'adminx' })), 400);
+  // invitatie noua -> pending user cu firme:[fidC]
+  const inv = fsvc.inviteCollaborator(fidC, { username: 'invitatnou', email: 'i@x.ro' });
+  ok('inviteNew: token + pending user cu acces la firma', inv.token.length === 48 && db.get().users.find((u) => u.id === inv.user.id).firme.includes(fidC) && db.get().users.find((u) => u.id === inv.user.id).pending === true);
+  eq('inviteNew: username existent -> 400', errStatus(() => fsvc.inviteCollaborator(fidC, { username: 'contabilx' })), 400);
+  eq('list: acum 3 (proprietar + contabilx + invitatnou pending)', fsvc.listCollaborators(fidC).length, 3);
+  ok('list: invitatia apare cu pending=true', fsvc.listCollaborators(fidC).some((c) => c.username === 'invitatnou' && c.pending));
+  // scoatere
+  fsvc.removeCollaborator(fidC, acc.id);
+  ok('remove: contabilx pierde accesul', !db.get().users.find((u) => u.id === acc.id).firme.includes(fidC));
+  eq('remove: non-colaborator -> 404', errStatus(() => fsvc.removeCollaborator(fidC, acc.id)), 404);
+  eq('remove: admin -> 404 (nu e colaborator per-firma)', errStatus(() => fsvc.removeCollaborator(fidC, adminU.id)), 404);
+  // pana ramane doar proprietarul: scot invitatia, apoi refuz scoaterea ultimului
+  fsvc.removeCollaborator(fidC, inv.user.id);
+  eq('remove: ultimul utilizator -> 400 (firma nu ramane orfana)', errStatus(() => fsvc.removeCollaborator(fidC, owner.id)), 400);
+  // curatenie
+  db.get().firme = db.get().firme.filter((f) => f.id !== fidC);
+  db.get().users = db.get().users.filter((u) => ![owner.id, acc.id, adminU.id, inv.user.id].includes(u.id));
+  db.save();
+}
+
 // ── PERIOADA INCHISA: garda unica (db.assertPeriodOpen) uniforma pe serviciile datate ──
 {
   const firmaLk = db.getFirma(fidOk);

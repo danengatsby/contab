@@ -9,6 +9,7 @@ const multer = require('multer');
 const plans = require('../plans');
 const db = require('../db');
 const svc = require('../firmeService');
+const notify = require('../notify');
 
 module.exports = function register(app, ctx) {
   const { activeId, allowedFirme, requireAdmin, wrap, logAudit } = ctx;
@@ -129,5 +130,53 @@ module.exports = function register(app, ctx) {
     svc.deleteFirma(req.user, req.params.id, req.impersonating);
     logAudit('firma.delete', 'firma ' + Number(req.params.id), { req, firmaId: null });
     return { ok: true };
+  }));
+
+  // ── Colaboratori pe firma ACTIVA (contabil <-> necontabil) ──────────────────────────────
+  // Lucreaza pe firma activa (mereu in allowedFirme -> apartenenta implicita). Adaugarea/scoaterea
+  // sunt POST/DELETE => garda readonly (un colaborator doar-citire nu poate) si paywall-ul per-firma
+  // se aplica automat. Contul demo (firma partajata) nu gestioneaza colaboratori.
+  function reqActiveFirma(req) {
+    const fid = activeId(req);
+    if (!fid) { const e = new Error('Nicio firmă activă.'); e.status = 400; throw e; }
+    if (req.user && req.user.username === 'demo') { const e = new Error('Contul demo nu gestionează colaboratori.'); e.status = 403; throw e; }
+    return fid;
+  }
+
+  app.get('/api/colaboratori', (req, res) => run(res, () => {
+    const fid = reqActiveFirma(req);
+    return { firmaActiva: fid, colaboratori: svc.listCollaborators(fid), eu: req.user && req.user.id };
+  }));
+
+  app.post('/api/colaboratori', wrap(async (req, res) => {
+    try {
+      const fid = reqActiveFirma(req);
+      const b = req.body || {};
+      if (b.mod === 'invite') {
+        const r = svc.inviteCollaborator(fid, b);
+        logAudit('colaborator.invite', r.user.username + ' -> firma ' + fid, { req, firmaId: fid });
+        const link = (req.protocol || 'http') + '://' + req.get('host') + '/?invite=' + r.token;
+        let emailed = false;
+        const smtp = db.get().settings.smtp;
+        if (r.user.email && smtp && smtp.host) {
+          try { await notify.sendMail(smtp, r.user.email, 'Invitație Contabo', 'Ai fost invitat să colaborezi într-o firmă din Contabo. Setează-ți parola aici:\n' + link); emailed = true; }
+          catch (e) { console.error('SMTP invitatie colaborator:', e.message); }
+        }
+        return res.json({ ok: true, invite: r.user, link, emailed });
+      }
+      const u = svc.addExistingCollaborator(fid, b);
+      logAudit('colaborator.add', u.username + ' -> firma ' + fid, { req, firmaId: fid });
+      return res.json({ ok: true, colaborator: u });
+    } catch (e) {
+      if (!e.status) throw e;
+      res.status(e.status).json({ error: e.message });
+    }
+  }));
+
+  app.delete('/api/colaboratori/:uid', (req, res) => run(res, () => {
+    const fid = reqActiveFirma(req);
+    const r = svc.removeCollaborator(fid, req.params.uid);
+    logAudit('colaborator.remove', r.username + ' <- firma ' + fid, { req, firmaId: fid });
+    return { ok: true, removed: r };
   }));
 };

@@ -304,6 +304,31 @@ async function main() {
     eq('expirat: PDF blocat (402)', (await req('GET', '/pdf/balance', { cookie: c3 })).status, 402);
     eq('expirat: alegerea planului merge (200)', (await req('POST', '/api/subscription/select', { cookie: c3, body: { plan: 'start' } })).status, 200);
 
+    // ── COLABORATORI PE FIRMA (contabil <-> necontabil): partajarea firmei active ──
+    {
+      const colList = await req('GET', '/api/colaboratori', { cookie: c1 });
+      ok('colaboratori: lista firmei active cu marcaj „eu"', colList.status === 200 && Array.isArray(colList.json.colaboratori) && colList.json.eu && colList.json.colaboratori.some((c) => c.id === colList.json.eu));
+      eq('colaboratori: fără sesiune -> 401 (sub garda /api)', (await req('GET', '/api/colaboratori')).status, 401);
+      // adaugare cont existent: expirat (firma 3) capata acces si la firma 1
+      eq('colaboratori: adaugare cont existent -> 200', (await req('POST', '/api/colaboratori', { cookie: c1, body: { mod: 'existing', username: 'expirat' } })).status, 200);
+      ok('colaboratori: expirat are acum acces la firma 1', ((await req('GET', '/api/me', { cookie: c3 })).json.firme || []).includes(1));
+      // scoatere -> expirat pierde firma 1 (starea revine curata)
+      eq('colaboratori: scoatere -> 200', (await req('DELETE', '/api/colaboratori/3', { cookie: c1 })).status, 200);
+      ok('colaboratori: expirat a pierdut accesul la firma 1', !((await req('GET', '/api/me', { cookie: c3 })).json.firme || []).includes(1));
+      // garzi: cont inexistent 404, adminul deja are acces 400
+      eq('colaboratori: cont inexistent -> 404', (await req('POST', '/api/colaboratori', { cookie: c1, body: { mod: 'existing', username: 'nimeni-aici' } })).status, 404);
+      eq('colaboratori: adminul deja are acces -> 400', (await req('POST', '/api/colaboratori', { cookie: c1, body: { mod: 'existing', username: 'admin2' } })).status, 400);
+      // invitatie prin link + acceptare -> user NOU cu acces la firma 1 (fluxul public existent)
+      const inv = await req('POST', '/api/colaboratori', { cookie: c1, body: { mod: 'invite', username: 'colabinvitat' } });
+      ok('colaboratori: invitatie -> link /?invite=<token>', inv.status === 200 && /\/\?invite=[0-9a-f]{48}$/.test(inv.json.link || ''));
+      const tok = (String(inv.json.link).match(/invite=([0-9a-f]+)/) || [])[1];
+      const acc = await req('POST', '/api/invite/accept', { body: { token: tok, password: 'ParolaBuna2026' } });
+      ok('colaboratori: acceptarea invitatiei -> user nou cu firma 1', acc.status === 200 && (acc.json.user.firme || []).includes(1));
+      // curatenie: sterge userul nou (admin) ca sa nu intre in snapshotul testului de backup de mai jos
+      const cAdmCol = (await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } })).cookie;
+      await req('DELETE', '/api/users/' + acc.json.user.id, { cookie: cAdmCol });
+    }
+
     // ── CSRF: garda de origine pe cererile mutante (aparare in adancime peste SameSite=Lax) ──
     const evil = await req('POST', '/api/login', { headers: { Origin: 'https://atacator.example' }, body: { username: 'x', password: 'y' } });
     eq('POST cu Origin strain -> 403 (CSRF)', evil.status, 403);
