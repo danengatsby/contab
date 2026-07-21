@@ -420,6 +420,10 @@ const recB2c = rep.tvaReconciliation(mkVat([
   { id: 'v4', tip: 'factura_vanzare_marfuri', document: 'BON1', period: '2026-06', data: '2026-06-13', lines: [{ debit: '4111', credit: '707', suma: 500 }, { debit: '4111', credit: '4427', suma: 105 }] },
 ]), '2026-06');
 ok('reconciliere: vanzare B2C (fara CUI) nu e semnalata ca netrimisa', !recB2c.findings.some((f) => f.cod === 'efactura-netrimisa'));
+// Dosar anual — perioadele de TVA dupa regim (helper pur; asamblarea completa e testata in http.js)
+const dosarMod = require('../src/dosarAnual');
+eq('dosar: perioade TVA lunare = 12 luni', dosarMod.vatPeriods({ perioadaTva: 'L' }, '2026').length, 12);
+eq('dosar: perioade TVA trimestriale = 4 trimestre', dosarMod.vatPeriods({ perioadaTva: 'T' }, '2026').join(','), '2026-Q1,2026-Q2,2026-Q3,2026-Q4');
 // D300 pe schema OFICIALA v12 — validata cu DUKIntegrator (scripts/valideaza-duk.sh):
 // forma plata (atribute pe radacina), valori in lei intregi, suma de control + nr_evid.
 const d300v12 = xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06'), { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
