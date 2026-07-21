@@ -1959,6 +1959,40 @@ ok('guard: neplatitor + document fara TVA -> permis', fp.entryGuard(gNepl, { lin
 const vIntra = { firmaId: 7, company: { tvaPlatitor: true, intrastatObligat: true }, angajati: [], entries: [{ tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10' }] };
 ok('expectedForFirma: Intrastat apare pentru firma obligata cu miscari intracom', declMod.expectedForFirma(vIntra, '2026-05').some((x) => x.tip === 'intrastat'));
 
+section('Exercitiul de restaurare automatizat (src/restoreDrill.js)');
+const drillMod = require('../src/restoreDrill');
+// graf coerent (2 firme, partida dubla echilibrata) -> drill ok, numaratoare corecta
+const drillDb = { firmaActiva: 1, firme: [{ id: 1, nume: 'Alfa SRL' }, { id: 2, nume: 'Beta SRL' }],
+  entries: [
+    { id: 'a', firmaId: 1, period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '5121', credit: '4111', suma: 1000 }] },
+    { id: 'b', firmaId: 2, period: '2026-03', data: '2026-03-02', lines: [{ debit: '371', credit: '401', suma: 500 }] },
+  ], openingBalances: {} };
+const drOk = drillMod.drillGraph(drillDb);
+eq('drill: graf coerent -> ok, 2 firme, 2 articole', drOk.ok + '/' + drOk.nrFirme + '/' + drOk.totalEntries, 'true/2/2');
+ok('drill: fiecare firma raportata cu balanta echilibrata', drOk.firme.every((f) => f.balanced && f.totalDebit === f.totalCredit));
+// preluare (openingBalances) STRICATA -> balanta de verificare nu se inchide -> drill esueaza, motivul numeste firma
+const drillBad = { firmaActiva: 1, firme: [{ id: 1, nume: 'Stricata SRL' }],
+  entries: [{ id: 'x', firmaId: 1, period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 1000 }] }],
+  openingBalances: { 1: { '5121': { d: 5000, c: 0 } } } }; // preluare de 5000 debit fara contrapartida
+const drBad = drillMod.drillGraph(drillBad);
+ok('drill: preluare dezechilibrata -> ok=false, motivul numeste firma', drBad.ok === false && /Stricata SRL/.test(drBad.motiv));
+// ciornele NU intra in verificare (ca peste tot in agregari): o ciorna dezechilibrata nu strica drill-ul
+const drillCiorna = { firmaActiva: 1, firme: [{ id: 1, nume: 'Ciorna SRL' }],
+  entries: [{ id: 'c', firmaId: 1, status: 'ciorna', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '5121', credit: '4111', suma: 1 }] }], openingBalances: {} };
+ok('drill: ciornele excluse din verificare -> ok', drillMod.drillGraph(drillCiorna).ok === true);
+// graf fara firme -> ok=false cu motiv
+ok('drill: db.json fara lista de firme -> ok=false', drillMod.drillGraph({ entries: [] }).ok === false && !!drillMod.drillGraph({ entries: [] }).motiv);
+// INTEGRARE: arhiva completa reala (fullBackup) -> drillArchive o deschide si o valideaza
+const drillBackup = require('../src/backup');
+const drillTmp = require('os').tmpdir() + '/drill-' + process.pid;
+require('fs').mkdirSync(drillTmp, { recursive: true });
+const drillDbFile = drillTmp + '/db.json';
+require('fs').writeFileSync(drillDbFile, JSON.stringify(Object.assign({ users: [{ id: 1 }] }, drillDb)));
+const drillArch = drillBackup.fullBackup(drillDbFile, drillTmp, 5);
+const drArch = drillMod.drillArchive(drillArch.path);
+eq('drill: arhiva completa reala -> restaurabila si coerenta contabil', drArch.ok + '/' + drArch.totalEntries, 'true/2');
+require('fs').rmSync(drillTmp, { recursive: true, force: true });
+
 section('e-Factura netrimisa in SPV + SAF-T lunar');
 eq('addCalendarDays: vineri + 5 zile calendaristice', declMod.addCalendarDays('2026-07-03', 5), '2026-07-08');
 const vEf = { firmaId: 9, company: { nume: 'EF SRL', tvaPlatitor: true }, angajati: [], entries: [

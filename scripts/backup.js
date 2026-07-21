@@ -101,11 +101,17 @@ async function main() {
   const sizeLabel = (f.size / 1024 / 1024).toFixed(1) + 'MB';
   log('Arhiva completa OK:', f.name, '(' + sizeLabel + ')');
 
-  // 2b) VERIFICAREA restaurabilitatii: arhiva se deschide si contine o baza valida.
-  //     Starea se persista pentru dashboardul /api/metrics (ultimul backup RESTAURABIL).
+  // 2b) VERIFICAREA restaurabilitatii, in DOUA straturi:
+  //   - STRUCTURAL (verifyArchive): arhiva se deschide, db.json valid cu firme, sqlite prezent;
+  //   - DRILL de restaurare (restoreDrill): extrage db.json si verifica COERENTA CONTABILA in
+  //     izolare — invariantul partidei duble (Σdebit == Σcredit) pe fiecare firma. Automatizeaza
+  //     exercitiul manual trimestrial din MONITORING.md. Starea (ambele) se persista pentru
+  //     /api/metrics (ops.ultimulBackup) si e vizibila in raportul zilnic.
   const veri = backup.verifyArchive(f.path);
+  const drill = require('../src/restoreDrill').drillArchive(f.path);
   fs.writeFileSync(path.join(DATA_DIR, 'backups', 'last-backup.json'), JSON.stringify({
     ts: new Date().toISOString(), name: f.name, ok: veri.ok, firme: veri.firme, sqlite: veri.sqlite, size: f.size, motiv: veri.motiv,
+    drill: { ok: drill.ok, nrFirme: drill.nrFirme, totalEntries: drill.totalEntries, motiv: drill.motiv },
   }));
   if (!veri.ok) {
     warn('Verificare arhiva ESUATA:', veri.motiv);
@@ -113,6 +119,14 @@ async function main() {
     process.exit(1);
   }
   log('Verificare arhiva OK:', veri.firme, 'firme, sqlite:', veri.sqlite);
+  if (!drill.ok) {
+    warn('Drill de restaurare ESUAT:', drill.motiv);
+    await alertEmail('[Contab backup] DRILL RESTAURARE ESUAT: ' + f.name,
+      'Arhiva se deschide, dar datele restaurate NU sunt coerente contabil: ' + drill.motiv
+      + '\nVerifica integritatea bazei inainte ca backupurile sa se roteasca.');
+    process.exit(1);
+  }
+  log('Drill restaurare OK:', drill.nrFirme, 'firme coerente,', drill.totalEntries, 'articole (balanta echilibrata).');
 
   // 3) offsite — email si/sau rclone; esecul unuia nu opreste restul.
   //    Cu CONTAB_BACKUP_KEY setat, copia OFFSITE pleaca CRIPTATA (AES-256, openssl);

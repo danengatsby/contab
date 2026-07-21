@@ -81,18 +81,33 @@ monitorul extern acoperă căderea totală a serverului. Împreună = și auto-v
 **RTO (timp de repunere):** ≤ 30 min — instalare Node + `npm ci`, dezarhivarea ultimei
 arhive offsite, `db.json` → `data/`, `uploads/*` → `data/uploads/`, pornire.
 
-**Backup restaurabil, nu doar creat:** `scripts/backup.js` VERIFICĂ fiecare arhivă după
-creare (se deschide, `db.json` valid cu firmele numărate) și scrie starea în
-`data/backups/last-backup.json` — vizibilă în `/api/metrics` (`ops.ultimulBackup`),
-alături de spațiul liber pe disc. La eșec: alertă pe email + exit 1 (vizibil în cron).
+**Backup restaurabil, nu doar creat — în două straturi:** `scripts/backup.js` verifică fiecare
+arhivă după creare și scrie starea (ambele straturi) în `data/backups/last-backup.json` —
+vizibilă în `/api/metrics` (`ops.ultimulBackup`), alături de spațiul liber pe disc:
+- **structural** (`backup.verifyArchive`): arhiva se deschide, `db.json` e valid cu firmele
+  numărate, instantaneul SQLite e prezent;
+- **drill de restaurare** (`src/restoreDrill.js`, `ops.ultimulBackup.drill`): extrage `db.json`
+  și RULEAZĂ agregarea contabilă în izolare (fără a atinge baza vie), verificând **balanța de
+  verificare** (Σdebit == Σcredit, rulaj + solduri de preluare) pe FIECARE firmă. Prinde ce
+  verificarea structurală nu vede: date restaurate care se parsează dar nu mai sunt procesabile
+  sau nu se mai închid (preluare stricată, sumă coruptă). Automatizează exercițiul de mai jos.
+
+La eșecul oricărui strat: alertă pe email + exit 1 (vizibil în cron).
 
 **Offsite criptat:** cu `CONTAB_BACKUP_KEY` setat, copiile offsite (email/rclone) pleacă
 AES-256. Restaurare: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in f.zip.enc -out f.zip -pass env:CONTAB_BACKUP_KEY`.
 
-**Exercițiu de restaurare (trimestrial, manual, ~10 min):** ia ultima arhivă offsite,
-dezarhiveaz-o pe o mașină curată (sau `CONTAB_DATA_DIR` temporar), pornește instanța
-izolată și verifică balanța unei firme contra producției. Restaurarea la nivel de firmă
-(bundle) e testată AUTOMAT la fiecare rulare a suitei HTTP și în CI.
+**Exercițiu de restaurare — AUTOMAT la fiecare backup:** drill-ul de mai sus
+(`src/restoreDrill.js`) face ce înainte cerea o rulare manuală trimestrială — deschide
+arhiva, restaurează `db.json` în izolare și verifică balanța fiecărei firme — la fiecare
+backup zilnic, cu alertă pe email la eșec. Restaurarea la nivel de firmă (bundle) e testată
+în plus la fiecare rulare a suitei HTTP și în CI.
+
+**Exercițiu manual complet (opțional, ~o dată pe an):** pentru încrederea „end-to-end pe
+mașină curată", ia ultima arhivă offsite (decripteaz-o dacă e cazul), dezarhiveaz-o pe o
+mașină/instanță curată, pornește-o și verifică vizual câteva firme. Drill-ul automat acoperă
+coerența datelor; exercițiul manual anual acoperă și pașii de infrastructură (Node, `npm ci`,
+nginx, TLS) pe care un job nu-i poate valida.
 
 ## Jurnal de audit — proba durabilă
 
