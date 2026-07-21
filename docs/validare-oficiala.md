@@ -20,8 +20,16 @@ validatoarele curente din manifestul oficial ANAF (`versiuni.xml`).
 | D112      | `declaratie_unica:declaratie:v7`            | J26.0.3        | ✅ Validare fără erori |
 | D390      | `d390:declaratie:v3`                        | J4.1.2         | ✅ Validare fără erori |
 | D100      | `d100:declaratie:v2`                        | J21.0.6        | ✅ Validare fără erori |
+| D101      | `d101:declaratie:v10`                       | J11.0.3        | ✅ Validare fără erori (profit, pierdere curentă, pierdere reportată, rezultat financiar, rotunjire) |
 | D205      | `d205:declaratie:v3`                        | J9.0.5         | ✅ Validare fără erori |
 | D406 (SAF-T) | `Ro_SAFT_Schema` v2.4.9 (`AuditFileVersion` 2.4.9) | J2.2.18 (16-Feb-2026) | ✅ Validare fără erori — variantele **L** (lunară), **T** (trimestrială), **A** (active), **C** (stocuri) |
+
+> **D101 (adăugat 2026-07-21):** validatorul alege singur versiunea de schemă după **anul din `Data_S`**
+> (tabelul intern `_dateVersionTable` din `D101Validator`), nu după un atribut liber — un exercițiu
+> încheiat în 2024/2025/2026 → schema **v10** (`declaratie101`, indicatorii P1..P53 ca atribute pe
+> rădăcină). Generatorul modelează cazul uzual: PJ română plătitoare de impozit pe profit
+> (`cod_obligatie=103`), exercițiu = an calendaristic. `scadenta`/`nr_evid` sunt calculate exact după
+> regulile validatorului (termen extins +6 luni pentru exercițiile 2021-12…2025).
 
 ## Reproducere
 

@@ -1358,6 +1358,32 @@ eq('D101: profit impozabil = brut 96000 + nedeductibile 1000', d101r.profitImpoz
 eq('D101: impozit = 97000 × 16% = 15520', d101r.impozit, 15520);
 eq('D101: scadenta = 25 martie anul urmator', d101r.scadenta, '2026-03-25');
 
+// D101 XML (schema oficiala v10) — validat oficial cu DUKIntegrator (vezi docs/validare-oficiala.md);
+// aici verificam bine-formarea, namespace-ul, structura si INVARIANTELE de calcul ale validatorului.
+const d101co = { cui: '12345674', nume: 'S.C. EXEMPLU PROD S.R.L.', adresa: 'Str. Exemplu nr. 1', oras: 'Bucuresti', judet: 'RO-B', caen: '1071' };
+const d101xml = xml.d101Xml(d101co, rep.d101({ entries: d101ent, openingBalances: {} }, '2026', { cheltNedeductibile: 1000 }));
+ok('D101 XML bine-format', wellFormed(d101xml));
+ok('D101 XML: schema v10, root declaratie101, cod_obligatie 103', d101xml.includes('xmlns="mfp:anaf:dgti:d101:declaratie:v10"') && d101xml.includes('<declaratie101') && d101xml.includes('cod_obligatie="103"'));
+ok('D101 XML: Data_S/Data_I an calendaristic + nr_evid pe 23 cifre + cif fara RO', d101xml.includes('Data_I="01.01.2026"') && d101xml.includes('Data_S="31.12.2026"') && /nr_evid="\d{23}"/.test(d101xml) && d101xml.includes('cif="12345674"'));
+const pAttr = (x, n) => Number((x.match(new RegExp('\\b' + n + '="(-?\\d+)"')) || [])[1]);
+ok('D101 XML: P3=P1-P2, P7=P3+P6, P22=P10-P16-P21, P35=P22+P34 (invariante validator)', (() => {
+  const P = (n) => pAttr(d101xml, n);
+  return P('P3') === P('P1') - P('P2') && P('P7') === P('P3') + P('P6')
+    && P('P22') === P('P10') - P('P16') - P('P21') && P('P35') === P('P22') + P('P34');
+})());
+ok('D101 XML: P41=P411, P48=P481+P482, P52=P48, totalPlata_A = suma indicatorilor principali', (() => {
+  const P = (n) => pAttr(d101xml, n);
+  const keys = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P10', 'P15', 'P16', 'P21', 'P22', 'P33', 'P34', 'P35', 'P36', 'P39', 'P40', 'P41', 'P48', 'P52'];
+  const suma = keys.reduce((s, k) => s + P(k), 0);
+  return P('P41') === P('P411') && P('P48') === P('P481') + P('P482') && P('P52') === P('P48') && P('totalPlata_A') === suma;
+})());
+// pierdere curenta: P35<0 -> P36 = -P35, P38a = 0, P40 = 0, impozit 0
+const d101loss = xml.d101Xml(d101co, rep.d101({ entries: [{ id: 'l', period: '2026-05', data: '2026-05-01', lines: [{ debit: '607', credit: '371', suma: 8000 }, { debit: '5121', credit: '707', suma: 3000 }] }], openingBalances: {} }, '2026'));
+ok('D101 XML pierdere: P36 = -P35 (pierderea curenta), P38a=0, P40=0, impozit P41=0', (() => {
+  const P = (n) => pAttr(d101loss, n);
+  return P('P35') < 0 && P('P36') === -P('P35') && P('P38a') === 0 && P('P40') === 0 && P('P41') === 0;
+})());
+
 section('Impozit pe profit — ajustari fiscale + reportare pierdere');
 const ptAdjEnt = [
   { id: '1', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 10000 }] },

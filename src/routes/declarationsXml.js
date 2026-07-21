@@ -112,6 +112,17 @@ module.exports = function register(app, ctx) {
     recordDecl(req, 'd100', period);
     sendXml(res, xml.d100Xml(v.company, period, rep.d100micro(v, period), declarantOf(req)), 'd100-' + (period || 'trim') + '.xml');
   });
+  // D101 — impozitul pe profit ANUAL (?year=). Doar pentru firmele in regim de profit;
+  // schema oficiala v10 (an sfarsit exercitiu >=2024). Descarcarea marcheaza declaratia in registru.
+  app.get('/xml/d101', (req, res) => {
+    const v = S(req);
+    if (!fiscalProfile.build(v.company).profit) {
+      return res.status(400).send('Firma nu e in regim de impozit pe profit — nu depune D101. Setează regimul „profit" în Setări dacă e cazul.');
+    }
+    const year = req.query.year || String(new Date().getFullYear());
+    recordDecl(req, 'd101', year + '-12'); // registrul lucreaza pe perioade lunare; D101 = decembrie
+    sendXml(res, xml.d101Xml(v.company, rep.d101(v, year), declarantOf(req)), 'd101-' + year + '.xml');
+  });
   app.get('/xml/d112', (req, res) => {
     const v = S(req);
     const period = req.query.period || new Date().toISOString().slice(0, 7);
@@ -145,6 +156,7 @@ module.exports = function register(app, ctx) {
       else if (type === 'd394') x = xml.d394Xml(v.company, pv, acc.vatJournals(v, pv), declarantOf(req), rep.achizitiiPfCarnet(v, pv));
       else if (type === 'd390') x = xml.d390Xml(v.company, period, rep.d390(v, period));
       else if (type === 'd100') x = xml.d100Xml(v.company, period, rep.d100micro(v, period), declarantOf(req));
+      else if (type === 'd101') x = xml.d101Xml(v.company, rep.d101(v, year), declarantOf(req));
       else if (type === 'intrastat') x = xml.intrastatXml(v.company, period, rep.intrastat(v, period));
       else if (type === 'd205') x = xml.d205Xml(v.company, year, rep.d205(v, year));
       else if (type === 'd112') x = xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarantOf(req));

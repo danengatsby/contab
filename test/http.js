@@ -544,6 +544,13 @@ async function main() {
       // calculul D101 (figuri semantice) disponibil via /api/d101
       const d101c = await req('GET', '/api/d101?year=2026', { cookie: c1 });
       ok('/api/d101: calcul coerent (rezultat brut + impozit + scadenta)', d101c.status === 200 && typeof d101c.json.rezultatBrut === 'number' && typeof d101c.json.impozit === 'number' && d101c.json.scadenta === '2027-03-25');
+      // XML-ul D101 (schema oficiala v10) — disponibil doar in regim de profit. Generez pe 2025 ca
+      // recordDecl (care marcheaza declaratia in registru) sa nu polueze verificarea micro pe 2026-12.
+      const xd101 = await req('GET', '/xml/d101?year=2025', { cookie: c1 });
+      ok('xml/d101: XML v10 bine-format (regim profit)', xd101.status === 200 && /<declaratie101/.test(xd101.text) && /xmlns="mfp:anaf:dgti:d101:declaratie:v10"/.test(xd101.text) && /cod_obligatie="103"/.test(xd101.text));
+      // pre-validarea interna accepta d101 (nu inregistreaza nimic)
+      const vd101 = await req('GET', '/api/validate/d101?year=2025', { cookie: c1 });
+      ok('/api/validate/d101: bine-format, fara erori', vd101.status === 200 && vd101.json.ok === true);
       // restaurez profilul firmei pentru restul suitei
       await req('POST', '/api/company', { cookie: c1, body: { regimImpozit: 'micro', d406Cadenta: '', intrastatObligat: false, scutiri: {} } });
       const fp2 = (await req('GET', '/api/fiscal-profile', { cookie: c1 })).json;
@@ -551,6 +558,8 @@ async function main() {
       // micro: in decembrie NU apare D101
       const dregDecMicro = (await req('GET', '/api/declarations?period=2026-12', { cookie: c1 })).json;
       ok('profil micro: D101 nu apare in decembrie', !(dregDecMicro.rows || []).map((x) => x.tip).includes('d101'));
+      // guard de generare: firma pe micro nu depune D101 -> 400
+      eq('guard: /xml/d101 la regim micro -> 400', (await req('GET', '/xml/d101?year=2026', { cookie: c1 })).status, 400);
       // controale de coerenta derivate din profil (al treilea pilon)
       const ctrl = (await req('GET', '/api/fiscal-controls?year=2026', { cookie: c1 })).json;
       ok('fiscal-controls: structura coerenta (byLevel + ok + findings)', ctrl.byLevel && typeof ctrl.ok === 'boolean' && Array.isArray(ctrl.findings));
