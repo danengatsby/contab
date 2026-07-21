@@ -57,9 +57,6 @@ function resetDemo() {
 module.exports = function register(app, ctx) {
   const { requireAdmin, logAudit } = ctx;
 
-  // La pornire: asigura contul demo-contabil + legatura cu firma demo (idempotent, no-op fara demo).
-  try { if (ensureDemoContabil()) db.save(); } catch (e) { console.error('ensureDemoContabil:', e.message); }
-
   app.post('/api/demo/reset', requireAdmin, (req, res) => {
     const r = resetDemo();
     logAudit('demo.reset', r.ok ? 'resetat manual' : r.reason, { req, firmaId: null });
@@ -80,5 +77,5 @@ module.exports = function register(app, ctx) {
     res.json({ ok: true, message: 'Exemplu incarcat: ' + r.entries + ' inregistrari pentru ' + r.period + '.' });
   });
 
-  return { resetDemo };
+  return { resetDemo, ensureDemoContabil };
 };

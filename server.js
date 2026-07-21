@@ -341,7 +341,10 @@ require('./src/routes/stockdocs')(app, { S, activeId, canAccess });
 
 // Utilitare demo (reset/snapshot) + incarcarea exemplului din ghid (admin): src/routes/demo.js
 // Intoarce resetDemo, folosit si de jobul zilnic de reset al contului demo (mai jos).
-const { resetDemo } = require('./src/routes/demo')(app, { requireAdmin, logAudit });
+const { resetDemo, ensureDemoContabil } = require('./src/routes/demo')(app, { requireAdmin, logAudit });
+// Provisioning idempotent al perechii demo (patron + demo-contabil) DUPA hidratarea bazei — pe pg
+// hidratarea e async, deci nu se poate face la register (baza inca goala). No-op fara cont demo.
+dbReady.then(() => { try { if (ensureDemoContabil()) db.save(); } catch (e) { console.error('ensureDemoContabil:', e.message); } });
 
 // Joburile periodice (backup zilnic, digest termene, demo-reset, igiena rate-limit,
 // auto-poll SPV): src/jobs.js — primeste doar dependintele de stare ale aplicatiei.
