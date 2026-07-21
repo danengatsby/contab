@@ -45,12 +45,17 @@ $('#registerBtn') && $('#registerBtn').addEventListener('click', () => {
   pendingPaidPlan = null; // „Testeaza gratuit" = inscriere simpla, fara plan platit in asteptare
   $('#registerErr').textContent = ''; openRegisterPanel();
 });
-// „Demo": intra in contul demo public (explorare libera, date resetate zilnic)
-$('#demoLoginBtn') && $('#demoLoginBtn').addEventListener('click', async (e) => {
-  const b = e.currentTarget; b.disabled = true;
-  try { await api('/api/demo-login', { method: 'POST' }); $('#loginOverlay').classList.add('hidden'); await D.init(); toast('Ai intrat în contul demo — explorează liber!'); }
-  catch (err) { toast(err.message, true); b.disabled = false; }
-});
+// „Demo": intra in contul demo public (explorare libera, date resetate zilnic). Doua conturi
+// partajate care demonstreaza colaborarea pe aceeasi firma: patronul (demo) si contabilul (demo-contabil).
+function demoLogin(btn, as) {
+  return async () => {
+    btn.disabled = true;
+    try { await api('/api/demo-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(as ? { as } : {}) }); $('#loginOverlay').classList.add('hidden'); await D.init(); toast('Ai intrat în contul demo ' + (as === 'contabil' ? 'contabil' : 'patron') + ' — explorează liber!'); }
+    catch (err) { toast(err.message, true); btn.disabled = false; }
+  };
+}
+$('#demoLoginBtn') && $('#demoLoginBtn').addEventListener('click', (e) => demoLogin(e.currentTarget)());
+$('#demoContabilBtn') && $('#demoContabilBtn').addEventListener('click', (e) => demoLogin(e.currentTarget, 'contabil')());
 $('#registerCancel') && $('#registerCancel').addEventListener('click', () => {
   pendingPaidPlan = null;
   $('#registerOverlay').classList.add('hidden'); $('#loginOverlay').classList.remove('hidden');

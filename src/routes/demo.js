@@ -12,7 +12,29 @@ const { seed } = require('../seed');
 
 const DEMO_SNAPSHOT = path.join(db.DATA_DIR, 'demo-firma.json');
 
-// Reseteaza firma demo din snapshot + igiena pe utilizatorul demo (contor AI, date personale, mesaje).
+/** Provisioning idempotent al perechii demo: patronul `demo` (deja creat pe productie) + contabilul
+ *  `demo-contabil`. Ambele partajeaza firma demo (colaborare patron<->contabil, ambele opereaza).
+ *  Ruleaza la boot si la fiecare reset — restaureaza legatura daca un vizitator a scos un cont in demo.
+ *  Nu creeaza nimic daca nu exista `demo` (dev/test fara cont demo). */
+function ensureDemoContabil() {
+  const d = db.get();
+  const demo = d.users.find((u) => u.username === 'demo');
+  const fid = demo && (demo.firme || [])[0];
+  if (!demo || !fid) return null;
+  let contabil = d.users.find((u) => u.username === 'demo-contabil');
+  if (!contabil) {
+    contabil = { id: db.nextUserId(), username: 'demo-contabil', salt: '', hash: '', role: 'user', firme: [], firmaActiva: fid, subscription: { status: 'active', plan: 'pro' } };
+    d.users.push(contabil);
+  }
+  // ambele conturi trebuie sa aiba acces la firma demo (opereaza amandoua)
+  demo.firme = demo.firme || []; if (!demo.firme.includes(fid)) demo.firme.push(fid);
+  contabil.firme = contabil.firme || []; if (!contabil.firme.includes(fid)) contabil.firme.push(fid);
+  if (!contabil.firmaActiva || !contabil.firme.includes(contabil.firmaActiva)) contabil.firmaActiva = fid;
+  contabil.subscription = { status: 'active', plan: 'pro' }; // tip „contabil" (Pro)
+  return contabil;
+}
+
+// Reseteaza firma demo din snapshot + igiena pe utilizatorii demo (contor AI, date personale, mesaje).
 function resetDemo() {
   const d = db.get();
   const demo = d.users.find((u) => u.username === 'demo');
@@ -22,15 +44,21 @@ function resetDemo() {
   const keepActive = d.firmaActiva; // importFirma muta firma activa — o pastram
   db.importFirma(bundle, { targetFid: fid });
   d.firmaActiva = keepActive;
-  // igiena pe utilizatorul demo: contorul AI, datele personale, conversatiile de suport
-  delete demo.aiUsage; delete demo.profil; demo.email = '';
-  d.messages = (d.messages || []).filter((m) => m.userId !== demo.id);
+  ensureDemoContabil(); // reface perechea demo<->demo-contabil (ambele pe firma demo)
+  // igiena pe conturile demo: contorul AI, datele personale, conversatiile de suport
+  for (const u of d.users.filter((x) => x.username === 'demo' || x.username === 'demo-contabil')) {
+    delete u.aiUsage; delete u.profil; u.email = '';
+    d.messages = (d.messages || []).filter((m) => m.userId !== u.id);
+  }
   db.save();
   return { ok: true, firmaId: fid };
 }
 
 module.exports = function register(app, ctx) {
   const { requireAdmin, logAudit } = ctx;
+
+  // La pornire: asigura contul demo-contabil + legatura cu firma demo (idempotent, no-op fara demo).
+  try { if (ensureDemoContabil()) db.save(); } catch (e) { console.error('ensureDemoContabil:', e.message); }
 
   app.post('/api/demo/reset', requireAdmin, (req, res) => {
     const r = resetDemo();

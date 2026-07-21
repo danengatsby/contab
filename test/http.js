@@ -1114,6 +1114,21 @@ async function main() {
     eq('demo: NU modifica conexiunea SPV (setare globala) -> 403', (await req('POST', '/api/anaf/config', { cookie: cDemo, body: { clientId: 'x' } })).status, 403);
     eq('user normal: profilul ramane editabil', (await req('POST', '/api/profile', { cookie: c1, body: { notifyDeadlines: true } })).status, 200);
 
+    // ── COLABORARE DEMO: perechea demo (patron) <-> demo-contabil, ambele opereaza pe firma ──
+    await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'demo-contabil', password: 'parola-democ', firme: [1] } });
+    const cDemoC = (await req('POST', '/api/demo-login', { body: { as: 'contabil' } })).cookie;
+    ok('demo-login as=contabil -> intra pe contul demo-contabil', (await req('GET', '/api/me', { cookie: cDemoC })).json.username === 'demo-contabil');
+    eq('demo-contabil: opereaza pe firma (dashboard 200)', (await req('GET', '/api/dashboard', { cookie: cDemoC })).status, 200);
+    const colDemo = (await req('GET', '/api/colaboratori', { cookie: cDemo })).json;
+    ok('demo GET colaboratori: demo=true + ambele conturi listate', colDemo.demo === true && colDemo.colaboratori.some((c) => c.username === 'demo') && colDemo.colaboratori.some((c) => c.username === 'demo-contabil'));
+    const dcId = (colDemo.colaboratori.find((c) => c.username === 'demo-contabil') || {}).id;
+    eq('demo (patron): scoate contul pereche demo-contabil -> 200', (await req('DELETE', '/api/colaboratori/' + dcId, { cookie: cDemo })).status, 200);
+    eq('demo (patron): re-adauga contul pereche -> 200', (await req('POST', '/api/colaboratori', { cookie: cDemo, body: { mod: 'existing', username: 'demo-contabil' } })).status, 200);
+    eq('demo-contabil (invers): scoate patronul demo -> 200', (await req('DELETE', '/api/colaboratori/' + (await req('GET', '/api/colaboratori', { cookie: cDemoC })).json.colaboratori.find((c) => c.username === 'demo').id, { cookie: cDemoC })).status, 200);
+    eq('demo-contabil (invers): re-adauga demo -> 200', (await req('POST', '/api/colaboratori', { cookie: cDemoC, body: { mod: 'existing', username: 'demo' } })).status, 200);
+    eq('demo: invitatie noua blocata -> 403', (await req('POST', '/api/colaboratori', { cookie: cDemo, body: { mod: 'invite', username: 'strain-nou' } })).status, 403);
+    eq('demo: adaugare cont arbitrar (non-pereche) blocata -> 403', (await req('POST', '/api/colaboratori', { cookie: cDemo, body: { mod: 'existing', username: 'admin2' } })).status, 403);
+
     // ── BILLING STRICT PER-FIRMA: firma noua porneste cu proba de 30 zile, apoi abonament ──
     const tfR = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Firma Proba SRL', cui: 'RO900' } });
     ok('firma noua porneste cu abonament de proba (30 zile)', tfR.json.ok && tfR.json.firma.subscription && tfR.json.firma.subscription.plan === 'trial' && !!tfR.json.firma.subscription.trialEndsAt);

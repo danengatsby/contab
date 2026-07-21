@@ -13,13 +13,14 @@ const db = require('./db');
 const totp = require('./totp');
 const authlib = require('./auth');
 const plans = require('./plans');
+const { isDemoUser } = require('./session');
 const QRCode = require('qrcode-svg');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 
-/** Contul demo e public si partajat — orice scriere pe cont e refuzata. */
+/** Conturile demo (demo / demo-contabil) sunt publice si partajate — orice scriere pe cont e refuzata. */
 function reqNotDemo(u) {
-  if (u && u.username === 'demo') fail(403, 'Contul demo este public și partajat — setările contului nu se pot modifica. Înscrie-ți un cont propriu.');
+  if (isDemoUser(u)) fail(403, 'Contul demo este public și partajat — setările contului nu se pot modifica. Înscrie-ți un cont propriu.');
 }
 
 // ── 2FA (TOTP) ──
