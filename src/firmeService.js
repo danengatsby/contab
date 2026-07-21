@@ -309,9 +309,75 @@ function deleteFirma(user, id, impersonating) {
   db.save();
 }
 
+// ───────────────────────── Colaboratori pe firma ─────────────────────────
+// Orice utilizator cu acces la o firma poate adauga/scoate alt utilizator PE ACEA firma
+// (contabil <-> necontabil). Accesul = firmaId in `user.firme`; colaboratorul primeste acces
+// COMPLET (fara drepturi restranse la adaugare). Autorizarea „esti membru al firmei" se impune
+// de apelant (ruta lucreaza pe firma ACTIVA, care e mereu in allowedFirme).
+
+/** Utilizatorii (non-admin) cu acces la firma `fid`, plus invitatiile in asteptare pentru ea. */
+function listCollaborators(fid) {
+  fid = Number(fid);
+  return db.get().users
+    .filter((u) => u.role !== 'admin' && Array.isArray(u.firme) && u.firme.includes(fid))
+    .map((u) => ({ id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending }));
+}
+
+/** Adauga un cont EXISTENT (dupa username sau email exact) ca membru al firmei `fid`. Idempotent. */
+function addExistingCollaborator(fid, b) {
+  fid = Number(fid); b = b || {};
+  const key = String(b.username || b.email || '').trim().toLowerCase();
+  if (!key) fail(400, 'Completează utilizatorul sau emailul colaboratorului.');
+  const d = db.get();
+  const u = d.users.find((x) => (x.username || '').toLowerCase() === key || (x.email || '').toLowerCase() === key);
+  if (!u) fail(404, 'Nu există un cont cu „' + (b.username || b.email) + '". Folosește „Invită prin link" pentru o persoană nouă.');
+  if (u.role === 'admin') fail(400, 'Administratorul are deja acces la toate firmele.');
+  u.firme = u.firme || [];
+  if (u.firme.includes(fid)) fail(400, u.username + ' e deja colaborator pe această firmă.');
+  u.firme.push(fid);
+  db.save();
+  return { id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending };
+}
+
+/** Creeaza o INVITATIE (pending user) cu acces la firma `fid` — aceeasi forma ca /api/invites.
+ *  Intoarce token-ul; ruta construieste linkul (si trimite email daca SMTP e configurat).
+ *  Acceptarea foloseste fluxul public existent (GET /api/invite/:token + POST /api/invite/accept). */
+function inviteCollaborator(fid, b) {
+  fid = Number(fid); b = b || {};
+  const username = String(b.username || '').trim();
+  if (!username) fail(400, 'Alege un nume de utilizator pentru invitație.');
+  const d = db.get();
+  if (d.users.some((u) => (u.username || '').toLowerCase() === username.toLowerCase())) fail(400, 'Există deja un cont „' + username + '". Adaugă-l ca „cont existent".');
+  const token = crypto.randomBytes(24).toString('hex');
+  const u = {
+    id: db.nextUserId(), username, email: String(b.email || '').trim(), salt: '', hash: '',
+    pending: true, inviteToken: token, inviteExp: Date.now() + 7 * 24 * 3600 * 1000,
+    role: 'user', firme: [fid], firmaActiva: fid,
+  };
+  d.users.push(u);
+  db.save();
+  return { token, user: { id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: true } };
+}
+
+/** Scoate colaboratorul `uid` de pe firma `fid`. Refuza adminul, non-colaboratorul si scoaterea
+ *  ultimului utilizator (firma nu ramane orfana). */
+function removeCollaborator(fid, uid) {
+  fid = Number(fid); uid = Number(uid);
+  const d = db.get();
+  const u = d.users.find((x) => x.id === uid);
+  if (!u || u.role === 'admin' || !Array.isArray(u.firme) || !u.firme.includes(fid)) fail(404, 'Utilizatorul nu e colaborator pe această firmă.');
+  const membri = d.users.filter((x) => x.role !== 'admin' && Array.isArray(x.firme) && x.firme.includes(fid));
+  if (membri.length <= 1) fail(400, 'Nu poți scoate ultimul utilizator al firmei — firma ar rămâne fără acces.');
+  u.firme = u.firme.filter((x) => x !== fid);
+  if (u.firmaActiva === fid) u.firmaActiva = u.firme[0] || null;
+  db.save();
+  return { id: u.id, username: u.username };
+}
+
 module.exports = {
   reqNotDemo, reqAccess, reqAdmin,
   createFirma, importBundle, importZip, testClone,
   exportBundle, exportZip, exportAllZip, firmaSlug,
   updateFirma, activateFirma, setFirmaSubscription, subscribeFirma, deleteFirma,
+  listCollaborators, addExistingCollaborator, inviteCollaborator, removeCollaborator,
 };

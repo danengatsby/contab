@@ -1707,6 +1707,20 @@ Cu stimă,
           <button class="btn primary">+ Adaugă firmă</button>
         </form>
       </div>
+      <div class="card" id="colaboratoriBox">
+        <h2>👥 Colaboratori pe firmă</h2>
+        <p class="muted">Dă acces la <b>firma activă</b> altei persoane — un <b>contabil</b> poate adăuga administratorul firmei, iar administratorul poate adăuga un contabil. Colaboratorul primește <b>acces complet</b> la această firmă (nu la celelalte firme ale tale).</p>
+        <div id="colaboratoriList" class="tablewrap"></div>
+        <form id="colaboratorForm" class="dyn" data-u="u8">
+          <label>Utilizator sau email <input id="colaboratorKey" name="key" placeholder="ex. contabil.ionescu sau nume@exemplu.ro" autocomplete="off" /></label>
+          <div class="row" data-u="u46">
+            <button type="button" id="colaboratorAddExisting" class="btn primary">Adaugă cont existent</button>
+            <button type="button" id="colaboratorInvite" class="btn">✉️ Invită prin link</button>
+          </div>
+          <div id="colaboratorInviteResult" class="muted" data-u="u18"></div>
+          <p class="muted" data-u="u28">„Adaugă cont existent" dă acces imediat unui cont Contabo care există deja. „Invită prin link" creează o invitație pentru o persoană nouă — primești un link pe care i-l trimiți ca să-și seteze parola.</p>
+        </form>
+      </div>
       <div class="card">
         <h2>🧪 Mediu de test (ramură de testare)</h2>
         <p class="muted">Creează o <b>copie completă</b> a firmei active, marcată <b>[TEST]</b>, ca să poți experimenta liber (înregistrări, închideri, declarații) <b>fără să afectezi datele reale</b>. O ștergi oricând când ai terminat, fără urme.</p>

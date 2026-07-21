@@ -3,7 +3,7 @@ import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUs
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, setSettingsDeps } from './settings.js';
-import { renderFirme, renderUsers, renderAudit, setAdminDeps } from './admin.js';
+import { renderFirme, renderUsers, renderColaboratori, renderAudit, setAdminDeps } from './admin.js';
 import { loadDashboard, renderBudget, setDashboardDeps } from './dashboard.js';
 import { initUiMode } from './simplemode.js';
 import { loadPartners } from './partners.js';
@@ -115,7 +115,7 @@ function onTab(t) {
   if (t === 'salarizare') loadSalarizare();
   if (t === 'stocuri') loadStocks();
   if (t === 'parteneri') loadPartners();
-  if (t === 'setari') { renderAnaf(); renderFirme(); renderUsers(); render2FA(); renderSmtp(); renderFiscal(); renderBackup(); renderProfile(); renderSessions(); renderLock(); renderOpening(); }
+  if (t === 'setari') { renderAnaf(); renderFirme(); renderColaboratori(); renderUsers(); render2FA(); renderSmtp(); renderFiscal(); renderBackup(); renderProfile(); renderSessions(); renderLock(); renderOpening(); }
   if (t === 'audit') renderAudit();
   if (t === 'arhiva') loadArhiva();
   if (t === 'plan') renderPlan();

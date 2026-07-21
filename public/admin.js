@@ -149,6 +149,45 @@ export async function renderUsers() {
     toast('Parolă resetată');
   }));
 }
+
+// Colaboratori pe firma ACTIVA (pentru ORICE utilizator, nu doar admin): contabil <-> necontabil.
+const COLAB_PILL = { admin: 'background:#2f2e2a;color:#fff', contabil: 'background:#e2f5e8;color:#0a7d33', necontabil: 'background:#e7eefc;color:#1652d6', tester: 'background:#fff4e0;color:#b26a00' };
+export async function renderColaboratori() {
+  const box = $('#colaboratoriBox'); if (!box) return;
+  // contul demo (firma partajata) nu gestioneaza colaboratori
+  if (isDemo && isDemo()) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  let data;
+  try { data = await api('/api/colaboratori'); } catch (e) { $('#colaboratoriList').innerHTML = `<p class="muted">${H(e.message || 'Indisponibil')}</p>`; return; }
+  const cols = data.colaboratori || [];
+  const pill = (c) => `<span class="pill" data-style="${COLAB_PILL[c.tip] || ''}">${c.tip || '—'}</span>`;
+  $('#colaboratoriList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th></th></tr></thead><tbody>${
+    cols.map((c) => `<tr><td><b>${H(c.username)}</b>${c.id === data.eu ? ' <span class="muted">(tu)</span>' : ''}${c.pending ? ' <span class="pill warn">invitație</span>' : ''}${c.email ? ` <span class="muted" data-u="u148">${H(c.email)}</span>` : ''}</td><td>${pill(c)}</td>
+      <td>${c.id === data.eu ? '' : `<button class="del colremove" data-id="${c.id}" data-nume="${H(c.username)}">✕ scoate</button>`}</td></tr>`).join('')
+    || '<tr><td colspan="3" class="muted">Deocamdată ești singurul cu acces la această firmă.</td></tr>'}</tbody></table>`;
+  $$('#colaboratoriList .colremove').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Scoți accesul lui „' + b.dataset.nume + '" la firma activă?')) return;
+    try { await api('/api/colaboratori/' + b.dataset.id, { method: 'DELETE' }); renderColaboratori(); toast('Colaborator scos'); }
+    catch (e) { toast(e.message, true); }
+  }));
+}
+async function addColaborator(mod) {
+  const key = ($('#colaboratorKey').value || '').trim();
+  if (!key) { toast('Completează utilizatorul sau emailul.', true); return; }
+  const body = mod === 'invite' ? { mod: 'invite', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '' } : { mod: 'existing', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '' };
+  if (mod === 'invite' && !body.username) { toast('Pentru invitație alege un nume de utilizator (nu email).', true); return; }
+  try {
+    const r = await api('/api/colaboratori', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (r.link) {
+      $('#colaboratorInviteResult').innerHTML = `Invitație creată${r.emailed ? ' și trimisă pe email' : ''}. Link (trimite-l persoanei): <a href="${r.link}" data-u="u148">${H(r.link)}</a>`;
+      toast('Invitație creată');
+    } else { $('#colaboratorInviteResult').textContent = ''; toast('Colaborator adăugat'); }
+    $('#colaboratorKey').value = '';
+    renderColaboratori();
+  } catch (e) { toast(e.message, true); }
+}
+$('#colaboratorAddExisting') && $('#colaboratorAddExisting').addEventListener('click', () => addColaborator('existing'));
+$('#colaboratorInvite') && $('#colaboratorInvite').addEventListener('click', () => addColaborator('invite'));
 $('#userNewForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
