@@ -135,22 +135,27 @@ module.exports = function register(app, ctx) {
   // ── Colaboratori pe firma ACTIVA (contabil <-> necontabil) ──────────────────────────────
   // Lucreaza pe firma activa (mereu in allowedFirme -> apartenenta implicita). Adaugarea/scoaterea
   // sunt POST/DELETE => garda readonly (un colaborator doar-citire nu poate) si paywall-ul per-firma
-  // se aplica automat. Contul demo (firma partajata) nu gestioneaza colaboratori.
-  function reqActiveFirma(req) {
+  // se aplica automat. VIZUALIZAREA (GET) e permisa si pe demo (firma partajata) — panoul e vizibil
+  // pentru demonstratie; doar GESTIONAREA (POST/DELETE) e blocata pe demo.
+  function activeFirma(req) {
     const fid = activeId(req);
     if (!fid) { const e = new Error('Nicio firmă activă.'); e.status = 400; throw e; }
+    return fid;
+  }
+  function reqManageFirma(req) {
+    const fid = activeFirma(req);
     if (req.user && req.user.username === 'demo') { const e = new Error('Contul demo nu gestionează colaboratori.'); e.status = 403; throw e; }
     return fid;
   }
 
   app.get('/api/colaboratori', (req, res) => run(res, () => {
-    const fid = reqActiveFirma(req);
-    return { firmaActiva: fid, colaboratori: svc.listCollaborators(fid), eu: req.user && req.user.id };
+    const fid = activeFirma(req);
+    return { firmaActiva: fid, colaboratori: svc.listCollaborators(fid), eu: req.user && req.user.id, demo: !!(req.user && req.user.username === 'demo') };
   }));
 
   app.post('/api/colaboratori', wrap(async (req, res) => {
     try {
-      const fid = reqActiveFirma(req);
+      const fid = reqManageFirma(req);
       const b = req.body || {};
       if (b.mod === 'invite') {
         const r = svc.inviteCollaborator(fid, b);
@@ -174,7 +179,7 @@ module.exports = function register(app, ctx) {
   }));
 
   app.delete('/api/colaboratori/:uid', (req, res) => run(res, () => {
-    const fid = reqActiveFirma(req);
+    const fid = reqManageFirma(req);
     const r = svc.removeCollaborator(fid, req.params.uid);
     logAudit('colaborator.remove', r.username + ' <- firma ' + fid, { req, firmaId: fid });
     return { ok: true, removed: r };

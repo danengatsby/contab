@@ -154,17 +154,22 @@ export async function renderUsers() {
 const COLAB_PILL = { admin: 'background:#2f2e2a;color:#fff', contabil: 'background:#e2f5e8;color:#0a7d33', necontabil: 'background:#e7eefc;color:#1652d6', tester: 'background:#fff4e0;color:#b26a00' };
 export async function renderColaboratori() {
   const box = $('#colaboratoriBox'); if (!box) return;
-  // contul demo (firma partajata) nu gestioneaza colaboratori
-  if (isDemo && isDemo()) { box.classList.add('hidden'); return; }
   box.classList.remove('hidden');
   let data;
   try { data = await api('/api/colaboratori'); } catch (e) { $('#colaboratoriList').innerHTML = `<p class="muted">${H(e.message || 'Indisponibil')}</p>`; return; }
   const cols = data.colaboratori || [];
+  const demo = !!data.demo; // pe contul demo: panoul e VIZIBIL pentru demonstratie, dar actiunile sunt dezactivate
   const pill = (c) => `<span class="pill" data-style="${COLAB_PILL[c.tip] || ''}">${c.tip || '—'}</span>`;
   $('#colaboratoriList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th></th></tr></thead><tbody>${
     cols.map((c) => `<tr><td><b>${H(c.username)}</b>${c.id === data.eu ? ' <span class="muted">(tu)</span>' : ''}${c.pending ? ' <span class="pill warn">invitație</span>' : ''}${c.email ? ` <span class="muted" data-u="u148">${H(c.email)}</span>` : ''}</td><td>${pill(c)}</td>
-      <td>${c.id === data.eu ? '' : `<button class="del colremove" data-id="${c.id}" data-nume="${H(c.username)}">✕ scoate</button>`}</td></tr>`).join('')
+      <td>${(c.id === data.eu || demo) ? '' : `<button class="del colremove" data-id="${c.id}" data-nume="${H(c.username)}">✕ scoate</button>`}</td></tr>`).join('')
     || '<tr><td colspan="3" class="muted">Deocamdată ești singurul cu acces la această firmă.</td></tr>'}</tbody></table>`;
+  // pe demo: dezactiveaza formularul + nota; pe cont real: activ
+  const form = $('#colaboratorForm');
+  if (form) form.querySelectorAll('input,button').forEach((el) => { el.disabled = demo; });
+  const note = $('#colaboratorInviteResult');
+  if (note) note.innerHTML = demo ? '🔒 În contul demo vezi funcția, dar adăugarea de colaboratori e dezactivată. Într-un <b>cont propriu</b> poți adăuga administratorul firmei sau un contabil.' : '';
+  if (demo) return;
   $$('#colaboratoriList .colremove').forEach((b) => b.addEventListener('click', async () => {
     if (!confirm('Scoți accesul lui „' + b.dataset.nume + '" la firma activă?')) return;
     try { await api('/api/colaboratori/' + b.dataset.id, { method: 'DELETE' }); renderColaboratori(); toast('Colaborator scos'); }
