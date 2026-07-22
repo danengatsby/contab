@@ -26,7 +26,7 @@ function reconcile(db) {
       const gkey = key + '|' + cont;
       const g = groups.get(gkey) || { key, cont, den: e.partener || key, cui: e.partenerCui || '', items: [] };
       if (!g.cui && e.partenerCui) g.cui = e.partenerCui;
-      g.items.push({ entryId: e.id, data: e.data, doc: e.document || '', tipNume: e.tipNume, debit: round2(d), credit: round2(c), matched: false });
+      g.items.push({ entryId: e.id, data: e.data, doc: e.document || '', tipNume: e.tipNume, debit: round2(d), credit: round2(c), matched: false, stinge: e.stinge });
       groups.set(gkey, g);
     }
   }
@@ -36,7 +36,7 @@ function reconcile(db) {
     // factura = creste creanta/datoria; decontare = o stinge
     const isInvoice = (it) => (g.cont === '4111' ? it.debit > 0 : it.credit > 0);
     const amount = (it) => round2(it.debit || it.credit);
-    const mk = (it) => ({ id: it.entryId, doc: it.doc, data: it.data, suma: amount(it) });
+    const mk = (it) => ({ id: it.entryId, doc: it.doc, data: it.data, suma: amount(it), stinge: it.stinge });
     const invoices = g.items.filter(isInvoice).map(mk);
     const payments = g.items.filter((it) => !isInvoice(it)).map(mk);
     // potrivire graduala (exacta -> agregata -> partiala); soldurile raman sume, neafectate de potrivire

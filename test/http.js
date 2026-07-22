@@ -541,6 +541,26 @@ async function main() {
     ok('lockedUntil NU s-a setat prin profil', mDupa.lockedUntil !== '2030-01');
     await req('POST', '/api/company', { cookie: c1, body: { nume: numeInit } }); // restaureaza
 
+    // ── Import extras bancar: legatura de decontare persistata (punctaj) + validare id-uri ──
+    {
+      const invR = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-06-24', partener: 'Client Punctaj SRL', cuiPartener: 'RO7788', document: 'PJ-1', baza: 1000, tva: 210, cota: 21 } } });
+      const invId = invR.json.entry && invR.json.entry.id;
+      ok('factura de decontat inregistrata', invR.json.ok && invId);
+      // import incasare legata de factura (stinge) + un id STRAIN care trebuie filtrat la persistare
+      const imp = await req('POST', '/api/bank/import', { cookie: c1, body: { transactions: [
+        { tip: 'incasare_client', fields: { data: '2026-06-25', partener: 'Client Punctaj SRL', cuiPartener: 'RO7788', suma: 1210, cont: '5121' }, stinge: [invId, 'e-strain-9999'] },
+      ] } });
+      eq('import bancar cu legatura -> 1 articol creat', imp.json.created, 1);
+      const plataEntry = (await req('GET', '/api/entries?firma=1', { cookie: c1 })).json.find((e) => e.tip === 'incasare_client' && e.partener === 'Client Punctaj SRL');
+      ok('incasarea importata pastreaza legatura DOAR catre factura reala (id strain filtrat)',
+        plataEntry && Array.isArray(plataEntry.stinge) && plataEntry.stinge.length === 1 && plataEntry.stinge[0] === invId);
+      // reconcilierea onoreaza legatura: partenerul e stins complet, cu pereche marcata "legata"
+      const rec = (await req('GET', '/api/reconcile', { cookie: c1 })).json;
+      const pj = rec.partners.find((p) => p.den === 'Client Punctaj SRL' && p.cont === '4111');
+      ok('reconciliere: partenerul punctat e stins (fara facturi deschise)', pj && pj.deschise.length === 0);
+      ok('reconciliere: perechea e marcata ca legata (punctaj autoritar)', pj && pj.perechi.some((pr) => pr.tip === 'legata' && pr.facturi.some((f) => f.id === invId)));
+    }
+
     // ── TVA trimestrial: vizualizarea urmeaza perioada TVA (agrega trimestrul) ──
     await req('POST', '/api/company', { cookie: c1, body: { perioadaTva: 'T' } });
     const vjT = await req('GET', '/api/vat-journals?period=2026-06', { cookie: c1 });

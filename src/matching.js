@@ -2,6 +2,8 @@
 
 // Motor de potrivire pentru reconciliere (fise partener + import extras bancar). Inlocuieste
 // potrivirea veche "suma exacta, first-fit" cu potriviri graduale, in ordinea increderii:
+//  - LEGATA:   punctaj EXPLICIT — plata poarta `stinge` = id-uri de facturi confirmate de
+//              utilizator (ex. la importul extrasului); autoritar, inaintea euristicii;
 //  - EXACTA:   o plata stinge o factura deschisa de aceeasi suma (toleranta mica de rotunjire);
 //  - AGREGATA: o plata stinge mai multe facturi vechi consecutive (frecvent: platite la gramada);
 //  - PARTIALA: plata mai mica decat factura -> stingere partiala (alocare FIFO pe cele mai vechi).
@@ -42,6 +44,20 @@ function settle(invoicesIn, paymentsIn, opts) {
   const invoices = invoicesIn.map((iv) => ({ ...iv, rest: round2(iv.suma) })).sort(byDate);
   const payments = paymentsIn.map((p) => ({ ...p, rest: round2(p.suma) })).sort(byDate);
   const perechi = [];
+
+  // Pas 0: LEGATURI EXPLICITE (punctaj confirmat de utilizator) — autoritare, inaintea euristicii.
+  // O plata poarta `stinge` = id-uri de facturi pe care le inchide; aloca FIFO printre cele legate.
+  for (const p of payments) {
+    if (p.rest <= tol || !Array.isArray(p.stinge) || !p.stinge.length) continue;
+    for (const invId of p.stinge) {
+      if (p.rest <= tol) break;
+      const iv = invoices.find((x) => x.id === invId && x.rest > tol);
+      if (!iv) continue;
+      const q = round2(Math.min(p.rest, iv.rest));
+      perechi.push({ tip: 'legata', plata: pub(p), facturi: [pub(iv)], suma: q });
+      iv.rest = round2(iv.rest - q); p.rest = round2(p.rest - q);
+    }
+  }
 
   // Pas 1: potriviri EXACTE (o plata <-> o factura de aceeasi suma) — cea mai mare incredere
   for (const p of payments) {

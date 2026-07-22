@@ -51,7 +51,7 @@ function renderBank() {
 }
 $('#bankImport').addEventListener('click', async () => {
   const sel = $$('.bsel').filter((c) => c.checked).map((c) => Number(c.dataset.i));
-  const transactions = sel.map((i) => ({ tip: BANK.rows[i].tip, fields: BANK.rows[i].fields }));
+  const transactions = sel.map((i) => ({ tip: BANK.rows[i].tip, fields: BANK.rows[i].fields, stinge: BANK.rows[i].stinge }));
   if (!transactions.length) return toast('Selectează cel puțin o tranzacție', true);
   try {
     const r = await api('/api/bank/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transactions, fileId: BANK.fileId }) });

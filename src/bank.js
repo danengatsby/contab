@@ -165,6 +165,8 @@ function parseAndSuggest(db, text) {
       const open = openIdx[cont].get(cui) || openIdx[cont].get(den) || [];
       const m = candidatesFor(open, t.suma);
       sug.potrivire = m;
+      // legatura de decontare (punctaj): id-urile facturilor stinse, propuse spre confirmare la import
+      if (m.facturi.length) sug.stinge = m.facturi.map((fa) => fa.id).filter(Boolean);
       // pre-completeaza referinta documentului DOAR pe potrivirea sigura (exacta); restul le decide contabilul
       if (m.tip === 'exacta' && m.facturi[0] && m.facturi[0].doc && !sug.fields.document) sug.fields.document = m.facturi[0].doc;
     }

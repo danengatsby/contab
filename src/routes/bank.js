@@ -30,10 +30,19 @@ module.exports = function register(app, ctx) {
     if (!Array.isArray(transactions)) return res.status(400).json({ error: 'Lipsesc tranzactiile.' });
     const d = db.get();
     const fid = activeId(req);
+    // id-uri de articole ale firmei — pentru validarea legaturilor de decontare (`stinge`)
+    const validIds = new Set(d.entries.filter((e) => e.firmaId === fid).map((e) => e.id));
     let created = 0; const errors = [];
     for (const t of transactions) {
-      try { const e = buildEntry(t.tip, t.fields || {}, fileId || null, fid); d.entries.push(e); upsertPartner(fid, e); created++; }
-      catch (e) { errors.push(String(e.message || e)); }
+      try {
+        const e = buildEntry(t.tip, t.fields || {}, fileId || null, fid);
+        // punctaj: leaga plata de facturile stinse (doar id-uri reale ale firmei — fara referinte straine)
+        if (Array.isArray(t.stinge)) {
+          const ref = [...new Set(t.stinge.filter((id) => validIds.has(id)))];
+          if (ref.length) e.stinge = ref;
+        }
+        d.entries.push(e); upsertPartner(fid, e); created++;
+      } catch (e) { errors.push(String(e.message || e)); }
     }
     if (created) logAudit('bank.import', created + ' tranzactii inregistrate', { req });
     db.save();
