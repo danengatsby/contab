@@ -561,6 +561,26 @@ async function main() {
       ok('reconciliere: perechea e marcata ca legata (punctaj autoritar)', pj && pj.perechi.some((pr) => pr.tip === 'legata' && pr.facturi.some((f) => f.id === invId)));
     }
 
+    // ── Punctaj MANUAL (POST /api/reconcile/link): leaga/dezleaga in fisa reconcilierii ──
+    {
+      const inv = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-06-26', partener: 'Client Manual SRL', cuiPartener: 'RO9001', document: 'MAN-1', baza: 1000, tva: 210, cota: 21 } } });
+      const invId = inv.json.entry.id;
+      // plata NElegata la creare (import fara stinge) — la reconciliere ar cadea pe euristica
+      await req('POST', '/api/bank/import', { cookie: c1, body: { transactions: [{ tip: 'incasare_client', fields: { data: '2026-06-27', partener: 'Client Manual SRL', cuiPartener: 'RO9001', suma: 1210, cont: '5121' } }] } });
+      const payId = (await req('GET', '/api/entries?firma=1', { cookie: c1 })).json.find((e) => e.tip === 'incasare_client' && e.partener === 'Client Manual SRL').id;
+      eq('link: plata inexistenta -> 404', (await req('POST', '/api/reconcile/link', { cookie: c1, body: { paymentId: 'e-nu-exista', invoiceIds: [invId] } })).status, 404);
+      // legare manuala, cu un id STRAIN care trebuie filtrat
+      const lk = await req('POST', '/api/reconcile/link', { cookie: c1, body: { paymentId: payId, invoiceIds: [invId, 'strain-123'] } });
+      ok('link: legare reusita, doar id-ul real pastrat', lk.json.ok && lk.json.stinge.length === 1 && lk.json.stinge[0] === invId);
+      const pmL = (await req('GET', '/api/reconcile', { cookie: c1 })).json.partners.find((p) => p.den === 'Client Manual SRL' && p.cont === '4111');
+      ok('link: legatura manuala onorata ca `legata` (bate euristica)', pmL && pmL.perechi.some((pr) => pr.tip === 'legata' && pr.facturi.some((f) => f.id === invId)));
+      // dezlegare (lista goala) -> revine pe euristica (aici exacta, aceeasi suma)
+      const ul = await req('POST', '/api/reconcile/link', { cookie: c1, body: { paymentId: payId, invoiceIds: [] } });
+      ok('unlink: dezlegare reusita (stinge gol)', ul.json.ok && ul.json.stinge.length === 0);
+      const pmU = (await req('GET', '/api/reconcile', { cookie: c1 })).json.partners.find((p) => p.den === 'Client Manual SRL' && p.cont === '4111');
+      ok('unlink: fara legatura, nu mai e `legata` (revine pe euristica)', pmU && !pmU.perechi.some((pr) => pr.tip === 'legata'));
+    }
+
     // ── TVA trimestrial: vizualizarea urmeaza perioada TVA (agrega trimestrul) ──
     await req('POST', '/api/company', { cookie: c1, body: { perioadaTva: 'T' } });
     const vjT = await req('GET', '/api/vat-journals?period=2026-06', { cookie: c1 });

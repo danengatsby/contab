@@ -28,6 +28,23 @@ module.exports = function register(app, ctx) {
 
   app.get('/api/reconcile', (req, res) => res.json(reconcile(S(req))));
 
+  // ── Punctaj manual: leaga/dezleaga o plata de facturile pe care le stinge (camp `stinge`) ──
+  // Adnotare de reconciliere: nu misca sume/linii/perioada, deci permisa si pe articole postate.
+  // Trimite intreg setul dorit (idempotent): lista goala = dezlegare completa.
+  app.post('/api/reconcile/link', (req, res) => {
+    const b = req.body || {}; const fid = activeId(req); const d = db.get();
+    const own = (id) => d.entries.find((e) => e.id === String(id) && e.firmaId === fid);
+    const pay = own(b.paymentId);
+    if (!pay) return res.status(404).json({ error: 'Articolul de decontare nu exista.' });
+    const ids = Array.isArray(b.invoiceIds)
+      ? [...new Set(b.invoiceIds.map(String))].filter((id) => id !== pay.id && !!own(id))
+      : [];
+    if (ids.length) pay.stinge = ids; else delete pay.stinge;
+    logAudit('reconcile.link', pay.id + ' -> [' + ids.join(', ') + ']', { req, firmaId: fid });
+    db.save();
+    res.json({ ok: true, paymentId: pay.id, stinge: ids });
+  });
+
   // ── Compensare creante / datorii (partener client + furnizor) ──
   app.get('/api/compensations', (req, res) => res.json(compensablePartners(S(req))));
   app.post('/api/compensations', (req, res) => {

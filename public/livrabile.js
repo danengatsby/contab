@@ -201,24 +201,63 @@ async function loadNotifications() {
 
 // ───────────────────────── RECONCILIERE ─────────────────────────
 $('#reconRefresh').addEventListener('click', loadReconcile);
+// Datele de punctaj per partener (indexate pe pozitia din lista), pentru randarea bifelor la schimbarea platii.
+let RECON_PM = [];
 async function loadReconcile() {
   const r = await api('/api/reconcile');
   $('#reconSummary').innerHTML =
     `<div class="card"><h3>Sold clienți (4111)</h3><p data-u="u160">${fmt(r.totalClienti)} lei</p><p class="muted">de încasat (net)</p></div>
      <div class="card"><h3>Sold furnizori (401)</h3><p data-u="u161">${fmt(r.totalFurnizori)} lei</p><p class="muted">de plătit (net)</p></div>`;
   renderCompensations();
+  RECON_PM = [];
   if (!r.partners.length) { $('#reconList').innerHTML = '<div class="card"><p class="muted">Nicio mișcare pe parteneri.</p></div>'; return; }
-  $('#reconList').innerHTML = r.partners.map((p) => {
+  $('#reconList').innerHTML = r.partners.map((p, pi) => {
     const rows = p.items.map((it) => `<tr class="${it.matched ? '' : ''}"><td>${it.data}</td><td>${it.doc}</td><td>${it.tipNume}</td>
       <td class="num">${it.debit ? fmt(it.debit) : ''}</td><td class="num">${it.credit ? fmt(it.credit) : ''}</td>
       <td>${it.matched ? '<span class="pill">✓ potrivit</span>' : '<span class="pill warn">deschis</span>'}</td></tr>`).join('');
     const lbl = p.cont === '4111' ? 'client' : 'furnizor';
+    // punctaj manual: pe 4111 plata = credit, factura = debit; pe 401 invers
+    const payAmt = (it) => (p.cont === '4111' ? it.credit : it.debit);
+    const invAmt = (it) => (p.cont === '4111' ? it.debit : it.credit);
+    const plati = p.items.filter((it) => payAmt(it) > 0).map((it) => ({ id: it.entryId, doc: it.doc, data: it.data, suma: payAmt(it), stinge: Array.isArray(it.stinge) ? it.stinge : [] }));
+    const facturi = p.items.filter((it) => invAmt(it) > 0).map((it) => ({ id: it.entryId, doc: it.doc, data: it.data, suma: invAmt(it) }));
+    RECON_PM[pi] = { plati, facturi };
+    const punctaj = (plati.length && facturi.length) ? `
+      <details class="pm-box">
+        <summary>🔗 Punctaj manual — leagă o plată de facturile pe care le stinge</summary>
+        <label class="pm-pay-row">Plata: <select class="pm-pay" data-pi="${pi}">${plati.map((pl) => `<option value="${H(pl.id)}">${pl.data} · ${H(pl.doc || 'fără doc')} · ${fmt(pl.suma)} lei${pl.stinge.length ? ' · ' + pl.stinge.length + ' legate' : ''}</option>`).join('')}</select></label>
+        <div class="pm-inv" data-pi="${pi}"></div>
+        <button class="btn small pm-save" data-pi="${pi}">Salvează punctajul</button>
+        <span class="muted"> Bifează facturile stinse de plata aleasă; debifează pentru a dezlega.</span>
+      </details>` : '';
     return `<div class="ledger-acc">
       <h4><span class="acc">${p.cont}</span> ${H(p.den)} ${p.cui ? '<span class="muted">(' + H(p.cui) + ')</span>' : ''} <span class="pill">${lbl}</span></h4>
       <p class="muted">Facturat: ${fmt(p.facturat)} · Decontat: ${fmt(p.decontat)} · <b>Sold: ${fmt(p.sold)}</b> · Potriviri: ${p.potriviri} · Deschise: ${p.nepotrivite}</p>
       <div class="tablewrap"><table><thead><tr><th>Data</th><th>Document</th><th>Tip</th><th class="num">Debit</th><th class="num">Credit</th><th>Stare</th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${punctaj}
     </div>`;
   }).join('');
+  wireReconPunctaj();
+}
+
+// Randeaza bifele de facturi pentru plata selectata (pre-bifate = deja legate prin `stinge`).
+function renderPmInv(pi) {
+  const sel = $(`.pm-pay[data-pi="${pi}"]`); const box = $(`.pm-inv[data-pi="${pi}"]`);
+  const pm = RECON_PM[pi]; if (!sel || !box || !pm) return;
+  const pay = pm.plati.find((pl) => String(pl.id) === sel.value) || pm.plati[0];
+  const linked = new Set(pay ? pay.stinge.map(String) : []);
+  box.innerHTML = pm.facturi.map((f) => `<label class="pm-inv-item"><input type="checkbox" class="pm-cb" value="${H(f.id)}" ${linked.has(String(f.id)) ? 'checked' : ''}> ${f.data} · ${H(f.doc || 'fără doc')} · ${fmt(f.suma)} lei</label>`).join('') || '<span class="muted">Nicio factură.</span>';
+}
+
+function wireReconPunctaj() {
+  $$('.pm-pay').forEach((sel) => { renderPmInv(sel.dataset.pi); sel.addEventListener('change', () => renderPmInv(sel.dataset.pi)); });
+  $$('.pm-save').forEach((btn) => btn.addEventListener('click', async () => {
+    const pi = btn.dataset.pi; const sel = $(`.pm-pay[data-pi="${pi}"]`);
+    const paymentId = sel && sel.value; if (!paymentId) return;
+    const invoiceIds = $$(`.pm-inv[data-pi="${pi}"] .pm-cb`).filter((c) => c.checked).map((c) => c.value);
+    try { await api('/api/reconcile/link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId, invoiceIds }) }); toast('Punctaj salvat'); loadReconcile(); }
+    catch (e) { toast(e.message, true); }
+  }));
 }
 
 async function renderCompensations() {
