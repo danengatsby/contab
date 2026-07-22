@@ -103,7 +103,46 @@ function parseMt940(text) {
   return txns.map((t) => ({ ...t, descriere: t.descriere.trim() }));
 }
 
+// ── CAMT.053 (ISO 20022, XML): extrasul modern SEPA. Parsare namespace-agnostica prin regex,
+// exact ca la e-Factura UBL (fara dependenta de un parser XML). ──
+function xmlUnesc(s) {
+  return String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+}
+function xmlTag(xml, name) {
+  const m = String(xml).match(new RegExp('<(?:\\w+:)?' + name + '(?:\\s[^>]*)?>([\\s\\S]*?)</(?:\\w+:)?' + name + '>'));
+  return m ? m[1] : '';
+}
+function xmlTagAll(xml, name) {
+  const out = []; const re = new RegExp('<(?:\\w+:)?' + name + '(?:\\s[^>]*)?>([\\s\\S]*?)</(?:\\w+:)?' + name + '>', 'g');
+  let m; while ((m = re.exec(String(xml))) !== null) out.push(m[1]);
+  return out;
+}
+
+/** Parseaza un extras CAMT.053 (bank-to-customer statement). O tranzactie = un <Ntry>. */
+function parseCamt(xml) {
+  const txns = [];
+  for (const ntry of xmlTagAll(xml, 'Ntry')) {
+    // Amt/CdtDbtInd de la nivelul Ntry sunt primele (inaintea NtryDtls) — non-greedy prinde intai pe ele
+    const suma = round2(parseFloat(String(xmlTag(ntry, 'Amt')).replace(/,/g, '.')) || 0);
+    if (!(suma > 0)) continue;
+    let sens = xmlTag(ntry, 'CdtDbtInd').toUpperCase() === 'DBIT' ? 'out' : 'in';
+    if (/^(true|1)$/i.test(xmlTag(ntry, 'RvslInd').trim())) sens = sens === 'in' ? 'out' : 'in'; // stornare = semn invers
+    const dt = xmlTag(ntry, 'BookgDt') || xmlTag(ntry, 'ValDt');
+    const data = String(xmlTag(dt, 'Dt') || xmlTag(dt, 'DtTm')).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) continue;
+    // descriere pentru potrivirea partenerului: remitere nestructurata + nume parti + info suplimentara
+    const parts = [];
+    for (const u of xmlTagAll(ntry, 'Ustrd')) parts.push(xmlUnesc(u));
+    for (const nm of xmlTagAll(xmlTag(ntry, 'RltdPties'), 'Nm')) parts.push(xmlUnesc(nm));
+    const addl = xmlTag(ntry, 'AddtlNtryInf'); if (addl) parts.push(xmlUnesc(addl));
+    const descriere = [...new Set(parts.map((s) => s.trim()).filter(Boolean))].join(' ').replace(/\s+/g, ' ').trim();
+    txns.push({ data, descriere, suma, sens });
+  }
+  return txns;
+}
+
 function parseStatement(text) {
+  if (/<(?:\w+:)?BkToCstmrStmt[\s>]|camt\.053/i.test(text)) return parseCamt(text);
   return /:61:/.test(text) ? parseMt940(text) : parseCsv(text);
 }
 
@@ -174,4 +213,4 @@ function parseAndSuggest(db, text) {
   });
 }
 
-module.exports = { parseStatement, parseCsv, parseMt940, parseAndSuggest, matchPartner, openInvoiceIndex };
+module.exports = { parseStatement, parseCsv, parseMt940, parseCamt, parseAndSuggest, matchPartner, openInvoiceIndex };

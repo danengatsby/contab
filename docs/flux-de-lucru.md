@@ -254,9 +254,11 @@ acesta nu se trimite în SPV (e document primit).
 (furnizori), agregă efectul fiecărei facturi/plăți și **potrivește automat** factura cu
 plata/încasarea de aceeași sumă; afișează soldul deschis per partener și totalurile.
 
-**Import extras bancar (CSV / MT940):** cardul „Import extras bancar” (tab Documente) citește
-tranzacțiile (auto-detectare delimitator/coloane pentru CSV; tag-uri `:61:`/`:86:` pentru
-MT940), **potrivește partenerul** după descriere (nume/CUI) și propune încasări/plăți
+**Import extras bancar (CSV / MT940 / CAMT.053):** cardul „Import extras bancar” (tab Documente)
+citește tranzacțiile (auto-detectare delimitator/coloane pentru CSV; tag-uri `:61:`/`:86:` pentru
+MT940; `<Ntry>` cu `Amt`/`CdtDbtInd`/`BookgDt` pentru CAMT.053 — ISO 20022 XML, formatul SEPA modern,
+parsat namespace-agnostic ca e-Factura UBL), **potrivește partenerul** după descriere (nume/CUI) și
+propune încasări/plăți
 (plus comisioane/dobânzi). Confirmi/editezi liniile și le imporți — alimentează automat
 reconcilierea. Module: `src/bank.js`.
 

@@ -581,6 +581,20 @@ async function main() {
       ok('unlink: fara legatura, nu mai e `legata` (revine pe euristica)', pmU && !pmU.perechi.some((pr) => pr.tip === 'legata'));
     }
 
+    // ── Import CAMT.053 prin upload (/api/bank/parse): XML multipart -> tranzactii parsate ──
+    {
+      const camtXml = '<?xml version="1.0"?><Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><BkToCstmrStmt><Stmt>'
+        + '<Ntry><Amt Ccy="RON">2380.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><BookgDt><Dt>2026-06-28</Dt></BookgDt>'
+        + '<NtryDtls><TxDtls><RltdPties><Dbtr><Nm>Client CAMT SRL</Nm></Dbtr></RltdPties><RmtInf><Ustrd>Incasare CAMT</Ustrd></RmtInf></TxDtls></NtryDtls></Ntry>'
+        + '</Stmt></BkToCstmrStmt></Document>';
+      const fdC = new FormData();
+      fdC.append('file', new Blob([camtXml], { type: 'application/xml' }), 'extras.camt.xml');
+      const rc = await req('POST', '/api/bank/parse', { cookie: c1, body: fdC });
+      eq('CAMT upload: parsare reusita (200)', rc.status, 200);
+      eq('CAMT upload: 1 tranzactie citita', rc.json.count, 1);
+      ok('CAMT upload: data/sens/suma corecte', rc.json.transactions[0].data === '2026-06-28' && rc.json.transactions[0].sens === 'in' && rc.json.transactions[0].suma === 2380);
+    }
+
     // ── TVA trimestrial: vizualizarea urmeaza perioada TVA (agrega trimestrul) ──
     await req('POST', '/api/company', { cookie: c1, body: { perioadaTva: 'T' } });
     const vjT = await req('GET', '/api/vat-journals?period=2026-06', { cookie: c1 });
