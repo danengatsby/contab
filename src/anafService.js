@@ -21,6 +21,7 @@ const anaf = require('./anaf');
 const xml = require('./xml');
 const coa = require('./chartOfAccounts');
 const efacturaImport = require('./efacturaImport');
+const eirec = require('./einvoiceReconcile');
 const { round2, period: periodOf } = require('./util');
 const { allowedFirme } = require('./session');
 
@@ -207,6 +208,22 @@ async function inbox(fid, zile) {
   }));
 }
 
+/** Reconciliaza facturile PRIMITE din SPV (inbox live) cu jurnalul de cumparari: prinde facturile
+ *  pe care ANAF le vede in SPV dar nu sunt in contabilitate (TVA deductibila pierduta). */
+async function einvoiceReconciliation(fid, zile) {
+  fid = reqFirma(fid);
+  const box = await inbox(fid, zile || 60); // apel SPV live
+  const v = db.scoped(fid);
+  const purchases = eirec.journalPurchases(v);
+  const nameByCif = {};
+  for (const e of v.entries || []) {
+    if (!e.partenerCui || !e.partener) continue;
+    const k = String(e.partenerCui).replace(/^ro/i, '').replace(/\D/g, '');
+    if (k && !nameByCif[k]) nameByCif[k] = e.partener;
+  }
+  return Object.assign({ zile: zile || 60 }, eirec.reconcileInbox(box, purchases, nameByCif));
+}
+
 /** Importa o factura primita: descarca ZIP-ul, il salveaza ca document, extrage UBL-ul. */
 async function importFromSpv(fid, msgId) {
   fid = reqFirma(fid);
@@ -300,6 +317,6 @@ module.exports = {
   saveRecipisa, pollSpv, extractInvoiceXml,
   configSummary, setConfig, authorizeUrl, oauthCallback,
   sendToSpv, checkStatus, downloadRecipisa, pollWithContext,
-  inbox, importFromSpv, importEfactura,
+  inbox, einvoiceReconciliation, importFromSpv, importEfactura,
   fisaRol, spvMesaje, spvDescarca,
 };

@@ -248,6 +248,31 @@ async function loadInbox() {
     $$('#inboxList .spvimp').forEach((b) => b.addEventListener('click', () => importFromSpv(b.dataset.id)));
   } catch (e) { box.innerHTML = `<p class="status err">${e.message}</p>`; }
 }
+// Reconciliere facturi primite din SPV <-> jurnal cumparari (prinde ce vede ANAF dar nu e in contabilitate)
+$('#einvReconBtn') && $('#einvReconBtn').addEventListener('click', loadEInvReconcile);
+async function loadEInvReconcile() {
+  const box = $('#einvReconResult'); box.innerHTML = '<p class="muted">Se reconciliază cu SPV…</p>';
+  let r;
+  try { r = await api('/api/efactura-reconciliere?zile=60'); }
+  catch (e) { box.innerHTML = `<p class="status err">${H(e.message)}</p>`; return; }
+  const badge = r.lipsaInJurnal ? `<span class="pill warn">${r.lipsaInJurnal} neînregistrate</span>` : '<span class="pill">0 neînregistrate</span>';
+  let html = `<p class="muted">SPV: <b>${r.totalSpv}</b> facturi primite · Jurnal: <b>${r.totalJurnal}</b> cumpărări · ${badge} · ${r.faraSpvCount} fără corespondent SPV <span class="muted">(ultimele ${r.zile} zile)</span></p>`;
+  if (r.neinregistrate.length) {
+    html += `<div class="card"><h4>⚠️ Facturi în SPV, neînregistrate în jurnal</h4>
+      <table><thead><tr><th>Data</th><th>Emitent (CIF)</th><th>Denumire</th></tr></thead><tbody>${
+      r.neinregistrate.map((m) => `<tr><td>${H(m.data || '')}</td><td>${H(m.cif)}</td><td>${H(m.den || '')}</td></tr>`).join('')}</tbody></table>
+      <p class="muted">Importă-le din lista „Facturi primite în SPV” de mai sus (buton „importă”).</p></div>`;
+  } else if (r.totalSpv) {
+    html += '<p class="status ok">Toate facturile din SPV au corespondent în jurnal. ✓</p>';
+  }
+  const disc = r.furnizori.filter((f) => f.lipsa > 0 || f.extra > 0);
+  if (disc.length) {
+    html += `<details class="pm-box"><summary>Detaliu pe furnizor (${disc.length} cu diferențe)</summary>
+      <table><thead><tr><th>CIF</th><th>Denumire</th><th class="num">SPV</th><th class="num">Jurnal</th><th class="num">Lipsă</th><th class="num">Fără SPV</th></tr></thead><tbody>${
+      disc.map((f) => `<tr><td>${H(f.cif)}</td><td>${H(f.den || '')}</td><td class="num">${f.spv}</td><td class="num">${f.jurnal}</td><td class="num">${f.lipsa || ''}</td><td class="num">${f.extra || ''}</td></tr>`).join('')}</tbody></table></details>`;
+  }
+  box.innerHTML = html;
+}
 async function importFromSpv(msgId) {
   const st = $('#uploadStatus'); st.className = 'status'; st.textContent = 'Se importă factura din SPV…';
   try {

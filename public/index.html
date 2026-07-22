@@ -450,6 +450,8 @@
         </div>
         <p class="muted">Importă facturile primite prin e-Factura: descarcă XML-ul, îl citește și deschide formularul de confirmare ca o cumpărare.</p>
         <div id="inboxList" class="tablewrap"><p class="muted"><b>Opțional</b> — necesită aplicație OAuth + certificat digital ANAF (Setări → „Trimitere în SPV”). Dacă nu folosești SPV, importă direct XML-ul mai jos.</p></div>
+        <button id="einvReconBtn" class="btn small" title="Compară facturile primite din SPV cu jurnalul de cumpărări">🔍 Reconciliază SPV ↔ jurnal cumpărări</button>
+        <div id="einvReconResult" class="tablewrap"></div>
         <h3 data-u="u78">📥 Import direct e-Factura (XML)</h3>
         <p class="muted">Ai primit un fișier e-Factura (XML UBL)? Încarcă-l sau lipește-l aici — aplicația citește furnizorul, sumele și TVA-ul și creează factura de cumpărare.</p>
         <div class="row" data-u="u79">
