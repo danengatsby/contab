@@ -2,6 +2,7 @@
 
 const { round2, period: periodOf } = require('./util');
 const { sortEntries } = require('./accounting');
+const { settle } = require('./matching');
 
 const PARTNER_ACCOUNTS = ['4111', '401'];
 
@@ -35,23 +36,26 @@ function reconcile(db) {
     // factura = creste creanta/datoria; decontare = o stinge
     const isInvoice = (it) => (g.cont === '4111' ? it.debit > 0 : it.credit > 0);
     const amount = (it) => round2(it.debit || it.credit);
-    const invoices = g.items.filter(isInvoice);
-    const payments = g.items.filter((it) => !isInvoice(it));
-    const perechi = [];
-    for (const p of payments) {
-      const inv = invoices.find((iv) => !iv.matched && amount(iv) === amount(p));
-      if (inv) { inv.matched = true; p.matched = true; perechi.push({ factura: inv.doc, plata: p.doc, suma: amount(p) }); }
-    }
-    const facturat = round2(invoices.reduce((s, it) => s + amount(it), 0));
-    const decontat = round2(payments.reduce((s, it) => s + amount(it), 0));
+    const mk = (it) => ({ id: it.entryId, doc: it.doc, data: it.data, suma: amount(it) });
+    const invoices = g.items.filter(isInvoice).map(mk);
+    const payments = g.items.filter((it) => !isInvoice(it)).map(mk);
+    // potrivire graduala (exacta -> agregata -> partiala); soldurile raman sume, neafectate de potrivire
+    const s = settle(invoices, payments);
+    // marcheaza pe items (folosit de UI): "potrivit" = stins complet; deschis/avans = are rest
+    const openIds = new Set([...s.deschise, ...s.avansuri].map((x) => x.id));
+    for (const it of g.items) it.matched = !openIds.has(it.entryId);
+    const facturat = round2(invoices.reduce((a, iv) => a + iv.suma, 0));
+    const decontat = round2(payments.reduce((a, p) => a + p.suma, 0));
     const sold = round2(facturat - decontat);
     result.push({
       key: g.key, cont: g.cont, den: g.den, cui: g.cui,
       facturat, decontat, sold,
-      potriviri: perechi.length,
-      nepotrivite: g.items.filter((it) => !it.matched).length,
+      potriviri: s.perechi.length,
+      nepotrivite: s.deschise.length + s.avansuri.length,
       items: g.items,
-      perechi,
+      perechi: s.perechi,
+      deschise: s.deschise,
+      avansuri: s.avansuri,
     });
   }
   result.sort((a, b) => Math.abs(b.sold) - Math.abs(a.sold) || a.den.localeCompare(b.den));

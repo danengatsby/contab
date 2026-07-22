@@ -4,7 +4,7 @@
 // app.js (Etapa 2 a modularizarii). Depinde de nucleu; reimprospatarea post-import
 // (fillPeriods + loadEntries + loadDashboard) e INJECTATA de app.js prin setBankRefresh,
 // ca sa nu apara o dependenta circulara bank <-> app.
-import { $, $$, api, toast, fmt, META, setMeta } from './core.js';
+import { $, $$, api, toast, fmt, H, META, setMeta } from './core.js';
 
 let onImported = () => {};
 export function setBankRefresh(fn) { onImported = fn; }
@@ -21,17 +21,28 @@ $('#bankFile').addEventListener('change', async () => {
     renderBank();
   } catch (e) { st.className = 'status err'; st.textContent = e.message; }
 });
+// Insigna facturii pe care o stinge linia de extras (potrivire exacta / agregata / partiala).
+function matchCell(r) {
+  const m = r.potrivire;
+  if (!m || m.tip === 'fara' || !m.facturi || !m.facturi.length) return '<span class="muted">—</span>';
+  const docs = m.facturi.map((f) => H(f.doc || 'fără nr.')).join(', ');
+  if (m.tip === 'exacta') return `<span class="pill" title="Stinge exact această factură">✓ ${docs}</span>`;
+  if (m.tip === 'agregata') return `<span class="pill" title="Stinge mai multe facturi vechi">${m.facturi.length} facturi: ${docs}</span>`;
+  if (m.tip === 'partiala') return `<span class="pill warn" title="Plată parțială — factura rămâne parțial deschisă">parțial ${docs}</span>`;
+  return '<span class="muted">—</span>';
+}
 function renderBank() {
   if (!BANK.rows.length) { $('#bankResult').innerHTML = '<p class="muted">Nicio tranzacție.</p>'; $('#bankImport').classList.add('hidden'); return; }
   const tipOpts = (sel) => META.types.map((t) => `<option value="${t.id}" ${t.id === sel ? 'selected' : ''}>${t.nume}</option>`).join('');
   $('#bankResult').innerHTML = `<table><thead><tr><th><input type="checkbox" id="bankAll" checked></th><th>Data</th><th>Descriere</th>
-    <th class="num">Sumă</th><th>Sens</th><th>Tip înregistrare</th><th>Partener</th></tr></thead><tbody>${
+    <th class="num">Sumă</th><th>Sens</th><th>Tip înregistrare</th><th>Partener</th><th>Factură stinsă</th></tr></thead><tbody>${
     BANK.rows.map((r, i) => `<tr>
       <td><input type="checkbox" class="bsel" data-i="${i}" checked></td>
       <td>${r.data}</td><td>${H((r.descriere || '').slice(0, 40))}</td>
       <td class="num">${fmt(r.suma)}</td><td>${r.sens === 'in' ? '↓ încasare' : '↑ plată'}</td>
       <td><select class="btip" data-i="${i}">${tipOpts(r.tip)}</select></td>
       <td><input class="bpart" data-i="${i}" value="${H(r.fields.partener || '')}" />${r.matched ? ' <span class="pill">potrivit</span>' : ''}</td>
+      <td>${matchCell(r)}</td>
     </tr>`).join('')}</tbody></table>`;
   $('#bankImport').classList.remove('hidden');
   $('#bankAll').addEventListener('change', (e) => $$('.bsel').forEach((c) => { c.checked = e.target.checked; }));
