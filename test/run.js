@@ -20,6 +20,7 @@ const saft = require('../src/saft');
 const xml = require('../src/xml');
 const fiscal = require('../src/fiscal');
 const { reconcile } = require('../src/reconcile');
+const { settle, candidatesFor } = require('../src/matching');
 const { statePlata, registruSalarii } = require('../src/payroll');
 
 let pass = 0; let fail = 0;
@@ -560,9 +561,48 @@ eq('ALFA facturat (perioada)', alfaR.facturat, 12100);
 eq('ALFA decontat', alfaR.decontat, 12100);
 eq('ALFA sold reconciliat', alfaR.sold, 0);
 eq('ALFA potriviri factura-plata', alfaR.potriviri, 1);
+ok('ALFA fara facturi deschise (reconciliat complet)', Array.isArray(alfaR.deschise) && alfaR.deschise.length === 0);
 const betaR = rc.partners.find((p) => /BETA/.test(p.den) && p.cont === '4111');
 eq('BETA facturat', betaR.facturat, 16940);
 eq('BETA decontat', betaR.decontat, 16940);
+
+section('Motor de potrivire — reconciliere inteligenta (src/matching.js)');
+{
+  // F3=500 (nicio factura nu e egala exact cu plata de 300) ca sa fortam calea AGREGAT, nu exacta
+  const inv = [
+    { id: 'i1', doc: 'F1', data: '2026-01-01', suma: 100 },
+    { id: 'i2', doc: 'F2', data: '2026-01-05', suma: 200 },
+    { id: 'i3', doc: 'F3', data: '2026-01-10', suma: 500 },
+  ];
+  // o plata = suma celor mai vechi doua facturi -> AGREGATA (F1+F2), F3 ramane deschisa
+  const s1 = settle(inv, [{ id: 'p', doc: 'P', data: '2026-01-06', suma: 300 }]);
+  eq('settle: agregata pe cele mai vechi doua facturi', s1.perechi[0].tip, 'agregata');
+  eq('settle: agregata leaga ambele documente', s1.perechi[0].facturi.map((f) => f.doc).join('+'), 'F1+F2');
+  eq('settle: F3 ramane deschisa', s1.deschise.map((d) => d.doc + ':' + d.rest).join(','), 'F3:500');
+  // plata de aceeasi suma cu o factura din mijloc -> EXACTA (nu prima)
+  const s2 = settle(inv, [{ id: 'p', doc: 'P', data: '2026-01-06', suma: 200 }]);
+  eq('settle: exacta cu factura de aceeasi suma', s2.perechi[0].tip, 'exacta');
+  eq('settle: exacta pe F2 (nu FIFO oarba)', s2.perechi[0].facturi[0].doc, 'F2');
+  // plata mai mica -> PARTIALA, rest deschis
+  const s3 = settle([{ id: 'i', doc: 'FX', data: '2026-01-01', suma: 500 }], [{ id: 'p', doc: 'PX', data: '2026-01-02', suma: 150 }]);
+  eq('settle: plata sub factura -> partiala', s3.perechi[0].tip, 'partiala');
+  eq('settle: rest corect dupa partiala', s3.deschise[0].rest, 350);
+  // plata fara factura -> AVANS
+  const s4 = settle([], [{ id: 'p', doc: 'AV', data: '2026-01-02', suma: 90 }]);
+  eq('settle: plata fara factura -> avans', s4.avansuri[0].rest, 90);
+  // diferenta de rotunjire ramane exacta (toleranta)
+  const s5 = settle([{ id: 'i', doc: 'FT', data: '2026-01-01', suma: 100 }], [{ id: 'p', doc: 'PT', data: '2026-01-02', suma: 100.03 }]);
+  eq('settle: diferenta de rotunjire ramane exacta', s5.perechi[0].tip, 'exacta');
+  ok('settle: nicio factura deschisa dupa potrivirea tolerata', s5.deschise.length === 0);
+
+  // candidatesFor — o linie de extras peste facturile deschise
+  const open = [{ id: 'a', doc: 'A', data: '2026-02-01', suma: 500 }, { id: 'b', doc: 'B', data: '2026-02-03', suma: 300 }];
+  eq('candidatesFor: suma = o factura -> exacta', candidatesFor(open, 500).tip, 'exacta');
+  eq('candidatesFor: suma = doua facturi -> agregata', candidatesFor(open, 800).tip, 'agregata');
+  eq('candidatesFor: suma sub cea mai veche -> partiala', candidatesFor(open, 120).tip, 'partiala');
+  eq('candidatesFor: suma peste tot deschisul -> fara', candidatesFor(open, 9999).tip, 'fara');
+  eq('candidatesFor: fara facturi deschise -> fara', candidatesFor([], 100).tip, 'fara');
+}
 
 section('Bilant (2026-06)');
 const bs = stmt.balanceSheet(v, '2026-06');
@@ -2828,6 +2868,18 @@ section('Extras bancar — parsere CSV / MT940 + sugestii (src/bank.js)');
   eq('sugestie: incasarea de la partener cunoscut -> incasare_client potrivit', sug[0].tip + '|' + sug[0].matched, 'incasare_client|true');
   eq('sugestie: CUI-ul partenerului potrivit e completat', sug[0].fields.cuiPartener, 'RO12345678');
   eq('sugestie: comisionul bancar are tipul lui', sug[2].tip, 'comision_bancar');
+  eq('sugestie: fara facturi deschise -> potrivire "fara"', sug[0].potrivire.tip, 'fara');
+
+  // potrivire cu factura DESCHISA: incasarea de 1190 stinge exact factura clientului (si pre-completeaza doc)
+  const dbOpen = {
+    partners: { 12345678: { cui: '12345678', den: 'CLIENT ALFA SRL' } },
+    entries: [{ id: 'inv1', data: '2026-06-01', document: 'ALX 1024', partener: 'CLIENT ALFA SRL', partenerCui: 'RO12345678',
+      lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '4111', credit: '4427', suma: 190 }] }],
+  };
+  const sugM = bank.parseAndSuggest(dbOpen, csv);
+  eq('potrivire bancara: incasarea de 1190 stinge exact factura deschisa', sugM[0].potrivire.tip, 'exacta');
+  eq('potrivire bancara: factura stinsa legata', sugM[0].potrivire.facturi[0].doc, 'ALX 1024');
+  eq('potrivire bancara: documentul facturii pre-completat pe potrivirea exacta', sugM[0].fields.document, 'ALX 1024');
 }
 
 section('Extractor — euristici pe text de factura (src/extractor.js)');

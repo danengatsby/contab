@@ -2,6 +2,8 @@
 
 const { round2, period: periodOf } = require('./util');
 const { parseRoNumber } = require('./extractor');
+const { reconcile } = require('./reconcile');
+const { candidatesFor } = require('./matching');
 
 /** Imparte un rand CSV respectand ghilimelele. */
 function splitCsvLine(line, delim) {
@@ -136,9 +138,38 @@ function suggest(db, t) {
   return { tip: 'plata_furnizor', matched: !!p, fields: { data: t.data, partener, cuiPartener: cui, document: '', suma: t.suma, cont: '5121', contFz: '401' } };
 }
 
-function parseAndSuggest(db, text) {
-  const txns = parseStatement(text);
-  return txns.map((t, i) => Object.assign({ idx: i, data: t.data, descriere: t.descriere, suma: t.suma, sens: t.sens }, suggest(db, t)));
+// Index al facturilor DESCHISE (sold neachitat) pe cont (4111 clienti / 401 furnizori) si pe
+// cheie de partener (denumire + CUI), calculat o data din reconcilierea fiselor. Alimenteaza
+// potrivirea liniei de extras cu factura pe care o stinge.
+function openInvoiceIndex(db) {
+  const idx = { 4111: new Map(), 401: new Map() };
+  for (const p of reconcile(db).partners) {
+    const m = idx[p.cont];
+    if (!m || !(p.deschise && p.deschise.length)) continue;
+    if (p.den) m.set(p.den.toUpperCase().trim(), p.deschise);
+    if (p.cui) m.set(String(p.cui).replace(/^ro/i, '').trim(), p.deschise);
+  }
+  return idx;
 }
 
-module.exports = { parseStatement, parseCsv, parseMt940, parseAndSuggest, matchPartner };
+function parseAndSuggest(db, text) {
+  const txns = parseStatement(text);
+  const openIdx = openInvoiceIndex(db);
+  return txns.map((t, i) => {
+    const sug = suggest(db, t);
+    // potriveste incasarea/plata cu factura deschisa a partenerului (exacta -> agregata -> partiala)
+    if (sug.matched && (sug.tip === 'incasare_client' || sug.tip === 'plata_furnizor')) {
+      const cont = sug.tip === 'incasare_client' ? 4111 : 401;
+      const cui = String(sug.fields.cuiPartener || '').replace(/^ro/i, '').trim();
+      const den = String(sug.fields.partener || '').toUpperCase().trim();
+      const open = openIdx[cont].get(cui) || openIdx[cont].get(den) || [];
+      const m = candidatesFor(open, t.suma);
+      sug.potrivire = m;
+      // pre-completeaza referinta documentului DOAR pe potrivirea sigura (exacta); restul le decide contabilul
+      if (m.tip === 'exacta' && m.facturi[0] && m.facturi[0].doc && !sug.fields.document) sug.fields.document = m.facturi[0].doc;
+    }
+    return Object.assign({ idx: i, data: t.data, descriere: t.descriere, suma: t.suma, sens: t.sens }, sug);
+  });
+}
+
+module.exports = { parseStatement, parseCsv, parseMt940, parseAndSuggest, matchPartner, openInvoiceIndex };
