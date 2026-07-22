@@ -595,6 +595,21 @@ section('Motor de potrivire — reconciliere inteligenta (src/matching.js)');
   eq('settle: diferenta de rotunjire ramane exacta', s5.perechi[0].tip, 'exacta');
   ok('settle: nicio factura deschisa dupa potrivirea tolerata', s5.deschise.length === 0);
 
+  // Pas 0 — LEGATURA EXPLICITA (punctaj): autoritara, bate euristica, suporta partial
+  const sL = settle(
+    [{ id: 'FA', doc: 'A', data: '2026-01-01', suma: 300 }, { id: 'FB', doc: 'B', data: '2026-01-05', suma: 200 }],
+    [{ id: 'P', doc: 'P', data: '2026-01-06', suma: 200, stinge: ['FB'] }]);
+  eq('settle: legatura explicita -> tip legata', sL.perechi[0].tip, 'legata');
+  eq('settle: legata stinge factura tintita (nu cea mai veche)', sL.perechi[0].facturi[0].doc, 'B');
+  eq('settle: factura netintita ramane deschisa', sL.deschise.map((d) => d.doc).join(','), 'A');
+  // legatura care depaseste plata -> partial pe factura legata
+  const sLP = settle([{ id: 'FX', doc: 'X', data: '2026-01-01', suma: 500 }], [{ id: 'P', doc: 'P', data: '2026-01-02', suma: 200, stinge: ['FX'] }]);
+  eq('settle: legatura partiala -> tip legata', sLP.perechi[0].tip, 'legata');
+  eq('settle: rest corect dupa legatura partiala', sLP.deschise[0].rest, 300);
+  // legatura la id inexistent -> ignorata, revine pe euristica exacta
+  const sBad = settle([{ id: 'FA', doc: 'A', data: '2026-01-01', suma: 300 }], [{ id: 'P', doc: 'P', data: '2026-01-02', suma: 300, stinge: ['NECUNOSCUT'] }]);
+  eq('settle: legatura invalida ignorata -> cade pe exacta', sBad.perechi[0].tip, 'exacta');
+
   // candidatesFor — o linie de extras peste facturile deschise
   const open = [{ id: 'a', doc: 'A', data: '2026-02-01', suma: 500 }, { id: 'b', doc: 'B', data: '2026-02-03', suma: 300 }];
   eq('candidatesFor: suma = o factura -> exacta', candidatesFor(open, 500).tip, 'exacta');
@@ -2880,6 +2895,7 @@ section('Extras bancar — parsere CSV / MT940 + sugestii (src/bank.js)');
   eq('potrivire bancara: incasarea de 1190 stinge exact factura deschisa', sugM[0].potrivire.tip, 'exacta');
   eq('potrivire bancara: factura stinsa legata', sugM[0].potrivire.facturi[0].doc, 'ALX 1024');
   eq('potrivire bancara: documentul facturii pre-completat pe potrivirea exacta', sugM[0].fields.document, 'ALX 1024');
+  eq('potrivire bancara: legatura de decontare (stinge) propusa spre confirmare', JSON.stringify(sugM[0].stinge), JSON.stringify(['inv1']));
 }
 
 section('Extractor — euristici pe text de factura (src/extractor.js)');
