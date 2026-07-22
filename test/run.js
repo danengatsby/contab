@@ -21,6 +21,7 @@ const xml = require('../src/xml');
 const fiscal = require('../src/fiscal');
 const { reconcile } = require('../src/reconcile');
 const { settle, candidatesFor } = require('../src/matching');
+const { reconcileInbox, journalPurchases } = require('../src/einvoiceReconcile');
 const { statePlata, registruSalarii } = require('../src/payroll');
 
 let pass = 0; let fail = 0;
@@ -617,6 +618,40 @@ section('Motor de potrivire — reconciliere inteligenta (src/matching.js)');
   eq('candidatesFor: suma sub cea mai veche -> partiala', candidatesFor(open, 120).tip, 'partiala');
   eq('candidatesFor: suma peste tot deschisul -> fara', candidatesFor(open, 9999).tip, 'fara');
   eq('candidatesFor: fara facturi deschise -> fara', candidatesFor([], 100).tip, 'fara');
+}
+
+section('Reconciliere e-Factura primite (inbox SPV <-> jurnal cumparari) (src/einvoiceReconcile.js)');
+{
+  // journalPurchases: doar articolele POSTATE care cresc datoria pe 401 (net creditor) cu furnizor
+  const v = { entries: [
+    { id: 'p1', partenerCui: 'RO111', document: 'A-1', lines: [{ debit: '371', credit: '401', suma: 100 }, { debit: '4426', credit: '401', suma: 19 }], spvImport: { msgId: 'm1' } },
+    { id: 'p2', partenerCui: 'RO222', document: 'B-1', lines: [{ debit: '371', credit: '401', suma: 200 }] },
+    { id: 'pv', partenerCui: 'RO999', document: 'V-1', lines: [{ debit: '4111', credit: '707', suma: 500 }] }, // vanzare -> nu e cumparare
+    { id: 'pc', status: 'ciorna', partenerCui: 'RO111', document: 'A-2', lines: [{ debit: '371', credit: '401', suma: 50 }] }, // ciorna -> exclusa
+  ] };
+  const jp = journalPurchases(v);
+  eq('journalPurchases: doar cumpararile postate (vanzarea + ciorna excluse)', jp.length, 2);
+  eq('journalPurchases: net pe 401 include TVA-ul deductibil', jp.find((p) => p.id === 'p1').suma, 119);
+  ok('journalPurchases: pastreaza legatura spvImport.msgId', jp.find((p) => p.id === 'p1').spvImportMsgId === 'm1');
+
+  // reconcileInbox: potrivire exacta (import) + count-based + lipsa + fara-SPV; CIF normalizat (RO/spatii)
+  const inbox = [
+    { id: 'm1', data: '20260601', cif: '111', importat: true },   // deja importata (potrivire exacta pe msgId)
+    { id: 'm3', data: '20260603', cif: 'RO111', importat: false }, // absorbita de o cumparare manuala de la 111
+    { id: 'm4', data: '20260604', cif: '222', importat: false },   // neinregistrata (fara cumparare de la 222)
+  ];
+  const purchases = [
+    { id: 'e1', data: '2026-06-01', partenerCui: 'RO111', document: 'A-1', suma: 119, spvImportMsgId: 'm1' },
+    { id: 'e3', data: '2026-06-03', partenerCui: '111', document: 'A-3', suma: 300, spvImportMsgId: null }, // manuala
+    { id: 'e9', data: '2026-06-05', partenerCui: 'RO333', document: 'C-1', suma: 500, spvImportMsgId: null }, // fara SPV
+  ];
+  const r = reconcileInbox(inbox, purchases, { 222: 'BETA SRL', 333: 'GAMA SRL' });
+  eq('reconcileInbox: 1 factura SPV neinregistrata in jurnal', r.lipsaInJurnal, 1);
+  eq('reconcileInbox: neinregistrata = m4 de la CIF 222', r.neinregistrate[0].msgId + '|' + r.neinregistrate[0].cif, 'm4|222');
+  eq('reconcileInbox: numele furnizorului rezolvat', r.neinregistrate[0].den, 'BETA SRL');
+  eq('reconcileInbox: 1 cumparare fara corespondent SPV (CIF 333)', r.faraSpvCount, 1);
+  ok('reconcileInbox: CIF 111 reconciliat (import exact + count) -> lipsa 0', r.furnizori.find((f) => f.cif === '111').lipsa === 0);
+  ok('reconcileInbox: furnizorul cu lipsa e primul (sortare)', r.furnizori[0].cif === '222');
 }
 
 section('Bilant (2026-06)');

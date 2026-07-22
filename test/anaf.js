@@ -198,6 +198,27 @@ function stubFetch(script) {
   try { svc.extractInvoiceXml(zipGol.toBuffer()); } catch (e) { exErr = e; }
   ok('extractInvoiceXml: fara XML -> eroare explicita', exErr && /nu contine XML/i.test(exErr.message));
 
+  section('Reconciliere e-Factura primite: serviciu (inbox SPV live stubuit <-> jurnal)');
+  f1.cui = '12345678'; f1.anaf = { env: 'test', accessToken: 'tok', cif: '12345678' };
+  // cumparari in jurnalul firmei: una importata din SPV (msgId), una manuala de la acelasi furnizor,
+  // una de la un furnizor fara facturi in SPV
+  d.entries.push(
+    { id: 'ci1', firmaId: f1.id, partenerCui: 'RO55500011', partener: 'FURNIZOR SPV SRL', document: 'F1', lines: [{ debit: '371', credit: '401', suma: 1000 }, { debit: '4426', credit: '401', suma: 190 }], spvImport: { msgId: 'sm1' } },
+    { id: 'ci2', firmaId: f1.id, partenerCui: '55500011', partener: 'FURNIZOR SPV SRL', document: 'F2', lines: [{ debit: '371', credit: '401', suma: 500 }] },
+    { id: 'ci3', firmaId: f1.id, partenerCui: 'RO77700022', partener: 'FARA SPV SRL', document: 'M1', lines: [{ debit: '371', credit: '401', suma: 800 }] },
+  );
+  // stub pe lista de mesaje SPV (facturi primite): 2 de la furnizorul SPV, 1 de la unul neinregistrat
+  anafMod.listMessages = async () => ([
+    { id: 'sm1', data_creare: '20260601', cif_emitent: '55500011' }, // deja importata (potrivire exacta pe msgId)
+    { id: 'sm2', data_creare: '20260602', cif_emitent: '55500011' }, // ne-importata -> absorbita de cumpararea manuala
+    { id: 'sm3', data_creare: '20260603', cif_emitent: '99900033' }, // neinregistrata (fara cumparare de la 99900033)
+  ]);
+  const eirR = await svc.einvoiceReconciliation(f1.id, 60);
+  eq('reconciliere serviciu: 1 factura SPV neinregistrata', eirR.lipsaInJurnal, 1);
+  eq('reconciliere serviciu: neinregistrata e sm3 (CIF 99900033)', eirR.neinregistrate[0].msgId + '|' + eirR.neinregistrate[0].cif, 'sm3|99900033');
+  ok('reconciliere serviciu: furnizorul SPV e reconciliat (import exact + count)', eirR.furnizori.find((f) => f.cif === '55500011') && eirR.furnizori.find((f) => f.cif === '55500011').lipsa === 0);
+  ok('reconciliere serviciu: cumpararea de la 77700022 apare fara corespondent SPV', eirR.faraSpv.some((x) => x.cif === '77700022'));
+
   // curatenie: recipisa de test scrisa in data/uploads + baza temporara
   try { fs.unlinkSync(recipisaPath); } catch (_) { /* ignora */ }
   try { fs.unlinkSync(process.env.CONTAB_DB_FILE); } catch (_) { /* ignora */ }

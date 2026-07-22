@@ -63,6 +63,8 @@ module.exports = function register(app, ctx) {
 
   // ── facturi primite (inbox) + import ──
   app.get('/api/anaf/inbox', wrap((req, res) => runA(res, svc.inbox(activeId(req), req.query.zile))));
+  // reconciliere e-Factura primite (inbox SPV) <-> jurnal cumparari (apel SPV live)
+  app.get('/api/efactura-reconciliere', wrap((req, res) => runA(res, svc.einvoiceReconciliation(activeId(req), Number(req.query.zile) || 60))));
   app.post('/api/anaf/import/:msgId', wrap((req, res) => runA(res, svc.importFromSpv(activeId(req), req.params.msgId))));
 
   // ── Fisa Rol / documente SPV (SPVWS2) ──
