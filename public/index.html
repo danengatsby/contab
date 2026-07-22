@@ -435,9 +435,9 @@
       </div>
 
       <div class="card">
-        <h2>Import extras bancar (CSV / <abbr title="Format standard de extras bancar (SWIFT), exportat de aplicațiile bancare">MT940</abbr>)</h2>
+        <h2>Import extras bancar (CSV / <abbr title="Format standard de extras bancar (SWIFT), exportat de aplicațiile bancare">MT940</abbr> / <abbr title="Format standard SEPA ISO 20022 (XML), exportat de băncile moderne">CAMT.053</abbr>)</h2>
         <p class="muted">Încarcă extrasul bancar; aplicația citește tranzacțiile, potrivește partenerul după descriere și propune încasări/plăți care alimentează reconcilierea.</p>
-        <input type="file" id="bankFile" accept=".csv,.txt,.sta,.mt940" />
+        <input type="file" id="bankFile" accept=".csv,.txt,.sta,.mt940,.940,.xml" />
         <div id="bankStatus" class="status"></div>
         <div id="bankResult" class="tablewrap"></div>
         <button id="bankImport" class="btn primary hidden">Importă selectate</button>

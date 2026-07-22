@@ -2877,6 +2877,27 @@ section('Extras bancar — parsere CSV / MT940 + sugestii (src/bank.js)');
   eq('MT940: descrierea din :86:', /CLIENT ALFA/.test(m[0].descriere), true);
   eq('parseStatement detecteaza MT940 dupa :61:', bank.parseStatement(mt).length, 2);
 
+  // CAMT.053 (ISO 20022, XML) — extrasul SEPA modern; namespace cu prefix, CRDT/DBIT, stornare, Dt/DtTm
+  const camt = '<?xml version="1.0"?><ns:Document xmlns:ns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><ns:BkToCstmrStmt><ns:Stmt>'
+    + '<ns:Ntry><ns:Amt Ccy="RON">1190.00</ns:Amt><ns:CdtDbtInd>CRDT</ns:CdtDbtInd><ns:BookgDt><ns:Dt>2026-06-03</ns:Dt></ns:BookgDt>'
+    + '<ns:NtryDtls><ns:TxDtls><ns:Amt Ccy="RON">1190.00</ns:Amt><ns:RltdPties><ns:Dbtr><ns:Nm>CLIENT ALFA SRL</ns:Nm></ns:Dbtr></ns:RltdPties><ns:RmtInf><ns:Ustrd>Incasare ALX 1024</ns:Ustrd></ns:RmtInf></ns:TxDtls></ns:NtryDtls></ns:Ntry>'
+    + '<ns:Ntry><ns:Amt Ccy="RON">500.50</ns:Amt><ns:CdtDbtInd>DBIT</ns:CdtDbtInd><ns:ValDt><ns:Dt>2026-06-04</ns:Dt></ns:ValDt><ns:NtryDtls><ns:TxDtls><ns:RmtInf><ns:Ustrd>Plata BETA</ns:Ustrd></ns:RmtInf></ns:TxDtls></ns:NtryDtls></ns:Ntry>'
+    + '<ns:Ntry><ns:Amt Ccy="RON">30.00</ns:Amt><ns:CdtDbtInd>CRDT</ns:CdtDbtInd><ns:RvslInd>true</ns:RvslInd><ns:BookgDt><ns:DtTm>2026-06-05T09:15:00</ns:DtTm></ns:BookgDt><ns:AddtlNtryInf>Stornare comision</ns:AddtlNtryInf></ns:Ntry>'
+    + '</ns:Stmt></ns:BkToCstmrStmt></ns:Document>';
+  const camtTx = bank.parseCamt(camt);
+  eq('CAMT: 3 tranzactii din <Ntry>', camtTx.length, 3);
+  eq('CAMT: CRDT -> incasare (sens in)', camtTx[0].sens, 'in');
+  eq('CAMT: suma cu punct zecimal (Amt nivel Ntry, nu TxDtls)', camtTx[0].suma, 1190);
+  eq('CAMT: data din BookgDt/Dt', camtTx[0].data, '2026-06-03');
+  eq('CAMT: descrierea = remitenta + numele partii', /ALX 1024/.test(camtTx[0].descriere) && /CLIENT ALFA/.test(camtTx[0].descriere), true);
+  eq('CAMT: DBIT -> plata (sens out)', camtTx[1].sens, 'out');
+  eq('CAMT: cade pe ValDt cand lipseste BookgDt', camtTx[1].data, '2026-06-04');
+  eq('CAMT: RvslInd inverseaza semnul (CRDT stornat -> out)', camtTx[2].sens, 'out');
+  eq('CAMT: DtTm redus la data (YYYY-MM-DD)', camtTx[2].data, '2026-06-05');
+  eq('parseStatement detecteaza CAMT dupa BkToCstmrStmt', bank.parseStatement(camt).length, 3);
+  const sugC = bank.parseAndSuggest({ partners: { 12345678: { cui: '12345678', den: 'CLIENT ALFA SRL' } }, entries: [] }, camt);
+  eq('CAMT + sugestie: incasarea de la partener cunoscut -> incasare_client potrivit', sugC[0].tip + '|' + sugC[0].matched, 'incasare_client|true');
+
   // sugestii: comisionul are tip dedicat; partenerul cunoscut e potrivit dupa denumire
   const fakeDb = { partners: { 12345678: { cui: '12345678', den: 'CLIENT ALFA SRL' } }, entries: [] };
   const sug = bank.parseAndSuggest(fakeDb, csv);
