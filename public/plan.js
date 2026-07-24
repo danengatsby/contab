@@ -107,3 +107,5 @@ $('#openSaveBtn') && $('#openSaveBtn').addEventListener('click', async () => {
 
 
 export { renderOpening, renderPlan };
+// Exportate pentru testele unitare de frontend (parsarea sumelor in format RO): test/frontend.mjs
+export { nrRo };

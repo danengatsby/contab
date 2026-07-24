@@ -244,3 +244,5 @@ async function loadArhiva() {
 onPeriodChange('arhiva', loadArhiva);
 
 export { loadArhiva, loadEntries, loadMissingDocs, renderEntryLists, setEntriesDeps };
+// Exportate pentru testele unitare de frontend (logica pura de clasificare/insigne): test/frontend.mjs
+export { etranspCell, entryDir, entryStateBadge };

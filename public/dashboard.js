@@ -303,3 +303,6 @@ async function loadDashboardCharts() {
   let c; try { c = await api('/api/dashboard-charts'); } catch (e) { return; }
   renderDashboardCharts(c);
 }
+
+// Exportat pentru testele unitare de frontend (calculul tendintei lunare): test/frontend.mjs
+export { trendOf };
