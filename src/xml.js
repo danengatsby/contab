@@ -241,9 +241,11 @@ function declarant(who) {
 // istorice (perioade vechi): 19->R69, 5->R71. Achizitii: 21->R22, 11->R23, 5->R24, 9->R74, 19->R75.
 const D300_RAND_V = { 21: 'R9', 11: 'R10', 9: 'R11', 19: 'R69', 5: 'R71' };
 const D300_RAND_C = { 21: 'R22', 11: 'R23', 5: 'R24', 9: 'R74', 19: 'R75' };
-function d300Xml(company, period, d, who) {
-  const { an, luna } = ym(period);
-  const lei = (v) => String(Math.round(Number(v) || 0));
+// Maparea rand->valoare (Rxx_1 = baza, Rxx_2 = TVA, in lei intregi) a decontului D300, din
+// pozitia TVA a perioadei (cotele de vanzare/cumparare). SURSA UNICA: folosita si la
+// serializarea XML (d300Xml), si la reconcilierea cu decontul precompletat e-TVA (etvaReconcile),
+// ca ambele sa vada exact aceleasi randuri.
+function d300Rows(d) {
   const A = {}; // atributele-randuri, doar cele cu valoare
   const put = (rand, baza, tva) => {
     if (!rand) return;
@@ -263,6 +265,13 @@ function d300Xml(company, period, d, who) {
   A.R33_2 = Math.max(A.R32_2 - A.R17_2, 0); A.R34_2 = Math.max(A.R17_2 - A.R32_2, 0);
   A.R37_2 = A.R34_2; A.R40_2 = A.R33_2;
   A.R41_2 = Math.max(A.R37_2 - A.R40_2, 0); A.R42_2 = Math.max(A.R40_2 - A.R37_2, 0);
+  return A;
+}
+
+function d300Xml(company, period, d, who) {
+  const { an, luna } = ym(period);
+  const lei = (v) => String(Math.round(Number(v) || 0));
+  const A = d300Rows(d);
   const emise = Object.keys(A).filter((k) => A[k] !== 0 || /^R(17|27|41|42)_/.test(k));
   const randuri = emise.map((k) => `  ${k}="${lei(A[k])}"`).join('\n');
   // totalPlata_A NU e plata, ci SUMA DE CONTROL: suma tuturor campurilor-rand emise.
@@ -861,5 +870,5 @@ ${rows}
 
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
-  umCode, d300Xml, d394Xml, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d300Rows, d394Xml, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
 };

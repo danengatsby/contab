@@ -897,3 +897,10 @@ body.dark .fstep.done .fstep-body b{text-decoration-color:#5cbb8d}
   /* tabelele late deruleaza in propriul container, pagina ramane fixa (conventia repo-ului) */
   .tab table{display:block;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
 }
+
+/* Reconciliere decont precompletat e-TVA: campul XML + evidentierea diferentelor */
+#etvaXmlInput{width:100%;box-sizing:border-box;resize:vertical;min-height:70px;padding:8px 10px;
+  border:1px solid var(--line);border-radius:9px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;margin-top:6px}
+td.etva-diff{background:#fdecea;color:#8a1c1c;font-weight:700}
+tr.etva-diff-row>td:first-child{border-left:3px solid #d64545}
+body.dark td.etva-diff{background:#4a1f1f;color:#ffd7d0}

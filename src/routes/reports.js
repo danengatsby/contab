@@ -10,6 +10,8 @@ const db = require('../db');
 const stmt = require('../statements');
 const rep = require('../reporting');
 const acc = require('../accounting');
+const xml = require('../xml');
+const etva = require('../etvaReconcile');
 const fiscalProfile = require('../fiscalProfile');
 const pdf = require('../pdf');
 const dosarAnual = require('../dosarAnual');
@@ -91,6 +93,22 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     const eff = acc.vatPeriod(v.company, req.query.period || null); // trimestru la regim 'T'
     return res.json(Object.assign(rep.tvaReconciliation(v, eff), { trimestrial: /^\d{4}-Q[1-4]$/.test(String(eff)) }));
+  });
+  // Reconciliere e-TVA: decontul PRECOMPLETAT ANAF (XML lipit/incarcat) <-> D300-ul propriu, rand-cu-rand.
+  // Perioada de comparat: luna/an din decont, sau ?period explicit (regim 'T' -> trimestrul).
+  app.post('/api/etva-precompletat', (req, res) => {
+    const v = S(req);
+    let anaf;
+    try { anaf = etva.parseD300((req.body || {}).xml || ''); }
+    catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+    const xmlPeriod = /^\d{4}$/.test(anaf.an) && /^\d{1,2}$/.test(anaf.luna) ? anaf.an + '-' + String(anaf.luna).padStart(2, '0') : null;
+    const reqPeriod = /^\d{4}-\d{2}$/.test(String(req.query.period || '')) ? req.query.period : null;
+    const period = acc.vatPeriod(v.company, reqPeriod || xmlPeriod || null);
+    const own = xml.d300Rows(rep.d300(v, period));
+    return res.json(etva.reconcile(own, anaf.rows, {
+      period, cuiPropriu: String(v.company.cui || '').replace(/^ro/i, ''),
+      anafLuna: anaf.luna, anafAn: anaf.an, anafCui: anaf.cui,
+    }));
   });
   app.get('/api/livrabile', (req, res) => res.json(rep.livrabile(S(req), req.query.period || new Date().toISOString().slice(0, 7))));
   app.get('/api/registru-fiscal', (req, res) => res.json(rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));

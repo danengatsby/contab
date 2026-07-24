@@ -1376,6 +1376,38 @@ ok('e-Transport validare: iesire IC cu sosire pe judet (nu frontiera) -> avertis
 const etIcPtf = et.buildDeclaration(etCompany, etIc, { nrVehicul: 'CJ01ABC', codTarifar: '94036010', greutateBruta: 500, final: { codPtf: 'NADLAC2' } });
 ok('e-Transport validare: iesire IC prin PTF -> fara avertisment de frontiera', !et.validate(etIcPtf).warnings.some((w) => /frontier|vamal/i.test(w)));
 
+section('Reconciliere e-TVA — decont precompletat <-> D300 propriu');
+const etva = require('../src/etvaReconcile');
+const etvaV = scopedSeed();
+const etvaPer = '2026-06';
+const etvaD = rep.d300(etvaV, etvaPer);
+const etvaOwn = xml.d300Rows(etvaD);
+const etvaOwnXml = xml.d300Xml(etvaV.company, etvaPer, etvaD, null);
+// parse
+const etvaParsed = etva.parseD300(etvaOwnXml);
+eq('e-TVA parse: luna/an din decont', etvaParsed.luna + '/' + etvaParsed.an, '6/2026');
+ok('e-TVA parse: extrage randuri Rxx_2 (TVA colectata)', Number(etvaParsed.rows.R17_2) > 0);
+let etvaThrew = false; try { etva.parseD300('<altceva/>'); } catch (e) { etvaThrew = e.status === 400; }
+ok('e-TVA parse: XML care nu e D300 -> eroare 400', etvaThrew);
+// self-vs-self: fara diferente
+const etvaR1 = etva.reconcile(etvaOwn, etvaParsed.rows, { period: etvaPer, cuiPropriu: etvaV.company.cui, anafLuna: etvaParsed.luna, anafAn: etvaParsed.an, anafCui: etvaParsed.cui });
+eq('e-TVA reconciliere: propriul decont vs sine -> 0 diferente', etvaR1.diffCount, 0);
+ok('e-TVA reconciliere: self -> ok, fara constatari', etvaR1.ok && etvaR1.findings.length === 0);
+eq('e-TVA reconciliere: R17 colectata identica', etvaR1.rows.find((r) => r.rand === 'R17').tva.match, true);
+// decont modificat: R9_2 + R17_2 marite cu 500 -> diferenta la colectata
+const etvaTampered = etvaOwnXml.replace(/R9_2="(\d+)"/, (m, n) => 'R9_2="' + (Number(n) + 500) + '"').replace(/R17_2="(\d+)"/, (m, n) => 'R17_2="' + (Number(n) + 500) + '"');
+const etvaP2 = etva.parseD300(etvaTampered);
+const etvaR2 = etva.reconcile(etvaOwn, etvaP2.rows, { period: etvaPer, cuiPropriu: etvaV.company.cui, anafLuna: etvaP2.luna, anafAn: etvaP2.an, anafCui: etvaP2.cui });
+ok('e-TVA reconciliere: decont diferit -> diferente semnalate', etvaR2.diffCount >= 2 && !etvaR2.ok);
+ok('e-TVA reconciliere: constatare pe taxa colectata', etvaR2.findings.some((f) => f.cod === 'e-tva-colectata-diferita'));
+eq('e-TVA reconciliere: delta R9 = +500 (ANAF vede mai mult)', etvaR2.rows.find((r) => r.rand === 'R9').tva.delta, 500);
+// CUI diferit -> eroare (decont al altei firme)
+const etvaR3 = etva.reconcile(etvaOwn, etvaParsed.rows, { period: etvaPer, cuiPropriu: '99999999', anafLuna: etvaParsed.luna, anafAn: etvaParsed.an, anafCui: etvaParsed.cui });
+ok('e-TVA reconciliere: CUI decont != firma -> eroare, not ok', etvaR3.findings.some((f) => f.cod === 'e-tva-cui' && f.nivel === 'eroare') && !etvaR3.ok);
+// perioada diferita -> avertisment
+const etvaR4 = etva.reconcile(etvaOwn, etvaParsed.rows, { period: '2026-05', cuiPropriu: etvaV.company.cui, anafLuna: etvaParsed.luna, anafAn: etvaParsed.an, anafCui: etvaParsed.cui });
+ok('e-TVA reconciliere: perioada decont != comparata -> avertisment', etvaR4.findings.some((f) => f.cod === 'e-tva-perioada'));
+
 section('D100 — impozit micro trimestrial + XML');
 // veniturile se cumuleaza pe lunile trimestrului (apr+iun in T2), luna din alt trimestru e exclusa
 const d100db = { entries: [
