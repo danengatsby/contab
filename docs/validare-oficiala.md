@@ -52,3 +52,21 @@ Local: `sh scripts/valideaza-referinte.sh` (generează + validează toate; 0 = t
 
 Validarea oficială se repetă **obligatoriu** la depunerea în SPV — acest jurnal atestă că
 fișierele generate trec validatorul, nu înlocuiește depunerea.
+
+## RO e-Transport (cod UIT) — validare XSD
+
+e-Transport **nu** trece prin DUKIntegrator (acela e pentru declarații D300/D394/…): schema lui
+e un XSD publicat separat, deci validarea e directă, cu `xmllint` (validarea XSD e o operație
+**locală, offline** — nu cere apeluri live la ANAF):
+
+```bash
+# schema oficială (versionată) se descarcă din pagina tehnică și se indică o singură dată:
+#   https://etransport.mfinante.gov.ro/informatii-tehnice  →  „Schema XSD"
+CONTAB_ETRANSPORT_XSD=/cale/eTransport.xsd \
+  scripts/valideaza-etransport.sh fișier.xml     # 0 = valid, 1 = erori (afișate), 2 = folosire/schemă lipsă
+```
+
+Schema **nu** e livrată în repo (ANAF o actualizează periodic; s-ar învechi) — de aceea se indică
+prin `CONTAB_ETRANSPORT_XSD` (cale locală sau URL, cu `.zip` dezarhivat automat). Pre-validarea
+rapidă din generarea aplicației rămâne `src/etransport.js` (`validate`): prinde câmpurile
+obligatorii, enum-urile, formatele și coerența traseu↔tip de operațiune înainte de trimitere.

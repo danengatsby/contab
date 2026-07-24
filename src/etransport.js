@@ -211,24 +211,42 @@ function buildDeclaration(company, entry, td) {
 
 // ───────────────────────── Validare pre-depunere ─────────────────────────
 
-/** @returns { ok, errors:[], warnings:[] } — erori = depunere respinsa; avertismente = de verificat. */
+// Operatiuni la care marfa INTRA in tara (punctul de plecare al traseului intern e o frontiera:
+// birou vamal la import, punct de trecere a frontierei la achizitie/tranzit intracomunitar).
+const INTRA_IN = new Set([10, 40, 60]);
+// Operatiuni la care marfa IESE din tara (punctul de sosire e o frontiera).
+const INTRA_OUT = new Set([20, 50, 70]);
+
+/** @returns { ok, errors:[], warnings:[] } — erori = depunere respinsa; avertismente = de verificat.
+ *  Prinde constrangerile pe care le impune si XSD-ul oficial (campuri obligatorii, enum-uri,
+ *  formate) inainte de depunere; validarea OFICIALA fata de XSD ramane scripts/valideaza-etransport.sh. */
 function validate(decl) {
   const errors = []; const warnings = [];
   if (!decl.codDeclarant) errors.push('Lipseste CUI-ul declarantului (firma).');
-  if (!TIP_OPERATIUNE[decl.codTipOperatiune]) errors.push('Tip de operatiune necunoscut: ' + decl.codTipOperatiune + '.');
+  else if (!/^\d{2,10}$/.test(decl.codDeclarant)) warnings.push('CUI-ul declarantului „' + decl.codDeclarant + '" nu pare valid (asteptam 2-10 cifre).');
+  const tip = Number(decl.codTipOperatiune);
+  if (!TIP_OPERATIUNE[tip]) errors.push('Tip de operatiune necunoscut: ' + decl.codTipOperatiune + '.');
   if (!decl.transport.nrVehicul) errors.push('Lipseste numarul de inmatriculare al vehiculului.');
   if (!decl.bunuri.length) errors.push('Nicio marfa de transportat.');
   for (const g of decl.bunuri) {
     if (!SCOP_OPERATIUNE[g.codScopOperatiune]) warnings.push('Scop de operatiune necunoscut la „' + g.denumireMarfa + '": ' + g.codScopOperatiune + '.');
+    if (!g.denumireMarfa) errors.push('Lipseste denumirea marfii la o pozitie.');
     if (!g.codTarifar) errors.push('Lipseste codul tarifar (NC) la „' + g.denumireMarfa + '".');
     else if (!/^\d{4,8}$/.test(g.codTarifar)) warnings.push('Codul tarifar „' + g.codTarifar + '" nu pare valid (asteptam 4-8 cifre).');
+    if (!(g.cantitate > 0)) errors.push('Cantitate 0 la „' + g.denumireMarfa + '".');
     if (!(g.greutateBruta > 0)) errors.push('Lipseste greutatea bruta (kg) la „' + g.denumireMarfa + '".');
+    else if (g.greutateNeta > g.greutateBruta) warnings.push('Greutatea neta o depaseste pe cea bruta la „' + g.denumireMarfa + '".');
     if (!(g.valoareLeiFaraTva > 0)) warnings.push('Valoare 0 (fara TVA) la „' + g.denumireMarfa + '".');
   }
+  if (!TIP_DOCUMENT[decl.document.tipDocument]) warnings.push('Tip de document de transport necunoscut: ' + decl.document.tipDocument + '.');
   // traseul rutier: fiecare capat are nevoie de judet+localitate SAU de un cod de vama/PTF (extern)
-  const locOk = (l) => !!(l.codBirouVamal || l.codPtf || (l.codJudet && l.denumireLocalitate));
+  const isBorder = (l) => !!(l.codBirouVamal || l.codPtf);
+  const locOk = (l) => !!(isBorder(l) || (l.codJudet && l.denumireLocalitate));
   if (!locOk(decl.start)) errors.push('Locul de plecare incomplet (judet + localitate sau cod vamal/PTF).');
   if (!locOk(decl.final)) errors.push('Locul de sosire incomplet (judet + localitate sau cod vamal/PTF).');
+  // coerenta traseu <-> tip operatiune: la intrari plecarea e o frontiera, la iesiri sosirea
+  if (INTRA_IN.has(tip) && !isBorder(decl.start)) warnings.push('La „' + TIP_OPERATIUNE[tip] + '" plecarea ar trebui sa fie un birou vamal / punct de trecere a frontierei.');
+  if (INTRA_OUT.has(tip) && !isBorder(decl.final)) warnings.push('La „' + TIP_OPERATIUNE[tip] + '" sosirea ar trebui sa fie un birou vamal / punct de trecere a frontierei.');
   return { ok: errors.length === 0, errors, warnings };
 }
 
