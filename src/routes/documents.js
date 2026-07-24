@@ -13,6 +13,8 @@ const ai = require('../aiExtractor');
 const log = require('../log');
 const metrics = require('../metrics');
 const { extractFromPdf } = require('../extractor');
+const extractCheck = require('../extractCheck');
+const fiscal = require('../fiscal');
 const { getType } = require('../documentTypes');
 const { round2, period: periodOf } = require('../util');
 const { sendList } = require('../paginate');
@@ -81,6 +83,13 @@ module.exports = function register(app, ctx) {
         extracted = await extractFromPdf(buf, ownCui);
       }
     }
+
+    // Reconciliere post-extragere (ambele cai): completeaza golurile derivabile si semnaleaza
+    // incoerentele (suma != baza+TVA, cota necorelata, incredere joasa) inainte de formular.
+    const chk = extractCheck.reconcile(extracted.fields || {}, { incredere: extra.incredere, standardCota: fiscal.FISCAL.tvaStandard });
+    extracted.fields = chk.fields;
+    if (chk.warnings.length) extra.checkWarnings = chk.warnings;
+    extra.needsReview = chk.needsReview;
 
     const docId = db.nextId('doc');
     d.documents.push({

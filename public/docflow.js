@@ -114,8 +114,10 @@ async function uploadFile(file) {
       ? '🤖 AI' + (res.incredere != null ? ' (încredere ' + res.incredere + '%)' : '')
       : '⚙️ reguli locale';
     st.innerHTML = 'Extras din „' + res.fileName + '” prin ' + via + '. CUI: ' + ((res.cuis || []).join(', ') || '—')
-      + (res.motiv ? '<br><span class="muted">' + res.motiv + '</span>' : '')
-      + (res.warning ? '<br><span data-u="u13">' + res.warning + '</span>' : '');
+      + (res.motiv ? '<br><span class="muted">' + H(res.motiv) + '</span>' : '')
+      + (res.warning ? '<br><span data-u="u13">' + H(res.warning) + '</span>' : '')
+      + ((res.checkWarnings || []).length
+        ? '<br><span data-u="u13">⚠️ Verifică: ' + res.checkWarnings.map(H).join('<br>⚠️ ') + '</span>' : '');
     CURRENT = { documentId: res.documentId, fields: res.fields, suggestedType: res.suggestedType };
     openForm(res.suggestedType, res.fields);
   } catch (e) { st.className = 'status err'; st.textContent = e.message; }
