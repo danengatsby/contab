@@ -36,6 +36,13 @@ D112/D100/Intrastat/SAF-T bine-formate + validare pre-depunere), **taxele PFA** 
 plafoane, registrul de încasări și plăți), e-Factura UBL, drepturile granulare pe utilizatori și
 blocarea perioadelor raportate. Blochează regresiile.
 
+**Logica pură de frontend** (`test/frontend.mjs`) e testată în Node, fără browser și fără jsdom:
+escaparea HTML (stratul de apărare dinaintea CSP), formatarea și rotunjirea sumelor (cu **paritate
+verificată față de `src/util.js`** — altfel ecranul și PDF-ul ar diferi la ban), aritmetica lunilor
+de lucru, clasificarea documentelor și parsarea sumelor în format românesc. Două verificări leagă
+frontend-ul de server (stările articolelor, tipurile eligibile e-Transport), ca o listă extinsă
+într-un singur loc să nu treacă neobservată. Randarea și evenimentele rămân în sarcina `npm run e2e`.
+
 - **Hook pre-pornire:** scriptul `prestart` rulează `npm test` înainte de `npm start` (pornirea
   locală e blocată dacă testele pică). Sub **pm2** (`node server.js` direct) hook-ul e ocolit — pentru
   a gata și acolo, rulează `npm test && pm2 restart contab`.

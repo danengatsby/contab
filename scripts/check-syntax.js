@@ -1,6 +1,6 @@
 'use strict';
 
-// Verifica sintaxa tuturor fisierelor .js (node --check). Folosit in `npm run lint` si CI.
+// Verifica sintaxa tuturor fisierelor .js si .mjs (node --check). Folosit in `npm run lint` si CI.
 
 const fs = require('fs');
 const path = require('path');
@@ -12,7 +12,7 @@ function walk(dir) {
   for (const f of fs.readdirSync(dir)) {
     const p = path.join(dir, f);
     if (fs.statSync(p).isDirectory()) { if (!SKIP.has(f)) walk(p); }
-    else if (f.endsWith('.js')) files.push(p);
+    else if (f.endsWith('.js') || f.endsWith('.mjs')) files.push(p);
   }
 }
 ['src', 'scripts', 'test', 'public'].forEach((d) => { if (fs.existsSync(d)) walk(d); });

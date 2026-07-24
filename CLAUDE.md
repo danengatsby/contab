@@ -17,6 +17,7 @@ npm test                      # suita completă: sintaxă + module + store + HTT
 node test/run.js              # doar verificările de module (sincron, eq/ok, secțiuni)
 node test/http.js             # doar integrarea HTTP (pornește serverul pe portul 3891, DB temporar)
 CONTAB_TEST_DRIVER=json node test/http.js     # aceeași suită pe driverul json (vechi, doar rollback; rulează ambele la schimbări de persistență!)
+node test/frontend.mjs        # doar logica pură din public/*.js (shim DOM, fără browser/jsdom)
 node test/anaf.js             # reziliență ANAF + poll SPV (async, stub-uri, fără apeluri reale)
 npm run seed                  # încarcă exemplul din ghid (S.C. EXEMPLU PROD S.R.L., 2026-06)
 npm run e2e                   # E2E pe live; pe acest server rulează prin Docker (vezi antetul scripts/e2e.mjs)
@@ -81,6 +82,13 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
   seed în `buildDb()`, cookie-uri prin `req()`, FormData nativ;
   `test/anaf.js` e async (stub pe `global.fetch` și pe funcțiile modulului `anaf`). La teste noi de
   rute HTTP, atenție: restore-ul din suita de backup readuce baza la snapshot.
+- Frontend: `test/frontend.mjs` testează **doar logica pură** din `public/*.js` (funcții și
+  construire de HTML ca șiruri), nu randarea — aceea e treaba lui `npm run e2e`. `test/dom-shim.mjs`
+  dă globalii atinși la import (`document`, `window`, `MutationObserver`…) și întoarce mereu
+  elemente inerte, niciodată `null` (disciplina de gardă pe null nu e uniformă în `public/`).
+  Modulele se importă dintr-o **oglindă în /tmp** marcată `{"type":"module"}`, fiindcă `package.json`
+  de la rădăcină e `"commonjs"`; `public/` rămâne curat (un `public/package.json` ar ajunge servit
+  static). Pentru a testa o funcție pură nouă, adaug-o într-un `export` separat, marcat cu comentariu.
 - Orice scriere externă (ANAF) trece prin `anafFetch` (timeout + retry doar pe GET); webhook-ul
   Stripe e idempotent pe `event.id` (`seenEvent`/`rememberEvent`).
 - Parametrii fiscali stau centralizat în `src/fiscalConfig.js` (datați); nu hardcoda cote.
