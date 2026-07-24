@@ -1363,6 +1363,18 @@ const etMulti = et.buildDeclaration(etCompany, etAviz, Object.assign({}, etTd, {
 ] }));
 eq('e-Transport multi: 2 pozitii de marfa', etMulti.bunuri.length, 2);
 eq('e-Transport multi: a doua pozitie are nrCrt 2 si UM kg=KGM', etMulti.bunuri[1].nrCrt + ':' + etMulti.bunuri[1].codUnitateMasura, '2:KGM');
+// constrangeri de schema in plus (aliniate cu XSD-ul oficial)
+ok('e-Transport validare: cantitate 0 -> eroare', !et.validate(et.buildDeclaration(etCompany, etAviz, Object.assign({}, etTd, { bunuri: [{ denumire: 'X', codTarifar: '48191000', cantitate: 0, um: 'buc', greutateBruta: 10, valoare: 5 }] }))).ok);
+ok('e-Transport validare: greutate neta > bruta -> avertisment', et.validate(et.buildDeclaration(etCompany, etAviz, Object.assign({}, etTd, { greutateNeta: 200, greutateBruta: 140 }))).warnings.some((w) => /neta/i.test(w)));
+// coerenta traseu <-> tip operatiune: livrare IC cu sosire pe judet (nu frontiera) -> avertisment
+const etIc = { id: 'e2', tip: 'livrare_intracomunitara', tipNume: 'Livrare IC', data: '2026-06-15', partener: 'DE Client', partenerCui: 'DE123',
+  lines: gt2('livrare_intracomunitara').build({ baza: 5000 }) };
+const etIcDecl = et.buildDeclaration(etCompany, etIc, { nrVehicul: 'CJ01ABC', codTarifar: '94036010', greutateBruta: 500, codScopOperatiune: '101', final: { judet: 'Timis', localitate: 'Timisoara' } });
+eq('e-Transport: livrare IC dedusa ca tip 20', etIcDecl.codTipOperatiune, 20);
+ok('e-Transport validare: iesire IC cu sosire pe judet (nu frontiera) -> avertisment', et.validate(etIcDecl).warnings.some((w) => /frontier|vamal/i.test(w)));
+// aceeasi iesire, dar cu sosire la un punct de trecere a frontierei -> fara avertismentul de traseu
+const etIcPtf = et.buildDeclaration(etCompany, etIc, { nrVehicul: 'CJ01ABC', codTarifar: '94036010', greutateBruta: 500, final: { codPtf: 'NADLAC2' } });
+ok('e-Transport validare: iesire IC prin PTF -> fara avertisment de frontiera', !et.validate(etIcPtf).warnings.some((w) => /frontier|vamal/i.test(w)));
 
 section('D100 — impozit micro trimestrial + XML');
 // veniturile se cumuleaza pe lunile trimestrului (apr+iun in T2), luna din alt trimestru e exclusa
