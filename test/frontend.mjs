@@ -201,12 +201,69 @@ eq('sirul gol da zero', plan.nrRo(''), 0);
 eq('textul nenumeric da zero (nu NaN)', plan.nrRo('abc'), 0);
 eq('null da zero', plan.nrRo(null), 0);
 eq('rezultatul e rotunjit la ban', plan.nrRo('5,678'), 5.68);
-// CARACTERIZARE, nu aprobare: cu un SINGUR separator si trei cifre dupa el, valoarea e
-// ambigua („1.234" = o mie doua sute treizeci si patru in scriere romaneasca, sau 1,234?).
-// Implementarea alege zecimalele, deci 1.234 devine 1,23 lei — de o mie de ori mai putin.
-// Testul fixeaza comportamentul EXISTENT ca sa nu se schimbe tacit; vezi nota din raport.
-eq('ambiguu: „1.234" e citit ca zecimal, nu ca mii', plan.nrRo('1.234'), 1.23);
-eq('ambiguu: „1,234" e citit ca zecimal, nu ca mii', plan.nrRo('1,234'), 1.23);
+// Separatori de mii repetati: formatul RO uzual pentru sume mari, fara zecimale.
+// Inainte de reparatie acestea dadeau 0 — suma disparea tacit din balanta de deschidere.
+eq('mii cu grupe multiple (RO)', plan.nrRo('1.234.567'), 1234567);
+eq('mii cu grupe multiple (EN)', plan.nrRo('1,234,567'), 1234567);
+eq('grupele de mii pastreaza si zecimalele', plan.nrRo('1.234.567,89'), 1234567.89);
+// Zero intreg si partea intreaga lunga NU pot fi grupe de mii -> zecimale, fara intrebare
+eq('„0,500" e jumatate de leu, nu 500', plan.nrRo('0,500'), 0.5);
+eq('„1234,567" nu e o grupare valida de mii -> zecimale', plan.nrRo('1234,567'), 1234.57);
+
+section('Plan de conturi: valorile ambigue nu se ghicesc');
+// Miezul reparatiei: un separator unic urmat de EXACT 3 cifre nu poate fi decis singur.
+// Parserul raporteaza ambiguitatea in loc sa aleaga (UI-ul intreaba — vezi askSeparator).
+ok('„1.234" e raportat ca ambiguu', plan.parseAmount('1.234').ambiguous === true);
+ok('„1,234" e raportat ca ambiguu', plan.parseAmount('1,234').ambiguous === true);
+ok('„10.000" e raportat ca ambiguu', plan.parseAmount('10.000').ambiguous === true);
+ok('„1.234,56" NU e ambiguu (ambii separatori prezenti)', plan.parseAmount('1.234,56').ambiguous === false);
+ok('„1234,56" NU e ambiguu (doua zecimale)', plan.parseAmount('1234,56').ambiguous === false);
+ok('„1.234.567" NU e ambiguu (separator repetat)', plan.parseAmount('1.234.567').ambiguous === false);
+ok('un numar fara separator NU e ambiguu', plan.parseAmount('1234').ambiguous === false);
+ok('sirul gol NU e ambiguu', plan.parseAmount('').ambiguous === false);
+// Odata lamurit rolul separatorului, aceeasi valoare se citeste in ambele feluri
+eq('ambiguu rezolvat ca mii', plan.nrRo('1.234', { '.': 'mii' }), 1234);
+eq('ambiguu rezolvat ca zecimale', plan.nrRo('1.234', { '.': 'zecimale' }), 1.23);
+eq('rolul se aplica pe separatorul corect', plan.nrRo('1,234', { ',': 'mii' }), 1234);
+ok('cu rol dat, valoarea nu mai e ambigua', plan.parseAmount('1.234', { '.': 'mii' }).ambiguous === false);
+
+section('Plan de conturi: deducerea conventiei din fisier');
+// O singura linie care se citeste singur lamureste tot fisierul — asa evitam sa intrebam degeaba.
+eq('„1.234,56" arata ca punctul separa miile', plan.sepConvention(['1.234,56'])['.'], 'mii');
+eq('„1.234,56" arata ca virgula e zecimala', plan.sepConvention(['1.234,56'])[','], 'zecimale');
+eq('„12,5" arata ca virgula e zecimala', plan.sepConvention(['12,5'])[','], 'zecimale');
+eq('„1.234.567" arata ca punctul separa miile', plan.sepConvention(['1.234.567'])['.'], 'mii');
+eq('tokenurile ambigue nu deduc nimic', plan.sepConvention(['1.234', '2.500'])['.'], null);
+eq('fara tokenuri nu se deduce nimic', plan.sepConvention([])['.'], null);
+// dovezi contradictorii pe acelasi separator: nu ghicim, raspunde omul
+eq('dovezi contradictorii anuleaza deducerea', plan.sepConvention(['1.234,56', '12.5'])['.'], null);
+
+section('Plan de conturi: importul balantei (linii -> randuri)');
+const LINES_CLAR = ['Cont;Denumire;SoldDebit;SoldCredit', '5121;Banca;1.234,56;0', '401;Furnizori;0;2.500,00'];
+const clar = plan.openingRowsFrom(LINES_CLAR, plan.sepConvention(['1.234,56', '0', '0', '2.500,00']));
+eq('antetul este sarit', clar.rows.length, 2);
+eq('nicio ambiguitate pe un fisier clar', clar.ambig.length, 0);
+eq('soldul debitor este citit corect', clar.rows[0].d, 1234.56);
+eq('contul este pastrat', clar.rows[0].cont, '5121');
+eq('soldul creditor este citit corect', clar.rows[1].c, 2500);
+// acelasi fisier, dar fara nicio zecimala care sa lamureasca separatorul -> import BLOCAT
+const LINES_AMBIG = ['Cont;Denumire;SoldDebit;SoldCredit', '5121;Banca;10.000;0', '401;Furnizori;0;10.000'];
+const amb = plan.openingRowsFrom(LINES_AMBIG, plan.sepConvention(['10.000', '0', '0', '10.000']));
+ok('fisierul fara dovezi raporteaza ambiguitatea', amb.ambig.length > 0);
+eq('valoarea ambigua e raportata asa cum a fost scrisa', amb.ambig[0], '10.000');
+// cu raspunsul omului, aceleasi linii se importa cu valoarea corecta
+const rezolvat = plan.openingRowsFrom(LINES_AMBIG, { '.': 'mii', ',': 'zecimale' });
+eq('dupa confirmare nu mai ramane nimic ambiguu', rezolvat.ambig.length, 0);
+eq('„10.000" devine zece mii', rezolvat.rows[0].d, 10000);
+// randurile fara solduri nu intra in editor
+const golite = plan.openingRowsFrom(['5121;Banca;0;0', '401;Furnizori;0;100'], {});
+eq('randurile cu ambele solduri zero sunt sarite', golite.rows.length, 1);
+// Raspunsul omului: separatorii au roluri COMPLEMENTARE, deci un raspuns ii lamureste pe amandoi
+eq('raspuns „mii" pe punct face virgula zecimala', plan.mergeRoles({}, '.', 'mii')[','], 'zecimale');
+eq('raspuns „zecimale" pe punct face virgula separator de mii', plan.mergeRoles({}, '.', 'zecimale')[','], 'mii');
+eq('raspunsul se aplica separatorului intrebat', plan.mergeRoles({}, ',', 'mii')[','], 'mii');
+// ce a stabilit deja fisierul NU se rescrie cu raspunsul omului
+eq('deducerea din fisier are prioritate', plan.mergeRoles({ '.': 'mii' }, ',', 'mii')['.'], 'mii');
 
 section('Dashboard: tendinta lunara');
 eq('serie goala nu are tendinta', dashboard.trendOf([], 'venituri'), null);
