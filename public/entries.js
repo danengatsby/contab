@@ -12,11 +12,14 @@ const EFACT_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse
 const SENDABLE_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare']);
 // Miscari de bunuri eligibile pentru RO e-Transport (cod UIT). Aliniat cu ELIGIBLE_TYPES din src/etransport.js.
 const ETRANSP_TYPES = new Set(['aviz_livrare', 'livrare_intracomunitara', 'achizitie_intracomunitara', 'import_vamal', 'factura_vanzare_marfuri', 'factura_vanzare_produse']);
-// Celula e-Transport: codul UIT (daca a fost obtinut) sau link la declaratia XML (draft din aviz).
+// Celula e-Transport: codul UIT (daca a fost obtinut) sau buton care deschide formularul ghidat
+// (vehicul/traseu/greutati -> verifica -> trimite pentru UIT). Butonul poarta datele de prefill;
+// handler-ul delegat din public/etransport.js il prinde din orice randare.
 function etranspCell(e) {
   if (!ETRANSP_TYPES.has(e.tip)) return '';
   if (e.etransport && e.etransport.uit) return ` · <span class="pill" title="Cod UIT e-Transport obtinut">UIT ${H(e.etransport.uit)}</span>`;
-  return ` · <a class="linkbtn" href="/xml/etransport/${e.id}" target="_blank" title="Generează declarația e-Transport (XML) — completează vehicul/traseu/greutate în portalul ANAF pentru codul UIT">e-Transport</a>`;
+  const nc = (e.intrastat && e.intrastat.codNC) || '';
+  return ` · <button class="linkbtn ettrans" data-id="${e.id}" data-tip="${e.tip}" data-nc="${H(nc)}" data-data="${H(e.data || '')}" title="Declară transportul de bunuri și obține codul UIT (e-Transport)">e-Transport</button>`;
 }
 // $, $$ mutati in core.js (importate mai sus)
 // Buton „arată/ascunde" pe fiecare camp de parola (login, inscriere, schimbare parola, admin…)

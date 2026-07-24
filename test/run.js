@@ -1309,6 +1309,9 @@ eq('e-Transport judet: Bucuresti -> 40', et.judetCod('Bucuresti'), '40');
 eq('e-Transport judet: diacritice „Timiș" -> 35', et.judetCod('Timiș'), '35');
 eq('e-Transport judet: „jud. Iași" -> 22', et.judetCod('jud. Iași'), '22');
 eq('e-Transport judet: cod direct „5" -> 05', et.judetCod('5'), '05');
+eq('e-Transport judet: ISO „RO-CJ" -> 12 (format e-Factura)', et.judetCod('RO-CJ'), '12');
+eq('e-Transport judet: ISO „RO-B" -> 40 (Bucuresti)', et.judetCod('RO-B'), '40');
+eq('e-Transport judet: sufix ISO „CJ" -> 12', et.judetCod('CJ'), '12');
 eq('e-Transport judet: necunoscut -> gol', et.judetCod('Atlantida'), '');
 // tipul operatiunii dedus din articol
 eq('e-Transport: aviz -> tip 30', et.defaultTipOperatiune('aviz_livrare'), 30);

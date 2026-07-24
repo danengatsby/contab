@@ -8,6 +8,7 @@ import { loadDashboard, renderBudget, setDashboardDeps } from './dashboard.js';
 import { initUiMode } from './simplemode.js';
 import { loadPartners } from './partners.js';
 import './viewer.js'; // vizualizatorul de documente (PDF/CSV/XML/e-Factura) — se activeaza prin efect secundar
+import './etransport.js'; // formularul ghidat e-Transport (cod UIT) — se activeaza prin efect secundar
 import { pget, workMonth, setWorkMonth, lunaLabel, applyWorkMonth, onPeriodChange, fillPeriods, setPeriodsDeps } from './periods.js';
 import { loadJournal, loadLedger, loadCashbook, loadBalance, loadVat, loadClosings, loadStatements, loadStorno } from './rapoarte.js';
 import { loadLivrabile, loadPortfolio, loadNotifications, loadReconcile, loadAnalytic, refreshNotifBadge } from './livrabile.js';

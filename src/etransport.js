@@ -65,9 +65,20 @@ const JUDETE = {
   salaj: '31', sibiu: '32', suceava: '33', teleorman: '34', timis: '35', tulcea: '36',
   vaslui: '37', valcea: '38', vrancea: '39', bucuresti: '40', calarasi: '51', giurgiu: '52',
 };
+// Codurile ISO 3166-2 de judet (RO-XX) \u2014 asa e stocat judetul firmei in setari (format e-Factura).
+// Cheie: sufixul (fara \u201eRO-"), 1-2 litere; valoare: acelasi cod SIRUTA de 2 cifre.
+const JUDETE_ISO = {
+  AB: '01', AR: '02', AG: '03', BC: '04', BH: '05', BN: '06', BT: '07', BV: '08', BR: '09', BZ: '10',
+  CS: '11', CJ: '12', CT: '13', CV: '14', DB: '15', DJ: '16', GL: '17', GJ: '18', HR: '19', HD: '20',
+  IL: '21', IS: '22', IF: '23', MM: '24', MH: '25', MS: '26', NT: '27', OT: '28', PH: '29', SM: '30',
+  SJ: '31', SB: '32', SV: '33', TR: '34', TM: '35', TL: '36', VS: '37', VL: '38', VN: '39', B: '40',
+  CL: '51', GR: '52',
+};
 function judetCod(j) {
   const s = String(j || '').trim();
-  if (/^\d{1,2}$/.test(s)) return s.padStart(2, '0'); // cod direct
+  if (/^\d{1,2}$/.test(s)) return s.padStart(2, '0'); // cod direct SIRUTA
+  const iso = s.toUpperCase().replace(/^RO[-\s]?/, ''); // \u201eRO-CJ" / \u201eRO-B" / \u201eCJ"
+  if (JUDETE_ISO[iso]) return JUDETE_ISO[iso];
   const key = s.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // scoate diacriticele (combinari NFD)
     .replace(/\bjud(et)?\.?\s*/i, '').replace(/\s+/g, ' ').trim();
