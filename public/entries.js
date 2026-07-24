@@ -10,6 +10,14 @@ function setEntriesDeps(d) { Object.assign(D, d); }
 
 const EFACT_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare', 'factura_storno_cumparare']);
 const SENDABLE_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare']);
+// Miscari de bunuri eligibile pentru RO e-Transport (cod UIT). Aliniat cu ELIGIBLE_TYPES din src/etransport.js.
+const ETRANSP_TYPES = new Set(['aviz_livrare', 'livrare_intracomunitara', 'achizitie_intracomunitara', 'import_vamal', 'factura_vanzare_marfuri', 'factura_vanzare_produse']);
+// Celula e-Transport: codul UIT (daca a fost obtinut) sau link la declaratia XML (draft din aviz).
+function etranspCell(e) {
+  if (!ETRANSP_TYPES.has(e.tip)) return '';
+  if (e.etransport && e.etransport.uit) return ` · <span class="pill" title="Cod UIT e-Transport obtinut">UIT ${H(e.etransport.uit)}</span>`;
+  return ` · <a class="linkbtn" href="/xml/etransport/${e.id}" target="_blank" title="Generează declarația e-Transport (XML) — completează vehicul/traseu/greutate în portalul ANAF pentru codul UIT">e-Transport</a>`;
+}
 // $, $$ mutati in core.js (importate mai sus)
 // Buton „arată/ascunde" pe fiecare camp de parola (login, inscriere, schimbare parola, admin…)
 function entryDir(tip) {
@@ -55,7 +63,7 @@ function entryRowHtml(e) {
     <td>${entryStateBadge(e)}</td>
     <td><a class="linkbtn" href="/pdf/note/${e.id}" target="_blank">PDF</a>
         ${e.lines.some((l) => /^531/.test(String(l.debit))) ? ` · <a class="linkbtn" href="/pdf/chitanta/${e.id}" target="_blank" title="Chitanta pentru incasarea in numerar (numar din seria CH)">chitanță</a>` : ''}
-        ${EFACT_TYPES.has(e.tip) ? ` · <a class="linkbtn" href="/xml/efactura/${e.id}" target="_blank">e-Factura</a>` : ''}
+        ${EFACT_TYPES.has(e.tip) ? ` · <a class="linkbtn" href="/xml/efactura/${e.id}" target="_blank">e-Factura</a>` : ''}${etranspCell(e)}
         ${SENDABLE_TYPES.has(e.tip) ? (e.spv
     ? ` · <button class="linkbtn spvstat" data-id="${e.id}">SPV: ${e.spv.stare}${e.spv.acceptat ? ' ✓' : ''}</button>${e.spv.idDescarcare ? ` · <button class="linkbtn spvdl" data-id="${e.id}">recipisă</button>` : ''}`
     : ` · <button class="linkbtn spvsend" data-id="${e.id}">trimite SPV</button>`) : ''}
@@ -195,9 +203,9 @@ async function loadArhiva() {
   const declMonthly = L('/pdf/d300' + pq, '⬇ D300 PDF') + L('/xml/d300' + pq, 'D300 XML') + L('/xml/d394' + pq, 'D394 XML') + L('/xml/d390' + pq, 'D390 XML (VIES)') + L('/xml/d100' + pq, 'D100 XML (trim.)') + L('/csv/intrastat' + pq, 'Intrastat CSV') + L('/xml/intrastat' + pq, 'Intrastat XML') + L('/pdf/d112' + pq, '⬇ D112 PDF') + L('/xml/d112' + pq, 'D112 XML') + L('/xml/d205' + yq, 'D205 XML (an)') + L('/xml/d101' + yq, 'D101 XML (an)') + L('/xml/saft' + yq, 'SAF-T XML');
   $('#arhivaView').innerHTML = `
     <div class="card"><h3>📥 01 · Intrări (facturi primite)</h3>
-      <p class="muted">Facturi de la furnizori, bonuri, chitanțe — cu fișierul scanat atașat.</p>${tbl(intr, null, 'Niciun document de intrare în perioadă.')}</div>
+      <p class="muted">Facturi de la furnizori, bonuri, chitanțe — cu fișierul scanat atașat.</p>${tbl(intr, etranspCell, 'Niciun document de intrare în perioadă.')}</div>
     <div class="card"><h3>📤 02 · Ieșiri (facturi emise)</h3>
-      <p class="muted">Facturi către clienți — cu PDF și e-Factura.</p>${tbl(ies, eFact, 'Niciun document de ieșire în perioadă.')}</div>
+      <p class="muted">Facturi către clienți — cu PDF, e-Factura și e-Transport.</p>${tbl(ies, (e) => eFact(e) + etranspCell(e), 'Niciun document de ieșire în perioadă.')}</div>
     <div class="grid2">
       <div class="card"><h3>🏦 03 · Bancă</h3><p class="muted">Jurnalul de bancă (5121) și extrasele importate.</p>${G('cashbook', 'Deschide Bancă / Casă')}</div>
       <div class="card"><h3>💵 04 · Casă</h3><p class="muted">Registrul de casă (5311) — încasări/plăți în numerar.</p>${G('cashbook', 'Deschide Bancă / Casă')}</div>
