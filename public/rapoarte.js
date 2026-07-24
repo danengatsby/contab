@@ -275,6 +275,40 @@ async function renderReconciliere(p) {
     + '<p class="muted" data-u="u28">Verificare internă orientativă: confruntă poziția ta cu ce vede ANAF prin RO e-Factura. Reconcilierea oficială o face decontul precompletat e-TVA după depunere.</p></div>';
 }
 
+// Reconciliere decont PRECOMPLETAT e-TVA: importa XML-ul ANAF si il confrunta rand-cu-rand
+// cu D300-ul propriu al perioadei (evidentiaza diferentele — simetric cu importul e-Factura primite).
+if ($('#etvaReconBtn')) $('#etvaReconBtn').addEventListener('click', runEtvaReconcile);
+if ($('#etvaFile')) $('#etvaFile').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try { $('#etvaXmlInput').value = await f.text(); runEtvaReconcile(); } catch (_) { toast('Nu s-a putut citi fișierul.', true); }
+});
+async function runEtvaReconcile() {
+  const box = $('#etvaResult');
+  const xmlText = (($('#etvaXmlInput') && $('#etvaXmlInput').value) || '').trim();
+  if (!xmlText) { box.innerHTML = '<p class="muted">Alege fișierul XML precompletat sau lipește conținutul.</p>'; return; }
+  const p = pget('tva');
+  box.innerHTML = '<p class="muted">Se reconciliază…</p>';
+  let r;
+  try { r = await api('/api/etva-precompletat' + (p ? '?period=' + p : ''), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ xml: xmlText }) }); }
+  catch (e) { box.innerHTML = `<p class="status err">${H(e.message)}</p>`; return; }
+  box.innerHTML = renderEtvaResult(r);
+}
+function renderEtvaResult(r) {
+  const icon = { eroare: '⛔', atentie: '⚠️', info: 'ℹ️' };
+  const badge = r.ok ? '<span class="pill">✓ concordant</span>' : `<span class="pill warn">${r.diffCount} rând(uri) cu diferențe</span>`;
+  const findings = (r.findings || []).length
+    ? `<ul class="checklist todo">${r.findings.map((f) => `<li>${icon[f.nivel] || '•'} ${H(f.mesaj)}</li>`).join('')}</ul>` : '';
+  const cell = (c) => c
+    ? `<td class="num">${fmt(c.propriu)}</td><td class="num">${fmt(c.anaf)}</td><td class="num${c.match ? '' : ' etva-diff'}">${c.delta === 0 ? '—' : (c.delta > 0 ? '+' : '') + fmt(c.delta)}</td>`
+    : '<td></td><td></td><td></td>';
+  const rows = (r.rows || []).map((row) => `<tr class="${row.match ? '' : 'etva-diff-row'}"><td>${H(row.rand)}</td><td>${H(row.eticheta)}</td>${cell(row.baza)}${cell(row.tva)}</tr>`).join('');
+  return `<div class="card" data-u="u18"><div class="card-head"><h4>Comparație cu decontul precompletat</h4>${badge}</div>`
+    + `<p class="muted" data-u="u25">Perioada ${H((r.meta && r.meta.period) || '')}. Δ = ANAF − tu (pozitiv: ANAF vede mai mult decât ai declarat).</p>`
+    + findings
+    + `<div class="tablewrap"><table><thead><tr><th>Rând</th><th>Descriere</th><th class="num">Bază tu</th><th class="num">Bază ANAF</th><th class="num">Δ</th><th class="num">TVA tu</th><th class="num">TVA ANAF</th><th class="num">Δ</th></tr></thead><tbody>${rows}</tbody></table></div>`
+    + `<p class="muted" data-u="u28">Decontul precompletat e-TVA se descarcă din SPV. Diferențele trebuie justificate până la termenul din notificarea de conformare.</p></div>`;
+}
+
 // ───────────────────────── CLOSINGS ─────────────────────────
 onPeriodChange('vc', previewVat);
 async function loadClosings() {

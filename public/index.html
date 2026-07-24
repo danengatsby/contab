@@ -730,6 +730,15 @@
       </div>
       <div id="tvaSummary" class="grid2"></div>
       <div id="tvaReconciliere"></div>
+      <div class="card" id="etvaPrecompletatCard">
+        <div class="card-head"><h3>Decont precompletat e-TVA — reconciliere</h3></div>
+        <p class="muted">Încarcă XML-ul decontului precompletat (RO e-TVA) descărcat din SPV și confruntă-l rând-cu-rând cu poziția ta.</p>
+        <input type="file" id="etvaFile" accept=".xml,application/xml,text/xml" aria-label="Fișier decont precompletat XML">
+        <details data-u="u18"><summary class="muted">…sau lipește conținutul XML</summary>
+          <textarea id="etvaXmlInput" rows="4" placeholder="&lt;declaratie300 .../&gt;" data-u="u18"></textarea></details>
+        <button id="etvaReconBtn" class="btn small primary" data-u="u23">Reconciliază cu decontul precompletat</button>
+        <div id="etvaResult" data-u="u18"></div>
+      </div>
       <div class="card"><div class="card-head"><h3>Jurnal de vânzări (TVA colectată)</h3><a id="tvaVanzariCsv" class="btn small" target="_blank">⬇ CSV</a></div><div id="tvaVanzari" class="tablewrap"></div></div>
       <div class="card"><div class="card-head"><h3>Jurnal de cumpărări (TVA deductibilă)</h3><a id="tvaCumparariCsv" class="btn small" target="_blank">⬇ CSV</a></div><div id="tvaCumparari" class="tablewrap"></div></div>
       <div class="card">

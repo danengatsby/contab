@@ -518,6 +518,17 @@ async function main() {
     const val = await req('GET', '/api/validate/d300?period=2026-06', { cookie: c1 });
     ok('validare pre-depunere: raspuns cu ok/errors', val.json && typeof val.json.ok === 'boolean' && Array.isArray(val.json.errors));
 
+    // ── Reconciliere e-TVA: decontul precompletat (aici = propriul D300) <-> pozitia proprie ──
+    await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2026-06-15', partener: 'Client eTVA', cuiPartener: 'RO123', document: 'ETVA-1', baza: 1000, tva: 210, cota: 21 } } });
+    const ownD300 = await req('GET', '/xml/d300?period=2026-06', { cookie: c1 });
+    const etvaSelf = await req('POST', '/api/etva-precompletat?period=2026-06', { cookie: c1, body: { xml: ownD300.text } });
+    ok('etva-precompletat: propriul decont vs sine -> 0 diferente, ok', etvaSelf.json && etvaSelf.json.diffCount === 0 && etvaSelf.json.ok === true);
+    ok('etva-precompletat: tabel de randuri cu R17 (total colectata)', Array.isArray(etvaSelf.json.rows) && etvaSelf.json.rows.some((r) => r.rand === 'R17' && r.tva));
+    const etvaTamp = ownD300.text.replace(/R9_2="(\d+)"/, (m, n) => 'R9_2="' + (Number(n) + 500) + '"');
+    const etvaDiff = await req('POST', '/api/etva-precompletat?period=2026-06', { cookie: c1, body: { xml: etvaTamp } });
+    ok('etva-precompletat: decont modificat -> diferente semnalate, not ok', etvaDiff.json && etvaDiff.json.diffCount >= 1 && etvaDiff.json.ok === false);
+    eq('etva-precompletat: XML care nu e D300 -> 400', (await req('POST', '/api/etva-precompletat', { cookie: c1, body: { xml: '<nu/>' } })).status, 400);
+
     // ── D100 XML + Intrastat XML + achizitii produse agricole pe carnet (D394) ──
     const agrE = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'achizitie_produse_agricole', fields: { data: '2026-06-20', partener: 'Ion Taranu', cuiPartener: '1800101223344', document: 'Fila 12', suma: 1000, cont: '371' } } });
     ok('achizitie produse agricole pe carnet: 371=462, fara TVA', agrE.json && agrE.json.ok && agrE.json.entry.lines.some((l) => l.debit === '371' && l.credit === '462') && !agrE.json.entry.lines.some((l) => l.debit === '4426'));
