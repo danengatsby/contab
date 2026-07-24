@@ -43,6 +43,13 @@ de lucru, clasificarea documentelor și parsarea sumelor în format românesc. D
 frontend-ul de server (stările articolelor, tipurile eligibile e-Transport), ca o listă extinsă
 într-un singur loc să nu treacă neobservată. Randarea și evenimentele rămân în sarcina `npm run e2e`.
 
+**Importul balanței de deschidere refuză valorile ambigue.** „1.234" poate însemna 1234 (separator
+de mii, scrierea românească) sau 1,23 — o diferență de o mie de ori, exact pe soldurile care se
+propagă în toată contabilitatea. Aplicația deduce întâi convenția din fișier (o singură valoare
+neambiguă, precum `1.234,56` sau `12,5`, lămurește tot fișierul), iar dacă rămân valori ambigue
+**nu importă nimic**: întreabă o dată, cu exemple reale și ambele interpretări calculate, și aplică
+răspunsul întregului fișier. Sumele fără zecimale (`1.234.567`) se citesc corect.
+
 - **Hook pre-pornire:** scriptul `prestart` rulează `npm test` înainte de `npm start` (pornirea
   locală e blocată dacă testele pică). Sub **pm2** (`node server.js` direct) hook-ul e ocolit — pentru
   a gata și acolo, rulează `npm test && pm2 restart contab`.
