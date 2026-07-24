@@ -195,6 +195,43 @@ async function listMessages(cfg, cif, zile, filtru) {
   return Array.isArray(j.mesaje) ? j.mesaje : [];
 }
 
+// ───────── RO e-Transport (ETRANSPORT/ws/v1) — cod UIT pentru transportul de bunuri ─────────
+// Acelasi OAuth ca e-Factura (logincert.anaf.ro), endpoint separat. Raspunsurile sunt JSON
+// (spre deosebire de FCTEL, care da XML), iar UIT-ul vine chiar in raspunsul la upload.
+
+/** Incarca declaratia e-Transport. Intoarce { index, uit }. POST-ul NU se reincearca (upload). */
+async function uploadEtransport(cfg, xmlStr, cif) {
+  const token = await ensureToken(cfg);
+  const c = String(cif || '').replace(/^ro/i, '').replace(/\s/g, '');
+  const url = apiBase(cfg.env) + '/ETRANSPORT/ws/v1/upload/ETRANSP/' + encodeURIComponent(c);
+  const r = await anafFetch('ANAF e-Transport upload', url, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/xml' },
+    body: xmlStr,
+  });
+  const txt = await r.text();
+  if (!r.ok) throw new Error('ANAF e-Transport upload ' + r.status + ': ' + txt.slice(0, 300));
+  let j;
+  try { j = JSON.parse(txt); } catch (_) { throw new Error('Raspuns e-Transport invalid: ' + txt.slice(0, 200)); }
+  if (Number(j.ExecutionStatus) !== 0) {
+    const err = (Array.isArray(j.Errors) && j.Errors.map((e) => e.errorMessage).filter(Boolean).join('; ')) || j.errorMessage || txt.slice(0, 300);
+    throw new Error('e-Transport respins: ' + err);
+  }
+  return { index: String(j.index_incarcare || j.index || ''), uit: String(j.UIT || ''), raw: txt };
+}
+
+/** Verifica starea unei incarcari e-Transport. Intoarce { stare, uit }. */
+async function etransportStatus(cfg, index) {
+  const token = await ensureToken(cfg);
+  const url = apiBase(cfg.env) + '/ETRANSPORT/ws/v1/stareMesaj/' + encodeURIComponent(index);
+  const r = await anafFetch('ANAF e-Transport stareMesaj', url, { headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+  const txt = await r.text();
+  if (!r.ok) throw new Error('ANAF e-Transport stareMesaj ' + r.status + ': ' + txt.slice(0, 300));
+  let j;
+  try { j = JSON.parse(txt); } catch (_) { throw new Error('Raspuns stare e-Transport invalid: ' + txt.slice(0, 200)); }
+  return { stare: String(j.stare || 'in prelucrare'), uit: String(j.UIT || ''), raw: txt };
+}
+
 // ───────── Servicii web SPV generale (SPVWS2) — cereri de documente: Fisa Rol etc. ─────────
 // Documentate oficial in github.com/MfpAnaf/ClientSPV. Fluxul: /cerere depune solicitarea
 // (raspuns { id_solicitare, titlu... }), ANAF o proceseaza asincron si documentul apare in
@@ -244,4 +281,4 @@ async function spvDownload(cfg, id) {
   return Buffer.from(await r.arrayBuffer());
 }
 
-module.exports = { configured, connected, authorizeUrl, exchangeCode, refresh, ensureToken, upload, status, download, listMessages, apiBase, spvRequest, spvMessages, spvDownload, anafFetch };
+module.exports = { configured, connected, authorizeUrl, exchangeCode, refresh, ensureToken, upload, status, download, listMessages, apiBase, spvRequest, spvMessages, spvDownload, anafFetch, uploadEtransport, etransportStatus };

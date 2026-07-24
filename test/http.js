@@ -365,6 +365,35 @@ async function main() {
     const fisaRol = await req('POST', '/api/anaf/fisa-rol', { cookie: c1 });
     ok('anaf/fisa-rol fara SPV -> refuz clar', fisaRol.status === 400 && /SPV|onect/i.test((fisaRol.json && fisaRol.json.error) || ''));
 
+    // ── RO e-Transport (cod UIT): eligibile, validare, XML, izolare, garda neconectat ──
+    const etNom = await req('GET', '/api/etransport/nomenclatoare', { cookie: c1 });
+    ok('etransport/nomenclatoare: tip operatiune + scop', etNom.json && etNom.json.tipOperatiune && etNom.json.tipOperatiune['30'] && etNom.json.scopOperatiune['101']);
+    const avizE = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'aviz_livrare', fields: { data: '2026-06-20', partener: 'Client Transport SRL', cuiPartener: 'RO4455', document: 'AVIZ-9', baza: 2000, tva: 420, cota: 21 } } });
+    const avizId = avizE.json && avizE.json.entry && avizE.json.entry.id;
+    ok('aviz de livrare inregistrat (pentru e-Transport)', avizE.json && avizE.json.ok && avizId);
+    const etElig = await req('GET', '/api/etransport/eligible', { cookie: c1 });
+    ok('etransport/eligible: avizul apare fara UIT', Array.isArray(etElig.json) && etElig.json.some((r) => r.id === avizId && r.uit === '' && r.valoare === 2000));
+    // validare cu date incomplete (fara vehicul/NC/greutate/traseu) -> nu e ok, cu erori
+    const etVBad = await req('POST', '/api/etransport/validate/' + avizId, { cookie: c1, body: {} });
+    ok('etransport/validate: date incomplete -> erori (vehicul lipsa etc.)', etVBad.json && etVBad.json.ok === false && etVBad.json.errors.some((e) => /vehicul/i.test(e)));
+    // validare cu date complete -> ok
+    const etTdOk = { nrVehicul: 'CJ01ABC', codScopOperatiune: '101', codTarifar: '48191000', greutateNeta: 100, greutateBruta: 120,
+      startJudet: 'Cluj', startLocalitate: 'Cluj-Napoca', finalJudet: 'Bucuresti', finalLocalitate: 'Bucuresti' };
+    const etVOk = await req('POST', '/api/etransport/validate/' + avizId, { cookie: c1, body: etTdOk });
+    ok('etransport/validate: date complete -> ok', etVOk.json && etVOk.json.ok === true && etVOk.json.errors.length === 0);
+    // XML: descarcare cu date de transport din query
+    const etXmlRes = await req('GET', '/xml/etransport/' + avizId + '?nrVehicul=CJ01ABC&codTarifar=48191000&greutateBruta=120&startJudet=Cluj&startLocalitate=Cluj-Napoca&finalJudet=Bucuresti&finalLocalitate=Bucuresti', { cookie: c1 });
+    ok('xml/etransport: XML v2 bine-format cu tip operatiune si vehicul', etXmlRes.status === 200 && /xmlns="mfp:anaf:dgti:eTransport:declaratie:v2"/.test(etXmlRes.text) && /codTipOperatiune="30"/.test(etXmlRes.text) && /nrVehicul="CJ01ABC"/.test(etXmlRes.text));
+    // trimitere fara conexiune SPV -> 400 cu mesaj clar (validarea nu se atinge inainte de conexiune)
+    const etSend = await req('POST', '/api/etransport/send/' + avizId, { cookie: c1, body: etTdOk });
+    ok('etransport/send fara SPV -> refuz clar', etSend.status === 400 && /SPV|onect/i.test((etSend.json && etSend.json.error) || ''));
+    // articol neeligibil (factura de cumparare din importul e-Factura) -> 400
+    const etIncomp = await req('POST', '/api/etransport/validate/' + (imp.json.entry.id), { cookie: c1, body: etTdOk });
+    ok('etransport/validate: articol neeligibil (cumparare) -> 400', etIncomp.status === 400 && /neeligibil|eligibil/i.test((etIncomp.json && etIncomp.json.error) || ''));
+    // izolare/inexistent: id necunoscut -> 404
+    eq('etransport/status: id inexistent -> 404', (await req('POST', '/api/etransport/status/nuexista', { cookie: c1 })).status, 404);
+    eq('xml/etransport: id inexistent -> 404', (await req('GET', '/xml/etransport/nuexista', { cookie: c1 })).status, 404);
+
     // ── Mijloace fixe: creare, plan de amortizare, inregistrarea amortizarii lunii ──
     eq('asset create fara campuri -> 400', (await req('POST', '/api/assets', { cookie: c1, body: { denumire: 'X' } })).status, 400);
     const mkAsset = await req('POST', '/api/assets', { cookie: c1, body: { denumire: 'Laptop', cont: '2131', cost: 6000, durataLuni: 24, dataPif: '2026-01-15', metoda: 'liniara' } });

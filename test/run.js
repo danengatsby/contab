@@ -1298,6 +1298,69 @@ eq('Intrastat: sub prag -> neobligat la declarare', intrNC.obligatExpedieri, fal
 ok('Intrastat XML bine-format', wellFormed(xml.intrastatXml({ cui: 'RO1', nume: 'X' }, '2026-06', intrNC)));
 ok('Intrastat XML: articolul DE cu masa neta cumulata', xml.intrastatXml({ cui: 'RO1', nume: 'X' }, '2026-06', intrNC).includes('masa_neta="200.00"'));
 
+section('RO e-Transport (cod UIT) — nomenclatoare, asamblare, validare, XML');
+const et = require('../src/etransport');
+// nomenclatoare oficiale
+ok('e-Transport: tip operatiune 30 = transport intern', /intern/i.test(et.TIP_OPERATIUNE[30]));
+ok('e-Transport: scop 101 = comercializare', /comercial/i.test(et.SCOP_OPERATIUNE[101]));
+// coduri de judet (SIRUTA): nume, diacritice, cod direct, necunoscut
+eq('e-Transport judet: Cluj -> 12', et.judetCod('Cluj'), '12');
+eq('e-Transport judet: Bucuresti -> 40', et.judetCod('Bucuresti'), '40');
+eq('e-Transport judet: diacritice „Timiș" -> 35', et.judetCod('Timiș'), '35');
+eq('e-Transport judet: „jud. Iași" -> 22', et.judetCod('jud. Iași'), '22');
+eq('e-Transport judet: cod direct „5" -> 05', et.judetCod('5'), '05');
+eq('e-Transport judet: necunoscut -> gol', et.judetCod('Atlantida'), '');
+// tipul operatiunii dedus din articol
+eq('e-Transport: aviz -> tip 30', et.defaultTipOperatiune('aviz_livrare'), 30);
+eq('e-Transport: livrare IC -> tip 20', et.defaultTipOperatiune('livrare_intracomunitara'), 20);
+eq('e-Transport: achizitie IC -> tip 10', et.defaultTipOperatiune('achizitie_intracomunitara'), 10);
+eq('e-Transport: import -> tip 40', et.defaultTipOperatiune('import_vamal'), 40);
+// eligibilitate
+ok('e-Transport: aviz eligibil', et.isEtransportEligible({ tip: 'aviz_livrare' }));
+ok('e-Transport: plata salarii NEeligibil', !et.isEtransportEligible({ tip: 'plata_salarii' }));
+// asamblare din aviz cu linii (items)
+const etCompany = { cui: 'RO12345678', nume: 'EXEMPLU PROD SRL', judet: 'Cluj', oras: 'Cluj-Napoca', adresa: 'Str. Fabricii 10' };
+const etAviz = { id: 'e1', tip: 'aviz_livrare', tipNume: 'Aviz de insotire', data: '2026-07-24', document: 'AVIZ 55',
+  partener: 'CLIENT & CO SRL', partenerCui: 'RO87654321',
+  items: [{ nume: 'Cutii carton', cantitate: 100, um: 'buc', pret: 5, cota: 21 }],
+  lines: gt2('aviz_livrare').build({ baza: 500, tva: 105 }) };
+const etTd = { codScopOperatiune: '101', nrVehicul: 'CJ 01 ABC', codTarifar: '48191000', greutateNeta: 120, greutateBruta: 140,
+  final: { judet: 'Bucuresti', localitate: 'Bucuresti', strada: 'Bd. Unirii', numar: '1' } };
+const etDecl = et.buildDeclaration(etCompany, etAviz, etTd);
+eq('e-Transport: codDeclarant fara prefix RO', etDecl.codDeclarant, '12345678');
+eq('e-Transport: tip operatiune implicit 30 (aviz intern)', etDecl.codTipOperatiune, 30);
+eq('e-Transport: o pozitie de marfa din aviz', etDecl.bunuri.length, 1);
+eq('e-Transport: valoare fara TVA din items (100x5)', etDecl.bunuri[0].valoareLeiFaraTva, 500);
+eq('e-Transport: UM „buc" -> C62', etDecl.bunuri[0].codUnitateMasura, 'C62');
+eq('e-Transport: nr vehicul normalizat (fara spatii, majuscule)', etDecl.transport.nrVehicul, 'CJ01ABC');
+eq('e-Transport: plecare din sediul firmei (Cluj=12)', etDecl.start.codJudet, '12');
+eq('e-Transport: sosire la client (Bucuresti=40)', etDecl.final.codJudet, '40');
+eq('e-Transport: partener fara prefix RO', etDecl.partener.cod, '87654321');
+// valoare fara TVA din linii cand nu exista items
+eq('e-Transport: valoare din linii de venit (fara items)', et.valoareFaraTva({ lines: [{ debit: '418', credit: '707', suma: 800 }, { debit: '418', credit: '4428', suma: 168 }] }), 800);
+// XML bine-format + continut cheie
+const etXml = et.eTransportXml(etCompany, etAviz, etTd);
+ok('e-Transport XML bine-format', wellFormed(etXml));
+ok('e-Transport XML: namespace v2', etXml.includes('xmlns="mfp:anaf:dgti:eTransport:declaratie:v2"'));
+ok('e-Transport XML: codTipOperatiune si nrVehicul', etXml.includes('codTipOperatiune="30"') && etXml.includes('nrVehicul="CJ01ABC"'));
+ok('e-Transport XML: cod tarifar in bunuri', etXml.includes('codTarifar="48191000"'));
+ok('e-Transport XML: amperandul din nume e escapat', etXml.includes('CLIENT &amp; CO SRL') && !etXml.includes('CLIENT & CO'));
+// validare: completa -> ok
+const etV = et.validate(etDecl);
+ok('e-Transport validare: declaratie completa e ok', etV.ok && etV.errors.length === 0);
+// validare: lipsa vehicul / NC / greutate / traseu -> erori
+ok('e-Transport validare: fara vehicul -> eroare', !et.validate(et.buildDeclaration(etCompany, etAviz, Object.assign({}, etTd, { nrVehicul: '' }))).ok);
+ok('e-Transport validare: fara cod tarifar -> eroare', !et.validate(et.buildDeclaration(etCompany, Object.assign({}, etAviz, { items: [], intrastat: null }), Object.assign({}, etTd, { codTarifar: '' }))).ok);
+ok('e-Transport validare: fara greutate bruta -> eroare', !et.validate(et.buildDeclaration(etCompany, etAviz, Object.assign({}, etTd, { greutateNeta: 0, greutateBruta: 0 }))).ok);
+ok('e-Transport validare: traseu final incomplet -> eroare', !et.validate(et.buildDeclaration(etCompany, etAviz, Object.assign({}, etTd, { final: {} }))).ok);
+// multi-pozitie: td.bunuri BATE derivarea din aviz (2 marfuri = 2 linii nrCrt)
+const etMulti = et.buildDeclaration(etCompany, etAviz, Object.assign({}, etTd, { bunuri: [
+  { denumire: 'Marfa A', codTarifar: '48191000', cantitate: 10, um: 'buc', greutateNeta: 50, greutateBruta: 55, valoare: 300, codScop: '101' },
+  { denumire: 'Marfa B', codTarifar: '39239000', cantitate: 20, um: 'kg', greutateNeta: 70, greutateBruta: 75, valoare: 200, codScop: '101' },
+] }));
+eq('e-Transport multi: 2 pozitii de marfa', etMulti.bunuri.length, 2);
+eq('e-Transport multi: a doua pozitie are nrCrt 2 si UM kg=KGM', etMulti.bunuri[1].nrCrt + ':' + etMulti.bunuri[1].codUnitateMasura, '2:KGM');
+
 section('D100 — impozit micro trimestrial + XML');
 // veniturile se cumuleaza pe lunile trimestrului (apr+iun in T2), luna din alt trimestru e exclusa
 const d100db = { entries: [

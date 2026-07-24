@@ -316,6 +316,9 @@ require('./src/routes/bank')(app, { upload, S, activeId, buildEntry, upsertPartn
 // ── Import e-Factura primita (UBL) ──
 require('./src/routes/anaf')(app, { activeId, wrap, logAudit, upsertPartner, canAccess, demoContLock });
 
+// ── RO e-Transport (cod UIT pentru transportul de bunuri; acelasi OAuth SPV ca e-Factura) ──
+require('./src/routes/etransport')(app, { activeId, wrap, logAudit });
+
 
 // Generarea XML declaratii (e-Factura, D300/D394/D390/D205/D112, SAF-T) + validare: src/routes/declarationsXml.js
 require('./src/routes/declarationsXml')(app, { S, activeId, canAccess, wrap });
