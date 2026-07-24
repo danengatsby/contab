@@ -1408,6 +1408,33 @@ ok('e-TVA reconciliere: CUI decont != firma -> eroare, not ok', etvaR3.findings.
 const etvaR4 = etva.reconcile(etvaOwn, etvaParsed.rows, { period: '2026-05', cuiPropriu: etvaV.company.cui, anafLuna: etvaParsed.luna, anafAn: etvaParsed.an, anafCui: etvaParsed.cui });
 ok('e-TVA reconciliere: perioada decont != comparata -> avertisment', etvaR4.findings.some((f) => f.cod === 'e-tva-perioada'));
 
+section('Verificare post-extragere (reconciliere aritmetica) — src/extractCheck.js');
+const echk = require('../src/extractCheck');
+// completeaza golurile derivabile (nu suprascrie)
+eq('extractCheck: completeaza suma lipsa (baza+TVA)', echk.reconcile({ baza: 1000, tva: 210 }).fields.suma, 1210);
+eq('extractCheck: completeaza baza lipsa (suma-TVA)', echk.reconcile({ suma: 1210, tva: 210 }).fields.baza, 1000);
+// infereaza cota din raportul TVA/baza cand lipseste
+eq('extractCheck: infereaza cota 21 din 210/1000', echk.reconcile({ baza: 1000, tva: 210, cota: 0 }).fields.cota, 21);
+eq('extractCheck: infereaza cota 9 din 27/300', echk.reconcile({ baza: 300, tva: 27, cota: 0 }).fields.cota, 9);
+// cota 0 ramane 0 la document fara TVA (regresia „|| 19" — NU se mai forteaza)
+eq('extractCheck: fara TVA -> cota ramane 0 (nu 19)', echk.reconcile({ baza: 500, tva: 0, suma: 500, cota: 0 }).fields.cota, 0);
+// document coerent -> fara avertismente, valori neschimbate
+const ecOk = echk.reconcile({ baza: 1000, tva: 210, suma: 1210, cota: 21 });
+ok('extractCheck: document coerent -> fara avertismente', ecOk.warnings.length === 0 && ecOk.needsReview === false);
+eq('extractCheck: nu suprascrie baza valida', ecOk.fields.baza, 1000);
+// suma incoerenta -> avertisment, dar NU se suprascrie
+const ecBad = echk.reconcile({ baza: 1000, tva: 210, suma: 1500, cota: 21 });
+ok('extractCheck: suma != baza+TVA -> avertisment + needsReview', ecBad.warnings.some((w) => /nu se potrivesc/i.test(w)) && ecBad.needsReview);
+eq('extractCheck: suma incoerenta NU e suprascrisa', ecBad.fields.suma, 1500);
+// cota necorelata cu raportul TVA/baza -> avertisment
+ok('extractCheck: cota necorelata cu raportul -> avertisment', echk.reconcile({ baza: 1000, tva: 210, suma: 1210, cota: 11 }).warnings.some((w) => /raportul TVA/i.test(w)));
+// cota invalida -> avertisment
+ok('extractCheck: cota invalida (17%) -> avertisment', echk.reconcile({ baza: 1000, tva: 170, suma: 1170, cota: 17 }).warnings.some((w) => /valid/i.test(w)));
+// incredere joasa -> verificare recomandata
+ok('extractCheck: incredere joasa -> needsReview', echk.reconcile({ baza: 1000, tva: 210, suma: 1210, cota: 21 }, { incredere: 40 }).needsReview);
+// fallback pe cota standard cand nu se poate infera (baza lipseste)
+eq('extractCheck: fallback pe cota standard cand baza lipseste', echk.reconcile({ tva: 210, cota: 0 }, { standardCota: 21 }).fields.cota, 21);
+
 section('D100 — impozit micro trimestrial + XML');
 // veniturile se cumuleaza pe lunile trimestrului (apr+iun in T2), luna din alt trimestru e exclusa
 const d100db = { entries: [

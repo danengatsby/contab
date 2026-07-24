@@ -182,14 +182,18 @@ async function extractWithAI(buffer, ownCui) {
     data = JSON.parse(textBlock.text);
   }
 
-  const cota = Number(data.cota) || 0;
+  // Cota se pastreaza asa cum a fost citita (inclusiv 0 = document fara TVA). NU se forteaza o
+  // valoare implicita aici — reconcilierea post-extragere (src/extractCheck.js) o infereaza din
+  // raportul TVA/baza cand lipseste, altfel cade pe cota standard datata; un „|| 19" ar fi pus o
+  // cota veche si ar fi ascuns documentele fara TVA.
+  const cota = Math.round(Number(data.cota) || 0);
   const fields = {
     data: data.data || '',
     document: data.document || '',
     partener: data.partener || '',
     baza: data.baza != null ? round2(data.baza) : null,
     tva: data.tva != null ? round2(data.tva) : null,
-    cota: cota || 19,
+    cota,
     suma: data.suma != null ? round2(data.suma) : null,
     brut: data.brut ? round2(data.brut) : null,
   };
