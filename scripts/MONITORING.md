@@ -21,6 +21,17 @@ Raport zilnic prin email: `scripts/perf-report.sh` (cron la 07:45, utilizatorul 
 email (Resend, către `CONTAB_BACKUP_EMAIL_TO`) **doar dacă a găsit ceva** — liniște = totul e ok.
 Rulare manuală fără email: `CONTAB_PERF_NOMAIL=1 bash scripts/perf-report.sh`.
 
+> **Liniștea contează doar dacă raportul chiar vede log-urile.** `ecosystem.config.js` declară
+> log-urile în `<repo>/logs`, dar dacă procesul a fost pornit fără acel fișier, pm2 scrie în
+> `$PM2_HOME/logs` — iar raportul scana un director înghețat și spunea „zero" la nesfârșit
+> (constatat 2026-07-25: fișierul din `<repo>/logs` nu mai fusese scris din 18 iulie). Acum
+> caută în toți candidații cunoscuți, iar dacă **niciunul** n-a fost scris în ultimele 25h
+> raportează explicit „MONITORIZARE OARBĂ" în loc să tacă. `CONTAB_PM2_LOG_DIR`, dacă e setat,
+> devine sursa unică (configurare explicită și cale testabilă).
+>
+> Verifică unde scrie pm2 acum:
+> `sudo -u contab PM2_HOME=/home/contab/.pm2 pm2 jlist | grep pm_out_log_path`
+
 Intenționat, `/api/health` rămâne minimal: e public, iar detaliile de proces pe un endpoint
 neautentificat ar însemna fingerprinting gratuit al serverului (există test care impune asta).
 
