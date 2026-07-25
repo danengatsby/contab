@@ -204,7 +204,7 @@ async function renderRecurring() {
   if (!list.length) { box.innerHTML = '<p class="muted">Niciun șablon recurent definit încă.</p>'; return; }
   const tname = (id) => ((META.types || []).find((t) => t.id === id) || {}).nume || id;
   box.innerHTML = `<table><thead><tr><th>Document</th><th>Partener</th><th class="num">Bază</th><th>Frecvență</th><th>Din</th><th>Ultima</th><th></th></tr></thead><tbody>${
-    list.map((t) => `<tr${t.activ ? '' : ' data-u="u21"'}><td>${tname(t.tip)}</td><td>${t.partener || '—'}</td>
+    list.map((t) => `<tr${t.activ ? '' : ' data-u="u21"'}><td>${H(tname(t.tip))}</td><td>${H(t.partener || '—')}</td>
       <td class="num">${fmt((t.fields || {}).baza || 0)}</td><td>${t.frecventa}</td><td>${t.startDate || ''}</td><td>${t.lastGenerated || '—'}</td>
       <td><button class="linkbtn rectog" data-id="${t.id}" data-activ="${t.activ ? 1 : 0}">${t.activ ? 'dezactivează' : 'activează'}</button> · <button class="del recdel" data-id="${t.id}">✕</button></td></tr>`).join('')}</tbody></table>`;
   $$('#recList .recdel').forEach((b) => b.addEventListener('click', async () => { if (confirm('Ștergi șablonul recurent?')) { await api('/api/recurring/' + b.dataset.id, { method: 'DELETE' }); renderRecurring(); } }));
@@ -245,7 +245,7 @@ async function loadInbox() {
     const msgs = await api('/api/anaf/inbox?zile=60');
     if (!msgs.length) { box.innerHTML = '<p class="muted">Nicio factură primită în ultimele 60 de zile.</p>'; return; }
     box.innerHTML = `<table><thead><tr><th>Data</th><th>Emitent (CIF)</th><th>Detalii</th><th></th></tr></thead><tbody>${
-      msgs.map((m) => `<tr><td>${m.data || ''}</td><td>${m.cif || ''}</td><td>${(m.detalii || '').slice(0, 60)}</td>
+      msgs.map((m) => `<tr><td>${m.data || ''}</td><td>${m.cif || ''}</td><td>${H((m.detalii || '').slice(0, 60))}</td>
         <td>${m.importat ? '<span class="pill">importată</span>' : `<button class="linkbtn spvimp" data-id="${m.id}">importă</button>`}</td></tr>`).join('')}</tbody></table>`;
     $$('#inboxList .spvimp').forEach((b) => b.addEventListener('click', () => importFromSpv(b.dataset.id)));
   } catch (e) { box.innerHTML = `<p class="status err">${e.message}</p>`; }

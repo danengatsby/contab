@@ -454,5 +454,103 @@ ok('codul achiziției IC înseamnă chiar achiziție intracomunitară', /Achizit
 ok('codul importului înseamnă chiar import', /Import/i.test(nomen[etransport.defaultTip('import_vamal')] || ''));
 ok('codul implicit înseamnă transport național', /national/i.test(nomen[etransport.defaultTip('altceva')] || ''));
 
+section('Poartă: fiecare modul din public/ se încarcă fără să arunce');
+// Testele de mai sus importa doar modulele pe care le verifica (9 din ~24). Un import lipsa in
+// restul (ex. folosirea lui `H` fara sa fie importat) NU se vede: `node --check` valideaza
+// sintaxa, nu rezolvarea numelor, iar eroarea apare abia in browser, la randare. S-a intamplat:
+// o reparatie de escapare in mijloace.js a introdus `H is not defined`, prins doar in Playwright.
+// Aici incarcam TOATE modulele — ieftin si prinde clasa asta imediat.
+const moduleErrs = [];
+let incarcate = 0;
+for (const f of fs.readdirSync(PUB).filter((x) => x.endsWith('.js') && x !== 'sw.js')) {
+  try { await import(path.join(mirror, f)); incarcate += 1; } catch (e) { moduleErrs.push(f + ': ' + e.message.slice(0, 60)); }
+}
+ok('toate modulele din public/ se importa (' + incarcate + ')' + (moduleErrs.length ? ' — ' + moduleErrs.join(' | ') : ''), moduleErrs.length === 0);
+ok('s-au incarcat efectiv modulele asteptate', incarcate >= 20);
+// Numele importate din core.js trebuie sa existe la RULARE, nu doar sa fie scrise: verificam ca
+// fiecare modul care foloseste `${fn(...)}` chiar are functia in domeniu (import sau definitie).
+const lipsaImport = [];
+for (const f of fs.readdirSync(PUB).filter((x) => x.endsWith('.js'))) {
+  const src = fs.readFileSync(path.join(PUB, f), 'utf8');
+  for (const fn of ['H', 'escAttr', 'escMsg', 'fmt', 'fiscalPct', 'fiscalText', 'accName']) {
+    if (!new RegExp('\\$\\{' + fn + '\\(').test(src)) continue;
+    const importat = new RegExp('^import \\{[^}]*\\b' + fn + '\\b', 'm').test(src);
+    const definit = new RegExp('^(const|function|let|export (const|function)) ' + fn + '\\b', 'm').test(src);
+    if (!importat && !definit) lipsaImport.push(f + ' foloseste ' + fn);
+  }
+}
+ok('fiecare functie folosita in sabloane e importata sau definita' + (lipsaImport.length ? ' — ' + lipsaImport.join(', ') : ''), lipsaImport.length === 0);
+
+section('Poartă: datele de proveniență externă nu ajung neescapate în HTML');
+// Scanare pe SURSA din public/ (acelasi tipar ca poarta pe docs/api.md din test/run.js).
+// Modelul de amenintare e cel declarat in public/core.js: „date de provenienta externa —
+// parteneri din e-Factura/SPV, extrase bancare, denumiri, explicatii". Un camp din lista de mai
+// jos interpolat direct in HTML, fara escapare, e o regresie: a existat deja (numele
+// partenerului din documentele lipsa, mesajele SPV, explicatiile din jurnal, numele firmei).
+//
+// CE NU acopera: campuri cu nume generice (`.name`, `.nume`) — sunt prea raspandite ca sa fie
+// distinse de constante interne fara un parser adevarat. Pentru acelea ramane a doua poarta,
+// cea pe atribute, plus revizuirea manuala.
+const RISKY_FIELD = /\b(partener|denumire|explicatie|descriere|author|username|fileName|detalii|mesaj|firma|adresa)\b/i;
+const ESC_FN = /\b(H|escMsg|escAttr|esc|e|fmt|encodeURIComponent|Number)\(/;
+// interpolarile FRUNZA: `${...}` fara alt `${` inauntru (altfel expresia exterioara, care
+// contine sabloane imbricate deja escapate, ar fi raportata mereu)
+function leafInterp(line) {
+  const out = []; let s = line;
+  for (let i = 0; i < 10; i += 1) {
+    let found = false;
+    s = s.replace(/\$\{([^{}]*)\}/g, (_, x) => { out.push(x.trim()); found = true; return ''; });
+    if (!found) break;
+  }
+  return out;
+}
+// Scoate apelurile de escapare CU TOT cu argumentul (paranteze echilibrate): ce ramane pe urma
+// e exact ce ajunge neescapat in pagina, indiferent cum a fost compusa expresia.
+function stripEsc(expr) {
+  let s = expr;
+  for (let p = 0; p < 12; p += 1) {
+    const m = s.match(ESC_FN);
+    if (!m) break;
+    const open = m.index + m[0].length - 1;
+    let depth = 0; let end = -1;
+    for (let i = open; i < s.length; i += 1) {
+      if (s[i] === '(') depth += 1;
+      else if (s[i] === ')') { depth -= 1; if (depth === 0) { end = i; break; } }
+    }
+    if (end < 0) break;
+    s = s.slice(0, m.index) + ' ' + s.slice(end + 1);
+  }
+  return s;
+}
+const dropCond = (s) => { const q = s.indexOf('?'); return q >= 0 ? s.slice(q + 1) : s; }; // conditia nu se afiseaza
+// textul afisat nu e o referinta de date: „abonează firma acum" contine „firma" fara sa citeasca nimic
+const stripLit = (s) => s.replace(/'[^']*'/g, "''").replace(/"[^"]*"/g, '""').replace(/`[^`]*`/g, '``');
+
+const neescapate = [];
+const inAtribut = [];
+for (const f of fs.readdirSync(PUB).filter((x) => x.endsWith('.js'))) {
+  fs.readFileSync(path.join(PUB, f), 'utf8').split('\n').forEach((ln, i) => {
+    // a doua poarta, EXACTA: escMsg nu escapeaza ghilimelele, deci intr-un atribut permite
+    // adaugarea de atribute noi. Exact bug-ul din mesagerie (numele fisierului atasat).
+    for (const m of ln.matchAll(/[a-zA-Z-]+="\$\{\s*escMsg\(/g)) inAtribut.push(f + ':' + (i + 1) + ' ' + m[0]);
+    if (!/[<][a-zA-Z/]|innerHTML|insertAdjacentHTML/.test(ln)) return;
+    for (const e of leafInterp(ln)) {
+      if (!e || !RISKY_FIELD.test(e)) continue;
+      if (RISKY_FIELD.test(stripLit(dropCond(stripEsc(e))))) neescapate.push(f + ':' + (i + 1) + '  ${' + e.slice(0, 60) + '}');
+    }
+  });
+}
+ok('niciun camp de provenienta externa interpolat fara escapare'
+  + (neescapate.length ? ' — ' + neescapate.slice(0, 4).join(' | ') : ''), neescapate.length === 0);
+ok('escMsg nu e folosit in atribute (nu escapeaza ghilimelele)'
+  + (inAtribut.length ? ' — ' + inAtribut.join(' | ') : ''), inAtribut.length === 0);
+// poarta trebuie sa POATA pica: verificam pe o linie construita anume
+ok('poarta chiar detecteaza o interpolare neescapata', leafInterp('x.innerHTML = `<td>${r.explicatie}</td>`')
+  .some((e) => RISKY_FIELD.test(stripLit(dropCond(stripEsc(e))))));
+ok('poarta nu raporteaza o interpolare escapata', !leafInterp('x.innerHTML = `<td>${H(r.explicatie)}</td>`')
+  .some((e) => RISKY_FIELD.test(stripLit(dropCond(stripEsc(e))))));
+ok('poarta nu se incurca in escapare compusa', !leafInterp("x.innerHTML = `<td>${o.partener ? ' · ' + H(o.partener) : ''}</td>`")
+  .some((e) => RISKY_FIELD.test(stripLit(dropCond(stripEsc(e))))));
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

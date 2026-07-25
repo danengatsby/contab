@@ -1,7 +1,7 @@
 'use strict';
 
 // Mijloace fixe: registru, fisa, amortizare lunara. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, fmt, toast, api } from './core.js';
+import { $$, $, H, fmt, toast, api } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
 
 // ───────────────────────── MIJLOACE FIXE ─────────────────────────
@@ -13,7 +13,7 @@ async function loadAssets() {
   $('#assetsList').innerHTML = list.length
     ? `<table><thead><tr><th>Denumire</th><th>Cont</th><th>Metodă</th><th>Data PIF</th><th class="num">Cost</th><th class="num">Amort./lună</th><th class="num">Cumulat</th><th class="num">Rămas</th><th></th></tr></thead><tbody>${
       list.map((a) => `<tr${a.status === 'casat' ? ' class="muted"' : ''}>
-        <td>${a.denumire}${a.status === 'casat' ? ' <span class="pill">casat</span>' : ''}</td>
+        <td>${H(a.denumire)}${a.status === 'casat' ? ' <span class="pill">casat</span>' : ''}</td>
         <td class="acc">${a.cont}/${a.calc.contAmortizare}</td>
         <td>${({ liniara: 'liniară', degresiva: 'degresivă', accelerata: 'accelerată' })[a.metoda] || a.metoda}</td>
         <td>${a.dataPif}</td>

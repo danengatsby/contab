@@ -22,7 +22,19 @@ function stubEl() {
     checked: false, disabled: false, focus: noop, blur: noop, click: noop, dispatchEvent: noop, reset: noop,
   };
   el.querySelector = () => stubEl();
-  return el;
+  // Un formular real isi expune controalele ca proprietati dupa `name` (`$('#f').tip`), iar
+  // shim-ul nu are de unde sti numele. Proxy-ul intoarce un element inert pentru orice
+  // proprietate necunoscuta, ca modulele sa se poata incarca.
+  // EXCEPTIILE conteaza: `then` ar face obiectul „thenable" si ar bloca orice `await`; `length`
+  // si `nodeType` sunt citite ca numere; simbolurile trebuie sa ramana nedefinite (iterare,
+  // instanceof). Pentru ele intoarcem undefined, ca in obiectul de baza.
+  const OPAC = new Set(['then', 'length', 'nodeType', 'constructor', 'toJSON', 'inspect']);
+  return new Proxy(el, {
+    get(t, k) {
+      if (k in t || typeof k === 'symbol' || OPAC.has(k)) return t[k];
+      return stubEl();
+    },
+  });
 }
 
 globalThis.document = {

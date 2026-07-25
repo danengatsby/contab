@@ -181,7 +181,7 @@ async function loadMissingDocs() {
     <div><b>${lbl}:</b> ${d.countThis} documente intrate · media ultimelor 3 luni: <b>${d.avgPrev}</b>${d.countThis < d.avgPrev ? ' <span class="muted">(sub medie — verifică ce lipsește)</span>' : ''}
       ${d.missing.length
     ? `<div data-u="u23"><b>Posibil lipsă</b> — furnizori care apăreau lunar, dar fără document în ${lbl}:</div>
-           <ul class="checklist todo" data-u="u27">${d.missing.map((m) => `<li>${m.partener} <span class="muted">— ultima oară: ${lunaLabel(m.ultimaLuna)} · ${m.luniPrezent}/3 luni anterioare</span></li>`).join('')}</ul>`
+           <ul class="checklist todo" data-u="u27">${d.missing.map((m) => `<li>${H(m.partener)} <span class="muted">— ultima oară: ${lunaLabel(m.ultimaLuna)} · ${m.luniPrezent}/3 luni anterioare</span></li>`).join('')}</ul>`
     : '<div data-u="u18">✓ Nu pare să lipsească niciun document recurent.</div>'}
     </div></div>`;
 }
