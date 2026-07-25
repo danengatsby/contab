@@ -1430,8 +1430,9 @@ Cu stimă,
     <section id="tab-plan" class="tab">
       <div class="toolbar"><h2>Planul de conturi</h2><div class="spacer"></div>
         <input id="planFilter" placeholder="Caută cont sau denumire…" /></div>
-      <details data-u="u107">
+      <details id="accImportBox" data-u="u107">
         <summary class="muted" data-u="u75">Import conturi personalizate din CSV (Cont;Denumire;Clasă;Tip A/P/B/C/V)</summary>
+        <p class="muted">Planul de conturi este comun tuturor firmelor, de aceea importul îl face administratorul.</p>
         <textarea id="accCsvIn" rows="3" data-u="u97" placeholder="6028;Cheltuieli cu alte materiale;6;C"></textarea>
         <div class="row"><input type="file" id="accCsvFile" accept=".csv,.txt,.xlsx,.xls,.dbf" /><button id="accImportBtn" class="btn small primary">Importă conturi</button></div>
       </details>

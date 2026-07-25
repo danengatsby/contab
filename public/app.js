@@ -260,6 +260,9 @@ async function init() {
   $('#userBadge').textContent = USER.username ? (USER.username + (USER.tip ? ' · ' + USER.tip : '')) : '';
   $('#usersCard').style.display = USER.role === 'admin' ? '' : 'none';
   $('#exportAllBtn') && ($('#exportAllBtn').style.display = USER.role === 'admin' ? '' : 'none');
+  // Planul de conturi e global (partajat de toate firmele), deci importul e rezervat adminului
+  // — serverul raspunde 403 oricum; ascunderea evita un buton care nu poate reusi.
+  $('#accImportBox') && ($('#accImportBox').style.display = USER.role === 'admin' ? '' : 'none');
   applySessionState(USER);
   // drepturi granulare: utilizatorii fara acces la salarizare nu vad intrarea din meniu
   const faraSalarii = !!(USER.drepturi && USER.drepturi.faraSalarii);

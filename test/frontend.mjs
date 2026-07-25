@@ -217,6 +217,20 @@ if (eligM) {
     + (missing.length ? ' (lipsesc: ' + missing.join(', ') + ')' : ''), missing.length === 0);
 }
 
+section('Plan de conturi: denumirile importate se escapeaza');
+// Planul se poate extinde prin CSV (/api/accounts/import), deci `nume` NU e o constanta interna.
+// Poarta generala de mai jos nu prinde acest caz: `nume`/`cod` sunt prea generice ca sa intre in
+// RISKY_FIELD fara zgomot (vezi comentariul ei). De aceea sinkul se verifica aici, direct.
+const planOtrava = [{ cod: '9999', nume: '<img src=x onerror=alert(1)>PWNED', clasa: 9, tip: 'B' }];
+const planHtml = plan.planRowsHtml(planOtrava, '');
+ok('denumirea de cont nu iese ca marcaj', !planHtml.includes('<img'));
+ok('denumirea apare escapata', planHtml.includes('&lt;img src=x onerror=alert(1)&gt;PWNED'));
+ok('codul de cont e si el escapat', !plan.planRowsHtml([{ cod: '<b>7</b>', nume: 'x', clasa: 1, tip: 'A' }], '').includes('<b>'));
+ok('tipul contului e escapat', !plan.planRowsHtml([{ cod: '1', nume: 'x', clasa: 1, tip: '<s>A</s>' }], '').includes('<s>'));
+eq('filtrul se aplica in continuare pe cod', plan.planRowsHtml(planOtrava, '9999').includes('9999'), true);
+eq('filtrul care nu se potriveste da tabel gol', plan.planRowsHtml(planOtrava, 'zzz'), '');
+ok('filtrul cauta si in denumire', plan.planRowsHtml(planOtrava, 'pwned').includes('9999'));
+
 section('Plan de conturi: parsarea sumelor in format romanesc');
 eq('format RO complet (punct la mii, virgula la zecimale)', plan.nrRo('1.234,56'), 1234.56);
 eq('format RO cu mai multe grupe', plan.nrRo('1.234.567,89'), 1234567.89);
@@ -606,6 +620,26 @@ for (const f of fs.readdirSync(PUB).filter((x) => x.endsWith('.js'))) {
 }
 ok('niciun camp de provenienta externa interpolat fara escapare'
   + (neescapate.length ? ' — ' + neescapate.slice(0, 4).join(' | ') : ''), neescapate.length === 0);
+
+// A treia poarta, PE SURSA in loc de pe numele campului: accName() citeste META.accounts, iar
+// planul de conturi se extinde prin import CSV — deci intoarce text de provenienta externa, sub
+// un nume (`nume`) prea generic pentru RISKY_FIELD. Aici nu ghicim dupa nume, ci dupa FUNCTIA
+// apelata: orice accName() interpolat in HTML trebuie sa fie invelit intr-o escapare.
+const accNeescapat = [];
+for (const f of fs.readdirSync(PUB).filter((x) => x.endsWith('.js'))) {
+  fs.readFileSync(path.join(PUB, f), 'utf8').split('\n').forEach((ln, i) => {
+    if (!/[<][a-zA-Z/]|innerHTML|insertAdjacentHTML/.test(ln)) return;
+    for (const e of leafInterp(ln)) {
+      if (e && /\baccName\(/.test(stripEsc(e))) accNeescapat.push(f + ':' + (i + 1) + '  ${' + e.slice(0, 60) + '}');
+    }
+  });
+}
+ok('accName() nu ajunge niciodata neescapat in HTML'
+  + (accNeescapat.length ? ' — ' + accNeescapat.join(' | ') : ''), accNeescapat.length === 0);
+ok('poarta accName chiar detecteaza cazul neescapat',
+  /\baccName\(/.test(stripEsc('`<td>${accName(r.cont)}</td>`')));
+ok('poarta accName accepta cazul escapat',
+  !/\baccName\(/.test(stripEsc('`<td>${H(accName(r.cont))}</td>`')));
 ok('escMsg nu e folosit in atribute (nu escapeaza ghilimelele)'
   + (inAtribut.length ? ' — ' + inAtribut.join(' | ') : ''), inAtribut.length === 0);
 // poarta trebuie sa POATA pica: verificam pe o linie construita anume

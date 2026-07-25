@@ -944,6 +944,22 @@ async function main() {
     ok('adminul comuta useAI, raspuns fara authSecret', rUseAI.status === 200 && rUseAI.json.settings && !('authSecret' in rUseAI.json.settings));
     eq('adminul poate scrie selfRegister', (await req('POST', '/api/settings', { cookie: la.cookie, body: { selfRegister: true } })).status, 200);
 
+    // ── Planul de conturi e GLOBAL (partajat de toate firmele) -> scrierea e doar a adminului ──
+    // Fara garda, un utilizator legat de o singura firma redenumea conturi standard pentru TOATE
+    // firmele (denumirile ajung in cartea mare, balanta, PDF-uri si SAF-T). Aceeasi clasa cu
+    // /api/settings de mai sus: stare globala scrisa dintr-un cont cu acces la o singura firma.
+    const numeInainte = (await req('GET', '/api/meta', { cookie: c1 })).json.accounts.find((a) => a.cod === '4111').nume;
+    const impStrain = await req('POST', '/api/accounts/import', { cookie: c1, body: { csv: '4111;REDENUMIT DE NON-ADMIN;4;A' } });
+    eq('non-admin NU poate importa in planul de conturi global -> 403', impStrain.status, 403);
+    eq('contul standard a ramas neatins dupa incercare',
+      (await req('GET', '/api/meta', { cookie: c1 })).json.accounts.find((a) => a.cod === '4111').nume, numeInainte);
+    // Atentie la datele de test: importAccounts sare primul rand daca pare antet, iar euristica
+    // se uita dupa „cont"/„cod"/„denumire" — o denumire care contine cuvantul „cont" ar fi inghitita.
+    const impAdmin = await req('POST', '/api/accounts/import', { cookie: la.cookie, body: { csv: '9911;Ajustari speciale de test;9;B' } });
+    ok('adminul importa in continuare in planul de conturi', impAdmin.status === 200 && impAdmin.json.importati === 1);
+    ok('contul importat de admin e vizibil in meta',
+      !!(await req('GET', '/api/meta', { cookie: la.cookie })).json.accounts.find((a) => a.cod === '9911'));
+
     // ── Schimbare de parola OBLIGATORIE (cont cu parola implicita „admin") ──
     const laDef = await req('POST', '/api/login', { body: { username: 'defpw', password: 'admin' } });
     ok('cont cu parola implicita: login reuseste (schimbarea vine dupa)', laDef.status === 200 && laDef.cookie);

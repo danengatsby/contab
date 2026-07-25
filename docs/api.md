@@ -140,7 +140,7 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 | `GET /api/partners` | — | nomenclatorul firmei (obiect pe CUI) |
 | `POST /api/partners` | `{ cui, den?, adresa?, oras?, judet?, tara?, tip? }` | `{ ok, partner }`; CUI normalizat; `tip` se păstrează la actualizare dacă lipsește; 400 CUI lipsă |
 | `POST /api/partners/import` | `{ csv }` (CUI;Denumire;Adresă;Oraș;Județ;Țară;Tip) | `{ ok, importati, erori[] }` — rândurile fără CUI ajung în erori |
-| `POST /api/accounts/import` | `{ csv }` (Cod;Denumire;Clasă;Tip) | `{ ok, importati, totalConturi }` — planul e global, partajat între firme |
+| `POST /api/accounts/import` (admin) | `{ csv }` (Cod;Denumire;Clasă;Tip) | `{ ok, importati, totalConturi }` — planul e global, partajat între firme, **de aceea scrierea e rezervată adminului**; 403 altfel. Primul rând e sărit dacă pare antet (conține „cont"/„cod"/„denumire") |
 | `GET/POST /api/opening` | `{ openingBalances: { cont: { d, c } } }` | `{ ok, totalDebit, totalCredit }`; dezechilibru → 400 cu `totalDebit`, `totalCredit`, `diferenta` lângă `error` |
 | `GET/POST /api/opening-analytic`, `DELETE /:idx` | `{ cont, partener?, cui?, d, c }` | upsert pe cheia cont+CUI; ștergerea cu index invalid NU e eroare |
 

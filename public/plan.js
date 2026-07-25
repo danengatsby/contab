@@ -14,10 +14,16 @@ $('#accImportBtn').addEventListener('click', async () => {
     $('#accCsvIn').value = ''; setMeta(await api('/api/meta')); renderPlan();
   } catch (err) { toast(err.message, true); }
 });
+// Denumirile de conturi NU sunt constante interne: planul se poate extinde prin import CSV
+// (/api/accounts/import), deci `nume` e text venit din afara si se escapeaza ca oricare altul.
+function planRowsHtml(accounts, q) {
+  const f = String(q || '').toLowerCase();
+  return (accounts || [])
+    .filter((a) => !f || String(a.cod).includes(f) || String(a.nume || '').toLowerCase().includes(f))
+    .map((a) => `<tr><td class="acc">${H(a.cod)}</td><td>${H(a.nume)}</td><td>Clasa ${H(a.clasa)}</td><td>${H(a.tip)}</td></tr>`).join('');
+}
 function renderPlan() {
-  const q = ($('#planFilter').value || '').toLowerCase();
-  const rows = META.accounts.filter((a) => !q || a.cod.includes(q) || a.nume.toLowerCase().includes(q))
-    .map((a) => `<tr><td class="acc">${a.cod}</td><td>${a.nume}</td><td>Clasa ${a.clasa}</td><td>${a.tip}</td></tr>`).join('');
+  const rows = planRowsHtml(META.accounts, $('#planFilter').value);
   $('#planView').innerHTML = `<table><thead><tr><th>Cont</th><th>Denumire</th><th>Clasa</th><th>Tip</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
@@ -103,8 +109,8 @@ async function renderOpening() {
 }
 function drawOpening() {
   const rows = OPEN_ROWS.map((r, i) => `<tr>
-    <td><input class="op-cont acc" data-i="${i}" value="${r.cont}" placeholder="cont" data-u="u90" /></td>
-    <td class="muted op-nume">${accName(r.cont) || ''}</td>
+    <td><input class="op-cont acc" data-i="${i}" value="${H(r.cont)}" placeholder="cont" data-u="u90" /></td>
+    <td class="muted op-nume">${H(accName(r.cont))}</td>
     <td><input class="op-d num" data-i="${i}" type="number" step="0.01" value="${r.d || ''}" placeholder="0" data-u="u162" /></td>
     <td><input class="op-c num" data-i="${i}" type="number" step="0.01" value="${r.c || ''}" placeholder="0" data-u="u162" /></td>
     <td><button class="linkbtn op-del" data-i="${i}">șterge</button></td></tr>`).join('');
@@ -227,5 +233,6 @@ $('#openSaveBtn') && $('#openSaveBtn').addEventListener('click', async () => {
 
 
 export { renderOpening, renderPlan };
-// Exportate pentru testele unitare de frontend (parsarea sumelor in format RO): test/frontend.mjs
-export { nrRo, parseAmount, sepConvention, openingRowsFrom, mergeRoles };
+// Exportate pentru testele unitare de frontend (parsarea sumelor in format RO + escaparea
+// denumirilor din planul de conturi): test/frontend.mjs
+export { nrRo, parseAmount, sepConvention, openingRowsFrom, mergeRoles, planRowsHtml };

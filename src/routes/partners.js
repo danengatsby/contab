@@ -7,7 +7,7 @@
 const svc = require('../partnersService');
 
 module.exports = function register(app, ctx) {
-  const { upload, S, activeId, logAudit } = ctx;
+  const { upload, S, activeId, logAudit, requireAdmin } = ctx;
 
   // Erorile de business poarta `status` (400/403); `extra` intra in corpul raspunsului
   // (contractul istoric al soldurilor dezechilibrate). Restul urca la handlerul global.
@@ -18,8 +18,12 @@ module.exports = function register(app, ctx) {
     }
   };
 
-  // Import plan de conturi personalizat din CSV: Cod;Denumire;Clasa;Tip (upsert in customAccounts)
-  app.post('/api/accounts/import', (req, res) => run(res, () => {
+  // Import plan de conturi personalizat din CSV: Cod;Denumire;Clasa;Tip (upsert in customAccounts).
+  // requireAdmin fiindca planul de conturi e GLOBAL, partajat de toate firmele (vezi
+  // partnersService.importAccounts): fara garda, un cont legat de o singura firma putea redenumi
+  // conturi standard pentru toate celelalte — denumirile ajung in cartea mare, balanta, PDF-uri
+  // si SAF-T. Aceeasi regula ca la /api/settings: stare globala = doar adminul o scrie.
+  app.post('/api/accounts/import', requireAdmin, (req, res) => run(res, () => {
     const r = svc.importAccounts((req.body || {}).csv);
     logAudit('accounts.import', r.importati + ' conturi', { req });
     return { ok: true, importati: r.importati, totalConturi: r.totalConturi };
