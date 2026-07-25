@@ -80,6 +80,41 @@ await pg.waitForTimeout(1200);
 ok('tab-ul TVA se randeaza (sumar decont)', /TVA/.test(await pg.locator('#tab-tva').textContent()));
 ok('cardul pro-rata (art. 300) e prezent in tab-ul TVA', (await pg.locator('#proRataView').count()) === 1);
 
+// 5b. Previzualizarea articolului contabil din formular. E singura verificare pe browser REAL a
+// caii: tastare -> pauza -> POST /api/preview -> randare. Logica e pe server (composeEntry, testat
+// in test/http.js); aici verificam exact ce nu poate vedea un test fara pagina — ca previzualizarea
+// chiar ajunge pe ecran, ca nu pleaca o cerere la fiecare tasta, si ca schimbarea tipului NU lasa
+// pe ecran articolul tipului anterior.
+const previewReq = [];
+pg.on('request', (r) => { if (r.url().includes('/api/preview')) previewReq.push(1); });
+await pg.evaluate(() => goTab('documente'));
+await pg.waitForTimeout(800);
+await pg.evaluate(() => document.querySelectorAll('#welcomeOverlay,.toast,#fwWizard,.op-wizard').forEach((e) => e.remove()));
+await pg.click('#manualBtn');
+await pg.waitForTimeout(1000);
+await pg.selectOption('#tipSelect', 'factura_vanzare_marfuri');
+await pg.waitForTimeout(700);
+await pg.fill('#fld_baza', '1000');
+await pg.fill('#fld_tva', '210');
+await pg.waitForTimeout(1500);
+const prevTxt = () => pg.locator('#preview').textContent();
+const pv = await prevTxt();
+ok('previzualizarea arata articolul venit de la server (4111 = 707 si 4427)', /4111/.test(pv) && /707/.test(pv) && /4427/.test(pv));
+ok('previzualizarea insumeaza articolul (total 1.210,00)', /1\.210,00/.test(pv));
+// debounce: tastare rapida = O SINGURA cerere, nu una pe tasta (altfel plafonul de API sare)
+previewReq.length = 0;
+for (const v of ['1', '12', '123', '1234']) { await pg.fill('#fld_baza', v); await pg.waitForTimeout(60); }
+await pg.waitForTimeout(1500);
+ok('previzualizarea e debounced (4 taste rapide -> 1 cerere, nu 4)', previewReq.length === 1);
+// schimbarea tipului nu lasa pe ecran articolul precedent nici macar o clipa
+await pg.selectOption('#tipSelect', 'incasare_client');
+const imediat = await prevTxt();
+ok('la schimbarea tipului previzualizarea veche dispare imediat', !/707/.test(imediat));
+await pg.waitForTimeout(1500);
+await pg.fill('#fld_suma', '500');
+await pg.waitForTimeout(1500);
+ok('previzualizarea se recalculeaza pentru noul tip (incasare: 5121/5311 = 4111)', /4111/.test(await prevTxt()));
+
 // 6. trecere pe VIEWPORT MOBIL (390x844): UI-ul mobil e ACTIV (bara de jos + panoul
 // „Mai mult"; sidebar-ul devine bara de sus) — fara scroll orizontal nicaieri.
 const pm = await b.newPage({ viewport: { width: 390, height: 844 } });
