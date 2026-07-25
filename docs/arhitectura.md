@@ -2,7 +2,12 @@
 
 ## Arhitectură
 
-- `server.js` — asamblarea aplicației: înregistrarea modulelor de rute cu ctx + `buildEntry`.
+- `server.js` — asamblarea aplicației: înregistrarea modulelor de rute cu ctx + `composeEntry`/`buildEntry`.
+  `composeEntry` construiește articolul complet **fără identitate**; `buildEntry` adaugă id-ul din
+  secvență. Separarea există pentru ca previzualizarea din formular (`POST /api/preview`) să treacă
+  prin **exact aceleași reguli** ca salvarea — inclusiv cele care depind de firmă (pro-rata, TVA la
+  încasare, auto 50%, perioade blocate) — fără să consume un id. Regulile contabile au astfel o
+  singură implementare: frontend-ul nu le mai reproduce.
   Infrastructura stă în module dedicate: `src/bootstrap.js` (middleware + garduri de acces),
   `src/authRoutes.js` (nucleul de autentificare), `src/jobs.js` (joburile periodice),
   `src/serverErrors.js` (erori globale + alertă), `src/lifecycle.js` (lock, listen, oprire curată).

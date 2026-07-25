@@ -14,8 +14,27 @@ const { sendList } = require('../paginate');
 const { period: periodOf } = require('../util');
 
 module.exports = function register(app, ctx) {
-  const { S, activeId, canAccess, requireAdmin, logAudit, buildEntry, upsertPartner } = ctx;
+  const { S, activeId, canAccess, requireAdmin, logAudit, buildEntry, composeEntry, upsertPartner } = ctx;
   const deps = { buildEntry, upsertPartner };
+
+  // Previzualizarea articolului din formular, INAINTE de salvare. Trece prin exact aceeasi
+  // compunere ca salvarea (composeEntry), deci arata si regulile pe care o replica in frontend
+  // nu le putea sti: auto50, pro-rata firmei, TVA la incasare, conturile inexistente in plan,
+  // perioada blocata. Nu scrie nimic si nu consuma un id.
+  app.post('/api/preview', (req, res) => {
+    const { tip, fields } = req.body || {};
+    if (!tip) return res.status(400).json({ error: 'Lipseste tipul de document.' });
+    let e;
+    try {
+      e = composeEntry(tip, fields || {}, null, activeId(req));
+    } catch (err) {
+      // Un articol inca incomplet NU e o eroare: e starea normala cat timp se completeaza
+      // formularul. Raspundem 200 cu motivul, ca sa nu poluam metricile la fiecare tasta.
+      return res.json({ ok: false, mesaj: err.message });
+    }
+    const total = e.lines.reduce((s, l) => s + l.suma, 0);
+    return res.json({ ok: true, tipNume: e.tipNume, lines: e.lines, total: Math.round(total * 100) / 100 });
+  });
 
   // Erorile de business poarta `status` (400/403/404); restul urca la handlerul global (500 + log).
   const run = (res, fn) => {

@@ -18,7 +18,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUB = path.join(ROOT, 'public');
@@ -39,8 +38,6 @@ const periods = await import(path.join(mirror, 'periods.js'));
 const entries = await import(path.join(mirror, 'entries.js'));
 const plan = await import(path.join(mirror, 'plan.js'));
 const dashboard = await import(path.join(mirror, 'dashboard.js'));
-const docflow = await import(path.join(mirror, 'docflow.js'));
-const { TYPES, getType } = createRequire(import.meta.url)(path.join(ROOT, 'src', 'documentTypes'));
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -280,65 +277,6 @@ eq('baza negativa foloseste modulul', dashboard.trendOf([{ venituri: -100 }, { v
 eq('profitul se calculeaza ca venituri - cheltuieli', dashboard.trendOf([{ venituri: 100, cheltuieli: 50 }, { venituri: 200, cheltuieli: 50 }], 'profit'), 200);
 // lunile fara nicio miscare sunt sarite: altfel o luna goala ar arata ca o prabusire de -100%
 eq('lunile complet goale sunt ignorate', dashboard.trendOf([{ venituri: 100 }, { venituri: 0, cheltuieli: 0 }, { venituri: 150 }], 'venituri'), 50);
-
-section('Previzualizarea articolului: acordul cu serverul, tip cu tip');
-// Formularul arata articolul contabil INAINTE de salvare, calculat local (public/docflow.js
-// localBuild), dar cel salvat il construieste serverul (src/documentTypes/*). Sunt doua
-// implementari ale aceleiasi reguli, deci pot devia — iar o previzualizare gresita induce in
-// eroare exact in clipa deciziei. Aici le hranim cu ACELEASI campuri si comparam liniile.
-// Comparam substanta contabila (debit = credit : suma), nu explicatiile (formulate diferit).
-const VAL = {
-  cota: 19, cotaVanzare: 11, baza: 1000, tva: 190, suma: 500, cost: 700, adaos: 300,
-  brut: 5000, neimpozabil: 0, cas: 0, cass: 0, impozit: 0, cam: 0,
-  valoare: 8000, amortizare: 2000, numerar: 400, card: 600, tvaDed: 90,
-  valoareBunuri: 2000, taxeVamale: 100, valoareImputata: 250,
-};
-// Campurile de cont raman NECOMPLETATE intentionat: asa se compara si conturile implicite,
-// acolo unde cele doua implementari si-ar putea alege altele. `omitCote` lasa si cotele goale,
-// ca sa prindem cotele hardcodate in frontend ramase in urma fata de src/fiscalConfig.js.
-function fieldsFor(type, sens, omitCote) {
-  const f = {};
-  for (const fld of type.fields || []) {
-    if (fld.name === 'items') { f.items = []; continue; }
-    if (fld.name === 'sens') { f.sens = sens; continue; }
-    if (/^cont/.test(fld.name)) continue;
-    if (omitCote && /^cota/.test(fld.name)) continue;
-    if (fld.type === 'number') { f[fld.name] = VAL[fld.name] !== undefined ? VAL[fld.name] : 100; continue; }
-    f[fld.name] = 'X';
-  }
-  return f;
-}
-const norm = (lines) => (lines || []).filter(Boolean).filter((l) => Number(l.suma) !== 0)
-  .map((l) => `${l.debit}=${l.credit}:${Math.round(Number(l.suma) * 100) / 100}`).join(' | ');
-
-core.setMeta({ types: [], accounts: [], company: {}, periods: [], fiscal: null });
-let cuPreview = 0; let comparate = 0;
-for (const t of TYPES) {
-  const type = getType(t.id);
-  const areSens = (type.fields || []).some((x) => x.name === 'sens');
-  const sensuri = areSens ? ['plus', 'minus', 'reluare', 'nefavorabila', ''] : [''];
-  let acoperit = false;
-  for (const sens of sensuri) {
-    for (const omitCote of [false, true]) {
-      const f = fieldsFor(type, sens, omitCote);
-      let fe; let be;
-      try { fe = docflow.localBuild(t.id, f); } catch (e) { fe = 'EROARE frontend: ' + e.message; }
-      if (fe === null) continue; // tip fara replica locala: serverul ramane singura sursa
-      acoperit = true;
-      try { be = norm(type.build(Object.assign({}, f))); } catch (e) { be = 'EROARE server: ' + e.message; }
-      const got = typeof fe === 'string' ? fe : norm(fe);
-      comparate += 1;
-      eq('previzualizarea „' + t.id + '"' + (sens ? ' [sens=' + sens + ']' : '') + (omitCote ? ' [cote implicite]' : '') + ' = articolul serverului', got, be);
-    }
-  }
-  if (acoperit) cuPreview += 1;
-}
-ok('replica locala acopera tipurile uzuale (' + cuPreview + ' din ' + TYPES.length + ')', cuPreview >= 40);
-ok('s-au comparat efectiv articole (' + comparate + ' comparatii)', comparate > 80);
-// Tipurile neacoperite trebuie sa spuna asta CINSTIT (null), nu sa ceara la nesfarsit completarea
-// unor campuri deja completate. Distinctia null vs [] e citita de updatePreview.
-ok('un tip inexistent nu are previzualizare (null, nu lista goala)', docflow.localBuild('tip_inexistent_xyz', {}) === null);
-ok('un tip acoperit fara sume da lista goala, nu null', Array.isArray(docflow.localBuild('factura_vanzare_marfuri', {})));
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

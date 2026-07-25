@@ -68,7 +68,10 @@ if (typeof window !== 'undefined') {
 }
 
 export async function api(url, opts) {
-  setLoad(true);
+  // `quiet`: cereri de fundal (previzualizarea din formular, ceruta la fiecare pauza de tastare)
+  // — fara bara de incarcare, care altfel ar clipi continuu. fetch ignora cheile necunoscute.
+  const quiet = !!(opts && opts.quiet);
+  if (!quiet) setLoad(true);
   try {
     let r;
     try {
@@ -88,7 +91,7 @@ export async function api(url, opts) {
       const err = new Error((data && data.error) || ('Eroare ' + r.status)); err.status = r.status; err.data = data; throw err;
     }
     return data;
-  } finally { setLoad(false); }
+  } finally { if (!quiet) setLoad(false); }
 }
 
 // Citeste un fisier de import: .xlsx/.xls/.dbf -> convertit la CSV pe server; .csv -> citit direct.

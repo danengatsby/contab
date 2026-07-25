@@ -36,7 +36,7 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
 ## Arhitectură
 
 - **server.js** (~350 linii) — doar ASAMBLAREA: înregistrarea modulelor de rute cu
-  `ctx = { S, activeId, canAccess, requireAdmin, logAudit… }`, `buildEntry`/`upsertPartner`
+  `ctx = { S, activeId, canAccess, requireAdmin, logAudit… }`, `composeEntry`/`buildEntry`/`upsertPartner`
   (partajate de entries/bank/anaf/payroll) și `activeId`/`S` (izolarea pe firmă — sursa unică).
   Restul e spart pe module: **src/bootstrap.js** (`.env`, `createApp` cu helmet/CSP calibrat,
   reqId, metrici, multer + garda upload; `applySecurityGuards` cu garda CSRF pe origine

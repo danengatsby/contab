@@ -125,6 +125,7 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 |---|---|---|
 | `GET /api/entries` | `?period=YYYY-MM` | articolele firmei active, sortate |
 | `POST /api/entries` | `{ tip, fields, fileId?, spvMsgId? }` | `{ ok, entry, stoc }`; liniile `fields.stoc[]` (productId+cantitate) generează descărcarea la CMP atomic; 400 tip/câmpuri invalide sau perioadă închisă |
+| `POST /api/preview` | `{ tip, fields }` | `{ ok: true, tipNume, lines, total }` — articolul **exact** cum va fi salvat, prin aceeași compunere (`composeEntry`); nu scrie nimic și nu consumă un id. Un articol încă incomplet întoarce **200** `{ ok: false, mesaj }` (e starea normală în timpul completării, nu o eroare); 400 doar fără `tip` |
 | `DELETE /api/entries/:id` | — | `{ ok, removed }`; id inexistent NU e eroare (`removed: 0`); 404 articol străin; 400 perioadă închisă |
 | `GET /api/recurring` / `due?period=` | — | șabloanele firmei / cele scadente în perioadă |
 | `POST /api/recurring` | `{ tip, partener?, fields?, frecventa?, ziua?, startDate?, activ? }` | `{ ok, template }`; ziua e plafonată la 28 |
