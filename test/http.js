@@ -185,6 +185,13 @@ async function main() {
     // politica de parole: inscrierea respinge o parola prea scurta (respingerea nu creeaza nimic)
     const regWeak = await req('POST', '/api/register', { body: { nume: 'Firma Noua SRL', username: 'noureg', password: 'scurt' } });
     ok('register: parola prea scurta -> 400', regWeak.status === 400 && /prea scurta/i.test((regWeak.json || {}).error || ''));
+    // Numele de utilizator: aceeasi regula pe AMBELE cai de creare. Inainte, inscrierea publica
+    // verifica duplicatele insensibil la litere mari/mici, iar ruta de admin SENSIBIL si fara trim,
+    // deci puteau coexista conturi care arata identic in liste si in jurnalul de audit.
+    const regInv = await req('POST', '/api/register', { body: { nume: 'F SRL', username: 'a\u200bb', password: 'ParolaBunaDeTot9' } });
+    ok('register: nume cu caracter invizibil -> 400', regInv.status === 400 && /invizibile|control/i.test((regInv.json || {}).error || ''));
+    const regScurt = await req('POST', '/api/register', { body: { nume: 'F SRL', username: ' ab ', password: 'ParolaBunaDeTot9' } });
+    ok('register: nume prea scurt dupa trim -> 400', regScurt.status === 400 && /prea scurt/i.test((regScurt.json || {}).error || ''));
 
     // autorizare pe firma: user1 (firma 1) nu vede documentul firmei 2
     eq('document al altei firme -> 403', (await req('GET', '/api/document/docA/file', { cookie: c1 })).status, 403);
@@ -1033,6 +1040,15 @@ async function main() {
     const isoED = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: '2026-08-06', explicatie: 'Ciorna de sters', debit: '5311', credit: '5121', suma: 42 } } })).json.entry;
     const isoAs = (await req('POST', '/api/assets', { cookie: c1, body: { denumire: 'Utilaj izolare', cont: '2131', cost: 5000, durataLuni: 60, dataPif: '2026-01-15' } })).json.asset || {};
     // utilizator nou, DOAR pe firma 2
+    // ruta de admin foloseste ACEEASI regula de nume ca inscrierea publica
+    const uDup = await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'ADMIN', password: 'ParolaBunaDeTot9' } });
+    ok('users: duplicat cu alte litere mari/mici -> 400', uDup.status === 400 && /existent/i.test((uDup.json || {}).error || ''));
+    const uSpatii = await req('POST', '/api/users', { cookie: la.cookie, body: { username: '  admin  ', password: 'ParolaBunaDeTot9' } });
+    ok('users: duplicat cu spatii la capete -> 400', uSpatii.status === 400 && /existent/i.test((uSpatii.json || {}).error || ''));
+    const uInv = await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'x\u200by', password: 'ParolaBunaDeTot9' } });
+    ok('users: nume cu caracter invizibil -> 400', uInv.status === 400 && /invizibile|control/i.test((uInv.json || {}).error || ''));
+    const uNorm = await req('POST', '/api/users', { cookie: la.cookie, body: { username: '  Ana   Maria  ', password: 'ParolaBunaDeTot9' } });
+    ok('users: numele se stocheaza normalizat', uNorm.status === 200 && uNorm.json.user.username === 'Ana Maria');
     await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'izolat', password: 'parola2', firme: [2] } });
     const c2 = (await req('POST', '/api/login', { body: { username: 'izolat', password: 'parola2' } })).cookie;
     const deny = (r) => [400, 402, 403, 404].includes(r.status);

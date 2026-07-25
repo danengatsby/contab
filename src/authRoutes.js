@@ -111,15 +111,16 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (regCount(req) >= 5) return res.status(429).json({ error: 'Prea multe inscrieri de pe aceasta retea. Reincearca peste o ora.' });
     const b = req.body || {};
     const nume = String(b.nume || '').trim();
-    const username = String(b.username || '').trim();
+    const username = authlib.normalizeUsername(b.username);
     const password = String(b.password || '');
     if (!nume) return res.status(400).json({ error: 'Completeaza denumirea firmei.' });
-    if (username.length < 3) return res.status(400).json({ error: 'Utilizator prea scurt (minim 3 caractere).' });
+    const userErr = authlib.validateUsername(username);
+    if (userErr) return res.status(400).json({ error: userErr });
     const pwErr = authlib.validatePassword(password, { username });
     if (pwErr) return res.status(400).json({ error: pwErr });
     const breachErr = await authlib.breachCheck(password); // HIBP (fail-open), inainte de a crea firma+user
     if (breachErr) return res.status(400).json({ error: breachErr });
-    if (d.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) return res.status(400).json({ error: 'Acest utilizator exista deja. Alege altul.' });
+    if (authlib.usernameTaken(d.users, username)) return res.status(400).json({ error: 'Acest utilizator exista deja. Alege altul.' });
     // firma noua GOALA — fara date contabile (entries/parteneri/solduri/stocuri etc.)
     const fid = db.nextFirmaId();
     const firma = Object.assign(db.defaultFirma(fid), {
