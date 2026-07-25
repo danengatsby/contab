@@ -14,6 +14,19 @@ const log = require('./log');
 // pm2 (suprapunere scurta a proceselor): retry ~2s inainte de a refuza; lock invechit (proces
 // mort) -> preluat automat. Rollback: CONTAB_SKIP_LOCK=1.
 const LOCK_FILE = db.DB_FILE + '.lock';
+// Adresele afisate la pornire. Interfetele publice se listeaza DOAR daca serverul chiar asculta
+// pe ele: legat la loopback, un „Retea: http://<ip-public>" ar fi neadevarat — sugereaza un port
+// expus care de fapt nu raspunde (endpointul public e nginx). Pur, ca sa poata fi verificat.
+function bannerUrls(host, port, ifaces) {
+  const out = ['  Local:  http://localhost:' + port];
+  if (host === '127.0.0.1' || host === 'localhost' || host === '::1') return out;
+  for (const nume of Object.keys(ifaces || {})) {
+    for (const i of (ifaces[nume] || [])) {
+      if (i.family === 'IPv4' && !i.internal) out.push('  Retea:  http://' + i.address + ':' + port);
+    }
+  }
+  return out;
+}
 function pidAlive(pid) { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } }
 function sleepMs(ms) { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch (_) { /* fara SAB */ } }
 function acquireDbLock() {
@@ -54,15 +67,7 @@ function start({ app, dbReady }) {
   dbReady.then(() => {
     server = app.listen(PORT, HOST, () => {
       console.log('Contabo ruleaza (asculta pe ' + HOST + ':' + PORT + ')');
-      console.log('  Local:  http://localhost:' + PORT);
-      const ifaces = os.networkInterfaces();
-      for (const name of Object.keys(ifaces)) {
-        for (const i of ifaces[name]) {
-          if (i.family === 'IPv4' && !i.internal) {
-            console.log('  Retea:  http://' + i.address + ':' + PORT);
-          }
-        }
-      }
+      for (const u of bannerUrls(HOST, PORT, os.networkInterfaces())) console.log(u);
     });
   }).catch((e) => {
     log.error('pornire esuata — baza de date nu s-a putut incarca', { err: e });
@@ -90,4 +95,4 @@ function start({ app, dbReady }) {
   process.on('SIGTERM', shutdown);
 }
 
-module.exports = { start };
+module.exports = { start, bannerUrls };
