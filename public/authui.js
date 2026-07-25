@@ -72,12 +72,12 @@ async function showPricing() {
   try { const r = await fetch('/api/register'); if (r.ok) canRegister = !!(await r.json()).enabled; } catch (e) { /* optional */ }
   box.innerHTML = (data.plans || []).map((p) => {
     const cta = canRegister
-      ? `<button class="btn primary pricing-start" data-plan="${p.id}" data-trial="${p.trial ? 1 : 0}">${p.trial ? 'Începe proba gratuită' : 'Alege ' + p.nume + ' →'}</button>`
+      ? `<button class="btn primary pricing-start" data-plan="${p.id}" data-trial="${p.trial ? 1 : 0}">${p.trial ? 'Începe proba gratuită' : 'Alege ' + H(p.nume) + ' →'}</button>`
       : '<div class="muted" data-u="u17">Autentifică-te pentru a alege planul</div>';
     const demo = p.trial ? '<button class="btn pricing-demo" data-u="u18">🔎 Intră în contul demo</button>' : '';
     return `<div class="plan-card${p.recomandat ? ' recomandat' : ''}">
       ${p.recomandat ? '<div class="plan-badge">Recomandat</div>' : ''}
-      <h3>${p.nume}</h3>
+      <h3>${H(p.nume)}</h3>
       <div class="plan-price">${p.pret === 0 ? 'Gratuit' : '<b>' + fmt(p.pret) + '</b> ' + p.moneda}<span>${p.pret === 0 ? '' : '/ ' + p.perioada}</span></div>
       <p class="plan-desc">${H(p.descriere || '')}</p>
       <ul class="plan-feat">${(p.features || []).map((f) => `<li>${f}</li>`).join('')}</ul>

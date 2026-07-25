@@ -39,7 +39,7 @@ async function loadLivrabile() {
     ? `<div class="warnbox" data-u="u23"><span class="wi">⚠️</span><div><b>Eligibilitate micro:</b> ${s.d100.avertismente.join('<br>')}</div></div>`
     : ''}</div>
      <div class="card"><h3>Total de virat la ANAF (luna ${p})</h3><table>
-      ${s.obligatii.items.map((i) => `<tr><td>${i.cont} ${i.nume}</td><td class="num">${fmt(i.suma)}</td></tr>`).join('') || '<tr><td class="muted">Fără obligații în perioadă</td><td></td></tr>'}
+      ${s.obligatii.items.map((i) => `<tr><td>${H(i.cont)} ${H(i.nume)}</td><td class="num">${fmt(i.suma)}</td></tr>`).join('') || '<tr><td class="muted">Fără obligații în perioadă</td><td></td></tr>'}
       <tr class="total"><td>TOTAL</td><td class="num">${fmt(s.obligatii.total)}</td></tr>
      </table></div>`;
   $('#livrabileLegend').innerHTML = Object.keys(STATUS).map((k) =>
@@ -80,7 +80,7 @@ async function loadDeclRegister(p) {
   const opts = (cur) => Object.keys(DECL_ST).map((k) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${DECL_ST[k].t}</option>`).join('');
   box.innerHTML = `<table><thead><tr><th>Declarație</th><th>Termen</th><th>Stare</th><th>Schimbă starea</th><th>Recipisă / detalii</th></tr></thead><tbody>${
     data.rows.map((r) => `<tr>
-      <td>${r.nume}</td>
+      <td>${H(r.nume)}</td>
       <td class="${r.overdue ? '' : 'muted'}" ${r.overdue ? 'data-u="u33"' : ''}>${r.due}</td>
       <td>${declBadge(r.status, r.overdue)}</td>
       <td><select class="decl-set" data-tip="${r.tip}" data-period="${r.period}">${opts(r.status)}</select></td>

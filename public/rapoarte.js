@@ -34,7 +34,7 @@ async function loadLedger() {
     const moves = a.moves.map((m) => `<tr><td>${H(m.data)}</td><td>${H(m.explicatie)}</td>
       <td class="num">${m.debit ? fmt(m.debit) : ''}</td><td class="num">${m.credit ? fmt(m.credit) : ''}</td></tr>`).join('');
     return `<div class="ledger-acc">
-      <h4><span class="acc">${a.cod}</span> — ${a.nume} <a class="linkbtn" href="/pdf/fisa-cont?cont=${a.cod}${p ? '&period=' + p : ''}" target="_blank" title="Fișa de cont: mișcări cu cont corespondent și sold curent">fișă de cont</a></h4>
+      <h4><span class="acc">${H(a.cod)}</span> — ${H(a.nume)} <a class="linkbtn" href="/pdf/fisa-cont?cont=${encodeURIComponent(a.cod)}${p ? '&period=' + encodeURIComponent(p) : ''}" target="_blank" title="Fișa de cont: mișcări cu cont corespondent și sold curent">fișă de cont</a></h4>
       <p class="muted">Sold inițial: D ${fmt(a.siD)} / C ${fmt(a.siC)}</p>
       <div class="tablewrap"><table><thead><tr><th>Data</th><th>Explicație</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
       <tbody>${moves}
@@ -124,7 +124,7 @@ function renderBalance() {
     $('#balantaStatus').innerHTML = '<p data-u="u172">✔ Balanța se închide — cele patru egalități sunt respectate.</p>';
   } else {
     const eqs = balanceEquations(tb.tot);
-    const det = eqs.map((x) => `<b>${x.nume}</b>: debit ${fmt(x.d)} vs credit ${fmt(x.c)} — diferență <b>${fmt(x.dif)}</b>`).join('<br>');
+    const det = eqs.map((x) => `<b>${H(x.nume)}</b>: debit ${fmt(x.d)} vs credit ${fmt(x.c)} — diferență <b>${fmt(x.dif)}</b>`).join('<br>');
     const initDif = eqs.some((x) => x.nume === 'Sold inițial');
     $('#balantaStatus').innerHTML = `<div data-u="u13"><p data-u="u173">✘ Balanța NU se închide:</p>
       <p data-u="u174">${det}</p>
@@ -134,7 +134,7 @@ function renderBalance() {
   const visible = onlyMoves ? tb.rows.filter((r) => r.rd || r.rc) : tb.rows;
   if (!visible.length) { $('#balantaView').innerHTML = `<p class="muted">${onlyMoves ? 'Niciun cont cu mișcări în luna aleasă.' : 'Niciun cont.'}</p>`; return; }
   const rows = visible.map((r) => `<tr>
-    <td class="acc">${r.cod}</td><td>${r.nume}</td>
+    <td class="acc">${H(r.cod)}</td><td>${H(r.nume)}</td>
     <td class="num grpsep">${fmt(r.siD)}</td><td class="num">${fmt(r.siC)}</td>
     <td class="num grpsep">${fmt(r.rd)}</td><td class="num">${fmt(r.rc)}</td>
     <td class="num grpsep">${fmt(r.tsD)}</td><td class="num">${fmt(r.tsC)}</td>
@@ -419,8 +419,8 @@ $('#fxLoad') && $('#fxLoad').addEventListener('click', async () => {
   let list; try { list = await api('/api/fx-reval/candidates?asOf=' + asOf); } catch (e) { area.innerHTML = `<p class="status err">${e.message}</p>`; return; }
   if (!list.length) { area.innerHTML = '<p class="muted">Niciun cont în valută cu sold la această dată (5124/5314 sau conturi cu mișcări în valută).</p>'; return; }
   area.innerHTML = `<table><thead><tr><th>Cont</th><th>Denumire</th><th>Tip</th><th class="num">Sold contabil (lei)</th><th>Mon.</th><th class="num">Sold în valută</th><th class="num">Curs închidere</th></tr></thead>
-    <tbody>${list.map((c) => `<tr data-cont="${c.cont}" data-asset="${c.isAsset ? 1 : 0}">
-      <td class="acc">${c.cont}</td><td>${c.nume}</td><td>${c.isAsset ? 'Activ' : 'Datorie'}</td><td class="num">${fmt(c.bookLei)}</td><td>${c.moneda}</td>
+    <tbody>${list.map((c) => `<tr data-cont="${H(c.cont)}" data-asset="${c.isAsset ? 1 : 0}">
+      <td class="acc">${H(c.cont)}</td><td>${H(c.nume)}</td><td>${c.isAsset ? 'Activ' : 'Datorie'}</td><td class="num">${fmt(c.bookLei)}</td><td>${H(c.moneda)}</td>
       <td class="num"><input class="fx-val" type="number" step="0.01" value="${c.foreignBalance || ''}" data-u="u177"></td>
       <td class="num"><input class="fx-curs" type="number" step="0.0001" placeholder="ex. 4.97" data-u="u178"></td></tr>`).join('')}</tbody></table>
     <button id="fxPreviewBtn" class="btn" data-u="u23">Previzualizează diferențele</button>`;
@@ -516,7 +516,7 @@ async function loadStatements() {
   }).catch(() => { $('#cashflowView').innerHTML = ''; });
   renderBudget(y);
   api('/api/statements/equity?year=' + y).then((eq) => {
-    const er = (r, cls) => `<tr class="${cls || ''}"><td>${r.nume}</td><td class="num">${fmt(r.soldI)}</td><td class="num">${fmt(r.cresteri)}</td><td class="num">${fmt(r.reduceri)}</td><td class="num">${fmt(r.soldF)}</td></tr>`;
+    const er = (r, cls) => `<tr class="${cls || ''}"><td>${H(r.nume)}</td><td class="num">${fmt(r.soldI)}</td><td class="num">${fmt(r.cresteri)}</td><td class="num">${fmt(r.reduceri)}</td><td class="num">${fmt(r.soldF)}</td></tr>`;
     $('#capitalView').innerHTML = `<table>
       <tr><th data-u="u183">Element</th><th class="num">Sold ${Number(y) - 1}-12-31</th><th class="num">Creșteri</th><th class="num">Reduceri</th><th class="num">Sold ${y}-12-31</th></tr>
       ${eq.rows.map((r) => er(r)).join('')}
@@ -546,9 +546,9 @@ async function loadStatements() {
     const pctTxt = (c) => c.pct < 100 ? ` <span class="muted">(${c.pct}% din ${fmt(c.baza)})</span>` : '';
     $('#fiscalView').innerHTML = `<table>
       <tr><td>Rezultat contabil (brut)</td><td class="num">${fmt(rf.rezultatContabil)}</td></tr>
-      ${rf.cheltNeded.map((c) => `<tr><td>+ ${c.cod} ${c.nume}${pctTxt(c)}</td><td class="num">${fmt(c.suma)}</td></tr>`).join('')}
+      ${rf.cheltNeded.map((c) => `<tr><td>+ ${H(c.cod)} ${H(c.nume)}${pctTxt(c)}</td><td class="num">${fmt(c.suma)}</td></tr>`).join('')}
       <tr><td>+ Total cheltuieli nedeductibile</td><td class="num">${fmt(rf.totalNeded)}</td></tr>
-      ${(rf.venituriList || []).map((c) => `<tr><td>− ${c.cod} ${c.nume}${pctTxt(c)}</td><td class="num">${fmt(c.suma)}</td></tr>`).join('')}
+      ${(rf.venituriList || []).map((c) => `<tr><td>− ${H(c.cod)} ${H(c.nume)}${pctTxt(c)}</td><td class="num">${fmt(c.suma)}</td></tr>`).join('')}
       <tr><td>− Total venituri neimpozabile</td><td class="num">${fmt(rf.venituriNeimpozabile)}</td></tr>
       <tr class="total"><td>= Rezultat fiscal</td><td class="num">${fmt(rf.rezultatFiscal)}</td></tr>
       <tr class="total"><td>Impozit pe profit ${rf.rateProfit}%</td><td class="num">${fmt(rf.impozitProfit)}</td></tr>

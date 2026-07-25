@@ -203,7 +203,7 @@ function prodMatRow() {
   const div = document.createElement('div');
   div.className = 'row'; div.style.cssText = 'gap:6px;margin-top:4px;align-items:center';
   div.innerHTML = `<select class="pm-prod" data-u="u52">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('')}</select>
-    <select class="pm-gest" data-u="u46">${PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${g.cod}</option>`).join('')}</select>
+    <select class="pm-gest" data-u="u46">${PROD_OPTS.gestiuni.map((g) => `<option value="${H(g.id)}">${H(g.cod)}</option>`).join('')}</select>
     <input class="pm-qty" type="number" step="0.001" placeholder="cantitate" data-u="u46">
     <button type="button" class="del pm-del" title="Elimină">✕</button>`;
   div.querySelector('.pm-del').addEventListener('click', () => div.remove());
@@ -280,7 +280,7 @@ async function renderRecipes(products) {
   let list; try { list = await api('/api/recipes'); } catch (e) { return; }
   if (!list.length) { box.innerHTML = '<p class="muted">Nicio rețetă salvată.</p>'; return; }
   box.innerHTML = `<table><thead><tr><th>Rețetă</th><th>Produs finit</th><th class="num">Cant. bază</th><th class="num">Materiale</th><th>Acțiuni</th></tr></thead><tbody>${
-    list.map((r) => `<tr data-id="${r.id}"><td><b>${r.nume}</b></td><td>${pName(r.productId)}</td><td class="num">${fmt(r.cantitateBaza)}</td><td class="num">${(r.materiale || []).length}</td>
+    list.map((r) => `<tr data-id="${H(r.id)}"><td><b>${H(r.nume)}</b></td><td>${H(pName(r.productId))}</td><td class="num">${fmt(r.cantitateBaza)}</td><td class="num">${(r.materiale || []).length}</td>
       <td class="row" data-u="u189">
         <input class="rc-qty" type="number" step="0.001" placeholder="cant." data-u="u190" title="Cantitate de produs">
         <button class="btn small primary rc-produce" title="Produce această cantitate">▶ Produce</button>
