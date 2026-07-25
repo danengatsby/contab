@@ -679,7 +679,7 @@ function renderSubscription(data) {
     }
     return `<div class="plan-card${p.recomandat ? ' recomandat' : ''}${isCurrent ? ' current' : ''}">
       ${p.recomandat ? '<div class="plan-badge">Recomandat</div>' : ''}
-      <h3>${p.nume}</h3>
+      <h3>${H(p.nume)}</h3>
       <div class="plan-price">${p.pret === 0 ? 'Gratuit' : '<b>' + fmt(p.pret) + '</b> ' + p.moneda}<span>${p.pret === 0 ? '' : '/ ' + p.perioada}</span></div>
       <p class="plan-desc">${H(p.descriere || '')}</p>
       <ul class="plan-feat">${(p.features || []).map((f) => `<li>${f}</li>`).join('')}</ul>

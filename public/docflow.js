@@ -15,7 +15,7 @@ function fillTipSelect() {
   const groups = {};
   META.types.forEach((t) => { (groups[t.grup] = groups[t.grup] || []).push(t); });
   sel.innerHTML = Object.keys(groups).map((g) =>
-    `<optgroup label="${g}">${groups[g].map((t) => `<option value="${t.id}">${t.nume}</option>`).join('')}</optgroup>`
+    `<optgroup label="${g}">${groups[g].map((t) => `<option value="${t.id}">${H(t.nume)}</option>`).join('')}</optgroup>`
   ).join('');
 }
 const drop = $('#drop'), fileInput = $('#file');
@@ -196,7 +196,7 @@ $$('.emit').forEach((btn) => btn.addEventListener('click', () => {
 $$('.linklist a[data-go]').forEach((a) => { a.style.cursor = 'pointer'; a.addEventListener('click', () => D.goTab(a.dataset.go)); });
 async function renderRecurring() {
   const sel = $('#recTip');
-  if (sel && !sel.options.length) sel.innerHTML = (META.types || []).map((t) => `<option value="${t.id}">${t.nume}</option>`).join('');
+  if (sel && !sel.options.length) sel.innerHTML = (META.types || []).map((t) => `<option value="${t.id}">${H(t.nume)}</option>`).join('');
   if ($('#recPeriod') && !$('#recPeriod').value) $('#recPeriod').value = workMonth();
   let list;
   try { list = await api('/api/recurring'); } catch (e) { return; }
@@ -344,7 +344,7 @@ function closeForm() {
 }
 $('#tipSelect').addEventListener('change', () => renderFields(collectFields()));
 function accountOptions(val) {
-  return META.accounts.map((a) => `<option value="${a.cod}" ${a.cod === String(val) ? 'selected' : ''}>${a.cod} — ${a.nume}</option>`).join('');
+  return META.accounts.map((a) => `<option value="${H(a.cod)}" ${a.cod === String(val) ? 'selected' : ''}>${H(a.cod)} — ${H(a.nume)}</option>`).join('');
 }
 function renderFields(values) {
   const tip = META.types.find((t) => t.id === $('#tipSelect').value);

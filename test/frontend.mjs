@@ -566,10 +566,14 @@ section('Poartă: datele de proveniență externă nu ajung neescapate în HTML'
 // jos interpolat direct in HTML, fara escapare, e o regresie: a existat deja (numele
 // partenerului din documentele lipsa, mesajele SPV, explicatiile din jurnal, numele firmei).
 //
-// CE NU acopera: campuri cu nume generice (`.name`, `.nume`) — sunt prea raspandite ca sa fie
-// distinse de constante interne fara un parser adevarat. Pentru acelea ramane a doua poarta,
-// cea pe atribute, plus revizuirea manuala.
-const RISKY_FIELD = /\b(partener|denumire|explicatie|descriere|author|username|fileName|detalii|mesaj|firma|adresa)\b/i;
+// `nume`/`cod` SUNT acum in lista, desi sunt generice. Comentariul de dinainte le excludea ca
+// „prea raspandite ca sa fie distinse de constante interne" — masurat, insa, dupa escaparea
+// sinkurilor reale au mai ramas doar 11 locuri, toate constante interne (planuri de abonament,
+// tipuri de documente, etichete de declaratii). Le-am escapat si pe acelea: escaparea unei
+// constante nu costa nimic, iar poarta devine ABSOLUTA — fara lista de exceptii care sa se
+// invecheasca. Motivul pentru care nu mai puteau fi ignorate: denumirile de conturi vin din
+// planul de conturi, care se extinde prin import CSV (vezi [[plan-conturi-stare-globala]]).
+const RISKY_FIELD = /\b(partener|denumire|explicatie|descriere|author|username|fileName|detalii|mesaj|firma|adresa|nume|cod)\b/i;
 const ESC_FN = /\b(H|escMsg|escAttr|esc|e|fmt|encodeURIComponent|Number)\(/;
 // interpolarile FRUNZA: `${...}` fara alt `${` inauntru (altfel expresia exterioara, care
 // contine sabloane imbricate deja escapate, ar fi raportata mereu)

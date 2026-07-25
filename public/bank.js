@@ -33,7 +33,7 @@ function matchCell(r) {
 }
 function renderBank() {
   if (!BANK.rows.length) { $('#bankResult').innerHTML = '<p class="muted">Nicio tranzacție.</p>'; $('#bankImport').classList.add('hidden'); return; }
-  const tipOpts = (sel) => META.types.map((t) => `<option value="${t.id}" ${t.id === sel ? 'selected' : ''}>${t.nume}</option>`).join('');
+  const tipOpts = (sel) => META.types.map((t) => `<option value="${t.id}" ${t.id === sel ? 'selected' : ''}>${H(t.nume)}</option>`).join('');
   $('#bankResult').innerHTML = `<table><thead><tr><th><input type="checkbox" id="bankAll" checked></th><th>Data</th><th>Descriere</th>
     <th class="num">Sumă</th><th>Sens</th><th>Tip înregistrare</th><th>Partener</th><th>Factură stinsă</th></tr></thead><tbody>${
     BANK.rows.map((r, i) => `<tr>
