@@ -2,7 +2,7 @@
 
 // Fluxul documentelor: upload + scanare (punte/camera), wizardul de tipuri, facturile recurente, SPV inbox + import e-Factura si formularul UNIC de inregistrare (mutat intre Documente/Emite).
 // Extras din app.js (faza 2); apelurile inapoi spre app.js vin prin setDeps (fara cicluri).
-import { $$, $, H, fmt, accName, toast, api, META, setMeta } from './core.js';
+import { $$, $, H, fmt, accName, toast, api, META, setMeta, applyFiscalDefaults } from './core.js';
 import { workMonth, fillPeriods } from './periods.js';
 import { loadEntries } from './entries.js';
 
@@ -223,7 +223,7 @@ $('#recForm') && $('#recForm').addEventListener('submit', async (e) => {
     fields: { baza, cota, tva: Math.round(baza * cota) / 100 },
     frecventa: f.frecventa.value, ziua: f.ziua.value, startDate: f.startDate.value || workMonth(),
   };
-  try { await api('/api/recurring', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); f.reset(); f.cota.value = 21; renderRecurring(); toast('Șablon recurent salvat'); }
+  try { await api('/api/recurring', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); f.reset(); applyFiscalDefaults(f); renderRecurring(); toast('Șablon recurent salvat'); }
   catch (err) { toast(err.message, true); }
 });
 $('#recGenBtn') && $('#recGenBtn').addEventListener('click', async () => {

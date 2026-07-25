@@ -99,6 +99,27 @@ ok('isDemo fals pentru un utilizator real', core.isDemo() === false);
 core.setUser({});
 ok('isDemo fals pentru utilizator fara nume', core.isDemo() === false);
 
+section('Nucleu: cotele fiscale vin de la server, nu din frontend');
+// Un procent scris de mana in frontend supravietuieste modificarii de cota si incepe sa minta:
+// fie pune o valoare gresita intr-un formular (devine DATA), fie eticheteaza gresit un numar
+// corect calculat pe server. Toate cotele afisate/implicite trec prin META.fiscal.
+core.setMeta({ types: [], accounts: [], company: {}, periods: [], fiscal: { tvaStandard: 21, tvaRedus: 11, cas: 25, cass: 10, cam: 2.25, impozitVenit: 10 } });
+eq('cota vine din META.fiscal', core.fiscalRate('tvaStandard', 19), 21);
+eq('cheie necunoscuta cade pe implicit', core.fiscalRate('inexistenta', 7), 7);
+eq('procentul se scrie romaneste (virgula zecimala)', core.fiscalPct('cam', 2.25), '2,25%');
+eq('procent intreg', core.fiscalPct('cas', 25), '25%');
+eq('textul explicativ primeste cota curenta', core.fiscalText('CAS {cas|25} din brut'), 'CAS 25% din brut');
+eq('textul cu mai multe cote', core.fiscalText('{cas|25} + {cass|10}'), '25% + 10%');
+eq('textul fara token ramane neatins', core.fiscalText('fara cote aici'), 'fara cote aici');
+// META neincarcat (prima randare, inainte de /api/meta) -> se foloseste plasa din cod
+core.setMeta({ types: [], accounts: [], company: {}, periods: [] });
+eq('fara META.fiscal se foloseste implicitul', core.fiscalRate('tvaStandard', 21), 21);
+eq('fara META.fiscal textul foloseste implicitul din token', core.fiscalText('CAM {cam|2.25}'), 'CAM 2,25%');
+// o cota SCHIMBATA pe server trebuie sa se vada imediat in frontend, fara modificari de cod
+core.setMeta({ types: [], accounts: [], company: {}, periods: [], fiscal: { tvaStandard: 23, cas: 26 } });
+eq('o cota noua de pe server se vede in frontend', core.fiscalRate('tvaStandard', 21), 23);
+eq('o cota noua se vede si in etichete', core.fiscalText('CAS {cas|25}'), 'CAS 26%');
+
 section('Perioade: aritmetica lunilor de lucru');
 eq('luna urmatoare trece anul (Decembrie -> Ianuarie)', periods.nextMonth('2026-12'), '2027-01');
 eq('luna precedenta trece anul (Ianuarie -> Decembrie)', periods.prevMonth('2026-01'), '2025-12');
