@@ -115,6 +115,60 @@ await pg.fill('#fld_suma', '500');
 await pg.waitForTimeout(1500);
 ok('previzualizarea se recalculeaza pentru noul tip (incasare: 5121/5311 = 4111)', /4111/.test(await prevTxt()));
 
+// 5c. Ce TRIMITE formularul. collectFields/readItems citesc din DOM, deci un test cu shim
+// inert nu ar dovedi nimic — aici e singurul loc unde se poate verifica. Cererea e INTERCEPTATA
+// si anulata: citim ce s-ar fi trimis, fara sa salvam nimic in firma demo.
+let trimis = null;
+await pg.route('**/api/entries', async (route) => {
+  if (route.request().method() !== 'POST') return route.continue();
+  try { trimis = JSON.parse(route.request().postData() || '{}'); } catch (_) { trimis = null; }
+  await route.abort();
+});
+await pg.selectOption('#tipSelect', 'factura_vanzare_marfuri');
+await pg.waitForTimeout(700);
+await pg.fill('#fld_partener', 'Client E2E');
+// doua linii: una completa, una cu denumirea goala — a doua trebuie ELIMINATA de readItems,
+// altfel ar pleca spre server o pozitie fara nume, care strica baza si TVA-ul.
+const ed = '#fld_items';
+await pg.click(ed + ' .additem');
+await pg.waitForTimeout(200);
+await pg.click(ed + ' .additem');
+await pg.waitForTimeout(300);
+const randuri = pg.locator(ed + ' .item-row');
+await randuri.nth(0).locator('.it-nume').fill('Produs A');
+await randuri.nth(0).locator('.it-cant').fill('3');
+await randuri.nth(0).locator('.it-pret').fill('50');
+await randuri.nth(0).locator('.it-cota').fill('21');
+await randuri.nth(1).locator('.it-cant').fill('9'); // fara denumire -> se elimina
+await pg.waitForTimeout(1200);
+await pg.click('#entryForm button[type="submit"], #entryForm .btn.primary');
+await pg.waitForTimeout(1200);
+ok('formularul chiar trimite o cerere de salvare', !!trimis && trimis.tip === 'factura_vanzare_marfuri');
+const items = (trimis && trimis.fields && trimis.fields.items) || [];
+ok('liniile fara denumire sunt eliminate inainte de trimitere (a ramas 1)', items.length === 1);
+ok('linia completa pleaca cu valorile tastate', items[0] && items[0].nume === 'Produs A' && String(items[0].cantitate) === '3' && String(items[0].pret) === '50' && String(items[0].cota) === '21');
+ok('campurile simple pleaca din formular', trimis && trimis.fields && trimis.fields.partener === 'Client E2E');
+// bifele trebuie sa plece ca BOOLEAN (prin .checked), nu ca sirul „on" al unui input
+await pg.selectOption('#tipSelect', 'factura_cumparare_marfuri');
+await pg.waitForTimeout(700);
+await pg.fill('#fld_data', '2026-06-15');
+await pg.fill('#fld_baza', '100');
+await pg.check('#fld_proRataMixt');
+await pg.waitForTimeout(1000);
+trimis = null;
+await pg.click('#entryForm button[type="submit"], #entryForm .btn.primary');
+await pg.waitForTimeout(1200);
+ok('bifa pleaca drept boolean true (prin .checked), nu ca sirul „on"', trimis && trimis.fields && trimis.fields.proRataMixt === true);
+// si nebifat: trebuie sa fie false, nu sir gol — altfel serverul ar primi o valoare falsy ambigua
+await pg.uncheck('#fld_proRataMixt');
+await pg.waitForTimeout(600);
+trimis = null;
+await pg.click('#entryForm button[type="submit"], #entryForm .btn.primary');
+await pg.waitForTimeout(1200);
+ok('bifa nebifata pleaca drept false, nu sir gol', trimis && trimis.fields && trimis.fields.proRataMixt === false);
+await pg.unroute('**/api/entries');
+await pg.evaluate(() => { const b = document.querySelector('#entryCancel, #formClose'); if (b) b.click(); });
+
 // 6. trecere pe VIEWPORT MOBIL (390x844): UI-ul mobil e ACTIV (bara de jos + panoul
 // „Mai mult"; sidebar-ul devine bara de sus) — fara scroll orizontal nicaieri.
 const pm = await b.newPage({ viewport: { width: 390, height: 844 } });
