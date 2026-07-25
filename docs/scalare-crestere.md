@@ -119,8 +119,26 @@ netestat. Și, cel mai important: scopul declarat al căii SQL nu e doar viteza,
 hidratarea lazy — singurul pas care reduce efectiv RAM-ul. Nu e cod inutil; e cod al cărui beneficiu
 de CPU nu se vede încă.
 
-**Ce ar trebui făcut, în ordine:** (a) re-măsurat pe **pg** înainte de orice ajustare de prag — dacă
-se confirmă, `CONTAB_SQL_READ_THRESHOLD` ar trebui **ridicat**, nu coborât; (b) `/api/dashboard` e
+**Re-măsurat pe pg (2026-07-25).** Aceleași date (2.500 de articole, confirmate ca rânduri în
+postgres, nu doar în RAM), ambele căi verificate prin anteturile `X-*-Source`:
+
+| Rută | SQL | RAM |
+|---|---|---|
+| balanță (lună) | 5 ms | 6 ms |
+| jurnal (lună) | 6 ms | 2 ms |
+| cartea mare (lună) | 7 ms | 3 ms |
+| fișă cont | 4 ms | 1 ms |
+| dashboard | 75 ms | 66 ms |
+
+Aceeași direcție ca pe sqlite: RAM e mai rapid (2–3× pe jurnal/carte/fișă), egal pe balanță.
+**Limita acestei rulări:** 2.500 de articole e mult SUB pragul de 20.000, deci nu spune ce se
+întâmplă la volumul unde poarta chiar se activează — SQL-ul a fost forțat cu prag 0. Măsurătoarea
+de pe sqlite la 27.350 (puțin peste prag) rămâne dovada cea mai apropiată de punctul de decizie.
+
+**Ce ar trebui făcut, în ordine:** (a) o măsurătoare pe pg **la peste 20.000 de articole** înainte de
+orice ajustare de prag — cele două rulări de până acum arată aceeași direcție, dar niciuna nu e la
+volumul unde poarta contează; dacă se confirmă, `CONTAB_SQL_READ_THRESHOLD` ar trebui **ridicat**,
+nu coborât; (b) `/api/dashboard` e
 următoarea investiție reală (cache per-firmă invalidat la `db.save`), fiindcă e singura rută care
 chiar doare, pe la ~18.000 de articole; (c) hidratarea lazy rămâne pe semnal de **RAM**, nu de CPU.
 
