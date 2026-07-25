@@ -2606,6 +2606,25 @@ eq('4xx prin statusCode isi pastreaza mesajul', (rCode.body || {}).error, 'Inter
 ok('cu antetele deja trimise, eroarea urca la Express', nextPrimit === eIntern);
 eq('cu antetele deja trimise nu se scrie un al doilea raspuns', rSent.code, 0);
 
+section('Banner de pornire: adresele afisate (src/lifecycle.js)');
+// Banner-ul enumera interfetele publice; daca o face si cand serverul e legat la loopback,
+// spune ceva NEADEVARAT — un „Retea: http://<ip-public>:8080" care nu raspunde (endpointul
+// public e nginx). Cine citeste logul trage concluzii gresite despre ce e expus.
+const { bannerUrls } = require('../src/lifecycle');
+const ifTest = { eth0: [{ family: 'IPv4', address: '203.0.113.7', internal: false }], lo: [{ family: 'IPv4', address: '127.0.0.1', internal: true }] };
+const bLoop = bannerUrls('127.0.0.1', 8080, ifTest);
+eq('legat la loopback: doar adresa locala', bLoop.length, 1);
+ok('legat la loopback NU se anunta interfata publica', !bLoop.join(' ').includes('203.0.113.7'));
+ok('adresa locala e mereu afisata', bLoop[0].includes('http://localhost:8080'));
+eq('„localhost" e tratat tot ca loopback', bannerUrls('localhost', 8080, ifTest).length, 1);
+eq('IPv6 loopback e tratat la fel', bannerUrls('::1', 8080, ifTest).length, 1);
+// legat pe toate interfetele: atunci anuntul e corect si util
+const bAll = bannerUrls('0.0.0.0', 8080, ifTest);
+eq('legat pe toate interfetele: local + retea', bAll.length, 2);
+ok('se anunta interfata publica reala', bAll.join(' ').includes('http://203.0.113.7:8080'));
+ok('interfetele interne nu se anunta ca „retea"', !bAll.slice(1).join(' ').includes('127.0.0.1'));
+eq('fara interfete nu arunca', bannerUrls('0.0.0.0', 8080, null).length, 1);
+
 section('Igiena data/: rotatia backup-urilor ad-hoc (src/backup.js)');
 const backupMod = require('../src/backup');
 const fsB = require('fs'); const osB = require('os'); const pathB = require('path');
