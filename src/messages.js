@@ -8,6 +8,30 @@
 
 const MAX_LEN = 4000;
 
+// Numele atasamentului e DOAR pentru afisare — pe disc fisierul sta sub `storedName` (hex
+// aleator), deci curatarea de aici nu poate rupe nimic functional. E al DOILEA strat: numele vine
+// din `req.file.originalname`, adica de la client, si un client care NU e browser poate trimite
+// orice (cu `filename*=UTF-8''…`, RFC 5987, ghilimelele ajung brute — browserele le %-codifica).
+// Apararea PRINCIPALA ramane escaparea la randare (escAttr in atribute, escMsg in text, vezi
+// public/messages.js): datele deja stocate nu mai trec pe aici, deci curatarea nu o inlocuieste.
+// Scoatem ce e periculos STRUCTURAL: caractere de control si CR/LF (antetul Content-Disposition),
+// separatori de cale, si caracterele care schimba sensul in HTML/atribute.
+const MAX_ATTACH_NAME = 120;
+function cleanAttachmentName(raw) {
+  let n = String(raw == null ? '' : raw)
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[\\/]/g, '_')
+    .replace(/["'<>`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (n.length > MAX_ATTACH_NAME) { // taiem, dar pastram extensia (utila la descarcare)
+    const dot = n.lastIndexOf('.');
+    const ext = dot > 0 && n.length - dot <= 10 ? n.slice(dot) : '';
+    n = n.slice(0, MAX_ATTACH_NAME - ext.length).trim() + ext;
+  }
+  return n || 'fisier';
+}
+
 /** Construieste un mesaj nou (cu starea de citire potrivita expeditorului). */
 function newMessage(id, userId, fromAdmin, text, author, attachment) {
   const t = String(text == null ? '' : text).trim().slice(0, MAX_LEN);
@@ -24,7 +48,7 @@ function newMessage(id, userId, fromAdmin, text, author, attachment) {
   };
   if (attachment && attachment.storedName) {
     m.attachment = {
-      name: String(attachment.name || 'fisier'),
+      name: cleanAttachmentName(attachment.name),
       storedName: String(attachment.storedName),
       size: Number(attachment.size) || 0,
       mime: String(attachment.mime || ''),
@@ -107,4 +131,4 @@ function markRead(list, userId, who) {
   return n;
 }
 
-module.exports = { newMessage, thread, unreadForUser, unreadForAdmin, threadsSummary, searchThreads, markRead, MAX_LEN };
+module.exports = { newMessage, thread, unreadForUser, unreadForAdmin, threadsSummary, searchThreads, markRead, cleanAttachmentName, MAX_LEN };
