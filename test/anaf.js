@@ -219,6 +219,30 @@ function stubFetch(script) {
   ok('reconciliere serviciu: furnizorul SPV e reconciliat (import exact + count)', eirR.furnizori.find((f) => f.cif === '55500011') && eirR.furnizori.find((f) => f.cif === '55500011').lipsa === 0);
   ok('reconciliere serviciu: cumpararea de la 77700022 apare fara corespondent SPV', eirR.faraSpv.some((x) => x.cif === '77700022'));
 
+  // ── Canalul de alerta (src/resend.js) ──
+  // Toata plasa de siguranta — arhiva nerestaurabila, drill esuat, fereastra de 5xx, veghea pe
+  // memorie — se sprijina pe un singur email. Copia din scripts/backup.js NU verifica raspunsul:
+  // un 401 (cheie revocata) sau 403 (domeniu neverificat) trecea drept succes, iar alerta disparea
+  // exact cand contai pe ea. sendResend ARUNCA, ca apelantul sa nu confunde „am cerut trimiterea"
+  // cu „a plecat".
+  section('Alerte: sendResend verifica raspunsul (nu doar il cere)');
+  {
+    const { sendResend } = require('../src/resend');
+    const msg = { from: 'a@x', to: 'b@y', subject: 's', text: 't' };
+    const stub = (ok, status, body) => { global.fetch = async () => ({ ok, status, text: async () => body }); };
+    const aAruncat = async (fn) => { try { await fn(); return false; } catch (_) { return true; } };
+
+    stub(false, 401, '{"message":"API key is invalid"}');
+    ok('401 (cheie revocata) -> arunca', await aAruncat(() => sendResend('k', msg)));
+    stub(false, 403, '{"message":"domain not verified"}');
+    ok('403 (domeniu neverificat) -> arunca', await aAruncat(() => sendResend('k', msg)));
+    stub(true, 200, '{"ok":true}');
+    ok('200 fara `id` (contract schimbat) -> arunca', await aAruncat(() => sendResend('k', msg)));
+    ok('fara cheie -> arunca', await aAruncat(() => sendResend('', msg)));
+    stub(true, 200, '{"id":"abc-123"}');
+    ok('200 cu `id` -> trece', !(await aAruncat(() => sendResend('k', msg))));
+  }
+
   // curatenie: recipisa de test scrisa in data/uploads + baza temporara
   try { fs.unlinkSync(recipisaPath); } catch (_) { /* ignora */ }
   try { fs.unlinkSync(process.env.CONTAB_DB_FILE); } catch (_) { /* ignora */ }

@@ -27,7 +27,11 @@ const path = require('path');
     if (!fs.existsSync(p)) return;
     for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
       const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+      // `in`, nu adevar-valoare — aceeasi semantica cu loadDotEnv din src/bootstrap.js (referinta).
+      // Cu `!process.env[...]`, o variabila setata explicit la GOL era considerata absenta si .env
+      // castiga: `CONTAB_BACKUP_EMAIL_TO= node scripts/backup.js` trimitea totusi emailul, fiindca
+      // adresa venea din .env. O incercare „fara efecte" avea efecte.
+      if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
     }
   } catch (_) { /* ignora */ }
 })();
@@ -40,8 +44,16 @@ process.emitWarning = function (w, ...rest) {
 };
 
 const backup = require('../src/backup');
+// Acelasi expeditor ca al aplicatiei, dar fara dependinta de baza de date (scriptul ruleaza din
+// cron si lucreaza pe fisiere). Important: verifica raspunsul si arunca daca emailul nu a plecat.
+const { sendResend } = require('../src/resend');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+// CONTAB_DATA_DIR, ca in src/db.js. Inainte era o cale FIXA catre data/ din repo, desi
+// CONTAB_DB_FILE era respectat — deci o rulare „pe date temporare" citea baza din /tmp, dar scria
+// arhivele, marcajul si rotatia in data/ REAL. E fix capcana din care s-a nascut pana de backup
+// de 7 zile: fisiere lasate in data/ de un proces rulat ca root. Un script de backup trebuie sa
+// poata fi incercat fara sa atinga productia.
+const DATA_DIR = process.env.CONTAB_DATA_DIR || path.join(__dirname, '..', 'data');
 const DB_FILE = process.env.CONTAB_DB_FILE || path.join(DATA_DIR, 'db.json');
 const KEEP = Number(process.env.CONTAB_BACKUP_KEEP) || 30;
 const KEEP_FULL = Number(process.env.CONTAB_BACKUP_KEEP_FULL) || 14;
@@ -80,15 +92,30 @@ async function emailArchive(zipPath, sizeLabel) {
 }
 
 /** Alerta text (fara atasament) cand backupul sau verificarea esueaza. */
+// Ultima alerta care NU a putut pleca (motivul). Ajunge in marcajul last-backup.json, deci in
+// /api/metrics si in raportul zilnic: daca insusi canalul de alerta e cazut, trebuie sa ramana
+// o urma pe care o vede altcineva — altfel tacerea seamana leit cu „totul e in regula".
+let alertaEsuata = null;
+
 async function alertEmail(subiect, text) {
-  if (!EMAIL_TO || !RESEND_KEY) return;
+  if (!EMAIL_TO || !RESEND_KEY) {
+    alertaEsuata = 'necofigurat: ' + (!EMAIL_TO ? 'CONTAB_BACKUP_EMAIL_TO' : 'RESEND_API_KEY') + ' lipseste';
+    warn('ALERTA NETRIMISA (' + alertaEsuata + '):', subiect);
+    return;
+  }
   try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + RESEND_KEY, 'Content-Type': 'application/json', 'User-Agent': 'contab-backup-script/1.0' },
-      body: JSON.stringify({ from: 'Contab backup <comenzi@poetio.site>', to: [EMAIL_TO], subject: subiect, text }),
+    // sendResend ARUNCA daca emailul nu a plecat. Varianta de dinainte ignora `r.ok`, deci un 401
+    // (cheie revocata) sau 403 (domeniu neverificat) trecea drept succes si alerta disparea.
+    await sendResend(RESEND_KEY, {
+      from: 'Contab backup <comenzi@poetio.site>', to: EMAIL_TO, subject: subiect, text,
+      ua: 'contab-backup-script/1.0',
     });
-  } catch (_) { /* alerta e best-effort */ }
+  } catch (e) {
+    alertaEsuata = String(e.message || e).slice(0, 200);
+    // Nu putem trimite email — tocmai asta a esuat. Ramane stderr (cron/MAILTO il prinde) plus
+    // marcajul de stare de mai jos.
+    warn('ALERTA NU A PLECAT:', alertaEsuata, '| subiect:', subiect);
+  }
 }
 
 async function main() {
@@ -115,17 +142,24 @@ async function main() {
   // serverului. S-a intamplat: un fisier ramas root-owned a facut writeFileSync sa arunce EACCES,
   // iar copia offsite n-a mai plecat SAPTE ZILE (19-25 iulie 2026), cu backup-urile locale create
   // in continuare — deci aparent totul era in regula.
-  try {
-    fs.writeFileSync(path.join(DATA_DIR, 'backups', 'last-backup.json'), JSON.stringify({
-      ts: new Date().toISOString(), name: f.name, ok: veri.ok, firme: veri.firme, sqlite: veri.sqlite, size: f.size, motiv: veri.motiv,
-      drill: { ok: drill.ok, nrFirme: drill.nrFirme, totalEntries: drill.totalEntries, motiv: drill.motiv },
-    }));
-  } catch (e) {
-    warn('Marcajul last-backup.json nu s-a putut scrie:', e.message, '— backupul CONTINUA (verificare, drill, offsite).');
-  }
+  // Se rescrie dupa fiecare alerta, ca `alertaEsuata` sa fie la zi: daca insusi canalul de alerta
+  // e cazut, urma trebuie sa ramana undeva ce se vede din afara.
+  const scrieMarcaj = () => {
+    try {
+      fs.writeFileSync(path.join(DATA_DIR, 'backups', 'last-backup.json'), JSON.stringify({
+        ts: new Date().toISOString(), name: f.name, ok: veri.ok, firme: veri.firme, sqlite: veri.sqlite, size: f.size, motiv: veri.motiv,
+        drill: { ok: drill.ok, nrFirme: drill.nrFirme, totalEntries: drill.totalEntries, motiv: drill.motiv },
+        alertaEsuata,
+      }));
+    } catch (e) {
+      warn('Marcajul last-backup.json nu s-a putut scrie:', e.message, '— backupul CONTINUA (verificare, drill, offsite).');
+    }
+  };
+  scrieMarcaj();
   if (!veri.ok) {
     warn('Verificare arhiva ESUATA:', veri.motiv);
     await alertEmail('[Contab backup] ARHIVA NERESTAURABILA: ' + f.name, 'Verificarea a esuat: ' + veri.motiv);
+    scrieMarcaj(); // alerta poate sa nu fi plecat — lasa urma inainte de a iesi
     process.exit(1);
   }
   log('Verificare arhiva OK:', veri.firme, 'firme, sqlite:', veri.sqlite);
@@ -134,6 +168,7 @@ async function main() {
     await alertEmail('[Contab backup] DRILL RESTAURARE ESUAT: ' + f.name,
       'Arhiva se deschide, dar datele restaurate NU sunt coerente contabil: ' + drill.motiv
       + '\nVerifica integritatea bazei inainte ca backupurile sa se roteasca.');
+    scrieMarcaj(); // alerta poate sa nu fi plecat — lasa urma inainte de a iesi
     process.exit(1);
   }
   log('Drill restaurare OK:', drill.nrFirme, 'firme coerente,', drill.totalEntries, 'articole (balanta echilibrata).');
@@ -174,6 +209,10 @@ async function main() {
   if (offsitePath !== f.path) { try { fs.unlinkSync(offsitePath); } catch (_) { /* best effort */ } }
   if (!offsiteConfigured) warn('ATENTIE: nicio copie offsite configurata (CONTAB_BACKUP_EMAIL_TO / RCLONE_REMOTE).');
   else if (!offsiteOk) process.exitCode = 1; // offsite configurat dar esuat -> semnaleaza in cron log
+  if (alertaEsuata) {
+    scrieMarcaj();               // urma ramane vizibila in /api/metrics si in raportul zilnic
+    process.exitCode = 1;        // canalul de alerta e cazut: rularea NU e „complet reusita"
+  }
 }
 
 main().catch(async (e) => {
