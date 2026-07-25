@@ -8,12 +8,17 @@ function fmtMsgTime(iso) {
   try { return new Date(iso).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
 }
 function fmtSize(b) { b = Number(b) || 0; if (b < 1024) return b + ' B'; if (b < 1048576) return (b / 1024).toFixed(0) + ' KB'; return (b / 1048576).toFixed(1) + ' MB'; }
-// randeaza atasamentul: imaginile raster inline (thumbnail), restul ca buton de descarcare
+// randeaza atasamentul: imaginile raster inline (thumbnail), restul ca buton de descarcare.
+// Numele fisierului vine de la incarcator (req.file.originalname) si NU e sanitizat pe server,
+// deci in ATRIBUTE se escapeaza cu escAttr, nu cu escMsg: escMsg nu atinge ghilimelele, iar un
+// nume ca `x" onerror="…` ar fi inchis atributul alt si ar fi adaugat altele. CSP (script-src
+// 'self', fara unsafe-inline) opreste executia, dar escaparea e stratul care nu trebuie sa cada
+// primul — mesajele vin de la utilizatori si sunt citite de administrator.
 function attachHtml(m) {
   if (!m.attachment) return '';
   const a = m.attachment; const url = '/api/messages/' + encodeURIComponent(m.id) + '/file';
   const isImg = /^image\/(png|jpe?g|gif|webp)$/i.test(a.mime || '');
-  if (isImg) return `<a class="msg-img" href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${escMsg(a.name)}" loading="lazy"></a>`;
+  if (isImg) return `<a class="msg-img" href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${escAttr(a.name)}" loading="lazy"></a>`;
   return `<a class="filechip" href="${url}" target="_blank" rel="noopener">📎 <span class="fn">${escMsg(a.name)}</span> <span class="fsize">${fmtSize(a.size)}</span></a>`;
 }
 // escMsg / escAttr sunt importate din core.js (partajate cu galeriile din app.js)
@@ -22,9 +27,9 @@ function bubble(m, viewerIsAdmin) {
   const mine = viewerIsAdmin ? m.fromAdmin : !m.fromAdmin;
   const who = m.fromAdmin ? 'Administrator' : (m.author || 'Utilizator');
   const txt = m.text ? escMsg(m.text).replace(/\n/g, '<br>') : '';
-  const del = viewerIsAdmin ? `<button type="button" class="msg-del" data-id="${escMsg(m.id)}" title="Șterge mesajul">✕</button>` : '';
+  const del = viewerIsAdmin ? `<button type="button" class="msg-del" data-id="${escAttr(m.id)}" title="Șterge mesajul">✕</button>` : '';
   // editarea: doar autorul (mesajul „mine”)
-  const edit = mine ? `<button type="button" class="msg-edit" data-id="${escMsg(m.id)}" data-text="${escAttr(m.text || '')}" title="Editează">✎</button>` : '';
+  const edit = mine ? `<button type="button" class="msg-edit" data-id="${escAttr(m.id)}" data-text="${escAttr(m.text || '')}" title="Editează">✎</button>` : '';
   // confirmare de citire pe mesajele proprii + marcaj „editat”
   let receipt = '';
   if (mine) {
@@ -249,3 +254,6 @@ function pingTyping() {
   const body = isAdminView() ? JSON.stringify({ userId: MSG_ADMIN_TARGET }) : '{}';
   fetch('/api/messages/typing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
 }
+
+// Exportate pentru testele unitare de frontend (randarea firului de chat, escapare): test/frontend.mjs
+export { bubble, attachHtml, fmtSize };

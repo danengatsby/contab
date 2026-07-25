@@ -40,6 +40,8 @@ const plan = await import(path.join(mirror, 'plan.js'));
 const dashboard = await import(path.join(mirror, 'dashboard.js'));
 const rapoarte = await import(path.join(mirror, 'rapoarte.js'));
 const livrabile = await import(path.join(mirror, 'livrabile.js'));
+const messages = await import(path.join(mirror, 'messages.js'));
+const etransport = await import(path.join(mirror, 'etransport.js'));
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -386,6 +388,71 @@ ok('eticheta din fișierul ANAF e escapată', !etvaOstil.includes('<i>y</i>') &&
 ok('numărul de rând ostil nu poate închide un atribut', !etvaOstil.includes('"><script>'));
 ok('perioada din meta e escapată', !etvaOstil.includes('<img src=x>'));
 ok('mesajul observației e escapat', !etvaOstil.includes('<b>x</b>'));
+
+section('Mesagerie: randarea firului de chat');
+// Continutul vine de la ALT UTILIZATOR (suport patron <-> contabil <-> administrator) si e citit
+// de administrator. Escaparea e stratul care nu trebuie sa cada primul, chiar daca CSP prinde
+// executia (script-src 'self', fara unsafe-inline).
+eq('dimensiune sub 1 KB in octeti', messages.fmtSize(512), '512 B');
+// granitele, nu doar puncte din mijlocul intervalelor: un prag mutat (1024 -> 1000) trece
+// neobservat daca testezi doar 512 si 1024 (verificat prin mutatie)
+eq('ultimul octet inainte de KB', messages.fmtSize(1023), '1023 B');
+eq('exact 1 KB', messages.fmtSize(1024), '1 KB');
+eq('ultimul KB inainte de MB', messages.fmtSize(1048575), '1024 KB');
+eq('pragul spre MB', messages.fmtSize(1048576), '1.0 MB');
+eq('zero e afisat, nu ascuns', messages.fmtSize(0), '0 B');
+eq('valoare invalida nu da NaN', messages.fmtSize('abc'), '0 B');
+ok('fara atasament nu se randeaza nimic', messages.attachHtml({ id: 'm1' }) === '');
+const imgAtt = messages.attachHtml({ id: 'm1', attachment: { name: 'poza.png', mime: 'image/png', size: 2048 } });
+ok('imaginile se randeaza inline (thumbnail)', imgAtt.includes('<img') && imgAtt.includes('msg-img'));
+const pdfAtt = messages.attachHtml({ id: 'm2', attachment: { name: 'raport.pdf', mime: 'application/pdf', size: 1048576 } });
+ok('restul devin buton de descarcare, nu <img>', pdfAtt.includes('filechip') && !pdfAtt.includes('<img'));
+ok('butonul de descarcare arata dimensiunea', pdfAtt.includes('1.0 MB'));
+// REGRESIE: numele fisierului vine din req.file.originalname si NU e sanitizat pe server. In
+// atribut trebuie escapat cu escAttr — escMsg (folosit inainte aici) nu atinge ghilimelele, deci
+// un nume ca `x" onerror="…` inchidea atributul alt si adauga altele noi.
+const attEvil = messages.attachHtml({ id: 'm3', attachment: { name: 'x" onerror="alert(1)', mime: 'image/png', size: 10 } });
+ok('numele de fișier ostil nu poate închide atributul alt', attEvil.includes('alt="x&quot; onerror=&quot;alert(1)"'));
+ok('numele ostil nu lasă ghilimele brute în markup', !/alt="x" /.test(attEvil));
+const bub = { id: 'm9', fromAdmin: false, text: 'salut <b>x</b>\nrand nou', author: 'Ion & Co', createdAt: '2026-07-01T10:00:00Z' };
+const bubUser = messages.bubble(bub, false);
+ok('textul mesajului e escapat', bubUser.includes('&lt;b&gt;') && !bubUser.includes('<b>x</b>'));
+ok('rândurile noi devin <br>', bubUser.includes('<br>'));
+ok('numele autorului e escapat', bubUser.includes('Ion &amp; Co'));
+ok('mesajul propriu e pe partea „mine"', bubUser.includes('msg mine'));
+ok('autorul își poate edita mesajul', bubUser.includes('msg-edit'));
+ok('utilizatorul nu poate șterge mesaje', !bubUser.includes('msg-del'));
+const bubAdmin = messages.bubble(bub, true);
+ok('pentru admin, mesajul utilizatorului e pe partea cealaltă', bubAdmin.includes('msg other'));
+ok('adminul poate șterge mesaje', bubAdmin.includes('msg-del'));
+ok('adminul NU poate edita mesajul altuia', !bubAdmin.includes('msg-edit'));
+// textul reintra intr-un ATRIBUT la editare (data-text) — acolo e nevoie de escAttr
+ok('textul dus în atributul de editare e escapat pentru atribut', messages.bubble({ id: 'm', fromAdmin: false, text: 'a"b', createdAt: '' }, false).includes('data-text="a&quot;b"'));
+ok('confirmarea de citire apare pe mesajul propriu', messages.bubble({ id: 'm', fromAdmin: false, text: 'x', createdAt: '', readByAdmin: true }, false).includes('citit'));
+ok('mesajul editat e marcat ca atare', messages.bubble({ id: 'm', fromAdmin: false, text: 'x', createdAt: '', editedAt: '2026-07-01' }, false).includes('editat'));
+
+section('e-Transport: tipul de operațiune propus');
+// Codul ajunge intr-o declaratie catre ANAF: un cod gresit inseamna o declaratie gresita.
+eq('livrarea intracomunitară', etransport.defaultTip('livrare_intracomunitara'), '20');
+eq('achiziția intracomunitară', etransport.defaultTip('achizitie_intracomunitara'), '10');
+eq('importul vamal', etransport.defaultTip('import_vamal'), '40');
+eq('restul sunt transport național', etransport.defaultTip('aviz_livrare'), '30');
+eq('tip necunoscut cade tot pe transport național', etransport.defaultTip('ceva_nou'), '30');
+// Poarta frontend <-> server: codurile propuse trebuie sa existe in nomenclatorul serverului SI
+// sa insemne ce trebuie. O inversare 10<->20 ar trece o verificare „codul exista", dar nu si asta.
+const etrSrc2 = fs.readFileSync(path.join(ROOT, 'src', 'etransport.js'), 'utf8');
+const tipM = etrSrc2.match(/const TIP_OPERATIUNE = \{([^}]+)\}/);
+ok('TIP_OPERATIUNE e gasit in src/etransport.js', !!tipM);
+const nomen = {};
+for (const m of (tipM ? tipM[1] : '').matchAll(/(\d+):\s*'([^']+)'/g)) nomen[m[1]] = m[2];
+ok('nomenclatorul serverului are coduri', Object.keys(nomen).length >= 4);
+for (const t of ['livrare_intracomunitara', 'achizitie_intracomunitara', 'import_vamal', 'aviz_livrare']) {
+  ok('codul propus pentru „' + t + '" exista in nomenclatorul serverului', !!nomen[etransport.defaultTip(t)]);
+}
+ok('codul livrării IC înseamnă chiar livrare intracomunitară', /Livrare intracomunitara/i.test(nomen[etransport.defaultTip('livrare_intracomunitara')] || ''));
+ok('codul achiziției IC înseamnă chiar achiziție intracomunitară', /Achizitie intracomunitara/i.test(nomen[etransport.defaultTip('achizitie_intracomunitara')] || ''));
+ok('codul importului înseamnă chiar import', /Import/i.test(nomen[etransport.defaultTip('import_vamal')] || ''));
+ok('codul implicit înseamnă transport național', /national/i.test(nomen[etransport.defaultTip('altceva')] || ''));
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

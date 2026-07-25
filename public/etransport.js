@@ -194,3 +194,6 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   openForm(b.dataset);
 });
+
+// Exportat pentru testele unitare de frontend (clasificarea operatiunii e-Transport): test/frontend.mjs
+export { defaultTip };
