@@ -447,8 +447,15 @@ function collectFields() {
   });
   return out;
 }
+// Cotele implicite vin din META.fiscal (adica src/fiscalConfig.js, prin /api/meta) — NU se
+// hardcodeaza aici: altfel o modificare de cota ramane doar pe server, iar previzualizarea arata
+// o alta suma decat cea salvata. Numerele de mai jos sunt doar plasa pentru META neincarcat inca.
+const cotaStd = () => Number((META.fiscal || {}).tvaStandard) || 21;
+const cotaRedusa = () => Number((META.fiscal || {}).tvaRedus) || 11;
 function localBuild(tipId, f) {
-  // replica simplificata pentru previzualizare (server ramane sursa de adevar)
+  // replica simplificata pentru previzualizare (server ramane sursa de adevar).
+  // Acordul cu serverul e verificat tip-cu-tip in test/frontend.mjs: o previzualizare care
+  // arata alt articol decat cel salvat induce in eroare exact inainte de decizie.
   const r2 = (x) => Math.round(x * 100) / 100;
   // daca exista linii detaliate, baza si TVA se calculeaza din ele
   if (Array.isArray(f.items) && f.items.length) {
@@ -469,7 +476,7 @@ function localBuild(tipId, f) {
     factura_servicii_primita: () => [L(f.contChelt || '628', '401', n('baza'), 'Servicii'), n('tva') > 0 && L('4426', '401', n('tva'), 'TVA deductibila')],
     factura_combustibil: () => [L('6022', '401', n('baza'), 'Combustibil'), n('tva') > 0 && L('4426', '401', n('tva'), 'TVA deductibila')],
     factura_imobilizare: () => [L(f.contImob || '2131', '404', n('baza'), 'Imobilizare'), n('tva') > 0 && L('4426', '404', n('tva'), 'TVA deductibila')],
-    achizitie_intracomunitara: () => { const t = r2(n('baza') * (n('cota') || 19) / 100); return [L(f.contStoc || '371', '401', n('baza'), 'Achizitie IC'), L('4426', '4427', t, 'Taxare inversa')]; },
+    achizitie_intracomunitara: () => { const t = r2(n('baza') * (n('cota') || cotaStd()) / 100); return [L(f.contStoc || '371', '401', n('baza'), 'Achizitie IC'), L('4426', '4427', t, 'Taxare inversa')]; },
     livrare_intracomunitara: () => [L('4111', '707', n('baza'), 'Livrare IC')],
     incasare_client: () => [L(f.cont || '5121', '4111', n('suma'), 'Incasare client')],
     plata_furnizor: () => [L(f.contFz || '401', f.cont || '5121', n('suma'), 'Plata furnizor')],
@@ -491,10 +498,13 @@ function localBuild(tipId, f) {
     lucrari_in_curs: () => f.sens === 'reluare' ? [L('712', '332', n('suma'), 'Reluare lucrari in curs')] : [L('332', '712', n('suma'), 'Lucrari in curs')],
     garantie_retinuta: () => [L('2678', '4111', n('suma'), 'Garantie retinuta')],
     garantie_restituita: () => [L(f.cont || '5121', '2678', n('suma'), 'Restituire garantie')],
-    horeca_intrare: () => { const o = [L('371', '401', n('cost'), 'Marfa la cost')]; if (n('tvaDed') > 0) o.push(L('4426', '401', n('tvaDed'), 'TVA deductibila')); if (n('adaos') > 0) o.push(L('371', '378', n('adaos'), 'Adaos')); const tn = r2((n('cost') + n('adaos')) * (n('cotaVanzare') || 11) / 100); if (tn > 0) o.push(L('371', '4428', tn, 'TVA neexigibila')); return o; },
-    horeca_vanzare: () => { const o = []; if (n('numerar') > 0) o.push(L('5311', '707', n('numerar'), 'Numerar')); if (n('card') > 0) o.push(L('5121', '707', n('card'), 'Card')); const tot = r2(n('numerar') + n('card')); const c = n('cota') || 11; const tc = r2(tot * c / (100 + c)); if (tc > 0) o.push(L('4428', '4427', tc, 'TVA colectata')); if (n('cost') > 0) o.push(L('607', '371', n('cost'), 'Cost')); if (n('adaos') > 0) o.push(L('378', '371', n('adaos'), 'Adaos')); return o; },
+    horeca_intrare: () => { const o = [L('371', '401', n('cost'), 'Marfa la cost')]; if (n('tvaDed') > 0) o.push(L('4426', '401', n('tvaDed'), 'TVA deductibila')); if (n('adaos') > 0) o.push(L('371', '378', n('adaos'), 'Adaos')); const tn = r2((n('cost') + n('adaos')) * (n('cotaVanzare') || cotaRedusa()) / 100); if (tn > 0) o.push(L('371', '4428', tn, 'TVA neexigibila')); return o; },
+    // Incasarea e BRUTA: 707 primeste doar baza, TVA merge pe 4427 separat pe fiecare mijloc de
+    // incasare, iar descarcarea de gestiune scoate din 371 si TVA neexigibila (4428 = 371), fiindca
+    // 371 e tinut la pret de vanzare cu amanuntul. Vezi src/documentTypes/sectoare.js.
+    horeca_vanzare: () => { const c = n('cota') || cotaRedusa(); const tvaDin = (brut) => r2((brut * c) / (100 + c)); const o = []; if (n('numerar') > 0) { const tn = tvaDin(n('numerar')); o.push(L('5311', '707', r2(n('numerar') - tn), 'Numerar - venit')); if (tn > 0) o.push(L('5311', '4427', tn, 'TVA colectata (numerar)')); } if (n('card') > 0) { const tc = tvaDin(n('card')); o.push(L('5121', '707', r2(n('card') - tc), 'Card - venit')); if (tc > 0) o.push(L('5121', '4427', tc, 'TVA colectata (card)')); } if (n('cost') > 0) o.push(L('607', '371', n('cost'), 'Cost')); if (n('adaos') > 0) o.push(L('378', '371', n('adaos'), 'Adaos')); const tvn = r2((n('cost') + n('adaos')) * c / 100); if (tvn > 0) o.push(L('4428', '371', tvn, 'TVA neexigibila')); return o; },
     diferenta_curs: () => f.sens === 'nefavorabila' ? [L('665', f.contTert || '401', n('suma'), 'Diferenta nefavorabila')] : [L(f.contTert || '5124', '765', n('suma'), 'Diferenta favorabila')],
-    combustibil_50: () => { const tt = r2(n('baza') * (n('cota') || 21) / 100); const td = r2(tt * 0.5); const tn = r2(tt - td); const o = [L('6022', '401', n('baza'), 'Combustibil')]; if (td > 0) o.push(L('4426', '401', td, 'TVA ded. 50%')); if (tn > 0) o.push(L('6022', '401', tn, 'TVA nded. 50%')); return o; },
+    combustibil_50: () => { const tt = r2(n('baza') * (n('cota') || cotaStd()) / 100); const td = r2(tt * 0.5); const tn = r2(tt - td); const o = [L('6022', '401', n('baza'), 'Combustibil')]; if (td > 0) o.push(L('4426', '401', td, 'TVA ded. 50%')); if (tn > 0) o.push(L('6022', '401', tn, 'TVA nded. 50%')); return o; },
     taxe_drum: () => [L('635', '446', n('suma'), 'Rovinieta/taxe drum')],
     plata_salarii: () => [L('421', f.cont || '5121', n('suma'), 'Plata salarii')],
     amortizare: () => [L('6811', f.contAmort || '281', n('suma'), 'Amortizare')],
@@ -504,19 +514,26 @@ function localBuild(tipId, f) {
     acordare_avans: () => [L('542', f.cont || '5311', n('suma'), 'Avans de trezorerie acordat')],
     decont_deplasare: () => [L(f.contChelt || '625', f.cont || '542', n('suma'), 'Decont deplasare')],
     dobanda_bancara: () => [L('666', '5121', n('suma'), 'Cheltuieli cu dobanzile')],
-    import_vamal: () => { const baza = r2(n('valoareBunuri') + n('taxeVamale')); const tva = r2(baza * (n('cota') || 21) / 100); const o = [L(f.contBun || '371', '401', n('valoareBunuri'), 'Import bunuri')]; if (n('taxeVamale') > 0) o.push(L(f.contBun || '371', '446', n('taxeVamale'), 'Taxe vamale')); o.push(L('4426', '446', tva, 'TVA in vama')); return o; },
+    import_vamal: () => { const baza = r2(n('valoareBunuri') + n('taxeVamale')); const tva = r2(baza * (n('cota') || cotaStd()) / 100); const o = [L(f.contBun || '371', '401', n('valoareBunuri'), 'Import bunuri')]; if (n('taxeVamale') > 0) o.push(L(f.contBun || '371', '446', n('taxeVamale'), 'Taxe vamale')); o.push(L('4426', '446', tva, 'TVA in vama')); return o; },
     diferente_inventar: () => f.sens === 'plus' ? [L(f.contStoc || '371', f.contChelt || '607', n('suma'), 'Plus la inventar')] : [L(f.contChelt || '607', f.contStoc || '371', n('suma'), 'Minus la inventar')],
     casare_mijloc_fix: () => { const ramas = r2(n('valoare') - n('amortizare')); const o = []; if (n('amortizare') > 0) o.push(L(f.contAmort || '281', f.contImob || '2131', n('amortizare'), 'Scadere amortizare')); if (ramas > 0) o.push(L('6583', f.contImob || '2131', ramas, 'Valoare ramasa')); return o; },
-    imputare_lipsa: () => { const tva = r2(n('valoareImputata') * (n('cota') || 21) / 100); const o = [L(f.contCreanta || '4282', '7588', n('valoareImputata'), 'Imputare lipsa - venit')]; if (tva > 0) o.push(L(f.contCreanta || '4282', '4427', tva, 'TVA imputare')); return o; },
+    imputare_lipsa: () => { const tva = r2(n('valoareImputata') * (n('cota') || cotaStd()) / 100); const o = [L(f.contCreanta || '4282', '7588', n('valoareImputata'), 'Imputare lipsa - venit')]; if (tva > 0) o.push(L(f.contCreanta || '4282', '4427', tva, 'TVA imputare')); return o; },
     plata_taxe: () => [L(f.contTaxa || '446', f.cont || '5121', n('suma'), 'Plata taxe/impozite')],
     nota_contabila: () => [L(f.debit || '?', f.credit || '?', n('suma'), f.explicatie || 'Nota')],
   };
-  return (m[tipId] ? m[tipId]() : []).filter(Boolean);
+  // null (nu []) pentru tipurile fara replica locala: previzualizarea nu poate distinge altfel
+  // „campuri necompletate" de „tip neacoperit" si i-ar cere omului la nesfarsit sa completeze
+  // campuri deja completate. Replica acopera tipurile uzuale; restul se genereaza pe server.
+  return m[tipId] ? m[tipId]().filter(Boolean) : null;
 }
 function updatePreview() {
   const tipId = $('#tipSelect').value;
   const f = collectFields();
   const lines = localBuild(tipId, f);
+  if (!lines) {
+    $('#preview').innerHTML = 'Articolul contabil pentru acest tip se generează pe server, la salvare — îl vezi imediat în listă.';
+    return;
+  }
   const total = lines.reduce((s, l) => s + l.suma, 0);
   $('#preview').innerHTML = lines.length
     ? lines.map((l) => `<span class="pd">${l.debit}</span> ${accName(l.debit)} = <span class="pc">${l.credit}</span> ${accName(l.credit)}  →  <b>${fmt(l.suma)}</b> lei`).join('\n')
@@ -539,3 +556,5 @@ $('#entryForm').addEventListener('submit', (e) => { e.preventDefault(); submitEn
 $('#saveDraft') && $('#saveDraft').addEventListener('click', () => submitEntry(true));
 
 export { fillTipSelect, renderRecurring, setDocflowDeps };
+// Exportat pentru testele unitare de frontend (acordul previzualizarii cu serverul): test/frontend.mjs
+export { localBuild };
