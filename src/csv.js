@@ -51,4 +51,18 @@ function parseCsv(text) {
   return rows.map((r) => r.map((x) => x.trim().replace(stripApostrof, ''))).filter((r) => r.some((c) => c !== ''));
 }
 
-module.exports = { toCsv, parseCsv };
+// Un CSV importat poate avea sau nu un rand de antet. Regula: se uita la PRIMA CELULA si cere ca
+// ea sa FIE un cuvant de antet (eventual urmat de altceva — „Cod produs"), nu doar sa-l CONTINA.
+// Varianta de dinainte cauta „cod|cont|cui|denumire" oriunde in primele doua celule si inghitea
+// TACIT primul rand real cand denumirea continea unul din cuvinte. Cazuri reale, nu teoretice:
+// „5121;Conturi curente la banci" (planul de conturi romanesc e plin de ele) si partenerul
+// „RO9001;CODLEA PROD SRL". Randul disparea fara nicio eroare, iar importul raporta succes.
+// Prima celula e un cod (cont/CUI/produs) sau un cuvant de antet — nu se pot confunda, atat timp
+// cat cerem cuvantul INTREG: „CODLEA" nu e „COD".
+const HEADER_WORD = /^(cod|cont|cui|nr\.?|nume|denumire|produs|articol|gestiune)(\s|$)/i;
+/** Primul rand al unui CSV importat e antet? (se ia decizia DOAR dupa prima celula) */
+function isHeaderRow(row) {
+  return HEADER_WORD.test(String((row && row[0]) || '').trim());
+}
+
+module.exports = { toCsv, parseCsv, isHeaderRow };
