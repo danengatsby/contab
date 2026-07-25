@@ -226,6 +226,38 @@ async function main() {
     const regScurt = await req('POST', '/api/register', { body: { nume: 'F SRL', username: ' ab ', password: 'ParolaBunaDeTot9' } });
     ok('register: nume prea scurt dupa trim -> 400', regScurt.status === 400 && /prea scurt/i.test((regScurt.json || {}).error || ''));
 
+    // ── Nicio ruta de scriere nu scapa gardii de autentificare ──
+    // Autentificarea e o SINGURA garda in bootstrap, deci proprietatea depinde de ORDINEA de
+    // inregistrare: o ruta montata inaintea ei ar raspunde neautentificat, si nimic nu ar spune-o.
+    // Enumeram rutele din sursa si le lovim fara sesiune — 401 (sau 403 de la garda CSRF) e
+    // respingere; orice 2xx inseamna ca cererea a ajuns la handler.
+    {
+      const fsx = require('fs'); const pth = require('path');
+      const root = pth.join(__dirname, '..');
+      const PUBLICE = new Set(['/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register',
+        '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest']);
+      const codeFiles = ['server.js', 'src/authRoutes.js', ...fsx.readdirSync(pth.join(root, 'src', 'routes')).map((f) => 'src/routes/' + f)];
+      const rute = new Set();
+      for (const f of codeFiles) {
+        const s = fsx.readFileSync(pth.join(root, f), 'utf8');
+        for (const m of s.matchAll(/app\.(post|put|patch|delete)\(\s*'([^']+)'/g)) {
+          const p = m[2];
+          if (PUBLICE.has(p) || p.startsWith('/api/invite/') || p.startsWith('/api/reset/')) continue;
+          rute.add(m[1].toUpperCase() + ' ' + p);
+        }
+      }
+      const scapate = [];
+      for (const r of rute) {
+        const [meth, p] = r.split(' ');
+        const url = p.replace(/:[a-zA-Z0-9_]+/g, 'x');
+        const res = await req(meth, url); // FARA cookie
+        if (res.status < 400) scapate.push(r + ' -> ' + res.status);
+      }
+      ok('rutele de scriere enumerate din sursa (>80)', rute.size > 80);
+      ok('nicio ruta de scriere nu raspunde fara sesiune'
+        + (scapate.length ? ' — ' + scapate.slice(0, 5).join(' | ') : ''), scapate.length === 0);
+    }
+
     // autorizare pe firma: user1 (firma 1) nu vede documentul firmei 2
     eq('document al altei firme -> 403', (await req('GET', '/api/document/docA/file', { cookie: c1 })).status, 403);
 

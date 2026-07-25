@@ -3640,6 +3640,39 @@ section('Docs API: rutele documentate exista in cod (fara drift)');
   ok('docs/api.md are rute documentate (grep-abile)', documented.size > 50);
   const drifted = [...documented].filter((r) => !registered.has(r));
   ok('fiecare ruta documentata exista in cod (drift = ' + drifted.length + ')' + (drifted.length ? ': ' + drifted.slice(0, 5).join(', ') : ''), drifted.length === 0);
+
+  // ── Poartă: orice rută de SCRIERE arată o formă de autorizare ──
+  // Lectia din `/api/accounts/import` (merge d117de9): ruta scria planul de conturi GLOBAL fara
+  // requireAdmin si fara scoping, iar un utilizator legat de o singura firma redenumea conturi
+  // pentru toate. Autentificarea e garantata central (o singura garda in bootstrap), dar
+  // AUTORIZAREA e per-ruta — deci se poate uita, si atunci nimic nu semnaleaza.
+  // Dovada acceptata: scoping pe firma (activeId/S(req)/reqFirma/canAccess/firmaId), garda de
+  // admin, sau predarea lui req.user unui serviciu care autorizeaza el (tiparul reqEntry).
+  const AUTZ = /\bactiveId\(|\bS\(req\)|\breqFirma\b|\bcanAccess\(|\bfirmaId\b|\breq\.user\b|\brequireAdmin\b|\bdemoContLock\b/;
+  // Exceptii REVIZUITE, fiecare cu motivul ei. O ruta noua care ajunge aici trebuie justificata
+  // explicit — asta e rostul portii, nu sa fie ocolita.
+  const FARA_AUTZ_OK = new Map([
+    ['POST /api/efactura/parse', 'fara persistenta: converteste XML-ul primit in campuri, nu scrie nimic'],
+    ['POST /api/xlsx-to-csv', 'fara persistenta: conversie de format pentru fluxurile de import'],
+    ['POST /api/checkout-guest', 'PUBLICA prin proiectare (vizitator neautentificat, inainte de cont)'],
+    ['POST /api/production', 'autorizata in helperul doProduction (activeId + S(req)), nu in corpul rutei'],
+  ]);
+  const neautorizate = [];
+  for (const f of codeFiles) {
+    const s = fsx.readFileSync(pth.join(root, f), 'utf8');
+    for (const m of s.matchAll(/app\.(post|put|patch|delete)\(\s*'([^']+)'([\s\S]{0,900}?)(?=\n {2}app\.|\n\};|$)/g)) {
+      const cheie = m[1].toUpperCase() + ' ' + m[2];
+      if (AUTZ.test(m[3]) || FARA_AUTZ_OK.has(cheie)) continue;
+      neautorizate.push(cheie + '  (' + f + ')');
+    }
+  }
+  ok('fiecare ruta de scriere arata o autorizare (sau e pe lista revizuita)'
+    + (neautorizate.length ? ' — ' + neautorizate.slice(0, 5).join(' | ') : ''), neautorizate.length === 0);
+  // poarta trebuie sa POATA pica
+  ok('poarta de autorizare chiar detecteaza o ruta fara garda',
+    !AUTZ.test("(req, res) => run(res, () => { const r = svc.importAccounts((req.body || {}).csv); return r; })"));
+  ok('poarta accepta scoping pe firma', AUTZ.test("(req, res) => res.json(svc.list(activeId(req)))"));
+  ok('poarta accepta garda de admin', AUTZ.test("requireAdmin, (req, res) => res.json(svc.all())"));
 }
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
