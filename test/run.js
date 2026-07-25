@@ -1012,6 +1012,29 @@ eq('parseCsv: separator in ghilimele pastrat', parsed[1][1], 'Firma A; SRL');
 eq('parseCsv: ghilimele escapate', parsed[2][1], 'Firma "B"');
 eq('parseCsv: tolereaza separator , si ;', parseCsv('a,b,c').length, 1);
 
+// Injectie de formule in foaia de calcul: Excel/LibreOffice evalueaza celula care incepe cu
+// = + - @ TAB CR. Denumirile de parteneri vin din e-Factura/SPV — le scrie PARTEA CEALALTA —
+// din extrase bancare si din extragerea AI, iar exporturile ajung deschise in Excel de contabil.
+const celula = (v) => toCsv(['V'], [[v]]).split('\r\n')[1];
+ok('formula cu = e neutralizata', celula('=HYPERLINK("http://x","c")').startsWith('"\'='));
+ok('formula cu + e neutralizata', celula('+SUM(A1:A9)') === "'+SUM(A1:A9)");
+ok('formula cu @ e neutralizata', celula('@import') === "'@import");
+ok('vectorul DDE cu - e neutralizat', celula("-2+3+cmd|'/c calc'!A0").startsWith("'-"));
+ok('TAB la inceput e neutralizat', celula('\tceva').startsWith('"\'\t') || celula('\tceva').startsWith("'\t"));
+// Cazul care face diferenta dintre un remediu bun si unul daunator: sumele negative sunt
+// frecvente in contabilitate si NU trebuie sa primeasca apostrof (ar strica orice export).
+eq('suma negativa ramane numar', celula('-1234.56'), '-1234.56');
+eq('suma negativa subunitara ramane numar', celula('-0.5'), '-0.5');
+eq('numarul cu plus ramane numar', celula('+1234'), '+1234');
+eq('numarul obisnuit ramane neatins', celula('1234.56'), '1234.56');
+eq('denumirea obisnuita ramane neatinsa', celula('Firma & Co SRL'), 'Firma & Co SRL');
+// Dus-intors: apostroful de protectie NU trebuie sa se lipeasca de denumire la reimport
+// (exporturile de parteneri/produse chiar se reimporta).
+const rtCsv = (v) => parseCsv(toCsv(['V'], [[v]]))[1][0];
+for (const v of ['=X', '+SUM(A1)', '@x', "-2+3+cmd|'/c calc'!A0", '-1234.56', 'Firma & Co', "'apostrof real"]) {
+  eq('dus-intors fidel pentru ' + JSON.stringify(v), rtCsv(v), v);
+}
+
 section('Import plan de conturi personalizat');
 const coaMod = require('../src/chartOfAccounts');
 coaMod.addAccounts([{ cod: '6028', nume: 'Cheltuieli cu alte materiale', clasa: 6, tip: 'C' }]);
