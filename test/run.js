@@ -468,6 +468,105 @@ eq('doua cote dupa adaugarea unei vanzari 11%', vjMix.coteV.length, 2);
 eq('TVA la cota 11%', (vjMix.coteV.find((c) => c.cota === 11) || {}).tva, 110);
 const d300xmlMix = xml.d300Xml(v.company, '2026-06', rep.d300(vMix, '2026-06'));
 ok('D300 XML cu cote ramane bine-format', wellFormed(d300xmlMix));
+
+section('Declaratii XML: date externe cu caractere speciale (escapare)');
+// Denumirile de parteneri vin din e-Factura/SPV, extrase bancare si extragerea AI din PDF —
+// „Ion & Co <SRL>" e un nume perfect legal. Neescapat, ar produce XML INVALID, adica o
+// declaratie RESPINSA de ANAF; sau, mai rau, ar injecta elemente in declaratie.
+//
+// ATENTIE la ce NU dovedeste `wellFormed`: verifica doar echilibrul etichetelor, iar un
+// `<b>x</b>` injectat din date e echilibrat, deci ar trece. De aceea se verifica in plus ca
+// markup-ul din date NU apare brut si ca entitatile escapate SUNT prezente (adica datele au
+// ajuns in declaratie, nu au fost pierdute tacit).
+const OSTIL = ' & <b>x</b> "q" \'a\'';
+const CAMPURI_TEXT = new Set(['nume', 'den', 'denumire', 'partener', 'explicatie', 'descriere', 'adresa', 'oras', 'tipNume', 'document']);
+function contamineaza(o, seen) {
+  seen = seen || new Set();
+  if (!o || typeof o !== 'object' || seen.has(o)) return o;
+  seen.add(o);
+  for (const k of Object.keys(o)) {
+    const val = o[k];
+    if (typeof val === 'string' && CAMPURI_TEXT.has(k) && val) o[k] = val + OSTIL;
+    else if (val && typeof val === 'object') contamineaza(val, seen);
+  }
+  return o;
+}
+const vX = contamineaza(JSON.parse(JSON.stringify(v)));
+const vjX = acc.vatJournals(vX, '2026-06');
+// `&` care nu deschide o entitate valida = XML invalid (cauza cea mai frecventa la respingere)
+const ampBrut = (x) => /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/.test(String(x));
+const declaratii = [
+  ['e-Factura', () => xml.eFacturaXml(vX.company, vX.entries.find((e) => e.tip === 'factura_vanzare_marfuri'), vX.partners)],
+  ['D300', () => xml.d300Xml(vX.company, '2026-06', rep.d300(vX, '2026-06'), { nume: 'Popescu' + OSTIL, prenume: 'Ion', functie: 'Contabil' })],
+  ['D394', () => xml.d394Xml(vX.company, '2026-06', vjX)],
+  ['SAF-T lunar', () => saft.saftXml(vX, '2026-06')],
+  ['SAF-T anual', () => saft.saftXml(vX, 2026)],
+];
+for (const [nume, fn] of declaratii) {
+  let out = '';
+  let err = null;
+  try { out = fn(); } catch (e) { err = e; }
+  ok(nume + ': se genereaza cu denumiri care contin & < > " \'' + (err ? ' — ' + err.message.slice(0, 50) : ''), !err && out.length > 100);
+  if (err) continue;
+  ok(nume + ': ramane bine-format', wellFormed(out));
+  ok(nume + ': niciun & neescapat (ar invalida XML-ul)', !ampBrut(out));
+  ok(nume + ': markup-ul din date nu ajunge brut in declaratie', !out.includes('<b>x</b>'));
+  ok(nume + ': datele chiar ajung in declaratie, escapate', out.includes('&amp;') && out.includes('&lt;b&gt;'));
+}
+// contra-proba: verificarile de mai sus chiar pot pica pe un XML construit gresit
+const xmlGresit = '<a><nume>Ion & Co <b>x</b></nume></a>';
+ok('contra-proba: un XML cu date neescapate e prins de verificari', ampBrut(xmlGresit) && xmlGresit.includes('<b>x</b>'));
+
+// Poarta statica peste sursa generatoarelor: testele de mai sus acopera doar campurile atinse de
+// datele de test. Un camp nou, pe o ramura pe care seed-ul nu o parcurge, ar trece neobservat.
+// Se scot apelurile de escapare CU TOT cu argumentul (paranteze echilibrate), conditiile de
+// ternar si literalii de sir — ce ramane e ce ajunge neescapat in declaratie.
+const CAMP_RISCANT = /\b(nume|denumire|partener|adresa|oras|judet|explicatie|descriere|localitate|strada|firma|client|furnizor|banca|produs|serie|document|mentiuni|reprezentant)\b/i;
+const ESC_XML = /\b(esc|num2|numOf|roCui|umCode|Number|String|Math|parseInt|parseFloat|encodeURIComponent)\(/;
+function frunze(line) {
+  const out = []; let s = line;
+  for (let i = 0; i < 10; i += 1) {
+    let gasit = false;
+    s = s.replace(/\$\{([^{}]*)\}/g, (_, x) => { out.push(x.trim()); gasit = true; return ''; });
+    if (!gasit) break;
+  }
+  return out;
+}
+function faraEsc(expr) {
+  let s = expr;
+  for (let p = 0; p < 12; p += 1) {
+    const m = s.match(ESC_XML);
+    if (!m) break;
+    const open = m.index + m[0].length - 1;
+    let depth = 0; let end = -1;
+    for (let i = open; i < s.length; i += 1) {
+      if (s[i] === '(') depth += 1;
+      else if (s[i] === ')') { depth -= 1; if (depth === 0) { end = i; break; } }
+    }
+    if (end < 0) break;
+    s = s.slice(0, m.index) + ' ' + s.slice(end + 1);
+  }
+  const q = s.indexOf('?');
+  if (q >= 0) s = s.slice(q + 1);
+  return s.replace(/'[^']*'/g, "''").replace(/"[^"]*"/g, '""').replace(/`[^`]*`/g, '``');
+}
+const fsx2 = require('fs');
+const pth2 = require('path');
+const neescapateXml = [];
+for (const f of ['xml.js', 'saft.js', 'etransport.js']) {
+  fsx2.readFileSync(pth2.join(__dirname, '..', 'src', f), 'utf8').split('\n').forEach((ln, i) => {
+    if (!/<[a-zA-Z/?]/.test(ln)) return;
+    for (const e of frunze(ln)) {
+      if (e && CAMP_RISCANT.test(e) && CAMP_RISCANT.test(faraEsc(e))) neescapateXml.push(f + ':' + (i + 1) + ' ${' + e.slice(0, 50) + '}');
+    }
+  });
+}
+ok('niciun camp de text interpolat in XML fara esc()'
+  + (neescapateXml.length ? ' — ' + neescapateXml.slice(0, 3).join(' | ') : ''), neescapateXml.length === 0);
+ok('poarta XML chiar detecteaza o interpolare neescapata',
+  frunze('`<Name>${p.denumire}</Name>`').some((e) => CAMP_RISCANT.test(faraEsc(e))));
+ok('poarta XML nu raporteaza o interpolare escapata',
+  !frunze('`<Name>${esc(p.denumire)}</Name>`').some((e) => CAMP_RISCANT.test(faraEsc(e))));
 ok('D300 XML: cota 21 pe randul 9', /R9_1="14000"/.test(d300xmlMix) && /R9_2="2940"/.test(d300xmlMix));
 ok('D300 XML: cota 11 pe randul 10', /R10_1="1000"/.test(d300xmlMix) && /R10_2="110"/.test(d300xmlMix));
 ok('D300 XML: totalul colectat insumeaza cotele (R17)', /R17_2="3050"/.test(d300xmlMix));
