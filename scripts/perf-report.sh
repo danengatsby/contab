@@ -22,7 +22,22 @@ envval() { grep -E "^$1=" "$DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | sed
 
 TO="${CONTAB_BACKUP_EMAIL_TO:-$(envval CONTAB_BACKUP_EMAIL_TO)}"
 KEY="${RESEND_API_KEY:-$(envval RESEND_API_KEY)}"
-LOGDIR="${CONTAB_PM2_LOG_DIR:-$DIR/logs}"
+# Log-urile pm2: se cauta in mai multe locuri, fiindca ecosystem.config.js DECLARA
+# <repo>/logs, dar procesul poate rula pornit fara acel fisier (atunci pm2 scrie in
+# $PM2_HOME/logs). Cautarea in locul gresit e mai rea decat lipsa raportului: scriptul ar
+# raporta „nimic de semnalat" la nesfarsit, fara sa vada nimic. Se iau toate directoarele
+# candidate care exista, iar prospetimea lor se verifica mai jos.
+# CONTAB_PM2_LOG_DIR setat = sursa UNICA (configurare explicita si cale testabila); nesetat =
+# se cauta in candidatii cunoscuti.
+LOGDIRS=""
+if [ -n "${CONTAB_PM2_LOG_DIR:-}" ]; then
+  LOGDIRS="$CONTAB_PM2_LOG_DIR"
+else
+  for d in "$DIR/logs" "/home/contab/.pm2/logs" "$HOME/.pm2/logs"; do
+    [ -d "$d" ] && case " $LOGDIRS " in *" $d "*) ;; *) LOGDIRS="$LOGDIRS $d";; esac
+  done
+fi
+LOGDIR="${CONTAB_PM2_LOG_DIR:-$DIR/logs}"   # pastrat pentru compatibilitate/mesaje
 LOG="$DIR/data/backups/perf-report.log"
 mkdir -p "$DIR/data/backups" 2>/dev/null
 
@@ -32,7 +47,8 @@ AZI=$(date -u +%Y-%m-%d); IERI=$(date -u -d yesterday +%Y-%m-%d)
 PRAG=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%S)
 
 scan() { # $1 = tiparul cautat; scoate liniile din ultimele 24h
-  grep -h "$1" "$LOGDIR"/contab-*.log 2>/dev/null \
+  # shellcheck disable=SC2086
+  grep -h "$1" $(for d in $LOGDIRS; do echo "$d"/contab-*.log; done) 2>/dev/null \
     | grep -E "($AZI|$IERI)" \
     | awk -v prag="$PRAG" '{ ts=$1; gsub(/^.*(2[0-9]{3}-)/, "\\1", ts); if (ts >= prag) print }' \
     | tail -200
@@ -43,7 +59,31 @@ ERORI=$(scan "eroare de server")
 NL=$(printf '%s' "$LENTE" | grep -c . || true)
 NE=$(printf '%s' "$ERORI" | grep -c . || true)
 
-echo "$(date -Is) lente=$NL erori5xx=$NE" >> "$LOG"
+# ORB vs LINISTE: daca niciun log candidat nu a fost scris in ultimele 25h, scriptul NU are ce
+# citi — iar „zero erori" ar fi o minciuna linistitoare. Se raporteaza ca defect de monitorizare.
+PROASPAT=0
+for d in $LOGDIRS; do
+  if [ -n "$(find "$d" -maxdepth 1 -name 'contab-*.log' -mmin -1500 2>/dev/null | head -1)" ]; then PROASPAT=1; break; fi
+done
+echo "$(date -Is) lente=$NL erori5xx=$NE dirs=[$LOGDIRS] proaspat=$PROASPAT" >> "$LOG"
+if [ "$PROASPAT" -eq 0 ]; then
+  BODY="Raport performanta Contabo — MONITORIZARE OARBA ($(date -Is)):
+
+Niciun log pm2 scris in ultimele 25h in directoarele cautate:$LOGDIRS
+
+Raportul nu poate vedea cererile lente sau erorile 5xx, deci tacerea lui NU inseamna
+ca totul e in regula. Verifica unde scrie pm2:
+  sudo -u contab PM2_HOME=/home/contab/.pm2 pm2 jlist | grep pm_out_log_path
+si fie porneste procesul cu ecosystem.config.js, fie seteaza CONTAB_PM2_LOG_DIR in cron.
+"
+  echo "$BODY"
+  if [ -n "$TO" ] && [ -n "$KEY" ] && [ "${CONTAB_PERF_NOMAIL:-0}" != "1" ]; then
+    curl -s -X POST https://api.resend.com/emails -H "Authorization: Bearer $KEY" \
+      -H 'Content-Type: application/json' \
+      -d "$(node -e 'const b=process.argv[1],t=process.argv[2];process.stdout.write(JSON.stringify({from:"Contab <comenzi@poetio.site>",to:[t],subject:"[Contab] Raportul de performanta e ORB",text:b}))' "$BODY" "$TO")" >/dev/null || true
+  fi
+  exit 0
+fi
 [ "$NL" -eq 0 ] && [ "$NE" -eq 0 ] && exit 0   # nimic de raportat -> niciun email
 
 # rezumat pe rute pentru cererile lente (tiparul url=... din logul structurat)
