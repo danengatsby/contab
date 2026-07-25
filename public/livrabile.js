@@ -116,8 +116,8 @@ async function loadSpvMesaje() {
   catch (e) { box.innerHTML = ''; toast(e.message, true); return; }
   box.innerHTML = msgs.length
     ? `<table><thead><tr><th>Data</th><th>Tip</th><th>Detalii</th><th></th></tr></thead><tbody>${
-      msgs.map((m) => `<tr><td class="muted">${(m.data || '').slice(0, 16)}</td><td>${m.tip || ''}</td><td>${m.detalii || ''}</td>
-        <td><button class="linkbtn spv-dl" data-id="${m.id}" data-detalii="${(m.detalii || m.tip || 'Document SPV').replace(/"/g, '')}">descarcă</button></td></tr>`).join('')}</tbody></table>`
+      msgs.map((m) => `<tr><td class="muted">${(m.data || '').slice(0, 16)}</td><td>${H(m.tip || '')}</td><td>${H(m.detalii || '')}</td>
+        <td><button class="linkbtn spv-dl" data-id="${m.id}" data-detalii="${H(m.detalii || m.tip || 'Document SPV')}">descarcă</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Niciun mesaj în SPV pe ultimele 30 de zile.</p>';
   box.querySelectorAll('.spv-dl').forEach((b) => b.addEventListener('click', async () => {
     try {
@@ -177,7 +177,7 @@ async function loadPortfolio() {
     d.firms.map((f) => `<tr><td>${H(f.nume)}</td><td class="muted">${H(f.cui)}</td><td>${formaBadge(f)}</td><td>${abonBadge(f.sub)}</td><td class="num">${f.counts.asteptate}</td><td class="num" data-u="u156">${f.counts.depuse}</td><td class="num">${f.counts.generate}</td><td class="num" ${f.counts.nedepuse ? 'data-u="u157"' : ''}>${f.counts.nedepuse}</td><td class="num" ${f.counts.erori ? 'data-u="u33"' : ''}>${f.counts.erori}</td><td class="num">${f.natentionari || ''}</td></tr>`).join('')}</tbody></table>`;
   $('#portoRecent').innerHTML = (d.recent || []).length
     ? `<table><thead><tr><th>Când</th><th>Firma</th><th>Cine</th><th>Acțiune</th></tr></thead><tbody>${
-      d.recent.map((a) => `<tr><td class="muted">${(a.ts || '').replace('T', ' ').slice(0, 16)}</td><td>${a.firma}</td><td>${a.username}</td><td>${a.action}${a.detail ? ' — <span class="muted">' + a.detail + '</span>' : ''}</td></tr>`).join('')}</tbody></table>`
+      d.recent.map((a) => `<tr><td class="muted">${(a.ts || '').replace('T', ' ').slice(0, 16)}</td><td>${H(a.firma)}</td><td>${H(a.username)}</td><td>${H(a.action)}${a.detail ? ' — <span class="muted">' + H(a.detail) + '</span>' : ''}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Nicio activitate recentă.</p>';
 }
 
@@ -196,7 +196,7 @@ async function loadNotifications() {
     ? `<table><thead><tr><th></th><th>Firma</th><th>Declarația</th><th>Luna</th><th>Termen</th><th>Stare</th></tr></thead><tbody>${
       n.items.map((i) => `<tr>
         <td>${i.kind === 'restanta' ? '<span data-u="u158">⏰ RESTANȚĂ</span>' : '<span data-u="u159">📅 termen apropiat</span>'}</td>
-        <td>${i.firma}</td><td>${i.nume}</td><td>${i.period}</td>
+        <td>${H(i.firma)}</td><td>${H(i.nume)}</td><td>${H(i.period)}</td>
         <td ${i.kind === 'restanta' ? 'data-u="u33"' : ''}>${i.due}</td>
         <td>${declBadge(i.status)}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">✓ Nicio restanță și niciun termen în următoarele 7 zile. Totul e la zi.</p>';

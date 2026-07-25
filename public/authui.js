@@ -79,7 +79,7 @@ async function showPricing() {
       ${p.recomandat ? '<div class="plan-badge">Recomandat</div>' : ''}
       <h3>${p.nume}</h3>
       <div class="plan-price">${p.pret === 0 ? 'Gratuit' : '<b>' + fmt(p.pret) + '</b> ' + p.moneda}<span>${p.pret === 0 ? '' : '/ ' + p.perioada}</span></div>
-      <p class="plan-desc">${p.descriere || ''}</p>
+      <p class="plan-desc">${H(p.descriere || '')}</p>
       <ul class="plan-feat">${(p.features || []).map((f) => `<li>${f}</li>`).join('')}</ul>
       <div class="plan-action">${cta}${demo}</div>
     </div>`;
@@ -221,7 +221,7 @@ async function startInvite(token) {
   catch (e) { $('#loginErr').textContent = 'Invitație invalidă sau expirată.'; return; }
   const box = $('#loginForm');
   box.innerHTML = `<div class="login-logo">▦ Contabo</div>
-    <p class="muted">Bun venit, <b>${info.username}</b>. Setează-ți parola.</p>
+    <p class="muted">Bun venit, <b>${H(info.username)}</b>. Setează-ți parola.</p>
     <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
     <div id="loginErr" class="status err"></div>
     <button class="btn primary" data-u="u19">Activează contul</button>`;
@@ -242,7 +242,7 @@ async function startReset(token) {
   catch (e) { $('#loginErr').textContent = 'Link de resetare invalid sau expirat.'; return; }
   const box = $('#loginForm');
   box.innerHTML = `<div class="login-logo">▦ Contabo</div>
-    <p class="muted">Resetare parolă pentru <b>${info.username}</b>.</p>
+    <p class="muted">Resetare parolă pentru <b>${H(info.username)}</b>.</p>
     <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
     <div id="loginErr" class="status err"></div>
     <button class="btn primary" data-u="u19">Salvează parola</button>`;

@@ -14,7 +14,7 @@ async function loadJournal() {
   const j = await api('/api/journal' + (p ? '?period=' + p : ''));
   if (!j.rows.length) { $('#jurnalView').innerHTML = '<p class="muted">Nicio înregistrare în perioada selectată.</p>'; return; }
   const rows = j.rows.map((r) => `<tr${r.nr ? ' data-u="u170"' : ''}>
-    <td class="num">${r.nr || ''}</td><td>${r.data}</td><td>${r.document}</td><td>${r.explicatie}</td>
+    <td class="num">${r.nr || ''}</td><td>${H(r.data)}</td><td>${H(r.document)}</td><td>${H(r.explicatie)}</td>
     <td class="acc">${r.debit}</td><td class="acc">${r.credit}</td><td class="num">${fmt(r.suma)}</td></tr>`).join('');
   $('#jurnalView').innerHTML = `<table><thead><tr>
     <th>Nr</th><th>Data</th><th>Document</th><th>Explicație</th><th>Cont D</th><th>Cont C</th><th class="num">Sumă</th>
@@ -31,7 +31,7 @@ async function loadLedger() {
   const accs = await api('/api/ledger' + (p ? '?period=' + p : ''));
   if (!accs.length) { $('#carteView').innerHTML = '<p class="muted">Nicio mișcare.</p>'; return; }
   $('#carteView').innerHTML = accs.map((a) => {
-    const moves = a.moves.map((m) => `<tr><td>${m.data}</td><td>${m.explicatie}</td>
+    const moves = a.moves.map((m) => `<tr><td>${H(m.data)}</td><td>${H(m.explicatie)}</td>
       <td class="num">${m.debit ? fmt(m.debit) : ''}</td><td class="num">${m.credit ? fmt(m.credit) : ''}</td></tr>`).join('');
     return `<div class="ledger-acc">
       <h4><span class="acc">${a.cod}</span> — ${a.nume} <a class="linkbtn" href="/pdf/fisa-cont?cont=${a.cod}${p ? '&period=' + p : ''}" target="_blank" title="Fișa de cont: mișcări cu cont corespondent și sold curent">fișă de cont</a></h4>
@@ -58,7 +58,7 @@ async function loadCashbook() {
       const cc = await api('/api/cash-control' + q);
       const items = [];
       cc.negative.forEach((n) => items.push(`<li><b>Sold de casă NEGATIV</b> (${fmt(n.sold)} lei) la ${n.data} — imposibil fizic; verifică ordinea operațiunilor sau o încasare lipsă.</li>`));
-      cc.plafon.forEach((w) => items.push(`<li><b>Plafon numerar depășit</b> (Legea 70/2015): ${w.tip === 'plata' ? 'plăți' : 'încasări'} de ${fmt(w.suma)} lei cu „${w.partener}" la ${w.data} — limita ${fmt(w.limita)} lei/zi (${w.juridic ? 'pers. juridică' : 'pers. fizică'}).</li>`));
+      cc.plafon.forEach((w) => items.push(`<li><b>Plafon numerar depășit</b> (Legea 70/2015): ${w.tip === 'plata' ? 'plăți' : 'încasări'} de ${fmt(w.suma)} lei cu „${H(w.partener)}" la ${H(w.data)} — limita ${fmt(w.limita)} lei/zi (${w.juridic ? 'pers. juridică' : 'pers. fizică'}).</li>`));
       if (cc.soldPesteLimita) items.push(`<li>Sold de casierie ${fmt(cc.soldPesteLimita.sold)} lei peste plafonul de ${fmt(cc.soldPesteLimita.limita)} lei — depune excedentul la bancă.</li>`);
       if (items.length) warnHtml = `<div class="warnbox"><span class="wi">⚠️</span><div><b>Control casă:</b><ul data-u="u171">${items.join('')}</ul></div></div>`;
     } catch (_) { /* control optional */ }
@@ -280,7 +280,7 @@ async function renderReconciliere(p) {
     r.netrimise.map((n) => `<tr><td>${H(n.data)}</td><td>${H(n.document)}</td><td>${H(n.partener)}</td></tr>`).join('')}</tbody></table></div>`);
   box.innerHTML = `<div class="card"><h3>Reconciliere e-TVA</h3>`
     + (findings.length
-      ? `<ul class="checklist todo">${findings.map((f) => `<li>${icon[f.nivel] || '•'} ${f.mesaj}</li>`).join('')}</ul>${deta.join('')}`
+      ? `<ul class="checklist todo">${findings.map((f) => `<li>${icon[f.nivel] || '•'} ${H(f.mesaj)}</li>`).join('')}</ul>${deta.join('')}`
       : '<div class="muted">✓ Poziția TVA a perioadei e coerentă — cotele se potrivesc și facturile emise sunt trimise în SPV. Nimic care să producă o discrepanță la decontul precompletat e-TVA.</div>')
     + '<p class="muted" data-u="u28">Verificare internă orientativă: confruntă poziția ta cu ce vede ANAF prin RO e-Factura. Reconcilierea oficială o face decontul precompletat e-TVA după depunere.</p></div>';
 }
@@ -332,7 +332,7 @@ async function previewVat() {
   const p = pget('vc'); if (!p) { $('#vatPreview').textContent = 'Alege o perioadă.'; return; }
   const v = await api('/api/vat-preview?period=' + p);
   $('#vatPreview').innerHTML = `Luna: <b>${lunaLabel(p)}</b>\nTVA colectată: <b>${fmt(v.colectata)}</b> lei\nTVA deductibilă: <b>${fmt(v.deductibila)}</b> lei\n──────────\n`
-    + (v.lines.length ? v.lines.map((l) => `<span class="pd">${l.debit}</span> = <span class="pc">${l.credit}</span>  ${fmt(l.suma)} lei  (${l.explicatie})`).join('\n')
+    + (v.lines.length ? v.lines.map((l) => `<span class="pd">${l.debit}</span> = <span class="pc">${l.credit}</span>  ${fmt(l.suma)} lei  (${H(l.explicatie)})`).join('\n')
       : 'Nimic de regularizat.');
 }
 $('#closeVat').addEventListener('click', async () => {

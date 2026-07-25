@@ -371,7 +371,7 @@ async function refreshFiscalProfile() {
       if (c.findings && c.findings.length) {
         const icon = { eroare: '⛔', atentie: '⚠️', info: 'ℹ️' };
         ctrlHtml = '<div data-u="ctrl"><b>Controale de coerență:</b><ul class="checklist todo">'
-          + c.findings.map((f) => `<li>${icon[f.nivel] || '•'} ${f.mesaj}</li>`).join('') + '</ul></div>';
+          + c.findings.map((f) => `<li>${icon[f.nivel] || '•'} ${H(f.mesaj)}</li>`).join('') + '</ul></div>';
       } else {
         ctrlHtml = '<div class="muted">✓ Controale de coerență: nicio problemă pe anul curent.</div>';
       }
@@ -675,7 +675,7 @@ function renderSubscription(data) {
       ${p.recomandat ? '<div class="plan-badge">Recomandat</div>' : ''}
       <h3>${p.nume}</h3>
       <div class="plan-price">${p.pret === 0 ? 'Gratuit' : '<b>' + fmt(p.pret) + '</b> ' + p.moneda}<span>${p.pret === 0 ? '' : '/ ' + p.perioada}</span></div>
-      <p class="plan-desc">${p.descriere || ''}</p>
+      <p class="plan-desc">${H(p.descriere || '')}</p>
       <ul class="plan-feat">${(p.features || []).map((f) => `<li>${f}</li>`).join('')}</ul>
       <div class="plan-action">${action}</div>
     </div>`;
