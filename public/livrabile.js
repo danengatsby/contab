@@ -64,6 +64,10 @@ const DECL_ST = {
   scutita: { t: 'Scutită', c: '#5a6472', bg: '#eceff3' },
   netrimisa: { t: 'Netrimisă în SPV', c: '#b00020', bg: '#fde7ea' },
 };
+// Sensul inregistrarii de provizion depinde de SEMN: se CONSTITUIE cand mai e nevoie de
+// provizion (6814 = 491) si se RELUA cand cel existent e prea mare (491 = 7814). O inversare
+// aici arata contabilului exact articolul invers fata de cel corect.
+const provizionDirectie = (deAjustat) => ((Number(deAjustat) || 0) >= 0 ? '6814 = 491' : '491 = 7814, reluare');
 const declBadge = (st, overdue) => {
   const x = DECL_ST[st] || DECL_ST.nedepusa;
   return `<span data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${x.t}</span>`
@@ -308,7 +312,7 @@ async function renderProvizion() {
   $('#provView').innerHTML = det + `<table data-u="u23"><tbody>
     <tr><td>Provizion necesar (${p.pct}%)</td><td class="num">${fmt(p.necesar)}</td></tr>
     <tr><td>Ajustare existentă (sold 491)</td><td class="num">${fmt(p.existent)}</td></tr>
-    <tr class="bold"><td>De înregistrat ${p.deAjustat >= 0 ? '(6814 = 491)' : '(491 = 7814, reluare)'}</td><td class="num">${fmt(Math.abs(p.deAjustat))}</td></tr></tbody></table>`;
+    <tr class="bold"><td>De înregistrat (${provizionDirectie(p.deAjustat)})</td><td class="num">${fmt(Math.abs(p.deAjustat))}</td></tr></tbody></table>`;
 }
 $('#provPct').addEventListener('input', renderProvizion);
 $('#provPost').addEventListener('click', async () => {
@@ -358,3 +362,5 @@ $('#oaForm').addEventListener('submit', async (e) => {
 
 
 export { loadAnalytic, loadLivrabile, loadNotifications, loadPortfolio, loadReconcile, refreshNotifBadge };
+// Exportate pentru testele unitare de frontend (insigna declaratiilor, sensul provizionului): test/frontend.mjs
+export { declBadge, provizionDirectie };

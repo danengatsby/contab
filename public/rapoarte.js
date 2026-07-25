@@ -99,19 +99,31 @@ async function loadBalance() {
   renderBalance();
 }
 $('#balOnlyMoves') && $('#balOnlyMoves').addEventListener('change', renderBalance);
+// Cele patru egalitati ale balantei si CARE dintre ele nu se inchide. Extras ca functie pura:
+// mesajul indruma contabilul spre cauza, deci o clasificare gresita il trimite sa caute in locul
+// nepotrivit. Campurile lipsa se citesc ca 0 — altfel diferenta ar iesi NaN si s-ar afisa ca atare.
+const BAL_KEYS = ['siD', 'siC', 'rd', 'rc', 'tsD', 'tsC', 'sfD', 'sfC'];
+function balanceEquations(tot) {
+  const t = tot || {};
+  return [
+    ['Sold inițial', t.siD, t.siC],
+    ['Rulaje', t.rd, t.rc],
+    ['Total sume', t.tsD, t.tsC],
+    ['Sold final', t.sfD, t.sfC],
+  ].map(([nume, d, c]) => ({ nume, d: Number(d) || 0, c: Number(c) || 0, dif: Math.round(((Number(d) || 0) - (Number(c) || 0)) * 100) / 100 }))
+    .filter((x) => x.dif !== 0);
+}
+// Totalurile randurilor VIZIBILE. La filtrarea „doar miscari", totalul general nu mai corespunde
+// cu ce se vede pe ecran, deci se recalculeaza din randurile ramase.
+function balanceTotals(rows) {
+  return BAL_KEYS.reduce((o, k) => (o[k] = Math.round((rows || []).reduce((s, r) => s + (Number(r[k]) || 0), 0) * 100) / 100, o), {});
+}
 function renderBalance() {
   const tb = BALANCE_TB; if (!tb) return;
   if (tb.balanced) {
     $('#balantaStatus').innerHTML = '<p data-u="u172">✔ Balanța se închide — cele patru egalități sunt respectate.</p>';
   } else {
-    // diagnostic: arata care egalitate nu se inchide si cu cat (de regula soldurile initiale)
-    const t = tb.tot;
-    const eqs = [
-      ['Sold inițial', t.siD, t.siC],
-      ['Rulaje', t.rd, t.rc],
-      ['Total sume', t.tsD, t.tsC],
-      ['Sold final', t.sfD, t.sfC],
-    ].map(([nume, d, c]) => ({ nume, d, c, dif: Math.round((d - c) * 100) / 100 })).filter((x) => x.dif !== 0);
+    const eqs = balanceEquations(tb.tot);
     const det = eqs.map((x) => `<b>${x.nume}</b>: debit ${fmt(x.d)} vs credit ${fmt(x.c)} — diferență <b>${fmt(x.dif)}</b>`).join('<br>');
     const initDif = eqs.some((x) => x.nume === 'Sold inițial');
     $('#balantaStatus').innerHTML = `<div data-u="u13"><p data-u="u173">✘ Balanța NU se închide:</p>
@@ -128,9 +140,7 @@ function renderBalance() {
     <td class="num grpsep">${fmt(r.tsD)}</td><td class="num">${fmt(r.tsC)}</td>
     <td class="num grpsep">${fmt(r.sfD)}</td><td class="num">${fmt(r.sfC)}</td></tr>`).join('');
   // total: cel general, sau recalculat din rândurile vizibile când filtrăm pe „doar mișcări”
-  const t = onlyMoves
-    ? ['siD', 'siC', 'rd', 'rc', 'tsD', 'tsC', 'sfD', 'sfC'].reduce((o, k) => (o[k] = visible.reduce((s, r) => s + (r[k] || 0), 0), o), {})
-    : tb.tot;
+  const t = onlyMoves ? balanceTotals(visible) : tb.tot;
   $('#balantaView').innerHTML = `<table><thead>
     <tr>
       <th rowspan="2">Cont</th><th rowspan="2">Denumire</th>
@@ -605,3 +615,5 @@ async function loadStatements() {
 
 
 export { loadBalance, loadCashbook, loadClosings, loadJournal, loadLedger, loadStatements, loadStorno, loadVat };
+// Exportate pentru testele unitare de frontend (diagnosticul balantei si comparatia e-TVA): test/frontend.mjs
+export { balanceEquations, balanceTotals, renderEtvaResult };
