@@ -2558,6 +2558,54 @@ ok('lista goala nu arunca', !authlib.usernameTaken(null, 'oricine'));
 // regula se aplica DOAR la creare: un nume deja existent care n-ar mai trece azi ramane valid
 ok('un nume vechi invalid azi e totusi gasit ca duplicat', authlib.usernameTaken([{ username: 'ab' }], 'ab'));
 
+section('Handlerul global de erori (src/serverErrors.js)');
+// Ultimul modul din src/ ramas fara nicio verificare. E plasa de siguranta: decide ce vede
+// CLIENTUL cand ceva crapa. O regresie aici scurge mesaje interne (interogari, cai de fisier,
+// stack) catre oricine trimite o cerere care esueaza — si se observa greu, fiindca aplicatia
+// „merge" mai departe.
+const serverErrors = require('../src/serverErrors');
+let errHandler = null;
+serverErrors.installErrorHandler({ use: (fn) => { errHandler = fn; } });
+ok('handlerul se inregistreaza ca middleware de erori (4 argumente)', typeof errHandler === 'function' && errHandler.length === 4);
+const fakeRes = () => {
+  const r = { code: 0, body: null, headersSent: false };
+  r.status = (c) => { r.code = c; return r; };
+  r.json = (bd) => { r.body = bd; return r; };
+  return r;
+};
+const fakeReq = (x) => Object.assign({ method: 'GET', originalUrl: '/api/ceva', reqId: 'abc12345' }, x || {});
+// logarea 5xx scrie pe stderr; o tacem doar pe durata acestor verificari, ca sa nu polueze suita
+const errPrev = console.error; const writePrev = process.stderr.write.bind(process.stderr);
+console.error = () => {}; process.stderr.write = () => true;
+const r500 = fakeRes();
+const eIntern = new Error('SELECT parola FROM users WHERE id=1 a esuat la /var/www/contab/data/db.json');
+errHandler(eIntern, fakeReq(), r500, () => {});
+const r400 = fakeRes();
+errHandler(Object.assign(new Error('Completeaza cel putin o suma.'), { status: 400 }), fakeReq(), r400, () => {});
+const rCode = fakeRes();
+errHandler(Object.assign(new Error('Interzis.'), { statusCode: 403 }), fakeReq(), rCode, () => {});
+let nextPrimit = null;
+const rSent = fakeRes(); rSent.headersSent = true;
+errHandler(eIntern, fakeReq(), rSent, (e) => { nextPrimit = e; });
+console.error = errPrev; process.stderr.write = writePrev;
+
+const body500 = JSON.stringify(r500.body || {});
+eq('eroarea fara status devine 500', r500.code, 500);
+ok('5xx NU scurge mesajul intern catre client', !body500.includes('SELECT') && !body500.includes('parola'));
+ok('5xx NU scurge cai de fisier de pe server', !body500.includes('/var/www'));
+ok('5xx NU trimite stack-ul', !body500.includes(' at ') && !body500.includes('.js:'));
+ok('5xx da un mesaj generic, util utilizatorului', /eroare interna/i.test((r500.body || {}).error || ''));
+eq('5xx include reqId, ca eroarea sa poata fi corelata cu logul', (r500.body || {}).reqId, 'abc12345');
+// 4xx sunt erori de BUSINESS: mesajul e scris pentru utilizator si trebuie sa ajunga la el
+eq('4xx pastreaza statusul', r400.code, 400);
+eq('4xx pastreaza mesajul de business', (r400.body || {}).error, 'Completeaza cel putin o suma.');
+ok('4xx NU include reqId (nu e un incident de server)', (r400.body || {}).reqId === undefined);
+eq('statusCode e onorat, nu doar status', rCode.code, 403);
+eq('4xx prin statusCode isi pastreaza mesajul', (rCode.body || {}).error, 'Interzis.');
+// daca raspunsul a plecat deja (ex. un export in flux), handlerul nu mai scrie peste el
+ok('cu antetele deja trimise, eroarea urca la Express', nextPrimit === eIntern);
+eq('cu antetele deja trimise nu se scrie un al doilea raspuns', rSent.code, 0);
+
 section('Igiena data/: rotatia backup-urilor ad-hoc (src/backup.js)');
 const backupMod = require('../src/backup');
 const fsB = require('fs'); const osB = require('os'); const pathB = require('path');
