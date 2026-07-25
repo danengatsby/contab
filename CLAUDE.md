@@ -23,6 +23,19 @@ npm run seed                  # încarcă exemplul din ghid (S.C. EXEMPLU PROD S
 npm run e2e                   # E2E pe live; pe acest server rulează prin Docker (vezi antetul scripts/e2e.mjs)
 ```
 
+**Producția rulează pe `pg`, dar `npm test` rulează pe `sqlite`** — iar `test/store-pg.js` se sare
+tăcut fără `CONTAB_PG_URL`. Deci o suită verde NU înseamnă că driverul de producție e verificat.
+Înainte de o schimbare care atinge persistența (sau după o zi cu multe merge-uri), rulează și pe pg:
+
+```bash
+docker run -d --name contab-pgtest -e POSTGRES_USER=contab -e POSTGRES_PASSWORD=contab \
+  -e POSTGRES_DB=contab_test -p 55432:5432 postgres:16
+PG='postgres://contab:contab@localhost:55432/contab_test'
+CONTAB_PG_URL="$PG" node test/store-pg.js                    # persistența incrementală pe pg
+CONTAB_DB_DRIVER=pg CONTAB_PG_URL="$PG" node test/http.js    # suita HTTP completă pe pg
+docker rm -f contab-pgtest                                    # ...și oprește containerul
+```
+
 Instanță de dezvoltare izolată (nu atinge producția):
 
 ```bash
