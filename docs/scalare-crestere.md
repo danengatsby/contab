@@ -84,6 +84,46 @@ fără schimbări în modulele de domeniu.
   fencing — fencing-ul actual protejează, nu partajează); eventual hidratare lazy (a nu încărca tot
   graful) — pasul care reduce efectiv RAM-ul, luat doar pe semnal real (`firmeLoad`).
 
+### Măsurătoare pe volum (2026-07-25) — primul semnal real
+
+Documentul cere ca fiecare pas să pornească pe un semnal real. Până acum nimeni nu produsese
+măsurătoarea, iar toate firmele din producție sunt mici (57 articole). Am generat **27.350 de
+articole** prin API-ul real (toate regulile, toate proiecțiile) pe o instanță izolată și am
+cronometrat rutele grele. Mediana din 3 rulări, driver `sqlite`:
+
+| Rută | Domeniu | RAM | SQL | Prag 500 ms |
+|---|---|---|---|---|
+| `/api/dashboard` | tot anul | **749–797 ms** | 859 ms | **⚠ DEPĂȘIT** |
+| `/xml/saft?year` | tot anul | 380–404 ms | — | se apropie |
+| `/api/journal?period=an` | tot anul | 290 ms | — | ok |
+| `/api/balance?period=an` | tot anul | 30 ms | — | ok |
+| `/api/balance?period=lună` | 2.279 art. | 18–27 ms | 47 ms | ok |
+| `/api/journal?period=lună` | 2.279 art. | 30–32 ms | 52 ms | ok |
+| `/api/ledger?period=lună` | 2.279 art. | 43–45 ms | 74 ms | ok |
+| `/api/fisa-cont` | 2.279 art. | 13–16 ms | 24 ms | ok |
+
+**1. `/api/dashboard` e singura rută peste prag** — și singura dintre cele grele **fără** cale SQL.
+Confirmă exact veghea de scalare din `scripts/perf-report.sh`, care o are pe listă cu acțiunea deja
+formulată („cache pe /api/dashboard"). Extrapolare grosieră din două puncte (18 ms la 500 articole,
+~780 ms la 27.350): ~0,028 ms/articol, deci pragul de 500 ms se atinge pe la **~18.000 de articole**.
+Ordin de mărime, nu cifră exactă.
+
+**2. Calea SQL e mai LENTĂ decât RAM la acest volum** — de 1,6–2,6× pe fiecare rută gate-uită. Adică
+`CONTAB_SQL_READ_THRESHOLD` = 20.000 comută pe calea mai lentă exact când se activează. Asta
+contrazice premisa „reduce CPU la firmele mari" de la pașii 5–8.
+
+**Limitele măsurătorii, explicit.** E făcută pe **sqlite**, iar producția rulează pe **pg** — pg
+peste socket ar fi probabil și mai lent față de RAM in-process, dar asta e inferență, nu măsurătoare.
+27.350 e doar puțin peste prag; punctul unde SQL începe să câștige poate fi mult mai sus (100k+),
+netestat. Și, cel mai important: scopul declarat al căii SQL nu e doar viteza, ci **seam-ul** către
+hidratarea lazy — singurul pas care reduce efectiv RAM-ul. Nu e cod inutil; e cod al cărui beneficiu
+de CPU nu se vede încă.
+
+**Ce ar trebui făcut, în ordine:** (a) re-măsurat pe **pg** înainte de orice ajustare de prag — dacă
+se confirmă, `CONTAB_SQL_READ_THRESHOLD` ar trebui **ridicat**, nu coborât; (b) `/api/dashboard` e
+următoarea investiție reală (cache per-firmă invalidat la `db.save`), fiindcă e singura rută care
+chiar doare, pe la ~18.000 de articole; (c) hidratarea lazy rămâne pe semnal de **RAM**, nu de CPU.
+
 Restul documentului rămâne analiza anterioară (partiționare pe firmă etc.), încă validă ca alternativă
 complementară — migrarea la pg tranzacțional și partiționarea pe `firmaId` nu se exclud.
 
