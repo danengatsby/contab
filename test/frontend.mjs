@@ -38,6 +38,8 @@ const periods = await import(path.join(mirror, 'periods.js'));
 const entries = await import(path.join(mirror, 'entries.js'));
 const plan = await import(path.join(mirror, 'plan.js'));
 const dashboard = await import(path.join(mirror, 'dashboard.js'));
+const rapoarte = await import(path.join(mirror, 'rapoarte.js'));
+const livrabile = await import(path.join(mirror, 'livrabile.js'));
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -298,6 +300,92 @@ eq('baza negativa foloseste modulul', dashboard.trendOf([{ venituri: -100 }, { v
 eq('profitul se calculeaza ca venituri - cheltuieli', dashboard.trendOf([{ venituri: 100, cheltuieli: 50 }, { venituri: 200, cheltuieli: 50 }], 'profit'), 200);
 // lunile fara nicio miscare sunt sarite: altfel o luna goala ar arata ca o prabusire de -100%
 eq('lunile complet goale sunt ignorate', dashboard.trendOf([{ venituri: 100 }, { venituri: 0, cheltuieli: 0 }, { venituri: 150 }], 'venituri'), 50);
+
+section('Balanță: diagnosticul dezechilibrului');
+// Cand balanta nu se inchide, mesajul spune CARE dintre cele patru egalitati e stricata si
+// trimite contabilul spre cauza. O clasificare gresita il pune sa caute in locul nepotrivit.
+const echilibrata = { siD: 100, siC: 100, rd: 50, rc: 50, tsD: 150, tsC: 150, sfD: 20, sfC: 20 };
+eq('balanța echilibrată nu raportează nicio egalitate stricată', rapoarte.balanceEquations(echilibrata).length, 0);
+const doarSolduri = Object.assign({}, echilibrata, { siD: 130, tsD: 180 });
+const eqSolduri = rapoarte.balanceEquations(doarSolduri);
+ok('soldurile inițiale dezechilibrate sunt identificate ca atare', eqSolduri.some((x) => x.nume === 'Sold inițial'));
+eq('diferența raportată e debit − credit', eqSolduri.find((x) => x.nume === 'Sold inițial').dif, 30);
+// cazul care declanseaza indrumarea „verifica soldurile initiale": doar rulajele stricate NU o da
+const doarRulaje = Object.assign({}, echilibrata, { rd: 70, tsD: 170 });
+ok('rulajele stricate nu sunt confundate cu soldurile inițiale', !rapoarte.balanceEquations(doarRulaje).some((x) => x.nume === 'Sold inițial'));
+ok('rulajele stricate sunt totuși raportate', rapoarte.balanceEquations(doarRulaje).some((x) => x.nume === 'Rulaje'));
+eq('se raportează toate egalitățile stricate, nu doar prima', rapoarte.balanceEquations({ siD: 1, siC: 2, rd: 3, rc: 4, tsD: 5, tsC: 6, sfD: 7, sfC: 8 }).length, 4);
+// campuri lipsa: 0, nu NaN — altfel s-ar afisa „diferență NaN" si ar parea un dezechilibru
+eq('câmpurile lipsă nu inventează un dezechilibru', rapoarte.balanceEquations({}).length, 0);
+eq('diferența e rotunjită la ban', rapoarte.balanceEquations({ siD: 0.1, siC: 0.2 })[0].dif, -0.1);
+
+section('Balanță: totalurile rândurilor vizibile');
+// La filtrarea „doar mișcări", totalul general nu mai corespunde cu ce se vede pe ecran.
+const randuri = [
+  { cod: '371', siD: 100, siC: 0, rd: 10, rc: 0, tsD: 110, tsC: 0, sfD: 110, sfC: 0 },
+  { cod: '401', siD: 0, siC: 50, rd: 0, rc: 5, tsD: 0, tsC: 55, sfD: 0, sfC: 55 },
+];
+const tot = rapoarte.balanceTotals(randuri);
+eq('totalul debit însumează rândurile vizibile', tot.siD, 100);
+eq('totalul credit însumează rândurile vizibile', tot.siC, 50);
+eq('totalul rulajelor', tot.rd, 10);
+eq('lista goală dă zerouri, nu undefined', rapoarte.balanceTotals([]).siD, 0);
+eq('cheile lipsă din rânduri contează ca 0', rapoarte.balanceTotals([{ cod: 'x' }]).rd, 0);
+// Suma in virgula mobila se rotunjeste: 1,1 + 2,2 = 3,3000000000000003 fara rotunjire.
+// ATENTIE: se verifica prin `ok`, nu prin `eq` — helperul `eq` rotunjeste el insusi numerele
+// inainte de comparatie, deci ar trece si daca rotunjirea din cod ar lipsi (verificat prin mutatie).
+ok('totalul e rotunjit la ban (fara reziduu de virgulă mobilă)', rapoarte.balanceTotals([{ siD: 1.1 }, { siD: 2.2 }]).siD === 3.3);
+
+section('Declarații: insigna de stare și sensul provizionului');
+ok('starea „depusă" își arată eticheta', livrabile.declBadge('depusa', false).includes('Depusă'));
+ok('starea „eroare" își arată eticheta', livrabile.declBadge('eroare', false).includes('Eroare'));
+// o stare necunoscuta NU trebuie sa lase insigna goala: cade pe „nedepusă" (cel mai prudent)
+ok('starea necunoscută cade pe „Nedepusă", nu pe gol', livrabile.declBadge('inventata', false).includes('Nedepusă'));
+ok('starea lipsă cade tot pe „Nedepusă"', livrabile.declBadge(undefined, false).includes('Nedepusă'));
+ok('restanța e marcată separat de stare', livrabile.declBadge('nedepusa', true).includes('restanță'));
+ok('fără restanță nu apare marcajul', !livrabile.declBadge('nedepusa', false).includes('restanță'));
+// Poarta frontend <-> server: fiecare stare acceptata de server are eticheta in frontend.
+// Altfel registrul ar afisa „Nedepusă" pentru o declaratie de fapt depusa — exact invers.
+const declSrc = fs.readFileSync(path.join(ROOT, 'src', 'declarations.js'), 'utf8');
+const stM = declSrc.match(/const STATUSES = \[([^\]]+)\]/);
+ok('STATUSES e gasit in src/declarations.js', !!stM);
+const serverDecl = stM ? stM[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')) : [];
+ok('serverul declara cel putin 5 stari', serverDecl.length >= 5);
+const fallbackHtml = livrabile.declBadge('__inexistenta__', false);
+for (const st of serverDecl) {
+  ok('starea „' + st + '" are eticheta proprie in frontend', st === 'nedepusa' || livrabile.declBadge(st, false) !== fallbackHtml);
+}
+// Sensul articolului de provizion se inverseaza dupa semn — o inversare arata articolul invers.
+eq('provizion de constituit (mai e nevoie)', livrabile.provizionDirectie(500), '6814 = 491');
+eq('provizion de reluat (existentul e prea mare)', livrabile.provizionDirectie(-500), '491 = 7814, reluare');
+eq('la zero se afișează constituirea (fără sumă de înregistrat)', livrabile.provizionDirectie(0), '6814 = 491');
+
+section('e-TVA: comparația cu decontul precompletat ANAF');
+// Conventia de semn e scrisa in interfata: „Δ = ANAF − tu (pozitiv: ANAF vede mai mult)".
+// O inversare de semn ar trimite contabilul sa corecteze in directia gresita.
+const etva = {
+  ok: false, diffCount: 1, meta: { period: '2026-06' },
+  findings: [{ nivel: 'atentie', mesaj: 'Diferență la rândul 9' }],
+  rows: [
+    { rand: '9', eticheta: 'Livrări taxabile', match: false, baza: { propriu: 1000, anaf: 1200, delta: 200, match: false }, tva: { propriu: 210, anaf: 252, delta: 42, match: false } },
+    { rand: '10', eticheta: 'Achiziții', match: true, baza: { propriu: 500, anaf: 500, delta: 0, match: true }, tva: null },
+  ],
+};
+const etvaHtml = rapoarte.renderEtvaResult(etva);
+ok('delta pozitivă e prefixată cu + (ANAF vede mai mult)', etvaHtml.includes('+200,00'));
+ok('delta zero se afișează ca liniuță, nu ca 0,00', etvaHtml.includes('>—<'));
+ok('rândul cu diferențe e marcat vizual', etvaHtml.includes('etva-diff-row'));
+ok('numărul de rânduri cu diferențe apare în insignă', etvaHtml.includes('1 rând(uri) cu diferențe'));
+ok('perioada comparată e afișată', etvaHtml.includes('2026-06'));
+ok('observațiile ANAF sunt listate', etvaHtml.includes('Diferență la rândul 9'));
+ok('coloanele lipsă (tva null) nu strică tabelul', etvaHtml.includes('<td></td><td></td><td></td>'));
+ok('rezultatul concordant arată insigna „concordant"', rapoarte.renderEtvaResult({ ok: true, rows: [], meta: {} }).includes('concordant'));
+// Datele vin dintr-un fisier ANAF, deci sunt EXTERNE: trec prin H inainte de innerHTML
+const etvaOstil = rapoarte.renderEtvaResult({ ok: false, diffCount: 0, meta: { period: '<img src=x>' }, findings: [{ nivel: 'info', mesaj: '<b>x</b>' }], rows: [{ rand: '"><script>', eticheta: '<i>y</i>', match: true, baza: null, tva: null }] });
+ok('eticheta din fișierul ANAF e escapată', !etvaOstil.includes('<i>y</i>') && etvaOstil.includes('&lt;i&gt;'));
+ok('numărul de rând ostil nu poate închide un atribut', !etvaOstil.includes('"><script>'));
+ok('perioada din meta e escapată', !etvaOstil.includes('<img src=x>'));
+ok('mesajul observației e escapat', !etvaOstil.includes('<b>x</b>'));
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

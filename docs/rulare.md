@@ -39,9 +39,15 @@ blocarea perioadelor raportate. Blochează regresiile.
 **Logica pură de frontend** (`test/frontend.mjs`) e testată în Node, fără browser și fără jsdom:
 escaparea HTML (stratul de apărare dinaintea CSP), formatarea și rotunjirea sumelor (cu **paritate
 verificată față de `src/util.js`** — altfel ecranul și PDF-ul ar diferi la ban), aritmetica lunilor
-de lucru, clasificarea documentelor și parsarea sumelor în format românesc. Două verificări leagă
-frontend-ul de server (stările articolelor, tipurile eligibile e-Transport), ca o listă extinsă
-într-un singur loc să nu treacă neobservată. Randarea și evenimentele rămân în sarcina `npm run e2e`.
+de lucru, clasificarea documentelor, parsarea sumelor în format românesc, diagnosticul balanței
+care nu se închide, insigna declarațiilor și comparația e-TVA cu decontul precompletat. Trei
+verificări leagă frontend-ul de server (stările articolelor, tipurile eligibile e-Transport,
+stările declarațiilor), ca o listă extinsă într-un singur loc să nu treacă neobservată. Randarea
+și evenimentele rămân în sarcina `npm run e2e`.
+
+> Atenție la scrierea de teste noi aici: helperul `eq` **rotunjește el însuși** numerele înainte de
+> comparație (moștenit din `test/run.js`), deci un test despre rotunjire trece și dacă rotunjirea
+> din cod lipsește. Pentru așa ceva folosește `ok(...)` cu comparație strictă.
 
 **Previzualizarea articolului contabil vine de la server** (`POST /api/preview`), prin aceeași
 compunere ca salvarea. Până acum frontend-ul avea o replică proprie a regulilor, care acoperea 42
