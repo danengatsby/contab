@@ -7,6 +7,9 @@ import { pget, workMonth, onPeriodChange } from './periods.js';
 // ───────────────────────── STOCURI ─────────────────────────
 let STOCK_MOVS = [];
 function stocAsOf() { return pget('stoc') || new Date().toISOString().slice(0, 7); }
+// Eticheta miscarii de stoc: receptie / transfer (cu gestiunile) / iesire. Scoasa la nivel de
+// modul pentru testare — transferul e singurul care arata AMBELE gestiuni.
+const tipLbl = (m) => ((m || {}).tip === 'receptie' ? 'recepție' : (m || {}).tip === 'transfer' ? `transfer ${m.gestiuneCod}→${m.gestiuneDestCod}` : 'ieșire');
 function renderStockMovements() {
   const ft = $('#mvfTip').value, fg = $('#mvfGest').value, fl = $('#mvfLuna').value;
   const fx = ($('#mvfText').value || '').toLowerCase().trim();
@@ -17,7 +20,6 @@ function renderStockMovements() {
     if (fx && !((m.cod + ' ' + m.denumire + ' ' + (m.document || '') + ' ' + (m.operator || '')).toLowerCase().includes(fx))) return false;
     return true;
   });
-  const tipLbl = (m) => m.tip === 'receptie' ? 'recepție' : m.tip === 'transfer' ? `transfer ${m.gestiuneCod}→${m.gestiuneDestCod}` : 'ieșire';
   $('#movementsList').innerHTML = movs.length
     ? `<table><thead><tr><th>Data</th><th>Tip</th><th>Gestiune</th><th>Produs</th><th class="num">Cantitate</th><th class="num">Preț</th><th>Document</th><th>Operator</th><th>Notă contabilă</th><th></th></tr></thead><tbody>${
       movs.map((m) => `<tr><td>${H(m.data)}</td><td>${tipLbl(m)}</td><td>${H(m.gestiuneCod)}</td><td>${H(m.cod)} ${H(m.denumire)}</td>
@@ -152,11 +154,15 @@ $('#prodImportBtn').addEventListener('click', async () => {
   catch (err) { toast(err.message, true); }
 });
 // Preluare stoc inițial (cantitativ-valoric) din CSV/XLS/XLSX/DBF, la data preluării firmei
+// Preluarea stocului trebuie sa bata cu soldul initial sintetic al contului. Pragul e de un
+// BAN: sub el diferenta e doar rotunjire si nu merita semnalata; de la el in sus, stocul
+// cantitativ-valoric nu corespunde cu contabilitatea si trebuie corectat inainte de pornire.
+const stocDiferentaSemnificativa = (dif) => Math.abs(Number(dif) || 0) >= 0.01;
 function renderInitialCheck(tot) {
   const box = $('#initStocCheck'); if (!box) return;
   box.innerHTML = (tot || []).length
     ? `<table><thead><tr><th>Cont stoc</th><th class="num">Stoc inițial preluat</th><th class="num">Sold inițial cont</th><th class="num">Diferență</th></tr></thead><tbody>${
-      tot.map((t) => `<tr><td class="acc">${t.cont}</td><td class="num">${fmt(t.stocInitial)}</td><td class="num">${fmt(t.soldInitial)}</td><td class="num"${Math.abs(t.diferenta) >= 0.01 ? ' data-u="u33"' : ''}>${fmt(t.diferenta)}</td></tr>`).join('')}</tbody></table>
+      tot.map((t) => `<tr><td class="acc">${t.cont}</td><td class="num">${fmt(t.stocInitial)}</td><td class="num">${fmt(t.soldInitial)}</td><td class="num"${stocDiferentaSemnificativa(t.diferenta) ? ' data-u="u33"' : ''}>${fmt(t.diferenta)}</td></tr>`).join('')}</tbody></table>
       <p class="muted" data-u="u18">Verificare cantitativ-valoric vs. contabilitate: <b>Diferență ≠ 0</b> înseamnă că valoarea stocului preluat nu bate cu soldul inițial sintetic al contului — corectează soldurile inițiale sau cantitățile/valorile preluate.</p>`
     : '';
 }
@@ -350,3 +356,6 @@ $('#invLoad').addEventListener('click', async () => {
 
 
 export { loadStocks };
+
+// Exportate pentru testele unitare de frontend (eticheta miscarii, pragul de un ban): test/frontend.mjs
+export { tipLbl, stocDiferentaSemnificativa };
