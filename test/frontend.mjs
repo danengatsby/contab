@@ -640,6 +640,35 @@ for (const f of fs.readdirSync(PUB).filter((x) => x.endsWith('.js'))) {
 }
 ok('accName() nu ajunge niciodata neescapat in HTML'
   + (accNeescapat.length ? ' — ' + accNeescapat.join(' | ') : ''), accNeescapat.length === 0);
+
+// A patra poarta, tot pe PROVENIENTA: renderEfactura (public/viewer.js) construieste HTML
+// EXCLUSIV din XML-ul unei facturi primite prin SPV — adica din date scrise de furnizor, cea
+// mai putin de incredere sursa din aplicatie. Acolo regula nu e „campurile riscante se
+// escapeaza", ci „TOT se escapeaza": orice interpolare care nu e literal sau formatare numerica
+// e o scapare. Asa au fost gasite `cbc:Percent` si `cbc:DocumentCurrencyCode`, neescapate intre
+// vecini escapati — nume de campuri pe care nicio lista de „campuri riscante" nu le-ar fi avut.
+const viewerSrc = fs.readFileSync(path.join(PUB, 'viewer.js'), 'utf8').split('\n');
+const efStart = viewerSrc.findIndex((l) => /function renderEfactura/.test(l));
+const efNeescapate = [];
+if (efStart >= 0) {
+  for (let i = efStart; i < viewerSrc.length; i += 1) {
+    const ln = viewerSrc[i];
+    if (i > efStart && /^function |^const \w+ = \(/.test(ln)) break; // sfarsitul functiei
+    if (!/[<][a-zA-Z/]/.test(ln)) continue;
+    for (const e of leafInterp(ln)) {
+      // `=>` marcheaza o expresie CONTAINER (lines.map(...)): frunzele ei au fost deja intoarse
+      // separat de leafInterp si verificate pe cont propriu, deci containerul nu spune nimic.
+      if (/=>/.test(e)) continue;
+      // conditia unui ternar nu se afiseaza (dropCond), sumele trec prin money() -> Number()
+      const rest = stripLit(dropCond(stripEsc(e.replace(/\bmoney\([^)]*\)/g, ' '))));
+      if (/[A-Za-z_$][\w$]*/.test(rest)) efNeescapate.push('viewer.js:' + (i + 1) + '  ${' + e.slice(0, 50) + '}');
+    }
+  }
+}
+ok('randarea e-Facturii escapeaza TOT (date de la furnizor)'
+  + (efNeescapate.length ? ' — ' + efNeescapate.join(' | ') : ''), efNeescapate.length === 0);
+ok('poarta e-Factura chiar detecteaza un camp neescapat',
+  /[A-Za-z_$][\w$]*/.test(stripLit(stripEsc("l.cota ? l.cota + '%' : '—'"))));
 ok('poarta accName chiar detecteaza cazul neescapat',
   /\baccName\(/.test(stripEsc('`<td>${accName(r.cont)}</td>`')));
 ok('poarta accName accepta cazul escapat',
