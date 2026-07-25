@@ -14,6 +14,18 @@ const fs = require('fs');
 const crypto = require('crypto');
 const auth = require('../src/auth');
 const xml = require('../src/xml');
+
+// Driverul serverului de test se alege prin CONTAB_TEST_DRIVER, iar env-ul copilului suprascrie
+// explicit CONTAB_DB_DRIVER (vezi startServer). Cine porneste suita cu CONTAB_DB_DRIVER=pg —
+// varianta intuitiva, si cea scrisa gresit in CLAUDE.md pana acum — obtinea o rulare pe SQLITE
+// care raporta „557 verificari trecute" si lasa impresia ca driverul de productie e verificat.
+// Esec zgomotos in locul increderii false: baza pg ramanea goala, deci nimic nu semnala nimic.
+if (process.env.CONTAB_DB_DRIVER && !process.env.CONTAB_TEST_DRIVER) {
+  console.error('\n[test/http] CONTAB_DB_DRIVER=' + process.env.CONTAB_DB_DRIVER + ' NU are efect aici:'
+    + ' suita isi porneste propriul server si alege driverul din CONTAB_TEST_DRIVER.'
+    + '\n            Foloseste: CONTAB_TEST_DRIVER=' + process.env.CONTAB_DB_DRIVER + ' node test/http.js\n');
+  process.exit(1);
+}
 const totp = require('../src/totp');
 
 // Port EFEMER, nu unul fix: un 3891 hardcodat se ciocnea cu o instanta uitata (fals-pozitive,
@@ -102,10 +114,31 @@ async function waitUp(tries) {
   return false;
 }
 
+/** Goleste baza pg de test inainte de rulare. Calea sqlite e izolata prin fisier temporar
+ *  per-pid; pe pg toate rularile impart aceeasi baza (CONTAB_PG_URL), deci a doua rulare
+ *  pornea peste datele primeia si pica cu ~24 erori — confuz, fiindca suita e corecta.
+ *  TRUNCATE pe tabelele APLICATIEI (acelasi tipar ca test/store-pg.js), nu DROP SCHEMA:
+ *  nu atinge nimic ce nu e al aplicatiei, daca baza indicata s-ar dovedi a fi altceva. */
+async function resetPgTestDb() {
+  if (process.env.CONTAB_TEST_DRIVER !== 'pg' || !process.env.CONTAB_PG_URL) return;
+  const { Pool } = require('pg');
+  const { ARRAY_COLLS, PROJECTIONS } = require('../src/store');
+  const pool = new Pool({ connectionString: process.env.CONTAB_PG_URL });
+  try {
+    const tables = [...ARRAY_COLLS.map((c) => c.key.toLowerCase()), ...(PROJECTIONS || []).map((p) => p.table), 'partners', 'opening_balances', 'meta'];
+    // Tabelele lipsesc la prima rulare (baza noua) — de aceea intrebam catalogul in loc sa
+    // inghitim erori: un TRUNCATE esuat din alt motiv trebuie sa se vada, nu sa treaca tacut.
+    const { rows } = await pool.query('SELECT tablename FROM pg_tables WHERE schemaname = current_schema()');
+    const existente = new Set(rows.map((r) => r.tablename));
+    for (const t of tables) if (existente.has(t)) await pool.query('TRUNCATE ' + t + ' RESTART IDENTITY CASCADE');
+  } finally { await pool.end(); }
+}
+
 async function main() {
   PORT = await freePort();
   PORT2 = await freePort();
   BASE = 'http://127.0.0.1:' + PORT;
+  await resetPgTestDb();
   fs.writeFileSync(DBF, JSON.stringify(buildDb()));
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     // plafoane de upload/export mici, ca testele 429 sa nu faca zeci de cereri; conturile
