@@ -1035,6 +1035,23 @@ for (const v of ['=X', '+SUM(A1)', '@x', "-2+3+cmd|'/c calc'!A0", '-1234.56', 'F
   eq('dus-intors fidel pentru ' + JSON.stringify(v), rtCsv(v), v);
 }
 
+// Antet sau primul rand de date? Decizia se ia DUPA PRIMA CELULA si cere cuvantul INTREG.
+// Varianta de dinainte cauta „cod|cont|cui|denumire" oriunde in primele doua celule si inghitea
+// TACIT primul rand real cand DENUMIREA continea unul din cuvinte. Importul raporta succes cu un
+// rand mai putin — pierdere de date fara nicio eroare. Cazuri reale, din patru importuri diferite.
+const { isHeaderRow } = require('../src/csv');
+ok('antet adevarat recunoscut', isHeaderRow(['Cod', 'Denumire', 'Clasa']));
+ok('antet cu determinant recunoscut („Cod produs")', isHeaderRow(['Cod produs', 'Denumire']));
+ok('antet CUI recunoscut', isHeaderRow(['CUI', 'Denumire']));
+ok('antet Denumire recunoscut', isHeaderRow(['Denumire', 'Cantitate']));
+eq('contul „5121;Conturi curente la banci" NU e antet', isHeaderRow(['5121', 'Conturi curente la banci']), false);
+eq('partenerul „RO9001;CODLEA PROD SRL" NU e antet', isHeaderRow(['RO9001', 'CODLEA PROD SRL']), false);
+// Cazul care face cuvantul-intreg sa CONTEZE: un cod de produs care incepe chiar cu „COD".
+// Cu regula „contine", randul asta ar disparea; cu „cuvant intreg", „COD-123" nu e „COD".
+eq('codul de produs „COD-123" NU e antet', isHeaderRow(['COD-123', 'Momeala pescuit']), false);
+eq('codul de produs „CONTOR-5" NU e antet', isHeaderRow(['CONTOR-5', 'Contor apa']), false);
+eq('randul gol nu e antet', isHeaderRow([]), false);
+
 section('Import plan de conturi personalizat');
 const coaMod = require('../src/chartOfAccounts');
 coaMod.addAccounts([{ cod: '6028', nume: 'Cheltuieli cu alte materiale', clasa: 6, tip: 'C' }]);
@@ -3674,6 +3691,7 @@ section('Docs API: rutele documentate exista in cod (fara drift)');
   ok('poarta accepta scoping pe firma', AUTZ.test("(req, res) => res.json(svc.list(activeId(req)))"));
   ok('poarta accepta garda de admin', AUTZ.test("requireAdmin, (req, res) => res.json(svc.all())"));
 }
+
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

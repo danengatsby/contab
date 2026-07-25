@@ -16,7 +16,7 @@ const coa = require('./chartOfAccounts');
 const xlsx = require('./xlsx');
 const xls = require('./xls');
 const dbf = require('./dbf');
-const { toCsv, parseCsv } = require('./csv');
+const { toCsv, parseCsv, isHeaderRow } = require('./csv');
 const { reqFirma } = require('./stocksService');
 const { round2 } = require('./util');
 
@@ -27,8 +27,7 @@ function fail(status, message, extra) { const e = new Error(message); e.status =
 function importAccounts(csv) {
   const rows = parseCsv(csv || '');
   if (!rows.length) fail(400, 'CSV gol sau invalid.');
-  let start = 0;
-  if (/cont|cod|denumire/i.test((rows[0][0] || '') + (rows[0][1] || ''))) start = 1;
+  const start = isHeaderRow(rows[0]) ? 1 : 0; // vezi isHeaderRow: decizia se ia dupa PRIMA celula
   const d = db.get();
   const list = [];
   for (let i = start; i < rows.length; i++) {
@@ -68,9 +67,7 @@ function importPartners(fid, csv) {
   fid = reqFirma(fid);
   const rows = parseCsv(csv || '');
   if (!rows.length) fail(400, 'CSV gol sau invalid.');
-  // sare peste randul de antet daca prima celula nu pare un CUI
-  let start = 0;
-  if (/cui|cod|denumire/i.test((rows[0][0] || '') + (rows[0][1] || ''))) start = 1;
+  const start = isHeaderRow(rows[0]) ? 1 : 0; // vezi isHeaderRow: decizia se ia dupa PRIMA celula
   const d = db.get();
   d.partners[fid] = d.partners[fid] || {};
   let importati = 0; const erori = [];

@@ -1018,12 +1018,33 @@ async function main() {
     eq('non-admin NU poate importa in planul de conturi global -> 403', impStrain.status, 403);
     eq('contul standard a ramas neatins dupa incercare',
       (await req('GET', '/api/meta', { cookie: c1 })).json.accounts.find((a) => a.cod === '4111').nume, numeInainte);
-    // Atentie la datele de test: importAccounts sare primul rand daca pare antet, iar euristica
-    // se uita dupa „cont"/„cod"/„denumire" — o denumire care contine cuvantul „cont" ar fi inghitita.
     const impAdmin = await req('POST', '/api/accounts/import', { cookie: la.cookie, body: { csv: '9911;Ajustari speciale de test;9;B' } });
     ok('adminul importa in continuare in planul de conturi', impAdmin.status === 200 && impAdmin.json.importati === 1);
     ok('contul importat de admin e vizibil in meta',
       !!(await req('GET', '/api/meta', { cookie: la.cookie })).json.accounts.find((a) => a.cod === '9911'));
+
+    // ── Antetul se recunoaste dupa prima celula, nu dupa cuvinte din rand ──
+    // Euristica veche cauta „cont|cod|denumire" oriunde in primele doua celule si inghitea tacit
+    // primul rand REAL cand denumirea continea unul din ele. Planul romanesc e plin de asa ceva.
+    const impCont = await req('POST', '/api/accounts/import', { cookie: la.cookie,
+      body: { csv: '9912;Conturi curente la banci filiala;9;B\n9913;Alt cont de test;9;B' } });
+    eq('primul rand nu se pierde cand denumirea contine „Conturi"', (impCont.json || {}).importati, 2);
+    ok('contul cu denumirea „Conturi…" chiar a ajuns in plan',
+      !!(await req('GET', '/api/meta', { cookie: la.cookie })).json.accounts.find((a) => a.cod === '9912'));
+    const impAntet = await req('POST', '/api/accounts/import', { cookie: la.cookie,
+      body: { csv: 'Cod;Denumire;Clasa;Tip\n9914;Cont dupa antet;9;B' } });
+    eq('un antet ADEVARAT se sare in continuare', (impAntet.json || {}).importati, 1);
+
+    // Acelasi bug, aceeasi reparatie, la importul de parteneri. Cuvintele cautate acolo sunt
+    // „cui|cod|denumire", deci cazul real e o denumire care contine „cod" — „CODLEA PROD SRL".
+    const impPart = await req('POST', '/api/partners/import', { cookie: c1,
+      body: { csv: 'RO9001;CODLEA PROD SRL;Str. A;Bucuresti;RO-B;RO\n9002;Alt Partener SRL;Str. B;Cluj;RO-CJ;RO' } });
+    eq('primul partener nu se pierde cand denumirea contine „COD"', (impPart.json || {}).importati, 2);
+    ok('CUI-ul cu prefix RO e recunoscut ca date, nu ca antet',
+      !!(await req('GET', '/api/partners', { cookie: c1 })).json['9001']);
+    const impPartAntet = await req('POST', '/api/partners/import', { cookie: c1,
+      body: { csv: 'CUI;Denumire;Adresa\n9003;Partener Dupa Antet SRL;Str. C' } });
+    eq('antetul de parteneri se sare in continuare', (impPartAntet.json || {}).importati, 1);
 
     // ── Schimbare de parola OBLIGATORIE (cont cu parola implicita „admin") ──
     const laDef = await req('POST', '/api/login', { body: { username: 'defpw', password: 'admin' } });

@@ -11,7 +11,7 @@
 
 const db = require('./db');
 const { round2 } = require('./util');
-const { parseCsv } = require('./csv');
+const { parseCsv, isHeaderRow } = require('./csv');
 const { parseRoNumber } = require('./extractor');
 const stocks = require('./stocks');
 const fiscal = require('./fiscal');
@@ -49,8 +49,7 @@ function importProducts(fid, csv) {
   fid = reqFirma(fid);
   const rows = parseCsv(csv || '');
   if (!rows.length) fail(400, 'CSV gol sau invalid.');
-  let start = 0;
-  if (/cod|denumire/i.test((rows[0][0] || '') + (rows[0][1] || ''))) start = 1;
+  const start = isHeaderRow(rows[0]) ? 1 : 0;
   const d = db.get();
   let importati = 0;
   for (let i = start; i < rows.length; i++) {
@@ -229,8 +228,7 @@ function importInitialStock(fid, operator, b) {
   db.assertPeriodOpen(fid, data, 'Preluarea stocului initial');
   const rows = parseCsv(b.csv || '');
   if (!rows.length) fail(400, 'CSV gol sau invalid.');
-  let start = 0;
-  if (/cod|denumire|cant/i.test((rows[0][0] || '') + (rows[0][1] || '') + (rows[0][5] || ''))) start = 1;
+  const start = isHeaderRow(rows[0]) ? 1 : 0;
   const d = db.get();
   let importate = 0; let produseNoi = 0; let gestiuniNoi = 0; const erori = [];
   for (let i = start; i < rows.length; i++) {
