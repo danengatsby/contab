@@ -119,26 +119,31 @@ netestat. Și, cel mai important: scopul declarat al căii SQL nu e doar viteza,
 hidratarea lazy — singurul pas care reduce efectiv RAM-ul. Nu e cod inutil; e cod al cărui beneficiu
 de CPU nu se vede încă.
 
-**Re-măsurat pe pg (2026-07-25).** Aceleași date (2.500 de articole, confirmate ca rânduri în
-postgres, nu doar în RAM), ambele căi verificate prin anteturile `X-*-Source`:
+**Măsurat pe pg, PESTE prag (2026-07-25) — punctul de decizie.** 22.000 de articole generate prin
+API-ul real, confirmate ca **rânduri în postgres** (22.000 entries, 44.000 entry_lines), nu doar în
+RAM. Poarta se activează natural (22.000 > 20.000), iar ambele căi sunt verificate prin anteturile
+`X-*-Source`. Mediana din 3 rulări:
 
-| Rută | SQL | RAM |
-|---|---|---|
-| balanță (lună) | 5 ms | 6 ms |
-| jurnal (lună) | 6 ms | 2 ms |
-| cartea mare (lună) | 7 ms | 3 ms |
-| fișă cont | 4 ms | 1 ms |
-| dashboard | 75 ms | 66 ms |
+| Rută | SQL | RAM | RAM mai rapid de |
+|---|---|---|---|
+| balanță (lună) | 17 ms | 14 ms | 1,2× |
+| jurnal (lună) | 82 ms | 21 ms | **3,9×** |
+| cartea mare (lună) | 87 ms | 30 ms | **2,9×** |
+| fișă cont | 26 ms | 16 ms | 1,6× |
+| balanță (tot anul) | 21 ms | 16 ms | 1,3× |
+| dashboard *(fără cale SQL)* | 736 ms | 634 ms | ⚠ peste prag |
+| SAF-T *(fără cale SQL)* | 419 ms | 345 ms | — |
 
-Aceeași direcție ca pe sqlite: RAM e mai rapid (2–3× pe jurnal/carte/fișă), egal pe balanță.
-**Limita acestei rulări:** 2.500 de articole e mult SUB pragul de 20.000, deci nu spune ce se
-întâmplă la volumul unde poarta chiar se activează — SQL-ul a fost forțat cu prag 0. Măsurătoarea
-de pe sqlite la 27.350 (puțin peste prag) rămâne dovada cea mai apropiată de punctul de decizie.
+**Concluzia, acum la volumul unde poarta chiar contează:** RAM e mai rapid decât SQL pe **fiecare**
+rută gate-uită, pe ambele drivere. `CONTAB_SQL_READ_THRESHOLD` = 20.000 comută pe calea mai lentă
+exact în clipa în care se activează. Confirmă și extrapolarea de mai sus: `/api/dashboard` trece
+pragul de 500 ms (estimat ~18.000, măsurat 634–736 ms la 22.000).
 
-**Ce ar trebui făcut, în ordine:** (a) o măsurătoare pe pg **la peste 20.000 de articole** înainte de
-orice ajustare de prag — cele două rulări de până acum arată aceeași direcție, dar niciuna nu e la
-volumul unde poarta contează; dacă se confirmă, `CONTAB_SQL_READ_THRESHOLD` ar trebui **ridicat**,
-nu coborât; (b) `/api/dashboard` e
+**Ce ar trebui făcut, în ordine:** (a) **ridicat** `CONTAB_SQL_READ_THRESHOLD` — calea SQL nu-și
+merită gate-ul pe criteriu de CPU. Atenție însă la ce NU spune măsurătoarea: scopul declarat al
+căii SQL e *seam*-ul către hidratarea lazy, adică reducerea RAM-ului, nu viteza. Ridicarea pragului
+o dezactivează practic; păstrarea codului rămâne justificată de acel scop. Decizia e „pe ce criteriu
+se activează", nu „se șterge sau nu"; (b) `/api/dashboard` e
 următoarea investiție reală (cache per-firmă invalidat la `db.save`), fiindcă e singura rută care
 chiar doare, pe la ~18.000 de articole; (c) hidratarea lazy rămâne pe semnal de **RAM**, nu de CPU.
 
