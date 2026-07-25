@@ -109,10 +109,20 @@ async function main() {
   //     /api/metrics (ops.ultimulBackup) si e vizibila in raportul zilnic.
   const veri = backup.verifyArchive(f.path);
   const drill = require('../src/restoreDrill').drillArchive(f.path);
-  fs.writeFileSync(path.join(DATA_DIR, 'backups', 'last-backup.json'), JSON.stringify({
-    ts: new Date().toISOString(), name: f.name, ok: veri.ok, firme: veri.firme, sqlite: veri.sqlite, size: f.size, motiv: veri.motiv,
-    drill: { ok: drill.ok, nrFirme: drill.nrFirme, totalEntries: drill.totalEntries, motiv: drill.motiv },
-  }));
+  // Marcajul de stare e util (il citeste /api/metrics si raportul zilnic), dar e cel mai PUTIN
+  // important pas de aici. Scrierea lui NU are voie sa opreasca ce urmeaza: verificarea, drill-ul
+  // si mai ales trimiterea OFFSITE — un backup care ramane pe server nu apara de pierderea
+  // serverului. S-a intamplat: un fisier ramas root-owned a facut writeFileSync sa arunce EACCES,
+  // iar copia offsite n-a mai plecat SAPTE ZILE (19-25 iulie 2026), cu backup-urile locale create
+  // in continuare — deci aparent totul era in regula.
+  try {
+    fs.writeFileSync(path.join(DATA_DIR, 'backups', 'last-backup.json'), JSON.stringify({
+      ts: new Date().toISOString(), name: f.name, ok: veri.ok, firme: veri.firme, sqlite: veri.sqlite, size: f.size, motiv: veri.motiv,
+      drill: { ok: drill.ok, nrFirme: drill.nrFirme, totalEntries: drill.totalEntries, motiv: drill.motiv },
+    }));
+  } catch (e) {
+    warn('Marcajul last-backup.json nu s-a putut scrie:', e.message, '— backupul CONTINUA (verificare, drill, offsite).');
+  }
   if (!veri.ok) {
     warn('Verificare arhiva ESUATA:', veri.motiv);
     await alertEmail('[Contab backup] ARHIVA NERESTAURABILA: ' + f.name, 'Verificarea a esuat: ' + veri.motiv);
