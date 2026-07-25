@@ -22,6 +22,8 @@ const { ARRAY_COLLS, PROJECTIONS } = require('./store'); // sursa unica a listei
 
 let pool = null;
 let queue = Promise.resolve(); // coada seriala de tranzactii persist
+let pendingWork = null;        // un singur `work` asteapta intrarea in tranzactie (vezi persist)
+let draining = false;          // santinela: o singura bucla de golire activa
 // Dirty-tracking, ca in store.js (SQLite): colectiile cu `id` primesc INSERT/UPDATE/DELETE per rand
 // (diff fata de `snap`), nu DELETE+INSERT integral. `snap[colectie]` = Map(id -> json persistat la
 // ultimul commit reusit. Restul (colectii fara id, partners/opening/meta) raman pe rescriere completa
@@ -134,7 +136,7 @@ async function isEmpty() {
 }
 
 /** Reseteaza starea persistata -> urmatorul persist rescrie tot (dupa hydrate/restore). */
-function resetDirty() { snap = {}; lastHash = {}; }
+function resetDirty() { snap = {}; lastHash = {}; pendingWork = null; }
 
 /** Aplica un set de colectii fotografiate, intr-o singura tranzactie. */
 async function applyWork(work) {
@@ -301,26 +303,51 @@ function persist(db) {
     return queue;
   }
 
-  queue = queue
-    .then(() => applyWork(work))
-    .then(() => {
-      epoch += 1; // versiunea avansata odata cu commit-ul
-      // starea persistata se actualizeaza DOAR dupa commit reusit (esec -> retry idempotent la urmatorul save)
-      for (const w of work) {
-        if (w.snapKey) snap[w.snapKey] = w.cur;   // colectii cu id: snapshot per rand
-        else if (w.hk) lastHash[w.hk] = w.h;       // colectii fara id + partners/opening/meta
-      }
-      lastWritten = work.map((w) => w.name);
-    })
-    .catch((e) => {
-      if (e && e.code === 'CONTAB_WRITER_CONFLICT') {
-        conflictedFlag = true; // ingheata scrierile viitoare (nu retry — ar suprascrie alt proces)
-        console.error('[contab] CONFLICT DE SCRIITOR (pg): ' + e.message + ' Persistenta e inghetata pana la restart.');
-        return;
-      }
-      console.error('[contab] persist PostgreSQL ESUAT (se reincearca la urmatorul save):', e.message);
-    });
+  // COLAPSARE: un singur `work` poate astepta intrarea in tranzactie; unul nou il INLOCUIESTE.
+  // E sigur fiindca `work` nu e un delta incremental, ci diff-ul fata de `snap` — iar `snap` se
+  // actualizeaza DOAR dupa commit. Cat timp nimic nu s-a comis, fiecare `work` nou e calculat fata
+  // de ACELASI `snap`, deci il contine integral pe cel pe care il inlocuieste.
+  //
+  // De ce conteaza: fara colapsare, fiecare save() adauga in coada un snapshot COMPLET al
+  // colectiilor (`cur` = Map cu JSON-ul fiecarui rand). Sub scrieri mai rapide decat comite baza,
+  // snapshot-urile se acumulau si duceau procesul in OOM — masurat: 800 de scrieri in 3s au dus
+  // memoria de la 136 la 475 MB, in timp ce aceleasi scrieri cu 25ms pauza au ramas la 151 MB.
+  // Vezi docs/scalare-crestere.md. SQLite (store.js) nu are problema: persista sincron.
+  pendingWork = work;
+  if (!draining) { draining = true; queue = queue.then(drain); }
   return queue;
+}
+
+// Goleste `pendingWork` pana nu mai are ce; ruleaza o singura data (santinela `draining`), pe coada
+// seriala, deci tranzactiile raman una dupa alta.
+async function drain() {
+  try {
+    while (pendingWork) {
+      const work = pendingWork;
+      pendingWork = null;
+      try {
+        await applyWork(work);
+        epoch += 1; // versiunea avansata odata cu commit-ul
+        // starea persistata se actualizeaza DOAR dupa commit reusit (esec -> retry idempotent la urmatorul save)
+        for (const w of work) {
+          if (w.snapKey) snap[w.snapKey] = w.cur;   // colectii cu id: snapshot per rand
+          else if (w.hk) lastHash[w.hk] = w.h;       // colectii fara id + partners/opening/meta
+        }
+        lastWritten = work.map((w) => w.name);
+      } catch (e) {
+        if (e && e.code === 'CONTAB_WRITER_CONFLICT') {
+          conflictedFlag = true; // ingheata scrierile viitoare (nu retry — ar suprascrie alt proces)
+          console.error('[contab] CONFLICT DE SCRIITOR (pg): ' + e.message + ' Persistenta e inghetata pana la restart.');
+          pendingWork = null; // nu mai incerca nimic din coada
+          return;
+        }
+        // `snap` a ramas neatins, deci urmatorul save recalculeaza diff-ul si reincearca
+        console.error('[contab] persist PostgreSQL ESUAT (se reincearca la urmatorul save):', e.message);
+      }
+    }
+  } finally {
+    draining = false; // si pe calea de eroare, altfel persistenta ar ramane blocata definitiv
+  }
 }
 
 /** A fost detectat alt scriitor (persistenta inghetata)? Diagnostic pentru metrici/teste. */

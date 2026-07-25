@@ -155,10 +155,17 @@ dacă: (a) se ridică plafonul de API, (b) o cale nouă de import face `save()` 
 (c) o firmă crește mult. Nu e o problemă de azi; e o fragilitate care scalează invers față de cum
 ne-am dori.
 
-**Remediul evident, dacă devine necesar:** colapsarea persistărilor în așteptare — dacă în coadă
-există deja un `work` neînceput, cel nou îl poate înlocui, fiindcă fiecare `work` e calculat față de
-`snap`-ul actualizat doar după commit, deci cel mai nou conține și schimbările celui vechi. E o
-modificare în stratul de persistență al unei aplicații de contabilitate, deci nu de făcut preventiv.
+**REMEDIAT (2026-07-25):** colapsarea persistărilor în așteptare. Un singur `work` poate aștepta
+intrarea în tranzacție; unul nou îl **înlocuiește**. E sigur fiindcă `work` nu e un delta, ci diff-ul
+față de `snap` — iar `snap` se actualizează doar după commit, deci cât timp nimic nu s-a comis fiecare
+`work` nou pornește din același punct și îl conține integral pe cel înlocuit. Fencing-ul rămâne
+valid: `epoch` avansează o dată per commit, la fel ca `dbEpoch` din bază.
+
+Verificat: aceleași 800 de scrieri rapide rămân la **181 MB** (înainte: 475 MB), cu aceeași durată —
+și, mai important, fără pierdere de date: 800 în RAM = 800 rânduri în postgres = 1.600 linii
+proiectate, iar după repornire și rehidratare din bază tot 800, cu balanța echilibrată. Suita
+`test/store-pg.js` a primit o secțiune dedicată (rafală de 20 de persist-uri fără await, ștergeri
+propagate printr-o rafală colapsată): 53 de verificări, plus suita HTTP completă pe pg.
 
 Restul documentului rămâne analiza anterioară (partiționare pe firmă etc.), încă validă ca alternativă
 complementară — migrarea la pg tranzacțional și partiționarea pe `firmaId` nu se exclud.

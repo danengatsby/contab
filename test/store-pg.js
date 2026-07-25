@@ -166,6 +166,43 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
     eq('re-persist nu dubleaza (ON CONFLICT DO NOTHING)', await store.auditCount(), 7);
   }
 
+  section('Colapsarea persistarilor in asteptare (contra acumularii in coada)');
+  {
+    // persist() FOTOGRAFIAZA sincron un snapshot COMPLET al colectiilor si il pune in coada async.
+    // Fara colapsare, save-uri mai rapide decat comite baza acumuleaza snapshot-uri in RAM pana la
+    // OOM (masurat: 800 de scrieri in 3s -> 475 MB). Cu colapsare, un `work` neinceput e inlocuit
+    // de cel nou — sigur fiindca `snap` se actualizeaza doar dupa commit, deci cel nou e calculat
+    // fata de ACELASI punct de plecare si il contine integral pe cel inlocuit.
+    const cdb = base();
+    for (let i = 0; i < 5; i += 1) cdb.entries.push(mkEntry('c' + i, 1, 10 + i));
+    store.persist(cdb); await store.flush();
+    eq('punct de plecare: 5 articole in baza', Number((await pool.query('SELECT COUNT(*) AS n FROM entries')).rows[0].n), 5);
+
+    // rafala: 20 de persist-uri FARA await intre ele (exact tiparul care umplea coada)
+    for (let i = 5; i < 25; i += 1) { cdb.entries.push(mkEntry('c' + i, 1, 10 + i)); store.persist(cdb); }
+    await store.flush();
+
+    // CE CONTEAZA: starea finala din baza == starea din memorie. Colapsarea sare peste persistari
+    // intermediare, deci daca invariantul ar fi gresit, aici s-ar pierde articole.
+    const nDb = Number((await pool.query('SELECT COUNT(*) AS n FROM entries')).rows[0].n);
+    eq('dupa rafala, baza are toate cele 25 de articole', nDb, cdb.entries.length);
+    const lipsa = (await pool.query('SELECT id FROM entries ORDER BY id')).rows.map((r) => r.id);
+    ok('niciun id pierdut prin colapsare', cdb.entries.every((e) => lipsa.includes(e.id)));
+    // proiectia derivata trebuie sa ramana coerenta cu blob-ul, nu doar numarul de randuri
+    const nLinii = Number((await pool.query('SELECT COUNT(*) AS n FROM entry_lines')).rows[0].n);
+    eq('proiectia de linii e coerenta cu articolele', nLinii, cdb.entries.reduce((s, e) => s + e.lines.length, 0));
+    // rehidratarea din baza trebuie sa dea exact ce era in memorie
+    const rehidratat = await store.hydrate();
+    eq('hydrate dupa rafala intoarce toate articolele', rehidratat.entries.length, cdb.entries.length);
+
+    // stergerea trebuie sa se propage si ea printr-o rafala colapsata
+    cdb.entries = cdb.entries.filter((e) => e.id !== 'c7' && e.id !== 'c9');
+    store.persist(cdb); store.persist(cdb); store.persist(cdb);
+    await store.flush();
+    eq('stergerile se propaga prin rafala', Number((await pool.query('SELECT COUNT(*) AS n FROM entries')).rows[0].n), cdb.entries.length);
+    ok('randurile sterse chiar au disparut', (await pool.query("SELECT 1 FROM entries WHERE id IN ('c7','c9')")).rows.length === 0);
+  }
+
   // ULTIMA sectiune (dupa conflict, persistenta ramane INGHETATA — nimic nu mai scrie dupa ea)
   section('Fencing multi-scriitor (dbEpoch): alt proces detectat -> refuz, nu clobber');
   {
