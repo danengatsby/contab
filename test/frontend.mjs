@@ -42,6 +42,11 @@ const rapoarte = await import(path.join(mirror, 'rapoarte.js'));
 const livrabile = await import(path.join(mirror, 'livrabile.js'));
 const messages = await import(path.join(mirror, 'messages.js'));
 const etransport = await import(path.join(mirror, 'etransport.js'));
+const app = await import(path.join(mirror, 'app.js'));
+const stocuri = await import(path.join(mirror, 'stocuri.js'));
+const bank = await import(path.join(mirror, 'bank.js'));
+const viewer = await import(path.join(mirror, 'viewer.js'));
+const partners = await import(path.join(mirror, 'partners.js'));
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -453,6 +458,65 @@ ok('codul livrării IC înseamnă chiar livrare intracomunitară', /Livrare intr
 ok('codul achiziției IC înseamnă chiar achiziție intracomunitară', /Achizitie intracomunitara/i.test(nomen[etransport.defaultTip('achizitie_intracomunitara')] || ''));
 ok('codul importului înseamnă chiar import', /Import/i.test(nomen[etransport.defaultTip('import_vamal')] || ''));
 ok('codul implicit înseamnă transport național', /national/i.test(nomen[etransport.defaultTip('altceva')] || ''));
+
+section('Abonament, stocuri, bancă, parteneri, vizualizator XML');
+// Eticheta de abonament din selectorul de firme — primul lucru pe care il vede utilizatorul
+// despre starea platii. O stare gresit etichetata inseamna fie panica degeaba, fie o firma
+// care expira fara ca nimeni sa observe.
+eq('proba arata zilele ramase', app.subTag({ _sub: { status: 'trial', zileRamase: 5 } }), ' 🎁 probă 5z');
+eq('proba expirata e marcata', app.subTag({ _sub: { status: 'expired' } }), ' 🎁 expirată');
+eq('lipsa abonamentului e marcata', app.subTag({ _sub: { status: 'none' } }), ' ⚠ fără abonament');
+eq('abonamentul activ nu adauga nimic', app.subTag({ _sub: { status: 'active' } }), '');
+eq('firma fara informatie de abonament nu arunca', app.subTag({}), '');
+eq('argument lipsa nu arunca', app.subTag(undefined), '');
+
+// Miscarile de stoc: transferul e singurul care trebuie sa arate AMBELE gestiuni.
+eq('receptia', stocuri.tipLbl({ tip: 'receptie' }), 'recepție');
+eq('transferul arata sursa si destinatia', stocuri.tipLbl({ tip: 'transfer', gestiuneCod: 'DEP1', gestiuneDestCod: 'MAG' }), 'transfer DEP1→MAG');
+eq('iesirea', stocuri.tipLbl({ tip: 'iesire' }), 'ieșire');
+eq('tip necunoscut e tratat ca iesire', stocuri.tipLbl({ tip: 'altceva' }), 'ieșire');
+eq('obiect gol nu arunca', stocuri.tipLbl({}), 'ieșire');
+
+// Pragul la preluarea stocului: sub un ban e rotunjire, de la un ban in sus stocul
+// cantitativ-valoric NU bate cu contabilitatea. Se verifica exact granita.
+ok('diferenta de exact un ban e semnificativa', stocuri.stocDiferentaSemnificativa(0.01) === true);
+ok('diferenta sub un ban e doar rotunjire', stocuri.stocDiferentaSemnificativa(0.009) === false);
+ok('zero nu e o diferenta', stocuri.stocDiferentaSemnificativa(0) === false);
+ok('diferenta negativa conteaza la fel', stocuri.stocDiferentaSemnificativa(-0.01) === true);
+ok('diferenta mare e semnificativa', stocuri.stocDiferentaSemnificativa(-5000) === true);
+ok('valoare nenumerica nu semnaleaza fals', stocuri.stocDiferentaSemnificativa('abc') === false);
+ok('null nu arunca', stocuri.stocDiferentaSemnificativa(null) === false);
+
+// Potrivirea liniei de extras bancar cu facturile pe care le stinge.
+ok('fara potrivire se arata liniuta', bank.matchCell({}).includes('—'));
+ok('potrivirea „fara" e tot liniuta', bank.matchCell({ potrivire: { tip: 'fara' } }).includes('—'));
+ok('lista goala de facturi nu inventeaza o potrivire', bank.matchCell({ potrivire: { tip: 'exacta', facturi: [] } }).includes('—'));
+ok('potrivirea exacta arata documentul', bank.matchCell({ potrivire: { tip: 'exacta', facturi: [{ doc: 'F100' }] } }).includes('F100'));
+const agreg = bank.matchCell({ potrivire: { tip: 'agregata', facturi: [{ doc: 'F1' }, { doc: 'F2' }] } });
+ok('potrivirea agregata spune CATE facturi stinge', agreg.includes('2 facturi'));
+ok('potrivirea agregata le si enumera', agreg.includes('F1, F2'));
+ok('potrivirea partiala e marcata ca avertisment', bank.matchCell({ potrivire: { tip: 'partiala', facturi: [{ doc: 'F3' }] } }).includes('pill warn'));
+ok('factura fara numar are text de rezerva', bank.matchCell({ potrivire: { tip: 'exacta', facturi: [{}] } }).includes('fără nr.'));
+// numarul de document e tastat de utilizator si vine si din extrasul bancar
+ok('numarul de document e escapat', bank.matchCell({ potrivire: { tip: 'exacta', facturi: [{ doc: '<b>x</b>' }] } }).includes('&lt;b&gt;'));
+
+// Insigna de tip partener.
+ok('clientul isi are insigna', partners.tipBadge('client').includes('Client'));
+ok('furnizorul isi are insigna', partners.tipBadge('furnizor').includes('Furnizor'));
+ok('„ambele" isi are insigna', partners.tipBadge('ambele').includes('Ambele'));
+ok('tipul necunoscut da liniuta, nu insigna goala', partners.tipBadge('inventat').includes('—'));
+ok('tipul lipsa da liniuta', partners.tipBadge(undefined).includes('—'));
+
+// Vizualizatorul de XML: titlul declaratiei si indentarea.
+eq('titlul pentru D300', viewer.xmlTitle('/xml/d300?period=2026-06'), 'D300 — Decont TVA (XML ANAF)');
+eq('titlul pentru SAF-T', viewer.xmlTitle('/xml/saft?year=2026'), 'SAF-T / D406 (XML ANAF)');
+eq('declaratie necunoscuta primeste titlu generic', viewer.xmlTitle('/xml/altceva'), 'XML ANAF');
+eq('adresa lipsa nu arunca', viewer.xmlTitle(undefined), 'XML ANAF');
+const pretty = viewer.prettyXml('<a><b><c>x</c></b><d/></a>');
+eq('prettyXml indenteaza pe niveluri', pretty.split('\n')[2], '    <c>x</c>');
+ok('prettyXml pastreaza eticheta auto-inchisa fara sa indenteze in plus', pretty.includes('\n  <d/>'));
+ok('prettyXml inchide la nivelul de pornire', pretty.split('\n').pop() === '</a>');
+eq('prettyXml pe un sir care nu e XML il intoarce neatins', viewer.prettyXml('nu sunt xml'), 'nu sunt xml');
 
 section('Poartă: fiecare modul din public/ se încarcă fără să arunce');
 // Testele de mai sus importa doar modulele pe care le verifica (9 din ~24). Un import lipsa in

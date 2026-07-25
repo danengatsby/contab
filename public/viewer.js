@@ -151,3 +151,6 @@ if ($('#pdfClose')) {
     }
   });
 }
+
+// Exportate pentru testele unitare de frontend (formatarea XML si titlul): test/frontend.mjs
+export { prettyXml, xmlTitle };

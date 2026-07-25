@@ -45,3 +45,6 @@ $('#partnersImportBtn').addEventListener('click', async () => {
     $('#partnersCsvIn').value = ''; loadPartners();
   } catch (err) { toast(err.message, true); }
 });
+
+// Exportat pentru testele unitare de frontend (insigna de tip partener): test/frontend.mjs
+export { tipBadge };

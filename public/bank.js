@@ -60,3 +60,6 @@ $('#bankImport').addEventListener('click', async () => {
     setMeta(await api('/api/meta')); onImported();
   } catch (e) { toast(e.message, true); }
 });
+
+// Exportat pentru testele unitare de frontend (insigna facturii stinse): test/frontend.mjs
+export { matchCell };

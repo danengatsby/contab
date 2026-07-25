@@ -139,9 +139,12 @@ $('#moreSheet') && $('#moreSheet').addEventListener('click', (e) => { if (e.targ
 $('#moreClose') && $('#moreClose').addEventListener('click', closeMore);
 $$('#moreSheet button[data-go]').forEach((b) => b.addEventListener('click', () => { goTab(b.dataset.go); closeMore(); }));
 // ───────────────────────── FIRME (multi-firma) ─────────────────────────
+// Eticheta de abonament din selectorul de firme: proba (cu zilele ramase), expirata, fara
+// abonament, sau nimic pentru un abonament activ. Scoasa la nivel de modul ca sa fie testabila —
+// e primul lucru pe care il vede utilizatorul despre starea platii firmei.
+const subTag = (f) => { const s = (f || {})._sub || {}; return s.status === 'trial' ? ' 🎁 probă ' + s.zileRamase + 'z' : s.status === 'expired' ? ' 🎁 expirată' : s.status === 'none' ? ' ⚠ fără abonament' : ''; };
 function fillFirmaSelect() {
   const sel = $('#firmaSelect');
-  const subTag = (f) => { const s = f._sub || {}; return s.status === 'trial' ? ' 🎁 probă ' + s.zileRamase + 'z' : s.status === 'expired' ? ' 🎁 expirată' : s.status === 'none' ? ' ⚠ fără abonament' : ''; };
   const opts = (META.firme || []).map((f) => `<option value="${f.id}" ${f.id === META.firmaActiva ? 'selected' : ''}>${H(f.nume)}${f.cui ? ' (' + H(f.cui) + ')' : ''}${subTag(f)}</option>`).join('');
   // optiune de adaugare direct din selector (discoverability) — duce la Setari -> Firmele mele.
   // Contul demo nu adauga/gestioneaza firme (lucreaza doar pe firma demo, resetata periodic).
@@ -847,3 +850,6 @@ if (/[?&]anaf=error/.test(location.search)) toast('Autorizarea ANAF a eșuat', t
 
 // Pornirea aplicatiei: fluxurile de invitatie/resetare (authui) au prioritate; altfel init().
 if (!bootAuth()) init().catch((e) => toast(e.message, true));
+
+// Exportate pentru testele unitare de frontend (eticheta de abonament): test/frontend.mjs
+export { subTag };
