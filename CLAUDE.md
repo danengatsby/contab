@@ -24,17 +24,26 @@ npm run e2e                   # E2E pe live; pe acest server rulează prin Docke
 ```
 
 **Producția rulează pe `pg`, dar `npm test` rulează pe `sqlite`** — iar `test/store-pg.js` se sare
-tăcut fără `CONTAB_PG_URL`. Deci o suită verde NU înseamnă că driverul de producție e verificat.
-Înainte de o schimbare care atinge persistența (sau după o zi cu multe merge-uri), rulează și pe pg:
+tăcut fără `CONTAB_PG_URL`. Deci o suită verde local NU înseamnă că driverul de producție e
+verificat. (În CI **e**: jobul `test-postgres` din `.github/workflows/ci.yml` rulează store-pg +
+suita HTTP + balanța cu prag 0 pe un Postgres real.) Înainte de o schimbare care atinge
+persistența, rulează și local pe pg:
 
 ```bash
 docker run -d --name contab-pgtest -e POSTGRES_USER=contab -e POSTGRES_PASSWORD=contab \
   -e POSTGRES_DB=contab_test -p 55432:5432 postgres:16
 PG='postgres://contab:contab@localhost:55432/contab_test'
-CONTAB_PG_URL="$PG" node test/store-pg.js                    # persistența incrementală pe pg
-CONTAB_DB_DRIVER=pg CONTAB_PG_URL="$PG" node test/http.js    # suita HTTP completă pe pg
-docker rm -f contab-pgtest                                    # ...și oprește containerul
+CONTAB_PG_URL="$PG" node test/store-pg.js                      # persistența incrementală pe pg
+CONTAB_TEST_DRIVER=pg CONTAB_PG_URL="$PG" node test/http.js    # suita HTTP completă pe pg
+docker rm -f contab-pgtest                                      # ...și oprește containerul
 ```
+
+**Variabila e `CONTAB_TEST_DRIVER`, NU `CONTAB_DB_DRIVER`.** `test/http.js` își pornește propriul
+server și îi impune driverul din `CONTAB_TEST_DRIVER`; un `CONTAB_DB_DRIVER=pg` pus în față era
+ignorat tăcut, suita rula pe sqlite și raporta „557 verificări trecute" — încredere falsă exact în
+locul unde voiai o verificare. Astăzi acea formă se oprește cu eroare și îți spune comanda corectă.
+Suita golește singură tabelele aplicației la pornire, deci se poate rula de câte ori vrei pe
+aceeași bază.
 
 Instanță de dezvoltare izolată (nu atinge producția):
 
