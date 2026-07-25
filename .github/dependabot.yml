@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Dependintele npm. `direct` = doar cele din package.json, nu si tranzitive: un PR pe o
+  # dependinta indirecta nu se poate revizui util aici (se rezolva prin actualizarea parintelui).
+  # ATENTIE: `xlsx` e pinuit pe un tarball de pe cdn.sheetjs.com, nu pe registrul npm — dependabot
+  # NU il vede. Actualizarea lui ramane manuala (vezi package.json).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "direct"
+
+  # Actiunile din .github/workflows/ci.yml sunt pinuite pe major (actions/checkout@v4 etc.) si
+  # se invechesc la fel de tacut ca pachetele. Fara asta, CI-ul ramane pe versiuni scoase din uz.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3

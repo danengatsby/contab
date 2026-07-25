@@ -106,7 +106,9 @@ function renderEfactura(doc) {
   const baza = T(root, 'cbc:TaxExclusiveAmount'); const tva = T(tt, 'cbc:TaxAmount');
   const total = T(root, 'cbc:PayableAmount') || T(root, 'cbc:TaxInclusiveAmount');
   const esc = (s) => (s || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  const money = (v) => v ? Number(v).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur : '';
+  // `cur` si `cota` vin din XML-ul FURNIZORULUI (cbc:DocumentCurrencyCode / cbc:Percent), la fel
+  // ca denumirile — deci se escapeaza la fel. Suma trecuta prin Number() e deja inofensiva.
+  const money = (v) => v ? Number(v).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + esc(cur) : '';
   const idDirect = (() => { for (const c of root.children) if (c.tagName === 'cbc:ID') return c.textContent.trim(); return ''; })();
   return `<div class="efact-doc">
     <div data-u="u191">
@@ -119,7 +121,7 @@ function renderEfactura(doc) {
       <div><div class="lbl">Cumpărător</div><b>${esc(pName(cus))}</b><br><span class="muted">CUI: ${esc(T(cus, 'cbc:CompanyID'))}</span></div>
     </div>
     <table><thead><tr><th>Denumire</th><th class="num">Cant.</th><th class="num">Preț</th><th class="num">Cotă</th><th class="num">Valoare</th></tr></thead>
-      <tbody>${lines.map((l) => `<tr><td>${esc(l.nume)}</td><td class="num">${esc(l.qty)}</td><td class="num">${money(l.pret)}</td><td class="num">${l.cota ? l.cota + '%' : '—'}</td><td class="num">${money(l.val)}</td></tr>`).join('')}</tbody>
+      <tbody>${lines.map((l) => `<tr><td>${esc(l.nume)}</td><td class="num">${esc(l.qty)}</td><td class="num">${money(l.pret)}</td><td class="num">${l.cota ? esc(l.cota) + '%' : '—'}</td><td class="num">${money(l.val)}</td></tr>`).join('')}</tbody>
     </table>
     <table class="efact-tot"><tbody>
       <tr><td>Bază impozabilă</td><td class="num">${money(baza)}</td></tr>
