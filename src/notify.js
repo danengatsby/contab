@@ -1,6 +1,7 @@
 'use strict';
 
 const secretbox = require('./secretbox');
+const { sendResend } = require('./resend');
 
 // Trimiterea de emailuri: SMTP-ul configurat in Setari sau, in lipsa, API-ul Resend
 // (RESEND_API_KEY din .env). Tot aici: digestul zilnic cu termenele fiscale.
@@ -23,13 +24,7 @@ async function sendNotifMail(to, subject, text) {
   if (smtp.host) return sendMail(smtp, to, subject, text);
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error('Nici SMTP, nici RESEND_API_KEY nu sunt configurate.');
-  const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json', 'User-Agent': 'contab-app/1.0' },
-    body: JSON.stringify({ from: 'Contab <comenzi@poetio.site>', to: [to], subject, text }),
-  });
-  const t = await r.text();
-  if (!r.ok || !t.includes('"id"')) throw new Error('Resend ' + r.status + ': ' + t.slice(0, 200));
+  return sendResend(key, { from: 'Contab <comenzi@poetio.site>', to, subject, text, ua: 'contab-app/1.0' });
 }
 
 function digestText(n) {
