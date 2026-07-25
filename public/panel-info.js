@@ -70,7 +70,7 @@ var PANEL_INFO = [
   // Salarizare
   ['Adaugă / modifică angajat', 'Datele angajatului: brut, spor, persoane în întreținere (pentru deducerea personală), tichete, avans, rețineri.'],
   ['Sumar stat de plată', 'Totalurile lunii: brut, contribuții (CAS/CASS/CAM), impozit, net de plată și costul total al angajatorului.'],
-  ['Angajați și calcul', 'Statul de plată per angajat: CAS 25%, CASS 10%, impozit 10% cu deducerea personală, și restul de plată.'],
+  ['Angajați și calcul', 'Statul de plată per angajat: CAS {cas|25}, CASS {cass|10}, impozit {impozitVenit|10} cu deducerea personală, și restul de plată.'],
   ['Registru anual de salarii', 'Cumulul anual per angajat (brut, contribuții, net) — baza adeverințelor de venit.'],
   // Stocuri
   ['Gestiuni (depozite)', 'Nomenclatorul de gestiuni; stocul și costul mediu ponderat se țin separat pe fiecare gestiune.'],

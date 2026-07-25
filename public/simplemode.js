@@ -3,7 +3,7 @@
 // (implicit pentru necontabili/testeri, preferinta per utilizator in browser) si glosarul de
 // termeni pe intelesul tuturor (modal cu cautare). Extras din app.js (Etapa 6). Depinde doar de
 // nucleu; nu apeleaza inapoi in app.js. initUiMode e apelat din init().
-import { $, USER, toast } from './core.js';
+import { $, USER, toast, fiscalText } from './core.js';
 
 // ── Mod simplu (necontabil) + Dicționar contabil pe înțelesul tuturor ──
 const GLOSAR = [
@@ -35,7 +35,7 @@ const GLOSAR = [
   ['Aviz de însoțire', 'Hârtia care însoțește marfa pe drum când factura nu e gata încă. Factura se emite ulterior, pe baza avizului.'],
   ['Gestiune', 'Un loc de depozitare urmărit separat (depozit, magazin, mașină). Stocul se ține pe fiecare gestiune, cu un gestionar răspunzător.'],
   ['Închidere de lună / de an', 'Ritualul de sfârșit de perioadă: se „strâng" conturile de TVA, veniturile și cheltuielile se mută în rezultat și se calculează impozitul. Aplicația face pașii automat.'],
-  ['CAS / CASS / CAM', 'Contribuțiile din salarii: CAS 25% (pensie) și CASS 10% (sănătate) se rețin din salariul angajatului; CAM 2,25% (asigurări de muncă) e plătită de firmă, peste salariu.'],
+  ['CAS / CASS / CAM', 'Contribuțiile din salarii: CAS {cas|25} (pensie) și CASS {cass|10} (sănătate) se rețin din salariul angajatului; CAM {cam|2.25} (asigurări de muncă) e plătită de firmă, peste salariu.'],
   ['Avantaje în natură', 'Beneficii date angajatului altfel decât în bani (mașina firmei folosită personal, chirie plătită de firmă). Se impozitează ca salariul, deși nu se plătesc cash.'],
   ['Avans de trezorerie / Decont', 'Bani dați unui angajat „în avans" pentru cheltuieli (deplasare, cumpărături firmă). La întoarcere face decontul: aduce bonurile și restul de bani.'],
   ['Filă carnet comercializare', 'Documentul cu care cumperi legal produse agricole de la producători persoane fizice (Legea 145/2014) — fără TVA și fără factură clasică.'],
@@ -46,7 +46,7 @@ function renderGlossary(q) {
   const s = (q || '').toLowerCase().trim();
   const items = GLOSAR.filter(([t, e]) => !s || (t + ' ' + e).toLowerCase().includes(s));
   box.innerHTML = items.length
-    ? items.map(([t, e]) => `<div class="gloss-item"><b>${t}</b><p>${e}</p></div>`).join('')
+    ? items.map(([t, e]) => `<div class="gloss-item"><b>${t}</b><p>${fiscalText(e)}</p></div>`).join('')
     : '<p class="muted" data-u="u188">Niciun termen găsit — încearcă alt cuvânt.</p>';
 }
 $('#glossaryBtn') && $('#glossaryBtn').addEventListener('click', () => { renderGlossary(''); $('#glossarySearch').value = ''; $('#glossaryModal').classList.remove('hidden'); $('#glossarySearch').focus(); });

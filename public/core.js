@@ -26,6 +26,27 @@ export let USER = {};
 export function setMeta(m) { META = m; }
 export function setUser(u) { USER = u; }
 
+// ── Cotele fiscale: de la server, niciodata hardcodate in frontend ──
+// Parametrii fiscali stau centralizat in src/fiscalConfig.js si ajung aici prin /api/meta.
+// Un procent scris de mana in frontend supravietuieste modificarii de cota si incepe sa minta:
+// fie pune o valoare gresita intr-un formular (devine DATA), fie eticheteaza gresit un numar
+// corect calculat pe server. `fallback` e doar plasa pentru META neincarcat inca.
+export const fiscalRate = (key, fallback) => {
+  const v = Number((META.fiscal || {})[key]);
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+};
+// Procentul ca text, in scriere romaneasca (virgula zecimala): "25%", "2,25%".
+export const fiscalPct = (key, fallback) => String(fiscalRate(key, fallback)).replace('.', ',') + '%';
+// Substituie `{cheie|implicit}` cu cota curenta in textele explicative (glosar, panouri).
+// Tabelele lor sunt constante evaluate la IMPORT, cand META.fiscal inca nu e incarcat, deci
+// substituim la randare, nu la definire.
+export const fiscalText = (s) => String(s).replace(/\{(\w+)\|([\d.]+)\}/g, (_, k, fb) => fiscalPct(k, Number(fb)));
+// Umple campurile marcate `data-rate="<cheie>"` cu cota curenta. Valoarea din HTML ramane
+// plasa (se foloseste daca META inca nu e incarcat). Se apeleaza dupa fiecare setMeta.
+export function applyFiscalDefaults(root) {
+  $$('[data-rate]', root || document).forEach((el) => { el.value = fiscalRate(el.dataset.rate, el.value); });
+}
+
 export const accName = (c) => { const a = META.accounts.find((x) => x.cod === String(c)); return a ? a.nume : ''; };
 // Contul demo (public, partajat): unele UI-uri se ascund. Partajat de app.js si admin.js.
 export const isDemo = () => !!(USER && (USER.username === 'demo' || USER.username === 'demo-contabil'));

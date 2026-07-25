@@ -1,7 +1,7 @@
 'use strict';
 
 // Salarizare: angajati, stat de plata, fluturasi, registru. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, toast, api, round2 } from './core.js';
+import { $$, $, H, fmt, toast, api, round2, fiscalPct } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
 
 // ───────────────────────── SALARIZARE ─────────────────────────
@@ -21,10 +21,10 @@ async function loadSalarizare() {
     : '<p class="muted">Niciun angajat. Adaugă unul în formular.</p>';
   $('#spSummary').innerHTML = `<table><tbody>
     <tr><td>Total salarii brute (641)</td><td class="num">${fmt(t.brut)}</td></tr>
-    <tr><td>CAS 25% reținut (4315)</td><td class="num">${fmt(t.cas)}</td></tr>
-    <tr><td>CASS 10% reținut (4316)</td><td class="num">${fmt(t.cass)}</td></tr>
-    <tr><td>Impozit 10% (444)</td><td class="num">${fmt(t.impozit)}</td></tr>
-    <tr><td>CAM 2,25% angajator (436)</td><td class="num">${fmt(t.cam)}</td></tr>
+    <tr><td>CAS ${fiscalPct('cas', 25)} reținut (4315)</td><td class="num">${fmt(t.cas)}</td></tr>
+    <tr><td>CASS ${fiscalPct('cass', 10)} reținut (4316)</td><td class="num">${fmt(t.cass)}</td></tr>
+    <tr><td>Impozit ${fiscalPct('impozitVenit', 10)} (444)</td><td class="num">${fmt(t.impozit)}</td></tr>
+    <tr><td>CAM ${fiscalPct('cam', 2.25)} angajator (436)</td><td class="num">${fmt(t.cam)}</td></tr>
     <tr class="bold"><td>Salarii nete de plată (421)</td><td class="num">${fmt(t.net)}</td></tr>
     <tr class="bold"><td>Total de virat la buget</td><td class="num">${fmt(t.totalBuget)}</td></tr>
     <tr><td>Cost total angajator</td><td class="num">${fmt(t.costTotal)}</td></tr></tbody></table>`;

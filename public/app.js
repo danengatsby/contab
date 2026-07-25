@@ -1,5 +1,5 @@
 'use strict';
-import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUser, setOn402, setOnReconnect, escMsg, escAttr, isDemo, fileToCsv, round2 } from './core.js';
+import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUser, setOn402, setOnReconnect, escMsg, escAttr, isDemo, fileToCsv, round2, applyFiscalDefaults, fiscalText } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, setSettingsDeps } from './settings.js';
@@ -223,7 +223,8 @@ $('#imperStop').addEventListener('click', async () => {
 // Dictionarul de explicatii pe panouri e in public/panel-info.js (incarcat inainte de app.js).
 function addPanelInfo() {
   const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9ăâîșşțţ]/g, '');
-  const dict = PANEL_INFO.map(([t, info]) => [norm(t), info]).sort((a, b) => b[0].length - a[0].length);
+  // fiscalText: cotele din explicatii vin din META.fiscal (tabelul e constanta, evaluata la import)
+  const dict = PANEL_INFO.map(([t, info]) => [norm(t), fiscalText(info)]).sort((a, b) => b[0].length - a[0].length);
   $$('.card h2, .card h3, section .toolbar h2').forEach((h) => {
     if (h.querySelector('.cinfo')) return;
     const key = norm(h.textContent);
@@ -249,6 +250,7 @@ async function init() {
     throw e;
   }
   hideLogin();
+  applyFiscalDefaults(); // cotele implicite din formulare vin din META.fiscal, nu din HTML
   setUser(META.user || {});
   // Plasa de siguranta (daca meta ar fi permisa candva): acelasi ecran de schimbare fortata.
   if (USER.mustChange) { showForcePw(); return; }

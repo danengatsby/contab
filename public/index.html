@@ -535,7 +535,7 @@
           <label>Partener (client) <input name="partener" /></label>
           <label>CUI <input name="cuiPartener" /></label>
           <label>Bază (fără TVA) <input name="baza" type="number" step="0.01" /></label>
-          <label>Cotă TVA (%) <input name="cota" type="number" value="21" /></label>
+          <label>Cotă TVA (%) <input name="cota" type="number" data-rate="tvaStandard" value="21" /></label>
           <label>Frecvență <select name="frecventa"><option value="lunar">lunar</option><option value="trimestrial">trimestrial</option><option value="anual">anual</option></select></label>
           <label>Ziua lunii <input name="ziua" type="number" min="1" max="28" value="1" /></label>
           <label>Începe din (lună) <input name="startDate" type="month" /></label>
@@ -754,7 +754,7 @@
             <select name="tip"><option value="colectata">Încasare (TVA colectată)</option><option value="deductibila">Plată (TVA deductibilă)</option></select>
           </label>
           <label>Sumă brută încasată/plătită <input name="brut" type="number" step="0.01" required /></label>
-          <label>Cotă TVA (%) <input name="cota" type="number" step="0.01" value="21" /></label>
+          <label>Cotă TVA (%) <input name="cota" type="number" step="0.01" data-rate="tvaStandard" value="21" /></label>
           <label>Data <input name="data" type="date" /></label>
           <label>Partener <input name="partener" /></label>
           <label>Document <input name="document" /></label>

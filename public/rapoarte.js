@@ -1,7 +1,7 @@
 'use strict';
 
 // Rapoarte contabile: jurnal, cartea mare, banca/casa, balanta, TVA/D300, inchideri, situatii. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, toast, api, META, USER, setMeta } from './core.js';
+import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct } from './core.js';
 import { renderBudget } from './dashboard.js';
 import { pget, workMonth, setWorkMonth, nextMonth, lunaLabel, applyWorkMonth, onPeriodChange } from './periods.js';
 
@@ -521,9 +521,9 @@ async function loadStatements() {
         <tr><td>Venituri din activitate</td><td class="num">${fmt(du.venituri)}</td></tr>
         <tr><td>− Cheltuieli deductibile</td><td class="num">${fmt(du.cheltuieli)}</td></tr>
         <tr class="total"><td>= Venit net anual</td><td class="num">${fmt(du.venitNet)}</td></tr>
-        <tr><td>CAS 25% ${du.bazaCas ? '(bază ' + fmt(du.bazaCas) + ')' : '<span class="muted">(sub 12 salarii minime — opțională)</span>'}</td><td class="num">${fmt(du.cas)}</td></tr>
-        <tr><td>CASS 10% (bază ${fmt(du.bazaCass)}, între 6 și 60 salarii minime)</td><td class="num">${fmt(du.cass)}</td></tr>
-        <tr><td>Impozit pe venit 10% (după deducerea CAS și CASS)</td><td class="num">${fmt(du.impozit)}</td></tr>
+        <tr><td>CAS ${fiscalPct('cas', 25)} ${du.bazaCas ? '(bază ' + fmt(du.bazaCas) + ')' : '<span class="muted">(sub 12 salarii minime — opțională)</span>'}</td><td class="num">${fmt(du.cas)}</td></tr>
+        <tr><td>CASS ${fiscalPct('cass', 10)} (bază ${fmt(du.bazaCass)}, între 6 și 60 salarii minime)</td><td class="num">${fmt(du.cass)}</td></tr>
+        <tr><td>Impozit pe venit ${fiscalPct('impozitVenit', 10)} (după deducerea CAS și CASS)</td><td class="num">${fmt(du.impozit)}</td></tr>
         <tr class="total"><td>TOTAL taxe (Declarația Unică)</td><td class="num">${fmt(du.total)}</td></tr>
       </table>
       <p class="muted" data-u="u98"><b>Variantă pe încasat/plătit</b> (fiscalitatea PFA în sistem real e pe încasări): venit net ${fmt(du.incasat.venitNet)} lei → taxe ${fmt(du.incasat.total)} lei. Alege baza corectă împreună cu contabilul.</p>
