@@ -5,7 +5,11 @@
 // Ruleaza DOAR cand exista o baza pg de test (CONTAB_PG_URL); altfel se sare (CI: job test-postgres).
 
 if (!process.env.CONTAB_PG_URL) {
-  console.log('store-pg: SARIT (fara CONTAB_PG_URL — baza pg de test)');
+  // Mesajul spune explicit CE nu s-a verificat: `pg` e driverul din PRODUCTIE, iar restul suitei
+  // ruleaza pe sqlite. Un „SARIT" neutru se citeste ca „nimic de facut" si lasa impresia falsa ca
+  // `npm test` verde acopera productia.
+  console.log('store-pg: SARIT — fara CONTAB_PG_URL. ATENTIE: `pg` e driverul din PRODUCTIE,');
+  console.log('          iar restul suitei ruleaza pe sqlite. Reteta pg locala: vezi CLAUDE.md.');
   process.exit(0);
 }
 
