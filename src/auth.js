@@ -37,6 +37,33 @@ function validatePassword(password, opts) {
   return null;
 }
 
+const MIN_USERNAME = 3;
+// Caractere invizibile folosite la mascare: control, zero-width, spatii exotice si marcajele
+// bidirectionale (RLO/LRO/PDF…), cu care doua nume pot arata IDENTIC pe ecran fara sa fie egale.
+const INVIZIBILE = /[\u0000-\u001F\u007F\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u206A-\u206F\uFEFF]/;
+
+/** Forma canonica a numelui de utilizator: fara spatii la capete si fara siruri de spatii
+ *  interioare. Doua nume care difera doar prin spatii devin acelasi nume — altfel „ana" si
+ *  „ana  b" arata aproape la fel in liste si in jurnalul de audit. */
+function normalizeUsername(raw) {
+  return String(raw == null ? '' : raw).trim().replace(/\s+/g, ' ');
+}
+/** Intoarce mesajul de eroare sau null. Se aplica DOAR la creare: numele deja existente raman
+ *  valabile (o regula noua nu are voie sa blocheze conturi care functionau). */
+function validateUsername(raw) {
+  const u = normalizeUsername(raw);
+  if (u.length < MIN_USERNAME) return 'Utilizator prea scurt (minim ' + MIN_USERNAME + ' caractere).';
+  if (u.length > 60) return 'Utilizator prea lung (maxim 60 de caractere).';
+  if (INVIZIBILE.test(u)) return 'Numele de utilizator contine caractere invizibile sau de control.';
+  return null;
+}
+/** Cautare de duplicat INSENSIBILA la litere mari/mici si la spatii — aceeasi regula pe toate
+ *  caile de creare (inscriere publica si adaugare din admin), care pana acum difereau. */
+function usernameTaken(users, raw) {
+  const u = normalizeUsername(raw).toLowerCase();
+  return (users || []).some((x) => normalizeUsername(x.username).toLowerCase() === u);
+}
+
 // Verifica parola contra bazei HaveIBeenPwned prin k-ANONIMITATE: se trimite DOAR primele 5
 // caractere din SHA1 (hex majuscul); serverul intoarce sufixele + nr. aparitii. Parola intreaga
 // NU pleaca niciodata (antetul Add-Padding maschează si dimensiunea raspunsului). Suplimenteaza
@@ -99,4 +126,7 @@ function parseCookies(header) {
   return out;
 }
 
-module.exports = { hashPassword, verifyPassword, validatePassword, breachCheck, sign, verify, parseCookies, MIN_PASSWORD };
+module.exports = {
+  hashPassword, verifyPassword, validatePassword, breachCheck, sign, verify, parseCookies,
+  normalizeUsername, validateUsername, usernameTaken, MIN_PASSWORD, MIN_USERNAME,
+};

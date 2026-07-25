@@ -2526,6 +2526,38 @@ ok('parola implicita „admin" e respinsa (prea scurta sau comuna)', authlib.val
 ok('parola = utilizator e respinsa', /identica cu numele/i.test(authlib.validatePassword('gigelgigel', { username: 'gigelgigel' }) || ''));
 ok('parola diferita de utilizator trece', authlib.validatePassword('altaparola9', { username: 'gigel' }) === null);
 
+section('Nume de utilizator: normalizare si regula unica de duplicat');
+// Numele apare in listele de utilizatori, in jurnalul de audit si in portofoliu. Nu era validat
+// pe caractere nicaieri, iar cele DOUA cai de creare aveau reguli diferite: inscrierea publica
+// verifica duplicatele insensibil la litere mari/mici, iar calea de admin SENSIBIL si fara trim —
+// deci putea lasa sa coexiste „ana", „Ana" si „ana ", conturi care arata identic pe ecran.
+eq('spatiile de la capete se scot', authlib.normalizeUsername('  ana  '), 'ana');
+eq('sirurile de spatii interioare se strang', authlib.normalizeUsername('a  n   a'), 'a n a');
+eq('null nu arunca', authlib.normalizeUsername(null), '');
+ok('numele obisnuit e acceptat', authlib.validateUsername('gigel') === null);
+ok('numele cu spatiu simplu e acceptat', authlib.validateUsername('Ana Maria') === null);
+ok('diacriticele romanesti sunt acceptate', authlib.validateUsername('Ștefan Ioniță') === null);
+ok('numele prea scurt e respins', /prea scurt/i.test(authlib.validateUsername('ab') || ''));
+ok('numele prea lung e respins', /prea lung/i.test(authlib.validateUsername('x'.repeat(70)) || ''));
+// caractere care fac doua nume sa arate IDENTIC pe ecran fara sa fie egale
+ok('zero-width space e respins', authlib.validateUsername('an​a') !== null);
+ok('marcajul bidirectional (RLO) e respins', authlib.validateUsername('an‮a') !== null);
+ok('caracterul NUL e respins', authlib.validateUsername('an a') !== null);
+// BOM si TAB sunt in clasa \s a JS, deci normalizarea ii transforma intr-un spatiu VIZIBIL
+// inainte de verificare — mascarea dispare oricum, doar pe alta cale decat respingerea.
+eq('BOM-ul devine spatiu vizibil, nu ramane invizibil', authlib.normalizeUsername('an\ufeffa'), 'an a');
+eq('TAB-ul devine spatiu vizibil', authlib.normalizeUsername('an\ta'), 'an a');
+// duplicatele: aceeasi regula, indiferent de calea de creare
+const uLista = [{ username: 'admin' }, { username: 'Ana Maria' }];
+ok('duplicat exact', authlib.usernameTaken(uLista, 'admin'));
+ok('duplicat cu litere mari', authlib.usernameTaken(uLista, 'ADMIN'));
+ok('duplicat cu spatii la capete', authlib.usernameTaken(uLista, '  admin '));
+ok('duplicat cu spatii interioare in plus', authlib.usernameTaken(uLista, 'Ana  Maria'));
+ok('un nume nou nu e duplicat', !authlib.usernameTaken(uLista, 'altcineva'));
+ok('lista goala nu arunca', !authlib.usernameTaken(null, 'oricine'));
+// regula se aplica DOAR la creare: un nume deja existent care n-ar mai trece azi ramane valid
+ok('un nume vechi invalid azi e totusi gasit ca duplicat', authlib.usernameTaken([{ username: 'ab' }], 'ab'));
+
 section('Igiena data/: rotatia backup-urilor ad-hoc (src/backup.js)');
 const backupMod = require('../src/backup');
 const fsB = require('fs'); const osB = require('os'); const pathB = require('path');
