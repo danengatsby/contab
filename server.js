@@ -153,7 +153,7 @@ require('./src/routes/users')(app, { requireAdmin, logAudit, startSession, publi
 require('./src/routes/config')(app, { S, activeId, logAudit, requireAdmin, upload });
 
 // Nomenclatoare (parteneri, import CSV, conversie XLSX/XLS/DBF) + solduri initiale: src/routes/partners.js
-require('./src/routes/partners')(app, { upload, S, activeId, logAudit });
+require('./src/routes/partners')(app, { upload, S, activeId, logAudit, requireAdmin });
 
 // Documente primare: upload (extragere AI/reguli locale), servire fisier, galerii primite/emise: src/routes/documents.js
 require('./src/routes/documents')(app, { upload, wrap, S, activeId, allowedFirme, logAudit });

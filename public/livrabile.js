@@ -323,7 +323,7 @@ $('#provPost').addEventListener('click', async () => {
   } catch (e) { toast(e.message, true); }
 });
 async function loadAnalytic() {
-  $('#oaCont').innerHTML = ANALYTIC_ACCOUNTS.map((c) => `<option value="${c}">${c} — ${accName(c)}</option>`).join('');
+  $('#oaCont').innerHTML = ANALYTIC_ACCOUNTS.map((c) => `<option value="${H(c)}">${H(c)} — ${H(accName(c))}</option>`).join('');
   await loadOpeningAnalytic();
   renderAging();
   const sections = await api('/api/analytic');
