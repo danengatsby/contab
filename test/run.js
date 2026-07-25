@@ -1120,6 +1120,30 @@ const inbox = [
 ];
 eq('mesaj de la user: necitit de admin', inbox[0].readByAdmin, false);
 eq('mesaj de la user: citit de user (autorul)', inbox[0].readByUser, true);
+
+// Numele atasamentului vine din req.file.originalname, adica de la CLIENT — iar un client care
+// nu e browser poate trimite orice (cu filename*=UTF-8''..., RFC 5987, ghilimelele ajung brute;
+// browserele le %-codifica). Curatarea de aici e al DOILEA strat; apararea principala ramane
+// escaparea la randare din public/messages.js. Numele e doar pentru afisare — pe disc fisierul
+// sta sub `storedName` (hex aleator) — deci curatarea nu poate rupe descarcarea.
+eq('numele obisnuit ramane neatins', msg.cleanAttachmentName('raport lunar.pdf'), 'raport lunar.pdf');
+eq('ghilimelele sunt scoase (context de atribut)', msg.cleanAttachmentName('a"onerror="b.png'), 'aonerror=b.png');
+eq('parantezele unghiulare sunt scoase', msg.cleanAttachmentName('<img>.png'), 'img.png');
+eq('apostroful si accentul grav sunt scoase', msg.cleanAttachmentName("a'b`c.png"), 'abc.png');
+eq('separatorii de cale devin underscore', msg.cleanAttachmentName('sub/dir/f.png'), 'sub_dir_f.png');
+eq('urcarea in arbore nu ramane cale', msg.cleanAttachmentName('../../etc/passwd'), '.._.._etc_passwd');
+eq('CR/LF sunt scoase (antetul Content-Disposition)', msg.cleanAttachmentName('a\r\nb.png'), 'ab.png');
+eq('caracterele de control sunt scoase', msg.cleanAttachmentName('a\u0000\u0007b.png'), 'ab.png');
+eq('numele gol cade pe o valoare utila', msg.cleanAttachmentName(''), 'fisier');
+eq('numele din spatii cade pe o valoare utila', msg.cleanAttachmentName('   '), 'fisier');
+eq('null nu arunca', msg.cleanAttachmentName(null), 'fisier');
+eq('un nume ramas gol dupa curatare nu devine sir gol', msg.cleanAttachmentName('"""'), 'fisier');
+ok('numele lung e plafonat', msg.cleanAttachmentName('x'.repeat(300) + '.png').length <= 120);
+ok('plafonarea pastreaza extensia', msg.cleanAttachmentName('x'.repeat(300) + '.png').endsWith('.png'));
+// integrarea: newMessage curata numele, nu doar helperul
+const mAtt = msg.newMessage('ma', 2, false, 'cu fisier', 'maria', { name: 'a"x.png', storedName: 'ab12.png', size: 5, mime: 'image/png' });
+eq('newMessage stocheaza numele curatat', mAtt.attachment.name, 'ax.png');
+eq('newMessage NU atinge numele de pe disc', mAtt.attachment.storedName, 'ab12.png');
 eq('raspuns admin: necitit de user', inbox[1].readByUser, false);
 eq('thread maria are 2 mesaje, cronologic', msg.thread(inbox, 2).length, 2);
 eq('thread maria nu include mesajele lui ion', msg.thread(inbox, 2).every((m) => m.userId === 2), true);
