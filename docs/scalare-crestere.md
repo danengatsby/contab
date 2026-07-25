@@ -124,6 +124,42 @@ se confirmă, `CONTAB_SQL_READ_THRESHOLD` ar trebui **ridicat**, nu coborât; (b
 următoarea investiție reală (cache per-firmă invalidat la `db.save`), fiindcă e singura rută care
 chiar doare, pe la ~18.000 de articole; (c) hidratarea lazy rămâne pe semnal de **RAM**, nu de CPU.
 
+### Coada de persistență pg acumulează sub scrieri rapide (2026-07-25)
+
+Încercând să repet măsurătoarea de mai sus pe **pg** (driverul din producție), instanța a murit cu
+`heap out of memory` la ~6.000 de articole — pe sqlite dusese 27.350 fără probleme. Cauza e o
+**asimetrie între drivere**:
+
+- `src/store.js` (sqlite): `persist()` e **sincron** — scrie și se întoarce, nimic nu se acumulează;
+- `src/storePg.js`: `persist()` construiește sincron un **snapshot complet** al colecțiilor
+  (`cur` = Map cu JSON-ul fiecărui rând) și îl adaugă în coada serială async. Dacă scrierile vin mai
+  repede decât comite baza, snapshot-urile se adună în RAM.
+
+Dovedit prin control, aceleași 800 de scrieri și aceleași date finale:
+
+| Ritm | Durată | Memorie proces |
+|---|---|---|
+| rapid (fără pauză) | 3,0 s | 136 → **413 MB**, urcă la 475 MB *după* ce scrierile s-au oprit |
+| lent (pauză 25 ms) | 23,9 s | 153 → 185 MB, **revine la 151 MB** după 8 s de liniște |
+
+**Cât de aproape e producția — onest: nu e.** Ritmul care a produs acumularea (~267 scrieri/s) a
+cerut ridicarea plafonului de API la 2.000.000; plafonul real e 600/min ≈ 10/s, adică **~26× sub**
+prag. Și căile de scriere în masă ale aplicației sunt scrise corect: importul de extras bancar și
+generatorul de recurente construiesc toate articolele și apoi fac **un singur** `db.save()`, nu unul
+per articol.
+
+**Ce rămâne totuși de reținut:** dimensiunea unui snapshot crește cu firma. La 800 de articole s-au
+măsurat ~350 KB reținuți per scriere în coadă; la 27.000 de articole snapshot-ul e de ~30× mai mare,
+deci câteva zeci de scrieri în coadă ating plafonul de 1 GB (`max_memory_restart`). Riscul apare
+dacă: (a) se ridică plafonul de API, (b) o cale nouă de import face `save()` per element, sau
+(c) o firmă crește mult. Nu e o problemă de azi; e o fragilitate care scalează invers față de cum
+ne-am dori.
+
+**Remediul evident, dacă devine necesar:** colapsarea persistărilor în așteptare — dacă în coadă
+există deja un `work` neînceput, cel nou îl poate înlocui, fiindcă fiecare `work` e calculat față de
+`snap`-ul actualizat doar după commit, deci cel mai nou conține și schimbările celui vechi. E o
+modificare în stratul de persistență al unei aplicații de contabilitate, deci nu de făcut preventiv.
+
 Restul documentului rămâne analiza anterioară (partiționare pe firmă etc.), încă validă ca alternativă
 complementară — migrarea la pg tranzacțional și partiționarea pe `firmaId` nu se exclud.
 
