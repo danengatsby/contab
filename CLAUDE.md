@@ -15,7 +15,7 @@ sunt izolate pe `firmaId`. **Acest director (`/var/www/contab`) este și instala
 ```bash
 npm test                      # suita completă: sintaxă + module + store + HTTP (rulează și la `prestart`)
 node test/run.js              # doar verificările de module (sincron, eq/ok, secțiuni)
-node test/http.js             # doar integrarea HTTP (pornește serverul pe portul 3891, DB temporar)
+node test/http.js             # doar integrarea HTTP (server real pe port efemer, DB temporar per-pid)
 CONTAB_TEST_DRIVER=json node test/http.js     # aceeași suită pe driverul json (vechi, doar rollback; rulează ambele la schimbări de persistență!)
 node test/frontend.mjs        # doar logica pură din public/*.js (shim DOM, fără browser/jsdom)
 node test/anaf.js             # reziliență ANAF + poll SPV (async, stub-uri, fără apeluri reale)
@@ -32,6 +32,10 @@ CONTAB_DB_DRIVER=sqlite CONTAB_DB_FILE=/tmp/dev.json CONTAB_DATA_DIR=/tmp/dev-da
 
 Deploy (după merge în `main`): `sudo -u contab PM2_HOME=/home/contab/.pm2 pm2 restart contab`,
 apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_HOME` eșuează.
+**`pm2 restart` NU reaplică `ecosystem.config.js`** — păstrează configurația cu care procesul a fost
+pornit prima dată. O modificare acolo (plafon de memorie, căi de log, env) ajunge în producție doar
+prin `pm2 delete contab && pm2 start ecosystem.config.js && pm2 save`; altfel fișierul rămâne o
+declarație de intenție (verifică înainte ce variabile ar dispărea din env-ul procesului).
 
 ## Arhitectură
 
@@ -44,7 +48,8 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
   `FIRMA_BILL_EXEMPT`, plafon general de API (`CONTAB_RATE_API`, implicit 600/min per
   utilizator/IP) și plafon exporturi),
   **src/authRoutes.js** (login/2FA, înscriere, resetare, impersonare, me/meta/health/metrics/audit),
-  **src/jobs.js** (`safeInterval`: backup, digest, demo-reset, spv-poll, rate-limit-hygiene),
+  **src/jobs.js** (`safeInterval`: backup, digest-termene, demo-reset, rate-limit-hygiene,
+  uploads-hygiene, memory-watch, spv-poll),
   **src/serverErrors.js** (fereastra 5xx + alertă email, handlerul global de erori, plasele pe
   proces), **src/lifecycle.js** (lock single-instance, listen după `dbReady`, oprirea curată).
 - **src/routes/*.js** — puncte de intrare subțiri: `register(app, ctx)`; parsează cererea, apelează
@@ -61,9 +66,14 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
   și cheamă `db.save()`. `db.scoped(fid)` = vederea filtrată pe firmă (folosită prin `S(req)` în rute).
   Oglinda JSON (`flushMirror(true)` înainte de backup) e fișierul copiat de backup.
 - **Module de domeniu** (`src/accounting|stocks|payroll|fiscal|xml|saft|reporting…`) — funcții pure
-  peste vederea scoped; XML-urile de declarații sunt verificate în teste cu `wellFormed`.
+  peste vederea scoped; XML-urile de declarații sunt verificate în teste cu `wellFormed`. **Atenție:
+  `wellFormed` verifică DOAR echilibrul etichetelor** — un `<b>x</b>` injectat dintr-o denumire de
+  partener e echilibrat, deci trece. Escaparea se dovedește separat (vezi secțiunea Convenții).
 - **Frontend** — vanilla JS în `public/`, spart pe module (app.js + messages/bank/settings/admin/…);
-  fără framework, decizie deliberată.
+  fără framework, decizie deliberată. Previzualizarea articolului contabil din formular NU se
+  calculează local: vine de la server (`POST /api/preview` → `composeEntry`), ca regulile contabile
+  să aibă o singură implementare. `composeEntry` compune articolul FĂRĂ identitate; `buildEntry`
+  adaugă id-ul din secvență — previzualizarea nu are voie să consume un id (ar lăsa goluri).
 - **Observabilitate** — `src/log.js` (structurat, reqId), `src/metrics.js` + `GET /api/metrics`
   (admin: durate pe rută, `recentErrors`, starea joburilor, proces). `/api/health` e PUBLIC și
   **intenționat minimal** — există test negativ care blochează orice câmp de diagnostic pe el.
@@ -91,7 +101,23 @@ apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_
   static). Pentru a testa o funcție pură nouă, adaug-o într-un `export` separat, marcat cu comentariu.
 - Orice scriere externă (ANAF) trece prin `anafFetch` (timeout + retry doar pe GET); webhook-ul
   Stripe e idempotent pe `event.id` (`seenEvent`/`rememberEvent`).
-- Parametrii fiscali stau centralizat în `src/fiscalConfig.js` (datați); nu hardcoda cote.
+- Parametrii fiscali stau centralizat în `src/fiscalConfig.js` (datați); nu hardcoda cote — nici în
+  frontend: cotele afișate și implicite vin din `META.fiscal` prin `fiscalRate`/`fiscalPct`/
+  `fiscalText`/`data-rate` (`public/core.js`).
+- **Escapare, după CONTEXTUL de ieșire.** Datele externe (parteneri din e-Factura/SPV, extrase
+  bancare, extragere AI, nume de fișiere, mesaje de la utilizatori) ajung în patru contexte, fiecare
+  cu regula lui:
+  - HTML, în **text**: `escMsg` (sau `H`); în **atribut**: `escAttr` sau `H` — `escMsg` NU escapează
+    ghilimelele, deci într-un atribut permite adăugarea de atribute noi;
+  - XML de declarații: `esc()` din `src/xml.js` (toate cele 5 entități) — neescapat înseamnă
+    declarație INVALIDĂ, adică respinsă de ANAF;
+  - CSV: `src/csv.js` neutralizează formulele (`= + - @` TAB/CR) cu prefix apostrof, dar **numai
+    pentru text** — sumele negative rămân numere (gardă `NUMERIC`);
+  - e-mail și jurnale: sigure deja (doar `text:`, nodemailer codifică subiectul; `JSON.stringify`).
+  Există patru porți în `test/frontend.mjs` (câmp extern neescapat, `escMsg` în atribut, toate
+  modulele se importă, fiecare funcție folosită în șabloane e importată) și una în `test/run.js`
+  (interpolare fără `esc()` în generatoarele XML). Nu te baza pe „browserul nu poate trimite asta":
+  clientul nu e obligat să fie un browser.
 - Migrări DB, două straturi (schema NU e SQL cu ALTER TABLE — vezi mai jos):
   - **Schema/DDL** (`schema()` din store.js/storePg.js): fiecare colecție e un tabel generic
     `id` + `firmaId` + blob `data` (TEXT/JSONB) — TOATE câmpurile trăiesc în `data`. Deci un câmp
