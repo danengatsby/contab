@@ -178,7 +178,15 @@ function upsertPartner(firmaId, entry) {
   dd.partners[firmaId][key] = ex;
 }
 
-function buildEntry(tipId, fields, fileId, firmaId) {
+/**
+ * Compune articolul contabil COMPLET, dar FARA identitate. Separarea exista pentru ca
+ * previzualizarea din formular (POST /api/preview) sa treaca prin exact aceleasi reguli ca
+ * salvarea — auto50, pro-rata, TVA la incasare, existenta conturilor, blocarea perioadei —
+ * fara sa consume un id din secventa (`db.nextId` incrementeaza `seq`, deci ar lasa goluri).
+ * Sursa UNICA a regulilor contabile: frontend-ul nu le mai reimplementeaza.
+ * Nu scrie nimic; doar citeste firma si planul de conturi.
+ */
+function composeEntry(tipId, fields, fileId, firmaId) {
   firmaId = firmaId || db.firmaActiva();
   const type = getType(tipId);
   if (!type) throw new Error('Tip de document necunoscut: ' + tipId);
@@ -205,7 +213,9 @@ function buildEntry(tipId, fields, fileId, firmaId) {
     }
   }
   const lines = type.build(f).filter((l) => l.suma !== 0); // storno foloseste sume negative (in rosu)
-  if (!lines.length) throw new Error('Completeaza cel putin o suma (baza, TVA sau total) inainte de salvare.');
+  // mesaj catre UTILIZATOR (deci cu diacritice): il vede la fiecare formular inca necompletat,
+  // fiindca previzualizarea trece prin aceeasi compunere.
+  if (!lines.length) throw new Error('Completează cel puțin o sumă (bază, TVA sau total) înainte de salvare.');
   // Deductibilitate partiala auto 50% (art. 298 Cod fiscal): jumatate din TVA devine NEDEDUCTIBILA
   // si se include in cost (vehicule fara utilizare exclusiv pentru afacere).
   if (f.auto50) {
@@ -253,7 +263,6 @@ function buildEntry(tipId, fields, fileId, firmaId) {
   }
   // nomenclatorul de parteneri se actualizeaza din ruta (upsertPartner), DUPA ce articolul e validat si adaugat
   return {
-    id: db.nextId('e'),
     firmaId,
     data,
     period: periodOf(data),
@@ -279,8 +288,14 @@ function buildEntry(tipId, fields, fileId, firmaId) {
   };
 }
 
+// Articolul gata de salvare = compunerea + identitatea. `id` ramane primul camp (ordinea din
+// serializari si din testele care compara forma articolului).
+function buildEntry(tipId, fields, fileId, firmaId) {
+  return Object.assign({ id: db.nextId('e') }, composeEntry(tipId, fields, fileId, firmaId));
+}
+
 // Articole contabile + recurente + blocare perioada + TVA la incasare: src/routes/entries.js
-require('./src/routes/entries')(app, { S, activeId, canAccess, requireAdmin, logAudit, buildEntry, upsertPartner });
+require('./src/routes/entries')(app, { S, activeId, canAccess, requireAdmin, logAudit, buildEntry, composeEntry, upsertPartner });
 // Productie + retete (BOM): src/routes/production.js
 require('./src/routes/production')(app, { S, activeId, logAudit });
 

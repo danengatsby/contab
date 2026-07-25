@@ -346,6 +346,46 @@ async function main() {
     eq('checkout-guest cu plan invalid -> 400', (await req('POST', '/api/checkout-guest', { body: { plan: 'inexistent' } })).status, 400);
     eq('non-admin la activarea de plan (admin) -> 403', (await req('POST', '/api/subscription/activate', { cookie: c1, body: { userId: 2, plan: 'pro' } })).status, 403);
 
+    // ── Previzualizarea articolului (POST /api/preview) ──
+    // Miezul: previzualizarea din formular trebuie sa arate EXACT articolul care se va salva.
+    // Pana la /api/preview, frontend-ul avea o replica proprie a regulilor si deviase tacit.
+    // Aici comparam previzualizarea cu articolul salvat efectiv, pe aceleasi campuri.
+    const pvFields = { data: '2026-06-11', partener: 'Client Preview SRL', cuiPartener: 'RO777', document: 'PV-1', baza: 1000, tva: 210, cota: 21, cost: 600 };
+    const pv = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: pvFields } });
+    ok('preview: raspunde ok cu linii si total', pv.status === 200 && pv.json && pv.json.ok === true && Array.isArray(pv.json.lines));
+    eq('preview: totalul e suma liniilor', pv.json.total, Math.round(pv.json.lines.reduce((s, l) => s + l.suma, 0) * 100) / 100);
+    const seqBefore = (await req('GET', '/api/entries', { cookie: c1 })).json.length;
+    const saved = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: pvFields } });
+    const fmtLines = (ls) => ls.map((l) => l.debit + '=' + l.credit + ':' + l.suma).join(' | ');
+    eq('preview = articolul salvat (aceleasi linii, aceleasi sume)', fmtLines(pv.json.lines), fmtLines(saved.json.entry.lines));
+    eq('preview: acelasi nume de tip ca articolul salvat', pv.json.tipNume, saved.json.entry.tipNume);
+    // Fara efecte secundare: previzualizarea NU salveaza si NU consuma un id din secventa.
+    // (nextId incrementeaza `seq`; daca previzualizarea l-ar chema, numerotarea ar avea goluri.)
+    const pv2 = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: pvFields } });
+    ok('preview: repetat, acelasi rezultat', fmtLines(pv2.json.lines) === fmtLines(pv.json.lines));
+    const saved2 = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: Object.assign({}, pvFields, { document: 'PV-2' }) } });
+    const idNum = (id) => Number(String(id).replace(/^e/, ''));
+    eq('preview nu consuma id-uri: articolele salvate raman consecutive', idNum(saved2.json.entry.id), idNum(saved.json.entry.id) + 1);
+    const seqAfter = (await req('GET', '/api/entries', { cookie: c1 })).json.length;
+    eq('preview nu creeaza inregistrari (doar cele 2 salvate explicit)', seqAfter - seqBefore, 2);
+    // Un articol inca incomplet NU e o eroare: e starea normala cat timp se completeaza formularul.
+    const pvGol = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2026-06-11' } } });
+    ok('preview fara sume: 200 cu ok=false si motiv, nu eroare HTTP', pvGol.status === 200 && pvGol.json.ok === false && /sum[aă]/i.test(pvGol.json.mesaj || ''));
+    eq('preview fara tip -> 400', (await req('POST', '/api/preview', { cookie: c1, body: { fields: {} } })).status, 400);
+    ok('preview cu tip inexistent: ok=false, nu 500', (await req('POST', '/api/preview', { cookie: c1, body: { tip: 'nu_exista_asa_ceva', fields: {} } })).json.ok === false);
+    eq('preview fara sesiune -> 401', (await req('POST', '/api/preview', { body: { tip: 'factura_vanzare_marfuri', fields: pvFields } })).status, 401);
+    // Regulile care depind de FIRMA — pe care o replica in frontend nu le putea sti. Le verificam
+    // pe firma cu „TVA la incasare": TVA colectata devine neexigibila (4427 -> 4428).
+    const firmaInc = await req('GET', '/api/firme', { cookie: c1 });
+    const fid1 = firmaInc.json.firmaActiva;
+    const setInc = await req('POST', '/api/firme/' + fid1, { cookie: c1, body: { tvaLaIncasare: true } });
+    ok('firma trecuta pe TVA la incasare (pregatire)', setInc.json && setInc.json.ok && setInc.json.firma.tvaLaIncasare === true);
+    const pvInc = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: pvFields } });
+    ok('preview reflecta TVA la incasare (4428, nu 4427)', pvInc.json.ok && pvInc.json.lines.some((l) => l.credit === '4428') && !pvInc.json.lines.some((l) => l.credit === '4427'));
+    const savedInc = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: Object.assign({}, pvFields, { document: 'PV-3' }) } });
+    eq('preview = salvat si sub TVA la incasare', fmtLines(pvInc.json.lines), fmtLines(savedInc.json.entry.lines));
+    await req('POST', '/api/firme/' + fid1, { cookie: c1, body: { tvaLaIncasare: false } });
+
     // ── e-Factura: round-trip generare -> parsare -> import (fara conexiune SPV) ──
     const ubl = xml.eFacturaXml(
       { nume: 'UNU SRL', cui: 'RO11', adresa: 'Str. A', oras: 'Cluj', judet: 'RO-CJ' },

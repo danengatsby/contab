@@ -43,6 +43,13 @@ de lucru, clasificarea documentelor și parsarea sumelor în format românesc. D
 frontend-ul de server (stările articolelor, tipurile eligibile e-Transport), ca o listă extinsă
 într-un singur loc să nu treacă neobservată. Randarea și evenimentele rămân în sarcina `npm run e2e`.
 
+**Previzualizarea articolului contabil vine de la server** (`POST /api/preview`), prin aceeași
+compunere ca salvarea. Până acum frontend-ul avea o replică proprie a regulilor, care acoperea 42
+din 107 tipuri și deviase tăcut; acum toate tipurile au previzualizare, iar ce vezi înainte de
+salvare este exact ce se salvează — inclusiv regulile care depind de firmă (pro-rata, TVA la
+încasare, deductibilitate auto 50%, perioade blocate), pe care o replică din browser nu le putea
+ști. Se cere după o pauză de tastare, nu la fiecare tastă.
+
 **Importul balanței de deschidere refuză valorile ambigue.** „1.234" poate însemna 1234 (separator
 de mii, scrierea românească) sau 1,23 — o diferență de o mie de ori, exact pe soldurile care se
 propagă în toată contabilitatea. Aplicația deduce întâi convenția din fișier (o singură valoare
