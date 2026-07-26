@@ -437,6 +437,38 @@ const vFals = { openingBalances: {}, company: v.company, entries: [
 ] };
 const aFals = xml.d300Rows(rep.d300(vFals, '2026-06'));
 eq('D300: diferenta de curs NU umfla decontul', (aFals.R1_1 || 0) + (aFals.R13_1 || 0) + (aFals.R17_1 || 0), 0);
+
+// Schema v12 nu are randuri pentru toate cotele: la ACHIZITII exista doar 21% (R22) si 11% (R23).
+// Cotele istorice (R24=5%, R74=19%, R75=9% la achizitii; R69=19%, R71=5% la livrari) sunt respinse
+// de validatorul oficial cu „atributul nu trebuie sa exista aici". Erau mapate si emise, deci o
+// SINGURA factura de achizitie la 9% facea toata declaratia respinsa la depunere. (9% e cota
+// curenta — la livrari are R11 — dar la achizitii v12 nu ii da rand; codul o trimitea la R74,
+// care e de fapt randul de 19%: maparea era si inversata.)
+const mkCota = (cota, tva) => ({ openingBalances: {}, company: { cui: 'RO1', nume: 'X' }, entries: [
+  { id: 'c' + cota, data: '2026-06-09', period: '2026-06', tip: 'factura_cumparare_marfuri', tipNume: 'M',
+    partener: 'F', partenerCui: 'RO555', document: 'F9',
+    lines: [{ debit: '371', credit: '401', suma: 1000 }, { debit: '4426', credit: '401', suma: tva }] },
+] });
+const a9 = xml.d300Rows(rep.d300(mkCota(9, 90), '2026-06'));
+ok('achizitie la 9%: NU se mai emite randul istoric R74 (ar fi respins de ANAF)', a9.R74_1 === undefined && a9.R74_2 === undefined);
+ok('achizitie la 9%: nu se inventeaza alt rand de achizitii', a9.R22_1 === undefined && a9.R23_1 === undefined);
+// ...dar suma nu dispare tacit: iese prin d300CoteFaraRand si e raportata ca EROARE
+eq('achizitie la 9%: raportata ca lipsa de rand, nu pierduta',
+  JSON.stringify(xml.d300CoteFaraRand(rep.d300(mkCota(9, 90), '2026-06'))),
+  '[{"sens":"achizitii","cota":9,"baza":1000,"tva":90}]');
+const rec9 = rep.tvaReconciliation(mkCota(9, 90), '2026-06');
+ok('achizitie la 9%: reconcilierea TVA o semnaleaza ca EROARE (nu doar atentionare)',
+  rec9.findings.some((f) => f.cod === 'tva-cota-fara-rand' && f.nivel === 'eroare') && rec9.ok === false);
+const val9 = require('../src/validate').validateDeclaration('d300', '<?xml version="1.0"?><declaratie300 cui="12345674" luna="6" an="2026"/>',
+  { cui: '12345674', coteFaraRand: xml.d300CoteFaraRand(rep.d300(mkCota(9, 90), '2026-06')) });
+ok('achizitie la 9%: validarea pre-depunere o da ca eroare, nu avertisment',
+  val9.ok === false && val9.errors.some((e) => /9%/.test(e) && /nu are rand/.test(e)));
+// cotele care AU rand raman neatinse
+const a11 = xml.d300Rows(rep.d300(mkCota(11, 110), '2026-06'));
+eq('achizitie la 11%: rand normal R23, fara semnalare', a11.R23_1 + '/' + a11.R23_2, '1000/110');
+eq('achizitie la 11%: nicio cota fara rand', xml.d300CoteFaraRand(rep.d300(mkCota(11, 110), '2026-06')).length, 0);
+ok('livrarile la 9% AU rand (R11) — asimetria e a schemei, nu a codului',
+  xml.d300Rows({ coteV: [{ cota: 9, baza: 1000, tva: 90 }], coteC: [] }).R11_1 === 1000);
 // Reconciliere TVA (pregatire e-TVA): pozitia perioadei + constatarile care ar crea discrepante
 const mkVat = (entries) => ({ entries, openingBalances: {} });
 const recOk = rep.tvaReconciliation(mkVat([
