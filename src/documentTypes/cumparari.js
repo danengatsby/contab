@@ -118,7 +118,7 @@ module.exports = [
     id: 'taxare_inversa_interna_livrare',
     nume: 'Livrare cu taxare inversa interna (factura emisa fara TVA)',
     grup: 'Vanzari',
-    fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza,
+    fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.codCategorie331,
       { name: 'contVenit', label: 'Cont venit', type: 'account', default: '707' }],
     build: (d) => [L('4111', d.contVenit || '707', d.baza, 'Livrare cu taxare inversa interna (fara TVA - mentiune pe factura)')],
   },

@@ -837,6 +837,36 @@ eq('D394: categorii diferite de la acelasi partener -> cate un op11 fiecare', (x
 ok('D394: op1 cumuleaza ambele facturi, op11 le separa pe categorii',
   /<op1 [^>]*tip="C"[^>]*nrFact="2" baza="3000"/.test(xDoua)
   && /codPR="22" bazaPR="1000"/.test(xDoua) && /codPR="24" bazaPR="2000"/.test(xDoua));
+
+// LIVRARILE art. 331 se factureaza fara TVA, deci nu trec prin jurnalul de vanzari — dar sunt
+// operatiuni INTERNE si trebuie sa apara in D394 ca tip 'V'. Nu ajungeau deloc acolo.
+// Validatorul cere pentru ele: cota 0 (R217.2), coloanele „scutit" LS/AS pe zero (R41.1/R42.1,
+// R49.1/R50.1) si op11 FARA `tvaPR` — exact invers fata de achizitii (R237.1).
+const vjLiv331 = acc.vatJournals({ openingBalances: {}, entries: [
+  { id: 'lv', period: '2026-06', data: '2026-06-12', tip: 'taxare_inversa_interna_livrare', tipNume: 'LivTI',
+    partener: 'Client Cereale SRL', partenerCui: 'RO45678918', document: 'LTI-1', codCategorie331: 22,
+    lines: [{ debit: '4111', credit: '707', suma: 8000 }] },
+] }, '2026-06');
+const xLiv = xml.d394Xml({ cui: 'RO12345674', nume: 'X' }, '2026-06', vjLiv331, { nume: 'P', prenume: 'I', functie: 'C' });
+ok('D394: livrarea art. 331 apare ca tip V cu cota 0', /<op1 tip="V" tip_partener="1" cota="0"[^>]*baza="8000"/.test(xLiv));
+ok('D394: op11 la livrare NU are tvaPR (interzis de R237.1)',
+  /<op11 nrFactPR="1" codPR="22" bazaPR="8000"\/>/.test(xLiv) && !/tvaPR/.test(xLiv));
+ok('D394: <detaliu> la livrare foloseste nrLivV/bazaLivV', /<detaliu bun="22" nrLivV="1" bazaLivV="8000"\/>/.test(xLiv));
+ok('D394: la cota 0 coloanele scutite LS si AS exista pe zero',
+  /facturiLS="0" bazaLS="0" facturiAS="0" bazaAS="0"/.test(xLiv));
+// livrarea intracomunitara, tot fara TVA, NU are voie in D394 (CUI strain -> D390)
+const vjLicD394 = acc.vatJournals({ openingBalances: {}, entries: [
+  { id: 'lic2', period: '2026-06', data: '2026-06-12', tip: 'livrare_intracomunitara', tipNume: 'LIC',
+    partener: 'GMBH', partenerCui: 'DE811907980', document: 'EX9', lines: [{ debit: '4111', credit: '707', suma: 9000 }] },
+] }, '2026-06');
+ok('D394: livrarea intracomunitara ramane exclusa (merge in D390)',
+  !xml.d394Xml({ cui: 'RO12345674', nume: 'X' }, '2026-06', vjLicD394, { nume: 'P', prenume: 'I', functie: 'C' }).includes('811907980'));
+eq('cele doua livrari fara TVA se separa pe canale', vjLicD394.scutite[0].inD394 + '|' + vjLiv331.scutite[0].inD394, 'false|true');
+// ...iar in D300 raman pe randurile lor (R1 intracomunitar, R13 taxare inversa)
+eq('D300: livrarea art. 331 pe R13, cea intracomunitara pe R1',
+  (xml.d300Rows(rep.d300({ openingBalances: {}, entries: [] }, '2026-06')).R13_1 || 0) + '|'
+  + xml.d300Rows({ coteV: [], coteC: [], scutite: vjLiv331.totals.scutite }).R13_1
+  + '|' + xml.d300Rows({ coteV: [], coteC: [], scutite: vjLicD394.totals.scutite }).R1_1, '0|8000|9000');
 // inchiderea anuala include conturile rectificative (709/609), cu sume in rosu
 const contraDb = { entries: [
   { id: 'v', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 10000 }] },
