@@ -52,6 +52,16 @@ function validateDeclaration(type, xml, ctx) {
     }
   }
 
+  // D394: taxarea inversa cere codul de bun art. 331 (sectiunea op11). Fara el ANAF respinge
+  // declaratia, deci e eroare — dar spunem si CARE articole trebuie completate.
+  if (type === 'd394' && (ctx.faraCodCategorie || []).length) {
+    for (const c of ctx.faraCodCategorie) {
+      errors.push('Operatiunea cu taxare inversa ' + (c.document ? '„' + c.document + '" ' : '')
+        + (c.partener ? '(' + c.partener + ') ' : '') + 'nu are codul de bun art. 331 completat — '
+        + 'D394 il cere (sectiunea op11) si ANAF respinge declaratia fara el.');
+    }
+  }
+
   // continut gol -> avertisment (nu eroare)
   if (type === 'd390' && !has(s, '<operatiune ')) warnings.push('Nicio operatiune intracomunitara in perioada — declaratie goala.');
   if (type === 'd205' && !has(s, '<beneficiar ')) warnings.push('Niciun beneficiar cu retinere la sursa — declaratie goala.');

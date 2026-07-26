@@ -795,6 +795,48 @@ const vjDoarC = acc.vatJournals({ openingBalances: {}, entries: [
 ] }, '2026-06');
 ok('D394: numai achizitii cu taxare inversa -> randul de rezumat2 exista',
   /<rezumat2[^>]*cota="21"[^>]*nrFacturiA="1"/.test(xml.d394Xml({ cui: 'RO12345674', nume: 'X' }, '2026-06', vjDoarC, { nume: 'P', prenume: 'I', functie: 'C' })));
+
+// D394 op11: taxarea inversa la persoane juridice cere detaliul pe categoria de bun art. 331
+// (regula R233.5), cu un cod din nomenclatorul oficial + `tvaPR` (R237.1), plus o sectiune
+// <detaliu> corespondenta in rezumat1 (R35). Codurile 32-35 sunt REZERVATE persoanelor fizice
+// (R235.1), deci placeholderul „35 = alte produse" folosit la fila de carnet nu merge aici.
+const tiCod = (cod) => acc.vatJournals({ openingBalances: {}, entries: [
+  { id: 'cc', period: '2026-06', data: '2026-06-11', tip: 'taxare_inversa_interna_achizitie', tipNume: 'TI',
+    partener: 'Cereale SRL', partenerCui: 'RO45678918', document: 'TI1', codCategorie331: cod,
+    lines: [{ debit: '371', credit: '401', suma: 5000 }, { debit: '4426', credit: '4427', suma: 1050 }] },
+] }, '2026-06');
+const x331 = xml.d394Xml({ cui: 'RO12345674', nume: 'X' }, '2026-06', tiCod(22), { nume: 'P', prenume: 'I', functie: 'C' });
+ok('D394: op11 cu codul de bun si tvaPR', /<op11 nrFactPR="1" codPR="22" bazaPR="5000" tvaPR="1050"\/>/.test(x331));
+ok('D394: <detaliu> oglinda in rezumat1 (nrAchizC/bazaAchizC/tvaAchizC)',
+  /<detaliu bun="22" nrAchizC="1" bazaAchizC="5000" tvaAchizC="1050"\/>/.test(x331));
+ok('D394: randul op1 tip C nu mai e auto-inchis (are copil op11)', /<op1 [^>]*tip="C"[^>]*>\s*\n\s*<op11/.test(x331));
+// codul se duce pe articol, nu se inventeaza: fara el, op11 lipseste si articolele sunt NUMITE
+const xFara = xml.d394Xml({ cui: 'RO12345674', nume: 'X' }, '2026-06', tiCod(0), { nume: 'P', prenume: 'I', functie: 'C' });
+ok('D394: fara cod NU se inventeaza unul (op11 absent)', !/<op11/.test(xFara));
+eq('D394: articolele fara cod sunt raportate, cu document si partener',
+  JSON.stringify(xml.d394FaraCodCategorie(tiCod(0))), '[{"document":"TI1","partener":"Cereale SRL","baza":5000}]');
+const valD394 = require('../src/validate').validateDeclaration('d394', '<?xml version="1.0"?><declaratie394 cui="12345674" luna="6" an="2026"/>',
+  { cui: '12345674', faraCodCategorie: xml.d394FaraCodCategorie(tiCod(0)) });
+ok('D394: validarea pre-depunere da EROARE si numeste documentul',
+  valD394.ok === false && valD394.errors.some((e) => /TI1/.test(e) && /op11/.test(e)));
+// nomenclatorul: doar codurile pentru persoane juridice
+ok('nomenclator art. 331: 22-31 si 36 acceptate', [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 36].every((c) => xml.D394_COD_331.has(c)));
+ok('nomenclator art. 331: 32-35 si 37 sunt pentru persoane fizice, nu juridice',
+  [32, 33, 34, 35, 37].every((c) => !xml.D394_COD_331.has(c)));
+// doua categorii de la acelasi partener, la aceeasi cota -> doua op11 in acelasi op1
+const vjDoua = acc.vatJournals({ openingBalances: {}, entries: [
+  { id: 'd1', period: '2026-06', data: '2026-06-11', tip: 'taxare_inversa_interna_achizitie', tipNume: 'TI',
+    partener: 'Mix SRL', partenerCui: 'RO45678918', document: 'A1', codCategorie331: 22,
+    lines: [{ debit: '371', credit: '401', suma: 1000 }, { debit: '4426', credit: '4427', suma: 210 }] },
+  { id: 'd2', period: '2026-06', data: '2026-06-12', tip: 'taxare_inversa_interna_achizitie', tipNume: 'TI',
+    partener: 'Mix SRL', partenerCui: 'RO45678918', document: 'A2', codCategorie331: 24,
+    lines: [{ debit: '371', credit: '401', suma: 2000 }, { debit: '4426', credit: '4427', suma: 420 }] },
+] }, '2026-06');
+const xDoua = xml.d394Xml({ cui: 'RO12345674', nume: 'X' }, '2026-06', vjDoua, { nume: 'P', prenume: 'I', functie: 'C' });
+eq('D394: categorii diferite de la acelasi partener -> cate un op11 fiecare', (xDoua.match(/<op11 /g) || []).length, 2);
+ok('D394: op1 cumuleaza ambele facturi, op11 le separa pe categorii',
+  /<op1 [^>]*tip="C"[^>]*nrFact="2" baza="3000"/.test(xDoua)
+  && /codPR="22" bazaPR="1000"/.test(xDoua) && /codPR="24" bazaPR="2000"/.test(xDoua));
 // inchiderea anuala include conturile rectificative (709/609), cu sume in rosu
 const contraDb = { entries: [
   { id: 'v', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 10000 }] },

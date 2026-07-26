@@ -449,7 +449,9 @@ function vatJournals(db, period) {
         baza: bazaJurnal, tva: tvaJurnal, total: round2(bazaJurnal + tvaJurnal), cota,
         tvaDedusa: ded, bazaDedusa, tvaNedeductibila: round2(tvaJurnal - ded), taxareInversa: reverseCharge,
         // categoria de autolichidare (randul propriu din decont) si daca articolul intra in D394
-        autolichidare: autolich ? autolich.cat : null, inD394: autolich ? autolich.d394 : true });
+        autolichidare: autolich ? autolich.cat : null, inD394: autolich ? autolich.d394 : true,
+        // codul de bun art. 331 (nomenclatorul D394) — sectiunea op11 a randului din D394
+        codCategorie331: Number(e.codCategorie331) || 0 });
       tot.deductibila = round2(tot.deductibila + ded);
       tot.bazaC = round2(tot.bazaC + bazaJurnal);
       if (autolich) { const a = totAuto[autolich.cat]; a.baza = round2(a.baza + bazaDedusa); a.tva = round2(a.tva + ded); }

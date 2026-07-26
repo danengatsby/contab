@@ -866,6 +866,27 @@ async function main() {
       && prE.json.entry.tvaPartial.tvaFactura === 210 && prE.json.entry.tvaPartial.tvaDedusa === 84);
     await req('POST', '/api/company', { cookie: c1, body: { proRataTva: '' } });
 
+    // ── Cod de bun art. 331 (op11 din D394): validat la INTRODUCERE, nu la depunere ──
+    // Un cod gresit ar trece pana la validatorul ANAF si ar respinge toata declaratia.
+    const ti331 = (cod) => ({ tip: 'taxare_inversa_interna_achizitie', fields: Object.assign(
+      { data: '2026-06-11', partener: 'Cereale SRL', cuiPartener: 'RO45678918', document: 'TI-331', baza: 5000, cota: 21 },
+      cod == null ? {} : { codCategorie331: cod }) });
+    const cod99 = await req('POST', '/api/entries', { cookie: c1, body: ti331(99) });
+    ok('cod art. 331 inexistent in nomenclator -> refuzat, cu lista codurilor valide',
+      cod99.status >= 400 && /22, 23/.test(cod99.json.error || ''));
+    const cod35 = await req('POST', '/api/entries', { cookie: c1, body: ti331(35) });
+    ok('cod art. 331 rezervat persoanelor fizice (35) -> refuzat si el', cod35.status >= 400);
+    const cod22 = await req('POST', '/api/entries', { cookie: c1, body: ti331(22) });
+    ok('cod art. 331 valid (22) -> acceptat si memorat pe articol',
+      cod22.json && cod22.json.ok && cod22.json.entry.codCategorie331 === 22);
+    // fara cod articolul se salveaza (se poate completa mai tarziu), dar D394 nu e depozabil
+    const fara = await req('POST', '/api/entries', { cookie: c1, body: ti331(null) });
+    ok('fara cod: articolul se salveaza, fara camp inventat',
+      fara.json && fara.json.ok && !fara.json.entry.codCategorie331);
+    const vD394 = (await req('GET', '/api/validate/d394?period=2026-06', { cookie: c1 })).json;
+    ok('validarea pre-depunere D394 semnaleaza articolul fara cod de bun',
+      vD394.ok === false && vD394.errors.some((e) => /TI-331/.test(e)));
+
     // ── Diferentierea PFA vs SRL ──
     ok('firma trecuta pe PFA', (await req('POST', '/api/company', { cookie: c1, body: { tipEntitate: 'pfa' } })).json.ok === true);
     const metaPfa = (await req('GET', '/api/meta', { cookie: c1 })).json;
