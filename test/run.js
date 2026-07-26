@@ -96,6 +96,37 @@ eq('total rulaj D = C', tb.tot.rd, tb.tot.rc);
 eq('total SF debit', tb.tot.sfD, 84327.5);
 eq('total SF debit = credit', tb.tot.sfD, tb.tot.sfC);
 
+// Capetele unei perioade nu se pot compara ca siruri cand perioada e un TRIMESTRU:
+// '2026-08' < '2026-Q2' e adevarat lexicografic ('0' < 'Q'), deci soldul initial al trimestrului
+// inghitea tot anul (inclusiv lunile de DUPA el) si rulajul trimestrului se numara de doua ori.
+// Balanta ramanea `balanced` (eroarea e simetrica), deci nicio verificare de echilibru nu o prindea.
+section('Perioade-trimestru: capetele de interval (beforePeriod / asOf)');
+eq('periodStart: trimestru -> prima luna', ['2026-Q1', '2026-Q2', '2026-Q3', '2026-Q4'].map(acc.periodStart).join(','), '2026-01,2026-04,2026-07,2026-10');
+eq('periodEnd: trimestru -> ultima luna', ['2026-Q1', '2026-Q2', '2026-Q3', '2026-Q4'].map(acc.periodEnd).join(','), '2026-03,2026-06,2026-09,2026-12');
+eq('periodStart/End: anul intreg', acc.periodStart('2026') + '..' + acc.periodEnd('2026'), '2026-01..2026-12');
+eq('periodStart/End: luna ramane neschimbata', acc.periodStart('2026-05') + '..' + acc.periodEnd('2026-05'), '2026-05..2026-05');
+// 100 lei venit in fiecare luna a anului: fiecare trimestru are rulaj 300 si SI = cumulatul dinainte
+const vQ = { openingBalances: {}, company: v.company, entries: [] };
+for (let m = 1; m <= 12; m++) {
+  const mm = '2026-' + String(m).padStart(2, '0');
+  vQ.entries.push({ id: 'q' + m, data: mm + '-15', period: mm, tip: 't', tipNume: 't', lines: [{ debit: '5121', credit: '704', suma: 100 }] });
+}
+const q704 = (p) => acc.trialBalance(vQ, p).rows.find((r) => r.cod === '704') || {};
+eq('Q1: sold initial 0, rulaj 300', q704('2026-Q1').siC + '/' + q704('2026-Q1').rc, '0/300');
+eq('Q2: soldul initial e DOAR trimestrul anterior (nu tot anul)', q704('2026-Q2').siC + '/' + q704('2026-Q2').rc, '300/300');
+eq('Q3: lunile de dupa trimestru nu intra in soldul initial', q704('2026-Q3').siC + '/' + q704('2026-Q3').rc, '600/300');
+eq('Q4: soldul final al anului', q704('2026-Q4').sfC, 1200);
+ok('soldul final al fiecarui trimestru = soldul initial al urmatorului',
+  [['2026-Q1', '2026-Q2'], ['2026-Q2', '2026-Q3'], ['2026-Q3', '2026-Q4']].every(([a, b]) => q704(a).sfC === q704(b).siC));
+ok('balanta ramane echilibrata pe toate formele de perioada',
+  ['2026-Q1', '2026-Q2', '2026-Q3', '2026-Q4', '2026-06', '2026'].every((p) => acc.trialBalance(vQ, p).balanced));
+// cartea mare si bilantul folosesc aceleasi capete
+const led704 = acc.ledger(vQ, '2026-Q2').find((c) => c.cod === '704') || {};
+eq('cartea mare pe trimestru: aceleasi capete ca balanta', led704.siC + '/' + led704.rc, '300/300');
+eq('bilantul la sfarsit de trimestru se opreste la ultima lui luna',
+  stmt.balanceSheetF10(vQ, '2026-Q2').totalActiv + '/' + stmt.balanceSheetF10(vQ, '2026-06').totalActiv, '600/600');
+eq('bilantul pe an vede tot anul', stmt.balanceSheetF10(vQ, '2026').totalActiv, 1200);
+
 section('Registrul-jurnal');
 const j = acc.journal(v, '2026-06');
 const nrs = j.rows.filter((r) => r.nr).map((r) => r.nr);

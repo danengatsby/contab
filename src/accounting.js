@@ -63,9 +63,33 @@ function inPeriod(e, period) {
   return ep === period; // luna exacta (YYYY-MM)
 }
 
+/**
+ * Prima / ultima luna (YYYY-MM) acoperita de o perioada, indiferent de forma ei: luna (YYYY-MM),
+ * trimestru (YYYY-Qn) sau an intreg (YYYY).
+ *
+ * Compararea directa de siruri NU merge pe trimestre: `'2026-08' < '2026-Q2'` e ADEVARAT
+ * lexicografic (cifra '0' < litera 'Q'). Asa, soldul initial al unui trimestru inghitea tot anul —
+ * inclusiv lunile de DUPA el — iar rulajul trimestrului se numara si in sold, si in rulaj:
+ *   Q2, cont 704 cu 1000 (ian) + 2000 (mai) + 3000 (aug)  ->  SI 6000, rulaj 2000, SF 8000.
+ * Balanta ramanea `balanced: true` (eroarea e simetrica pe debit si credit), deci verificarea de
+ * echilibru nu o putea prinde. `inPeriod` trata deja corect trimestrele; doar capetele nu.
+ */
+function periodStart(period) {
+  const p = String(period || '');
+  const q = p.match(/^(\d{4})-Q([1-4])$/);
+  if (q) return q[1] + '-' + String(Number(q[2]) * 3 - 2).padStart(2, '0');
+  return p.length === 4 ? p + '-01' : p;
+}
+function periodEnd(period) {
+  const p = String(period || '');
+  const q = p.match(/^(\d{4})-Q([1-4])$/);
+  if (q) return q[1] + '-' + String(Number(q[2]) * 3).padStart(2, '0');
+  return p.length === 4 ? p + '-12' : p;
+}
+
 function beforePeriod(e, period) {
   if (!period) return false;
-  return (e.period || periodOf(e.data)) < period;
+  return (e.period || periodOf(e.data)) < periodStart(period);
 }
 
 /**
@@ -680,5 +704,5 @@ function cashControl(db, cont, period) {
 }
 
 module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
-  allLines, resultLines, isResultClosingLine, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
+  allLines, resultLines, isResultClosingLine, sortEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };
