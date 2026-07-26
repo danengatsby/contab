@@ -401,6 +401,42 @@ eq('baza vanzari', vj.totals.bazaV, 14000);
 eq('TVA colectata (jurnal vanzari)', vj.totals.colectata, 2940);
 eq('baza cumparari', vj.totals.bazaC, 10000);
 eq('TVA deductibila (jurnal cumparari)', vj.totals.deductibila, 2100);
+
+// Livrarile FARA TVA (intracomunitare scutite, taxare inversa art. 331) nu au TVA colectata,
+// deci nu intra in `vanzari` si nu apar in `coteV` — dar au rand propriu in decont. Inainte
+// dispareau complet: D390 declara livrarea intracomunitara, D300 raporta zero pe ea, exact
+// discrepanta pe care ANAF o verifica automat intre cele doua.
+const vScutit = { openingBalances: {}, company: v.company, entries: v.entries.concat([
+  { id: 'lic', tip: 'livrare_intracomunitara', tipNume: 'LIC', partener: 'GMBH', partenerCui: 'DE811907980',
+    document: 'EX1', period: '2026-06', data: '2026-06-20', lines: [{ debit: '4111', credit: '707', suma: 50000 }] },
+  { id: 'tii', tip: 'taxare_inversa_interna_livrare', tipNume: 'TI', partener: 'Cereale SRL', partenerCui: 'RO9876543',
+    document: 'TI1', period: '2026-06', data: '2026-06-21', lines: [{ debit: '4111', credit: '707', suma: 20000 }] },
+]) };
+const vjS = acc.vatJournals(vScutit, '2026-06');
+eq('scutite: livrare intracomunitara colectata pe categoria ei', vjS.totals.scutite.intracom, 50000);
+eq('scutite: taxare inversa interna (art. 331) pe categoria ei', vjS.totals.scutite.taxareInversa, 20000);
+eq('scutite: baza taxabila ramane neatinsa', vjS.totals.bazaV, 14000);
+ok('scutite: NU intra in jurnalul de vanzari taxabile (D394 e raportare interna)',
+  !vjS.vanzari.some((r) => String(r.cui).includes('811907980')));
+// maparea pe randuri: R1 = livrari intracomunitare scutite, R13 = taxare inversa art. 331,
+// iar ambele INTRA in totalul R17_1 (regula R65 a validatorului oficial ANAF).
+const aScutit = xml.d300Rows(rep.d300(vScutit, '2026-06'));
+eq('D300: R1_1 = livrarea intracomunitara scutita', aScutit.R1_1, 50000);
+eq('D300: R13_1 = livrarea cu taxare inversa interna', aScutit.R13_1, 20000);
+eq('D300: R17_1 include randurile scutite (14000 + 50000 + 20000)', aScutit.R17_1, 84000);
+eq('D300: taxa colectata nu se schimba (operatiunile sunt fara TVA)', aScutit.R17_2, 2940);
+ok('D300: randurile scutite nu au coloana de TVA in schema (fara R1_2/R13_2)',
+  aScutit.R1_2 === undefined && aScutit.R13_2 === undefined);
+// D390 si D300 trebuie sa spuna acelasi lucru despre livrarile intracomunitare
+eq('D390 si D300 concorda pe livrarile intracomunitare', rep.d390(vScutit, '2026-06').totalL, aScutit.R1_1);
+// diferentele de curs / provizioanele / subventiile sunt tot venituri fara TVA, dar NU sunt
+// operatiuni de decont: maparea e pe TIPUL documentului, nu pe absenta TVA-ului
+const vFals = { openingBalances: {}, company: v.company, entries: [
+  { id: 'dc', tip: 'diferenta_curs_favorabila', tipNume: 'DC', document: 'DC1', period: '2026-06', data: '2026-06-22',
+    lines: [{ debit: '4111', credit: '765', suma: 7777 }] },
+] };
+const aFals = xml.d300Rows(rep.d300(vFals, '2026-06'));
+eq('D300: diferenta de curs NU umfla decontul', (aFals.R1_1 || 0) + (aFals.R13_1 || 0) + (aFals.R17_1 || 0), 0);
 // Reconciliere TVA (pregatire e-TVA): pozitia perioadei + constatarile care ar crea discrepante
 const mkVat = (entries) => ({ entries, openingBalances: {} });
 const recOk = rep.tvaReconciliation(mkVat([
