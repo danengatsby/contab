@@ -216,6 +216,16 @@ function composeEntry(tipId, fields, fileId, firmaId) {
   // mesaj catre UTILIZATOR (deci cu diacritice): il vede la fiecare formular inca necompletat,
   // fiindca previzualizarea trece prin aceeasi compunere.
   if (!lines.length) throw new Error('Completează cel puțin o sumă (bază, TVA sau total) înainte de salvare.');
+  // TVA partial deductibila (auto 50% mai jos, pro-rata dupa el): partea nededusa se muta in
+  // linia de COST, deci baza si cota facturii nu se mai pot reconstitui din liniile articolului
+  // (raportul TVA-dedus/baza-din-linii da o cota fantoma: 105/1105 = 10%). Le memoram pe articol,
+  // ca la TVA la incasare (`tvaExig`), fiindca jurnalul de cumparari, D300 si D394 au nevoie de
+  // factura asa cum a fost emisa, nu de urma ei contabila.
+  const vatL0 = lines.find((l) => l.debit === '4426');
+  const tvaFactura = vatL0 ? round2(vatL0.suma) : 0;
+  const bazaFactura = vatL0 ? round2(lines
+    .filter((l) => l !== vatL0 && !['4426', '4427', '4428'].includes(l.debit))
+    .reduce((s, l) => s + l.suma, 0)) : 0;
   // Deductibilitate partiala auto 50% (art. 298 Cod fiscal): jumatate din TVA devine NEDEDUCTIBILA
   // si se include in cost (vehicule fara utilizare exclusiv pentru afacere).
   if (f.auto50) {
@@ -245,6 +255,14 @@ function composeEntry(tipId, fields, fileId, firmaId) {
       if (costL) { costL.suma = round2(costL.suma + neded); costL.explicatie = (costL.explicatie || '') + ' (+TVA nedeductibila pro-rata)'; }
     }
   }
+  // Amandoua regulile muteaza `vatL0.suma` pe loc, deci aici e TVA-ul ramas deductibil. Marcajul
+  // se pune doar cand chiar s-a nededus ceva (facturile normale raman fara camp suplimentar).
+  const tvaPartial = (vatL0 && tvaFactura > 0 && vatL0.suma !== tvaFactura) ? {
+    baza: bazaFactura,
+    cota: bazaFactura > 0 ? Math.round((tvaFactura / bazaFactura) * 100) : (Number(f.cota) || 0),
+    tvaFactura,
+    tvaDedusa: round2(vatL0.suma),
+  } : null;
   // Regim „TVA la incasare": pe facturi, TVA devine NEEXIGIBILA (4428) pana la incasare/plata.
   if (firma.tvaLaIncasare && /^factura_(vanzare|cumparare|utilitati|servicii|combustibil|imobilizare)/.test(tipId)) {
     for (const l of lines) {
@@ -282,6 +300,7 @@ function composeEntry(tipId, fields, fileId, firmaId) {
       valutaInfo: { valuta: String(f.moneda).toUpperCase().trim(), sumaValuta: round2(parseFloat(f.sumaValuta) || 0), curs: round2(parseFloat(f.curs) || 0) },
     } : {}),
     ...(f.proRataMixt ? { proRataMixt: true } : {}), // marcaj pentru regularizarea anuala a pro-ratei
+    ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
     fileId: fileId || null,
     system: false,
     lines,

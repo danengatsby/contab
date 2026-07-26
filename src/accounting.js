@@ -416,9 +416,22 @@ function vatJournals(db, period) {
     // La taxarea inversa interna aceeasi baza se raporteaza si la colectata, si la deductibila (D300).
     if (reverseCharge && bazaV === 0) bazaV = bazaC;
     if (ded !== 0) {
-      cumparari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '', baza: bazaC, tva: ded, total: round2(bazaC + ded), cota: bazaC > 0 && ded > 0 ? Math.round((ded / bazaC) * 100) : 0, taxareInversa: reverseCharge });
+      // TVA partial deductibila (auto 50% art. 298, pro-rata art. 300): partea nededusa a intrat
+      // in linia de cost, deci `bazaC` calculat din linii e umflat cu ea si raportul ded/bazaC da
+      // o cota fantoma (105/1105 = 10%) care nu exista in nomenclatorul de randuri al D300 —
+      // articolul disparea tacut din decont. `e.tvaPartial` pastreaza factura asa cum a fost emisa.
+      const tp = e.tvaPartial;
+      const bazaJurnal = tp ? tp.baza : bazaC;                 // factura reala (jurnal, D394)
+      const tvaJurnal = tp ? tp.tvaFactura : ded;              // TVA-ul de pe factura, nu cel dedus
+      const cota = tp ? tp.cota : (bazaC > 0 && ded > 0 ? Math.round((ded / bazaC) * 100) : 0);
+      // In decont intra doar partea DEDUSA, cu baza ei proportionala: validatorul oficial cere
+      // raportul baza/TVA egal cu cota (regula R84), iar `pro_rata` declarat nu il relaxeaza.
+      const bazaDedusa = tp ? (cota > 0 ? round2((ded * 100) / cota) : 0) : bazaC;
+      cumparari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '',
+        baza: bazaJurnal, tva: tvaJurnal, total: round2(bazaJurnal + tvaJurnal), cota,
+        tvaDedusa: ded, bazaDedusa, tvaNedeductibila: round2(tvaJurnal - ded), taxareInversa: reverseCharge });
       tot.deductibila = round2(tot.deductibila + ded);
-      tot.bazaC = round2(tot.bazaC + bazaC);
+      tot.bazaC = round2(tot.bazaC + bazaJurnal);
     }
     if (col !== 0) {
       vanzari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '', baza: bazaV, tva: col, total: round2(bazaV + col), cota: bazaV > 0 && col > 0 ? Math.round((col / bazaV) * 100) : 0, taxareInversa: reverseCharge });
@@ -435,14 +448,19 @@ function vatJournals(db, period) {
   }
   const deplata = round2(Math.max(tot.colectata - tot.deductibila, 0));
   const derecuperat = round2(Math.max(tot.deductibila - tot.colectata, 0));
-  // defalcare pe cote de TVA (21% / 11% / 0% scutit) pentru D300
+  // Defalcare pe cote de TVA (21% / 11% / 0% scutit) pentru D300. Cota vine de pe RAND (unde e
+  // deja cea a facturii), nu recalculata din tva/baza: la TVA partial deductibila raportul ar da
+  // o cota inexistenta. In decont intra partea dedusa cu baza ei proportionala (`bazaDedusa`/
+  // `tvaDedusa`); pentru facturile normale cele doua coincid cu baza si TVA-ul de pe factura.
   const byCota = (rows) => {
     const m = {};
     for (const r of rows) {
-      const cota = r.baza > 0 && r.tva > 0 ? Math.round((r.tva / r.baza) * 100) : 0;
+      const cota = r.cota || 0;
+      const baza = r.bazaDedusa != null ? r.bazaDedusa : r.baza;
+      const tva = r.tvaDedusa != null ? r.tvaDedusa : r.tva;
       m[cota] = m[cota] || { cota, baza: 0, tva: 0 };
-      m[cota].baza = round2(m[cota].baza + r.baza);
-      m[cota].tva = round2(m[cota].tva + r.tva);
+      m[cota].baza = round2(m[cota].baza + baza);
+      m[cota].tva = round2(m[cota].tva + tva);
     }
     return Object.values(m).sort((a, b) => b.cota - a.cota);
   };

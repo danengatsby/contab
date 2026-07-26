@@ -62,7 +62,9 @@ function tvaReconciliation(db, period) {
   for (const [tip, rows] of [['vanzare', vj.vanzari], ['cumparare', vj.cumparari]]) {
     for (const r of rows) {
       if (r.taxareInversa || r.tva === 0) continue;
-      const cota = r.baza > 0 ? Math.round((r.tva / r.baza) * 100) : -1; // baza 0 cu TVA > 0 = anormal
+      // cota de pe rand = cea a FACTURII; recalculata din tva/baza, o achizitie cu TVA partial
+      // deductibil (auto 50%, pro-rata) ar da 10% si ar fi raportata fals ca „cota neconforma".
+      const cota = r.baza > 0 ? (r.cota || Math.round((r.tva / r.baza) * 100)) : -1; // baza 0 cu TVA > 0 = anormal
       if (!COTE_TVA_VALIDE.has(cota)) coteAnormale.push({ tip, document: r.document || '', partener: r.partener || '', baza: r.baza, tva: r.tva, cota });
     }
   }
