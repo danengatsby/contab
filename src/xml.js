@@ -520,14 +520,19 @@ function d394Xml(company, period, vj, who, pf) {
     }
     return `  <rezumat1 ${a}/>`;
   }).join('\n');
-  // rezumat2: totaluri pe cota (facturile simplificate nu sunt urmarite separat => 0)
-  const cote = [...new Set(opList.filter((o) => 'LA'.includes(o.tip)).map((o) => o.cota))].sort((a, b) => b - a).slice(0, 5);
+  // rezumat2: totaluri pe cota (facturile simplificate nu sunt urmarite separat => 0).
+  // Achizitiile cu taxare inversa (tip C) intra in totalurile 'A' — sunt tot achizitii. Validatorul
+  // o cere explicit: pe o achizitie art. 331 de 5000/1050 langa una normala de 10000/2100 raspundea
+  // „R99: nrFacturiA (1) trebuie sa fie egal cu valoarea calculata (2)", si la fel R100 (baza
+  // 15000) si R101 (TVA 3150). Si `cote` trebuie sa le vada: altfel o perioada cu NUMAI achizitii
+  // cu taxare inversa nu genera deloc rand de rezumat2 pentru cota lor.
+  const cote = [...new Set(opList.filter((o) => 'LAC'.includes(o.tip)).map((o) => o.cota))].sort((a, b) => b - a).slice(0, 5);
   const rez2Of = (cota) => {
     const t = { nrL: 0, bazaL: 0, tvaL: 0, nrA: 0, bazaA: 0, tvaA: 0 };
     for (const o of opList) {
       if (o.cota !== cota) continue;
       if (o.tip === 'L') { t.nrL += o.nr; t.bazaL += o.baza; t.tvaL += o.tva; }
-      if (o.tip === 'A') { t.nrA += o.nr; t.bazaA += o.baza; t.tvaA += o.tva; }
+      if (o.tip === 'A' || o.tip === 'C') { t.nrA += o.nr; t.bazaA += o.baza; t.tvaA += o.tva; }
     }
     return t;
   };

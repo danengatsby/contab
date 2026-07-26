@@ -773,6 +773,28 @@ ok('achizitie intracomunitara: NU mai apare ca livrare taxabila (R9)', aIc.R9_1 
 ok('achizitie intracomunitara: exclusa din D394 (CUI strain)', vjIc.cumparari[0].inD394 === false);
 ok('achizitie intracomunitara: absenta din D394 generat',
   !xml.d394Xml({ cui: 'RO12345674', nume: 'X' }, '2026-06', vjIc, { nume: 'P', prenume: 'I', functie: 'C' }).includes('811907980'));
+
+// D394 rezumat2: achizitiile cu taxare inversa (tip C) sunt tot ACHIZITII si intra in totalurile
+// 'A'. Validatorul o cere explicit (R99/R100/R101); pana la corectie erau numarate doar cele
+// normale, iar o perioada cu numai achizitii art. 331 nu genera deloc rand de rezumat2.
+const vjTiMix = acc.vatJournals({ openingBalances: {}, entries: [
+  { id: 'a1', period: '2026-06', data: '2026-06-10', tip: 'factura_cumparare_marfuri', tipNume: 'M', partener: 'F1', partenerCui: 'RO12345674',
+    lines: [{ debit: '371', credit: '401', suma: 10000 }, { debit: '4426', credit: '401', suma: 2100 }] },
+  { id: 'c1', period: '2026-06', data: '2026-06-11', tip: 'taxare_inversa_interna_achizitie', tipNume: 'TI', partener: 'F2', partenerCui: 'RO45678918',
+    lines: [{ debit: '371', credit: '401', suma: 5000 }, { debit: '4426', credit: '4427', suma: 1050 }] },
+] }, '2026-06');
+const x394TiMix = xml.d394Xml({ cui: 'RO12345674', nume: 'X' }, '2026-06', vjTiMix, { nume: 'P', prenume: 'I', functie: 'C' });
+const r2Ti = (x394TiMix.match(/<rezumat2[^>]*cota="21"[^>]*>/) || [''])[0];
+eq('D394 rezumat2: taxarea inversa intra in totalurile A (2 facturi)', (r2Ti.match(/nrFacturiA="(\d+)"/) || [])[1], '2');
+eq('D394 rezumat2: baza A cumuleaza si taxarea inversa (10000 + 5000)', (r2Ti.match(/bazaA="(\d+)"/) || [])[1], '15000');
+eq('D394 rezumat2: TVA A cumuleaza si taxarea inversa (2100 + 1050)', (r2Ti.match(/tvaA="(\d+)"/) || [])[1], '3150');
+// ...iar o perioada cu NUMAI achizitii cu taxare inversa produce totusi randul de rezumat2
+const vjDoarC = acc.vatJournals({ openingBalances: {}, entries: [
+  { id: 'c2', period: '2026-06', data: '2026-06-11', tip: 'taxare_inversa_interna_achizitie', tipNume: 'TI', partener: 'F2', partenerCui: 'RO45678918',
+    lines: [{ debit: '371', credit: '401', suma: 5000 }, { debit: '4426', credit: '4427', suma: 1050 }] },
+] }, '2026-06');
+ok('D394: numai achizitii cu taxare inversa -> randul de rezumat2 exista',
+  /<rezumat2[^>]*cota="21"[^>]*nrFacturiA="1"/.test(xml.d394Xml({ cui: 'RO12345674', nume: 'X' }, '2026-06', vjDoarC, { nume: 'P', prenume: 'I', functie: 'C' })));
 // inchiderea anuala include conturile rectificative (709/609), cu sume in rosu
 const contraDb = { entries: [
   { id: 'v', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 10000 }] },
