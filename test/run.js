@@ -709,13 +709,38 @@ eq('scont acordat: 667=4111', gt('scont_acordat').build({ suma: 50 })[0].debit +
 eq('scont primit: 401=767', gt('scont_primit').build({ suma: 50 })[0].debit + '=' + gt('scont_primit').build({ suma: 50 })[0].credit, '401=767');
 const tii = gt('taxare_inversa_interna_achizitie').build({ baza: 1000, cota: 21, contStoc: '371' });
 ok('taxare inversa interna: 371=401 + 4426=4427', tii.some((l) => l.debit === '371' && l.credit === '401') && tii.some((l) => l.debit === '4426' && l.credit === '4427' && l.suma === 210));
-// raportare in jurnalul de TVA: aceeasi baza la colectata SI la deductibila (nu 0 pe colectata)
+// Raportare in decont: TVA-ul autolichidat se colecteaza SI se deduce (pozitie neta zero), dar
+// operatiunea NU e o livrare. Pana la corectie ajungea pe randurile de cota (R9 livrari taxabile
+// + R22 achizitii taxabile) si, prin jurnalul de vanzari, in D394 ca livrare interna cu taxare
+// inversa — 10 erori la validatorul oficial. Are perechea ei de randuri: R7 colectata / R20
+// deductibila (regulile V13/V14 cer `R20_1 = R7_1`).
 const tiEntry = { id: 'ti', period: '2026-06', data: '2026-06-20', tip: 'taxare_inversa_interna_achizitie', tipNume: 'Taxare inversa', partener: 'GAMA', partenerCui: 'RO321', lines: tii };
 const vjTi = acc.vatJournals({ entries: [tiEntry], openingBalances: {} }, '2026-06');
-eq('taxare inversa: baza colectata = baza deductibila', vjTi.totals.bazaV, vjTi.totals.bazaC);
-eq('taxare inversa: baza colectata 1000 (nu 0)', vjTi.totals.bazaV, 1000);
-eq('taxare inversa: cota colectata 21% (defalcare D300)', vjTi.coteV[0].cota, 21);
-ok('taxare inversa: marcata in ambele jurnale', vjTi.vanzari[0].taxareInversa === true && vjTi.cumparari[0].taxareInversa === true);
+eq('taxare inversa: TVA colectat = TVA dedus (pozitie neta zero)', vjTi.totals.colectata + '|' + vjTi.totals.deductibila, '210|210');
+eq('taxare inversa: baza si TVA pe categoria de autolichidare', JSON.stringify(vjTi.totals.autolichidari.taxareInversaInterna), '{"baza":1000,"tva":210}');
+ok('taxare inversa: NU apare ca livrare (jurnalul de vanzari ramane gol)', vjTi.vanzari.length === 0 && vjTi.coteV.length === 0);
+ok('taxare inversa: ramane in jurnalul de cumparari, marcata', vjTi.cumparari.length === 1 && vjTi.cumparari[0].taxareInversa === true);
+ok('taxare inversa: iese din defalcarea pe cote (are rand propriu)', vjTi.coteC.length === 0);
+const aTi = xml.d300Rows(rep.d300({ entries: [tiEntry], openingBalances: {} }, '2026-06'));
+eq('taxare inversa interna -> R7 colectata / R20 deductibila, nu R9/R22', [aTi.R7_1, aTi.R7_2, aTi.R20_1, aTi.R20_2].join('/'), '1000/210/1000/210');
+ok('taxare inversa: NU mai ajunge pe randurile de cota', aTi.R9_1 === undefined && aTi.R22_1 === undefined);
+eq('taxare inversa: intra in ambele totaluri (R17 colectata, R27 deductibila)', aTi.R17_1 + '|' + aTi.R27_1, '1000|1000');
+eq('taxare inversa: soldul de plata ramane zero', aTi.R41_2 + '|' + aTi.R42_2, '0|0');
+ok('taxare inversa interna (art. 331) RAMANE in D394 — e operatiune interna', vjTi.cumparari[0].inD394 === true);
+
+// Achizitia intracomunitara: aceeasi mecanica, dar perechea R5/R18 (V7/V8) si NU intra in D394 —
+// partenerul are CUI strain, iar declaratia interna il respinge; se declara in D390.
+const icEntry = { id: 'ic', period: '2026-06', data: '2026-06-21', tip: 'achizitie_intracomunitara', tipNume: 'AIC',
+  partener: 'Lieferant GmbH', partenerCui: 'DE811907980',
+  lines: [{ debit: '371', credit: '401', suma: 10000 }, { debit: '4426', credit: '4427', suma: 2100 }] };
+const vjIc = acc.vatJournals({ entries: [icEntry], openingBalances: {} }, '2026-06');
+eq('achizitie intracomunitara: baza si TVA pe categoria ei', JSON.stringify(vjIc.totals.autolichidari.intracomBunuri), '{"baza":10000,"tva":2100}');
+const aIc = xml.d300Rows(rep.d300({ entries: [icEntry], openingBalances: {} }, '2026-06'));
+eq('achizitie intracomunitara -> R5 colectata / R18 deductibila, nu R9/R22', [aIc.R5_1, aIc.R5_2, aIc.R18_1, aIc.R18_2].join('/'), '10000/2100/10000/2100');
+ok('achizitie intracomunitara: NU mai apare ca livrare taxabila (R9)', aIc.R9_1 === undefined);
+ok('achizitie intracomunitara: exclusa din D394 (CUI strain)', vjIc.cumparari[0].inD394 === false);
+ok('achizitie intracomunitara: absenta din D394 generat',
+  !xml.d394Xml({ cui: 'RO12345674', nume: 'X' }, '2026-06', vjIc, { nume: 'P', prenume: 'I', functie: 'C' }).includes('811907980'));
 // inchiderea anuala include conturile rectificative (709/609), cu sume in rosu
 const contraDb = { entries: [
   { id: 'v', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 10000 }] },

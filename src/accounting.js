@@ -375,6 +375,22 @@ const LIVRARI_SCUTITE = {
   taxare_inversa_interna_livrare: 'taxareInversa',  // taxare inversa interna, art. 331
 };
 
+/**
+ * Achizitiile cu AUTOLICHIDARE (taxare inversa la beneficiar): TVA-ul se colecteaza si se deduce
+ * pe acelasi articol (4426 = 4427). In decont NU merg pe randurile de cota, ci pe perechea lor
+ * proprie colectata/deductibila — validatorul oficial leaga perechile prin reguli: V7/V8 cer
+ * `R18_1 = R5_1`, V13/V14 cer `R20_1 = R7_1`. Raportate pe randurile de cota, umflau si livrarile
+ * taxabile (R9), si achizitiile taxabile (R22), cu o operatiune care nu e nici una, nici alta.
+ *
+ * `d394` = intra in D394. Achizitiile intracomunitare NU: partenerul are CUI strain, iar
+ * declaratia — care e raportare B2B INTERNA — le respinge („cuiP trebuie sa fie un CUI valid",
+ * plus tip 'V' cu cota != 0). Ele se declara in D390.
+ */
+const AUTOLICHIDARE = {
+  achizitie_intracomunitara: { cat: 'intracomBunuri', d394: false },        // R5 / R18
+  taxare_inversa_interna_achizitie: { cat: 'taxareInversaInterna', d394: true }, // R7 / R20
+};
+
 /** Jurnalele de TVA (vanzari/cumparari) si sumarul pentru decontul D300. */
 function vatJournals(db, period) {
   const entries = sortEntries(postedEntries(db).filter((e) => inPeriod(e, period)));
@@ -387,6 +403,7 @@ function vatJournals(db, period) {
   const scutite = [];
   const tot = { bazaV: 0, colectata: 0, bazaC: 0, deductibila: 0 };
   const totScutite = { intracom: 0, taxareInversa: 0 };
+  const totAuto = { intracomBunuri: { baza: 0, tva: 0 }, taxareInversaInterna: { baza: 0, tva: 0 } };
 
   for (const e of entries) {
     let col = 0; let ded = 0; let bazaV = 0; let reverseCharge = false;
@@ -414,6 +431,7 @@ function vatJournals(db, period) {
       else bazaV = round2(bazaV + (Number(e.tvaExig.baza) || 0));
     }
     // La taxarea inversa interna aceeasi baza se raporteaza si la colectata, si la deductibila (D300).
+    const autolich = AUTOLICHIDARE[e.tip];
     if (reverseCharge && bazaV === 0) bazaV = bazaC;
     if (ded !== 0) {
       // TVA partial deductibila (auto 50% art. 298, pro-rata art. 300): partea nededusa a intrat
@@ -429,14 +447,22 @@ function vatJournals(db, period) {
       const bazaDedusa = tp ? (cota > 0 ? round2((ded * 100) / cota) : 0) : bazaC;
       cumparari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '',
         baza: bazaJurnal, tva: tvaJurnal, total: round2(bazaJurnal + tvaJurnal), cota,
-        tvaDedusa: ded, bazaDedusa, tvaNedeductibila: round2(tvaJurnal - ded), taxareInversa: reverseCharge });
+        tvaDedusa: ded, bazaDedusa, tvaNedeductibila: round2(tvaJurnal - ded), taxareInversa: reverseCharge,
+        // categoria de autolichidare (randul propriu din decont) si daca articolul intra in D394
+        autolichidare: autolich ? autolich.cat : null, inD394: autolich ? autolich.d394 : true });
       tot.deductibila = round2(tot.deductibila + ded);
       tot.bazaC = round2(tot.bazaC + bazaJurnal);
+      if (autolich) { const a = totAuto[autolich.cat]; a.baza = round2(a.baza + bazaDedusa); a.tva = round2(a.tva + ded); }
     }
     if (col !== 0) {
-      vanzari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '', baza: bazaV, tva: col, total: round2(bazaV + col), cota: bazaV > 0 && col > 0 ? Math.round((col / bazaV) * 100) : 0, taxareInversa: reverseCharge });
       tot.colectata = round2(tot.colectata + col);
-      tot.bazaV = round2(tot.bazaV + bazaV);
+      // Colectata din autolichidare NU e o livrare: nu intra in jurnalul de vanzari (de acolo o
+      // lua si D394, unde ajungea ca livrare interna cu taxare inversa) si nici in `coteV`.
+      // Baza si TVA-ul ei sunt deja acumulate in `totAuto`, pe latura deductibila a aceluiasi articol.
+      if (!autolich) {
+        vanzari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '', baza: bazaV, tva: col, total: round2(bazaV + col), cota: bazaV > 0 && col > 0 ? Math.round((col / bazaV) * 100) : 0, taxareInversa: reverseCharge });
+        tot.bazaV = round2(tot.bazaV + bazaV);
+      }
     }
     // Livrari scutite / cu taxare inversa la beneficiar: nu au TVA, deci nu ajung nici in
     // `vanzari` (filtrat pe col !== 0), nici in `coteV` — dar au rand propriu in decont.
@@ -464,7 +490,10 @@ function vatJournals(db, period) {
     }
     return Object.values(m).sort((a, b) => b.cota - a.cota);
   };
-  return { period, vanzari, cumparari, scutite, coteV: byCota(vanzari), coteC: byCota(cumparari), totals: Object.assign(tot, { deplata, derecuperat, scutite: totScutite }) };
+  // Achizitiile cu autolichidare ies din defalcarea pe cote: au randurile lor in decont.
+  return { period, vanzari, cumparari, scutite,
+    coteV: byCota(vanzari), coteC: byCota(cumparari.filter((r) => !r.autolichidare)),
+    totals: Object.assign(tot, { deplata, derecuperat, scutite: totScutite, autolichidari: totAuto }) };
 }
 
 /** Jurnal de banca / casa pentru un cont de trezorerie, cu sold curent (running balance). */
