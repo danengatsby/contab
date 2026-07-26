@@ -2,7 +2,7 @@
 
 const { round2, period: periodOf } = require('./util');
 const coa = require('./chartOfAccounts');
-const { allLines, accumulate, postedEntries } = require('./accounting');
+const { allLines, resultLines, accumulate, postedEntries } = require('./accounting');
 
 /** Solduri finale nete (cont -> net) la sfarsitul unei perioade (inclusiv), cumulat. */
 function finalBalances(db, asOf) {
@@ -33,7 +33,7 @@ const starts = (cod, ...pre) => pre.some((p) => String(cod).startsWith(p));
 /** Contul de profit si pierdere pentru un an (din rulajele claselor 6 si 7). */
 function profitLoss(db, year) {
   const ent = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
-  const acc = accumulate(allLines(ent));
+  const acc = accumulate(resultLines(ent)); // fara inchiderile 6/7 -> 121
   const venit = (cod) => round2((acc[cod] ? acc[cod].c - acc[cod].d : 0));
   const chelt = (cod) => round2((acc[cod] ? acc[cod].d - acc[cod].c : 0));
 
@@ -176,7 +176,7 @@ function balanceSheetF10(db, asOf) {
  */
 function profitLossF20(db, year) {
   const ent = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
-  const acc = accumulate(allLines(ent));
+  const acc = accumulate(resultLines(ent)); // fara inchiderile 6/7 -> 121
   const venit = (cod) => round2((acc[cod] ? acc[cod].c - acc[cod].d : 0));
   const chelt = (cod) => round2((acc[cod] ? acc[cod].d - acc[cod].c : 0));
   const codes = Object.keys(acc);

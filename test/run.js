@@ -591,6 +591,41 @@ eq('rezultat (121) = rezultat brut P&L', an.rezultat, 687.5);
 ok('contine inchidere venituri 707=121', an.lines.some((l) => l.debit === '707' && l.credit === '121'));
 ok('contine inchidere cheltuieli 121=607', an.lines.some((l) => l.debit === '121' && l.credit === '607'));
 
+// Inchiderea anuala muta clasele 6/7 in 121 cu un rulaj EGAL SI DE SENS OPUS celui din cursul
+// anului. Daca agregarile de rezultat nu o exclud, dupa inchidere toate ies zero — impozitul pe
+// profit s-ar inregistra 0, iar contul de profit si pierdere depus ar fi gol. Aici blocam exact
+// asta: rapoartele anului trebuie sa dea ACELASI lucru inainte si dupa inchidere.
+section('Inchiderea anuala nu goleste rapoartele de rezultat (ordinea inchiderilor)');
+const vInchis = JSON.parse(JSON.stringify(v));
+vInchis.entries.push({ id: 'e-inchidere-an', firmaId: v.company.id, data: '2026-12-31', period: '2026-12',
+  tip: 'inchidere_an', tipNume: 'Inchidere conturi venituri/cheltuieli', partener: '', document: 'Inchidere 2026',
+  explicatie: '', fileId: null, system: true, lines: an.lines });
+
+eq('profitTax: profit contabil neschimbat', acc.profitTax(vInchis, '2026', { cota: 16 }).profitContabil,
+  acc.profitTax(v, '2026', { cota: 16 }).profitContabil);
+eq('profitTax: impozitul nu devine 0', acc.profitTax(vInchis, '2026', { cota: 16 }).impozit,
+  acc.profitTax(v, '2026', { cota: 16 }).impozit);
+eq('P&L: venit total neschimbat', stmt.profitLoss(vInchis, '2026').venitTotal, stmt.profitLoss(v, '2026').venitTotal);
+eq('P&L: rezultat brut neschimbat', stmt.profitLoss(vInchis, '2026').rezBrut, stmt.profitLoss(v, '2026').rezBrut);
+eq('F20: cifra de afaceri neschimbata', stmt.profitLossF20(vInchis, '2026').cifraAfaceri, stmt.profitLossF20(v, '2026').cifraAfaceri);
+eq('registru fiscal: rezultat contabil neschimbat', rep.registruFiscal(vInchis, '2026').rezultatContabil,
+  rep.registruFiscal(v, '2026').rezultatContabil);
+eq('D100 micro: venitul anului neschimbat', rep.d100micro(vInchis, '2026-06').venitAn, rep.d100micro(v, '2026-06').venitAn);
+eq('serie lunara: decembrie nu e golita de inchidere',
+  rep.monthlySeries(vInchis, '2026').reduce((s, m) => s + m.venituri, 0),
+  rep.monthlySeries(v, '2026').reduce((s, m) => s + m.venituri, 0));
+
+// ...dar REGISTRELE trebuie sa vada inchiderea (e o nota contabila reala), iar o a doua rulare
+// a inchiderii nu are ce mai inchide (idempotenta se bazeaza tocmai pe anularea rulajelor).
+ok('cartea mare vede nota de inchidere pe 121', acc.ledger(vInchis, '2026').some((c) => c.cod === '121' && (c.rd || c.rc)));
+ok('balanta ramane echilibrata dupa inchidere', acc.trialBalance(vInchis, '2026').balanced);
+ok('bilantul ramane echilibrat dupa inchidere', stmt.balanceSheetF10(vInchis, '2026-12').echilibrat);
+eq('a doua inchidere nu mai are ce inchide', acc.annualClosing(vInchis, '2026').lines.length, 0);
+
+// Linia 121 = 691 atasata impozitului cand anul era deja inchis: tot o inchidere de rezultat.
+ok('121 = 691 recunoscut ca linie de inchidere', acc.isResultClosingLine({ debit: '121', credit: '691' }));
+ok('121 = 4111 NU e linie de inchidere', !acc.isResultClosingLine({ debit: '121', credit: '4111' }));
+
 section('Repartizarea rezultatului (121 -> 117)');
 const profitDb = { entries: [
   { id: 'c1', period: '2026-12', data: '2026-12-31', lines: [{ debit: '707', credit: '121', suma: 10000 }] },
