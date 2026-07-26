@@ -2,12 +2,15 @@
 
 const { round2, period: periodOf } = require('./util');
 const coa = require('./chartOfAccounts');
-const { allLines, resultLines, accumulate, postedEntries } = require('./accounting');
+const { allLines, resultLines, accumulate, postedEntries, periodEnd } = require('./accounting');
 
-/** Solduri finale nete (cont -> net) la sfarsitul unei perioade (inclusiv), cumulat. */
+/** Solduri finale nete (cont -> net) la sfarsitul unei perioade (inclusiv), cumulat.
+ *  `asOf` poate fi luna, trimestru sau an — comparatia se face pe ULTIMA luna acoperita, fiindca
+ *  pe forma `YYYY-Qn` compararea directa de siruri ar include si lunile de dupa trimestru. */
 function finalBalances(db, asOf) {
   const opening = db.openingBalances || {};
-  const ent = postedEntries(db).filter((e) => !asOf || (e.period || periodOf(e.data)) <= asOf);
+  const lastM = asOf ? periodEnd(asOf) : null;
+  const ent = postedEntries(db).filter((e) => !lastM || (e.period || periodOf(e.data)) <= lastM);
   const acc = accumulate(allLines(ent));
   const codes = new Set([...Object.keys(opening), ...Object.keys(acc)]);
   const net = {};
