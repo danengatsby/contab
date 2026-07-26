@@ -371,8 +371,10 @@ function resultDistribution(db, year) {
  * intracomunitare se declara in D390, nu in D394.
  */
 const LIVRARI_SCUTITE = {
-  livrare_intracomunitara: 'intracom',              // scutita cu drept de deducere, art. 294 alin. (2)
-  taxare_inversa_interna_livrare: 'taxareInversa',  // taxare inversa interna, art. 331
+  // scutita cu drept de deducere, art. 294 alin. (2) — se declara in D390, nu in D394 (CUI strain)
+  livrare_intracomunitara: { cat: 'intracom', d394: false },
+  // taxare inversa interna, art. 331 — operatiune INTERNA, deci intra si in D394 (ca tip 'V')
+  taxare_inversa_interna_livrare: { cat: 'taxareInversa', d394: true },
 };
 
 /**
@@ -468,10 +470,12 @@ function vatJournals(db, period) {
     }
     // Livrari scutite / cu taxare inversa la beneficiar: nu au TVA, deci nu ajung nici in
     // `vanzari` (filtrat pe col !== 0), nici in `coteV` — dar au rand propriu in decont.
-    const catScutit = LIVRARI_SCUTITE[e.tip];
-    if (catScutit && col === 0 && bazaV !== 0) {
-      scutite.push({ cat: catScutit, data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '', baza: bazaV });
-      totScutite[catScutit] = round2(totScutite[catScutit] + bazaV);
+    const scutit = LIVRARI_SCUTITE[e.tip];
+    if (scutit && col === 0 && bazaV !== 0) {
+      scutite.push({ cat: scutit.cat, data: e.data, document: e.document, partener: e.partener,
+        cui: e.partenerCui || '', baza: bazaV, inD394: scutit.d394,
+        codCategorie331: Number(e.codCategorie331) || 0 });
+      totScutite[scutit.cat] = round2(totScutite[scutit.cat] + bazaV);
     }
   }
   const deplata = round2(Math.max(tot.colectata - tot.deductibila, 0));

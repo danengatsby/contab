@@ -514,6 +514,15 @@ function d394Xml(company, period, vj, who, pf) {
     const cui = cuiDigits(r.cui); if (!cui) continue;
     addOp(r.taxareInversa ? 'C' : 'A', 1, r.cota, cui, r.partener, r.baza, r.tva, 1, r.codCategorie331);
   }
+  // Livrarile cu taxare inversa interna (art. 331) se factureaza FARA TVA, deci nu trec prin
+  // jurnalul de vanzari — dar sunt operatiuni interne si intra in D394 ca tip 'V', cu cota 0
+  // („R217.2: daca tip este unul din 'LS','AS','N','V' atunci cota trebuie sa fie egala cu 0").
+  // Livrarile intracomunitare, tot fara TVA, sunt marcate `inD394: false` — ele merg in D390.
+  for (const r of vj.scutite || []) {
+    if (r.inD394 === false) continue;
+    const cui = cuiDigits(r.cui); if (!cui) continue;
+    addOp('V', 1, 0, cui, r.partener, r.baza, 0, 1, r.codCategorie331);
+  }
   for (const r of (pf && pf.rows) || []) addOp('N', 2, 0, r.cnp || '', r.partener, r.total, 0, r.nr);
   const opList = [...ops.values()];
   // rezumat1: totaluri pe (tip_partener, cota), cu coloane pe tipul operatiunii
@@ -551,11 +560,17 @@ function d394Xml(company, period, vj, who, pf) {
       if (e.V) a += ` facturiV="${e.V.nr}" bazaV="${lei(e.V.baza)}"`;
       if (e.A) a += ` facturiA="${e.A.nr}" bazaA="${lei(e.A.baza)}" tvaA="${lei(e.A.tva)}"`;
       if (e.C) a += ` facturiC="${e.C.nr}" bazaC="${lei(e.C.baza)}" tvaC="${lei(e.C.tva)}"`;
+      // La cota 0 coloanele „scutit" sunt OBLIGATORII, chiar si pe zero: LS mereu (R41.1/R42.1),
+      // iar AS in plus la persoane juridice (R49.1/R50.1).
+      if (e.cota === 0) {
+        a += ` facturiLS="0" bazaLS="0"`;
+        if (e.tp === 1) a += ` facturiAS="0" bazaAS="0"`;
+      }
     }
     if (e.N) {
-      // achizitii de la PF (document_N=1 fila carnet): coloanele LS obligatorii (R41/R42)
-      // + detaliul pe nomenclatorul de bunuri (R35), oglinda op11 (codPR 35 = alte produse)
-      a += ` facturiLS="0" bazaLS="0" facturiN="${e.N.nr}" document_N="1" bazaN="${lei(e.N.baza)}"`;
+      // achizitii de la PF (document_N=1 fila carnet) + detaliul pe nomenclatorul de bunuri
+      // (R35), oglinda op11 (codPR 35 = alte produse). LS a fost deja emis mai sus (cota 0).
+      a += ` facturiN="${e.N.nr}" document_N="1" bazaN="${lei(e.N.baza)}"`;
       return `  <rezumat1 ${a}>\n    <detaliu bun="35" nrN="${e.N.nr}" valN="${lei(e.N.baza)}"/>\n  </rezumat1>`;
     }
     // detaliul pe nomenclatorul art. 331 pentru taxarea inversa: achizitiile (C) poarta si TVA,
@@ -633,8 +648,11 @@ function d394Xml(company, period, vj, who, pf) {
     // NU inventam unul — randul ramane fara op11, iar validarea pre-depunere semnaleaza articolele
     // de completat. O declaratie respinsa e mai buna decat una valida cu incadrare gresita.
     if ((o.tip === 'C' || o.tip === 'V') && o.pr.size) {
+      // `tvaPR` e obligatoriu la achizitii (R237.1) si INTERZIS la livrari — acolo aceeasi regula
+      // spune „daca tip = 'V' ... atributul tvaPR nu trebuie sa existe" (livrarea e fara TVA).
       const det = [...o.pr.entries()].sort((a, b) => a[0] - b[0]).map(([cod, p]) =>
-        `    <op11 nrFactPR="${p.nr}" codPR="${cod}" bazaPR="${lei(p.baza)}" tvaPR="${lei(p.tva)}"/>`).join('\n');
+        `    <op11 nrFactPR="${p.nr}" codPR="${cod}" bazaPR="${lei(p.baza)}"`
+        + (o.tip === 'C' ? ` tvaPR="${lei(p.tva)}"` : '') + '/>').join('\n');
       return `  <op1 ${attrs}>\n${det}\n  </op1>`;
     }
     return `  <op1 ${attrs}/>`;
