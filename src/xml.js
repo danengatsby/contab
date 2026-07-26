@@ -453,6 +453,29 @@ ${asigurati}
 `;
 }
 
+/**
+ * Codurile de bunuri/servicii (codPR din sectiunea op11) acceptate de D394 v5 pentru un partener
+ * PERSOANA JURIDICA. Nomenclatorul e ridicat cod cu cod cu validatorul oficial: enum-ul complet e
+ * 22-37, dar 32-35 si 37 sunt respinse pentru tip_partener=1 („R235.1: sectiunea Op11 nu poate sa
+ * apara pentru codPR = 32, 33, 34 sau 35") — acelea sunt pentru achizitiile de la persoane fizice.
+ *
+ * DENUMIRILE nu sunt reproduse aici intentionat: validatorul nu le expune (in mesajele lui apare
+ * doar „cereale si plante tehnice"), iar o lista ghicita ar produce declaratii VALIDE dar GRESITE.
+ * Contabilul introduce codul din nomenclatorul oficial D394; aplicatia doar verifica apartenenta.
+ */
+const D394_COD_331 = new Set([22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 36]);
+
+/** Operatiunile cu taxare inversa care intra in D394 dar NU au codul de bun completat — fara el
+ *  declaratia e respinsa (R233.5). Sursa unica pentru validarea pre-depunere. */
+function d394FaraCodCategorie(vj) {
+  const out = [];
+  for (const r of (vj.cumparari || []).concat(vj.vanzari || [])) {
+    if (!r.taxareInversa || r.inD394 === false || !r.cui) continue;
+    if (!r.codCategorie331) out.push({ document: r.document || '', partener: r.partener || '', baza: r.baza });
+  }
+  return out;
+}
+
 /** D394 — declaratie informativa pe schema OFICIALA v5 (mfp:anaf:dgti:d394:declaratie:v5).
  *  Structura: atribute pe radacina (identificare + suma de control), apoi <informatii>
  *  (contoare + TVA pe cote), <rezumat1> (pe tip partener x cota), <rezumat2> (pe cota),
@@ -466,23 +489,30 @@ function d394Xml(company, period, vj, who, pf) {
   const cuiDigits = (c) => String(c || '').replace(/^ro/i, '').replace(/\s/g, '');
   // agregare op1 pe (tip, partener, cota); taxarea inversa are tipuri proprii (V/C)
   const ops = new Map();
-  const addOp = (tip, tp, cota, cui, den, baza, tva, nrDoc) => {
+  // `codPR` = codul de bun art. 331; se acumuleaza pe categorie IN INTERIORUL randului op1,
+  // fiindca acelasi partener poate livra bunuri din categorii diferite la aceeasi cota.
+  const addOp = (tip, tp, cota, cui, den, baza, tva, nrDoc, codPR) => {
     const k = tip + '|' + cui + '|' + cota;
-    const e = ops.get(k) || { tip, tp, cota, cui, den, nr: 0, baza: 0, tva: 0 };
+    const e = ops.get(k) || { tip, tp, cota, cui, den, nr: 0, baza: 0, tva: 0, pr: new Map() };
     e.nr += nrDoc || 1; e.baza += baza; e.tva += tva || 0;
     if (!e.den && den) e.den = den;
+    if (codPR) {
+      const p = e.pr.get(codPR) || { nr: 0, baza: 0, tva: 0 };
+      p.nr += nrDoc || 1; p.baza += baza; p.tva += tva || 0;
+      e.pr.set(codPR, p);
+    }
     ops.set(k, e);
   };
   for (const r of vj.vanzari || []) {
     const cui = cuiDigits(r.cui); if (!cui) continue;
-    addOp(r.taxareInversa ? 'V' : 'L', 1, r.cota, cui, r.partener, r.baza, r.tva);
+    addOp(r.taxareInversa ? 'V' : 'L', 1, r.cota, cui, r.partener, r.baza, r.tva, 1, r.codCategorie331);
   }
   for (const r of vj.cumparari || []) {
     // Achizitiile intracomunitare NU intra in D394 (raportare B2B interna): partenerul are CUI
     // strain, iar declaratia le respinge („cuiP trebuie sa fie un CUI valid"). Ele merg in D390.
     if (r.inD394 === false) continue;
     const cui = cuiDigits(r.cui); if (!cui) continue;
-    addOp(r.taxareInversa ? 'C' : 'A', 1, r.cota, cui, r.partener, r.baza, r.tva);
+    addOp(r.taxareInversa ? 'C' : 'A', 1, r.cota, cui, r.partener, r.baza, r.tva, 1, r.codCategorie331);
   }
   for (const r of (pf && pf.rows) || []) addOp('N', 2, 0, r.cnp || '', r.partener, r.total, 0, r.nr);
   const opList = [...ops.values()];
@@ -490,9 +520,19 @@ function d394Xml(company, period, vj, who, pf) {
   const rez1 = new Map();
   for (const o of opList) {
     const k = o.tp + '|' + o.cota;
-    const e = rez1.get(k) || { tp: o.tp, cota: o.cota, L: null, V: null, A: null, C: null, N: null };
+    const e = rez1.get(k) || { tp: o.tp, cota: o.cota, L: null, V: null, A: null, C: null, N: null, pr: new Map() };
     e[o.tip] = e[o.tip] || { nr: 0, baza: 0, tva: 0 };
     e[o.tip].nr += o.nr; e[o.tip].baza += o.baza; e[o.tip].tva += o.tva;
+    // oglinda op11 la nivel de rezumat1: fiecare cod de bun din op1 cere un <detaliu> aici
+    // („R35: Nu exista sectiune Detaliu pentru (tip_partener, cota, document_N, codPR)")
+    if (o.tip === 'C' || o.tip === 'V') {
+      for (const [cod, p] of o.pr) {
+        const d = e.pr.get(cod) || { C: null, V: null };
+        d[o.tip] = d[o.tip] || { nr: 0, baza: 0, tva: 0 };
+        d[o.tip].nr += p.nr; d[o.tip].baza += p.baza; d[o.tip].tva += p.tva;
+        e.pr.set(cod, d);
+      }
+    }
     rez1.set(k, e);
   }
   const rez1Xml = [...rez1.values()].map((e) => {
@@ -517,6 +557,17 @@ function d394Xml(company, period, vj, who, pf) {
       // + detaliul pe nomenclatorul de bunuri (R35), oglinda op11 (codPR 35 = alte produse)
       a += ` facturiLS="0" bazaLS="0" facturiN="${e.N.nr}" document_N="1" bazaN="${lei(e.N.baza)}"`;
       return `  <rezumat1 ${a}>\n    <detaliu bun="35" nrN="${e.N.nr}" valN="${lei(e.N.baza)}"/>\n  </rezumat1>`;
+    }
+    // detaliul pe nomenclatorul art. 331 pentru taxarea inversa: achizitiile (C) poarta si TVA,
+    // livrarile (V) doar baza — se factureaza fara TVA.
+    if (e.pr.size) {
+      const det = [...e.pr.entries()].sort((x, y) => x[0] - y[0]).map(([cod, d]) => {
+        let at = `bun="${cod}"`;
+        if (d.C) at += ` nrAchizC="${d.C.nr}" bazaAchizC="${lei(d.C.baza)}" tvaAchizC="${lei(d.C.tva)}"`;
+        if (d.V) at += ` nrLivV="${d.V.nr}" bazaLivV="${lei(d.V.baza)}"`;
+        return `    <detaliu ${at}/>`;
+      }).join('\n');
+      return `  <rezumat1 ${a}>\n${det}\n  </rezumat1>`;
     }
     return `  <rezumat1 ${a}/>`;
   }).join('\n');
@@ -575,9 +626,18 @@ function d394Xml(company, period, vj, who, pf) {
     const attrs = `tip="${o.tip}" tip_partener="${o.tp}" cota="${o.cota}"${o.cui ? ` cuiP="${esc(o.cui)}"` : ''} denP="${esc(o.den || '-')}"`
       + `${o.tip === 'N' ? ' tip_document="1"' : ''} nrFact="${o.nr}" baza="${lei(o.baza)}"${o.tip === 'L' || o.tip === 'A' || o.tip === 'C' ? ` tva="${lei(o.tva)}"` : ''}`;
     // achizitiile de la PF (tip N) cer detaliul op11 pe categorii de produse (R233.6);
-    // fara categorie in datele-sursa, totul intra la codPR 35 (alte produse)
-    if (o.tip !== 'N') return `  <op1 ${attrs}/>`;
-    return `  <op1 ${attrs}>\n    <op11 nrFactPR="${o.nr}" codPR="35" bazaPR="${lei(o.baza)}"/>\n  </op1>`;
+    // fara categorie in datele-sursa, totul intra la codPR 35 (alte produse — rezervat PF)
+    if (o.tip === 'N') return `  <op1 ${attrs}>\n    <op11 nrFactPR="${o.nr}" codPR="35" bazaPR="${lei(o.baza)}"/>\n  </op1>`;
+    // Taxarea inversa la persoane juridice (tip C si V) cere si ea op11 (R233.5), dar cu un cod
+    // din nomenclatorul art. 331 si cu `tvaPR` (R237.1). Codul vine de pe articol; cand lipseste,
+    // NU inventam unul — randul ramane fara op11, iar validarea pre-depunere semnaleaza articolele
+    // de completat. O declaratie respinsa e mai buna decat una valida cu incadrare gresita.
+    if ((o.tip === 'C' || o.tip === 'V') && o.pr.size) {
+      const det = [...o.pr.entries()].sort((a, b) => a[0] - b[0]).map(([cod, p]) =>
+        `    <op11 nrFactPR="${p.nr}" codPR="${cod}" bazaPR="${lei(p.baza)}" tvaPR="${lei(p.tva)}"/>`).join('\n');
+      return `  <op1 ${attrs}>\n${det}\n  </op1>`;
+    }
+    return `  <op1 ${attrs}/>`;
   }).join('\n');
   const w = who && who.nume ? who : { nume: 'Administrator', prenume: '', functie: 'Administrator' };
   const numeIntocmit = [w.prenume, w.nume].filter(Boolean).join(' ') || 'Administrator';
@@ -939,5 +999,5 @@ ${rows}
 
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
-  umCode, d300Xml, d300Rows, d300CoteFaraRand, d394Xml, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d300Rows, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
 };

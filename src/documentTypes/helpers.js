@@ -42,6 +42,11 @@ const F = {
   stoc: { name: 'stoc', label: 'Descarcare din stoc (produs + gestiune + cantitate) — cost la CMP, automat', type: 'stoc' },
   auto50: { name: 'auto50', label: 'Deductibilitate auto 50% (vehicul fara uz exclusiv): 50% din TVA devine nedeductibil si intra in cost', type: 'checkbox' },
   proRataMixt: { name: 'proRataMixt', label: 'Achizitie cu destinatie mixta (pro-rata, art. 300): TVA deductibila doar in procentul pro-rata setat pe firma, restul intra in cost', type: 'checkbox' },
+  // Codul de bun art. 331 (nomenclatorul oficial D394, sectiunea op11). Fara el, D394 e respins
+  // („R233.5: trebuie completata cel putin o sectiune op11"). Se cere codul, nu o denumire aleasa
+  // dintr-o lista: nomenclatorul nu e expus de validator si o lista ghicita ar da o declaratie
+  // valida dar gresita. Acceptate pentru persoane juridice: 22-31 si 36.
+  codCategorie331: { name: 'codCategorie331', label: 'Cod categorie bun (nomenclatorul D394, art. 331) — acceptate 22-31 și 36', type: 'number', default: 0 },
   // Intrastat (doar pentru operatiuni intracomunitare de bunuri)
   codNC: { name: 'codNC', label: 'Cod NC8 (Intrastat)', type: 'text' },
   masaNeta: { name: 'masaNeta', label: 'Masa neta kg (Intrastat)', type: 'number', default: 0 },

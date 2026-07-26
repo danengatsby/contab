@@ -167,6 +167,9 @@ module.exports = function register(app, ctx) {
     // D300: cotele fara rand in v12 nu se vad in XML (tocmai fiindca nu le mai emitem) — se
     // calculeaza din aceeasi sursa ca decontul si se dau validarii ca sa le poata raporta.
     if (type === 'd300') ctxVal.coteFaraRand = xml.d300CoteFaraRand(rep.d300(v, acc.vatPeriod(v.company, period)));
+    // D394: articolele cu taxare inversa fara cod de bun art. 331 nu se vad in XML (op11 lipseste
+    // tocmai pentru ca nu inventam un cod) — se calculeaza din jurnal, ca sa le putem numi.
+    if (type === 'd394') ctxVal.faraCodCategorie = xml.d394FaraCodCategorie(acc.vatJournals(v, acc.vatPeriod(v.company, period)));
     const result = validate.validateDeclaration(type, x, ctxVal);
     // D100: adauga avertismentele de eligibilitate micro (plafon venituri + conditia de salariat)
     if (type === 'd100') result.warnings.push(...(rep.d100micro(v, period).avertismente || []));

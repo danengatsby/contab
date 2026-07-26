@@ -104,7 +104,7 @@ module.exports = [
     id: 'taxare_inversa_interna_achizitie',
     nume: 'Achizitie cu taxare inversa interna (art. 331 — cereale, lemn, deseuri, constructii...)',
     grup: 'Cumparari',
-    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota,
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota, F.codCategorie331,
       { name: 'contStoc', label: 'Cont stoc/cheltuiala/imobilizare', type: 'account', default: '371' }],
     build: (d) => {
       const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);

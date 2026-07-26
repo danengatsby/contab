@@ -18,6 +18,7 @@ const { sendDeadlineDigests } = require('./src/notify'); // ruta de digest manua
 const log = require('./src/log');
 const serverErrors = require('./src/serverErrors');
 const { round2, period: periodOf } = require('./src/util');
+const { D394_COD_331 } = require('./src/xml');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
 // sa asculte (app.listen, la finalul fisierului) abia dupa ce baza e hidratata.
@@ -274,6 +275,18 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     if (!coa.getAccount(l.debit)) throw new Error('Cont debitor inexistent in plan: ' + l.debit);
     if (!coa.getAccount(l.credit)) throw new Error('Cont creditor inexistent in plan: ' + l.credit);
   }
+  // Codul de bun art. 331 (op11 din D394): validat la introducere, nu la depunere — o valoare
+  // gresita ar trece pana la validatorul ANAF si ar respinge toata declaratia. Lipsa nu blocheaza
+  // salvarea (articolul poate fi completat mai tarziu); o semnaleaza validarea pre-depunere.
+  let codCategorie331 = 0;
+  if (f.codCategorie331 != null && f.codCategorie331 !== '' && Number(f.codCategorie331) !== 0) {
+    codCategorie331 = Number(f.codCategorie331);
+    if (!D394_COD_331.has(codCategorie331)) {
+      throw new Error('Cod categorie bun invalid: ' + f.codCategorie331
+        + '. Nomenclatorul D394 acceptă pentru persoane juridice doar codurile '
+        + [...D394_COD_331].join(', ') + '.');
+    }
+  }
   const data = f.data || new Date().toISOString().slice(0, 10);
   // Blocarea perioadei: nu se inregistreaza in luni inchise (protejeaza fata de declaratiile depuse).
   if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) {
@@ -301,6 +314,7 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     } : {}),
     ...(f.proRataMixt ? { proRataMixt: true } : {}), // marcaj pentru regularizarea anuala a pro-ratei
     ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
+    ...(codCategorie331 ? { codCategorie331 } : {}), // categoria de bun art. 331, pentru op11 din D394
     fileId: fileId || null,
     system: false,
     lines,
