@@ -35,6 +35,8 @@ function d300(db, period) {
   const vj = acc.vatJournals(db, period);
   // `vj.totals.scutite` (bazele fara TVA, pe categorie) intra in plic prin Object.assign —
   // d300Rows le mapeaza pe randurile proprii (R1 intracomunitar, R13 taxare inversa).
+  // `vj.totals` aduce in plic si `scutite` (baze fara TVA, pe categorie), si `autolichidari`
+  // (perechile colectata/deductibila ale taxarii inverse) — d300Rows le mapeaza pe randurile lor.
   return Object.assign({ period, coteV: vj.coteV, coteC: vj.coteC, scutiteRows: vj.scutite }, vj.totals);
 }
 

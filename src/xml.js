@@ -247,6 +247,14 @@ const D300_RAND_C = { 21: 'R22', 11: 'R23', 5: 'R24', 9: 'R74', 19: 'R75' };
 // Randurile de baza R1..R15 INTRA in totalul R17_1 — verificat cu validatorul oficial, care
 // respinge altfel: „regula R65: R17_1 = R17_1 calculat conform regulii".
 const D300_RAND_SCUTITE = { intracom: 'R1', taxareInversa: 'R13' };
+// Achizitiile cu autolichidare au perechea lor de randuri (colectata + deductibila), NU randurile
+// de cota: R5/R18 = achizitii intracomunitare de bunuri, R7/R20 = restul taxarii inverse la
+// beneficiar (art. 331 intern). Perechile sunt impuse de validatorul oficial: V7/V8 cer
+// `R18_1 = R5_1` si `R18_2 = R5_2`, V13/V14 cer acelasi lucru pentru R20 fata de R7.
+const D300_RAND_AUTOLICH = {
+  intracomBunuri: { col: 'R5', ded: 'R18' },
+  taxareInversaInterna: { col: 'R7', ded: 'R20' },
+};
 // Maparea rand->valoare (Rxx_1 = baza, Rxx_2 = TVA, in lei intregi) a decontului D300, din
 // pozitia TVA a perioadei (cotele de vanzare/cumparare). SURSA UNICA: folosita si la
 // serializarea XML (d300Xml), si la reconcilierea cu decontul precompletat e-TVA (etvaReconcile),
@@ -267,10 +275,19 @@ function d300Rows(d) {
   for (const c of d.coteV || []) put(D300_RAND_V[c.cota], c.baza, c.tva);
   for (const c of d.coteC || []) put(D300_RAND_C[c.cota], c.baza, c.tva);
   for (const [cat, rand] of Object.entries(D300_RAND_SCUTITE)) putBaza(rand, (d.scutite || {})[cat]);
+  // Autolichidarea intra pe AMBELE laturi cu aceleasi cifre (asta cer regulile V7/V8, V13/V14).
+  for (const [cat, r] of Object.entries(D300_RAND_AUTOLICH)) {
+    const a = (d.autolichidari || {})[cat];
+    if (!a || (!a.baza && !a.tva)) continue;
+    put(r.col, a.baza, a.tva);
+    put(r.ded, a.baza, a.tva);
+  }
   // Totaluri (formulele oficiale): R17 = total taxa colectata, R27 = total taxa deductibila.
   const sum = (rows, col) => rows.reduce((s, r) => s + (Number(A[r + col]) || 0), 0);
-  const RV = Object.values(D300_RAND_V).concat(Object.values(D300_RAND_SCUTITE));
-  const RC = Object.values(D300_RAND_C);
+  const AUTO_COL = Object.values(D300_RAND_AUTOLICH).map((r) => r.col);
+  const AUTO_DED = Object.values(D300_RAND_AUTOLICH).map((r) => r.ded);
+  const RV = Object.values(D300_RAND_V).concat(Object.values(D300_RAND_SCUTITE), AUTO_COL);
+  const RC = Object.values(D300_RAND_C).concat(AUTO_DED);
   A.R17_1 = sum(RV, '_1'); A.R17_2 = sum(RV, '_2');
   A.R27_1 = sum(RC, '_1'); A.R27_2 = sum(RC, '_2');
   // Sold: R28 = taxa dedusa (fara regularizari => R27); R32 = total dedus; apoi inchiderea
@@ -431,6 +448,9 @@ function d394Xml(company, period, vj, who, pf) {
     addOp(r.taxareInversa ? 'V' : 'L', 1, r.cota, cui, r.partener, r.baza, r.tva);
   }
   for (const r of vj.cumparari || []) {
+    // Achizitiile intracomunitare NU intra in D394 (raportare B2B interna): partenerul are CUI
+    // strain, iar declaratia le respinge („cuiP trebuie sa fie un CUI valid"). Ele merg in D390.
+    if (r.inD394 === false) continue;
     const cui = cuiDigits(r.cui); if (!cui) continue;
     addOp(r.taxareInversa ? 'C' : 'A', 1, r.cota, cui, r.partener, r.baza, r.tva);
   }
