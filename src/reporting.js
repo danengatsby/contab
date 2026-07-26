@@ -224,7 +224,7 @@ function d100micro(db, period, cota) {
   const y = String(period || '').slice(0, 4);
   const q0 = m ? m - ((m - 1) % 3) : 0;
   const luni = m ? [q0, q0 + 1, q0 + 2].map((x) => y + '-' + String(x).padStart(2, '0')) : [];
-  const lines = acc.allLines(acc.postedEntries(db).filter((e) => luni.includes(String(e.period || periodOf(e.data)))));
+  const lines = acc.resultLines(acc.postedEntries(db).filter((e) => luni.includes(String(e.period || periodOf(e.data)))));
   const r = acc.accumulate(lines);
   let venit = 0;
   for (const cod of Object.keys(r)) {
@@ -235,7 +235,7 @@ function d100micro(db, period, cota) {
   const rate = cota || fiscal.FISCAL.impozitMicro || 1;
   // Semnal de eligibilitate micro (art. 47 Cod fiscal): plafonul de venituri (EUR, configurabil)
   // si conditia de salariat. Doar AVERTIZEAZA — incadrarea finala ramane la contribuabil.
-  const rAn = acc.accumulate(acc.allLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
+  const rAn = acc.accumulate(acc.resultLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
   let venitAn = 0;
   for (const cod of Object.keys(rAn)) {
     const a = coa.getAccount(cod);
@@ -430,8 +430,10 @@ function registruFiscal(db, year, cota) {
   };
 }
 
+// Rulajul anului pentru rapoartele FISCALE (registrul de evidenta fiscala, Declaratia Unica):
+// fara inchiderile 6/7 -> 121, altfel dupa inchiderea anuala baza fiscala iese zero.
 function periodRulaj2(db, year) {
-  const lines = acc.allLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year))));
+  const lines = acc.resultLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year))));
   return acc.accumulate(lines);
 }
 
@@ -699,7 +701,7 @@ function monthlySeries(db, year) {
     if (!p || p.slice(0, 4) !== y) continue;
     const s = sums.get(Number(p.slice(5, 7)));
     if (!s) continue;
-    for (const l of acc.allLines([e])) {
+    for (const l of acc.resultLines([e])) { // fara inchiderile 6/7 -> 121: ar goli luna decembrie
       if (/^7/.test(l.credit)) s.ven = round2(s.ven + l.suma);
       if (/^7/.test(l.debit)) s.ven = round2(s.ven - l.suma);
       if (/^6/.test(l.debit)) s.chelt = round2(s.chelt + l.suma);

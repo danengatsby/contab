@@ -68,6 +68,37 @@ function beforePeriod(e, period) {
   return (e.period || periodOf(e.data)) < period;
 }
 
+/**
+ * Linia inchide un cont de rezultat in 121 (cheltuieli: 121 = 6xx; venituri: 7xx = 121)?
+ *
+ * Inchiderea NU e o operatiune economica — doar muta soldurile claselor 6/7 in rezultat — dar
+ * pe cont produce un rulaj egal si de sens opus celui din cursul anului. Deci orice agregare a
+ * claselor 6/7 pe an trebuie sa o EXCLUDA: altfel rulajele se anuleaza reciproc si, dupa
+ * inchiderea anuala, TOATE rapoartele de rezultat ies zero — impozitul pe profit, contul de
+ * profit si pierdere (F20), registrul fiscal, impozitul micro, Declaratia Unica.
+ *
+ * Regula e STRUCTURALA, nu dupa `tip`: prinde si nota contabila libera 121 = 6xx scrisa de mana,
+ * si linia 121 = 691 atasata impozitului pe profit cand anul era deja inchis.
+ *
+ * Exceptia deliberata e `annualClosing`, care se bazeaza pe anulare ca sa calculeze CE A MAI
+ * RAMAS de inchis — de aceea ramane pe `allLines` si o a doua rulare nu posteaza nimic.
+ */
+function isResultClosingLine(l) {
+  const clasa = (cod) => {
+    const a = coa.getAccount(cod);
+    return a ? a.clasa : Number(String(cod)[0]);
+  };
+  const d = String(l.debit); const c = String(l.credit);
+  if (d === '121') return clasa(c) === 6 || clasa(c) === 7;
+  if (c === '121') return clasa(d) === 6 || clasa(d) === 7;
+  return false;
+}
+
+/** Liniile articolelor, fara inchiderile de rezultat — vederea pentru orice agregare 6/7. */
+function resultLines(entries) {
+  return allLines(entries).filter((l) => !isResultClosingLine(l));
+}
+
 /** Acumuleaza miscarile {d,c} pe cont dintr-o lista de linii. */
 function accumulate(lines) {
   const m = {};
@@ -288,7 +319,7 @@ function profitTax(db, year, opts) {
   const deduceri = round2(Number(opts.deduceri) || 0);
   const pierdereReportata = round2(Number(opts.pierdereReportata) || 0);
   const yearEntries = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
-  const acc = accumulate(allLines(yearEntries));
+  const acc = accumulate(resultLines(yearEntries)); // fara inchiderile 6/7 -> 121 (vezi isResultClosingLine)
   let venit = 0; let chelt = 0;
   for (const cod of Object.keys(acc)) {
     const a = coa.getAccount(cod);
@@ -572,5 +603,5 @@ function cashControl(db, cont, period) {
 }
 
 module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
-  allLines, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
+  allLines, resultLines, isResultClosingLine, sortEntries, accumulate, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };
