@@ -241,6 +241,12 @@ function declarant(who) {
 // istorice (perioade vechi): 19->R69, 5->R71. Achizitii: 21->R22, 11->R23, 5->R24, 9->R74, 19->R75.
 const D300_RAND_V = { 21: 'R9', 11: 'R10', 9: 'R11', 19: 'R69', 5: 'R71' };
 const D300_RAND_C = { 21: 'R22', 11: 'R23', 5: 'R24', 9: 'R74', 19: 'R75' };
+// Livrarile FARA TVA au randuri proprii, doar cu baza (in schema exista doar Rn_1, nu si Rn_2):
+// R1 = livrari intracomunitare de bunuri scutite (art. 294 alin. (2)), R13 = livrari cu taxare
+// inversa la beneficiar (art. 331). Categoriile vin din acc.vatJournals().scutite.
+// Randurile de baza R1..R15 INTRA in totalul R17_1 — verificat cu validatorul oficial, care
+// respinge altfel: „regula R65: R17_1 = R17_1 calculat conform regulii".
+const D300_RAND_SCUTITE = { intracom: 'R1', taxareInversa: 'R13' };
 // Maparea rand->valoare (Rxx_1 = baza, Rxx_2 = TVA, in lei intregi) a decontului D300, din
 // pozitia TVA a perioadei (cotele de vanzare/cumparare). SURSA UNICA: folosita si la
 // serializarea XML (d300Xml), si la reconcilierea cu decontul precompletat e-TVA (etvaReconcile),
@@ -252,11 +258,19 @@ function d300Rows(d) {
     A[rand + '_1'] = (Number(A[rand + '_1']) || 0) + Math.round(baza || 0);
     A[rand + '_2'] = (Number(A[rand + '_2']) || 0) + Math.round(tva || 0);
   };
+  // Randurile scutite au DOAR baza in schema (nu exista Rn_2) — un R1_2="0" emis ar fi
+  // respins ca atribut necunoscut, deci se scrie strict `_1`.
+  const putBaza = (rand, baza) => {
+    if (!rand || !baza) return;
+    A[rand + '_1'] = (Number(A[rand + '_1']) || 0) + Math.round(baza);
+  };
   for (const c of d.coteV || []) put(D300_RAND_V[c.cota], c.baza, c.tva);
   for (const c of d.coteC || []) put(D300_RAND_C[c.cota], c.baza, c.tva);
+  for (const [cat, rand] of Object.entries(D300_RAND_SCUTITE)) putBaza(rand, (d.scutite || {})[cat]);
   // Totaluri (formulele oficiale): R17 = total taxa colectata, R27 = total taxa deductibila.
   const sum = (rows, col) => rows.reduce((s, r) => s + (Number(A[r + col]) || 0), 0);
-  const RV = Object.values(D300_RAND_V); const RC = Object.values(D300_RAND_C);
+  const RV = Object.values(D300_RAND_V).concat(Object.values(D300_RAND_SCUTITE));
+  const RC = Object.values(D300_RAND_C);
   A.R17_1 = sum(RV, '_1'); A.R17_2 = sum(RV, '_2');
   A.R27_1 = sum(RC, '_1'); A.R27_2 = sum(RC, '_2');
   // Sold: R28 = taxa dedusa (fara regularizari => R27); R32 = total dedus; apoi inchiderea

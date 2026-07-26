@@ -33,7 +33,9 @@ function d112(db, period) {
 /** Recap D300 — decont TVA (din jurnalele de TVA). */
 function d300(db, period) {
   const vj = acc.vatJournals(db, period);
-  return Object.assign({ period, coteV: vj.coteV, coteC: vj.coteC }, vj.totals);
+  // `vj.totals.scutite` (bazele fara TVA, pe categorie) intra in plic prin Object.assign —
+  // d300Rows le mapeaza pe randurile proprii (R1 intracomunitar, R13 taxare inversa).
+  return Object.assign({ period, coteV: vj.coteV, coteC: vj.coteC, scutiteRows: vj.scutite }, vj.totals);
 }
 
 // Cote de TVA acceptate (RO, curente + istorice recente): 21/11/9 curente, 19/5 istorice, 0 scutit.

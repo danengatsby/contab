@@ -360,6 +360,21 @@ function resultDistribution(db, year) {
   return { year: String(year), sold121: net, profit: net > 0 ? net : 0, pierdere: net < 0 ? round2(-net) : 0, lines };
 }
 
+/**
+ * Livrarile FARA TVA pe factura care intra totusi in decont, pe randul lor din D300.
+ *
+ * Cheia e TIPUL documentului, nu absenta TVA-ului. Regula „venit din clasa 7 fara 4427" ar
+ * prinde si diferentele de curs, reluarile de provizioane, subventiile, lucrarile in curs si
+ * sconturile — care nu sunt operatiuni de decont si i-ar umfla baza cu sume inventate.
+ *
+ * Nu intra in `vanzari`: acolo se uita d394Xml, iar D394 e raportarea B2B INTERNA — livrarile
+ * intracomunitare se declara in D390, nu in D394.
+ */
+const LIVRARI_SCUTITE = {
+  livrare_intracomunitara: 'intracom',              // scutita cu drept de deducere, art. 294 alin. (2)
+  taxare_inversa_interna_livrare: 'taxareInversa',  // taxare inversa interna, art. 331
+};
+
 /** Jurnalele de TVA (vanzari/cumparari) si sumarul pentru decontul D300. */
 function vatJournals(db, period) {
   const entries = sortEntries(postedEntries(db).filter((e) => inPeriod(e, period)));
@@ -369,7 +384,9 @@ function vatJournals(db, period) {
   };
   const vanzari = [];
   const cumparari = [];
+  const scutite = [];
   const tot = { bazaV: 0, colectata: 0, bazaC: 0, deductibila: 0 };
+  const totScutite = { intracom: 0, taxareInversa: 0 };
 
   for (const e of entries) {
     let col = 0; let ded = 0; let bazaV = 0; let reverseCharge = false;
@@ -408,6 +425,13 @@ function vatJournals(db, period) {
       tot.colectata = round2(tot.colectata + col);
       tot.bazaV = round2(tot.bazaV + bazaV);
     }
+    // Livrari scutite / cu taxare inversa la beneficiar: nu au TVA, deci nu ajung nici in
+    // `vanzari` (filtrat pe col !== 0), nici in `coteV` — dar au rand propriu in decont.
+    const catScutit = LIVRARI_SCUTITE[e.tip];
+    if (catScutit && col === 0 && bazaV !== 0) {
+      scutite.push({ cat: catScutit, data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '', baza: bazaV });
+      totScutite[catScutit] = round2(totScutite[catScutit] + bazaV);
+    }
   }
   const deplata = round2(Math.max(tot.colectata - tot.deductibila, 0));
   const derecuperat = round2(Math.max(tot.deductibila - tot.colectata, 0));
@@ -422,7 +446,7 @@ function vatJournals(db, period) {
     }
     return Object.values(m).sort((a, b) => b.cota - a.cota);
   };
-  return { period, vanzari, cumparari, coteV: byCota(vanzari), coteC: byCota(cumparari), totals: Object.assign(tot, { deplata, derecuperat }) };
+  return { period, vanzari, cumparari, scutite, coteV: byCota(vanzari), coteC: byCota(cumparari), totals: Object.assign(tot, { deplata, derecuperat, scutite: totScutite }) };
 }
 
 /** Jurnal de banca / casa pentru un cont de trezorerie, cu sold curent (running balance). */
