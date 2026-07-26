@@ -735,6 +735,50 @@ eq('profit in 121 (10000-7000)', rdP.profit, 3000);
 eq('o linie generata', rdP.lines.length, 1);
 eq('profit: 121 = 117', rdP.lines[0].debit + '=' + rdP.lines[0].credit, '121=117');
 eq('suma repartizata = profit', rdP.lines[0].suma, 3000);
+
+// Rezerva legala (art. 183 Legea 31/1990): 5% din profitul BRUT, pana cand rezerva atinge 20% din
+// capitalul social. Constituirea e OBLIGATORIE cat timp plafonul nu e atins. Pana acum era doar
+// AFISATA in notele explicative — nicio nota contabila nu o constituia, iar contul 129 (existent
+// in plan si mapat in bilant) nu era alimentat de nimic.
+const mkRez = (capital, brut, impozit, rezervaExist) => ({
+  // 1012, nu 101: contul sintetic nu exista in plan (capitalul social sta pe 1011/1012)
+  openingBalances: Object.assign({ 1012: { d: 0, c: capital }, 5121: { d: capital, c: 0 } },
+    rezervaExist ? { 1061: { d: 0, c: rezervaExist }, 117: { d: rezervaExist, c: 0 } } : {}),
+  entries: [
+    { id: 'rv', data: '2026-06-01', period: '2026-06', tip: 't', tipNume: 't', lines: [{ debit: '4111', credit: '704', suma: brut }] },
+    { id: 'ri', data: '2026-12-31', period: '2026-12', tip: 'impozit_profit', tipNume: 't', lines: [{ debit: '691', credit: '4411', suma: impozit }] },
+    { id: 'rz', data: '2026-12-31', period: '2026-12', tip: 'inchidere_an', tipNume: 't',
+      lines: [{ debit: '704', credit: '121', suma: brut }, { debit: '121', credit: '691', suma: impozit }] },
+  ],
+});
+const rezA = acc.resultDistribution(mkRez(200000, 10000, 1600, 0), '2026');
+eq('rezerva: baza e profitul BRUT (10000), nu cel net (8400)', rezA.rezervaInfo.profitBrut + '/' + rezA.sold121, '10000/8400');
+eq('rezerva: 5% din brut = 500', rezA.rezervaLegala, 500);
+eq('rezerva: constituire 129 = 1061', rezA.lines[0].debit + '=' + rezA.lines[0].credit + '/' + rezA.lines[0].suma, '129=1061/500');
+eq('rezerva: inchiderea contului de repartizare 121 = 129', rezA.lines[1].debit + '=' + rezA.lines[1].credit + '/' + rezA.lines[1].suma, '121=129/500');
+eq('rezerva: restul merge la reportat (8400 - 500)', rezA.lines[2].debit + '=' + rezA.lines[2].credit + '/' + rezA.lines[2].suma, '121=117/7900');
+eq('rezerva + reportat = profitul net de repartizat', Math.round((rezA.rezervaLegala + rezA.reportat) * 100) / 100, rezA.sold121);
+// plafonul de 20% din capitalul social taie rezerva
+const rezB = acc.resultDistribution(mkRez(200, 10000, 1600, 0), '2026');
+eq('plafon: 20% din capital social (200) limiteaza rezerva la 40', rezB.rezervaLegala + '/' + rezB.rezervaInfo.plafon, '40/40');
+// rezerva deja la plafon -> nu se mai constituie nimic
+const rezC = acc.resultDistribution(mkRez(10000, 10000, 1600, 2000), '2026');
+eq('rezerva deja la plafon (2000 = 20% din 10000) -> nu se mai constituie', rezC.rezervaLegala, 0);
+eq('la plafon atins ramane o singura linie, 121 = 117', rezC.lines.length + '/' + rezC.lines[0].credit, '1/117');
+// pierderea nu constituie rezerva
+const rezD = acc.resultDistribution(mkRez(200000, -5000, 0, 0), '2026');
+eq('pierdere: fara rezerva, doar reportarea 117 = 121', rezD.rezervaLegala + '/' + rezD.lines.length + '/' + rezD.lines[0].debit, '0/1/117');
+// contul 129 e de TRANZIT: dupa repartizare soldul lui e zero, iar balanta ramane echilibrata
+const dbRez = mkRez(200000, 10000, 1600, 0);
+dbRez.entries.push({ id: 'rp', data: '2026-12-31', period: '2026-12', tip: 'repartizare_rezultat', tipNume: 't', lines: rezA.lines });
+const tbRez = acc.trialBalance(dbRez, '2026');
+ok('dupa repartizare, contul 129 are sold zero (cont de tranzit)',
+  !(tbRez.rows.find((r) => r.cod === '129') || {}).sfD && !(tbRez.rows.find((r) => r.cod === '129') || {}).sfC);
+eq('rezerva ajunge in 1061', (tbRez.rows.find((r) => r.cod === '1061') || {}).sfC, 500);
+ok('balanta ramane echilibrata dupa constituirea rezervei', tbRez.balanced);
+// nota explicativa si nota contabila folosesc ACEEASI regula (bazele difera deliberat: nota
+// citeste din contul de profit si pierdere, deci merge si inainte de inchiderea anuala)
+eq('nota 3 si repartizarea dau aceeasi rezerva', rep.notes(dbRez, '2026').rezervaLegala, rezA.rezervaLegala);
 const lossDb = { entries: [
   { id: 'c1', period: '2026-12', data: '2026-12-31', lines: [{ debit: '707', credit: '121', suma: 5000 }] },
   { id: 'c2', period: '2026-12', data: '2026-12-31', lines: [{ debit: '121', credit: '607', suma: 8000 }] },

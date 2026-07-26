@@ -368,20 +368,71 @@ function profitTax(db, year, opts) {
 }
 
 /**
- * Repartizarea rezultatului la inceputul anului urmator (dupa aprobarea situatiilor financiare):
- * soldul contului 121 „Profit si pierdere" se transfera la 117 „Rezultatul reportat".
- *   profit (121 sold creditor):  121 = 117
- *   pierdere (121 sold debitor): 117 = 121
- * Calculat pe soldul CUMULAT al lui 121 la sfarsitul anului (dupa inchiderea conturilor 6/7).
+ * Soldul net cumulat, la finalul unui an, al conturilor care incep cu `prefix` (pozitiv = debitor),
+ * inclusiv soldurile de preluare.
+ *
+ * PREFIX, nu potrivire exacta: contul sintetic 101 NU exista in planul de conturi — capitalul
+ * social sta pe 1011/1012 — iar orice cont poate avea analitice. O cautare exacta pe '101' ar da
+ * mereu zero, deci rezerva legala nu s-ar constitui niciodata.
+ */
+function soldLaFinal(db, year, prefix) {
+  const upTo = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)) <= year + '-12');
+  const acc = accumulate(allLines(upTo));
+  const op = db.openingBalances || {};
+  let net = 0;
+  for (const cod of new Set([...Object.keys(op), ...Object.keys(acc)])) {
+    if (!String(cod).startsWith(prefix)) continue;
+    const o = op[cod] || { d: 0, c: 0 }; const a = acc[cod] || { d: 0, c: 0 };
+    net = round2(net + (o.d + a.d) - (o.c + a.c));
+  }
+  return net;
+}
+
+/**
+ * Rezerva legala de constituit pentru un an: **5% din profitul contabil BRUT** (inainte de
+ * impozit), pana cand rezerva atinge **20% din capitalul social** subscris si varsat.
+ * Art. 183 din Legea 31/1990 („se va prelua in fiecare an cel putin 5% ... pana ce acesta va
+ * atinge minimum a cincea parte din capitalul social") + art. 26 Cod fiscal pentru deductibilitate.
+ * Constituirea e OBLIGATORIE cat timp plafonul nu e atins — nu optionala.
+ *
+ * Baza e profitul BRUT, nu cel net: `profitTax().profitContabil` exclude deja 691/698, deci e
+ * exact rezultatul brut din contul de profit si pierdere (F20 `rezBrut`).
+ */
+function legalReserve(db, year) {
+  const brut = profitTax(db, year).profitContabil;
+  const capitalSocial = round2(-soldLaFinal(db, year, '101'));   // sold creditor -> pozitiv
+  const rezervaExist = round2(-soldLaFinal(db, year, '1061'));
+  const plafon = round2(Math.max(0, capitalSocial * 0.20 - rezervaExist));
+  const rezerva = brut > 0 ? round2(Math.min(round2(brut * 0.05), plafon)) : 0;
+  return { year: String(year), profitBrut: brut, capitalSocial, rezervaExistenta: rezervaExist, plafon, rezerva };
+}
+
+/**
+ * Repartizarea rezultatului la inceputul anului urmator (dupa aprobarea situatiilor financiare).
+ * Profitul NU trece direct in rezultat reportat: intai se constituie rezerva legala, prin contul
+ * de repartizare 129, apoi restul merge la 117.
+ *   rezerva:   129 = 1061  (constituirea)  si  121 = 129  (inchiderea contului de repartizare)
+ *   restul:    121 = 117
+ *   pierdere:  117 = 121
+ * Calculat pe soldul CUMULAT al lui 121 la sfarsitul anului (dupa inchiderea conturilor 6/7),
+ * deci pe profitul NET; rezerva se calculeaza insa pe cel BRUT (vezi legalReserve).
  */
 function resultDistribution(db, year) {
-  const upTo = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)) <= year + '-12');
-  const c121 = accumulate(allLines(upTo))['121'] || { d: 0, c: 0 };
-  const net = round2(c121.c - c121.d); // > 0 = profit (sold creditor)
+  const c121 = soldLaFinal(db, year, '121');
+  const net = round2(-c121); // > 0 = profit (sold creditor)
+  const rez = legalReserve(db, year);
+  // rezerva nu poate depasi profitul de repartizat (an cu impozit mare fata de profitul brut)
+  const rezerva = net > 0 ? round2(Math.min(rez.rezerva, net)) : 0;
+  const reportat = net > 0 ? round2(net - rezerva) : 0;
   const lines = [];
-  if (net > 0) lines.push({ debit: '121', credit: '117', suma: net, explicatie: 'Repartizarea profitului la rezultat reportat' });
+  if (rezerva > 0) {
+    lines.push({ debit: '129', credit: '1061', suma: rezerva, explicatie: 'Constituirea rezervei legale (5% din profitul brut, plafon 20% din capitalul social)' });
+    lines.push({ debit: '121', credit: '129', suma: rezerva, explicatie: 'Inchiderea contului de repartizare a profitului' });
+  }
+  if (reportat > 0) lines.push({ debit: '121', credit: '117', suma: reportat, explicatie: 'Repartizarea profitului la rezultat reportat' });
   else if (net < 0) lines.push({ debit: '117', credit: '121', suma: round2(-net), explicatie: 'Reportarea pierderii contabile' });
-  return { year: String(year), sold121: net, profit: net > 0 ? net : 0, pierdere: net < 0 ? round2(-net) : 0, lines };
+  return { year: String(year), sold121: net, profit: net > 0 ? net : 0, pierdere: net < 0 ? round2(-net) : 0,
+    rezervaLegala: rezerva, rezervaInfo: rez, reportat, lines };
 }
 
 /**
@@ -704,5 +755,5 @@ function cashControl(db, cont, period) {
 }
 
 module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
-  allLines, resultLines, isResultClosingLine, sortEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
+  allLines, resultLines, isResultClosingLine, sortEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, legalReserve, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };

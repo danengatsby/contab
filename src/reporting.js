@@ -497,10 +497,17 @@ function notes(db, year) {
 
   // ── NOTA 3 — repartizarea profitului
   const profit = f20.rezNet;
-  const capitalSocial = round2(-sumO(close, (c) => st(c, '101')));
-  const rezervaExist = round2(-sumO(close, (c) => st(c, '1061')));
-  const rezervaPlafon = round2(Math.max(0, capitalSocial * 0.20 - rezervaExist)); // pana la 20% din capital social
-  const rezervaLegala = profit > 0 ? round2(Math.min(f20.rezBrut * 0.05, rezervaPlafon)) : 0;
+  // REGULA rezervei legale (5% din brut, plafon 20% din capitalul social) vine dintr-o sursa
+  // unica — aceeasi care genereaza articolele contabile la repartizare. Inainte era rescrisa aici,
+  // iar repartizarea o ignora complet: nota anunta o rezerva pe care nicio nota contabila nu o
+  // constituia. BAZA ramane insa diferita, si e corect asa: nota descrie repartizarea PROPUSA a
+  // rezultatului din contul de profit si pierdere (se poate citi si inainte de inchiderea anuala),
+  // pe cand articolul repartizeaza soldul EFECTIV al lui 121 (exista doar dupa inchidere). Cand
+  // anul e inchis, cele doua coincid.
+  const rezInfo = acc.legalReserve(db, year);
+  const capitalSocial = rezInfo.capitalSocial;
+  const rezervaPlafon = rezInfo.plafon;
+  const rezervaLegala = profit > 0 ? round2(Math.min(rezInfo.rezerva, profit)) : 0;
   const reportat = profit > 0 ? round2(profit - rezervaLegala) : 0;
   const n3linii = profit > 0
     ? [{ k: 'Profit net de repartizat', v: profit }, { k: 'Rezerva legala (5% din profit brut, max 20% capital social)', v: rezervaLegala },
