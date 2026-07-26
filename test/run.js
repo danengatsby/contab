@@ -1735,6 +1735,38 @@ const ajF = gt2('ajustare_tva_bunuri_capital').build({ tvaDedusa: 10000, durata:
 eq('ajustare art. 305 in favoarea firmei: 4426=635 cu 5/20 din TVA', ajF[0].debit + '=' + ajF[0].credit + '|' + ajF[0].suma, '4426=635|2500');
 eq('regularizare pro-rata in favoarea firmei: 4426=635', gt2('regularizare_pro_rata').build({ suma: 42, sens: 'firma' })[0].debit + '=' + gt2('regularizare_pro_rata').build({ suma: 42, sens: 'firma' })[0].credit, '4426=635');
 
+// TVA partial deductibila (auto 50% art. 298, pro-rata art. 300): partea nededusa intra in linia
+// de COST, deci baza si cota facturii nu se mai pot citi din linii — raportul TVA-dedus/baza-din-
+// linii da 105/1105 = 10%, o cota care nu exista in nomenclatorul de randuri D300, si articolul
+// disparea TACIT din decont (plus un fals pozitiv „cota neconforma" la reconcilierea e-TVA).
+// `tvaPartial` (pus de composeEntry) pastreaza factura asa cum a fost emisa.
+const auto50Db = { openingBalances: {}, company: { cui: 'RO1', nume: 'X', perioadaTva: 'L' }, entries: [
+  { id: 'a50', data: '2026-06-05', period: '2026-06', tip: 'factura_combustibil', tipNume: 'Comb',
+    partener: 'OMV', partenerCui: 'RO123', document: 'BON1',
+    lines: [{ debit: '6022', credit: '401', suma: 1105 }, { debit: '4426', credit: '401', suma: 105 }],
+    tvaPartial: { baza: 1000, cota: 21, tvaFactura: 210, tvaDedusa: 105 } },
+] };
+const vjA50 = acc.vatJournals(auto50Db, '2026-06');
+const rA50 = vjA50.cumparari[0];
+eq('auto50: jurnalul arata baza REALA a facturii, nu baza umflata cu TVA-ul nededus', rA50.baza, 1000);
+eq('auto50: jurnalul arata TVA-ul de pe factura', rA50.tva, 210);
+eq('auto50: cota ramane cea a facturii (nu 10% fantoma)', rA50.cota, 21);
+eq('auto50: defalcarea deductibil / nedeductibil', rA50.tvaDedusa + '|' + rA50.tvaNedeductibila, '105|105');
+// In decont intra DOAR partea dedusa, cu baza ei proportionala: validatorul oficial cere
+// raportul baza/TVA egal cu cota (regula R84), iar `pro_rata` declarat nu il relaxeaza.
+eq('auto50: D300 primeste baza proportionala cu TVA-ul dedus', JSON.stringify(vjA50.coteC), '[{"cota":21,"baza":500,"tva":105}]');
+const aA50 = xml.d300Rows(rep.d300(auto50Db, '2026-06'));
+eq('auto50: randul NU mai dispare din D300 (R22 = achizitii 21%)', aA50.R22_1 + '/' + aA50.R22_2, '500/105');
+eq('auto50: raportul baza/TVA din decont da exact cota (regula R84)', Math.round((aA50.R22_2 / aA50.R22_1) * 100), 21);
+ok('auto50: reconcilierea e-TVA nu mai raporteaza fals „cota neconforma"',
+  !rep.tvaReconciliation(auto50Db, '2026-06').findings.some((f) => f.cod === 'tva-cota-neconforma'));
+// factura normala (fara tvaPartial) trece neschimbata prin acelasi cod
+const normalDb = { openingBalances: {}, company: { cui: 'RO1', nume: 'X' }, entries: [
+  { id: 'n1', data: '2026-06-06', period: '2026-06', tip: 'factura_cumparare_marfuri', tipNume: 'M', partenerCui: 'RO9',
+    lines: [{ debit: '371', credit: '401', suma: 1000 }, { debit: '4426', credit: '401', suma: 210 }] },
+] };
+eq('factura normala: baza si TVA neschimbate', JSON.stringify(acc.vatJournals(normalDb, '2026-06').coteC), '[{"cota":21,"baza":1000,"tva":210}]');
+
 section('Suma in litere (chitante)');
 const sil = require('../src/util').sumaInLitere;
 eq('zero', sil(0), 'zero lei');

@@ -857,6 +857,13 @@ async function main() {
       && prE.json.entry.lines.some((l) => l.debit === '605' && l.suma === 1126));
     const prH = (await req('GET', '/api/pro-rata?year=2026', { cookie: c1 })).json;
     ok('raport pro-rata: achizitia mixta numarata si regularizarea calculata', prH.nrMixte >= 1 && prH.dedusaProvizoriu >= 84 && typeof prH.definitiva === 'number');
+    // TVA-ul nededus a intrat in linia de cost, deci baza si cota facturii nu se mai pot citi din
+    // linii. composeEntry le memoreaza pe articol; fara ele, raportul TVA-dedus/baza-din-linii da
+    // o cota inexistenta si achizitia dispare TACIT din D300.
+    ok('pro-rata: factura reala memorata pe articol (baza 1000, cota 21, TVA 210, dedus 84)',
+      prE.json && prE.json.entry.tvaPartial
+      && prE.json.entry.tvaPartial.baza === 1000 && prE.json.entry.tvaPartial.cota === 21
+      && prE.json.entry.tvaPartial.tvaFactura === 210 && prE.json.entry.tvaPartial.tvaDedusa === 84);
     await req('POST', '/api/company', { cookie: c1, body: { proRataTva: '' } });
 
     // ── Diferentierea PFA vs SRL ──
