@@ -8,6 +8,7 @@ const fiscalProfile = require('./fiscalProfile'); // regimul firmei (micro/profi
 const stmt = require('./statements');
 const { reconcile } = require('./reconcile');
 const recurring = require('./recurring');
+const xml = require('./xml'); // doar pentru maparea cota->rand D300 (xml.js nu importa nimic din lant)
 
 /** Rulajele perioadei pe cont {cod:{d,c}}. */
 function periodRulaj(db, period) {
@@ -86,11 +87,19 @@ function tvaReconciliation(db, period) {
   if (netrimise.length) findings.push({ nivel: 'atentie', cod: 'efactura-netrimisa',
     mesaj: netrimise.length + ' factură/facturi emise cu TVA NEtrimise în SPV — ANAF le include în decontul precompletat; trimite-le ca D300 să se potrivească.' });
 
+  // 3) Cote care nu au rand in schema D300 v12 — sume care NU pot intra in decont. Tipic: achizitii
+  // la 9% (cota exista la livrari, dar v12 nu are rand de achizitii pentru ea) sau date vechi la
+  // 19%/5%. Inainte se emiteau pe randuri istorice si ANAF respingea toata declaratia.
+  const faraRand = xml.d300CoteFaraRand({ coteV: vj.coteV, coteC: vj.coteC });
+  if (faraRand.length) findings.push({ nivel: 'eroare', cod: 'tva-cota-fara-rand',
+    mesaj: faraRand.map((c) => `${c.sens} la ${c.cota}% (bază ${c.baza} lei, TVA ${c.tva} lei)`).join('; ')
+      + ' — cotă fără rând în schema D300 v12, suma NU intră în decont. Verifică încadrarea; declarația ar fi respinsă dacă am emite-o oricum.' });
+
   return {
     period,
     colectata: t.colectata, deductibila: t.deductibila, deplata: t.deplata, derecuperat: t.derecuperat,
     coteV: vj.coteV, coteC: vj.coteC,
-    coteAnormale, netrimise,
+    coteAnormale, netrimise, faraRand,
     findings,
     ok: findings.every((f) => f.nivel !== 'eroare'),
   };

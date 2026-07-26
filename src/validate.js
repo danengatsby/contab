@@ -42,6 +42,16 @@ function validateDeclaration(type, xml, ctx) {
   if (type === 'd205' && !attr(s, 'an') && !has(s, '<an')) errors.push('Lipseste anul din D205.');
   if (type === 'd101' && !attr(s, 'an')) errors.push('Lipseste anul din D101.');
 
+  // Cote fara rand in schema D300 v12 (tipic: achizitii la 9%, sau date vechi la 19%/5%). Suma nu
+  // are unde intra in decont, deci decontul ar fi INCOMPLET — eroare, nu avertisment. Emiterea pe
+  // un rand istoric ar fi si mai rau: ANAF respinge toata declaratia.
+  if (type === 'd300' && (ctx.coteFaraRand || []).length) {
+    for (const c of ctx.coteFaraRand) {
+      errors.push('Cota de ' + c.cota + '% (' + c.sens + ': baza ' + c.baza + ' lei, TVA ' + c.tva
+        + ' lei) nu are rand in schema D300 v12 — suma nu intra in decont. Verifica incadrarea inainte de depunere.');
+    }
+  }
+
   // continut gol -> avertisment (nu eroare)
   if (type === 'd390' && !has(s, '<operatiune ')) warnings.push('Nicio operatiune intracomunitara in perioada — declaratie goala.');
   if (type === 'd205' && !has(s, '<beneficiar ')) warnings.push('Niciun beneficiar cu retinere la sursa — declaratie goala.');

@@ -237,10 +237,27 @@ function declarant(who) {
  *  Forma e plata: toate valorile sunt atribute pe radacina, randurile decontului sunt Rn_1
  *  (baza) / Rn_2 (TVA), in LEI INTREGI (tip N(15) in XSD — nu zecimale). Maparea cota->rand
  *  si formulele de total urmeaza structura_D300_v12 + verificarile DUKIntegrator. */
-// Randurile pe cote (dupa 01.08.2025): livrari 21->R9, 11->R10, 9(art.III L141/2025)->R11;
-// istorice (perioade vechi): 19->R69, 5->R71. Achizitii: 21->R22, 11->R23, 5->R24, 9->R74, 19->R75.
-const D300_RAND_V = { 21: 'R9', 11: 'R10', 9: 'R11', 19: 'R69', 5: 'R71' };
-const D300_RAND_C = { 21: 'R22', 11: 'R23', 5: 'R24', 9: 'R74', 19: 'R75' };
+/*
+ * Randurile pe cote — DOAR cele pe care schema v12 le accepta. Inventar ridicat rand cu rand cu
+ * validatorul oficial (fiecare rand sondat izolat; cota o da regula de banda a validatorului,
+ * ex. „R51: 8% din abs(R11_1) <= abs(R11_2) <= 10%" => R11 = 9%):
+ *
+ *   livrari:   R9 = 21%, R10 = 11%, R11 = 9%          (permise)
+ *   achizitii: R22 = 21%, R23 = 11%                    (permise)
+ *   istorice:  R69 = 19% si R71 = 5% (livrari), R24 = 5%, R74 = 19%, R75 = 9% (achizitii)
+ *              — TOATE respinse de v12: „atributul nu trebuie sa exista aici".
+ *
+ * Cotele istorice erau mapate aici si emise, ceea ce facea decontul INVALID. Cel mai grav era 9%
+ * la ACHIZITII: e o cota curenta (art. III L141/2025 — la livrari exista R11), dar in v12 nu are
+ * rand de achizitii, iar codul o trimitea la R74 (care e de fapt 19%, nu 9% — erau si inversate).
+ * O singura factura de cumparare la 9% facea toata declaratia respinsa la depunere.
+ *
+ * Ce nu are rand NU se mai emite; suma nu se pierde tacit, ci iese prin `d300CoteFaraRand` si e
+ * raportata de reconcilierea TVA si de validarea pre-depunere. Perioadele vechi (cu 19%/5%) cer
+ * oricum schema v10, pe care generatorul nu o produce — namespace-ul v12 e fix.
+ */
+const D300_RAND_V = { 21: 'R9', 11: 'R10', 9: 'R11' };
+const D300_RAND_C = { 21: 'R22', 11: 'R23' };
 // Livrarile FARA TVA au randuri proprii, doar cu baza (in schema exista doar Rn_1, nu si Rn_2):
 // R1 = livrari intracomunitare de bunuri scutite (art. 294 alin. (2)), R13 = livrari cu taxare
 // inversa la beneficiar (art. 331). Categoriile vin din acc.vatJournals().scutite.
@@ -255,6 +272,19 @@ const D300_RAND_AUTOLICH = {
   intracomBunuri: { col: 'R5', ded: 'R18' },
   taxareInversaInterna: { col: 'R7', ded: 'R20' },
 };
+/**
+ * Cotele din perioada care NU au rand in schema D300 v12 — deci sume care nu pot fi declarate.
+ * Sursa unica pentru avertizare: o foloseste si reconcilierea TVA (panoul din aplicatie), si
+ * validarea pre-depunere. Fara ea, sumele ar disparea tacit din decont odata ce nu le mai emitem.
+ * @returns [{ sens:'livrari'|'achizitii', cota, baza, tva }]
+ */
+function d300CoteFaraRand(d) {
+  const out = [];
+  for (const c of d.coteV || []) if (c.cota && !D300_RAND_V[c.cota]) out.push({ sens: 'livrari', cota: c.cota, baza: c.baza, tva: c.tva });
+  for (const c of d.coteC || []) if (c.cota && !D300_RAND_C[c.cota]) out.push({ sens: 'achizitii', cota: c.cota, baza: c.baza, tva: c.tva });
+  return out;
+}
+
 // Maparea rand->valoare (Rxx_1 = baza, Rxx_2 = TVA, in lei intregi) a decontului D300, din
 // pozitia TVA a perioadei (cotele de vanzare/cumparare). SURSA UNICA: folosita si la
 // serializarea XML (d300Xml), si la reconcilierea cu decontul precompletat e-TVA (etvaReconcile),
@@ -904,5 +934,5 @@ ${rows}
 
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
-  umCode, d300Xml, d300Rows, d394Xml, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d300Rows, d300CoteFaraRand, d394Xml, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
 };
