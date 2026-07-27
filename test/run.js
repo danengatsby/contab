@@ -4022,5 +4022,55 @@ section('Docs API: rutele documentate exista in cod (fara drift)');
 }
 
 
+section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift)');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const root = pth.join(__dirname, '..');
+  const poarta = fsx.readFileSync(pth.join(root, 'scripts', 'poarta-fiscala.sh'), 'utf8');
+  const lista = (poarta.match(/CAI_FISCALE='([^']*)'/) || [, ''])[1].split('\n').map((s) => s.trim()).filter(Boolean);
+  ok('scripts/poarta-fiscala.sh declara un perimetru CAI_FISCALE', lista.length > 5);
+
+  // Poarta valideaza cu validatoarele OFICIALE ce produc generatoarele; daca apare un generator
+  // ANAF nou (alt XML de declaratie) si nu intra in perimetru, poarta nu se mai aplica la
+  // schimbarile lui — adica exact regresia pe care ar trebui s-o prinda trece nevazuta.
+  // Detectia e dupa SURSA (namespace ANAF in continut), nu dupa numele fisierului.
+  const NS_ANAF = /xmlns="mfp:anaf|Ro_SAFT_Schema/;
+  const generatoare = [];
+  const scan = (rel) => {
+    for (const f of fsx.readdirSync(pth.join(root, rel))) {
+      const p = pth.join(rel, f);
+      if (fsx.statSync(pth.join(root, p)).isDirectory()) { scan(p); continue; }
+      if (!f.endsWith('.js')) continue;
+      if (NS_ANAF.test(fsx.readFileSync(pth.join(root, p), 'utf8'))) generatoare.push(p);
+    }
+  };
+  scan('src');
+  ok('detectia gaseste generatoarele cunoscute (xml/saft/etransport)', generatoare.length >= 3);
+  const acoperit = (f) => lista.some((c) => f === c || f.startsWith(c));
+  const lipsa = generatoare.filter((f) => !acoperit(f));
+  ok('fiecare generator ANAF e in perimetrul portii' + (lipsa.length ? ' — LIPSA: ' + lipsa.join(', ') : ''), lipsa.length === 0);
+
+  // ...si caile declarate chiar exista (o cale scrisa gresit dezactiveaza tacit poarta pe ea)
+  const inexistente = lista.filter((c) => !fsx.existsSync(pth.join(root, c.replace(/\/$/, ''))));
+  ok('fiecare cale din perimetru exista pe disc' + (inexistente.length ? ' — INEXISTENTE: ' + inexistente.join(', ') : ''), inexistente.length === 0);
+
+  // poarta trebuie sa POATA pica: un generator inventat, in afara perimetrului, e detectat
+  ok('poarta detecteaza un generator din afara perimetrului', !acoperit('src/declaratieNoua.js'));
+
+  // Schema e-Transport e versionata in repo, ca poarta sa fie reproductibila oriunde (runnerul
+  // de CI e efemer — o variabila cu o CALE de pe server n-ar indica nimic acolo).
+  const dirSchema = pth.join(root, 'schemas', 'eTransport');
+  const xsdFiles = fsx.existsSync(dirSchema) ? fsx.readdirSync(dirSchema).filter((f) => f.endsWith('.xsd')) : [];
+  ok('schema e-Transport e versionata in repo (schemas/eTransport/*.xsd)', xsdFiles.length >= 1);
+  // O SINGURA versiune: scriptul ia cel mai recent *.xsd, deci doua fisiere ar schimba tacit
+  // fata de ce se valideaza (vezi schemas/eTransport/README.md).
+  ok('exact o versiune de schema in depozit (nu doua)' + (xsdFiles.length > 1 ? ' — ' + xsdFiles.join(', ') : ''), xsdFiles.length === 1);
+  if (xsdFiles.length === 1) {
+    const xsd = fsx.readFileSync(pth.join(dirSchema, xsdFiles[0]), 'utf8');
+    ok('schema declara namespace-ul eTransport v2', xsd.includes('targetNamespace="mfp:anaf:dgti:eTransport:declaratie:v2"'));
+    ok('schema are elementul <notificare> (structura pe care o genereaza codul)', /name="notificare"/.test(xsd));
+  }
+}
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

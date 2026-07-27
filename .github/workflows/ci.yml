@@ -90,14 +90,44 @@ jobs:
           CONTAB_SQL_READ_THRESHOLD: '0'
         run: node test/http.js
 
+  # ── POARTA FISCALA: conditie de RELEASE, pe FIECARE push/PR care atinge module fiscale ──
+  # Diviziunea muncii cu `validare-anaf` de mai jos:
+  #   poarta-fiscala : prinde REGRESIA PROPRIE, inainte de merge — ruleaza doar cand s-a atins
+  #                    ceva fiscal (perimetrul e in scripts/poarta-fiscala.sh, sursa unica).
+  #   validare-anaf  : prinde DRIFTUL DE SCHEMA ANAF — ruleaza periodic, si cand nimic nu s-a
+  #                    schimbat la noi (acolo se misca validatorul, nu codul).
+  # Poarta NU are portita: „n-am putut verifica" (ANAF picat, XSD nesetat) blocheaza la fel ca
+  # „invalid" — un gate care trece cand n-a verificat nimic e mai rau decat lipsa lui.
+  # Ca sa devina obligatorie la merge: Branch protection -> Required status checks -> poarta-fiscala.
+  poarta-fiscala:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # merge-base cu main: poarta compara fata de punctul comun
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: xmllint (validarea XSD e-Transport)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
+      - name: Cache DUKIntegrator
+        uses: actions/cache@v4
+        with:
+          path: /var/tmp/contab-duk
+          key: dukintegrator-dist-v1
+      - run: git fetch --no-tags origin main
+      # Schema e-Transport e VERSIONATA in repo (schemas/eTransport/*.xsd) — runnerul e o masina
+      # efemera, deci o variabila cu o CALE n-ar indica nimic aici. Vezi schemas/eTransport/README.md.
+      - name: Poarta fiscala (validatoare oficiale ANAF)
+        run: sh scripts/poarta-fiscala.sh origin/main
+
   # Validarea OFICIALA ANAF (DUKIntegrator) pe fisierele de referinta generate din seed.
-  # Ruleaza: saptamanal (drift de schema ANAF), manual, si cand se ating generatoarele/validarea.
-  # Nu blocheaza fiecare push (descarca validatoarele de pe static.anaf.ro + ruleaza Java prin Docker).
+  # Rol distinct fata de poarta: prinde driftul de schema ANAF, adica exact cazul in care codul
+  # nostru NU s-a schimbat (deci poarta nu se aplica), dar validatorul da.
   validare-anaf:
     runs-on: ubuntu-latest
-    # NU pe fiecare PR: o cadere temporara a static.anaf.ro nu trebuie sa blocheze PR-urile.
-    # Regresiile de generator le prinde suita de teste (asertii pe continutul XML); acest job
-    # adauga validarea OFICIALA — periodic (drift de schema), manual, si post-merge pe main.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     steps:
       - uses: actions/checkout@v4
@@ -106,11 +136,13 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: xmllint (validarea XSD e-Transport)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
       # cache pentru distributia DUKIntegrator (~36MB) — validatoarele se reimprospateaza singure
       - name: Cache DUKIntegrator
         uses: actions/cache@v4
         with:
           path: /var/tmp/contab-duk
           key: dukintegrator-dist-v1
-      - name: Genereaza + valideaza referintele cu validatorul oficial ANAF
+      - name: Genereaza + valideaza referintele cu validatoarele oficiale ANAF
         run: sh scripts/valideaza-referinte.sh

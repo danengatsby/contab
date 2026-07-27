@@ -8,7 +8,7 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-07-19
+## Ultima verificare: 2026-07-27
 
 Rulată pe datele exemplului integrat (`npm run seed` — S.C. EXEMPLU PROD S.R.L.), cu
 validatoarele curente din manifestul oficial ANAF (`versiuni.xml`).
@@ -23,6 +23,34 @@ validatoarele curente din manifestul oficial ANAF (`versiuni.xml`).
 | D101      | `d101:declaratie:v10`                       | J11.0.3        | ✅ Validare fără erori (profit, pierdere curentă, pierdere reportată, rezultat financiar, rotunjire) |
 | D205      | `d205:declaratie:v3`                        | J9.0.5         | ✅ Validare fără erori |
 | D406 (SAF-T) | `Ro_SAFT_Schema` v2.4.9 (`AuditFileVersion` 2.4.9) | J2.2.18 (16-Feb-2026) | ✅ Validare fără erori — variantele **L** (lunară), **T** (trimestrială), **A** (active), **C** (stocuri) |
+
+> **SAF-T nu cere o integrare separată.** ANAF publică validatorul SAF-T pe pagină proprie, dar
+> intrarea `<D406>` există în **același manifest** `versiuni.xml` (`J2.2.18`, `D406_35/D406Validator.jar`),
+> deci `scripts/valideaza-duk.sh D406` îl rezolvă pe aceeași cale ca restul declarațiilor. Toate cele
+> patru variante (L/T/A/C) trec validatorul oficial.
+
+### Unde stă schema e-Transport
+
+**Versionată în repo:** `schemas/eTransport/schema_ETR_v2_20230126.xsd` (versiune `1.02`,
+39.496 octeți). Poarta merge în orice clonă, fără nicio variabilă de mediu — verificat pe un
+export curat al repo-ului, cu depozitul de pe server mascat.
+
+Ordinea de căutare (`scripts/valideaza-etransport.sh`):
+
+1. `CONTAB_ETRANSPORT_XSD` — cale locală **sau URL** (`.xsd`/`.zip`, dezarhivat automat), pentru probe;
+2. `schemas/eTransport/*.xsd` — **locul normal**;
+3. `CONTAB_ETRANSPORT_SCHEMA_DIR` (implicit `/var/lib/contab/schemas`) — depozitul de pe server;
+4. altfel `NEVERIFICAT` → poarta **blochează**. Fără schemă nu există dovadă.
+
+> **Revenire pe o decizie anterioară.** Politica era „schema NU se ține în repo, s-ar învechi".
+> Valabilă pentru o schemă neversionată — dar runnerul de CI e o mașină efemeră, deci o variabilă
+> de repo care conține o *cale* (`/var/lib/contab/schemas/…`) nu indică nimic acolo, iar poarta ar
+> bloca fiecare PR fiscal pe `NEVERIFICAT`. Cu data în numele fișierului, jobul săptămânal
+> `validare-anaf` și jurnalul de aici, învechirea nu mai e tăcută. Motivarea completă și procedura
+> de înlocuire: `schemas/eTransport/README.md`.
+>
+> `/var/tmp` **nu** e depozit: `systemd-tmpfiles` îl curăță la 30 de zile
+> (`q /var/tmp 1777 root root 30d`) — o schemă acolo dispare fără urmă.
 
 > **D101 (adăugat 2026-07-21):** validatorul alege singur versiunea de schemă după **anul din `Data_S`**
 > (tabelul intern `_dateVersionTable` din `D101Validator`), nu după un atribut liber — un exercițiu
@@ -39,16 +67,55 @@ validatoarele curente din manifestul oficial ANAF (`versiuni.xml`).
 scripts/valideaza-duk.sh D300 fișier.xml     # 0 = valid, 1 = erori (afișate), 2 = tip greșit
 ```
 
-## Automatizare (CI)
+## Poarta fiscală — validarea oficială ca **condiție de release**
 
-Validarea oficială rulează și în **CI** (`.github/workflows/ci.yml`, jobul `validare-anaf`):
-generează toate ieșirile din seed (`scripts/genereaza-referinte.js`) și le trece prin
-DUKIntegrator (`scripts/valideaza-referinte.sh`) — **săptămânal** (prinde driftul de schemă
-când ANAF actualizează validatoarele), **manual** (`workflow_dispatch`) și **post-merge pe
-main**. Nu rulează pe fiecare PR: o cădere temporară a `static.anaf.ro` nu trebuie să
-blocheze PR-urile, iar regresiile de generator le prinde oricum suita de teste.
+Validarea oficială **blochează** orice schimbare care atinge un modul fiscal. Nu mai e o
+verificare periodică pe lângă flux, ci o precondiție de merge.
 
-Local: `sh scripts/valideaza-referinte.sh` (generează + validează toate; 0 = toate valide).
+```bash
+sh scripts/poarta-fiscala.sh                 # față de origin/main (implicit)
+sh scripts/poarta-fiscala.sh HEAD~1          # față de altă bază
+sh scripts/poarta-fiscala.sh --intotdeauna   # indiferent ce s-a schimbat
+```
+
+Poarta se aplică **doar când s-a atins ceva fiscal** — o schimbare de CSS nu așteaptă un
+container Java. Perimetrul e sursă unică, în `CAI_FISCALE` din `scripts/poarta-fiscala.sh`:
+generatoarele (`xml.js`, `saft.js`, `etransport.js`), regulile și cotele (`fiscal*.js`,
+`payroll.js`, `reporting.js`, `accounting.js`, `validate.js`), monografiile
+(`src/documentTypes/` — schimbă articolele contabile, deci și declarațiile), seed-ul
+(= datele de referință) și scripturile de generare/validare însele.
+
+**Trei rezultate, nu două** — distincția e miezul porții:
+
+| Rezultat | Ce înseamnă | Cod |
+|---|---|---|
+| `valid` | trece validatorul oficial | 0 — release permis |
+| `INVALID` | validatorul respinge fișierul → defect real în generator | 1 — **blocat** |
+| `NEVERIFICAT` | validarea n-a putut rula (ANAF picat, Docker/xmllint lipsă, XSD nesetat) | 2 — **blocat** |
+
+Poarta blochează și pe `NEVERIFICAT`, deliberat: „n-am putut verifica" nu e același lucru cu
+„e bine", iar un gate care trece când n-a verificat nimic e mai rău decât lipsa lui (dă
+încredere falsă exact acolo unde voiai o dovadă). Remediul e re-rularea, nu o portiță.
+
+### În CI
+
+Două joburi, cu roluri distincte (`.github/workflows/ci.yml`):
+
+| Job | Când | Ce prinde |
+|---|---|---|
+| `poarta-fiscala` | **fiecare push/PR** care atinge module fiscale | regresia proprie, **înainte** de merge |
+| `validare-anaf` | săptămânal, manual, post-merge pe main | driftul de schemă ANAF — cazul în care codul nostru *nu* s-a schimbat, dar validatorul da |
+
+Ca poarta să blocheze efectiv merge-ul pe GitHub, adaug-o în **Branch protection → Required
+status checks → `poarta-fiscala`**. Fișierul de workflow o rulează; obligativitatea e o
+setare de repo.
+
+Schema e-Transport nu se ține în repo (ANAF o actualizează; s-ar învechi) — CI o ia din
+variabila de repo `CONTAB_ETRANSPORT_XSD` (*Settings → Secrets and variables → Actions →
+Variables*). **Nesetată, poarta blochează** orice schimbare fiscală: e-Transport iese
+`NEVERIFICAT`.
+
+Local, fără detecția de cale: `sh scripts/valideaza-referinte.sh` (generează + validează tot).
 
 Validarea oficială se repetă **obligatoriu** la depunerea în SPV — acest jurnal atestă că
 fișierele generate trec validatorul, nu înlocuiește depunerea.

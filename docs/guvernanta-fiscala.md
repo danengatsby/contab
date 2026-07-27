@@ -27,9 +27,11 @@ Regula de aur: **nicio cotă hardcodată în afara acestui fișier.** (Convenți
    legislativă are aserțiuni cu valorile noi (ex. TVA 21/11, dividende 16% din 2026,
    salariul minim pe semestre). Suita (~1.200 aserțiuni de module) pică dacă o cotă
    veche a rămas undeva.
-3. Dacă schimbarea atinge o declarație, XML-ul se re-validează cu **validatorul oficial
-   ANAF**: `scripts/valideaza-duk.sh <TIP> <fisier>` (DUKIntegrator prin Docker) —
-   validatoarele se reîmprospătează automat din manifestul ANAF.
+3. **Poarta fiscală, obligatoriu înainte de merge:** `sh scripts/poarta-fiscala.sh` —
+   generează toate ieșirile din seed și le trece prin validatoarele **oficiale**
+   (DUKIntegrator pentru declarații + SAF-T, XSD pentru e-Transport). Se aplică automat
+   doar dacă s-a atins ceva fiscal. Blochează atât la „invalid", cât și la „n-am putut
+   verifica". Detalii: **docs/validare-oficiala.md**.
 4. Commit tematic cu actul normativ în mesaj → review → merge → deploy.
 
 Istoricul git al `fiscalConfig.js` este astfel **jurnalul versiunilor de reguli**:

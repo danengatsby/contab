@@ -15,6 +15,8 @@ const acc = require('../src/accounting');
 const rep = require('../src/reporting');
 const xml = require('../src/xml');
 const saft = require('../src/saft');
+const etransport = require('../src/etransport');
+const { getType } = require('../src/documentTypes');
 const { statePlata } = require('../src/payroll');
 
 const dir = process.argv[2] || path.join(require('os').tmpdir(), 'contab-referinte');
@@ -44,6 +46,21 @@ w('D406', saft.saftXml(v, '2026-06'));                                   // luna
 w('D406-T', saft.saftXml(Object.assign({}, v, { company: Object.assign({}, v.company, { perioadaTva: 'T' }) }), '2026-Q2')); // trimestrial (T)
 w('D406-A', saft.saftXml(v, '2026'));                                    // active (A)
 w('D406-C', saft.saftXml(v, '2026', 'C'));                               // stocuri (C)
+
+// RO e-Transport (cod UIT) — NU trece prin DUKIntegrator (schema lui e un XSD publicat separat);
+// referinta se valideaza cu scripts/valideaza-etransport.sh. Exemplul de seed n-are aviz de
+// insotire, deci construim unul minimal-realist: transport intern de marfa, pe rutier.
+const avizRef = {
+  id: 'et-ref', tip: 'aviz_livrare', tipNume: 'Aviz de insotire a marfii', data: '2026-06-20',
+  period: '2026-06', document: 'AVIZ 100', partener: 'CLIENT EXEMPLU SRL', partenerCui: 'RO87654321',
+  items: [{ nume: 'Cutii carton', cantitate: 100, um: 'buc', pret: 5, cota: 21 }],
+  lines: getType('aviz_livrare').build({ baza: 500, tva: 105 }),
+};
+w('eTransport', etransport.eTransportXml(v.company, avizRef, {
+  codScopOperatiune: '101', nrVehicul: 'B 100 XYZ', codTarifar: '48191000',
+  greutateNeta: 120, greutateBruta: 140,
+  final: { judet: 'Cluj', localitate: 'Cluj-Napoca', strada: 'Str. Fabricii', numar: '10' },
+}));
 
 const generate = fs.readdirSync(dir).filter((n) => n.endsWith('.xml'));
 console.log('Referinte generate in ' + dir + ':\n  ' + generate.join('\n  '));

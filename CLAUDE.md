@@ -21,7 +21,23 @@ node test/frontend.mjs        # doar logica pură din public/*.js (shim DOM, fă
 node test/anaf.js             # reziliență ANAF + poll SPV (async, stub-uri, fără apeluri reale)
 npm run seed                  # încarcă exemplul din ghid (S.C. EXEMPLU PROD S.R.L., 2026-06)
 npm run e2e                   # E2E pe live; pe acest server rulează prin Docker (vezi antetul scripts/e2e.mjs)
+sh scripts/poarta-fiscala.sh  # POARTA FISCALĂ — obligatorie înainte de merge dacă ai atins ceva fiscal
 ```
+
+**Poarta fiscală e condiție de release.** Orice schimbare care atinge un generator fiscal
+(`src/xml.js`, `saft.js`, `etransport.js`, `fiscal*.js`, `payroll.js`, `reporting.js`,
+`accounting.js`, `validate.js`, `seed.js`, `src/documentTypes/` — lista completă în
+`CAI_FISCALE` din script) trece prin **validatoarele oficiale ANAF** înainte de merge:
+DUKIntegrator pentru declarații + SAF-T (D406 e în același manifest, nu cere integrare
+separată), XSD pentru e-Transport. Poarta blochează la „INVALID" **și** la „NEVERIFICAT"
+(ANAF picat, Docker/xmllint lipsă, schemă e-Transport absentă) — „n-am putut verifica"
+nu e „e bine". `npm test` nu o înlocuiește: `wellFormed` verifică doar echilibrul etichetelor,
+nu ce acceptă ANAF. În CI: jobul `poarta-fiscala` (fiecare push/PR).
+
+Schema e-Transport e **versionată în repo** (`schemas/eTransport/*.xsd`, o singură versiune la un
+moment dat), ca poarta să meargă în orice clonă și în CI fără variabile — runnerul e efemer, deci
+o cale de pe server n-ar indica nimic acolo. Se poate suprascrie cu `CONTAB_ETRANSPORT_XSD` (cale
+sau URL) pentru probe. Procedura de înlocuire la o versiune nouă ANAF: `schemas/eTransport/README.md`.
 
 **Producția rulează pe `pg`, dar `npm test` rulează pe `sqlite`** — iar `test/store-pg.js` se sare
 tăcut fără `CONTAB_PG_URL`. Deci o suită verde local NU înseamnă că driverul de producție e
