@@ -32,6 +32,7 @@ const FIRMA_EDITABLE = new Set([
   'nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'tara',                       // identificare
   'tvaPlatitor', 'tvaLaIncasare', 'tipEntitate', 'proRataTva', 'caen', 'perioadaTva', 'capitalSocial', // profil fiscal
   'regimImpozit', 'd406Cadenta', 'intrastatObligat', 'scutiri',                     // motor profil fiscal (regim, cadenta D406, Intrastat, exceptii)
+  'autoPostDocumente',                                                              // postarea automata a documentelor citite (implicit oprita)
   'iban', 'banca', 'cont', 'telefon', 'email', 'numeComplet', 'autorizatie',        // banca / contact / reprezentant
   'accentColor', 'pdfLayout', 'pdfFooter', 'asociatiText',                          // prezentare facturi/PDF
 ]);
@@ -77,6 +78,7 @@ const DEFAULT_DB = {
   recipes: [],         // { id, firmaId, nume, productId, gestiuneId, cantitateBaza, costUnitar, materiale:[{productId, gestiuneId, cantitate}] } - retete/BOM productie
   budgets: [],         // { id, firmaId, an, cont, suma } - buget anual per cont (clasa 6/7)
   declarations: [],    // { id, firmaId, tip, period, status, generatedAt, submittedAt, recipisa, note } - registrul depunerilor
+  extractInterventions: [], // { id, firmaId, documentId, entryId, diff, controalePicate, partener, format } - corectiile operatorului peste extragere
   customAccounts: [],  // { cod, nume, clasa, tip } - conturi personalizate (import)
   settings: {
     useAI: true,
@@ -179,6 +181,7 @@ function migrate(d) {
   if (!Array.isArray(d.budgets)) d.budgets = [];
   if (!Array.isArray(d.recurringInvoices)) d.recurringInvoices = [];
   if (!Array.isArray(d.declarations)) d.declarations = [];
+  if (!Array.isArray(d.extractInterventions)) d.extractInterventions = [];
   if (!Array.isArray(d.customAccounts)) d.customAccounts = [];
   if (!Array.isArray(d.assets)) d.assets = [];
   if (!Array.isArray(d.angajati)) d.angajati = [];
