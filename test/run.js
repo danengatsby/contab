@@ -3961,6 +3961,144 @@ section('CSP: style-src FARA unsafe-inline (poarta zero)');
   ok('CSP: styleSrc nu mai contine unsafe-inline', !/styleSrc[^\]]*unsafe-inline/.test(fsx.readFileSync(pth.join(__dirname, '..', 'src', 'bootstrap.js'), 'utf8')));
 }
 
+section('Docs: documentatia nu contrazice configuratia reala (fara drift)');
+{
+  const fsd = require('fs'); const pd = require('path');
+  const root = pd.join(__dirname, '..');
+  const rd = (p) => fsd.readFileSync(pd.join(root, p), 'utf8');
+
+  // Documentele „vii" (descriu starea CURENTA a produsului) — acestea trebuie sa fie adevarate azi.
+  // ADR-urile (docs/scalare-crestere.md) si backlogul sunt INTENTIONAT istorice: consemneaza
+  // masuratori si decizii la data lor, deci nu intra in poarta de actualitate.
+  const DOCS_VII = ['docs/rulare.md', 'docs/api.md', 'docs/arhitectura.md', 'docs/flux-de-lucru.md',
+    'docs/documente-fiscal.md', 'docs/guvernanta-fiscala.md', 'docs/validare-oficiala.md',
+    'scripts/MONITORING.md', 'CLAUDE.md', 'README.md'];
+  const TOATE_DOCS = DOCS_VII.concat(['docs/scalare-crestere.md', 'docs/backlog-sprint.md', 'STRIPE-SETUP.md']);
+
+  // tot codul, o singura data (verificarea variabilelor de mediu cauta in el)
+  const codFisiere = [];
+  (function scan(dir) {
+    for (const f of fsd.readdirSync(dir)) {
+      if (['node_modules', '.git', 'data', 'logs'].includes(f)) continue;
+      const full = pd.join(dir, f);
+      if (fsd.statSync(full).isDirectory()) scan(full);
+      else if (/\.(js|mjs|sh|yml|json)$/.test(f)) codFisiere.push(full);
+    }
+  })(root);
+  const cod = codFisiere.map((f) => fsd.readFileSync(f, 'utf8')).join('\n');
+
+  // 1) Fiecare `npm run X` din documentatie exista in package.json
+  const scripturi = new Set(Object.keys(JSON.parse(rd('package.json')).scripts || {}));
+  const npmLipsa = [];
+  for (const doc of TOATE_DOCS) {
+    for (const m of rd(doc).matchAll(/npm run ([a-z0-9:-]+)/g)) if (!scripturi.has(m[1])) npmLipsa.push(doc + ': npm run ' + m[1]);
+  }
+  ok('fiecare `npm run` din documentatie exista in package.json' + (npmLipsa.length ? ' — ' + npmLipsa.join(', ') : ''), npmLipsa.length === 0);
+
+  // 2) Fiecare cale de fisier citata in documentatie exista. Prinde exact driftul de refactorizare:
+  //    `src/pdf.js` a devenit directorul `src/pdf/`, iar documentul a ramas in urma.
+  // Cateva cai sunt citate TOCMAI fiindca nu exista (si nu trebuie sa existe) — un contrafactual,
+  // nu o referinta. Lista e scurta si fiecare intrare isi poarta motivul; daca se lungeste, semnul
+  // e ca documentatia a inceput sa vorbeasca despre fisiere imaginare.
+  const CAI_INTENTIONAT_ABSENTE = new Map([
+    ['public/package.json', 'CLAUDE.md explica de ce NU exista: ar ajunge servit static clientilor'],
+  ]);
+  const caiLipsa = [];
+  for (const doc of TOATE_DOCS) {
+    for (const m of rd(doc).matchAll(/\b((?:src|scripts|test|docs|public)\/[\w./-]+\.(?:json|mjs|js|sh|md|html|css))\b/g)) {
+      if (CAI_INTENTIONAT_ABSENTE.has(m[1])) continue;
+      if (!fsd.existsSync(pd.join(root, m[1]))) caiLipsa.push(doc + ': ' + m[1]);
+    }
+  }
+  ok('fiecare fisier citat in documentatie exista' + (caiLipsa.length ? ' — ' + [...new Set(caiLipsa)].join(', ') : ''), caiLipsa.length === 0);
+
+  // 3) Fiecare variabila CONTAB_* documentata exista in cod (prinde knob-urile redenumite/scoase)
+  const envLipsa = [];
+  for (const doc of TOATE_DOCS) {
+    for (const m of rd(doc).matchAll(/\bCONTAB_[A-Z0-9_]+/g)) if (!cod.includes(m[0])) envLipsa.push(doc + ': ' + m[0]);
+  }
+  ok('fiecare variabila CONTAB_* documentata exista in cod' + (envLipsa.length ? ' — ' + [...new Set(envLipsa)].join(', ') : ''), envLipsa.length === 0);
+
+  // 4) Versiunile de Node din documente = matricea CI + minimul din `engines`.
+  //    „CI ruleaza pe Node 18 si 20" a supravietuit trecerii CI-ului pe 22/24 exact fiindca nimic
+  //    nu compara cele doua fisiere.
+  const ci = rd('.github/workflows/ci.yml');
+  const majoreCI = new Set([...ci.matchAll(/node-version:\s*\[?([^\]\n]+)\]?/g)]
+    .flatMap((m) => m[1].split(',').map((x) => x.replace(/['"\s]/g, '').split('.')[0]))
+    .filter((x) => /^\d+$/.test(x)));
+  const minEngine = String(JSON.parse(rd('package.json')).engines.node).replace(/[^\d.]/g, '').split('.')[0];
+  majoreCI.add(minEngine);
+  const nodeStrain = (text, permise) => [...text.matchAll(/Node[\s≥>=]*(\d{2})(?:\.\d+)?/g)]
+    .filter((m) => !permise.has(m[1])).map((m) => m[0].trim());
+  const nodeGresit = [];
+  for (const doc of DOCS_VII) for (const g of nodeStrain(rd(doc), majoreCI)) nodeGresit.push(doc + ': „' + g + '"');
+  ok('versiunile de Node din documente sunt cele din CI/engines (' + [...majoreCI].sort().join(', ') + ')'
+    + (nodeGresit.length ? ' — ' + [...new Set(nodeGresit)].join(', ') : ''), nodeGresit.length === 0);
+
+  // 4b) Mai ascutit: PROPOZITIA care vorbeste despre CI trebuie sa listeze EXACT matricea. Regula
+  //     de mai sus accepta si minimul din `engines`, deci ar lasa sa treaca „CI ruleaza pe Node 22"
+  //     cand matricea e 22+24. Aici comparam multimile.
+  const fraze = rd('docs/rulare.md').split(/\n\s*\n/).filter((f) => /\bCI\b/.test(f) && /Node/.test(f));
+  const cereriCI = [];
+  for (const f of fraze) {
+    const numere = new Set([...f.matchAll(/\b(\d{2})\b/g)].map((m) => m[1]).filter((n) => Number(n) >= 18 && Number(n) <= 40));
+    if (!numere.size) continue;
+    const lipsa = [...majoreCI].filter((v) => v !== minEngine && !numere.has(v));
+    const inPlus = [...numere].filter((v) => !majoreCI.has(v));
+    if (lipsa.length || inPlus.length) cereriCI.push('lipsesc: [' + lipsa.join(',') + '], in plus: [' + inPlus.join(',') + ']');
+  }
+  ok('fraza despre CI din docs/rulare.md listeaza exact matricea din ci.yml'
+    + (cereriCI.length ? ' — ' + cereriCI.join(' | ') : ''), cereriCI.length === 0);
+
+  // 5) Portul implicit din documente = cel din cod. Doua valori diferite in acelasi document
+  //    (3000 la pornire, 8080 la „deschide in browser") sunt semnul clasic de doc netestat.
+  const portReal = (rd('src/lifecycle.js').match(/process\.env\.PORT\s*\|\|\s*(\d+)/) || [])[1];
+  ok('portul implicit se poate citi din cod', !!portReal);
+  const portGresit = [];
+  for (const doc of TOATE_DOCS) {
+    // doar URL-urile APLICATIEI: `postgres://...@localhost:55432` e alt serviciu, nu o contrazicere
+    for (const m of rd(doc).matchAll(/https?:\/\/localhost:(\d{2,5})/g)) if (m[1] !== portReal) portGresit.push(doc + ': localhost:' + m[1]);
+  }
+  ok('adresele „localhost:PORT" din documente folosesc portul implicit real (' + portReal + ')'
+    + (portGresit.length ? ' — ' + [...new Set(portGresit)].join(', ') : ''), portGresit.length === 0);
+
+  // 6) docs/rulare.md nu are voie sa afirme NUMERE de verificari: se schimba la fiecare test nou,
+  //    deci ar drifta garantat. Numarul curent il spune `npm test`. (ADR-urile POT: acolo cifra e
+  //    o masuratoare datata, nu o descriere a prezentului — de aceea regula e doar pe acest fisier.)
+  const cifreTeste = [...rd('docs/rulare.md').matchAll(/[~\d][\d.,]*\s*(?:de\s+)?verific[ăa]ri/gi)].map((m) => m[0].trim());
+  ok('docs/rulare.md nu fixeaza numere de verificari (ar drifta la fiecare test nou)'
+    + (cifreTeste.length ? ' — ' + cifreTeste.join(', ') : ''), cifreTeste.length === 0);
+
+  // 7) Numele grupurilor din meniu (public/index.html) apar in ghidul de rulare. Verificarea e
+  //    COD -> DOC, deci prinde si redenumirea, si grupul nou nedocumentat. Exact driftul care a
+  //    trecut neobservat: documentul descria categorii („Operational", „Registre", „Nomenclatoare")
+  //    care nu mai existau in interfata de ani.
+  const html = rd('public/index.html');
+  const grupuri = [...html.matchAll(/class="navlabel"[^>]*>([^<]+)/g)]
+    .map((m) => m[1].replace(/\s+/g, ' ').trim()).filter(Boolean);
+  ok('meniul are grupuri de citit din index.html', grupuri.length >= 5);
+  const rulare = rd('docs/rulare.md');
+  const grupuriNedocumentate = grupuri.filter((g) => !rulare.includes(g));
+  ok('fiecare grup din meniu apare in docs/rulare.md'
+    + (grupuriNedocumentate.length ? ' — ' + grupuriNedocumentate.join(', ') : ''), grupuriNedocumentate.length === 0);
+
+  // Poarta trebuie sa POATA pica: verificam detectoarele pe intrari construite anume.
+  ok('detectorul de cai chiar prinde un fisier inexistent',
+    !fsd.existsSync(pd.join(root, 'src/nu-exista-acest-fisier.js')));
+  // allowlist-ul nu are voie sa acopere fisiere care AU aparut intre timp (altfel ar ascunde drift)
+  const allowlistInutil = [...CAI_INTENTIONAT_ABSENTE.keys()].filter((f) => fsd.existsSync(pd.join(root, f)));
+  ok('lista de cai „intentionat absente" nu contine fisiere care exista'
+    + (allowlistInutil.length ? ' — ' + allowlistInutil.join(', ') : ''), allowlistInutil.length === 0);
+  // Detectorul se verifica pe intrari construite, NU fixand matricea CI: daca maine se adauga
+  // legitim Node 20, poarta nu trebuie sa cada dintr-un test despre ea insasi.
+  ok('detectorul de Node prinde o versiune din afara matricei',
+    nodeStrain('rulează pe Node 18 și 20', majoreCI).length === 1);
+  ok('detectorul de Node accepta o versiune din matrice',
+    nodeStrain('cere Node ' + [...majoreCI][0], majoreCI).length === 0);
+  ok('detectorul de port compara cu valoarea din cod', portReal === '8080');
+  ok('detectorul de meniu ar prinde un grup redenumit', !rulare.includes('🧭 Grup Care Nu Exista'));
+}
+
 section('Docs API: rutele documentate exista in cod (fara drift)');
 {
   const fsx = require('fs'); const pth = require('path');
