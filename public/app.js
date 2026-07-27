@@ -13,6 +13,7 @@ import { pget, workMonth, setWorkMonth, lunaLabel, applyWorkMonth, onPeriodChang
 import { loadJournal, loadLedger, loadCashbook, loadBalance, loadVat, loadClosings, loadStatements, loadStorno } from './rapoarte.js';
 import { loadLivrabile, loadPortfolio, loadNotifications, loadReconcile, loadAnalytic, refreshNotifBadge } from './livrabile.js';
 import { loadAssets } from './mijloace.js';
+import { loadMonthlyClose, setInchidereDeps } from './inchidere.js';
 import { loadSalarizare } from './salarizare.js';
 import { loadStocks } from './stocuri.js';
 import { renderPlan, renderOpening } from './plan.js';
@@ -105,7 +106,7 @@ function onTab(t) {
   if (t === 'balanta') loadBalance();
   if (t === 'storno') loadStorno();
   if (t === 'tva') loadVat();
-  if (t === 'inchideri') loadClosings();
+  if (t === 'inchideri') { loadClosings(); loadMonthlyClose(); }
   if (t === 'situatii') loadStatements();
   if (t === 'livrabile') loadLivrabile();
   if (t === 'portofoliu') loadPortfolio();
@@ -317,6 +318,8 @@ function handleCheckoutReturn() {
 // ───────────────────────── DASHBOARD ─────────────────────────
 // KPI-uri, rezumat, buget, forecast, an-la-an si grafice traiesc in public/dashboard.js.
 setDashboardDeps({ goTab });
+// Cockpitul de inchidere lunara (public/inchidere.js) navigheaza catre pasul de rezolvat.
+setInchidereDeps({ goTab });
 
 // ───────────────────────── IMPORT EXTRAS BANCAR ─────────────────────────
 // Extras in public/bank.js. Ii injectam reimprospatarea de dupa import (functiile traiesc aici).

@@ -94,6 +94,12 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
 - **src/routes/*.js** — puncte de intrare subțiri: `register(app, ctx)`; parsează cererea, apelează
   serviciul, scriu auditul, traduc erorile. Tipar: `run(res, fn)` trimite JSON doar dacă `fn` nu a
   răspuns deja singur (export/PDF) și lasă erorile fără `status` să urce la handlerul global (500 + log).
+- **Închiderea lunară** (`src/monthlyClose.js` motor pur + `src/monthlyCloseService.js` scrieri +
+  `public/inchidere.js` cockpit, în capul tabului „Închideri de lună") — fluxul unic documente →
+  extras bancar → TVA → declarații → aprobare → blocare. **Starea fiecărui pas se DERIVĂ din date**,
+  nu se bifează: o bifă manuală ar rămâne adevărată după ce datele se schimbă. Se persistă
+  (colecția `closings`) doar ce nu se poate deduce: responsabil, termen, notă, dovada validării,
+  aprobarea, forțarea cu motiv. Închiderea peste pași deschiși = **admin + motiv scris**.
 - **Service layer** (`src/stocksService.js`, `src/firmeService.js`, `src/anafService.js`) — validare,
   reguli, scrieri, cu **autorizare dublată**: `reqFirma()` (firmă explicită și existentă — fără
   fallback pe `firmaActiva`; `db.scoped(fid)` cade acolo pe fid invalid = scurgere), `reqEntry()`

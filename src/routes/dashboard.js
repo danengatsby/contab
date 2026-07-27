@@ -18,12 +18,6 @@ const { reconcile, compensablePartners } = require('../reconcile');
 const { analyticBalance, aging } = require('../analytic');
 const { round2, period: periodOf } = require('../util');
 
-function shiftYM(ym, delta) {
-  const [y, m] = ym.split('-').map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-}
-
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit } = ctx;
 
@@ -124,27 +118,9 @@ module.exports = function register(app, ctx) {
     res.json(rep.cashForecast(S(req), templates, { months: Number(req.query.months) || 6, startPeriod: req.query.start || null }));
   });
 
-  // Documente lipsa: furnizori care apareau lunar dar nu au document in luna selectata
-  app.get('/api/missing-docs', (req, res) => {
-    const s = S(req);
-    const ym = /^\d{4}-\d{2}$/.test(req.query.period) ? req.query.period : new Date().toISOString().slice(0, 7);
-    const per = (e) => e.period || periodOf(e.data);
-    const purchases = (s.entries || []).filter((e) => /cumparare/.test(e.tip) && e.partener);
-    const prev = [1, 2, 3].map((k) => shiftYM(ym, -k));
-    const seen = {}; const lastSeen = {};
-    purchases.forEach((e) => {
-      const m = per(e);
-      if (!lastSeen[e.partener] || m > lastSeen[e.partener]) lastSeen[e.partener] = m;
-      if (prev.includes(m)) { (seen[e.partener] = seen[e.partener] || new Set()).add(m); }
-    });
-    const thisSet = new Set(purchases.filter((e) => per(e) === ym).map((e) => e.partener));
-    const missing = Object.keys(seen).filter((p) => seen[p].size >= 2 && !thisSet.has(p))
-      .map((p) => ({ partener: p, luniPrezent: seen[p].size, ultimaLuna: lastSeen[p] }))
-      .sort((a, b) => b.luniPrezent - a.luniPrezent);
-    const countThis = thisSet.size ? purchases.filter((e) => per(e) === ym).length : 0;
-    const avgPrev = Math.round((prev.reduce((acc, m) => acc + purchases.filter((e) => per(e) === m).length, 0) / 3) * 10) / 10;
-    res.json({ period: ym, countThis, avgPrev, missing });
-  });
+  // Documente lipsa: furnizori care apareau lunar dar nu au document in luna selectata.
+  // Regula traieste in rep.missingDocs — aceeasi folosita de pasul 1 al inchiderii lunare.
+  app.get('/api/missing-docs', (req, res) => res.json(rep.missingDocs(S(req), req.query.period)));
   app.get('/api/dashboard-charts', (req, res) => {
     const v = S(req);
     const year = req.query.year || rep.latestYear(v);

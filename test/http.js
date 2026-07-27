@@ -1024,6 +1024,71 @@ async function main() {
     const laMonth = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     await req('POST', '/api/period-lock', { cookie: laMonth.cookie, body: { lockedUntil: null } }); // deblochez pentru restul testelor
 
+    // ── INCHIDEREA LUNARA ca flux unic (cockpit): pasi derivati, alocare, dovada, aprobare, blocare ──
+    {
+      const PER = '2025-11'; // luna proprie, ca sa nu depinda de restul suitei
+      const mc = async (p) => (await req('GET', '/api/monthly-close?period=' + (p || PER), { cookie: c1 })).json;
+      const pas = (st, k) => st.steps.find((s) => s.key === k);
+
+      const st0 = await mc();
+      eq('flux: pasii vin in ordinea ceruta', st0.steps.map((s) => s.key).join('>'), 'documente>banca>tva>declaratii>aprobare>blocare');
+      ok('flux: fiecare pas are termen', st0.steps.every((s) => /^\d{4}-\d{2}-\d{2}$/.test(s.due)));
+      // primii patru pasi se rezolva pe alt ecran (au `tab`); aprobarea si blocarea, in cockpit
+      ok('flux: pasii care se rezolva in alta parte trimit acolo',
+        st0.steps.filter((s) => ['documente', 'banca', 'tva', 'declaratii'].includes(s.key)).every((s) => !!s.tab && !!s.eticheta)
+        && st0.steps.filter((s) => ['aprobare', 'blocare'].includes(s.key)).every((s) => !s.tab));
+      ok('flux: responsabilii posibili sunt conturile firmei', Array.isArray(st0.responsabili) && st0.responsabili.some((u) => u.username === 'user1'));
+      eq('flux: perioada invalida -> 400', (await req('GET', '/api/monthly-close?period=2025', { cookie: c1 })).status, 400);
+
+      // Alocare: responsabil (cont real) + termen + nota
+      const asig = await req('POST', '/api/monthly-close/step', { cookie: c1, body: { period: PER, step: 'documente', responsabilId: 2, due: '2025-12-05', nota: 'Cer facturile de la furnizori' } });
+      const pDoc = pas(asig.json, 'documente');
+      ok('alocare: responsabil + termen + nota salvate', pDoc.responsabil === 'user1' && pDoc.due === '2025-12-05' && pDoc.dueImplicit === false && /facturile/.test(pDoc.nota));
+      eq('alocare: responsabil fara acces la firma -> 400', (await req('POST', '/api/monthly-close/step', { cookie: c1, body: { period: PER, step: 'documente', responsabilId: 424242 } })).status, 400);
+      eq('alocare: pas necunoscut -> 400', (await req('POST', '/api/monthly-close/step', { cookie: c1, body: { period: PER, step: 'inexistent' } })).status, 400);
+      eq('alocare: termen malformat -> 400', (await req('POST', '/api/monthly-close/step', { cookie: c1, body: { period: PER, step: 'banca', due: '05-12-2025' } })).status, 400);
+      // termenul se poate goli -> revine la cel implicit (derivat din termenul real de depunere)
+      const golit = await req('POST', '/api/monthly-close/step', { cookie: c1, body: { period: PER, step: 'documente', due: '' } });
+      ok('alocare: termen golit -> revine la implicit', pas(golit.json, 'documente').dueImplicit === true);
+
+      // DOVADA VALIDARII: ruleaza generatorul real si pastreaza verdictul semnat
+      const val = await req('POST', '/api/monthly-close/validate', { cookie: c1, body: { period: PER, tip: 'd300' } });
+      ok('dovada: validarea ruleaza si intoarce verdict', val.status === 200 && typeof val.json.rezultat.ok === 'boolean');
+      const dovada = (pas(val.json.state, 'declaratii').detalii.declaratii || []).find((x) => x.tip === 'd300');
+      ok('dovada: ramane pe dosarul lunii, cu cine si cand', !!dovada && !!dovada.dovada && dovada.dovada.by === 2 && !!dovada.dovada.at);
+      eq('dovada: tip de declaratie necunoscut -> 400', (await req('POST', '/api/monthly-close/validate', { cookie: c1, body: { period: PER, tip: 'dXYZ' } })).status, 400);
+
+      // Aprobarea si inchiderea sunt REFUZATE cat timp exista pasi nerezolvati
+      const stDesc = await mc();
+      ok('flux: luna nu se poate inchide cu pasi deschisi', stDesc.sePoateInchide === false && stDesc.blocante.length > 0);
+      const apr = await req('POST', '/api/monthly-close/approve', { cookie: c1, body: { period: PER } });
+      ok('aprobare refuzata cu pasi deschisi (si spune care)', apr.status === 400 && /nerezolvați/i.test(apr.json.error));
+      const inch = await req('POST', '/api/monthly-close/close', { cookie: c1, body: { period: PER } });
+      ok('inchidere refuzata cu pasi deschisi', inch.status === 400 && /nu poate fi închisă/i.test(inch.json.error));
+
+      // FORTAREA: doar admin, doar cu motiv scris
+      const laF = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
+      // autorizarea se verifica INAINTEA continutului: un neadministrator primeste 403 chiar
+      // si cu motiv bun, iar adminul primeste 400 doar pentru motivul insuficient.
+      const f2 = await req('POST', '/api/monthly-close/close', { cookie: c1, body: { period: PER, force: true, motiv: 'Depuse manual pe portalul ANAF, recipisele sunt la dosar.' } });
+      ok('fortare de un NEadministrator -> 403', f2.status === 403);
+      const f1 = await req('POST', '/api/monthly-close/close', { cookie: laF.cookie, body: { period: PER, force: true, motiv: 'scurt' } });
+      ok('fortare de admin, dar fara motiv suficient -> 400', f1.status === 400 && /motiv scris/i.test(f1.json.error));
+      // pragul e exact 10 caractere (un „prea scurt" de fix 10 TRECE — verificat, ca sa nu
+      // ramana o granita presupusa): sub prag se refuza, la prag se accepta.
+      eq('fortare cu motiv de 9 caractere -> tot 400', (await req('POST', '/api/monthly-close/close', { cookie: laF.cookie, body: { period: PER, force: true, motiv: '123456789' } })).status, 400);
+      const f3 = await req('POST', '/api/monthly-close/close', { cookie: laF.cookie, body: { period: PER, force: true, motiv: 'Depuse manual pe portalul ANAF, recipisele sunt la dosar.' } });
+      ok('fortare de admin, cu motiv: reuseste si blocheaza perioada', f3.status === 200 && f3.json.fortata === true && f3.json.lockedUntil === PER);
+      ok('motivul fortarii ramane pe dosarul lunii, cu pasii nerezolvati de atunci',
+        /portalul ANAF/.test(f3.json.state.fortata.motiv) && f3.json.state.fortata.blocante.length > 0 && f3.json.state.fortata.username === 'admin');
+      ok('dupa fortare luna e finalizata si read-only', f3.json.state.finalizata === true && f3.json.state.inchisa === true);
+      eq('scrierea in luna inchisa e refuzata', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', fields: { data: PER + '-10', explicatie: 'dupa inchidere', debit: '5311', credit: '5121', suma: 10 } } })).status, 400);
+      eq('a doua inchidere a aceleiasi luni -> 400', (await req('POST', '/api/monthly-close/close', { cookie: laF.cookie, body: { period: PER } })).status, 400);
+      // auditul consemneaza fortarea distinct de o inchidere normala
+      ok('auditul consemneaza inchiderea FORTATA', (await req('GET', '/api/audit', { cookie: laF.cookie })).json.some((a) => a.action === 'inchidere.fortata' && /portalul ANAF/.test(a.detail || '')));
+      await req('POST', '/api/period-lock', { cookie: laF.cookie, body: { lockedUntil: null } }); // deblochez pentru restul suitei
+    }
+
     // ── Inchideri: ordinea impozit-profit vs inchidere anuala e irelevanta ──
     // pregatim un an cu profit: o vanzare de servicii + inregistrarea ei
     const vz = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2025-03-10', partener: 'X', cuiPartener: 'RO9', document: 'FS1', baza: 10000, tva: 2100, cota: 21 } } });

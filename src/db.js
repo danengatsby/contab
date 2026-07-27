@@ -77,6 +77,7 @@ const DEFAULT_DB = {
   recipes: [],         // { id, firmaId, nume, productId, gestiuneId, cantitateBaza, costUnitar, materiale:[{productId, gestiuneId, cantitate}] } - retete/BOM productie
   budgets: [],         // { id, firmaId, an, cont, suma } - buget anual per cont (clasa 6/7)
   declarations: [],    // { id, firmaId, tip, period, status, generatedAt, submittedAt, recipisa, note } - registrul depunerilor
+  closings: [],        // { id, firmaId, period, steps, validari, aprobare, fortata, closedAt } - dosarul inchiderii lunare
   customAccounts: [],  // { cod, nume, clasa, tip } - conturi personalizate (import)
   settings: {
     useAI: true,
@@ -186,6 +187,7 @@ function migrate(d) {
   if (!Array.isArray(d.budgets)) d.budgets = [];
   if (!Array.isArray(d.recurringInvoices)) d.recurringInvoices = [];
   if (!Array.isArray(d.declarations)) d.declarations = [];
+  if (!Array.isArray(d.closings)) d.closings = [];
   if (!Array.isArray(d.customAccounts)) d.customAccounts = [];
   if (!Array.isArray(d.assets)) d.assets = [];
   if (!Array.isArray(d.angajati)) d.angajati = [];
