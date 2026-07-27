@@ -4,6 +4,28 @@ const PDFParser = require('pdf2json');
 const { round2 } = require('./util');
 const fiscal = require('./fiscal');
 
+/**
+ * Octetii PDF-ului, garantat intr-un ArrayBuffer PROPRIU (byteOffset 0, exact lungimea lui).
+ *
+ * De ce: `fs.readFileSync` aloca din POOL-ul de Buffere pentru fisiere sub 4 KB
+ * (`Buffer.poolSize >>> 1`), deci intoarce o VEDERE intr-un ArrayBuffer de 8 KB partajat cu
+ * alte alocari — `byteOffset` != 0. pdf2json (pdf.js) citeste ArrayBuffer-ul SUBIACENT intreg,
+ * ignorand `byteOffset`/`length`: parseaza octeti straini si iese cu „Invalid XRef stream header".
+ * Iar `extractText` inghite eroarea prin proiectare (extragerea de text e calea de rezerva), deci
+ * defectul era TACUT — orice PDF incarcat sub 4 KB pur si simplu nu dadea text, fara niciun semn.
+ * Masurat: 3.344 si 3.403 octeti -> zero text; 4.742 octeti (peste prag, byteOffset 0) -> corect.
+ *
+ * Copiem doar cand e nevoie: peste prag Buffer-ul are deja ArrayBuffer propriu, deci zero cost.
+ */
+function ownBytes(buffer) {
+  if (!buffer || typeof buffer.byteLength !== 'number') return buffer;
+  const propriu = buffer.byteOffset === 0 && buffer.buffer && buffer.buffer.byteLength === buffer.byteLength;
+  if (propriu) return buffer;
+  const copie = new Uint8Array(buffer.byteLength);
+  copie.set(buffer);
+  return copie;
+}
+
 /** Extrage textul dintr-un PDF cu pdf2json (motor pdf.js mentinut) - reconstruieste randurile
  *  dupa pozitie (grupare pe y, ordonare pe x), ce tine eticheta si valoarea pe acelasi rand
  *  (util pentru euristicile de mai jos). Consolidat pe pdf2json, cu pdf-parse (nementinut) scos:
@@ -31,7 +53,7 @@ function extractText(buffer) {
       const txt = out.join('\n');
       resolve(txt.trim() ? txt : '');
     });
-    try { p.parseBuffer(buffer); } catch (_) { resolve(''); }
+    try { p.parseBuffer(ownBytes(buffer)); } catch (_) { resolve(''); }
   });
 }
 
@@ -211,4 +233,4 @@ async function extractFromPdf(buffer, ownCui) {
   return extractFromText(text, ownCui);
 }
 
-module.exports = { extractFromPdf, extractFromText, extractText, parseRoNumber };
+module.exports = { extractFromPdf, extractFromText, extractText, parseRoNumber, ownBytes };
