@@ -32,14 +32,43 @@ test-postgres
 audit'
 
 command -v gh >/dev/null 2>&1 || { echo "gh nu e instalat." >&2; exit 2; }
-if ! gh auth status >/dev/null 2>&1; then
+
+# Token dintr-un FISIER, ca alternativa NEinteractiva la `gh auth login` (care cere terminal).
+# Secretul nu trece prin linia de comanda (ar ramane in istoricul shellului si in `ps`).
+if [ "${1:-}" = "--token-file" ]; then
+  [ -f "${2:-}" ] || { echo "Fisier de token inexistent: ${2:-(lipsa)}" >&2; exit 2; }
+  GH_TOKEN=$(tr -d ' \t\r\n' < "$2"); export GH_TOKEN
+  [ -n "$GH_TOKEN" ] || { echo "Fisierul de token e gol: $2" >&2; exit 2; }
+  shift 2
+fi
+
+# `gh auth status` iese cu 0 chiar si cand tokenul din GH_TOKEN e INVALID (spune „invalid" in
+# text, dar nu in codul de iesire) — deci nu e o garda. Verificam ce ne trebuie de fapt: ca putem
+# citi repo-ul SI ca avem drept de ADMIN pe el (fara admin, PUT-ul de protectie da 403).
+if ! gh auth status >/dev/null 2>&1 || ! gh api "repos/$REPO" --jq '.permissions.admin' >/dev/null 2>&1; then
   cat >&2 <<MSG
 gh nu e autentificat — protectia ramurii cere un token cu drepturi de ADMIN pe repo.
-(Cheia SSH cu care se face push autentifica git, nu API-ul REST.)
+(Cheia SSH cu care se face push autentifica git, NU API-ul REST.)
 
-  gh auth login            # o singura data, apoi reia comanda asta
+Doua cai:
+  1) interactiv, in terminalul tau:
+       gh auth login            # o singura data, apoi reia comanda asta
+
+  2) NEinteractiv, cu un token intr-un fisier (util cand comanda o ruleaza altcineva/ceva):
+       # token fin, doar pe acest repo, permisiunea „Administration: Read and write"
+       # https://github.com/settings/personal-access-tokens/new
+       umask 077; printf '%s' 'github_pat_...' > ~/.gh-token
+       sh scripts/protectie-ramura.sh --token-file ~/.gh-token
+       shred -u ~/.gh-token     # sterge-l dupa
 
 MSG
+  exit 2
+fi
+
+admin=$(gh api "repos/$REPO" --jq '.permissions.admin' 2>/dev/null || echo false)
+if [ "$admin" != "true" ]; then
+  echo "Tokenul e valid, dar NU are drepturi de admin pe $REPO — protectia ramurii cere" >&2
+  echo "permisiunea „Administration: Read and write\" (token fin) sau scope-ul `repo` (token clasic)." >&2
   exit 2
 fi
 
