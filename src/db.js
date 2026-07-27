@@ -541,8 +541,16 @@ const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 // Peste un prag de articole/firma, agregarile grele (ex. balanta) se pot calcula direct in SQL prin
 // proiectia entry_lines, in loc de a itera graful din RAM. Gate pe prag REAL: sub prag, RAM e mai
 // simplu si mai rapid. Driverul json (fara SQL) cade mereu pe RAM. Rezultatul e IDENTIC (dovedit in teste).
+//
+// PRAGUL A FOST RIDICAT 20.000 -> 100.000 (2026-07-27), pe masuratoare, nu pe intuitie: la 22.000 de
+// articole pe pg (si 27.350 pe sqlite) calea SQL e mai LENTA decat RAM pe FIECARE ruta gate-uita
+// (jurnal 3,9x, cartea mare 2,9x, fisa de cont 1,6x, balanta 1,2x — docs/scalare-crestere.md).
+// Pragul vechi comuta pe calea mai lenta exact in clipa in care se activa. Codul SQL ramane: scopul
+// lui declarat e SEAM-ul catre hidratarea lazy (reducerea RAM-ului), nu viteza; pragul spune doar
+// „pe ce criteriu se activeaza". 100.000 e un prag deliberat NEMASURAT (punctul unde SQL ar castiga
+// e necunoscut) — pana la o masuratoare acolo, calea implicita e cea dovedit mai rapida.
 const SQL_READ_THRESHOLD = Number.isFinite(Number(process.env.CONTAB_SQL_READ_THRESHOLD)) && process.env.CONTAB_SQL_READ_THRESHOLD !== ''
-  ? Number(process.env.CONTAB_SQL_READ_THRESHOLD) : 20000; // 0 e valid (forteaza SQL); gol/absent -> 20000
+  ? Number(process.env.CONTAB_SQL_READ_THRESHOLD) : 100000; // 0 e valid (forteaza SQL); gol/absent -> 100000
 
 /** Driverul suporta citiri SQL din proiectii (pg/sqlite au linesTurnover; json nu)? */
 function canSqlRead() { return !!(store && typeof store.linesTurnover === 'function'); }
