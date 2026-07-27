@@ -67,17 +67,28 @@ function run(bin, args, timeoutMs) {
   };
 }
 
-/** Extrage o intrare din arhiva intr-un fisier temporar. Intoarce calea sau null. */
+/**
+ * Extrage o intrare din arhiva intr-un fisier temporar.
+ * @returns { path } | { absent: true } | { eroare: '<motiv>' }
+ *
+ * Cele trei rezultate TREBUIE separate. Varianta care intorcea `null` pentru toate le confunda:
+ * o arhiva ilizibila (sau `adm-zip` care nu se incarca — s-a intamplat, rulare dintr-un checkout
+ * fara node_modules) era raportata drept „arhiva nu contine contab.sql", adica „nu se aplica",
+ * adica TACERE. Exact eroarea pe care restul modulului o evita cu grija.
+ */
 function extractEntry(zipPath, entryName, destDir) {
+  let zip;
   try {
     const AdmZip = require('adm-zip');
-    const zip = new AdmZip(zipPath);
+    zip = new AdmZip(zipPath);
+  } catch (e) { return { eroare: 'arhiva nu s-a putut deschide: ' + String(e.message || e).slice(0, 200) }; }
+  try {
     const e = zip.getEntry(entryName);
-    if (!e || !e.header.size) return null;
+    if (!e || !e.header.size) return { absent: true };
     const dest = path.join(destDir, entryName);
     fs.writeFileSync(dest, zip.readFile(e));
-    return dest;
-  } catch (_) { return null; }
+    return { path: dest };
+  } catch (e) { return { eroare: 'intrarea „' + entryName + '" nu s-a putut extrage: ' + String(e.message || e).slice(0, 200) }; }
 }
 
 /** Graful din arhiva (db.json), pentru comparatia de echivalenta. Null daca lipseste. */
@@ -98,7 +109,13 @@ function graphFromArchive(zipPath) {
  */
 async function graphFromDb(connString, dbname) {
   const { Client } = require('pg');
-  const client = connString ? new Client({ connectionString: connString }) : new Client({ database: dbname });
+  // Fara URL explicit folosim EXACT aceeasi conventie ca storePg.open(): socketul local
+  // (/var/run/postgresql, autentificare peer). Altfel `pg` cade pe TCP catre localhost si cere
+  // parola — psql reusea prin socket, iar verificarea de dupa el pica cu „client password must
+  // be a string", adica drill-ul raporta esec desi restaurarea mersese.
+  const client = connString
+    ? new Client({ connectionString: connString })
+    : new Client({ host: process.env.PGHOST || '/var/run/postgresql', database: dbname });
   await client.connect();
   try {
     const d = { firme: [], entries: [], openingBalances: {}, partners: {} };
@@ -154,8 +171,10 @@ async function runPgDrill(opts) {
   // PRIMA intrebare: exista un dump nativ de verificat? Daca NU, drill-ul chiar nu se aplica
   // (instalare pe sqlite) si tacerea e corecta. Daca DA, orice ne impiedica sa-l rejucam devine
   // un rezultat NEGATIV, nu o sarire tacuta — vezi `neverificabil` mai jos.
-  const sqlPath = extractEntry(zipPath, 'contab.sql', tmpDir);
-  if (!sqlPath) { cleanupDir(); return Object.assign(out, { sarit: true, motiv: 'arhiva nu contine contab.sql (dump nativ) — instalarea nu e pe PostgreSQL' }); }
+  const ex = extractEntry(zipPath, 'contab.sql', tmpDir);
+  if (ex.eroare) { cleanupDir(); return Object.assign(out, { neverificabil: true, motiv: ex.eroare }); }
+  if (ex.absent) { cleanupDir(); return Object.assign(out, { sarit: true, motiv: 'arhiva nu contine contab.sql (dump nativ) — instalarea nu e pe PostgreSQL' }); }
+  const sqlPath = ex.path;
 
   // De aici incolo EXISTA un dump care ar trebui sa fie restaurabil. Daca nu putem verifica —
   // psql lipsa, fara drept de a crea baza temporara — asta NU e „nu se aplica", ci „calea de
