@@ -4395,6 +4395,46 @@ section('Paginare + garda OOM (src/paginate.js sendList)');
   ok('harta lipsa nu arunca', r.body && Object.keys(r.body).length === 0);
 }
 
+section('CSRF: token sincronizator + allowlist de origine (src/csrf.js)');
+{
+  const csrf = require('../src/csrf');
+  const SEC = 'secret-de-test';
+  const tok = csrf.tokenFor('sess-1', SEC);
+  ok('token derivat, nu stocat: acelasi de fiecare data', tok === csrf.tokenFor('sess-1', SEC) && tok.length === 32);
+  ok('alta sesiune -> alt token', csrf.tokenFor('sess-2', SEC) !== tok);
+  ok('alt secret -> alt token (rotirea secretului invalideaza)', csrf.tokenFor('sess-1', 'alt') !== tok);
+  eq('fara sesiune nu emitem token slab', csrf.tokenFor('', SEC), '');
+  eq('fara secret nu emitem token slab', csrf.tokenFor('s', ''), '');
+
+  const ok200 = (h, sess) => csrf.check({ headers: h, sessId: sess, secret: SEC }).ok;
+  // 1. origine straina: respinsa CHIAR SI cu token valid — allowlist inainte de token
+  const strain = csrf.check({ headers: { host: 'a.ro', origin: 'https://rau.example', 'x-csrf-token': tok }, sessId: 'sess-1', secret: SEC });
+  ok('origine straina respinsa chiar cu token valid', !strain.ok && strain.reason === 'origin');
+  ok('Referer strain e tratat la fel ca Origin',
+    !csrf.check({ headers: { host: 'a.ro', referer: 'https://rau.example/p' }, sessId: 'sess-1', secret: SEC }).ok);
+  // 2. LIPSA antetului nu mai e portita: cu sesiune, token-ul e obligatoriu
+  ok('fara Origin si FARA token, dar cu sesiune -> respins', !ok200({ host: 'a.ro' }, 'sess-1'));
+  const fp = csrf.check({ headers: { host: 'a.ro' }, sessId: 'sess-1', secret: SEC });
+  eq('...motivul e „token", nu „origin"', fp.reason, 'token');
+  ok('fara Origin dar CU token propriu -> acceptat', ok200({ host: 'a.ro', 'x-csrf-token': tok }, 'sess-1'));
+  ok('token al altei sesiuni -> respins', !ok200({ host: 'a.ro', 'x-csrf-token': csrf.tokenFor('sess-2', SEC) }, 'sess-1'));
+  // 3. fara sesiune nu exista credentiale ambientale de calarit
+  ok('fara sesiune, fara token -> acceptat (login/inregistrare/webhook)', ok200({ host: 'a.ro' }, null));
+  ok('origine proprie + sesiune + token -> acceptat', ok200({ host: 'a.ro', origin: 'https://a.ro', 'x-csrf-token': tok }, 'sess-1'));
+
+  // allowlist configurabila (proxy / alt domeniu al aplicatiei)
+  ok('gazda din CONTAB_CSRF_ORIGINS e acceptata',
+    csrf.check({ headers: { host: 'intern:8080', origin: 'https://app.exemplu.ro', 'x-csrf-token': tok }, sessId: 'sess-1', secret: SEC, extraOrigins: 'https://app.exemplu.ro' }).ok);
+  ok('...si numai ea (alta ramane straina)',
+    !csrf.check({ headers: { host: 'intern:8080', origin: 'https://alta.ro' }, sessId: 'sess-1', secret: SEC, extraOrigins: 'https://app.exemplu.ro' }).ok);
+  ok('allowedHosts normalizeaza si o gazda fara schema', csrf.allowedHosts('a.ro', 'b.ro').has('b.ro'));
+  eq('sourceHost intoarce null cand antetul lipseste', csrf.sourceHost({}), null);
+  eq('sourceHost intoarce null pe URL nevalid', csrf.sourceHost({ origin: 'nu-e-url' }), null);
+  // comparatie in timp constant: lungimi diferite nu arunca
+  ok('comparatia nu arunca pe lungimi diferite', csrf.safeEqual('abc', 'abcd') === false);
+  ok('comparatia respinge sirul gol', csrf.safeEqual('', '') === false);
+}
+
 section('Poarta: fiecare ruta care intoarce o colectie trece prin sendList/sendMap');
 {
   const fsx = require('fs'); const pth = require('path');

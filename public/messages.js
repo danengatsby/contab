@@ -2,7 +2,7 @@
 // Modul de mesagerie (suport user <-> admin): firul de chat, inbox-ul de admin, cautare,
 // arhivare, atasamente, notificari (badge/titlu/sunet), indicator „scrie acum" si polling
 // aproape in timp real. Extras din app.js (Etapa 1 a modularizarii). Depinde doar de nucleu.
-import { $, $$, api, toast, USER, escMsg, escAttr } from './core.js';
+import { $, $$, api, toast, USER, escMsg, escAttr, withCsrf } from './core.js';
 
 function fmtMsgTime(iso) {
   try { return new Date(iso).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
@@ -252,7 +252,9 @@ function pingTyping() {
   if (isAdminView() && !MSG_ADMIN_TARGET) return;
   const now = Date.now(); if (now - lastTypingPing < 2500) return; lastTypingPing = now;
   const body = isAdminView() ? JSON.stringify({ userId: MSG_ADMIN_TARGET }) : '{}';
-  fetch('/api/messages/typing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
+  // fetch DIRECT (fara api(): e o cerere de fundal care nu trebuie sa aprinda bara de incarcare)
+  // — dar tot mutanta, deci trece prin withCsrf ca sa poarte antetul X-CSRF-Token.
+  fetch('/api/messages/typing', withCsrf({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body })).catch(() => {});
 }
 
 // Exportate pentru testele unitare de frontend (randarea firului de chat, escapare): test/frontend.mjs

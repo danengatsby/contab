@@ -189,20 +189,33 @@ function applySecurityGuards(app, ctx) {
   const uploadGuard = require('./uploadGuard');
   const { currentUser } = require('./session');
 
-  // ── CSRF (aparare in adancime peste SameSite=Lax): cererile MUTANTE catre API trebuie sa
-  // vina din propria origine. Browserele trimit Origin pe POST; LIPSA antetului e permisa
-  // (curl, teste, integrari server-to-server — CSRF cu cookie presupune un browser, iar acela
-  // trimite antetul). Webhook-ul Stripe e exceptat: vine extern si e autentificat prin
-  // semnatura, nu prin cookie. Rollback: CONTAB_CSRF=0.
-  const CSRF_OFF = process.env.CONTAB_CSRF === '0';
+  // ── CSRF: token sincronizator + allowlist de origine (aparare in adancime peste SameSite=Lax).
+  // Garda veche accepta cererea cand `Origin`/`Referer` LIPSEA, „pentru compatibilitate" — o
+  // conditie care se deschide la absenta unui antet, adica exact ce cauta un atacator. Acum:
+  // origine straina -> respins; sesiune prezenta -> token OBLIGATORIU (si cand antetul lipseste);
+  // fara sesiune -> trece (nu exista credentiale ambientale de calarit: login, inregistrare,
+  // webhook Stripe, plata de vizitator). Detalii si rationament: src/csrf.js.
+  //
+  // Trepte de rollback, in ordinea slabirii:
+  //   CONTAB_CSRF=origin  -> doar allowlist de origine (comportamentul vechi, fara token)
+  //   CONTAB_CSRF=0       -> garda oprita complet
+  const csrf = require('./csrf');
+  const sessionLib = require('./session');
+  const CSRF_MODE = process.env.CONTAB_CSRF === '0' ? 'off'
+    : (process.env.CONTAB_CSRF === 'origin' ? 'origin' : 'token');
+  const CSRF_ORIGINS = process.env.CONTAB_CSRF_ORIGINS || process.env.APP_URL || '';
   app.use((req, res, next) => {
-    if (CSRF_OFF || req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+    if (CSRF_MODE === 'off' || req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
     if (!/^\/(api|pdf|xml|csv|efactura)/.test(req.path) || req.path === '/api/stripe/webhook') return next();
-    const src = req.headers.origin || req.headers.referer;
-    if (!src) return next();
-    let host = null; try { host = new URL(src).host; } catch (_) { host = null; }
-    if (host && host === req.headers.host) return next();
-    return res.status(403).json({ error: 'Cerere respinsă (origine străină).' });
+    const v = csrf.check({
+      headers: req.headers,
+      // in modul `origin` ignoram sesiunea, deci token-ul nu se mai cere (rollback)
+      sessId: CSRF_MODE === 'token' ? sessionLib.sessionIdOf(req) : null,
+      secret: sessionLib.csrfSecret(),
+      extraOrigins: CSRF_ORIGINS,
+    });
+    if (v.ok) return next();
+    return res.status(403).json({ error: v.motiv, csrf: v.reason });
   });
 
   // Orice ruta de API/livrabile (pdf/xml/csv/efactura) cere sesiune, cu exceptia celor publice.

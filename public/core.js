@@ -88,6 +88,21 @@ if (typeof window !== 'undefined') {
   if (!navigator.onLine) setOffline(true);
 }
 
+// Token-ul CSRF al sesiunii: vine o data, in /api/me, si se ataseaza la fiecare cerere mutanta.
+// Un site strain nu-l poate citi (same-origin policy), deci nu poate compune cererea.
+let CSRF = '';
+export function setCsrf(t) { CSRF = t || ''; }
+export function getCsrf() { return CSRF; }
+/** Antetele unei cereri, cu X-CSRF-Token adaugat la metodele mutante. Nu suprascrie unul explicit. */
+export function withCsrf(opts) {
+  const o = opts || {};
+  const m = String(o.method || 'GET').toUpperCase();
+  if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS' || !CSRF) return o;
+  const h = new Headers(o.headers || {});
+  if (!h.has('X-CSRF-Token')) h.set('X-CSRF-Token', CSRF);
+  return Object.assign({}, o, { headers: h });
+}
+
 export async function api(url, opts) {
   // `quiet`: cereri de fundal (previzualizarea din formular, ceruta la fiecare pauza de tastare)
   // — fara bara de incarcare, care altfel ar clipi continuu. fetch ignora cheile necunoscute.
@@ -96,7 +111,7 @@ export async function api(url, opts) {
   try {
     let r;
     try {
-      r = await fetch(url, opts);
+      r = await fetch(url, withCsrf(opts));
     } catch (netErr) {
       // Esec de RETEA (offline / server inaccesibil), NU un raspuns HTTP de eroare.
       setOffline(true);
