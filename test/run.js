@@ -3593,6 +3593,88 @@ ok('job: eroarea notata si numarata', snapJ['spv-poll'].lastError === 'ANAF 503'
 metricsMod.reset();
 ok('reset: erori si joburi golite', metricsMod.snapshot().recentErrors.length === 0 && Object.keys(metricsMod.snapshot().jobs).length === 0);
 
+section('Ordine cronologica: colator natural refolosit + ultimele N fara sortare completa');
+{
+  const { naturalCompare } = require('../src/util');
+  // Echivalenta cu localeCompare: spec-ul defineste localeCompare(x, loc, opts) ca
+  // Collator(loc, opts).compare(...) — deci un colator refolosit da EXACT aceeasi ordine.
+  const probe = ['e2', 'e10', 'e1', 'be100', 'be9', 'e10a', 'E3', 'e03', 'sm7', ''];
+  const lc = [...probe].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+  const nc = [...probe].sort(naturalCompare);
+  eq('colatorul refolosit da aceeasi ordine ca localeCompare', nc.join('|'), lc.join('|'));
+  ok('ordine NATURALA, nu lexicografica (e2 inaintea lui e10)', nc.indexOf('e2') < nc.indexOf('e10'));
+
+  // lastEntries(n) == sortEntries(...).slice(-n).reverse(), pe date cu date/id-uri amestecate
+  const rnd = [];
+  for (let i = 0; i < 400; i++) {
+    rnd.push({ id: 'e' + ((i * 37) % 400), data: '2026-' + String(1 + ((i * 7) % 12)).padStart(2, '0') + '-' + String(1 + ((i * 13) % 28)).padStart(2, '0') });
+  }
+  const idsOf = (arr) => arr.map((e) => e.id).join(',');
+  const referinta = (arr, n) => { const s = acc.sortEntries(arr); return s.slice(Math.max(0, s.length - n)).reverse(); };
+  for (const n of [0, 1, 5, 399, 400, 500]) {
+    eq('lastEntries(' + n + ') identic cu sortEntries().slice(-n).reverse()',
+      idsOf(acc.lastEntries(rnd, n)), idsOf(referinta(rnd, n)));
+  }
+  eq('lastEntries pe lista goala', acc.lastEntries([], 5).length, 0);
+  // aceleasi date, ordine de intrare inversata -> acelasi rezultat (nu depinde de ordinea colectiei)
+  eq('lastEntries nu depinde de ordinea din colectie', idsOf(acc.lastEntries([...rnd].reverse(), 5)), idsOf(acc.lastEntries(rnd, 5)));
+}
+
+section('Memo per firma pentru rutele scumpe (src/cache.js)');
+{
+  const cache = require('../src/cache');
+  cache.clear();
+  let calcule = 0;
+  const calc = (marca) => () => { calcule += 1; return { marca, n: calcule }; };
+  const revInainte = db.dataRev();
+  ok('db expune revizia de scriere (numar)', typeof revInainte === 'number');
+
+  const m1 = cache.memo('t', 1, calc('firma1'));
+  ok('prima cerere: miss, se calculeaza', m1.hit === false && m1.value.marca === 'firma1' && calcule === 1);
+  const m2 = cache.memo('t', 1, calc('firma1'));
+  ok('a doua cerere, fara scriere: hit, NU se recalculeaza', m2.hit === true && calcule === 1);
+  ok('hit-ul intoarce exact aceeasi valoare', m2.value === m1.value);
+
+  // izolarea pe firma: cheia include firmaId, deci firma 2 nu vede valoarea firmei 1
+  const m3 = cache.memo('t', 2, calc('firma2'));
+  ok('alta firma: miss propriu, valoare proprie', m3.hit === false && m3.value.marca === 'firma2');
+  ok('firma 1 ramane cachetata separat', cache.memo('t', 1, calc('firma1')).value.marca === 'firma1');
+  // ...si nume diferite de raport nu se amesteca intre ele
+  ok('alt nume de raport: cheie diferita', cache.memo('altul', 1, calc('alt')).hit === false);
+
+  // INVALIDAREA: orice db.save() avanseaza revizia -> toate memo-urile devin invalide
+  const inainte = calcule;
+  db.save();
+  ok('db.save() avanseaza revizia', db.dataRev() > revInainte);
+  const dupaScriere = cache.memo('t', 1, calc('firma1-nou'));
+  ok('dupa scriere: miss, se recalculeaza', dupaScriere.hit === false && calcule === inainte + 1);
+  ok('valoarea noua o inlocuieste pe cea veche', dupaScriere.value.marca === 'firma1-nou');
+  ok('si celelalte firme au fost invalidate', cache.memo('t', 2, calc('firma2')).hit === false);
+
+  // a doua dimensiune de validitate: ZIUA (agregate care depind de „azi", ex. termenul e-Factura)
+  {
+    const realDate = Date;
+    cache.clear(); calcule = 0;
+    cache.memo('zi', 1, calc('azi'));
+    ok('acelasi moment: hit', cache.memo('zi', 1, calc('azi')).hit === true);
+    const maine = new realDate(realDate.now() + 26 * 3600 * 1000);
+    global.Date = class extends realDate { constructor(...a) { super(...(a.length ? a : [maine])); } static now() { return maine.getTime(); } };
+    const dupaZi = cache.memo('zi', 1, calc('maine'));
+    global.Date = realDate;
+    ok('a doua zi, fara nicio scriere: miss (agregatele depind de azi)', dupaZi.hit === false);
+  }
+
+  // plafon de memorie: LRU, nu crestere nelimitata
+  cache.clear();
+  for (let i = 0; i < cache.MAX_ENTRIES + 10; i++) cache.memo('lru', i, calc('f' + i));
+  ok('plafon LRU respectat', cache.stats().entries === cache.MAX_ENTRIES);
+
+  cache.clear();
+  const s0 = cache.stats();
+  ok('stats: golit, dar contoarele raman cumulative', s0.entries === 0 && s0.hits > 0 && s0.misses > 0);
+  ok('stats: rata de hit intre 0 si 1', s0.hitRate > 0 && s0.hitRate <= 1);
+}
+
 section('Service layer firme: autorizarea dublata (src/firmeService.js)');
 const fsvc = require('../src/firmeService');
 const fidPrima = dbx.firme[0].id;

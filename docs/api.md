@@ -186,6 +186,9 @@ Citiri pure pe firma activă; parametrii uzuali `?period=` / `?year=`.
 - `GET /api/analytic`, `/api/aging?asOf=` — balanța analitică și scadențarul (FIFO).
 - `GET /api/dashboard` — KPI + `primiiPasi` (onboarding) + alerte e-Factura;
   `/api/dashboard-charts`, `/api/cash-forecast?months=`, `/api/missing-docs?period=`.
+  Răspunsul e memoizat pe firmă și invalidat de orice scriere; antetul de diagnostic
+  `X-Dashboard-Cache: hit|miss` spune care cale a servit cererea. Câmpul
+  `primiiPasi.wizardAscuns` e per utilizator, deci se suprapune *după* memo.
 - `GET /api/reconcile`, `/api/compensations` (+ `POST` pentru nota 401=4111).
 - Export: aceleași rapoarte există ca `/pdf/*` și `/csv/*` (CSV cu `;` și BOM UTF-8).
 

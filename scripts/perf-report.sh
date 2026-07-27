@@ -94,7 +94,10 @@ TOP=$(printf '%s\n' "$LENTE" | grep -o 'url=[^ ]*' | sed 's/url=//; s/?.*//' | s
 # deci semnalul e chiar traversarea pragului de catre o ruta care ar trebui sa ramana rapida.)
 SCALE_ROUTES="${CONTAB_PERF_SCALE_ROUTES:-dashboard saft}"
 scale_action() { case "$1" in
-  *dashboard*) echo "cache pe /api/dashboard (memoizare per-firma, invalidat la db.save)";;
+  # Memoizarea per-firma EXISTA deja (src/cache.js, invalidata de db.save). Daca dashboard-ul
+  # apare totusi ca lent, cauza nu mai e „lipseste cache-ul": ori rata de hit e mica (scrieri
+  # dese — vezi `cache` in /api/metrics), ori calea de RECALCULARE a crescut peste prag.
+  *dashboard*) echo "verifica hitRate din /api/metrics (cache); daca e bun, calea de recalculare a crescut — profileaza componentele din rep.dashboard";;
   *saft*)      echo "streaming la /xml/saft (fara buffer integral), evita blocarea event loop-ului";;
   *)           echo "vezi src/reporting.js / generatorul rutei";;
 esac; }

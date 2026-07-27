@@ -8,6 +8,7 @@
 // register(app, ctx).
 
 const db = require('../db');
+const cache = require('../cache');
 const rep = require('../reporting');
 const decl = require('../declarations');
 const pdf = require('../pdf');
@@ -71,38 +72,51 @@ module.exports = function register(app, ctx) {
     res.json({ ok: true, entry, compensat: suma });
   });
 
+  // Ruta cea mai scumpa a aplicatiei (trece prin tot graful firmei: reconciliere, jurnale TVA,
+  // cont de profit pe doi ani, solduri finale, stocuri). Masurat 611–736 ms la 22.000 de articole,
+  // singura peste pragul de 500 ms — de aceea rezultatul PE FIRMA e memoizat (src/cache.js),
+  // invalidat de orice scriere prin revizia globala. Antet de diagnostic: X-Dashboard-Cache.
   app.get('/api/dashboard', (req, res) => {
-    const v = S(req);
-    // Primii pasi (onboarding pentru firme proaspete): starea reala a pasilor de inceput,
-    // ca dashboard-ul sa ghideze un tester necontabil in loc sa-i arate doar zerouri.
-    // wizardAscuns e per UTILIZATOR (persistat pe cont, nu in localStorage — supravietuieste
-    // schimbarii de browser); conditiile de afisare deriva insa din datele reale ale firmei.
-    const primiiPasi = {
-      firmaCompletata: !!(v.company && v.company.cui),
-      arePartener: Object.keys(v.partners || {}).length > 0,
-      areProdus: (v.products || []).length > 0,
-      documentInregistrat: (v.entries || []).some((e) => !e.system),
-      facturaEmisa: (v.entries || []).some((e) => /^factura_vanzare/.test(e.tip || '')),
-      nrInregistrari: (v.entries || []).length,
-      wizardAscuns: !!req.user.wizardAscuns,
-    };
-    // Ultimele operatiuni: cele mai recente 5 articole (orice tip), cu totalul liniilor —
-    // dashboard-ul raspunde la "ce s-a intamplat ultima data" fara drum prin jurnal.
-    const ultimeleOperatiuni = acc.sortEntries(v.entries || []).slice(-5).reverse().map((e) => ({
-      id: e.id, data: e.data, tipNume: e.tipNume, partener: e.partener || '', document: e.document || '',
-      suma: round2((e.lines || []).reduce((s, l) => s + (Number(l.suma) || 0), 0)),
+    const fid = activeId(req);
+    const { value, hit } = cache.memo('dashboard', fid, () => {
+      // db.scoped(fid), NU S(req): valoarea e partajata intre utilizatorii aceleiasi firme, deci
+      // calculul nu are voie sa depinda de CINE cere (S injecteaza `_intocmit` din profilul lui).
+      const v = db.scoped(fid);
+      // Primii pasi (onboarding pentru firme proaspete): starea reala a pasilor de inceput,
+      // ca dashboard-ul sa ghideze un tester necontabil in loc sa-i arate doar zerouri.
+      // Aici intra DOAR ce deriva din datele firmei; wizardAscuns e per UTILIZATOR, deci se
+      // suprapune dupa cache (altfel un utilizator ar mosteni starea wizardului altuia).
+      const primiiPasi = {
+        firmaCompletata: !!(v.company && v.company.cui),
+        arePartener: Object.keys(v.partners || {}).length > 0,
+        areProdus: (v.products || []).length > 0,
+        documentInregistrat: (v.entries || []).some((e) => !e.system),
+        facturaEmisa: (v.entries || []).some((e) => /^factura_vanzare/.test(e.tip || '')),
+        nrInregistrari: (v.entries || []).length,
+      };
+      // Ultimele operatiuni: cele mai recente 5 articole (orice tip), cu totalul liniilor —
+      // dashboard-ul raspunde la "ce s-a intamplat ultima data" fara drum prin jurnal.
+      const ultimeleOperatiuni = acc.lastEntries(v.entries || [], 5).map((e) => ({
+        id: e.id, data: e.data, tipNume: e.tipNume, partener: e.partener || '', document: e.document || '',
+        suma: round2((e.lines || []).reduce((s, l) => s + (Number(l.suma) || 0), 0)),
+      }));
+      // Stocuri valoroase: top 5 produse dupa valoarea la CMP (agregat pe gestiuni);
+      // lista goala = firma fara activitate de stocuri, frontend-ul ascunde cardul.
+      const byProd = new Map();
+      for (const r of stocks.currentStock(v, null, null)) {
+        const cur = byProd.get(r.product.id) || { cod: r.product.cod, denumire: r.product.denumire, stocV: 0 };
+        cur.stocV = round2(cur.stocV + r.stocV);
+        byProd.set(r.product.id, cur);
+      }
+      const stocuriValoroase = [...byProd.values()].filter((x) => x.stocV > 0).sort((a, b) => b.stocV - a.stocV).slice(0, 5);
+      // e-Factura B2B: facturile emise netrimise in SPV (termen legal 5 zile lucratoare) — alerta pe dashboard
+      return Object.assign(rep.dashboard(v), { efactura: decl.eFacturaNetrimise(v), primiiPasi, ultimeleOperatiuni, stocuriValoroase });
+    });
+    res.setHeader('X-Dashboard-Cache', hit ? 'hit' : 'miss');
+    // Copie superficiala: valoarea din cache e partajata intre cereri, nu se muteaza niciodata.
+    res.json(Object.assign({}, value, {
+      primiiPasi: Object.assign({}, value.primiiPasi, { wizardAscuns: !!req.user.wizardAscuns }),
     }));
-    // Stocuri valoroase: top 5 produse dupa valoarea la CMP (agregat pe gestiuni);
-    // lista goala = firma fara activitate de stocuri, frontend-ul ascunde cardul.
-    const byProd = new Map();
-    for (const r of stocks.currentStock(v, null, null)) {
-      const cur = byProd.get(r.product.id) || { cod: r.product.cod, denumire: r.product.denumire, stocV: 0 };
-      cur.stocV = round2(cur.stocV + r.stocV);
-      byProd.set(r.product.id, cur);
-    }
-    const stocuriValoroase = [...byProd.values()].filter((x) => x.stocV > 0).sort((a, b) => b.stocV - a.stocV).slice(0, 5);
-    // e-Factura B2B: facturile emise netrimise in SPV (termen legal 5 zile lucratoare) — alerta pe dashboard
-    res.json(Object.assign(rep.dashboard(v), { efactura: decl.eFacturaNetrimise(v), primiiPasi, ultimeleOperatiuni, stocuriValoroase }));
   });
   app.get('/api/cash-forecast', (req, res) => {
     const fid = activeId(req);

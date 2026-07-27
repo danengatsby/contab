@@ -5,7 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const auth = require('./auth');
 const migrations = require('./migrations');
-const { stringifyDb } = require('./util');
+const { stringifyDb, naturalCompare } = require('./util');
 
 // CONTAB_DATA_DIR: izolare pentru teste (backup/restore, uploads) — implicit data/ din repo.
 const DATA_DIR = process.env.CONTAB_DATA_DIR || path.join(__dirname, '..', 'data');
@@ -89,6 +89,13 @@ const DEFAULT_DB = {
 };
 
 let db = null;
+
+// Revizia globala de scriere: avanseaza la FIECARE persistare (save/restore/load). E cheia de
+// validitate a memo-urilor de citire din src/cache.js — o valoare calculata la revizia R ramane
+// valabila exact cat timp revizia e tot R. NU se persista (e per proces): dupa restart porneste
+// de la 0, cu cache-urile goale, deci nu poate „invia" un rezultat vechi.
+let rev = 0;
+function dataRev() { return rev; }
 
 function chmodSafe(p, mode) {
   try { fs.chmodSync(p, mode); } catch (_) { /* platforma/permisiuni: nu masca pornirea */ }
@@ -246,6 +253,7 @@ function loadJson() {
 // Driver PostgreSQL (async): load() intoarce o PROMISIUNE — serverul o asteapta la pornire
 // (bootstrap in server.js). Aceeasi migrare unica din db.json ca la trecerea pe SQLite.
 async function loadPg() {
+  rev += 1; // (re)hidratare: baza din RAM se schimba sub picioarele memo-urilor
   await store.open();
   if (await store.isEmpty()) {
     if (fs.existsSync(JSON_FILE)) {
@@ -271,6 +279,7 @@ async function loadPg() {
 
 function load() {
   ensureDir();
+  rev += 1; // (re)hidratare: baza din RAM se schimba sub picioarele memo-urilor
   if (DRIVER === 'pg') return loadPg();
   if (DRIVER !== 'sqlite') return loadJson();
   store.open(SQLITE_FILE);
@@ -321,6 +330,7 @@ function flushMirror(force) {
 
 function save() {
   ensureDir();
+  rev += 1; // inainte de orice iesire: si pe calea `json`, si daca driverul arunca (RAM e deja mutat)
   if (DRIVER === 'json') { writeJson(JSON_FILE, db); return; }
   store.persist(db); // sqlite: sincron; pg: fotografiaza sincron + scrie printr-o coada seriala
   if (JSON_MIRROR) scheduleMirror(); // oglinda pentru backup/rollback, scrisa cu intarziere
@@ -334,6 +344,7 @@ function flushStore() {
 // Restaurare dintr-un fisier JSON (folosita de ruta /api/restore): seteaza in memorie + persista in driver.
 function restoreFromJson(jsonPath) {
   const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+  rev += 1; // baza e INLOCUITA integral — orice memo calculat pe cea veche devine invalid
   db = migrate(applyDefaults(parsed));
   if (DRIVER !== 'json') { store.resetDirty(); store.persist(db); }
   if (JSON_MIRROR || DRIVER === 'json') writeJson(JSON_FILE, db);
@@ -530,8 +541,16 @@ const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 // Peste un prag de articole/firma, agregarile grele (ex. balanta) se pot calcula direct in SQL prin
 // proiectia entry_lines, in loc de a itera graful din RAM. Gate pe prag REAL: sub prag, RAM e mai
 // simplu si mai rapid. Driverul json (fara SQL) cade mereu pe RAM. Rezultatul e IDENTIC (dovedit in teste).
+//
+// PRAGUL A FOST RIDICAT 20.000 -> 100.000 (2026-07-27), pe masuratoare, nu pe intuitie: la 22.000 de
+// articole pe pg (si 27.350 pe sqlite) calea SQL e mai LENTA decat RAM pe FIECARE ruta gate-uita
+// (jurnal 3,9x, cartea mare 2,9x, fisa de cont 1,6x, balanta 1,2x — docs/scalare-crestere.md).
+// Pragul vechi comuta pe calea mai lenta exact in clipa in care se activa. Codul SQL ramane: scopul
+// lui declarat e SEAM-ul catre hidratarea lazy (reducerea RAM-ului), nu viteza; pragul spune doar
+// „pe ce criteriu se activeaza". 100.000 e un prag deliberat NEMASURAT (punctul unde SQL ar castiga
+// e necunoscut) — pana la o masuratoare acolo, calea implicita e cea dovedit mai rapida.
 const SQL_READ_THRESHOLD = Number.isFinite(Number(process.env.CONTAB_SQL_READ_THRESHOLD)) && process.env.CONTAB_SQL_READ_THRESHOLD !== ''
-  ? Number(process.env.CONTAB_SQL_READ_THRESHOLD) : 20000; // 0 e valid (forteaza SQL); gol/absent -> 20000
+  ? Number(process.env.CONTAB_SQL_READ_THRESHOLD) : 100000; // 0 e valid (forteaza SQL); gol/absent -> 100000
 
 /** Driverul suporta citiri SQL din proiectii (pg/sqlite au linesTurnover; json nu)? */
 function canSqlRead() { return !!(store && typeof store.linesTurnover === 'function'); }
@@ -552,10 +571,18 @@ function largeFirma(fid) {
 /** Perioada suportata de calea SQL a balantei: YYYY sau YYYY-MM (trimestrele/gol -> RAM). */
 function sqlBalancePeriodOk(period) { return typeof period === 'string' && /^\d{4}(-\d{2})?$/.test(period); }
 
+// CITIRE-DUPA-SCRIERE pe calea SQL: pe pg, `save()` fotografiaza sincron dar COMITE printr-o coada
+// asincrona, deci proiectiile (entry_lines) pot fi in urma cu cateva milisecunde. Calea RAM nu are
+// problema asta (citeste chiar obiectul mutat), dar o citire SQL imediat dupa o scriere vedea starea
+// DE DINAINTE — de exemplu un articol tocmai postat lipsea din balanta si din jurnal. Asteptam coada
+// inainte de orice citire din proiectii: pe sqlite e o promisiune deja rezolvata (persist sincron).
+function sqlReady() { return flushStore(); }
+
 /** Balanta calculata DIRECT in SQL (rulaj perioada + rulaj inainte, din entry_lines) + soldurile de
  *  preluare din RAM. Acelasi rezultat ca accounting.trialBalance, dar fara a itera graful. Async
  *  (pg e asincron; sqlite sincron -> await pe valoare). */
 async function trialBalanceSql(fid, period) {
+  await sqlReady();
   const acc = require('./accounting');
   const opening = (get().openingBalances || {})[fid] || {};
   const before = await store.linesTurnover(fid, period, { before: true });
@@ -567,13 +594,14 @@ async function trialBalanceSql(fid, period) {
 // NATURAL — localeCompare numeric, nereproductibil in SQL), apoi seq (pozitia liniei in articol).
 function lineChrono(a, b) {
   if (a.data !== b.data) return (a.data || '') < (b.data || '') ? -1 : 1;
-  const c = String(a.entry_id).localeCompare(String(b.entry_id), undefined, { numeric: true });
+  const c = naturalCompare(a.entry_id, b.entry_id);
   return c !== 0 ? c : (a.seq - b.seq);
 }
 
 /** Registrul-jurnal calculat DIRECT in SQL (liniile perioadei din entry_lines). Acelasi rezultat
  *  ca accounting.journal, fara a itera graful. */
 async function journalSql(fid, period) {
+  await sqlReady();
   const { round2 } = require('./util');
   const lines = (await store.linesForPeriod(fid, period)).sort(lineChrono);
   const rows = []; let total = 0; let nr = 0; let lastEntry = null;
@@ -595,6 +623,7 @@ async function journalSql(fid, period) {
 /** Cartea mare calculata DIRECT in SQL (rulaj inainte + liniile perioadei din entry_lines) +
  *  soldurile de preluare din RAM. Acelasi rezultat ca accounting.ledger, fara a itera graful. */
 async function ledgerSql(fid, period) {
+  await sqlReady();
   const coa = require('./chartOfAccounts');
   const { round2 } = require('./util');
   const opening = (get().openingBalances || {})[fid] || {};
@@ -627,6 +656,7 @@ async function ledgerSql(fid, period) {
 /** Fisa unui cont calculata DIRECT in SQL (miscarile contului + rulaj inainte, din entry_lines) +
  *  soldul de preluare din RAM. Acelasi rezultat ca accounting.fisaCont, dar fara a itera graful. */
 async function trialFisaContSql(fid, cont, period) {
+  await sqlReady();
   const coa = require('./chartOfAccounts');
   const { round2 } = require('./util');
   cont = String(cont || '').trim();
@@ -647,7 +677,7 @@ async function trialFisaContSql(fid, cont, period) {
 }
 
 module.exports = {
-  get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen,
+  get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
   canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,

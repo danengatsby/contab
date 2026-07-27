@@ -112,6 +112,12 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   calculează local: vine de la server (`POST /api/preview` → `composeEntry`), ca regulile contabile
   să aibă o singură implementare. `composeEntry` compune articolul FĂRĂ identitate; `buildEntry`
   adaugă id-ul din secvență — previzualizarea nu are voie să consume un id (ar lăsa goluri).
+- **src/cache.js** — memo PER FIRMĂ pentru rutele scumpe (azi doar `/api/dashboard`). Validitatea
+  stă pe `db.dataRev()` (revizie globală avansată la fiecare `save()`/`restore`/`load`) + ziua
+  curentă. Invalidarea e **globală, deliberat**: corectă prin construcție, fără a inventaria căile
+  de scriere. Valoarea e partajată între cereri — **nu o muta**; câmpurile per utilizator se
+  suprapun pe o copie, iar calculul folosește `db.scoped(fid)`, nu `S(req)` (altfel rezultatul ar
+  depinde de cine cere). Diagnostic: antet `X-Dashboard-Cache` + `cache` în `/api/metrics`.
 - **Observabilitate** — `src/log.js` (structurat, reqId), `src/metrics.js` + `GET /api/metrics`
   (admin: durate pe rută, `recentErrors`, starea joburilor, proces). `/api/health` e PUBLIC și
   **intenționat minimal** — există test negativ care blochează orice câmp de diagnostic pe el.
@@ -168,6 +174,10 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
     persistat în meta pe toate driverele — echivalentul tabelului `_migrations`). Hook unic la finalul
     `migrate()`. Un pas nou = `{ v, desc, up(d) }` cu `v` strict crescător; `up(d)` mută graful în loc
     și **trebuie** idempotent + data-driven (rulează și pe bază goală, și pe date deja migrate).
+- Ordinea naturală a id-urilor (`e2` înaintea lui `e10`) se face cu `naturalCompare` din
+  `src/util.js` — un singur `Intl.Collator` refolosit. `localeCompare(x, undefined, {numeric:true})`
+  construiește un colator **la fiecare comparație**: aceeași ordine, dar 175 ms în loc de 12 ms pe o
+  sortare de 22.000 de articole. Nu reintroduce forma cu `localeCompare` în sortări.
 - Rutele care întorc colecții vii din memorie trec prin `src/paginate.js` (`sendList`): fără
   `?limit` → array simplu, dar **plafonat** la `CONTAB_MAX_ROWS` (implicit 20000, gardă contra
   OOM, cu antet `X-Rows-Truncated` când taie); cu `?limit`/`?offset` → plic `{ items, total,

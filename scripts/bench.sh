@@ -8,7 +8,9 @@ N=$1
 SP="$(dirname "$0")"
 fuser -k 3891/tcp 2>/dev/null || true; sleep 1
 rm -f /tmp/contab-bench.json* /tmp/contab-bench.sqlite*
-export CONTAB_DB_DRIVER=sqlite CONTAB_DB_FILE=/tmp/contab-bench.json
+# CONTAB_DATA_DIR obligatoriu: fara el, uploads/backups/audit ale instantei de bench ar ateriza
+# in data/ al PRODUCTIEI (acest director e si instalarea live).
+export CONTAB_DB_DRIVER=sqlite CONTAB_DB_FILE=/tmp/contab-bench.json CONTAB_DATA_DIR=/tmp/contab-bench-data
 node /var/www/contab/scripts/seed.js >/dev/null 2>&1
 node "$SP"/bench-seed.js $N | tail -1
 PORT=3891 CONTAB_JSON_MIRROR=0 STRIPE_SECRET_KEY='' CONTAB_RATE_API=100000 nohup node /var/www/contab/server.js > /dev/null 2>&1 &
