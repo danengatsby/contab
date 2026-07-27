@@ -100,6 +100,14 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   nu se bifează: o bifă manuală ar rămâne adevărată după ce datele se schimbă. Se persistă
   (colecția `closings`) doar ce nu se poate deduce: responsabil, termen, notă, dovada validării,
   aprobarea, forțarea cu motiv. Închiderea peste pași deschiși = **admin + motiv scris**.
+- **Calitatea extragerii** (`src/extractQuality.js`) — bateria de controale peste documentele citite
+  automat: sursă, încredere (prag 85%, peste cel de avertizare din `extractCheck`), aritmetică, cotă,
+  dată (inclusiv perioadă închisă), număr de document, **partener cunoscut**, tip determinat,
+  **duplicat**. Decizia e o CONJUNCȚIE — se postează automat doar dacă trec TOATE controalele
+  blocante ȘI firma a bifat `autoPostDocumente` (implicit OPRIT). Scorul (0–100) e doar pentru
+  raportare; nu decide nimic. Intervenția operatorului se consemnează **singură**, din diferența
+  dintre `document.extras` (ce a citit mașina) și ce s-a salvat — nu se cere din interfață, ca să nu
+  poată fi uitată; `motivRevizuire` adaugă contextul. Raport: `GET /api/extract-quality`.
 - **Service layer** (`src/stocksService.js`, `src/firmeService.js`, `src/anafService.js`) — validare,
   reguli, scrieri, cu **autorizare dublată**: `reqFirma()` (firmă explicită și existentă — fără
   fallback pe `firmaActiva`; `db.scoped(fid)` cade acolo pe fid invalid = scurgere), `reqEntry()`

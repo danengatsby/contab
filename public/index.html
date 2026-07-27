@@ -422,6 +422,8 @@
             </label>
             <div id="dynFields" class="dyn"></div>
             <div id="preview" class="preview"></div>
+            <label class="muted" for="motivRevizuire">De ce a fost nevoie de corectură? <span class="muted">(opțional — intră în raportul pe furnizori/formate)</span></label>
+            <input id="motivRevizuire" placeholder="ex. furnizorul pune totalul în subsol; s-a citit subtotalul" maxlength="300" />
             <div class="row">
               <button type="submit" class="btn primary">✓ Salvează</button>
               <button type="button" id="saveDraft" class="btn ghost" title="Salvează ca ciornă — vizibilă, dar nu intră în contabilitate până la postare">✎ Salvează ca ciornă</button>
@@ -578,7 +580,19 @@
       <div id="missingDocs"></div>
       <div class="row" data-u="u83"><button class="btn primary qa" data-go="documente">📥 Adaugă un document primit</button></div>
       <div id="entriesIntrare" class="tablewrap"></div>
-    </section>
+    
+      <div class="card" id="calitateCard">
+        <h2>Calitatea citirii automate</h2>
+        <p class="muted">Ce documente au putut fi postate fără om, unde a fost nevoie de corectură și
+          <b>care furnizori și formate</b> produc cele mai multe erori. Se postează automat doar dacă
+          trec <b>toate</b> controalele; orice îndoială cere revizuire.</p>
+        <div class="toolbar">
+          <label>Ultimele <select id="calZile"><option value="30">30 de zile</option><option value="90" selected>90 de zile</option><option value="365">un an</option></select></label>
+          <button id="calRefresh" class="btn">Recalculează</button>
+        </div>
+        <div id="calitateView"></div>
+      </div>
+</section>
 
     <!-- ─────────────── GALERIE DOCUMENTE PRIMITE ─────────────── -->
     <section id="tab-galerie" class="tab">

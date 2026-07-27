@@ -243,6 +243,51 @@ async function loadArhiva() {
 }
 onPeriodChange('arhiva', loadArhiva);
 
-export { loadArhiva, loadEntries, loadMissingDocs, renderEntryLists, setEntriesDeps };
+/** Raportul de calitate a citirii automate — tabelele pe furnizori / formate / controale.
+ *  Funcție pură (testată în test/frontend.mjs): primește raportul, întoarce HTML. */
+export function calitateRaportHtml(r) {
+  if (!r) return '';
+  if (!r.documenteCitite) return '<p class="muted">Niciun document citit automat în perioada aleasă.</p>';
+  const tabel = (titlu, rows, etCheie) => (rows || []).length
+    ? `<h3>${H(titlu)}</h3><table><thead><tr><th>${H(etCheie)}</th><th class="num">Corecții</th><th class="num">Câmpuri</th><th>Ce pică cel mai des</th></tr></thead><tbody>${
+      rows.slice(0, 10).map((g) => `<tr><td>${H(g.cheie)}</td><td class="num">${H(g.interventii)}</td><td class="num">${H(g.campuri)}</td>
+        <td class="muted">${H((g.controaleTop || []).slice(0, 3).map((c) => c.cod + ' ×' + c.n).join(', ') || '—')}</td></tr>`).join('')}</tbody></table>`
+    : '';
+  // aceeasi structura de card ca pe dashboard (.kpi > .lbl/.val/.sub), ca sa arate la fel
+  const kpiCard = (lbl, val, sub) => `<div class="kpi"><div class="lbl">${H(lbl)}</div><div class="val">${H(val)}</div><div class="sub">${H(sub || '')}</div></div>`;
+  const kpi = `<div class="kpis">${
+    kpiCard('Documente citite', r.documenteCitite, 'în ultimele ' + (r.zile || '—') + ' zile')
+    + kpiCard('Scor mediu', r.scorMediu == null ? '—' : r.scorMediu + '%', 'media controalelor trecute')
+    + kpiCard('Au trecut toate controalele', r.postateAutomat, 'ar fi putut fi postate fără om')
+    + kpiCard('Rată de corecție', r.rataCorectie + '%', 'din documentele revizuite')}</div>`;
+  const stare = r.autoPostActiv
+    ? '<p class="muted">Postarea automată e <b>pornită</b>: documentele care trec toate controalele intră direct în contabilitate.</p>'
+    : '<p class="muted">Postarea automată e <b>oprită</b> (implicit). Se poate porni din Setări → datele firmei; documentele care trec toate controalele ar intra direct în contabilitate.</p>';
+  const recente = (r.recente || []).length
+    ? `<h3>Ultimele corecții</h3><table><thead><tr><th>Document</th><th>Furnizor</th><th>Ce s-a corectat</th><th>Motiv</th></tr></thead><tbody>${
+      r.recente.slice(0, 10).map((x) => `<tr><td>${H(x.fileName)} <span class="muted">${H(x.format)}</span></td><td>${H(x.partener)}</td>
+        <td class="muted">${H((x.campuri || []).map((c) => c.camp).join(', ') || (x.tipExtras !== x.tipSalvat ? 'tipul documentului' : '—'))}</td>
+        <td class="muted">${H(x.motiv || '—')}</td></tr>`).join('')}</tbody></table>`
+    : '';
+  return kpi + stare + tabel('Furnizori care cer corecții', r.furnizori, 'Furnizor')
+    + tabel('Formate care cer corecții', r.formate, 'Format')
+    + ((r.peControl || []).length
+      ? `<h3>Controale care pică</h3><table><thead><tr><th>Control</th><th class="num">De câte ori</th></tr></thead><tbody>${
+        r.peControl.map((c) => `<tr><td>${H(c.nume)}</td><td class="num">${H(c.n)}</td></tr>`).join('')}</tbody></table>`
+      : '')
+    + recente;
+}
+
+async function loadCalitate() {
+  const host = $('#calitateView');
+  if (!host) return;
+  const zile = ($('#calZile') && $('#calZile').value) || 90;
+  try { host.innerHTML = calitateRaportHtml(await api('/api/extract-quality?days=' + encodeURIComponent(zile))); }
+  catch (e) { host.innerHTML = `<p class="muted">${H(e.message)}</p>`; }
+}
+$('#calRefresh') && $('#calRefresh').addEventListener('click', loadCalitate);
+$('#calZile') && $('#calZile').addEventListener('change', loadCalitate);
+
+export { loadArhiva, loadEntries, loadMissingDocs, renderEntryLists, setEntriesDeps, loadCalitate };
 // Exportate pentru testele unitare de frontend (logica pura de clasificare/insigne): test/frontend.mjs
 export { etranspCell, entryDir, entryStateBadge };

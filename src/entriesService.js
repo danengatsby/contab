@@ -14,7 +14,8 @@ const db = require('./db');
 const coa = require('./chartOfAccounts');
 const stocks = require('./stocks');
 const recurring = require('./recurring');
-const fiscalProfile = require('./fiscalProfile'); // guard de scriere derivat din profilul fiscal
+const fiscalProfile = require('./fiscalProfile');
+const extractQuality = require('./extractQuality'); // guard de scriere derivat din profilul fiscal
 const { reqFirma } = require('./stocksService');
 const { round2, period: periodOf } = require('./util');
 
@@ -60,8 +61,57 @@ function createEntry(fid, b, deps) {
   }
   d.entries.push(entry);
   deps.upsertPartner(fid, entry);
+  inregistreazaInterventia(fid, b, entry, f);
   db.save();
   return { entry, stoc: stocInfo };
+}
+
+/**
+ * INTERVENTIA OPERATORULUI: ce a corectat omul fata de ce a citit masina.
+ *
+ * Se calculeaza aici, nu se cere de la interfata, tocmai ca sa nu poata fi uitata sau falsificata:
+ * documentul poarta extragerea originala (`doc.extras`), articolul poarta ce s-a salvat, iar
+ * diferenta e o consecinta, nu o declaratie. `motiv` (optional, din formular) adauga contextul pe
+ * care datele nu-l pot spune — de ce a fost gresit, nu doar ce.
+ *
+ * Se inregistreaza si interventiile GOALE (om care confirma extragerea fara sa schimbe nimic):
+ * fara ele, rata de corectie pe furnizor ar fi calculata doar din esecuri si ar arata mereu 100%.
+ */
+function inregistreazaInterventia(fid, b, entry, campuriSalvate) {
+  if (!b.fileId) return null;
+  const d = db.get();
+  const doc = (d.documents || []).find((x) => x.id === b.fileId && x.firmaId === fid);
+  if (!doc || !doc.extras) return null;            // document fara extragere (upload-only, import SPV)
+  if (doc.extras.autoPostat || doc.interventieId) return null; // deja consemnat o data
+  const ex = doc.extras;
+  const diff = extractQuality.diferente(ex.fields || {}, campuriSalvate || {}, ex.suggestedType, b.tip);
+  const rec = {
+    id: db.nextId('itv'),
+    firmaId: fid,
+    documentId: doc.id,
+    entryId: entry.id,
+    at: new Date().toISOString(),
+    fileName: doc.fileName || '',
+    format: ex.format || extractQuality.formatFisier(doc.fileName),
+    source: ex.source || 'necunoscut',
+    incredere: ex.incredere == null ? null : Number(ex.incredere),
+    scor: ex.scor == null ? null : Number(ex.scor),
+    decizie: ex.decizie || null,
+    controalePicate: ex.controalePicate || [],
+    // partenerul SALVAT (cel corect, dupa interventie): raportul trebuie sa arate furnizorul real,
+    // nu numele posibil gresit citit de masina
+    partener: entry.partener || (ex.fields || {}).partener || '',
+    partenerCui: entry.partenerCui || '',
+    tipExtras: ex.suggestedType || null,
+    tipSalvat: b.tip || null,
+    diff,
+    corectat: diff.nrModificari > 0,
+    motiv: String((b.motivRevizuire == null ? '' : b.motivRevizuire)).slice(0, 300),
+  };
+  d.extractInterventions = d.extractInterventions || [];
+  d.extractInterventions.push(rec);
+  doc.interventieId = rec.id;
+  return rec;
 }
 
 /** Sterge un articol dupa id. `canFid(firmaId)` decide accesul apelantului la firma articolului

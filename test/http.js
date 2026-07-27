@@ -269,6 +269,80 @@ async function main() {
     fdOk.append('file', new Blob(['CUI;Den\n1;X'], { type: 'text/csv' }), 'date.csv');
     eq('upload .csv acceptat', (await req('POST', '/api/upload-only', { cookie: c1, body: fdOk })).status, 200);
 
+    // ── Controlul calitatii extragerii: decizie, interventia operatorului, raport ──
+    {
+      // Cont separat pentru incarcari (ca la testul de plafon de upload): plafonul e per utilizator,
+      // iar cele patru documente de aici ar fi consumat din bugetul restului suitei.
+      const cUp = (await req('POST', '/api/login', { body: { username: 'uploader', password: 'parola1' } })).cookie;
+      const incarca = async (nume, text) => {
+        const fd = new FormData();
+        fd.append('file', new Blob([text], { type: 'text/plain' }), nume);
+        return req('POST', '/api/upload', { cookie: cUp, body: fd });
+      };
+      const u1 = await incarca('factura-alpha.txt', 'Factura ALPHA SRL nr F-777 din 2026-06-10, baza 1000, TVA 210, total 1210');
+      eq('upload cu extragere: 200', u1.status, 200);
+      const cal = u1.json.calitate;
+      ok('raspunsul poarta scorul si decizia', !!cal && typeof cal.scor === 'number' && ['auto', 'revizuire'].includes(cal.decizie));
+      ok('raspunsul poarta toate controalele, cu nume citibil',
+        Array.isArray(cal.controale) && cal.controale.length >= 8 && cal.controale.every((c) => c.cod && c.nume && typeof c.ok === 'boolean'));
+      // Suita ruleaza FARA cheie AI: extragerea e euristica, deci controlul de sursa/incredere pica
+      // si decizia trebuie sa fie „revizuire". Regula e o conjunctie — nu se posteaza pe increderea
+      // extractorului despre sine, ci pe controale verificabile.
+      eq('fara AI: decizia e revizuire', cal.decizie, 'revizuire');
+      ok('...cu motivele scrise, nu doar un steag', cal.motive.length > 0 && cal.motive.every((m) => typeof m === 'string' && m.length > 10));
+      ok('needsReview ramane compatibil cu ce foloseste formularul', u1.json.needsReview === true);
+      ok('nu s-a postat nimic automat', !u1.json.autoPostat);
+
+      // POSTAREA AUTOMATA e o CONJUNCTIE: chiar cu optiunea pornita, controalele picate o opresc.
+      ok('optiunea de postare automata se salveaza pe firma',
+        (await req('POST', '/api/company', { cookie: c1, body: { autoPostDocumente: true } })).json.ok === true);
+      const u2 = await incarca('factura-beta.txt', 'Factura BETA SRL nr F-778 din 2026-06-11, baza 500, TVA 105, total 605');
+      ok('cu optiunea pornita dar controale picate: TOT revizuire, nimic postat',
+        u2.json.calitate.decizie === 'revizuire' && !u2.json.autoPostat);
+      // ...si nici macar nu s-a INCERCAT: daca postarea ar fi fost incercata si ar fi esuat din alt
+      // motiv (perioada inchisa, guard fiscal), ruta ar adauga motivul „Postarea automată a fost
+      // oprită". Absenta lui dovedeste ca poarta e o CONJUNCTIE, nu doar optiunea firmei.
+      ok('...si postarea nici nu a fost incercata (poarta e conjunctie, nu doar optiunea)',
+        !(u2.json.calitate.motive || []).some((m) => /Postarea automat/i.test(m)));
+      await req('POST', '/api/company', { cookie: c1, body: { autoPostDocumente: false } });
+
+      // INTERVENTIA se consemneaza SINGURA din diferenta extras -> salvat (nu se cere din interfata)
+      const salv = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'factura_cumparare_marfuri', fileId: u1.json.documentId,
+        motivRevizuire: 'Furnizorul pune totalul in subsol; extragerea a luat subtotalul.',
+        fields: { data: '2026-06-10', document: 'F-777', partener: 'ALPHA SRL', cuiPartener: 'RO4242', baza: 1000, tva: 210, cota: 21, suma: 1210 },
+      } });
+      eq('articolul se salveaza din document', salv.status, 200);
+
+      const rap = (await req('GET', '/api/extract-quality?days=30', { cookie: c1 })).json;
+      ok('raport: numara documentele citite si interventiile', rap.documenteCitite >= 2 && rap.interventii >= 1);
+      ok('raport: rata de corectie e un procent', rap.rataCorectie >= 0 && rap.rataCorectie <= 100);
+      ok('raport: furnizorul corectat apare, cu numarul de interventii',
+        rap.furnizori.some((f) => f.cheie === 'ALPHA SRL' && f.interventii >= 1));
+      ok('raport: formatul fisierului apare', rap.formate.some((f) => f.cheie === 'txt'));
+      ok('raport: controalele picate sunt agregate', rap.peControl.length > 0 && rap.peControl[0].n >= 1 && !!rap.peControl[0].nume);
+      ok('raport: campurile corectate sunt agregate', rap.peCamp.some((c) => c.camp === 'document' || c.camp === 'partener'));
+      const rec = rap.recente[0];
+      ok('raport: interventia recenta poarta motivul scris de operator', !!rec && /subsol/.test(rec.motiv));
+      ok('raport: si diferenta camp cu camp (ce a citit vs ce s-a salvat)',
+        !!rec && Array.isArray(rec.campuri) && rec.campuri.some((c) => c.camp === 'document' && c.salvat === 'F-777'));
+      ok('raport: starea optiunii de postare automata e vizibila', rap.autoPostActiv === false);
+
+      // A doua salvare din ACELASI document nu dubleaza interventia (consemnarea e idempotenta)
+      const inainte = (await req('GET', '/api/extract-quality?days=30', { cookie: c1 })).json.interventii;
+      await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'factura_cumparare_marfuri', fileId: u1.json.documentId,
+        fields: { data: '2026-06-10', document: 'F-779', partener: 'ALPHA SRL', cuiPartener: 'RO4242', baza: 10, tva: 2.1, cota: 21, suma: 12.1 },
+      } });
+      eq('interventia se consemneaza o singura data per document',
+        (await req('GET', '/api/extract-quality?days=30', { cookie: c1 })).json.interventii, inainte);
+
+      // Duplicat: acelasi numar de document, acelasi partener -> controlul trebuie sa pice
+      const u3 = await incarca('factura-alpha-dubla.txt', 'Factura ALPHA SRL nr F-777 din 2026-06-10, baza 1000, TVA 210, total 1210');
+      const cDup = (u3.json.calitate.controale || []).find((c) => c.cod === 'duplicat');
+      ok('controlul de duplicat exista si raporteaza starea', !!cDup && typeof cDup.ok === 'boolean');
+    }
+
     // protectia de continut: extensia nu garanteaza continutul — un .pdf cu text e respins
     // si fisierul salvat de multer nu ramane pe disc
     const upDir = path.join(DATA_TMP, 'uploads');

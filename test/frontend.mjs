@@ -48,6 +48,7 @@ const bank = await import(path.join(mirror, 'bank.js'));
 const viewer = await import(path.join(mirror, 'viewer.js'));
 const partners = await import(path.join(mirror, 'partners.js'));
 const inchidere = await import(path.join(mirror, 'inchidere.js'));
+const docflow = await import(path.join(mirror, 'docflow.js'));
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -599,6 +600,53 @@ section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js
   ok('numele declarației e escapat', hProof.includes('D394 — &lt;b&gt;info&lt;/b&gt;'));
   ok('numele validatorului e escapat', hProof.includes('ma&lt;ria'));
   eq('fără declarații așteptate: mesaj, nu tabel gol', inchidere.proofsHtml({ steps: [] }, []).includes('<table>'), false);
+}
+
+section('Calitatea citirii automate: verdictul și raportul (docflow.js / entries.js)');
+{
+  // Verdictul de pe ecranul de încărcare — serverul decide, ecranul doar explică.
+  const cal = {
+    scor: 62, decizie: 'revizuire',
+    controale: [
+      { cod: 'aritmetica', nume: 'Bază + TVA = total', ok: true, motiv: null },
+      { cod: 'partener', nume: 'Partener cunoscut', ok: false, motiv: 'Partenerul „<b>ACME</b> SRL" e nou — prima înregistrare se verifică.' },
+      { cod: 'duplicat', nume: 'Fără duplicat', ok: false, motiv: 'Documentul „F-1" e deja înregistrat (e9).' },
+    ],
+  };
+  const h = docflow.calitateHtml(cal);
+  ok('verdictul spune că cere revizuire', h.includes('cere revizuire'));
+  ok('arată scorul și câte controale au trecut', h.includes('62%') && h.includes('1/3'));
+  ok('listează DOAR controalele picate, cu motivul lor', h.includes('Partener cunoscut') && h.includes('Fără duplicat') && !h.includes('Bază + TVA'));
+  // numele furnizorului vine din document (sursă externă) și ajunge în motiv
+  ok('motivul e escapat', h.includes('&lt;b&gt;ACME&lt;/b&gt;') && !h.includes('<b>ACME'));
+
+  const hAuto = docflow.calitateHtml({ scor: 100, controale: [] }, { entryId: 'e42' });
+  ok('postarea automată se anunță ca atare, cu articolul creat', hAuto.includes('postat automat') && hAuto.includes('e42'));
+  eq('fără verdict nu randează nimic', docflow.calitateHtml(null), '');
+
+  // Raportul pe furnizori / formate / controale
+  const raport = {
+    documenteCitite: 12, scorMediu: 71, postateAutomat: 3, rataCorectie: 40, autoPostActiv: false,
+    furnizori: [{ cheie: '<b>ALPHA</b> SRL', interventii: 4, campuri: 6, controaleTop: [{ cod: 'cota', n: 3 }, { cod: 'partener', n: 1 }] }],
+    formate: [{ cheie: 'pdf', interventii: 3, campuri: 4, controaleTop: [] }],
+    peControl: [{ cod: 'cota', nume: 'Cotă TVA validă', n: 3 }],
+    peCamp: [{ camp: 'cota', n: 3 }],
+    recente: [{ fileName: 'f<1>.pdf', format: 'pdf', partener: 'ALPHA', campuri: [{ camp: 'cota' }], motiv: 'cotă <i>greșită</i>', tipExtras: 'a', tipSalvat: 'a' }],
+  };
+  const hr = entries.calitateRaportHtml(raport);
+  ok('raportul arată KPI-urile', hr.includes('12') && hr.includes('71%') && hr.includes('40%'));
+  ok('spune dacă postarea automată e pornită sau nu', hr.includes('oprită'));
+  ok('are tabelul pe furnizori, cu ce pică cel mai des', hr.includes('Furnizori care cer corecții') && hr.includes('cota ×3'));
+  ok('are tabelul pe formate', hr.includes('Formate care cer corecții') && hr.includes('pdf'));
+  ok('are tabelul de controale, cu numele lizibil', hr.includes('Cotă TVA validă'));
+  ok('are ultimele corecții, cu motivul operatorului', hr.includes('Ultimele corecții') && hr.includes('gre'));
+  // furnizorul, numele fișierului și motivul vin din date externe / de la operator
+  ok('numele furnizorului e escapat', hr.includes('&lt;b&gt;ALPHA&lt;/b&gt;') && !hr.includes('<b>ALPHA'));
+  ok('numele fișierului e escapat', hr.includes('f&lt;1&gt;.pdf'));
+  ok('motivul scris de operator e escapat', hr.includes('&lt;i&gt;greșită&lt;/i&gt;'));
+  ok('fără documente citite: mesaj, nu tabele goale',
+    entries.calitateRaportHtml({ documenteCitite: 0 }).includes('Niciun document'));
+  eq('raport lipsă nu randează nimic', entries.calitateRaportHtml(null), '');
 }
 
 section('Poartă: fiecare modul din public/ se încarcă fără să arunce');

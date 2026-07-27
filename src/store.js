@@ -81,6 +81,7 @@ const ARRAY_COLLS = [
   { key: 'budgets', firma: true, hasId: true },
   { key: 'declarations', firma: true, hasId: true },
   { key: 'closings', firma: true, hasId: true },
+  { key: 'extractInterventions', firma: true, hasId: true },
 ];
 
 // PROIECTII NORMALIZATE: tabele derivate din blob-uri, scrise tranzactional in aceeasi tranzactie cu

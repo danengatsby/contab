@@ -157,7 +157,7 @@ require('./src/routes/config')(app, { S, activeId, logAudit, requireAdmin, uploa
 require('./src/routes/partners')(app, { upload, S, activeId, logAudit, requireAdmin });
 
 // Documente primare: upload (extragere AI/reguli locale), servire fisier, galerii primite/emise: src/routes/documents.js
-require('./src/routes/documents')(app, { upload, wrap, S, activeId, allowedFirme, logAudit });
+require('./src/routes/documents')(app, { upload, wrap, S, activeId, allowedFirme, logAudit, buildEntry, upsertPartner });
 
 // ───────────────────────────── ENTRIES ─────────────────────────────
 /**
