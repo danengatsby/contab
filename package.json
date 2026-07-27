@@ -10,7 +10,8 @@
     "test": "node scripts/check-syntax.js && node test/db-guard.js && node test/auth.js && node test/run.js && node test/cazuri-aprobate.js && node test/extractor.js && node test/frontend.mjs && node test/anaf.js && node test/store.js && node test/store-pg.js && node test/http.js",
     "lint": "node scripts/check-syntax.js",
     "prestart": "npm test",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "e2e-izolat": "bash scripts/e2e-izolat.sh"
   },
   "engines": {
     "node": ">=22.13"

@@ -21,6 +21,7 @@ node test/frontend.mjs        # doar logica pură din public/*.js (shim DOM, fă
 node test/anaf.js             # reziliență ANAF + poll SPV (async, stub-uri, fără apeluri reale)
 npm run seed                  # încarcă exemplul din ghid (S.C. EXEMPLU PROD S.R.L., 2026-06)
 npm run e2e                   # E2E pe live; pe acest server rulează prin Docker (vezi antetul scripts/e2e.mjs)
+npm run e2e-izolat            # E2E pe instanță PROPRIE (roluri, resetare parolă, 2FA, importuri, SPV, restaurare, toate declarațiile)
 sh scripts/poarta-fiscala.sh  # POARTA FISCALĂ — obligatorie înainte de merge dacă ai atins ceva fiscal
 ```
 
