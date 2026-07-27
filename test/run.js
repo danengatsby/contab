@@ -3490,6 +3490,121 @@ const rDupa = mkRes(); let nextDupa = false;
 limT(reqLim, rDupa, () => { nextDupa = true; });
 ok('dupa igiena (fereastra expirata): plafonul se reseteaza', nextDupa);
 
+section('Calitatea extragerii: controale, decizie, interventii (src/extractQuality.js)');
+{
+  const eq2 = require('../src/extractQuality');
+
+  // Vedere de firma: un partener CUNOSCUT (RO111) si un articol deja inregistrat (pentru duplicat).
+  const vedere = {
+    partners: { RO111: { den: 'ALPHA SRL', cui: 'RO111' } },
+    entries: [{ id: 'e1', data: '2026-05-04', document: 'F-900', partener: 'ALPHA SRL', partenerCui: 'RO111', tip: 'factura_cumparare_marfuri' }],
+  };
+  const BUN = {
+    fields: { data: '2026-06-10', document: 'F-123', partener: 'ALPHA SRL', cuiPartener: 'RO111', baza: 1000, tva: 210, cota: 21, suma: 1210 },
+    suggestedType: 'factura_cumparare_marfuri', source: 'ai', incredere: 95, fileName: 'factura.pdf',
+  };
+  const ctxq = { v: vedere, firma: { lockedUntil: '' }, azi: '2026-06-20', standardCota: 21 };
+  const ev = (over, ctxOver) => eq2.evalueaza(Object.assign({}, BUN, over || {}), Object.assign({}, ctxq, ctxOver || {}));
+  const codc = (r, c) => r.controale.find((x) => x.cod === c);
+
+  // Cazul curat: toate controalele trec -> postare automata permisa
+  const bun = ev();
+  eq('document curat: toate controalele trec', bun.controale.filter((c) => !c.ok).length, 0);
+  eq('document curat: scor 100', bun.scor, 100);
+  eq('document curat: decizie auto', bun.decizie, 'auto');
+  eq('document curat: fara motive', bun.motive.length, 0);
+
+  // Fiecare control, cazut individual -> revizuire, cu motiv in cuvinte (nu doar un bec rosu)
+  const picaCu = (over, ctxOver) => { const r = ev(over, ctxOver); return { r, dec: r.decizie, motive: r.motive.join(' | ') }; };
+
+  const sursa = picaCu({ source: 'heuristic', incredere: null });
+  ok('reguli locale -> revizuire (sursa + incredere pica)', sursa.dec === 'revizuire'
+    && !codc(sursa.r, 'sursa').ok && !codc(sursa.r, 'incredere').ok && /reguli locale/i.test(sursa.motive));
+
+  const conf = picaCu({ incredere: 60 });
+  ok('incredere sub prag -> revizuire, cu pragul scris', conf.dec === 'revizuire' && /60%/.test(conf.motive) && /85%/.test(conf.motive));
+  ok('increderea fix pe prag trece', ev({ incredere: eq2.MIN_INCREDERE }).decizie === 'auto');
+
+  const arit = picaCu({ fields: Object.assign({}, BUN.fields, { suma: 1500 }) });
+  ok('baza + TVA != total -> revizuire', arit.dec === 'revizuire' && !codc(arit.r, 'aritmetica').ok);
+
+  const cotaGresita = picaCu({ fields: Object.assign({}, BUN.fields, { cota: 9 }) });
+  ok('cota nu se potriveste cu raportul TVA/baza -> revizuire', cotaGresita.dec === 'revizuire' && !codc(cotaGresita.r, 'cota').ok);
+
+  ok('data lipsa -> revizuire', !codc(ev({ fields: Object.assign({}, BUN.fields, { data: '' }) }), 'data').ok);
+  ok('data in viitor -> revizuire', /viitor/i.test(picaCu({ fields: Object.assign({}, BUN.fields, { data: '2026-12-01' }) }).motive));
+  ok('data in perioada INCHISA -> revizuire (ar fi respinsa oricum la postare)',
+    /închis/i.test(picaCu({}, { firma: { lockedUntil: '2026-06' } }).motive));
+
+  ok('numar de document lipsa -> revizuire', !codc(ev({ fields: Object.assign({}, BUN.fields, { document: '' }) }), 'document').ok);
+
+  const partenerNou = picaCu({ fields: Object.assign({}, BUN.fields, { partener: 'BETA SRL', cuiPartener: 'RO999' }) });
+  ok('partener NOU -> revizuire (primul document al unui furnizor se verifica)',
+    partenerNou.dec === 'revizuire' && /nou/i.test(partenerNou.motive));
+  ok('partener fara CUI -> revizuire', /nu are CUI/i.test(picaCu({ fields: Object.assign({}, BUN.fields, { cuiPartener: '' }) }).motive));
+  ok('CUI cu prefix RO si spatii se potriveste tot cu partenerul cunoscut',
+    ev({ fields: Object.assign({}, BUN.fields, { cuiPartener: 'RO 111' }) }).decizie === 'auto');
+
+  const tipNedet = picaCu({ suggestedType: 'nota_contabila' });
+  ok('tip nedeterminat (nota contabila = rezerva) -> revizuire', tipNedet.dec === 'revizuire' && /nu a putut fi determinat/i.test(tipNedet.motive));
+
+  const dup = picaCu({ fields: Object.assign({}, BUN.fields, { document: 'F-900' }) });
+  ok('document deja inregistrat -> revizuire, cu id-ul articolului existent',
+    dup.dec === 'revizuire' && /F-900/.test(dup.motive) && /e1/.test(dup.motive));
+  ok('duplicatul se prinde si dupa numele partenerului, fara CUI', (() => {
+    const r = eq2.gasesteDuplicat({ entries: vedere.entries }, { document: 'f 900', partener: 'alpha srl' }, 'x');
+    return !!r && r.id === 'e1';
+  })());
+  ok('acelasi numar la ALT partener NU e duplicat',
+    !eq2.gasesteDuplicat({ entries: vedere.entries }, { document: 'F-900', partener: 'GAMA SRL', cuiPartener: 'RO7' }, 'x'));
+
+  // Un singur control cazut e de ajuns ca sa opreasca postarea (regula e conjunctie, nu scor)
+  const unSingur = ev({ fields: Object.assign({}, BUN.fields, { document: '' }) });
+  ok('un singur control cazut opreste postarea, desi scorul ramane mare',
+    unSingur.decizie === 'revizuire' && unSingur.scor >= 90);
+
+  // Golurile derivabile se completeaza (nu se suprascrie nimic extras)
+  const golTva = ev({ fields: { data: '2026-06-10', document: 'F-7', partener: 'ALPHA SRL', cuiPartener: 'RO111', baza: 1000, suma: 1210 } });
+  eq('golul derivabil (TVA) se completeaza din baza si total', golTva.fields.tva, 210);
+  eq('...si cota se infereaza din raport', golTva.fields.cota, 21);
+
+  // ── Diferenta om vs masina ──
+  const dif = eq2.diferente(
+    { data: '2026-06-10', document: 'F-1', partener: 'ALFA', baza: 100, tva: 21, suma: 121 },
+    { data: '2026-06-10', document: 'F-1', partener: 'ALPHA SRL', baza: 100, tva: 21, suma: 121 },
+    'factura_cumparare_marfuri', 'factura_cumparare_marfuri');
+  eq('diferenta prinde exact campul corectat', dif.campuri.map((c) => c.camp).join(','), 'partener');
+  eq('...si numara modificarile', dif.nrModificari, 1);
+  ok('diferenta pastreaza ambele valori (ce a citit vs ce a salvat)',
+    dif.campuri[0].extras === 'ALFA' && dif.campuri[0].salvat === 'ALPHA SRL');
+  const difTip = eq2.diferente({ baza: 100 }, { baza: 100 }, 'factura_utilitati', 'factura_servicii_primita');
+  ok('schimbarea TIPULUI conteaza ca interventie', difTip.tipSchimbat === true && difTip.nrModificari === 1);
+  eq('numerele se compara ca numere, nu ca text', eq2.diferente({ tva: '210' }, { tva: 210 }).nrModificari, 0);
+  eq('gol vs lipsa nu e o modificare', eq2.diferente({ document: '' }, {}).nrModificari, 0);
+  eq('confirmarea fara schimbari da zero modificari',
+    eq2.diferente(BUN.fields, Object.assign({}, BUN.fields), 'x', 'x').nrModificari, 0);
+
+  eq('formatul se ia din extensie', eq2.formatFisier('Factura Alpha.PDF'), 'pdf');
+  eq('fara extensie -> necunoscut', eq2.formatFisier('scan'), 'necunoscut');
+
+  // ── Raportul: cine si ce produce erori ──
+  const itv = [
+    { partener: 'ALPHA SRL', format: 'pdf', source: 'ai', controalePicate: ['partener', 'cota'], diff: { nrModificari: 2, campuri: [{ camp: 'cota' }, { camp: 'partener' }] } },
+    { partener: 'ALPHA SRL', format: 'pdf', source: 'ai', controalePicate: ['cota'], diff: { nrModificari: 1, campuri: [{ camp: 'cota' }] } },
+    { partener: 'BETA SRL', format: 'jpg', source: 'ai', controalePicate: ['aritmetica'], diff: { nrModificari: 1, campuri: [{ camp: 'suma' }] } },
+  ];
+  const rp = eq2.raport(itv);
+  eq('raport: total interventii', rp.total, 3);
+  eq('raport: furnizorul cu cele mai multe corectii e primul', rp.furnizori[0].cheie, 'ALPHA SRL');
+  eq('raport: si numarul lor', rp.furnizori[0].interventii, 2);
+  eq('raport: controlul dominant al furnizorului', rp.furnizori[0].controaleTop[0].cod, 'cota');
+  eq('raport: formatele se grupeaza separat', rp.formate.map((f) => f.cheie + ':' + f.interventii).join(','), 'pdf:2,jpg:1');
+  eq('raport: controlul care pica cel mai des', rp.peControl[0].cod, 'cota');
+  ok('raport: controlul poarta si numele lizibil', !!rp.peControl[0].nume && rp.peControl[0].nume !== rp.peControl[0].cod);
+  eq('raport: campul corectat cel mai des', rp.peCamp[0].camp, 'cota');
+  eq('raport gol nu arunca', eq2.raport([]).total, 0);
+}
+
 section('Contoarele extragerilor AI (src/metrics.js aiCall/aiSnapshot)');
 const metAi = require('../src/metrics');
 metAi.reset();
