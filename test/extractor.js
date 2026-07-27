@@ -51,6 +51,33 @@ async function silent(fn) {
   eq('extractFromText: suma', h.fields.suma, 327);
   ok('extractFromText: CUIs ambele', h.cuis.includes('13267221') && h.cuis.includes('12345678'));
 
+  // ── Buffer din POOL: defectul TACUT al extragerii de text ──────────────────
+  // `fs.readFileSync` aloca din pool pentru fisiere sub 4 KB (Buffer.poolSize >>> 1), deci
+  // intoarce o VEDERE intr-un ArrayBuffer partajat (byteOffset != 0). pdf2json/pdf.js citeste
+  // ArrayBuffer-ul SUBIACENT intreg, ignorand byteOffset/length -> parsa octeti straini si
+  // esua cu „Invalid XRef stream header". Cum extractText inghite eroarea prin proiectare,
+  // orice PDF sub 4 KB nu dadea text si NIMIC nu semnala asta. Reprodus si masurat pe PDF-uri
+  // reale: 3.344 si 3.403 octeti -> zero text; 4.742 octeti (byteOffset 0) -> corect.
+  const { ownBytes } = require('../src/extractor');
+  {
+    const partajat = new ArrayBuffer(64);
+    new Uint8Array(partajat).fill(0xAA);              // „octetii altcuiva" din pool
+    const vedere = new Uint8Array(partajat, 8, 16);   // exact forma unui Buffer din pool
+    for (let i = 0; i < 16; i += 1) vedere[i] = i + 1; // datele NOASTRE, distincte de 0xAA
+    ok('vederea din pool chiar are byteOffset != 0 (altfel testul n-ar dovedi nimic)', vedere.byteOffset === 8);
+    const n = ownBytes(vedere);
+    eq('ownBytes muta octetii intr-un ArrayBuffer propriu', n.byteOffset, 0);
+    eq('...de exact lungimea datelor, nu a pool-ului', n.buffer.byteLength, 16);
+    ok('...cu acelasi continut', [...n].join(',') === [...vedere].join(','));
+    ok('...si fara octetii straini din pool', ![...new Uint8Array(n.buffer)].includes(0xAA));
+  }
+  {
+    // deja standalone -> se intoarce ACELASI obiect (fara copie inutila peste prag)
+    const propriu = new Uint8Array(32);
+    ok('un buffer deja propriu nu se copiaza', ownBytes(propriu) === propriu);
+  }
+  ok('buffer lipsa nu arunca', ownBytes(null) === null && ownBytes(undefined) === undefined);
+
   console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari extractor trecute, ' + fail + ' esuate.');
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
