@@ -165,6 +165,14 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
 
 ## Convenții
 
+- **Documentația vie e artefact de release**, verificată automat în `npm test` („Docs: documentația
+  nu contrazice configurația reală"): fiecare `npm run` și fiecare cale citată există, variabilele
+  `CONTAB_*` documentate există în cod, versiunile de Node = matricea CI + `engines`, portul =
+  cel din cod, grupurile din meniu apar în ghid, fiecare declarație generată apare în jurnalul de
+  validare oficială. **Cifrele de verificări nu se scriu de mână**: ori sunt confruntate cu
+  realitatea (registrul `AFIRMATII`), ori nu au ce căuta într-un document viu — altfel driftează
+  la fiecare test nou. ADR-urile (`docs/scalare-crestere.md`) și backlogul sunt intenționat
+  istorice și rămân în afara porții.
 - Comentariile din `src/` sunt în română **fără diacritice**; docs/ și mesajele către utilizator cu
   diacritice. Comentariile explică *de ce*, nu *ce*.
 - **Documentele „vii" se verifică singure** (poartă în `test/run.js`): căi de fișiere, `npm run`,

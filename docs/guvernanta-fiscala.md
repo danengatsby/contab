@@ -25,8 +25,9 @@ Regula de aur: **nicio cotă hardcodată în afara acestui fișier.** (Convenți
    (cu actul normativ și data intrării în vigoare).
 2. Se actualizează/adaugă **testele datate** din `test/run.js` — fiecare schimbare
    legislativă are aserțiuni cu valorile noi (ex. TVA 21/11, dividende 16% din 2026,
-   salariul minim pe semestre). Suita (~1.200 aserțiuni de module) pică dacă o cotă
-   veche a rămas undeva.
+   salariul minim pe semestre). Suita de module pică dacă o cotă veche a rămas undeva
+   (numărul curent de verificări îl spune `npm test` — nu îl fixăm aici, ar drifta la
+   fiecare test nou).
 3. **Poarta fiscală, obligatoriu înainte de merge:** `sh scripts/poarta-fiscala.sh` —
    generează toate ieșirile din seed și le trece prin validatoarele **oficiale**
    (DUKIntegrator pentru declarații + SAF-T, XSD pentru e-Transport). Se aplică automat

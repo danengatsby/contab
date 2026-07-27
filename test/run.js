@@ -4662,12 +4662,58 @@ section('Docs: documentatia nu contrazice configuratia reala (fara drift)');
   ok('adresele „localhost:PORT" din documente folosesc portul implicit real (' + portReal + ')'
     + (portGresit.length ? ' — ' + [...new Set(portGresit)].join(', ') : ''), portGresit.length === 0);
 
-  // 6) docs/rulare.md nu are voie sa afirme NUMERE de verificari: se schimba la fiecare test nou,
-  //    deci ar drifta garantat. Numarul curent il spune `npm test`. (ADR-urile POT: acolo cifra e
-  //    o masuratoare datata, nu o descriere a prezentului — de aceea regula e doar pe acest fisier.)
-  const cifreTeste = [...rd('docs/rulare.md').matchAll(/[~\d][\d.,]*\s*(?:de\s+)?verific[ăa]ri/gi)].map((m) => m[0].trim());
-  ok('docs/rulare.md nu fixeaza numere de verificari (ar drifta la fiecare test nou)'
-    + (cifreTeste.length ? ' — ' + cifreTeste.join(', ') : ''), cifreTeste.length === 0);
+  // 6) NUMERELE DE VERIFICARI din documentatia VIE. Regula era doar pe docs/rulare.md si a lasat
+  //    sa drifteze exact ce trebuia sa prinda: „18 verificari cap-coada" in arhitectura.md (erau
+  //    36) si „~1.200 aserttiuni" in guvernanta-fiscala.md (erau 1948). Acum, in ORICE document viu,
+  //    o cifra langa „verificari/aserttiuni" trebuie sa fie ori VERIFICATA aici, ori sa nu existe.
+  //    (ADR-urile si backlogul raman in afara: acolo cifra e o masuratoare datata, nu o descriere
+  //    a prezentului.)
+  const nrOk = (fisier) => (rd(fisier).match(/^\s*ok\(/gm) || []).length;
+  // Afirmatii numerice ACCEPTATE, fiindca sunt confruntate cu realitatea la fiecare rulare.
+  const AFIRMATII = [
+    { doc: 'docs/arhitectura.md', rx: /(\d+) verific[ăa]ri cap-coad[ăa]/,
+      real: () => nrOk('scripts/e2e.mjs'), ce: 'apeluri ok() in scripts/e2e.mjs' },
+    { doc: 'docs/arhitectura.md', rx: /(\d+) verific[ăa]ri pe instan[țt][ăa] izolat[ăa]/,
+      real: () => nrOk('scripts/e2e-izolat.mjs'), ce: 'apeluri ok() in scripts/e2e-izolat.mjs' },
+  ];
+  const afirmGresite = [];
+  for (const a of AFIRMATII) {
+    const m = rd(a.doc).match(a.rx);
+    if (!m) { afirmGresite.push(a.doc + ': afirmatia despre „' + a.ce + '" a disparut din document'); continue; }
+    const real = a.real();
+    if (Number(m[1]) !== real) afirmGresite.push(a.doc + ': scrie ' + m[1] + ', real ' + real + ' (' + a.ce + ')');
+  }
+  ok('afirmatiile numerice din documente sunt cele reale'
+    + (afirmGresite.length ? ' — ' + afirmGresite.join(' | ') : ''), afirmGresite.length === 0);
+
+  // Citate istorice: cifra descrie un incident din trecut, nu prezentul. Fiecare isi poarta motivul.
+  const CIFRE_ISTORICE = new Map([
+    ['CLAUDE.md', /557 verific[ăa]ri trecute/],  // incidentul CONTAB_TEST_DRIVER: suita rula pe alt driver
+  ]);
+  const cifreLibere = [];
+  for (const doc of DOCS_VII) {
+    const text = rd(doc);
+    for (const m of text.matchAll(/[~\d][\d.,]*\s*(?:de\s+)?(?:verific[ăa]ri|aser[țt]iuni)/gi)) {
+      const bucata = text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40);
+      if (AFIRMATII.some((a) => a.doc === doc && a.rx.test(bucata))) continue;   // verificata mai sus
+      const ist = CIFRE_ISTORICE.get(doc);
+      if (ist && ist.test(bucata)) continue;                                      // citat istoric (se cauta in CONTEXT)
+      cifreLibere.push(doc + ': „' + m[0].trim() + '"');
+    }
+  }
+  ok('nicio cifra de verificari NEVERIFICATA in documentatia vie'
+    + (cifreLibere.length ? ' — ' + cifreLibere.join(', ') : ''), cifreLibere.length === 0);
+
+  // 6b) DOCUMENTATIA FISCALA ca artefact de release: fiecare declaratie pe care codul o GENEREAZA
+  //     trebuie sa apara in jurnalul de conformitate. Altfel se poate livra o iesire fiscala noua
+  //     fara nicio dovada de validare — si nimeni n-ar observa lipsa.
+  const rutePeXml = [...rd('src/routes/declarationsXml.js').matchAll(/app\.get\('\/xml\/([a-z0-9]+)/g)]
+    .map((m) => m[1].toUpperCase()).filter((t) => /^D\d+$/.test(t) || t === 'SAFT');
+  ok('se pot citi declaratiile generate din rute', rutePeXml.length >= 6);
+  const jurnal = rd('docs/validare-oficiala.md');
+  const nedovedite = [...new Set(rutePeXml)].filter((t) => !jurnal.includes(t === 'SAFT' ? 'SAF-T' : t));
+  ok('fiecare declaratie generata apare in jurnalul de validare oficiala'
+    + (nedovedite.length ? ' — LIPSESC: ' + nedovedite.join(', ') : ''), nedovedite.length === 0);
 
   // 7) Numele grupurilor din meniu (public/index.html) apar in ghidul de rulare. Verificarea e
   //    COD -> DOC, deci prinde si redenumirea, si grupul nou nedocumentat. Exact driftul care a
