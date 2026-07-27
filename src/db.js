@@ -5,7 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const auth = require('./auth');
 const migrations = require('./migrations');
-const { stringifyDb } = require('./util');
+const { stringifyDb, naturalCompare } = require('./util');
 
 // CONTAB_DATA_DIR: izolare pentru teste (backup/restore, uploads) — implicit data/ din repo.
 const DATA_DIR = process.env.CONTAB_DATA_DIR || path.join(__dirname, '..', 'data');
@@ -567,7 +567,7 @@ async function trialBalanceSql(fid, period) {
 // NATURAL — localeCompare numeric, nereproductibil in SQL), apoi seq (pozitia liniei in articol).
 function lineChrono(a, b) {
   if (a.data !== b.data) return (a.data || '') < (b.data || '') ? -1 : 1;
-  const c = String(a.entry_id).localeCompare(String(b.entry_id), undefined, { numeric: true });
+  const c = naturalCompare(a.entry_id, b.entry_id);
   return c !== 0 ? c : (a.seq - b.seq);
 }
 

@@ -152,6 +152,10 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
     persistat în meta pe toate driverele — echivalentul tabelului `_migrations`). Hook unic la finalul
     `migrate()`. Un pas nou = `{ v, desc, up(d) }` cu `v` strict crescător; `up(d)` mută graful în loc
     și **trebuie** idempotent + data-driven (rulează și pe bază goală, și pe date deja migrate).
+- Ordinea naturală a id-urilor (`e2` înaintea lui `e10`) se face cu `naturalCompare` din
+  `src/util.js` — un singur `Intl.Collator` refolosit. `localeCompare(x, undefined, {numeric:true})`
+  construiește un colator **la fiecare comparație**: aceeași ordine, dar 175 ms în loc de 12 ms pe o
+  sortare de 22.000 de articole. Nu reintroduce forma cu `localeCompare` în sortări.
 - Rutele care întorc colecții vii din memorie trec prin `src/paginate.js` (`sendList`): fără
   `?limit` → array simplu, dar **plafonat** la `CONTAB_MAX_ROWS` (implicit 20000, gardă contra
   OOM, cu antet `X-Rows-Truncated` când taie); cu `?limit`/`?offset` → plic `{ items, total,

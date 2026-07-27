@@ -4,7 +4,7 @@
 // separat per (produs × gestiune). Miscari: receptie (intrare), iesire (consum/vanzare) si
 // transfer intre gestiuni (iesire din sursa + intrare in destinatie la CMP-ul sursei).
 
-const { round2 } = require('./util');
+const { round2, naturalCompare } = require('./util');
 
 const DEFAULT_GEST = '(fara gestiune)';
 function gestKey(m, role) { return (role === 'dest' ? m.gestiuneDestId : m.gestiuneId) || DEFAULT_GEST; }
@@ -23,7 +23,7 @@ function cogsAccount(contStoc) {
 }
 
 function sortMov(list) {
-  return [...list].sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : String(a.id).localeCompare(String(b.id), undefined, { numeric: true })));
+  return [...list].sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : naturalCompare(a.id, b.id)));
 }
 
 function limitOf(asOf) {

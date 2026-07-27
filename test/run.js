@@ -3534,6 +3534,33 @@ ok('job: eroarea notata si numarata', snapJ['spv-poll'].lastError === 'ANAF 503'
 metricsMod.reset();
 ok('reset: erori si joburi golite', metricsMod.snapshot().recentErrors.length === 0 && Object.keys(metricsMod.snapshot().jobs).length === 0);
 
+section('Ordine cronologica: colator natural refolosit + ultimele N fara sortare completa');
+{
+  const { naturalCompare } = require('../src/util');
+  // Echivalenta cu localeCompare: spec-ul defineste localeCompare(x, loc, opts) ca
+  // Collator(loc, opts).compare(...) — deci un colator refolosit da EXACT aceeasi ordine.
+  const probe = ['e2', 'e10', 'e1', 'be100', 'be9', 'e10a', 'E3', 'e03', 'sm7', ''];
+  const lc = [...probe].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+  const nc = [...probe].sort(naturalCompare);
+  eq('colatorul refolosit da aceeasi ordine ca localeCompare', nc.join('|'), lc.join('|'));
+  ok('ordine NATURALA, nu lexicografica (e2 inaintea lui e10)', nc.indexOf('e2') < nc.indexOf('e10'));
+
+  // lastEntries(n) == sortEntries(...).slice(-n).reverse(), pe date cu date/id-uri amestecate
+  const rnd = [];
+  for (let i = 0; i < 400; i++) {
+    rnd.push({ id: 'e' + ((i * 37) % 400), data: '2026-' + String(1 + ((i * 7) % 12)).padStart(2, '0') + '-' + String(1 + ((i * 13) % 28)).padStart(2, '0') });
+  }
+  const idsOf = (arr) => arr.map((e) => e.id).join(',');
+  const referinta = (arr, n) => { const s = acc.sortEntries(arr); return s.slice(Math.max(0, s.length - n)).reverse(); };
+  for (const n of [0, 1, 5, 399, 400, 500]) {
+    eq('lastEntries(' + n + ') identic cu sortEntries().slice(-n).reverse()',
+      idsOf(acc.lastEntries(rnd, n)), idsOf(referinta(rnd, n)));
+  }
+  eq('lastEntries pe lista goala', acc.lastEntries([], 5).length, 0);
+  // aceleasi date, ordine de intrare inversata -> acelasi rezultat (nu depinde de ordinea colectiei)
+  eq('lastEntries nu depinde de ordinea din colectie', idsOf(acc.lastEntries([...rnd].reverse(), 5)), idsOf(acc.lastEntries(rnd, 5)));
+}
+
 section('Service layer firme: autorizarea dublata (src/firmeService.js)');
 const fsvc = require('../src/firmeService');
 const fidPrima = dbx.firme[0].id;
