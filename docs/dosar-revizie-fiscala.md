@@ -102,8 +102,18 @@ că cifrele sunt „doar consecvente cu implementarea, nu confirmate față de l
 
 ## 6. Cazurile supuse aprobării
 
-17 cazuri, în 6 arii. Tabelul de mai jos e un instantaneu — sursa de adevăr e
-`node test/cazuri-aprobate.js --md`.
+**Ce se trimite efectiv revizorului:**
+
+```bash
+node test/cazuri-aprobate.js --dosar > cazuri-fiscale-2026.md
+```
+
+Documentul de lucru: fiecare caz cu **temeiul**, **intrarea**, **cifrele propuse** și punctele
+„De decis", plus o casetă de verdict per caz și rubrica de semnătură la final. Revizorul bifează
+sau contestă direct pe el — nu are nevoie să citească JavaScript, ceea ce scurtează revizia și
+elimină scuza „n-am putut verifica implementarea".
+
+Tabelul de mai jos e doar un rezumat; sursa de adevăr rămâne `node test/cazuri-aprobate.js --md`.
 
 ### Cote și praguri
 

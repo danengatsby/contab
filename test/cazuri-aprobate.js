@@ -26,6 +26,7 @@
 //    node test/cazuri-aprobate.js                 ruleaza corpusul
 //    node test/cazuri-aprobate.js --semnatura ID  tipareste amprenta de lipit in `aprobare`
 //    node test/cazuri-aprobate.js --md            tabelul pentru dosarul de revizie
+//    node test/cazuri-aprobate.js --dosar         documentul de LUCRU al revizorului (de trimis)
 //
 //  Dosarul trimis revizorului: docs/dosar-revizie-fiscala.md
 // ─────────────────────────────────────────────────────────────────────────────
@@ -397,6 +398,40 @@ function ruleaza() {
   return fail ? 1 : 0;
 }
 
+/** `--dosar`: documentul de LUCRU al revizorului — fiecare caz cu intrarea, cifrele si intrebarile
+ *  deschise, ca sa poata bifa/contesta fara sa citeasca JavaScript. Asta se trimite, nu codul. */
+function dosar() {
+  // `an` e un an calendaristic, nu o suma: fara separator de mii (altfel „2.026").
+  const val = (k, v) => {
+    if (v == null) return '—';
+    if (typeof v !== 'number') return String(v);
+    if (/^an$/i.test(k)) return String(v);
+    return v.toLocaleString('ro-RO', { maximumFractionDigits: 2 });
+  };
+  const tabel = (o) => Object.keys(o).map((k) => '| `' + k + '` | ' + val(k, o[k]) + ' |').join('\n');
+  console.log('# Cazuri fiscale supuse aprobării — document de lucru\n');
+  console.log('Set fiscal **' + cfg.AN + '** (actualizat ' + cfg.DATA_ACTUALIZARE + '). '
+    + CAZURI.length + ' cazuri, ' + CAZURI.filter((c) => c.aprobare).length + ' aprobate.\n');
+  console.log('Pentru fiecare caz: **temeiul** pe care se verifică, **intrarea** și **cifrele** '
+    + 'propuse. Marcați fiecare caz cu ✔ (corect) sau ✘ + valoarea corectă și temeiul. '
+    + 'Punctele „De decis" sunt cele unde implementarea e simplificată deliberat.\n');
+  let arie = '';
+  for (const c of CAZURI) {
+    if (c.arie !== arie) { arie = c.arie; console.log('\n## ' + arie); }
+    console.log('\n### ' + c.id + ' — ' + c.titlu + '\n');
+    console.log('**Temei:** ' + c.temei.replace(/\n\s*/g, ' ') + '\n');
+    console.log('| Intrare | Valoare |\n|---|---|');
+    console.log(tabel(c.intrare));
+    console.log('\n| Cifra propusă spre aprobare | Valoare |\n|---|---|');
+    console.log(tabel(c.asteptat));
+    if (c.observatii) console.log('\n> **De decis:** ' + c.observatii.replace(/\n\s*/g, ' '));
+    console.log('\n**Verdict:** ☐ corect ☐ incorect → valoarea corectă: ............ (temei: ............)');
+  }
+  console.log('\n---\n');
+  console.log('Revizor: ........................................  '
+    + 'Calitate/nr. CECCAR: ....................  Data: ..............\n');
+}
+
 /** `--md`: tabelul de cazuri pentru dosarul trimis revizorului. */
 function tabelMd() {
   let arie = '';
@@ -420,6 +455,8 @@ if (arg === '--semnatura') {
   console.log(semnatura(c));
 } else if (arg === '--md') {
   tabelMd();
+} else if (arg === '--dosar') {
+  dosar();
 } else {
   process.exit(ruleaza());
 }
