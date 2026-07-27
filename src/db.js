@@ -563,10 +563,18 @@ function largeFirma(fid) {
 /** Perioada suportata de calea SQL a balantei: YYYY sau YYYY-MM (trimestrele/gol -> RAM). */
 function sqlBalancePeriodOk(period) { return typeof period === 'string' && /^\d{4}(-\d{2})?$/.test(period); }
 
+// CITIRE-DUPA-SCRIERE pe calea SQL: pe pg, `save()` fotografiaza sincron dar COMITE printr-o coada
+// asincrona, deci proiectiile (entry_lines) pot fi in urma cu cateva milisecunde. Calea RAM nu are
+// problema asta (citeste chiar obiectul mutat), dar o citire SQL imediat dupa o scriere vedea starea
+// DE DINAINTE — de exemplu un articol tocmai postat lipsea din balanta si din jurnal. Asteptam coada
+// inainte de orice citire din proiectii: pe sqlite e o promisiune deja rezolvata (persist sincron).
+function sqlReady() { return flushStore(); }
+
 /** Balanta calculata DIRECT in SQL (rulaj perioada + rulaj inainte, din entry_lines) + soldurile de
  *  preluare din RAM. Acelasi rezultat ca accounting.trialBalance, dar fara a itera graful. Async
  *  (pg e asincron; sqlite sincron -> await pe valoare). */
 async function trialBalanceSql(fid, period) {
+  await sqlReady();
   const acc = require('./accounting');
   const opening = (get().openingBalances || {})[fid] || {};
   const before = await store.linesTurnover(fid, period, { before: true });
@@ -585,6 +593,7 @@ function lineChrono(a, b) {
 /** Registrul-jurnal calculat DIRECT in SQL (liniile perioadei din entry_lines). Acelasi rezultat
  *  ca accounting.journal, fara a itera graful. */
 async function journalSql(fid, period) {
+  await sqlReady();
   const { round2 } = require('./util');
   const lines = (await store.linesForPeriod(fid, period)).sort(lineChrono);
   const rows = []; let total = 0; let nr = 0; let lastEntry = null;
@@ -606,6 +615,7 @@ async function journalSql(fid, period) {
 /** Cartea mare calculata DIRECT in SQL (rulaj inainte + liniile perioadei din entry_lines) +
  *  soldurile de preluare din RAM. Acelasi rezultat ca accounting.ledger, fara a itera graful. */
 async function ledgerSql(fid, period) {
+  await sqlReady();
   const coa = require('./chartOfAccounts');
   const { round2 } = require('./util');
   const opening = (get().openingBalances || {})[fid] || {};
@@ -638,6 +648,7 @@ async function ledgerSql(fid, period) {
 /** Fisa unui cont calculata DIRECT in SQL (miscarile contului + rulaj inainte, din entry_lines) +
  *  soldul de preluare din RAM. Acelasi rezultat ca accounting.fisaCont, dar fara a itera graful. */
 async function trialFisaContSql(fid, cont, period) {
+  await sqlReady();
   const coa = require('./chartOfAccounts');
   const { round2 } = require('./util');
   cont = String(cont || '').trim();
