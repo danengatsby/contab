@@ -187,6 +187,25 @@ Citiri pure pe firma activă; parametrii uzuali `?period=` / `?year=`.
 - `GET /api/dashboard` — KPI + `primiiPasi` (onboarding) + alerte e-Factura;
   `/api/dashboard-charts`, `/api/cash-forecast?months=`, `/api/missing-docs?period=`.
 - `GET /api/reconcile`, `/api/compensations` (+ `POST` pentru nota 401=4111).
+
+### Închiderea lunară (cockpit) — `src/routes/monthlyClose.js`
+
+Fluxul unic *documente → extras bancar → TVA → declarații → aprobare → blocare*. Starea fiecărui
+pas se **derivă din date** (`src/monthlyClose.js`); se persistă doar alocarea, dovada validării,
+aprobarea și eventuala forțare.
+
+- `GET /api/monthly-close?period=YYYY-MM` — pașii cu `stare` (`gata|deschis|blocat|nuseaplica`),
+  `blocaje[]` (motivul), `blocatDe` (pasul care îl ține), `responsabil`, `due`, plus `responsabili`
+  (conturile firmei) și `validabile` (declarațiile lunii care se pot valida).
+- `POST /api/monthly-close/step` `{period, step, responsabilId, due, nota}` — alocarea unui pas;
+  `due: ''` revine la termenul implicit (derivat din termenul real de depunere al lunii).
+- `POST /api/monthly-close/validate` `{period, tip}` — rulează validarea pre-depunere și **păstrează
+  dovada** (cine, când, verdict). Aceeași funcție ca `GET /api/validate/:type` (`src/declarationCheck.js`).
+- `POST /api/monthly-close/approve` / `unapprove` `{period, nota}` — asumarea explicită a lunii;
+  refuzată cât timp există pași nerezolvați.
+- `POST /api/monthly-close/close` `{period, force, motiv}` — blochează perioada. Cu pași deschiși
+  se refuză (400); **doar un administrator** poate forța (`force:true`), obligatoriu cu `motiv`
+  (≥10 caractere), care rămâne pe dosarul lunii și în audit (`inchidere.fortata`).
 - Export: aceleași rapoarte există ca `/pdf/*` și `/csv/*` (CSV cu `;` și BOM UTF-8).
 
 ## Declarații & e-Factura (`src/routes/declarations.js`, `declarationsXml.js`, `anaf.js`)
