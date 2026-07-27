@@ -558,6 +558,13 @@ function canSqlRead() { return !!(store && typeof store.linesTurnover === 'funct
 /** Fencing multi-scriitor: alt proces a scris in baza (persistenta inghetata)? json -> false. */
 function storeConflicted() { return !!(store && typeof store.conflicted === 'function' && store.conflicted()); }
 
+/** Starea cozii de persistenta a driverului (vezi store*.queueStats). Pe driverul `json` nu
+ *  exista coada: scrierea e sincrona in fisier, deci nimic nu asteapta niciodata. */
+function persistStats() {
+  if (store && typeof store.queueStats === 'function') return store.queueStats();
+  return { driver: DRIVER, pending: false, pendingAgeMs: 0, pendingBytes: 0, draining: false, commits: 0, failStreak: 0, lastCommitAt: null, lastError: null, conflicted: false };
+}
+
 /** Firma are destule articole ca sa merite calculul in SQL (peste prag)? Scurt-circuit la prag. */
 function largeFirma(fid) {
   if (!canSqlRead()) return false;
@@ -679,6 +686,6 @@ async function trialFisaContSql(fid, cont, period) {
 module.exports = {
   get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
-  canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, SQL_READ_THRESHOLD,
+  canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, persistStats, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

@@ -245,7 +245,13 @@ module.exports = function registerAuthRoutes(app, ctx) {
         memoryRssMb: mb(mem.rss), memoryHeapUsedMb: mb(mem.heapUsed), memoryHeapTotalMb: mb(mem.heapTotal),
         // fencing multi-scriitor: true = alt proces a scris in baza, persistenta e INGHETATA (restart necesar)
         storeConflict: db.storeConflicted(),
+        // cat de aproape e RSS-ul de plafonul pm2 (max_memory_restart): sub 100% procesul traieste
+        memoryLimitMb: metrics.MEM_LIMIT_MB,
+        memoryWarnMb: metrics.MEM_WARN_MB,
+        memoryPctDinPlafon: Math.round((mem.rss / (metrics.MEM_LIMIT_MB * 1048576)) * 100),
       },
+      // Coada de persistenta: `pendingAgeMs` > 0 = scrieri care traiesc doar in RAM (nedurabile).
+      persist: db.persistStats(),
       firmeLoad: { maxEntries: topFirme.length ? topFirme[0].entries : 0, top: topFirme },
       // memo-ul per firma al rutelor scumpe (dashboard): rata de hit spune daca invalidarea
       // globala la fiecare scriere lasa cache-ul sa ajute in practica.

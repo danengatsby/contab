@@ -1551,6 +1551,38 @@ async function main() {
     ok('backup: fisierul se descarca si e un JSON de baza valid', snap.status === 200 && (() => { try { const j = JSON.parse(snap.text); return Array.isArray(j.firme) && Array.isArray(j.users); } catch (_) { return false; } })());
     eq('backup: traversarea de cale respinsa (404)', (await req('GET', '/api/backup/file/..%2F..%2Fdb.json', { cookie: cAdm })).status, 404);
     eq('backup: nume in afara tiparului db-*.json respins (404)', (await req('GET', '/api/backup/file/evil.txt', { cookie: cAdm })).status, 404);
+
+    // ── Drill de restaurare NATIVA PostgreSQL (la cerere) ──
+    eq('drill nativ PG: non-admin -> 403', (await req('POST', '/api/pg-restore-drill', { cookie: c1 })).status, 403);
+    eq('drill nativ PG: fara nicio arhiva completa -> 400 explicit',
+      (await req('POST', '/api/pg-restore-drill', { cookie: cAdm })).status, 400);
+    // Cu o arhiva reala prezenta: suita ruleaza pe sqlite/json, deci arhiva NU contine contab.sql
+    // si drill-ul trebuie sa se SARA curat, cu motivul scris. Un pas care nu poate rula n-are voie
+    // sa raporteze esec — altfel alerta zilnica ar tipa pe fiecare instalare care nu e pe pg.
+    require('../src/backup').fullBackup(DBF, DATA_TMP, 3);
+    const pgd = await req('POST', '/api/pg-restore-drill', { cookie: cAdm });
+    eq('drill nativ PG: raspunde 200 cand exista arhiva', pgd.status, 200);
+    ok('drill nativ PG: „nu se aplica" CU MOTIV (fara contab.sql pe sqlite), nu esec tacut',
+      pgd.json.sarit === true && /contab\.sql/i.test(pgd.json.motiv || ''));
+    ok('drill nativ PG: nu pretinde ca a reusit', pgd.json.ok === false);
+    // Distinctia care conteaza: „nu se aplica" (sqlite) tace; „nu pot verifica" (exista dump, dar
+    // lipseste psql / dreptul CREATEDB) NU are voie sa taca — altfel absenta verificarii ar trece
+    // drept verificare trecuta, exact tiparul de monitorizare oarba de care s-a mai lovit proiectul.
+    ok('drill nativ PG: pe sqlite nu e marcat „neverificabil"', !pgd.json.neverificabil);
+    ok('drill nativ PG: spune pe ce arhiva a lucrat', /^full-.*\.zip$/.test(pgd.json.arhiva || ''));
+    // `firmaId: null` in logAudit NU produce o intrare de sistem cand exista `req` (helperul cade
+    // pe firma activa a celui autentificat) — la fel ca restul operatiunilor de backup.
+    ok('drill nativ PG: consemnat in audit, cu rezultatul',
+      (await req('GET', '/api/audit', { cookie: cAdm })).json.some((a) => a.action === 'backup.pg-drill' && /SARIT|OK|ESUAT/.test(a.detail || '')));
+
+    // Starea cozii de persistenta + marginea fata de plafonul pm2, in /api/metrics
+    const mx = (await req('GET', '/api/metrics', { cookie: cAdm })).json;
+    ok('metrics: coada de persistenta e expusa cu contract complet',
+      mx.persist && typeof mx.persist.pending === 'boolean' && typeof mx.persist.pendingAgeMs === 'number' && typeof mx.persist.commits === 'number');
+    ok('metrics: driverul cozii e cel real', mx.persist.driver === (process.env.CONTAB_TEST_DRIVER || 'sqlite'));
+    ok('metrics: marginea fata de plafonul pm2 e vizibila',
+      mx.process.memoryLimitMb > 0 && mx.process.memoryWarnMb > 0 && mx.process.memoryWarnMb < mx.process.memoryLimitMb
+      && typeof mx.process.memoryPctDinPlafon === 'number');
     // restaurare: validarea refuza gunoiul INAINTE sa atinga baza
     const fdBadJson = new FormData();
     fdBadJson.append('file', new Blob(['nu e json'], { type: 'application/json' }), 'stricat.json');

@@ -24,6 +24,17 @@ let pool = null;
 let queue = Promise.resolve(); // coada seriala de tranzactii persist
 let pendingWork = null;        // un singur `work` asteapta intrarea in tranzactie (vezi persist)
 let draining = false;          // santinela: o singura bucla de golire activa
+// OBSERVABILITATEA COZII. Dupa colapsare (vezi persist) coada nu mai poate CRESTE — deci
+// „adancimea" nu mai e semnalul util. Ce ramane periculos e VECHIMEA: cat timp `pendingWork`
+// asteapta necomis, scrierile traiesc doar in RAM (nedurabile) si tin in viata un snapshot al
+// colectiilor schimbate. O coada care nu se goleste inseamna baza lenta, cazuta sau blocata —
+// exact situatia in care procesul creste spre plafonul pm2 fara ca nimeni sa observe.
+let pendingSince = 0;   // ms epoch de cand asteapta lucrarea curenta (0 = nimic in asteptare)
+let pendingBytes = 0;   // marimea aproximativa a lucrarii retinute in RAM
+let commits = 0;        // tranzactii comise cu succes
+let failStreak = 0;     // esecuri consecutive de persist (se reseteaza la primul commit reusit)
+let lastPersistError = null;   // { msg, at } — ultimul esec de scriere
+let lastCommitAt = null;       // ISO — ultima scriere ajunsa efectiv in baza
 // Dirty-tracking, ca in store.js (SQLite): colectiile cu `id` primesc INSERT/UPDATE/DELETE per rand
 // (diff fata de `snap`), nu DELETE+INSERT integral. `snap[colectie]` = Map(id -> json persistat la
 // ultimul commit reusit. Restul (colectii fara id, partners/opening/meta) raman pe rescriere completa
@@ -314,6 +325,8 @@ function persist(db) {
   // memoria de la 136 la 475 MB, in timp ce aceleasi scrieri cu 25ms pauza au ramas la 151 MB.
   // Vezi docs/scalare-crestere.md. SQLite (store.js) nu are problema: persista sincron.
   pendingWork = work;
+  if (!pendingSince) pendingSince = Date.now(); // vechimea se masoara de la PRIMA lucrare neconsumata
+  pendingBytes = approxBytes(work);
   if (!draining) { draining = true; queue = queue.then(drain); }
   return queue;
 }
@@ -328,6 +341,9 @@ async function drain() {
       try {
         await applyWork(work);
         epoch += 1; // versiunea avansata odata cu commit-ul
+        commits += 1; failStreak = 0; lastCommitAt = new Date().toISOString();
+        if (!pendingWork) { pendingSince = 0; pendingBytes = 0; } // coada golita
+        else pendingSince = Date.now();                            // a intrat deja alta lucrare
         // starea persistata se actualizeaza DOAR dupa commit reusit (esec -> retry idempotent la urmatorul save)
         for (const w of work) {
           if (w.snapKey) snap[w.snapKey] = w.cur;   // colectii cu id: snapshot per rand
@@ -342,12 +358,44 @@ async function drain() {
           return;
         }
         // `snap` a ramas neatins, deci urmatorul save recalculeaza diff-ul si reincearca
+        failStreak += 1;
+        lastPersistError = { msg: String(e.message || e).slice(0, 300), at: new Date().toISOString() };
         console.error('[contab] persist PostgreSQL ESUAT (se reincearca la urmatorul save):', e.message);
       }
     }
   } finally {
     draining = false; // si pe calea de eroare, altfel persistenta ar ramane blocata definitiv
   }
+}
+
+/** Marimea aproximativa (octeti) a unei lucrari retinute in coada — cat RAM tine ocupat. */
+function approxBytes(work) {
+  let n = 0;
+  for (const w of work || []) {
+    if (w.json) n += w.json.length;
+    if (w.cur) for (const v of w.cur.values()) n += v.length;
+    if (Array.isArray(w.entries)) for (const [, v] of w.entries) n += String(v).length;
+  }
+  return n;
+}
+
+/**
+ * Starea cozii de persistenta — pentru /api/metrics si pentru jobul de veghe.
+ * `pendingAgeMs` > 0 inseamna scrieri care NU au ajuns inca in baza (traiesc doar in RAM).
+ */
+function queueStats() {
+  return {
+    driver: 'pg',
+    pending: !!pendingWork,
+    pendingAgeMs: pendingSince ? Date.now() - pendingSince : 0,
+    pendingBytes,
+    draining,
+    commits,
+    failStreak,
+    lastCommitAt,
+    lastError: lastPersistError,
+    conflicted: conflictedFlag,
+  };
 }
 
 /** A fost detectat alt scriitor (persistenta inghetata)? Diagnostic pentru metrici/teste. */
@@ -508,4 +556,4 @@ async function close() {
   try { await p.end(); } catch (_) { /* ignora */ }
 }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, linesTurnover, linesForAccount, linesForPeriod, documentsStats, documentsSearch, auditCount, auditRecent, conflicted };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, queueStats, linesTurnover, linesForAccount, linesForPeriod, documentsStats, documentsSearch, auditCount, auditRecent, conflicted };

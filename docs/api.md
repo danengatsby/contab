@@ -221,8 +221,15 @@ Citiri pure pe firma activă; parametrii uzuali `?period=` / `?year=`.
   utilizator (auditată; alt admin nu poate fi impersonat).
 - `POST /api/backup`, `GET /api/backups`, `GET /api/backup/file/:name`,
   `POST /api/restore` (multipart) — backup/restaurare completă.
+- `POST /api/pg-restore-drill` — restaurează `contab.sql` din ultima arhivă într-o bază PostgreSQL
+  **temporară** și verifică rezultatul (rejucare fără erori, balanța fiecărei firme, echivalență cu
+  `db.json` din aceeași arhivă); baza temporară e ștearsă mereu. Răspuns:
+  `{ ok, sarit?, neverificabil?, motiv?, arhiva, firme, totalEntries, randuri, durataMs }` —
+  `sarit` = nu se aplică (instalare fără dump nativ), `neverificabil` = dump există dar nu poate fi
+  rejucat (lipsă `psql` sau drept `CREATEDB`), caz în care rularea periodică trimite alertă.
+  400 dacă nu există nicio arhivă completă.
 - `GET /api/metrics` — durate pe rută, `recentErrors`, starea joburilor, contoare AI,
-  proces. `GET /api/audit` / `/api/audit/system` — jurnalul de audit (JSON, ultimele 300;
+  proces (inclusiv marja față de plafonul pm2) și `persist` (starea cozii de persistență). `GET /api/audit` / `/api/audit/system` — jurnalul de audit (JSON, ultimele 300;
   `?limit/offset` pentru istoric). `GET /csv/audit` / `/csv/audit/system` — export CSV (tot ce
   e reținut, plafon 3000; arhivă / control intern / GDPR; sistemul doar admin).
 - `GET/POST /api/fiscal-config` — cotele fiscale configurabile (reset la standard cu

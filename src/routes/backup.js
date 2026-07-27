@@ -59,6 +59,18 @@ module.exports = function register(app, ctx) {
     res.json({ ok: true, message: 'Baza de date a fost restaurata. Va trebui sa te autentifici din nou.' });
   });
 
+  // Drill de restaurare NATIVA PostgreSQL, la cerere (admin): restaureaza `contab.sql` din ultima
+  // arhiva intr-o baza TEMPORARA si verifica rezultatul. Ruleaza si periodic din scripts/backup.js;
+  // butonul manual exista ca sa poti verifica IMEDIAT dupa o schimbare de infrastructura (versiune
+  // PostgreSQL, migrare de server) fara sa astepti urmatoarea rulare programata.
+  app.post('/api/pg-restore-drill', requireAdmin, async (req, res) => {
+    const list = backupLib.listFullArchives(db.DATA_DIR);
+    if (!list.length) return res.status(400).json({ error: 'Nicio arhiva completa (full-*.zip) de verificat.' });
+    const r = await require('../pgRestoreDrill').runPgDrill({ zipPath: list[0].path });
+    logAudit('backup.pg-drill', (r.sarit ? 'SARIT: ' : r.neverificabil ? 'NEVERIFICABIL: ' : r.ok ? 'OK: ' : 'ESUAT: ') + (r.motiv || (r.firme + ' firme, ' + r.totalEntries + ' articole')), { req, firmaId: null });
+    res.json(Object.assign({ arhiva: list[0].name }, r));
+  });
+
   // ── SMTP (admin) ──
   app.get('/api/smtp', requireAdmin, (req, res) => {
     const s = db.get().settings.smtp || {};

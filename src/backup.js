@@ -149,6 +149,17 @@ function fullBackup(dbFile, dataDir, keep) {
   return { name, path: path.join(dir, name), size: fs.statSync(path.join(dir, name)).size };
 }
 
+/** Arhivele complete (full-*.zip) din data/backups, cele mai noi primele. Folosita de drill-ul
+ *  nativ (la cerere si periodic): amandoua vor „ultima arhiva", si nu are voie sa fie doua reguli. */
+function listFullArchives(dataDir) {
+  const dir = backupDir(dataDir);
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir)
+    .filter((f) => /^full-.*\.zip$/.test(f))
+    .map((f) => ({ name: f, path: path.join(dir, f), mtime: fs.statSync(path.join(dir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime);
+}
+
 /** Verificarea RESTAURABILITATII unei arhive complete: se deschide, db.json trebuie sa fie
  *  JSON valid cu lista de firme, iar instantaneul sqlite sa fie prezent si nenul. Ruleaza
  *  dupa fiecare backup — un backup care nu se poate restaura e doar zgomot pe disc. */
@@ -166,4 +177,4 @@ function verifyArchive(zipPath) {
   } catch (e) { return { ok: false, motiv: e.message }; }
 }
 
-module.exports = { backupNow, listBackups, backupPath, fullBackup, pruneStrayBackups, prunePreRestoreBackups, verifyArchive };
+module.exports = { backupNow, listBackups, backupPath, fullBackup, pruneStrayBackups, prunePreRestoreBackups, verifyArchive, listFullArchives };

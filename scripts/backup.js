@@ -134,6 +134,14 @@ async function main() {
   //     izolare — invariantul partidei duble (Σdebit == Σcredit) pe fiecare firma. Automatizeaza
   //     exercitiul manual trimestrial din MONITORING.md. Starea (ambele) se persista pentru
   //     /api/metrics (ops.ultimulBackup) si e vizibila in raportul zilnic.
+  // Starea drill-ului nativ PG e citita AICI (inaintea lui scrieMarcaj, care o include in marcaj)
+  // ca sa nu cada primul apel in TDZ; rularea propriu-zisa vine mai jos, dupa celelalte verificari.
+  const PG_DRILL_DAYS = Number(process.env.CONTAB_PG_DRILL_DAYS || 7);
+  const drillMarkPath = path.join(DATA_DIR, 'backups', 'last-pg-drill.json');
+  let pgDrill = null;
+  const ultimulPgDrill = (() => {
+    try { return JSON.parse(fs.readFileSync(drillMarkPath, 'utf8')); } catch (_) { return null; }
+  })();
   const veri = backup.verifyArchive(f.path);
   const drill = require('../src/restoreDrill').drillArchive(f.path);
   // Marcajul de stare e util (il citeste /api/metrics si raportul zilnic), dar e cel mai PUTIN
@@ -144,11 +152,18 @@ async function main() {
   // in continuare — deci aparent totul era in regula.
   // Se rescrie dupa fiecare alerta, ca `alertaEsuata` sa fie la zi: daca insusi canalul de alerta
   // e cazut, urma trebuie sa ramana undeva ce se vede din afara.
+  // Forma COMPACTA a starii drill-ului nativ pentru marcaj: `randuri` (harta pe colectii) e utila
+  // in last-pg-drill.json, dar ar umfla marcajul citit de /api/metrics la fiecare cerere.
+  const rezumatPgDrill = (x) => (x ? {
+    ok: !!x.ok, sarit: !!x.sarit, motiv: x.motiv || null,
+    firme: x.firme, totalEntries: x.totalEntries, durataMs: x.durataMs, ts: x.ts, arhiva: x.arhiva,
+  } : null);
   const scrieMarcaj = () => {
     try {
       fs.writeFileSync(path.join(DATA_DIR, 'backups', 'last-backup.json'), JSON.stringify({
         ts: new Date().toISOString(), name: f.name, ok: veri.ok, firme: veri.firme, sqlite: veri.sqlite, size: f.size, motiv: veri.motiv,
         drill: { ok: drill.ok, nrFirme: drill.nrFirme, totalEntries: drill.totalEntries, motiv: drill.motiv },
+        pgDrill: rezumatPgDrill(pgDrill || ultimulPgDrill),
         alertaEsuata,
       }));
     } catch (e) {
@@ -172,6 +187,47 @@ async function main() {
     process.exit(1);
   }
   log('Drill restaurare OK:', drill.nrFirme, 'firme coerente,', drill.totalEntries, 'articole (balanta echilibrata).');
+
+  // 2c) DRILL NATIV PostgreSQL: restaureaza efectiv `contab.sql` intr-o baza TEMPORARA si verifica
+  // ce a iesit (rejucare fara erori, coerenta contabila, echivalenta cu db.json din aceeasi arhiva).
+  // Pana acum dump-ul nativ era doar PRODUS, niciodata rejucat — se putea strica in tacere.
+  // Ruleaza cel mult o data la CONTAB_PG_DRILL_DAYS zile (implicit 7): e mai scump decat restul si
+  // dump-ul nu se schimba structural de la o zi la alta. Se sare curat pe sqlite (fara contab.sql)
+  // sau daca `psql` lipseste — un pas care nu poate rula nu are voie sa pice backupul.
+  const scadent = !ultimulPgDrill || !ultimulPgDrill.ts
+    || (Date.now() - Date.parse(ultimulPgDrill.ts)) >= PG_DRILL_DAYS * 24 * 3600 * 1000;
+  if (scadent) {
+    pgDrill = await require('../src/pgRestoreDrill').runPgDrill({ zipPath: f.path });
+    pgDrill.ts = new Date().toISOString();
+    pgDrill.arhiva = f.name;
+    try { fs.writeFileSync(drillMarkPath, JSON.stringify(pgDrill)); }
+    catch (e) { warn('Marcajul last-pg-drill.json nu s-a putut scrie:', e.message); }
+    if (pgDrill.sarit) log('Drill nativ PostgreSQL: nu se aplica —', pgDrill.motiv);
+    else if (pgDrill.neverificabil) {
+      // Exista dump, dar nu-l putem rejuca: NU e „nu se aplica". Alerta, dar fara exit 1 —
+      // backupul in sine e bun, iar cauza e de INFRASTRUCTURA (drepturi, unelte lipsa).
+      warn('Drill nativ PostgreSQL NEVERIFICABIL:', pgDrill.motiv);
+      await alertEmail('[Contab backup] restaurarea nativa PG ramane NEVERIFICATA',
+        'Arhiva contine contab.sql, dar drill-ul nu a putut rula: ' + pgDrill.motiv + '\n\n'
+        + 'Backupul e in regula si restaurarea prin db.json ramane verificata — dar calea NATIVA\n'
+        + '(cea rapida, la dezastru) nu e probata de nimeni. Repara cauza de mai sus.');
+    } else if (!pgDrill.ok) {
+      warn('Drill nativ PostgreSQL ESUAT:', pgDrill.motiv);
+      await alertEmail('[Contab backup] RESTAURARE NATIVA PG ESUATA: ' + f.name,
+        'Dump-ul contab.sql din arhiva NU s-a putut restaura intr-o baza temporara, sau datele\n'
+        + 'rezultate nu sunt bune: ' + pgDrill.motiv + '\n\n'
+        + 'db.json din aceeasi arhiva a trecut verificarile, deci restaurarea prin JSON ramane\n'
+        + 'posibila — dar calea NATIVA (cea rapida, la dezastru) nu e utilizabila. Verifica\n'
+        + 'versiunea pg_dump fata de serverul PostgreSQL si spatiul pe disc.');
+      scrieMarcaj();
+      process.exit(1);
+    } else {
+      log('Drill nativ PostgreSQL OK: baza temporara', pgDrill.dbTemp, '—', pgDrill.firme, 'firme,',
+        pgDrill.totalEntries, 'articole, echivalenta cu db.json, in', pgDrill.durataMs + 'ms.');
+    }
+  } else {
+    log('Drill nativ PostgreSQL: nu e scadent (ultimul la', ultimulPgDrill.ts + ', la fiecare', PG_DRILL_DAYS, 'zile).');
+  }
 
   // 3) offsite — email si/sau rclone; esecul unuia nu opreste restul.
   //    Cu CONTAB_BACKUP_KEY setat, copia OFFSITE pleaca CRIPTATA (AES-256, openssl);
