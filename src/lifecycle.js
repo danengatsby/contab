@@ -57,6 +57,10 @@ function releaseDbLock() {
 }
 
 function start({ app, dbReady }) {
+  // Secretele obligatorii se verifica INAINTE de orice altceva: inaintea lock-ului, a hidratarii
+  // si a lui listen(). O instanta care porneste si abia apoi descopera ca semneaza sesiuni cu un
+  // secret din baza a apucat deja sa emita cookie-uri forjabile. Vezi src/secretsGuard.js.
+  require('./secretsGuard').assertSecrets();
   acquireDbLock();
   process.on('exit', releaseDbLock);
 

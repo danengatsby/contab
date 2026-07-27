@@ -4395,6 +4395,39 @@ section('Paginare + garda OOM (src/paginate.js sendList)');
   ok('harta lipsa nu arunca', r.body && Object.keys(r.body).length === 0);
 }
 
+section('Secrete obligatorii la pornire (src/secretsGuard.js)');
+{
+  const g = require('../src/secretsGuard');
+  const bun = { CONTAB_AUTH_SECRET: 'a'.repeat(64), CONTAB_SECRETS_KEY: 'b'.repeat(64) };
+  eq('mediu complet -> nicio problema', g.problems(bun).length, 0);
+  eq('mediu gol -> ambele semnalate', g.problems({}).length, 2);
+  ok('lipsa CONTAB_AUTH_SECRET spune DE CE (forjarea sesiunilor din backup)',
+    /forja sesiuni/i.test(g.problems({ CONTAB_SECRETS_KEY: 'b'.repeat(64) })[0]));
+  ok('lipsa CONTAB_SECRETS_KEY spune ca necriptarea e TACUTA',
+    /tacut/i.test(g.problems({ CONTAB_AUTH_SECRET: 'a'.repeat(64) })[0]));
+  // formatul conteaza, nu doar prezenta
+  eq('secret de semnare prea scurt e respins', g.problems(Object.assign({}, bun, { CONTAB_AUTH_SECRET: 'scurt' })).length, 1);
+  eq('cheia de criptare non-hex e respinsa', g.problems(Object.assign({}, bun, { CONTAB_SECRETS_KEY: 'x'.repeat(64) })).length, 1);
+  eq('cheia de criptare de alta lungime e respinsa', g.problems(Object.assign({}, bun, { CONTAB_SECRETS_KEY: 'ab' })).length, 1);
+  ok('64 hex cu litere mari e acceptat', g.problems(Object.assign({}, bun, { CONTAB_SECRETS_KEY: 'AB'.repeat(32) })).length === 0);
+
+  // Comportamentul la pornire, cu io injectat (fara process.exit real)
+  g._reset(); // garda e idempotenta pe proces; testele o reseteaza intre cazuri
+  const rec = () => { const o = { erori: [], jurnal: [], cod: null }; return Object.assign(o, { error: (m) => o.erori.push(m), log: (m) => o.jurnal.push(m), exit: (c) => { o.cod = c; } }); };
+  let io = rec(); const okRes = g.assertSecrets(bun, io);
+  ok('cu secrete: porneste, fara zgomot', okRes.ok && io.cod === null && io.erori.length === 0);
+  g._reset(); io = rec(); const fail = g.assertSecrets({}, io);
+  ok('fara secrete: REFUZA pornirea (exit 1)', fail.ok === false && io.cod === 1 && io.erori.length === 1);
+  ok('mesajul de refuz spune si cum se genereaza cheile', /randomBytes\(32\)/.test(io.erori[0]));
+  ok('...si avertizeaza ca schimbarea invalideaza sesiunile', /invalideaza toate/i.test(io.erori[0]));
+  g._reset(); io = rec(); const dev = g.assertSecrets({ CONTAB_DEV: '1' }, io);
+  ok('CONTAB_DEV=1: porneste, dar AVERTIZEAZA la fiecare pornire', dev.ok && dev.dev === true && io.cod === null && io.jurnal.length >= 1);
+  ok('avertismentul spune explicit ca nu e pentru productie', /NU folosi asa in productie/i.test(io.jurnal[0]));
+  // CONTAB_DEV nu e o valoare adevarata oarecare: doar '1'
+  g._reset(); io = rec(); g.assertSecrets({ CONTAB_DEV: 'true' }, io);
+  eq('CONTAB_DEV=true NU e acceptat ca dezvoltare (doar „1")', io.cod, 1);
+}
+
 section('CSRF: token sincronizator + allowlist de origine (src/csrf.js)');
 {
   const csrf = require('../src/csrf');

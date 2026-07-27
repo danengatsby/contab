@@ -64,9 +64,18 @@ aceeași bază.
 Instanță de dezvoltare izolată (nu atinge producția):
 
 ```bash
-CONTAB_DB_DRIVER=sqlite CONTAB_DB_FILE=/tmp/dev.json CONTAB_DATA_DIR=/tmp/dev-data PORT=18099 node server.js
+CONTAB_DEV=1 CONTAB_DB_DRIVER=sqlite CONTAB_DB_FILE=/tmp/dev.json CONTAB_DATA_DIR=/tmp/dev-data PORT=18099 node server.js
 # ...și oprește-o la final: fuser -k 18099/tcp  (o instanță uitată dă fals-pozitive la verificări)
 ```
+
+**`CONTAB_DEV=1` e obligatoriu la instanțele de dezvoltare** — fără el serverul REFUZĂ să pornească
+dacă lipsesc `CONTAB_AUTH_SECRET` (semnează sesiunile și derivă tokenul CSRF; fără el s-ar folosi
+un secret generat și ținut **în bază**, deci un backup ar permite forjarea de sesiuni de admin) sau
+`CONTAB_SECRETS_KEY` (criptează credențialele stocate; fără ea `seal()` întoarce textul neatins,
+**tăcut**). Garda e **fail-closed deliberat**, nu condiționată de `NODE_ENV`: pe această instalare
+`NODE_ENV` nu e setat în mediul pm2, deci o gardă legată de el n-ar fi pornit niciodată exact unde
+contează. Se verifică și formatul (minim 32 de caractere, respectiv exact 64 hex — o cheie
+malformată dezactivează criptarea tăcut). Vezi `src/secretsGuard.js`.
 
 Deploy (după merge în `main`): `sudo -u contab PM2_HOME=/home/contab/.pm2 pm2 restart contab`,
 apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_HOME` eșuează.

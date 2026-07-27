@@ -1,5 +1,12 @@
 # Rulare, deploy și configurare
 
+
+> **Secrete obligatorii.** Serverul refuză să pornească fără `CONTAB_AUTH_SECRET` și
+> `CONTAB_SECRETS_KEY` (ambele 64 hex, generate cu
+> `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`). Pe instanțele de
+> dezvoltare și în teste, marchează-le explicit cu `CONTAB_DEV=1` — atunci pornește cu valori de
+> rezervă, avertizând la fiecare pornire. Flagul nu se pune niciodată pe instalarea reală.
+
 ## Rulare
 
 ```bash
