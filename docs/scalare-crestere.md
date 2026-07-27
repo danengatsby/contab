@@ -43,7 +43,8 @@ fără schimbări în modulele de domeniu.
   detail, viaAdmin. Dovedit în teste: după plafonarea RAM, `audit_log` păstrează evenimentele ieșite din RAM.
 - **Pas 5 — LIVRAT (seam, gated pe prag): citiri per-cerere din SQL pentru firmele MARI.** `/api/balance`
   se calculează acum **direct în SQL** (proiecția `entry_lines`, prin `db.trialBalanceSql`) când firma
-  depășește `CONTAB_SQL_READ_THRESHOLD` articole (implicit **20.000**) și driverul suportă SQL (pg/sqlite);
+  depășește `CONTAB_SQL_READ_THRESHOLD` articole (implicit **100.000** din 2026-07-27, vezi mai jos;
+  inițial 20.000) și driverul suportă SQL (pg/sqlite);
   altfel din RAM. Rezultat **identic** (dovedit: suita HTTP trece cu ACELEASI aserttii de balanță și pe
   calea RAM, și pe cea SQL forțată cu prag 0 — rulat în CI pe sqlite și pg). `accounting.buildBalanceRows`
   a fost extras ca să fie alimentabil din ambele surse; `store.linesTurnover(fid, period, {before})` dă
@@ -139,13 +140,85 @@ rută gate-uită, pe ambele drivere. `CONTAB_SQL_READ_THRESHOLD` = 20.000 comut�
 exact în clipa în care se activează. Confirmă și extrapolarea de mai sus: `/api/dashboard` trece
 pragul de 500 ms (estimat ~18.000, măsurat 634–736 ms la 22.000).
 
-**Ce ar trebui făcut, în ordine:** (a) **ridicat** `CONTAB_SQL_READ_THRESHOLD` — calea SQL nu-și
+**Ce ar trebui făcut, în ordine** (toate trei rezolvate pe 2026-07-27 — vezi secțiunea următoare):
+(a) **ridicat** `CONTAB_SQL_READ_THRESHOLD` — calea SQL nu-și
 merită gate-ul pe criteriu de CPU. Atenție însă la ce NU spune măsurătoarea: scopul declarat al
 căii SQL e *seam*-ul către hidratarea lazy, adică reducerea RAM-ului, nu viteza. Ridicarea pragului
 o dezactivează practic; păstrarea codului rămâne justificată de acel scop. Decizia e „pe ce criteriu
 se activează", nu „se șterge sau nu"; (b) `/api/dashboard` e
 următoarea investiție reală (cache per-firmă invalidat la `db.save`), fiindcă e singura rută care
 chiar doare, pe la ~18.000 de articole; (c) hidratarea lazy rămâne pe semnal de **RAM**, nu de CPU.
+
+### REZOLVAT (2026-07-27): dashboard memoizat, comparator natural refolosit, prag SQL ridicat
+
+Cele două acțiuni cerute de măsurătoarea de mai sus — (a) ridicarea pragului SQL și (b) cache pe
+`/api/dashboard` — sunt livrate. Pe drum, profilarea pe componente a scos la iveală o a treia
+cauză, mai mare decât ambele: **construirea unui `Intl.Collator` la fiecare comparație**.
+
+**1. Comparatorul natural, refolosit (`util.naturalCompare`).** Toate sortările cronologice
+(articole, mișcări de stoc, linii din SQL) comparau id-urile cu
+`String.prototype.localeCompare(x, undefined, { numeric: true })` — spec-ul definește asta ca
+`Collator(locale, opts).compare(...)`, adică **un colator construit per comparație**. Un singur
+`Intl.Collator` refolosit dă, prin aceeași definiție, **exact aceeași ordine** (verificat în teste
+pe id-uri amestecate), la o fracțiune din cost. Măsurat pe 22.000 de articole: sortarea completă
+**175 ms → 12 ms**. Beneficiul nu e doar pe dashboard — atinge orice rută care sortează articole.
+
+**2. `accounting.lastEntries(entries, n)`.** Dashboard-ul sorta toată colecția ca să afișeze
+ultimele **cinci** operațiuni. Acum face o singură trecere cu o listă de `n` elemente; rezultat
+identic cu `sortEntries(...).slice(-n).reverse()` (dovedit în teste, inclusiv pe capete: n=0,
+n>lungime, ordine de intrare inversată).
+
+**3. Memo per firmă pentru `/api/dashboard` (`src/cache.js`).** Cheia e `(nume raport, firmaId)`;
+validitatea stă pe **revizia globală de scriere** (`db.dataRev()`, avansată la fiecare
+`save()`/`restore`/`load`) plus **ziua curentă** (agregatele care depind de „azi", ca termenul de
+5 zile la e-Factura). Invalidarea e deliberat **globală, nu per firmă**: e corectă *prin
+construcție*, fără a inventaria căile de scriere — o cale uitată ar însemna cifre contabile
+învechite afișate ca fiind curente, iar asta nu merită schimbat pe o rată de hit mai bună. Câmpul
+per utilizator (`primiiPasi.wizardAscuns`) se suprapune **după** memo, pe o copie superficială;
+memoizarea folosește `db.scoped(fid)`, nu `S(req)`, tocmai ca rezultatul să nu depindă de cine
+cere. Plafon LRU de 64 de intrări. Diagnostic: antetul `X-Dashboard-Cache: hit|miss` și
+`cache: { entries, hits, misses, hitRate }` în `/api/metrics`.
+
+Măsurat pe aceeași instanță de bench (sqlite, `scripts/bench.sh`), mediana din 3 rulări:
+
+| Rută | Înainte | După (miss) | După (hit) |
+|---|---|---|---|
+| `/api/dashboard` (22.000 art.) | **611 ms** | **100 ms** | **2–3 ms** |
+| `/api/entries` (22.000 art.) | 212 ms | 52 ms | — |
+| `/api/vat-journals?period=lună` | 21 ms | 6 ms | — |
+
+Componentele dashboard-ului la 22.000 de articole (înainte → după): `reconcile` 217 → 50 ms,
+`vatJournals` 201 → 30 ms, `sortEntries` 176 → 13 ms, total `rep.dashboard` 403 → 86 ms.
+
+**p95, măsurat pe amestecuri citiri/scrieri** (20 de cicluri, fiecare cu o scriere reală prin
+`POST /api/entries` urmată de citiri):
+
+| Volum | doar MISS (p50/p95) | doar HIT (p50/p95) | 1 scriere la 5 citiri (p95) |
+|---|---|---|---|
+| 22.000 articole | 100 / 131 ms | 3 / 5 ms | 112 ms |
+| 60.000 articole | 278 / 336 ms | 5 / 7 ms | 299 ms |
+
+**Ținta p95 < 500 ms e atinsă cu marjă, indiferent de amestec** — inclusiv în cazul degenerat în
+care *fiecare* citire e precedată de o scriere (adică memo-ul nu ajută deloc): 131 ms la 22.000 și
+336 ms la 60.000. Cache-ul nu mai e singurul lucru care ține pragul; calea de recalculare singură
+îl respectă până pe la ~100.000 de articole (extrapolare din cele două puncte măsurate).
+
+**3bis. Reparat pe drum: citire-după-scriere pe calea SQL (pg).** Verificarea pe `pg` cu prag 0 a
+scos un defect **preexistent**, invizibil pe sqlite: pe pg, `save()` fotografiază sincron dar
+**comite printr-o coadă asincronă**, iar citirile din proiecții (`entry_lines`) nu o așteptau. O
+citire imediat după o scriere vedea starea DE DINAINTE — un articol tocmai postat lipsea din
+balanță și din registrul-jurnal (suita pica reproductibil pe combinația pg + prag 0, deci și în
+jobul `test-postgres` din CI). Toate cele patru citiri SQL (`trialBalanceSql`, `journalSql`,
+`ledgerSql`, `trialFisaContSql`) așteaptă acum coada (`sqlReady()` → `flushStore()`); pe sqlite e o
+promisiune deja rezolvată, deci zero cost. Verificat pe toate patru combinațiile (sqlite/pg ×
+prag implicit/0): 580 de verificări HTTP verzi peste tot.
+
+**4. `CONTAB_SQL_READ_THRESHOLD`: 20.000 → 100.000.** Pe criteriu de CPU, calea SQL nu-și merita
+poarta (era mai lentă decât RAM pe fiecare rută gate-uită, exact la volumul unde se activa). Codul
+SQL **rămâne**: scopul lui declarat e seam-ul către hidratarea lazy — reducerea RAM-ului, nu viteza.
+Noua valoare e deliberat **nemăsurată** (punctul unde SQL ar câștiga rămâne necunoscut): până la o
+măsurătoare acolo, calea implicită e cea dovedit mai rapidă. CI-ul continuă să ruleze suita și cu
+prag 0, deci echivalența celor două căi rămâne verificată.
 
 ### Coada de persistență pg acumulează sub scrieri rapide (2026-07-25)
 
