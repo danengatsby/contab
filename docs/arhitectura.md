@@ -48,7 +48,8 @@
   Creanțele neîncasabile se pot **scoate din evidență** direct din scadențar (buton „scoate"):
   `654 = 4111` (pierdere) + reluarea automată a ajustării aferente `491 = 7814`; `/api/writeoff`.
 - `src/statements.js` — cont de profit și pierdere, bilanț.
-- `src/pdf.js` — generarea rapoartelor PDF (PDFKit).
+- `src/pdf/` — generarea rapoartelor PDF (PDFKit), spart pe domenii: `index.js` (compunerea),
+  `registre.js`, `declaratii.js`, `facturare.js`, `salarii.js`, `imobilizari.js`, `helpers.js`.
 - `src/csv.js` — export CSV compatibil Excel (separator `;`, BOM UTF-8) pentru mișcări de stoc,
   stoc curent, registrul-jurnal, balanță, **cartea mare** (cu sold inițial/final și mișcări),
   **balanța analitică** și **parteneri** (`/csv/stock-movements`, `/csv/stocks`, `/csv/journal`,

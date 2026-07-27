@@ -134,6 +134,13 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
 
 - Comentariile din `src/` sunt în română **fără diacritice**; docs/ și mesajele către utilizator cu
   diacritice. Comentariile explică *de ce*, nu *ce*.
+- **Documentele „vii" se verifică singure** (poartă în `test/run.js`): căi de fișiere, `npm run`,
+  variabile `CONTAB_*`, versiunile de Node (față de `ci.yml` + `engines`), portul implicit (față de
+  `src/lifecycle.js`) și grupurile din meniu (față de `public/index.html`). Deci o schimbare de
+  configurație care contrazice `docs/rulare.md` pică suita — actualizează documentul în același
+  commit. ADR-urile (`docs/scalare-crestere.md`) și backlogul sunt **exceptate**: acolo cifrele sunt
+  măsurători datate, nu descrieri ale prezentului. Nu fixa în `docs/rulare.md` numere care se schimbă
+  singure (câte verificări, câți KB) — regula 6 a porții le refuză, fiindcă vor drifta garantat.
 - Commit-uri tematice în română (titlu scurt + corp explicativ), o ramură pe temă, merge în `main`
   cu `--no-ff` (nu squash). `gh` nu e autentificat — PR-urile se deschid manual dacă e nevoie de review.
 - Teste: `test/run.js` e sincron (helper-ele `eq/ok/section`; `errStatus` pentru gărzile de serviciu);
