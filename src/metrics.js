@@ -49,6 +49,15 @@ function snapshot() {
 
 // ── Operational: spatiul liber pe discul de date + starea ultimului backup VERIFICAT
 // ca restaurabil (scrisa de scripts/backup.js in data/backups/last-backup.json) ──
+// ── Plafoanele de memorie: UN SINGUR loc, ca alerta si metrica sa spuna acelasi lucru ──
+// `max_memory_restart` din ecosystem.config.js NU e citit din fisier intentionat: `pm2 restart` nu
+// reaplica fisierul, deci valoarea de acolo e o DECLARATIE DE INTENTIE, nu plafonul procesului viu
+// (vezi CLAUDE.md). Il declaram explicit prin mediu si il verificam cu `pm2 jlist` cand se schimba.
+const MEM_LIMIT_MB = Number(process.env.CONTAB_PM2_MAX_MB) || 1024; // = max_memory_restart
+// Pragul de avertizare: implicit 70% din plafon — destul cat sa mai poti privi procesul inainte
+// ca pm2 sa-l ucida in mijlocul unei cereri.
+const MEM_WARN_MB = Number(process.env.CONTAB_MEM_WARN_MB) || Math.round(MEM_LIMIT_MB * 0.7);
+
 function opsSnapshot() {
   const fs = require('fs');
   const path = require('path');
@@ -107,6 +116,7 @@ function reset() {
 }
 
 module.exports = {
+  MEM_LIMIT_MB, MEM_WARN_MB,
   SLOW_MS, routePattern, record, snapshot, reset,
   recordError, recentErrors, jobTick, jobResult, jobError, jobsSnapshot,
   aiCall, aiSnapshot,

@@ -44,6 +44,8 @@ const crypto = require('crypto');
 // persist calculam diferenta fata de memorie si aplicam DOAR randurile schimbate (INSERT/UPDATE/
 // DELETE per id). Colectiile fara `id` (openingAnalytic, customAccounts) + partners/opening/meta
 // raman pe rescriere completa, dar doar cand amprenta (`lastHash`) lor s-a schimbat.
+let commits = 0;      // tranzactii comise (paritate de contract cu storePg.queueStats)
+let lastCommitAt = null;
 let snap = {};        // { [colectie hasId]: Map(id -> json) } — starea persistata, per rand
 let lastHash = {};    // amprenta ultimei stari persistate pt. colectiile rescrise integral
 let forceFull = false; // dupa resetDirty(): urmatorul persist rescrie tot (init/restore)
@@ -328,6 +330,16 @@ function firmaOf(c, item) { return c.firma && item && item.firmaId != null ? asI
 /** Reseteaza starea persistata -> urmatorul persist rescrie tot (dupa hydrate/restore). */
 function resetDirty() { snap = {}; lastHash = {}; forceFull = true; }
 
+/** Starea „cozii" de persistenta pe SQLite: persist() e SINCRON, deci nu exista niciodata ceva
+ *  in asteptare. Exista ca sa aiba apelantii (metrici, jobul de veghe) un contract unic, fara
+ *  ramuri pe driver — iar `pendingAgeMs: 0` e adevarul, nu o valoare de umplutura. */
+function queueStats() {
+  return {
+    driver: 'sqlite', pending: false, pendingAgeMs: 0, pendingBytes: 0, draining: false,
+    commits, failStreak: 0, lastCommitAt, lastError: null, conflicted: conflictedFlag,
+  };
+}
+
 /**
  * Scrie in tabele DOAR ce s-a schimbat de la ultimul persist, intr-o singura tranzactie (atomic,
  * durabil prin WAL). Colectiile cu `id` primesc INSERT/UPDATE/DELETE per rand (diff fata de snap);
@@ -475,6 +487,7 @@ function persist(db) {
     throw e;
   }
   epoch += 1; // versiunea avansata odata cu commit-ul
+  commits += 1; lastCommitAt = new Date().toISOString();
   // ── 4) Actualizeaza starea persistata (snapshot / amprente) DOAR dupa commit reusit ──
   for (const w of work) {
     if (w.snap) snap[w.c.key] = w.snap;   // colectii cu id (incr/full)
@@ -525,4 +538,4 @@ function hydrate(defaults) {
 
 function close() { if (sdb) { try { sdb.close(); } catch (_) { /* ignore */ } sdb = null; } }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, auditRow, linesTurnover, linesForAccount, linesForPeriod, documentsStats, documentsSearch, auditCount, auditRecent, conflicted, checkSqlite };
+module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, queueStats, ARRAY_COLLS, PROJECTIONS, entryLineRows, documentMetaRow, auditRow, linesTurnover, linesForAccount, linesForPeriod, documentsStats, documentsSearch, auditCount, auditRecent, conflicted, checkSqlite };

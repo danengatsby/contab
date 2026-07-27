@@ -37,6 +37,25 @@ function safeInterval(label, fn, ms) {
   return t;
 }
 
+/**
+ * Decizia de alerta pentru coada de persistenta — PURA, ca sa poata fi testata pe fiecare caz
+ * (jobul de deasupra pastreaza doar efectele: log + email). Ordinea conteaza: inghetarea prin
+ * conflict de scriitor e cea mai grava (nimic nu se mai scrie pana la restart), apoi intarzierea
+ * (scrieri care traiesc doar in RAM), apoi esecurile repetate.
+ */
+function persistVerdict(s, opts) {
+  const o = opts || {};
+  const lagMs = o.lagMs || 60000;
+  const fails = o.fails || 3;
+  const kb = Math.round((s.pendingBytes || 0) / 1024);
+  if (s.conflicted) return { alert: true, cod: 'conflict', motiv: 'persistenta INGHETATA (alt proces a scris in baza — conflict dbEpoch); e nevoie de restart' };
+  if (s.pending && s.pendingAgeMs >= lagMs) {
+    return { alert: true, cod: 'intarziere', motiv: 'scrieri necomise de ' + Math.round(s.pendingAgeMs / 1000) + 's (' + kb + ' KB in RAM)' };
+  }
+  if ((s.failStreak || 0) >= fails) return { alert: true, cod: 'esecuri', motiv: s.failStreak + ' esecuri consecutive de scriere' };
+  return { alert: false, cod: null, motiv: null };
+}
+
 /** Opreste toate joburile pornite; intoarce cate intervale a curatat (idempotent). */
 function stop() {
   let n = 0;
@@ -108,22 +127,57 @@ function start(ctx) {
   // Veghe pe memorie: avertizeaza INAINTE ca pm2 sa ucida procesul la max_memory_restart.
   // Baza in RAM e prin design (graful de date e minuscul; RSS-ul e dominat de runtime) —
   // o crestere sustinuta peste prag inseamna leak sau varfuri repetate si trebuie VAZUTA,
-  // nu descoperita din restarturi. Email cel mult o data pe zi (acelasi tipar ca alerta 5xx).
-  const MEM_WARN_MB = Number(process.env.CONTAB_MEM_WARN_MB || 700);
+  // nu descoperita din restarturi. Pragul si plafonul vin din metrics (o singura sursa, ca
+  // metrica si alerta sa nu spuna cifre diferite). Email cel mult o data pe zi (tiparul alertei 5xx).
+  const { MEM_WARN_MB, MEM_LIMIT_MB } = metrics;
   let lastMemAlert = 0;
   safeInterval('memory-watch', () => {
     const rssMb = Math.round(process.memoryUsage().rss / 1048576);
-    metrics.jobResult('memory-watch', rssMb + ' MB (prag ' + MEM_WARN_MB + ')');
+    const pct = Math.round((rssMb / MEM_LIMIT_MB) * 100);
+    metrics.jobResult('memory-watch', rssMb + ' MB = ' + pct + '% din plafonul pm2 (' + MEM_LIMIT_MB + ' MB), prag ' + MEM_WARN_MB);
     if (rssMb < MEM_WARN_MB) return;
-    log.error('memorie ridicata', { rssMb, pragMb: MEM_WARN_MB });
+    log.error('memorie ridicata', { rssMb, pragMb: MEM_WARN_MB, plafonMb: MEM_LIMIT_MB, pct });
     const now = Date.now();
     if (now - lastMemAlert > 24 * 3600 * 1000) {
       lastMemAlert = now;
-      sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] ATENTIE: memorie ridicata',
-        'RSS ' + rssMb + ' MB (prag ' + MEM_WARN_MB + ' MB; pm2 restarteaza la max_memory_restart).\n'
-        + 'Verifica /api/metrics (admin) si pm2 logs contab.').catch(() => {});
+      sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] ATENTIE: memorie ridicata (' + pct + '% din plafonul pm2)',
+        'RSS ' + rssMb + ' MB — ' + pct + '% din plafonul pm2 de ' + MEM_LIMIT_MB + ' MB (prag de avertizare ' + MEM_WARN_MB + ' MB).\n'
+        + 'La atingerea plafonului pm2 restarteaza procesul, posibil in mijlocul unei cereri.\n'
+        + 'Verifica /api/metrics (admin, campurile process.memory*) si pm2 logs contab.\n'
+        + 'Daca plafonul pm2 s-a schimbat, actualizeaza CONTAB_PM2_MAX_MB (fisierul ecosystem.config.js\n'
+        + 'e doar o declaratie: `pm2 restart` NU il reaplica — verifica cu `pm2 jlist`).').catch(() => {});
     }
   }, 5 * 60 * 1000);
+
+  // Veghe pe COADA DE PERSISTENTA. Pe pg, save() fotografiaza sincron dar COMITE asincron: cat timp
+  // lucrarea asteapta, scrierile traiesc doar in RAM (nedurabile) si tin ocupat un snapshot al
+  // colectiilor schimbate. O coada care nu se goleste = baza lenta, cazuta sau blocata — si e
+  // exact drumul catre plafonul pm2. Pe sqlite persist e sincron, deci semnalul e mereu zero;
+  // jobul ramane pornit fara cost (contract unic, fara ramuri pe driver).
+  const PERSIST_LAG_MS = Number(process.env.CONTAB_PERSIST_LAG_MS) || 60 * 1000;
+  const PERSIST_FAILS = Number(process.env.CONTAB_PERSIST_FAILS) || 3;
+  let lastPersistAlert = 0;
+  safeInterval('persist-watch', () => {
+    const s = db.persistStats();
+    const kb = Math.round((s.pendingBytes || 0) / 1024);
+    metrics.jobResult('persist-watch', s.pending
+      ? 'IN ASTEPTARE de ' + Math.round(s.pendingAgeMs / 1000) + 's (' + kb + ' KB retinuti)'
+      : 'la zi (' + s.commits + ' scrieri comise' + (s.failStreak ? ', ' + s.failStreak + ' esecuri consecutive' : '') + ')');
+    const verdict = persistVerdict(s, { lagMs: PERSIST_LAG_MS, fails: PERSIST_FAILS });
+    if (!verdict.alert) return;
+    const motiv = verdict.motiv;
+    log.error('coada de persistenta', { motiv, pendingAgeMs: s.pendingAgeMs, pendingBytes: s.pendingBytes, failStreak: s.failStreak, conflicted: s.conflicted });
+    const now = Date.now();
+    if (now - lastPersistAlert > 24 * 3600 * 1000) {
+      lastPersistAlert = now;
+      sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] ATENTIE: coada de persistenta (' + s.driver + ')',
+        'Backlog la scrierea in baza: ' + motiv + '.\n'
+        + 'Ultima scriere comisa: ' + (s.lastCommitAt || 'niciuna de la pornire') + '.\n'
+        + (s.lastError ? 'Ultima eroare: ' + s.lastError.msg + ' (' + s.lastError.at + ')\n' : '')
+        + 'Cat timp coada nu se goleste, datele scrise traiesc DOAR in RAM (se pierd la restart)\n'
+        + 'si consuma memorie catre plafonul pm2. Verifica PostgreSQL si /api/metrics (campul persist).').catch(() => {});
+    }
+  }, 60 * 1000);
 
   // Job periodic: descarca automat recipisele — SPV per-firma, doar firmele cu autoPoll bifat
   safeInterval('spv-poll', () => {
@@ -141,4 +195,4 @@ function start(ctx) {
   return { stop };
 }
 
-module.exports = { start, stop };
+module.exports = { start, stop, persistVerdict };
