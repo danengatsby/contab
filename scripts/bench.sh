@@ -13,7 +13,8 @@ rm -f /tmp/contab-bench.json* /tmp/contab-bench.sqlite*
 export CONTAB_DB_DRIVER=sqlite CONTAB_DB_FILE=/tmp/contab-bench.json CONTAB_DATA_DIR=/tmp/contab-bench-data
 node /var/www/contab/scripts/seed.js >/dev/null 2>&1
 node "$SP"/bench-seed.js $N | tail -1
-PORT=3891 CONTAB_JSON_MIRROR=0 STRIPE_SECRET_KEY='' CONTAB_RATE_API=100000 nohup node /var/www/contab/server.js > /dev/null 2>&1 &
+# CONTAB_DEV=1: instanta de masurare NU are secretele de productie (si nici nu trebuie sa le aiba)
+PORT=3891 CONTAB_DEV=1 CONTAB_JSON_MIRROR=0 STRIPE_SECRET_KEY='' CONTAB_RATE_API=100000 nohup node /var/www/contab/server.js > /dev/null 2>&1 &
 timeout 30 bash -c 'until curl -sf http://127.0.0.1:3891/api/health >/dev/null; do sleep 1; done'
 # login admin (+ schimbarea fortata a parolei pe DB proaspat)
 C=$(curl -s -D - -o /dev/null -X POST http://127.0.0.1:3891/api/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"admin"}' | grep -i '^set-cookie' | sed 's/^[Ss]et-[Cc]ookie: //' | cut -d';' -f1)

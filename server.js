@@ -6,6 +6,9 @@
 // handlerul global de erori (src/serverErrors.js) si ciclul de viata (src/lifecycle.js).
 const bootstrap = require('./src/bootstrap');
 bootstrap.loadDotEnv(__dirname); // inainte de orice require care citeste variabile (cheie AI etc.)
+// Secretele obligatorii, IMEDIAT dupa .env si INAINTE de a atinge baza: altfel o pornire fara
+// ele apuca sa creeze fisierul bazei (cu un authSecret generat) inainte sa refuze.
+require('./src/secretsGuard').assertSecrets();
 // Orice fisier nou (upload, backup, jurnal) porneste privat; modulele de date aplica si chmod
 // pentru instalari/fisiere vechi. Nu afecteaza activele publice, servite din public/.
 process.umask(0o077);
