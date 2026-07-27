@@ -82,8 +82,32 @@ Pentru operatorii care oferă Contabo ca serviciu: programați o **revizie anual
 specialist** a `fiscalConfig.js` + a tratamentelor din `fiscal.js`/`payroll.js`
 (ideal în ianuarie, după publicarea actelor pentru anul nou) și consemnați-o mai jos.
 
-## 5. Jurnalul reviziilor de specialitate
+Perimetrul, procedura, inventarul simplificărilor cunoscute și cazurile supuse aprobării:
+**docs/dosar-revizie-fiscala.md** — documentul care se trimite revizorului.
+
+## 5. Cazurile-test aprobate (`test/cazuri-aprobate.js`)
+
+Restul suitei dovedește că aplicația calculează **consecvent**; corpusul acesta dovedește că un
+**om calificat a confirmat cifrele față de lege**. 17 cazuri (cote, salarii, deducere personală,
+concedii, PFA), fiecare cu intrare, cifre așteptate și temei legal.
+
+Când un specialist confirmă un caz, se completează `aprobare` cu cine/când și cu **amprenta**
+tripletei (temei, intrare, cifre) — `node test/cazuri-aprobate.js --semnatura <ID>`. Dacă un caz
+aprobat e modificat ulterior, amprenta nu mai corespunde și suita **pică**: o aprobare nu se
+moștenește tacit de alte cifre. Cazurile nerevizuite doar avertizează (nu blochează `prestart`),
+dar apar nominal la fiecare rulare.
+
+Regula de aur a corpusului: **un caz-test nu se aliniază niciodată la ce produce codul.** Dacă
+revizorul contestă o cifră, se corectează codul.
+
+```bash
+node test/cazuri-aprobate.js                 # rulează corpusul + raportul de acoperire
+node test/cazuri-aprobate.js --semnatura ID  # amprenta de lipit în `aprobare`
+node test/cazuri-aprobate.js --md            # tabelul pentru dosar
+```
+
+## 6. Jurnalul reviziilor de specialitate
 
 | Data | Cine | Ce s-a revizuit | Concluzie |
 |---|---|---|---|
-| — | — | — | (nicio revizie externă consemnată încă) |
+| — | — | — | (nicio revizie externă consemnată încă; 0/17 cazuri aprobate) |
