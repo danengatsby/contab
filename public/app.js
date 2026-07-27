@@ -18,7 +18,7 @@ import { loadStocks } from './stocuri.js';
 import { renderPlan, renderOpening } from './plan.js';
 import { setAuthuiDeps, bootAuth, showLogin, hideLogin, showForcePw, handleRegisterLink, openRegisterPanel } from './authui.js';
 import { setDocflowDeps, fillTipSelect, renderRecurring } from './docflow.js';
-import { setEntriesDeps, loadEntries, renderEntryLists, loadMissingDocs, loadArhiva } from './entries.js';
+import { setEntriesDeps, loadEntries, renderEntryLists, loadMissingDocs, loadArhiva, loadCalitate } from './entries.js';
 setAuthuiDeps({ init, goTab, promptFirmaSubscribe });
 setDocflowDeps({ goTab });
 setEntriesDeps({ goTab });
@@ -98,7 +98,7 @@ function onTab(t) {
   if (t === 'dashboard') loadDashboard();
   if (t === 'documente' || t === 'intrate' || t === 'iesite') loadEntries();
   if (t === 'emite') renderRecurring();
-  if (t === 'intrate') loadMissingDocs();
+  if (t === 'intrate') { loadMissingDocs(); loadCalitate(); }
   if (t === 'jurnal') loadJournal();
   if (t === 'carte') loadLedger();
   if (t === 'cashbook') loadCashbook();

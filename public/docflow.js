@@ -104,6 +104,21 @@ if ($('#scanBtn')) {
     }, 'image/jpeg', 0.92);
   });
 }
+/** Verdictul controlului de calitate, in cuvinte: ce s-a verificat si de ce cere revizuire.
+ *  Functie pura (testata in test/frontend.mjs) — randarea nu decide nimic, serverul a decis deja. */
+export function calitateHtml(cal, autoPostat) {
+  if (!cal) return '';
+  if (autoPostat) {
+    return '<br><span class="pill ok">postat automat</span> <span class="muted">scor ' + H(cal.scor)
+      + '% — toate controalele au trecut. Articol: ' + H(autoPostat.entryId) + '</span>';
+  }
+  const picate = (cal.controale || []).filter((c) => !c.ok);
+  const trecute = (cal.controale || []).length - picate.length;
+  return '<br><span class="pill warn">cere revizuire</span> <span class="muted">scor ' + H(cal.scor)
+    + '% · ' + H(trecute) + '/' + H((cal.controale || []).length) + ' controale trecute</span>'
+    + (picate.length ? '<ul class="closeblock">' + picate.map((c) => '<li><b>' + H(c.nume) + ':</b> ' + H(c.motiv || '') + '</li>').join('') + '</ul>' : '');
+}
+
 async function uploadFile(file) {
   const st = $('#uploadStatus'); st.className = 'status'; st.textContent = 'Se citește „' + file.name + '”…';
   const fd = new FormData(); fd.append('file', file);
@@ -117,8 +132,11 @@ async function uploadFile(file) {
       + (res.motiv ? '<br><span class="muted">' + H(res.motiv) + '</span>' : '')
       + (res.warning ? '<br><span data-u="u13">' + H(res.warning) + '</span>' : '')
       + ((res.checkWarnings || []).length
-        ? '<br><span data-u="u13">⚠️ Verifică: ' + res.checkWarnings.map(H).join('<br>⚠️ ') + '</span>' : '');
-    CURRENT = { documentId: res.documentId, fields: res.fields, suggestedType: res.suggestedType };
+        ? '<br><span data-u="u13">⚠️ Verifică: ' + res.checkWarnings.map(H).join('<br>⚠️ ') + '</span>' : '')
+      + calitateHtml(res.calitate, res.autoPostat);
+    // Postat automat: articolul e deja in contabilitate, nu mai deschidem formularul.
+    if (res.autoPostat) { CURRENT = null; loadEntries && loadEntries(); return; }
+    CURRENT = { documentId: res.documentId, fields: res.fields, suggestedType: res.suggestedType, calitate: res.calitate };
     openForm(res.suggestedType, res.fields);
   } catch (e) { st.className = 'status err'; st.textContent = e.message; }
 }
@@ -495,7 +513,13 @@ async function submitEntry(ciorna) {
   try {
     const res = await api('/api/entries', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tip: $('#tipSelect').value, fields: collectFields(), fileId: CURRENT && CURRENT.documentId, spvMsgId: CURRENT && CURRENT.spvMsgId, ciorna: !!ciorna }),
+      body: JSON.stringify({
+        tip: $('#tipSelect').value, fields: collectFields(),
+        fileId: CURRENT && CURRENT.documentId, spvMsgId: CURRENT && CURRENT.spvMsgId, ciorna: !!ciorna,
+        // De ce a fost nevoie de om — optional, dar e singurul lucru pe care diferenta de campuri
+        // nu-l poate spune. Ajunge in raportul pe furnizori/formate.
+        motivRevizuire: ($('#motivRevizuire') && $('#motivRevizuire').value) || '',
+      }),
     });
     toast(ciorna ? 'Ciornă salvată: ' + res.entry.id + ' (o postezi din listă)' : 'Înregistrare salvată: ' + res.entry.id);
     closeForm();
