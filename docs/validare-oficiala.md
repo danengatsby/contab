@@ -130,9 +130,16 @@ Două joburi, cu roluri distincte (`.github/workflows/ci.yml`):
 | `poarta-fiscala` | **fiecare push/PR** care atinge module fiscale | regresia proprie, **înainte** de merge |
 | `validare-anaf` | săptămânal, manual, post-merge pe main | driftul de schemă ANAF — cazul în care codul nostru *nu* s-a schimbat, dar validatorul da |
 
-Ca poarta să blocheze efectiv merge-ul pe GitHub, adaug-o în **Branch protection → Required
-status checks → `poarta-fiscala`**. Fișierul de workflow o rulează; obligativitatea e o
-setare de repo.
+Ca poarta să blocheze efectiv merge-ul pe GitHub, rulează **`sh scripts/protectie-ramura.sh`**
+(cere `gh auth login` o dată — cheia SSH autentifică `git`, nu API-ul REST). Fișierul de workflow
+rulează poarta; obligativitatea e o setare de repo.
+
+**Ce blochează și ce nu.** Checkurile obligatorii se evaluează la merge-ul unui *pull request* —
+adică exact pentru PR-urile dependabot. Fluxul propriu (merge local `--no-ff` + push direct în
+`main`) nu trece prin PR, deci protecția nu-l atinge cât timp `enforce_admins=false`. Pe `true`,
+push-ul direct ar fi **respins**: checkurile rulează *după* push, deci un commit nou n-are cum să
+aibă deja statusuri verzi. Pentru calea proprie, mecanismul potrivit e un hook `pre-push` local,
+nu setarea de repo.
 
 Schema e-Transport nu se ține în repo (ANAF o actualizează; s-ar învechi) — CI o ia din
 variabila de repo `CONTAB_ETRANSPORT_XSD` (*Settings → Secrets and variables → Actions →
