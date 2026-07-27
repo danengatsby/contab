@@ -33,4 +33,35 @@ function sendList(req, res, list, opts = {}) {
   return res.json(list);
 }
 
-module.exports = { sendList, ABS_MAX };
+/**
+ * Varianta pentru colectiile expuse ca OBIECT-harta (ex. `/api/partners`, cheie = CUI). Nu se pot
+ * pagina ca o lista fara sa schimbe forma raspunsului, deci:
+ *  - FARA ?limit: harta, ca pana acum (compatibil), plafonata la `max` chei cu X-Rows-Truncated;
+ *  - CU ?limit: plic { items, total, offset, limit } unde `items` e o LISTA ordonata dupa cheie.
+ *    O harta PARTIALA ar fi ambigua — clientul n-ar putea distinge „lipseste" de „nu exista".
+ * Trunchierea e acceptabila aici fiindca harta alimenteaza o listare, nu o cautare punctuala
+ * (partenerul de editat se ia din randul deja afisat).
+ */
+function sendMap(req, res, map, opts = {}) {
+  const max = opts.max || ABS_MAX;
+  const src = map || {};
+  const keys = Object.keys(src);
+  const total = keys.length;
+  const rawLimit = req.query ? req.query.limit : undefined;
+  if (rawLimit != null && rawLimit !== '') {
+    const limit = Math.min(Math.max(1, parseInt(rawLimit, 10) || 0), max);
+    const offset = Math.max(0, parseInt((req.query || {}).offset, 10) || 0);
+    const ord = keys.slice().sort();
+    return res.json({ items: ord.slice(offset, offset + limit).map((k) => src[k]), total, offset, limit });
+  }
+  if (total > max) {
+    if (log.warn) log.warn('harta plafonata (garda OOM)', log.ctx(req, { label: opts.label || (req.path || ''), total, cap: max }));
+    res.setHeader('X-Rows-Truncated', String(total));
+    const out = {};
+    for (const k of keys.slice(0, max)) out[k] = src[k];
+    return res.json(out);
+  }
+  return res.json(src);
+}
+
+module.exports = { sendList, sendMap, ABS_MAX };

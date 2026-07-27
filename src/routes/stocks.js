@@ -23,7 +23,7 @@ module.exports = function register(app, ctx) {
   const operator = (req) => (req.user && req.user.username) || '';
 
   // ── nomenclator produse ──
-  app.get('/api/products', (req, res) => res.json(S(req).products));
+  app.get('/api/products', (req, res) => sendList(req, res, S(req).products, { label: 'products' }));
   app.post('/api/products', (req, res) => run(res, () => {
     const r = svc.upsertProduct(activeId(req), req.body);
     if (r.created) logAudit('product.create', r.product.cod + ' ' + r.product.denumire, { req });
@@ -53,7 +53,7 @@ module.exports = function register(app, ctx) {
   }));
 
   // ── gestiuni (depozite) ──
-  app.get('/api/gestiuni', (req, res) => res.json(S(req).gestiuni));
+  app.get('/api/gestiuni', (req, res) => sendList(req, res, S(req).gestiuni, { label: 'gestiuni' }));
   app.post('/api/gestiuni', (req, res) => run(res, () => {
     const r = svc.upsertGestiune(activeId(req), req.body);
     if (r.created) logAudit('gestiune.create', r.gestiune.cod + ' ' + r.gestiune.denumire, { req });
@@ -91,10 +91,10 @@ module.exports = function register(app, ctx) {
     logAudit('inventar', r.inv.gestiuneCod + ' ' + r.inv.data + ' (+' + r.result.plusuri.length + '/-' + r.result.minusuri.length + ')', { req });
     return { ok: true, id: r.inv.id, result: r.result };
   }));
-  app.get('/api/inventories', (req, res) => res.json(
+  app.get('/api/inventories', (req, res) => sendList(req, res,
     (S(req).inventories || []).slice().sort((a, b) => (a.ts < b.ts ? 1 : -1))
       .map((iv) => ({ id: iv.id, gestiuneCod: iv.gestiuneCod, gestiuneDen: iv.gestiuneDen, data: iv.data, ts: iv.ts, operator: iv.operator || '', status: iv.status || 'activ', stornoData: iv.stornoData || null, totalPlus: iv.totalPlus, totalMinus: iv.totalMinus, totalImputat: iv.totalImputat, nrPlus: iv.lines.filter((l) => l.tip === 'plus').length, nrMinus: iv.lines.filter((l) => l.tip === 'minus').length })),
-  ));
+    { label: 'inventories' }));
   app.post('/api/inventories/:id/storno', (req, res) => run(res, () => {
     const r = svc.stornoInventory(activeId(req), operator(req), req.params.id, (req.body || {}).data);
     logAudit('inventar.storno', r.iv.gestiuneCod + ' ' + r.iv.data, { req });
@@ -102,7 +102,7 @@ module.exports = function register(app, ctx) {
   }));
 
   // ── stoc curent / fisa de magazie ──
-  app.get('/api/stocks', (req, res) => res.json(stocks.currentStock(S(req), req.query.asOf || null, req.query.gestiune || null)));
+  app.get('/api/stocks', (req, res) => sendList(req, res, stocks.currentStock(S(req), req.query.asOf || null, req.query.gestiune || null), { label: 'stocks' }));
   app.get('/api/stocks/:id/ledger', (req, res) => {
     const v = S(req);
     const p = v.products.find((x) => x.id === req.params.id);

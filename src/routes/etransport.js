@@ -7,6 +7,7 @@
 
 const svc = require('../etransportService');
 const et = require('../etransport');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { activeId, logAudit, wrap } = ctx;
@@ -44,7 +45,7 @@ module.exports = function register(app, ctx) {
   }));
 
   // Articolele eligibile din firma activa, cu starea UIT
-  app.get('/api/etransport/eligible', (req, res) => run(res, () => svc.eligibleList(activeId(req))));
+  app.get('/api/etransport/eligible', (req, res) => sendList(req, res, svc.eligibleList(activeId(req)), { label: 'etransport/eligible' }));
 
   // Validare pre-depunere (fara trimitere) — pentru feedback in formular
   app.post('/api/etransport/validate/:id', (req, res) => run(res, () => svc.validateFor(req.user, req.params.id, tdFrom(req.body))));

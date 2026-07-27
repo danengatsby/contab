@@ -1309,6 +1309,30 @@ async function main() {
       const dp = (await req('GET', p + '?limit=1', { cookie: c1 })).json;
       ok('doc ' + p + ': cu limit -> plic { items, total }', Array.isArray(dp.items) && typeof dp.total === 'number');
     }
+    // ── Paginare UNIFORMA: inventarul rutelor care intorc colectii ──
+    // Inventarul a fost facut EMPIRIC (fiecare GET /api fara parametri, lovit pe o instanta cu
+    // seed): 26 de rute intorc un array la radacina. Inainte, doar 7 paginau — produsele,
+    // partenerii, angajatii, stocurile si o parte din rapoarte trimiteau setul intreg.
+    const COLECTII = ['/api/sessions', '/api/budgets', '/api/fx-reval/candidates', '/api/assets',
+      '/api/efactura-list', '/api/compensations', '/api/analytic', '/api/recurring',
+      '/api/etransport/eligible', '/api/opening-analytic', '/api/angajati', '/api/recipes',
+      '/api/ledger', '/api/doc-register', '/api/products', '/api/gestiuni', '/api/inventories',
+      '/api/stocks', '/api/users'];
+    for (const p of COLECTII) {
+      const fara = await req('GET', p, { cookie: la.cookie });
+      ok('colectie ' + p + ': fara limit -> array (contract pastrat)', fara.status === 200 && Array.isArray(fara.json));
+      const cu = (await req('GET', p + (p.includes('?') ? '&' : '?') + 'limit=1', { cookie: la.cookie })).json;
+      ok('colectie ' + p + ': cu limit -> plic { items, total, offset, limit }',
+        Array.isArray(cu.items) && cu.items.length <= 1 && typeof cu.total === 'number'
+        && cu.limit === 1 && cu.offset === 0);
+    }
+    // /api/partners e o HARTA (cheie = CUI), nu o lista: forma implicita ramane harta
+    const parteneriHarta = (await req('GET', '/api/partners', { cookie: la.cookie })).json;
+    ok('partners: fara limit ramane harta (contract pastrat)',
+      parteneriHarta && !Array.isArray(parteneriHarta) && typeof parteneriHarta === 'object');
+    const parteneriPlic = (await req('GET', '/api/partners?limit=1', { cookie: la.cookie })).json;
+    ok('partners: cu limit -> plic cu items LISTA',
+      Array.isArray(parteneriPlic.items) && typeof parteneriPlic.total === 'number');
     eq('faraSalarii: si citirea salarizarii e respinsa (403)', (await req('GET', '/api/angajati', { cookie: c1 })).status, 403);
     eq('faraSalarii: D112 XML respins (403)', (await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).status, 403);
     ok('drepturile pot fi ridicate inapoi', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: false, faraSalarii: false } } })).json.ok === true);

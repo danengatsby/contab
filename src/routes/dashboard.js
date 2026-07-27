@@ -17,6 +17,7 @@ const stocks = require('../stocks');
 const { reconcile, compensablePartners } = require('../reconcile');
 const { analyticBalance, aging } = require('../analytic');
 const { round2, period: periodOf } = require('../util');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit } = ctx;
@@ -41,7 +42,7 @@ module.exports = function register(app, ctx) {
   });
 
   // ── Compensare creante / datorii (partener client + furnizor) ──
-  app.get('/api/compensations', (req, res) => res.json(compensablePartners(S(req))));
+  app.get('/api/compensations', (req, res) => sendList(req, res, compensablePartners(S(req)), { label: 'compensations' }));
   app.post('/api/compensations', (req, res) => {
     const b = req.body || {}; const fid = activeId(req); const d = db.get();
     const cui = String(b.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
@@ -127,7 +128,7 @@ module.exports = function register(app, ctx) {
     const ag = aging(v, null);
     res.json({ year, monthly: rep.monthlySeries(v, year), agingClienti: ag.totalClienti, agingFurnizori: ag.totalFurnizori });
   });
-  app.get('/api/analytic', (req, res) => res.json(analyticBalance(S(req))));
+  app.get('/api/analytic', (req, res) => sendList(req, res, analyticBalance(S(req)), { label: 'analytic' }));
   app.get('/api/aging', (req, res) => res.json(aging(S(req), req.query.asOf || null)));
   app.get('/pdf/aging', (req, res) => pdf.agingPdf(res, S(req).company, aging(S(req), req.query.asOf || null)));
 };

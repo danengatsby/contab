@@ -7,6 +7,7 @@
 
 const svc = require('../accountService');
 const authlib = require('../auth');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { logAudit } = ctx;
@@ -38,7 +39,7 @@ module.exports = function register(app, ctx) {
   }));
 
   // ───────────────────────────── SESIUNI ACTIVE ─────────────────────────────
-  app.get('/api/sessions', (req, res) => res.json(svc.listSessions(req.user, req._sessId)));
+  app.get('/api/sessions', (req, res) => sendList(req, res, svc.listSessions(req.user, req._sessId), { label: 'sessions' }));
   app.post('/api/sessions/logout-others', (req, res) => run(res, () => {
     svc.logoutOtherSessions(req.user, req._sessId);
     logAudit('session.logout_others', req.user.username, { req, firmaId: null });

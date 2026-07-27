@@ -5,6 +5,7 @@
 // detaliile de dezechilibru la solduri) in raspunsuri HTTP. Citirile raman pe vederea scoped.
 
 const svc = require('../partnersService');
+const { sendList, sendMap } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { upload, S, activeId, logAudit, requireAdmin } = ctx;
@@ -29,7 +30,7 @@ module.exports = function register(app, ctx) {
     return { ok: true, importati: r.importati, totalConturi: r.totalConturi };
   }));
 
-  app.get('/api/partners', (req, res) => res.json(S(req).partners));
+  app.get('/api/partners', (req, res) => sendMap(req, res, S(req).partners, { label: 'partners' }));
   app.post('/api/partners', (req, res) => run(res, () => {
     const r = svc.upsertPartner(activeId(req), req.body);
     return { ok: true, partner: r.partner };
@@ -47,7 +48,7 @@ module.exports = function register(app, ctx) {
     return { ok: true, rows: r.rows, csv: r.csv };
   }));
 
-  app.get('/api/opening-analytic', (req, res) => res.json(S(req).openingAnalytic));
+  app.get('/api/opening-analytic', (req, res) => sendList(req, res, S(req).openingAnalytic || [], { label: 'opening-analytic' }));
   app.post('/api/opening-analytic', (req, res) => run(res, () => {
     const r = svc.saveOpeningAnalytic(activeId(req), req.body);
     return { ok: true, openingAnalytic: r.openingAnalytic };
