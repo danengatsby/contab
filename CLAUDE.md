@@ -32,7 +32,7 @@ DUKIntegrator pentru declarații + SAF-T (D406 e în același manifest, nu cere 
 separată), XSD pentru e-Transport. Poarta blochează la „INVALID" **și** la „NEVERIFICAT"
 (ANAF picat, Docker/xmllint lipsă, schemă e-Transport absentă) — „n-am putut verifica"
 nu e „e bine". `npm test` nu o înlocuiește: `wellFormed` verifică doar echilibrul etichetelor,
-nu ce acceptă ANAF. În CI: jobul `poarta-fiscala` (fiecare push/PR).
+nu ce acceptă ANAF. În CI: jobul `poarta-fiscala` (fiecare push/PR); pe calea locală (merge + push direct, fără PR) o leagă hook-ul din `sh scripts/hook-fiscal.sh`, iar pe PR-uri `sh scripts/protectie-ramura.sh`.
 
 Schema e-Transport e **versionată în repo** (`schemas/eTransport/*.xsd`, o singură versiune la un
 moment dat), ca poarta să meargă în orice clonă și în CI fără variabile — runnerul e efemer, deci

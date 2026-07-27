@@ -138,8 +138,25 @@ rulează poarta; obligativitatea e o setare de repo.
 adică exact pentru PR-urile dependabot. Fluxul propriu (merge local `--no-ff` + push direct în
 `main`) nu trece prin PR, deci protecția nu-l atinge cât timp `enforce_admins=false`. Pe `true`,
 push-ul direct ar fi **respins**: checkurile rulează *după* push, deci un commit nou n-are cum să
-aibă deja statusuri verzi. Pentru calea proprie, mecanismul potrivit e un hook `pre-push` local,
-nu setarea de repo.
+aibă deja statusuri verzi — ar fi o blocare a propriei căi, nu o protecție.
+
+### Calea proprie: hook `pre-push`
+
+Pentru merge local + push direct, singurul loc unde poarta poate fi legată e local:
+
+```bash
+sh scripts/hook-fiscal.sh                 # instalează
+sh scripts/hook-fiscal.sh --arata         # ce e instalat
+sh scripts/hook-fiscal.sh --dezinstaleaza # scoate-l
+```
+
+Hook-ul rulează poarta **doar dacă** commit-urile împinse ating module fiscale — un push de CSS nu
+așteaptă un container Java. Refuză push-ul atât la `INVALID` (cod 1), cât și la `NEVERIFICAT`
+(cod 2). Ieșire de urgență, deliberată și documentată: `git push --no-verify`; poarta rămâne
+obligatorie în CI pe push, deci ocolirea se vede.
+
+Cele două mecanisme sunt complementare: protecția de repo acoperă PR-urile (dependabot), hook-ul
+acoperă calea proprie.
 
 Schema e-Transport nu se ține în repo (ANAF o actualizează; s-ar învechi) — CI o ia din
 variabila de repo `CONTAB_ETRANSPORT_XSD` (*Settings → Secrets and variables → Actions →
