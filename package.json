@@ -23,7 +23,7 @@
     "multer": "^2.2.0",
     "nodemailer": "^9.0.3",
     "openai": "^6.49.0",
-    "pdf2json": "^3.1.4",
+    "pdf2json": "^4.0.3",
     "pdfkit": "^0.15.1",
     "pg": "^8.22.0",
     "qrcode-svg": "^1.1.0",
