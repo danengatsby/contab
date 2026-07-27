@@ -14,6 +14,8 @@ const log = require('../log');
 const metrics = require('../metrics');
 const { extractFromPdf } = require('../extractor');
 const extractCheck = require('../extractCheck');
+const extractQuality = require('../extractQuality');
+const entriesService = require('../entriesService');
 const fiscal = require('../fiscal');
 const { getType } = require('../documentTypes');
 const { round2, period: periodOf } = require('../util');
@@ -39,7 +41,7 @@ function bumpAiUsage(u) {
 }
 
 module.exports = function register(app, ctx) {
-  const { upload, S, activeId, allowedFirme, logAudit } = ctx;
+  const { upload, S, activeId, allowedFirme, logAudit, buildEntry, upsertPartner } = ctx;
 
   app.post('/api/upload', upload.single('file'), ctx.wrap(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
@@ -84,24 +86,61 @@ module.exports = function register(app, ctx) {
       }
     }
 
-    // Reconciliere post-extragere (ambele cai): completeaza golurile derivabile si semnaleaza
-    // incoerentele (suma != baza+TVA, cota necorelata, incredere joasa) inainte de formular.
-    const chk = extractCheck.reconcile(extracted.fields || {}, { incredere: extra.incredere, standardCota: fiscal.FISCAL.tvaStandard });
-    extracted.fields = chk.fields;
-    if (chk.warnings.length) extra.checkWarnings = chk.warnings;
-    extra.needsReview = chk.needsReview;
+    // CONTROLUL CALITATII: bateria de verificari peste datele firmei (aritmetica, cota, data,
+    // partener cunoscut, duplicat, tip) + reconcilierea post-extragere. Intoarce si campurile cu
+    // golurile derivabile completate — deci inlocuieste apelul separat catre extractCheck.
+    const fid = activeId(req);
+    const calitate = extractQuality.evalueaza(
+      { fields: extracted.fields || {}, suggestedType: extracted.suggestedType, source, incredere: extra.incredere, fileName: req.file.originalname },
+      { v: S(req), firma: db.getFirma(fid) || {}, standardCota: fiscal.FISCAL.tvaStandard }
+    );
+    extracted.fields = calitate.fields;
+    if (calitate.avertismente.length) extra.checkWarnings = calitate.avertismente;
+    extra.needsReview = calitate.decizie !== 'auto';
+    extra.calitate = { scor: calitate.scor, decizie: calitate.decizie, controale: calitate.controale, motive: calitate.motive };
 
     const docId = db.nextId('doc');
     d.documents.push({
       id: docId,
-      firmaId: activeId(req),
+      firmaId: fid,
       fileName: req.file.originalname,
       storedName: req.file.filename,
       uploadedAt: new Date().toISOString(),
       text: (extracted.text || '').slice(0, 20000),
+      // Ce a CITIT masina, pastrat ca atare. E referinta fata de care se masoara interventia
+      // operatorului la salvare (vezi entriesService.createEntry): fara ea, „ce a corectat omul"
+      // ar fi o intrebare fara raspuns, iar raportul pe furnizori/formate n-ar avea din ce trai.
+      extras: {
+        source, incredere: extra.incredere == null ? null : Number(extra.incredere),
+        suggestedType: extracted.suggestedType,
+        fields: extracted.fields,
+        scor: calitate.scor,
+        decizie: calitate.decizie,
+        controalePicate: calitate.controale.filter((c) => !c.ok).map((c) => c.cod),
+        format: extractQuality.formatFisier(req.file.originalname),
+      },
     });
-    logAudit('document.upload', uploadDetail(req.file) + ', extragere: ' + source, { req });
+    logAudit('document.upload', uploadDetail(req.file) + ', extragere: ' + source
+      + ', calitate: ' + calitate.scor + '% ' + calitate.decizie, { req });
     db.save();
+
+    // POSTARE AUTOMATA — doar daca firma a cerut-o EXPLICIT si toate controalele blocante trec.
+    // Optiunea e implicit oprita: a scrie in contabilitate fara om nu e o valoare implicita
+    // rezonabila. Daca crearea esueaza dintr-un motiv de business (perioada inchisa, guard fiscal),
+    // NU e o eroare a cererii: documentul ramane la revizuire, cu motivul aratat.
+    const firmaCfg = db.getFirma(fid) || {};
+    if (firmaCfg.autoPostDocumente && calitate.decizie === 'auto') {
+      try {
+        const r = entriesService.createEntry(fid, { tip: extracted.suggestedType, fields: extracted.fields, fileId: docId }, { buildEntry, upsertPartner });
+        logAudit('document.autopost', r.entry.id + ' (' + extracted.suggestedType + ', scor ' + calitate.scor + '%)', { req });
+        extra.autoPostat = { entryId: r.entry.id, tip: extracted.suggestedType };
+      } catch (e) {
+        extra.needsReview = true;
+        extra.calitate.decizie = 'revizuire';
+        extra.calitate.motive = (extra.calitate.motive || []).concat(['Postarea automată a fost oprită: ' + (e.message || e)]);
+      }
+    }
+
     res.json(Object.assign({
       documentId: docId,
       fileName: req.file.originalname,
@@ -112,6 +151,37 @@ module.exports = function register(app, ctx) {
       warning,
     }, extra));
   }));
+
+  // ── Calitatea extragerii: raportul pe furnizori / formate / controale ──
+  // Intrebarea operationala e „pe cine merita sa-l repari", deci raspunsul e sortat dupa numarul
+  // de interventii, nu o medie generala. `?days=` restrange fereastra (implicit 90 de zile).
+  app.get('/api/extract-quality', (req, res) => {
+    const fid = activeId(req);
+    const zile = Math.min(365, Math.max(1, Number(req.query.days) || 90));
+    const dinCand = new Date(Date.now() - zile * 86400000).toISOString();
+    const toate = (db.get().extractInterventions || []).filter((i) => i.firmaId === fid && i.at >= dinCand);
+    // Raportul e despre CORECTII: interventiile fara nicio modificare (om care a confirmat
+    // extragerea) intra doar in numitor, ca rata sa fie onesta.
+    const corectate = toate.filter((i) => i.corectat);
+    const rap = extractQuality.raport(corectate);
+    const auto = (db.get().documents || []).filter((x) => x.firmaId === fid && x.extras && x.uploadedAt >= dinCand);
+    res.json(Object.assign(rap, {
+      zile,
+      documenteCitite: auto.length,
+      interventii: toate.length,
+      corectii: corectate.length,
+      rataCorectie: toate.length ? Math.round((corectate.length / toate.length) * 100) : 0,
+      postateAutomat: auto.filter((x) => x.extras.decizie === 'auto').length,
+      scorMediu: auto.length ? Math.round(auto.reduce((s, x) => s + (Number(x.extras.scor) || 0), 0) / auto.length) : null,
+      autoPostActiv: !!(db.getFirma(fid) || {}).autoPostDocumente,
+      controale: extractQuality.CONTROALE.map((c) => ({ cod: c.cod, nume: c.nume })),
+      recente: corectate.slice(-20).reverse().map((i) => ({
+        at: i.at, fileName: i.fileName, format: i.format, source: i.source, scor: i.scor,
+        partener: i.partener, tipExtras: i.tipExtras, tipSalvat: i.tipSalvat,
+        campuri: (i.diff || {}).campuri || [], motiv: i.motiv || '',
+      })),
+    }));
+  });
 
   // Document fara extragere (introducere manuala / atasament)
   app.post('/api/upload-only', upload.single('file'), (req, res) => {
