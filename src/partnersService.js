@@ -71,13 +71,23 @@ function importPartners(fid, csv) {
   const d = db.get();
   d.partners[fid] = d.partners[fid] || {};
   let importati = 0; const erori = [];
+  // Prima celula trebuie sa ARATE a cod fiscal: cifre, eventual cu prefix de tara (RO12345674,
+  // 12345674, DE811907980). Fara verificarea asta, un CSV cu alte coloane se importa TACIT ca
+  // parteneri de gunoi — gasit de E2E-ul izolat: „nu,sunt,coloane" crea partenerul cui='nu',
+  // den='sunt', iar raspunsul raporta „importati: 2". Un import care reuseste pe date gresite e
+  // mai rau decat unul care esueaza: gunoiul ajunge in facturi si in declaratii.
+  const CUI_OK = /^[A-Z]{0,3}\d{2,12}$/i;
   for (let i = start; i < rows.length; i++) {
     const r = rows[i];
     const key = String(r[0] || '').replace(/^ro/i, '').replace(/\s/g, '');
     if (!key) { erori.push('rand ' + (i + 1) + ': CUI lipsa'); continue; }
+    if (!CUI_OK.test(key)) { erori.push('rand ' + (i + 1) + ': „' + String(r[0]).slice(0, 24) + '" nu e un cod fiscal valid'); continue; }
+    if (!String(r[1] || '').trim()) { erori.push('rand ' + (i + 1) + ': denumire lipsa pentru ' + key); continue; }
     d.partners[fid][key] = { cui: key, den: r[1] || '', adresa: r[2] || '', oras: r[3] || '', judet: r[4] || '', tara: r[5] || 'RO', tip: (r[6] || '').toLowerCase().trim() };
     importati += 1;
   }
+  // Niciun rand valid, dar randuri au existat -> fisierul nu are forma asteptata. Spune-o.
+  if (!importati && erori.length) fail(400, 'Niciun rand valid: ' + erori.slice(0, 3).join('; ') + (erori.length > 3 ? ' …' : ''));
   db.save();
   return { importati, erori };
 }
