@@ -47,6 +47,7 @@ const stocuri = await import(path.join(mirror, 'stocuri.js'));
 const bank = await import(path.join(mirror, 'bank.js'));
 const viewer = await import(path.join(mirror, 'viewer.js'));
 const partners = await import(path.join(mirror, 'partners.js'));
+const inchidere = await import(path.join(mirror, 'inchidere.js'));
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -531,6 +532,74 @@ eq('prettyXml indenteaza pe niveluri', pretty.split('\n')[2], '    <c>x</c>');
 ok('prettyXml pastreaza eticheta auto-inchisa fara sa indenteze in plus', pretty.includes('\n  <d/>'));
 ok('prettyXml inchide la nivelul de pornire', pretty.split('\n').pop() === '</a>');
 eq('prettyXml pe un sir care nu e XML il intoarce neatins', viewer.prettyXml('nu sunt xml'), 'nu sunt xml');
+
+section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js)');
+// Modulul nu decide nimic — randează starea primită de la server. Aici verificăm exact atât:
+// că starea ajunge corect pe ecran ȘI că tot ce vine din date (nume de partener în motivul
+// blocajului, motivul forțării scris de admin, numele utilizatorului) e escapat.
+{
+  const pasGata = { key: 'banca', nume: 'Extras bancar', descriere: 'd', tab: 'reconciliere', eticheta: 'Verifică', stare: 'gata', blocaje: [], blocatDe: null, responsabilId: null, due: '2026-07-15', dueImplicit: true, overdue: false, nota: '' };
+  const pasDeschis = Object.assign({}, pasGata, { key: 'documente', nume: 'Documente', stare: 'deschis', blocaje: ['2 furnizori fără document: <b>ACME</b> SRL'], overdue: true, dueImplicit: false, responsabilId: 7 });
+  const pasBlocat = Object.assign({}, pasGata, { key: 'tva', stare: 'blocat', blocaje: ['x'], blocatDe: 'Documente <b>complete</b>' });
+  const resp = [{ id: 7, username: 'maria<script>' }];
+
+  const hGata = inchidere.stepHtml(pasGata, resp);
+  ok('pasul gata poartă clasa de stare', hGata.includes('is-gata'));
+  ok('pasul gata NU mai arată butonul de acțiune', !hGata.includes('cl-go'));
+  ok('termenul implicit e marcat ca atare', hGata.includes('implicit'));
+
+  const hDeschis = inchidere.stepHtml(pasDeschis, resp);
+  ok('pasul deschis arată butonul către ecranul care îl rezolvă', hDeschis.includes('cl-go') && hDeschis.includes('data-tab="reconciliere"'));
+  ok('motivul blocajului apare în listă', hDeschis.includes('closeblock') && hDeschis.includes('furnizori'));
+  ok('termenul depășit e marcat', hDeschis.includes('depășit'));
+  ok('responsabilul alocat e selectat', hDeschis.includes('value="7" selected'));
+  ok('„nealocat" rămâne o opțiune validă', hDeschis.includes('— nealocat —'));
+  // ESCAPARE: numele partenerului ajunge în blocaj din documentele primite; username-ul din cont
+  ok('motivul blocajului e escapat', hDeschis.includes('&lt;b&gt;ACME&lt;/b&gt;') && !hDeschis.includes('<b>ACME'));
+  ok('numele utilizatorului e escapat în select', hDeschis.includes('maria&lt;script&gt;') && !hDeschis.includes('maria<script>'));
+
+  const hBlocat = inchidere.stepHtml(pasBlocat, resp);
+  ok('pasul blocat spune CE îl ține', hBlocat.includes('Așteaptă pasul anterior'));
+  ok('numele pasului care blochează e escapat', hBlocat.includes('&lt;b&gt;complete&lt;/b&gt;'));
+
+  // Antetul: progres, verdict, aprobare, forțare (cu motivul scris de om)
+  const stBaza = { period: '2026-06', progres: { gata: 3, total: 6, procent: 50 }, sePoateInchide: false, inchisa: false, ancoraTermen: '2026-07-25', aprobare: null, fortata: null, steps: [] };
+  const hHead = inchidere.closeHeaderHtml(stBaza);
+  ok('bara de progres reflectă procentul', hHead.includes('width:50%'));
+  ok('verdictul spune câți pași au rămas', hHead.includes('3 pas'));
+  const hGataHead = inchidere.closeHeaderHtml(Object.assign({}, stBaza, { sePoateInchide: true, progres: { gata: 5, total: 5, procent: 100 } }));
+  ok('când totul e gata, verdictul o spune', hGataHead.includes('se poate închide'));
+  const hForced = inchidere.closeHeaderHtml(Object.assign({}, stBaza, {
+    fortata: { motiv: 'depus <b>manual</b> pe portal', username: 'ad<min', at: '2026-07-20T08:00:00Z', blocante: ['D<300'] },
+  }));
+  ok('forțarea e afișată vizibil, cu motivul', hForced.includes('warnbox') && hForced.includes('forțată'));
+  ok('motivul forțării e escapat', hForced.includes('&lt;b&gt;manual&lt;/b&gt;') && !hForced.includes('<b>manual'));
+  ok('numele celui care a forțat e escapat', hForced.includes('ad&lt;min'));
+  ok('pașii nerezolvați la forțare sunt escapați', hForced.includes('D&lt;300'));
+  const hAprob = inchidere.closeHeaderHtml(Object.assign({}, stBaza, { aprobare: { username: 'ma<ria', at: '2026-07-20T08:00:00Z', nota: 'ok <b>' } }));
+  ok('aprobarea arată cine și când, escapat', hAprob.includes('ma&lt;ria') && hAprob.includes('ok &lt;b&gt;'));
+
+  // Tabelul dovezilor de validare
+  const stDecl = {
+    steps: [{ key: 'declaratii', detalii: { declaratii: [
+      { tip: 'd300', nume: 'D300 — decont TVA', due: '2026-07-25', status: 'depusa', overdue: false, dovada: { at: '2026-07-20T09:30:00Z', username: 'ma<ria', ok: true, errors: 0, warnings: 1 } },
+      { tip: 'd394', nume: 'D394 — <b>info</b>', due: '2026-07-25', status: 'generata', overdue: true, dovada: { at: '2026-07-20T09:31:00Z', username: 'x', ok: false, errors: 2, warnings: 0 } },
+      { tip: 'saft', nume: 'D406 — SAF-T', due: '2026-07-31', status: 'nedepusa', overdue: false, dovada: null },
+    ] } }],
+  };
+  const hProof = inchidere.proofsHtml(stDecl, [{ tip: 'd300' }, { tip: 'd394' }]);
+  eq('starea se afișează în scriere românească, nu valoarea internă', inchidere.statusLabel('nedepusa'), 'nedepusă');
+  eq('statusul necunoscut nu se pierde', inchidere.statusLabel('altceva'), 'altceva');
+  eq('statusul lipsă dă liniuță', inchidere.statusLabel(undefined), '—');
+  ok('tabelul folosește eticheta, nu valoarea brută', hProof.includes('nedepusă') && !hProof.includes('>nedepusa<'));
+  ok('dovada fără erori se vede ca atare', hProof.includes('fără erori'));
+  ok('dovada cu erori arată numărul', hProof.includes('2 eroare/erori'));
+  ok('declarația nevalidată e marcată', hProof.includes('nevalidată'));
+  ok('butonul de validare apare doar pentru tipurile validabile', (hProof.match(/cl-val/g) || []).length === 2);
+  ok('numele declarației e escapat', hProof.includes('D394 — &lt;b&gt;info&lt;/b&gt;'));
+  ok('numele validatorului e escapat', hProof.includes('ma&lt;ria'));
+  eq('fără declarații așteptate: mesaj, nu tabel gol', inchidere.proofsHtml({ steps: [] }, []).includes('<table>'), false);
+}
 
 section('Poartă: fiecare modul din public/ se încarcă fără să arunce');
 // Testele de mai sus importa doar modulele pe care le verifica (9 din ~24). Un import lipsa in

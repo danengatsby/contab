@@ -904,3 +904,36 @@ body.dark .fstep.done .fstep-body b{text-decoration-color:#5cbb8d}
 td.etva-diff{background:#fdecea;color:#8a1c1c;font-weight:700}
 tr.etva-diff-row>td:first-child{border-left:3px solid #d64545}
 body.dark td.etva-diff{background:#4a1f1f;color:#ffd7d0}
+
+/* ── Cockpit de inchidere lunara (tab „Inchideri de luna") ── */
+/* Variante de pastila lipsa (existau doar .pill si .pill.warn) */
+.pill.ok{background:#eef6f2;color:var(--accent)}
+.pill.err{background:#fdeaea;color:var(--danger)}
+.pill.muted{background:#eef0f3;color:#6b7280}
+.closehead{margin-bottom:12px}
+.closebar{height:8px;border-radius:6px;background:#eef0f3;overflow:hidden}
+.closebarfill{display:block;height:100%;background:var(--accent);transition:width .25s ease}
+.closemeta{margin-top:6px;font-size:13px}
+.closesteps{list-style:none;margin:0;padding:0;counter-reset:closestep}
+.closestep{counter-increment:closestep;position:relative;border:1px solid var(--line);border-radius:10px;
+  padding:11px 14px 11px 42px;margin-bottom:9px;background:#fff}
+.closestep::before{content:counter(closestep);position:absolute;left:12px;top:12px;width:20px;height:20px;
+  border-radius:50%;background:#eef0f3;color:#6b7280;font-size:11px;font-weight:700;display:flex;
+  align-items:center;justify-content:center}
+.closestep.is-gata{border-color:#bfe3d0;background:#f7fcf9}
+.closestep.is-gata::before{background:var(--accent);color:#fff}
+.closestep.is-deschis{border-left:4px solid #c79100}
+.closestep.is-blocat{opacity:.72}
+.closestep.is-nuseaplica{opacity:.6}
+.closestep-h{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.closeicon{font-weight:700}
+.closeblock{margin:6px 0 0;padding-left:18px;font-size:13px;color:#8a1c1c}
+.closewait{margin:5px 0 0;font-size:13px}
+.closefields{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+.closefield{display:flex;align-items:center;gap:6px;font-size:13px;color:#6b7280}
+.closefield select,.closefield input{margin:0}
+body.dark .closestep{background:#1b2027;border-color:#2b323b}
+body.dark .closestep.is-gata{background:#16241c;border-color:#2f5c43}
+body.dark .closebar{background:#2b323b}
+body.dark .pill.muted{background:#2b323b;color:#aab3bf}
+body.dark .closeblock{color:#ffb4a8}
