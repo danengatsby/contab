@@ -623,6 +623,36 @@ function recurringAmount(t) {
 function isIncomeTemplate(tip) { return /vanzare|^livrare_intra|^bon_fiscal|^aviz|factura_simplificata|incasare/.test(String(tip)); }
 
 /**
+ * DOCUMENTE LIPSA: furnizorii care apareau lunar dar nu au niciun document in luna ceruta.
+ * Euristica (deliberat simpla, explicabila contabilului): un furnizor de la care s-au inregistrat
+ * cumparari in cel putin 2 din ultimele 3 luni, dar nimic in luna curenta, e probabil o factura
+ * neajunsa inca la contabilitate. `countThis`/`avgPrev` dau contextul (cate documente fata de media
+ * lunilor precedente), ca „0 lipsuri" pe o luna aproape goala sa nu para o luna in regula.
+ *
+ * Folosita de /api/missing-docs SI de primul pas al inchiderii lunare (src/monthlyClose.js) —
+ * o singura implementare a regulii, ca ecranul si cockpitul sa nu spuna lucruri diferite.
+ */
+function missingDocs(v, period) {
+  const ym = /^\d{4}-\d{2}$/.test(String(period || '')) ? String(period) : new Date().toISOString().slice(0, 7);
+  const per = (e) => e.period || periodOf(e.data);
+  const purchases = (v.entries || []).filter((e) => /cumparare/.test(e.tip) && e.partener);
+  const prev = [1, 2, 3].map((k) => addMonths(ym, -k));
+  const seen = {}; const lastSeen = {};
+  purchases.forEach((e) => {
+    const m = per(e);
+    if (!lastSeen[e.partener] || m > lastSeen[e.partener]) lastSeen[e.partener] = m;
+    if (prev.includes(m)) { (seen[e.partener] = seen[e.partener] || new Set()).add(m); }
+  });
+  const thisSet = new Set(purchases.filter((e) => per(e) === ym).map((e) => e.partener));
+  const missing = Object.keys(seen).filter((p) => seen[p].size >= 2 && !thisSet.has(p))
+    .map((p) => ({ partener: p, luniPrezent: seen[p].size, ultimaLuna: lastSeen[p] }))
+    .sort((a, b) => b.luniPrezent - a.luniPrezent);
+  const countThis = thisSet.size ? purchases.filter((e) => per(e) === ym).length : 0;
+  const avgPrev = Math.round((prev.reduce((acc, m) => acc + purchases.filter((e) => per(e) === m).length, 0) / 3) * 10) / 10;
+  return { period: ym, countThis, avgPrev, missing };
+}
+
+/**
  * Previziune de cash-flow pe un orizont de luni. Model transparent: luna 1 incaseaza soldurile deschise
  * de clienti si plateste datoriile catre furnizori; toate lunile adauga facturile recurente scadente.
  * Nu inventeaza date — proiecteaza din ce e deja cunoscut (solduri + sabloane recurente).
@@ -801,4 +831,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation };
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation };

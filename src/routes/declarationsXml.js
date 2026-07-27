@@ -13,7 +13,7 @@ const saft = require('../saft');
 const pdf = require('../pdf');
 const decl = require('../declarations');
 const plans = require('../plans');
-const validate = require('../validate');
+const declCheck = require('../declarationCheck');
 const fiscalProfile = require('../fiscalProfile');
 const { statePlata } = require('../payroll');
 
@@ -145,35 +145,19 @@ module.exports = function register(app, ctx) {
   }));
 
   // Validare pre-depunere: genereaza XML-ul declaratiei si verifica bine-format + campuri obligatorii.
+  // Validare pre-depunere: genereaza XML-ul declaratiei si verifica bine-format + campuri
+  // obligatorii. Logica sta in src/declarationCheck.js — acelasi verdict il foloseste si
+  // cockpitul de inchidere lunara („dovada validarii"), deci nu are voie sa existe in doua locuri.
   app.get('/api/validate/:type', (req, res) => {
-    const v = S(req); const type = req.params.type;
-    const period = req.query.period || null;
-    const year = req.query.year || String(new Date().getFullYear());
-    let x = '';
+    const type = req.params.type;
+    if (!declCheck.TYPES.includes(type)) return res.status(400).json({ error: 'Tip de declaratie necunoscut: ' + type });
     try {
-      const pv = acc.vatPeriod(v.company, period); // D300/D394: agrega trimestrul la regim 'T'
-      if (type === 'd300') x = xml.d300Xml(v.company, pv, rep.d300(v, pv), declarantOf(req));
-      else if (type === 'd394') x = xml.d394Xml(v.company, pv, acc.vatJournals(v, pv), declarantOf(req), rep.achizitiiPfCarnet(v, pv));
-      else if (type === 'd390') x = xml.d390Xml(v.company, period, rep.d390(v, period));
-      else if (type === 'd100') x = xml.d100Xml(v.company, period, rep.d100micro(v, period), declarantOf(req));
-      else if (type === 'd101') x = xml.d101Xml(v.company, rep.d101(v, year), declarantOf(req));
-      else if (type === 'intrastat') x = xml.intrastatXml(v.company, period, rep.intrastat(v, period));
-      else if (type === 'd205') x = xml.d205Xml(v.company, year, rep.d205(v, year));
-      else if (type === 'd112') x = xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarantOf(req));
-      else if (type === 'saft') x = saft.saftXml(v, year);
-      else return res.status(400).json({ error: 'Tip de declaratie necunoscut: ' + type });
-    } catch (e) { return res.status(400).json({ error: e.message }); }
-    const ctxVal = { cui: v.company.cui };
-    // D300: cotele fara rand in v12 nu se vad in XML (tocmai fiindca nu le mai emitem) — se
-    // calculeaza din aceeasi sursa ca decontul si se dau validarii ca sa le poata raporta.
-    if (type === 'd300') ctxVal.coteFaraRand = xml.d300CoteFaraRand(rep.d300(v, acc.vatPeriod(v.company, period)));
-    // D394: articolele cu taxare inversa fara cod de bun art. 331 nu se vad in XML (op11 lipseste
-    // tocmai pentru ca nu inventam un cod) — se calculeaza din jurnal, ca sa le putem numi.
-    if (type === 'd394') ctxVal.faraCodCategorie = xml.d394FaraCodCategorie(acc.vatJournals(v, acc.vatPeriod(v.company, period)));
-    const result = validate.validateDeclaration(type, x, ctxVal);
-    // D100: adauga avertismentele de eligibilitate micro (plafon venituri + conditia de salariat)
-    if (type === 'd100') result.warnings.push(...(rep.d100micro(v, period).avertismente || []));
-    res.json(Object.assign({ type, period }, result));
+      res.json(declCheck.validateFor(S(req), type, {
+        period: req.query.period || null,
+        year: req.query.year || String(new Date().getFullYear()),
+        declarant: declarantOf(req),
+      }));
+    } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
   });
   app.get('/api/saft', (req, res) => res.json(saft.saftSummary(S(req), req.query.year || String(new Date().getFullYear()))));
 };
