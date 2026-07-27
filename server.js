@@ -334,6 +334,7 @@ require('./src/routes/production')(app, { S, activeId, logAudit });
 
 // Inchideri fiscale (TVA, an, impozit pe profit, repartizare rezultat): src/routes/closings.js
 require('./src/routes/closings')(app, { S, activeId, logAudit });
+require('./src/routes/monthlyClose')(app, { activeId, logAudit });
 
 // ───────────────────────────── MIJLOACE FIXE ─────────────────────────────
 // Mijloace fixe (registru + amortizare): src/routes/assets.js

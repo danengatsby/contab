@@ -2781,6 +2781,150 @@ ok('notificari: e-Factura cu termen apropiat apare', nEf.items.some((i) => i.tip
 }
 ok('SAF-T lunar: bine-format, perioada corecta si codul L in HeaderComment', (() => { const x = saft.saftXml(vDecl, '2026-06'); return x.includes('<PeriodStart>6</PeriodStart>') && x.includes('<PeriodEnd>6</PeriodEnd>') && x.includes('<HeaderComment>L</HeaderComment>'); })());
 
+section('Inchidere lunara: motorul fluxului (src/monthlyClose.js)');
+{
+  const mcMod = require('../src/monthlyClose');
+  const AZI = '2026-07-20';
+  // Firma-model: platitoare de TVA, o luna cu o vanzare, o incasare care o stinge complet si
+  // nota de regularizare TVA — punctul de plecare „luna curata".
+  const mkV = (over) => Object.assign({
+    firmaId: 5,
+    company: { id: 5, nume: 'FLUX SRL', cui: '123', tvaPlatitor: true, perioadaTva: 'L' },
+    angajati: [], products: [], gestiuni: [], stockMovements: [], inventories: [], assets: [],
+    partners: {}, openingBalances: {}, openingAnalytic: [], payrollHistory: [], documents: [],
+    entries: [
+      { id: 'e1', firmaId: 5, data: '2026-06-10', period: '2026-06', tip: 'factura_vanzare_servicii', tipNume: 'Factura', partener: 'CLIENT SRL', document: 'F1', spv: { index: '9' }, lines: [{ debit: '4111', credit: '704', suma: 1000 }, { debit: '4111', credit: '4427', suma: 210 }] },
+      { id: 'e2', firmaId: 5, data: '2026-06-20', period: '2026-06', tip: 'incasare_client', tipNume: 'Incasare', partener: 'CLIENT SRL', document: 'CH1', lines: [{ debit: '5121', credit: '4111', suma: 1210 }] },
+      { id: 'e3', firmaId: 5, data: '2026-06-28', period: '2026-06', tip: 'inchidere_tva', tipNume: 'Inchidere TVA', system: true, lines: [{ debit: '4427', credit: '4423', suma: 210 }] },
+    ],
+  }, over || {});
+  const D0 = { declarations: [], closings: [] };
+  const stare = (d, v, per, o) => mcMod.status(d || D0, v || mkV(), per || '2026-06', Object.assign({ today: AZI }, o || {}));
+  const pas = (st, k) => st.steps.find((s) => s.key === k);
+
+  const st1 = stare();
+  eq('ordinea pasilor e fluxul cerut', st1.steps.map((s) => s.key).join('>'), 'documente>banca>tva>declaratii>aprobare>blocare');
+  eq('documente: gata (fara ciorne, fara lipsuri, e-Factura trimisa)', pas(st1, 'documente').stare, 'gata');
+  eq('banca: gata (incasarea stinge factura, casa nu e negativa)', pas(st1, 'banca').stare, 'gata');
+  eq('tva: gata (nota de regularizare postata, nimic ramas)', pas(st1, 'tva').stare, 'gata');
+  eq('declaratii: deschis (nedepuse)', pas(st1, 'declaratii').stare, 'deschis');
+  eq('aprobare: BLOCAT de declaratii', pas(st1, 'aprobare').blocatDe, 'Declarații validate și depuse');
+  ok('blocare: blocata si ea, luna nu se poate inchide', pas(st1, 'blocare').stare === 'blocat' && st1.sePoateInchide === false);
+  ok('blocantele numesc pasii, nu doar numarul', st1.blocante.some((b) => b.key === 'declaratii' && b.blocaje.length > 0));
+
+  // termenele implicite se ancoreaza in TERMENUL REAL de depunere al lunii (nu o cifra inventata)
+  eq('ancora de termen = cel mai devreme termen de depunere', st1.ancoraTermen, '2026-07-25');
+  eq('termen implicit: documentele cu 15 zile inainte de ancora', pas(st1, 'documente').due, '2026-07-10');
+  eq('termen implicit: banca cu 10 zile inainte', pas(st1, 'banca').due, '2026-07-15');
+  ok('termenele implicite sunt marcate ca implicite', pas(st1, 'tva').dueImplicit === true);
+
+  // CIORNA in luna = document neinregistrat contabil -> blocheaza primul pas
+  const vCiorna = mkV();
+  vCiorna.entries = vCiorna.entries.concat([{ id: 'e9', firmaId: 5, data: '2026-06-15', period: '2026-06', tip: 'nota_contabila', tipNume: 'Nota', status: 'ciorna', lines: [{ debit: '5311', credit: '5121', suma: 10 }] }]);
+  const stC = stare(D0, vCiorna);
+  eq('ciorna in luna: pasul 1 se deschide', pas(stC, 'documente').stare, 'deschis');
+  ok('ciorna: motivul blocajului o numeste', pas(stC, 'documente').blocaje.some((b) => /ciorn/i.test(b)));
+  // Un pas care nu e inca rezolvat devine „blocat" si spune CINE il tine. Un pas deja rezolvat
+  // (aici TVA, cu nota postata) ramane „gata" — blocarea e despre ce ai de facut, nu o retrogradare.
+  eq('pasul nerezolvat de dupa devine „blocat"', pas(stC, 'declaratii').stare, 'blocat');
+  eq('...si spune CE il tine', pas(stC, 'declaratii').blocatDe, 'Documente complete');
+  eq('un pas DEJA rezolvat nu se retrogradeaza', pas(stC, 'tva').stare, 'gata');
+
+  // e-Factura netrimisa in luna: termen legal, deci blocaj
+  const vEfact = mkV();
+  vEfact.entries[0] = Object.assign({}, vEfact.entries[0], { partenerCui: 'RO77', spv: null });
+  ok('e-Factura netrimisa a lunii blocheaza pasul 1', pas(stare(D0, vEfact), 'documente').blocaje.some((b) => /SPV|e-Factura/i.test(b)));
+
+  // TVA: nota exista, dar apare o factura DUPA regularizare -> pasul redevine deschis
+  const vTvaDupa = mkV();
+  vTvaDupa.entries = vTvaDupa.entries.concat([{ id: 'e10', firmaId: 5, data: '2026-06-29', period: '2026-06', tip: 'factura_vanzare_servicii', tipNume: 'F', partener: 'CLIENT SRL', document: 'F2', spv: { index: '1' }, lines: [{ debit: '4111', credit: '704', suma: 500 }, { debit: '4111', credit: '4427', suma: 105 }] }]);
+  const stTvaDupa = stare(D0, vTvaDupa);
+  ok('TVA: operatiuni aparute DUPA regularizare redeschid pasul',
+    pas(stTvaDupa, 'tva').stare === 'deschis' && pas(stTvaDupa, 'tva').blocaje.some((b) => /după regularizare/i.test(b)));
+
+  // Luna fara nicio operatiune de TVA: nu cerem o nota goala (blocaj inventat)
+  const vGol = mkV({ entries: [] });
+  const stGol = stare(D0, vGol, '2026-06');
+  ok('luna fara TVA: pasul e gata, marcat ca fara operatiuni',
+    pas(stGol, 'tva').stare === 'gata' && pas(stGol, 'tva').detalii.faraOperatiuniTva === true);
+
+  // Firma NEPLATITOARE de TVA: pasul nu se aplica si nu intra in progres
+  const vNeplat = mkV({ company: { id: 5, nume: 'MICRO SRL', cui: '1', tvaPlatitor: false } });
+  const stNep = stare(D0, vNeplat);
+  eq('firma neplatitoare de TVA: pasul nu se aplica', pas(stNep, 'tva').stare, 'nuseaplica');
+  ok('pasul „nu se aplica" nu intra in total', stNep.progres.total < st1.progres.total);
+  ok('...si are motivul scris', /plătitoare de TVA/i.test(pas(stNep, 'tva').motiv || ''));
+
+  // Sold de casa NEGATIV: imposibil fizic -> blocaj pe extras
+  const vCasa = mkV();
+  vCasa.entries = vCasa.entries.concat([{ id: 'e11', firmaId: 5, data: '2026-06-05', period: '2026-06', tip: 'plata_furnizor', tipNume: 'Plata', partener: 'F SRL', lines: [{ debit: '401', credit: '5311', suma: 500 }] }]);
+  ok('sold de casa negativ: blocaj pe pasul de banca', pas(stare(D0, vCasa), 'banca').blocaje.some((b) => /NEGATIV/i.test(b)));
+
+  // Incasare care NU stinge nicio factura -> punctaj incomplet
+  const vNepunctat = mkV();
+  vNepunctat.entries = vNepunctat.entries.concat([{ id: 'e12', firmaId: 5, data: '2026-06-22', period: '2026-06', tip: 'incasare_client', tipNume: 'Incasare', partener: 'ALT CLIENT', document: 'CH2', lines: [{ debit: '5121', credit: '4111', suma: 333 }] }]);
+  ok('incasare nepunctata: blocaj pe extras', pas(stare(D0, vNepunctat), 'banca').blocaje.some((b) => /nepunctat/i.test(b)));
+
+  // DECLARATII: depusa fara dovada de validare NU e suficient (fluxul cere dovada)
+  const dDepusa = { declarations: [{ firmaId: 5, tip: 'd300', period: '2026-06', status: 'depusa' }], closings: [] };
+  ok('declaratie depusa FARA dovada de validare ramane blocaj',
+    pas(stare(dDepusa, mkV()), 'declaratii').blocaje.some((b) => /fără dovadă/i.test(b)));
+  const dCuDovada = {
+    declarations: [{ firmaId: 5, tip: 'd300', period: '2026-06', status: 'depusa' }],
+    closings: [{ firmaId: 5, period: '2026-06', steps: {}, validari: { d300: { at: '2026-07-19T10:00:00Z', by: 3, username: 'maria', ok: true, errors: 0, warnings: 1 } } }],
+  };
+  const stDov = stare(dCuDovada, mkV());
+  const d300Row = (pas(stDov, 'declaratii').detalii.declaratii || []).find((x) => x.tip === 'd300');
+  ok('dovada validarii e purtata pe declaratie (cine, cand, verdict)',
+    d300Row.dovada && d300Row.dovada.ok === true && d300Row.dovada.by === 3);
+  ok('dovada cu ERORI nu trece pasul', (() => {
+    const dErr = JSON.parse(JSON.stringify(dCuDovada));
+    dErr.closings[0].validari.d300 = { at: 'x', by: 3, ok: false, errors: 2 };
+    return pas(stare(dErr, mkV()), 'declaratii').blocaje.some((b) => /eroare/i.test(b));
+  })());
+
+  // Alocarea persistata: responsabil + termen + nota se citesc din inregistrarea lunii
+  const dAlocat = { declarations: [], closings: [{ firmaId: 5, period: '2026-06', steps: { documente: { responsabilId: 7, due: '2026-07-02', nota: 'Cer facturile' } }, validari: {} }] };
+  // pe vederea cu ciorna, ca pasul sa fie DESCHIS (un pas gata n-are termen depasit: nu mai ai ce face)
+  const stAloc = stare(dAlocat, vCiorna, '2026-06', { users: [{ id: 7, username: 'maria' }] });
+  const pDoc = pas(stAloc, 'documente');
+  ok('responsabilul alocat apare cu nume', pDoc.responsabilId === 7 && pDoc.responsabil === 'maria');
+  ok('termenul explicit inlocuieste implicitul', pDoc.due === '2026-07-02' && pDoc.dueImplicit === false);
+  eq('nota se pastreaza', pDoc.nota, 'Cer facturile');
+  ok('termen depasit fata de azi -> overdue', pDoc.overdue === true);
+
+  // Perioada blocata (dar fara dosar de inchidere) vs finalizata prin flux
+  const vBlocat = mkV({ company: { id: 5, nume: 'FLUX SRL', cui: '123', tvaPlatitor: true, lockedUntil: '2026-06' } });
+  const stBloc = stare(D0, vBlocat);
+  ok('perioada blocata: pasul de blocare e gata, dar luna NU e finalizata',
+    pas(stBloc, 'blocare').stare === 'gata' && stBloc.inchisa === true && stBloc.finalizata === false);
+  const dFinal = { declarations: [], closings: [{ firmaId: 5, period: '2026-06', steps: {}, validari: {}, closedAt: '2026-07-20T08:00:00Z', closedBy: 7, closedByName: 'maria' }] };
+  const stFin = stare(dFinal, vBlocat);
+  ok('cu dosar de inchidere: finalizata, cu cine si cand', stFin.finalizata === true && stFin.inchidere.username === 'maria');
+
+  // Fortarea: motivul si pasii nerezolvati raman pe dosarul lunii
+  const dFortat = { declarations: [], closings: [{ firmaId: 5, period: '2026-06', steps: {}, validari: {}, closedAt: 'x', fortata: { motiv: 'Depus manual pe portal', username: 'admin', blocante: ['Declaratii validate si depuse'] } }] };
+  ok('fortarea e vizibila in stare, cu motiv', stare(dFortat, vBlocat).fortata.motiv === 'Depus manual pe portal');
+
+  // perioada invalida -> 400 (nu o stare inventata)
+  eq('perioada care nu e luna -> 400', (() => { try { stare(D0, mkV(), '2026'); return null; } catch (e) { return e.status; } })(), 400);
+}
+
+section('Inchidere lunara: garzile serviciului (src/monthlyCloseService.js)');
+{
+  const mcs = require('../src/monthlyCloseService');
+  const errS = (fn) => { try { fn(); return null; } catch (e) { return e.status || 500; } };
+  eq('firma inexistenta -> 403', errS(() => mcs.state(9999, '2026-06')), 403);
+  eq('santinela NO_FIRMA (-1) -> 403, fara fallback pe firma activa', errS(() => mcs.state(-1, '2026-06')), 403);
+  const fidReal = db.get().firme[0].id; // `dbx` se defineste mai jos in fisier (TDZ)
+  eq('perioada invalida -> 400', errS(() => mcs.state(fidReal, '2026')), 400);
+  eq('pas necunoscut -> 400', errS(() => mcs.setStep(fidReal, '2026-06', 'inexistent', {})), 400);
+  eq('responsabil care nu are acces la firma -> 400', errS(() => mcs.setStep(fidReal, '2026-06', 'documente', { responsabilId: 424242 })), 400);
+  eq('termen malformat -> 400', errS(() => mcs.setStep(fidReal, '2026-06', 'documente', { due: '02-07-2026' })), 400);
+  eq('tip de declaratie necunoscut la validare -> 400', errS(() => mcs.validateDeclaration(fidReal, '2026-06', 'dXXX', null)), 400);
+  eq('retragerea unei aprobari inexistente -> 400', errS(() => mcs.unapprove(fidReal, '2026-06')), 400);
+}
+
 section('XSS: escaparea datelor externe la randare (public/app.js)');
 // app.js + ecranele extrase din el (periods/rapoarte/livrabile/mijloace/salarizare/stocuri/plan):
 // portile de escapare acopera tot codul de randare, indiferent in ce modul a ajuns
