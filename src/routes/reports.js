@@ -16,6 +16,7 @@ const fiscalProfile = require('../fiscalProfile');
 const pdf = require('../pdf');
 const dosarAnual = require('../dosarAnual');
 const { analyticBalance } = require('../analytic');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, wrap, activeId } = ctx;
@@ -46,10 +47,10 @@ module.exports = function register(app, ctx) {
     const fid = activeId(req); const period = req.query.period || null;
     if (db.sqlBalancePeriodOk(period) && db.largeFirma(fid)) {
       res.setHeader('X-Ledger-Source', 'sql');
-      return res.json(await db.ledgerSql(fid, period));
+      return sendList(req, res, await db.ledgerSql(fid, period), { label: 'ledger' });
     }
     res.setHeader('X-Ledger-Source', 'ram');
-    res.json(acc.ledger(S(req), period));
+    sendList(req, res, acc.ledger(S(req), period), { label: 'ledger' });
   }));
   // Fisa de cont: miscarile unui cont cu contul corespondent si sold curent (orice cont din plan).
   // Pentru firmele MARI (peste prag) se interogheaza direct SQL (entry_lines), altfel RAM. Rezultat identic.

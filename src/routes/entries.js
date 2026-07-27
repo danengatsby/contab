@@ -10,7 +10,7 @@ const db = require('../db');
 const acc = require('../accounting');
 const recurring = require('../recurring');
 const svc = require('../entriesService');
-const { sendList } = require('../paginate');
+const { sendList, ABS_MAX } = require('../paginate');
 const { period: periodOf } = require('../util');
 
 module.exports = function register(app, ctx) {
@@ -94,7 +94,7 @@ module.exports = function register(app, ctx) {
   // ───────────────────────── FACTURI RECURENTE ─────────────────────────
   app.get('/api/recurring', (req, res) => {
     const fid = activeId(req);
-    res.json((db.get().recurringInvoices || []).filter((t) => t.firmaId === fid));
+    sendList(req, res, (db.get().recurringInvoices || []).filter((t) => t.firmaId === fid), { label: 'recurring' });
   });
   app.post('/api/recurring', (req, res) => run(res, () => {
     const r = svc.saveRecurring(activeId(req), req.body);
@@ -109,7 +109,11 @@ module.exports = function register(app, ctx) {
   app.get('/api/recurring/due', (req, res) => {
     const fid = activeId(req);
     const period = req.query.period || new Date().toISOString().slice(0, 7);
-    res.json({ period, due: recurring.dueForPeriod((db.get().recurringInvoices || []).filter((t) => t.firmaId === fid), period) });
+    // Colectia e ambalata intr-un obiect ({ period, due }), deci nu poate trece prin sendList
+    // fara sa schimbe forma raspunsului. Plafonam lista cu ACELASI plafon si semnalam taierea.
+    const due = recurring.dueForPeriod((db.get().recurringInvoices || []).filter((t) => t.firmaId === fid), period);
+    if (due.length > ABS_MAX) res.setHeader('X-Rows-Truncated', String(due.length));
+    res.json({ period, due: due.slice(0, ABS_MAX) });
   });
   app.post('/api/recurring/generate', (req, res) => run(res, () => {
     const r = svc.generateRecurring(activeId(req), req.query.period, deps);

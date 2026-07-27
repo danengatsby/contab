@@ -13,6 +13,7 @@ const stocks = require('../stocks');
 const acc = require('../accounting');
 const { round2 } = require('../util');
 const svc = require('../stocksService');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, canAccess } = ctx;
@@ -56,7 +57,7 @@ module.exports = function register(app, ctx) {
   }));
 
   // ── Registrul documentelor de stoc + documentele numerotate ──
-  app.get('/api/doc-register', (req, res) => res.json(svc.buildDocRegister(S(req))));
+  app.get('/api/doc-register', (req, res) => sendList(req, res, svc.buildDocRegister(S(req)), { label: 'doc-register' }));
   app.get('/pdf/doc-register', (req, res) => pdf.docRegisterPdf(res, S(req).company, svc.buildDocRegister(S(req))));
 
   app.get('/pdf/nir', (req, res) => {

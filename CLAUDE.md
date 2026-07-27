@@ -208,4 +208,7 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
 - Rutele care întorc colecții vii din memorie trec prin `src/paginate.js` (`sendList`): fără
   `?limit` → array simplu, dar **plafonat** la `CONTAB_MAX_ROWS` (implicit 20000, gardă contra
   OOM, cu antet `X-Rows-Truncated` când taie); cu `?limit`/`?offset` → plic `{ items, total,
-  offset, limit }`. Extinde acest tipar la orice rută nouă care serializează o listă mare.
+  offset, limit }`. Colecțiile expuse ca **obiect-hartă** (`/api/partners`, cheie = CUI) trec prin
+  `sendMap`: implicit rămân hartă (plafonată), cu `?limit` dau plic cu `items` **listă** — o hartă
+  parțială ar fi ambiguă. O **poartă** din `test/run.js` pică dacă o rută nouă serializează direct
+  o colecție cu `res.json`; inventarul rutelor paginate e verificat în `test/http.js`.

@@ -12,6 +12,7 @@ const rep = require('../reporting');
 const fxreval = require('../fxreval');
 const { aging } = require('../analytic');
 const { round2, period: periodOf } = require('../util');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit } = ctx;
@@ -19,7 +20,7 @@ module.exports = function register(app, ctx) {
   // ── Buget vs realizat ──
   app.get('/api/budgets', (req, res) => {
     const fid = activeId(req); const year = req.query.year;
-    res.json((db.get().budgets || []).filter((t) => t.firmaId === fid && (!year || String(t.an) === String(year))));
+    sendList(req, res, (db.get().budgets || []).filter((t) => t.firmaId === fid && (!year || String(t.an) === String(year))), { label: 'budgets' });
   });
   app.post('/api/budgets', (req, res) => {
     const b = req.body || {}; const cont = String(b.cont || '').trim();
@@ -48,7 +49,7 @@ module.exports = function register(app, ctx) {
   });
 
   // ── Reevaluare valutara la sfarsit de perioada ──
-  app.get('/api/fx-reval/candidates', (req, res) => res.json(fxreval.candidates(S(req), req.query.asOf || null)));
+  app.get('/api/fx-reval/candidates', (req, res) => sendList(req, res, fxreval.candidates(S(req), req.query.asOf || null), { label: 'fx-reval/candidates' }));
   app.post('/api/fx-reval/preview', (req, res) => {
     const b = req.body || {};
     res.json(fxreval.buildRevaluation(S(req), b.asOf || null, Array.isArray(b.items) ? b.items : []));

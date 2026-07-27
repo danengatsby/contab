@@ -10,6 +10,7 @@ const bankLib = require('../bank');
 const xml = require('../xml');
 const acc = require('../accounting');
 const { period: periodOf } = require('../util');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { upload, S, activeId, buildEntry, upsertPartner, logAudit } = ctx;
@@ -52,6 +53,6 @@ module.exports = function register(app, ctx) {
     const { period } = req.query;
     let list = S(req).entries.filter((e) => acc.isPosted(e) && xml.isEFacturaEligible(e));
     if (period) list = list.filter((e) => (e.period || periodOf(e.data)) === period);
-    res.json(acc.sortEntries(list).map((e) => ({ id: e.id, data: e.data, document: e.document, partener: e.partener, partenerCui: e.partenerCui || '' })));
+    sendList(req, res, acc.sortEntries(list).map((e) => ({ id: e.id, data: e.data, document: e.document, partener: e.partener, partenerCui: e.partenerCui || '' })), { label: 'efactura-list' });
   });
 };

@@ -4375,6 +4375,48 @@ section('Paginare + garda OOM (src/paginate.js sendList)');
   eq('offset: fereastra decalata', r.body.items[0].id, 10);
   r = mkRes(); sendList({ query: { limit: '9999' }, path: '/x' }, r, big, { max: 20 });
   eq('limit prins in [1, max] (nu poate depasi plafonul)', r.body.limit, 20);
+
+  // sendMap: colectiile expuse ca OBIECT-harta (/api/partners, cheie = CUI). Nu se pot pagina ca
+  // o lista fara sa schimbe forma, deci implicit raman harta (compatibil), iar `?limit` da plic.
+  const { sendMap } = require('../src/paginate');
+  const harta = {}; for (let i = 0; i < 30; i += 1) harta['CUI' + String(i).padStart(2, '0')] = { cui: 'CUI' + i, den: 'P' + i };
+  r = mkRes(); sendMap({ query: {}, path: '/p' }, r, harta, { max: 100 });
+  ok('harta sub plafon se intoarce ca harta (forma compatibila)', !Array.isArray(r.body) && Object.keys(r.body).length === 30);
+  r = mkRes(); sendMap({ query: {}, path: '/p' }, r, harta, { max: 10 });
+  eq('harta peste plafon e taiata', Object.keys(r.body).length, 10);
+  eq('...si trunchierea e VIZIBILA in antet', r.headers['X-Rows-Truncated'], '30');
+  r = mkRes(); sendMap({ query: { limit: '5' }, path: '/p' }, r, harta, { max: 100 });
+  ok('cu ?limit harta devine plic cu items LISTA (o harta partiala ar fi ambigua)',
+    Array.isArray(r.body.items) && r.body.items.length === 5 && r.body.total === 30);
+  eq('...ordonat dupa cheie, stabil', r.body.items[0].den, 'P0');
+  r = mkRes(); sendMap({ query: { limit: '5', offset: '10' }, path: '/p' }, r, harta, { max: 100 });
+  eq('offset se aplica pe ordinea cheilor', r.body.items[0].den, 'P10');
+  r = mkRes(); sendMap({ query: {}, path: '/p' }, r, null, { max: 10 });
+  ok('harta lipsa nu arunca', r.body && Object.keys(r.body).length === 0);
+}
+
+section('Poarta: fiecare ruta care intoarce o colectie trece prin sendList/sendMap');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const root = pth.join(__dirname, '..');
+  // De ce o poarta si nu doar teste pe rutele de azi: graful bazei sta in RAM prin design, deci o
+  // colectie serializata integral poate aloca zeci de MB si, sub concurenta, poate duce la OOM.
+  // O ruta NOUA care intoarce direct `res.json(colectie)` reintroduce exact riscul — tacut.
+  const files = ['server.js', 'src/authRoutes.js']
+    .concat(fsx.readdirSync(pth.join(root, 'src', 'routes')).filter((f) => f.endsWith('.js')).map((f) => 'src/routes/' + f));
+  // expresii care denota o COLECTIE vie (nu un obiect singular)
+  const COLECTIE = /S\(req\)\.(entries|documents|products|angajati|partners|assets|gestiuni|inventories|openingAnalytic)\b|db\.get\(\)\.(users|budgets|recipes|recurringInvoices)\b/;
+  const scapate = [];
+  for (const f of files) {
+    const s = fsx.readFileSync(pth.join(root, f), 'utf8');
+    for (const m of s.matchAll(/res\.json\(([^;]{0,160})/g)) {
+      if (COLECTIE.test(m[1])) scapate.push(f.split('/').pop() + ': res.json(' + m[1].slice(0, 46).replace(/\s+/g, ' ') + '…');
+    }
+  }
+  ok('nicio colectie nu se serializeaza direct cu res.json'
+    + (scapate.length ? ' — ' + scapate.slice(0, 3).join(' | ') : ''), scapate.length === 0);
+  ok('poarta chiar detecteaza o colectie scapata', COLECTIE.test("res.json(S(req).products)"));
+  ok('poarta nu se declanseaza pe un obiect singular', !COLECTIE.test("res.json(S(req).company)"));
 }
 
 section('PWA: manifest + service worker (instalabilitate + siguranta cache)');

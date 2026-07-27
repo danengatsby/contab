@@ -10,13 +10,14 @@ const pdf = require('../pdf');
 const coa = require('../chartOfAccounts');
 const { leasingSchedule } = require('../leasing');
 const { round2 } = require('../util');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit } = ctx;
 
   app.get('/api/assets', (req, res) => {
     const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
-    res.json(assets.register(S(req), asOf));
+    sendList(req, res, assets.register(S(req), asOf), { label: 'assets' });
   });
   app.get('/api/assets/:id/schedule', (req, res) => {
     const a = (S(req).assets || []).find((x) => x.id === req.params.id);

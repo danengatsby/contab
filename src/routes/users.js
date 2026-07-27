@@ -9,17 +9,18 @@ const crypto = require('crypto');
 const db = require('../db');
 const plans = require('../plans');
 const authlib = require('../auth');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { requireAdmin, logAudit, startSession, publicUser } = ctx;
 
   app.get('/api/users', requireAdmin, (req, res) => {
     const base = (req.protocol || 'http') + '://' + req.get('host');
-    res.json(db.get().users.map((u) => ({
+    sendList(req, res, db.get().users.map((u) => ({
       id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), plan: plans.status(u.subscription).plan, firme: u.firme || [],
       drepturi: u.drepturi || {},
       pending: !!u.pending, inviteLink: u.pending && u.inviteToken ? base + '/?invite=' + u.inviteToken : null,
-    })));
+    })), { label: 'users' });
   });
   app.post('/api/users', requireAdmin, (req, res) => {
     const b = req.body || {};

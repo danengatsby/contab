@@ -8,6 +8,7 @@ const db = require('../db');
 const { period: periodOf } = require('../util');
 const production = require('../production');
 const coa = require('../chartOfAccounts');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit } = ctx;
@@ -46,7 +47,7 @@ module.exports = function register(app, ctx) {
   // ── Retete / BOM stocate ──
   app.get('/api/recipes', (req, res) => {
     const fid = activeId(req);
-    res.json((db.get().recipes || []).filter((t) => t.firmaId === fid));
+    sendList(req, res, (db.get().recipes || []).filter((t) => t.firmaId === fid), { label: 'recipes' });
   });
   app.post('/api/recipes', (req, res) => {
     const b = req.body || {};

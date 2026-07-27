@@ -8,6 +8,7 @@
 const { statePlata, registruSalarii } = require('../payroll');
 const pdf = require('../pdf');
 const svc = require('../payrollService');
+const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit, buildEntry } = ctx;
@@ -21,7 +22,7 @@ module.exports = function register(app, ctx) {
     }
   };
 
-  app.get('/api/angajati', (req, res) => res.json(S(req).angajati));
+  app.get('/api/angajati', (req, res) => sendList(req, res, S(req).angajati, { label: 'angajati' }));
   app.post('/api/angajati', (req, res) => run(res, () => {
     const r = svc.upsertAngajat(activeId(req), req.body);
     logAudit('angajat.save', r.angajat.nume, { req });
