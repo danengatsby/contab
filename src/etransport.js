@@ -25,16 +25,21 @@ const cui0 = (cui) => String(cui || '').replace(/^ro/i, '').replace(/\s/g, '');
 // ───────────────────────── Nomenclatoare oficiale ─────────────────────────
 
 // Tipul operatiunii (codTipOperatiune) — cine misca marfa si pe ce ruta.
+// Valorile si denumirile sunt cele din documentatia XSD-ului oficial (CodTipOperatiuneType).
 const TIP_OPERATIUNE = {
-  10: 'Achizitie intracomunitara',
-  20: 'Livrare intracomunitara',
-  30: 'Transport pe teritoriul national (tranzactie interna)',
-  40: 'Import',
-  50: 'Export',
-  60: 'Tranzactie intracomunitara - tranzit (intrare/iesire)',
-  70: 'Tranzactie non-UE - tranzit',
+  10: 'AIC - Achizitie intracomunitara',
+  12: 'LHI - Operatiuni in sistem lohn (UE) - intrare',
+  14: 'SCI - Stocuri la dispozitia clientului (Call-off stock) - intrare',
+  20: 'LIC - Livrare intracomunitara',
+  22: 'LHE - Operatiuni in sistem lohn (UE) - iesire',
+  24: 'SCE - Stocuri la dispozitia clientului (Call-off stock) - iesire',
+  30: 'TTN - Transport pe teritoriul national',
+  40: 'IMP - Import',
+  50: 'EXP - Export',
+  60: 'DIN - Tranzactie intracomunitara - Intrare pentru depozitare/formare nou transport',
+  70: 'DIE - Tranzactie intracomunitara - Iesire dupa depozitare/formare nou transport',
 };
-// Scopul operatiunii (codScopOperatiune) — de ce se misca marfa.
+// Scopul operatiunii (codScopOperatiune) — de ce se misca marfa (CodScopOperatiuneType).
 const SCOP_OPERATIUNE = {
   101: 'Comercializare',
   201: 'Productie',
@@ -45,11 +50,21 @@ const SCOP_OPERATIUNE = {
   703: 'Operatiuni de livrare cu instalare',
   704: 'Transfer intre gestiuni',
   705: 'Bunuri puse la dispozitia clientului',
-  801: 'Operatiuni in sistem lohn (UE)',
-  802: 'Operatiuni in sistem lohn (non-UE)',
-  901: 'Stocuri la dispozitia clientului',
-  1001: 'Operatiuni de returnare',
-  9999: 'Altele',
+  801: 'Leasing financiar/operational',
+  802: 'Bunuri in garantie',
+  901: 'Operatiuni scutite',
+  1001: 'Investitie in curs',
+  1101: 'Donatii, ajutoare',
+  9901: 'Altele',
+  9999: 'Acelasi cu operatiunea',
+};
+// Scopurile ADMISE per tip de operatiune (documentatia XSD). La tipurile de tranzit / lohn /
+// call-off / import / export scopul e mereu „9999 - acelasi cu operatiunea".
+const SCOP_ADMIS = {
+  10: [101, 201, 301, 401, 501, 601, 703, 801, 802, 901, 1001, 1101, 9901],
+  20: [101, 301, 703, 801, 802, 9901],
+  30: [101, 704, 705, 9901],
+  12: [9999], 14: [9999], 22: [9999], 24: [9999], 40: [9999], 50: [9999], 60: [9999], 70: [9999],
 };
 // Tipul documentului de transport (tipDocument).
 const TIP_DOCUMENT = { 10: 'CMR', 20: 'Factura', 30: 'Aviz de insotire a marfii', 9999: 'Altele' };
@@ -117,10 +132,12 @@ function valoareFaraTva(entry) {
 
 function mapGood(g, nrCrt, td) {
   return {
+    // nrCrt e DOAR pentru ordonare interna / interfata: schema oficiala NU are un asemenea
+    // atribut pe bunuriTransportate, deci nu se serializeaza (ar invalida declaratia).
     nrCrt,
     codScopOperatiune: String(g.codScop || td.codScopOperatiune || '101'),
     codTarifar: String(g.codTarifar || '').replace(/\s/g, ''),
-    denumireMarfa: String(g.denumire || g.nume || 'Marfa').slice(0, 500),
+    denumireMarfa: String(g.denumire || g.nume || 'Marfa').slice(0, 200), // Str200
     cantitate: round2(g.cantitate),
     codUnitateMasura: umCode(g.um),
     greutateNeta: round2(g.greutateNeta),
@@ -151,17 +168,21 @@ function buildGoods(entry, td) {
   }, 1, td)];
 }
 
+// codPtf (1..38) si codBirouVamal sunt NUMERICE in schema (xs:int cu enumerare), nu etichete
+// de tipul „NADLAC2" — pastram doar cifrele, ca o eticheta gresita sa nu ajunga in XML.
+const codNumeric = (v) => (/^\d+$/.test(String(v || '').trim()) ? String(v).trim() : '');
+
 function buildLoc(loc) {
   loc = loc || {};
   return {
-    codBirouVamal: String(loc.codBirouVamal || '').trim(),
-    codPtf: String(loc.codPtf || '').trim(), // punct de trecere a frontierei
+    codBirouVamal: codNumeric(loc.codBirouVamal),
+    codPtf: codNumeric(loc.codPtf), // punct de trecere a frontierei
     codJudet: judetCod(loc.judet || loc.codJudet),
-    denumireLocalitate: String(loc.localitate || loc.denumireLocalitate || '').trim(),
-    denumireStrada: String(loc.strada || loc.denumireStrada || '').trim(),
-    numar: String(loc.numar || '').trim(),
-    codPostal: String(loc.codPostal || '').trim(),
-    alteInfo: String(loc.alteInfo || '').slice(0, 500),
+    denumireLocalitate: String(loc.localitate || loc.denumireLocalitate || '').trim().slice(0, 100),
+    denumireStrada: String(loc.strada || loc.denumireStrada || '').trim().slice(0, 100),
+    numar: String(loc.numar || '').trim().slice(0, 20),
+    codPostal: String(loc.codPostal || '').trim().slice(0, 20),
+    alteInfo: String(loc.alteInfo || '').slice(0, 200),
   };
 }
 
@@ -185,13 +206,13 @@ function buildDeclaration(company, entry, td) {
     bunuri: buildGoods(entry, td),
     partener: {
       codTara: String(td.partenerTara || 'RO').toUpperCase().slice(0, 2),
-      cod: cui0(entry.partenerCui),
-      denumire: String(entry.partener || '').slice(0, 500),
+      cod: cui0(entry.partenerCui).slice(0, 30),      // Cod30Type
+      denumire: String(entry.partener || '').slice(0, 200), // Str200
     },
     transport: {
       codTaraOrgTransport: String(org.tara || 'RO').toUpperCase().slice(0, 2),
-      codOrgTransport: orgCui,
-      denumireOrgTransport: String(org.nume || company.nume || '').slice(0, 500),
+      codOrgTransport: orgCui.slice(0, 30),
+      denumireOrgTransport: String(org.nume || company.nume || '').slice(0, 200),
       nrVehicul: String(td.nrVehicul || '').toUpperCase().replace(/\s/g, '').slice(0, 20),
       nrRemorca1: String(td.nrRemorca1 || '').toUpperCase().replace(/\s/g, '').slice(0, 20),
       nrRemorca2: String(td.nrRemorca2 || '').toUpperCase().replace(/\s/g, '').slice(0, 20),
@@ -204,7 +225,7 @@ function buildDeclaration(company, entry, td) {
       tipDocument: String((td.document && td.document.tip) || (entry.tip === 'aviz_livrare' ? '30' : '20')),
       numarDocument: String((td.document && td.document.numar) || entry.document || '').slice(0, 50),
       dataDocument: (td.document && /^\d{4}-\d{2}-\d{2}$/.test(String(td.document.data)) ? td.document.data : (entry.data || '')),
-      observatii: String((td.document && td.document.observatii) || '').slice(0, 500),
+      observatii: String((td.document && td.document.observatii) || '').slice(0, 200),
     },
   };
 }
@@ -212,10 +233,10 @@ function buildDeclaration(company, entry, td) {
 // ───────────────────────── Validare pre-depunere ─────────────────────────
 
 // Operatiuni la care marfa INTRA in tara (punctul de plecare al traseului intern e o frontiera:
-// birou vamal la import, punct de trecere a frontierei la achizitie/tranzit intracomunitar).
-const INTRA_IN = new Set([10, 40, 60]);
+// birou vamal la import, punct de trecere a frontierei la achizitie/lohn/call-off/tranzit).
+const INTRA_IN = new Set([10, 12, 14, 40, 60]);
 // Operatiuni la care marfa IESE din tara (punctul de sosire e o frontiera).
-const INTRA_OUT = new Set([20, 50, 70]);
+const INTRA_OUT = new Set([20, 22, 24, 50, 70]);
 
 /** @returns { ok, errors:[], warnings:[] } — erori = depunere respinsa; avertismente = de verificat.
  *  Prinde constrangerile pe care le impune si XSD-ul oficial (campuri obligatorii, enum-uri,
@@ -228,22 +249,37 @@ function validate(decl) {
   if (!TIP_OPERATIUNE[tip]) errors.push('Tip de operatiune necunoscut: ' + decl.codTipOperatiune + '.');
   if (!decl.transport.nrVehicul) errors.push('Lipseste numarul de inmatriculare al vehiculului.');
   if (!decl.bunuri.length) errors.push('Nicio marfa de transportat.');
+  const admis = SCOP_ADMIS[tip];
   for (const g of decl.bunuri) {
     if (!SCOP_OPERATIUNE[g.codScopOperatiune]) warnings.push('Scop de operatiune necunoscut la „' + g.denumireMarfa + '": ' + g.codScopOperatiune + '.');
+    else if (admis && !admis.includes(Number(g.codScopOperatiune))) {
+      // regula din documentatia XSD: scopurile admise depind de tipul operatiunii
+      warnings.push('Scopul ' + g.codScopOperatiune + ' nu e admis la „' + TIP_OPERATIUNE[tip] + '" (admise: ' + admis.join(', ') + ').');
+    }
     if (!g.denumireMarfa) errors.push('Lipseste denumirea marfii la o pozitie.');
     if (!g.codTarifar) errors.push('Lipseste codul tarifar (NC) la „' + g.denumireMarfa + '".');
-    else if (!/^\d{4,8}$/.test(g.codTarifar)) warnings.push('Codul tarifar „' + g.codTarifar + '" nu pare valid (asteptam 4-8 cifre).');
+    // schema: pattern [0-9]{4}|[0-9]{6}|[0-9]{8} — 5 sau 7 cifre sunt RESPINSE, nu tolerate
+    else if (!/^(\d{4}|\d{6}|\d{8})$/.test(g.codTarifar)) errors.push('Codul tarifar „' + g.codTarifar + '" e invalid (schema cere exact 4, 6 sau 8 cifre).');
     if (!(g.cantitate > 0)) errors.push('Cantitate 0 la „' + g.denumireMarfa + '".');
     if (!(g.greutateBruta > 0)) errors.push('Lipseste greutatea bruta (kg) la „' + g.denumireMarfa + '".');
     else if (g.greutateNeta > g.greutateBruta) warnings.push('Greutatea neta o depaseste pe cea bruta la „' + g.denumireMarfa + '".');
     if (!(g.valoareLeiFaraTva > 0)) warnings.push('Valoare 0 (fara TVA) la „' + g.denumireMarfa + '".');
   }
   if (!TIP_DOCUMENT[decl.document.tipDocument]) warnings.push('Tip de document de transport necunoscut: ' + decl.document.tipDocument + '.');
-  // traseul rutier: fiecare capat are nevoie de judet+localitate SAU de un cod de vama/PTF (extern)
+  if (!decl.document.dataDocument) errors.push('Lipseste data documentului de transport.');
+  if (!decl.transport.dataTransport) errors.push('Lipseste data transportului.');
+  if (!decl.transport.denumireOrgTransport) errors.push('Lipseste denumirea organizatorului de transport.');
+  // traseul rutier: fiecare capat e ori o frontiera (PTF / birou vamal, coduri NUMERICE), ori o
+  // adresa interna completa — in schema, <locatie> cere judet + localitate + STRADA, toate trei.
   const isBorder = (l) => !!(l.codBirouVamal || l.codPtf);
-  const locOk = (l) => !!(isBorder(l) || (l.codJudet && l.denumireLocalitate));
-  if (!locOk(decl.start)) errors.push('Locul de plecare incomplet (judet + localitate sau cod vamal/PTF).');
-  if (!locOk(decl.final)) errors.push('Locul de sosire incomplet (judet + localitate sau cod vamal/PTF).');
+  const adresaOk = (l) => !!(l.codJudet && l.denumireLocalitate && l.denumireStrada);
+  const locErr = (l, care) => {
+    if (isBorder(l) || adresaOk(l)) return;
+    if (l.codJudet && l.denumireLocalitate && !l.denumireStrada) errors.push('Lipseste strada la locul de ' + care + ' (schema o cere impreuna cu judetul si localitatea).');
+    else errors.push('Locul de ' + care + ' incomplet: fie judet + localitate + strada, fie codul NUMERIC de birou vamal / punct de trecere a frontierei (ex. 4 = Nadlac, nu „NADLAC").');
+  };
+  locErr(decl.start, 'plecare');
+  locErr(decl.final, 'sosire');
   // coerenta traseu <-> tip operatiune: la intrari plecarea e o frontiera, la iesiri sosirea
   if (INTRA_IN.has(tip) && !isBorder(decl.start)) warnings.push('La „' + TIP_OPERATIUNE[tip] + '" plecarea ar trebui sa fie un birou vamal / punct de trecere a frontierei.');
   if (INTRA_OUT.has(tip) && !isBorder(decl.final)) warnings.push('La „' + TIP_OPERATIUNE[tip] + '" sosirea ar trebui sa fie un birou vamal / punct de trecere a frontierei.');
@@ -252,46 +288,57 @@ function validate(decl) {
 
 // ───────────────────────── Serializare XML (schema v2) ─────────────────────────
 
+/** Atribut optional: se emite DOAR daca are continut. Tipurile optionale din schema sunt
+ *  siruri cu `minLength=1` sau zecimale cu `minExclusive=0` — un `atribut=""` sau
+ *  `greutateNeta="0.00"` INVALIDEAZA declaratia, nu o lasa neutra. */
+const at = (nume, val) => (val === '' || val == null ? '' : ` ${nume}="${esc(val)}"`);
+const atNum = (nume, val) => (Number(val) > 0 ? ` ${nume}="${num2(val)}"` : '');
+
+/** Capat de traseu: codPtf/codBirouVamal stau pe ELEMENT, adresa interna intr-un copil
+ *  `<locatie>` (schema: LocTraseuRutierType are secventa cu `locatie` minOccurs=0).
+ *  La frontiera (PTF / birou vamal) nu exista adresa interna, deci elementul ramane gol. */
 function locXml(tag, l) {
-  const a = [];
-  if (l.codBirouVamal) a.push(`codBirouVamal="${esc(l.codBirouVamal)}"`);
-  if (l.codPtf) a.push(`codPtf="${esc(l.codPtf)}"`);
-  if (l.codJudet) a.push(`codJudet="${esc(l.codJudet)}"`);
-  if (l.denumireLocalitate) a.push(`denumireLocalitate="${esc(l.denumireLocalitate)}"`);
-  if (l.denumireStrada) a.push(`denumireStrada="${esc(l.denumireStrada)}"`);
-  if (l.numar) a.push(`numar="${esc(l.numar)}"`);
-  if (l.codPostal) a.push(`codPostal="${esc(l.codPostal)}"`);
-  if (l.alteInfo) a.push(`alteInfo="${esc(l.alteInfo)}"`);
-  return `    <${tag} ${a.join(' ')}/>`;
+  const attrs = at('codPtf', l.codPtf) + at('codBirouVamal', l.codBirouVamal);
+  // codJudet + denumireLocalitate + denumireStrada sunt TOATE obligatorii in <locatie>;
+  // fara ele nu emitem elementul (validate() semnaleaza deja lipsa).
+  if (!(l.codJudet && l.denumireLocalitate && l.denumireStrada)) return `    <${tag}${attrs}/>`;
+  const loc = `codJudet="${esc(l.codJudet)}" denumireLocalitate="${esc(l.denumireLocalitate)}"`
+    + ` denumireStrada="${esc(l.denumireStrada)}"`
+    + at('numar', l.numar) + at('codPostal', l.codPostal) + at('alteInfo', l.alteInfo);
+  return `    <${tag}${attrs}>\n      <locatie ${loc}/>\n    </${tag}>`;
 }
 
 function eTransportXml(company, entry, td) {
   const d = buildDeclaration(company, entry, td);
   const t = d.transport;
+  // ATENTIE: ordinea elementelor din <notificare> e o SECVENTA in schema (bunuri ->
+  // partener -> dateTransport -> start -> final -> documente); nu o rearanja.
   const bunuri = d.bunuri.map((g) =>
-    `    <bunuriTransportate nrCrt="${g.nrCrt}" codScopOperatiune="${esc(g.codScopOperatiune)}"`
-    + ` codTarifar="${esc(g.codTarifar)}" denumireMarfa="${esc(g.denumireMarfa)}"`
+    `    <bunuriTransportate codScopOperatiune="${esc(g.codScopOperatiune)}"`
+    + at('codTarifar', g.codTarifar)
+    + ` denumireMarfa="${esc(g.denumireMarfa)}"`
     + ` cantitate="${num2(g.cantitate)}" codUnitateMasura="${esc(g.codUnitateMasura)}"`
-    + ` greutateNeta="${num2(g.greutateNeta)}" greutateBruta="${num2(g.greutateBruta)}"`
+    + atNum('greutateNeta', g.greutateNeta)
+    + ` greutateBruta="${num2(g.greutateBruta)}"`
     + ` valoareLeiFaraTva="${num2(g.valoareLeiFaraTva)}"/>`).join('\n');
-  const remorci = (t.nrRemorca1 ? ` nrRemorca1="${esc(t.nrRemorca1)}"` : '') + (t.nrRemorca2 ? ` nrRemorca2="${esc(t.nrRemorca2)}"` : '');
+  const remorci = at('nrRemorca1', t.nrRemorca1) + at('nrRemorca2', t.nrRemorca2);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- e-Transport generat de Contabo (schema eTransport v2, OUG 41/2022). Validare oficiala: XSD ANAF. -->
 <eTransport xmlns="mfp:anaf:dgti:eTransport:declaratie:v2" codDeclarant="${esc(d.codDeclarant)}" refDeclarant="${esc(d.refDeclarant)}">
-  <transport codTipOperatiune="${esc(String(d.codTipOperatiune))}">
+  <notificare codTipOperatiune="${esc(String(d.codTipOperatiune))}">
 ${bunuri}
-    <partenerComercial codTara="${esc(d.partener.codTara)}" cod="${esc(d.partener.cod)}" denumire="${esc(d.partener.denumire)}"/>
-    <dateTransport codTaraOrgTransport="${esc(t.codTaraOrgTransport)}" codOrgTransport="${esc(t.codOrgTransport)}" denumireOrgTransport="${esc(t.denumireOrgTransport)}" nrVehicul="${esc(t.nrVehicul)}"${remorci} dataTransport="${esc(t.dataTransport)}"/>
+    <partenerComercial codTara="${esc(d.partener.codTara)}"${at('cod', d.partener.cod)} denumire="${esc(d.partener.denumire)}"/>
+    <dateTransport nrVehicul="${esc(t.nrVehicul)}"${remorci} codTaraOrgTransport="${esc(t.codTaraOrgTransport)}"${at('codOrgTransport', t.codOrgTransport)} denumireOrgTransport="${esc(t.denumireOrgTransport)}" dataTransport="${esc(t.dataTransport)}"/>
 ${locXml('locStartTraseuRutier', d.start)}
 ${locXml('locFinalTraseuRutier', d.final)}
-    <documenteTransport tipDocument="${esc(d.document.tipDocument)}" numarDocument="${esc(d.document.numarDocument)}" dataDocument="${esc(d.document.dataDocument)}" observatii="${esc(d.document.observatii)}"/>
-  </transport>
+    <documenteTransport tipDocument="${esc(d.document.tipDocument)}"${at('numarDocument', d.document.numarDocument)} dataDocument="${esc(d.document.dataDocument)}"${at('observatii', d.document.observatii)}/>
+  </notificare>
 </eTransport>
 `;
 }
 
 module.exports = {
-  TIP_OPERATIUNE, SCOP_OPERATIUNE, TIP_DOCUMENT, JUDETE,
+  TIP_OPERATIUNE, SCOP_OPERATIUNE, SCOP_ADMIS, TIP_DOCUMENT, JUDETE,
   judetCod, defaultTipOperatiune, isEtransportEligible, ELIGIBLE_TYPES,
   buildDeclaration, validate, eTransportXml, valoareFaraTva,
 };

@@ -621,7 +621,10 @@ ok('contra-proba: un XML cu date neescapate e prins de verificari', ampBrut(xmlG
 // Se scot apelurile de escapare CU TOT cu argumentul (paranteze echilibrate), conditiile de
 // ternar si literalii de sir — ce ramane e ce ajunge neescapat in declaratie.
 const CAMP_RISCANT = /\b(nume|denumire|partener|adresa|oras|judet|explicatie|descriere|localitate|strada|firma|client|furnizor|banca|produs|serie|document|mentiuni|reprezentant)\b/i;
-const ESC_XML = /\b(esc|num2|numOf|roCui|umCode|Number|String|Math|parseInt|parseFloat|encodeURIComponent)\(/;
+// `at`/`atNum` (src/etransport.js) sunt invelisuri care escapeaza ele insele si, in plus, OMIT
+// atributul cand valoarea e goala (schema cere minLength=1). Sunt acceptate aici doar pentru ca
+// escaparea lor e dovedita separat, pe iesire, in sectiunea e-Transport („atribut optional").
+const ESC_XML = /\b(esc|at|atNum|num2|numOf|roCui|umCode|Number|String|Math|parseInt|parseFloat|encodeURIComponent)\(/;
 function frunze(line) {
   const out = []; let s = line;
   for (let i = 0; i < 10; i += 1) {
@@ -1761,8 +1764,14 @@ ok('Intrastat XML: articolul DE cu masa neta cumulata', xml.intrastatXml({ cui: 
 section('RO e-Transport (cod UIT) — nomenclatoare, asamblare, validare, XML');
 const et = require('../src/etransport');
 // nomenclatoare oficiale
-ok('e-Transport: tip operatiune 30 = transport intern', /intern/i.test(et.TIP_OPERATIUNE[30]));
+ok('e-Transport: tip operatiune 30 = transport pe teritoriul national', /teritoriul national/i.test(et.TIP_OPERATIUNE[30]));
 ok('e-Transport: scop 101 = comercializare', /comercial/i.test(et.SCOP_OPERATIUNE[101]));
+// nomenclatoarele urmeaza documentatia XSD-ului oficial: tipurile de lohn / call-off lipseau,
+// iar 801/802/901/1001 aveau denumiri gresite (erau ale altor scopuri).
+ok('e-Transport: tipurile lohn (12/22) si call-off (14/24) exista', !!(et.TIP_OPERATIUNE[12] && et.TIP_OPERATIUNE[22] && et.TIP_OPERATIUNE[14] && et.TIP_OPERATIUNE[24]));
+ok('e-Transport: scop 801 = leasing (nu „lohn")', /leasing/i.test(et.SCOP_OPERATIUNE[801]));
+ok('e-Transport: scop 901 = operatiuni scutite', /scutit/i.test(et.SCOP_OPERATIUNE[901]));
+ok('e-Transport: scopurile 1101 si 9901 exista (lipseau)', !!(et.SCOP_OPERATIUNE[1101] && et.SCOP_OPERATIUNE[9901]));
 // coduri de judet (SIRUTA): nume, diacritice, cod direct, necunoscut
 eq('e-Transport judet: Cluj -> 12', et.judetCod('Cluj'), '12');
 eq('e-Transport judet: Bucuresti -> 40', et.judetCod('Bucuresti'), '40');
@@ -1805,6 +1814,52 @@ eq('e-Transport: valoare din linii de venit (fara items)', et.valoareFaraTva({ l
 const etXml = et.eTransportXml(etCompany, etAviz, etTd);
 ok('e-Transport XML bine-format', wellFormed(etXml));
 ok('e-Transport XML: namespace v2', etXml.includes('xmlns="mfp:anaf:dgti:eTransport:declaratie:v2"'));
+
+// ── Conformitatea cu XSD-ul OFICIAL (defecte prinse de poarta fiscala la prima rulare) ──
+// Toate cele de mai jos invalidau declaratia la ANAF, desi XML-ul era bine-format si trecea
+// verificarile de continut. `wellFormed` nu spune nimic despre schema.
+ok('e-Transport XML: elementul e <notificare>, NU <transport> (choice-ul din schema)',
+  /<notificare\b/.test(etXml) && !/<transport\b/.test(etXml));
+ok('e-Transport XML: bunuriTransportate FARA nrCrt (atribut inexistent in schema)',
+  /<bunuriTransportate\b/.test(etXml) && !/nrCrt=/.test(etXml));
+ok('e-Transport XML: adresa sta in copilul <locatie>, nu pe capatul de traseu',
+  /<locStartTraseuRutier>\s*<locatie /.test(etXml) && !/<locStartTraseuRutier [^>]*codJudet=/.test(etXml));
+ok('e-Transport XML: ordinea din secventa (bunuri -> partener -> dateTransport -> traseu -> documente)',
+  etXml.indexOf('<bunuriTransportate') < etXml.indexOf('<partenerComercial')
+  && etXml.indexOf('<partenerComercial') < etXml.indexOf('<dateTransport')
+  && etXml.indexOf('<dateTransport') < etXml.indexOf('<locStartTraseuRutier')
+  && etXml.indexOf('<locFinalTraseuRutier') < etXml.indexOf('<documenteTransport'));
+// atribute optionale: goale sau zero -> OMISE (schema are minLength=1 / minExclusive=0)
+const etGol = et.eTransportXml(etCompany,
+  Object.assign({}, etAviz, { document: '', partenerCui: '' }),
+  Object.assign({}, etTd, { greutateNeta: 0 }));
+ok('e-Transport XML: atribut optional gol e OMIS, nu emis ca ""',
+  !/numarDocument=""/.test(etGol) && !/numarDocument=/.test(etGol) && !/ cod=""/.test(etGol));
+ok('e-Transport XML: greutateNeta 0 e OMISA (minExclusive 0), bruta ramane',
+  !/greutateNeta=/.test(etGol) && /greutateBruta="140.00"/.test(etGol));
+ok('e-Transport XML: observatii goale nu se emit', !/observatii=/.test(etXml));
+// dovada ca invelisul `at()` chiar escapeaza (e trecut pe lista portii de escapare din XML)
+const etOstil = et.eTransportXml(etCompany,
+  Object.assign({}, etAviz, { document: 'AV <b>&"1' }),
+  Object.assign({}, etTd, { document: { observatii: 'x & y' } }));
+ok('e-Transport XML: atributele prin `at()` sunt escapate (& < > ")',
+  etOstil.includes('numarDocument="AV &lt;b&gt;&amp;&quot;1"') && etOstil.includes('observatii="x &amp; y"'));
+// limitele de lungime din schema (Str200 pe denumiri, nu 500)
+const etLung = et.buildDeclaration(etCompany, Object.assign({}, etAviz, { partener: 'P'.repeat(300) }), etTd);
+eq('e-Transport: denumirea partenerului taiata la 200 (Str200)', etLung.partener.denumire.length, 200);
+// codTarifar: schema cere EXACT 4, 6 sau 8 cifre — 5 sau 7 sunt respinse, nu tolerate
+ok('e-Transport validare: cod tarifar de 5 cifre -> EROARE (nu avertisment)',
+  !et.validate(et.buildDeclaration(etCompany, etAviz, Object.assign({}, etTd, { codTarifar: '48191' }))).ok);
+ok('e-Transport validare: cod tarifar de 6 cifre e acceptat',
+  et.validate(et.buildDeclaration(etCompany, etAviz, Object.assign({}, etTd, { codTarifar: '481910' }))).ok);
+// <locatie> cere judet + localitate + STRADA (toate trei); lipsa strazii era tolerata
+ok('e-Transport validare: sosire fara strada -> eroare (schema cere denumireStrada)',
+  !et.validate(et.buildDeclaration(etCompany, etAviz, Object.assign({}, etTd, { final: { judet: 'Bucuresti', localitate: 'Bucuresti' } }))).ok);
+// scopul admis depinde de tipul operatiunii (regula din documentatia XSD): 704 „transfer intre
+// gestiuni" e valabil la transport intern, nu la o livrare intracomunitara.
+ok('e-Transport validare: scop 704 (transfer gestiuni) la livrare IC -> avertisment',
+  et.validate(et.buildDeclaration(etCompany, { id: 'ics', tip: 'livrare_intracomunitara', data: '2026-06-15', partener: 'DE Client', partenerCui: 'DE123', lines: [] },
+    { nrVehicul: 'CJ01ABC', codTarifar: '94036010', greutateBruta: 500, codScopOperatiune: '704', final: { codPtf: '4' } })).warnings.some((w) => /nu e admis/i.test(w)));
 ok('e-Transport XML: codTipOperatiune si nrVehicul', etXml.includes('codTipOperatiune="30"') && etXml.includes('nrVehicul="CJ01ABC"'));
 ok('e-Transport XML: cod tarifar in bunuri', etXml.includes('codTarifar="48191000"'));
 ok('e-Transport XML: amperandul din nume e escapat', etXml.includes('CLIENT &amp; CO SRL') && !etXml.includes('CLIENT & CO'));
@@ -1832,9 +1887,13 @@ const etIc = { id: 'e2', tip: 'livrare_intracomunitara', tipNume: 'Livrare IC', 
 const etIcDecl = et.buildDeclaration(etCompany, etIc, { nrVehicul: 'CJ01ABC', codTarifar: '94036010', greutateBruta: 500, codScopOperatiune: '101', final: { judet: 'Timis', localitate: 'Timisoara' } });
 eq('e-Transport: livrare IC dedusa ca tip 20', etIcDecl.codTipOperatiune, 20);
 ok('e-Transport validare: iesire IC cu sosire pe judet (nu frontiera) -> avertisment', et.validate(etIcDecl).warnings.some((w) => /frontier|vamal/i.test(w)));
-// aceeasi iesire, dar cu sosire la un punct de trecere a frontierei -> fara avertismentul de traseu
-const etIcPtf = et.buildDeclaration(etCompany, etIc, { nrVehicul: 'CJ01ABC', codTarifar: '94036010', greutateBruta: 500, final: { codPtf: 'NADLAC2' } });
+// aceeasi iesire, dar cu sosire la un punct de trecere a frontierei -> fara avertismentul de traseu.
+// codPtf e NUMERIC in schema (xs:int, 1..38 — „4" = Nadlac); o eticheta text ca „NADLAC2" nu e cod.
+const etIcPtf = et.buildDeclaration(etCompany, etIc, { nrVehicul: 'CJ01ABC', codTarifar: '94036010', greutateBruta: 500, final: { codPtf: '4' } });
 ok('e-Transport validare: iesire IC prin PTF -> fara avertisment de frontiera', !et.validate(etIcPtf).warnings.some((w) => /frontier|vamal/i.test(w)));
+const etIcPtfText = et.buildDeclaration(etCompany, etIc, { nrVehicul: 'CJ01ABC', codTarifar: '94036010', greutateBruta: 500, final: { codPtf: 'NADLAC2' } });
+eq('e-Transport: cod PTF nenumeric e ignorat (schema cere xs:int)', etIcPtfText.final.codPtf, '');
+ok('e-Transport: PTF nenumeric NU trece drept frontiera', !et.validate(etIcPtfText).ok);
 
 section('Reconciliere e-TVA — decont precompletat <-> D300 propriu');
 const etva = require('../src/etvaReconcile');
@@ -4021,7 +4080,6 @@ section('Docs API: rutele documentate exista in cod (fara drift)');
   ok('poarta accepta garda de admin', AUTZ.test("requireAdmin, (req, res) => res.json(svc.all())"));
 }
 
-
 section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift)');
 {
   const fsx = require('fs'); const pth = require('path');
@@ -4071,6 +4129,7 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
     ok('schema are elementul <notificare> (structura pe care o genereaza codul)', /name="notificare"/.test(xsd));
   }
 }
+
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);
