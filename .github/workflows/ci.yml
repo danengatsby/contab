@@ -113,7 +113,7 @@ jobs:
       - name: xmllint (validarea XSD e-Transport)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
       - name: Cache DUKIntegrator
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /var/tmp/contab-duk
           key: dukintegrator-dist-v1
@@ -140,7 +140,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
       # cache pentru distributia DUKIntegrator (~36MB) — validatoarele se reimprospateaza singure
       - name: Cache DUKIntegrator
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /var/tmp/contab-duk
           key: dukintegrator-dist-v1
