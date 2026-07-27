@@ -488,14 +488,21 @@ async function main() {
     // validare cu date incomplete (fara vehicul/NC/greutate/traseu) -> nu e ok, cu erori
     const etVBad = await req('POST', '/api/etransport/validate/' + avizId, { cookie: c1, body: {} });
     ok('etransport/validate: date incomplete -> erori (vehicul lipsa etc.)', etVBad.json && etVBad.json.ok === false && etVBad.json.errors.some((e) => /vehicul/i.test(e)));
-    // validare cu date complete -> ok
+    // validare cu date complete -> ok. STRADA e obligatorie in <locatie> (schema oficiala:
+    // codJudet + denumireLocalitate + denumireStrada, toate `use="required"`).
     const etTdOk = { nrVehicul: 'CJ01ABC', codScopOperatiune: '101', codTarifar: '48191000', greutateNeta: 100, greutateBruta: 120,
-      startJudet: 'Cluj', startLocalitate: 'Cluj-Napoca', finalJudet: 'Bucuresti', finalLocalitate: 'Bucuresti' };
+      startJudet: 'Cluj', startLocalitate: 'Cluj-Napoca', startStrada: 'Str. Fabricii',
+      finalJudet: 'Bucuresti', finalLocalitate: 'Bucuresti', finalStrada: 'Bd. Unirii' };
     const etVOk = await req('POST', '/api/etransport/validate/' + avizId, { cookie: c1, body: etTdOk });
     ok('etransport/validate: date complete -> ok', etVOk.json && etVOk.json.ok === true && etVOk.json.errors.length === 0);
+    const etVFaraStrada = await req('POST', '/api/etransport/validate/' + avizId, { cookie: c1, body: Object.assign({}, etTdOk, { finalStrada: '' }) });
+    ok('etransport/validate: traseu fara strada -> eroare (cerinta XSD)',
+      etVFaraStrada.json && etVFaraStrada.json.ok === false && etVFaraStrada.json.errors.some((e) => /strada/i.test(e)));
     // XML: descarcare cu date de transport din query
-    const etXmlRes = await req('GET', '/xml/etransport/' + avizId + '?nrVehicul=CJ01ABC&codTarifar=48191000&greutateBruta=120&startJudet=Cluj&startLocalitate=Cluj-Napoca&finalJudet=Bucuresti&finalLocalitate=Bucuresti', { cookie: c1 });
+    const etXmlRes = await req('GET', '/xml/etransport/' + avizId + '?nrVehicul=CJ01ABC&codTarifar=48191000&greutateBruta=120&startJudet=Cluj&startLocalitate=Cluj-Napoca&startStrada=Str.+Fabricii&finalJudet=Bucuresti&finalLocalitate=Bucuresti&finalStrada=Bd.+Unirii', { cookie: c1 });
     ok('xml/etransport: XML v2 bine-format cu tip operatiune si vehicul', etXmlRes.status === 200 && /xmlns="mfp:anaf:dgti:eTransport:declaratie:v2"/.test(etXmlRes.text) && /codTipOperatiune="30"/.test(etXmlRes.text) && /nrVehicul="CJ01ABC"/.test(etXmlRes.text));
+    ok('xml/etransport: structura oficiala (<notificare> + <locatie>), nu <transport>',
+      /<notificare\b/.test(etXmlRes.text) && !/<transport\b/.test(etXmlRes.text) && /<locatie /.test(etXmlRes.text));
     // trimitere fara conexiune SPV -> 400 cu mesaj clar (validarea nu se atinge inainte de conexiune)
     const etSend = await req('POST', '/api/etransport/send/' + avizId, { cookie: c1, body: etTdOk });
     ok('etransport/send fara SPV -> refuz clar', etSend.status === 400 && /SPV|onect/i.test((etSend.json && etSend.json.error) || ''));

@@ -23,11 +23,35 @@ validatoarele curente din manifestul oficial ANAF (`versiuni.xml`).
 | D101      | `d101:declaratie:v10`                       | J11.0.3        | ✅ Validare fără erori (profit, pierdere curentă, pierdere reportată, rezultat financiar, rotunjire) |
 | D205      | `d205:declaratie:v3`                        | J9.0.5         | ✅ Validare fără erori |
 | D406 (SAF-T) | `Ro_SAFT_Schema` v2.4.9 (`AuditFileVersion` 2.4.9) | J2.2.18 (16-Feb-2026) | ✅ Validare fără erori — variantele **L** (lunară), **T** (trimestrială), **A** (active), **C** (stocuri) |
+| e-Transport | `mfp:anaf:dgti:eTransport:declaratie:v2`     | XSD oficial `schema_ETR_v2_20230126.xsd` (v1.02) | ✅ Valid — **după corectarea a 8 neconformități**, vezi mai jos |
 
 > **SAF-T nu cere o integrare separată.** ANAF publică validatorul SAF-T pe pagină proprie, dar
 > intrarea `<D406>` există în **același manifest** `versiuni.xml` (`J2.2.18`, `D406_35/D406Validator.jar`),
 > deci `scripts/valideaza-duk.sh D406` îl rezolvă pe aceeași cale ca restul declarațiilor. Toate cele
 > patru variante (L/T/A/C) trec validatorul oficial.
+
+### e-Transport: ce a găsit prima rulare a porții cu schema oficială
+
+Până la 2026-07-27, e-Transport fusese validat doar față de o schemă reconstruită local — XML-ul
+era bine-format și trecea toate aserțiunile de conținut, dar **ANAF l-ar fi respins**. Prima rulare
+față de XSD-ul oficial a găsit opt neconformități, toate reparate în `src/etransport.js`:
+
+| # | Neconformitate | Regula din schemă |
+|---|---|---|
+| 1 | element `<transport>` | schema are `<notificare>` (choice cu `stergere`/`confirmare`/`modifVehicul`) |
+| 2 | `bunuriTransportate/@nrCrt` | atribut inexistent — acum e doar model intern, nu se serializează |
+| 3 | adresa pusă direct pe `locStart/FinalTraseuRutier` | adresa stă în copilul `<locatie>`; pe element rămân doar `codPtf`/`codBirouVamal` |
+| 4 | `greutateNeta="0.00"` când lipsea | `PosDec_12_2_Type` are `minExclusive=0` → atribut opțional, se omite |
+| 5 | `numarDocument=""`, `observatii=""`, `cod=""` | tipurile `Str*`/`Cod*` au `minLength=1` → gol ≠ neutru, invalidează |
+| 6 | cod tarifar de 5 sau 7 cifre doar avertizat | pattern `[0-9]{4}\|[0-9]{6}\|[0-9]{8}` → e eroare, nu avertisment |
+| 7 | `codPtf="NADLAC2"` (etichetă text) | `CodPtfType` e `xs:int`, enumerare 1..38 |
+| 8 | trunchieri la 500 de caractere | `Str200`/`Str100`/`Str50`/`Str30`/`Str20` |
+
+În plus, nomenclatoarele: lipseau tipurile 12/14/22/24 (lohn, call-off stock), lipseau scopurile
+1101 și 9901, iar 801/802/901/1001 aveau denumirile altor scopuri. `<locatie>` cere **și strada**
+(`denumireStrada use="required"`), nu doar județ + localitate — validarea internă o cere acum.
+
+Fiecare punct are test în `test/run.js` (secțiunea RO e-Transport) și în `test/http.js`.
 
 ### Unde stă schema e-Transport
 
