@@ -154,9 +154,13 @@ infrastructură, fără să aștepți rularea programată.
 > altfel absența verificării ar semăna leit cu o verificare trecută — exact tiparul care a ținut
 > raportul zilnic orb și backupul offsite oprit șapte zile.
 >
-> Pe această instalare rolul `contab` **nu** are `CREATEDB`, deci drill-ul raportează
-> `neverificabil` până la: `sudo -u postgres psql -c 'ALTER ROLE contab CREATEDB;'`
-> (reversibil: `ALTER ROLE contab NOCREATEDB;`).
+> Rolul `contab` are `CREATEDB` (acordat 2026-07-27, tocmai pentru acest drill; reversibil cu
+> `sudo -u postgres psql -c 'ALTER ROLE contab NOCREATEDB;'` — dar atunci drill-ul devine
+> `neverificabil` și alertează). Verificare:
+> `sudo -u contab psql -d contab -tAc "select rolcreatedb from pg_roles where rolname=current_user"`.
+>
+> Prima rulare pe arhiva reală de producție (2026-07-27): restaurare nativă reușită — 4 firme,
+> 56 articole, echivalente cu `db.json` din aceeași arhivă, în 238 ms, baza temporară ștearsă.
 
 **Exercițiu manual complet (opțional, ~o dată pe an):** pentru încrederea „end-to-end pe
 mașină curată", ia ultima arhivă offsite (decripteaz-o dacă e cazul), dezarhiveaz-o pe o
