@@ -71,7 +71,8 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   utilizator/IP) și plafon exporturi),
   **src/authRoutes.js** (login/2FA, înscriere, resetare, impersonare, me/meta/health/metrics/audit),
   **src/jobs.js** (`safeInterval`: backup, digest-termene, demo-reset, rate-limit-hygiene,
-  uploads-hygiene, memory-watch, spv-poll),
+  uploads-hygiene, memory-watch, **persist-watch**, spv-poll — ultimele două alertează ÎNAINTE de
+  plafonul pm2: RSS peste prag, respectiv scrieri necomise/eșecuri în coada de persistență),
   **src/serverErrors.js** (fereastra 5xx + alertă email, handlerul global de erori, plasele pe
   proces), **src/lifecycle.js** (lock single-instance, listen după `dbReady`, oprirea curată).
 - **src/routes/*.js** — puncte de intrare subțiri: `register(app, ctx)`; parsează cererea, apelează
@@ -96,6 +97,11 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   calculează local: vine de la server (`POST /api/preview` → `composeEntry`), ca regulile contabile
   să aibă o singură implementare. `composeEntry` compune articolul FĂRĂ identitate; `buildEntry`
   adaugă id-ul din secvență — previzualizarea nu are voie să consume un id (ar lăsa goluri).
+- **Reziliență backup** — două drill-uri, complementare: `src/restoreDrill.js` (graful din `db.json`,
+  la fiecare backup) și `src/pgRestoreDrill.js` (**restaurare NATIVĂ**: rejoacă `contab.sql` într-o
+  bază PostgreSQL temporară, o dată la `CONTAB_PG_DRILL_DAYS` zile, apoi o șterge). Al doilea
+  distinge `sarit` (nu se aplică — tace) de `neverificabil` (dump există dar nu poate fi rejucat —
+  **alertează**): o verificare care nu poate rula nu are voie să semene cu una trecută.
 - **Observabilitate** — `src/log.js` (structurat, reqId), `src/metrics.js` + `GET /api/metrics`
   (admin: durate pe rută, `recentErrors`, starea joburilor, proces). `/api/health` e PUBLIC și
   **intenționat minimal** — există test negativ care blochează orice câmp de diagnostic pe el.

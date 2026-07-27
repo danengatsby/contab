@@ -2781,6 +2781,91 @@ ok('notificari: e-Factura cu termen apropiat apare', nEf.items.some((i) => i.tip
 }
 ok('SAF-T lunar: bine-format, perioada corecta si codul L in HeaderComment', (() => { const x = saft.saftXml(vDecl, '2026-06'); return x.includes('<PeriodStart>6</PeriodStart>') && x.includes('<PeriodEnd>6</PeriodEnd>') && x.includes('<HeaderComment>L</HeaderComment>'); })());
 
+section('Coada de persistenta: starea expusa (store/storePg queueStats)');
+{
+  const st = require('../src/store');
+  const q = st.queueStats();
+  ok('sqlite expune contractul complet', ['driver', 'pending', 'pendingAgeMs', 'pendingBytes', 'draining', 'commits', 'failStreak', 'lastCommitAt', 'lastError', 'conflicted'].every((k) => k in q));
+  // Pe sqlite persist e SINCRON: nu exista niciodata ceva in asteptare. Zeroul e adevarul, nu umplutura.
+  ok('sqlite: nimic in asteptare, niciodata', q.pending === false && q.pendingAgeMs === 0 && q.pendingBytes === 0);
+  ok('sqlite: numara scrierile comise', typeof q.commits === 'number');
+  const inainte = st.queueStats().commits;
+  db.get().settings.__probaCoada = Date.now(); // fara o schimbare reala, persist() nu scrie nimic
+  db.save();
+  ok('un save() cu schimbari avanseaza contorul de commit-uri', st.queueStats().commits > inainte);
+  const dupa = st.queueStats().commits;
+  db.save();
+  ok('un save() FARA schimbari nu produce tranzactie (zero I/O)', st.queueStats().commits === dupa);
+  delete db.get().settings.__probaCoada; db.save();
+  ok('...si dateaza ultima scriere', !!st.queueStats().lastCommitAt);
+  // db.persistStats() da acelasi contract, indiferent de driver (ruta si jobul nu ramifica)
+  const p = db.persistStats();
+  ok('db.persistStats expune acelasi contract', p.driver === 'sqlite' && p.pending === false);
+
+  // storePg: contractul exista si fara conexiune (jobul de veghe il apeleaza la fiecare minut)
+  const pg = require('../src/storePg');
+  const qp = pg.queueStats();
+  ok('storePg expune acelasi contract, fara conexiune', qp.driver === 'pg' && qp.pending === false && qp.pendingAgeMs === 0);
+
+  // Pragurile de memorie: o SINGURA sursa pentru metrica si pentru alerta
+  const met = require('../src/metrics');
+  ok('plafonul pm2 si pragul de avertizare sunt numere coerente',
+    met.MEM_LIMIT_MB > 0 && met.MEM_WARN_MB > 0 && met.MEM_WARN_MB < met.MEM_LIMIT_MB);
+  eq('pragul implicit e 70% din plafon', met.MEM_WARN_MB, Math.round(met.MEM_LIMIT_MB * 0.7));
+  // Decizia de ALERTA pe coada (pura): fiecare caz, plus pragurile.
+  const { persistVerdict } = require('../src/jobs');
+  const baza = { pending: false, pendingAgeMs: 0, pendingBytes: 0, failStreak: 0, conflicted: false };
+  ok('coada la zi -> fara alerta', persistVerdict(baza).alert === false);
+  ok('scrieri in asteptare, dar sub prag -> fara alerta',
+    persistVerdict(Object.assign({}, baza, { pending: true, pendingAgeMs: 5000 }), { lagMs: 60000 }).alert === false);
+  ok('scrieri necomise peste prag -> alerta, cu vechimea si memoria retinuta', (() => {
+    const v = persistVerdict(Object.assign({}, baza, { pending: true, pendingAgeMs: 90000, pendingBytes: 2048 }), { lagMs: 60000 });
+    return v.alert && v.cod === 'intarziere' && /90s/.test(v.motiv) && /2 KB/.test(v.motiv);
+  })());
+  ok('esecuri consecutive peste prag -> alerta', persistVerdict(Object.assign({}, baza, { failStreak: 3 }), { fails: 3 }).alert === true);
+  ok('un singur esec nu alerteaza', persistVerdict(Object.assign({}, baza, { failStreak: 1 }), { fails: 3 }).alert === false);
+  ok('conflictul de scriitor are prioritate (nimic nu se mai scrie)', (() => {
+    const v = persistVerdict(Object.assign({}, baza, { conflicted: true, pending: true, pendingAgeMs: 90000 }));
+    return v.alert && v.cod === 'conflict' && /INGHETATA/.test(v.motiv);
+  })());
+  // pe sqlite semnalul e constant zero -> jobul nu poate alerta fals
+  ok('starea reala de pe sqlite nu declanseaza alerta', persistVerdict(require('../src/store').queueStats()).alert === false);
+}
+
+
+section('Drill de restaurare NATIVA PostgreSQL (src/pgRestoreDrill.js)');
+{
+  const pgd = require('../src/pgRestoreDrill');
+  const fsx = require('fs'); const pth = require('path');
+
+  // Colectiile verificate vin din ARRAY_COLLS — o colectie noua intra automat in drill,
+  // nu ramane neverificata pentru ca cineva a uitat sa o adauge intr-o a doua lista.
+  const colls = pgd.blobCollections();
+  ok('lista de colectii vine din store.ARRAY_COLLS', colls.includes('entries') && colls.includes('firme') && colls.length > 10);
+  eq('aceeasi lista ca a schemei', colls.join(','), require('../src/store').ARRAY_COLLS.map((c) => c.key).join(','));
+
+  // URL-urile derivate: baza de intretinere `postgres` + baza temporara, pastrand credentialele
+  const u = pgd.urlsFor('postgres://u:p@h:5432/contab', 'contab_drill_1');
+  ok('URL de intretinere pe baza postgres', /\/postgres$/.test(u.maint) && u.maint.includes('u:p@h:5432'));
+  ok('URL-ul bazei temporare poarta numele cerut', /\/contab_drill_1$/.test(u.temp));
+  eq('fara URL explicit -> null (se cade pe socketul local)', pgd.urlsFor('', 'x'), null);
+  eq('URL invalid -> null, nu exceptie', pgd.urlsFor('nu-e-url', 'x'), null);
+
+  // Taxonomia rezultatelor e contractul pe care se sprijina alerta: `sarit` tace, `neverificabil`
+  // se aude. Caile asincrone se verifica in test/http.js (ruta de admin); aici doar partea pura.
+  const antet = fsx.readFileSync(pth.join(__dirname, '..', 'src', 'pgRestoreDrill.js'), 'utf8');
+  ok('contractul distinge „nu se aplica" de „nu pot verifica"',
+    /sarit\b[\s\S]{0,200}nu se aplica/i.test(antet) && /neverificabil[\s\S]{0,200}se alerteaza/i.test(antet));
+  ok('drill-ul curata baza temporara si pe calea de eroare (DROP in finally)',
+    /finally\s*\{[\s\S]{0,300}dropDb\(\)/.test(antet));
+  ok('rejucarea foloseste ON_ERROR_STOP (altfel un dump stricat ar iesi cu 0)',
+    /ON_ERROR_STOP=1'[^\n]*'-q'[^\n]*'-f'/.test(antet) || /'ON_ERROR_STOP=1', '-q', '-f'/.test(antet));
+  ok('numele bazei temporare e unic (pid + timp), ca sa nu se ciocneasca rulari paralele',
+    /contab_drill_' \+ process\.pid \+ '_' \+ Date\.now\(\)/.test(antet));
+  eq('temporarul nu poate atinge baza de productie', /DROP DATABASE IF EXISTS "' \+ tempName/.test(antet), true);
+  ok('fisierele extrase in /tmp se sterg si pe calea de eroare', /cleanupDir\(\);/.test(antet));
+}
+
 section('XSS: escaparea datelor externe la randare (public/app.js)');
 // app.js + ecranele extrase din el (periods/rapoarte/livrabile/mijloace/salarizare/stocuri/plan):
 // portile de escapare acopera tot codul de randare, indiferent in ce modul a ajuns
@@ -3759,11 +3844,11 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   const stubs = { doBackup: () => ({ name: 'x' }), resetDemo: () => ({ ok: true }), registerAttempts: new Map(), forgotAttempts: new Map() };
   const h = jobs.start(stubs);
   ok('start() intoarce un handle cu stop()', h && typeof h.stop === 'function');
-  eq('stop() curata toate cele 7 joburi', h.stop(), 7);
+  eq('stop() curata toate cele 8 joburi', h.stop(), 8);
   eq('stop() e idempotent (a doua oara: nimic de curatat)', jobs.stop(), 0);
   // dupa stop, un nou start functioneaza si se curata la fel (nu ramane stare blocata)
   jobs.start(stubs);
-  eq('restart dupa stop: tot 7 joburi, curatate din nou', jobs.stop(), 7);
+  eq('restart dupa stop: tot 8 joburi, curatate din nou', jobs.stop(), 8);
 }
 
 section('Migrari DB versionate (src/migrations.js)');

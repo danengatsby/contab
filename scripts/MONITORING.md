@@ -11,9 +11,25 @@ Performanță și diagnostic: **`/api/metrics`** (doar admin) — de la ultimul 
 - `jobs` — starea job-urilor de background (backup, digest-termene, demo-reset, spv-poll,
   rate-limit-hygiene): ultimul tick, ultimul rezultat, ultima eroare; pentru backup/digest/demo
   și ultima rulare reușită din settings (supraviețuiește restartului);
-- `process` — memorie RSS/heap, versiune Node, PID, driver DB, număr firme/utilizatori.
+- `process` — memorie RSS/heap, versiune Node, PID, driver DB, număr firme/utilizatori, plus
+  **marja față de plafonul pm2**: `memoryLimitMb` (= `max_memory_restart`), `memoryWarnMb` (pragul
+  de avertizare, implicit 70% din plafon) și `memoryPctDinPlafon`;
+- `persist` — starea **cozii de persistență**: `pending`, `pendingAgeMs` (de cât timp există
+  scrieri necomise — cât timp e > 0, datele trăiesc DOAR în RAM), `pendingBytes`, `commits`,
+  `failStreak`, `lastCommitAt`, `lastError`, `conflicted`.
 
 Cererile peste prag apar și în log ca avertismente `cerere lenta`, cu `reqId` pentru corelare.
+
+**Două vegheri care alertează ÎNAINTE de plafonul pm2** (email cel mult o dată pe zi, ca alerta 5xx):
+- `memory-watch` (la 5 min) — RSS peste `CONTAB_MEM_WARN_MB` (implicit 70% din `CONTAB_PM2_MAX_MB`,
+  la rândul lui implicit 1024 = `max_memory_restart`). Mesajul spune procentul din plafon, nu doar
+  megaocteții. `ecosystem.config.js` NU e citit din fișier: `pm2 restart` nu îl reaplică, deci
+  valoarea de acolo e o declarație de intenție — plafonul real se verifică cu `pm2 jlist`.
+- `persist-watch` (la 1 min) — coada de persistență: scrieri necomise de peste
+  `CONTAB_PERSIST_LAG_MS` (implicit 60s), `CONTAB_PERSIST_FAILS` eșecuri consecutive (implicit 3),
+  sau persistență înghețată de conflict `dbEpoch`. Pe pg, `save()` fotografiază sincron dar comite
+  asincron: cât timp coada nu se golește, scrierile nu sunt durabile ȘI țin memorie ocupată — adică
+  exact drumul către plafonul pm2. Pe SQLite persist e sincron, deci semnalul e constant zero.
 Optimizările pornesc de aici, nu din instinct.
 
 Raport zilnic prin email: `scripts/perf-report.sh` (cron la 07:45, utilizatorul `contab`) numără
@@ -113,6 +129,34 @@ AES-256. Restaurare: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in f.zip
 arhiva, restaurează `db.json` în izolare și verifică balanța fiecărei firme — la fiecare
 backup zilnic, cu alertă pe email la eșec. Restaurarea la nivel de firmă (bundle) e testată
 în plus la fiecare rulare a suitei HTTP și în CI.
+
+**Restaurare NATIVĂ PostgreSQL — rejucată periodic, nu doar produsă** (`src/pgRestoreDrill.js`):
+arhiva conține și `contab.sql` (dump `pg_dump`), dar până acum acesta era doar *creat*, niciodată
+*rejucat* — un dump se poate strica în tăcere (pg_dump eșuat parțial, versiune incompatibilă, tabel
+lipsă) și afli abia în ziua în care ai nevoie de el. Acum, o dată la `CONTAB_PG_DRILL_DAYS` zile
+(implicit 7), backupul zilnic:
+
+1. creează o bază **temporară** (`contab_drill_<pid>_<ts>`) pe același server PostgreSQL;
+2. rejoacă `contab.sql` cu `psql -v ON_ERROR_STOP=1` (fără asta, un dump stricat ar ieși cu cod 0);
+3. reconstruiește graful din baza restaurată și verifică **balanța fiecărei firme** (aceeași
+   verificare ca drill-ul pe `db.json`);
+4. compară cu `db.json` din **aceeași arhivă** — dacă cele două căi de restaurare dau date diferite,
+   una e învechită sau incompletă, deși fiecare pare validă separat;
+5. **șterge baza temporară**, inclusiv pe calea de eroare.
+
+Starea intră în `data/backups/last-pg-drill.json` și în `/api/metrics` (`ops.ultimulBackup.pgDrill`).
+Manual, oricând: `POST /api/pg-restore-drill` (admin) — util imediat după o schimbare de
+infrastructură, fără să aștepți rularea programată.
+
+> **„Nu se aplică" ≠ „nu pot verifica".** Fără `contab.sql` în arhivă (instalare pe SQLite) drill-ul
+> tace — corect. Dar dacă dump-ul EXISTĂ și totuși nu poate fi rejucat (lipsește `psql`, sau rolul
+> aplicației nu are dreptul `CREATEDB`), rezultatul e `neverificabil` și **se trimite alertă**:
+> altfel absența verificării ar semăna leit cu o verificare trecută — exact tiparul care a ținut
+> raportul zilnic orb și backupul offsite oprit șapte zile.
+>
+> Pe această instalare rolul `contab` **nu** are `CREATEDB`, deci drill-ul raportează
+> `neverificabil` până la: `sudo -u postgres psql -c 'ALTER ROLE contab CREATEDB;'`
+> (reversibil: `ALTER ROLE contab NOCREATEDB;`).
 
 **Exercițiu manual complet (opțional, ~o dată pe an):** pentru încrederea „end-to-end pe
 mașină curată", ia ultima arhivă offsite (decripteaz-o dacă e cazul), dezarhiveaz-o pe o
