@@ -1,5 +1,5 @@
 'use strict';
-import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUser, setOn402, setOnReconnect, escMsg, escAttr, isDemo, fileToCsv, round2, applyFiscalDefaults, fiscalText } from './core.js';
+import { $, $$, H, fmt, accName, toast, setLoad, api, META, USER, setMeta, setUser, setOn402, setOnReconnect, escMsg, escAttr, isDemo, fileToCsv, round2, applyFiscalDefaults, fiscalText, setCsrf } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, setSettingsDeps } from './settings.js';
@@ -256,6 +256,7 @@ async function init() {
   hideLogin();
   applyFiscalDefaults(); // cotele implicite din formulare vin din META.fiscal, nu din HTML
   setUser(META.user || {});
+  setCsrf(META.user && META.user.csrf); // token-ul CSRF pentru toate cererile mutante ulterioare
   // Plasa de siguranta (daca meta ar fi permisa candva): acelasi ecran de schimbare fortata.
   if (USER.mustChange) { showForcePw(); return; }
   $('#userBadge').textContent = USER.username ? (USER.username + (USER.tip ? ' · ' + USER.tip : '')) : '';

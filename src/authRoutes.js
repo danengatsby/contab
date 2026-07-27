@@ -25,6 +25,8 @@ const { sendList } = require('./paginate');
 const { toCsv } = require('./csv');
 const { currentUser, allowedFirme, publicUser, startSession, setTrustedDevice, deviceTrusted, isLocked, bumpFail, clearFails, attemptKey } = require('./session');
 const { period: periodOf } = require('./util');
+const csrfLib = require('./csrf');
+const sessionLib = require('./session');
 
 module.exports = function registerAuthRoutes(app, ctx) {
   const { logAudit, wrap, requireAdmin, activeId, S } = ctx;
@@ -32,6 +34,10 @@ module.exports = function registerAuthRoutes(app, ctx) {
   // Imbogateste obiectul public al utilizatorului cu starea de impersonare si mesajele necitite.
   function withSessionState(req, u) {
     const out = publicUser(u);
+    // Token-ul CSRF calatoreste in raspunsul de identitate: clientul il citeste o data, la pornire,
+    // si il trimite inapoi in antetul X-CSRF-Token la fiecare cerere mutanta. Un site strain nu-l
+    // poate citi (same-origin), deci nu poate compune cererea.
+    out.csrf = csrfLib.tokenFor(req._sessId, sessionLib.csrfSecret());
     if (req.impersonating && req.realUser) out.impersonating = { adminId: req.realUser.id, adminName: req.realUser.username };
     const d = db.get();
     out.unreadMessages = (u.role === 'admin' && !req.impersonating)

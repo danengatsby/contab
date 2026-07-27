@@ -90,6 +90,20 @@ function buildDb() {
   };
 }
 
+// Token-ul CSRF al fiecarei sesiuni, memorat per cookie: garda cere token la orice cerere mutanta
+// care poarta o sesiune. Testele se comporta ca un client normal (il iau din /api/me si il trimit
+// inapoi); cazurile care verifica INSASI garda folosesc `noCsrf: true`.
+const CSRF_CACHE = new Map();
+async function csrfFor(cookie) {
+  if (!cookie) return '';
+  if (CSRF_CACHE.has(cookie)) return CSRF_CACHE.get(cookie);
+  const r = await fetch(BASE + '/api/me', { headers: { Cookie: cookie } });
+  let t = '';
+  try { t = (await r.json()).csrf || ''; } catch (_) { t = ''; }
+  CSRF_CACHE.set(cookie, t);
+  return t;
+}
+
 async function req(method, p, opts) {
   const o = opts || {};
   const headers = Object.assign({}, o.headers);
@@ -99,6 +113,10 @@ async function req(method, p, opts) {
     body = JSON.stringify(body);
   }
   if (o.cookie) headers.Cookie = o.cookie;
+  if (o.cookie && !o.noCsrf && !headers['X-CSRF-Token'] && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    const t = await csrfFor(o.cookie);
+    if (t) headers['X-CSRF-Token'] = t;
+  }
   const r = await fetch(BASE + p, { method, headers, body });
   const text = await r.text();
   let json = null;
@@ -481,8 +499,33 @@ async function main() {
     const own = await req('POST', '/api/login', { headers: { Origin: BASE }, body: { username: 'x', password: 'y' } });
     eq('POST cu Origin propriu trece de garda (401 = parola, nu 403)', own.status, 401);
     eq('Referer strain e respins la fel', (await req('POST', '/api/logout', { headers: { Referer: 'https://atacator.example/pagina' } })).status, 403);
-    // lipsa Origin/Referer e permisa (curl/integrari) — intreaga suita ruleaza asa; GET nu e atins
     eq('GET cu Origin strain ramane permis (nu e mutant)', (await req('GET', '/api/health', { headers: { Origin: 'https://atacator.example' } })).status, 200);
+
+    // ── CSRF: TOKEN SINCRONIZATOR (lipsa Origin nu mai e o portita) ──
+    // Garda veche accepta cererea cand Origin/Referer LIPSEA. Acum, o cerere care poarta o SESIUNE
+    // are nevoie de token — si cand antetul lipseste, care era exact conditia exploatabila.
+    const faraToken = await req('POST', '/api/entries', { cookie: c1, noCsrf: true, body: { tip: 'nota_contabila', fields: { data: '2026-06-01', explicatie: 'x', debit: '5311', credit: '5121', suma: 1 } } });
+    eq('mutanta cu sesiune si FARA token -> 403', faraToken.status, 403);
+    eq('...cu motiv explicit (token, nu origine)', faraToken.json && faraToken.json.csrf, 'token');
+    const tokGresit = await req('POST', '/api/entries', { cookie: c1, noCsrf: true, headers: { 'X-CSRF-Token': 'a'.repeat(32) }, body: { tip: 'nota_contabila', fields: { data: '2026-06-01', explicatie: 'x', debit: '5311', credit: '5121', suma: 1 } } });
+    eq('token gresit (aceeasi lungime) -> 403', tokGresit.status, 403);
+    // token-ul e legat de SESIUNE, nu de utilizator: o A DOUA sesiune a ACELUIASI cont are alt
+    // sessId, deci alt token — iar acela nu merge pe cookie-ul primei sesiuni.
+    const l1b = await req('POST', '/api/login', { body: { username: 'user1', password: 'parola1' } });
+    const altTok = (await req('GET', '/api/me', { cookie: l1b.cookie })).json.csrf;
+    ok('doua sesiuni ale aceluiasi cont au token-uri DIFERITE',
+      !!altTok && altTok !== (await req('GET', '/api/me', { cookie: c1 })).json.csrf);
+    const tokStrain = await req('POST', '/api/entries', { cookie: c1, noCsrf: true, headers: { 'X-CSRF-Token': altTok }, body: { tip: 'nota_contabila', fields: { data: '2026-06-01', explicatie: 'x', debit: '5311', credit: '5121', suma: 1 } } });
+    eq('token-ul altei SESIUNI -> 403 (legat de sesiune, nu de cont)', tokStrain.status, 403);
+    // cu token-ul propriu, aceeasi cerere trece
+    const cuToken = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', fields: { data: '2026-06-01', explicatie: 'csrf ok', debit: '5311', credit: '5121', suma: 1 } } });
+    eq('aceeasi cerere CU token propriu -> 200', cuToken.status, 200);
+    // originea straina e respinsa CHIAR SI cu token valid (allowlist inainte de token)
+    const tokMeu = (await req('GET', '/api/me', { cookie: c1 })).json.csrf;
+    eq('Origin strain + token valid -> tot 403',
+      (await req('POST', '/api/entries', { cookie: c1, noCsrf: true, headers: { Origin: 'https://atacator.example', 'X-CSRF-Token': tokMeu }, body: { tip: 'nota_contabila', fields: { data: '2026-06-01', explicatie: 'x', debit: '5311', credit: '5121', suma: 1 } } })).status, 403);
+    // fara sesiune nu exista credentiale ambientale de calarit -> ruta publica ramane accesibila
+    eq('POST public FARA sesiune si fara token ramane permis', (await req('POST', '/api/checkout-guest', { body: { plan: 'inexistent' } })).status, 400);
 
     // ── Abonament / plati (src/routes/billing.js) ──
     const plansPub = await req('GET', '/api/plans'); // public (fara sesiune)

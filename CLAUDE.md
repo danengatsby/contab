@@ -81,8 +81,17 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   `ctx = { S, activeId, canAccess, requireAdmin, logAudit… }`, `composeEntry`/`buildEntry`/`upsertPartner`
   (partajate de entries/bank/anaf/payroll) și `activeId`/`S` (izolarea pe firmă — sursa unică).
   Restul e spart pe module: **src/bootstrap.js** (`.env`, `createApp` cu helmet/CSP calibrat,
-  reqId, metrici, multer + garda upload; `applySecurityGuards` cu garda CSRF pe origine
-  (`CONTAB_CSRF=0` rollback), autentificare, mustChange, drepturi granulare, paywall per-firmă
+  reqId, metrici, multer + garda upload; `applySecurityGuards` cu garda CSRF —
+  **token sincronizator + allowlist de origine** (`src/csrf.js`): origine străină → respins chiar
+  cu token valid; sesiune prezentă → token obligatoriu **și când `Origin` lipsește** (absența
+  antetului nu mai e portiță); fără sesiune → trece (nu există credențiale ambientale de călărit).
+  Tokenul e derivat, nu stocat: `HMAC(secretul de semnare, 'csrf:' + sessId)` — se invalidează
+  singur la delogare și la rotirea secretului. Clientul îl ia din `/api/meta`→`user.csrf` și îl
+  trimite în `X-CSRF-Token`; în frontend îl atașează `withCsrf()` din `core.js` (orice `fetch`
+  mutant care ocolește `api()` trebuie să treacă prin el). Rollback în trepte:
+  `CONTAB_CSRF=origin` (doar origine, comportamentul vechi), `CONTAB_CSRF=0` (oprit).
+  `CONTAB_CSRF_ORIGINS` adaugă origini la allowlist (implicit `APP_URL`),
+  autentificare, mustChange, drepturi granulare, paywall per-firmă
   `FIRMA_BILL_EXEMPT`, plafon general de API (`CONTAB_RATE_API`, implicit 600/min per
   utilizator/IP) și plafon exporturi),
   **src/authRoutes.js** (login/2FA, înscriere, resetare, impersonare, me/meta/health/metrics/audit),

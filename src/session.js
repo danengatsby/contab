@@ -122,8 +122,20 @@ function pruneLoginAttempts(now = Date.now()) {
 const DEMO_USERS = ['demo', 'demo-contabil'];
 function isDemoUser(user) { return !!(user && DEMO_USERS.includes(user.username)); }
 
+/** Id-ul sesiunii din cookie-ul semnat, FARA a atinge utilizatorul (garda CSRF ruleaza inaintea
+ *  middleware-ului de autentificare, deci nu se poate baza pe `req.user`). Null daca lipseste ori
+ *  cookie-ul nu verifica — un token forjat nu trebuie sa dea un sessId pe care sa se derive CSRF. */
+function sessionIdOf(req) {
+  try {
+    const p = authlib.verify(authlib.parseCookies((req || {}).headers ? req.headers.cookie : '').sid, signingSecret(db.get()));
+    return p && p.sessId ? p.sessId : null;
+  } catch (_) { return null; }
+}
+/** Secretul din care se deriva token-ul CSRF (acelasi cu cel de semnare a sesiunii). */
+function csrfSecret() { try { return signingSecret(db.get()); } catch (_) { return null; } }
+
 module.exports = {
-  currentUser, allowedFirme, publicUser,
+  currentUser, allowedFirme, publicUser, sessionIdOf, csrfSecret,
   startSession, setTrustedDevice, deviceTrusted,
   isLocked, bumpFail, clearFails, attemptKey, pruneLoginAttempts,
   DEMO_USERS, isDemoUser,
