@@ -4,16 +4,17 @@
 
 ```bash
 npm install
-npm start            # porneste pe http://localhost:3000  (sau PORT=3787 npm start)
-npm test             # ruleaza suita completa: lint + ~750 verificari de module + ~140 verificari HTTP
+npm start            # porneste pe http://localhost:8080  (sau PORT=9000 npm start)
+npm test             # suita completa: sintaxa + garda DB + module + frontend + ANAF + store + HTTP
 ```
 
-Apoi deschide `http://localhost:8080` în browser.
+Apoi deschide `http://localhost:8080` în browser. **Cere Node ≥ 22.13** (`engines` din
+`package.json`; driverul implicit `node:sqlite` nu există înainte).
 
-Navigarea e organizată pe categorii (meniuri în bara de sus): **Dashboard**, **Operațional**
-(documente, bancă/casă, reconciliere, stocuri, mijloace fixe, salarizare), **Registre** (jurnal,
-carte mare, balanță, analitic/scadențar), **Declarații & situații** (TVA/D300/D394, închideri,
-situații financiare, livrabile), **Nomenclatoare** (parteneri, plan de conturi, ghid) și **Setări**.
+Navigarea e organizată pe grupuri, ca meniuri derulante în bara de sus: `📥 Documente & facturi`,
+`🏦 Bani`, `🧾 Taxe`, `📦 Stocuri`, `👥 Salarii`, `🏢 Mijloace fixe`, `📊 Rapoarte`, `📁 Date firmă`,
+`⚙️ Setări`. (Numele lor sunt verificate față de `public/index.html` — vezi poarta de drift din
+`test/run.js`.)
 
 Aplicația diferențiază **SRL vs PFA** (formă juridică pe firmă — taxe, calendar de declarații și
 documente specifice: Declarația Unică cu variantă pe încasat, registrul de încasări și plăți,
@@ -24,9 +25,13 @@ dicționar contabil, meniu fără jargon) + **întrebări frecvente publice** pe
 Facturile se emit în **trei modele de PDF** cu logo-ul firmei, cu **chitanță tipăribilă** (sumă în
 litere, serie proprie), iar utilizatorii pot primi **drepturi granulare** (doar-citire / fără salarii).
 
-**Teste automate** (`npm test`): verificarea sintaxei tuturor fișierelor (`npm run lint`) +
-**~750 de verificări de module** (`test/run.js`, pe date construite pur, fără a atinge `data/db.json`)
-+ **~140 de verificări HTTP** (`test/http.js`, server pornit pe o bază temporară) — balanța și cele
+**Teste automate** (`npm test`) — numărul curent de verificări îl afișează chiar suita, deci nu îl
+fixăm aici (ar drifta la fiecare test nou; există o poartă în `test/run.js` care impune asta).
+Rulează, în ordine: verificarea sintaxei tuturor fișierelor (`npm run lint`), garda pe baza reală
+(`test/db-guard.js`), sesiuni/auth, **verificările de module** (`test/run.js`, pe date construite
+pur, fără a atinge `data/db.json`), extractorul, **logica pură de frontend** (`test/frontend.mjs`),
+reziliența ANAF (`test/anaf.js`, cu stub-uri), persistența (`test/store.js`, `test/store-pg.js`) și
+**verificările HTTP** (`test/http.js`, server pornit pe o bază temporară) — balanța și cele
 4 egalități, TVA (decont, la încasare, taxare inversă, **pro-rata art. 300**, ajustări **art. 305**),
 amortizarea (liniară/degresivă/accelerată), stocurile (CMP pe gestiuni, preluare stoc inițial,
 inventariere, producție), salarizarea (CAS/CASS/impozit/CAM, deducerea personală, tichete, avantaje
@@ -66,8 +71,11 @@ răspunsul întregului fișier. Sumele fără zecimale (`1.234.567`) se citesc c
 - **Hook pre-pornire:** scriptul `prestart` rulează `npm test` înainte de `npm start` (pornirea
   locală e blocată dacă testele pică). Sub **pm2** (`node server.js` direct) hook-ul e ocolit — pentru
   a gata și acolo, rulează `npm test && pm2 restart contab`.
-- **CI:** `.github/workflows/ci.yml` rulează `npm ci` + `npm run lint` + testele pe Node 18 și 20 la
-  fiecare push/PR.
+- **CI:** `.github/workflows/ci.yml` rulează `npm ci` + suita completă pe **Node 22 și 24** la fiecare
+  push/PR, plus: balanța pe calea SQL (prag 0), suita HTTP pe **PostgreSQL** (paritate cu producția)
+  și `npm audit` (blochează la HIGH/CRITICAL). Validarea oficială ANAF (DUKIntegrator) rulează
+  săptămânal, manual și la push pe `main` — nu pe fiecare PR, ca o cădere a `static.anaf.ro` să nu
+  blocheze munca.
 
 **Dashboard cu grafice** (SVG, fără dependențe): evoluția lunară venituri/cheltuieli/profit (bare
 grupate), comparația creanțe vs datorii și structura aging pe intervale de vechime. `/api/dashboard-charts`.
@@ -101,14 +109,14 @@ deja `nginx` pe portul 80. Adaugă un reverse proxy către aplicație:
 # /etc/nginx/sites-available/contab  (apoi: ln -s ... sites-enabled && nginx -t && systemctl reload nginx)
 server {
     listen 80;
-    server_name 159.69.200.202;   # sau domeniul tău
+    server_name contabo.space;    # domeniul instalării (sau IP-ul serverului)
     client_max_body_size 25m;     # pentru upload de PDF-uri
     location / { proxy_pass http://127.0.0.1:8080; proxy_set_header Host $host; }
 }
 ```
 
-**Compresie (în `nginx.conf`, blocul `http`):** frontendul e ~344KB de JS/CSS necomprimat
-(21 module ES). `gzip on` singur NU ajunge — totul trece prin `proxy_pass`, deci nginx NU
+**Compresie (în `nginx.conf`, blocul `http`):** frontendul e câteva sute de KB de JS/CSS
+necomprimat, servit ca module ES separate. `gzip on` singur NU ajunge — totul trece prin `proxy_pass`, deci nginx NU
 comprimă răspunsurile fără `gzip_proxied`. Activează (câștig real ~69%: app.js 50KB→15KB):
 
 ```nginx
@@ -119,12 +127,21 @@ gzip_comp_level 6;
 gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 ```
 
-Aceasta e alternativa corectă la bundling: încărcarea e deja rapidă (~230ms, 21 fișiere mici
-same-origin), iar compresia reduce octeții pe conexiuni lente **fără build step** — proiectul
+Aceasta e alternativa corectă la bundling: încărcarea e deja rapidă (fișiere mici, same-origin), iar compresia reduce octeții pe conexiuni lente **fără build step** — proiectul
 rămâne servit direct de `node server.js`, fără pipeline de build (decizie deliberată).
 
-**Pornire automată (recomandat, necesită root):** rulează ca serviciu systemd
-ca să repornească la boot și să nu depindă de o sesiune:
+**Pornire automată.** Pe *această* instalare procesul rulează sub **pm2**, ca utilizatorul `contab`
+(vezi `ecosystem.config.js` — `max_memory_restart: 1G`, log-uri în `logs/`):
+
+```bash
+sudo -u contab PM2_HOME=/home/contab/.pm2 pm2 restart contab
+curl -s http://127.0.0.1:8080/api/health
+```
+
+`pm2 restart` **nu** reaplică `ecosystem.config.js`; o modificare acolo ajunge în proces doar prin
+`pm2 delete contab && pm2 start ecosystem.config.js && pm2 save`.
+
+**Alternativa systemd** (dacă preferi, în locul pm2 — necesită root):
 
 ```ini
 # /etc/systemd/system/contab.service
@@ -137,7 +154,7 @@ Environment=PORT=8080 HOST=127.0.0.1
 # Environment=ANTHROPIC_API_KEY=sk-ant-...   # optional, pentru extragerea cu AI
 ExecStart=/usr/bin/node server.js
 Restart=always
-User=dan
+User=contab
 [Install]
 WantedBy=multi-user.target
 ```
@@ -148,13 +165,18 @@ sudo systemctl enable --now contab
 ### Extragere cu AI (opțional, recomandat pentru facturi variate / scanate)
 
 Aplicația poate citi **PDF-uri și imagini (JPG/PNG/WEBP — facturi scanate sau fotografiate)** cu
-**Claude API** (`@anthropic-ai/sdk`, model `claude-opus-4-8`, intrare document PDF sau imagine +
-ieșire structurată JSON). Tipul fișierului e detectat automat din conținut (PDF → bloc `document`,
-imagine → bloc `image`). Pornește serverul cu cheia setată:
+**Claude API** (`@anthropic-ai/sdk`, model implicit `claude-opus-4-8`, intrare document PDF sau
+imagine + ieșire structurată JSON). Tipul fișierului e detectat automat din conținut (PDF → bloc
+`document`, imagine → bloc `image`). Pornește serverul cu cheia setată:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-... npm start
 ```
+
+**Furnizorul se alege singur** din cheile prezente: `ANTHROPIC_API_KEY` → Anthropic, altfel
+`OPENAI_API_KEY` → OpenAI (model implicit `gpt-4.1-mini`, reglabil cu `CONTAB_AI_MODEL_OPENAI`);
+fără nicio cheie se folosesc regulile locale. `CONTAB_AI_PROVIDER=anthropic|openai` forțează
+alegerea când sunt prezente ambele.
 
 Când cheia este prezentă, fiecare upload este trimis la Claude pentru a extrage
 câmpurile (CUI, nr./dată, bază, TVA, cotă, total) și a propune tipul de
@@ -197,7 +219,9 @@ obligatoriu la depunerea în SPV.
 
 ## Note
 
-- Datele se păstrează în `data/db.json`; fișierele PDF încărcate în `data/uploads/`.
+- Baza autoritară e cea relațională aleasă de `CONTAB_DB_DRIVER` (`data/contab.sqlite` sau
+  PostgreSQL); `data/db.json` e **oglinda** ei, folosită de backup și de restaurare. Fișierele
+  încărcate stau în `data/uploads/`.
 - **Uploadurile sunt validate** (allowlist de extensii: PDF, imagini, CSV/TXT, XLS(X), DBF, XML,
   ZIP, JSON — HTML/JS/SVG sunt respinse, anti-XSS stocat). La descărcare, doar tipurile inerte
   (PDF/imagini) se afișează inline; orice altceva se descarcă forțat ca octeți. Accesul la
