@@ -178,6 +178,8 @@ npm run seed         # din linia de comanda
 
 Guvernanța regulilor fiscale (sursă unică datată, fluxul schimbărilor legislative,
 statusurile pre-depunere, jurnalul reviziilor): vezi **docs/guvernanta-fiscala.md**.
+Revizia de specialitate a cifrelor (ce se trimite revizorului, simplificările cunoscute,
+cazurile-test aprobate): **docs/dosar-revizie-fiscala.md** + `node test/cazuri-aprobate.js`.
 
 Aplicația face o pre-validare rapidă la generare (`src/validate.js`: bine-format + câmpuri
 obligatorii + CUI/perioadă). Pentru validarea **oficială** — aceeași pe care o face ANAF la
