@@ -19,6 +19,7 @@ const messages = require('./messages');
 const plans = require('./plans');
 const billing = require('./billing');
 const metrics = require('./metrics');
+const cache = require('./cache');
 const { sendMail, sendNotifMail } = require('./notify');
 const { sendList } = require('./paginate');
 const { toCsv } = require('./csv');
@@ -246,6 +247,9 @@ module.exports = function registerAuthRoutes(app, ctx) {
         storeConflict: db.storeConflicted(),
       },
       firmeLoad: { maxEntries: topFirme.length ? topFirme[0].entries : 0, top: topFirme },
+      // memo-ul per firma al rutelor scumpe (dashboard): rata de hit spune daca invalidarea
+      // globala la fiecare scriere lasa cache-ul sa ajute in practica.
+      cache: cache.stats(),
     }));
   });
 

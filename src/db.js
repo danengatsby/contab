@@ -90,6 +90,13 @@ const DEFAULT_DB = {
 
 let db = null;
 
+// Revizia globala de scriere: avanseaza la FIECARE persistare (save/restore/load). E cheia de
+// validitate a memo-urilor de citire din src/cache.js — o valoare calculata la revizia R ramane
+// valabila exact cat timp revizia e tot R. NU se persista (e per proces): dupa restart porneste
+// de la 0, cu cache-urile goale, deci nu poate „invia" un rezultat vechi.
+let rev = 0;
+function dataRev() { return rev; }
+
 function chmodSafe(p, mode) {
   try { fs.chmodSync(p, mode); } catch (_) { /* platforma/permisiuni: nu masca pornirea */ }
 }
@@ -246,6 +253,7 @@ function loadJson() {
 // Driver PostgreSQL (async): load() intoarce o PROMISIUNE — serverul o asteapta la pornire
 // (bootstrap in server.js). Aceeasi migrare unica din db.json ca la trecerea pe SQLite.
 async function loadPg() {
+  rev += 1; // (re)hidratare: baza din RAM se schimba sub picioarele memo-urilor
   await store.open();
   if (await store.isEmpty()) {
     if (fs.existsSync(JSON_FILE)) {
@@ -271,6 +279,7 @@ async function loadPg() {
 
 function load() {
   ensureDir();
+  rev += 1; // (re)hidratare: baza din RAM se schimba sub picioarele memo-urilor
   if (DRIVER === 'pg') return loadPg();
   if (DRIVER !== 'sqlite') return loadJson();
   store.open(SQLITE_FILE);
@@ -321,6 +330,7 @@ function flushMirror(force) {
 
 function save() {
   ensureDir();
+  rev += 1; // inainte de orice iesire: si pe calea `json`, si daca driverul arunca (RAM e deja mutat)
   if (DRIVER === 'json') { writeJson(JSON_FILE, db); return; }
   store.persist(db); // sqlite: sincron; pg: fotografiaza sincron + scrie printr-o coada seriala
   if (JSON_MIRROR) scheduleMirror(); // oglinda pentru backup/rollback, scrisa cu intarziere
@@ -334,6 +344,7 @@ function flushStore() {
 // Restaurare dintr-un fisier JSON (folosita de ruta /api/restore): seteaza in memorie + persista in driver.
 function restoreFromJson(jsonPath) {
   const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+  rev += 1; // baza e INLOCUITA integral — orice memo calculat pe cea veche devine invalid
   db = migrate(applyDefaults(parsed));
   if (DRIVER !== 'json') { store.resetDirty(); store.persist(db); }
   if (JSON_MIRROR || DRIVER === 'json') writeJson(JSON_FILE, db);
@@ -647,7 +658,7 @@ async function trialFisaContSql(fid, cont, period) {
 }
 
 module.exports = {
-  get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen,
+  get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
   canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,

@@ -96,6 +96,12 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   calculează local: vine de la server (`POST /api/preview` → `composeEntry`), ca regulile contabile
   să aibă o singură implementare. `composeEntry` compune articolul FĂRĂ identitate; `buildEntry`
   adaugă id-ul din secvență — previzualizarea nu are voie să consume un id (ar lăsa goluri).
+- **src/cache.js** — memo PER FIRMĂ pentru rutele scumpe (azi doar `/api/dashboard`). Validitatea
+  stă pe `db.dataRev()` (revizie globală avansată la fiecare `save()`/`restore`/`load`) + ziua
+  curentă. Invalidarea e **globală, deliberat**: corectă prin construcție, fără a inventaria căile
+  de scriere. Valoarea e partajată între cereri — **nu o muta**; câmpurile per utilizator se
+  suprapun pe o copie, iar calculul folosește `db.scoped(fid)`, nu `S(req)` (altfel rezultatul ar
+  depinde de cine cere). Diagnostic: antet `X-Dashboard-Cache` + `cache` în `/api/metrics`.
 - **Observabilitate** — `src/log.js` (structurat, reqId), `src/metrics.js` + `GET /api/metrics`
   (admin: durate pe rută, `recentErrors`, starea joburilor, proces). `/api/health` e PUBLIC și
   **intenționat minimal** — există test negativ care blochează orice câmp de diagnostic pe el.

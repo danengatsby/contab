@@ -927,6 +927,37 @@ async function main() {
     const reLog = await req('POST', '/api/login', { body: { username: 'user1', password: 'parola1' } });
     ok('persistat intre sesiuni: ascuns si dupa o autentificare noua', (await req('GET', '/api/dashboard', { cookie: reLog.cookie })).json.primiiPasi.wizardAscuns === true);
 
+    // ── Memo-ul dashboard-ului (src/cache.js): raspuns identic pe hit, invalidat de orice scriere ──
+    {
+      const dash = (ck) => fetch(BASE + '/api/dashboard', { headers: { Cookie: ck } });
+      const r1 = await dash(c1); const j1 = await r1.json();
+      const r2 = await dash(c1); const j2 = await r2.json();
+      ok('dashboard: a doua cerere fara scriere e servita din memo', r2.headers.get('x-dashboard-cache') === 'hit');
+      eq('dashboard: hit-ul intoarce EXACT acelasi continut', JSON.stringify(j2), JSON.stringify(j1));
+      // wizardAscuns e PER UTILIZATOR: se suprapune dupa memo, deci hit-ul nu il poate imprumuta
+      // de la alt cont. user1 l-a ascuns mai sus; adminul (alta firma activa, alt cont) nu.
+      // (adminul e pe ACEEASI firma 1 — cazul tare: memo comun, camp per utilizator diferit)
+      const laC = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
+      const jA = await (await dash(laC.cookie)).json();
+      ok('dashboard: wizardAscuns ramane per utilizator, nu vine din memo', jA.primiiPasi.wizardAscuns === false && j2.primiiPasi.wizardAscuns === true);
+      ok('dashboard: restul cifrelor sunt aceleasi pentru ambii (memo comun pe firma)', jA.venituri === j2.venituri && jA.soldClienti === j2.soldClienti);
+      // izolarea pe firma: memo-ul e cheiat pe firmaId — firma 2 nu poate primi raspunsul firmei 1
+      const j2f = await (await fetch(BASE + '/api/dashboard?firma=2', { headers: { Cookie: laC.cookie } })).json();
+      ok('dashboard: alta firma primeste propriile cifre, nu pe ale firmei 1',
+        j2f.primiiPasi.nrInregistrari !== j2.primiiPasi.nrInregistrari || j2f.venituri !== j2.venituri);
+      // INVALIDARE: o scriere (articol nou) schimba cifrele, deci memo-ul nu are voie sa supravietuiasca
+      const inainte = j2.primiiPasi.nrInregistrari;
+      const nouM = await req('POST', '/api/entries', {
+        cookie: c1,
+        body: { tip: 'incasare_client', fields: { data: '2026-06-28', partener: 'Client Memo', suma: 111, cont: '5311' } },
+      });
+      eq('scriere de control acceptata', nouM.status, 200);
+      const r3 = await dash(c1); const j3 = await r3.json();
+      ok('dashboard: dupa scriere e recalculat (miss)', r3.headers.get('x-dashboard-cache') === 'miss');
+      ok('dashboard: cifrele reflecta scrierea (nu raspuns invechit)', j3.primiiPasi.nrInregistrari === inainte + 1);
+      ok('dashboard: reintra in memo dupa recalculare', (await dash(c1)).headers.get('x-dashboard-cache') === 'hit');
+    }
+
     // ── Rapoarte dedicate: fisa de cont, situatie aprovizionari, situatie consumuri ──
     const fcH = await req('GET', '/api/fisa-cont?cont=4111&period=2026-06', { cookie: c1 });
     ok('fisa de cont 4111: raspuns cu miscari', fcH.json && fcH.json.cont === '4111' && Array.isArray(fcH.json.rows));

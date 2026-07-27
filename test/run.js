@@ -3561,6 +3561,61 @@ section('Ordine cronologica: colator natural refolosit + ultimele N fara sortare
   eq('lastEntries nu depinde de ordinea din colectie', idsOf(acc.lastEntries([...rnd].reverse(), 5)), idsOf(acc.lastEntries(rnd, 5)));
 }
 
+section('Memo per firma pentru rutele scumpe (src/cache.js)');
+{
+  const cache = require('../src/cache');
+  cache.clear();
+  let calcule = 0;
+  const calc = (marca) => () => { calcule += 1; return { marca, n: calcule }; };
+  const revInainte = db.dataRev();
+  ok('db expune revizia de scriere (numar)', typeof revInainte === 'number');
+
+  const m1 = cache.memo('t', 1, calc('firma1'));
+  ok('prima cerere: miss, se calculeaza', m1.hit === false && m1.value.marca === 'firma1' && calcule === 1);
+  const m2 = cache.memo('t', 1, calc('firma1'));
+  ok('a doua cerere, fara scriere: hit, NU se recalculeaza', m2.hit === true && calcule === 1);
+  ok('hit-ul intoarce exact aceeasi valoare', m2.value === m1.value);
+
+  // izolarea pe firma: cheia include firmaId, deci firma 2 nu vede valoarea firmei 1
+  const m3 = cache.memo('t', 2, calc('firma2'));
+  ok('alta firma: miss propriu, valoare proprie', m3.hit === false && m3.value.marca === 'firma2');
+  ok('firma 1 ramane cachetata separat', cache.memo('t', 1, calc('firma1')).value.marca === 'firma1');
+  // ...si nume diferite de raport nu se amesteca intre ele
+  ok('alt nume de raport: cheie diferita', cache.memo('altul', 1, calc('alt')).hit === false);
+
+  // INVALIDAREA: orice db.save() avanseaza revizia -> toate memo-urile devin invalide
+  const inainte = calcule;
+  db.save();
+  ok('db.save() avanseaza revizia', db.dataRev() > revInainte);
+  const dupaScriere = cache.memo('t', 1, calc('firma1-nou'));
+  ok('dupa scriere: miss, se recalculeaza', dupaScriere.hit === false && calcule === inainte + 1);
+  ok('valoarea noua o inlocuieste pe cea veche', dupaScriere.value.marca === 'firma1-nou');
+  ok('si celelalte firme au fost invalidate', cache.memo('t', 2, calc('firma2')).hit === false);
+
+  // a doua dimensiune de validitate: ZIUA (agregate care depind de „azi", ex. termenul e-Factura)
+  {
+    const realDate = Date;
+    cache.clear(); calcule = 0;
+    cache.memo('zi', 1, calc('azi'));
+    ok('acelasi moment: hit', cache.memo('zi', 1, calc('azi')).hit === true);
+    const maine = new realDate(realDate.now() + 26 * 3600 * 1000);
+    global.Date = class extends realDate { constructor(...a) { super(...(a.length ? a : [maine])); } static now() { return maine.getTime(); } };
+    const dupaZi = cache.memo('zi', 1, calc('maine'));
+    global.Date = realDate;
+    ok('a doua zi, fara nicio scriere: miss (agregatele depind de azi)', dupaZi.hit === false);
+  }
+
+  // plafon de memorie: LRU, nu crestere nelimitata
+  cache.clear();
+  for (let i = 0; i < cache.MAX_ENTRIES + 10; i++) cache.memo('lru', i, calc('f' + i));
+  ok('plafon LRU respectat', cache.stats().entries === cache.MAX_ENTRIES);
+
+  cache.clear();
+  const s0 = cache.stats();
+  ok('stats: golit, dar contoarele raman cumulative', s0.entries === 0 && s0.hits > 0 && s0.misses > 0);
+  ok('stats: rata de hit intre 0 si 1', s0.hitRate > 0 && s0.hitRate <= 1);
+}
+
 section('Service layer firme: autorizarea dublata (src/firmeService.js)');
 const fsvc = require('../src/firmeService');
 const fidPrima = dbx.firme[0].id;
