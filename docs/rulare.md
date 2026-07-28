@@ -34,6 +34,12 @@ litere, serie proprie), iar utilizatorii pot primi **drepturi granulare** (doar-
 
 **Teste automate** (`npm test`) — numărul curent de verificări îl afișează chiar suita, deci nu îl
 fixăm aici (ar drifta la fiecare test nou; există o poartă în `test/run.js` care impune asta).
+Fiecare suită rulează **independent** (`scripts/run-all.js`): una picată nu le mai oprește pe
+următoarele, iar la final se raportează toate, cu totalul de verificări și codul de ieșire 1 dacă
+vreuna a căzut. Înlănțuirea veche cu `&&` se oprea la prima suită roșie și ascundea tăcut restul —
+inclusiv toată integrarea HTTP — ceea ce făcea ca „o problemă mică" să însemne, de fapt, „două
+treimi din suită nu au rulat". Suitele care se sar motivat (`test/store-pg.js` fără `CONTAB_PG_URL`)
+se raportează distinct: **sărit nu e trecut**.
 Rulează, în ordine: verificarea sintaxei tuturor fișierelor (`npm run lint`), garda pe baza reală
 (`test/db-guard.js`), sesiuni/auth, **verificările de module** (`test/run.js`, pe date construite
 pur, fără a atinge `data/db.json`), extractorul, **logica pură de frontend** (`test/frontend.mjs`),
