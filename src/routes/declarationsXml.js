@@ -78,7 +78,10 @@ module.exports = function register(app, ctx) {
     if (!requireVatPayer(v, res)) return;
     recordDecl(req, 'd300', req.query.period);
     const pd300 = acc.vatPeriod(v.company, req.query.period || null); // agrega trimestrul la regim 'T'
-    sendXml(res, xml.d300Xml(v.company, pd300, rep.d300(v, pd300), declarantOf(req)), 'd300.xml');
+    // `?dupaRezerva=1` pune temei=2 (art. 105 alin. (6) CPF). D300 nu are steag de rectificare:
+    // decontul corectat se redepune ca atare — vezi nota din src/declarations.js.
+    sendXml(res, xml.d300Xml(v.company, pd300, rep.d300(v, pd300), declarantOf(req),
+      { dupaRezerva: req.query.dupaRezerva === '1' }), 'd300.xml');
   });
   app.get('/xml/d394', (req, res) => {
     const v = S(req);
@@ -153,7 +156,13 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     const period = req.query.period || new Date().toISOString().slice(0, 7);
     recordDecl(req, 'd112', period);
-    sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarantOf(req)), 'd112-' + period + '.xml');
+    // Steagul de rectificare se DERIVA din istoricul depunerilor, nu se cere din interfata: daca
+    // exista deja o depunere pe perioada, urmatorul XML e rectificativ prin definitie. O bifa
+    // manuala ar putea fi uitata, si D112-ul ar pleca la ANAF ca declaratie initiala.
+    const recD112 = decl.find(db.get(), activeId(req), 'd112', period);
+    const depusaDeja = !!decl.lastSubmission(recD112);
+    sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarantOf(req),
+      { rectificativa: depusaDeja, tipRec: req.query.tipRec }), 'd112-' + period + '.xml');
   });
   app.get('/xml/saft', wrap(async (req, res) => {
     const v = S(req);

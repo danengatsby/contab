@@ -6,6 +6,7 @@
 
 const decl = require('../declarations');
 const plans = require('../plans');
+const rep = require('../reporting');
 
 module.exports = function register(app, ctx) {
   const { db, S, activeId, allowedFirme, logAudit } = ctx;
@@ -14,6 +15,64 @@ module.exports = function register(app, ctx) {
     const period = req.query.period || new Date().toISOString().slice(0, 7);
     if (!/^\d{4}-\d{2}$/.test(period)) return res.status(400).json({ error: 'Perioada invalida (YYYY-MM).' });
     res.json({ period, rows: decl.registerForFirma(db.get(), S(req), period) });
+  });
+
+  // ── Declaratii rectificative ────────────────────────────────────────────
+  // Cifrele-cheie ale unei depuneri, ca sa se poata arata DIFERENTA la rectificativa. Fara ele,
+  // istoricul ar spune „s-a mai depus o data", fara sa spuna CE s-a schimbat.
+  function sumeCheie(view, tip, period) {
+    try {
+      if (tip === 'd300') { const x = rep.d300(view, period); return { tvaColectata: x.tvaColectata, tvaDeductibila: x.tvaDeductibila, tvaDePlata: x.tvaDePlata, tvaDeRecuperat: x.tvaDeRecuperat }; }
+      if (tip === 'd112') { const x = rep.d112(view, period); const t = x.totals || {}; return { brut: t.brut, impozit: t.impozit, cas: t.cas, cass: t.cass, cam: t.cam }; }
+      if (tip === 'd394') { const x = rep.d300(view, period); return { tvaColectata: x.tvaColectata, tvaDeductibila: x.tvaDeductibila }; }
+    } catch (e) { /* raportul nu se poate calcula: istoricul ramane fara sume, nu pica depunerea */ }
+    return null;
+  }
+
+  app.get('/api/declarations/istoric', (req, res) => {
+    const { tip, period } = req.query;
+    if (!decl.TIPURI[tip]) return res.status(400).json({ error: 'Tip de declaratie necunoscut.' });
+    if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return res.status(400).json({ error: 'Perioada invalida (YYYY-MM).' });
+    const rec = decl.find(db.get(), activeId(req), tip, period);
+    const depuneri = (rec && rec.depuneri) || [];
+    // Diferenta fata de ultima depunere, calculata pe datele DE ACUM: asta ar depune utilizatorul.
+    const ultima = decl.lastSubmission(rec);
+    const acum = { sume: sumeCheie(S(req), tip, period) };
+    res.json({
+      tip, period, depuneri,
+      semnalizataInXml: !!decl.RECT_IN_XML[tip],
+      diferenta: ultima ? decl.submissionDiff(ultima, acum) : [],
+    });
+  });
+
+  app.post('/api/declarations/rectificativa', (req, res) => {
+    const b = req.body || {};
+    if (!decl.TIPURI[b.tip]) return res.status(400).json({ error: 'Tip de declaratie necunoscut.' });
+    if (!/^\d{4}-\d{2}$/.test(String(b.period || ''))) return res.status(400).json({ error: 'Perioada invalida (YYYY-MM).' });
+    const d = db.get();
+    const fid = activeId(req);
+    const rec = decl.find(d, fid, b.tip, b.period);
+    if (!rec || !decl.lastSubmission(rec)) {
+      return res.status(400).json({ error: 'Nu exista o depunere anterioara pe ' + b.period + ': depune declaratia normal, nu rectificativ.' });
+    }
+    // Perioada inchisa NU blocheaza rectificativa — asta e chiar scopul ei — dar cere MOTIV SCRIS,
+    // pe modelul fortarii inchiderii lunare. Fara motiv, corectia peste o luna deja raportata ar
+    // fi invizibila la orice control ulterior.
+    const firma = db.getFirma(fid) || {};
+    const inchisa = firma.lockedUntil && String(b.period) <= String(firma.lockedUntil);
+    const motiv = String(b.motiv || '').trim();
+    if (inchisa && motiv.length < 5) {
+      return res.status(400).json({ error: 'Perioada ' + b.period + ' este inchisa. Rectificativa e permisa, dar cere un motiv scris (minim 5 caractere).' });
+    }
+    const r = decl.addSubmission(d, fid, b.tip, b.period, {
+      motiv, de: req.user.username, tipRec: b.tipRec,
+      sume: sumeCheie(S(req), b.tip, b.period),
+    }, db.nextId);
+    logAudit('declaratie.rectificativa', b.tip.toUpperCase() + ' ' + b.period
+      + ' — depunerea #' + r.depunere.ordinal + (inchisa ? ' (perioada inchisa)' : '')
+      + (motiv ? ': ' + motiv : ''), { req });
+    db.save();
+    res.json({ ok: true, depunere: r.depunere, depuneri: r.rec.depuneri, semnalizataInXml: !!decl.RECT_IN_XML[b.tip] });
   });
 
   app.post('/api/declarations/set', (req, res) => {
@@ -25,6 +84,18 @@ module.exports = function register(app, ctx) {
     decl.record(d, activeId(req), b.tip, b.period, {
       status: b.status, recipisa: b.recipisa, note: b.note, updatedBy: req.user.username,
     }, db.nextId);
+    // Marcarea „depusa" SEEDEAZA prima depunere in istoric. Fara asta cele doua mecanisme ar fi
+    // deconectate: registrul ar sti ca declaratia e depusa, dar ruta de rectificativa n-ar gasi
+    // nicio depunere anterioara si ar refuza corectia. Doar PRIMA — redepunerile trec prin
+    // /api/declarations/rectificativa, care cere motiv pe perioada inchisa.
+    if (b.status === 'depusa') {
+      const recSet = decl.find(d, activeId(req), b.tip, b.period);
+      if (!decl.lastSubmission(recSet)) {
+        decl.addSubmission(d, activeId(req), b.tip, b.period, {
+          de: req.user.username, sume: sumeCheie(S(req), b.tip, b.period),
+        }, db.nextId);
+      }
+    }
     logAudit('declaratie.status', b.tip.toUpperCase() + ' ' + b.period + ' → ' + b.status + (b.recipisa ? ' (recipisa ' + b.recipisa + ')' : ''), { req });
     // Declaratie DEPUSA => perioada se blocheaza automat (luna raportata nu se mai editeaza;
     // corectiile ulterioare se fac prin stornare in luna curenta). Deblocare: Setari -> Blocare perioada.

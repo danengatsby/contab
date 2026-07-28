@@ -137,6 +137,74 @@ function record(d, firmaId, tip, period, patch, nextIdFn) {
   return rec;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  DECLARATII RECTIFICATIVE
+//
+//  Sondajul pe validatoarele oficiale (metoda „validatorul ca oracol") a aratat ca cele trei
+//  declaratii NU se comporta la fel — si ca doua dintre ele nu au niciun steag in XML:
+//
+//    D112 — SEMNALIZATA in XML: `d_rec="1"` + `tip_rec="N"`. Regula A3b a validatorului:
+//           daca d_rec=1, tip_rec nu poate fi 5. Daca d_rec=0, tip_rec nu se completeaza deloc.
+//    D300 — FARA steag. Rectificarea e o redepunere a decontului pe aceeasi perioada. Singurul
+//           camp inrudit e `temei`, cu lista {0, 2} (1 si 3 respinse la sondaj): temeiul legal
+//           cand decontul se depune DUPA anularea rezervei verificarii ulterioare.
+//    D394 — FARA steag, zero aparitii ale notiunii in tot validatorul. Rectificarea e o
+//           redepunere completa.
+//
+//  Consecinta de proiectare: „rectificativa" e in primul rand o stare a APLICATIEI (a cata
+//  depunere, de ce, ce s-a schimbat), nu un camp XML. De aceea istoricul de mai jos e tinut
+//  pentru toate trei, iar XML-ul primeste steag doar unde exista.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Tipurile care poarta un steag de rectificare in XML (restul se redepun ca atare). */
+const RECT_IN_XML = { d112: true };
+
+/**
+ * Inregistreaza o depunere noua peste (firmaId, tip, period). NU suprascrie: adauga in istoric.
+ * Prima depunere are ordinal 1 si nu e rectificativa; urmatoarele sunt rectificative.
+ * `motiv` e obligatoriu cand perioada e inchisa — vezi garda din serviciu.
+ */
+function addSubmission(d, firmaId, tip, period, info, nextIdFn) {
+  const rec = record(d, firmaId, tip, period, {}, nextIdFn);
+  if (!rec) return null;
+  rec.depuneri = Array.isArray(rec.depuneri) ? rec.depuneri : [];
+  const ordinal = rec.depuneri.length + 1;
+  const dep = {
+    ordinal,
+    rectificativa: ordinal > 1,
+    ts: (info && info.ts) || new Date().toISOString(),
+    motiv: String((info && info.motiv) || '').slice(0, 500),
+    de: (info && info.de) || '',
+    // Sumele-cheie la momentul depunerii: fara ele nu se poate arata DIFERENTA fata de depunerea
+    // anterioara, iar o rectificativa fara diferenta vizibila nu se poate verifica de nimeni.
+    sume: (info && info.sume) || null,
+    tipRec: (info && info.tipRec != null) ? Number(info.tipRec) : null,
+  };
+  rec.depuneri.push(dep);
+  rec.status = 'depusa';
+  rec.submittedAt = dep.ts;
+  rec.updatedAt = dep.ts;
+  return { rec, depunere: dep };
+}
+
+/** Ultima depunere (sau null), pentru diferenta la urmatoarea rectificativa. */
+function lastSubmission(rec) {
+  const list = (rec && Array.isArray(rec.depuneri)) ? rec.depuneri : [];
+  return list.length ? list[list.length - 1] : null;
+}
+
+/** Diferenta dintre sumele a doua depuneri, pe cheile comune (doar valorile schimbate). */
+function submissionDiff(prev, curr) {
+  const a = (prev && prev.sume) || {}; const b = (curr && curr.sume) || {};
+  const chei = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort();
+  const out = [];
+  for (const k of chei) {
+    const va = Number(a[k]) || 0; const vb = Number(b[k]) || 0;
+    if (va !== vb) out.push({ cheie: k, inainte: va, dupa: vb, delta: Math.round((vb - va) * 100) / 100 });
+  }
+  return out;
+}
+
 /** Registrul unei firme pe o luna: asteptate ∪ inregistrari, cu termen si restanta. */
 function registerForFirma(d, v, period, today) {
   const t = today || new Date().toISOString().slice(0, 10);
@@ -231,4 +299,5 @@ function notifications(d, scopedList, today, days, lookback) {
   return { count: items.length, items };
 }
 
-module.exports = { TIPURI, STATUSES, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays };
+module.exports = { TIPURI, STATUSES, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays,
+  addSubmission, lastSubmission, submissionDiff, RECT_IN_XML };

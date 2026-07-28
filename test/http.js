@@ -445,6 +445,31 @@ async function main() {
     const d300v2 = set.json && set.json.rows.find((r) => r.tip === 'd300');
     ok('registru: marcare depusa cu recipisa', d300v2 && d300v2.status === 'depusa' && d300v2.recipisa === 'R1');
     eq('marcarea depusa a blocat automat luna', set.json.locked, '2026-06');
+    // ── Declaratii rectificative ──────────────────────────────────────────
+    // Perioada e ACUM inchisa (marcarea „depusa" de mai sus a blocat-o automat) — exact contextul
+    // in care se depune o rectificativa in practica.
+    const rectFaraMotiv = await req('POST', '/api/declarations/rectificativa', { cookie: c1, body: { tip: 'd300', period: '2026-06' } });
+    eq('rectificativa pe perioada inchisa FARA motiv -> 400', rectFaraMotiv.status, 400);
+    ok('mesajul explica ca rectificativa e permisa, dar cere motiv',
+      /motiv/i.test((rectFaraMotiv.json || {}).error || ''));
+    const rectOk = await req('POST', '/api/declarations/rectificativa', { cookie: c1, body: { tip: 'd300', period: '2026-06', motiv: 'factura de la furnizor primita dupa depunere' } });
+    eq('rectificativa cu motiv scris -> 200', rectOk.status, 200);
+    eq('e a doua depunere pe perioada', rectOk.json.depunere.ordinal, 2);
+    ok('depunerea e marcata rectificativa', rectOk.json.depunere.rectificativa === true);
+    ok('D300 nu poarta steag in XML (redepunere)', rectOk.json.semnalizataInXml === false);
+    // Pe un tip fara depunere anterioara nu exista „rectificativa" — e o depunere normala.
+    const rectFaraBaza = await req('POST', '/api/declarations/rectificativa', { cookie: c1, body: { tip: 'd390', period: '2026-06', motiv: 'oarecare' } });
+    eq('rectificativa fara depunere anterioara -> 400', rectFaraBaza.status, 400);
+    // Istoricul e vizibil si nu se pierde
+    const ist = await req('GET', '/api/declarations/istoric?tip=d300&period=2026-06', { cookie: c1 });
+    eq('istoricul are ambele depuneri', ist.json.depuneri.length, 2);
+    ok('istoricul pastreaza motivul', /furnizor/.test(ist.json.depuneri[1].motiv));
+    // Auditul consemneaza rectificativa (altfel corectia peste o luna raportata ar fi invizibila)
+    const auditRect = await req('GET', '/api/audit', { cookie: c1 });
+    const listaAudit = Array.isArray(auditRect.json) ? auditRect.json : (auditRect.json.items || []);
+    ok('rectificativa apare in jurnalul de audit',
+      listaAudit.some((a) => a.action === 'declaratie.rectificativa'));
+
     // deblocam (admin) — fluxul de test completeaza intentionat date in iunie in continuare
     const laLock = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     ok('deblocarea perioadei (admin) reuseste', (await req('POST', '/api/period-lock', { cookie: laLock.cookie, body: { lockedUntil: null } })).status === 200);
