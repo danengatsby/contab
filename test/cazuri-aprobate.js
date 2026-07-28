@@ -36,6 +36,7 @@ const fiscal = require('../src/fiscal');
 const cfg = require('../src/fiscalConfig');
 const { statePlata } = require('../src/payroll');
 const deduct = require('../src/deductibilitate');
+const assets = require('../src/assets');
 
 /** Istoric de state postate (pentru mediile de concediu): `luni` luni cu acelasi brut. */
 function istoric(id, luni, brut) {
@@ -395,6 +396,39 @@ const CAZURI = [
       + 'care aici ar da 6.030.000 si un nedeductibil de 13.970.000. De asemenea: baza de calcul foloseste '
       + 'amortizarea fiscala, care azi coincide cu cea contabila (vezi itemul separat din backlog), iar '
       + 'diferentele de curs aferente imprumuturilor NU sunt incluse in costul excedentar.',
+    aprobare: null,
+  },
+  {
+    id: 'PLF-06', arie: 'Plafoane de deductibilitate (impozit pe profit)',
+    titlu: 'Amortizare fiscala diferita de cea contabila — ajustarea in ambele sensuri',
+    temei: 'Art. 28 Cod fiscal — amortizarea fiscala se calculeaza separat de cea contabila; '
+      + 'diferenta ajusteaza rezultatul fiscal al exercitiului',
+    intrare: { cost: 36000, durataLuni: 36, metodaContabila: 'liniara', metodaFiscala: 'accelerata',
+      dataPif: '2025-12-15' },
+    asteptat: { contabil2026: 12000, fiscal2026: 18000, ajustare2026: -6000, ajustare2027: 3000, sumaPeDurata: 0 },
+    calc: (i) => {
+      const mf = { id: 'x', cont: '2131', cost: i.cost, valoareReziduala: 0, dataPif: i.dataPif,
+        durataLuni: i.durataLuni, metoda: i.metodaContabila, metodaFiscala: i.metodaFiscala };
+      let s = 0;
+      for (const an of ['2025', '2026', '2027', '2028', '2029']) {
+        s = Math.round((s + assets.depreciationDifference([mf], an).diferenta) * 100) / 100;
+      }
+      return {
+        contabil2026: assets.annualFor(mf, '2026', false),
+        fiscal2026: assets.annualFor(mf, '2026', true),
+        ajustare2026: assets.depreciationDifference([mf], '2026').diferenta,
+        ajustare2027: assets.depreciationDifference([mf], '2027').diferenta,
+        sumaPeDurata: s,
+      };
+    },
+    observatii: 'Semnul: ajustare NEGATIVA = deducere suplimentara (amortizarea fiscala e mai mare), '
+      + 'POZITIVA = nedeductibil. Invariantul verificat separat in suita: suma ajustarilor pe toata '
+      + 'durata de viata e ZERO — regula muta deducerea intre exercitii, nu o creeaza. '
+      + 'DE CONFIRMAT: (1) metoda accelerata e implementata ca 50% in primele 12 LUNI, apoi liniar pe '
+      + 'restul duratei — de verificat fata de art. 28 alin. (6) si HG 2139/2004; (2) partea contabila '
+      + 'a ajustarii vine din rulajul REAL al contului 6811, nu din plan, deci o amortizare '
+      + 'neinregistrata sau inregistrata gresit se vede ca diferenta fiscala; (3) aplicatia nu trateaza '
+      + 'inca regimul fiscal special la casare/cedare inainte de amortizarea integrala.',
     aprobare: null,
   },
 ];

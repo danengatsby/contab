@@ -2331,6 +2331,64 @@ section('Plafoane de deductibilitate (art. 25 / 40^2) — src/deductibilitate.js
   ok('niciun cont nu e citit si de motor, si de tabela de procente fixe', suprapuse.length === 0);
 }
 
+section('Amortizare fiscala separata de cea contabila (art. 28)');
+{
+  const P = require('../src/fiscalConfig').RATES;
+  const deduct = require('../src/deductibilitate');
+  // Acelasi mijloc fix: liniar contabil (36 luni), accelerat fiscal (50% in primul an).
+  const mf = { id: 'mf1', denumire: 'Utilaj', cont: '2131', cost: 36000, valoareReziduala: 0,
+    dataPif: '2025-12-15', durataLuni: 36, metoda: 'liniara', metodaFiscala: 'accelerata' };
+
+  ok('activul are plan fiscal diferit', assets.hasFiscalPlan(mf));
+  ok('fara campuri fiscale, planul e IDENTIC (fallback, fara migrare)',
+    !assets.hasFiscalPlan({ durataLuni: 36, metoda: 'liniara' }));
+  // Vederea fiscala nu atinge activul original (altfel planul contabil s-ar corupe tacit).
+  assets.fiscalView(mf);
+  eq('fiscalView nu muteaza activul', mf.metoda, 'liniara');
+
+  const c2026 = assets.annualFor(mf, '2026', false);
+  const f2026 = assets.annualFor(mf, '2026', true);
+  eq('contabil 2026: 12 luni x 1000 = 12.000', c2026, 12000);
+  eq('fiscal 2026 (accelerat): 50% din 36.000 in primele 12 luni = 18.000', f2026, 18000);
+  const d1 = assets.depreciationDifference([mf], '2026');
+  eq('anul 1: fiscala > contabila -> diferenta NEGATIVA (deducere)', d1.diferenta, -6000);
+  ok('anul 1: se raporteaza ca diferenta', d1.areDiferenta);
+  const d2 = assets.depreciationDifference([mf], '2027');
+  // an 2 contabil 12.000; fiscal: restul de 18.000 pe 24 de luni = 9.000/an
+  eq('anul 2: contabila > fiscala -> diferenta POZITIVA (nedeductibil)', d2.diferenta, 3000);
+
+  // INVARIANTUL CENTRAL: pe toata durata, ajustarile se anuleaza. Amortizarea fiscala MUTA
+  // deducerea intre exercitii, nu o creeaza si nu o distruge. Daca suma nu e zero, undeva se
+  // pierde sau se inventeaza deducere — cel mai grav defect posibil al acestei reguli.
+  let sumaDif = 0; let sumaC = 0; let sumaF = 0;
+  for (const an of ['2025', '2026', '2027', '2028', '2029']) {
+    const d = assets.depreciationDifference([mf], an);
+    sumaDif = Math.round((sumaDif + d.diferenta) * 100) / 100;
+    sumaC = Math.round((sumaC + d.contabilaPlan) * 100) / 100;
+    sumaF = Math.round((sumaF + d.fiscala) * 100) / 100;
+  }
+  ok('suma diferentelor pe toata durata = 0 (deducerea se muta, nu se creeaza)', sumaDif === 0);
+  ok('ambele planuri amortizeaza exact costul (36.000)', sumaC === 36000 && sumaF === 36000);
+
+  // Amortizarea contabila REALA (rulajul 6811) inlocuieste planul: registrul fiscal porneste de la
+  // ce s-a inregistrat efectiv, nu de la ce ar fi trebuit.
+  const dReal = assets.depreciationDifference([mf], '2026', 11500);
+  eq('rulajul real al lui 6811 bate planul contabil', dReal.contabila, 11500);
+  eq('planul contabil ramane vizibil separat', dReal.contabilaPlan, 12000);
+  eq('diferenta se calculeaza fata de cifra REALA', dReal.diferenta, -6500);
+
+  // Regula in motor: singura care poate da nedeductibil NEGATIV (= deducere).
+  const aj = deduct.ajustari({ rulaj: {}, profitContabil: 0, amortizare: { contabila: 12000, fiscala: 18000 } }, P);
+  const rA = aj.randuri.find((x) => x.regula === 'Amortizare (contabila vs fiscala)');
+  eq('motor: diferenta negativa intra ca deducere', rA.nedeductibil, -6000);
+  eq('motor: totalul scade cu deducerea', aj.totalNedeductibil, -6000);
+  const aj2 = deduct.ajustari({ rulaj: {}, profitContabil: 0, amortizare: { contabila: 12000, fiscala: 9000 } }, P);
+  eq('motor: diferenta pozitiva intra ca nedeductibil', aj2.totalNedeductibil, 3000);
+  const aj0 = deduct.ajustari({ rulaj: {}, profitContabil: 0, amortizare: { contabila: 12000, fiscala: 12000 } }, P);
+  ok('planuri identice -> NICIUN rand de ajustare (nu se inventeaza zerouri)',
+    !aj0.randuri.some((x) => x.regula === 'Amortizare (contabila vs fiscala)'));
+}
+
 section('Productie (consum materiale + obtinere produse finite)');
 const prodMod = require('../src/production');
 const prodProducts = [{ id: 'PF', cont: '345', cod: 'PF1', denumire: 'Masa', um: 'buc' }, { id: 'MAT', cont: '301', cod: 'M1', denumire: 'Cherestea', um: 'mc' }];

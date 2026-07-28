@@ -5,6 +5,7 @@ const fiscal = require('./fiscal');
 const coa = require('./chartOfAccounts');
 const acc = require('./accounting');
 const deduct = require('./deductibilitate');
+const assets = require('./assets');
 const fiscalProfile = require('./fiscalProfile'); // regimul firmei (micro/profit) pentru livrabile
 const stmt = require('./statements');
 const { reconcile } = require('./reconcile');
@@ -448,10 +449,18 @@ function registruFiscal(db, year, cota, opts) {
       venituriNeimpozabile = round2(venituriNeimpozabile + suma);
     }
   }
-  // Amortizare: contabila vs fiscala (art. 28) — in aplicatie coincid (aceeasi metoda)
+  // Amortizare: contabila (rulajul REAL al contului 6811) vs fiscala (planul fiscal al fiecarui
+  // mijloc fix). Nu mai e o ipoteza: daca planurile difera, diferenta devine ajustare.
   const amortContabila = r['6811'] ? round2(r['6811'].d - r['6811'].c) : 0;
+  const amortDif = assets.depreciationDifference(db.assets || [], year, amortContabila);
   const mentiuni = [];
-  if (amortContabila > 0) mentiuni.push('Art. 28: amortizarea fiscala = amortizarea contabila (' + amortContabila + ' lei), integral deductibila — nicio diferenta.');
+  if (amortContabila > 0 || amortDif.fiscala > 0) {
+    mentiuni.push(amortDif.areDiferenta
+      ? 'Art. 28: amortizare contabila ' + amortDif.contabila + ' lei vs fiscala ' + amortDif.fiscala
+        + ' lei — diferenta de ' + Math.abs(amortDif.diferenta) + ' lei '
+        + (amortDif.diferenta > 0 ? 'e nedeductibila' : 'e deducere suplimentara') + ' in acest exercitiu.'
+      : 'Art. 28: amortizarea fiscala = amortizarea contabila (' + amortContabila + ' lei), integral deductibila — nicio diferenta.');
+  }
   const rezultatContabil = pl.rezBrut;
   // Ajustarile CU PLAFON (art. 25/40^2), calculate din conturi — separate de tabela de procente
   // fixe de mai sus, care acopera doar cheltuielile integral nedeductibile. Nu se suprapun:
@@ -461,7 +470,8 @@ function registruFiscal(db, year, cota, opts) {
     rulaj: r, profitContabil: rezultatContabil,
     cheltAuto: cheltuieliAuto(db, year),
     cheltImpozitProfit: r['691'] ? round2(r['691'].d - r['691'].c) : 0,
-    amortizareFiscala: amortContabila,
+    amortizare: amortDif,
+    amortizareFiscala: amortDif.fiscala, // baza art. 40^2 foloseste amortizarea FISCALA
     cursEur: opts.cursEur,
     rezultatFiscalInainteDobanzi: round2(rezultatContabil + totalNeded - venituriNeimpozabile),
   }, plafoane) : { randuri: [], totalNedeductibil: 0, sponsorizareCheltuita: 0 };
