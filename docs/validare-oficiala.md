@@ -8,10 +8,19 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-07-27
+## Ultima verificare: 2026-07-28
 
 Rulată pe datele exemplului integrat (`npm run seed` — S.C. EXEMPLU PROD S.R.L.), cu
 validatoarele curente din manifestul oficial ANAF (`versiuni.xml`).
+
+Declanșată de hook-ul `pre-push` la publicarea unei serii de commit-uri care atingeau
+`src/bilant.js`, `src/stocks.js` și `src/xml.js`. Toate cele 15 ieșiri au trecut: cele 7 declarații,
+SAF-T în cele patru variante (L/T/A/C), cele 3 formulare de situații financiare și e-Transport.
+
+Versiunile din tabel au fost **reconfirmate în aceeași zi** față de manifestul live, nu copiate din
+intrarea precedentă: niciuna nu se schimbase. Jar-urile care au rulat efectiv erau descărcate în
+26–28 iulie, deci în fereastra de reîmprospătare de 7 zile a validatorului — nu s-a validat cu o
+copie învechită.
 
 | Declarație | Schemă (namespace)                          | Validator ANAF | Rezultat |
 |-----------|----------------------------------------------|----------------|----------|
@@ -189,10 +198,10 @@ obligatorie în CI pe push, deci ocolirea se vede.
 Cele două mecanisme sunt complementare: protecția de repo acoperă PR-urile (dependabot), hook-ul
 acoperă calea proprie.
 
-Schema e-Transport nu se ține în repo (ANAF o actualizează; s-ar învechi) — CI o ia din
-variabila de repo `CONTAB_ETRANSPORT_XSD` (*Settings → Secrets and variables → Actions →
-Variables*). **Nesetată, poarta blochează** orice schimbare fiscală: e-Transport iese
-`NEVERIFICAT`.
+Schema e-Transport e **versionată în repo** (vezi „Unde stă schema e-Transport" mai sus), deci CI
+o găsește fără nicio variabilă de mediu — inclusiv pe un runner efemer. `CONTAB_ETRANSPORT_XSD`
+rămâne doar suprascrierea pentru probe (cale sau URL). Dacă schema lipsește **și** variabila nu e
+setată, poarta blochează orice schimbare fiscală: e-Transport iese `NEVERIFICAT`.
 
 Local, fără detecția de cale: `sh scripts/valideaza-referinte.sh` (generează + validează tot).
 
@@ -212,7 +221,8 @@ CONTAB_ETRANSPORT_XSD=/cale/eTransport.xsd \
   scripts/valideaza-etransport.sh fișier.xml     # 0 = valid, 1 = erori (afișate), 2 = folosire/schemă lipsă
 ```
 
-Schema **nu** e livrată în repo (ANAF o actualizează periodic; s-ar învechi) — de aceea se indică
-prin `CONTAB_ETRANSPORT_XSD` (cale locală sau URL, cu `.zip` dezarhivat automat). Pre-validarea
+Schema **e** livrată în repo (`schemas/eTransport/`), deci comanda de mai sus e necesară doar dacă
+vrei să validezi față de **altă** versiune decât cea versionată — `CONTAB_ETRANSPORT_XSD` acceptă
+cale locală sau URL, cu `.zip` dezarhivat automat. Pre-validarea
 rapidă din generarea aplicației rămâne `src/etransport.js` (`validate`): prinde câmpurile
 obligatorii, enum-urile, formatele și coerența traseu↔tip de operațiune înainte de trimitere.
