@@ -564,6 +564,38 @@ producție (producția rulează pe pm2 pe acest server, decizie deja consemnată
 
 ---
 
+## Cele trei rămase deschise — ce s-a putut avansa (2026-07-28)
+
+Niciunul nu se poate **închide** din cod: cer o semnătură de expert, o bancă reală, respectiv
+credențiale de stocare. Ce s-a făcut e să scadă cât rămâne de făcut de om.
+
+**1. Cazuri fiscale nerevizuite → decizia devine o alegere între cifre.** La art. 40², ambele
+citiri sunt acum **calculate**, nu descrise: `alternativa.cumulativ` (8.970.000 nedeductibil) și
+`alternativa.max` (13.970.000) apar amândouă în rezultat, iar comutarea se face cu
+`art402Interpretare`, fără modificare de cod. Cazul `PLF-05` le pune pe amândouă în fața
+revizorului. **Rămâne:** semnătura, pe toate cele 24.
+
+**2. Export de plăți nedovedit → găsit și reparat un defect care ar fi lovit la prima folosire.**
+Setul de caractere SEPA (EPC) **nu permite diacritice**, iar denumirile de parteneri vin din
+e-Factura, deci conțin `Ș`, `Ț`, `ă`. Generatorul le emitea ca atare: banca ori respinge fișierul,
+ori stâlcește numele — și plata pleacă spre un beneficiar scris altfel decât în contract. Acum se
+transliterează (`ȚARA`→`TARA`, `&`→`+`, en-dash→cratimă), cu poartă care verifică fiecare câmp de
+text. **Rămâne:** proba la o bancă reală — dar un motiv probabil de respingere a dispărut.
+
+**3. RTO nemăsurat → partea locală e acum măsurată.** Pe arhiva reală de producție: decriptare
+0,063 s + dezarhivare 0,012 s = **0,075 s**, round-trip identic. Deci criptografia nu e în drumul
+critic. **Rămâne:** descărcarea din offsite și timpul operatorului, care domină — și cer credențiale.
+
+**Descoperire colaterală, mai gravă decât cele trei:** poarta fiscală avea **găuri de perimetru**.
+`CAI_FISCALE` lista generatoarele, dar nu și modulele care le *alimentează*: `assets.js`,
+`statements.js`, `chartOfAccounts.js`, `matching.js` și încă trei lipseau. Când s-a livrat
+amortizarea fiscală (P0-2), poarta a rulat **doar fiindcă același commit atingea și `reporting.js`**
+— o schimbare izolată pe amortizare ar fi sărit-o complet. Perimetrul e acum **închis tranzitiv**
+(21 → 28 de căi) și există un test care pică dacă un modul cerut de unul din perimetru rămâne pe
+dinafară. Testul a găsit iterativ ultimele două lipsuri, nu eu.
+
+---
+
 ## Sprintul anterior — iulie 2026, runda întâi (ÎNCHIS 5/5)
 
 Închis integral pe 2026-07-16, într-o singură zi (estimare inițială: 10–15 zile). Detaliul complet,

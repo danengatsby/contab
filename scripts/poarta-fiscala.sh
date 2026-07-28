@@ -49,6 +49,14 @@ src/reporting.js
 src/bilant.js
 src/stocks.js
 src/accounting.js
+src/deductibilitate.js
+src/assets.js
+src/statements.js
+src/chartOfAccounts.js
+src/bilantNomenclator.js
+src/reconcile.js
+src/recurring.js
+src/matching.js
 src/validate.js
 src/seed.js
 src/documentTypes/

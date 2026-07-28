@@ -296,11 +296,16 @@ openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
 | | Valoare | De unde vine |
 |---|---|---|
 | **RPO** (cât se poate pierde) | **24 h** | backupul rulează zilnic la 03:30; o cădere la 03:29 pierde ziua precedentă |
-| **RTO** (cât durează revenirea) | **estimat sub 1 h** — **nemăsurat** | descărcare + decriptare + restaurare; vezi avertismentul de mai jos |
+| **RTO** (cât durează revenirea) | **partea locală: 0,08 s** (măsurat); total **nemăsurat** | vezi mai jos |
 
-> **RTO-ul nu e cronometrat pe o restaurare reală.** Cifra de mai sus e o estimare din durata
-> pașilor, nu o măsurătoare. Prin regula proiectului, asta înseamnă **neverificat** — nu „e bine".
-> Prima restaurare completă din offsite trebuie cronometrată, iar valoarea reală scrisă aici.
+**Ce e măsurat** (2026-07-28, pe arhiva reală de producție, 68 KB): decriptare `openssl` **0,063 s**
++ dezarhivare **0,012 s** = **0,075 s**, cu round-trip identic cu originalul. Partea locală e deci
+neglijabilă și rămâne așa și la volume mult mai mari — `openssl` face zeci de MB pe secundă.
+
+**Ce NU e măsurat, și de ce contează mai mult:** descărcarea din offsite (depinde de furnizor și de
+dimensiune) și **timpul operatorului** — găsirea cheii, rularea pașilor, verificarea. Acestea domină
+RTO-ul, nu criptografia. Prima restaurare completă trebuie cronometrată cap-coadă, cu credențiale
+reale, iar cifra scrisă aici. Până atunci, RTO-ul total rămâne **neverificat** — nu „e bine".
 
 ### Procedura de restaurare, pas cu pas
 
