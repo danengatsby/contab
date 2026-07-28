@@ -586,6 +586,18 @@ text. **Rămâne:** proba la o bancă reală — dar un motiv probabil de respin
 0,063 s + dezarhivare 0,012 s = **0,075 s**, round-trip identic. Deci criptografia nu e în drumul
 critic. **Rămâne:** descărcarea din offsite și timpul operatorului, care domină — și cer credențiale.
 
+**Trei porți întărite, toate de aceeași clasă: liste scrise de mână care driftează.**
+
+| Poartă | Ce avea | Ce are acum |
+|---|---|---|
+| Perimetru fiscal | listă manuală de generatoare | **închidere tranzitivă** — orice modul cerut de unul din perimetru intră automat |
+| Colecții serializate direct | listă manuală de nume | derivată din **`store.ARRAY_COLLS`**; a prins imediat `cursuriBnr`, colecție care nu exista când poarta a fost scrisă |
+| Prefixe de rută | *niciuna* — doar o lecție în memorie | **invariant verificat**: nicio rută în afara `/api /pdf /xml /csv /efactura`, altfel ar ocoli tăcut CSRF-ul și autentificarea |
+
+Fiecare a fost probată cu o încălcare deliberată: perimetrul a găsit iterativ ultimele două module,
+poarta de colecții a prins `res.json(db.get().cursuriBnr)`, iar cea de prefixe a prins
+`POST /export/pain001`. O poartă care nu poate pica nu dovedește nimic.
+
 **Descoperire colaterală, mai gravă decât cele trei:** poarta fiscală avea **găuri de perimetru**.
 `CAI_FISCALE` lista generatoarele, dar nu și modulele care le *alimentează*: `assets.js`,
 `statements.js`, `chartOfAccounts.js`, `matching.js` și încă trei lipseau. Când s-a livrat

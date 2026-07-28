@@ -4971,6 +4971,35 @@ section('CSRF: token sincronizator + allowlist de origine (src/csrf.js)');
   ok('comparatia respinge sirul gol', csrf.safeEqual('', '') === false);
 }
 
+section('Poarta: nicio ruta in afara prefixelor pazite (/api /pdf /xml /csv /efactura)');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const root = pth.join(__dirname, '..');
+  // Garda CSRF si cerinta de sesiune se aplica pe PREFIX (src/bootstrap.js:
+  // /^\/(api|pdf|xml|csv|efactura)/). O ruta inregistrata in afara lor — `/export/...`,
+  // `/download/...` — ar ocoli TACIT si CSRF-ul, si autentificarea. Lectia e consemnata in
+  // memoria proiectului dupa un incident; aici devine invariant verificat, nu obicei.
+  const PREFIXE = new Set(['api', 'pdf', 'xml', 'csv', 'efactura']);
+  const fisiere = ['server.js', 'src/authRoutes.js']
+    .concat(fsx.readdirSync(pth.join(root, 'src', 'routes')).filter((f) => f.endsWith('.js')).map((f) => 'src/routes/' + f));
+  const straine = [];
+  let total = 0;
+  for (const f of fisiere) {
+    const txt = fsx.readFileSync(pth.join(root, f), 'utf8');
+    for (const m of txt.matchAll(/app\.(get|post|delete|patch|put)\(\s*'(\/[^']*)'/g)) {
+      total += 1;
+      const pref = m[2].split('/')[1] || '';
+      if (!PREFIXE.has(pref)) straine.push(f.split('/').pop() + ': ' + m[1].toUpperCase() + ' ' + m[2]);
+    }
+  }
+  ok('poarta vede rutele aplicatiei', total > 100);
+  ok('nicio ruta in afara prefixelor pazite'
+    + (straine.length ? ' — ' + straine.slice(0, 5).join(' | ') : ''), straine.length === 0);
+  // poarta trebuie sa POATA pica
+  ok('poarta chiar detecteaza un prefix nepazit', !PREFIXE.has('/export/date'.split('/')[1]));
+  ok('si accepta unul pazit', PREFIXE.has('/xml/pain001'.split('/')[1]));
+}
+
 section('Poarta: fiecare ruta care intoarce o colectie trece prin sendList/sendMap');
 {
   const fsx = require('fs'); const pth = require('path');
@@ -4980,8 +5009,18 @@ section('Poarta: fiecare ruta care intoarce o colectie trece prin sendList/sendM
   // O ruta NOUA care intoarce direct `res.json(colectie)` reintroduce exact riscul — tacut.
   const files = ['server.js', 'src/authRoutes.js']
     .concat(fsx.readdirSync(pth.join(root, 'src', 'routes')).filter((f) => f.endsWith('.js')).map((f) => 'src/routes/' + f));
-  // expresii care denota o COLECTIE vie (nu un obiect singular)
-  const COLECTIE = /S\(req\)\.(entries|documents|products|angajati|partners|assets|gestiuni|inventories|openingAnalytic)\b|db\.get\(\)\.(users|budgets|recipes|recurringInvoices)\b/;
+  // Expresii care denota o COLECTIE vie (nu un obiect singular). Lista NU se scrie de mana:
+  // se DERIVA din store.ARRAY_COLLS, sursa autoritara. O lista scrisa de mana driftează la fiecare
+  // colectie noua — exact ce s-a intamplat cu `cursuriBnr`, adaugata pentru cursul BNR si absenta
+  // din poarta pana la aceasta verificare. Poarta trebuie sa afle singura de colectiile noi.
+  const { ARRAY_COLLS } = require('../src/store');
+  const numeColectii = ARRAY_COLLS.map((c) => c.key).concat(['partners', 'openingAnalytic']);
+  // ANCORAT la inceputul argumentului: `res.json(S(req).entries)` e o colectie serializata direct,
+  // dar `res.json(registruSalarii(S(req).payrollHistory, ...))` e un AGREGAT — colectia doar intra
+  // intr-o functie. Fara ancora, poarta ar raporta fals si ar fi dezactivata de primul care o vede.
+  const COLECTIE = new RegExp('^\\s*(?:S\\(req\\)|db\\.get\\(\\))\\.(' + numeColectii.join('|') + ')\\b');
+  ok('poarta isi ia colectiile din ARRAY_COLLS, nu dintr-o lista scrisa de mana',
+    numeColectii.includes('cursuriBnr') && numeColectii.includes('entries') && numeColectii.length > 12);
   const scapate = [];
   for (const f of files) {
     const s = fsx.readFileSync(pth.join(root, f), 'utf8');
@@ -4991,7 +5030,9 @@ section('Poarta: fiecare ruta care intoarce o colectie trece prin sendList/sendM
   }
   ok('nicio colectie nu se serializeaza direct cu res.json'
     + (scapate.length ? ' — ' + scapate.slice(0, 3).join(' | ') : ''), scapate.length === 0);
-  ok('poarta chiar detecteaza o colectie scapata', COLECTIE.test("res.json(S(req).products)"));
+  ok('poarta chiar detecteaza o colectie scapata', COLECTIE.test("S(req).products)"));
+  ok('poarta NU raporteaza un agregat care doar primeste colectia',
+    !COLECTIE.test("registruSalarii(S(req).payrollHistory, req.query.year)"));
   ok('poarta nu se declanseaza pe un obiect singular', !COLECTIE.test("res.json(S(req).company)"));
 }
 

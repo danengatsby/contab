@@ -517,6 +517,11 @@ async function main() {
       const nrInainte = Array.isArray(entriesInainte) ? entriesInainte.length : entriesInainte.items.length;
       const okGen = await req('POST', '/xml/pain001', { cookie: laP.cookie, body: { moneda: 'RON', execDate: '2026-08-05',
         plati: [{ beneficiar: 'ALFA DISTRIBUTIE SRL', iban: 'DE89370400440532013000', suma: 1234.56, detalii: 'Factura 77' }] } });
+      // Ruta e POST in afara lui /api/ — deci merita dovedit ca garda CSRF chiar o acopera,
+      // nu doar ca prefixul apare intr-un regex. `noCsrf` sare peste antet in harness.
+      const faraCsrf = await req('POST', '/xml/pain001', { cookie: laP.cookie, noCsrf: true,
+        body: { plati: [{ beneficiar: 'ALFA', iban: 'DE89370400440532013000', suma: 10 }] } });
+      eq('POST /xml/pain001 fara token CSRF -> 403', faraCsrf.status, 403);
       eq('generare valida -> 200', okGen.status, 200);
       ok('raspunsul e XML pain.001', /pain\.001\.001\.03/.test(okGen.text || ''));
       ok('se descarca drept fisier', /attachment/.test(okGen.headers.get('content-disposition') || ''));
