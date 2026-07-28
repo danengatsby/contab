@@ -247,6 +247,11 @@ Măsurat pe un val de 40 de cereri: **8 × 401** (respinse de aplicație ca paro
 (anti-brute-force propriu), **19 × 503** (tăiate de nginx, nu au atins aplicația). Căile normale
 rămân neafectate.
 
+**HTTP/2 e activ** (`http2 on`): aplicația încarcă ~27 de resurse la prima vizită (modulele ES din
+`public/`), iar pe HTTP/1.1 acestea se serializau în valuri de câte ~6 conexiuni. Prima încărcare,
+măsurată cu gzip activ: **193 KB** (HTML 41 + CSS 16 + JS 135). Nu există pas de build — decizie
+măsurată, motivată în backlog.
+
 > **Fișierul din repo poate drifta față de cel viu**: `certbot --nginx` modifică
 > `/etc/nginx/sites-available/contab` direct (liniile „managed by Certbot"). Procedura la orice
 > schimbare: modifici fișierul viu → `nginx -t` → `systemctl reload nginx` → copiezi înapoi în repo.

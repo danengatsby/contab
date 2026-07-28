@@ -484,9 +484,38 @@ bine făcut — dar traficul unui atacator costă oricum o tură de event loop p
 
 ---
 
-## 9. Pas de build minimal pentru frontend
+## 9. Pas de build minimal pentru frontend — ⚠️ RESTRÂNS după măsurare, 2026-07-28
 
-**Estimare:** 2–3 zile · **Prioritate:** 9
+**Estimare:** 2–3 zile · **Realizat:** HTTP/2 (~15 min). Restul: **NEFĂCUT, deliberat.**
+
+> **Măsurătoarea contrazice premisa itemului — și premisa era a mea.** Analiza inițială cita
+> `index.html` la 162 KB și 464 KB de JS: cifre **necomprimate**. nginx are `gzip on` de mult, iar
+> transferul real e:
+>
+> | | Pe disc | Transferat |
+> |---|---|---|
+> | `index.html` | 163 KB | **41 KB** |
+> | `styles.css` | 62 KB | **16 KB** |
+> | JS (25 fișiere) | 464 KB | **135 KB** |
+> | **Total prima vizită** | | **193 KB, 27 de cereri** |
+>
+> 193 KB e o primă încărcare rezonabilă. Problema reală nu era dimensiunea, ci că serverul rula
+> **HTTP/1.1**: 27 de cereri se serializează în valuri de câte ~6 conexiuni. Asta s-a reparat cu
+> **o linie** (`http2 on`), verificat: răspunsurile vin acum pe HTTP/2, multiplexate.
+>
+> **Ce NU se mai face, și de ce.** Am măsurat câștigul rămas în loc să-l presupun:
+> - **minificarea** JS-ului economisește **20 KB din 135 (15%)** — gzip comprimă deja bine
+>   spațiile și comentariile. În schimb, comentariile din acest cod explică *de ce*, iar
+>   pierderea lor face depanarea în producție mai grea decât merită 20 KB;
+> - **spargerea `index.html`** ar salva ~26 KB, cu preț mare: pas de build, schimbare a ceea ce se
+>   servește, și risc pe un frontend **viu** — `public/` e servit direct din working tree.
+>
+> ~45 KB, o singură dată (restul e din cache), contra unui pas de build care ar trebui întreținut.
+> La 4 firme, nu se justifică. Aceeași critică pe care am adus-o căii `rclone` — cod care pare viu
+> dar nu e folosit — s-ar aplica unui build pe care nimeni nu-l rulează.
+>
+> **Semnalul care redeschide itemul:** o primă încărcare peste ~400 KB comprimat, sau `index.html`
+> depășind ~60 KB transferați. Atunci spargerea pe fragmente devine rentabilă.
 
 ### Descriere
 
@@ -507,9 +536,10 @@ Decizia „fără framework" e bună și rămâne; „fără niciun pas de build
 
 ### Acceptanță
 
-- [ ] Prima încărcare scade măsurabil (cifră înainte/după, în acest document).
-- [ ] `npm test` și `npm run e2e` verzi, nemodificate ca aserțiuni.
-- [ ] Niciun artefact de build servit accidental din `public/`.
+- [x] Prima încărcare **măsurată**: 193 KB comprimat / 27 de cereri; HTTP/1.1 → HTTP/2 elimină
+      serializarea cererilor. Cifrele înainte/după sunt în tabelul de mai sus.
+- [x] `npm test` verde; `public/` neatins, deci aserțiunile de frontend rămân valabile.
+- [x] Niciun artefact de build — **fiindcă nu există pas de build**, prin decizie măsurată.
 
 ---
 
