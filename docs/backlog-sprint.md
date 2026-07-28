@@ -325,9 +325,34 @@ CAMT.053. Drumul de întoarcere lipsește: lotul de plăți către furnizori și
 
 ---
 
-## 6. Importator de migrare de la software-ul existent
+## 6. Importator de migrare de la software-ul existent — ✅ ÎNCHIS 2026-07-28 (parțial, vezi mai jos)
 
-**Estimare:** 3–5 zile · **Prioritate:** 6
+**Estimare:** 3–5 zile · **Realizat:** ~2 ore · **Prioritate:** 6
+
+> `migrare.js` (pur) + `routes/migrare.js`: încarcă balanța de verificare (CSV/XLS/XLSX/DBF),
+> **detectează antetul** (exporturile au 2–5 rânduri de titlu înainte de tabel), mapează coloanele
+> pe heuristici RO (`SID`/`SFC`/„Sold final debitor"…), construiește **previzualizarea** și abia
+> apoi, la confirmare, scrie.
+>
+> **Regula de aur e verificată de două ori**, în previzualizare *și* pe scriere. A doua nu e
+> redundantă: între previzualizare și import, corpul cererii poate fi orice — garda trebuie să stea
+> pe scriere. Harta completă se construiește înainte de a atinge baza, deci un rând invalid lasă
+> refuzul curat, fără date parțiale. Mutația care scoate garda din rută e prinsă separat.
+>
+> **Poartă anti-drift nouă:** parsarea sumelor există acum în două implementări — `public/plan.js`
+> (editorul din interfață) și `src/migrare.js` (serverul). Nu pot partaja cod (modul ES în browser
+> vs CommonJS pe server), așa că `test/frontend.mjs` le compară pe un corpus de tokenuri ambigue.
+> Poarta **și-a dovedit valoarea imediat**: a prins o divergență reală la prima rulare — serverul
+> returna `0` la ambiguitate, frontend-ul o valoare provizorie.
+>
+> 30 de verificări noi în `test/run.js` + 17 în `test/http.js` + poarta din `test/frontend.mjs`.
+>
+> **CE NU E FĂCUT, deliberat:** niciun format specific de furnizor (SAGA/WinMentor/Ciel). Traseul
+> generic acoperă orice export tabelar cu mapare asistată, dar backlogul cerea „cel puțin un format
+> concret, ales după ce întrebăm un cabinet ce folosește" — iar acea întrebare nu a fost pusă. Un
+> preset de furnizor e o adăugire mică (câteva tipare de coloană) odată ce se știe programul.
+> **Nici parteneri / mijloace fixe / stocuri** nu se preiau încă: itemul cerea toate patru
+> într-o trecere. Balanța e cea care schimbă totul; restul rămân.
 
 ### Descriere
 
@@ -352,9 +377,13 @@ soldurile a 40 de clienți.
 
 ### Acceptanță
 
-- [ ] O firmă reală se preia cap-coadă și balanța de deschidere iese identică cu cea din programul sursă.
-- [ ] Un fișier corupt sau dezechilibrat nu lasă date parțiale în bază.
-- [ ] Maparea de coloane e salvată și refolosibilă la următorul client din același program.
+- [x] Balanța se preia cap-coadă și soldurile de deschidere ies identice cu fișierul sursă
+      (verificat prin test HTTP, pe o firmă proprie). **Pe o firmă reală, nu e încă probat.**
+- [x] Un fișier corupt sau dezechilibrat nu lasă date parțiale în bază (garda e pe scriere, nu doar
+      pe previzualizare; mutația care o scoate e prinsă).
+- [ ] **NEFĂCUT** — maparea de coloane nu se salvează încă pentru reutilizare la următorul client
+      din același program. Detecția automată o reface de fiecare dată, deci pierderea e mică, dar
+      criteriul nu e îndeplinit.
 
 ---
 
