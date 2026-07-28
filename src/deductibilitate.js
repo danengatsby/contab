@@ -123,6 +123,24 @@ function ajustari(i, cfg) {
       sponsor, 'Integral nedeductibila; se recupereaza ca CREDIT FISCAL din impozit (vezi creditul).'));
   }
 
+  // ── Amortizare: contabila vs fiscala (art. 28) ────────────────────────────
+  // Singura regula care poate produce un nedeductibil NEGATIV, adica o DEDUCERE: cand amortizarea
+  // fiscala e mai mare decat cea contabila (cazul accelerata fiscal / liniara contabil, in primul
+  // an). Pe toata durata de viata suma diferentelor e zero — ajustarea muta deducerea intre
+  // exercitii, nu o creeaza. Forma randului se potriveste exact: „cheltuit" = amortizarea
+  // contabila, „deductibil" (plafon) = cea fiscala.
+  if (i.amortizare && (Number(i.amortizare.contabila) || Number(i.amortizare.fiscala))) {
+    const ac = round2(Number(i.amortizare.contabila) || 0);
+    const af = round2(Number(i.amortizare.fiscala) || 0);
+    const dif = round2(ac - af);
+    if (dif !== 0) {
+      randuri.push(rand('Amortizare (contabila vs fiscala)', 'Art. 28', '6811', ac, af, ac, dif,
+        dif > 0
+          ? 'Amortizarea contabila depaseste pe cea fiscala: diferenta e nedeductibila in acest exercitiu.'
+          : 'Amortizarea fiscala depaseste pe cea contabila: diferenta e o DEDUCERE suplimentara (nedeductibil negativ).'));
+    }
+  }
+
   // ── Costuri excedentare ale indatorarii (art. 40^2) ───────────────────────
   // INTERPRETARE (de confirmat de revizor, vezi test/cazuri-aprobate.js): pana la echivalentul a
   // 1.000.000 EUR costul excedentar e deductibil neconditionat; ce depaseste e deductibil doar

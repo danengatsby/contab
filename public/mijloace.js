@@ -48,6 +48,10 @@ $('#assetForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   const body = { denumire: f.denumire.value, cont: f.cont.value, cost: f.cost.value, durataLuni: f.durataLuni.value, metoda: f.metoda.value, valoareReziduala: f.valoareReziduala.value, dataAchizitie: f.dataAchizitie.value, dataPif: f.dataPif.value, furnizor: f.furnizor.value, cui: f.cui.value };
+  // Planul fiscal se trimite doar daca a fost ales; serverul ignora oricum valorile egale cu cele
+  // contabile, dar nu are rost sa le trimitem.
+  if (f.metodaFiscala && f.metodaFiscala.value) body.metodaFiscala = f.metodaFiscala.value;
+  if (f.durataFiscalaLuni && f.durataFiscalaLuni.value) body.durataFiscalaLuni = f.durataFiscalaLuni.value;
   try { await api('/api/assets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Mijloc fix adăugat'); f.reset(); f.valoareReziduala.value = '0'; loadAssets(); }
   catch (err) { toast(err.message, true); }
 });

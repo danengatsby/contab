@@ -135,6 +135,70 @@ function compute(asset, asOf) {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  PLANUL FISCAL DE AMORTIZARE (art. 28 Cod fiscal)
+//
+//  Amortizarea fiscala poate folosi ALTA metoda si ALTA durata decat cea contabila (cazul uzual:
+//  accelerata fiscal, liniara contabil). Diferenta dintre ele e o ajustare a rezultatului fiscal,
+//  in ambele sensuri, si se anuleaza pe toata durata de viata — nu creeaza si nu distruge deducere,
+//  o MUTA intre exercitii.
+//
+//  Planul fiscal e EXTRACONTABIL: nu genereaza articole. Doar planul contabil posteaza 6811 = 281x.
+//
+//  Nu exista migrare de date, deliberat: `metodaFiscala`/`durataFiscalaLuni` lipsa inseamna
+//  „identic cu planul contabil", iar fallback-ul de mai jos o face fara sa scrie nimic. O migrare
+//  care ar copia aceleasi valori in fiecare rand ar fi amplificare de scriere pentru zero efect,
+//  iar la o schimbare ulterioara a metodei contabile planul fiscal trebuie sa o urmeze cat timp
+//  utilizatorul nu l-a fixat explicit — exact ce face fallback-ul.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Vederea FISCALA a unui mijloc fix: acelasi activ, cu metoda si durata fiscale. */
+function fiscalView(asset) {
+  const durataF = Number(asset.durataFiscalaLuni);
+  return Object.assign({}, asset, {
+    metoda: METHODS.includes(asset.metodaFiscala) ? asset.metodaFiscala : asset.metoda,
+    durataLuni: Number.isFinite(durataF) && durataF > 0 ? durataF : asset.durataLuni,
+  });
+}
+
+/** Are activul un plan fiscal DIFERIT de cel contabil? (pentru raportare, nu pentru calcul) */
+function hasFiscalPlan(asset) {
+  const f = fiscalView(asset);
+  return f.metoda !== asset.metoda || Number(f.durataLuni) !== Number(asset.durataLuni);
+}
+
+/** Suma amortizarii dintr-un AN, pe planul dat (`schedule` e refolosit, nu reimplementat). */
+function annualFor(asset, year, fiscal) {
+  const rows = schedule(fiscal ? fiscalView(asset) : asset);
+  let s = 0;
+  for (const r of rows) if (String(r.period).startsWith(String(year))) s = round2(s + r.amount);
+  return s;
+}
+
+/**
+ * Amortizarea contabila vs fiscala a unui an, pe tot registrul (art. 28).
+ * `amortizareContabilaReala` (rulajul contului 6811), cand e dat, INLOCUIESTE suma din plan pe
+ * partea contabila: registrul fiscal trebuie sa porneasca de la ce s-a inregistrat efectiv, nu de
+ * la ce ar fi trebuit sa se inregistreze. Diferenta dintre ele e o problema de contabilitate, nu
+ * una fiscala, si nu trebuie ascunsa intr-o ajustare.
+ */
+function depreciationDifference(assets, year, amortizareContabilaReala) {
+  let contabilaPlan = 0; let fiscala = 0;
+  for (const a of assets || []) {
+    contabilaPlan = round2(contabilaPlan + annualFor(a, year, false));
+    fiscala = round2(fiscala + annualFor(a, year, true));
+  }
+  const contabila = (amortizareContabilaReala != null && Number.isFinite(Number(amortizareContabilaReala)))
+    ? round2(Number(amortizareContabilaReala)) : contabilaPlan;
+  return {
+    contabila, contabilaPlan, fiscala,
+    // > 0 => amortizarea contabila e mai mare => partea in plus e NEDEDUCTIBILA;
+    // < 0 => amortizarea fiscala e mai mare => deducere suplimentara.
+    diferenta: round2(contabila - fiscala),
+    areDiferenta: round2(contabila - fiscala) !== 0,
+  };
+}
+
 /** Amortizarea de inregistrat pentru o luna (pentru toate mijloacele active). */
 function monthlyDepreciation(assets, period) {
   const lines = [];
@@ -157,4 +221,5 @@ function register(db, asOf) {
   }));
 }
 
-module.exports = { compute, schedule, monthlyDepreciation, register, contAmortizare, firstDepreciationMonth, degressiveCoef, METHODS };
+module.exports = { compute, schedule, monthlyDepreciation, register, contAmortizare, firstDepreciationMonth, degressiveCoef, METHODS,
+  fiscalView, hasFiscalPlan, annualFor, depreciationDifference };

@@ -36,6 +36,13 @@ module.exports = function register(app, ctx) {
       dataAchizitie: b.dataAchizitie || b.dataPif, dataPif: String(b.dataPif),
       durataLuni: Math.max(1, Number(b.durataLuni) || 1),
       metoda: assets.METHODS.includes(b.metoda) ? b.metoda : 'liniara', status: 'activ',
+      // Planul FISCAL (art. 28) e optional: absent inseamna „identic cu cel contabil". Se scrie
+      // doar cand difera efectiv — un camp egal cu cel contabil ar sugera o alegere care nu s-a
+      // facut, si ar ingheta planul fiscal daca metoda contabila se schimba ulterior.
+      ...(assets.METHODS.includes(b.metodaFiscala) && b.metodaFiscala !== b.metoda
+        ? { metodaFiscala: b.metodaFiscala } : {}),
+      ...(Number(b.durataFiscalaLuni) > 0 && Number(b.durataFiscalaLuni) !== Number(b.durataLuni)
+        ? { durataFiscalaLuni: Math.max(1, Number(b.durataFiscalaLuni)) } : {}),
     };
     d.assets.push(a);
     logAudit('asset.create', a.denumire + ' (' + a.cont + ')', { req });

@@ -12,6 +12,16 @@ const acc = require('./accounting');
 const coa = require('./chartOfAccounts');
 const fiscal = require('./fiscal');
 const rep = require('./reporting');
+const assets = require('./assets');
+
+/** Rulajul net (debitor) al unui cont de cheltuiala intr-un an, din articolele postate. */
+function rulajCont(view, year, cont) {
+  const lines = acc.resultLines(acc.postedEntries(view)
+    .filter((e) => String(e.period || '').startsWith(String(year))));
+  const a = acc.accumulate(lines)[cont];
+  return a ? Math.round((a.d - a.c) * 100) / 100 : 0;
+}
+
 const { reqFirma } = require('./stocksService');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
@@ -61,6 +71,7 @@ function profitTaxOptions(fid, src, year) {
   src = src || {};
   const pr = (src.pierdereReportata != null && src.pierdereReportata !== '') ? Number(src.pierdereReportata) : (Number(losses[Number(year) - 1]) || 0);
   const firma = db.getFirma(fid) || {};
+  const view = db.scoped(fid);
   return {
     cota: fiscal.FISCAL.impozitProfit,
     // Suprascrierea manuala ramane posibila, dar NU mai e implicita: transmisa goala, motorul de
@@ -70,7 +81,10 @@ function profitTaxOptions(fid, src, year) {
     deduceri: Number(src.deduceri) || 0,
     pierdereReportata: pr || 0,
     plafoane: fiscal.FISCAL,
-    cheltAuto: rep.cheltuieliAuto(db.scoped(fid), year),
+    cheltAuto: rep.cheltuieliAuto(view, year),
+    // Amortizarea contabila vine din rulajul REAL al contului 6811, nu din plan: registrul fiscal
+    // porneste de la ce s-a inregistrat efectiv.
+    amortizare: assets.depreciationDifference(view.assets || [], year, rulajCont(view, year, '6811')),
     cursEur: Number(src.cursEur) || Number(firma.cursEur) || 0,
     sponsorizareReport: firma.sponsorizareReport || [],
   };

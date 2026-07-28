@@ -109,9 +109,25 @@ ce trebuie calculat.
 
 ---
 
-## 2. Amortizare fiscală separată de cea contabilă
+## 2. Amortizare fiscală separată de cea contabilă — ✅ ÎNCHIS 2026-07-28
 
-**Estimare:** 2 zile · **Prioritate:** 2
+**Estimare:** 2 zile · **Realizat:** ~2 ore · **Prioritate:** 2
+
+> `metodaFiscala` / `durataFiscalaLuni` pe mijlocul fix, opționale. Motorul de amortizare e
+> **refolosit**, nu duplicat: `fiscalView()` proiectează activul cu planul fiscal și `schedule()`
+> rulează neatins pe el. Diferența intră în motorul de plafoane ca singura regulă care poate da
+> nedeductibil **negativ** (deducere), iar mențiunea „fără diferență" e acum condiționată.
+>
+> **Abatere deliberată de la plan: nicio migrare de date.** Absența câmpurilor înseamnă „identic cu
+> planul contabil", iar fallback-ul din `fiscalView()` o rezolvă fără să scrie nimic. O migrare care
+> ar copia aceleași valori în fiecare rând ar fi amplificare de scriere pentru zero efect — și ar
+> îngheța planul fiscal dacă metoda contabilă se schimbă ulterior, exact invers față de intenție.
+>
+> Partea contabilă a ajustării vine din **rulajul real al contului 6811**, nu din plan: registrul
+> fiscal pornește de la ce s-a înregistrat efectiv. Diferența dintre plan și realitate e o problemă
+> de contabilitate, nu una fiscală, și nu are voie să fie ascunsă într-o ajustare.
+>
+> 17 verificări noi (mutații: `fiscalView` inertă, semn inversat — ambele prinse) + cazul `PLF-06`.
 
 ### Descriere
 
@@ -134,11 +150,11 @@ singură metodă per mijloc fix. Orice client cu amortizare accelerată fiscal �
 
 ### Acceptanță
 
-- [ ] Un mijloc fix cu accelerată fiscal / liniară contabil produce ajustare nenulă în anul 1 și
+- [x] Un mijloc fix cu accelerată fiscal / liniară contabil produce ajustare nenulă în anul 1 și
       ajustare de semn opus în anii următori, cu suma cumulată **zero** pe toată durata.
-- [ ] Bazele existente rămân neschimbate după migrare (planurile pornesc egale → diferență zero).
-- [ ] Caz semnat în [`test/cazuri-aprobate.js`](../test/cazuri-aprobate.js).
-- [ ] Poarta fiscală verde (atinge registrul fiscal și D101).
+- [x] Bazele existente rămân neschimbate (fără migrare: planurile pornesc egale prin fallback).
+- [x] Caz semnat în [`test/cazuri-aprobate.js`](../test/cazuri-aprobate.js) — `PLF-06`.
+- [x] Poarta fiscală verde (atinge registrul fiscal și D101).
 
 ---
 
