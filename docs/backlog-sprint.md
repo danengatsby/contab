@@ -158,9 +158,30 @@ singură metodă per mijloc fix. Orice client cu amortizare accelerată fiscal �
 
 ---
 
-## 3. Declarații rectificative (D300 / D394 / D112)
+## 3. Declarații rectificative (D300 / D394 / D112) — ✅ ÎNCHIS 2026-07-28
 
-**Estimare:** 2–3 zile · **Prioritate:** 3
+**Estimare:** 2–3 zile · **Realizat:** ~2 ore · **Prioritate:** 3
+
+> **Sondajul a infirmat premisa itemului.** Planul presupunea că fiecare declarație are un câmp de
+> semnalizare de găsit. Adevărul, citit din validatoarele oficiale: doar **D112** are steag
+> (`d_rec` + `tip_rec`, cu regula A3b — `tip_rec` nu poate fi 5); **D300** și **D394** nu au
+> niciunul, rectificarea fiind o redepunere. Tabelul complet e în jurnalul de validare.
+>
+> Deci „rectificativă" e în primul rând stare a aplicației: istoric de depuneri cu ordinal, motiv,
+> autor și sumele-cheie de la momentul depunerii — din care se calculează **diferența** față de
+> depunerea anterioară. Perioada închisă nu blochează rectificativa (e scopul ei), dar cere motiv
+> scris și intră în audit.
+>
+> Steagul D112 se **derivă din istoric**, nu se cere din interfață: dacă există deja o depunere pe
+> perioadă, XML-ul următor e rectificativ prin definiție — o bifă manuală ar putea fi uitată și
+> declarația ar pleca la ANAF ca inițială.
+>
+> Reparat pe parcurs un dezacord real: marcarea „depusă" din registru nu crea istoric, deci ruta de
+> rectificativă nu găsea nicio depunere anterioară și refuza corecția. `set` seedează acum prima
+> depunere; redepunerile trec prin ruta dedicată.
+>
+> 23 de verificări noi în `test/run.js` + 10 în `test/http.js` (mutații: istoric reinițializat,
+> prima depunere marcată rectificativă, clamparea `tip_rec=5` scoasă — toate trei prinse).
 
 ### Descriere
 
@@ -183,10 +204,12 @@ rutină** într-un cabinet, nu caz de colț: o factură primită târziu după d
 
 ### Acceptanță
 
-- [ ] Câte o rectificativă pentru D300, D394 și D112 trece la validatorul oficial („Validare fără erori").
-- [ ] Rectificativa peste o perioadă închisă cere motiv și îl consemnează în audit.
-- [ ] Istoricul depunerilor per perioadă e vizibil și nu se pierde la a doua rectificativă.
-- [ ] Cele trei declarații rămân în jurnalul din [`docs/validare-oficiala.md`](validare-oficiala.md).
+- [x] Câte o rectificativă pentru D300, D394 și D112 trece la validatorul oficial („Validare fără
+      erori"). Pentru D300/D394 rectificativa e XML-ul normal (nu există steag), dovedit prin sondaj.
+- [x] Rectificativa peste o perioadă închisă cere motiv și îl consemnează în audit.
+- [x] Istoricul depunerilor per perioadă e vizibil și nu se pierde la a doua rectificativă.
+- [x] Cele trei declarații rămân în jurnalul din [`docs/validare-oficiala.md`](validare-oficiala.md),
+      cu tabelul comparativ al mecanismelor.
 
 ---
 

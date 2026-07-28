@@ -329,7 +329,12 @@ function d300Rows(d) {
   return A;
 }
 
-function d300Xml(company, period, d, who) {
+// D300 NU are steag de rectificare: decontul corectat se REDEPUNE pe aceeasi perioada (dovedit —
+// zero aparitii ale notiunii in validator). Singurul camp inrudit e `temei`, cu lista {0, 2}
+// (valorile 1 si 3 sunt respinse de validator): 2 = decontul se depune dupa anularea rezervei
+// verificarii ulterioare (art. 105 alin. (6) Cod procedura fiscala).
+const D300_TEMEI_DUPA_REZERVA = 2;
+function d300Xml(company, period, d, who, rect) {
   const { an, luna } = ym(period);
   const lei = (v) => String(Math.round(Number(v) || 0));
   const A = d300Rows(d);
@@ -348,7 +353,7 @@ function d300Xml(company, period, d, who) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- D300 v12 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D300 fisier.xml -->
 <declaratie300 xmlns="mfp:anaf:dgti:d300:declaratie:v12"
-  luna="${esc(luna)}" an="${esc(an)}" depusReprezentant="0" bifa_interne="0" temei="0"
+  luna="${esc(luna)}" an="${esc(an)}" depusReprezentant="0" bifa_interne="0" temei="${(rect && rect.dupaRezerva) ? D300_TEMEI_DUPA_REZERVA : 0}"
   nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
   cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
   adresa="${esc(adresa || '-')}"${company.telefon ? `\n  telefon="${esc(company.telefon)}"` : ''}${company.email ? `\n  mail="${esc(company.email)}"` : ''}
@@ -389,7 +394,18 @@ function zileLucratoareLuna(an, luna) {
  *  + contoarele angajatorB; apoi cate un <asigurat> per salariat, cu sectiunea A (baze si
  *  contributii) si E3 (impozitul retinut). Valori in LEI INTREGI.
  *  Verificare oficiala: scripts/valideaza-duk.sh D112 fisier.xml */
-function d112Xml(company, period, sp, who) {
+// Rectificativa la D112 e SEMNALIZATA in XML (spre deosebire de D300/D394): `d_rec="1"` +
+// `tip_rec`. Regula A3b a validatorului oficial: cand d_rec=1, tip_rec NU poate fi 5; cand d_rec=0,
+// tip_rec nu se completeaza deloc. Ambele dovedite prin sondaj — vezi docs/validare-oficiala.md.
+const D112_TIP_REC_INTERZIS = 5;
+function d112RectAttrs(rect) {
+  if (!rect || !rect.rectificativa) return '';
+  let tip = Number(rect.tipRec);
+  if (!Number.isFinite(tip) || tip <= 0 || tip === D112_TIP_REC_INTERZIS) tip = 1;
+  return ` d_rec="1" tip_rec="${tip}"`;
+}
+
+function d112Xml(company, period, sp, who, rect) {
   const { an, luna } = ym(period);
   const lei = (v) => String(Math.round(Number(v) || 0));
   const t = sp.totals;
@@ -437,7 +453,7 @@ function d112Xml(company, period, sp, who) {
   }).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- D112 (declaratieUnica v6) generat de Contabo. Verificare: scripts/valideaza-duk.sh D112 fisier.xml -->
-<declaratieUnica xmlns="mfp:anaf:dgti:declaratie_unica:declaratie:v7"
+<declaratieUnica xmlns="mfp:anaf:dgti:declaratie_unica:declaratie:v7"${d112RectAttrs(rect)}
   luna_r="${esc(luna)}" an_r="${esc(an)}"
   nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}">
   <angajator cif="${esc(String(company.cui).replace(/^ro/i, ''))}" caen="${esc(company.caen || '0000')}" den="${esc(company.nume)}"

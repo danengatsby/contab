@@ -116,6 +116,25 @@ Ordinea de căutare (`scripts/valideaza-etransport.sh`):
 > `/var/tmp` **nu** e depozit: `systemd-tmpfiles` îl curăță la 30 de zile
 > (`q /var/tmp 1777 root root 30d`) — o schemă acolo dispare fără urmă.
 
+> **Declarații rectificative — cele trei nu se comportă la fel (sondaj, 2026-07-28).** Presupunerea
+> naturală, că fiecare declarație are un „bifați dacă e rectificativă", e **falsă**. Căutarea în
+> validatoarele oficiale dă zero apariții ale noțiunii la D300 și D394; doar D112 o are:
+>
+> | | Steag în XML | Ce s-a dovedit |
+> |---|---|---|
+> | **D112** | `d_rec="1"` + `tip_rec="N"` | Regula **A3b**: când `d_rec=1`, `tip_rec` **nu poate fi 5** (probat: 1 și 3 trec, 5 respins). Când `d_rec=0`, `tip_rec` nu se completează deloc. `cnpAnt`/`numeAnt`/`prenAnt` doar la rectificative. |
+> | **D300** | **niciunul** | Decontul corectat se **redepune**. Singurul câmp înrudit e `temei`, cu lista **{0, 2}** — valorile 1 și 3 sunt respinse („nu se află în listă"). `2` = depunere după anularea rezervei verificării ulterioare. |
+> | **D394** | **niciunul** | Zero apariții ale noțiunii în tot validatorul. Rectificarea e o redepunere completă. `tip_D394` e tipul de **perioadă** (L/T/S/A), nu un steag de rectificare — capcană ușoară. |
+>
+> Consecința de proiectare: „rectificativă" e în primul rând o stare a **aplicației** (a câta
+> depunere, de ce, ce s-a schimbat), nu un câmp XML. Istoricul depunerilor se ține pentru toate trei;
+> XML-ul primește steag doar unde există.
+>
+> **Capcană de metodă, meritată o dată:** prima sondă pe D112 a „trecut" pentru că regexul insera
+> atributele pe `<declaratie112`, iar rădăcina reală e `<declaratieUnica` — nu s-a inserat nimic și
+> am validat fișierul original. O sondă care nu modifică fișierul raportează *valid* și pare o
+> confirmare. Verifică întotdeauna că sonda chiar a schimbat ceva înainte să-i crezi rezultatul.
+
 > **D101 — creditul de sponsorizare (adăugat 2026-07-28).** Rândul și plafonul **nu au fost ghicite**,
 > ci citite din validator prin sondaj (metoda „validatorul ca oracol"). O primă încercare cu o sumă
 > arbitrară a întors regula, textual:

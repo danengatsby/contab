@@ -2805,6 +2805,61 @@ eq('expandRecipe: cost unitar din reteta', ordT.costUnitar, 5);
 eq('expandRecipe: override cost', bomMod.expandRecipe(recT, 10, 8).costUnitar, 8);
 eq('expandRecipe: fara cantitate -> cantitateBaza', bomMod.expandRecipe(recT).cantitate, 10);
 
+section('Declaratii rectificative (istoric depuneri + steag XML)');
+{
+  const decl = require('../src/declarations');
+  const nid = (() => { let n = 0; return () => 'dcl' + (++n); })();
+  const d = { declarations: [] };
+
+  // Prima depunere NU e rectificativa; urmatoarele sunt, prin definitie.
+  const s1 = decl.addSubmission(d, 'f1', 'd300', '2026-06', { sume: { tvaDePlata: 1000 }, de: 'ana' }, nid);
+  eq('prima depunere are ordinalul 1', s1.depunere.ordinal, 1);
+  ok('prima depunere NU e rectificativa', s1.depunere.rectificativa === false);
+  const s2 = decl.addSubmission(d, 'f1', 'd300', '2026-06', { sume: { tvaDePlata: 1250 }, motiv: 'factura primita tarziu', de: 'ana' }, nid);
+  eq('a doua depunere are ordinalul 2', s2.depunere.ordinal, 2);
+  ok('a doua depunere E rectificativa', s2.depunere.rectificativa === true);
+
+  // Istoricul NU se suprascrie — asta e intreg scopul: o rectificativa e o depunere NOUA.
+  eq('istoricul pastreaza ambele depuneri', s2.rec.depuneri.length, 2);
+  eq('prima depunere ramane cu suma ei initiala', s2.rec.depuneri[0].sume.tvaDePlata, 1000);
+  eq('motivul se pastreaza pe depunere', s2.rec.depuneri[1].motiv, 'factura primita tarziu');
+  // A treia nu pierde primele doua (regresia clasica: `depuneri` reinitializat la fiecare apel).
+  const s3 = decl.addSubmission(d, 'f1', 'd300', '2026-06', { sume: { tvaDePlata: 1250 } }, nid);
+  eq('a treia depunere nu pierde istoricul', s3.rec.depuneri.length, 3);
+  eq('o singura inregistrare pe (firma, tip, perioada)', d.declarations.length, 1);
+  eq('statusul devine „depusa"', s3.rec.status, 'depusa');
+
+  // Diferenta: doar cheile SCHIMBATE, cu delta — o rectificativa fara diferenta vizibila nu se
+  // poate verifica de nimeni.
+  const dif = decl.submissionDiff(s1.depunere, s2.depunere);
+  eq('diferenta are un singur rand', dif.length, 1);
+  eq('diferenta: cheia schimbata', dif[0].cheie, 'tvaDePlata');
+  eq('diferenta: delta calculat', dif[0].delta, 250);
+  eq('doua depuneri identice -> nicio diferenta', decl.submissionDiff(s2.depunere, s3.depunere).length, 0);
+
+  // Steagul in XML exista DOAR la D112 (dovedit prin sondaj pe validatoarele oficiale).
+  ok('D112 e semnalizata in XML', !!decl.RECT_IN_XML.d112);
+  ok('D300 NU are steag in XML (redepunere)', !decl.RECT_IN_XML.d300);
+  ok('D394 NU are steag in XML (redepunere)', !decl.RECT_IN_XML.d394);
+
+  // Generatorul: steagul apare doar cand e cerut, iar valoarea interzisa de regula A3b se corecteaza.
+  const co = { cui: '12345674', nume: 'T', caen: '1071', adresa: 'A', oras: 'B', judet: 'RO-B' };
+  const sp = { rows: [], totals: { brut: 0, cas: 0, cass: 0, impozit: 0, cam: 0, net: 0 } };
+  const norm = xml.d112Xml(co, '2026-06', sp, null);
+  const rect = xml.d112Xml(co, '2026-06', sp, null, { rectificativa: true, tipRec: 1 });
+  ok('D112 normal NU are d_rec', !/d_rec/.test(norm));
+  ok('D112 rectificativ are d_rec="1" si tip_rec', /d_rec="1"/.test(rect) && /tip_rec="1"/.test(rect));
+  // Regula A3b a validatorului: cand d_rec=1, tip_rec nu poate fi 5.
+  const bad = xml.d112Xml(co, '2026-06', sp, null, { rectificativa: true, tipRec: 5 });
+  ok('tip_rec=5 (interzis de regula A3b) e corectat, nu emis', !/tip_rec="5"/.test(bad) && /tip_rec="1"/.test(bad));
+  ok('rectificativa=false nu emite steag', !/d_rec/.test(xml.d112Xml(co, '2026-06', sp, null, { rectificativa: false })));
+
+  // D300: fara steag, dar cu `temei` — lista dovedita {0, 2}.
+  const d300d = { tvaColectata: 0, tvaDeductibila: 0, tvaDePlata: 0, tvaDeRecuperat: 0, randuri: {} };
+  ok('D300 implicit are temei="0"', /temei="0"/.test(xml.d300Xml(co, '2026-06', d300d, null)));
+  ok('D300 dupa anularea rezervei are temei="2"', /temei="2"/.test(xml.d300Xml(co, '2026-06', d300d, null, { dupaRezerva: true })));
+}
+
 section('Registrul depunerilor + portofoliu');
 const declMod = require('../src/declarations');
 eq('termen D300 pentru iunie', declMod.dueDate('d300', '2026-06'), '2026-07-25');
