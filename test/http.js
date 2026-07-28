@@ -948,6 +948,43 @@ async function main() {
       ok('profil micro: D101 nu apare in decembrie', !(dregDecMicro.rows || []).map((x) => x.tip).includes('d101'));
       // guard de generare: firma pe micro nu depune D101 -> 400
       eq('guard: /xml/d101 la regim micro -> 400', (await req('GET', '/xml/d101?year=2026', { cookie: c1 })).status, 400);
+
+      // ── Situatii financiare anuale (bilant) ──
+      // Nomenclatoarele vin de la server (sursa unica: valorile extrase din validatorul ANAF).
+      const nomB = await req('GET', '/api/bilant-nomenclator', { cookie: c1 });
+      ok('/api/bilant-nomenclator: 42 de judete, 27 forme, 5 calitati',
+        nomB.status === 200 && nomB.json.judete.length === 42
+        && nomB.json.formeProprietate.length === 27 && nomB.json.calitati.length === 5);
+      ok('nomenclatorul pastreaza codurile istorice (Calarasi 51)',
+        nomB.json.judete.some((j) => j.cod === '51' && j.iso === 'RO-CL'));
+
+      // Fara datele de antet, generarea e REFUZATA si spune ce lipseste (nu produce un formular inventat)
+      const bLipsa = await req('GET', '/xml/bilant?year=2025', { cookie: c1 });
+      ok('xml/bilant fara antet -> 400 cu lista campurilor lipsa',
+        bLipsa.status === 400 && /forma de propriet/i.test(bLipsa.text) && /administrator/i.test(bLipsa.text));
+
+      // Campurile de antet se salveaza prin /api/company (sunt in allowlist-ul de firma)
+      const savedB = await req('POST', '/api/company', { cookie: c1, body: {
+        judet: 'RO-B', adresa: 'Str. Exemplu nr. 1', caen: '1071',
+        formaProprietate: '35', administrator: 'Popescu Ion', telefon: '0211234567',
+        intocmitNume: 'Ionescu Maria', intocmitCalitate: '21', intocmitNr: '12345', auditStatut: '3',
+      } });
+      ok('/api/company accepta campurile de antet ale bilantului',
+        savedB.status === 200 && savedB.json.company.formaProprietate === '35'
+        && savedB.json.company.administrator === 'Popescu Ion');
+
+      const xb = await req('GET', '/xml/bilant?year=2025&categorie=micro', { cookie: c1 });
+      ok('xml/bilant (micro): S1120 bine-format, cu F10 si F20',
+        xb.status === 200 && /<Bilant1120 /.test(xb.text)
+        && /xmlns="mfp:anaf:dgti:s1120:declaratie:v3"/.test(xb.text)
+        && /<F10 /.test(xb.text) && /<F20 /.test(xb.text));
+      ok('xml/bilant: sume in lei INTREGI (validatorul respinge zecimalele)',
+        !/F10_\d{4}="-?\d+\.\d/.test(xb.text));
+      ok('xml/bilant: niciun atribut gol (validatorul le respinge)', !/="\s*"/.test(xb.text));
+      const xb1121 = await req('GET', '/xml/bilant?year=2025&categorie=mic', { cookie: c1 });
+      ok('xml/bilant (mic): S1121 cu F20 complet (88 de randuri)',
+        xb1121.status === 200 && /<Bilant1121 /.test(xb1121.text)
+        && (xb1121.text.match(/F20_\d{4}="/g) || []).length === 176);
       // controale de coerenta derivate din profil (al treilea pilon)
       const ctrl = (await req('GET', '/api/fiscal-controls?year=2026', { cookie: c1 })).json;
       ok('fiscal-controls: structura coerenta (byLevel + ok + findings)', ctrl.byLevel && typeof ctrl.ok === 'boolean' && Array.isArray(ctrl.findings));

@@ -1815,6 +1815,30 @@ Cu stimă,
             </div>
           </div>
           <div class="full explain" id="fiscalProfileSummary"><span class="ei">⚙️</span><p class="muted">Se încarcă profilul calculat…</p></div>
+
+          <div class="full"><b>Situații financiare anuale (bilanț)</b>
+            <p class="muted">Datele de antet cerute de formularul ANAF (S1120 / S1121). Fără ele
+              bilanțul nu se poate genera — sunt informații pe care doar firma le cunoaște, așa că
+              aplicația refuză să le presupună. Codul de județ se deduce din câmpul „Județ" de mai sus.</p></div>
+          <label>Cod CAEN efectiv (dacă diferă de cel principal) <input name="caenE" maxlength="4" placeholder="implicit: la fel ca CAEN" /></label>
+          <label>Formă de proprietate
+            <select name="formaProprietate" data-nom="formeProprietate"><option value="">— alege —</option></select>
+          </label>
+          <label>Cod teritorial (județul administrației fiscale)
+            <select name="codTeritorial" data-nom="judete"><option value="">Automat (județul firmei)</option></select>
+          </label>
+          <label>Administrator (nume complet) <input name="administrator" placeholder="ex. Popescu Ion" /></label>
+          <label>Situațiile sunt întocmite de <input name="intocmitNume" placeholder="nume complet" /></label>
+          <label>În calitate de
+            <select name="intocmitCalitate" data-nom="calitati"><option value="">— alege —</option></select>
+          </label>
+          <label>Nr. în Registrul CECCAR <input name="intocmitNr" placeholder="obligatoriu doar pentru expert contabil / firmă CECCAR" /></label>
+          <label>Statutul de audit
+            <select name="auditStatut" data-nom="audit"><option value="3">Neauditate / neverificate</option></select>
+          </label>
+          <label>Auditor / cenzor — denumire <input name="auditorNume" placeholder="doar dacă situațiile sunt auditate sau verificate" /></label>
+          <label>Auditor — nr. registru <input name="auditorNr" /></label>
+          <label>Auditor — CIF <input name="auditorCif" /></label>
           <div class="full" data-u="u126"><b data-u="u127">Personalizare documente & facturi</b></div>
           <label>IBAN (apare pe documente + în e-Factura) <input name="iban" placeholder="RO49AAAA1B31007593840000" /></label>
           <label>Banca <input name="banca" placeholder="Banca Transilvania" /></label>

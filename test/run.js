@@ -4856,5 +4856,89 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
 }
 
 
+section('Situatii financiare anuale (S1120/S1121) — randuri, invarianti, antet');
+{
+  const bil = require('../src/bilant');
+  const nomB = require('../src/bilantNomenclator');
+  const { bilantXml } = require('../src/xml');
+  const { buildSeedData } = require('../src/seed');
+
+  // Numarul de campuri e impus de SCHEMA ANAF (verificat pe validatorul oficial). Daca cineva
+  // modifica intervalele, formularul iese cu randuri lipsa — pe care ANAF le asteapta completate.
+  eq('F10 are 102 campuri (51 randuri x 2 coloane)', bil.CAMPURI_F10.length, 102);
+  eq('F20 micro are 28 de campuri (14 randuri)', bil.CAMPURI_F20_MICRO.length, 28);
+  eq('F20 complet are 176 de campuri (88 de randuri)', bil.CAMPURI_F20_COMPLET.length, 176);
+  ok('campurile respecta tiparul <formular>_<rand><coloana>', bil.CAMPURI_F10.every((k) => /^F10_\d{4}$/.test(k)));
+
+  let n = 0; const sd = buildSeedData(() => 'e' + (++n));
+  const view = { entries: sd.entries, openingBalances: sd.openingBalances || {} };
+  const firma = Object.assign({}, sd.firme[0], {
+    telefon: '0211234567', formaProprietate: '35', administrator: 'POPESCU ION',
+    intocmitNume: 'IONESCU MARIA', intocmitCalitate: '21', intocmitNr: '12345', auditStatut: '3',
+  });
+
+  for (const cat of ['micro', 'mic']) {
+    const s = bil.situatii(view, firma, 2026, cat);
+    eq('antet complet -> nimic de reclamat (' + cat + ')', s.lipsa.length, 0);
+    const R = s.f10[2];
+    const g = (k) => R[k] || 0;
+    // INVARIANTUL CENTRAL: identitatea de bilant pe care o verifica validatorul (regula F10_64).
+    // Tine doar daca fiecare cont a cazut in EXACT UN rand, cu semnul corect.
+    const stanga = g('049');
+    const dreapta = g('004') + g('009') + g('010') - g('013') - g('016') - g('017') - g('018');
+    eq('identitatea de bilant tine (' + cat + ')', stanga, dreapta);
+    // Legatura impusa intre formulare: rezultatul din bilant = rezultatul din contul de profit
+    const randP = cat === 'mic' ? '069' : '008';
+    const randPi = cat === 'mic' ? '070' : '009';
+    eq('rezultatul din F10 = rezultatul din F20 (' + cat + ')',
+      g('043') - g('044'), s.f20[2][randP] - s.f20[2][randPi]);
+    // Toate sumele sunt INTREGI — validatorul respinge zecimalele
+    ok('toate randurile F10 sunt lei intregi (' + cat + ')',
+      Object.values(R).every((x) => Number.isInteger(x)));
+    ok('toate randurile F20 sunt lei intregi (' + cat + ')',
+      Object.values(s.f20[2]).every((x) => Number.isInteger(x)));
+
+    const x = bilantXml(s);
+    ok('XML bine format (' + cat + ')', wellFormed(x));
+    ok('radacina si namespace corecte (' + cat + ')',
+      x.includes('<' + s.antet.formular.radacina + ' ') && x.includes(':' + s.antet.formular.ns + ':declaratie:'));
+    ok('contine toate campurile F10 (' + cat + ')', bil.CAMPURI_F10.every((k) => x.includes(k + '="')));
+    ok('niciun atribut gol (validatorul le respinge) (' + cat + ')', !/="\s*"/.test(x));
+  }
+
+  // Versiunea de namespace se alege dupa ANUL RAPORTAT (capcana confirmata pe validator).
+  const { bilantNsVersion } = require('../src/xml');
+  eq('namespace v3 pentru 2025', bilantNsVersion(2025), 'v3');
+  eq('namespace v2 pentru 2020', bilantNsVersion(2020), 'v2');
+  eq('namespace v1 pentru 2017', bilantNsVersion(2017), 'v1');
+
+  // Antetul REFUZA sa se completeze singur: fara datele firmei nu se genereaza nimic.
+  const gol = bil.situatii(view, { nume: 'X', cui: '1', judet: 'RO-B' }, 2026, 'micro');
+  ok('antet incomplet -> raporteaza ce lipseste, nu inventeaza', gol.lipsa.length >= 5);
+  ok('...si numeste forma de proprietate', gol.lipsa.some((m) => /forma de proprietate/.test(m)));
+  const jGresit = bil.situatii(view, Object.assign({}, firma, { judet: 'XX' }), 2026, 'micro');
+  ok('judet nerecunoscut -> refuz explicit, nu un cod implicit', jGresit.lipsa.some((m) => /judet/.test(m)));
+
+  // Regula R26 a validatorului: numarul CECCAR e obligatoriu la calitatile 21/22, interzis altfel.
+  const fara = bil.antet(Object.assign({}, firma, { intocmitNr: '' }), 2026, 'micro', 0);
+  ok('R26: calitatea 21 fara numar CECCAR -> reclamat', fara.lipsa.some((m) => /CECCAR/.test(m)));
+  const intern = bil.antet(Object.assign({}, firma, { intocmitCalitate: '12', intocmitNr: '999' }), 2026, 'micro', 0);
+  ok('R26: la calitatea 12 numarul NU se trimite', intern.attrs.nri_intocmit === undefined);
+
+  // Nomenclatoarele sunt cele din validatorul oficial — nu inventate de noi.
+  eq('42 de judete in nomenclator', nomB.JUDETE.length, 42);
+  eq('Bucuresti = 40', nomB.codJudet('RO-B'), '40');
+  eq('Calarasi pastreaza codul istoric 51', nomB.codJudet('RO-CL'), '51');
+  eq('Giurgiu pastreaza codul istoric 52', nomB.codJudet('RO-GR'), '52');
+  ok('judet necunoscut -> null (nu un implicit tacut)', nomB.codJudet('RO-ZZ') === null);
+  eq('27 de forme de proprietate', nomB.FORME_PROPRIETATE.length, 27);
+  eq('5 calitati de intocmitor', nomB.CALITATI.length, 5);
+
+  // Termenul legal: 31 mai anul urmator (150 de zile, Legea 82/1991 art. 36).
+  const declB = require('../src/declarations');
+  eq('termenul situatiilor financiare = 31 mai anul urmator', declB.dueDate('bilant', '2026-12'), '2027-05-31');
+  ok('tipul apare in registrul de declaratii', !!declB.TIPURI.bilant);
+}
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

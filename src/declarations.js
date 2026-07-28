@@ -20,6 +20,7 @@ const TIPURI = {
   d101: { nume: 'D101 — impozit pe profit (anual)' },
   saft: { nume: 'D406 — SAF-T' },
   intrastat: { nume: 'Intrastat — declarație statistică (INS)' },
+  bilant: { nume: 'Situații financiare anuale (bilanț)' },
 };
 const STATUSES = ['nedepusa', 'generata', 'depusa', 'eroare', 'scutita'];
 
@@ -40,6 +41,9 @@ function dueDate(tip, period) {
   if (tip === 'intrastat') return ny + '-' + pad2(nm) + '-15';
   // D101 (impozit pe profit anual): 25 martie anul URMATOR anului fiscal (perioada = Y-12)
   if (tip === 'd101') return (y + 1) + '-03-25';
+  // Situatiile financiare anuale: 31 MAI anul urmator, pentru societati (art. 36 alin. 1 din
+  // Legea contabilitatii 82/1991 — 150 de zile de la incheierea exercitiului financiar).
+  if (tip === 'bilant') return (y + 1) + '-05-31';
   // restul: 25 ale lunii urmatoare
   return ny + '-' + pad2(nm) + '-25';
 }

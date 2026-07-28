@@ -46,6 +46,7 @@ src/fiscalProfile.js
 src/fiscalControls.js
 src/payroll.js
 src/reporting.js
+src/bilant.js
 src/accounting.js
 src/validate.js
 src/seed.js
