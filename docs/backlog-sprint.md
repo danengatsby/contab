@@ -1,257 +1,373 @@
-# Backlog sprint — iulie 2026
+# Backlog sprint — iulie 2026 (runda a doua)
 
-Backlog verificat față de codul real la 2026-07-16 (starea de pe `main`, commit 3450958).
-Itemii propuși inițial care s-au dovedit deja implementați sunt listați la final, la
-„Tăiat din backlog", ca să nu reapară la următoarea planificare.
+Backlog verificat față de codul real la 2026-07-28 (starea de pe `main`, commit b72c45f), în urma
+unei analize complete pe două axe: informatică și contabilă. Fiecare gol de mai jos a fost
+**confirmat în cod**, nu presupus — referințele trimit la linia care îl dovedește.
 
-Estimare totală: **10–15 zile** pentru toți cei 5 itemi; primii 4 (~8–12 zile) formează
-sprintul recomandat.
+Estimare totală: **16–24 de zile** pentru toți cei 10 itemi. Sprintul recomandat = P0 (3 itemi,
+7–9 zile), fiindcă acolo aplicația calculează astăzi cifre pe care un client le-ar semna.
 
-Convenții de lucru (din CLAUDE.md): o ramură pe item, commit-uri tematice în română,
-merge în `main` cu `--no-ff`. Orice item care atinge persistența rulează suita HTTP pe
-ambele drivere (`node test/http.js` și `CONTAB_TEST_DRIVER=sqlite node test/http.js`).
+Convenții de lucru (din CLAUDE.md): o ramură pe item, commit-uri tematice în română, merge în
+`main` cu `--no-ff`. Orice item care atinge un generator fiscal trece prin
+`sh scripts/poarta-fiscala.sh` înainte de merge. Orice item care atinge persistența rulează suita
+HTTP pe ambele drivere (vezi rețeta `CONTAB_TEST_DRIVER` + `CONTAB_PG_URL` din CLAUDE.md).
 
 ---
 
-## 1. Refactorizare rute → servicii (subsetul cu scrieri) — ✅ ÎNCHIS 2026-07-16
+## Starea măsurată la deschiderea backlogului (2026-07-28)
 
-**Estimare:** 5–7 zile · **Realizat:** 1 zi · **Prioritate:** 1
+Măsurători datate, nu descrieri ale prezentului permanent:
 
-> Toate cele 7 rute au service layer (câte o ramură + merge `--no-ff` per rută):
-> `accountService`, `entriesService`, `messagesService`, `partnersService`,
-> `configService`, `closingsService`, `payrollService`. Suita `test/run.js` a crescut
-> de la 899 la 1003 verificări; contractele istorice sunt conservate și documentate
-> în comentarii. Abateri deliberate față de plan: mesageria a primit serviciu NOU
-> (`src/messages.js` rămâne pur, nu se extinde), iar `buildEntry`/`upsertPartner`
-> rămân în server.js (folosite de bancă/ANAF) și intră ca dependențe.
+| | |
+|---|---|
+| Cod | 26.900 linii, 599 commit-uri, 332 de rute |
+| Teste | 3.488 de verificări verzi, 0 picate (1 suită sărită: store-pg, fără `CONTAB_PG_URL`) |
+| Dependențe | 0 vulnerabilități (`npm audit`), 0 markere TODO/FIXME în cod |
+| Producție | pm2 online, `/api/health` 1,8 ms, TLS valid până la 12 oct. 2026 |
+| **Date reale în producție** | **56 de articole contabile, 4 firme, 674 de rânduri de audit** |
+
+Ultimul rând ordonează tot ce urmează. Ingineria e cu două ordine de mărime înaintea utilizării,
+deci marginalul pe infrastructură e mic, iar marginalul pe „ce face un cabinet să-și mute clienții
+aici" e mare. De aceea P0 e contabil, nu informatic, iar multi-instanța rămâne nefăcută.
+
+---
+
+# P0 — corectitudine fiscală
+
+Blochează orice client plătitor de impozit pe profit. Aplicația produce astăzi un „rezultat fiscal"
+care poate fi greșit fără ca nimic să semnaleze.
+
+## 1. Motor de plafoane de deductibilitate
+
+**Estimare:** 3–4 zile · **Prioritate:** 1
 
 ### Descriere
 
-Modelul de service layer există și e documentat (`src/stocksService.js`,
-`src/firmeService.js`, `src/anafService.js`, cu gărzile `reqFirma`/`reqEntry`/
-`reqNotDemo`/`reqAdmin` și erori purtând `err.status`), dar doar 4 din 25 de module de
-rute îl folosesc. Restul scriu direct în baza de date din handler. Nu se refactorizează
-tot: doar rutele cu scrieri multiple, în ordinea numărului de `db.save()` inline:
+Deductibilitatea e modelată astăzi ca **procent fix pe cont**: tabela `NEDEDUCTIBILE` din
+[`src/reporting.js`](../src/reporting.js) (linia ~396) are 5 conturi, fiecare cu un `pct`. Lipsesc
+exact regulile **cu plafon**, care sunt miezul impozitului pe profit românesc — verificat prin
+căutare în tot `src/`:
 
-| Rută | Scrieri inline | Serviciu țintă |
+| Regulă | Temei | Apariții în cod azi |
 |---|---|---|
-| `src/routes/account.js` | 8 | `src/accountService.js` |
-| `src/routes/entries.js` | 7 | `src/entriesService.js` |
-| `src/routes/messages.js` | 7 | extindere `src/messages.js` |
-| `src/routes/partners.js` | 6 | `src/partnersService.js` |
-| `src/routes/config.js` | 6 | `src/configService.js` |
-| `src/routes/payroll.js` | 4 | extindere `src/payroll.js` |
-| `src/routes/closings.js` | 5 | `src/closingsService.js` |
+| Protocol (623) — 2% din profitul contabil ajustat | art. 25(3)(a) | **0** |
+| Cheltuieli sociale (6458) — 5% din fondul de salarii | art. 25(3)(b) | **0** |
+| Sponsorizare — credit fiscal min(0,75% CA, 20% impozit), report 7 ani | art. 25(4)(i) | **1**, o etichetă de checklist |
+| Dobânzi / costuri excedentare ale îndatorării — 1 M EUR + 30% EBITDA | art. 40² | **0** |
+| Auto 50% pe **cheltuială** (nu doar pe TVA) | art. 25(3)(l) | doar jumătatea de TVA |
 
-Rutele read-only și cele cu 1–2 scrieri simple rămân cum sunt (decizie explicită, nu
-omisiune).
+Consecința directă: `profitTax()` din [`src/accounting.js`](../src/accounting.js) primește
+`cheltNedeductibile` ca **număr tastat de om**, iar generatorul D101 din
+[`src/xml.js`](../src/xml.js) (linia ~921) îl varsă nedetaliat în P33/P34 („toate nedeductibilele
+la «alte cheltuieli»"). Registrul de evidență fiscală arată corect ca formă, dar nu calculează
+ce trebuie calculat.
 
 ### Cerințe tehnice
 
-- Fiecare serviciu urmează tiparul din `src/stocksService.js`: primește `fid` explicit
-  (fără fallback pe `firmaActiva`), validează prin `reqFirma()`, caută înregistrări doar
-  în firma dată (`reqEntry()` — 404 identic pentru inexistent și străin), aruncă erori
-  cu `err.status`.
-- Ruta rămâne adaptor: parse cerere → apel serviciu → `logAudit` → răspuns prin `run(res, fn)`.
-- Refactorizare pură: fără schimbări de comportament HTTP (aceleași coduri, aceleași
-  corpuri de răspuns). Testele existente din `test/http.js` trebuie să treacă neatinse.
-- Per serviciu nou: secțiune de teste sincrone în `test/run.js` cu `errStatus` pentru
-  gărzi (autorizare pe firmă, perioadă închisă, demo).
-- Un commit / o ramură per serviciu extras, ca review-ul (cubic) să rămână digerabil.
+- Modul nou `deductibilitate.js` în `src/`, **pur** (fără scrieri), pe modelul modulelor de domeniu:
+  primește vederea scoped + anul, întoarce liniile de ajustare cu bază, plafon, sumă deductibilă,
+  sumă nedeductibilă și temeiul legal per rând.
+- Parametrii (2%, 5%, 0,75%, 20%, 30%, 1 M EUR) intră în [`src/fiscalConfig.js`](../src/fiscalConfig.js),
+  datați și cu `SURSE`, ca orice cotă — nu se hardcodează în motor.
+- Ordinea de aplicare contează și e parte din contract: protocolul se calculează pe profitul
+  contabil **înainte** de impozitul pe profit și **inclusiv** cheltuiala de protocol; sponsorizarea
+  e credit fiscal (se scade din impozit), nu cheltuială deductibilă.
+- Reportul de 7 ani al sponsorizării neutilizate se **persistă** (nu se poate deduce din rulajul
+  anului) — o colecție nouă sau un câmp pe `closings`, după modelul din CLAUDE.md.
+- `registruFiscal()` și `profitTax()` consumă motorul; `cheltNedeductibile` rămâne acceptat ca
+  suprascriere manuală (contract istoric conservat), dar valoarea implicită vine din calcul.
+- D101 primește defalcarea reală pe rânduri, nu suma globală. **Trece prin poarta fiscală.**
 
 ### Acceptanță
 
-- [x] Cele 7 rute din tabel nu mai conțin logică de business — doar parse/apel/răspuns.
-- [x] Fiecare serviciu are teste directe în `test/run.js` (inclusiv gărzile de autorizare).
-- [x] `npm test` verde, plus `test/http.js` pe ambele drivere.
-- [x] Niciun endpoint nu-și schimbă contractul (verificabil prin testele HTTP existente).
+- [ ] Fiecare din cele 5 reguli are cel puțin un caz semnat în [`test/cazuri-aprobate.js`](../test/cazuri-aprobate.js)
+      (amprentă pe temei + intrare + cifre), inclusiv un caz la limita plafonului și unul peste.
+- [ ] Sponsorizarea neutilizată se reportează corect peste 3 ani consecutivi, cu prescripția la 7.
+- [ ] `registruFiscal()` nu mai raportează zero nedeductibile pentru o firmă cu protocol și amenzi.
+- [ ] D101 generat rămâne „Validare fără erori" la validatorul oficial, cu defalcarea nouă.
+- [ ] `npm test` verde + `sh scripts/poarta-fiscala.sh` verde.
 
 ---
 
-## 2. Protecție upload: validare de conținut + rate limit — ✅ ÎNCHIS 2026-07-16
+## 2. Amortizare fiscală separată de cea contabilă
 
-**Estimare:** 1–2 zile · **Realizat:** ~2 ore · **Prioritate:** 2
-
-> Implementat în `src/uploadGuard.js`: magic bytes pentru PDF/imagini + verificare
-> „fără NUL" pentru text; containerele (.xlsx/.xls/.zip/.dbf) rămân deliberat pe
-> validarea parserului (variante istorice multe, nu se servesc inline). Plafoane per
-> utilizator: upload 60/oră (`CONTAB_RATE_UPLOAD`), exporturi mari 10/oră
-> (`CONTAB_RATE_EXPORT`, pe SAF-T + backup + export firmă). Plafonul AI exista deja
-> (zilnic, per utilizator, în documents.js) — punctul din plan era deja acoperit.
+**Estimare:** 2 zile · **Prioritate:** 2
 
 ### Descriere
 
-Upload-ul are deja limită de 20 MB și allowlist de extensii care blochează HTML/JS/SVG
-(`server.js`, `UPLOAD_EXT_OK`). Două goluri reale:
-
-1. **Extensia nu garantează conținutul** — un fișier `.pdf` poate fi orice; extractorul
-   și Claude API primesc conținut nevalidat.
-2. **Niciun plafon de frecvență** pe upload și pe exporturile costisitoare (SAF-T, PDF-uri
-   mari) — un cont autentificat poate satura discul sau bugetul de API AI.
+Ipoteza „amortizarea fiscală = amortizarea contabilă" e **hardcodată și scrisă explicit** în
+[`src/reporting.js`](../src/reporting.js) (linia ~433), care emite mențiunea „art. 28: amortizarea
+fiscală = amortizarea contabilă […] — nicio diferență". [`src/assets.js`](../src/assets.js) ține o
+singură metodă per mijloc fix. Orice client cu amortizare accelerată fiscal și liniară contabil
+(cazul uzual la echipamente) primește un rezultat fiscal greșit, tăcut.
 
 ### Cerințe tehnice
 
-- Validare magic bytes după salvarea multer, înaintea procesării: PDF (`%PDF`),
-  PNG/JPEG/WebP/GIF (semnăturile standard), CSV/TXT (euristică text). Nepotrivire
-  extensie/conținut → 400 cu mesaj clar + ștergerea fișierului de pe disc.
-- Rate limit per utilizator (nu per IP — utilizatorii sunt autentificați) pe:
-  - upload documente: plafon generos (~60/oră) — nu deranjează contabilul, oprește abuzul;
-  - extragere AI: plafon separat, mai strâns (cost extern);
-  - exporturi mari (SAF-T, backup): ~10/oră.
-- Refolosește tiparul existent de rate limit din `server.js` (map + job
-  `rate-limit-hygiene` din `safeInterval`), nu o dependență nouă.
-- Depășire → 429 cu mesaj în română, ca la login.
+- Al doilea plan pe fiecare mijloc fix: `metodaFiscala` + `durataFiscalaLuni`, implicit **egale** cu
+  cele contabile (migrare aditivă, idempotentă, pe modelul pașilor versionați din
+  [`src/migrations.js`](../src/migrations.js) — rulează și pe bază goală, și pe date migrate).
+- Motorul de amortizare existent se refolosește pe ambele planuri; nu se duplică formulele.
+- Diferența (contabilă − fiscală) intră **automat** ca ajustare în registrul de evidență fiscală și
+  în motorul de la itemul 1 — în ambele sensuri (deducere suplimentară sau cheltuială nedeductibilă).
+- Doar planul **contabil** postează 6811 = 281x. Planul fiscal e extracontabil, nu generează articole.
+- Mențiunea din registru devine condiționată: „fără diferență" doar când chiar nu e.
 
 ### Acceptanță
 
-- [x] Un fișier `.pdf` cu conținut non-PDF e respins cu 400 și nu ajunge la extractor
-      (nici pe disc după respingere).
-- [x] Depășirea plafonului răspunde 429; sub plafon, comportamentul e neschimbat.
-- [x] Teste în `test/http.js`: fișier deghizat respins, al N+1-lea upload primește 429.
-- [x] Map-urile noi de rate limit sunt curățate de jobul de igienă existent.
+- [ ] Un mijloc fix cu accelerată fiscal / liniară contabil produce ajustare nenulă în anul 1 și
+      ajustare de semn opus în anii următori, cu suma cumulată **zero** pe toată durata.
+- [ ] Bazele existente rămân neschimbate după migrare (planurile pornesc egale → diferență zero).
+- [ ] Caz semnat în [`test/cazuri-aprobate.js`](../test/cazuri-aprobate.js).
+- [ ] Poarta fiscală verde (atinge registrul fiscal și D101).
 
 ---
 
-## 3. Wizard de primă autentificare — ✅ ÎNCHIS 2026-07-16
+## 3. Declarații rectificative (D300 / D394 / D112)
 
-**Estimare:** 1–2 zile · **Realizat:** ~2 ore · **Prioritate:** 3
-
-> Overlay de bun venit peste dashboard pentru firmele fără nicio înregistrare,
-> cu pașii checklist-ului „Primii pași" (extins cu „Adaugă primul partener");
-> `primiiPasi` expune în plus `arePartener`/`areProdus`/`wizardAscuns`. „Mai târziu"
-> persistă pe cont prin `POST /api/onboarding/dismiss` (accountService). Verificat
-> vizual pe instanță dev izolată cu Playwright în Docker (overlay apare / se
-> ascunde / rămâne ascuns după reload).
+**Estimare:** 2–3 zile · **Prioritate:** 3
 
 ### Descriere
 
-Piesele există deja: checklist-ul „Primii pași" pe dashboard
-(`src/routes/dashboard.js`, `primiiPasi`), wizard-ul „Înregistrează ghidat" pentru tipul
-de operațiune (`public/app.js`), importuri de parteneri/produse, seed demo. Planul de
-conturi e built-in (`src/chartOfAccounts.js`) — nu necesită import. Ce lipsește: un flux
-care **leagă** pașii pentru un utilizator nou, în loc să-l lase să-i descopere singur.
+Zero apariții pentru „rectificativ" în tot codul. Depunerea unei rectificative e muncă **lunară de
+rutină** într-un cabinet, nu caz de colț: o factură primită târziu după depunerea decontului
+înseamnă D300 rectificativ, iar o corecție de salariu înseamnă D112 rectificativ.
 
 ### Cerințe tehnice
 
-- Extinde `primiiPasi` din `/api/dashboard` cu pașii lipsă: date fiscale complete
-  (CUI + plătitor TVA + serie facturi), cel puțin un partener, cel puțin un produs
-  (doar dacă firma are activitate de stocuri).
-- Frontend: overlay/panou pas-cu-pas afișat când `primiiPasi` indică firmă goală;
-  fiecare pas deschide direct formularul existent (nu duplică formulare). Buton
-  „mai târziu" care îl retrogradează la checklist-ul discret existent pe dashboard.
-- Starea „văzut/ascuns" per utilizator, persistată (nu localStorage — utilizatorul
-  poate schimba browserul).
-- Fără framework — vanilla JS, în stilul modulelor din `public/`.
-- Condiția de afișare derivă din datele reale ale firmei (ca `primiiPasi` acum), nu
-  dintr-un flag „prima autentificare" — astfel funcționează și pentru firme noi ale
-  utilizatorilor vechi.
+- Câmpul exact de semnalizare per declarație **nu se ghicește**: se sondează validatorul oficial cu
+  XML-uri minime și se citește regula din eroare — metoda documentată în
+  [`docs/validare-oficiala.md`](validare-oficiala.md) și folosită deja pentru R65 / V7 / V8 / R84.
+- Starea se ține pe cheia existentă (firmaId, tip, period) din colecția `declarations`: o
+  rectificativă e o **depunere nouă** peste aceeași perioadă, cu ordinal, nu o suprascriere — se
+  păstrează istoricul depunerilor și XML-ul fiecăreia.
+- Perioada închisă nu blochează rectificativa (ăsta e scopul ei), dar cere **motiv scris**, pe
+  modelul forțării închiderii din [`src/monthlyClose.js`](../src/monthlyClose.js) — și intră în audit.
+- UI: în tabul de declarații, acțiune explicită „Depune rectificativă", cu diferența față de
+  depunerea anterioară afișată înainte de confirmare.
 
 ### Acceptanță
 
-- [x] Un utilizator nou cu firmă goală vede wizard-ul la autentificare și poate ajunge
-      la primul document înregistrat în sub 10 minute doar urmând pașii.
-- [x] Wizard-ul nu apare pentru firme cu date suficiente și nici după ce a fost închis
-      explicit (persistent între sesiuni/browsere).
-- [x] Test în `test/http.js` pentru pașii noi din `primiiPasi` (pe modelul testului
-      existent de onboarding).
-- [x] Verificare vizuală prin skill-ul `run-app` (instanță dev izolată, nu producția).
+- [ ] Câte o rectificativă pentru D300, D394 și D112 trece la validatorul oficial („Validare fără erori").
+- [ ] Rectificativa peste o perioadă închisă cere motiv și îl consemnează în audit.
+- [ ] Istoricul depunerilor per perioadă e vizibil și nu se pierde la a doua rectificativă.
+- [ ] Cele trei declarații rămân în jurnalul din [`docs/validare-oficiala.md`](validare-oficiala.md).
 
 ---
 
-## 4. Loguri de business: upload + extragere AI — ✅ ÎNCHIS 2026-07-16
+# P1 — deblochează utilizarea zilnică
 
-**Estimare:** 1 zi · **Realizat:** ~1 oră · **Prioritate:** 4
+## 4. Feed curs valutar BNR
 
-> `document.upload` în audit (nume + KB + sursa extragerii, fără conținut), plus
-> `bank.parse`/`bank.import` pentru extrasul bancar. Apelurile AI sunt cronometrate:
-> contoare `n/fail/avgMs/lastError` în `/api/metrics` (secțiunea `ai`) și log
-> structurat cu `reqId` la succes/eșec. Instrumentarea stă în rută, în jurul
-> apelului — `aiExtractor.js` neatins.
+**Estimare:** 1–2 zile · **Prioritate:** 4
 
 ### Descriere
 
-Auditul (`logAudit`) acoperă ~80 de acțiuni, dar exact zona cu cost extern e oarbă:
-nu există `document.upload` și nici o urmă pentru extragerea AI (succes/eșec/durată/
-dimensiune). La un incident de cost API sau la un document „pierdut", singura urmă e
-logul generic de cereri.
+Nu există niciun feed de curs în aplicație. [`src/fxreval.js`](../src/fxreval.js) cere cursul de
+închidere **tastat de utilizator**, iar [`src/anafService.js`](../src/anafService.js) (linia ~250)
+refuză direct importul unei e-Facturi în altă monedă: „Importul automat suportă deocamdată doar RON."
+Orice client cu furnizori în EUR e blocat pe ambele capete.
 
 ### Cerințe tehnice
 
-- `logAudit('document.upload', …)` în `src/routes/documents.js`: nume fișier, dimensiune,
-  tip detectat, firmă.
-- În `src/aiExtractor.js`, prin `src/log.js`: început/sfârșit extragere cu durată,
-  model, dimensiune document, succes/eșec + motiv (`log.info`/`log.warn` cu `log.ctx`).
-  Atenție la conținut: se loghează metadate, niciodată textul documentului.
-- Contor simplu în `src/metrics.js` pentru extragerile AI (număr, eșecuri, durată medie),
-  expus în `GET /api/metrics` — intră automat și în raportul zilnic de performanță.
-- Fără logare de date personale din documente (doar identificatori și metadate).
+- Modul nou `bnr.js` în `src/`: citește cursul oficial zilnic, cu **istoric** (cursul de la data
+  documentului, nu cel de azi — o factură din martie se evaluează la cursul din martie).
+- Orice apel extern trece prin tiparul existent `anafFetch` (timeout + retry doar pe GET), nu prin
+  `fetch` gol; indisponibilitatea feed-ului **nu** blochează înregistrarea — cade pe cursul tastat.
+- Cursurile se persistă local; o zi nelucrătoare folosește ultimul curs publicat (regula BNR).
+- Deblochează importul e-Factura în valută: baza în valută + cursul zilei → lei.
+- Job periodic prin `safeInterval` din [`src/jobs.js`](../src/jobs.js), nu un timer nou.
 
 ### Acceptanță
 
-- [x] Fiecare upload apare în audit cu utilizator, firmă și metadatele fișierului.
-- [x] O extragere AI eșuată e localizabilă în log după `reqId`, cu motivul eșecului.
-- [x] `/api/metrics` expune contoarele AI; testul de metrics din `test/http.js` extins.
-- [x] Zero conținut de document în loguri (verificat în review).
+- [ ] Reevaluarea lunară rulează fără curs tastat manual, cu cursul corect al datei de referință.
+- [ ] O e-Factură în EUR se importă și produce articolul contabil în lei.
+- [ ] Feed-ul căzut → avertisment, nu eroare; înregistrarea manuală rămâne posibilă.
+- [ ] Testele nu fac apeluri externe reale (stub pe `global.fetch`, ca în [`test/anaf.js`](../test/anaf.js)).
 
 ---
 
-## 5. Documentare API / contracte — ✅ ÎNCHIS 2026-07-16
+## 5. Export fișier de plăți (SEPA pain.001)
 
-**Estimare:** 2–3 zile · **Realizat:** ~1 oră · **Prioritate:** 5
-
-> `docs/api.md`: convențiile transversale o dată (sesiuni, scoping, erori, plafoane),
-> fluxul cap-coadă login → upload → articol → rapoarte, contractele per modul —
-> inclusiv contractele istorice conservate la refactorizare. Fără OpenAPI (decizie
-> documentată în antet). Făcut ultimul, cum era planificat: documentează contractele
-> stabilizate de itemul 1.
-
-**SPRINTUL E COMPLET: 5/5 iteme închise pe 2026-07-16, într-o singură zi**
-(estimarea inițială: 10–15 zile).
+**Estimare:** 2 zile · **Prioritate:** 5
 
 ### Descriere
 
-`docs/arhitectura.md` descrie modulele și menționează multe endpoint-uri inline, dar nu
-există un contract per endpoint (parametri, formatul răspunsului, erori). De făcut
-**după** itemul 1 — refactorizarea stabilizează exact contractele care se documentează.
+Importul de extras bancar e complet — [`src/bank.js`](../src/bank.js) parsează CSV, MT940 și
+CAMT.053. Drumul de întoarcere lipsește: lotul de plăți către furnizori și salariile nete, de urcat
+în internet banking. Astăzi contabilul le tastează una câte una în aplicația băncii.
 
 ### Cerințe tehnice
 
-- Un fișier nou `docs/api.md`, organizat pe module (ca `src/routes/`), pentru rutele
-  principale: autentificare/cont, firme, documente + upload, entries, rapoarte,
-  declarații, stocuri, salarizare.
-- Per endpoint: metodă + cale, parametri (query/body), formatul răspunsului de succes,
-  erorile posibile cu status (400/401/403/404/409/429) și forma `{ error: '…' }`.
-- Documentează convențiile transversale o singură dată, la început: autentificarea pe
-  sesiune, scoping-ul pe firmă activă, tiparul de erori, rate limit-urile.
-- În română cu diacritice (e în `docs/`), ținut sincron manual — fără generator
-  OpenAPI deocamdată (decizie explicită: costul de întreținere nu se justifică la
-  dimensiunea actuală a echipei).
+- Generator `pain.001` (SEPA Credit Transfer) dintr-o selecție de facturi furnizor scadente și/sau
+  din restul de plată al statului de salarii.
+- Escapare XML prin `esc()` din [`src/xml.js`](../src/xml.js) — denumirile de partener vin din surse
+  externe (e-Factura/SPV), deci contextul de ieșire e cel din secțiunea „Escapare" din CLAUDE.md.
+- Fișierul generat **nu** postează nimic în contabilitate: plata se înregistrează la confirmarea din
+  extras, prin fluxul existent de reconciliere. Altfel s-ar dubla.
+- Export plafonat prin limita de exporturi mari existentă (`CONTAB_RATE_EXPORT`).
+- Validare împotriva schemei ISO 20022 înainte de livrare, pe modelul XSD-ului e-Transport
+  versionat în repo.
 
 ### Acceptanță
 
-- [x] Rutele principale au contract documentat (parametri, răspuns, erori).
-- [x] Un dezvoltator nou poate urmări fluxul upload → extragere → articol contabil →
-      raport doar din document.
-- [x] Convențiile transversale sunt descrise o dată, nu repetate per endpoint.
+- [ ] Fișierul generat e acceptat de cel puțin o bancă reală (probă documentată).
+- [ ] IBAN invalid sau lipsă → refuz cu mesaj clar, înainte de generare.
+- [ ] Generarea nu creează articole contabile (verificat prin test).
 
 ---
 
-## Tăiat din backlog (deja implementat, verificat în cod)
+## 6. Importator de migrare de la software-ul existent
 
-- **Dashboard KPI** — `rep.dashboard()` (`src/reporting.js`) livrează TVA de plată/
-  recuperat, solduri clienți/furnizori cu top 5, numerar/bancă, venituri/cheltuieli/
-  profit cu variație an-la-an; rute separate pentru grafice, aging, cash-forecast,
-  documente lipsă. Frontend în `public/dashboard.js`.
-- **CI/CD** — `.github/workflows/ci.yml`: lint + teste pe Node 22/24, plus suita HTTP
-  pe PostgreSQL real (paritate cu producția) la fiecare push/PR. `test/http.js`
-  pornește serverul real, deci depășește un smoke test. Rest posibil: un Dockerfile —
-  neinclus deliberat, producția rulează pe pm2 pe acest server.
-- **Rate limit pe autentificare** — login cu anti-brute-force și 429, înregistrare
-  5/oră/IP, forgot-password plafonat (commit 9b5b8ba), job de igienă a map-urilor.
-- **Limite de upload** — 20 MB + allowlist de extensii care blochează fișierele active
-  (HTML/JS/SVG). Rămâne doar validarea de conținut (itemul 2).
-- **Observabilitate de infrastructură** — `src/log.js` structurat (reqId, mod JSON),
-  `/api/metrics` cu durate pe rută + `recentErrors` + starea joburilor, raport zilnic
-  `scripts/perf-report.sh`. Rămân doar logurile de business (itemul 4).
-- **Import plan de conturi** — non-task: planul de conturi RO e built-in
-  (`src/chartOfAccounts.js`).
+**Estimare:** 3–5 zile · **Prioritate:** 6
+
+### Descriere
+
+**Cel mai bun raport valoare/efort din toată lista.** Se pot importa astăzi parteneri, produse, plan
+de conturi, solduri inițiale și extras bancar — dar fiecare separat, dintr-un fișier pregătit manual.
+Nu există o cale de migrare de la programul pe care cabinetul îl folosește deja. Asta e obiecția
+numărul unu la schimbarea furnizorului, și e de produs, nu de tehnologie: nimeni nu retastează
+soldurile a 40 de clienți.
+
+### Cerințe tehnice
+
+- Un flux unic „Preia o firmă din alt program": balanță de verificare + parteneri + mijloace fixe +
+  stocuri, într-o singură trecere, cu previzualizare și raport de erori **înainte** de scriere.
+- Parserul de sume există deja și e bun — convenția separatorului dedusă din fișier, cu întrebare la
+  ambiguitate (`public/plan.js`). Se refolosește, nu se rescrie.
+- Regula de aur a importului: **balanța trebuie să iasă echilibrată**, altfel importul se refuză
+  întreg (tranzacțional), nu parțial.
+- Cel puțin un format concret de la un furnizor real, ales după ce întrebăm un cabinet ce folosește.
+  Formatele necunoscute cad pe traseul generic (CSV/XLS cu mapare de coloane asistată).
+- Autorizarea trece prin `reqFirma()` — importul scrie într-o firmă explicită, niciodată în
+  `firmaActiva` prin fallback.
+
+### Acceptanță
+
+- [ ] O firmă reală se preia cap-coadă și balanța de deschidere iese identică cu cea din programul sursă.
+- [ ] Un fișier corupt sau dezechilibrat nu lasă date parțiale în bază.
+- [ ] Maparea de coloane e salvată și refolosibilă la următorul client din același program.
+
+---
+
+# P2 — infrastructură, pe semnal real
+
+## 7. Offsite pe stocare obiect, criptat
+
+**Estimare:** 1 zi · **Prioritate:** 7
+
+### Descriere
+
+Backup-ul zilnic funcționează și are **două** drill-uri de restaurare (graf + restaurare nativă pg) —
+partea grea e făcută. Dar offsite-ul e **e-mail către o adresă Gmail**
+([`scripts/backup.js`](../scripts/backup.js), cron 03:30). Merge la 0,1 MB. Se rupe la dimensiune și
+trece date fiscale de client printr-o cutie poștală terță — inconsecvent cu DPA-ul comis în b72c45f.
+
+### Cerințe tehnice
+
+- Destinație S3-compatibilă (Backblaze B2 / Hetzner Storage Box), arhivă **criptată înainte de
+  urcare**, cu retenție și versionare.
+- E-mailul rămâne **notificare**, nu transport de date.
+- Variabilele noi de mediu urmează prefixul `CONTAB_` existent; documentate în ghidul de rulare în
+  **același commit** (poarta de documentație verifică asta).
+- RTO/RPO scrise explicit în documentație, cu procedura de restaurare pas cu pas.
+- Drill-ul de restaurare existent rulează pe arhiva **descărcată din offsite**, nu doar pe cea locală
+  — altfel verifică ce n-a plecat nicăieri.
+
+### Acceptanță
+
+- [ ] O restaurare completă din offsite, cronometrată, cu RTO măsurat și scris.
+- [ ] Arhiva urcată e ilizibilă fără cheie (verificat).
+- [ ] Eșecul urcării alertează — „n-am putut verifica" nu e „e bine", ca la poarta fiscală.
+
+---
+
+## 8. Limitare de debit la nivel nginx
+
+**Estimare:** 2 ore · **Prioritate:** 8
+
+### Descriere
+
+Tot throttling-ul e în Node (plafon general de API, login anti-brute-force, upload, exporturi) și e
+bine făcut — dar traficul unui atacator costă oricum o tură de event loop pe un proces **singur**.
+`nginx-contab.conf` nu are nicio directivă `limit_req`.
+
+### Cerințe tehnice
+
+- `limit_req` pe `/api/login`, `/api/register` și calea de resetare a parolei, calibrat **peste**
+  plafoanele din aplicație (nginx taie abuzul, aplicația rămâne autoritatea pe reguli).
+- Plafoanele din aplicație rămân neatinse — sunt apărarea corectă, nginx e doar prima plasă.
+- Configurația nginx nu e în repo azi; dacă intră, intră cu tot cu notă în ghidul de rulare.
+
+### Acceptanță
+
+- [ ] Un val de cereri pe `/api/login` primește 503 de la nginx fără să atingă Node.
+- [ ] Un utilizator normal nu vede nicio diferență (verificat prin `npm run e2e`).
+
+---
+
+## 9. Pas de build minimal pentru frontend
+
+**Estimare:** 2–3 zile · **Prioritate:** 9
+
+### Descriere
+
+[`public/index.html`](../public/index.html) e un monolit de **162 KB / 2.171 de linii**: markup-ul
+tuturor taburilor pleacă la fiecare utilizator, la fiecare încărcare, plus 464 KB de JS neminificat.
+Decizia „fără framework" e bună și rămâne; „fără niciun pas de build" e altceva.
+
+### Cerințe tehnice
+
+- Spargerea `index.html` pe taburi, încărcate la cerere — **nu** un framework, doar fragmente.
+- Minificare + hash în numele fișierelor pentru cache; service worker-ul din `public/sw.js` e deja
+  network-first pe shell, deci actualizările rămân instant.
+- **Atenție** (memorie de proiect): `public/` e servit direct din working tree, deci orice fișier
+  scris acolo e instant public. Pasul de build trebuie să scrie într-un director de ieșire, nu peste
+  sursă, iar tranziția să nu lase artefacte intermediare servite.
+- `test/frontend.mjs` importă module din `public/` printr-o oglindă în /tmp — pasul de build nu are
+  voie să rupă acel contract.
+
+### Acceptanță
+
+- [ ] Prima încărcare scade măsurabil (cifră înainte/după, în acest document).
+- [ ] `npm test` și `npm run e2e` verzi, nemodificate ca aserțiuni.
+- [ ] Niciun artefact de build servit accidental din `public/`.
+
+---
+
+## 10. Multi-instanță reală — NEÎNCEPUT, deliberat
+
+**Prioritate:** ultima, și doar pe semnal real
+
+Aplicația rulează pe **o singură instanță, pe o singură mașină**: pm2 în fork mode, un proces Node,
+graful integral în RAM. Fencing-ul `dbEpoch` (pasul 7 din [`docs/scalare-crestere.md`](scalare-crestere.md))
+**protejează** împotriva a doi scriitori, dar nu **permite** multi-instanță. Nu există failover.
+
+Ăsta e cel mai mare risc structural al aplicației — și totuși **nu se face acum**. La 56 de articole
+contabile în producție, ar rezolva o problemă pe care nu o ai, cu costul de a nu rezolva niciuna
+dintre cele opt de mai sus, care sunt reale astăzi.
+
+Pașii sunt deja scriși în ADR și rămân valabili: citiri per-cerere generalizate, apoi hidratare lazy.
+**Semnalul care declanșează itemul:** `firmeLoad` sau RSS-ul urcând constant spre plafonul pm2, ori
+primul client care cere disponibilitate contractuală. Nu înainte.
+
+Tot din același motiv rămân nefăcute: normalizarea relațională suplimentară și un Dockerfile de
+producție (producția rulează pe pm2 pe acest server, decizie deja consemnată).
+
+---
+
+## Sprintul anterior — iulie 2026, runda întâi (ÎNCHIS 5/5)
+
+Închis integral pe 2026-07-16, într-o singură zi (estimare inițială: 10–15 zile). Detaliul complet,
+cu cerințe și acceptanță per item, e în istoricul git al acestui fișier — ultima versiune a
+sprintului închis e la commit `d26b94b` (`git show d26b94b:docs/backlog-sprint.md`).
+
+1. **Refactorizare rute → servicii** (subsetul cu scrieri) — 7 servicii extrase, câte o ramură fiecare.
+2. **Protecție upload: validare de conținut + rate limit** — magic bytes + plafoane per utilizator.
+3. **Wizard de primă autentificare** — overlay derivat din date reale, cu „mai târziu" persistat pe cont.
+4. **Loguri de business: upload + extragere AI** — audit `document.upload` + contoare AI în metrici.
+5. **Documentare API / contracte** — [`docs/api.md`](api.md), fără OpenAPI (decizie explicită).
+
+Itemii care s-au dovedit **deja implementați** la verificarea de atunci și nu trebuie să reapară la
+planificare: dashboard KPI, CI/CD, rate limit pe autentificare, limite de upload, observabilitate de
+infrastructură, import plan de conturi (planul RO e built-in în
+[`src/chartOfAccounts.js`](../src/chartOfAccounts.js)).
