@@ -364,8 +364,39 @@ function fillCompanyForm() {
   if (f.intrastatObligat) f.intrastatObligat.checked = !!META.company.intrastatObligat;
   const scut = (META.company.scutiri && typeof META.company.scutiri === 'object') ? META.company.scutiri : {};
   document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { c.checked = !!scut[c.dataset.scutire]; });
+  // antetul situatiilor financiare — se completeaza dupa ce nomenclatoarele sunt in DOM
+  fillBilantNomenclatoare().then(() => {
+    BILANT_FIELDS.forEach((k) => { if (f[k]) f[k].value = META.company[k] || (k === 'auditStatut' ? '3' : ''); });
+  });
   refreshLogo();
   refreshFiscalProfile();
+}
+
+// Campurile de antet ale situatiilor financiare anuale (S1120/S1121).
+const BILANT_FIELDS = ['caenE', 'codTeritorial', 'formaProprietate', 'administrator',
+  'intocmitNume', 'intocmitCalitate', 'intocmitNr', 'auditStatut', 'auditorNume', 'auditorNr', 'auditorCif'];
+
+// Nomenclatoarele vin de la SERVER, nu sunt scrise in HTML: valorile admise sunt cele extrase din
+// validatorul oficial ANAF (src/bilantNomenclator.js). O lista copiata in frontend ar putea drifta
+// fata de ce accepta ANAF, iar o valoare in afara listei inseamna declaratie respinsa.
+let nomBilantCache = null;
+async function fillBilantNomenclatoare() {
+  const selects = document.querySelectorAll('#companyForm [data-nom]');
+  if (!selects.length) return;
+  if (!nomBilantCache) {
+    try { nomBilantCache = await api('/api/bilant-nomenclator'); } catch (_) { return; }
+  }
+  selects.forEach((sel) => {
+    if (sel.dataset.populat) return; // o singura data: repopularea ar pierde selectia curenta
+    const lista = nomBilantCache[sel.dataset.nom] || [];
+    for (const o of lista) {
+      const opt = document.createElement('option');
+      opt.value = o.cod;
+      opt.textContent = o.cod + ' — ' + o.nume;
+      sel.appendChild(opt);
+    }
+    sel.dataset.populat = '1';
+  });
 }
 // Rezumatul profilului fiscal CALCULAT (motorul) — arata ce declaratii/alerte deriva din setari
 async function refreshFiscalProfile() {
@@ -838,6 +869,8 @@ $('#companyForm').addEventListener('submit', async (e) => {
   body.intrastatObligat = f.intrastatObligat ? f.intrastatObligat.checked : false;
   body.scutiri = {};
   document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { if (c.checked) body.scutiri[c.dataset.scutire] = true; });
+  // antetul situatiilor financiare anuale (bilant)
+  BILANT_FIELDS.forEach((k) => { if (f[k]) body[k] = String(f[k].value || '').trim(); });
   const r = await api('/api/company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   META.company = r.company || body;
   refreshFiscalProfile(); // recalculeaza rezumatul profilului — inaintea DOM-ului care ar putea arunca

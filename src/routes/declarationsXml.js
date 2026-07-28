@@ -11,6 +11,7 @@ const rep = require('../reporting');
 const acc = require('../accounting');
 const saft = require('../saft');
 const bilant = require('../bilant');
+const bilantNom = require('../bilantNomenclator');
 const pdf = require('../pdf');
 const decl = require('../declarations');
 const plans = require('../plans');
@@ -124,6 +125,11 @@ module.exports = function register(app, ctx) {
     recordDecl(req, 'd101', year + '-12'); // registrul lucreaza pe perioade lunare; D101 = decembrie
     sendXml(res, xml.d101Xml(v.company, rep.d101(v, year), declarantOf(req)), 'd101-' + year + '.xml');
   });
+  // Nomenclatoarele antetului de bilant, pentru listele din Setari. Valorile sunt cele EXTRASE
+  // din validatorul oficial ANAF — servite de aici ca sa existe o singura sursa; o lista copiata
+  // in frontend ar putea drifta fata de ce accepta ANAF.
+  app.get('/api/bilant-nomenclator', (req, res) => res.json(bilantNom.optiuni()));
+
   // Situatiile financiare ANUALE (S1120 microentitati / S1121 entitati mici).
   // Categoria vine din ?categorie=, implicit dupa regimul fiscal al firmei: micro -> S1120.
   // Antetul cere date pe care doar firma le stie (administrator, intocmitor, forma de
