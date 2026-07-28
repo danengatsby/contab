@@ -121,7 +121,9 @@ async function req(method, p, opts) {
   const text = await r.text();
   let json = null;
   try { json = JSON.parse(text); } catch (_) { /* non-JSON */ }
-  return { status: r.status, json, text, cookie: (r.headers.get('set-cookie') || '').split(';')[0], reqId: r.headers.get('x-request-id') };
+  // `headers` expus aditiv: unele raspunsuri se verifica pe antet (Content-Disposition,
+  // X-Balance-Source), nu doar pe corp.
+  return { status: r.status, json, text, headers: r.headers, cookie: (r.headers.get('set-cookie') || '').split(';')[0], reqId: r.headers.get('x-request-id') };
 }
 
 async function waitUp(tries) {
@@ -490,6 +492,39 @@ async function main() {
     const listaAudit = Array.isArray(auditRect.json) ? auditRect.json : (auditRect.json.items || []);
     ok('rectificativa apare in jurnalul de audit',
       listaAudit.some((a) => a.action === 'declaratie.rectificativa'));
+
+    // ── Fisier de plati pain.001 ──────────────────────────────────────────
+    {
+      const laP = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
+      // Propunerile arata si randurile care NU pot intra in lot, cu motivul — nu le ascund.
+      const prop = await req('GET', '/api/plati/propuneri?tip=furnizori', { cookie: laP.cookie });
+      eq('propunerile de plata se pot citi', prop.status, 200);
+      ok('fiecare rand spune daca e gata si de ce nu', (prop.json.randuri || []).every((r) => 'gata' in r && 'motiv' in r));
+      ok('firma fara IBAN e semnalata separat', typeof prop.json.platitorGata === 'boolean');
+
+      // Fara IBAN pe firma, generarea REFUZA cu toate problemele deodata.
+      const fara = await req('POST', '/xml/pain001', { cookie: laP.cookie, body: { plati: [{ beneficiar: 'ALFA', iban: 'DE89370400440532013000', suma: 10 }] } });
+      eq('generare fara IBAN-ul firmei -> 400', fara.status, 400);
+      ok('raspunsul enumera problemele', Array.isArray(fara.json.probleme) && fara.json.probleme.length > 0);
+
+      // Completam IBAN-ul firmei si generam
+      await req('POST', '/api/company', { cookie: laP.cookie, body: { iban: 'RO49AAAA1B31007593840000' } });
+      const rau = await req('POST', '/xml/pain001', { cookie: laP.cookie, body: { plati: [{ beneficiar: 'ALFA', iban: 'RO00GRESIT', suma: 10 }] } });
+      eq('IBAN de beneficiar invalid -> 400 (nu se genereaza)', rau.status, 400);
+      ok('mesajul numeste IBAN-ul invalid', /IBAN invalid/i.test((rau.json || {}).error || ''));
+
+      const entriesInainte = (await req('GET', '/api/entries', { cookie: laP.cookie })).json;
+      const nrInainte = Array.isArray(entriesInainte) ? entriesInainte.length : entriesInainte.items.length;
+      const okGen = await req('POST', '/xml/pain001', { cookie: laP.cookie, body: { moneda: 'RON', execDate: '2026-08-05',
+        plati: [{ beneficiar: 'ALFA DISTRIBUTIE SRL', iban: 'DE89370400440532013000', suma: 1234.56, detalii: 'Factura 77' }] } });
+      eq('generare valida -> 200', okGen.status, 200);
+      ok('raspunsul e XML pain.001', /pain\.001\.001\.03/.test(okGen.text || ''));
+      ok('se descarca drept fisier', /attachment/.test(okGen.headers.get('content-disposition') || ''));
+      // INVARIANTUL: fisierul e o intentie de plata, nu o plata. Nimic nu s-a inregistrat.
+      const entriesDupa = (await req('GET', '/api/entries', { cookie: laP.cookie })).json;
+      const nrDupa = Array.isArray(entriesDupa) ? entriesDupa.length : entriesDupa.items.length;
+      eq('generarea NU creeaza niciun articol contabil', nrDupa, nrInainte);
+    }
 
     // ── Curs BNR (fixture LOCAL, zero apeluri externe) ────────────────────
     {

@@ -270,9 +270,32 @@ Orice client cu furnizori în EUR e blocat pe ambele capete.
 
 ---
 
-## 5. Export fișier de plăți (SEPA pain.001)
+## 5. Export fișier de plăți (SEPA pain.001) — ✅ ÎNCHIS 2026-07-28
 
-**Estimare:** 2 zile · **Prioritate:** 5
+**Estimare:** 2 zile · **Realizat:** ~2 ore · **Prioritate:** 5
+
+> `sepa.js` (pur): validare IBAN prin **mod-97** (ISO 13616), verificarea lotului care raportează
+> *toate* problemele deodată, și generatorul `pain.001.001.03`. Rută `POST /xml/pain001` +
+> `GET /api/plati/propuneri`, care compune lotul din scadențarul de furnizori sau din resturile de
+> plată ale statului de salarii. IBAN/BIC adăugate pe partener, angajat și firmă.
+>
+> **Două decizii de fond:**
+> - Fișierul **nu postează nimic** în contabilitate. Plata se înregistrează la apariția în extras.
+>   Contabilizarea și la generare, și la import ar dubla plata — iar un fișier generat nu e o plată:
+>   banca îl poate refuza. Invariantul e testat explicit (numărul de articole nu se schimbă).
+> - `SvcLvl/SEPA` **doar pentru EUR**. Schema SEPA e prin definiție în euro; o plată internă în RON
+>   marcată „SEPA" e o contradicție pe care unele bănci o resping, iar altele o tratează greșit tăcut.
+>
+> **Ce NU s-a putut face, și e important:** ieșirea **nu e validată față de schema oficială
+> ISO 20022**. XSD-ul pain.001 nu e disponibil public la o adresă stabilă (patru surse încercate,
+> toate 404). Spre deosebire de e-Transport, unde XSD-ul e versionat în repo, aici verificăm doar
+> structura și bine-formarea. Prin regula proiectului, „n-am putut verifica" **nu** e „e bine":
+> criteriul de acceptanță „acceptat de o bancă reală" **rămâne neîndeplinit** și e singurul lucru
+> care poate confirma formatul.
+>
+> 26 de verificări noi în `test/run.js` + 11 în `test/http.js` (mutații: mod-97 scos, SEPA pe RON,
+> escapare scoasă — toate trei prinse). Testul a prins și o eroare reală de pornire: ruta era
+> înregistrată în `server.js` înaintea definiției lui `S`, ceea ce ar fi doborât producția la deploy.
 
 ### Descriere
 
@@ -294,9 +317,11 @@ CAMT.053. Drumul de întoarcere lipsește: lotul de plăți către furnizori și
 
 ### Acceptanță
 
-- [ ] Fișierul generat e acceptat de cel puțin o bancă reală (probă documentată).
-- [ ] IBAN invalid sau lipsă → refuz cu mesaj clar, înainte de generare.
-- [ ] Generarea nu creează articole contabile (verificat prin test).
+- [ ] **NEÎNDEPLINIT** — fișierul generat acceptat de cel puțin o bancă reală (probă documentată).
+      Nu poate fi verificat din cod: cere o încărcare reală în internet banking. **Singurul lucru
+      care confirmă formatul** — până atunci, tratează exportul ca nedovedit.
+- [x] IBAN invalid sau lipsă → refuz cu mesaj clar (toate problemele deodată), înainte de generare.
+- [x] Generarea nu creează articole contabile (verificat prin test: numărul de articole e neschimbat).
 
 ---
 
