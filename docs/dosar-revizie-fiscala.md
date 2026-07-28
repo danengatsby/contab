@@ -4,14 +4,20 @@ Documentul care se **trimite revizorului** (expert contabil CECCAR / consultant 
 în care se **consemnează** rezultatul. Completează [guvernanța fiscală](guvernanta-fiscala.md):
 acolo e cum se întreține setul de reguli, aici e cum se dovedește că e corect.
 
-> **Starea la 2026‑07‑27: nicio revizie externă efectuată încă.** Cele 17 cazuri-test există și
-> rulează, dar niciunul nu are semnătura unui specialist. Vezi §6.
+> **Starea la 2026‑07‑28: nicio revizie externă efectuată încă.** Cazurile-test există și rulează,
+> dar **niciunul** nu are semnătura unui specialist. Numărul curent și starea fiecăruia se citesc
+> din corpus (`node test/cazuri-aprobate.js`), nu de aici — o cifră scrisă în document ar drifta la
+> fiecare caz nou. Vezi §6.
+>
+> **Adăugat 2026‑07‑28:** aria *Plafoane de deductibilitate* (`PLF-01..05`), cu regulile art. 25 și
+> 40² — cea mai urgentă de revizuit din tot corpusul, fiindcă acolo interpretarea schimbă direct
+> impozitul datorat, iar la art. 40² citirea alternativă dă **altă cifră** (vezi §6).
 
 ---
 
 ## 1. De ce e nevoie de ea (ce NU dovedește suita de teste)
 
-Suita automată (~1.200 aserțiuni) și validatorul oficial ANAF acoperă două lucruri:
+Suita automată (`npm test`) și validatorul oficial ANAF acoperă două lucruri:
 
 | Ce se dovedește azi | Cu ce |
 |---|---|
@@ -162,6 +168,19 @@ Tabelul de mai jos e doar un rezumat; sursa de adevăr rămâne `node test/cazur
 | `PFA-02` | Venit net 60.000 lei: baza CAS = 12 SM | Art. 148 Cod fiscal |
 | `PFA-03` | Venit net 300.000 lei: baza CAS = 24 SM, CASS plafonată la 60 SM | Art. 148, 170 Cod fiscal |
 
+### Plafoane de deductibilitate (impozit pe profit) — **prioritatea reviziei**
+
+Adăugate 2026‑07‑28. Spre deosebire de restul corpusului, unde o eroare afectează un salariat sau o
+estimare, aici interpretarea schimbă **impozitul pe profit datorat de firmă**.
+
+| Caz | Ce se verifică | Temei |
+|---|---|---|
+| `PLF-01` | Protocol — plafonul de 2% și **baza** lui de calcul | Art. 25(3)(a) Cod fiscal |
+| `PLF-02` | Cheltuieli sociale — 5% din fondul de salarii | Art. 25(3)(b) Cod fiscal |
+| `PLF-03` | Sponsorizare — cheltuială nedeductibilă + credit fiscal cu dublu plafon | Art. 25(4)(i) Cod fiscal |
+| `PLF-04` | Cheltuieli auto — 50% nedeductibil pe **cheltuială** (distinct de TVA) | Art. 25(3)(l) Cod fiscal |
+| `PLF-05` | Costuri excedentare ale îndatorării — plafon în EUR + 30% din bază | Art. 40² Cod fiscal |
+
 ## 7. Simplificări cunoscute — lista de întrebări pentru revizor
 
 Inventarul onest al locurilor unde implementarea e deliberat simplificată. **Acestea sunt punctele
@@ -228,6 +247,40 @@ exercițiului precedent. Rămâne parametru manual sau se preia automat? — caz
   explicit ca orientative.
 
 Sunt aceste avertismente suficiente ca poziționare, sau trebuie transformate în controale ferme?
+
+### 7.7 Plafoanele de deductibilitate (`src/deductibilitate.js`) — cea mai mare incertitudine deschisă
+
+Adăugat 2026‑07‑28, odată cu motorul. Patru întrebări, în ordinea impactului:
+
+**(a) Art. 40² — costurile excedentare ale îndatorării. Aici există două citiri care dau cifre
+diferite, și e nevoie de o decizie, nu de o preferință.** Implementarea tratează plafonul în EUR ca
+deductibil necondiționat și aplică cei 30% **doar părții care îl depășește**:
+
+```
+deductibil = plafonEUR + min(cost − plafonEUR ; 30% × bază)
+```
+
+Citirea alternativă ar fi `deductibil = max(plafonEUR ; 30% × bază)`. Pe cazul `PLF-05` (cost
+20.000.000 lei, bază 20.100.000, curs 5): implementarea dă **8.970.000** nedeductibil, alternativa dă
+**13.970.000**. Diferența e de 5 milioane de lei pe un singur exercițiu.
+
+În plus, la această regulă: baza de calcul folosește amortizarea **fiscală**, care astăzi coincide cu
+cea contabilă (item separat în backlog), iar **diferențele de curs valutar aferente împrumuturilor NU
+sunt incluse** în costul excedentar, deși legea le menționează.
+
+**(b) Protocol — baza de calcul.** Implementarea include în bază cheltuiala de protocol **însăși** și
+cheltuiala cu impozitul pe profit. Dacă revizorul consideră baza altfel (de exemplu doar profitul
+contabil), plafonul din `PLF-01` scade de la 2.420 la 2.000 și nedeductibilul crește la 3.000.
+
+**(c) Sponsorizare — regimul reportului.** Creditul neutilizat se reportează pe
+`sponsorizareReportAni` ani (azi 7), consumat cel mai vechi întâi. Regulile de report și de
+redirecționare s-au schimbat de câteva ori în ultimii ani — de confirmat că regimul implementat e cel
+în vigoare pentru exercițiul revizuit. Notă tehnică: plafonul de 20% e impus și de validatorul oficial
+D101 ca `round((P41−P42)×20%) ≥ P43`, deci pe impozitul **minus creditul fiscal extern**; aplicația nu
+modelează P42, deci azi cele două coincid.
+
+**(d) Fondul de salarii la cheltuielile sociale.** Baza e rulajul contului **641**. De confirmat dacă
+pentru firmele care folosesc și 642/643/644 acestea trebuie incluse.
 
 ## 8. Ce rămâne în sarcina utilizatorului, oricum
 
