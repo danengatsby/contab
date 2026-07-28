@@ -2805,6 +2805,51 @@ eq('expandRecipe: cost unitar din reteta', ordT.costUnitar, 5);
 eq('expandRecipe: override cost', bomMod.expandRecipe(recT, 10, 8).costUnitar, 8);
 eq('expandRecipe: fara cantitate -> cantitateBaza', bomMod.expandRecipe(recT).cantitate, 10);
 
+section('Copie offsite pe stocare obiect (src/offsite.js)');
+{
+  const off = require('../src/offsite');
+  // Vectorul de mai jos NU e memorat: e derivat INDEPENDENT cu openssl (alta implementare de
+  // HMAC-SHA256) si confruntat cu al nostru. O valoare „stiuta" ar fi fost circulara — daca
+  // implementarea si asteptarea vin din aceeasi sursa, testul nu dovedeste nimic.
+  const k = off.signingKey('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', '20120215', 'us-east-1', 'iam');
+  eq('cheia de semnare SigV4 (confruntata cu openssl)', k.toString('hex'),
+    'f4780e2d9f65fa895f9c67b32ce1baf0b0d8a43505a000a1a9e090d414db404d');
+  // Lantul e sensibil la FIECARE componenta: schimba una, se schimba cheia.
+  ok('alta data -> alta cheie', off.signingKey('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', '20120216', 'us-east-1', 'iam').toString('hex') !== k.toString('hex'));
+  ok('alta regiune -> alta cheie', off.signingKey('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', '20120215', 'eu-central-1', 'iam').toString('hex') !== k.toString('hex'));
+  ok('alt serviciu -> alta cheie', off.signingKey('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', '20120215', 'us-east-1', 's3').toString('hex') !== k.toString('hex'));
+
+  const CFG = { endpoint: 'https://s3.eu-central-003.backblazeb2.com', region: 'eu-central-003',
+    bucket: 'contab-backup', accessKey: 'AKIDEXAMPLE', secretKey: 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY' };
+  const sg = off.signRequest(Object.assign({}, CFG, { key: 'contab/full-20260728.zip.enc',
+    payload: Buffer.from('date'), amzDate: '20260728T120000Z' }));
+  ok('antetul Authorization are forma AWS4-HMAC-SHA256', /^AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE\/20260728\/eu-central-003\/s3\/aws4_request/.test(sg.headers.Authorization));
+  ok('semnatura e hex de 64', /^[0-9a-f]{64}$/.test(sg.signature));
+  ok('URL-ul contine bucket si cheie', sg.url.endsWith('/contab-backup/contab/full-20260728.zip.enc'));
+  ok('amprenta continutului e in antet, nu UNSIGNED-PAYLOAD', /^[0-9a-f]{64}$/.test(sg.headers['x-amz-content-sha256']));
+  // Determinism: aceleasi intrari -> aceeasi semnatura (altfel nu s-ar putea reproduce un incident)
+  const sg2 = off.signRequest(Object.assign({}, CFG, { key: 'contab/full-20260728.zip.enc',
+    payload: Buffer.from('date'), amzDate: '20260728T120000Z' }));
+  eq('semnarea e determinista', sg2.signature, sg.signature);
+  // ...dar depinde de CONTINUT: un octet schimbat schimba semnatura (integritate, nu doar identitate)
+  const sg3 = off.signRequest(Object.assign({}, CFG, { key: 'contab/full-20260728.zip.enc',
+    payload: Buffer.from('datf'), amzDate: '20260728T120000Z' }));
+  ok('un octet schimbat in continut schimba semnatura', sg3.signature !== sg.signature);
+
+  // Configurarea incompleta NU se incearca: o urcare cu jumatate de credentiale ar esua la retea,
+  // dupa ce a expus endpointul si numele bucketului in log.
+  ok('configurare completa e recunoscuta', off.configured(CFG));
+  ok('fara secret -> neconfigurat', !off.configured(Object.assign({}, CFG, { secretKey: '' })));
+  ok('fara bucket -> neconfigurat', !off.configured(Object.assign({}, CFG, { bucket: '' })));
+  ok('fara nimic -> neconfigurat', !off.configured({}));
+  eq('citirea din mediu foloseste prefixul CONTAB_OFFSITE_',
+    off.fromEnv({ CONTAB_OFFSITE_BUCKET: 'b', CONTAB_OFFSITE_ENDPOINT: 'https://x', CONTAB_OFFSITE_KEY: 'k', CONTAB_OFFSITE_SECRET: 's' }).bucket, 'b');
+  eq('prefixul implicit al obiectelor', off.fromEnv({}).prefix, 'contab');
+
+  // Codificarea caii pastreaza „/" dar codifica restul (un nume de fisier cu spatiu ar rupe semnatura)
+  eq('caile se codifica pe segmente', off.uriEncodePath('contab/full 2026.zip'), 'contab/full%202026.zip');
+}
+
 section('Preluare firma din alt program (src/migrare.js)');
 {
   const mig = require('../src/migrare');

@@ -43,6 +43,7 @@ process.emitWarning = function (w, ...rest) {
   return _emitWarning.call(process, w, ...rest);
 };
 
+const offsite = require(require('path').join(__dirname, '..', 'src', 'offsite'));
 const backup = require('../src/backup');
 // Acelasi expeditor ca al aplicatiei, dar fara dependinta de baza de date (scriptul ruleaza din
 // cron si lucreaza pe fisiere). Important: verifica raspunsul si arunca daca emailul nu a plecat.
@@ -239,8 +240,29 @@ async function main() {
     const encPath = f.path + '.enc';
     const enc = spawnSync('openssl', ['enc', '-aes-256-cbc', '-pbkdf2', '-iter', '200000', '-in', f.path, '-out', encPath, '-pass', 'env:CONTAB_BACKUP_KEY'],
       { env: Object.assign({}, process.env, { CONTAB_BACKUP_KEY: BK_KEY }), timeout: 5 * 60 * 1000 });
-    if (enc.status === 0) { offsitePath = encPath; log('Offsite criptat:', path.basename(encPath)); }
-    else warn('Criptarea offsite a esuat (se trimite necriptat):', (enc.stderr || enc.error || '').toString().slice(0, 200));
+    if (enc.status !== 0) {
+      // FAIL-CLOSED, deliberat. Varianta veche trimitea NECRIPTAT cand criptarea esua — adica
+      // exact cand ceva nu era in regula, datele fiscale plecau in clar, cu un simplu avertisment
+      // in log. O cheie configurata e o CERINTA, nu o preferinta.
+      throw new Error('Criptarea offsite a esuat, iar CONTAB_BACKUP_KEY e setat: '
+        + (enc.stderr || enc.error || '').toString().slice(0, 200)
+        + ' — copia offsite NU a fost trimisa (refuz deliberat de a trimite in clar).');
+    }
+    // Verificare de ROUND-TRIP inainte de urcare: o arhiva criptata care nu se poate descifra e o
+    // arhiva pierduta, si s-ar afla abia la dezastru. „N-am putut verifica" nu e „e bine".
+    const probaPath = encPath + '.proba';
+    const dec = spawnSync('openssl', ['enc', '-d', '-aes-256-cbc', '-pbkdf2', '-iter', '200000', '-in', encPath, '-out', probaPath, '-pass', 'env:CONTAB_BACKUP_KEY'],
+      { env: Object.assign({}, process.env, { CONTAB_BACKUP_KEY: BK_KEY }), timeout: 5 * 60 * 1000 });
+    let identic = false;
+    try {
+      identic = dec.status === 0
+        && require('crypto').createHash('sha256').update(fs.readFileSync(probaPath)).digest('hex')
+         === require('crypto').createHash('sha256').update(fs.readFileSync(f.path)).digest('hex');
+    } catch (_) { identic = false; }
+    try { fs.unlinkSync(probaPath); } catch (_) { /* best effort */ }
+    if (!identic) throw new Error('Arhiva criptata NU se descifreaza inapoi la original — copia offsite a fost oprita.');
+    offsitePath = encPath;
+    log('Offsite criptat si verificat (round-trip):', path.basename(encPath));
   }
   let offsiteOk = false, offsiteConfigured = false;
   if (EMAIL_TO) {
@@ -254,6 +276,25 @@ async function main() {
       catch (e) { warn('Offsite email ESUAT:', e.message); }
     }
   }
+  // Stocare obiect S3-compatibila (Backblaze B2 / Hetzner / MinIO / R2), semnata nativ — fara
+  // rclone, care nici nu e instalat pe server. E destinatia RECOMANDATA: emailul are limita de
+  // dimensiune si trece datele printr-o cutie postala terta.
+  const offCfg = offsite.fromEnv(process.env);
+  if (offsite.configured(offCfg)) {
+    offsiteConfigured = true;
+    try {
+      const buf = fs.readFileSync(offsitePath);
+      const cheie = (offCfg.prefix ? offCfg.prefix.replace(/\/$/, '') + '/' : '') + path.basename(offsitePath);
+      await offsite.putObject(offCfg, cheie, buf);
+      // Verificare ca ce s-a urcat e ce am trimis: descarcam si comparam amprenta. O urcare
+      // „reusita" care a truncat fisierul arata identic in log cu una buna.
+      const inapoi = await offsite.getObject(offCfg, cheie);
+      const h = (b) => require('crypto').createHash('sha256').update(b).digest('hex');
+      if (h(inapoi) !== h(buf)) throw new Error('obiectul descarcat inapoi difera de cel urcat');
+      offsiteOk = true;
+      log('Offsite S3 OK ->', offCfg.bucket + '/' + cheie, '(' + sizeLabel + ', verificat)');
+    } catch (e) { warn('Offsite S3 ESUAT:', e.message); }
+  }
   if (RCLONE_REMOTE) {
     offsiteConfigured = true;
     const { spawnSync } = require('child_process');
@@ -263,7 +304,9 @@ async function main() {
     else { offsiteOk = true; log('Offsite rclone OK ->', RCLONE_REMOTE); }
   }
   if (offsitePath !== f.path) { try { fs.unlinkSync(offsitePath); } catch (_) { /* best effort */ } }
-  if (!offsiteConfigured) warn('ATENTIE: nicio copie offsite configurata (CONTAB_BACKUP_EMAIL_TO / RCLONE_REMOTE).');
+  if (!offsiteConfigured) warn('ATENTIE: nicio copie offsite configurata. Recomandat: stocare obiect '
+    + '(CONTAB_OFFSITE_ENDPOINT/BUCKET/KEY/SECRET) + criptare (CONTAB_BACKUP_KEY). '
+    + 'Alternative: CONTAB_BACKUP_EMAIL_TO (limitat ca dimensiune), RCLONE_REMOTE (cere rclone instalat).');
   else if (!offsiteOk) process.exitCode = 1; // offsite configurat dar esuat -> semnaleaza in cron log
   if (alertaEsuata) {
     scrieMarcaj();               // urma ramane vizibila in /api/metrics si in raportul zilnic

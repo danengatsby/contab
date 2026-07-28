@@ -232,6 +232,65 @@ actualizează frecvent). Cache-ul stă în `/var/tmp/contab-duk` (reglabil cu `C
 de un runtime Java și de ciclul de update-uri ANAF, iar validarea oficială oricum se repetă
 obligatoriu la depunerea în SPV.
 
+## Copie offsite: stocare obiect, criptată
+
+Backupul zilnic (cron 03:30, `scripts/backup.js`) produce arhiva locală și o trimite offsite.
+**Destinația recomandată e stocarea obiect S3-compatibilă** (Backblaze B2, Hetzner, MinIO,
+Cloudflare R2) — semnarea AWS SigV4 e implementată nativ în [`src/offsite.js`](../src/offsite.js),
+fără `rclone` și fără dependențe noi.
+
+| Variabilă | Ce face |
+|---|---|
+| `CONTAB_OFFSITE_ENDPOINT` | URL-ul serviciului, ex. `https://s3.eu-central-003.backblazeb2.com` |
+| `CONTAB_OFFSITE_BUCKET` | bucketul destinație |
+| `CONTAB_OFFSITE_KEY` / `CONTAB_OFFSITE_SECRET` | credențialele |
+| `CONTAB_OFFSITE_REGION` | regiunea (implicit `us-east-1`) |
+| `CONTAB_OFFSITE_PREFIX` | prefixul obiectelor (implicit `contab`) |
+| `CONTAB_BACKUP_KEY` | **cheia de criptare** — vezi mai jos |
+| `CONTAB_BACKUP_EMAIL_TO` | destinatarul notificării (nu al datelor, dacă e configurat S3) |
+| `RCLONE_REMOTE` | cale alternativă, moștenită; cere `rclone` instalat (**nu e** pe acest server) |
+
+### Criptarea e fail-closed
+
+Cu `CONTAB_BACKUP_KEY` setat, arhiva se criptează (AES-256-CBC, PBKDF2 200.000 iterații) **înainte**
+de urcare, iar scriptul verifică *round-trip* — descifrează și compară amprenta cu originalul —
+înainte să trimită ceva. Dacă criptarea sau verificarea eșuează, **copia offsite nu pleacă deloc**.
+
+Comportamentul vechi trimitea necriptat cu un simplu avertisment în log: adică exact când ceva nu
+era în regulă, datele fiscale plecau în clar. O cheie configurată e o cerință, nu o preferință.
+
+Formatul e cel `openssl`, deliberat: o restaurare de dezastru trebuie să fie posibilă cu unelte de
+pe orice mașină, fără aplicație și fără Node.
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+  -in full-20260728.zip.enc -out full-20260728.zip -pass env:CONTAB_BACKUP_KEY
+```
+
+### RTO / RPO
+
+| | Valoare | De unde vine |
+|---|---|---|
+| **RPO** (cât se poate pierde) | **24 h** | backupul rulează zilnic la 03:30; o cădere la 03:29 pierde ziua precedentă |
+| **RTO** (cât durează revenirea) | **estimat sub 1 h** — **nemăsurat** | descărcare + decriptare + restaurare; vezi avertismentul de mai jos |
+
+> **RTO-ul nu e cronometrat pe o restaurare reală.** Cifra de mai sus e o estimare din durata
+> pașilor, nu o măsurătoare. Prin regula proiectului, asta înseamnă **neverificat** — nu „e bine".
+> Prima restaurare completă din offsite trebuie cronometrată, iar valoarea reală scrisă aici.
+
+### Procedura de restaurare, pas cu pas
+
+1. Descarcă ultima arhivă din bucket (`contab/full-AAAALLZZ-HHMMSS.zip.enc`).
+2. Decriptează cu comanda `openssl` de mai sus (ai nevoie de `CONTAB_BACKUP_KEY`).
+3. Dezarhivează: conține `db.json`, dump-ul PostgreSQL (`contab.sql`) și `uploads/`.
+4. Restaurează baza: fie din Setări → Backup → „Restaurează", fie rejucând `contab.sql`.
+5. Copiază `uploads/` înapoi în `data/uploads/`.
+6. Repornește: `sudo -u contab PM2_HOME=/home/contab/.pm2 pm2 restart contab`.
+7. Verifică: `curl -s http://localhost:8080/api/health` și o balanță pe o lună cunoscută.
+
+**Cheia de criptare nu se ține în același loc cu backupul.** Dacă `CONTAB_BACKUP_KEY` se pierde,
+arhivele offsite sunt irecuperabile — asta e și scopul lor, și riscul lor.
+
 ## Curs de schimb BNR
 
 Cursul oficial BNR se descarcă automat (job la 6 ore) și se păstrează cu **istoric**: o factură din
