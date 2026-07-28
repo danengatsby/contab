@@ -2006,6 +2006,61 @@ async function main() {
     ok('metrici: jobul de backup arata ultima rulare reusita (din settings)',
       met2.json.jobs.backup && typeof met2.json.jobs.backup.lastDoneAt === 'string');
 
+    // ── Preluare firma din alt program (balanta -> solduri) ───────────────
+    {
+      const laM = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
+      const csv = ['Cont;Denumire;Sold final debitor;Sold final creditor',
+        '1012;Capital social;0;30.000,00',
+        '371;Marfuri;25.000,00;0',
+        '401;Furnizori;0;10.000,00',
+        '5121;Banca;15.000,00;0'].join('\n');
+      const fd = new FormData();
+      fd.append('file', new Blob([csv], { type: 'text/csv' }), 'balanta.csv');
+      const pv = await req('POST', '/api/migrare/preview', { cookie: laM.cookie, body: fd });
+      eq('previzualizarea balantei -> 200', pv.status, 200);
+      eq('coloanele sunt mapate automat', pv.json.mapare.cont, 0);
+      eq('conturile cu sold sunt preluate', pv.json.preview.conturi.length, 4);
+      ok('balanta e echilibrata', pv.json.preview.echilibrata === true && pv.json.preview.totalD === 40000);
+      ok('se poate importa', pv.json.preview.sePoateImporta === true);
+      // Importul se face intr-o firma PROPRIE: preluarea rescrie soldurile, iar restul suitei
+      // lucreaza pe firma existenta. Testeaza in acelasi timp garda de firma explicita.
+      const fNoua = await req('POST', '/api/firme', { cookie: laM.cookie, body: { nume: 'PRELUATA SRL', cui: '30000001' } });
+      const fidNou = fNoua.json && (fNoua.json.firma ? fNoua.json.firma.id : fNoua.json.id);
+      ok('firma-tinta pentru preluare a fost creata', !!fidNou);
+      const obInainte = (await req('GET', '/api/opening?firma=' + fidNou, { cookie: laM.cookie })).json;
+      eq('firma noua porneste fara solduri de preluare', Object.keys(obInainte || {}).length, 0);
+
+      // Import intr-o firma INEXISTENTA -> 403 (fara fallback pe firma activa)
+      eq('import in firma inexistenta -> 403',
+        (await req('POST', '/api/migrare/import', { cookie: laM.cookie, body: { firmaId: 99999, conturi: [{ cont: '371', d: 1, c: 0 }] } })).status, 403);
+
+      // REGULA DE AUR verificata pe ce se SCRIE, nu pe ce s-a previzualizat
+      const dezech = await req('POST', '/api/migrare/import', { cookie: laM.cookie,
+        body: { firmaId: fidNou, conturi: [{ cont: '371', d: 100, c: 0 }, { cont: '401', d: 0, c: 50 }], suprascrie: true } });
+      eq('balanta dezechilibrata la import -> 400', dezech.status, 400);
+      ok('mesajul spune ca refuzul e integral', /refuzat integral/i.test((dezech.json || {}).error || ''));
+      // ...si nimic nu s-a scris partial
+      const obDupaRefuz = (await req('GET', '/api/opening?firma=' + fidNou, { cookie: laM.cookie })).json;
+      ok('refuzul nu lasa date partiale', JSON.stringify(obDupaRefuz) === JSON.stringify(obInainte));
+
+      // Firma are deja solduri -> 409 fara `suprascrie`
+      const randuriImp = pv.json.preview.conturi.map((x) => ({ cont: x.cont, d: x.d, c: x.c }));
+      const imp = await req('POST', '/api/migrare/import', { cookie: laM.cookie,
+        body: { firmaId: fidNou, conturi: randuriImp } });
+      eq('importul echilibrat reuseste', imp.status, 200);
+      eq('s-au scris cele 4 conturi', imp.json.conturi, 4);
+      // A doua preluare peste solduri existente cere `suprascrie` — altfel s-ar pierde tacit date.
+      eq('a doua preluare fara `suprascrie` -> 409',
+        (await req('POST', '/api/migrare/import', { cookie: laM.cookie, body: { firmaId: fidNou, conturi: randuriImp } })).status, 409);
+      const obDupa = (await req('GET', '/api/opening?firma=' + fidNou, { cookie: laM.cookie })).json;
+      ok('soldurile preluate se regasesc', obDupa['371'] && obDupa['371'].d === 25000);
+      ok('si creditul furnizorului', obDupa['401'] && obDupa['401'].c === 10000);
+      // Urma in audit: o preluare de solduri schimba toata contabilitatea firmei
+      const aud = (await req('GET', '/api/audit', { cookie: laM.cookie })).json;
+      const lst = Array.isArray(aud) ? aud : (aud.items || []);
+      ok('preluarea apare in audit', lst.some((a) => a.action === 'migrare.import'));
+    }
+
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {

@@ -2805,6 +2805,89 @@ eq('expandRecipe: cost unitar din reteta', ordT.costUnitar, 5);
 eq('expandRecipe: override cost', bomMod.expandRecipe(recT, 10, 8).costUnitar, 8);
 eq('expandRecipe: fara cantitate -> cantitateBaza', bomMod.expandRecipe(recT).cantitate, 10);
 
+section('Preluare firma din alt program (src/migrare.js)');
+{
+  const mig = require('../src/migrare');
+  const ANTET = ['Cont', 'Denumire', 'Sold initial debitor', 'Sold initial creditor', 'Sold final debitor', 'Sold final creditor'];
+  const det = mig.detectMapping(ANTET);
+  eq('coloana contului e gasita', det.map.cont, 0);
+  eq('soldul final debitor e gasit', det.map.sfd, 4);
+  eq('soldul initial creditor e gasit', det.map.sic, 3);
+  // Antet cu prescurtari, forma uzuala in exporturile romanesti
+  const det2 = mig.detectMapping(['Simbol', 'Denumire cont', 'SID', 'SIC', 'SFD', 'SFC']);
+  ok('prescurtarile SID/SFC sunt recunoscute', det2.map.sid === 2 && det2.map.sfc === 5);
+  // O coloana nu poate fi luata de doua campuri (altfel debitul ar fi si credit)
+  ok('fiecare coloana e atribuita unui singur camp',
+    new Set(Object.values(det.map)).size === Object.values(det.map).length);
+  ok('coloanele nefolosite sunt raportate', Array.isArray(mig.detectMapping(['Cont', 'Ceva', 'SFD', 'SFC']).nefolosite));
+
+  const RANDURI = [
+    ['1012', 'Capital social', '0', '30.000,00', '0', '30.000,00'],
+    ['371', 'Marfuri', '20.000,00', '0', '25.000,00', '0'],
+    ['401', 'Furnizori', '0', '15.000,00', '0', '10.000,00'],
+    ['5121', 'Banca', '25.000,00', '0', '15.000,00', '0'],
+  ];
+  const pv = mig.buildPreview(RANDURI, det.map, { sursa: 'final' });
+  eq('se preiau conturile cu sold', pv.conturi.length, 4);
+  eq('total debit', pv.totalD, 40000);
+  eq('total credit', pv.totalC, 40000);
+  ok('balanta e echilibrata', pv.echilibrata);
+  ok('se poate importa', pv.sePoateImporta);
+  eq('fara probleme', pv.probleme.length, 0);
+
+  // REGULA DE AUR: dezechilibrul refuza importul INTREG, nu partial.
+  const dezech = mig.buildPreview([['371', 'M', '0', '0', '25.000,00', '0'], ['401', 'F', '0', '0', '0', '10.000,00']], det.map, { sursa: 'final' });
+  ok('balanta dezechilibrata NU se poate importa', !dezech.sePoateImporta);
+  ok('mesajul spune ca refuzul e integral', dezech.probleme.some((p) => /refuza integral/i.test(p)));
+  eq('diferenta e raportata', dezech.diferenta, 15000);
+
+  // Randurile de titlu/total (fara cont numeric) se sar; conturile soldate nu se preiau.
+  const cuGunoi = mig.buildPreview([
+    ['BALANTA DE VERIFICARE', '', '', '', '', ''],
+    ['371', 'M', '0', '0', '100,00', '0'],
+    ['TOTAL', '', '', '', '100,00', '100,00'],
+    ['401', 'F', '0', '0', '0', '100,00'],
+    ['5311', 'Casa', '0', '0', '0', '0'],
+  ], det.map, { sursa: 'final' });
+  eq('randurile de titlu si total sunt sarite', cuGunoi.conturi.length, 2);
+  ok('contul soldat nu se preia', !cuGunoi.conturi.some((x) => x.cont === '5311'));
+  ok('balanta ramane echilibrata dupa curatare', cuGunoi.echilibrata);
+
+  // Conturile din afara planului NU sunt eroare, dar trebuie vazute.
+  const cuNecunoscut = mig.buildPreview([['371', 'M', '0', '0', '100,00', '0'], ['9999', 'X', '0', '0', '0', '100,00']], det.map, { sursa: 'final' });
+  ok('contul din afara planului e semnalat', cuNecunoscut.necunoscute.includes('9999'));
+  ok('dar nu blocheaza importul', cuNecunoscut.sePoateImporta);
+
+  // AMBIGUITATEA separatorului: „1.234" singur nu se ghiceste — costa un factor de 1000.
+  const amb = mig.buildPreview([['371', 'M', '0', '0', '1.234', '0'], ['401', 'F', '0', '0', '0', '1.234']], det.map, { sursa: 'final' });
+  ok('separatorul ambiguu e raportat, nu ghicit', amb.ambigue > 0);
+  ok('si blocheaza importul pana raspunde omul', !amb.sePoateImporta);
+  // Cu rolul fixat explicit, aceleasi date se importa
+  const dez = mig.buildPreview([['371', 'M', '0', '0', '1.234', '0'], ['401', 'F', '0', '0', '0', '1.234']], det.map,
+    { sursa: 'final', roles: { '.': 'mii', ',': 'zecimale' } });
+  eq('rolul fixat explicit: 1.234 = o mie doua sute treizeci si patru', dez.totalD, 1234);
+  ok('si atunci se poate importa', dez.sePoateImporta);
+  // O SINGURA linie neambigua din fisier lamureste conventia pentru toate celelalte
+  const lamurit = mig.buildPreview([
+    ['371', 'M', '0', '0', '1.234', '0'],
+    ['401', 'F', '0', '0', '0', '1.234'],
+    ['5121', 'B', '0', '0', '12.345.678', '0'],   // doi separatori => „mii", fara dubiu
+    ['1012', 'C', '0', '0', '0', '12.345.678'],
+  ], det.map, { sursa: 'final' });
+  eq('o dovada neambigua fixeaza conventia pentru tot fisierul', lamurit.ambigue, 0);
+  eq('si sumele se citesc ca mii', lamurit.totalD, 12346912);
+
+  // Sursa soldurilor: initial vs final sunt coloane DIFERITE.
+  const dinInitial = mig.buildPreview(RANDURI, det.map, { sursa: 'initial' });
+  eq('sursa „initial" citeste alte coloane', dinInitial.totalD, 45000);
+  ok('si ramane echilibrata', dinInitial.echilibrata);
+
+  // Forma de stocare
+  const ob = mig.toOpeningBalances(pv);
+  eq('soldurile se transforma in forma de stocare', ob['371'].d, 25000);
+  eq('creditul contului 401', ob['401'].c, 10000);
+}
+
 section('Fisier de plati ISO 20022 (pain.001) — src/sepa.js');
 {
   const sepa = require('../src/sepa');

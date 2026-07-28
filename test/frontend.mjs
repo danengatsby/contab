@@ -800,5 +800,37 @@ ok('poarta nu raporteaza o interpolare escapata', !leafInterp('x.innerHTML = `<t
 ok('poarta nu se incurca in escapare compusa', !leafInterp("x.innerHTML = `<td>${o.partener ? ' · ' + H(o.partener) : ''}</td>`")
   .some((e) => RISKY_FIELD.test(stripLit(dropCond(stripEsc(e))))));
 
+// ── Poarta anti-drift: parsarea sumelor exista in DOUA implementari ────────
+// `public/plan.js` (editorul de solduri din interfata) si `src/migrare.js` (preluarea din alt
+// program). Nu pot partaja cod — unul e modul ES in browser, celalalt CommonJS pe server — dar
+// NU au voie sa difere: un separator interpretat altfel intr-un loc costa un factor de 1000 exact
+// pe soldurile de deschidere. Daca driftează, poarta asta pica.
+{
+  const { createRequire } = await import('node:module');
+  const requireCjs = createRequire(import.meta.url);
+  const mig = requireCjs(path.join(ROOT, 'src', 'migrare.js'));
+  const CORPUS = ['1.234', '1.234,56', '1,234.56', '12.345.678', '0,50', '0.50', '1234', '-1.234,56',
+    '12,5', '1.234.567', '999', '1.000', '10.000,00', '', 'abc', '1 234,56', '1.234 lei'];
+  const dif = [];
+  for (const t of CORPUS) {
+    // acelasi rol de separator pe ambele parti, si cazul „fara conventie" (ambiguu)
+    for (const roles of [null, { '.': 'mii', ',': 'zecimale' }, { '.': 'zecimale', ',': 'mii' }]) {
+      const a = plan.parseAmount(t, roles);
+      const b = mig.parseAmount(t, roles);
+      if (a.value !== b.value || !!a.ambiguous !== !!b.ambiguous) {
+        dif.push(t + ' [' + JSON.stringify(roles) + ']: frontend=' + JSON.stringify(a) + ' server=' + JSON.stringify(b));
+      }
+    }
+    // si deductia conventiei dintr-un singur token
+    const ra = plan.sepConvention([t]); const rb = mig.sepConvention([t]);
+    if (JSON.stringify(ra) !== JSON.stringify(rb)) dif.push('sepConvention(' + t + '): ' + JSON.stringify(ra) + ' vs ' + JSON.stringify(rb));
+  }
+  ok('parsarea sumelor e IDENTICA in public/plan.js si src/migrare.js'
+    + (dif.length ? ' — ' + dif.slice(0, 3).join(' | ') : ''), dif.length === 0);
+  // poarta trebuie sa POATA pica: doua rezultate diferite pe acelasi token sunt detectate
+  ok('poarta chiar detecteaza o divergenta',
+    plan.parseAmount('1.234', { '.': 'mii' }).value !== plan.parseAmount('1.234', { '.': 'zecimale' }).value);
+}
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);
