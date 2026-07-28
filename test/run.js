@@ -4971,6 +4971,73 @@ section('CSRF: token sincronizator + allowlist de origine (src/csrf.js)');
   ok('comparatia respinge sirul gol', csrf.safeEqual('', '') === false);
 }
 
+section('Upload: lipsa extensiei e „necunoscut", nu „permis"');
+{
+  const ug = require('../src/uploadGuard');
+  const HTML = Buffer.from('<html><script>alert(1)</script></html>');
+  // Cele doua straturi aveau ACEEASI gaura: `fileFilter` scurtcircuita pe `ext &&`, iar
+  // `contentMatches` cadea pe ramura containerelor. Iar multer salveaza fisierul fara extensie
+  // ca `.pdf` (`extname(...) || '.pdf'`), deci octetii ajungeau la extractorul PDF si la API-ul
+  // AI ca si cum ar fi fost un PDF valid.
+  ok('extensie goala + continut arbitrar -> RESPINS', ug.contentMatches('', HTML) === false);
+  ok('extensie goala + octeti NUL -> RESPINS', ug.contentMatches('', Buffer.from([0, 1, 2])) === false);
+  // ...fara sa strice cazurile legitime
+  ok('.pdf cu antet PDF -> acceptat', ug.contentMatches('.pdf', Buffer.from('%PDF-1.7')) === true);
+  ok('.pdf cu continut HTML -> respins (neschimbat)', ug.contentMatches('.pdf', HTML) === false);
+  ok('containerele raman pe validarea parserului lor', ug.contentMatches('.zip', Buffer.from('PK\x03\x04')) === true);
+  ok('.xlsx ramane acceptat', ug.contentMatches('.xlsx', Buffer.from('PK\x03\x04')) === true);
+  ok('textul fara NUL ramane acceptat', ug.contentMatches('.csv', Buffer.from('a;b;c')) === true);
+  ok('textul CU NUL ramane respins', ug.contentMatches('.csv', Buffer.from([0x61, 0x00, 0x62])) === false);
+
+  // Filtrul de extensii din bootstrap nu mai are scurtcircuitul pe extensie goala.
+  const fsx = require('fs'); const pth = require('path');
+  const boot = fsx.readFileSync(pth.join(__dirname, '..', 'src', 'bootstrap.js'), 'utf8');
+  ok('fileFilter nu mai foloseste `ext &&` (care lasa sa treaca lipsa extensiei)',
+    !/if \(ext && !UPLOAD_EXT_OK\.has\(ext\)\)/.test(boot));
+  ok('fileFilter cere apartenenta la allowlist, neconditionat',
+    /if \(!UPLOAD_EXT_OK\.has\(ext\)\)/.test(boot));
+}
+
+section('Poarta: allowlist-ul public (PUBLIC_PATHS) — fara orfani, fara crestere tacuta');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const root = pth.join(__dirname, '..');
+  const boot = fsx.readFileSync(pth.join(root, 'src', 'bootstrap.js'), 'utf8');
+  const brut = (boot.match(/PUBLIC_PATHS = new Set\(\[([^\]]*)\]/s) || [, ''])[1];
+  const publice = brut.split(',').map((x) => x.trim().replace(/^'|'$/g, '')).filter(Boolean);
+  ok('PUBLIC_PATHS se poate citi din bootstrap', publice.length > 5);
+
+  // Toate rutele inregistrate, ca sa putem cere ca fiecare cale publica sa EXISTE.
+  const fisiere = ['server.js', 'src/authRoutes.js']
+    .concat(fsx.readdirSync(pth.join(root, 'src', 'routes')).filter((f) => f.endsWith('.js')).map((f) => 'src/routes/' + f));
+  const rute = new Set();
+  for (const f of fisiere) {
+    for (const m of fsx.readFileSync(pth.join(root, f), 'utf8').matchAll(/app\.(get|post|delete|patch|put)\(\s*'(\/[^']*)'/g)) rute.add(m[2]);
+  }
+  // ORFANII sunt periculosi in ambele sensuri: o cale redenumita lasa ruta reala PROTEJATA (se
+  // strica fluxul public) si, mai rau, lasa in allowlist o cale libera — care devine o gaura in
+  // ziua in care cineva inregistreaza o ruta acolo, fara sa stie ca e deja publica.
+  const orfani = publice.filter((p) => !rute.has(p));
+  ok('nicio cale publica orfana (toate corespund unei rute reale)'
+    + (orfani.length ? ' — ' + orfani.join(', ') : ''), orfani.length === 0);
+
+  // Cresterea allowlist-ului trebuie sa fie o DECIZIE, nu un accident: lista asteptata e scrisa
+  // aici, deci orice adaugare apare in diff-ul testului si trece prin review. Acelasi tipar ca la
+  // numarul de joburi periodice.
+  const ASTEPTAT = ['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password',
+    '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest'];
+  const inPlus = publice.filter((p) => !ASTEPTAT.includes(p));
+  const lipsa = ASTEPTAT.filter((p) => !publice.includes(p));
+  ok('allowlist-ul public e exact cel revizuit (o adaugare cere actualizarea testului)'
+    + (inPlus.length ? ' — IN PLUS: ' + inPlus.join(', ') : '') + (lipsa.length ? ' — LIPSA: ' + lipsa.join(', ') : ''),
+    inPlus.length === 0 && lipsa.length === 0);
+
+  // Prefixele care sar peste autentificare (invitatii, resetare) sunt tot allowlist — si tot
+  // trebuie sa fie exact cele doua stiute.
+  const prefixe = [...boot.matchAll(/req\.path\.startsWith\('(\/api\/[a-z-]+\/)'\)/g)].map((m) => m[1]).sort();
+  eq('doar doua prefixe publice (invitatie + resetare)', prefixe.join(','), '/api/invite/,/api/reset/');
+}
+
 section('Poarta: nicio ruta in afara prefixelor pazite (/api /pdf /xml /csv /efactura)');
 {
   const fsx = require('fs'); const pth = require('path');
@@ -5117,7 +5184,18 @@ section('Docs: documentatia nu contrazice configuratia reala (fara drift)');
   const DOCS_VII = ['docs/rulare.md', 'docs/api.md', 'docs/arhitectura.md', 'docs/flux-de-lucru.md',
     'docs/documente-fiscal.md', 'docs/guvernanta-fiscala.md', 'docs/validare-oficiala.md',
     'scripts/MONITORING.md', 'CLAUDE.md', 'README.md'];
-  const TOATE_DOCS = DOCS_VII.concat(['docs/scalare-crestere.md', 'docs/backlog-sprint.md', 'STRIPE-SETUP.md']);
+  // TOATE_DOCS nu se mai scrie de mana: se DERIVA. Un document nou din docs/ era pana acum in
+  // afara oricarei verificari — si asa a driftat `dosar-revizie-fiscala.md`, care sustinea „17
+  // cazuri" cand corpusul avea 22, si cita „~1.200 aserttiuni". DOCS_VII (setul STRICT, al
+  // documentelor care descriu prezentul) ramane explicit, fiindca „viu vs istoric" e o judecata;
+  // dar ACOPERIREA DE BAZA — caile citate exista, `npm run` exista, variabilele exista — se
+  // aplica automat oricarui document.
+  const docsPeDisc = fsd.readdirSync(pd.join(root, 'docs')).filter((f) => f.endsWith('.md')).map((f) => 'docs/' + f);
+  const ALTE_DOCS = ['README.md', 'STRIPE-SETUP.md', 'schemas/eTransport/README.md']
+    .filter((f) => fsd.existsSync(pd.join(root, f)));
+  const TOATE_DOCS = [...new Set(DOCS_VII.concat(docsPeDisc, ALTE_DOCS))];
+  ok('acoperirea documentelor e derivata din disc, nu scrisa de mana',
+    TOATE_DOCS.includes('docs/dosar-revizie-fiscala.md') && TOATE_DOCS.length >= docsPeDisc.length);
 
   // tot codul, o singura data (verificarea variabilelor de mediu cauta in el)
   const codFisiere = [];

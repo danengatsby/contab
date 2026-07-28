@@ -31,6 +31,12 @@ function contentMatches(ext, b) {
     case '.gif': return b.length > 3 && b.toString('ascii', 0, 4) === 'GIF8';
     default:
       if (TEXT_EXT.has(ext)) return !b.includes(0); // text: fara octeti NUL
+      // FARA EXTENSIE = necunoscut, nu „container". Ramura `default` a fost scrisa pentru
+      // .zip/.xlsx/.xls/.dbf, care isi au parserul lor — dar prindea si extensia GOALA, si atunci
+      // orice continut trecea nevalidat. Multer stocheaza un fisier fara extensie ca `.pdf`
+      // (`path.extname(...) || '.pdf'`), deci acei octeti ajungeau la extractorul PDF si la API-ul
+      // AI ca si cum ar fi fost un PDF. Fail-closed: necunoscutul se respinge.
+      if (!ext) return false;
       return true; // containere (.zip/.xlsx/.xls/.dbf) — valideaza parserul lor
   }
 }

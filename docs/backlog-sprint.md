@@ -586,13 +586,31 @@ text. **Rămâne:** proba la o bancă reală — dar un motiv probabil de respin
 0,063 s + dezarhivare 0,012 s = **0,075 s**, round-trip identic. Deci criptografia nu e în drumul
 critic. **Rămâne:** descărcarea din offsite și timpul operatorului, care domină — și cer credențiale.
 
-**Trei porți întărite, toate de aceeași clasă: liste scrise de mână care driftează.**
+**Cinci porți întărite + un defect real de securitate — toate din aceeași clasă.**
+
+Tiparul e mereu acelaşi: **o listă scrisă de mână care descrie realitatea la momentul scrierii și
+driftează tăcut după.** Căutarea sistematică a clasei, nu a instanței, a produs:
 
 | Poartă | Ce avea | Ce are acum |
 |---|---|---|
-| Perimetru fiscal | listă manuală de generatoare | **închidere tranzitivă** — orice modul cerut de unul din perimetru intră automat |
-| Colecții serializate direct | listă manuală de nume | derivată din **`store.ARRAY_COLLS`**; a prins imediat `cursuriBnr`, colecție care nu exista când poarta a fost scrisă |
-| Prefixe de rută | *niciuna* — doar o lecție în memorie | **invariant verificat**: nicio rută în afara `/api /pdf /xml /csv /efactura`, altfel ar ocoli tăcut CSRF-ul și autentificarea |
+| Perimetru fiscal | listă manuală de generatoare | **închidere tranzitivă** (21 → 28 de căi) |
+| Colecții serializate | listă manuală de nume | derivată din **`store.ARRAY_COLLS`** |
+| Prefixe de rută | *niciuna* | invariant pe toate rutele |
+| Documente verificate | listă manuală | derivată **de pe disc** |
+| Allowlist public | *niciuna* | fără orfani + fără creștere tăcută |
+
+**Defectul de securitate (`uploadGuard` + `bootstrap`).** Un fișier **fără extensie** trecea de
+*ambele* straturi de protecție: `fileFilter` scurtcircuita pe `ext &&`, iar `contentMatches` cădea
+pe ramura containerelor și întorcea `true`. Multer îl salvează ca **`.pdf`**
+(`path.extname(...) || '.pdf'`), deci octeți arbitrari ajungeau la extractorul PDF și la API-ul AI
+ca și cum ar fi fost un PDF valid — exact ce garda există să prevină.
+
+**Nu e o cale de XSS stocat** — fișierele se servesc cu `attachment` + `octet-stream`, iar extensia
+forțată e `.pdf`. Dar e o gaură într-un strat a cărui întreagă rațiune e să reziste când calea de
+servire se schimbă. Reparat fail-closed, în ambele straturi: lipsa extensiei e „necunoscut", nu
+„permis".
+
+
 
 Fiecare a fost probată cu o încălcare deliberată: perimetrul a găsit iterativ ultimele două module,
 poarta de colecții a prins `res.json(db.get().cursuriBnr)`, iar cea de prefixe a prins
