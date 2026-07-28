@@ -382,20 +382,28 @@ const CAZURI = [
     temei: 'Art. 40^2 Cod fiscal — deductibile pana la echivalentul a 1.000.000 EUR; '
       + 'ce depaseste, doar pana la 30% din baza de calcul',
     intrare: { cheltDobanzi: 20000000, venitDobanzi: 0, profitContabil: 100000, amortizareFiscala: 0, cursEur: 5 },
-    asteptat: { costExcedentar: 20000000, plafonAplicat: 11030000, nedeductibil: 8970000 },
+    asteptat: { costExcedentar: 20000000, plafonAplicat: 11030000, nedeductibil: 8970000,
+      nedeductibilCitireA: 8970000, nedeductibilCitireB: 13970000 },
     calc: (i) => {
       const r = deduct.ajustari({ rulaj: { 666: { d: i.cheltDobanzi, c: 0 }, 766: { d: 0, c: i.venitDobanzi } },
         profitContabil: i.profitContabil, rezultatFiscalInainteDobanzi: i.profitContabil,
         amortizareFiscala: i.amortizareFiscala, cursEur: i.cursEur }, cfg.RATES);
       const x = r.randuri.find((y) => y.regula === 'Costuri excedentare ale indatorarii');
-      return { costExcedentar: x.cheltuit, plafonAplicat: x.plafon, nedeductibil: x.nedeductibil };
+      return { costExcedentar: x.cheltuit, plafonAplicat: x.plafon, nedeductibil: x.nedeductibil,
+        nedeductibilCitireA: x.alternativa.cumulativ.nedeductibil,
+        nedeductibilCitireB: x.alternativa.max.nedeductibil };
     },
-    observatii: 'INTERPRETARE DE CONFIRMAT, cea mai incerta din acest grup: aplicatia trateaza plafonul in EUR '
-      + 'ca deductibil neconditionat si aplica cei 30% DOAR partii care il depaseste (deductibil = 5.000.000 '
-      + '+ min(15.000.000; 30% x 20.100.000)). O citire alternativa ar fi deductibil = max(plafon EUR; 30% din baza), '
-      + 'care aici ar da 6.030.000 si un nedeductibil de 13.970.000. De asemenea: baza de calcul foloseste '
-      + 'amortizarea fiscala, care azi coincide cu cea contabila (vezi itemul separat din backlog), iar '
-      + 'diferentele de curs aferente imprumuturilor NU sunt incluse in costul excedentar.',
+    observatii: 'DE ALES INTRE DOUA CIFRE, nu intre doua formulari — ambele sunt calculate de aplicatie:\n'
+      + '  CITIREA A (aplicata azi, „cumulativ"): plafonul in EUR e deductibil neconditionat, iar cei 30% '
+      + 'se aplica DOAR partii care il depaseste. ded = 5.000.000 + min(15.000.000; 30% x 20.100.000) = 11.030.000 '
+      + '-> NEDEDUCTIBIL 8.970.000.\n'
+      + '  CITIREA B („max"): deductibilul e maximul dintre cele doua plafoane. ded = max(5.000.000; 6.030.000) '
+      + '= 6.030.000 -> NEDEDUCTIBIL 13.970.000.\n'
+      + '  Diferenta pe acest caz: 5.000.000 lei intr-un singur exercitiu. Bifeaza citirea corecta; '
+      + 'comutarea se face cu `art402Interpretare` (implicit „cumulativ"), fara alta modificare de cod.\n'
+      + 'ALTE DOUA LIMITE CUNOSCUTE: baza de calcul foloseste amortizarea fiscala (separata de cea contabila '
+      + 'din 2026-07-28, dar egale implicit), iar diferentele de curs aferente imprumuturilor NU sunt incluse '
+      + 'in costul excedentar, desi legea le mentioneaza.',
     aprobare: null,
   },
   {

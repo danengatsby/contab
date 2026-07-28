@@ -52,9 +52,38 @@ function validIban(raw) {
   return rest === 1;
 }
 
-/** Curata un text pentru campurile ISO 20022 (lungime maxima + fara caractere de control). */
+// Setul de caractere permis de SEPA (EPC Rulebook): literele latine de baza, cifre si
+//   / - ? : ( ) . , ' +   plus spatiu. NIMIC altceva.
+// Diacriticele romanesti NU sunt in el, iar denumirile de parteneri vin din e-Factura/SPV, deci
+// CONTIN „Ș", „Ț", „ă". Bancile ori resping fisierul, ori stalcesc tacit numele — si atunci plata
+// pleaca spre un beneficiar scris altfel decat in contract. Se translitereaza, nu se spera.
+const SEPA_PERMIS = /[^A-Za-z0-9/\-?:().,'+ ]/g;
+// Perechile care nu se rezolva prin descompunere Unicode (virgula-dedesubt romaneasca) sau care
+// au o transliterare consacrata.
+const TRANSLIT = {
+  ș: 's', Ș: 'S', ş: 's', Ş: 'S', ț: 't', Ț: 'T', ţ: 't', Ţ: 'T',
+  ß: 'ss', æ: 'ae', Æ: 'AE', ø: 'o', Ø: 'O', đ: 'd', Đ: 'D', ł: 'l', Ł: 'L',
+  '&': '+', '–': '-', '—': '-', '„': "'", '”': "'", '“': "'", '’': "'", '«': "'", '»': "'",
+};
+
+/**
+ * Curata un text pentru campurile ISO 20022: transliterare in setul SEPA + lungime maxima.
+ * Ordinea conteaza: intai perechile explicite, apoi descompunerea Unicode (care rezolva generic
+ * é/ü/à ale furnizorilor straini), abia apoi inlocuirea a ce a ramas in afara setului.
+ */
 function txt(s, max) {
-  return String(s == null ? '' : s).replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, max || 70);
+  let t = String(s == null ? '' : s).replace(/[\x00-\x1f\x7f]/g, ' ');
+  t = t.replace(/[^\x00-\x7f]/g, (c) => (TRANSLIT[c] != null ? TRANSLIT[c] : c));
+  t = t.replace(/&/g, '+');
+  // NFD desface litera de semnul diacritic; \p{M} sterge semnul si ramane litera de baza.
+  t = t.normalize('NFD').replace(/\p{M}/gu, '');
+  t = t.replace(SEPA_PERMIS, ' ').replace(/\s+/g, ' ').trim();
+  return t.slice(0, max || 70);
+}
+
+/** Textul contine caractere pe care SEPA nu le accepta? (pentru avertismente in interfata) */
+function needsTranslit(s) {
+  return SEPA_PERMIS.test(String(s == null ? '' : s).replace(SEPA_PERMIS, (m) => m));
 }
 
 /** Identificator unic, stabil ca forma, pentru MsgId/PmtInfId/EndToEndId. */
@@ -151,4 +180,4 @@ ${tx}
 `;
 }
 
-module.exports = { buildPain001, checkPayload, validIban, normIban };
+module.exports = { buildPain001, checkPayload, validIban, normIban, txt, needsTranslit };

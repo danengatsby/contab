@@ -2307,6 +2307,18 @@ section('Plafoane de deductibilitate (art. 25 / 40^2) — src/deductibilitate.js
   // baza = 100.000 + 20.000.000 = 20.100.000; 30% = 6.030.000; plafon EUR = 5.000.000;
   // deductibil = 5.000.000 + min(15.000.000; 6.030.000) = 11.030.000 -> nedeductibil 8.970.000
   eq('dobanzi mult peste plafon: nedeductibil = cost − (plafon EUR + 30% din baza)', rd2.nedeductibil, 8970000);
+  // AMBELE citiri ale art. 40^2 sunt CALCULATE, ca revizorul sa aleaga intre doua cifre, nu intre
+  // doua fraze. Diferenta pe acest caz e de 5.000.000 lei — nu o nuanta de redactare.
+  ok('ambele interpretari sunt expuse', rd2.alternativa && rd2.alternativa.cumulativ && rd2.alternativa.max);
+  eq('citirea implicita e cea cumulativa', rd2.alternativa.aplicata, 'cumulativ');
+  eq('cumulativ -> 8.970.000 nedeductibil', rd2.alternativa.cumulativ.nedeductibil, 8970000);
+  eq('alternativa max -> 13.970.000 nedeductibil', rd2.alternativa.max.nedeductibil, 13970000);
+  eq('diferenta dintre citiri, pe acest caz', rd2.alternativa.max.nedeductibil - rd2.alternativa.cumulativ.nedeductibil, 5000000);
+  // Optiunea chiar comuta calculul aplicat (nu doar raportarea)
+  const dMax = deduct.ajustari({ rulaj: R({ 666: 20000000 }), profitContabil: 100000,
+    rezultatFiscalInainteDobanzi: 100000, amortizareFiscala: 0, cursEur: 5, art402Interpretare: 'max' }, P);
+  eq('optiunea „max" schimba cifra aplicata', gasit(dMax, 'Costuri excedentare ale indatorarii').nedeductibil, 13970000);
+  ok('si o marcheaza ca atare', gasit(dMax, 'Costuri excedentare ale indatorarii').alternativa.aplicata === 'max');
 
   // ── Integrarea in profitTax: contractul istoric NU se schimba ────────────
   const ent = [
@@ -2981,19 +2993,46 @@ section('Fisier de plati ISO 20022 (pain.001) — src/sepa.js');
   const xe = sepa.buildPain001({ msgId: 'T2', moneda: 'EUR', debitor: DBT, plati: UNA });
   ok('EUR: CU nivel de serviciu SEPA', /<SvcLvl><Cd>SEPA<\/Cd><\/SvcLvl>/.test(xe));
 
+  // ── Setul de caractere SEPA: diacriticele romanesti NU sunt permise ──────
+  // Denumirile vin din e-Factura, deci CONTIN diacritice. Netransliterate, banca ori respinge
+  // fisierul, ori stalceste numele — si plata pleaca spre un beneficiar scris altfel.
+  const PERMIS = /^[A-Za-z0-9/\-?:().,'+ ]*$/;
+  eq('diacriticele romanesti se translitereaza', sepa.txt('ÎNTREPRINDEREA ȚĂRĂNEASCĂ SRL', 70), 'INTREPRINDEREA TARANEASCA SRL');
+  eq('s si t cu virgula (nu se descompun Unicode)', sepa.txt('ȘTEFAN ȚARA', 70), 'STEFAN TARA');
+  eq('& devine + (in setul permis)', sepa.txt('ALFA & BETA', 70), 'ALFA + BETA');
+  eq('linia lunga devine cratima', sepa.txt('nr. 5 – tigla', 70), 'nr. 5 - tigla');
+  eq('diacriticele straine se descompun generic', sepa.txt('Müller & José', 70), 'Muller + Jose');
+  ok('un text deja curat nu se schimba', sepa.txt('ALFA SRL', 70) === 'ALFA SRL');
+  const xdia = sepa.buildPain001({ msgId: 'TD', debitor: { nume: 'S.C. ȘTEFAN S.R.L.', iban: 'RO49AAAA1B31007593840000' },
+    plati: [{ beneficiar: 'ÎNTREPRINDEREA ȚĂRĂNEASCĂ SRL', iban: 'DE89370400440532013000', suma: 10, detalii: 'Factură țiglă' }] });
+  const campuri = [...xdia.matchAll(/<(?:Nm|Ustrd)>([^<]*)<\/(?:Nm|Ustrd)>/g)].map((m) => m[1]);
+  ok('fisierul generat are cel putin trei campuri de text', campuri.length >= 3);
+  ok('NICIUN camp de text nu iese din setul SEPA'
+    + (campuri.filter((c) => !PERMIS.test(c)).length ? ' — ' + campuri.filter((c) => !PERMIS.test(c)).join(' | ') : ''),
+    campuri.every((c) => PERMIS.test(c)));
+  // poarta trebuie sa POATA pica: un text netransliterat chiar iese din set
+  ok('poarta chiar detecteaza un text neconform', !PERMIS.test('ȚARA'));
+
   // ── Escaparea: denumirile de partener vin din surse EXTERNE (e-Factura/SPV) ──
   const xesc = sepa.buildPain001({ msgId: 'T3', debitor: DBT,
     plati: [{ beneficiar: 'A & B <SRL> "X"', iban: 'DE89370400440532013000', suma: 5, detalii: 'ref & <b>bold</b>' }] });
-  ok('& si <> din denumire sunt escapate', /A &amp; B &lt;SRL&gt;/.test(xesc));
-  ok('markup injectat in detalii nu ajunge crud', !/<b>bold<\/b>/.test(xesc));
-  ok('ramane bine-format dupa escapare', wellFormed(xesc));
+  // Transliterarea SEPA elimina deja `<`, `>` si `"` (nu sunt in setul permis), iar `&` devine `+`.
+  // Deci markup-ul nu mai are din ce sa se formeze — dar escaparea RAMANE, ca aparare in adancime:
+  // daca setul permis s-ar largi vreodata, esc() e in continuare pe drum.
+  ok('markup injectat nu supravietuieste transliterarii', !/<b>|&lt;SRL&gt;|<SRL>/.test(xesc));
+  ok('& devine + in loc sa ajunga entitate', /A \+ B SRL/.test(xesc));
+  // Apostroful E in setul SEPA, deci ajunge la XML — si acolo trebuie escapat.
+  const xap = sepa.buildPain001({ msgId: 'T4', debitor: DBT,
+    plati: [{ beneficiar: "O'BRIEN & CO", iban: 'DE89370400440532013000', suma: 5 }] });
+  ok('apostroful (permis de SEPA) e escapat in XML', /O&apos;BRIEN/.test(xap));
+  ok('ramane bine-format', wellFormed(xesc) && wellFormed(xap));
 
   // ── Invariantul de fond: generarea NU produce articole contabile ─────────
   // Fisierul e o INTENTIE de plata. Contabilizarea lui aici, plus cea de la import extras, ar
   // dubla plata — iar banca poate oricand refuza lotul.
   ok('iesirea e doar XML, fara nicio linie contabila', typeof x === 'string' && !/debit|credit|"lines"/.test(x));
   ok('modulul nu exporta nimic care sa scrie in baza',
-    Object.keys(sepa).every((k) => ['buildPain001', 'checkPayload', 'validIban', 'normIban'].includes(k)));
+    Object.keys(sepa).every((k) => ['buildPain001', 'checkPayload', 'validIban', 'normIban', 'txt', 'needsTranslit'].includes(k)));
 }
 
 section('Curs BNR (parsare, multiplicator, zile nelucratoare)');
@@ -5415,6 +5454,30 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
   };
   scan('src');
   ok('detectia gaseste generatoarele cunoscute (xml/saft/etransport)', generatoare.length >= 3);
+  // ── Inchiderea TRANZITIVA a perimetrului ──────────────────────────────────
+  // Detectia de mai sus gaseste GENERATOARELE (dupa namespace-ul ANAF din continut). Dar un modul
+  // care doar ALIMENTEAZA un generator poate schimba cifrele fara sa contina vreun XML — si atunci
+  // poarta nu se aplica la schimbarile lui. Exact asta s-a intamplat cu `assets.js`: amortizarea
+  // fiscala a intrat in D101 prin registrul fiscal, iar poarta a rulat doar fiindca acelasi commit
+  // atingea si reporting.js. O schimbare izolata pe amortizare ar fi sarit poarta complet.
+  // Regula: orice modul din src/ cerut de un fisier DEJA in perimetru intra si el, cu exceptia
+  // infrastructurii (persistenta, log, utilitare) — care nu poarta reguli fiscale.
+  const INFRA = new Set(['src/db.js', 'src/log.js', 'src/util.js', 'src/metrics.js', 'src/store.js',
+    'src/storePg.js', 'src/session.js', 'src/csv.js', 'src/cache.js', 'src/paginate.js']);
+  const neacoperite = new Set();
+  for (const f of lista) {
+    const abs = pth.join(root, f);
+    if (!fsx.existsSync(abs) || fsx.statSync(abs).isDirectory()) continue;
+    for (const m of fsx.readFileSync(abs, 'utf8').matchAll(/require\('\.\/([a-zA-Z0-9_]+)'\)/g)) {
+      const dep = 'src/' + m[1] + '.js';
+      if (!fsx.existsSync(pth.join(root, dep))) continue;
+      if (lista.includes(dep) || INFRA.has(dep)) continue;
+      neacoperite.add(dep);
+    }
+  }
+  ok('perimetrul e inchis tranzitiv (dependintele fiscale sunt si ele acoperite)'
+    + (neacoperite.size ? ' — LIPSESC: ' + [...neacoperite].sort().join(', ') : ''), neacoperite.size === 0);
+
   const acoperit = (f) => lista.some((c) => f === c || f.startsWith(c));
   const lipsa = generatoare.filter((f) => !acoperit(f));
   ok('fiecare generator ANAF e in perimetrul portii' + (lipsa.length ? ' — LIPSA: ' + lipsa.join(', ') : ''), lipsa.length === 0);

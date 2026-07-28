@@ -151,21 +151,42 @@ function ajustari(i, cfg) {
   if (excedent > 0) {
     const curs = Number(i.cursEur || 0);
     const plafonEur = curs > 0 ? round2(Number(cfg.dobanziPlafonEur || 0) * curs) : 0;
-    let nedeductibilD = 0; let plafonAplicat = plafonEur; let nota = '';
+    let nedeductibilD = 0; let plafonAplicat = plafonEur; let nota = ''; let alternativa = null;
     if (excedent <= plafonEur) {
       nota = 'Sub plafonul de ' + (cfg.dobanziPlafonEur || 0) + ' EUR: integral deductibil.';
     } else {
       const bazaD = round2(Number(i.rezultatFiscalInainteDobanzi || 0) + excedent + Number(i.amortizareFiscala || 0));
       const plafon30 = bazaD > 0 ? round2((bazaD * Number(cfg.dobanziEbitdaPct || 0)) / 100) : 0;
       const peste = round2(excedent - plafonEur);
-      const dedSuplimentar = Math.max(0, Math.min(peste, plafon30));
-      plafonAplicat = round2(plafonEur + dedSuplimentar);
+      // DOUA CITIRI ALE ART. 40^2, ambele calculate — decizia e a revizorului, nu a codului.
+      //  A („cumulativ", implicita): plafonul in EUR e deductibil neconditionat, iar cei 30% se
+      //     aplica DOAR partii care il depaseste.  ded = plafonEur + min(peste; 30% x baza)
+      //  B („alternativa"): deductibilul e maximul dintre cele doua plafoane.
+      //     ded = max(plafonEur; 30% x baza)
+      // Pe cifre mari diferenta e uriasa, de aceea ambele sunt expuse in rezultat si in cazul
+      // PLF-05 din corpusul de revizie. Cand `art402Interpretare === 'max'`, se aplica B.
+      const dedA = round2(plafonEur + Math.max(0, Math.min(peste, plafon30)));
+      const dedB = round2(Math.max(plafonEur, plafon30));
+      const alegeB = String(i.art402Interpretare || cfg.art402Interpretare || 'cumulativ') === 'max';
+      plafonAplicat = alegeB ? dedB : dedA;
       nedeductibilD = Math.max(0, round2(excedent - plafonAplicat));
-      nota = 'Peste plafonul in EUR; partea excedentara e deductibila pana la '
-        + (cfg.dobanziEbitdaPct || 0) + '% din baza (' + round2(bazaD) + '). Partea nedeductibila se reporteaza NELIMITAT.';
+      alternativa = {
+        cumulativ: { deductibil: dedA, nedeductibil: Math.max(0, round2(excedent - dedA)) },
+        max: { deductibil: dedB, nedeductibil: Math.max(0, round2(excedent - dedB)) },
+        aplicata: alegeB ? 'max' : 'cumulativ',
+        baza: bazaD, plafonEur, plafon30,
+      };
+      nota = 'Peste plafonul in EUR. Doua citiri posibile ale art. 40^2 — aplicata: '
+        + (alegeB ? 'max(plafon EUR; ' : 'plafon EUR + min(excedent; ') + (cfg.dobanziEbitdaPct || 0)
+        + '% din baza ' + round2(bazaD) + ')'
+        + '. Cealalta ar da un nedeductibil de '
+        + (alegeB ? Math.max(0, round2(excedent - dedA)) : Math.max(0, round2(excedent - dedB)))
+        + ' lei. Partea nedeductibila se reporteaza NELIMITAT.';
     }
-    randuri.push(rand('Costuri excedentare ale indatorarii', 'Art. 40^2', CONT.dobanzi,
-      excedent, plafonAplicat, excedent, nedeductibilD, nota));
+    const randDob = rand('Costuri excedentare ale indatorarii', 'Art. 40^2', CONT.dobanzi,
+      excedent, plafonAplicat, excedent, nedeductibilD, nota);
+    if (alternativa) randDob.alternativa = alternativa; // ambele cifre, pentru revizor si pentru UI
+    randuri.push(randDob);
   }
 
   const totalNedeductibil = round2(randuri.reduce((s, r) => s + r.nedeductibil, 0));
