@@ -161,8 +161,13 @@ function createApp() {
     limits: { fileSize: 20 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       const ext = path.extname(file.originalname || '').toLowerCase();
-      if (ext && !UPLOAD_EXT_OK.has(ext)) {
-        const err = new Error('Tip de fisier neacceptat (' + ext + '). Acceptate: PDF, imagini, CSV/TXT, XLS(X), DBF, XML, ZIP, JSON.');
+      // `ext &&` lasa sa treaca fisierele FARA extensie: conditia scurtcircuita si allowlist-ul nu
+      // se mai aplica. Iar `storage` le salveaza ca `.pdf` (extname(...) || '.pdf'), deci ajungeau
+      // la extractorul PDF fara nicio validare. Lipsa extensiei e „necunoscut", nu „permis".
+      if (!UPLOAD_EXT_OK.has(ext)) {
+        const err = new Error(ext
+          ? 'Tip de fisier neacceptat (' + ext + '). Acceptate: PDF, imagini, CSV/TXT, XLS(X), DBF, XML, ZIP, JSON.'
+          : 'Fisierul nu are extensie, deci tipul lui nu poate fi verificat. Redenumeste-l cu extensia potrivita (ex. .pdf).');
         err.status = 400;
         return cb(err);
       }
