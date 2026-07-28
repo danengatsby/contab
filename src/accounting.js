@@ -2,6 +2,7 @@
 
 const { round2, period: periodOf, naturalCompare } = require('./util');
 const coa = require('./chartOfAccounts');
+const deduct = require('./deductibilitate');
 
 /** Toate liniile contabile, fiecare cu metadatele articolului din care provine. */
 function allLines(entries) {
@@ -361,7 +362,6 @@ const CAP_PIERDERE_PCT = 70;
 function profitTax(db, year, opts) {
   opts = (typeof opts === 'number') ? { cota: opts } : (opts || {});
   const cota = opts.cota || 16;
-  const nedeductibile = round2(Number(opts.cheltNedeductibile) || 0);
   const deduceri = round2(Number(opts.deduceri) || 0);
   const pierdereReportata = round2(Number(opts.pierdereReportata) || 0);
   const yearEntries = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
@@ -374,6 +374,21 @@ function profitTax(db, year, opts) {
     else if (clasa === 6 && !/^(691|698)/.test(String(cod))) chelt = round2(chelt + (acc[cod].d - acc[cod].c));
   }
   const profitContabil = round2(venit - chelt);
+  // Cheltuielile nedeductibile: CALCULATE din plafoanele art. 25/40^2 cand apelantul da cotele
+  // (`opts.plafoane`), altfel din valoarea transmisa. `cheltNedeductibile` ramane suprascriere
+  // explicita — contract istoric, si singura portita cand contabilul stie o ajustare pe care
+  // motorul n-o poate deduce din conturi.
+  const ded = opts.plafoane
+    ? deduct.ajustari({
+      rulaj: acc, profitContabil,
+      cheltAuto: opts.cheltAuto, cheltImpozitProfit: opts.cheltImpozitProfit,
+      amortizareFiscala: opts.amortizareFiscala, cursEur: opts.cursEur,
+      rezultatFiscalInainteDobanzi: profitContabil,
+    }, opts.plafoane)
+    : null;
+  const nedeductibile = (opts.cheltNedeductibile != null && opts.cheltNedeductibile !== '')
+    ? round2(Number(opts.cheltNedeductibile) || 0)
+    : (ded ? ded.totalNedeductibil : 0);
   const bazaInainteReportare = round2(profitContabil + nedeductibile - deduceri);
   // Plafonul de 70% (configurabil) se aplica doar pentru anii fiscali >= 2024; altfel recuperare 100%.
   const capPct = (opts.pierdereRecuperabilaPct != null && Number.isFinite(Number(opts.pierdereRecuperabilaPct)))
@@ -382,11 +397,30 @@ function profitTax(db, year, opts) {
   const pierdereRecuperabilaMax = bazaInainteReportare > 0 ? round2(bazaInainteReportare * plafonReportarePct / 100) : 0;
   const pierdereFolosita = bazaInainteReportare > 0 ? round2(Math.min(pierdereReportata, pierdereRecuperabilaMax)) : 0;
   const profitImpozabil = round2(bazaInainteReportare - pierdereFolosita);
-  const impozit = profitImpozabil > 0 ? round2(profitImpozabil * cota / 100) : 0;
+  const impozitBrut = profitImpozabil > 0 ? round2(profitImpozabil * cota / 100) : 0;
+  // FAZA 2 — creditul fiscal al sponsorizarii, care se scade DIN IMPOZIT (nu din baza). Depinde de
+  // impozitul de mai sus, deci nu poate fi calculat odata cu nedeductibilele.
+  const cifraAfaceri = round2(Object.keys(acc).filter((c) => /^70/.test(String(c)))
+    .reduce((s, c) => s + (acc[c].c - acc[c].d), 0));
+  const cr = (ded && opts.plafoane)
+    ? deduct.credit({
+      cifraAfaceri, impozit: impozitBrut, an: Number(year),
+      sponsorizareAn: ded.sponsorizareCheltuita, report: opts.sponsorizareReport || [],
+    }, opts.plafoane)
+    : null;
+  const impozit = cr ? cr.impozitDupaCredit : impozitBrut;
   const pierdereCurenta = bazaInainteReportare < 0 ? round2(-bazaInainteReportare) : 0;
   const pierdereDeReportat = round2(pierdereReportata - pierdereFolosita + pierdereCurenta);
   const lines = impozit > 0 ? [{ debit: '691', credit: '4411', suma: impozit, explicatie: 'Impozit pe profit (' + cota + '%)' }] : [];
-  return { year: String(year), venit, chelt, profitContabil, cheltNedeductibile: nedeductibile, deduceri, pierdereReportata, plafonReportarePct, pierdereRecuperabilaMax, pierdereFolosita, profitImpozabil, cota, impozit, pierdereCurenta, pierdereDeReportat, lines };
+  return {
+    year: String(year), venit, chelt, profitContabil, cheltNedeductibile: nedeductibile, deduceri,
+    pierdereReportata, plafonReportarePct, pierdereRecuperabilaMax, pierdereFolosita, profitImpozabil,
+    cota, impozit, pierdereCurenta, pierdereDeReportat, lines,
+    // Campuri NOI (aditive — forma istorica de mai sus e neatinsa): detaliul plafoanelor si creditul.
+    impozitBrut, cifraAfaceri,
+    ajustari: ded ? ded.randuri : [],
+    sponsorizare: cr,
+  };
 }
 
 /**

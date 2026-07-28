@@ -928,12 +928,21 @@ function d101Xml(company, d, who) {
   const P40a = P38a < 0 ? -P38a : 0;        // mereu 0 aici (P38a>=0)
   const P41 = P40 > 0 ? Math.round(P40 * cota / 100) : 0; // impozit pe profit anual
   const P411 = P41; const P412 = 0;
-  const P481 = P41; const P482 = 0; const P48 = P481 + P482; // fara credite/reduceri => P48 = P41
+  // P43 — sumele reprezentand sponsorizare/mecenat/burse private, scazute DIN IMPOZIT.
+  // Plafonul e impus de validator prin regula V5: round( (P41-P42)*20% ) >= P43. P42 (creditul
+  // fiscal extern) nu e modelat, deci e 0 si nu se emite. Clamparea NU e prisos: motorul de
+  // plafoane lucreaza in bani (round2), iar D101 in lei intregi — o diferenta de rotunjire ar
+  // depasi plafonul cu 1 leu si ar face declaratia INVALIDA.
+  const plafonSponsor = Math.round(P41 * 20 / 100);
+  const P43 = Math.max(0, Math.min(lei(d.sponsorizareCredit), plafonSponsor));
+  const P431 = P43; const P432 = 0;
+  const P481 = P41 - P43; const P482 = 0; const P48 = P481 + P482;
   const P52 = P48;                          // impozit de plata = (P48+P51)-(P49+P50) = P48
-  const vals = { P1, P2, P3, P4, P5, P6, P7, P10, P15, P16, P21, P22, P33, P34, P35, P36, P38a, P39, P39a, P40, P40a, P41, P411, P412, P481, P482, P48, P52 };
+  const vals = { P1, P2, P3, P4, P5, P6, P7, P10, P15, P16, P21, P22, P33, P34, P35, P36, P38a, P39, P39a, P40, P40a, P41, P411, P412, P43, P431, P432, P481, P482, P48, P52 };
   // Suma de control (totalPlata_A) = suma DOAR a indicatorilor principali P1..P53 (regula R19 din
-  // validator); variantele "a" (P38a/P40a) si sub-indicatorii (P411/P412/P481/P482/P39a) NU intra.
-  const checksumKeys = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P10', 'P15', 'P16', 'P21', 'P22', 'P33', 'P34', 'P35', 'P36', 'P39', 'P40', 'P41', 'P48', 'P52'];
+  // validator); variantele "a" (P38a/P40a) si sub-indicatorii (P411/P412/P431/P432/P481/P482/P39a)
+  // NU intra. Ca P43 intra, iar P431 nu, e dovedit prin sondaj pe validator (vezi jurnalul).
+  const checksumKeys = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P10', 'P15', 'P16', 'P21', 'P22', 'P33', 'P34', 'P35', 'P36', 'P39', 'P40', 'P41', 'P43', 'P48', 'P52'];
   const totalPlata = checksumKeys.reduce((s, k) => s + vals[k], 0);
   const cui = String(company.cui).replace(/^ro/i, '').replace(/\s/g, '');
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
@@ -951,7 +960,7 @@ function d101Xml(company, d, who) {
   ${P('P1')} ${P('P2')} ${P('P3')} ${P('P4')} ${P('P5')} ${P('P6')} ${P('P7')} ${P('P10')}
   ${P('P15')} ${P('P16')} ${P('P21')} ${P('P22')} ${P('P33')} ${P('P34')} ${P('P35')} ${P('P36')}
   ${P('P38a')} ${P('P39')} ${P('P39a')} ${P('P40')} ${P('P40a')} ${P('P41')} ${P('P411')} ${P('P412')}
-  ${P('P481')} ${P('P482')} ${P('P48')} ${P('P52')}/>
+  ${P43 > 0 ? `${P('P43')} ${P('P431')} ${P('P432')} ` : ''}${P('P481')} ${P('P482')} ${P('P48')} ${P('P52')}/>
 `;
 }
 

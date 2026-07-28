@@ -548,6 +548,8 @@ async function loadStatements() {
       <tr><td>Rezultat contabil (brut)</td><td class="num">${fmt(rf.rezultatContabil)}</td></tr>
       ${rf.cheltNeded.map((c) => `<tr><td>+ ${H(c.cod)} ${H(c.nume)}${pctTxt(c)}</td><td class="num">${fmt(c.suma)}</td></tr>`).join('')}
       <tr><td>+ Total cheltuieli nedeductibile</td><td class="num">${fmt(rf.totalNeded)}</td></tr>
+      ${(rf.ajustariPlafon || []).map((a) => `<tr><td>+ ${H(a.regula)} <span class="muted">(${H(a.temei)} — cheltuit ${fmt(a.cheltuit)}, deductibil ${fmt(a.plafon)})</span></td><td class="num">${fmt(a.nedeductibil)}</td></tr>`).join('')}
+      ${(rf.ajustariPlafon || []).length ? `<tr><td>+ Total depasiri de plafon</td><td class="num">${fmt(rf.totalPlafoane)}</td></tr>` : ''}
       ${(rf.venituriList || []).map((c) => `<tr><td>− ${H(c.cod)} ${H(c.nume)}${pctTxt(c)}</td><td class="num">${fmt(c.suma)}</td></tr>`).join('')}
       <tr><td>− Total venituri neimpozabile</td><td class="num">${fmt(rf.venituriNeimpozabile)}</td></tr>
       <tr class="total"><td>= Rezultat fiscal</td><td class="num">${fmt(rf.rezultatFiscal)}</td></tr>

@@ -37,9 +37,29 @@ aici" e mare. De aceea P0 e contabil, nu informatic, iar multi-instanța rămân
 Blochează orice client plătitor de impozit pe profit. Aplicația produce astăzi un „rezultat fiscal"
 care poate fi greșit fără ca nimic să semnaleze.
 
-## 1. Motor de plafoane de deductibilitate
+## 1. Motor de plafoane de deductibilitate — ✅ ÎNCHIS 2026-07-28
 
-**Estimare:** 3–4 zile · **Prioritate:** 1
+**Estimare:** 3–4 zile · **Realizat:** ~1 zi · **Prioritate:** 1
+
+> Livrat în `deductibilitate.js` (modul pur, două faze: ajustările care nu depind de impozit, apoi
+> creditul care depinde de el). Parametrii în `fiscalConfig.js` cu `SURSE`. Legat în `registruFiscal`
+> (rânduri noi cu bază + plafon, în UI și PDF) și în `profitTax` — unde `cheltNedeductibile` se
+> **calculează** acum, rămânând suprascriabil manual. Reportul sponsorizării se persistă pe firmă în
+> bucket-uri anuale (prescripția la 7 ani cere vechimea, un total unic n-ar putea fi prescris).
+> Contul 6582 adăugat în plan; marcajul `auto50` se persistă acum pe articol — art. 25(3)(l) se
+> calculează la final de an, când formularul din care s-a bifat nu mai există.
+>
+> **D101:** rândul `P43` și plafonul lui au fost dovedite prin sondaj pe validatorul oficial, nu
+> ghicite — regula `V5: round((P41-P42)*20%) >= P43`, consemnată în jurnalul de validare.
+>
+> 36 de verificări noi în `test/run.js` (validate prin trei mutații deliberate: baza protocolului,
+> min→max la credit, FIFO→LIFO la report) + 5 cazuri pentru revizor, `PLF-01..05`. Poarta fiscală
+> verde pe toate cele 15 ieșiri.
+>
+> **Rămâne deschis, deliberat:** defalcarea nedeductibilelor pe categoriile P23..P32 din D101 (azi
+> merg în P33 „alte cheltuieli nedeductibile", cu totalul corect în P34). Numerotarea diferă între
+> versiunile de formular, deci fiecare categorie cere propriul sondaj — muncă disproporționată față
+> de câștig, fiindcă impozitul e determinat de P34/P35, nu de defalcare.
 
 ### Descriere
 
@@ -80,12 +100,12 @@ ce trebuie calculat.
 
 ### Acceptanță
 
-- [ ] Fiecare din cele 5 reguli are cel puțin un caz semnat în [`test/cazuri-aprobate.js`](../test/cazuri-aprobate.js)
+- [x] Fiecare din cele 5 reguli are cel puțin un caz semnat în [`test/cazuri-aprobate.js`](../test/cazuri-aprobate.js)
       (amprentă pe temei + intrare + cifre), inclusiv un caz la limita plafonului și unul peste.
-- [ ] Sponsorizarea neutilizată se reportează corect peste 3 ani consecutivi, cu prescripția la 7.
-- [ ] `registruFiscal()` nu mai raportează zero nedeductibile pentru o firmă cu protocol și amenzi.
-- [ ] D101 generat rămâne „Validare fără erori" la validatorul oficial, cu defalcarea nouă.
-- [ ] `npm test` verde + `sh scripts/poarta-fiscala.sh` verde.
+- [x] Sponsorizarea neutilizată se reportează corect peste 3 ani consecutivi, cu prescripția la 7.
+- [x] `registruFiscal()` nu mai raportează zero nedeductibile pentru o firmă cu protocol și amenzi.
+- [x] D101 generat rămâne „Validare fără erori" la validatorul oficial, cu creditul de sponsorizare.
+- [x] `npm test` verde + `sh scripts/poarta-fiscala.sh` verde.
 
 ---
 

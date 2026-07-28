@@ -11,6 +11,7 @@ const db = require('./db');
 const acc = require('./accounting');
 const coa = require('./chartOfAccounts');
 const fiscal = require('./fiscal');
+const rep = require('./reporting');
 const { reqFirma } = require('./stocksService');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
@@ -59,11 +60,19 @@ function profitTaxOptions(fid, src, year) {
   const losses = db.getFirma(fid).pierdereFiscala || {};
   src = src || {};
   const pr = (src.pierdereReportata != null && src.pierdereReportata !== '') ? Number(src.pierdereReportata) : (Number(losses[Number(year) - 1]) || 0);
+  const firma = db.getFirma(fid) || {};
   return {
     cota: fiscal.FISCAL.impozitProfit,
-    cheltNedeductibile: Number(src.cheltNedeductibile) || 0,
+    // Suprascrierea manuala ramane posibila, dar NU mai e implicita: transmisa goala, motorul de
+    // plafoane calculeaza singur nedeductibilele din conturi (art. 25/40^2).
+    cheltNedeductibile: (src.cheltNedeductibile != null && src.cheltNedeductibile !== '')
+      ? Number(src.cheltNedeductibile) : null,
     deduceri: Number(src.deduceri) || 0,
     pierdereReportata: pr || 0,
+    plafoane: fiscal.FISCAL,
+    cheltAuto: rep.cheltuieliAuto(db.scoped(fid), year),
+    cursEur: Number(src.cursEur) || Number(firma.cursEur) || 0,
+    sponsorizareReport: firma.sponsorizareReport || [],
   };
 }
 
@@ -80,6 +89,10 @@ function closeProfitTax(fid, src, year) {
   const firma = db.getFirma(fid);
   firma.pierdereFiscala = firma.pierdereFiscala || {};
   firma.pierdereFiscala[year] = pt.pierdereDeReportat;
+  // Reportul creditului de sponsorizare, pe acelasi tipar ca pierderea fiscala: se memoreaza si
+  // cand creditul folosit e 0. Bucket-urile isi pastreaza ANUL, fiindca prescriptia (7 ani) se
+  // masoara pe vechimea fiecaruia — un total unic n-ar mai putea fi prescris corect.
+  if (pt.sponsorizare) firma.sponsorizareReport = pt.sponsorizare.reportNou;
   if (!pt.lines.length) { db.save(); return { result: pt, posted: false }; }
   const lines = pt.lines.slice();
   const yearClosed = d.entries.some((e) => e.firmaId === fid && e.tip === 'inchidere_an' && e.period === year + '-12');

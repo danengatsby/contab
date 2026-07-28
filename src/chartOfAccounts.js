@@ -140,6 +140,7 @@ const ACCOUNTS = [
   { cod: '6458', nume: 'Alte cheltuieli privind asigurarile si protectia sociala', clasa: 6, tip: 'C' },
   { cod: '646',  nume: 'Cheltuieli privind contributia asiguratorie pentru munca', clasa: 6, tip: 'C' },
   { cod: '6581', nume: 'Despagubiri, amenzi si penalitati', clasa: 6, tip: 'C' },
+  { cod: '6582', nume: 'Donatii si subventii acordate (sponsorizare, mecenat)', clasa: 6, tip: 'C' },
   { cod: '6583', nume: 'Cheltuieli privind activele cedate si alte operatii de capital', clasa: 6, tip: 'C' },
   { cod: '665',  nume: 'Cheltuieli din diferente de curs valutar', clasa: 6, tip: 'C' },
   { cod: '666',  nume: 'Cheltuieli privind dobanzile', clasa: 6, tip: 'C' },

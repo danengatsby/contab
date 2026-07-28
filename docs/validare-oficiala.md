@@ -116,6 +116,30 @@ Ordinea de căutare (`scripts/valideaza-etransport.sh`):
 > `/var/tmp` **nu** e depozit: `systemd-tmpfiles` îl curăță la 30 de zile
 > (`q /var/tmp 1777 root root 30d`) — o schemă acolo dispare fără urmă.
 
+> **D101 — creditul de sponsorizare (adăugat 2026-07-28).** Rândul și plafonul **nu au fost ghicite**,
+> ci citite din validator prin sondaj (metoda „validatorul ca oracol"). O primă încercare cu o sumă
+> arbitrară a întors regula, textual:
+>
+> ```
+> V5: round( (P41-P42)*20% ) >= P43
+> ```
+>
+> De aici, trei lucruri care nu se deduc din formular: **P43** e rândul sumelor de sponsorizare/mecenat
+> scăzute din impozit (cu subrândurile P431/P432); plafonul de 20% se aplică la **P41 − P42**, adică
+> impozitul **minus creditul fiscal extern**, nu la impozitul brut (aplicația nu modelează P42, deci azi
+> coincid — dar formula e cea corectă când va fi modelat); iar **P43 intră în suma de control**, în timp
+> ce subrândurile nu. Ultimul punct a fost dovedit separat: validatorul a raportat diferența exactă
+> dintre suma așteptată și cea trimisă, egală cu P43.
+>
+> Generatorul **clampează** creditul la `round(P41 × 20%)`. Nu e prisos: motorul de plafoane lucrează în
+> bani (`round2`), iar D101 în lei întregi — o diferență de rotunjire ar depăși plafonul cu 1 leu și ar
+> face declarația invalidă.
+>
+> Atenție la reluarea sondajului pe altă versiune de schemă: jar-ul de PDF conține **mai multe
+> numerotări** de rânduri („rd.23+rd.33", „rd.24 la rd.34", „rd.26 la rd.36"), iar validatorul alege
+> versiunea după anul din `Data_S`. Maparea de mai sus e dovedită pentru schema **v10** (exercițiile
+> 2024–2026); pentru alt an se re-sondează, nu se extrapolează.
+
 > **D101 (adăugat 2026-07-21):** validatorul alege singur versiunea de schemă după **anul din `Data_S`**
 > (tabelul intern `_dateVersionTable` din `D101Validator`), nu după un atribut liber — un exercițiu
 > încheiat în 2024/2025/2026 → schema **v10** (`declaratie101`, indicatorii P1..P53 ca atribute pe
