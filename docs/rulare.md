@@ -232,6 +232,25 @@ actualizează frecvent). Cache-ul stă în `/var/tmp/contab-duk` (reglabil cu `C
 de un runtime Java și de ciclul de update-uri ANAF, iar validarea oficială oricum se repetă
 obligatoriu la depunerea în SPV.
 
+## Plafon de debit la nivel nginx (prima plasă)
+
+Aplicația are plafoane proprii — 8 încercări eșuate de login pe IP, 5 înscrieri/oră/IP, 600 de
+cereri/min general — și **ele rămân autoritatea pe reguli**. Rolul nginx e altul: să nu coste o tură
+de event loop fiecare cerere dintr-un val.
+
+`nginx-contab.conf` limitează căile de autentificare (`/api/login`, `/api/demo-login`,
+`/api/register`, `/api/forgot-password`, `/api/reset/accept`) la **10r/min per IP, burst 20,
+`nodelay`** — calibrat peste folosirea umană normală (un contabil face 1–3 încercări pe minut) și
+sub abuz. Peste burst se răspunde `503`, fără să se atingă Node.
+
+Măsurat pe un val de 40 de cereri: **8 × 401** (respinse de aplicație ca parolă greșită), **13 × 429**
+(anti-brute-force propriu), **19 × 503** (tăiate de nginx, nu au atins aplicația). Căile normale
+rămân neafectate.
+
+> **Fișierul din repo poate drifta față de cel viu**: `certbot --nginx` modifică
+> `/etc/nginx/sites-available/contab` direct (liniile „managed by Certbot"). Procedura la orice
+> schimbare: modifici fișierul viu → `nginx -t` → `systemctl reload nginx` → copiezi înapoi în repo.
+
 ## Copie offsite: stocare obiect, criptată
 
 Backupul zilnic (cron 03:30, `scripts/backup.js`) produce arhiva locală și o trimite offsite.

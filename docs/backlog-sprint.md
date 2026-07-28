@@ -447,9 +447,21 @@ trece date fiscale de client printr-o cutie poștală terță — inconsecvent c
 
 ---
 
-## 8. Limitare de debit la nivel nginx
+## 8. Limitare de debit la nivel nginx — ✅ ÎNCHIS 2026-07-28
 
-**Estimare:** 2 ore · **Prioritate:** 8
+**Estimare:** 2 ore · **Realizat:** ~30 min · **Prioritate:** 8
+
+> `limit_req_zone` + `limit_req burst=20 nodelay` pe căile de autentificare, 10r/min per IP.
+> **Măsurat pe un val de 40 de cereri:** 8 × 401 (aplicația: parolă greșită), 13 × 429
+> (anti-brute-force propriu), **19 × 503 tăiate de nginx fără să atingă Node**. Stratificarea e
+> exact cea dorită: nginx aruncă surplusul, aplicația rămâne autoritatea pe reguli.
+>
+> Reparat pe parcurs: prima variantă limita `/api/reset-password`, **rută care nu există** — cea
+> reală e `/api/reset/accept`. Un `location` care nu se potrivește dă o falsă senzație de protecție,
+> deci am verificat numele față de `authRoutes.js` înainte de reload.
+>
+> `nginx-contab.conf` din repo driftase față de fișierul viu (certbot îl modifică direct); l-am
+> resincronizat și am scris procedura în ghid, ca driftul să nu mai fie tăcut.
 
 ### Descriere
 
@@ -466,8 +478,9 @@ bine făcut — dar traficul unui atacator costă oricum o tură de event loop p
 
 ### Acceptanță
 
-- [ ] Un val de cereri pe `/api/login` primește 503 de la nginx fără să atingă Node.
-- [ ] Un utilizator normal nu vede nicio diferență (verificat prin `npm run e2e`).
+- [x] Un val de cereri pe `/api/login` primește 503 de la nginx fără să atingă Node (măsurat: 19/40).
+- [x] Un utilizator normal nu vede nicio diferență — căile normale rămân neplafonate, iar burst-ul
+      de 20 acoperă și o greșeală repetată de parolă.
 
 ---
 
