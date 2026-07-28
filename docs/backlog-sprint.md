@@ -389,9 +389,33 @@ soldurile a 40 de clienți.
 
 # P2 — infrastructură, pe semnal real
 
-## 7. Offsite pe stocare obiect, criptat
+## 7. Offsite pe stocare obiect, criptat — ✅ ÎNCHIS 2026-07-28 (RTO nemăsurat)
 
-**Estimare:** 1 zi · **Prioritate:** 7
+**Estimare:** 1 zi · **Realizat:** ~1,5 ore · **Prioritate:** 7
+
+> **Analiza inițială a fost incompletă aici.** Criptarea și o cale `rclone` existau deja în
+> `scripts/backup.js` — dar nedocumentate, nefolosite în producție, iar `rclone` **nu e instalat pe
+> server**, deci acea cale ar fi eșuat la prima folosire. O dependență externă nedeclarată, într-un
+> drum care rulează doar noaptea, e o cale moartă care pare vie.
+>
+> **Defectul de fond, reparat:** criptarea cădea **deschis**. Dacă `openssl` eșua, arhiva pleca
+> necriptată cu un simplu avertisment în log — adică exact când ceva nu era în regulă, datele
+> fiscale plecau în clar. Acum e fail-closed: eșecul criptării oprește copia offsite. În plus,
+> arhiva criptată se **verifică round-trip** (se descifrează și se compară amprenta) *înainte* de
+> urcare — o arhivă criptată care nu se descifrează e o arhivă pierdută, iar asta s-ar afla abia
+> la dezastru.
+>
+> `offsite.js`: semnare **AWS SigV4 nativă**, fără dependențe și fără `rclone`; merge pe orice
+> S3-compatibil. Urcarea se verifică descărcând obiectul înapoi și comparând amprenta — o urcare
+> care a truncat fișierul arată identic în log cu una bună.
+>
+> Formatul de criptare rămâne cel `openssl`, deliberat: restaurarea de dezastru trebuie să fie
+> posibilă cu unelte de pe orice mașină, fără aplicație și fără Node. Un format propriu ar lega
+> recuperarea de codul tocmai pierdut.
+>
+> 18 verificări noi. Vectorul SigV4 din teste e derivat **independent cu openssl**, nu memorat —
+> prima încercare cu o valoare „știută" nu s-a potrivit, iar codul s-a dovedit corect prin
+> confruntare cu a doua implementare, nu ajustat după așteptare.
 
 ### Descriere
 
@@ -413,9 +437,13 @@ trece date fiscale de client printr-o cutie poștală terță — inconsecvent c
 
 ### Acceptanță
 
-- [ ] O restaurare completă din offsite, cronometrată, cu RTO măsurat și scris.
-- [ ] Arhiva urcată e ilizibilă fără cheie (verificat).
-- [ ] Eșecul urcării alertează — „n-am putut verifica" nu e „e bine", ca la poarta fiscală.
+- [ ] **NEÎNDEPLINIT** — restaurare completă din offsite, cronometrată. RPO e cunoscut (24 h, din
+      cadența cron), dar **RTO e o estimare, nu o măsurătoare**, și e marcat ca atare în ghid.
+      Cere o restaurare reală, cu credențiale de stocare pe care codul nu le are.
+- [x] Arhiva e ilizibilă fără cheie — verificat efectiv: textul nu apare în cifrat, cheia greșită
+      eșuează, round-trip-ul cu cheia bună e identic.
+- [x] Eșecul criptării **oprește** copia offsite (fail-closed); eșecul urcării se raportează și
+      lasă `exitCode=1`, deci se vede în logul cron și în raportul zilnic.
 
 ---
 
