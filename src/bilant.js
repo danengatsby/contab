@@ -238,4 +238,144 @@ function f20Micro(db, year) {
   return R;
 }
 
-module.exports = { f10Base, f10Totals, f10At, f20Micro, plAcc };
+/**
+ * F20 COMPLET (entitati mici, S1121) — 70 de randuri de fond + 18 „din care"/speciale.
+ *
+ * Disciplina care garanteaza corectitudinea: randurile de DETALIU se mapeaza explicit pe conturi,
+ * iar cate un rand pe fiecare sectiune e REZIDUAL (013 alte venituri din exploatare, 037 alte
+ * cheltuieli, 050 alte venituri financiare, 058 alte cheltuieli financiare). Asa, totalurile
+ * 016/042/052/059 egaleaza EXACT rulajul claselor 6 si 7 — un cont pe care nu l-am prevazut
+ * nominal nu dispare din formular, ci aterizeaza in rezidualul sectiunii lui.
+ *
+ * Randurile „din care" (301-318, mai putin cele care intra in formule) raman 0: validatorul le cere
+ * doar <= randul-parinte, iar aplicatia nu tine evidenta separata (ex. tranzactii cu entitati
+ * afiliate). Mai bine gol decat completat gresit.
+ */
+function f20Complet(db, year) {
+  const acc = plAcc(db, year);
+  const codes = Object.keys(acc);
+  const venit = (c) => round2(acc[c] ? acc[c].c - acc[c].d : 0);
+  const chelt = (c) => round2(acc[c] ? acc[c].d - acc[c].c : 0);
+  const sv = (p) => round2(codes.filter(p).reduce((s, c) => s + venit(c), 0));
+  const sc = (p) => round2(codes.filter(p).reduce((s, c) => s + chelt(c), 0));
+
+  const R = {};
+  for (let i = 1; i <= 70; i++) R[String(i).padStart(3, '0')] = 0;
+  for (const d of ['301', '302', '303', '304', '305', '306', '307', '308', '309', '310',
+    '311', '312', '313', '314', '315', '316', '317', '318']) R[d] = 0;
+
+  // Ce e „financiar" (si deci NU intra in exploatare): 76x + 786 la venituri, 66x + 686 la
+  // cheltuieli. Exceptie: 7418 (subventii pentru dobanda) e cont de clasa 74, dar formularul il
+  // cere pe randul 049, INAUNTRUL veniturilor financiare — deci se scoate din exploatare.
+  const eVenitFin = (c) => starts(c, '76', '786', '7418');
+  const eCheltFin = (c) => starts(c, '66', '686');
+  const eImpozit = (c) => starts(c, '691', '698');
+
+  // ── VENITURI DIN EXPLOATARE ──
+  R['002'] = sv((c) => starts(c, '701', '702', '703', '704', '705', '706', '708')); // productia vanduta
+  R['003'] = sv((c) => starts(c, '707'));                       // venituri din vanzarea marfurilor
+  R['004'] = round2(-sv((c) => starts(c, '709')));              // reduceri comerciale acordate (sold debitor)
+  R['006'] = sv((c) => starts(c, '7411'));                      // subventii aferente cifrei de afaceri
+  R['001'] = round2(R['002'] + R['003'] - R['004'] + R['005'] + R['006']);
+  const varStoc = sv((c) => starts(c, '711', '712'));           // variatia stocurilor: C = venit, D = cost
+  R['007'] = varStoc > 0 ? varStoc : 0;
+  R['008'] = varStoc < 0 ? round2(-varStoc) : 0;
+  R['009'] = sv((c) => starts(c, '721', '722'));                // productia de imobilizari
+  R['010'] = sv((c) => starts(c, '755'));                       // reevaluarea imobilizarilor corporale
+  R['011'] = sv((c) => starts(c, '725'));                       // productia de investitii imobiliare
+  R['012'] = sv((c) => starts(c, '741') && !starts(c, '7411', '7418')); // alte subventii de exploatare
+  const venitExplTot = sv((c) => classOf(c) === 7 && !eVenitFin(c));
+  // rezidual: tot ce n-a fost prins nominal (758, 7815, 7588…) ramane „alte venituri din exploatare"
+  R['013'] = round2(venitExplTot - R['001'] - varStoc - R['009'] - R['010'] - R['011'] - R['012']);
+  R['016'] = round2(R['001'] + R['007'] - R['008'] + R['009'] + R['010'] + R['011'] + R['012'] + R['013']);
+
+  // ── CHELTUIELI DE EXPLOATARE ──
+  R['017'] = sc((c) => starts(c, '601', '602'));                // materii prime si materiale consumabile
+  R['018'] = sc((c) => starts(c, '603', '604', '606', '608'));  // alte cheltuieli materiale
+  R['019'] = sc((c) => starts(c, '605'));                       // energie si apa
+  R['020'] = sc((c) => starts(c, '607'));                       // cheltuieli privind marfurile
+  R['021'] = round2(-sc((c) => starts(c, '609')));              // reduceri comerciale primite (sold creditor)
+  R['023'] = sc((c) => starts(c, '641', '642', '643', '644'));  // salarii si indemnizatii
+  R['024'] = sc((c) => starts(c, '645', '646'));                // asigurari si protectie sociala
+  R['022'] = round2(R['023'] + R['024']);
+  R['026'] = sc((c) => starts(c, '6811', '6813'));              // ajustari imobilizari — cheltuieli
+  R['027'] = sv((c) => starts(c, '7813'));                      // ajustari imobilizari — venituri
+  R['025'] = round2(R['306'] + R['026'] - R['027']);
+  R['029'] = sc((c) => starts(c, '6814'));                      // ajustari active circulante — cheltuieli
+  R['030'] = sv((c) => starts(c, '7814'));                      // ajustari active circulante — venituri
+  R['028'] = round2(R['029'] - R['030']);
+  R['040'] = sc((c) => starts(c, '6812'));                      // provizioane — cheltuieli
+  R['041'] = sv((c) => starts(c, '7812'));                      // provizioane — venituri
+  R['039'] = round2(R['040'] - R['041']);
+  R['032'] = sc((c) => /^6(1|2)/.test(String(c)));              // prestatii externe (61x + 62x)
+  R['033'] = sc((c) => starts(c, '635'));                       // alte impozite, taxe si varsaminte
+  R['034'] = sc((c) => starts(c, '652'));                       // protectia mediului
+  R['035'] = sc((c) => starts(c, '655'));                       // cheltuieli din reevaluare
+  R['036'] = sc((c) => starts(c, '6587'));                      // calamitati si evenimente similare
+  const cheltExplTot = sc((c) => classOf(c) === 6 && !eCheltFin(c) && !eImpozit(c));
+  // rezidual „alte cheltuieli": diferenta pana la totalul real al exploatarii
+  R['037'] = round2(cheltExplTot - R['017'] - R['018'] - R['019'] - R['020'] + R['021']
+    - R['022'] - R['026'] - R['029'] - R['040']
+    - R['032'] - R['033'] - R['034'] - R['035'] - R['036']);
+  R['031'] = round2(R['032'] + R['033'] + R['034'] + R['035'] + R['036'] + R['037'] + R['038']
+    + R['310'] + R['312'] + R['314'] + R['316']);
+  R['042'] = round2(R['017'] + R['018'] + R['019'] + R['020'] - R['021'] + R['022']
+    + R['025'] + R['028'] + R['031'] + R['039']);
+
+  // ── FINANCIAR ──
+  R['045'] = sv((c) => starts(c, '761'));                       // interese de participare
+  R['047'] = sv((c) => starts(c, '766'));                       // venituri din dobanzi
+  R['049'] = sv((c) => starts(c, '7418'));                      // subventii pentru dobanda datorata
+  const venitFinTot = sv(eVenitFin);
+  R['050'] = round2(venitFinTot - R['045'] - R['047'] - R['049']); // rezidual: alte venituri financiare
+  R['052'] = round2(R['045'] + R['047'] + R['049'] + R['050']);
+  R['054'] = sc((c) => starts(c, '686'));                       // ajustari imobilizari financiare — cheltuieli
+  R['055'] = sv((c) => starts(c, '786'));                       // ...si venituri
+  R['053'] = round2(R['054'] - R['055']);
+  R['056'] = sc((c) => starts(c, '666'));                       // cheltuieli privind dobanzile
+  const cheltFinTot = sc(eCheltFin);
+  R['058'] = round2(cheltFinTot - R['054'] - R['056']);          // rezidual: alte cheltuieli financiare
+  R['059'] = round2(R['053'] + R['056'] + R['058']);
+
+  // ── TOTALURI, impozit, rezultat ──
+  R['062'] = round2(R['016'] + R['052']);
+  R['063'] = round2(R['042'] + R['059']);
+  R['066'] = sc((c) => starts(c, '691'));                       // impozitul pe profit
+  R['068'] = sc((c) => starts(c, '698'));                       // alte impozite (inclusiv impozitul micro)
+
+  // lei intregi pe randurile elementare, INAINTE de rezultat (acelasi motiv ca la F10)
+  for (const k of Object.keys(R)) R[k] = intLei(R[k]);
+  // ...si recompunem agregatele din valorile rotunjite, cu formulele validatorului
+  R['001'] = R['002'] + R['003'] - R['004'] + R['005'] + R['006'];
+  R['016'] = R['001'] + R['007'] - R['008'] + R['009'] + R['010'] + R['011'] + R['012'] + R['013'];
+  R['022'] = R['023'] + R['024'];
+  R['025'] = R['306'] + R['026'] - R['027'];
+  R['028'] = R['029'] - R['030'];
+  R['039'] = R['040'] - R['041'];
+  R['031'] = R['032'] + R['033'] + R['034'] + R['035'] + R['036'] + R['037'] + R['038']
+    + R['310'] + R['312'] + R['314'] + R['316'];
+  R['042'] = R['017'] + R['018'] + R['019'] + R['020'] - R['021'] + R['022']
+    + R['025'] + R['028'] + R['031'] + R['039'];
+  R['053'] = R['054'] - R['055'];
+  R['052'] = R['045'] + R['047'] + R['049'] + R['050'];
+  R['059'] = R['053'] + R['056'] + R['058'];
+  R['062'] = R['016'] + R['052'];
+  R['063'] = R['042'] + R['059'];
+
+  const rezExpl = R['016'] - R['042'];
+  R['043'] = rezExpl > 0 ? rezExpl : 0;
+  R['044'] = rezExpl <= 0 ? -rezExpl : 0;
+  const rezFin = R['052'] - R['059'];
+  R['060'] = rezFin > 0 ? rezFin : 0;
+  R['061'] = rezFin <= 0 ? -rezFin : 0;
+  const rezBrut = R['062'] - R['063'];
+  R['064'] = rezBrut > 0 ? rezBrut : 0;
+  R['065'] = rezBrut <= 0 ? -rezBrut : 0;
+  // rezultatul net, exact cu formulele F20_069 / F20_070
+  const net = R['064'] - R['065'] - R['066'] - R['068'] - R['304'] - R['317'] + R['305'];
+  R['069'] = net > 0 ? net : 0;
+  R['070'] = net < 0 ? -net : 0;
+  return R;
+}
+
+module.exports = { f10Base, f10Totals, f10At, f20Micro, f20Complet, plAcc };
