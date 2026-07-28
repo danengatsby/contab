@@ -21,6 +21,7 @@ const anaf = require('./anaf');
 const xml = require('./xml');
 const coa = require('./chartOfAccounts');
 const efacturaImport = require('./efacturaImport');
+const bnr = require('./bnr');
 const eirec = require('./einvoiceReconcile');
 const { round2, period: periodOf } = require('./util');
 const { allowedFirme } = require('./session');
@@ -247,22 +248,41 @@ function importEfactura(fid, b, upsertPartner) {
   let inv;
   try { inv = efacturaImport.parseUBL(b.xml || ''); } catch (e) { fail(400, e.message); }
   if (!inv.furnizor.cui && !inv.furnizor.nume) fail(400, 'Nu am putut identifica furnizorul din e-Factura.');
-  if (inv.moneda && inv.moneda !== 'RON') fail(400, 'e-Factura este in ' + inv.moneda + '. Importul automat suporta deocamdata doar RON.');
+  // Valuta: baza si TVA-ul se convertesc in lei la cursul BNR al DATEI FACTURII (nu al zilei de
+  // azi). Cursul poate veni si explicit (`b.curs`) — feed-ul cazut nu blocheaza importul.
+  let cursAplicat = 1;
+  if (inv.moneda && inv.moneda !== 'RON') {
+    const dataFact = b.data || inv.data || new Date().toISOString().slice(0, 10);
+    const manual = Number(b.curs);
+    if (Number.isFinite(manual) && manual > 0) cursAplicat = manual;
+    else {
+      const r = bnr.rateAt(d.cursuriBnr || [], inv.moneda, dataFact);
+      if (!r) {
+        fail(400, 'e-Factura este in ' + inv.moneda + ', iar cursul BNR pentru ' + dataFact
+          + ' nu e disponibil local. Reimprospateaza cursul (Setari) sau trimite cursul explicit.');
+      }
+      cursAplicat = r.curs;
+    }
+  }
   const cont = b.cont || '371'; // contul de cheltuiala/stoc (371 marfuri implicit)
   if (!coa.getAccount(cont)) fail(400, 'Cont inexistent in plan: ' + cont);
   const data = b.data || inv.data || new Date().toISOString().slice(0, 10);
   const firma = db.getFirma(fid) || {};
   if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) fail(400, 'Perioada ' + periodOf(data) + ' este inchisa.');
   const sign = inv.tip === 'creditnote' ? -1 : 1;
-  const baza = round2(sign * inv.baza); const tva = round2(sign * inv.tva);
-  const lines = [{ debit: cont, credit: '401', suma: baza, explicatie: 'Factura cumparare (import e-Factura)' }];
+  const baza = round2(sign * inv.baza * cursAplicat); const tva = round2(sign * inv.tva * cursAplicat);
+  const notaCurs = cursAplicat !== 1 ? ' (' + inv.moneda + ' la cursul ' + cursAplicat + ')' : '';
+  const lines = [{ debit: cont, credit: '401', suma: baza, explicatie: 'Factura cumparare (import e-Factura)' + notaCurs }];
   if (Math.abs(tva) >= 0.005) lines.push({ debit: '4426', credit: '401', suma: tva, explicatie: 'TVA deductibila' });
   const entry = {
     id: db.nextId('e'), firmaId: fid, data, period: periodOf(data),
     tip: inv.tip === 'creditnote' ? 'factura_cumparare_storno' : 'factura_cumparare_marfuri',
     tipNume: (inv.tip === 'creditnote' ? 'Storno factura cumparare' : 'Factura cumparare') + ' (import e-Factura)',
     partener: inv.furnizor.nume, partenerCui: inv.furnizor.cui, document: inv.numar || '',
-    explicatie: 'Import e-Factura primita', fileId: null, system: false, lines,
+    explicatie: 'Import e-Factura primita' + notaCurs, fileId: null, system: false, lines,
+    // Soldul in valuta ramane vizibil pentru reevaluarea de la sfarsit de perioada: fara
+    // `valutaInfo`, articolul ar arata ca unul in lei si contul n-ar mai fi reevaluat.
+    ...(cursAplicat !== 1 ? { valutaInfo: { valuta: inv.moneda, sumaValuta: round2(sign * (inv.baza + inv.tva)), curs: cursAplicat } } : {}),
     items: inv.linii.map((l) => ({ nume: l.nume, cantitate: round2(sign * l.cantitate), pret: l.pret, cota: l.cota })),
   };
   d.entries.push(entry);

@@ -10,6 +10,7 @@ const path = require('path');
 const db = require('../db');
 const pdf = require('../pdf');
 const fiscal = require('../fiscal');
+const bnr = require('../bnr');
 const fiscalProfile = require('../fiscalProfile');
 const fiscalControls = require('../fiscalControls');
 const svc = require('../configService');
@@ -80,6 +81,42 @@ module.exports = function register(app, ctx) {
     const r = svc.updateSettings(req.body, req.user && req.user.role === 'admin');
     return { ok: true, settings: r.settings };
   }));
+
+  // ── Curs de schimb BNR ──────────────────────────────────────────────────
+  // Cursul la o DATA (nu cel de azi): o factura din martie se evalueaza la cursul din martie.
+  // Zi nelucratoare -> ultimul curs publicat inainte, cu `exact:false` ca sa se vada in interfata
+  // ca s-a folosit cursul altei zile. Lipsa cursului NU e eroare: se raspunde cu null si
+  // utilizatorul tasteaza cursul, ca inainte.
+  app.get('/api/curs-bnr', (req, res) => {
+    const d = db.get();
+    const colectie = d.cursuriBnr || [];
+    const { moneda, data } = req.query;
+    if (moneda) {
+      const zi = data || new Date().toISOString().slice(0, 10);
+      const r = bnr.rateAt(colectie, moneda, zi);
+      return res.json({ moneda: String(moneda).toUpperCase(), data: zi, rezultat: r, valute: bnr.currencies(colectie) });
+    }
+    const ultima = colectie.length ? colectie.map((x) => x.id).sort().slice(-1)[0] : null;
+    res.json({ zile: colectie.length, ultimaZi: ultima, valute: bnr.currencies(colectie) });
+  });
+
+  // Reimprospatare la cerere (admin): ziua curenta sau un an intreg de istoric (`?an=2026`).
+  app.post('/api/curs-bnr/refresh', requireAdmin, async (req, res) => {
+    try {
+      const an = req.query.an || (req.body || {}).an;
+      const randuri = an ? await bnr.fetchYear(String(an)) : await bnr.fetchDaily();
+      const d = db.get();
+      d.cursuriBnr = Array.isArray(d.cursuriBnr) ? d.cursuriBnr : [];
+      const r = bnr.upsertRates(d.cursuriBnr, randuri);
+      if (r.adaugate || r.actualizate) db.save();
+      logAudit('curs.bnr', (an ? 'an ' + an : 'ziua curenta') + ': ' + r.adaugate + ' zile noi, ' + r.actualizate + ' actualizate', { req });
+      res.json({ ok: true, adaugate: r.adaugate, actualizate: r.actualizate, zile: d.cursuriBnr.length });
+    } catch (e) {
+      // 503, nu 500: serviciul extern e jos, aplicatia e sanatoasa — iar cursul tastat manual
+      // ramane disponibil, deci nu s-a pierdut nicio capacitate.
+      res.status(503).json({ error: 'Cursul BNR nu e disponibil acum: ' + (e.message || e) + ' Poti introduce cursul manual.' });
+    }
+  });
 
   // Cote fiscale configurabile (admin): CAS/CASS/impozit/TVA/profit/salariu minim etc.
   app.get('/api/fiscal-config', requireAdmin, (req, res) => res.json({ current: fiscal.FISCAL, defaults: fiscal.DEFAULTS, custom: db.get().settings.fiscal || {}, vechime: fiscal.fiscalStaleness(new Date().getFullYear()) }));
