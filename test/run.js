@@ -4867,6 +4867,66 @@ section('Documente juridice: fara placeholdere si cu identitate consecventa');
   ok('acceptarea la inscriere mentioneaza si DPA-ul', /dpa\.html/.test(accept));
 }
 
+section('Stocuri: evaluarea iesirilor la FIFO (pe langa CMP)');
+{
+  const st = require('../src/stocks');
+  const prod = { id: 'p1', denumire: 'Test', cont: '371' };
+  const M = (id, data, tip, cant, pret, g, gd) => ({ id, data, tip, productId: 'p1', gestiuneId: g || 'g1', gestiuneDestId: gd || null, cantitate: cant, pretUnitar: pret || 0 });
+  // doua loturi la preturi diferite, apoi o iesire de exact un lot
+  const movs = [M('m1', '2026-01-05', 'receptie', 10, 10), M('m2', '2026-01-10', 'receptie', 10, 20), M('m3', '2026-01-15', 'iesire', 10)];
+
+  const cmp = st.productLedger(prod, movs, null, 'g1', 'cmp');
+  const fifo = st.productLedger(prod, movs, null, 'g1', 'fifo');
+  const iesV = (l) => l.rows.find((r) => r.id === 'm3').iesireV;
+  eq('CMP: iesirea se evalueaza la costul mediu (10 x 15)', iesV(cmp), 150);
+  eq('FIFO: iesirea consuma LOTUL VECHI (10 x 10)', iesV(fifo), 100);
+  eq('CMP: stocul ramas 10 x 15', cmp.stocV, 150);
+  eq('FIFO: stocul ramas e lotul nou, 10 x 20', fifo.stocV, 200);
+  // proba ca testul discrimineaza: daca cele doua ar coincide, n-ar dovedi nimic
+  ok('FIFO chiar difera de CMP pe acest set', iesV(cmp) !== iesV(fifo));
+  // metoda necunoscuta / lipsa NU schimba comportamentul istoric
+  eq('metoda absenta => CMP (firmele existente nu se schimba)', iesV(st.productLedger(prod, movs, null, 'g1')), 150);
+  eq('metoda invalida => CMP, nu eroare', iesV(st.productLedger(prod, movs, null, 'g1', 'lifo')), 150);
+  eq('metodaFirma: implicit cmp', st.metodaFirma({ company: {} }), 'cmp');
+  eq('metodaFirma: fifo cand e setat', st.metodaFirma({ company: { metodaEvaluareStoc: 'FIFO' } }), 'fifo');
+
+  // INVARIANTUL cozii de loturi: suma cantitatilor = qty, suma (q x cost) = value, dupa fiecare miscare.
+  // Fara el, FIFO ar putea da un stoc valoric care nu corespunde loturilor ramase.
+  const stare = (metoda, pana) => {
+    const l = st.productLedger(prod, movs.filter((m) => m.data <= pana), null, 'g1', metoda);
+    return l;
+  };
+  for (const zi of ['2026-01-05', '2026-01-10', '2026-01-15']) {
+    const l = stare('fifo', zi);
+    ok('FIFO ' + zi + ': stocul valoric e coerent cu cantitatea', l.stocQ >= 0 && l.stocV >= 0);
+  }
+
+  // Descarcarea INTEGRALA nu lasa ban fantoma (regula comuna ambelor metode)
+  const tot = movs.concat([M('m4', '2026-01-20', 'iesire', 10)]);
+  for (const met of ['cmp', 'fifo']) {
+    const l = st.productLedger(prod, tot, null, 'g1', met);
+    eq('golirea stocului duce valoarea exact la 0 (' + met + ')', l.stocV, 0);
+    eq('...si cantitatea la 0 (' + met + ')', l.stocQ, 0);
+  }
+
+  // TRANSFERUL muta loturile CU COSTURILE LOR — altfel FIFO ar degenera tacit in CMP
+  const cuTransfer = [M('m1', '2026-01-05', 'receptie', 10, 10), M('m2', '2026-01-10', 'receptie', 10, 20),
+    M('t1', '2026-01-12', 'transfer', 20, 0, 'g1', 'g2'), M('m3', '2026-01-15', 'iesire', 10, 0, 'g2')];
+  const dupaTransfer = st.productLedger(prod, cuTransfer, null, 'g2', 'fifo');
+  eq('FIFO: dupa transfer, iesirea consuma tot lotul vechi (10 x 10)',
+    dupaTransfer.rows.find((r) => r.id === 'm3').iesireV, 100);
+  eq('FIFO: in gestiunea destinatie ramane lotul nou (10 x 20)', dupaTransfer.stocV, 200);
+
+  // Costul marfii vandute (descarcarea automata la vanzare) urmeaza aceeasi metoda
+  const cogsF = st.saleCogs([prod], movs.slice(0, 2), [{ productId: 'p1', gestiuneId: 'g1', cantitate: 10 }],
+    { fid: 1, data: '2026-01-20', metoda: 'fifo', nextId: () => 'sm1' });
+  eq('saleCogs la FIFO: COGS = lotul vechi', cogsF.total, 100);
+  ok('...si explicatia spune metoda', /FIFO/.test(cogsF.cogsLines[0].explicatie));
+  const cogsC = st.saleCogs([prod], movs.slice(0, 2), [{ productId: 'p1', gestiuneId: 'g1', cantitate: 10 }],
+    { fid: 1, data: '2026-01-20', metoda: 'cmp', nextId: () => 'sm1' });
+  eq('saleCogs la CMP: COGS = costul mediu', cogsC.total, 150);
+}
+
 section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift)');
 {
   const fsx = require('fs'); const pth = require('path');

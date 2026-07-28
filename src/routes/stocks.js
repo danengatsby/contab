@@ -107,7 +107,7 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     const p = v.products.find((x) => x.id === req.params.id);
     if (!p) return res.status(404).json({ error: 'Produs inexistent.' });
-    res.json(stocks.productLedger(p, v.stockMovements, req.query.asOf || null, req.query.gestiune || null));
+    res.json(stocks.productLedger(p, v.stockMovements, req.query.asOf || null, req.query.gestiune || null, stocks.metodaFirma(v)));
   });
 
 };

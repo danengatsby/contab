@@ -362,6 +362,7 @@ function fillCompanyForm() {
   if (f.regimImpozit) f.regimImpozit.value = ['micro', 'profit'].includes(META.company.regimImpozit) ? META.company.regimImpozit : 'micro';
   if (f.d406Cadenta) f.d406Cadenta.value = ['L', 'T', 'A'].includes(META.company.d406Cadenta) ? META.company.d406Cadenta : '';
   if (f.intrastatObligat) f.intrastatObligat.checked = !!META.company.intrastatObligat;
+  if (f.metodaEvaluareStoc) f.metodaEvaluareStoc.value = META.company.metodaEvaluareStoc === 'fifo' ? 'fifo' : 'cmp';
   const scut = (META.company.scutiri && typeof META.company.scutiri === 'object') ? META.company.scutiri : {};
   document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { c.checked = !!scut[c.dataset.scutire]; });
   // antetul situatiilor financiare — se completeaza dupa ce nomenclatoarele sunt in DOM
@@ -867,6 +868,7 @@ $('#companyForm').addEventListener('submit', async (e) => {
   body.regimImpozit = f.regimImpozit ? f.regimImpozit.value : 'micro';
   body.d406Cadenta = f.d406Cadenta ? f.d406Cadenta.value : '';
   body.intrastatObligat = f.intrastatObligat ? f.intrastatObligat.checked : false;
+  body.metodaEvaluareStoc = f.metodaEvaluareStoc ? f.metodaEvaluareStoc.value : 'cmp';
   body.scutiri = {};
   document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { if (c.checked) body.scutiri[c.dataset.scutire] = true; });
   // antetul situatiilor financiare anuale (bilant)

@@ -125,7 +125,7 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     const p = v.products.find((x) => x.id === req.params.id);
     if (!p) return res.status(404).send('Produs inexistent');
-    pdf.stockLedgerPdf(res, v.company, stocks.productLedger(p, v.stockMovements, req.query.asOf || null, req.query.gestiune || null));
+    pdf.stockLedgerPdf(res, v.company, stocks.productLedger(p, v.stockMovements, req.query.asOf || null, req.query.gestiune || null, stocks.metodaFirma(v)));
   });
   app.get('/pdf/note/:id', (req, res) => {
     const e = db.get().entries.find((x) => x.id === req.params.id);

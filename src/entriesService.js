@@ -49,7 +49,7 @@ function createEntry(fid, b, deps) {
   if (stocLines.length) {
     const v = db.scoped(fid);
     let r;
-    try { r = stocks.saleCogs(v.products, v.stockMovements, stocLines, { fid, data: entry.data, document: entry.document, entryId: entry.id, nextId: () => db.nextId('sm') }); }
+    try { r = stocks.saleCogs(v.products, v.stockMovements, stocLines, { fid, data: entry.data, document: entry.document, entryId: entry.id, nextId: () => db.nextId('sm'), metoda: stocks.metodaFirma(v) }); }
     catch (e) { fail(400, e.message); }
     for (const ln of r.cogsLines) {
       if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) fail(400, 'Cont de descarcare inexistent in plan: ' + ln.debit + '/' + ln.credit);

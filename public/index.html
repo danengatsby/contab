@@ -1802,6 +1802,17 @@ Cu stimă,
           <label>Cadență D406 (SAF-T)
             <select name="d406Cadenta"><option value="">Automat (după perioada TVA)</option><option value="L">Lunar</option><option value="T">Trimestrial</option><option value="A">Anual</option></select>
           </label>
+          <label>Evaluarea ieșirilor din stoc (politică contabilă — OMFP 1802/2014 pct. 289)
+            <select name="metodaEvaluareStoc">
+              <option value="cmp">Cost mediu ponderat (CMP)</option>
+              <option value="fifo">FIFO — primul intrat, primul ieșit</option>
+            </select>
+          </label>
+          <div class="full explain"><span class="ei">⚠️</span><p class="muted">Metoda se alege
+            <b>o dată</b>, la începutul exercițiului. Schimbarea ei recalculează retroactiv toate
+            ieșirile deja înregistrate, deci costul mărfii vândute din articolele contabile postate
+            nu va mai corespunde fișei de magazie. Schimbă doar dacă știi ce faci — o modificare de
+            politică contabilă cere hotărâre și notă explicativă.</p></div>
           <label class="check"><input name="intrastatObligat" type="checkbox" /> Obligată la Intrastat (peste pragul INS — declarație statistică lunară la mișcări intracomunitare)</label>
           <div class="full">
             <label>Scutiri — declarații pe care firma NU le datorează (rar; oprește alertele pentru ele)</label>

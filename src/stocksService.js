@@ -353,7 +353,7 @@ function createInventory(fid, operator, b) {
   for (const ln of b.lines) {
     const p = v.products.find((x) => x.id === ln.productId);
     if (!p) continue;
-    const led = stocks.productLedger(p, v.stockMovements, b.data, b.gestiuneId); // scriptic = starea de dinainte de inventar
+    const led = stocks.productLedger(p, v.stockMovements, b.data, b.gestiuneId, stocks.metodaFirma(v)); // scriptic = starea de dinainte de inventar
     const scriptic = led.stocQ; const cmp = led.cmp;
     const faptic = round2(Number(ln.faptic) || 0);
     const diff = round2(faptic - scriptic);

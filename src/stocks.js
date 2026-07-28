@@ -1,12 +1,30 @@
 'use strict';
 
-// Gestiune cantitativ-valorica a stocurilor pe GESTIUNI (depozite), cu cost mediu ponderat (CMP)
-// separat per (produs × gestiune). Miscari: receptie (intrare), iesire (consum/vanzare) si
-// transfer intre gestiuni (iesire din sursa + intrare in destinatie la CMP-ul sursei).
+// Gestiune cantitativ-valorica a stocurilor pe GESTIUNI (depozite), separat per (produs × gestiune).
+// Miscari: receptie (intrare), iesire (consum/vanzare) si transfer intre gestiuni.
+//
+// DOUA METODE DE EVALUARE la iesire, ambele permise de OMFP 1802/2014 pct. 289:
+//   'cmp'  — cost mediu ponderat (implicit, comportamentul istoric);
+//   'fifo' — primul intrat, primul iesit: iesirile se descarca din LOTURILE cele mai vechi.
+// Metoda vine din firma (`metodaEvaluareStoc`) si e SINGURA diferenta de comportament — restul
+// motorului (rotunjiri, transferuri, descarcarea integrala) e comun, ca sa nu existe doua
+// implementari care pot drifta una fata de alta.
+//
+// La FIFO starea tine, pe langa {qty,value}, o COADA de loturi [{q,cost}] in ordinea intrarii.
+// Invariantul verificat in teste: suma loturilor == qty si suma (q x cost) == value, dupa
+// FIECARE miscare. Transferul muta loturile cu costurile lor (nu le omogenizeaza la un cost
+// mediu) — altfel FIFO s-ar transforma tacit in CMP la prima mutare intre gestiuni.
 
 const { round2, naturalCompare } = require('./util');
 
 const DEFAULT_GEST = '(fara gestiune)';
+
+/** Metoda de evaluare a iesirilor, din profilul firmei. Implicit CMP (comportamentul istoric):
+ *  o firma existenta nu-si schimba evaluarea pentru ca am adaugat noi o optiune. */
+function metodaFirma(db) {
+  const m = String(((db || {}).company || {}).metodaEvaluareStoc || 'cmp').toLowerCase();
+  return m === 'fifo' ? 'fifo' : 'cmp';
+}
 function gestKey(m, role) { return (role === 'dest' ? m.gestiuneDestId : m.gestiuneId) || DEFAULT_GEST; }
 function inPeriod(m, period) { return !period || String(m.data || '').slice(0, 7) === period; }
 
@@ -40,11 +58,39 @@ function within(m, limit) {
  * Simuleaza miscarile unui produs pe toate gestiunile (cronologic), mentinand {qty,value} per gestiune.
  * Returneaza randurile (cu gestiunea atinsa) si starea finala per gestiune.
  */
-function simulate(product, movements, asOf) {
+function simulate(product, movements, asOf, metoda) {
+  const fifo = String(metoda || 'cmp').toLowerCase() === 'fifo';
   const limit = limitOf(asOf);
   const movs = sortMov(movements.filter((m) => m.productId === product.id && within(m, limit)));
-  const state = {}; // gestiuneId -> { qty, value }
-  const ensure = (g) => (state[g] = state[g] || { qty: 0, value: 0 });
+  const state = {}; // gestiuneId -> { qty, value, lots: [{q, cost}] }
+  const ensure = (g) => (state[g] = state[g] || { qty: 0, value: 0, lots: [] });
+
+  /** Descarca `c2` bucati din stare si intoarce { v, lots } — valoarea iesita si loturile consumate
+   *  (loturile trebuie pastrate pentru transfer, ca destinatia sa primeasca aceleasi costuri).
+   *  La descarcarea INTREGULUI stoc se ia valoarea reziduala intreaga: qty=0 <=> value=0 exact,
+   *  fara ban fantoma din rotunjire. Regula e comuna ambelor metode. */
+  const descarca = (s, c2) => {
+    if (c2 >= s.qty) { // integral
+      const lots = s.lots.slice(); const v = round2(s.value);
+      s.lots = []; return { v, lots };
+    }
+    if (!fifo) { // CMP: cost unitar mediu
+      const cmp = s.qty > 0 ? round2(s.value / s.qty) : 0;
+      return { v: round2(c2 * cmp), lots: [{ q: c2, cost: cmp }] };
+    }
+    // FIFO: se consuma din fata cozii
+    let ramas = c2; let v = 0; const luate = [];
+    while (ramas > 0.0000001 && s.lots.length) {
+      const lot = s.lots[0];
+      const ia = Math.min(lot.q, ramas);
+      v = round2(v + ia * lot.cost);
+      luate.push({ q: round2(ia), cost: lot.cost });
+      lot.q = round2(lot.q - ia);
+      ramas = round2(ramas - ia);
+      if (lot.q <= 0.0000001) s.lots.shift();
+    }
+    return { v, lots: luate };
+  };
   const rows = [];
   for (const m of movs) {
     const c = round2(Number(m.cantitate) || 0);
@@ -53,24 +99,25 @@ function simulate(product, movements, asOf) {
       const pret = round2(Number(m.pretUnitar) || 0);
       const v = round2(c * pret);
       s.qty = round2(s.qty + c); s.value = round2(s.value + v);
+      if (c > 0) s.lots.push({ q: c, cost: pret });
       rows.push({ id: m.id, data: m.data, tip: 'receptie', gestiuneId: g, document: m.document || '', intrareQ: c, intrareV: v, iesireQ: 0, iesireV: 0, stocQ: s.qty, cmp: s.qty > 0 ? round2(s.value / s.qty) : 0, stocV: s.value });
     } else if (m.tip === 'transfer') {
       const gs = gestKey(m); const gd = gestKey(m, 'dest');
       const ss = ensure(gs); const sd = ensure(gd);
-      const cmp = ss.qty > 0 ? round2(ss.value / ss.qty) : 0;
       const c2 = Math.min(c, ss.qty);
-      // la transferul INTREGULUI stoc, muta valoarea reziduala intreaga (evita drift de rotunjire)
-      const v = c2 >= ss.qty ? round2(ss.value) : round2(c2 * cmp);
+      const d = descarca(ss, c2);
+      const v = d.v;
+      const cmp = c2 > 0 ? round2(v / c2) : 0; // costul unitar EFECTIV al transferului
       ss.qty = round2(ss.qty - c2); ss.value = round2(ss.value - v);
       sd.qty = round2(sd.qty + c2); sd.value = round2(sd.value + v);
+      // loturile trec cu costurile lor: FIFO ramane FIFO si dupa mutarea intre gestiuni
+      for (const l of d.lots) if (l.q > 0) sd.lots.push({ q: l.q, cost: l.cost });
       rows.push({ id: m.id, data: m.data, tip: 'transfer', gestiuneId: gs, gestiuneDestId: gd, document: m.document || '', intrareQ: 0, intrareV: 0, iesireQ: c2, iesireV: v, transferV: v, stocQ: ss.qty, cmp, stocV: ss.value });
     } else { // iesire
       const g = gestKey(m); const s = ensure(g);
-      const cmp = s.qty > 0 ? round2(s.value / s.qty) : 0;
       const c2 = Math.min(c, s.qty);
-      // la iesirea INTREGULUI stoc, descarca valoarea reziduala intreaga: qty=0 <=> value=0 exact,
-      // iar COGS-ul iesit egaleaza costul intrat (fara ban fantoma din rotunjirea CMP)
-      const v = c2 >= s.qty ? round2(s.value) : round2(c2 * cmp);
+      const v = descarca(s, c2).v;
+      const cmp = c2 > 0 ? round2(v / c2) : 0; // costul unitar EFECTIV al iesirii (mediu la CMP, din loturi la FIFO)
       s.qty = round2(s.qty - c2); s.value = round2(s.value - v);
       rows.push({ id: m.id, data: m.data, tip: 'iesire', gestiuneId: g, document: m.document || '', intrareQ: 0, intrareV: 0, iesireQ: c2, iesireV: v, stocQ: s.qty, cmp, stocV: round2(s.value) });
     }
@@ -79,8 +126,8 @@ function simulate(product, movements, asOf) {
 }
 
 /** Fisa de magazie pentru un produs (optional filtrata pe o gestiune). */
-function productLedger(product, movements, asOf, gestiuneId) {
-  const { rows, state } = simulate(product, movements, asOf);
+function productLedger(product, movements, asOf, gestiuneId, metoda) {
+  const { rows, state } = simulate(product, movements, asOf, metoda);
   // pentru transfer, randul apare la ambele gestiuni implicate
   const visible = gestiuneId
     ? rows.filter((r) => r.gestiuneId === gestiuneId || r.gestiuneDestId === gestiuneId).map((r) => {
@@ -106,7 +153,7 @@ function currentStock(db, asOf, gestiuneId) {
   const gById = new Map((db.gestiuni || []).map((g) => [g.id, g]));
   const out = [];
   for (const p of (db.products || [])) {
-    const { state } = simulate(p, movements, asOf);
+    const { state } = simulate(p, movements, asOf, metodaFirma(db));
     for (const [gid, s] of Object.entries(state)) {
       if (gestiuneId && gid !== gestiuneId) continue;
       if (s.qty === 0 && s.value === 0) continue;
@@ -171,14 +218,14 @@ function situatieConsumuri(db, period) {
 /** Lista de inventariere pentru o gestiune: stocul scriptic pe fiecare produs la o data. */
 function inventoryList(db, gestiuneId, asOf) {
   return (db.products || []).map((p) => {
-    const l = productLedger(p, db.stockMovements || [], asOf, gestiuneId);
+    const l = productLedger(p, db.stockMovements || [], asOf, gestiuneId, metodaFirma(db));
     return { product: p, scripticQty: l.stocQ, scripticVal: l.stocV, cmp: l.cmp };
   });
 }
 
-/** Valoarea contabila a unei miscari (receptie = cant×pret; iesire = la CMP). */
-function movementValue(product, movements, movementId) {
-  const { rows } = simulate(product, movements, null);
+/** Valoarea contabila a unei miscari (receptie = cant×pret; iesire = la metoda firmei). */
+function movementValue(product, movements, movementId, metoda) {
+  const { rows } = simulate(product, movements, null, metoda);
   const row = rows.find((r) => r.id === movementId);
   if (!row) return 0;
   return row.tip === 'receptie' ? row.intrareV : row.iesireV;
@@ -186,7 +233,8 @@ function movementValue(product, movements, movementId) {
 
 /**
  * Descarcarea de gestiune pentru o vanzare: din liniile {productId, gestiuneId, cantitate}
- * genereaza miscari de IESIRE si calculeaza costul marfii vandute la CMP, grupat pe contul de
+ * genereaza miscari de IESIRE si calculeaza costul marfii vandute la metoda firmei (`opts.metoda`),
+ * grupat pe contul de
  * descarcare (ex. 607=371). Functie PURA — nu salveaza nimic; rezultatul e aplicat de ruta.
  * @returns {{ newMovements, cogsLines, total, warns }}
  */
@@ -209,7 +257,7 @@ function saleCogs(products, baseMovements, stocLines, opts) {
   const byCogs = {}; const warns = []; let total = 0;
   for (const mv of newMovements) {
     const p = (products || []).find((x) => x.id === mv.productId);
-    const suma = round2(movementValue(p, all, mv.id));
+    const suma = round2(movementValue(p, all, mv.id, o.metoda));
     if (suma > 0) {
       const contStoc = p.cont || '371';
       const k = cogsAccount(contStoc) + '>' + contStoc;
@@ -221,9 +269,11 @@ function saleCogs(products, baseMovements, stocLines, opts) {
   }
   const cogsLines = Object.keys(byCogs).map((k) => {
     const [debit, credit] = k.split('>');
-    return { debit, credit, suma: byCogs[k], explicatie: 'Descarcare gestiune - cost marfa vanduta (CMP)' };
+    const met = String(o.metoda || 'cmp').toLowerCase() === 'fifo' ? 'FIFO' : 'CMP';
+    return { debit, credit, suma: byCogs[k], explicatie: 'Descarcare gestiune - cost marfa vanduta (' + met + ')' };
   });
   return { newMovements, cogsLines, total, warns };
 }
 
-module.exports = { productLedger, currentStock, movementsList, sortMov, cogsAccount, movementValue, simulate, inventoryList, saleCogs, situatieAprovizionari, situatieConsumuri };
+module.exports = {
+  metodaFirma, productLedger, currentStock, movementsList, sortMov, cogsAccount, movementValue, simulate, inventoryList, saleCogs, situatieAprovizionari, situatieConsumuri };
