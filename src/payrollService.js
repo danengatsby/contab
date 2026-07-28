@@ -9,6 +9,7 @@
 // (tiparul din entriesService). Autorizarea pe firma e dublata prin reqFirma.
 
 const db = require('./db');
+const sepa = require('./sepa');
 const { round2 } = require('./util');
 const { statePlata } = require('./payroll');
 const { reqFirma } = require('./stocksService');
@@ -21,7 +22,9 @@ function upsertAngajat(fid, b) {
   const d = db.get();
   const a = b.id && (d.angajati || []).find((x) => x.id === b.id && x.firmaId === fid);
   const rec = a || { id: db.nextId('ang'), firmaId: fid };
-  Object.assign(rec, { nume: String(b.nume), cnp: b.cnp || '', functie: b.functie || '', salariuBrut: round2(Number(b.salariuBrut) || 0), neimpozabil: round2(Number(b.neimpozabil) || 0), spor: round2(Number(b.spor) || 0), avans: round2(Number(b.avans) || 0), retineri: round2(Number(b.retineri) || 0), persoane: b.persoane === '' || b.persoane == null ? null : Math.max(0, Math.round(Number(b.persoane) || 0)), sub26: !!b.sub26, copii: Math.max(0, Math.round(Number(b.copii) || 0)), tichete: round2(Number(b.tichete) || 0), avantaje: round2(Number(b.avantaje) || 0), zileCM: Math.max(0, Math.round(Number(b.zileCM) || 0)), procentCM: [75, 85, 100].includes(Number(b.procentCM)) ? Number(b.procentCM) : 75, zileCO: Math.max(0, Math.round(Number(b.zileCO) || 0)), zileLucratoare: Math.max(1, Math.round(Number(b.zileLucratoare) || 21)), normaPartiala: !!b.normaPartiala, scutitNormaPartiala: !!b.scutitNormaPartiala, sector: ['it', 'constructii', 'agro'].includes(b.sector) ? b.sector : 'normal' });
+  // IBAN-ul angajatului: pentru lotul de plata a salariilor nete (pain.001). Optional.
+  Object.assign(rec, { iban: b.iban != null ? sepa.normIban(b.iban) : (rec.iban || ''),
+    nume: String(b.nume), cnp: b.cnp || '', functie: b.functie || '', salariuBrut: round2(Number(b.salariuBrut) || 0), neimpozabil: round2(Number(b.neimpozabil) || 0), spor: round2(Number(b.spor) || 0), avans: round2(Number(b.avans) || 0), retineri: round2(Number(b.retineri) || 0), persoane: b.persoane === '' || b.persoane == null ? null : Math.max(0, Math.round(Number(b.persoane) || 0)), sub26: !!b.sub26, copii: Math.max(0, Math.round(Number(b.copii) || 0)), tichete: round2(Number(b.tichete) || 0), avantaje: round2(Number(b.avantaje) || 0), zileCM: Math.max(0, Math.round(Number(b.zileCM) || 0)), procentCM: [75, 85, 100].includes(Number(b.procentCM)) ? Number(b.procentCM) : 75, zileCO: Math.max(0, Math.round(Number(b.zileCO) || 0)), zileLucratoare: Math.max(1, Math.round(Number(b.zileLucratoare) || 21)), normaPartiala: !!b.normaPartiala, scutitNormaPartiala: !!b.scutitNormaPartiala, sector: ['it', 'constructii', 'agro'].includes(b.sector) ? b.sector : 'normal' });
   if (!a) d.angajati.push(rec);
   db.save();
   return { angajat: rec };

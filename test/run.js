@@ -2805,6 +2805,69 @@ eq('expandRecipe: cost unitar din reteta', ordT.costUnitar, 5);
 eq('expandRecipe: override cost', bomMod.expandRecipe(recT, 10, 8).costUnitar, 8);
 eq('expandRecipe: fara cantitate -> cantitateBaza', bomMod.expandRecipe(recT).cantitate, 10);
 
+section('Fisier de plati ISO 20022 (pain.001) — src/sepa.js');
+{
+  const sepa = require('../src/sepa');
+  // ── IBAN: mod 97, nu o euristica de forma ────────────────────────────────
+  ok('IBAN romanesc valid', sepa.validIban('RO49AAAA1B31007593840000'));
+  ok('IBAN german valid', sepa.validIban('DE89370400440532013000'));
+  ok('acelasi IBAN cu spatii si litere mici', sepa.validIban('ro49 aaaa 1b31 0075 9384 0000'));
+  // O SINGURA cifra schimbata trebuie sa pice: asta separa mod-97 de o verificare de lungime.
+  ok('IBAN cu o cifra gresita e RESPINS', !sepa.validIban('RO49AAAA1B31007593840001'));
+  ok('IBAN cu lungime gresita pentru tara e respins', !sepa.validIban('RO49AAAA1B3100759384'));
+  ok('sir gol e respins', !sepa.validIban(''));
+  ok('text oarecare e respins', !sepa.validIban('nu e un iban'));
+
+  const DBT = { nume: 'S.C. EXEMPLU PROD S.R.L.', iban: 'RO49AAAA1B31007593840000' };
+  const UNA = [{ beneficiar: 'ALFA', iban: 'DE89370400440532013000', suma: 100, ref: 'F1' }];
+
+  // ── Verificarea lotului: TOATE problemele deodata, nu prima ──────────────
+  const pr = sepa.checkPayload({ debitor: { nume: 'X' }, plati: [{ beneficiar: '', suma: 0 }] });
+  ok('lipsa IBAN-ului platitorului e semnalata', pr.some((x) => /IBAN-ul firmei/.test(x)));
+  ok('beneficiarul lipsa e semnalat', pr.some((x) => /lipseste beneficiarul/.test(x)));
+  ok('suma zero e semnalata', pr.some((x) => /mai mare ca zero/.test(x)));
+  ok('se raporteaza TOATE problemele, nu prima', pr.length >= 3);
+  eq('un lot corect nu are probleme', sepa.checkPayload({ debitor: DBT, plati: UNA }).length, 0);
+  // Generarea REFUZA lotul invalid (nu emite un fisier pe care banca il respinge)
+  let statusInvalid = 0;
+  try { sepa.buildPain001({ debitor: DBT, plati: [{ beneficiar: 'X', iban: 'GRESIT', suma: 1 }] }); }
+  catch (e) { statusInvalid = e.status; }
+  eq('generarea unui lot invalid arunca 400', statusInvalid, 400);
+
+  // ── Structura si sumele de control ───────────────────────────────────────
+  const x = sepa.buildPain001({ msgId: 'T1', creDtTm: '2026-07-28T10:00:00', execDate: '2026-07-30',
+    moneda: 'RON', debitor: DBT,
+    plati: [{ beneficiar: 'ALFA', iban: 'DE89370400440532013000', suma: 100.5, ref: 'F1' },
+      { beneficiar: 'BETA', iban: 'RO49AAAA1B31007593840000', suma: 200.25, ref: 'F2' }] });
+  ok('namespace-ul pain.001.001.03', /urn:iso:std:iso:20022:tech:xsd:pain\.001\.001\.03/.test(x));
+  ok('XML bine-format', wellFormed(x));
+  eq('numarul de tranzactii (in antet si in lot)', (x.match(/<NbOfTxs>2<\/NbOfTxs>/g) || []).length, 2);
+  // Suma de control trebuie sa fie suma randurilor — o nepotrivire e primul lucru pe care il
+  // verifica banca, si respinge tot lotul.
+  eq('suma de control = suma randurilor', (x.match(/<CtrlSum>([\d.]+)<\/CtrlSum>/) || [])[1], '300.75');
+  ok('sumele au exact doua zecimale', /<InstdAmt Ccy="RON">100\.50<\/InstdAmt>/.test(x));
+  eq('cate un EndToEndId per plata', (x.match(/<EndToEndId>/g) || []).length, 2);
+
+  // ── SEPA doar pe EUR: o plata interna in RON marcata „SEPA" e o contradictie ──
+  ok('RON: FARA nivel de serviciu SEPA', !/<SvcLvl>/.test(x));
+  const xe = sepa.buildPain001({ msgId: 'T2', moneda: 'EUR', debitor: DBT, plati: UNA });
+  ok('EUR: CU nivel de serviciu SEPA', /<SvcLvl><Cd>SEPA<\/Cd><\/SvcLvl>/.test(xe));
+
+  // ── Escaparea: denumirile de partener vin din surse EXTERNE (e-Factura/SPV) ──
+  const xesc = sepa.buildPain001({ msgId: 'T3', debitor: DBT,
+    plati: [{ beneficiar: 'A & B <SRL> "X"', iban: 'DE89370400440532013000', suma: 5, detalii: 'ref & <b>bold</b>' }] });
+  ok('& si <> din denumire sunt escapate', /A &amp; B &lt;SRL&gt;/.test(xesc));
+  ok('markup injectat in detalii nu ajunge crud', !/<b>bold<\/b>/.test(xesc));
+  ok('ramane bine-format dupa escapare', wellFormed(xesc));
+
+  // ── Invariantul de fond: generarea NU produce articole contabile ─────────
+  // Fisierul e o INTENTIE de plata. Contabilizarea lui aici, plus cea de la import extras, ar
+  // dubla plata — iar banca poate oricand refuza lotul.
+  ok('iesirea e doar XML, fara nicio linie contabila', typeof x === 'string' && !/debit|credit|"lines"/.test(x));
+  ok('modulul nu exporta nimic care sa scrie in baza',
+    Object.keys(sepa).every((k) => ['buildPain001', 'checkPayload', 'validIban', 'normIban'].includes(k)));
+}
+
 section('Curs BNR (parsare, multiplicator, zile nelucratoare)');
 {
   const bnr = require('../src/bnr');

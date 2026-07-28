@@ -12,6 +12,7 @@
 
 const fs = require('fs');
 const db = require('./db');
+const sepa = require('./sepa');
 const coa = require('./chartOfAccounts');
 const xlsx = require('./xlsx');
 const xls = require('./xls');
@@ -57,6 +58,11 @@ function upsertPartner(fid, b) {
   d.partners[fid][key] = {
     cui: key, den: b.den || '', adresa: b.adresa || '', oras: b.oras || '',
     judet: b.judet || '', tara: b.tara || 'RO', tip: b.tip != null ? b.tip : (prev.tip || ''),
+    // IBAN/BIC: pentru fisierul de plati (pain.001). Optionale — un partener fara IBAN ramane
+    // valid, doar ca nu poate intra intr-un lot de plati. Se PASTREAZA cele anterioare cand
+    // cererea nu le trimite, ca o editare de adresa sa nu stearga coordonatele bancare.
+    iban: b.iban != null ? sepa.normIban(b.iban) : (prev.iban || ''),
+    bic: b.bic != null ? String(b.bic).toUpperCase().trim().slice(0, 11) : (prev.bic || ''),
   };
   db.save();
   return { partner: d.partners[fid][key] };

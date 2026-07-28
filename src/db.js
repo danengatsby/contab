@@ -34,7 +34,7 @@ const FIRMA_EDITABLE = new Set([
   'regimImpozit', 'd406Cadenta', 'intrastatObligat', 'scutiri',                     // motor profil fiscal (regim, cadenta D406, Intrastat, exceptii)
   'autoPostDocumente',                                                              // postarea automata a documentelor citite (implicit oprita)
   'metodaEvaluareStoc',                                                             // evaluarea iesirilor din stoc: 'cmp' (implicit) sau 'fifo'
-  'iban', 'banca', 'cont', 'telefon', 'email', 'numeComplet', 'autorizatie',        // banca / contact / reprezentant
+  'iban', 'bic', 'banca', 'cont', 'telefon', 'email', 'numeComplet', 'autorizatie',        // banca / contact / reprezentant
   'accentColor', 'pdfLayout', 'pdfFooter', 'asociatiText',                          // prezentare facturi/PDF
   // Antetul situatiilor financiare anuale (S1120/S1121). Valorile admise sunt cele din
   // validatorul oficial — vezi src/bilantNomenclator.js; codul de judet se DEDUCE din `judet`.

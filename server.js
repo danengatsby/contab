@@ -393,6 +393,8 @@ app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
 
 // Situatii financiare + recapitulatii declaratii + registre (PDF/JSON): src/routes/reports.js
 require('./src/routes/reports')(app, { S, wrap, activeId });
+// Fisierul de plati (pain.001) — dupa `S`, ca orice ruta care lucreaza pe vederea scoped.
+require('./src/routes/plati')(app, { S, activeId, logAudit });
 // numerotare secventiala a documentelor de stoc (serie + numar), per firma si tip
 // Documente de gestiune (situatii stoc, serii NIR/BC/AVIZ, NIR/bon/aviz, fisa magazie, nota PDF): src/routes/stockdocs.js
 // Seriile de documente stau in service layer (src/stocksService.js); config.js le primeste prin ctx (chitanta CH).

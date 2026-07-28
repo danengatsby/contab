@@ -1091,4 +1091,5 @@ module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
   umCode, d300Xml, d300Rows, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
   bilantXml, bilantNsVersion,
+  esc, // escaparea XML, refolosita de generatoarele din afara acestui fisier (ex. src/sepa.js)
 };
