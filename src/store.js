@@ -62,6 +62,8 @@ const EMPTY = new Map();
 // Colectii-array: { cheie, are firmaId?, are camp id? } -> fiecare devine un tabel.
 const ARRAY_COLLS = [
   { key: 'users', firma: false, hasId: true },
+  // cursurile BNR sunt GLOBALE (nu per firma): o zi = un rand, id = 'YYYY-MM-DD'
+  { key: 'cursuriBnr', firma: false, hasId: true },
   { key: 'firme', firma: false, hasId: true },
   { key: 'documents', firma: true, hasId: true },
   { key: 'entries', firma: true, hasId: true },

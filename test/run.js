@@ -2805,6 +2805,56 @@ eq('expandRecipe: cost unitar din reteta', ordT.costUnitar, 5);
 eq('expandRecipe: override cost', bomMod.expandRecipe(recT, 10, 8).costUnitar, 8);
 eq('expandRecipe: fara cantitate -> cantitateBaza', bomMod.expandRecipe(recT).cantitate, 10);
 
+section('Curs BNR (parsare, multiplicator, zile nelucratoare)');
+{
+  const bnr = require('../src/bnr');
+  const XML = `<?xml version="1.0" encoding="utf-8"?>
+<DataSet xmlns="http://www.bnr.ro/xsd"><Header><PublishingDate>2026-07-28</PublishingDate></Header><Body>
+<Cube date="2026-07-27"><Rate currency="EUR">5.2200</Rate><Rate currency="USD">4.6000</Rate></Cube>
+<Cube date="2026-07-28"><Rate currency="EUR">5.2310</Rate><Rate currency="USD">4.6050</Rate>
+<Rate currency="HUF" multiplier="100">1.4517</Rate><Rate currency="JPY" multiplier="100">2.8103</Rate></Cube>
+</Body></DataSet>`;
+  const parsed = bnr.parseRates(XML);
+  eq('parseaza toate zilele din fisier', parsed.length, 2);
+  // Cursurile au 4 zecimale, iar `eq` rotunjeste la 2: comparatia trebuie sa fie STRICTA,
+  // altfel 5,2310 si 5,2299 ar trece la fel si testul n-ar mai discrimina nimic.
+  ok('cursul EUR al zilei (comparatie stricta, 4 zecimale)', parsed[1].cursuri.EUR === 5.231);
+  // MULTIPLICATORUL: 1,4517 e cursul pentru 100 HUF. Ignorarea atributului ar da o eroare de
+  // exact 100x — silentioasa si catastrofala pe o reevaluare. Comparatie STRICTA (eq rotunjeste
+  // la 2 zecimale si ar face testul sa treaca degeaba).
+  ok('multiplicatorul 100 e aplicat (HUF)', parsed[1].cursuri.HUF === 1.4517 / 100);
+  ok('multiplicatorul 100 e aplicat (JPY)', parsed[1].cursuri.JPY === 2.8103 / 100);
+  ok('valuta fara multiplicator ramane neatinsa', parsed[1].cursuri.USD === 4.605);
+  eq('XML gol -> nicio zi (nu arunca)', bnr.parseRates('').length, 0);
+  eq('XML fara Cube -> nicio zi', bnr.parseRates('<DataSet></DataSet>').length, 0);
+
+  // upsert: idempotent, si actualizeaza o zi deja prezenta fara sa o dubleze
+  const col = [];
+  const u1 = bnr.upsertRates(col, parsed);
+  eq('prima incarcare adauga ambele zile', u1.adaugate, 2);
+  const u2 = bnr.upsertRates(col, parsed);
+  eq('a doua incarcare nu adauga nimic (idempotent)', u2.adaugate, 0);
+  eq('si nici nu actualizeaza (aceleasi valori)', u2.actualizate, 0);
+  eq('colectia ramane la 2 zile', col.length, 2);
+  bnr.upsertRates(col, [{ data: '2026-07-28', cursuri: { EUR: 5.25 } }]);
+  eq('o zi revenita cu alte valori se ACTUALIZEAZA, nu se dubleaza', col.length, 2);
+  ok('valoarea noua e cea retinuta', col.find((x) => x.id === '2026-07-28').cursuri.EUR === 5.25);
+
+  // rateAt: regula zilelor nelucratoare — ultimul curs PUBLICAT inainte, fara interpolare
+  const col2 = [{ id: '2026-07-24', cursuri: { EUR: 5.2 } }, { id: '2026-07-27', cursuri: { EUR: 5.22 } }];
+  ok('zi cu curs propriu: exact', bnr.rateAt(col2, 'EUR', '2026-07-27').curs === 5.22);
+  ok('zi cu curs propriu e marcata exact', bnr.rateAt(col2, 'EUR', '2026-07-27').exact === true);
+  const weekend = bnr.rateAt(col2, 'EUR', '2026-07-26'); // sambata
+  ok('zi nelucratoare: ultimul curs publicat inainte', weekend.curs === 5.2);
+  eq('si se vede DIN CE ZI s-a luat', weekend.data, '2026-07-24');
+  ok('zi nelucratoare NU e marcata exact', weekend.exact === false);
+  ok('data dinaintea primului curs -> null (nu se extrapoleaza)', bnr.rateAt(col2, 'EUR', '2026-07-01') === null);
+  ok('valuta necunoscuta -> null', bnr.rateAt(col2, 'XXX', '2026-07-27') === null);
+  ok('RON e mereu 1, fara sa fie in colectie', bnr.rateAt(col2, 'RON', '2026-07-27').curs === 1);
+  ok('data invalida -> null', bnr.rateAt(col2, 'EUR', 'maine') === null);
+  eq('valutele disponibile', bnr.currencies(col2).join(','), 'EUR');
+}
+
 section('Declaratii rectificative (istoric depuneri + steag XML)');
 {
   const decl = require('../src/declarations');
@@ -4467,11 +4517,11 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   const stubs = { doBackup: () => ({ name: 'x' }), resetDemo: () => ({ ok: true }), registerAttempts: new Map(), forgotAttempts: new Map() };
   const h = jobs.start(stubs);
   ok('start() intoarce un handle cu stop()', h && typeof h.stop === 'function');
-  eq('stop() curata toate cele 8 joburi', h.stop(), 8);
+  eq('stop() curata toate cele 9 joburi', h.stop(), 9);
   eq('stop() e idempotent (a doua oara: nimic de curatat)', jobs.stop(), 0);
   // dupa stop, un nou start functioneaza si se curata la fel (nu ramane stare blocata)
   jobs.start(stubs);
-  eq('restart dupa stop: tot 8 joburi, curatate din nou', jobs.stop(), 8);
+  eq('restart dupa stop: tot 9 joburi, curatate din nou', jobs.stop(), 9);
 }
 
 section('Migrari DB versionate (src/migrations.js)');

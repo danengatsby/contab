@@ -81,6 +81,7 @@ const DEFAULT_DB = {
   audit: [],           // { id, ts, userId, username, firmaId, action, detail }
   messages: [],        // { id, userId, fromAdmin, text, author, createdAt, readByUser, readByAdmin } - suport user<->admin
   recurringInvoices: [], // { id, firmaId, tip, partener, cuiPartener, fields, frecventa, ziua, activ, startDate, lastGenerated } - facturi recurente
+  cursuriBnr: [],      // { id: 'YYYY-MM-DD', cursuri: { EUR: 5.231, ... } } - curs oficial BNR, GLOBAL (nu per firma)
   recipes: [],         // { id, firmaId, nume, productId, gestiuneId, cantitateBaza, costUnitar, materiale:[{productId, gestiuneId, cantitate}] } - retete/BOM productie
   budgets: [],         // { id, firmaId, an, cont, suma } - buget anual per cont (clasa 6/7)
   declarations: [],    // { id, firmaId, tip, period, status, generatedAt, submittedAt, recipisa, note } - registrul depunerilor
@@ -194,6 +195,7 @@ function migrate(d) {
   if (!Array.isArray(d.recipes)) d.recipes = [];
   if (!Array.isArray(d.budgets)) d.budgets = [];
   if (!Array.isArray(d.recurringInvoices)) d.recurringInvoices = [];
+  if (!Array.isArray(d.cursuriBnr)) d.cursuriBnr = [];
   if (!Array.isArray(d.declarations)) d.declarations = [];
   if (!Array.isArray(d.closings)) d.closings = [];
   if (!Array.isArray(d.extractInterventions)) d.extractInterventions = [];

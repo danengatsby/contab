@@ -152,16 +152,37 @@ async function resetPgTestDb() {
   } finally { await pool.end(); }
 }
 
+// Fixture BNR local: suita NU are voie sa iasa pe retea. Serverul de test e un proces COPIL,
+// deci un stub pe `global.fetch` din procesul de test n-ar avea niciun efect asupra lui — greseala
+// costa un apel real catre bnr.ro la fiecare `npm test`. In schimb, copilul primeste
+// CONTAB_BNR_URL_ZI catre serverul de mai jos si exercita drumul REAL de retea.
+const BNR_XML = '<?xml version="1.0"?><DataSet><Cube date="2026-06-15">'
+  + '<Rate currency="EUR">5.1000</Rate><Rate currency="HUF" multiplier="100">1.2500</Rate></Cube></DataSet>';
+let bnrHits = 0;
+function startBnrFixture(port) {
+  const http = require('http');
+  const srv = http.createServer((rq, rs) => {
+    bnrHits += 1;
+    if (rq.url === '/cade') { rs.destroy(); return; }
+    rs.writeHead(200, { 'Content-Type': 'application/xml' });
+    rs.end(BNR_XML);
+  });
+  return new Promise((resolve) => srv.listen(port, '127.0.0.1', () => resolve(srv)));
+}
+
 async function main() {
   PORT = await freePort();
   PORT2 = await freePort();
+  const PORT_BNR = await freePort();
+  const bnrSrv = await startBnrFixture(PORT_BNR);
+  globalThis.__bnrSrv = bnrSrv;
   BASE = 'http://127.0.0.1:' + PORT;
   await resetPgTestDb();
   fs.writeFileSync(DBF, JSON.stringify(buildDb()));
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     // plafoane de upload/export mici, ca testele 429 sa nu faca zeci de cereri; conturile
     // din restul suitei raman sub ele (bucket-urile sunt per utilizator)
-    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1', CONTAB_RATE_IMPORT: '7' }),
+    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_BNR_URL_ZI: 'http://127.0.0.1:' + PORT_BNR + '/zi', CONTAB_BNR_URL_AN: 'http://127.0.0.1:' + PORT_BNR + '/an{AN}', CONTAB_BNR_RETRIES: '0', CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1', CONTAB_RATE_IMPORT: '7' }),
     stdio: 'ignore',
   });
   const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
@@ -469,6 +490,42 @@ async function main() {
     const listaAudit = Array.isArray(auditRect.json) ? auditRect.json : (auditRect.json.items || []);
     ok('rectificativa apare in jurnalul de audit',
       listaAudit.some((a) => a.action === 'declaratie.rectificativa'));
+
+    // ── Curs BNR (fixture LOCAL, zero apeluri externe) ────────────────────
+    {
+      const laBnr = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
+      const hitsInainte = bnrHits;
+      const ref = await req('POST', '/api/curs-bnr/refresh', { cookie: laBnr.cookie, body: {} });
+      eq('refresh curs BNR (admin) -> 200', ref.status, 200);
+      eq('a adaugat ziua din feed', ref.json.adaugate, 1);
+      ok('cererea a ajuns la fixture-ul local, nu pe internet', bnrHits > hitsInainte);
+      const c = await req('GET', '/api/curs-bnr?moneda=EUR&data=2026-06-15', { cookie: c1 });
+      ok('doar valutele din fixture sunt cunoscute (nu feed-ul real)',
+        c.json.valute.length === 2 && c.json.valute.join(',') === 'EUR,HUF');
+      ok('cursul EUR al zilei e cel din feed', c.json.rezultat && c.json.rezultat.curs === 5.1);
+      ok('cursul e marcat exact', c.json.rezultat.exact === true);
+      // Zi ulterioara, fara publicare: se ia ultimul curs publicat inainte (regula BNR).
+      const c2 = await req('GET', '/api/curs-bnr?moneda=EUR&data=2026-06-20', { cookie: c1 });
+      ok('zi fara publicare -> ultimul curs, marcat NEexact',
+        c2.json.rezultat.curs === 5.1 && c2.json.rezultat.exact === false && c2.json.rezultat.data === '2026-06-15');
+      // Multiplicatorul ajunge intreg pana in API (nu doar in modul)
+      const cH = await req('GET', '/api/curs-bnr?moneda=HUF&data=2026-06-15', { cookie: c1 });
+      ok('HUF ajunge in API cu multiplicatorul aplicat', cH.json.rezultat.curs === 0.0125);
+      // A doua reimprospatare e idempotenta: aceeasi zi, nimic adaugat
+      const ref2 = await req('POST', '/api/curs-bnr/refresh', { cookie: laBnr.cookie, body: {} });
+      eq('reimprospatarea repetata nu dubleaza ziua', ref2.json.adaugate, 0);
+      // Un utilizator ne-admin nu poate declansa reimprospatarea
+      eq('refresh curs BNR fara admin -> 403', (await req('POST', '/api/curs-bnr/refresh', { cookie: c1, body: {} })).status, 403);
+
+      // Feed CAZUT: oprim fixture-ul. Raspunsul trebuie sa fie 503 (serviciul extern e jos, nu
+      // aplicatia) si sa indrume spre cursul manual — nicio capacitate nu se pierde.
+      await new Promise((resolve) => globalThis.__bnrSrv.close(resolve));
+      const jos = await req('POST', '/api/curs-bnr/refresh', { cookie: laBnr.cookie, body: {} });
+      eq('feed BNR cazut -> 503, nu 500', jos.status, 503);
+      ok('mesajul indruma spre cursul manual', /manual/i.test((jos.json || {}).error || ''));
+      const dupa = await req('GET', '/api/curs-bnr?moneda=EUR&data=2026-06-15', { cookie: c1 });
+      ok('cursurile deja descarcate raman utilizabile dupa un esec de feed', dupa.json.rezultat.curs === 5.1);
+    }
 
     // deblocam (admin) — fluxul de test completeaza intentionat date in iunie in continuare
     const laLock = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });

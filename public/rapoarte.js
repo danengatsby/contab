@@ -423,8 +423,29 @@ $('#fxLoad') && $('#fxLoad').addEventListener('click', async () => {
       <td class="acc">${H(c.cont)}</td><td>${H(c.nume)}</td><td>${c.isAsset ? 'Activ' : 'Datorie'}</td><td class="num">${fmt(c.bookLei)}</td><td>${H(c.moneda)}</td>
       <td class="num"><input class="fx-val" type="number" step="0.01" value="${c.foreignBalance || ''}" data-u="u177"></td>
       <td class="num"><input class="fx-curs" type="number" step="0.0001" placeholder="ex. 4.97" data-u="u178"></td></tr>`).join('')}</tbody></table>
+    <button id="fxBnrBtn" class="btn" data-u="u23">Ia cursul BNR de la ${H(asOf)}</button>
     <button id="fxPreviewBtn" class="btn" data-u="u23">Previzualizează diferențele</button>`;
   $('#fxPreviewBtn').addEventListener('click', fxPreview);
+  // Cursul se completeaza din cursul OFICIAL al datei de reevaluare, nu al zilei de azi. Ramane
+  // editabil: feed-ul cazut sau o valuta nepublicata nu blocheaza reevaluarea manuala.
+  $('#fxBnrBtn').addEventListener('click', async () => {
+    let luate = 0; let lipsa = []; let aproximate = 0;
+    for (const tr of document.querySelectorAll('#fxRevalArea tbody tr')) {
+      const mon = tr.children[4].textContent.trim();
+      try {
+        const r = await api('/api/curs-bnr?moneda=' + encodeURIComponent(mon) + '&data=' + asOf);
+        if (r.rezultat && r.rezultat.curs > 0) {
+          tr.querySelector('.fx-curs').value = r.rezultat.curs;
+          luate += 1;
+          if (!r.rezultat.exact) aproximate += 1;
+        } else lipsa.push(mon);
+      } catch (e) { lipsa.push(mon); }
+    }
+    const parti = [luate + ' curs(uri) completate'];
+    if (aproximate) parti.push(aproximate + ' din ultima zi publicată înainte');
+    if (lipsa.length) parti.push('lipsă pentru ' + [...new Set(lipsa)].join(', ') + ' — completează manual');
+    toast(parti.join('; '), lipsa.length > 0);
+  });
 });
 function fxItems() {
   return $$('#fxRevalArea tbody tr').map((tr) => ({

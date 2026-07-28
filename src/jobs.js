@@ -10,6 +10,7 @@ const log = require('./log');
 const metrics = require('./metrics');
 const uploadGuard = require('./uploadGuard');
 const anaf = require('./anaf');
+const bnr = require('./bnr');
 const { pollSpv } = require('./anafService');
 const { sendDeadlineDigests, sendNotifMail } = require('./notify');
 const { pruneLoginAttempts } = require('./session');
@@ -191,6 +192,25 @@ function start(ctx) {
         .catch((e) => { metrics.jobError('spv-poll', e.message || e); console.error('Auto-poll SPV:', e.message || e); });
     }
   }, 15 * 60 * 1000);
+
+  // Cursul BNR: o data la 6 ore. BNR publica o singura data pe zi (in jurul pranzului), deci mai
+  // des n-ar aduce nimic; mai rar ar rata ziua curenta cand serverul a fost oprit. Esecul feed-ului
+  // e AVERTISMENT, nu eroare: cursul tastat manual ramane calea de rezerva, deci nimic nu se
+  // blocheaza daca BNR e indisponibil.
+  safeInterval('curs-bnr', () => {
+    bnr.fetchDaily()
+      .then((randuri) => {
+        const d = db.get();
+        d.cursuriBnr = Array.isArray(d.cursuriBnr) ? d.cursuriBnr : [];
+        const r = bnr.upsertRates(d.cursuriBnr, randuri);
+        if (r.adaugate || r.actualizate) db.save();
+        metrics.jobResult('curs-bnr', 'zile noi ' + r.adaugate + ', actualizate ' + r.actualizate);
+      })
+      .catch((e) => {
+        metrics.jobError('curs-bnr', e.message || e);
+        console.warn('Curs BNR indisponibil (se foloseste cursul tastat manual):', e.message || e);
+      });
+  }, 6 * 60 * 60 * 1000);
 
   return { stop };
 }

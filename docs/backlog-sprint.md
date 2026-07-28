@@ -215,9 +215,33 @@ rutină** într-un cabinet, nu caz de colț: o factură primită târziu după d
 
 # P1 — deblochează utilizarea zilnică
 
-## 4. Feed curs valutar BNR
+## 4. Feed curs valutar BNR — ✅ ÎNCHIS 2026-07-28
 
-**Estimare:** 1–2 zile · **Prioritate:** 4
+**Estimare:** 1–2 zile · **Realizat:** ~2 ore · **Prioritate:** 4
+
+> `bnr.js`: parsare pură + fetch cu timeout/retry (tiparul `anafFetch`, cu prefix de log și knob-uri
+> proprii). Cursurile stau într-o **colecție nouă** (`cursuriBnr`, o linie în `ARRAY_COLLS` — deci
+> tabel creat idempotent pe ambele drivere, scriere incrementală per rând), nu în `settings`, care
+> se rescrie integral la orice modificare.
+>
+> **Multiplicatorul e capcana reală:** BNR publică HUF/JPY/KRW/ISK la 100 de unități. Ignorarea
+> atributului dă o eroare de exact 100× — tăcută și catastrofală pe o reevaluare. Se aplică la
+> parsare, deci cursul stocat e mereu pentru *o* unitate.
+>
+> Regula zilelor nelucrătoare: ultimul curs publicat **înainte**, cu `exact:false` ca interfața să
+> arate din ce zi s-a luat. Nu se extrapolează în viitor.
+>
+> Deblochează importul e-Factura în valută (`anafService` refuza direct non-RON): baza și TVA-ul se
+> convertesc la cursul **datei facturii**, iar articolul primește `valutaInfo` ca să rămână
+> reevaluabil. Buton „ia cursul BNR" în reevaluare, cu cursul rămas editabil.
+>
+> **Testele nu ies pe rețea** — și asta a cerut o corecție de metodă: serverul de test e un proces
+> **copil**, deci stub-ul pe `global.fetch` din procesul de test n-avea niciun efect și prima
+> versiune a testului a apelat bnr.ro **real**. Acum `test/http.js` pornește un fixture HTTP local
+> și îi indică serverului-copil `CONTAB_BNR_URL_ZI`, exercitând drumul real de rețea.
+>
+> 22 de verificări noi în `test/run.js` + 12 în `test/http.js` (mutații: multiplicator ignorat,
+> extrapolare în viitor, upsert care dublează ziua — toate trei prinse).
 
 ### Descriere
 
@@ -238,10 +262,11 @@ Orice client cu furnizori în EUR e blocat pe ambele capete.
 
 ### Acceptanță
 
-- [ ] Reevaluarea lunară rulează fără curs tastat manual, cu cursul corect al datei de referință.
-- [ ] O e-Factură în EUR se importă și produce articolul contabil în lei.
-- [ ] Feed-ul căzut → avertisment, nu eroare; înregistrarea manuală rămâne posibilă.
-- [ ] Testele nu fac apeluri externe reale (stub pe `global.fetch`, ca în [`test/anaf.js`](../test/anaf.js)).
+- [x] Reevaluarea lunară rulează fără curs tastat manual, cu cursul corect al datei de referință.
+- [x] O e-Factură în EUR se importă și produce articolul contabil în lei.
+- [x] Feed-ul căzut → `503` cu mesaj explicit, nu eroare; înregistrarea manuală rămâne posibilă.
+- [x] Testele nu fac apeluri externe reale — prin **fixture HTTP local**, nu prin stub pe
+      `global.fetch`: serverul de test e proces copil, iar stub-ul n-ar fi ajuns la el.
 
 ---
 

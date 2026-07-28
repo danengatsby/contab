@@ -232,6 +232,37 @@ actualizează frecvent). Cache-ul stă în `/var/tmp/contab-duk` (reglabil cu `C
 de un runtime Java și de ciclul de update-uri ANAF, iar validarea oficială oricum se repetă
 obligatoriu la depunerea în SPV.
 
+## Curs de schimb BNR
+
+Cursul oficial BNR se descarcă automat (job la 6 ore) și se păstrează cu **istoric**: o factură din
+martie se evaluează la cursul din martie, nu la cel de azi. Într-o zi nelucrătoare se folosește
+ultimul curs publicat înainte — regula BNR — iar interfața marchează explicit când cursul provine
+din altă zi.
+
+```bash
+curl -s 'http://localhost:8080/api/curs-bnr?moneda=EUR&data=2026-03-15'   # cursul la o dată
+# reîmprospătare la cerere (admin); `?an=2026` aduce un an întreg de istoric
+curl -s -X POST 'http://localhost:8080/api/curs-bnr/refresh?an=2026'
+```
+
+Atenție la **multiplicator**: BNR publică unele valute la 100 de unități (HUF, JPY, KRW, ISK…).
+Aplicația îl aplică la parsare, deci cursul stocat e mereu pentru *o* unitate.
+
+Indisponibilitatea feed-ului **nu blochează nimic**: reîmprospătarea răspunde `503` cu un mesaj
+explicit, iar cursul se poate tasta manual ca înainte.
+
+| Variabilă | Ce face |
+|---|---|
+| `CONTAB_BNR_URL_ZI` | suprascrie URL-ul feed-ului zilnic (probe/teste) |
+| `CONTAB_BNR_URL_AN` | idem, pentru istoricul anual; `{AN}` se înlocuiește cu anul |
+| `CONTAB_BNR_TIMEOUT_MS` | timeout per cerere (implicit 20000) |
+| `CONTAB_BNR_RETRIES` | reîncercări la eroare tranzitorie (implicit 2) |
+| `CONTAB_BNR_BACKOFF_MS` | pauza inițială între reîncercări (implicit 500) |
+
+Suita de teste **nu iese pe rețea**: `test/http.js` pornește un fixture HTTP local și îi indică
+serverul-copil prin `CONTAB_BNR_URL_ZI`. Serverul de test e un proces copil, deci un stub pe
+`global.fetch` din procesul de test n-ar avea niciun efect asupra lui.
+
 ## Note
 
 - Baza autoritară e cea relațională aleasă de `CONTAB_DB_DRIVER` (`data/contab.sqlite` sau
