@@ -23,12 +23,42 @@ validatoarele curente din manifestul oficial ANAF (`versiuni.xml`).
 | D101      | `d101:declaratie:v10`                       | J11.0.3        | ✅ Validare fără erori (profit, pierdere curentă, pierdere reportată, rezultat financiar, rotunjire) |
 | D205      | `d205:declaratie:v3`                        | J9.0.5         | ✅ Validare fără erori |
 | D406 (SAF-T) | `Ro_SAFT_Schema` v2.4.9 (`AuditFileVersion` 2.4.9) | J2.2.18 (16-Feb-2026) | ✅ Validare fără erori — variantele **L** (lunară), **T** (trimestrială), **A** (active), **C** (stocuri) |
+| S1120 (situații financiare, microentități) | `s1120:declaratie:v3` | J4.0.1 | ✅ Validare fără erori |
+| S1121 (situații financiare, entități mici) | `s1121:declaratie:v3` | J4.0.4 | ✅ Validare fără erori |
 | e-Transport | `mfp:anaf:dgti:eTransport:declaratie:v2`     | XSD oficial `schema_ETR_v2_20230126.xsd` (v1.02) | ✅ Valid — **după corectarea a 8 neconformități**, vezi mai jos |
 
 > **SAF-T nu cere o integrare separată.** ANAF publică validatorul SAF-T pe pagină proprie, dar
 > intrarea `<D406>` există în **același manifest** `versiuni.xml` (`J2.2.18`, `D406_35/D406Validator.jar`),
 > deci `scripts/valideaza-duk.sh D406` îl rezolvă pe aceeași cale ca restul declarațiilor. Toate cele
 > patru variante (L/T/A/C) trec validatorul oficial.
+
+### Situațiile financiare anuale (adăugate 2026-07-28)
+
+Formularele se aleg după **categoria de entitate** (OMFP 1802/2014). `F10` (bilanțul prescurtat,
+51 de rânduri) e **identic** între S1120 și S1121 — diferă doar contul de profit și pierdere:
+
+| Cod | F10 | F20 | Categorie |
+|---|---|---|---|
+| S1120 | prescurtat (51) | prescurtat (14) | microentități |
+| S1121 | prescurtat (51) | complet (88) | entități mici |
+| S1122 | complet (104) | complet (88) | mijlocii și mari — **neimplementat** |
+
+Patru particularități pe care validatorul le impune și care nu se deduc din documentație:
+
+| # | Regulă | Consecință în cod |
+|---|---|---|
+| 1 | Versiunea de namespace se alege după **anul raportat** (`v1`/`v2`/`v3`), nu e fixă | `xml.bilantNsVersion()`; același tipar ca la D101 (unde versiunea vine din anul din `Data_S`) |
+| 2 | Sumele sunt în **lei întregi**; un total rotunjit separat nu mai egalează suma părților lui rotunjite | rotunjire pe rândurile **elementare**, apoi totalurile din formulele validatorului |
+| 3 | `F10_043 = F20_069` — rezultatul din bilanț trebuie să fie **identic** cu cel din contul de profit | F20 e autoritatea; `f10At()` preia rezultatul, nu-l recalculează (două calcule independente divergeau cu 1 leu) |
+| 4 | Un atribut **gol** nu e neutru — e respins | câmpurile opționale se omit complet |
+
+Nomenclatoarele antetului (`tipBIL`, forme de proprietate, calități, coduri de județ) sunt extrase
+din validatorul oficial, nu redactate de mână — `src/bilantNomenclator.js`. `tipBIL` are o singură
+valoare validă per formular (`UU` la micro, `BS` la mici).
+
+Antetul cere date pe care doar firma le știe (administrator, întocmitor, formă de proprietate).
+Când lipsesc, generarea e **refuzată cu lista exactă** a câmpurilor — un antet plauzibil dar
+inventat trece validatorul și ajunge la ANAF ca declarație greșită.
 
 ### e-Transport: ce a găsit prima rulare a porții cu schema oficială
 

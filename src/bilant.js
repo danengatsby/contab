@@ -378,4 +378,133 @@ function f20Complet(db, year) {
   return R;
 }
 
-module.exports = { f10Base, f10Totals, f10At, f20Micro, f20Complet, plAcc };
+// ── ANTETUL formularului ─────────────────────────────────────────────────────
+
+const nom = require('./bilantNomenclator');
+
+/** Codurile de formular, dupa categoria de entitate. */
+const FORMULARE = {
+  micro: { cod: 'S1120', radacina: 'Bilant1120', ns: 's1120', tipBIL: 'UU' },
+  mic: { cod: 'S1121', radacina: 'Bilant1121', ns: 's1121', tipBIL: 'BS' },
+};
+
+/**
+ * Antetul, din datele firmei. Intoarce `{ attrs, lipsa }`:
+ *  - `attrs` = perechile pentru XML (valorile ABSENTE nu se pun deloc — un atribut gol
+ *    NU e neutru pentru validator, il respinge);
+ *  - `lipsa` = lista campurilor obligatorii necompletate, in limbaj de utilizator.
+ *
+ * NU inventam valori implicite pentru identificare (judet, forma de proprietate, administrator,
+ * intocmitor): un antet plauzibil dar gresit trece validatorul si ajunge la ANAF ca declaratie
+ * gresita. Mai bine refuzam generarea si spunem ce lipseste.
+ */
+function antet(firma, year, categorie, totalCapital) {
+  const f = firma || {};
+  const F = FORMULARE[categorie] || FORMULARE.micro;
+  const lipsa = [];
+  const cer = (val, eticheta) => { if (val == null || String(val).trim() === '') lipsa.push(eticheta); return val; };
+
+  const codJJ = nom.codJudet(f.judet);
+  if (!codJJ) lipsa.push('judetul firmei (nu se poate deduce codul ANAF din „' + (f.judet || '') + '")');
+  // codTT e tot un cod de judet, independent de codJJ in schema; implicit e acelasi judet
+  // (administratia fiscala a firmei e, in mod normal, in judetul ei).
+  const codTT = String(f.codTeritorial || codJJ || '');
+  if (codTT && !nom.COD_JUDET.has(codTT)) lipsa.push('codul teritorial (valoare in afara nomenclatorului)');
+
+  const forma = String(f.formaProprietate || '');
+  if (!forma) lipsa.push('forma de proprietate');
+  else if (!nom.COD_FORMA.has(forma)) lipsa.push('forma de proprietate (valoare in afara nomenclatorului)');
+
+  const calit = String(f.intocmitCalitate || '');
+  if (!calit) lipsa.push('calitatea celui care intocmeste situatiile');
+  else if (!nom.COD_CALITATE.has(calit)) lipsa.push('calitatea (valoare in afara nomenclatorului)');
+
+  const audit = String(f.auditStatut || '3'); // implicit: neauditat — cazul obisnuit la micro/mici
+  if (!nom.COD_AUDIT.has(audit)) lipsa.push('statutul de audit (valoare in afara nomenclatorului)');
+
+  cer(f.nume, 'denumirea firmei');
+  cer(f.cui, 'CUI-ul');
+  cer(f.adresa, 'adresa');
+  cer(f.telefon, 'telefonul');
+  cer(f.caen, 'codul CAEN');
+  cer(f.administrator, 'numele administratorului');
+  cer(f.intocmitNume, 'numele persoanei care intocmeste situatiile');
+
+  const y = String(year);
+  const attrs = {
+    luna: '12', an: y, an_i: y,
+    // CUI-ul se raporteaza fara prefixul „RO" si fara separatori
+    cui: String(f.cui || '').replace(/[^0-9]/g, ''),
+    den: f.nume || '', adresa: f.adresa || '', telefon: String(f.telefon || ''),
+    caen: String(f.caen || ''), caenE: String(f.caenE || f.caen || ''),
+    bifaMC: '0', tipBIL: F.tipBIL, interes_public: '0',
+    codTT, codJJ: codJJ || '', codPP: forma,
+    nume_admin: f.administrator || '',
+    nume_intocmit: f.intocmitNume || '', calit_intocmit: calit,
+    totalPlata_A: String(Math.round(totalCapital || 0)),
+    // exercitiu financiar NEMODIFICAT: 01.01 - 31.12, trimestrul 4
+    data_I: '01.01.' + y, data_S: '31.12.' + y, d_trim: '4', d_modif: '0',
+    d_audit: audit, bifaGG: '0', bifaAA: '0',
+  };
+
+  // R26: numarul din Registrul CECCAR e obligatoriu la calitatile 21/22 si INTERZIS la restul.
+  if (nom.CALITATI_CU_NR.has(calit)) {
+    if (!String(f.intocmitNr || '').trim()) lipsa.push('numarul din Registrul CECCAR (obligatoriu pentru calitatea aleasa)');
+    else attrs.nri_intocmit = String(f.intocmitNr).trim();
+  }
+  // d_audit=3 (neauditat): denumirea e ceruta, dar numarul si CIF-ul auditorului trebuie sa LIPSEASCA.
+  attrs.den_audi = String(f.auditorNume || '').trim() || 'NEAUDITAT';
+  if (audit !== '3') {
+    if (String(f.auditorNr || '').trim()) attrs.nr_audi = String(f.auditorNr).trim();
+    if (String(f.auditorCif || '').trim()) attrs.cif_audi = String(f.auditorCif).trim();
+  }
+  return { attrs, lipsa, formular: F };
+}
+
+// ── Listele de campuri cerute de schema ──────────────────────────────────────
+// Numele atributelor sunt `<formular>_<rand><coloana>`; coloana 1 = inceputul exercitiului,
+// 2 = sfarsitul. Numarul lor e VERIFICAT in teste fata de schema reala (51/14/88 de randuri) —
+// un rand lipsa ar da un formular pe care ANAF il asteapta completat si nu l-ar gasi.
+const interval = (de, la) => Array.from({ length: la - de + 1 }, (_, i) => String(de + i).padStart(3, '0'));
+const campuri = (prefix, randuri) => randuri.flatMap((r) => [prefix + '_' + r + '1', prefix + '_' + r + '2']);
+
+const RANDURI_F10 = [...interval(1, 49), '301', '302'];                  // 51
+const RANDURI_F20_MICRO = [...interval(1, 9), ...interval(301, 305)];    // 14
+const RANDURI_F20_COMPLET = [...interval(1, 70), ...interval(301, 318)]; // 88
+
+const CAMPURI_F10 = campuri('F10', RANDURI_F10);
+const CAMPURI_F20_MICRO = campuri('F20', RANDURI_F20_MICRO);
+const CAMPURI_F20_COMPLET = campuri('F20', RANDURI_F20_COMPLET);
+
+/**
+ * Situatiile financiare anuale complete pentru un an, gata de serializat.
+ * `categorie`: 'micro' (S1120) sau 'mic' (S1121). Intoarce si `lipsa` — campurile de antet
+ * necompletate; cine cheama decide daca refuza generarea (ruta o face).
+ */
+function situatii(view, firma, year, categorie) {
+  const cat = categorie === 'mic' ? 'mic' : 'micro';
+  const f20fn = cat === 'mic' ? f20Complet : f20Micro;
+  const randProfit = cat === 'mic' ? '069' : '008';
+  const randPierdere = cat === 'mic' ? '070' : '009';
+
+  const f20cur = f20fn(view, year);
+  const f20pre = f20fn(view, Number(year) - 1);
+  // rezultatul din F20 e AUTORITATEA; bilantul il preia (vezi f10At)
+  const f10cur = f10At(view, year, f20cur[randProfit] - f20cur[randPierdere]);
+  const f10pre = f10At(view, Number(year) - 1, f20pre[randProfit] - f20pre[randPierdere]);
+
+  const a = antet(firma, year, cat, f10cur['029']);
+  return {
+    antet: a, lipsa: a.lipsa, categorie: cat,
+    f10: { 1: f10pre, 2: f10cur },
+    f20: { 1: f20pre, 2: f20cur },
+    randuriF10: CAMPURI_F10,
+    randuriF20: cat === 'mic' ? CAMPURI_F20_COMPLET : CAMPURI_F20_MICRO,
+  };
+}
+
+module.exports = {
+  f10Base, f10Totals, f10At, f20Micro, f20Complet, plAcc, antet, situatii, FORMULARE,
+  RANDURI_F10, RANDURI_F20_MICRO, RANDURI_F20_COMPLET,
+  CAMPURI_F10, CAMPURI_F20_MICRO, CAMPURI_F20_COMPLET,
+};

@@ -1015,7 +1015,55 @@ ${rows}
 `;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  SITUATII FINANCIARE ANUALE — S1120 (microentitati) / S1121 (entitati mici)
+//
+//  Structura: <Bilant11xx ...antet...><F10 .../><F20 .../></Bilant11xx>, cu TOATE cifrele ca
+//  ATRIBUTE (nu elemente), in LEI INTREGI. Maparea cont -> rand sta in `src/bilant.js`; aici
+//  ramane doar serializarea.
+//
+//  Doua capcane ale schemei, ambele confirmate pe validatorul oficial:
+//   1. Versiunea de namespace se alege dupa ANUL RAPORTAT (v1/v2/v3), nu e fixa. Acelasi tipar
+//      ca la D101 (unde versiunea se lua din anul din Data_S).
+//   2. Un atribut GOL nu e neutru — e respins. Campurile optionale se OMIT complet.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Versiunea de namespace, dupa anul raportat. Tabelul se extinde cand ANAF publica o schema noua
+// (vezi docs/validare-oficiala.md); necunoscut -> cea mai recenta cunoscuta, ca sa nu blocam.
+function bilantNsVersion(year) {
+  const y = Number(year);
+  if (y <= 2018) return 'v1';
+  if (y <= 2022) return 'v2';
+  return 'v3';
+}
+
+/**
+ * XML-ul situatiilor financiare anuale.
+ * `d` = { antet: {attrs, formular}, f10: {rand->suma}, f20: {rand->suma}, randuriF10: [...], randuriF20: [...] }
+ * Listele de campuri vin din schema (numele exacte ale atributelor, ex. `F10_0011`), ca sa nu se
+ * poata genera un formular caruia ii lipseste un rand pe care ANAF il asteapta.
+ */
+function bilantXml(d) {
+  const F = d.antet.formular;
+  const lei = (v) => String(Math.round(Number(v) || 0));
+  const at = Object.entries(d.antet.attrs)
+    .map(([k, v]) => `${k}="${esc(String(v))}"`).join(' ');
+  const camp = (lista, valori) => lista.map((k) => {
+    // `F10_0011` -> randul '001', coloana '1' (1 = inceputul exercitiului, 2 = sfarsitul)
+    const rand = k.slice(4, 7); const col = k.slice(7);
+    return `${k}="${lei((valori[col] || {})[rand])}"`;
+  }).join(' ');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- ${F.cod} generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh ${F.cod} fisier.xml -->
+<${F.radacina} xmlns="mfp:anaf:dgti:${F.ns}:declaratie:${bilantNsVersion(d.antet.attrs.an)}" ${at}>
+  <F10 ${camp(d.randuriF10, d.f10)} />
+  <F20 ${camp(d.randuriF20, d.f20)} />
+</${F.radacina}>
+`;
+}
+
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
   umCode, d300Xml, d300Rows, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  bilantXml, bilantNsVersion,
 };

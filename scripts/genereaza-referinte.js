@@ -18,6 +18,7 @@ const saft = require('../src/saft');
 const etransport = require('../src/etransport');
 const { getType } = require('../src/documentTypes');
 const { statePlata } = require('../src/payroll');
+const bilant = require('../src/bilant');
 
 const dir = process.argv[2] || path.join(require('os').tmpdir(), 'contab-referinte');
 fs.mkdirSync(dir, { recursive: true });
@@ -41,6 +42,20 @@ w('D101', xml.d101Xml(v.company, rep.d101(v, '2026'), who));
 // D205 (retineri la sursa) — an incheiat, cu un beneficiar de dividende
 const vDiv = { entries: [{ id: 'd1', data: '2025-08-10', period: '2025-08', tip: 'repartizare_dividende', tipNume: 'Div', partener: 'Ion', partenerCui: '1900101415238', lines: [{ debit: '457', credit: '5121', suma: 9200 }, { debit: '457', credit: '446', suma: 800 }, { debit: '117', credit: '457', suma: 10000 }] }], openingBalances: {} };
 w('D205', xml.d205Xml(v.company, '2025', rep.d205(vDiv, '2025'), who));
+// Situatii financiare anuale — S1120 (microentitati) si S1121 (entitati mici).
+// Antetul cere date pe care exemplul nu le are (administrator, intocmitor, forma de
+// proprietate): le completam AICI, pentru referinta, nu cu valori implicite in cod —
+// generatorul refuza deliberat sa inventeze identificarea unei firme reale.
+const firmaBil = Object.assign({}, v.company, {
+  telefon: '0211234567', formaProprietate: '35', administrator: 'Popescu Ion',
+  intocmitNume: 'Ionescu Maria', intocmitCalitate: '21', intocmitNr: '12345', auditStatut: '3',
+});
+for (const [cat, tip] of [['micro', 'S1120'], ['mic', 'S1121']]) {
+  const s = bilant.situatii(v, firmaBil, '2026', cat);
+  if (s.lipsa.length) throw new Error(tip + ': antet incomplet — ' + s.lipsa.join('; '));
+  w(tip, xml.bilantXml(s));
+}
+
 // D406 (SAF-T) — cele 4 variante
 w('D406', saft.saftXml(v, '2026-06'));                                   // lunar (L)
 w('D406-T', saft.saftXml(Object.assign({}, v, { company: Object.assign({}, v.company, { perioadaTva: 'T' }) }), '2026-Q2')); // trimestrial (T)

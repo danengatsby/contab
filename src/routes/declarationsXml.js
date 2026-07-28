@@ -10,6 +10,7 @@ const xml = require('../xml');
 const rep = require('../reporting');
 const acc = require('../accounting');
 const saft = require('../saft');
+const bilant = require('../bilant');
 const pdf = require('../pdf');
 const decl = require('../declarations');
 const plans = require('../plans');
@@ -123,6 +124,25 @@ module.exports = function register(app, ctx) {
     recordDecl(req, 'd101', year + '-12'); // registrul lucreaza pe perioade lunare; D101 = decembrie
     sendXml(res, xml.d101Xml(v.company, rep.d101(v, year), declarantOf(req)), 'd101-' + year + '.xml');
   });
+  // Situatiile financiare ANUALE (S1120 microentitati / S1121 entitati mici).
+  // Categoria vine din ?categorie=, implicit dupa regimul fiscal al firmei: micro -> S1120.
+  // Antetul cere date pe care doar firma le stie (administrator, intocmitor, forma de
+  // proprietate). Daca lipsesc, REFUZAM generarea si spunem exact ce — un formular cu antet
+  // inventat trece validatorul si ajunge la ANAF ca declaratie gresita.
+  app.get('/xml/bilant', (req, res) => {
+    const v = S(req);
+    const year = String(req.query.year || (new Date().getFullYear() - 1));
+    const implicit = fiscalProfile.build(v.company).micro ? 'micro' : 'mic';
+    const categorie = req.query.categorie === 'mic' ? 'mic' : req.query.categorie === 'micro' ? 'micro' : implicit;
+    const s = bilant.situatii(v, v.company, year, categorie);
+    if (s.lipsa.length) {
+      return res.status(400).send('Situațiile financiare nu pot fi generate — completează în Setări → Firmă: '
+        + s.lipsa.join('; ') + '.');
+    }
+    recordDecl(req, 'bilant', year + '-12'); // registrul lucreaza pe perioade lunare
+    sendXml(res, xml.bilantXml(s), s.antet.formular.cod.toLowerCase() + '-bilant-' + year + '.xml');
+  });
+
   app.get('/xml/d112', (req, res) => {
     const v = S(req);
     const period = req.query.period || new Date().toISOString().slice(0, 7);
