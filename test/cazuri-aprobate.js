@@ -35,6 +35,7 @@ const crypto = require('crypto');
 const fiscal = require('../src/fiscal');
 const cfg = require('../src/fiscalConfig');
 const { statePlata } = require('../src/payroll');
+const deduct = require('../src/deductibilitate');
 
 /** Istoric de state postate (pentru mediile de concediu): `luni` luni cu acelasi brut. */
 function istoric(id, luni, brut) {
@@ -299,6 +300,101 @@ const CAZURI = [
     },
     observatii: 'Rezultatul e marcat „estimare" in interfata si in PDF. De confirmat ca plafonarea CASS la 60 SM '
       + 'ramane valabila pentru anul revizuit.',
+    aprobare: null,
+  },
+
+  // ─── Plafoane de deductibilitate la impozitul pe profit ───────────────────
+  {
+    id: 'PLF-01', arie: 'Plafoane de deductibilitate (impozit pe profit)',
+    titlu: 'Cheltuieli de protocol — plafonul de 2% si BAZA lui de calcul',
+    temei: 'Art. 25(3)(a) Cod fiscal — deductibile in limita a 2% din baza = profit contabil '
+      + '+ cheltuielile de protocol + cheltuiala cu impozitul pe profit',
+    intrare: { profitContabil: 100000, cheltProtocol: 5000, cheltImpozitProfit: 16000 },
+    asteptat: { baza: 121000, plafon: 2420, nedeductibil: 2580 },
+    calc: (i) => {
+      const r = deduct.ajustari({ rulaj: { 623: { d: i.cheltProtocol, c: 0 } },
+        profitContabil: i.profitContabil, cheltImpozitProfit: i.cheltImpozitProfit }, cfg.RATES);
+      const x = r.randuri.find((y) => y.regula === 'Protocol');
+      return { baza: x.baza, plafon: x.plafon, nedeductibil: x.nedeductibil };
+    },
+    observatii: 'PUNCTUL DE CONFIRMAT: baza include cheltuiala de protocol INSASI si impozitul pe profit. '
+      + 'Daca revizorul considera ca baza e alta (ex. doar profitul contabil), plafonul devine 2.000 '
+      + 'si nedeductibilul 3.000 — deci cifra se schimba.',
+    aprobare: null,
+  },
+  {
+    id: 'PLF-02', arie: 'Plafoane de deductibilitate (impozit pe profit)',
+    titlu: 'Cheltuieli sociale — plafonul de 5% din fondul de salarii',
+    temei: 'Art. 25(3)(b) Cod fiscal — deductibile in limita a 5% din cheltuielile cu salariile personalului',
+    intrare: { cheltSociale: 3000, fondSalarii: 40000 },
+    asteptat: { plafon: 2000, nedeductibil: 1000 },
+    calc: (i) => {
+      const r = deduct.ajustari({ rulaj: { 6458: { d: i.cheltSociale, c: 0 }, 641: { d: i.fondSalarii, c: 0 } },
+        profitContabil: 0 }, cfg.RATES);
+      const x = r.randuri.find((y) => y.regula === 'Cheltuieli sociale');
+      return { plafon: x.plafon, nedeductibil: x.nedeductibil };
+    },
+    observatii: 'Baza e rulajul contului 641. De confirmat daca in fondul de salarii intra si alte conturi '
+      + '(ex. 642/643/644) pentru firmele care le folosesc.',
+    aprobare: null,
+  },
+  {
+    id: 'PLF-03', arie: 'Plafoane de deductibilitate (impozit pe profit)',
+    titlu: 'Sponsorizare — cheltuiala nedeductibila + creditul fiscal cu dublu plafon',
+    temei: 'Art. 25(4)(i) Cod fiscal — cheltuiala integral nedeductibila; se scade DIN IMPOZIT '
+      + 'in limita minimului dintre 0,75% din cifra de afaceri si 20% din impozitul pe profit',
+    intrare: { sponsorizare: 10000, cifraAfaceri: 800000, impozit: 20000 },
+    asteptat: { nedeductibil: 10000, plafonCa: 6000, plafonImpozit: 4000, credit: 4000, report: 6000 },
+    calc: (i) => {
+      const a = deduct.ajustari({ rulaj: { 6582: { d: i.sponsorizare, c: 0 } }, profitContabil: 0 }, cfg.RATES);
+      const x = a.randuri.find((y) => y.regula === 'Sponsorizare (cheltuiala)');
+      const c = deduct.credit({ cifraAfaceri: i.cifraAfaceri, impozit: i.impozit,
+        sponsorizareAn: a.sponsorizareCheltuita, report: [], an: cfg.AN }, cfg.RATES);
+      return { nedeductibil: x.nedeductibil, plafonCa: c.plafonCa, plafonImpozit: c.plafonImpozit,
+        credit: c.folosit, report: c.reportNou.reduce((s, b) => s + b.suma, 0) };
+    },
+    observatii: 'DOUA puncte de confirmat. (1) Validatorul oficial D101 impune plafonul ca '
+      + '`round((P41-P42)*20%) >= P43` — deci pe impozitul MINUS creditul fiscal extern, nu pe impozitul brut; '
+      + 'aplicatia nu modeleaza P42, deci azi coincid. (2) Reportul creditului neutilizat pe '
+      + cfg.RATES.sponsorizareReportAni + ' ani: de confirmat ca regimul de report e cel in vigoare pentru anul '
+      + 'revizuit (regulile de report/redirectionare s-au schimbat in ultimii ani).',
+    aprobare: null,
+  },
+  {
+    id: 'PLF-04', arie: 'Plafoane de deductibilitate (impozit pe profit)',
+    titlu: 'Cheltuieli auto — 50% nedeductibil pe CHELTUIALA (distinct de TVA)',
+    temei: 'Art. 25(3)(l) Cod fiscal — 50% din cheltuielile aferente vehiculelor fara utilizare '
+      + 'exclusiv in scopul activitatii economice',
+    intrare: { cheltAuto: 8000 },
+    asteptat: { nedeductibil: 4000 },
+    calc: (i) => {
+      const r = deduct.ajustari({ rulaj: {}, profitContabil: 0, cheltAuto: i.cheltAuto }, cfg.RATES);
+      return { nedeductibil: r.randuri.find((y) => y.regula === 'Cheltuieli auto').nedeductibil };
+    },
+    observatii: 'Baza vine din articolele bifate „auto 50%" la inregistrare. Limitarea e DISTINCTA de cea '
+      + 'de TVA (art. 298), care se aplica deja la inregistrare — de confirmat ca nu se considera dubla limitare.',
+    aprobare: null,
+  },
+  {
+    id: 'PLF-05', arie: 'Plafoane de deductibilitate (impozit pe profit)',
+    titlu: 'Costuri excedentare ale indatorarii — plafon in EUR + 30% din baza',
+    temei: 'Art. 40^2 Cod fiscal — deductibile pana la echivalentul a 1.000.000 EUR; '
+      + 'ce depaseste, doar pana la 30% din baza de calcul',
+    intrare: { cheltDobanzi: 20000000, venitDobanzi: 0, profitContabil: 100000, amortizareFiscala: 0, cursEur: 5 },
+    asteptat: { costExcedentar: 20000000, plafonAplicat: 11030000, nedeductibil: 8970000 },
+    calc: (i) => {
+      const r = deduct.ajustari({ rulaj: { 666: { d: i.cheltDobanzi, c: 0 }, 766: { d: 0, c: i.venitDobanzi } },
+        profitContabil: i.profitContabil, rezultatFiscalInainteDobanzi: i.profitContabil,
+        amortizareFiscala: i.amortizareFiscala, cursEur: i.cursEur }, cfg.RATES);
+      const x = r.randuri.find((y) => y.regula === 'Costuri excedentare ale indatorarii');
+      return { costExcedentar: x.cheltuit, plafonAplicat: x.plafon, nedeductibil: x.nedeductibil };
+    },
+    observatii: 'INTERPRETARE DE CONFIRMAT, cea mai incerta din acest grup: aplicatia trateaza plafonul in EUR '
+      + 'ca deductibil neconditionat si aplica cei 30% DOAR partii care il depaseste (deductibil = 5.000.000 '
+      + '+ min(15.000.000; 30% x 20.100.000)). O citire alternativa ar fi deductibil = max(plafon EUR; 30% din baza), '
+      + 'care aici ar da 6.030.000 si un nedeductibil de 13.970.000. De asemenea: baza de calcul foloseste '
+      + 'amortizarea fiscala, care azi coincide cu cea contabila (vezi itemul separat din backlog), iar '
+      + 'diferentele de curs aferente imprumuturilor NU sunt incluse in costul excedentar.',
     aprobare: null,
   },
 ];

@@ -39,6 +39,19 @@ const RATES = {
   impozitProfit: 16,      // % — art. 17 Cod fiscal
   impozitDividende: 16,   // % — Legea 141/2025 (de la 1 ianuarie 2026)
   deductibilitateTvaAutoLimitat: 50, // % — art. 298 Cod fiscal (vehicule fara uz exclusiv business)
+  // ── Plafoane de deductibilitate la impozitul pe profit (art. 25 si 40^2 Cod fiscal) ──
+  // Procentele sunt PLAFOANE, nu cote de nedeductibilitate: partea din cheltuiala care
+  // depaseste plafonul devine nedeductibila. Vezi src/deductibilitate.js pentru baza de calcul
+  // a fiecaruia — baza difera de la o regula la alta si acolo se greseste, nu la procent.
+  protocolPct: 2,              // % — art. 25(3)(a): plafon = 2% din (profit contabil + protocol + impozit profit)
+  socialPct: 5,                // % — art. 25(3)(b): plafon = 5% din fondul de salarii (cont 641)
+  autoCheltuialaDeductibilPct: 50, // % — art. 25(3)(l): partea DEDUCTIBILA din cheltuielile auto
+                                   // (separat de TVA-ul auto de mai sus: alt articol, poate diverge)
+  sponsorizareCaPct: 0.75,     // % — art. 25(4)(i): primul plafon al creditului fiscal (din cifra de afaceri)
+  sponsorizareImpozitPct: 20,  // % — art. 25(4)(i): al doilea plafon (din impozitul pe profit datorat)
+  sponsorizareReportAni: 7,    // ani consecutivi de report al creditului neutilizat
+  dobanziPlafonEur: 1000000,   // EUR — art. 40^2: plafonul deductibil neconditionat al costurilor excedentare
+  dobanziEbitdaPct: 30,        // % — art. 40^2: peste plafon, deductibil pana la 30% din baza de calcul
   // Eligibilitate micro (art. 47 Cod fiscal, OUG 156/2024): plafon 100.000 EUR din 2026.
   plafonMicroEur: 100000,
   cursPlafonMicro: 5.0,   // orientativ (legal: cursul de la inchiderea exercitiului precedent)
@@ -81,6 +94,14 @@ const SURSE = {
   pfa: 'Art. 148 & 170 Cod fiscal — plafoane 6 / 12 / 24 / 60 salarii minime',
   concediiMedicale: 'OUG 158/2005 — CAS + impozit, fara CASS; CAM doar pe partea angajatorului',
   deductibilitateAuto: 'Art. 298 Cod fiscal — TVA deductibila 50% (vehicule fara uz exclusiv business)',
+  protocol: 'Art. 25(3)(a) Cod fiscal — plafon 2%, baza = profit contabil + protocol + impozit pe profit',
+  social: 'Art. 25(3)(b) Cod fiscal — plafon 5% din fondul de salarii',
+  autoCheltuiala: 'Art. 25(3)(l) Cod fiscal — 50% din cheltuielile auto (vehicule fara uz exclusiv business)',
+  sponsorizare: 'Art. 25(4)(i) Cod fiscal — cheltuiala integral nedeductibila, dar CREDIT FISCAL '
+    + 'min(' + RATES.sponsorizareCaPct + '% din cifra de afaceri; ' + RATES.sponsorizareImpozitPct
+    + '% din impozitul pe profit), cu report ' + RATES.sponsorizareReportAni + ' ani',
+  dobanziExcedentare: 'Art. 40^2 Cod fiscal — 1.000.000 EUR deductibil neconditionat, peste acesta '
+    + '30% din baza (rezultat fiscal + costuri excedentare + amortizare fiscala); report NELIMITAT',
   pragIntrastat: 'Ordin INS — praguri Intrastat 1.000.000 lei/an pe flux (introduceri / expedieri), 2024-2026',
 };
 

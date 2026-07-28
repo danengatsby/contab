@@ -316,6 +316,10 @@ function composeEntry(tipId, fields, fileId, firmaId) {
       valutaInfo: { valuta: String(f.moneda).toUpperCase().trim(), sumaValuta: round2(parseFloat(f.sumaValuta) || 0), curs: round2(parseFloat(f.curs) || 0) },
     } : {}),
     ...(f.proRataMixt ? { proRataMixt: true } : {}), // marcaj pentru regularizarea anuala a pro-ratei
+    // Marcajul auto50 se PASTREAZA pe articol, nu doar se consuma la compunere: efectul lui pe TVA
+    // (art. 298) intra in linii si se pierde, dar art. 25(3)(l) face nedeductibila si jumatate din
+    // CHELTUIALA, iar asta se calculeaza abia la finalul anului — atunci steagul nu mai exista.
+    ...(f.auto50 ? { auto50: true } : {}),
     ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
     ...(codCategorie331 ? { codCategorie331 } : {}), // categoria de bun art. 331, pentru op11 din D394
     fileId: fileId || null,

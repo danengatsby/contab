@@ -4,6 +4,7 @@ const { round2, period: periodOf } = require('./util');
 const fiscal = require('./fiscal');
 const coa = require('./chartOfAccounts');
 const acc = require('./accounting');
+const deduct = require('./deductibilitate');
 const fiscalProfile = require('./fiscalProfile'); // regimul firmei (micro/profit) pentru livrabile
 const stmt = require('./statements');
 const { reconcile } = require('./reconcile');
@@ -406,8 +407,25 @@ const NEIMPOZABILE = {
   7812: { nume: 'Venituri din reluarea provizioanelor nedeductibile', pct: 100 },
 };
 
+/** Baza cheltuielilor auto cu deductibilitate limitata (art. 25(3)(l)): liniile de cheltuiala din
+ *  articolele marcate `auto50`. Marcajul se pastreaza pe articol tocmai pentru acest calcul —
+ *  la finalul anului nu mai exista formularul din care s-a bifat. */
+function cheltuieliAuto(db, year) {
+  let s = 0;
+  for (const e of acc.postedEntries(db)) {
+    if (!e.auto50) continue;
+    if (!String(e.period || periodOf(e.data)).startsWith(String(year))) continue;
+    for (const l of (e.lines || [])) {
+      const cod = String(l.debit || '');
+      if (/^6/.test(cod) && !/^(691|698)/.test(cod)) s = round2(s + (Number(l.suma) || 0));
+    }
+  }
+  return round2(s);
+}
+
 /** Registrul de evidenta fiscala: trecerea de la rezultatul contabil la cel fiscal. */
-function registruFiscal(db, year, cota) {
+function registruFiscal(db, year, cota, opts) {
+  opts = opts || {};
   const pl = stmt.profitLoss(db, year);
   const r = periodRulaj2(db, year);
   const cheltNeded = [];
@@ -435,13 +453,28 @@ function registruFiscal(db, year, cota) {
   const mentiuni = [];
   if (amortContabila > 0) mentiuni.push('Art. 28: amortizarea fiscala = amortizarea contabila (' + amortContabila + ' lei), integral deductibila — nicio diferenta.');
   const rezultatContabil = pl.rezBrut;
-  const rezultatFiscal = round2(rezultatContabil + totalNeded - venituriNeimpozabile);
+  // Ajustarile CU PLAFON (art. 25/40^2), calculate din conturi — separate de tabela de procente
+  // fixe de mai sus, care acopera doar cheltuielile integral nedeductibile. Nu se suprapun:
+  // niciun cont din NEDEDUCTIBILE nu e citit de motorul de plafoane.
+  const plafoane = opts.plafoane || null;
+  const dedRez = plafoane ? deduct.ajustari({
+    rulaj: r, profitContabil: rezultatContabil,
+    cheltAuto: cheltuieliAuto(db, year),
+    cheltImpozitProfit: r['691'] ? round2(r['691'].d - r['691'].c) : 0,
+    amortizareFiscala: amortContabila,
+    cursEur: opts.cursEur,
+    rezultatFiscalInainteDobanzi: round2(rezultatContabil + totalNeded - venituriNeimpozabile),
+  }, plafoane) : { randuri: [], totalNedeductibil: 0, sponsorizareCheltuita: 0 };
+  const totalPlafoane = dedRez.totalNedeductibil;
+  const rezultatFiscal = round2(rezultatContabil + totalNeded + totalPlafoane - venituriNeimpozabile);
   const rateProfit = cota || 16;
   const impozitProfit = round2((Math.max(rezultatFiscal, 0) * rateProfit) / 100);
   const impozitMicro = round2((pl.venitTotal * 1) / 100);
   return {
     year, rezultatContabil, cheltNeded, totalNeded, venituriList, venituriNeimpozabile, mentiuni,
     rezultatFiscal, rateProfit, impozitProfit, impozitMicro, venitTotal: pl.venitTotal,
+    // Aditiv: randurile cu plafon si totalul lor, separate de procentele fixe.
+    ajustariPlafon: dedRez.randuri, totalPlafoane,
   };
 }
 
@@ -825,10 +858,13 @@ function d101(db, year, opts) {
     pierdereReportata: round2(pt.pierdereReportata || 0),
     pierdereFolosita: round2(pt.pierdereFolosita || 0),
     profitImpozabil: round2(pt.profitImpozabil || 0),
-    impozit: round2(pt.impozit || 0),
-    impozitDePlata: round2(pt.impozit || 0), // fara plati anticipate/credite fiscale modelate
+    impozit: round2(pt.impozitBrut != null ? pt.impozitBrut : (pt.impozit || 0)), // P41, INAINTE de credit
+    // Creditul de sponsorizare (P43). Plafonul din D101 e round((P41-P42)*20%) — regula V5 a
+    // validatorului, dovedita prin sondaj; P42 (credit fiscal extern) nu e modelat, deci e 0.
+    sponsorizareCredit: pt.sponsorizare ? round2(pt.sponsorizare.folosit) : 0,
+    impozitDePlata: round2(pt.impozit || 0), // P52 — dupa scaderea sponsorizarii
     scadenta: (Number(String(year).slice(0, 4)) + 1) + '-03-25',
   };
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation };
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto };

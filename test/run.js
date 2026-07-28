@@ -2221,6 +2221,116 @@ const ptLossYr = acc.profitTax({ entries: [{ id: '1', period: '2026-03', data: '
 eq('an pe pierdere -> impozit 0 (plafonul nu se aplica pe baza negativa)', ptLossYr.impozit, 0);
 eq('pierdere curenta 5000 + reportata 1000 = 6000 de reportat', ptLossYr.pierdereDeReportat, 6000);
 
+section('Plafoane de deductibilitate (art. 25 / 40^2) — src/deductibilitate.js');
+{
+  const deduct = require('../src/deductibilitate');
+  const P = require('../src/fiscalConfig').RATES;
+  const R = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { d: v, c: 0 }]));
+  const gasit = (r, regula) => r.randuri.find((x) => x.regula === regula);
+
+  // ── Protocol: baza INCLUDE cheltuiala insasi si impozitul pe profit ──────
+  // Greseala clasica ar fi plafon = 2% din profitul contabil simplu (2.000), care ar da 3.000
+  // nedeductibil in loc de 2.900. Diferenta e exact ce testeaza randul urmator.
+  const prot = deduct.ajustari({ rulaj: R({ 623: 5000 }), profitContabil: 100000, cheltImpozitProfit: 0 }, P);
+  eq('protocol: baza = profit + protocol + impozit = 105.000', gasit(prot, 'Protocol').baza, 105000);
+  eq('protocol: plafon = 2% din baza = 2.100', gasit(prot, 'Protocol').plafon, 2100);
+  eq('protocol: nedeductibil = 5.000 − 2.100 = 2.900', gasit(prot, 'Protocol').nedeductibil, 2900);
+  const protImp = deduct.ajustari({ rulaj: R({ 623: 5000 }), profitContabil: 100000, cheltImpozitProfit: 16000 }, P);
+  eq('protocol: impozitul deja inregistrat intra in baza (121.000)', gasit(protImp, 'Protocol').baza, 121000);
+  // An pe pierdere: baza <= 0 => plafon 0 => cheltuiala integral nedeductibila.
+  const protL = deduct.ajustari({ rulaj: R({ 623: 5000 }), profitContabil: -50000 }, P);
+  eq('protocol pe pierdere: plafon 0', gasit(protL, 'Protocol').plafon, 0);
+  eq('protocol pe pierdere: integral nedeductibil', gasit(protL, 'Protocol').nedeductibil, 5000);
+
+  // ── Cheltuieli sociale: 5% din FONDUL DE SALARII (641), nu din cheltuiala ──
+  const soc = deduct.ajustari({ rulaj: R({ 6458: 3000, 641: 40000 }), profitContabil: 0 }, P);
+  eq('social: plafon = 5% din 40.000 = 2.000', gasit(soc, 'Cheltuieli sociale').plafon, 2000);
+  eq('social: nedeductibil = 3.000 − 2.000 = 1.000', gasit(soc, 'Cheltuieli sociale').nedeductibil, 1000);
+  const socFara = deduct.ajustari({ rulaj: R({ 6458: 3000 }), profitContabil: 0 }, P);
+  eq('social fara fond de salarii: integral nedeductibil', gasit(socFara, 'Cheltuieli sociale').nedeductibil, 3000);
+  // Sub plafon: nimic nedeductibil (plafonul nu inventeaza ajustari).
+  const socSub = deduct.ajustari({ rulaj: R({ 6458: 1000, 641: 40000 }), profitContabil: 0 }, P);
+  eq('social sub plafon: nedeductibil 0', gasit(socSub, 'Cheltuieli sociale').nedeductibil, 0);
+
+  // ── Auto 50% pe CHELTUIALA (art. 25(3)(l)), distinct de TVA-ul auto (art. 298) ──
+  const au = deduct.ajustari({ rulaj: {}, profitContabil: 0, cheltAuto: 8000 }, P);
+  eq('auto: jumatate din cheltuiala e nedeductibila', gasit(au, 'Cheltuieli auto').nedeductibil, 4000);
+
+  // ── Sponsorizarea ca CHELTUIALA e integral nedeductibila ────────────────
+  const sp = deduct.ajustari({ rulaj: R({ 6582: 10000 }), profitContabil: 0 }, P);
+  eq('sponsorizare: cheltuiala integral nedeductibila', gasit(sp, 'Sponsorizare (cheltuiala)').nedeductibil, 10000);
+  eq('sponsorizare: suma e raportata separat pentru faza 2', sp.sponsorizareCheltuita, 10000);
+
+  // ── Creditul fiscal (faza 2): min(0,75% din CA, 20% din impozit) ─────────
+  const c1 = deduct.credit({ cifraAfaceri: 800000, impozit: 20000, sponsorizareAn: 10000, report: [], an: 2026 }, P);
+  eq('credit: plafon CA = 0,75% × 800.000 = 6.000', c1.plafonCa, 6000);
+  eq('credit: plafon impozit = 20% × 20.000 = 4.000', c1.plafonImpozit, 4000);
+  eq('credit: se ia MINIMUL celor doua plafoane', c1.plafon, 4000);
+  eq('credit: impozitul scade cu creditul folosit', c1.impozitDupaCredit, 16000);
+  eq('credit: restul de 6.000 se reporteaza', c1.reportNou[0].suma, 6000);
+  // Plafonul de CA muscator (CA mica): min(0,75%×100.000=750; 20%×20.000=4.000) = 750.
+  const c2 = deduct.credit({ cifraAfaceri: 100000, impozit: 20000, sponsorizareAn: 10000, report: [], an: 2026 }, P);
+  eq('credit: cand CA e mica, plafonul de 0,75% e cel care muscA', c2.folosit, 750);
+
+  // ── Reportul: consum FIFO pe ani si prescriptie la 7 ani ─────────────────
+  const c3 = deduct.credit({ cifraAfaceri: 1000000, impozit: 100000, sponsorizareAn: 0,
+    report: [{ an: 2022, suma: 1000 }, { an: 2023, suma: 2000 }], an: 2026 }, P);
+  eq('report: se consuma cel mai VECHI intai (2022 dispare)', c3.reportNou.length, 0);
+  eq('report: tot ce era disponibil s-a folosit (3.000)', c3.folosit, 3000);
+  const c4 = deduct.credit({ cifraAfaceri: 100000, impozit: 100000, sponsorizareAn: 0,
+    report: [{ an: 2022, suma: 1000 }, { an: 2023, suma: 2000 }], an: 2026 }, P);
+  eq('report FIFO: plafon 750 -> se stinge din bucketul 2022', c4.folosit, 750);
+  eq('report FIFO: bucketul 2022 ramane cu 250', c4.reportNou[0].suma, 250);
+  eq('report FIFO: anul bucketului se PASTREAZA (prescriptia depinde de el)', c4.reportNou[0].an, 2022);
+  // Prescriptia: un bucket din 2019 e mai vechi de 7 ani fata de 2026 -> nu se mai poate folosi.
+  const c5 = deduct.credit({ cifraAfaceri: 1000000, impozit: 100000, sponsorizareAn: 0,
+    report: [{ an: 2019, suma: 5000 }], an: 2026 }, P);
+  eq('prescriptie: bucketul de 7 ani vechime nu se mai foloseste', c5.folosit, 0);
+  eq('prescriptie: suma pierduta e raportata explicit', c5.prescris, 5000);
+
+  // ── Art. 40^2: costuri excedentare ale indatorarii ───────────────────────
+  const dSub = deduct.ajustari({ rulaj: R({ 666: 50000 }), profitContabil: 0, cursEur: 5 }, P);
+  eq('dobanzi sub plafonul de 1M EUR: nimic nedeductibil', gasit(dSub, 'Costuri excedentare ale indatorarii').nedeductibil, 0);
+  // Veniturile din dobanzi (766) reduc costul excedentar — e un NET, nu o cheltuiala bruta.
+  const dNet = deduct.ajustari({ rulaj: { 666: { d: 50000, c: 0 }, 766: { d: 0, c: 20000 } }, profitContabil: 0, cursEur: 5 }, P);
+  eq('dobanzi: costul excedentar e NET de veniturile din dobanzi', gasit(dNet, 'Costuri excedentare ale indatorarii').cheltuit, 30000);
+  // Peste plafon: 6.000.000 lei cost, plafon 5.000.000 (1M EUR × 5), baza 30% aplicata excedentului.
+  const dPeste = deduct.ajustari({ rulaj: R({ 666: 6000000 }), profitContabil: 1000000,
+    rezultatFiscalInainteDobanzi: 1000000, amortizareFiscala: 500000, cursEur: 5 }, P);
+  const rd = gasit(dPeste, 'Costuri excedentare ale indatorarii');
+  // baza = 1.000.000 + 6.000.000 + 500.000 = 7.500.000; 30% = 2.250.000; excedent peste plafon
+  // = 1.000.000, deci deductibil integral din cei 30% -> nimic nedeductibil.
+  eq('dobanzi peste plafon: excedentul incape in 30% din baza', rd.nedeductibil, 0);
+  const dRau = deduct.ajustari({ rulaj: R({ 666: 20000000 }), profitContabil: 100000,
+    rezultatFiscalInainteDobanzi: 100000, amortizareFiscala: 0, cursEur: 5 }, P);
+  const rd2 = gasit(dRau, 'Costuri excedentare ale indatorarii');
+  // baza = 100.000 + 20.000.000 = 20.100.000; 30% = 6.030.000; plafon EUR = 5.000.000;
+  // deductibil = 5.000.000 + min(15.000.000; 6.030.000) = 11.030.000 -> nedeductibil 8.970.000
+  eq('dobanzi mult peste plafon: nedeductibil = cost − (plafon EUR + 30% din baza)', rd2.nedeductibil, 8970000);
+
+  // ── Integrarea in profitTax: contractul istoric NU se schimba ────────────
+  const ent = [
+    { id: '1', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 200000 }] },
+    { id: '2', period: '2026-04', data: '2026-04-01', lines: [{ debit: '623', credit: '401', suma: 5000 }] },
+  ];
+  const fara = acc.profitTax({ entries: ent }, '2026', { cota: 16 });
+  eq('fara opts.plafoane: nedeductibile 0 (comportament istoric)', fara.cheltNedeductibile, 0);
+  const cu = acc.profitTax({ entries: ent }, '2026', { cota: 16, plafoane: P });
+  // profit contabil = 195.000; baza protocol = 195.000 + 5.000 = 200.000; plafon 4.000; neded 1.000
+  eq('cu opts.plafoane: nedeductibilele se CALCULEAZA (1.000)', cu.cheltNedeductibile, 1000);
+  eq('cu opts.plafoane: profitul impozabil creste cu nedeductibilul', cu.profitImpozabil, 196000);
+  ok('cu opts.plafoane: randurile de ajustare sunt expuse', cu.ajustari.length === 1);
+  const supra = acc.profitTax({ entries: ent }, '2026', { cota: 16, plafoane: P, cheltNedeductibile: 7777 });
+  eq('suprascrierea manuala BATE motorul (portita contabilului)', supra.cheltNedeductibile, 7777);
+
+  // ── Fara suprapunere cu tabela de procente fixe din registrul fiscal ─────
+  // Motorul citeste 623/6458/6582/666; NEDEDUCTIBILE citeste 6581/635/6814/654/6812. Daca cineva
+  // adauga un cont in ambele, nedeductibilul s-ar numara de DOUA ori — de aici poarta.
+  const conturiMotor = Object.values(deduct.CONT);
+  const suprapuse = ['6581', '635', '6814', '654', '6812'].filter((c) => conturiMotor.some((m) => c.startsWith(m)));
+  ok('niciun cont nu e citit si de motor, si de tabela de procente fixe', suprapuse.length === 0);
+}
+
 section('Productie (consum materiale + obtinere produse finite)');
 const prodMod = require('../src/production');
 const prodProducts = [{ id: 'PF', cont: '345', cod: 'PF1', denumire: 'Masa', um: 'buc' }, { id: 'MAT', cont: '301', cod: 'M1', denumire: 'Cherestea', um: 'mc' }];

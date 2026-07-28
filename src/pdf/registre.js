@@ -226,6 +226,13 @@ function registruFiscalPdf(res, company, rf) {
   ];
   rf.cheltNeded.forEach((c) => rows.push({ k: '+ ' + c.cod + ' ' + c.nume + pctTxt(c), v: fmt(c.suma) }));
   rows.push({ k: '+ Total cheltuieli nedeductibile', v: fmt(rf.totalNeded), _bold: true });
+  // Randurile CU PLAFON: se arata baza si partea deductibila, altfel nedeductibilul pare arbitrar
+  // si revizorul nu poate reface calculul din document.
+  (rf.ajustariPlafon || []).forEach((a) => rows.push({
+    k: '+ ' + a.regula + ' (' + a.temei + ' — cheltuit ' + fmt(a.cheltuit) + ', deductibil ' + fmt(a.plafon) + ')',
+    v: fmt(a.nedeductibil),
+  }));
+  if ((rf.ajustariPlafon || []).length) rows.push({ k: '+ Total depasiri de plafon', v: fmt(rf.totalPlafoane), _bold: true });
   (rf.venituriList || []).forEach((c) => rows.push({ k: '- ' + c.cod + ' ' + c.nume + pctTxt(c), v: fmt(c.suma) }));
   rows.push({ k: '- Total venituri neimpozabile', v: fmt(rf.venituriNeimpozabile), _bold: true });
   rows.push({ k: '= REZULTATUL FISCAL', v: fmt(rf.rezultatFiscal), _bold: true, _fill: C.zebra });

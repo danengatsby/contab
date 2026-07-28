@@ -13,6 +13,7 @@ const acc = require('../accounting');
 const xml = require('../xml');
 const etva = require('../etvaReconcile');
 const fiscalProfile = require('../fiscalProfile');
+const fiscal = require('../fiscal');
 const pdf = require('../pdf');
 const dosarAnual = require('../dosarAnual');
 const { analyticBalance } = require('../analytic');
@@ -112,7 +113,9 @@ module.exports = function register(app, ctx) {
     }));
   });
   app.get('/api/livrabile', (req, res) => res.json(rep.livrabile(S(req), req.query.period || new Date().toISOString().slice(0, 7))));
-  app.get('/api/registru-fiscal', (req, res) => res.json(rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));
+  // `plafoane` porneste motorul art. 25/40^2; fara el registrul ar arata doar procentele fixe.
+  const optPlaf = (req) => ({ plafoane: fiscal.FISCAL, cursEur: Number(req.query.cursEur) || Number((S(req).company || {}).cursEur) || 0 });
+  app.get('/api/registru-fiscal', (req, res) => res.json(rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()), null, optPlaf(req))));
   app.get('/api/cashbook', (req, res) => res.json(acc.cashBankJournal(S(req), req.query.cont || '5121', req.query.period || null)));
   app.get('/api/cash-valuta', (req, res) => res.json(acc.cashRegisterValuta(S(req), req.query.period || null, req.query.moneda || 'EUR')));
   app.get('/api/cash-control', (req, res) => res.json(acc.cashControl(S(req), req.query.cont || '5311', req.query.period || null)));
@@ -183,7 +186,7 @@ module.exports = function register(app, ctx) {
     res.send(r.buffer);
   }));
   app.get('/pdf/registru-inventar', (req, res) => pdf.registruInventarPdf(res, S(req).company, rep.registruInventar(S(req), req.query.period || null)));
-  app.get('/pdf/registru-fiscal', (req, res) => pdf.registruFiscalPdf(res, S(req).company, rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()))));
+  app.get('/pdf/registru-fiscal', (req, res) => pdf.registruFiscalPdf(res, S(req).company, rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()), null, optPlaf(req))));
   app.get('/pdf/analytic', (req, res) => pdf.analyticPdf(res, S(req).company, analyticBalance(S(req))));
   app.get('/pdf/cashbook', (req, res) => pdf.cashBookPdf(res, S(req).company, acc.cashBankJournal(S(req), req.query.cont || '5121', req.query.period || null)));
   app.get('/pdf/cash-valuta', (req, res) => pdf.cashValutaPdf(res, S(req).company, acc.cashRegisterValuta(S(req), req.query.period || null, req.query.moneda || 'EUR')));
