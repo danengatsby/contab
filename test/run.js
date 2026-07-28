@@ -4805,6 +4805,68 @@ section('Docs API: rutele documentate exista in cod (fara drift)');
   ok('poarta accepta garda de admin', AUTZ.test("requireAdmin, (req, res) => res.json(svc.all())"));
 }
 
+section('Documente juridice: fara placeholdere si cu identitate consecventa');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const root = pth.join(__dirname, '..');
+  const PAGINI = ['termeni.html', 'confidentialitate.html', 'dpa.html'];
+  for (const f of PAGINI) ok('pagina juridica exista: ' + f, fsx.existsSync(pth.join(root, 'public', f)));
+
+  // Placeholderele de forma [DENUMIREA OPERATORULUI] / [CUI] sunt cea mai vizibila forma de
+  // „nefinalizat" pe un site care vinde. Ele NU au voie sa ajunga in productie — iar singurul mod
+  // de a fi sigur nu e sa-ti amintesti, ci sa pice suita.
+  const PH = /\[[A-ZĂÂÎȘȚ][A-ZĂÂÎȘȚ .0-9-]{2,}\]/g;
+  const gasite = [];
+  for (const f of PAGINI) {
+    const txt = fsx.readFileSync(pth.join(root, 'public', f), 'utf8');
+    for (const m of (txt.match(PH) || [])) gasite.push(f + ': ' + m);
+  }
+  ok('niciun placeholder nefinalizat in documentele juridice'
+    + (gasite.length ? ' — ' + gasite.slice(0, 4).join(' | ') : ''), gasite.length === 0);
+  // poarta trebuie sa POATA pica
+  ok('poarta chiar detecteaza un placeholder', PH.test('operat de [DENUMIREA OPERATORULUI], cu'));
+
+  // Identitatea juridica apare in doua documente; daca se schimba intr-unul si se uita in celalalt,
+  // ai doua adevaruri diferite pe acelasi site. Comparam CUI-ul si denumirea intre pagini.
+  const idOf = (f) => {
+    const txt = fsx.readFileSync(pth.join(root, 'public', f), 'utf8');
+    // ancora e FRAZA legala, nu cuvantul „CUI" (care apare si in alte contexte)
+    const cui = (txt.match(/cod de identificare fiscal[ăa][^<]*<b>([^<]+)<\/b>/i) || [])[1] || null;
+    return cui ? cui.replace(/\s/g, '') : null;
+  };
+  const cuiT = idOf('termeni.html'); const cuiD = idOf('dpa.html');
+  ok('CUI-ul apare in ambele documente', !!cuiT && !!cuiD);
+  ok('CUI identic in termeni si DPA' + (cuiT && cuiD && cuiT !== cuiD ? ' — ' + cuiT + ' vs ' + cuiD : ''),
+    !cuiT || !cuiD || cuiT === cuiD);
+
+  // DPA-ul trebuie sa acopere subiectele fara de care nu e un acord art. 28, ci un text frumos.
+  const dpa = fsx.readFileSync(pth.join(root, 'public', 'dpa.html'), 'utf8');
+  for (const [ce, rx] of [
+    ['subimputerniciti', /sub[iî]mputernicit/i],
+    ['instructiuni documentate', /instruc[țt]iunilor tale documentate/i],
+    ['notificarea incidentelor', /[îi]nc[ăa]lcare a securit[ăa][țt]ii/i],
+    ['stergere la incetare', /Anexa 3/],
+    ['transferuri internationale', /clauze contractuale standard/i],
+    ['CNP tratat explicit', /CNP/],
+  ]) ok('DPA acopera: ' + ce, rx.test(dpa));
+
+  // Furnizorii chiar folositi de cod trebuie sa fie DECLARATI (altfel lista e o fictiune).
+  const conf = fsx.readFileSync(pth.join(root, 'public', 'confidentialitate.html'), 'utf8');
+  const aiSrc = fsx.readFileSync(pth.join(root, 'src', 'aiExtractor.js'), 'utf8');
+  if (/'openai'/.test(aiSrc)) {
+    ok('OpenAI e folosit in cod, deci declarat in politica', /OpenAI/i.test(conf));
+    ok('...si in anexa de subimputerniciti', /OpenAI/i.test(dpa));
+  }
+  if (/anthropic/i.test(aiSrc)) ok('Anthropic declarat in politica', /Anthropic/i.test(conf));
+  const authSrc = fsx.readFileSync(pth.join(root, 'src', 'auth.js'), 'utf8');
+  if (/pwnedpasswords/.test(authSrc)) ok('verificarea parolelor la HIBP e declarata', /Pwned/i.test(conf));
+
+  // Un DPA pe care nimeni nu l-a acceptat nu e opozabil: ecranul de inscriere trebuie sa-l numeasca.
+  const idx = fsx.readFileSync(pth.join(root, 'public', 'index.html'), 'utf8');
+  const accept = (idx.match(/Prin crearea contului accep[țt]i[^<]*(?:<[^>]+>[^<]*)*?<\/p>/) || [''])[0];
+  ok('acceptarea la inscriere mentioneaza si DPA-ul', /dpa\.html/.test(accept));
+}
+
 section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift)');
 {
   const fsx = require('fs'); const pth = require('path');
@@ -4868,6 +4930,7 @@ section('Situatii financiare anuale (S1120/S1121) — randuri, invarianti, antet
   eq('F10 are 102 campuri (51 randuri x 2 coloane)', bil.CAMPURI_F10.length, 102);
   eq('F20 micro are 28 de campuri (14 randuri)', bil.CAMPURI_F20_MICRO.length, 28);
   eq('F20 complet are 176 de campuri (88 de randuri)', bil.CAMPURI_F20_COMPLET.length, 176);
+  eq('F10 complet are 208 campuri (104 randuri, S1122)', bil.CAMPURI_F10_COMPLET.length, 208);
   ok('campurile respecta tiparul <formular>_<rand><coloana>', bil.CAMPURI_F10.every((k) => /^F10_\d{4}$/.test(k)));
 
   let n = 0; const sd = buildSeedData(() => 'e' + (++n));
@@ -4877,21 +4940,24 @@ section('Situatii financiare anuale (S1120/S1121) — randuri, invarianti, antet
     intocmitNume: 'IONESCU MARIA', intocmitCalitate: '21', intocmitNr: '12345', auditStatut: '3',
   });
 
-  for (const cat of ['micro', 'mic']) {
+  for (const cat of ['micro', 'mic', 'mare']) {
     const s = bil.situatii(view, firma, 2026, cat);
     eq('antet complet -> nimic de reclamat (' + cat + ')', s.lipsa.length, 0);
     const R = s.f10[2];
     const g = (k) => R[k] || 0;
     // INVARIANTUL CENTRAL: identitatea de bilant pe care o verifica validatorul (regula F10_64).
     // Tine doar daca fiecare cont a cazut in EXACT UN rand, cu semnul corect.
-    const stanga = g('049');
-    const dreapta = g('004') + g('009') + g('010') - g('013') - g('016') - g('017') - g('018');
+    const complet = cat === 'mare';
+    const stanga = complet ? g('103') : g('049');
+    const dreapta = complet
+      ? g('025') + g('041') + g('042') - g('053') - g('064') - g('068') - g('079')
+      : g('004') + g('009') + g('010') - g('013') - g('016') - g('017') - g('018');
     eq('identitatea de bilant tine (' + cat + ')', stanga, dreapta);
     // Legatura impusa intre formulare: rezultatul din bilant = rezultatul din contul de profit
-    const randP = cat === 'mic' ? '069' : '008';
-    const randPi = cat === 'mic' ? '070' : '009';
+    const randP = cat === 'micro' ? '008' : '069';
+    const randPi = cat === 'micro' ? '009' : '070';
     eq('rezultatul din F10 = rezultatul din F20 (' + cat + ')',
-      g('043') - g('044'), s.f20[2][randP] - s.f20[2][randPi]);
+      complet ? g('097') - g('098') : g('043') - g('044'), s.f20[2][randP] - s.f20[2][randPi]);
     // Toate sumele sunt INTREGI — validatorul respinge zecimalele
     ok('toate randurile F10 sunt lei intregi (' + cat + ')',
       Object.values(R).every((x) => Number.isInteger(x)));
@@ -4902,7 +4968,7 @@ section('Situatii financiare anuale (S1120/S1121) — randuri, invarianti, antet
     ok('XML bine format (' + cat + ')', wellFormed(x));
     ok('radacina si namespace corecte (' + cat + ')',
       x.includes('<' + s.antet.formular.radacina + ' ') && x.includes(':' + s.antet.formular.ns + ':declaratie:'));
-    ok('contine toate campurile F10 (' + cat + ')', bil.CAMPURI_F10.every((k) => x.includes(k + '="')));
+    ok('contine toate campurile F10 (' + cat + ')', s.randuriF10.every((k) => x.includes(k + '="')));
     ok('niciun atribut gol (validatorul le respinge) (' + cat + ')', !/="\s*"/.test(x));
   }
 

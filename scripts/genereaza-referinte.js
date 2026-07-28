@@ -50,7 +50,7 @@ const firmaBil = Object.assign({}, v.company, {
   telefon: '0211234567', formaProprietate: '35', administrator: 'Popescu Ion',
   intocmitNume: 'Ionescu Maria', intocmitCalitate: '21', intocmitNr: '12345', auditStatut: '3',
 });
-for (const [cat, tip] of [['micro', 'S1120'], ['mic', 'S1121']]) {
+for (const [cat, tip] of [['micro', 'S1120'], ['mic', 'S1121'], ['mare', 'S1122']]) {
   const s = bilant.situatii(v, firmaBil, '2026', cat);
   if (s.lipsa.length) throw new Error(tip + ': antet incomplet — ' + s.lipsa.join('; '));
   w(tip, xml.bilantXml(s));

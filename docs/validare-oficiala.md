@@ -25,6 +25,7 @@ validatoarele curente din manifestul oficial ANAF (`versiuni.xml`).
 | D406 (SAF-T) | `Ro_SAFT_Schema` v2.4.9 (`AuditFileVersion` 2.4.9) | J2.2.18 (16-Feb-2026) | ✅ Validare fără erori — variantele **L** (lunară), **T** (trimestrială), **A** (active), **C** (stocuri) |
 | S1120 (situații financiare, microentități) | `s1120:declaratie:v3` | J4.0.1 | ✅ Validare fără erori |
 | S1121 (situații financiare, entități mici) | `s1121:declaratie:v3` | J4.0.4 | ✅ Validare fără erori |
+| S1122 (situații financiare, entități mijlocii și mari) | `s1122:declaratie:v3` | J4.0.4 | ✅ Validare fără erori |
 | e-Transport | `mfp:anaf:dgti:eTransport:declaratie:v2`     | XSD oficial `schema_ETR_v2_20230126.xsd` (v1.02) | ✅ Valid — **după corectarea a 8 neconformități**, vezi mai jos |
 
 > **SAF-T nu cere o integrare separată.** ANAF publică validatorul SAF-T pe pagină proprie, dar
@@ -41,7 +42,7 @@ Formularele se aleg după **categoria de entitate** (OMFP 1802/2014). `F10` (bil
 |---|---|---|---|
 | S1120 | prescurtat (51) | prescurtat (14) | microentități |
 | S1121 | prescurtat (51) | complet (88) | entități mici |
-| S1122 | complet (104) | complet (88) | mijlocii și mari — **neimplementat** |
+| S1122 | complet (104) | complet (88) | mijlocii și mari |
 
 Patru particularități pe care validatorul le impune și care nu se deduc din documentație:
 

@@ -190,6 +190,171 @@ function f10At(db, year, rezultatNet) {
   return absoarbeRezidul(f10Totals(base));
 }
 
+// ── F10 COMPLET (S1122, entitati mijlocii si mari) — 104 randuri ─────────────
+
+/**
+ * Bilantul COMPLET: aceleasi solduri, dar desfasurate pe randurile detaliate ale OMFP 1802/2014.
+ * Diferenta fata de cel prescurtat e granularitatea, nu continutul — de aceea totalurile ies
+ * identice, iar `f10CompletTotals` foloseste tot formulele validatorului.
+ *
+ * Unde aplicatia NU tine evidenta ceruta de formular (creante/datorii fata de entitati AFILIATE
+ * vs. ASOCIATE — nu exista marcaj de grup pe partener), randurile respective raman 0, iar sumele
+ * merg pe randul general (creante comerciale / alte datorii). E o pierdere de detaliu declarata,
+ * nu o eroare de sold: totalurile si identitatea de bilant raman exacte.
+ */
+function f10CompletBase(net) {
+  const R = {};
+  const add = (rand, val) => { R[rand] = round2((R[rand] || 0) + val); };
+  let rezNeinchis = 0;
+
+  for (const cod of Object.keys(net)) {
+    const v = net[cod];
+    if (Math.abs(v) < 0.005) continue;
+    const cl = classOf(cod);
+    if (cl === 6 || cl === 7) { rezNeinchis = round2(rezNeinchis - v); continue; }
+    if (cl >= 8) continue;
+
+    // ── A. IMOBILIZARI (clasa 2), nete de amortizari/ajustari ──
+    if (cl === 2) {
+      if (starts(cod, '201', '280 1', '2801')) { add('001', v); continue; }        // cheltuieli de constituire
+      if (starts(cod, '203', '2803')) { add('002', v); continue; }                 // cheltuieli de dezvoltare
+      if (starts(cod, '205', '208', '2805', '2808', '2905', '2908')) { add('003', v); continue; } // concesiuni, brevete, licente
+      if (starts(cod, '206', '2806')) { add('004', v); continue; }                 // active necorporale de explorare
+      if (starts(cod, '207', '2807', '2907')) { add('005', v); continue; }         // fond comercial
+      if (starts(cod, '233', '4094')) { add('006', v); continue; }                 // imobilizari necorporale in curs / avansuri
+      if (starts(cod, '211', '212', '2811', '2812', '2911', '2912')) { add('008', v); continue; } // terenuri si constructii
+      if (starts(cod, '213', '2813', '2913')) { add('009', v); continue; }         // instalatii tehnice si masini
+      if (starts(cod, '214', '2814', '2914')) { add('010', v); continue; }         // alte instalatii, utilaje si mobilier
+      if (starts(cod, '215', '2815', '2915')) { add('011', v); continue; }         // investitii imobiliare
+      if (starts(cod, '216', '2816')) { add('012', v); continue; }                 // active corporale de explorare
+      if (starts(cod, '217', '2817')) { add('013', v); continue; }                 // active biologice productive
+      if (starts(cod, '231', '2931')) { add('014', v); continue; }                 // imobilizari corporale in curs
+      if (starts(cod, '235', '2935')) { add('015', v); continue; }                 // investitii imobiliare in curs
+      if (starts(cod, '4093')) { add('016', v); continue; }                        // avansuri pentru imobilizari corporale
+      if (starts(cod, '261', '2961')) { add('018', v); continue; }                 // actiuni detinute la filiale
+      if (starts(cod, '2671', '2672')) { add('019', v); continue; }                // imprumuturi acordate entitatilor din grup
+      if (starts(cod, '262', '263', '2962')) { add('020', v); continue; }          // actiuni la entitati asociate/controlate
+      if (starts(cod, '2673', '2674')) { add('021', v); continue; }                // imprumuturi acordate entitatilor asociate
+      if (starts(cod, '265', '2965')) { add('022', v); continue; }                 // alte investitii detinute ca imobilizari
+      add('023', v); continue;                                                     // alte imprumuturi (2675-2679 etc.)
+    }
+    // ── B.I. STOCURI (clasa 3), nete de ajustari 39x ──
+    if (cl === 3) {
+      if (starts(cod, '30', '32', '390', '392')) { add('026', v); continue; }       // materii prime si materiale consumabile
+      if (starts(cod, '33', '393')) { add('027', v); continue; }                    // productia in curs de executie
+      add('028', v); continue;                                                      // produse finite si marfuri (34x-37x)
+    }
+    if (starts(cod, '4091')) { add('029', v); continue; }                            // avansuri pentru cumparari de stocuri
+    // ── C. CHELTUIELI IN AVANS (fara evidenta de scadenta -> integral „pana la un an") ──
+    if (starts(cod, '471')) { add('043', v); continue; }
+    // ── I. VENITURI IN AVANS ──
+    if (starts(cod, '475')) { add('070', -v); continue; }                            // subventii pentru investitii
+    if (starts(cod, '472')) { add('073', -v); continue; }                            // venituri inregistrate in avans
+    if (starts(cod, '478')) { add('076', -v); continue; }                            // venituri in avans / active prin transfer
+
+    // ── J. CAPITALURI PROPRII (clasa 1) ──
+    if (cl === 1) {
+      if (starts(cod, '1012')) { add('080', -v); continue; }
+      if (starts(cod, '1011')) { add('081', -v); continue; }
+      if (starts(cod, '1015')) { add('082', -v); continue; }
+      if (starts(cod, '1018')) { add('083', -v); continue; }
+      if (starts(cod, '1016')) { add('101', -v); continue; }                         // patrimoniul public
+      if (starts(cod, '1017')) { add('102', -v); continue; }                         // patrimoniul privat
+      if (starts(cod, '103')) { add('084', -v); continue; }
+      if (starts(cod, '104')) { add('086', -v); continue; }                          // prime de capital
+      if (starts(cod, '105')) { add('087', -v); continue; }                          // rezerve din reevaluare
+      if (starts(cod, '1061')) { add('088', -v); continue; }                         // rezerve legale
+      if (starts(cod, '1063')) { add('089', -v); continue; }                         // rezerve statutare
+      if (starts(cod, '106')) { add('090', -v); continue; }                          // alte rezerve
+      if (starts(cod, '109')) { add('092', v); continue; }                           // actiuni proprii (debitor)
+      if (starts(cod, '141')) { add('093', -v); continue; }
+      if (starts(cod, '149')) { add('094', v); continue; }
+      if (starts(cod, '117')) { add(v <= 0 ? '095' : '096', Math.abs(v)); continue; } // reportat C / D
+      if (starts(cod, '121')) { add(v <= 0 ? '097' : '098', Math.abs(v)); continue; } // exercitiu C / D
+      if (starts(cod, '129')) { add('099', v); continue; }                            // repartizarea profitului
+      if (starts(cod, '15')) { add(starts(cod, '1515') ? '066' : '067', -v); continue; } // provizioane
+      if (starts(cod, '161')) { add('056', -v); continue; }                            // imprumuturi din emisiuni de obligatiuni (>1 an)
+      if (starts(cod, '162', '166', '167', '168', '169')) { add('057', -v); continue; } // credite bancare si alte datorii >1 an
+      if (starts(cod, '16')) { add('063', -v); continue; }                             // rest grupa 16
+      add('084', -v); continue;                                                        // alt cont de clasa 1 -> alte elemente de capitaluri
+    }
+    // ── B.III. INVESTITII PE TERMEN SCURT ──
+    if (starts(cod, '501', '591')) { if (v >= 0) add('037', v); else add('052', -v); continue; }
+    if (starts(cod, '50', '59')) { if (v >= 0) add('038', v); else add('052', -v); continue; }
+    // ── B.IV. CASA SI CONTURI LA BANCI; sold creditor = descoperit de cont (datorie curenta) ──
+    if (starts(cod, '51', '52', '53', '54')) { if (v >= 0) add('040', v); else add('046', -v); continue; }
+    // ── D. DATORII pana la un an / creante, dupa SEMN ──
+    if (v > 0) {
+      if (starts(cod, '411', '413', '418')) { add('031', v); continue; }               // creante comerciale
+      if (starts(cod, '456')) { add('035', v); continue; }                             // capital subscris si nevarsat
+      add('034', v); continue;                                                         // alte creante
+    }
+    const s = -v;
+    if (starts(cod, '419')) { add('047', s); continue; }                               // avansuri incasate in contul comenzilor
+    if (starts(cod, '401', '404', '408')) { add('048', s); continue; }                  // datorii comerciale — furnizori
+    if (starts(cod, '403', '405')) { add('049', s); continue; }                          // efecte de comert de platit
+    add('052', s);                                                                      // alte datorii (fiscale, sociale, 43x/44x/45x/46x)
+  }
+
+  if (Math.abs(rezNeinchis) >= 0.005) {
+    const net121 = round2((R['097'] || 0) - (R['098'] || 0) + rezNeinchis);
+    R['097'] = net121 > 0 ? net121 : 0;
+    R['098'] = net121 < 0 ? round2(-net121) : 0;
+  }
+  return R;
+}
+
+/** Totalurile bilantului complet, cu formulele validatorului (nu prin insumare proprie). */
+function f10CompletTotals(R) {
+  const g = (k) => round2(R[k] || 0);
+  const set = (k, val) => { R[k] = round2(val); };
+  set('007', g('001') + g('002') + g('003') + g('004') + g('005') + g('006'));         // imob. necorporale
+  set('017', g('008') + g('009') + g('010') + g('011') + g('012') + g('013') + g('014') + g('015') + g('016'));
+  set('024', g('018') + g('019') + g('020') + g('021') + g('022') + g('023'));         // imob. financiare
+  set('025', g('007') + g('017') + g('024'));                                          // A. ACTIVE IMOBILIZATE
+  set('030', g('026') + g('027') + g('028') + g('029'));                               // stocuri
+  set('036', g('031') + g('032') + g('033') + g('034') + g('035') + g('301'));         // creante
+  set('039', g('037') + g('038'));                                                     // investitii pe termen scurt
+  set('041', g('030') + g('036') + g('039') + g('040'));                               // B. ACTIVE CIRCULANTE
+  set('042', g('043') + g('044'));                                                     // C. CHELTUIELI IN AVANS
+  set('053', g('045') + g('046') + g('047') + g('048') + g('049') + g('050') + g('051') + g('052'));
+  set('069', g('070') + g('071')); set('072', g('073') + g('074')); set('075', g('076') + g('077'));
+  set('079', g('069') + g('072') + g('075') + g('078'));                               // I. VENITURI IN AVANS
+  set('054', g('041') + g('043') - g('053') - g('070') - g('073') - g('076'));         // E. active circ. nete
+  set('055', g('025') + g('044') + g('054'));                                          // F. total active minus datorii curente
+  set('064', g('056') + g('057') + g('058') + g('059') + g('060') + g('061') + g('062') + g('063'));
+  set('068', g('065') + g('066') + g('067'));                                          // H. PROVIZIOANE
+  set('085', g('080') + g('081') + g('082') + g('083') + g('084'));                    // capital
+  set('091', g('088') + g('089') + g('090'));                                          // rezerve
+  set('100', g('085') + g('086') + g('087') + g('091') - g('092') + g('093') - g('094')
+    + g('095') - g('096') + g('097') - g('098') - g('099'));                           // capitaluri proprii
+  set('103', g('100') + g('101') + g('102'));                                          // CAPITALURI — TOTAL
+  return R;
+}
+
+/** Reziduul de rotunjire pentru bilantul complet (acelasi principiu ca la cel prescurtat). */
+function absoarbeRezidulComplet(R) {
+  const g = (k) => R[k] || 0;
+  const rezid = (g('025') + g('041') + g('042') - g('053') - g('064') - g('068') - g('079')) - g('103');
+  if (!rezid) return R;
+  const reportatNet = g('095') - g('096') + rezid;
+  R['095'] = reportatNet > 0 ? reportatNet : 0;
+  R['096'] = reportatNet < 0 ? -reportatNet : 0;
+  return f10CompletTotals(R);
+}
+
+/** Randurile F10 COMPLET pentru un an fiscal, in lei intregi. */
+function f10CompletAt(db, year, rezultatNet) {
+  const base = f10CompletBase(finalBalances(db, String(year) + '-12'));
+  for (const k of Object.keys(base)) base[k] = intLei(base[k]);
+  if (rezultatNet != null) {
+    const rez = intLei(rezultatNet);
+    base['097'] = rez > 0 ? rez : 0;
+    base['098'] = rez < 0 ? -rez : 0;
+  }
+  return absoarbeRezidulComplet(f10CompletTotals(base));
+}
+
 // ── F20: CONTUL DE PROFIT SI PIERDERE ────────────────────────────────────────
 
 /** Rulajele claselor 6/7 pentru un an, pe cod de cont (fara inchiderile 6/7 -> 121). */
@@ -386,6 +551,7 @@ const nom = require('./bilantNomenclator');
 const FORMULARE = {
   micro: { cod: 'S1120', radacina: 'Bilant1120', ns: 's1120', tipBIL: 'UU' },
   mic: { cod: 'S1121', radacina: 'Bilant1121', ns: 's1121', tipBIL: 'BS' },
+  mare: { cod: 'S1122', radacina: 'Bilant1122', ns: 's1122', tipBIL: 'BL' },
 };
 
 /**
@@ -468,11 +634,13 @@ function antet(firma, year, categorie, totalCapital) {
 const interval = (de, la) => Array.from({ length: la - de + 1 }, (_, i) => String(de + i).padStart(3, '0'));
 const campuri = (prefix, randuri) => randuri.flatMap((r) => [prefix + '_' + r + '1', prefix + '_' + r + '2']);
 
-const RANDURI_F10 = [...interval(1, 49), '301', '302'];                  // 51
+const RANDURI_F10 = [...interval(1, 49), '301', '302'];                  // 51 (prescurtat)
+const RANDURI_F10_COMPLET = [...interval(1, 103), '301'];                // 104 (S1122)
 const RANDURI_F20_MICRO = [...interval(1, 9), ...interval(301, 305)];    // 14
 const RANDURI_F20_COMPLET = [...interval(1, 70), ...interval(301, 318)]; // 88
 
 const CAMPURI_F10 = campuri('F10', RANDURI_F10);
+const CAMPURI_F10_COMPLET = campuri('F10', RANDURI_F10_COMPLET);
 const CAMPURI_F20_MICRO = campuri('F20', RANDURI_F20_MICRO);
 const CAMPURI_F20_COMPLET = campuri('F20', RANDURI_F20_COMPLET);
 
@@ -482,29 +650,35 @@ const CAMPURI_F20_COMPLET = campuri('F20', RANDURI_F20_COMPLET);
  * necompletate; cine cheama decide daca refuza generarea (ruta o face).
  */
 function situatii(view, firma, year, categorie) {
-  const cat = categorie === 'mic' ? 'mic' : 'micro';
-  const f20fn = cat === 'mic' ? f20Complet : f20Micro;
-  const randProfit = cat === 'mic' ? '069' : '008';
-  const randPierdere = cat === 'mic' ? '070' : '009';
+  const cat = ['mic', 'mare'].includes(categorie) ? categorie : 'micro';
+  const complet = cat !== 'micro';                 // F20 complet la 'mic' SI la 'mare' (identice)
+  const bilComplet = cat === 'mare';               // F10 complet doar la 'mare'
+  const f20fn = complet ? f20Complet : f20Micro;
+  const randProfit = complet ? '069' : '008';
+  const randPierdere = complet ? '070' : '009';
 
   const f20cur = f20fn(view, year);
   const f20pre = f20fn(view, Number(year) - 1);
-  // rezultatul din F20 e AUTORITATEA; bilantul il preia (vezi f10At)
-  const f10cur = f10At(view, year, f20cur[randProfit] - f20cur[randPierdere]);
-  const f10pre = f10At(view, Number(year) - 1, f20pre[randProfit] - f20pre[randPierdere]);
+  const rez = (r) => r[randProfit] - r[randPierdere];
+  // rezultatul din F20 e AUTORITATEA; bilantul il preia (vezi f10At / f10CompletAt)
+  const f10fn = bilComplet ? f10CompletAt : f10At;
+  const f10cur = f10fn(view, year, rez(f20cur));
+  const f10pre = f10fn(view, Number(year) - 1, rez(f20pre));
 
-  const a = antet(firma, year, cat, f10cur['029']);
+  // suma de control (totalPlata_A) = randul de CAPITAL: 029 la prescurtat, 085 la complet
+  const a = antet(firma, year, cat, f10cur[bilComplet ? '085' : '029']);
   return {
     antet: a, lipsa: a.lipsa, categorie: cat,
     f10: { 1: f10pre, 2: f10cur },
     f20: { 1: f20pre, 2: f20cur },
-    randuriF10: CAMPURI_F10,
-    randuriF20: cat === 'mic' ? CAMPURI_F20_COMPLET : CAMPURI_F20_MICRO,
+    randuriF10: bilComplet ? CAMPURI_F10_COMPLET : CAMPURI_F10,
+    randuriF20: complet ? CAMPURI_F20_COMPLET : CAMPURI_F20_MICRO,
   };
 }
 
 module.exports = {
-  f10Base, f10Totals, f10At, f20Micro, f20Complet, plAcc, antet, situatii, FORMULARE,
-  RANDURI_F10, RANDURI_F20_MICRO, RANDURI_F20_COMPLET,
-  CAMPURI_F10, CAMPURI_F20_MICRO, CAMPURI_F20_COMPLET,
+  f10Base, f10Totals, f10At, f10CompletBase, f10CompletTotals, f10CompletAt,
+  f20Micro, f20Complet, plAcc, antet, situatii, FORMULARE,
+  RANDURI_F10, RANDURI_F10_COMPLET, RANDURI_F20_MICRO, RANDURI_F20_COMPLET,
+  CAMPURI_F10, CAMPURI_F10_COMPLET, CAMPURI_F20_MICRO, CAMPURI_F20_COMPLET,
 };

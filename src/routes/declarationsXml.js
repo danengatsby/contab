@@ -139,7 +139,7 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     const year = String(req.query.year || (new Date().getFullYear() - 1));
     const implicit = fiscalProfile.build(v.company).micro ? 'micro' : 'mic';
-    const categorie = req.query.categorie === 'mic' ? 'mic' : req.query.categorie === 'micro' ? 'micro' : implicit;
+    const categorie = ['micro', 'mic', 'mare'].includes(req.query.categorie) ? req.query.categorie : implicit;
     const s = bilant.situatii(v, v.company, year, categorie);
     if (s.lipsa.length) {
       return res.status(400).send('Situațiile financiare nu pot fi generate — completează în Setări → Firmă: '
