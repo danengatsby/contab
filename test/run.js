@@ -2877,6 +2877,32 @@ section('Copie offsite pe stocare obiect (src/offsite.js)');
 
   // Codificarea caii pastreaza „/" dar codifica restul (un nume de fisier cu spatiu ar rupe semnatura)
   eq('caile se codifica pe segmente', off.uriEncodePath('contab/full 2026.zip'), 'contab/full%202026.zip');
+
+  // ── Avertismentul de CONFIDENTIALITATE ──────────────────────────────────────────────────────
+  // Pana la el, o copie plecata IN CLAR trecea complet tacut: singurul avertisment din backup.js
+  // se declansa cand NU exista nicio destinatie, iar cu e-mailul configurat si fara cheie logul
+  // spunea „Offsite email OK". Masurat pe productie la 2026-07-29: exact asta se intampla zilnic.
+  const avert = (s) => off.confidentialityWarning(s);
+  ok('copie trimisa FARA criptare -> avertisment',
+    /NECRIPTATA/.test(avert({ sent: true, encrypted: false, viaEmail: true })));
+  ok('...care numeste ce contine arhiva (nu doar „neconfigurat")',
+    /contab\.sql/.test(avert({ sent: true, encrypted: false, viaEmail: true })));
+  ok('...si spune ce ai de facut', /CONTAB_BACKUP_KEY/.test(avert({ sent: true, encrypted: false })));
+  eq('copie trimisa CRIPTAT -> tacere', avert({ sent: true, encrypted: true, viaEmail: true }), '');
+  eq('nimic trimis -> tacere (alt avertisment acopera cazul)', avert({ sent: false, encrypted: false }), '');
+  eq('apel fara argumente nu arunca', avert(), '');
+  ok('mentioneaza cutia postala doar cand chiar pleaca pe e-mail',
+    /cutie postala/.test(avert({ sent: true, encrypted: false, viaEmail: true }))
+    && !/cutie postala/.test(avert({ sent: true, encrypted: false, viaEmail: false })));
+
+  // scripts/backup.js chiar CHEAMA garda SI ii foloseste rezultatul — altfel functia ar fi
+  // corecta si moarta. Verificarea „apare numele functiei" nu ajunge: la mutatia de control am
+  // scos linia care avertizeaza si testul a ramas verde, fiindca APELUL era inca acolo.
+  const bk = require('fs').readFileSync(require('path').join(__dirname, '..', 'scripts', 'backup.js'), 'utf8');
+  const numeVar = (bk.match(/const\s+(\w+)\s*=\s*offsite\.confidentialityWarning\(/) || [])[1];
+  ok('backup.js cheama garda de confidentialitate', !!numeVar);
+  ok('...si chiar AVERTIZEAZA cu rezultatul ei',
+    !!numeVar && new RegExp('warn\\(\\s*' + numeVar + '\\s*\\)').test(bk));
 }
 
 section('Preluare firma din alt program (src/migrare.js)');

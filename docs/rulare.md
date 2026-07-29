@@ -334,6 +334,61 @@ dimensiunea dump-ului; ce rămâne de scurtat e pasul manual de mai sus.
 > Transportul efectiv e e-mailul către `CONTAB_BACKUP_EMAIL_TO`, cu `db.json` + `contab.sql` +
 > `uploads/` în clar. Codul pentru varianta criptată pe S3 există și e testat — doar nu e
 > configurat. Până când este, procedura de mai jos descrie o instalare care nu e în funcțiune.
+> Backupul zilnic **avertizează** acum explicit când copia pleacă necriptată — nu mai raportează
+> doar „Offsite email OK".
+
+### Activarea copiei offsite criptate (pași exacți)
+
+Totul e configurare — codul există și e testat. **Verifică oricând starea cu:**
+
+```bash
+npm run offsite-check     # 0 = verde | 1 = ceva chiar nu merge | 2 = neconfigurat
+```
+
+Comanda face exact drumul backupului real, dar pe un obiect de probă de câteva zeci de octeți:
+criptare + descifrare cu comparare de amprentă, apoi `PUT` și `GET` înapoi din bucket. Nu atinge
+arhivele reale și nu trimite e-mail. Rulează-o **după fiecare pas de mai jos**, ca să nu afli
+dimineața din log că ai greșit o literă în secret.
+
+**1. Cheia de criptare.** Generează una și pune-o în `.env`:
+
+```bash
+openssl rand -base64 48        # 64 de caractere, suficient pentru AES-256 prin PBKDF2
+```
+
+```
+CONTAB_BACKUP_KEY=<valoarea generată>
+```
+
+> **Cheia nu se ține lângă backup.** Nu în același bucket, nu în aceeași cutie poștală, nu în
+> același furnizor. Dacă se pierde, arhivele sunt irecuperabile — acesta e și scopul, și riscul.
+> Păstreaz-o într-un manager de parole separat, plus o copie fizică offline.
+
+**2. Stocarea obiect.** Orice furnizor S3-compatibil (Backblaze B2, Hetzner, Cloudflare R2, MinIO).
+Creează un bucket **privat**, cu versionare și retenție dacă furnizorul le oferă, apoi o cheie de
+acces limitată **doar** la acel bucket:
+
+```
+CONTAB_OFFSITE_ENDPOINT=https://s3.eu-central-003.backblazeb2.com
+CONTAB_OFFSITE_BUCKET=contab-backup
+CONTAB_OFFSITE_KEY=<access key>
+CONTAB_OFFSITE_SECRET=<secret key>
+CONTAB_OFFSITE_REGION=eu-central-003        # opțional, implicit us-east-1
+CONTAB_OFFSITE_PREFIX=contab                # opțional, implicit „contab"
+```
+
+Semnarea e **AWS SigV4 nativă**, fără `rclone` și fără dependențe noi — verificată atât față de
+vectorii oficiali, cât și cap-coadă împotriva unui server S3 real (MinIO local, 2026-07-29):
+credențiale greșite dau `SignatureDoesNotMatch`, bucket inexistent dă `NoSuchBucket`.
+
+**3. Confirmă și lasă e-mailul ca notificare.** După `npm run offsite-check` verde, e-mailul poate
+rămâne pentru **notificare**, dar nu mai e nevoie să fie transportul datelor: arhiva criptată pleacă
+în bucket. Prima rulare reală se vede în `logs/backup.log` ca `Offsite S3 OK -> …(verificat)`.
+
+Ce se întâmplă dacă ceva cedează: criptarea e **fail-closed** (dacă `openssl` eșuează iar cheia e
+setată, copia offsite **nu pleacă** — refuz deliberat de a trimite în clar), iar urcarea se
+verifică descărcând obiectul înapoi și comparând amprenta, fiindcă o urcare care a truncat fișierul
+arată identic în log cu una bună.
 
 ### Procedura de restaurare, pas cu pas
 

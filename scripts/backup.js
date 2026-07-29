@@ -307,6 +307,9 @@ async function main() {
   if (!offsiteConfigured) warn('ATENTIE: nicio copie offsite configurata. Recomandat: stocare obiect '
     + '(CONTAB_OFFSITE_ENDPOINT/BUCKET/KEY/SECRET) + criptare (CONTAB_BACKUP_KEY). '
     + 'Alternative: CONTAB_BACKUP_EMAIL_TO (limitat ca dimensiune), RCLONE_REMOTE (cere rclone instalat).');
+  // O copie care a PLECAT, dar in clar, nu mai trece tacut (vezi offsite.confidentialityWarning).
+  const avertismentConf = offsite.confidentialityWarning({ sent: offsiteOk, encrypted: !!BK_KEY, viaEmail: !!EMAIL_TO });
+  if (avertismentConf) warn(avertismentConf);
   else if (!offsiteOk) process.exitCode = 1; // offsite configurat dar esuat -> semnaleaza in cron log
   if (alertaEsuata) {
     scrieMarcaj();               // urma ramane vizibila in /api/metrics si in raportul zilnic
