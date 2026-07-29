@@ -4,6 +4,7 @@
 
 const { L, F, TROZ } = require('./helpers');
 const { round2 } = require('../util');
+const fiscal = require('../fiscal'); // cotele NU se hardcodeaza — sursa unica e fiscalConfig
 
 module.exports = [
   // ───────────── IMPOZIT RETINUT LA SURSA (pentru D205) ─────────────
@@ -13,12 +14,12 @@ module.exports = [
     grup: 'Retineri la sursa',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'baza', label: 'Chirie bruta (lei)', type: 'number', required: true },
-      { name: 'cota', label: 'Cota impozit (%)', type: 'number', default: 10 },
+      { name: 'cota', label: 'Cota impozit (%)', type: 'number', default: fiscal.FISCAL.impozitVenit },
       { name: 'cont', label: 'Platit din', type: 'select', options: TROZ, default: '5121' }],
     build: (d) => {
       // Din 2024: venitul net din chirii = brut - 20% cota forfetara; impozitul (10%) se aplica
       // la NET => efectiv 8% din brut (art. 84 Cod fiscal, OG 16/2022 rev.).
-      const impozit = round2((d.baza || 0) * 0.8 * (d.cota || 10) / 100);
+      const impozit = round2((d.baza || 0) * 0.8 * (d.cota || fiscal.FISCAL.impozitVenit) / 100);
       const net = round2((d.baza || 0) - impozit);
       const lines = [];
       if (net > 0) lines.push(L('612', d.cont || '5121', net, 'Chirie platita persoanei fizice (dupa retinere)'));
@@ -32,10 +33,10 @@ module.exports = [
     grup: 'Retineri la sursa',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'baza', label: 'Premiu brut (lei)', type: 'number', required: true },
-      { name: 'cota', label: 'Cota impozit (%)', type: 'number', default: 10 },
+      { name: 'cota', label: 'Cota impozit (%)', type: 'number', default: fiscal.FISCAL.impozitVenit },
       { name: 'cont', label: 'Platit din', type: 'select', options: TROZ, default: '5311' }],
     build: (d) => {
-      const impozit = round2((d.baza || 0) * (d.cota || 10) / 100);
+      const impozit = round2((d.baza || 0) * (d.cota || fiscal.FISCAL.impozitVenit) / 100);
       const net = round2((d.baza || 0) - impozit);
       const lines = [];
       if (net > 0) lines.push(L('623', d.cont || '5311', net, 'Premiu acordat persoanei fizice (net)'));

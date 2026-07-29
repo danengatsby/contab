@@ -23,6 +23,9 @@ const assetsLib = require('./assets');
 // sute de ms — adica ar ingheta TOATE celelalte cereri cat timp ruleaza. Variantele *Async cedeaza
 // event loop-ul la fiecare SAFT_YIELD_EVERY iteratii (fara infra, fara worker), pastrand output-ul
 // byte-identic cu cel sincron. La volume mici (productia normala) yield-ul e neglijabil.
+// La cate randuri cedeaza generarea asincrona controlul buclei de evenimente. Implicit 2000:
+// destul de rar cat sa nu coste, destul de des cat serverul sa ramana receptiv pe un SAF-T mare.
+// CONTAB_SAFT_YIELD_EVERY il coboara in teste, ca sa se declanseze cedari reale pe date mici.
 const SAFT_YIELD_EVERY = Number(process.env.CONTAB_SAFT_YIELD_EVERY || 2000);
 const microYield = () => new Promise((resolve) => setImmediate(resolve));
 const stocksLib = require('./stocks');

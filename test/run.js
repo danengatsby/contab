@@ -3780,6 +3780,36 @@ const vam = getType('import_vamal');
 eq('import vamal: cota TVA implicita = tvaStandard', (vam.fields.find((f) => f.name === 'cota') || {}).default, fiscal.FISCAL.tvaStandard);
 // poarta negativa: TVA-ul standard nu mai e hardcodat ca 21 in documentTypes
 ok('documentTypes: fara cota TVA hardcodata (default: 21 / || 21)', !/default: 21\b/.test(dtSrc) && !/\|\| 21\)/.test(dtSrc));
+// ...si generalizarea ei: NICIO cota din fiscalConfig nu are voie sa apara ca numar scris de mana.
+// Varianta de mai sus era ancorata pe valoarea 21, deci vedea doar TVA-ul standard: masurat, doua
+// cote de impozit pe venit (art. 78) stateau hardcodate ca `default: 10` si `d.cota || 10`, adica
+// exact tiparul pe care poarta il prinde pentru 21. Lista de cote se DERIVA din fiscalConfig, deci
+// nu drifteaza cand se adauga una noua sau se schimba o valoare.
+{
+  const valori = new Set(Object.keys(fconf.RATES)
+    .filter((k) => /^(tva|impozit|cas|cass|cam|protocol|social|auto|sponsorizare|dobanzi)/i.test(k))
+    .map((k) => Number(fconf.RATES[k]))
+    .filter((v) => Number.isFinite(v) && v > 0 && v <= 100 && Number.isInteger(v)));
+  const hard = [];
+  for (const f of require('fs').readdirSync(dtDir).filter((x) => x.endsWith('.js'))) {
+    const src = require('fs').readFileSync(require('path').join(dtDir, f), 'utf8');
+    src.split('\n').forEach((ln, i) => {
+      // Linia trebuie sa fie DESPRE o cota. Fara conditia asta, regula raporta
+      // `const durata = Number(d.durata) || 5` (ani de ajustare la bunuri de capital, art. 305)
+      // doar fiindca 5 coincide cu cota redusa de TVA — un numar nu e o cota prin valoarea lui,
+      // ci prin ce denumeste.
+      if (!/\b(cota|pct|procent|rate)\b/i.test(ln)) return;
+      // pozitiile in care un numar chiar E o cota: valoarea implicita a campului sau rezerva din `||`
+      for (const m of ln.matchAll(/(?:default:\s*|\|\|\s*)(\d{1,2})\b/g)) {
+        if (valori.has(Number(m[1]))) hard.push(f + ':' + (i + 1) + ' → ' + ln.trim().slice(0, 70));
+      }
+    });
+  }
+  ok('documentTypes: nicio cota din fiscalConfig scrisa de mana'
+    + (hard.length ? ' — ' + hard.slice(0, 3).join(' | ') : ''), hard.length === 0);
+  ok('poarta isi ia cotele din fiscalConfig, nu dintr-o lista scrisa de mana',
+    valori.has(Number(fconf.RATES.tvaStandard)) && valori.has(Number(fconf.RATES.impozitVenit)) && valori.size >= 4);
+}
 
 section('Modularizare frontend: vizualizator documente (Etapa 8, public/viewer.js)');
 const viewerJs = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'viewer.js'), 'utf8');
@@ -5474,6 +5504,47 @@ section('Docs: documentatia nu contrazice configuratia reala (fara drift)');
     for (const m of rd(doc).matchAll(/\bCONTAB_[A-Z0-9_]+/g)) if (!cod.includes(m[0])) envLipsa.push(doc + ': ' + m[0]);
   }
   ok('fiecare variabila CONTAB_* documentata exista in cod' + (envLipsa.length ? ' — ' + [...new Set(envLipsa)].join(', ') : ''), envLipsa.length === 0);
+
+  // 3b) …si DIRECTIA INVERSA: fiecare variabila CITITA din mediu e si explicata undeva.
+  // Poarta de mai sus prinde doar knob-urile documentate care au disparut din cod. Cealalta
+  // directie driftează tacut: masurat inainte de aceasta verificare, 10 din 65 de variabile nu
+  // erau explicate NICAIERI — printre ele `CONTAB_SKIP_LOCK` (dezactiveaza garda single-instance)
+  // si pragurile de alerta ale cozii de persistenta. Un knob nedocumentat exista doar pentru cine
+  // l-a scris.
+  // „Explicata" = in documentatia centrala SAU intr-o linie de COMENTARIU (cineva a scris o
+  // propozitie despre ea, fie si in antetul scriptului care o detine) — nu doar folosita.
+  const fisiereCod = [];
+  const strange = (dir) => {
+    for (const f of fsd.readdirSync(pd.join(root, dir), { withFileTypes: true })) {
+      const rel = dir + '/' + f.name;
+      if (f.isDirectory()) { if (!/node_modules|^\.git|^data/.test(f.name)) strange(rel); continue; }
+      if (/\.(js|mjs|sh)$/.test(f.name)) fisiereCod.push(rel);
+    }
+  };
+  for (const d of ['src', 'scripts', 'test']) strange(d);
+  fisiereCod.push('server.js', 'ecosystem.config.js');
+  const citite = new Set(); const explicate = new Set();
+  for (const f of fisiereCod) {
+    const p = pd.join(root, f);
+    if (!fsd.existsSync(p)) continue;
+    const c = fsd.readFileSync(p, 'utf8');
+    for (const m of c.matchAll(/process\.env\.(CONTAB_[A-Z0-9_]+)/g)) citite.add(m[1]);
+    for (const m of c.matchAll(/\$\{?(CONTAB_[A-Z0-9_]+)/g)) citite.add(m[1]);
+    for (const ln of c.split('\n')) {
+      const s = ln.trim();
+      if (s.startsWith('#') || s.startsWith('//') || s.startsWith('*')) {
+        for (const m of ln.matchAll(/\b(CONTAB_[A-Z0-9_]+)/g)) explicate.add(m[1]);
+      }
+    }
+  }
+  // `.env.example` E documentatia canonica a variabilelor de mediu, chiar daca nu e un .md —
+  // fara el poarta ar cere ca fiecare knob sa fie explicat si intr-un ghid, ceea ce ar impinge
+  // spre duplicare, nu spre claritate.
+  const docText = TOATE_DOCS.map(rd).join('\n') + '\n' + rd('.env.example');
+  const orfane = [...citite].filter((v) => !explicate.has(v) && !docText.includes(v)).sort();
+  ok('fiecare variabila CONTAB_* citita din mediu e explicata undeva'
+    + (orfane.length ? ' — NEEXPLICATE: ' + orfane.join(', ') : ''), orfane.length === 0);
+  ok('poarta chiar vede variabilele din mediu (nu scaneaza o lista goala)', citite.size > 40);
 
   // 4) Versiunile de Node din documente = matricea CI + minimul din `engines`.
   //    „CI ruleaza pe Node 18 si 20" a supravietuit trecerii CI-ului pe 22/24 exact fiindca nimic
