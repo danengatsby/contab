@@ -2995,6 +2995,35 @@ section('Copie offsite pe stocare obiect (src/offsite.js)');
   ok('backup.js cheama garda de confidentialitate', !!numeVar);
   ok('...si chiar AVERTIZEAZA cu rezultatul ei',
     !!numeVar && new RegExp('warn\\(\\s*' + numeVar + '\\s*\\)').test(bk));
+
+  // ── O VERIFICARE PICATA NU ARE VOIE SA ANULEZE PROTECTIA ────────────────────────────────────
+  // Drill-ul nativ PG e o verificare a unei cai de restaurare SECUNDARE, iar pasul de dupa el e
+  // copia OFFSITE. Varianta veche facea `process.exit(1)` la esecul drill-ului, deci arhiva zilei
+  // nu mai pleca nicaieri — desi trecuse si verificarea arhivei si drill-ul pe db.json. Chiar s-a
+  // intamplat, pe 2026-07-28 (rolul pg lipsea sub cron): in log lipseste linia „Offsite email OK",
+  // singura zi din serie fara ea.
+  const iDrill = bk.indexOf('RESTAURARE NATIVA PG ESUATA');
+  const iOffsite = bk.indexOf('// 3) offsite');
+  ok('poarta gaseste ambele repere in backup.js', iDrill > 0 && iOffsite > iDrill);
+  // Comentariile se scot INAINTE de verificare: prima versiune a portii a picat pe propriul
+  // comentariu explicativ („NU process.exit(1) aici"), adica pe text, nu pe cod. Aceeasi capcana
+  // ca la poarta de CI, care trecea verde pe baza unei mentiuni intr-un comentariu.
+  const faraComentarii = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const ramuraDrill = faraComentarii(bk.slice(iDrill, iOffsite));
+  ok('esecul drill-ului nativ NU opreste rularea inainte de offsite',
+    !/process\.exit\(/.test(ramuraDrill));
+  ok('...dar rularea e marcata ca nereusita (ajunge in logul cron si in raportul zilnic)',
+    /process\.exitCode\s*=\s*1/.test(ramuraDrill));
+
+  // ...iar celelalte doua opriri RAMAN: acolo arhiva insasi e nefolosibila, deci trimiterea ei
+  // offsite ar fi si inutila si inselatoare. Distinctia e deliberata, nu o inconsecventa — de aceea
+  // se verifica in ambele sensuri, ca nimeni sa nu „uniformizeze" toate trei intr-o direcție.
+  const iVerif = bk.indexOf('ARHIVA NERESTAURABILA');
+  const iDrillJson = bk.indexOf('DRILL RESTAURARE ESUAT');
+  ok('arhiva nerestaurabila opreste rularea (nu trimitem o arhiva stricata)',
+    /process\.exit\(1\)/.test(bk.slice(iVerif, iDrillJson)));
+  ok('drill-ul pe db.json picat opreste si el rularea',
+    /process\.exit\(1\)/.test(bk.slice(iDrillJson, iDrill)));
 }
 
 section('Preluare firma din alt program (src/migrare.js)');
