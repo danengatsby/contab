@@ -4756,6 +4756,35 @@ section('Garda node:sqlite (driverul implicit cere Node >= 22.13)');
   ok('package.json declara engines.node >= 22.13', !!(pkg.engines && pkg.engines.node === '>=22.13'));
 }
 
+section('Conexiunea locala pg: rolul e EXPLICIT (defect vizibil doar sub cron)');
+{
+  // Biblioteca `pg` deduce utilizatorul din process.env.USER. Cron ruleaza cu un mediu minimal,
+  // FARA USER — acolo pachetul de start pleaca fara rol si serverul raspunde „no PostgreSQL user
+  // name specified in startup packet". `psql` (libpq) citeste passwd-ul, deci NU are problema:
+  // de-aia drill-ul de restaurare nativa rejuca dump-ul cu succes si abia verificarea de dupa el
+  // pica — si numai in productie, sub cron. Orice proba manuala (cu USER setat) il rata.
+  const { localPgConfig } = require('../src/storePg');
+  const uSave = process.env.USER; const pgSave = process.env.PGUSER;
+  delete process.env.USER; delete process.env.PGUSER;
+  const faraMediu = localPgConfig('baza_x');
+  process.env.PGUSER = 'rol_explicit';
+  const cuPguser = localPgConfig();
+  if (uSave === undefined) delete process.env.USER; else process.env.USER = uSave;
+  if (pgSave === undefined) delete process.env.PGUSER; else process.env.PGUSER = pgSave;
+
+  ok('rolul e pus chiar fara USER/PGUSER in mediu (sursa: passwd, nu mediul)', !!faraMediu.user);
+  eq('baza ceruta explicit e respectata', faraMediu.database, 'baza_x');
+  ok('conexiunea ramane pe socketul local (autentificare peer)', /^\//.test(faraMediu.host));
+  eq('PGUSER, cand exista, are prioritate', cuPguser.user, 'rol_explicit');
+
+  // Drill-ul nu-si mai rescrie propria conventie de conectare: doua copii chiar au driftat, iar
+  // cea din drill ramasese fara `user`. Acum o importa din storePg — sursa unica.
+  const drillSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'pgRestoreDrill.js'), 'utf8');
+  ok('drill-ul importa conventia din storePg, nu si-o rescrie', /localPgConfig/.test(drillSrc));
+  ok('...si nu mai construieste clientul cu host/database scrise de mana',
+    !/new Client\(\{\s*host:/.test(drillSrc));
+}
+
 section('Joburi periodice opribile (src/jobs.js: unref + stop)');
 {
   // Intervalele joburilor nu au voie sa tina un proces in viata sau sa "scape" dintr-un test:

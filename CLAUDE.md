@@ -22,6 +22,8 @@ node test/anaf.js             # reziliență ANAF + poll SPV (async, stub-uri, f
 npm run seed                  # încarcă exemplul din ghid (S.C. EXEMPLU PROD S.R.L., 2026-06)
 npm run e2e                   # E2E pe live; pe acest server rulează prin Docker (vezi antetul scripts/e2e.mjs)
 npm run e2e-izolat            # E2E pe instanță PROPRIE (roluri, resetare parolă, 2FA, importuri, SPV, restaurare, toate declarațiile)
+npm run test-pg               # suita pe driverul de PRODUCȚIE (pg): pornește/curăță singură baza
+npm run rto-drill             # DRILL DE RTO: restaurează ultima arhivă și cronometrează revenirea
 sh scripts/poarta-fiscala.sh  # POARTA FISCALĂ — obligatorie înainte de merge dacă ai atins ceva fiscal
 ```
 

@@ -437,9 +437,22 @@ trece date fiscale de client printr-o cutie poștală terță — inconsecvent c
 
 ### Acceptanță
 
-- [ ] **NEÎNDEPLINIT** — restaurare completă din offsite, cronometrată. RPO e cunoscut (24 h, din
-      cadența cron), dar **RTO e o estimare, nu o măsurătoare**, și e marcat ca atare în ghid.
-      Cere o restaurare reală, cu credențiale de stocare pe care codul nu le are.
+- [x] **ÎNDEPLINIT PARȚIAL 2026-07-29** — RTO e acum **măsurat, nu estimat**: `npm run rto-drill`
+      restaurează arhiva reală într-un PostgreSQL efemer, pornește aplicația și verifică datele,
+      cronometrând fiecare etapă. **~1,4 s** de la arhivă în mână la serviciu verificat (72 KB,
+      4 firme / 58 articole). Rămâne neinclus, deliberat, pasul de **obținere** a arhivei — azi e
+      un atașament de e-mail, deci manual; un total care l-ar înghiți tăcut ar fi ficțiune.
+      Trei constatări din drill, toate confirmate pe server la aceeași dată:
+      1. **drill-ul de restaurare nativă era PICAT** sub cron („no PostgreSQL user name specified"):
+         `pg` deduce rolul din `process.env.USER`, pe care cron nu-l setează, iar `psql` nu are
+         problema — deci defectul apărea *numai* în producție și orice probă manuală îl rata. Reparat
+         (`localPgConfig` în `storePg.js`, importat de drill), cu test de regresie fără `USER` în mediu;
+      2. **copia offsite pleacă NECRIPTATĂ**: `CONTAB_BACKUP_KEY` și toate `CONTAB_OFFSITE_*` sunt
+         absente pe server, deci calea criptată pe stocare obiect construită la acest item **nu e
+         activă** — transportul real e tot e-mailul, cu date fiscale în clar. Codul e gata; lipsește
+         doar configurarea. **Criteriul de fond al itemului rămâne deci neatins în producție**;
+      3. **runbook-ul descria o instalare care nu e în funcțiune** (descarcă din bucket, decriptează)
+         — corectat în `docs/rulare.md`, cu avertisment despre starea reală.
 - [x] Arhiva e ilizibilă fără cheie — verificat efectiv: textul nu apare în cifrat, cheia greșită
       eșuează, round-trip-ul cu cheia bună e identic.
 - [x] Eșecul criptării **oprește** copia offsite (fail-closed); eșecul urcării se raportează și

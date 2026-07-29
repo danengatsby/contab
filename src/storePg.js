@@ -17,6 +17,7 @@ const { stringifyDb } = require('./util');
 // PGDATABASE || 'contab'.
 
 const crypto = require('crypto');
+const os = require('os');
 const { Pool } = require('pg');
 const { ARRAY_COLLS, PROJECTIONS } = require('./store'); // sursa unica a listei de colectii + registrul de proiectii (identice cu SQLite)
 
@@ -51,12 +52,30 @@ function sha(s) { return crypto.createHash('sha1').update(s).digest('hex'); }
 function asInt(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
 function firmaOf(c, item) { return c.firma && item && item.firmaId != null ? asInt(item.firmaId) : null; }
 
+/**
+ * Configuratia de conectare LOCALA (socket, autentificare peer). Rolul se pune EXPLICIT, nu se
+ * lasa pe seama bibliotecii: `pg` il deduce din `process.env.USER`, iar cron ruleaza cu un mediu
+ * minimal, FARA USER — acolo pachetul de start pleaca fara nume de rol si serverul raspunde
+ * „no PostgreSQL user name specified in startup packet". `psql` (libpq) nu are problema, fiindca
+ * citeste passwd-ul; deci defectul apare DOAR pe calea node si DOAR sub cron, adica orice proba
+ * manuala il rateaza. Exact asa a picat tacut drill-ul de restaurare nativa (2026-07-28): psql
+ * rejuca dump-ul cu succes, iar verificarea de dupa el nu se mai putea conecta.
+ * `os.userInfo()` citeste passwd-ul, deci nu depinde de mediu.
+ */
+function localPgConfig(dbname) {
+  return {
+    host: process.env.PGHOST || '/var/run/postgresql',
+    database: dbname || process.env.PGDATABASE || 'contab',
+    user: process.env.PGUSER || process.env.USER || os.userInfo().username,
+  };
+}
+
 async function open() {
   if (pool) return pool;
   pool = new Pool(
     process.env.CONTAB_PG_URL
       ? { connectionString: process.env.CONTAB_PG_URL }
-      : { host: process.env.PGHOST || '/var/run/postgresql', database: process.env.PGDATABASE || 'contab' }
+      : localPgConfig()
   );
   pool.on('error', (e) => console.error('[contab] pg pool:', e.message));
   await schema();
@@ -556,4 +575,4 @@ async function close() {
   try { await p.end(); } catch (_) { /* ignora */ }
 }
 
-module.exports = { open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, queueStats, linesTurnover, linesForAccount, linesForPeriod, documentsStats, documentsSearch, auditCount, auditRecent, conflicted };
+module.exports = { localPgConfig, open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, queueStats, linesTurnover, linesForAccount, linesForPeriod, documentsStats, documentsSearch, auditCount, auditRecent, conflicted };
