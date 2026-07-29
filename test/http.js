@@ -84,6 +84,9 @@ function buildDb() {
       // cont dedicat testelor de plafon upload/export (bucket-urile sunt per utilizator —
       // un cont separat nu consuma plafonul conturilor folosite de restul suitei)
       { id: 9, username: 'uploader', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
+      // idem pentru retentia pe conversatie: POST /api/messages trece prin upload.single (atasament
+      // optional), deci consuma plafonul de upload — un cont propriu tine testul independent
+      { id: 10, username: 'msguser', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
     ],
     documents: [{ id: 'docA', firmaId: 2, fileName: 'secret.pdf', storedName: 'nu-exista-pe-disc.pdf', uploadedAt: 'x', text: '' }],
     settings: { authSecret: 'x'.repeat(64) },
@@ -184,7 +187,7 @@ async function main() {
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     // plafoane de upload/export mici, ca testele 429 sa nu faca zeci de cereri; conturile
     // din restul suitei raman sub ele (bucket-urile sunt per utilizator)
-    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_BNR_URL_ZI: 'http://127.0.0.1:' + PORT_BNR + '/zi', CONTAB_BNR_URL_AN: 'http://127.0.0.1:' + PORT_BNR + '/an{AN}', CONTAB_BNR_RETRIES: '0', CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1', CONTAB_RATE_IMPORT: '7' }),
+    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_BNR_URL_ZI: 'http://127.0.0.1:' + PORT_BNR + '/zi', CONTAB_BNR_URL_AN: 'http://127.0.0.1:' + PORT_BNR + '/an{AN}', CONTAB_BNR_RETRIES: '0', CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1', CONTAB_RATE_IMPORT: '7', CONTAB_MESSAGES_MAX: '5' }),
     stdio: 'ignore',
   });
   const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
@@ -1404,7 +1407,7 @@ async function main() {
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
-    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 9 && users.json.every((u) => u.tip));
+    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 10 && users.json.every((u) => u.tip));
     eq('non-admin la ruta de admin -> 403', (await req('GET', '/api/users', { cookie: c1 })).status, 403);
     // ── /api/settings: allowlist strict (fix escaladare la admin prin authSecret) ──
     eq('non-admin nu poate scrie authSecret -> 403', (await req('POST', '/api/settings', { cookie: c1, body: { authSecret: 'forjat' } })).status, 403);
@@ -1484,6 +1487,32 @@ async function main() {
     const poll = await req('GET', '/api/messages/poll', { cookie: c1 });
     ok('poll consolidat raspunde cu unread + typing', poll.json && typeof poll.json.unread === 'number' && typeof poll.json.typing === 'boolean');
     ok('cautarea in conversatii (admin) raspunde', Array.isArray((await req('GET', '/api/messages/search?q=TVA', { cookie: la.cookie })).json.threads));
+
+    // ── Retentie pe conversatie: `messages` era singura colectie vie fara plafon, iar poarta
+    // statica nu o vedea (colectia iesea prin svc.inbox(), nu langa res.json). Proba e de
+    // COMPORTAMENT, nu de forma: serverul de test ruleaza cu CONTAB_MESSAGES_MAX=5.
+    {
+      const cMsg = (await req('POST', '/api/login', { body: { username: 'msguser', password: 'parola1' } })).cookie;
+      let toateTrimise = true;
+      for (let i = 0; i < 8; i += 1) {
+        const r = await req('POST', '/api/messages', { cookie: cMsg, body: { text: 'mesaj de retentie #' + i } });
+        if (!(r.json && r.json.ok)) toateTrimise = false;
+      }
+      ok('cele 8 mesaje chiar au fost trimise (altfel testul de mai jos nu dovedeste nimic)', toateTrimise);
+      const t = (await req('GET', '/api/messages', { cookie: cMsg })).json;
+      // ATENTIE la ce dovedeste fiecare rand: `thread.length` NU discrimineaza retentia, fiindca
+      // raspunsul e plafonat oricum de capList la aceeasi valoare — a trecut si cu retentia
+      // scoasa, la mutatia de control. Dovada ca s-a taiat IN BAZA e `threadTotal`, care numara
+      // firul real, nu felia intoarsa.
+      ok('retentia taie IN BAZA, nu doar in raspuns (totalul real ramane la plafon)', t.threadTotal === 5);
+      ok('...deci raspunsul nici nu are ce trunchia', t.threadTruncated === false);
+      eq('firul intors e marginit', t.thread.length, 5);
+      ok('...si se pastreaza cele mai RECENTE mesaje',
+        t.thread[t.thread.length - 1].text === 'mesaj de retentie #7' && !t.thread.some((m) => m.text === 'mesaj de retentie #0'));
+      const adm = (await req('GET', '/api/messages/thread/10', { cookie: la.cookie })).json;
+      eq('adminul vede acelasi fir marginit', adm.thread.length, 5);
+      ok('firul ramane ARRAY (contractul frontendului public/messages.js)', Array.isArray(adm.thread));
+    }
 
     // ── Drepturi granulare: doar-citire + fara salarii ──
     ok('admin seteaza drepturi restrictive pe user1', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: true, faraSalarii: true } } })).json.ok === true);

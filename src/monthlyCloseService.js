@@ -16,6 +16,7 @@ const mc = require('./monthlyClose');
 const decl = require('./declarations');
 const declCheck = require('./declarationCheck');
 const { reqFirma } = require('./stocksService');
+const { capList } = require('./paginate');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 
@@ -52,9 +53,11 @@ function state(fid, period, opts) {
 
 /** Utilizatorii care pot fi responsabili: cei cu acces la firma + administratorii. */
 function firmUsers(fid) {
-  return db.get().users
+  // proiectie marginita: lista alimenteaza un selector de responsabil, deci o taiere la plafon e
+  // inofensiva functional — dar capList o si logheaza, ca sa nu fie tacuta daca se intampla
+  return capList(db.get().users
     .filter((u) => !u.pending && (u.role === 'admin' || (Array.isArray(u.firme) && u.firme.includes(Number(fid)))))
-    .map((u) => ({ id: u.id, username: u.username, role: u.role }));
+    .map((u) => ({ id: u.id, username: u.username, role: u.role })), 0, 'inchidere.responsabili').items;
 }
 
 /** Aloca un pas: responsabil (cont din firma), termen si nota. Campurile absente raman neatinse. */

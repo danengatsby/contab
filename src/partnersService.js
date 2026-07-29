@@ -18,6 +18,7 @@ const xlsx = require('./xlsx');
 const xls = require('./xls');
 const dbf = require('./dbf');
 const { toCsv, parseCsv, isHeaderRow } = require('./csv');
+const { capList } = require('./paginate');
 const { reqFirma } = require('./stocksService');
 const { round2 } = require('./util');
 
@@ -127,7 +128,7 @@ function saveOpeningAnalytic(fid, b) {
   const i = d.openingAnalytic.findIndex((x) => key(x) === key(rec));
   if (i >= 0) d.openingAnalytic[i] = rec; else d.openingAnalytic.push(rec);
   db.save();
-  return { openingAnalytic: d.openingAnalytic.filter((o) => o.firmaId === fid) };
+  return { openingAnalytic: capList(d.openingAnalytic.filter((o) => o.firmaId === fid), 0, 'opening-analytic').items };
 }
 
 /** Sterge dupa indexul din lista filtrata pe firma (contractul UI-ului); un index invalid

@@ -16,6 +16,7 @@ const zipGuard = require('./zipGuard');
 const db = require('./db');
 const plans = require('./plans');
 const billing = require('./billing');
+const { capList } = require('./paginate');
 const backup = require('./backup');
 const { allowedFirme, isDemoUser } = require('./session');
 
@@ -318,9 +319,11 @@ function deleteFirma(user, id, impersonating) {
 /** Utilizatorii (non-admin) cu acces la firma `fid`, plus invitatiile in asteptare pentru ea. */
 function listCollaborators(fid) {
   fid = Number(fid);
-  return db.get().users
+  // proiectie marginita (vezi capList): lista alimenteaza ecranul de colaboratori
+  return capList(db.get().users
     .filter((u) => u.role !== 'admin' && Array.isArray(u.firme) && u.firme.includes(fid))
-    .map((u) => ({ id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending }));
+    .map((u) => ({ id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending })),
+  0, 'colaboratori').items;
 }
 
 /** Adauga un cont EXISTENT (dupa username sau email exact) ca membru al firmei `fid`. Idempotent. */

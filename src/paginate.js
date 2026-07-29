@@ -64,4 +64,23 @@ function sendMap(req, res, map, opts = {}) {
   return res.json(src);
 }
 
-module.exports = { sendList, sendMap, ABS_MAX };
+/**
+ * Plafon PUR (fara raspuns HTTP) pentru colectiile vii care ajung INTR-UN CAMP al raspunsului,
+ * nu direct in `res.json` — ex. firul de mesaje din `{ admin, thread }`. Acolo `sendList` nu se
+ * poate folosi: ar trimite el raspunsul si ar pierde restul campurilor.
+ *
+ * Intoarce ULTIMELE `max` elemente (cele mai recente — ce vrea un fir de conversatie), plus
+ * totalul real si semnalul de trunchiere. Trunchierea se si LOGHEAZA: unii apelanti folosesc doar
+ * `.items` (proiectii interne), iar principiul e ca o taiere sa nu fie niciodata TACUTA — altfel
+ * n-am sti cand un client chiar are nevoie de paginare in UI.
+ */
+function capList(list, max, label) {
+  const src = Array.isArray(list) ? list : [];
+  const cap = max || ABS_MAX;
+  const total = src.length;
+  if (total <= cap) return { items: src, total, truncated: false };
+  if (log.warn) log.warn('lista plafonata (garda OOM)', log.ctx(null, { label: label || '', total, cap }));
+  return { items: src.slice(-cap), total, truncated: true };
+}
+
+module.exports = { sendList, sendMap, capList, ABS_MAX };
