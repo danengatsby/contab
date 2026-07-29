@@ -221,7 +221,15 @@ async function main() {
         + 'posibila — dar calea NATIVA (cea rapida, la dezastru) nu e utilizabila. Verifica\n'
         + 'versiunea pg_dump fata de serverul PostgreSQL si spatiul pe disc.');
       scrieMarcaj();
-      process.exit(1);
+      // NU `process.exit(1)` aici. Varianta veche oprea rularea pe loc, iar pasul urmator e
+      // COPIA OFFSITE — deci un esec de VERIFICARE anula PROTECTIA. S-a intamplat pe
+      // 2026-07-28: drill-ul a picat (rolul pg lipsea sub cron) si arhiva zilei n-a plecat
+      // nicaieri, desi trecuse si verificarea arhivei si drill-ul pe db.json.
+      // Diferenta fata de cele doua iesiri de mai sus e reala: acolo ARHIVA e nefolosibila, deci
+      // nu are rost (si e inselator) s-o trimiti. Aici arhiva e BUNA — doar calea nativa, care e
+      // o cale de restaurare SECUNDARA, nu se poate proba. Rularea continua si se marcheaza ca
+      // nereusita prin exitCode, care ajunge in logul cron si in raportul zilnic.
+      process.exitCode = 1;
     } else {
       log('Drill nativ PostgreSQL OK: baza temporara', pgDrill.dbTemp, '—', pgDrill.firme, 'firme,',
         pgDrill.totalEntries, 'articole, echivalenta cu db.json, in', pgDrill.durataMs + 'ms.');
