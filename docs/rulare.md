@@ -40,6 +40,12 @@ vreuna a căzut. Înlănțuirea veche cu `&&` se oprea la prima suită roșie ș
 inclusiv toată integrarea HTTP — ceea ce făcea ca „o problemă mică" să însemne, de fapt, „două
 treimi din suită nu au rulat". Suitele care se sar motivat (`test/store-pg.js` fără `CONTAB_PG_URL`)
 se raportează distinct: **sărit nu e trecut**.
+
+Fiindcă `npm test` rulează pe **sqlite**, iar producția pe **pg**, driverul real se verifică
+separat cu `npm run test-pg`: pornește un PostgreSQL efemer, rulează cele trei probe (persistență
+incrementală, suita HTTP, balanța cu prag SQL 0) și curăță după el. E aceeași comandă pe care o
+cheamă și CI, deci nu există două liste de probe care să driftează. Docker lipsă întoarce codul
+**2 — NEVERIFICAT**, distinct de un eșec de test.
 Rulează, în ordine: verificarea sintaxei tuturor fișierelor (`npm run lint`), garda pe baza reală
 (`test/db-guard.js`), sesiuni/auth, **verificările de module** (`test/run.js`, pe date construite
 pur, fără a atinge `data/db.json`), extractorul, **logica pură de frontend** (`test/frontend.mjs`),

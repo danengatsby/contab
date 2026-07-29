@@ -5359,6 +5359,24 @@ section('Docs: documentatia nu contrazice configuratia reala (fara drift)');
   ok('fraza despre CI din docs/rulare.md listeaza exact matricea din ci.yml'
     + (cereriCI.length ? ' — ' + cereriCI.join(' | ') : ''), cereriCI.length === 0);
 
+  // 4c) Probele pe driverul de PRODUCTIE se declara O SINGURA DATA: in scripts/test-pg.sh, pe
+  //     care il cheama si CI si dezvoltatorul. Inainte, CI le avea inlantuite ca pasi proprii,
+  //     iar reteta locala statea scrisa de mana in CLAUDE.md — doua liste care puteau (si chiar
+  //     au) drifta. Daca cineva re-inlantuie pasii in ci.yml, jobul redevine o a doua lista.
+  // ancorat pe `run:`, nu oriunde in fisier: altfel o simpla MENTIUNE intr-un comentariu tine
+  // aserttia verde dupa ce pasul real a fost inlocuit (prins printr-o mutatie care a trecut asa)
+  ok('CI cheama `npm run test-pg`, nu isi rescrie propriii pasi pe pg', /run:\s*npm run test-pg/.test(ci));
+  // Doar JOBUL test-postgres, nu tot fisierul: pragul SQL 0 apare legitim si in jobul pe sqlite
+  // (dovada de echivalenta SQL == RAM acolo), iar o verificare pe tot ci.yml l-ar raporta gresit.
+  const jobPg = (ci.match(/^ {2}test-postgres:[\s\S]*?(?=^ {2}\w[\w-]*:|\Z)/m) || [''])[0];
+  ok('poarta chiar izoleaza jobul test-postgres', jobPg.includes('postgres:16') && jobPg.length > 200);
+  ok('...iar jobul nu mai are pasi pe pg inlantuiti direct (ar fi a doua lista)',
+    !/run:\s*node test\//.test(jobPg));
+  const tpg = rd('scripts/test-pg.sh');
+  ok('scriptul chiar ruleaza cele trei probe',
+    /test\/store-pg\.js/.test(tpg) && /CONTAB_TEST_DRIVER=pg/.test(tpg) && /CONTAB_SQL_READ_THRESHOLD=0/.test(tpg));
+  ok('scriptul distinge NEVERIFICAT (docker lipsa) de teste picate', /exit 2/.test(tpg));
+
   // 5) Portul implicit din documente = cel din cod. Doua valori diferite in acelasi document
   //    (3000 la pornire, 8080 la „deschide in browser") sunt semnul clasic de doc netestat.
   const portReal = (rd('src/lifecycle.js').match(/process\.env\.PORT\s*\|\|\s*(\d+)/) || [])[1];

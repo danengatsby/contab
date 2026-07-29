@@ -42,18 +42,21 @@ sau URL) pentru probe. Procedura de înlocuire la o versiune nouă ANAF: `schema
 
 **Producția rulează pe `pg`, dar `npm test` rulează pe `sqlite`** — iar `test/store-pg.js` se sare
 tăcut fără `CONTAB_PG_URL`. Deci o suită verde local NU înseamnă că driverul de producție e
-verificat. (În CI **e**: jobul `test-postgres` din `.github/workflows/ci.yml` rulează store-pg +
-suita HTTP + balanța cu prag 0 pe un Postgres real.) Înainte de o schimbare care atinge
-persistența, rulează și local pe pg:
+verificat. Înainte de o schimbare care atinge persistența, rulează:
 
 ```bash
-docker run -d --name contab-pgtest -e POSTGRES_USER=contab -e POSTGRES_PASSWORD=contab \
-  -e POSTGRES_DB=contab_test -p 55432:5432 postgres:16
-PG='postgres://contab:contab@localhost:55432/contab_test'
-CONTAB_PG_URL="$PG" node test/store-pg.js                      # persistența incrementală pe pg
-CONTAB_TEST_DRIVER=pg CONTAB_PG_URL="$PG" node test/http.js    # suita HTTP completă pe pg
-docker rm -f contab-pgtest                                      # ...și oprește containerul
+npm run test-pg     # pornește singur un PostgreSQL efemer, rulează cele trei probe, curăță după el
 ```
+
+Rulează **exact aceleași trei probe ca jobul `test-postgres` din CI** (store-pg + suita HTTP +
+balanța cu prag SQL 0), fiindcă **CI cheamă acest script** — o singură listă, nu două care
+driftează. Containerul primește un port liber (două rulări în paralel nu se ciocnesc) și se șterge
+și dacă suita pică. Cu `CONTAB_PG_URL` setat folosește baza aceea și nu pornește niciun container.
+Coduri de ieșire: `0` verde, `1` teste picate, **`2` NEVERIFICAT** (docker lipsă) — distinct
+deliberat, ca la poarta fiscală: „n-am putut verifica" nu e „e bine".
+
+A treia probă (prag SQL 0) nu e un lux: read-after-write învechit s-a văzut **doar** acolo —
+citirile SQL nu așteptau coada de persistență.
 
 **Variabila e `CONTAB_TEST_DRIVER`, NU `CONTAB_DB_DRIVER`.** `test/http.js` își pornește propriul
 server și îi impune driverul din `CONTAB_TEST_DRIVER`; un `CONTAB_DB_DRIVER=pg` pus în față era
