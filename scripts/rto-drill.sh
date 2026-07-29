@@ -100,6 +100,7 @@ PORT_PG=$(node -e 'const n=require("net"),s=n.createServer();s.listen(0,"127.0.0
 # versiune decat cea reala. Prima rulare a picat exact asa, pe un `postgres:16` scris de mana.
 MAJOR=$(sed -n 's/.*Dumped from database version \([0-9][0-9]*\).*/\1/p' "$TMP/continut/contab.sql" | head -1)
 [ -n "$MAJOR" ] || MAJOR=18
+# CONTAB_PGTEST_IMAGE suprascrie imaginea (probe pe alta versiune decat cea a dump-ului).
 IMAGINE=${CONTAB_PGTEST_IMAGE:-postgres:$MAJOR}
 echo "[rto] dump produs de PostgreSQL $MAJOR -> restaurez pe $IMAGINE"
 CONTAINER="contab-rto-$$"

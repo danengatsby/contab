@@ -21,6 +21,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -eu
 
+# CONTAB_REPO / CONTAB_BRANCH: depozitul si ramura protejata (implicit danengatsby/contab, main).
 REPO=${CONTAB_REPO:-danengatsby/contab}
 RAMURA=${CONTAB_BRANCH:-main}
 # Checkurile care trebuie sa treaca. `poarta-fiscala` e cel care blocheaza declaratiile

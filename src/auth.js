@@ -71,6 +71,9 @@ function usernameTaken(users, raw) {
 // FAIL-OPEN: orice eroare (retea/timeout/non-200) -> permite; nu blocam auth pe un serviciu
 // extern indisponibil. Dezactivabil: CONTAB_HIBP=0 (ex. instalari izolate, fara internet).
 const HIBP_ON = process.env.CONTAB_HIBP !== '0';
+// Cat asteptam raspunsul de la Have I Been Pwned inainte sa renuntam. Verificarea e un BONUS de
+// securitate, nu o conditie: daca serviciul e lent sau cazut, inregistrarea nu are voie sa stea
+// dupa el. CONTAB_HIBP_TIMEOUT_MS ajusteaza pragul; CONTAB_HIBP=0 opreste verificarea de tot.
 const HIBP_TIMEOUT_MS = Number(process.env.CONTAB_HIBP_TIMEOUT_MS) || 2500;
 async function breachCheck(password) {
   if (!HIBP_ON) return null;
