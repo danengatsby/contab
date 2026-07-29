@@ -237,5 +237,19 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   OOM, cu antet `X-Rows-Truncated` când taie); cu `?limit`/`?offset` → plic `{ items, total,
   offset, limit }`. Colecțiile expuse ca **obiect-hartă** (`/api/partners`, cheie = CUI) trec prin
   `sendMap`: implicit rămân hartă (plafonată), cu `?limit` dau plic cu `items` **listă** — o hartă
-  parțială ar fi ambiguă. O **poartă** din `test/run.js` pică dacă o rută nouă serializează direct
-  o colecție cu `res.json`; inventarul rutelor paginate e verificat în `test/http.js`.
+  parțială ar fi ambiguă. Colecțiile care ajung într-un **câmp** al răspunsului (firul din
+  `{ admin, thread }`), unde `sendList` ar trimite el răspunsul și ar pierde restul câmpurilor,
+  trec prin `capList` — plafon pur, care întoarce ultimele `max` plus totalul real și semnalul de
+  trunchiere, și **loghează** tăierea (unii apelanți folosesc doar `.items`).
+  Poarta e în **două straturi**, fiindcă unul singur nu ajunge: cel din `test/run.js` ancorat pe
+  `res.json(S(req).X)` pică la o rută care serializează direct o colecție — dar era **orb** la
+  ruta care întoarce rezultatul unui serviciu (`/api/messages` → `svc.inbox()` →
+  `messages.thread(d.messages, …)`, nemărginit). Ancora e necesară (fără ea, orice agregat care
+  primește colecția ar fi fals-pozitiv), deci al doilea strat verifică **celălalt capăt**: în
+  `src/*Service.js`, o colecție vie folosită ca VALOARE într-un `return` trebuie să treacă prin
+  `capList`/`sendList`. Excepțiile sunt structurale, nu scrise de mână — metodele de Array care
+  întorc scalari (`.some`, `.length`, `.reduce`…) și indexarea `X[...]`.
+  **Retenție:** `messages` era singura colecție vie fără plafon (`audit` avea `CONTAB_AUDIT_MAX`);
+  azi are `CONTAB_MESSAGES_MAX` (implicit 500), **per conversație** — un plafon global ar lăsa o
+  conversație zgomotoasă să evacueze istoricul tuturor. Tăierea duce cu ea și atașamentul de pe
+  disc. Inventarul rutelor paginate e verificat în `test/http.js`.

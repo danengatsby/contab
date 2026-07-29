@@ -9,6 +9,7 @@
 const db = require('../db');
 const messages = require('../messages');
 const svc = require('../messagesService');
+const { capList } = require('../paginate');
 
 // Indicator „scrie acum…": stare efemera in memorie (nu se persista).
 const typingState = new Map(); // userId -> { user: tsExpira, admin: tsExpira }
@@ -77,7 +78,8 @@ module.exports = function register(app, ctx) {
   });
   app.get('/api/messages/search', requireAdmin, (req, res) => {
     const d = db.get(); d.messages = d.messages || [];
-    res.json({ admin: true, threads: messages.searchThreads(d.messages, d.users, req.query.q || '') });
+    const s = capList(messages.searchThreads(d.messages, d.users, req.query.q || ''), 0, 'messages.search');
+    res.json({ admin: true, threads: s.items, threadsTotal: s.total, threadsTruncated: s.truncated });
   });
   app.post('/api/messages/typing', (req, res) => {
     if (actor(req).isAdmin) { const uid = Number((req.body || {}).userId); if (uid) setTyping(uid, 'admin'); }

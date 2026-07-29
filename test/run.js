@@ -4896,6 +4896,19 @@ section('Paginare + garda OOM (src/paginate.js sendList)');
   eq('offset se aplica pe ordinea cheilor', r.body.items[0].den, 'P10');
   r = mkRes(); sendMap({ query: {}, path: '/p' }, r, null, { max: 10 });
   ok('harta lipsa nu arunca', r.body && Object.keys(r.body).length === 0);
+
+  // capList: plafon PUR, pentru colectiile care ajung intr-un CAMP al raspunsului (firul de
+  // mesaje din { admin, thread }), unde sendList n-ar merge — ar trimite el raspunsul.
+  const { capList } = require('../src/paginate');
+  const fir = []; for (let i = 0; i < 30; i += 1) fir.push({ id: i });
+  let cl = capList(fir, 100);
+  ok('sub plafon: lista intacta, fara semnal de trunchiere', cl.items.length === 30 && cl.total === 30 && cl.truncated === false);
+  cl = capList(fir, 10);
+  ok('peste plafon: taiat la plafon, cu totalul REAL pastrat', cl.items.length === 10 && cl.total === 30 && cl.truncated === true);
+  eq('...se pastreaza cele mai RECENTE (coada firului, ce vrea o conversatie)', cl.items[cl.items.length - 1].id, 29);
+  eq('...si taierea incepe de la cel mai vechi pastrat', cl.items[0].id, 20);
+  cl = capList(null, 10);
+  ok('lista lipsa nu arunca', cl.items.length === 0 && cl.total === 0 && cl.truncated === false);
 }
 
 section('Secrete obligatorii la pornire (src/secretsGuard.js)');
@@ -5101,6 +5114,47 @@ section('Poarta: fiecare ruta care intoarce o colectie trece prin sendList/sendM
   ok('poarta NU raporteaza un agregat care doar primeste colectia',
     !COLECTIE.test("registruSalarii(S(req).payrollHistory, req.query.year)"));
   ok('poarta nu se declanseaza pe un obiect singular', !COLECTIE.test("res.json(S(req).company)"));
+
+  // ── Al DOILEA strat: colectiile care ies prin SERVICE LAYER ──────────────────────────────────
+  // Poarta de mai sus e ancorata pe `res.json(S(req).X)` — ancora e necesara (fara ea, orice
+  // agregat care primeste colectia ar fi fals-pozitiv si poarta ar fi dezactivata de primul care
+  // o vede). Dar exact din cauza ancorei era OARBA la ruta care intoarce rezultatul unui
+  // serviciu: `/api/messages` -> svc.inbox() -> messages.thread(d.messages, uid) trecea neatins,
+  // nemarginit. Colectia nu mai apare langa `res.json`, deci prima poarta nu avea ce vedea.
+  //
+  // Aici se verifica CEALALTA capat: in servicii, o colectie vie folosita ca VALOARE intr-un
+  // `return` trebuie sa treaca printr-un plafon (capList/sendList). Exceptiile sunt structurale,
+  // nu scrise de mana: `.length` e un agregat numeric, iar `X[...]` e un element singular.
+  // Ce NU e o colectie care scapa: metodele de Array care intorc un SCALAR sau un element unic
+  // (`d.entries.some(...)` din anafService e un boolean per rand, nu jurnalul intors clientului),
+  // plus indexarea `X[...]`. Nu e o lista de exceptii scrisa de mana pentru acest proiect, ci o
+  // proprietate a limbajului — de-aia nu drifteaza cand apare un serviciu nou.
+  const SCALAR = 'length|some|every|find|findIndex|findLast|includes|indexOf|reduce|join';
+  const COLECTIE_VAL = new RegExp('\\b(?:d|db\\.get\\(\\))\\.(' + numeColectii.join('|') + ')\\b'
+    + '(?!\\s*\\.(?:' + SCALAR + ')\\b)(?!\\s*\\[)');
+  // predicatul EXACT al portii, folosit si de scanare si de auto-verificari: nu se rederiveaza
+  const nemarginit = (expr) => COLECTIE_VAL.test(expr) && !/capList|sendList/.test(expr);
+  const servicii = fsx.readdirSync(pth.join(root, 'src')).filter((f) => f.endsWith('Service.js'));
+  const nemarginite = [];
+  for (const f of servicii) {
+    const s = fsx.readFileSync(pth.join(root, 'src', f), 'utf8');
+    for (const m of s.matchAll(/return\s+([^;]{0,300});/g)) {
+      if (nemarginit(m[1])) nemarginite.push(f + ': return ' + m[1].trim().slice(0, 50).replace(/\s+/g, ' ') + '…');
+    }
+  }
+  ok('serviciile isi plafoneaza colectiile vii inainte de a le intoarce'
+    + (nemarginite.length ? ' — ' + nemarginite.slice(0, 3).join(' | ') : ''), nemarginite.length === 0);
+  ok('poarta pe servicii scaneaza servicii reale, nu o lista goala', servicii.length >= 8);
+  ok('poarta pe servicii prinde forma care a scapat (colectie printr-un helper)',
+    nemarginit('{ thread: messages.thread(d.messages, uid) }'));
+  ok('...si se stinge cand aceeasi expresie trece prin capList',
+    !nemarginit('{ thread: capList(messages.thread(d.messages, uid), MAX).items }'));
+  ok('...NU se declanseaza pe un numar derivat din colectie',
+    !nemarginit('{ removed: n - d.entries.length }'));
+  ok('...nici pe un predicat care intoarce boolean per rand',
+    !nemarginit('msgs.map((m) => ({ importat: d.entries.some((e) => e.id === m.id) }))'));
+  ok('...nici pe un element singular luat prin cheie',
+    !nemarginit('{ partner: d.partners[fid][key] }'));
 }
 
 section('PWA: manifest + service worker (instalabilitate + siguranta cache)');

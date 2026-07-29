@@ -13,8 +13,10 @@
 const path = require('path');
 const fs = require('fs');
 const db = require('./db');
+const log = require('./log');
 const messages = require('./messages');
 const presence = require('./presence');
+const { capList } = require('./paginate');
 const { sendMail } = require('./notify');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
@@ -22,14 +24,53 @@ function fail(status, message) { const e = new Error(message); e.status = status
 // Servire atasament: doar tipuri sigure inline; restul ca attachment.
 const INLINE_OK = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'application/pdf']);
 
+// ── Plafon de RETENTIE pe CONVERSATIE ──────────────────────────────────────────────────────────
+// Graful bazei sta in RAM prin design si fiecare db.save() costa O(colectie), deci o colectie care
+// creste nemarginit degradeaza intreg procesul, nu doar ruta ei. `audit` avea deja plafon
+// (AUDIT_MAX din server.js); `messages` era singura colectie vie ramasa fara niciunul.
+//
+// De ce PE CONVERSATIE si nu global: un plafon global lasa o conversatie zgomotoasa sa evacueze
+// istoricul de suport al tuturor celorlalti. Per conversatie, totalul e marginit natural de
+// (utilizatori x plafon) si se pastreaza exact ce foloseste suportul — contextul recent.
+//
+// Spre deosebire de audit, mesajele NU au proba durabila pe disc, deci taierea chiar pierde date:
+// de aceea plafonul e generos (o conversatie de suport de 500 de mesaje e deja patologica), se
+// LOGHEAZA, si duce cu ea si atasamentul de pe disc — altfel ar ramane fisiere orfane in uploads.
+const THREAD_MAX = Number(process.env.CONTAB_MESSAGES_MAX) || 500;
+
+/** Taie cele mai vechi mesaje din conversatia unui utilizator peste plafon. @returns cate a sters */
+function pruneThread(d, userId) {
+  const idx = [];
+  for (let i = 0; i < d.messages.length; i++) if (d.messages[i].userId === userId) idx.push(i);
+  const over = idx.length - THREAD_MAX;
+  if (over <= 0) return 0;
+  // `d.messages` creste prin push, deci ordinea indicilor E ordinea cronologica: primii ies primii
+  const drop = new Set(idx.slice(0, over));
+  const removed = d.messages.filter((_, i) => drop.has(i));
+  d.messages = d.messages.filter((_, i) => !drop.has(i));
+  for (const m of removed) {
+    if (m.attachment && m.attachment.storedName) {
+      try { fs.unlinkSync(path.join(db.UPLOAD_DIR, path.basename(m.attachment.storedName))); } catch (_) { /* best-effort */ }
+    }
+  }
+  log.warn('conversatie plafonata (retentie mesaje)', log.ctx(null, { userId, sterse: removed.length, cap: THREAD_MAX }));
+  return removed.length;
+}
+
 /** Inbox-ul actorului: adminul vede sumarul conversatiilor, utilizatorul propriul fir
  *  (deschiderea marcheaza raspunsurile adminului ca citite). */
 function inbox(actor) {
   const d = db.get(); d.messages = d.messages || [];
-  if (actor.isAdmin) return { admin: true, threads: messages.threadsSummary(d.messages, d.users) };
+  if (actor.isAdmin) {
+    const s = capList(messages.threadsSummary(d.messages, d.users), 0, 'messages.threads');
+    return { admin: true, threads: s.items, threadsTotal: s.total, threadsTruncated: s.truncated };
+  }
   const changed = messages.markRead(d.messages, actor.user.id, 'user');
   if (changed) db.save();
-  return { admin: false, thread: messages.thread(d.messages, actor.user.id) };
+  // `thread` ramane ARRAY (contractul frontendului: public/messages.js face .map/.length pe el);
+  // totalul si semnalul de trunchiere vin alaturi, nu in locul lui.
+  const t = capList(messages.thread(d.messages, actor.user.id), THREAD_MAX, 'messages.thread');
+  return { admin: false, thread: t.items, threadTotal: t.total, threadTruncated: t.truncated };
 }
 
 /** Conversatia unui utilizator, pentru admin (deschiderea marcheaza cererile ca citite). */
@@ -40,7 +81,11 @@ function threadForAdmin(userId) {
   if (!u) fail(404, 'Utilizator inexistent.');
   const changed = messages.markRead(d.messages, uid, 'admin');
   if (changed) db.save();
-  return { userId: uid, username: u.username, archived: !!u.supportArchived, thread: messages.thread(d.messages, uid) };
+  const t = capList(messages.thread(d.messages, uid), THREAD_MAX, 'messages.thread');
+  return {
+    userId: uid, username: u.username, archived: !!u.supportArchived,
+    thread: t.items, threadTotal: t.total, threadTruncated: t.truncated,
+  };
 }
 
 /** Trimite un mesaj: utilizatorul catre admin (redeschide conversatia arhivata), adminul
@@ -62,6 +107,7 @@ function sendMessage(actor, body, att) {
   if (!fromAdmin) { const tu = d.users.find((x) => x.id === userId); if (tu && tu.supportArchived) tu.supportArchived = false; }
   const m = messages.newMessage(db.nextId('msg'), userId, fromAdmin, text, actor.user.username, att);
   d.messages.push(m);
+  pruneThread(d, userId);
   db.save();
   return { message: m, fromAdmin, userId };
 }
@@ -142,4 +188,5 @@ function notifyAdminsOfNewMessage(fromUser, message, baseUrl) {
 module.exports = {
   inbox, threadForAdmin, sendMessage, attachmentFile,
   deleteMessage, editMessage, archiveThread, notifyAdminsOfNewMessage,
+  THREAD_MAX,
 };
