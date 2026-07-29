@@ -124,4 +124,33 @@ async function getObject(cfg, key, fetchImpl) {
   return Buffer.from(await r.arrayBuffer());
 }
 
-module.exports = { signRequest, signingKey, putObject, getObject, configured, fromEnv, uriEncodePath };
+/**
+ * Avertismentul de CONFIDENTIALITATE al copiei offsite.
+ *
+ * O copie plecata fara criptare NU e un esec de backup — arhiva chiar a ajuns undeva — dar e o
+ * expunere, si pana acum trecea complet tacut: singurul avertisment din scripts/backup.js se
+ * declansa cand NU exista nicio destinatie configurata. Cu e-mailul configurat si fara cheie,
+ * logul spunea „Offsite email OK" si atat.
+ *
+ * Masurat pe productie la 2026-07-29: `CONTAB_BACKUP_KEY` lipsea, deci arhiva zilnica —
+ * db.json + contab.sql + uploads/, adica toate datele fiscale ale tuturor firmelor — pleca in
+ * CLAR catre o cutie postala terta, exact ce itemul de backlog voia sa elimine. Codul criptat
+ * exista si era testat; lipsea doar configurarea, si nimic nu o semnala.
+ *
+ * Severitate: avertisment, nu esec. Backupul si-a facut treaba, iar `exitCode=1` aici ar
+ * confunda „nu am backup" (grav, disponibilitate) cu „am backup neprotejat" (grav, dar altfel)
+ * — si ar toci semnalul care conteaza cel mai mult.
+ *
+ * @returns {string} mesajul de avertizare, sau '' daca nu e nimic de semnalat
+ */
+function confidentialityWarning(stare) {
+  const s = stare || {};
+  if (!s.sent || s.encrypted) return '';
+  return 'ATENTIE: copia offsite a plecat NECRIPTATA'
+    + (s.viaEmail ? ' prin e-mail (cutie postala terta)' : '')
+    + ' — arhiva contine db.json, contab.sql si uploads/, adica toate datele fiscale. '
+    + 'Seteaza CONTAB_BACKUP_KEY (cheia NU se tine langa backup) si verifica cu `npm run offsite-check`. '
+    + 'Detalii: docs/rulare.md, sectiunea RTO / RPO.';
+}
+
+module.exports = { signRequest, signingKey, putObject, getObject, configured, fromEnv, uriEncodePath, confidentialityWarning };
