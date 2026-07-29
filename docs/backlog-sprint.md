@@ -56,10 +56,16 @@ care poate fi greșit fără ca nimic să semnaleze.
 > min→max la credit, FIFO→LIFO la report) + 5 cazuri pentru revizor, `PLF-01..05`. Poarta fiscală
 > verde pe toate cele 15 ieșiri.
 >
-> **Rămâne deschis, deliberat:** defalcarea nedeductibilelor pe categoriile P23..P32 din D101 (azi
-> merg în P33 „alte cheltuieli nedeductibile", cu totalul corect în P34). Numerotarea diferă între
-> versiunile de formular, deci fiecare categorie cere propriul sondaj — muncă disproporționată față
-> de câștig, fiindcă impozitul e determinat de P34/P35, nu de defalcare.
+> **Defalcarea pe P23..P33 — ✅ ÎNCHISĂ 2026-07-29.** Estimarea de mai jos („fiecare categorie cere
+> propriul sondaj") s-a dovedit greșită ca metodă: validatorul **nu poate** confirma maparea, fiindcă
+> regula R80 cere doar ca P34 să fie suma de la P23 la P33 — orice repartizare care torna trece. Deci
+> sondajul n-ar fi ajutat oricât s-ar fi insistat. Sursa corectă e **formularul oficial OPANAF
+> 206/2025** plus instrucțiunile lui de completare; sondajul a servit doar la aflarea aritmeticii
+> (R80, R56, R65). Protocol → rd. 26, sponsorizare → rd. 27, dobânzi excedentare → rd. 31, social și
+> auto rămân la rd. 33 (instrucțiunea rândului 33 le enumeră explicit), iar amortizarea ocupă **două**
+> rânduri: contabilă la rd. 28, fiscală la rd. 11. Invariant fixat în teste: defalcarea nu mișcă
+> P35/P40/P41/P52. Referință nouă `D101-defalcare` în poarta fiscală — exemplul obișnuit n-are
+> cheltuieli cu plafon, deci calea nouă ar fi rămas neverificată. Detalii: `docs/validare-oficiala.md`.
 
 ### Descriere
 

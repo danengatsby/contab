@@ -2418,6 +2418,98 @@ section('Amortizare fiscala separata de cea contabila (art. 28)');
     !aj0.randuri.some((x) => x.regula === 'Amortizare (contabila vs fiscala)'));
 }
 
+section('D101: defalcarea nedeductibilelor pe randurile formularului (P23..P33 + P11)');
+{
+  const deduct = require('../src/deductibilitate');
+  const xmlM = require('../src/xml');
+
+  // ── maparea, pe reguli ──────────────────────────────────────────────────────────────────────
+  // Etichetele sunt cele din OPANAF 206/2025. Validatorul NU poate confirma maparea (R80 cere
+  // doar ca totalul sa torne), deci corectitudinea vine din formular, si se fixeaza aici.
+  const R = (regula, d101, ned, cheltuit, plafon) => ({ regula, d101, nedeductibil: ned, cheltuit: cheltuit != null ? cheltuit : ned, plafon: plafon || 0 });
+  const m = deduct.mapareD101([
+    R('Protocol', 'P26', 10000),
+    R('Cheltuieli sociale', 'P33', 5000),
+    R('Cheltuieli auto', 'P33', 8000),
+    R('Sponsorizare (cheltuiala)', 'P27', 3000),
+    R('Amortizare', { rand: 'P28', brut: true, deducere: 'P11' }, 3000, 12000, 9000),
+  ]);
+  eq('protocolul peste plafon merge la rd. 26', m.nedeductibile.P26, 10000);
+  eq('sponsorizarea merge la rd. 27 (cheltuiala inregistrata)', m.nedeductibile.P27, 3000);
+  eq('social + auto se cumuleaza la rd. 33 (art. 25(3), fara rand propriu)', m.nedeductibile.P33, 13000);
+  eq('amortizarea CONTABILA intreaga merge la rd. 28, nu diferenta', m.nedeductibile.P28, 12000);
+  eq('...iar cea FISCALA devine deducere la rd. 11', m.deduceri.P11, 9000);
+  eq('totalul nedeductibilelor e suma randurilor', m.totalNedeductibil, 38000);
+  eq('fara randuri: mapare goala, nu exceptie', deduct.mapareD101([]).totalNedeductibil, 0);
+  eq('un rand fara `d101` cade la „alte" (rd. 33), nu se pierde',
+    deduct.mapareD101([{ nedeductibil: 700 }]).nedeductibile.P33, 700);
+
+  // ── randul D101 e ANCORAT PE REGULA REALA, nu doar pe randuri sintetice ─────────────────────
+  // Prima varianta a testului folosea numai randuri construite in test, deci mutarea unei reguli
+  // pe alt rand (P26 -> P33, in deductibilitate.js) trecea NEOBSERVATA. Aici se cer adnotarile
+  // de pe regulile chiar produse de motor.
+  const RATES = require('../src/fiscalConfig').RATES;
+  const aj = deduct.ajustari({
+    rulaj: { 623: { d: 10000, c: 0 }, 6458: { d: 5000, c: 0 }, 641: { d: 50000, c: 0 }, 6582: { d: 3000, c: 0 }, 666: { d: 200000, c: 0 } },
+    profitContabil: 40000, cheltAuto: 8000,
+    amortizare: { contabila: 12000, fiscala: 9000 },
+    cursEur: 5,
+  }, RATES);
+  const randD101 = {};
+  for (const r of aj.randuri) randD101[r.regula] = typeof r.d101 === 'string' ? r.d101 : (r.d101 && r.d101.rand);
+  eq('regula Protocol e adnotata cu rd. 26', randD101.Protocol, 'P26');
+  eq('regula Sponsorizare e adnotata cu rd. 27', randD101['Sponsorizare (cheltuiala)'], 'P27');
+  eq('regula Amortizare e adnotata cu rd. 28', randD101['Amortizare (contabila vs fiscala)'], 'P28');
+  eq('regula Dobanzi excedentare e adnotata cu rd. 31', randD101['Costuri excedentare ale indatorarii'], 'P31');
+  eq('Cheltuielile sociale raman la rd. 33 (fara rand propriu)', randD101['Cheltuieli sociale'], 'P33');
+  eq('Cheltuielile auto raman la rd. 33', randD101['Cheltuieli auto'], 'P33');
+  ok('fiecare rand produs de motor stie pe ce rand de formular merge',
+    aj.randuri.every((r) => !!r.d101));
+
+  // ── invariantul care conteaza: defalcarea NU schimba impozitul ───────────────────────────────
+  // Amortizarea muta `af` din nedeductibile in deduceri (P34 +af, P16 +af => P22 -af), deci P35
+  // ramane pe loc. Daca acest test pica, defalcarea a inceput sa schimbe cifra datorata.
+  const co = { cui: '12345674', nume: 'T SRL', adresa: 'A', oras: 'B', judet: 'RO-B', caen: '1071' };
+  const baza = { year: 2026, cota: 16, venituriExploatare: 100000, cheltuieliExploatare: 60000,
+    venituriFinanciare: 0, cheltuieliFinanciare: 0, deduceriFiscale: 0, pierdereReportata: 0,
+    pierdereFolosita: 0, sponsorizareCredit: 0 };
+  const vechi = xmlM.d101Xml(co, Object.assign({}, baza, { cheltuieliNedeductibile: 29000 }));
+  const nou = xmlM.d101Xml(co, Object.assign({}, baza, {
+    cheltuieliNedeductibile: m.totalNedeductibil,
+    d101Nedeductibile: m.nedeductibile, d101Deduceri: m.deduceri,
+  }));
+  const at = (s, k) => { const g = s.match(new RegExp('\\b' + k + '="([^"]*)"')); return g ? Number(g[1]) : null; };
+  for (const k of ['P35', 'P40', 'P41', 'P52']) {
+    eq('defalcarea nu misca ' + k + ' (impozitul ramane identic)', at(nou, k), at(vechi, k));
+  }
+  eq('rd. 11 apare in XML cand exista amortizare fiscala', at(nou, 'P11'), 9000);
+  eq('rd. 26 apare in XML', at(nou, 'P26'), 10000);
+  eq('rd. 28 apare in XML', at(nou, 'P28'), 12000);
+
+  // regulile de aritmetica ale validatorului, verificate pe iesire (aflate prin sondaj pe DUK)
+  const RANDURI = ['P23', 'P24', 'P25', 'P26', 'P27', 'P28', 'P29', 'P30', 'P31', 'P32', 'P33'];
+  const sumaNed = RANDURI.reduce((s, k) => s + (at(nou, k) || 0), 0);
+  eq('R80: P34 = suma(P23..P33)', at(nou, 'P34'), sumaNed);
+  eq('R56: P16 = P11 + P15', at(nou, 'P16'), (at(nou, 'P11') || 0) + at(nou, 'P15'));
+  eq('R65: P22 = P10 - P16 - P21', at(nou, 'P22'), at(nou, 'P10') - at(nou, 'P16') - at(nou, 'P21'));
+
+  // fara defalcare se pastreaza comportamentul istoric (nedeductibile tastate manual)
+  eq('fara defalcare: tot la P33', at(vechi, 'P33'), 29000);
+  ok('fara defalcare: randurile intermediare NU se emit',
+    !/\bP26=/.test(vechi) && !/\bP28=/.test(vechi) && !/\bP11=/.test(vechi));
+
+  // reporting: defalcarea apare doar cand nedeductibilele sunt CALCULATE, nu tastate
+  const repM = require('../src/reporting');
+  const entD = [{ id: 'e1', firmaId: 1, data: '2026-03-01', period: '2026-03', tip: 'x', status: 'postat',
+    lines: [{ debit: '623', credit: '401', suma: 10000 }] }];
+  const dbD = { entries: entD, company: { cui: '12345674', nume: 'T' }, firmaActiva: 1 };
+  const cuPlaf = repM.d101(dbD, '2026', { cota: 16, plafoane: require('../src/fiscalConfig').RATES });
+  ok('cu plafoane: reporting da defalcarea', !!cuPlaf.d101Nedeductibile);
+  const manual = repM.d101(dbD, '2026', { cota: 16, plafoane: require('../src/fiscalConfig').RATES, cheltNedeductibile: 4321 });
+  ok('nedeductibile TASTATE: fara defalcare inventata', !manual.d101Nedeductibile);
+  eq('...si totalul ramane cel tastat', manual.cheltuieliNedeductibile, 4321);
+}
+
 section('Productie (consum materiale + obtinere produse finite)');
 const prodMod = require('../src/production');
 const prodProducts = [{ id: 'PF', cont: '345', cod: 'PF1', denumire: 'Masa', um: 'buc' }, { id: 'MAT', cont: '301', cod: 'M1', denumire: 'Cherestea', um: 'mc' }];

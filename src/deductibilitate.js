@@ -53,14 +53,59 @@ function venit(rulaj, prefix) {
   return round2(s);
 }
 
-/** Un rand de ajustare, in forma pe care o consuma registrul fiscal si D101. */
-function rand(regula, temei, cont, baza, plafon, cheltuit, nedeductibil, nota) {
-  return {
+/** Un rand de ajustare, in forma pe care o consuma registrul fiscal si D101.
+ *  `d101` spune PE CE RAND al formularului 101 se duce ajustarea — cunostinta sta langa temeiul
+ *  legal, nu in generatorul XML, fiindca tot aici se schimba daca se schimba regula. */
+function rand(regula, temei, cont, baza, plafon, cheltuit, nedeductibil, nota, d101) {
+  const r = {
     regula, temei, cont,
     baza: round2(baza), plafon: round2(plafon), cheltuit: round2(cheltuit),
     deductibil: round2(cheltuit - nedeductibil), nedeductibil: round2(nedeductibil),
     nota: nota || '',
   };
+  if (d101) r.d101 = d101;
+  return r;
+}
+
+// ── Maparea pe randurile formularului 101 ─────────────────────────────────────────────────────
+// Etichetele si regulile de completare sunt cele din OPANAF 206/2025 (formularul oficial +
+// instructiunile lui), NU deduse din numele campurilor. Randurile fara corespondent dedicat merg
+// la P33 „Alte cheltuieli nedeductibile" — ceea ce e CORECT, nu o scapare: instructiunea randului
+// 33 enumera explicit „depasirile limitelor admisibile, stabilite prin dispozitiile art. 25 alin.
+// (3)", adica exact cheltuielile sociale si cele auto.
+//
+// Validatorul oficial NU poate confirma maparea: regula R80 cere doar ca P34 sa fie suma de la
+// P23 la P33, deci ORICE repartizare care torna trece. De aceea sursa e formularul, nu sondajul —
+// sondajul a servit doar la aflarea regulilor de aritmetica (R80, R56, R65).
+const D101_IMPLICIT = 'P33';
+
+/**
+ * Repartizeaza randurile de ajustare pe randurile D101.
+ *
+ * Amortizarea e singurul caz cu DOUA randuri: formularul cere amortizarea CONTABILA intreaga la
+ * P28 (nedeductibila) si pe cea FISCALA la P11 (deducere) — nu diferenta dintre ele. Efectul pe
+ * impozit e identic (P34 creste cu `af`, P16 creste cu `af`, deci P35 nu se misca), dar
+ * prezentarea e cea ceruta, si trateaza natural si cazul in care amortizarea fiscala o depaseste
+ * pe cea contabila — acolo „nedeductibilul" ar fi fost negativ, ceea ce pe formular n-ar avea sens.
+ *
+ * @returns {{ nedeductibile: object, totalNedeductibil: number, deduceri: object, totalDeduceri: number }}
+ */
+function mapareD101(randuri) {
+  const ned = {}; const ded = {};
+  const adauga = (unde, cod, suma) => { if (suma) unde[cod] = round2((unde[cod] || 0) + suma); };
+  for (const r of (randuri || [])) {
+    const m = r && r.d101;
+    if (m && m.brut) {
+      // forma „brut + deducere": pe formular merge cheltuiala INTREAGA, iar partea recunoscuta
+      // fiscal se scade separat, pe randul de deduceri
+      adauga(ned, m.rand, r.cheltuit);
+      adauga(ded, m.deducere, r.plafon);
+    } else {
+      adauga(ned, (m && m.rand) || m || D101_IMPLICIT, r.nedeductibil);
+    }
+  }
+  const sum = (o) => round2(Object.keys(o).reduce((s, k) => s + o[k], 0));
+  return { nedeductibile: ned, totalNedeductibil: sum(ned), deduceri: ded, totalDeduceri: sum(ded) };
 }
 
 /**
@@ -90,7 +135,8 @@ function ajustari(i, cfg) {
     const plafonP = bazaP > 0 ? round2((bazaP * Number(cfg.protocolPct || 0)) / 100) : 0;
     randuri.push(rand('Protocol', 'Art. 25(3)(a)', CONT.protocol, bazaP, plafonP, protocol,
       Math.max(0, round2(protocol - plafonP)),
-      bazaP > 0 ? '' : 'Baza de calcul <= 0 (an pe pierdere): plafonul e zero, cheltuiala e integral nedeductibila.'));
+      bazaP > 0 ? '' : 'Baza de calcul <= 0 (an pe pierdere): plafonul e zero, cheltuiala e integral nedeductibila.',
+      'P26')); // rd. 26 „Cheltuieli de protocol care depasesc limita prevazuta de lege" — instructiunea citeaza chiar art. 25(3)(a)
   }
 
   // ── Cheltuieli sociale (art. 25(3)(b)) ────────────────────────────────────
@@ -100,7 +146,8 @@ function ajustari(i, cfg) {
     const plafonS = fond > 0 ? round2((fond * Number(cfg.socialPct || 0)) / 100) : 0;
     randuri.push(rand('Cheltuieli sociale', 'Art. 25(3)(b)', CONT.social, fond, plafonS, social,
       Math.max(0, round2(social - plafonS)),
-      fond > 0 ? '' : 'Fara fond de salarii: plafonul e zero.'));
+      fond > 0 ? '' : 'Fara fond de salarii: plafonul e zero.',
+      'P33')); // fara rand dedicat; instructiunea rd. 33 enumera explicit depasirile de la art. 25(3)
   }
 
   // ── Cheltuieli auto (art. 25(3)(l)) ───────────────────────────────────────
@@ -111,7 +158,8 @@ function ajustari(i, cfg) {
     const pctDed = Number(cfg.autoCheltuialaDeductibilPct || 0);
     const dedA = round2((auto * pctDed) / 100);
     randuri.push(rand('Cheltuieli auto', 'Art. 25(3)(l)', '', auto, dedA, auto,
-      round2(auto - dedA), 'Deductibile ' + pctDed + '% (vehicule fara utilizare exclusiv business).'));
+      round2(auto - dedA), 'Deductibile ' + pctDed + '% (vehicule fara utilizare exclusiv business).',
+      'P33')); // idem: depasire de la art. 25(3)(l), fara rand propriu pe formular
   }
 
   // ── Sponsorizare, ca CHELTUIALA (art. 25(4)(i)) ───────────────────────────
@@ -120,7 +168,8 @@ function ajustari(i, cfg) {
   const sponsor = cheltuiala(rulaj, CONT.sponsorizare);
   if (sponsor > 0) {
     randuri.push(rand('Sponsorizare (cheltuiala)', 'Art. 25(4)(i)', CONT.sponsorizare, sponsor, 0, sponsor,
-      sponsor, 'Integral nedeductibila; se recupereaza ca CREDIT FISCAL din impozit (vezi creditul).'));
+      sponsor, 'Integral nedeductibila; se recupereaza ca CREDIT FISCAL din impozit (vezi creditul).',
+      'P27')); // rd. 27 cere cheltuiala de sponsorizare INREGISTRATA in contabilitate — exact ce e aici
   }
 
   // ── Amortizare: contabila vs fiscala (art. 28) ────────────────────────────
@@ -137,7 +186,8 @@ function ajustari(i, cfg) {
       randuri.push(rand('Amortizare (contabila vs fiscala)', 'Art. 28', '6811', ac, af, ac, dif,
         dif > 0
           ? 'Amortizarea contabila depaseste pe cea fiscala: diferenta e nedeductibila in acest exercitiu.'
-          : 'Amortizarea fiscala depaseste pe cea contabila: diferenta e o DEDUCERE suplimentara (nedeductibil negativ).'));
+          : 'Amortizarea fiscala depaseste pe cea contabila: diferenta e o DEDUCERE suplimentara (nedeductibil negativ).',
+        { rand: 'P28', brut: true, deducere: 'P11' })); // rd. 28 = amortizarea CONTABILA intreaga, rd. 11 = cea FISCALA
     }
   }
 
@@ -184,7 +234,9 @@ function ajustari(i, cfg) {
         + ' lei. Partea nedeductibila se reporteaza NELIMITAT.';
     }
     const randDob = rand('Costuri excedentare ale indatorarii', 'Art. 40^2', CONT.dobanzi,
-      excedent, plafonAplicat, excedent, nedeductibilD, nota);
+      excedent, plafonAplicat, excedent, nedeductibilD, nota,
+      'P31'); // rd. 31 — costul excedentar nedeductibil ANUL ACESTA, dar REPORTAT: instructiunea
+             // spune ca suma de aici e preluata anul urmator la rd. 12.1, ca deducere
     if (alternativa) randDob.alternativa = alternativa; // ambele cifre, pentru revizor si pentru UI
     randuri.push(randDob);
   }
@@ -242,4 +294,5 @@ function credit(i, cfg) {
   };
 }
 
-module.exports = { ajustari, credit, CONT, cheltuiala, venit };
+module.exports = {
+  mapareD101, ajustari, credit, CONT, cheltuiala, venit };
