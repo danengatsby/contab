@@ -931,10 +931,34 @@ function d101Xml(company, d, who) {
   const P4 = lei(d.venituriFinanciare); const P5 = lei(d.cheltuieliFinanciare); const P6 = P4 - P5;
   const P7 = P3 + P6;                       // rezultat brut (P8=P9=0 -> P10=P7)
   const P10 = P7;
-  const P15 = lei(d.deduceriFiscale); const P16 = P15; // toate deducerile la "alte sume deductibile"
+  // ── Deduceri (rd. 11..16) si cheltuieli nedeductibile (rd. 23..34) ──────────────────────────
+  // Randurile se iau din defalcarea calculata de motorul de plafoane (src/deductibilitate.js,
+  // `mapareD101`), care le atribuie dupa TEMEIUL LEGAL, conform OPANAF 206/2025. Fara defalcare
+  // (nedeductibile tastate manual) se pastreaza comportamentul istoric: tot la P33/P15.
+  // Reguli impuse de validator, aflate prin sondaj (vezi jurnalul de validare):
+  //   R56: P16 = P11+P12+P13+P14+P15      R80: P34 = suma(P23..P33)      R65: P22 = P10-P16-P21
+  const nedD = d.d101Nedeductibile || null;
+  const dedD = d.d101Deduceri || null;
+  const P11 = lei(dedD ? (dedD.P11 || 0) : 0);
+  const P15 = lei(d.deduceriFiscale); const P16 = P11 + P15;
   const P21 = 0;
   const P22 = P10 - P16 - P21;
-  const P33 = lei(d.cheltuieliNedeductibile); const P34 = P33; // toate nedeductibilele la "alte cheltuieli"
+  // Randurile de cheltuieli nedeductibile, in ordinea formularului. P34 e SUMA lor (R80), nu o
+  // valoare independenta — altfel defalcarea si totalul ar putea diverge tacut.
+  const RANDURI_NED = ['P23', 'P24', 'P25', 'P26', 'P27', 'P28', 'P29', 'P30', 'P31', 'P32', 'P33'];
+  const ned = {};
+  if (nedD) {
+    for (const k of RANDURI_NED) ned[k] = lei(nedD[k] || 0);
+    // ce n-a nimerit un rand cunoscut nu se pierde: se aduna la „alte cheltuieli nedeductibile"
+    const cunoscute = RANDURI_NED.reduce((s, k) => s + lei(nedD[k] || 0), 0);
+    const rest = lei(d.cheltuieliNedeductibile) - cunoscute;
+    if (rest) ned.P33 = ned.P33 + rest;
+  } else {
+    for (const k of RANDURI_NED) ned[k] = 0;
+    ned.P33 = lei(d.cheltuieliNedeductibile); // comportamentul istoric
+  }
+  const P33 = ned.P33;
+  const P34 = RANDURI_NED.reduce((s, k) => s + ned[k], 0);
   const P35 = P22 + P34;                    // profit impozabil/pierdere inainte de reportarea pierderilor
   const P36 = P35 < 0 ? -P35 : 0;           // pierderea curenta de reportat (P37=P38=0)
   const P38a = P35 + P36;                   // = max(P35, 0)
@@ -954,11 +978,17 @@ function d101Xml(company, d, who) {
   const P431 = P43; const P432 = 0;
   const P481 = P41 - P43; const P482 = 0; const P48 = P481 + P482;
   const P52 = P48;                          // impozit de plata = (P48+P51)-(P49+P50) = P48
-  const vals = { P1, P2, P3, P4, P5, P6, P7, P10, P15, P16, P21, P22, P33, P34, P35, P36, P38a, P39, P39a, P40, P40a, P41, P411, P412, P43, P431, P432, P481, P482, P48, P52 };
+  const vals = Object.assign({}, ned, { P1, P2, P3, P4, P5, P6, P7, P10, P11, P15, P16, P21, P22, P33, P34, P35, P36, P38a, P39, P39a, P40, P40a, P41, P411, P412, P43, P431, P432, P481, P482, P48, P52 });
+  // randurile de nedeductibile care au valoare; P33 ramane mereu emis (contract istoric)
+  const randuriNedNenule = RANDURI_NED.filter((k) => k !== 'P33' && ned[k]);
   // Suma de control (totalPlata_A) = suma DOAR a indicatorilor principali P1..P53 (regula R19 din
   // validator); variantele "a" (P38a/P40a) si sub-indicatorii (P411/P412/P431/P432/P481/P482/P39a)
   // NU intra. Ca P43 intra, iar P431 nu, e dovedit prin sondaj pe validator (vezi jurnalul).
-  const checksumKeys = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P10', 'P15', 'P16', 'P21', 'P22', 'P33', 'P34', 'P35', 'P36', 'P39', 'P40', 'P41', 'P43', 'P48', 'P52'];
+  // P11 si P23..P32 intra si ele cand sunt emise: sunt indicatori PRINCIPALI, ca P15/P33.
+  const checksumKeys = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P10']
+    .concat(P11 ? ['P11'] : []).concat(['P15', 'P16', 'P21', 'P22'])
+    .concat(randuriNedNenule)
+    .concat(['P33', 'P34', 'P35', 'P36', 'P39', 'P40', 'P41', 'P43', 'P48', 'P52']);
   const totalPlata = checksumKeys.reduce((s, k) => s + vals[k], 0);
   const cui = String(company.cui).replace(/^ro/i, '').replace(/\s/g, '');
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
@@ -974,7 +1004,8 @@ function d101Xml(company, d, who) {
   nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
   cif="${esc(cui)}" caen="${esc(company.caen || '0000')}" denumire="${esc(company.nume)}" adresa="${esc(adresa || '-')}"
   ${P('P1')} ${P('P2')} ${P('P3')} ${P('P4')} ${P('P5')} ${P('P6')} ${P('P7')} ${P('P10')}
-  ${P('P15')} ${P('P16')} ${P('P21')} ${P('P22')} ${P('P33')} ${P('P34')} ${P('P35')} ${P('P36')}
+  ${P11 ? P('P11') + ' ' : ''}${P('P15')} ${P('P16')} ${P('P21')} ${P('P22')}
+  ${randuriNedNenule.map(P).join(' ')}${randuriNedNenule.length ? ' ' : ''}${P('P33')} ${P('P34')} ${P('P35')} ${P('P36')}
   ${P('P38a')} ${P('P39')} ${P('P39a')} ${P('P40')} ${P('P40a')} ${P('P41')} ${P('P411')} ${P('P412')}
   ${P43 > 0 ? `${P('P43')} ${P('P431')} ${P('P432')} ` : ''}${P('P481')} ${P('P482')} ${P('P48')} ${P('P52')}/>
 `;

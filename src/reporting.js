@@ -858,13 +858,23 @@ function d101(db, year, opts) {
   const rezExploatare = round2(vExpl - cExpl);
   const rezFinanciar = round2(vFin - cFin);
   const rezultatBrut = round2(rezExploatare + rezFinanciar); // = profit contabil (venituri - cheltuieli)
+  // Defalcarea nedeductibilelor pe randurile D101 se face DOAR cand ele au fost calculate din
+  // reguli (motorul de plafoane a rulat). Daca apelantul a tastat `cheltNedeductibile`, nu avem
+  // din ce sa derivam repartizarea si ramane totul la P33, ca pana acum.
+  const manual = opts.cheltNedeductibile != null && opts.cheltNedeductibile !== '';
+  const mapD101 = (!manual && pt.ajustari && pt.ajustari.length) ? deduct.mapareD101(pt.ajustari) : null;
   return {
     year: String(year), cota: pt.cota,
     venituriExploatare: vExpl, cheltuieliExploatare: cExpl, rezExploatare,
     venituriFinanciare: vFin, cheltuieliFinanciare: cFin, rezFinanciar,
     rezultatBrut,
-    cheltuieliNedeductibile: round2(pt.cheltNedeductibile || 0),
-    deduceriFiscale: round2(pt.deduceri || 0),
+    cheltuieliNedeductibile: round2(mapD101 ? mapD101.totalNedeductibil : (pt.cheltNedeductibile || 0)),
+    deduceriFiscale: round2(pt.deduceri || 0), // ramane P15; P11 vine separat, din mapare
+    // Defalcarea pe randurile formularului (P23..P33) + deducerile perechi (P11). Absenta cand
+    // nedeductibilele au fost TASTATE manual: atunci nu exista reguli din care sa se derive
+    // repartizarea, iar o defalcare inventata ar fi mai rea decat totalul cinstit la „alte".
+    d101Nedeductibile: mapD101 ? mapD101.nedeductibile : null,
+    d101Deduceri: mapD101 ? mapD101.deduceri : null,
     pierdereReportata: round2(pt.pierdereReportata || 0),
     pierdereFolosita: round2(pt.pierdereFolosita || 0),
     profitImpozabil: round2(pt.profitImpozabil || 0),

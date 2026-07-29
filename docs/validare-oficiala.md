@@ -159,6 +159,39 @@ Ordinea de căutare (`scripts/valideaza-etransport.sh`):
 > versiunea după anul din `Data_S`. Maparea de mai sus e dovedită pentru schema **v10** (exercițiile
 > 2024–2026); pentru alt an se re-sondează, nu se extrapolează.
 
+> **D101 — defalcarea nedeductibilelor pe rândurile P23..P33 (adăugat 2026-07-29).** Până acum toate
+> cheltuielile nedeductibile mergeau la **P33** „Alte cheltuieli nedeductibile", cu totalul corect în
+> P34. Acum se repartizează după temeiul legal al fiecărei reguli.
+>
+> **Sursa mapării NU e validatorul, și asta e esențial.** Sondajul a întors doar regulile de
+> aritmetică:
+>
+> ```
+> R80: total chelt nedeductibile P34 trebuie sa fie suma cheltuielilor de la P23 pana la P33
+> R56: total deduceri P16 trebuie sa fie suma P11+P12+P13+P14+P15
+> R65: Profit/pierdere P22 trebuie sa fie suma P10-P16-P21
+> ```
+>
+> Adică validatorul acceptă **orice** repartizare care torna — o mapare greșită ar trece validarea și
+> ar raporta fals. De aceea etichetele au fost luate din **formularul oficial OPANAF 206/2025** și din
+> instrucțiunile lui de completare, nu din sondaj. Corespondențele reținute: protocolul peste plafon →
+> **rd. 26** (instrucțiunea citează chiar art. 25(3)(a)), sponsorizarea înregistrată în contabilitate →
+> **rd. 27**, costul excedentar al îndatorării reportat → **rd. 31** (instrucțiunea spune că suma e
+> preluată anul următor la rd. 12.1), iar cheltuielile sociale și cele auto rămân la **rd. 33** —
+> corect, fiindcă instrucțiunea rândului 33 enumeră explicit „depășirile limitelor admisibile,
+> stabilite prin dispozițiile art. 25 alin. (3)".
+>
+> **Amortizarea are DOUĂ rânduri, nu unul:** formularul cere amortizarea *contabilă* întreagă la
+> **rd. 28** și pe cea *fiscală* la **rd. 11** (deducere) — nu diferența. Efectul pe impozit e identic
+> (P34 crește cu amortizarea fiscală, P16 la fel, deci P22+P34 nu se mișcă), dar prezentarea e cea
+> cerută și tratează natural cazul în care amortizarea fiscală o depășește pe cea contabilă: acolo
+> „nedeductibilul" ar fi fost negativ, ceea ce pe formular n-ar avea sens.
+>
+> Invariantul e fixat în teste: **defalcarea nu are voie să miște P35/P40/P41/P52**. Iar referința
+> `D101-defalcare` (`scripts/genereaza-referinte.js`) există fiindcă exemplul obișnuit n-are cheltuieli
+> cu plafon — nedeductibilele ies zero și poarta ar fi rămas verde fără să fi validat vreodată calea
+> nouă.
+
 > **D101 (adăugat 2026-07-21):** validatorul alege singur versiunea de schemă după **anul din `Data_S`**
 > (tabelul intern `_dateVersionTable` din `D101Validator`), nu după un atribut liber — un exercițiu
 > încheiat în 2024/2025/2026 → schema **v10** (`declaratie101`, indicatorii P1..P53 ca atribute pe
