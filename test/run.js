@@ -5243,10 +5243,20 @@ section('CSP: style-src FARA unsafe-inline (poarta zero)');
     .map((f) => (fsx.readFileSync(pth.join(pub, f), 'utf8').match(re) || []).length)
     .reduce((a, b) => a + b, 0);
   eq('zero elemente <style> in paginile HTML', count('.html', /<style[\s>]/g), 0);
-  eq('zero atribute style= in HTML (data-u/data-style permise)', count('.html', /(?<!data-)style="/g), 0);
-  eq('zero atribute style= in template-urile JS', count('.js', /(?<!data-)style=\\?"/g), 0);
+  // Ghilimelele nu se presupun: `style='...'` sau `style=\`...\`` ar fi la fel de inline, dar un
+  // regex care cere doar `"` le-ar rata TACIT. Azi sunt zero din fiecare fel (masurat) — poarta
+  // trebuie sa ramana adevarata si daca maine cineva scrie altfel.
+  eq('zero atribute style= in HTML (data-u/data-style permise)', count('.html', /(?<!data-)style\s*=\s*["'`]/g), 0);
+  eq('zero atribute style= in template-urile JS', count('.js', /(?<!data-)style\s*=\s*\\?["'`]/g), 0);
   eq('zero setAttribute(style) in JS (blocat de CSP; foloseste el.style)', count('.js', /setAttribute\((['"])style\1/g), 0);
   ok('CSP: styleSrc nu mai contine unsafe-inline', !/styleSrc[^\]]*unsafe-inline/.test(fsx.readFileSync(pth.join(__dirname, '..', 'src', 'bootstrap.js'), 'utf8')));
+  // Contra-probe pe MECANISM, nu pe fisiere vii: public/ e servit direct din working tree, deci
+  // o mutatie de proba acolo ar fi PUBLICA cat dureaza. Verificam ca regexul chiar prinde toate
+  // cele trei feluri de ghilimele si ca `data-style` ramane permis.
+  const RX_STYLE = /(?<!data-)style\s*=\s*["'`]/g;
+  const cate = (s) => (s.match(RX_STYLE) || []).length;
+  eq('poarta prinde style= indiferent de ghilimele', cate('<i style="a"><b style=\'b\'><u style=`c`>'), 3);
+  eq('data-style ramane permis (calea CSSOM)', cate('<i data-style="color:red">'), 0);
 }
 
 section('Docs: documentatia nu contrazice configuratia reala (fara drift)');
