@@ -216,6 +216,15 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   modulele se importă, fiecare funcție folosită în șabloane e importată) și una în `test/run.js`
   (interpolare fără `esc()` în generatoarele XML). Nu te baza pe „browserul nu poate trimite asta":
   clientul nu e obligat să fie un browser.
+  Ambele scanează **pe TEMPLATE, nu pe linie** (`test/tpl-scan.js`). Ancora veche cerea ca linia
+  interpolării să conțină `<tag`, deci sărea liniile de continuare ale șabloanelor pe mai multe
+  rânduri — forma normală aici: **6%** dintre interpolările din `public/` și **28%** dintre cele
+  din generatoarele XML nu erau văzute deloc (20 chiar cu nume de câmp riscant, toate escapate
+  corect — gaura era reală, dar goală: o ținea disciplina, nu poarta). Perimetrul porții XML se
+  **derivă** din sursă, nu mai e o listă de trei fișiere scrisă de mână: așa a intrat și
+  `src/sepa.js` (pain.001, pleacă la BANCĂ), adăugat după ce lista fusese scrisă.
+  Scanerul trebuie să sară literalii **regex** — fără asta raporta zero șabloane în `sepa.js`
+  (fișier plin de ele), adică un „curat" fals pe tot fișierul.
 - Migrări DB, două straturi (schema NU e SQL cu ALTER TABLE — vezi mai jos):
   - **Schema/DDL** (`schema()` din store.js/storePg.js): fiecare colecție e un tabel generic
     `id` + `firmaId` + blob `data` (TEXT/JSONB) — TOATE câmpurile trăiesc în `data`. Deci un câmp

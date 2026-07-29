@@ -625,15 +625,6 @@ const CAMP_RISCANT = /\b(nume|denumire|partener|adresa|oras|judet|explicatie|des
 // atributul cand valoarea e goala (schema cere minLength=1). Sunt acceptate aici doar pentru ca
 // escaparea lor e dovedita separat, pe iesire, in sectiunea e-Transport („atribut optional").
 const ESC_XML = /\b(esc|at|atNum|num2|numOf|roCui|umCode|Number|String|Math|parseInt|parseFloat|encodeURIComponent)\(/;
-function frunze(line) {
-  const out = []; let s = line;
-  for (let i = 0; i < 10; i += 1) {
-    let gasit = false;
-    s = s.replace(/\$\{([^{}]*)\}/g, (_, x) => { out.push(x.trim()); gasit = true; return ''; });
-    if (!gasit) break;
-  }
-  return out;
-}
 function faraEsc(expr) {
   let s = expr;
   for (let p = 0; p < 12; p += 1) {
@@ -654,21 +645,47 @@ function faraEsc(expr) {
 }
 const fsx2 = require('fs');
 const pth2 = require('path');
+const { markupInterps } = require('./tpl-scan');
+const TAG_XML = /<[a-zA-Z/?][\w:.-]*[\s/>]/;
+const srcDir = pth2.join(__dirname, '..', 'src');
+const citeste = (f) => fsx2.readFileSync(pth2.join(srcDir, f), 'utf8');
+// DOUA schimbari fata de varianta ancorata pe linie, amandoua masurate inainte:
+//  1. Scanarea merge pe TEMPLATE, nu pe linie. Ancora veche („linia contine <tag") sarea liniile
+//     de continuare ale template-urilor pe mai multe randuri — 28% dintre interpolarile din
+//     generatoare, dintre care 20 chiar cu nume de camp riscant. Toate erau escapate corect:
+//     gaura era reala, dar goala. Tinea disciplina, nu poarta.
+//  2. Lista de fisiere se DERIVA din sursa (orice modul din src/ care compune markup), nu se
+//     scrie de mana. Varianta veche fixa trei fisiere si nu stia de src/sepa.js — fisierul de
+//     plati pain.001, adaugat ulterior, care pleaca la BANCA.
+const generatoare = fsx2.readdirSync(srcDir)
+  .filter((f) => f.endsWith('.js'))
+  .filter((f) => markupInterps(citeste(f), TAG_XML).length > 0);
 const neescapateXml = [];
-for (const f of ['xml.js', 'saft.js', 'etransport.js']) {
-  fsx2.readFileSync(pth2.join(__dirname, '..', 'src', f), 'utf8').split('\n').forEach((ln, i) => {
-    if (!/<[a-zA-Z/?]/.test(ln)) return;
-    for (const e of frunze(ln)) {
-      if (e && CAMP_RISCANT.test(e) && CAMP_RISCANT.test(faraEsc(e))) neescapateXml.push(f + ':' + (i + 1) + ' ${' + e.slice(0, 50) + '}');
+for (const f of generatoare) {
+  for (const it of markupInterps(citeste(f), TAG_XML)) {
+    if (CAMP_RISCANT.test(it.expr) && CAMP_RISCANT.test(faraEsc(it.expr))) {
+      neescapateXml.push(f + ':' + it.line + ' ${' + it.expr.slice(0, 50) + '}');
     }
-  });
+  }
 }
 ok('niciun camp de text interpolat in XML fara esc()'
   + (neescapateXml.length ? ' — ' + neescapateXml.slice(0, 3).join(' | ') : ''), neescapateXml.length === 0);
+ok('perimetrul portii XML se deriva, nu e scris de mana (prinde si sepa.js)',
+  generatoare.includes('xml.js') && generatoare.includes('saft.js')
+  && generatoare.includes('etransport.js') && generatoare.includes('sepa.js'));
+// contra-probe pe MECANISMUL nou: un template pe mai multe randuri, cu interpolarea pe o linie
+// care nu contine niciun tag — exact forma pe care poarta veche o sarea.
+const tplMulti = ['const x = `<Invoice>', '  <Name>${p.denumire}</Name>', '</Invoice>`;'].join('\n');
+ok('poarta XML vede interpolarile de pe liniile de continuare (ancora veche le sarea)',
+  markupInterps(tplMulti, TAG_XML).some((it) => CAMP_RISCANT.test(faraEsc(it.expr))));
 ok('poarta XML chiar detecteaza o interpolare neescapata',
-  frunze('`<Name>${p.denumire}</Name>`').some((e) => CAMP_RISCANT.test(faraEsc(e))));
+  markupInterps('const x = `<Name>${p.denumire}</Name>`;', TAG_XML).some((it) => CAMP_RISCANT.test(faraEsc(it.expr))));
 ok('poarta XML nu raporteaza o interpolare escapata',
-  !frunze('`<Name>${esc(p.denumire)}</Name>`').some((e) => CAMP_RISCANT.test(faraEsc(e))));
+  !markupInterps('const x = `<Name>${esc(p.denumire)}</Name>`;', TAG_XML).some((it) => CAMP_RISCANT.test(faraEsc(it.expr))));
+// scanerul trebuie sa treaca peste literalii REGEX: fara asta raporta ZERO template-uri in
+// sepa.js (fisier plin de ele) si poarta ar fi dat un „curat" fals pe tot fisierul
+ok('scanerul nu se pierde pe un literal regex dinaintea template-ului',
+  markupInterps('const r = /["\'`]/g; const x = `<Name>${p.denumire}</Name>`;', TAG_XML).length === 1);
 ok('D300 XML: cota 21 pe randul 9', /R9_1="14000"/.test(d300xmlMix) && /R9_2="2940"/.test(d300xmlMix));
 ok('D300 XML: cota 11 pe randul 10', /R10_1="1000"/.test(d300xmlMix) && /R10_2="110"/.test(d300xmlMix));
 ok('D300 XML: totalul colectat insumeaza cotele (R17)', /R17_2="3050"/.test(d300xmlMix));
@@ -5025,7 +5042,7 @@ section('Poarta: allowlist-ul public (PUBLIC_PATHS) — fara orfani, fara creste
     .concat(fsx.readdirSync(pth.join(root, 'src', 'routes')).filter((f) => f.endsWith('.js')).map((f) => 'src/routes/' + f));
   const rute = new Set();
   for (const f of fisiere) {
-    for (const m of fsx.readFileSync(pth.join(root, f), 'utf8').matchAll(/app\.(get|post|delete|patch|put)\(\s*'(\/[^']*)'/g)) rute.add(m[2]);
+    for (const m of fsx.readFileSync(pth.join(root, f), 'utf8').matchAll(/app\.(get|post|delete|patch|put)\(\s*['"`](\/[^'"`]*)['"`]/g)) rute.add(m[2]);
   }
   // ORFANII sunt periculosi in ambele sensuri: o cale redenumita lasa ruta reala PROTEJATA (se
   // strica fluxul public) si, mai rau, lasa in allowlist o cale libera — care devine o gaura in
@@ -5066,7 +5083,7 @@ section('Poarta: nicio ruta in afara prefixelor pazite (/api /pdf /xml /csv /efa
   let total = 0;
   for (const f of fisiere) {
     const txt = fsx.readFileSync(pth.join(root, f), 'utf8');
-    for (const m of txt.matchAll(/app\.(get|post|delete|patch|put)\(\s*'(\/[^']*)'/g)) {
+    for (const m of txt.matchAll(/app\.(get|post|delete|patch|put)\(\s*['"`](\/[^'"`]*)['"`]/g)) {
       total += 1;
       const pref = m[2].split('/')[1] || '';
       if (!PREFIXE.has(pref)) straine.push(f.split('/').pop() + ': ' + m[1].toUpperCase() + ' ' + m[2]);
@@ -5078,6 +5095,12 @@ section('Poarta: nicio ruta in afara prefixelor pazite (/api /pdf /xml /csv /efa
   // poarta trebuie sa POATA pica
   ok('poarta chiar detecteaza un prefix nepazit', !PREFIXE.has('/export/date'.split('/')[1]));
   ok('si accepta unul pazit', PREFIXE.has('/xml/pain001'.split('/')[1]));
+  // Azi toate cele 340 de rute se inregistreaza cu ghilimele simple, deci un regex care cere
+  // apostroful nu rata nimic — dar tacerea ar fi fost totala daca cineva scria `app.get("/x")`:
+  // ruta ar fi devenit invizibila DEODATA pentru poarta de prefixe si pentru cea de allowlist.
+  const RX_RUTA = /app\.(get|post|delete|patch|put)\(\s*['"`](\/[^'"`]*)['"`]/g;
+  ok('extragerea rutelor nu depinde de stilul de ghilimele',
+    [...'app.get("/export/date", h); app.post(`/api/x`, h);'.matchAll(RX_RUTA)].length === 2);
 }
 
 section('Poarta: fiecare ruta care intoarce o colectie trece prin sendList/sendMap');
