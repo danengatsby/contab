@@ -8,6 +8,7 @@
     "start": "node server.js",
     "seed": "node scripts/seed.js",
     "test": "node scripts/run-all.js",
+    "test-pg": "sh scripts/test-pg.sh",
     "lint": "node scripts/check-syntax.js",
     "prestart": "npm test",
     "e2e": "node scripts/e2e.mjs",

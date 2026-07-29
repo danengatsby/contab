@@ -74,21 +74,13 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Store incremental pe PostgreSQL (paritate cu SQLite)
+      # Aceeasi comanda pe care o ruleaza si dezvoltatorul local (`npm run test-pg`), ca sa nu
+      # existe doua liste paralele de probe care driftează. Scriptul foloseste CONTAB_PG_URL cand
+      # e setat — aici e serviciul de mai sus, deci nu porneste niciun container in plus.
+      - name: Suita pe driverul de productie (PostgreSQL)
         env:
           CONTAB_PG_URL: postgres://contab:contab@localhost:5432/contab_test
-        run: node test/store-pg.js
-      - name: Suita HTTP pe PostgreSQL
-        env:
-          CONTAB_TEST_DRIVER: pg
-          CONTAB_PG_URL: postgres://contab:contab@localhost:5432/contab_test
-        run: node test/http.js
-      - name: Balanta pe calea SQL (prag 0, PostgreSQL)
-        env:
-          CONTAB_TEST_DRIVER: pg
-          CONTAB_PG_URL: postgres://contab:contab@localhost:5432/contab_test
-          CONTAB_SQL_READ_THRESHOLD: '0'
-        run: node test/http.js
+        run: npm run test-pg
 
   # ── POARTA FISCALA: conditie de RELEASE, pe FIECARE push/PR care atinge module fiscale ──
   # Diviziunea muncii cu `validare-anaf` de mai jos:
