@@ -18,6 +18,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import tplScan from './tpl-scan.js';
+
+const { templates } = tplScan;
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUB = path.join(ROOT, 'public');
@@ -692,17 +695,10 @@ section('Poartă: datele de proveniență externă nu ajung neescapate în HTML'
 // planul de conturi, care se extinde prin import CSV (vezi [[plan-conturi-stare-globala]]).
 const RISKY_FIELD = /\b(partener|denumire|explicatie|descriere|author|username|fileName|detalii|mesaj|firma|adresa|nume|cod)\b/i;
 const ESC_FN = /\b(H|escMsg|escAttr|esc|e|fmt|encodeURIComponent|Number)\(/;
-// interpolarile FRUNZA: `${...}` fara alt `${` inauntru (altfel expresia exterioara, care
-// contine sabloane imbricate deja escapate, ar fi raportata mereu)
-function leafInterp(line) {
-  const out = []; let s = line;
-  for (let i = 0; i < 10; i += 1) {
-    let found = false;
-    s = s.replace(/\$\{([^{}]*)\}/g, (_, x) => { out.push(x.trim()); found = true; return ''; });
-    if (!found) break;
-  }
-  return out;
-}
+// Interpolarile FRUNZA se iau acum PE TEMPLATE, nu pe linie (test/tpl-scan.js). Ancora veche
+// („linia contine <tag / innerHTML") sarea liniile de continuare ale template-urilor pe mai
+// multe randuri — forma normala aici: masurat, 69 din 1030 de interpolari (6%) nu erau vazute
+// deloc. Niciuna nu purta un camp riscant, deci gaura era goala; o tinea disciplina, nu poarta.
 // Scoate apelurile de escapare CU TOT cu argumentul (paranteze echilibrate): ce ramane pe urma
 // e exact ce ajunge neescapat in pagina, indiferent cum a fost compusa expresia.
 function stripEsc(expr) {
@@ -724,20 +720,40 @@ function stripEsc(expr) {
 const dropCond = (s) => { const q = s.indexOf('?'); return q >= 0 ? s.slice(q + 1) : s; }; // conditia nu se afiseaza
 // textul afisat nu e o referinta de date: „abonează firma acum" contine „firma" fara sa citeasca nimic
 const stripLit = (s) => s.replace(/'[^']*'/g, "''").replace(/"[^"]*"/g, '""').replace(/`[^`]*`/g, '``');
+// CHEILE de obiect sunt nume pe care le-am scris NOI, nu date pe care le citim: in
+// `Object.assign({ nume: 'TOTAL CAPITALURI PROPRII' }, eq.total)` cuvantul „nume" e o eticheta
+// interna, nu un camp extern. Ancorat pe `{` sau `,` ca sa nu prinda `p.nume : ''` dintr-un
+// ternar — acolo `nume` chiar e o citire de date si trebuie sa ramana raportabil.
+// (Falsul pozitiv a aparut abia dupa trecerea la scanarea pe template: statea pe o linie de
+// continuare, adica exact in unghiul mort al ancorei vechi.)
+const stripKeys = (s) => s.replace(/([{,]\s*)[A-Za-z_$][\w$]*\s*:/g, '$1');
+// expresiile FRUNZA dintr-un fragment de sursa (folosit de contra-probe si de portile 3 si 4)
+const leaves = (src) => templates(src)
+  .flatMap((t) => t.interps.filter((it) => !it.expr.includes('${')).map((it) => it.expr.trim()));
 
+const TAG_HTML = /[<][a-zA-Z/]/;
 const neescapate = [];
 const inAtribut = [];
 for (const f of fs.readdirSync(PUB).filter((x) => x.endsWith('.js'))) {
-  fs.readFileSync(path.join(PUB, f), 'utf8').split('\n').forEach((ln, i) => {
+  const src = fs.readFileSync(path.join(PUB, f), 'utf8');
+  src.split('\n').forEach((ln, i) => {
     // a doua poarta, EXACTA: escMsg nu escapeaza ghilimelele, deci intr-un atribut permite
     // adaugarea de atribute noi. Exact bug-ul din mesagerie (numele fisierului atasat).
     for (const m of ln.matchAll(/[a-zA-Z-]+="\$\{\s*escMsg\(/g)) inAtribut.push(f + ':' + (i + 1) + ' ' + m[0]);
-    if (!/[<][a-zA-Z/]|innerHTML|insertAdjacentHTML/.test(ln)) return;
-    for (const e of leafInterp(ln)) {
-      if (!e || !RISKY_FIELD.test(e)) continue;
-      if (RISKY_FIELD.test(stripLit(dropCond(stripEsc(e))))) neescapate.push(f + ':' + (i + 1) + '  ${' + e.slice(0, 60) + '}');
-    }
   });
+  // Un template intra la verificare daca poarta markup SAU daca e dat direct unui sink de HTML
+  // fara sa contina vreun tag: `el.innerHTML = ${x}` injecteaza la fel de bine fara `<` in sablon.
+  const sink = (t) => TAG_HTML.test(t.text)
+    || /innerHTML|insertAdjacentHTML/.test((src.split('\n')[t.line - 1] || ''));
+  for (const t of templates(src)) {
+    if (!sink(t)) continue;
+    for (const it of t.interps) {
+      if (it.expr.includes('${')) continue; // nu e frunza
+      const e = it.expr.trim();
+      if (!e || !RISKY_FIELD.test(e)) continue;
+      if (RISKY_FIELD.test(stripKeys(stripLit(dropCond(stripEsc(e)))))) neescapate.push(f + ':' + it.line + '  ${' + e.slice(0, 60) + '}');
+    }
+  }
 }
 ok('niciun camp de provenienta externa interpolat fara escapare'
   + (neescapate.length ? ' — ' + neescapate.slice(0, 4).join(' | ') : ''), neescapate.length === 0);
@@ -748,12 +764,16 @@ ok('niciun camp de provenienta externa interpolat fara escapare'
 // apelata: orice accName() interpolat in HTML trebuie sa fie invelit intr-o escapare.
 const accNeescapat = [];
 for (const f of fs.readdirSync(PUB).filter((x) => x.endsWith('.js'))) {
-  fs.readFileSync(path.join(PUB, f), 'utf8').split('\n').forEach((ln, i) => {
-    if (!/[<][a-zA-Z/]|innerHTML|insertAdjacentHTML/.test(ln)) return;
-    for (const e of leafInterp(ln)) {
-      if (e && /\baccName\(/.test(stripEsc(e))) accNeescapat.push(f + ':' + (i + 1) + '  ${' + e.slice(0, 60) + '}');
+  const src = fs.readFileSync(path.join(PUB, f), 'utf8');
+  const linii = src.split('\n');
+  for (const t of templates(src)) {
+    if (!TAG_HTML.test(t.text) && !/innerHTML|insertAdjacentHTML/.test(linii[t.line - 1] || '')) continue;
+    for (const it of t.interps) {
+      if (it.expr.includes('${')) continue;
+      const e = it.expr.trim();
+      if (e && /\baccName\(/.test(stripEsc(e))) accNeescapat.push(f + ':' + it.line + '  ${' + e.slice(0, 60) + '}');
     }
-  });
+  }
 }
 ok('accName() nu ajunge niciodata neescapat in HTML'
   + (accNeescapat.length ? ' — ' + accNeescapat.join(' | ') : ''), accNeescapat.length === 0);
@@ -768,17 +788,24 @@ const viewerSrc = fs.readFileSync(path.join(PUB, 'viewer.js'), 'utf8').split('\n
 const efStart = viewerSrc.findIndex((l) => /function renderEfactura/.test(l));
 const efNeescapate = [];
 if (efStart >= 0) {
-  for (let i = efStart; i < viewerSrc.length; i += 1) {
-    const ln = viewerSrc[i];
-    if (i > efStart && /^function |^const \w+ = \(/.test(ln)) break; // sfarsitul functiei
-    if (!/[<][a-zA-Z/]/.test(ln)) continue;
-    for (const e of leafInterp(ln)) {
-      // `=>` marcheaza o expresie CONTAINER (lines.map(...)): frunzele ei au fost deja intoarse
-      // separat de leafInterp si verificate pe cont propriu, deci containerul nu spune nimic.
-      if (/=>/.test(e)) continue;
+  let efEnd = viewerSrc.length;
+  for (let i = efStart + 1; i < viewerSrc.length; i += 1) {
+    if (/^function |^const \w+ = \(/.test(viewerSrc[i])) { efEnd = i; break; }
+  }
+  // se scaneaza FRAGMENTUL functiei ca text, nu linie cu linie: altfel interpolarile din
+  // template-urile pe mai multe randuri (majoritatea aici) raman nevazute
+  const efSrc = viewerSrc.slice(efStart, efEnd).join('\n');
+  for (const t of templates(efSrc)) {
+    if (!TAG_HTML.test(t.text)) continue;
+    for (const it of t.interps) {
+      if (it.expr.includes('${')) continue;
+      const e = it.expr.trim();
+      // `=>` marcheaza o expresie CONTAINER (lines.map(...)): frunzele ei sunt intoarse separat
+      // si verificate pe cont propriu, deci containerul nu spune nimic.
+      if (!e || /=>/.test(e)) continue;
       // conditia unui ternar nu se afiseaza (dropCond), sumele trec prin money() -> Number()
-      const rest = stripLit(dropCond(stripEsc(e.replace(/\bmoney\([^)]*\)/g, ' '))));
-      if (/[A-Za-z_$][\w$]*/.test(rest)) efNeescapate.push('viewer.js:' + (i + 1) + '  ${' + e.slice(0, 50) + '}');
+      const rest = stripKeys(stripLit(dropCond(stripEsc(e.replace(/\bmoney\([^)]*\)/g, ' ')))));
+      if (/[A-Za-z_$][\w$]*/.test(rest)) efNeescapate.push('viewer.js:' + (efStart + it.line) + '  ${' + e.slice(0, 50) + '}');
     }
   }
 }
@@ -793,12 +820,21 @@ ok('poarta accName accepta cazul escapat',
 ok('escMsg nu e folosit in atribute (nu escapeaza ghilimelele)'
   + (inAtribut.length ? ' — ' + inAtribut.join(' | ') : ''), inAtribut.length === 0);
 // poarta trebuie sa POATA pica: verificam pe o linie construita anume
-ok('poarta chiar detecteaza o interpolare neescapata', leafInterp('x.innerHTML = `<td>${r.explicatie}</td>`')
-  .some((e) => RISKY_FIELD.test(stripLit(dropCond(stripEsc(e))))));
-ok('poarta nu raporteaza o interpolare escapata', !leafInterp('x.innerHTML = `<td>${H(r.explicatie)}</td>`')
-  .some((e) => RISKY_FIELD.test(stripLit(dropCond(stripEsc(e))))));
-ok('poarta nu se incurca in escapare compusa', !leafInterp("x.innerHTML = `<td>${o.partener ? ' · ' + H(o.partener) : ''}</td>`")
-  .some((e) => RISKY_FIELD.test(stripLit(dropCond(stripEsc(e))))));
+const scapa = (src) => leaves(src).some((e) => RISKY_FIELD.test(stripKeys(stripLit(dropCond(stripEsc(e))))));
+ok('poarta chiar detecteaza o interpolare neescapata', scapa('x.innerHTML = `<td>${r.explicatie}</td>`'));
+ok('poarta nu raporteaza o interpolare escapata', !scapa('x.innerHTML = `<td>${H(r.explicatie)}</td>`'));
+ok('poarta nu se incurca in escapare compusa', !scapa("x.innerHTML = `<td>${o.partener ? ' · ' + H(o.partener) : ''}</td>`"));
+// contra-proba pe MECANISMUL nou: interpolarea sta pe o linie fara niciun tag, in interiorul
+// unui template pe mai multe randuri — forma pe care ancora veche o sarea complet
+ok('poarta vede interpolarile de pe liniile de continuare (ancora veche le sarea)',
+  scapa(['x.innerHTML = `<table>', '  <td>${r.explicatie}</td>', '</table>`;'].join('\n')));
+ok('...si le accepta cand sunt escapate',
+  !scapa(['x.innerHTML = `<table>', '  <td>${H(r.explicatie)}</td>', '</table>`;'].join('\n')));
+// cheia de obiect nu e o citire de date, dar un camp cu acelasi nume ramane raportabil
+ok('cheia de obiect literal nu e confundata cu un camp extern',
+  !scapa("x.innerHTML = `<td>${er(Object.assign({ nume: 'TOTAL' }, eq.total))}</td>`"));
+ok('...dar o citire reala cu acelasi nume tot e prinsa',
+  scapa('x.innerHTML = `<td>${p.nume}</td>`'));
 
 // ── Poarta anti-drift: parsarea sumelor exista in DOUA implementari ────────
 // `public/plan.js` (editorul de solduri din interfata) si `src/migrare.js` (preluarea din alt
