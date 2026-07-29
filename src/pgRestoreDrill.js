@@ -113,9 +113,12 @@ async function graphFromDb(connString, dbname) {
   // (/var/run/postgresql, autentificare peer). Altfel `pg` cade pe TCP catre localhost si cere
   // parola — psql reusea prin socket, iar verificarea de dupa el pica cu „client password must
   // be a string", adica drill-ul raporta esec desi restaurarea mersese.
+  // Conventia se IMPORTA din storePg, nu se rescrie aici: doua copii ale ei chiar au driftat, iar
+  // cea de aici a ramas fara `user` — vezi localPgConfig pentru ce a costat asta sub cron.
+  const { localPgConfig } = require('./storePg');
   const client = connString
     ? new Client({ connectionString: connString })
-    : new Client({ host: process.env.PGHOST || '/var/run/postgresql', database: dbname });
+    : new Client(localPgConfig(dbname));
   await client.connect();
   try {
     const d = { firme: [], entries: [], openingBalances: {}, partners: {} };

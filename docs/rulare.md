@@ -302,22 +302,49 @@ openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
 | | Valoare | De unde vine |
 |---|---|---|
 | **RPO** (cât se poate pierde) | **24 h** | backupul rulează zilnic la 03:30; o cădere la 03:29 pierde ziua precedentă |
-| **RTO** (cât durează revenirea) | **partea locală: 0,08 s** (măsurat); total **nemăsurat** | vezi mai jos |
+| **RTO** (cât durează revenirea) | **~1,4 s** de la arhivă în mână la serviciu verificat (măsurat) | `npm run rto-drill` |
 
-**Ce e măsurat** (2026-07-28, pe arhiva reală de producție, 68 KB): decriptare `openssl` **0,063 s**
-+ dezarhivare **0,012 s** = **0,075 s**, cu round-trip identic cu originalul. Partea locală e deci
-neglijabilă și rămâne așa și la volume mult mai mari — `openssl` face zeci de MB pe secundă.
+**Măsurat, nu estimat** (2026-07-29, pe arhiva reală de producție, 72 KB, 4 firme / 58 articole).
+Cifra se reproduce oricând cu:
 
-**Ce NU e măsurat, și de ce contează mai mult:** descărcarea din offsite (depinde de furnizor și de
-dimensiune) și **timpul operatorului** — găsirea cheii, rularea pașilor, verificarea. Acestea domină
-RTO-ul, nu criptografia. Prima restaurare completă trebuie cronometrată cap-coadă, cu credențiale
-reale, iar cifra scrisă aici. Până atunci, RTO-ul total rămâne **neverificat** — nu „e bine".
+```bash
+npm run rto-drill            # implicit: cea mai recentă data/backups/full-*.zip
+```
+
+Drill-ul cronometrează fiecare etapă și **verifică datele restaurate**, nu doar că serviciul
+pornește: despachetare `0,012 s` → rejucarea `contab.sql` `0,162 s` → fișiere (93) `0,014 s` →
+pornirea aplicației `1,062 s` → verificare `0,086 s`. Nu atinge producția: bază efemeră, director
+de date temporar, port liber. Versiunea de PostgreSQL se **derivă din antetul dump-ului** — un dump
+de pe 18 nu se rejoacă pe 16, iar prima rulare a picat exact așa.
+
+**Ce NU intră în cifră, deliberat:**
+- **obținerea arhivei din offsite** — azi e un atașament de e-mail, deci un pas *manual*: deschizi
+  mesajul, descarci. Depinde de om și de rețea, nu de cod. Un total care ar înghiți tăcut o etapă
+  manuală ar fi ficțiune;
+- **pornirea PostgreSQL** (1,4 s în drill) — artefact al probei; la o restaurare reală serverul de
+  baze e deja pornit;
+- **timpul operatorului** — găsirea arhivei, decizia, verificarea. Acesta domină RTO-ul real.
+
+Concluzia onestă: partea *tehnică* a revenirii e sub 2 secunde la volumul actual și scalează cu
+dimensiunea dump-ului; ce rămâne de scurtat e pasul manual de mai sus.
+
+> ⚠️ **Starea reală a copiei offsite diferă de procedura de mai jos.** Măsurat pe server la
+> 2026-07-29: `CONTAB_BACKUP_KEY` **absent** (deci arhiva pleacă **necriptată**) și toate
+> variabilele `CONTAB_OFFSITE_*` **absente** (deci calea pe stocare obiect **nu e activă**).
+> Transportul efectiv e e-mailul către `CONTAB_BACKUP_EMAIL_TO`, cu `db.json` + `contab.sql` +
+> `uploads/` în clar. Codul pentru varianta criptată pe S3 există și e testat — doar nu e
+> configurat. Până când este, procedura de mai jos descrie o instalare care nu e în funcțiune.
 
 ### Procedura de restaurare, pas cu pas
 
-1. Descarcă ultima arhivă din bucket (`contab/full-AAAALLZZ-HHMMSS.zip.enc`).
-2. Decriptează cu comanda `openssl` de mai sus (ai nevoie de `CONTAB_BACKUP_KEY`).
+1. Obține ultima arhivă. **Astăzi:** atașamentul din e-mailul zilnic către `CONTAB_BACKUP_EMAIL_TO`
+   (`full-AAAALLZZ-HHMMSS.zip`, necriptat). **După configurarea offsite-ului:** din bucket
+   (`contab/full-AAAALLZZ-HHMMSS.zip.enc`). Vezi avertismentul de mai sus — cele două diferă azi.
+2. Decriptează **doar dacă** arhiva e `.enc` (deci doar după ce `CONTAB_BACKUP_KEY` e setat), cu
+   comanda `openssl` de mai sus.
 3. Dezarhivează: conține `db.json`, dump-ul PostgreSQL (`contab.sql`) și `uploads/`.
+   Pașii 3–7 sunt exact ce automatizează și cronometrează `npm run rto-drill` — rulează-l periodic,
+   ca procedura să fie dovedită, nu presupusă.
 4. Restaurează baza: fie din Setări → Backup → „Restaurează", fie rejucând `contab.sql`.
 5. Copiază `uploads/` înapoi în `data/uploads/`.
 6. Repornește: `sudo -u contab PM2_HOME=/home/contab/.pm2 pm2 restart contab`.

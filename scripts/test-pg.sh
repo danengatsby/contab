@@ -56,10 +56,14 @@ else
   # in paralel — sau o instanta uitata — s-ar ciocni pe un port fix
   PORT=$(node -e 'const n=require("net"),s=n.createServer();s.listen(0,"127.0.0.1",()=>{const p=s.address().port;s.close(()=>console.log(p))})')
   CONTAINER="contab-pgtest-$$"
-  echo "[test-pg] pornesc PostgreSQL 16 efemer ($CONTAINER) pe portul $PORT…"
+  echo "[test-pg] pornesc ${CONTAB_PGTEST_IMAGE:-postgres:18} efemer ($CONTAINER) pe portul $PORT…"
+  # Versiunea majora urmareste PRODUCTIA (18.4 la 2026-07-29), nu o valoare veche: un `postgres:16`
+  # scris de mana ar verifica driverul pe alt server decat cel real — si chiar difera destul incat
+  # un dump de pe 18 sa nu se rejoace pe 16. Se poate suprascrie pentru probe pe alta versiune.
+  IMAGINE=${CONTAB_PGTEST_IMAGE:-postgres:18}
   docker run -d --name "$CONTAINER" \
     -e POSTGRES_USER=contab -e POSTGRES_PASSWORD=contab -e POSTGRES_DB=contab_test \
-    -p "$PORT:5432" postgres:16 >/dev/null
+    -p "$PORT:5432" "$IMAGINE" >/dev/null
 
   # asteptam sa accepte conexiuni; o baza care nu porneste e NEVERIFICAT, nu esec de test
   gata=0
