@@ -300,7 +300,7 @@ function equityChanges(db, year) {
     { nume: 'Rezerve legale', m: (c) => st(c, '1061') },
     { nume: 'Alte rezerve', m: (c) => st(c, '106') && !st(c, '1061') },
     { nume: 'Rezultatul reportat', m: (c) => st(c, '117') },
-    { nume: 'Rezultatul exercitiului', m: (c) => st(c, '121') },
+    { nume: 'Rezultatul exercițiului', m: (c) => st(c, '121') },
     { nume: 'Repartizarea profitului', m: (c) => st(c, '129') },
   ];
   const rows = groups.map((g) => ({
@@ -315,7 +315,7 @@ function equityChanges(db, year) {
   const rezultatNeinchis = round2(-sumNet(close, (c) => classOf(c) === 6 || classOf(c) === 7, 1));
   if (Math.abs(rezultatNeinchis) >= 0.005) {
     rows.push({
-      nume: 'Rezultatul exercitiului (neinchis in 121)',
+      nume: 'Rezultatul exercițiului (neînchis)',
       soldI: 0, cresteri: rezultatNeinchis > 0 ? rezultatNeinchis : 0, reduceri: rezultatNeinchis < 0 ? round2(-rezultatNeinchis) : 0, soldF: rezultatNeinchis,
     });
   }

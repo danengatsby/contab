@@ -1,7 +1,7 @@
 'use strict';
 
 // Rapoarte contabile: jurnal, cartea mare, banca/casa, balanta, TVA/D300, inchideri, situatii. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct } from './core.js';
+import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct, ac } from './core.js';
 import { renderBudget } from './dashboard.js';
 import { pget, workMonth, setWorkMonth, nextMonth, lunaLabel, applyWorkMonth, onPeriodChange } from './periods.js';
 
@@ -84,7 +84,7 @@ async function loadCashValuta() {
     ? `<p class="muted">Sold inițial lei: ${fmt(reg.siLei)} · monedă afișată: <b>${reg.moneda}</b></p>
       <table><thead><tr><th>Data</th><th>Doc.</th><th>Explicație</th><th>Mon.</th><th class="num">Curs</th><th class="num">Înc. val.</th><th class="num">Plăți val.</th><th class="num">Sold val.</th><th class="num">Înc. lei</th><th class="num">Plăți lei</th><th class="num">Sold lei</th></tr></thead>
       <tbody>${rows}<tr class="total"><td colspan="5">TOTAL ${reg.moneda} / SOLD FINAL</td><td class="num">${fmt(reg.rdVal)}</td><td class="num">${fmt(reg.rcVal)}</td><td class="num">${fmt(reg.soldFinalVal)}</td><td class="num">${fmt(reg.rdLei)}</td><td class="num">${fmt(reg.rcLei)}</td><td class="num">${fmt(reg.soldFinalLei)}</td></tr></tbody></table>`
-    : '<p class="muted">Nicio mișcare prin casa în valută (5314) în perioadă.</p>';
+    : '<p class="muted">Nicio mișcare prin casa în valută<span class="adv"> (5314)</span> în perioadă.</p>';
 }
 $('#cvMoneda') && $('#cvMoneda').addEventListener('change', loadCashValuta);
 
@@ -212,10 +212,19 @@ $('#exigForm').addEventListener('submit', async (e) => {
 });
 async function renderNeexigibila() {
   let n; try { n = await api('/api/tva-neexigibila'); } catch (e) { return; }
-  if (!n.colectataNeexigibila && !n.deductibilaNeexigibila && !n.facturi.length) { $('#neexigView').innerHTML = ''; return; }
+  // Acelasi tipar ca la pro-rata: o sectiune care nu se aplica firmei se da la o parte singura si
+  // spune DE CE, in loc sa ceara unui necontabil sa deduca dintr-un formular gol ca nu-l priveste.
+  // Ascunde formularul si explicatia, nu tot cardul: titlul ramane ca ancora, cu motivul sub el.
+  const nimic = !n.colectataNeexigibila && !n.deductibilaNeexigibila && !n.facturi.length;
+  const nuSeAplica = nimic && !(META.company && META.company.tvaLaIncasare);
+  const na = $('#tvaIncasareNA'); const frm = $('#exigForm');
+  if (na) na.classList.toggle('hidden', !nuSeAplica);
+  if (frm) frm.classList.toggle('hidden', nuSeAplica);
+  $$('#tvaIncasareCard > p.muted.adv').forEach((el) => el.classList.toggle('hidden', nuSeAplica));
+  if (nimic) { $('#neexigView').innerHTML = ''; return; }
   $('#neexigView').innerHTML = `<table><tbody>
-    <tr><td>TVA colectată încă neexigibilă (4428)</td><td class="num">${fmt(n.colectataNeexigibila)}</td></tr>
-    <tr><td>TVA deductibilă încă neexigibilă (4428)</td><td class="num">${fmt(n.deductibilaNeexigibila)}</td></tr></tbody></table>
+    <tr><td>TVA colectată încă neexigibilă${ac('4428')}</td><td class="num">${fmt(n.colectataNeexigibila)}</td></tr>
+    <tr><td>TVA deductibilă încă neexigibilă${ac('4428')}</td><td class="num">${fmt(n.deductibilaNeexigibila)}</td></tr></tbody></table>
     ${n.facturi.length ? `<div class="tablewrap" data-u="u18"><table><thead><tr><th>Data</th><th>Document</th><th>Partener</th><th>Tip</th><th>Stadiu</th><th class="num">TVA</th></tr></thead><tbody>${
       n.facturi.map((f) => `<tr><td>${H(f.data)}</td><td>${H(f.document)}</td><td>${H(f.partener)}</td><td>${H(f.tip)}</td><td>${f.stadiu === 'neexigibila' ? 'neexigibilă' : 'exigibilă'}</td><td class="num">${fmt(f.suma)}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
 }
@@ -239,12 +248,12 @@ async function loadVat() {
   const trimNota = vj.period
     ? ` <span class="badge" title="${vj.trimestrial ? 'TVA trimestrial: decontul agregă cele 3 luni ale trimestrului' : 'Perioada decontului'}">${H(vj.period)}${vj.trimestrial ? ' (trimestru)' : ''}</span>`
     : ' <span class="badge" title="Fără lună selectată: totalurile cumulează toate perioadele">cumulat</span>';
-  const deLabel = t.deplata > 0 ? 'TVA de plată (4423)' : 'TVA de recuperat (4424)';
+  const deLabel = t.deplata > 0 ? 'TVA de plată' + ac('4423') : 'TVA de recuperat' + ac('4424');
   const deVal = t.deplata > 0 ? t.deplata : t.derecuperat;
   $('#tvaSummary').innerHTML =
     `<div class="card"><h3>Sumar decont (D300)${trimNota}</h3><table>
-      <tr><td>TVA colectată (4427)</td><td class="num">${fmt(t.colectata)}</td></tr>
-      <tr><td>TVA deductibilă (4426)</td><td class="num">${fmt(t.deductibila)}</td></tr>
+      <tr><td>TVA colectată${ac('4427')}</td><td class="num">${fmt(t.colectata)}</td></tr>
+      <tr><td>TVA deductibilă${ac('4426')}</td><td class="num">${fmt(t.deductibila)}</td></tr>
       <tr class="total"><td>${deLabel}</td><td class="num">${fmt(deVal)}</td></tr>
      </table></div>
      <div class="card"><h3>Defalcare pe cote (D300)</h3><table><thead><tr><th>Cotă</th><th class="num">Bază vânzări</th><th class="num">TVA col.</th><th class="num">Bază cumpărări</th><th class="num">TVA ded.</th></tr></thead><tbody>${

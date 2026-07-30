@@ -21,6 +21,16 @@ export const H = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
 export const escMsg = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 export const escAttr = (s) => escMsg(s).replace(/"/g, '&quot;');
 
+// Codul de cont afisat LANGA o eticheta umana („TVA colectata (4427)"): detaliu tehnic, marcat
+// `.adv`, deci ascuns in modul simplu si vizibil in cel expert. Modul simplu era pana acum doar
+// un filtru de MENIU — ascundea intrari, dar paginile ramase isi pastrau tot vocabularul contabil.
+// Nu se foloseste acolo unde codul ESTE informatia (plan de conturi, balanta, fise de cont):
+// acele ecrane sunt oricum `.adv` in intregime.
+// `H(cod)` chiar daca azi toate apelurile trec literali: planul de conturi se poate IMPORTA, deci
+// un cod poate deveni oricand data externa. Poarta de escapare din test/frontend.mjs cere asta,
+// si bine face — regula e „escapeaza dupa SURSA, nu dupa cat de sigur pare apelul de azi".
+export const ac = (cod) => ` <span class="adv">(${H(cod)})</span>`;
+
 export let META = { types: [], accounts: [], company: {}, periods: [] };
 export let USER = {};
 export function setMeta(m) { META = m; }

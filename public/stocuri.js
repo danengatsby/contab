@@ -26,7 +26,7 @@ function renderStockMovements() {
         <td class="num">${fmt(m.cantitate)} ${H(m.um)}</td><td class="num">${m.pretUnitar ? fmt(m.pretUnitar) : '—'}</td><td>${H(m.document)}</td><td>${m.operator ? H(m.operator) : '—'}</td>
         <td>${m.tip === 'transfer' ? '<span class="muted">intern</span>' : m.initial ? '<span class="pill" title="Stoc preluat la deschidere — valoarea e în soldurile inițiale, nu se contabilizează separat">sold inițial</span>' : m.entryId ? '<span class="pill">✓ contabilizat</span>' : `<button class="linkbtn mpost" data-id="${m.id}">postează nota</button>`}</td>
         <td>${m.tip === 'receptie' ? `<a class="linkbtn" href="/pdf/nir?id=${m.id}" target="_blank">NIR</a> · ` : m.tip === 'iesire' ? `<a class="linkbtn" href="/pdf/bon-consum?id=${m.id}" target="_blank">bon consum</a> · ` : `<a class="linkbtn" href="/pdf/aviz?id=${m.id}" target="_blank">aviz</a> · `}<button class="linkbtn mdel" data-id="${m.id}">șterge</button></td></tr>`).join('')}</tbody></table>
-      <p class="muted" data-u="u18">${movs.length} din ${STOCK_MOVS.length} mișcări. „Postează nota”: recepție <b>3xx = 401</b>, ieșire <b>60x = 3xx</b> la CMP. Transferul e mișcare internă.</p>`
+      <p class="muted" data-u="u18">${movs.length} din ${STOCK_MOVS.length} mișcări. „Postează nota”: recepție <b class="adv">3xx = 401</b>, ieșire <b>60x = 3xx</b> la CMP. Transferul e mișcare internă.</p>`
     : '<p class="muted">Nicio mișcare (verifică filtrele).</p>';
   $$('#movementsList .mdel').forEach((b) => b.addEventListener('click', async () => {
     await api('/api/stock-movements/' + b.dataset.id, { method: 'DELETE' }); loadStocks(); toast('Mișcare ștearsă');
@@ -53,8 +53,8 @@ async function loadStocks() {
   ]);
   // gestiuni: listă + selecturi
   $('#gestiuniList').innerHTML = gestiuni.length
-    ? `<table><thead><tr><th>Cod</th><th>Denumire</th><th>Gestionar</th><th>Cont</th><th></th></tr></thead><tbody>${
-      gestiuni.map((g) => `<tr><td class="acc">${H(g.cod)}</td><td>${H(g.denumire)}</td><td>${H(g.gestionar)}</td><td class="acc">${H(g.cont || '371')}</td>
+    ? `<table><thead><tr><th>Cod</th><th>Denumire</th><th>Gestionar</th><th class="adv">Cont</th><th></th></tr></thead><tbody>${
+      gestiuni.map((g) => `<tr><td class="acc">${H(g.cod)}</td><td>${H(g.denumire)}</td><td>${H(g.gestionar)}</td><td class="acc adv">${H(g.cont || '371')}</td>
         <td><button class="linkbtn gdel" data-id="${g.id}">șterge</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Nicio gestiune. Adaugă cel puțin un depozit.</p>';
   $$('#gestiuniList .gdel').forEach((b) => b.addEventListener('click', async () => {

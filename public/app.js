@@ -237,8 +237,17 @@ function addPanelInfo() {
     const i = document.createElement('span');
     i.className = 'cinfo'; i.tabIndex = 0; i.textContent = 'i';
     i.setAttribute('role', 'note'); i.setAttribute('aria-label', hit[1]);
+    // Al treilea element al intrarii (optional) e coada TEHNICA a explicatiei — notele contabile
+    // („constitui ajustarea 6814 = 491"). Merge intr-un <span class="adv">, deci dispare in modul
+    // simplu si ramane pentru expert. Se construieste ca NOD separat, nu prin innerHTML: textul
+    // ramane pus cu textContent, deci nu se deschide o cale de injectie in explicatii.
     const pop = document.createElement('span');
     pop.className = 'cpop'; pop.textContent = hit[1];
+    if (hit[2]) {
+      const teh = document.createElement('span');
+      teh.className = 'adv'; teh.textContent = ' ' + hit[2];
+      pop.appendChild(teh);
+    }
     i.appendChild(pop);
     h.appendChild(i);
   });

@@ -459,17 +459,17 @@
         <div class="row" data-u="u79">
           <input type="file" id="efImportFile" accept=".xml,text/xml" />
           <label data-u="u73">Cont cheltuială/stoc
-            <select id="efImportCont">
-              <option value="371">371 — Mărfuri</option>
-              <option value="301">301 — Materii prime</option>
-              <option value="302">302 — Materiale consumabile</option>
-              <option value="628">628 — Servicii (alte)</option>
-              <option value="604">604 — Materiale nestocate</option>
-              <option value="612">612 — Chirii</option>
-              <option value="605">605 — Utilități (energie, apă)</option>
-              <option value="611">611 — Întreținere și reparații</option>
-              <option value="613">613 — Asigurări</option>
-              <option value="623">623 — Protocol, reclamă</option>
+            <select id="efImportCont" data-acc-labels>
+              <option value="371">Mărfuri (371)</option>
+              <option value="301">Materii prime (301)</option>
+              <option value="302">Materiale consumabile (302)</option>
+              <option value="628">Alte servicii (628)</option>
+              <option value="604">Materiale nestocate (604)</option>
+              <option value="612">Chirii (612)</option>
+              <option value="605">Utilități (energie, apă) (605)</option>
+              <option value="611">Întreținere și reparații (611)</option>
+              <option value="613">Asigurări (613)</option>
+              <option value="623">Protocol, reclamă (623)</option>
             </select>
           </label>
           <button id="efParseBtn" class="btn">Citește factura</button>
@@ -668,11 +668,11 @@
       <div class="toolbar">
         <h2>Încasări & plăți <span class="muted" data-u="u70">(bancă / casă)</span></h2>
         <div class="spacer"></div>
-        <select id="cbCont" class="period">
-          <option value="5121">5121 Bancă lei</option>
-          <option value="5311">5311 Casa lei</option>
-          <option value="5124">5124 Bancă valută</option>
-          <option value="5314">5314 Casa valută</option>
+        <select id="cbCont" class="period" data-acc-labels>
+          <option value="5121">Bancă lei (5121)</option>
+          <option value="5311">Casă lei (5311)</option>
+          <option value="5124">Bancă valută (5124)</option>
+          <option value="5314">Casă valută (5314)</option>
         </select>
         <select id="cbLuna" class="period luna" aria-label="Luna"></select>
         <select id="cbAn" class="period an" aria-label="Anul"></select>
@@ -681,7 +681,7 @@
       <div id="cbView" class="tablewrap"></div>
       <div class="card">
         <div class="card-head">
-          <h3>💱 Registru de casă în valută <span class="muted" data-u="u70">(5314)</span></h3>
+          <h3>💱 Registru de casă în valută <span class="muted adv" data-u="u70">(5314)</span></h3>
           <div class="row" data-u="u85">
             <input id="cvMoneda" class="period" value="EUR" data-u="u86" title="Moneda" />
             <a id="cvPdf" class="btn small" target="_blank">⬇ PDF</a>
@@ -760,9 +760,10 @@
         <p class="muted">Dacă ai și operațiuni <b>fără drept de deducere</b> (scutite: medical, financiar, chirii scutite…), setează <b>pro-rata provizorie</b> în Setări → Datele firmei și bifează „achiziție cu destinație mixtă" pe facturile comune — TVA-ul se deduce automat doar în procentul setat, restul intră în cost. La final de an, aici vezi pro-rata <b>definitivă</b> și regularizarea de postat.</p>
         <div id="proRataView" class="tablewrap"></div>
       </div>
-      <div class="card">
+      <div class="card" id="tvaIncasareCard">
         <h3>TVA la încasare — exigibilitate automată</h3>
-        <p class="muted">La încasarea/plata unei facturi cu TVA neexigibilă (4428), introdu suma brută; TVA-ul se calculează automat (brut × cotă / (100+cotă)) și se postează nota: încasare <b>4428 = 4427</b>, plată <b>4426 = 4428</b>.</p>
+        <p class="muted hidden" id="tvaIncasareNA">Nu e cazul: firma nu aplică TVA la încasare și nu ai TVA neexigibilă în evidență. Firmele cu TVA exigibil la facturare sar peste această secțiune.</p>
+        <p class="muted adv">La încasarea/plata unei facturi cu TVA neexigibilă (4428), introdu suma brută; TVA-ul se calculează automat (brut × cotă / (100+cotă)) și se postează nota: încasare <b>4428 = 4427</b>, plată <b>4426 = 4428</b>.</p>
         <form id="exigForm" class="dyn">
           <label>Tip
             <select name="tip"><option value="colectata">Încasare (TVA colectată)</option><option value="deductibila">Plată (TVA deductibilă)</option></select>
@@ -801,7 +802,7 @@
       <div class="grid2">
         <div class="card">
           <h2>Închide TVA-ul lunii</h2>
-          <p class="muted">Compensează TVA colectată (4427) cu TVA deductibilă (4426) și determină TVA de plată (4423) sau de recuperat (4424).</p>
+          <p class="muted adv">Compensează TVA colectată (4427) cu TVA deductibilă (4426) și determină TVA de plată (4423) sau de recuperat (4424).</p>
           <label>Luna de închis</label>
           <div class="toolbar" data-u="u88">
             <select id="vcLuna" class="period luna-req" aria-label="Luna"></select>
@@ -1020,13 +1021,13 @@
     <section id="tab-analitic" class="tab">
       <div class="explain"><span class="ei">🔎</span><p><b>Ce e asta:</b> aici vezi soldul detaliat pe fiecare partener — cine îți mai datorează bani și cui mai datorezi tu, defalcat client cu client și furnizor cu furnizor.</p></div>
       <div class="toolbar">
-        <h2>Scadențar clienți & furnizori <span class="muted" data-u="u70">(balanță analitică pe partener)</span></h2>
+        <h2>Scadențar clienți &amp; furnizori <span class="muted adv" data-u="u70">(balanță analitică pe partener)</span></h2>
         <div class="spacer"></div>
         <a id="analyticPdf" class="btn" href="/pdf/analytic" target="_blank">⬇ PDF</a>
         <a id="analyticCsv" class="btn" href="/csv/analytic" target="_blank">⬇ CSV</a>
       </div>
-      <p class="muted">Detalierea conturilor sintetice (401, 4111…) pe analitice per partener (401.01, 401.02…), cu sold inițial, rulaje și sold final.</p>
-      <div class="card">
+      <p class="muted adv">Detalierea conturilor sintetice (401, 4111…) pe analitice per partener (401.01, 401.02…), cu sold inițial, rulaje și sold final.</p>
+      <div class="card adv">
         <h3>Solduri inițiale pe partener</h3>
         <p class="muted">Adaugă soldul de deschidere al fiecărui partener. Suma lor pe cont trebuie să fie egală cu soldul inițial sintetic (Setări → solduri inițiale).</p>
         <form id="oaForm" class="dyn">
@@ -1052,10 +1053,10 @@
           <h3>Ajustare pentru deprecierea creanțelor</h3>
           <span class="row" data-u="u95"><input id="provPct" type="number" min="0" max="100" value="100" data-u="u96" title="Procent provizion" /> %<button id="provPost" class="btn small primary">Înregistrează ajustarea</button></span>
         </div>
-        <p class="muted">Pe baza creanțelor mai vechi de 90 de zile (din aging). Înregistrează <b>6814 = 491</b> (sau reluare <b>491 = 7814</b> dacă ajustarea existentă e prea mare). Deductibilitatea fiscală (ex. 30% la &gt;270 zile) se reflectă separat în registrul de evidență fiscală.</p>
+        <p class="muted adv">Pe baza creanțelor mai vechi de 90 de zile (din aging). Înregistrează <b>6814 = 491</b> (sau reluare <b>491 = 7814</b> dacă ajustarea existentă e prea mare). Deductibilitatea fiscală (ex. 30% la &gt;270 zile) se reflectă separat în registrul de evidență fiscală.</p>
         <div id="provView"></div>
       </div>
-      <div id="analyticList"></div>
+      <div id="analyticList" class="adv"></div>
     </section>
 
     <!-- ─────────────── PARTENERI ─────────────── -->
@@ -1231,7 +1232,7 @@
             <label>Cod <input name="cod" placeholder="DEP" required /></label>
             <label>Denumire <input name="denumire" required /></label>
             <label>Gestionar <input name="gestionar" /></label>
-            <label>Cont implicit <input name="cont" value="371" /></label>
+            <label class="adv">Cont implicit <input name="cont" value="371" /></label>
             <button class="btn primary">Salvează gestiune</button>
           </form>
           <div id="gestiuniList" class="tablewrap" data-u="u8"></div>
@@ -1242,7 +1243,7 @@
             <label>Cod <input name="cod" required /></label>
             <label>Denumire <input name="denumire" required /></label>
             <label>UM <input name="um" value="buc" /></label>
-            <label>Cont stoc <input name="cont" value="371" /></label>
+            <label class="adv">Cont stoc <input name="cont" value="371" /></label>
             <label>Grupă <input name="grupa" placeholder="Mărfuri" /></label>
             <label>Cod NC (opțional) <input name="codNC" /></label>
             <button class="btn primary">Salvează produs</button>
@@ -1256,7 +1257,7 @@
       </div>
       <div class="card">
         <h2>📥 Preluare stoc inițial (societate cu istoric)</h2>
-        <p class="muted">Preiei o firmă care are deja marfă pe stoc? Încarcă stocul <b>cantitativ-valoric</b> la data preluării, dintr-un fișier <b>XLS / XLSX / DBF / CSV</b> exportat din vechiul program. Produsele și gestiunile lipsă se creează automat, iar costul mediu (CMP) pornește de la aceste cantități și valori. <b>Nu se generează note contabile</b> — valoarea stocului preluat o incluzi în <b>soldurile inițiale</b> ale conturilor de stoc (301/371/303…), altfel s-ar dubla.</p>
+        <p class="muted">Preiei o firmă care are deja marfă pe stoc? Încarcă stocul <b>cantitativ-valoric</b> la data preluării, dintr-un fișier <b>XLS / XLSX / DBF / CSV</b> exportat din vechiul program. Produsele și gestiunile lipsă se creează automat, iar costul mediu (CMP) pornește de la aceste cantități și valori. <b>Nu se generează note contabile</b> — valoarea stocului preluat o incluzi în <b>soldurile inițiale</b> ale conturilor de stoc<span class="adv"> (301/371/303…)</span>, altfel s-ar dubla.</p>
         <p class="muted" data-u="u98">Coloane: <span class="acc">Cod;Denumire;UM;Cont;Gestiune;Cantitate;PrețUnitar;Valoare</span> — antetul e opțional; dacă dai <b>Valoare</b>, are prioritate față de preț.</p>
         <textarea id="initStocCsv" rows="4" data-u="u19" placeholder="MARFA-001;Ciment 40kg;buc;371;DEP;120;25,50&#10;MP-01;Făină albă;kg;301;DEP;500;;1750"></textarea>
         <div class="row" data-u="u99">
@@ -1290,7 +1291,7 @@
       </div>
       <div class="card">
         <h2>🏭 Producție (obținere produse finite)</h2>
-        <p class="muted">Consumă materiale din stoc (la cost mediu) și obține produse finite la cost de producție: <b>601/602 = 301/302</b> (consum) + <b>345 = 711</b> (obținere). Stocul se actualizează automat.</p>
+        <p class="muted">Consumă materiale din stoc (la cost mediu) și obține produse finite la cost de producție: <b class="adv">601/602 = 301/302</b> (consum) + <b class="adv">345 = 711</b> (obținere). Stocul se actualizează automat.</p>
         <form id="prodForm" class="dyn">
           <label>Data <input name="data" type="date" /></label>
           <label>Document (bon de producție) <input name="document" placeholder="Bon producție 1" /></label>
@@ -1339,7 +1340,7 @@
             <button id="invLoad" class="btn small">Încarcă lista</button>
           </span>
         </div>
-        <p class="muted">Completează stocul faptic (numărat fizic). La înregistrare se generează automat: plus de inventar <b>3xx = 758</b>, minus (lipsă) <b>60x = 3xx</b>, iar bifând „imputare” se adaugă <b>4282 = 7588 + 4427</b> (recuperare de la gestionar). Fiecare inventar produce un proces-verbal.</p>
+        <p class="muted">Completează stocul faptic (numărat fizic). La înregistrare se generează automat: plus de inventar <b class="adv">3xx = 758</b>, minus (lipsă) <b>60x = 3xx</b>, iar bifând „imputare” se adaugă <b class="adv">4282 = 7588 + 4427</b> (recuperare de la gestionar). Fiecare inventar produce un proces-verbal.</p>
         <div id="inventoryArea"></div>
         <div id="inventoriesList" class="tablewrap" data-u="u101"></div>
       </div>

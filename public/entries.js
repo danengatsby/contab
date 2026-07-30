@@ -61,7 +61,7 @@ function entryRowHtml(e) {
     <td>${H(e.data)}</td>
     <td>${H(e.tipNume)}${e.system ? ' <span class="pill">auto</span>' : ''}</td>
     <td>${H(e.partener)}</td>
-    <td class="acc">${H(formula)}</td>
+    <td class="acc adv">${H(formula)}</td>
     <td class="num">${fmt(total)}</td>
     <td>${entryStateBadge(e)}</td>
     <td><a class="linkbtn" href="/pdf/note/${e.id}" target="_blank">PDF</a>
@@ -74,11 +74,14 @@ function entryRowHtml(e) {
     <td>${entryActionsHtml(e)}</td>
   </tr>`;
 }
+// Coloana „Formula" (6811=281) e cel mai tehnic lucru de pe prima pagina pe care o deschide un
+// incepator; clasa `adv` o scoate in modul simplu. O poarta si antetul, si celula din
+// entryRowHtml — altfel ar ramane o coloana fara cap.
 function renderEntryTable(containerId, rowsHtml, emptyMsg) {
   const el = $('#' + containerId); if (!el) return;
   if (!rowsHtml) { el.innerHTML = `<p class="muted">${emptyMsg}</p>`; return; }
   el.innerHTML = `<table><thead><tr>
-    <th>Data</th><th>Tip</th><th>Partener</th><th>Formulă</th><th class="num">Sumă</th><th>Stare</th><th>Fișiere</th><th></th>
+    <th>Data</th><th>Tip</th><th>Partener</th><th class="adv">Formulă</th><th class="num">Sumă</th><th>Stare</th><th>Fișiere</th><th></th>
     </tr></thead><tbody>${rowsHtml}</tbody></table>`;
   bindEntryActions(el);
 }

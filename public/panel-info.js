@@ -28,7 +28,7 @@ var PANEL_INFO = [
   ['Toate operațiunile', 'Registrul-jurnal: toate articolele contabile în ordine cronologică, numerotate secvențial. Documentul legal de bază.'],
   ['Fișa fiecărui cont', 'Cartea mare: mișcările fiecărui cont, cu sold inițial, rulaje și sold final.'],
   ['Încasări & plăți', 'Jurnal de bancă / registru de casă: mișcările contului de trezorerie ales, cu sold curent după fiecare operațiune și controlul plafoanelor de numerar.'],
-  ['💱 Registru de casă în valută', 'Mișcările casei în valută (5314): sumele în valută și în lei, cu solduri pe ambele coloane.'],
+  ['💱 Registru de casă în valută', 'Mișcările casei în valută: sumele în valută și în lei, cu solduri pe ambele coloane.', '(contul 5314.)'],
   ['Solduri conturi', 'Balanța de verificare cu cele patru egalități (SI, rulaje, total sume, SF). Dacă nu se închide, există o eroare de înregistrare.'],
   // TVA
   ['TVA de plată', 'Decontul D300 pe perioadă: TVA colectată minus deductibilă, defalcat pe cote, cu XML-ul generat pe schema oficială curentă (verificat cu validatorul ANAF).'],
@@ -62,7 +62,7 @@ var PANEL_INFO = [
   ['🔄 Compensare creanțe', 'Partenerii care îți sunt și clienți, și furnizori: compensezi soldurile reciproce printr-o notă contabilă.'],
   ['Solduri inițiale pe partener', 'Împarți soldul inițial al conturilor de terți pe partenerii care îl compun; aplicația verifică concordanța cu sinteticul.'],
   ['Scadențar — creanțe și datorii', 'Soldurile restante pe partener, pe intervale de vechime, prin stingere FIFO (factura cea mai veche se stinge prima).'],
-  ['Ajustare pentru deprecierea creanțelor', 'Pentru creanțele vechi (peste 90 de zile): constitui ajustarea 6814 = 491 sau scoți creanța din evidență (654 = 4111).'],
+  ['Ajustare pentru deprecierea creanțelor', 'Pentru creanțele vechi (peste 90 de zile): recunoști că probabil nu mai încasezi banii — fie prin ajustare (reversibilă), fie scoțând creanța din evidență, dacă e sigur pierdută.', 'Note: ajustare 6814 = 491; scoatere 654 = 4111.'],
   // Mijloace fixe
   ['Registrul mijloacelor fixe', 'Toate imobilizările, cu valoare de intrare, amortizare cumulată și valoare rămasă la zi.'],
   ['Adaugă mijloc fix', 'Introduci imobilizarea (cost, durată, metodă de amortizare); amortizarea începe automat din luna următoare punerii în funcțiune.'],
@@ -74,7 +74,7 @@ var PANEL_INFO = [
   ['Registru anual de salarii', 'Cumulul anual per angajat (brut, contribuții, net) — baza adeverințelor de venit.'],
   // Stocuri
   ['Gestiuni (depozite)', 'Nomenclatorul de gestiuni; stocul și costul mediu ponderat se țin separat pe fiecare gestiune.'],
-  ['Adaugă produs', 'Nomenclatorul de produse: cod, denumire, UM și contul de stoc (371 mărfuri, 301 materii, 345 produse finite…).'],
+  ['Adaugă produs', 'Nomenclatorul de produse: cod, denumire, unitate de măsură și felul stocului (marfă, materii prime, produse finite…).', 'Conturi de stoc: 371 mărfuri, 301 materii, 345 produse finite.'],
   ['Înregistrează mișcare', 'Recepții, ieșiri (descărcare la CMP) și transferuri între gestiuni; nota contabilă se poate posta automat.'],
   ['🏭 Producție', 'Consumă materialele din rețetă și obține produsul finit în gestiune, la cost de producție.'],
   ['Situație producție', 'Producția lunii de lucru: cantitățile obținute și costurile lor.'],
