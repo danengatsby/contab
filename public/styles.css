@@ -539,6 +539,16 @@ body:not(.dark) .kpi.blue{border-left-color:#9c7a55}
   .topbar .side-tools .btn{width:100%;text-align:center;padding:7px 8px}
   .topbar #userBadge{order:7;text-align:center;margin:4px 0 0}
   .topbar #logoutBtn{order:8;width:100%}
+  /* Butoane utilitare pe fundal inchis — bara laterala are `background:var(--head)` in AMBELE teme.
+     Regula venea din u.css (`data-u="u66"`), cu specificitate 0,1,0. `body:not(.dark) .btn`
+     (0,2,1) ii lua fundalul deschis, dar NU si `color:#fff` — deci alb pe crem, contrast 1,19:1,
+     tocmai pe Dictionar si pe comutatorul Simplu/Expert, cele doua comenzi facute pentru
+     necontabili. Perechea fundal+text se seteaza acum IMPREUNA, cu specificitate care castiga in
+     ambele teme, ca sa nu se mai poata desperechea. */
+  body .topbar .side-tools .btn,
+  body .topbar #logoutBtn{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)}
+  body .topbar .side-tools .btn:hover,
+  body .topbar #logoutBtn:hover{background:rgba(255,255,255,.24);border-color:rgba(255,255,255,.42)}
   .shell>main{flex:1 1 auto;min-width:0;margin:0;max-width:none;padding:24px 28px}
   .shell>main>.tab{max-width:1120px;margin:0 auto}
   /* navigație verticală: secțiuni COLAPSABILE (acordeon), cea activă deschisă */

@@ -141,9 +141,10 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   alertă (max. una pe oră); la înscriere, utilizatorii cu email primesc un **mesaj de bun venit**
   cu primii pași.
 - **E2E pe live:** `npm run e2e` (`scripts/e2e.mjs`, Playwright — pe acest server prin Docker,
-  comanda e în antetul scriptului): 36 verificări cap-coadă pe instanța reală, cu contul demo —
-  inclusiv FAQ-ul public de pe login, dicționarul contabil, modul simplu cu rezumatul executiv
-  și cardul de pro-rata din tab-ul TVA.
+  comanda e în antetul scriptului): 37 verificări cap-coadă pe instanța reală, cu contul demo —
+  inclusiv FAQ-ul public de pe login, dicționarul contabil, modul simplu cu rezumatul executiv,
+  cardul de pro-rata din tab-ul TVA și contrastul AA al comenzilor din bara laterală (verificat
+  în ambele teme — depinde de cascada reală, deci nu poate trăi în `npm test`).
 - **E2E pe instanță izolată:** `npm run e2e-izolat` (`scripts/e2e-izolat.sh` +
   `scripts/e2e-izolat.mjs`) ridică o instanță proprie (bază și date temporare, port separat) și
   rulează **42 verificări pe instanță izolată** — exact fluxurile care nu se pot atinge pe demo

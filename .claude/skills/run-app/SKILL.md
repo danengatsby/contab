@@ -77,7 +77,9 @@ Capcane confirmate:
 
 ## 4. E2E complet existent
 
-18 verificări pe live, cu aceeași rută Docker (comanda exactă e în antetul fișierului):
+Verificări cap-coadă pe live, cu aceeași rută Docker (comanda exactă e în antetul fișierului).
+Numărul exact nu se scrie aici — driftează la fiecare test nou; `docs/arhitectura.md` îl ține,
+confruntat automat cu realitatea de registrul `AFIRMATII` din `test/run.js`:
 
 ```bash
 docker run --rm -v /var/www/contab/scripts:/w -w /w mcr.microsoft.com/playwright:v1.58.2-noble \
