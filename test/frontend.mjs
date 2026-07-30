@@ -671,6 +671,30 @@ section('Luna de lucru nu trece în viitor (public/periods.js)');
   ok('decembrie vs ianuarie: ordinea pe sir e cea cronologica', '2026-12' < '2027-01');
 }
 
+section('Trecerea la luna următoare doar prin închidere (public/periods.js)');
+{
+  const { esteInchisa, poateInainte } = await import(path.join(mirror, 'periods.js'));
+  // `lu` si `acum` se dau explicit, ca testul sa nu depinda de ceasul masinii
+  ok('luna dinaintea plafonului e inchisa', esteInchisa('2026-03', '2026-05'));
+  ok('chiar luna plafonului e inchisa (<=)', esteInchisa('2026-05', '2026-05'));
+  ok('luna de dupa plafon e deschisa', !esteInchisa('2026-06', '2026-05'));
+  ok('fara nicio luna inchisa, nimic nu e inchis', !esteInchisa('2026-01', ''));
+
+  // inaintarea cere ca luna CURENTA de lucru sa fie inchisa
+  const v1 = poateInainte('2026-05', '2026-05', '2026-09');
+  ok('din luna inchisa se poate inainta', v1.ok);
+  const v2 = poateInainte('2026-06', '2026-05', '2026-09');
+  ok('dintr-o luna NEinchisa nu se poate inainta', !v2.ok);
+  eq('...iar motivul e „neinchisa" (ca sageata sa poata explica)', v2.motiv, 'neinchisa');
+  // plafonul de viitor ramane si el, si are PRIORITATE (mesajul corect e „esti pe luna curenta")
+  const v3 = poateInainte('2026-09', '2026-12', '2026-09');
+  ok('nu se inainteaza in viitor nici daca luna e inchisa', !v3.ok);
+  eq('...cu motivul „viitor", nu „neinchisa"', v3.motiv, 'viitor');
+  // mersul inainte prin luni deja inchise, pana la frontiera
+  ok('se poate merge din aprilie in mai (ambele inchise)', poateInainte('2026-04', '2026-06', '2026-09').ok);
+  ok('dar nu mai departe de ultima luna inchisa', !poateInainte('2026-07', '2026-06', '2026-09').ok);
+}
+
 section('Căutare globală (Ctrl+K): filtrarea și ordonarea rezultatelor');
 {
   const { cauta, fold } = await import(path.join(mirror, 'paleta.js'));

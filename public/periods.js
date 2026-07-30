@@ -3,7 +3,7 @@
 // „Luna de lucru” + filtrele Luna/An ale tabelelor — extrase din app.js. applyWorkMonth
 // reincarca ecranul curent prin dependinte injectate (setPeriodsDeps), ca modulul sa nu
 // depinda de onTab/renderEntryLists din app.js.
-import { $, $$, META } from './core.js';
+import { $, $$, META, toast } from './core.js';
 
 const D = { renderEntryLists: null, onTab: null };
 function setPeriodsDeps(d) { Object.assign(D, d); }
@@ -29,6 +29,24 @@ function currentMonth() {
 // cele programatice din notificari si din cautarea globala) si la citire (o valoare veche ramasa
 // in localStorage dinainte de plafon nu are voie sa reapara).
 const capMonth = (m) => (m > currentMonth() ? currentMonth() : m);
+
+// Ultima luna INCHISA a firmei (firma.lockedUntil): tot ce e <= ea e read-only. Serverul o impune
+// prin db.assertPeriodOpen pe toate scrierile datate; aici o folosim ca sa ARATAM starea.
+function lockedUntil() { return (META.company && META.company.lockedUntil) || ''; }
+/** Luna e inchisa (consultabila, dar nu editabila)? */
+function esteInchisa(m, lu) { const L = lu === undefined ? lockedUntil() : lu; return !!L && m <= L; }
+/**
+ * Se poate trece la luna urmatoare? Doar prin INCHIDEREA lunii curente de lucru — inaintarea
+ * libera lasa in urma luni nefinalizate, iar fluxul contabil cere ordine: se inchide, apoi se
+ * trece mai departe. In plus, luna urmatoare nu are voie sa fie in viitor.
+ * Intoarce si MOTIVUL, ca sageata stinsa sa poata spune de ce, nu doar sa nu reactioneze.
+ */
+function poateInainte(m, lu, acum) {
+  const urm = nextMonth(m);
+  if (urm > (acum || currentMonth())) return { ok: false, motiv: 'viitor' };
+  if (!esteInchisa(m, lu)) return { ok: false, motiv: 'neinchisa' };
+  return { ok: true };
+}
 
 // „Luna de lucru” — pornește de la luna curentă și avansează la închiderea de lună
 function workMonth() {
@@ -65,14 +83,26 @@ function setCurrentPeriod() {
   const el = $('#currentPeriod'); if (!el) return;
   const m = workMonth();
   el.textContent = lunaLabel(m);
-  // Sageata „inainte" se dezactiveaza pe luna curenta: un buton care nu face nimic la click pare
-  // stricat, unul stins spune singur ca s-a ajuns la capat.
+  // Sageata „inainte": stinsa cand nu se poate merge mai departe, cu MOTIVUL in title. Un buton
+  // care nu reactioneaza pare stricat; unul stins care spune de ce e o instructiune.
   const nx = $('#nextMonth');
   if (nx) {
-    const laZi = m >= currentMonth();
-    nx.disabled = laZi;
-    nx.setAttribute('aria-disabled', String(laZi));
-    nx.title = laZi ? 'Ești pe luna curentă — nu se poate lucra în viitor' : 'Luna următoare';
+    const v = poateInainte(m);
+    nx.disabled = !v.ok;
+    nx.setAttribute('aria-disabled', String(!v.ok));
+    nx.title = v.ok ? 'Luna următoare (' + lunaLabel(nextMonth(m)) + ')'
+      : v.motiv === 'viitor' ? 'Ești pe luna curentă — nu se poate lucra în viitor'
+        : 'Închide mai întâi ' + lunaLabel(m) + ' (Rapoarte → Închideri de lună) ca să treci la ' + lunaLabel(nextMonth(m));
+  }
+  // Banda de „luna inchisa" + marcajul pe <body> care stinge caile de CREARE (vezi styles.css)
+  const inchisa = esteInchisa(m);
+  document.body.classList.toggle('luna-inchisa', inchisa);
+  const bar = $('#lunaInchisaBar');
+  if (bar) {
+    bar.classList.toggle('hidden', !inchisa);
+    // textul se scrie DOAR cand banda se arata: altfel ramane in DOM o afirmatie falsa
+    // („Iunie e închisă") care ar deveni vizibila daca cineva ascunde banda altfel decat prin aici
+    const t = $('#lunaInchisaText'); if (t) t.textContent = inchisa ? lunaLabel(m) + ' este închisă' : '';
   }
 }
 // Aplica luna de lucru pe toate filtrele de tabel si reincarca ecranul curent
@@ -92,7 +122,19 @@ setCurrentPeriod();
 // Navigare luna de lucru din bara de sus
 function goWorkMonth(m) { setWorkMonth(m); applyWorkMonth(); }
 $('#prevMonth') && $('#prevMonth').addEventListener('click', () => goWorkMonth(prevMonth(workMonth())));
-$('#nextMonth') && $('#nextMonth').addEventListener('click', () => goWorkMonth(nextMonth(workMonth())));
+// Garda si pe handler, nu doar pe atributul `disabled`: starea butonului se recalculeaza la
+// setCurrentPeriod, iar intre timp META se poate schimba (alta firma, alt lockedUntil).
+$('#nextMonth') && $('#nextMonth').addEventListener('click', () => {
+  const m = workMonth(); const v = poateInainte(m);
+  if (v.ok) return goWorkMonth(nextMonth(m));
+  if (v.motiv === 'neinchisa') toast('Închide mai întâi ' + lunaLabel(m) + ' — Rapoarte → Închideri de lună.', true);
+});
+// Banda de luna inchisa: duce la prima luna DESCHISA (imediat dupa ultima inchisa), plafonata la
+// luna curenta — daca sunt inchise toate lunile pana azi, ramai unde esti.
+$('#lunaInchisaGo') && $('#lunaInchisaGo').addEventListener('click', () => {
+  const lu = lockedUntil(); if (!lu) return;
+  goWorkMonth(nextMonth(lu));
+});
 $('#currentPeriod') && $('#currentPeriod').addEventListener('click', () => goWorkMonth(currentMonth()));
 
 // Leaga schimbarea perechii Lună+An de functia de reincarcare a tabelului
@@ -124,8 +166,13 @@ function fillPeriods() {
   $$('select.luna').forEach((s) => { const keep = s.value; s.innerHTML = lunaOpts; s.value = keep || wmM; });
   // luna obligatorie (stocuri, salarizare, mijloace fixe) — fara „Toate”
   $$('select.luna-req').forEach((s) => { const keep = s.value; s.innerHTML = monthOpts; s.value = keep || wmM; });
+  // Starea sagetii si banda de „luna inchisa" depind de META.company.lockedUntil, iar
+  // setCurrentPeriod() de la incarcarea modulului a rulat inaintea lui setMeta(). fillPeriods()
+  // ruleaza din init(), DUPA ce META e populata — si la fiecare schimbare de firma, care poate
+  // aduce alt lockedUntil. Deci aici e locul unde starea se aduce la zi.
+  setCurrentPeriod();
 }
 
 export { LUNI, pget, workMonth, setWorkMonth, nextMonth, prevMonth, lunaLabel, applyWorkMonth, onPeriodChange, fillPeriods, setPeriodsDeps };
 // Exportate pentru testele unitare de frontend (plafonul lunii de lucru): test/frontend.mjs
-export { capMonth, currentMonth };
+export { capMonth, currentMonth, esteInchisa, poateInainte };
