@@ -210,8 +210,10 @@ let RECON_PM = [];
 async function loadReconcile() {
   const r = await api('/api/reconcile');
   $('#reconSummary').innerHTML =
-    `<div class="card"><h3>Sold clienți (4111)</h3><p data-u="u160">${fmt(r.totalClienti)} lei</p><p class="muted">de încasat (net)</p></div>
-     <div class="card"><h3>Sold furnizori (401)</h3><p data-u="u161">${fmt(r.totalFurnizori)} lei</p><p class="muted">de plătit (net)</p></div>`;
+    // Fără coduri de cont în titlu: cardurile acoperă acum tot perimetrul de terți, nu doar
+    // 4111/401. Nici „(net)" nu mai e exact — totalul nu compensează între parteneri.
+    `<div class="card"><h3>De încasat de la clienți</h3><p data-u="u160">${fmt(r.totalClienti)} lei</p><p class="muted">creanțe deschise, pe toți partenerii</p></div>
+     <div class="card"><h3>De plătit către furnizori</h3><p data-u="u161">${fmt(r.totalFurnizori)} lei</p><p class="muted">datorii deschise, pe toți partenerii</p></div>`;
   renderCompensations();
   RECON_PM = [];
   if (!r.partners.length) { $('#reconList').innerHTML = '<div class="card"><p class="muted">Nicio mișcare pe parteneri.</p></div>'; return; }
@@ -221,10 +223,14 @@ async function loadReconcile() {
     const rows = p.items.map((it) => `<tr class="${it.matched ? '' : ''}"><td>${it.soldInitial ? '<span class="muted">preluare</span>' : it.data}</td><td>${it.doc}</td><td>${it.tipNume}</td>
       <td class="num">${it.debit ? fmt(it.debit) : ''}</td><td class="num">${it.credit ? fmt(it.credit) : ''}</td>
       <td>${it.matched ? '<span class="pill">✓ potrivit</span>' : '<span class="pill warn">deschis</span>'}</td></tr>`).join('');
-    const lbl = p.cont === '4111' ? 'client' : 'furnizor';
-    // punctaj manual: pe 4111 plata = credit, factura = debit; pe 401 invers
-    const payAmt = (it) => (p.cont === '4111' ? it.credit : it.debit);
-    const invAmt = (it) => (p.cont === '4111' ? it.debit : it.credit);
+    // Sensul vine de la server (`sens`), nu se mai deduce aici din codul de cont: fisele acoperă
+    // acum tot perimetrul de terți (418/461 la creanțe, 404/408/419/462 la datorii), iar regula
+    // scrisă ca „4111 sau altfel furnizor” ar fi citit invers orice cont de creanță în plus.
+    const creanta = p.sens === 'creanta';
+    const lbl = creanta ? 'de încasat' : 'de plătit';
+    // punctaj manual: la creanță plata = credit, factura = debit; la datorie invers
+    const payAmt = (it) => (creanta ? it.credit : it.debit);
+    const invAmt = (it) => (creanta ? it.debit : it.credit);
     // Soldul initial preluat apare in fisa (e o datorie/creanta reala), dar NU in punctajul manual:
     // n-are articol contabil in spate, deci n-are ce lega — ruta l-ar respinge cu 404.
     const legabil = (it) => !it.soldInitial;

@@ -55,6 +55,7 @@ src/statements.js
 src/chartOfAccounts.js
 src/bilantNomenclator.js
 src/reconcile.js
+src/analytic.js
 src/recurring.js
 src/matching.js
 src/validate.js

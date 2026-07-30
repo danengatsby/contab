@@ -3,8 +3,14 @@
 const { round2, period: periodOf } = require('./util');
 const { sortEntries, postedEntries } = require('./accounting');
 const { settle } = require('./matching');
+const { CONTURI_CREANTE, CONTURI_DATORII } = require('./analytic');
 
-const PARTNER_ACCOUNTS = ['4111', '401'];
+// Perimetrul vine din analytic.js, ca fisele de partener si vechimea soldurilor (aging) sa
+// acopere prin constructie aceleasi conturi. Inainte erau doar 4111 si 401, deci o factura de
+// imobilizari (404), una nesosita (408) sau un avans de la client (419) lipsea din scadentar,
+// desi aparea in aging — a doua cifra pentru acelasi lucru.
+const PARTNER_ACCOUNTS = [...CONTURI_CREANTE, ...CONTURI_DATORII];
+const esteCreanta = (cont) => CONTURI_CREANTE.includes(cont);
 
 /**
  * Fise de partener pe conturile 4111 (clienti) si 401 (furnizori), cu potrivirea
@@ -57,8 +63,11 @@ function reconcile(db) {
 
   const result = [];
   for (const g of groups.values()) {
-    // factura = creste creanta/datoria; decontare = o stinge
-    const isInvoice = (it) => (g.cont === '4111' ? it.debit > 0 : it.credit > 0);
+    // factura = creste creanta/datoria; decontare = o stinge. Sensul se deduce din CONT
+    // (creanta -> debit, datorie -> credit); regula era scrisa ca `cont === '4111'`, deci orice
+    // alt cont de creanta (418, 461) ar fi fost citit invers, ca datorie.
+    const creanta = esteCreanta(g.cont);
+    const isInvoice = (it) => (creanta ? it.debit > 0 : it.credit > 0);
     const amount = (it) => round2(it.debit || it.credit);
     const mk = (it) => ({ id: it.entryId, doc: it.doc, data: it.data, suma: amount(it), stinge: it.stinge });
     const invoices = g.items.filter(isInvoice).map(mk);
@@ -72,7 +81,9 @@ function reconcile(db) {
     const decontat = round2(payments.reduce((a, p) => a + p.suma, 0));
     const sold = round2(facturat - decontat);
     result.push({
-      key: g.key, cont: g.cont, den: g.den, cui: g.cui,
+      // `sens` calculat AICI si trimis mai departe: aceeasi regula era rescrisa in monthlyClose.js,
+      // bank.js si public/livrabile.js, fiecare cu acelasi `cont === '4111'` de reparat.
+      key: g.key, cont: g.cont, sens: creanta ? 'creanta' : 'datorie', den: g.den, cui: g.cui,
       facturat, decontat, sold,
       potriviri: s.perechi.length,
       nepotrivite: s.deschise.length + s.avansuri.length,
@@ -83,8 +94,14 @@ function reconcile(db) {
     });
   }
   result.sort((a, b) => Math.abs(b.sold) - Math.abs(a.sold) || a.den.localeCompare(b.den));
-  const totalClienti = round2(result.filter((r) => r.cont === '4111').reduce((s, r) => s + r.sold, 0));
-  const totalFurnizori = round2(result.filter((r) => r.cont === '401').reduce((s, r) => s + r.sold, 0));
+  // Totalurile NU compenseaza intre parteneri: o creanta la A nu scade ce datorezi lui B — sunt
+  // drepturi distincte, iar compensarea e un act explicit (vezi compensablePartners mai jos, care
+  // o propune doar pe acelasi partener, pe ambele sensuri). Deci soldul fiecarui partener intra
+  // cu podea la zero, ca in analytic.aging(); soldul PER PARTENER ramane cu semn (un avans
+  // trebuie sa se vada ca avans in fisa).
+  const totalPe = (sens) => round2(result.filter((r) => r.sens === sens).reduce((s, r) => s + Math.max(r.sold, 0), 0));
+  const totalClienti = totalPe('creanta');
+  const totalFurnizori = totalPe('datorie');
   return { partners: result, totalClienti, totalFurnizori };
 }
 
@@ -100,8 +117,8 @@ function compensablePartners(db) {
     if (!key) continue;
     byKey[key] = byKey[key] || { cui: p.cui || '', den: p.den || key };
     if (p.den && /[a-z]/i.test(p.den)) byKey[key].den = p.den;
-    if (p.cont === '4111' && p.sold > 0) byKey[key].creanta = round2((byKey[key].creanta || 0) + p.sold);
-    if (p.cont === '401' && p.sold > 0) byKey[key].datorie = round2((byKey[key].datorie || 0) + p.sold);
+    if (p.sens === 'creanta' && p.sold > 0) byKey[key].creanta = round2((byKey[key].creanta || 0) + p.sold);
+    if (p.sens === 'datorie' && p.sold > 0) byKey[key].datorie = round2((byKey[key].datorie || 0) + p.sold);
   }
   const out = [];
   for (const k of Object.keys(byKey)) {

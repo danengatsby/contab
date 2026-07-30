@@ -994,7 +994,7 @@ eq('BETA decontat', betaR.decontat, 16940);
 const rcOpenDb = { openingAnalytic: [
   { cont: '401', partener: 'DELTA SRL', cui: 'RO999', d: 0, c: 15000 },
   { cont: '4111', partener: 'OMEGA SRL', cui: 'RO888', d: 4000, c: 0 },
-  { cont: '404', partener: 'IGNORAT SRL', cui: 'RO777', d: 0, c: 9999 }, // in afara PARTNER_ACCOUNTS
+  { cont: '404', partener: 'IMOBIL SRL', cui: 'RO777', d: 0, c: 9999 }, // furnizor de imobilizari
 ], entries: [
   { id: 'p1', period: '2026-03', data: '2026-03-10', partener: 'DELTA SRL', partenerCui: 'RO999',
     lines: [{ debit: '401', credit: '5121', suma: 5000 }] },
@@ -1004,12 +1004,14 @@ const delta = rcOpen.partners.find((p) => p.den === 'DELTA SRL' && p.cont === '4
 ok('sold initial preluat: intra in datoria catre furnizor', delta.facturat === 15000);
 ok('sold initial preluat: plata ulterioara il stinge partial', delta.decontat === 5000);
 ok('sold initial preluat: soldul ramas e 10000, nu 0', delta.sold === 10000);
-eq('sold initial preluat: totalul pe furnizori', rcOpen.totalFurnizori, 10000);
+// Perimetrul e acum acelasi cu al lui aging(): 404 (furnizori de imobilizari) intra la datorii.
+eq('sold initial preluat: totalul pe furnizori (401 + 404)', rcOpen.totalFurnizori, 19999);
 eq('sold initial preluat: totalul pe clienti', rcOpen.totalClienti, 4000);
 ok('sold initial: randul e marcat, ca sa nu intre in punctajul manual',
   (delta.items || []).some((it) => it.soldInitial === true && it.credit === 15000));
-ok('sold initial: conturile din afara lui PARTNER_ACCOUNTS (404) nu se preiau',
-  !rcOpen.partners.some((p) => p.den === 'IGNORAT SRL'));
+const imobil = rcOpen.partners.find((p) => p.den === 'IMOBIL SRL') || {};
+ok('404 e in perimetru si e citit ca DATORIE, nu ca creanta', imobil.sens === 'datorie');
+ok('404 aduce soldul cu semnul corect', imobil.sold === 9999);
 
 // Ciornele nu sunt inca datorii reale: aging() le filtra (postedEntries), scadentarul nu.
 const rcDraftDb = { openingAnalytic: [], entries: [
@@ -1020,6 +1022,41 @@ const rcDraftDb = { openingAnalytic: [], entries: [
 ] };
 const rcDraft = reconcile(rcDraftDb);
 ok('ciorna nu creeaza datorie in scadentar (doar articolul postat)', rcDraft.totalFurnizori === 1000);
+
+// Perimetrul largit: sensul se deduce din CONT. Riscul reparat aici e ca un cont de creanta
+// ALTUL decat 4111 (418, 461) sa fie citit invers — regula veche era `cont === '4111'`, deci
+// tot ce nu era 4111 trecea drept datorie.
+const rcSensDb = { openingAnalytic: [], entries: [
+  // 418 clienti-facturi de intocmit: creanta, creste pe DEBIT
+  { id: 's1', period: '2026-03', data: '2026-03-01', partener: 'EPSILON SRL', partenerCui: 'RO222',
+    lines: [{ debit: '418', credit: '704', suma: 2500 }] },
+  // 419 avans incasat de la client: DATORIE, desi contrapartea e un client
+  { id: 's2', period: '2026-03', data: '2026-03-02', partener: 'ZETA SRL', partenerCui: 'RO333',
+    lines: [{ debit: '5121', credit: '419', suma: 800 }] },
+  // 462 creditori diversi: datorie
+  { id: 's3', period: '2026-03', data: '2026-03-03', partener: 'ETA SRL', partenerCui: 'RO444',
+    lines: [{ debit: '628', credit: '462', suma: 300 }] },
+] };
+const rcSens = reconcile(rcSensDb);
+const gr = (den) => rcSens.partners.find((p) => p.den === den) || {};
+ok('418 e creanta (nu datorie, cum ar fi iesit din regula veche)', gr('EPSILON SRL').sens === 'creanta');
+ok('418 pe debit = factura, deci sold pozitiv de incasat', gr('EPSILON SRL').sold === 2500);
+ok('419 (avans de la client) e DATORIE, desi partenerul e client', gr('ZETA SRL').sens === 'datorie');
+ok('462 e datorie', gr('ETA SRL').sens === 'datorie');
+eq('total de incasat = doar 418', rcSens.totalClienti, 2500);
+eq('total de platit = 419 + 462', rcSens.totalFurnizori, 1100);
+
+// Totalurile nu compenseaza INTRE parteneri: un avans la A nu scade ce datorezi lui B.
+// Compensarea e un act explicit si se propune doar pe acelasi partener (compensablePartners).
+const rcNetDb = { openingAnalytic: [], entries: [
+  { id: 'c1', period: '2026-03', data: '2026-03-01', partener: 'A SRL', partenerCui: 'RO1',
+    lines: [{ debit: '371', credit: '401', suma: 1000 }] },
+  { id: 'c2', period: '2026-03', data: '2026-03-02', partener: 'B SRL', partenerCui: 'RO2',
+    lines: [{ debit: '401', credit: '5121', suma: 500 }] }, // plata in avans catre B: sold -500
+] };
+const rcNet = reconcile(rcNetDb);
+ok('avansul catre un furnizor ramane cu semn in fisa lui', (rcNet.partners.find((p) => p.den === 'B SRL') || {}).sold === -500);
+ok('dar NU scade datoria catre alt furnizor in total', rcNet.totalFurnizori === 1000);
 
 section('Motor de potrivire — reconciliere inteligenta (src/matching.js)');
 {
