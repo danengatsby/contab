@@ -437,18 +437,18 @@
         </div>
       </div>
 
-      <div class="card">
-        <h2>Import extras bancar (CSV / <abbr title="Format standard de extras bancar (SWIFT), exportat de aplicațiile bancare">MT940</abbr> / <abbr title="Format standard SEPA ISO 20022 (XML), exportat de băncile moderne">CAMT.053</abbr>)</h2>
+      <details class="card">
+        <summary class="sec-sum">🏦 Import extras bancar <span class="muted">(CSV / MT940 / CAMT.053)</span></summary>
         <p class="muted">Încarcă extrasul bancar; aplicația citește tranzacțiile, potrivește partenerul după descriere și propune încasări/plăți care alimentează reconcilierea.</p>
         <input type="file" id="bankFile" accept=".csv,.txt,.sta,.mt940,.940,.xml" />
         <div id="bankStatus" class="status"></div>
         <div id="bankResult" class="tablewrap"></div>
         <button id="bankImport" class="btn primary hidden">Importă selectate</button>
-      </div>
+      </details>
 
-      <div class="card">
+      <details class="card">
+        <summary class="sec-sum">📨 Facturi primite în SPV <span class="muted">(e-Factura: import din SPV sau XML)</span></summary>
         <div class="card-head">
-          <h2>Facturi primite în <abbr title="Spațiul Privat Virtual — portalul ANAF unde se depun declarațiile și circulă e-Factura">SPV</abbr></h2>
           <button id="inboxRefresh" class="btn small">⟳ Reîmprospătează</button>
         </div>
         <p class="muted">Importă facturile primite prin e-Factura: descarcă XML-ul, îl citește și deschide formularul de confirmare ca o cumpărare.</p>
@@ -477,12 +477,12 @@
         </div>
         <textarea id="efImportXml" rows="4" placeholder="...sau lipește aici conținutul XML al e-Facturii" data-u="u80"></textarea>
         <div id="efPreview" data-u="u23"></div>
-      </div>
+      </details>
 
 
-      <div class="card">
+      <details class="card">
+        <summary class="sec-sum">📚 Toate înregistrările recente <span class="muted">(jurnalul lunii, inclusiv operațiunile interne)</span></summary>
         <div class="card-head">
-          <h2>Toate înregistrările recente</h2>
           <span class="toolbar" data-u="u73">
             <select id="toateLuna" class="period luna" aria-label="Luna"></select>
             <select id="toateAn" class="period an" aria-label="Anul"></select>
@@ -491,7 +491,7 @@
         </div>
         <p class="muted">Include și operațiunile interne (bancă, casă, salarii, închideri, note contabile).</p>
         <div id="entriesList" class="tablewrap"></div>
-      </div>
+      </details>
     </section>
 
     <!-- ─────────────── EMITE FACTURĂ (documente de ieșire) ─────────────── -->
