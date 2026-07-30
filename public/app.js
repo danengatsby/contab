@@ -238,7 +238,7 @@ function addPanelInfo() {
   const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9ăâîșşțţ]/g, '');
   // fiscalText: cotele din explicatii vin din META.fiscal (tabelul e constanta, evaluata la import)
   const dict = PANEL_INFO.map(([t, info]) => [norm(t), fiscalText(info)]).sort((a, b) => b[0].length - a[0].length);
-  $$('.card h2, .card h3, section .toolbar h2').forEach((h) => {
+  $$('.card h2, .card h3, section .toolbar h2, .card > summary').forEach((h) => {
     if (h.querySelector('.cinfo')) return;
     const key = norm(h.textContent);
     const hit = dict.find(([t]) => key.startsWith(t));

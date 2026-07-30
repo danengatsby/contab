@@ -120,7 +120,10 @@ const coduriVizibile = async (tab) => pg.evaluate(async ({ x, V }) => {
   }
   return [...out];
 }, { x: tab, V: CONTURI });
-const TABURI = ['documente', 'tva', 'stocuri'];
+// `intrate` e in lista DELIBERAT: pe „documente" jurnalul lunii sta acum intr-o sectiune pliata,
+// deci coloana „Formula" nu mai e vizibila acolo si poarta ar fi trecut degeaba. Pe „intrate"
+// aceleasi randuri se randeaza desfasurat, deci coloana ramane acoperita.
+const TABURI = ['documente', 'intrate', 'tva', 'stocuri'];
 const strange = async () => { const s = new Set(); for (const t of TABURI) (await coduriVizibile(t)).forEach((c) => s.add(c)); return s; };
 const inSimplu = await strange();
 ok(`modul simplu nu arata coduri de cont (gasite: ${[...inSimplu].join(' ') || 'niciunul'})`, inSimplu.size === 0);
