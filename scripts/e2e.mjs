@@ -76,6 +76,16 @@ for (const tema of ['light', 'dark']) {
 }
 await pg.emulateMedia({ colorScheme: null });
 
+// 3bb. cautarea globala (Ctrl+K): gaseste un partener si DUCE la ecranul lui
+await pg.keyboard.press('Control+k');
+await pg.waitForTimeout(500);
+ok('Ctrl+K deschide cautarea globala', await pg.locator('#paletaModal').isVisible());
+await pg.fill('#paletaSearch', 'alfa');
+await pg.waitForTimeout(700);
+ok('cautarea globala gaseste partenerul', (await pg.locator('#paletaList .pal-item').count()) > 0);
+await pg.keyboard.press('Escape');
+ok('Escape inchide cautarea globala', !(await pg.locator('#paletaModal').isVisible()));
+
 // 3c. dictionarul contabil + modul simplu (rezumatul executiv)
 await pg.click('#glossaryBtn');
 ok('dictionarul contabil se deschide', await pg.locator('#glossaryModal').isVisible());

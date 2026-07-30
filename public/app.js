@@ -12,6 +12,7 @@ import './etransport.js'; // formularul ghidat e-Transport (cod UIT) — se acti
 import { pget, workMonth, setWorkMonth, lunaLabel, applyWorkMonth, onPeriodChange, fillPeriods, setPeriodsDeps } from './periods.js';
 import { loadJournal, loadLedger, loadCashbook, loadBalance, loadVat, loadClosings, loadStatements, loadStorno } from './rapoarte.js';
 import { loadLivrabile, loadPortfolio, loadNotifications, loadReconcile, loadAnalytic, refreshNotifBadge, setLivrabileDeps } from './livrabile.js';
+import { setPaletaDeps, deschide as deschidePaleta } from './paleta.js';
 import { loadAssets } from './mijloace.js';
 import { loadMonthlyClose, setInchidereDeps } from './inchidere.js';
 import { loadSalarizare } from './salarizare.js';
@@ -340,6 +341,9 @@ setDashboardDeps({ goTab });
 setInchidereDeps({ goTab });
 // Notificarile duc utilizatorul la ecranul care rezolva restanta — pe FIRMA si pe LUNA ei.
 setLivrabileDeps({ goTab, activateFirma, applyWorkMonth, setWorkMonth });
+// Cautarea globala (Ctrl+K) navigheaza si ea, si pune luna documentului gasit.
+setPaletaDeps({ goTab, applyWorkMonth, setWorkMonth });
+$('#paletaBtn') && $('#paletaBtn').addEventListener('click', deschidePaleta);
 
 // ───────────────────────── IMPORT EXTRAS BANCAR ─────────────────────────
 // Extras in public/bank.js. Ii injectam reimprospatarea de dupa import (functiile traiesc aici).
