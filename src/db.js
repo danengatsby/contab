@@ -59,6 +59,14 @@ function defaultFirma(id) {
     oras: 'Bucuresti',
     judet: 'RO-B',
     tvaPlatitor: true,
+    // De cand exista firma IN APLICATIE. Calendarul fiscal se deriva din PROFIL, nu din date
+    // (multe declaratii se depun „pe zero"), deci fara reperul asta o firma creata azi aparea
+    // imediat cu restante pentru lunile dinaintea ei. Vezi declarations.primaLunaUrmarita.
+    // Sta AICI, in sablonul comun, fiindca firmele se creeaza pe doua cai — inscrierea publica
+    // (authRoutes) si adaugarea din aplicatie (firmeService) — si amandoua pleaca de la el.
+    // Firmele dinaintea campului nu-l au: ele raman pe comportamentul vechi, ca sa nu ascundem
+    // retroactiv restante adevarate.
+    createdAt: new Date().toISOString(),
   };
 }
 

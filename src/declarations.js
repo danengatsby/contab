@@ -237,7 +237,11 @@ function portfolio(d, scopedList, period, today) {
   const firms = [];
   const tot = { asteptate: 0, depuse: 0, generate: 0, nedepuse: 0, erori: 0, scutite: 0, restante: 0 };
   for (const v of scopedList) {
-    const rows = registerForFirma(d, v, period, t);
+    // Acelasi reper ca la notificari: pentru o luna dinaintea existentei firmei nu exista obligatii.
+    // Firma RAMANE in lista, cu zero — portofoliul e inventarul firmelor administrate, iar una care
+    // dispare si reapare dupa luna aleasa ar parea pierduta.
+    const dela = primaLunaUrmarita(v);
+    const rows = (dela && String(period || '') < dela) ? [] : registerForFirma(d, v, period, t);
     const c = { asteptate: rows.length, depuse: 0, generate: 0, nedepuse: 0, erori: 0, scutite: 0, restante: 0 };
     const atentionari = [];
     for (const r of rows) {
@@ -271,14 +275,40 @@ function addMonths(period, n) {
  * Notificari de termene pe portofoliu: restante + termene in urmatoarele `days` zile,
  * scanand ultimele `lookback` luni (declaratia lunii M are termen in M+1).
  */
+/**
+ * Prima luna pentru care aplicatia are dreptul sa ceara declaratii de la o firma.
+ *
+ * Calendarul fiscal se DERIVA din profilul firmei (platitor de TVA, angajati, regim), nu din date
+ * — asa si trebuie, fiindca multe declaratii se depun „pe zero". Dar fara un reper de inceput,
+ * o firma creata AZI aparea imediat cu restante pentru lunile dinaintea ei: 9 restante D300/D394/
+ * D406 pentru luni in care nu exista. E o acuzatie falsa, si tocmai pe ecranul care ar trebui sa
+ * fie lista de lucru a utilizatorului.
+ *
+ * Reperul e `createdAt`. Daca firma are inregistrari mai VECHI (istoric preluat de la contabilul
+ * anterior), acelea coboara reperul: acolo obligatiile sunt reale si trebuie aratate.
+ * Firmele fara `createdAt` (cele dinainte de campul asta) intorc '' — comportament neschimbat,
+ * ca sa nu ascundem retroactiv restante adevarate.
+ */
+function primaLunaUrmarita(v) {
+  let min = String(((v && v.company) || {}).createdAt || '').slice(0, 7);
+  if (!min) return '';
+  for (const e of ((v && v.entries) || [])) {
+    const p = String(e.period || e.data || '').slice(0, 7);
+    if (p && p < min) min = p;
+  }
+  return min;
+}
+
 function notifications(d, scopedList, today, days, lookback) {
   const t = today || new Date().toISOString().slice(0, 10);
   const horizon = new Date(Date.parse(t) + (days || 7) * 86400000).toISOString().slice(0, 10);
   const curPeriod = t.slice(0, 7);
   const items = [];
   for (const v of scopedList) {
+    const dela = primaLunaUrmarita(v); // '' = firma veche, fara reper -> ca inainte
     for (let i = 1; i <= (lookback || 3); i++) {
       const period = addMonths(curPeriod, -i);
+      if (dela && period < dela) continue; // luna dinaintea existentei firmei: n-are obligatii aici
       for (const r of registerForFirma(d, v, period, t)) {
         if (r.status === 'depusa' || r.status === 'scutita') continue;
         if (r.overdue) {
@@ -299,5 +329,5 @@ function notifications(d, scopedList, today, days, lookback) {
   return { count: items.length, items };
 }
 
-module.exports = { TIPURI, STATUSES, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays,
+module.exports = { TIPURI, STATUSES, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, primaLunaUrmarita, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays,
   addSubmission, lastSubmission, submissionDiff, RECT_IN_XML };
