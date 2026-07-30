@@ -4,6 +4,11 @@
 import { $$, $, H, fmt, accName, toast, api, ac } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
 
+// Dependinte injectate din app.js (navigare, schimbarea firmei, luna de lucru) — livrabile.js nu
+// importa inapoi din app.js. Vezi setLivrabileDeps in app.js.
+let D = {};
+export function setLivrabileDeps(d) { D = d; }
+
 // ───────────────────────── LIVRABILE ─────────────────────────
 onPeriodChange('livrabile', loadLivrabile);
 const STATUS = {
@@ -190,17 +195,51 @@ async function refreshNotifBadge() {
     b.classList.toggle('hidden', !n.count);
   } catch (e) { /* ignora */ }
 }
+// Ecranul de notificari era o FUNDATURA: 13 randuri rosii „RESTANȚĂ", niciun link, niciun buton,
+// niciun handler. Utilizatorul afla ca are 13 probleme si nu putea face nimic de acolo — trebuia
+// sa retina firma, luna si declaratia, apoi sa le regaseasca singur prin meniu.
+// Acum fiecare rand duce exact la ecranul care il rezolva, pe FIRMA si pe LUNA notificarii.
+const NOTIF_ACT = { efactura: { tab: 'iesite', cta: 'Trimite în SPV' } };
+const notifAct = (it) => NOTIF_ACT[it.tip] || { tab: 'livrabile', cta: 'Deschide declarația' };
+// Vechimea restantei = severitatea ei. O restanta de 66 de zile si una de 2 arata la fel altfel.
+function zileIntarziere(due, azi) {
+  const z = Math.floor((Date.parse(azi || new Date().toISOString().slice(0, 10)) - Date.parse(due)) / 86400000);
+  return z > 0 ? z : 0;
+}
+let NOTIF_ITEMS = [];
 async function loadNotifications() {
   const n = await api('/api/notifications');
+  NOTIF_ITEMS = n.items;
   $('#notifList').innerHTML = n.items.length
-    ? `<table><thead><tr><th></th><th>Firma</th><th>Declarația</th><th>Luna</th><th>Termen</th><th>Stare</th></tr></thead><tbody>${
-      n.items.map((i) => `<tr>
-        <td>${i.kind === 'restanta' ? '<span data-u="u158">⏰ RESTANȚĂ</span>' : '<span data-u="u159">📅 termen apropiat</span>'}</td>
+    ? `<table><thead><tr><th></th><th>Firma</th><th>Declarația</th><th>Luna</th><th>Termen</th><th>Stare</th><th></th></tr></thead><tbody>${
+      n.items.map((i, idx) => {
+        const z = zileIntarziere(i.due);
+        return `<tr>
+        <td>${i.kind === 'restanta'
+    ? `<span data-u="u158">⏰ RESTANȚĂ</span>${z ? ` <span class="muted">· ${z} ${z === 1 ? 'zi' : 'zile'}</span>` : ''}`
+    : '<span data-u="u159">📅 termen apropiat</span>'}</td>
         <td>${H(i.firma)}</td><td>${H(i.nume)}</td><td>${H(i.period)}</td>
         <td ${i.kind === 'restanta' ? 'data-u="u33"' : ''}>${i.due}</td>
-        <td>${declBadge(i.status)}</td></tr>`).join('')}</tbody></table>`
+        <td>${declBadge(i.status)}</td>
+        <td><button class="btn small notif-go" data-i="${idx}">${H(notifAct(i).cta)} →</button></td></tr>`;
+      }).join('')}</tbody></table>`
     : '<p class="muted">✓ Nicio restanță și niciun termen în următoarele 7 zile. Totul e la zi.</p>';
+  $$('#notifList .notif-go').forEach((b) => b.addEventListener('click', () => rezolvaNotificare(NOTIF_ITEMS[Number(b.dataset.i)])));
   refreshNotifBadge();
+}
+// Firma, apoi luna, apoi ecranul — in ordinea asta: schimbarea firmei reincarca META si retrimite
+// tab-ul activ, deci o luna pusa inainte s-ar pierde.
+async function rezolvaNotificare(it) {
+  if (!it) return;
+  const a = notifAct(it);
+  try {
+    if (it.firmaId && D.activateFirma) {
+      const schimbat = await D.activateFirma(it.firmaId);
+      if (schimbat) toast('Firmă activă: ' + it.firma);
+    }
+    if (it.period && D.setWorkMonth) { D.setWorkMonth(it.period); if (D.applyWorkMonth) D.applyWorkMonth(); }
+    if (D.goTab) D.goTab(a.tab);
+  } catch (e) { toast(e.message, true); }
 }
 
 // ───────────────────────── RECONCILIERE ─────────────────────────

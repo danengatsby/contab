@@ -346,51 +346,65 @@ function registruInventar(db, asOf) {
  *         regim = depinde de regimul fiscal; anaf = emis de ANAF; manual = pregatit de firma.
  */
 function livrabile(db, period) {
-  const L = (sectiune, nr, nume, status, links, obs) => ({ sectiune, nr, nume, status, links: links || [], obs: obs || '' });
+  // `id` = identitatea randului (stabila, dupa ea se filtreaza ce nu se aplica firmei).
+  // `nr` = POZITIA afisata, calculata la final de `finalizeaza`. Cat timp erau acelasi lucru,
+  // filtrarea lasa goluri vizibile: la micro numerotarea sarea 15 -> 17, la PFA lipseau 9, 12,
+  // 15, 16 si 19, iar ultimele doua randuri (23, 24) apareau dupa sectiunea „D. La cerere".
+  const L = (sectiune, id, nume, status, links, obs) => ({ sectiune, id, nume, status, links: links || [], obs: obs || '' });
   const p = period ? '?period=' + period : '';
   const yr = (period || '').slice(0, 4);
   const list = [
-    L('A. Lunar', 1, 'Balanta de verificare', 'ok', [{ label: 'Balanta', href: '/pdf/balance' + p }]),
-    L('A. Lunar', 2, 'State de plata + fluturasi de salariu', 'manual', [], 'Necesita evidenta pe fiecare angajat'),
-    L('A. Lunar', 3, 'Situatia sumelor de virat (salarii nete + contributii)', 'recap', [{ label: 'Recap D112', href: '/pdf/d112' + p }]),
+    L('A. Lunar', 1, 'Balanță de verificare', 'ok', [{ label: 'Balanta', href: '/pdf/balance' + p }]),
+    L('A. Lunar', 2, 'State de plată + fluturași de salariu', 'manual', [], 'Necesită evidența pe fiecare angajat'),
+    L('A. Lunar', 3, 'Situația sumelor de virat (salarii nete + contribuții)', 'recap', [{ label: 'Recap D112', href: '/pdf/d112' + p }]),
     L('A. Lunar', 4, 'Registre: registru-jurnal, cartea mare, jurnale TVA', 'ok', [
       { label: 'Jurnal', href: '/pdf/journal' + p }, { label: 'Cartea mare', href: '/pdf/ledger' + p }, { label: 'Jurnale TVA', href: '/pdf/vat' + p }]),
-    L('A. Lunar', 5, 'D112 — contributii si impozit salarii (+ recipisa)', 'recap', [{ label: 'Recap D112', href: '/pdf/d112' + p }], 'Depunerea XML + recipisa la ANAF'),
-    L('A. Lunar', 6, 'D300 — decont TVA (+ recipisa)', 'recap', [{ label: 'Recap PDF', href: '/pdf/d300' + p }, { label: 'XML ANAF', href: '/xml/d300' + p }], 'XML de validat cu DUKIntegrator; recipisa la ANAF'),
-    L('A. Lunar', 7, 'D394 — declaratie informativa (+ recipisa)', 'recap', [{ label: 'XML ANAF', href: '/xml/d394' + p }, { label: 'Jurnale TVA', href: '/pdf/vat' + p }], 'XML de validat cu DUKIntegrator'),
-    L('A. Lunar', 8, 'D390 VIES — operatiuni intracomunitare (+ recipisa)', 'regim', [], 'Doar daca exista operatiuni intracomunitare'),
-    L('A. Lunar', 9, 'D406 SAF-T (+ recipisa)', 'regim', [], 'In functie de regim/termen'),
-    L('A. Lunar', 10, 'D100 — retineri la sursa / dividende (+ recipisa)', 'regim', [], 'Daca e cazul'),
-    L('A. Lunar', 11, 'Situatia sumelor de plata la ANAF', 'ok', [{ label: 'Obligatii', href: '/pdf/obligatii' + p }]),
-    L('B. Trimestrial', 12, 'D100 — impozit micro 1% / avans impozit profit (+ recipisa)', 'recap', [{ label: 'Recap D100', href: '/pdf/d100' + p }, { label: 'D100 XML', href: '/xml/d100' + p }]),
-    L('B. Trimestrial', 13, 'D300 / D394 / D406 — regim trimestrial (+ recipisa)', 'regim', [], 'Daca firma e pe regim trimestrial'),
-    L('B. Trimestrial', 14, 'Balanta de verificare la sfarsit de trimestru', 'ok', [{ label: 'Balanta', href: '/pdf/balance' + p }]),
-    L('C. Anual', 15, 'Situatii financiare: bilant + cont de profit si pierdere + note', 'ok', [
-      { label: 'Bilant', href: '/pdf/bilant?period=' + yr + '-12' }, { label: 'Cont P&P', href: '/pdf/pl?year=' + yr }], 'Notele explicative se redacteaza separat'),
-    L('C. Anual', 16, 'D101 — impozit pe profit (+ recipisa)', 'regim', [], 'Doar la regim de impozit pe profit'),
-    L('C. Anual', 17, 'D205 / D107 — retineri la sursa / sponsorizari (+ recipisa)', 'regim', [], 'Daca e cazul'),
-    L('C. Anual', 18, 'Registrul-inventar si documentele de inventariere', 'ok', [{ label: 'Registru-inventar', href: '/pdf/registru-inventar?period=' + yr + '-12' }]),
-    L('C. Anual', 19, 'Proiect hotarare AGA: aprobare situatii + repartizare profit', 'manual', [], 'Document pregatit de firma'),
-    L('D. La cerere', 20, 'Fisa pe platitor / situatia obligatiilor la ANAF', 'ok', [{ label: 'Obligatii', href: '/pdf/obligatii' + p }], 'Fisa oficiala se obtine din SPV'),
-    L('D. La cerere', 21, 'Certificat de atestare fiscala', 'anaf', [], 'Emis de ANAF'),
-    L('D. La cerere', 22, 'Balante si situatii pentru banca', 'ok', [{ label: 'Balanta', href: '/pdf/balance' + p }]),
+    L('A. Lunar', 5, 'D112 — contribuții și impozit salarii (+ recipisă)', 'recap', [{ label: 'Recap D112', href: '/pdf/d112' + p }], 'Depunerea XML + recipisă la ANAF'),
+    L('A. Lunar', 6, 'D300 — decont TVA (+ recipisă)', 'recap', [{ label: 'Recap PDF', href: '/pdf/d300' + p }, { label: 'XML ANAF', href: '/xml/d300' + p }], 'XML de validat cu DUKIntegrator; recipisă la ANAF'),
+    L('A. Lunar', 7, 'D394 — declarație informativă (+ recipisă)', 'recap', [{ label: 'XML ANAF', href: '/xml/d394' + p }, { label: 'Jurnale TVA', href: '/pdf/vat' + p }], 'XML de validat cu DUKIntegrator'),
+    L('A. Lunar', 8, 'D390 VIES — operațiuni intracomunitare (+ recipisă)', 'regim', [], 'Doar dacă există operațiuni intracomunitare'),
+    L('A. Lunar', 9, 'D406 SAF-T (+ recipisă)', 'regim', [], 'În funcție de regim/termen'),
+    L('A. Lunar', 10, 'D100 — rețineri la sursă / dividende (+ recipisă)', 'regim', [], 'Dacă e cazul'),
+    L('A. Lunar', 11, 'Situația sumelor de plată la ANAF', 'ok', [{ label: 'Obligații', href: '/pdf/obligatii' + p }]),
+    L('B. Trimestrial', 12, 'D100 — impozit micro 1% / avans impozit profit (+ recipisă)', 'recap', [{ label: 'Recap D100', href: '/pdf/d100' + p }, { label: 'D100 XML', href: '/xml/d100' + p }]),
+    L('B. Trimestrial', 13, 'D300 / D394 / D406 — regim trimestrial (+ recipisă)', 'regim', [], 'Dacă firma e pe regim trimestrial'),
+    L('B. Trimestrial', 14, 'Balanță de verificare la sfârșit de trimestru', 'ok', [{ label: 'Balanta', href: '/pdf/balance' + p }]),
+    L('C. Anual', 15, 'Situații financiare: bilanț + cont de profit și pierdere + note', 'ok', [
+      { label: 'Bilanț', href: '/pdf/bilant?period=' + yr + '-12' }, { label: 'Cont P&P', href: '/pdf/pl?year=' + yr }], 'Notele explicative se redactează separat'),
+    L('C. Anual', 16, 'D101 — impozit pe profit (+ recipisă)', 'regim', [], 'Doar la regimul de impozit pe profit'),
+    L('C. Anual', 17, 'D205 / D107 — rețineri la sursă / sponsorizări (+ recipisă)', 'regim', [], 'Dacă e cazul'),
+    L('C. Anual', 18, 'Registrul-inventar și documentele de inventariere', 'ok', [{ label: 'Registru-inventar', href: '/pdf/registru-inventar?period=' + yr + '-12' }]),
+    L('C. Anual', 19, 'Proiect hotărâre AGA: aprobare situații + repartizare profit', 'manual', [], 'Document pregătit de firmă'),
+    L('D. La cerere', 20, 'Fișa pe plătitor / situația obligațiilor la ANAF', 'ok', [{ label: 'Obligații', href: '/pdf/obligatii' + p }], 'Fișa oficială se obține din SPV'),
+    L('D. La cerere', 21, 'Certificat de atestare fiscală', 'anaf', [], 'Emis de ANAF'),
+    L('D. La cerere', 22, 'Balanțe și situații pentru bancă', 'ok', [{ label: 'Balanta', href: '/pdf/balance' + p }]),
   ];
   const sumar = { d112: d112(db, period), d300: d300(db, period), obligatii: obligatii(db, period), d100: d100micro(db, period) };
   // PFA: fara SAF-T / D100 micro / situatii financiare / D101 / AGA — in loc, Declaratia Unica anuala
   if ((db.company && db.company.tipEntitate) === 'pfa') {
     const drop = new Set([9, 12, 15, 16, 19]);
-    const listPfa = list.filter((x) => !drop.has(x.nr));
-    listPfa.push(L('A. Lunar', 24, 'Registrul-jurnal de incasari si plati (partida simpla)', 'ok',
+    const listPfa = list.filter((x) => !drop.has(x.id));
+    listPfa.push(L('A. Lunar', 24, 'Registrul-jurnal de încasări și plăți (partidă simplă)', 'ok',
       [{ label: 'Registru', href: '/pdf/registru-incasari-plati' + p }]));
-    listPfa.push(L('C. Anual', 23, 'Declaratia Unica — venit net PFA + CAS/CASS/impozit (estimare)', 'recap',
-      [{ label: 'PDF', href: '/pdf/declaratia-unica?year=' + yr }, { label: 'Registru incasari-plati (an)', href: '/pdf/registru-incasari-plati?period=' + yr }], 'Se depune personal, din SPV, pana la termenul legal'));
+    listPfa.push(L('C. Anual', 23, 'Declarația Unică — venit net PFA + CAS/CASS/impozit (estimare)', 'recap',
+      [{ label: 'PDF', href: '/pdf/declaratia-unica?year=' + yr }, { label: 'Registru încasări-plăți (an)', href: '/pdf/registru-incasari-plati?period=' + yr }], 'Se depune personal, din SPV, până la termenul legal'));
     sumar.du = declaratiaUnica(db, yr || String(new Date().getFullYear()));
-    return { period, list: listPfa, sumar };
+    return { period, list: finalizeaza(listPfa), sumar };
   }
-  // micro/profit: D101 (nr 16) apare DOAR la regimul de impozit pe profit (micro nu depune D101)
+  // micro/profit: D101 (id 16) apare DOAR la regimul de impozit pe profit (micro nu depune D101)
   const prof = fiscalProfile.build(db.company);
-  const listFinal = prof.profit ? list : list.filter((x) => x.nr !== 16);
-  return { period, list: listFinal, sumar };
+  const listFinal = prof.profit ? list : list.filter((x) => x.id !== 16);
+  return { period, list: finalizeaza(listFinal), sumar };
+}
+
+// Ordinea sectiunilor + numerotarea afisata, dupa filtrare. Sortarea e stabila explicit (indexul
+// ca departajare), fiindca la PFA randurile adaugate la final apartin unor sectiuni anterioare.
+const SECTIUNI = ['A. Lunar', 'B. Trimestrial', 'C. Anual', 'D. La cerere'];
+function finalizeaza(list) {
+  return list
+    .map((x, i) => ({ x, i }))
+    .sort((a, b) => (SECTIUNI.indexOf(a.x.sectiune) - SECTIUNI.indexOf(b.x.sectiune)) || (a.i - b.i))
+    .map(({ x }, i) => Object.assign({}, x, { nr: i + 1 }));
 }
 
 // Conturile de trezorerie (banii firmei) — SURSA UNICA a listei. monthlyClose.js o ia de aici
