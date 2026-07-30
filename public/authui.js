@@ -103,7 +103,10 @@ $('#faqClose') && $('#faqClose').addEventListener('click', () => $('#faqOverlay'
 // Butonul de copiere functioneaza in ambele cazuri, deci adresa e utilizabila oricum.
 $('#adminMailCopy') && $('#adminMailCopy').addEventListener('click', async (e) => {
   e.preventDefault();
-  const adr = ($('#adminMail') && $('#adminMail').textContent.trim()) || '';
+  const el = $('#adminMail');
+  // adresa vine din data-mail, nu din textul afisat: linkul duce acum la Gmail, deci href-ul
+  // nu mai e adresa, iar textul e doar eticheta si poate fi schimbat oricand
+  const adr = (el && (el.dataset.mail || el.textContent.trim())) || '';
   try {
     await navigator.clipboard.writeText(adr);
     toast('Adresă copiată: ' + adr);
