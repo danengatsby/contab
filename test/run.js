@@ -3463,6 +3463,36 @@ ok('notificari: termen d112 iunie (25 iulie) e in fereastra de 7 zile', notifDec
 ok('notificari: d300 depusa nu apare', !notifDecl.items.some((i) => i.tip === 'd300' && i.period === '2026-06'));
 eq('notificari: restantele primele', declMod.notifications(dDecl, [vDecl], '2026-08-01', 7, 3).items[0].kind, 'restanta');
 
+// O firma nou creata NU datoreaza declaratii pentru lunile dinaintea ei. Calendarul se deriva din
+// PROFIL, nu din date (multe declaratii se depun „pe zero"), deci fara un reper de inceput o firma
+// facuta azi aparea imediat cu restante D300/D394/D406 pentru ultimele 3 luni — o acuzatie falsa,
+// chiar pe ecranul care ar trebui sa fie lista ei de lucru.
+{
+  const azi = '2026-07-30';
+  const vNou = { firmaId: 9, company: { nume: 'NOUA SRL', tvaPlatitor: true, createdAt: '2026-07-28T10:00:00.000Z' }, entries: [], angajati: [] };
+  const nNou = declMod.notifications({ declarations: [] }, [vNou], azi, 7, 3);
+  eq('firma creata luna asta: nicio restanta pentru lunile dinaintea ei', nNou.items.filter((i) => i.kind === 'restanta').length, 0);
+  eq('prima luna urmarita = luna crearii', declMod.primaLunaUrmarita(vNou), '2026-07');
+  ok('portofoliul nu-i cere nimic pe o luna anterioara',
+    declMod.portfolio({ declarations: [] }, [vNou], '2026-04', azi).firms[0].counts.asteptate === 0);
+  ok('...dar firma RAMANE in lista portofoliului (nu dispare)',
+    declMod.portfolio({ declarations: [] }, [vNou], '2026-04', azi).firms.length === 1);
+
+  // istoric preluat de la contabilul anterior: inregistrari mai VECHI coboara reperul, fiindca
+  // acolo obligatiile sunt reale
+  const vIstoric = { firmaId: 10, company: { nume: 'CU ISTORIC SRL', tvaPlatitor: true, createdAt: '2026-07-28T10:00:00.000Z' },
+    entries: [{ id: 'x', period: '2026-05', data: '2026-05-10', lines: [] }], angajati: [] };
+  eq('istoricul preluat coboara reperul la luna celei mai vechi inregistrari', declMod.primaLunaUrmarita(vIstoric), '2026-05');
+  ok('deci restantele reale din mai/iunie se arata',
+    declMod.notifications({ declarations: [] }, [vIstoric], azi, 7, 3).items.some((i) => i.period === '2026-05' && i.kind === 'restanta'));
+
+  // firmele DINAINTE de campul createdAt raman pe comportamentul vechi (nu ascundem retroactiv)
+  const vVeche = { firmaId: 11, company: { nume: 'VECHE SRL', tvaPlatitor: true }, entries: [], angajati: [] };
+  eq('firma fara createdAt: fara reper', declMod.primaLunaUrmarita(vVeche), '');
+  ok('...deci restantele ei se arata ca inainte',
+    declMod.notifications({ declarations: [] }, [vVeche], azi, 7, 3).items.some((i) => i.kind === 'restanta'));
+}
+
 section('Motor de profil fiscal (src/fiscalProfile.js)');
 const fp = require('../src/fiscalProfile');
 // implicite compatibile: firma veche (doar tvaPlatitor) => profil coerent
