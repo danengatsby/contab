@@ -1196,6 +1196,11 @@ async function main() {
     const dashH = (await req('GET', '/api/dashboard', { cookie: c1 })).json;
     ok('dashboard: rezumatul executiv are agregatele numerice',
       typeof dashH.disponibilTotal === 'number' && typeof dashH.taxeDatorate === 'number' && typeof dashH.salariiDePlata === 'number');
+    // Semnalul de trezorerie negativa ajunge pe ruta (forma, nu doar existenta): frontendul
+    // interpoleaza `cont`/`nume`/`sold` in banda de alerte.
+    ok('dashboard: semnalul conturilor de bani negative e expus pe ruta',
+      Array.isArray(dashH.conturiBaniNegative)
+      && dashH.conturiBaniNegative.every((x) => typeof x.cont === 'string' && typeof x.nume === 'string' && typeof x.sold === 'number'));
     // Primii pasi (onboarding): starea pasilor reflecta datele reale ale firmei
     ok('dashboard: primii pasi prezenti si bifati din date (document inregistrat)',
       dashH.primiiPasi && dashH.primiiPasi.documentInregistrat === true && typeof dashH.primiiPasi.nrInregistrari === 'number');

@@ -44,7 +44,7 @@ export async function loadDashboard() {
     card('🧾', tvaP ? 'TVA de plată' : 'TVA de recuperat', tvaP ? k.tvaDePlata : k.tvaDeRecuperat, 'cumulat', 'blue', '',
       'Soldul de TVA cumulat (4423/4424 după închideri + luna curentă neînchisă). Decontul exact, pe lună, e în tab-ul TVA.') +
     card('🏦', 'Disponibil bancă (5121)', k.banca, 'sold curent', 'blue', '',
-      'Banii din contul bancar în lei, după toate încasările și plățile înregistrate.') +
+      'Banii din contul bancar în lei, după toate încasările și plățile înregistrate. Un sold negativ înseamnă de regulă încasări lipsă din evidență; dacă e un descoperit de cont real, se reclasifică pe 5191.') +
     card('💵', 'Numerar casă (5311)', k.numerar, 'sold curent', 'blue', '',
       'Numerarul din casierie. Nu poate fi negativ — dacă e, lipsește o încasare din evidență.') +
     card('📈', 'Venituri ' + k.year, k.venituri, yoySub(yo.venituriDelta), 'green', trendChip(trendOf(s, 'venituri'), true),
@@ -242,6 +242,15 @@ function renderYoY(yo) {
 function renderDashAlerts(k) {
   const box = $('#dashAlerts'); if (!box) return;
   const a = [];
+  // Sold creditor pe un cont de bani — PRIMA alertă: cât timp există, „Bani disponibili" de mai jos
+  // e mai mic decât pare, deci nicio altă cifră de pe ecran nu merită citită înaintea ei.
+  // `nume` vine din planul de conturi, care se poate IMPORTA (dată externă) → escapat cu H.
+  const cbn = k.conturiBaniNegative || [];
+  if (cbn.length) a.push({ ic: '⚠️', tone: 'bad',
+    txt: cbn.length === 1
+      ? `Contul <b>${H(cbn[0].cont)}</b> (${H(cbn[0].nume)}) are sold negativ: <b>${fmt(cbn[0].sold)}</b> lei — probabil lipsesc încasări din evidență`
+      : `<b>${cbn.length}</b> conturi de bani au sold negativ (${cbn.map((x) => H(x.cont)).join(', ')}) — probabil lipsesc încasări din evidență`,
+    go: 'cashbook', cta: 'Verifică încasările' });
   const ef = k.efactura || {};
   if (ef.count > 0) a.push({ ic: '📤', tone: ef.overdue > 0 ? 'bad' : 'warn',
     txt: '<b>' + ef.count + '</b> facturi emise netrimise în SPV (e-Factura, termen 5 zile lucrătoare)' + (ef.overdue > 0 ? ' — <b>' + ef.overdue + ' cu termen depășit</b>' : ''),
