@@ -713,7 +713,12 @@ body.dark .imper-banner button{background:#ffd778;color:#2a2008}
 .dash-alerts{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
 .alert{display:flex;align-items:center;gap:11px;text-align:left;border:1px solid var(--line);border-left-width:4px;
   border-radius:var(--radius-sm);background:var(--card);padding:12px 15px;cursor:pointer;font-size:13.5px;color:var(--ink);
-  box-shadow:var(--shadow);transition:box-shadow .15s,transform .06s;flex:1 1 250px;min-width:0}
+  box-shadow:var(--shadow);transition:box-shadow .15s,transform .06s;
+  /* latimea urmeaza CONTINUTUL: `flex-basis:250px` le facea egale indiferent de text, deci alerta
+     cea mai lunga (soldul negativ de trezorerie) se rupea pe zece randuri langa una de trei cuvinte.
+     Cu `basis:auto` spatiul liber se imparte egal PESTE latimea naturala, iar min-width tine
+     alertele scurte lizibile si trimite pe rand nou cand nu mai incap. */
+  flex:1 1 auto;min-width:260px}
 .alert[data-go]:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
 .alert .al-ic{font-size:21px;line-height:1;flex:0 0 auto}
 .alert .al-tx{flex:1;min-width:0}

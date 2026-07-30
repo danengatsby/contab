@@ -250,7 +250,7 @@ function renderDashAlerts(k) {
     // Denumirea contului PRIMA, codul ca detaliu tehnic (`.adv`): în modul simplu „5121" nu spune
     // nimic unui necontabil, dar „Conturi la banci in lei" spune.
     txt: cbn.length === 1
-      ? `Contul <b>${H(cbn[0].nume)}</b><span class="adv"> (${H(cbn[0].cont)})</span> are sold negativ: <b>${fmt(cbn[0].sold)}</b> lei — probabil lipsesc încasări din evidență`
+      ? `<b>${H(cbn[0].nume)}</b><span class="adv"> (${H(cbn[0].cont)})</span> — sold negativ: <b>${fmt(cbn[0].sold)}</b> lei, probabil lipsesc încasări din evidență`
       : `<b>${cbn.length}</b> conturi de bani au sold negativ (${cbn.map((x) => H(x.nume)).join(', ')}) — probabil lipsesc încasări din evidență`,
     go: 'cashbook', cta: 'Verifică încasările' });
   const ef = k.efactura || {};
