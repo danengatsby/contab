@@ -30,6 +30,35 @@ const MIGRATIONS = [
       return n;
     },
   },
+  {
+    v: 2,
+    desc: 'backfill `createdAt` pe firmele existente (podeaua calendarului fiscal)',
+    up(d) {
+      // Calendarul fiscal nu cere declaratii pentru luni dinaintea existentei firmei
+      // (declarations.primaLunaUrmarita), dar reperul se pune doar la firmele CREATE dupa
+      // introducerea campului. Firmele dinainte ramaneau fara reper, deci continuau sa arate
+      // restante pentru luni in care nu existau — exact simptomul pentru care s-a facut podeaua.
+      //
+      // Reper folosit, in ordine: momentul probei (`trialStartedAt`, data reala a crearii pentru
+      // firmele inscrise), apoi `since`. Ambele sunt momente in care firma SIGUR exista deja.
+      //
+      // De ce e sigur si cand reperul e mai TARZIU decat infiintarea reala: podeaua coboara singura
+      // la luna celei mai vechi inregistrari, deci o firma cu istoric preluat isi pastreaza
+      // restantele adevarate. Se ascund doar cele ale firmelor care n-au NICIO inregistrare —
+      // acolo unde aplicatia oricum n-are pe ce sa se sprijine, iar prima inregistrare adaugata
+      // coboara imediat podeaua.
+      let n = 0;
+      for (const f of d.firme || []) {
+        if (f.createdAt) continue;
+        const s = f.subscription || {};
+        const reper = s.trialStartedAt || s.since || '';
+        if (!reper) continue; // fara niciun semnal: lasam firma pe comportamentul vechi
+        f.createdAt = reper;
+        n += 1;
+      }
+      return n;
+    },
+  },
 ];
 
 const LATEST = MIGRATIONS.reduce((m, x) => Math.max(m, x.v), 0);

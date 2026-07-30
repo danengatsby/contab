@@ -5135,6 +5135,26 @@ section('Migrari DB versionate (src/migrations.js)');
   eq('v1 backfill: period derivat din data unde lipsea', dOld.entries[0].period, '2026-03');
   eq('v1 backfill: period existent NU se atinge', dOld.entries[1].period, '2026-04');
   ok('v1 a raportat inregistrarea atinsa', applied.some((a) => a.v === 1 && a.changed === 1));
+  // v2: podeaua calendarului fiscal pentru firmele DINAINTE de campul `createdAt`. Fara ea, o
+  // firma veche si goala continua sa arate restante pentru luni in care nu exista.
+  {
+    const dF = { entries: [], firme: [
+      { id: 1, subscription: { trialStartedAt: '2026-07-28T09:00:00.000Z' } },
+      { id: 2, subscription: { status: 'active', since: '2026-07-05T10:00:00.000Z' } },
+      { id: 3, createdAt: '2026-01-01T00:00:00.000Z', subscription: { since: '2026-07-05T10:00:00.000Z' } },
+      { id: 4 }, // fara niciun semnal
+    ] };
+    const ap = mig.runMigrations(dF, { log: quiet });
+    eq('v2: reperul preferat e momentul probei', dF.firme[0].createdAt, '2026-07-28T09:00:00.000Z');
+    eq('v2: altfel `since`', dF.firme[1].createdAt, '2026-07-05T10:00:00.000Z');
+    eq('v2: firma care avea deja createdAt NU se atinge', dF.firme[2].createdAt, '2026-01-01T00:00:00.000Z');
+    ok('v2: fara niciun semnal, firma ramane fara reper', dF.firme[3].createdAt === undefined);
+    ok('v2 a raportat doua firme completate', ap.some((x) => x.v === 2 && x.changed === 2));
+    // idempotent: a doua rulare pe acelasi graf nu mai schimba nimic
+    dF.schemaVersion = 0;
+    const ap2 = mig.runMigrations(dF, { log: quiet });
+    ok('v2 e idempotent (a doua rulare nu mai atinge nimic)', ap2.some((x) => x.v === 2 && x.changed === 0));
+  }
   // re-rulare pe baza deja migrata: idempotent prin VERSIUNE (niciun pas)
   const applied2 = mig.runMigrations(dOld, { log: quiet });
   eq('re-rulare: niciun pas aplicat', applied2.length, 0);
