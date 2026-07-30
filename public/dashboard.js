@@ -255,7 +255,9 @@ function renderDashAlerts(k) {
   if (ef.count > 0) a.push({ ic: '📤', tone: ef.overdue > 0 ? 'bad' : 'warn',
     txt: '<b>' + ef.count + '</b> facturi emise netrimise în SPV (e-Factura, termen 5 zile lucrătoare)' + (ef.overdue > 0 ? ' — <b>' + ef.overdue + ' cu termen depășit</b>' : ''),
     go: 'iesite', cta: 'Trimite în SPV' });
-  if (k.tvaDePlata > k.tvaDeRecuperat && k.tvaDePlata > 0) a.push({ ic: '🧾', tone: 'warn', txt: 'TVA de plată: <b>' + fmt(k.tvaDePlata) + '</b> lei', go: 'tva', cta: 'Decont TVA' });
+  // „cumulat" explicit: tab-ul TVA arată decontul UNEI luni, deci fără cuvântul ăsta cele două
+  // cifre („5.502" aici, „882" acolo) par să se contrazică.
+  if (k.tvaDePlata > k.tvaDeRecuperat && k.tvaDePlata > 0) a.push({ ic: '🧾', tone: 'warn', txt: 'TVA de plată, <b>cumulat</b>: <b>' + fmt(k.tvaDePlata) + '</b> lei', go: 'tva', cta: 'Decont pe lună' });
   if (k.soldFurnizori > 0) a.push({ ic: '🏭', tone: 'warn', txt: '<b>' + fmt(k.soldFurnizori) + '</b> lei de plătit furnizorilor', go: 'cashbook', cta: 'Plăți' });
   if (k.soldClienti > 0) a.push({ ic: '👥', tone: 'info', txt: '<b>' + fmt(k.soldClienti) + '</b> lei de încasat de la clienți', go: 'analitic', cta: 'Scadențar' });
   if (k.profit < 0) a.push({ ic: '⚠️', tone: 'bad', txt: 'Rezultatul anului e <b>pierdere</b> (' + fmt(k.profit) + ' lei)', go: 'situatii', cta: 'Situații' });

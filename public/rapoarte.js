@@ -233,8 +233,12 @@ async function loadVat() {
   renderNeexigibila();
   const vj = await api('/api/vat-journals' + (p ? '?period=' + p : ''));
   const t = vj.totals;
-  // plătitor TVA trimestrial: decontul agregă întreg trimestrul — arată clar perioada
-  const trimNota = vj.trimestrial ? ` <span class="badge" title="TVA trimestrial: decontul agregă cele 3 luni ale trimestrului">${H(vj.period)} (trimestru)</span>` : '';
+  // Perioada, MEREU vizibilă pe card. Aceeași etichetă („TVA de plată") apare și pe dashboard,
+  // unde cifra e cumulată pe toate perioadele — fără perioada scrisă lângă ele, cele două numere
+  // par să se contrazică. La plătitorul trimestrial decontul agregă cele 3 luni ale trimestrului.
+  const trimNota = vj.period
+    ? ` <span class="badge" title="${vj.trimestrial ? 'TVA trimestrial: decontul agregă cele 3 luni ale trimestrului' : 'Perioada decontului'}">${H(vj.period)}${vj.trimestrial ? ' (trimestru)' : ''}</span>`
+    : ' <span class="badge" title="Fără lună selectată: totalurile cumulează toate perioadele">cumulat</span>';
   const deLabel = t.deplata > 0 ? 'TVA de plată (4423)' : 'TVA de recuperat (4424)';
   const deVal = t.deplata > 0 ? t.deplata : t.derecuperat;
   $('#tvaSummary').innerHTML =
