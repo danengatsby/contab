@@ -831,6 +831,10 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 .gloss-list{overflow:auto;flex:1;border-top:1px solid var(--line)}
 .gloss-item{padding:9px 6px;border-bottom:1px solid var(--line)}
 .gloss-item b{color:var(--head,#2b3a67)}
+/* randul ales cu sagetile in cautarea globala (Ctrl+K) */
+.pal-item{cursor:pointer;border-radius:8px}
+.pal-item:hover{background:var(--soft)}
+.pal-item.sel{background:var(--soft2);outline:2px solid var(--accent);outline-offset:-2px}
 .gloss-item p{margin:3px 0 0;font-size:13px;color:var(--muted)}
 
 /* ── Rezumat executiv (mod simplu): tile-uri clicabile, KPI-urile tehnice ascunse ── */

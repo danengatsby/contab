@@ -182,6 +182,7 @@
     </span>
     <div class="spacer" data-u="u46"></div>
     <div class="side-tools">
+      <button id="paletaBtn" class="btn small" title="Caută în aplicație — clienți, facturi, pagini (Ctrl+K)">🔎 Caută</button>
       <button id="glossaryBtn" class="btn small" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor">❓ Dicționar</button>
       <button id="uiModeBtn" class="btn small" title="Mod simplu: ascunde partea tehnic-contabilă din meniu (balanță, registre, plan de conturi, închideri). Contabilitatea rulează neschimbată în fundal. Mod expert: totul vizibil.">🎓</button>
       <button id="themeBtn" class="btn small" title="Comută tema (clar / întunecat)">🌙</button>
@@ -2135,6 +2136,19 @@ Cu stimă,
   <div id="toast" class="toast"></div>
 
   <!-- Dicționar contabil pe înțelesul tuturor (buton ❓ în bara de sus) -->
+  <!-- Cautare globala (Ctrl+K). Refoloseste stilul dicționarului: acelasi tip de panou, zero CSS nou. -->
+  <div id="paletaModal" class="gloss-overlay hidden" role="dialog" aria-modal="true" aria-label="Caută în aplicație">
+    <div class="gloss-panel">
+      <div class="gloss-head">
+        <h2>🔎 Caută în aplicație</h2>
+        <button id="paletaClose" class="btn small ghost" type="button">✕ Închide</button>
+      </div>
+      <input id="paletaSearch" placeholder="Caută un client, o factură sau o pagină… (ex. ALFA, EXP 2605, TVA)" autocomplete="off" role="combobox" aria-controls="paletaList" aria-expanded="true" />
+      <div id="paletaList" class="gloss-list" role="listbox"></div>
+      <p class="muted" data-u="u145">Deschizi cu <b>Ctrl+K</b> (⌘K pe Mac) · navighezi cu ↑ ↓ · alegi cu Enter · închizi cu Esc.</p>
+    </div>
+  </div>
+
   <div id="glossaryModal" class="gloss-overlay hidden" role="dialog" aria-modal="true" aria-label="Dicționar contabil">
     <div class="gloss-panel">
       <div class="gloss-head">

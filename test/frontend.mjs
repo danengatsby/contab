@@ -652,6 +652,34 @@ section('Calitatea citirii automate: verdictul și raportul (docflow.js / entrie
   eq('raport lipsă nu randează nimic', entries.calitateRaportHtml(null), '');
 }
 
+section('Căutare globală (Ctrl+K): filtrarea și ordonarea rezultatelor');
+{
+  const { cauta, fold } = await import(path.join(mirror, 'paleta.js'));
+  eq('fold scoate diacriticele (căutarea nu depinde de ele)', fold('Găsești ȘI Țară'), 'gasesti si tara');
+  const surse = {
+    parteneri: [
+      { fel: 'partener', text: 'ALFA DISTRIBUTIE SRL', sub: 'CUI 11223344', tab: 'parteneri' },
+      { fel: 'partener', text: 'BETA RETAIL SRL', sub: 'CUI 99887766', tab: 'parteneri' },
+    ],
+    inregistrari: [
+      { fel: 'doc', text: 'EXP 2605', sub: '2026-07-15 · BETA RETAIL SRL · Factura vanzare', tab: 'iesite', period: '2026-07' },
+    ],
+  };
+  // destinatiile se citesc din DOM; shim-ul nu are meniu, deci aici raman doar sursele date
+  const r1 = cauta('alfa', surse);
+  ok('gaseste partenerul dupa denumire', r1.length === 1 && r1[0].text === 'ALFA DISTRIBUTIE SRL');
+  const r2 = cauta('EXP 2605', surse);
+  ok('gaseste documentul dupa numar', r2.length === 1 && r2[0].tab === 'iesite');
+  ok('documentul isi poarta luna (lista se filtreaza pe luna de lucru)', r2[0].period === '2026-07');
+  // „beta" e la INCEPUTUL denumirii partenerului, dar doar in mijlocul descrierii documentului:
+  // potrivirea de la inceput trebuie sa iasa prima, altfel rezultatul evident ajunge al doilea
+  const r3 = cauta('beta', surse);
+  ok('potrivirea de la inceput e prima', r3.length === 2 && r3[0].text === 'BETA RETAIL SRL');
+  ok('cautarea ignora diacriticele si majusculele', cauta('AlFa', surse).length === 1);
+  eq('fara text nu se listeaza parteneri/documente', cauta('   ', surse).length, 0);
+  eq('un cuvant fara potrivire da zero rezultate', cauta('zzz-inexistent', surse).length, 0);
+}
+
 section('Poartă: fiecare modul din public/ se încarcă fără să arunce');
 // Testele de mai sus importa doar modulele pe care le verifica (9 din ~24). Un import lipsa in
 // restul (ex. folosirea lui `H` fara sa fie importat) NU se vede: `node --check` valideaza
