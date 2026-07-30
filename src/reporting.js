@@ -762,8 +762,23 @@ function dashboard(db) {
   // e cea care intra in „Bani disponibili".
   const conturiBaniNegative = CONTURI_TREZORERIE.filter((c) => net(c) < -0.005)
     .map((c) => ({ cont: c, nume: coa.accountName(c), sold: net(c) }));
-  const topList = (cont) => rc.partners.filter((p) => p.cont === cont && p.sold > 0)
-    .sort((a, b) => b.sold - a.sold).slice(0, 5).map((p) => ({ den: p.den, cui: p.cui, sold: p.sold }));
+  // Partenerii cu sold deschis pe un sens, AGREGAT pe partener: acelasi partener poate avea acum
+  // mai multe conturi de acelasi sens (401 si 404), iar o lista pe cont l-ar numara de doua ori —
+  // si in „Top datorii", si in „N furnizori de plata" de sub cifra.
+  const deschisiPe = (sens) => {
+    const byKey = new Map();
+    for (const p of rc.partners) {
+      if (p.sens !== sens || p.sold <= 0) continue;
+      const k = p.cui || p.den;
+      const cur = byKey.get(k) || { den: p.den, cui: p.cui, sold: 0 };
+      if (p.den && /[a-z]/i.test(p.den)) cur.den = p.den;
+      cur.sold = round2(cur.sold + p.sold);
+      byKey.set(k, cur);
+    }
+    return [...byKey.values()].sort((a, b) => b.sold - a.sold);
+  };
+  const creanteDeschise = deschisiPe('creanta');
+  const datoriiDeschise = deschisiPe('datorie');
   // variatie procentuala an-la-an (null cand anul precedent e 0)
   const pct = (cur, prev) => (prev ? round2(((cur - prev) / Math.abs(prev)) * 100) : null);
   const yoY = {
@@ -785,10 +800,10 @@ function dashboard(db) {
     venituri: pl.venitTotal,
     cheltuieli: pl.cheltTotal,
     profit: pl.rezNet,
-    clientiDeschisi: rc.partners.filter((p) => p.cont === '4111' && p.sold > 0).length,
-    furnizoriDeschisi: rc.partners.filter((p) => p.cont === '401' && p.sold > 0).length,
-    topCreante: topList('4111'),
-    topDatorii: topList('401'),
+    clientiDeschisi: creanteDeschise.length,
+    furnizoriDeschisi: datoriiDeschise.length,
+    topCreante: creanteDeschise.slice(0, 5),
+    topDatorii: datoriiDeschise.slice(0, 5),
     // Rezumat executiv (modul simplu): agregate in limbaj de business.
     // Trezoreria e NETA (vezi net() mai sus); datoriile raman soldul creditor ca numar pozitiv.
     disponibilTotal: sumNet(CONTURI_TREZORERIE),

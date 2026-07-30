@@ -107,7 +107,7 @@ function checkBanca(v, period) {
   let nepunctate = 0;
   for (const p of reconcile(v).partners) {
     for (const it of p.items) {
-      const eFactura = p.cont === '4111' ? it.debit > 0 : it.credit > 0;
+      const eFactura = p.sens === 'creanta' ? it.debit > 0 : it.credit > 0;
       if (eFactura || it.matched || !idsLuna.has(it.entryId)) continue;
       nepunctate += 1;
     }

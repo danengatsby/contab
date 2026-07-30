@@ -4,6 +4,17 @@ const { round2 } = require('./util');
 const coa = require('./chartOfAccounts');
 const { postedEntries } = require('./accounting'); // registrele analitice numara doar articole postate
 
+// Conturile de CREANTE si de DATORII pe partener — SURSA UNICA a perimetrului. Le folosesc si
+// vechimea soldurilor (aging, mai jos), si fisele de partener (reconcile.js). Cat timp fiecare
+// avea lista lui, acelasi lucru iesea cu doua cifre pe acelasi ecran: „De platit catre furnizori"
+// citea doar 401, iar „Datorii de platit" citea tot perimetrul.
+// SENSUL: la creante soldul creste pe DEBIT (factura emisa), la datorii pe CREDIT (factura primita).
+// 419 (avansuri incasate de la clienti) sta la datorii desi contrapartea e un client: e o obligatie.
+// 409 (avansuri platite furnizorilor) NU e in niciuna dintre liste — la fel ca inainte; adaugarea
+// lui e o decizie separata, dar acum se face intr-un singur loc, nu in doua care pot drifta.
+const CONTURI_CREANTE = ['4111', '418', '461'];
+const CONTURI_DATORII = ['401', '404', '408', '419', '462'];
+
 // Conturi care se detaliaza pe partener (dimensiunea = partenerul)
 const PARTNER_SYNTH = ['401', '404', '408', '409', '419', '4111', '418', '461', '462'];
 // Conturi care se detaliaza pe o eticheta libera (banca, angajat, casierie etc.)
@@ -165,8 +176,8 @@ function aging(db, asOf) {
     return out.sort((a, b) => b.total - a.total);
   }
 
-  const clienti = build(['4111', '418', '461'], true);
-  const furnizori = build(['401', '404', '408', '419', '462'], false);
+  const clienti = build(CONTURI_CREANTE, true);
+  const furnizori = build(CONTURI_DATORII, false);
   const sum = (list) => {
     const t = { total: 0, b0_30: 0, b31_60: 0, b61_90: 0, b90plus: 0 };
     for (const x of list) for (const k of Object.keys(t)) t[k] = round2(t[k] + x[k]);
@@ -175,4 +186,4 @@ function aging(db, asOf) {
   return { asOf: ref.toISOString().slice(0, 10), clienti, furnizori, totalClienti: sum(clienti), totalFurnizori: sum(furnizori) };
 }
 
-module.exports = { analyticBalance, receivablesPayables, aging, PARTNER_SYNTH, TAG_SYNTH, ANALYTIC_ACCOUNTS, partnerKey };
+module.exports = { analyticBalance, receivablesPayables, aging, PARTNER_SYNTH, TAG_SYNTH, ANALYTIC_ACCOUNTS, partnerKey, CONTURI_CREANTE, CONTURI_DATORII };
