@@ -394,9 +394,9 @@
             <p>Trage un <b>PDF sau o imagine</b> (JPG/PNG) aici sau <span class="link">alege un fișier</span></p>
           </div>
           <div class="row" data-u="u74">
-            <button id="scannerBtn" class="btn">🖨️ Scanează (scaner local)</button>
+            <button id="scannerBtn" class="btn" disabled aria-disabled="true" title="Scanarea de la un scaner local este momentan indisponibilă. Încarcă documentul ca PDF sau poză.">🖨️ Scanează (scaner local)</button>
           </div>
-          <details id="scanSetup" data-u="u23">
+          <details id="scanSetup" class="inactiv" aria-disabled="true" data-u="u23">
             <summary class="muted" data-u="u75">Configurează scanerul local (o singură dată)</summary>
             <div class="muted" data-u="u76">
               Browserul nu poate accesa direct un scaner, așa că rulezi o mică „punte" pe acest PC:
@@ -1957,6 +1957,7 @@ Cu stimă,
       </div>
       <div class="card howto">
         <h2>🖨️ Punte de scanare locală (Windows 11)</h2>
+        <div class="warnbox"><span class="wi">⚠️</span><div><b>Momentan indisponibilă.</b> Butonul „🖨️ Scanează (scaner local)" din <kbd>📥 Documente</kbd> este dezactivat, deci pașii de mai jos nu pot fi urmați acum. Până la reactivare, adu documentele ca <b>PDF sau poză</b> (le tragi în zona de încărcare) — restul fluxului e neschimbat.</div></div>
         <p class="lead"><b>De ce e nevoie?</b> Browserele NU pot accesa direct un scaner (limitare de securitate). Această mică „punte" rulează pe PC-ul tău, vorbește cu scanerul și oferă imaginea aplicației Contabo.</p>
 
         <h3>Instalare (o singură dată)</h3>
