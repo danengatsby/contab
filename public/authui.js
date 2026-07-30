@@ -74,14 +74,13 @@ async function showPricing() {
     const cta = canRegister
       ? `<button class="btn primary pricing-start" data-plan="${p.id}" data-trial="${p.trial ? 1 : 0}">${p.trial ? 'Începe proba gratuită' : 'Alege ' + H(p.nume) + ' →'}</button>`
       : '<div class="muted" data-u="u17">Autentifică-te pentru a alege planul</div>';
-    const demo = p.trial ? '<button class="btn pricing-demo" data-u="u18">🔎 Intră în contul demo</button>' : '';
     return `<div class="plan-card${p.recomandat ? ' recomandat' : ''}">
       ${p.recomandat ? '<div class="plan-badge">Recomandat</div>' : ''}
       <h3>${H(p.nume)}</h3>
       <div class="plan-price">${p.pret === 0 ? 'Gratuit' : '<b>' + fmt(p.pret) + '</b> ' + p.moneda}<span>${p.pret === 0 ? '' : '/ ' + p.perioada}</span></div>
       <p class="plan-desc">${H(p.descriere || '')}</p>
       <ul class="plan-feat">${(p.features || []).map((f) => `<li>${f}</li>`).join('')}</ul>
-      <div class="plan-action">${cta}${demo}</div>
+      <div class="plan-action">${cta}</div>
     </div>`;
   }).join('');
   $$('#pricingPlans .pricing-start').forEach((b) => b.addEventListener('click', () => {
@@ -90,15 +89,6 @@ async function showPricing() {
     pendingPaidPlan = b.dataset.trial === '1' ? null : b.dataset.plan;
     const label = b.textContent.replace(/→/g, '').replace(/^\s*Alege\s+/i, '').trim();
     openRegisterPanel(b.dataset.trial === '1' ? null : label);
-  }));
-  $$('#pricingPlans .pricing-demo').forEach((b) => b.addEventListener('click', async () => {
-    b.disabled = true;
-    try {
-      await api('/api/demo-login', { method: 'POST' });
-      $('#pricingOverlay').classList.add('hidden');
-      await D.init();
-      toast('Ai intrat în contul demo — explorează liber!');
-    } catch (e) { toast(e.message, true); b.disabled = false; }
   }));
 }
 $('#showPricingLogin') && $('#showPricingLogin').addEventListener('click', showPricing);
