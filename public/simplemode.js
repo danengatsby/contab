@@ -58,8 +58,20 @@ $('#glossarySearch') && $('#glossarySearch').addEventListener('input', (e) => re
 // Mod simplu: ascunde intrarile tehnic-contabile din meniu (marcate cu .adv). Implicit pentru
 // utilizatorii „necontabil"; preferinta se tine per utilizator, in browser.
 function uiModeKey() { return 'contabo-uimode-' + ((USER && USER.username) || ''); }
+// Codul de cont din etichetele de <option>. In restul paginii un `<span class="adv">` ar fi de
+// ajuns, dar <option> randeaza TEXT: nu accepta markup, deci `.adv` n-are pe ce sa se aplice.
+// Deci textul se rescrie: „Banca lei (5121)" -> „Banca lei" in modul simplu. `value` NU se atinge
+// (formularele si JS-ul citesc de acolo), iar originalul se pastreaza in data-full ca sa se poata
+// reveni exact la comutarea inapoi pe expert.
+function applyAccLabels(simplu) {
+  document.querySelectorAll('select[data-acc-labels] option').forEach((o) => {
+    if (!o.dataset.full) o.dataset.full = o.textContent;
+    o.textContent = simplu ? o.dataset.full.replace(/\s*\(\d{3,4}\)\s*$/, '') : o.dataset.full;
+  });
+}
 function applyUiMode(mode) {
   document.body.classList.toggle('simple-ui', mode === 'simplu');
+  applyAccLabels(mode === 'simplu');
   const b = $('#uiModeBtn');
   if (b) {
     b.textContent = mode === 'simplu' ? '🎓 Simplu' : '🛠 Expert';

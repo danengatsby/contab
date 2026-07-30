@@ -247,9 +247,11 @@ function renderDashAlerts(k) {
   // `nume` vine din planul de conturi, care se poate IMPORTA (dată externă) → escapat cu H.
   const cbn = k.conturiBaniNegative || [];
   if (cbn.length) a.push({ ic: '⚠️', tone: 'bad',
+    // Denumirea contului PRIMA, codul ca detaliu tehnic (`.adv`): în modul simplu „5121" nu spune
+    // nimic unui necontabil, dar „Conturi la banci in lei" spune.
     txt: cbn.length === 1
-      ? `Contul <b>${H(cbn[0].cont)}</b> (${H(cbn[0].nume)}) are sold negativ: <b>${fmt(cbn[0].sold)}</b> lei — probabil lipsesc încasări din evidență`
-      : `<b>${cbn.length}</b> conturi de bani au sold negativ (${cbn.map((x) => H(x.cont)).join(', ')}) — probabil lipsesc încasări din evidență`,
+      ? `Contul <b>${H(cbn[0].nume)}</b><span class="adv"> (${H(cbn[0].cont)})</span> are sold negativ: <b>${fmt(cbn[0].sold)}</b> lei — probabil lipsesc încasări din evidență`
+      : `<b>${cbn.length}</b> conturi de bani au sold negativ (${cbn.map((x) => H(x.nume)).join(', ')}) — probabil lipsesc încasări din evidență`,
     go: 'cashbook', cta: 'Verifică încasările' });
   const ef = k.efactura || {};
   if (ef.count > 0) a.push({ ic: '📤', tone: ef.overdue > 0 ? 'bad' : 'warn',

@@ -90,7 +90,36 @@ if (!(await pg.evaluate(() => document.body.classList.contains('simple-ui')))) a
 await pg.evaluate(() => goTab('dashboard'));
 await pg.waitForTimeout(1000);
 ok('rezumatul executiv e vizibil in modul simplu', await pg.locator('#rezumatCard').isVisible());
-await pg.click('#uiModeBtn'); // inapoi la modul expert pentru restul verificarilor
+
+// Modul simplu a fost multa vreme doar un filtru de MENIU: ascundea intrari, dar paginile ramase
+// isi pastrau tot vocabularul contabil (coloana „Formula" 6811=281, „TVA colectata (4427)",
+// selectoare de cont). Poarta masoara EFECTUL, nu marcajele: cate coduri din planul de conturi
+// chiar ajung pe ecran. Trebuie sa ramana ZERO in simplu — si nenul in expert, altfel ar trece
+// si o regresie care ascunde totul pentru toata lumea.
+const CONTURI = (await (await pg.request.get(BASE + '/api/meta')).json()).accounts.map((a) => String(a.cod));
+const coduriVizibile = async (tab) => pg.evaluate(async ({ x, V }) => {
+  const btn = document.querySelector(`#tabs button[data-tab="${x}"]`); if (!btn) return [];
+  btn.click(); await new Promise((r) => setTimeout(r, 1800));
+  const valid = new Set(V); const sec = document.querySelector('section.tab.active'); if (!sec) return [];
+  const w = document.createTreeWalker(sec, NodeFilter.SHOW_TEXT); const out = new Set(); let n;
+  while ((n = w.nextNode())) {
+    const p = n.parentElement;
+    if (!p || !p.offsetParent) continue; // doar ce e chiar vizibil
+    // cifrele din sume/date nu sunt coduri de cont: lookaround pe separatori si pe litere („D205")
+    for (const m of n.nodeValue.matchAll(/(?<![\d.,\w])(\d{3,4})(?![\d.,\w])/g)) if (valid.has(m[1])) out.add(m[1]);
+  }
+  return [...out];
+}, { x: tab, V: CONTURI });
+const TABURI = ['documente', 'tva', 'stocuri'];
+const strange = async () => { const s = new Set(); for (const t of TABURI) (await coduriVizibile(t)).forEach((c) => s.add(c)); return s; };
+const inSimplu = await strange();
+ok(`modul simplu nu arata coduri de cont (gasite: ${[...inSimplu].join(' ') || 'niciunul'})`, inSimplu.size === 0);
+await pg.click('#uiModeBtn'); // -> expert
+await pg.waitForTimeout(300);
+const inExpert = await strange();
+ok(`modul expert le arata mai departe (${inExpert.size} coduri)`, inExpert.size > 10);
+if (await pg.evaluate(() => document.body.classList.contains('simple-ui'))) await pg.click('#uiModeBtn');
+// restul verificarilor ruleaza in modul expert
 
 // 4. API-uri cheie cu sesiunea demo
 const notif = await (await pg.request.get(BASE + '/api/notifications')).json();

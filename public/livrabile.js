@@ -1,7 +1,7 @@
 'use strict';
 
 // Declaratii & termene: livrabile ANAF, registrul depunerilor, fisa rol/SPV, portofoliu, notificari, reconciliere, scadentar. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, accName, toast, api } from './core.js';
+import { $$, $, H, fmt, accName, toast, api, ac } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
 
 // ───────────────────────── LIVRABILE ─────────────────────────
@@ -39,7 +39,7 @@ async function loadLivrabile() {
     ? `<div class="warnbox" data-u="u23"><span class="wi">⚠️</span><div><b>Eligibilitate micro:</b> ${s.d100.avertismente.join('<br>')}</div></div>`
     : ''}</div>
      <div class="card"><h3>Total de virat la ANAF (luna ${p})</h3><table>
-      ${s.obligatii.items.map((i) => `<tr><td>${H(i.cont)} ${H(i.nume)}</td><td class="num">${fmt(i.suma)}</td></tr>`).join('') || '<tr><td class="muted">Fără obligații în perioadă</td><td></td></tr>'}
+      ${s.obligatii.items.map((i) => `<tr><td><span class="adv">${H(i.cont)}</span> ${H(i.nume)}</td><td class="num">${fmt(i.suma)}</td></tr>`).join('') || '<tr><td class="muted">Fără obligații în perioadă</td><td></td></tr>'}
       <tr class="total"><td>TOTAL</td><td class="num">${fmt(s.obligatii.total)}</td></tr>
      </table></div>`;
   $('#livrabileLegend').innerHTML = Object.keys(STATUS).map((k) =>
@@ -246,7 +246,7 @@ async function loadReconcile() {
         <span class="muted"> Bifează facturile stinse de plata aleasă; debifează pentru a dezlega.</span>
       </details>` : '';
     return `<div class="ledger-acc">
-      <h4><span class="acc">${p.cont}</span> ${H(p.den)} ${p.cui ? '<span class="muted">(' + H(p.cui) + ')</span>' : ''} <span class="pill">${lbl}</span></h4>
+      <h4><span class="acc adv">${p.cont}</span> ${H(p.den)} ${p.cui ? '<span class="muted">(' + H(p.cui) + ')</span>' : ''} <span class="pill">${lbl}</span></h4>
       <p class="muted">Facturat: ${fmt(p.facturat)} · Decontat: ${fmt(p.decontat)} · <b>Sold: ${fmt(p.sold)}</b> · Potriviri: ${p.potriviri} · Deschise: ${p.nepotrivite}</p>
       <div class="tablewrap"><table><thead><tr><th>Data</th><th>Document</th><th>Tip</th><th class="num">Debit</th><th class="num">Credit</th><th>Stare</th></tr></thead><tbody>${rows}</tbody></table></div>
       ${punctaj}
@@ -280,7 +280,7 @@ async function renderCompensations() {
   let list; try { list = await api('/api/compensations'); } catch (e) { card.classList.add('hidden'); return; }
   if (!list.length) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
-  $('#compensView').innerHTML = `<table><thead><tr><th>Partener</th><th class="num">Creanță (4111)</th><th class="num">Datorie (401)</th><th class="num">Compensabil</th><th></th></tr></thead>
+  $('#compensView').innerHTML = `<table><thead><tr><th>Partener</th><th class="num">Creanță${ac('4111')}</th><th class="num">Datorie${ac('401')}</th><th class="num">Compensabil</th><th></th></tr></thead>
     <tbody>${list.map((c) => `<tr data-cui="${H(c.cui)}"><td>${H(c.den)}${c.cui ? ' <span class="muted">(' + H(c.cui) + ')</span>' : ''}</td>
       <td class="num">${fmt(c.creanta)}</td><td class="num">${fmt(c.datorie)}</td><td class="num"><b>${fmt(c.compensabil)}</b></td>
       <td><button class="btn small primary compBtn" data-cui="${H(c.cui)}" data-max="${c.compensabil}">Compensează</button></td></tr>`).join('')}</tbody></table>`;
@@ -322,8 +322,8 @@ async function renderProvizion() {
     : '<p class="muted">Nicio creanță mai veche de 90 de zile.</p>';
   $('#provView').innerHTML = det + `<table data-u="u23"><tbody>
     <tr><td>Provizion necesar (${p.pct}%)</td><td class="num">${fmt(p.necesar)}</td></tr>
-    <tr><td>Ajustare existentă (sold 491)</td><td class="num">${fmt(p.existent)}</td></tr>
-    <tr class="bold"><td>De înregistrat (${provizionDirectie(p.deAjustat)})</td><td class="num">${fmt(Math.abs(p.deAjustat))}</td></tr></tbody></table>`;
+    <tr><td>Ajustare existentă${ac('491')}</td><td class="num">${fmt(p.existent)}</td></tr>
+    <tr class="bold"><td>De înregistrat<span class="adv"> (${provizionDirectie(p.deAjustat)})</span></td><td class="num">${fmt(Math.abs(p.deAjustat))}</td></tr></tbody></table>`;
 }
 $('#provPct').addEventListener('input', renderProvizion);
 $('#provPost').addEventListener('click', async () => {
