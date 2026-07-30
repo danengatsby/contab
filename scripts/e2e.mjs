@@ -50,7 +50,33 @@ ok('login demo functioneaza (badge cu tipul)', /demo/.test(await pg.locator('#us
 ok('panourile au explicatii (ⓘ injectate)', (await pg.locator('.cinfo').count()) > 50);
 ok('dashboardul are banda de alerte', (await pg.locator('#dashAlerts .alert').count()) > 0);
 
-// 3b. dictionarul contabil + modul simplu (rezumatul executiv)
+// 3b. contrastul comenzilor utilitare din bara laterala. Poarta traieste AICI, nu in npm test:
+// depinde de cascada reala + compunerea alpha, deci cere un browser. A prins o regresie reala —
+// `body:not(.dark) .btn{background:#efebe1}` lua fundalul inchis al butoanelor, dar lasa
+// `color:#fff` de la regula veche din u.css: alb pe crem, 1,19:1, exact pe Dictionar si pe
+// comutatorul Simplu/Expert. Se verifica in AMBELE teme, fiindca doar tema luminoasa era rupta.
+for (const tema of ['light', 'dark']) {
+  await pg.emulateMedia({ colorScheme: tema });
+  await pg.waitForTimeout(150);
+  const masuri = await pg.evaluate(() => {
+    const relLum = (r, g, b) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const nums = (s) => (s.match(/[\d.]+/g) || []).map(Number);
+    const tb = nums(getComputedStyle(document.querySelector('.topbar')).backgroundColor).slice(0, 3);
+    return ['#glossaryBtn', '#uiModeBtn', '#themeBtn', '#densityBtn', '#logoutBtn'].map((sel) => {
+      const s = getComputedStyle(document.querySelector(sel));
+      const fg = nums(s.color).slice(0, 3); const bgRaw = nums(s.backgroundColor);
+      const a = bgRaw.length === 4 ? bgRaw[3] : 1;
+      const bg = bgRaw.slice(0, 3).map((c, i) => Math.round(a * c + (1 - a) * tb[i])); // compunere peste bara
+      const L1 = relLum(...fg); const L2 = relLum(...bg);
+      return { sel, k: (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05) };
+    });
+  });
+  const slab = masuri.reduce((m, x) => (x.k < m.k ? x : m));
+  ok(`contrast AA pe comenzile din bara laterala (tema ${tema}; cel mai slab ${slab.sel} ${slab.k.toFixed(2)}:1)`, slab.k >= 4.5);
+}
+await pg.emulateMedia({ colorScheme: null });
+
+// 3c. dictionarul contabil + modul simplu (rezumatul executiv)
 await pg.click('#glossaryBtn');
 ok('dictionarul contabil se deschide', await pg.locator('#glossaryModal').isVisible());
 await pg.fill('#glossarySearch', 'storno');
