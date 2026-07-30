@@ -127,8 +127,24 @@ function isDemoUser(user) { return !!(user && DEMO_USERS.includes(user.username)
  *  cookie-ul nu verifica — un token forjat nu trebuie sa dea un sessId pe care sa se derive CSRF. */
 function sessionIdOf(req) {
   try {
-    const p = authlib.verify(authlib.parseCookies((req || {}).headers ? req.headers.cookie : '').sid, signingSecret(db.get()));
-    return p && p.sessId ? p.sessId : null;
+    const d = db.get();
+    const p = authlib.verify(authlib.parseCookies((req || {}).headers ? req.headers.cookie : '').sid, signingSecret(d));
+    if (!p || !p.sessId) return null;
+    // Sesiunea trebuie sa fie si VIE, nu doar semnata corect — aceeasi conditie pe care o pune
+    // currentUser (utilizator existent + sesiune nerevocata).
+    //
+    // Cat timp aici era de ajuns semnatura, un cookie ramas de la o sesiune REVOCATA sau expirata
+    // facea token-ul CSRF obligatoriu pe pagina de LOGIN, unde el nu poate fi obtinut: /api/meta
+    // raspunde 401, deci clientul n-are de unde lua `user.csrf`. Efectul: utilizatorul nu se mai
+    // putea autentifica DELOC — nici demo, nici cu parola, nici inscriere — iar mesajul „Reincarca
+    // pagina" nu ajuta, fiindca dupa reincarcare situatia e identica. Singura iesire era stergerea
+    // manuala a cookie-urilor.
+    //
+    // Pentru CSRF, un cookie mort e echivalent cu lipsa sesiunii: nu ofera credentiale ambientale
+    // de calarit. Pentru sesiunile VII nimic nu se schimba — token-ul ramane obligatoriu.
+    const u = (d.users || []).find((x) => x.id === p.uid);
+    if (!u || !(u.sessions || []).some((s) => s.id === p.sessId)) return null;
+    return p.sessId;
   } catch (_) { return null; }
 }
 /** Secretul din care se deriva token-ul CSRF (acelasi cu cel de semnare a sesiunii). */

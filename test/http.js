@@ -642,6 +642,29 @@ async function main() {
       !!altTok && altTok !== (await req('GET', '/api/me', { cookie: c1 })).json.csrf);
     const tokStrain = await req('POST', '/api/entries', { cookie: c1, noCsrf: true, headers: { 'X-CSRF-Token': altTok }, body: { tip: 'nota_contabila', fields: { data: '2026-06-01', explicatie: 'x', debit: '5311', credit: '5121', suma: 1 } } });
     eq('token-ul altei SESIUNI -> 403 (legat de sesiune, nu de cont)', tokStrain.status, 403);
+
+    // ── Cookie MORT: nu are voie sa blocheze o autentificare noua ──
+    // Garda cerea token pentru orice cookie cu SEMNATURA valida, chiar daca sesiunea fusese
+    // revocata. Pe pagina de login token-ul nu se poate obtine (/api/meta raspunde 401, deci nu
+    // exista `user.csrf`), asa ca utilizatorul ramas cu un cookie vechi nu se mai putea autentifica
+    // DELOC — nici cu parola, nici demo, nici inscriere. „Reincarca pagina" nu ajuta: dupa
+    // reincarcare situatia e identica. Un cookie mort nu ofera credentiale de calarit, deci pentru
+    // CSRF e echivalent cu lipsa sesiunii.
+    {
+      const viu = await req('POST', '/api/login', { body: { username: 'user1', password: 'parola1' } });
+      await req('POST', '/api/logout', { cookie: viu.cookie }); // serverul revoca sesiunea...
+      // ...dar browserul poate ramane cu cookie-ul (tab vechi, restaurare de sesiune, back/forward)
+      eq('cookie mort: /api/meta raspunde 401 (deci se arata pagina de login)',
+        (await req('GET', '/api/meta', { cookie: viu.cookie })).status, 401);
+      const reLogin = await req('POST', '/api/login', { cookie: viu.cookie, noCsrf: true, headers: { Origin: BASE }, body: { username: 'user1', password: 'parola1' } });
+      eq('cookie mort + login fara token -> merge (nu 403)', reLogin.status, 200);
+      const reDemo = await req('POST', '/api/demo-login', { cookie: viu.cookie, noCsrf: true, headers: { Origin: BASE }, body: {} });
+      ok('cookie mort + „Demo patron" fara token -> nu mai e respins', reDemo.status !== 403);
+      // iar protectia pentru sesiunile VII ramane neatinsa (verificata si mai sus, pe c1)
+      const viu2 = await req('POST', '/api/login', { body: { username: 'user1', password: 'parola1' } });
+      const totBlocat = await req('POST', '/api/entries', { cookie: viu2.cookie, noCsrf: true, body: { tip: 'nota_contabila', fields: { data: '2026-06-01', explicatie: 'x', debit: '5311', credit: '5121', suma: 1 } } });
+      eq('sesiune VIE fara token -> tot 403 (protectia nu s-a slabit)', totBlocat.status, 403);
+    }
     // cu token-ul propriu, aceeasi cerere trece
     const cuToken = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', fields: { data: '2026-06-01', explicatie: 'csrf ok', debit: '5311', credit: '5121', suma: 1 } } });
     eq('aceeasi cerere CU token propriu -> 200', cuToken.status, 200);
