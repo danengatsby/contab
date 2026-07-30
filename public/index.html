@@ -275,6 +275,13 @@
     </nav>
   </header>
 
+  <!-- Luna de lucru inchisa: consultare fara editare. Serverul refuza oricum scrierile
+       (db.assertPeriodOpen), banda e ca utilizatorul sa afle INAINTE, nu dupa ce completeaza. -->
+  <div id="lunaInchisaBar" class="hidden luna-bar">
+    🔒 <b id="lunaInchisaText"></b> — o poți consulta, dar nu o mai poți modifica.
+    Corecțiile se fac prin <b>storno</b> într-o lună deschisă.
+    <button id="lunaInchisaGo" class="btn small">Mergi la luna deschisă →</button>
+  </div>
   <div id="subExpiredBar" class="hidden" data-u="u67">
     ⚠️ <b>Perioada de probă a expirat</b> — contul e acum doar în citire (datele tale sunt intacte).
     <button id="subExpiredGo" class="btn small" data-u="u68">Alege un plan →</button>
