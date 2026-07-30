@@ -1,7 +1,7 @@
 'use strict';
 
 const { round2, period: periodOf } = require('./util');
-const { sortEntries } = require('./accounting');
+const { sortEntries, postedEntries } = require('./accounting');
 const { settle } = require('./matching');
 
 const PARTNER_ACCOUNTS = ['4111', '401'];
@@ -12,8 +12,32 @@ const PARTNER_ACCOUNTS = ['4111', '401'];
  */
 function reconcile(db) {
   const groups = new Map();
-  for (const e of sortEntries(db.entries)) {
-    const key = (e.partener || e.partenerCui || '').toUpperCase().trim();
+  const keyOf = (partener, cui) => (partener || cui || '').toUpperCase().trim();
+  // Soldurile initiale pe partener (preluarea de la contabilitatea anterioara) sunt tot creante
+  // si datorii deschise. Erau IGNORATE aici, desi analytic.aging() le citeste — de unde doua cifre
+  // diferite pentru acelasi lucru pe acelasi ecran: „De platit catre furnizori 0" langa
+  // „Datorii de platit 15.000". Nu era doar o nepotrivire de afisare: soldul iesea mai mic cu
+  // exact preluarea, si in scadentar, si in previziunea de cash-flow.
+  // N-au document sau data, deci intra ca cel mai VECHI element (se sting primele, FIFO) —
+  // aceeasi conventie ca in analytic.aging().
+  for (const o of (db.openingAnalytic || [])) {
+    if (!PARTNER_ACCOUNTS.includes(o.cont)) continue;
+    const key = keyOf(o.partener, o.cui); if (!key) continue;
+    const d = round2(Number(o.d) || 0); const c = round2(Number(o.c) || 0);
+    if (!d && !c) continue;
+    const gkey = key + '|' + o.cont;
+    const g = groups.get(gkey) || { key, cont: o.cont, den: o.partener || key, cui: o.cui || '', items: [] };
+    if (!g.cui && o.cui) g.cui = o.cui;
+    // `soldInitial` scoate randul din punctajul MANUAL din interfata: n-are articol contabil in
+    // spate, deci n-ar avea ce lega (ruta /api/reconcile/link l-ar respinge oricum cu 404).
+    g.items.push({ entryId: 'sold-initial|' + gkey, data: '1900-01-01', doc: 'Sold inițial preluat',
+      tipNume: 'Sold inițial preluat', debit: d, credit: c, matched: false, stinge: null, soldInitial: true });
+    groups.set(gkey, g);
+  }
+  // Doar articolele POSTATE: o ciorna nu e inca o creanta/datorie reala. aging() filtra deja
+  // (postedEntries), scadentarul nu — a doua sursa de divergenta intre aceleasi doua cifre.
+  for (const e of sortEntries(postedEntries(db))) {
+    const key = keyOf(e.partener, e.partenerCui);
     if (!key) continue;
     // efectul net al intregului articol pe fiecare cont de partener (factura = un singur rand)
     for (const cont of PARTNER_ACCOUNTS) {
