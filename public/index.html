@@ -22,7 +22,7 @@
       <p class="muted">Autentificare</p>
       <label>Utilizator <input name="username" autocomplete="username" required /></label>
       <label>Parolă <input name="password" type="password" autocomplete="current-password" required /></label>
-      <label id="codeRow" class="hidden">Cod 2FA (6 cifre) <input name="code" inputmode="numeric" autocomplete="one-time-code" /></label>
+      <label id="codeRow" class="hidden inactiv">Cod 2FA (6 cifre) <input name="code" inputmode="numeric" autocomplete="one-time-code" disabled aria-disabled="true" title="Autentificarea în doi pași este momentan dezactivată." /><span class="muted">Autentificarea în doi pași este momentan dezactivată — cere ajutorul administratorului.</span></label>
       <label id="rememberRow" class="hidden" data-u="u44"><input name="remember" type="checkbox" data-u="u15"> Ține minte acest dispozitiv 30 de zile</label>
       <div id="loginErr" class="status err"></div>
       <button class="btn primary" data-u="u19">Intră</button>
