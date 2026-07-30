@@ -97,7 +97,7 @@ function checkDocumente(v, period, today) {
 /** 2. Banca: decontari nepunctate din luna + sold de casa negativ. */
 function checkBanca(v, period) {
   const blocaje = []; const detalii = {};
-  const CONTURI_TREZORERIE = ['5121', '5124', '5311', '5314'];
+  const CONTURI_TREZORERIE = rep.CONTURI_TREZORERIE;
   const inLuna = (e) => (e.period || periodOf(e.data)) === period;
   const miscari = acc.postedEntries(v).filter((e) => inLuna(e)
     && (e.lines || []).some((l) => CONTURI_TREZORERIE.includes(String(l.debit)) || CONTURI_TREZORERIE.includes(String(l.credit))));

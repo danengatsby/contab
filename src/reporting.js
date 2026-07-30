@@ -393,6 +393,10 @@ function livrabile(db, period) {
   return { period, list: listFinal, sumar };
 }
 
+// Conturile de trezorerie (banii firmei) — SURSA UNICA a listei. monthlyClose.js o ia de aici
+// (importa deja `reporting`); invers n-ar merge, ar inchide un ciclu de import.
+const CONTURI_TREZORERIE = ['5121', '5124', '5311', '5314'];
+
 // Conturi de cheltuieli nedeductibile fiscal (uzual)
 // Cheltuieli (partial) nedeductibile fiscal — `pct` = procentul nedeductibil (art. 25-28 Cod fiscal)
 const NEDEDUCTIBILE = {
@@ -745,7 +749,19 @@ function dashboard(db) {
   const pl = stmt.profitLoss(db, year);
   const plPrev = stmt.profitLoss(db, String(Number(year) - 1));
   const fb = stmt.finalBalances(db, null);
-  const pos = (cod) => Math.max(round2(fb[cod] || 0), 0);
+  // Soldurile de trezorerie se raporteaza NET, cu semn. Varianta veche le clampa la zero
+  // (`Math.max(sold, 0)`), ceea ce ascundea exact anomalia care trebuie aratata: un sold creditor
+  // pe un cont de bani nu e „zero lei", ci un semn ca lipsesc incasari din evidenta. Clamparea
+  // supraevalua „Bani disponibili" cu exact valoarea soldului negativ si contrazicea previziunea
+  // de cash-flow si bilantul de pe aceleasi ecrane, care au raportat dintotdeauna netul.
+  const net = (cod) => round2(fb[cod] || 0);
+  const sumNet = (coduri) => round2(coduri.reduce((s, c) => s + net(c), 0));
+  // Conturile de bani cu sold creditor la zi — sursa alertei de pe dashboard. Complementar
+  // lui acc.cashControl(), care verifica soldul INTRA-luna (momentele in care casa trece prin
+  // negativ) si traieste in fluxul de inchidere lunara; aici conteaza pozitia FINALA, fiindca ea
+  // e cea care intra in „Bani disponibili".
+  const conturiBaniNegative = CONTURI_TREZORERIE.filter((c) => net(c) < -0.005)
+    .map((c) => ({ cont: c, nume: coa.accountName(c), sold: net(c) }));
   const topList = (cont) => rc.partners.filter((p) => p.cont === cont && p.sold > 0)
     .sort((a, b) => b.sold - a.sold).slice(0, 5).map((p) => ({ den: p.den, cui: p.cui, sold: p.sold }));
   // variatie procentuala an-la-an (null cand anul precedent e 0)
@@ -764,8 +780,8 @@ function dashboard(db) {
     soldFurnizori: rc.totalFurnizori,
     tvaDePlata: vat.deplata,
     tvaDeRecuperat: vat.derecuperat,
-    numerar: pos('5311'),
-    banca: pos('5121'),
+    numerar: net('5311'),
+    banca: net('5121'),
     venituri: pl.venitTotal,
     cheltuieli: pl.cheltTotal,
     profit: pl.rezNet,
@@ -774,10 +790,11 @@ function dashboard(db) {
     topCreante: topList('4111'),
     topDatorii: topList('401'),
     // Rezumat executiv (modul simplu): agregate in limbaj de business.
-    // neg() = soldul creditor ca numar pozitiv (datorie), pos() = soldul debitor.
-    disponibilTotal: round2(pos('5121') + pos('5124') + pos('5311') + pos('5314')),
-    bancaTotal: round2(pos('5121') + pos('5124')),
-    casaTotal: round2(pos('5311') + pos('5314')),
+    // Trezoreria e NETA (vezi net() mai sus); datoriile raman soldul creditor ca numar pozitiv.
+    disponibilTotal: sumNet(CONTURI_TREZORERIE),
+    bancaTotal: sumNet(['5121', '5124']),
+    casaTotal: sumNet(['5311', '5314']),
+    conturiBaniNegative,
     taxeDatorate: round2(['4423', '4411', '444', '4315', '4316', '436', '446', '447', '4481'].reduce((s, c) => s + Math.max(round2(-(fb[c] || 0)), 0), 0)),
     salariiDePlata: round2(['421', '425', '426', '427'].reduce((s, c) => s + Math.max(round2(-(fb[c] || 0)), 0), 0)),
   };
@@ -887,4 +904,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto };
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };

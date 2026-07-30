@@ -2731,6 +2731,29 @@ eq('rezumat: bani disponibili = banca + casa', rz.disponibilTotal, 3500);
 eq('rezumat: defalcarea banca/casa', rz.bancaTotal + '|' + rz.casaTotal, '3000|500');
 eq('rezumat: salarii de plata (sold creditor 421)', rz.salariiDePlata, 1700);
 eq('rezumat: taxe datorate (444)', rz.taxeDatorate, 300);
+ok('rezumat: niciun cont de bani semnalat cand toate sunt pozitive', rz.conturiBaniNegative.length === 0);
+
+// Trezoreria se raporteaza NET, cu semn. Varianta veche clampa soldurile negative la zero
+// (`Math.max(sold, 0)`), deci un cont de banca pe minus disparea din calcul si SUPRAEVALUA
+// „Bani disponibili" cu exact valoarea lui. Aici casa are +1000 si banca -400: disponibilul
+// real e 600, nu 1000. Semnul se verifica cu `ok` si comparatie stricta — `eq` rotunjeste.
+const rzNegDb = { openingBalances: {}, partners: {}, entries: [
+  { id: 'n1', period: '2026-06', data: '2026-06-01', lines: [{ debit: '5311', credit: '4111', suma: 1000 }] },
+  { id: 'n2', period: '2026-06', data: '2026-06-02', lines: [{ debit: '401', credit: '5121', suma: 400 }] },
+] };
+const rzNeg = rep.dashboard(rzNegDb);
+ok('trezorerie: disponibilul scade cu soldul negativ, nu il ignora', rzNeg.disponibilTotal === 600);
+ok('trezorerie: banca ramane negativa, nu clampata la 0', rzNeg.bancaTotal === -400);
+ok('trezorerie: KPI-ul de banca poarta semnul', rzNeg.banca === -400);
+eq('trezorerie: casa ramane pozitiva', rzNeg.casaTotal, 1000);
+eq('trezorerie: exact un cont de bani semnalat', rzNeg.conturiBaniNegative.length, 1);
+// `|| {}`: daca semnalul dispare cu totul (regresie), testele de mai jos trebuie sa PICE curat,
+// nu sa arunce pe indexarea unui array gol — o exceptie aici ar opri restul suitei.
+const cbn0 = rzNeg.conturiBaniNegative[0] || {};
+eq('trezorerie: contul semnalat e cel de banca', cbn0.cont, '5121');
+ok('trezorerie: soldul semnalat pastreaza semnul', cbn0.sold === -400);
+ok('trezorerie: semnalul poarta denumirea contului', /banci/i.test(cbn0.nume || ''));
+ok('trezorerie: conturile pozitive nu se semnaleaza', !rzNeg.conturiBaniNegative.some((x) => x.cont === '5311'));
 
 section('Buget vs realizat');
 const budDb = { entries: [{ period: '2026-04', lines: [
