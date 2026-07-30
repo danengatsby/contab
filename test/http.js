@@ -1490,6 +1490,20 @@ async function main() {
     ok('/api/me semnaleaza mustChange (migrarea a re-armat flagul)', (await req('GET', '/api/me', { cookie: laDef.cookie })).json.mustChange === true);
     const blocked = await req('GET', '/api/dashboard', { cookie: laDef.cookie });
     ok('mustChange: orice actiune e blocata (403 + flag)', blocked.status === 403 && blocked.json.mustChange === true);
+    // De unde isi ia clientul token-ul CSRF cat timp e blocat pe ecranul de schimbare a parolei.
+    // Sesiunea EXISTA, deci garda cere token la orice cerere mutanta — inclusiv la schimbarea
+    // parolei. Dar /api/meta, sursa obisnuita a token-ului, e tocmai una dintre rutele blocate.
+    // Frontendul il lua doar de acolo, deci ecranul nu putea trimite nimic: „Cerere respinsă
+    // (token CSRF lipsă sau invalid)", fara iesire — reincarcarea ducea in aceeasi stare.
+    // Testele de mai jos existau si treceau, fiindca harness-ul ia token-ul din /api/me:
+    // exact ruta pe care clientul NU o folosea. Deci fixam contractul, nu doar comportamentul.
+    eq('mustChange: /api/meta e blocata (nu poate fi sursa token-ului)',
+      (await req('GET', '/api/meta', { cookie: laDef.cookie })).status, 403);
+    const meDef = (await req('GET', '/api/me', { cookie: laDef.cookie })).json;
+    ok('mustChange: /api/me ramane accesibila SI poarta token-ul CSRF',
+      typeof meDef.csrf === 'string' && meDef.csrf.length === 32);
+    eq('mustChange: schimbarea parolei FARA token -> 403 (deci token-ul chiar e necesar)',
+      (await req('POST', '/api/change-password', { cookie: laDef.cookie, noCsrf: true, headers: { Origin: BASE }, body: { oldPassword: 'admin', newPassword: 'ParolaNoua2026x' } })).status, 403);
     eq('mustChange: scriere blocata', (await req('POST', '/api/partners', { cookie: laDef.cookie, body: { cui: 'RO1', den: 'X' } })).status, 403);
     eq('mustChange: parola noua = cea veche -> refuz', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'admin' } })).status, 400);
     eq('mustChange: parola noua prea scurta -> refuz', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'ab1' } })).status, 400);

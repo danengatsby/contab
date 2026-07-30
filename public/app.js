@@ -268,7 +268,15 @@ async function init() {
   } catch (e) {
     if (e.status === 401) { showLogin(); handleCheckoutReturn(); handleRegisterLink(); return; }
     // Cont cu parola implicita: serverul blocheaza pana la schimbare (inclusiv /api/meta).
-    if (e.status === 403 && e.data && e.data.mustChange) { showForcePw(); return; }
+    if (e.status === 403 && e.data && e.data.mustChange) {
+      // Tokenul CSRF se ia de obicei din /api/meta — dar tocmai meta e blocata aici, iar sesiunea
+      // EXISTA, deci garda cere token la orice cerere mutanta. Fara el, ecranul de schimbare
+      // fortata nu putea trimite nimic: „Cerere respinsă (token CSRF lipsă sau invalid)", fara
+      // iesire — reincarcarea ducea in exact aceeasi stare. /api/me e permisa cat timp mustChange
+      // e activ si poarta tokenul, deci de acolo il luam.
+      try { const me = await api('/api/me'); setCsrf(me && me.csrf); } catch (_) { /* ecranul se arata oricum */ }
+      showForcePw(); return;
+    }
     throw e;
   }
   hideLogin();
