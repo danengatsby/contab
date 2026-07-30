@@ -652,6 +652,25 @@ section('Calitatea citirii automate: verdictul și raportul (docflow.js / entrie
   eq('raport lipsă nu randează nimic', entries.calitateRaportHtml(null), '');
 }
 
+section('Luna de lucru nu trece în viitor (public/periods.js)');
+{
+  const { capMonth, currentMonth } = await import(path.join(mirror, 'periods.js'));
+  const acum = currentMonth();
+  ok('luna curenta e in forma AAAA-LL', /^\d{4}-(0[1-9]|1[0-2])$/.test(acum));
+  // luna curenta se calculeaza LOCAL, nu prin toISOString(): in UTC+2/+3, in primele ore ale zilei
+  // de 1 ale lunii, UTC e inca luna trecuta — ca plafon, asta ar bloca utilizatorul in luna veche
+  const d = new Date();
+  eq('luna curenta e cea locala, nu cea UTC', acum, d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+  const plus = (n) => { const x = new Date(); x.setDate(1); x.setMonth(x.getMonth() + n); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0'); };
+  eq('luna urmatoare e plafonata la cea curenta', capMonth(plus(1)), acum);
+  eq('o luna mult in viitor e plafonata la fel', capMonth(plus(14)), acum);
+  eq('luna curenta trece neatinsa', capMonth(acum), acum);
+  eq('lunile din trecut trec neatinse', capMonth(plus(-1)), plus(-1));
+  eq('si cele mult din trecut', capMonth('2019-03'), '2019-03');
+  // comparatia e pe SIR: forma AAAA-LL o face corecta si peste hotarul de an
+  ok('decembrie vs ianuarie: ordinea pe sir e cea cronologica', '2026-12' < '2027-01');
+}
+
 section('Căutare globală (Ctrl+K): filtrarea și ordonarea rezultatelor');
 {
   const { cauta, fold } = await import(path.join(mirror, 'paleta.js'));

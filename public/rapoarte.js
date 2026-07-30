@@ -353,14 +353,15 @@ $('#closeVat').addEventListener('click', async () => {
   try {
     await api('/api/close-vat?period=' + p, { method: 'POST' });
     setMeta(await api('/api/meta'));
-    // avanseaza la luna urmatoare si muta TOATE filtrele (jurnal, balanta etc.) pe noua luna
-    const nm = nextMonth(p);
-    setWorkMonth(nm);
+    // avanseaza la luna urmatoare si muta TOATE filtrele (jurnal, balanta etc.) pe noua luna.
+    // `nm` e luna CHIAR setata: cand se inchide luna curenta, cea urmatoare ar fi in viitor si
+    // luna de lucru ramane pe loc — mesajul si filtrele trebuie sa spuna adevarul, nu intentia.
+    const nm = setWorkMonth(nextMonth(p));
     applyWorkMonth();
     loadEntries();
     $('#vcLuna').value = nm.slice(5);
     if ([...$('#vcAn').options].some((o) => o.value === nm.slice(0, 4))) $('#vcAn').value = nm.slice(0, 4);
-    toast('Luna ' + lunaLabel(p) + ' închisă. Ai trecut la ' + lunaLabel(nm) + '.');
+    toast('Luna ' + lunaLabel(p) + ' închisă.' + (nm === p ? '' : ' Ai trecut la ' + lunaLabel(nm) + '.'));
     previewVat();
   } catch (e) { toast(e.message, true); }
 });

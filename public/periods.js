@@ -16,16 +16,40 @@ function pget(prefix) {
   if (!y) return '';
   return m ? (y + '-' + m) : y;
 }
+// Luna calendaristica de azi, in ora LOCALA. `toISOString()` da UTC, iar in Romania (UTC+2/+3)
+// asta inseamna ca in primele ore ale zilei de 1 ale lunii UTC e inca luna trecuta — ca simplu
+// implicit trecea neobservat, dar ca PLAFON ar fi blocat utilizatorul in luna precedenta.
+function currentMonth() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+// Luna de lucru nu trece in VIITOR. O luna viitoare nu are documente, nici termene, nici solduri:
+// toate ecranele ies goale, ceea ce seamana cu o aplicatie stricata, nu cu „nu s-a intamplat inca
+// nimic". Plafonul se aplica in AMBELE capete — la scriere (orice apel de setWorkMonth, inclusiv
+// cele programatice din notificari si din cautarea globala) si la citire (o valoare veche ramasa
+// in localStorage dinainte de plafon nu are voie sa reapara).
+const capMonth = (m) => (m > currentMonth() ? currentMonth() : m);
+
 // „Luna de lucru” — pornește de la luna curentă și avansează la închiderea de lună
 function workMonth() {
   let m = '';
   try { m = localStorage.getItem('contab_workmonth') || ''; } catch (e) { /* ignora */ }
-  if (!/^\d{4}-\d{2}$/.test(m)) m = new Date().toISOString().slice(0, 7);
-  return m;
+  if (!/^\d{4}-\d{2}$/.test(m)) m = currentMonth();
+  const cap = capMonth(m);
+  // O valoare viitoare ramasa in stocare se NORMALIZEAZA, nu doar se plafoneaza la afisare:
+  // altfel ar sta acolo pana cand timpul o ajunge din urma, si atunci aplicatia ar sari brusc
+  // in luna aceea in loc sa porneasca, ca de obicei, pe cea curenta. Se scrie direct (nu prin
+  // setWorkMonth), ca sa nu se intre in recursie prin setCurrentPeriod.
+  if (cap !== m) { try { localStorage.setItem('contab_workmonth', cap); } catch (e) { /* ignora */ } }
+  return cap;
 }
+// Intoarce luna CHIAR setata (poate diferi de cea ceruta, daca a fost plafonata): apelantii care
+// anunta utilizatorul unde a ajuns trebuie sa foloseasca valoarea reala, nu pe cea dorita.
 function setWorkMonth(m) {
+  m = capMonth(m);
   try { localStorage.setItem('contab_workmonth', m); } catch (e) { /* ignora */ }
   setCurrentPeriod();
+  return m;
 }
 function shiftMonth(m, delta) {
   const [y, mo] = m.split('-').map(Number);
@@ -39,7 +63,17 @@ function lunaLabel(m) { const [y, mo] = m.split('-').map(Number); return LUNI[mo
 // Afiseaza luna de lucru in bara de sus (langa firma)
 function setCurrentPeriod() {
   const el = $('#currentPeriod'); if (!el) return;
-  el.textContent = lunaLabel(workMonth());
+  const m = workMonth();
+  el.textContent = lunaLabel(m);
+  // Sageata „inainte" se dezactiveaza pe luna curenta: un buton care nu face nimic la click pare
+  // stricat, unul stins spune singur ca s-a ajuns la capat.
+  const nx = $('#nextMonth');
+  if (nx) {
+    const laZi = m >= currentMonth();
+    nx.disabled = laZi;
+    nx.setAttribute('aria-disabled', String(laZi));
+    nx.title = laZi ? 'Ești pe luna curentă — nu se poate lucra în viitor' : 'Luna următoare';
+  }
 }
 // Aplica luna de lucru pe toate filtrele de tabel si reincarca ecranul curent
 function applyWorkMonth() {
@@ -59,7 +93,7 @@ setCurrentPeriod();
 function goWorkMonth(m) { setWorkMonth(m); applyWorkMonth(); }
 $('#prevMonth') && $('#prevMonth').addEventListener('click', () => goWorkMonth(prevMonth(workMonth())));
 $('#nextMonth') && $('#nextMonth').addEventListener('click', () => goWorkMonth(nextMonth(workMonth())));
-$('#currentPeriod') && $('#currentPeriod').addEventListener('click', () => goWorkMonth(new Date().toISOString().slice(0, 7)));
+$('#currentPeriod') && $('#currentPeriod').addEventListener('click', () => goWorkMonth(currentMonth()));
 
 // Leaga schimbarea perechii Lună+An de functia de reincarcare a tabelului
 function onPeriodChange(prefix, fn) {
@@ -93,3 +127,5 @@ function fillPeriods() {
 }
 
 export { LUNI, pget, workMonth, setWorkMonth, nextMonth, prevMonth, lunaLabel, applyWorkMonth, onPeriodChange, fillPeriods, setPeriodsDeps };
+// Exportate pentru testele unitare de frontend (plafonul lunii de lucru): test/frontend.mjs
+export { capMonth, currentMonth };

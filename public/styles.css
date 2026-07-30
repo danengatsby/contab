@@ -49,6 +49,9 @@ a{color:var(--accent);text-decoration:none}
 .curnav{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);
   border-radius:8px;padding:6px 9px;cursor:pointer;font-size:12px;font-weight:700;line-height:1;min-height:auto}
 .curnav:hover{background:rgba(255,255,255,.25)}
+/* sageata „inainte" pe luna curenta: stinsa, ca sa se vada ca s-a ajuns la capat, nu ca e stricata */
+.curnav[disabled]{opacity:.35;cursor:not-allowed}
+.curnav[disabled]:hover{background:rgba(255,255,255,.12)}
 
 /* Vizualizator PDF/document in aplicatie */
 .pdf-modal{position:fixed;inset:0;background:rgba(20,30,60,.65);z-index:90;display:flex;
