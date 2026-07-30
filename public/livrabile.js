@@ -216,7 +216,9 @@ async function loadReconcile() {
   RECON_PM = [];
   if (!r.partners.length) { $('#reconList').innerHTML = '<div class="card"><p class="muted">Nicio mișcare pe parteneri.</p></div>'; return; }
   $('#reconList').innerHTML = r.partners.map((p, pi) => {
-    const rows = p.items.map((it) => `<tr class="${it.matched ? '' : ''}"><td>${it.data}</td><td>${it.doc}</td><td>${it.tipNume}</td>
+    // Preluarea n-are data reala: `1900-01-01` e doar santinela care o tine prima la stingerea
+    // FIFO. Afisata ca atare arata a eroare de date, deci in fisa apare eticheta, nu santinela.
+    const rows = p.items.map((it) => `<tr class="${it.matched ? '' : ''}"><td>${it.soldInitial ? '<span class="muted">preluare</span>' : it.data}</td><td>${it.doc}</td><td>${it.tipNume}</td>
       <td class="num">${it.debit ? fmt(it.debit) : ''}</td><td class="num">${it.credit ? fmt(it.credit) : ''}</td>
       <td>${it.matched ? '<span class="pill">✓ potrivit</span>' : '<span class="pill warn">deschis</span>'}</td></tr>`).join('');
     const lbl = p.cont === '4111' ? 'client' : 'furnizor';
