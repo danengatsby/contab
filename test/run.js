@@ -974,14 +974,52 @@ ok('linia de inchidere 709 e in rosu (negativa)', anC.lines.some((l) => l.debit 
 section('Reconciliere facturi - plati');
 const rc = reconcile(v);
 const alfaR = rc.partners.find((p) => /ALFA/.test(p.den) && p.cont === '401');
-eq('ALFA facturat (perioada)', alfaR.facturat, 12100);
+// Seed-ul are ALFA cu 15.000 preluare, si in openingBalances['401'], si in openingAnalytic.
+// Cifrele de mai jos erau 12.100/0/„fara deschise": fisa de partener ignora preluarea, desi
+// balanta generala o purta — de unde soldul 401 = 15.000 in balanta si 0 in scadentar.
+eq('ALFA facturat = preluare 15.000 + facturile perioadei 12.100', alfaR.facturat, 27100);
 eq('ALFA decontat', alfaR.decontat, 12100);
-eq('ALFA sold reconciliat', alfaR.sold, 0);
+eq('ALFA sold reconciliat = preluarea ramasa neplatita', alfaR.sold, 15000);
 eq('ALFA potriviri factura-plata', alfaR.potriviri, 1);
-ok('ALFA fara facturi deschise (reconciliat complet)', Array.isArray(alfaR.deschise) && alfaR.deschise.length === 0);
+ok('ALFA are preluarea inca deschisa (facturile perioadei sunt stinse)',
+  Array.isArray(alfaR.deschise) && alfaR.deschise.length === 1 && alfaR.deschise[0].suma === 15000);
 const betaR = rc.partners.find((p) => /BETA/.test(p.den) && p.cont === '4111');
 eq('BETA facturat', betaR.facturat, 16940);
 eq('BETA decontat', betaR.decontat, 16940);
+
+// Soldurile initiale pe partener (preluarea de la contabilitatea anterioara) sunt creante si
+// datorii deschise. Erau ignorate aici, desi analytic.aging() le citeste — de unde „De platit
+// catre furnizori 0" langa „Datorii de platit 15.000" pe acelasi ecran. Soldul iesea mai mic
+// cu exact preluarea, si in scadentar, si in previziunea de cash-flow.
+const rcOpenDb = { openingAnalytic: [
+  { cont: '401', partener: 'DELTA SRL', cui: 'RO999', d: 0, c: 15000 },
+  { cont: '4111', partener: 'OMEGA SRL', cui: 'RO888', d: 4000, c: 0 },
+  { cont: '404', partener: 'IGNORAT SRL', cui: 'RO777', d: 0, c: 9999 }, // in afara PARTNER_ACCOUNTS
+], entries: [
+  { id: 'p1', period: '2026-03', data: '2026-03-10', partener: 'DELTA SRL', partenerCui: 'RO999',
+    lines: [{ debit: '401', credit: '5121', suma: 5000 }] },
+] };
+const rcOpen = reconcile(rcOpenDb);
+const delta = rcOpen.partners.find((p) => p.den === 'DELTA SRL' && p.cont === '401') || {};
+ok('sold initial preluat: intra in datoria catre furnizor', delta.facturat === 15000);
+ok('sold initial preluat: plata ulterioara il stinge partial', delta.decontat === 5000);
+ok('sold initial preluat: soldul ramas e 10000, nu 0', delta.sold === 10000);
+eq('sold initial preluat: totalul pe furnizori', rcOpen.totalFurnizori, 10000);
+eq('sold initial preluat: totalul pe clienti', rcOpen.totalClienti, 4000);
+ok('sold initial: randul e marcat, ca sa nu intre in punctajul manual',
+  (delta.items || []).some((it) => it.soldInitial === true && it.credit === 15000));
+ok('sold initial: conturile din afara lui PARTNER_ACCOUNTS (404) nu se preiau',
+  !rcOpen.partners.some((p) => p.den === 'IGNORAT SRL'));
+
+// Ciornele nu sunt inca datorii reale: aging() le filtra (postedEntries), scadentarul nu.
+const rcDraftDb = { openingAnalytic: [], entries: [
+  { id: 'd1', period: '2026-03', data: '2026-03-01', partener: 'GAMA SRL', partenerCui: 'RO111',
+    status: 'ciorna', lines: [{ debit: '371', credit: '401', suma: 7000 }] },
+  { id: 'd2', period: '2026-03', data: '2026-03-02', partener: 'GAMA SRL', partenerCui: 'RO111',
+    lines: [{ debit: '371', credit: '401', suma: 1000 }] },
+] };
+const rcDraft = reconcile(rcDraftDb);
+ok('ciorna nu creeaza datorie in scadentar (doar articolul postat)', rcDraft.totalFurnizori === 1000);
 
 section('Motor de potrivire — reconciliere inteligenta (src/matching.js)');
 {

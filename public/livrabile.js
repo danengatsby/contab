@@ -223,8 +223,11 @@ async function loadReconcile() {
     // punctaj manual: pe 4111 plata = credit, factura = debit; pe 401 invers
     const payAmt = (it) => (p.cont === '4111' ? it.credit : it.debit);
     const invAmt = (it) => (p.cont === '4111' ? it.debit : it.credit);
-    const plati = p.items.filter((it) => payAmt(it) > 0).map((it) => ({ id: it.entryId, doc: it.doc, data: it.data, suma: payAmt(it), stinge: Array.isArray(it.stinge) ? it.stinge : [] }));
-    const facturi = p.items.filter((it) => invAmt(it) > 0).map((it) => ({ id: it.entryId, doc: it.doc, data: it.data, suma: invAmt(it) }));
+    // Soldul initial preluat apare in fisa (e o datorie/creanta reala), dar NU in punctajul manual:
+    // n-are articol contabil in spate, deci n-are ce lega — ruta l-ar respinge cu 404.
+    const legabil = (it) => !it.soldInitial;
+    const plati = p.items.filter((it) => legabil(it) && payAmt(it) > 0).map((it) => ({ id: it.entryId, doc: it.doc, data: it.data, suma: payAmt(it), stinge: Array.isArray(it.stinge) ? it.stinge : [] }));
+    const facturi = p.items.filter((it) => legabil(it) && invAmt(it) > 0).map((it) => ({ id: it.entryId, doc: it.doc, data: it.data, suma: invAmt(it) }));
     RECON_PM[pi] = { plati, facturi };
     const punctaj = (plati.length && facturi.length) ? `
       <details class="pm-box">
