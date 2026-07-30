@@ -97,6 +97,26 @@ $('#pricingClose') && $('#pricingClose').addEventListener('click', () => $('#pri
 // Întrebări frecvente (public, pe pagina de autentificare) — acordeoane + căutare
 $('#showFaqLogin') && $('#showFaqLogin').addEventListener('click', () => $('#faqOverlay').classList.remove('hidden'));
 $('#faqClose') && $('#faqClose').addEventListener('click', () => $('#faqOverlay').classList.add('hidden'));
+// Adresa administratorului: `mailto:` merge doar daca sistemul are un program de e-mail asociat.
+// Cine foloseste Gmail/Outlook intr-un TAB de browser n-are unul, iar click-ul nu face nimic
+// vizibil — pagina isi face treaba (preda linkul sistemului), dar utilizatorul vede o adresa moarta.
+// Butonul de copiere functioneaza in ambele cazuri, deci adresa e utilizabila oricum.
+$('#adminMailCopy') && $('#adminMailCopy').addEventListener('click', async (e) => {
+  e.preventDefault();
+  const adr = ($('#adminMail') && $('#adminMail').textContent.trim()) || '';
+  try {
+    await navigator.clipboard.writeText(adr);
+    toast('Adresă copiată: ' + adr);
+  } catch (_) {
+    // clipboard indisponibil (context nesigur, permisiune refuzata): selectam textul, ca
+    // utilizatorul sa poata copia cu Ctrl+C — mai bine decat un buton care nu face nimic
+    try {
+      const r = document.createRange(); r.selectNodeContents($('#adminMail'));
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      toast('Apasă Ctrl+C ca să copiezi adresa selectată.', true);
+    } catch (__) { toast('Copiază manual adresa: ' + adr, true); }
+  }
+});
 $('#faqSearch') && $('#faqSearch').addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase().trim();
   $$('#faqList .faq-item').forEach((it) => {
