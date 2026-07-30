@@ -11,7 +11,7 @@ import './viewer.js'; // vizualizatorul de documente (PDF/CSV/XML/e-Factura) —
 import './etransport.js'; // formularul ghidat e-Transport (cod UIT) — se activeaza prin efect secundar
 import { pget, workMonth, setWorkMonth, lunaLabel, applyWorkMonth, onPeriodChange, fillPeriods, setPeriodsDeps } from './periods.js';
 import { loadJournal, loadLedger, loadCashbook, loadBalance, loadVat, loadClosings, loadStatements, loadStorno } from './rapoarte.js';
-import { loadLivrabile, loadPortfolio, loadNotifications, loadReconcile, loadAnalytic, refreshNotifBadge } from './livrabile.js';
+import { loadLivrabile, loadPortfolio, loadNotifications, loadReconcile, loadAnalytic, refreshNotifBadge, setLivrabileDeps } from './livrabile.js';
 import { loadAssets } from './mijloace.js';
 import { loadMonthlyClose, setInchidereDeps } from './inchidere.js';
 import { loadSalarizare } from './salarizare.js';
@@ -153,6 +153,15 @@ function fillFirmaSelect() {
   // Portofoliul are sens doar cu mai multe firme in administrare
   const np = $('#navPortofoliu'); if (np) np.classList.toggle('hidden', (META.firme || []).length < 2);
 }
+// Schimbarea firmei active, ca functie ASTEPTABILA. Handlerul de pe #firmaSelect e async, deci
+// cine il declanseaza cu dispatchEvent nu are cum sa astepte sfarsitul lui `init()`. Notificarile
+// au nevoie sa astepte: abia dupa ce firma s-a schimbat pot pune luna si deschide ecranul.
+async function activateFirma(id) {
+  if (String(id) === String(META.firmaActiva)) return false;
+  await api('/api/firme/' + id + '/activate', { method: 'POST' });
+  await init();
+  return true;
+}
 $('#firmaSelect').addEventListener('change', async (e) => {
   if (e.target.value === '__add__') { // nu e o firma — deschide gestionarea firmelor
     e.target.value = String(META.firmaActiva || '');
@@ -160,8 +169,7 @@ $('#firmaSelect').addEventListener('change', async (e) => {
     setTimeout(() => { const c = $('#firmaNewForm'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.nume.focus(); } }, 150);
     return;
   }
-  await api('/api/firme/' + e.target.value + '/activate', { method: 'POST' });
-  await init();
+  await activateFirma(e.target.value);
   const active = $('#tabs button[data-tab].active'); onTab(active ? active.dataset.tab : 'dashboard');
   toast('Firmă activă schimbată');
 });
@@ -330,6 +338,8 @@ function handleCheckoutReturn() {
 setDashboardDeps({ goTab });
 // Cockpitul de inchidere lunara (public/inchidere.js) navigheaza catre pasul de rezolvat.
 setInchidereDeps({ goTab });
+// Notificarile duc utilizatorul la ecranul care rezolva restanta — pe FIRMA si pe LUNA ei.
+setLivrabileDeps({ goTab, activateFirma, applyWorkMonth, setWorkMonth });
 
 // ───────────────────────── IMPORT EXTRAS BANCAR ─────────────────────────
 // Extras in public/bank.js. Ii injectam reimprospatarea de dupa import (functiile traiesc aici).

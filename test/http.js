@@ -1188,7 +1188,7 @@ async function main() {
     eq('Declaratia Unica PDF', (await req('GET', '/pdf/declaratia-unica?year=2026', { cookie: c1 })).status, 200);
     const livH = (await req('GET', '/api/livrabile?period=2026-06', { cookie: c1 })).json;
     ok('livrabile PFA: Declaratia Unica in lista, fara D100 micro',
-      livH.list.some((x) => /Declaratia Unica/.test(x.nume)) && !livH.list.some((x) => x.nr === 12) && livH.sumar.du && typeof livH.sumar.du.total === 'number');
+      livH.list.some((x) => /Declarația Unică/.test(x.nume)) && !livH.list.some((x) => x.id === 12) && livH.sumar.du && typeof livH.sumar.du.total === 'number');
     ok('firma revenita pe SRL', (await req('POST', '/api/company', { cookie: c1, body: { tipEntitate: 'srl' } })).json.ok === true);
     ok('SRL: d100 revine in calendar', (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.some((r) => r.tip === 'd100'));
 

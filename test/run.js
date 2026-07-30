@@ -3417,11 +3417,21 @@ eq('neplatitor TVA: saft doar trimestrial', declMod.expectedForFirma({ company: 
 eq('PFA platitor TVA: doar d300+d394 (fara d100/saft)', declMod.expectedForFirma({ company: { tvaPlatitor: true, tipEntitate: 'pfa' }, angajati: [], entries: [] }, '2026-06').map((x) => x.tip).join(','), 'd300,d394');
 eq('PFA neplatitor fara angajati: nicio declaratie lunara', declMod.expectedForFirma({ company: { tvaPlatitor: false, tipEntitate: 'pfa' }, angajati: [], entries: [] }, '2026-06').length, 0);
 const livPfa = rep.livrabile({ company: { tipEntitate: 'pfa' }, entries: [], openingBalances: {} }, '2026-06');
-ok('livrabile PFA: fara D100 micro / SAF-T / D101 / situatii financiare / AGA', !livPfa.list.some((x) => [9, 12, 15, 16, 19].includes(x.nr)));
-ok('livrabile PFA: Declaratia Unica prezenta cu sumarul ei', livPfa.list.some((x) => /Declaratia Unica/.test(x.nume)) && livPfa.sumar.du && livPfa.sumar.du.venitNet === 0);
+ok('livrabile PFA: fara D100 micro / SAF-T / D101 / situatii financiare / AGA', !livPfa.list.some((x) => [9, 12, 15, 16, 19].includes(x.id)));
+ok('livrabile PFA: Declaratia Unica prezenta cu sumarul ei', livPfa.list.some((x) => /Declarația Unică/.test(x.nume)) && livPfa.sumar.du && livPfa.sumar.du.venitNet === 0);
 // livrabile micro/profit: D101 (nr 16) apare doar la regimul de profit
-ok('livrabile micro: fara D101 in checklist', !rep.livrabile({ company: { tipEntitate: 'srl', regimImpozit: 'micro' }, entries: [], openingBalances: {} }, '2026-06').list.some((x) => x.nr === 16));
-ok('livrabile profit: cu D101 in checklist', rep.livrabile({ company: { tipEntitate: 'srl', regimImpozit: 'profit' }, entries: [], openingBalances: {} }, '2026-06').list.some((x) => x.nr === 16));
+// Numerotarea AFISATA nu are voie sa aiba goluri, oricare ar fi filtrarea: `nr` e pozitia,
+// nu identitatea (aceea e `id`). Inainte, la micro sarea 15 -> 17, la PFA lipseau cinci numere.
+const nrContinuu = (l) => l.list.every((x, i) => x.nr === i + 1);
+const ordineSect = (l) => { const o = ['A. Lunar', 'B. Trimestrial', 'C. Anual', 'D. La cerere'];
+  return l.list.every((x, i) => i === 0 || o.indexOf(l.list[i - 1].sectiune) <= o.indexOf(x.sectiune)); };
+const livMicro = rep.livrabile({ company: { tipEntitate: 'srl', regimImpozit: 'micro' }, entries: [], openingBalances: {} }, '2026-06');
+ok('borderou micro: numerotare continua, fara golul 15->17', nrContinuu(livMicro));
+ok('borderou PFA: numerotare continua desi se scot 5 randuri', nrContinuu(livPfa));
+ok('borderou PFA: sectiunile raman in ordine (randurile adaugate nu ies la coada)', ordineSect(livPfa));
+ok('borderou: textele au diacritice (mesaj catre utilizator)', livMicro.list.some((x) => /ă|â|î|ș|ț/.test(x.nume)));
+ok('livrabile micro: fara D101 in checklist', !rep.livrabile({ company: { tipEntitate: 'srl', regimImpozit: 'micro' }, entries: [], openingBalances: {} }, '2026-06').list.some((x) => x.id === 16));
+ok('livrabile profit: cu D101 in checklist', rep.livrabile({ company: { tipEntitate: 'srl', regimImpozit: 'profit' }, entries: [], openingBalances: {} }, '2026-06').list.some((x) => x.id === 16));
 eq('neplatitor TVA: luna non-trimestriala fara obligatii', declMod.expectedForFirma({ company: { tvaPlatitor: false }, angajati: [] }, '2026-05').length, 0);
 const vIC = { company: { tvaPlatitor: true }, angajati: [], entries: [{ tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10' }] };
 ok('D390 asteptata DOAR in lunile cu operatiuni intracomunitare',
