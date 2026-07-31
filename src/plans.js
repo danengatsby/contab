@@ -4,6 +4,11 @@
 // stocat pe user: { plan, status, trialStartedAt, trialEndsAt, since, requestedPlan, requestedAt }.
 
 const TRIAL_DAYS = 30;
+// Cate perioade de proba poate primi o FIRMA, in total. Prima vine automat la inscriere; a doua
+// se cere explicit, de pe ecranul de preturi, dupa ce prima a expirat. Dupa a doua, cardul de
+// proba ramane vizibil dar inactiv — utilizatorul vede ca optiunea exista si ca s-a consumat,
+// in loc sa dispara fara explicatie.
+const TRIAL_MAX = 2;
 
 // Toate planurile includ aceleasi functii (se diferentiaza doar prin pret).
 const FEATURES = [
@@ -46,9 +51,28 @@ function expiredLock(user) {
 }
 
 /** Abonament de PROBA per firma (30 zile). */
-function firmaTrialSub(now) {
+function firmaTrialSub(now, trialCount) {
   now = now || Date.now();
-  return { plan: 'trial', trialStartedAt: new Date(now).toISOString(), trialEndsAt: new Date(now + TRIAL_DAYS * 86400000).toISOString() };
+  return {
+    plan: 'trial',
+    trialStartedAt: new Date(now).toISOString(),
+    trialEndsAt: new Date(now + TRIAL_DAYS * 86400000).toISOString(),
+    // a cata proba e aceasta. Firmele dinaintea campului nu-l au: `trialCount || 1` le socoteste
+    // la prima, deci pot cere inca una — nu le penalizam pentru ca abonamentul lor e mai vechi.
+    trialCount: trialCount || 1,
+  };
+}
+/** Cate probe a consumat firma (firmele vechi, fara contor, au avut una). */
+function firmaTrialCount(firma) {
+  const s = (firma && firma.subscription) || {};
+  if (s.trialCount) return Number(s.trialCount) || 0;
+  return s.trialEndsAt ? 1 : 0;
+}
+/** Mai poate firma sa ceara o proba? Doar cand cea curenta s-a terminat si n-a atins plafonul. */
+function firmaPoateProba(firma, now) {
+  const st = firmaStatus(firma, now);
+  if (st.status === 'active' || st.status === 'trial') return false; // are deja acces
+  return firmaTrialCount(firma) < TRIAL_MAX;
 }
 
 /**
@@ -64,11 +88,15 @@ function firmaStatus(firma, now) {
   const s = (firma && firma.subscription) || {};
   const pending = !!s.pendingPlan && s.status !== 'active'; // checkout initiat, in asteptarea platii
   if (s.status === 'active') return { status: 'active', plan: s.plan || 'activ', since: s.since || null, zileRamase: null, pending: false };
+  const nrProbe = s.trialCount ? (Number(s.trialCount) || 0) : (s.trialEndsAt ? 1 : 0);
   if (s.trialEndsAt) {
     const left = daysLeft(s.trialEndsAt, now);
-    return { status: left > 0 ? 'trial' : 'expired', plan: 'trial', trialEndsAt: s.trialEndsAt, zileRamase: left, pending, pendingPlan: pending ? s.pendingPlan : null };
+    return { status: left > 0 ? 'trial' : 'expired', plan: 'trial', trialEndsAt: s.trialEndsAt, zileRamase: left,
+      trialCount: nrProbe, maiPoateProba: left <= 0 && nrProbe < TRIAL_MAX, trialMax: TRIAL_MAX,
+      pending, pendingPlan: pending ? s.pendingPlan : null };
   }
-  return { status: 'none', plan: null, zileRamase: null, pending, pendingPlan: pending ? s.pendingPlan : null };
+  return { status: 'none', plan: null, zileRamase: null, trialCount: nrProbe, maiPoateProba: nrProbe < TRIAL_MAX, trialMax: TRIAL_MAX,
+    pending, pendingPlan: pending ? s.pendingPlan : null };
 }
 
 /** Firma blocata (read-only): proba expirata sau fara abonament. */
@@ -164,4 +192,4 @@ function pendingToSubscription(rec, now) {
   return { plan: rec.plan, status: 'active', stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null, since: new Date(now || Date.now()).toISOString() };
 }
 
-module.exports = { PLANS, TRIAL_DAYS, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock, firmaTrial, firmaTrialSub, firmaStatus, firmaLocked };
+module.exports = { PLANS, TRIAL_DAYS, TRIAL_MAX, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock, firmaTrial, firmaTrialSub, firmaTrialCount, firmaPoateProba, firmaStatus, firmaLocked };

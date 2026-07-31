@@ -2945,6 +2945,28 @@ const ftExp = plansMod.firmaStatus({ subscription: { plan: 'trial', trialEndsAt:
 ok('firmaStatus: proba expirata -> expired + blocata', ftExp.status === 'expired' && plansMod.firmaLocked({ subscription: { plan: 'trial', trialEndsAt: '2026-06-01T00:00:00Z' } }, nowFt));
 const ftSub = plansMod.firmaTrialSub(nowFt);
 ok('firmaTrialSub: proba de 30 zile', ftSub.plan === 'trial' && plansMod.daysLeft(ftSub.trialEndsAt, nowFt) === 30);
+
+// A DOUA perioada de proba: prima vine automat la inscriere, a doua se cere explicit dupa ce
+// prima a expirat. Plafonul (TRIAL_MAX) opreste reinnoirea la nesfarsit.
+{
+  const expirata = (nr) => ({ subscription: Object.assign(plansMod.firmaTrialSub(Date.parse('2026-06-01T00:00:00Z'), nr)) });
+  const p1 = expirata(1);
+  eq('proba 1 expirata -> expired', plansMod.firmaStatus(p1, nowFt).status, 'expired');
+  ok('...si mai poate cere una', plansMod.firmaPoateProba(p1, nowFt));
+  eq('...iar starea o spune explicit', plansMod.firmaStatus(p1, nowFt).maiPoateProba, true);
+  const p2 = expirata(2);
+  ok('dupa a DOUA proba expirata nu mai poate', !plansMod.firmaPoateProba(p2, nowFt));
+  eq('...iar cardul se arata inactiv (2/2)', plansMod.firmaStatus(p2, nowFt).trialCount + '/' + plansMod.firmaStatus(p2, nowFt).trialMax, '2/2');
+  // cat timp proba e ACTIVA nu se poate cere alta (altfel s-ar putea stivui la nesfarsit)
+  const activa = { subscription: plansMod.firmaTrialSub(nowFt, 1) };
+  ok('proba activa -> nu se poate cere inca una', !plansMod.firmaPoateProba(activa, nowFt));
+  // firma cu abonament platit nu are nevoie de proba
+  ok('abonament activ -> fara proba', !plansMod.firmaPoateProba({ subscription: { status: 'active', plan: 'pro' } }, nowFt));
+  // firmele VECHI, fara contor, se socotesc la prima proba: pot cere inca una
+  const veche = { subscription: { plan: 'trial', trialEndsAt: '2026-06-01T00:00:00Z' } };
+  eq('firma veche fara contor: socotita la prima proba', plansMod.firmaTrialCount(veche), 1);
+  ok('...deci mai poate cere una', plansMod.firmaPoateProba(veche, nowFt));
+}
 const nowSub = Date.parse('2026-06-01T00:00:00Z');
 const trial1 = plansMod.startTrial({}, nowSub);
 eq('trial: status trial', trial1.status, 'trial');

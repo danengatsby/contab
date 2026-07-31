@@ -112,6 +112,18 @@ module.exports = function register(app, ctx) {
     return { ok: true, firmaActiva: r.firmaActiva };
   }));
 
+  // A doua perioada de proba, ceruta explicit de utilizator dupa ce prima a expirat.
+  app.post('/api/firme/:id/trial', wrap(async (req, res) => {
+    try {
+      const r = await svc.trialDinNou(req.user, req.params.id);
+      logAudit('firma.trial', 'firma ' + req.params.id + ' -> proba ' + r.trialCount + '/' + plans.TRIAL_MAX, { req, firmaId: Number(req.params.id) });
+      res.json(Object.assign({ ok: true }, r));
+    } catch (e) {
+      if (!e.status) throw e;
+      res.status(e.status).json({ error: e.message });
+    }
+  }));
+
   // Abonare pe FIRMA (billing strict per-firma): plata Stripe (activare la webhook) sau,
   // fara Stripe (dev/manual), activare directa pe luna curenta.
   app.post('/api/firme/:id/subscribe', wrap(async (req, res) => {

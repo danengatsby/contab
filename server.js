@@ -93,7 +93,7 @@ require('./src/routes/messages')(app, { requireAdmin, upload, logAudit });
 // ── Abonamente (planuri + trial) ──
 // Prețurile sunt publice (vizibile pe pagina de înscriere, fără autentificare).
 // Abonament / plati Stripe (planuri, checkout, portal, webhook, proba/select, activare admin): src/routes/billing.js
-require('./src/routes/billing')(app, { requireAdmin, logAudit });
+require('./src/routes/billing')(app, { requireAdmin, logAudit, activeId });
 
 // firma activa (constransa la firmele utilizatorului) + vederea filtrata
 // Firma activa pentru cerere. STRICT pentru utilizatorii non-admin (necontabili/contabili):

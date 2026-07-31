@@ -312,6 +312,15 @@ async function init() {
     const go = $('#subExpiredGo');
     if (go && !go._wired) { go._wired = true; go.addEventListener('click', () => goTab('abonament')); }
   }
+  // La expirarea probei, ecranul de preturi se deschide SINGUR — o data pe sesiunea de pagina.
+  // Contul e read-only pana la o alegere, deci a-l lasa sa rataceasca printr-o aplicatie care
+  // refuza orice scriere ar fi doar frustrant. Repetarea la fiecare init() ar fi insa o capcana:
+  // orice schimbare de firma sau reincarcare l-ar smulge din ecranul curent.
+  if (USER.subExpirat && !window.__pretDeschis) {
+    window.__pretDeschis = true;
+    goTab('abonament');
+    toast('Perioada de probă a expirat. Alege un plan — sau mai încearcă o lună gratuită, dacă nu ai folosit-o încă.', true);
+  }
   // abonatii (necontabil/contabil) isi completeaza datele personale in Setari -> Contul meu
   if ((USER.tip === 'necontabil' || USER.tip === 'contabil') && !USER.profilComplet) {
     toast('Completează-ți datele personale (nume, telefon) în Setări → Contul meu.', true);
@@ -697,17 +706,30 @@ async function renderFirmeBilling() {
     const pend = s.pending ? ' <span class="pill" data-u="u11" title="Ai inițiat plata — se activează după confirmarea Stripe">⏳ plată în așteptare</span>' : '';
     if (s.status === 'trial') return `<span class="pill" data-u="u10">🎁 probă · ${s.zileRamase} ${s.zileRamase === 1 ? 'zi' : 'zile'}</span>${pend}`;
     if (s.status === 'active') return `<span class="pill" data-u="u10">✓ activ${s.plan && s.plan !== 'grandfathered' ? ' · ' + (s.plan === 'pro' ? 'Pro' : 'Start') : ''}</span>`;
-    if (s.status === 'expired') return `<span class="pill warn">probă expirată</span>${pend}`;
+    if (s.status === 'expired') return `<span class="pill warn">probă expirată${s.trialCount ? ' · ' + s.trialCount + '/' + s.trialMax : ''}</span>${pend}`;
     return `<span class="pill warn">fără abonament</span>${pend}`;
   };
   box.innerHTML = `<table><thead><tr><th>Firmă</th><th>Stare abonament</th><th></th></tr></thead><tbody>${
     data.firme.map((f) => { const s = f._sub || {}; const needs = s.status === 'expired' || s.status === 'none';
       return `<tr><td>${H(f.nume)}${f.cui ? ' <span class="muted">(' + H(f.cui) + ')</span>' : ''}</td>
         <td>${stLabel(s)}</td>
-        <td>${needs ? `<button class="linkbtn fbsub" data-id="${f.id}" data-nume="${H(f.nume)}" data-u="u12">abonează-te →</button>` : (s.status === 'trial' ? `<button class="linkbtn fbsub" data-id="${f.id}" data-nume="${H(f.nume)}">abonează firma acum</button>` : '')}</td></tr>`;
+        <td>${needs ? `${s.maiPoateProba ? `<button class="linkbtn fbtrial" data-id="${f.id}" data-nume="${H(f.nume)}">încă o lună de probă</button> · ` : ''}<button class="linkbtn fbsub" data-id="${f.id}" data-nume="${H(f.nume)}" data-u="u12">abonează-te →</button>` : (s.status === 'trial' ? `<button class="linkbtn fbsub" data-id="${f.id}" data-nume="${H(f.nume)}">abonează firma acum</button>` : '')}</td></tr>`;
     }).join('')}</tbody></table>
     <p class="muted" data-u="u24">Firma activă acum: <b>${H((data.firme.find((f) => f.id === data.firmaActiva) || {}).nume || '—')}</b>. Abonarea deschide plata (Stripe) pentru planul potrivit tipului tău.</p>`;
   $$('#firmeBilling .fbsub').forEach((b) => b.addEventListener('click', () => promptFirmaSubscribe(Number(b.dataset.id), b.dataset.nume)));
+  // A doua (si ultima) perioada de proba — ceruta explicit, cu mesaj catre utilizator.
+  $$('#firmeBilling .fbtrial').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true;
+    try {
+      const r = await api('/api/firme/' + b.dataset.id + '/trial', { method: 'POST' });
+      const ultima = r.trialCount >= (r.sub && r.sub.trialMax);
+      toast('Ai încă o lună de probă gratuită pentru ' + r.nume + ' — până pe '
+        + String((r.sub || {}).trialEndsAt || '').slice(0, 10)
+        + (ultima ? '. Este ultima: după ea alegi un plan ca să continui.' : '.'));
+      setMeta(await api('/api/meta'));
+      renderFirmeBilling(); loadSubscription();
+    } catch (e) { toast(e.message, true); b.disabled = false; }
+  }));
 }
 function renderSubscription(data) {
   const c = data.current || {}; const plans = data.plans || [];
@@ -718,6 +740,15 @@ function renderSubscription(data) {
   else if (c.status === 'active') banner = `<div class="sub-banner ok"><b>✓ Abonament activ: ${nameOf(c.plan)}</b>${c.since ? ' · din ' + c.since.slice(0, 10) : ''}.</div>`;
   else if (c.status === 'expired') banner = `<div class="sub-banner warn"><b>⚠ Perioada de probă a expirat.</b> Alege un plan pentru a continua.</div>`;
   else banner = `<div class="sub-banner"><b>Niciun abonament activ.</b> Începe cu proba gratuită de 30 zile.</div>`;
+  // Accesul il da abonamentul FIRMEI, nu al contului: bannerul trebuie sa spuna ce se intampla cu
+  // ea. Altfel invita la „proba gratuită de 30 zile" exact sub cardul care anunta ca sunt consumate.
+  const f = data.firma;
+  if (f) {
+    if (f.status === 'trial') banner = `<div class="sub-banner ok"><b>✓ ${H(data.firmaNume || 'Firma activă')}: probă activă</b> — încă <b>${f.zileRamase}</b> ${f.zileRamase === 1 ? 'zi' : 'zile'}${f.trialCount ? ` (proba ${f.trialCount} din ${f.trialMax})` : ''}.</div>`;
+    else if (f.status === 'active') banner = `<div class="sub-banner ok"><b>✓ ${H(data.firmaNume || 'Firma activă')}: abonament activ</b>${f.plan && f.plan !== 'grandfathered' ? ' · ' + (f.plan === 'pro' ? 'Pro' : 'Start') : ''}.</div>`;
+    else if (f.maiPoateProba) banner = `<div class="sub-banner warn"><b>⚠ ${H(data.firmaNume || 'Firma activă')}: perioada de probă a expirat.</b> Alege un plan — sau mai iei o lună gratuită (ultima).</div>`;
+    else banner = `<div class="sub-banner warn"><b>⚠ ${H(data.firmaNume || 'Firma activă')}: cele ${f.trialMax} perioade de probă s-au terminat.</b> Alege un plan ca să continui.</div>`;
+  }
   if (c.requestedPlan && c.status !== 'active') banner += `<div class="sub-banner">⏳ Ai solicitat planul <b>${nameOf(c.requestedPlan)}</b> — în așteptarea activării (după confirmarea plății).</div>`;
   if (c.status === 'active' && data.manageable) banner += `<div data-u="u23"><button id="subPortal" class="btn">Gestionează / anulează abonamentul</button></div>`;
   if (c.status === 'canceled') banner = `<div class="sub-banner warn"><b>Abonament anulat.</b> Alege din nou un plan pentru a reactiva.</div>` + banner;
@@ -733,7 +764,14 @@ function renderSubscription(data) {
     const isCurrent = (c.status === 'active' && c.plan === p.id) || (p.trial && c.status === 'trial');
     let action;
     if (p.trial) {
-      action = c.trialUsed
+      // Cardul de proba urmareste FIRMA activa (ea expira si blocheaza aplicatia), nu contul.
+      // Dupa ce firma si-a consumat toate perioadele, cardul RAMANE vizibil dar inactiv, cu
+      // numarul folosit: o optiune care dispare fara explicatie pare o functie pierduta.
+      const fs2 = data.firma || {};
+      if (fs2.status === 'trial') action = `<button class="btn" disabled>Probă în curs · ${fs2.zileRamase} ${fs2.zileRamase === 1 ? 'zi' : 'zile'}</button>`;
+      else if (fs2.maiPoateProba) action = `<button class="btn primary firma-trial">Mai vreau o lună de probă</button>`;
+      else if (fs2.trialCount) action = `<button class="btn" disabled title="Fiecare firmă are dreptul la ${fs2.trialMax} perioade de probă.">Probă folosită (${fs2.trialCount}/${fs2.trialMax})</button>`;
+      else action = c.trialUsed
         ? `<button class="btn" disabled>${c.status === 'trial' ? 'Probă în curs' : 'Probă folosită'}</button>`
         : `<button class="btn primary sub-trial">Începe proba gratuită</button>`;
     } else if (isCurrent) {
@@ -754,6 +792,20 @@ function renderSubscription(data) {
     </div>`;
   }).join('');
 
+  // „Mai vreau o lună de probă" — pe FIRMA activa
+  const ft = $('#subPlans .firma-trial');
+  if (ft) ft.addEventListener('click', async () => {
+    ft.disabled = true;
+    try {
+      const r = await api('/api/firme/' + (data.firma && data.firma.firmaId || META.firmaActiva) + '/trial', { method: 'POST' });
+      const ultima = r.trialCount >= (r.sub && r.sub.trialMax);
+      toast('Ai încă o lună de probă gratuită pentru ' + r.nume + ' — până pe '
+        + String((r.sub || {}).trialEndsAt || '').slice(0, 10)
+        + (ultima ? '. Este ultima: după ea alegi un plan ca să continui.' : '.'));
+      setMeta(await api('/api/meta'));
+      loadSubscription();
+    } catch (e) { toast(e.message, true); ft.disabled = false; }
+  });
   const tb = $('#subPlans .sub-trial');
   if (tb) tb.addEventListener('click', async () => {
     tb.disabled = true;

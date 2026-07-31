@@ -1900,6 +1900,28 @@ async function main() {
     eq('dupa expirare: scrierea pe firma e blocata (402)', blocat.status, 402);
     ok('402 semnaleaza firma pentru promptul de abonare', blocat.json && blocat.json.firmaTrialExpired === true && blocat.json.firmaId === tf && blocat.json.firmaStatus === 'expired');
     eq('dupa expirare: citirile raman libere', (await req('GET', '/api/partners', { cookie: c1 })).status, 200);
+
+    // ── A DOUA perioada de proba, ceruta explicit dupa expirarea primei ──
+    // La expirare aplicatia deschide singura ecranul de preturi, iar de acolo utilizatorul poate
+    // cere inca o luna gratuita. Dupa a doua, cardul de proba ramane vizibil dar inactiv.
+    const subInainte = (await req('GET', '/api/subscription', { cookie: c1 })).json;
+    ok('/api/subscription poarta starea probei FIRMEI active (nu doar a contului)',
+      subInainte.firma && typeof subInainte.firma.trialCount === 'number' && typeof subInainte.firma.maiPoateProba === 'boolean');
+    const t2 = await req('POST', '/api/firme/' + tf + '/trial', { cookie: c1 });
+    ok('a doua proba se acorda (2/2)', t2.status === 200 && t2.json.ok && t2.json.trialCount === 2);
+    ok('...si deblocheaza scrierea', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO904', den: 'Proba2' } })).status === 200);
+    eq('cat timp proba noua e activa, alta nu se poate cere',
+      (await req('POST', '/api/firme/' + tf + '/trial', { cookie: c1 })).status, 400);
+    // expiram si a doua -> plafonul se aplica
+    await req('POST', '/api/firme/' + tf + '/subscription', { cookie: la.cookie, body: { subscription: { plan: 'trial', trialCount: 2, trialEndsAt: '2026-01-01T00:00:00Z' } } });
+    const t3 = await req('POST', '/api/firme/' + tf + '/trial', { cookie: c1 });
+    eq('a TREIA proba e refuzata', t3.status, 400);
+    ok('...cu motivul plafonului', /perioade de probă/i.test((t3.json || {}).error || ''));
+    const subDupa = (await req('GET', '/api/subscription', { cookie: c1 })).json;
+    ok('starea spune ca proba nu mai e disponibila', subDupa.firma.maiPoateProba === false && subDupa.firma.trialCount === 2);
+    eq('demo NU poate cere proba', (await req('POST', '/api/firme/1/trial', { cookie: cDemo })).status, 403);
+    // repunem firma pe expirat-cu-o-proba, ca restul testelor (abonarea) sa continue de unde erau
+    await req('POST', '/api/firme/' + tf + '/subscription', { cookie: la.cookie, body: { subscription: { plan: 'trial', trialEndsAt: '2026-01-01T00:00:00Z' } } });
     // abonare pe FIRMA: activeaza abonamentul firmei pe luna curenta + deblocheaza
     const lunaCur = new Date().toISOString().slice(0, 7);
     const sub = await req('POST', '/api/firme/' + tf + '/subscribe', { cookie: c1, body: {} });
