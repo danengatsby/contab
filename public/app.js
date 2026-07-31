@@ -13,7 +13,7 @@ import { pget, workMonth, setWorkMonth, lunaLabel, applyWorkMonth, onPeriodChang
 import { loadJournal, loadLedger, loadCashbook, loadBalance, loadVat, loadClosings, loadStatements, loadStorno } from './rapoarte.js';
 import { loadLivrabile, loadPortfolio, loadNotifications, loadReconcile, loadAnalytic, refreshNotifBadge, setLivrabileDeps } from './livrabile.js';
 import { setPaletaDeps, deschide as deschidePaleta } from './paleta.js';
-import { loadAssets } from './mijloace.js';
+import { loadAssets, loadLeasingContracts } from './mijloace.js';
 import { loadMonthlyClose, setInchidereDeps } from './inchidere.js';
 import { loadSalarizare } from './salarizare.js';
 import { loadStocks } from './stocuri.js';
@@ -117,7 +117,7 @@ function onTab(t) {
   if (t === 'notificari') loadNotifications();
   if (t === 'reconciliere') loadReconcile();
   if (t === 'analitic') loadAnalytic();
-  if (t === 'mijloace') loadAssets();
+  if (t === 'mijloace') { loadAssets(); loadLeasingContracts(); }
   if (t === 'salarizare') loadSalarizare();
   if (t === 'stocuri') loadStocks();
   if (t === 'parteneri') loadPartners();

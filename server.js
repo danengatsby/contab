@@ -334,6 +334,9 @@ function buildEntry(tipId, fields, fileId, firmaId) {
   return Object.assign({ id: db.nextId('e') }, composeEntry(tipId, fields, fileId, firmaId));
 }
 
+// Contracte de leasing (nomenclator + grafic de rate pe luni): src/routes/leasing.js
+require('./src/routes/leasing')(app, { activeId, logAudit });
+
 // Articole contabile + recurente + blocare perioada + TVA la incasare: src/routes/entries.js
 require('./src/routes/entries')(app, { S, activeId, canAccess, requireAdmin, logAudit, buildEntry, composeEntry, upsertPartner });
 // Productie + retete (BOM): src/routes/production.js

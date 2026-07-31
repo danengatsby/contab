@@ -44,4 +44,44 @@ function leasingSchedule(principal, months, annualRatePct, method) {
   return { principal: P, months: n, annualRatePct: Number(annualRatePct) || 0, method: m, rows, totals };
 }
 
-module.exports = { leasingSchedule };
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONTRACTUL DE LEASING — graficul legat de o luna calendaristica
+//
+//  `leasingSchedule` de mai sus numeroteaza ratele 1..n, atat. Ca factura lunara sa se poata
+//  completa singura, rata trebuie gasita dupa LUNA in care se emite, nu dupa numar: contabilul
+//  are in mana factura lui martie, nu „rata 15". Legarea se face de `dataPrimeiRate`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Luna (YYYY-MM) a ratei `n` (1-based), pornind de la data primei rate. */
+function periodOfInstallment(dataPrimeiRate, n) {
+  const d = new Date(dataPrimeiRate);
+  if (isNaN(d)) return null;
+  d.setDate(1); // ziua nu conteaza si ar putea sari o luna (31 ian + 1 luna)
+  d.setMonth(d.getMonth() + (Math.max(1, Number(n) || 1) - 1));
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+/** Graficul unui contract, cu luna calendaristica si TVA-ul pe fiecare rata. */
+function contractSchedule(contract) {
+  const c = contract || {};
+  const s = leasingSchedule(c.principal, c.months, c.dobandaAnuala, c.metoda);
+  const cota = Number(c.cotaTva) || 0;
+  s.rows = s.rows.map((r) => {
+    // TVA-ul ratei de leasing FINANCIAR se aplica pe principal SI pe dobanda: dobanda e
+    // contravaloarea unui serviciu de finantare prestat de locator, nu o operatiune scutita.
+    const tva = round2(((r.principal + r.dobanda) * cota) / 100);
+    return Object.assign({}, r, { period: periodOfInstallment(c.dataPrimeiRate, r.luna), tva, total: round2(r.rata + tva) });
+  });
+  s.totals.tva = round2(s.rows.reduce((x, r) => x + r.tva, 0));
+  s.cotaTva = cota;
+  return s;
+}
+
+/** Rata scadenta intr-o luna (YYYY-MM), sau null daca luna e in afara contractului. */
+function installmentFor(contract, period) {
+  const p = String(period || '').slice(0, 7);
+  if (!p) return null;
+  return contractSchedule(contract).rows.find((r) => r.period === p) || null;
+}
+
+module.exports = { leasingSchedule, contractSchedule, installmentFor, periodOfInstallment };

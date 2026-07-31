@@ -1633,6 +1633,38 @@ async function main() {
     const setDep2 = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd394', period: '2026-01', status: 'depusa' } });
     ok('a doua declaratie depusa pe aceeasi luna nu re-blocheaza', setDep2.json.ok === true && setDep2.json.locked == null);
 
+    // ── CONTRACTE DE LEASING: contractul alimenteaza factura de rata ──
+    // Graficul era un calculator fara stare, deci `factura_leasing` cerea principalul si dobanda
+    // introduse de mana in fiecare luna — exact cifrele pe care graficul le stia deja.
+    const lc = await req('POST', '/api/leasing-contracts', { cookie: c1, body: {
+      denumire: 'Autoutilitara', partener: 'Leasing SA', cui: 'RO777', document: 'CTR-42',
+      principal: 50000, months: 36, dobandaAnuala: 9, metoda: 'anuitati', dataPrimeiRate: '2026-03-15', cotaTva: 21 } });
+    ok('contract de leasing salvat', lc.status === 200 && lc.json.contract.id);
+    const lcId = lc.json.contract.id;
+    const lcSch = await req('GET', '/api/leasing-contracts/' + lcId + '/schedule', { cookie: c1 });
+    eq('graficul are 36 de rate', lcSch.json.schedule.rows.length, 36);
+    eq('graficul se inchide pe principal', lcSch.json.schedule.totals.principal, 50000);
+    const rata = await req('GET', '/api/leasing-contracts/' + lcId + '/rata?period=2026-05', { cookie: c1 });
+    eq('rata lunii cerute e a treia', rata.json.rata.luna, 3);
+    ok('rata are principal, dobanda si TVA', rata.json.rata.principal > 0 && rata.json.rata.dobanda > 0 && rata.json.rata.tva > 0);
+    eq('rata poarta datele locatorului, pentru completarea facturii', rata.json.contract.cui, 'RO777');
+    // o luna din afara contractului e eroare EXPLICITA, nu o rata goala (ar posta articol fara continut)
+    eq('luna fara rata -> 404', (await req('GET', '/api/leasing-contracts/' + lcId + '/rata?period=2030-01', { cookie: c1 })).status, 404);
+    // cifrele preluate compun un articol contabil VALID (167 + 666 + 4426 = 404)
+    const fl = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_leasing', fields: {
+      data: '2026-05-15', partener: rata.json.contract.partener, cuiFurnizor: rata.json.contract.cui, document: 'FL-3',
+      principal: rata.json.rata.principal, dobanda: rata.json.rata.dobanda, tva: rata.json.rata.tva, cota: 21 } } });
+    ok('factura de rata se posteaza din cifrele graficului', fl.status === 200);
+    const flLines = fl.json.entry.lines;
+    eq('articolul are trei linii (principal, dobanda, TVA)', flLines.length, 3);
+    ok('167 = 404 pe principal', flLines.some((l) => l.debit === '167' && l.credit === '404' && l.suma === rata.json.rata.principal));
+    ok('666 = 404 pe dobanda', flLines.some((l) => l.debit === '666' && l.credit === '404' && l.suma === rata.json.rata.dobanda));
+    ok('4426 = 404 pe TVA', flLines.some((l) => l.debit === '4426' && l.credit === '404' && l.suma === rata.json.rata.tva));
+    // validari de intrare
+    eq('contract fara denumire -> 400', (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { principal: 1000, months: 12, dataPrimeiRate: '2026-01-01' } })).status, 400);
+    eq('contract fara data primei rate -> 400', (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { denumire: 'X', principal: 1000, months: 12 } })).status, 400);
+    eq('valoare finantata zero -> 400', (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { denumire: 'X', principal: 0, months: 12, dataPrimeiRate: '2026-01-01' } })).status, 400);
+
     // ── IZOLARE MULTI-FIRMA: utilizatorul firmei 2 nu poate citi/sterge resursele firmei 1 ──
     // resurse proaspete in firma 1
     const isoP = (await req('POST', '/api/products', { cookie: c1, body: { cod: 'ISO-1', denumire: 'Produs izolare', um: 'buc', cont: '371' } })).json.product;
@@ -1643,6 +1675,7 @@ async function main() {
     // ciorna dedicata pentru cazul pozitiv de stergere (doar ciornele se sterg; postatele = storno)
     const isoED = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: '2026-08-06', explicatie: 'Ciorna de sters', debit: '5311', credit: '5121', suma: 42 } } })).json.entry;
     const isoAs = (await req('POST', '/api/assets', { cookie: c1, body: { denumire: 'Utilaj izolare', cont: '2131', cost: 5000, durataLuni: 60, dataPif: '2026-01-15' } })).json.asset || {};
+    const isoLs = (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { denumire: 'Leasing izolare', principal: 50000, months: 36, dobandaAnuala: 9, dataPrimeiRate: '2026-03-15', cotaTva: 21 } })).json.contract || {};
     // utilizator nou, DOAR pe firma 2
     // ruta de admin foloseste ACEEASI regula de nume ca inscrierea publica
     const uDup = await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'ADMIN', password: 'ParolaBunaDeTot9' } });
@@ -1666,6 +1699,10 @@ async function main() {
     ok('stergerea angajatului strain: refuzata', deny(await req('DELETE', '/api/angajati/' + isoA.id, { cookie: c2 })));
     ok('stergerea mijlocului fix strain: refuzata', deny(await req('DELETE', '/api/assets/' + isoAs.id, { cookie: c2 })));
     ok('casarea mijlocului fix strain: refuzata', deny(await req('POST', '/api/assets/' + isoAs.id + '/scrap', { cookie: c2, body: {} })));
+    ok('stergerea contractului de leasing strain: refuzata', deny(await req('DELETE', '/api/leasing-contracts/' + isoLs.id, { cookie: c2 })));
+    ok('graficul contractului strain: refuzat', deny(await req('GET', '/api/leasing-contracts/' + isoLs.id + '/schedule', { cookie: c2 })));
+    ok('rata contractului strain: refuzata', deny(await req('GET', '/api/leasing-contracts/' + isoLs.id + '/rata?period=2026-03', { cookie: c2 })));
+    ok('editarea contractului strain: refuzata', deny(await req('POST', '/api/leasing-contracts', { cookie: c2, body: { id: isoLs.id, denumire: 'Deturnat', principal: 1, months: 1, dataPrimeiRate: '2026-01-01' } })));
     ok('fisa de magazie straina: refuzata', (await req('GET', '/api/stocks/' + isoP.id + '/ledger', { cookie: c2 })).status !== 200);
     ok('fluturasul strain: refuzat', (await req('GET', '/pdf/fluturas/' + isoA.id + '?period=2026-08', { cookie: c2 })).status !== 200);
     ok('trimiterea in SPV a facturii straine: refuzata', deny(await req('POST', '/api/anaf/send/' + isoE.id, { cookie: c2 })));
@@ -1677,6 +1714,7 @@ async function main() {
       && (await req('GET', '/api/entries', { cookie: c1 })).json.some((e) => e.id === isoE.id)
       && (await req('GET', '/api/stock-movements', { cookie: c1 })).json.some((m) => m.id === isoM.id)
       && (await req('GET', '/api/assets', { cookie: c1 })).json.some((x) => x.id === isoAs.id)
+      && (await req('GET', '/api/leasing-contracts', { cookie: c1 })).json.some((x) => x.id === isoLs.id && x.denumire === 'Leasing izolare')
     ));
     // un articol POSTAT nu se sterge (jurnal append-only) — corectia se face prin storno
     eq('stergerea unui articol postat -> 400 (corecteaza prin storno)', (await req('DELETE', '/api/entries/' + isoE.id, { cookie: c1 })).status, 400);

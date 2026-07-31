@@ -95,6 +95,7 @@ const DEFAULT_DB = {
   declarations: [],    // { id, firmaId, tip, period, status, generatedAt, submittedAt, recipisa, note } - registrul depunerilor
   closings: [],        // { id, firmaId, period, steps, validari, aprobare, fortata, closedAt } - dosarul inchiderii lunare
   extractInterventions: [], // { id, firmaId, documentId, entryId, diff, controalePicate, partener, format } - corectiile operatorului peste extragere
+  leasingContracts: [], // { id, firmaId, denumire, partener, cui, principal, months, dobandaAnuala, metoda, dataPrimeiRate, cotaTva } - contractele de leasing, sursa graficului de rate
   accessRequests: [],  // { id, firmaId, userId, ts, status } - contabil care CERE acces la o firma existenta (aproba proprietarul)
   serviceRequests: [], // { id, firmaId, ownerId, contabilId, mesaj, ts, status } - patron care ANGAJEAZA un contabil (accepta contabilul)
   customAccounts: [],  // { cod, nume, clasa, tip } - conturi personalizate (import)
@@ -209,6 +210,7 @@ function migrate(d) {
   if (!Array.isArray(d.declarations)) d.declarations = [];
   if (!Array.isArray(d.closings)) d.closings = [];
   if (!Array.isArray(d.extractInterventions)) d.extractInterventions = [];
+  if (!Array.isArray(d.leasingContracts)) d.leasingContracts = [];
   if (!Array.isArray(d.accessRequests)) d.accessRequests = [];
   if (!Array.isArray(d.serviceRequests)) d.serviceRequests = [];
   if (!Array.isArray(d.customAccounts)) d.customAccounts = [];
