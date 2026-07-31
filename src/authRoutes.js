@@ -319,7 +319,14 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (!fa || now > fa.reset) fa = { count: 0, reset: now + 3600 * 1000 };
     fa.count += 1; forgotAttempts.set(k, fa);
     if (fa.count > 5) return res.json(generic);
-    if (!u || !u.email || !(d.settings.smtp && d.settings.smtp.host)) return res.json(generic);
+    // Raspunsul catre client ramane IDENTIC in toate cazurile (anti-enumerare de conturi), dar
+    // motivul se scrie in log: altfel „nu primesc mailul de resetare" e imposibil de diagnosticat
+    // din afara, iar cauza cea mai frecventa — SMTP neconfigurat — nu lasa nicio urma.
+    if (!u || !u.email || !(d.settings.smtp && d.settings.smtp.host)) {
+      const motiv = !u ? 'cont inexistent' : !u.email ? 'contul nu are adresa de email' : 'SMTP neconfigurat (Setări → Server email)';
+      console.warn('[contab] link de resetare NETRIMIS:', motiv);
+      return res.json(generic);
+    }
     u.resetToken = crypto.randomBytes(24).toString('hex');
     u.resetExp = Date.now() + 3600 * 1000; // 1 ora
     db.save();
