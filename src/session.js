@@ -64,6 +64,9 @@ function publicUser(u) {
     drepturi: u.drepturi || {},
     mustChange: !!u.mustChange, twofa: !!u.twofa,
     profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?
+    // conditie ca sa poti inscrie firme proprii; interfata o anunta INAINTE de a incerca,
+    // nu dupa ce cererea e refuzata (valoarea, nu CNP-ul — acela nu pleaca niciodata intreg)
+    cnpSetat: !!p.cnp,
     subExpirat: plans.expiredLock(u), // proba expirata -> cont read-only (banner in UI)
   };
 }

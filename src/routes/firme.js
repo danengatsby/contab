@@ -23,7 +23,8 @@ module.exports = function register(app, ctx) {
       if (out !== undefined) res.json(out);
     } catch (e) {
       if (!e.status) throw e;
-      res.status(e.status).json({ error: e.message });
+      // `code` insoteste mesajul cand interfata are ceva de facut cu el (vezi fail() din serviciu)
+      res.status(e.status).json(e.code ? { error: e.message, code: e.code } : { error: e.message });
     }
   };
 
