@@ -62,7 +62,9 @@ export const accName = (c) => { const a = META.accounts.find((x) => x.cod === St
 export const isDemo = () => !!(USER && (USER.username === 'demo' || USER.username === 'demo-contabil'));
 
 export function toast(msg, err) {
-  const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
+  // fara element, un toast nu are voie sa omoare apelantul
+  const t = $('#toast'); if (!t) return;
+  t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
   setTimeout(() => (t.className = 'toast'), 3200);
 }
 

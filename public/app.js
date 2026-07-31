@@ -291,8 +291,11 @@ async function init() {
   // Plasa de siguranta (daca meta ar fi permisa candva): acelasi ecran de schimbare fortata.
   if (USER.mustChange) { showForcePw(); return; }
   $('#userBadge').textContent = USER.username ? (USER.username + (USER.tip ? ' · ' + USER.tip : '')) : '';
-  $('#usersCard').style.display = USER.role === 'admin' ? '' : 'none';
-  $('#exportAllBtn') && ($('#exportAllBtn').style.display = USER.role === 'admin' ? '' : 'none');
+  // Prin CLASA, nu prin style.display: `= ''` doar sterge stilul inline si lasa regula din
+  // foaia de stil sa ascunda mai departe — asa au ramas INVIZIBILE pentru admin cardurile de
+  // utilizatori, backup, SMTP si cote fiscale, plus exportul complet si stergerea logoului.
+  $('#usersCard').classList.toggle('hidden', USER.role !== 'admin');
+  $('#exportAllBtn') && $('#exportAllBtn').classList.toggle('hidden', USER.role !== 'admin');
   // Planul de conturi e global (partajat de toate firmele), deci importul e rezervat adminului
   // — serverul raspunde 403 oricum; ascunderea evita un buton care nu poate reusi.
   $('#accImportBox') && ($('#accImportBox').style.display = USER.role === 'admin' ? '' : 'none');
@@ -474,8 +477,10 @@ async function refreshLogo() {
   if (!img) return;
   try {
     const r = await fetch('/api/company/logo?ts=' + Date.now());
-    if (r.ok) { img.src = URL.createObjectURL(await r.blob()); img.style.display = ''; if (del) del.style.display = ''; }
-    else { img.style.display = 'none'; if (del) del.style.display = 'none'; }
+    // acelasi motiv ca la cardurile de admin: butonul de stergere e ascuns din foaia de stil,
+    // iar `style.display = ''` doar sterge stilul inline, fara sa-l arate
+    if (r.ok) { img.src = URL.createObjectURL(await r.blob()); img.style.display = ''; if (del) del.classList.remove('hidden'); }
+    else { img.style.display = 'none'; if (del) del.classList.add('hidden'); }
   } catch (e) { /* fara logo */ }
 }
 $('#logoUploadBtn') && $('#logoUploadBtn').addEventListener('click', async () => {
