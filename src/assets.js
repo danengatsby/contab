@@ -39,6 +39,27 @@ function firstDepreciationMonth(dataPif) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
 
+/**
+ * Ultima luna in care activul se mai amortizeaza (YYYY-MM), sau null daca nu e limitat.
+ *
+ * SURSA UNICA a regulii, fiindca era scrisa in doua locuri care se contraziceau: `compute` o citea
+ * din `dataCasare` (corect), iar `monthlyDepreciation` sarea peste ORICE activ casat, indiferent
+ * de data. Rezultatul: marcarea unui mijloc fix ca fiind casat stergea retroactiv amortizarea
+ * lunilor DINAINTE de casare. Registrul arata amortizarea cumulata, dar niciun articol nu o
+ * inregistrase — se declansa la orice inchidere intarziata sau regenerare de luna, adica exact
+ * cand contabilul marcheaza casarea si abia apoi inchide lunile anterioare.
+ *
+ * Luna casarii se amortizeaza INCLUSIV (activul a fost in gestiune o parte din ea) — asa numara
+ * si `compute`, iar cele doua trebuie sa dea acelasi raspuns despre acelasi activ.
+ *
+ * Un activ casat FARA data ramane sarit complet: nu se poate sti pana cand s-a amortizat, iar a
+ * ghici ar inregistra cheltuiala pe luni in care activul putea sa nu mai existe.
+ */
+function stopMonth(asset) {
+  if (!asset || asset.status !== 'casat') return null;
+  return asset.dataCasare ? String(asset.dataCasare).slice(0, 7) : '';
+}
+
 /** Cotele anuale de amortizare pentru metoda aleasa. */
 function annualQuotas(base, durataLuni, metoda) {
   const years = durataLuni / 12;
@@ -118,7 +139,7 @@ function compute(asset, asOf) {
   const metoda = METHODS.includes(asset.metoda) ? asset.metoda : 'liniara';
   const sch = schedule(asset);
   const refM = String(asOf || new Date().toISOString().slice(0, 7)).slice(0, 7);
-  const stopM = asset.status === 'casat' && asset.dataCasare ? String(asset.dataCasare).slice(0, 7) : refM;
+  const stopM = stopMonth(asset) || refM;
   const limitM = stopM < refM ? stopM : refM;
 
   let cumulat = 0; let luni = 0; let current = 0;
@@ -204,7 +225,11 @@ function monthlyDepreciation(assets, period) {
   const lines = [];
   let total = 0;
   for (const a of assets) {
-    if (a.status === 'casat') continue;
+    // Casarea opreste amortizarea DUPA luna ei, nu retroactiv: lunile dinainte se inregistreaza
+    // normal. Acelasi `stopMonth` pe care il foloseste `compute`, ca registrul si articolele sa nu
+    // se mai contrazica. Sirul gol = casat fara data => sarit complet (vezi stopMonth).
+    const stop = stopMonth(a);
+    if (stop !== null && (stop === '' || period > stop)) continue;
     const row = schedule(a).find((r) => r.period === period);
     if (!row || row.amount <= 0) continue;
     lines.push({ assetId: a.id, denumire: a.denumire, cont: a.cont, contAmortizare: contAmortizare(a.cont), suma: row.amount });

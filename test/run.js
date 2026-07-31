@@ -180,6 +180,30 @@ for (const [nume, a] of [
   const r = deprClose(a);
   ok('amortizare „' + nume + '": cumulat = baza, ramas = reziduala, fara rate negative', r.closes && r.ramasOk && r.negative === 0);
 }
+// ── Casarea opreste amortizarea DUPA luna ei, nu retroactiv ────────────────────────────────
+// `monthlyDepreciation` sarea peste ORICE activ cu status 'casat', indiferent de `dataCasare`,
+// in timp ce `compute` citea corect data. Deci marcarea unui mijloc fix ca fiind casat stergea
+// amortizarea lunilor DINAINTE de casare: registrul arata amortizarea cumulata, dar niciun
+// articol nu o inregistra. Se declanseaza la orice inchidere intarziata sau regenerare de luna.
+{
+  const { round2 } = require('../src/util');
+  const cas = { id: 'mfc', denumire: 'Utilaj casat', cont: '2131', cost: 12000, durataLuni: 24,
+    metoda: 'liniara', dataPif: '2025-12-15', status: 'casat', dataCasare: '2026-06-20' }; // 500 lei/luna
+  const lunar = (p) => assets.monthlyDepreciation([cas], p).total;
+  eq('luna dinaintea casarii se amortizeaza', lunar('2026-03'), 500);
+  eq('luna casarii se amortizeaza (activul a fost in gestiune o parte din ea)', lunar('2026-06'), 500);
+  eq('luna de DUPA casare nu se mai amortizeaza', lunar('2026-07'), 0);
+  // INVARIANTUL care lipsea: registrul si articolele trebuie sa spuna acelasi lucru despre
+  // acelasi activ. Inainte, compute() zicea 3000 si suma articolelor lunare zicea 0.
+  let sumaLunara = 0;
+  for (let y = 2026; y <= 2027; y += 1) for (let m = 1; m <= 12; m += 1) sumaLunara = round2(sumaLunara + lunar(y + '-' + String(m).padStart(2, '0')));
+  eq('suma articolelor lunare = amortizarea cumulata din registru', sumaLunara, assets.compute(cas, '2026-12').amortizareCumulata);
+  eq('...si aceea se opreste la luna casarii (6 x 500)', assets.compute(cas, '2026-12').amortizareCumulata, 3000);
+  // casat FARA data: nu se poate sti pana cand, deci ramane sarit (comportament pastrat)
+  eq('casat fara data ramane sarit', assets.monthlyDepreciation([Object.assign({}, cas, { dataCasare: '' })], '2026-03').total, 0);
+  // activul necasat e neatins de reparatie
+  eq('activul necasat se amortizeaza normal', assets.monthlyDepreciation([Object.assign({}, cas, { status: 'activ' })], '2026-09').total, 500);
+}
 eq('coeficient degresiv ≤5 ani', assets.degressiveCoef(5), 1.5);
 eq('coeficient degresiv 6-10 ani', assets.degressiveCoef(8), 2.0);
 eq('coeficient degresiv >10 ani', assets.degressiveCoef(12), 2.5);
