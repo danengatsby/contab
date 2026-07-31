@@ -147,33 +147,6 @@ export async function renderContabili() {
   $$('#serviciiPrimite .srv-nu').forEach((b) => b.addEventListener('click', () => decideSrv(b.dataset.id, false)));
 }
 
-// Inscrierea unei firme PROPRII: CUI-ul primul, fiindca el decide daca firma e noua sau exista deja.
-// La 409 (firma exista) nu ramane doar un mesaj rosu — se completeaza singur CUI-ul in formularul
-// de cerere de acces, adica exact pasul urmator.
-$('#firmaProprieForm') && $('#firmaProprieForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const f = e.target; const st = $('#firmaProprieStatus');
-  st.className = 'status'; st.textContent = 'Se verifică CUI-ul…';
-  try {
-    await api('/api/firme', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, oras: f.oras.value,
-        tipEntitate: f.tipEntitate.value, tvaPlatitor: f.tvaPlatitor.checked,
-      }),
-    });
-    const cui = f.cui.value;
-    f.reset(); f.tvaPlatitor.checked = true;
-    st.className = 'status ok'; st.textContent = 'Firmă înscrisă (acum activă), cu o lună de probă gratuită. CUI ' + cui;
-    await deps.init(); deps.onTab('setari');
-  } catch (err) {
-    st.className = 'status err'; st.textContent = err.message;
-    if (err.status === 409) {
-      const ca = $('#cerereAccesForm');
-      if (ca) { ca.cui.value = f.cui.value; ca.scrollIntoView({ behavior: 'smooth', block: 'center' }); ca.cui.focus(); }
-    }
-  }
-});
 
 export async function renderFirme() {
   const data = await api('/api/firme');

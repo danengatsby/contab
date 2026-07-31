@@ -1783,29 +1783,6 @@ Cu stimă,
         <p class="muted">Conturi care au cerut acces la firmele al căror proprietar ești. Aprobarea le dă acces la toate datele firmei.</p>
         <div id="cereriPrimite" class="tablewrap"></div>
 
-        <h3>Înscrie o firmă proprie</h3>
-        <p class="muted">Doar firme care <b>nu sunt încă</b> în aplicație. Începem cu CUI-ul: dacă firma e deja înregistrată,
-          nu se creează a doua oară — te trimitem la cererea de acces, ca să lucrezi pe evidența reală.</p>
-        <form id="firmaProprieForm" class="dyn" data-u="u8">
-          <label>CUI * <input name="cui" placeholder="RO14399840" required /></label>
-          <label>Denumire * <input name="nume" placeholder="S.C. NOUA S.R.L." required /></label>
-          <div data-u="u51">
-            <label data-u="u46">Reg. Com. <input name="regCom" /></label>
-            <label data-u="u46">Oraș <input name="oras" /></label>
-          </div>
-          <div data-u="u53">
-            <label data-u="u46">Formă juridică
-              <select name="tipEntitate">
-                <option value="srl">SRL / societate</option>
-                <option value="pfa">PFA / Întreprindere individuală</option>
-              </select>
-            </label>
-            <label data-u="u54"><input name="tvaPlatitor" type="checkbox" checked data-u="u15"> Plătitoare de TVA</label>
-          </div>
-          <p class="muted" data-u="u124">🎁 Orice firmă nouă începe cu <b>o lună de probă gratuită</b>. La final o abonezi (plata pe firmă) ca să continui, sau o ștergi.</p>
-          <button class="btn primary">+ Înscrie firma</button>
-        </form>
-        <div id="firmaProprieStatus" class="status"></div>
       </div>
 
       <div class="card" id="contabiliCard">
