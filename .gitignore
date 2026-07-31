@@ -6,3 +6,9 @@ logs/
 !.env.example
 *.log
 /tmp/
+
+# fisiere de cookie lasate de curl in probele manuale (sesiuni, nu artefacte de proiect)
+cookies*.txt
+*.cookies
+c[0-9].txt
+p[0-9].txt
