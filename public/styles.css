@@ -190,6 +190,16 @@ body.compact h1{font-size:17px}body.compact h2{font-size:15px}body.compact h3{fo
 /* Fara ancora pe element: aceeasi clasa marcheaza si titluri de sectiune (h3) din interiorul
    unui card, nu doar h2-urile de card. `body.compact .card-titlu-mare` (doua clase) bate
    `body.compact h3` (o clasa, doua elemente) — altfel titlul ar fi scazut in modul compact. */
+/* Titlul unui card. Regula prinde COPIII DIRECTI, nu orice h2 dintr-un card: titlurile
+   imbricate mai adanc (sub-blocuri dintr-un card mare, si titlul paginii Ghid, care sta intr-un
+   card) trebuie sa ramana subordonate — o regula de descendenta le-ar fi ridicat pe toate la
+   acelasi nivel si ar fi intrat si in coliziune cu `.toolbar>h2`, la specificitate egala. */
+.card>h2{font-size:23px;letter-spacing:-.01em;color:var(--head)}
+body.compact .card>h2{font-size:20px}
+body.dark .card>h2{color:var(--ink)}
+
+/* Acelasi rang, cerut punctual: titluri de SECTIUNE din interiorul unui card (h3) si cele cateva
+   h2 imbricate. Ce nu poarta clasa ramane subordonat — asta e si rostul ei acum. */
 .card-titlu-mare{font-size:23px;letter-spacing:-.01em;color:var(--head)}
 body.compact .card-titlu-mare{font-size:20px}
 body.dark .card-titlu-mare{color:var(--ink)}
