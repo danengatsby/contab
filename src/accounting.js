@@ -3,6 +3,7 @@
 const { round2, period: periodOf, naturalCompare } = require('./util');
 const coa = require('./chartOfAccounts');
 const deduct = require('./deductibilitate');
+const fiscal = require('./fiscal'); // doar pentru plafoanele Legii 70/2015 (fiscal.js nu depinde de acest modul)
 
 /** Toate liniile contabile, fiecare cu metadatele articolului din care provine. */
 function allLines(entries) {
@@ -771,8 +772,15 @@ function cashRegisterValuta(db, period, moneda) {
  * si (2) depasirea plafoanelor de numerar (Legea 70/2015): 5.000 lei/zi/persoana juridica,
  * 10.000 lei/zi/persoana fizica, plus soldul de casierie peste 50.000 lei.
  */
-function cashControl(db, cont, period) {
+function cashControl(db, cont, period, opts) {
   cont = cont || '5311';
+  // Plafoanele stau in fiscalConfig (sursa unica, datata), nu in cod: erau hardcodate aici, deci
+  // o modificare a Legii 70/2015 ar fi cerut vanatoare prin module. `fiscal.FISCAL` poarta si
+  // suprascrierile din Setari, deci o firma poate stabili o limita interna mai stricta.
+  const lim = Object.assign({}, fiscal.FISCAL, opts || {});
+  const limJuridic = Number(lim.plafonNumerarJuridic) || 5000;
+  const limFizic = Number(lim.plafonNumerarFizic) || 10000;
+  const limSold = Number(lim.plafonSoldCasa) || 50000;
   const opening = (db.openingBalances || {})[cont] || { d: 0, c: 0 };
   const before = accumulate(allLines(postedEntries(db).filter((e) => beforePeriod(e, period))))[cont] || { d: 0, c: 0 };
   let sold = round2((opening.d + before.d) - (opening.c + before.c));
@@ -786,11 +794,15 @@ function cashControl(db, cont, period) {
     }
   }
   movs.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
-  // (1) sold negativ
+  // (1) sold negativ + (3) soldul la SFARSITUL FIECAREI ZILE (vezi mai jos)
   const negative = [];
-  for (const m of movs) {
+  const soldZi = []; // { data, sold } — soldul dupa ultima operatiune a zilei
+  for (let i = 0; i < movs.length; i++) {
+    const m = movs[i];
     sold = round2(sold + m.incasare - m.plata);
     if (sold < -0.005) negative.push({ data: m.data, document: m.document, sold });
+    const ultimaDinZi = i === movs.length - 1 || movs[i + 1].data !== m.data;
+    if (ultimaDinZi) soldZi.push({ data: m.data, sold });
   }
   // (2) plafon pe (zi × partener)
   const byKey = {};
@@ -803,12 +815,22 @@ function cashControl(db, cont, period) {
   const plafon = [];
   for (const g of Object.values(byKey)) {
     const juridic = !!g.cui;
-    const limita = juridic ? 5000 : 10000;
+    const limita = juridic ? limJuridic : limFizic;
     if (g.plati > limita) plafon.push({ data: g.data, partener: g.partener || g.cui, juridic, tip: 'plata', suma: g.plati, limita });
     if (g.incasari > limita) plafon.push({ data: g.data, partener: g.partener || g.cui, juridic, tip: 'incasare', suma: g.incasari, limita });
   }
-  const soldPesteLimita = sold > 50000 ? { sold, limita: 50000 } : null;
-  return { cont, period, soldFinal: sold, negative, plafon, soldPesteLimita, ok: !negative.length && !plafon.length && !soldPesteLimita };
+  // (3) SOLDUL DE CASIERIE — art. 4 alin. (4) plafoneaza soldul la sfarsitul FIECAREI ZILE, nu la
+  // sfarsitul perioadei. Verificarea pe soldul final rata exact cazul tipic: firma trece de plafon
+  // pe 10 martie, depune excedentul la banca pe 25 si inchide luna sub limita — nesemnalata, desi
+  // abaterea (si sanctiunea) exista. Se raporteaza toate zilele depasite; `soldPesteLimita`
+  // pastreaza forma istorica, dar arata acum ziua cea mai grava, nu ultima.
+  const zilePesteLimita = soldZi.filter((z) => z.sold > limSold)
+    .map((z) => ({ data: z.data, sold: z.sold, limita: limSold }));
+  const soldPesteLimita = zilePesteLimita.length
+    ? zilePesteLimita.reduce((a, b) => (b.sold > a.sold ? b : a))
+    : null;
+  return { cont, period, soldFinal: sold, negative, plafon, soldPesteLimita, zilePesteLimita,
+    ok: !negative.length && !plafon.length && !zilePesteLimita.length };
 }
 
 module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,

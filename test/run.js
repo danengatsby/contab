@@ -825,6 +825,38 @@ const cashOk = acc.cashControl({ openingBalances: { 5311: { d: 5000, c: 0 } }, e
   { id: 'x', period: '2026-07', data: '2026-07-01', partener: 'Y', partenerCui: 'RO9', lines: [{ debit: '401', credit: '5311', suma: 2000 }] }] }, '5311', '2026-07');
 ok('casa fara probleme -> ok', cashOk.ok && !cashOk.negative.length && !cashOk.plafon.length);
 
+// ── Plafonul de casierie se verifica la sfarsitul FIECAREI zile (Legea 70/2015 art. 4 alin. 4) ──
+// Verificarea pe soldul FINAL al perioadei rata exact cazul tipic: firma trece de plafon la
+// jumatatea lunii si depune excedentul inainte de sfarsit. Abaterea a existat, deci trebuie
+// semnalata — cu ziua ei, ca sa se poata corecta.
+const cashZi = acc.cashControl({ openingBalances: { 5311: { d: 0, c: 0 } }, entries: [
+  { id: 'z1', period: '2026-03', data: '2026-03-10', partener: 'Client X', partenerCui: '', lines: [{ debit: '5311', credit: '707', suma: 60000 }] },
+  { id: 'z2', period: '2026-03', data: '2026-03-25', partener: '', partenerCui: '', lines: [{ debit: '5121', credit: '5311', suma: 40000 }] },
+] }, '5311', '2026-03');
+eq('depasirea de casierie din cursul lunii e semnalata', cashZi.zilePesteLimita.length, 1);
+eq('...cu ziua ei', cashZi.zilePesteLimita[0].data, '2026-03-10');
+eq('...si cu soldul zilei', cashZi.zilePesteLimita[0].sold, 60000);
+eq('(premisa) soldul FINAL era sub plafon — de asta scapa inainte', cashZi.soldFinal, 20000);
+ok('controlul de casa nu mai raporteaza „ok"', !cashZi.ok);
+// soldul zilei = dupa ULTIMA operatiune a zilei, nu dupa fiecare: doua incasari a 30.000 in
+// aceeasi zi depasesc impreuna, chiar daca niciuna singura nu o face
+const cashCumul = acc.cashControl({ openingBalances: { 5311: { d: 0, c: 0 } }, entries: [
+  { id: 'c1', period: '2026-04', data: '2026-04-07', partener: 'A', partenerCui: '', lines: [{ debit: '5311', credit: '707', suma: 30000 }] },
+  { id: 'c2', period: '2026-04', data: '2026-04-07', partener: 'B', partenerCui: '', lines: [{ debit: '5311', credit: '707', suma: 30000 }] },
+] }, '5311', '2026-04');
+eq('soldul de casierie se masoara CUMULAT pe zi', cashCumul.zilePesteLimita.length, 1);
+eq('...la 60.000, nu la 30.000', cashCumul.zilePesteLimita[0].sold, 60000);
+// ...si o zi care depaseste doar in cursul zilei, dar se inchide sub plafon, NU e abatere
+const cashIntraZi = acc.cashControl({ openingBalances: { 5311: { d: 0, c: 0 } }, entries: [
+  { id: 'i1', period: '2026-05', data: '2026-05-03', partener: 'A', partenerCui: '', lines: [{ debit: '5311', credit: '707', suma: 60000 }] },
+  { id: 'i2', period: '2026-05', data: '2026-05-03', partener: '', partenerCui: '', lines: [{ debit: '5121', credit: '5311', suma: 45000 }] },
+] }, '5311', '2026-05');
+eq('depasirea doar in cursul zilei, inchisa sub plafon, nu e abatere', cashIntraZi.zilePesteLimita.length, 0);
+// plafoanele vin din fiscalConfig, nu din cod
+eq('plafonul de casierie vine din fiscalConfig', require('../src/fiscalConfig').RATES.plafonSoldCasa, 50000);
+eq('plafonul numerar juridic vine din fiscalConfig', require('../src/fiscalConfig').RATES.plafonNumerarJuridic, 5000);
+eq('plafonul numerar fizic vine din fiscalConfig', require('../src/fiscalConfig').RATES.plafonNumerarFizic, 10000);
+
 section('Reduceri comerciale, sconturi, taxare inversa interna');
 const gt = require('../src/documentTypes').getType;
 const rca = gt('reducere_comerciala_acordata').build({ baza: 100, tva: 21, cota: 21 });
