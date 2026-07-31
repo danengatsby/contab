@@ -75,6 +75,10 @@ function applyUiMode(mode) {
   const b = $('#uiModeBtn');
   if (b) {
     b.textContent = mode === 'simplu' ? '🎓 Simplu' : '🛠 Expert';
+    // Galben in modul EXPERT: acolo sunt vizibile conturile, registrele si notele contabile,
+    // deci merita un semnal ca nu esti in vederea simplificata. Acelasi galben ca la sectiunea
+    // deschisa din meniu (#f0c14b), nu unul nou.
+    b.classList.toggle('mod-expert', mode !== 'simplu');
     b.setAttribute('aria-label', mode === 'simplu'
       ? 'Mod simplu activ — apasă pentru modul expert (arată și partea tehnic-contabilă)'
       : 'Mod expert activ — apasă pentru modul simplu (ascunde partea tehnic-contabilă)');
