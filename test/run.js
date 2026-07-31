@@ -1166,6 +1166,45 @@ eq('F10: credit pe TL (1621) -> G (datorii >1 an)', f10lt.randuri.G_datoriiLT, 5
 eq('F10: nu apare in datorii curente', f10lt.randuri.D_datorii, 0);
 ok('F10 echilibrat cu datorie pe termen lung', f10lt.echilibrat);
 
+// ── Ajustarile pentru depreciere sunt RECTIFICATIVE de activ, nu datorii ────────────────────
+// 49x si 59x au sold creditor, ca o datorie, dar nu sunt o obligatie catre nimeni: scad activul
+// pe care il insotesc (OMFP 1802/2014 — bilantul cere activele NETE). Clasificarea dupa SEMN le
+// trimitea la „datorii care trebuie platite intr-o perioada de pana la un an", si lasa creantele
+// si investitiile la valoarea BRUTA — deci doua randuri gresite intr-o raportare depusa la ANAF.
+//
+// Nicio verificare de echilibru nu putea prinde asta: activul si datoria cresteau cu ACEEASI
+// suma, deci totalurile torneau in continuare. De aceea testul verifica randurile ELEMENTARE,
+// nu doar identitatea de bilant — dar o verifica si pe aceea, ca reparatia sa nu o strice.
+{
+  const bil = require('../src/bilant');
+  const { round2 } = require('../src/util');
+  // balanta echilibrata: D 285.000 = C 285.000; clienti 100.000 cu ajustare 30.000,
+  // investitii pe termen scurt 50.000 cu ajustare 5.000, furnizor 50.000, pierdere 35.000
+  const netAj = { 1012: -200000, 401: -50000, 491: -30000, 591: -5000, 5121: 100000, 4111: 100000, 5081: 50000, 121: 35000 };
+  const sumD = Object.values(netAj).filter((x) => x > 0).reduce((a, x) => a + x, 0);
+  const sumC = -Object.values(netAj).filter((x) => x < 0).reduce((a, x) => a + x, 0);
+  eq('(premisa) balanta de proba e echilibrata', sumD, sumC);
+
+  const Rs = bil.f10Base(netAj); bil.f10Totals(Rs); const gs = (k) => round2(Rs[k] || 0);
+  eq('F10 prescurtat: creante NETE de ajustare (100.000-30.000)', gs('006'), 70000);
+  eq('F10 prescurtat: investitii NETE de ajustare (50.000-5.000)', gs('007'), 45000);
+  eq('F10 prescurtat: datorii = doar furnizorul, fara ajustari', gs('013'), 50000);
+  eq('F10 prescurtat: identitatea de bilant se pastreaza',
+    round2(gs('004') + gs('009') + gs('010') - gs('013') - gs('016') - gs('017') - gs('018')), gs('049'));
+
+  const Rc = bil.f10CompletBase(netAj); bil.f10CompletTotals(Rc); const gc = (k) => round2(Rc[k] || 0);
+  eq('F10 complet: creante NETE de ajustare', gc('036'), 70000);
+  eq('F10 complet: investitii NETE de ajustare', gc('039'), 45000);
+  eq('F10 complet: datorii = doar furnizorul, fara ajustari', gc('053'), 50000);
+  eq('F10 complet: identitatea de bilant se pastreaza',
+    round2(gc('025') + gc('041') + gc('042') - gc('053') - gc('064') - gc('068') - gc('079')), gc('100'));
+
+  // 496 (debitori diversi) merge la ALTE creante, nu la cele comerciale — randuri distincte pe formular
+  const Rc2 = bil.f10CompletBase({ 1012: -10000, 461: 10000, 496: -4000, 121: 4000 });
+  eq('F10 complet: ajustarea de debitori diversi scade ALTE creante', round2(Rc2['034'] || 0), 6000);
+  eq('F10 complet: ...si nu atinge creantele comerciale', round2(Rc2['031'] || 0), 0);
+}
+
 section('Calcul salarial (payroll, brut 5000)');
 const pay = fiscal.payroll(5000);
 eq('CAS 25% retinut', pay.cas, 1250);
