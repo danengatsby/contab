@@ -110,6 +110,10 @@ $('#profileForm').addEventListener('submit', async (e) => {
   } catch (err) { return toast(err.message, true); } // CNP invalid: mesajul serverului, nu o eroare tacuta
   toast('Profil salvat');
   renderProfile(); // reafiseaza CNP-ul mascat si reincarca lista de contabili daca s-a schimbat optiunea
+  // USER vine din /api/meta si poarta `cnpSetat`, de care depinde avertismentul din „Firmele mele".
+  // Fara reincarcare, cine tocmai si-a completat CNP-ul ramanea cu avertismentul pe ecran — adica
+  // exact cu impresia ca n-a mers.
+  if (deps.init) await deps.init();
 });
 export async function renderSessions() {
   let list;

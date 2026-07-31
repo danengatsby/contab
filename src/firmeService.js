@@ -23,7 +23,10 @@ const identitate = require('./identitate');
 const { cuiKey } = identitate;
 const { allowedFirme, isDemoUser } = require('./session');
 
-function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
+// `code` (optional) e un marcaj STABIL pentru client, cand raspunsul cere o actiune anume in
+// interfata. Textul mesajului nu e contract: se rescrie oricand, si o potrivire pe el ar
+// pica tacut la prima reformulare.
+function fail(status, message, code) { const e = new Error(message); e.status = status; if (code) e.code = code; throw e; }
 
 /** Conturile demo (public, partajate) nu adauga si nu gestioneaza firme. */
 function reqNotDemo(user) {
@@ -72,8 +75,8 @@ function reqCnp(user) {
   if (user.role === 'admin') return;
   const cnp = ((user.profil || {}).cnp) || '';
   if (!identitate.validCNP(cnp)) {
-    fail(400, 'Completează-ți CNP-ul în „Contul meu" înainte de a înscrie o firmă. '
-      + 'Firmele se înregistrează pe o persoană identificată — ea aprobă cine primește acces la ele.');
+    fail(400, 'Ca să înscrii o firmă, completează-ți întâi CNP-ul — firmele se înregistrează pe o '
+      + 'persoană identificată, iar ea aprobă cine primește acces la ele.', 'CNP_LIPSA');
   }
 }
 

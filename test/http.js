@@ -1816,10 +1816,16 @@ async function main() {
     // Firmele proprii se inscriu pe o PERSOANA identificata: fara CNP in profil, cererea e refuzata.
     const faraCnp = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'A Doua Firma PFA', cui: '7777' } });
     eq('fara CNP in profil, nu poti inscrie o firma -> 400', faraCnp.status, 400);
-    ok('mesajul trimite la locul unde se completeaza CNP-ul', /CNP/.test(faraCnp.json.error) && /Contul meu/.test(faraCnp.json.error));
+    ok('mesajul spune ca lipseste CNP-ul', /CNP/.test(faraCnp.json.error));
+    // marcaj STABIL pentru interfata (care sare la campul CNP). Textul se rescrie oricand — o
+    // potrivire pe el ar pica tacut la prima reformulare, si saltul ar disparea fara sa se vada.
+    eq('raspunsul poarta codul pe care il foloseste interfata', faraCnp.json.code, 'CNP_LIPSA');
+    ok('starea „am CNP" ajunge la client, ca sa avertizeze INAINTE de incercare',
+      (await req('GET', '/api/me', { cookie: c1 })).json.cnpSetat === false);
     eq('CNP invalid (cifra de control) e respins', (await req('POST', '/api/profile', { cookie: c1, body: { profil: { cnp: '1900101415239' } } })).status, 400);
     ok('CNP valid se salveaza', (await req('POST', '/api/profile', { cookie: c1, body: { profil: { cnp: '1900101415238' } } })).status === 200);
     ok('CNP-ul NU se intoarce intreg, nici propriului cont', (await req('GET', '/api/profile', { cookie: c1 })).json.profil.cnp === '1900101******');
+    ok('...iar dupa completare, starea din /api/me se schimba', (await req('GET', '/api/me', { cookie: c1 })).json.cnpSetat === true);
     const cuiRau = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Cu CUI gresit', cui: '7778' } });
     eq('CUI cu cifra de control gresita e respins -> 400', cuiRau.status, 400);
     const nouaFirma = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'A Doua Firma PFA', cui: 'RO7777', tipEntitate: 'pfa', tvaPlatitor: false } });

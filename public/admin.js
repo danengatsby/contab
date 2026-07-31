@@ -169,12 +169,32 @@ $('#firmaProprieForm') && $('#firmaProprieForm').addEventListener('submit', asyn
     await deps.init(); deps.onTab('setari');
   } catch (err) {
     st.className = 'status err'; st.textContent = err.message;
+    const cod = (err.data || {}).code;
     if (err.status === 409) {
       const ca = $('#cerereAccesForm');
       if (ca) { ca.cui.value = f.cui.value; ca.scrollIntoView({ behavior: 'smooth', block: 'center' }); ca.cui.focus(); }
     }
+    // „Completeaza-ti CNP-ul" trimitea intr-un card aflat mult mai jos in aceeasi pagina, pe care
+    // trebuia sa-l CAUTI. Un mesaj care numeste un loc fara sa te duca acolo e o sarcina, nu un
+    // indiciu: dupa mutarea firmelor in capul paginii, „Contul meu" a ajuns al saptelea card.
+    if (cod === 'CNP_LIPSA') dutaLaCnp(st);
   }
 });
+
+/** Duce utilizatorul la campul CNP din „Contul meu" si il evidentiaza cateva secunde. */
+function dutaLaCnp(st) {
+  const cnp = $('#profileForm') && $('#profileForm').cnp;
+  if (!cnp) return;
+  if (st) {
+    st.innerHTML += ' <button type="button" class="linkbtn" id="mergiLaCnp">Completează CNP-ul →</button>';
+    const b2 = $('#mergiLaCnp');
+    if (b2) b2.addEventListener('click', () => dutaLaCnp(null));
+  }
+  cnp.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  cnp.focus();
+  cnp.classList.add('camp-cerut');
+  setTimeout(() => cnp.classList.remove('camp-cerut'), 4000);
+}
 // Contabilii isi pot avea si ei propria firma (foarte des, chiar biroul lor). Formularul nu li se
 // arata din start — ei vin sa preia firmele altora — dar nici nu li se inchide usa: un rand de
 // text il deschide. Un cont fara nicio cale spre firma proprie ar fi fost o fundatura.
@@ -193,6 +213,13 @@ export async function renderFirme() {
   const patron = USER.tipCont !== 'contabil';
   $('#firmaProprieBox') && $('#firmaProprieBox').classList.toggle('hidden', !patron);
   $('#firmaProprieLink') && $('#firmaProprieLink').classList.toggle('hidden', patron);
+  // CNP-ul e conditie pentru inscriere: se spune INAINTE de a incerca, cu drum direct la camp
+  const cn = $('#cnpNecesar');
+  if (cn) {
+    cn.classList.toggle('hidden', !!USER.cnpSetat || USER.role === 'admin');
+    const g = $('#cnpNecesarGo');
+    if (g && !g._wired) { g._wired = true; g.addEventListener('click', () => dutaLaCnp(null)); }
+  }
   $('#firmaExport').href = '/api/firme/' + data.firmaActiva + '/export-zip';
   // Contul demo (public, partajat) nu gestioneaza firme si nici setarile contului:
   // fara Firmele mele / mediu de test / restaurare, si fara profil / parola / 2FA / conexiune SPV.
