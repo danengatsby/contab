@@ -55,6 +55,12 @@ const RATES = {
   // Eligibilitate micro (art. 47 Cod fiscal, OUG 156/2024): plafon 100.000 EUR din 2026.
   plafonMicroEur: 100000,
   cursPlafonMicro: 5.0,   // orientativ (legal: cursul de la inchiderea exercitiului precedent)
+  // ── Disciplina platilor in numerar (Legea 70/2015, cu modificarile din OG 16/2022) ──
+  // Plafoane pe PERSOANA si pe ZI, plus soldul maxim de casierie la SFARSITUL FIECAREI ZILE
+  // (art. 4 alin. 4) — nu la sfarsitul perioadei. Erau hardcodate in accounting.js.
+  plafonNumerarJuridic: 5000,   // lei/persoana/zi — incasari si plati cu persoane juridice
+  plafonNumerarFizic: 10000,    // lei/persoana/zi — incasari si plati cu persoane fizice
+  plafonSoldCasa: 50000,        // lei — soldul de casierie admis la sfarsitul fiecarei zile
   // Praguri Intrastat (lei/an, separat pe flux) — Ordin INS (valabile 2024-2026): peste prag,
   // firma devine obligata la declaratia statistica Intrastat pentru fluxul respectiv.
   pragIntrastatIntroduceri: 1000000, // achizitii intracomunitare (arrivals)

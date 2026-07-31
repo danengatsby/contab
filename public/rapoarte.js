@@ -59,7 +59,10 @@ async function loadCashbook() {
       const items = [];
       cc.negative.forEach((n) => items.push(`<li><b>Sold de casă NEGATIV</b> (${fmt(n.sold)} lei) la ${n.data} — imposibil fizic; verifică ordinea operațiunilor sau o încasare lipsă.</li>`));
       cc.plafon.forEach((w) => items.push(`<li><b>Plafon numerar depășit</b> (Legea 70/2015): ${w.tip === 'plata' ? 'plăți' : 'încasări'} de ${fmt(w.suma)} lei cu „${H(w.partener)}" la ${H(w.data)} — limita ${fmt(w.limita)} lei/zi (${w.juridic ? 'pers. juridică' : 'pers. fizică'}).</li>`));
-      if (cc.soldPesteLimita) items.push(`<li>Sold de casierie ${fmt(cc.soldPesteLimita.sold)} lei peste plafonul de ${fmt(cc.soldPesteLimita.limita)} lei — depune excedentul la bancă.</li>`);
+      // Plafonul de casierie se verifică la sfârșitul FIECĂREI zile, deci se enumeră zilele
+      // depășite — un sold final sub limită nu spală o depășire din cursul lunii.
+      (cc.zilePesteLimita || (cc.soldPesteLimita ? [cc.soldPesteLimita] : [])).forEach((z) => items.push(
+        `<li><b>Sold de casierie peste plafon</b> la ${H(z.data || '')}: ${fmt(z.sold)} lei, limita ${fmt(z.limita)} lei/zi (Legea 70/2015 art. 4) — depune excedentul la bancă.</li>`));
       if (items.length) warnHtml = `<div class="warnbox"><span class="wi">⚠️</span><div><b>Control casă:</b><ul data-u="u171">${items.join('')}</ul></div></div>`;
     } catch (_) { /* control optional */ }
   }
