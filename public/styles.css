@@ -555,11 +555,14 @@ body:not(.dark) .kpi.blue{border-left-color:#9c7a55}
   .shell>main{flex:1 1 auto;min-width:0;margin:0;max-width:none;padding:24px 28px}
   .shell>main>.tab{max-width:1120px;margin:0 auto}
   /* navigație verticală: secțiuni COLAPSABILE (acordeon), cea activă deschisă */
-  #tabs>button[data-tab]{text-align:left;width:100%;padding:10px 12px;border-radius:9px;font-size:14px;font-weight:600;
+  /* `:not(.hidden)` NU e cosmetic: fara el, `!important`-ul de aici bate `.hidden{display:none}`,
+     iar intrarile ascunse din JS raman vizibile. Asa aparea „Portofoliu" si la conturile cu o
+     singura firma, desi app.js il ascundea. Aceeasi capcana e semnalata mai jos pentru `.adv`. */
+  #tabs>button[data-tab]:not(.hidden){text-align:left;width:100%;padding:10px 12px;border-radius:9px;font-size:14px;font-weight:600;
     display:flex !important;align-items:center;gap:8px;border-left:3px solid transparent}
-  #tabs button[data-tab]{display:block !important}
+  #tabs button[data-tab]:not(.hidden){display:block !important}
   #tabs>button[data-tab].active{background:rgba(255,255,255,.16);color:#fff;border-left-color:#f0c14b}
-  #tabs .navgroup{display:block !important;position:static !important;width:100%;margin-top:1px}
+  #tabs .navgroup:not(.hidden){display:block !important;position:static !important;width:100%;margin-top:1px}
   /* antet de secțiune — clickabil, cu chevron care se rotește */
   #tabs .navlabel{display:flex !important;align-items:center;justify-content:space-between;gap:6px;text-align:left;width:100%;
     font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:#bdab83;padding:12px 12px 6px;
