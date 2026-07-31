@@ -1261,6 +1261,66 @@ ok('F10 echilibrat cu datorie pe termen lung', f10lt.echilibrat);
   eq('F10 complet: ...si nu atinge creantele comerciale', round2(Rc2['031'] || 0), 0);
 }
 
+// ── CONCORDANTA celor DOUA bilanturi ────────────────────────────────────────────────────────
+// Exista doua mapari, deliberat: `statements.balanceSheetF10` da agregate de AFISAJ (PDF-ul
+// intern, dosarul anual), `bilant.f10Base` da randurile NUMEROTATE ale formularului ANAF. Sunt
+// lucruri diferite — dar trebuie sa spuna acelasi lucru despre aceleasi solduri.
+//
+// Fara verificarea asta au si divergat: reparatia ajustarilor 49x/59x a fost facuta intai doar in
+// `bilant.js`, iar `statements.js` a ramas cu defectul (plus unul propriu: actiunile proprii
+// raportate ca o CREANTA, deci si activul si capitalurile umflate cu valoarea lor). Doua
+// implementari care trebuie sa coincida au nevoie de un test care le confrunta, nu de doua seturi
+// de teste care le descriu separat.
+{
+  const bil = require('../src/bilant');
+  const { round2 } = require('../src/util');
+  const cazuri = [
+    { nume: 'ajustari de creante si de investitii + actiuni proprii',
+      net: { 1012: -200000, 109: 15000, 4111: 100000, 491: -30000, 5081: 50000, 591: -5000, 401: -50000, 5121: 100000, 121: 20000 } },
+    { nume: 'imobilizari nete, stocuri, datorii pe termen lung',
+      net: { 1012: -100000, 2131: 80000, 2813: -20000, 371: 40000, 397: -5000, 1621: -30000, 5121: 40000, 117: -5000 } },
+    { nume: 'avansuri, venituri in avans si provizioane',
+      net: { 1012: -50000, 4091: 6000, 419: -8000, 472: -4000, 151: -10000, 5121: 70000, 117: -4000 } },
+  ];
+  for (const c of cazuri) {
+    const sumD = Object.values(c.net).filter((x) => x > 0).reduce((a, x) => a + x, 0);
+    const sumC = -Object.values(c.net).filter((x) => x < 0).reduce((a, x) => a + x, 0);
+    eq('(premisa) „' + c.nume + '" e o balanta echilibrata', sumD, sumC);
+    const db = { openingBalances: Object.fromEntries(Object.entries(c.net).map(([k, v]) => [k, v >= 0 ? { d: v, c: 0 } : { d: 0, c: -v }])), entries: [] };
+    const af = stmt.balanceSheetF10(db, '2026-12').randuri;
+    const R = bil.f10Base(c.net); bil.f10Totals(R);
+    const g = (k) => round2(R[k] || 0);
+    eq('concordanta „' + c.nume + '": active imobilizate', af.A, g('004'));
+    eq('concordanta „' + c.nume + '": stocuri', af.B_stocuri, g('005'));
+    eq('concordanta „' + c.nume + '": creante', af.B_creante, g('006'));
+    eq('concordanta „' + c.nume + '": investitii pe termen scurt', af.B_investTS, g('007'));
+    eq('concordanta „' + c.nume + '": casa si conturi la banci', af.B_casa, g('008'));
+    eq('concordanta „' + c.nume + '": datorii curente', af.D_datorii, g('013'));
+    eq('concordanta „' + c.nume + '": datorii pe termen lung', af.G_datoriiLT, g('016'));
+    eq('concordanta „' + c.nume + '": provizioane', af.H_provizioane, g('017'));
+    eq('concordanta „' + c.nume + '": venituri in avans', af.I_venitAvans, g('018'));
+    eq('concordanta „' + c.nume + '": capitaluri proprii', af.J_capital, g('049'));
+  }
+}
+
+// ── Fluxul de trezorerie (F30, metoda directa) ──────────────────────────────────────────────
+{
+  const cfDb2 = { openingBalances: { 5121: { d: 20000, c: 0 } }, entries: [
+    { id: 'cf1', data: '2026-03-05', period: '2026-03', tipNume: 'Avans incasat', lines: [{ debit: '5121', credit: '419', suma: 10000 }] },
+    { id: 'cf2', data: '2026-03-10', period: '2026-03', tipNume: 'Plata furnizor', lines: [{ debit: '401', credit: '5121', suma: 4000 }] },
+    { id: 'cf3', data: '2026-03-20', period: '2026-03', tipNume: 'Incasare client', lines: [{ debit: '5121', credit: '4111', suma: 7000 }] },
+  ] };
+  const cf2 = stmt.cashFlow(cfDb2, 2026);
+  // Avansul incasat de la un client e bani INTRATI de la un client. Grupat cu 40x, aparea ca suma
+  // POZITIVA pe linia de plati catre furnizori — iar o linie de plati nu poate fi pozitiva.
+  eq('avansul de la client intra la incasari de la clienti', cf2.ex_clienti, 17000);
+  eq('plati catre furnizori: doar plata reala, cu semnul ei', cf2.ex_furnizoriAngajati, -4000);
+  ok('linia de plati e negativa, cum trebuie', cf2.ex_furnizoriAngajati < 0);
+  // invariantul de control ramane (era adevarat si INAINTE de reparatie — de asta n-o putea prinde)
+  eq('variatia de numerar = fluxul net', cf2.variatie, cf2.variatieControl);
+  ok('fluxul se declara echilibrat', cf2.echilibrat);
+}
+
 section('Calcul salarial (payroll, brut 5000)');
 const pay = fiscal.payroll(5000);
 eq('CAS 25% retinut', pay.cas, 1250);
