@@ -48,6 +48,10 @@ function createFirma(user, b) {
     tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
     tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
   }, { id });
+  // PROPRIETARUL firmei: cine a creat-o. El — si numai el — aproba cererile de acces ale altor
+  // conturi (contabili care preiau firma). Pana acum accesul era o simpla lista `user.firme`, in
+  // care toti membrii erau egali si nu exista pe cine intreba.
+  if (user.role !== 'admin') f.ownerId = user.id;
   // Billing per-firma: firma noua a unui utilizator porneste cu proba de 30 de zile (apoi abonament).
   // Firmele create de admin sunt active direct (adminul nu e taxat).
   f.subscription = user.role === 'admin'
@@ -60,6 +64,79 @@ function createFirma(user, b) {
   user.firmaActiva = id;
   db.save();
   return { firma: f, firmaActiva: id };
+}
+
+// ───────────────────── CERERI DE ACCES LA O FIRMA EXISTENTA ─────────────────────
+// Un contabil care preia o firma nu si-o mai creeaza a doua oara (ar fi o firma goala, dublura),
+// ci CERE acces la cea existenta. Cererea o aproba PROPRIETARUL (firma.ownerId) — accesul la
+// datele contabile ale altcuiva nu se ia, se primeste.
+
+/** Normalizeaza CUI-ul pentru comparatie: fara prefix RO, fara spatii/puncte. */
+function cuiKey(v) { return String(v == null ? '' : v).toUpperCase().replace(/^RO/, '').replace(/[^0-9A-Z]/g, ''); }
+
+/**
+ * Cerere de acces la firma cu CUI-ul dat.
+ * Raspunsul e VOIT identic fie ca firma exista sau nu: altfel ecranul devine un oracol prin care
+ * oricine cu un cont poate afla ce firme sunt in sistem, incercand CUI-uri. Acelasi rationament
+ * ca la resetarea parolei.
+ */
+function cerereAcces(user, cui) {
+  reqNotDemo(user);
+  const key = cuiKey(cui);
+  if (!key) fail(400, 'Completează CUI-ul firmei.');
+  const d = db.get();
+  d.accessRequests = d.accessRequests || [];
+  const generic = { ok: true, message: 'Dacă firma există în aplicație, proprietarul ei a primit cererea ta și îți va răspunde.' };
+  const f = (d.firme || []).find((x) => cuiKey(x.cui) === key);
+  // firma inexistenta, fara proprietar (creata de admin), sau esti deja membru -> acelasi raspuns
+  if (!f || !f.ownerId) return generic;
+  if ((user.firme || []).includes(f.id) || f.ownerId === user.id) return generic;
+  // o cerere in asteptare e de ajuns; re-trimiterea nu creeaza duplicate si nu spune nimic in plus
+  const existenta = d.accessRequests.find((r) => r.firmaId === f.id && r.userId === user.id && r.status === 'in_asteptare');
+  if (existenta) return generic;
+  d.accessRequests.push({
+    id: db.nextId('acc'),
+    firmaId: f.id, userId: user.id, ts: new Date().toISOString(), status: 'in_asteptare',
+  });
+  db.save();
+  return generic;
+}
+
+/** Cererile in asteptare pentru firmele al caror PROPRIETAR e utilizatorul. */
+function cereriPrimite(user) {
+  const d = db.get();
+  const aleMele = new Set((d.firme || []).filter((f) => f.ownerId === user.id).map((f) => f.id));
+  const out = (d.accessRequests || [])
+    .filter((r) => r.status === 'in_asteptare' && aleMele.has(r.firmaId))
+    .map((r) => {
+      const u = (d.users || []).find((x) => x.id === r.userId) || {};
+      const f = db.getFirma(r.firmaId) || {};
+      return { id: r.id, firmaId: r.firmaId, firma: f.nume || '', ts: r.ts, username: u.username || '', email: u.email || '' };
+    });
+  return capList(out, 0, 'cereri-acces').items;
+}
+
+/** Aprobare/respingere — DOAR proprietarul firmei din cerere. */
+function decideCerere(user, id, aprob) {
+  reqNotDemo(user);
+  const d = db.get();
+  const r = (d.accessRequests || []).find((x) => String(x.id) === String(id));
+  if (!r || r.status !== 'in_asteptare') fail(404, 'Cererea nu mai există sau a fost deja rezolvată.');
+  const f = db.getFirma(r.firmaId);
+  if (!f) fail(404, 'Firma nu mai există.');
+  // garda esentiala: proprietarul, nu „oricine are acces" — altfel un colaborator adaugat ieri
+  // ar putea da mai departe acces la datele patronului
+  if (f.ownerId !== user.id) fail(403, 'Doar proprietarul firmei poate decide cererile de acces.');
+  r.status = aprob ? 'aprobata' : 'respinsa';
+  r.decidedBy = user.id; r.decidedAt = new Date().toISOString();
+  if (aprob) {
+    const u = (d.users || []).find((x) => x.id === r.userId);
+    if (!u) fail(404, 'Contul care a cerut accesul nu mai există.');
+    u.firme = u.firme || [];
+    if (!u.firme.includes(f.id)) u.firme.push(f.id);
+  }
+  db.save();
+  return { ok: true, status: r.status, firma: f.nume || '', firmaId: f.id };
 }
 
 /** Import (JSON sau din ZIP, prin importZip): mode replace SUPRASCRIE firma activa — cu plasa
@@ -401,7 +478,7 @@ function removeCollaborator(fid, uid) {
 }
 
 module.exports = {
-  trialDinNou,
+  trialDinNou, cerereAcces, cereriPrimite, decideCerere,
   reqNotDemo, reqAccess, reqAdmin,
   createFirma, importBundle, importZip, testClone,
   exportBundle, exportZip, exportAllZip, firmaSlug,

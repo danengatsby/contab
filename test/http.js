@@ -1920,6 +1920,68 @@ async function main() {
     const subDupa = (await req('GET', '/api/subscription', { cookie: c1 })).json;
     ok('starea spune ca proba nu mai e disponibila', subDupa.firma.maiPoateProba === false && subDupa.firma.trialCount === 2);
     eq('demo NU poate cere proba', (await req('POST', '/api/firme/1/trial', { cookie: cDemo })).status, 403);
+
+    // ── CERERI DE ACCES la o firma EXISTENTA (contabil care preia firma unui client) ──
+    // Doua garantii se testeaza explicit: raspunsul e IDENTIC fie ca firma exista sau nu (altfel
+    // ecranul devine un mod de a afla ce firme sunt in sistem, incercand CUI-uri), si decide
+    // PROPRIETARUL, nu oricine are acces (un colaborator n-are voie sa dea mai departe accesul).
+    {
+      const patron = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FIRMA PATRON SRL', cui: 'RO5550001', username: 'patron-t', password: 'ParolaBuna2026' } });
+      ok('patron: firma inscrisa', patron.status === 200 && patron.json.ok);
+      const fidP = patron.json.firma.id;
+      const contabil = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'BIROU CONTABIL SRL', cui: 'RO5550002', username: 'contabil-t', password: 'ParolaBuna2026' } });
+      ok('contabil: cont propriu', contabil.status === 200);
+
+      // raspuns IDENTIC pentru firma care exista si pentru una inventata
+      const exista = await req('POST', '/api/firme/cerere-acces', { cookie: contabil.cookie, body: { cui: 'RO5550001' } });
+      const nuExista = await req('POST', '/api/firme/cerere-acces', { cookie: contabil.cookie, body: { cui: 'RO9999999' } });
+      ok('cerere: acelasi raspuns pentru firma reala si inexistenta (fara enumerare)',
+        exista.status === 200 && nuExista.status === 200 && exista.text === nuExista.text);
+
+      // contabilul NU are inca acces
+      const inainte = (await req('GET', '/api/firme', { cookie: contabil.cookie })).json.firme.map((f) => f.id);
+      ok('cerere trimisa nu da acces prin ea insasi', !inainte.includes(fidP));
+
+      // patronul vede cererea; contabilul nu vede nimic (nu e proprietar)
+      const cereriPatron = (await req('GET', '/api/firme/cereri', { cookie: patron.cookie })).json.cereri;
+      ok('patronul vede cererea', cereriPatron.length === 1 && cereriPatron[0].username === 'contabil-t' && cereriPatron[0].firmaId === fidP);
+      eq('contabilul nu vede cereri (nu e proprietar)', (await req('GET', '/api/firme/cereri', { cookie: contabil.cookie })).json.cereri.length, 0);
+
+      // cine NU e proprietar nu poate decide — nici macar cel care a cerut
+      eq('cel care a cerut nu-si poate aproba singur cererea',
+        (await req('POST', '/api/firme/cereri/' + cereriPatron[0].id, { cookie: contabil.cookie, body: { aprob: true } })).status, 403);
+
+      // aprobarea patronului da accesul
+      const ap = await req('POST', '/api/firme/cereri/' + cereriPatron[0].id, { cookie: patron.cookie, body: { aprob: true } });
+      ok('patronul aproba', ap.status === 200 && ap.json.status === 'aprobata');
+      ok('dupa aprobare contabilul are firma', (await req('GET', '/api/firme', { cookie: contabil.cookie })).json.firme.some((f) => f.id === fidP));
+      eq('cererea nu se mai poate decide a doua oara',
+        (await req('POST', '/api/firme/cereri/' + cereriPatron[0].id, { cookie: patron.cookie, body: { aprob: true } })).status, 404);
+      eq('lista patronului e goala dupa rezolvare', (await req('GET', '/api/firme/cereri', { cookie: patron.cookie })).json.cereri.length, 0);
+
+      // Cazul care da sens cerintei „numai cu acordul patronului": contabilul are ACUM acces la
+      // firma, dar tot NU poate aproba cererea altcuiva. Altfel accesul s-ar propaga singur —
+      // primul invitat ar putea invita mai departe, iar patronul ar pierde controlul.
+      const c3 = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'AL TREILEA SRL', cui: 'RO5550004', username: 'contabil3-t', password: 'ParolaBuna2026' } });
+      await req('POST', '/api/firme/cerere-acces', { cookie: c3.cookie, body: { cui: 'RO5550001' } });
+      const cerT = (await req('GET', '/api/firme/cereri', { cookie: patron.cookie })).json.cereri;
+      ok('patronul vede cererea a treia', cerT.length === 1);
+      eq('un COLABORATOR cu acces NU poate aproba cererea altcuiva (doar proprietarul)',
+        (await req('POST', '/api/firme/cereri/' + cerT[0].id, { cookie: contabil.cookie, body: { aprob: true } })).status, 403);
+      ok('...iar al treilea chiar NU a primit acces',
+        !(await req('GET', '/api/firme', { cookie: c3.cookie })).json.firme.some((f) => f.id === fidP));
+      await req('POST', '/api/firme/cereri/' + cerT[0].id, { cookie: patron.cookie, body: { aprob: false } }); // curatenie
+
+      // respingerea NU da acces
+      const c2 = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'ALT BIROU SRL', cui: 'RO5550003', username: 'contabil2-t', password: 'ParolaBuna2026' } });
+      await req('POST', '/api/firme/cerere-acces', { cookie: c2.cookie, body: { cui: 'RO5550001' } });
+      const cer2 = (await req('GET', '/api/firme/cereri', { cookie: patron.cookie })).json.cereri;
+      await req('POST', '/api/firme/cereri/' + cer2[0].id, { cookie: patron.cookie, body: { aprob: false } });
+      ok('respingerea nu da acces', !(await req('GET', '/api/firme', { cookie: c2.cookie })).json.firme.some((f) => f.id === fidP));
+
+      eq('demo nu poate cere acces', (await req('POST', '/api/firme/cerere-acces', { cookie: cDemo, body: { cui: 'RO5550001' } })).status, 403);
+      eq('CUI gol -> 400', (await req('POST', '/api/firme/cerere-acces', { cookie: contabil.cookie, body: { cui: '  ' } })).status, 400);
+    }
     // repunem firma pe expirat-cu-o-proba, ca restul testelor (abonarea) sa continue de unde erau
     await req('POST', '/api/firme/' + tf + '/subscription', { cookie: la.cookie, body: { subscription: { plan: 'trial', trialEndsAt: '2026-01-01T00:00:00Z' } } });
     // abonare pe FIRMA: activeaza abonamentul firmei pe luna curenta + deblocheaza

@@ -42,6 +42,23 @@ module.exports = function register(app, ctx) {
 
   // Export/import complet al unei firme (migrare/arhivare) — inainte de ruta /:id ca sa nu fie prinse de ea.
   // mode=replace: SUPRASCRIE firma activa cu datele din copie (cu plasa de siguranta salvata pe server).
+  // ── Cereri de acces la o firma EXISTENTA (contabil care preia firma unui client) ──
+  // Inregistrate INAINTEA rutelor cu parametru: `/api/firme/:id` se potriveste si cu
+  // „cerere-acces", deci le-ar inghiti si ar raspunde „Fara acces la aceasta firma".
+  // Raspunsul e generic prin constructie (vezi serviciul): ruta nu are voie sa devina un oracol
+  // prin care se afla ce firme exista in sistem.
+  app.post('/api/firme/cerere-acces', (req, res) => run(res, () => {
+    const r = svc.cerereAcces(req.user, (req.body || {}).cui);
+    logAudit('firma.cerere-acces', 'cerere trimisa (CUI ' + String((req.body || {}).cui || '').slice(0, 20) + ')', { req, firmaId: null });
+    return r;
+  }));
+  app.get('/api/firme/cereri', (req, res) => run(res, () => ({ cereri: svc.cereriPrimite(req.user) })));
+  app.post('/api/firme/cereri/:id', (req, res) => run(res, () => {
+    const r = svc.decideCerere(req.user, req.params.id, !!(req.body || {}).aprob);
+    logAudit('firma.cerere-' + r.status, 'firma ' + r.firmaId, { req, firmaId: r.firmaId });
+    return r;
+  }));
+
   app.post('/api/firme/import', (req, res) => run(res, () => {
     const bundle = (req.body && req.body.firma) ? req.body : (req.body && req.body.bundle);
     const r = svc.importBundle(req.user, bundle, { replace: req.query.mode === 'replace', activeFid: activeId(req) });

@@ -142,6 +142,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
     d.partners[fid] = {}; d.openingBalances[fid] = {};
     const { salt, hash } = authlib.hashPassword(password);
     const user = { id: db.nextUserId(), username, email: String(b.email || '').trim(), salt, hash, role: 'user', firme: [fid], firmaActiva: fid };
+    firma.ownerId = user.id; // proprietarul firmei: cel care a inscris-o (aproba cererile de acces)
     d.users.push(user);
     // Daca a platit ca „guest" inainte de inscriere, leaga abonamentul dupa email (Stripe) — firma devine activa.
     const pIdx = plans.findPending(d.settings.pendingSubs, user.email);
