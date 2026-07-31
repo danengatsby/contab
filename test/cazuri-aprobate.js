@@ -120,6 +120,25 @@ const CAZURI = [
     aprobare: null,
   },
   {
+    id: 'SAL-06', arie: 'Salarii',
+    titlu: 'Suma neimpozabila din salariul minim (4.050 lei brut, martie)',
+    temei: 'Art. 76 Cod fiscal — 300 lei (S1) / 200 lei (S2) neimpozabili din salariul minim',
+    intrare: { brut: 4050, luna: '2026-03', neimpozabil: 300 },
+    asteptat: { neimpozabil: 300, cas: 937.5, cass: 375, baza: 2437.5, impozit: 243.75, cam: 84.38, net: 2493.75 },
+    calc: (i) => {
+      const nz = fiscal.neimpozabilMinim(i.brut, i.brut, i.luna);
+      const p = fiscal.payroll(i.brut, 0, { neimpozabilMinim: nz.suma });
+      return { neimpozabil: nz.suma, cas: p.cas, cass: p.cass, baza: p.baza, impozit: p.impozit, cam: p.cam, net: p.net };
+    },
+    observatii: 'INTERPRETARE de confirmat: suma nu e doar NEIMPOZABILA, ci si EXCEPTATA DE LA CONTRIBUTII — '
+      + 'iese din baza de CAS, CASS si CAM, nu doar din cea de impozit. Cifrele de mai sus pornesc de la '
+      + 'baza redusa 3.750 = 4.050 - 300. Daca revizorul stabileste ca facilitatea priveste doar impozitul, '
+      + 'atunci CAS = 1.012,50, CASS = 405 si CAM = 91,13, iar netul scade la 2.369,25 + 30 = 2.399,25. '
+      + 'Conditiile de acordare (salariul de baza = salariul minim; brutul lunii <= minim + suma) sunt in '
+      + '`fiscal.neimpozabilMinim`; peste plafon facilitatea cade INTEGRAL, nu proportional.',
+    aprobare: null,
+  },
+  {
     id: 'SAL-02', arie: 'Salarii',
     titlu: 'Tichete de masa 400 lei peste un brut de 5.000 lei',
     temei: 'Art. 76 alin. (3) si art. 157 Cod fiscal — tichetele suporta CASS si impozit, NU CAS',

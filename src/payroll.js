@@ -25,10 +25,14 @@ function mediaIstoric(a, history, period, luni) {
  *  `history` (payrollHistory, optional) da media ultimelor 6 luni pentru baza concediului medical. */
 function statePlata(angajati, period, history) {
   const rows = [];
-  const t = { brut: 0, neimpozabil: 0, deducere: 0, tichete: 0, avantaje: 0, spor: 0, cas: 0, cass: 0, impozit: 0, cam: 0, net: 0, avans: 0, retineri: 0, restPlata: 0, costTotal: 0, cmAngajator: 0, cmFnuass: 0, indemnizatieCM: 0, indemnizatieCO: 0, casAngajator: 0, cassAngajator: 0 };
+  const t = { brut: 0, neimpozabil: 0, neimpozabilMinim: 0, deducere: 0, tichete: 0, avantaje: 0, spor: 0, cas: 0, cass: 0, impozit: 0, cam: 0, net: 0, avans: 0, retineri: 0, restPlata: 0, costTotal: 0, cmAngajator: 0, cmFnuass: 0, indemnizatieCM: 0, indemnizatieCO: 0, casAngajator: 0, cassAngajator: 0 };
   for (const a of angajati || []) {
     const spor = round2(Number(a.spor) || 0);
     const brut = round2((Number(a.salariuBrut) || 0) + spor);
+    // `a.neimpozabil` = alte venituri neimpozabile, introduse de contabil (asa e si eticheta din
+    // formular: „Venit neimpozabil suplimentar"). Facilitatea din salariul minim NU se ia de aici:
+    // se DERIVA mai jos, fiindca depinde de salariu si de luna, iar un cuantum stocat ar ramane
+    // adevarat dupa ce salariul creste.
     const neimpozabil = round2(Number(a.neimpozabil) || 0);
     // Deducerea personala se calculeaza cand angajatul are datele (persoane in intretinere / <=26 ani / copii);
     // altfel se pastreaza comportamentul anterior (doar suma neimpozabila manuala).
@@ -70,11 +74,16 @@ function statePlata(angajati, period, history) {
     // in sarcina angajatorului; exceptii legale (elevi/studenti, pensionari, ucenici, dizabilitate,
     // cumul de norma intreaga la alt angajator) — bifate pe angajat.
     const bazaMinima = (a.normaPartiala && !a.scutitNormaPartiala) ? fiscal.salariuMinimLa(period) : 0;
-    const p = fiscal.payroll(brutTaxabil, deducere, { tichete, avantaje, sector, cmAngajator: cmA, cmFnuass: cmF, bazaMinima });
+    // Suma neimpozabila din salariul minim (art. 76): derivata din salariul de BAZA contractual
+    // (`a.salariuBrut`, fara spor) si din brutul efectiv al lunii. Nu e o deducere — iese din toate
+    // bazele, deci se trimite separat de `deducere`.
+    const nm = fiscal.neimpozabilMinim(brutTaxabil, round2(Number(a.salariuBrut) || 0), period);
+    const p = fiscal.payroll(brutTaxabil, deducere, { tichete, avantaje, sector, cmAngajator: cmA, cmFnuass: cmF, bazaMinima, neimpozabilMinim: nm.suma });
     const restPlata = round2(p.net - avans - retineri);
     rows.push({
       id: a.id, nume: a.nume || '', cnp: a.cnp || '', functie: a.functie || '', persoane: a.persoane != null ? Number(a.persoane) : null, sub26: !!a.sub26, copii: Number(a.copii) || 0,
-      brut: brutTaxabil, salariuBaza: brut, salariuZileLucrate, spor, neimpozabil, deducere: dp, tichete, avantaje, sector, scutire: p.scutImpozit || p.scutCass, overPlafon: p.overPlafon,
+      brut: brutTaxabil, salariuBaza: brut, salariuZileLucrate, spor, neimpozabil, deducere: dp,
+      neimpozabilMinim: nm.suma, neimpozabilMinimMotiv: nm.motiv, tichete, avantaje, sector, scutire: p.scutImpozit || p.scutCass, overPlafon: p.overPlafon,
       zileCM: zcm, procentCM: zcm ? procentCM : 0, mediaCM, cmAngajator: cmA, cmFnuass: cmF, indemnizatieCM: round2(cmA + cmF),
       zileCO: zco, mediaCO, indemnizatieCO,
       normaPartiala: !!(a.normaPartiala && !a.scutitNormaPartiala), casAngajator: p.casAngajator, cassAngajator: p.cassAngajator,
@@ -85,6 +94,7 @@ function statePlata(angajati, period, history) {
     t.indemnizatieCO = round2(t.indemnizatieCO + indemnizatieCO);
     t.casAngajator = round2(t.casAngajator + p.casAngajator); t.cassAngajator = round2(t.cassAngajator + p.cassAngajator);
     t.brut = round2(t.brut + brutTaxabil); t.neimpozabil = round2(t.neimpozabil + neimpozabil); t.spor = round2(t.spor + spor);
+    t.neimpozabilMinim = round2((t.neimpozabilMinim || 0) + nm.suma);
     t.cas = round2(t.cas + p.cas); t.cass = round2(t.cass + p.cass); t.impozit = round2(t.impozit + p.impozit);
     t.cam = round2(t.cam + p.cam); t.net = round2(t.net + p.net); t.costTotal = round2(t.costTotal + p.costTotal);
     t.avans = round2(t.avans + avans); t.retineri = round2(t.retineri + retineri); t.restPlata = round2(t.restPlata + restPlata);
