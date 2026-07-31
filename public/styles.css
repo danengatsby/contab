@@ -690,9 +690,22 @@ body.dark .imper-banner button{background:#ffd778;color:#2a2008}
 .typing .dots i:nth-child(3){animation-delay:.4s}
 @keyframes typedot{0%,60%,100%{opacity:.25}30%{opacity:1}}
 /* ───────────── Tur ghidat (prima logare) ───────────── */
+/* Fond INCHIS, in ambele teme: turul e un strat peste aplicatie, nu o parte din ea — se vede ca
+   atare si nu se topeste in pagina. Fundalul si textul se seteaza IMPREUNA (aceeasi lectie ca la
+   butoanele din bara laterala: o regula care schimba doar fundalul lasa textul mostenit si iese
+   alb pe alb). Selectoarele au 3 clase, deci bat `body:not(.dark) .btn` / `body.dark .btn` (2
+   clase + 1 element) indiferent de ordinea din fisier. */
 .tour-card{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:250;
-  background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;
-  padding:18px 22px;width:410px;max-width:92%;box-shadow:0 18px 50px rgba(0,0,0,.4);text-align:center}
+  background:#15140f;color:#f4f1e8;border:1px solid rgba(255,255,255,.16);border-radius:14px;
+  padding:18px 22px;width:410px;max-width:92%;box-shadow:0 18px 50px rgba(0,0,0,.55);text-align:center}
+.tour-card h3{color:#fff}
+.tour-card #tourText{color:#cfc9ba}                     /* bate `.muted`, care e gri inchis */
+.tour-card .tour-progress i{background:rgba(255,255,255,.3)}
+.tour-card .tour-progress i.on{background:var(--accent)}
+.tour-card .tour-actions .btn{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.28)}
+.tour-card .tour-actions .btn:hover{background:rgba(255,255,255,.26);border-color:rgba(255,255,255,.45)}
+.tour-card .tour-actions .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tour-card .tour-actions .btn.primary:hover{background:var(--accent2);border-color:var(--accent2)}
 .tour-card.hidden{display:none}
 .tour-ic{font-size:38px;line-height:1;margin-bottom:4px}
 .tour-card h3{margin:2px 0 8px;font-size:18px}
