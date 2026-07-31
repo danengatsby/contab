@@ -1704,6 +1704,37 @@ const lsU = leasingSchedule(10000, 7, 13, 'anuitati'); // durata „urata"
 eq('anuitati durata urata: principal = P (inchidere exacta)', lsU.totals.principal, 10000);
 eq('anuitati durata urata: sold final 0', lsU.rows[6].sold, 0);
 
+// ── Contractul: graficul legat de LUNA calendaristica ───────────────────────────────────────
+// `leasingSchedule` numeroteaza ratele 1..n, atat. Ca factura lunara sa se poata completa
+// singura, rata trebuie gasita dupa luna in care se emite — contabilul are in mana factura lui
+// martie, nu „rata 15".
+{
+  const { round2 } = require('../src/util');
+  const lg = require('../src/leasing');
+  const contract = { denumire: 'Autoutilitara', principal: 50000, months: 36, dobandaAnuala: 9,
+    metoda: 'anuitati', dataPrimeiRate: '2026-03-15', cotaTva: 21 };
+  const sch = lg.contractSchedule(contract);
+  eq('contract: 36 de rate', sch.rows.length, 36);
+  eq('prima rata cade in luna primei plati', sch.rows[0].period, '2026-03');
+  eq('ultima rata, 35 de luni mai tarziu', sch.rows[35].period, '2029-02');
+  eq('graficul se inchide exact pe principal', sch.totals.principal, 50000);
+  // ziua din `dataPrimeiRate` nu trebuie sa faca luna sa sara (31 ian + 1 luna = 2 martie)
+  eq('31 ianuarie + o luna ramane februarie', lg.periodOfInstallment('2026-01-31', 2), '2026-02');
+  // TVA-ul se aplica pe principal SI pe dobanda (dobanda e contravaloarea finantarii)
+  const r1 = lg.installmentFor(contract, '2026-03');
+  eq('TVA pe principal + dobanda', r1.tva, round2((r1.principal + r1.dobanda) * 0.21));
+  eq('totalul ratei include TVA', r1.total, round2(r1.rata + r1.tva));
+  // suma platilor de principal pe tot contractul = valoarea finantata (nu se pierde niciun ban)
+  eq('suma principalelor = valoarea finantata', round2(sch.rows.reduce((s, r) => s + r.principal, 0)), 50000);
+  // o luna din afara contractului NU intoarce o rata goala — ar posta un articol fara continut
+  eq('luna dinaintea contractului: fara rata', lg.installmentFor(contract, '2026-02'), null);
+  eq('luna de dupa ultima rata: fara rata', lg.installmentFor(contract, '2029-03'), null);
+  // fara dobanda, rata e principal curat
+  const zero = lg.contractSchedule({ principal: 12000, months: 12, dobandaAnuala: 0, metoda: 'anuitati', dataPrimeiRate: '2026-01-10', cotaTva: 0 });
+  eq('dobanda 0: rata = principal/luni', zero.rows[0].principal, 1000);
+  eq('dobanda 0: fara TVA daca nu s-a dat cota', zero.totals.tva, 0);
+}
+
 section('Provizioane pentru riscuri si cheltuieli (151)');
 const vProv = { entries: [
   mkTva('provizion_constituire', { suma: 5000, explicatie: 'Litigiu' }, '2026-12-15'),

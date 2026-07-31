@@ -19,7 +19,12 @@ module.exports = [
     id: 'factura_leasing',
     nume: 'Factura rata de leasing (principal + dobanda + TVA)',
     grup: 'Leasing',
+    // Campul `leasingRata` NU intra in monografie: alege un contract si o luna, iar formularul isi
+    // completeaza singur principalul, dobanda si TVA-ul din graficul contractului (ruta
+    // /api/leasing-contracts/:id/rata). Cifrele raman editabile — o rata restanta sau o
+    // regularizare nu trebuie sa fie blocata de grafic — si `build` ramane pur, pe ele.
     fields: [F.data, F.partener, F.cuiFurnizor, F.document,
+      { name: 'leasingRata', label: 'Preia rata din contractul de leasing', type: 'leasing' },
       { name: 'principal', label: 'Principal (rata capital, 167)', type: 'number', required: true },
       { name: 'dobanda', label: 'Dobanda (666)', type: 'number', default: 0 },
       F.tva, F.cota],

@@ -378,8 +378,9 @@ function renderFields(values) {
     else if (f.type === 'items') input = `<div class="items-editor" id="${id}"><div class="items-rows"></div><button type="button" class="btn ghost small additem">＋ adaugă linie</button></div>`;
     else if (f.type === 'stoc') input = `<div class="stoc-editor" id="${id}"><div class="stoc-rows"></div><button type="button" class="btn ghost small addstoc">＋ produs din stoc</button><div class="muted" data-u="u25">Costul mărfii vândute (607=371) se calculează automat la <b>CMP</b>, la salvare.</div></div>`;
     else if (f.type === 'checkbox') input = `<input id="${id}" type="checkbox" ${v && v !== 'false' ? 'checked' : ''} data-u="u26" />`;
+    else if (f.type === 'leasing') input = `<div class="leasing-picker" id="${id}"><select class="lp-contract"><option value="">— alege contractul —</option></select><input class="lp-period" type="month" /><button type="button" class="btn ghost small lp-load">preia rata</button><span class="lp-msg muted"></span></div>`;
     else input = `<input id="${id}" type="text" value="${(v || '').toString().replace(/"/g, '&quot;')}" />`;
-    const wide = (f.name === 'explicatie' || f.type === 'account' || f.type === 'select' || f.type === 'items' || f.type === 'stoc' || f.type === 'checkbox') ? ' full' : '';
+    const wide = (f.name === 'explicatie' || f.type === 'account' || f.type === 'select' || f.type === 'items' || f.type === 'stoc' || f.type === 'checkbox' || f.type === 'leasing') ? ' full' : '';
     box.insertAdjacentHTML('beforeend', `<label class="${wide ? 'full' : ''}">${f.label}${input}</label>`);
   });
   // initializeaza editoarele de linii
@@ -395,6 +396,7 @@ function renderFields(values) {
     const name = ed.id.replace('fld_', '');
     initStocEditor(ed, Array.isArray(values[name]) ? values[name] : []);
   });
+  box.querySelectorAll('.leasing-picker').forEach((ed) => initLeasingPicker(ed));
   box.querySelectorAll('input,select').forEach((el) => el.addEventListener('input', updatePreview));
   updatePreview();
 }
@@ -424,6 +426,47 @@ async function ensureStocCache() {
   catch (_) { STOCCACHE = STOCCACHE || { products: [], gestiuni: [] }; }
   return STOCCACHE;
 }
+/**
+ * Selectorul de rată de leasing: alegi contractul și luna, iar formularul își completează
+ * principalul, dobânda și TVA-ul din graficul contractului.
+ *
+ * Cifrele rămân EDITABILE după preluare — o rată restantă, o regularizare sau un comision
+ * facturat odată cu rata nu trebuie blocate de grafic. Selectorul nu intră în monografie:
+ * articolul se compune tot pe server, din câmpurile numerice (`POST /api/preview`).
+ */
+async function initLeasingPicker(ed) {
+  const sel = ed.querySelector('.lp-contract');
+  const per = ed.querySelector('.lp-period');
+  const msg = ed.querySelector('.lp-msg');
+  // luna implicită = luna documentului, dacă e deja completată
+  const dataDoc = ($('#fld_data') || {}).value || '';
+  if (dataDoc) per.value = dataDoc.slice(0, 7);
+  let contracte = [];
+  try { contracte = await api('/api/leasing-contracts'); } catch (_) { contracte = []; }
+  if (!contracte.length) { msg.textContent = 'Niciun contract salvat — adaugă unul în „Mijloace fixe → Contracte de leasing".'; return; }
+  sel.insertAdjacentHTML('beforeend', contracte.map((c) =>
+    `<option value="${H(c.id)}">${H(c.denumire)}${c.partener ? ' — ' + H(c.partener) : ''} (${fmt(c.principal)} lei / ${c.months} rate)</option>`).join(''));
+
+  const preia = async () => {
+    msg.textContent = '';
+    if (!sel.value) { msg.textContent = 'Alege întâi contractul.'; return; }
+    if (!per.value) { msg.textContent = 'Alege luna ratei.'; return; }
+    try {
+      const r = await api(`/api/leasing-contracts/${encodeURIComponent(sel.value)}/rata?period=${encodeURIComponent(per.value)}`);
+      const set = (name, val) => { const el = $('#fld_' + name); if (el && val != null && val !== '') el.value = val; };
+      set('principal', r.rata.principal);
+      set('dobanda', r.rata.dobanda);
+      set('tva', r.rata.tva);
+      set('cota', r.contract.cotaTva);
+      set('partener', r.contract.partener);
+      set('cuiFurnizor', r.contract.cui);
+      msg.textContent = `Rata ${r.rata.luna}/${contracte.find((c) => c.id === sel.value).months} — sold rămas ${fmt(r.rata.sold)} lei.`;
+      updatePreview();
+    } catch (e) { msg.textContent = e.message; }
+  };
+  ed.querySelector('.lp-load').addEventListener('click', preia);
+}
+
 async function initStocEditor(ed, initLines) {
   await ensureStocCache();
   (initLines || []).forEach((l) => addStocRow(ed, l));

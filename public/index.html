@@ -1153,6 +1153,30 @@
         </form>
         <div id="lsView" class="tablewrap" data-u="u8"></div>
       </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Contracte de leasing</h2>
+        </div>
+        <p class="muted">Un contract salvat aici alimentează factura de rată: în „Documente → Factură rată de leasing" alegi contractul și luna, iar principalul, dobânda și TVA-ul se completează din grafic.</p>
+        <form id="lcForm" class="dyn">
+          <input type="hidden" name="id" />
+          <label>Denumire contract <input name="denumire" required placeholder="Autoutilitară X, contract 1234" /></label>
+          <label>Locator (furnizor) <input name="partener" /></label>
+          <label>CUI locator <input name="cui" /></label>
+          <label>Nr. contract <input name="document" /></label>
+          <label>Valoare finanțată <input name="principal" type="number" step="0.01" required /></label>
+          <label>Număr rate (luni) <input name="months" type="number" required /></label>
+          <label>Dobândă anuală (%) <input name="dobandaAnuala" type="number" step="0.01" value="0" /></label>
+          <label>Data primei rate <input name="dataPrimeiRate" type="date" required /></label>
+          <label>Cotă TVA (%) <input name="cotaTva" type="number" step="0.01" data-rate="tvaStandard" /></label>
+          <label>Metodă
+            <select name="metoda"><option value="anuitati">Anuități constante</option><option value="rate_egale">Rate de capital egale</option></select>
+          </label>
+          <button class="btn primary">Salvează contractul</button>
+        </form>
+        <div id="lcList" class="tablewrap"></div>
+        <div id="lcSchedule" class="tablewrap"></div>
+      </div>
     </section>
 
     <!-- ─────────────── SALARIZARE ─────────────── -->
