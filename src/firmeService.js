@@ -259,6 +259,29 @@ function setFirmaSubscription(user, id, sub) {
 
 /** Abonare pe FIRMA (billing strict per-firma): cu Stripe configurat deschide plata (PLATA-GATED —
  *  firma se activeaza abia la webhook); fara Stripe (dev/manual), activare directa pe luna curenta. */
+/**
+ * A DOUA perioada de proba a unei firme, ceruta explicit de utilizator dupa ce prima a expirat.
+ * Nu se acorda automat: prima vine la inscriere, a doua e o alegere constienta de pe ecranul de
+ * preturi. Plafonul (plans.TRIAL_MAX) opreste reinnoirea la nesfarsit — dupa el, cardul de proba
+ * ramane vizibil, dar inactiv.
+ * Garzile sunt DUBLATE aici, nu doar in ruta: apartenenta la firma, blocajul contului demo si
+ * plafonul de probe.
+ */
+function trialDinNou(user, id) {
+  reqNotDemo(user);
+  reqAccess(user, id);
+  const f = db.getFirma(id);
+  if (!f) fail(404, 'Firma inexistenta.');
+  const st = plans.firmaStatus(f);
+  if (st.status === 'active') fail(400, 'Firma are deja abonament activ.');
+  if (st.status === 'trial') fail(400, 'Perioada de probă e încă activă — mai ai ' + st.zileRamase + ' zile.');
+  if (!plans.firmaPoateProba(f)) fail(400, 'Firma a folosit deja cele ' + plans.TRIAL_MAX + ' perioade de probă. Alege un plan ca să continui.');
+  const nr = plans.firmaTrialCount(f) + 1;
+  f.subscription = plans.firmaTrialSub(Date.now(), nr);
+  db.save();
+  return { firmaId: Number(id), nume: f.nume, trialCount: nr, sub: plans.firmaStatus(f) };
+}
+
 async function subscribeFirma(user, id, planCerut) {
   reqNotDemo(user);
   reqAccess(user, id);
@@ -378,6 +401,7 @@ function removeCollaborator(fid, uid) {
 }
 
 module.exports = {
+  trialDinNou,
   reqNotDemo, reqAccess, reqAdmin,
   createFirma, importBundle, importZip, testClone,
   exportBundle, exportZip, exportAllZip, firmaSlug,

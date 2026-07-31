@@ -11,7 +11,7 @@ const plans = require('../plans');
 const billing = require('../billing');
 
 module.exports = function register(app, ctx) {
-  const { requireAdmin, logAudit } = ctx;
+  const { requireAdmin, logAudit, activeId } = ctx;
 
   app.get('/api/plans', (req, res) => res.json({ plans: plans.PLANS, trialDays: plans.TRIAL_DAYS }));
   // Checkout „guest" (plata înainte de înscriere). Fără Stripe configurat → semnalează degradarea.
@@ -26,8 +26,15 @@ module.exports = function register(app, ctx) {
   });
   app.get('/api/subscription', (req, res) => {
     const sub = req.user.subscription || {};
+    // Accesul e guvernat de abonamentul FIRMEI active (billing strict per-firma), nu de cel al
+    // utilizatorului: el expira si blocheaza aplicatia. Grila de planuri trebuie sa arate starea
+    // reala a probei — inclusiv cate au ramas — altfel cardul „Probă gratuită" ar parea disponibil
+    // dupa ce firma si-a consumat ambele perioade.
+    const firmaActiva = db.getFirma(activeId(req));
     res.json({
       plans: plans.PLANS, trialDays: plans.TRIAL_DAYS, current: plans.status(sub),
+      firma: firmaActiva ? Object.assign({ firmaId: firmaActiva.id }, plans.firmaStatus(firmaActiva)) : null,
+      firmaNume: firmaActiva ? firmaActiva.nume : '',
       stripeEnabled: billing.configured(), manageable: !!sub.stripeCustomerId,
     });
   });
