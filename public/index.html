@@ -2011,7 +2011,7 @@ Cu stimă,
         <div id="fiscalStatus" class="status"></div>
       </div>
       <div class="card">
-        <h2>🔒 Blocare perioadă (integritate față de declarații)</h2>
+        <h2 class="card-titlu-mare">🔒 Blocare perioadă (integritate față de declarații)</h2>
         <p class="muted">Lunile închise devin <b>read-only</b>: nu se mai pot adăuga sau șterge înregistrări cu dată din ele — ca să nu modifici balanțe/declarații (D300/D394) deja depuse. Închiderea lunii blochează automat perioada; un administrator o poate debloca temporar pentru corecții.</p>
         <div id="lockStatus" class="status"></div>
         <label>Blocat până la luna (inclusiv) <input type="month" id="lockUntil" /></label>
@@ -2021,7 +2021,7 @@ Cu stimă,
         </div>
       </div>
       <div class="card">
-        <h2>Extragere cu AI (Claude API)</h2>
+        <h2 class="card-titlu-mare">Extragere cu AI (Claude API)</h2>
         <p class="muted">Când este activată, documentele PDF (inclusiv scanate) sunt citite cu Claude pentru a completa automat câmpurile și a propune tipul de înregistrare. Dacă apelul eșuează, se folosesc regulile locale.</p>
         <div id="aiStatus" class="status"></div>
         <label class="full" data-u="u133">
@@ -2030,7 +2030,7 @@ Cu stimă,
         <div id="aiHelp" class="preview hidden"></div>
       </div>
       <div class="card">
-        <h2>Trimitere în SPV (ANAF e-Factura) — firma activă</h2>
+        <h2 class="card-titlu-mare">Trimitere în SPV (ANAF e-Factura) — firma activă</h2>
         <p class="muted">Conexiunea SPV este <b>pe firmă</b>: fiecare firmă are propriile credențiale și propriul token — comută firma din selectorul de sus ca să configurezi alta. Necesită o aplicație OAuth înregistrată în SPV (client_id/secret) și un certificat digital pentru pasul de conectare. Folosește mediul <b>test</b> până la validare.</p>
         <div id="anafStatus" class="status"></div>
         <form id="anafForm" class="dyn">
