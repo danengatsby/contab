@@ -45,10 +45,22 @@ function allowedFirme(u) {
   const d = db.get();
   return u.role === 'admin' ? d.firme.map((f) => f.id) : (u.firme || []);
 }
+/**
+ * Felul contului: `patron` (isi inscrie firme proprii) sau `contabil` (primeste firmele altora).
+ * Se alege la inscriere si se stocheaza; pentru conturile dinaintea campului se DEDUCE din
+ * realitate — cine e proprietarul unei firme e patron. Deducerea e si plasa pentru conturile
+ * create de admin, care nu trec prin formularul de inscriere.
+ */
+function tipCont(u) {
+  if (!u || u.role === 'admin') return 'admin';
+  if (u.tipCont === 'patron' || u.tipCont === 'contabil') return u.tipCont;
+  return db.get().firme.some((f) => f.ownerId === u.id) ? 'patron' : 'contabil';
+}
+
 function publicUser(u) {
   const p = u.profil || {};
   return {
-    id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), firme: allowedFirme(u),
+    id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), tipCont: tipCont(u), firme: allowedFirme(u),
     drepturi: u.drepturi || {},
     mustChange: !!u.mustChange, twofa: !!u.twofa,
     profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?
@@ -151,7 +163,7 @@ function sessionIdOf(req) {
 function csrfSecret() { try { return signingSecret(db.get()); } catch (_) { return null; } }
 
 module.exports = {
-  currentUser, allowedFirme, publicUser, sessionIdOf, csrfSecret,
+  currentUser, allowedFirme, publicUser, tipCont, sessionIdOf, csrfSecret,
   startSession, setTrustedDevice, deviceTrusted,
   isLocked, bumpFail, clearFails, attemptKey, pruneLoginAttempts,
   DEMO_USERS, isDemoUser,

@@ -78,7 +78,12 @@ Aplicația gestionează **mai multe firme** în aceeași instanță:
   lista de contabili. A-l obliga să inventeze o firmă la înscriere ar fi produs exact dublurile
   împotriva cărora e construită poarta pe CUI. „Fără nicio firmă" e o stare distinctă de „probă
   expirată" (`user.faraFirma` în `/api/me` și `/api/meta`) — altfel contul nou ateriza pe bannerul
-  de read-only și pe ecranul de prețuri, despre un abonament pe care nu-l are.
+  de read-only și pe ecranul de prețuri, despre un abonament pe care nu-l are. Alegerea se
+  stochează (`user.tipCont`) și decide ce se oferă în Setări → „Adaugă o firmă la contul tău":
+  patronului i se deschide formularul de **înscriere a unei firme proprii**, contabilului îi
+  rămâne **cererea de acces** (formularul propriu e la un rând de text distanță — un contabil are
+  adesea și firma lui). Conturile dinaintea câmpului sunt clasificate de migrarea **v4**, din
+  realitate: cine e proprietarul unei firme e patron.
 - **O firmă, o singură evidență.** Fiecare firmă are un **proprietar** (`firma.ownerId` — contul
   care a înscris-o). O firmă se înregistrează o singură dată: `POST /api/firme` și înscrierea
   publică refuză cu **409** un CUI deja folosit și trimit spre cererea de acces (aceeași gardă

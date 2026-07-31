@@ -5177,6 +5177,27 @@ section('Migrari DB versionate (src/migrations.js)');
     const ap2 = mig.runMigrations(dF, { log: quiet });
     ok('v2 e idempotent (a doua rulare nu mai atinge nimic)', ap2.some((x) => x.v === 2 && x.changed === 0));
   }
+  // v4: felul contului dedus din realitate (proprietar de firma = patron), nu ghicit
+  {
+    const d4 = {
+      schemaVersion: 3,
+      firme: [{ id: 1, ownerId: 7 }, { id: 2, ownerId: null }],
+      users: [
+        { id: 7, role: 'user', firme: [1] },          // proprietar -> patron
+        { id: 8, role: 'user', firme: [1, 2] },       // doar acces -> contabil
+        { id: 9, role: 'user', firme: [], tipCont: 'patron' }, // deja setat -> neatins
+        { id: 1, role: 'admin', firme: [] },          // adminul nu intra in clasificare
+      ],
+    };
+    const ap4 = mig.runMigrations(d4, { log: quiet });
+    ok('v4 a clasificat doua conturi', ap4.some((x) => x.v === 4 && x.changed === 2));
+    eq('proprietarul unei firme e patron', d4.users[0].tipCont, 'patron');
+    eq('cine are doar acces e contabil', d4.users[1].tipCont, 'contabil');
+    eq('valoarea deja setata nu se suprascrie', d4.users[2].tipCont, 'patron');
+    ok('adminul ramane neclasificat', d4.users[3].tipCont === undefined);
+    d4.schemaVersion = 3;
+    ok('v4 e idempotent', mig.runMigrations(d4, { log: quiet }).some((x) => x.v === 4 && x.changed === 0));
+  }
   // re-rulare pe baza deja migrata: idempotent prin VERSIUNE (niciun pas)
   const applied2 = mig.runMigrations(dOld, { log: quiet });
   eq('re-rulare: niciun pas aplicat', applied2.length, 0);

@@ -83,6 +83,23 @@ const MIGRATIONS = [
       return n;
     },
   },
+  {
+    v: 4,
+    desc: 'backfill `tipCont` pe conturi (patron = detine cel putin o firma; restul, contabil)',
+    up(d) {
+      // Felul contului se alege acum la inscriere, dar conturile de dinainte nu-l au. Se deduce
+      // din realitate, nu se ghiceste: cine e proprietarul unei firme e patron; cine nu e, are
+      // acces la firmele altora, deci e contabil. Adminul nu intra in clasificare.
+      const proprietari = new Set((d.firme || []).map((f) => f.ownerId).filter((x) => x != null));
+      let n = 0;
+      for (const u of d.users || []) {
+        if (u.role === 'admin' || u.tipCont) continue;
+        u.tipCont = proprietari.has(u.id) ? 'patron' : 'contabil';
+        n += 1;
+      }
+      return n;
+    },
+  },
 ];
 
 const LATEST = MIGRATIONS.reduce((m, x) => Math.max(m, x.v), 0);

@@ -172,7 +172,10 @@ module.exports = function registerAuthRoutes(app, ctx) {
       d.partners[fid] = {}; d.openingBalances[fid] = {};
     }
     const { salt, hash } = authlib.hashPassword(password);
-    const user = { id: db.nextUserId(), username, email: String(b.email || '').trim(), salt, hash, role: 'user', firme: fid ? [fid] : [], firmaActiva: fid };
+    // felul contului, ales explicit la inscriere: decide ce i se ofera in aplicatie (patronul
+    // isi inscrie firme proprii; contabilul primeste firmele altora, prin acord)
+    const user = { id: db.nextUserId(), username, email: String(b.email || '').trim(), salt, hash, role: 'user',
+      tipCont: contabilFaraFirma ? 'contabil' : 'patron', firme: fid ? [fid] : [], firmaActiva: fid };
     if (firma) firma.ownerId = user.id; // proprietarul firmei: cel care a inscris-o (aproba cererile de acces)
     // Cine se inscrie CA SI CONTABIL apare in lista pe care o vad patronii — a te face gasit e
     // chiar motivul inscrierii. Bifa din formular ramane, ca sa fie o alegere vazuta, nu dedusa;
