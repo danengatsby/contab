@@ -195,6 +195,14 @@
     <nav class="tabs" id="tabs" aria-label="Meniu principal">
       <button data-tab="dashboard" class="active">🏠 Acasă</button>
       <button data-tab="ghid">📖 Ghid</button>
+      <div class="navgroup">
+        <button class="navlabel" type="button">⚙️ Setări</button>
+        <div class="navmenu">
+          <button data-tab="setari">Setări generale</button>
+          <button data-tab="arhiva">Arhivă documente</button>
+          <button data-tab="audit" class="adv">Jurnal de audit</button>
+        </div>
+      </div>
       <div id="imperBanner" class="imper-banner hidden">
         <span>👤 Conectat ca <b id="imperName"></b> <span class="imper-sub">(mod administrator — „intră pe cont"). Toate acțiunile sunt jurnalizate.</span></span>
         <button id="imperStop" type="button">↩ Revino la contul de admin</button>
@@ -264,14 +272,6 @@
         <div class="navmenu">
           <button data-tab="parteneri">Clienți & furnizori</button>
           <button data-tab="plan" class="adv">Plan de conturi</button>
-        </div>
-      </div>
-      <div class="navgroup">
-        <button class="navlabel" type="button">⚙️ Setări</button>
-        <div class="navmenu">
-          <button data-tab="setari">Setări generale</button>
-          <button data-tab="arhiva">Arhivă documente</button>
-          <button data-tab="audit" class="adv">Jurnal de audit</button>
         </div>
       </div>
     </nav>
