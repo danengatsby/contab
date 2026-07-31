@@ -148,10 +148,51 @@ export async function renderContabili() {
 }
 
 
+// Inscrierea unei firme PROPRII: CUI-ul primul, fiindca el decide daca firma e noua sau exista
+// deja. La 409 (firma exista) nu ramane doar un mesaj rosu — se completeaza singur CUI-ul in
+// formularul de cerere de acces, adica exact pasul urmator.
+$('#firmaProprieForm') && $('#firmaProprieForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target; const st = $('#firmaProprieStatus');
+  st.className = 'status'; st.textContent = 'Se verifică CUI-ul…';
+  try {
+    await api('/api/firme', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, oras: f.oras.value,
+        tipEntitate: f.tipEntitate.value, tvaPlatitor: f.tvaPlatitor.checked,
+      }),
+    });
+    const cui = f.cui.value;
+    f.reset(); f.tvaPlatitor.checked = true;
+    st.className = 'status ok'; st.textContent = 'Firmă înscrisă (acum activă), cu o lună de probă gratuită. CUI ' + cui;
+    await deps.init(); deps.onTab('setari');
+  } catch (err) {
+    st.className = 'status err'; st.textContent = err.message;
+    if (err.status === 409) {
+      const ca = $('#cerereAccesForm');
+      if (ca) { ca.cui.value = f.cui.value; ca.scrollIntoView({ behavior: 'smooth', block: 'center' }); ca.cui.focus(); }
+    }
+  }
+});
+// Contabilii isi pot avea si ei propria firma (foarte des, chiar biroul lor). Formularul nu li se
+// arata din start — ei vin sa preia firmele altora — dar nici nu li se inchide usa: un rand de
+// text il deschide. Un cont fara nicio cale spre firma proprie ar fi fost o fundatura.
+$('#firmaProprieShow') && $('#firmaProprieShow').addEventListener('click', () => {
+  $('#firmaProprieBox').classList.remove('hidden');
+  $('#firmaProprieLink').classList.add('hidden');
+  $('#firmaProprieForm').cui.focus();
+});
+
 export async function renderFirme() {
   const data = await api('/api/firme');
   renderCereriAcces();
   renderContabili();
+  // Patronul isi inscrie firme proprii — formularul e deschis de la inceput. Contabilul il are
+  // dupa un rand de text; el a venit pentru firmele altora, si acelea nu se creeaza, se cer.
+  const patron = USER.tipCont !== 'contabil';
+  $('#firmaProprieBox') && $('#firmaProprieBox').classList.toggle('hidden', !patron);
+  $('#firmaProprieLink') && $('#firmaProprieLink').classList.toggle('hidden', patron);
   $('#firmaExport').href = '/api/firme/' + data.firmaActiva + '/export-zip';
   // Contul demo (public, partajat) nu gestioneaza firme si nici setarile contului:
   // fara Firmele mele / mediu de test / restaurare, si fara profil / parola / 2FA / conexiune SPV.

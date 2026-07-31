@@ -2103,6 +2103,10 @@ async function main() {
       eq('contabilul se inscrie FARA denumire de firma -> 200', conNou.status, 200);
       ok('raspunsul spune ca nu s-a creat nicio firma', conNou.json.firma === null && conNou.json.faraFirma === true);
       ok('contul chiar nu are firme', (conNou.json.user.firme || []).length === 0);
+      // felul contului se stocheaza si ajunge la client: interfata ii ofera patronului formularul
+      // de inscriere a unei firme proprii, iar contabilului cererea de acces
+      eq('contul de contabil e marcat ca atare', conNou.json.user.tipCont, 'contabil');
+      eq('...iar cel care si-a inscris firma e patron', (await req('GET', '/api/me', { cookie: patron.cookie })).json.tipCont, 'patron');
       eq('...si lista lui de firme e goala', (await req('GET', '/api/firme', { cookie: conNou.cookie })).json.firme.length, 0);
       ok('inscris CA SI CONTABIL, apare in lista pe care o vad patronii',
         (await req('GET', '/api/firme/contabili', { cookie: patron.cookie })).json.contabili.some((c) => c.username === 'contabil-fara-t'));
