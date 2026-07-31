@@ -53,6 +53,27 @@ module.exports = function register(app, ctx) {
     return r;
   }));
   app.get('/api/firme/cereri', (req, res) => run(res, () => ({ cereri: svc.cereriPrimite(req.user) })));
+
+  // ── Angajarea unui contabil: patron -> contabil (sensul invers fata de cererea de acces) ──
+  // Tot INAINTEA rutelor cu parametru, din acelasi motiv: `/api/firme/:id` ar inghiti „contabili".
+  app.get('/api/firme/contabili', (req, res) => run(res, () => ({ contabili: svc.listaContabili(req.user) })));
+  app.get('/api/firme/servicii', (req, res) => run(res, () => svc.cereriServicii(req.user)));
+  app.post('/api/firme/servicii', (req, res) => run(res, () => {
+    const b = req.body || {};
+    const r = svc.cerereServicii(req.user, b.firmaId, b);
+    logAudit('firma.cerere-servicii', 'cerere catre ' + r.contabil, { req, firmaId: r.firmaId });
+    return r;
+  }));
+  app.post('/api/firme/servicii/:id', (req, res) => run(res, () => {
+    const r = svc.decideServicii(req.user, req.params.id, !!(req.body || {}).accept);
+    logAudit('firma.servicii-' + r.status, 'firma ' + r.firmaId, { req, firmaId: r.firmaId });
+    return r;
+  }));
+  app.post('/api/firme/servicii/:id/retrage', (req, res) => run(res, () => {
+    const r = svc.retrageServicii(req.user, req.params.id);
+    logAudit('firma.servicii-retrasa', 'cerere ' + req.params.id, { req, firmaId: null });
+    return r;
+  }));
   app.post('/api/firme/cereri/:id', (req, res) => run(res, () => {
     const r = svc.decideCerere(req.user, req.params.id, !!(req.body || {}).aprob);
     logAudit('firma.cerere-' + r.status, 'firma ' + r.firmaId, { req, firmaId: r.firmaId });

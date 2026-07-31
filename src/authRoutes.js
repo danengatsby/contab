@@ -17,6 +17,8 @@ const authlib = require('./auth');
 const totp = require('./totp');
 const messages = require('./messages');
 const plans = require('./plans');
+const identitate = require('./identitate');
+const firmeSvc = require('./firmeService');
 const billing = require('./billing');
 const metrics = require('./metrics');
 const cache = require('./cache');
@@ -128,10 +130,18 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const breachErr = await authlib.breachCheck(password); // HIBP (fail-open), inainte de a crea firma+user
     if (breachErr) return res.status(400).json({ error: breachErr });
     if (authlib.usernameTaken(d.users, username)) return res.status(400).json({ error: 'Acest utilizator exista deja. Alege altul.' });
+    // CUI-ul ramane OPTIONAL la inscriere (nu rupem intrarea in aplicatie), dar daca e dat trebuie
+    // sa fie valid si liber: altfel inscrierea ar fi portita prin care se creeaza a doua evidenta
+    // pentru o firma existenta, ocolind poarta din createFirma.
+    const cuiNou = String(b.cui || '').trim();
+    if (cuiNou) {
+      if (!identitate.validCUI(cuiNou)) return res.status(400).json({ error: 'CUI invalid — cifra de control nu se potriveste. Lasa campul gol daca nu il stii acum.' });
+      if (firmeSvc.firmaDupaCui(cuiNou)) return res.status(409).json({ error: firmeSvc.CUI_DUPLICAT });
+    }
     // firma noua GOALA — fara date contabile (entries/parteneri/solduri/stocuri etc.)
     const fid = db.nextFirmaId();
     const firma = Object.assign(db.defaultFirma(fid), {
-      nume, cui: String(b.cui || '').trim(), regCom: String(b.regCom || '').trim(),
+      nume, cui: cuiNou, regCom: String(b.regCom || '').trim(),
       adresa: String(b.adresa || '').trim(), oras: String(b.oras || '').trim(), judet: b.judet || 'RO-B',
       tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
       tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',

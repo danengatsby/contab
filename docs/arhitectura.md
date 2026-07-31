@@ -70,7 +70,24 @@ Aplicația gestionează **mai multe firme** în aceeași instanță:
 - **Firma activă** se alege din selectorul din bara de sus; toată aplicația (rapoarte, jurnale,
   balanță, declarații, parteneri, reconciliere, dashboard) este filtrată automat pe ea, printr-o
   „vedere” scoped — modulele de raportare nu au fost modificate.
-- Gestionarea firmelor (adăugare, activare, ștergere) e în Setări → „Firme”.
+- Gestionarea firmelor (activare, ștergere) e în Setări → „Firmele mele”.
+- **O firmă, o singură evidență.** Fiecare firmă are un **proprietar** (`firma.ownerId` — contul
+  care a înscris-o). O firmă se înregistrează o singură dată: `POST /api/firme` și înscrierea
+  publică refuză cu **409** un CUI deja folosit și trimit spre cererea de acces (aceeași gardă
+  și la schimbarea CUI-ului unei firme existente, altfel poarta s-ar ocoli în doi pași). Ca să
+  poți deține firme, contul trebuie să aibă **CNP** valid în profil — proprietarul e o persoană
+  identificată, nu doar un nume de utilizator. Codurile se validează cu cifra de control
+  (`src/identitate.js`).
+- **Două căi de a primi acces la o firmă, ambele prin acord explicit** — decide de fiecare dată
+  celălalt, nu cel care cere:
+  - **contabil → patron** (`accessRequests`): contabilul cere acces după CUI, proprietarul aprobă.
+    Răspunsul e identic fie că firma există sau nu (fără enumerare).
+    `POST /api/firme/cerere-acces` · `GET /api/firme/cereri` · `POST /api/firme/cereri/:id`.
+  - **patron → contabil** (`serviceRequests`): patronul alege din **lista contabililor înscriși**
+    (opt-in explicit: `profil.disponibilContabil`) și trimite o cerere de servicii; contabilul
+    acceptă sau refuză, și abia atunci primește acces.
+    `GET /api/firme/contabili` · `GET/POST /api/firme/servicii` · `POST /api/firme/servicii/:id` ·
+    `POST /api/firme/servicii/:id/retrage`.
 - Bazele vechi (o singură firmă, fără `firmaId`) sunt **migrate automat** la prima pornire.
 - e-Factura, D300/D394 și trimiterea în SPV folosesc datele firmei căreia îi aparține înregistrarea.
 - API: `GET/POST /api/firme`, `POST /api/firme/:id`, `POST /api/firme/:id/activate`,

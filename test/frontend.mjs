@@ -963,5 +963,27 @@ section('Administrare: cine e patronul si cine e contabilul unei firme');
   ok('firma fara membri nu inventeaza contabili', admin.contabiliiFirmei(users, faraPatron).length === 0);
 }
 
+section('Administrare: lista de contabili si cererile de servicii');
+{
+  const firme = [{ id: 3, nume: 'ALFA <SRL>' }];
+  const c = {
+    id: 9, username: 'ionel', nume: 'Ion "Contabil" Popescu', oras: 'Cluj', telefon: '0712',
+    autorizatie: '12/2020', descriere: 'salarizare <b>rapida</b> & declaratii',
+  };
+  const html = admin.randContabil(c, firme);
+  ok('numele extern e escapat in text', html.includes('Ion &quot;Contabil&quot; Popescu') && !html.includes('Ion "Contabil"'));
+  ok('descrierea externa nu poate injecta markup', html.includes('&lt;b&gt;rapida&lt;/b&gt;') && !html.includes('<b>rapida'));
+  ok('denumirea firmei din <option> e escapata', html.includes('ALFA &lt;SRL&gt;'));
+  ok('id-urile ajung in atribute data- pentru butonul de cerere', html.includes('data-id="9"'));
+  ok('autorizatia declarata se arata ca pastila', /CECCAR 12\/2020/.test(html));
+
+  const fara = admin.randContabil(c, []);
+  ok('fara firme proprii nu se ofera butonul de cerere, ci explicatia', !fara.includes('srv-cere') && /firm[ăa] proprie/i.test(fara));
+  ok('...si nici selectorul de firma', !fara.includes('srv-firma'));
+
+  ok('starile cererii au etichete romanesti', admin.STARE_SRV.in_asteptare === 'în așteptare'
+    && admin.STARE_SRV.acceptata === 'acceptată' && admin.STARE_SRV.refuzata === 'refuzată' && admin.STARE_SRV.retrasa === 'retrasă');
+}
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

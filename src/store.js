@@ -84,6 +84,12 @@ const ARRAY_COLLS = [
   { key: 'declarations', firma: true, hasId: true },
   { key: 'closings', firma: true, hasId: true },
   { key: 'extractInterventions', firma: true, hasId: true },
+  // Cereri intre conturi. NU sunt per firma: `accessRequests` porneste de la un CUI (posibil al
+  // unei firme la care solicitantul nu are acces), iar `serviceRequests` leaga proprietarul unei
+  // firme de un contabil din alt cont. Cheia de firma exista in obiect (firmaId), dar coloana
+  // indexata ramane goala — filtrarea se face pe proprietar/destinatar, nu pe firma activa.
+  { key: 'accessRequests', firma: false, hasId: true },
+  { key: 'serviceRequests', firma: false, hasId: true },
 ];
 
 // PROIECTII NORMALIZATE: tabele derivate din blob-uri, scrise tranzactional in aceeasi tranzactie cu

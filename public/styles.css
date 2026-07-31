@@ -1026,4 +1026,8 @@ body.dark .pill.muted{background:#2b323b;color:#aab3bf}
 .pill.rol-contabil{background:#e7eefc;color:#1652d6}
 body.dark .pill.rol-patron{background:#12301f;color:#6ed69a}
 body.dark .pill.rol-contabil{background:#141f33;color:#8fb4f0}
+/* Alegerea firmei + butonul, pe acelasi rand: selectul intins pe toata celula impingea butonul
+   in afara cardului (tabelul are latime fixa, deci nu se vedea deloc). */
+.srv-actiune{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.srv-actiune select{max-width:220px;flex:0 1 auto}
 body.dark .closeblock{color:#ffb4a8}

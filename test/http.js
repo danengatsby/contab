@@ -1813,7 +1813,16 @@ async function main() {
 
     // ── MULTI-FIRMA pentru un user obisnuit: adauga si comuta intre firme (ca la admin) ──
     const firmeInainte = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.length;
-    const nouaFirma = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'A Doua Firma PFA', cui: 'RO7788', tipEntitate: 'pfa', tvaPlatitor: false } });
+    // Firmele proprii se inscriu pe o PERSOANA identificata: fara CNP in profil, cererea e refuzata.
+    const faraCnp = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'A Doua Firma PFA', cui: '7777' } });
+    eq('fara CNP in profil, nu poti inscrie o firma -> 400', faraCnp.status, 400);
+    ok('mesajul trimite la locul unde se completeaza CNP-ul', /CNP/.test(faraCnp.json.error) && /Contul meu/.test(faraCnp.json.error));
+    eq('CNP invalid (cifra de control) e respins', (await req('POST', '/api/profile', { cookie: c1, body: { profil: { cnp: '1900101415239' } } })).status, 400);
+    ok('CNP valid se salveaza', (await req('POST', '/api/profile', { cookie: c1, body: { profil: { cnp: '1900101415238' } } })).status === 200);
+    ok('CNP-ul NU se intoarce intreg, nici propriului cont', (await req('GET', '/api/profile', { cookie: c1 })).json.profil.cnp === '1900101******');
+    const cuiRau = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Cu CUI gresit', cui: '7778' } });
+    eq('CUI cu cifra de control gresita e respins -> 400', cuiRau.status, 400);
+    const nouaFirma = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'A Doua Firma PFA', cui: 'RO7777', tipEntitate: 'pfa', tvaPlatitor: false } });
     ok('user obisnuit: creeaza o firma noua, devine activa', nouaFirma.json && nouaFirma.json.ok && nouaFirma.json.firmaActiva === nouaFirma.json.firma.id);
     const f2 = nouaFirma.json.firma.id;
     ok('firma noua pastreaza forma juridica si statutul TVA', nouaFirma.json.firma.tipEntitate === 'pfa' && nouaFirma.json.firma.tvaPlatitor === false);
@@ -1884,7 +1893,7 @@ async function main() {
     eq('demo: adaugare cont arbitrar (non-pereche) blocata -> 403', (await req('POST', '/api/colaboratori', { cookie: cDemo, body: { mod: 'existing', username: 'admin2' } })).status, 403);
 
     // ── BILLING STRICT PER-FIRMA: firma noua porneste cu proba de 30 zile, apoi abonament ──
-    const tfR = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Firma Proba SRL', cui: 'RO900' } });
+    const tfR = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Firma Proba SRL', cui: 'RO12340' } });
     ok('firma noua porneste cu abonament de proba (30 zile)', tfR.json.ok && tfR.json.firma.subscription && tfR.json.firma.subscription.plan === 'trial' && !!tfR.json.firma.subscription.trialEndsAt);
     const tf = tfR.json.firma.id;
     const tfInfo = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf);
@@ -1926,14 +1935,14 @@ async function main() {
     // ecranul devine un mod de a afla ce firme sunt in sistem, incercand CUI-uri), si decide
     // PROPRIETARUL, nu oricine are acces (un colaborator n-are voie sa dea mai departe accesul).
     {
-      const patron = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FIRMA PATRON SRL', cui: 'RO5550001', username: 'patron-t', password: 'ParolaBuna2026' } });
+      const patron = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FIRMA PATRON SRL', cui: 'RO5550005', username: 'patron-t', password: 'ParolaBuna2026' } });
       ok('patron: firma inscrisa', patron.status === 200 && patron.json.ok);
       const fidP = patron.json.firma.id;
-      const contabil = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'BIROU CONTABIL SRL', cui: 'RO5550002', username: 'contabil-t', password: 'ParolaBuna2026' } });
+      const contabil = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'BIROU CONTABIL SRL', cui: 'RO5550013', username: 'contabil-t', password: 'ParolaBuna2026' } });
       ok('contabil: cont propriu', contabil.status === 200);
 
       // raspuns IDENTIC pentru firma care exista si pentru una inventata
-      const exista = await req('POST', '/api/firme/cerere-acces', { cookie: contabil.cookie, body: { cui: 'RO5550001' } });
+      const exista = await req('POST', '/api/firme/cerere-acces', { cookie: contabil.cookie, body: { cui: 'RO5550005' } });
       const nuExista = await req('POST', '/api/firme/cerere-acces', { cookie: contabil.cookie, body: { cui: 'RO9999999' } });
       ok('cerere: acelasi raspuns pentru firma reala si inexistenta (fara enumerare)',
         exista.status === 200 && nuExista.status === 200 && exista.text === nuExista.text);
@@ -1962,8 +1971,8 @@ async function main() {
       // Cazul care da sens cerintei „numai cu acordul patronului": contabilul are ACUM acces la
       // firma, dar tot NU poate aproba cererea altcuiva. Altfel accesul s-ar propaga singur —
       // primul invitat ar putea invita mai departe, iar patronul ar pierde controlul.
-      const c3 = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'AL TREILEA SRL', cui: 'RO5550004', username: 'contabil3-t', password: 'ParolaBuna2026' } });
-      await req('POST', '/api/firme/cerere-acces', { cookie: c3.cookie, body: { cui: 'RO5550001' } });
+      const c3 = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'AL TREILEA SRL', cui: 'RO5550030', username: 'contabil3-t', password: 'ParolaBuna2026' } });
+      await req('POST', '/api/firme/cerere-acces', { cookie: c3.cookie, body: { cui: 'RO5550005' } });
       const cerT = (await req('GET', '/api/firme/cereri', { cookie: patron.cookie })).json.cereri;
       ok('patronul vede cererea a treia', cerT.length === 1);
       eq('un COLABORATOR cu acces NU poate aproba cererea altcuiva (doar proprietarul)',
@@ -1973,14 +1982,112 @@ async function main() {
       await req('POST', '/api/firme/cereri/' + cerT[0].id, { cookie: patron.cookie, body: { aprob: false } }); // curatenie
 
       // respingerea NU da acces
-      const c2 = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'ALT BIROU SRL', cui: 'RO5550003', username: 'contabil2-t', password: 'ParolaBuna2026' } });
-      await req('POST', '/api/firme/cerere-acces', { cookie: c2.cookie, body: { cui: 'RO5550001' } });
+      const c2 = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'ALT BIROU SRL', cui: 'RO5550021', username: 'contabil2-t', password: 'ParolaBuna2026' } });
+      await req('POST', '/api/firme/cerere-acces', { cookie: c2.cookie, body: { cui: 'RO5550005' } });
       const cer2 = (await req('GET', '/api/firme/cereri', { cookie: patron.cookie })).json.cereri;
       await req('POST', '/api/firme/cereri/' + cer2[0].id, { cookie: patron.cookie, body: { aprob: false } });
       ok('respingerea nu da acces', !(await req('GET', '/api/firme', { cookie: c2.cookie })).json.firme.some((f) => f.id === fidP));
 
-      eq('demo nu poate cere acces', (await req('POST', '/api/firme/cerere-acces', { cookie: cDemo, body: { cui: 'RO5550001' } })).status, 403);
+      eq('demo nu poate cere acces', (await req('POST', '/api/firme/cerere-acces', { cookie: cDemo, body: { cui: 'RO5550005' } })).status, 403);
       eq('CUI gol -> 400', (await req('POST', '/api/firme/cerere-acces', { cookie: contabil.cookie, body: { cui: '  ' } })).status, 400);
+
+      // ── O FIRMA, O SINGURA EVIDENTA: poarta pe CUI ──
+      // Fara ea, „cere acces" ramane o sugestie: cine nu vrea sa astepte aprobarea isi inregistreaza
+      // firma inca o data si lucreaza pe o evidenta paralela, cu aceleasi declaratii de depus.
+      const dubluReg = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FIRMA PATRON SRL (copie)', cui: 'RO5550005', username: 'dublura-t', password: 'ParolaBuna2026' } });
+      eq('inscriere cu CUI-ul unei firme existente -> 409', dubluReg.status, 409);
+      ok('...si mesajul trimite spre cererea de acces', /cere acces/i.test(dubluReg.json.error));
+      eq('inscriere cu CUI invalid (cifra de control) -> 400',
+        (await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'CU CUI RAU SRL', cui: 'RO5550006', username: 'cuirau-t', password: 'ParolaBuna2026' } })).status, 400);
+      ok('inscrierea FARA CUI ramane permisa (nu rupem intrarea in aplicatie)',
+        (await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FARA CUI SRL', username: 'faracui-t', password: 'ParolaBuna2026' } })).status === 200);
+      // aceeasi poarta pe calea din aplicatie, nu doar la inscriere
+      const dubluCreate = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'COPIE PRIN APLICATIE SRL', cui: 'RO5550005' } });
+      eq('inscrierea unei firme cu CUI deja folosit, din aplicatie -> 409', dubluCreate.status, 409);
+      ok('...cu acelasi mesaj care trimite la cererea de acces', /cere acces/i.test(dubluCreate.json.error));
+      // portita in doi pasi: firma fara CUI, apoi ii pui CUI-ul altei firme
+      const fcLista = (await req('GET', '/api/firme', { cookie: (await req('POST', '/api/login', { headers: { Origin: BASE }, body: { username: 'faracui-t', password: 'ParolaBuna2026' } })).cookie })).json;
+      const cFc = (await req('POST', '/api/login', { headers: { Origin: BASE }, body: { username: 'faracui-t', password: 'ParolaBuna2026' } })).cookie;
+      eq('nu poti muta CUI-ul altei firme pe firma ta, dupa creare -> 409',
+        (await req('POST', '/api/firme/' + fcLista.firme[0].id, { cookie: cFc, body: { cui: 'RO5550005' } })).status, 409);
+
+      // Plafonul de inscrieri per IP (5/ora) e ATINS exact aici, de cele 5 conturi create mai sus.
+      // Aserțiunea il face explicit: daca cineva mai adauga o inscriere in suita, pica AICI, cu
+      // motivul la vedere, in loc sa strice tacut un test de mai jos printr-un 429 neasteptat.
+      eq('a sasea inscriere de pe acelasi IP e refuzata (plafon 5/ora)',
+        (await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'A SASEA SRL', cui: '5550048', username: 'asasea-t', password: 'ParolaBuna2026' } })).status, 429);
+
+      // ── ANGAJAREA UNUI CONTABIL: patron -> contabil (sensul invers) ──
+      // Simetria cu cererea de acces: cine primeste cererea decide. Aici decide CONTABILUL.
+      {
+        // Contabilul din fluxul de mai sus a PRIMIT deja acces la firma patronului, deci nu poate fi
+        // angajat pe ea. Folosesc contul caruia i s-a RESPINS cererea: n-are niciun acces.
+        const cPat = patron.cookie; const cCon = c2.cookie; const cTert = contabil.cookie;
+        eq('lista de contabili e goala cat timp nimeni nu s-a oferit',
+          (await req('GET', '/api/firme/contabili', { cookie: cPat })).json.contabili.length, 0);
+        ok('contabilul se inscrie in lista (optiune explicita)',
+          (await req('POST', '/api/profile', { cookie: cCon, body: { profil: { disponibilContabil: true, numeComplet: 'Maria Contabil', oras: 'Cluj', autorizatie: '123/2020' } } })).status === 200);
+        const lst = (await req('GET', '/api/firme/contabili', { cookie: cPat })).json.contabili;
+        ok('patronul vede contabilul disponibil', lst.length === 1 && lst[0].nume === 'Maria Contabil' && lst[0].oras === 'Cluj');
+        ok('lista NU divulga emailul, CNP-ul sau firmele contabilului',
+          !('email' in lst[0]) && !('cnp' in lst[0]) && !('firme' in lst[0]));
+        const conId = lst[0].id;
+
+        // patronul cere servicii pentru firma LUI
+        const cs = await req('POST', '/api/firme/servicii', { cookie: cPat, body: { firmaId: fidP, contabilId: conId, mesaj: 'Am nevoie de contabil de luna viitoare.' } });
+        eq('patronul trimite cererea de servicii', cs.status, 200);
+        eq('a doua cerere identica e refuzata', (await req('POST', '/api/firme/servicii', { cookie: cPat, body: { firmaId: fidP, contabilId: conId } })).status, 400);
+        // pentru firma ALTCUIVA nu se poate cere
+        eq('nu poti angaja un contabil pentru firma altcuiva -> 403',
+          (await req('POST', '/api/firme/servicii', { cookie: cCon, body: { firmaId: 1, contabilId: conId } })).status, 403);
+
+        const primite = (await req('GET', '/api/firme/servicii', { cookie: cCon })).json;
+        ok('contabilul vede cererea primita', primite.primite.length === 1 && primite.primite[0].firmaId === fidP && /luna viitoare/.test(primite.primite[0].mesaj));
+        ok('patronul isi vede cererea trimisa', (await req('GET', '/api/firme/servicii', { cookie: cPat })).json.trimise.some((r) => r.status === 'in_asteptare'));
+        const srvId = primite.primite[0].id;
+
+        // garda esentiala: PATRONUL nu poate accepta in numele contabilului (i-ar impune munca)
+        eq('patronul NU poate accepta cererea in locul contabilului -> 403',
+          (await req('POST', '/api/firme/servicii/' + srvId, { cookie: cPat, body: { accept: true } })).status, 403);
+        eq('nici un tert nu poate raspunde -> 403',
+          (await req('POST', '/api/firme/servicii/' + srvId, { cookie: cTert, body: { accept: true } })).status, 403);
+
+        // contabilul refuza -> nu primeste acces
+        const cs2 = await req('POST', '/api/firme/servicii/' + srvId, { cookie: cCon, body: { accept: false } });
+        ok('contabilul refuza', cs2.status === 200 && cs2.json.status === 'refuzata');
+        eq('cererea rezolvata nu se mai poate decide', (await req('POST', '/api/firme/servicii/' + srvId, { cookie: cCon, body: { accept: true } })).status, 404);
+
+        // acceptarea da accesul — pe o firma la care contabilul NU avea acces
+        // contul creat prin inscriere nu are CNP: firmele PROPRII cer o persoana identificata
+        eq('fara CNP, patronul nu-si mai poate inscrie o firma -> 400',
+          (await req('POST', '/api/firme', { cookie: cPat, body: { nume: 'A DOUA A PATRONULUI SRL', cui: '5550048' } })).status, 400);
+        await req('POST', '/api/profile', { cookie: cPat, body: { profil: { cnp: '2900202526344' } } });
+        const f2Pat = (await req('POST', '/api/firme', { cookie: cPat, body: { nume: 'A DOUA A PATRONULUI SRL', cui: '5550048' } }));
+        ok('cu CNP completat, patronul isi mai inscrie o firma', f2Pat.status === 200);
+        const fid2 = f2Pat.json.firma.id;
+        const cs3 = await req('POST', '/api/firme/servicii', { cookie: cPat, body: { firmaId: fid2, contabilId: conId } });
+        eq('cerere pe a doua firma', cs3.status, 200);
+        const srv2 = (await req('GET', '/api/firme/servicii', { cookie: cCon })).json.primite[0].id;
+        ok('contabilul NU avea acces inainte de acceptare',
+          !(await req('GET', '/api/firme', { cookie: cCon })).json.firme.some((f) => f.id === fid2));
+        ok('contabilul accepta', (await req('POST', '/api/firme/servicii/' + srv2, { cookie: cCon, body: { accept: true } })).json.status === 'acceptata');
+        ok('...si abia acum are firma', (await req('GET', '/api/firme', { cookie: cCon })).json.firme.some((f) => f.id === fid2));
+
+        // retragerea: doar cel care a trimis
+        const cs4 = await req('POST', '/api/firme/servicii', { cookie: cPat, body: { firmaId: fidP, contabilId: conId } });
+        eq('patronul retrimite pe prima firma', cs4.status, 200);
+        eq('contabilul NU poate retrage cererea patronului -> 403',
+          (await req('POST', '/api/firme/servicii/' + cs4.json.id + '/retrage', { cookie: cCon })).status, 403);
+        ok('patronul o retrage', (await req('POST', '/api/firme/servicii/' + cs4.json.id + '/retrage', { cookie: cPat })).json.status === 'retrasa');
+        eq('dupa retragere contabilul nu mai vede cererea', (await req('GET', '/api/firme/servicii', { cookie: cCon })).json.primite.length, 0);
+
+        // iesirea din lista opreste cererile noi
+        await req('POST', '/api/profile', { cookie: cCon, body: { profil: { disponibilContabil: false } } });
+        eq('contabilul iesit din lista nu mai apare', (await req('GET', '/api/firme/contabili', { cookie: cPat })).json.contabili.length, 0);
+        eq('...si nu mai poate primi cereri -> 404',
+          (await req('POST', '/api/firme/servicii', { cookie: cPat, body: { firmaId: fidP, contabilId: conId } })).status, 404);
+        eq('demo nu vede lista de contabili', (await req('GET', '/api/firme/contabili', { cookie: cDemo })).status, 403);
+      }
     }
     // repunem firma pe expirat-cu-o-proba, ca restul testelor (abonarea) sa continue de unde erau
     await req('POST', '/api/firme/' + tf + '/subscription', { cookie: la.cookie, body: { subscription: { plan: 'trial', trialEndsAt: '2026-01-01T00:00:00Z' } } });
@@ -2184,7 +2291,7 @@ async function main() {
       ok('se poate importa', pv.json.preview.sePoateImporta === true);
       // Importul se face intr-o firma PROPRIE: preluarea rescrie soldurile, iar restul suitei
       // lucreaza pe firma existenta. Testeaza in acelasi timp garda de firma explicita.
-      const fNoua = await req('POST', '/api/firme', { cookie: laM.cookie, body: { nume: 'PRELUATA SRL', cui: '30000001' } });
+      const fNoua = await req('POST', '/api/firme', { cookie: laM.cookie, body: { nume: 'PRELUATA SRL', cui: '300008' } });
       const fidNou = fNoua.json && (fNoua.json.firma ? fNoua.json.firma.id : fNoua.json.id);
       ok('firma-tinta pentru preluare a fost creata', !!fidNou);
       const obInainte = (await req('GET', '/api/opening?firma=' + fidNou, { cookie: laM.cookie })).json;
