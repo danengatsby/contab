@@ -83,6 +83,34 @@ function neimpozabilLa(period) {
 }
 
 /**
+ * Suma neimpozabila din salariul minim, pentru o luna (art. 76 Cod fiscal): 300 lei S1 / 200 S2.
+ *
+ * `neimpozabilLa` de mai sus da doar CUANTUMUL lunii; aici stau CONDITIILE, fiindca facilitatea
+ * nu se acorda tuturor. Se cer amandoua:
+ *   1. salariul de baza brut lunar = salariul minim (nu „in jurul lui" — egal);
+ *   2. brutul realizat in luna nu depaseste salariul minim + suma.
+ * A doua conditie o taie la depasire, deci un spor care ridica brutul peste plafon anuleaza
+ * facilitatea in intregime (nu o reduce proportional).
+ *
+ * Se DERIVA din salariu si luna, nu se bifeaza pe angajat: un cuantum stocat ar ramane adevarat
+ * dupa ce salariul creste, si s-ar aplica tacit la un brut care nu mai da dreptul la el.
+ *
+ * @returns {{ suma:number, eligibil:boolean, motiv:string }} `motiv` explica refuzul, ca sa poata
+ *   fi aratat in statul de plata — o facilitate lipsa fara explicatie pare o eroare de calcul.
+ */
+function neimpozabilMinim(brut, salariuBaza, period) {
+  const sm = salariuMinimLa(period);
+  const suma = neimpozabilLa(period);
+  const b = round2(Number(brut) || 0);
+  const baza = round2(Number(salariuBaza != null ? salariuBaza : brut) || 0);
+  if (!(sm > 0) || !(suma > 0)) return { suma: 0, eligibil: false, motiv: 'Fara salariu minim sau suma neimpozabila configurate.' };
+  if (baza !== sm) return { suma: 0, eligibil: false, motiv: 'Salariul de baza (' + baza + ' lei) nu e la nivelul salariului minim (' + sm + ' lei).' };
+  const plafon = round2(sm + suma);
+  if (b > plafon) return { suma: 0, eligibil: false, motiv: 'Brutul lunii (' + b + ' lei) depaseste plafonul de ' + plafon + ' lei (salariul minim + ' + suma + ').' };
+  return { suma: Math.min(suma, b), eligibil: true, motiv: '' };
+}
+
+/**
  * Calculul salariului dintr-un brut (cotele 2026).
  * @param {number} brut
  * @param {number} deducere - deducerea totala scazuta din baza de impozit (deducere personala + sume neimpozabile)
@@ -105,10 +133,15 @@ function payroll(brut, deducere, opts) {
   const cmA = round2(o.cmAngajator) || 0;
   const cmF = round2(o.cmFnuass) || 0;
   const sector = o.sector || 'normal';
-  const bazaCasReala = round2(b + avantaje + cmA + cmF);
+  // Suma neimpozabila din salariul minim (art. 76): NU e o simpla deducere. `deducere` (deducerea
+  // personala) scade doar baza de IMPOZIT; suma asta iese din TOATE bazele — impozit, CAS, CASS si
+  // CAM. Tratata ca deducere, ar fi lasat contributiile calculate pe intreg brutul, deci CAS/CASS
+  // si CAM supraevaluate — si asta merge direct in D112.
+  const nm = Math.max(0, Math.min(round2(o.neimpozabilMinim) || 0, b));
+  const bazaCasReala = round2(b + avantaje + cmA + cmF - nm);
   const cas = round2((bazaCasReala * FISCAL.cas) / 100);
   // tichetele de masa suporta CASS (din 2024) si impozit, dar NU CAS; indemnizatiile CM sunt exceptate de la CASS
-  const bazaCassReala = round2(b + tichete + avantaje);
+  const bazaCassReala = round2(b + tichete + avantaje - nm);
   const cass = round2((bazaCassReala * FISCAL.cass) / 100);
   // Norma partiala (OUG 16/2022, art. 146 Cod fiscal): cand venitul brut e sub salariul minim,
   // CAS si CASS se datoreaza la nivelul salariului minim (o.bazaMinima); DIFERENTA fata de
@@ -116,11 +149,12 @@ function payroll(brut, deducere, opts) {
   const bmin = round2(o.bazaMinima) || 0;
   const casAngajator = bmin > bazaCasReala ? round2(((bmin - bazaCasReala) * FISCAL.cas) / 100) : 0;
   const cassAngajator = bmin > bazaCassReala ? round2(((bmin - bazaCassReala) * FISCAL.cass) / 100) : 0;
-  const baza = Math.max(0, round2(b + tichete + avantaje + cmA + cmF - cas - cass - ded));
+  const baza = Math.max(0, round2(b + tichete + avantaje + cmA + cmF - nm - cas - cass - ded));
   const impozit = round2((baza * FISCAL.impozitVenit) / 100);
-  const cam = round2(((b + avantaje + cmA) * FISCAL.cam) / 100);
+  const cam = round2(((b + avantaje + cmA - nm) * FISCAL.cam) / 100);
+  // Netul creste, dar nu fiindca se adauga ceva: suma ramane in brut, doar nu mai e taxata.
   const net = round2(b + cmA + cmF - cas - cass - impozit); // tichetele si avantajele se acorda ca valori, nu in numerar
-  return { brut: b, tichete, avantaje, cmAngajator: cmA, cmFnuass: cmF, cas, cass, casAngajator, cassAngajator, baza, impozit, cam, net, costTotal: round2(b + cmA + cam + tichete + casAngajator + cassAngajator), sector, scutImpozit: false, scutCass: false, overPlafon: false };
+  return { brut: b, tichete, avantaje, cmAngajator: cmA, cmFnuass: cmF, neimpozabilMinim: nm, cas, cass, casAngajator, cassAngajator, baza, impozit, cam, net, costTotal: round2(b + cmA + cam + tichete + casAngajator + cassAngajator), sector, scutImpozit: false, scutCass: false, overPlafon: false };
 }
 
 /**
@@ -148,4 +182,4 @@ function taxePfa(venitNet, opts) {
   return { venitNet: vn, salariuMinim: sm, plafon6: p6, plafon12: p12, plafon24: p24, plafon60: p60, bazaCas, cas, bazaCass, cass, impozit, total: round2(cas + cass + impozit) };
 }
 
-module.exports = { FISCAL, DEFAULTS, applyConfig, fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa };
+module.exports = { FISCAL, DEFAULTS, applyConfig, fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa, neimpozabilMinim };

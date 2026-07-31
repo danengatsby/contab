@@ -1413,8 +1413,59 @@ eq('100 lei x 2 copii in invatamant', fiscal.deducerePersonala(sm, 0, { salariuM
 // integrare in statul de plata: angajat la salariul minim cu 1 persoana in intretinere
 const dpMin = fiscal.deducerePersonala(sm, 1, { salariuMinim: sm }).total; // 25% -> 1015 rotunjit
 const spDP = statePlata([{ id: 'z', nume: 'MinWage', salariuBrut: sm, persoane: 1 }], '2026-03'); // S1 explicit
-const payMin = fiscal.payroll(sm, dpMin);
+// Angajatul e CHIAR la salariul minim, deci primeste si suma neimpozabila din art. 76 — referinta
+// trebuie sa o includa, altfel testul ar compara statul de plata cu un calcul incomplet.
+const payMin = fiscal.payroll(sm, dpMin, { neimpozabilMinim: fiscal.neimpozabilLa('2026-03') });
 eq('impozit scade cu deducerea personala', spDP.rows[0].impozit, payMin.impozit);
+
+// ── Suma neimpozabila din salariul minim (art. 76 Cod fiscal) ───────────────────────────────
+// `neimpozabilLa()` exista si era testata, dar nu era folosita NICAIERI in productie: facilitatea
+// pur si simplu nu se acorda. Se DERIVA din salariul de baza si din luna — un cuantum stocat pe
+// angajat ar ramane adevarat dupa ce salariul creste.
+{
+  const { round2 } = require('../src/util');
+  const nz = fiscal.neimpozabilMinim;
+  const smS1 = fiscal.salariuMinimLa('2026-03'); // 4050, suma 300
+  const smS2 = fiscal.salariuMinimLa('2026-08'); // 4325, suma 200
+  ok('la salariul minim exact: eligibil', nz(smS1, smS1, '2026-03').eligibil);
+  eq('...cu suma lunii (S1 = 300)', nz(smS1, smS1, '2026-03').suma, 300);
+  eq('...si S2 = 200 (de la 1 iulie)', nz(smS2, smS2, '2026-08').suma, 200);
+  // conditia 1: salariul de BAZA trebuie sa fie la nivelul minimului
+  eq('salariu peste minim: fara facilitate', nz(8000, 8000, '2026-03').suma, 0);
+  ok('...si spune de ce', /nu e la nivelul salariului minim/.test(nz(8000, 8000, '2026-03').motiv));
+  // conditia 2: brutul lunii nu depaseste minimul + suma; peste plafon cade INTEGRAL, nu proportional
+  eq('spor care lasa brutul sub plafon: facilitatea ramane', nz(smS1 + 100, smS1, '2026-03').suma, 300);
+  eq('spor care trece brutul peste plafon: facilitatea cade integral', nz(smS1 + 400, smS1, '2026-03').suma, 0);
+  ok('...si spune de ce', /depaseste plafonul/.test(nz(smS1 + 400, smS1, '2026-03').motiv));
+
+  // Miezul: suma iese din TOATE bazele, nu doar din cea de impozit. Tratata ca simpla deducere,
+  // CAS/CASS/CAM ar fi ramas calculate pe intreg brutul — si asta merge direct in D112.
+  const cu = fiscal.payroll(smS1, 0, { neimpozabilMinim: 300 });
+  const fara = fiscal.payroll(smS1, 0);
+  const bazaRedusa = round2(smS1 - 300);
+  eq('CAS pe baza REDUSA cu suma neimpozabila', cu.cas, round2(bazaRedusa * 0.25));
+  eq('CASS pe baza REDUSA', cu.cass, round2(bazaRedusa * 0.10));
+  eq('CAM pe baza REDUSA', cu.cam, round2(bazaRedusa * 0.0225));
+  ok('CAS scade fata de calculul fara facilitate', cu.cas < fara.cas);
+  ok('CASS scade fata de calculul fara facilitate', cu.cass < fara.cass);
+  ok('CAM scade fata de calculul fara facilitate', cu.cam < fara.cam);
+  ok('impozitul scade si el', cu.impozit < fara.impozit);
+  // netul creste fara ca brutul sa se schimbe: suma ramane in brut, doar nu mai e taxata
+  ok('netul creste, la acelasi brut', cu.net > fara.net && cu.brut === fara.brut);
+  eq('netul = brut - CAS - CASS - impozit', cu.net, round2(smS1 - cu.cas - cu.cass - cu.impozit));
+
+  // integrarea in statul de plata: derivata, nu luata din campul manual
+  const spNz = statePlata([{ id: 'n1', nume: 'MinWage', salariuBrut: smS1 }], '2026-03').rows[0];
+  eq('statul de plata acorda facilitatea singur', spNz.neimpozabilMinim, 300);
+  eq('...si CAS-ul e cel pe baza redusa', spNz.cas, round2(bazaRedusa * 0.25));
+  const spSus = statePlata([{ id: 'n2', nume: 'Sus', salariuBrut: 8000 }], '2026-03').rows[0];
+  eq('peste minim: statul nu o acorda', spSus.neimpozabilMinim, 0);
+  ok('...si consemneaza motivul, ca lipsa ei sa nu para eroare de calcul', !!spSus.neimpozabilMinimMotiv);
+  // campul manual „venit neimpozabil suplimentar" ramane SEPARAT (alte venituri scutite)
+  const spAmbele = statePlata([{ id: 'n3', nume: 'Ambele', salariuBrut: smS1, neimpozabil: 50 }], '2026-03').rows[0];
+  eq('campul manual ramane distinct de facilitate', spAmbele.neimpozabilMinim, 300);
+  eq('...si se aplica pe langa ea (doar pe baza de impozit)', spAmbele.impozit, round2(spNz.impozit - 5));
+}
 eq('deducerea apare in rand', spDP.rows[0].deducere, dpMin);
 ok('impozit cu deducere < impozit fara deducere', payMin.impozit < fiscal.payroll(sm, 0).impozit);
 // fara campuri noi -> comportament neschimbat (compat)
