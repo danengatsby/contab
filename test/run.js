@@ -6248,7 +6248,11 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
   // Regula: orice modul din src/ cerut de un fisier DEJA in perimetru intra si el, cu exceptia
   // infrastructurii (persistenta, log, utilitare) — care nu poarta reguli fiscale.
   const INFRA = new Set(['src/db.js', 'src/log.js', 'src/util.js', 'src/metrics.js', 'src/store.js',
-    'src/storePg.js', 'src/session.js', 'src/csv.js', 'src/cache.js', 'src/paginate.js']);
+    'src/storePg.js', 'src/session.js', 'src/csv.js', 'src/cache.js', 'src/paginate.js',
+    // Transport, criptare si formate care NU merg la ANAF: nu poarta reguli fiscale, deci o
+    // schimbare in ele nu are ce valida DUKIntegrator. `sepa.js` (pain.001) pleaca la BANCA, si
+    // e acoperit de poarta de escapare XML din acest fisier — alt mecanism, alt perimetru.
+    'src/anaf.js', 'src/secretbox.js', 'src/zipGuard.js', 'src/sepa.js']);
   const neacoperite = new Set();
   for (const f of lista) {
     const abs = pth.join(root, f);
@@ -6263,7 +6267,35 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
   ok('perimetrul e inchis tranzitiv (dependintele fiscale sunt si ele acoperite)'
     + (neacoperite.size ? ' — LIPSESC: ' + [...neacoperite].sort().join(', ') : ''), neacoperite.size === 0);
 
+  // ── AL DOILEA STRAT: MONOGRAFIILE ────────────────────────────────────────
+  // Inchiderea tranzitiva de mai sus merge in JOS: dependintele unui fisier fiscal. Dar un modul
+  // poate schimba cifrele unei declaratii fara sa fie cerut de niciun fisier din perimetru — ii
+  // ajunge sa SCRIE ARTICOLE CONTABILE. Declaratiile se calculeaza din `entries`, nu din apeluri:
+  // cine decide debitul si creditul decide si ce ajunge la ANAF, oricat de departe ar fi de
+  // generatorul XML. `src/documentTypes/` era in perimetru tocmai din acest motiv, dar restul
+  // monografiilor (reevaluare valutara, productie, inchideri, salarii, stocuri, import e-Factura)
+  // nu erau — si niciun require nu le lega de perimetru, deci ancora nu le putea vedea.
+  //
+  // Ancora nu se slabeste (fara ea, orice modul care doar CITESTE articole ar fi fals-pozitiv):
+  // se adauga un al doilea strat, care verifica CELALALT capat — cine PRODUCE articolul.
+  // Semnatura unei linii contabile in acest cod: { debit, credit, suma, explicatie }.
+  const LINIE_CONTABILA = /\{[^{}]{0,240}debit\s*:[^{}]{0,240}credit\s*:[^{}]{0,240}suma\s*:[^{}]{0,240}explicatie\s*:/s;
+  const monografii = [];
+  for (const f of fsx.readdirSync(pth.join(root, 'src'))) {
+    if (!f.endsWith('.js')) continue;
+    const rel = 'src/' + f;
+    if (INFRA.has(rel)) continue; // persistenta: serializeaza linii, nu le decide
+    if (LINIE_CONTABILA.test(fsx.readFileSync(pth.join(root, rel), 'utf8'))) monografii.push(rel);
+  }
+  ok('detectia gaseste monografiile cunoscute (accounting, fxreval, production)',
+    ['src/accounting.js', 'src/fxreval.js', 'src/production.js'].every((f) => monografii.includes(f)));
+  ok('detectia NU confunda o harta de coloane cu o monografie (bank.js)', !monografii.includes('src/bank.js'));
+
   const acoperit = (f) => lista.some((c) => f === c || f.startsWith(c));
+  const monoLipsa = monografii.filter((f) => !acoperit(f));
+  ok('fiecare modul care SCRIE articole contabile e in perimetru'
+    + (monoLipsa.length ? ' — LIPSESC: ' + monoLipsa.join(', ') : ''), monoLipsa.length === 0);
+
   const lipsa = generatoare.filter((f) => !acoperit(f));
   ok('fiecare generator ANAF e in perimetrul portii' + (lipsa.length ? ' — LIPSA: ' + lipsa.join(', ') : ''), lipsa.length === 0);
 
