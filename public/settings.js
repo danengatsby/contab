@@ -40,7 +40,7 @@ $('#twofaRevoke').addEventListener('click', async () => {
 // ───────────────────────── BACKUP (admin) ─────────────────────────
 export async function renderBackup() {
   if (!USER || USER.role !== 'admin') return;
-  $('#backupCard').style.display = '';
+  $('#backupCard').classList.remove('hidden');
   let b;
   try { b = await api('/api/backups'); } catch (e) { return; }
   $('#backupAuto').checked = b.auto;
@@ -109,7 +109,7 @@ $('#logoutOthers').addEventListener('click', async () => {
 // ───────────────────────── SMTP (admin) ─────────────────────────
 export async function renderSmtp() {
   if (!USER || USER.role !== 'admin') return;
-  $('#smtpCard').style.display = '';
+  $('#smtpCard').classList.remove('hidden');
   let s;
   try { s = await api('/api/smtp'); } catch (e) { return; }
   const f = $('#smtpForm');
@@ -120,6 +120,24 @@ export async function renderSmtp() {
     ? '✔ SMTP configurat (' + s.host + ')'
     : '⚠ SMTP necompletat — aplicația nu trimite emailuri: resetarea parolei NU funcționează, iar invitațiile se dau ca link copiat manual.';
 }
+// Proba de trimitere: raspunsul serverului poarta eroarea REALA de la serverul de mail
+// („autentificare respinsa", „gazda inaccesibila"), fiindca cere remedii diferite. Testul
+// foloseste datele SALVATE, deci se apasa dupa „Salvează SMTP" — altfel ar testa altceva
+// decat ce va folosi aplicatia.
+$('#smtpTest') && $('#smtpTest').addEventListener('click', async () => {
+  const b = $('#smtpTest'); const st = $('#smtpStatus');
+  b.disabled = true; const textVechi = b.textContent; b.textContent = 'Se trimite…';
+  try {
+    const r = await api('/api/smtp/test', { method: 'POST' });
+    st.className = 'status ok';
+    st.textContent = '✔ Email de test trimis către ' + r.to + '. Dacă ajunge, serverul de email e configurat corect.';
+    toast('Email de test trimis către ' + r.to);
+  } catch (e) {
+    st.className = 'status err';
+    st.textContent = '⚠ ' + e.message;
+    toast(e.message, true);
+  } finally { b.disabled = false; b.textContent = textVechi; }
+});
 $('#smtpForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -131,7 +149,7 @@ $('#smtpForm').addEventListener('submit', async (e) => {
 // ── Cote fiscale configurabile (admin) ──
 export async function renderFiscal() {
   if (!USER || USER.role !== 'admin') return;
-  $('#fiscalCard').style.display = '';
+  $('#fiscalCard').classList.remove('hidden');
   let c; try { c = await api('/api/fiscal-config'); } catch (e) { return; }
   const f = $('#fiscalForm');
   Object.keys(c.current || {}).forEach((k) => { if (f[k]) f[k].value = c.current[k]; });

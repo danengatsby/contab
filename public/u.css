@@ -114,7 +114,8 @@
 [data-u="u109"]{font-size:12px;margin-top:12px}
 [data-u="u110"]{cursor:pointer;color:var(--accent)}
 [data-u="u111"]{gap:10px;flex-wrap:wrap;align-items:center}
-[data-u="u112"]{display:none}
+/* u112 eliminat: cele 6 elemente ascunse implicit (carduri de admin, export, stergere logo)
+   folosesc acum clasa .hidden — JS-ul le arata cu classList, nu cu style.display. */
 [data-u="u113"]{margin:14px 0;border:none;border-top:1px solid var(--line)}
 [data-u="u114"]{max-width:320px}
 [data-u="u115"]{gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}

@@ -10,9 +10,10 @@ const secretbox = require('../secretbox');
 const fs = require('fs');
 const db = require('../db');
 const backupLib = require('../backup');
+const notify = require('../notify'); // proba de trimitere SMTP (butonul de email de test)
 
 module.exports = function register(app, ctx) {
-  const { requireAdmin, upload, logAudit } = ctx;
+  const { requireAdmin, upload, logAudit, wrap } = ctx;
 
   function doBackup() {
     const d = db.get();
@@ -89,6 +90,26 @@ module.exports = function register(app, ctx) {
     db.save();
     res.json({ ok: true, configured: !!s.host });
   });
+  // Proba de trimitere. Fara ea, singurul mod de a afla daca SMTP-ul chiar merge era sa treci
+  // prin fluxul de resetare a parolei — care, din motive de anti-enumerare, raspunde identic si
+  // cand n-a trimis nimic. Aici eroarea reala de la serverul de mail se INTOARCE (ruta e de admin),
+  // fiindca „autentificare respinsa" si „gazda inaccesibila" cer remedii diferite.
+  app.post('/api/smtp/test', requireAdmin, wrap(async (req, res) => {
+    const d = db.get();
+    const s = d.settings.smtp || {};
+    if (!s.host) return res.status(400).json({ error: 'Completează și salvează întâi datele SMTP.' });
+    const to = String((req.body || {}).to || req.user.email || '').trim();
+    if (!to) return res.status(400).json({ error: 'Nu am unde trimite: contul tău nu are adresă de email (Setări → Contul meu).' });
+    try {
+      await notify.sendMail(s, to, 'Contabo — email de test', 'Acesta e un email de test din Contabo.\n'
+        + 'Dacă l-ai primit, serverul de email e configurat corect: resetarea parolei, invitațiile şi digestul de termene vor funcţiona.');
+      logAudit('smtp.test', 'email de test trimis catre ' + to, { req, firmaId: null });
+      res.json({ ok: true, to });
+    } catch (e) {
+      // mesajul brut de la serverul de mail e exact ce ii trebuie adminului ca sa stie ce sa schimbe
+      res.status(400).json({ error: 'Trimiterea a eșuat: ' + String(e.message || e) });
+    }
+  }));
 
   return { doBackup };
 };

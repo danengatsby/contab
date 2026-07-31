@@ -85,7 +85,7 @@ function requireAdmin(req, res, next) {
 require('./src/routes/account')(app, { logAudit });
 
 // Backup/restaurare + SMTP (admin): src/routes/backup.js — intoarce doBackup (folosit si de jobul zilnic).
-const { doBackup } = require('./src/routes/backup')(app, { requireAdmin, upload, logAudit });
+const { doBackup } = require('./src/routes/backup')(app, { requireAdmin, upload, logAudit, wrap });
 // Mesaje (suport user <-> admin): src/routes/messages.js
 require('./src/routes/messages')(app, { requireAdmin, upload, logAudit });
 

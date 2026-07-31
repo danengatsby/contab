@@ -1627,7 +1627,7 @@ Cu stimă,
         <p class="muted">Descarcă <b>toate datele firmei active</b> (înregistrări, parteneri, stocuri, salarii, solduri) <b>împreună cu documentele scanate atașate</b>, într-o singură arhivă ZIP pe PC-ul tău. O poți restaura oricând, aici sau pe altă instalare.</p>
         <div class="row" data-u="u111">
           <a id="firmaExport" class="btn primary" target="_blank">⬇ Descarcă copia completă (ZIP, pe PC)</a>
-          <a id="exportAllBtn" href="/api/firme/export-all" class="btn" target="_blank" data-u="u112" title="Doar pentru administrator">⬇ Descarcă TOATE firmele (ZIP-uri separate)</a>
+          <a id="exportAllBtn" href="/api/firme/export-all" class="btn hidden" target="_blank" title="Doar pentru administrator">⬇ Descarcă TOATE firmele (ZIP-uri separate)</a>
         </div>
         <div id="firmaRestoreZone">
           <hr data-u="u113">
@@ -1655,7 +1655,7 @@ Cu stimă,
         </div>
         <div id="openStatus" class="status"></div>
       </div>
-      <div class="card" id="usersCard" data-u="u112">
+      <div class="card hidden" id="usersCard">
         <h2>Utilizatori (administrator)</h2>
         <p class="muted">Fiecare contabil vede doar firmele bifate. Adminul vede toate firmele.</p>
         <label data-u="u117"><input type="checkbox" id="selfRegToggle" data-u="u15"> Permite înscrierea publică de firme noi (butonul „Înscrie o firmă" de pe pagina de login)</label>
@@ -1718,7 +1718,7 @@ Cu stimă,
           <span id="twofaDisableWrap" class="hidden"><input id="twofaDisCode" inputmode="numeric" placeholder="Cod 6 cifre" data-u="u120" /> <button id="twofaDisable" class="btn ghost">Dezactivează 2FA</button> <button id="twofaRevoke" class="btn ghost">Revocă dispozitivele de încredere</button></span>
         </div>
       </div>
-      <div class="card" id="backupCard" data-u="u112">
+      <div class="card hidden" id="backupCard">
         <div class="card-head">
           <h2>Backup baza de date</h2>
           <button id="backupNow" class="btn small primary">Fă backup acum</button>
@@ -1731,7 +1731,7 @@ Cu stimă,
         <input type="file" id="restoreFile" accept=".json" />
         <button id="restoreBtn" class="btn">Restaurează din fișier</button>
       </div>
-      <div class="card" id="smtpCard" data-u="u112">
+      <div class="card hidden" id="smtpCard">
         <h2>Server email (SMTP)</h2>
         <p class="muted">Fără el aplicația <b>nu poate trimite niciun email</b>: linkul de <b>resetare a parolei</b>,
           invitațiile pentru colaboratori, digestul zilnic cu termenele fiscale și alertele de eroare.
@@ -1746,6 +1746,7 @@ Cu stimă,
           <label class="full">Expeditor (From) <input name="from" placeholder="Contabo <noreply@exemplu.ro>" /></label>
           <label class="full" data-u="u123"><input name="notifyNewMessage" type="checkbox" data-u="u15" checked> 📧 Trimite-mi email la mesaje noi de la utilizatori când nu sunt online</label>
           <button class="btn primary">Salvează SMTP</button>
+          <button id="smtpTest" class="btn" type="button" title="Trimite un email de probă pe adresa contului tău, ca să vezi dacă datele sunt corecte">✉️ Trimite email de test</button>
         </form>
       </div>
       <div class="card">
@@ -1895,13 +1896,13 @@ Cu stimă,
               <img id="logoPreview" alt="" data-u="u130" />
               <input type="file" id="logoFile" accept=".png,.jpg,.jpeg" data-u="u131" />
               <button type="button" id="logoUploadBtn" class="btn small">Încarcă logo</button>
-              <button type="button" id="logoDeleteBtn" class="btn small ghost" data-u="u112">Șterge logo</button>
+              <button type="button" id="logoDeleteBtn" class="btn small ghost hidden">Șterge logo</button>
             </div>
           </div>
           <button class="btn primary">Salvează</button>
         </form>
       </div>
-      <div class="card" id="fiscalCard" data-u="u112">
+      <div class="card hidden" id="fiscalCard">
         <h2>⚖️ Cote fiscale (administrator)</h2>
         <p class="muted">Cotele folosite la salarii, TVA și impozite. Modifică-le când se schimbă legea — toate calculele preiau automat noile valori. „Reset" revine la valorile standard din aplicație.</p>
         <div id="fiscalVechime"></div>
