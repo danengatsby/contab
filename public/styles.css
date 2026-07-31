@@ -193,6 +193,11 @@ body.compact h1{font-size:17px}body.compact h2{font-size:15px}body.compact h3{fo
 .card-titlu-mare{font-size:23px;letter-spacing:-.01em;color:var(--head)}
 body.compact .card-titlu-mare{font-size:20px}
 body.dark .card-titlu-mare{color:var(--ink)}
+/* Cand clasa cade pe TITLUL DE PAGINA (.toolbar>h2, deja 21px), regula de mai sus ar pierde:
+   `.toolbar>h2` are o clasa si un element, `.card-titlu-mare` doar o clasa. Deci o pereche
+   proprie, si o dimensiune peste cea de pagina — altfel marcajul n-ar face nimic vizibil. */
+.toolbar>h2.card-titlu-mare{font-size:26px}
+body.compact .toolbar>h2.card-titlu-mare{font-size:22px}
 body.compact .card{padding:11px 13px;margin-bottom:11px;border-radius:11px}
 body.compact .grid2{gap:12px}
 body.compact th,body.compact td{padding:3px 7px}
