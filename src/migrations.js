@@ -59,6 +59,30 @@ const MIGRATIONS = [
       return n;
     },
   },
+  {
+    v: 3,
+    desc: 'backfill `ownerId` pe firmele existente (proprietarul aproba cererile de acces)',
+    up(d) {
+      // Accesul se tinea DOAR ca lista `user.firme`, in care toti membrii sunt egali — deci nu
+      // exista pe cine intreba cand cineva cere acces la o firma. Proprietarul e cel care a
+      // creat-o; pentru firmele de dinainte de camp il deducem din membri.
+      //
+      // Regula: daca firma are EXACT UN membru non-admin, el e proprietarul (cazul obisnuit —
+      // cineva si-a inscris firma). Daca are mai multi, luam pe cel cu id-ul cel mai mic, adica
+      // primul cont creat: el a inscris firma, ceilalti au fost adaugati dupa. Daca n-are niciun
+      // membru (firma facuta de admin), NU inventam un proprietar — raman cererile pe seama
+      // adminului, care are oricum acces la tot.
+      let n = 0;
+      for (const f of d.firme || []) {
+        if (f.ownerId) continue;
+        const membri = (d.users || []).filter((u) => u.role !== 'admin' && Array.isArray(u.firme) && u.firme.includes(f.id));
+        if (!membri.length) continue;
+        f.ownerId = membri.reduce((min, u) => (u.id < min.id ? u : min)).id;
+        n += 1;
+      }
+      return n;
+    },
+  },
 ];
 
 const LATEST = MIGRATIONS.reduce((m, x) => Math.max(m, x.v), 0);

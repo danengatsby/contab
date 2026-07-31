@@ -9,8 +9,50 @@ import { $, $$, api, toast, USER, H, META, isDemo } from './core.js';
 let deps = {};
 export function setAdminDeps(d) { deps = d; }
 
+// ── Cereri de acces la o firma existenta ──
+// Un contabil care preia o firma nu si-o mai creeaza a doua oara (ar iesi o firma goala, dublura),
+// ci cere acces la cea reala. Decide PROPRIETARUL.
+export async function renderCereriAcces() {
+  const box = $('#cereriPrimite'); if (!box) return;
+  let d; try { d = await api('/api/firme/cereri'); } catch (e) { box.innerHTML = ''; return; }
+  const c = d.cereri || [];
+  box.innerHTML = c.length
+    ? `<table><thead><tr><th>Firma</th><th>Cine cere</th><th>Email</th><th>Când</th><th></th></tr></thead><tbody>${
+      c.map((r) => `<tr><td>${H(r.firma)}</td><td>${H(r.username)}</td><td class="muted">${H(r.email)}</td>
+        <td class="muted">${String(r.ts || '').slice(0, 10)}</td>
+        <td><button class="btn small primary cer-ok" data-id="${H(r.id)}">Aprobă</button>
+            <button class="btn small cer-nu" data-id="${H(r.id)}">Respinge</button></td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Nicio cerere în așteptare.</p>';
+  const decide = async (id, aprob) => {
+    try {
+      const r = await api('/api/firme/cereri/' + encodeURIComponent(id), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aprob }),
+      });
+      toast(aprob ? ('Acces acordat pentru „' + r.firma + '".') : 'Cerere respinsă.');
+      renderCereriAcces();
+    } catch (e) { toast(e.message, true); }
+  };
+  $$('#cereriPrimite .cer-ok').forEach((b2) => b2.addEventListener('click', () => decide(b2.dataset.id, true)));
+  $$('#cereriPrimite .cer-nu').forEach((b2) => b2.addEventListener('click', () => decide(b2.dataset.id, false)));
+}
+$('#cerereAccesForm') && $('#cerereAccesForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const st = $('#cerereAccesStatus');
+  try {
+    const r = await api('/api/firme/cerere-acces', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cui: e.target.cui.value }),
+    });
+    // mesajul e acelasi fie ca firma exista sau nu — ecranul nu are voie sa devina un mod de a
+    // afla ce firme sunt in aplicatie, incercand CUI-uri
+    st.className = 'status ok'; st.textContent = r.message;
+    e.target.reset();
+  } catch (err) { st.className = 'status err'; st.textContent = err.message; }
+});
+
 export async function renderFirme() {
   const data = await api('/api/firme');
+  renderCereriAcces();
   $('#firmaExport').href = '/api/firme/' + data.firmaActiva + '/export-zip';
   // Contul demo (public, partajat) nu gestioneaza firme si nici setarile contului:
   // fara Firmele mele / mediu de test / restaurare, si fara profil / parola / 2FA / conexiune SPV.
