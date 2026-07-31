@@ -193,6 +193,10 @@ body.compact h1{font-size:17px}body.compact h2{font-size:15px}body.compact h3{fo
 .card-titlu-mare{font-size:23px;letter-spacing:-.01em;color:var(--head)}
 body.compact .card-titlu-mare{font-size:20px}
 body.dark .card-titlu-mare{color:var(--ink)}
+/* Titlu de sectiune care incepe o parte NOUA in acelasi card: are nevoie de aer deasupra, altfel
+   se lipeste de tabelul de dinainte si pare inca un rand al lui, nu un capitol nou. */
+.sect-desprinsa{margin-top:28px}
+body.compact .sect-desprinsa{margin-top:20px}
 
 body.compact .card{padding:11px 13px;margin-bottom:11px;border-radius:11px}
 body.compact .grid2{gap:12px}
