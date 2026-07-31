@@ -1759,9 +1759,11 @@ Cu stimă,
         <p class="muted">Poți administra <b>mai multe firme din același cont</b>. Comuți între ele din selectorul de sus (bara albastră) — exact ca la administrator. Firma activă determină ce date vezi în toată aplicația.</p>
         <div id="firmeList" class="tablewrap"></div>
 
-        <h3>Cer acces la o firmă existentă</h3>
-        <p class="muted">Preiei contabilitatea unei firme deja înregistrate în aplicație? Nu o crea din nou —
-          cere acces după CUI. <b>Proprietarul firmei decide</b>; primești acces doar după ce aprobă el.</p>
+        <h3>Adaugă o firmă la contul tău</h3>
+        <p class="muted">Preiei contabilitatea unei firme deja înregistrate în aplicație? Cere acces după CUI.
+          <b>Proprietarul firmei decide</b>; primești acces doar după ce aprobă el.<br>
+          O firmă <b>care nu există încă</b> în aplicație se înscrie de către patronul ei, de pe pagina de
+          autentificare („🚀 Testează gratuit") — așa are de la început un proprietar care poate aproba accesul altora.</p>
         <form id="cerereAccesForm" class="dyn">
           <label>CUI-ul firmei <input name="cui" placeholder="RO12345678" required /></label>
           <button class="btn">Trimite cererea</button>
@@ -1772,26 +1774,6 @@ Cu stimă,
         <p class="muted">Conturi care au cerut acces la firmele al căror proprietar ești. Aprobarea le dă acces la toate datele firmei.</p>
         <div id="cereriPrimite" class="tablewrap"></div>
 
-        <h3>Creează o firmă nouă</h3>
-        <form id="firmaNewForm" class="dyn" data-u="u8">
-          <label>Denumire <input name="nume" placeholder="S.C. NOUA S.R.L." required /></label>
-          <div data-u="u51">
-            <label data-u="u46">CUI <input name="cui" /></label>
-            <label data-u="u46">Reg. Com. <input name="regCom" /></label>
-            <label data-u="u46">Oraș <input name="oras" /></label>
-          </div>
-          <div data-u="u53">
-            <label data-u="u46">Formă juridică
-              <select name="tipEntitate">
-                <option value="srl">SRL / societate</option>
-                <option value="pfa">PFA / Întreprindere individuală</option>
-              </select>
-            </label>
-            <label data-u="u54"><input name="tvaPlatitor" type="checkbox" checked data-u="u15"> Plătitoare de TVA</label>
-          </div>
-          <p class="muted" data-u="u124">🎁 Orice firmă nouă începe cu <b>o lună de probă gratuită</b>. La final o abonezi (plata pe firmă) ca să continui, sau o ștergi.</p>
-          <button class="btn primary">+ Adaugă firmă</button>
-        </form>
       </div>
       <div class="card" id="colaboratoriBox">
         <h2>👥 Colaboratori pe firmă</h2>

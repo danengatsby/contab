@@ -57,7 +57,7 @@ export async function renderFirme() {
   // Contul demo (public, partajat) nu gestioneaza firme si nici setarile contului:
   // fara Firmele mele / mediu de test / restaurare, si fara profil / parola / 2FA / conexiune SPV.
   if (isDemo()) {
-    ['#firmaNewForm', '#testCloneBtn', '#profileForm', '#pwForm', '#twofaStatus', '#anafForm'].forEach((sel) => {
+    ['#firmeList', '#testCloneBtn', '#profileForm', '#pwForm', '#twofaStatus', '#anafForm'].forEach((sel) => {
       const el = $(sel); const card = el && el.closest('.card');
       if (card) card.classList.add('hidden');
     });
@@ -105,13 +105,6 @@ $('#testCloneBtn') && $('#testCloneBtn').addEventListener('click', async () => {
     toast('Firmă de test creată: ' + r.nume + ' (acum activă)');
   } catch (e) { toast(e.message, true); }
   finally { b.disabled = false; b.textContent = '🧪 Creează firmă de test (copie a celei curente)'; }
-});
-$('#firmaNewForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const f = e.target;
-  await api('/api/firme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, oras: f.oras.value, tipEntitate: f.tipEntitate.value, tvaPlatitor: f.tvaPlatitor.checked }) });
-  f.reset(); if (f.tvaPlatitor) f.tvaPlatitor.checked = true; await deps.init(); deps.onTab('setari');
-  toast('Firmă adăugată cu o lună de probă gratuită (acum activă). Comuți între firme din selectorul de sus.');
 });
 $('#firmaImportBtn').addEventListener('click', async () => {
   const file = $('#firmaImportFile').files[0];
