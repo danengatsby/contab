@@ -77,7 +77,10 @@ $$('#tabs .navgroup').forEach((g) => {
     else openGroup(g);
   });
 });
-openGroup($$('#tabs .navgroup')[0]); // deschide prima secțiune (Documente) la pornire
+// Deschide sectiunea de LUCRU la pornire. Ancorata pe CONTINUT, nu pe pozitie: varianta veche
+// lua „prima .navgroup din DOM" presupunand ca e Documente, iar mutarea lui Setări sub Ghid a
+// facut-o sa deschida exact sectiunea in care nu-ti incepi ziua.
+openGroup($$('#tabs .navgroup').find((g) => g.querySelector('[data-tab="documente"]')) || $$('#tabs .navgroup')[0]);
 
 $('#tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || !b.dataset.tab) return; // ignora etichetele de grup
@@ -609,6 +612,7 @@ const TOUR = [
   { ic: '👋', title: 'Bun venit! Meniul, pe scurt', text: 'L-am organizat pe activități zilnice, în limbaj simplu. Ți-l arăt în câțiva pași — apoi ești gata.' },
   { sel: '#tabs [data-tab="dashboard"]', ic: '🏠', title: 'Acasă', text: 'Punctul de plecare: butoane „Ce vrei să faci?" și o privire de ansamblu asupra firmei.' },
   { sel: '#tabs [data-tab="ghid"]', ic: '📖', title: 'Ghid', text: 'Cum lucrezi, pas cu pas — de la primul document până la declarații.' },
+  { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Datele firmei, arhiva documentelor și preferințele contului.' },
   { group: 'Documente', ic: '📥', title: 'Documente & facturi', text: 'Adaugi documentele primite (le încarci, aplicația le citește) și emiți facturi către clienți.' },
   { group: 'Bani', ic: '🏦', title: 'Bani', text: 'Încasările și plățile prin bancă și casă, plus verificarea extrasului bancar.' },
   { group: 'Taxe', ic: '🧾', title: 'Taxe', text: 'TVA-ul de plată și declarațiile pentru ANAF.' },
@@ -618,7 +622,6 @@ const TOUR = [
   { sel: '#tabs [data-tab="mesaje"]', ic: '💬', title: 'Mesaje', text: 'Ai o întrebare? Scrie-i administratorului direct de aici — îți răspunde în aplicație.' },
   { sel: '#tabs [data-tab="notificari"]', ic: '🔔', title: 'Notificări', text: 'Termenele fiscale care se apropie și restanțele. Fiecare rând are butonul care le rezolvă.' },
   { sel: '#navPortofoliu', ic: '🗂', title: 'Portofoliu', text: 'Toate firmele tale deodată: ce declarații are fiecare și ce a rămas de făcut. Util mai ales când administrezi mai multe.' },
-  { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Datele firmei, arhiva documentelor și preferințele contului.' },
   { ic: '🎉', title: 'Gata!', text: 'Începe din 🏠 Acasă → „Ce vrei să faci?". Poți relua oricând turul din butonul 🧭 Tur meniu.' },
 ];
 let tourIdx = 0;
