@@ -1641,6 +1641,88 @@ Cu stimă,
     <!-- ─────────────── SETARI ─────────────── -->
     <section id="tab-setari" class="tab">
       <div class="card">
+        <h2>Firmele mele</h2>
+        <p class="muted">Poți administra <b>mai multe firme din același cont</b>. Comuți între ele din selectorul de sus (bara albastră) — exact ca la administrator. Firma activă determină ce date vezi în toată aplicația.</p>
+        <div id="firmeList" class="tablewrap"></div>
+
+        <h3>Adaugă o firmă la contul tău</h3>
+
+        <div id="firmaProprieBox" class="hidden">
+          <p class="muted"><b>Firmă nouă, a ta.</b> Doar firme care <b>nu sunt încă</b> în aplicație. Începem cu CUI-ul:
+            dacă firma e deja înregistrată, nu se creează a doua oară — te trimitem la cererea de acces de mai jos,
+            ca să lucrezi pe evidența reală, nu pe una paralelă.</p>
+          <form id="firmaProprieForm" class="dyn" data-u="u8">
+            <label>CUI * <input name="cui" placeholder="RO14399840" required /></label>
+            <label>Denumire * <input name="nume" placeholder="S.C. NOUA S.R.L." required /></label>
+            <div data-u="u51">
+              <label data-u="u46">Reg. Com. <input name="regCom" /></label>
+              <label data-u="u46">Oraș <input name="oras" /></label>
+            </div>
+            <div data-u="u53">
+              <label data-u="u46">Formă juridică
+                <select name="tipEntitate">
+                  <option value="srl">SRL / societate</option>
+                  <option value="pfa">PFA / Întreprindere individuală</option>
+                </select>
+              </label>
+              <label data-u="u54"><input name="tvaPlatitor" type="checkbox" checked data-u="u15"> Plătitoare de TVA</label>
+            </div>
+            <p class="muted" data-u="u124">🎁 Orice firmă nouă începe cu <b>o lună de probă gratuită</b>. La final o abonezi (plata pe firmă) ca să continui, sau o ștergi.</p>
+            <button class="btn primary">+ Înscrie firma</button>
+          </form>
+          <div id="firmaProprieStatus" class="status"></div>
+        </div>
+
+        <p class="muted hidden" id="firmaProprieLink">Ai și o firmă a ta, pe care vrei s-o ții aici?
+          <a class="link" id="firmaProprieShow">Înscrie-o →</a></p>
+
+        <p class="muted"><b>Firmă care există deja în aplicație.</b> Preiei contabilitatea unui client? Cere acces după CUI.
+          <b>Proprietarul firmei decide</b>; primești acces doar după ce aprobă el.</p>
+        <form id="cerereAccesForm" class="dyn">
+          <label>CUI-ul firmei <input name="cui" placeholder="RO12345678" required /></label>
+          <button class="btn">Trimite cererea</button>
+        </form>
+        <div id="cerereAccesStatus" class="status"></div>
+
+        <h3>Cereri de acces la firmele tale</h3>
+        <p class="muted">Conturi care au cerut acces la firmele al căror proprietar ești. Aprobarea le dă acces la toate datele firmei.</p>
+        <div id="cereriPrimite" class="tablewrap"></div>
+
+      </div>
+
+      <div class="card" id="contabiliCard">
+        <h2>🧮 Contabili și cereri de servicii</h2>
+        <p class="muted">Ca <b>patron</b>: alegi un contabil din listă și îi trimiți o cerere pentru una dintre firmele tale —
+          el <b>acceptă sau refuză</b>, și abia atunci primește acces la datele firmei.
+          Ca <b>contabil</b>: bifează „Apar în lista de contabili" în „Contul meu" ca să te poată găsi, și răspunzi mai jos cererilor primite.</p>
+        <h3>Contabili disponibili</h3>
+        <div id="contabiliList" class="tablewrap"></div>
+        <div id="cerereServiciiStatus" class="status"></div>
+
+        <h3>Cereri trimise de tine</h3>
+        <div id="serviciiTrimise" class="tablewrap"></div>
+
+        <h3>Cereri primite de la patroni</h3>
+        <p class="muted">Firme care te-au cerut ca și contabil. Acceptarea îți dă acces la toate datele firmei.</p>
+        <div id="serviciiPrimite" class="tablewrap"></div>
+
+      </div>
+      <div class="card" id="colaboratoriBox">
+        <h2>👥 Colaboratori pe firmă</h2>
+        <p class="muted">Dă acces la <b>firma activă</b> altei persoane — un <b>contabil</b> poate adăuga administratorul firmei, iar administratorul poate adăuga un contabil. Colaboratorul primește <b>acces complet</b> la această firmă (nu la celelalte firme ale tale).</p>
+        <div id="colaboratoriList" class="tablewrap"></div>
+        <form id="colaboratorForm" class="dyn" data-u="u8">
+          <label>Utilizator sau email <input id="colaboratorKey" name="key" placeholder="ex. contabil.ionescu sau nume@exemplu.ro" autocomplete="off" /></label>
+          <div class="row" data-u="u46">
+            <button type="button" id="colaboratorAddExisting" class="btn primary">Adaugă cont existent</button>
+            <button type="button" id="colaboratorInvite" class="btn">✉️ Invită prin link</button>
+          </div>
+          <div id="colaboratorInviteResult" class="muted" data-u="u18"></div>
+          <p class="muted" data-u="u28">„Adaugă cont existent" dă acces imediat unui cont Contabo care există deja. „Invită prin link" creează o invitație pentru o persoană nouă — primești un link pe care i-l trimiți ca să-și seteze parola.</p>
+        </form>
+      </div>
+
+      <div class="card">
         <h2>💾 Copia ta de siguranță — pe calculatorul tău</h2>
         <p class="muted">Descarcă <b>toate datele firmei active</b> (înregistrări, parteneri, stocuri, salarii, solduri) <b>împreună cu documentele scanate atașate</b>, într-o singură arhivă ZIP pe PC-ul tău. O poți restaura oricând, aici sau pe altă instalare.</p>
         <div class="row" data-u="u111">
@@ -1781,87 +1863,7 @@ Cu stimă,
           <button id="smtpTest" class="btn" type="button" title="Trimite un email de probă pe adresa contului tău, ca să vezi dacă datele sunt corecte">✉️ Trimite email de test</button>
         </form>
       </div>
-      <div class="card">
-        <h2>Firmele mele</h2>
-        <p class="muted">Poți administra <b>mai multe firme din același cont</b>. Comuți între ele din selectorul de sus (bara albastră) — exact ca la administrator. Firma activă determină ce date vezi în toată aplicația.</p>
-        <div id="firmeList" class="tablewrap"></div>
-
-        <h3>Adaugă o firmă la contul tău</h3>
-
-        <div id="firmaProprieBox" class="hidden">
-          <p class="muted"><b>Firmă nouă, a ta.</b> Doar firme care <b>nu sunt încă</b> în aplicație. Începem cu CUI-ul:
-            dacă firma e deja înregistrată, nu se creează a doua oară — te trimitem la cererea de acces de mai jos,
-            ca să lucrezi pe evidența reală, nu pe una paralelă.</p>
-          <form id="firmaProprieForm" class="dyn" data-u="u8">
-            <label>CUI * <input name="cui" placeholder="RO14399840" required /></label>
-            <label>Denumire * <input name="nume" placeholder="S.C. NOUA S.R.L." required /></label>
-            <div data-u="u51">
-              <label data-u="u46">Reg. Com. <input name="regCom" /></label>
-              <label data-u="u46">Oraș <input name="oras" /></label>
-            </div>
-            <div data-u="u53">
-              <label data-u="u46">Formă juridică
-                <select name="tipEntitate">
-                  <option value="srl">SRL / societate</option>
-                  <option value="pfa">PFA / Întreprindere individuală</option>
-                </select>
-              </label>
-              <label data-u="u54"><input name="tvaPlatitor" type="checkbox" checked data-u="u15"> Plătitoare de TVA</label>
-            </div>
-            <p class="muted" data-u="u124">🎁 Orice firmă nouă începe cu <b>o lună de probă gratuită</b>. La final o abonezi (plata pe firmă) ca să continui, sau o ștergi.</p>
-            <button class="btn primary">+ Înscrie firma</button>
-          </form>
-          <div id="firmaProprieStatus" class="status"></div>
-        </div>
-
-        <p class="muted hidden" id="firmaProprieLink">Ai și o firmă a ta, pe care vrei s-o ții aici?
-          <a class="link" id="firmaProprieShow">Înscrie-o →</a></p>
-
-        <p class="muted"><b>Firmă care există deja în aplicație.</b> Preiei contabilitatea unui client? Cere acces după CUI.
-          <b>Proprietarul firmei decide</b>; primești acces doar după ce aprobă el.</p>
-        <form id="cerereAccesForm" class="dyn">
-          <label>CUI-ul firmei <input name="cui" placeholder="RO12345678" required /></label>
-          <button class="btn">Trimite cererea</button>
-        </form>
-        <div id="cerereAccesStatus" class="status"></div>
-
-        <h3>Cereri de acces la firmele tale</h3>
-        <p class="muted">Conturi care au cerut acces la firmele al căror proprietar ești. Aprobarea le dă acces la toate datele firmei.</p>
-        <div id="cereriPrimite" class="tablewrap"></div>
-
-      </div>
-
-      <div class="card" id="contabiliCard">
-        <h2>🧮 Contabili și cereri de servicii</h2>
-        <p class="muted">Ca <b>patron</b>: alegi un contabil din listă și îi trimiți o cerere pentru una dintre firmele tale —
-          el <b>acceptă sau refuză</b>, și abia atunci primește acces la datele firmei.
-          Ca <b>contabil</b>: bifează „Apar în lista de contabili" în „Contul meu" ca să te poată găsi, și răspunzi mai jos cererilor primite.</p>
-        <h3>Contabili disponibili</h3>
-        <div id="contabiliList" class="tablewrap"></div>
-        <div id="cerereServiciiStatus" class="status"></div>
-
-        <h3>Cereri trimise de tine</h3>
-        <div id="serviciiTrimise" class="tablewrap"></div>
-
-        <h3>Cereri primite de la patroni</h3>
-        <p class="muted">Firme care te-au cerut ca și contabil. Acceptarea îți dă acces la toate datele firmei.</p>
-        <div id="serviciiPrimite" class="tablewrap"></div>
-
-      </div>
-      <div class="card" id="colaboratoriBox">
-        <h2>👥 Colaboratori pe firmă</h2>
-        <p class="muted">Dă acces la <b>firma activă</b> altei persoane — un <b>contabil</b> poate adăuga administratorul firmei, iar administratorul poate adăuga un contabil. Colaboratorul primește <b>acces complet</b> la această firmă (nu la celelalte firme ale tale).</p>
-        <div id="colaboratoriList" class="tablewrap"></div>
-        <form id="colaboratorForm" class="dyn" data-u="u8">
-          <label>Utilizator sau email <input id="colaboratorKey" name="key" placeholder="ex. contabil.ionescu sau nume@exemplu.ro" autocomplete="off" /></label>
-          <div class="row" data-u="u46">
-            <button type="button" id="colaboratorAddExisting" class="btn primary">Adaugă cont existent</button>
-            <button type="button" id="colaboratorInvite" class="btn">✉️ Invită prin link</button>
-          </div>
-          <div id="colaboratorInviteResult" class="muted" data-u="u18"></div>
-          <p class="muted" data-u="u28">„Adaugă cont existent" dă acces imediat unui cont Contabo care există deja. „Invită prin link" creează o invitație pentru o persoană nouă — primești un link pe care i-l trimiți ca să-și seteze parola.</p>
-        </form>
-      </div>
+      
       <div class="card">
         <h2>🧪 Mediu de test (ramură de testare)</h2>
         <p class="muted">Creează o <b>copie completă</b> a firmei active, marcată <b>[TEST]</b>, ca să poți experimenta liber (înregistrări, închideri, declarații) <b>fără să afectezi datele reale</b>. O ștergi oricând când ai terminat, fără urme.</p>
