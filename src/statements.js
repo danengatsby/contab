@@ -130,14 +130,27 @@ function balanceSheetF10(db, asOf) {
     if (starts(cod, '471')) { add('C_cheltAvans', v); continue; }
     // ── Venituri in avans
     if (starts(cod, '472', '475')) { add('I_venitAvans', -v); continue; }
-    // ── Capitaluri proprii (capital, prime, rezerve, reportat, rezultat) — sold creditor
-    if (cl === 1 && starts(cod, '101', '102', '103', '104', '105', '106', '108', '117', '121', '129')) { add('J_capital', -v); continue; }
+    // ── Capitaluri proprii (capital, prime, rezerve, reportat, rezultat) — sold creditor.
+    //    109 (actiuni proprii), 141/149 (castiguri/pierderi din instrumente de capitaluri) sunt tot
+    //    componente de capitaluri, cu sold DEBITOR: `-v` le scade, cum trebuie. Lipseau din lista,
+    //    deci cadeau pana la regula de semn de la coada si actiunile proprii ajungeau raportate ca
+    //    o CREANTA — activ circulant in loc de diminuare a capitalurilor, deci si activul si
+    //    capitalurile umflate cu valoarea lor.
+    if (cl === 1 && starts(cod, '101', '102', '103', '104', '105', '106', '108', '109', '117', '121', '129', '141', '149')) { add('J_capital', -v); continue; }
     // ── Datorii pe termen lung (>1 an): imprumuturi si datorii asimilate, leasing (clasa 1, grupa 16)
     if (cl === 1 && starts(cod, '16')) { add('G_datoriiLT', -v); continue; }
     // ── Provizioane
     if (cl === 1 && starts(cod, '15')) { add('H_provizioane', -v); continue; }
-    // ── Investitii pe termen scurt (clasa 5, grupa 50), net de ajustari 59x
-    if (starts(cod, '50', '59')) { add(v >= 0 ? 'B_investTS' : 'D_datorii', v >= 0 ? v : -v); continue; }
+    // ── AJUSTARILE PENTRU DEPRECIERE (49x, 59x) — RECTIFICATIVE de activ, nu datorii.
+    //    Au sold creditor, ca o datorie, dar nu sunt o obligatie catre nimeni: scad activul pe care
+    //    il insotesc. Trebuie tratate INAINTEA regulii de semn de mai jos, care face din orice sold
+    //    creditor o datorie curenta — asa, activul ramanea BRUT si aparea si o datorie fictiva.
+    //    Aceeasi reparatie ca in `bilant.js`; cele doua mapari trebuie sa dea acelasi raspuns
+    //    (verificat de testul de concordanta din test/run.js).
+    if (starts(cod, '491', '495', '496')) { add('B_creante', v); continue; }
+    if (starts(cod, '59')) { add('B_investTS', v); continue; }
+    // ── Investitii pe termen scurt (clasa 5, grupa 50)
+    if (starts(cod, '50')) { add(v >= 0 ? 'B_investTS' : 'D_datorii', v >= 0 ? v : -v); continue; }
     // ── Casa si conturi la banci (51x/53x/54x) — daca e sold creditor (descoperit) -> datorie curenta
     if (starts(cod, '51', '52', '53', '54')) { if (v >= 0) add('B_casa', v); else add('D_datorii', -v); continue; }
     // ── Clasa 4 si rest clasa 5 (bifunctionale): semnul decide creanta vs datorie curenta
@@ -247,10 +260,18 @@ function cashFlow(db, year) {
     const c = String(cont);
     if (/^(20|21|22|23|26|27|404|405)/.test(c)) return 'inv_imobilizari';
     if (/^(761|762|763|764|765)/.test(c)) return 'inv_dobanziDiv';
-    if (/^(16|159|519|455|509|269)/.test(c)) return 'fin_credite';
+    // (269 nu apare aici: e prins mai sus de `26` — varsaminte pentru imobilizari financiare =
+    //  activitate de INVESTITII, nu de finantare. Il pastram acolo, dar il scoatem din lista asta,
+    //  unde era oricum umbrit si sugera o clasificare pe care codul n-o face.)
+    if (/^(16|159|519|455|509)/.test(c)) return 'fin_credite';
     if (/^(101|102|103|104|105|108|456)/.test(c)) return 'fin_capital';
     if (/^457/.test(c)) return 'fin_dividende';
-    if (/^(40|419)/.test(c) || /^(42|43)/.test(c)) return 'ex_furnizoriAngajati';
+    // 419 (avansuri incasate de la CLIENTI) sta la incasari de la clienti, nu la plati: e bani
+    // INTRATI de la un client. Grupat cu 40x, un avans incasat aparea ca suma POZITIVA pe linia de
+    // plati catre furnizori si angajati — o linie de plati nu poate fi pozitiva. 409 (avansuri
+    // PLATITE furnizorilor) ramane unde e, acolo chiar sunt bani iesiti.
+    if (/^419/.test(c)) return 'ex_clienti';
+    if (/^(40|42|43)/.test(c)) return 'ex_furnizoriAngajati';
     if (/^44/.test(c)) return 'ex_impozite';
     if (/^(666|518)/.test(c)) return 'ex_dobanzi';
     if (/^(41|418|70)/.test(c)) return 'ex_clienti';
@@ -302,6 +323,12 @@ function equityChanges(db, year) {
     { nume: 'Rezultatul reportat', m: (c) => st(c, '117') },
     { nume: 'Rezultatul exercițiului', m: (c) => st(c, '121') },
     { nume: 'Repartizarea profitului', m: (c) => st(c, '129') },
+    // Componente cu sold DEBITOR, care DIMINUEAZA capitalurile. Lipseau, iar `echilibrat` compara
+    // totalul cu capitalurile din bilant — deci o firma cu actiuni proprii primea o situatie
+    // incompleta si un dezechilibru fara explicatie.
+    { nume: 'Acțiuni proprii', m: (c) => st(c, '109') },
+    { nume: 'Câștiguri din instrumente de capitaluri proprii', m: (c) => st(c, '141') },
+    { nume: 'Pierderi din instrumente de capitaluri proprii', m: (c) => st(c, '149') },
   ];
   const rows = groups.map((g) => ({
     nume: g.nume,
