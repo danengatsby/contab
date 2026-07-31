@@ -151,8 +151,10 @@ function fillFirmaSelect() {
   // optiune de adaugare direct din selector (discoverability) — duce la Setari -> Firmele mele.
   // Contul demo nu adauga/gestioneaza firme (lucreaza doar pe firma demo, resetata periodic).
   sel.innerHTML = opts + (isDemo() ? '' : '<option value="__add__">＋ Adaugă / gestionează firme…</option>');
-  // Portofoliul are sens doar cu mai multe firme in administrare
-  const np = $('#navPortofoliu'); if (np) np.classList.toggle('hidden', (META.firme || []).length < 2);
+  // Portofoliul ramane MEREU vizibil, si cu o singura firma. Ascunderea sub 2 firme parea logica
+  // („n-ai ce compara"), dar facea intrarea sa apara si sa dispara singura pe masura ce se adauga
+  // sau se sterg firme — iar o functie care se evapora arata a defect, nu a decizie. Cu o firma,
+  // ecranul e o privire de conformitate pe declaratiile ei, deci nici nu e gol.
 }
 // Schimbarea firmei active, ca functie ASTEPTABILA. Handlerul de pe #firmaSelect e async, deci
 // cine il declanseaza cu dispatchEvent nu are cum sa astepte sfarsitul lui `init()`. Notificarile
@@ -614,7 +616,7 @@ const TOUR = [
   { group: 'Date firmă', ic: '📁', title: 'Date firmă', text: 'Clienții și furnizorii tăi — și, în modul expert, planul de conturi.' },
   { sel: '#tabs [data-tab="mesaje"]', ic: '💬', title: 'Mesaje', text: 'Ai o întrebare? Scrie-i administratorului direct de aici — îți răspunde în aplicație.' },
   { sel: '#tabs [data-tab="notificari"]', ic: '🔔', title: 'Notificări', text: 'Termenele fiscale care se apropie și restanțele. Fiecare rând are butonul care le rezolvă.' },
-  { sel: '#navPortofoliu', ic: '🗂', title: 'Portofoliu', text: 'Ai mai multe firme? Aici le vezi pe toate deodată: ce declarații are fiecare și ce a rămas de făcut.' },
+  { sel: '#navPortofoliu', ic: '🗂', title: 'Portofoliu', text: 'Toate firmele tale deodată: ce declarații are fiecare și ce a rămas de făcut. Util mai ales când administrezi mai multe.' },
   { sel: '#tabs [data-tab="ghid"]', ic: '📖', title: 'Ghid', text: 'Cum lucrezi, pas cu pas — de la primul document până la declarații.' },
   { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Datele firmei, arhiva documentelor și preferințele contului.' },
   { ic: '🎉', title: 'Gata!', text: 'Începe din 🏠 Acasă → „Ce vrei să faci?". Poți relua oricând turul din butonul 🧭 Tur meniu.' },
