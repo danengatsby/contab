@@ -2,7 +2,7 @@
 // Dashboard (tab-ul Acasa) + analize derivate: KPI-uri, rezumat executiv, alerte, primii pasi,
 // buget vs realizat, previziune cash-flow, comparatie an-la-an si graficele SVG. Extras din app.js
 // (Etapa 5). Depinde de nucleu; navigarea intre tab-uri (goTab) e INJECTATA prin setDashboardDeps.
-import { $, $$, api, fmt, H, META, toast } from './core.js';
+import { $, $$, api, fmt, H, META, USER, toast } from './core.js';
 
 let deps = {};
 export function setDashboardDeps(d) { deps = d; }
@@ -99,6 +99,9 @@ function wireSteps(rootSel, after) {
 }
 function renderPrimiiPasi(p) {
   const card = $('#primiiPasiCard'); if (!card) return;
+  // Fara nicio firma (contabil proaspat inscris) checklistul e de nefacut: „Completeaza datele
+  // firmei", „Emite prima factura" — care firma? Bannerul de sus ii spune ce are efectiv de facut.
+  if (USER.faraFirma) { card.classList.add('hidden'); return; }
   // firma are deja activitate -> nu mai e nevoie de ghidaj
   if (!p || (p.nrInregistrari >= 5 && p.firmaCompletata)) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');

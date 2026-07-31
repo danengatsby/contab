@@ -47,9 +47,18 @@ module.exports = function registerAuthRoutes(app, ctx) {
       : messages.unreadForUser(d.messages || [], u.id);
     // Billing per-firma: starea abonamentului FIRMEI active + semnalul de read-only pentru banner.
     if (u.role !== 'admin') {
-      const f = db.getFirma(activeId(req));
+      // `activeId(req)` citeste req.user — dar /api/me e in PUBLIC_PATHS, deci middleware-ul de
+      // autentificare NU l-a pus, iar activeId cadea pe ramura de admin: prima firma din TOATA
+      // baza. Adica /api/me raporta abonamentul firmei ALTCUIVA (pe aceasta instalare, firma #1).
+      // Se calculeaza pe utilizatorul primit ca argument, singurul de incredere aici.
+      const f = db.getFirma(activeId({ user: u, query: req.query || {} }));
       out.firmaSub = plans.firmaStatus(f);
-      out.subExpirat = plans.firmaLocked(f);
+      // „N-am nicio firma" NU e „mi-a expirat proba". `firmaLocked(null)` e true — corect pentru
+      // paywall (fara firma nu ai unde scrie), dar ca mesaj era fals si descurajant: un contabil
+      // proaspat inscris ateriza pe bannerul rosu „perioada de proba a expirat" si pe ecranul de
+      // preturi, desi n-avea nicio proba si n-avea ce sa aboneze. Cele doua stari se despart aici.
+      out.faraFirma = !f;
+      out.subExpirat = !!f && plans.firmaLocked(f);
     }
     return out;
   }
@@ -119,10 +128,17 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (d.settings.selfRegister === false) return res.status(403).json({ error: 'Inscrierea de firme noi este momentan dezactivata.' });
     if (regCount(req) >= 5) return res.status(429).json({ error: 'Prea multe inscrieri de pe aceasta retea. Reincearca peste o ora.' });
     const b = req.body || {};
+    // DOUA feluri de cont, fiindca oamenii intra in aplicatie din doua directii:
+    //   patron   — vine cu firma lui, deci contul si firma se creeaza deodata (ca pana acum);
+    //   contabil — vine sa tina contabilitatea ALTORA, deci nu are ce firma sa inscrie. Contul se
+    //              creeaza gol, iar firmele vin dupa: fie cere el acces dupa CUI, fie il cheama un
+    //              patron din lista de contabili. A-l obliga sa inventeze o firma la inscriere ar
+    //              fi produs exact dublurile impotriva carora e construita poarta pe CUI.
+    const contabilFaraFirma = String(b.tipCont || '') === 'contabil';
     const nume = String(b.nume || '').trim();
     const username = authlib.normalizeUsername(b.username);
     const password = String(b.password || '');
-    if (!nume) return res.status(400).json({ error: 'Completeaza denumirea firmei.' });
+    if (!contabilFaraFirma && !nume) return res.status(400).json({ error: 'Completeaza denumirea firmei.' });
     const userErr = authlib.validateUsername(username);
     if (userErr) return res.status(400).json({ error: userErr });
     const pwErr = authlib.validatePassword(password, { username });
@@ -133,51 +149,73 @@ module.exports = function registerAuthRoutes(app, ctx) {
     // CUI-ul ramane OPTIONAL la inscriere (nu rupem intrarea in aplicatie), dar daca e dat trebuie
     // sa fie valid si liber: altfel inscrierea ar fi portita prin care se creeaza a doua evidenta
     // pentru o firma existenta, ocolind poarta din createFirma.
-    const cuiNou = String(b.cui || '').trim();
+    const cuiNou = contabilFaraFirma ? '' : String(b.cui || '').trim();
     if (cuiNou) {
       if (!identitate.validCUI(cuiNou)) return res.status(400).json({ error: 'CUI invalid — cifra de control nu se potriveste. Lasa campul gol daca nu il stii acum.' });
       if (firmeSvc.firmaDupaCui(cuiNou)) return res.status(409).json({ error: firmeSvc.CUI_DUPLICAT });
     }
     // firma noua GOALA — fara date contabile (entries/parteneri/solduri/stocuri etc.)
-    const fid = db.nextFirmaId();
-    const firma = Object.assign(db.defaultFirma(fid), {
-      nume, cui: cuiNou, regCom: String(b.regCom || '').trim(),
-      adresa: String(b.adresa || '').trim(), oras: String(b.oras || '').trim(), judet: b.judet || 'RO-B',
-      tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
-      tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
-    }, { id: fid });
-    // Billing per-firma: prima firma primeste o proba de 30 de zile.
-    firma.subscription = plans.firmaTrialSub();
-    d.firme.push(firma);
-    d.partners[fid] = {}; d.openingBalances[fid] = {};
+    // La contul de contabil nu se creeaza nicio firma: `firma` ramane null si tot ce urmeaza
+    // (proba, proprietar, legarea platii) se sare. Firmele lui vin prin acord, mai tarziu.
+    let firma = null; let fid = null;
+    if (!contabilFaraFirma) {
+      fid = db.nextFirmaId();
+      firma = Object.assign(db.defaultFirma(fid), {
+        nume, cui: cuiNou, regCom: String(b.regCom || '').trim(),
+        adresa: String(b.adresa || '').trim(), oras: String(b.oras || '').trim(), judet: b.judet || 'RO-B',
+        tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
+        tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
+      }, { id: fid });
+      // Billing per-firma: prima firma primeste o proba de 30 de zile.
+      firma.subscription = plans.firmaTrialSub();
+      d.firme.push(firma);
+      d.partners[fid] = {}; d.openingBalances[fid] = {};
+    }
     const { salt, hash } = authlib.hashPassword(password);
-    const user = { id: db.nextUserId(), username, email: String(b.email || '').trim(), salt, hash, role: 'user', firme: [fid], firmaActiva: fid };
-    firma.ownerId = user.id; // proprietarul firmei: cel care a inscris-o (aproba cererile de acces)
+    const user = { id: db.nextUserId(), username, email: String(b.email || '').trim(), salt, hash, role: 'user', firme: fid ? [fid] : [], firmaActiva: fid };
+    if (firma) firma.ownerId = user.id; // proprietarul firmei: cel care a inscris-o (aproba cererile de acces)
+    // Cine se inscrie CA SI CONTABIL apare in lista pe care o vad patronii — a te face gasit e
+    // chiar motivul inscrierii. Bifa din formular ramane, ca sa fie o alegere vazuta, nu dedusa;
+    // se poate schimba oricand din Setari -> Contul meu.
+    if (contabilFaraFirma && b.disponibilContabil !== false) user.profil = { disponibilContabil: true };
     d.users.push(user);
     // Daca a platit ca „guest" inainte de inscriere, leaga abonamentul dupa email (Stripe) — firma devine activa.
     const pIdx = plans.findPending(d.settings.pendingSubs, user.email);
     if (pIdx >= 0) {
       const rec = d.settings.pendingSubs[pIdx];
       user.subscription = plans.pendingToSubscription(rec);
-      firma.subscription = { status: 'active', plan: rec.plan, since: new Date().toISOString(), stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null };
+      // fara firma nu exista pe ce sa se aplice abonamentul de firma; contul pastreaza plata
+      // legata (user.subscription) si o va folosi la prima firma pe care o primeste
+      if (firma) firma.subscription = { status: 'active', plan: rec.plan, since: new Date().toISOString(), stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null };
       d.settings.pendingSubs.splice(pIdx, 1);
       logAudit('subscription.linked', 'abonament ' + rec.plan + ' legat la inscriere', { userId: user.id, username, firmaId: fid });
     }
     regBump(req);
-    logAudit('firma.register', nume + ' (utilizator ' + username + ')', { userId: user.id, username, firmaId: fid });
+    logAudit(contabilFaraFirma ? 'contabil.register' : 'firma.register',
+      contabilFaraFirma ? ('cont de contabil, fara firma (utilizator ' + username + ')') : (nume + ' (utilizator ' + username + ')'),
+      { userId: user.id, username, firmaId: fid });
     db.save();
     startSession(req, res, user); // autentificare automata dupa inscriere
-    res.json({ ok: true, firma: { id: fid, nume: firma.nume }, user: publicUser(user) });
+    res.json({ ok: true, firma: firma ? { id: fid, nume: firma.nume } : null, faraFirma: contabilFaraFirma, user: publicUser(user) });
     // email de bun venit (best-effort, nu blocheaza raspunsul)
     if (user.email) {
       sendNotifMail(user.email, 'Bun venit în Contabo!',
-        'Salut,\n\nContul tău („' + username + '") și firma „' + firma.nume + '" sunt gata.\n\n'
-        + 'Primii pași:\n'
-        + '  1. Încarcă prima factură primită (PDF sau poză) — articolul contabil se generează singur.\n'
-        + '  2. Emite o factură către un client — primești automat e-Factura XML + PDF.\n'
-        + '  3. La final de lună, descarcă declarațiile din „Declarații ANAF".\n\n'
-        + 'Ghidul pas cu pas e în aplicație (tab-ul Ghid), iar la orice întrebare ne scrii direct din Mesaje.\n\n'
-        + 'Intră în aplicație: ' + billing.appUrl() + '\n\nSpor la treabă!\nEchipa Contabo'
+        contabilFaraFirma
+          ? ('Salut,\n\nContul tău de contabil („' + username + '") e gata. Nu ai nicio firmă încă — și e normal:\n'
+            + 'firmele vin de la clienți, prin acordul lor.\n\n'
+            + 'Primii pași:\n'
+            + '  1. Completează-ți datele în Setări → Contul meu (nume, oraș, ce servicii oferi) — așa te găsesc patronii.\n'
+            + '  2. Preiei un client care e deja în Contabo? Cere acces după CUI, din Setări → Firmele mele. Proprietarul aprobă.\n'
+            + '  3. Sau așteaptă: un patron îți poate trimite direct o cerere de servicii, iar tu accepți sau refuzi.\n\n'
+            + 'Ghidul pas cu pas e în aplicație (tab-ul Ghid), iar la orice întrebare ne scrii direct din Mesaje.\n\n'
+            + 'Intră în aplicație: ' + billing.appUrl() + '\n\nSpor la treabă!\nEchipa Contabo')
+          : ('Salut,\n\nContul tău („' + username + '") și firma „' + firma.nume + '" sunt gata.\n\n'
+            + 'Primii pași:\n'
+            + '  1. Încarcă prima factură primită (PDF sau poză) — articolul contabil se generează singur.\n'
+            + '  2. Emite o factură către un client — primești automat e-Factura XML + PDF.\n'
+            + '  3. La final de lună, descarcă declarațiile din „Declarații ANAF".\n\n'
+            + 'Ghidul pas cu pas e în aplicație (tab-ul Ghid), iar la orice întrebare ne scrii direct din Mesaje.\n\n'
+            + 'Intră în aplicație: ' + billing.appUrl() + '\n\nSpor la treabă!\nEchipa Contabo')
       ).catch((e) => console.error('email bun venit:', e.message));
     }
   });

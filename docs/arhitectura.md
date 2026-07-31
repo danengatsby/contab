@@ -71,6 +71,14 @@ Aplicația gestionează **mai multe firme** în aceeași instanță:
   balanță, declarații, parteneri, reconciliere, dashboard) este filtrată automat pe ea, printr-o
   „vedere” scoped — modulele de raportare nu au fost modificate.
 - Gestionarea firmelor (activare, ștergere) e în Setări → „Firmele mele”.
+- **Două feluri de cont la înscriere** (`POST /api/register`, câmpul `tipCont`), pentru că oamenii
+  intră în aplicație din două direcții: **patronul** vine cu firma lui, deci contul și firma se
+  creează deodată; **contabilul** vine să țină contabilitatea altora, deci contul se creează
+  **fără nicio firmă** (`firme: []`, `firmaActiva: null`) și, dacă acceptă bifa, intră direct în
+  lista de contabili. A-l obliga să inventeze o firmă la înscriere ar fi produs exact dublurile
+  împotriva cărora e construită poarta pe CUI. „Fără nicio firmă" e o stare distinctă de „probă
+  expirată" (`user.faraFirma` în `/api/me` și `/api/meta`) — altfel contul nou ateriza pe bannerul
+  de read-only și pe ecranul de prețuri, despre un abonament pe care nu-l are.
 - **O firmă, o singură evidență.** Fiecare firmă are un **proprietar** (`firma.ownerId` — contul
   care a înscris-o). O firmă se înregistrează o singură dată: `POST /api/firme` și înscrierea
   publică refuză cu **409** un CUI deja folosit și trimit spre cererea de acces (aceeași gardă

@@ -2088,6 +2088,45 @@ async function main() {
           (await req('POST', '/api/firme/servicii', { cookie: cPat, body: { firmaId: fidP, contabilId: conId } })).status, 404);
         eq('demo nu vede lista de contabili', (await req('GET', '/api/firme/contabili', { cookie: cDemo })).status, 403);
       }
+
+      // ── CONT DE CONTABIL: inscriere FARA firma ──
+      // Inscrierile de mai jos vin de pe ALTE IP-uri (X-Forwarded-For; serverul il crede doar de
+      // pe loopback, adica exact cazul suitei), ca sa nu consume bugetul de 5/ora al IP-ului
+      // implicit — pe care il verifica aserțiunea de mai jos. Utilizatori diferiti, retele
+      // diferite: realist, nu o ocolire a plafonului. Merge si `X-Forwarded-Proto: https`, fiindca
+      // odata ce cererea nu mai vine de pe loopback intra sub garda CONTAB_FORCE_HTTPS — exact
+      // perechea de anteturi pe care o pune nginx in productie.
+      // Patronul vine cu firma lui; contabilul vine sa tina contabilitatea altora, deci n-are ce
+      // firma sa inscrie. A-l obliga sa inventeze una ar fi produs exact dublurile impotriva
+      // carora e construita poarta pe CUI.
+      const conNou = await req('POST', '/api/register', { headers: { Origin: BASE, 'X-Forwarded-For': '10.0.0.11', 'X-Forwarded-Proto': 'https' }, body: { tipCont: 'contabil', username: 'contabil-fara-t', password: 'ParolaBuna2026' } });
+      eq('contabilul se inscrie FARA denumire de firma -> 200', conNou.status, 200);
+      ok('raspunsul spune ca nu s-a creat nicio firma', conNou.json.firma === null && conNou.json.faraFirma === true);
+      ok('contul chiar nu are firme', (conNou.json.user.firme || []).length === 0);
+      eq('...si lista lui de firme e goala', (await req('GET', '/api/firme', { cookie: conNou.cookie })).json.firme.length, 0);
+      ok('inscris CA SI CONTABIL, apare in lista pe care o vad patronii',
+        (await req('GET', '/api/firme/contabili', { cookie: patron.cookie })).json.contabili.some((c) => c.username === 'contabil-fara-t'));
+      // starea contului: fara firma NU inseamna proba expirata
+      const meCon = (await req('GET', '/api/me', { cookie: conNou.cookie })).json;
+      ok('contul fara firma e marcat `faraFirma`, nu `subExpirat`', meCon.faraFirma === true && meCon.subExpirat === false);
+      const mePat = (await req('GET', '/api/me', { cookie: patron.cookie })).json;
+      ok('patronul, care ARE firma, nu e marcat faraFirma', mePat.faraFirma === false);
+      // /api/me e PUBLIC (isi ia singur utilizatorul din sesiune), deci `req.user` nu e pus de
+      // middleware. `activeId(req)` cadea atunci pe ramura de admin si raporta abonamentul PRIMEI
+      // firme din toata baza — a altcuiva. Aserțiunea fixeaza ca starea e a firmei UTILIZATORULUI.
+      ok('/api/me raporteaza abonamentul firmei PROPRII, nu al primei firme din baza',
+        mePat.firmaSub && mePat.firmaSub.plan === 'trial');
+      ok('...iar contul fara firma nu mosteneste abonamentul altcuiva',
+        meCon.firmaSub && meCon.firmaSub.status === 'none' && !meCon.firmaSub.plan);
+      // bifa se poate refuza explicit la inscriere
+      const conAscuns = await req('POST', '/api/register', { headers: { Origin: BASE, 'X-Forwarded-For': '10.0.0.12', 'X-Forwarded-Proto': 'https' }, body: { tipCont: 'contabil', disponibilContabil: false, username: 'contabil-ascuns-t', password: 'ParolaBuna2026' } });
+      eq('al doilea cont de contabil se creeaza', conAscuns.status, 200);
+      ok('cine refuza bifa NU apare in lista',
+        !(await req('GET', '/api/firme/contabili', { cookie: patron.cookie })).json.contabili.some((c) => c.username === 'contabil-ascuns-t'));
+      // patronul ramane obligat sa dea denumirea firmei
+      eq('inscrierea de patron FARA denumire de firma e refuzata -> 400',
+        (await req('POST', '/api/register', { headers: { Origin: BASE, 'X-Forwarded-For': '10.0.0.13', 'X-Forwarded-Proto': 'https' }, body: { username: 'patron-fara-nume-t', password: 'ParolaBuna2026' } })).status, 400);
+
     }
     // repunem firma pe expirat-cu-o-proba, ca restul testelor (abonarea) sa continue de unde erau
     await req('POST', '/api/firme/' + tf + '/subscription', { cookie: la.cookie, body: { subscription: { plan: 'trial', trialEndsAt: '2026-01-01T00:00:00Z' } } });

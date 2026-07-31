@@ -36,7 +36,10 @@ a{color:var(--accent);text-decoration:none}
 .login-overlay{position:fixed;inset:0;background:#14204a url(/login-bg.svg) center/cover no-repeat;display:grid;place-items:center;z-index:100}
 .login-box{background:#fff;border-radius:16px;padding:28px;width:340px;max-width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .login-logo{font-size:24px;font-weight:800;color:var(--head)}
-.login-box label{display:block;margin-top:10px}
+/* `:not(.hidden)` e OBLIGATORIU, nu cosmetic: `.login-box label` (clasa + element) bate
+   `.hidden{display:none}` (o clasa) la specificitate, deci un label ascuns din JS ramanea
+   vizibil. Aceeasi capcana ca la `#tabs` mai jos. */
+.login-box label:not(.hidden){display:block;margin-top:10px}
 .login-box .btn{margin-top:14px}
 .userbadge{color:#c7cfe6;font-size:13px;font-weight:600;margin-right:4px;white-space:nowrap}
 .firma-select{width:auto;min-width:170px;max-width:240px;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);padding:6px 10px;border-radius:8px;font-weight:600}
@@ -1030,4 +1033,15 @@ body.dark .pill.rol-contabil{background:#141f33;color:#8fb4f0}
    in afara cardului (tabelul are latime fixa, deci nu se vedea deloc). */
 .srv-actiune{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .srv-actiune select{max-width:220px;flex:0 1 auto}
+/* Alegerea felului de cont, la inscriere: doua carduri-radio, nu un select — decizia schimba
+   ce se cere mai jos (firma sau nimic), deci trebuie vazuta, nu cautata intr-o lista. */
+/* Ancorate pe #registerForm: `.login-box label` are specificitate mai mare decat o singura clasa,
+   deci `.reg-tip-op{display:flex}` era batut de `display:block` si cele doua randuri se lipeau. */
+#registerForm .reg-tip{display:flex;gap:8px;margin:6px 0 10px}
+#registerForm .reg-tip-op{flex:1;display:flex;flex-direction:column;gap:3px;margin:0;padding:9px 11px;
+  border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13px;line-height:1.35}
+#registerForm .reg-tip-hd{display:flex;align-items:center;gap:6px;font-size:13px}
+#registerForm .reg-tip-hd input{margin:0;width:auto;flex:0 0 auto}
+#registerForm .reg-tip-op .muted{font-size:11.5px;line-height:1.3}
+#registerForm .reg-tip-op:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 body.dark .closeblock{color:#ffb4a8}
