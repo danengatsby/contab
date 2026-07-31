@@ -294,8 +294,10 @@ async function init() {
   applySessionState(USER);
   // drepturi granulare: utilizatorii fara acces la salarizare nu vad intrarea din meniu
   const faraSalarii = !!(USER.drepturi && USER.drepturi.faraSalarii);
-  $$('button[data-tab="salarizare"]').forEach((b) => { b.style.display = faraSalarii ? 'none' : ''; });
-  const gs = $('#navgrupSalarii'); if (gs) gs.style.display = faraSalarii ? 'none' : ''; // tot meniul, nu doar intrarea
+  // Prin CLASA, nu prin style inline: regulile de sidebar au `!important`, care bate un
+  // un display:none pus inline din JS, care nu e important — deci ascunderea nu se producea deloc.
+  $$('button[data-tab="salarizare"]').forEach((b) => b.classList.toggle('hidden', faraSalarii));
+  const gs = $('#navgrupSalarii'); if (gs) gs.classList.toggle('hidden', faraSalarii); // tot meniul, nu doar intrarea
   initUiMode(); // mod simplu implicit pentru necontabili (ascunde partea tehnica din meniu)
   // Intoarcere de la Stripe (user logat) dupa abonarea unei firme: confirmare + starea se activeaza la webhook
   const cr = /[?&]checkout=(success|cancel)/.exec(location.search);
@@ -609,8 +611,13 @@ const TOUR = [
   { group: 'Taxe', ic: '🧾', title: 'Taxe', text: 'TVA-ul de plată și declarațiile pentru ANAF.' },
   { group: 'Stocuri', ic: '📦', title: 'Stocuri, salarii, mijloace fixe', text: 'Fiecare cu meniul lui — le folosești doar dacă firma ta are nevoie de ele (mijloacele fixe apar în modul expert).' },
   { group: 'Rapoarte', ic: '📊', title: 'Rapoarte', text: 'Toate rapoartele contabile la un loc (situații, solduri, operațiuni). Se fac singure din documentele tale.' },
+  { group: 'Date firmă', ic: '📁', title: 'Date firmă', text: 'Clienții și furnizorii tăi — și, în modul expert, planul de conturi.' },
   { sel: '#tabs [data-tab="mesaje"]', ic: '💬', title: 'Mesaje', text: 'Ai o întrebare? Scrie-i administratorului direct de aici — îți răspunde în aplicație.' },
-  { ic: '🎉', title: 'Gata!', text: 'Începe din 🏠 Acasă → „Ce vrei să faci?". Poți relua oricând turul din 📖 Ghid.' },
+  { sel: '#tabs [data-tab="notificari"]', ic: '🔔', title: 'Notificări', text: 'Termenele fiscale care se apropie și restanțele. Fiecare rând are butonul care le rezolvă.' },
+  { sel: '#navPortofoliu', ic: '🗂', title: 'Portofoliu', text: 'Ai mai multe firme? Aici le vezi pe toate deodată: ce declarații are fiecare și ce a rămas de făcut.' },
+  { sel: '#tabs [data-tab="ghid"]', ic: '📖', title: 'Ghid', text: 'Cum lucrezi, pas cu pas — de la primul document până la declarații.' },
+  { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Datele firmei, arhiva documentelor și preferințele contului.' },
+  { ic: '🎉', title: 'Gata!', text: 'Începe din 🏠 Acasă → „Ce vrei să faci?". Poți relua oricând turul din butonul 🧭 Tur meniu.' },
 ];
 let tourIdx = 0;
 function tourKey() { return 'contab_tour_v1_' + ((USER && USER.username) || '?'); }
@@ -620,27 +627,37 @@ function tourTargetOf(step) {
   return null;
 }
 function clearTourHighlight() { $$('.tour-highlight').forEach((el) => el.classList.remove('tour-highlight')); }
+// Pasii CHIAR aplicabili contului curent. „Portofoliu" apare doar de la 2 firme in sus, iar
+// intrarile tehnice lipsesc in modul simplu — un pas care descrie un meniu inexistent e o
+// promisiune pe care aplicatia n-o tine, si strica si numaratoarea („pasul 4 din 13", cu pasi
+// goi). Se recalculeaza la FIECARE pornire, fiindca modul si numarul de firme se schimba.
+let TOUR_PASI = TOUR;
+function tourAplicabil(step) {
+  if (!step.sel && !step.group) return true; // introducerea si finalul n-au tinta
+  const t = tourTargetOf(step);
+  return !!(t && t.offsetParent !== null);
+}
 function showTourStep(i) {
-  tourIdx = Math.max(0, Math.min(i, TOUR.length - 1));
-  const step = TOUR[tourIdx];
+  tourIdx = Math.max(0, Math.min(i, TOUR_PASI.length - 1));
+  const step = TOUR_PASI[tourIdx];
   clearTourHighlight();
   $('#tourIc').textContent = step.ic;
   $('#tourTitle').textContent = step.title;
   $('#tourText').textContent = step.text;
-  $('#tourProgress').innerHTML = TOUR.map((_, k) => `<i class="${k === tourIdx ? 'on' : ''}"></i>`).join('');
+  $('#tourProgress').innerHTML = TOUR_PASI.map((_, k) => `<i class="${k === tourIdx ? 'on' : ''}"></i>`).join('');
   $('#tourBack').style.visibility = tourIdx === 0 ? 'hidden' : 'visible';
-  $('#tourNext').textContent = tourIdx === TOUR.length - 1 ? 'Gata ✓' : 'Următorul →';
+  $('#tourNext').textContent = tourIdx === TOUR_PASI.length - 1 ? 'Gata ✓' : 'Următorul →';
   const t = tourTargetOf(step);
   if (t) { const g = t.closest && t.closest('.navgroup'); if (g) openGroup(g); t.classList.add('tour-highlight'); try { t.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) { /* ignora */ } }
 }
-function startTour() { $('#tourCard').classList.remove('hidden'); showTourStep(0); }
+function startTour() { TOUR_PASI = TOUR.filter(tourAplicabil); $('#tourCard').classList.remove('hidden'); showTourStep(0); }
 function endTour() { clearTourHighlight(); $('#tourCard').classList.add('hidden'); try { localStorage.setItem(tourKey(), '1'); } catch (e) { /* ignora */ } }
 function maybeTour() {
   try { if (localStorage.getItem(tourKey())) return; } catch (e) { return; }
   if (!$('#welcomeOverlay').classList.contains('hidden')) return; // dacă se arată bun-venitul, turul pornește după „Începe turul”
   startTour();
 }
-$('#tourNext').addEventListener('click', () => { if (tourIdx >= TOUR.length - 1) endTour(); else showTourStep(tourIdx + 1); });
+$('#tourNext').addEventListener('click', () => { if (tourIdx >= TOUR_PASI.length - 1) endTour(); else showTourStep(tourIdx + 1); });
 $('#tourBack').addEventListener('click', () => showTourStep(tourIdx - 1));
 $('#tourSkip').addEventListener('click', endTour);
 $('#tourReplay') && $('#tourReplay').addEventListener('click', startTour);
