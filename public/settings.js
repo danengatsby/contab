@@ -77,19 +77,39 @@ export async function renderProfile() {
     f.notifyDeadlines.checked = p.notifyDeadlines !== false;
     // datele personale: doar pentru abonati (necontabil = Start, contabil = Pro)
     const abonat = p.tip === 'necontabil' || p.tip === 'contabil';
-    $('#profilPersonal').classList.toggle('hidden', !abonat);
-    $('#autorizatieRow').classList.toggle('hidden', p.tip !== 'contabil');
+    const pr0 = p.profil || {};
+    // ...si pentru cine s-a inscris in LISTA DE CONTABILI: acolo numele, orasul si autorizatia NU
+    // sunt date de facturare, ci chiar continutul anuntului. Ascunse dupa abonament, un contabil
+    // aflat in proba aparea in lista doar cu numele de utilizator — adica un anunt fara identitate.
+    const inLista = !!pr0.disponibilContabil;
+    $('#profilPersonal').classList.toggle('hidden', !abonat && !inLista);
+    $('#autorizatieRow').classList.toggle('hidden', p.tip !== 'contabil' && !inLista);
     const pr = p.profil || {};
-    for (const k of ['numeComplet', 'telefon', 'adresa', 'oras', 'judet', 'autorizatie']) { if (f[k]) f[k].value = pr[k] || ''; }
+    for (const k of ['numeComplet', 'telefon', 'adresa', 'oras', 'judet', 'autorizatie', 'descriere']) { if (f[k]) f[k].value = pr[k] || ''; }
+    // CNP-ul vine MASCAT de la server (1900101******). Se afiseaza asa, ca dovada ca e completat;
+    // la salvare, valoarea mascata e ignorata de server, deci re-salvarea altui camp nu il strica.
+    if (f.cnp) f.cnp.value = pr.cnp || '';
+    if (f.disponibilContabil) f.disponibilContabil.checked = !!pr.disponibilContabil;
   } catch (e) { /* */ }
 }
+// bifa deschide campurile pe loc: altfel ar trebui sa salvezi o data ca sa poti completa anuntul
+$('#profileForm') && $('#profileForm').disponibilContabil && $('#profileForm').disponibilContabil.addEventListener('change', (ev) => {
+  if (!ev.target.checked) return;
+  $('#profilPersonal').classList.remove('hidden');
+  $('#autorizatieRow').classList.remove('hidden');
+});
 $('#profileForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   const profil = {};
-  for (const k of ['numeComplet', 'telefon', 'adresa', 'oras', 'judet', 'autorizatie']) { if (f[k]) profil[k] = f[k].value; }
-  await api('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: f.email.value, notifyDeadlines: f.notifyDeadlines.checked, profil }) });
+  for (const k of ['numeComplet', 'telefon', 'adresa', 'oras', 'judet', 'autorizatie', 'descriere']) { if (f[k]) profil[k] = f[k].value; }
+  if (f.cnp) profil.cnp = f.cnp.value;
+  if (f.disponibilContabil) profil.disponibilContabil = f.disponibilContabil.checked;
+  try {
+    await api('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: f.email.value, notifyDeadlines: f.notifyDeadlines.checked, profil }) });
+  } catch (err) { return toast(err.message, true); } // CNP invalid: mesajul serverului, nu o eroare tacuta
   toast('Profil salvat');
+  renderProfile(); // reafiseaza CNP-ul mascat si reincarca lista de contabili daca s-a schimbat optiunea
 });
 export async function renderSessions() {
   let list;

@@ -13,6 +13,7 @@ const db = require('./db');
 const totp = require('./totp');
 const authlib = require('./auth');
 const plans = require('./plans');
+const identitate = require('./identitate');
 const { isDemoUser } = require('./session');
 const QRCode = require('qrcode-svg');
 
@@ -100,10 +101,13 @@ function dismissWizard(u) {
 }
 
 function getProfile(u) {
+  const p = u.profil || {};
   return {
     username: u.username, email: u.email || '', role: u.role,
     tip: plans.userKind(u), notifyDeadlines: u.notifyDeadlines !== false,
-    profil: u.profil || {},
+    // CNP-ul nu se intoarce niciodata intreg, nici propriului cont: ecranul serveste la a-l
+    // RECUNOASTE, nu la a-l copia, iar o captura de ecran nu are ce sa divulge.
+    profil: Object.assign({}, p, { cnp: identitate.maskCNP(p.cnp || ''), cnpSetat: !!p.cnp }),
   };
 }
 
@@ -114,13 +118,28 @@ function updateProfile(u, b) {
   // date personale (necontabil / contabil): nume, telefon, adresa + autorizatia contabilului
   if (b.profil && typeof b.profil === 'object') {
     const p = u.profil || {};
-    for (const k of ['numeComplet', 'telefon', 'adresa', 'oras', 'judet', 'autorizatie']) {
-      if (b.profil[k] != null) p[k] = String(b.profil[k]).slice(0, 120).trim();
+    for (const k of ['numeComplet', 'telefon', 'adresa', 'oras', 'judet', 'autorizatie', 'descriere']) {
+      if (b.profil[k] != null) p[k] = String(b.profil[k]).slice(0, 400).trim();
     }
+    // CNP: identitatea persoanei care detine firmele. Se valideaza (cifra de control) pentru ca o
+    // greseala de tastare aici nu se mai vede niciodata — campul se afiseaza mascat dupa salvare.
+    // Sirul mascat trimis inapoi de formular NU rescrie valoarea (ar distruge-o la prima salvare
+    // a altui camp): se ignora orice valoare care nu e un CNP intreg.
+    if (b.profil.cnp != null) {
+      const brut = String(b.profil.cnp).trim();
+      if (brut === '') delete p.cnp;
+      else if (identitate.cnpKey(brut).length === 13) {
+        if (!identitate.validCNP(brut)) fail(400, 'CNP invalid (cifra de control nu se potriveste). Verifică cifrele.');
+        p.cnp = identitate.cnpKey(brut);
+      }
+    }
+    // Apar sau nu in lista de contabili pe care o vad patronii. Optiune EXPLICITA: lista de
+    // conturi ale aplicatiei nu se publica singura.
+    if (b.profil.disponibilContabil != null) p.disponibilContabil = !!b.profil.disponibilContabil;
     u.profil = p;
   }
   db.save();
-  return { email: u.email, notifyDeadlines: u.notifyDeadlines !== false, profil: u.profil || {} };
+  return Object.assign({ email: u.email, notifyDeadlines: u.notifyDeadlines !== false }, { profil: getProfile(u).profil });
 }
 
 module.exports = {

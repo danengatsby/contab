@@ -50,9 +50,135 @@ $('#cerereAccesForm') && $('#cerereAccesForm').addEventListener('submit', async 
   } catch (err) { st.className = 'status err'; st.textContent = err.message; }
 });
 
+// ═══════════ ANGAJAREA UNUI CONTABIL: patron -> contabil (sensul invers) ═══════════
+// Cererea de acces porneste de la contabil („preiau firma asta"); aici porneste de la patron
+// („imi tii tu contabilitatea?"). Cine primeste cererea decide — de fiecare data celalalt.
+
+/** Randul unui contabil din lista publica; `firme` = firmele PROPRII, pentru care poate cere servicii.
+ *  Exportat separat pentru test/frontend.mjs (logica pura: construire de HTML, fara DOM). */
+export function randContabil(c, firme) {
+  const optiuni = firme.map((f) => `<option value="${H(f.id)}">${H(f.nume)}</option>`).join('');
+  const contact = [c.oras, c.telefon].filter(Boolean).map(H).join(' · ');
+  return `<tr>
+    <td><b>${H(c.nume)}</b>${c.autorizatie ? ' <span class="pill" title="Număr de autorizație declarat">CECCAR ' + H(c.autorizatie) + '</span>' : ''}
+      <div class="muted">${H(c.username)}${contact ? ' — ' + contact : ''}</div></td>
+    <td>${c.descriere ? H(c.descriere) : '<span class="muted">—</span>'}</td>
+    <td>${firme.length
+    ? `<div class="srv-actiune"><select class="srv-firma" data-id="${H(c.id)}">${optiuni}</select>
+         <button class="btn small primary srv-cere" data-id="${H(c.id)}" data-nume="${H(c.nume)}">Trimite cererea</button></div>`
+    : '<span class="muted">Ai nevoie de o firmă proprie ca să ceri servicii.</span>'}</td></tr>`;
+}
+
+// Exportat pentru teste: eticheta romaneasca a starii unei cereri de servicii.
+export const STARE_SRV = { in_asteptare: 'în așteptare', acceptata: 'acceptată', refuzata: 'refuzată', retrasa: 'retrasă' };
+
+export async function renderContabili() {
+  const box = $('#contabiliList'); if (!box) return;
+  const card = $('#contabiliCard');
+  let lst; let srv;
+  try {
+    lst = (await api('/api/firme/contabili')).contabili || [];
+    srv = await api('/api/firme/servicii');
+  } catch (e) {
+    // contul demo primeste 403 pe lista — cardul dispare, nu ramane un tabel gol si nelamurit
+    if (card) card.classList.add('hidden');
+    return;
+  }
+  if (card) card.classList.remove('hidden');
+  // firmele MELE = cele al caror proprietar sunt; doar pentru ele pot angaja pe cineva
+  const firme = (META.firme || []).filter((f) => f.ownerId === USER.id);
+  box.innerHTML = lst.length
+    ? `<table><thead><tr><th>Contabil</th><th>Ce oferă</th><th>Pentru firma</th></tr></thead><tbody>${
+      lst.map((c) => randContabil(c, firme)).join('')}</tbody></table>`
+    : '<p class="muted">Deocamdată niciun contabil nu s-a declarat disponibil. Revino mai târziu — sau, dacă tu ești contabil, bifează „Apar în lista de contabili" în „Contul meu".</p>';
+  $$('#contabiliList .srv-cere').forEach((b) => b.addEventListener('click', async () => {
+    const sel = $(`#contabiliList .srv-firma[data-id="${b.dataset.id}"]`);
+    const st = $('#cerereServiciiStatus');
+    const mesaj = prompt('Un mesaj scurt pentru ' + b.dataset.nume + ' (opțional):', '');
+    if (mesaj === null) return; // Renunță
+    try {
+      const r = await api('/api/firme/servicii', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firmaId: Number(sel.value), contabilId: Number(b.dataset.id), mesaj }),
+      });
+      st.className = 'status ok';
+      st.textContent = 'Cerere trimisă către ' + r.contabil + ' pentru „' + r.firma + '". Primește acces doar dacă acceptă.';
+      renderContabili();
+    } catch (e) { st.className = 'status err'; st.textContent = e.message; }
+  }));
+
+  // cererile trimise de mine (ca patron)
+  const t = $('#serviciiTrimise');
+  const tr = srv.trimise || [];
+  t.innerHTML = tr.length
+    ? `<table><thead><tr><th>Firma</th><th>Contabil</th><th>Stare</th><th></th></tr></thead><tbody>${
+      tr.map((r) => `<tr><td>${H(r.firma)}</td><td>${H(r.contabil)}</td>
+        <td>${H(STARE_SRV[r.status] || r.status)}</td>
+        <td>${r.status === 'in_asteptare' ? `<button class="btn small srv-retrag" data-id="${H(r.id)}">Retrage</button>` : ''}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Nicio cerere trimisă.</p>';
+  $$('#serviciiTrimise .srv-retrag').forEach((b) => b.addEventListener('click', async () => {
+    try { await api('/api/firme/servicii/' + encodeURIComponent(b.dataset.id) + '/retrage', { method: 'POST' }); toast('Cerere retrasă'); renderContabili(); }
+    catch (e) { toast(e.message, true); }
+  }));
+
+  // cererile primite de mine (ca si contabil)
+  const p2 = $('#serviciiPrimite');
+  const pr = srv.primite || [];
+  p2.innerHTML = pr.length
+    ? `<table><thead><tr><th>Firma</th><th>Patron</th><th>Mesaj</th><th></th></tr></thead><tbody>${
+      pr.map((r) => `<tr><td>${H(r.firma)}</td><td>${H(r.patron)}</td>
+        <td class="muted">${H(r.mesaj)}</td>
+        <td><button class="btn small primary srv-da" data-id="${H(r.id)}">Accept</button>
+            <button class="btn small srv-nu" data-id="${H(r.id)}">Refuz</button></td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Nicio cerere primită.</p>';
+  const decideSrv = async (id, accept) => {
+    try {
+      const r = await api('/api/firme/servicii/' + encodeURIComponent(id), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accept }),
+      });
+      toast(accept ? ('Ai primit acces la „' + r.firma + '".') : 'Cerere refuzată.');
+      // acceptarea aduce o firma noua in cont: reincarca META si redeseneaza tot tabul,
+      // altfel lista „Firmele mele" ramane cea de dinainte si pare ca nu s-a intamplat nimic
+      if (accept) { await deps.init(); deps.onTab('setari'); return; }
+      renderContabili();
+    } catch (e) { toast(e.message, true); }
+  };
+  $$('#serviciiPrimite .srv-da').forEach((b) => b.addEventListener('click', () => decideSrv(b.dataset.id, true)));
+  $$('#serviciiPrimite .srv-nu').forEach((b) => b.addEventListener('click', () => decideSrv(b.dataset.id, false)));
+}
+
+// Inscrierea unei firme PROPRII: CUI-ul primul, fiindca el decide daca firma e noua sau exista deja.
+// La 409 (firma exista) nu ramane doar un mesaj rosu — se completeaza singur CUI-ul in formularul
+// de cerere de acces, adica exact pasul urmator.
+$('#firmaProprieForm') && $('#firmaProprieForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target; const st = $('#firmaProprieStatus');
+  st.className = 'status'; st.textContent = 'Se verifică CUI-ul…';
+  try {
+    await api('/api/firme', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, oras: f.oras.value,
+        tipEntitate: f.tipEntitate.value, tvaPlatitor: f.tvaPlatitor.checked,
+      }),
+    });
+    const cui = f.cui.value;
+    f.reset(); f.tvaPlatitor.checked = true;
+    st.className = 'status ok'; st.textContent = 'Firmă înscrisă (acum activă), cu o lună de probă gratuită. CUI ' + cui;
+    await deps.init(); deps.onTab('setari');
+  } catch (err) {
+    st.className = 'status err'; st.textContent = err.message;
+    if (err.status === 409) {
+      const ca = $('#cerereAccesForm');
+      if (ca) { ca.cui.value = f.cui.value; ca.scrollIntoView({ behavior: 'smooth', block: 'center' }); ca.cui.focus(); }
+    }
+  }
+});
+
 export async function renderFirme() {
   const data = await api('/api/firme');
   renderCereriAcces();
+  renderContabili();
   $('#firmaExport').href = '/api/firme/' + data.firmaActiva + '/export-zip';
   // Contul demo (public, partajat) nu gestioneaza firme si nici setarile contului:
   // fara Firmele mele / mediu de test / restaurare, si fara profil / parola / 2FA / conexiune SPV.

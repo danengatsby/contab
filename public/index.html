@@ -1686,6 +1686,15 @@ Cu stimă,
             <input name="notifyDeadlines" type="checkbox" checked data-u="u15" />
             Primește zilnic pe email termenele fiscale (restanțe + următoarele 7 zile)
           </label>
+          <label class="full">CNP <span class="muted">(al tău, ca persoană — firmele se înregistrează pe o persoană identificată)</span>
+            <input name="cnp" inputmode="numeric" maxlength="13" placeholder="1900101415238"
+                   title="Necesar ca să îți poți înscrie firme proprii. După salvare se afișează mascat." /></label>
+          <div class="full" data-u="u88">
+            <label data-u="u123"><input name="disponibilContabil" type="checkbox" data-u="u15" />
+              <b>Apar în lista de contabili</b> <span class="muted">— patronii care caută un contabil te pot găsi și îți pot trimite cereri de servicii</span></label>
+            <label class="full">Ce servicii oferi <span class="muted">(apare lângă numele tău în listă)</span>
+              <input name="descriere" placeholder="ex. contabilitate SRL și PFA, salarizare, declarații — Cluj și online" /></label>
+          </div>
           <div id="profilPersonal" class="full hidden" data-u="u119">
             <p data-u="u88"><b>Date personale</b> <span class="muted">(pentru contul tău de abonat — apar pe documentele emise către tine)</span></p>
             <label>Nume și prenume <input name="numeComplet" placeholder="Ion Popescu" /></label>
@@ -1773,6 +1782,47 @@ Cu stimă,
         <h3>Cereri de acces la firmele tale</h3>
         <p class="muted">Conturi care au cerut acces la firmele al căror proprietar ești. Aprobarea le dă acces la toate datele firmei.</p>
         <div id="cereriPrimite" class="tablewrap"></div>
+
+        <h3>Înscrie o firmă proprie</h3>
+        <p class="muted">Doar firme care <b>nu sunt încă</b> în aplicație. Începem cu CUI-ul: dacă firma e deja înregistrată,
+          nu se creează a doua oară — te trimitem la cererea de acces, ca să lucrezi pe evidența reală.</p>
+        <form id="firmaProprieForm" class="dyn" data-u="u8">
+          <label>CUI * <input name="cui" placeholder="RO14399840" required /></label>
+          <label>Denumire * <input name="nume" placeholder="S.C. NOUA S.R.L." required /></label>
+          <div data-u="u51">
+            <label data-u="u46">Reg. Com. <input name="regCom" /></label>
+            <label data-u="u46">Oraș <input name="oras" /></label>
+          </div>
+          <div data-u="u53">
+            <label data-u="u46">Formă juridică
+              <select name="tipEntitate">
+                <option value="srl">SRL / societate</option>
+                <option value="pfa">PFA / Întreprindere individuală</option>
+              </select>
+            </label>
+            <label data-u="u54"><input name="tvaPlatitor" type="checkbox" checked data-u="u15"> Plătitoare de TVA</label>
+          </div>
+          <p class="muted" data-u="u124">🎁 Orice firmă nouă începe cu <b>o lună de probă gratuită</b>. La final o abonezi (plata pe firmă) ca să continui, sau o ștergi.</p>
+          <button class="btn primary">+ Înscrie firma</button>
+        </form>
+        <div id="firmaProprieStatus" class="status"></div>
+      </div>
+
+      <div class="card" id="contabiliCard">
+        <h2>🧮 Contabili și cereri de servicii</h2>
+        <p class="muted">Ca <b>patron</b>: alegi un contabil din listă și îi trimiți o cerere pentru una dintre firmele tale —
+          el <b>acceptă sau refuză</b>, și abia atunci primește acces la datele firmei.
+          Ca <b>contabil</b>: bifează „Apar în lista de contabili" în „Contul meu" ca să te poată găsi, și răspunzi mai jos cererilor primite.</p>
+        <h3>Contabili disponibili</h3>
+        <div id="contabiliList" class="tablewrap"></div>
+        <div id="cerereServiciiStatus" class="status"></div>
+
+        <h3>Cereri trimise de tine</h3>
+        <div id="serviciiTrimise" class="tablewrap"></div>
+
+        <h3>Cereri primite de la patroni</h3>
+        <p class="muted">Firme care te-au cerut ca și contabil. Acceptarea îți dă acces la toate datele firmei.</p>
+        <div id="serviciiPrimite" class="tablewrap"></div>
 
       </div>
       <div class="card" id="colaboratoriBox">

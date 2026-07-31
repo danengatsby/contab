@@ -278,7 +278,7 @@ function applySecurityGuards(app, ctx) {
   // `impersonate` e exceptat: altfel adminul care impersoneaza un user cu firma expirata ar fi
   // BLOCAT in impersonare (402 chiar pe /api/impersonate/stop). Paywall-ul ramane pe restul
   // rutelor si sub impersonare — adminul vede exact ce vede utilizatorul.
-  const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe|impersonate)|^\/api\/firme(\/\d+\/(keep|activate|subscribe|trial))?$|^\/api\/firme\/\d+$|^\/api\/firme\/(cerere-acces|cereri\/[\w-]+)$/;
+  const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe|impersonate)|^\/api\/firme(\/\d+\/(keep|activate|subscribe|trial))?$|^\/api\/firme\/\d+$|^\/api\/firme\/(cerere-acces|cereri\/[\w-]+|contabili|servicii|servicii\/[\w-]+(\/retrage)?)$/;
   app.use((req, res, next) => {
     if (!req.user || req.user.role === 'admin') return next();
     if (req.method === 'GET' && !/^\/(pdf|xml|csv|efactura)/.test(req.path)) return next(); // citirile libere
@@ -286,7 +286,9 @@ function applySecurityGuards(app, ctx) {
     // paywall-ul ar raspunde 402 tocmai la cererea prin care utilizatorul iese din 402.
     // Cererile de acces sunt tot gestiune de CONT, nu munca contabila: un contabil caruia i-a
     // expirat proba pe o firma trebuie sa poata cere acces la alta, iar un patron trebuie sa
-    // poata aproba chiar daca propria firma e in pauza de plata.
+    // poata aproba chiar daca propria firma e in pauza de plata. Acelasi rationament pentru
+    // angajarea unui contabil (`servicii`): un patron blocat de paywall are cu atat mai multa
+    // nevoie de un contabil — nu i se inchide usa exact cand o cauta.
     if (FIRMA_BILL_EXEMPT.test(req.path)) return next(); // cont + gestionarea firmei (activate/subscribe/trial/cereri/delete/create)
     const f = db.getFirma(activeId(req));
     if (f && plans.firmaLocked(f)) {

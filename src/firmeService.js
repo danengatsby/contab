@@ -17,7 +17,10 @@ const db = require('./db');
 const plans = require('./plans');
 const billing = require('./billing');
 const { capList } = require('./paginate');
+const { naturalCompare } = require('./util');
 const backup = require('./backup');
+const identitate = require('./identitate');
+const { cuiKey } = identitate;
 const { allowedFirme, isDemoUser } = require('./session');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
@@ -38,8 +41,52 @@ function reqAdmin(user) {
   if (!user || user.role !== 'admin') fail(403, 'Doar administratorul.');
 }
 
+// ───────────── O firma, o singura evidenta: poarta pe CUI ─────────────
+// Doua inregistrari ale aceleiasi firme inseamna doua adevaruri contabile pentru acelasi CUI:
+// balante care nu se potrivesc, declaratii depuse din locul gresit. Firma se inscrie O SINGURA
+// data, de catre patronul ei; oricine altcineva CERE acces la cea existenta.
+//
+// Refuzul spune ca firma exista — deci ecranul poate fi folosit ca sa afli daca un CUI e in
+// aplicatie. Am acceptat deliberat scurgerea: e singurul mod de a-l trimite pe om spre calea
+// corecta („cere acces") in loc sa-l lasi sa-si construiasca o evidenta paralela. Ce NU se
+// divulga: cine e proprietarul, ce denumire are, de cand exista. Iar caile care ajung aici sunt
+// plafonate (inscriere: 5/ora/IP; API: CONTAB_RATE_API).
+const CUI_DUPLICAT = 'Există deja o firmă cu acest CUI în aplicație. Nu o înregistra a doua oară — '
+  + 'cere acces la ea după CUI, din „Firmele mele". Proprietarul aprobă, și lucrezi pe evidența reală.';
+
+/** Firma existenta cu acelasi CUI (comparatie normalizata), sau null. `exceptId` sare peste ea insasi. */
+function firmaDupaCui(cui, exceptId) {
+  const key = cuiKey(cui);
+  if (!key) return null;
+  return db.get().firme.find((x) => x.id !== exceptId && cuiKey(x.cui) === key) || null;
+}
+
+/** Refuza CUI-ul deja folosit de alta firma. 409: conflict, nu „date gresite". */
+function reqCuiLiber(cui, exceptId) {
+  if (firmaDupaCui(cui, exceptId)) fail(409, CUI_DUPLICAT);
+}
+
+/** CNP-ul patronului, obligatoriu ca sa poti detine firme: proprietarul e o PERSOANA identificata,
+ *  nu doar un nume de utilizator. Fara el nu s-ar sti pe cine intreaba aplicatia la cererile de acces. */
+function reqCnp(user) {
+  if (user.role === 'admin') return;
+  const cnp = ((user.profil || {}).cnp) || '';
+  if (!identitate.validCNP(cnp)) {
+    fail(400, 'Completează-ți CNP-ul în „Contul meu" înainte de a înscrie o firmă. '
+      + 'Firmele se înregistrează pe o persoană identificată — ea aprobă cine primește acces la ele.');
+  }
+}
+
 function createFirma(user, b) {
   reqNotDemo(user); b = b || {};
+  // Formularul din aplicatie inscrie firme PROPRII: CUI obligatoriu si valid (cifra de control),
+  // liber, si patron identificat. La inscrierea publica (authRoutes) CUI-ul ramane optional —
+  // acolo se creeaza contul si firma deodata, iar cerinta ar rupe intrarea in aplicatie.
+  if (user.role !== 'admin') {
+    reqCnp(user);
+    if (!identitate.validCUI(b.cui)) fail(400, 'CUI invalid. Scrie codul fiscal al firmei (ex. RO14399840) — cifra de control nu se potrivește.');
+    reqCuiLiber(b.cui);
+  } else if (b.cui) { reqCuiLiber(b.cui); }
   const d = db.get();
   const id = db.nextFirmaId();
   const f = Object.assign(db.defaultFirma(id), {
@@ -70,9 +117,6 @@ function createFirma(user, b) {
 // Un contabil care preia o firma nu si-o mai creeaza a doua oara (ar fi o firma goala, dublura),
 // ci CERE acces la cea existenta. Cererea o aproba PROPRIETARUL (firma.ownerId) — accesul la
 // datele contabile ale altcuiva nu se ia, se primeste.
-
-/** Normalizeaza CUI-ul pentru comparatie: fara prefix RO, fara spatii/puncte. */
-function cuiKey(v) { return String(v == null ? '' : v).toUpperCase().replace(/^RO/, '').replace(/[^0-9A-Z]/g, ''); }
 
 /**
  * Cerere de acces la firma cu CUI-ul dat.
@@ -137,6 +181,131 @@ function decideCerere(user, id, aprob) {
   }
   db.save();
   return { ok: true, status: r.status, firma: f.nume || '', firmaId: f.id };
+}
+
+// ═══════════ ANGAJAREA UNUI CONTABIL: patron -> contabil (sensul invers) ═══════════
+// `accessRequests` merge dinspre contabil („preiau firma asta, ma lasi?"). Aici e drumul celalalt:
+// patronul isi cauta un contabil in lista celor inscrisi si ii trimite o CERERE DE SERVICII.
+// Simetria e importanta — accesul la datele unei firme se da si se primeste prin acord explicit,
+// indiferent cine incepe discutia. Cine decide e mereu celalalt: contabilul ACCEPTA sau refuza.
+
+/** Proiectia publica a unui contabil din lista — fara email, fara CNP, fara firmele lui. */
+function contabilPublic(u) {
+  const p = u.profil || {};
+  return {
+    id: u.id,
+    username: u.username,
+    nume: p.numeComplet || u.username,
+    oras: p.oras || '', judet: p.judet || '',
+    telefon: p.telefon || '',
+    autorizatie: p.autorizatie || '',
+    descriere: p.descriere || '',
+    tip: plans.userKind(u),
+  };
+}
+
+/**
+ * Contabilii inscrisi in aplicatie care s-au declarat DISPONIBILI (profil.disponibilContabil).
+ * Optiunea e explicita, nu dedusa din abonament: lista conturilor aplicatiei nu se publica singura,
+ * iar cine nu vrea clienti noi nu apare. Cine se inscrie in lista accepta sa i se vada datele de
+ * contact — de asta campurile intoarse sunt exact cele completate pentru asta.
+ */
+function listaContabili(user) {
+  reqNotDemo(user);
+  const out = db.get().users
+    .filter((u) => u.role !== 'admin' && !u.pending && u.id !== user.id && (u.profil || {}).disponibilContabil)
+    .map(contabilPublic)
+    .sort((a, b) => naturalCompare(a.nume, b.nume)); // colator refolosit (vezi util.js), nu localeCompare per comparatie
+  return capList(out, 0, 'contabili').items;
+}
+
+/** Firma din cerere trebuie sa fie a TA: angajarea unui contabil e decizia proprietarului. */
+function reqProprietar(user, fid) {
+  const f = db.getFirma(Number(fid));
+  if (!f) fail(404, 'Firma nu exista.');
+  if (f.ownerId !== user.id) fail(403, 'Doar proprietarul firmei poate angaja un contabil pentru ea.');
+  return f;
+}
+
+/** Patronul trimite unui contabil cererea de a-i tine contabilitatea firmei `fid`. */
+function cerereServicii(user, fid, b) {
+  reqNotDemo(user); b = b || {};
+  const f = reqProprietar(user, fid);
+  const d = db.get();
+  const c = d.users.find((x) => x.id === Number(b.contabilId));
+  // aceeasi conditie ca la listare: nu se poate trimite cerere unui cont care nu s-a oferit
+  if (!c || c.role === 'admin' || c.pending || !(c.profil || {}).disponibilContabil) fail(404, 'Contabilul nu mai este în lista celor disponibili.');
+  if (c.id === user.id) fail(400, 'Nu îți poți trimite ție cererea.');
+  if ((c.firme || []).includes(f.id)) fail(400, c.username + ' are deja acces la această firmă.');
+  d.serviceRequests = d.serviceRequests || [];
+  const dubla = d.serviceRequests.find((r) => r.firmaId === f.id && r.contabilId === c.id && r.status === 'in_asteptare');
+  if (dubla) fail(400, 'Ai deja o cerere în așteptare la acest contabil pentru firma respectivă.');
+  const r = {
+    id: db.nextId('srv'),
+    firmaId: f.id, ownerId: user.id, contabilId: c.id,
+    mesaj: String(b.mesaj || '').slice(0, 1000).trim(),
+    ts: new Date().toISOString(), status: 'in_asteptare',
+  };
+  d.serviceRequests.push(r);
+  db.save();
+  // acelasi nume ca in lista din care a fost ales (profil, altfel contul) — mesajul de confirmare
+  // trebuie sa spuna cui i-ai trimis, nu un identificator pe care patronul nu l-a vazut niciodata
+  return { ok: true, id: r.id, contabil: (c.profil || {}).numeComplet || c.username, firma: f.nume || '', firmaId: f.id };
+}
+
+/** Cererile de servicii care ma privesc: primite (sunt contabilul) si trimise (sunt patronul). */
+function cereriServicii(user) {
+  const d = db.get();
+  const all = d.serviceRequests || [];
+  const numeFirma = (id) => (db.getFirma(id) || {}).nume || '';
+  // numele afisat: cel din profil daca exista, altfel contul — in tabel „Maria Contabil" spune
+  // mai mult decat „contabil", iar patronul tocmai dupa nume l-a ales din lista
+  const numeUser = (id) => {
+    const u = (d.users || []).find((x) => x.id === id);
+    return u ? ((u.profil || {}).numeComplet || u.username) : '';
+  };
+  const primite = all.filter((r) => r.contabilId === user.id && r.status === 'in_asteptare')
+    .map((r) => ({ id: r.id, firmaId: r.firmaId, firma: numeFirma(r.firmaId), patron: numeUser(r.ownerId), mesaj: r.mesaj || '', ts: r.ts }));
+  const trimise = all.filter((r) => r.ownerId === user.id)
+    .map((r) => ({ id: r.id, firmaId: r.firmaId, firma: numeFirma(r.firmaId), contabil: numeUser(r.contabilId), status: r.status, ts: r.ts }));
+  return {
+    primite: capList(primite, 0, 'servicii-primite').items,
+    trimise: capList(trimise, 0, 'servicii-trimise').items,
+  };
+}
+
+/** Contabilul accepta sau refuza. Acceptarea ii da acces la firma — echivalentul aprobarii de acces. */
+function decideServicii(user, id, accept) {
+  reqNotDemo(user);
+  const d = db.get();
+  const r = (d.serviceRequests || []).find((x) => String(x.id) === String(id));
+  if (!r || r.status !== 'in_asteptare') fail(404, 'Cererea nu mai există sau a fost deja rezolvată.');
+  // garda esentiala: DESTINATARUL decide, nu proprietarul cererii — altfel patronul si-ar putea
+  // baga singur contabilul in firma, adica i-ar impune munca fara acord
+  if (r.contabilId !== user.id) fail(403, 'Doar contabilul căruia i-ai trimis cererea poate răspunde.');
+  const f = db.getFirma(r.firmaId);
+  if (!f) fail(404, 'Firma nu mai există.');
+  r.status = accept ? 'acceptata' : 'refuzata';
+  r.decidedAt = new Date().toISOString();
+  if (accept) {
+    user.firme = user.firme || [];
+    if (!user.firme.includes(f.id)) user.firme.push(f.id);
+  }
+  db.save();
+  return { ok: true, status: r.status, firma: f.nume || '', firmaId: f.id };
+}
+
+/** Patronul isi retrage o cerere netrimisa inca la capat (sau pe cea la care nu mai vrea raspuns). */
+function retrageServicii(user, id) {
+  reqNotDemo(user);
+  const d = db.get();
+  const r = (d.serviceRequests || []).find((x) => String(x.id) === String(id));
+  if (!r || r.status !== 'in_asteptare') fail(404, 'Cererea nu mai există sau a fost deja rezolvată.');
+  if (r.ownerId !== user.id) fail(403, 'Doar cel care a trimis cererea o poate retrage.');
+  r.status = 'retrasa';
+  r.decidedAt = new Date().toISOString();
+  db.save();
+  return { ok: true, status: r.status };
 }
 
 /** Import (JSON sau din ZIP, prin importZip): mode replace SUPRASCRIE firma activa — cu plasa
@@ -308,6 +477,8 @@ function updateFirma(user, id, body) {
   reqAccess(user, id);
   const f = db.getFirma(id);
   if (!f) fail(404, 'Firma inexistenta');
+  // fara asta poarta se ocolea in doi pasi: creezi firma fara CUI, apoi ii pui CUI-ul altei firme
+  if (body && body.cui != null && cuiKey(body.cui) !== cuiKey(f.cui)) reqCuiLiber(body.cui, f.id);
   // allowlist de profil — la fel ca updateCompany; campurile sensibile au rute dedicate
   Object.assign(f, db.pickFirmaFields(body), { id: f.id });
   db.save();
@@ -479,6 +650,8 @@ function removeCollaborator(fid, uid) {
 
 module.exports = {
   trialDinNou, cerereAcces, cereriPrimite, decideCerere,
+  firmaDupaCui, reqCuiLiber, reqCnp, CUI_DUPLICAT,
+  listaContabili, contabilPublic, cerereServicii, cereriServicii, decideServicii, retrageServicii,
   reqNotDemo, reqAccess, reqAdmin,
   createFirma, importBundle, importZip, testClone,
   exportBundle, exportZip, exportAllZip, firmaSlug,
