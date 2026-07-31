@@ -853,6 +853,25 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 .gloss-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:220;display:flex;align-items:center;justify-content:center;padding:20px}
 .gloss-overlay.hidden{display:none}
 .gloss-panel{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+/* Panourile modale (Caută · Ctrl+K, Dicționar) pe fond INCHIS, ca turul: sunt straturi PESTE
+   aplicatie, nu parte din ea. Se recoloreaza TOT ce contine text, nu doar fundalul — titlu, camp
+   de cautare, placeholder, termeni, definitii, separatoare, randul selectat si butonul de inchidere.
+   Un fundal schimbat singur ar lasa textul mostenit inchis pe inchis (defectul de la butoanele din
+   bara). Butonul foloseste 3 clase, ca sa bata `body:not(.dark) .btn` / `body.dark .btn`. */
+.gloss-panel{background:#15140f;color:#f4f1e8;border-color:rgba(255,255,255,.16)}
+.gloss-panel .gloss-head h2{color:#fff}
+.gloss-panel input{background:rgba(255,255,255,.08);color:#f4f1e8;border-color:rgba(255,255,255,.24)}
+.gloss-panel input::placeholder{color:#a9a396}
+.gloss-panel input:focus{border-color:var(--accent);outline:2px solid rgba(194,97,60,.45)}
+.gloss-panel .gloss-list{border-top-color:rgba(255,255,255,.14)}
+.gloss-panel .gloss-item{border-bottom-color:rgba(255,255,255,.10)}
+.gloss-panel .gloss-item b{color:#f0c14b}
+.gloss-panel .gloss-item p{color:#cfc9ba}
+.gloss-panel .muted{color:#bdb7a8}
+.gloss-panel .pal-item:hover{background:rgba(255,255,255,.09)}
+.gloss-panel .pal-item.sel{background:rgba(255,255,255,.15)}
+.gloss-panel .gloss-head .btn{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.28)}
+.gloss-panel .gloss-head .btn:hover{background:rgba(255,255,255,.26);border-color:rgba(255,255,255,.45)}
 .gloss-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .gloss-head h2{margin:0;font-size:17px}
 #glossarySearch{width:100%;margin-bottom:10px}
