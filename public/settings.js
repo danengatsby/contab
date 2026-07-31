@@ -115,8 +115,10 @@ export async function renderSmtp() {
   const f = $('#smtpForm');
   f.host.value = s.host || ''; f.port.value = s.port || 587; f.secure.checked = !!s.secure; f.user.value = s.user || ''; f.from.value = s.from || '';
   if (f.notifyNewMessage) f.notifyNewMessage.checked = s.notifyNewMessage !== false;
-  $('#smtpStatus').className = 'status' + (s.configured ? ' ok' : '');
-  $('#smtpStatus').textContent = s.configured ? '✔ SMTP configurat (' + s.host + ')' : 'SMTP necompletat — invitațiile se trimit ca link.';
+  $('#smtpStatus').className = 'status' + (s.configured ? ' ok' : ' err');
+  $('#smtpStatus').textContent = s.configured
+    ? '✔ SMTP configurat (' + s.host + ')'
+    : '⚠ SMTP necompletat — aplicația nu trimite emailuri: resetarea parolei NU funcționează, iar invitațiile se dau ca link copiat manual.';
 }
 $('#smtpForm').addEventListener('submit', async (e) => {
   e.preventDefault();

@@ -1732,8 +1732,10 @@ Cu stimă,
         <button id="restoreBtn" class="btn">Restaurează din fișier</button>
       </div>
       <div class="card" id="smtpCard" data-u="u112">
-        <h2>Server email (SMTP) — pentru invitații</h2>
-        <p class="muted">Configurat → invitațiile pot fi trimise pe email; necompletat → adminul copiază linkul.</p>
+        <h2>Server email (SMTP)</h2>
+        <p class="muted">Fără el aplicația <b>nu poate trimite niciun email</b>: linkul de <b>resetare a parolei</b>,
+          invitațiile pentru colaboratori, digestul zilnic cu termenele fiscale și alertele de eroare.
+          Necompletat → resetarea parolei nu funcționează, iar invitațiile se dau ca link copiat manual.</p>
         <div id="smtpStatus" class="status"></div>
         <form id="smtpForm" class="dyn">
           <label class="full">Host <input name="host" placeholder="smtp.exemplu.ro" /></label>
