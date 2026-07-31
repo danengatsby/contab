@@ -187,9 +187,12 @@ body.compact h1{font-size:17px}body.compact h2{font-size:15px}body.compact h3{fo
 /* Cele doua carduri cu care incepe pagina de Setari — „Contul meu" si „Firmele mele" — poarta un
    titlu mai mare, ca sa se vada de la prima privire unde esti. Scaleaza si in modul compact,
    unde restul titlurilor scad: altfel diferenta ar disparea exact acolo unde e mai nevoie de ea. */
-h2.card-titlu-mare{font-size:23px;letter-spacing:-.01em;color:var(--head)}
-body.compact h2.card-titlu-mare{font-size:20px}
-body.dark h2.card-titlu-mare{color:var(--ink)}
+/* Fara ancora pe element: aceeasi clasa marcheaza si titluri de sectiune (h3) din interiorul
+   unui card, nu doar h2-urile de card. `body.compact .card-titlu-mare` (doua clase) bate
+   `body.compact h3` (o clasa, doua elemente) — altfel titlul ar fi scazut in modul compact. */
+.card-titlu-mare{font-size:23px;letter-spacing:-.01em;color:var(--head)}
+body.compact .card-titlu-mare{font-size:20px}
+body.dark .card-titlu-mare{color:var(--ink)}
 body.compact .card{padding:11px 13px;margin-bottom:11px;border-radius:11px}
 body.compact .grid2{gap:12px}
 body.compact th,body.compact td{padding:3px 7px}

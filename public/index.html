@@ -1727,7 +1727,7 @@ Cu stimă,
       </div>
 
       <div class="card" id="contabiliCard">
-        <h2>🧮 Contabili și cereri de servicii</h2>
+        <h2 class="card-titlu-mare">🧮 Contabili și cereri de servicii</h2>
         <p class="muted">Ca <b>patron</b>: alegi un contabil din listă și îi trimiți o cerere pentru una dintre firmele tale —
           el <b>acceptă sau refuză</b>, și abia atunci primește acces la datele firmei.
           Ca <b>contabil</b>: bifează „Apar în lista de contabili" în „Contul meu" ca să te poată găsi, și răspunzi mai jos cererilor primite.</p>
@@ -1744,7 +1744,7 @@ Cu stimă,
 
       </div>
       <div class="card" id="colaboratoriBox">
-        <h2>👥 Colaboratori pe firmă</h2>
+        <h2 class="card-titlu-mare">👥 Colaboratori pe firmă</h2>
         <p class="muted">Dă acces la <b>firma activă</b> altei persoane — un <b>contabil</b> poate adăuga administratorul firmei, iar administratorul poate adăuga un contabil. Colaboratorul primește <b>acces complet</b> la această firmă (nu la celelalte firme ale tale).</p>
         <div id="colaboratoriList" class="tablewrap"></div>
         <form id="colaboratorForm" class="dyn" data-u="u8">
@@ -1759,7 +1759,7 @@ Cu stimă,
       </div>
 
       <div class="card">
-        <h2>💾 Copia ta de siguranță — pe calculatorul tău</h2>
+        <h2 class="card-titlu-mare">💾 Copia ta de siguranță — pe calculatorul tău</h2>
         <p class="muted">Descarcă <b>toate datele firmei active</b> (înregistrări, parteneri, stocuri, salarii, solduri) <b>împreună cu documentele scanate atașate</b>, într-o singură arhivă ZIP pe PC-ul tău. O poți restaura oricând, aici sau pe altă instalare.</p>
         <div class="row" data-u="u111">
           <a id="firmaExport" class="btn primary" target="_blank">⬇ Descarcă copia completă (ZIP, pe PC)</a>
@@ -1776,7 +1776,7 @@ Cu stimă,
         </div>
       </div>
       <div class="card" id="openingCard">
-        <h2>⚖️ Solduri inițiale (preluare firmă cu istoric)</h2>
+        <h2 class="card-titlu-mare">⚖️ Solduri inițiale (preluare firmă cu istoric)</h2>
         <p class="muted">Balanța de deschidere la preluarea firmei în aplicație: soldul <b>debitor sau creditor</b> al fiecărui cont la data preluării. <b>Totalul debit trebuie să fie egal cu totalul credit</b> — altfel balanța nu se va închide niciodată. Poți importa balanța exportată din vechiul program (<b>XLS / XLSX / DBF / CSV</b>, coloane <span class="acc">Cont;Denumire;SoldDebit;SoldCredit</span> — antetul e opțional). Soldurile pe partener le detaliezi în <b>Analitic</b>, iar stocul cantitativ-valoric în <b>Stocuri → Preluare stoc inițial</b>.</p>
         <div class="row" data-u="u115">
           <input type="file" id="openFile" accept=".csv,.txt,.xlsx,.xls,.dbf" title="Încarcă balanța de deschidere din fișier" />
@@ -1870,7 +1870,7 @@ Cu stimă,
       </div>
       
       <div class="card">
-        <h2>🧪 Mediu de test (ramură de testare)</h2>
+        <h2 class="card-titlu-mare">🧪 Mediu de test (ramură de testare)</h2>
         <p class="muted">Creează o <b>copie completă</b> a firmei active, marcată <b>[TEST]</b>, ca să poți experimenta liber (înregistrări, închideri, declarații) <b>fără să afectezi datele reale</b>. O ștergi oricând când ai terminat, fără urme.</p>
         <div id="testEnvInfo" class="muted" data-u="u72"></div>
         <div class="row">
@@ -1879,7 +1879,7 @@ Cu stimă,
         <p class="muted" data-u="u125">După creare, ești comutat automat pe firma de test. Revii la firma reală din selectorul de firmă (sus, în bară). Firmele de test apar cu eticheta <b>[TEST]</b> și le ștergi din lista de mai sus.</p>
       </div>
       <div class="card">
-        <h2>Datele firmei active</h2>
+        <h2 class="card-titlu-mare">Datele firmei active</h2>
         <form id="companyForm" class="dyn">
           <label>Denumire <input name="nume" /></label>
           <label>Formă juridică
@@ -1932,7 +1932,7 @@ Cu stimă,
           </div>
           <div class="full explain" id="fiscalProfileSummary"><span class="ei">⚙️</span><p class="muted">Se încarcă profilul calculat…</p></div>
 
-          <div class="full"><b>Situații financiare anuale (bilanț)</b>
+          <div class="full"><h3 class="card-titlu-mare">Situații financiare anuale (bilanț)</h3>
             <p class="muted">Datele de antet cerute de formularul ANAF (S1120 / S1121). Fără ele
               bilanțul nu se poate genera — sunt informații pe care doar firma le cunoaște, așa că
               aplicația refuză să le presupună. Codul de județ se deduce din câmpul „Județ" de mai sus.</p></div>
