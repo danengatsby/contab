@@ -62,7 +62,12 @@ for (const tema of ['light', 'dark']) {
     const relLum = (r, g, b) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
     const nums = (s) => (s.match(/[\d.]+/g) || []).map(Number);
     const tb = nums(getComputedStyle(document.querySelector('.topbar')).backgroundColor).slice(0, 3);
-    return ['#glossaryBtn', '#uiModeBtn', '#themeBtn', '#densityBtn', '#logoutBtn'].map((sel) => {
+    // Butoanele se DERIVA din DOM, nu dintr-o lista scrisa de mana: altfel fiecare comanda noua
+    // adaugata in bara (cautarea, turul) ar fi ramas neacoperita tacit, iar poarta ar fi raportat
+    // verde pentru un set tot mai mic din ce se vede pe ecran.
+    const sels = [...document.querySelectorAll('.side-tools .btn'), document.querySelector('#logoutBtn')]
+      .filter(Boolean).map((el) => '#' + el.id).filter((x) => x !== '#');
+    return sels.map((sel) => {
       const s = getComputedStyle(document.querySelector(sel));
       const fg = nums(s.color).slice(0, 3); const bgRaw = nums(s.backgroundColor);
       const a = bgRaw.length === 4 ? bgRaw[3] : 1;

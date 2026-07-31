@@ -644,6 +644,9 @@ $('#tourNext').addEventListener('click', () => { if (tourIdx >= TOUR.length - 1)
 $('#tourBack').addEventListener('click', () => showTourStep(tourIdx - 1));
 $('#tourSkip').addEventListener('click', endTour);
 $('#tourReplay') && $('#tourReplay').addEventListener('click', startTour);
+// acelasi tur, pornit si din bara laterala (langa comutatorul de densitate): din Ghid se ajunge
+// doar daca stii ca exista, iar turul e util tocmai celui care inca NU stie unde e ce.
+$('#tourBtn') && $('#tourBtn').addEventListener('click', startTour);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#tourCard').classList.contains('hidden')) endTour(); });
 
 // Documente de IESIRE — butoane „emite” deschid formularul (in pagina Emite factura) cu tipul potrivit
