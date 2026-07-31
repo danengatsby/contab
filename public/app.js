@@ -172,7 +172,9 @@ $('#firmaSelect').addEventListener('change', async (e) => {
   if (e.target.value === '__add__') { // nu e o firma — deschide gestionarea firmelor
     e.target.value = String(META.firmaActiva || '');
     goTab('setari');
-    setTimeout(() => { const c = $('#firmaNewForm'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.nume.focus(); } }, 150);
+    // firmele nu se mai creeaza de aici: o firma noua intra prin inscriere (patronul ei),
+    // iar una existenta se adauga cerand acces dupa CUI, cu acordul proprietarului
+    setTimeout(() => { const c = $('#cerereAccesForm'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.cui.focus(); } }, 150);
     return;
   }
   await activateFirma(e.target.value);
