@@ -9,6 +9,31 @@ const coa = require('./chartOfAccounts');
 const stmt = require('./statements');
 const { postedEntries } = require('./accounting'); // reevaluarea vede doar soldurile din articole postate
 
+// ── CE SE REEVALUEAZA: doar elementele MONETARE in valuta ────────────────────────────────────
+// OMFP 1802/2014 pct. 319: disponibilitatile, creantele si datoriile in valuta se evalueaza la
+// cursul de inchidere. pct. 320: elementele NEMONETARE (stocuri, imobilizari corporale) raman la
+// cursul de la data tranzactiei — nu se reevalueaza niciodata.
+//
+// Fara filtrul asta, `candidates` propunea orice cont atins de un articol in valuta: marfa
+// cumparata de la un furnizor extern (371) si venitul dintr-o livrare intracomunitara (707)
+// apareau alaturi de 401 si 4111. Reevaluarea lor ar fi umflat stocul si ar fi rescris un venit
+// deja realizat — exact ce interzice pct. 320.
+const NEMONETARE = [
+  '409', '419',               // avansuri pentru bunuri/servicii: pct. 320 alin. (3) le declara
+                              // NEMONETARE — raman la cursul din ziua platii/incasarii
+  '44',                       // decontari cu bugetul statului — sunt in lei prin definitie
+  '471', '472', '475', '478', // cheltuieli/venituri in avans, subventii — nemonetare
+  '59',                       // ajustari pentru pierderea de valoare — in lei
+];
+
+/** Elementul e MONETAR, deci se reevalueaza la cursul de inchidere? */
+function esteMonetar(cod) {
+  const c = String(cod || '');
+  if (NEMONETARE.some((p) => c.startsWith(p))) return false;
+  if (/^(16[12678]|26[79])/.test(c)) return true; // imprumuturi si creante imobilizate in valuta
+  return /^[45]/.test(c);                         // creante, datorii, disponibilitati
+}
+
 /** Soldul in valuta al unui cont la o data (din e.valutaInfo): debit pe cont +, credit -. */
 function foreignBalance(db, account, asOf, moneda) {
   let bal = 0;
@@ -33,21 +58,30 @@ function candidates(db, asOf) {
     const vi = e.valutaInfo; if (!vi) continue;
     for (const l of (e.lines || [])) { for (const c of [l.debit, l.credit]) if (!curByAcct[c]) curByAcct[c] = vi.valuta; }
   }
-  const set = new Set(Object.keys(curByAcct));
+  const set = new Set(Object.keys(curByAcct).filter(esteMonetar));
   for (const c of ['5124', '5314']) if (Math.abs(fb[c] || 0) > 0.005) set.add(c);
   const out = [];
   for (const cont of set) {
     const net = round2(fb[cont] || 0);
     if (Math.abs(net) < 0.005) continue;
     const moneda = curByAcct[cont] || 'EUR';
-    out.push({ cont, nume: coa.accountName(cont), moneda, bookLei: round2(Math.abs(net)), isAsset: net >= 0, foreignBalance: foreignBalance(db, cont, asOf, moneda) });
+    // `foreignBalance` intoarce soldul CU SEMN (credit = negativ), dar randul e descris peste tot
+    // in perechea (marime, sens): `bookLei` e deja modulul soldului, iar sensul sta in `isAsset`.
+    // Aici trebuie deci MODULUL — altfel `revalue` compara un sold valutar negativ cu o valoare
+    // contabila pozitiva si iese o diferenta de ordinul dublului soldului, cu semnul inversat.
+    out.push({ cont, nume: coa.accountName(cont), moneda, bookLei: round2(Math.abs(net)), isAsset: net >= 0, foreignBalance: Math.abs(foreignBalance(db, cont, asOf, moneda)) });
   }
   return out.sort((a, b) => String(a.cont).localeCompare(String(b.cont)));
 }
 
 /** Calculeaza diferenta de reevaluare pentru un cont si linia contabila aferenta. */
 function revalue(account, isAsset, bookLei, foreignBal, closingRate) {
-  const revaluedLei = round2((Number(foreignBal) || 0) * (Number(closingRate) || 0));
+  // Soldul valutar se ia in MODUL, ca si `bookLei`: sensul (creanta/datorie) e purtat de `isAsset`,
+  // nu de semnul sumei. Fara asta, un sold de datorie trimis cu semn (-1000 EUR) ar da o diferenta
+  // de ordinul dublului soldului si un articol INVERS — pierderea de curs ar aparea ca venit.
+  // Garda sta aici, nu doar la apelant: `items` vin din cerere, deci pot fi si altceva decat ce a
+  // pus formularul.
+  const revaluedLei = round2(Math.abs(Number(foreignBal) || 0) * (Number(closingRate) || 0));
   const book = round2(Math.abs(Number(bookLei) || 0));
   const diff = round2(revaluedLei - book);
   let lines = []; let sens = 'nimic';
@@ -74,4 +108,4 @@ function buildRevaluation(db, asOf, items) {
   return { results, lines, totalFavorabil, totalNefavorabil };
 }
 
-module.exports = { foreignBalance, candidates, revalue, buildRevaluation };
+module.exports = { foreignBalance, candidates, revalue, buildRevaluation, esteMonetar };

@@ -2873,6 +2873,48 @@ eq('candidates 5314 sold in valuta', c5314.foreignBalance, 100);
 eq('candidates 5314 moneda EUR', c5314.moneda, 'EUR');
 ok('candidates 5314 este activ', c5314.isAsset);
 
+// ── Reevaluarea unei DATORII, pe drumul intreg candidates -> articol ────────────────────────
+// Costura dintre cele doua: `foreignBalance` intoarce soldul cu SEMN (credit = negativ), dar
+// `revalue` il inmulteste cu cursul si il compara cu `bookLei`, care e MODULUL soldului. Testele
+// de mai sus n-o atingeau: pe `revalue` treceau marimea direct, iar `candidates` era verificat
+// doar pe un cont de ACTIV (5314), unde semnul e pozitiv si defectul invizibil.
+// Pe o datorie de 1000 EUR la 4,90 reevaluata la 5,00, articolul corect e 665 = 401 cu 100 lei;
+// forma veche dadea 401 = 765 cu 9900 — semn inversat si de ~2x soldul.
+const fxDat = { openingBalances: {}, entries: [
+  { period: '2026-11', data: '2026-11-10', tip: 'achizitie_intracomunitara',
+    valutaInfo: { valuta: 'EUR', sumaValuta: 1000, curs: 4.90 },
+    lines: [{ debit: '371', credit: '401', suma: 4900 }] },
+] };
+const cDat = fxr.candidates(fxDat, '2026-12').find((c) => c.cont === '401');
+eq('candidates datorie: sold valutar in MODUL', cDat.foreignBalance, 1000);
+ok('candidates datorie: nu e activ', !cDat.isAsset);
+const bDat = fxr.buildRevaluation(fxDat, '2026-12', [{ cont: '401', foreignBalance: cDat.foreignBalance, closingRate: 5.00 }]);
+eq('reeval datorie (drum intreg): o linie', bDat.lines.length, 1);
+eq('reeval datorie (drum intreg): 665=401', bDat.lines[0].debit + '=' + bDat.lines[0].credit, '665=401');
+eq('reeval datorie (drum intreg): suma 100', bDat.lines[0].suma, 100);
+eq('reeval datorie (drum intreg): pierdere, nu castig', bDat.totalFavorabil, 0);
+// `revalue` isi ia singur modulul: `items` vin din cerere, deci pot avea orice semn.
+const rSemn = fxr.revalue('401', false, 4900, -1000, 5.00);
+eq('revalue ignora semnul soldului trimis', rSemn.lines[0].debit + '=' + rSemn.lines[0].credit, '665=401');
+eq('revalue ignora semnul: aceeasi suma', rSemn.lines[0].suma, 100);
+
+// ── Doar elementele MONETARE se reevalueaza (OMFP 1802/2014 pct. 319-320) ───────────────────
+// Marfa cumparata in valuta (371) si venitul dintr-o livrare intracomunitara (707) erau propuse
+// la reevaluare fiindca apareau intr-un articol cu `valutaInfo`. Sunt elemente NEMONETARE: raman
+// la cursul din ziua tranzactiei.
+const contFx = fxr.candidates(fxDat, '2026-12').map((c) => c.cont);
+ok('371 (marfa) nu e candidat la reevaluare', !contFx.includes('371'));
+ok('401 (datorie) ramane candidat', contFx.includes('401'));
+ok('esteMonetar: 4111 client', fxr.esteMonetar('4111'));
+ok('esteMonetar: 5124 banca in valuta', fxr.esteMonetar('5124'));
+ok('esteMonetar: 2678 creante imobilizate', fxr.esteMonetar('2678'));
+ok('esteMonetar: 371 marfuri NU', !fxr.esteMonetar('371'));
+ok('esteMonetar: 707 venituri NU', !fxr.esteMonetar('707'));
+ok('esteMonetar: 4091 avans furnizor NU (pct. 320 alin. 3)', !fxr.esteMonetar('4091'));
+ok('esteMonetar: 419 avans client NU', !fxr.esteMonetar('419'));
+ok('esteMonetar: 4426 TVA NU (e in lei)', !fxr.esteMonetar('4426'));
+ok('esteMonetar: 471 cheltuiala in avans NU', !fxr.esteMonetar('471'));
+
 section('Previziune cash-flow');
 const fcDb = {
   openingBalances: { 5121: { d: 10000, c: 0 } }, openingAnalytic: [],
