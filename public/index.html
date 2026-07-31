@@ -42,9 +42,19 @@
 
   <div id="registerOverlay" class="login-overlay hidden">
     <form id="registerForm" class="login-box reg-compact" data-u="u48">
-      <div class="login-logo">▦ Înscrie o firmă</div>
+      <div class="login-logo">▦ Cont nou</div>
       <div id="regPlanHint" class="hidden" data-u="u49"></div>
-      <p class="muted" data-u="u50">Contul tău și firma ta — plan de conturi complet, zero înregistrări.</p>
+      <div class="reg-tip">
+        <label class="reg-tip-op">
+          <span class="reg-tip-hd"><input type="radio" name="tipCont" value="patron" checked /> <b>🏢 Sunt patron</b></span>
+          <span class="muted">Îmi înscriu firma acum — contul și firma se creează deodată.</span></label>
+        <label class="reg-tip-op">
+          <span class="reg-tip-hd"><input type="radio" name="tipCont" value="contabil" /> <b>🧮 Sunt contabil</b></span>
+          <span class="muted">Fără firmă. Firmele clienților vin după, cu acordul lor.</span></label>
+      </div>
+      <p class="muted" id="regHintPatron" data-u="u50">Contul tău și firma ta — plan de conturi complet, zero înregistrări.</p>
+      <p class="muted hidden" id="regHintContabil">Contul tău, fără nicio firmă. Preiei o firmă deja înregistrată cerând acces după CUI (proprietarul aprobă), sau te găsește un patron în lista de contabili și îți trimite o cerere.</p>
+      <div id="regFirmaFields">
       <label>Denumire firmă * <input name="nume" required maxlength="120" placeholder="S.C. EXEMPLU S.R.L." /></label>
       <div data-u="u51">
         <label data-u="u46">CUI <input name="cui" placeholder="RO12345678" /></label>
@@ -64,13 +74,16 @@
         </label>
         <label data-u="u54"><input name="tvaPlatitor" type="checkbox" checked data-u="u15"> Plătitoare de TVA</label>
       </div>
+      </div>
+      <label class="hidden" id="regContabilLista"><input name="disponibilContabil" type="checkbox" checked data-u="u15" />
+        Apar în lista de contabili, ca să mă poată găsi patronii <span class="muted">(o poți schimba oricând din Setări)</span></label>
       <div data-u="u51">
         <label data-u="u46">Utilizator (login) * <input name="username" autocomplete="username" required minlength="3" /></label>
         <label data-u="u46">Parolă * <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
       </div>
       <label>Email <span class="muted" data-u="u55">(recuperare parolă; același email ca la plată)</span> <input name="email" type="email" autocomplete="email" /></label>
       <div id="registerErr" class="status err"></div>
-      <button class="btn primary" data-u="u19">Creează firma și contul</button>
+      <button class="btn primary" id="regSubmit" data-u="u19">Creează firma și contul</button>
       <p class="muted" data-u="u56">Prin crearea contului accepți <a href="/termeni.html" target="_blank" rel="noopener">Termenii și condițiile</a>, <a href="/confidentialitate.html" target="_blank" rel="noopener">Politica de confidențialitate</a> și <a href="/dpa.html" target="_blank" rel="noopener">Acordul de prelucrare a datelor</a>.</p>
       <p data-u="u57"><a id="showPricingReg" class="link">💳 Vezi prețurile</a> · <a id="registerCancel" class="link">← Înapoi</a></p>
     </form>
@@ -283,6 +296,11 @@
     🔒 <b id="lunaInchisaText"></b> — o poți consulta, dar nu o mai poți modifica.
     Corecțiile se fac prin <b>storno</b> într-o lună deschisă.
     <button id="lunaInchisaGo" class="btn small">Mergi la luna deschisă →</button>
+  </div>
+  <div id="faraFirmaBar" class="hidden luna-bar">
+    🧮 <b>Nu ai încă nicio firmă</b> — normal pentru un cont de contabil: firmele vin de la clienți, cu acordul lor.
+    Cere acces după CUI, sau apari în lista de contabili ca să te găsească patronii.
+    <button id="faraFirmaGo" class="btn small">Setări → Firmele mele →</button>
   </div>
   <div id="subExpiredBar" class="hidden" data-u="u67">
     ⚠️ <b>Perioada de probă a expirat</b> — contul e acum doar în citire (datele tale sunt intacte).

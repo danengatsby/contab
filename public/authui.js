@@ -128,10 +128,35 @@ $('#faqSearch') && $('#faqSearch').addEventListener('input', (e) => {
     if (q && hit) it.open = true; else if (!q) it.open = false;
   });
 });
+// Felul contului decide ce se cere mai jos: patronul isi inscrie firma odata cu contul, contabilul
+// nu are ce firma sa inscrie. Campurile firmei nu se ascund doar vizual — se si scot din validarea
+// browserului (`required` pe un camp ascuns blocheaza trimiterea, tacut si fara sa se vada unde).
+function regTip() {
+  const r = $('#registerForm [name="tipCont"]:checked');
+  return r ? r.value : 'patron';
+}
+export function aplicaTipCont() {
+  const f = $('#registerForm'); if (!f) return;
+  const contabil = regTip() === 'contabil';
+  $('#regFirmaFields').classList.toggle('hidden', contabil);
+  $('#regContabilLista').classList.toggle('hidden', !contabil);
+  $('#regHintPatron').classList.toggle('hidden', contabil);
+  $('#regHintContabil').classList.toggle('hidden', !contabil);
+  if (f.nume) f.nume.required = !contabil;
+  const btn = $('#regSubmit');
+  if (btn) btn.textContent = contabil ? 'Creează contul de contabil' : 'Creează firma și contul';
+  const logo = $('#registerOverlay .login-logo');
+  if (logo) logo.textContent = contabil ? '▦ Cont de contabil' : '▦ Înscrie o firmă';
+}
+$$('#registerForm [name="tipCont"]').forEach((r) => r.addEventListener('change', aplicaTipCont));
+
 $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target; $('#registerErr').textContent = '';
-  const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaPlatitor: f.tvaPlatitor.checked, tipEntitate: f.tipEntitate.value, username: f.username.value, password: f.password.value, email: f.email.value };
+  const contabil = regTip() === 'contabil';
+  const body = contabil
+    ? { tipCont: 'contabil', disponibilContabil: f.disponibilContabil.checked, username: f.username.value, password: f.password.value, email: f.email.value }
+    : { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaPlatitor: f.tvaPlatitor.checked, tipEntitate: f.tipEntitate.value, username: f.username.value, password: f.password.value, email: f.email.value };
   try {
     await api('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     f.password.value = '';
@@ -147,7 +172,9 @@ $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) =>
     }
     $('#registerOverlay').classList.add('hidden'); $('#loginOverlay').classList.add('hidden');
     await D.init();
-    toast('Bine ai venit! Firma „' + body.nume + '" a fost creată.');
+    toast(contabil
+      ? 'Bine ai venit! Contul tău de contabil e gata — firmele vin după, cu acordul clienților.'
+      : ('Bine ai venit! Firma „' + body.nume + '" a fost creată.'));
   } catch (err) { $('#registerErr').textContent = err.message; }
 });
 $('#loginForm').addEventListener('submit', async (e) => {
@@ -224,7 +251,7 @@ function openRegisterPanel(planLabel) {
   }
   const submitBtn = $('#registerForm') && $('#registerForm').querySelector('button.primary');
   if (submitBtn) submitBtn.textContent = pendingPaidPlan ? 'Creează firma și continuă la plată →' : 'Creează firma și contul';
-  $('#registerOverlay') && $('#registerOverlay').classList.remove('hidden');
+  $('#registerOverlay') && $('#registerOverlay').classList.remove('hidden'); aplicaTipCont(); // normalizeaza starea la fiecare deschidere
 }
 const inviteToken = new URLSearchParams(location.search).get('invite');
 async function startInvite(token) {

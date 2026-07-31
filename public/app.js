@@ -317,6 +317,21 @@ async function init() {
     else { toast('✓ Plată primită! Abonamentul firmei se activează în câteva momente (după confirmarea Stripe).'); goTab('abonament'); }
   }
   startMsgPolling();
+  // Cont fara nicio firma (contabil proaspat inscris): NU e „proba expirata". Pana acum ateriza
+  // pe bannerul rosu si pe ecranul de preturi — un mesaj fals, despre un abonament pe care nu-l
+  // are si o firma pe care n-o are. Aici i se spune ce are efectiv de facut.
+  const ffb = $('#faraFirmaBar');
+  if (ffb) {
+    ffb.classList.toggle('hidden', !USER.faraFirma);
+    const g = $('#faraFirmaGo');
+    if (g && !g._wired) {
+      g._wired = true;
+      g.addEventListener('click', () => {
+        goTab('setari');
+        setTimeout(() => { const c = $('#cerereAccesForm'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.cui.focus(); } }, 150);
+      });
+    }
+  }
   // proba expirata: banner persistent + cont read-only (serverul blocheaza scrierile cu 402)
   const seb = $('#subExpiredBar');
   if (seb) {
