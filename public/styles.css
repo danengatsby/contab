@@ -193,11 +193,7 @@ body.compact h1{font-size:17px}body.compact h2{font-size:15px}body.compact h3{fo
 .card-titlu-mare{font-size:23px;letter-spacing:-.01em;color:var(--head)}
 body.compact .card-titlu-mare{font-size:20px}
 body.dark .card-titlu-mare{color:var(--ink)}
-/* Cand clasa cade pe TITLUL DE PAGINA (.toolbar>h2, deja 21px), regula de mai sus ar pierde:
-   `.toolbar>h2` are o clasa si un element, `.card-titlu-mare` doar o clasa. Deci o pereche
-   proprie, si o dimensiune peste cea de pagina — altfel marcajul n-ar face nimic vizibil. */
-.toolbar>h2.card-titlu-mare{font-size:26px}
-body.compact .toolbar>h2.card-titlu-mare{font-size:22px}
+
 body.compact .card{padding:11px 13px;margin-bottom:11px;border-radius:11px}
 body.compact .grid2{gap:12px}
 body.compact th,body.compact td{padding:3px 7px}
@@ -221,7 +217,11 @@ body.compact #balantaView thead tr:nth-child(2) th{top:22px}
 .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .toolbar .spacer{flex:1}
 /* anteturi de pagină consistente: titlu mare, clar, în partea de sus a fiecărui ecran */
-.toolbar>h2{font-size:21px;font-weight:700;letter-spacing:-.01em;color:var(--head);line-height:1.2}
+/* Titlul paginii. `body.compact h2` are aceeasi specificitate si vine mai jos in fisier, deci ar
+   castiga si ar cobori titlul la 15px in modul compact — la fel ca un titlu de card, adica fara
+   ierarhie. De aceea perechea compacta e explicita si mai specifica. */
+.toolbar>h2{font-size:26px;font-weight:700;letter-spacing:-.01em;color:var(--head);line-height:1.2}
+body.compact .toolbar>h2{font-size:22px}
 .tab>.toolbar:first-child{padding-bottom:12px;margin-bottom:16px;border-bottom:1px solid var(--line)}
 body.dark .tab>.toolbar:first-child{border-bottom-color:var(--line)}
 .period{width:auto;min-width:140px}
