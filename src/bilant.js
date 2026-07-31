@@ -101,8 +101,20 @@ function f10Base(net) {
       // orice alt cont de clasa 1 ramas: tot capitaluri proprii („alte elemente")
       add('034', -v); continue;
     }
-    // ── Investitii pe termen scurt (50x) si ajustarile lor (59x)
-    if (starts(cod, '50', '59')) { if (v >= 0) add('007', v); else add('013', -v); continue; }
+    // ── AJUSTARILE PENTRU DEPRECIERE (49x, 59x) — RECTIFICATIVE, nu datorii ──────────────────
+    // Au sold CREDITOR, ca o datorie, dar nu sunt o obligatie catre nimeni: corecteaza in minus
+    // activul pe care il insotesc. Bilantul cere activele NETE (OMFP 1802/2014), deci ajustarea
+    // se scade din randul activului, nu se adauga la datorii.
+    //
+    // Trebuie tratate INAINTEA clasificarii dupa semn de mai jos: acolo orice sold creditor
+    // devine datorie curenta, deci o ajustare de creante aparea simultan ca datorie fictiva SI
+    // lasa creantele la valoarea BRUTA. Totalurile ramaneau echilibrate (ambele parti crescute cu
+    // aceeasi suma), deci nicio verificare de echilibru nu o putea prinde — dar rd. 013 raporta
+    // la ANAF o datorie inexistenta, iar rd. 301 creante neajustate.
+    if (starts(cod, '491', '495', '496')) { add('301', v); continue; } // ajustari de creante
+    if (starts(cod, '59')) { add('007', v); continue; }                // ajustari de investitii pe termen scurt
+    // ── Investitii pe termen scurt (50x)
+    if (starts(cod, '50')) { if (v >= 0) add('007', v); else add('013', -v); continue; }
     // ── Casa si conturi la banci; sold creditor (descoperit de cont) = datorie curenta
     if (starts(cod, '51', '52', '53', '54')) { if (v >= 0) add('008', v); else add('013', -v); continue; }
     // ── Clasa 4 (si rest): SEMNUL decide creanta vs. datorie curenta.
@@ -278,9 +290,14 @@ function f10CompletBase(net) {
       if (starts(cod, '16')) { add('063', -v); continue; }                             // rest grupa 16
       add('084', -v); continue;                                                        // alt cont de clasa 1 -> alte elemente de capitaluri
     }
-    // ── B.III. INVESTITII PE TERMEN SCURT ──
-    if (starts(cod, '501', '591')) { if (v >= 0) add('037', v); else add('052', -v); continue; }
-    if (starts(cod, '50', '59')) { if (v >= 0) add('038', v); else add('052', -v); continue; }
+    // ── AJUSTARILE PENTRU DEPRECIERE (49x) — rectificative de ACTIV, nu datorii (vezi f10Base) ──
+    if (starts(cod, '491')) { add('031', v); continue; }          // ajustari de creante comerciale
+    if (starts(cod, '495', '496')) { add('034', v); continue; }   // ajustari de alte creante
+    // ── B.III. INVESTITII PE TERMEN SCURT (ajustarile 59x scad activul, indiferent de semn) ──
+    if (starts(cod, '591')) { add('037', v); continue; }
+    if (starts(cod, '59')) { add('038', v); continue; }
+    if (starts(cod, '501')) { if (v >= 0) add('037', v); else add('052', -v); continue; }
+    if (starts(cod, '50')) { if (v >= 0) add('038', v); else add('052', -v); continue; }
     // ── B.IV. CASA SI CONTURI LA BANCI; sold creditor = descoperit de cont (datorie curenta) ──
     if (starts(cod, '51', '52', '53', '54')) { if (v >= 0) add('040', v); else add('046', -v); continue; }
     // ── D. DATORII pana la un an / creante, dupa SEMN ──
