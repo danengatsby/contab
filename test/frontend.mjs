@@ -52,6 +52,7 @@ const viewer = await import(path.join(mirror, 'viewer.js'));
 const partners = await import(path.join(mirror, 'partners.js'));
 const inchidere = await import(path.join(mirror, 'inchidere.js'));
 const docflow = await import(path.join(mirror, 'docflow.js'));
+const admin = await import(path.join(mirror, 'admin.js'));
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -937,6 +938,29 @@ ok('...dar o citire reala cu acelasi nume tot e prinsa',
   // poarta trebuie sa POATA pica: doua rezultate diferite pe acelasi token sunt detectate
   ok('poarta chiar detecteaza o divergenta',
     plan.parseAmount('1.234', { '.': 'mii' }).value !== plan.parseAmount('1.234', { '.': 'zecimale' }).value);
+}
+
+section('Administrare: cine e patronul si cine e contabilul unei firme');
+{
+  const users = [
+    { id: 1, username: 'admin', role: 'admin', firme: [7, 8] },
+    { id: 2, username: 'patron', role: 'user', firme: [7] },
+    { id: 3, username: 'contabil', role: 'user', firme: [7, 8] },
+    { id: 4, username: 'strain', role: 'user', firme: [8] },
+  ];
+  const f7 = { id: 7, nume: 'ALFA', ownerId: 2 };
+  const faraPatron = { id: 9, nume: 'VECHE', ownerId: undefined };
+
+  ok('proprietarul firmei e patron', admin.rolPeFirma(users[1], f7) === 'patron');
+  ok('cine doar are acces e contabil', admin.rolPeFirma(users[2], f7) === 'contabil');
+  ok('pe o firma fara proprietar nimeni nu e patron', admin.rolPeFirma(users[1], faraPatron) === 'contabil');
+
+  const c7 = admin.contabiliiFirmei(users, f7).map((u) => u.username);
+  ok('contabilii firmei = cei cu acces, fara proprietar', c7.join(',') === 'contabil');
+  ok('patronul nu apare si ca propriul contabil', !c7.includes('patron'));
+  ok('adminul nu e listat drept contabil', !c7.includes('admin'));
+  ok('cine nu are acces la firma nu apare', !c7.includes('strain'));
+  ok('firma fara membri nu inventeaza contabili', admin.contabiliiFirmei(users, faraPatron).length === 0);
 }
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');

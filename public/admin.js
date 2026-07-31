@@ -146,6 +146,39 @@ function firmeChecks(selected) {
   return (META.firme || []).map((f) => `<label data-u="u14">
     <input type="checkbox" class="ufirma" value="${f.id}" ${sel.has(f.id) ? 'checked' : ''} data-u="u15"> ${H(f.nume)}</label>`).join('');
 }
+// Cine gestioneaza fiecare firma: PATRON (proprietarul, `firma.ownerId` — cel care a inscris-o si
+// aproba cererile de acces) si CONTABILII (ceilalti membri, care au primit acces). Datele exista
+// deja — META.firme poarta ownerId, iar /api/users poarta lista de firme a fiecarui cont — deci se
+// compun in frontend, fara ruta noua.
+// Exportate separat pentru test/frontend.mjs (logica pura, fara DOM).
+/** Rolul unui cont PE o firma: 'patron' daca e proprietarul, 'contabil' daca doar are acces. */
+export function rolPeFirma(user, firma) {
+  return firma && firma.ownerId === user.id ? 'patron' : 'contabil';
+}
+/** Contabilii unei firme = au acces la ea, dar nu sunt proprietarul (adminul le vede pe toate, deci nu conteaza). */
+export function contabiliiFirmei(users, firma) {
+  return (users || []).filter((u) => u.role !== 'admin' && u.id !== firma.ownerId && (u.firme || []).includes(firma.id));
+}
+
+function renderFirmePersoane(users) {
+  const box = $('#firmePersoane'); if (!box) return;
+  const firme = META.firme || [];
+  const numeUser = (id) => { const u = users.find((x) => x.id === id); return u ? u.username : null; };
+  const rows = firme.map((f) => {
+    const patron = f.ownerId ? numeUser(f.ownerId) : null;
+    const contabili = contabiliiFirmei(users, f);
+    return `<tr>
+      <td>${patron ? '<b>' + H(patron) + '</b>' : '<span class="muted" title="Firmă fără proprietar (creată din contul de administrator) — nu primește cereri de acces">— fără patron</span>'}</td>
+      <td><span class="acc">#${H(f.id)}</span> ${H(f.nume)}${f.cui ? ' <span class="muted">(' + H(f.cui) + ')</span>' : ''}</td>
+      <td>${contabili.length
+    ? contabili.map((u) => H(u.username) + (u.pending ? ' <span class="pill warn">invitație</span>' : '')).join(', ')
+    : '<span class="muted">— niciunul</span>'}</td></tr>`;
+  }).join('');
+  box.innerHTML = firme.length
+    ? `<table><thead><tr><th>Patron</th><th>Cod firmă</th><th>Contabil</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<p class="muted">Nicio firmă.</p>';
+}
+
 export async function renderUsers() {
   if (USER.role !== 'admin') return;
   const srt = $('#selfRegToggle');
@@ -158,6 +191,7 @@ export async function renderUsers() {
   }
   $('#userFirmeChecks').innerHTML = firmeChecks([]);
   const users = await api('/api/users');
+  renderFirmePersoane(users);
   // tipul utilizatorului: admin / tester (proba) / necontabil (Start) / contabil (Pro)
   const tipPill = (u) => {
     const c = { admin: 'background:#2f2e2a;color:#fff', contabil: 'background:#e2f5e8;color:#0a7d33', necontabil: 'background:#e7eefc;color:#1652d6', tester: 'background:#fff4e0;color:#b26a00' }[u.tip] || '';
@@ -167,7 +201,11 @@ export async function renderUsers() {
       <input type="checkbox" class="udrept" data-id="${u.id}" data-drept="${key}" data-u="u15" ${u.drepturi && u.drepturi[key] ? 'checked' : ''} /> ${label}</label>`;
   $('#usersList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th>Firme</th><th>Drepturi</th><th></th></tr></thead><tbody>${
     users.map((u) => `<tr><td><b>${H(u.username)}</b>${u.pending ? ' <span class="pill warn">invitație</span>' : ''}</td><td>${tipPill(u)}</td>
-      <td>${u.role === 'admin' ? '<span class="muted">toate</span>' : u.firme.map((id) => { const f = (META.firme || []).find((x) => x.id === id); return f ? H(f.nume) : id; }).join(', ') || '<span class="muted">—</span>'}</td>
+      <td>${u.role === 'admin' ? '<span class="muted">toate</span>' : (u.firme.map((id) => {
+    const f = (META.firme || []).find((x) => x.id === id);
+    const rol = rolPeFirma(u, f);
+    return `<span class="acc">#${H(id)}</span> ${f ? H(f.nume) : ''} <span class="pill rol-${rol}">${rol}</span>`;
+  }).join('<br>') || '<span class="muted">—</span>')}</td>
       <td>${u.role === 'admin' ? '<span class="muted">complete</span>' : drCheck(u, 'readonly', 'doar citire', 'Vede toate datele, dar nu poate modifica nimic') + '<br>' + drCheck(u, 'faraSalarii', 'fără salarii', 'Fără acces la salarizare (angajați, state de plată, fluturași, D112)')}</td>
       <td>${u.pending ? `<button class="linkbtn ulink" data-link="${u.inviteLink}">copiază link</button>` : `<button class="linkbtn ureset" data-id="${u.id}">resetează parola</button>${u.role !== 'admin' ? ` · <button class="linkbtn uimp" data-id="${u.id}">↪ intră pe cont</button>` : ''}`} · <button class="del udel" data-id="${u.id}">✕</button></td></tr>`).join('')}</tbody></table>`;
   $$('#usersList .udrept').forEach((cb) => cb.addEventListener('change', async () => {

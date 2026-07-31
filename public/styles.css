@@ -1020,4 +1020,10 @@ body.dark .closestep{background:#1b2027;border-color:#2b323b}
 body.dark .closestep.is-gata{background:#16241c;border-color:#2f5c43}
 body.dark .closebar{background:#2b323b}
 body.dark .pill.muted{background:#2b323b;color:#aab3bf}
+/* Rolul pe o firma, in tabelele de administrare: patron (proprietarul) vs contabil (are acces).
+   Doua culori distincte, nu doar text — se citesc dintr-o privire pe un cont cu multe firme. */
+.pill.rol-patron{background:#e2f5e8;color:#0a7d33}
+.pill.rol-contabil{background:#e7eefc;color:#1652d6}
+body.dark .pill.rol-patron{background:#12301f;color:#6ed69a}
+body.dark .pill.rol-contabil{background:#141f33;color:#8fb4f0}
 body.dark .closeblock{color:#ffb4a8}
