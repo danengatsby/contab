@@ -5573,6 +5573,62 @@ section('deployState — ce cod ruleaza de fapt (arbore de lucru = productie)');
   eq('ramura de deploy e `main` (conventia proiectului, nu un knob de mediu)', ds.RAMURA_DEPLOY, 'main');
 }
 
+section('Erori din client — curatare si agregare (metrics.clientErrorRecord / clientError)');
+{
+  const m = require('../src/metrics');
+  m.reset();
+
+  // ── SECURITATE 1: interogarea NU are voie sa ajunga in metrici ──
+  // Pagina de resetare poarta tokenul in URL (`/?reset=<token>`). Un `location.href` raportat naiv
+  // l-ar fi scris in /api/metrics, adica ne-am fi divulgat singuri un secret valabil o ora.
+  const cuToken = m.clientErrorRecord(
+    { msg: 'x', cale: '/?reset=TOKEN-SECRET-123', sursa: 'https://x/app.js?v=TOKEN-SECRET-123:1:2' }, {});
+  ok('interogarea e taiata din cale', cuToken.cale === '/' && !/TOKEN-SECRET/.test(cuToken.cale));
+  ok('interogarea e taiata si din sursa', !/TOKEN-SECRET/.test(cuToken.sursa));
+  ok('tokenul nu apare NICAIERI in inregistrare', !/TOKEN-SECRET/.test(JSON.stringify(cuToken)));
+  const stivaCuToken = m.clientErrorRecord({ msg: 'y', stack: 'la http://x/a.js?reset=TOKEN-SECRET-9:1:1' }, {});
+  ok('interogarea e taiata si din stiva', !/TOKEN-SECRET/.test(stivaCuToken.stack));
+
+  // ── SECURITATE 2: identitatea vine de pe SERVER, nu din corpul cererii ──
+  const fals = m.clientErrorRecord({ msg: 'x', username: 'admin', ua: 'sunt-admin' }, { username: null, ua: 'Mozilla/5.0' });
+  eq('username din corp e IGNORAT (altfel oricine si-ar atribui erorile altcuiva)', fals.username, null);
+  ok('user-agentul vine din antet, nu din corp', fals.ua === 'Mozilla/5.0');
+  const real = m.clientErrorRecord({ msg: 'x' }, { username: 'ana', ua: 'UA' });
+  eq('username din sesiune ajunge in inregistrare', real.username, 'ana');
+
+  // ── Taieri (text controlat de client) ──
+  const lung = m.clientErrorRecord({
+    msg: 'M'.repeat(500), sursa: 'S'.repeat(400), cale: '/c'.repeat(200),
+    stack: Array.from({ length: 40 }, (_, i) => 'la functia' + i + ' (x.js:' + i + ':1)').join('\n'),
+  }, {});
+  ok('mesajul se taie la 200', lung.msg.length === 200);
+  ok('sursa se taie la 120', lung.sursa.length === 120);
+  ok('calea se taie la 100', lung.cale.length === 100);
+  ok('stiva se taie (primele randuri, sub 500 caractere)', lung.stack.length <= 500 && lung.stack.includes('functia0'));
+  ok('stiva pastreaza doar primele 5 randuri', !lung.stack.includes('functia9'));
+  eq('mesajul lipsa nu produce o inregistrare goala', m.clientErrorRecord({}, {}).msg, '(fara mesaj)');
+  eq('tipul se normalizeaza (orice altceva -> „eroare")', m.clientErrorRecord({ tip: 'inventat' }, {}).tip, 'eroare');
+  eq('respingerea de promisiune isi pastreaza tipul', m.clientErrorRecord({ tip: 'promisiune' }, {}).tip, 'promisiune');
+
+  // ── AGREGARE: aceeasi eroare de la 50 de utilizatori = „x50", nu 50 de intrari ──
+  // Fara asta, ruta fiind publica, o rafala ar fi evacuat inelul de erori reale.
+  m.reset();
+  for (let i = 0; i < 50; i++) m.clientError(m.clientErrorRecord({ msg: 'cade la fel', sursa: 'a.js:1:1' }, { username: 'u' + (i % 3) }));
+  const agregat = m.clientErrorsSnapshot();
+  eq('50 de raportari identice -> o singura intrare', agregat.length, 1);
+  eq('...cu numaratoarea corecta', agregat[0].n, 50);
+  eq('utilizatorii distincti se retin (plafonat)', agregat[0].utilizatori.length, 3);
+  ok('primaLa si ultimaLa sunt amandoua completate', !!agregat[0].primaLa && !!agregat[0].ultimaLa);
+
+  // Erori DIFERITE ocupa intrari diferite, dar inelul e plafonat.
+  m.reset();
+  for (let i = 0; i < m.MAX_CLIENT_ERRORS + 10; i++) m.clientError(m.clientErrorRecord({ msg: 'eroare ' + i, sursa: 'a.js:' + i }, {}));
+  eq('inelul se plafoneaza', m.clientErrorsSnapshot().length, m.MAX_CLIENT_ERRORS);
+  ok('cele mai recent vazute sunt primele', /eroare 3[0-9]/.test(m.clientErrorsSnapshot()[0].msg));
+  m.reset();
+  eq('reset() goleste si erorile de client', m.clientErrorsSnapshot().length, 0);
+}
+
 section('Joburi periodice opribile (src/jobs.js: unref + stop)');
 {
   // Intervalele joburilor nu au voie sa tina un proces in viata sau sa "scape" dintr-un test:
@@ -5954,8 +6010,12 @@ section('Poarta: allowlist-ul public (PUBLIC_PATHS) — fara orfani, fara creste
   // Cresterea allowlist-ului trebuie sa fie o DECIZIE, nu un accident: lista asteptata e scrisa
   // aici, deci orice adaugare apare in diff-ul testului si trece prin review. Acelasi tipar ca la
   // numarul de joburi periodice.
+  // `/api/client-error` e public DELIBERAT: cea mai costisitoare eroare de client e cea de pe
+  // ecranul de LOGIN — daca ruta ar cere sesiune, exact acel caz ar ramane invizibil, adica
+  // tocmai gaura pe care o astupa. Abuzul e marginit prin plafon pe IP + taiere + agregare.
   const ASTEPTAT = ['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password',
-    '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest'];
+    '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest',
+    '/api/client-error'];
   const inPlus = publice.filter((p) => !ASTEPTAT.includes(p));
   const lipsa = ASTEPTAT.filter((p) => !publice.includes(p));
   ok('allowlist-ul public e exact cel revizuit (o adaugare cere actualizarea testului)'

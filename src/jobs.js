@@ -66,7 +66,7 @@ function stop() {
 }
 
 function start(ctx) {
-  const { doBackup, resetDemo, registerAttempts, forgotAttempts } = ctx;
+  const { doBackup, resetDemo, registerAttempts, forgotAttempts, clientErrAttempts } = ctx;
 
   // Backup automat zilnic (daca e activat)
   safeInterval('backup', () => {
@@ -112,6 +112,7 @@ function start(ctx) {
     pruneLoginAttempts(now); // loginAttempts traieste in src/session.js (incapsulat)
     for (const [k, r] of registerAttempts) { if (r.reset < now) registerAttempts.delete(k); }
     for (const [k, r] of forgotAttempts) { if (r.reset < now) forgotAttempts.delete(k); }
+    for (const [k, r] of (clientErrAttempts || [])) { if (r.reset < now) clientErrAttempts.delete(k); }
     uploadGuard.pruneRateBuckets(now); // bucket-urile de upload/export per utilizator
   }, 3600 * 1000);
 

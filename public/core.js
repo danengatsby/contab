@@ -178,3 +178,61 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { /* instalarea PWA e optionala */ });
   });
 }
+
+// ── RAPORTAREA ERORILOR DIN CLIENT ──
+// Observabilitatea pe server e buna (reqId, durate, fereastra 5xx). In client era NULA: o exceptie
+// netratata lasa utilizatorul cu ecranul blocat, iar noi nu aflam niciodata — el pleaca si atat.
+// Aici pleaca semnalul minim catre /api/client-error (ruta publica: o eroare pe ecranul de LOGIN e
+// exact cea care nu se afla altfel).
+//
+// Trei reguli, ca raportorul sa nu devina el problema:
+//   1. NU trece prin api(): acela afiseaza toast-uri, trateaza 401/402 si poate fi chiar el rupt.
+//      Se foloseste fetch brut, cu keepalive (raportarea supravietuieste navigarii care urmeaza).
+//   2. NU raporteaza propriile esecuri — orice eroare din trimitere se inghite. Altfel o retea
+//      cazuta ar produce o bucla: eroare -> raportare esuata -> eroare -> ...
+//   3. Se opreste dupa un numar mic de raportari pe incarcare de pagina. O bucla de randare poate
+//      arunca mii de exceptii pe secunda; fara plafon i-am trimite pe toate.
+const ERORI_MAX = 5;              // per incarcare de pagina
+let eroriTrimise = 0;
+const eroriVazute = new Set();    // aceeasi eroare nu se trimite de doua ori din aceeasi pagina
+
+/** Construieste corpul raportarii. Exportata pentru test/frontend.mjs (logica pura). */
+export function pachetEroare(sursaEvent) {
+  const e = sursaEvent || {};
+  const err = e.error || e.reason;  // 'error' -> .error, 'unhandledrejection' -> .reason
+  const mesaj = (err && err.message) || e.message
+    || (typeof err === 'string' ? err : '') || 'eroare necunoscuta';
+  return {
+    msg: String(mesaj).slice(0, 200),
+    // fisier:linie:coloana — la respingerile de promisiuni lipseste, si e in regula
+    sursa: e.filename ? String(e.filename).split('?')[0] + ':' + (e.lineno || 0) + ':' + (e.colno || 0) : '',
+    stack: err && err.stack ? String(err.stack).slice(0, 1000) : '',
+    // DOAR pathname: `location.href` ar fi trimis si interogarea, iar pagina de resetare are
+    // tokenul acolo (`/?reset=<token>`) — l-am fi scris singuri in metrici.
+    cale: (location && location.pathname) || '',
+    tip: e.type === 'unhandledrejection' ? 'promisiune' : 'eroare',
+  };
+}
+
+/** Decide daca raportarea pleaca. Pura, ca sa poata fi verificata fara retea. */
+export function trebuieRaportata(pachet, trimise, vazute) {
+  if (trimise >= ERORI_MAX) return false;
+  const amprenta = pachet.msg + '|' + pachet.sursa;
+  return !vazute.has(amprenta);
+}
+
+function raporteazaEroare(ev) {
+  try {
+    const pachet = pachetEroare(ev);
+    if (!trebuieRaportata(pachet, eroriTrimise, eroriVazute)) return;
+    eroriVazute.add(pachet.msg + '|' + pachet.sursa);
+    eroriTrimise += 1;
+    fetch('/api/client-error', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(pachet), keepalive: true,
+    }).catch(() => { /* regula 2: esecul raportarii nu produce alta raportare */ });
+  } catch (_) { /* raportarea nu are voie sa arunce niciodata */ }
+}
+
+window.addEventListener('error', raporteazaEroare);
+window.addEventListener('unhandledrejection', raporteazaEroare);

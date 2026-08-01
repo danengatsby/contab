@@ -43,6 +43,7 @@ function snapshot() {
     recentErrors: recentErrors.slice().reverse(), // cele mai noi primele
     lag: lagSnapshot(), // cat a stat bucla blocata — cauza pe care durata pe ruta n-o poate arata
     audit: auditSnapshot(), // scrierile in jurnalul DURABIL: tacerea lor invalida retentia
+    clientErrors: clientErrorsSnapshot(), // ce s-a rupt in BROWSER — server-side nu se vede deloc
     jobs: jobsSnapshot(),
     ai: aiSnapshot(),
     ops: opsSnapshot(),
@@ -93,6 +94,75 @@ const recentErrors = [];
 function recordError(msg) {
   recentErrors.push({ ts: new Date().toISOString(), msg: String(msg).slice(0, 200) });
   if (recentErrors.length > MAX_ERRORS) recentErrors.shift();
+}
+
+// ── ERORI DIN CLIENT (JavaScript, in browserul utilizatorului) ──
+// Pe server observabilitatea e buna (reqId, durate, fereastra 5xx, metrici). In client era NULA:
+// o exceptie netratata lasa contabilul cu ecranul blocat, iar tu nu aflai niciodata — el pleaca
+// si atat. Aici ajunge semnalul minim: ce s-a rupt, unde, de cate ori si la cine.
+//
+// Se AGREGA pe semnatura, nu se stivuieste: aceeasi eroare de la 50 de utilizatori trebuie sa
+// arate „x50", nu sa evacueze restul inelului. Asta rezolva si utilitatea, si abuzul — ruta e
+// publica (o eroare pe ECRANUL DE LOGIN e exact cea care nu se afla altfel), deci o stiva simpla
+// ar fi fost usor de umplut cu gunoi.
+const MAX_CLIENT_ERRORS = 25;
+const clientErrors = new Map(); // semnatura -> inregistrare agregata
+
+/**
+ * Curata si normalizeaza o raportare venita din browser. PURA si testata separat: e singurul loc
+ * unde intra text controlat de client, deci taierile si stergerea interogarilor sunt reguli de
+ * securitate, nu cosmetica.
+ *
+ * ATENTIE la interogari: pagina de resetare are tokenul in URL (`/?reset=<token>`). Un `location.href`
+ * raportat naiv ar fi scris tokenul de resetare in /api/metrics. Se taie si aici, chiar daca
+ * clientul trimite deja doar `pathname` — clientul NU e de incredere.
+ */
+function clientErrorRecord(body, ctx) {
+  const b = body || {}; const c = ctx || {};
+  const t = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const faraInterogare = (s) => String(s || '').split('?')[0].split('#')[0];
+  return {
+    msg: t(b.msg, 200) || '(fara mesaj)',
+    sursa: t(faraInterogare(b.sursa), 120),
+    // doar primele randuri din stiva: destul cat sa localizezi, nu cat sa devina un jurnal
+    stack: String(b.stack == null ? '' : b.stack).split('\n').slice(0, 5)
+      .map((l) => faraInterogare(l.trim())).filter(Boolean).join(' | ')
+      .slice(0, 500),
+    cale: t(faraInterogare(b.cale), 100),
+    tip: b.tip === 'promisiune' ? 'promisiune' : 'eroare',
+    // Identitatea si user-agentul vin de pe SERVER (sesiune + antet), nu din corpul cererii:
+    // altfel oricine si-ar putea atribui erorile altui utilizator.
+    username: c.username || null,
+    ua: t(c.ua, 120),
+  };
+}
+
+/** Inregistreaza (agregat) o eroare de client deja normalizata. */
+function clientError(rec) {
+  const semn = (rec.msg + '|' + rec.sursa).slice(0, 320);
+  const acum = new Date().toISOString();
+  let e = clientErrors.get(semn);
+  if (!e) {
+    // Plin: se evacueaza cea mai veche VAZUTA (nu cea mai veche aparuta) — o eroare care inca se
+    // repeta e mai relevanta decat una stinsa de mult.
+    if (clientErrors.size >= MAX_CLIENT_ERRORS) {
+      let vechea = null;
+      for (const [k, v] of clientErrors) if (!vechea || v.ultimaLa < vechea[1].ultimaLa) vechea = [k, v];
+      if (vechea) clientErrors.delete(vechea[0]);
+    }
+    e = { msg: rec.msg, sursa: rec.sursa, tip: rec.tip, stack: rec.stack, cale: rec.cale,
+      ua: rec.ua, utilizatori: [], n: 0, primaLa: acum, ultimaLa: acum };
+    clientErrors.set(semn, e);
+  }
+  e.n += 1; e.ultimaLa = acum;
+  if (rec.stack && !e.stack) e.stack = rec.stack; // primul exemplar cu stiva o pastreaza
+  if (rec.username && !e.utilizatori.includes(rec.username) && e.utilizatori.length < 10) e.utilizatori.push(rec.username);
+  return e;
+}
+
+/** Cele mai recent vazute primele — ordinea in care le-ai vrea la diagnostic. */
+function clientErrorsSnapshot() {
+  return [...clientErrors.values()].sort((a, b) => (a.ultimaLa < b.ultimaLa ? 1 : -1)).map((e) => Object.assign({}, e));
 }
 
 // ── Starea job-urilor de background (tick = a rulat verificarea; result/error = ce a facut) ──
@@ -193,6 +263,7 @@ function reset() {
   lagH.reset(); lagMaxTotal = 0; lagWindowFrom = Date.now();
   audit.scrise = 0; audit.esecuri = 0; audit.esecConsecutive = 0;
   audit.lastError = null; audit.lastErrorAt = null; audit.lastOkAt = null;
+  clientErrors.clear();
 }
 
 module.exports = {
@@ -201,4 +272,5 @@ module.exports = {
   recordError, recentErrors, jobTick, jobResult, jobError, jobsSnapshot,
   aiCall, aiSnapshot, lagSnapshot, lagRoll, lagValues,
   auditOk, auditFail, auditSnapshot,
+  clientErrorRecord, clientError, clientErrorsSnapshot, MAX_CLIENT_ERRORS,
 };
