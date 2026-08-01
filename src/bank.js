@@ -1,6 +1,6 @@
 'use strict';
 
-const { round2, period: periodOf } = require('./util');
+const { round2 } = require('./util');
 const { parseRoNumber } = require('./extractor');
 const { reconcile } = require('./reconcile');
 const { candidatesFor } = require('./matching');
@@ -24,7 +24,7 @@ function detectDelim(text) {
 }
 
 function parseDateRo(s) {
-  let m = String(s).match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/);
+  let m = String(s).match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
   if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; }
   m = String(s).match(/(\d{4})-(\d{2})-(\d{2})/);
   return m ? `${m[1]}-${m[2]}-${m[3]}` : '';

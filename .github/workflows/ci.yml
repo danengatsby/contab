@@ -34,6 +34,22 @@ jobs:
           CONTAB_SQL_READ_THRESHOLD: '0'
         run: node test/http.js
 
+  # ANALIZA STATICA (ESLint). Job SEPARAT, nu parte din `npm test`: `npm test` ruleaza la
+  # `prestart`, adica pe serverul de PRODUCTIE la fiecare pornire, iar ESLint e o dependinta de
+  # dezvoltare — cu `npm ci --omit=dev` nici n-ar exista acolo. Un linter nu are voie sa
+  # impiedice pornirea aplicatiei de contabilitate.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+
   # Audit de securitate al dependentelor: pica pe vulnerabilitati HIGH/CRITICAL (moderate/low
   # sunt doar raportate, nu blocheaza). Ruleaza pe fiecare push/PR ca un pachet vulnerabil sa fie
   # prins imediat, nu la urmatorul deploy. NU se pune in `npm test`/prestart local (cere reteaua

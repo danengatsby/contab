@@ -223,7 +223,7 @@ function generalLedgerAccounts(db, year) {
 
 function partyXml(tag, idTag, accountId, list, db) {
   const out = [`    <${tag}s>`];
-  list.forEach((p, i) => {
+  list.forEach((p, _i) => {
     const info = partnerInfo(db, p.cui);
     // RegistrationNumber in SAF-T: "00" + CUI numeric pentru RO; "01" + cod tara + cod TVA
     // pentru UE (ghidul oficial D406 — prefixul fiscal "RO" NU se scrie)
@@ -232,7 +232,6 @@ function partyXml(tag, idTag, accountId, list, db) {
       ? '00' + cuiCurat.replace(/^ro/i, '')
       : '01' + cuiCurat;
     const balD = p.bal >= 0 ? num2(p.bal) : '0.00';
-    const balC = p.bal < 0 ? num2(-p.bal) : '0.00';
     // ordinea ceruta de parserul DUK: ID + cont + solduri intai, identitatea (CompanyStructure)
     // la final; ID-ul partenerului este chiar codul 00/01+CUI (ghidul oficial D406)
     out.push(
@@ -289,7 +288,7 @@ function taxTable() {
 function assetsXml(db, year) {
   const list = db.assets || [];
   const out = ['    <Assets>'];
-  list.forEach((a, i) => {
+  list.forEach((a, _i) => {
     const cEnd = assetsLib.compute(a, year + '-12');
     const cBegin = assetsLib.compute(a, (Number(year) - 1) + '-12');
     const depYear = round2(cEnd.amortizareCumulata - cBegin.amortizareCumulata);
@@ -400,7 +399,13 @@ function movementTypeTable() {
 }
 
 /** Owners — asociatii/actionarii firmei (Setari -> Datele firmei, un rand pe asociat:
- *  "Nume; CNP/CUI; procent"). Pentru PFA fara lista: titularul cu 100%. */
+ *  "Nume; CNP/CUI; procent"). Pentru PFA fara lista: titularul cu 100%.
+ *
+ *  NELEGATA: functia e completa, dar nimeni nu o cheama — sectiunea <Owners> NU ajunge azi in
+ *  D406. Campul `asociatiText` din profilul firmei exista si se poate completa din Setari, deci
+ *  ce scrie utilizatorul acolo nu ajunge nicaieri. Se pastreaza (nu e cod mort, e o functie
+ *  neconectata), dar legarea ei e o schimbare FISCALA: cere trecerea prin DUKIntegrator. */
+// eslint-disable-next-line no-unused-vars -- construita, nelegata inca (vezi comentariul de mai sus)
 function ownersXml(db) {
   const c = db.company || {};
   const rows = String(c.asociatiText || '').trim()
@@ -442,7 +447,6 @@ function masterFiles(db, year) {
 function movementOfGoodsXml(db, year) {
   if (saftIsPeriodic(year)) return '    <MovementOfGoods/>'; // gol in varianta periodica (vezi mai sus)
   const byId = new Map((db.products || []).map((p) => [p.id, p]));
-  const gCod = new Map((db.gestiuni || []).map((g) => [g.id, g.cod]));
   const movs = stocksLib.sortMov((db.stockMovements || []).filter((m) => inYear({ data: m.data }, year)));
   let qIn = 0; let qOut = 0; const lines = [];
   movs.forEach((m, i) => {
@@ -451,7 +455,6 @@ function movementOfGoodsXml(db, year) {
     const type = m.tip === 'receptie' ? '10' : m.tip === 'transfer' ? '40' : '20';
     if (m.tip === 'receptie') qIn = round2(qIn + c);
     else if (m.tip === 'iesire') qOut = round2(qOut + c); // transferurile = interne, nu in totaluri
-    const wh = gCod.get(m.gestiuneId) || 'GEST';
     lines.push(
       '        <StockMovement>',
       `          <MovementReference>${esc(m.document || m.id)}</MovementReference>`,
@@ -683,233 +686,6 @@ function paymentMethod(e) {
   return 'Alte';
 }
 function paymentsXml(db, year) {
-  const pays = postedEntries(db).filter((e) => inYear(e, year) && PAYMENT_TIP(e.tip));
-  let totalD = 0; let totalC = 0; const out = [];
-  for (const e of pays) {
-    const date = String(e.data);
-    const month = Number(String(e.period || e.data).slice(5, 7)) || 1;
-    let rec = 0; const lines = [];
-    for (const l of e.lines) {
-      totalD = round2(totalD + l.suma); totalC = round2(totalC + l.suma);
-      rec += 1;
-      lines.push(
-        '          <PaymentLine>',
-        `            <LineNumber>${rec}</LineNumber>`,
-        `            <AccountID>${esc(l.debit)}</AccountID>`,
-        `            <CustomerID>${pid00(e, db)}</CustomerID>`,
-        `            <SupplierID>${pid00(e, db)}</SupplierID>`,
-
-        `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
-        '            <DebitCreditIndicator>D</DebitCreditIndicator>',
-        `            <PaymentLineAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></PaymentLineAmount>`,
-        '            <TaxInformation><TaxType>300</TaxType><TaxCode>300101</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
-        '          </PaymentLine>',
-      );
-      rec += 1;
-      lines.push(
-        '          <PaymentLine>',
-        `            <LineNumber>${rec}</LineNumber>`,
-        `            <AccountID>${esc(l.credit)}</AccountID>`,
-        `            <CustomerID>${pid00(e, db)}</CustomerID>`,
-        `            <SupplierID>${pid00(e, db)}</SupplierID>`,
-
-        `            <Description>${esc(l.explicatie || e.explicatie || e.tipNume)}</Description>`,
-        '            <DebitCreditIndicator>C</DebitCreditIndicator>',
-        `            <PaymentLineAmount><Amount>${num2(l.suma)}</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></PaymentLineAmount>`,
-        '            <TaxInformation><TaxType>300</TaxType><TaxCode>300101</TaxCode><TaxAmount><Amount>0.00</Amount><CurrencyCode>RON</CurrencyCode><CurrencyAmount>0.00</CurrencyAmount></TaxAmount></TaxInformation>',
-        '          </PaymentLine>',
-      );
-    }
-    const total = round2(e.lines.reduce((s, l) => s + l.suma, 0));
-    out.push(
-      '        <Payment>',
-      `          <PaymentRefNo>${esc(e.document || e.id)}</PaymentRefNo>`,
-      `          <Period>${month}</Period>`,
-      `          <PeriodYear>${String(e.data || '').slice(0, 4)}</PeriodYear>`,
-      `          <TransactionID>${esc(e.id)}</TransactionID>`,
-      `          <TransactionDate>${date}</TransactionDate>`,
-      `          <PaymentMethod>${paymentMethod(e)}</PaymentMethod>`,
-      `          <Description>${esc(e.tipNume + (e.partener ? ' - ' + e.partener : ''))}</Description>`,
-      lines.join('\n'),
-      '          <PaymentDocumentTotals>',
-      `            <NetTotal>${num2(total)}</NetTotal>`,
-      `            <GrossTotal>${num2(total)}</GrossTotal>`,
-      '          </PaymentDocumentTotals>',
-      '        </Payment>',
-    );
-  }
-  return [
-    '    <Payments>',
-    `      <NumberOfEntries>${pays.length}</NumberOfEntries>`,
-    `      <TotalDebit>${num2(totalD)}</TotalDebit>`,
-    `      <TotalCredit>${num2(totalC)}</TotalCredit>`,
-    out.join('\n'),
-    '    </Payments>',
-  ].join('\n');
-}
-
-function sourceDocuments(db, year) {
-  // A (Active): documente-sursa dezactivate + AssetTransactions cu contor;
-  // C (Stocuri): la fel, dar FARA AssetTransactions si cu MovementOfGoods PLIN
-  if (!saftIsPeriodic(year)) {
-    return ['  <SourceDocuments>', '    <SalesInvoices/>', '    <PurchaseInvoices/>',
-      '    <Payments/>',
-      db._saftTip === 'C' ? movementOfGoodsXml(db, year) : '    <MovementOfGoods/>',
-      db._saftTip === 'C' ? '' : '    <AssetTransactions><NumberOfAssetTransactions>0</NumberOfAssetTransactions></AssetTransactions>',
-      '  </SourceDocuments>'].filter(Boolean).join('\n');
-  }
-  const roles = partnerRoles(db, year);
-  const idOf = (list) => {
-    const m = new Map();
-    list.forEach((p) => m.set((p.den || '').toUpperCase().trim(), '00' + String(p.cui || '').replace(/^ro/i, '').replace(/\s/g, '')));
-    return m;
-  };
-  const custId = idOf(roles.customers);
-  const supId = idOf(roles.suppliers);
-  const within = postedEntries(db).filter((e) => inYear(e, year));
-
-  const block = (tag, filter, kind, partyTag, partyIdTag, idMap, account) => {
-    const invs = within.filter(filter);
-    let net = 0; const xmls = [];
-    for (const e of invs) {
-      const pid = idMap.get((e.partener || '').toUpperCase().trim()) || pid00(e, db);
-      const r = invoiceXml(e, kind, partyTag, partyIdTag, pid, account);
-      xmls.push(r.xml); net = round2(net + r.net);
-    }
-    return [
-      `    <${tag}>`,
-      `      <NumberOfEntries>${invs.length}</NumberOfEntries>`,
-      `      <TotalDebit>${num2(kind === 'purchase' ? net : 0)}</TotalDebit>`,
-      `      <TotalCredit>${num2(kind === 'sale' ? net : 0)}</TotalCredit>`,
-      xmls.join('\n'),
-      `    </${tag}>`,
-    ].join('\n');
-  };
-
-  return [
-    '  <SourceDocuments>',
-    block('SalesInvoices', (e) => SALE_TIP(e.tip), 'sale', 'CustomerInfo', 'CustomerID', custId, '4111'),
-    block('PurchaseInvoices', (e) => PURCHASE_TIP(e.tip), 'purchase', 'SupplierInfo', 'SupplierID', supId, '401'),
-    paymentsXml(db, year),
-    movementOfGoodsXml(db, year),
-    '  </SourceDocuments>',
-  ].join('\n');
-}
-
-// Varianta asincrona a sourceDocuments: cedeaza in bucla de facturi (blocul dominant din sectiune).
-// Wrapper-ul si invoiceXml sunt aceleasi ca la calea sincrona -> output byte-identic.
-async function sourceDocumentsAsync(db, year) {
-  // A (Active): documente-sursa dezactivate + AssetTransactions cu contor;
-  // C (Stocuri): la fel, dar FARA AssetTransactions si cu MovementOfGoods PLIN
-  if (!saftIsPeriodic(year)) {
-    return ['  <SourceDocuments>', '    <SalesInvoices/>', '    <PurchaseInvoices/>',
-      '    <Payments/>',
-      db._saftTip === 'C' ? movementOfGoodsXml(db, year) : '    <MovementOfGoods/>',
-      db._saftTip === 'C' ? '' : '    <AssetTransactions><NumberOfAssetTransactions>0</NumberOfAssetTransactions></AssetTransactions>',
-      '  </SourceDocuments>'].filter(Boolean).join('\n');
-  }
-  const roles = partnerRoles(db, year);
-  const idOf = (list) => {
-    const m = new Map();
-    list.forEach((p) => m.set((p.den || '').toUpperCase().trim(), '00' + String(p.cui || '').replace(/^ro/i, '').replace(/\s/g, '')));
-    return m;
-  };
-  const custId = idOf(roles.customers);
-  const supId = idOf(roles.suppliers);
-  const within = postedEntries(db).filter((e) => inYear(e, year));
-  const blockAsync = async (tag, filter, kind, partyTag, partyIdTag, idMap, account) => {
-    const invs = within.filter(filter);
-    let net = 0; const xmls = []; let i = 0;
-    for (const e of invs) {
-      const pid = idMap.get((e.partener || '').toUpperCase().trim()) || pid00(e, db);
-      const r = invoiceXml(e, kind, partyTag, partyIdTag, pid, account);
-      xmls.push(r.xml); net = round2(net + r.net);
-      if ((i += 1) % SAFT_YIELD_EVERY === 0) await microYield();
-    }
-    return [
-      `    <${tag}>`,
-      `      <NumberOfEntries>${invs.length}</NumberOfEntries>`,
-      `      <TotalDebit>${num2(kind === 'purchase' ? net : 0)}</TotalDebit>`,
-      `      <TotalCredit>${num2(kind === 'sale' ? net : 0)}</TotalCredit>`,
-      xmls.join('\n'),
-      `    </${tag}>`,
-    ].join('\n');
-  };
-  const sales = await blockAsync('SalesInvoices', (e) => SALE_TIP(e.tip), 'sale', 'CustomerInfo', 'CustomerID', custId, '4111');
-  const purch = await blockAsync('PurchaseInvoices', (e) => PURCHASE_TIP(e.tip), 'purchase', 'SupplierInfo', 'SupplierID', supId, '401');
-  return [
-    '  <SourceDocuments>',
-    sales,
-    purch,
-    paymentsXml(db, year),
-    movementOfGoodsXml(db, year),
-    '  </SourceDocuments>',
-  ].join('\n');
-}
-
-/** Genereaza fisierul SAF-T (D406) pentru un an. */
-function saftXml(db, year, tip) {
-  // tip: implicit L (perioada 'YYYY-MM') sau A (an); 'C' = declaratia de STOCURI (la cerere)
-  if (tip === 'C') db = Object.assign(Object.create(db), { _saftTip: 'C', company: Object.assign({}, db.company, { _saftTip: 'C' }) });
-  const yr = String(year || new Date().getFullYear());
-  const company = db.company || {};
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
-    header(company, yr),
-    masterFiles(db, yr),
-    generalLedgerEntries(db, yr),
-    sourceDocuments(db, yr),
-    '</AuditFile>',
-    '',
-  ].join('\n');
-}
-
-/** Varianta ASINCRONA a saftXml: output byte-identic, dar cedeaza event loop-ul periodic in buclele
- *  grele (GL + facturi) — nu blocheaza celelalte cereri la volume mari. Ruta o foloseste in locul
- *  celei sincrone; saftXml sincron ramane pentru teste (referinta byte-identica) si apeluri simple. */
-async function saftXmlAsync(db, year, tip) {
-  if (tip === 'C') db = Object.assign(Object.create(db), { _saftTip: 'C', company: Object.assign({}, db.company, { _saftTip: 'C' }) });
-  const yr = String(year || new Date().getFullYear());
-  const company = db.company || {};
-  const gl = await generalLedgerEntriesAsync(db, yr);
-  const sd = await sourceDocumentsAsync(db, yr);
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<AuditFile xmlns="mfp:anaf:dgti:d406:declaratie:v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
-    header(company, yr),
-    masterFiles(db, yr),
-    gl,
-    sd,
-    '</AuditFile>',
-    '',
-  ].join('\n');
-}
-
-/** Sumar pentru UI (fara a genera tot XML-ul). */
-function saftSummary(db, year) {
-  const yr = String(year || new Date().getFullYear());
-  const within = postedEntries(db).filter((e) => inYear(e, yr));
-  let total = 0;
-  for (const e of within) for (const l of e.lines) total = round2(total + l.suma);
-  const roles = partnerRoles(db, yr);
-  return {
-    year: yr,
-    accounts: accountBalances(db, yr).length,
-    entries: within.length,
-    totalDebit: total,
-    customers: roles.customers.length,
-    suppliers: roles.suppliers.length,
-    salesInvoices: within.filter((e) => SALE_TIP(e.tip)).length,
-    purchaseInvoices: within.filter((e) => PURCHASE_TIP(e.tip)).length,
-    payments: within.filter((e) => PAYMENT_TIP(e.tip)).length,
-    assets: (db.assets || []).length,
-    products: (db.products || []).length,
-    stockMovements: (db.stockMovements || []).filter((m) => inYear({ data: m.data }, yr)).length,
-  };
-}
-
-module.exports = { saftXml, saftXmlAsync, saftSummary, accountBalances, partnerRoles };function paymentsXml(db, year) {
   const pays = postedEntries(db).filter((e) => inYear(e, year) && PAYMENT_TIP(e.tip));
   let totalD = 0; let totalC = 0; const out = [];
   for (const e of pays) {

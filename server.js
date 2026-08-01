@@ -43,7 +43,7 @@ const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
 // ───────────────────────── AUTENTIFICARE ─────────────────────────
 // Primitive de sesiune/auth/anti-brute-force: src/session.js. Rutele de login/cont/impersonare/
 // resetare (nucleul de securitate) stau in src/authRoutes.js si isi fac singure require-urile.
-const { currentUser, allowedFirme, publicUser, startSession } = require('./src/session');
+const { allowedFirme, publicUser, startSession } = require('./src/session');
 
 // jurnal de audit (cine, ce actiune, pe ce firma)
 const auditLog = require('./src/auditLog');

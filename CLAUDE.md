@@ -24,6 +24,8 @@ npm run e2e                   # E2E pe live; pe acest server rulează prin Docke
 npm run e2e-izolat            # E2E pe instanță PROPRIE (roluri, resetare parolă, 2FA, importuri, SPV, restaurare, toate declarațiile)
 npm run test-pg               # suita pe driverul de PRODUCȚIE (pg): pornește/curăță singură baza
 npm run rto-drill             # DRILL DE RTO: restaurează ultima arhivă și cronometrează revenirea
+npm run lint                  # ESLint (analiză statică) — NU e în `npm test`, vezi mai jos
+npm run lint-syntax           # doar `node --check` pe tot codul (rulează și în `npm test`)
 sh scripts/poarta-fiscala.sh  # POARTA FISCALĂ — obligatorie înainte de merge dacă ai atins ceva fiscal
 ```
 
@@ -41,6 +43,16 @@ Schema e-Transport e **versionată în repo** (`schemas/eTransport/*.xsd`, o sin
 moment dat), ca poarta să meargă în orice clonă și în CI fără variabile — runnerul e efemer, deci
 o cale de pe server n-ar indica nimic acolo. Se poate suprascrie cu `CONTAB_ETRANSPORT_XSD` (cale
 sau URL) pentru probe. Procedura de înlocuire la o versiune nouă ANAF: `schemas/eTransport/README.md`.
+
+**ESLint NU face parte din `npm test`, deliberat.** `npm test` rulează la `prestart`, adică pe
+serverul de producție la fiecare pornire; ESLint e devDependency, deci cu `npm ci --omit=dev` nici
+n-ar exista acolo și `npm test` ar pica — un linter nu are voie să împiedice pornirea aplicației.
+Rulează în CI (jobul `lint`) și local prin `npm run lint`. `scripts/check-syntax.js` rămâne în
+suită: e `node --check`, fără dependințe, și verifică doar că fișierele parsează.
+Configurația (`eslint.config.js`) e calibrată pe **clase de defecte, nu stil**: perimetrul e îngust
+ca semnalările care contează să nu fie îngropate. Ce a găsit la prima rulare: `loadEntries` apelat
+în 4 module fără să fie importat (ReferenceError real, 11 apeluri) și ~227 de linii duplicate în
+`src/saft.js` (două `module.exports`, prima copie moartă prin hoisting).
 
 **Producția rulează pe `pg`, dar `npm test` rulează pe `sqlite`** — iar `test/store-pg.js` se sare
 tăcut fără `CONTAB_PG_URL`. Deci o suită verde local NU înseamnă că driverul de producție e

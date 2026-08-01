@@ -4,7 +4,6 @@ const Anthropic = require('@anthropic-ai/sdk');
 const OpenAI = require('openai');
 const { round2 } = require('./util');
 const { typesForClient } = require('./documentTypes');
-const coa = require('./chartOfAccounts');
 
 const MODEL = process.env.CONTAB_AI_MODEL || 'claude-opus-4-8';
 

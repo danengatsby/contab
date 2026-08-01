@@ -46,7 +46,7 @@ separat cu `npm run test-pg`: pornește un PostgreSQL efemer, rulează cele trei
 incrementală, suita HTTP, balanța cu prag SQL 0) și curăță după el. E aceeași comandă pe care o
 cheamă și CI, deci nu există două liste de probe care să driftează. Docker lipsă întoarce codul
 **2 — NEVERIFICAT**, distinct de un eșec de test.
-Rulează, în ordine: verificarea sintaxei tuturor fișierelor (`npm run lint`), garda pe baza reală
+Rulează, în ordine: verificarea sintaxei tuturor fișierelor (`npm run lint-syntax`), garda pe baza reală
 (`test/db-guard.js`), sesiuni/auth, **verificările de module** (`test/run.js`, pe date construite
 pur, fără a atinge `data/db.json`), extractorul, **logica pură de frontend** (`test/frontend.mjs`),
 reziliența ANAF (`test/anaf.js`, cu stub-uri), persistența (`test/store.js`, `test/store-pg.js`) și

@@ -57,7 +57,6 @@ let lastWritten = []; // colectiile scrise la ultimul persist (pentru diagnostic
 let epoch = 0;         // versiunea la ultimul commit reusit al ACESTUI proces
 let conflictedFlag = false; // detectat alt scriitor -> toate persist-urile urmatoare refuzate
 function sha(s) { return crypto.createHash('sha1').update(s).digest('hex'); }
-const EMPTY = new Map();
 
 // Colectii-array: { cheie, are firmaId?, are camp id? } -> fiecare devine un tabel.
 const ARRAY_COLLS = [

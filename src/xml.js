@@ -1,6 +1,6 @@
 'use strict';
 
-const { round2, period: periodOf } = require('./util');
+const { round2 } = require('./util');
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -224,7 +224,12 @@ function nrEvidPlata(cod3, luna, an) {
   return p21 + ctl;
 }
 
-/** Atributele declarantului (intocmitorului) — incluse doar cand datele exista. */
+/** Atributele declarantului (intocmitorului) — incluse doar cand datele exista.
+ *
+ *  NELEGATA: niciun generator nu o cheama, deci declaratiile nu poarta azi `nume_declar`. Se
+ *  pastreaza pentru ca e o functie neconectata, nu cod mort; conectarea ei schimba XML-ul trimis
+ *  la ANAF, deci trece prin poarta fiscala. */
+// eslint-disable-next-line no-unused-vars -- construita, nelegata inca (vezi comentariul de mai sus)
 function declarant(who) {
   if (!who || !who.nume) return '';
   let a = ` nume_declar="${esc(who.nume)}"`;

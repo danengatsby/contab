@@ -3,6 +3,7 @@
 // Stocuri si gestiune: situatii, fise de magazie, documente de stoc, inventariere, productie. Extras din app.js (Etapa: spargerea fisierului mare).
 import { $$, $, H, fmt, toast, api, fileToCsv, round2 } from './core.js';
 import { pget, workMonth, onPeriodChange } from './periods.js';
+import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 
 // ───────────────────────── STOCURI ─────────────────────────
 let STOCK_MOVS = [];

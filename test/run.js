@@ -968,7 +968,7 @@ eq('plafonul numerar fizic vine din fiscalConfig', require('../src/fiscalConfig'
     eq('„' + c.nume + '": TVA net (1050-210)', cote[0].tva, 840);
     // decisiv: ce ajunge in XML-ul depus trebuie sa fie ce spune contabilitatea
     const x = String(xmlS.d300Xml(dbS.company, '2026-09', dS, {}, null));
-    const g = (r) => (x.match(new RegExp(r + '="([^"]*)"')) || [, null])[1];
+    const g = (r) => (x.match(new RegExp(r + '="([^"]*)"')) || [undefined, null])[1];
     eq('„' + c.nume + '": XML baza', g(c.v ? 'R9_1' : 'R22_1'), '4000');
     eq('„' + c.nume + '": XML TVA', g(c.v ? 'R9_2' : 'R22_2'), '840');
     eq('„' + c.nume + '": decontul coincide cu contabilitatea',
@@ -5466,7 +5466,7 @@ section('Serializare sigura a bazei (stringifyDb: BigInt / valori nefinite)');
   // valorile nefinite pastreaza comportamentul JSON standard (null), dar sunt semnalate in log
   eq('NaN -> null (ca JSON standard)', stringifyDb({ x: NaN }), '{"x":null}');
   eq('Infinity -> null (ca JSON standard)', stringifyDb({ x: Infinity }), '{"x":null}');
-  ok('pretty-print cu spatiere functioneaza', /\n  "a": 1/.test(stringifyDb({ a: 1 }, 2)));
+  ok('pretty-print cu spatiere functioneaza', /\n {2}"a": 1/.test(stringifyDb({ a: 1 }, 2)));
   // referintele circulare raman erori vizibile (nu au reprezentare corecta)
   const circ = {}; circ.self = circ;
   ok('referinta circulara arunca in continuare', (() => { try { stringifyDb(circ); return false; } catch (e) { return true; } })());
@@ -5933,7 +5933,7 @@ section('Poarta: allowlist-ul public (PUBLIC_PATHS) — fara orfani, fara creste
   const fsx = require('fs'); const pth = require('path');
   const root = pth.join(__dirname, '..');
   const boot = fsx.readFileSync(pth.join(root, 'src', 'bootstrap.js'), 'utf8');
-  const brut = (boot.match(/PUBLIC_PATHS = new Set\(\[([^\]]*)\]/s) || [, ''])[1];
+  const brut = (boot.match(/PUBLIC_PATHS = new Set\(\[([^\]]*)\]/s) || [undefined, ''])[1];
   const publice = brut.split(',').map((x) => x.trim().replace(/^'|'$/g, '')).filter(Boolean);
   ok('PUBLIC_PATHS se poate citi din bootstrap', publice.length > 5);
 
@@ -6473,7 +6473,7 @@ section('Docs: documentatia nu contrazice configuratia reala (fara drift)');
   ok('CI cheama `npm run test-pg`, nu isi rescrie propriii pasi pe pg', /run:\s*npm run test-pg/.test(ci));
   // Doar JOBUL test-postgres, nu tot fisierul: pragul SQL 0 apare legitim si in jobul pe sqlite
   // (dovada de echivalenta SQL == RAM acolo), iar o verificare pe tot ci.yml l-ar raporta gresit.
-  const jobPg = (ci.match(/^ {2}test-postgres:[\s\S]*?(?=^ {2}\w[\w-]*:|\Z)/m) || [''])[0];
+  const jobPg = (ci.match(/^ {2}test-postgres:[\s\S]*?(?=^ {2}\w[\w-]*:|Z)/m) || [''])[0];
   ok('poarta chiar izoleaza jobul test-postgres', jobPg.includes('postgres:16') && jobPg.length > 200);
   ok('...iar jobul nu mai are pasi pe pg inlantuiti direct (ar fi a doua lista)',
     !/run:\s*node test\//.test(jobPg));
@@ -6764,7 +6764,7 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
   const fsx = require('fs'); const pth = require('path');
   const root = pth.join(__dirname, '..');
   const poarta = fsx.readFileSync(pth.join(root, 'scripts', 'poarta-fiscala.sh'), 'utf8');
-  const lista = (poarta.match(/CAI_FISCALE='([^']*)'/) || [, ''])[1].split('\n').map((s) => s.trim()).filter(Boolean);
+  const lista = (poarta.match(/CAI_FISCALE='([^']*)'/) || [undefined, ''])[1].split('\n').map((s) => s.trim()).filter(Boolean);
   ok('scripts/poarta-fiscala.sh declara un perimetru CAI_FISCALE', lista.length > 5);
 
   // Poarta valideaza cu validatoarele OFICIALE ce produc generatoarele; daca apare un generator
