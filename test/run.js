@@ -881,6 +881,85 @@ eq('plafonul de casierie vine din fiscalConfig', require('../src/fiscalConfig').
 eq('plafonul numerar juridic vine din fiscalConfig', require('../src/fiscalConfig').RATES.plafonNumerarJuridic, 5000);
 eq('plafonul numerar fizic vine din fiscalConfig', require('../src/fiscalConfig').RATES.plafonNumerarFizic, 10000);
 
+// ── Stornarile si notele de credit pastreaza COTA facturii ──────────────────────────────────
+// Cota se deducea din raport doar cand baza SI TVA erau POZITIVE: `bazaV > 0 && col > 0`. La un
+// storno, la o nota de credit, la o reducere comerciala si la regularizarea unui avans, amandoua
+// sunt NEGATIVE — deci randul primea cota 0.
+//
+// Cota 0 nu are rand in D300 (livrarile scutite au propriul canal), deci `put()` o arunca tacit;
+// iar plasa de siguranta `d300CoteFaraRand` avea garda `c.cota &&`, adica exact cota 0 — falsy —
+// ii scapa. Tacut de DOUA ori: suma disparea din decont SI din avertizare. Rezultatul: firma
+// declara si plateste TVA pe factura INTREAGA, desi si-a stornat o parte, iar decontul contrazice
+// propria contabilitate. Poarta fiscala nu putea prinde: XML-ul e perfect VALID, doar gresit.
+{
+  const { getType: gtS } = require('../src/documentTypes');
+  const repS = require('../src/reporting');
+  const xmlS = require('../src/xml');
+  const mkS = (id, f, date) => ({ id: id + date, data: date, period: date.slice(0, 7), tip: id, tipNume: gtS(id).nume,
+    partener: 'Client A', partenerCui: 'RO111', document: f.document, lines: gtS(id).build(f) });
+  const cazuri = [
+    { nume: 'storno de vanzare', v: true, entries: [
+      mkS('factura_vanzare_servicii', { baza: 5000, tva: 1050, cota: 21, document: 'F-1' }, '2026-09-10'),
+      mkS('factura_storno_vanzare', { baza: 1000, tva: 210, cota: 21, document: 'SF-1' }, '2026-09-25')] },
+    { nume: 'reducere comerciala acordata', v: true, entries: [
+      mkS('factura_vanzare_servicii', { baza: 5000, tva: 1050, cota: 21, document: 'F-2' }, '2026-09-10'),
+      mkS('reducere_comerciala_acordata', { baza: 1000, tva: 210, cota: 21, document: 'RC-1' }, '2026-09-25')] },
+    { nume: 'storno de achizitie', v: false, entries: [
+      mkS('factura_cumparare_marfuri', { baza: 5000, tva: 1050, cota: 21, document: 'A-1' }, '2026-09-10'),
+      mkS('factura_storno_cumparare', { baza: 1000, tva: 210, cota: 21, document: 'SA-1' }, '2026-09-25')] },
+    { nume: 'reducere comerciala primita', v: false, entries: [
+      mkS('factura_cumparare_marfuri', { baza: 5000, tva: 1050, cota: 21, document: 'A-2' }, '2026-09-10'),
+      mkS('reducere_comerciala_primita', { baza: 1000, tva: 210, cota: 21, document: 'RP-1' }, '2026-09-25')] },
+  ];
+  for (const c of cazuri) {
+    const dbS = { openingBalances: {}, company: { cui: 'RO999', den: 'T' }, partners: {}, entries: c.entries };
+    const dS = repS.d300(dbS, '2026-09');
+    const cote = c.v ? dS.coteV : dS.coteC;
+    eq('„' + c.nume + '": o singura cota in decont', cote.length, 1);
+    eq('„' + c.nume + '": cota ramane 21%, nu 0', cote[0].cota, 21);
+    eq('„' + c.nume + '": baza neta (5000-1000)', cote[0].baza, 4000);
+    eq('„' + c.nume + '": TVA net (1050-210)', cote[0].tva, 840);
+    // decisiv: ce ajunge in XML-ul depus trebuie sa fie ce spune contabilitatea
+    const x = String(xmlS.d300Xml(dbS.company, '2026-09', dS, {}, null));
+    const g = (r) => (x.match(new RegExp(r + '="([^"]*)"')) || [, null])[1];
+    eq('„' + c.nume + '": XML baza', g(c.v ? 'R9_1' : 'R22_1'), '4000');
+    eq('„' + c.nume + '": XML TVA', g(c.v ? 'R9_2' : 'R22_2'), '840');
+    eq('„' + c.nume + '": decontul coincide cu contabilitatea',
+      Number(g(c.v ? 'R9_2' : 'R22_2')), c.v ? dS.colectata : dS.deductibila);
+  }
+  // Avans facturat -> factura finala -> regularizare: TVA-ul avansului se anuleaza, nu se dubleaza
+  const dbAv = { openingBalances: {}, company: { cui: 'RO999', den: 'T' }, partners: {}, entries: [
+    mkS('factura_avans_client', { baza: 1000, tva: 210, cota: 21, document: 'AV-1' }, '2026-09-05'),
+    mkS('factura_vanzare_servicii', { baza: 5000, tva: 1050, cota: 21, document: 'F-10' }, '2026-09-20'),
+    mkS('regularizare_avans_client', { baza: 1000, tva: 210, cota: 21, document: 'F-10' }, '2026-09-20')] };
+  const dAv = repS.d300(dbAv, '2026-09');
+  eq('avans + regularizare: o singura cota', dAv.coteV.length, 1);
+  eq('avans + regularizare: baza = doar livrarea finala', dAv.coteV[0].baza, 5000);
+  eq('avans + regularizare: TVA nedublat', dAv.coteV[0].tva, 1050);
+
+  // Plasa de siguranta trebuie sa priveasca SUMELE, nu cota: garda `c.cota &&` lasa sa treaca
+  // exact cota 0 (falsy) — adica singurul caz in care suma chiar se pierde.
+  const faraRand = xmlS.d300CoteFaraRand({ coteV: [{ cota: 0, baza: -1000, tva: -210 }], coteC: [] });
+  eq('o cota fara rand, cu sume nenule, e RAPORTATA chiar daca e 0', faraRand.length, 1);
+  // indexare defensiva: cand aserttiunea de mai sus pica, `faraRand[0]` e undefined, iar un acces
+  // direct ar arunca si ar OPRI suita — ascunzand toate verificarile de dupa. O aserttiune care
+  // pica trebuie sa raporteze, nu sa doboare rulajul.
+  eq('...pe latura corecta', (faraRand[0] || {}).sens, 'livrari');
+  eq('o cota fara rand dar cu sume zero nu produce zgomot',
+    xmlS.d300CoteFaraRand({ coteV: [{ cota: 0, baza: 0, tva: 0 }], coteC: [] }).length, 0);
+
+  // Regularizarea anuala de pro-rata (art. 300) posteaza TVA fara baza (4426 = 635), deci cade pe
+  // cota 0. Decontul NU are rand de regularizari (`R28 = R27`, vezi xml.js), deci suma chiar nu
+  // poate fi declarata — dar acum se VEDE, in loc sa dispara. Testul fixeaza tocmai asta:
+  // o suma care nu incape in declaratie trebuie raportata, nu inghitita.
+  const dbPr = { openingBalances: {}, company: { cui: 'RO999', den: 'T' }, partners: {}, entries: [
+    mkS('regularizare_pro_rata', { suma: 1000, tva: 1000, document: 'RP-1' }, '2026-12-31')] };
+  const dPr = repS.d300(dbPr, '2026-12');
+  eq('(premisa) regularizarea de pro-rata are TVA fara baza', dPr.coteC[0].baza, 0);
+  eq('regularizarea de pro-rata e RAPORTATA ca nedeclarabila', xmlS.d300CoteFaraRand(dPr).length, 1);
+  eq('...cu TVA-ul ei, ca sa se poata corecta manual', (xmlS.d300CoteFaraRand(dPr)[0] || {}).tva, 1000);
+}
+
 section('Reduceri comerciale, sconturi, taxare inversa interna');
 const gt = require('../src/documentTypes').getType;
 const rca = gt('reducere_comerciala_acordata').build({ baza: 100, tva: 21, cota: 21 });
