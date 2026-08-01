@@ -366,6 +366,36 @@ section('Poarta: pagina publica de prezentare nu-si contrazice produsul');
     /valideaz\u0103|valida/i.test(pag) && /versiune[\s\S]{0,200}DUKIntegrator|DUKIntegrator[\s\S]{0,200}versiune/i.test(pag));
 }
 
+section('Poarta: materialele publicate nu divergo de sursa lor');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const MAT = pth.join(RADACINA, 'public', 'materiale');
+  const SRC = pth.join(RADACINA, 'marketing');
+
+  // `public/materiale/` sunt COPII servite public ale materialelor din `marketing/`. Doua copii
+  // ale aceluiasi fisier drifteaza garantat: la rescrierea textului comercial, cea publicata a
+  // ramas o versiune in urma pana am copiat-o manual. Poarta face copierea obligatorie, nu optionala.
+  const identic = (a, b) => fsx.existsSync(a) && fsx.existsSync(b) && fsx.readFileSync(a).equals(fsx.readFileSync(b));
+
+  ok('folderul publicat exista', fsx.existsSync(MAT));
+  ok('descrierea publicata e identica cu sursa din marketing/',
+    identic(pth.join(SRC, 'descriere.txt'), pth.join(MAT, 'descriere.txt')));
+
+  // Fiecare captura din marketing/capturi/ trebuie sa aiba geamanul ei publicat, bit cu bit.
+  const capturi = fsx.readdirSync(pth.join(SRC, 'capturi')).filter((f) => f.endsWith('.png'));
+  ok('exista capturi de verificat (poarta nu scaneaza in gol)', capturi.length >= 3);
+  const divergente = capturi.filter((f) => !identic(pth.join(SRC, 'capturi', f), pth.join(MAT, f)));
+  ok('fiecare captura publicata e identica cu originalul' + (divergente.length ? ' — DIFERITE: ' + divergente.join(', ') : ''),
+    divergente.length === 0);
+
+  // Materialele NU au voie sa concureze paginile reale in cautari: sunt acelasi text, la alta
+  // adresa. Fara excludere, `/materiale/descriere.txt` poate ajunge deasupra paginii de prezentare.
+  const robots = pth.join(RADACINA, 'public', 'robots.txt');
+  ok('robots.txt exista', fsx.existsSync(robots));
+  ok('robots.txt exclude materialele din indexare',
+    fsx.existsSync(robots) && /Disallow:\s*\/materiale\//.test(fsx.readFileSync(robots, 'utf8')));
+}
+
 section('Poarta: nicio ruta in afara prefixelor pazite (/api /pdf /xml /csv /efactura)');
 {
   const fsx = require('fs'); const pth = require('path');
