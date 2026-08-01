@@ -1,0 +1,6 @@
+# Materialele de marketing (public/materiale/) sunt COPII ale textelor si capturilor din
+# marketing/. Acelasi continut la alta adresa concureaza in cautari paginile reale — nu vrem ca
+# /materiale/descriere.txt sa apara deasupra paginii de prezentare. Fisierele raman accesibile
+# oricui are adresa; doar nu se indexeaza.
+User-agent: *
+Disallow: /materiale/
