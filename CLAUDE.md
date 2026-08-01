@@ -227,7 +227,18 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   singure (câte verificări, câți KB) — regula 6 a porții le refuză, fiindcă vor drifta garantat.
 - Commit-uri tematice în română (titlu scurt + corp explicativ), o ramură pe temă, merge în `main`
   cu `--no-ff` (nu squash). `gh` nu e autentificat — PR-urile se deschid manual dacă e nevoie de review.
-- Teste: `test/run.js` e sincron (helper-ele `eq/ok/section`; `errStatus` pentru gărzile de serviciu);
+- Teste: `test/run.js` e sincron (helper-ele `eq/ok/section`; `errStatus` pentru gărzile de serviciu).
+  **Se sparge gradual**: helperii și contorul stau în `test/run/comun.js`, iar blocurile care nu
+  împart fixture-uri cu miezul fiscal au ieșit în `test/run/porti.js` (porți pe cod: allowlist,
+  prefixe păzite, paginare, CSP/PWA, docs) și `test/run/servicii.js` (strat de servicii +
+  infrastructură). Părțile se cer din `run.js` **pe poziția lor**, ca ordinea secțiunilor să nu se
+  schimbe. Un test nou merge în partea potrivită, nu la coada monolitului. Două capcane la mutare,
+  amândouă întâlnite: căile relative urcă un nivel (`../../src/`) — asta eșuează ZGOMOTOS — dar
+  `path.join(__dirname, '..')` indică `test/`, iar **o poartă care scanează un director greșit
+  trece, nu pică**; de aceea rădăcina vine din `comun.js` (`RADACINA`). Contorul e un OBIECT
+  partajat: numere primitive s-ar fi copiat la import și totalul ar fi ieșit mai mic.
+  Invariantul de verificat la orice mutare: aceeași listă de secțiuni, în aceeași ordine, și
+  același număr de verificări.
   `test/http.js` pornește serverul real pe un **port efemer** (`freePort()` — nu mai fix; suita e
   paralelizabilă, DBF e per-pid) și include un test de concurență (scrieri paralele pe `/api/entries`);
   seed în `buildDb()`, cookie-uri prin `req()`, FormData nativ;

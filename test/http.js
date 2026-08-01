@@ -2350,7 +2350,7 @@ async function main() {
       !/TOKEN-SECRET-HTTP/.test(JSON.stringify(mx2.clientErrors)));
     ok('client-error: username-ul din corp e ignorat (fara sesiune, lista de utilizatori ramane goala)',
       cel('pretinde ca e admin').utilizatori.length === 0
-      && !/\"admin\"/.test(JSON.stringify(cel('pretinde ca e admin').utilizatori)));
+      && !/"admin"/.test(JSON.stringify(cel('pretinde ca e admin').utilizatori)));
     ok('client-error: NU intra in erorile de server (nu e caderea noastra, n-are ce cauta in alerta 5xx)',
       !(mx2.recentErrors || []).some((e) => /crapat pe login/.test(e.msg)));
 
