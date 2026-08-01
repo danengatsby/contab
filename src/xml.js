@@ -280,8 +280,14 @@ const D300_RAND_AUTOLICH = {
  */
 function d300CoteFaraRand(d) {
   const out = [];
-  for (const c of d.coteV || []) if (c.cota && !D300_RAND_V[c.cota]) out.push({ sens: 'livrari', cota: c.cota, baza: c.baza, tva: c.tva });
-  for (const c of d.coteC || []) if (c.cota && !D300_RAND_C[c.cota]) out.push({ sens: 'achizitii', cota: c.cota, baza: c.baza, tva: c.tva });
+  // Garda trebuie sa priveasca SUMELE, nu cota: `c.cota &&` lasa sa treaca exact cota 0, care e
+  // falsy — iar cota 0 e tocmai valoarea pe care o capata un rand a carui cota nu s-a putut
+  // determina. Rezultatul: suma disparea din decont SI din avertizare, deci tacut de doua ori.
+  // Cota 0 nu are rand in D300 (livrarile scutite au propriul canal, `scutite`), deci un rand cu
+  // cota 0 si sume nenule e intotdeauna o anomalie de raportat.
+  const areSume = (c) => Math.abs(Number(c.baza) || 0) >= 0.005 || Math.abs(Number(c.tva) || 0) >= 0.005;
+  for (const c of d.coteV || []) if (areSume(c) && !D300_RAND_V[c.cota]) out.push({ sens: 'livrari', cota: c.cota, baza: c.baza, tva: c.tva });
+  for (const c of d.coteC || []) if (areSume(c) && !D300_RAND_C[c.cota]) out.push({ sens: 'achizitii', cota: c.cota, baza: c.baza, tva: c.tva });
   return out;
 }
 

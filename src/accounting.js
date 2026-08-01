@@ -556,9 +556,23 @@ function vatJournals(db, period) {
       // taxare inversa interna (art. 331): autolichidarea TVA pe acelasi articol (4426 = 4427)
       if (l.debit === '4426' && l.credit === '4427') reverseCharge = true;
     }
-    // baza de achizitie = liniile de debit, exclusiv conturile de TVA
+    // Baza de achizitie = contravaloarea fara TVA, luata de pe liniile care NU sunt de TVA.
+    //
+    // Doua corecturi fata de forma veche („liniile de debit, mai putin cele cu TVA pe debit"):
+    //  a) linia de TVA se sare indiferent de LATURA pe care sta contul de taxa. La o reducere
+    //     comerciala primita, TVA-ul se storneaza prin CREDITUL lui 4426 (401 = 4426), deci linia
+    //     trecea de filtru si TVA-ul intra in baza: 1000 + 210 = 1210, adica o cota de -17%;
+    //  b) semnul vine din POZITIA furnizorului. Cand datoria (40x, mai putin 409 care e o creanta)
+    //     sta pe DEBIT, operatiunea REDUCE achizitia — reducere comerciala, nota de credit — deci
+    //     baza e negativa. Stornarile care isi pastreaza sensul si isi neaga suma (401 pe credit,
+    //     suma negativa) ies corect si asa.
+    const CONT_TVA = (c) => c === '4426' || c === '4427' || c === '4428';
+    const esteDatorieFurnizor = (c) => /^40/.test(String(c)) && !/^409/.test(String(c));
     let bazaC = 0;
-    for (const l of e.lines) if (l.debit !== '4426' && l.debit !== '4427' && l.debit !== '4428') bazaC = round2(bazaC + l.suma);
+    for (const l of e.lines) {
+      if (CONT_TVA(l.debit) || CONT_TVA(l.credit)) continue;
+      bazaC = round2(bazaC + (esteDatorieFurnizor(l.debit) ? -l.suma : l.suma));
+    }
     // TVA la incasare devenita exigibila: articolul (4428=4427 / 4426=4428) nu are baza pe linii,
     // dar baza aferenta e memorata pe articol (e.tvaExig) si intra in D300 in perioada exigibilitatii.
     if (e.tvaExig) {
@@ -576,7 +590,10 @@ function vatJournals(db, period) {
       const tp = e.tvaPartial;
       const bazaJurnal = tp ? tp.baza : bazaC;                 // factura reala (jurnal, D394)
       const tvaJurnal = tp ? tp.tvaFactura : ded;              // TVA-ul de pe factura, nu cel dedus
-      const cota = tp ? tp.cota : (bazaC > 0 && ded > 0 ? Math.round((ded / bazaC) * 100) : 0);
+      // Cota se deduce din RAPORT, nu din semn: la un storno / o nota de credit / o reducere
+      // comerciala, si baza si TVA-ul sunt NEGATIVE, iar raportul lor ramane cota facturii
+      // (-210 / -1000 = 21%). Conditia veche `> 0` le trimitea pe toate la cota 0 — vezi `byCota`.
+      const cota = tp ? tp.cota : (bazaC !== 0 && ded !== 0 ? Math.round((ded / bazaC) * 100) : 0);
       // In decont intra doar partea DEDUSA, cu baza ei proportionala: validatorul oficial cere
       // raportul baza/TVA egal cu cota (regula R84), iar `pro_rata` declarat nu il relaxeaza.
       const bazaDedusa = tp ? (cota > 0 ? round2((ded * 100) / cota) : 0) : bazaC;
@@ -597,7 +614,9 @@ function vatJournals(db, period) {
       // lua si D394, unde ajungea ca livrare interna cu taxare inversa) si nici in `coteV`.
       // Baza si TVA-ul ei sunt deja acumulate in `totAuto`, pe latura deductibila a aceluiasi articol.
       if (!autolich) {
-        vanzari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '', baza: bazaV, tva: col, total: round2(bazaV + col), cota: bazaV > 0 && col > 0 ? Math.round((col / bazaV) * 100) : 0, taxareInversa: reverseCharge });
+        // Cota din RAPORT, nu din semn (vezi si latura de achizitii): storno, nota de credit si
+        // reducere comerciala au baza SI TVA negative, iar raportul ramane cota facturii.
+        vanzari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '', baza: bazaV, tva: col, total: round2(bazaV + col), cota: bazaV !== 0 && col !== 0 ? Math.round((col / bazaV) * 100) : 0, taxareInversa: reverseCharge });
         tot.bazaV = round2(tot.bazaV + bazaV);
       }
     }
