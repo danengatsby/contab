@@ -743,6 +743,38 @@ section('Memo per firma pentru rutele scumpe (src/cache.js)');
   ok('stats: rata de hit intre 0 si 1', s0.hitRate > 0 && s0.hitRate <= 1);
 }
 
+section('Cautarea pe CUI raspunde despre firme REALE, nu despre copii de exercitiu');
+{
+  const fsvc = require('../../src/firmeService');
+  const d = db.get();
+  const inainte = d.firme.slice();
+
+  // Firmele de EXERCITIU poarta CUI-ul originalului: clona [TEST] il copiaza intocmai, iar firma
+  // demo vine dintr-un instantaneu cu CUI-ul lui. Nefiltrate, ele umbresc firma reala — o clona
+  // declanseaza „CUI deja folosit" la inregistrarea firmei adevarate, iar o cerere de acces pe CUI
+  // poate nimeri copia. Defectul exista de dinainte de firma demo, pe clona [TEST].
+  d.firme = [
+    { id: 901, nume: 'REALA SRL', cui: '40123456' },
+    { id: 902, nume: '[TEST] REALA SRL', cui: '40123456', test: true },
+    { id: 903, nume: 'FIRMA DEMO (exemplu de lucru)', cui: '40123456', demo: true },
+  ];
+  const gasita = fsvc.firmaDupaCui('40123456');
+  ok('cautarea gaseste firma REALA', !!gasita && gasita.id === 901);
+  eq('...nu clona de test', (gasita || {}).test, undefined);
+  eq('...nu firma demo', (gasita || {}).demo, undefined);
+
+  // Daca REALA lipseste, o copie nu ii ia locul: raspunsul e „nicio firma", nu un fals pozitiv
+  // care ar bloca inregistrarea celei adevarate.
+  d.firme = [
+    { id: 902, nume: '[TEST] REALA SRL', cui: '40123456', test: true },
+    { id: 903, nume: 'FIRMA DEMO', cui: '40123456', demo: true },
+  ];
+  eq('doar copii -> CUI-ul e liber pentru firma adevarata', fsvc.firmaDupaCui('40123456'), null);
+  eq('reqCuiLiber nu se plange din cauza copiilor', errStatus(() => fsvc.reqCuiLiber('40123456')), null);
+
+  d.firme = inainte;
+}
+
 section('Service layer firme: autorizarea dublata (src/firmeService.js)');
 const fsvc = require('../../src/firmeService');
 const fidPrima = dbx.firme[0].id;

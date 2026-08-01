@@ -323,6 +323,20 @@ async function init() {
   const ffb = $('#faraFirmaBar');
   if (ffb) {
     ffb.classList.toggle('hidden', !USER.faraFirma);
+    // Firma DEMO: un contabil proaspat inscris are contul GOL prin constructie, deci n-are ce
+    // evalua. Butonul ii da un dosar complet, cu care se poate juca fara sa strice nimic.
+    const fd = $('#faraFirmaDemo');
+    if (fd && !fd._wired) {
+      fd._wired = true;
+      fd.addEventListener('click', async () => {
+        fd.disabled = true;
+        try {
+          const r = await api('/api/firme/demo', { method: 'POST' });
+          toast('Firma demo „' + r.nume + '" e gata — poți umbla liniștit prin ea.');
+          window.location.reload(); // firma noua devine activa: reincarcam pe datele ei
+        } catch (e) { toast(e.message, true); fd.disabled = false; }
+      });
+    }
     const g = $('#faraFirmaGo');
     if (g && !g._wired) {
       g._wired = true;

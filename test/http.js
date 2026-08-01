@@ -281,6 +281,30 @@ async function main() {
     ok('register: nume cu caracter invizibil -> 400', regInv.status === 400 && /invizibile|control/i.test((regInv.json || {}).error || ''));
     const regScurt = await req('POST', '/api/register', { body: { nume: 'F SRL', username: ' ab ', password: 'ParolaBunaDeTot9' } });
     ok('register: nume prea scurt dupa trim -> 400', regScurt.status === 400 && /prea scurt/i.test((regScurt.json || {}).error || ''));
+    // ── FIRMA DEMO: pentru cine are portofoliul GOL ──
+    // Un contabil se inscrie fara nicio firma (firmele vin de la clienti), deci pana preia primul
+    // client deschide o aplicatie goala si n-are ce evalua. NU se foloseste inscrierea publica in
+    // aceasta proba: are plafon de 5/ora/IP, iar alte teste din suita se bazeaza pe el.
+    {
+      const fsD = require('fs'); const pthD = require('path');
+      fsD.writeFileSync(pthD.join(DATA_TMP, 'demo-firma.json'), JSON.stringify({ _format: 'contab-firma-v1',
+        firma: { nume: 'S.C. DEMO SAMPLE S.R.L.', cui: '40123456', tvaPlatitor: true },
+        entries: [], documents: [], partners: {}, openingBalances: {} }));
+      const cA = (await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } })).cookie;
+      await req('POST', '/api/users', { cookie: cA, body: { username: 'fara-firme', password: 'ParolaTest2026x', role: 'user', firme: [] } });
+      const cF = (await req('POST', '/api/login', { body: { username: 'fara-firme', password: 'ParolaTest2026x' } })).cookie;
+
+      eq('portofoliu gol: primeste firma demo -> 200', (await req('POST', '/api/firme/demo', { cookie: cF })).status, 200);
+      const fdemo = ((await req('GET', '/api/firme', { cookie: cF })).json.firme || []).find((f) => f.demo);
+      ok('firma e MARCATA demo (nu se poate confunda cu una reala)', !!fdemo);
+      ok('numele spune ce e', /DEMO/i.test((fdemo || {}).nume || ''));
+      // O SINGURA firma demo: altfel portofoliul s-ar umple cu dosare de exercitiu care arata ca
+      // firme reale in tabloul de conformitate.
+      eq('a doua cerere -> 409', (await req('POST', '/api/firme/demo', { cookie: cF })).status, 409);
+      // Cine ARE deja o firma de lucru nu primeste una demo: pentru incercari exista clona [TEST].
+      eq('cont cu firma proprie: refuzat -> 403', (await req('POST', '/api/firme/demo', { cookie: c1 })).status, 403);
+    }
+
 
     // ── Nicio ruta de scriere nu scapa gardii de autentificare ──
     // Autentificarea e o SINGURA garda in bootstrap, deci proprietatea depinde de ORDINEA de
@@ -1450,7 +1474,7 @@ async function main() {
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
-    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 10 && users.json.every((u) => u.tip));
+    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 11 && users.json.every((u) => u.tip));
     eq('non-admin la ruta de admin -> 403', (await req('GET', '/api/users', { cookie: c1 })).status, 403);
     // ── /api/settings: allowlist strict (fix escaladare la admin prin authSecret) ──
     eq('non-admin nu poate scrie authSecret -> 403', (await req('POST', '/api/settings', { cookie: c1, body: { authSecret: 'forjat' } })).status, 403);

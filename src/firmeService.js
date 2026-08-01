@@ -61,7 +61,11 @@ const CUI_DUPLICAT = 'Există deja o firmă cu acest CUI în aplicație. Nu o î
 function firmaDupaCui(cui, exceptId) {
   const key = cuiKey(cui);
   if (!key) return null;
-  return db.get().firme.find((x) => x.id !== exceptId && cuiKey(x.cui) === key) || null;
+  // Firmele de EXERCITIU (clona [TEST], firma demo) poarta CUI-ul original, dar nu sunt evidenta
+  // nimanui. Nefiltrate, ele umbresc firma reala: o clona de test declanseaza „CUI deja folosit"
+  // la crearea firmei adevarate, iar o cerere de acces pe CUI poate nimeri copia in locul
+  // originalului. Cautarea pe CUI raspunde despre firme REALE.
+  return db.get().firme.find((x) => x.id !== exceptId && !x.test && !x.demo && cuiKey(x.cui) === key) || null;
 }
 
 /** Refuza CUI-ul deja folosit de alta firma. 409: conflict, nu „date gresite". */
@@ -432,6 +436,68 @@ function testClone(user, id) {
   } catch (e) { if (e.status) throw e; fail(400, e.message); }
 }
 
+/**
+ * FIRMA DEMO pentru evaluare, cu date de exemplu.
+ *
+ * De ce exista: un CONTABIL se inscrie fara nicio firma — contul lui e gol prin constructie,
+ * fiindca el vine sa tina contabilitatea altora. Pana preia primul client real n-are ce evalua:
+ * deschide aplicatia si vede ecrane goale. Firma demo ii da un dosar complet (facturi, banca,
+ * salarii, declaratii) pe care poate umbla fara sa strice nimic.
+ *
+ * E marcata `demo: true`: apare cu numele ei explicit, nu raspunde la cautarea pe CUI (vezi
+ * firmaDupaCui) si se poate sterge oricand ca orice alta firma.
+ */
+function addDemoFirma(user) {
+  reqNotDemo(user);
+  // CINE are voie. Nu planul de abonament: `plans.userKind` deriva din plan (Pro = contabil), iar
+  // un contabil proaspat inscris e inca pe PROBA — ar fi fost respins exact cand are cea mai mare
+  // nevoie de firma demo. Prins la prima probă.
+  //
+  // Conditia e nevoia REALA, nu eticheta: are omul ceva la ce sa se uite? Un contabil (`tipCont`)
+  // se inscrie fara nicio firma, deci da. Oricine ajunge cu portofoliul gol, la fel — n-are rost
+  // sa-l refuzam pe motiv ca eticheta lui zice altceva. Un patron are firma lui de la inscriere,
+  // deci nu: pentru un teren de joaca peste date proprii exista deja clona [TEST].
+  // Firmele DEMO nu conteaza ca „firma de lucru": altfel garda s-ar auto-bloca imediat dupa ce
+  // adauga prima (omul ar avea „o firma", deci ar fi refuzat inainte sa afle ca are deja una demo,
+  // cu mesajul gresit). Prins la proba: „a doua cerere -> 409" raspundea 403.
+  const areFirme = (user.firme || []).map((id) => db.getFirma(id)).filter((f) => f && !f.demo).length > 0;
+  if (user.role !== 'admin' && user.tipCont !== 'contabil' && areFirme) {
+    fail(403, 'Firma demo e pentru conturile de contabil sau pentru cele fără nicio firmă. '
+      + 'Ai deja o firmă de lucru — pentru încercări pe datele ei folosește copia [TEST].');
+  }
+  const alBundleului = path.join(db.DATA_DIR, 'demo-firma.json');
+  if (!fs.existsSync(alBundleului)) fail(503, 'Exemplul demonstrativ nu e disponibil momentan pe acest server.');
+
+  // UNA singura: altfel un cont ar putea umple portofoliul cu dosare de exercitiu, care arata
+  // ca firme reale in tabloul de conformitate.
+  const aleMele = (user.firme || []).map((id) => db.getFirma(id)).filter(Boolean);
+  const existenta = aleMele.find((f) => f.demo);
+  if (existenta) fail(409, 'Ai deja o firmă demo („' + existenta.nume + '"). Șterge-o dacă vrei una nouă, cu datele resetate.');
+
+  let bundle;
+  try { bundle = JSON.parse(fs.readFileSync(alBundleului, 'utf8')); }
+  catch (e) { fail(503, 'Exemplul demonstrativ nu s-a putut citi.'); }
+
+  let newFid;
+  try { newFid = db.importFirma(bundle); }
+  catch (e) { fail(400, e.message); }
+  const nf = db.getFirma(newFid);
+  if (nf) {
+    nf.demo = true;
+    nf.nume = 'FIRMA DEMO (exemplu de lucru)';
+    // Abonamentul: aceleasi conditii ca la orice firma noua — altfel ar lovi paywall-ul imediat.
+    if (!nf.subscription) {
+      nf.subscription = user.role === 'admin'
+        ? { status: 'active', plan: 'grandfathered', since: new Date().toISOString() }
+        : plans.firmaTrialSub();
+    }
+  }
+  if (user.role !== 'admin') { user.firme = user.firme || []; if (!user.firme.includes(newFid)) user.firme.push(newFid); }
+  user.firmaActiva = newFid;
+  db.save();
+  return { firmaId: newFid, nume: nf ? nf.nume : '' };
+}
+
 function firmaSlug(bundle) {
   return String((bundle.firma && bundle.firma.nume) || 'firma').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'firma';
 }
@@ -656,7 +722,7 @@ module.exports = {
   firmaDupaCui, reqCuiLiber, reqCnp, CUI_DUPLICAT,
   listaContabili, contabilPublic, cerereServicii, cereriServicii, decideServicii, retrageServicii,
   reqNotDemo, reqAccess, reqAdmin,
-  createFirma, importBundle, importZip, testClone,
+  createFirma, importBundle, importZip, testClone, addDemoFirma,
   exportBundle, exportZip, exportAllZip, firmaSlug,
   updateFirma, activateFirma, setFirmaSubscription, subscribeFirma, deleteFirma,
   listCollaborators, addExistingCollaborator, inviteCollaborator, removeCollaborator,
