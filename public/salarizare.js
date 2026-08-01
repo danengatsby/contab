@@ -3,6 +3,7 @@
 // Salarizare: angajati, stat de plata, fluturasi, registru. Extras din app.js (Etapa: spargerea fisierului mare).
 import { $$, $, H, fmt, toast, api, round2, fiscalPct, ac } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
+import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 
 // ───────────────────────── SALARIZARE ─────────────────────────
 function spPeriod() { return pget('sp') || new Date().toISOString().slice(0, 7); }

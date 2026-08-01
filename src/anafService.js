@@ -14,7 +14,6 @@ const secretbox = require('./secretbox');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const AdmZip = require('adm-zip');
 const zipGuard = require('./zipGuard');
 const db = require('./db');
 const anaf = require('./anaf');
@@ -99,7 +98,7 @@ async function pollSpv(opts) {
 /** Extrage XML-ul facturii dintr-un ZIP SPV (sare peste fisierul de semnatura). */
 function extractInvoiceXml(buf) {
   // ZIP venit din SPV — tot input extern: trece prin garda anti zip-bomb
-  const { zip, entries } = zipGuard.openGuarded(buf, { maxEntries: 100, maxTotalSize: 256 * 1024 * 1024 });
+  const { entries } = zipGuard.openGuarded(buf, { maxEntries: 100, maxTotalSize: 256 * 1024 * 1024 });
   let pick = entries.find((en) => /\.xml$/i.test(en.entryName) && !/semnatura/i.test(en.entryName));
   if (!pick) pick = entries.find((en) => /\.xml$/i.test(en.entryName));
   if (!pick) throw new Error('Arhiva nu contine XML.');

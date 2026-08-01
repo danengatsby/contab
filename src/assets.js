@@ -25,12 +25,6 @@ function degressiveCoef(years) {
   return 2.5;
 }
 
-function monthsBetween(from, to) {
-  const a = new Date(from); const b = new Date(to);
-  if (isNaN(a) || isNaN(b)) return 0;
-  return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
-}
-
 /** Prima luna de amortizare = luna urmatoare punerii in functiune (format YYYY-MM). */
 function firstDepreciationMonth(dataPif) {
   const d = new Date(dataPif);

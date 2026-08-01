@@ -3,6 +3,7 @@
 // Declaratii & termene: livrabile ANAF, registrul depunerilor, fisa rol/SPV, portofoliu, notificari, reconciliere, scadentar. Extras din app.js (Etapa: spargerea fisierului mare).
 import { $$, $, H, fmt, accName, toast, api, ac } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
+import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 
 // Dependinte injectate din app.js (navigare, schimbarea firmei, luna de lucru) — livrabile.js nu
 // importa inapoi din app.js. Vezi setLivrabileDeps in app.js.

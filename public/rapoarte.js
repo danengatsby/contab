@@ -4,6 +4,7 @@
 import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct, ac } from './core.js';
 import { renderBudget } from './dashboard.js';
 import { pget, workMonth, setWorkMonth, nextMonth, lunaLabel, applyWorkMonth, onPeriodChange } from './periods.js';
+import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 
 // ───────────────────────── JOURNAL ─────────────────────────
 onPeriodChange('jurnal', loadJournal);

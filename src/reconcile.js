@@ -1,6 +1,6 @@
 'use strict';
 
-const { round2, period: periodOf } = require('./util');
+const { round2 } = require('./util');
 const { sortEntries, postedEntries } = require('./accounting');
 const { settle } = require('./matching');
 const { CONTURI_CREANTE, CONTURI_DATORII } = require('./analytic');

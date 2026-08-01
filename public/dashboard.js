@@ -2,7 +2,7 @@
 // Dashboard (tab-ul Acasa) + analize derivate: KPI-uri, rezumat executiv, alerte, primii pasi,
 // buget vs realizat, previziune cash-flow, comparatie an-la-an si graficele SVG. Extras din app.js
 // (Etapa 5). Depinde de nucleu; navigarea intre tab-uri (goTab) e INJECTATA prin setDashboardDeps.
-import { $, $$, api, fmt, H, META, USER, toast } from './core.js';
+import { $, $$, api, fmt, H, USER, toast } from './core.js';
 
 let deps = {};
 export function setDashboardDeps(d) { deps = d; }

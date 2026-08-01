@@ -567,7 +567,6 @@ function notes(db, year) {
   // anul e inchis, cele doua coincid.
   const rezInfo = acc.legalReserve(db, year);
   const capitalSocial = rezInfo.capitalSocial;
-  const rezervaPlafon = rezInfo.plafon;
   const rezervaLegala = profit > 0 ? round2(Math.min(rezInfo.rezerva, profit)) : 0;
   const reportat = profit > 0 ? round2(profit - rezervaLegala) : 0;
   const n3linii = profit > 0

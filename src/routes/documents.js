@@ -13,7 +13,6 @@ const ai = require('../aiExtractor');
 const log = require('../log');
 const metrics = require('../metrics');
 const { extractFromPdf } = require('../extractor');
-const extractCheck = require('../extractCheck');
 const extractQuality = require('../extractQuality');
 const entriesService = require('../entriesService');
 const fiscal = require('../fiscal');

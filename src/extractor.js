@@ -96,7 +96,7 @@ function findAmountAfter(text, labels) {
 
 function extractDate(text) {
   // dd.mm.yyyy / dd/mm/yyyy / dd-mm-yyyy
-  let m = text.match(/\b(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})\b/);
+  let m = text.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{4})\b/);
   if (m) {
     const dd = m[1].padStart(2, '0');
     const mm = m[2].padStart(2, '0');
@@ -169,8 +169,8 @@ function guessType(text, ownCui) {
 
 function extractNumber(text) {
   const pats = [
-    /seria\s*([A-Z0-9]+)\s*(?:nr\.?|num[aă]r)\s*[:.]?\s*([A-Z0-9\-\/]+)/i,
-    /(?:factur[aă]\s*)?(?:nr\.?|num[aă]r|no\.?|#)\s*\.?\s*(?:factur[aă]|fiscal[aă])?\s*[:.]?\s*([A-Z0-9][A-Z0-9 \-\/]{0,18})/i,
+    /seria\s*([A-Z0-9]+)\s*(?:nr\.?|num[aă]r)\s*[:.]?\s*([A-Z0-9\-/]+)/i,
+    /(?:factur[aă]\s*)?(?:nr\.?|num[aă]r|no\.?|#)\s*\.?\s*(?:factur[aă]|fiscal[aă])?\s*[:.]?\s*([A-Z0-9][A-Z0-9 \-/]{0,18})/i,
   ];
   for (const re of pats) {
     const m = text.match(re);

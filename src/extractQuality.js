@@ -48,7 +48,7 @@ function normCui(s) { return String(s == null ? '' : s).replace(/^ro/i, '').repl
  * si suma. Duplicatele sunt cazul cel mai scump al postarii automate: o factura inregistrata de doua
  * ori umfla cheltuiala si TVA-ul deductibil, si se descopera tarziu, la reconciliere.
  */
-function gasesteDuplicat(v, fields, tip) {
+function gasesteDuplicat(v, fields, _tip) {
   const doc = normDoc(fields.document);
   if (!doc) return null;
   const cui = normCui(fields.cuiPartener || fields.cui);

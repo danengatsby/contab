@@ -97,7 +97,6 @@ export function proofsHtml(st, validabile) {
 
 // ── Randare + acțiuni ──
 
-let currentState = null;
 
 function period() { return workMonth(); }
 
@@ -109,7 +108,6 @@ async function loadMonthlyClose() {
   let st;
   try { st = await api('/api/monthly-close?period=' + encodeURIComponent(per)); }
   catch (e) { host.innerHTML = `<p class="muted">${H(e.message)}</p>`; return; }
-  currentState = st;
   host.innerHTML = closeHeaderHtml(st)
     + `<ol class="closesteps">${st.steps.map((s) => stepHtml(s, st.responsabili)).join('')}</ol>`;
   const pr = $('#closeProofs'); if (pr) pr.innerHTML = proofsHtml(st, st.validabile);
@@ -142,7 +140,7 @@ function renderCloseButton(st) {
        <button id="clForce" class="linkbtn">Forțează închiderea (administrator)…</button>`
     : ''}`;
   $('#clApprove') && $('#clApprove').addEventListener('click', async () => {
-    try { currentState = await api('/api/monthly-close/approve', post({ period: st.period, nota: '' })); toast('Luna a fost aprobată.'); loadMonthlyClose(); }
+    try { await api('/api/monthly-close/approve', post({ period: st.period, nota: '' })); toast('Luna a fost aprobată.'); loadMonthlyClose(); }
     catch (e) { toast(e.message, true); }
   });
   $('#clUnapprove') && $('#clUnapprove').addEventListener('click', async () => {
@@ -168,7 +166,7 @@ function post(body) {
 
 async function saveStep(step, patch) {
   try {
-    currentState = await api('/api/monthly-close/step', post(Object.assign({ period: period(), step }, patch)));
+    await api('/api/monthly-close/step', post(Object.assign({ period: period(), step }, patch)));
     loadMonthlyClose();
   } catch (e) { toast(e.message, true); }
 }

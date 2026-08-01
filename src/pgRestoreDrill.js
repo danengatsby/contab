@@ -48,8 +48,8 @@ async function toolAvailable(bin) {
 /** URL-ul bazei de intretinere (`postgres`) + al bazei temporare, derivate din CONTAB_PG_URL. */
 function urlsFor(baseUrl, tempName) {
   if (!baseUrl) return null; // fara URL explicit ramanem pe socket local (vezi psqlArgs)
-  let u;
-  try { u = new URL(baseUrl); } catch (_) { return null; }
+  // parsarea E verificarea: daca URL-ul nu e valid, drill-ul nu are ce deriva
+  try { new URL(baseUrl); } catch (_) { return null; }
   const maint = new URL(baseUrl); maint.pathname = '/postgres';
   const temp = new URL(baseUrl); temp.pathname = '/' + tempName;
   return { maint: maint.toString(), temp: temp.toString() };

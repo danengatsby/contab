@@ -2,7 +2,7 @@
 
 // Autentificare UI: login/2FA, inscriere + preturi, parola uitata/reset, invitatii, schimbarea fortata a parolei.
 // Extras din app.js (faza 2); apelurile inapoi spre app.js vin prin setDeps (fara cicluri).
-import { $$, $, H, fmt, accName, toast, setLoad, api, setOn402 } from './core.js';
+import { $$, $, H, fmt, toast, api, setOn402 } from './core.js';
 
 const D = { init: null, goTab: null, promptFirmaSubscribe: null };
 function setAuthuiDeps(d) { Object.assign(D, d); }
