@@ -1,8 +1,13 @@
 'use strict';
 
-// Verificarea de compromitere a parolei (authlib.breachCheck, HaveIBeenPwned) — k-anonimitate +
-// FAIL-OPEN. Stub pe global.fetch: niciun apel real catre HIBP. Invariantul critic: orice
-// problema a serviciului extern (retea/timeout/non-200) NU blocheaza autentificarea (intoarce null).
+// Doua probe pe primitivele de autentificare:
+//
+//  1. breachCheck (HaveIBeenPwned) — k-anonimitate + FAIL-OPEN. Stub pe global.fetch: niciun apel
+//     real catre HIBP. Invariantul critic: orice problema a serviciului extern (retea/timeout/
+//     non-200) NU blocheaza autentificarea (intoarce null).
+//  2. verifyUserPassword — COSTUL constant pe conturi inexistente (anti-enumerare). Se numara
+//     invocarile de scryptSync, nu se cronometreaza: o aserttie pe timp ar fi instabila sub
+//     incarcarea din CI, pe cand numarul de apeluri e exact marimea care produce diferenta.
 
 const crypto = require('crypto');
 const authlib = require('../src/auth');
@@ -37,6 +42,47 @@ const suffixOf = (pw) => crypto.createHash('sha1').update(pw).digest('hex').toUp
   global.fetch = async () => ({ ok: false, text: async () => '' });
   ok('HIBP non-200 -> null (fail-open)', (await authlib.breachCheck('orice')) === null);
 
-  console.log((fail ? '✗ ' : '✓ ') + pass + ' verificari breachCheck trecute, ' + fail + ' esuate.\n');
+  // ─────────── verifyUserPassword: cost constant, indiferent daca contul exista ───────────
+  // Forma naiva `!u || !verifyPassword(...)` sarea peste scrypt cand contul lipsea (~0 ms fata de
+  // ~30 ms), deci un 401 identic ca text spunea totusi daca numele exista. Masuram CAUZA, nu
+  // simptomul: cate hash-uri se calculeaza pe fiecare ramura.
+  console.log('verifyUserPassword (cost constant — anti-enumerare de conturi)');
+
+  const PAROLA = 'parola-de-proba-2026!';
+  const contReal = authlib.hashPassword(PAROLA); // inainte de instrumentare (si el cheama scryptSync)
+
+  const scryptReal = crypto.scryptSync;
+  let apeluri = 0;
+  crypto.scryptSync = function (...args) { apeluri += 1; return scryptReal.apply(crypto, args); };
+  const nrApeluri = (fn) => { apeluri = 0; const r = fn(); return { r, n: apeluri }; };
+
+  const corect = nrApeluri(() => authlib.verifyUserPassword(contReal, PAROLA));
+  ok('cont existent + parola corecta -> true', corect.r === true);
+  ok('cont existent: exact un scrypt', corect.n === 1);
+
+  const gresit = nrApeluri(() => authlib.verifyUserPassword(contReal, 'alta-parola'));
+  ok('cont existent + parola gresita -> false', gresit.r === false);
+  ok('parola gresita: exact un scrypt', gresit.n === 1);
+
+  // MIEZUL: contul inexistent trebuie sa coste la fel. Cu regresia, aici ar fi 0.
+  const lipsa = nrApeluri(() => authlib.verifyUserPassword(null, PAROLA));
+  ok('cont inexistent -> false', lipsa.r === false);
+  ok('cont inexistent: exact un scrypt (nu 0 — altfel timpul enumera conturile)', lipsa.n === 1);
+  ok('cont inexistent costa la fel ca unul existent', lipsa.n === corect.n && lipsa.n === gresit.n);
+
+  const nedefinit = nrApeluri(() => authlib.verifyUserPassword(undefined, PAROLA));
+  ok('undefined tratat ca inexistent, tot un scrypt', nedefinit.r === false && nedefinit.n === 1);
+
+  // Cont fara credentiale (date corupte / invitatie neacceptata): nu se autentifica NICIODATA,
+  // dar consuma acelasi scrypt — altfel ar fi a treia clasa de timp, distincta de primele doua.
+  const fost = nrApeluri(() => authlib.verifyUserPassword({ id: 7, username: 'x' }, PAROLA));
+  ok('cont fara salt/hash -> false', fost.r === false);
+  ok('cont fara salt/hash: tot un scrypt', fost.n === 1);
+  const doarSalt = nrApeluri(() => authlib.verifyUserPassword({ id: 8, salt: contReal.salt }, PAROLA));
+  ok('cont cu salt dar fara hash -> false, tot un scrypt', doarSalt.r === false && doarSalt.n === 1);
+
+  crypto.scryptSync = scryptReal;
+
+  console.log((fail ? '✗ ' : '✓ ') + pass + ' verificari auth trecute, ' + fail + ' esuate.\n');
   process.exit(fail ? 1 : 0);
 })();

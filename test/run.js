@@ -5833,6 +5833,57 @@ section('Poarta: allowlist-ul public (PUBLIC_PATHS) — fara orfani, fara creste
   eq('doar doua prefixe publice (invitatie + resetare)', prefixe.join(','), '/api/invite/,/api/reset/');
 }
 
+section('Poarta: verificarea parolei costa la fel si cand contul NU exista (anti-enumerare)');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const root = pth.join(__dirname, '..');
+  // Perimetrul se DERIVA din sursa (tot src/, recursiv), nu e o lista scrisa de mana care sa
+  // drifteze cand apare un modul nou de autentificare.
+  const fisiere = [];
+  (function walk(dir) {
+    for (const f of fsx.readdirSync(dir).sort()) {
+      const p = pth.join(dir, f);
+      if (fsx.statSync(p).isDirectory()) walk(p);
+      else if (f.endsWith('.js')) fisiere.push(p);
+    }
+  })(pth.join(root, 'src'));
+  ok('perimetrul se citeste din src/', fisiere.length > 50);
+
+  // DEFECTUL pe care il prinde poarta: `!u || ... verifyPassword(pw, u.salt, u.hash)`. Operatorul
+  // || scurtcircuiteaza, deci pe contul inexistent scrypt nu mai ruleaza — raspunsul vine in ~0 ms
+  // fata de ~30 ms, si un 401 identic ca text spune totusi daca numele exista. Forma corecta pe
+  // caile publice e authlib.verifyUserPassword(user|null, parola), care hash-uieste intotdeauna.
+  //
+  // Se scaneaza pe FEREASTRA din jurul apelului, nu pe linie: conditia poate fi rupta pe mai multe
+  // randuri, si o ancora pe linie ar sari exact peste forma desfasurata (vezi punctul orb al
+  // porctilor de escapare din CLAUDE.md).
+  const GARDA = /!\s*[A-Za-z_$][\w$]*\s*\|\|/;   // semnatura `!u ||` / `!user ||`
+  // Comentariile se scot INAINTE de scanare — altfel poarta se autodenunta pe documentatia care
+  // citeaza tocmai forma interzisa (s-a si intamplat la prima rulare). Se inlocuiesc cu acelasi
+  // numar de linii noi, ca indicii si numerele de linie raportate sa ramana cele reale.
+  const faraComentarii = (s) => s
+    .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '))
+    .replace(/^([ \t]*)\/\/.*$/gm, (c) => c.replace(/[^\n]/g, ' '));
+  const vinovati = [];
+  for (const f of fisiere) {
+    const src = faraComentarii(fsx.readFileSync(f, 'utf8'));
+    for (const m of src.matchAll(/(?<!User)verifyPassword\s*\(/g)) {
+      const inainte = src.slice(Math.max(0, m.index - 220), m.index).replace(/\s+/g, ' ');
+      if (GARDA.test(inainte)) vinovati.push(pth.relative(root, f) + ':' + (src.slice(0, m.index).split('\n').length));
+    }
+  }
+  ok('niciun verifyPassword() in spatele unui scurtcircuit pe existenta contului'
+    + (vinovati.length ? ' — ' + vinovati.join(', ') : ''), vinovati.length === 0);
+
+  // Poarta de mai sus e NEGATIVA: ar trece si daca cineva ar sterge verificarea cu totul. Deci
+  // se cere si prezenta formei corecte exact acolo unde conteaza — pe ruta publica de login.
+  const authR = fsx.readFileSync(pth.join(root, 'src', 'authRoutes.js'), 'utf8');
+  ok('/api/login foloseste authlib.verifyUserPassword', /verifyUserPassword\s*\(/.test(authR));
+  ok('src/authRoutes.js nu mai cheama verifyPassword direct', !/(?<!User)verifyPassword\s*\(/.test(authR));
+  ok('verifyUserPassword e exportat din src/auth.js',
+    /verifyUserPassword/.test(fsx.readFileSync(pth.join(root, 'src', 'auth.js'), 'utf8').match(/module\.exports\s*=\s*\{[^}]*\}/s)[0]));
+}
+
 section('Poarta: nicio ruta in afara prefixelor pazite (/api /pdf /xml /csv /efactura)');
 {
   const fsx = require('fs'); const pth = require('path');

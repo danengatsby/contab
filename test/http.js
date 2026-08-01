@@ -252,7 +252,19 @@ async function main() {
     ok('COEP dezactivat (nu rupe iframe PDF/punte)', !hdrs.get('cross-origin-embedder-policy'));
     ok('CORP dezactivat (comportament pastrat)', !hdrs.get('cross-origin-resource-policy'));
     eq('date fara login -> 401', (await req('GET', '/api/dashboard')).status, 401);
-    eq('login cu parola gresita -> 401', (await req('POST', '/api/login', { body: { username: 'user1', password: 'nu' } })).status, 401);
+    const pwGresit = await req('POST', '/api/login', { body: { username: 'user1', password: 'nu' } });
+    eq('login cu parola gresita -> 401', pwGresit.status, 401);
+    // ANTI-ENUMERARE: un nume inexistent nu are voie sa se deosebeasca de o parola gresita pe
+    // NICIUN canal. Costul (scrypt ruleaza si pe contul lipsa) e masurat in test/auth.js, unde
+    // se poate numara; aici se apara canalul de CONTINUT, singurul observabil din afara.
+    // Aserttia e intre cele doua raspunsuri, nu fata de un text fix: asa o reformulare a
+    // mesajului ramane liberă, dar o divergenta intre ramuri pica.
+    const userLipsa = await req('POST', '/api/login', { body: { username: 'nimeni-pe-lume-2026', password: 'nu' } });
+    eq('nume inexistent -> tot 401', userLipsa.status, pwGresit.status);
+    eq('nume inexistent -> acelasi mesaj ca parola gresita (fara enumerare)',
+      JSON.stringify(userLipsa.json), JSON.stringify(pwGresit.json));
+    // login reusit imediat dupa: clearFails reseteaza contorul (MAX_ATTEMPTS=8), deci cele trei
+    // esecuri consecutive de mai sus nu lasa IP-ul suitei blocat pentru testele urmatoare
     const l1 = await req('POST', '/api/login', { body: { username: 'user1', password: 'parola1' } });
     ok('login user1 reusit + cookie', l1.status === 200 && /^sid=/.test(l1.cookie));
     const c1 = l1.cookie;
