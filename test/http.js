@@ -2337,6 +2337,15 @@ async function main() {
       mx.lag.p50Ms >= 0 && mx.lag.p50Ms < 1000 && mx.lag.maxMs >= 0 && mx.lag.p99Ms >= mx.lag.p50Ms);
     ok('metrics: pragul de alerta calatoreste cu masura (altfel cifra nu se poate interpreta)',
       mx.lag.pragMs > 0 && mx.lag.rezolutieMs > 0);
+    // Jurnalul de audit DURABIL. Pe un server care a servit deja sute de cereri autentificate,
+    // scrierile trebuie sa fi REUSIT — daca aici ar aparea esecuri, tocmai s-ar fi demonstrat
+    // problema pe care contorul o face vizibila.
+    ok('metrics: starea jurnalului durabil e expusa cu contract complet',
+      mx.audit && typeof mx.audit.scrise === 'number' && typeof mx.audit.esecuri === 'number'
+      && typeof mx.audit.esecConsecutive === 'number' && 'lastError' in mx.audit && 'lastOkAt' in mx.audit);
+    ok('metrics: jurnalul chiar s-a scris in timpul suitei (nu e un contor mort)', mx.audit.scrise > 0);
+    ok('metrics: fara esecuri de scriere in jurnal pe parcursul suitei',
+      mx.audit.esecuri === 0 && mx.audit.esecConsecutive === 0);
     // restaurare: validarea refuza gunoiul INAINTE sa atinga baza
     const fdBadJson = new FormData();
     fdBadJson.append('file', new Blob(['nu e json'], { type: 'application/json' }), 'stricat.json');

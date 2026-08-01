@@ -354,6 +354,53 @@ section('auditLog — jurnal DURABIL append-only pe disc');
   eq('linia e NDJSON valid, reconstructibila', JSON.parse(linii[0]).action, 'test.a');
   ok('listFiles le vede pe amandoua, noile primele', (() => { const f = auditLog.listFiles(); return f[0] === 'audit-2026-08.ndjson' && f.includes('audit-2026-07.ndjson'); })());
   fsA.rmSync(process.env.CONTAB_AUDIT_DIR, { recursive: true, force: true }); // curatenie (dir izolat)
+
+  // ── ESECUL nu mai are voie sa fie TACUT ──
+  // append e best-effort (nu rupe cererea) si avertizeaza o singura data pana la urmatorul succes
+  // (nu inunda logul). Corecte separat, tacere completa impreuna: o permisiune stricata dadea o
+  // linie in log si apoi nimic. Si nu e o tacere oarecare — plafonul CONTAB_AUDIT_MAX din baza vie
+  // e justificat TOCMAI de existenta probei pe disc.
+  //
+  // Defectul se provoaca prin ENOTDIR (director cerut SUB un fisier), nu prin chmod: chmod nu
+  // opreste procesul care ruleaza ca root, deci proba ar fi trecut din motivul gresit exact pe
+  // masinile pe care ruleaza aplicatia.
+  const metricsA = require('../src/metrics');
+  const inainte = metricsA.auditSnapshot();
+  const fisierNuDirector = pathA.join(osA.tmpdir(), 'audit-nu-e-director-' + process.pid);
+  fsA.writeFileSync(fisierNuDirector, 'sunt un fisier, nu un director');
+  process.env.CONTAB_AUDIT_DIR = pathA.join(fisierNuDirector, 'audit');
+
+  const sonda = auditLog.probeWritable();
+  ok('sonda vede ca jurnalul NU se poate scrie', sonda.ok === false && /ENOTDIR|not a directory/i.test(sonda.motiv || ''));
+  auditLog.append({ id: 9, ts: '2026-08-01T10:00:00.000Z', username: 'u', action: 'test.esec', detail: '' });
+  const dupaEsec = metricsA.auditSnapshot();
+  eq('esecul e CONTORIZAT, nu doar logat', dupaEsec.esecuri, inainte.esecuri + 1);
+  ok('ultima eroare e retinuta, pentru diagnostic', !!dupaEsec.lastError && !!dupaEsec.lastErrorAt);
+  eq('scrierile reusite NU cresc pe esec', dupaEsec.scrise, inainte.scrise);
+
+  // Throttle-ul e pentru CONSOLA, nu pentru contor: al doilea esec consecutiv (care nu mai
+  // produce nicio linie in log) trebuie totusi sa se vada in cifre.
+  auditLog.append({ id: 10, ts: '2026-08-01T10:01:00.000Z', username: 'u', action: 'test.esec2', detail: '' });
+  const dupaAlDoilea = metricsA.auditSnapshot();
+  eq('al doilea esec (fara linie noua in log) se contorizeaza si el', dupaAlDoilea.esecuri, inainte.esecuri + 2);
+  eq('esecurile consecutive se numara', dupaAlDoilea.esecConsecutive, 2);
+
+  // Revenirea: dupa un succes, sonda si contorul de consecutive se sting.
+  process.env.CONTAB_AUDIT_DIR = fsA.mkdtempSync(pathA.join(osA.tmpdir(), 'audit-ok-'));
+  ok('sonda confirma revenirea', auditLog.probeWritable().ok === true);
+  auditLog.append({ id: 11, ts: '2026-08-01T10:02:00.000Z', username: 'u', action: 'test.ok', detail: '' });
+  const dupaRevenire = metricsA.auditSnapshot();
+  eq('scrierea reusita se contorizeaza', dupaRevenire.scrise, inainte.scrise + 1);
+  eq('esecurile consecutive se reseteaza la succes', dupaRevenire.esecConsecutive, 0);
+  ok('totalul de esecuri NU se pierde (ramane pentru raport)', dupaRevenire.esecuri === inainte.esecuri + 2);
+
+  // Sonda verifica FISIERUL lunii curente cand exista, nu doar directorul: esecul real de pe
+  // aceasta instalare a fost EACCES pe `open` al fisierului, cu directorul perfect scriibil.
+  ok('sonda tinteste fisierul lunii curente, nu doar directorul',
+    /audit-\d{4}-\d{2}\.ndjson$/.test(auditLog.fileFor()));
+
+  fsA.rmSync(process.env.CONTAB_AUDIT_DIR, { recursive: true, force: true });
+  fsA.unlinkSync(fisierNuDirector);
   if (prevAuditDir === undefined) delete process.env.CONTAB_AUDIT_DIR; else process.env.CONTAB_AUDIT_DIR = prevAuditDir;
 }
 
@@ -5489,11 +5536,11 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   const stubs = { doBackup: () => ({ name: 'x' }), resetDemo: () => ({ ok: true }), registerAttempts: new Map(), forgotAttempts: new Map() };
   const h = jobs.start(stubs);
   ok('start() intoarce un handle cu stop()', h && typeof h.stop === 'function');
-  eq('stop() curata toate cele 10 joburi', h.stop(), 10);
+  eq('stop() curata toate cele 11 joburi', h.stop(), 11);
   eq('stop() e idempotent (a doua oara: nimic de curatat)', jobs.stop(), 0);
   // dupa stop, un nou start functioneaza si se curata la fel (nu ramane stare blocata)
   jobs.start(stubs);
-  eq('restart dupa stop: tot 10 joburi, curatate din nou', jobs.stop(), 10);
+  eq('restart dupa stop: tot 11 joburi, curatate din nou', jobs.stop(), 11);
 }
 
 section('Lag-ul buclei de evenimente (metrics.lagValues) — traducerea histogramei');
