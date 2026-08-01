@@ -2294,6 +2294,18 @@ async function main() {
     ok('metrics: coada de persistenta e expusa cu contract complet',
       mx.persist && typeof mx.persist.pending === 'boolean' && typeof mx.persist.pendingAgeMs === 'number' && typeof mx.persist.commits === 'number');
     ok('metrics: driverul cozii e cel real', mx.persist.driver === (process.env.CONTAB_TEST_DRIVER || 'sqlite'));
+    // CE COD RULEAZA. Aici se verifica INTEGRAREA (git chiar se lanseaza si raspunde); verdictul
+    // pe fiecare caz e in test/run.js, pe iesiri inventate. Suita ruleaza din depozit, deci
+    // `cunoscut` trebuie sa fie true — daca ar fi false, tocmai ar arata ca citirea nu merge.
+    // NU se afirma `curat`: in timpul dezvoltarii arborele e normal sa fie murdar.
+    ok('metrics: starea codului e expusa cu contract complet',
+      mx.deploy && typeof mx.deploy.cunoscut === 'boolean' && 'curat' in mx.deploy
+      && 'ramura' in mx.deploy && typeof mx.deploy.nrModificate === 'number' && Array.isArray(mx.deploy.modificate));
+    ok('metrics: git chiar a raspuns (suita ruleaza dintr-un depozit)',
+      mx.deploy.cunoscut === true && !!mx.deploy.ramura && !!mx.deploy.commit);
+    ok('metrics: verdictul e coerent cu numarul de fisiere raportate',
+      mx.deploy.curat === (mx.deploy.nrModificate === 0 && mx.deploy.peRamuraDeDeploy === true));
+    ok('metrics: cand nu e curat, motivul e scris', mx.deploy.curat === true || !!mx.deploy.motiv);
     ok('metrics: marginea fata de plafonul pm2 e vizibila',
       mx.process.memoryLimitMb > 0 && mx.process.memoryWarnMb > 0 && mx.process.memoryWarnMb < mx.process.memoryLimitMb
       && typeof mx.process.memoryPctDinPlafon === 'number');

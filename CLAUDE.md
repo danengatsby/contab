@@ -85,6 +85,15 @@ malformată dezactivează criptarea tăcut). Vezi `src/secretsGuard.js`.
 
 Deploy (după merge în `main`): `sudo -u contab PM2_HOME=/home/contab/.pm2 pm2 restart contab`,
 apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_HOME` eșuează.
+
+**Restartul E un deploy.** Procesul citește fișierele direct din arborele de lucru, deci orice
+modificare necomisă din `src/` ajunge în producție la următoarea pornire — indiferent de motivul ei
+(`pm2 restart`, plafonul de memorie atins, un reboot), iar `public/` e publicat *instant*, fără
+restart. `src/deployState.js` face starea vizibilă: la pornire scrie ramura + commitul (sau
+avertizează, cu lista fișierelor necomise), și apare în `/api/metrics` → `deploy`. **Nu blochează
+pornirea, deliberat** — un refuz de a porni ar lovi exact în urgența în care tocmai ai pus o
+corecție pe disc. Fără `.git` verdictul e `cunoscut: false` cu `curat: null`, nu „curat": „nu pot
+verifica" nu e „e bine", ca la drill-ul de restaurare.
 **`pm2 restart` NU reaplică `ecosystem.config.js`** — păstrează configurația cu care procesul a fost
 pornit prima dată. O modificare acolo (plafon de memorie, căi de log, env) ajunge în producție doar
 prin `pm2 delete contab && pm2 start ecosystem.config.js && pm2 save`; altfel fișierul rămâne o
