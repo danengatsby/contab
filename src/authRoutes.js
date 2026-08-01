@@ -279,7 +279,10 @@ module.exports = function registerAuthRoutes(app, ctx) {
 
   // Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare
   // primii. Include si diagnosticele de proces (memorie, Node, driver) — DOAR pentru admin.
-  app.get('/api/metrics', requireAdmin, (req, res) => {
+  // ASINCRON pentru un singur camp: `deploy` (ce cod ruleaza de fapt). Citirea lanseaza git, deci
+  // nu are ce cauta pe o cale sincrona; memo-ul cu TTL din deployState face ca rafalele de
+  // reimprospatare sa nu lanseze subprocese in serie.
+  app.get('/api/metrics', requireAdmin, async (req, res) => {
     const d = db.get();
     const mem = process.memoryUsage();
     const mb = (b) => Math.round((b / (1024 * 1024)) * 100) / 100;
@@ -301,7 +304,11 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const topFirme = [...perFirma.entries()]
       .map(([id, s]) => ({ id, nume: nume.get(id) || String(id), entries: s.entries, documents: s.documents }))
       .sort((a, b) => b.entries - a.entries).slice(0, 10);
+    // Nu blocheaza raspunsul daca git nu merge: deployState.read() nu arunca niciodata, iar
+    // verdictul „nu se poate citi" e o stare de sine statatoare, distincta de „curat".
+    const deploy = await require('./deployState').read();
     res.json(Object.assign(metrics.snapshot(), {
+      deploy,
       jobs,
       process: {
         nodeVersion: process.version, pid: process.pid, driver: db.DRIVER,

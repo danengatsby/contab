@@ -68,6 +68,19 @@ function start({ app, dbReady }) {
   // Nginx este endpointul public; bind-ul local previne expunerea accidentala a portului Node.
   const HOST = process.env.HOST || '127.0.0.1';
   let server = null; // atribuit dupa hidratarea bazei (dbReady)
+  // CE COD PORNESTE. Pe aceasta instalare directorul de lucru E productia, deci un restart —
+  // oricare, inclusiv unul automat de la plafonul de memorie — publica exact ce e pe disc.
+  // Se semnaleaza, NU se blocheaza pornirea: un refuz de a porni ar lovi exact in urgenta in care
+  // tocmai ai pus o corectie pe disc si ai nevoie de proces sus. In dezvoltare (CONTAB_DEV) starea
+  // murdara e normala si mesajul ar fi doar zgomot.
+  if (!process.env.CONTAB_DEV) {
+    require('./deployState').read().then((v) => {
+      const av = require('./deployState').avertisment(v);
+      if (av) log.error('deploy: ' + av, { ramura: v.ramura, commit: v.commit, nrModificate: v.nrModificate });
+      else console.log('Cod: ' + v.ramura + '@' + v.commit + ' (arbore curat)');
+    }).catch(() => { /* diagnostic, nu conditie de pornire */ });
+  }
+
   dbReady.then(() => {
     server = app.listen(PORT, HOST, () => {
       console.log('Contabo ruleaza (asculta pe ' + HOST + ':' + PORT + ')');

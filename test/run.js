@@ -5528,6 +5528,51 @@ section('Conexiunea locala pg: rolul e EXPLICIT (defect vizibil doar sub cron)')
     !/new Client\(\{\s*host:/.test(drillSrc));
 }
 
+section('deployState — ce cod ruleaza de fapt (arbore de lucru = productie)');
+{
+  const ds = require('../src/deployState');
+  const V = (ramura, porcelain, commit) => ds.verdict(ramura, porcelain, commit);
+
+  const curat = V('main', '', 'abc1234');
+  ok('pe main + arbore curat -> curat', curat.curat === true && curat.cunoscut === true);
+  eq('fara motiv cand e curat', curat.motiv, null);
+  eq('commit-ul e raportat (ce cod ruleaza)', curat.commit, 'abc1234');
+  eq('niciun avertisment cand e curat', ds.avertisment(curat), null);
+
+  // Cazul de pe aceasta instalare, chiar acum: fisiere necomise pe o ramura de lucru.
+  const murdar = V('aging-si-cost-productie', ' M src/analytic.js\n M src/production.js', 'def5678');
+  ok('fisiere necomise -> NU e curat', murdar.curat === false);
+  eq('numarul de fisiere e corect', murdar.nrModificate, 2);
+  ok('motivul spune AMBELE devieri (ramura si necomisele)',
+    /nu pe/.test(murdar.motiv) && /2 fisier/.test(murdar.motiv));
+  ok('avertismentul explica MIZA, nu doar starea', /restart/i.test(ds.avertisment(murdar) || ''));
+  ok('avertismentul numeste fisierele', /analytic\.js/.test(ds.avertisment(murdar) || ''));
+
+  const altaRamura = V('o-ramura-de-lucru', '', 'aaa1111');
+  ok('curat dar pe alta ramura -> tot NU e curat (restartul ar publica alt cod)',
+    altaRamura.curat === false && altaRamura.peRamuraDeDeploy === false && altaRamura.nrModificate === 0);
+
+  const doarNecomise = V('main', '?? public/fisier-nou.js', 'bbb2222');
+  ok('fisier NETRACAT pe main -> tot murdar (public/ e servit din arbore, deci e deja live)',
+    doarNecomise.curat === false && doarNecomise.nrModificate === 1);
+
+  // MIEZUL: fara git nu stim nimic, si asta NU are voie sa semene cu „curat". Aceeasi distinctie
+  // ca la drill-ul de restaurare — „nu pot verifica" nu e „e bine". Un deploy dintr-o arhiva
+  // (fara .git) ar fi raportat verde de o implementare care confunda cele doua.
+  const necunoscut = V('', '', '');
+  eq('fara git: cunoscut = false', necunoscut.cunoscut, false);
+  eq('fara git: `curat` e null, NU true', necunoscut.curat, null);
+  ok('fara git: se spune ca nu s-a putut citi', /nu se poate citi/.test(necunoscut.motiv || ''));
+  ok('fara git: avertismentul se aude si el', /nu se poate verifica/.test(ds.avertisment(necunoscut) || ''));
+
+  // Lista se plafoneaza: un arbore foarte murdar nu are voie sa umfle raspunsul /api/metrics.
+  const multe = V('main', Array.from({ length: 50 }, (_, i) => ' M f' + i + '.js').join('\n'), 'c');
+  eq('numarul real se pastreaza', multe.nrModificate, 50);
+  eq('lista se plafoneaza la 20', multe.modificate.length, 20);
+
+  eq('ramura de deploy e `main` (conventia proiectului, nu un knob de mediu)', ds.RAMURA_DEPLOY, 'main');
+}
+
 section('Joburi periodice opribile (src/jobs.js: unref + stop)');
 {
   // Intervalele joburilor nu au voie sa tina un proces in viata sau sa "scape" dintr-un test:
