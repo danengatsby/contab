@@ -89,6 +89,14 @@ module.exports = function register(app, ctx) {
   }));
 
   // Ramura de testare: cloneaza firma activa intr-o copie marcata [TEST] si comuta pe ea
+  // Firma DEMO cu date de exemplu, pentru conturile de contabil (care se inscriu fara nicio firma).
+  // Inainte de rutele cu parametru: `/api/firme/:id` s-ar potrivi si cu „demo".
+  app.post('/api/firme/demo', (req, res) => run(res, () => {
+    const r = svc.addDemoFirma(req.user);
+    logAudit('firma.demo', 'firma demo ' + r.firmaId + ' adaugata', { req, firmaId: r.firmaId });
+    return { ok: true, firmaId: r.firmaId, nume: r.nume };
+  }));
+
   app.post('/api/firme/:id/test-clone', (req, res) => run(res, () => {
     const r = svc.testClone(req.user, req.params.id);
     logAudit('firma.test-clone', 'firma de test ' + r.firmaId + ' din ' + req.params.id, { req, firmaId: r.firmaId });
