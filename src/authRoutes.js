@@ -21,6 +21,7 @@ const identitate = require('./identitate');
 const firmeSvc = require('./firmeService');
 const billing = require('./billing');
 const metrics = require('./metrics');
+const log = require('./log');
 const cache = require('./cache');
 const { sendMail, sendNotifMail } = require('./notify');
 const { sendList } = require('./paginate');
@@ -279,6 +280,35 @@ module.exports = function registerAuthRoutes(app, ctx) {
 
   // Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare
   // primii. Include si diagnosticele de proces (memorie, Node, driver) — DOAR pentru admin.
+  // ───────── ERORI DIN CLIENT (public) ─────────
+  // Ruta e PUBLICA deliberat. Cea mai costisitoare eroare de client e cea de pe ECRANUL DE LOGIN:
+  // nimeni nu mai intra, iar utilizatorii pleaca fara sa reclame. Daca ar cere sesiune, exact acel
+  // caz ar ramane invizibil — adica tocmai gaura pe care ruta o astupa.
+  //
+  // Suprafata de abuz e marginita din patru directii: plafon pe IP (mai jos), taiere agresiva a
+  // campurilor (metrics.clientErrorRecord), AGREGARE pe semnatura (o rafala repetata nu evacueaza
+  // nimic) si inelul de 25 de intrari. Nu se persista si nu se trimite niciun email.
+  const clientErrAttempts = new Map();
+  const CLIENT_ERR_MAX = Number(process.env.CONTAB_RATE_CLIENT_ERR) || 30; // raportari/ora/IP
+  app.post('/api/client-error', (req, res) => {
+    const k = attemptKey(req); const now = Date.now();
+    let r = clientErrAttempts.get(k);
+    if (!r || now > r.reset) r = { count: 0, reset: now + 3600 * 1000 };
+    r.count += 1; clientErrAttempts.set(k, r);
+    // Peste plafon raspundem tot 204: clientul n-are ce face cu informatia, iar un 429 l-ar
+    // impinge sa reincerce. Raportarea e best-effort prin natura ei.
+    if (r.count > CLIENT_ERR_MAX) return res.status(204).end();
+    const rec = metrics.clientErrorRecord(req.body, {
+      username: (currentUser(req) || {}).username || null,
+      ua: req.get('user-agent'),
+    });
+    metrics.clientError(rec);
+    // In logul structurat ca AVERTISMENT, nu ca eroare de server: nu e o cadere a noastra si n-are
+    // voie sa intre in fereastra de alerta 5xx (ar trimite emailuri pentru un browser strain).
+    log.warn('eroare in client', { msg: rec.msg, sursa: rec.sursa, cale: rec.cale, user: rec.username });
+    res.status(204).end();
+  });
+
   // ASINCRON pentru un singur camp: `deploy` (ce cod ruleaza de fapt). Citirea lanseaza git, deci
   // nu are ce cauta pe o cale sincrona; memo-ul cu TTL din deployState face ca rafalele de
   // reimprospatare sa nu lanseze subprocese in serie.
@@ -465,5 +495,5 @@ module.exports = function registerAuthRoutes(app, ctx) {
     });
   });
 
-  return { registerAttempts, forgotAttempts };
+  return { registerAttempts, forgotAttempts, clientErrAttempts };
 };

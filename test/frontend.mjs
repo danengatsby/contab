@@ -985,5 +985,48 @@ section('Administrare: lista de contabili si cererile de servicii');
     && admin.STARE_SRV.acceptata === 'acceptată' && admin.STARE_SRV.refuzata === 'refuzată' && admin.STARE_SRV.retrasa === 'retrasă');
 }
 
+
+section('Raportarea erorilor din client (core.js: pachetEroare / trebuieRaportata)');
+{
+  // Evenimentul `error` poarta exceptia in `.error`; `unhandledrejection` o poarta in `.reason`.
+  // Ambele forme trebuie sa produca acelasi pachet — altfel jumatate din erori ar pleca fara mesaj.
+  const err = new Error('a crapat ceva');
+  err.stack = 'Error: a crapat ceva\n    la f (https://x/app.js:10:5)';
+  const dinError = core.pachetEroare({ type: 'error', error: err, filename: 'https://x/app.js', lineno: 10, colno: 5 });
+  ok('eveniment `error`: mesajul se extrage din .error', dinError.msg === 'a crapat ceva');
+  ok('eveniment `error`: sursa e fisier:linie:coloana', dinError.sursa === 'https://x/app.js:10:5');
+  ok('eveniment `error`: tipul e „eroare"', dinError.tip === 'eroare');
+  ok('eveniment `error`: stiva se preia', /app\.js:10:5/.test(dinError.stack));
+
+  const dinPromisiune = core.pachetEroare({ type: 'unhandledrejection', reason: err });
+  ok('respingere de promisiune: mesajul se extrage din .reason', dinPromisiune.msg === 'a crapat ceva');
+  ok('respingere de promisiune: tipul e „promisiune"', dinPromisiune.tip === 'promisiune');
+  ok('respingere de promisiune: fara filename, sursa ramane goala (nu „undefined:0:0")', dinPromisiune.sursa === '');
+
+  // O respingere cu un sir simplu (`Promise.reject('gata')`) nu are .message — fara ramura asta
+  // ar fi ajuns „eroare necunoscuta" si n-am fi stiut niciodata ce s-a intamplat.
+  ok('respingere cu sir simplu: sirul devine mesaj', core.pachetEroare({ type: 'unhandledrejection', reason: 'gata' }).msg === 'gata');
+  ok('eveniment fara nimic util: mesaj de rezerva, nu gol', core.pachetEroare({}).msg === 'eroare necunoscuta');
+  ok('mesajul se taie la 200 inca din client', core.pachetEroare({ message: 'M'.repeat(600) }).msg.length === 200);
+
+  // SECURITATE: din client pleaca DOAR pathname. `location.href` ar fi trimis si interogarea, iar
+  // pagina de resetare are tokenul acolo. Serverul taie a doua oara (clientul nu e de incredere),
+  // dar prima aparare trebuie sa fie aici — altfel tokenul ar circula prin retea degeaba.
+  ok('calea raportata e doar pathname (fara interogare)', !/\?/.test(core.pachetEroare({}).cale));
+  ok('interogarea se taie si din filename', core.pachetEroare({ filename: 'https://x/app.js?v=SECRET' }).sursa === 'https://x/app.js:0:0');
+
+  // PLAFON: o bucla de randare poate arunca mii de exceptii pe secunda. Fara plafon si fara
+  // deduplicare i-am trimite pe toate — raportorul ar deveni el problema.
+  const vazute = new Set();
+  const p = core.pachetEroare({ message: 'aceeasi', filename: 'a.js', lineno: 1, colno: 1 });
+  ok('prima aparitie se raporteaza', core.trebuieRaportata(p, 0, vazute) === true);
+  vazute.add(p.msg + '|' + p.sursa);
+  ok('a doua oara aceeasi eroare NU se mai trimite', core.trebuieRaportata(p, 1, vazute) === false);
+  const altul = core.pachetEroare({ message: 'alta', filename: 'b.js', lineno: 2, colno: 2 });
+  ok('o eroare DIFERITA trece', core.trebuieRaportata(altul, 1, vazute) === true);
+  ok('peste plafonul pe pagina nu mai pleaca nimic', core.trebuieRaportata(altul, 5, new Set()) === false);
+}
+
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

@@ -290,8 +290,11 @@ async function main() {
     {
       const fsx = require('fs'); const pth = require('path');
       const root = pth.join(__dirname, '..');
+      // `/api/client-error` scrie doar intr-un inel de diagnostic din RAM (nicio date de firma,
+      // nicio persistenta) si trebuie sa mearga FARA sesiune: eroarea de pe ecranul de login e
+      // exact cea care altfel nu se afla. Exceptia e deliberata si se vede in diff-ul testului.
       const PUBLICE = new Set(['/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register',
-        '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest']);
+        '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest', '/api/client-error']);
       const codeFiles = ['server.js', 'src/authRoutes.js', ...fsx.readdirSync(pth.join(root, 'src', 'routes')).map((f) => 'src/routes/' + f)];
       const rute = new Set();
       for (const f of codeFiles) {
@@ -2326,6 +2329,41 @@ async function main() {
     // pe fiecare caz e in test/run.js, pe iesiri inventate. Suita ruleaza din depozit, deci
     // `cunoscut` trebuie sa fie true — daca ar fi false, tocmai ar arata ca citirea nu merge.
     // NU se afirma `curat`: in timpul dezvoltarii arborele e normal sa fie murdar.
+    // ── ERORI DIN CLIENT ── ruta PUBLICA: o eroare pe ecranul de login e exact cea care altfel
+    // nu se afla. Se verifica aici capatul care conteaza: ca nu cere sesiune, ca ajunge in
+    // metrici agregata, si ca nu poate fi folosita nici pentru scurgeri, nici pentru impersonare.
+    const ce = (body, opts) => req('POST', '/api/client-error', Object.assign({ body }, opts || {}));
+    eq('client-error: merge FARA sesiune (altfel erorile de pe login ar ramane invizibile)',
+      (await ce({ msg: 'crapat pe login', sursa: 'authui.js:10:1' })).status, 204);
+    await ce({ msg: 'crapat pe login', sursa: 'authui.js:10:1' });
+    await ce({ msg: 'crapat pe login', sursa: 'authui.js:10:1' });
+    // SCURGERE: tokenul de resetare traieste in interogare (`/?reset=<token>`)
+    await ce({ msg: 'pe resetare', cale: '/?reset=TOKEN-SECRET-HTTP', sursa: 'core.js?v=TOKEN-SECRET-HTTP:1:1' });
+    // IMPERSONARE: identitatea trebuie sa vina din sesiune, nu din corp
+    await ce({ msg: 'pretinde ca e admin', username: 'admin' });
+
+    const mx2 = (await req('GET', '/api/metrics', { cookie: cAdm })).json;
+    const cel = (m) => (mx2.clientErrors || []).find((x) => x.msg === m);
+    ok('client-error: ajunge in /api/metrics', Array.isArray(mx2.clientErrors) && !!cel('crapat pe login'));
+    eq('client-error: trei raportari identice se AGREGA intr-una singura', cel('crapat pe login').n, 3);
+    ok('client-error: tokenul de resetare NU ajunge in metrici',
+      !/TOKEN-SECRET-HTTP/.test(JSON.stringify(mx2.clientErrors)));
+    ok('client-error: username-ul din corp e ignorat (fara sesiune, lista de utilizatori ramane goala)',
+      cel('pretinde ca e admin').utilizatori.length === 0
+      && !/\"admin\"/.test(JSON.stringify(cel('pretinde ca e admin').utilizatori)));
+    ok('client-error: NU intra in erorile de server (nu e caderea noastra, n-are ce cauta in alerta 5xx)',
+      !(mx2.recentErrors || []).some((e) => /crapat pe login/.test(e.msg)));
+
+    // Plafonul pe IP: peste el raspunsul ramane 204 (un 429 ar impinge clientul sa reincerce),
+    // dar raportarea nu se mai inregistreaza. Se epuizeaza la final — nicio alta proba nu
+    // foloseste ruta, deci nu deranjeaza restul suitei.
+    for (let i = 0; i < 40; i++) await ce({ msg: 'inundatie ' + i, sursa: 'f.js:' + i });
+    const mx3 = (await req('GET', '/api/metrics', { cookie: cAdm })).json;
+    eq('client-error: peste plafon raspunde tot 204 (nu 429)', (await ce({ msg: 'dupa plafon' })).status, 204);
+    ok('client-error: peste plafon nu se mai inregistreaza nimic',
+      !(mx3.clientErrors || []).some((x) => x.msg === 'dupa plafon'));
+    ok('client-error: inelul ramane plafonat chiar si sub inundatie', (mx3.clientErrors || []).length <= 25);
+
     ok('metrics: starea codului e expusa cu contract complet',
       mx.deploy && typeof mx.deploy.cunoscut === 'boolean' && 'curat' in mx.deploy
       && 'ramura' in mx.deploy && typeof mx.deploy.nrModificate === 'number' && Array.isArray(mx.deploy.modificate));

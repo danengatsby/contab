@@ -182,7 +182,14 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   distinge `sarit` (nu se aplică — tace) de `neverificabil` (dump există dar nu poate fi rejucat —
   **alertează**): o verificare care nu poate rula nu are voie să semene cu una trecută.
 - **Observabilitate** — `src/log.js` (structurat, reqId), `src/metrics.js` + `GET /api/metrics`
-  (admin: durate pe rută, `recentErrors`, starea joburilor, proces). `/api/health` e PUBLIC și
+  (admin: durate pe rută, `recentErrors`, starea joburilor, proces, `lag`, `audit`, `deploy`,
+  `clientErrors`). **Erorile din CLIENT** ajung prin `POST /api/client-error` (handler global în
+  `public/core.js`): pe server observabilitatea era bună, în browser era nulă — o excepție netratată
+  lăsa utilizatorul cu ecranul blocat și nu aflai niciodată. Ruta e **publică deliberat** (eroarea de
+  pe ecranul de login e exact cea care altfel nu se află), mărginită prin plafon pe IP
+  (`CONTAB_RATE_CLIENT_ERR`), tăiere agresivă și **agregare pe semnătură** — aceeași eroare de la 50
+  de utilizatori apare „×50", nu evacuează inelul. Identitatea vine din sesiune, nu din corp, iar
+  interogările se taie pe ambele capete: pagina de resetare poartă tokenul în URL. `/api/health` e PUBLIC și
   **intenționat minimal** — există test negativ care blochează orice câmp de diagnostic pe el.
   Raport zilnic: `scripts/perf-report.sh` (cron 07:45, email doar dacă e ceva de raportat;
   la testare folosește `CONTAB_PERF_NOMAIL=1` — variabilele goale NU opresc trimiterea, `.env` câștigă).
