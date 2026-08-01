@@ -246,7 +246,254 @@ buton. Restul lunii îl petreci conducând firma, nu căutând acte.
 
 ---
 
-## 12. Variante scurte pentru rețele sociale
+## 12. Facebook — pachet gata de publicat
+
+**Cum se citește secțiunea asta.** Facebook **nu randează markdown**: nu copia asteriscuri,
+diez sau liniuțe de listă — textele de mai jos sunt deja în text simplu, cu rânduri goale ca
+separatori. Pe mobil se văd **primele ~125 de caractere** înainte de „Vezi mai mult", deci prima
+linie e singura garantată. Emoji-urile sunt puse rar, ca reper vizual, nu ca decor.
+
+Patronii și contabilii se targetează separat — de aceea au postări și reclame diferite, nu una
+comună care nu vorbește cu niciunul.
+
+---
+
+### 12.1 Descrierea paginii
+
+**Scurtă (bio, sub numele paginii)**
+
+```
+Contabilitate românească completă: de la poza facturii până la declarația pentru ANAF.
+```
+
+**Lungă (secțiunea „Despre")**
+
+```
+Contabo e o aplicație de contabilitate românească în partidă dublă, făcută pentru firme mici și
+pentru contabilii care le țin.
+
+Tragi factura în aplicație — Contabo alege conturile, ține registrele, calculează TVA-ul și îți
+pregătește D300, D394, D112, e-Factura și SAF-T. Tu verifici și confirmi.
+
+107 tipuri de operațiuni gata pregătite. Stocuri, producție, salarizare și toate declarațiile
+sunt incluse în orice plan — fără module plătite separat.
+
+Înainte ca o versiune să ajungă la tine, declarațiile generate de aplicație trec prin
+DUKIntegrator, validatorul publicat de ANAF. Dacă una singură e respinsă, versiunea nu se publică.
+
+30 de zile gratuit, fără card. contabo.space
+```
+
+---
+
+### 12.2 Postarea fixată
+
+```
+Cât profit ai făcut luna trecută?
+
+Dacă răspunsul vine peste trei săptămâni, de la contabil, e prea târziu ca să mai schimbi ceva.
+
+Contabo îți arată profitul, taxele și banii disponibili după fiecare document înregistrat. Tragi
+factura în aplicație — furnizorul, baza și TVA-ul se completează singure. La final de lună apeși
+„Închide TVA", iar decontul D300 e deja completat, defalcat pe cote.
+
+107 tipuri de operațiuni. Toate declarațiile incluse. Fără module plătite separat.
+
+30 de zile gratuit, fără card 👉 contabo.space
+```
+
+*Imagine: captură din aplicație cu tabloul de bord — profit, TVA de plată, bani disponibili.*
+
+---
+
+### 12.3 Postări pentru calendar
+
+Fiecare are o singură idee. Prima linie e cârligul; restul se vede după „Vezi mai mult".
+
+**1 · Durerea patronului**
+```
+„Îți spun după ce închid luna."
+
+Cea mai scumpă propoziție din relația cu contabilul tău. Nu pentru că el greșește — ci pentru că
+decizia pe care o aveai de luat era săptămâna trecută.
+
+În Contabo, fiecare document înregistrat actualizează imediat profitul, taxele și banii
+disponibili. Nu aștepți raportul. Te uiți.
+
+30 de zile gratuit, fără card → contabo.space
+```
+
+**2 · Durerea contabilului**
+```
+Zece firme. Zece termene. Zece dosare de deschis ca să afli cine are restanțe.
+
+Sau un singur ecran care ți le arată pe toate: ce e depus, ce e restant, cine are erori — cu
+procentul de conformitate pe tot portofoliul.
+
+În plus, un digest zilnic pe e-mail cu termenele următoarelor 7 zile, pe toate firmele deodată.
+
+contabo.space
+```
+*Imagine: captură din tabul Portofoliu.*
+
+**3 · Încrederea (cea mai puternică)**
+```
+Majoritatea programelor de contabilitate scriu „conform ANAF".
+
+Noi trecem fiecare versiune prin DUKIntegrator — validatorul publicat chiar de ANAF — înainte să
+ajungă la tine. Dacă o singură declarație e respinsă, versiunea nu se publică.
+
+Iar dacă validarea nu POATE rula — serviciul ANAF e picat, schema lipsește — versiunea tot nu se
+publică. „N-am putut verifica" nu înseamnă „e bine".
+
+contabo.space
+```
+
+**4 · Citirea automată**
+```
+Fotografiezi factura. O tragi în aplicație. Gata.
+
+Furnizorul, CUI-ul, baza, TVA-ul și totalul se completează singure.
+
+Înainte de a fi acceptată, citirea trece prin verificări de aritmetică, cotă, dată, număr de
+document, partener cunoscut și duplicat. Tu confirmi — postarea automată e oprită până când o
+ceri tu.
+
+Automatizare, nu ghicit. contabo.space
+```
+*Video scurt: PDF tras în aplicație → câmpurile se completează.*
+
+**5 · Onestitatea (convertește mai bine decât încă cinci funcții)**
+```
+Ce NU face Contabo.
+
+Nu depune declarațiile în locul tău — depunerea în SPV o faci tu, cu certificat digital.
+Nu înlocuiește casa de marcat fiscală.
+Nu înlocuiește contabilul autorizat: aplicația calculează, răspunderea fiscală rămâne a ta.
+
+Ce face: îți dă contabilitatea gata făcută și declarațiile gata pregătite, ca omul care le
+verifică să nu mai piardă timp introducând date.
+
+Plătești pentru expertiză, nu pentru tastare. contabo.space
+```
+
+**6 · Prețul**
+```
+Fără „ups, asta e în alt pachet".
+
+Stocurile, producția, salarizarea și toate declarațiile sunt incluse din prima zi, în orice plan.
+Planurile se diferențiază prin preț, nu prin funcții.
+
+Start 99 lei/lună. Pro 199 lei/lună. Probă 30 de zile, fără card.
+
+contabo.space
+```
+
+**7 · Migrarea**
+```
+„Am deja o firmă cu istoric. E prea târziu să mă mut."
+
+Nu e. Imporți balanța din programul vechi — XLS, XLSX, DBF sau CSV — plus soldurile pe fiecare
+client și furnizor și stocul cantitativ-valoric. Continui din luna curentă.
+
+Aplicația verifică singură echilibrul preluării: dacă debitul nu dă creditul, îți spune unde.
+
+contabo.space
+```
+
+**8 · Micro sau profit**
+```
+Micro 1% sau impozit pe profit 16%?
+
+Micro avantajează marjele mari. Impozitul pe profit poate fi mai bun la marje mici. Iar diferența,
+pe an, poate fi cât un salariu.
+
+Contabo îți arată ambele calcule alături, pe cifrele TALE. Decizia o iei cu contabilul — dar o iei
+informat, nu după ce a zis cineva pe un grup.
+
+contabo.space
+```
+
+**9 · Partida dublă (pentru cei tehnici)**
+```
+Debit = Credit.
+
+Toată contabilitatea în partidă dublă stă pe egalitatea asta. Dacă nu se închide, ceva e greșit —
+și de obicei afli la balanță, peste trei săptămâni.
+
+Contabo o verifică la fiecare înregistrare, nu la final de lună. Plus balanța cu cele patru
+egalități, registru-jurnal, cartea mare — generate, nu completate de mână.
+
+contabo.space
+```
+
+**10 · e-Factura**
+```
+e-Factura nu mai e opțională. Iar în Contabo nu e nici măcar un pas separat.
+
+Completezi liniile facturii și primești deodată PDF-ul pentru client și XML-ul UBL pentru SPV, cu
+numărul în serie continuă. Trimiți din aplicație și primești recipisa.
+
+Facturile primite se importă la fel de simplu, direct din SPV.
+
+contabo.space
+```
+
+---
+
+### 12.4 Reclame (Meta Ads)
+
+Limitele recomandate de Meta se schimbă; verifică-le în Ads Manager înainte de a publica.
+Orientativ: text principal citit până la ~125 de caractere, titlu ~40, descriere ~30.
+
+**Set A — patroni de firme**
+
+| câmp | text |
+|---|---|
+| Text principal | Cât profit ai făcut luna asta? Dacă afli peste trei săptămâni, e prea târziu să mai schimbi ceva. Contabo îți arată profitul, taxele și banii disponibili după fiecare document. 30 de zile gratuit, fără card. |
+| Titlu | Contabilitatea firmei, în timp real |
+| Descriere | Fără card. 30 de zile. |
+| Buton | Încearcă gratuit |
+
+**Set B — contabili**
+
+| câmp | text |
+|---|---|
+| Text principal | Zece firme, zece termene, zece dosare de deschis. Sau un singur ecran cu tot portofoliul: ce e depus, ce e restant, cine are erori. Plus digest zilnic cu termenele săptămânii. |
+| Titlu | Tot portofoliul, pe un ecran |
+| Descriere | Multi-firmă. Probă 30 zile. |
+| Buton | Află mai multe |
+
+**Set C — încredere (pentru cei care au văzut deja pagina)**
+
+| câmp | text |
+|---|---|
+| Text principal | Alte programe scriu „conform ANAF". Noi trecem fiecare versiune prin DUKIntegrator, validatorul publicat de ANAF. Dacă o declarație e respinsă, versiunea nu se publică. |
+| Titlu | Validat de validatorul ANAF |
+| Descriere | Vezi cum verificăm. |
+| Buton | Încearcă gratuit |
+
+---
+
+### 12.5 Ce merge și ce nu, pe Facebook
+
+- **Prima linie decide.** Restul se citește doar dacă ea a oprit degetul. Nu începe cu „Suntem o
+  aplicație de…" — începe cu problema cititorului.
+- **O idee pe postare.** Lista de 14 funcții nu se citește. Postarea 6 vinde prețul, postarea 3
+  vinde încrederea — nu le amesteca.
+- **Capturi reale din aplicație**, nu ilustrații generice cu grafice. Publicul ăsta recunoaște
+  imediat o poză de stoc.
+- **Postarea de onestitate (5) merită bani de promovare.** Pe o piață plină de exagerări, lista a
+  ce NU faci construiește mai multă încredere decât încă cinci funcții — și taie din comentariile
+  „dar depune singură?".
+- **Răspunde la comentarii cu cifre**, nu cu „vă rugăm să ne scrieți în privat". Întrebarea publică
+  a unuia e răspunsul căutat de alți cincizeci.
+- **Nu promite ce nu face.** Tot ce e mai sus e verificat în cod. Dacă adaugi ceva, verifică întâi
+  în aplicație — o promisiune ratată la ANAF costă mai mult decât o vânzare câștigată.
+
+---
+
+## 13. Variante scurte pentru alte rețele
 
 **Pentru antreprenori**
 > Cât profit ai făcut luna asta? Dacă răspunsul vine peste trei săptămâni, de la contabil, e prea
