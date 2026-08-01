@@ -12,3 +12,10 @@ cookies*.txt
 *.cookies
 c[0-9].txt
 p[0-9].txt
+
+# Setarile LOCALE ale editorului (Claude Code). Nu se comit — dar fara linia asta, `git status`
+# le vede ca netracate, iar garda din src/deployState.js raporta „arbore murdar" la fiecare
+# pornire in productie. O alarma care suna mereu e o alarma pe care operatorul o ignora.
+# (Root le ascundea printr-un core.excludesFile global, utilizatorul `contab` nu — deci
+# verdictul difera dupa cine il cere. Aici il facem sa nu mai depinda de asta.)
+.claude/settings.local.json
