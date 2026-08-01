@@ -150,6 +150,35 @@ function start(ctx) {
     }
   }, 5 * 60 * 1000);
 
+  // Veghe pe INTARZIEREA BUCLEI DE EVENIMENTE. Procesul e unul singur, deci o bucata de munca
+  // sincrona opreste toate cererile, nu doar pe a ei — iar in durata pe ruta asta apare ca „totul
+  // a fost lent atunci", fara vinovat. Alerta se uita pe FEREASTRA scursa (metrics.lagRoll o
+  // inchide si porneste alta): un varf de acum trei zile n-are voie sa tina alarma pornita.
+  // Se raporteaza p99 si max, nu media: un blocaj de o secunda intr-un minut linistit lasa media
+  // aproape neatinsa — exact cazul pe care jobul trebuie sa-l vada.
+  const LAG_WARN_MS = metrics.LAG_WARN_MS; // o singura sursa, ca alerta si metrica sa nu difere
+  let lastLagAlert = 0;
+  safeInterval('lag-watch', () => {
+    const s = metrics.lagRoll();
+    metrics.jobResult('lag-watch', 'p99 ' + s.p99Ms + ' ms, varf ' + s.maxMs + ' ms in ultimele '
+      + s.fereastraSec + 's (prag ' + LAG_WARN_MS + ', varf de la pornire ' + s.maxTotalMs + ')');
+    if (s.maxMs < LAG_WARN_MS) return;
+    log.error('bucla de evenimente blocata', { p99Ms: s.p99Ms, maxMs: s.maxMs, pragMs: LAG_WARN_MS, fereastraSec: s.fereastraSec });
+    const now = Date.now();
+    if (now - lastLagAlert > 24 * 3600 * 1000) {
+      lastLagAlert = now;
+      sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] ATENTIE: bucla de evenimente blocata (' + s.maxMs + ' ms)',
+        'Bucla a stat blocata pana la ' + s.maxMs + ' ms (p99 ' + s.p99Ms + ' ms) in ultimele ' + s.fereastraSec + ' secunde,\n'
+        + 'peste pragul de ' + LAG_WARN_MS + ' ms. Cat tine blocajul, TOATE cererile asteapta, oricat de ieftine ar fi.\n\n'
+        + 'Suspecti obisnuiti, in ordinea probabilitatii:\n'
+        + '  • backupul zilnic — pg_dump si arhivarea ruleaza SINCRON, in acest proces;\n'
+        + '  • o rafala de autentificari (scrypt costa ~30 ms de bucla blocata fiecare);\n'
+        + '  • un export/raport mare, sau serializarea bazei la save() pe o firma voluminoasa.\n\n'
+        + 'Verifica /api/metrics (admin): campul `lag` si rutele cu maxMs mare in aceeasi fereastra.\n'
+        + 'Pragul se schimba din CONTAB_LAG_WARN_MS.').catch(() => {});
+    }
+  }, 60 * 1000);
+
   // Veghe pe COADA DE PERSISTENTA. Pe pg, save() fotografiaza sincron dar COMITE asincron: cat timp
   // lucrarea asteapta, scrierile traiesc doar in RAM (nedurabile) si tin ocupat un snapshot al
   // colectiilor schimbate. O coada care nu se goleste = baza lenta, cazuta sau blocata — si e

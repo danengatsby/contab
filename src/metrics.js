@@ -41,6 +41,7 @@ function snapshot() {
   return {
     sinceTs: new Date(startedAt).toISOString(), slowThresholdMs: SLOW_MS, routes: list.slice(0, 100),
     recentErrors: recentErrors.slice().reverse(), // cele mai noi primele
+    lag: lagSnapshot(), // cat a stat bucla blocata — cauza pe care durata pe ruta n-o poate arata
     jobs: jobsSnapshot(),
     ai: aiSnapshot(),
     ops: opsSnapshot(),
@@ -109,15 +110,76 @@ function jobsSnapshot() {
   return out;
 }
 
+// ── INTARZIEREA BUCLEI DE EVENIMENTE (event loop lag) ──
+// Aplicatia ruleaza intr-UN SINGUR proces (lock single-instance, baza in RAM), deci orice munca
+// sincrona — scrypt la login, pg_dump + zip la backup, un raport mare — opreste TOATE cererile,
+// nu doar pe a ei. Durata pe ruta nu poate spune care e care: o cerere lenta in sine si una
+// blocata in spatele altcuiva apar amandoua ca „3 s", fara cauza. Lag-ul e marimea care le desparte.
+//
+// ATENTIE la doua capcane ale histogramei, ambele verificate:
+//   1. REZOLUTIA E SI PODEAUA: pe o bucla libera se citeste ~rezolutia (10 ms), nu 0. Se scade din
+//      fiecare valoare raportata, altfel un server sanatos ar parea permanent intarziat.
+//   2. FARA MOSTRE intoarce valori-gunoi (percentile()=511, min=2^63, mean=NaN) — nu zerouri.
+//      De aceea `count === 0` se trateaza explicit; altfel /api/metrics ar arata 9.2e18 ms.
+// Nu masoara blocajele dinaintea primei ture de bucla (pornirea): acolo nu exista cereri de oprit.
+const { monitorEventLoopDelay } = require('perf_hooks');
+const LAG_RES_MS = 10;
+// Pragul de la care un blocaj devine alerta. 250 ms = peste orice cerere normala, dar sub un
+// pg_dump sau o serializare mare — adica prinde exact ce n-ar trebui sa se intample.
+const LAG_WARN_MS = Number(process.env.CONTAB_LAG_WARN_MS) || 250;
+const lagH = monitorEventLoopDelay({ resolution: LAG_RES_MS });
+lagH.enable(); // timerul intern e unref-uit: NU tine procesul in viata (verificat, altfel testele ar atarna)
+let lagMaxTotal = 0;             // varful de la pornire, peste toate ferestrele
+let lagWindowFrom = Date.now();
+
+const lagMs = (ns) => Math.max(0, Math.round((ns / 1e6 - LAG_RES_MS) * 10) / 10);
+
+/**
+ * Traducerea PURA a histogramei in cifrele raportate — scoasa separat ca sa poata fi verificata
+ * sincron, cu o histograma inventata (tiparul lui persistVerdict din jobs.js). Altfel proba ar
+ * cere ture reale de bucla, deci un test asincron, iar test/run.js e sincron prin constructie.
+ * `h` are nevoie doar de { count, max, percentile(p) }.
+ */
+function lagValues(h, fereastraSec, maxTotal) {
+  const gol = !h || h.count === 0;
+  return {
+    fereastraSec,
+    p50Ms: gol ? 0 : lagMs(h.percentile(50)),
+    p99Ms: gol ? 0 : lagMs(h.percentile(99)),
+    maxMs: gol ? 0 : lagMs(h.max),
+    maxTotalMs: maxTotal,
+    pragMs: LAG_WARN_MS,
+    rezolutieMs: LAG_RES_MS,
+  };
+}
+
+/** Citirea ferestrei curente, FARA reset — o privire in /api/metrics nu are voie sa strice
+ *  fereastra pe care se uita jobul lag-watch. */
+function lagSnapshot() {
+  return lagValues(lagH, Math.round((Date.now() - lagWindowFrom) / 1000), lagMaxTotal);
+}
+
+/** Inchide fereastra: intoarce ce s-a masurat, retine varful de la pornire si porneste alta.
+ *  O foloseste jobul lag-watch — o alerta trebuie sa spuna „acum", nu „candva de la pornire",
+ *  iar `maxMs` al unei histograme necurate n-ar mai scadea niciodata. */
+function lagRoll() {
+  const s = lagSnapshot();
+  if (s.maxMs > lagMaxTotal) lagMaxTotal = s.maxMs;
+  s.maxTotalMs = lagMaxTotal;
+  lagH.reset(); lagWindowFrom = Date.now();
+  return s;
+}
+
 /** Doar pentru teste: goleste agregatele. */
 function reset() {
   routes.clear(); recentErrors.length = 0; jobs.clear();
   ai.n = 0; ai.fail = 0; ai.totalMs = 0; ai.lastError = null; ai.lastErrorAt = null;
+  lagH.reset(); lagMaxTotal = 0; lagWindowFrom = Date.now();
 }
 
 module.exports = {
-  MEM_LIMIT_MB, MEM_WARN_MB,
+  MEM_LIMIT_MB, MEM_WARN_MB, LAG_WARN_MS,
   SLOW_MS, routePattern, record, snapshot, reset,
   recordError, recentErrors, jobTick, jobResult, jobError, jobsSnapshot,
-  aiCall, aiSnapshot,
+  aiCall, aiSnapshot, lagSnapshot, lagRoll, lagValues,
 };
