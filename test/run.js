@@ -5488,11 +5488,53 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   const stubs = { doBackup: () => ({ name: 'x' }), resetDemo: () => ({ ok: true }), registerAttempts: new Map(), forgotAttempts: new Map() };
   const h = jobs.start(stubs);
   ok('start() intoarce un handle cu stop()', h && typeof h.stop === 'function');
-  eq('stop() curata toate cele 9 joburi', h.stop(), 9);
+  eq('stop() curata toate cele 10 joburi', h.stop(), 10);
   eq('stop() e idempotent (a doua oara: nimic de curatat)', jobs.stop(), 0);
   // dupa stop, un nou start functioneaza si se curata la fel (nu ramane stare blocata)
   jobs.start(stubs);
-  eq('restart dupa stop: tot 9 joburi, curatate din nou', jobs.stop(), 9);
+  eq('restart dupa stop: tot 10 joburi, curatate din nou', jobs.stop(), 10);
+}
+
+section('Lag-ul buclei de evenimente (metrics.lagValues) — traducerea histogramei');
+{
+  const m = require('../src/metrics');
+  const H = (count, max, p50, p99) => ({ count, max, percentile: (p) => (p === 50 ? p50 : p99) });
+  const NS = (ms) => ms * 1e6;
+
+  // CAPCANA 1 — histograma FARA mostre nu intoarce zerouri, ci gunoi: percentile()=511,
+  // min=2^63, mean=NaN. Neprins, /api/metrics ar fi aratat un lag de 9,2e18 ms.
+  const gol = m.lagValues({ count: 0, max: 0, percentile: () => 511 }, 30, 0);
+  ok('histograma goala -> zerouri, nu valorile-gunoi ale histogramei',
+    gol.p50Ms === 0 && gol.p99Ms === 0 && gol.maxMs === 0);
+  ok('histograma lipsa (undefined) nu arunca', m.lagValues(undefined, 5, 0).maxMs === 0);
+
+  // CAPCANA 2 — REZOLUTIA E PODEAUA: pe o bucla libera histograma citeste ~10 ms (rezolutia).
+  // Raportata ca atare, un server sanatos ar parea permanent intarziat, iar pragul de alerta ar
+  // fi masurat de la un reper fals.
+  const liber = m.lagValues(H(100, NS(10.1), NS(10.1), NS(11.2)), 60, 0);
+  ok('bucla libera raporteaza ~0, nu ~10 (rezolutia e scazuta)', liber.p50Ms <= 0.2 && liber.maxMs <= 0.2);
+  eq('rezolutia raportata, ca cifra sa poata fi interpretata', liber.rezolutieMs, 10);
+
+  // Un blocaj real: histograma citeste blocaj + rezolutie, deci se raporteaza blocajul curat.
+  const blocat = m.lagValues(H(100, NS(160.2), NS(10.1), NS(160.2)), 60, 0);
+  eq('blocaj de 150 ms (citit 160,2 = 150 + rezolutie) -> 150,2', blocat.maxMs, 150.2);
+  ok('p50 ramane plat cand doar varful e mare — de aceea alerta se uita la p99/max',
+    blocat.p50Ms <= 0.2 && blocat.p99Ms > 100);
+  ok('nicio valoare nu iese negativa sub podea', m.lagValues(H(5, NS(3), NS(3), NS(3)), 1, 0).maxMs === 0);
+
+  // lagRoll INCHIDE fereastra: varful de la pornire se pastreaza, fereastra curenta reporneste.
+  // Fara asta, `maxMs` al unei histograme necurate n-ar mai scadea niciodata si alerta ar ramane
+  // aprinsa pentru un varf de acum trei zile.
+  m.reset();
+  const dupaReset = m.lagSnapshot();
+  eq('reset() duce varful de la pornire la zero', dupaReset.maxTotalMs, 0);
+  const r1 = m.lagRoll();
+  ok('lagRoll intoarce forma completa', typeof r1.p99Ms === 'number' && typeof r1.fereastraSec === 'number');
+  ok('fereastra reporneste dupa roll (fereastraSec revine la ~0)', m.lagSnapshot().fereastraSec <= 1);
+  eq('pragul vine din metrics, o singura sursa cu alerta', m.lagSnapshot().pragMs, m.LAG_WARN_MS);
+
+  // Poarta pe INTEGRARE: masura trebuie sa ajunga si in raspunsul rutei, nu doar sa existe.
+  ok('snapshot() include campul lag', !!require('../src/metrics').snapshot().lag);
 }
 
 section('Migrari DB versionate (src/migrations.js)');

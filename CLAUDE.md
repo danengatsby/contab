@@ -111,8 +111,12 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   utilizator/IP) și plafon exporturi),
   **src/authRoutes.js** (login/2FA, înscriere, resetare, impersonare, me/meta/health/metrics/audit),
   **src/jobs.js** (`safeInterval`: backup, digest-termene, demo-reset, rate-limit-hygiene,
-  uploads-hygiene, memory-watch, **persist-watch**, spv-poll — ultimele două alertează ÎNAINTE de
-  plafonul pm2: RSS peste prag, respectiv scrieri necomise/eșecuri în coada de persistență),
+  uploads-hygiene, memory-watch, **persist-watch**, **lag-watch**, spv-poll — primele două
+  alertează ÎNAINTE de plafonul pm2: RSS peste prag, respectiv scrieri necomise/eșecuri în coada
+  de persistență; `lag-watch` măsoară cât stă blocată bucla de evenimente — într-un singur proces,
+  o bucată de muncă sincronă oprește toate cererile, iar durata pe rută nu poate distinge o cerere
+  lentă în sine de una blocată în spatele alteia. Alerta se uită pe fereastra scursă, la vârf, nu
+  la medie: un blocaj de o secundă într-un minut liniștit lasă media aproape neatinsă),
   **src/serverErrors.js** (fereastra 5xx + alertă email, handlerul global de erori, plasele pe
   proces), **src/lifecycle.js** (lock single-instance, listen după `dbReady`, oprirea curată).
 - **src/routes/*.js** — puncte de intrare subțiri: `register(app, ctx)`; parsează cererea, apelează

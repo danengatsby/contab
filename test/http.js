@@ -2297,6 +2297,18 @@ async function main() {
     ok('metrics: marginea fata de plafonul pm2 e vizibila',
       mx.process.memoryLimitMb > 0 && mx.process.memoryWarnMb > 0 && mx.process.memoryWarnMb < mx.process.memoryLimitMb
       && typeof mx.process.memoryPctDinPlafon === 'number');
+    // Lag-ul buclei — masurat pe un server REAL, care a servit deja sute de cereri. Traducerea
+    // histogramei e verificata sincron in test/run.js (cu histograme inventate); aici se apara
+    // integrarea: ca masura chiar ajunge in raspuns si ca valorile sunt plauzibile, nu gunoiul
+    // pe care histograma il intoarce fara mostre (percentile()=511, min=2^63).
+    ok('metrics: lagul buclei e expus cu contract complet',
+      mx.lag && typeof mx.lag.p50Ms === 'number' && typeof mx.lag.p99Ms === 'number'
+      && typeof mx.lag.maxMs === 'number' && typeof mx.lag.maxTotalMs === 'number'
+      && typeof mx.lag.fereastraSec === 'number');
+    ok('metrics: lagul e in milisecunde plauzibile, nu valorile-gunoi ale histogramei',
+      mx.lag.p50Ms >= 0 && mx.lag.p50Ms < 1000 && mx.lag.maxMs >= 0 && mx.lag.p99Ms >= mx.lag.p50Ms);
+    ok('metrics: pragul de alerta calatoreste cu masura (altfel cifra nu se poate interpreta)',
+      mx.lag.pragMs > 0 && mx.lag.rezolutieMs > 0);
     // restaurare: validarea refuza gunoiul INAINTE sa atinga baza
     const fdBadJson = new FormData();
     fdBadJson.append('file', new Blob(['nu e json'], { type: 'application/json' }), 'stricat.json');
