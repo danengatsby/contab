@@ -25,7 +25,11 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+// execFile, NU spawnSync: drill-ul e declansabil din aplicatie (POST /api/pg-restore-drill,
+// admin), iar procesul e unul singur. Cu spawnSync, rejucarea dump-ului — pana la 10 MINUTE —
+// bloca bucla de evenimente, adica TOTI utilizatorii asteptau cat verifica adminul un backup.
+// `runPgDrill` era deja `async`, dar asincronia era cosmetica: inauntru totul era sincron.
+const { execFile } = require('child_process');
 
 const restoreDrill = require('./restoreDrill');
 
@@ -36,11 +40,9 @@ function blobCollections() {
 }
 
 /** `psql` si `pg_dump` exista in PATH? Fara ele drill-ul nu are cum sa ruleze (dump plain-text). */
-function toolAvailable(bin) {
-  try {
-    const r = spawnSync(bin, ['--version'], { encoding: 'utf8', timeout: 15000 });
-    return r.status === 0;
-  } catch (_) { return false; }
+async function toolAvailable(bin) {
+  const r = await run(bin, ['--version'], 15000);
+  return r.ok;
 }
 
 /** URL-ul bazei de intretinere (`postgres`) + al bazei temporare, derivate din CONTAB_PG_URL. */
@@ -58,13 +60,20 @@ function psqlArgs(url, dbname) {
   return url ? ['--dbname=' + url] : ['-d', dbname];
 }
 
+// maxBuffer generos: implicitul lui execFile e 1 MB, iar depasirea OMOARA procesul si intoarce
+// eroare. Cu `-q` + ON_ERROR_STOP=1 psql scoate aproape nimic pe succes, deci 64 MB e mult peste
+// orice caz real; iar daca totusi s-ar depasi, rezultatul e `ok:false` — adica o ALERTA, nu o
+// trecere tacuta. Directia sigura pentru un modul a carui treaba e sa nu confunde „n-am putut
+// verifica" cu „e bine".
 function run(bin, args, timeoutMs) {
-  const r = spawnSync(bin, args, { encoding: 'utf8', timeout: timeoutMs || 5 * 60 * 1000 });
-  return {
-    ok: r.status === 0,
-    out: String(r.stdout || ''),
-    err: String(r.stderr || (r.error && r.error.message) || '').slice(0, 500),
-  };
+  return new Promise((resolve) => {
+    execFile(bin, args, { encoding: 'utf8', timeout: timeoutMs || 5 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 },
+      (err, stdout, stderr) => resolve({
+        ok: !err,
+        out: String(stdout || ''),
+        err: String(stderr || (err && err.message) || '').slice(0, 500),
+      }));
+  });
 }
 
 /**
@@ -184,7 +193,7 @@ async function runPgDrill(opts) {
   // restaurare nativa ramane NEVERIFICATA". Diferenta conteaza: proiectul a mai fost muscat de
   // monitorizare care tace (raportul care scana un director inghetat, backupul offsite oprit 7
   // zile). O verificare care nu poate rula trebuie sa se auda, altfel seamana leit cu „e bine".
-  if (!toolAvailable('psql')) {
+  if (!await toolAvailable('psql')) {
     cleanupDir();
     return Object.assign(out, {
       neverificabil: true,
@@ -202,7 +211,7 @@ async function runPgDrill(opts) {
   const dropDb = () => run('psql', maintArgs.concat(['-v', 'ON_ERROR_STOP=1', '-c', 'DROP DATABASE IF EXISTS "' + tempName + '"']), 60000);
 
   try {
-    const created = run('psql', maintArgs.concat(['-v', 'ON_ERROR_STOP=1', '-c', 'CREATE DATABASE "' + tempName + '"']), 60000);
+    const created = await run('psql', maintArgs.concat(['-v', 'ON_ERROR_STOP=1', '-c', 'CREATE DATABASE "' + tempName + '"']), 60000);
     if (!created.ok) {
       // Cazul REAL intalnit pe productie: rolul aplicatiei nu are dreptul CREATEDB, deci drill-ul
       // n-ar putea rula niciodata. Fara semnalul asta, absenta verificarii ar fi trecut drept
@@ -219,7 +228,7 @@ async function runPgDrill(opts) {
 
     // REJUCAREA dump-ului. ON_ERROR_STOP=1 e esential: fara el psql trece peste instructiunile
     // esuate si iese cu 0, adica un dump stricat ar trece drept restaurat cu succes.
-    const restored = run('psql', tempArgs.concat(['-v', 'ON_ERROR_STOP=1', '-q', '-f', sqlPath]), 10 * 60 * 1000);
+    const restored = await run('psql', tempArgs.concat(['-v', 'ON_ERROR_STOP=1', '-q', '-f', sqlPath]), 10 * 60 * 1000);
     if (!restored.ok) return Object.assign(out, { motiv: 'restaurarea dump-ului a esuat: ' + (restored.err || 'psql a intors eroare') });
 
     const { d, counts } = await graphFromDb(urls ? urls.temp : '', tempName);
@@ -252,7 +261,10 @@ async function runPgDrill(opts) {
     return Object.assign(out, { motiv: 'drill esuat: ' + String(e.message || e).slice(0, 300) });
   } finally {
     out.durataMs = Date.now() - started;
-    if (!o.keepDb) dropDb(); // si pe calea de eroare: nu lasam baze temporare in urma
+    // AWAIT obligatoriu de cand `run` e asincron: nedasteptat, drill-ul s-ar intoarce inaintea
+    // stergerii, iar in scriptul de cron procesul ar putea iesi lasand baza temporara in urma —
+    // exact ce garanta forma sincrona. `finally` asteapta promisiunea returnata dintr-un async.
+    if (!o.keepDb) await dropDb(); // si pe calea de eroare: nu lasam baze temporare in urma
     cleanupDir();
   }
 }

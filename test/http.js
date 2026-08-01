@@ -2304,6 +2304,19 @@ async function main() {
     ok('drill nativ PG: consemnat in audit, cu rezultatul',
       (await req('GET', '/api/audit', { cookie: cAdm })).json.some((a) => a.action === 'backup.pg-drill' && /SARIT|OK|ESUAT/.test(a.detail || '')));
 
+    // Lansarea de procese externe a trecut de la spawnSync la execFile (bucla nu mai asteapta
+    // subprocesul — drill-ul e declansabil dintr-o ruta de admin). Drumul de mai sus se opreste
+    // la „sarit" pe o arhiva sqlite, fara sa atinga psql, deci noul `run` ramanea neexercitat.
+    // toolAvailable il foloseste direct si acopera AMBELE iesiri, fara sa ceara PostgreSQL.
+    const drillMod = require('../src/pgRestoreDrill');
+    // `node`, nu `sh`: toolAvailable ruleaza `<bin> --version` si cere cod 0, iar dash (/bin/sh
+    // pe Debian) nu cunoaste --version si iese non-zero — ar fi fost un fals esec al testului.
+    const tAre = drillMod.toolAvailable('node');
+    ok('toolAvailable intoarce o PROMISIUNE (lansarea nu mai e sincrona)', typeof tAre.then === 'function');
+    ok('toolAvailable: comanda existenta -> true', (await tAre) === true);
+    ok('toolAvailable: comanda inexistenta -> false (nu arunca)',
+      (await drillMod.toolAvailable('contab-comanda-inexistenta-xyz')) === false);
+
     // Starea cozii de persistenta + marginea fata de plafonul pm2, in /api/metrics
     const mx = (await req('GET', '/api/metrics', { cookie: cAdm })).json;
     ok('metrics: coada de persistenta e expusa cu contract complet',

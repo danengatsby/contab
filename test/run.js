@@ -4100,8 +4100,10 @@ section('Drill de restaurare NATIVA PostgreSQL (src/pgRestoreDrill.js)');
   const antet = fsx.readFileSync(pth.join(__dirname, '..', 'src', 'pgRestoreDrill.js'), 'utf8');
   ok('contractul distinge „nu se aplica" de „nu pot verifica"',
     /sarit\b[\s\S]{0,200}nu se aplica/i.test(antet) && /neverificabil[\s\S]{0,200}se alerteaza/i.test(antet));
-  ok('drill-ul curata baza temporara si pe calea de eroare (DROP in finally)',
-    /finally\s*\{[\s\S]{0,300}dropDb\(\)/.test(antet));
+  // `await` obligatoriu de cand lansarea lui psql e asincrona — vezi poarta „nicio comanda externa
+  // SINCRONA pe o cale de cerere". Nedasteptata, stergerea ar putea sa nu apuce sa ruleze.
+  ok('drill-ul curata baza temporara si pe calea de eroare (DROP asteptat, in finally)',
+    /finally\s*\{[\s\S]{0,400}await\s+dropDb\(\)/.test(antet));
   ok('rejucarea foloseste ON_ERROR_STOP (altfel un dump stricat ar iesi cu 0)',
     /ON_ERROR_STOP=1'[^\n]*'-q'[^\n]*'-f'/.test(antet) || /'ON_ERROR_STOP=1', '-q', '-f'/.test(antet));
   ok('numele bazei temporare e unic (pid + timp), ca sa nu se ciocneasca rulari paralele',
@@ -5969,6 +5971,73 @@ section('Poarta: niciun scrypt SINCRON pe o cale de cerere (bucla de evenimente)
   // src/db.js ARE voie sa foloseasca forma sincrona (pornire) — poarta nu trebuie sa fie atat de
   // larga incat sa-l prinda, altfel presiunea ar fi sa facem `load()` asincron fara motiv.
   ok('db.js (pornire) ramane in afara perimetrului', !caiDeCerere.includes('src/db.js'));
+}
+
+section('Poarta: nicio comanda externa SINCRONA pe o cale de cerere');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const root = pth.join(__dirname, '..');
+  const rd = (f) => fsx.readFileSync(pth.join(root, f), 'utf8');
+  const faraComentarii = (s) => s
+    .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '))
+    .replace(/^([ \t]*)\/\/.*$/gm, (c) => c.replace(/[^\n]/g, ' '));
+  const SYNC_EXEC = /\b(spawnSync|execSync|execFileSync)\s*\(/g;
+
+  // Perimetrul se DERIVA: tot ce inregistreaza rute + serviciile chemate din ele.
+  const caiDeCerere = ['src/authRoutes.js']
+    .concat(fsx.readdirSync(pth.join(root, 'src', 'routes')).filter((f) => f.endsWith('.js')).map((f) => 'src/routes/' + f))
+    .concat(fsx.readdirSync(pth.join(root, 'src')).filter((f) => /Service\.js$/.test(f)).map((f) => 'src/' + f));
+  const textCereri = caiDeCerere.map((f) => faraComentarii(rd(f))).join('\n');
+
+  // 1. Direct: nicio comanda sincrona chiar in fisierele de rute/servicii.
+  const directe = caiDeCerere.filter((f) => { SYNC_EXEC.lastIndex = 0; return SYNC_EXEC.test(faraComentarii(rd(f))); });
+  ok('nicio comanda externa sincrona direct pe o cale de cerere' + (directe.length ? ' — ' + directe.join(', ') : ''),
+    directe.length === 0);
+
+  /** Numele functiei de nivel superior care CONTINE offsetul dat (stilul modulelor din src/). */
+  const functiaCare = (src, offset) => {
+    const inainte = src.slice(0, offset);
+    const m = [...inainte.matchAll(/^(?:async\s+)?function\s+(\w+)/gm)].pop();
+    return m ? m[1] : '(nivel superior)';
+  };
+
+  // 2. Tranzitiv, UN nivel: modulele cerute din caile de cerere. Un asemenea modul are voie sa
+  //    contina exec sincron DOAR daca functia care il poarta nu e numita pe nicio cale de cerere.
+  //    Asa `src/backup.js` ramane legitim (spawnSync-ul lui pg_dump traieste in `fullBackup`, care
+  //    ruleaza EXCLUSIV din scripts/backup.js, adica din cron, unde nu blocheaza nicio cerere),
+  //    iar `src/pgRestoreDrill.js` NU ar mai fi: `runPgDrill` e chemat din /api/pg-restore-drill.
+  //    Regula e conditionata si isi poarta dovada — nu o lista de exceptii scrisa de mana.
+  const ceruteDinRute = new Set();
+  for (const f of caiDeCerere) {
+    for (const m of faraComentarii(rd(f)).matchAll(/require\(\s*['"]\.\.?\/([\w/]+)['"]\s*\)/g)) {
+      const cale = 'src/' + m[1].replace(/^\.\//, '') + '.js';
+      if (fsx.existsSync(pth.join(root, cale))) ceruteDinRute.add(cale);
+    }
+  }
+  ok('perimetrul tranzitiv e nevid (modulele cerute din rute)', ceruteDinRute.size > 10);
+
+  const expuse = [];
+  for (const mod of ceruteDinRute) {
+    const src = faraComentarii(rd(mod));
+    SYNC_EXEC.lastIndex = 0;
+    for (const m of src.matchAll(SYNC_EXEC)) {
+      const fn = functiaCare(src, m.index);
+      // e chemata functia asta de pe o cale de cerere?
+      if (new RegExp('\\b' + fn + '\\s*\\(').test(textCereri)) expuse.push(mod + ':' + fn + '()');
+    }
+  }
+  ok('nicio functie cu comanda sincrona nu e chemata de pe o cale de cerere'
+    + (expuse.length ? ' — ' + [...new Set(expuse)].join(', ') : ''), expuse.length === 0);
+
+  // Poarta de mai sus e NEGATIVA — ar trece si daca drill-ul n-ar mai rula deloc. Deci se cere si
+  // forma corecta acolo unde stim ca se lanseaza procese: drill-ul nativ ruleaza ASINCRON.
+  const drill = rd('src/pgRestoreDrill.js');
+  ok('drill-ul nativ PG chiar lanseaza psql, asincron', /execFile\s*\(/.test(drill) && !/spawnSync\s*\(/.test(faraComentarii(drill)));
+  ok('rejucarea dump-ului si crearea bazei temporare sunt asteptate',
+    /await\s+run\s*\(\s*'psql'/.test(drill) && /await\s+toolAvailable\s*\(/.test(drill));
+  // Stergerea bazei temporare TREBUIE asteptata de cand `run` e asincron: altfel drill-ul se
+  // intoarce inaintea ei, iar sub cron procesul poate iesi lasand baze orfane.
+  ok('baza temporara se sterge ASTEPTAT (fara baze orfane)', /await\s+dropDb\s*\(\)/.test(drill));
 }
 
 section('Poarta: nicio ruta in afara prefixelor pazite (/api /pdf /xml /csv /efactura)');
