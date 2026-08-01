@@ -1028,5 +1028,46 @@ section('Raportarea erorilor din client (core.js: pachetEroare / trebuieRaportat
 }
 
 
+section('Înscriere: din afara aplicației se alege DOAR proba gratuită');
+{
+  // Regula de produs: planurile plătite se afișează cu preț și funcții (omul trebuie să știe ce
+  // urmează), dar NU se pot alege la înscriere — se cumpără din aplicație, după probă, când omul
+  // a văzut deja produsul.
+  const authui = await import(path.join(mirror, 'authui.js')).catch(() => null);
+  ok('authui.js se încarcă', !!authui);
+  const cta = authui && authui.ctaPlanPublic;
+  ok('decizia e o funcție pură, exportată', typeof cta === 'function');
+
+  const proba = cta({ id: 'trial', nume: 'Probă gratuită', trial: true }, true);
+  ok('proba gratuită are buton ACTIV', proba.fel === 'buton' && proba.activ === true);
+  ok('...cu textul de pornire', /proba gratuită/i.test(proba.text));
+
+  for (const id of ['start', 'pro']) {
+    const d = cta({ id, nume: id }, true);
+    ok(id + ': control de tip buton, dar INACTIV', d.fel === 'buton' && d.activ === false);
+    ok(id + ': textul spune UNDE se alege, nu doar că nu se poate', /după probă/i.test(d.text));
+    ok(id + ': explicația completă e în titlu (tooltip)', /aplicaţie|aplicație/i.test(d.titlu || ''));
+  }
+
+  // Fără înscriere publică activă, niciun plan nu primește buton — nici proba.
+  const inchis = cta({ id: 'trial', trial: true }, false);
+  ok('înscriere dezactivată -> text, nu buton', inchis.fel === 'text' && /autentifică/i.test(inchis.text));
+
+  // A DOUA implementare: public/prezentare.js e script simplu (nu modul), deci nu poate importa
+  // regula — o are dublată. Poarta verifică să nu divergă: acolo planurile plătite trebuie sa aibă
+  // `disabled`, iar proba un link activ.
+  const prez = fs.readFileSync(path.join(PUB, 'prezentare.js'), 'utf8');
+  ok('prezentare.js: planurile plătite au buton dezactivat',
+    /p\.trial[\s\S]{0,400}?<button class="btn" disabled/.test(prez));
+  ok('prezentare.js: proba rămâne link activ către înscriere',
+    /p\.trial[\s\S]{0,120}?<a class="btn solid" href="\/\?register=1"/.test(prez));
+  ok('prezentare.js: nu mai există „Alege <plan> →" pe planurile plătite', !/Alege '\s*\+\s*H\(p\.nume\)/.test(prez));
+
+  // Mecanismul de „alege plan platit la inscriere, plateste dupa" a fost SCOS, nu ascuns: lasat in
+  // cod ar fi fost o cale moarta care pare vie (vezi lectia din src/saft.js).
+  const au = fs.readFileSync(path.join(PUB, 'authui.js'), 'utf8');
+  ok('mecanismul de plată imediat după înscriere e scos din cod', !/pendingPaidPlan/.test(au));
+}
+
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

@@ -42,7 +42,6 @@ async function checkRegisterEnabled() {
   catch (e) { /* ignora */ }
 }
 $('#registerBtn') && $('#registerBtn').addEventListener('click', () => {
-  pendingPaidPlan = null; // „Testeaza gratuit" = inscriere simpla, fara plan platit in asteptare
   $('#registerErr').textContent = ''; openRegisterPanel();
 });
 // „Demo": intra in contul demo public (explorare libera, date resetate zilnic). Doua conturi
@@ -57,11 +56,19 @@ function demoLogin(btn, as) {
 $('#demoLoginBtn') && $('#demoLoginBtn').addEventListener('click', (e) => demoLogin(e.currentTarget)());
 $('#demoContabilBtn') && $('#demoContabilBtn').addEventListener('click', (e) => demoLogin(e.currentTarget, 'contabil')());
 $('#registerCancel') && $('#registerCancel').addEventListener('click', () => {
-  pendingPaidPlan = null;
   $('#registerOverlay').classList.add('hidden'); $('#loginOverlay').classList.remove('hidden');
 });
-// Planul plătit ales din panoul de prețuri — reținut până la crearea contului, apoi lansează Stripe.
-let pendingPaidPlan = null;
+// REGULA DE INSCRIERE: din panoul public se poate alege DOAR proba gratuită. Planurile plătite se
+// aleg din aplicație, după probă — momentul în care omul știe deja ce cumpără, nu înainte să fi
+// văzut produsul. De aceea nu mai există „alege un plan plătit acum și plătește după înregistrare":
+// mecanismul care reținea planul până la crearea contului a fost scos, nu doar ascuns.
+/** Ce control primește un plan în panoul public. PUR, ca să poată fi verificat fără DOM. */
+export function ctaPlanPublic(plan, canRegister) {
+  if (!canRegister) return { fel: 'text', text: 'Autentifică-te pentru a alege planul' };
+  if (plan.trial) return { fel: 'buton', text: 'Începe proba gratuită', activ: true };
+  return { fel: 'buton', text: 'Disponibil după probă', activ: false,
+    titlu: 'Începe cu proba gratuită de 30 de zile. Planul plătit îl alegi din aplicație, când proba se apropie de final.' };
+}
 // Prețuri publice (pe pagina de autentificare/înscriere)
 async function showPricing() {
   const box = $('#pricingPlans'); if (!box) return;
@@ -71,9 +78,12 @@ async function showPricing() {
   let canRegister = false;
   try { const r = await fetch('/api/register'); if (r.ok) canRegister = !!(await r.json()).enabled; } catch (e) { /* optional */ }
   box.innerHTML = (data.plans || []).map((p) => {
-    const cta = canRegister
-      ? `<button class="btn primary pricing-start" data-plan="${p.id}" data-trial="${p.trial ? 1 : 0}">${p.trial ? 'Începe proba gratuită' : 'Alege ' + H(p.nume) + ' →'}</button>`
-      : '<div class="muted" data-u="u17">Autentifică-te pentru a alege planul</div>';
+    const d = ctaPlanPublic(p, canRegister);
+    const cta = d.fel === 'text'
+      ? `<div class="muted" data-u="u17">${H(d.text)}</div>`
+      : (d.activ
+        ? `<button class="btn primary pricing-start" data-plan="${p.id}">${H(d.text)}</button>`
+        : `<button class="btn" disabled title="${H(d.titlu || '')}">${H(d.text)}</button>`);
     return `<div class="plan-card${p.recomandat ? ' recomandat' : ''}">
       ${p.recomandat ? '<div class="plan-badge">Recomandat</div>' : ''}
       <h3>${H(p.nume)}</h3>
@@ -83,13 +93,8 @@ async function showPricing() {
       <div class="plan-action">${cta}</div>
     </div>`;
   }).join('');
-  $$('#pricingPlans .pricing-start').forEach((b) => b.addEventListener('click', () => {
-    // Intai INSCRIEREA firmei; plata Stripe se lanseaza dupa completarea formularului (vezi registerForm).
-    // Proba gratuita nu are plata; planul platit e retinut in pendingPaidPlan.
-    pendingPaidPlan = b.dataset.trial === '1' ? null : b.dataset.plan;
-    const label = b.textContent.replace(/→/g, '').replace(/^\s*Alege\s+/i, '').trim();
-    openRegisterPanel(b.dataset.trial === '1' ? null : label);
-  }));
+  // Singurul buton activ e proba gratuită, deci inscrierea nu mai poarta niciun plan cu ea.
+  $$('#pricingPlans .pricing-start').forEach((b) => b.addEventListener('click', () => openRegisterPanel()));
 }
 $('#showPricingLogin') && $('#showPricingLogin').addEventListener('click', showPricing);
 $('#showPricingReg') && $('#showPricingReg').addEventListener('click', showPricing);
@@ -160,16 +165,8 @@ $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) =>
   try {
     await api('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     f.password.value = '';
-    // Plan platit ales din preturi -> dupa crearea contului, lanseaza plata Stripe
-    if (pendingPaidPlan) {
-      const plan = pendingPaidPlan; pendingPaidPlan = null;
-      try {
-        const r = await api('/api/subscription/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }) });
-        if (r.url) { window.location.href = r.url; return; } // redirect catre Stripe Checkout
-      } catch (e) {
-        toast('Firma a fost creată. Plata online nu e disponibilă acum — te ajutăm să activezi abonamentul din Abonament.', true);
-      }
-    }
+    // Inscrierea porneste INTOTDEAUNA proba gratuita; nu mai exista plata imediat dupa creare.
+    // Planul platit se alege din aplicatie (Abonament), cand proba se apropie de final.
     $('#registerOverlay').classList.add('hidden'); $('#loginOverlay').classList.add('hidden');
     await D.init();
     toast(contabil
@@ -239,18 +236,15 @@ function handleRegisterLink() {
   history.replaceState(null, '', location.pathname);
   openRegisterPanel();
 }
-function openRegisterPanel(planLabel) {
+function openRegisterPanel() {
   $('#pricingOverlay') && $('#pricingOverlay').classList.add('hidden');
   $('#loginOverlay') && $('#loginOverlay').classList.add('hidden');
   if ($('#registerErr')) $('#registerErr').textContent = '';
-  // indiciu: dupa crearea contului urmeaza plata planului ales
+  // Inscrierea e mereu pe proba gratuita, deci nu mai exista „plan ales" de anuntat.
   const hint = $('#regPlanHint');
-  if (hint) {
-    if (pendingPaidPlan && planLabel) { hint.textContent = '💳 Plan ales: ' + planLabel + '. După crearea contului treci la plată.'; hint.classList.remove('hidden'); }
-    else hint.classList.add('hidden');
-  }
+  if (hint) hint.classList.add('hidden');
   const submitBtn = $('#registerForm') && $('#registerForm').querySelector('button.primary');
-  if (submitBtn) submitBtn.textContent = pendingPaidPlan ? 'Creează firma și continuă la plată →' : 'Creează firma și contul';
+  if (submitBtn) submitBtn.textContent = 'Creează firma și contul';
   $('#registerOverlay') && $('#registerOverlay').classList.remove('hidden'); aplicaTipCont(); // normalizeaza starea la fiecare deschidere
 }
 const inviteToken = new URLSearchParams(location.search).get('invite');

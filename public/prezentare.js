@@ -1,5 +1,11 @@
 'use strict';
 // Pagina publică de prezentare: încarcă prețurile live + butonul de demo.
+//
+// REGULA DE INSCRIERE: din afara aplicației se poate porni DOAR proba gratuită. Planurile plătite
+// se afișează cu preț și funcții (omul trebuie să știe ce urmează), dar butonul lor e INACTIV:
+// se aleg din aplicație, după probă. Aceeași regulă e implementată si în public/authui.js
+// (ctaPlanPublic) — sunt două fișiere fiindcă acesta e script simplu, nu modul, deci nu poate
+// importa. O poartă din test/run.js verifică să nu divergă.
 
 // Escapare locală: pagina asta e un script simplu (<script src>, nu modul), deci nu poate
 // importa H din core.js. Aceeași regulă ca în restul aplicației — datele afișate se escapează
@@ -18,7 +24,9 @@ const H = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '
         <h3>${H(p.nume)}</h3>
         <div class="price">${p.pret === 0 ? '<b>Gratuit</b>' : '<b>' + p.pret + '</b> ' + p.moneda + ' / ' + p.perioada}</div>
         <ul>${(p.features || []).map((f) => '<li>' + f + '</li>').join('')}</ul>
-        <a class="btn ${p.trial ? 'solid' : 'buy'}" href="/?register=1">${p.trial ? 'Începe proba gratuită' : 'Alege ' + H(p.nume) + ' →'}</a>
+        ${p.trial
+          ? `<a class="btn solid" href="/?register=1">Începe proba gratuită</a>`
+          : `<button class="btn" disabled title="Începe cu proba gratuită de 30 de zile. Planul plătit îl alegi din aplicație, când proba se apropie de final.">Disponibil după probă</button>`}
       </div>`).join('');
   } catch (e) {
     box.innerHTML = '<p data-u="u169">Prețurile sunt disponibile în aplicație.</p>';

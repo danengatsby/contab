@@ -1,0 +1,169 @@
+CONTABO — TEXT DE VANZARE
+Text simplu, pentru vanzare online cu abonament lunar. Se copiaza si se lipeste
+oriunde: pagina de vanzare, e-mail, oferta, magazin de aplicatii.
+
+Trei lungimi, dupa cat spatiu ai. Cifrele sunt verificate in cod la 2026-08-01.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+1. SCURT  (pentru anunturi, liste, semnaturi)
+═══════════════════════════════════════════════════════════════════════════════
+
+Nu mai afla peste trei saptamani cat ai castigat luna trecuta.
+
+Contabo iti tine contabilitatea pe masura ce lucrezi: tragi factura in aplicatie,
+ea pune conturile, calculeaza TVA-ul si iti pregateste declaratiile pentru ANAF.
+De la 99 de lei pe luna. 30 de zile gratuit, fara card.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+2. MEDIU  (pentru e-mail sau pagina de vanzare)
+═══════════════════════════════════════════════════════════════════════════════
+
+CAT PROFIT AI FACUT LUNA ASTA?
+
+Daca raspunsul vine peste trei saptamani, de la contabil, e prea tarziu ca sa mai
+schimbi ceva. Decizia pe care o aveai de luat era saptamana trecuta.
+
+Contabo schimba asta. Fotografiezi factura cu telefonul si o tragi in aplicatie:
+furnizorul, baza si TVA-ul se completeaza singure, iar tu doar confirmi. Din acel
+moment stii exact cat profit ai, cate taxe datorezi si cati bani ai disponibili —
+nu la sfarsitul lunii, ci imediat.
+
+La final de luna apesi un buton si decontul de TVA e gata completat. Declaratiile
+pentru ANAF — D300, D394, D112, SAF-T si celelalte — se genereaza singure. Emiti
+facturi cu e-Factura pentru SPV, tii stocuri, faci salarii, urmaresti cine iti
+datoreaza bani. Totul intr-un singur loc.
+
+99 de lei pe luna. Compara cu cat platesti acum doar pentru introducerea datelor.
+
+Incepi cu 30 de zile gratuit, fara card bancar. Daca te razgandesti, renunti cand
+vrei — datele raman ale tale si le poti vedea oricand.
+
+contabo.space
+
+
+═══════════════════════════════════════════════════════════════════════════════
+3. COMPLET  (pentru pagina de vanzare sau documentul trimis unui client)
+═══════════════════════════════════════════════════════════════════════════════
+
+CAT PROFIT AI FACUT LUNA ASTA? CAT AI DE PLATIT LA STAT?
+
+Daca afli peste trei saptamani, e prea tarziu. Angajarea pe care o cantareai,
+factura pe care nu stiai daca ti-o permiti, banii pe care i-ai scos crezand ca
+ai profit — toate deciziile astea s-au luat deja, pe ghicite.
+
+Nu e vina contabilului. E vina faptului ca datele ajung la el o data pe luna,
+intr-un plic.
+
+
+ASA ARATA CU CONTABO
+
+Ai primit o factura de la furnizor. O fotografiezi cu telefonul si o tragi in
+aplicatie. Furnizorul, CUI-ul, baza si TVA-ul se completeaza singure. Confirmi.
+Zece secunde.
+
+Din secunda aceea, tabloul tau de bord arata adevarul: profitul lunii, taxele
+datorate, banii disponibili, cine iti datoreaza si de cate zile.
+
+Emiti o factura unui client? Completezi liniile si primesti deodata PDF-ul pentru
+el si e-Factura in format XML pentru SPV, cu numar in serie continua.
+
+La final de luna apesi „Inchide TVA". Decontul D300 e deja completat, defalcat pe
+cote. Descarci declaratiile si le depui.
+
+Asta e tot. Nu trebuie sa stii contabilitate: alegi tipul documentului in limbaj
+obisnuit — „factura de la furnizor", „incasare de la client" — iar aplicatia pune
+conturile corecte. Sunt peste 100 de tipuri de operatiuni pregatite.
+
+
+CE PRIMESTI PENTRU BANII ASTIA
+
+Facturare completa, cu e-Factura pentru SPV si import al facturilor primite.
+Toate declaratiile pentru ANAF: D300, D394, D112, D390, D100, D101, D205, SAF-T,
+Intrastat si situatiile financiare anuale.
+Registrele obligatorii: jurnal, cartea mare, balanta de verificare.
+Bilantul complet, cu contul de profit si pierdere si notele explicative.
+Stocuri pe gestiuni, cu productie si retete de fabricatie.
+Salarii, cu state de plata, fluturasi si D112.
+Mijloace fixe, amortizare si leasing.
+Import de extras bancar, cu potrivire automata a incasarilor.
+Scadentar, previziune de incasari, comparatie an la an.
+
+Toate, in orice plan. Nu exista module platite separat.
+
+
+CAT COSTA
+
+Proba: 30 de zile, gratuit, fara card bancar.
+Start: 99 de lei pe luna, pentru cine isi tine singur evidenta.
+Pro: 199 de lei pe luna, pentru contabili si firme cu portofoliu.
+
+Fa socoteala: cat platesti acum, in fiecare luna, doar ca cineva sa introduca
+documentele in program? Contabo face partea aceea. Contabilul tau ramane — dar
+pentru ce stie el sa faca si aplicatia nu: verificare, incadrari, semnatura,
+raspundere. Platesti pentru expertiza, nu pentru tastare.
+
+
+DE CE POTI AVEA INCREDERE
+
+Cele mai multe programe scriu „conform ANAF" si te lasa sa speri.
+
+Noi trecem fiecare versiune prin DUKIntegrator — validatorul publicat chiar de
+ANAF — inainte sa ajunga la tine. Daca o singura declaratie e respinsa, versiunea
+nu se publica. Iar daca validarea nu poate rula, versiunea tot nu se publica:
+„n-am putut verifica" nu inseamna „e bine".
+
+Peste asta ruleaza automat, la fiecare versiune, mii de controale: balante care
+trebuie sa se inchida, TVA pe fiecare cota, salarii pe grila in vigoare.
+
+Cotele fiscale sunt cele in vigoare si stau intr-un singur loc, datate — se
+actualizeaza cand se schimba legea, nu cand ne aducem aminte.
+
+
+NU RISTI NIMIC
+
+30 de zile gratuit, fara card bancar. Nu-ti cerem datele de plata ca sa te razgan-
+desti mai greu.
+
+Daca renunti, datele raman ale tale: contul ramane deschis si le poti consulta
+oricand. Nu se sterge nimic.
+
+Daca ai deja o firma cu istoric, te muti simplu: imporți balanta din programul
+vechi (XLS, XLSX, DBF sau CSV), soldurile pe clienti si furnizori si stocul
+cantitativ-valoric. Continui din luna curenta. Aplicatia verifica singura
+echilibrul preluarii si iti arata unde nu se inchide, daca e cazul.
+
+
+DE CE ACUM
+
+e-Factura nu mai e optionala. SAF-T se extinde. Fiecare luna in care tii evidenta
+pe hartie sau in fisiere Excel e o luna in care riscul creste si nu stii pe ce
+cifre stai.
+
+Iar peste trei luni, cand vei vrea sa te muti, vei avea de mutat cu trei luni mai
+mult.
+
+
+CINSTIT, PANA LA CAPAT
+
+Ca sa nu ai surprize dupa ce platesti, iata ce NU face aplicatia:
+
+Nu depune declaratiile in locul tau — depunerea in SPV o faci tu, cu certificat
+digital ANAF.
+Nu inlocuieste validarea oficiala: declaratia ta, cu cifrele tale, se valideaza cu
+DUKIntegrator inainte de depunere.
+Nu inlocuieste contabilul autorizat. Calculeaza si pregateste; raspunderea fiscala
+ramane a ta.
+Nu inlocuieste casa de marcat fiscala.
+Nu pastreaza documentele originale in locul tau.
+
+Preferam sa afli asta acum, de la noi, decat peste doua luni, singur.
+
+
+INCEPE AZI
+
+Inscrierea dureaza doua minute si nu cere card. Prima factura inregistrata dureaza
+sub un minut.
+
+contabo.space
