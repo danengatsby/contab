@@ -14,6 +14,7 @@ const bnr = require('./bnr');
 const { pollSpv } = require('./anafService');
 const { sendDeadlineDigests, sendNotifMail } = require('./notify');
 const { pruneLoginAttempts } = require('./session');
+const auditLog = require('./auditLog');
 const { trackServerError } = require('./serverErrors');
 
 // Ruleaza un job periodic cu plasa de siguranta: o eroare SINCRONA in callback (ex. un db.save()
@@ -178,6 +179,47 @@ function start(ctx) {
         + 'Pragul se schimba din CONTAB_LAG_WARN_MS.').catch(() => {});
     }
   }, 60 * 1000);
+
+  // Veghe pe JURNALUL DE AUDIT DURABIL (data/audit/*.ndjson). E proba de control intern, si e
+  // singurul lucru care justifica plafonul din baza vie: `logAudit` roleste d.audit la
+  // CONTAB_AUDIT_MAX linistit TOCMAI fiindca proba ramane pe disc. Daca scrierea nu mai merge,
+  // afirmatia aceea devine falsa — si devenea falsa in TACERE: append e best-effort (corect: nu
+  // rupe cererea) si avertizeaza o singura data pana la urmatorul succes (corect: nu inunda
+  // logul), dar cele doua impreuna insemnau o linie in log si apoi nimic, la nesfarsit.
+  //
+  // Doua semnale, fiindca raspund la intrebari diferite:
+  //   - SONDA: se mai poate scrie ACUM? (raspunde inainte sa avem un eveniment de consemnat)
+  //   - CONTORUL: au esuat scrieri de la ultima verificare? (fereastra, nu cumulat de la pornire —
+  //     altfel o defectiune trecatoare ar tine alarma aprinsa pana la restart)
+  let auditEsecuriVazute = 0;
+  let lastAuditAlert = 0;
+  safeInterval('audit-watch', () => {
+    const s = metrics.auditSnapshot();
+    const noi = s.esecuri - auditEsecuriVazute;
+    auditEsecuriVazute = s.esecuri;
+    const p = auditLog.probeWritable();
+    metrics.jobResult('audit-watch', p.ok
+      ? 'scriibil (' + s.scrise + ' scrise, ' + s.esecuri + ' esecuri de la pornire)'
+      : 'NESCRIIBIL: ' + p.motiv);
+    if (p.ok && noi <= 0) return;
+    const motiv = !p.ok
+      ? 'jurnalul nu se poate scrie: ' + p.motiv
+      : noi + ' scrieri esuate de la ultima verificare (ultima eroare: ' + s.lastError + ')';
+    log.error('jurnal de audit durabil', { motiv, scrise: s.scrise, esecuri: s.esecuri, sondaOk: p.ok });
+    const now = Date.now();
+    if (now - lastAuditAlert > 24 * 3600 * 1000) {
+      lastAuditAlert = now;
+      sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] ATENTIE: jurnalul de audit durabil nu se scrie',
+        motiv + '.\n\n'
+        + 'Jurnalul din data/audit/*.ndjson e proba de control intern si e inclus in backupul zilnic.\n'
+        + 'Cat timp nu se scrie, actiunile raman doar in baza vie, care se roleste la '
+        + (Number(process.env.CONTAB_AUDIT_MAX) || 20000) + ' de inregistrari — deci proba chiar se pierde.\n\n'
+        + 'Cauza cea mai frecventa: un fisier audit-YYYY-MM.ndjson ramas de la un proces rulat sub alt\n'
+        + 'utilizator (root), pe care procesul aplicatiei nu-l mai poate deschide. Verifica\n'
+        + '`ls -l ' + auditLog.auditDir() + '` si proprietarul fisierului lunii curente.\n'
+        + 'Starea completa: /api/metrics (admin), campul `audit`.').catch(() => {});
+    }
+  }, 5 * 60 * 1000);
 
   // Veghe pe COADA DE PERSISTENTA. Pe pg, save() fotografiaza sincron dar COMITE asincron: cat timp
   // lucrarea asteapta, scrierile traiesc doar in RAM (nedurabile) si tin ocupat un snapshot al

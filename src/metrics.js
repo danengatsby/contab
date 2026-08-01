@@ -42,6 +42,7 @@ function snapshot() {
     sinceTs: new Date(startedAt).toISOString(), slowThresholdMs: SLOW_MS, routes: list.slice(0, 100),
     recentErrors: recentErrors.slice().reverse(), // cele mai noi primele
     lag: lagSnapshot(), // cat a stat bucla blocata — cauza pe care durata pe ruta n-o poate arata
+    audit: auditSnapshot(), // scrierile in jurnalul DURABIL: tacerea lor invalida retentia
     jobs: jobsSnapshot(),
     ai: aiSnapshot(),
     ops: opsSnapshot(),
@@ -170,11 +171,28 @@ function lagRoll() {
   return s;
 }
 
+// ── JURNALUL DE AUDIT DURABIL: cate scrieri au reusit si cate au esuat ──
+// src/auditLog.js e best-effort DELIBERAT (un esec de scriere nu rupe cererea) si avertizeaza in
+// consola o SINGURA data pana la urmatorul succes, ca sa nu inunde logul. Cele doua impreuna
+// faceau tacere: o permisiune stricata dadea o linie in log, apoi nimic — la nesfarsit. Si nu e
+// o tacere oarecare: plafonul din baza vie (CONTAB_AUDIT_MAX) e justificat TOCMAI de faptul ca
+// proba durabila exista pe disc. Daca ea nu se mai scrie, rolarea chiar pierde proba.
+// Aici se numara FIECARE esec, nu doar primul — throttle-ul ramane doar pe consola.
+const audit = { scrise: 0, esecuri: 0, esecConsecutive: 0, lastError: null, lastErrorAt: null, lastOkAt: null };
+function auditOk() { audit.scrise += 1; audit.esecConsecutive = 0; audit.lastOkAt = new Date().toISOString(); }
+function auditFail(msg) {
+  audit.esecuri += 1; audit.esecConsecutive += 1;
+  audit.lastError = String(msg || '').slice(0, 200); audit.lastErrorAt = new Date().toISOString();
+}
+function auditSnapshot() { return Object.assign({}, audit); }
+
 /** Doar pentru teste: goleste agregatele. */
 function reset() {
   routes.clear(); recentErrors.length = 0; jobs.clear();
   ai.n = 0; ai.fail = 0; ai.totalMs = 0; ai.lastError = null; ai.lastErrorAt = null;
   lagH.reset(); lagMaxTotal = 0; lagWindowFrom = Date.now();
+  audit.scrise = 0; audit.esecuri = 0; audit.esecConsecutive = 0;
+  audit.lastError = null; audit.lastErrorAt = null; audit.lastOkAt = null;
 }
 
 module.exports = {
@@ -182,4 +200,5 @@ module.exports = {
   SLOW_MS, routePattern, record, snapshot, reset,
   recordError, recentErrors, jobTick, jobResult, jobError, jobsSnapshot,
   aiCall, aiSnapshot, lagSnapshot, lagRoll, lagValues,
+  auditOk, auditFail, auditSnapshot,
 };
