@@ -51,9 +51,34 @@ function buildProduction(products, baseMovements, order, opts) {
   const fp = find(order.productId);
   if (!fp) throw new Error('Produsul finit este inexistent in nomenclator.');
   const qty = round2(Number(order.cantitate) || 0);
-  const costUnitar = round2(Number(order.costUnitar) || 0);
   if (qty <= 0) throw new Error('Cantitatea de produs finit trebuie sa fie > 0.');
+  // COSTUL DE PRODUCTIE (OMFP 1802/2014): materiale directe + manopera + regie de productie.
+  // Cand nu e dat, se deriva din consumul EFECTIV de materiale — nu se lasa 0.
+  //
+  // Cu 0, iesea o operatiune care doar distruge valoare, tacut: materialele se consumau
+  // (601 = 301), dar articolul `345 = 711` nu se mai emitea deloc (era conditionat de
+  // `valoare > 0`), deci consumul ramanea pe cheltuieli fara produsul care sa-l justifice —
+  // pierdere artificiala. Mai rau, receptia intra in stoc la pretul 0 si tragea in jos CMP-ul
+  // produsului finit pentru totdeauna, contaminand costul tuturor iesirilor urmatoare.
+  let costUnitar = round2(Number(order.costUnitar) || 0);
+  let costDerivat = false;
+  if (costUnitar <= 0) {
+    costUnitar = round2(costMateriale / qty);
+    costDerivat = costUnitar > 0;
+    if (costDerivat) {
+      warns.push('Costul unitar nu a fost dat: s-a folosit costul materialelor consumate ('
+        + costUnitar + ' lei/unitate). Adauga manopera si regia de productie daca exista.');
+    } else {
+      warns.push('Costul unitar este 0 si nu s-au consumat materiale: produsul finit intra in stoc la valoare zero.');
+    }
+  }
   const valoare = round2(qty * costUnitar);
+  // Sub costul materialelor, productia ar „pierde" valoare fara explicatie contabila. Nu se
+  // blocheaza (exista rebuturi si produse secundare care justifica diferenta), dar se spune.
+  if (!costDerivat && costMateriale > 0 && valoare < costMateriale) {
+    warns.push('Valoarea produselor obtinute (' + valoare + ' lei) este sub costul materialelor consumate ('
+      + costMateriale + ' lei) — diferenta ramane pe cheltuieli. Verifica costul unitar.');
+  }
   newMovements.push({
     id: o.nextId ? o.nextId('sm') : 'sm-' + (newMovements.length + 1), firmaId: o.fid, data: o.data, tip: 'receptie',
     productId: fp.id, gestiuneId: order.gestiuneId || null, gestiuneDestId: null,
