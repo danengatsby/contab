@@ -1,0 +1,174 @@
+CONTABO — DESCRIEREA APLICATIEI
+Text simplu, pentru cumparatori. Se copiaza si se lipeste oriunde: e-mail, ofer-
+ta, magazin de aplicatii, document trimis unui client. Fara formatare speciala.
+
+Trei lungimi, dupa cat spatiu ai. Cifrele sunt verificate in cod la 2026-08-01;
+reverifica-le inainte de a le folosi (vezi PREZENTARE.md, antet).
+
+
+═══════════════════════════════════════════════════════════════════════════════
+1. DESCRIERE SCURTA  (o frazA — pentru liste, anunturi, semnaturi)
+═══════════════════════════════════════════════════════════════════════════════
+
+Contabo este o aplicatie de contabilitate romaneasca in partida dubla: aduci
+documentele, iar aplicatia construieste inregistrarile contabile, tine registrele,
+calculeaza TVA-ul si pregateste declaratiile pentru ANAF.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+2. DESCRIERE MEDIE  (un paragraf — pentru e-mail sau prezentare de oferta)
+═══════════════════════════════════════════════════════════════════════════════
+
+Contabo este o aplicatie de contabilitate romaneasca in partida dubla, construita
+pentru firme mici si pentru contabilii care le tin. Tragi factura in aplicatie —
+PDF sau poza facuta cu telefonul — iar furnizorul, baza si TVA-ul se completeaza
+singure; tu verifici si salvezi. Aplicatia alege conturile corecte din peste 100
+de tipuri de operatiuni pregatite, tine registrul-jurnal si cartea mare, calculea-
+za decontul de TVA si genereaza declaratiile pentru ANAF: D300, D394, D112, D390,
+D100, D101, D205, SAF-T, Intrastat si situatiile financiare anuale. Emite facturi
+cu e-Factura in format XML pentru SPV si importa facturile primite. Include stocuri,
+productie, salarizare, mijloace fixe si import de extras bancar — toate in orice
+plan, fara module platite separat. Costa 99 sau 199 de lei pe luna, cu 30 de zile
+de proba gratuita si fara card.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+3. DESCRIERE COMPLETA  (o pagina — pentru document trimis unui cumparator)
+═══════════════════════════════════════════════════════════════════════════════
+
+CE ESTE
+
+Contabo este o aplicatie de contabilitate romaneasca in partida dubla, care acopera
+ciclul contabil intreg: de la documentul primar pana la declaratia pentru ANAF si
+situatiile financiare anuale. Lucreaza dupa reglementarile contabile romanesti
+(OMFP 1802/2014), cu parametrii fiscali ai anului 2026.
+
+Se foloseste din browser, fara instalare. Datele fiecarei firme sunt separate
+strict de ale celorlalte.
+
+
+PENTRU CINE
+
+Pentru patronul care isi tine singur evidenta si vrea sa stie in orice moment cat
+profit a facut, cate taxe are de platit si cati bani are disponibili — fara sa
+astepte raportul contabilului peste trei saptamani.
+
+Pentru contabilul cu portofoliu de firme, care are nevoie sa vada dintr-un singur
+ecran ce declaratii sunt depuse, ce e restant si unde sunt erori, pe toate firmele
+deodata.
+
+
+CE FACE
+
+Documente si facturare. Peste 100 de tipuri de operatiuni gata pregatite: alegi
+tipul in limbaj obisnuit („factura de la furnizor", „incasare de la client"), iar
+aplicatia pune conturile corecte. Facturile emise primesc numar in serie continua,
+PDF pentru client si e-Factura in format XML pentru SPV, cu trimitere si recipisa.
+Facturile primite se pot importa direct din SPV. Include avize, facturi simplifi-
+cate, facturi de avans si e-Transport (cod UIT).
+
+Citirea automata a documentelor. Tragi PDF-ul sau poza facturii; furnizorul, CUI-ul,
+baza, TVA-ul si totalul se completeaza singure. Inainte de a fi acceptata, citirea
+trece printr-o baterie de controale: aritmetica (baza plus TVA egal total), cota,
+data, numarul documentului, partenerul cunoscut si duplicatul. Inregistrarea auto-
+mata este oprita implicit — se activeaza doar daca o ceri.
+
+TVA si declaratii. Jurnale de vanzari si cumparari defalcate pe cote, TVA la
+incasare, taxare inversa, pro-rata. Se genereaza D300, D394, D390, D205, D112,
+D100, D101, SAF-T (D406) si Intrastat, cu validare inainte de depunere si cu
+reconciliere fata de decontul precompletat e-TVA.
+
+Registre si situatii financiare. Registru-jurnal, cartea mare, balanta de verifi-
+care cu cele patru egalitati, bilant (F10), cont de profit si pierdere (F20),
+situatia fluxurilor de trezorerie (F30), situatia modificarilor capitalurilor
+proprii (F40) si notele explicative — intr-un singur PDF.
+
+Stocuri si productie. Gestiuni evaluate la cost mediu ponderat sau FIFO, NIR, bon
+de consum, aviz de insotire, inventar cu proces-verbal, retete de fabricatie si
+descarcare automata de gestiune la vanzare.
+
+Salarizare. State de plata cu cotele in vigoare, deducere personala, concedii
+medicale si de odihna, tichete de masa, avantaje in natura, fluturasi, adeverinte
+si declaratia D112.
+
+Banca si casa. Import de extras bancar in format CSV sau MT940, potrivire automata
+a incasarilor si platilor cu partenerii, control de sold si de plafon de casierie,
+fisier de plati in standardul SEPA si preluarea automata a cursului BNR.
+
+Imobilizari. Registrul mijloacelor fixe, amortizare liniara, degresiva sau
+accelerata, amortizare fiscala separata de cea contabila si leasing financiar cu
+grafic de rate.
+
+Conducerea afacerii. Situatia la zi a profitului, taxelor si banilor disponibili;
+scadentar pe vechimi al clientilor si furnizorilor; comparatie an la an; buget fata
+de realizat; previziune de incasari; comparatie intre impozitul micro si cel pe
+profit, pe cifrele tale.
+
+Pentru mai multe firme. Comutare dintr-un selector, tablou de conformitate agregat
+peste tot portofoliul, registru al depunerilor cu termenele legale si un rezumat
+zilnic pe e-mail cu restantele si termenele urmatoarelor sapte zile.
+
+Siguranta. Cont propriu cu parola si, optional, autentificare in doi pasi. Jurnal
+de audit al actiunilor. Backup zilnic automat, cu o copie pastrata in afara
+serverului, si exercitiu de restaurare rulat periodic — ca sa se stie ca backupul
+chiar poate fi restaurat, nu doar ca exista.
+
+
+DE CE POATE FI CREZUTA
+
+Inainte ca o versiune sa ajunga la utilizatori, declaratiile pe care le genereaza
+aplicatia sunt trecute prin DUKIntegrator — validatorul publicat chiar de ANAF —
+si prin schema oficiala XSD pentru e-Transport. Daca o singura declaratie este
+respinsa, versiunea nu se publica. Mai mult: daca validarea nu poate rula (servi-
+ciul ANAF este indisponibil, schema lipseste), versiunea tot nu se publica.
+
+Peste aceasta verificare ruleaza automat, la fiecare versiune, o suita de mii de
+controale: balante care trebuie sa se inchida, TVA pe fiecare cota, salarii pe
+grila in vigoare, inchideri de luna si de an.
+
+Cotele fiscale nu sunt raspandite prin cod, ci stau intr-un singur loc, cu data de
+la care se aplica, si pot fi ajustate manual daca legea se schimba.
+
+
+CE COSTA
+
+Proba: 30 de zile, gratuit, fara card bancar.
+Start: 99 de lei pe luna — pentru antreprenori care isi tin singuri evidenta.
+Pro:  199 de lei pe luna — pentru contabili si portofolii de firme.
+
+Toate planurile includ aceleasi functii. Stocurile, productia, salarizarea si toate
+declaratiile sunt incluse din prima zi; nu exista module platite separat. Planurile
+se diferentiaza prin pret, nu prin ce poti face.
+
+Dupa terminarea probei datele raman; se alege un plan si se continua de unde s-a
+ramas.
+
+
+CE NU FACE
+
+Nu depune declaratiile in locul tau. Depunerea in Spatiul Privat Virtual o faci tu
+si necesita certificat digital ANAF.
+
+Nu inlocuieste validarea oficiala. Declaratia ta, cu cifrele tale, se valideaza cu
+DUKIntegrator inainte de depunere.
+
+Nu inlocuieste contabilul autorizat. Aplicatia calculeaza si pregateste; raspunderea
+fiscala ramane a ta, iar sumele si incadrarile e bine sa fie verificate de un
+profesionist.
+
+Nu inlocuieste casa de marcat fiscala, obligatorie separat pentru incasarile in
+numerar de la populatie.
+
+Nu pastreaza in locul tau documentele originale, care trebuie tinute conform
+termenelor legale — in general cinci ani.
+
+
+CUM SE INCEPE
+
+Inscrierea dureaza doua minute si nu cere card. Daca ai deja o firma cu istoric,
+poti importa balanta din programul vechi (XLS, XLSX, DBF sau CSV), soldurile pe
+fiecare client si furnizor si stocul cantitativ-valoric, si continui din luna
+curenta. Aplicatia verifica singura echilibrul preluarii si iti arata unde nu se
+inchide, daca e cazul.
+
+contabo.space
