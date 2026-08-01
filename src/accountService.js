@@ -81,13 +81,15 @@ function revokeSession(u, sessId) {
 
 // ── Parola + profil ──
 
-function changePassword(u, oldPassword, newPassword) {
+// ASINCRON pentru scrypt: doua hash-uri (verificarea celei vechi + calculul celei noi) inseamna
+// ~60 ms de bucla blocata daca s-ar face sincron — vezi src/auth.js.
+async function changePassword(u, oldPassword, newPassword) {
   reqNotDemo(u);
-  if (!authlib.verifyPassword(oldPassword, u.salt, u.hash)) fail(400, 'Parola veche gresita.');
+  if (!await authlib.verifyPasswordAsync(oldPassword, u.salt, u.hash)) fail(400, 'Parola veche gresita.');
   const pwErr = authlib.validatePassword(newPassword, { username: u.username });
   if (pwErr) fail(400, pwErr);
   if (String(newPassword) === String(oldPassword)) fail(400, 'Parola noua trebuie sa fie diferita de cea veche.');
-  const h = authlib.hashPassword(newPassword);
+  const h = await authlib.hashPasswordAsync(newPassword);
   u.salt = h.salt; u.hash = h.hash; u.mustChange = false;
   db.save();
 }

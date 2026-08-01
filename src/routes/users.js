@@ -22,7 +22,7 @@ module.exports = function register(app, ctx) {
       pending: !!u.pending, inviteLink: u.pending && u.inviteToken ? base + '/?invite=' + u.inviteToken : null,
     })), { label: 'users' });
   });
-  app.post('/api/users', requireAdmin, (req, res) => {
+  app.post('/api/users', requireAdmin, async (req, res) => {
     const b = req.body || {};
     if (!b.username || !b.password) return res.status(400).json({ error: 'Utilizator si parola obligatorii.' });
     // Aceeasi regula ca la inscrierea publica: pana acum calea de admin nu normaliza numele si
@@ -33,21 +33,21 @@ module.exports = function register(app, ctx) {
     if (userErr) return res.status(400).json({ error: userErr });
     const d = db.get();
     if (authlib.usernameTaken(d.users, username)) return res.status(400).json({ error: 'Utilizator deja existent.' });
-    const { salt, hash } = authlib.hashPassword(b.password);
+    const { salt, hash } = await authlib.hashPasswordAsync(b.password);
     const u = { id: db.nextUserId(), username, email: b.email || '', salt, hash, role: b.role === 'admin' ? 'admin' : 'user', firme: Array.isArray(b.firme) ? b.firme.map(Number) : [], firmaActiva: (b.firme && b.firme[0]) || null };
     d.users.push(u);
     logAudit('user.create', username + ' (' + u.role + ')', { req, firmaId: null });
     db.save();
     res.json({ ok: true, user: { id: u.id, username: u.username, role: u.role, firme: u.firme } });
   });
-  app.post('/api/users/:id', requireAdmin, (req, res) => {
+  app.post('/api/users/:id', requireAdmin, async (req, res) => {
     const u = db.getUser(req.params.id);
     if (!u) return res.status(404).json({ error: 'Utilizator inexistent' });
     const b = req.body || {};
     if (b.role) u.role = b.role === 'admin' ? 'admin' : 'user';
     if (Array.isArray(b.firme)) u.firme = b.firme.map(Number);
     if (b.drepturi && typeof b.drepturi === 'object') u.drepturi = { readonly: !!b.drepturi.readonly, faraSalarii: !!b.drepturi.faraSalarii };
-    if (b.password) { const h = authlib.hashPassword(b.password); u.salt = h.salt; u.hash = h.hash; u.mustChange = false; }
+    if (b.password) { const h = await authlib.hashPasswordAsync(b.password); u.salt = h.salt; u.hash = h.hash; u.mustChange = false; }
     logAudit('user.update', u.username, { req, firmaId: null });
     db.save();
     res.json({ ok: true });
@@ -113,7 +113,7 @@ module.exports = function register(app, ctx) {
     if (pwErr) return res.status(400).json({ error: pwErr });
     const breachErr = await authlib.breachCheck(password);
     if (breachErr) return res.status(400).json({ error: breachErr });
-    const h = authlib.hashPassword(password);
+    const h = await authlib.hashPasswordAsync(password);
     u.salt = h.salt; u.hash = h.hash; u.pending = false; delete u.inviteToken; delete u.inviteExp;
     startSession(req, res, u);
     logAudit('invite.accept', u.username, { userId: u.id, username: u.username, firmaId: null });

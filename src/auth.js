@@ -2,17 +2,42 @@
 
 const crypto = require('crypto');
 
+// scrypt costa ~30 ms de CPU, deliberat. In forma SINCRONA acele 30 ms sunt buclă de evenimente
+// BLOCATA: procesul e unul singur, deci cat dureaza un hash nu se serveste nicio alta cerere,
+// oricat de ieftina. Varianta asincrona muta calculul pe threadpool-ul libuv (implicit 4 fire,
+// UV_THREADPOOL_SIZE) — bucla ramane libera, iar hash-urile concurente chiar merg in paralel.
+//
+// Amandoua raman: pe caile de CERERE se foloseste cea asincrona (vezi poarta din test/run.js),
+// iar cea sincrona ramane pentru pornire/migrare (db.js), unde nu exista cereri de blocat si
+// unde un await ar contamina un `load()` sincron.
+const { promisify } = require('util');
+const scryptAsync = promisify(crypto.scrypt);
+const KEYLEN = 64;
+
+/** Comparatia in timp constant — scrisa O SINGURA DATA, ca variantele sa nu poata diverge. */
+function sameHash(hexNou, hexStocat) {
+  const a = Buffer.from(hexNou); const b = Buffer.from(String(hexStocat));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 /** Hash de parola cu scrypt + salt aleator. */
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, KEYLEN).toString('hex');
+  return { salt, hash };
+}
+async function hashPasswordAsync(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = (await scryptAsync(String(password), salt, KEYLEN)).toString('hex');
   return { salt, hash };
 }
 function verifyPassword(password, salt, hash) {
   if (!salt || !hash) return false;
-  const h = crypto.scryptSync(String(password), salt, 64).toString('hex');
-  const a = Buffer.from(h); const b = Buffer.from(hash);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  return sameHash(crypto.scryptSync(String(password), salt, KEYLEN).toString('hex'), hash);
+}
+async function verifyPasswordAsync(password, salt, hash) {
+  if (!salt || !hash) return false;
+  return sameHash((await scryptAsync(String(password), salt, KEYLEN)).toString('hex'), hash);
 }
 
 // Amprenta-MOMEALA: un salt/hash valid peste o parola aleatoare, imposibil de nimerit. Serveste
@@ -29,12 +54,21 @@ const DECOY = hashPassword(crypto.randomBytes(32).toString('hex'));
  * text si status — spune totusi atacatorului daca numele exista. Aici scrypt ruleaza EXACT o data
  * pe ambele ramuri; `user` fals inseamna doar ca rezultatul e aruncat.
  */
-function verifyUserPassword(user, password) {
+function decoyed(user) {
   const usable = !!(user && user.salt && user.hash); // un cont fara credentiale nu se autentifica
-  const salt = usable ? user.salt : DECOY.salt;
-  const hash = usable ? user.hash : DECOY.hash;
-  const okHash = verifyPassword(password, salt, hash);
-  return usable && okHash;
+  return { usable, salt: usable ? user.salt : DECOY.salt, hash: usable ? user.hash : DECOY.hash };
+}
+function verifyUserPassword(user, password) {
+  const d = decoyed(user);
+  const okHash = verifyPassword(password, d.salt, d.hash); // ruleaza INTOTDEAUNA
+  return d.usable && okHash;
+}
+/** Varianta asincrona — cea care trebuie folosita pe caile de cerere (scrypt pe threadpool,
+ *  bucla libera). Aceeasi alegere de momeala, deci aceleasi proprietati anti-enumerare. */
+async function verifyUserPasswordAsync(user, password) {
+  const d = decoyed(user);
+  const okHash = await verifyPasswordAsync(password, d.salt, d.hash); // ruleaza INTOTDEAUNA
+  return d.usable && okHash;
 }
 
 // Politica de parole (centralizata) pentru fluxurile self-service — unde proprietarul contului
@@ -152,6 +186,7 @@ function parseCookies(header) {
 }
 
 module.exports = {
-  hashPassword, verifyPassword, verifyUserPassword, validatePassword, breachCheck, sign, verify, parseCookies,
+  hashPassword, hashPasswordAsync, verifyPassword, verifyPasswordAsync,
+  verifyUserPassword, verifyUserPasswordAsync, validatePassword, breachCheck, sign, verify, parseCookies,
   normalizeUsername, validateUsername, usernameTaken, MIN_PASSWORD, MIN_USERNAME,
 };
