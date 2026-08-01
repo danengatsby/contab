@@ -321,6 +321,51 @@ section('Poarta: nicio comanda externa SINCRONA pe o cale de cerere');
   ok('baza temporara se sterge ASTEPTAT (fara baze orfane)', /await\s+dropDb\s*\(\)/.test(drill));
 }
 
+section('Poarta: pagina publica de prezentare nu-si contrazice produsul');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const pag = fsx.readFileSync(pth.join(RADACINA, 'public', 'prezentare.html'), 'utf8');
+
+  // Pagina de vanzare afirma CIFRE despre produs. Netinute in frau, ele drifteaza in tacere si in
+  // directia proasta: la scrierea acestei porti spunea „~100 tipuri" (erau 107), „7 declaratii"
+  // (erau 10) si „582 de verificari" cand suita trecuse de 4.300 — adica isi SUBEVALUA produsul
+  // de sapte ori. Nimic nu confrunta pagina cu realitatea, spre deosebire de docs/.
+  const nrTipuri = Object.keys(require('../../src/documentTypes').TYPES).length;
+  const statTipuri = Number((pag.match(/<b>(\d+)<\/b> tipuri de operatiuni|<b>(\d+)<\/b> tipuri de opera\u021biuni/) || [])
+    .slice(1).find(Boolean));
+  eq('numarul de tipuri de operatiuni din pagina = cel real', statTipuri, nrTipuri);
+
+  // Declaratiile: cele din registrul depunerilor + D205 (generator propriu, fara pozitie in registru).
+  const nrDecl = Object.keys(require('../../src/declarations').TIPURI).length
+    + (typeof require('../../src/xml').d205Xml === 'function' ? 1 : 0);
+  const statDecl = Number((pag.match(/<b>(\d+)<\/b> declara\u021bii/) || [])[1]);
+  eq('numarul de declaratii din pagina = cel real', statDecl, nrDecl);
+
+  // Fiecare declaratie NUMITA in pagina trebuie sa existe ca generator — altfel pagina vinde ceva
+  // ce nu se livreaza. Se verifica pe numele scurte, nu pe descrieri.
+  const numite = [...new Set([...pag.matchAll(/\bD(100|101|112|205|300|390|394|406)\b/g)].map((m) => m[1]))];
+  const xmlSrc = fsx.readFileSync(pth.join(RADACINA, 'src', 'xml.js'), 'utf8')
+    + fsx.readFileSync(pth.join(RADACINA, 'src', 'saft.js'), 'utf8');
+  const fara = numite.filter((d) => !new RegExp('d' + d + 'Xml|D406|saftXml', 'i').test(xmlSrc));
+  ok('fiecare declaratie numita in pagina are generator' + (fara.length ? ' — LIPSA: D' + fara.join(', D') : ''),
+    fara.length === 0);
+  ok('pagina chiar numeste declaratii (poarta nu scaneaza in gol)', numite.length >= 6);
+
+  // NUMERE CARE DRIFTEAZA GARANTAT: cate verificari are suita nu are ce cauta intr-o pagina de
+  // marketing — creste la fiecare test nou. Aceeasi regula ca la docs/ (vezi CLAUDE.md).
+  // Regexul tolereaza MARCAJ intre cifra si text: forma reala din pagina era
+  // `<b>582</b> de verificari automate`, iar o ancora care cerea cifra lipita de cuvant nu o
+  // prindea — verificat prin mutatie, poarta trecea senina peste exact driftul pe care il vaneaza.
+  ok('pagina NU fixeaza numarul de verificari al suitei (drifteaza garantat)',
+    !/\d[\s\S]{0,24}verific\u0103ri automate/.test(pag));
+
+  // Afirmatia cea mai puternica a produsului lipsea cu desavarsire din pagina de vanzare:
+  // DUKIntegrator aparea O SINGURA data, si doar ca obligatie a UTILIZATORULUI. Poarta cere ca
+  // pagina sa spuna si ce garanteaza PRODUSUL — altfel argumentul se pierde iar la o rescriere.
+  ok('pagina prezinta poarta fiscala ca promisiune a produsului, nu doar ca sarcina a ta',
+    /valideaz\u0103|valida/i.test(pag) && /versiune[\s\S]{0,200}DUKIntegrator|DUKIntegrator[\s\S]{0,200}versiune/i.test(pag));
+}
+
 section('Poarta: nicio ruta in afara prefixelor pazite (/api /pdf /xml /csv /efactura)');
 {
   const fsx = require('fs'); const pth = require('path');
