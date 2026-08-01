@@ -102,10 +102,10 @@
   <!-- ─────────────── STATS ─────────────── -->
   <div class="stats">
     <div class="wrap">
-      <div class="stat"><b>~100</b> tipuri de operațiuni contabile gata pregătite</div>
-      <div class="stat"><b>7</b> declarații ANAF: D300 · D394 · D390 · D205 · D112 · D100 · SAF-T</div>
+      <div class="stat"><b>107</b> tipuri de operațiuni contabile gata pregătite</div>
+      <div class="stat"><b>10</b> declarații și situații: D300 · D394 · D390 · D205 · D112 · D100 · D101 · SAF-T · Intrastat · bilanț</div>
       <div class="stat"><b>F10–F40</b> situații financiare complete, într-un PDF</div>
-      <div class="stat"><b>582</b> de verificări automate la fiecare versiune</div>
+      <div class="stat"><b>0</b> versiuni publicate fără trecerea prin validatorul ANAF</div>
     </div>
   </div>
 
@@ -238,6 +238,38 @@
         <li tabindex="0"><b>Verifici rapoartele</b><span class="mut">Registru-jurnal, cartea mare, balanța (debit = credit), decontul de TVA pe cote — toate deja generate.</span></li>
         <li tabindex="0"><b>Închizi luna</b><span class="mut">Amortizare, închidere TVA, apoi descarci declarațiile: D300, D394, D112, SAF-T — și le bifezi „depuse" în registrul depunerilor.</span></li>
       </ol>
+    </div>
+  </section>
+
+  <!-- ─────────────── INCREDERE: POARTA FISCALA ─────────────── -->
+  <section id="incredere">
+    <div class="wrap">
+      <p class="kicker">De ce poți avea încredere</p>
+      <h2>Fiecare versiune trece prin validatorul oficial ANAF</h2>
+      <p class="lead">Nu spunem „conform ANAF" și atât. <b>Înainte ca o versiune să ajungă la tine</b>,
+        declarațiile pe care le generează aplicația sunt trecute prin <b>DUKIntegrator — validatorul
+        publicat de ANAF</b> — și prin schema oficială XSD pentru e-Transport. Dacă o singură
+        declarație e respinsă, versiunea nu se publică.</p>
+      <div class="poarta">
+        <div class="poarta-c">
+          <b>„N-am putut verifica" nu înseamnă „e bine"</b>
+          <p>Dacă validarea nu <i>poate</i> rula — serviciul ANAF e picat, schema lipsește —
+            versiunea tot nu se publică. Absența unei verificări nu e tratată ca o verificare trecută.</p>
+        </div>
+        <div class="poarta-c">
+          <b>Verificat pe fiecare declarație</b>
+          <p>D300, D394, D390, D205, D112, D100, D101, SAF-T (D406) în toate variantele, plus
+            situațiile financiare S1120/S1121 și e-Transport — toate, la fiecare versiune.</p>
+        </div>
+        <div class="poarta-c">
+          <b>Cotele stau într-un singur loc, datate</b>
+          <p>TVA 21%/11%, dividende 16%, micro 1%, salariul minim cu comutare automată la 1 iulie,
+            deducerea personală după grila în vigoare — configurabile, dacă legea se schimbă înaintea noastră.</p>
+        </div>
+      </div>
+      <p class="fineprint">Validarea de mai sus privește <b>formatul</b> declarațiilor generate de aplicație.
+        Declarația <b>ta</b>, cu cifrele tale, se validează tot cu DUKIntegrator înainte de depunere —
+        vezi „Ce face aplicația și ce rămâne la tine".</p>
     </div>
   </section>
 
