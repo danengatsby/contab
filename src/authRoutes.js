@@ -82,7 +82,11 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const { username, password, code, remember } = req.body || {};
     const d = db.get();
     const u = d.users.find((x) => x.username === username);
-    if (!u || u.pending || !authlib.verifyPassword(password, u.salt, u.hash)) { bumpFail(req); return res.status(401).json({ error: 'Utilizator sau parola gresita.' }); }
+    // Costul verificarii NU are voie sa depinde de existenta contului — vezi verifyUserPassword.
+    // Contul in ASTEPTARE (invitat, neacceptat inca) merge pe aceeasi ramura de momeala: lasat ca
+    // `u.pending || …` ar fi scurtcircuitat inaintea lui scrypt si ar fi reintrodus diferenta,
+    // deosebind un invitat de un nume liber. Dincolo de linia asta `u` e sigur activ.
+    if (!authlib.verifyUserPassword(u && !u.pending ? u : null, password)) { bumpFail(req); return res.status(401).json({ error: 'Utilizator sau parola gresita.' }); }
     let rememberDevice = false;
     if (u.twofa && !deviceTrusted(req, u)) {
       if (!code) return res.json({ twofa: true }); // parola corecta, mai trebuie codul
@@ -383,8 +387,17 @@ module.exports = function registerAuthRoutes(app, ctx) {
     u.resetExp = Date.now() + 3600 * 1000; // 1 ora
     db.save();
     const link = (req.protocol || 'http') + '://' + req.get('host') + '/?reset=' + u.resetToken;
-    try { await sendMail(d.settings.smtp, u.email, 'Resetare parola Contabo', 'Reseteaza-ti parola (valabil 1 ora):\n' + link); } catch (e) { console.error('SMTP reset:', e.message); }
+    // Raspunde INAINTE de a trimite mailul. Asteptarea rundei SMTP se vedea in timpul de raspuns
+    // doar pe ramura cu cont existent (secunde, nu milisecunde), deci enumera conturile exact ce
+    // textul generic de mai sus ascunde. Trimiterea continua in fundal; esecul ei se logheaza si
+    // asa nu schimba raspunsul catre client (utilizatorul reincearca, tokenul e deja salvat).
     res.json(generic);
+    // sendMail poate arunca SINCRON (nodemailer lipsa, transport invalid), nu doar respinge — dupa
+    // res.json() aceea ar urca la handlerul global cu antetele trimise. Ambele forme se opresc aici.
+    try {
+      sendMail(d.settings.smtp, u.email, 'Resetare parola Contabo', 'Reseteaza-ti parola (valabil 1 ora):\n' + link)
+        .catch((e) => console.error('SMTP reset:', e.message));
+    } catch (e) { console.error('SMTP reset:', e.message); }
   }));
   function findReset(token) {
     // comparatie in timp constant: tokenul vine din URL, egalitatea `===` s-ar scurta la primul

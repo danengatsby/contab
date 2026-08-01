@@ -15,6 +15,28 @@ function verifyPassword(password, salt, hash) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+// Amprenta-MOMEALA: un salt/hash valid peste o parola aleatoare, imposibil de nimerit. Serveste
+// exclusiv la a consuma acelasi scrypt cand contul nu exista. Se genereaza la incarcarea
+// modulului (o singura data, ~30 ms la pornire) ca sa nu stea o valoare fixa in depozit.
+const DECOY = hashPassword(crypto.randomBytes(32).toString('hex'));
+
+/**
+ * Verifica parola pentru un utilizator care POATE lipsi — singura forma admisa pe rutele PUBLICE.
+ *
+ * Forma naiva `!u || !verifyPassword(pw, u.salt, u.hash)` scurtcircuiteaza: pe contul inexistent
+ * scrypt nu mai ruleaza deloc, deci raspunsul vine in ~0 ms fata de ~30 ms pentru un cont real.
+ * Diferenta e cu doua ordine de marime peste zgomotul retelei, deci raspunsul 401 — identic ca
+ * text si status — spune totusi atacatorului daca numele exista. Aici scrypt ruleaza EXACT o data
+ * pe ambele ramuri; `user` fals inseamna doar ca rezultatul e aruncat.
+ */
+function verifyUserPassword(user, password) {
+  const usable = !!(user && user.salt && user.hash); // un cont fara credentiale nu se autentifica
+  const salt = usable ? user.salt : DECOY.salt;
+  const hash = usable ? user.hash : DECOY.hash;
+  const okHash = verifyPassword(password, salt, hash);
+  return usable && okHash;
+}
+
 // Politica de parole (centralizata) pentru fluxurile self-service — unde proprietarul contului
 // isi alege singur parola: inscriere, resetare, acceptare invitatie, schimbare parola. Intoarce
 // un mesaj de eroare (string) sau null daca parola e acceptabila. Fara dependinte: lungime minima
@@ -130,6 +152,6 @@ function parseCookies(header) {
 }
 
 module.exports = {
-  hashPassword, verifyPassword, validatePassword, breachCheck, sign, verify, parseCookies,
+  hashPassword, verifyPassword, verifyUserPassword, validatePassword, breachCheck, sign, verify, parseCookies,
   normalizeUsername, validateUsername, usernameTaken, MIN_PASSWORD, MIN_USERNAME,
 };
