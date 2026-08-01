@@ -150,6 +150,14 @@ function aging(db, asOf) {
         const onDebit = accounts.includes(l.debit);
         const onCredit = accounts.includes(l.credit);
         if (!onDebit && !onCredit) continue;
+        // MUTARE IN INTERIORUL familiei (4111 = 418 la facturarea unui aviz; 408 = 401 cand
+        // soseste factura): creanta/datoria isi schimba doar contul, marimea ei nu se misca.
+        // Fara linia asta, latura care primeste era numarata ca o factura NOUA, iar cea care da
+        // era ignorata — deci acelasi element intra de doua ori. Un aviz de 10.000 facturat apoi
+        // aparea in scadentar ca 20.000, in timp ce `receivablesPayables`, care merge pe soldul
+        // net din `analyticBalance`, arata corect 10.000: doua cifre pentru acelasi lucru, pe
+        // acelasi ecran — exact ce evita perimetrul comun din capul modulului.
+        if (onDebit && onCredit) continue;
         const r = ensure(key, e.partener, e.partenerCui);
         const isCharge = chargeOnDebit ? onDebit : onCredit;
         if (isCharge) r.charges.push({ date: e.data, amount: round2(l.suma) });
