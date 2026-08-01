@@ -76,7 +76,9 @@ module.exports = function registerAuthRoutes(app, ctx) {
     }
   });
 
-  app.post('/api/login', (req, res) => {
+  // Handler ASINCRON deliberat: scrypt costa ~30 ms si in forma sincrona acelea sunt 30 ms in care
+  // nu se serveste NICIO alta cerere (un singur proces). Vezi authlib.verifyUserPasswordAsync.
+  app.post('/api/login', async (req, res) => {
     const mins = isLocked(req);
     if (mins) return res.status(429).json({ error: 'Prea multe incercari esuate. Reincearca peste ~' + mins + ' min.' });
     const { username, password, code, remember } = req.body || {};
@@ -86,7 +88,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
     // Contul in ASTEPTARE (invitat, neacceptat inca) merge pe aceeasi ramura de momeala: lasat ca
     // `u.pending || …` ar fi scurtcircuitat inaintea lui scrypt si ar fi reintrodus diferenta,
     // deosebind un invitat de un nume liber. Dincolo de linia asta `u` e sigur activ.
-    if (!authlib.verifyUserPassword(u && !u.pending ? u : null, password)) { bumpFail(req); return res.status(401).json({ error: 'Utilizator sau parola gresita.' }); }
+    if (!await authlib.verifyUserPasswordAsync(u && !u.pending ? u : null, password)) { bumpFail(req); return res.status(401).json({ error: 'Utilizator sau parola gresita.' }); }
     let rememberDevice = false;
     if (u.twofa && !deviceTrusted(req, u)) {
       if (!code) return res.json({ twofa: true }); // parola corecta, mai trebuie codul
@@ -175,7 +177,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
       d.firme.push(firma);
       d.partners[fid] = {}; d.openingBalances[fid] = {};
     }
-    const { salt, hash } = authlib.hashPassword(password);
+    const { salt, hash } = await authlib.hashPasswordAsync(password);
     // felul contului, ales explicit la inscriere: decide ce i se ofera in aplicatie (patronul
     // isi inscrie firme proprii; contabilul primeste firmele altora, prin acord)
     const user = { id: db.nextUserId(), username, email: String(b.email || '').trim(), salt, hash, role: 'user',
@@ -424,7 +426,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (pwErr) return res.status(400).json({ error: pwErr });
     const breachErr = await authlib.breachCheck(password);
     if (breachErr) return res.status(400).json({ error: breachErr });
-    const h = authlib.hashPassword(password);
+    const h = await authlib.hashPasswordAsync(password);
     u.salt = h.salt; u.hash = h.hash; u.mustChange = false; delete u.resetToken; delete u.resetExp;
     u.sessions = []; // resetarea parolei deconecteaza celelalte sesiuni
     startSession(req, res, u);

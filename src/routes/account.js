@@ -19,6 +19,14 @@ module.exports = function register(app, ctx) {
       res.status(e.status).json({ error: e.message });
     }
   };
+  // Varianta asincrona (tiparul `runA` din src/routes/anaf.js): erorile de business isi pastreaza
+  // statusul, restul urca la handlerul global. Apelantul TREBUIE sa o astepte.
+  const runA = async (res, fn) => {
+    try { res.json(await fn()); } catch (e) {
+      if (!e.status) throw e;
+      res.status(e.status).json({ error: e.message });
+    }
+  };
 
   // ───────────────────────────── 2FA (TOTP) ─────────────────────────────
   app.post('/api/2fa/setup', (req, res) => run(res, () => svc.setup2fa(req.user)));
@@ -56,8 +64,11 @@ module.exports = function register(app, ctx) {
     // validarea sincrona (oldPassword, lungime/blacklist) e in serviciu; verificarea HIBP e async
     const breachErr = b.newPassword ? await authlib.breachCheck(String(b.newPassword)) : null;
     if (breachErr) return res.status(400).json({ error: breachErr });
-    run(res, () => {
-      svc.changePassword(req.user, b.oldPassword, b.newPassword);
+    // runA, nu run: changePassword e acum asincron (scrypt pe threadpool). Cu `run` sincron,
+    // promisiunea ar fi ramas neasteptata — raspuns trimis inainte de scriere si erorile de
+    // business (parola veche gresita) ratacite intr-o respingere netratata.
+    await runA(res, async () => {
+      await svc.changePassword(req.user, b.oldPassword, b.newPassword);
       logAudit('parola.schimbata', req.user.username, { req, firmaId: null });
       return { ok: true };
     });

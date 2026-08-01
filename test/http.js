@@ -1517,6 +1517,9 @@ async function main() {
     eq('mustChange: schimbarea parolei FARA token -> 403 (deci token-ul chiar e necesar)',
       (await req('POST', '/api/change-password', { cookie: laDef.cookie, noCsrf: true, headers: { Origin: BASE }, body: { oldPassword: 'admin', newPassword: 'ParolaNoua2026x' } })).status, 403);
     eq('mustChange: scriere blocata', (await req('POST', '/api/partners', { cookie: laDef.cookie, body: { cui: 'RO1', den: 'X' } })).status, 403);
+    // Garda pe parola VECHE — singurul caz care nu era acoperit pe ruta (statea doar in suita
+    // sincrona, unde changePassword nu mai poate fi verificat de cand e asincron).
+    eq('mustChange: parola veche gresita -> refuz', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'nu-asta', newPassword: 'ParolaNoua2026x' } })).status, 400);
     eq('mustChange: parola noua = cea veche -> refuz', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'admin' } })).status, 400);
     eq('mustChange: parola noua prea scurta -> refuz', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'ab1' } })).status, 400);
     ok('mustChange: schimbarea valida reuseste', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'parola-noua-2026' } })).json.ok === true);

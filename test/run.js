@@ -4631,17 +4631,16 @@ const totpT = require('../src/totp');
 // garda pe contul demo: refuzata la nivel de serviciu, nu doar in ruta
 const demoAcc = { username: 'demo' };
 eq('demo: setup 2FA -> 403', errStatus(() => asvc.setup2fa(demoAcc)), 403);
-eq('demo: schimbare parola -> 403', errStatus(() => asvc.changePassword(demoAcc, 'a', 'parola-noua-2026')), 403);
 eq('demo: actualizare profil -> 403', errStatus(() => asvc.updateProfile(demoAcc, { email: 'spam@x.ro' })), 403);
 eq('demo: revocare dispozitive -> 403', errStatus(() => asvc.revokeTrustedDevices(demoAcc)), 403);
-// schimbarea parolei: gardele si efectul
+// changePassword nu se mai verifica AICI: e asincron (scrypt pe threadpool — vezi src/auth.js),
+// iar suita asta e sincora prin constructie. `errStatus(() => asvc.changePassword(...))` ar primi
+// o promisiune RESPINSA, nu o exceptie, si ar raporta verde din motivul gresit — genul de test
+// care linisteste fara sa verifice nimic. Cele cinci cazuri (demo -> 403, parola veche gresita,
+// parola noua slaba, parola noua = cea veche, schimbarea valida + mustChange stins) se verifica
+// pe RUTA, in test/http.js, unde se exercita si legarea prin runA.
 const hpT = authT.hashPassword('parola-veche-123');
 const u1 = { username: 'tester-cont', salt: hpT.salt, hash: hpT.hash, mustChange: true, sessions: [{ id: 's1' }, { id: 's2' }, { id: 's3' }] };
-eq('parola veche gresita -> 400', errStatus(() => asvc.changePassword(u1, 'gresita', 'parola-noua-2026')), 400);
-eq('parola noua slaba -> 400', errStatus(() => asvc.changePassword(u1, 'parola-veche-123', 'ab1')), 400);
-eq('parola noua = cea veche -> 400', errStatus(() => asvc.changePassword(u1, 'parola-veche-123', 'parola-veche-123')), 400);
-asvc.changePassword(u1, 'parola-veche-123', 'parola-noua-2026');
-ok('schimbare valida: hash nou + mustChange resetat', authT.verifyPassword('parola-noua-2026', u1.salt, u1.hash) && u1.mustChange === false);
 // fluxul 2FA: setup -> enable (cod real) -> disable, cu gardele de stare
 eq('enable fara setup -> 400', errStatus(() => asvc.enable2fa(u1, '123456')), 400);
 const s2fa = asvc.setup2fa(u1);
@@ -5867,8 +5866,15 @@ section('Poarta: verificarea parolei costa la fel si cand contul NU exista (anti
   const vinovati = [];
   for (const f of fisiere) {
     const src = faraComentarii(fsx.readFileSync(f, 'utf8'));
-    for (const m of src.matchAll(/(?<!User)verifyPassword\s*\(/g)) {
+    // `(Async)?` e esential: fara el poarta ar fi devenit oarba exact cand calea de login a trecut
+    // pe scrypt asincron — `!u || !verifyPasswordAsync(...)` e aceeasi regresie, alt nume.
+    for (const m of src.matchAll(/(?<!User)verifyPassword(Async)?\s*\(/g)) {
       const inainte = src.slice(Math.max(0, m.index - 220), m.index).replace(/\s+/g, ' ');
+      // DECLARATIILE nu sunt apeluri: `function verifyPasswordAsync(...)` prindea in fereastra
+      // corpul functiei DINAINTE (care contine legitim `if (!salt || !hash) return false`) si
+      // raporta src/auth.js ca vinovat. Defectul era latent si in P2 — a iesit la iveala abia
+      // cand a aparut a doua declaratie.
+      if (/\bfunction\s+$/.test(inainte)) continue;
       if (GARDA.test(inainte)) vinovati.push(pth.relative(root, f) + ':' + (src.slice(0, m.index).split('\n').length));
     }
   }
@@ -5878,10 +5884,49 @@ section('Poarta: verificarea parolei costa la fel si cand contul NU exista (anti
   // Poarta de mai sus e NEGATIVA: ar trece si daca cineva ar sterge verificarea cu totul. Deci
   // se cere si prezenta formei corecte exact acolo unde conteaza — pe ruta publica de login.
   const authR = fsx.readFileSync(pth.join(root, 'src', 'authRoutes.js'), 'utf8');
-  ok('/api/login foloseste authlib.verifyUserPassword', /verifyUserPassword\s*\(/.test(authR));
-  ok('src/authRoutes.js nu mai cheama verifyPassword direct', !/(?<!User)verifyPassword\s*\(/.test(authR));
-  ok('verifyUserPassword e exportat din src/auth.js',
-    /verifyUserPassword/.test(fsx.readFileSync(pth.join(root, 'src', 'auth.js'), 'utf8').match(/module\.exports\s*=\s*\{[^}]*\}/s)[0]));
+  ok('/api/login foloseste authlib.verifyUserPassword(Async)', /verifyUserPassword(Async)?\s*\(/.test(authR));
+  ok('src/authRoutes.js nu mai cheama verifyPassword direct', !/(?<!User)verifyPassword(Async)?\s*\(/.test(faraComentarii(authR)));
+  const exp = fsx.readFileSync(pth.join(root, 'src', 'auth.js'), 'utf8').match(/module\.exports\s*=\s*\{[\s\S]*?\}/)[0];
+  ok('ambele variante sunt exportate din src/auth.js',
+    /verifyUserPassword\b/.test(exp) && /verifyUserPasswordAsync\b/.test(exp));
+}
+
+section('Poarta: niciun scrypt SINCRON pe o cale de cerere (bucla de evenimente)');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const root = pth.join(__dirname, '..');
+  const faraComentarii = (s) => s
+    .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '))
+    .replace(/^([ \t]*)\/\/.*$/gm, (c) => c.replace(/[^\n]/g, ' '));
+
+  // scrypt costa ~30 ms de CPU. Sincron, acelea sunt 30 ms in care procesul — unul singur — nu
+  // serveste NICIO alta cerere. Pe o cale de cerere se foloseste varianta asincrona (threadpool);
+  // formele sincrone raman legitime DOAR la pornire/migrare (src/db.js), unde nu exista cereri
+  // de blocat si unde un await ar contamina un `load()` sincron.
+  //
+  // Perimetrul se DERIVA: tot ce inregistreaza rute (src/routes/*, authRoutes) plus serviciile
+  // chemate din ele — nu o lista fixa, ca un modul de rute nou sa intre singur sub poarta.
+  const caiDeCerere = ['src/authRoutes.js']
+    .concat(fsx.readdirSync(pth.join(root, 'src', 'routes')).filter((f) => f.endsWith('.js')).map((f) => 'src/routes/' + f))
+    .concat(fsx.readdirSync(pth.join(root, 'src')).filter((f) => /Service\.js$/.test(f)).map((f) => 'src/' + f));
+  ok('perimetrul acopera rutele si serviciile', caiDeCerere.length > 30);
+
+  const SINCRON = /(?<!Async)\b(hashPassword|verifyPassword|verifyUserPassword)\s*\(/;
+  const vinovati = caiDeCerere.filter((f) => SINCRON.test(faraComentarii(fsx.readFileSync(pth.join(root, f), 'utf8'))));
+  ok('niciun hash/verify sincron pe caile de cerere' + (vinovati.length ? ' — ' + vinovati.join(', ') : ''),
+    vinovati.length === 0);
+
+  // Poarta de mai sus e NEGATIVA — ar trece si pe un cod care nu mai hash-uieste nimic. Deci se
+  // cere si prezenta formelor asincrone acolo unde stim ca se lucreaza cu parole.
+  const auth = fsx.readFileSync(pth.join(root, 'src', 'authRoutes.js'), 'utf8');
+  ok('authRoutes chiar hash-uieste, asincron', /hashPasswordAsync\s*\(/.test(auth));
+  const acc = fsx.readFileSync(pth.join(root, 'src', 'accountService.js'), 'utf8');
+  ok('schimbarea parolei e asincrona pe ambele hash-uri (verificare + calcul)',
+    /verifyPasswordAsync\s*\(/.test(acc) && /hashPasswordAsync\s*\(/.test(acc));
+
+  // src/db.js ARE voie sa foloseasca forma sincrona (pornire) — poarta nu trebuie sa fie atat de
+  // larga incat sa-l prinda, altfel presiunea ar fi sa facem `load()` asincron fara motiv.
+  ok('db.js (pornire) ramane in afara perimetrului', !caiDeCerere.includes('src/db.js'));
 }
 
 section('Poarta: nicio ruta in afara prefixelor pazite (/api /pdf /xml /csv /efactura)');
