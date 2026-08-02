@@ -309,6 +309,14 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
 
   const randuriLogari = await adm.locator('#accessLogins table tbody tr').count();
   ok('tabelul de autentificari are randuri', randuriLogari > 0);
+
+  // Al treilea tabel exista si e cel despre vizitatorii NEAUTENTIFICATI. Aici nu poate avea randuri:
+  // instanta izolata e lovita de pe bucla locala, iar acele adrese sunt excluse deliberat. Asta e
+  // tocmai proba ca filtrul functioneaza — daca ar aparea randuri, ar insemna ca numaram nginx-ul
+  // si sondele proprii drept vizitatori.
+  ok('tabelul de accesari ale site-ului exista', (await adm.locator('#accessVisitors').count()) === 1);
+  ok('...si NU numara traficul de pe bucla locala',
+    /Nicio accesare/.test(await adm.locator('#accessVisitors').innerText().catch(() => '')));
   ok('...cu data si ora afisate', /\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2}/.test(await adm.locator('#accessLogins').innerText().catch(() => '')));
 
   // Filtrul „doar esuate" trebuie sa schimbe efectiv continutul, nu doar clasa butonului.

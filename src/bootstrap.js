@@ -36,6 +36,7 @@ function createApp() {
   const log = require('./log');
   const metrics = require('./metrics');
   const uploadGuard = require('./uploadGuard');
+  const visitors = require('./visitors');
   const helmet = require('helmet');
 
   // Reverse proxy: avem incredere DOAR in proxy-ul local (nginx pe 127.0.0.1) ca sa citim
@@ -106,6 +107,16 @@ function createApp() {
   app.use((req, res, next) => {
     req.reqId = crypto.randomBytes(4).toString('hex');
     res.setHeader('X-Request-Id', req.reqId);
+    next();
+  });
+
+  // Cine atinge site-ul, AGREGAT PE IP (src/visitors.js). Sta INAINTEA fisierelor statice, ca sa
+  // vada si vizitatorii care nu ajung niciodata la o ruta de API (pagina de prezentare, ecranul de
+  // login, roboti). O(1) si fara I/O — persistenta e treaba unui job periodic, nu a cererii.
+  // `req.user` nu e inca setat aici (autentificarea vine mai jos), deci legatura IP -> cont se
+  // face la finalul raspunsului, cand utilizatorul e cunoscut.
+  app.use((req, res, next) => {
+    res.on('finish', () => { try { visitors.noteRequest(req); } catch (_) { /* nu rupe cererea */ } });
     next();
   });
 

@@ -98,6 +98,7 @@ const DEFAULT_DB = {
   leasingContracts: [], // { id, firmaId, denumire, partener, cui, principal, months, dobandaAnuala, metoda, dataPrimeiRate, cotaTva } - contractele de leasing, sursa graficului de rate
   accessRequests: [],  // { id, firmaId, userId, ts, status } - contabil care CERE acces la o firma existenta (aproba proprietarul)
   serviceRequests: [], // { id, firmaId, ownerId, contabilId, mesaj, ts, status } - patron care ANGAJEAZA un contabil (accepta contabilul)
+  visitors: [],        // { id=ip, ip, prima, ultima, cereri, pagini, ultimaCale, ua, bot, useri } - cine atinge site-ul, AGREGAT pe IP (src/visitors.js)
   customAccounts: [],  // { cod, nume, clasa, tip } - conturi personalizate (import)
   settings: {
     useAI: true,
@@ -213,6 +214,7 @@ function migrate(d) {
   if (!Array.isArray(d.leasingContracts)) d.leasingContracts = [];
   if (!Array.isArray(d.accessRequests)) d.accessRequests = [];
   if (!Array.isArray(d.serviceRequests)) d.serviceRequests = [];
+  if (!Array.isArray(d.visitors)) d.visitors = [];
   if (!Array.isArray(d.customAccounts)) d.customAccounts = [];
   if (!Array.isArray(d.assets)) d.assets = [];
   if (!Array.isArray(d.angajati)) d.angajati = [];

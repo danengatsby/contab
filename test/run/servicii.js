@@ -1128,13 +1128,19 @@ section('Joburi periodice opribile (src/jobs.js: unref + stop)');
   // sunt unref() la creare, iar start() intoarce un stop() care le curata pe toate.
   const jobs = require('../../src/jobs');
   const stubs = { doBackup: () => ({ name: 'x' }), resetDemo: () => ({ ok: true }), registerAttempts: new Map(), forgotAttempts: new Map() };
+  // Numarul asteptat se DERIVA din sursa, nu se scrie de mana: altfel fiecare job nou pica testul
+  // dintr-un motiv fals si cifra ajunge sa fie „reparata" mecanic, pana cand nu mai verifica nimic.
+  // Derivat, aserttiunea spune ce trebuie: *fiecare* `safeInterval` ajunge in `handles` si e oprit.
+  const asteptate = (require('fs').readFileSync(require('path').join(RADACINA, 'src', 'jobs.js'), 'utf8')
+    .match(/^\s*safeInterval\(/gm) || []).length;
+  ok('poarta chiar numara joburi (nu o lista goala)', asteptate > 5);
   const h = jobs.start(stubs);
   ok('start() intoarce un handle cu stop()', h && typeof h.stop === 'function');
-  eq('stop() curata toate cele 11 joburi', h.stop(), 11);
+  eq('stop() curata toate joburile declarate in sursa', h.stop(), asteptate);
   eq('stop() e idempotent (a doua oara: nimic de curatat)', jobs.stop(), 0);
   // dupa stop, un nou start functioneaza si se curata la fel (nu ramane stare blocata)
   jobs.start(stubs);
-  eq('restart dupa stop: tot 11 joburi, curatate din nou', jobs.stop(), 11);
+  eq('restart dupa stop: acelasi numar, curatate din nou', jobs.stop(), asteptate);
 }
 
 section('Lag-ul buclei de evenimente (metrics.lagValues) — traducerea histogramei');
@@ -1352,3 +1358,94 @@ section('Raportul „cine acceseaza aplicatia" (src/accessService.js)');
   eq('IP-urile distincte se cer o singura data', asvcA.ipuriDistincte(s, l).length, 4);
 }
 
+
+section('Vizitatorii site-ului (src/visitors.js) — ce se numara si ce nu');
+{
+  const vis = require('../../src/visitors');
+  const cerere = (o) => Object.assign({ ip: '86.1.1.1', path: '/', method: 'GET', headers: { accept: 'text/html', 'user-agent': 'Mozilla/5.0 Chrome/120' } }, o);
+
+  // Ce NU se numara. Bucla locala e nginx-ul si sondele proprii; `/api/health` e lovit la 5 minute
+  // de cronul de monitorizare, deci fara excluderea lui ar fi „vizitatorul" numarul unu al site-ului.
+  ok('bucla locala nu se numara', vis.seNumara('127.0.0.1', '/') === false);
+  ok('reteaua interna nu se numara', vis.seNumara('10.0.0.5', '/') === false);
+  ok('sonda de sanatate nu se numara', vis.seNumara('86.1.1.1', '/api/health') === false);
+  ok('service worker-ul nu se numara', vis.seNumara('86.1.1.1', '/sw.js') === false);
+  ok('robots.txt nu se numara', vis.seNumara('86.1.1.1', '/robots.txt') === false);
+  ok('un vizitator public chiar se numara', vis.seNumara('86.1.1.1', '/prezentare.html') === true);
+
+  // PAGINA vs RESURSA: distinctia e tot rostul agregarii — un om face cateva pagini si zeci de
+  // cereri, un scaner face zeci de cai diferite si nicio pagina.
+  ok('„/" cu Accept: text/html e pagina', vis.estePagina('/', 'text/html', 'GET') === true);
+  ok('prezentare.html e pagina', vis.estePagina('/prezentare.html', 'text/html,*/*', 'GET') === true);
+  ok('un modul JS NU e pagina', vis.estePagina('/app.js', 'text/html', 'GET') === false);
+  ok('o foaie de stil NU e pagina', vis.estePagina('/styles.css', 'text/html', 'GET') === false);
+  ok('o ruta de API NU e pagina', vis.estePagina('/api/meta', 'text/html', 'GET') === false);
+  ok('un export PDF NU e pagina', vis.estePagina('/pdf/balanta', 'text/html', 'GET') === false);
+  ok('fara Accept: text/html nu e pagina', vis.estePagina('/', 'application/json', 'GET') === false);
+  ok('POST nu e pagina', vis.estePagina('/', 'text/html', 'POST') === false);
+
+  ok('robotul declarat e recunoscut', vis.esteBot('Mozilla/5.0 (compatible; Googlebot/2.1)') === true);
+  ok('curl e recunoscut', vis.esteBot('curl/8.5.0') === true);
+  ok('un browser obisnuit NU e robot', vis.esteBot('Mozilla/5.0 (Windows NT 10.0) Chrome/120 Safari/537') === false);
+
+  // Agregarea propriu-zisa: un rand pe IP, oricate cereri.
+  vis._reset();
+  vis.noteRequest(cerere({}));                                   // pagina
+  vis.noteRequest(cerere({ path: '/app.js', headers: { accept: 'text/html', 'user-agent': 'Mozilla/5.0 Chrome/120' } }));  // resursa
+  vis.noteRequest(cerere({ path: '/styles.css', headers: { accept: 'text/css', 'user-agent': 'Mozilla/5.0 Chrome/120' } }));
+  vis.noteRequest(cerere({ path: '/prezentare.html' }));         // a doua pagina
+  vis.noteRequest(cerere({ ip: '127.0.0.1' }));                  // ignorata
+  vis.noteRequest(cerere({ path: '/api/health' }));              // ignorata
+  let s = vis.snapshot();
+  eq('un singur rand pentru un singur IP', s.length, 1);
+  eq('cererile se numara toate (fara cele ignorate)', s[0].cereri, 4);
+  eq('paginile se numara separat de resurse', s[0].pagini, 2);
+  eq('ultima pagina e retinuta', s[0].ultimaCale, '/prezentare.html');
+  ok('prima si ultima accesare exista', !!s[0].prima && !!s[0].ultima);
+  ok('nu e marcat drept robot', s[0].bot === false);
+  eq('niciun cont legat inca', s[0].useri.length, 0);
+
+  // Legatura IP -> cont, cand vizitatorul chiar se autentifica.
+  vis.noteRequest(cerere({ path: '/api/meta', user: { username: 'contabil01' } }));
+  vis.noteRequest(cerere({ path: '/api/meta', user: { username: 'contabil01' } }));
+  s = vis.snapshot();
+  eq('contul apare o singura data, nu la fiecare cerere', s[0].useri.length, 1);
+  eq('...si e cel corect', s[0].useri[0], 'contabil01');
+
+  // Al doilea IP, de la un robot declarat.
+  vis.noteRequest(cerere({ ip: '188.2.2.2', headers: { accept: 'text/html', 'user-agent': 'Googlebot/2.1' } }));
+  s = vis.snapshot();
+  eq('doua adrese distincte', s.length, 2);
+  ok('robotul e marcat ca atare', s.find((x) => x.ip === '188.2.2.2').bot === true);
+  ok('...iar browserul obisnuit nu', s.find((x) => x.ip === '86.1.1.1').bot === false);
+
+  // Persistenta: se cere doar cand s-a schimbat ceva (altfel jobul ar marca inutil colectia murdara).
+  const p1 = vis.toPersist();
+  ok('toPersist da lista cand exista schimbari', Array.isArray(p1) && p1.length === 2);
+  ok('...cu id = adresa IP (cheia colectiei)', p1.every((x) => x.id === x.ip));
+  eq('a doua oara, fara schimbari -> null (nicio scriere)', vis.toPersist(), null);
+  vis.noteRequest(cerere({ ip: '9.9.9.9' }));
+  ok('dupa o cerere noua, toPersist da din nou lista', Array.isArray(vis.toPersist()));
+
+  // Ordonarea (cea mai recenta activitate prima) se verifica pe timpi EXPLICITI, nu pe doua
+  // `noteRequest` consecutive: acelea cad in aceeasi milisecunda, deci ordinea ar fi decisa de
+  // insertie, iar testul ar trece sau ar pica dupa cum se nimereste ceasul.
+  vis._reset();
+  vis.hydrate([
+    { ip: '1.1.1.1', prima: '2026-08-01T10:00:00.000Z', ultima: '2026-08-01T10:00:00.000Z', cereri: 1 },
+    { ip: '3.3.3.3', prima: '2026-08-02T09:00:00.000Z', ultima: '2026-08-02T09:00:00.000Z', cereri: 1 },
+    { ip: '2.2.2.2', prima: '2026-08-01T23:00:00.000Z', ultima: '2026-08-01T23:00:00.000Z', cereri: 1 },
+  ]);
+  eq('ordonare: cea mai recenta activitate prima', vis.snapshot().map((x) => x.ip).join(','), '3.3.3.3,2.2.2.2,1.1.1.1');
+
+  // Retentia: randurile vechi ies singure.
+  vis._reset();
+  vis.hydrate([
+    { ip: '1.1.1.1', prima: '2020-01-01T00:00:00.000Z', ultima: '2020-01-01T00:00:00.000Z', cereri: 5 },
+    { ip: '2.2.2.2', prima: new Date().toISOString(), ultima: new Date().toISOString(), cereri: 1 },
+  ]);
+  eq('hydrate reincarca starea persistata', vis.snapshot().length, 2);
+  eq('curata scoate inregistrarile expirate', vis.curata(Date.now()), 1);
+  eq('...si o pastreaza pe cea recenta', vis.snapshot().length, 1);
+  vis._reset();
+}
