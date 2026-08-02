@@ -494,6 +494,7 @@ export async function renderAudit() {
 // utilizator, `ip` si `dispozitiv` vin din anteturi HTTP, iar `locatie` din raspunsul unui
 // serviciu extern. Deci fiecare camp trece prin H() — inclusiv cele care „nu pot" contine markup.
 let ACCESS_DOAR_ESUATE = false;
+let ACCESS_FARA_BOTI = false;
 
 /** „02.08.2026 09:14:22" din ISO. Pura; sirul gol ramane gol. */
 function dataOra(ts) {
@@ -530,12 +531,35 @@ export async function renderAccess() {
         <td>${r.reusita ? '✓ reușită' : '✗ ' + H(r.detaliu || 'respinsă')}</td></tr>`).join('')}</tbody></table>`
     : `<p class="muted">${ACCESS_DOAR_ESUATE ? 'Nicio încercare eșuată înregistrată.' : 'Nicio autentificare înregistrată.'}</p>`;
 
+  // Al treilea tabel: TOATE adresele care ating site-ul, nu doar cele care ajung intr-un cont.
+  const boxV = $('#accessVisitors');
+  if (boxV) {
+    $('#accessVisAll') && $('#accessVisAll').classList.toggle('active', !ACCESS_FARA_BOTI);
+    $('#accessVisOameni') && $('#accessVisOameni').classList.toggle('active', ACCESS_FARA_BOTI);
+    const v = (d.vizitatori || []).filter((r) => !ACCESS_FARA_BOTI || !r.bot);
+    boxV.innerHTML = v.length
+      ? `<table><thead><tr><th>IP</th><th>Locație</th><th>Prima dată</th><th>Ultima dată</th><th>Pagini</th><th>Cereri</th><th>Ultima pagină</th><th>Cont</th></tr></thead><tbody>${
+        v.map((r) => `<tr${r.bot ? ' class="muted"' : ''}><td class="acc">${H(r.ip || '')}${r.bot ? ' <span class="muted">(robot)</span>' : ''}</td>
+          <td>${loc(r)}</td><td>${H(dataOra(r.prima))}</td><td>${H(dataOra(r.ultima))}</td>
+          <td>${Number(r.pagini) || 0}</td><td>${Number(r.cereri) || 0}</td>
+          <td>${H(r.ultimaCale || '')}</td>
+          <td>${(r.useri || []).length ? H((r.useri || []).join(', ')) : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>`
+      : `<p class="muted">${ACCESS_FARA_BOTI ? 'Nicio accesare de la un vizitator uman încă.' : 'Nicio accesare înregistrată încă.'}</p>`;
+    if ((d.vizitatoriTotal || 0) > v.length && !ACCESS_FARA_BOTI) {
+      boxV.innerHTML += `<p class="muted">Se afișează ${v.length} din ${d.vizitatoriTotal} adrese.</p>`;
+    }
+  }
+
   // Onest despre ce lipseste: „—" la locatie poate insemna si „IP privat", si „serviciul tace".
   if (!d.geoDisponibil) boxL.innerHTML += '<p class="muted">Localizarea IP-urilor nu e disponibilă momentan — restul datelor sunt complete.</p>';
 }
 $('#accessRefresh') && $('#accessRefresh').addEventListener('click', renderAccess);
 $('#accessAll') && $('#accessAll').addEventListener('click', () => { ACCESS_DOAR_ESUATE = false; renderAccess(); });
 $('#accessFailed') && $('#accessFailed').addEventListener('click', () => { ACCESS_DOAR_ESUATE = true; renderAccess(); });
+// Filtrul de roboti lucreaza pe datele deja primite (nu cere din nou serverul): distinctia e o
+// euristica pe User-Agent, deci ramane o alegere de AFISARE, nu una care sa taie date la sursa.
+$('#accessVisAll') && $('#accessVisAll').addEventListener('click', () => { ACCESS_FARA_BOTI = false; renderAccess(); });
+$('#accessVisOameni') && $('#accessVisOameni').addEventListener('click', () => { ACCESS_FARA_BOTI = true; renderAccess(); });
 
 $('#auditRefresh').addEventListener('click', renderAudit);
 $('#auditScopeFirma') && $('#auditScopeFirma').addEventListener('click', () => { AUDIT_SCOPE = 'firma'; renderAudit(); });

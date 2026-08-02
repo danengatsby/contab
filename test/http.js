@@ -2325,6 +2325,31 @@ async function main() {
       ok('PAROLA incercata nu apare NICAIERI in raport',
         !JSON.stringify(al.json).includes('parola-gresita-deliberat'));
 
+      // ── Al treilea tabel: TOATE adresele care ating site-ul, nu doar cele care ajung in cont.
+      // Cererile suitei vin de pe bucla locala, care e EXCLUSA deliberat (nginx + sondele proprii),
+      // deci tabelul e gol aici — si asta e tocmai proba ca filtrul chiar taie. Continutul se
+      // verifica prin acumulatorul injectat, unde IP-urile pot fi publice.
+      ok('raportul are si tabelul de vizitatori', Array.isArray(al.json.vizitatori));
+      ok('bucla locala NU ajunge in tabelul de vizitatori (altfel suita insasi l-ar umple)',
+        al.json.vizitatori.every((v) => !/^(127\.|::1|10\.|192\.168\.)/.test(v.ip)));
+
+      const visStub = {
+        snapshot: () => [
+          { ip: '86.124.1.1', prima: '2026-08-02T08:00:00.000Z', ultima: '2026-08-02T09:00:00.000Z', cereri: 34, pagini: 3, ultimaCale: '/prezentare.html', ua: 'Mozilla/5.0 Chrome/120', bot: false, useri: [] },
+          { ip: '66.249.66.1', prima: '2026-08-02T07:00:00.000Z', ultima: '2026-08-02T07:30:00.000Z', cereri: 12, pagini: 12, ultimaCale: '/robots.txt', ua: 'Googlebot/2.1', bot: true, useri: [] },
+        ],
+      };
+      const cuVis = await require('../src/accessService').raport(require('../src/db').get(), {
+        visitors: visStub,
+        geo: { lookupMany: async (ips) => new Map(ips.map((ip) => [ip, { oras: 'X', taraCod: 'RO' }])), eticheta: (g) => (g ? g.oras + ', ' + g.taraCod : '') },
+      });
+      eq('vizitatorii ajung in raport', cuVis.vizitatori.length, 2);
+      ok('...cu numaratoarea de pagini SEPARATA de cea de cereri',
+        cuVis.vizitatori[0].pagini === 3 && cuVis.vizitatori[0].cereri === 34);
+      ok('...cu robotul marcat', cuVis.vizitatori.some((v) => v.bot === true));
+      ok('...si cu localizare, ca celelalte tabele', cuVis.vizitatori.every((v) => v.locatie === 'X, RO'));
+      eq('totalul real e raportat', cuVis.vizitatoriTotal, 2);
+
       const doarE = await req('GET', '/api/access-log?esuate=1', { cookie: cAdmin });
       ok('filtrul ?esuate=1 intoarce numai esecuri', doarE.json.autentificari.length > 0
         && doarE.json.autentificari.every((x) => x.reusita === false));

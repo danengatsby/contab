@@ -1067,6 +1067,27 @@ section('2FA: login si Setari spun acelasi lucru (fara auto-blocare)');
     && !/\bdisabled\b/.test('<input name="code" inputmode="numeric" />'));
 }
 
+section('Poarta: fiecare colectie din graf are linie in ARRAY_COLLS (altfel dispare la restart)');
+{
+  // Modul de esec pe care il previne: o colectie noua adaugata in `db.js` dar UITATA in
+  // `store.ARRAY_COLLS` traieste doar in RAM. Totul pare sa mearga — se scrie, se citeste, testele
+  // trec — pana la primul restart, cand datele dispar TACUT. Nimic nu semnaleaza, fiindca nu exista
+  // eroare: pur si simplu nu s-a persistat niciodata nimic.
+  const dbx2 = require('../../src/db');
+  const storex = require('../../src/store');
+  const graf = dbx2.get();
+  const arrays = Object.keys(graf).filter((k) => Array.isArray(graf[k]));
+  const declarate = new Set(storex.ARRAY_COLLS.map((c) => c.key));
+  ok('poarta chiar vede colectii (nu un graf gol)', arrays.length > 15);
+  const uitate = arrays.filter((k) => !declarate.has(k));
+  ok('nicio colectie fara linie in ARRAY_COLLS'
+    + (uitate.length ? ' — UITATE: ' + uitate.join(', ') : ''), uitate.length === 0);
+  // ...si invers: o linie in ARRAY_COLLS fara colectie in graf ar persista un tabel mort
+  const fantome = [...declarate].filter((k) => !arrays.includes(k));
+  ok('nicio linie ARRAY_COLLS fara colectie in graf'
+    + (fantome.length ? ' — FANTOME: ' + fantome.join(', ') : ''), fantome.length === 0);
+}
+
 section('Incasare: nicio plata fara parte contractanta identificata');
 {
   const fsx = require('fs'); const pth = require('path');

@@ -28,6 +28,9 @@ const { D394_COD_331 } = require('./src/xml');
 const dbReady = Promise.resolve(db.load()).then(() => {
   coa.addAccounts(db.get().customAccounts); // inregistreaza conturile personalizate importate
   fiscal.applyConfig(db.get().settings.fiscal); // aplica cotele fiscale configurate (peste valorile implicite)
+  // Vizitatorii site-ului traiesc intr-un Map in memorie (calea cererii nu scrie in baza); la
+  // pornire se reincarca din colectia persistata, altfel fiecare restart ar reseta contoarele.
+  require('./src/visitors').hydrate(db.get().visitors);
 });
 
 // Instanta Express cu tot middleware-ul de infrastructura (trust proxy, helmet/CSP, reqId,

@@ -116,6 +116,20 @@ function start(ctx) {
     uploadGuard.pruneRateBuckets(now); // bucket-urile de upload/export per utilizator
   }, 3600 * 1000);
 
+  // Vizitatorii site-ului (src/visitors.js): agregatul din memorie se coboara in baza la un minut,
+  // si DOAR daca s-a schimbat ceva. Aici e tot pretul functiei — calea cererii ramane fara I/O.
+  // Un `db.save()` per cerere ar fi costat O(colectie) de fiecare data (docs/scalare-crestere.md).
+  safeInterval('visitors-flush', () => {
+    const vis = require('./visitors');
+    vis.curata();                       // retentie: inregistrarile vechi ies inainte de a fi scrise
+    const lista = vis.toPersist();
+    if (!lista) return;                 // nimic nou -> nicio scriere, nicio colectie marcata murdara
+    const d = db.get();
+    d.visitors = lista;
+    db.save();
+    metrics.jobResult('visitors-flush', lista.length + ' adrese');
+  }, 60 * 1000);
+
   // Igiena uploads (zilnic): staging-urile de import ramase dupa un crash se sterg
   // (gunoi cert, peste 24h); fisierele ORFANE doar se numara si se vad in /api/metrics
   // (ops) — stergerea lor ramane decizia operatorului.

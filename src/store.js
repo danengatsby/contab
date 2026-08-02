@@ -90,6 +90,10 @@ const ARRAY_COLLS = [
   // indexata ramane goala — filtrarea se face pe proprietar/destinatar, nu pe firma activa.
   { key: 'accessRequests', firma: false, hasId: true },
   { key: 'serviceRequests', firma: false, hasId: true },
+  // Vizitatorii site-ului, AGREGATI PE IP (un rand per adresa, nu per cerere) — vezi src/visitors.js.
+  // Globali, nu per firma: cine deschide pagina publica nu are inca nicio firma. `id` = adresa IP,
+  // deci reintrarea aceluiasi vizitator actualizeaza randul lui, nu adauga unul nou.
+  { key: 'visitors', firma: false, hasId: true },
 ];
 
 // PROIECTII NORMALIZATE: tabele derivate din blob-uri, scrise tranzactional in aceeasi tranzactie cu
