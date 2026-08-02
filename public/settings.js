@@ -8,26 +8,18 @@ import { $, $$, api, toast, USER, setMeta } from './core.js';
 let deps = {};
 export function setSettingsDeps(d) { deps = d; }
 
+// PORNIREA 2FA e scoasa din interfata cat timp campul de cod de pe login e `disabled` — ar bloca
+// definitiv contul (vezi comentariul de langa cardul 2FA din index.html). Au disparut cu ea si
+// elementele de configurare (butonul de pornire, blocul cu QR-ul, butonul de activare): in browser
+// `$()` intoarce `null` pe un id inexistent, deci un ascultator ramas pe ele ar fi aruncat la
+// import si ar fi rupt TOT modulul de setari, nu doar 2FA.
+// Ce ramane: starea (informativa) si iesirea — cine are deja 2FA trebuie sa si-l poata opri.
 export function render2FA() {
   const on = !!(USER && USER.twofa);
   $('#twofaStatus').className = 'status' + (on ? ' ok' : '');
   $('#twofaStatus').textContent = on ? '✔ 2FA este activat pe contul tău.' : '2FA este dezactivat.';
-  $('#twofaStart').classList.toggle('hidden', on);
   $('#twofaDisableWrap').classList.toggle('hidden', !on);
-  $('#twofaSetup').classList.add('hidden');
 }
-$('#twofaStart').addEventListener('click', async () => {
-  try {
-    const r = await api('/api/2fa/setup', { method: 'POST' });
-    $('#twofaSecret').textContent = 'Secret: ' + r.secret;
-    $('#twofaQr').innerHTML = `${r.qrSvg ? `<div data-u="u186">${r.qrSvg}</div><br>` : ''}<a href="${r.otpauth}" data-u="u187">${r.otpauth}</a>`;
-    $('#twofaSetup').classList.remove('hidden');
-  } catch (e) { toast(e.message, true); }
-});
-$('#twofaEnable').addEventListener('click', async () => {
-  try { await api('/api/2fa/enable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: $('#twofaCode').value }) }); toast('2FA activat'); await deps.init(); deps.onTab('setari'); }
-  catch (e) { toast(e.message, true); }
-});
 $('#twofaDisable').addEventListener('click', async () => {
   try { await api('/api/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: $('#twofaDisCode').value }) }); toast('2FA dezactivat'); await deps.init(); deps.onTab('setari'); }
   catch (e) { toast(e.message, true); }

@@ -210,10 +210,14 @@ $('#forcePwForm') && $('#forcePwForm').addEventListener('submit', async (e) => {
   try {
     await api('/api/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword: f.oldPassword.value, newPassword: f.newPassword.value }) });
     $('#forcePwOverlay').classList.add('hidden');
-    toast('Parolă schimbată. Îți recomandăm să activezi și 2FA din Setări.');
+    // Recomandarea de 2FA (si saltul la butonul ei) au fost SCOASE: cat timp campul de cod de pe
+    // login e `disabled`, ele trimiteau omul exact catre blocarea definitiva a contului. Butonul
+    // nici nu mai exista, deci `scrollIntoView` cauta un element disparut. Se pun la loc odata cu
+    // reactivarea 2FA — vezi comentariul de langa cardul 2FA din index.html.
+    toast('Parolă schimbată. Verifică în Setări sesiunile active și deconectează-le pe cele străine.');
     await D.init();
     D.goTab('setari');
-    setTimeout(() => { const t = $('#twofaStart'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 250);
+    setTimeout(() => { const t = $('#sessionsList'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 250);
   } catch (ex) { err.textContent = ex.message; }
 });
 $('#forgotLink').addEventListener('click', () => {
