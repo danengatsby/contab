@@ -489,6 +489,54 @@ export async function renderAudit() {
     list.map((a) => `<tr><td>${(a.ts || '').replace('T', ' ').slice(0, 16)}</td><td>${H(a.username || '')}${a.viaAdmin ? ' <span class="muted">(via ' + H(a.viaAdmin) + ')</span>' : ''}</td>
       <td class="acc">${a.action}</td><td>${a.detail || ''}</td></tr>`).join('')}</tbody></table>`;
 }
+// ── Cine acceseaza aplicatia (admin): sesiuni active + autentificari, cu IP si locatie ──
+// Tot ce se interpoleaza aici vine, direct sau indirect, din AFARA: `username` e ales de
+// utilizator, `ip` si `dispozitiv` vin din anteturi HTTP, iar `locatie` din raspunsul unui
+// serviciu extern. Deci fiecare camp trece prin H() — inclusiv cele care „nu pot" contine markup.
+let ACCESS_DOAR_ESUATE = false;
+
+/** „02.08.2026 09:14:22" din ISO. Pura; sirul gol ramane gol. */
+function dataOra(ts) {
+  const s = String(ts || '');
+  if (s.length < 16) return s;
+  return s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4) + ' ' + s.slice(11, 19);
+}
+
+export async function renderAccess() {
+  if (!USER || USER.role !== 'admin') return;
+  const boxS = $('#accessSessions'); const boxL = $('#accessLogins');
+  if (!boxS || !boxL) return;
+  $('#accessAll') && $('#accessAll').classList.toggle('active', !ACCESS_DOAR_ESUATE);
+  $('#accessFailed') && $('#accessFailed').classList.toggle('active', ACCESS_DOAR_ESUATE);
+  boxS.innerHTML = '<p class="muted">Se încarcă…</p>';
+  let d;
+  try { d = await api('/api/access-log' + (ACCESS_DOAR_ESUATE ? '?esuate=1' : '')); }
+  catch (e) { boxS.innerHTML = '<p class="status err">Nu s-a putut încărca lista de accesări.</p>'; boxL.innerHTML = ''; return; }
+
+  const loc = (r) => (r.locatie ? H(r.locatie) : '<span class="muted">—</span>');
+  const s = d.sesiuni || [];
+  boxS.innerHTML = s.length
+    ? `<table><thead><tr><th>Utilizator</th><th>IP</th><th>Locație</th><th>Dispozitiv</th><th>Conectat din</th><th>Ultima activitate</th></tr></thead><tbody>${
+      s.map((r) => `<tr${r.online ? ' class="ok"' : ''}><td>${H(r.username || '')}${r.rol === 'admin' ? ' <span class="muted">(admin)</span>' : ''}</td>
+        <td class="acc">${H(r.ip || '')}</td><td>${loc(r)}</td><td>${H(r.dispozitiv || '')}</td>
+        <td>${H(dataOra(r.creata))}</td><td>${H(dataOra(r.ultimaActivitate))}${r.online ? ' <b>· acum</b>' : ''}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Nicio sesiune activă.</p>';
+
+  const l = d.autentificari || [];
+  boxL.innerHTML = l.length
+    ? `<table><thead><tr><th>Data și ora</th><th>Utilizator</th><th>IP</th><th>Locație</th><th>Rezultat</th></tr></thead><tbody>${
+      l.map((r) => `<tr><td>${H(dataOra(r.ts))}</td><td>${H(r.username || '')}</td>
+        <td class="acc">${H(r.ip || '')}</td><td>${loc(r)}</td>
+        <td>${r.reusita ? '✓ reușită' : '✗ ' + H(r.detaliu || 'respinsă')}</td></tr>`).join('')}</tbody></table>`
+    : `<p class="muted">${ACCESS_DOAR_ESUATE ? 'Nicio încercare eșuată înregistrată.' : 'Nicio autentificare înregistrată.'}</p>`;
+
+  // Onest despre ce lipseste: „—" la locatie poate insemna si „IP privat", si „serviciul tace".
+  if (!d.geoDisponibil) boxL.innerHTML += '<p class="muted">Localizarea IP-urilor nu e disponibilă momentan — restul datelor sunt complete.</p>';
+}
+$('#accessRefresh') && $('#accessRefresh').addEventListener('click', renderAccess);
+$('#accessAll') && $('#accessAll').addEventListener('click', () => { ACCESS_DOAR_ESUATE = false; renderAccess(); });
+$('#accessFailed') && $('#accessFailed').addEventListener('click', () => { ACCESS_DOAR_ESUATE = true; renderAccess(); });
+
 $('#auditRefresh').addEventListener('click', renderAudit);
 $('#auditScopeFirma') && $('#auditScopeFirma').addEventListener('click', () => { AUDIT_SCOPE = 'firma'; renderAudit(); });
 $('#auditScopeSystem') && $('#auditScopeSystem').addEventListener('click', () => { AUDIT_SCOPE = 'system'; renderAudit(); });

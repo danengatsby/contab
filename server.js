@@ -53,6 +53,13 @@ function logAudit(action, detail, opts) {
   d.audit = d.audit || [];
   // daca actiunea e facuta de un admin in modul impersonare, pastreaza si numele real
   const viaAdmin = o.req && o.req.impersonating && o.req.realUser ? o.req.realUser.username : null;
+  // Adresa IP se retine pe evenimentele de AUTENTIFICARE (reusite si esuate), nu pe toate:
+  // acolo raspunde la intrebarea „cine a intrat si de unde", care e si intrebarea panoului de
+  // administrare. Pe restul actiunilor ar fi doar zgomot repetat de mii de ori pe zi.
+  // NU ajunge in proiectia SQL `audit_log` (coloane fixe, iar arhitectura nu evolueaza schema
+  // relationala — vezi CLAUDE.md): traieste in colectia vie si, DURABIL, in data/audit/*.ndjson,
+  // unde `auditLog.append` scrie inregistrarea intreaga.
+  const ip = o.ip || (o.req ? String(o.req.ip || '') : '');
   const record = {
     id: (d.audit[d.audit.length - 1] || {}).id + 1 || 1,
     ts: new Date().toISOString(),
@@ -60,6 +67,7 @@ function logAudit(action, detail, opts) {
     username: o.username || (o.req && o.req.user && o.req.user.username) || '',
     firmaId: o.firmaId != null ? o.firmaId : (o.req && o.req.user ? activeId(o.req) : null),
     action, detail: detail || '',
+    ...(ip ? { ip } : {}),
     ...(viaAdmin ? { viaAdmin } : {}),
   };
   d.audit.push(record);
@@ -152,6 +160,9 @@ require('./src/routes/firme')(app, { activeId, allowedFirme, canAccess, requireA
 
 // Utilizatori (admin) + invitatii (link setare parola, email optional): src/routes/users.js
 require('./src/routes/users')(app, { requireAdmin, logAudit, startSession, publicUser });
+
+// Cine acceseaza aplicatia (admin): sesiuni active + istoricul autentificarilor, cu IP si locatie
+require('./src/routes/access')(app, { requireAdmin, wrap });
 
 // Configurare (companie, logo, chitanta, setari, cote fiscale): src/routes/config.js
 require('./src/routes/config')(app, { S, activeId, logAudit, requireAdmin, upload });

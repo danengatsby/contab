@@ -1258,3 +1258,97 @@ section('Migrari DB versionate (src/migrations.js)');
   eq('db incarcata: schemaVersion = LATEST (hook in migrate)', require('../../src/db').get().schemaVersion, mig.LATEST);
 }
 
+
+section('Geolocalizarea IP-urilor (src/geoip.js) — ce nu pleaca niciodata');
+{
+  const geo = require('../../src/geoip');
+  geo._reset();
+
+  // IPv4 mapat in IPv6: `req.ip` da forma asta in spatele proxy-ului, iar un serviciu extern
+  // interogat cu ea intoarce „adresa invalida". Normalizarea nu e cosmetica.
+  eq('::ffff:1.2.3.4 -> 1.2.3.4', geo.normalizeIp('::ffff:1.2.3.4'), '1.2.3.4');
+  eq('spatii + majuscule se normalizeaza', geo.normalizeIp('  2A02:AB:1::5 '), '2a02:ab:1::5');
+  eq('null -> sir gol', geo.normalizeIp(null), '');
+
+  // Adresele private NU au voie sa plece la un tert: nu spun nimic serviciului si spun ceva
+  // despre reteaua noastra. Fiecare interval, verificat pe granite, nu pe un exemplu din mijloc.
+  for (const ip of ['127.0.0.1', '10.0.0.1', '10.255.255.255', '192.168.1.1', '172.16.0.1',
+    '172.31.255.255', '169.254.1.1', '100.64.0.1', '100.127.255.255', '::1', 'fe80::1', 'fd00::1',
+    '', 'unknown', '0.0.0.0']) {
+    ok('privat/local, nu pleaca: ' + (ip || '(gol)'), geo.isPrivate(ip) === true);
+  }
+  // ...iar vecinii lor imediati sunt PUBLICI: o granita gresita ar taca exact unde conteaza
+  for (const ip of ['172.15.255.255', '172.32.0.1', '100.63.255.255', '100.128.0.1', '11.0.0.1',
+    '8.8.8.8', '86.124.1.1', '2a02:ab:1::5']) {
+    ok('public, se poate interoga: ' + ip, geo.isPrivate(ip) === false);
+  }
+  ok('IPv4 malformat e tratat ca privat (fail-closed)', geo.isPrivate('999.1.2.3') === true);
+
+  // Furnizorul semnaleaza esecul cu `success:false` SI HTTP 200 — un `res.ok` singur ar fi luat
+  // esecul drept reusita si ar fi pus in cache un raspuns gol pentru 30 de zile.
+  eq('success:false -> null', geo.parseRaspuns({ success: false, message: 'reserved range' }), null);
+  eq('raspuns gol -> null', geo.parseRaspuns({}), null);
+  eq('non-obiect -> null', geo.parseRaspuns(null), null);
+  const p = geo.parseRaspuns({ country: 'Romania', country_code: 'ro', region: 'Cluj', city: 'Cluj-Napoca', connection: { isp: 'RCS & RDS' } });
+  eq('tara parsata', p.tara, 'Romania');
+  eq('codul de tara se normalizeaza la majuscule', p.taraCod, 'RO');
+  eq('operatorul din connection.isp', p.operator, 'RCS & RDS');
+  eq('eticheta pentru interfata', geo.eticheta(p), 'Cluj-Napoca, Cluj, RO');
+  eq('eticheta fara localizare = sir gol', geo.eticheta(null), '');
+  // orasul egal cu regiunea nu se repeta in eticheta
+  eq('eticheta nu repeta orasul', geo.eticheta({ oras: 'Bucuresti', regiune: 'Bucuresti', taraCod: 'RO' }), 'Bucuresti, RO');
+}
+
+section('Raportul „cine acceseaza aplicatia" (src/accessService.js)');
+{
+  const asvcA = require('../../src/accessService');
+  const T0 = Date.parse('2026-08-02T10:00:00Z');
+  const iso = (msInUrma) => new Date(T0 - msInUrma).toISOString();
+
+  eq('dispozitiv din User-Agent (Chrome/Windows)',
+    asvcA.dispozitiv('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36'),
+    'Chrome / Windows');
+  eq('Edge NU e raportat drept Chrome (sirul lui contine „Chrome/")',
+    asvcA.dispozitiv('Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/120 Safari/537.36 Edg/120'),
+    'Edge / Windows');
+  eq('Safari pe iPhone', asvcA.dispozitiv('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605 Version/17.0 Safari/605'), 'Safari / iOS');
+  eq('User-Agent absent -> sir gol', asvcA.dispozitiv(''), '');
+
+  const users = [
+    { id: 1, username: 'admin', role: 'admin', sessions: [
+      { id: 'a', ip: '::ffff:86.124.1.1', ua: 'Chrome/120 Windows NT 10.0', createdAt: iso(3600000), lastSeen: iso(60000) },
+    ] },
+    { id: 2, username: 'contabil01', role: 'user', sessions: [
+      { id: 'b', ip: '188.26.2.2', ua: 'Firefox/130 Linux', createdAt: iso(86400000), lastSeen: iso(30 * 60000) },
+      { id: 'c', ip: '10.0.0.5', ua: '', createdAt: iso(200000), lastSeen: iso(120000) },
+    ] },
+    { id: 3, username: 'fara-sesiuni', role: 'user' },
+  ];
+  const s = asvcA.sesiuniActive(users, T0);
+  eq('toate sesiunile tuturor utilizatorilor', s.length, 3);
+  eq('cea mai recenta activitate e prima', s[0].username, 'admin');
+  eq('IP-ul e normalizat si in raport', s[0].ip, '86.124.1.1');
+  ok('activ in ultimele 7 min -> online', s[0].online === true);
+  ok('activ acum 30 de min -> NU online', s.find((x) => x.ip === '188.26.2.2').online === false);
+  ok('utilizatorul fara sesiuni nu apare', !s.some((x) => x.username === 'fara-sesiuni'));
+
+  const audit = [
+    { ts: iso(500000), action: 'login', username: 'admin', userId: 1, ip: '86.124.1.1', detail: 'autentificare' },
+    { ts: iso(400000), action: 'entry.create', username: 'admin', userId: 1, detail: 'irelevant' },
+    { ts: iso(300000), action: 'login.failed', username: 'admin', userId: 1, ip: '45.9.9.9', detail: 'utilizator sau parola gresita' },
+    { ts: iso(200000), action: 'login.failed', username: 'nuexista', userId: null, ip: '45.9.9.9', detail: 'utilizator sau parola gresita' },
+  ];
+  const l = asvcA.autentificari(audit, {});
+  eq('doar evenimentele de autentificare', l.length, 3);
+  ok('actiunile care nu-s logari sunt ignorate', !l.some((x) => x.detaliu === 'irelevant'));
+  eq('cea mai recenta prima', l[0].username, 'nuexista');
+  ok('reusita e marcata ca atare', l[l.length - 1].reusita === true);
+  ok('esecul e marcat ca atare', l[0].reusita === false);
+  eq('contul inexistent nu primeste userId (nu se confirma ca exista)', l[0].userId, null);
+  const doarE = asvcA.autentificari(audit, { doarEsuate: true });
+  eq('filtrul „doar esuate"', doarE.length, 2);
+  ok('...si chiar nu contine reusite', doarE.every((x) => x.reusita === false));
+
+  eq('IP-urile distincte se cer o singura data', asvcA.ipuriDistincte(s, l).length, 4);
+}
+

@@ -283,6 +283,49 @@ sect('7. Backup si restaurare');
   ok('...iar datele din seed sunt la locul lor', !!dupaRest['11223342']);
 }
 
+// ────────── 8. „CINE ACCESEAZA APLICATIA" (admin) ──────────────────────────
+// Panoul se construieste in browser din /api/access-log. Testele HTTP dovedesc raspunsul, dar nu
+// si ca tabelele chiar se randeaza si ca ADMINUL e singurul care le vede — pentru asta trebuie un
+// DOM adevarat. Randurile vin din sesiunile create chiar de scenariul asta, deci exista sigur.
+sect('8. Cine acceseaza aplicatia (panou de administrare)');
+{
+  await adm.goto(BASE + '/', { waitUntil: 'networkidle' });
+  // `goTab`, nu un click pe butonul din meniu: bara laterala e un acordeon, iar butonul unui grup
+  // inchis nu e VIZIBIL pentru Playwright, deci clickul expira. Aceeasi cale ca in scripts/e2e.mjs.
+  // Restaurarea din sectiunea 7 readuce o baza in care contul pare „nou", deci apare ecranul de
+  // bun-venit — un overlay care intercepteaza clickurile. Se inchide inainte de a atinge panoul.
+  await adm.evaluate(() => { const w = document.querySelector('#welcomeOverlay'); if (w) w.classList.add('hidden'); });
+  await adm.evaluate(() => window.goTab('setari'));
+  await adm.waitForTimeout(1200);
+
+  const card = adm.locator('#accessCard');
+  ok('cardul exista in pagina', (await card.count()) === 1);
+  ok('...si e VIZIBIL pentru admin', !(await adm.locator('#accessCard.hidden').count()));
+
+  const randuriSesiuni = await adm.locator('#accessSessions table tbody tr').count();
+  ok('tabelul de sesiuni active are randuri', randuriSesiuni > 0);
+  const textSesiuni = await adm.locator('#accessSessions').innerText().catch(() => '');
+  ok('...si contine contul de admin', /admin/.test(textSesiuni));
+
+  const randuriLogari = await adm.locator('#accessLogins table tbody tr').count();
+  ok('tabelul de autentificari are randuri', randuriLogari > 0);
+  ok('...cu data si ora afisate', /\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2}/.test(await adm.locator('#accessLogins').innerText().catch(() => '')));
+
+  // Filtrul „doar esuate" trebuie sa schimbe efectiv continutul, nu doar clasa butonului.
+  await adm.click('#accessFailed');
+  await adm.waitForTimeout(700);
+  const dupaFiltru = await adm.locator('#accessLogins').innerText().catch(() => '');
+  ok('filtrul „doar esuate" nu mai arata reusite', !/reu[sș]it[ăa]/i.test(dupaFiltru));
+
+  // Un utilizator obisnuit NU are voie sa vada panoul — nici cardul, nici datele din spatele lui.
+  const pgLim2 = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+  await login(pgLim2, 'limitat', PAROLA);
+  ok('utilizatorul limitat NU vede cardul', (await pgLim2.locator('#accessCard.hidden').count()) === 1);
+  const refuz = await apiIn(pgLim2, '/api/access-log');
+  ok('...iar serverul ii refuza si datele (403), nu doar UI-ul ascunde', refuz.status === 403);
+  await pgLim2.close();
+}
+
 await b.close();
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari E2E izolate trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

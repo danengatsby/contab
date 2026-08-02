@@ -3,7 +3,7 @@ import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, setSettingsDeps } from './settings.js';
-import { renderFirme, renderUsers, renderColaboratori, renderAudit, setAdminDeps } from './admin.js';
+import { renderFirme, renderUsers, renderColaboratori, renderAudit, renderAccess, setAdminDeps } from './admin.js';
 import { loadDashboard, setDashboardDeps } from './dashboard.js';
 import { initUiMode } from './simplemode.js';
 import { loadPartners } from './partners.js';
@@ -131,7 +131,7 @@ function onTab(t) {
   if (t === 'salarizare') loadSalarizare();
   if (t === 'stocuri') loadStocks();
   if (t === 'parteneri') loadPartners();
-  if (t === 'setari') { renderAnaf(); renderFirme(); renderColaboratori(); renderUsers(); render2FA(); renderSmtp(); renderFiscal(); renderBackup(); renderProfile(); renderSessions(); renderLock(); renderOpening(); }
+  if (t === 'setari') { renderAnaf(); renderFirme(); renderColaboratori(); renderUsers(); renderAccess(); render2FA(); renderSmtp(); renderFiscal(); renderBackup(); renderProfile(); renderSessions(); renderLock(); renderOpening(); }
   if (t === 'audit') renderAudit();
   if (t === 'arhiva') loadArhiva();
   if (t === 'plan') renderPlan();
@@ -307,6 +307,7 @@ async function init() {
   // foaia de stil sa ascunda mai departe — asa au ramas INVIZIBILE pentru admin cardurile de
   // utilizatori, backup, SMTP si cote fiscale, plus exportul complet si stergerea logoului.
   $('#usersCard').classList.toggle('hidden', USER.role !== 'admin');
+  $('#accessCard') && $('#accessCard').classList.toggle('hidden', USER.role !== 'admin');
   $('#exportAllBtn') && $('#exportAllBtn').classList.toggle('hidden', USER.role !== 'admin');
   // Planul de conturi e global (partajat de toate firmele), deci importul e rezervat adminului
   // — serverul raspunde 403 oricum; ascunderea evita un buton care nu poate reusi.
