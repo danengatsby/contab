@@ -304,7 +304,11 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   for (const [tab, ancora] of [['setari', '#companyForm'], ['cont', '#profileForm'],
     ['acces', '#colaboratoriBox'], ['date', '#openingCard'], ['conexiuni', '#anafForm'],
     // ...si stocurile, sparte la fel: lucrul zilnic / productie / configurare
-    ['stocuri', '#stocGestFilter'], ['productie', '#prodForm'], ['configstoc', '#gestiuniList']]) {
+    ['stocuri', '#stocGestFilter'], ['productie', '#prodForm'], ['configstoc', '#gestiuniList'],
+    // ...si cele trei panouri care nu erau situatii financiare: bugetul (control intern),
+    // registrul fiscal (impozit pe profit) si SAF-T — o DECLARATIE, mutata acolo unde meniul
+    // o promitea deja („Declaratii ANAF (D112, SAF-T)"), dar unde nu era.
+    ['buget', '#budgetForm'], ['regfiscal', '#fiscalView'], ['livrabile', '#saftView']]) {
     await adm.evaluate((x) => window.goTab(x), tab);
     await adm.waitForTimeout(500);
     ok('pagina „' + tab + '" se deschide', (await adm.locator('#tab-' + tab + '.active').count()) === 1);

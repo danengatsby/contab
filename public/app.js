@@ -10,7 +10,7 @@ import { loadPartners } from './partners.js';
 import './viewer.js'; // vizualizatorul de documente (PDF/CSV/XML/e-Factura) — se activeaza prin efect secundar
 import './etransport.js'; // formularul ghidat e-Transport (cod UIT) — se activeaza prin efect secundar
 import { setWorkMonth, applyWorkMonth, fillPeriods, setPeriodsDeps } from './periods.js';
-import { loadJournal, loadLedger, loadCashbook, loadBalance, loadVat, loadClosings, loadStatements, loadStorno } from './rapoarte.js';
+import { loadJournal, loadLedger, loadCashbook, loadBalance, loadVat, loadClosings, loadStatements, loadStorno, loadSaft, loadBuget, loadRegFiscal } from './rapoarte.js';
 import { loadLivrabile, loadPortfolio, loadNotifications, loadReconcile, loadAnalytic, refreshNotifBadge, setLivrabileDeps } from './livrabile.js';
 import { setPaletaDeps, deschide as deschidePaleta } from './paleta.js';
 import { loadAssets, loadLeasingContracts } from './mijloace.js';
@@ -122,7 +122,12 @@ function onTab(t) {
   if (t === 'tva') loadVat();
   if (t === 'inchideri') { loadClosings(); loadMonthlyClose(); }
   if (t === 'situatii') loadStatements();
-  if (t === 'livrabile') loadLivrabile();
+  // Trei panouri au plecat din „Situatii financiare", fiindca nu erau situatii financiare:
+  // bugetul e control de gestiune INTERN, registrul fiscal tine de impozitul pe profit, iar
+  // SAF-T e o DECLARATIE — pe care meniul o promitea deja la „Declaratii ANAF", fara sa fie acolo.
+  if (t === 'buget') loadBuget();
+  if (t === 'regfiscal') loadRegFiscal();
+  if (t === 'livrabile') { loadLivrabile(); loadSaft(); }
   if (t === 'portofoliu') loadPortfolio();
   if (t === 'notificari') loadNotifications();
   if (t === 'reconciliere') loadReconcile();

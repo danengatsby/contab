@@ -1095,6 +1095,41 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
     + (orfane.length ? ' — ORFANE: ' + orfane.join(', ') : ''), orfane.length === 0);
   ok('poarta chiar vede navigarile programatice', navigate.size > 3);
 
+  // Meniul nu are voie sa promita ce pagina nu contine. Cazul real: intrarea „Declaratii ANAF
+  // (D112, SAF-T)" numea SAF-T de luni de zile, in timp ce panoul lui statea in „Situatii
+  // financiare", sub Rapoarte. Nimic nu semnala — eticheta si continutul nu se intalneau nicaieri.
+  const eticheta = (tab) => {
+    const m = html.match(new RegExp('<button data-tab="' + tab + '"[^>]*>([\\s\\S]*?)</button>'));
+    return m ? m[1].replace(/<[^>]+>/g, ' ') : '';
+  };
+  const corpSectiune = (tab) => {
+    const i = html.indexOf('<section id="tab-' + tab + '"');
+    if (i < 0) return '';
+    const j = html.indexOf('<section id="tab-', i + 10);
+    return html.slice(i, j < 0 ? html.length : j);
+  };
+  // Ancora e CAPACITATEA (un link/control care chiar face lucrul), nu cuvantul. Prima forma cerea
+  // doar ca numele sa apara undeva in sectiune — si trecea pe o simpla mentiune in textul
+  // explicativ: „declaratiile (D112, D300, SAF-T…) sunt ciorne". Adica poarta ar fi ramas verde
+  // exact in situatia pe care trebuia s-o prinda.
+  // Ancora e ID-ul controlului, nu href-ul: adresele se pun din JS (`$('#saftXml').href = …`),
+  // deci in HTML nu exista niciun `/xml/saft` de cautat. Id-ul dovedeste ca butonul care FACE
+  // lucrul e chiar in sectiunea care il promite.
+  const PROMISIUNI = [
+    ['livrabile', 'SAF-T', 'id="saftXml"'],
+    ['tva', 'D300', 'id="d300Xml"'],
+    ['situatii', 'bilanț', 'id="bilantPdf"'],
+  ];
+  for (const [tab, promis, ancora] of PROMISIUNI) {
+    const et = eticheta(tab);
+    if (!et || !new RegExp(promis, 'i').test(et)) continue;   // eticheta nu-l promite -> nimic de cerut
+    ok('„' + promis + '" promis in meniu la „' + tab + '" chiar e FUNCTIONAL in pagina (' + ancora + ')',
+      corpSectiune(tab).includes(ancora));
+  }
+  ok('poarta chiar citeste etichetele de meniu', /SAF-T/i.test(eticheta('livrabile')));
+  ok('poarta nu se multumeste cu o mentiune in text',
+    !corpSectiune('situatii').includes('id="saftXml"') && /SAF-T|D406/i.test(corpSectiune('livrabile')));
+
   // Fiecare tab pe care `onTab` il trateaza explicit trebuie sa existe ca sectiune — altfel
   // randarea se leaga de un ecran care nu mai e acolo.
   const app = fsx.readFileSync(pth.join(RADACINA, 'public', 'app.js'), 'utf8');

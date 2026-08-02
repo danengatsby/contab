@@ -111,7 +111,7 @@ function applyWorkMonth() {
   $$('select.luna, select.luna-req').forEach((s) => { if ([...s.options].some((o) => o.value === mo)) s.value = mo; });
   $$('select.an').forEach((s) => { if ([...s.options].some((o) => o.value === yr)) s.value = yr; });
   // câmpurile anuale (situații financiare, închidere anuală, registru salarii) urmează anul de lucru
-  ['stmtYear', 'yearInput', 'rsYear'].forEach((id) => { const el = $('#' + id); if (el) el.value = yr; });
+  ['stmtYear', 'yearInput', 'rsYear', 'bugetYear', 'regfiscalYear'].forEach((id) => { const el = $('#' + id); if (el) el.value = yr; });
   // câmpurile native de lună rămase (dacă există) urmează luna de lucru
   $$('input[type="month"].period').forEach((el) => { el.value = m; });
   if (D.renderEntryLists) D.renderEntryLists();
