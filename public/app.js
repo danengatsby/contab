@@ -683,13 +683,15 @@ const TOUR = [
   { ic: '👋', title: 'Bun venit! Meniul, pe scurt', text: 'L-am organizat pe activități zilnice, în limbaj simplu. Ți-l arăt în câțiva pași — apoi ești gata.' },
   { sel: '#tabs [data-tab="dashboard"]', ic: '🏠', title: 'Acasă', text: 'Punctul de plecare: butoane „Ce vrei să faci?" și o privire de ansamblu asupra firmei.' },
   { sel: '#tabs [data-tab="ghid"]', ic: '📖', title: 'Ghid', text: 'Cum lucrezi, pas cu pas — de la primul document până la declarații.' },
-  { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Datele firmei, arhiva documentelor și preferințele contului.' },
-  { group: 'Documente', ic: '📥', title: 'Documente & facturi', text: 'Adaugi documentele primite (le încarci, aplicația le citește) și emiți facturi către clienți.' },
-  { group: 'Bani', ic: '🏦', title: 'Bani', text: 'Încasările și plățile prin bancă și casă, plus verificarea extrasului bancar.' },
-  { group: 'Taxe', ic: '🧾', title: 'Taxe', text: 'TVA-ul de plată și declarațiile pentru ANAF.' },
-  { group: 'Stocuri', ic: '📦', title: 'Stocuri, salarii, mijloace fixe', text: 'Fiecare cu meniul lui — le folosești doar dacă firma ta are nevoie de ele (mijloacele fixe apar în modul expert).' },
-  { group: 'Rapoarte', ic: '📊', title: 'Rapoarte', text: 'Toate rapoartele contabile la un loc (situații, solduri, operațiuni). Se fac singure din documentele tale.' },
-  { group: 'Date firmă', ic: '📁', title: 'Date firmă', text: 'Clienții și furnizorii tăi — și, în modul expert, planul de conturi.' },
+  { group: 'Documente', ic: '📥', title: 'Documente & facturi', text: 'De aici pornește totul: încarci documentele primite (aplicația le citește singură) și emiți facturi către clienți.' },
+  { group: 'Bani', ic: '🏦', title: 'Bani', text: 'Încasările și plățile prin bancă și casă, plus punerea lor față în față cu extrasul bancar.' },
+  { group: 'Taxe', ic: '🧾', title: 'Taxe', text: 'TVA-ul de plată, declarațiile pentru ANAF și drumul de la rezultatul contabil la cel fiscal.' },
+  { group: 'Salarii', ic: '👥', title: 'Salarii', text: 'Angajații și statele de plată; de aici iese și declarația D112.' },
+  { group: 'Stocuri', ic: '📦', title: 'Stocuri', text: 'Marfa și materialele: ce ai pe stoc, ce a intrat și ce a ieșit. Îl folosești doar dacă firma ta ține stocuri.' },
+  { group: 'Mijloace fixe', ic: '🏢', title: 'Mijloace fixe', text: 'Bunurile de folosință îndelungată și amortizarea lor lunară, calculată automat.' },
+  { group: 'Rapoarte', ic: '📊', title: 'Rapoarte', text: 'Tot ce se calculează singur din documentele tale: situații financiare, balanță, registre, închideri de lună.' },
+  { group: 'Date firmă', ic: '📁', title: 'Date firmă', text: 'Nomenclatoarele: clienții și furnizorii tăi și, în modul expert, planul de conturi.' },
+  { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Tot ce se configurează o dată și se mai atinge rar — plus aplicația de instalat pe calculatorul tău.' },
   { sel: '#tabs [data-tab="mesaje"]', ic: '💬', title: 'Mesaje', text: 'Ai o întrebare? Scrie-i administratorului direct de aici — îți răspunde în aplicație.' },
   { sel: '#tabs [data-tab="notificari"]', ic: '🔔', title: 'Notificări', text: 'Termenele fiscale care se apropie și restanțele. Fiecare rând are butonul care le rezolvă.' },
   { sel: '#navPortofoliu', ic: '🗂', title: 'Portofoliu', text: 'Toate firmele tale deodată: ce declarații are fiecare și ce a rămas de făcut. Util mai ales când administrezi mai multe.' },
@@ -703,6 +705,24 @@ function tourTargetOf(step) {
   return null;
 }
 function clearTourHighlight() { $$('.tour-highlight').forEach((el) => el.classList.remove('tour-highlight')); }
+/**
+ * Intrarile din submeniul unui grup, CITITE DIN MENIUL REAL, nu dintr-o lista scrisa de mana.
+ * O lista fixa ar fi ramas in urma la prima redenumire — si chiar a ramas: turul descria „Stocuri"
+ * ca pe un singur ecran mult dupa ce devenise trei, iar „Setari" ca pe unul singur cand avea noua.
+ * Asa, turul e corect prin construcție, si ramane corect si la meniurile de maine.
+ *
+ * Se iau doar intrarile VIZIBILE pentru contul curent: cele ascunse dupa rol („Cine acceseaza
+ * aplicatia" e doar pentru admin) sau de modul simplu n-au ce cauta intr-un tur care le promite.
+ */
+function subintrariVizibile(grupEticheta) {
+  const lbl = $$('#tabs .navlabel').find((l) => l.textContent.indexOf(grupEticheta) >= 0);
+  const grup = lbl && lbl.closest('.navgroup');
+  if (!grup) return [];
+  return $$('.navmenu button[data-tab]', grup)
+    .filter((b) => !b.classList.contains('hidden') && getComputedStyle(b).display !== 'none')
+    .map((b) => b.textContent.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
 // Pasii CHIAR aplicabili contului curent. „Portofoliu" apare doar de la 2 firme in sus, iar
 // intrarile tehnice lipsesc in modul simplu — un pas care descrie un meniu inexistent e o
 // promisiune pe care aplicatia n-o tine, si strica si numaratoarea („pasul 4 din 13", cu pasi
@@ -720,6 +740,15 @@ function showTourStep(i) {
   $('#tourIc').textContent = step.ic;
   $('#tourTitle').textContent = step.title;
   $('#tourText').textContent = step.text;
+  // Sub text, intrarile chiar existente din submeniul grupului. Etichetele vin din DOM-ul nostru,
+  // dar trec prin H() la fel ca orice altceva: regula e dupa CONTEXTUL de iesire, nu dupa cat de
+  // sigura pare sursa — asa nu trebuie sa reevaluam decizia daca maine meniul devine configurabil.
+  const sub = $('#tourSub');
+  if (sub) {
+    const intrari = step.group ? subintrariVizibile(step.group) : [];
+    sub.classList.toggle('hidden', intrari.length === 0);
+    sub.innerHTML = intrari.length ? '<b>Cuprinde:</b> ' + intrari.map(H).join(' · ') : '';
+  }
   $('#tourProgress').innerHTML = TOUR_PASI.map((_, k) => `<i class="${k === tourIdx ? 'on' : ''}"></i>`).join('');
   $('#tourBack').style.visibility = tourIdx === 0 ? 'hidden' : 'visible';
   $('#tourNext').textContent = tourIdx === TOUR_PASI.length - 1 ? 'Gata ✓' : 'Următorul →';

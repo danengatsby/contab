@@ -1130,6 +1130,27 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
   ok('poarta nu se multumeste cu o mentiune in text',
     !corpSectiune('situatii').includes('id="saftXml"') && /SAF-T|D406/i.test(corpSectiune('livrabile')));
 
+  // TURUL trebuie sa acopere fiecare grup din meniu. Un grup nou fara pas in tur nu produce
+  // nicio eroare — turul pur si simplu nu-l pomeneste, iar omul caruia i se explica aplicatia
+  // afla despre el abia din intamplare. Exact ce se intamplase: „Salarii" si „Mijloace fixe"
+  // erau lipite intr-un pas despre Stocuri, iar „Setari" era descris ca un singur ecran dupa ce
+  // devenise noua. Submeniurile NU se verifica aici: turul le citeste din DOM la rulare, deci
+  // nu pot drifta prin constructie.
+  const grupuriMeniu = [...html.matchAll(/class="navlabel"[^>]*>([^<]+)/g)]
+    .map((m) => m[1].replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const app0 = fsx.readFileSync(pth.join(RADACINA, 'public', 'app.js'), 'utf8');
+  const turBloc = (app0.match(/const TOUR = \[[\s\S]*?\n\];/) || [''])[0];
+  ok('turul exista si are pasi', turBloc.length > 200);
+  const grupuriTur = [...turBloc.matchAll(/group:\s*'([^']+)'/g)].map((m) => m[1]);
+  ok('turul chiar enumera grupuri', grupuriTur.length >= 5);
+  const nedescrise = grupuriMeniu.filter((g) => !grupuriTur.some((t) => g.indexOf(t) >= 0));
+  ok('fiecare grup din meniu are pas in tur'
+    + (nedescrise.length ? ' — FARA PAS: ' + nedescrise.join(', ') : ''), nedescrise.length === 0);
+  // ...si invers: un pas care tinteste un grup disparut ar evidentia in gol.
+  const tinteMoarte = grupuriTur.filter((t) => !grupuriMeniu.some((g) => g.indexOf(t) >= 0));
+  ok('niciun pas de tur nu tinteste un grup inexistent'
+    + (tinteMoarte.length ? ' — ' + tinteMoarte.join(', ') : ''), tinteMoarte.length === 0);
+
   // Fiecare tab pe care `onTab` il trateaza explicit trebuie sa existe ca sectiune — altfel
   // randarea se leaga de un ecran care nu mai e acolo.
   const app = fsx.readFileSync(pth.join(RADACINA, 'public', 'app.js'), 'utf8');
