@@ -2087,6 +2087,24 @@ Cu stimă,
         </label>
         <div id="aiHelp" class="preview hidden"></div>
       </div>
+      <!-- Cardul se ascunde daca pachetul nu e construit (public/descarcari/pachet.json lipseste):
+           o instalare proaspata nu are voie sa ofere un link mort. Vezi scripts/pachet-windows.sh. -->
+      <div class="card hidden" id="pachetWinCard">
+        <div class="card-head">
+          <h2>💻 Contabo pe calculatorul tău (Windows)</h2>
+          <a id="pachetWinBtn" class="btn primary" href="/descarcari/Contabo-Windows.zip" download>⬇ Descarcă</a>
+        </div>
+        <p class="lead">Aceeași aplicație, dar rulând <b>local</b>, pe PC-ul tău: datele rămân la tine,
+          merge și fără internet, fără abonament și fără limită de timp.</p>
+        <p class="muted">Nu instalezi nimic — Node vine în pachet. Dezarhivezi, dublu-clic pe
+          <b>„Porneste Contabo.bat"</b>, intri cu <b>admin / admin</b>. Instrucțiunile complete sunt
+          în <b>CITESTE-MA.txt</b>, lângă aplicație.</p>
+        <div id="pachetWinInfo" class="muted"></div>
+        <p class="muted"><b>Ai deja instalat?</b> Același link e și fișierul de actualizare:
+          dezarhivezi peste folderul existent, cu aplicația închisă. Folderul <b>date</b> —
+          baza și documentele tale — rămâne neatins. Ce versiune ai acum scrie în
+          <b>VERSIUNE.txt</b>, lângă aplicație.</p>
+      </div>
       <div class="card howto">
         <h2>🖨️ Punte de scanare locală (Windows 11)</h2>
         <div class="warnbox"><span class="wi">⚠️</span><div><b>Momentan indisponibilă.</b> Butonul „🖨️ Scanează (scaner local)" din <kbd>📥 Documente</kbd> este dezactivat, deci pașii de mai jos nu pot fi urmați acum. Până la reactivare, adu documentele ca <b>PDF sau poză</b> (le tragi în zona de încărcare) — restul fluxului e neschimbat.</div></div>

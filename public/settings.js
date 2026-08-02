@@ -3,7 +3,7 @@
 // profil + sesiuni active, server SMTP (admin) si cotele fiscale configurabile (admin).
 // Extras din app.js (Etapa 3 a modularizarii). Depinde de nucleu; init/onTab (reincarcarea
 // sesiunii dupa (dez)activarea 2FA) sunt INJECTATE de app.js prin setSettingsDeps.
-import { $, $$, api, toast, USER, setMeta } from './core.js';
+import { $, $$, api, toast, USER, setMeta, H } from './core.js';
 
 let deps = {};
 export function setSettingsDeps(d) { deps = d; }
@@ -190,3 +190,24 @@ $('#fiscalReset') && $('#fiscalReset').addEventListener('click', async () => {
   try { await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reset: true }) }); await renderFiscal(); setMeta(await api('/api/meta')); toast('Cote resetate la valori standard'); }
   catch (e) { toast(e.message, true); }
 });
+
+// ── Pachetul Windows (Contabo pe calculatorul tau) ───────────────────────────
+// Manifestul e un fisier STATIC (public/descarcari/pachet.json), scris de
+// scripts/pachet-windows.sh. Fara ruta de API dinadins: nu e nimic de autorizat, iar o instalare
+// in care pachetul nu a fost construit trebuie sa ASCUNDA butonul, nu sa ofere un link mort —
+// lipsa manifestului e chiar semnalul, si nu cere niciun cod in plus.
+export async function renderPachetWin() {
+  const card = $('#pachetWinCard'); if (!card) return;
+  let m;
+  try {
+    const r = await fetch('/descarcari/pachet.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('lipsa');
+    m = await r.json();
+  } catch (e) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  const mb = (Number(m.octeti) || 0) / 1048576;
+  // Amprenta se arata trunchiata, dar INTREAGA in `title`: cine vrea s-o verifice cu
+  // `Get-FileHash` o poate copia, fara ca randul sa devina ilizibil pentru restul.
+  $('#pachetWinInfo').innerHTML = `Versiunea <b>${H(m.versiune || '—')}</b> · ${mb.toFixed(0)} MB · Node ${H(m.node || '—')}`
+    + (m.sha256 ? ` · <span title="SHA-256: ${H(m.sha256)}">amprentă ${H(String(m.sha256).slice(0, 12))}…</span>` : '');
+}
