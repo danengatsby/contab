@@ -203,8 +203,15 @@ export async function renderPachetWin() {
     const r = await fetch('/descarcari/pachet.json', { cache: 'no-store' });
     if (!r.ok) throw new Error('lipsa');
     m = await r.json();
-  } catch (e) { card.classList.add('hidden'); return; }
+  } catch (e) {
+    // Pachetul nu e construit pe aceasta instalare. Cardul dispare, dar pagina NU ramane goala:
+    // un ecran fara nimic pe el se citeste ca „stricat", nu ca „nu se aplica aici".
+    card.classList.add('hidden');
+    const l = $('#pachetWinLipsa'); if (l) l.classList.remove('hidden');
+    return;
+  }
   card.classList.remove('hidden');
+  const l = $('#pachetWinLipsa'); if (l) l.classList.add('hidden');
   const mb = (Number(m.octeti) || 0) / 1048576;
   // Amprenta se arata trunchiata, dar INTREAGA in `title`: cine vrea s-o verifice cu
   // `Get-FileHash` o poate copia, fara ca randul sa devina ilizibil pentru restul.

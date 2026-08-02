@@ -374,6 +374,21 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   const pgLim2 = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
   await login(pgLim2, 'limitat', PAROLA);
   ok('utilizatorul limitat NU vede intrarea de meniu', (await pgLim2.locator('#navAccesari.hidden').count()) === 1);
+
+  // ...dar pachetul Windows E pentru toata lumea: oricine isi poate rula contabilitatea pe
+  // calculatorul lui. Proba se face pe contul LIMITAT, nu pe admin — pe admin ar fi trecut si
+  // daca intrarea ar fi fost gresit ingradita de rol.
+  ok('contul limitat VEDE intrarea „Contabo pe calculatorul tau"',
+    (await pgLim2.locator('#tabs button[data-tab="pachetwin"]').count()) === 1
+    && (await pgLim2.locator('#tabs button[data-tab="pachetwin"].hidden').count()) === 0);
+  await pgLim2.evaluate(() => window.goTab('pachetwin'));
+  await pgLim2.waitForTimeout(900);
+  ok('...si pagina se deschide pentru el', (await pgLim2.locator('#tab-pachetwin.active').count()) === 1);
+  // Pachetul poate lipsi pe instanta de test (nu se construieste in E2E) — atunci pagina trebuie
+  // sa EXPLICE, nu sa ramana goala. Oricare din cele doua stari e corecta; „nimic" nu e.
+  const areCard = (await pgLim2.locator('#pachetWinCard:not(.hidden)').count()) === 1;
+  const areExplicatie = (await pgLim2.locator('#pachetWinLipsa:not(.hidden)').count()) === 1;
+  ok('...si arata ori pachetul, ori de ce lipseste (niciodata gol)', areCard || areExplicatie);
   const refuz = await apiIn(pgLim2, '/api/access-log');
   ok('...iar serverul ii refuza si datele (403), nu doar UI-ul ascunde', refuz.status === 403);
   await pgLim2.close();
