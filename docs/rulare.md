@@ -415,6 +415,33 @@ arată identic în log cu una bună.
 **Cheia de criptare nu se ține în același loc cu backupul.** Dacă `CONTAB_BACKUP_KEY` se pierde,
 arhivele offsite sunt irecuperabile — asta e și scopul lor, și riscul lor.
 
+## Pachetul Windows (aplicația locală)
+
+Utilizatorii pot rula Contabo **pe calculatorul lor**, fără server și fără abonament:
+Setări → Conexiuni & unelte → „Contabo pe calculatorul tău (Windows)" → **Descarcă**.
+
+```bash
+npm run pachet-windows     # 0 = construit | 1 = eroare | 2 = NEVERIFICAT (unelte lipsă)
+```
+
+Produce `public/descarcari/Contabo-Windows.zip` (~57 MB) plus manifestul `pachet.json` pe care
+îl citește interfața. **Numele fișierului e stabil**: același link servește și ca instalare, și ca
+actualizare — utilizatorul nu caută de fiecare dată altă adresă.
+
+Ce intră: codul + `node_modules` + `node.exe` (Node oficial pentru Windows, ca să nu instaleze
+nimeni nimic) + lansatorul `.bat` + instrucțiunile. Ce **nu** intră: `.env`, `data/`, `logs/`,
+`.git` — verificat pe **arhiva construită**, nu pe lista de excluderi, plus o căutare a valorilor
+reale ale secretelor din `.env`. O excludere greșită arată identic cu una corectă până deschizi
+arhiva.
+
+Rulează pe driverul `sqlite` (implicit), cu datele în subfolderul `date`. Contul local e
+**admin**, care nu trece prin paywall și nu expiră — altfel instalarea s-ar bloca singură după
+30 de zile de probă.
+
+Artefactele nu se comit (`/public/descarcari/` e în `.gitignore`): sunt mari și regenerabile.
+Pe o instalare unde pachetul nu a fost construit, manifestul lipsește și butonul **se ascunde** —
+o instalare proaspătă nu oferă un link mort.
+
 ## Curs de schimb BNR
 
 Cursul oficial BNR se descarcă automat (job la 6 ore) și se păstrează cu **istoric**: o factură din

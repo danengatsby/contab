@@ -1,0 +1,94 @@
+CONTABO — contabilitate pe calculatorul tău
+===========================================
+
+CUM PORNEȘTI
+------------
+1. Dezarhivează folderul „Contabo" undeva unde ai drept de scriere
+   (Documente sau Desktop; NU direct în C:\ — Windows nu lasă).
+2. Dublu-clic pe „Porneste Contabo.bat".
+3. Se deschide singur browserul, la adresa http://localhost:8123
+4. Autentificare la prima pornire:  utilizator  admin
+                                    parola      admin
+   Îți cere imediat să schimbi parola. Fă-o.
+
+CA SĂ OPREȘTI: închizi fereastra neagră. Atât.
+Cât lucrezi, fereastra aceea trebuie să rămână deschisă — ea E aplicația.
+
+
+NU TREBUIE SĂ INSTALEZI NIMIC
+-----------------------------
+Node.js vine în pachet (node.exe, lângă acest fișier). Nu se instalează nimic
+în Windows, nu se scrie nimic în registry, nu are nevoie de drepturi de
+administrator. Ca să dezinstalezi, ștergi folderul.
+
+
+UNDE ÎȚI STAU DATELE
+--------------------
+Totul în subfolderul „date":
+   date\db.sqlite   baza de date (toată contabilitatea ta)
+   date\uploads\    documentele încărcate (PDF-uri, poze)
+   date\.env        cheile de securitate, generate la prima pornire
+
+COPIA DE SIGURANȚĂ = copiezi folderul „date" pe un stick sau în cloud.
+Fă-o regulat. Dacă pierzi folderul acela, pierzi contabilitatea.
+Aplicația are și un backup propriu, în Setări → Date & copii de siguranță.
+
+
+CUM ACTUALIZEZI (versiune nouă)
+-------------------------------
+Descarci același fișier de la aceeași adresă — link-ul nu se schimbă niciodată:
+   https://contabo.space/descarcari/Contabo-Windows.zip
+
+Apoi:
+1. ÎNCHIZI aplicația (închizi fereastra neagră).
+2. Dezarhivezi peste folderul „Contabo" existent, confirmând înlocuirea.
+3. Pornești din nou.
+
+Datele NU se pierd: se înlocuiesc doar „app" și „node.exe". Folderul „date",
+cu baza și documentele tale, rămâne neatins — arhiva nu conține nimic care
+să-l suprascrie.
+
+Totuși, înainte de o actualizare: COPIAZĂ folderul „date" undeva. Costă zece
+secunde și te scutește de orice surpriză.
+
+Ce versiune ai acum: scrie în VERSIUNE.txt, lângă acest fișier. Pe pagina de
+descărcare vezi ce versiune e pe server — dacă e aceeași, n-ai ce actualiza.
+
+
+CE MERGE FĂRĂ INTERNET
+----------------------
+Aproape tot: documente, facturi, note contabile, TVA, balanță, registre,
+situații financiare, salarii, stocuri, toate declarațiile ca fișiere XML.
+
+CE ARE NEVOIE DE INTERNET
+-------------------------
+- trimiterea în SPV (e-Factura, e-Transport) — plus certificatul tău ANAF
+- cursul BNR (altfel îl introduci manual)
+- citirea automată a documentelor cu inteligență artificială — cere o cheie
+  proprie de la Anthropic sau OpenAI, pusă în date\.env
+
+
+UN MESAJ ROȘU LA PORNIRE — E NORMAL
+-----------------------------------
+La fiecare pornire vezi o linie roșie:
+   „deploy: Starea codului nu se poate verifica"
+E o verificare gândită pentru serverul de producție, care se uită dacă rulezi
+exact codul publicat. Pe calculatorul tău nu are ce verifica, așa că spune
+cinstit că nu poate — în loc să tacă și să pară că totul e verificat.
+Nu afectează nimic.
+
+
+DACĂ PORTUL 8123 E OCUPAT
+-------------------------
+Deschizi date\.env cu Notepad, schimbi PORT=8123 în alt număr (de exemplu
+8124) și repornești. Adresa devine http://localhost:8124
+
+
+DIFERENȚE FAȚĂ DE VARIANTA DE PE contabo.space
+----------------------------------------------
+- Ești administrator pe instalarea ta: fără abonament, fără limită de timp.
+- Nu există plăți online (nici nu-și au rostul aici).
+- E-mailurile (resetare parolă, notificări) nu se trimit fără un server SMTP
+  configurat în Setări → Conexiuni & unelte. Local nu-ți trebuie.
+- Backupul automat prin e-mail și copia criptată offsite sunt lucruri de
+  server; local, copiezi folderul „date".

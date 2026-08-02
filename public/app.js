@@ -2,7 +2,7 @@
 import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
-import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, setSettingsDeps } from './settings.js';
+import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, renderPachetWin, setSettingsDeps } from './settings.js';
 import { renderFirme, renderUsers, renderColaboratori, renderAudit, renderAccess, renderCereriAcces, setAdminDeps } from './admin.js';
 import { loadDashboard, setDashboardDeps } from './dashboard.js';
 import { initUiMode } from './simplemode.js';
@@ -150,7 +150,7 @@ function onTab(t) {
   if (t === 'cont') { renderProfile(); renderSessions(); render2FA(); }
   if (t === 'acces') { renderFirme(); renderColaboratori(); renderUsers(); renderCereriAcces(); }
   if (t === 'date') { renderBackup(); renderOpening(); }
-  if (t === 'conexiuni') { renderAnaf(); renderSmtp(); renderFiscal(); }
+  if (t === 'conexiuni') { renderAnaf(); renderSmtp(); renderFiscal(); renderPachetWin(); }
   if (t === 'audit') renderAudit();
   if (t === 'accesari') renderAccess();
   if (t === 'arhiva') loadArhiva();

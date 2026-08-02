@@ -26,6 +26,7 @@ npm run test-pg               # suita pe driverul de PRODUCȚIE (pg): pornește/
 npm run rto-drill             # DRILL DE RTO: restaurează ultima arhivă și cronometrează revenirea
 npm run lint                  # ESLint (analiză statică) — NU e în `npm test`, vezi mai jos
 npm run lint-syntax           # doar `node --check` pe tot codul (rulează și în `npm test`)
+npm run pachet-windows        # PACHETUL WINDOWS: aplicația care rulează local pe PC-ul clientului
 sh scripts/poarta-fiscala.sh  # POARTA FISCALĂ — obligatorie înainte de merge dacă ai atins ceva fiscal
 ```
 

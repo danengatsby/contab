@@ -15,7 +15,8 @@
     "prestart": "npm test",
     "e2e": "node scripts/e2e.mjs",
     "e2e-izolat": "bash scripts/e2e-izolat.sh",
-    "lint-syntax": "node scripts/check-syntax.js"
+    "lint-syntax": "node scripts/check-syntax.js",
+    "pachet-windows": "sh scripts/pachet-windows.sh"
   },
   "engines": {
     "node": ">=22.13"
