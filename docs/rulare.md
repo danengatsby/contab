@@ -328,14 +328,20 @@ de pe 18 nu se rejoacă pe 16, iar prima rulare a picat exact așa.
 Concluzia onestă: partea *tehnică* a revenirii e sub 2 secunde la volumul actual și scalează cu
 dimensiunea dump-ului; ce rămâne de scurtat e pasul manual de mai sus.
 
-> ⚠️ **Starea reală a copiei offsite diferă de procedura de mai jos.** Măsurat pe server la
-> 2026-07-29: `CONTAB_BACKUP_KEY` **absent** (deci arhiva pleacă **necriptată**) și toate
-> variabilele `CONTAB_OFFSITE_*` **absente** (deci calea pe stocare obiect **nu e activă**).
-> Transportul efectiv e e-mailul către `CONTAB_BACKUP_EMAIL_TO`, cu `db.json` + `contab.sql` +
-> `uploads/` în clar. Codul pentru varianta criptată pe S3 există și e testat — doar nu e
-> configurat. Până când este, procedura de mai jos descrie o instalare care nu e în funcțiune.
-> Backupul zilnic **avertizează** acum explicit când copia pleacă necriptată — nu mai raportează
-> doar „Offsite email OK".
+> ⚠️ **Starea reală a copiei offsite, măsurată pe server la 2026-08-02** (`npm run offsite-check`):
+> `CONTAB_BACKUP_KEY` **este setat** — arhiva pleacă **criptată** (AES-256-CBC, PBKDF2 200.000
+> iterații), cu round-trip verificat înainte de fiecare trimitere. Variabilele `CONTAB_OFFSITE_*`
+> rămân **absente**, deci calea pe stocare obiect **nu e activă** și transportul efectiv e tot
+> e-mailul către `CONTAB_BACKUP_EMAIL_TO` — acum însă cu conținut cifrat, nu în clar.
+>
+> Ce rămâne de făcut pentru „offsite complet": bucketul S3-compatibil (`CONTAB_OFFSITE_ENDPOINT` /
+> `_BUCKET` / `_KEY` / `_SECRET`). Până atunci `offsite-check` iese cu **2 = neconfigurat**,
+> deliberat: „criptat, dar tot prin cutia poștală a unui terț" nu e steaua finală.
+>
+> **Riscul rămas, de tratat în afara serverului:** cheia trăiește doar în `.env`, pe aceeași
+> mașină care e și sursa backupului. Dacă serverul se pierde, toate copiile offsite devin
+> nedescifrabile. Cheia trebuie ținută **și** într-un manager de parole, separat de cutia poștală
+> în care ajung arhivele.
 
 ### Activarea copiei offsite criptate (pași exacți)
 
@@ -393,10 +399,11 @@ arată identic în log cu una bună.
 ### Procedura de restaurare, pas cu pas
 
 1. Obține ultima arhivă. **Astăzi:** atașamentul din e-mailul zilnic către `CONTAB_BACKUP_EMAIL_TO`
-   (`full-AAAALLZZ-HHMMSS.zip`, necriptat). **După configurarea offsite-ului:** din bucket
-   (`contab/full-AAAALLZZ-HHMMSS.zip.enc`). Vezi avertismentul de mai sus — cele două diferă azi.
-2. Decriptează **doar dacă** arhiva e `.enc` (deci doar după ce `CONTAB_BACKUP_KEY` e setat), cu
-   comanda `openssl` de mai sus.
+   (`full-AAAALLZZ-HHMMSS.zip.enc`, **criptat** de la 2026-08-02). **După configurarea bucketului:**
+   din stocarea obiect (`contab/full-AAAALLZZ-HHMMSS.zip.enc`) — același format, altă sursă.
+2. Decriptează cu comanda `openssl` de mai sus. Ea e reprodusă și **în corpul fiecărui e-mail de
+   backup**, tocmai ca procedura să fie la îndemână când aplicația și serverul nu mai există.
+   Arhivele dinaintea datei de 2026-08-02 sunt `.zip` necriptat și se sar direct la pasul 3.
 3. Dezarhivează: conține `db.json`, dump-ul PostgreSQL (`contab.sql`) și `uploads/`.
    Pașii 3–7 sunt exact ce automatizează și cronometrează `npm run rto-drill` — rulează-l periodic,
    ca procedura să fie dovedită, nu presupusă.
