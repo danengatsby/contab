@@ -259,6 +259,7 @@
         <div class="navmenu">
           <button data-tab="tva">TVA de plată (decont)</button>
           <button data-tab="livrabile">Declarații ANAF (<abbr title="Declarația privind contribuțiile sociale și impozitul pe salarii">D112</abbr>, <abbr title="Standard Audit File for Tax — declarația D406 cu datele contabile detaliate">SAF-T</abbr>)</button>
+          <button data-tab="regfiscal">Registru fiscal (impozit pe profit)</button>
         </div>
       </div>
       <div class="navgroup">
@@ -290,6 +291,7 @@
         <button class="navlabel" type="button">📊 Rapoarte</button>
         <div class="navmenu">
           <button data-tab="situatii">Situații financiare (bilanț, profit)</button>
+          <button data-tab="buget">Buget vs realizat</button>
           <button data-tab="balanta" class="adv">Solduri conturi (balanță)</button>
           <button data-tab="jurnal" class="adv">Toate operațiunile (jurnal)</button>
           <button data-tab="carte" class="adv">Fișa fiecărui cont (cartea mare)</button>
@@ -937,52 +939,14 @@
         <div id="capitalView"></div>
       </div>
       <div class="card">
-        <h3>📊 Buget vs realizat <span class="muted" data-u="u70">(control de gestiune)</span></h3>
-        <p class="muted">Setează un buget anual pe conturi de venituri (clasa 7) și cheltuieli (clasa 6), apoi compară cu rulajul efectiv: vezi gradul de realizare și abaterile.</p>
-        <form id="budgetForm" class="row" data-u="u89">
-          <label data-u="u73">An <input name="an" type="number" value="2026" data-u="u90" required /></label>
-          <label data-u="u73">Cont <input name="cont" placeholder="ex. 707, 607, 641" data-u="u91" required /></label>
-          <label data-u="u73">Sumă bugetată (lei) <input name="suma" type="number" step="0.01" data-u="u92" required /></label>
-          <button class="btn primary">Adaugă / actualizează</button>
-        </form>
-        <div id="budgetStatus" class="status"></div>
-        <div id="budgetView" class="tablewrap"></div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <h3>Registrul de evidență fiscală</h3>
-          <a id="fiscalPdf" class="btn small" target="_blank">⬇ PDF</a>
-        </div>
-        <p class="muted">Trecerea de la rezultatul contabil la cel fiscal (cheltuieli nedeductibile) și impozitul pe profit vs. micro.</p>
-        <div id="fiscalView"></div>
-      </div>
-      <div class="card">
         <div class="card-head">
           <h3>Note explicative (generate automat)</h3>
           <a id="notesPdf" class="btn small" target="_blank">⬇ PDF</a>
         </div>
         <div id="notesView"></div>
       </div>
-      <div class="card">
-        <div class="card-head">
-          <h3>SAF-T — Declarația informativă D406</h3>
-          <a id="saftXmlLuna" class="btn small primary" target="_blank">⬇ XML luna de lucru</a>
-          <a id="saftXml" class="btn small" target="_blank">⬇ XML an întreg</a>
-        </div>
-        <p class="muted"><b>D406 se depune lunar</b> (firmele cu TVA lunară) sau <b>trimestrial</b> (TVA trimestrială / neplătitori), până la ultima zi a lunii următoare — folosește XML-ul pe luna de lucru. Fișierul conține: Header, conturile din planul contabil cu solduri, clienți, furnizori, cotele de TVA, nomenclatorul de produse, mijloacele fixe, stocul final, toate articolele contabile ca tranzacții, facturile de vânzare/cumpărare, plățile și mișcările de stoc (SourceDocuments).</p>
-        <div class="warnbox"><span class="wi">⚠️</span><div>
-          <b>SAF-T este o ciornă structurată, nu un fișier XSD-validat oficial.</b> Conține secțiunile schemei
-          <b>D406 v2.4.x</b>: conturi cu solduri, clienți/furnizori, cote TVA, <b>UOMTable</b>, <b>MovementTypeTable</b>,
-          nomenclator produse, mijloace fixe, stoc final, <b>Owners</b> (asociații din Setări → Datele firmei; la PFA — titularul)
-          și toate tranzacțiile. <b>Înainte de depunere, validează fișierul cu modulul oficial ANAF (Soft-J / DUKIntegrator)</b> —
-          nomenclatoarele de coduri oficiale (taxonomii ANAF) pot cere ajustări punctuale.
-        </div></div>
-        <div id="saftView"></div>
-      </div>
     </section>
-
-    <!-- ─────────────── LIVRABILE ─────────────── -->
-    <section id="tab-livrabile" class="tab">
+<section id="tab-livrabile" class="tab">
       <div class="toolbar">
         <h2>Declarații ANAF & borderou lunar</h2>
         <div class="spacer"></div>
@@ -1019,6 +983,22 @@
           <input id="f4109Serie" placeholder="Seria fiscală a casei de marcat (ex. AMEF12345678)" data-u="u94" />
           <a id="f4109Pdf" class="btn primary" target="_blank">⬇ Generează F4109 (luna de lucru)</a>
         </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>SAF-T — Declarația informativă D406</h3>
+          <a id="saftXmlLuna" class="btn small primary" target="_blank">⬇ XML luna de lucru</a>
+          <a id="saftXml" class="btn small" target="_blank">⬇ XML an întreg</a>
+        </div>
+        <p class="muted"><b>D406 se depune lunar</b> (firmele cu TVA lunară) sau <b>trimestrial</b> (TVA trimestrială / neplătitori), până la ultima zi a lunii următoare — folosește XML-ul pe luna de lucru. Fișierul conține: Header, conturile din planul contabil cu solduri, clienți, furnizori, cotele de TVA, nomenclatorul de produse, mijloacele fixe, stocul final, toate articolele contabile ca tranzacții, facturile de vânzare/cumpărare, plățile și mișcările de stoc (SourceDocuments).</p>
+        <div class="warnbox"><span class="wi">⚠️</span><div>
+          <b>SAF-T este o ciornă structurată, nu un fișier XSD-validat oficial.</b> Conține secțiunile schemei
+          <b>D406 v2.4.x</b>: conturi cu solduri, clienți/furnizori, cote TVA, <b>UOMTable</b>, <b>MovementTypeTable</b>,
+          nomenclator produse, mijloace fixe, stoc final, <b>Owners</b> (asociații din Setări → Datele firmei; la PFA — titularul)
+          și toate tranzacțiile. <b>Înainte de depunere, validează fișierul cu modulul oficial ANAF (Soft-J / DUKIntegrator)</b> —
+          nomenclatoarele de coduri oficiale (taxonomii ANAF) pot cere ajustări punctuale.
+        </div></div>
+        <div id="saftView"></div>
       </div>
     </section>
 
@@ -2237,6 +2217,44 @@ Cu stimă,
         nu s-au autentificat niciodată. Un rând per adresă, nu per cerere: o singură deschidere a
         aplicației înseamnă ~30 de cereri. „Pagini" numără navigările, „cereri" tot ce a cerut.</p>
       <div id="accessVisitors" class="tablewrap"></div>
+      </div>
+    </section>
+
+    <section id="tab-buget" class="tab">
+      <div class="toolbar">
+        <h2>📊 Buget vs realizat</h2>
+        <div class="spacer"></div>
+        <label class="muted">Anul <input type="number" id="bugetYear" value="2026" class="period" /></label>
+      </div>
+      <div class="explain"><span class="ei">📊</span><p><b>Ce e asta:</b> compari ce ai <b>plănuit</b> cu ce s-a întâmplat, pe conturi de venituri și cheltuieli. E un instrument de conducere, intern — nu se depune nicăieri și nu ține de situațiile financiare.</p></div>
+      <div class="card">
+        <h3>📊 Buget vs realizat <span class="muted" data-u="u70">(control de gestiune)</span></h3>
+        <p class="muted">Setează un buget anual pe conturi de venituri (clasa 7) și cheltuieli (clasa 6), apoi compară cu rulajul efectiv: vezi gradul de realizare și abaterile.</p>
+        <form id="budgetForm" class="row" data-u="u89">
+          <label data-u="u73">An <input name="an" type="number" value="2026" data-u="u90" required /></label>
+          <label data-u="u73">Cont <input name="cont" placeholder="ex. 707, 607, 641" data-u="u91" required /></label>
+          <label data-u="u73">Sumă bugetată (lei) <input name="suma" type="number" step="0.01" data-u="u92" required /></label>
+          <button class="btn primary">Adaugă / actualizează</button>
+        </form>
+        <div id="budgetStatus" class="status"></div>
+        <div id="budgetView" class="tablewrap"></div>
+      </div>
+    </section>
+
+    <section id="tab-regfiscal" class="tab">
+      <div class="toolbar">
+        <h2>📒 Registrul de evidență fiscală</h2>
+        <div class="spacer"></div>
+        <label class="muted">Anul <input type="number" id="regfiscalYear" value="2026" class="period" /></label>
+      </div>
+      <div class="explain"><span class="ei">📒</span><p><b>Ce e asta:</b> drumul de la <b>rezultatul contabil</b> la <b>rezultatul fiscal</b>: ce cheltuieli nu sunt deductibile, ce venituri nu se impozitează și cât iese impozitul. Codul fiscal îl cere plătitorilor de impozit pe profit; e baza declarației D101.</p></div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Registrul de evidență fiscală</h3>
+          <a id="fiscalPdf" class="btn small" target="_blank">⬇ PDF</a>
+        </div>
+        <p class="muted">Trecerea de la rezultatul contabil la cel fiscal (cheltuieli nedeductibile) și impozitul pe profit vs. micro.</p>
+        <div id="fiscalView"></div>
       </div>
     </section>
 

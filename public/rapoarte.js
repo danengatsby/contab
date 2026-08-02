@@ -527,20 +527,18 @@ $('#fxRevalPost') && $('#fxRevalPost').addEventListener('click', async () => {
 
 // ───────────────────────── STATEMENTS ─────────────────────────
 $('#stmtYear').addEventListener('change', loadStatements);
-async function loadStatements() {
-  // necontabilii isi depun singuri declaratiile, dar bilantul cere semnatura calificata (L82/1991)
-  $('#bilantWarn').classList.toggle('hidden', USER.tip !== 'necontabil');
-  const y = $('#stmtYear').value;
-  $('#plPdf').href = '/pdf/pl?year=' + y;
-  $('#bilantPdf').href = '/pdf/bilant?period=' + y + '-12';
-  $('#situatiiPdf').href = '/pdf/situatii?year=' + y;
-  $('#cashflowPdf').href = '/pdf/cashflow?year=' + y;
-  $('#capitalPdf').href = '/pdf/capital?year=' + y;
-  $('#fiscalPdf').href = '/pdf/registru-fiscal?year=' + y;
-  $('#notesPdf').href = '/pdf/note?year=' + y;
-  $('#saftXml').href = '/xml/saft?year=' + y;
-  $('#saftXmlLuna') && ($('#saftXmlLuna').href = '/xml/saft?period=' + workMonth());
-  api('/api/saft?year=' + y).then((s) => {
+$('#bugetYear') && $('#bugetYear').addEventListener('change', loadBuget);
+$('#regfiscalYear') && $('#regfiscalYear').addEventListener('change', loadRegFiscal);
+// ── SAF-T (D406) ── mutat in „Declaratii ANAF": acolo il promite meniul, langa celelalte
+// declaratii. Foloseste perioada paginii aceleia, nu anul situatiilor financiare — SAF-T nu e o
+// situatie financiara, e o declaratie informativa.
+async function loadSaft() {
+  const box = $('#saftView'); if (!box) return;
+  const an = (pget('livrabile') || new Date().toISOString().slice(0, 7)).slice(0, 4);
+  const luna = pget('livrabile') || workMonth();
+  $('#saftXml') && ($('#saftXml').href = '/xml/saft?year=' + an);
+  $('#saftXmlLuna') && ($('#saftXmlLuna').href = '/xml/saft?period=' + luna);
+  return api('/api/saft?year=' + an).then((s) => {
     $('#saftView').innerHTML = `<table>
       <tr><td>Articole contabile (tranzacții)</td><td class="num">${s.entries}</td></tr>
       <tr><td>Conturi cu sold/rulaj</td><td class="num">${s.accounts}</td></tr>
@@ -550,49 +548,20 @@ async function loadStatements() {
       <tr><td>Produse / mișcări stoc (Products, MovementOfGoods)</td><td class="num">${s.products} / ${s.stockMovements}</td></tr>
       <tr><td>Total debit = total credit</td><td class="num">${fmt(s.totalDebit)}</td></tr></table>`;
   }).catch(() => { $('#saftView').innerHTML = ''; });
-  api('/api/notes?year=' + y).then((n) => {
-    const noteSec = (s) => {
-      let body;
-      if (s.tabel) {
-        const head = '<tr>' + s.tabel.cols.map((c) => `<th class="${c.num ? 'num' : ''}" data-style="text-align:${c.num ? 'right' : 'left'}">${c.label}</th>`).join('') + '</tr>';
-        const body2 = s.tabel.rows.map((row) => '<tr' + (row._bold ? ' class="total"' : '') + '>' + s.tabel.cols.map((c) =>
-          `<td class="${c.num ? 'num' : ''}">${c.num ? (row[c.k] == null ? '—' : fmt(row[c.k])) : (row[c.k] == null ? '' : row[c.k])}</td>`).join('') + '</tr>').join('');
-        body = head + body2;
-      } else {
-        body = s.linii.map((l) => `<tr${l._bold ? ' class="total"' : ''}><td>${l.k}</td><td class="num">${l.v == null ? '—' : (l.raw ? l.v : fmt(l.v))}</td></tr>`).join('');
-      }
-      return `<p data-u="u179"><b>${s.titlu}</b></p><table>${body}</table>`;
-    };
-    $('#notesView').innerHTML = n.sections.map(noteSec).join('')
-      + '<p data-u="u180"><b>Nota 7 — Principii și politici contabile</b></p><ul class="muted" data-u="u181">'
-      + n.principii.map((p) => `<li>${p}</li>`).join('') + '</ul>';
-  }).catch(() => {});
-  api('/api/statements/cashflow?year=' + y).then((cf) => {
-    const cr = (label, val, cls) => `<tr class="${cls || ''}"><td>${label}</td><td class="num">${fmt(val)}</td></tr>`;
-    const cs = (label, val) => `<tr><td data-u="u182" class="muted">${label}</td><td class="num">${fmt(val)}</td></tr>`;
-    $('#cashflowView').innerHTML = `<table>
-      ${cr('Activitatea de exploatare', '', 'total')}
-      ${cs('Încasări de la clienți', cf.ex_clienti)}${cs('Plăți către furnizori și angajați', cf.ex_furnizoriAngajati)}${cs('Plăți impozite, taxe și TVA', cf.ex_impozite)}${cs('Dobânzi plătite', cf.ex_dobanzi)}${cs('Alte încasări/plăți din exploatare', cf.ex_altele)}
-      ${cr('= Numerar net din exploatare', cf.ex_net, 'total')}
-      ${cr('Activitatea de investiție', '', 'total')}
-      ${cs('Plăți/încasări privind imobilizările', cf.inv_imobilizari)}${cs('Dobânzi și dividende încasate', cf.inv_dobanziDiv)}
-      ${cr('= Numerar net din investiție', cf.inv_net, 'total')}
-      ${cr('Activitatea de finanțare', '', 'total')}
-      ${cs('Credite/împrumuturi (trageri − rambursări)', cf.fin_credite)}${cs('Aporturi de capital', cf.fin_capital)}${cs('Dividende plătite', cf.fin_dividende)}
-      ${cr('= Numerar net din finanțare', cf.fin_net, 'total')}
-      ${cr('VARIAȚIA NETĂ A NUMERARULUI', cf.variatie, 'bold')}
-      ${cs('Numerar la începutul exercițiului', cf.numerarInitial)}${cs('Numerar la sfârșitul exercițiului', cf.numerarFinal)}</table>
-      <p class="${cf.echilibrat ? '' : 'status err'}" data-u="u35">${cf.echilibrat ? '✔ Control: variația = numerar final − inițial (' + fmt(cf.variatieControl) + ')' : '✘ Variația calculată diferă de variația soldurilor de numerar'}</p>`;
-  }).catch(() => { $('#cashflowView').innerHTML = ''; });
-  renderBudget(y);
-  api('/api/statements/equity?year=' + y).then((eq) => {
-    const er = (r, cls) => `<tr class="${cls || ''}"><td>${H(r.nume)}</td><td class="num">${fmt(r.soldI)}</td><td class="num">${fmt(r.cresteri)}</td><td class="num">${fmt(r.reduceri)}</td><td class="num">${fmt(r.soldF)}</td></tr>`;
-    $('#capitalView').innerHTML = `<table>
-      <tr><th data-u="u183">Element</th><th class="num">Sold ${Number(y) - 1}-12-31</th><th class="num">Creșteri</th><th class="num">Reduceri</th><th class="num">Sold ${y}-12-31</th></tr>
-      ${eq.rows.map((r) => er(r)).join('')}
-      ${er(Object.assign({ nume: 'TOTAL CAPITALURI PROPRII' }, eq.total), 'bold')}</table>
-      <p class="${eq.echilibrat ? '' : 'status err'}" data-u="u35">${eq.echilibrat ? '✔ Control: total = capitalurile proprii din bilanț (F10)' : '✘ Totalul diferă de capitalurile din F10 (' + fmt(eq.capitalPropriiF10) + ')'}</p>`;
-  }).catch(() => { $('#capitalView').innerHTML = ''; });
+}
+
+// ── Buget vs realizat ── control de gestiune, INTERN: nu se depune nicaieri si nu tine de
+// situatiile financiare anuale. De aceea are pagina lui, nu un card la coada bilantului.
+function loadBuget() {
+  const el = $('#bugetYear'); if (!el) return;
+  renderBudget(el.value);
+}
+
+// ── Registrul de evidenta fiscala ── drumul de la rezultatul CONTABIL la cel FISCAL (baza D101).
+// Tine de impozitul pe profit, nu de situatiile financiare — de aceea sta in grupul Taxe.
+function loadRegFiscal() {
+  const el = $('#regfiscalYear'); if (!el) return;
+  const y = el.value;
   // PFA: in locul registrului fiscal SRL (profit vs micro), estimarea Declaratiei Unice
   if (META.company && META.company.tipEntitate === 'pfa') {
     api('/api/declaratia-unica?year=' + y).then((du) => {
@@ -628,6 +597,63 @@ async function loadStatements() {
     </table>${(rf.mentiuni || []).map((m) => `<p class="muted" data-u="u184">${m}</p>`).join('')}`;
   }).catch(() => {});
   }
+}
+
+async function loadStatements() {
+  // necontabilii isi depun singuri declaratiile, dar bilantul cere semnatura calificata (L82/1991)
+  $('#bilantWarn').classList.toggle('hidden', USER.tip !== 'necontabil');
+  const y = $('#stmtYear').value;
+  $('#plPdf').href = '/pdf/pl?year=' + y;
+  $('#bilantPdf').href = '/pdf/bilant?period=' + y + '-12';
+  $('#situatiiPdf').href = '/pdf/situatii?year=' + y;
+  $('#cashflowPdf').href = '/pdf/cashflow?year=' + y;
+  $('#capitalPdf').href = '/pdf/capital?year=' + y;
+  $('#fiscalPdf').href = '/pdf/registru-fiscal?year=' + y;
+  $('#notesPdf').href = '/pdf/note?year=' + y;
+  $('#saftXml').href = '/xml/saft?year=' + y;
+  $('#saftXmlLuna') && ($('#saftXmlLuna').href = '/xml/saft?period=' + workMonth());
+  api('/api/notes?year=' + y).then((n) => {
+    const noteSec = (s) => {
+      let body;
+      if (s.tabel) {
+        const head = '<tr>' + s.tabel.cols.map((c) => `<th class="${c.num ? 'num' : ''}" data-style="text-align:${c.num ? 'right' : 'left'}">${c.label}</th>`).join('') + '</tr>';
+        const body2 = s.tabel.rows.map((row) => '<tr' + (row._bold ? ' class="total"' : '') + '>' + s.tabel.cols.map((c) =>
+          `<td class="${c.num ? 'num' : ''}">${c.num ? (row[c.k] == null ? '—' : fmt(row[c.k])) : (row[c.k] == null ? '' : row[c.k])}</td>`).join('') + '</tr>').join('');
+        body = head + body2;
+      } else {
+        body = s.linii.map((l) => `<tr${l._bold ? ' class="total"' : ''}><td>${l.k}</td><td class="num">${l.v == null ? '—' : (l.raw ? l.v : fmt(l.v))}</td></tr>`).join('');
+      }
+      return `<p data-u="u179"><b>${s.titlu}</b></p><table>${body}</table>`;
+    };
+    $('#notesView').innerHTML = n.sections.map(noteSec).join('')
+      + '<p data-u="u180"><b>Nota 7 — Principii și politici contabile</b></p><ul class="muted" data-u="u181">'
+      + n.principii.map((p) => `<li>${p}</li>`).join('') + '</ul>';
+  }).catch(() => {});
+  api('/api/statements/cashflow?year=' + y).then((cf) => {
+    const cr = (label, val, cls) => `<tr class="${cls || ''}"><td>${label}</td><td class="num">${fmt(val)}</td></tr>`;
+    const cs = (label, val) => `<tr><td data-u="u182" class="muted">${label}</td><td class="num">${fmt(val)}</td></tr>`;
+    $('#cashflowView').innerHTML = `<table>
+      ${cr('Activitatea de exploatare', '', 'total')}
+      ${cs('Încasări de la clienți', cf.ex_clienti)}${cs('Plăți către furnizori și angajați', cf.ex_furnizoriAngajati)}${cs('Plăți impozite, taxe și TVA', cf.ex_impozite)}${cs('Dobânzi plătite', cf.ex_dobanzi)}${cs('Alte încasări/plăți din exploatare', cf.ex_altele)}
+      ${cr('= Numerar net din exploatare', cf.ex_net, 'total')}
+      ${cr('Activitatea de investiție', '', 'total')}
+      ${cs('Plăți/încasări privind imobilizările', cf.inv_imobilizari)}${cs('Dobânzi și dividende încasate', cf.inv_dobanziDiv)}
+      ${cr('= Numerar net din investiție', cf.inv_net, 'total')}
+      ${cr('Activitatea de finanțare', '', 'total')}
+      ${cs('Credite/împrumuturi (trageri − rambursări)', cf.fin_credite)}${cs('Aporturi de capital', cf.fin_capital)}${cs('Dividende plătite', cf.fin_dividende)}
+      ${cr('= Numerar net din finanțare', cf.fin_net, 'total')}
+      ${cr('VARIAȚIA NETĂ A NUMERARULUI', cf.variatie, 'bold')}
+      ${cs('Numerar la începutul exercițiului', cf.numerarInitial)}${cs('Numerar la sfârșitul exercițiului', cf.numerarFinal)}</table>
+      <p class="${cf.echilibrat ? '' : 'status err'}" data-u="u35">${cf.echilibrat ? '✔ Control: variația = numerar final − inițial (' + fmt(cf.variatieControl) + ')' : '✘ Variația calculată diferă de variația soldurilor de numerar'}</p>`;
+  }).catch(() => { $('#cashflowView').innerHTML = ''; });
+  api('/api/statements/equity?year=' + y).then((eq) => {
+    const er = (r, cls) => `<tr class="${cls || ''}"><td>${H(r.nume)}</td><td class="num">${fmt(r.soldI)}</td><td class="num">${fmt(r.cresteri)}</td><td class="num">${fmt(r.reduceri)}</td><td class="num">${fmt(r.soldF)}</td></tr>`;
+    $('#capitalView').innerHTML = `<table>
+      <tr><th data-u="u183">Element</th><th class="num">Sold ${Number(y) - 1}-12-31</th><th class="num">Creșteri</th><th class="num">Reduceri</th><th class="num">Sold ${y}-12-31</th></tr>
+      ${eq.rows.map((r) => er(r)).join('')}
+      ${er(Object.assign({ nume: 'TOTAL CAPITALURI PROPRII' }, eq.total), 'bold')}</table>
+      <p class="${eq.echilibrat ? '' : 'status err'}" data-u="u35">${eq.echilibrat ? '✔ Control: total = capitalurile proprii din bilanț (F10)' : '✘ Totalul diferă de capitalurile din F10 (' + fmt(eq.capitalPropriiF10) + ')'}</p>`;
+  }).catch(() => { $('#capitalView').innerHTML = ''; });
   const Y0 = Number(y) - 1;
   const [pl, pl0] = await Promise.all([
     api('/api/statements/pl-f20?year=' + y),
@@ -686,6 +712,6 @@ async function loadStatements() {
 }
 
 
-export { loadBalance, loadCashbook, loadClosings, loadJournal, loadLedger, loadStatements, loadStorno, loadVat };
+export { loadBalance, loadCashbook, loadClosings, loadJournal, loadLedger, loadStatements, loadStorno, loadVat, loadSaft, loadBuget, loadRegFiscal };
 // Exportate pentru testele unitare de frontend (diagnosticul balantei si comparatia e-TVA): test/frontend.mjs
 export { balanceEquations, balanceTotals, renderEtvaResult };
