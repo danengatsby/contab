@@ -295,12 +295,17 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   // Restaurarea din sectiunea 7 readuce o baza in care contul pare „nou", deci apare ecranul de
   // bun-venit — un overlay care intercepteaza clickurile. Se inchide inainte de a atinge panoul.
   await adm.evaluate(() => { const w = document.querySelector('#welcomeOverlay'); if (w) w.classList.add('hidden'); });
-  await adm.evaluate(() => window.goTab('setari'));
-  await adm.waitForTimeout(1200);
 
-  const card = adm.locator('#accessCard');
-  ok('cardul exista in pagina', (await card.count()) === 1);
-  ok('...si e VIZIBIL pentru admin', !(await adm.locator('#accessCard.hidden').count()));
+  // Panoul e o intrare PROPRIE in submeniul Setari, nu un card in „Setari generale". Se verifica
+  // intai ca intrarea exista si e oferita adminului, apoi ca deschide chiar sectiunea lui.
+  ok('intrarea de meniu exista in submeniul Setari',
+    (await adm.locator('#tabs .navgroup .navmenu button[data-tab="accesari"]').count()) === 1);
+  ok('...si e oferita adminului (nu ascunsa)', (await adm.locator('#navAccesari.hidden').count()) === 0);
+
+  await adm.evaluate(() => window.goTab('accesari'));
+  await adm.waitForTimeout(1200);
+  ok('intrarea deschide sectiunea proprie', (await adm.locator('#tab-accesari.active').count()) === 1);
+  ok('...iar „Setari generale" NU mai e sectiunea activa', (await adm.locator('#tab-setari.active').count()) === 0);
 
   const randuriSesiuni = await adm.locator('#accessSessions table tbody tr').count();
   ok('tabelul de sesiuni active are randuri', randuriSesiuni > 0);
@@ -325,10 +330,10 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   const dupaFiltru = await adm.locator('#accessLogins').innerText().catch(() => '');
   ok('filtrul „doar esuate" nu mai arata reusite', !/reu[sș]it[ăa]/i.test(dupaFiltru));
 
-  // Un utilizator obisnuit NU are voie sa vada panoul — nici cardul, nici datele din spatele lui.
+  // Un utilizator obisnuit NU are voie sa vada panoul — nici intrarea de meniu, nici datele.
   const pgLim2 = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
   await login(pgLim2, 'limitat', PAROLA);
-  ok('utilizatorul limitat NU vede cardul', (await pgLim2.locator('#accessCard.hidden').count()) === 1);
+  ok('utilizatorul limitat NU vede intrarea de meniu', (await pgLim2.locator('#navAccesari.hidden').count()) === 1);
   const refuz = await apiIn(pgLim2, '/api/access-log');
   ok('...iar serverul ii refuza si datele (403), nu doar UI-ul ascunde', refuz.status === 403);
   await pgLim2.close();

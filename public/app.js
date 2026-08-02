@@ -131,8 +131,9 @@ function onTab(t) {
   if (t === 'salarizare') loadSalarizare();
   if (t === 'stocuri') loadStocks();
   if (t === 'parteneri') loadPartners();
-  if (t === 'setari') { renderAnaf(); renderFirme(); renderColaboratori(); renderUsers(); renderAccess(); render2FA(); renderSmtp(); renderFiscal(); renderBackup(); renderProfile(); renderSessions(); renderLock(); renderOpening(); }
+  if (t === 'setari') { renderAnaf(); renderFirme(); renderColaboratori(); renderUsers(); render2FA(); renderSmtp(); renderFiscal(); renderBackup(); renderProfile(); renderSessions(); renderLock(); renderOpening(); }
   if (t === 'audit') renderAudit();
+  if (t === 'accesari') renderAccess();
   if (t === 'arhiva') loadArhiva();
   if (t === 'plan') renderPlan();
   if (t === 'galerie') loadGalerie();
@@ -307,7 +308,9 @@ async function init() {
   // foaia de stil sa ascunda mai departe — asa au ramas INVIZIBILE pentru admin cardurile de
   // utilizatori, backup, SMTP si cote fiscale, plus exportul complet si stergerea logoului.
   $('#usersCard').classList.toggle('hidden', USER.role !== 'admin');
-  $('#accessCard') && $('#accessCard').classList.toggle('hidden', USER.role !== 'admin');
+  // Intrarea de meniu „Cine accesează aplicația" (submeniul Setări) — doar admin. Serverul refuza
+  // oricum /api/access-log cu 403; ascunderea evita o intrare de meniu care nu poate reusi.
+  $('#navAccesari') && $('#navAccesari').classList.toggle('hidden', USER.role !== 'admin');
   $('#exportAllBtn') && $('#exportAllBtn').classList.toggle('hidden', USER.role !== 'admin');
   // Planul de conturi e global (partajat de toate firmele), deci importul e rezervat adminului
   // — serverul raspunde 403 oricum; ascunderea evita un buton care nu poate reusi.

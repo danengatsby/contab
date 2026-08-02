@@ -214,6 +214,11 @@
           <button data-tab="setari">Setări generale</button>
           <button data-tab="arhiva">Arhivă documente</button>
           <button data-tab="audit" class="adv">Jurnal de audit</button>
+          <!-- Doar admin (comutat din app.js dupa rol). NU e marcat `.adv`, spre deosebire de
+               jurnalul de audit: acela se vede de toata lumea si e ascuns in modul simplu ca
+               intrare tehnica, pe cand asta e deja ingradit de rol. Doua garduri peste aceeasi
+               intrare ar produce „adminul nu-l mai gaseste" fara ca nimic sa explice de ce. -->
+          <button data-tab="accesari" id="navAccesari" class="hidden">Cine accesează aplicația</button>
         </div>
       </div>
       <div id="imperBanner" class="imper-banner hidden">
@@ -1864,39 +1869,6 @@ Cu stimă,
           <span id="twofaDisableWrap" class="hidden"><input id="twofaDisCode" inputmode="numeric" placeholder="Cod 6 cifre" data-u="u120" /> <button id="twofaDisable" class="btn ghost">Dezactivează 2FA</button> <button id="twofaRevoke" class="btn ghost">Revocă dispozitivele de încredere</button></span>
         </div>
       </div>
-      <div class="card hidden" id="accessCard">
-        <div class="card-head">
-          <h2>Cine accesează aplicația</h2>
-          <button id="accessRefresh" class="btn small">Reîmprospătează</button>
-        </div>
-        <p class="muted">Adresele IP, locația lor aproximativă și momentul accesului. Locația e
-          orientativă (derivată din IP, nu din dispozitiv) și se obține de la un serviciu extern —
-          vezi <a href="/confidentialitate.html" target="_blank">politica de confidențialitate</a>.</p>
-
-        <h3>Conectați acum</h3>
-        <div id="accessSessions" class="tablewrap"></div>
-
-        <div class="card-head">
-          <h3>Autentificări</h3>
-          <span class="row" data-u="u28">
-            <button id="accessAll" class="btn small active">Toate</button>
-            <button id="accessFailed" class="btn small">Doar eșuate</button>
-          </span>
-        </div>
-        <div id="accessLogins" class="tablewrap"></div>
-
-        <div class="card-head">
-          <h3>Toate accesările site-ului</h3>
-          <span class="row" data-u="u28">
-            <button id="accessVisAll" class="btn small active">Toate</button>
-            <button id="accessVisOameni" class="btn small">Fără roboți</button>
-          </span>
-        </div>
-        <p class="muted">Fiecare adresă IP care a cerut ceva de la site — inclusiv vizitatorii care
-          nu s-au autentificat niciodată. Un rând per adresă, nu per cerere: o singură deschidere a
-          aplicației înseamnă ~30 de cereri. „Pagini" numără navigările, „cereri" tot ce a cerut.</p>
-        <div id="accessVisitors" class="tablewrap"></div>
-      </div>
       <div class="card hidden" id="backupCard">
         <div class="card-head">
           <h2>Backup baza de date</h2>
@@ -2163,6 +2135,45 @@ Cu stimă,
       </div>
       <div class="explain"><span class="ei">📋</span><p><b>Ce e asta:</b> istoricul acțiunilor importante <b>pentru firma curentă</b> — <b>cine</b>, <b>ce</b> a făcut și <b>când</b> (creare/ștergere înregistrări, închideri, import etc.). Schimbă firma din selectorul de sus pentru jurnalul altei firme. <b>Adminul</b> poate comuta la <b>„Sistem (global)"</b> pentru acțiunile fără firmă (utilizatori, firme, impersonare, mesaje, backup). Util pentru control și trasabilitate.</p></div>
       <div id="auditList" class="tablewrap"></div>
+    </section>
+
+    <!-- ─────────────── CINE ACCESEAZĂ APLICAȚIA (doar admin) ─────────────── -->
+    <section id="tab-accesari" class="tab">
+      <div class="toolbar">
+        <h2>🔍 Cine accesează aplicația</h2>
+        <div class="spacer"></div>
+        <button id="accessRefresh" class="btn small" aria-label="Reîmprospătează">⟳ Reîmprospătează</button>
+      </div>
+      <div class="explain"><span class="ei">🔍</span><p><b>Ce e asta:</b> de unde se intră în aplicație și cine bate la ușă. <b>Conectații acum</b> — sesiunile active ale tuturor conturilor. <b>Autentificările</b> — intrările reușite și cele <b>eșuate</b> (o serie de parole greșite de pe o adresă străină se vede aici înainte să devină o problemă). <b>Accesările site-ului</b> — fiecare adresă IP care a cerut ceva, inclusiv vizitatorii fără cont și roboții. Locația e orientativă, dedusă din adresa IP.</p></div>
+      <div class="card">
+      <p class="muted">Locația e orientativă (derivată din adresa IP, nu din dispozitiv) și se
+        obține de la un serviciu extern — vezi
+        <a href="/confidentialitate.html" target="_blank">politica de confidențialitate</a>.</p>
+
+      <h3>Conectați acum</h3>
+      <div id="accessSessions" class="tablewrap"></div>
+
+      <div class="card-head">
+        <h3>Autentificări</h3>
+        <span class="row" data-u="u28">
+          <button id="accessAll" class="btn small active">Toate</button>
+          <button id="accessFailed" class="btn small">Doar eșuate</button>
+        </span>
+      </div>
+      <div id="accessLogins" class="tablewrap"></div>
+
+      <div class="card-head">
+        <h3>Toate accesările site-ului</h3>
+        <span class="row" data-u="u28">
+          <button id="accessVisAll" class="btn small active">Toate</button>
+          <button id="accessVisOameni" class="btn small">Fără roboți</button>
+        </span>
+      </div>
+      <p class="muted">Fiecare adresă IP care a cerut ceva de la site — inclusiv vizitatorii care
+        nu s-au autentificat niciodată. Un rând per adresă, nu per cerere: o singură deschidere a
+        aplicației înseamnă ~30 de cereri. „Pagini" numără navigările, „cereri" tot ce a cerut.</p>
+      <div id="accessVisitors" class="tablewrap"></div>
+      </div>
     </section>
 
     <!-- ─────────────── ARHIVĂ DOCUMENTE ─────────────── -->
