@@ -129,7 +129,12 @@ function onTab(t) {
   if (t === 'analitic') loadAnalytic();
   if (t === 'mijloace') { loadAssets(); loadLeasingContracts(); }
   if (t === 'salarizare') loadSalarizare();
-  if (t === 'stocuri') loadStocks();
+  // Stocurile sunt sparte in trei pagini, dar `loadStocks()` ramane UN singur punct de randare:
+  // umple toate zonele (gestiuni, produse, stoc, miscari, productie, retete) dintr-o singura runda
+  // de patru apeluri. Cardurile exista in DOM indiferent de pagina activa, deci fiecare dintre cele
+  // trei cheama acelasi lucru — la fel de scump ca azi, si fara o a doua cale de randare care sa
+  // driftreze fata de prima.
+  if (t === 'stocuri' || t === 'productie' || t === 'configstoc') loadStocks();
   if (t === 'parteneri') loadPartners();
   // Setarile au fost sparte in cinci pagini tematice. `setari` PASTREAZA reimprospatarea completa,
   // deliberat: vreo zece locuri din aplicatie cheama `onTab('setari')` dupa o operatie (firma

@@ -124,6 +124,11 @@ main{max-width:1180px;margin:22px auto;padding:0 18px}
    personalizare facturi). Sunt marcatori într-un grid, nu containere, deci nu se pot împacheta în
    carduri fără să se rupă așezarea câmpurilor — dar pot fi DESPĂRȚITE, ca să nu se citească drept
    un singur perete de 43 de câmpuri. Linie deasupra + aer, atât. */
+/* Rândul de descărcări, scos din bara de titlu: acolo se înghesuia cu perioada și rupea titlul
+   pe trei linii. Se înfășoară curat și rămâne secundar vizual — sunt exporturi, nu acțiuni. */
+.descarcari{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-4px 0 16px}
+.descarcari>.muted{font-size:.9rem;margin-right:2px}
+
 .dyn>.full.sect-form{margin-top:26px;padding-top:20px;border-top:2px solid var(--line)}
 .dyn>.full.sect-form>h3{margin:0 0 6px}
 

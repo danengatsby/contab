@@ -264,7 +264,12 @@
       <div class="navgroup">
         <button class="navlabel" type="button">📦 Stocuri</button>
         <div class="navmenu">
-          <button data-tab="stocuri">Stocuri / gestiune</button>
+          <!-- Sparte pe CE FACI, nu pe cum e organizat codul: lucrul zilnic (ce ai, ce mișcă),
+               producția — o activitate pe care multe firme n-o folosesc deloc — și configurarea,
+               care se face o dată la început. Erau 11 panouri și 58 de câmpuri într-o pagină. -->
+          <button data-tab="stocuri">Ce am pe stoc</button>
+          <button data-tab="productie">Producție</button>
+          <button data-tab="configstoc">Configurare stocuri</button>
         </div>
       </div>
       <!-- grupul intreg se ascunde pentru utilizatorii cu dreptul „faraSalarii" (app.js) -->
@@ -1277,20 +1282,137 @@
     </section>
 
     <!-- ─────────────── STOCURI ─────────────── -->
-    <section id="tab-stocuri" class="tab">
-      <div class="explain"><span class="ei">📦</span><p><b>Ce e asta:</b> aici urmărești marfa și materialele — ce a intrat, ce a ieșit și ce stoc ți-a rămas, cu valoarea lui (la cost mediu). Util ca să știi exact ce ai pe stoc.</p></div>
+        <section id="tab-stocuri" class="tab">
+      <!-- Titlul, perioada si SASE butoane de export stateau pe acelasi rand: titlul se rupea pe
+           trei linii, iar butoanele se inghesuiau unele in altele. Bara pastreaza doar ce comanda
+           pagina (perioada); descarcarile trec pe randul lor, unde au loc sa fie citite. -->
       <div class="toolbar">
-        <h2>Gestiunea stocurilor <span class="muted" data-u="u70">(cost mediu)</span></h2>
+        <h2>📦 Ce am pe stoc <span class="muted" data-u="u70">(cost mediu)</span></h2>
         <div class="spacer"></div>
         <select id="stocLuna" class="period luna-req" aria-label="Luna"></select>
         <select id="stocAn" class="period an" aria-label="Anul"></select>
-        <a id="stocPdf" class="btn" target="_blank">⬇ Situație stocuri PDF</a>
-        <a id="aprovPdf" class="btn" target="_blank" title="Recepțiile perioadei, cu recapitulație pe furnizori">⬇ Situație aprovizionări</a>
-        <a id="consumPdf" class="btn" target="_blank" title="Ieșirile din gestiune la CMP, cu totaluri pe contul de descărcare">⬇ Situație consumuri</a>
-        <a id="stocCsv" class="btn" target="_blank">⬇ Stoc CSV</a>
-        <a id="movCsv" class="btn" target="_blank">⬇ Mișcări CSV</a>
-        <a id="saftStockHint" class="btn ghost" href="#" title="Stocurile alimentează secțiunile Products / MovementOfGoods / PhysicalStock din SAF-T">SAF-T ↗</a>
       </div>
+      <div class="descarcari">
+        <span class="muted">Descarcă:</span>
+        <a id="stocPdf" class="btn small" target="_blank">⬇ Situație stocuri PDF</a>
+        <a id="aprovPdf" class="btn small" target="_blank" title="Recepțiile perioadei, cu recapitulație pe furnizori">⬇ Situație aprovizionări</a>
+        <a id="consumPdf" class="btn small" target="_blank" title="Ieșirile din gestiune la CMP, cu totaluri pe contul de descărcare">⬇ Situație consumuri</a>
+        <a id="stocCsv" class="btn small" target="_blank">⬇ Stoc CSV</a>
+        <a id="movCsv" class="btn small" target="_blank">⬇ Mișcări CSV</a>
+        <a id="saftStockHint" class="btn small ghost" href="#" title="Stocurile alimentează secțiunile Products / MovementOfGoods / PhysicalStock din SAF-T">SAF-T ↗</a>
+      </div>
+      <div class="explain"><span class="ei">📦</span><p><b>Ce e asta:</b> ce ai pe stoc <b>acum</b> și ce a mișcat în perioadă. Aici înregistrezi intrările (recepții de la furnizor) și ieșirile (consum, vânzare), scoți situațiile PDF/CSV și faci inventarul.</p></div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Stoc curent (pe gestiune)</h2>
+          <select id="stocGestFilter" class="period"><option value="">Toate gestiunile</option></select>
+        </div>
+        <div id="stocksList" class="tablewrap"></div>
+      </div>
+      <div class="card">
+        <h2>Înregistrează mișcare</h2>
+        <form id="movementForm" class="dyn">
+          <label>Produs <select name="productId" required></select></label>
+          <label>Tip
+            <select name="tip">
+              <option value="receptie">Recepție (intrare)</option>
+              <option value="iesire">Ieșire (consum/vânzare)</option>
+              <option value="transfer">Transfer între gestiuni</option>
+            </select>
+          </label>
+          <label id="gestSrcRow">Gestiune <select name="gestiuneId" required></select></label>
+          <label id="gestDestRow" class="hidden">Gestiune destinație <select name="gestiuneDestId"></select></label>
+          <label>Data <input name="data" type="date" required /></label>
+          <label>Cantitate <input name="cantitate" type="number" step="0.001" required /></label>
+          <label id="pretRow">Preț unitar (la recepție) <input name="pretUnitar" type="number" step="0.01" /></label>
+          <label id="furnizorRow">Furnizor (la recepție) <input name="furnizor" /></label>
+          <label>Document <input name="document" /></label>
+          <button class="btn primary">Înregistrează</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Mișcări de stoc</h2>
+          <span class="row" data-u="u102">
+            <select id="mvfTip" class="period"><option value="">Toate tipurile</option><option value="receptie">Recepție</option><option value="iesire">Ieșire</option><option value="transfer">Transfer</option></select>
+            <select id="mvfGest" class="period"><option value="">Toate gestiunile</option></select>
+            <input id="mvfText" placeholder="produs / document / operator" data-u="u103" />
+            <input id="mvfLuna" type="month" class="period" title="Filtru pe lună" />
+            <button id="mvfReset" class="btn small ghost">Resetează</button>
+          </span>
+        </div>
+        <div id="movementsList" class="tablewrap"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Registrul documentelor emise</h2>
+          <a id="docRegPdf" class="btn small" target="_blank">⬇ PDF</a>
+        </div>
+        <p class="muted">Toate documentele de stoc numerotate (NIR, bon de consum, aviz), pentru control.</p>
+        <div id="docRegisterList" class="tablewrap"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Inventariere</h2>
+          <span>
+            <select id="invGest" class="period"></select>
+            <a id="invPdf" class="btn small" target="_blank">⬇ Listă inventar PDF</a>
+            <button id="invLoad" class="btn small">Încarcă lista</button>
+          </span>
+        </div>
+        <p class="muted">Completează stocul faptic (numărat fizic). La înregistrare se generează automat: plus de inventar <b class="adv">3xx = 758</b>, minus (lipsă) <b>60x = 3xx</b>, iar bifând „imputare” se adaugă <b class="adv">4282 = 7588 + 4427</b> (recuperare de la gestionar). Fiecare inventar produce un proces-verbal.</p>
+        <div id="inventoryArea"></div>
+        <div id="inventoriesList" class="tablewrap" data-u="u101"></div>
+      </div>
+    </section>
+    <section id="tab-productie" class="tab">
+      <div class="toolbar">
+        <h2>🏭 Producție</h2>
+        <div class="spacer"></div>
+      </div>
+      <div class="explain"><span class="ei">🏭</span><p><b>Ce e asta:</b> dacă din materiale <b>produci</b> altceva. Consumi materii prime și obții produse finite; rețeta (BOM) e lista fixă de materiale pentru o bucată, ca să nu o rescrii de fiecare dată. Dacă doar cumperi și vinzi marfă, această pagină nu te privește.</p></div>
+      <div class="card">
+        <h2>🏭 Producție (obținere produse finite)</h2>
+        <p class="muted">Consumă materiale din stoc (la cost mediu) și obține produse finite la cost de producție: <b class="adv">601/602 = 301/302</b> (consum) + <b class="adv">345 = 711</b> (obținere). Stocul se actualizează automat.</p>
+        <form id="prodForm" class="dyn">
+          <label>Data <input name="data" type="date" /></label>
+          <label>Document (bon de producție) <input name="document" placeholder="Bon producție 1" /></label>
+          <label>Produs finit <select name="productId" required></select></label>
+          <label>Gestiune (destinație) <select name="gestiuneId"></select></label>
+          <label>Cantitate obținută <input name="cantitate" type="number" step="0.001" required /></label>
+          <label>Cost unitar de producție <input name="costUnitar" type="number" step="0.01" required /></label>
+          <div class="full"><label>Materiale consumate (din stoc, la CMP)</label><div id="prodMaterials"></div><button type="button" id="prodAddMat" class="btn ghost small">+ adaugă material</button></div>
+          <button class="btn primary">Înregistrează producția</button>
+        </form>
+        <div id="prodStatus" class="status"></div>
+        <h3 data-u="u61">Situație producție (luna de lucru)</h3>
+        <div id="prodReport" class="tablewrap"></div>
+      </div>
+      <div class="card">
+        <h2>📋 Rețete / BOM (producție standardizată)</h2>
+        <p class="muted">Salvează o rețetă (lista de materiale pentru o <b>cantitate de bază</b> de produs finit). Apoi produci cu un clic, indicând doar cantitatea dorită — materialele se scalează automat și se generează nota contabilă.</p>
+        <form id="recipeForm" class="dyn">
+          <input type="hidden" name="id" />
+          <label>Nume rețetă <input name="nume" required placeholder="ex. Pâine 500g" /></label>
+          <label>Produs finit <select name="productId" required></select></label>
+          <label>Gestiune (destinație) <select name="gestiuneId"></select></label>
+          <label>Cantitate de bază <input name="cantitateBaza" type="number" step="0.001" value="1" required /></label>
+          <label>Cost unitar standard <input name="costUnitar" type="number" step="0.01" placeholder="lei / buc" /></label>
+          <div class="full"><label>Materiale (pentru cantitatea de bază)</label><div id="recipeMaterials"></div><button type="button" id="recipeAddMat" class="btn ghost small">+ adaugă material</button></div>
+          <button class="btn primary">Salvează rețeta</button>
+          <button type="button" id="recipeReset" class="btn ghost">Rețetă nouă</button>
+        </form>
+        <div id="recipeStatus" class="status"></div>
+        <h3 data-u="u61">Rețete salvate</h3>
+        <div id="recipeList" class="tablewrap"></div>
+      </div>
+    </section>
+    <section id="tab-configstoc" class="tab">
+      <div class="toolbar">
+        <h2>⚙️ Configurare stocuri</h2>
+        <div class="spacer"></div>
+      </div>
+      <div class="explain"><span class="ei">⚙️</span><p><b>Ce e asta:</b> se face <b>o dată, la început</b>: depozitele (gestiunile) în care ții marfa, lista de produse, stocul cu care pornești dacă preiei o firmă cu istoric, și numerotarea documentelor de stoc.</p></div>
       <div class="grid2">
         <div class="card">
           <h2>Gestiuni (depozite)</h2>
@@ -1335,103 +1457,6 @@
         <div id="initStocCheck" class="tablewrap" data-u="u23"></div>
       </div>
       <div class="card">
-        <h2>Înregistrează mișcare</h2>
-        <form id="movementForm" class="dyn">
-          <label>Produs <select name="productId" required></select></label>
-          <label>Tip
-            <select name="tip">
-              <option value="receptie">Recepție (intrare)</option>
-              <option value="iesire">Ieșire (consum/vânzare)</option>
-              <option value="transfer">Transfer între gestiuni</option>
-            </select>
-          </label>
-          <label id="gestSrcRow">Gestiune <select name="gestiuneId" required></select></label>
-          <label id="gestDestRow" class="hidden">Gestiune destinație <select name="gestiuneDestId"></select></label>
-          <label>Data <input name="data" type="date" required /></label>
-          <label>Cantitate <input name="cantitate" type="number" step="0.001" required /></label>
-          <label id="pretRow">Preț unitar (la recepție) <input name="pretUnitar" type="number" step="0.01" /></label>
-          <label id="furnizorRow">Furnizor (la recepție) <input name="furnizor" /></label>
-          <label>Document <input name="document" /></label>
-          <button class="btn primary">Înregistrează</button>
-        </form>
-      </div>
-      <div class="card">
-        <h2>🏭 Producție (obținere produse finite)</h2>
-        <p class="muted">Consumă materiale din stoc (la cost mediu) și obține produse finite la cost de producție: <b class="adv">601/602 = 301/302</b> (consum) + <b class="adv">345 = 711</b> (obținere). Stocul se actualizează automat.</p>
-        <form id="prodForm" class="dyn">
-          <label>Data <input name="data" type="date" /></label>
-          <label>Document (bon de producție) <input name="document" placeholder="Bon producție 1" /></label>
-          <label>Produs finit <select name="productId" required></select></label>
-          <label>Gestiune (destinație) <select name="gestiuneId"></select></label>
-          <label>Cantitate obținută <input name="cantitate" type="number" step="0.001" required /></label>
-          <label>Cost unitar de producție <input name="costUnitar" type="number" step="0.01" required /></label>
-          <div class="full"><label>Materiale consumate (din stoc, la CMP)</label><div id="prodMaterials"></div><button type="button" id="prodAddMat" class="btn ghost small">+ adaugă material</button></div>
-          <button class="btn primary">Înregistrează producția</button>
-        </form>
-        <div id="prodStatus" class="status"></div>
-        <h3 data-u="u61">Situație producție (luna de lucru)</h3>
-        <div id="prodReport" class="tablewrap"></div>
-      </div>
-      <div class="card">
-        <h2>📋 Rețete / BOM (producție standardizată)</h2>
-        <p class="muted">Salvează o rețetă (lista de materiale pentru o <b>cantitate de bază</b> de produs finit). Apoi produci cu un clic, indicând doar cantitatea dorită — materialele se scalează automat și se generează nota contabilă.</p>
-        <form id="recipeForm" class="dyn">
-          <input type="hidden" name="id" />
-          <label>Nume rețetă <input name="nume" required placeholder="ex. Pâine 500g" /></label>
-          <label>Produs finit <select name="productId" required></select></label>
-          <label>Gestiune (destinație) <select name="gestiuneId"></select></label>
-          <label>Cantitate de bază <input name="cantitateBaza" type="number" step="0.001" value="1" required /></label>
-          <label>Cost unitar standard <input name="costUnitar" type="number" step="0.01" placeholder="lei / buc" /></label>
-          <div class="full"><label>Materiale (pentru cantitatea de bază)</label><div id="recipeMaterials"></div><button type="button" id="recipeAddMat" class="btn ghost small">+ adaugă material</button></div>
-          <button class="btn primary">Salvează rețeta</button>
-          <button type="button" id="recipeReset" class="btn ghost">Rețetă nouă</button>
-        </form>
-        <div id="recipeStatus" class="status"></div>
-        <h3 data-u="u61">Rețete salvate</h3>
-        <div id="recipeList" class="tablewrap"></div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <h2>Stoc curent (pe gestiune)</h2>
-          <select id="stocGestFilter" class="period"><option value="">Toate gestiunile</option></select>
-        </div>
-        <div id="stocksList" class="tablewrap"></div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <h2>Inventariere</h2>
-          <span>
-            <select id="invGest" class="period"></select>
-            <a id="invPdf" class="btn small" target="_blank">⬇ Listă inventar PDF</a>
-            <button id="invLoad" class="btn small">Încarcă lista</button>
-          </span>
-        </div>
-        <p class="muted">Completează stocul faptic (numărat fizic). La înregistrare se generează automat: plus de inventar <b class="adv">3xx = 758</b>, minus (lipsă) <b>60x = 3xx</b>, iar bifând „imputare” se adaugă <b class="adv">4282 = 7588 + 4427</b> (recuperare de la gestionar). Fiecare inventar produce un proces-verbal.</p>
-        <div id="inventoryArea"></div>
-        <div id="inventoriesList" class="tablewrap" data-u="u101"></div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <h2>Mișcări de stoc</h2>
-          <span class="row" data-u="u102">
-            <select id="mvfTip" class="period"><option value="">Toate tipurile</option><option value="receptie">Recepție</option><option value="iesire">Ieșire</option><option value="transfer">Transfer</option></select>
-            <select id="mvfGest" class="period"><option value="">Toate gestiunile</option></select>
-            <input id="mvfText" placeholder="produs / document / operator" data-u="u103" />
-            <input id="mvfLuna" type="month" class="period" title="Filtru pe lună" />
-            <button id="mvfReset" class="btn small ghost">Resetează</button>
-          </span>
-        </div>
-        <div id="movementsList" class="tablewrap"></div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <h2>Registrul documentelor emise</h2>
-          <a id="docRegPdf" class="btn small" target="_blank">⬇ PDF</a>
-        </div>
-        <p class="muted">Toate documentele de stoc numerotate (NIR, bon de consum, aviz), pentru control.</p>
-        <div id="docRegisterList" class="tablewrap"></div>
-      </div>
-      <div class="card">
         <h2>Serii documente (numerotare)</h2>
         <p class="muted">Seria și următorul număr pentru NIR, bon de consum și aviz. Numărul se atribuie automat la prima tipărire a documentului și rămâne fix la reimprimare.</p>
         <form id="docSeriesForm" class="dyn">
@@ -1447,8 +1472,7 @@
         </form>
       </div>
     </section>
-
-    <section id="tab-parteneri" class="tab">
+<section id="tab-parteneri" class="tab">
       <div class="grid2">
         <div class="card">
           <h2>Adaugă / modifică partener</h2>

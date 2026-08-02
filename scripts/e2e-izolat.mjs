@@ -302,7 +302,9 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   // sectiunea ei si sa afiseze continut — o poarta pe sursa dovedeste ca sectiunile EXISTA, dar nu
   // si ca navigarea chiar ajunge acolo cu panourile randate.
   for (const [tab, ancora] of [['setari', '#companyForm'], ['cont', '#profileForm'],
-    ['acces', '#colaboratoriBox'], ['date', '#openingCard'], ['conexiuni', '#anafForm']]) {
+    ['acces', '#colaboratoriBox'], ['date', '#openingCard'], ['conexiuni', '#anafForm'],
+    // ...si stocurile, sparte la fel: lucrul zilnic / productie / configurare
+    ['stocuri', '#stocGestFilter'], ['productie', '#prodForm'], ['configstoc', '#gestiuniList']]) {
     await adm.evaluate((x) => window.goTab(x), tab);
     await adm.waitForTimeout(500);
     ok('pagina „' + tab + '" se deschide', (await adm.locator('#tab-' + tab + '.active').count()) === 1);
