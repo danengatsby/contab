@@ -89,17 +89,30 @@ module.exports = function registerAuthRoutes(app, ctx) {
     // Contul in ASTEPTARE (invitat, neacceptat inca) merge pe aceeasi ramura de momeala: lasat ca
     // `u.pending || …` ar fi scurtcircuitat inaintea lui scrypt si ar fi reintrodus diferenta,
     // deosebind un invitat de un nume liber. Dincolo de linia asta `u` e sigur activ.
-    if (!await authlib.verifyUserPasswordAsync(u && !u.pending ? u : null, password)) { bumpFail(req); return res.status(401).json({ error: 'Utilizator sau parola gresita.' }); }
+    // Incercarile ESUATE se consemneaza, cu IP-ul: ele sunt semnalul de securitate propriu-zis
+    // (panoul de administrare le arata separat). Se retine numele INCERCAT — util cand cineva bate
+    // la usa cu „admin" — dar NICIODATA parola, nici macar trunchiata. `userId` ramane gol cand
+    // contul nu exista, ca sa nu para ca a existat.
+    const esec = (motiv) => logAudit('login.failed', motiv, {
+      req, userId: (u && u.id) || null, username: String(username || '').slice(0, 60), firmaId: null,
+    });
+    if (!await authlib.verifyUserPasswordAsync(u && !u.pending ? u : null, password)) {
+      bumpFail(req); esec('utilizator sau parola gresita'); db.save();
+      return res.status(401).json({ error: 'Utilizator sau parola gresita.' });
+    }
     let rememberDevice = false;
     if (u.twofa && !deviceTrusted(req, u)) {
       if (!code) return res.json({ twofa: true }); // parola corecta, mai trebuie codul
-      if (!totp.verify(u.totpSecret, code)) { bumpFail(req); return res.status(401).json({ error: 'Cod 2FA gresit.', twofa: true }); }
+      if (!totp.verify(u.totpSecret, code)) {
+        bumpFail(req); esec('cod 2FA gresit'); db.save();
+        return res.status(401).json({ error: 'Cod 2FA gresit.', twofa: true });
+      }
       rememberDevice = !!remember;
     }
     clearFails(req);
     startSession(req, res, u); // creeaza sesiune + cookie sid
     if (rememberDevice) setTrustedDevice(req, res, u); // append (tfd) DUPA setSession
-    logAudit('login', 'autentificare', { userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
+    logAudit('login', 'autentificare', { req, userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
     db.save();
     req.user = u; // pentru withSessionState (starea abonamentului firmei active)
     res.json({ ok: true, user: withSessionState(req, u) });
@@ -113,7 +126,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const u = d.users.find((x) => x.username === uname);
     if (!u) return res.status(404).json({ error: 'Contul ' + (uname === 'demo-contabil' ? 'demo-contabil' : 'demo') + ' nu este disponibil momentan.' });
     startSession(req, res, u);
-    logAudit('login', 'cont ' + uname + ' (public)', { userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
+    logAudit('login', 'cont ' + uname + ' (public)', { req, userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
     db.save();
     res.json({ ok: true, user: publicUser(u) });
   });

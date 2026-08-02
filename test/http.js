@@ -2291,6 +2291,71 @@ async function main() {
     eq('oprire fara impersonare activa -> 400', (await req('POST', '/api/impersonate/stop', { cookie: cImp })).status, 400);
     ok('auditul de sistem consemneaza impersonarea', (await req('GET', '/api/audit/system', { cookie: cImp })).json.some((a) => a.action === 'impersonate.start'));
 
+    // ── „Cine acceseaza aplicatia" (admin): sesiuni active + autentificari, cu IP si locatie ──
+    // Testat AICI, nu in test/run.js: `raport()` e async, iar suita aceea e sincrona — o aserttiune
+    // asincrona pusa acolo NU se numara si nu poate pica (verificat prin mutatie: o valoare sigur
+    // gresita trecea cu „0 esuate"). Un test care nu poate pica e mai rau decat lipsa lui.
+    {
+      // Sesiune proprie de admin, nu una imprumutata din blocul de impersonare de mai sus:
+      // testul nu trebuie sa depinda de starea in care a lasat-o alt scenariu.
+      const cAdmin = (await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } })).cookie;
+      eq('access-log: non-admin -> 403', (await req('GET', '/api/access-log', { cookie: c1 })).status, 403);
+      eq('access-log: fara sesiune -> 401', (await req('GET', '/api/access-log')).status, 401);
+
+      // Autentificare ESUATA, apoi una reusita, de pe acelasi client: ambele trebuie sa apara.
+      await req('POST', '/api/login', { body: { username: 'admin', password: 'parola-gresita-deliberat' } });
+      await req('POST', '/api/login', { body: { username: 'nu-exista-contul-asta', password: 'orice' } });
+
+      const al = await req('GET', '/api/access-log', { cookie: cAdmin });
+      eq('access-log: admin -> 200', al.status, 200);
+      ok('raportul are ambele tabele', Array.isArray(al.json.sesiuni) && Array.isArray(al.json.autentificari));
+      ok('sesiunile active includ adminul conectat', al.json.sesiuni.some((s) => s.username === 'admin'));
+      const oSes = al.json.sesiuni.find((s) => s.username === 'admin');
+      ok('...cu IP, dispozitiv si momentele accesului', 'ip' in oSes && 'dispozitiv' in oSes
+        && !!oSes.creata && !!oSes.ultimaActivitate && typeof oSes.online === 'boolean');
+      ok('fiecare rand poarta campul de locatie', al.json.sesiuni.every((s) => 'locatie' in s)
+        && al.json.autentificari.every((s) => 'locatie' in s));
+
+      const esecuri = al.json.autentificari.filter((x) => !x.reusita);
+      ok('incercarea cu parola gresita e consemnata', esecuri.some((x) => x.username === 'admin'));
+      ok('...si cea pe un cont inexistent', esecuri.some((x) => x.username === 'nu-exista-contul-asta'));
+      ok('contul inexistent NU primeste userId (nu se confirma ca exista)',
+        esecuri.filter((x) => x.username === 'nu-exista-contul-asta').every((x) => x.userId == null));
+      ok('autentificarile reusite sunt si ele in lista', al.json.autentificari.some((x) => x.reusita));
+      ok('PAROLA incercata nu apare NICAIERI in raport',
+        !JSON.stringify(al.json).includes('parola-gresita-deliberat'));
+
+      const doarE = await req('GET', '/api/access-log?esuate=1', { cookie: cAdmin });
+      ok('filtrul ?esuate=1 intoarce numai esecuri', doarE.json.autentificari.length > 0
+        && doarE.json.autentificari.every((x) => x.reusita === false));
+
+      // IP-ul de test e loopback, deci NU pleaca la niciun serviciu extern: locatia ramane goala.
+      // Asta e si proba ca garda de adrese private chiar taie inaintea retelei — suita nu are voie
+      // sa depinda de un tert ca sa treaca.
+      ok('IP privat -> nicio localizare (si niciun apel extern)',
+        al.json.autentificari.every((x) => x.locatie === ''));
+
+      // Raportul insusi, cu un furnizor de geo INJECTAT: dovedeste ca localizarea chiar se lipeste
+      // pe randuri si ca o cadere a furnizorului nu rupe raportul.
+      const accSvc = require('../src/accessService');
+      const dLive = require('../src/db').get();
+      const cuGeo = await accSvc.raport(dLive, {
+        geo: {
+          lookupMany: async (ips) => new Map(ips.map((ip) => [ip, { oras: 'Cluj-Napoca', taraCod: 'RO' }])),
+          eticheta: (g) => (g ? g.oras + ', ' + g.taraCod : ''),
+        },
+      });
+      ok('cu geo disponibil: eticheta ajunge pe randuri',
+        cuGeo.sesiuni.length > 0 && cuGeo.sesiuni.every((s) => s.locatie === 'Cluj-Napoca, RO'));
+      ok('...si se raporteaza ca disponibil', cuGeo.geoDisponibil === true);
+
+      const geoCazut = await accSvc.raport(dLive, {
+        geo: { lookupMany: async () => { throw new Error('serviciu cazut'); }, eticheta: () => '' },
+      });
+      ok('furnizor CAZUT: raportul se intoarce oricum', Array.isArray(geoCazut.sesiuni) && geoCazut.sesiuni.length > 0);
+      ok('...marcat explicit ca indisponibil, nu tacut', geoCazut.geoDisponibil === false);
+    }
+
     // ── 2FA / TOTP: setup -> enable -> login in doi pasi -> disable (cap-coada) ──
     const c2f = (await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1' } })).cookie;
     const setup = await req('POST', '/api/2fa/setup', { cookie: c2f });

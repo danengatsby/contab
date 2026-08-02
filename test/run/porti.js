@@ -988,6 +988,22 @@ section('Documente juridice: fara placeholdere si cu identitate consecventa');
   const authSrc = fsx.readFileSync(pth.join(root, 'src', 'auth.js'), 'utf8');
   if (/pwnedpasswords/.test(authSrc)) ok('verificarea parolelor la HIBP e declarata', /Pwned/i.test(conf));
 
+  // Localizarea IP-urilor trimite adrese ale utilizatorilor unui TERT, deci e subimputernicit.
+  // Poarta se ancoreaza pe GAZDA din cod, nu pe un nume scris de mana: daca maine se schimba
+  // furnizorul, declaratia trebuie sa se schimbe odata cu el, altfel anexa devine o fictiune —
+  // exact esecul pe care restul acestei sectiuni il previne pentru ceilalti furnizori.
+  const geoSrc = fsx.readFileSync(pth.join(root, 'src', 'geoip.js'), 'utf8');
+  const gazdaGeo = (geoSrc.match(/https:\/\/([a-z0-9.-]+)\//i) || [])[1] || '';
+  ok('modulul de geolocalizare numeste o gazda concreta', !!gazdaGeo);
+  const folositGeo = fsx.readdirSync(pth.join(root, 'src'))
+    .some((f) => f.endsWith('.js') && f !== 'geoip.js'
+      && /require\(['"]\.\/geoip['"]\)/.test(fsx.readFileSync(pth.join(root, 'src', f), 'utf8')));
+  if (folositGeo && gazdaGeo) {
+    ok('furnizorul de geolocalizare (' + gazdaGeo + ') e declarat in politica', conf.includes(gazdaGeo));
+    ok('...si in anexa de subimputerniciti din DPA', dpa.includes(gazdaGeo));
+    ok('...cu mentiunea ca pleaca DOAR adresa IP', /doar[^.<]{0,20}adres[ăa]\s+IP/i.test(conf) || /doar[^.<]{0,20}o adres[ăa] IP/i.test(dpa));
+  }
+
   // Un DPA pe care nimeni nu l-a acceptat nu e opozabil: ecranul de inscriere trebuie sa-l numeasca.
   const idx = fsx.readFileSync(pth.join(root, 'public', 'index.html'), 'utf8');
   const accept = (idx.match(/Prin crearea contului accep[țt]i[^<]*(?:<[^>]+>[^<]*)*?<\/p>/) || [''])[0];

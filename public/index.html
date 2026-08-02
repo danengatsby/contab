@@ -1864,6 +1864,27 @@ Cu stimă,
           <span id="twofaDisableWrap" class="hidden"><input id="twofaDisCode" inputmode="numeric" placeholder="Cod 6 cifre" data-u="u120" /> <button id="twofaDisable" class="btn ghost">Dezactivează 2FA</button> <button id="twofaRevoke" class="btn ghost">Revocă dispozitivele de încredere</button></span>
         </div>
       </div>
+      <div class="card hidden" id="accessCard">
+        <div class="card-head">
+          <h2>Cine accesează aplicația</h2>
+          <button id="accessRefresh" class="btn small">Reîmprospătează</button>
+        </div>
+        <p class="muted">Adresele IP, locația lor aproximativă și momentul accesului. Locația e
+          orientativă (derivată din IP, nu din dispozitiv) și se obține de la un serviciu extern —
+          vezi <a href="/confidentialitate.html" target="_blank">politica de confidențialitate</a>.</p>
+
+        <h3>Conectați acum</h3>
+        <div id="accessSessions" class="tablewrap"></div>
+
+        <div class="card-head">
+          <h3>Autentificări</h3>
+          <span class="row" data-u="u28">
+            <button id="accessAll" class="btn small active">Toate</button>
+            <button id="accessFailed" class="btn small">Doar eșuate</button>
+          </span>
+        </div>
+        <div id="accessLogins" class="tablewrap"></div>
+      </div>
       <div class="card hidden" id="backupCard">
         <div class="card-head">
           <h2>Backup baza de date</h2>
