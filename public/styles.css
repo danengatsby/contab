@@ -773,6 +773,8 @@ body.dark .imper-banner button{background:#ffd778;color:#2a2008}
   padding:18px 22px;width:410px;max-width:92%;box-shadow:0 18px 50px rgba(0,0,0,.55);text-align:center}
 .tour-card h3{color:#fff}
 .tour-card #tourText{color:#cfc9ba}                     /* bate `.muted`, care e gri inchis */
+.tour-card .tour-sub{color:#a8a294;font-size:.9rem;margin:-6px 0 0;line-height:1.5}
+.tour-card .tour-sub b{color:#cfc9ba;font-weight:600}
 .tour-card .tour-progress i{background:rgba(255,255,255,.3)}
 .tour-card .tour-progress i.on{background:var(--accent)}
 .tour-card .tour-actions .btn{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.28)}
