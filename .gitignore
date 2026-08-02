@@ -19,3 +19,8 @@ p[0-9].txt
 # (Root le ascundea printr-un core.excludesFile global, utilizatorul `contab` nu — deci
 # verdictul difera dupa cine il cere. Aici il facem sa nu mai depinda de asta.)
 .claude/settings.local.json
+
+# Pachete de descarcat servite temporar (ex. pachetul Windows). NU se comit: sunt artefacte
+# mari, generate. Fara linia asta, garda din src/deployState.js ar raporta „arbore murdar"
+# la fiecare pornire — exact alarma care suna mereu si pe care operatorul o ignora.
+/public/descarcari/
