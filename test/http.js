@@ -722,6 +722,24 @@ async function main() {
     eq('checkout-guest cu plan invalid -> 400', (await req('POST', '/api/checkout-guest', { body: { plan: 'inexistent' } })).status, 400);
     eq('non-admin la activarea de plan (admin) -> 403', (await req('POST', '/api/subscription/activate', { cookie: c1, body: { userId: 2, plan: 'pro' } })).status, 403);
 
+    // ── Incasarea, suspendata cat timp furnizorul nu are identitate juridica publicata ──
+    // Porti pe SURSA exista deja (test/run/porti.js), dar ele dovedesc ca garda e SCRISA, nu ca
+    // raspunsul chiar se schimba: o garda pusa dupa un `return` ar fi trecut scanarea. Aici se
+    // dovedeste comportamentul, pe serverul real.
+    const plansM = require('../src/plans');
+    if (plansM.PLATI_SUSPENDATE) {
+      const cgValid = await req('POST', '/api/checkout-guest', { body: { plan: 'pro' } });
+      eq('checkout-guest cu plan VALID -> 503 (incasare oprita)', cgValid.status, 503);
+      ok('...cu motivul si marcajul pentru interfata', cgValid.json.platiSuspendate === true && /nu [îi]ncas[ăa]m/i.test(cgValid.json.error || ''));
+      eq('subscription/checkout -> 503 (incasare oprita)', (await req('POST', '/api/subscription/checkout', { cookie: c1, body: { plan: 'pro' } })).status, 503);
+      ok('/api/plans anunta suspendarea', plansPub.json.platiSuspendate === true);
+      ok('/api/subscription anunta suspendarea + motivul', subInfo.json.platiSuspendate === true
+        && typeof subInfo.json.motivPlatiSuspendate === 'string' && subInfo.json.motivPlatiSuspendate.length > 40);
+      // Anularea NU are voie sa fie prinsa in suspendare: un client trebuie sa poata pleca oricand.
+      // Fara abonament Stripe raspunsul e 400 („nimic de gestionat"), niciodata 503.
+      eq('portalul de anulare NU e oprit de suspendare', (await req('POST', '/api/subscription/portal', { cookie: c1 })).status, 400);
+    }
+
     // ── Previzualizarea articolului (POST /api/preview) ──
     // Miezul: previzualizarea din formular trebuie sa arate EXACT articolul care se va salva.
     // Pana la /api/preview, frontend-ul avea o replica proprie a regulilor si deviase tacit.

@@ -492,6 +492,11 @@ module.exports = function registerAuthRoutes(app, ctx) {
       ai: { available: ai.aiAvailable(), enabled: d.settings.useAI !== false, model: ai.MODEL },
       fiscal: fiscal.FISCAL,
       selfRegister: d.settings.selfRegister !== false,
+      // Incasarea e oprita cat timp furnizorul nu are identitate juridica publicata (src/plans.js).
+      // Ajunge in META fiindca interfata trebuie sa stie INAINTE de a promite o plata: ecranul de
+      // abonare a firmei spunea „se deschide plata online" si abia apoi ar fi primit 503.
+      platiSuspendate: plans.PLATI_SUSPENDATE,
+      motivPlatiSuspendate: plans.MOTIV_PLATI_SUSPENDATE,
     });
   });
 

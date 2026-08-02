@@ -926,12 +926,43 @@ section('Documente juridice: fara placeholdere si cu identitate consecventa');
   // ai doua adevaruri diferite pe acelasi site. Comparam CUI-ul si denumirea intre pagini.
   const idOf = (f) => {
     const txt = fsx.readFileSync(pth.join(root, 'public', f), 'utf8');
-    // ancora e FRAZA legala, nu cuvantul „CUI" (care apare si in alte contexte)
-    const cui = (txt.match(/cod de identificare fiscal[ăa][^<]*<b>([^<]+)<\/b>/i) || [])[1] || null;
+    // Ancora e FRAZA legala, nu cuvantul „CUI" (care apare si in alte contexte) — dar si FORMA
+    // valorii: fara ea, `cod de identificare fiscală) vor fi publicate … <b>contact@…</b>` din
+    // textul care ANUNTA identitatea era citit drept identitate publicata. O ancora care prinde
+    // orice <b> de dupa fraza raporteaza o adresa de e-mail ca fiind un CUI.
+    const cui = (txt.match(/cod de identificare fiscal[ăa][^<]*<b>\s*((?:RO\s*)?\d[\d\s]*)<\/b>/i) || [])[1] || null;
     return cui ? cui.replace(/\s/g, '') : null;
   };
   const cuiT = idOf('termeni.html'); const cuiD = idOf('dpa.html');
-  ok('CUI-ul apare in ambele documente', !!cuiT && !!cuiD);
+  const termeniTxt = fsx.readFileSync(pth.join(root, 'public', 'termeni.html'), 'utf8');
+
+  // Datele de identificare FICTIVE nu au voie sa se intoarca, in nicio pagina. Au stat luni intregi
+  // in productie („EXEMPLU SOFT S.R.L.", J40/1234/2020, RO12345678) fara ca nimic sa le semnaleze,
+  // fiindca poarta veche cerea doar ca un CUI sa EXISTE — nu ca el sa fie real.
+  const FICTIVE = [/EXEMPLU SOFT/i, /J40\/1234\/2020/, /RO12345678/, /Str\.\s*X\s*nr\./i];
+  const cuFictive = [];
+  for (const f of PAGINI) {
+    const txt = fsx.readFileSync(pth.join(root, 'public', f), 'utf8');
+    for (const rx of FICTIVE) if (rx.test(txt)) cuFictive.push(f + ': ' + rx.source);
+  }
+  ok('nicio identitate fictiva in documentele juridice'
+    + (cuFictive.length ? ' — ' + cuFictive.slice(0, 4).join(' | ') : ''), cuFictive.length === 0);
+
+  // IMPLICATIA care chiar apara: se pot incasa bani DOAR daca exista o parte contractanta
+  // identificata. Invers nu se cere — cat timp incasarea e oprita, absenta identitatii e starea
+  // corecta, nu un gol. Poarta se muta singura odata cu PLATI_SUSPENDATE, deci ziua in care cineva
+  // porneste incasarea fara sa completeze identitatea e ziua in care suita pica.
+  const plansMod = require('../../src/plans');
+  if (plansMod.PLATI_SUSPENDATE) {
+    ok('incasare oprita -> nicio identitate provizorie afisata', !cuiT && !cuiD);
+    ok('...iar documentele spun de ce', /[îi]n curs de [îi]nfiin[țt]are/i.test(termeniTxt));
+    // `\s+`, nu spatiu: fraza e rupta pe doua randuri in HTML, iar o poarta care cere exact un
+    // spatiu pica la prima reasezare a textului — adica din motivul gresit.
+    ok('...si ca nu se incaseaza nimic', /nu se\s+[îi]ncaseaz[ăa]\s+nicio\s+sum[ăa]/i.test(termeniTxt));
+  } else {
+    ok('incasare pornita -> CUI in ambele documente', !!cuiT && !!cuiD);
+    ok('incasare pornita -> numar de ordine in Registrul Comertului', /J\d+\/\d+\/\d{4}/.test(termeniTxt));
+  }
   ok('CUI identic in termeni si DPA' + (cuiT && cuiD && cuiT !== cuiD ? ' — ' + cuiT + ' vs ' + cuiD : ''),
     !cuiT || !cuiD || cuiT === cuiD);
 
@@ -961,5 +992,103 @@ section('Documente juridice: fara placeholdere si cu identitate consecventa');
   const idx = fsx.readFileSync(pth.join(root, 'public', 'index.html'), 'utf8');
   const accept = (idx.match(/Prin crearea contului accep[țt]i[^<]*(?:<[^>]+>[^<]*)*?<\/p>/) || [''])[0];
   ok('acceptarea la inscriere mentioneaza si DPA-ul', /dpa\.html/.test(accept));
+}
+
+section('2FA: login si Setari spun acelasi lucru (fara auto-blocare)');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const root = RADACINA;
+  const idx = fsx.readFileSync(pth.join(root, 'public', 'index.html'), 'utf8');
+  const setari = fsx.readFileSync(pth.join(root, 'public', 'settings.js'), 'utf8');
+
+  // Cele doua jumatati ale lui 2FA au driftat deja o data, si consecinta era maxima: campul de cod
+  // de pe login a fost dezactivat (decizie deliberata), dar butonul de activare din Setari a ramas.
+  // Cine si-ar fi pornit 2FA nu s-ar mai fi putut autentifica NICIODATA — nu exista ruta de admin
+  // care sa stearga 2FA de pe alt cont, deci recuperarea cerea editarea directa a bazei.
+  // Poarta leaga starile in AMBELE sensuri: nici activare fara camp, nici camp fara activare.
+  const campLogin = (idx.match(/<label id="codeRow"[\s\S]*?<\/label>/) || [''])[0];
+  ok('campul de cod 2FA de pe login exista in formular', /name="code"/.test(campLogin));
+  const loginBlocat = /\bdisabled\b/.test(campLogin);
+
+  const arePornire = /id="twofaStart"/.test(idx) || /id="twofaEnable"/.test(idx);
+  const cheamaPornire = /\/api\/2fa\/(setup|enable)/.test(setari);
+
+  if (loginBlocat) {
+    ok('login blocat -> niciun buton de pornire 2FA in interfata', !arePornire);
+    ok('login blocat -> Setari nu mai cheama /api/2fa/setup|enable', !cheamaPornire);
+    ok('...dar iesirea ramane (cine are 2FA si-l poate opri)', /id="twofaDisableWrap"/.test(idx) && /\/api\/2fa\/disable/.test(setari));
+    ok('...si utilizatorului i se spune de ce', /momentan indisponibil/i.test(idx));
+
+    // Nicio pagina SI NICIUN MODUL nu are voie sa mai RECOMANDE pornirea 2FA cat timp ea blocheaza
+    // contul. Prima forma a acestei porti citea doar `index.html` si trecea — in timp ce
+    // `authui.js` inca afisa, dupa schimbarea parolei, „Îți recomandăm să activezi și 2FA din
+    // Setări" si derula pana la butonul disparut. Adica poarta era verde exact peste indemnul care
+    // ducea la blocarea contului. Perimetrul se DERIVA din directorul public/, nu e o lista scrisa
+    // de mana — a doua lectie a aceleiasi greseli.
+    const RECOMANDA = /recomand[ăa]m[^.<]{0,40}activezi[^.<]{0,40}2FA/i;
+    const cuIndemn = [];
+    for (const f of fsx.readdirSync(pth.join(root, 'public'))) {
+      if (!/\.(js|html)$/.test(f)) continue;
+      if (RECOMANDA.test(fsx.readFileSync(pth.join(root, 'public', f), 'utf8'))) cuIndemn.push(f);
+    }
+    ok('nicio recomandare de a porni 2FA, in niciun fisier din public/'
+      + (cuIndemn.length ? ' — ' + cuIndemn.join(', ') : ''), cuIndemn.length === 0);
+    ok('poarta chiar prinde indemnul', RECOMANDA.test('Parolă schimbată. Îți recomandăm să activezi și 2FA din Setări.'));
+
+    // Un ascultator ramas pe un id disparut nu arunca (`if (t)`), dar deruleaza catre nimic; iar
+    // unul NEgardat ar rupe tot modulul la import. Nici scrollIntoView catre butonul scos.
+    const jsPublic = fsx.readdirSync(pth.join(root, 'public')).filter((f) => f.endsWith('.js'));
+    const orfane = jsPublic.filter((f) => /#twofaStart|#twofaEnable/.test(fsx.readFileSync(pth.join(root, 'public', f), 'utf8')));
+    ok('niciun modul nu mai cauta butoanele de pornire 2FA'
+      + (orfane.length ? ' — ' + orfane.join(', ') : ''), orfane.length === 0);
+  } else {
+    ok('login functional -> butonul de pornire 2FA exista', arePornire);
+    ok('login functional -> Setari cheama /api/2fa/setup|enable', cheamaPornire);
+  }
+
+  // Poarta trebuie sa POATA pica: pe forma veche a campului (fara `disabled`) verdictul se inverseaza.
+  ok('poarta chiar distinge cele doua stari', /\bdisabled\b/.test('<input name="code" disabled />')
+    && !/\bdisabled\b/.test('<input name="code" inputmode="numeric" />'));
+}
+
+section('Incasare: nicio plata fara parte contractanta identificata');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const plansMod = require('../../src/plans');
+  const bil = fsx.readFileSync(pth.join(RADACINA, 'src', 'routes', 'billing.js'), 'utf8');
+
+  ok('suspendarea e o decizie de COD, nu o variabila de mediu', typeof plansMod.PLATI_SUSPENDATE === 'boolean'
+    && !/process\.env\.[A-Z_]*PLAT/i.test(fsx.readFileSync(pth.join(RADACINA, 'src', 'plans.js'), 'utf8')));
+
+  // Cele doua rute care chiar iau bani trebuie sa treaca prin garda. Ancora e corpul rutei, nu
+  // fisierul: o garda declarata dar necheamata ar fi trecut o verificare pe fisier.
+  for (const ruta of ['/api/checkout-guest', '/api/subscription/checkout']) {
+    const corp = (bil.match(new RegExp("app\\.post\\('" + ruta.replace(/\//g, '\\/') + "'[\\s\\S]*?\\n  \\}\\);")) || [''])[0];
+    ok('ruta exista in sursa: ' + ruta, corp.length > 0);
+    ok(ruta + ' trece prin garda de suspendare', /platiOprite\(res\)/.test(corp));
+  }
+
+  // A treia cale de plata NU e o ruta, ci serviciul din spatele butonului de abonare al firmei —
+  // singura folosita efectiv de interfata. A fost gasita abia dupa ce primele doua erau pazite,
+  // deci poarta o numeste explicit: altfel „platile sunt oprite" ar fi adevarat despre rutele
+  // enumerate si fals despre casa.
+  const fsvc = fsx.readFileSync(pth.join(RADACINA, 'src', 'firmeService.js'), 'utf8');
+  const corpAbonare = (fsvc.match(/async function subscribeFirma[\s\S]*?\n\}/) || [''])[0];
+  ok('subscribeFirma exista in sursa', corpAbonare.length > 0);
+  ok('abonarea firmei nu deschide Stripe cat timp platile sunt suspendate',
+    /PLATI_SUSPENDATE\)\s*fail\(503/.test(corpAbonare));
+  ok('...dar garda sta pe ramura CU plata, nu pe activarea manuala',
+    corpAbonare.indexOf('PLATI_SUSPENDATE') > corpAbonare.indexOf('billing.configured()'));
+
+  // Ce NU are voie sa fie oprit: anularea (un client trebuie sa poata pleca oricand) si webhook-ul
+  // (un abonament deja platit trebuie onorat chiar daca vanzarea e inchisa intre timp).
+  for (const ruta of ['/api/subscription/portal', '/api/stripe/webhook']) {
+    const corp = (bil.match(new RegExp("app\\.post\\('" + ruta.replace(/\//g, '\\/') + "'[\\s\\S]*?\\n  \\}\\);")) || [''])[0];
+    ok('ruta exista in sursa: ' + ruta, corp.length > 0);
+    ok(ruta + ' NU e oprita de suspendare', !/platiOprite\(res\)/.test(corp));
+  }
+
+  ok('motivul suspendarii e un text pentru om, nu un cod', typeof plansMod.MOTIV_PLATI_SUSPENDATE === 'string'
+    && plansMod.MOTIV_PLATI_SUSPENDATE.length > 40);
 }
 

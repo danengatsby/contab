@@ -179,10 +179,13 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   expert, ca să nu treacă nici o regresie care ar ascunde totul pentru toată lumea).
 - **E2E pe instanță izolată:** `npm run e2e-izolat` (`scripts/e2e-izolat.sh` +
   `scripts/e2e-izolat.mjs`) ridică o instanță proprie (bază și date temporare, port separat) și
-  rulează **42 verificări pe instanță izolată** — exact fluxurile care nu se pot atinge pe demo
-  live: roluri și drepturi granulare, resetare de parolă cu token real, 2FA (cod TOTP calculat în
-  test), importuri, erori SPV fără credențiale, toate cele 10 declarații XML și **restaurarea
-  efectivă** a unui backup (verificată prin dispariția unui marcaj scris după arhivare).
+  rulează **44 verificări pe instanță izolată** — exact fluxurile care nu se pot atinge pe demo
+  live: roluri și drepturi granulare, resetare de parolă cu token real, importuri, erori SPV fără
+  credențiale, toate cele 10 declarații XML și **restaurarea efectivă** a unui backup (verificată
+  prin dispariția unui marcaj scris după arhivare). Secțiunea 2FA nu mai parcurge fluxul, fiindcă
+  produsul nu-l mai oferă: verifică **starea deliberată** (câmpul de cod inactiv pe login, nicio
+  cale de pornire în interfață, ieșirea intactă) plus faptul că generatorul TOTP rămâne corect,
+  ca reactivarea să fie o schimbare de interfață, nu repornirea unui mecanism neprobat.
 - **Arhivă completă + copie offsite (zilnic):** pe lângă copia `db.json`, cronul creează
   `data/backups/full-YYYYMMDD-HHMMSS.zip` — `db.json` + un **instantaneu consistent** al bazei
   relaționale (SQLite prin `VACUUM INTO`, sigur sub WAL; sau `contab.sql` prin `pg_dump` pe

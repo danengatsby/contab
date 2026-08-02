@@ -38,6 +38,16 @@ async function promptFirmaSubscribe(firmaId, firmaNume) {
   firmaSubPromptOpen = true;
   const contabil = USER && USER.tip === 'contabil';
   const planNume = contabil ? 'Pro' : 'Start';
+  // Cat timp incasarea e oprita (vezi PLATI_SUSPENDATE din src/plans.js), NU se promite o plata
+  // care ar fi refuzata cu 503 dupa apasare. Steagul vine din META, nu din raspunsul rutei: aici
+  // textul se scrie INAINTE de orice cerere, deci o verificare de dupa ar veni prea tarziu.
+  if (META && META.platiSuspendate) {
+    firmaSubPromptOpen = false;
+    alert('Firma „' + (firmaNume || '') + '" are nevoie de un abonament, dar acesta nu poate fi '
+      + 'activat deocamdată.\n\n' + (META.motivPlatiSuspendate || '')
+      + '\n\nScrie-ne și îți prelungim accesul până când abonamentele redevin disponibile.');
+    return;
+  }
   const da = confirm('Abonezi firma „' + (firmaNume || '') + '"?\n\n'
     + 'Fiecare firmă are propriul abonament (' + planNume + ' pentru ' + (contabil ? 'contabili' : 'necontabili') + '). '
     + 'Se deschide plata online — datele firmei rămân intacte.');
@@ -837,6 +847,11 @@ function renderSubscription(data) {
         : `<button class="btn primary sub-trial">Începe proba gratuită</button>`;
     } else if (isCurrent) {
       action = `<button class="btn" disabled>Planul tău</button>`;
+    } else if (data.platiSuspendate) {
+      // Incasarea e oprita pana cand furnizorul isi publica datele de identificare (vezi
+      // PLATI_SUSPENDATE din src/plans.js). Cardul RAMANE vizibil, cu motivul la vedere: un plan
+      // care dispare fara explicatie pare o functie pierduta, iar serverul oricum ar refuza cu 503.
+      action = `<button class="btn" disabled title="${H(data.motivPlatiSuspendate || '')}">Indisponibil momentan</button>`;
     } else if (c.requestedPlan === p.id && !data.stripeEnabled) {
       action = `<button class="btn" disabled>În așteptare activare</button>`;
     } else {

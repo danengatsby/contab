@@ -75,15 +75,21 @@ async function apiIn(page, url, opts) {
 // ─────────────────────────── 1. ROLURI SI DREPTURI ───────────────────────────
 sect('1. Roluri si drepturi granulare');
 ok('admin se autentifica prin interfata', await login(pg, 'admin', PAROLA));
-const cardStil = (page) => page.evaluate(() => {
+// Ascunderea cardului se comanda prin clasa `.hidden` (app.js: classList.toggle), nu prin stil
+// inline. Varianta veche citea `el.style.display`, care e '' in AMBELE cazuri — deci aserttiunea
+// pozitiva („adminul vede") trecea din motivul gresit, iar cea negativa („limitatul nu vede") nu
+// putea trece NICIODATA. Era rosie de mult, ascunsa in spatele blocajului de la 2FA, care oprea
+// scenariul inainte de sumar. Se citeste MECANISMUL real, nu un efect al lui — si nu stilul
+// calculat, care ar depinde de tabul activ.
+const cardUtilizatori = (page) => page.evaluate(() => {
   const el = document.querySelector('#usersCard');
-  return el ? el.style.display : 'lipseste';
+  return el ? (el.classList.contains('hidden') ? 'ascuns' : 'vizibil') : 'lipseste';
 });
-ok('adminul are administrarea utilizatorilor DISPONIBILA', (await cardStil(pg)) !== 'none');
+ok('adminul are administrarea utilizatorilor DISPONIBILA', (await cardUtilizatori(pg)) === 'vizibil');
 
 const pgLim = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 ok('utilizatorul cu drepturi restranse se autentifica', await login(pgLim, 'limitat', PAROLA));
-ok('...NU vede administrarea utilizatorilor (ascunsa dupa rol)', (await cardStil(pgLim)) === 'none');
+ok('...NU vede administrarea utilizatorilor (ascunsa dupa rol)', (await cardUtilizatori(pgLim)) === 'ascuns');
 ok('...NU vede meniul de salarizare (drept faraSalarii)',
   (await pgLim.locator('button[data-tab="salarizare"]:visible').count()) === 0);
 const salLim = await apiIn(pgLim, '/api/angajati');
@@ -135,25 +141,38 @@ const PAROLA_ADMIN = RESET ? PAROLA2 : PAROLA;
 const adm = pgNou || pg;
 
 // ─────────────────────────── 3. 2FA ──────────────────────────────────────────
-sect('3. Autentificare in doi pasi (2FA)');
+// 2FA e DEZACTIVAT deliberat in produs: campul de cod de pe login e `disabled`, deci serverul ar
+// cere un cod pe care formularul nu-l poate primi. Scenariul de aici nu mai poate PARCURGE fluxul
+// (a si picat, din 30 iulie pana la 2 august, exact asa) — dar nici nu are voie sa dispara: atunci
+// nimic n-ar mai observa ziua in care jumatatile se desincronizeaza din nou. Deci verifica STAREA:
+// nicio cale de pornire in interfata, iesirea intacta, si mecanismul TOTP inca sanatos pentru cand
+// 2FA se reactiveaza. Cand campul de login redevine activ, aici se pune la loc fluxul complet.
+sect('3. Autentificare in doi pasi (2FA) — dezactivata deliberat');
 {
-  const s = await apiIn(adm, '/api/2fa/setup', { method: 'POST' });
-  const secret = s.body && (s.body.secret || (s.body.otpauth || '').match(/secret=([A-Z2-7]+)/i)?.[1]);
-  ok('setup 2FA intoarce un secret', !!secret);
-  if (secret) {
-    const gresit = await apiIn(adm, '/api/2fa/enable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: '000000' }) });
-    ok('activarea cu cod GRESIT e respinsa', gresit.status >= 400);
-    const en = await apiIn(adm, '/api/2fa/enable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: totpCode(secret) }) });
-    ok('activarea cu cod corect reuseste', en.status === 200);
-    // de acum, login-ul FARA cod trebuie sa ceara codul
-    const p2 = await (await b.newContext()).newPage();
-    ok('login fara cod 2FA NU intra', !(await login(p2, 'admin', PAROLA_ADMIN)));
-    ok('...iar interfata cere codul', await p2.locator('#codeRow').isVisible().catch(() => false));
-    ok('login CU cod 2FA intra', await login(p2, 'admin', PAROLA_ADMIN, totpCode(secret)));
-    await p2.close();
-    const dis = await apiIn(adm, '/api/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: totpCode(secret) }) });
-    ok('dezactivarea 2FA reuseste (cont curat pentru restul scenariilor)', dis.status === 200);
-  }
+  const p2 = await (await b.newContext()).newPage();
+  await p2.goto(BASE + '/', { waitUntil: 'networkidle' });
+
+  const camp = p2.locator('#loginForm input[name=code]');
+  ok('campul de cod exista in formularul de login', (await camp.count()) === 1);
+  const blocat = await camp.isDisabled().catch(() => false);
+  ok('...si e INACTIV (2FA oprit in produs)', blocat);
+  ok('...cu motivul scris langa el, nu doar stins', /momentan dezactivat/i.test(await p2.locator('#codeRow').innerText().catch(() => '')));
+
+  // Capcana pe care o pazim: activare posibila + camp inactiv = cont blocat definitiv, fara nicio
+  // cale de recuperare din interfata. Cele doua nu au voie sa coexiste.
+  ok('nicio cale de PORNIRE a 2FA in interfata', (await p2.locator('#twofaStart, #twofaEnable').count()) === 0);
+  ok('...dar iesirea ramane pentru cine are deja 2FA', (await p2.locator('#twofaDisableWrap').count()) === 1);
+
+  // Login normal (fara cod) trebuie sa mearga in continuare — 2FA oprit nu inseamna login stricat.
+  ok('login obisnuit merge in continuare', await login(p2, 'admin', PAROLA_ADMIN));
+  await p2.close();
+
+  // Generatorul TOTP ramane verificat, ca reactivarea sa fie o schimbare de UI, nu o repornire a
+  // unui mecanism neprobat. Vector fix: RFC 4226/6238, secret 'GEZDGNBVGY3TQOJQ' (= "12345678901234567890").
+  const c1t = totpCode('GEZDGNBVGY3TQOJQ', 59000);
+  ok('TOTP: cod de 6 cifre pentru vectorul RFC', /^\d{6}$/.test(String(c1t)));
+  ok('TOTP: acelasi moment -> acelasi cod (determinist)', totpCode('GEZDGNBVGY3TQOJQ', 59000) === c1t);
+  ok('TOTP: alta fereastra de 30s -> alt cod', totpCode('GEZDGNBVGY3TQOJQ', 59000 + 60000) !== c1t);
 }
 
 // ─────────────────────────── 4. IMPORTURI ────────────────────────────────────

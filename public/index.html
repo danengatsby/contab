@@ -1849,16 +1849,18 @@ Cu stimă,
       </div>
       <div class="card">
         <h2>Autentificare în doi pași (2FA)</h2>
-        <p class="muted">Folosește o aplicație de autentificare (Google Authenticator, Authy, FreeOTP). La login vei introduce și un cod de 6 cifre.</p>
+        <!-- ACTIVAREA 2FA E SCOASA cat timp campul de cod de pe ecranul de login (#codeRow) e
+             `disabled`: serverul ar cere codul la urmatoarea autentificare, iar formularul nu-l
+             poate primi. Cine si-ar porni 2FA acum si-ar bloca DEFINITIV contul — nu exista nicio
+             cale de recuperare din interfata (nicio ruta de admin nu sterge 2FA de pe alt cont).
+             Cele doua jumatati se reactiveaza IMPREUNA: se scot `disabled`, `.inactiv` si nota din
+             #codeRow si se readuce aici butonul de activare. Poarta care le tine legate:
+             test/run/porti.js, sectiunea „2FA: login si Setari spun acelasi lucru". -->
+        <p class="muted">Autentificarea în doi pași este <b>momentan indisponibilă</b> — o reactivăm
+        împreună cu câmpul de cod de pe ecranul de autentificare. Până atunci nu poate fi pornită,
+        tocmai ca să nu rămâi blocat în afara contului.</p>
         <div id="twofaStatus" class="status"></div>
-        <div id="twofaSetup" class="hidden">
-          <p class="muted">Scanează codul sau introdu secretul manual în aplicație, apoi confirmă cu un cod:</p>
-          <div id="twofaQr" data-u="u42"></div>
-          <div class="preview" id="twofaSecret"></div>
-          <div class="row"><input id="twofaCode" inputmode="numeric" placeholder="Cod 6 cifre" data-u="u120" /><button id="twofaEnable" class="btn primary">Activează</button></div>
-        </div>
         <div class="row">
-          <button id="twofaStart" class="btn">Activează 2FA</button>
           <span id="twofaDisableWrap" class="hidden"><input id="twofaDisCode" inputmode="numeric" placeholder="Cod 6 cifre" data-u="u120" /> <button id="twofaDisable" class="btn ghost">Dezactivează 2FA</button> <button id="twofaRevoke" class="btn ghost">Revocă dispozitivele de încredere</button></span>
         </div>
       </div>
@@ -2156,7 +2158,9 @@ Cu stimă,
         <div id="forcePwErr" class="status err" data-u="u138"></div>
         <button class="btn primary" type="submit">Setează parola nouă</button>
       </form>
-      <p class="muted" data-u="u28">După schimbare îți recomandăm să activezi și autentificarea în doi pași (2FA) din Setări.</p>
+      <!-- Recomandarea de a porni 2FA a fost SCOASA odata cu butonul de activare: cat timp campul
+           de cod de pe login e `disabled`, ea trimitea omul exact catre auto-blocarea contului. -->
+      <p class="muted" data-u="u28">După schimbare, deconectează sesiunile de pe alte dispozitive din Setări dacă bănuiești că parola veche a fost văzută de altcineva.</p>
     </div>
   </div>
 

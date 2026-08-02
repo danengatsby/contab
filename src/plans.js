@@ -10,6 +10,28 @@ const TRIAL_DAYS = 30;
 // in loc sa dispara fara explicatie.
 const TRIAL_MAX = 2;
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  ABONAMENTELE PLATITE — SUSPENDATE cat timp furnizorul nu are identitate juridica.
+//
+//  Termenii si DPA-ul afisau pana acum date de identificare FICTIVE („EXEMPLU SOFT S.R.L.")
+//  in timp ce cheia Stripe era `sk_live`, adica se puteau incasa bani reali sub un contract
+//  semnat de o societate inexistenta: contractul nu obliga pe nimeni, iar DPA-ul (art. 28 GDPR)
+//  nu acopera pe nimeni. Datele fictive au fost scoase; ca sa nu ramana o poarta de plata fara
+//  parte contractanta, incasarea se opreste ODATA CU ele, in acelasi commit.
+//
+//  Suspendarea sta in COD, nu intr-o variabila de mediu, si e deliberat asa: un `.env` uitat
+//  sau o instalare noua ar reactiva incasarea tacut, exact riscul de evitat. Se ridica manual,
+//  intr-un commit care completeaza si blocul de identitate din public/termeni.html + public/dpa.html
+//  — cele doua sunt aceeasi decizie, nu doua.
+//
+//  Ce NU opreste: proba gratuita, portalul Stripe (un client existent trebuie sa poata mereu
+//  anula), webhook-ul (un abonament deja platit trebuie onorat) si activarea manuala de catre
+//  admin (acolo exista un om care raspunde de identitate).
+const PLATI_SUSPENDATE = true;
+const MOTIV_PLATI_SUSPENDATE = 'Abonamentele plătite sunt momentan indisponibile: '
+  + 'furnizorul este în curs de înființare, iar până la publicarea datelor lui de identificare '
+  + 'nu încasăm nicio sumă. Proba gratuită rămâne complet funcțională.';
+
 // Toate planurile includ aceleasi functii (se diferentiaza doar prin pret).
 const FEATURES = [
   'Facturi + e-Factura',
@@ -192,4 +214,4 @@ function pendingToSubscription(rec, now) {
   return { plan: rec.plan, status: 'active', stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null, since: new Date(now || Date.now()).toISOString() };
 }
 
-module.exports = { PLANS, TRIAL_DAYS, TRIAL_MAX, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock, firmaTrial, firmaTrialSub, firmaTrialCount, firmaPoateProba, firmaStatus, firmaLocked };
+module.exports = { PLANS, TRIAL_DAYS, TRIAL_MAX, PLATI_SUSPENDATE, MOTIV_PLATI_SUSPENDATE, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock, firmaTrial, firmaTrialSub, firmaTrialCount, firmaPoateProba, firmaStatus, firmaLocked };
