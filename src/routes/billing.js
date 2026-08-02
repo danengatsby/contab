@@ -13,11 +13,25 @@ const billing = require('../billing');
 module.exports = function register(app, ctx) {
   const { requireAdmin, logAudit, activeId } = ctx;
 
-  app.get('/api/plans', (req, res) => res.json({ plans: plans.PLANS, trialDays: plans.TRIAL_DAYS }));
+  // Incasarea e oprita cat timp furnizorul nu are identitate juridica publicata (vezi
+  // PLATI_SUSPENDATE din src/plans.js). Garda sta pe SERVER, nu doar in interfata: butoanele
+  // ascunse nu opresc un POST direct, iar aici se iau bani.
+  const platiOprite = (res) => {
+    if (!plans.PLATI_SUSPENDATE) return false;
+    res.status(503).json({ error: plans.MOTIV_PLATI_SUSPENDATE, platiSuspendate: true });
+    return true;
+  };
+
+  app.get('/api/plans', (req, res) => res.json({
+    plans: plans.PLANS, trialDays: plans.TRIAL_DAYS, platiSuspendate: plans.PLATI_SUSPENDATE,
+  }));
   // Checkout „guest" (plata înainte de înscriere). Fără Stripe configurat → semnalează degradarea.
   app.post('/api/checkout-guest', async (req, res) => {
     const plan = (req.body || {}).plan;
+    // Validarea intrarii RAMANE inaintea suspendarii: un plan inexistent e o cerere gresita (400),
+    // indiferent daca incasarea e pornita sau oprita.
     if (!plans.PLANS.some((p) => p.id === plan && !p.trial)) return res.status(400).json({ error: 'Plan invalid.' });
+    if (platiOprite(res)) return;
     if (!billing.configured()) return res.json({ notConfigured: true });
     try {
       const session = await billing.createGuestCheckoutSession(plan);
@@ -36,10 +50,12 @@ module.exports = function register(app, ctx) {
       firma: firmaActiva ? Object.assign({ firmaId: firmaActiva.id }, plans.firmaStatus(firmaActiva)) : null,
       firmaNume: firmaActiva ? firmaActiva.nume : '',
       stripeEnabled: billing.configured(), manageable: !!sub.stripeCustomerId,
+      platiSuspendate: plans.PLATI_SUSPENDATE, motivPlatiSuspendate: plans.MOTIV_PLATI_SUSPENDATE,
     });
   });
   // Plata online: creeaza o sesiune Stripe Checkout si returneaza URL-ul de redirect.
   app.post('/api/subscription/checkout', async (req, res) => {
+    if (platiOprite(res)) return;
     if (!billing.configured()) return res.status(400).json({ error: 'Plățile online nu sunt configurate momentan. Contactează-ne pentru activare manuală.' });
     const u = db.get().users.find((x) => x.id === req.user.id);
     if (!u) return res.status(404).json({ error: 'Utilizator inexistent.' });

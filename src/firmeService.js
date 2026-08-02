@@ -609,6 +609,13 @@ async function subscribeFirma(user, id, planCerut) {
   const luna = new Date().toISOString().slice(0, 7);
   const prev = f.subscription || {};
   if (billing.configured()) {
+    // A TREIA cale prin care se pot lua bani (dupa /api/checkout-guest si
+    // /api/subscription/checkout) — si singura pe care o foloseste efectiv interfata, prin butonul
+    // de abonare al firmei. Cat timp furnizorul nu are identitate juridica publicata, se opreste si
+    // ea: altfel „am scos datele fictive" ar fi fost adevarat despre pagini si fals despre casa.
+    // Se opreste DOAR ramura cu plata; activarea directa de mai jos (fara Stripe: dezvoltare si
+    // activare manuala de catre admin) nu incaseaza nimic si ramane la locul ei.
+    if (plans.PLATI_SUSPENDATE) fail(503, plans.MOTIV_PLATI_SUSPENDATE);
     // NU deblocam optimist: marcam doar intentia (pendingPlan); starea ramane pana la plata.
     const u = db.get().users.find((x) => x.id === user.id) || user;
     let url;
