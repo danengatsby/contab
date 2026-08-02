@@ -211,7 +211,15 @@
       <div class="navgroup">
         <button class="navlabel" type="button">⚙️ Setări</button>
         <div class="navmenu">
-          <button data-tab="setari">Setări generale</button>
+          <!-- „Setări generale" era o singură pagină de ~5.200 px cu 19 panouri fără legătură
+               între ele (datele firmei, parola, colaboratorii, backupul, tutorialul de scanare).
+               Spartă pe SCOP, cu nume pe care le înțelege și un necontabil: fiecare pagină
+               răspunde la o singură întrebare, iar niciuna nu mai trece de un ecran-două. -->
+          <button data-tab="setari">🏢 Firma mea</button>
+          <button data-tab="cont">👤 Contul meu</button>
+          <button data-tab="acces">👥 Cine are acces</button>
+          <button data-tab="date">💾 Date &amp; copii de siguranță</button>
+          <button data-tab="conexiuni">🔌 Conexiuni &amp; unelte</button>
           <button data-tab="arhiva">Arhivă documente</button>
           <button data-tab="audit" class="adv">Jurnal de audit</button>
           <!-- Doar admin (comutat din app.js dupa rol). NU e marcat `.adv`, spre deosebire de
@@ -1669,7 +1677,136 @@ Cu stimă,
     </section>
 
     <!-- ─────────────── SETARI ─────────────── -->
-    <section id="tab-setari" class="tab">
+        <section id="tab-setari" class="tab">
+      <div class="toolbar">
+        <h2>🏢 Firma mea</h2>
+        <div class="spacer"></div>
+      </div>
+      <div class="explain"><span class="ei">🏢</span><p><b>Ce e asta:</b> Datele care apar pe <b>facturi</b> și în <b>declarații</b>: cine e firma, ce regim fiscal are, cum arată documentele pe care le emite. Le completezi o dată, la început, și le mai atingi rar.</p></div>
+      <div class="card">
+        <h2>Datele firmei active</h2>
+        <form id="companyForm" class="dyn">
+          <label>Denumire <input name="nume" /></label>
+          <label>Formă juridică
+            <select name="tipEntitate">
+              <option value="srl">SRL / societate</option>
+              <option value="pfa">PFA / Întreprindere individuală</option>
+            </select>
+          </label>
+          <label>CUI <input name="cui" /></label>
+          <label>Reg. Com. <input name="regCom" /></label>
+          <label>Adresă <input name="adresa" /></label>
+          <label>Oraș <input name="oras" /></label>
+          <label>Județ (cod, ex: RO-B) <input name="judet" /></label>
+          <label class="check"><input name="tvaLaIncasare" type="checkbox" /> TVA la încasare (exigibilitate la încasare/plată — prin contul 4428)</label>
+          <label>Pro-rata TVA provizorie % (doar regim mixt — gol = deducere integrală) <input name="proRataTva" type="number" min="1" max="99" step="1" placeholder="ex. 40" /></label>
+          <label>Cod CAEN (activitatea principală — apare în D300) <input name="caen" maxlength="4" placeholder="ex. 1071" /></label>
+          <label>Perioada fiscală TVA (decontul D300)
+            <select name="perioadaTva"><option value="L">Lunar</option><option value="T">Trimestrial</option></select>
+          </label>
+          <div class="full sect-form"><h3 class="card-titlu-mare">Profil fiscal — motorul declarațiilor și alertelor</h3>
+            <p class="muted">De aici se derivă declarațiile așteptate, termenele și alertele — nu dintr-un simplu „plătitoare de TVA".</p></div>
+          <label>Regim de impozitare
+            <select name="regimImpozit"><option value="micro">Microîntreprindere (D100 trimestrial)</option><option value="profit">Impozit pe profit (D101 anual)</option></select>
+          </label>
+          <label>Cadență D406 (SAF-T)
+            <select name="d406Cadenta"><option value="">Automat (după perioada TVA)</option><option value="L">Lunar</option><option value="T">Trimestrial</option><option value="A">Anual</option></select>
+          </label>
+          <label>Evaluarea ieșirilor din stoc (politică contabilă — OMFP 1802/2014 pct. 289)
+            <select name="metodaEvaluareStoc">
+              <option value="cmp">Cost mediu ponderat (CMP)</option>
+              <option value="fifo">FIFO — primul intrat, primul ieșit</option>
+            </select>
+          </label>
+          <div class="full explain"><span class="ei">⚠️</span><p class="muted">Metoda se alege
+            <b>o dată</b>, la începutul exercițiului. Schimbarea ei recalculează retroactiv toate
+            ieșirile deja înregistrate, deci costul mărfii vândute din articolele contabile postate
+            nu va mai corespunde fișei de magazie. Schimbă doar dacă știi ce faci — o modificare de
+            politică contabilă cere hotărâre și notă explicativă.</p></div>
+          <label class="check"><input name="intrastatObligat" type="checkbox" /> Obligată la Intrastat (peste pragul INS — declarație statistică lunară la mișcări intracomunitare)</label>
+          <div class="full">
+            <label>Scutiri — declarații pe care firma NU le datorează (rar; oprește alertele pentru ele)</label>
+            <div class="row" id="scutiriBox">
+              <label class="check"><input type="checkbox" data-scutire="d300" /> D300</label>
+              <label class="check"><input type="checkbox" data-scutire="d394" /> D394</label>
+              <label class="check"><input type="checkbox" data-scutire="d390" /> D390</label>
+              <label class="check"><input type="checkbox" data-scutire="d112" /> D112</label>
+              <label class="check"><input type="checkbox" data-scutire="d100" /> D100</label>
+              <label class="check"><input type="checkbox" data-scutire="saft" /> D406</label>
+            </div>
+          </div>
+          <div class="full explain" id="fiscalProfileSummary"><span class="ei">⚙️</span><p class="muted">Se încarcă profilul calculat…</p></div>
+
+          <div class="full sect-form"><h3 class="card-titlu-mare">Situații financiare anuale (bilanț)</h3>
+            <p class="muted">Datele de antet cerute de formularul ANAF (S1120 / S1121). Fără ele
+              bilanțul nu se poate genera — sunt informații pe care doar firma le cunoaște, așa că
+              aplicația refuză să le presupună. Codul de județ se deduce din câmpul „Județ" de mai sus.</p></div>
+          <label>Cod CAEN efectiv (dacă diferă de cel principal) <input name="caenE" maxlength="4" placeholder="implicit: la fel ca CAEN" /></label>
+          <label>Formă de proprietate
+            <select name="formaProprietate" data-nom="formeProprietate"><option value="">— alege —</option></select>
+          </label>
+          <label>Cod teritorial (județul administrației fiscale)
+            <select name="codTeritorial" data-nom="judete"><option value="">Automat (județul firmei)</option></select>
+          </label>
+          <label>Administrator (nume complet) <input name="administrator" placeholder="ex. Popescu Ion" /></label>
+          <label>Situațiile sunt întocmite de <input name="intocmitNume" placeholder="nume complet" /></label>
+          <label>În calitate de
+            <select name="intocmitCalitate" data-nom="calitati"><option value="">— alege —</option></select>
+          </label>
+          <label>Nr. în Registrul CECCAR <input name="intocmitNr" placeholder="obligatoriu doar pentru expert contabil / firmă CECCAR" /></label>
+          <label>Statutul de audit
+            <select name="auditStatut" data-nom="audit"><option value="3">Neauditate / neverificate</option></select>
+          </label>
+          <label>Auditor / cenzor — denumire <input name="auditorNume" placeholder="doar dacă situațiile sunt auditate sau verificate" /></label>
+          <label>Auditor — nr. registru <input name="auditorNr" /></label>
+          <label>Auditor — CIF <input name="auditorCif" /></label>
+          <div class="full sect-form" data-u="u126"><h3 class="card-titlu-mare">Personalizare documente &amp; facturi</h3></div>
+          <label>IBAN (apare pe documente + în e-Factura) <input name="iban" placeholder="RO49AAAA1B31007593840000" /></label>
+          <label>Banca <input name="banca" placeholder="Banca Transilvania" /></label>
+          <label>Telefon <input name="telefon" /></label>
+          <label>Email <input name="email" type="email" /></label>
+          <label>Capital social <input name="capitalSocial" /></label>
+          <label>Culoare accent PDF <input name="accentColor" type="color" value="#0b6e4f" data-u="u128" /></label>
+          <label>Model factură PDF
+            <select name="pdfLayout">
+              <option value="clasic">Clasic (A4)</option>
+              <option value="compact">Compact (A5 — facturi simple)</option>
+              <option value="detaliat">Detaliat (furnizor/cumpărător, recap TVA, sumă în litere)</option>
+            </select>
+          </label>
+          <label class="full">Text subsol documente (condiții, mulțumiri, mențiuni) <input name="pdfFooter" maxlength="200" placeholder="Mulțumim! Plata în 15 zile. Penalități 0,1%/zi întârziere." /></label>
+          <label class="full">Asociați / acționari — pentru secțiunea Owners din SAF-T (un rând pe asociat: Nume; CNP/CUI; procent)
+            <textarea name="asociatiText" rows="2" placeholder="Ion Popescu; 1800101223344; 60&#10;Maria Ionescu; 2850505334455; 40"></textarea></label>
+          <div class="full">
+            <label>Logo firmă (PNG/JPEG — apare în antetul facturilor, avizelor, chitanțelor și rapoartelor PDF)</label>
+            <div class="row" data-u="u129">
+              <img id="logoPreview" alt="" data-u="u130" />
+              <input type="file" id="logoFile" accept=".png,.jpg,.jpeg" data-u="u131" />
+              <button type="button" id="logoUploadBtn" class="btn small">Încarcă logo</button>
+              <button type="button" id="logoDeleteBtn" class="btn small ghost hidden">Șterge logo</button>
+            </div>
+          </div>
+          <button class="btn primary">Salvează</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>🔒 Blocare perioadă (integritate față de declarații)</h2>
+        <p class="muted">Lunile închise devin <b>read-only</b>: nu se mai pot adăuga sau șterge înregistrări cu dată din ele — ca să nu modifici balanțe/declarații (D300/D394) deja depuse. Închiderea lunii blochează automat perioada; un administrator o poate debloca temporar pentru corecții.</p>
+        <div id="lockStatus" class="status"></div>
+        <label>Blocat până la luna (inclusiv) <input type="month" id="lockUntil" /></label>
+        <div class="row" data-u="u132">
+          <button id="lockSet" class="btn primary">Aplică blocarea</button>
+          <button id="lockClear" class="btn ghost">Deblochează complet</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-cont" class="tab">
+      <div class="toolbar">
+        <h2>👤 Contul meu</h2>
+        <div class="spacer"></div>
+      </div>
+      <div class="explain"><span class="ei">👤</span><p><b>Ce e asta:</b> Doar despre <b>tine</b>, nu despre firmă: datele tale personale (apar la „Întocmit de" pe documente), parola și dispozitivele de pe care ești conectat.</p></div>
       <div class="card">
         <h2>Contul meu</h2>
         <p class="muted">Setează un email ca să poți recupera parola dacă o uiți (necesită SMTP configurat).</p>
@@ -1702,7 +1839,39 @@ Cu stimă,
         <div id="sessionsList" class="tablewrap" data-u="u101"></div>
         <button id="logoutOthers" class="btn ghost small" data-u="u23">Deconectează celelalte dispozitive</button>
       </div>
+      <div class="card">
+        <h2>Schimbă parola</h2>
+        <form id="pwForm" class="dyn">
+          <label>Parola veche <input name="oldPassword" type="password" required /></label>
+          <label>Parola nouă <input name="newPassword" type="password" required /></label>
+          <button class="btn primary">Schimbă parola</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Autentificare în doi pași (2FA)</h2>
+        <!-- ACTIVAREA 2FA E SCOASA cat timp campul de cod de pe ecranul de login (#codeRow) e
+             `disabled`: serverul ar cere codul la urmatoarea autentificare, iar formularul nu-l
+             poate primi. Cine si-ar porni 2FA acum si-ar bloca DEFINITIV contul — nu exista nicio
+             cale de recuperare din interfata (nicio ruta de admin nu sterge 2FA de pe alt cont).
+             Cele doua jumatati se reactiveaza IMPREUNA: se scot `disabled`, `.inactiv` si nota din
+             #codeRow si se readuce aici butonul de activare. Poarta care le tine legate:
+             test/run/porti.js, sectiunea „2FA: login si Setari spun acelasi lucru". -->
+        <p class="muted">Autentificarea în doi pași este <b>momentan indisponibilă</b> — o reactivăm
+        împreună cu câmpul de cod de pe ecranul de autentificare. Până atunci nu poate fi pornită,
+        tocmai ca să nu rămâi blocat în afara contului.</p>
+        <div id="twofaStatus" class="status"></div>
+        <div class="row">
+          <span id="twofaDisableWrap" class="hidden"><input id="twofaDisCode" inputmode="numeric" placeholder="Cod 6 cifre" data-u="u120" /> <button id="twofaDisable" class="btn ghost">Dezactivează 2FA</button> <button id="twofaRevoke" class="btn ghost">Revocă dispozitivele de încredere</button></span>
+        </div>
+      </div>
+    </section>
 
+    <section id="tab-acces" class="tab">
+      <div class="toolbar">
+        <h2>👥 Cine are acces</h2>
+        <div class="spacer"></div>
+      </div>
+      <div class="explain"><span class="ei">👥</span><p><b>Ce e asta:</b> Firmele pe care le administrezi și <b>oamenii</b> care lucrează la ele: contabilul tău, colaboratorii, cererile de acces. Fiecare vede doar firmele care i s-au dat.</p></div>
       <div class="card">
         <h2>Firmele mele</h2>
         <p class="muted">Poți administra <b>mai multe firme din același cont</b>. Comuți între ele din selectorul de sus (bara albastră) — exact ca la administrator. Firma activă determină ce date vezi în toată aplicația.</p>
@@ -1755,7 +1924,6 @@ Cu stimă,
         <div id="cereriPrimite" class="tablewrap"></div>
 
       </div>
-
       <div class="card" id="contabiliCard">
         <h2>🧮 Contabili și cereri de servicii</h2>
         <p class="muted">Ca <b>patron</b>: alegi un contabil din listă și îi trimiți o cerere pentru una dintre firmele tale —
@@ -1787,40 +1955,6 @@ Cu stimă,
           <p class="muted" data-u="u28">„Adaugă cont existent" dă acces imediat unui cont Contabo care există deja. „Invită prin link" creează o invitație pentru o persoană nouă — primești un link pe care i-l trimiți ca să-și seteze parola.</p>
         </form>
       </div>
-
-      <div class="card">
-        <h2>💾 Copia ta de siguranță — pe calculatorul tău</h2>
-        <p class="muted">Descarcă <b>toate datele firmei active</b> (înregistrări, parteneri, stocuri, salarii, solduri) <b>împreună cu documentele scanate atașate</b>, într-o singură arhivă ZIP pe PC-ul tău. O poți restaura oricând, aici sau pe altă instalare.</p>
-        <div class="row" data-u="u111">
-          <a id="firmaExport" class="btn primary" target="_blank">⬇ Descarcă copia completă (ZIP, pe PC)</a>
-          <a id="exportAllBtn" href="/api/firme/export-all" class="btn hidden" target="_blank" title="Doar pentru administrator">⬇ Descarcă TOATE firmele (ZIP-uri separate)</a>
-        </div>
-        <div id="firmaRestoreZone">
-          <hr data-u="u113">
-          <p class="muted"><b>↩ Restaurare din fișier:</b> alege o copie salvată anterior (ZIP sau JSON) — datele firmei active sunt <b>înlocuite complet</b> cu cele din copie (inclusiv fișierele atașate). Înainte de înlocuire, aplicația păstrează automat o <b>plasă de siguranță</b> pe server.</p>
-          <div class="row" data-u="u111">
-            <input type="file" id="firmaImportFile" accept=".json,.zip" data-u="u114" />
-            <button id="firmaImportBtn" class="btn primary">↩ Restaurează din fișier</button>
-          </div>
-          <div id="firmaRestoreStatus" class="status"></div>
-        </div>
-      </div>
-      <div class="card" id="openingCard">
-        <h2>⚖️ Solduri inițiale (preluare firmă cu istoric)</h2>
-        <p class="muted">Balanța de deschidere la preluarea firmei în aplicație: soldul <b>debitor sau creditor</b> al fiecărui cont la data preluării. <b>Totalul debit trebuie să fie egal cu totalul credit</b> — altfel balanța nu se va închide niciodată. Poți importa balanța exportată din vechiul program (<b>XLS / XLSX / DBF / CSV</b>, coloane <span class="acc">Cont;Denumire;SoldDebit;SoldCredit</span> — antetul e opțional). Soldurile pe partener le detaliezi în <b>Analitic</b>, iar stocul cantitativ-valoric în <b>Stocuri → Preluare stoc inițial</b>.</p>
-        <div class="row" data-u="u115">
-          <input type="file" id="openFile" accept=".csv,.txt,.xlsx,.xls,.dbf" title="Încarcă balanța de deschidere din fișier" />
-          <button id="openAddRow" class="btn small ghost">+ adaugă cont</button>
-        </div>
-        <div id="openAmbig"></div>
-        <div id="openEditor" class="tablewrap"></div>
-        <div class="row" data-u="u116">
-          <div id="openTotals" class="muted"></div>
-          <span class="spacer"></span>
-          <button id="openSaveBtn" class="btn primary">Salvează soldurile inițiale</button>
-        </div>
-        <div id="openStatus" class="status"></div>
-      </div>
       <div class="card hidden" id="usersCard">
         <h2>Utilizatori (administrator)</h2>
         <p class="muted">Fiecare contabil vede doar firmele bifate. Adminul vede toate firmele.</p>
@@ -1843,30 +1977,29 @@ Cu stimă,
           <button type="button" id="inviteBtn" class="btn">Trimite invitație (link)</button>
         </form>
       </div>
-      
-      <div class="card">
-        <h2>Schimbă parola</h2>
-        <form id="pwForm" class="dyn">
-          <label>Parola veche <input name="oldPassword" type="password" required /></label>
-          <label>Parola nouă <input name="newPassword" type="password" required /></label>
-          <button class="btn primary">Schimbă parola</button>
-        </form>
+    </section>
+
+    <section id="tab-date" class="tab">
+      <div class="toolbar">
+        <h2>💾 Date & copii de siguranță</h2>
+        <div class="spacer"></div>
       </div>
+      <div class="explain"><span class="ei">💾</span><p><b>Ce e asta:</b> De unde pornești și cum îți protejezi datele: <b>soldurile inițiale</b> (dacă preiei o firmă cu istoric), copiile de siguranță și datele de exemplu pentru exersat.</p></div>
       <div class="card">
-        <h2>Autentificare în doi pași (2FA)</h2>
-        <!-- ACTIVAREA 2FA E SCOASA cat timp campul de cod de pe ecranul de login (#codeRow) e
-             `disabled`: serverul ar cere codul la urmatoarea autentificare, iar formularul nu-l
-             poate primi. Cine si-ar porni 2FA acum si-ar bloca DEFINITIV contul — nu exista nicio
-             cale de recuperare din interfata (nicio ruta de admin nu sterge 2FA de pe alt cont).
-             Cele doua jumatati se reactiveaza IMPREUNA: se scot `disabled`, `.inactiv` si nota din
-             #codeRow si se readuce aici butonul de activare. Poarta care le tine legate:
-             test/run/porti.js, sectiunea „2FA: login si Setari spun acelasi lucru". -->
-        <p class="muted">Autentificarea în doi pași este <b>momentan indisponibilă</b> — o reactivăm
-        împreună cu câmpul de cod de pe ecranul de autentificare. Până atunci nu poate fi pornită,
-        tocmai ca să nu rămâi blocat în afara contului.</p>
-        <div id="twofaStatus" class="status"></div>
-        <div class="row">
-          <span id="twofaDisableWrap" class="hidden"><input id="twofaDisCode" inputmode="numeric" placeholder="Cod 6 cifre" data-u="u120" /> <button id="twofaDisable" class="btn ghost">Dezactivează 2FA</button> <button id="twofaRevoke" class="btn ghost">Revocă dispozitivele de încredere</button></span>
+        <h2>💾 Copia ta de siguranță — pe calculatorul tău</h2>
+        <p class="muted">Descarcă <b>toate datele firmei active</b> (înregistrări, parteneri, stocuri, salarii, solduri) <b>împreună cu documentele scanate atașate</b>, într-o singură arhivă ZIP pe PC-ul tău. O poți restaura oricând, aici sau pe altă instalare.</p>
+        <div class="row" data-u="u111">
+          <a id="firmaExport" class="btn primary" target="_blank">⬇ Descarcă copia completă (ZIP, pe PC)</a>
+          <a id="exportAllBtn" href="/api/firme/export-all" class="btn hidden" target="_blank" title="Doar pentru administrator">⬇ Descarcă TOATE firmele (ZIP-uri separate)</a>
+        </div>
+        <div id="firmaRestoreZone">
+          <hr data-u="u113">
+          <p class="muted"><b>↩ Restaurare din fișier:</b> alege o copie salvată anterior (ZIP sau JSON) — datele firmei active sunt <b>înlocuite complet</b> cu cele din copie (inclusiv fișierele atașate). Înainte de înlocuire, aplicația păstrează automat o <b>plasă de siguranță</b> pe server.</p>
+          <div class="row" data-u="u111">
+            <input type="file" id="firmaImportFile" accept=".json,.zip" data-u="u114" />
+            <button id="firmaImportBtn" class="btn primary">↩ Restaurează din fișier</button>
+          </div>
+          <div id="firmaRestoreStatus" class="status"></div>
         </div>
       </div>
       <div class="card hidden" id="backupCard">
@@ -1882,25 +2015,28 @@ Cu stimă,
         <input type="file" id="restoreFile" accept=".json" />
         <button id="restoreBtn" class="btn">Restaurează din fișier</button>
       </div>
-      <div class="card hidden" id="smtpCard">
-        <h2>Server email (SMTP)</h2>
-        <p class="muted">Fără el aplicația <b>nu poate trimite niciun email</b>: linkul de <b>resetare a parolei</b>,
-          invitațiile pentru colaboratori, digestul zilnic cu termenele fiscale și alertele de eroare.
-          Necompletat → resetarea parolei nu funcționează, iar invitațiile se dau ca link copiat manual.</p>
-        <div id="smtpStatus" class="status"></div>
-        <form id="smtpForm" class="dyn">
-          <label class="full">Host <input name="host" placeholder="smtp.exemplu.ro" /></label>
-          <label>Port <input name="port" type="number" value="587" /></label>
-          <label data-u="u123"><input name="secure" type="checkbox" data-u="u15"> SSL (465)</label>
-          <label>Utilizator <input name="user" /></label>
-          <label>Parolă <input name="pass" type="password" placeholder="(nemodificat dacă gol)" /></label>
-          <label class="full">Expeditor (From) <input name="from" placeholder="Contabo <noreply@exemplu.ro>" /></label>
-          <label class="full" data-u="u123"><input name="notifyNewMessage" type="checkbox" data-u="u15" checked> 📧 Trimite-mi email la mesaje noi de la utilizatori când nu sunt online</label>
-          <button class="btn primary">Salvează SMTP</button>
-          <button id="smtpTest" class="btn" type="button" title="Trimite un email de probă pe adresa contului tău, ca să vezi dacă datele sunt corecte">✉️ Trimite email de test</button>
-        </form>
+      <div class="card" id="openingCard">
+        <h2>⚖️ Solduri inițiale (preluare firmă cu istoric)</h2>
+        <p class="muted">Balanța de deschidere la preluarea firmei în aplicație: soldul <b>debitor sau creditor</b> al fiecărui cont la data preluării. <b>Totalul debit trebuie să fie egal cu totalul credit</b> — altfel balanța nu se va închide niciodată. Poți importa balanța exportată din vechiul program (<b>XLS / XLSX / DBF / CSV</b>, coloane <span class="acc">Cont;Denumire;SoldDebit;SoldCredit</span> — antetul e opțional). Soldurile pe partener le detaliezi în <b>Analitic</b>, iar stocul cantitativ-valoric în <b>Stocuri → Preluare stoc inițial</b>.</p>
+        <div class="row" data-u="u115">
+          <input type="file" id="openFile" accept=".csv,.txt,.xlsx,.xls,.dbf" title="Încarcă balanța de deschidere din fișier" />
+          <button id="openAddRow" class="btn small ghost">+ adaugă cont</button>
+        </div>
+        <div id="openAmbig"></div>
+        <div id="openEditor" class="tablewrap"></div>
+        <div class="row" data-u="u116">
+          <div id="openTotals" class="muted"></div>
+          <span class="spacer"></span>
+          <button id="openSaveBtn" class="btn primary">Salvează soldurile inițiale</button>
+        </div>
+        <div id="openStatus" class="status"></div>
       </div>
-      
+      <div class="card">
+        <h2>Date demonstrative</h2>
+        <p class="muted">Încarcă exemplul integrat din ghid (luna iunie, S.C. EXEMPLU PROD S.R.L.) pentru a vedea tot ciclul funcționând.</p>
+        <button id="seedBtn" class="btn">Încarcă exemplul din ghid</button>
+        <span id="seedStatus" class="status"></span>
+      </div>
       <div class="card">
         <h2>🧪 Mediu de test (ramură de testare)</h2>
         <p class="muted">Creează o <b>copie completă</b> a firmei active, marcată <b>[TEST]</b>, ca să poți experimenta liber (înregistrări, închideri, declarații) <b>fără să afectezi datele reale</b>. O ștergi oricând când ai terminat, fără urme.</p>
@@ -1910,157 +2046,14 @@ Cu stimă,
         </div>
         <p class="muted" data-u="u125">După creare, ești comutat automat pe firma de test. Revii la firma reală din selectorul de firmă (sus, în bară). Firmele de test apar cu eticheta <b>[TEST]</b> și le ștergi din lista de mai sus.</p>
       </div>
-      <div class="card">
-        <h2>Datele firmei active</h2>
-        <form id="companyForm" class="dyn">
-          <label>Denumire <input name="nume" /></label>
-          <label>Formă juridică
-            <select name="tipEntitate">
-              <option value="srl">SRL / societate</option>
-              <option value="pfa">PFA / Întreprindere individuală</option>
-            </select>
-          </label>
-          <label>CUI <input name="cui" /></label>
-          <label>Reg. Com. <input name="regCom" /></label>
-          <label>Adresă <input name="adresa" /></label>
-          <label>Oraș <input name="oras" /></label>
-          <label>Județ (cod, ex: RO-B) <input name="judet" /></label>
-          <label class="check"><input name="tvaLaIncasare" type="checkbox" /> TVA la încasare (exigibilitate la încasare/plată — prin contul 4428)</label>
-          <label>Pro-rata TVA provizorie % (doar regim mixt — gol = deducere integrală) <input name="proRataTva" type="number" min="1" max="99" step="1" placeholder="ex. 40" /></label>
-          <label>Cod CAEN (activitatea principală — apare în D300) <input name="caen" maxlength="4" placeholder="ex. 1071" /></label>
-          <label>Perioada fiscală TVA (decontul D300)
-            <select name="perioadaTva"><option value="L">Lunar</option><option value="T">Trimestrial</option></select>
-          </label>
-          <div class="full"><b>Profil fiscal — motorul declarațiilor & alertelor</b>
-            <p class="muted">De aici se derivă declarațiile așteptate, termenele și alertele — nu dintr-un simplu „plătitoare de TVA".</p></div>
-          <label>Regim de impozitare
-            <select name="regimImpozit"><option value="micro">Microîntreprindere (D100 trimestrial)</option><option value="profit">Impozit pe profit (D101 anual)</option></select>
-          </label>
-          <label>Cadență D406 (SAF-T)
-            <select name="d406Cadenta"><option value="">Automat (după perioada TVA)</option><option value="L">Lunar</option><option value="T">Trimestrial</option><option value="A">Anual</option></select>
-          </label>
-          <label>Evaluarea ieșirilor din stoc (politică contabilă — OMFP 1802/2014 pct. 289)
-            <select name="metodaEvaluareStoc">
-              <option value="cmp">Cost mediu ponderat (CMP)</option>
-              <option value="fifo">FIFO — primul intrat, primul ieșit</option>
-            </select>
-          </label>
-          <div class="full explain"><span class="ei">⚠️</span><p class="muted">Metoda se alege
-            <b>o dată</b>, la începutul exercițiului. Schimbarea ei recalculează retroactiv toate
-            ieșirile deja înregistrate, deci costul mărfii vândute din articolele contabile postate
-            nu va mai corespunde fișei de magazie. Schimbă doar dacă știi ce faci — o modificare de
-            politică contabilă cere hotărâre și notă explicativă.</p></div>
-          <label class="check"><input name="intrastatObligat" type="checkbox" /> Obligată la Intrastat (peste pragul INS — declarație statistică lunară la mișcări intracomunitare)</label>
-          <div class="full">
-            <label>Scutiri — declarații pe care firma NU le datorează (rar; oprește alertele pentru ele)</label>
-            <div class="row" id="scutiriBox">
-              <label class="check"><input type="checkbox" data-scutire="d300" /> D300</label>
-              <label class="check"><input type="checkbox" data-scutire="d394" /> D394</label>
-              <label class="check"><input type="checkbox" data-scutire="d390" /> D390</label>
-              <label class="check"><input type="checkbox" data-scutire="d112" /> D112</label>
-              <label class="check"><input type="checkbox" data-scutire="d100" /> D100</label>
-              <label class="check"><input type="checkbox" data-scutire="saft" /> D406</label>
-            </div>
-          </div>
-          <div class="full explain" id="fiscalProfileSummary"><span class="ei">⚙️</span><p class="muted">Se încarcă profilul calculat…</p></div>
+    </section>
 
-          <div class="full"><h3 class="card-titlu-mare">Situații financiare anuale (bilanț)</h3>
-            <p class="muted">Datele de antet cerute de formularul ANAF (S1120 / S1121). Fără ele
-              bilanțul nu se poate genera — sunt informații pe care doar firma le cunoaște, așa că
-              aplicația refuză să le presupună. Codul de județ se deduce din câmpul „Județ" de mai sus.</p></div>
-          <label>Cod CAEN efectiv (dacă diferă de cel principal) <input name="caenE" maxlength="4" placeholder="implicit: la fel ca CAEN" /></label>
-          <label>Formă de proprietate
-            <select name="formaProprietate" data-nom="formeProprietate"><option value="">— alege —</option></select>
-          </label>
-          <label>Cod teritorial (județul administrației fiscale)
-            <select name="codTeritorial" data-nom="judete"><option value="">Automat (județul firmei)</option></select>
-          </label>
-          <label>Administrator (nume complet) <input name="administrator" placeholder="ex. Popescu Ion" /></label>
-          <label>Situațiile sunt întocmite de <input name="intocmitNume" placeholder="nume complet" /></label>
-          <label>În calitate de
-            <select name="intocmitCalitate" data-nom="calitati"><option value="">— alege —</option></select>
-          </label>
-          <label>Nr. în Registrul CECCAR <input name="intocmitNr" placeholder="obligatoriu doar pentru expert contabil / firmă CECCAR" /></label>
-          <label>Statutul de audit
-            <select name="auditStatut" data-nom="audit"><option value="3">Neauditate / neverificate</option></select>
-          </label>
-          <label>Auditor / cenzor — denumire <input name="auditorNume" placeholder="doar dacă situațiile sunt auditate sau verificate" /></label>
-          <label>Auditor — nr. registru <input name="auditorNr" /></label>
-          <label>Auditor — CIF <input name="auditorCif" /></label>
-          <div class="full" data-u="u126"><h3 class="card-titlu-mare">Personalizare documente &amp; facturi</h3></div>
-          <label>IBAN (apare pe documente + în e-Factura) <input name="iban" placeholder="RO49AAAA1B31007593840000" /></label>
-          <label>Banca <input name="banca" placeholder="Banca Transilvania" /></label>
-          <label>Telefon <input name="telefon" /></label>
-          <label>Email <input name="email" type="email" /></label>
-          <label>Capital social <input name="capitalSocial" /></label>
-          <label>Culoare accent PDF <input name="accentColor" type="color" value="#0b6e4f" data-u="u128" /></label>
-          <label>Model factură PDF
-            <select name="pdfLayout">
-              <option value="clasic">Clasic (A4)</option>
-              <option value="compact">Compact (A5 — facturi simple)</option>
-              <option value="detaliat">Detaliat (furnizor/cumpărător, recap TVA, sumă în litere)</option>
-            </select>
-          </label>
-          <label class="full">Text subsol documente (condiții, mulțumiri, mențiuni) <input name="pdfFooter" maxlength="200" placeholder="Mulțumim! Plata în 15 zile. Penalități 0,1%/zi întârziere." /></label>
-          <label class="full">Asociați / acționari — pentru secțiunea Owners din SAF-T (un rând pe asociat: Nume; CNP/CUI; procent)
-            <textarea name="asociatiText" rows="2" placeholder="Ion Popescu; 1800101223344; 60&#10;Maria Ionescu; 2850505334455; 40"></textarea></label>
-          <div class="full">
-            <label>Logo firmă (PNG/JPEG — apare în antetul facturilor, avizelor, chitanțelor și rapoartelor PDF)</label>
-            <div class="row" data-u="u129">
-              <img id="logoPreview" alt="" data-u="u130" />
-              <input type="file" id="logoFile" accept=".png,.jpg,.jpeg" data-u="u131" />
-              <button type="button" id="logoUploadBtn" class="btn small">Încarcă logo</button>
-              <button type="button" id="logoDeleteBtn" class="btn small ghost hidden">Șterge logo</button>
-            </div>
-          </div>
-          <button class="btn primary">Salvează</button>
-        </form>
+    <section id="tab-conexiuni" class="tab">
+      <div class="toolbar">
+        <h2>🔌 Conexiuni & unelte</h2>
+        <div class="spacer"></div>
       </div>
-      <div class="card hidden" id="fiscalCard">
-        <h2>⚖️ Cote fiscale (administrator)</h2>
-        <p class="muted">Cotele folosite la salarii, TVA și impozite. Modifică-le când se schimbă legea — toate calculele preiau automat noile valori. „Reset" revine la valorile standard din aplicație.</p>
-        <div id="fiscalVechime"></div>
-        <form id="fiscalForm" class="dyn">
-          <label>CAS (%) <input name="cas" type="number" step="0.01" /></label>
-          <label>CASS (%) <input name="cass" type="number" step="0.01" /></label>
-          <label>Impozit venit (%) <input name="impozitVenit" type="number" step="0.01" /></label>
-          <label>CAM (%) <input name="cam" type="number" step="0.01" /></label>
-          <label>TVA standard (%) <input name="tvaStandard" type="number" step="0.01" /></label>
-          <label>TVA redus (%) <input name="tvaRedus" type="number" step="0.01" /></label>
-          <label>Impozit profit (%) <input name="impozitProfit" type="number" step="0.01" /></label>
-          <label>Impozit micro (%) <input name="impozitMicro" type="number" step="0.01" /></label>
-          <label>Impozit dividende (%) <input name="impozitDividende" type="number" step="0.01" /></label>
-          <label>Plafon micro (EUR) <input name="plafonMicroEur" type="number" /></label>
-          <label>Curs EUR pt. plafon micro <input name="cursPlafonMicro" type="number" step="0.0001" /></label>
-          <label>Salariu minim S1 <input name="salariuMinimS1" type="number" /></label>
-          <label>Salariu minim S2 <input name="salariuMinimS2" type="number" /></label>
-          <label>Salariu minim construcții <input name="salariuMinimConstructii" type="number" /></label>
-          <label>Plafon scutiri sectoriale (istoric, eliminate din 2025) <input name="plafonScutire" type="number" /></label>
-          <label>Deductibilitate TVA auto (%) <input name="deductibilitateTvaAutoLimitat" type="number" /></label>
-          <button class="btn primary">Salvează cotele</button>
-          <button type="button" id="fiscalReset" class="btn">↺ Reset la valori standard</button>
-        </form>
-        <div id="fiscalStatus" class="status"></div>
-      </div>
-      <div class="card">
-        <h2>🔒 Blocare perioadă (integritate față de declarații)</h2>
-        <p class="muted">Lunile închise devin <b>read-only</b>: nu se mai pot adăuga sau șterge înregistrări cu dată din ele — ca să nu modifici balanțe/declarații (D300/D394) deja depuse. Închiderea lunii blochează automat perioada; un administrator o poate debloca temporar pentru corecții.</p>
-        <div id="lockStatus" class="status"></div>
-        <label>Blocat până la luna (inclusiv) <input type="month" id="lockUntil" /></label>
-        <div class="row" data-u="u132">
-          <button id="lockSet" class="btn primary">Aplică blocarea</button>
-          <button id="lockClear" class="btn ghost">Deblochează complet</button>
-        </div>
-      </div>
-      <div class="card">
-        <h2>Extragere cu AI (Claude API)</h2>
-        <p class="muted">Când este activată, documentele PDF (inclusiv scanate) sunt citite cu Claude pentru a completa automat câmpurile și a propune tipul de înregistrare. Dacă apelul eșuează, se folosesc regulile locale.</p>
-        <div id="aiStatus" class="status"></div>
-        <label class="full" data-u="u133">
-          <input type="checkbox" id="aiToggle" data-u="u15" /> Folosește extragerea cu AI când este disponibilă
-        </label>
-        <div id="aiHelp" class="preview hidden"></div>
-      </div>
+      <div class="explain"><span class="ei">🔌</span><p><b>Ce e asta:</b> Legăturile cu <b>exteriorul</b>: SPV-ul ANAF (e-Factura), citirea automată a documentelor, scanerul de pe calculatorul tău. Se configurează o dată.</p></div>
       <div class="card">
         <h2>Trimitere în SPV (ANAF e-Factura) — firma activă</h2>
         <p class="muted">Conexiunea SPV este <b>pe firmă</b>: fiecare firmă are propriile credențiale și propriul token — comută firma din selectorul de sus ca să configurezi alta. Necesită o aplicație OAuth înregistrată în SPV (client_id/secret) și un certificat digital pentru pasul de conectare. Folosește mediul <b>test</b> până la validare.</p>
@@ -2080,6 +2073,15 @@ Cu stimă,
           <button type="button" id="anafConnect" class="btn">Conectează (autorizare ANAF)</button>
           <button type="button" id="anafPoll" class="btn ghost">Verifică toate acum</button>
         </form>
+      </div>
+      <div class="card">
+        <h2>Extragere cu AI (Claude API)</h2>
+        <p class="muted">Când este activată, documentele PDF (inclusiv scanate) sunt citite cu Claude pentru a completa automat câmpurile și a propune tipul de înregistrare. Dacă apelul eșuează, se folosesc regulile locale.</p>
+        <div id="aiStatus" class="status"></div>
+        <label class="full" data-u="u133">
+          <input type="checkbox" id="aiToggle" data-u="u15" /> Folosește extragerea cu AI când este disponibilă
+        </label>
+        <div id="aiHelp" class="preview hidden"></div>
       </div>
       <div class="card howto">
         <h2>🖨️ Punte de scanare locală (Windows 11)</h2>
@@ -2113,11 +2115,49 @@ Cu stimă,
         </details>
         <p class="muted" data-u="u28">🔒 Securitate: puntea ascultă DOAR pe <code>localhost</code> (PC-ul tău), nu pe internet. <a href="/tools/scanner-bridge/CITESTE-MA.txt" target="_blank">Instrucțiuni complete →</a></p>
       </div>
-      <div class="card">
-        <h2>Date demonstrative</h2>
-        <p class="muted">Încarcă exemplul integrat din ghid (luna iunie, S.C. EXEMPLU PROD S.R.L.) pentru a vedea tot ciclul funcționând.</p>
-        <button id="seedBtn" class="btn">Încarcă exemplul din ghid</button>
-        <span id="seedStatus" class="status"></span>
+      <div class="card hidden" id="smtpCard">
+        <h2>Server email (SMTP)</h2>
+        <p class="muted">Fără el aplicația <b>nu poate trimite niciun email</b>: linkul de <b>resetare a parolei</b>,
+          invitațiile pentru colaboratori, digestul zilnic cu termenele fiscale și alertele de eroare.
+          Necompletat → resetarea parolei nu funcționează, iar invitațiile se dau ca link copiat manual.</p>
+        <div id="smtpStatus" class="status"></div>
+        <form id="smtpForm" class="dyn">
+          <label class="full">Host <input name="host" placeholder="smtp.exemplu.ro" /></label>
+          <label>Port <input name="port" type="number" value="587" /></label>
+          <label data-u="u123"><input name="secure" type="checkbox" data-u="u15"> SSL (465)</label>
+          <label>Utilizator <input name="user" /></label>
+          <label>Parolă <input name="pass" type="password" placeholder="(nemodificat dacă gol)" /></label>
+          <label class="full">Expeditor (From) <input name="from" placeholder="Contabo <noreply@exemplu.ro>" /></label>
+          <label class="full" data-u="u123"><input name="notifyNewMessage" type="checkbox" data-u="u15" checked> 📧 Trimite-mi email la mesaje noi de la utilizatori când nu sunt online</label>
+          <button class="btn primary">Salvează SMTP</button>
+          <button id="smtpTest" class="btn" type="button" title="Trimite un email de probă pe adresa contului tău, ca să vezi dacă datele sunt corecte">✉️ Trimite email de test</button>
+        </form>
+      </div>
+      <div class="card hidden" id="fiscalCard">
+        <h2>⚖️ Cote fiscale (administrator)</h2>
+        <p class="muted">Cotele folosite la salarii, TVA și impozite. Modifică-le când se schimbă legea — toate calculele preiau automat noile valori. „Reset" revine la valorile standard din aplicație.</p>
+        <div id="fiscalVechime"></div>
+        <form id="fiscalForm" class="dyn">
+          <label>CAS (%) <input name="cas" type="number" step="0.01" /></label>
+          <label>CASS (%) <input name="cass" type="number" step="0.01" /></label>
+          <label>Impozit venit (%) <input name="impozitVenit" type="number" step="0.01" /></label>
+          <label>CAM (%) <input name="cam" type="number" step="0.01" /></label>
+          <label>TVA standard (%) <input name="tvaStandard" type="number" step="0.01" /></label>
+          <label>TVA redus (%) <input name="tvaRedus" type="number" step="0.01" /></label>
+          <label>Impozit profit (%) <input name="impozitProfit" type="number" step="0.01" /></label>
+          <label>Impozit micro (%) <input name="impozitMicro" type="number" step="0.01" /></label>
+          <label>Impozit dividende (%) <input name="impozitDividende" type="number" step="0.01" /></label>
+          <label>Plafon micro (EUR) <input name="plafonMicroEur" type="number" /></label>
+          <label>Curs EUR pt. plafon micro <input name="cursPlafonMicro" type="number" step="0.0001" /></label>
+          <label>Salariu minim S1 <input name="salariuMinimS1" type="number" /></label>
+          <label>Salariu minim S2 <input name="salariuMinimS2" type="number" /></label>
+          <label>Salariu minim construcții <input name="salariuMinimConstructii" type="number" /></label>
+          <label>Plafon scutiri sectoriale (istoric, eliminate din 2025) <input name="plafonScutire" type="number" /></label>
+          <label>Deductibilitate TVA auto (%) <input name="deductibilitateTvaAutoLimitat" type="number" /></label>
+          <button class="btn primary">Salvează cotele</button>
+          <button type="button" id="fiscalReset" class="btn">↺ Reset la valori standard</button>
+        </form>
+        <div id="fiscalStatus" class="status"></div>
       </div>
     </section>
 

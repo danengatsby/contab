@@ -3,7 +3,7 @@ import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, setSettingsDeps } from './settings.js';
-import { renderFirme, renderUsers, renderColaboratori, renderAudit, renderAccess, setAdminDeps } from './admin.js';
+import { renderFirme, renderUsers, renderColaboratori, renderAudit, renderAccess, renderCereriAcces, setAdminDeps } from './admin.js';
 import { loadDashboard, setDashboardDeps } from './dashboard.js';
 import { initUiMode } from './simplemode.js';
 import { loadPartners } from './partners.js';
@@ -131,7 +131,16 @@ function onTab(t) {
   if (t === 'salarizare') loadSalarizare();
   if (t === 'stocuri') loadStocks();
   if (t === 'parteneri') loadPartners();
+  // Setarile au fost sparte in cinci pagini tematice. `setari` PASTREAZA reimprospatarea completa,
+  // deliberat: vreo zece locuri din aplicatie cheama `onTab('setari')` dupa o operatie (firma
+  // activata/stearsa, colaborator acceptat, copie restaurata) ca sa reincarce ce s-a schimbat.
+  // Toate cardurile exista in DOM indiferent de pagina activa, deci un refresh complet ramane
+  // corect si nu costa mai mult decat costa azi. Paginile noi isi randeaza doar partea lor.
   if (t === 'setari') { renderAnaf(); renderFirme(); renderColaboratori(); renderUsers(); render2FA(); renderSmtp(); renderFiscal(); renderBackup(); renderProfile(); renderSessions(); renderLock(); renderOpening(); }
+  if (t === 'cont') { renderProfile(); renderSessions(); render2FA(); }
+  if (t === 'acces') { renderFirme(); renderColaboratori(); renderUsers(); renderCereriAcces(); }
+  if (t === 'date') { renderBackup(); renderOpening(); }
+  if (t === 'conexiuni') { renderAnaf(); renderSmtp(); renderFiscal(); }
   if (t === 'audit') renderAudit();
   if (t === 'accesari') renderAccess();
   if (t === 'arhiva') loadArhiva();
@@ -182,7 +191,7 @@ async function activateFirma(id) {
 $('#firmaSelect').addEventListener('change', async (e) => {
   if (e.target.value === '__add__') { // nu e o firma — deschide gestionarea firmelor
     e.target.value = String(META.firmaActiva || '');
-    goTab('setari');
+    goTab('acces'); // firmele si cererile de acces stau acum in pagina lor, nu in „Firma mea"
     // firmele nu se mai creeaza de aici: o firma noua intra prin inscriere (patronul ei),
     // iar una existenta se adauga cerand acces dupa CUI, cu acordul proprietarului
     setTimeout(() => { const c = $('#cerereAccesForm'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.cui.focus(); } }, 150);
@@ -355,7 +364,7 @@ async function init() {
     if (g && !g._wired) {
       g._wired = true;
       g.addEventListener('click', () => {
-        goTab('setari');
+        goTab('acces'); // formularul de cerere de acces s-a mutat aici
         setTimeout(() => { const c = $('#cerereAccesForm'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.cui.focus(); } }, 150);
       });
     }

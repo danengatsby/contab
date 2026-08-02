@@ -298,6 +298,18 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
 
   // Panoul e o intrare PROPRIE in submeniul Setari, nu un card in „Setari generale". Se verifica
   // intai ca intrarea exista si e oferita adminului, apoi ca deschide chiar sectiunea lui.
+  // Setarile au fost sparte in cinci pagini tematice. Fiecare intrare trebuie sa deschida efectiv
+  // sectiunea ei si sa afiseze continut — o poarta pe sursa dovedeste ca sectiunile EXISTA, dar nu
+  // si ca navigarea chiar ajunge acolo cu panourile randate.
+  for (const [tab, ancora] of [['setari', '#companyForm'], ['cont', '#profileForm'],
+    ['acces', '#colaboratoriBox'], ['date', '#openingCard'], ['conexiuni', '#anafForm']]) {
+    await adm.evaluate((x) => window.goTab(x), tab);
+    await adm.waitForTimeout(500);
+    ok('pagina „' + tab + '" se deschide', (await adm.locator('#tab-' + tab + '.active').count()) === 1);
+    ok('...si contine panoul mutat acolo (' + ancora + ')',
+      (await adm.locator('#tab-' + tab + ' ' + ancora).count()) === 1);
+  }
+
   ok('intrarea de meniu exista in submeniul Setari',
     (await adm.locator('#tabs .navgroup .navmenu button[data-tab="accesari"]').count()) === 1);
   ok('...si e oferita adminului (nu ascunsa)', (await adm.locator('#navAccesari.hidden').count()) === 0);

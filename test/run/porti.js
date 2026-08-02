@@ -1067,6 +1067,44 @@ section('2FA: login si Setari spun acelasi lucru (fara auto-blocare)');
     && !/\bdisabled\b/.test('<input name="code" inputmode="numeric" />'));
 }
 
+section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are intrare');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const html = fsx.readFileSync(pth.join(RADACINA, 'public', 'index.html'), 'utf8');
+  // Spargerea paginii Setari in cinci a mutat 19 panouri intre sectiuni. Modul de esec al unei
+  // astfel de operatii nu e o eroare, ci o TACERE: o intrare de meniu care nu mai deschide nimic
+  // (sectiune redenumita) sau o sectiune orfana pe care n-o mai poate ajunge nimeni (intrare
+  // uitata). Ambele arata perfect pana cand cineva da clic.
+  const meniu = [...new Set([...html.matchAll(/<button[^>]*data-tab="([^"]+)"/g)].map((m) => m[1]))];
+  const sectiuni = [...new Set([...html.matchAll(/<section id="tab-([^"]+)"/g)].map((m) => m[1]))];
+  ok('poarta chiar vede meniul (nu o lista goala)', meniu.length > 20);
+  ok('poarta chiar vede sectiunile', sectiuni.length > 20);
+  const faraSectiune = meniu.filter((t) => !sectiuni.includes(t));
+  ok('nicio intrare de meniu fara sectiune'
+    + (faraSectiune.length ? ' — DUC NICAIERI: ' + faraSectiune.join(', ') : ''), faraSectiune.length === 0);
+  // O sectiune fara intrare de meniu NU e automat orfana: la unele se ajunge doar programatic
+  // (`tab-abonament` se deschide din bannerul de plata si din butoanele de plan, deliberat — nu-si
+  // are locul in meniul permanent). Orfana e cea la care nu duce NIMIC: nici meniu, nici `goTab`.
+  const js = fsx.readdirSync(pth.join(RADACINA, 'public'))
+    .filter((f) => f.endsWith('.js'))
+    .map((f) => fsx.readFileSync(pth.join(RADACINA, 'public', f), 'utf8')).join('\n');
+  const navigate = new Set([...js.matchAll(/goTab\(\s*'([a-z-]+)'/g)].map((m) => m[1])
+    .concat([...js.matchAll(/go:\s*'([a-z-]+)'/g)].map((m) => m[1])));
+  const orfane = sectiuni.filter((t) => !meniu.includes(t) && !navigate.has(t));
+  ok('nicio sectiune la care sa nu duca nimic'
+    + (orfane.length ? ' — ORFANE: ' + orfane.join(', ') : ''), orfane.length === 0);
+  ok('poarta chiar vede navigarile programatice', navigate.size > 3);
+
+  // Fiecare tab pe care `onTab` il trateaza explicit trebuie sa existe ca sectiune — altfel
+  // randarea se leaga de un ecran care nu mai e acolo.
+  const app = fsx.readFileSync(pth.join(RADACINA, 'public', 'app.js'), 'utf8');
+  const tratate = [...new Set([...app.matchAll(/\bt === '([a-z-]+)'/g)].map((m) => m[1]))];
+  ok('poarta vede taburile tratate in onTab', tratate.length > 5);
+  const tratateFaraSectiune = tratate.filter((t) => !sectiuni.includes(t));
+  ok('fiecare tab tratat in onTab are sectiune'
+    + (tratateFaraSectiune.length ? ' — ' + tratateFaraSectiune.join(', ') : ''), tratateFaraSectiune.length === 0);
+}
+
 section('Poarta: fiecare colectie din graf are linie in ARRAY_COLLS (altfel dispare la restart)');
 {
   // Modul de esec pe care il previne: o colectie noua adaugata in `db.js` dar UITATA in

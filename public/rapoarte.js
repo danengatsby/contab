@@ -187,11 +187,26 @@ onPeriodChange('tva', loadVat);
 // Pro-rata TVA (art. 300): definitiva calculata din jurnal + regularizarea achizitiilor mixte
 async function renderProRata(year) {
   const box = $('#proRataView'); if (!box) return;
-  let r; try { r = await api('/api/pro-rata?year=' + year); } catch (e) { box.innerHTML = ''; return; }
+  const card = box.closest('.card');
+  // Cardul se STRANGE la un rand cand sectiunea nu se aplica: pana acum ramaneau la vedere si
+  // explicatia lunga (cinci randuri despre regimul mixt), si motivul — adica o treime de ecran ca
+  // sa spuna ca nu te priveste. Titlul ramane, ca optiunea sa nu para pierduta.
+  const explic = card && card.querySelector(':scope > p.muted');
+  const strange = (da) => {
+    if (card) card.classList.toggle('inaplicabil', da);
+    if (explic) explic.classList.toggle('hidden', da);
+  };
+  let r; try { r = await api('/api/pro-rata?year=' + year); } catch (e) { box.innerHTML = ''; strange(false); return; }
   if (!r.provizorie && !r.faraDrept && !r.nrMixte) {
-    box.innerHTML = '<p class="muted">Nu e cazul: nu ai pro-rata setată, operațiuni scutite fără drept sau achiziții marcate mixte. Firmele cu deducere integrală sar peste această secțiune.</p>';
+    box.innerHTML = '';
+    strange(true);
+    if (card && !card.querySelector('.na-motiv')) {
+      card.insertAdjacentHTML('beforeend', '<p class="muted na-motiv">nu se aplică firmei tale (fără pro-rata, fără operațiuni scutite fără drept, fără achiziții mixte)</p>');
+    }
     return;
   }
+  strange(false);
+  const vechi = card && card.querySelector('.na-motiv'); if (vechi) vechi.remove();
   box.innerHTML = `<table>
     <tr><td>Livrări CU drept de deducere (taxabile + LIC)</td><td class="num">${fmt(r.cuDrept)}</td></tr>
     <tr><td>Livrări FĂRĂ drept de deducere (scutite)</td><td class="num">${fmt(r.faraDrept)}</td></tr>
@@ -225,6 +240,10 @@ async function renderNeexigibila() {
   if (na) na.classList.toggle('hidden', !nuSeAplica);
   if (frm) frm.classList.toggle('hidden', nuSeAplica);
   $$('#tvaIncasareCard > p.muted.adv').forEach((el) => el.classList.toggle('hidden', nuSeAplica));
+  // ...si cardul se strange la un rand, ca la pro-rata: ascunderea formularului lasa altfel un
+  // card gol de inaltimea unui titlu plus doua paragrafe, care arata a sectiune stricata.
+  const cardTva = $('#tvaIncasareCard');
+  if (cardTva) cardTva.classList.toggle('inaplicabil', nuSeAplica);
   if (nimic) { $('#neexigView').innerHTML = ''; return; }
   $('#neexigView').innerHTML = `<table><tbody>
     <tr><td>TVA colectată încă neexigibilă${ac('4428')}</td><td class="num">${fmt(n.colectataNeexigibila)}</td></tr>
