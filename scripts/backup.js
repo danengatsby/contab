@@ -68,12 +68,30 @@ function warn(...a) { console.error(new Date().toISOString(), ...a); }
 
 /** Trimite arhiva ca atasament prin API-ul Resend (expeditor: domeniul verificat poetio.site). */
 async function emailArchive(zipPath, sizeLabel) {
+  // Instructiunile de restaurare CALATORESC cu arhiva, deci trebuie sa fie corecte tocmai in
+  // situatia in care aplicatia (si serverul) nu mai exista. Doua greseli reparate aici: textul
+  // spunea „contab.sqlite" desi instalarea e pe PostgreSQL de pe 2026-07-14 (arhiva contine
+  // `contab.sql`), si nu pomenea deloc descifrarea — dupa activarea CONTAB_BACKUP_KEY atasamentul
+  // e `.zip.enc`, iar un „dezarhiveaza" pe el esueaza fara sa spuna de ce.
+  const criptat = zipPath.endsWith('.enc');
+  const pasi = (criptat
+    ? ['1. Descifreaza (cere CONTAB_BACKUP_KEY, tinuta SEPARAT de aceasta cutie postala):',
+      '   openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \\',
+      `     -in ${path.basename(zipPath)} -out ${path.basename(zipPath).replace(/\.enc$/, '')} -pass env:CONTAB_BACKUP_KEY`,
+      '2. Dezarhiveaza fisierul .zip rezultat.']
+    : ['1. Dezarhiveaza arhiva.'])
+    .concat([
+      '3. db.json    -> Setari -> Backup -> Restaureaza (sau restaurare nativa din contab.sql).',
+      '4. uploads/*  -> data/uploads/',
+      '5. audit/*    -> data/audit/   (jurnalul append-only, proba durabila)',
+    ]);
   const payload = {
     from: 'Contab backup <comenzi@poetio.site>',
     to: [EMAIL_TO],
     subject: `[Contab backup] ${path.basename(zipPath)} (${sizeLabel})`,
-    text: 'Backup zilnic Contab (contabo.space): db.json + contab.sqlite + uploads/.\n'
-      + 'Restaurare: dezarhiveaza; db.json -> Setari -> Backup -> Restaureaza; uploads/* -> data/uploads/.\n',
+    text: 'Backup zilnic Contab (contabo.space): db.json + contab.sql (dump PostgreSQL) + uploads/ + audit/.\n'
+      + (criptat ? 'Arhiva e CRIPTATA (AES-256).\n' : 'ATENTIE: arhiva NU e criptata.\n')
+      + '\nRestaurare:\n' + pasi.join('\n') + '\n',
     attachments: [{
       filename: path.basename(zipPath),
       content: fs.readFileSync(zipPath).toString('base64'),
