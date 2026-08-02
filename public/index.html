@@ -220,6 +220,7 @@
           <button data-tab="acces">👥 Cine are acces</button>
           <button data-tab="date">💾 Date &amp; copii de siguranță</button>
           <button data-tab="conexiuni">🔌 Conexiuni &amp; unelte</button>
+          <button data-tab="pachetwin">💻 Contabo pe calculatorul tău</button>
           <button data-tab="arhiva">Arhivă documente</button>
           <button data-tab="audit" class="adv">Jurnal de audit</button>
           <!-- Doar admin (comutat din app.js dupa rol). NU e marcat `.adv`, spre deosebire de
@@ -2087,25 +2088,7 @@ Cu stimă,
         </label>
         <div id="aiHelp" class="preview hidden"></div>
       </div>
-      <!-- Cardul se ascunde daca pachetul nu e construit (public/descarcari/pachet.json lipseste):
-           o instalare proaspata nu are voie sa ofere un link mort. Vezi scripts/pachet-windows.sh. -->
-      <div class="card hidden" id="pachetWinCard">
-        <div class="card-head">
-          <h2>💻 Contabo pe calculatorul tău (Windows)</h2>
-          <a id="pachetWinBtn" class="btn primary" href="/descarcari/Contabo-Windows.zip" download>⬇ Descarcă</a>
-        </div>
-        <p class="lead">Aceeași aplicație, dar rulând <b>local</b>, pe PC-ul tău: datele rămân la tine,
-          merge și fără internet, fără abonament și fără limită de timp.</p>
-        <p class="muted">Nu instalezi nimic — Node vine în pachet. Dezarhivezi, dublu-clic pe
-          <b>„Porneste Contabo.bat"</b>, intri cu <b>admin / admin</b>. Instrucțiunile complete sunt
-          în <b>CITESTE-MA.txt</b>, lângă aplicație.</p>
-        <div id="pachetWinInfo" class="muted"></div>
-        <p class="muted"><b>Ai deja instalat?</b> Același link e și fișierul de actualizare:
-          dezarhivezi peste folderul existent, cu aplicația închisă. Folderul <b>date</b> —
-          baza și documentele tale — rămâne neatins. Ce versiune ai acum scrie în
-          <b>VERSIUNE.txt</b>, lângă aplicație.</p>
-      </div>
-      <div class="card howto">
+            <div class="card howto">
         <h2>🖨️ Punte de scanare locală (Windows 11)</h2>
         <div class="warnbox"><span class="wi">⚠️</span><div><b>Momentan indisponibilă.</b> Butonul „🖨️ Scanează (scaner local)" din <kbd>📥 Documente</kbd> este dezactivat, deci pașii de mai jos nu pot fi urmați acum. Până la reactivare, adu documentele ca <b>PDF sau poză</b> (le tragi în zona de încărcare) — restul fluxului e neschimbat.</div></div>
         <p class="lead"><b>De ce e nevoie?</b> Browserele NU pot accesa direct un scaner (limitare de securitate). Această mică „punte" rulează pe PC-ul tău, vorbește cu scanerul și oferă imaginea aplicației Contabo.</p>
@@ -2274,6 +2257,35 @@ Cu stimă,
         <p class="muted">Trecerea de la rezultatul contabil la cel fiscal (cheltuieli nedeductibile) și impozitul pe profit vs. micro.</p>
         <div id="fiscalView"></div>
       </div>
+    </section>
+
+    <!-- Pagina e pentru TOTI utilizatorii, nu doar pentru admin: oricine isi poate rula
+         contabilitatea pe calculatorul lui. De aceea intrarea de meniu NU se comuta dupa rol,
+         spre deosebire de „Cine acceseaza aplicatia". -->
+    <section id="tab-pachetwin" class="tab">
+      <div class="toolbar">
+        <h2>💻 Contabo pe calculatorul tău</h2>
+        <div class="spacer"></div>
+      </div>
+      <div class="explain"><span class="ei">💻</span><p><b>Ce e asta:</b> aceeași aplicație, dar rulând <b>pe calculatorul tău</b>, nu pe internet. Datele rămân la tine, merge și fără conexiune, fără abonament și fără limită de timp. Nu instalezi nimic: dezarhivezi și dai dublu-clic.</p></div>
+<div class="card hidden" id="pachetWinCard">
+        <div class="card-head">
+          <h2>💻 Contabo pe calculatorul tău (Windows)</h2>
+          <a id="pachetWinBtn" class="btn primary" href="/descarcari/Contabo-Windows.zip" download>⬇ Descarcă</a>
+        </div>
+        <p class="lead">Aceeași aplicație, dar rulând <b>local</b>, pe PC-ul tău: datele rămân la tine,
+          merge și fără internet, fără abonament și fără limită de timp.</p>
+        <p class="muted">Nu instalezi nimic — Node vine în pachet. Dezarhivezi, dublu-clic pe
+          <b>„Porneste Contabo.bat"</b>, intri cu <b>admin / admin</b>. Instrucțiunile complete sunt
+          în <b>CITESTE-MA.txt</b>, lângă aplicație.</p>
+        <div id="pachetWinInfo" class="muted"></div>
+        <p class="muted"><b>Ai deja instalat?</b> Același link e și fișierul de actualizare:
+          dezarhivezi peste folderul existent, cu aplicația închisă. Folderul <b>date</b> —
+          baza și documentele tale — rămâne neatins. Ce versiune ai acum scrie în
+          <b>VERSIUNE.txt</b>, lângă aplicație.</p>
+      </div>
+      <p class="muted hidden" id="pachetWinLipsa">Pachetul pentru Windows nu e disponibil pe această
+        instalare. Dacă administrezi serverul, îl construiești cu <code>npm run pachet-windows</code>.</p>
     </section>
 
     <!-- ─────────────── ARHIVĂ DOCUMENTE ─────────────── -->

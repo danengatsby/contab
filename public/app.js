@@ -150,7 +150,9 @@ function onTab(t) {
   if (t === 'cont') { renderProfile(); renderSessions(); render2FA(); }
   if (t === 'acces') { renderFirme(); renderColaboratori(); renderUsers(); renderCereriAcces(); }
   if (t === 'date') { renderBackup(); renderOpening(); }
-  if (t === 'conexiuni') { renderAnaf(); renderSmtp(); renderFiscal(); renderPachetWin(); }
+  if (t === 'conexiuni') { renderAnaf(); renderSmtp(); renderFiscal(); }
+  // Pagina pachetului Windows e pentru TOTI utilizatorii — nicio garda pe rol aici.
+  if (t === 'pachetwin') renderPachetWin();
   if (t === 'audit') renderAudit();
   if (t === 'accesari') renderAccess();
   if (t === 'arhiva') loadArhiva();
