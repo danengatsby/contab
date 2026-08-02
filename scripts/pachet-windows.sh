@@ -63,6 +63,7 @@ cp "$RADACINA/.env.example" "$D/app/.env.example" 2>/dev/null || true
 cp "$NODEEXE" "$D/node.exe"
 cp "$RADACINA/scripts/pachet-windows/Porneste Contabo.bat" "$D/"
 cp "$RADACINA/scripts/pachet-windows/CITESTE-MA.txt" "$D/"
+cp "$RADACINA/scripts/pachet-windows/genereaza-config.js" "$D/"
 printf 'Datele tale apar aici la prima pornire.\r\n' > "$D/date/CITESTE-MA.txt"
 
 # 3) Versiunea: data + commitul. `package.json` are 1.0.0 de la inceput, deci nu
@@ -96,8 +97,10 @@ done
 # pica pe `APP_URL=https://contabo.space` — care apare legitim in cod, in docs si in README.
 # O verificare care pica din motivul gresit se dezactiveaza dupa a doua oara; una care numeste
 # cheia gasita se repara.
+#    Cautarea se face PRIN FLUX (`unzip -p`), nu pe arhiva dezarhivata: desfacerea inseamna ~200 MB
+#    pe disc, iar `/tmp` e un tmpfs de 3,8 G — build-ul a si picat o data cu „disk full", adica
+#    dintr-un motiv care n-avea nimic de-a face cu ce verifica.
 if [ -f "$RADACINA/.env" ]; then
-  TMPX="$LUCRU/x"; mkdir -p "$TMPX"; unzip -q "$IESIRE/Contabo-Windows.zip.nou" -d "$TMPX"
   GASIT=0
   for cheie in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET ANTHROPIC_API_KEY OPENAI_API_KEY \
                RESEND_API_KEY CONTAB_AUTH_SECRET CONTAB_SECRETS_KEY CONTAB_SECRETS_KEY_OLD \
@@ -105,7 +108,7 @@ if [ -f "$RADACINA/.env" ]; then
     val=$(grep -E "^$cheie=" "$RADACINA/.env" 2>/dev/null | head -1 | cut -d= -f2-)
     [ -z "$val" ] && continue
     [ ${#val} -lt 12 ] && continue
-    if grep -rqF "$val" "$TMPX" 2>/dev/null; then
+    if unzip -p "$IESIRE/Contabo-Windows.zip.nou" 2>/dev/null | grep -qF "$val"; then
       echo "EROARE: valoarea lui $cheie a ajuns in pachet." >&2; GASIT=1
     fi
   done
