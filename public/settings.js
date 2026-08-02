@@ -21,7 +21,7 @@ export function render2FA() {
   $('#twofaDisableWrap').classList.toggle('hidden', !on);
 }
 $('#twofaDisable').addEventListener('click', async () => {
-  try { await api('/api/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: $('#twofaDisCode').value }) }); toast('2FA dezactivat'); await deps.init(); deps.onTab('setari'); }
+  try { await api('/api/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: $('#twofaDisCode').value }) }); toast('2FA dezactivat'); await deps.init(); deps.onTab('cont'); }
   catch (e) { toast(e.message, true); }
 });
 $('#twofaRevoke').addEventListener('click', async () => {

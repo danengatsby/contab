@@ -107,6 +107,25 @@ main{max-width:1180px;margin:22px auto;padding:0 18px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;
   margin-bottom:18px;box-shadow:var(--shadow)}
 .card-head{display:flex;align-items:center;justify-content:space-between}
+/* Secțiune care NU se aplică firmei curente (pro-rata TVA, TVA la încasare ș.a.).
+   Nu se ascunde de tot — o opțiune care dispare fără explicație pare o funcție pierdută — dar nu
+   are voie să ocupe un ecran ca să spună că nu te privește. Se strânge la un rând: titlul rămâne
+   ancoră, motivul îl urmează pe aceeași linie, restul conținutului e ascuns de JS. */
+.card.inaplicabil{padding:10px 16px;opacity:.72;background:var(--soft);box-shadow:none}
+/* `:not(.hidden)` NU e cosmetic: `.card.inaplicabil>p` are specificitate 0,2,1, iar `.hidden` doar
+   0,1,0 — deci fara excludere regula asta BATE ascunderea facuta din JS si explicatiile lungi
+   reapar tocmai in randul care trebuia sa le inlocuiasca. Vazut pe TVA: sectiunea „nu se aplica"
+   afisa in continuare cele cinci randuri despre regimul mixt, pe o singura linie. */
+.card.inaplicabil>h2:not(.hidden),.card.inaplicabil>h3:not(.hidden){display:inline;font-size:.95rem;margin:0;font-weight:600}
+.card.inaplicabil>h2::after,.card.inaplicabil>h3::after{content:" —";opacity:.6}
+.card.inaplicabil>p:not(.hidden){display:inline;margin:0 0 0 .35em;font-size:.92rem}
+.card.inaplicabil>.tablewrap:empty{display:none}
+/* Secțiunile dinăuntrul unui formular lung („Firma mea": identitate → profil fiscal → bilanț →
+   personalizare facturi). Sunt marcatori într-un grid, nu containere, deci nu se pot împacheta în
+   carduri fără să se rupă așezarea câmpurilor — dar pot fi DESPĂRȚITE, ca să nu se citească drept
+   un singur perete de 43 de câmpuri. Linie deasupra + aer, atât. */
+.dyn>.full.sect-form{margin-top:26px;padding-top:20px;border-top:2px solid var(--line)}
+.dyn>.full.sect-form>h3{margin:0 0 6px}
 
 .drop{border:2px dashed var(--line-strong);border-radius:12px;padding:26px;text-align:center;
   background:var(--soft);cursor:pointer;transition:.15s}

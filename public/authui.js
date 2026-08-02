@@ -216,7 +216,7 @@ $('#forcePwForm') && $('#forcePwForm').addEventListener('submit', async (e) => {
     // reactivarea 2FA — vezi comentariul de langa cardul 2FA din index.html.
     toast('Parolă schimbată. Verifică în Setări sesiunile active și deconectează-le pe cele străine.');
     await D.init();
-    D.goTab('setari');
+    D.goTab('cont'); // parola si sesiunile stau in „Contul meu"
     setTimeout(() => { const t = $('#sessionsList'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 250);
   } catch (ex) { err.textContent = ex.message; }
 });
