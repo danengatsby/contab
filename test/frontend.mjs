@@ -40,6 +40,7 @@ const core = await import(path.join(mirror, 'core.js'));
 const periods = await import(path.join(mirror, 'periods.js'));
 const entries = await import(path.join(mirror, 'entries.js'));
 const plan = await import(path.join(mirror, 'plan.js'));
+const pag = await import(path.join(mirror, 'paginare.js'));
 const dashboard = await import(path.join(mirror, 'dashboard.js'));
 const rapoarte = await import(path.join(mirror, 'rapoarte.js'));
 const livrabile = await import(path.join(mirror, 'livrabile.js'));
@@ -1067,6 +1068,70 @@ section('Înscriere: din afara aplicației se alege DOAR proba gratuită');
   // cod ar fi fost o cale moarta care pare vie (vezi lectia din src/saft.js).
   const au = fs.readFileSync(path.join(PUB, 'authui.js'), 'utf8');
   ok('mecanismul de plată imediat după înscriere e scos din cod', !/pendingPaidPlan/.test(au));
+}
+section('Paginare (public/paginare.js) — calculul poziției');
+{
+  const S = pag.stare;
+
+  // Cazul obișnuit.
+  const a = S(893, 0, 50);
+  eq('pagina 1 din 18', a.pagina + '/' + a.pagini, '1/18');
+  eq('intervalul afișat', a.deLa + '–' + a.panaLa, '1–50');
+  ok('pe prima pagină, „înapoi" e blocat', a.prima === true && a.ultima === false);
+  const b = S(893, 850, 50);
+  eq('ultima pagină e parțială', b.deLa + '–' + b.panaLa, '851–893');
+  ok('pe ultima pagină, „înainte" e blocat', b.ultima === true);
+
+  // NORMALIZAREA poziției. Fără ea, o pagină golită (după o ștergere sau după un filtru mai
+  // strict) ar lăsa un tabel gol PESTE date care există — un bug care arată exact ca „nu am date".
+  const c = S(12, 500, 50);
+  eq('offset dincolo de sfârșit -> ultima pagină', c.offset, 0);
+  eq('...cu intervalul corect', c.deLa + '–' + c.panaLa, '1–12');
+  const d = S(120, 500, 50);
+  eq('offset mult peste total -> ultima pagină reală', d.offset, 100);
+  eq('...adică pagina 3 din 3', d.pagina + '/' + d.pagini, '3/3');
+  const e = S(893, 37, 50);
+  eq('offset nealiniat se aliniază la marginea paginii', e.offset, 0);
+  const f = S(893, 137, 50);
+  eq('...și pentru o pagină din mijloc', f.offset, 100);
+
+  // Margini.
+  eq('zero rânduri -> o pagină, interval gol', S(0, 0, 50).pagini + '/' + S(0, 0, 50).deLa, '1/0');
+  ok('zero rânduri: și prima, și ultima', S(0, 0, 50).prima === true && S(0, 0, 50).ultima === true);
+  eq('limit invalid cade pe implicit', S(100, 0, 0).limit, pag.MARIME_IMPLICITA);
+  eq('offset negativ devine 0', S(100, -20, 50).offset, 0);
+  eq('total exact cât o pagină -> o singură pagină', S(50, 0, 50).pagini, 1);
+  eq('total cu unul peste -> două pagini', S(51, 0, 50).pagini, 2);
+
+  // Controalele apar când există MAI MULT DE O PAGINĂ, raportat la limita chiar folosită.
+  ok('30 de rânduri la 50/pagină: paginarea nu e necesară', S(30, 0, 50).necesara === false);
+  ok('...iar bara nici nu se randează', pag.controaleHtml(S(30, 0, 50), 'x', 'rânduri') === '');
+  ok('893 de rânduri: paginarea e necesară', S(893, 0, 50).necesara === true);
+  // Regresia care a costat: cartea mare merge pe 10 conturi. Cu regula veche („mai mult decât cea
+  // mai mică mărime standard, 50") lista era tăiată la 10 din 19 și bara NU apărea — nouă conturi
+  // inaccesibile, fără niciun semn că există.
+  ok('19 elemente la 10/pagină: paginarea E necesară', S(19, 0, 10).necesara === true);
+  ok('...și bara chiar se randează', pag.controaleHtml(S(19, 0, 10), 'carte', 'conturi') !== '');
+  ok('...cu mărimea nestandard prezentă în listă, ca opțiune selectată',
+    pag.controaleHtml(S(19, 0, 10), 'carte', 'conturi').includes('value="10" selected'));
+  ok('exact o pagină plină: fără controale', S(10, 0, 10).necesara === false);
+
+  // Rezumatul.
+  eq('rezumat pe mai multe pagini', pag.rezumat(S(893, 50, 50), 'acțiuni'), '51–100 din 893 acțiuni');
+  eq('rezumat cand incape tot', pag.rezumat(S(12, 0, 50), 'conturi'), '12 conturi');
+  eq('rezumat gol', pag.rezumat(S(0, 0, 50), 'conturi'), 'niciun rând');
+
+  // HTML-ul: butoanele se dezactivează la capete, iar identificatorul e escapat.
+  const h1 = pag.controaleHtml(S(893, 0, 50), 'audit', 'acțiuni');
+  ok('prima pagină: „Prima" și „Înapoi" sunt disabled',
+    /pg-prim" disabled/.test(h1) && /pg-inapoi" disabled/.test(h1));
+  ok('...dar „Înainte" nu', /pg-inainte" (?!disabled)/.test(h1) || !/pg-inainte" disabled/.test(h1));
+  const h2 = pag.controaleHtml(S(893, 850, 50), 'audit', 'acțiuni');
+  ok('ultima pagină: „Înainte" și „Ultima" sunt disabled',
+    /pg-inainte" disabled/.test(h2) && /pg-ultim" disabled/.test(h2));
+  ok('mărimile de pagină apar ca opțiuni', pag.MARIMI.every((m) => h1.includes('value="' + m + '"')));
+  ok('mărimea curentă e selectată', h1.includes('value="50" selected'));
+  ok('identificatorul barei e escapat', !pag.controaleHtml(S(893, 0, 50), '"><img src=x>', 'r').includes('<img'));
 }
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');

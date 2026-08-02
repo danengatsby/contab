@@ -312,6 +312,28 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
       (await adm.locator('#tab-' + tab + ' ' + ancora).count()) === 1);
   }
 
+  // Paginarea listelor lungi. Se verifica pe JURNALUL DE AUDIT, singurul care cere de la server
+  // doar pagina afisata (`?limit&offset` -> plicul din src/paginate.js): daca ar cere tot si ar
+  // taia in client, testul de mai jos ar trece la fel — deci se verifica si numarul de randuri
+  // primite, nu doar textul barei.
+  await adm.evaluate(() => window.goTab('audit'));
+  await adm.waitForTimeout(1200);
+  const bara = adm.locator('#tab-audit .paginare');
+  if ((await bara.count()) === 1) {
+    const randuri = await adm.locator('#tab-audit table tbody tr').count();
+    ok('jurnalul afiseaza o singura pagina, nu tot', randuri <= 50);
+    ok('...cu rezumatul „x–y din N"', /\d+–\d+ din \d+/.test(await bara.innerText()));
+    ok('pe prima pagina, „Inapoi" e blocat', (await adm.locator('#tab-audit .pg-inapoi[disabled]').count()) === 1);
+    const inainte = await adm.locator('#tab-audit .pg-pozitie').innerText();
+    await adm.click('#tab-audit .pg-inainte');
+    await adm.waitForTimeout(1200);
+    ok('„Inainte" schimba pagina', (await adm.locator('#tab-audit .pg-pozitie').innerText()) !== inainte);
+    ok('...si deblocheaza „Inapoi"', (await adm.locator('#tab-audit .pg-inapoi[disabled]').count()) === 0);
+  } else {
+    // Instanta izolata poate avea sub o pagina de audit — atunci bara NU trebuie sa apara deloc.
+    ok('sub o pagina: nicio bara de paginare', (await adm.locator('#tab-audit table tbody tr').count()) <= 50);
+  }
+
   ok('intrarea de meniu exista in submeniul Setari',
     (await adm.locator('#tabs .navgroup .navmenu button[data-tab="accesari"]').count()) === 1);
   ok('...si e oferita adminului (nu ascunsa)', (await adm.locator('#navAccesari.hidden').count()) === 0);

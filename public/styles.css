@@ -124,6 +124,15 @@ main{max-width:1180px;margin:22px auto;padding:0 18px}
    personalizare facturi). Sunt marcatori într-un grid, nu containere, deci nu se pot împacheta în
    carduri fără să se rupă așezarea câmpurilor — dar pot fi DESPĂRȚITE, ca să nu se citească drept
    un singur perete de 43 de câmpuri. Linie deasupra + aer, atât. */
+/* Bara de paginare (public/paginare.js). Apare sub tabelele lungi; rămâne discretă — e navigare,
+   nu acțiune — dar cu ținte de clic destul de mari ca să fie folosibile și pe telefon. */
+.paginare{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;
+  padding-top:12px;border-top:1px solid var(--line)}
+.paginare .spacer{flex:1}
+.paginare .pg-pozitie{font-size:.9rem;white-space:nowrap}
+.paginare .btn[disabled]{opacity:.4;cursor:default;pointer-events:none}
+.paginare .pg-marime{padding:4px 8px}
+
 /* Rândul de descărcări, scos din bara de titlu: acolo se înghesuia cu perioada și rupea titlul
    pe trei linii. Se înfășoară curat și rămâne secundar vizual — sunt exporturi, nu acțiuni. */
 .descarcari{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-4px 0 16px}

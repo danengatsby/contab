@@ -5,6 +5,7 @@
 // app.js (Etapa 4). Depinde de nucleu; init/onTab/promptFirmaSubscribe/impersonate sunt INJECTATE
 // de app.js prin setAdminDeps (evita dependenta circulara admin <-> app).
 import { $, $$, api, toast, USER, H, META, isDemo } from './core.js';
+import { stare, controaleHtml, leaga, MARIME_IMPLICITA } from './paginare.js';
 
 let deps = {};
 export function setAdminDeps(d) { deps = d; }
@@ -474,6 +475,10 @@ $('#inviteBtn').addEventListener('click', async () => {
 
 // ───────────────────────── AUDIT ─────────────────────────
 let AUDIT_SCOPE = 'firma'; // 'firma' (curentă) | 'system' (global, doar admin)
+// Pozitia in jurnal. Se reseteaza la schimbarea domeniului (firma/sistem): pagina 7 din jurnalul
+// firmei nu inseamna nimic in cel de sistem, care are cu totul alte randuri.
+let AUDIT_OFFSET = 0;
+let AUDIT_LIMIT = MARIME_IMPLICITA;
 export async function renderAudit() {
   const isAdmin = USER && USER.role === 'admin';
   $('#auditScope') && $('#auditScope').classList.toggle('hidden', !isAdmin);
@@ -482,12 +487,29 @@ export async function renderAudit() {
   $('#auditScopeSystem') && $('#auditScopeSystem').classList.toggle('active', AUDIT_SCOPE === 'system');
   // exportul CSV urmeaza scope-ul curent (firma / sistem)
   const exp = $('#auditExport'); if (exp) exp.href = AUDIT_SCOPE === 'system' ? '/csv/audit/system' : '/csv/audit';
-  let list;
-  try { list = await api(AUDIT_SCOPE === 'system' ? '/api/audit/system' : '/api/audit'); } catch (e) { return; }
-  if (!list.length) { $('#auditList').innerHTML = '<p class="muted">Nicio acțiune înregistrată ' + (AUDIT_SCOPE === 'system' ? 'la nivel de sistem.' : 'pentru firma curentă.') + '</p>'; return; }
+  // Jurnalul e cea mai lungă listă din aplicație (10.770 px la 893 de rânduri, iar plafonul e
+  // 20.000). Se cere de la server DOAR pagina afișată — ruta întoarce plicul { items, total, … }
+  // când primește `?limit` (src/paginate.js). E singurul loc unde paginarea chiar scade și
+  // memoria, și traficul, nu doar ce se vede.
+  let plic;
+  const q = '?limit=' + AUDIT_LIMIT + '&offset=' + AUDIT_OFFSET;
+  try { plic = await api((AUDIT_SCOPE === 'system' ? '/api/audit/system' : '/api/audit') + q); } catch (e) { return; }
+  const items = plic.items || [];
+  const s = stare(plic.total || 0, plic.offset || 0, plic.limit || AUDIT_LIMIT);
+  // Poziția se normalizează în `stare()` (o pagină golită după o ștergere ar rămâne altfel goală
+  // peste date care există); dacă s-a mutat, se cere din nou de la poziția corectă.
+  if (s.offset !== (plic.offset || 0) && (plic.total || 0) > 0) { AUDIT_OFFSET = s.offset; return renderAudit(); }
+  AUDIT_OFFSET = s.offset;
+  if (!plic.total) { $('#auditList').innerHTML = '<p class="muted">Nicio acțiune înregistrată ' + (AUDIT_SCOPE === 'system' ? 'la nivel de sistem.' : 'pentru firma curentă.') + '</p>'; return; }
+  // `action` si `detail` erau interpolate NEESCAPAT. `detail` poarta date din cerere — de pilda
+  // `'a ales planul ' + req.body.plan` — deci un sir cu markup ajungea in DOM-ul ADMINULUI.
+  // CSP-ul (script-src 'self', fara unsafe-inline) blocheaza executia, dar asta e a doua plasa,
+  // nu prima: escaparea se face aici, dupa contextul de iesire (text HTML → H).
   $('#auditList').innerHTML = `<table><thead><tr><th>Data</th><th>Utilizator</th><th>Acțiune</th><th>Detaliu</th></tr></thead><tbody>${
-    list.map((a) => `<tr><td>${(a.ts || '').replace('T', ' ').slice(0, 16)}</td><td>${H(a.username || '')}${a.viaAdmin ? ' <span class="muted">(via ' + H(a.viaAdmin) + ')</span>' : ''}</td>
-      <td class="acc">${a.action}</td><td>${a.detail || ''}</td></tr>`).join('')}</tbody></table>`;
+    items.map((a) => `<tr><td>${H((a.ts || '').replace('T', ' ').slice(0, 16))}</td><td>${H(a.username || '')}${a.viaAdmin ? ' <span class="muted">(via ' + H(a.viaAdmin) + ')</span>' : ''}</td>
+      <td class="acc">${H(a.action || '')}</td><td>${H(a.detail || '')}</td></tr>`).join('')}</tbody></table>`
+    + controaleHtml(s, 'audit', 'acțiuni');
+  leaga('#auditList', s, (off, lim) => { AUDIT_OFFSET = off; AUDIT_LIMIT = lim; renderAudit(); });
 }
 // ── Cine acceseaza aplicatia (admin): sesiuni active + autentificari, cu IP si locatie ──
 // Tot ce se interpoleaza aici vine, direct sau indirect, din AFARA: `username` e ales de
@@ -562,5 +584,5 @@ $('#accessVisAll') && $('#accessVisAll').addEventListener('click', () => { ACCES
 $('#accessVisOameni') && $('#accessVisOameni').addEventListener('click', () => { ACCESS_FARA_BOTI = true; renderAccess(); });
 
 $('#auditRefresh').addEventListener('click', renderAudit);
-$('#auditScopeFirma') && $('#auditScopeFirma').addEventListener('click', () => { AUDIT_SCOPE = 'firma'; renderAudit(); });
-$('#auditScopeSystem') && $('#auditScopeSystem').addEventListener('click', () => { AUDIT_SCOPE = 'system'; renderAudit(); });
+$('#auditScopeFirma') && $('#auditScopeFirma').addEventListener('click', () => { AUDIT_SCOPE = 'firma'; AUDIT_OFFSET = 0; renderAudit(); });
+$('#auditScopeSystem') && $('#auditScopeSystem').addEventListener('click', () => { AUDIT_SCOPE = 'system'; AUDIT_OFFSET = 0; renderAudit(); });

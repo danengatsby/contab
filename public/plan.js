@@ -2,9 +2,12 @@
 
 // Planul de conturi: afisare pe clase + import CSV personalizat. Extras din app.js (Etapa: spargerea fisierului mare).
 import { $$, $, fmt, H, accName, toast, api, META, setMeta, fileToCsv } from './core.js';
+import { stare, controaleHtml, leaga, MARIME_IMPLICITA } from './paginare.js';
 
 // ───────────────────────── PLAN ─────────────────────────
-$('#planFilter').addEventListener('input', renderPlan);
+// La filtrare se revine la prima pagina: o cautare care da trei rezultate te-ar fi lasat altfel
+// pe pagina 8, adica pe un tabel gol peste date care exista.
+$('#planFilter').addEventListener('input', () => { PLAN_OFFSET = 0; renderPlan(); });
 $('#accCsvFile').addEventListener('change', async (e) => { const f = e.target.files[0]; if (f) { try { $('#accCsvIn').value = await fileToCsv(f); } catch (err) { toast(err.message, true); } } });
 $('#accImportBtn').addEventListener('click', async () => {
   const csv = $('#accCsvIn').value.trim(); if (!csv) return toast('Lipiește un CSV', true);
@@ -16,15 +19,33 @@ $('#accImportBtn').addEventListener('click', async () => {
 });
 // Denumirile de conturi NU sunt constante interne: planul se poate extinde prin import CSV
 // (/api/accounts/import), deci `nume` e text venit din afara si se escapeaza ca oricare altul.
-function planRowsHtml(accounts, q) {
+/** Conturile care trec de filtru. Separată de randare ca să poată fi și numărată, și paginată. */
+function planFiltrate(accounts, q) {
   const f = String(q || '').toLowerCase();
-  return (accounts || [])
-    .filter((a) => !f || String(a.cod).includes(f) || String(a.nume || '').toLowerCase().includes(f))
+  return (accounts || []).filter((a) => !f || String(a.cod).includes(f) || String(a.nume || '').toLowerCase().includes(f));
+}
+function planRowsHtml(accounts, q) {
+  return planFiltrate(accounts, q)
     .map((a) => `<tr><td class="acc">${H(a.cod)}</td><td>${H(a.nume)}</td><td>Clasa ${H(a.clasa)}</td><td>${H(a.tip)}</td></tr>`).join('');
 }
+// Poziția în plan. Planul vine întreg în META (nu e o rută), deci paginarea e de AFIȘARE — dar
+// exact asta doare: peste 700 de conturi construite ca HTML dintr-o dată sunt și lente de randat,
+// și imposibil de citit. Filtrul rămâne prima unealtă; paginarea e pentru cine răsfoiește.
+let PLAN_OFFSET = 0;
+let PLAN_LIMIT = MARIME_IMPLICITA;
 function renderPlan() {
-  const rows = planRowsHtml(META.accounts, $('#planFilter').value);
-  $('#planView').innerHTML = `<table><thead><tr><th>Cont</th><th>Denumire</th><th>Clasa</th><th>Tip</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const q = $('#planFilter').value;
+  const toate = planFiltrate(META.accounts, q);
+  const s = stare(toate.length, PLAN_OFFSET, PLAN_LIMIT);
+  PLAN_OFFSET = s.offset;
+  // Randurile se construiesc TOT prin `planRowsHtml` (filtrul e deja aplicat, deci ''): o copie a
+  // buclei aici ar fi fost calea REALA a interfetei, in timp ce probele de escapare din
+  // test/frontend.mjs ar fi continuat sa verifice functia exportata. Testele ar fi ramas verzi
+  // peste o randare vulnerabila — exact tiparul „testul trece din motivul gresit".
+  const rows = planRowsHtml(toate.slice(s.offset, s.offset + s.limit), '');
+  $('#planView').innerHTML = `<table><thead><tr><th>Cont</th><th>Denumire</th><th>Clasa</th><th>Tip</th></tr></thead><tbody>${rows}</tbody></table>`
+    + controaleHtml(s, 'plan', 'conturi');
+  leaga('#planView', s, (off, lim) => { PLAN_OFFSET = off; PLAN_LIMIT = lim; renderPlan(); });
 }
 
 // ── Mod simplu (necontabil) + Dictionar contabil ──

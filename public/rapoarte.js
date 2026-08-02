@@ -5,6 +5,7 @@ import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct, ac } from '.
 import { renderBudget } from './dashboard.js';
 import { pget, workMonth, setWorkMonth, nextMonth, lunaLabel, applyWorkMonth, onPeriodChange } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
+import { stare, controaleHtml, leaga } from './paginare.js';
 
 // ───────────────────────── JOURNAL ─────────────────────────
 onPeriodChange('jurnal', loadJournal);
@@ -24,13 +25,23 @@ async function loadJournal() {
 }
 
 // ───────────────────────── LEDGER ─────────────────────────
-onPeriodChange('carte', loadLedger);
+// La schimbarea perioadei se revine la prima pagina: alta luna inseamna alta lista de conturi,
+// deci pagina 4 din luna trecuta nu inseamna nimic in cea noua.
+onPeriodChange('carte', () => { CARTE_OFFSET = 0; loadLedger(); });
+// Poziția în cartea mare. Unitatea paginată e CONTUL, nu rândul: un cont tăiat pe la jumătate,
+// cu rulajul și soldul final pe pagina următoare, ar fi de necitit — și ar arăta ca o eroare de
+// calcul. Fiecare pagină conține conturi întregi.
+let CARTE_OFFSET = 0;
+let CARTE_LIMIT = 10;
 async function loadLedger() {
   const p = pget('carte');
   $('#cartePdf').href = '/pdf/ledger' + (p ? '?period=' + p : '');
   $('#carteCsv').href = '/csv/ledger' + (p ? '?period=' + p : '');
-  const accs = await api('/api/ledger' + (p ? '?period=' + p : ''));
-  if (!accs.length) { $('#carteView').innerHTML = '<p class="muted">Nicio mișcare.</p>'; return; }
+  const toate = await api('/api/ledger' + (p ? '?period=' + p : ''));
+  if (!toate.length) { $('#carteView').innerHTML = '<p class="muted">Nicio mișcare.</p>'; return; }
+  const s = stare(toate.length, CARTE_OFFSET, CARTE_LIMIT);
+  CARTE_OFFSET = s.offset;
+  const accs = toate.slice(s.offset, s.offset + s.limit);
   $('#carteView').innerHTML = accs.map((a) => {
     const moves = a.moves.map((m) => `<tr><td>${H(m.data)}</td><td>${H(m.explicatie)}</td>
       <td class="num">${m.debit ? fmt(m.debit) : ''}</td><td class="num">${m.credit ? fmt(m.credit) : ''}</td></tr>`).join('');
@@ -42,7 +53,8 @@ async function loadLedger() {
       <tr class="total"><td colspan="2">Rulaj perioadă</td><td class="num">${fmt(a.rd)}</td><td class="num">${fmt(a.rc)}</td></tr>
       <tr class="total"><td colspan="2">Sold final</td><td class="num">${fmt(a.sfD)}</td><td class="num">${fmt(a.sfC)}</td></tr>
       </tbody></table></div></div>`;
-  }).join('');
+  }).join('') + controaleHtml(s, 'carte', 'conturi');
+  leaga('#carteView', s, (off, lim) => { CARTE_OFFSET = off; CARTE_LIMIT = lim; loadLedger(); });
 }
 
 // ───────────────────────── BANCA / CASA ─────────────────────────
