@@ -3180,7 +3180,11 @@ eq('trezorerie: exact un cont de bani semnalat', rzNeg.conturiBaniNegative.lengt
 const cbn0 = rzNeg.conturiBaniNegative[0] || {};
 eq('trezorerie: contul semnalat e cel de banca', cbn0.cont, '5121');
 ok('trezorerie: soldul semnalat pastreaza semnul', cbn0.sold === -400);
-ok('trezorerie: semnalul poarta denumirea contului', /banci/i.test(cbn0.nume || ''));
+// Ancorat pe SURSA denumirii, nu pe o bucata de text: aserțiunea era `/banci/i` si a picat cand
+// planul de conturi a primit diacritice („bănci"), desi semnalul functiona perfect. Ce trebuie sa
+// tina e ca semnalul poarta denumirea contului, nu cum se scrie ea in luna asta.
+ok('trezorerie: semnalul poarta denumirea contului',
+  !!cbn0.nume && cbn0.nume === require('../src/chartOfAccounts').accountName('5121'));
 ok('trezorerie: conturile pozitive nu se semnaleaza', !rzNeg.conturiBaniNegative.some((x) => x.cont === '5311'));
 
 section('Buget vs realizat');
