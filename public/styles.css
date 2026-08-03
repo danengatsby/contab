@@ -177,6 +177,8 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 th{background:var(--soft2);position:sticky;top:0;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+/* zero stins in tabelele numerice — scris, dar nu concurent vizual cu sumele reale */
+.zero{color:var(--muted);opacity:.55}
 tr.total td{font-weight:700;background:var(--soft)}
 tr.sys td{color:#8a6d00}
 /* Ciorna (nu inca in contabilitate): rand estompat, cu bara de accent la stanga */
@@ -301,7 +303,11 @@ body.dark .tab>.toolbar:first-child{border-bottom-color:var(--line)}
 .kpi .lbl{color:var(--muted);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .kpi .val{font-size:27px;font-weight:800;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .kpi .sub{color:var(--muted);font-size:12px;margin-top:2px}
-.kpi.green .val{color:var(--accent)}.kpi.red .val{color:var(--danger)}.kpi.blue .val{color:var(--head)}
+/* Bun/rau se citesc dupa CULOARE, deci nu au voie sa iasa din acelasi token.
+   `--accent` e verde in dark, dar teracota in light — regula scrisa pe el mergea doar in dark,
+   iar in light profitul si pierderea ajunsesera la 13,6° distanta de nuanta, adica identice.
+   `--good` e verde in ambele teme (in dark chiar EGAL cu --accent, deci aici nu se schimba nimic). */
+.kpi.green .val{color:var(--good)}.kpi.red .val{color:var(--danger)}.kpi.blue .val{color:var(--head)}
 
 .items-editor{border:1px solid var(--line);border-radius:9px;padding:8px;background:var(--soft)}
 .item-row{display:grid;grid-template-columns:2fr .8fr .7fr 1fr .7fr auto;gap:6px;margin-bottom:5px}
@@ -313,9 +319,22 @@ body.dark .tab>.toolbar:first-child{border-bottom-color:var(--line)}
 .stoc-row .delstoc{padding:4px 9px}
 body.dark .stoc-editor{background:#121a2b}
 
+/* Legatura „sari la continut": ascunsa pana primeste focalizare, apoi vizibila peste tot.
+   Deliberat NU `display:none`/`visibility:hidden` — ambele o scot din ordinea de tabulare,
+   adica ar fi facut-o imposibil de atins exact pentru cine are nevoie de ea. */
+.skip-link{position:fixed;top:-56px;left:10px;z-index:60;background:var(--card);color:var(--ink);
+  border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px 15px;
+  font-weight:700;font-size:13px;text-decoration:none;box-shadow:var(--shadow-lg);transition:top .15s}
+.skip-link:focus{top:10px}
+/* focalizata din program, nu cu Tab: inelul ar incadra tot ecranul fara sa spuna nimic */
+main#main:focus{outline:none}
+
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(40px);
   background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;opacity:0;transition:.25s;
-  box-shadow:var(--shadow);z-index:50;max-width:90%}
+  box-shadow:var(--shadow);z-index:50;max-width:90%;
+  /* invizibil dar tot in pagina (opacity, nu display) — fara asta inghitea atingerile de la
+     baza ecranului, adica exact peste bara de navigare de pe mobil */
+  pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--danger)}
 /* Banda de conexiune pierduta (degradare gratioasa — nu offline-first) */
@@ -460,9 +479,10 @@ body.dark .toolbar>h2,body.dark .opw-head h3{color:var(--ink)}
 .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
 .kpi-ic{font-size:22px;line-height:1}
 .kpi .trend{font-size:12px;font-weight:800;padding:2px 9px;border-radius:20px;white-space:nowrap}
-.kpi .trend.good{background:#eaf4ef;color:var(--accent)}
+/* fundalul chipului era deja verde pal — ramasese din paleta veche, sub un prim-plan teracota */
+.kpi .trend.good{background:#eaf4ef;color:var(--good)}
 .kpi .trend.bad{background:#fdeef0;color:var(--danger)}
-.kpi.green{border-left:4px solid var(--accent)}
+.kpi.green{border-left:4px solid var(--good)}
 .kpi.red{border-left:4px solid var(--danger)}
 .kpi.blue{border-left:4px solid #4a72c4}
 body.dark .kpi .trend.good{background:#14271f;color:#4fc596}
@@ -955,9 +975,15 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 details[open]>.sec-sum::before{transform:rotate(90deg)}
 .sec-sum:hover{color:var(--accent)}
 /* Comenzi INACTIVE: raman vizibile (utilizatorul vede ca functia exista), dar nu se pot folosi.
-   `.inactiv` e pentru containere fara stare nativa de dezactivare — <details> nu are `disabled`. */
-.btn[disabled]{opacity:.45;cursor:not-allowed;filter:grayscale(.6)}
-.btn[disabled]:hover{background:var(--soft);border-color:var(--line);box-shadow:none;transform:none}
+   Stare dezactivata EXPLICITA, nu `opacity` peste culoarea activa: pe un buton primar teracota,
+   .45 opacitate + grayscale dadea alb-pe-crem, adica un contrast de 1,4 — eticheta devenea
+   nelizibila exact pe butoanele principale. Fondul propriu duce la 4,1 (starea dezactivata e
+   scutita de pragul AA, dar 1,4 nu se citea deloc). `body.dark` in selector doar ca sa bata
+   `body.dark .btn.primary`, care altfel ramanea cu fondul de accent si sub `disabled`. */
+.btn[disabled],body.dark .btn[disabled]{background:var(--soft);color:var(--muted);border-color:var(--line);box-shadow:none;filter:none;opacity:1;cursor:not-allowed}
+.btn[disabled]:hover,body.dark .btn[disabled]:hover{background:var(--soft);border-color:var(--line);box-shadow:none;transform:none}
+/* `.inactiv` e pentru containere fara stare nativa de dezactivare — <details> nu are `disabled`.
+   Ramane pe `opacity`: se aplica pe un container intreg, nu pe o singura eticheta de buton. */
 .inactiv{opacity:.45;pointer-events:none}
 .inactiv summary{cursor:not-allowed}
 /* Banda „luna inchisa" + dezactivarea cailor de CREARE cat timp e afisata o luna inchisa.

@@ -134,6 +134,12 @@ function balanceEquations(tot) {
 function balanceTotals(rows) {
   return BAL_KEYS.reduce((o, k) => (o[k] = Math.round((rows || []).reduce((s, r) => s + (Number(r[k]) || 0), 0) * 100) / 100, o), {});
 }
+// Balanta are 10 coloane numerice, iar pe o luna obisnuita majoritatea celulelor sunt „0,00":
+// pe firma demo, ~100 de zerouri intre care cifrele reale se pierd. Zeroul RAMANE scris (o celula
+// goala s-ar citi ca „lipseste valoarea", nu ca „zero", iar coloanele sunt tabular-nums, deci
+// alinierea depinde de latimea egala) — doar se stinge, ca ochiul sa cada pe sumele care exista.
+const fmt0 = (v) => (Number(v) ? fmt(v) : `<span class="zero">${fmt(v)}</span>`);
+
 function renderBalance() {
   const tb = BALANCE_TB; if (!tb) return;
   if (tb.balanced) {
@@ -151,10 +157,10 @@ function renderBalance() {
   if (!visible.length) { $('#balantaView').innerHTML = `<p class="muted">${onlyMoves ? 'Niciun cont cu mișcări în luna aleasă.' : 'Niciun cont.'}</p>`; return; }
   const rows = visible.map((r) => `<tr>
     <td class="acc">${H(r.cod)}</td><td>${H(r.nume)}</td>
-    <td class="num grpsep">${fmt(r.siD)}</td><td class="num">${fmt(r.siC)}</td>
-    <td class="num grpsep">${fmt(r.rd)}</td><td class="num">${fmt(r.rc)}</td>
-    <td class="num grpsep">${fmt(r.tsD)}</td><td class="num">${fmt(r.tsC)}</td>
-    <td class="num grpsep">${fmt(r.sfD)}</td><td class="num">${fmt(r.sfC)}</td></tr>`).join('');
+    <td class="num grpsep">${fmt0(r.siD)}</td><td class="num">${fmt0(r.siC)}</td>
+    <td class="num grpsep">${fmt0(r.rd)}</td><td class="num">${fmt0(r.rc)}</td>
+    <td class="num grpsep">${fmt0(r.tsD)}</td><td class="num">${fmt0(r.tsC)}</td>
+    <td class="num grpsep">${fmt0(r.sfD)}</td><td class="num">${fmt0(r.sfC)}</td></tr>`).join('');
   // total: cel general, sau recalculat din rândurile vizibile când filtrăm pe „doar mișcări”
   const t = onlyMoves ? balanceTotals(visible) : tb.tot;
   $('#balantaView').innerHTML = `<table><thead>
@@ -172,10 +178,10 @@ function renderBalance() {
       <th class="num grpsep">Debit</th><th class="num">Credit</th>
     </tr></thead>
     <tbody>${rows}<tr class="total"><td colspan="2">TOTAL</td>
-    <td class="num grpsep">${fmt(t.siD)}</td><td class="num">${fmt(t.siC)}</td>
-    <td class="num grpsep">${fmt(t.rd)}</td><td class="num">${fmt(t.rc)}</td>
-    <td class="num grpsep">${fmt(t.tsD)}</td><td class="num">${fmt(t.tsC)}</td>
-    <td class="num grpsep">${fmt(t.sfD)}</td><td class="num">${fmt(t.sfC)}</td></tr></tbody></table>`;
+    <td class="num grpsep">${fmt0(t.siD)}</td><td class="num">${fmt0(t.siC)}</td>
+    <td class="num grpsep">${fmt0(t.rd)}</td><td class="num">${fmt0(t.rc)}</td>
+    <td class="num grpsep">${fmt0(t.tsD)}</td><td class="num">${fmt0(t.tsC)}</td>
+    <td class="num grpsep">${fmt0(t.sfD)}</td><td class="num">${fmt0(t.sfC)}</td></tr></tbody></table>`;
 }
 
 // ───────────────────────── ARTICOLE STORNATE ─────────────────────────
