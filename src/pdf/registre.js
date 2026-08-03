@@ -39,7 +39,7 @@ function ledgerPdf(res, company, accounts, period) {
       data: fmtDate(m.data), explicatie: m.explicatie,
       debit: m.debit ? fmt(m.debit) : '', credit: m.credit ? fmt(m.credit) : '',
     }));
-    rows.push({ data: '', explicatie: 'Rulaj perioada', debit: fmt(a.rd), credit: fmt(a.rc), _bold: true, _fill: C.zebra });
+    rows.push({ data: '', explicatie: 'Rulaj perioadă', debit: fmt(a.rd), credit: fmt(a.rc), _bold: true, _fill: C.zebra });
     rows.push({ data: '', explicatie: 'Sold final', debit: fmt(a.sfD), credit: fmt(a.sfC), _bold: true, _accent: true });
     table(doc, [
       { label: 'Data', key: 'data', width: 60 },
@@ -98,7 +98,7 @@ function fisaContPdf(res, company, fc) {
     data: fmtDate(r.data), document: r.document, explicatie: (r.partener ? r.partener + ' — ' : '') + (r.explicatie || ''),
     corespondent: r.corespondent, d: r.d ? fmt(r.d) : '', c: r.c ? fmt(r.c) : '', sold: fmt(r.sold),
   }));
-  rows.push({ data: '', document: '', explicatie: 'Rulaje perioada / Sold final', corespondent: '', d: fmt(fc.rd), c: fmt(fc.rc), sold: fmt(fc.sfFinal), _bold: true, _fill: C.zebra });
+  rows.push({ data: '', document: '', explicatie: 'Rulaje perioadă / Sold final', corespondent: '', d: fmt(fc.rd), c: fmt(fc.rc), sold: fmt(fc.sfFinal), _bold: true, _fill: C.zebra });
   table(doc, [
     { label: 'Data', key: 'data', width: 55 },
     { label: 'Document', key: 'document', width: 75 },
@@ -123,7 +123,7 @@ function cashBookPdf(res, company, cb) {
     data: fmtDate(r.data), document: r.document, explicatie: (r.partener ? r.partener + ' — ' : '') + r.explicatie,
     incasare: r.incasare ? fmt(r.incasare) : '', plata: r.plata ? fmt(r.plata) : '', sold: fmt(r.sold),
   }));
-  rows.push({ data: '', document: '', explicatie: 'Rulaje perioada / Sold final', incasare: fmt(cb.rd), plata: fmt(cb.rc), sold: fmt(cb.sfFinal), _bold: true, _fill: C.zebra });
+  rows.push({ data: '', document: '', explicatie: 'Rulaje perioadă / Sold final', incasare: fmt(cb.rd), plata: fmt(cb.rc), sold: fmt(cb.sfFinal), _bold: true, _fill: C.zebra });
   table(doc, [
     { label: 'Data', key: 'data', width: 60 },
     { label: 'Document', key: 'document', width: 80 },

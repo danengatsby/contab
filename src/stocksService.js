@@ -177,10 +177,10 @@ function postMovement(fid, id) {
   const contStoc = p.cont || '371';
   let line; let tip; let tipNume;
   if (m.tip === 'receptie') {
-    line = { debit: contStoc, credit: '401', suma, explicatie: 'Receptie ' + p.denumire };
+    line = { debit: contStoc, credit: '401', suma, explicatie: 'Recepție ' + p.denumire };
     tip = 'stoc_receptie'; tipNume = 'Receptie in gestiune';
   } else {
-    line = { debit: stocks.cogsAccount(contStoc), credit: contStoc, suma, explicatie: 'Descarcare gestiune ' + p.denumire };
+    line = { debit: stocks.cogsAccount(contStoc), credit: contStoc, suma, explicatie: 'Descărcare gestiune ' + p.denumire };
     tip = 'stoc_descarcare'; tipNume = 'Descarcare de gestiune';
   }
   const entry = {
@@ -374,13 +374,13 @@ function createInventory(fid, operator, b) {
       const q = round2(-diff);
       const val = round2(q * cmp);
       addMove({ id: db.nextId('sm'), firmaId: fid, data: b.data, tip: 'iesire', productId: p.id, gestiuneId: b.gestiuneId, gestiuneDestId: null, cantitate: q, pretUnitar: 0, document: doc, operator });
-      if (val > 0) addEntry({ id: db.nextId('e'), firmaId: fid, data: b.data, period: String(b.data).slice(0, 7), tip: 'inventar_minus', tipNume: 'Minus de inventar (lipsa)', partener: '', partenerCui: '', document: doc, analitic: '', explicatie: 'Lipsa inventar ' + p.denumire, fileId: null, system: true, lines: [{ debit: stocks.cogsAccount(cont), credit: cont, suma: val, explicatie: 'Lipsa la inventar ' + p.cod }] });
+      if (val > 0) addEntry({ id: db.nextId('e'), firmaId: fid, data: b.data, period: String(b.data).slice(0, 7), tip: 'inventar_minus', tipNume: 'Minus de inventar (lipsa)', partener: '', partenerCui: '', document: doc, analitic: '', explicatie: 'Lipsă inventar ' + p.denumire, fileId: null, system: true, lines: [{ debit: stocks.cogsAccount(cont), credit: cont, suma: val, explicatie: 'Lipsă la inventar ' + p.cod }] });
       // imputare gestionar: 4282 = 7588 + 4427
       if (ln.imputa && val > 0) {
         const tva = round2((val * tvaRate) / 100);
         addEntry({ id: db.nextId('e'), firmaId: fid, data: b.data, period: String(b.data).slice(0, 7), tip: 'imputare_lipsa', tipNume: 'Imputare lipsa gestionar', partener: g.gestionar || '', partenerCui: '', document: doc, analitic: '', explicatie: 'Imputare ' + p.denumire + ' catre ' + (g.gestionar || 'gestionar'), fileId: null, system: true, lines: [
-          { debit: '4282', credit: '7588', suma: val, explicatie: 'Imputare lipsa ' + p.cod },
-          { debit: '4282', credit: '4427', suma: tva, explicatie: 'TVA imputare lipsa ' + p.cod },
+          { debit: '4282', credit: '7588', suma: val, explicatie: 'Imputare lipsă ' + p.cod },
+          { debit: '4282', credit: '4427', suma: tva, explicatie: 'TVA imputare lipsă ' + p.cod },
         ] });
         ivLine.imputat = true; ivLine.tvaImputare = tva; inv.totalImputat = round2(inv.totalImputat + val + tva);
         result.imputari.push({ produs: p.cod, valoare: val, tva });

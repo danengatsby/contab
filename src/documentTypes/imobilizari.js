@@ -13,7 +13,7 @@ module.exports = [
     fields: [F.data, F.partener, F.document,
       { name: 'contImob', label: 'Cont imobilizare (2131/2133...)', type: 'account', default: '2133' },
       { name: 'valoare', label: 'Valoarea finantata (fara TVA)', type: 'number', required: true }],
-    build: (d) => [L(d.contImob || '2133', '167', d.valoare, 'Imobilizare in leasing financiar + datorie')],
+    build: (d) => [L(d.contImob || '2133', '167', d.valoare, 'Imobilizare în leasing financiar + datorie')],
   },
   {
     id: 'factura_leasing',
@@ -30,8 +30,8 @@ module.exports = [
       F.tva, F.cota],
     build: (d) => {
       const lines = [L('167', '404', d.principal, 'Rata de capital leasing')];
-      if (d.dobanda > 0) lines.push(L('666', '404', d.dobanda, 'Dobanda leasing'));
-      if (d.tva > 0) lines.push(L('4426', '404', d.tva, 'TVA deductibila aferenta ratei'));
+      if (d.dobanda > 0) lines.push(L('666', '404', d.dobanda, 'Dobânda leasing'));
+      if (d.tva > 0) lines.push(L('4426', '404', d.tva, 'TVA deductibilă aferentă ratei'));
       return lines;
     },
   },
@@ -51,8 +51,8 @@ module.exports = [
     grup: 'Imobilizari',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota],
     build: (d) => {
-      const lines = [L('231', '404', d.baza, 'Imobilizare corporala in curs de executie')];
-      if (d.tva > 0) lines.push(L('4426', '404', d.tva, 'TVA deductibila'));
+      const lines = [L('231', '404', d.baza, 'Imobilizare corporală în curs de execuție')];
+      if (d.tva > 0) lines.push(L('4426', '404', d.tva, 'TVA deductibilă'));
       return lines;
     },
   },
@@ -61,7 +61,7 @@ module.exports = [
     nume: 'Imobilizare in curs - productie proprie (231 = 722)',
     grup: 'Imobilizari',
     fields: [F.data, F.document, { name: 'valoare', label: 'Cost productie (fara TVA)', type: 'number', required: true }],
-    build: (d) => [L('231', '722', d.valoare, 'Productie de imobilizari in regie proprie')],
+    build: (d) => [L('231', '722', d.valoare, 'Producție de imobilizări în regie proprie')],
   },
   {
     id: 'punere_in_functiune',
@@ -70,7 +70,7 @@ module.exports = [
     fields: [F.data, F.document,
       { name: 'contImob', label: 'Cont imobilizare (2131/212...)', type: 'account', default: '2131' },
       { name: 'valoare', label: 'Valoarea de intrare', type: 'number', required: true }],
-    build: (d) => [L(d.contImob || '2131', '231', d.valoare, 'Receptie si punere in functiune')],
+    build: (d) => [L(d.contImob || '2131', '231', d.valoare, 'Recepție și punere în funcțiune')],
   },
   {
     id: 'reevaluare_plus',
@@ -79,7 +79,7 @@ module.exports = [
     fields: [F.data, F.document,
       { name: 'contImob', label: 'Cont imobilizare', type: 'account', default: '212' },
       { name: 'valoare', label: 'Plus de valoare (lei)', type: 'number', required: true }],
-    build: (d) => [L(d.contImob || '212', '105', d.valoare, 'Plus din reevaluare (rezerva)')],
+    build: (d) => [L(d.contImob || '212', '105', d.valoare, 'Plus din reevaluare (rezervă)')],
   },
   {
     id: 'reevaluare_minus',
@@ -91,8 +91,8 @@ module.exports = [
       { name: 'peCheltuiala', label: 'Pe cheltuiala 655 (lei)', type: 'number', default: 0 }],
     build: (d) => {
       const lines = [];
-      if (d.dinRezerva > 0) lines.push(L('105', d.contImob || '212', d.dinRezerva, 'Minus din reevaluare (din rezerva)'));
-      if (d.peCheltuiala > 0) lines.push(L('655', d.contImob || '212', d.peCheltuiala, 'Minus din reevaluare (cheltuiala)'));
+      if (d.dinRezerva > 0) lines.push(L('105', d.contImob || '212', d.dinRezerva, 'Minus din reevaluare (din rezervă)'));
+      if (d.peCheltuiala > 0) lines.push(L('655', d.contImob || '212', d.peCheltuiala, 'Minus din reevaluare (cheltuială)'));
       return lines;
     },
   },

@@ -29,9 +29,9 @@ module.exports = [
         cas = p.cas; cass = p.cass; impozit = p.impozit; cam = p.cam;
       }
       const lines = [L('641', '421', d.brut, 'Salarii brute datorate')];
-      if (cas > 0) lines.push(L('421', '4315', cas, 'Retinere CAS 25%'));
-      if (cass > 0) lines.push(L('421', '4316', cass, 'Retinere CASS 10%'));
-      if (impozit > 0) lines.push(L('421', '444', impozit, 'Retinere impozit pe salarii 10%'));
+      if (cas > 0) lines.push(L('421', '4315', cas, 'Reținere CAS 25%'));
+      if (cass > 0) lines.push(L('421', '4316', cass, 'Reținere CASS 10%'));
+      if (impozit > 0) lines.push(L('421', '444', impozit, 'Reținere impozit pe salarii 10%'));
       if (cam > 0) lines.push(L('646', '436', cam, 'CAM 2,25% (angajator)'));
       return lines;
     },
@@ -49,21 +49,21 @@ module.exports = [
     nume: 'Tichete de masa acordate salariatilor',
     grup: 'Salarii',
     fields: [F.data, F.suma, F.analiticAngajat],
-    build: (d) => [L('642', '5328', d.suma, 'Tichete de masa acordate')],
+    build: (d) => [L('642', '5328', d.suma, 'Tichete de masă acordate')],
   },
   {
     id: 'concediu_medical_angajator',
     nume: 'Concediu medical - indemnizatie suportata de angajator (primele 5 zile)',
     grup: 'Salarii',
     fields: [F.data, F.suma, F.analiticAngajat],
-    build: (d) => [L('6458', '423', d.suma, 'Indemnizatie concediu medical (angajator)')],
+    build: (d) => [L('6458', '423', d.suma, 'Indemnizație concediu medical (angajator)')],
   },
   {
     id: 'concediu_medical_fnuass',
     nume: 'Concediu medical - indemnizatie suportata de FNUASS (de recuperat)',
     grup: 'Salarii',
     fields: [F.data, F.suma, F.analiticAngajat],
-    build: (d) => [L('4373', '423', d.suma, 'Indemnizatie concediu medical (FNUASS - de recuperat)')],
+    build: (d) => [L('4373', '423', d.suma, 'Indemnizație concediu medical (FNUASS - de recuperat)')],
   },
   {
     id: 'recuperare_fnuass',
@@ -71,7 +71,7 @@ module.exports = [
     grup: 'Salarii',
     fields: [F.data, F.suma,
       { name: 'cont', label: 'Incasata in', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L(d.cont || '5121', '4373', d.suma, 'Recuperare indemnizatii de la FNUASS')],
+    build: (d) => [L(d.cont || '5121', '4373', d.suma, 'Recuperare indemnizații de la FNUASS')],
   },
 
 ];

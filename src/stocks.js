@@ -270,7 +270,7 @@ function saleCogs(products, baseMovements, stocLines, opts) {
   const cogsLines = Object.keys(byCogs).map((k) => {
     const [debit, credit] = k.split('>');
     const met = String(o.metoda || 'cmp').toLowerCase() === 'fifo' ? 'FIFO' : 'CMP';
-    return { debit, credit, suma: byCogs[k], explicatie: 'Descarcare gestiune - cost marfa vanduta (' + met + ')' };
+    return { debit, credit, suma: byCogs[k], explicatie: 'Descărcare gestiune - cost marfă vândută (' + met + ')' };
   });
   return { newMovements, cogsLines, total, warns };
 }

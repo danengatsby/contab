@@ -12,7 +12,7 @@ module.exports = [
     grup: 'Trezorerie',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Incasata in', type: 'select', options: TROZ, default: '5121' }, F.analiticBanca],
-    build: (d) => [L(d.cont || '5121', '4111', d.suma, 'Incasare de la client')],
+    build: (d) => [L(d.cont || '5121', '4111', d.suma, 'Încasare de la client')],
   },
   {
     id: 'plata_furnizor',
@@ -21,7 +21,7 @@ module.exports = [
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Platita din', type: 'select', options: TROZ, default: '5121' },
       { name: 'contFz', label: 'Cont furnizor', type: 'account', default: '401' }, F.analiticBanca],
-    build: (d) => [L(d.contFz || '401', d.cont || '5121', d.suma, 'Plata catre furnizor')],
+    build: (d) => [L(d.contFz || '401', d.cont || '5121', d.suma, 'Plata către furnizor')],
   },
   {
     id: 'depunere_numerar',
@@ -29,8 +29,8 @@ module.exports = [
     grup: 'Trezorerie',
     fields: [F.data, F.document, F.suma],
     build: (d) => [
-      L('581', '5311', d.suma, 'Ridicare numerar din casa - viramente interne'),
-      L('5121', '581', d.suma, 'Depunere numerar in banca'),
+      L('581', '5311', d.suma, 'Ridicare numerar din casă - viramente interne'),
+      L('5121', '581', d.suma, 'Depunere numerar în bancă'),
     ],
   },
   {
@@ -39,8 +39,8 @@ module.exports = [
     grup: 'Trezorerie',
     fields: [F.data, F.document, F.suma],
     build: (d) => [
-      L('581', '5121', d.suma, 'Ridicare numerar din banca - viramente interne'),
-      L('5311', '581', d.suma, 'Intrare numerar in casa'),
+      L('581', '5121', d.suma, 'Ridicare numerar din bancă - viramente interne'),
+      L('5311', '581', d.suma, 'Intrare numerar în casă'),
     ],
   },
   {

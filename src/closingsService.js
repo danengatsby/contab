@@ -56,7 +56,7 @@ function closeYear(fid, year) {
   if (!c.lines.length) return { result: c, posted: false };
   d.entries.push({
     id: db.nextId('e'), firmaId: fid, data: year + '-12-31', period: year + '-12', tip: 'inchidere_an', tipNume: 'Inchidere conturi venituri/cheltuieli',
-    partener: '', document: 'Inchidere ' + year, explicatie: 'Inchidere clasa 6 si 7 in contul 121',
+    partener: '', document: 'Inchidere ' + year, explicatie: 'Închidere clasa 6 și 7 în contul 121',
     fileId: null, system: true, lines: c.lines,
   });
   db.save();
@@ -111,10 +111,10 @@ function closeProfitTax(fid, src, year) {
   const lines = pt.lines.slice();
   const yearClosed = d.entries.some((e) => e.firmaId === fid && e.tip === 'inchidere_an' && e.period === year + '-12');
   let alsoClosed691 = false;
-  if (yearClosed && pt.impozit > 0) { lines.push({ debit: '121', credit: '691', suma: pt.impozit, explicatie: 'Inchidere impozit pe profit in rezultat (dupa inchiderea anuala)' }); alsoClosed691 = true; }
+  if (yearClosed && pt.impozit > 0) { lines.push({ debit: '121', credit: '691', suma: pt.impozit, explicatie: 'Închidere impozit pe profit în rezultat (după închiderea anuală)' }); alsoClosed691 = true; }
   d.entries.push({
     id: db.nextId('e'), firmaId: fid, data: year + '-12-31', period: year + '-12', tip: 'impozit_profit', tipNume: 'Impozit pe profit',
-    partener: '', document: 'Impozit profit ' + year, explicatie: 'Inregistrare impozit pe profit (' + pt.cota + '%)' + (alsoClosed691 ? ' + inchidere 691 in 121' : ''),
+    partener: '', document: 'Impozit profit ' + year, explicatie: 'Înregistrare impozit pe profit (' + pt.cota + '%)' + (alsoClosed691 ? ' + inchidere 691 in 121' : ''),
     fileId: null, system: true, lines,
   });
   db.save();

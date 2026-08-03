@@ -14,10 +14,10 @@ module.exports = [
       { name: 'cost', label: 'Cost marfa vanduta — manual (doar daca NU folosesti descarcarea din stoc)', type: 'number', default: 0 }, F.items],
     build: (d) => {
       const lines = [
-        L('4111', '707', d.baza, 'Venituri din vanzarea marfurilor'),
+        L('4111', '707', d.baza, 'Venituri din vânzarea mărfurilor'),
       ];
-      if (d.tva > 0) lines.push(L('4111', '4427', d.tva, 'TVA colectata'));
-      if (d.cost > 0) lines.push(L('607', '371', d.cost, 'Descarcare gestiune - cost marfa vanduta'));
+      if (d.tva > 0) lines.push(L('4111', '4427', d.tva, 'TVA colectată'));
+      if (d.cost > 0) lines.push(L('607', '371', d.cost, 'Descărcare gestiune - cost marfă vândută'));
       return lines;
     },
   },
@@ -27,8 +27,8 @@ module.exports = [
     grup: 'Vanzari',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota, F.items],
     build: (d) => {
-      const lines = [L('4111', '701', d.baza, 'Venituri din vanzarea produselor finite')];
-      if (d.tva > 0) lines.push(L('4111', '4427', d.tva, 'TVA colectata'));
+      const lines = [L('4111', '701', d.baza, 'Venituri din vânzarea produselor finite')];
+      if (d.tva > 0) lines.push(L('4111', '4427', d.tva, 'TVA colectată'));
       return lines;
     },
   },
@@ -39,7 +39,7 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota, F.items],
     build: (d) => {
       const lines = [L('4111', '704', d.baza, 'Venituri din servicii prestate')];
-      if (d.tva > 0) lines.push(L('4111', '4427', d.tva, 'TVA colectata'));
+      if (d.tva > 0) lines.push(L('4111', '4427', d.tva, 'TVA colectată'));
       return lines;
     },
   },
@@ -50,8 +50,8 @@ module.exports = [
     fields: [F.data, F.document, F.baza, F.tva, F.cota,
       { name: 'incasare', label: 'Incasata in', type: 'select', options: TROZ, default: '5311' }],
     build: (d) => {
-      const lines = [L(d.incasare || '5311', '707', d.baza, 'Vanzare cu amanuntul')];
-      if (d.tva > 0) lines.push(L(d.incasare || '5311', '4427', d.tva, 'TVA colectata aferenta'));
+      const lines = [L(d.incasare || '5311', '707', d.baza, 'Vânzare cu amănuntul')];
+      if (d.tva > 0) lines.push(L(d.incasare || '5311', '4427', d.tva, 'TVA colectată aferentă'));
       return lines;
     },
   },

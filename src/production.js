@@ -44,7 +44,7 @@ function buildProduction(products, baseMovements, order, opts) {
   }
   for (const k of Object.keys(byConsum)) {
     const [debit, credit] = k.split('>');
-    lines.push({ debit, credit, suma: byConsum[k], explicatie: 'Consum materiale in productie (CMP)' });
+    lines.push({ debit, credit, suma: byConsum[k], explicatie: 'Consum materiale în producție (CMP)' });
   }
 
   // 2) obtinere produs finit (receptie in stoc, la costul de productie) + 345 = 711
@@ -84,7 +84,7 @@ function buildProduction(products, baseMovements, order, opts) {
     productId: fp.id, gestiuneId: order.gestiuneId || null, gestiuneDestId: null,
     cantitate: qty, pretUnitar: costUnitar, document: o.document || '', entryId: o.entryId || null, auto: true,
   });
-  if (valoare > 0) lines.push({ debit: (fp.cont || '345'), credit: '711', suma: valoare, explicatie: 'Obtinere produse finite la cost de productie' });
+  if (valoare > 0) lines.push({ debit: (fp.cont || '345'), credit: '711', suma: valoare, explicatie: 'Obținere produse finite la cost de producție' });
 
   return { newMovements, lines, costMateriale, valoareObtinuta: valoare, warns };
 }

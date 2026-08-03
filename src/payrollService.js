@@ -58,16 +58,16 @@ function postStatPlata(fid, period, deps) {
     analitic: sp.rows.length + ' angajati',
   }, null, fid);
   entry.system = true; entry.document = 'Stat plata ' + period;
-  if (sp.totals.avans > 0) entry.lines.push({ debit: '421', credit: '425', suma: sp.totals.avans, explicatie: 'Retinere avans acordat' });
-  if (sp.totals.retineri > 0) entry.lines.push({ debit: '421', credit: '427', suma: sp.totals.retineri, explicatie: 'Retineri din salarii (terti/popriri)' });
+  if (sp.totals.avans > 0) entry.lines.push({ debit: '421', credit: '425', suma: sp.totals.avans, explicatie: 'Reținere avans acordat' });
+  if (sp.totals.retineri > 0) entry.lines.push({ debit: '421', credit: '427', suma: sp.totals.retineri, explicatie: 'Rețineri din salarii (terți/popriri)' });
   // Concedii medicale: drepturile trec tot prin 421 (retinerile si plata raman pe un singur cont);
   // partea FNUASS e creanta de recuperat (4373 debit). Alternativa cu 423 exista ca tipuri manuale.
-  if (sp.totals.cmAngajator > 0) entry.lines.push({ debit: '6458', credit: '421', suma: sp.totals.cmAngajator, explicatie: 'Indemnizatii CM suportate de angajator (primele 5 zile lucratoare)' });
-  if (sp.totals.cmFnuass > 0) entry.lines.push({ debit: '4373', credit: '421', suma: sp.totals.cmFnuass, explicatie: 'Indemnizatii CM suportate de FNUASS (de recuperat)' });
+  if (sp.totals.cmAngajator > 0) entry.lines.push({ debit: '6458', credit: '421', suma: sp.totals.cmAngajator, explicatie: 'Indemnizații CM suportate de angajator (primele 5 zile lucrătoare)' });
+  if (sp.totals.cmFnuass > 0) entry.lines.push({ debit: '4373', credit: '421', suma: sp.totals.cmFnuass, explicatie: 'Indemnizații CM suportate de FNUASS (de recuperat)' });
   // Norma partiala sub salariul minim (OUG 16/2022): diferentele de CAS/CASS pana la nivelul
   // salariului minim sunt CHELTUIALA a angajatorului (nu retinere din salariat).
-  if (sp.totals.casAngajator > 0) entry.lines.push({ debit: '6458', credit: '4315', suma: sp.totals.casAngajator, explicatie: 'CAS suportat de angajator — norma partiala sub salariul minim' });
-  if (sp.totals.cassAngajator > 0) entry.lines.push({ debit: '6458', credit: '4316', suma: sp.totals.cassAngajator, explicatie: 'CASS suportat de angajator — norma partiala sub salariul minim' });
+  if (sp.totals.casAngajator > 0) entry.lines.push({ debit: '6458', credit: '4315', suma: sp.totals.casAngajator, explicatie: 'CAS suportat de angajator — normă parțială sub salariul minim' });
+  if (sp.totals.cassAngajator > 0) entry.lines.push({ debit: '6458', credit: '4316', suma: sp.totals.cassAngajator, explicatie: 'CASS suportat de angajator — normă parțială sub salariul minim' });
   const d = db.get();
   d.entries.push(entry);
   // instantaneu in istoricul de salarizare (inlocuieste daca luna era deja inregistrata)

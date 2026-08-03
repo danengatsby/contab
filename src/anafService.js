@@ -271,14 +271,14 @@ function importEfactura(fid, b, upsertPartner) {
   const sign = inv.tip === 'creditnote' ? -1 : 1;
   const baza = round2(sign * inv.baza * cursAplicat); const tva = round2(sign * inv.tva * cursAplicat);
   const notaCurs = cursAplicat !== 1 ? ' (' + inv.moneda + ' la cursul ' + cursAplicat + ')' : '';
-  const lines = [{ debit: cont, credit: '401', suma: baza, explicatie: 'Factura cumparare (import e-Factura)' + notaCurs }];
-  if (Math.abs(tva) >= 0.005) lines.push({ debit: '4426', credit: '401', suma: tva, explicatie: 'TVA deductibila' });
+  const lines = [{ debit: cont, credit: '401', suma: baza, explicatie: 'Factura cumpărare (import e-Factura)' + notaCurs }];
+  if (Math.abs(tva) >= 0.005) lines.push({ debit: '4426', credit: '401', suma: tva, explicatie: 'TVA deductibilă' });
   const entry = {
     id: db.nextId('e'), firmaId: fid, data, period: periodOf(data),
     tip: inv.tip === 'creditnote' ? 'factura_cumparare_storno' : 'factura_cumparare_marfuri',
     tipNume: (inv.tip === 'creditnote' ? 'Storno factura cumparare' : 'Factura cumparare') + ' (import e-Factura)',
     partener: inv.furnizor.nume, partenerCui: inv.furnizor.cui, document: inv.numar || '',
-    explicatie: 'Import e-Factura primita' + notaCurs, fileId: null, system: false, lines,
+    explicatie: 'Import e-Factura primită' + notaCurs, fileId: null, system: false, lines,
     // Soldul in valuta ramane vizibil pentru reevaluarea de la sfarsit de perioada: fara
     // `valutaInfo`, articolul ar arata ca unul in lei si contul n-ar mai fi reevaluat.
     ...(cursAplicat !== 1 ? { valutaInfo: { valuta: inv.moneda, sumaValuta: round2(sign * (inv.baza + inv.tva)), curs: cursAplicat } } : {}),

@@ -14,8 +14,8 @@ module.exports = [
     grup: 'Cumparari',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.proRataMixt],
     build: (d) => {
-      const lines = [L('371', '401', d.baza, 'Cumparare marfuri (intrare in stoc)')];
-      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibila'));
+      const lines = [L('371', '401', d.baza, 'Cumpărare mărfuri (intrare în stoc)')];
+      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibilă'));
       return lines;
     },
   },
@@ -26,8 +26,8 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.proRataMixt,
       { name: 'contStoc', label: 'Cont stoc', type: 'account', default: '301' }],
     build: (d) => {
-      const lines = [L(d.contStoc || '301', '401', d.baza, 'Cumparare materii/materiale')];
-      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibila'));
+      const lines = [L(d.contStoc || '301', '401', d.baza, 'Cumpărare materii/materiale')];
+      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibilă'));
       return lines;
     },
   },
@@ -37,8 +37,8 @@ module.exports = [
     grup: 'Cumparari',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.proRataMixt],
     build: (d) => {
-      const lines = [L('605', '401', d.baza, 'Cheltuieli cu energia si apa')];
-      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibila'));
+      const lines = [L('605', '401', d.baza, 'Cheltuieli cu energia și apa')];
+      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibilă'));
       return lines;
     },
   },
@@ -50,7 +50,7 @@ module.exports = [
       { name: 'contChelt', label: 'Cont cheltuiala', type: 'account', default: '628' }],
     build: (d) => {
       const lines = [L(d.contChelt || '628', '401', d.baza, 'Cheltuieli cu servicii primite')];
-      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibila'));
+      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibilă'));
       return lines;
     },
   },
@@ -61,7 +61,7 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.auto50],
     build: (d) => {
       const lines = [L('6022', '401', d.baza, 'Cheltuieli privind combustibilii')];
-      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibila'));
+      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibilă'));
       return lines;
     },
   },
@@ -72,8 +72,8 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.auto50,
       { name: 'contImob', label: 'Cont imobilizare', type: 'account', default: '2131' }],
     build: (d) => {
-      const lines = [L(d.contImob || '2131', '404', d.baza, 'Achizitie imobilizare')];
-      if (d.tva > 0) lines.push(L('4426', '404', d.tva, 'TVA deductibila'));
+      const lines = [L(d.contImob || '2131', '404', d.baza, 'Achiziție imobilizare')];
+      if (d.tva > 0) lines.push(L('4426', '404', d.tva, 'TVA deductibilă'));
       return lines;
     },
   },
@@ -87,8 +87,8 @@ module.exports = [
     build: (d) => {
       const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
       return [
-        L(d.contStoc || '371', '401', d.baza, 'Achizitie intracomunitara (baza)'),
-        L('4426', '4427', tva, 'Taxare inversa - TVA deductibila si colectata'),
+        L(d.contStoc || '371', '401', d.baza, 'Achiziție intracomunitară (bază)'),
+        L('4426', '4427', tva, 'Taxare inversă - TVA deductibilă și colectată'),
       ];
     },
   },
@@ -98,7 +98,7 @@ module.exports = [
     grup: 'Vanzari',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza,
       F.codNC, F.masaNeta, F.naturaTranz, F.conditieLivrare],
-    build: (d) => [L('4111', '707', d.baza, 'Livrare intracomunitara (scutita cu drept de deducere)')],
+    build: (d) => [L('4111', '707', d.baza, 'Livrare intracomunitară (scutită cu drept de deducere)')],
   },
   {
     id: 'taxare_inversa_interna_achizitie',
@@ -109,8 +109,8 @@ module.exports = [
     build: (d) => {
       const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
       return [
-        L(d.contStoc || '371', '401', d.baza, 'Achizitie cu taxare inversa interna (baza)'),
-        L('4426', '4427', tva, 'Taxare inversa interna - TVA deductibila si colectata'),
+        L(d.contStoc || '371', '401', d.baza, 'Achiziție cu taxare inversă internă (bază)'),
+        L('4426', '4427', tva, 'Taxare inversă internă - TVA deductibilă și colectată'),
       ];
     },
   },
@@ -120,7 +120,7 @@ module.exports = [
     grup: 'Vanzari',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.codCategorie331,
       { name: 'contVenit', label: 'Cont venit', type: 'account', default: '707' }],
-    build: (d) => [L('4111', d.contVenit || '707', d.baza, 'Livrare cu taxare inversa interna (fara TVA - mentiune pe factura)')],
+    build: (d) => [L('4111', d.contVenit || '707', d.baza, 'Livrare cu taxare inversă internă (fără TVA - mențiune pe factura)')],
   },
   {
     id: 'reducere_comerciala_acordata',
@@ -128,8 +128,8 @@ module.exports = [
     grup: 'Vanzari',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota],
     build: (d) => {
-      const lines = [L('709', '4111', d.baza, 'Reducere comerciala acordata')];
-      if (d.tva > 0) lines.push(L('4427', '4111', d.tva, 'TVA aferenta reducerii (storno colectata)'));
+      const lines = [L('709', '4111', d.baza, 'Reducere comercială acordată')];
+      if (d.tva > 0) lines.push(L('4427', '4111', d.tva, 'TVA aferentă reducerii (storno colectată)'));
       return lines;
     },
   },
@@ -139,8 +139,8 @@ module.exports = [
     grup: 'Cumparari',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota],
     build: (d) => {
-      const lines = [L('401', '609', d.baza, 'Reducere comerciala primita')];
-      if (d.tva > 0) lines.push(L('401', '4426', d.tva, 'TVA aferenta reducerii (storno deductibila)'));
+      const lines = [L('401', '609', d.baza, 'Reducere comercială primită')];
+      if (d.tva > 0) lines.push(L('401', '4426', d.tva, 'TVA aferentă reducerii (storno deductibilă)'));
       return lines;
     },
   },
@@ -156,7 +156,7 @@ module.exports = [
     nume: 'Scont de decontare obtinut (plata in avans catre furnizor)',
     grup: 'Cumparari',
     fields: [F.data, F.partener, F.document, F.suma],
-    build: (d) => [L('401', '767', d.suma, 'Scont de decontare obtinut')],
+    build: (d) => [L('401', '767', d.suma, 'Scont de decontare obținut')],
   },
 
 ];
