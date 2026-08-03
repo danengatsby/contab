@@ -92,7 +92,7 @@ function setCurrentPeriod() {
     nx.setAttribute('aria-disabled', String(!v.ok));
     nx.title = v.ok ? 'Luna următoare (' + lunaLabel(nextMonth(m)) + ')'
       : v.motiv === 'viitor' ? 'Ești pe luna curentă — nu se poate lucra în viitor'
-        : 'Închide mai întâi ' + lunaLabel(m) + ' (Rapoarte → Închideri de lună) ca să treci la ' + lunaLabel(nextMonth(m));
+        : 'Închide mai întâi ' + lunaLabel(m) + ' (Rapoarte → Închiderea lunii) ca să treci la ' + lunaLabel(nextMonth(m));
   }
   // Banda de „luna inchisa" + marcajul pe <body> care stinge caile de CREARE (vezi styles.css)
   const inchisa = esteInchisa(m);
@@ -127,7 +127,7 @@ $('#prevMonth') && $('#prevMonth').addEventListener('click', () => goWorkMonth(p
 $('#nextMonth') && $('#nextMonth').addEventListener('click', () => {
   const m = workMonth(); const v = poateInainte(m);
   if (v.ok) return goWorkMonth(nextMonth(m));
-  if (v.motiv === 'neinchisa') toast('Închide mai întâi ' + lunaLabel(m) + ' — Rapoarte → Închideri de lună.', true);
+  if (v.motiv === 'neinchisa') toast('Închide mai întâi ' + lunaLabel(m) + ' — Rapoarte → Închiderea lunii.', true);
 });
 // Banda de luna inchisa: duce la prima luna DESCHISA (imediat dupa ultima inchisa), plafonata la
 // luna curenta — daca sunt inchise toate lunile pana azi, ramai unde esti.

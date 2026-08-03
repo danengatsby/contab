@@ -132,7 +132,11 @@ function onTab(t) {
   if (t === 'balanta') loadBalance();
   if (t === 'storno') loadStorno();
   if (t === 'tva') loadVat();
-  if (t === 'inchideri') { loadClosings(); loadMonthlyClose(); }
+  // Inchiderile stau in doua pagini (ritm lunar / ritm anual), dar randarea ramane un singur punct:
+  // `loadClosings()` umple toate previzualizarile dintr-o data, iar cardurile exista in DOM
+  // indiferent de pagina activa. Cockpitul lunar se incarca doar unde se vede.
+  if (t === 'inchideri' || t === 'inchidere-an') loadClosings();
+  if (t === 'inchideri') loadMonthlyClose();
   if (t === 'situatii') loadStatements();
   // Trei panouri au plecat din „Situatii financiare", fiindca nu erau situatii financiare:
   // bugetul e control de gestiune INTERN, registrul fiscal tine de impozitul pe profit, iar

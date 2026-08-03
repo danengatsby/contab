@@ -308,7 +308,8 @@
           <button data-tab="carte" class="adv">Fișa fiecărui cont (cartea mare)</button>
           <button data-tab="storno" class="adv">Articole stornate (corecții)</button>
           <button data-tab="analitic">Scadențar clienți & furnizori</button>
-          <button data-tab="inchideri" class="adv">Închideri de lună</button>
+          <button data-tab="inchideri" class="adv">Închiderea lunii</button>
+          <button data-tab="inchidere-an" class="adv">Închiderea anului</button>
         </div>
       </div>
       <div class="navgroup">
@@ -860,45 +861,17 @@
         <div id="closeAction" class="toolbar"></div>
       </div>
 
-      <div class="explain"><span class="ei">🔒</span><p><b>Ce faci aici:</b> la sfârșit de lună „închizi” anumite conturi — stabilești TVA-ul de plată sau de recuperat și muți veniturile și cheltuielile în rezultat (profit sau pierdere). Apeși butoanele în ordine; aplicația face singură înregistrările. <b>Faci asta o dată pe lună</b>, după ce ai introdus toate documentele.</p></div>
-      <div class="grid2">
-        <div class="card">
-          <h2>Închide TVA-ul lunii</h2>
-          <p class="muted adv">Compensează TVA colectată (4427) cu TVA deductibilă (4426) și determină TVA de plată (4423) sau de recuperat (4424).</p>
-          <label>Luna de închis</label>
-          <div class="toolbar" data-u="u88">
-            <select id="vcLuna" class="period luna-req" aria-label="Luna"></select>
-            <select id="vcAn" class="period an" aria-label="Anul"></select>
-          </div>
-          <div id="vatPreview" class="preview"></div>
-          <button id="closeVat" class="btn primary">Închide luna și treci la următoarea →</button>
+      <div class="explain"><span class="ei">🔒</span><p><b>Ce faci aici:</b> la sfârșit de lună „închizi” anumite conturi — stabilești TVA-ul de plată sau de recuperat și reevaluezi soldurile în valută. Apeși butoanele în ordine; aplicația face singură înregistrările. <b>Faci asta o dată pe lună</b>, după ce ai introdus toate documentele. Operațiunile care se fac <b>o dată pe an</b> (impozitul pe profit, închiderea conturilor de venituri și cheltuieli, repartizarea rezultatului) stau în pagina <b>„Închiderea anului"</b>.</p></div>
+      <div class="card">
+        <h2>Închide TVA-ul lunii</h2>
+        <p class="muted adv">Compensează TVA colectată (4427) cu TVA deductibilă (4426) și determină TVA de plată (4423) sau de recuperat (4424).</p>
+        <label>Luna de închis</label>
+        <div class="toolbar" data-u="u88">
+          <select id="vcLuna" class="period luna-req" aria-label="Luna"></select>
+          <select id="vcAn" class="period an" aria-label="Anul"></select>
         </div>
-        <div class="card">
-          <h2>Impozit pe profit</h2>
-          <p class="muted">Profit impozabil = profit contabil <b>+ cheltuieli nedeductibile − deduceri − pierdere fiscală reportată</b>. Impozit = profit impozabil × cota → <b>691 = 4411</b>. Pierderea fiscală a anului se reportează automat. <b>Ordinea față de închiderea anuală nu contează</b> — dacă anul e deja închis, contul 691 se închide automat în 121.</p>
-          <div class="dyn">
-            <label>Anul <input type="number" id="ptYear" value="2026" /></label>
-            <label>Cheltuieli nedeductibile (+) <input type="number" id="ptNed" value="0" step="0.01" /></label>
-            <label>Deduceri / venituri neimpozabile (−) <input type="number" id="ptDed" value="0" step="0.01" /></label>
-            <label>Pierdere fiscală reportată (−) <input type="number" id="ptPierdere" step="0.01" placeholder="auto din anul precedent" /></label>
-          </div>
-          <div id="ptPreview" class="preview"></div>
-          <button id="closeProfitTax" class="btn primary">Înregistrează impozitul pe profit</button>
-        </div>
-        <div class="card">
-          <h2>Închiderea anuală</h2>
-          <p class="muted">Închide conturile de venituri (clasa 7) și de cheltuieli (clasa 6) în contul 121 „Profit și pierdere” și determină rezultatul exercițiului.</p>
-          <label>Anul <input type="number" id="yearInput" value="2026" /></label>
-          <div id="yearPreview" class="preview"></div>
-          <button id="closeYear" class="btn primary">Înregistrează închiderea anuală</button>
-        </div>
-        <div class="card">
-          <h2>Repartizarea profitului sau pierderii anului <span class="muted" data-u="u70">(rezultatul reportat)</span></h2>
-          <p class="muted">După aprobarea situațiilor financiare (AGA), rezultatul din contul 121 „Profit și pierdere” se transferă la 117 „Rezultatul reportat”: profit <b>121 = 117</b>, pierdere <b>117 = 121</b>. Se face de obicei la începutul anului următor.</p>
-          <label>Anul închis <input type="number" id="distYear" value="2026" /></label>
-          <div id="distPreview" class="preview"></div>
-          <button id="distResult" class="btn primary">Înregistrează repartizarea (121→117)</button>
-        </div>
+        <div id="vatPreview" class="preview"></div>
+        <button id="closeVat" class="btn primary">Închide luna și treci la următoarea →</button>
       </div>
       <div class="card">
         <h2>💱 Reevaluare valutară <span class="muted" data-u="u70">(la sfârșit de lună / an)</span></h2>
@@ -914,7 +887,44 @@
       </div>
     </section>
 
-    <!-- ─────────────── SITUATII ─────────────── -->
+    <!-- ─────────────── INCHIDEREA ANULUI ─────────────── -->
+    <!-- Plecate din „Închiderea lunii": au alt RITM (o data pe an, dupa ce toate lunile sunt
+         inchise) si alt an de referinta decat luna de lucru. Stateau in acelasi teanc cu pasii
+         lunari, deci pareau, la fel ca ei, de facut in fiecare luna. -->
+    <section id="tab-inchidere-an" class="tab">
+      <div class="toolbar">
+        <h2>📅 Închiderea anului</h2>
+        <div class="spacer"></div>
+      </div>
+      <div class="explain"><span class="ei">📅</span><p><b>Ce faci aici:</b> operațiunile de <b>sfârșit de an</b>, în ordinea de mai jos: calculezi impozitul pe profit, închizi veniturile și cheltuielile în rezultatul exercițiului, iar după aprobarea situațiilor financiare muți rezultatul la „rezultat reportat". Se fac <b>o dată pe an</b>, după ce toate lunile sunt închise.</p></div>
+      <div class="card">
+        <h2>① Impozit pe profit</h2>
+        <p class="muted">Profit impozabil = profit contabil <b>+ cheltuieli nedeductibile − deduceri − pierdere fiscală reportată</b>. Impozit = profit impozabil × cota → <b>691 = 4411</b>. Pierderea fiscală a anului se reportează automat. <b>Ordinea față de închiderea anuală nu contează</b> — dacă anul e deja închis, contul 691 se închide automat în 121. Calculul detaliat, rând cu rând, e în „Taxe → Registru fiscal".</p>
+        <div class="dyn">
+          <label>Anul <input type="number" id="ptYear" value="2026" /></label>
+          <label>Cheltuieli nedeductibile (+) <input type="number" id="ptNed" value="0" step="0.01" /></label>
+          <label>Deduceri / venituri neimpozabile (−) <input type="number" id="ptDed" value="0" step="0.01" /></label>
+          <label>Pierdere fiscală reportată (−) <input type="number" id="ptPierdere" step="0.01" placeholder="auto din anul precedent" /></label>
+        </div>
+        <div id="ptPreview" class="preview"></div>
+        <button id="closeProfitTax" class="btn primary">Înregistrează impozitul pe profit</button>
+      </div>
+      <div class="card">
+        <h2>② Închiderea anuală</h2>
+        <p class="muted">Închide conturile de venituri (clasa 7) și de cheltuieli (clasa 6) în contul 121 „Profit și pierdere” și determină rezultatul exercițiului.</p>
+        <label>Anul <input type="number" id="yearInput" value="2026" /></label>
+        <div id="yearPreview" class="preview"></div>
+        <button id="closeYear" class="btn primary">Înregistrează închiderea anuală</button>
+      </div>
+      <div class="card">
+        <h2>③ Repartizarea profitului sau pierderii anului <span class="muted" data-u="u70">(rezultatul reportat)</span></h2>
+        <p class="muted">După aprobarea situațiilor financiare (AGA), rezultatul din contul 121 „Profit și pierdere” se transferă la 117 „Rezultatul reportat”: profit <b>121 = 117</b>, pierdere <b>117 = 121</b>. Se face de obicei la începutul anului următor.</p>
+        <label>Anul închis <input type="number" id="distYear" value="2026" /></label>
+        <div id="distPreview" class="preview"></div>
+        <button id="distResult" class="btn primary">Înregistrează repartizarea (121→117)</button>
+      </div>
+    </section>
+
     <section id="tab-situatii" class="tab">
       <div class="explain"><span class="ei">📊</span><p><b>Ce e asta:</b> aici vezi cum stă firma — contul de profit și pierdere (ai câștigat sau ai pierdut în an) și bilanțul (ce ai: bani, stocuri, bunuri; și ce datorezi).</p></div>
       <div id="bilantWarn" class="warnbox hidden"><span class="wi">⚠️</span><div>
@@ -1683,7 +1693,7 @@ Cu stimă,
 
         <h3>⑥ La sfârșit de lună (închidere)</h3>
         <ul>
-          <li>Tab <kbd>Închideri</kbd>: amortizarea mijloacelor fixe, închiderea TVA (4427/4426 → 4423/4424), închiderea veniturilor și cheltuielilor.</li>
+          <li>Tab <kbd>Închiderea lunii</kbd>: pașii lunii, în ordine — amortizarea mijloacelor fixe, închiderea TVA (4427/4426 → 4423/4424), reevaluarea valutară. Ce se face o dată pe an (impozitul pe profit, închiderea veniturilor și cheltuielilor în 121, repartizarea rezultatului) stă în <kbd>Închiderea anului</kbd>.</li>
           <li>Tab <kbd>Livrabile</kbd>: generezi declarațiile pentru ANAF (D300, D394, D112, SAF-T).</li>
         </ul>
 

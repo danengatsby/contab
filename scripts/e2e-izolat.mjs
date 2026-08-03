@@ -312,7 +312,10 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
     // ...si salariile, sparte in trei (statul lunii / datele angajatilor / registrul anual) plus
     // leasingul, plecat din „Mijloace fixe": e alta activitate, cu contract si scadentar.
     ['salarizare', '#spSummary'], ['angajati', '#angajatForm'], ['regsalarii', '#rsList'],
-    ['mijloace', '#assetForm'], ['leasing', '#lcForm']]) {
+    ['mijloace', '#assetForm'], ['leasing', '#lcForm'],
+    // ...si inchiderile, despartite pe RITM: pasii lunii (cockpit, TVA, valutar) fata de cei
+    // anuali (impozit pe profit, 6/7 in 121, repartizarea rezultatului).
+    ['inchideri', '#closeCockpit'], ['inchidere-an', '#ptPreview']]) {
     await adm.evaluate((x) => window.goTab(x), tab);
     await adm.waitForTimeout(500);
     ok('pagina „' + tab + '" se deschide', (await adm.locator('#tab-' + tab + '.active').count()) === 1);
