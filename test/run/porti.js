@@ -1168,6 +1168,26 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
   ok('niciun pas de tur nu tinteste un grup inexistent'
     + (tinteMoarte.length ? ' — ' + tinteMoarte.join(', ') : ''), tinteMoarte.length === 0);
 
+  // ORDINEA MENIULUI trebuie sa urmeze CICLUL CONTABIL, nu invers. Ciclul nu e o parere: `CYCLE`
+  // din public/app.js il declara deja si il deseneaza pe ecran (banda de pasi din capul paginilor).
+  // Meniul il contrazicea pe fata: „Declaratii ANAF" (ultimul pas) statea in al treilea grup, cu
+  // doua grupuri INAINTEA registrelor si a inchiderii din care se calculeaza. Nimic nu semnala —
+  // ambele erau corecte separat. Se verifica pozitia in meniu, nu apartenenta la vreun grup: gruparea
+  // se poate schimba oricand, ordinea pasilor nu.
+  const navBloc = html.slice(html.indexOf('id="tabs"'), html.indexOf('</nav>', html.indexOf('id="tabs"')));
+  const ciclu = [...(app0.match(/const CYCLE = \[[\s\S]*?\n\];/) || [''])[0].matchAll(/go: '([a-z-]+)'/g)].map((m) => m[1]);
+  ok('poarta vede ciclul contabil declarat in cod', ciclu.length >= 5);
+  const pozitie = (t) => navBloc.indexOf('data-tab="' + t + '"');
+  const inMeniu = ciclu.filter((t) => pozitie(t) >= 0);
+  ok('pasii ciclului se regasesc in meniu', inMeniu.length >= 5);
+  const inversate = inMeniu.filter((t, i) => i > 0 && pozitie(t) < pozitie(inMeniu[i - 1]));
+  ok('ordinea meniului urmeaza ciclul contabil'
+    + (inversate.length ? ' — INVERSATE fata de pasul dinainte: ' + inversate.join(', ') : ''), inversate.length === 0);
+  // Poarta trebuie sa POATA pica: pe o lista intoarsa, verdictul se inverseaza.
+  const intors = [...inMeniu].reverse();
+  ok('detectorul chiar prinde o ordine gresita',
+    intors.filter((t, i) => i > 0 && pozitie(t) < pozitie(intors[i - 1])).length > 0);
+
   // Fiecare tab pe care `onTab` il trateaza explicit trebuie sa existe ca sectiune — altfel
   // randarea se leaga de un ecran care nu mai e acolo.
   const app = fsx.readFileSync(pth.join(RADACINA, 'public', 'app.js'), 'utf8');

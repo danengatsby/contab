@@ -704,21 +704,23 @@ $('#welcomeGuide').addEventListener('click', () => { closeWelcome(); goTab('ghid
 
 // ───────────────────────── TUR GHIDAT (noul meniu) ─────────────────────────
 const TOUR = [
-  { ic: '👋', title: 'Bun venit! Meniul, pe scurt', text: 'L-am organizat pe activități zilnice, în limbaj simplu. Ți-l arăt în câțiva pași — apoi ești gata.' },
+  { ic: '👋', title: 'Bun venit! Meniul, pe scurt', text: 'L-am organizat pe ORDINEA în care se lucrează: de sus în jos e chiar ciclul contabil — documente, bani, ce mișcă lunar, verificare, închiderea lunii, declarații, rapoarte. Ți-l arăt în câțiva pași — apoi ești gata.' },
   { sel: '#tabs [data-tab="dashboard"]', ic: '🏠', title: 'Acasă', text: 'Punctul de plecare: butoane „Ce vrei să faci?" și o privire de ansamblu asupra firmei.' },
   { sel: '#tabs [data-tab="ghid"]', ic: '📖', title: 'Ghid', text: 'Cum lucrezi, pas cu pas — de la primul document până la declarații.' },
-  { group: 'Documente', ic: '📥', title: 'Documente & facturi', text: 'De aici pornește totul: încarci documentele primite (aplicația le citește singură) și emiți facturi către clienți.' },
-  { group: 'Bani', ic: '🏦', title: 'Bani', text: 'Încasările și plățile prin bancă și casă, plus punerea lor față în față cu extrasul bancar.' },
-  { group: 'Taxe', ic: '🧾', title: 'Taxe', text: 'TVA-ul de plată, declarațiile pentru ANAF și drumul de la rezultatul contabil la cel fiscal.' },
-  { group: 'Salarii', ic: '👥', title: 'Salarii', text: 'Statul de plată al lunii, datele angajaților și registrul anual; de aici iese și declarația D112.' },
-  { group: 'Stocuri', ic: '📦', title: 'Stocuri', text: 'Marfa și materialele: ce ai pe stoc, ce a intrat și ce a ieșit. Îl folosești doar dacă firma ta ține stocuri.' },
-  { group: 'Mijloace fixe', ic: '🏢', title: 'Mijloace fixe', text: 'Bunurile de folosință îndelungată și amortizarea lor lunară, calculată automat — plus contractele de leasing și scadențarele lor.' },
-  { group: 'Rapoarte', ic: '📊', title: 'Rapoarte', text: 'Tot ce se calculează singur din documentele tale: situații financiare, balanță, registre, închideri de lună.' },
-  { group: 'Date firmă', ic: '📁', title: 'Date firmă', text: 'Nomenclatoarele: clienții și furnizorii tăi și, în modul expert, planul de conturi.' },
-  { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Tot ce se configurează o dată și se mai atinge rar — plus aplicația de instalat pe calculatorul tău.' },
   { sel: '#tabs [data-tab="mesaje"]', ic: '💬', title: 'Mesaje', text: 'Ai o întrebare? Scrie-i administratorului direct de aici — îți răspunde în aplicație.' },
   { sel: '#tabs [data-tab="notificari"]', ic: '🔔', title: 'Notificări', text: 'Termenele fiscale care se apropie și restanțele. Fiecare rând are butonul care le rezolvă.' },
   { sel: '#navPortofoliu', ic: '🗂', title: 'Portofoliu', text: 'Toate firmele tale deodată: ce declarații are fiecare și ce a rămas de făcut. Util mai ales când administrezi mai multe.' },
+  { group: 'Documente', ic: '📥', title: 'Documente & facturi', text: 'De aici pornește totul: încarci documentele primite (aplicația le citește singură) și emiți facturi către clienți.' },
+  { group: 'Bani', ic: '🏦', title: 'Bani', text: 'Încasările și plățile prin bancă și casă, plus punerea lor față în față cu extrasul bancar.' },
+  { group: 'Stocuri', ic: '📦', title: 'Stocuri', text: 'Marfa și materialele: ce ai pe stoc, ce a intrat și ce a ieșit. Îl folosești doar dacă firma ta ține stocuri.' },
+  { group: 'Salarii', ic: '👥', title: 'Salarii', text: 'Statul de plată al lunii, datele angajaților și registrul anual; de aici iese și declarația D112.' },
+  { group: 'Mijloace fixe', ic: '🏢', title: 'Mijloace fixe', text: 'Bunurile de folosință îndelungată și amortizarea lor lunară, calculată automat — plus contractele de leasing și scadențarele lor.' },
+  { group: 'Registre', ic: '📒', title: 'Registre contabile', text: 'Pasul de verificare, înainte de închidere: balanța, jurnalul, fișa fiecărui cont. Aici te uiți ca să vezi dacă mai lipsește ceva.' },
+  { group: 'Închideri', ic: '🔒', title: 'Închideri', text: 'Închiderea lunii, ca listă de pași cu stare calculată din date — și, separat, operațiunile de sfârșit de an.' },
+  { group: 'Taxe', ic: '🧾', title: 'Taxe & declarații', text: 'TVA-ul de plată, declarațiile pentru ANAF și drumul de la rezultatul contabil la cel fiscal. Vin după închidere, fiindcă din ea se calculează.' },
+  { group: 'Rapoarte', ic: '📊', title: 'Rapoarte & analize', text: 'Ce se calculează singur din documentele tale: situații financiare, buget vs realizat, scadențar — și arhiva lunii, dosarul gata de predat.' },
+  { group: 'Date firmă', ic: '📁', title: 'Date firmă', text: 'Nomenclatoarele: clienții și furnizorii tăi și, în modul expert, planul de conturi.' },
+  { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Tot ce se configurează o dată și se mai atinge rar — plus aplicația de instalat pe calculatorul tău.' },
   { ic: '🎉', title: 'Gata!', text: 'Începe din 🏠 Acasă → „Ce vrei să faci?". Poți relua oricând turul din butonul 🧭 Tur meniu.' },
 ];
 let tourIdx = 0;
