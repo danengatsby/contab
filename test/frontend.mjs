@@ -329,6 +329,30 @@ eq('profitul se calculeaza ca venituri - cheltuieli', dashboard.trendOf([{ venit
 // lunile fara nicio miscare sunt sarite: altfel o luna goala ar arata ca o prabusire de -100%
 eq('lunile complet goale sunt ignorate', dashboard.trendOf([{ venituri: 100 }, { venituri: 0, cheltuieli: 0 }, { venituri: 150 }], 'venituri'), 50);
 
+section('Dashboard: culoarea KPI spune ceva despre VALOARE, nu despre tipul cardului');
+// Regresia care se apara aici: clasele erau fixate pe card, deci „Sold clienti 0,00" iesea verde
+// („bine" despre „n-ai ce incasa"), iar un disponibil bancar negativ — pe care aplicatia il
+// semnaleaza ca eroare in banda de alerte — iesea neutru. Contrastul dintre cele doua e miezul.
+eq('trezorerie pozitiva ramane neutra', dashboard.tonTrezorerie(1500), 'blue');
+eq('trezorerie zero e neutra, nu o eroare', dashboard.tonTrezorerie(0), 'blue');
+eq('trezorerie NEGATIVA e semnalata', dashboard.tonTrezorerie(-60819), 'red');
+// „-0" vine din scaderi in virgula mobila si NU e sub zero: nu are voie sa alarmeze
+eq('minus zero nu alarmeaza', dashboard.tonTrezorerie(-0), 'blue');
+// valorile vin din JSON, deci pot sosi ca sir; comparatia trebuie sa fie numerica, nu lexicala
+eq('sir negativ e tratat numeric', dashboard.tonTrezorerie('-12.5'), 'red');
+eq('sir pozitiv e tratat numeric', dashboard.tonTrezorerie('12.5'), 'blue');
+// niciodata verde: nu exista „bine" pe un sold de trezorerie, doar „normal" si „gresit"
+ok('trezoreria nu afirma niciodata „bine"', ![-1, 0, 1, 1e9].some((v) => dashboard.tonTrezorerie(v) === 'green'));
+
+// Soldurile de terti sunt FAPTE: nicio culoare evaluativa pe ele, in niciuna dintre cele doua
+// vederi (KPI-urile din modul expert si dalele „Situatia firmei" din modul simplu).
+const dashSrc = fs.readFileSync(path.join(PUB, 'dashboard.js'), 'utf8');
+const cardLinie = (eticheta) => (dashSrc.split('\n').find((l) => l.includes(eticheta)) || '');
+for (const et of ['Sold clienți (4111)', 'Sold furnizori (401)', 'De încasat de la clienți', 'De plătit către furnizori', 'Obligații: stat & salarii']) {
+  const l = cardLinie(et);
+  ok('„' + et + '" nu e colorat evaluativ', l !== '' && !/'green'|'red'/.test(l));
+}
+
 section('Balanță: diagnosticul dezechilibrului');
 // Cand balanta nu se inchide, mesajul spune CARE dintre cele patru egalitati e stricata si
 // trimite contabilul spre cauza. O clasificare gresita il pune sa caute in locul nepotrivit.

@@ -303,7 +303,12 @@ body.dark .tab>.toolbar:first-child{border-bottom-color:var(--line)}
 .kpi .lbl{color:var(--muted);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .kpi .val{font-size:27px;font-weight:800;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .kpi .sub{color:var(--muted);font-size:12px;margin-top:2px}
-/* Bun/rau se citesc dupa CULOARE, deci nu au voie sa iasa din acelasi token.
+/* Numele claselor sunt istorice, dar INTELESUL lor e semantic — nu alege dupa culoare:
+     .green = afirma „bine"   .red = afirma „rau"   .blue = NEUTRU, doar un fapt
+   Un sold de terti (clienti, furnizori, obligatii) e un fapt, deci `.blue`; `.green`/`.red` se
+   pun doar unde exista cu adevarat o axa bun/rau, si atunci din VALOARE, nu din tipul cardului
+   (vezi `tonTrezorerie` din public/dashboard.js).
+   Bun/rau se citesc dupa CULOARE, deci nu au voie sa iasa din acelasi token.
    `--accent` e verde in dark, dar teracota in light — regula scrisa pe el mergea doar in dark,
    iar in light profitul si pierderea ajunsesera la 13,6° distanta de nuanta, adica identice.
    `--good` e verde in ambele teme (in dark chiar EGAL cu --accent, deci aici nu se schimba nimic). */
