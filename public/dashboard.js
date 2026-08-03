@@ -17,6 +17,19 @@ function trendOf(series, key) {
   if (!prev) return null;
   return ((cur - prev) / Math.abs(prev)) * 100;
 }
+// Culoarea unui KPI AFIRMA ceva („bine" / „rau"), deci nu are voie sa stea pe TIPUL cardului
+// atunci cand afirmatia depinde de valoare. Doua greseli opuse traiau aici:
+//   - solduri de terti colorate degeaba: „Sold clienti" verde si „Sold furnizori" rosu. Nu exista
+//     axa bun/rau pe ele — a datora furnizorilor e normalitate, iar creante mari sunt mai degraba
+//     risc decat vestea buna sugerata de verde. Iar la zero verdele spunea „bine" despre „n-ai ce
+//     incasa". Sunt fapte: raman neutre la orice valoare.
+//   - trezorerie NEcolorata: un sold negativ de banca sau de casa nu e o nuanta, e o eroare de
+//     evidenta (lipsesc incasari) — aplicatia o striga in banda de alerte de deasupra, dar cardul
+//     o arata neutru. Numerarul din casa nici macar nu POATE fi negativ in realitate.
+// Exportata ca sa poata fi verificata in test/frontend.mjs: bug-ul de mai sus a fost invizibil
+// tocmai fiindca nimic nu-l afirma undeva unde sa poata fi contrazis.
+export const tonTrezorerie = (v) => (Number(v) < 0 ? 'red' : 'blue');
+
 function trendChip(pct, goodWhenUp) {
   if (pct == null || !isFinite(pct)) return '';
   const up = pct >= 0; const good = up === goodWhenUp;
@@ -37,15 +50,15 @@ export async function loadDashboard() {
   const yo = k.yoY || {};
   const yoySub = (delta) => delta == null ? ('vs ' + (yo.prevYear || '') + ': fără bază') : ('vs ' + yo.prevYear + ': ' + (delta >= 0 ? '▲ +' : '▼ ') + fmt(delta) + '%');
   $('#kpis').innerHTML =
-    card('👥', 'Sold clienți (4111)', k.soldClienti, 'de încasat', 'green', '',
+    card('👥', 'Sold clienți (4111)', k.soldClienti, 'de încasat', 'blue', '',
       'Cât au de plătit clienții tăi în total — soldul contului 4111 la zi. Detaliul pe fiecare client e în Scadențar.') +
-    card('🏭', 'Sold furnizori (401)', k.soldFurnizori, 'de plătit', 'red', '',
+    card('🏭', 'Sold furnizori (401)', k.soldFurnizori, 'de plătit', 'blue', '',
       'Cât datorezi furnizorilor în total — soldul contului 401 la zi.') +
     card('🧾', tvaP ? 'TVA de plată' : 'TVA de recuperat', tvaP ? k.tvaDePlata : k.tvaDeRecuperat, 'cumulat', 'blue', '',
       'Soldul de TVA cumulat (4423/4424 după închideri + luna curentă neînchisă). Decontul exact, pe lună, e în tab-ul TVA.') +
-    card('🏦', 'Disponibil bancă (5121)', k.banca, 'sold curent', 'blue', '',
+    card('🏦', 'Disponibil bancă (5121)', k.banca, 'sold curent', tonTrezorerie(k.banca), '',
       'Banii din contul bancar în lei, după toate încasările și plățile înregistrate. Un sold negativ înseamnă de regulă încasări lipsă din evidență; dacă e un descoperit de cont real, se reclasifică pe 5191.') +
-    card('💵', 'Numerar casă (5311)', k.numerar, 'sold curent', 'blue', '',
+    card('💵', 'Numerar casă (5311)', k.numerar, 'sold curent', tonTrezorerie(k.numerar), '',
       'Numerarul din casierie. Nu poate fi negativ — dacă e, lipsește o încasare din evidență.') +
     card('📈', 'Venituri ' + k.year, k.venituri, yoySub(yo.venituriDelta), 'green', trendChip(trendOf(s, 'venituri'), true),
       'Total venituri (clasa 7) pe anul curent, cu comparația față de anul trecut și tendința ultimelor luni.') +
@@ -141,10 +154,14 @@ async function renderRezumat(k) {
     <div class="lbl">${lbl}</div><div class="val">${fmt(val)}</div><div class="sub">${sub}</div></div>`;
   const obligatii = Math.round(((k.taxeDatorate || 0) + (k.salariiDePlata || 0)) * 100) / 100;
   box.innerHTML =
-    tile('💼', 'Bani disponibili', k.disponibilTotal, 'bancă ' + fmt(k.bancaTotal) + ' · casă ' + fmt(k.casaTotal), 'blue', 'cashbook', 'Deschide Încasări & plăți')
-    + tile('📥', 'De încasat de la clienți', k.soldClienti, (k.clientiDeschisi || 0) + (k.clientiDeschisi === 1 ? ' client cu facturi deschise' : ' clienți cu facturi deschise'), 'green', 'analitic', 'Deschide scadențarul pe clienți')
-    + tile('📤', 'De plătit către furnizori', k.soldFurnizori, (k.furnizoriDeschisi || 0) + (k.furnizoriDeschisi === 1 ? ' furnizor de plătit' : ' furnizori de plătit'), 'red', 'analitic', 'Deschide scadențarul pe furnizori')
-    + tile('🏛️', 'Obligații: stat & salarii', obligatii, 'taxe ' + fmt(k.taxeDatorate) + ' · salarii ' + fmt(k.salariiDePlata), 'red', 'livrabile', 'Deschide declarațiile și termenele');
+    // Aceeasi regula ca la KPI-urile de sus (vezi `tonTrezorerie`), si din acelasi motiv: altfel
+    // ACELASI numar iesea verde in modul simplu si neutru in cel expert. Cele trei solduri sunt
+    // fapte — directia lor o poarta deja pictograma (📥 intra / 📤 iese), nu culoarea; doar banii
+    // disponibili au o stare gresita reala, cea sub zero.
+    tile('💼', 'Bani disponibili', k.disponibilTotal, 'bancă ' + fmt(k.bancaTotal) + ' · casă ' + fmt(k.casaTotal), tonTrezorerie(k.disponibilTotal), 'cashbook', 'Deschide Încasări & plăți')
+    + tile('📥', 'De încasat de la clienți', k.soldClienti, (k.clientiDeschisi || 0) + (k.clientiDeschisi === 1 ? ' client cu facturi deschise' : ' clienți cu facturi deschise'), 'blue', 'analitic', 'Deschide scadențarul pe clienți')
+    + tile('📤', 'De plătit către furnizori', k.soldFurnizori, (k.furnizoriDeschisi || 0) + (k.furnizoriDeschisi === 1 ? ' furnizor de plătit' : ' furnizori de plătit'), 'blue', 'analitic', 'Deschide scadențarul pe furnizori')
+    + tile('🏛️', 'Obligații: stat & salarii', obligatii, 'taxe ' + fmt(k.taxeDatorate) + ' · salarii ' + fmt(k.salariiDePlata), 'blue', 'livrabile', 'Deschide declarațiile și termenele');
   $$('#rezumatKpis .kpi.go').forEach((el) => {
     el.addEventListener('click', () => deps.goTab(el.dataset.go));
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); deps.goTab(el.dataset.go); } });
