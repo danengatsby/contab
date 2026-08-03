@@ -65,7 +65,10 @@ export function toast(msg, err) {
   // fara element, un toast nu are voie sa omoare apelantul
   const t = $('#toast'); if (!t) return;
   t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
-  setTimeout(() => (t.className = 'toast'), 3200);
+  // La ascundere se goleste si TEXTUL, nu doar clasa: elementul se stinge cu `opacity`, deci
+  // ramane in arborele de accesibilitate: un mesaj nesters ar fi ramas de citit la nesfarsit,
+  // cu mult dupa ce a disparut de pe ecran.
+  setTimeout(() => { t.className = 'toast'; t.textContent = ''; }, 3200);
 }
 
 let pendingReq = 0;

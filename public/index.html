@@ -180,6 +180,11 @@
   </div>
 
   <div class="shell">
+  <!-- Prima oprire de tastatura din aplicatie: meniul lateral are ~40 de butoane, pe care un
+       utilizator care navigheaza cu Tab le parcurgea din nou la FIECARE pagina. Stau aici, nu la
+       inceputul lui <body>: suprapunerile de login/inregistrare de deasupra sunt `display:none`
+       dupa autentificare, deci nimic focalizabil nu ramane inaintea acestei legaturi. -->
+  <a href="#main" class="skip-link">Sari la conținut</a>
   <header class="topbar">
     <div class="brand">
       <span class="logo">▦</span>
@@ -328,7 +333,9 @@
     ⚠️ <b>Perioada de probă a expirat</b> — contul e acum doar în citire (datele tale sunt intacte).
     <button id="subExpiredGo" class="btn small" data-u="u68">Alege un plan →</button>
   </div>
-  <main>
+  <!-- `tabindex="-1"`: fara el, saritul muta doar ancora, nu si focalizarea — urmatorul Tab
+       s-ar fi intors in meniu, adica exact ce incerca legatura sa ocoleasca. -->
+  <main id="main" tabindex="-1">
     <!-- ─────────────── DASHBOARD ─────────────── -->
     <section id="tab-dashboard" class="tab active">
       <div class="toolbar"><h2>Acasă</h2><div class="spacer"></div><span id="dashYear" class="badge"></span></div>
@@ -2417,7 +2424,11 @@ Cu stimă,
 
   <div id="loadbar"></div>
   <div id="offlineBanner" class="offline-banner hidden">📴 Ești offline — modificările nu se salvează până revine conexiunea. Datele din formular rămân intacte.</div>
-  <div id="toast" class="toast"></div>
+  <!-- Singurul canal prin care aplicatia confirma o salvare SAU raporteaza o eroare. Fara
+       `role=status` schimbarea textului nu era anuntata deloc de cititoarele de ecran: pentru un
+       utilizator care nu vede ecranul, „salvat" si „a esuat" aratau la fel — adica nicicum.
+       `polite` (nu `assertive`): mesajul vine dupa o actiune a utilizatorului, nu-l intrerupe. -->
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <!-- Dicționar contabil pe înțelesul tuturor (buton ❓ în bara de sus) -->
   <!-- Cautare globala (Ctrl+K). Refoloseste stilul dicționarului: acelasi tip de panou, zero CSS nou. -->
