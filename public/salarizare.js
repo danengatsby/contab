@@ -5,6 +5,12 @@ import { $$, $, H, fmt, toast, api, round2, fiscalPct, ac } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 
+// Salariile stau in trei pagini (statul de plata, angajatii, registrul anual), deci butoanele care
+// trec de la una la alta au nevoie de `goTab` — vine din app.js, ca la entries/docflow (fara ciclu).
+const D = { goTab: null };
+function setSalarizareDeps(d) { Object.assign(D, d); }
+function duLa(tab) { if (D.goTab) D.goTab(tab); }
+
 // ───────────────────────── SALARIZARE ─────────────────────────
 function spPeriod() { return pget('sp') || new Date().toISOString().slice(0, 7); }
 async function loadSalarizare() {
@@ -19,7 +25,7 @@ async function loadSalarizare() {
         <td class="num">${fmt(r.brut)}</td><td class="num">${fmt(r.cas)}</td><td class="num">${fmt(r.cass)}</td><td class="num">${r.deducere ? fmt(r.deducere) : ''}</td><td class="num">${fmt(r.impozit)}</td><td class="num">${fmt(r.net)}</td><td class="num">${r.avans ? fmt(r.avans) : ''}</td><td class="num">${r.retineri ? fmt(r.retineri) : ''}</td><td class="num">${fmt(r.restPlata)}</td><td class="num">${fmt(r.cam)}</td>
         <td><a class="linkbtn" href="/pdf/fluturas/${r.id}?period=${spPeriod()}" target="_blank">fluturaș</a> · <a class="linkbtn" href="/pdf/adeverinta/${r.id}?year=${($('#rsYear').value || new Date().getFullYear())}" target="_blank">adeverință</a> · <button class="linkbtn aedit" data-id="${r.id}">editează</button> · <button class="linkbtn adel" data-id="${r.id}">șterge</button></td></tr>`).join('')}
       <tr class="bold"><td colspan="2">TOTAL (${sp.rows.length} ang.)</td><td class="num">${fmt(t.brut)}</td><td class="num">${fmt(t.cas)}</td><td class="num">${fmt(t.cass)}</td><td class="num">${fmt(t.deducere)}</td><td class="num">${fmt(t.impozit)}</td><td class="num">${fmt(t.net)}</td><td class="num">${fmt(t.avans)}</td><td class="num">${fmt(t.retineri)}</td><td class="num">${fmt(t.restPlata)}</td><td class="num">${fmt(t.cam)}</td><td></td></tr></tbody></table>`
-    : '<p class="muted">Niciun angajat. Adaugă unul în formular.</p>';
+    : '<p class="muted">Niciun angajat. Adaugă unul în pagina „Angajați" (butonul de mai sus).</p>';
   $('#spSummary').innerHTML = `<table><tbody>
     <tr><td>Total salarii brute${ac('641')}</td><td class="num">${fmt(t.brut)}</td></tr>
     <tr><td>CAS ${fiscalPct('cas', 25)} reținut${ac('4315')}</td><td class="num">${fmt(t.cas)}</td></tr>
@@ -37,6 +43,9 @@ async function loadSalarizare() {
   renderRegistruSalarii();
   $$('#angajatiList .aedit').forEach((b) => b.addEventListener('click', () => {
     const r = sp.rows.find((x) => x.id === b.dataset.id); const f = $('#angajatForm');
+    // formularul e in ALTA pagina de cand salariile s-au spart in trei: fara saltul asta, „editează"
+    // ar completa un formular pe care utilizatorul nu-l vede si ar parea ca butonul nu face nimic
+    duLa('angajati');
     f.id.value = r.id; f.nume.value = r.nume; f.cnp.value = r.cnp; f.functie.value = r.functie;
     f.salariuBrut.value = round2(r.brut - r.spor); f.spor.value = r.spor; f.neimpozabil.value = r.neimpozabil; f.avans.value = r.avans; f.retineri.value = r.retineri;
     f.persoane.value = r.persoane != null ? r.persoane : ''; f.copii.value = r.copii || 0; f.sub26.checked = !!r.sub26;
@@ -61,9 +70,20 @@ $('#angajatForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   const body = { id: f.id.value || undefined, nume: f.nume.value, cnp: f.cnp.value, functie: f.functie.value, salariuBrut: f.salariuBrut.value, spor: f.spor.value, persoane: f.persoane.value, copii: f.copii.value, sub26: f.sub26.checked, neimpozabil: f.neimpozabil.value, tichete: f.tichete.value, avantaje: f.avantaje.value, zileCM: f.zileCM.value, procentCM: f.procentCM.value, zileCO: f.zileCO.value, normaPartiala: f.normaPartiala.checked, scutitNormaPartiala: f.scutitNormaPartiala.checked, zileLucratoare: f.zileLucratoare.value, sector: f.sector.value, avans: f.avans.value, retineri: f.retineri.value };
-  try { await api('/api/angajati', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Angajat salvat'); f.reset(); f.id.value = ''; f.spor.value = '0'; f.copii.value = '0'; f.sub26.checked = false; f.neimpozabil.value = '0'; f.avans.value = '0'; f.retineri.value = '0'; f.avantaje.value = '0'; loadSalarizare(); }
+  try { await api('/api/angajati', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Angajat salvat'); golesteAngajat(); loadSalarizare(); }
   catch (err) { toast(err.message, true); }
 });
+// Golirea formularului: `reset()` intoarce campurile la valorile din HTML, dar `id` e hidden si ar
+// ramane completat — adica urmatoarea salvare ar MODIFICA angajatul dinainte in loc sa adauge unul.
+function golesteAngajat() {
+  const f = $('#angajatForm'); if (!f) return;
+  f.reset(); f.id.value = '';
+  f.spor.value = '0'; f.copii.value = '0'; f.sub26.checked = false; f.neimpozabil.value = '0';
+  f.avans.value = '0'; f.retineri.value = '0'; f.avantaje.value = '0';
+}
+$('#angajatNou') && $('#angajatNou').addEventListener('click', () => { golesteAngajat(); toast('Formular gol — completează noul angajat'); });
+$('#angajatStat') && $('#angajatStat').addEventListener('click', () => duLa('salarizare'));
+$('#spAddAngajat') && $('#spAddAngajat').addEventListener('click', () => duLa('angajati'));
 $('#spPost').addEventListener('click', async () => {
   const period = spPeriod();
   if (!period) return toast('Alege luna', true);
@@ -78,4 +98,4 @@ $('#spPay').addEventListener('click', async () => {
 });
 
 
-export { loadSalarizare };
+export { loadSalarizare, setSalarizareDeps };

@@ -15,7 +15,7 @@ import { loadLivrabile, loadPortfolio, loadNotifications, loadReconcile, loadAna
 import { setPaletaDeps, deschide as deschidePaleta } from './paleta.js';
 import { loadAssets, loadLeasingContracts } from './mijloace.js';
 import { loadMonthlyClose, setInchidereDeps } from './inchidere.js';
-import { loadSalarizare } from './salarizare.js';
+import { loadSalarizare, setSalarizareDeps } from './salarizare.js';
 import { loadStocks } from './stocuri.js';
 import { renderPlan, renderOpening } from './plan.js';
 import { setAuthuiDeps, bootAuth, showLogin, hideLogin, showForcePw, handleRegisterLink, openRegisterPanel } from './authui.js';
@@ -24,6 +24,7 @@ import { setEntriesDeps, loadEntries, renderEntryLists, loadMissingDocs, loadArh
 setAuthuiDeps({ init, goTab, promptFirmaSubscribe });
 setDocflowDeps({ goTab });
 setEntriesDeps({ goTab });
+setSalarizareDeps({ goTab }); // „editează" din statul de plată duce in pagina „Angajați"
 
 setPeriodsDeps({ renderEntryLists, onTab }); // functiile sunt declarate mai jos (hoisting)
 
@@ -75,6 +76,17 @@ function openGroup(g) {
   closeMenus(g);
   g.classList.add('open');
   const l = g.querySelector('.navlabel'); if (l) l.setAttribute('aria-expanded', 'true');
+  // Bara laterala isi deruleaza singura continutul (`#tabs` are overflow-y:auto). Un grup deschis
+  // langa marginea de jos isi lasa intrarile SUB taietura: se vad doar daca banuiesti ca trebuie sa
+  // derulezi. Se aduc in cadru DOAR daca sunt chiar taiate — altfel meniul ar sari la fiecare clic.
+  const meniu = g.querySelector('.navmenu');
+  if (!meniu) return;
+  requestAnimationFrame(() => {
+    const bara = g.closest('#tabs'); if (!bara) return;
+    if (meniu.getBoundingClientRect().bottom > bara.getBoundingClientRect().bottom) {
+      g.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  });
 }
 $$('#tabs .navgroup').forEach((g) => {
   const label = g.querySelector('.navlabel');
@@ -132,8 +144,13 @@ function onTab(t) {
   if (t === 'notificari') loadNotifications();
   if (t === 'reconciliere') loadReconcile();
   if (t === 'analitic') loadAnalytic();
-  if (t === 'mijloace') { loadAssets(); loadLeasingContracts(); }
-  if (t === 'salarizare') loadSalarizare();
+  // Mijloacele fixe si leasingul sunt doua pagini, dar randarea ramane un singur punct: cardurile
+  // exista in DOM indiferent de pagina activa, deci fiecare dintre cele doua cheama acelasi lucru
+  // — la fel de scump ca azi, si fara o a doua cale de randare care sa driftreze fata de prima.
+  if (t === 'mijloace' || t === 'leasing') { loadAssets(); loadLeasingContracts(); }
+  // Idem pentru cele trei pagini de salarii: `loadSalarizare()` umple statul, lista si registrul
+  // anual dintr-o singura runda (si tot el pune anul implicit in `#rsYear`).
+  if (t === 'salarizare' || t === 'angajati' || t === 'regsalarii') loadSalarizare();
   // Stocurile sunt sparte in trei pagini, dar `loadStocks()` ramane UN singur punct de randare:
   // umple toate zonele (gestiuni, produse, stoc, miscari, productie, retete) dintr-o singura runda
   // de patru apeluri. Cardurile exista in DOM indiferent de pagina activa, deci fiecare dintre cele
@@ -341,7 +358,10 @@ async function init() {
   const faraSalarii = !!(USER.drepturi && USER.drepturi.faraSalarii);
   // Prin CLASA, nu prin style inline: regulile de sidebar au `!important`, care bate un
   // un display:none pus inline din JS, care nu e important — deci ascunderea nu se producea deloc.
-  $$('button[data-tab="salarizare"]').forEach((b) => b.classList.toggle('hidden', faraSalarii));
+  // Toate cele trei pagini de salarii, nu doar statul: dreptul e „fara salarii", iar angajatii si
+  // registrul anual arata exact aceleasi date.
+  $$('button[data-tab="salarizare"], button[data-tab="angajati"], button[data-tab="regsalarii"]')
+    .forEach((b) => b.classList.toggle('hidden', faraSalarii));
   const gs = $('#navgrupSalarii'); if (gs) gs.classList.toggle('hidden', faraSalarii); // tot meniul, nu doar intrarea
   initUiMode(); // mod simplu implicit pentru necontabili (ascunde partea tehnica din meniu)
   // Intoarcere de la Stripe (user logat) dupa abonarea unei firme: confirmare + starea se activeaza la webhook
@@ -686,9 +706,9 @@ const TOUR = [
   { group: 'Documente', ic: '📥', title: 'Documente & facturi', text: 'De aici pornește totul: încarci documentele primite (aplicația le citește singură) și emiți facturi către clienți.' },
   { group: 'Bani', ic: '🏦', title: 'Bani', text: 'Încasările și plățile prin bancă și casă, plus punerea lor față în față cu extrasul bancar.' },
   { group: 'Taxe', ic: '🧾', title: 'Taxe', text: 'TVA-ul de plată, declarațiile pentru ANAF și drumul de la rezultatul contabil la cel fiscal.' },
-  { group: 'Salarii', ic: '👥', title: 'Salarii', text: 'Angajații și statele de plată; de aici iese și declarația D112.' },
+  { group: 'Salarii', ic: '👥', title: 'Salarii', text: 'Statul de plată al lunii, datele angajaților și registrul anual; de aici iese și declarația D112.' },
   { group: 'Stocuri', ic: '📦', title: 'Stocuri', text: 'Marfa și materialele: ce ai pe stoc, ce a intrat și ce a ieșit. Îl folosești doar dacă firma ta ține stocuri.' },
-  { group: 'Mijloace fixe', ic: '🏢', title: 'Mijloace fixe', text: 'Bunurile de folosință îndelungată și amortizarea lor lunară, calculată automat.' },
+  { group: 'Mijloace fixe', ic: '🏢', title: 'Mijloace fixe', text: 'Bunurile de folosință îndelungată și amortizarea lor lunară, calculată automat — plus contractele de leasing și scadențarele lor.' },
   { group: 'Rapoarte', ic: '📊', title: 'Rapoarte', text: 'Tot ce se calculează singur din documentele tale: situații financiare, balanță, registre, închideri de lună.' },
   { group: 'Date firmă', ic: '📁', title: 'Date firmă', text: 'Nomenclatoarele: clienții și furnizorii tăi și, în modul expert, planul de conturi.' },
   { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Tot ce se configurează o dată și se mai atinge rar — plus aplicația de instalat pe calculatorul tău.' },
