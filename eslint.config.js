@@ -82,7 +82,7 @@ module.exports = [
   // `capturi-marketing.mjs` a fost adaugat mai tarziu si a picat exact pe aceasta lipsa — iar
   // `npm test` nu l-a prins, fiindca ESLint ruleaza doar in CI si local (vezi antetul).
   {
-    files: ['scripts/e2e*.mjs', 'scripts/capturi-marketing.mjs'],
+    files: ['scripts/e2e*.mjs', 'scripts/capturi-marketing.mjs', 'scripts/video-prezentare.mjs'],
     // `goTab` e o globala REALA a aplicatiei (public/app.js: `window.goTab = goTab`), pusa acolo
     // tocmai ca sa poata fi condusa din afara. Verificat inainte de a o declara — altfel ar fi
     // fost un ReferenceError in pagina, la trei pasi din E2E.
