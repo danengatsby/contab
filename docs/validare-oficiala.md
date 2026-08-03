@@ -8,7 +8,20 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-07-28
+## Ultima verificare: 2026-08-03 — diacriticele din planul de conturi
+
+Declanșată de poartă la atingerea lui `src/chartOfAccounts.js`: denumirile conturilor au primit
+diacritice, iar ele **intră în SAF-T**, în `<AccountDescription>`. Toate cele 16 ieșiri au trecut,
+inclusiv D406 în cele patru variante (L/T/A/C).
+
+Miza verificării nu era schema, ci **codarea**: un `<AccountDescription>Contribuția asiguratorie
+pentru muncă (CAM)</AccountDescription>` conține octeți multi-byte pe care validatorul îi acceptă
+doar dacă respectă declarația `encoding="UTF-8"` din prolog. Ipoteza dinainte de rulare era că trec,
+fiindcă **același document trimitea deja diacritice** din text liber introdus de utilizator
+(denumirea firmei, partenerii, denumirile de produse) — verificarea a confirmat-o, nu a presupus-o.
+Versiunile de schemă și validator sunt cele din intrarea precedentă, nemodificate.
+
+## Verificare anterioară: 2026-07-28
 
 Rulată pe datele exemplului integrat (`npm run seed` — S.C. EXEMPLU PROD S.R.L.), cu
 validatoarele curente din manifestul oficial ANAF (`versiuni.xml`).
