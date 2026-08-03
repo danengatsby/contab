@@ -306,16 +306,19 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
     // ...si stocurile, sparte la fel: lucrul zilnic / productie / configurare
     ['stocuri', '#stocGestFilter'], ['productie', '#prodForm'], ['configstoc', '#gestiuniList'],
     // ...si cele trei panouri care nu erau situatii financiare: bugetul (control intern),
-    // registrul fiscal (impozit pe profit) si SAF-T — o DECLARATIE, mutata acolo unde meniul
-    // o promitea deja („Declaratii ANAF (D112, SAF-T)"), dar unde nu era.
-    ['buget', '#budgetForm'], ['regfiscal', '#fiscalView'], ['livrabile', '#saftView'],
+    // registrul fiscal (impozit pe profit) si SAF-T — o DECLARATIE, plecata din „Situatii" la
+    // declaratii, iar de acolo in pagina ei (ancora de mai jos, la `saft`).
+    ['buget', '#budgetForm'], ['regfiscal', '#fiscalView'], ['livrabile', '#livrabileList'],
     // ...si salariile, sparte in trei (statul lunii / datele angajatilor / registrul anual) plus
     // leasingul, plecat din „Mijloace fixe": e alta activitate, cu contract si scadentar.
     ['salarizare', '#spSummary'], ['angajati', '#angajatForm'], ['regsalarii', '#rsList'],
     ['mijloace', '#assetForm'], ['leasing', '#lcForm'],
     // ...si inchiderile, despartite pe RITM: pasii lunii (cockpit, TVA, valutar) fata de cei
     // anuali (impozit pe profit, 6/7 in 121, repartizarea rezultatului).
-    ['inchideri', '#closeCockpit'], ['inchidere-an', '#ptPreview']]) {
+    ['inchideri', '#closeCockpit'], ['inchidere-an', '#ptPreview'],
+    // ...anexele scoase de sub bilant si declaratiile despartite: SAF-T (o singura declaratie, dar
+    // cea mai mare) si SPV (ce vine DE LA ANAF, nu ce pleaca).
+    ['anexe', '#cashflowView'], ['saft', '#saftView'], ['spv', '#spvMesajeList']]) {
     await adm.evaluate((x) => window.goTab(x), tab);
     await adm.waitForTimeout(500);
     ok('pagina „' + tab + '" se deschide', (await adm.locator('#tab-' + tab + '.active').count()) === 1);

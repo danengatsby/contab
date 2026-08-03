@@ -532,7 +532,13 @@ $('#fxRevalPost') && $('#fxRevalPost').addEventListener('click', async () => {
 });
 
 // ───────────────────────── STATEMENTS ─────────────────────────
+// Situatiile si anexele lor stau in doua pagini, dar sunt ACELEASI cifre pe acelasi an: cele doua
+// campuri de an se oglindesc. Doua ani independenti ar fi lasat bilantul pe 2026 si notele pe 2025
+// fara ca nimic sa spuna de ce — o divergenta tacuta intre doua ecrane care se citesc impreuna.
 $('#stmtYear').addEventListener('change', loadStatements);
+$('#anexeYear') && $('#anexeYear').addEventListener('change', () => {
+  $('#stmtYear').value = $('#anexeYear').value; loadStatements();
+});
 $('#bugetYear') && $('#bugetYear').addEventListener('change', loadBuget);
 $('#regfiscalYear') && $('#regfiscalYear').addEventListener('change', loadRegFiscal);
 // ── SAF-T (D406) ── mutat in „Declaratii ANAF": acolo il promite meniul, langa celelalte
@@ -540,8 +546,9 @@ $('#regfiscalYear') && $('#regfiscalYear').addEventListener('change', loadRegFis
 // situatie financiara, e o declaratie informativa.
 async function loadSaft() {
   const box = $('#saftView'); if (!box) return;
-  const an = (pget('livrabile') || new Date().toISOString().slice(0, 7)).slice(0, 4);
-  const luna = pget('livrabile') || workMonth();
+  // perioada paginii PROPRII (#saftLuna/#saftAn) de cand SAF-T a iesit din lista de declaratii
+  const an = (pget('saft') || new Date().toISOString().slice(0, 7)).slice(0, 4);
+  const luna = pget('saft') || workMonth();
   $('#saftXml') && ($('#saftXml').href = '/xml/saft?year=' + an);
   $('#saftXmlLuna') && ($('#saftXmlLuna').href = '/xml/saft?period=' + luna);
   return api('/api/saft?year=' + an).then((s) => {
@@ -555,6 +562,7 @@ async function loadSaft() {
       <tr><td>Total debit = total credit</td><td class="num">${fmt(s.totalDebit)}</td></tr></table>`;
   }).catch(() => { $('#saftView').innerHTML = ''; });
 }
+onPeriodChange('saft', loadSaft);
 
 // ── Buget vs realizat ── control de gestiune, INTERN: nu se depune nicaieri si nu tine de
 // situatiile financiare anuale. De aceea are pagina lui, nu un card la coada bilantului.
@@ -609,6 +617,7 @@ async function loadStatements() {
   // necontabilii isi depun singuri declaratiile, dar bilantul cere semnatura calificata (L82/1991)
   $('#bilantWarn').classList.toggle('hidden', USER.tip !== 'necontabil');
   const y = $('#stmtYear').value;
+  if ($('#anexeYear')) $('#anexeYear').value = y;
   $('#plPdf').href = '/pdf/pl?year=' + y;
   $('#bilantPdf').href = '/pdf/bilant?period=' + y + '-12';
   $('#situatiiPdf').href = '/pdf/situatii?year=' + y;
@@ -616,8 +625,9 @@ async function loadStatements() {
   $('#capitalPdf').href = '/pdf/capital?year=' + y;
   $('#fiscalPdf').href = '/pdf/registru-fiscal?year=' + y;
   $('#notesPdf').href = '/pdf/note?year=' + y;
-  $('#saftXml').href = '/xml/saft?year=' + y;
-  $('#saftXmlLuna') && ($('#saftXmlLuna').href = '/xml/saft?period=' + workMonth());
+  // NU se mai scriu aici linkurile SAF-T: panoul a plecat de mult din „Situatii financiare", dar
+  // liniile au ramas si RESCRIAU adresele paginii SAF-T cu anul situatiilor — doi scriitori pe
+  // acelasi href, ultimul castiga. Singurul proprietar e acum `loadSaft()`.
   api('/api/notes?year=' + y).then((n) => {
     const noteSec = (s) => {
       let body;

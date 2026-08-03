@@ -301,7 +301,9 @@
         <button class="navlabel" type="button">🧾 Taxe & declarații</button>
         <div class="navmenu">
           <button data-tab="tva">TVA de plată (decont)</button>
-          <button data-tab="livrabile">Declarații ANAF (<abbr title="Declarația privind contribuțiile sociale și impozitul pe salarii">D112</abbr>, <abbr title="Standard Audit File for Tax — declarația D406 cu datele contabile detaliate">SAF-T</abbr>)</button>
+          <button data-tab="livrabile">Declarații ANAF (<abbr title="Decontul de TVA">D300</abbr>, <abbr title="Declarația privind contribuțiile sociale și impozitul pe salarii">D112</abbr>…)</button>
+          <button data-tab="saft"><abbr title="Standard Audit File for Tax — declarația D406 cu datele contabile detaliate">SAF-T</abbr> (D406)</button>
+          <button data-tab="spv">Mesaje și documente din SPV</button>
           <button data-tab="regfiscal">Registru fiscal (impozit pe profit)</button>
         </div>
       </div>
@@ -309,6 +311,7 @@
         <button class="navlabel" type="button">📊 Rapoarte & analize</button>
         <div class="navmenu">
           <button data-tab="situatii">Situații financiare (bilanț, profit)</button>
+          <button data-tab="anexe" class="adv">Anexe la situații (F30, F40, note)</button>
           <button data-tab="buget">Buget vs realizat</button>
           <button data-tab="analitic">Scadențar clienți & furnizori</button>
           <!-- Arhiva a plecat din „Setări": un dosar cu documentele și registrele lunii nu e o
@@ -951,25 +954,41 @@
     </section>
 
     <section id="tab-situatii" class="tab">
-      <div class="explain"><span class="ei">📊</span><p><b>Ce e asta:</b> aici vezi cum stă firma — contul de profit și pierdere (ai câștigat sau ai pierdut în an) și bilanțul (ce ai: bani, stocuri, bunuri; și ce datorezi).</p></div>
+      <div class="toolbar">
+        <h2>📊 Situații financiare</h2>
+        <div class="spacer"></div>
+        <input type="number" id="stmtYear" value="2026" class="period" aria-label="Anul" />
+      </div>
+      <div class="descarcari">
+        <span class="muted">Descarcă:</span>
+        <a id="plPdf" class="btn small" target="_blank">⬇ Cont de profit și pierdere</a>
+        <a id="bilantPdf" class="btn small" target="_blank">⬇ Bilanț</a>
+        <a id="situatiiPdf" class="btn small primary" target="_blank">⬇ Set complet (F10+F20+F30+F40+Note)</a>
+      </div>
+      <div class="explain"><span class="ei">📊</span><p><b>Ce e asta:</b> aici vezi cum stă firma — contul de profit și pierdere (ai câștigat sau ai pierdut în an) și bilanțul (ce ai: bani, stocuri, bunuri; și ce datorezi). Anexele obligatorii la depunere (F30, F40, notele explicative) au pagina lor, alături.</p></div>
       <div id="bilantWarn" class="warnbox hidden"><span class="wi">⚠️</span><div>
         <b>Bilanțul anual cere semnătură calificată:</b> situațiile financiare depuse la ANAF trebuie semnate
         și de un <b>contabil calificat</b> — angajat cu studii economice superioare sau membru CECCAR
         (art. 10 și 28, Legea contabilității 82/1991). Declarațiile curente (D300, D394, D112) le poți
         depune singur, ca administrator; pentru bilanț apelează la un contabil.
       </div></div>
-      <div class="toolbar">
-        <h2>Situații financiare</h2>
-        <div class="spacer"></div>
-        <input type="number" id="stmtYear" value="2026" class="period" />
-        <a id="plPdf" class="btn" target="_blank">⬇ Cont P&P</a>
-        <a id="bilantPdf" class="btn" target="_blank">⬇ Bilanț</a>
-        <a id="situatiiPdf" class="btn primary" target="_blank">⬇ Set complet (F10+F20+F30+F40+Note)</a>
-      </div>
       <div class="grid2">
         <div class="card"><h3>Cont de profit și pierdere <span class="muted" data-u="u70">(structură oficială F20)</span></h3><div id="plView"></div></div>
         <div class="card"><h3>Bilanț (simplificat)</h3><div id="bilantView"></div></div>
       </div>
+    </section>
+
+    <!-- ─────────────── ANEXE LA SITUATIILE FINANCIARE ─────────────── -->
+    <!-- Plecate din „Situatii financiare": trei tabele mari (F30, F40, notele) care se citesc O DATA
+         PE AN, la depunere, si care ingropau sub ele exact ce se cauta zilnic — profitul si bilantul.
+         Anul e acelasi pe ambele pagini (vezi oglindirea din rapoarte.js). -->
+    <section id="tab-anexe" class="tab">
+      <div class="toolbar">
+        <h2>📎 Anexe la situațiile financiare</h2>
+        <div class="spacer"></div>
+        <input type="number" id="anexeYear" value="2026" class="period" aria-label="Anul" />
+      </div>
+      <div class="explain"><span class="ei">📎</span><p><b>Ce e asta:</b> celelalte formulare din setul anual depus la ANAF, generate automat din aceleași înregistrări: de unde a venit și unde s-a dus numerarul (F30), cum s-au mișcat capitalurile proprii (F40) și notele explicative. Le citești o dată pe an, la depunere; setul complet se descarcă din „Situații financiare".</p></div>
       <div class="card">
         <div class="card-head">
           <h3>Situația fluxurilor de trezorerie <span class="muted" data-u="u70">(F30, metoda directă)</span></h3>
@@ -994,16 +1013,78 @@
         <div id="notesView"></div>
       </div>
     </section>
-<section id="tab-livrabile" class="tab">
+
+    <section id="tab-livrabile" class="tab">
       <div class="toolbar">
-        <h2>Declarații ANAF & borderou lunar</h2>
+        <h2>📤 Declarații ANAF</h2>
         <div class="spacer"></div>
         <select id="livrabileLuna" class="period luna-req" aria-label="Luna"></select>
         <select id="livrabileAn" class="period an" aria-label="Anul"></select>
       </div>
       <div class="cyclemap" data-step="livrabile"></div>
-      <div class="explain"><span class="ei">📤</span><p><b>Ultimul pas:</b> ce predai mai departe. Aici găsești declarațiile și raportările pregătite pentru ANAF (D112, SAF-T, recapitulări) și borderoul lunar — gata de descărcat și depus. Se generează automat din tot ce ai înregistrat în lună.</p></div>
+      <div class="explain"><span class="ei">📤</span><p><b>Ultimul pas:</b> ce predai mai departe. Aici găsești declarațiile lunii pregătite pentru ANAF (D300, D394, D112, recapitulări) și borderoul — gata de descărcat și depus. Se generează automat din tot ce ai înregistrat în lună. <b>SAF-T (D406)</b> și <b>răspunsurile din SPV</b> au paginile lor, alături.</p></div>
       <div class="warnbox"><span class="wi">⚠️</span><div><b>Înainte de depunere:</b> declarațiile (D112, D300, SAF-T…) sunt <b>ciorne</b>. Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică-l cu un contabil înainte de depunerea în SPV.</div></div>
+      <div id="livrabileSumar" class="grid2"></div>
+      <div class="card">
+        <div id="livrabileLegend" class="muted" data-u="u72"></div>
+        <div id="livrabileList" class="tablewrap"></div>
+      </div>
+      <div class="card">
+        <h3>📋 Registrul depunerilor <span class="muted" data-u="u70">(pe luna selectată)</span></h3>
+        <p class="muted">Descărcarea unui XML marchează automat declarația „generată". Marchează manual „depusă" (cu nr. recipisă), „eroare" sau „scutită" — starea alimentează portofoliul și notificările de termene.</p>
+        <div id="declRegister" class="tablewrap"></div>
+      </div>
+      <div class="card">
+        <h3>🧾 F4109 — declarație de neutilizare casă de marcat</h3>
+        <p class="muted">Dacă în luna de lucru <b>nu ai folosit casa de marcat</b>, generează declarația de neutilizare (F4109). Completează seria fiscală a aparatului (o poți separa cu virgulă dacă ai mai multe), apoi descarcă PDF-ul pentru luna aleasă. Se semnează și se depune electronic, prin SPV.</p>
+        <div class="row" data-u="u93">
+          <input id="f4109Serie" placeholder="Seria fiscală a casei de marcat (ex. AMEF12345678)" data-u="u94" />
+          <a id="f4109Pdf" class="btn primary" target="_blank">⬇ Generează F4109 (luna de lucru)</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── SAF-T (D406) ─────────────── -->
+    <!-- Pagina proprie: e o singura declaratie, dar cea mai mare din aplicatie (tot planul de conturi,
+         partenerii, stocurile, mijloacele fixe si toate tranzactiile), cu ritm propriu si cu doua
+         avertismente lungi. Ca ultim card al listei de declaratii, ingropa exact ce se cauta acolo. -->
+    <section id="tab-saft" class="tab">
+      <div class="toolbar">
+        <h2>🗄 SAF-T — Declarația informativă D406</h2>
+        <div class="spacer"></div>
+        <select id="saftLuna" class="period luna-req" aria-label="Luna"></select>
+        <select id="saftAn" class="period an" aria-label="Anul"></select>
+      </div>
+      <div class="descarcari">
+        <span class="muted">Descarcă:</span>
+        <a id="saftXmlLuna" class="btn small primary" target="_blank">⬇ XML luna aleasă</a>
+        <a id="saftXml" class="btn small" target="_blank">⬇ XML an întreg</a>
+      </div>
+      <div class="explain"><span class="ei">🗄</span><p><b>Ce e asta:</b> fișierul standard de audit fiscal — toată contabilitatea lunii, într-un XML pe care ANAF îl citește automat. Nu se completează: se generează din ce ai înregistrat deja.</p></div>
+      <div class="card">
+        <h3>Ce conține și când se depune</h3>
+        <p class="muted"><b>D406 se depune lunar</b> (firmele cu TVA lunară) sau <b>trimestrial</b> (TVA trimestrială / neplătitori), până la ultima zi a lunii următoare — folosește XML-ul pe luna aleasă. Fișierul conține: Header, conturile din planul contabil cu solduri, clienți, furnizori, cotele de TVA, nomenclatorul de produse, mijloacele fixe, stocul final, toate articolele contabile ca tranzacții, facturile de vânzare/cumpărare, plățile și mișcările de stoc (SourceDocuments).</p>
+        <div class="warnbox"><span class="wi">⚠️</span><div>
+          <b>SAF-T este o ciornă structurată, nu un fișier XSD-validat oficial.</b> Conține secțiunile schemei
+          <b>D406 v2.4.x</b>: conturi cu solduri, clienți/furnizori, cote TVA, <b>UOMTable</b>, <b>MovementTypeTable</b>,
+          nomenclator produse, mijloace fixe, stoc final, <b>Owners</b> (asociații din Setări → Datele firmei; la PFA — titularul)
+          și toate tranzacțiile. <b>Înainte de depunere, validează fișierul cu modulul oficial ANAF (Soft-J / DUKIntegrator)</b> —
+          nomenclatoarele de coduri oficiale (taxonomii ANAF) pot cere ajustări punctuale.
+        </div></div>
+        <h3>Ce pleacă în fișier (anul ales)</h3>
+        <div id="saftView"></div>
+      </div>
+    </section>
+
+    <!-- ─────────────── SPV: CE VINE DE LA ANAF ─────────────── -->
+    <!-- Celelalte pagini duc declaratii CATRE ANAF; asta aduce documente DE LA ANAF. Stateau in
+         acelasi teanc, desi sunt sensuri opuse ale aceleiasi relatii. -->
+    <section id="tab-spv" class="tab">
+      <div class="toolbar">
+        <h2>🏛 Mesaje și documente din SPV</h2>
+        <div class="spacer"></div>
+      </div>
+      <div class="explain"><span class="ei">🏛</span><p><b>Ce e asta:</b> ce îți trimite ANAF, nu ce trimiți tu: fișa pe plătitor (obligații și plăți din evidența fiscală) și răspunsurile din Spațiul Privat Virtual. Necesită conexiunea SPV din „Setări → Conexiuni & unelte".</p></div>
       <div class="card">
         <h3>🏛 Fișa Rol / documente din SPV</h3>
         <p class="muted">Solicită de la ANAF <b>fișa pe plătitor</b> (obligațiile și plățile firmei, din evidența administrației fiscale). Necesită conexiunea SPV din Setări. ANAF procesează cererea în câteva minute — documentul apare mai jos și se atașează ca PDF al firmei.</p>
@@ -1014,43 +1095,8 @@
         </div>
         <div id="spvMesajeList" class="tablewrap"></div>
       </div>
-      <div class="card">
-        <h3>📋 Registrul depunerilor <span class="muted" data-u="u70">(pe luna selectată)</span></h3>
-        <p class="muted">Descărcarea unui XML marchează automat declarația „generată". Marchează manual „depusă" (cu nr. recipisă), „eroare" sau „scutită" — starea alimentează portofoliul și notificările de termene.</p>
-        <div id="declRegister" class="tablewrap"></div>
-      </div>
-      <div id="livrabileSumar" class="grid2"></div>
-      <div class="card">
-        <div id="livrabileLegend" class="muted" data-u="u72"></div>
-        <div id="livrabileList" class="tablewrap"></div>
-      </div>
-      <div class="card">
-        <h3>🧾 F4109 — declarație de neutilizare casă de marcat</h3>
-        <p class="muted">Dacă în luna de lucru <b>nu ai folosit casa de marcat</b>, generează declarația de neutilizare (F4109). Completează seria fiscală a aparatului (o poți separa cu virgulă dacă ai mai multe), apoi descarcă PDF-ul pentru luna aleasă. Se semnează și se depune electronic, prin SPV.</p>
-        <div class="row" data-u="u93">
-          <input id="f4109Serie" placeholder="Seria fiscală a casei de marcat (ex. AMEF12345678)" data-u="u94" />
-          <a id="f4109Pdf" class="btn primary" target="_blank">⬇ Generează F4109 (luna de lucru)</a>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <h3>SAF-T — Declarația informativă D406</h3>
-          <a id="saftXmlLuna" class="btn small primary" target="_blank">⬇ XML luna de lucru</a>
-          <a id="saftXml" class="btn small" target="_blank">⬇ XML an întreg</a>
-        </div>
-        <p class="muted"><b>D406 se depune lunar</b> (firmele cu TVA lunară) sau <b>trimestrial</b> (TVA trimestrială / neplătitori), până la ultima zi a lunii următoare — folosește XML-ul pe luna de lucru. Fișierul conține: Header, conturile din planul contabil cu solduri, clienți, furnizori, cotele de TVA, nomenclatorul de produse, mijloacele fixe, stocul final, toate articolele contabile ca tranzacții, facturile de vânzare/cumpărare, plățile și mișcările de stoc (SourceDocuments).</p>
-        <div class="warnbox"><span class="wi">⚠️</span><div>
-          <b>SAF-T este o ciornă structurată, nu un fișier XSD-validat oficial.</b> Conține secțiunile schemei
-          <b>D406 v2.4.x</b>: conturi cu solduri, clienți/furnizori, cote TVA, <b>UOMTable</b>, <b>MovementTypeTable</b>,
-          nomenclator produse, mijloace fixe, stoc final, <b>Owners</b> (asociații din Setări → Datele firmei; la PFA — titularul)
-          și toate tranzacțiile. <b>Înainte de depunere, validează fișierul cu modulul oficial ANAF (Soft-J / DUKIntegrator)</b> —
-          nomenclatoarele de coduri oficiale (taxonomii ANAF) pot cere ajustări punctuale.
-        </div></div>
-        <div id="saftView"></div>
-      </div>
     </section>
 
-    <!-- ─────────────── PORTOFOLIU (multi-firma) ─────────────── -->
     <section id="tab-portofoliu" class="tab">
       <div class="toolbar">
         <h2>Portofoliu — conformitate declarații</h2>
@@ -1719,7 +1765,7 @@ Cu stimă,
         <h3>⑥ La sfârșit de lună (închidere)</h3>
         <ul>
           <li>Tab <kbd>Închiderea lunii</kbd>: pașii lunii, în ordine — amortizarea mijloacelor fixe, închiderea TVA (4427/4426 → 4423/4424), reevaluarea valutară. Ce se face o dată pe an (impozitul pe profit, închiderea veniturilor și cheltuielilor în 121, repartizarea rezultatului) stă în <kbd>Închiderea anului</kbd>.</li>
-          <li>Tab <kbd>Declarații ANAF</kbd>: generezi declarațiile pentru ANAF (D300, D394, D112, SAF-T).</li>
+          <li>Tab <kbd>Declarații ANAF</kbd>: generezi declarațiile lunii (D300, D394, D112); <kbd>SAF-T (D406)</kbd> are pagina lui, iar în <kbd>Mesaje și documente din SPV</kbd> vezi ce îți trimite ANAF.</li>
         </ul>
 
         <h3>⑦ Module dedicate (după caz)</h3>
