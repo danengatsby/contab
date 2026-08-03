@@ -1133,7 +1133,10 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
   // deci in HTML nu exista niciun `/xml/saft` de cautat. Id-ul dovedeste ca butonul care FACE
   // lucrul e chiar in sectiunea care il promite.
   const PROMISIUNI = [
-    ['livrabile', 'SAF-T', 'id="saftXml"'],
+    ['saft', 'SAF-T', 'id="saftXml"'],
+    // D300 nu are buton propriu in HTML: liniile de descarcare se randeaza in `#livrabileList`,
+    // deci ancora e chiar lista din care se ia fiecare declaratie promisa in eticheta.
+    ['livrabile', 'D300', 'id="livrabileList"'],
     ['tva', 'D300', 'id="d300Xml"'],
     ['situatii', 'bilanț', 'id="bilantPdf"'],
   ];
@@ -1143,7 +1146,7 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
     ok('„' + promis + '" promis in meniu la „' + tab + '" chiar e FUNCTIONAL in pagina (' + ancora + ')',
       corpSectiune(tab).includes(ancora));
   }
-  ok('poarta chiar citeste etichetele de meniu', /SAF-T/i.test(eticheta('livrabile')));
+  ok('poarta chiar citeste etichetele de meniu', /SAF-T/i.test(eticheta('saft')));
   ok('poarta nu se multumeste cu o mentiune in text',
     !corpSectiune('situatii').includes('id="saftXml"') && /SAF-T|D406/i.test(corpSectiune('livrabile')));
 

@@ -137,13 +137,17 @@ function onTab(t) {
   // indiferent de pagina activa. Cockpitul lunar se incarca doar unde se vede.
   if (t === 'inchideri' || t === 'inchidere-an') loadClosings();
   if (t === 'inchideri') loadMonthlyClose();
-  if (t === 'situatii') loadStatements();
+  // Situatiile si anexele lor (F30, F40, note): acelasi `loadStatements()` umple ambele pagini.
+  if (t === 'situatii' || t === 'anexe') loadStatements();
   // Trei panouri au plecat din „Situatii financiare", fiindca nu erau situatii financiare:
   // bugetul e control de gestiune INTERN, registrul fiscal tine de impozitul pe profit, iar
   // SAF-T e o DECLARATIE — pe care meniul o promitea deja la „Declaratii ANAF", fara sa fie acolo.
   if (t === 'buget') loadBuget();
   if (t === 'regfiscal') loadRegFiscal();
-  if (t === 'livrabile') { loadLivrabile(); loadSaft(); }
+  // Declaratiile lunii, SAF-T si SPV au pagini separate: SAF-T are perioada lui, iar panoul SPV
+  // nu se randeaza singur (raspunsurile se cer la clic), deci n-are ce incarca la deschidere.
+  if (t === 'livrabile') loadLivrabile();
+  if (t === 'saft') loadSaft();
   if (t === 'portofoliu') loadPortfolio();
   if (t === 'notificari') loadNotifications();
   if (t === 'reconciliere') loadReconcile();
