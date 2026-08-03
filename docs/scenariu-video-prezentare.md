@@ -275,7 +275,36 @@ De filmat oricum, chiar dacă nu intră în montajul final — acoperă tăietur
 
 ---
 
-## 8. Verificări înainte de publicare
+## 8. Montajul brut, deja înregistrat
+
+Există o **primă filmare automată** a scenariului: `scripts/video-prezentare.mjs` conduce
+aplicația prin scenele de mai sus și înregistrează ecranul (Playwright înregistrează nativ, fără
+ffmpeg pe gazdă). Rezultatul: **3:12, 1280×720**, cu cartoane de titlu între capitole și un cursor
+desenat, fiindcă în înregistrare **cursorul real nu apare** — fără el, lucrurile par că se întâmplă
+singure. Fișierele nu se comit (sunt artefacte generate); rețeta completă de reproducere e în
+antetul scriptului.
+
+**Ce are** montajul brut: toate scenele pe date reale din exemplul din ghid — tabloul de bord,
+înregistrarea unui document cu previzualizarea notei contabile venită de la server, documentul care
+apare apoi în listă, factura emisă, banca, stocurile, statul de plată, mijloacele fixe, registrele,
+cockpitul închiderii lunii, decontul de TVA, declarațiile, SAF-T și situațiile financiare.
+
+**Ce NU are, și rămâne de făcut de un editor:** vocea (textele sunt în capitolul 3), muzica,
+subtitrarea arsă, tăieturile fine de ritm și cartușul de limite din capitolul 4.
+
+**Cum se verifică o înregistrare fără să te uiți la ea trei minute:** se face un *contact* — tot
+filmul într-o singură imagine, un cadru la 8 secunde, în grilă 5×5 (comanda e în antetul
+scriptului). Așa s-au prins două eșecuri **tăcute**, care raportau „reușit" la fiecare pas:
+
+1. **CSP-ul aplicației** (`style-src 'self'`, fără `unsafe-inline`) bloca stilul injectat pentru
+   cartoane și cursor — prima înregistrare a ieșit fără ele, fără nicio eroare. Contextul se
+   creează acum cu `bypassCSP` (doar în sesiunea de filmare; produsul rămâne neatins).
+2. **Cartonul de titlu rămâne în DOM între scene** (transparent) și, fără `pointer-events: none`,
+   **înghițea clicurile**: formularul nu se mai deschidea, iar pașii raportau în continuare succes.
+
+---
+
+## 9. Verificări înainte de publicare
 
 - [ ] Toate cifrele rostite s-au reverificat în ziua montajului: numărul de verificări din suită,
       tipurile de operațiuni, prețurile (99 lei Start, 199 lei Pro, probă 30 de zile fără card).
