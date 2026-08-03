@@ -1145,3 +1145,9 @@ body.dark .pill.rol-contabil{background:#141f33;color:#8fb4f0}
 .camp-cerut{outline:2px solid var(--danger);outline-offset:1px;animation:campCerut 1s ease-in-out 2}
 @keyframes campCerut{0%,100%{outline-color:var(--danger)}50%{outline-color:transparent}}
 body.dark .closeblock{color:#ffb4a8}
+
+/* Playerul din „Video de prezentare": latime plina, dar plafonat pe inaltime ca sa incapa
+   controalele si informatiile fara derulare pe un laptop. Fundal negru: un cadru gri in jurul
+   imaginii 16:9 se citeste ca o eroare de incarcare. */
+#videoPlayer{width:100%;max-height:66vh;aspect-ratio:16/9;background:#000;border-radius:10px;display:block}
+#videoLink{flex:1;min-width:220px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}

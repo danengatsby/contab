@@ -196,6 +196,50 @@ $('#fiscalReset') && $('#fiscalReset').addEventListener('click', async () => {
 // scripts/pachet-windows.sh. Fara ruta de API dinadins: nu e nimic de autorizat, iar o instalare
 // in care pachetul nu a fost construit trebuie sa ASCUNDA butonul, nu sa ofere un link mort —
 // lipsa manifestului e chiar semnalul, si nu cere niciun cod in plus.
+// ── Videoul de prezentare ────────────────────────────────────────────────────
+// Acelasi tipar ca la pachetul Windows: fisier STATIC + manifest, fara ruta de API. Nu e nimic de
+// autorizat (linkul e public prin constructie, ca orice din public/), iar lipsa manifestului e
+// chiar semnalul ca filmul nu e publicat pe instalarea asta.
+export async function renderVideo() {
+  const card = $('#videoCard'); if (!card) return;
+  const lipsa = $('#videoLipsa');
+  let m;
+  try {
+    const r = await fetch('/descarcari/video.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('lipsa');
+    m = await r.json();
+  } catch (e) {
+    // Pagina nu ramane goala: un ecran fara nimic pe el se citeste ca „stricat", nu ca „nu se aplica".
+    card.classList.add('hidden');
+    if (lipsa) lipsa.classList.remove('hidden');
+    return;
+  }
+  card.classList.remove('hidden');
+  if (lipsa) lipsa.classList.add('hidden');
+  const v = $('#videoPlayer');
+  // `src` se pune DIN MANIFEST, nu din HTML: altfel browserul ar cere fisierul (si ar loga un 404)
+  // pe fiecare instalare unde filmul nu e publicat.
+  if (v && v.getAttribute('src') !== m.fisier) {
+    v.setAttribute('src', m.fisier);
+    if (m.poster) v.setAttribute('poster', m.poster);
+  }
+  $('#videoDownload').href = m.fisier;
+  const mb = (Number(m.octeti) || 0) / 1048576;
+  $('#videoInfo').innerHTML = `Durata <b>${H(m.durata || '—')}</b> · ${H(m.rezolutie || '')} · ${mb.toFixed(0)} MB`
+    + (m.data ? ` · înregistrat ${H(m.data)}` : '');
+  const link = location.origin + m.fisier;
+  $('#videoLink').value = link;
+  const buton = $('#videoCopy');
+  if (buton && !buton.dataset.legat) {
+    buton.dataset.legat = '1';
+    buton.addEventListener('click', async () => {
+      // clipboard-ul cere context sigur si permisiune; pe esec, selectam textul ca sa poata fi copiat manual
+      try { await navigator.clipboard.writeText($('#videoLink').value); toast('Link copiat'); }
+      catch (e) { $('#videoLink').select(); toast('Apasă Ctrl+C ca să copiezi linkul', true); }
+    });
+  }
+}
+
 export async function renderPachetWin() {
   const card = $('#pachetWinCard'); if (!card) return;
   let m;
