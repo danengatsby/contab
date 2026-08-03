@@ -18,10 +18,13 @@ npm test             # suita completa: sintaxa + garda DB + module + frontend + 
 Apoi deschide `http://localhost:8080` în browser. **Cere Node ≥ 22.13** (`engines` din
 `package.json`; driverul implicit `node:sqlite` nu există înainte).
 
-Navigarea e organizată pe grupuri, ca meniuri derulante în bara de sus: `📥 Documente & facturi`,
-`🏦 Bani`, `🧾 Taxe`, `📦 Stocuri`, `👥 Salarii`, `🏢 Mijloace fixe`, `📊 Rapoarte`, `📁 Date firmă`,
-`⚙️ Setări`. (Numele lor sunt verificate față de `public/index.html` — vezi poarta de drift din
-`test/run.js`.)
+Navigarea e organizată pe grupuri, iar **ordinea lor e chiar ciclul contabil**, de sus în jos:
+`📥 Documente & facturi`, `🏦 Bani`, `📦 Stocuri`, `👥 Salarii`, `🏢 Mijloace fixe`,
+`📒 Registre contabile`, `🔒 Închideri`, `🧾 Taxe & declarații`, `📊 Rapoarte & analize` —
+înregistrezi, urmărești banii, treci prin ce mișcă lunar, verifici registrele, închizi luna, depui
+declarațiile, citești rapoartele. Jos rămân lucrurile din afara ciclului: `📁 Date firmă`
+(nomenclatoare) și `⚙️ Setări`. (Numele grupurilor sunt verificate față de `public/index.html`, iar
+ordinea lor față de `CYCLE` din `public/app.js` — vezi porțile de drift din `test/run.js`.)
 
 Aplicația diferențiază **SRL vs PFA** (formă juridică pe firmă — taxe, calendar de declarații și
 documente specifice: Declarația Unică cu variantă pe încasat, registrul de încasări și plăți,

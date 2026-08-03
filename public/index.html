@@ -211,30 +211,16 @@
     <span id="userBadge" class="userbadge"></span>
     <button id="logoutBtn" class="btn small">Ieși</button>
     <nav class="tabs" id="tabs" aria-label="Meniu principal">
+      <!-- ORDINEA GRUPURILOR = CICLUL CONTABIL, de sus în jos: înregistrezi documentele, urmărești
+           banii, apoi ce mișcă lunar (stocuri, salarii, amortizare), verifici registrele, închizi
+           luna, depui declarațiile și abia apoi citești rapoartele. Până acum „Taxe" stătea al
+           treilea — adică declarațiile veneau în meniu ÎNAINTEA lunii din care se calculează, iar
+           închiderea era ultima intrare a grupului „Rapoarte", ascunsă în modul simplu.
+           `CYCLE` (public/app.js) declara deja această ordine; o poartă din test/run/porti.js
+           verifică acum că meniul n-o mai contrazice. Jos stau lucrurile din afara ciclului:
+           nomenclatoarele și setările — se ating rar, deci nu mai stau în drum. -->
       <button data-tab="dashboard" class="active">🏠 Acasă</button>
       <button data-tab="ghid">📖 Ghid</button>
-      <div class="navgroup">
-        <button class="navlabel" type="button">⚙️ Setări</button>
-        <div class="navmenu">
-          <!-- „Setări generale" era o singură pagină de ~5.200 px cu 19 panouri fără legătură
-               între ele (datele firmei, parola, colaboratorii, backupul, tutorialul de scanare).
-               Spartă pe SCOP, cu nume pe care le înțelege și un necontabil: fiecare pagină
-               răspunde la o singură întrebare, iar niciuna nu mai trece de un ecran-două. -->
-          <button data-tab="setari">🏢 Firma mea</button>
-          <button data-tab="cont">👤 Contul meu</button>
-          <button data-tab="acces">👥 Cine are acces</button>
-          <button data-tab="date">💾 Date &amp; copii de siguranță</button>
-          <button data-tab="conexiuni">🔌 Conexiuni &amp; unelte</button>
-          <button data-tab="pachetwin">💻 Contabo pe calculatorul tău</button>
-          <button data-tab="arhiva">Arhivă documente</button>
-          <button data-tab="audit" class="adv">Jurnal de audit</button>
-          <!-- Doar admin (comutat din app.js dupa rol). NU e marcat `.adv`, spre deosebire de
-               jurnalul de audit: acela se vede de toata lumea si e ascuns in modul simplu ca
-               intrare tehnica, pe cand asta e deja ingradit de rol. Doua garduri peste aceeasi
-               intrare ar produce „adminul nu-l mai gaseste" fara ca nimic sa explice de ce. -->
-          <button data-tab="accesari" id="navAccesari" class="hidden">Cine accesează aplicația</button>
-        </div>
-      </div>
       <div id="imperBanner" class="imper-banner hidden">
         <span>👤 Conectat ca <b id="imperName"></b> <span class="imper-sub">(mod administrator — „intră pe cont"). Toate acțiunile sunt jurnalizate.</span></span>
         <button id="imperStop" type="button">↩ Revino la contul de admin</button>
@@ -258,14 +244,6 @@
         <div class="navmenu">
           <button data-tab="cashbook">Încasări & plăți (bancă / casă)</button>
           <button data-tab="reconciliere">Verifică extrasul bancar</button>
-        </div>
-      </div>
-      <div class="navgroup">
-        <button class="navlabel" type="button">🧾 Taxe</button>
-        <div class="navmenu">
-          <button data-tab="tva">TVA de plată (decont)</button>
-          <button data-tab="livrabile">Declarații ANAF (<abbr title="Declarația privind contribuțiile sociale și impozitul pe salarii">D112</abbr>, <abbr title="Standard Audit File for Tax — declarația D406 cu datele contabile detaliate">SAF-T</abbr>)</button>
-          <button data-tab="regfiscal">Registru fiscal (impozit pe profit)</button>
         </div>
       </div>
       <div class="navgroup">
@@ -298,18 +276,44 @@
           <button data-tab="leasing">Leasing (contracte și rate)</button>
         </div>
       </div>
+      <!-- Registrele obligatorii, scoase din „Rapoarte": nu sunt rapoarte de citit din când în când,
+           ci pasul de VERIFICARE dinaintea închiderii (te uiți în balanță și în jurnal ca să vezi ce
+           mai lipsește). Toate patru erau deja `.adv`, deci grupul e `.adv` — în modul simplu ar fi
+           rămas o etichetă goală. -->
+      <div class="navgroup adv">
+        <button class="navlabel" type="button">📒 Registre contabile</button>
+        <div class="navmenu">
+          <!-- in ordinea in care se citesc: operatiunile -> fisa fiecarui cont -> soldurile -->
+          <button data-tab="jurnal" class="adv">Toate operațiunile (jurnal)</button>
+          <button data-tab="carte" class="adv">Fișa fiecărui cont (cartea mare)</button>
+          <button data-tab="balanta" class="adv">Solduri conturi (balanță)</button>
+          <button data-tab="storno" class="adv">Articole stornate (corecții)</button>
+        </div>
+      </div>
+      <div class="navgroup adv">
+        <button class="navlabel" type="button">🔒 Închideri</button>
+        <div class="navmenu">
+          <button data-tab="inchideri" class="adv">Închiderea lunii</button>
+          <button data-tab="inchidere-an" class="adv">Închiderea anului</button>
+        </div>
+      </div>
       <div class="navgroup">
-        <button class="navlabel" type="button">📊 Rapoarte</button>
+        <button class="navlabel" type="button">🧾 Taxe & declarații</button>
+        <div class="navmenu">
+          <button data-tab="tva">TVA de plată (decont)</button>
+          <button data-tab="livrabile">Declarații ANAF (<abbr title="Declarația privind contribuțiile sociale și impozitul pe salarii">D112</abbr>, <abbr title="Standard Audit File for Tax — declarația D406 cu datele contabile detaliate">SAF-T</abbr>)</button>
+          <button data-tab="regfiscal">Registru fiscal (impozit pe profit)</button>
+        </div>
+      </div>
+      <div class="navgroup">
+        <button class="navlabel" type="button">📊 Rapoarte & analize</button>
         <div class="navmenu">
           <button data-tab="situatii">Situații financiare (bilanț, profit)</button>
           <button data-tab="buget">Buget vs realizat</button>
-          <button data-tab="balanta" class="adv">Solduri conturi (balanță)</button>
-          <button data-tab="jurnal" class="adv">Toate operațiunile (jurnal)</button>
-          <button data-tab="carte" class="adv">Fișa fiecărui cont (cartea mare)</button>
-          <button data-tab="storno" class="adv">Articole stornate (corecții)</button>
           <button data-tab="analitic">Scadențar clienți & furnizori</button>
-          <button data-tab="inchideri" class="adv">Închiderea lunii</button>
-          <button data-tab="inchidere-an" class="adv">Închiderea anului</button>
+          <!-- Arhiva a plecat din „Setări": un dosar cu documentele și registrele lunii nu e o
+               setare, ci ultimul pas al ciclului — ce predai mai departe după ce ai închis luna. -->
+          <button data-tab="arhiva">Arhivă documente (dosarul lunii)</button>
         </div>
       </div>
       <div class="navgroup">
@@ -317,6 +321,27 @@
         <div class="navmenu">
           <button data-tab="parteneri">Clienți & furnizori</button>
           <button data-tab="plan" class="adv">Plan de conturi</button>
+        </div>
+      </div>
+      <div class="navgroup">
+        <button class="navlabel" type="button">⚙️ Setări</button>
+        <div class="navmenu">
+          <!-- „Setări generale" era o singură pagină de ~5.200 px cu 19 panouri fără legătură
+               între ele (datele firmei, parola, colaboratorii, backupul, tutorialul de scanare).
+               Spartă pe SCOP, cu nume pe care le înțelege și un necontabil: fiecare pagină
+               răspunde la o singură întrebare, iar niciuna nu mai trece de un ecran-două. -->
+          <button data-tab="setari">🏢 Firma mea</button>
+          <button data-tab="cont">👤 Contul meu</button>
+          <button data-tab="acces">👥 Cine are acces</button>
+          <button data-tab="date">💾 Date &amp; copii de siguranță</button>
+          <button data-tab="conexiuni">🔌 Conexiuni &amp; unelte</button>
+          <button data-tab="pachetwin">💻 Contabo pe calculatorul tău</button>
+          <button data-tab="audit" class="adv">Jurnal de audit</button>
+          <!-- Doar admin (comutat din app.js dupa rol). NU e marcat `.adv`, spre deosebire de
+               jurnalul de audit: acela se vede de toata lumea si e ascuns in modul simplu ca
+               intrare tehnica, pe cand asta e deja ingradit de rol. Doua garduri peste aceeasi
+               intrare ar produce „adminul nu-l mai gaseste" fara ca nimic sa explice de ce. -->
+          <button data-tab="accesari" id="navAccesari" class="hidden">Cine accesează aplicația</button>
         </div>
       </div>
     </nav>
@@ -899,7 +924,7 @@
       <div class="explain"><span class="ei">📅</span><p><b>Ce faci aici:</b> operațiunile de <b>sfârșit de an</b>, în ordinea de mai jos: calculezi impozitul pe profit, închizi veniturile și cheltuielile în rezultatul exercițiului, iar după aprobarea situațiilor financiare muți rezultatul la „rezultat reportat". Se fac <b>o dată pe an</b>, după ce toate lunile sunt închise.</p></div>
       <div class="card">
         <h2>① Impozit pe profit</h2>
-        <p class="muted">Profit impozabil = profit contabil <b>+ cheltuieli nedeductibile − deduceri − pierdere fiscală reportată</b>. Impozit = profit impozabil × cota → <b>691 = 4411</b>. Pierderea fiscală a anului se reportează automat. <b>Ordinea față de închiderea anuală nu contează</b> — dacă anul e deja închis, contul 691 se închide automat în 121. Calculul detaliat, rând cu rând, e în „Taxe → Registru fiscal".</p>
+        <p class="muted">Profit impozabil = profit contabil <b>+ cheltuieli nedeductibile − deduceri − pierdere fiscală reportată</b>. Impozit = profit impozabil × cota → <b>691 = 4411</b>. Pierderea fiscală a anului se reportează automat. <b>Ordinea față de închiderea anuală nu contează</b> — dacă anul e deja închis, contul 691 se închide automat în 121. Calculul detaliat, rând cu rând, e în „Taxe & declarații → Registru fiscal".</p>
         <div class="dyn">
           <label>Anul <input type="number" id="ptYear" value="2026" /></label>
           <label>Cheltuieli nedeductibile (+) <input type="number" id="ptNed" value="0" step="0.01" /></label>
@@ -1663,7 +1688,7 @@ Cu stimă,
 
         <h3><span class="tag in">INTRARE</span> ② Înregistrezi un document PRIMIT (factură de la furnizor, bon, chitanță)</h3>
         <ol>
-          <li>Tab <kbd>1 · Documente</kbd> → zona verde <b>📥 Documente de INTRARE</b>.</li>
+          <li>Tab <kbd>Documente &amp; facturi</kbd> → zona verde <b>📥 Documente de INTRARE</b>.</li>
           <li><b>Trage fișierul</b> (PDF <i>sau o poză</i> a facturii) în chenarul de încărcare.</li>
           <li>Aplicația (AI) citește documentul și <b>completează singură</b>: tipul, partenerul, CUI, baza, TVA, cota, totalul.</li>
           <li><b>Verifici</b> valorile la pasul „2 · Confirmă articolul contabil” și corectezi dacă e nevoie.</li>
@@ -1672,7 +1697,7 @@ Cu stimă,
 
         <h3><span class="tag out">IEȘIRE</span> ③ Emiți un document al firmei tale (factură către client)</h3>
         <ol>
-          <li>Tab <kbd>1 · Documente</kbd> → zona roșie <b>📤 Documente de IEȘIRE</b>.</li>
+          <li>Tab <kbd>Documente &amp; facturi</kbd> → zona roșie <b>📤 Documente de IEȘIRE</b>.</li>
           <li>Apeși butonul potrivit: <b>Factură vânzare mărfuri / produse / servicii</b> etc.</li>
           <li>Completezi clientul și sumele (sau adaugi <b>linii</b> cu cantitate × preț × cotă).</li>
           <li>Salvezi → în „Înregistrări recente” poți descărca <b>e-Factura (XML)</b> pentru ANAF sau PDF-ul.</li>
@@ -1680,13 +1705,13 @@ Cu stimă,
 
         <h3>④ Banca</h3>
         <ul>
-          <li>În <kbd>1 · Documente</kbd> încarci <b>extrasul bancar</b> (CSV/MT940); aplicația potrivește încasările/plățile cu partenerii.</li>
-          <li>În <kbd>Reconciliere</kbd> confirmi că soldul din contabilitate = soldul din bancă.</li>
+          <li>În <kbd>Documente &amp; facturi</kbd> încarci <b>extrasul bancar</b> (CSV/MT940); aplicația potrivește încasările/plățile cu partenerii.</li>
+          <li>În <kbd>Verifică extrasul bancar</kbd> confirmi că soldul din contabilitate = soldul din bancă.</li>
         </ul>
 
         <h3>⑤ Verifici și raportezi (se generează automat)</h3>
         <ul>
-          <li><kbd>Registru-jurnal</kbd> = toate înregistrările cronologic; <kbd>Cartea mare</kbd> = grupate pe cont; <kbd>Balanță</kbd> = soldurile (debit trebuie = credit).</li>
+          <li><kbd>Toate operațiunile (jurnal)</kbd> = toate înregistrările cronologic; <kbd>Fișa fiecărui cont</kbd> = grupate pe cont; <kbd>Solduri conturi (balanță)</kbd> = soldurile (debit trebuie = credit).</li>
           <li><kbd>TVA</kbd> → decontul <b>D300</b> și <b>D394</b>, defalcate pe cote.</li>
           <li><kbd>Situații</kbd> → cont de profit/pierdere și bilanț.</li>
         </ul>
@@ -1694,7 +1719,7 @@ Cu stimă,
         <h3>⑥ La sfârșit de lună (închidere)</h3>
         <ul>
           <li>Tab <kbd>Închiderea lunii</kbd>: pașii lunii, în ordine — amortizarea mijloacelor fixe, închiderea TVA (4427/4426 → 4423/4424), reevaluarea valutară. Ce se face o dată pe an (impozitul pe profit, închiderea veniturilor și cheltuielilor în 121, repartizarea rezultatului) stă în <kbd>Închiderea anului</kbd>.</li>
-          <li>Tab <kbd>Livrabile</kbd>: generezi declarațiile pentru ANAF (D300, D394, D112, SAF-T).</li>
+          <li>Tab <kbd>Declarații ANAF</kbd>: generezi declarațiile pentru ANAF (D300, D394, D112, SAF-T).</li>
         </ul>
 
         <h3>⑦ Module dedicate (după caz)</h3>
@@ -1710,10 +1735,10 @@ Cu stimă,
         <h2>🧾 Flux de facturare în 5 pași</h2>
         <p class="lead">A factura = a cere oficial banii pentru ce ai vândut. Vinzi → <b>emiți factura</b> → o <b>trimiți</b> (client + ANAF) → clientul <b>plătește</b> → tu <b>bifezi încasarea</b>.</p>
         <ol>
-          <li><b>Pregătește datele clientului</b> — denumire + CUI (și adresa, pentru e-Factura). Le salvezi o dată în <kbd>Nomenclatoare → Parteneri</kbd>.</li>
+          <li><b>Pregătește datele clientului</b> — denumire + CUI (și adresa, pentru e-Factura). Le salvezi o dată în <kbd>Date firmă → Clienți &amp; furnizori</kbd>.</li>
           <li><b>Emite factura</b> — din pagina <kbd>🧾 Emite factură</kbd>: ce ai vândut, cantitate × preț, cota de TVA (21% / 11% / scutit). Aplicația calculează singură baza, TVA-ul și totalul, și dă un <b>număr în serie continuă</b>.</li>
           <li><b>Trimite factura</b> — pentru firme (B2B) e obligatoriu prin <b>e-Factura (SPV)</b>. Descarci <b>XML-ul</b> și trimiți și un <b>PDF</b> clientului, cu scadența.</li>
-          <li><b>Urmărește încasarea</b> — vezi cine ți-a plătit și cine întârzie în <kbd>Reconciliere</kbd> / <kbd>Analitic</kbd>, ca să nu uiți banii pe drum.</li>
+          <li><b>Urmărește încasarea</b> — vezi cine ți-a plătit și cine întârzie în <kbd>Verifică extrasul bancar</kbd> / <kbd>Scadențar clienți &amp; furnizori</kbd>, ca să nu uiți banii pe drum.</li>
           <li><b>Înregistrează plata</b> — când banii intră, alegi <kbd>Încasare de la client</kbd> (5311/5121 = 4111). Abia acum creanța devine bani reali și clientul nu-ți mai datorează nimic.</li>
         </ol>
         <p class="muted" data-u="u18">⚠️ Reține: factura emisă (B2B) trebuie trimisă în <b>e-Factura</b>, iar XML-ul se validează înainte de depunere (vezi checklistul de mai jos).</p>
