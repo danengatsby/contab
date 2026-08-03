@@ -283,14 +283,19 @@
       <div class="navgroup" id="navgrupSalarii">
         <button class="navlabel" type="button">👥 Salarii</button>
         <div class="navmenu">
-          <button data-tab="salarizare">Salarii (state de plată)</button>
+          <!-- Sparte pe CE FACI: munca lunii (statul), datele angajatilor (formularul de 20 de
+               campuri) si registrul anual, care e un raport pe alt an decat luna de lucru. -->
+          <button data-tab="salarizare">Statul de plată (lunar)</button>
+          <button data-tab="angajati">Angajați</button>
+          <button data-tab="regsalarii">Registru anual de salarii</button>
         </div>
       </div>
-      <!-- adv pe tot grupul: singura lui intrare e tehnica, in modul simplu ar ramane o eticheta goala -->
+      <!-- adv pe tot grupul: ambele intrari sunt tehnice, in modul simplu ar ramane o eticheta goala -->
       <div class="navgroup adv">
         <button class="navlabel" type="button">🏢 Mijloace fixe</button>
         <div class="navmenu">
           <button data-tab="mijloace">Mijloace fixe (amortizare)</button>
+          <button data-tab="leasing">Leasing (contracte și rate)</button>
         </div>
       </div>
       <div class="navgroup">
@@ -1097,15 +1102,20 @@
     <!-- ─────────────── PARTENERI ─────────────── -->
     <!-- ─────────────── MIJLOACE FIXE ─────────────── -->
     <section id="tab-mijloace" class="tab">
-      <div class="explain"><span class="ei">🏗️</span><p><b>Ce e asta:</b> aici ții evidența bunurilor de valoare ale firmei (echipamente, mașini, clădiri) și amortizarea lor lunară — adică pierderea treptată din valoare, trecută pe cheltuieli.</p></div>
+      <!-- Bara pastreaza doar ce COMANDA pagina (perioada) si actiunea lunii; descarcarea trece pe
+           randul ei, ca la Stocuri — un export nu e o actiune. -->
       <div class="toolbar">
-        <h2>Registrul mijloacelor fixe</h2>
+        <h2>🏢 Mijloace fixe (amortizare)</h2>
         <div class="spacer"></div>
         <select id="mfLuna" class="period luna-req" aria-label="Luna"></select>
         <select id="mfAn" class="period an" aria-label="Anul"></select>
-        <button id="mfDeprec" class="btn">Înregistrează amortizarea lunii</button>
-        <a id="mfRegPdf" class="btn" target="_blank">⬇ Registru PDF</a>
+        <button id="mfDeprec" class="btn primary">Înregistrează amortizarea lunii</button>
       </div>
+      <div class="descarcari">
+        <span class="muted">Descarcă:</span>
+        <a id="mfRegPdf" class="btn small" target="_blank">⬇ Registrul mijloacelor fixe PDF</a>
+      </div>
+      <div class="explain"><span class="ei">🏗️</span><p><b>Ce e asta:</b> aici ții evidența bunurilor de valoare ale firmei (echipamente, mașini, clădiri) și amortizarea lor lunară — adică pierderea treptată din valoare, trecută pe cheltuieli. Ratele de leasing au pagina lor, alături.</p></div>
       <div class="grid2">
         <div class="card">
           <h2>Adaugă mijloc fix</h2>
@@ -1144,22 +1154,18 @@
           <div id="assetsList" class="tablewrap"></div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-head">
-          <h2>Grafic de rate leasing</h2>
-          <a id="lsPdf" class="btn small" target="_blank">⬇ PDF</a>
-        </div>
-        <form id="lsForm" class="dyn">
-          <label>Valoare finanțată <input name="principal" type="number" step="0.01" value="50000" required /></label>
-          <label>Număr rate (luni) <input name="months" type="number" value="36" required /></label>
-          <label>Dobândă anuală (%) <input name="rate" type="number" step="0.01" value="9" /></label>
-          <label>Metodă
-            <select name="method"><option value="anuitati">Anuități constante</option><option value="rate_egale">Rate de capital egale</option></select>
-          </label>
-          <button class="btn primary">Generează graficul</button>
-        </form>
-        <div id="lsView" class="tablewrap" data-u="u8"></div>
+    </section>
+
+    <!-- ─────────────── LEASING ─────────────── -->
+    <!-- Plecat din „Mijloace fixe": e o alta activitate (o finantare, cu contract si scadentar),
+         pe care multe firme n-o au deloc. Contractele stau primele — ele alimenteaza facturile de
+         rata; simulatorul e o unealta de calcul, care nu salveaza nimic. -->
+    <section id="tab-leasing" class="tab">
+      <div class="toolbar">
+        <h2>📄 Leasing (contracte și rate)</h2>
+        <div class="spacer"></div>
       </div>
+      <div class="explain"><span class="ei">📄</span><p><b>Ce e asta:</b> bunurile luate în leasing (mașini, utilaje) se plătesc în rate, fiecare cu principal, dobândă și TVA. Salvezi contractul o dată, iar aplicația știe apoi rata fiecărei luni. Dacă firma nu are contracte de leasing, această pagină nu te privește.</p></div>
       <div class="card">
         <div class="card-head">
           <h2>Contracte de leasing</h2>
@@ -1184,11 +1190,47 @@
         <div id="lcList" class="tablewrap"></div>
         <div id="lcSchedule" class="tablewrap"></div>
       </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Grafic de rate (simulator)</h2>
+          <a id="lsPdf" class="btn small" target="_blank">⬇ PDF</a>
+        </div>
+        <p class="muted">Calculează un scadențar fără să salveze nimic — util înainte de a semna, ca să vezi rata și dobânda totală. Pentru un leasing pe care îl ai deja, salvează-l ca <b>contract</b> mai sus.</p>
+        <form id="lsForm" class="dyn">
+          <label>Valoare finanțată <input name="principal" type="number" step="0.01" value="50000" required /></label>
+          <label>Număr rate (luni) <input name="months" type="number" value="36" required /></label>
+          <label>Dobândă anuală (%) <input name="rate" type="number" step="0.01" value="9" /></label>
+          <label>Metodă
+            <select name="method"><option value="anuitati">Anuități constante</option><option value="rate_egale">Rate de capital egale</option></select>
+          </label>
+          <button class="btn primary">Generează graficul</button>
+        </form>
+        <div id="lsView" class="tablewrap" data-u="u8"></div>
+      </div>
     </section>
 
-    <!-- ─────────────── SALARIZARE ─────────────── -->
+    <!-- ─────────────── SALARII: STATUL DE PLATA ─────────────── -->
+    <!-- Pagina lunii: ce iese la plata si ce se vireaza la buget. Datele angajatilor (un formular
+         de 20 de campuri) si registrul anual au pagini proprii — stateau toate trei una peste alta. -->
     <section id="tab-salarizare" class="tab">
-      <div class="explain"><span class="ei">👥</span><p><b>Ce e asta:</b> aici calculezi salariile angajaților — salariul brut, taxele (CAS, CASS, impozit) și suma netă de plată. Generează statul de plată și datele pentru declarația D112.</p></div>
+      <!-- Bara avea NOUA controale pe un rand (perioada, trei descarcari, doua actiuni si contul de
+           plata). Ramane ce COMANDA pagina; descarcarile trec pe randul lor, ca la Stocuri. -->
+      <div class="toolbar">
+        <h2>👥 Statul de plată</h2>
+        <div class="spacer"></div>
+        <select id="spLuna" class="period luna-req" aria-label="Luna"></select>
+        <select id="spAn" class="period an" aria-label="Anul"></select>
+        <button id="spPost" class="btn primary">Înregistrează salariile lunii</button>
+        <select id="spCont" class="period" title="Cont de plată"><option value="5121">Bancă (5121)</option><option value="5311">Casă (5311)</option></select>
+        <button id="spPay" class="btn">Plătește salariile</button>
+      </div>
+      <div class="descarcari">
+        <span class="muted">Descarcă:</span>
+        <a id="spPdf" class="btn small" target="_blank">⬇ Stat de plată PDF</a>
+        <a id="spD112" class="btn small" target="_blank">⬇ D112 XML</a>
+        <a id="spDosarCm" class="btn small" target="_blank" title="Dosar de recuperare a indemnizațiilor de concediu medical de la FNUASS">🏥 Dosar recuperare CM</a>
+      </div>
+      <div class="explain"><span class="ei">👥</span><p><b>Ce e asta:</b> salariile lunii alese — brutul, taxele (CAS, CASS, impozit) și suma netă de plată, pentru fiecare angajat. De aici înregistrezi statul în contabilitate, plătești salariile și scoți D112. Datele angajaților se completează în pagina <b>„Angajați"</b>.</p></div>
       <div class="warnbox"><span class="wi">⚠️</span><div>
         <b>D112 — ciornă, de validat înainte de depunere.</b> Aplicația completează creanțele fiscale
         (CAS 25% / CASS 10% / impozit 10% / CAM 2,25%) și <b>evidența nominală per angajat</b> din statul
@@ -1196,75 +1238,101 @@
         avantaje în natură) se verifică separat. Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b>
         și confirmă sumele cu un contabil înainte de depunere.
       </div></div>
-      <div class="toolbar">
-        <h2>Salarii — stat de plată</h2>
-        <div class="spacer"></div>
-        <select id="spLuna" class="period luna-req" aria-label="Luna"></select>
-        <select id="spAn" class="period an" aria-label="Anul"></select>
-        <a id="spPdf" class="btn" target="_blank">⬇ Stat plată PDF</a>
-        <a id="spD112" class="btn" target="_blank">⬇ D112 XML</a>
-        <a id="spDosarCm" class="btn" target="_blank" title="Dosar de recuperare a indemnizațiilor de concediu medical de la FNUASS">🏥 Dosar recuperare CM</a>
-        <button id="spPost" class="btn primary">Înregistrează salariile lunii</button>
-        <select id="spCont" class="period" title="Cont de plată"><option value="5121">Bancă (5121)</option><option value="5311">Casă (5311)</option></select>
-        <button id="spPay" class="btn">Plătește salariile</button>
-      </div>
-      <div class="grid2">
-        <div class="card">
-          <h2>Adaugă / modifică angajat</h2>
-          <p class="muted">Salariu brut lunar. Deducerea personală se calculează automat din nr. de persoane în întreținere + vârstă + copii (art. 77 Cod fiscal). Contribuții 2026: CAS 25%, CASS 10%, impozit 10%, CAM 2,25%.</p>
-          <form id="angajatForm" class="dyn">
-            <input type="hidden" name="id" />
-            <label class="full">Nume <input name="nume" required /></label>
-            <label>CNP <input name="cnp" /></label>
-            <label>Funcție <input name="functie" /></label>
-            <label>Salariu brut <input name="salariuBrut" type="number" step="0.01" required /></label>
-            <label>Spor (impozabil) <input name="spor" type="number" step="0.01" value="0" /></label>
-            <label>Persoane în întreținere <input name="persoane" type="number" min="0" step="1" placeholder="0" /></label>
-            <label>Copii în învățământ (100 lei/copil) <input name="copii" type="number" min="0" step="1" value="0" /></label>
-            <label class="check"><input name="sub26" type="checkbox" /> Tânăr ≤ 26 ani (deducere +15% la salariul minim)</label>
-            <label>Venit neimpozabil suplimentar <input name="neimpozabil" type="number" step="0.01" value="0" /></label>
-            <label>Tichete de masă (valoare/lună) <input name="tichete" type="number" step="0.01" value="0" /></label>
-            <label>Avantaje în natură impozabile (auto, chirie… — intră în CAS/CASS/impozit, nu se plătesc în bani) <input name="avantaje" type="number" step="0.01" value="0" /></label>
-            <label>Zile concediu de odihnă în luna curentă (indemnizație pe media ultimelor 3 luni) <input name="zileCO" type="number" min="0" step="1" value="0" /></label>
-            <label class="check"><input name="normaPartiala" type="checkbox" /> Normă parțială sub salariul minim (OUG 16/2022 — CAS/CASS la nivelul salariului minim, diferența o suportă firma)</label>
-            <label class="check"><input name="scutitNormaPartiala" type="checkbox" /> Excepție de la suprataxare (elev/student, pensionar, ucenic, dizabilitate, normă întreagă la alt angajator)</label>
-            <label>Zile concediu medical în luna curentă <input name="zileCM" type="number" min="0" step="1" value="0" /></label>
-            <label>Procent indemnizație CM
-              <select name="procentCM">
-                <option value="75">75% — boală obișnuită</option>
-                <option value="85">85% — sarcină/lăuzie, urgențe</option>
-                <option value="100">100% — accident de muncă, boli speciale</option>
-              </select>
-            </label>
-            <label>Zile lucrătoare în lună <input name="zileLucratoare" type="number" min="1" max="23" step="1" value="21" /></label>
-            <label>Sector (informativ — facilitățile fiscale au fost eliminate din ian. 2025, OUG 156/2024)
-              <select name="sector">
-                <option value="normal">Normal</option>
-                <option value="it">IT</option>
-                <option value="constructii">Construcții</option>
-                <option value="agro">Agroalimentar</option>
-              </select>
-            </label>
-            <label>Avans acordat (425) <input name="avans" type="number" step="0.01" value="0" /></label>
-            <label>Rețineri din net (popriri/terți) <input name="retineri" type="number" step="0.01" value="0" /></label>
-            <button class="btn primary">Salvează angajat</button>
-          </form>
-        </div>
-        <div class="card">
-          <h2>Sumar stat de plată</h2>
-          <div id="spSummary"></div>
-        </div>
-      </div>
       <div class="card">
-        <h2>Angajați și calcul</h2>
+        <div class="card-head">
+          <h2>Angajați și calcul</h2>
+          <button id="spAddAngajat" class="btn small" type="button">➕ Adaugă / modifică angajat</button>
+        </div>
         <div id="angajatiList" class="tablewrap"></div>
       </div>
       <div class="card">
-        <div class="card-head">
-          <h2>Registru anual de salarii</h2>
-          <span class="row" data-u="u95"><input type="number" id="rsYear" class="period" data-u="u90" /><a id="rsPdf" class="btn small" target="_blank">⬇ PDF</a></span>
-        </div>
-        <p class="muted">Cumulul lunar per angajat (din statele de plată înregistrate) — bază pentru adeverințe de venit.</p>
+        <h2>Sumar stat de plată</h2>
+        <div id="spSummary"></div>
+      </div>
+    </section>
+
+    <!-- ─────────────── SALARII: ANGAJATI ─────────────── -->
+    <section id="tab-angajati" class="tab">
+      <div class="toolbar">
+        <h2>👤 Angajați</h2>
+        <div class="spacer"></div>
+        <button id="angajatNou" class="btn" type="button">➕ Angajat nou</button>
+        <button id="angajatStat" class="btn ghost" type="button">→ Vezi statul de plată</button>
+      </div>
+      <div class="explain"><span class="ei">👤</span><p><b>Ce e asta:</b> datele fiecărui angajat, din care se calculează statul de plată. Cele mai multe se completează <b>o dată</b> (salariu, funcție, persoane în întreținere); doar blocul <b>„Luna curentă"</b> se atinge în fiecare lună — zile de concediu, avans, rețineri.</p></div>
+      <div class="card">
+        <h2>Adaugă / modifică angajat</h2>
+        <p class="muted">Salariu brut lunar. Deducerea personală se calculează automat din nr. de persoane în întreținere + vârstă + copii (art. 77 Cod fiscal). Contribuții 2026: CAS 25%, CASS 10%, impozit 10%, CAM 2,25%.</p>
+        <!-- Formularul avea 20 de campuri intr-un teanc, in care nimic nu spunea ce se completeaza o
+             data si ce in fiecare luna. Sectiunile sunt marcatori in grid (`.sect-form`), nu
+             containere: campurile isi pastreaza asezarea, dar teancul se citeste pe blocuri. -->
+        <form id="angajatForm" class="dyn">
+          <input type="hidden" name="id" />
+          <label class="full">Nume <input name="nume" required /></label>
+          <label>CNP <input name="cnp" /></label>
+          <label>Funcție <input name="functie" /></label>
+          <label>Salariu brut <input name="salariuBrut" type="number" step="0.01" required /></label>
+          <label>Spor (impozabil) <input name="spor" type="number" step="0.01" value="0" /></label>
+          <label>Sector (informativ — facilitățile fiscale au fost eliminate din ian. 2025, OUG 156/2024)
+            <select name="sector">
+              <option value="normal">Normal</option>
+              <option value="it">IT</option>
+              <option value="constructii">Construcții</option>
+              <option value="agro">Agroalimentar</option>
+            </select>
+          </label>
+
+          <div class="full sect-form"><h3 class="card-titlu-mare">Luna curentă</h3>
+            <p class="muted">Singurele câmpuri care se schimbă de la o lună la alta.</p></div>
+          <label>Zile lucrătoare în lună <input name="zileLucratoare" type="number" min="1" max="23" step="1" value="21" /></label>
+          <label>Zile concediu de odihnă în luna curentă (indemnizație pe media ultimelor 3 luni) <input name="zileCO" type="number" min="0" step="1" value="0" /></label>
+          <label>Zile concediu medical în luna curentă <input name="zileCM" type="number" min="0" step="1" value="0" /></label>
+          <label>Procent indemnizație CM
+            <select name="procentCM">
+              <option value="75">75% — boală obișnuită</option>
+              <option value="85">85% — sarcină/lăuzie, urgențe</option>
+              <option value="100">100% — accident de muncă, boli speciale</option>
+            </select>
+          </label>
+          <label>Avans acordat (425) <input name="avans" type="number" step="0.01" value="0" /></label>
+          <label>Rețineri din net (popriri/terți) <input name="retineri" type="number" step="0.01" value="0" /></label>
+
+          <div class="full sect-form"><h3 class="card-titlu-mare">Deduceri și beneficii</h3>
+            <p class="muted">Reduc impozitul sau se adaugă la venit — se completează o dată și rămân.</p></div>
+          <label>Persoane în întreținere <input name="persoane" type="number" min="0" step="1" placeholder="0" /></label>
+          <label>Copii în învățământ (100 lei/copil) <input name="copii" type="number" min="0" step="1" value="0" /></label>
+          <label class="check"><input name="sub26" type="checkbox" /> Tânăr ≤ 26 ani (deducere +15% la salariul minim)</label>
+          <label>Venit neimpozabil suplimentar <input name="neimpozabil" type="number" step="0.01" value="0" /></label>
+          <label>Tichete de masă (valoare/lună) <input name="tichete" type="number" step="0.01" value="0" /></label>
+          <label>Avantaje în natură impozabile (auto, chirie… — intră în CAS/CASS/impozit, nu se plătesc în bani) <input name="avantaje" type="number" step="0.01" value="0" /></label>
+
+          <div class="full sect-form"><h3 class="card-titlu-mare">Normă parțială</h3>
+            <p class="muted">Lasă-le nebifate dacă angajatul lucrează cu normă întreagă.</p></div>
+          <label class="check"><input name="normaPartiala" type="checkbox" /> Normă parțială sub salariul minim (OUG 16/2022 — CAS/CASS la nivelul salariului minim, diferența o suportă firma)</label>
+          <label class="check"><input name="scutitNormaPartiala" type="checkbox" /> Excepție de la suprataxare (elev/student, pensionar, ucenic, dizabilitate, normă întreagă la alt angajator)</label>
+          <!-- butonul salveaza TOT formularul, nu ultimul bloc: linia de deasupra il desparte de el -->
+          <div class="full sect-form"><button class="btn primary">Salvează angajat</button></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ─────────────── SALARII: REGISTRUL ANUAL ─────────────── -->
+    <!-- Pagina proprie fiindca lucreaza pe ALT interval decat restul grupului: un AN intreg, ales
+         separat de luna de lucru. Doi selectori de perioada in aceeasi pagina se incurca intre ei. -->
+    <section id="tab-regsalarii" class="tab">
+      <div class="toolbar">
+        <h2>📒 Registru anual de salarii</h2>
+        <div class="spacer"></div>
+        <input type="number" id="rsYear" class="period" data-u="u90" aria-label="Anul" />
+      </div>
+      <div class="descarcari">
+        <span class="muted">Descarcă:</span>
+        <a id="rsPdf" class="btn small" target="_blank">⬇ Registru anual PDF</a>
+      </div>
+      <div class="explain"><span class="ei">📒</span><p><b>Ce e asta:</b> cumulul pe tot anul, per angajat, din statele de plată înregistrate — brut, contribuții, impozit, net. E baza adeverințelor de venit și registrul pe care îl ceri când verifici anul.</p></div>
+      <div class="card">
+        <h2>Cumul anual per angajat</h2>
+        <p class="muted">Se completează pe măsură ce înregistrezi statele lunare; o lună neînregistrată lipsește și de aici.</p>
         <div id="rsList" class="tablewrap"></div>
       </div>
     </section>
@@ -1622,8 +1690,8 @@ Cu stimă,
         <h3>⑦ Module dedicate (după caz)</h3>
         <ul>
           <li><kbd>Stocuri</kbd> — intrări/ieșiri de marfă pe gestiuni, cu cost mediu ponderat.</li>
-          <li><kbd>Salarizare</kbd> — angajați, state de plată, contribuții, D112.</li>
-          <li><kbd>Mijloace fixe</kbd> — registrul de imobilizări și amortizarea.</li>
+          <li><kbd>Salarii</kbd> — statul de plată al lunii, datele angajaților, contribuțiile, D112 și registrul anual.</li>
+          <li><kbd>Mijloace fixe</kbd> — registrul de imobilizări și amortizarea; alături, contractele de leasing.</li>
         </ul>
 
         <p class="muted" data-u="u78">💡 Regula de aur: <b>nu trebuie să știi formula contabilă</b> — alegi tipul documentului, aplicația pune conturile corecte. Dacă greșești ceva, poți șterge înregistrarea din „Înregistrări recente” și o refaci.</p>
@@ -2477,7 +2545,7 @@ Cu stimă,
         <button data-go="carte">📗 Cartea mare</button>
         <button data-go="situatii">📊 Situații</button>
         <button data-go="stocuri">📦 Stocuri</button>
-        <button data-go="salarii">👥 Salarii</button>
+        <button data-go="salarizare">👥 Salarii</button>
         <button data-go="parteneri">🤝 Parteneri</button>
         <button data-go="livrabile">📁 Livrabile</button>
         <button data-go="mesaje">💬 Mesaje</button>

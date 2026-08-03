@@ -1095,6 +1095,23 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
     + (orfane.length ? ' — ORFANE: ' + orfane.join(', ') : ''), orfane.length === 0);
   ok('poarta chiar vede navigarile programatice', navigate.size > 3);
 
+  // Al doilea capat: butoanele care navigheaza din HTML (`data-go`) — bara de jos si panoul „Mai
+  // mult" de pe MOBIL, plus scurtaturile de pe Acasa. Ancora de mai sus se uita doar la `data-tab`
+  // si la `goTab(...)` din JS, deci era oarba exact aici — iar defectul e tacut: `goTab` pe un nume
+  // inexistent deselecteaza tot si nu activeaza nimic, adica ecran GOL. Gasit asa, real:
+  // `data-go="salarii"` in panoul mobil, cand sectiunea se numeste `tab-salarizare`.
+  const destinatiiHtml = [...new Set([...html.matchAll(/data-go="([a-z-]+)"/g)].map((m) => m[1]))];
+  ok('poarta vede butoanele care navigheaza din HTML', destinatiiHtml.length > 5);
+  const dusNicaieri = destinatiiHtml.filter((t) => !sectiuni.includes(t));
+  ok('niciun buton `data-go` nu duce intr-un ecran gol'
+    + (dusNicaieri.length ? ' — FARA SECTIUNE: ' + dusNicaieri.join(', ') : ''), dusNicaieri.length === 0);
+  // ...si `data-tabs` (ce tab-uri tin butonul din bara mobila aprins) trebuie sa numeasca tot sectiuni.
+  const evidentiate = [...new Set([...html.matchAll(/data-tabs="([^"]+)"/g)]
+    .flatMap((m) => m[1].split(',').map((s) => s.trim())).filter(Boolean))];
+  const evidNecunoscute = evidentiate.filter((t) => !sectiuni.includes(t));
+  ok('bara mobila nu se aprinde dupa sectiuni inexistente'
+    + (evidNecunoscute.length ? ' — ' + evidNecunoscute.join(', ') : ''), evidNecunoscute.length === 0);
+
   // Meniul nu are voie sa promita ce pagina nu contine. Cazul real: intrarea „Declaratii ANAF
   // (D112, SAF-T)" numea SAF-T de luni de zile, in timp ce panoul lui statea in „Situatii
   // financiare", sub Rapoarte. Nimic nu semnala — eticheta si continutul nu se intalneau nicaieri.

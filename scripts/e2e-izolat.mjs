@@ -308,13 +308,35 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
     // ...si cele trei panouri care nu erau situatii financiare: bugetul (control intern),
     // registrul fiscal (impozit pe profit) si SAF-T — o DECLARATIE, mutata acolo unde meniul
     // o promitea deja („Declaratii ANAF (D112, SAF-T)"), dar unde nu era.
-    ['buget', '#budgetForm'], ['regfiscal', '#fiscalView'], ['livrabile', '#saftView']]) {
+    ['buget', '#budgetForm'], ['regfiscal', '#fiscalView'], ['livrabile', '#saftView'],
+    // ...si salariile, sparte in trei (statul lunii / datele angajatilor / registrul anual) plus
+    // leasingul, plecat din „Mijloace fixe": e alta activitate, cu contract si scadentar.
+    ['salarizare', '#spSummary'], ['angajati', '#angajatForm'], ['regsalarii', '#rsList'],
+    ['mijloace', '#assetForm'], ['leasing', '#lcForm']]) {
     await adm.evaluate((x) => window.goTab(x), tab);
     await adm.waitForTimeout(500);
     ok('pagina „' + tab + '" se deschide', (await adm.locator('#tab-' + tab + '.active').count()) === 1);
     ok('...si contine panoul mutat acolo (' + ancora + ')',
       (await adm.locator('#tab-' + tab + ' ' + ancora).count()) === 1);
   }
+
+  // Formularul de angajat a plecat in pagina lui, deci „editează" din statul de plata trebuie sa
+  // SARA acolo si sa completeze formularul. Fara salt ar completa un formular pe care omul nu-l
+  // vede — adica butonul ar parea ca nu face nimic, fara nicio eroare care sa spuna de ce.
+  const angNou = await apiIn(adm, '/api/angajati', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nume: 'Salt Formular E2E', salariuBrut: 5000 }) });
+  ok('angajat de proba creat pentru saltul „editează"', angNou.status === 200 && angNou.body && angNou.body.ok);
+  await adm.evaluate(() => window.goTab('salarizare'));
+  await adm.waitForTimeout(900);
+  // Randul angajatului CREAT AICI, nu primul din lista: baza de seed are deja angajati, iar un
+  // `.first()` ar fi verificat completarea cu altcineva (si ar fi picat exact asa).
+  const btnEdit = adm.locator('#angajatiList tr', { hasText: 'Salt Formular E2E' }).locator('.aedit');
+  ok('statul de plata listeaza angajatul, cu butonul „editează"', (await btnEdit.count()) === 1);
+  await btnEdit.click();
+  await adm.waitForTimeout(600);
+  ok('...iar „editează" duce in pagina „Angajați"', (await adm.locator('#tab-angajati.active').count()) === 1);
+  ok('...cu formularul completat cu angajatul ales',
+    (await adm.locator('#angajatForm input[name="nume"]').inputValue()) === 'Salt Formular E2E');
 
   // Paginarea listelor lungi. Se verifica pe JURNALUL DE AUDIT, singurul care cere de la server
   // doar pagina afisata (`?limit&offset` -> plicul din src/paginate.js): daca ar cere tot si ar
