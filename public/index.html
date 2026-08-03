@@ -339,6 +339,7 @@
           <button data-tab="date">💾 Date &amp; copii de siguranță</button>
           <button data-tab="conexiuni">🔌 Conexiuni &amp; unelte</button>
           <button data-tab="pachetwin">💻 Contabo pe calculatorul tău</button>
+          <button data-tab="video">🎬 Video de prezentare</button>
           <button data-tab="audit" class="adv">Jurnal de audit</button>
           <!-- Doar admin (comutat din app.js dupa rol). NU e marcat `.adv`, spre deosebire de
                jurnalul de audit: acela se vede de toata lumea si e ascuns in modul simplu ca
@@ -2442,6 +2443,41 @@ Cu stimă,
       </div>
       <p class="muted hidden" id="pachetWinLipsa">Pachetul pentru Windows nu e disponibil pe această
         instalare. Dacă administrezi serverul, îl construiești cu <code>npm run pachet-windows</code>.</p>
+    </section>
+
+    <!-- ─────────────── VIDEO DE PREZENTARE ─────────────── -->
+    <!-- Videoul e un fisier STATIC (public/descarcari/), la fel ca pachetul Windows, iar manifestul
+         `video.json` e semnalul de existenta: fara el pagina NU arata un player mort, ci spune de ce
+         lipseste. Linkul e PUBLIC prin constructie — tot ce sta in public/ e servit oricui, fara
+         autentificare — si pagina o spune, ca sa nu fie o surpriza. -->
+    <section id="tab-video" class="tab">
+      <div class="toolbar">
+        <h2>🎬 Video de prezentare</h2>
+        <div class="spacer"></div>
+      </div>
+      <div class="explain"><span class="ei">🎬</span><p><b>Ce e asta:</b> filmul de prezentare al aplicației — drumul complet, de la documentul primit până la declarații, pe date reale. Îl poți viziona aici, îl poți descărca sau îi poți trimite cuiva linkul.</p></div>
+      <div class="card hidden" id="videoCard">
+        <div class="card-head">
+          <h2>Contabo — de la poză la declarație</h2>
+          <a id="videoDownload" class="btn" download>⬇ Descarcă filmul</a>
+        </div>
+        <video id="videoPlayer" controls preload="none" playsinline>
+          Browserul tău nu poate reda videoclipuri MP4. Descarcă filmul cu butonul de mai sus.
+        </video>
+        <div id="videoInfo" class="muted"></div>
+        <p class="muted"><b>Link public</b> — oricine îl are îl poate deschide, fără cont și fără parolă:</p>
+        <div class="row" data-u="u93">
+          <input id="videoLink" readonly aria-label="Linkul public al filmului" />
+          <button id="videoCopy" class="btn" type="button">📋 Copiază linkul</button>
+        </div>
+        <p class="muted">Scenariul după care e filmat, cu textele de citit și variantele scurte, e în
+          <code>docs/scenariu-video-prezentare.md</code>. Filmul se reface cu
+          <code>scripts/video-prezentare.mjs</code> și se publică din nou cu
+          <code>npm run publica-video</code>.</p>
+      </div>
+      <p class="muted hidden" id="videoLipsa">Filmul nu e publicat pe această instalare. Dacă
+        administrezi serverul, îl înregistrezi cu <code>scripts/video-prezentare.mjs</code> și îl
+        publici cu <code>npm run publica-video</code>.</p>
     </section>
 
     <!-- ─────────────── ARHIVĂ DOCUMENTE ─────────────── -->

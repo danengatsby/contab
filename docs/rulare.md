@@ -425,6 +425,7 @@ Setări → Conexiuni & unelte → „Contabo pe calculatorul tău (Windows)" �
 
 ```bash
 npm run pachet-windows     # 0 = construit | 1 = eroare | 2 = NEVERIFICAT (unelte lipsă)
+npm run publica-video      # mută filmul de prezentare în public/descarcari/ + scrie manifestul
 ```
 
 Produce `public/descarcari/Contabo-Windows.zip` (~57 MB) plus manifestul `pachet.json` pe care

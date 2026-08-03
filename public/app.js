@@ -2,7 +2,7 @@
 import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
-import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, renderPachetWin, setSettingsDeps } from './settings.js';
+import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, renderPachetWin, renderVideo, setSettingsDeps } from './settings.js';
 import { renderFirme, renderUsers, renderColaboratori, renderAudit, renderAccess, renderCereriAcces, setAdminDeps } from './admin.js';
 import { loadDashboard, setDashboardDeps } from './dashboard.js';
 import { initUiMode } from './simplemode.js';
@@ -178,6 +178,8 @@ function onTab(t) {
   if (t === 'conexiuni') { renderAnaf(); renderSmtp(); renderFiscal(); }
   // Pagina pachetului Windows e pentru TOTI utilizatorii — nicio garda pe rol aici.
   if (t === 'pachetwin') renderPachetWin();
+  // Videoul de prezentare: fisier static + manifest, ca pachetul Windows (vezi settings.js).
+  if (t === 'video') renderVideo();
   if (t === 'audit') renderAudit();
   if (t === 'accesari') renderAccess();
   if (t === 'arhiva') loadArhiva();

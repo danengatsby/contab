@@ -417,6 +417,15 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   const areCard = (await pgLim2.locator('#pachetWinCard:not(.hidden)').count()) === 1;
   const areExplicatie = (await pgLim2.locator('#pachetWinLipsa:not(.hidden)').count()) === 1;
   ok('...si arata ori pachetul, ori de ce lipseste (niciodata gol)', areCard || areExplicatie);
+  // Videoul de prezentare: acelasi tipar (fisier static + manifest), deci aceeasi cerinta — pagina
+  // arata ori playerul, ori motivul. Pe instanta de test filmul nu e publicat, deci se asteapta
+  // explicatia; testul nu fixeaza care din cele doua, ca sa treaca si pe o instalare cu film.
+  await pgLim2.evaluate(() => window.goTab('video'));
+  await pgLim2.waitForTimeout(900);
+  ok('pagina „Video de prezentare" se deschide', (await pgLim2.locator('#tab-video.active').count()) === 1);
+  const areFilm = (await pgLim2.locator('#videoCard:not(.hidden)').count()) === 1;
+  const areMotiv = (await pgLim2.locator('#videoLipsa:not(.hidden)').count()) === 1;
+  ok('...si arata ori filmul, ori de ce lipseste (niciodata gol)', areFilm || areMotiv);
   const refuz = await apiIn(pgLim2, '/api/access-log');
   ok('...iar serverul ii refuza si datele (403), nu doar UI-ul ascunde', refuz.status === 403);
   await pgLim2.close();
