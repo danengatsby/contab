@@ -88,8 +88,8 @@ function revalue(account, isAsset, bookLei, foreignBal, closingRate) {
   if (Math.abs(diff) >= 0.005) {
     const favorabil = isAsset ? diff > 0 : diff < 0; // activ care creste / datorie care scade = castig
     const amt = round2(Math.abs(diff));
-    if (favorabil) { lines = [{ debit: account, credit: '765', suma: amt, explicatie: 'Diferenta favorabila de curs (reevaluare ' + account + ')' }]; sens = 'favorabila'; }
-    else { lines = [{ debit: '665', credit: account, suma: amt, explicatie: 'Diferenta nefavorabila de curs (reevaluare ' + account + ')' }]; sens = 'nefavorabila'; }
+    if (favorabil) { lines = [{ debit: account, credit: '765', suma: amt, explicatie: 'Diferență favorabilă de curs (reevaluare ' + account + ')' }]; sens = 'favorabila'; }
+    else { lines = [{ debit: '665', credit: account, suma: amt, explicatie: 'Diferență nefavorabilă de curs (reevaluare ' + account + ')' }]; sens = 'nefavorabila'; }
   }
   return { account, revaluedLei, book, diff, sens, lines };
 }

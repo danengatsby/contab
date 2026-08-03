@@ -16,8 +16,8 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'baza', label: 'Avans facturat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
     build: (d) => {
-      const lines = [L('4111', '419', d.baza, 'Factura de avans - avans facturat (fara TVA)')];
-      if (d.tva > 0) lines.push(L('4111', '4427', d.tva, 'TVA colectata aferenta avansului'));
+      const lines = [L('4111', '419', d.baza, 'Factura de avans - avans facturat (fără TVA)')];
+      if (d.tva > 0) lines.push(L('4111', '4427', d.tva, 'TVA colectată aferentă avansului'));
       return lines;
     },
   },
@@ -30,8 +30,8 @@ module.exports = [
       { name: 'baza', label: 'Avans stornat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
     build: (d) => {
       // se inregistreaza IMPREUNA cu factura finala de livrare (introdusa separat, ca vanzare normala)
-      const lines = [L('4111', '419', -d.baza, 'Storno avans facturat (in rosu)')];
-      if (d.tva > 0) lines.push(L('4111', '4427', -d.tva, 'Storno TVA aferenta avansului (in rosu)'));
+      const lines = [L('4111', '419', -d.baza, 'Storno avans facturat (în roșu)')];
+      if (d.tva > 0) lines.push(L('4111', '4427', -d.tva, 'Storno TVA aferentă avansului (în roșu)'));
       return lines;
     },
   },
@@ -42,8 +42,8 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiFurnizor, F.document,
       { name: 'baza', label: 'Avans facturat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
     build: (d) => {
-      const lines = [L('409', '401', d.baza, 'Factura de avans primita - avans (fara TVA)')];
-      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibila aferenta avansului'));
+      const lines = [L('409', '401', d.baza, 'Factura de avans primită - avans (fără TVA)')];
+      if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibilă aferentă avansului'));
       return lines;
     },
   },
@@ -55,8 +55,8 @@ module.exports = [
       { name: 'refFactura', label: 'Factura de avans stornata (referinta)', type: 'text' },
       { name: 'baza', label: 'Avans stornat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
     build: (d) => {
-      const lines = [L('409', '401', -d.baza, 'Storno avans facturat furnizor (in rosu)')];
-      if (d.tva > 0) lines.push(L('4426', '401', -d.tva, 'Storno TVA aferenta avansului (in rosu)'));
+      const lines = [L('409', '401', -d.baza, 'Storno avans facturat furnizor (în roșu)')];
+      if (d.tva > 0) lines.push(L('4426', '401', -d.tva, 'Storno TVA aferentă avansului (în roșu)'));
       return lines;
     },
   },

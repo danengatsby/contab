@@ -307,9 +307,9 @@ function vatClosing(db, period) {
   const deductibila = round2(c4426.d - c4426.c);
   const lines = [];
   const comp = Math.min(colectata, deductibila);
-  if (comp > 0) lines.push({ debit: '4427', credit: '4426', suma: round2(comp), explicatie: 'Compensare TVA colectata cu TVA deductibila' });
+  if (comp > 0) lines.push({ debit: '4427', credit: '4426', suma: round2(comp), explicatie: 'Compensare TVA colectată cu TVA deductibilă' });
   const diff = round2(colectata - deductibila);
-  if (diff > 0) lines.push({ debit: '4427', credit: '4423', suma: diff, explicatie: 'TVA de plata' });
+  if (diff > 0) lines.push({ debit: '4427', credit: '4423', suma: diff, explicatie: 'TVA de plată' });
   else if (diff < 0) lines.push({ debit: '4424', credit: '4426', suma: round2(-diff), explicatie: 'TVA de recuperat' });
   return { colectata, deductibila, diff, lines };
 }
@@ -485,7 +485,7 @@ function resultDistribution(db, year) {
   const lines = [];
   if (rezerva > 0) {
     lines.push({ debit: '129', credit: '1061', suma: rezerva, explicatie: 'Constituirea rezervei legale (5% din profitul brut, plafon 20% din capitalul social)' });
-    lines.push({ debit: '121', credit: '129', suma: rezerva, explicatie: 'Inchiderea contului de repartizare a profitului' });
+    lines.push({ debit: '121', credit: '129', suma: rezerva, explicatie: 'Închiderea contului de repartizare a profitului' });
   }
   if (reportat > 0) lines.push({ debit: '121', credit: '117', suma: reportat, explicatie: 'Repartizarea profitului la rezultat reportat' });
   else if (net < 0) lines.push({ debit: '117', credit: '121', suma: round2(-net), explicatie: 'Reportarea pierderii contabile' });

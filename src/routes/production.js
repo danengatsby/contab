@@ -25,7 +25,7 @@ module.exports = function register(app, ctx) {
     for (const ln of r.lines) if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) return res.status(400).json({ error: 'Cont inexistent in plan: ' + ln.debit + '/' + ln.credit });
     const entry = {
       id: db.nextId('e'), firmaId: fid, data, period: periodOf(data), tip: 'productie', tipNume: 'Productie (obtinere produse finite)',
-      partener: '', document: document || 'Bon productie', explicatie: 'Consum materiale + obtinere produse finite', fileId: null, system: false, lines: r.lines,
+      partener: '', document: document || 'Bon productie', explicatie: 'Consum materiale + obținere produse finite', fileId: null, system: false, lines: r.lines,
     };
     r.newMovements.forEach((m) => { m.entryId = entry.id; d.stockMovements.push(m); });
     entry.stocMovementIds = r.newMovements.map((m) => m.id);

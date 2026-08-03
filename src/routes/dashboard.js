@@ -58,7 +58,7 @@ module.exports = function register(app, ctx) {
       id: db.nextId('e'), firmaId: fid, data, period: periodOf(data),
       tip: 'compensare', tipNume: 'Compensare creanta/datorie (401 = 4111)',
       partener: cand.den, partenerCui: cand.cui, document: b.document || 'Compensare ' + (cand.den || cand.cui),
-      explicatie: 'Compensare creanta clienti cu datorie furnizori', fileId: null, system: false,
+      explicatie: 'Compensare creanță clienți cu datorie furnizori', fileId: null, system: false,
       lines: [{ debit: '401', credit: '4111', suma, explicatie: 'Compensare ' + (cand.den || cand.cui) }],
     };
     d.entries.push(entry);

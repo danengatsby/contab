@@ -16,7 +16,7 @@ module.exports = [
       { name: 'valuta', label: 'Suma in valuta', type: 'number', required: true },
       { name: 'curs', label: 'Curs valutar (lei/valuta)', type: 'number', required: true },
       { name: 'contVenit', label: 'Cont de venit', type: 'account', default: '707' }],
-    build: (d) => [L('4111', d.contVenit || '707', round2((Number(d.valuta) || 0) * (Number(d.curs) || 0)), 'Factura in valuta (scutita de TVA)')],
+    build: (d) => [L('4111', d.contVenit || '707', round2((Number(d.valuta) || 0) * (Number(d.curs) || 0)), 'Factura în valută (scutită de TVA)')],
   },
   {
     id: 'diferenta_curs_favorabila',
@@ -25,7 +25,7 @@ module.exports = [
     fields: [F.data, F.partener, F.document,
       { name: 'cont', label: 'Cont in valuta (4111/401/5124...)', type: 'select', options: TVAL, default: '4111' },
       { name: 'suma', label: 'Diferenta favorabila (lei)', type: 'number', required: true }],
-    build: (d) => [L(d.cont || '4111', '765', d.suma, 'Diferenta de curs valutar favorabila')],
+    build: (d) => [L(d.cont || '4111', '765', d.suma, 'Diferență de curs valutar favorabilă')],
   },
   {
     id: 'diferenta_curs_nefavorabila',
@@ -34,7 +34,7 @@ module.exports = [
     fields: [F.data, F.partener, F.document,
       { name: 'cont', label: 'Cont in valuta (4111/401/5124...)', type: 'select', options: TVAL, default: '401' },
       { name: 'suma', label: 'Diferenta nefavorabila (lei)', type: 'number', required: true }],
-    build: (d) => [L('665', d.cont || '401', d.suma, 'Diferenta de curs valutar nefavorabila')],
+    build: (d) => [L('665', d.cont || '401', d.suma, 'Diferență de curs valutar nefavorabilă')],
   },
 
   // ───────────────────── PROVIZIOANE (151) ─────────────────────
@@ -60,7 +60,7 @@ module.exports = [
     grup: 'Asociati / Grup',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Incasat in', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L(d.cont || '5121', '455', d.suma, 'Imprumut de la asociat (cont curent)')],
+    build: (d) => [L(d.cont || '5121', '455', d.suma, 'Împrumut de la asociat (cont curent)')],
   },
   {
     id: 'restituire_asociat',
@@ -68,14 +68,14 @@ module.exports = [
     grup: 'Asociati / Grup',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Platit din', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L('455', d.cont || '5121', d.suma, 'Restituire imprumut catre asociat')],
+    build: (d) => [L('455', d.cont || '5121', d.suma, 'Restituire împrumut către asociat')],
   },
   {
     id: 'dobanda_asociat',
     nume: 'Dobanda datorata asociatului (666 = 4558/455)',
     grup: 'Asociati / Grup',
     fields: [F.data, F.partener, F.document, { name: 'suma', label: 'Dobanda (lei)', type: 'number', required: true }],
-    build: (d) => [L('666', '455', d.suma, 'Dobanda aferenta imprumutului de la asociat')],
+    build: (d) => [L('666', '455', d.suma, 'Dobânda aferentă împrumutului de la asociat')],
   },
   {
     id: 'decontare_intragrup',
@@ -85,8 +85,8 @@ module.exports = [
       { name: 'sens', label: 'Sens', type: 'select', options: [{ value: 'creanta', label: 'Creanta (481 debitor)' }, { value: 'datorie', label: 'Datorie (481 creditor)' }], default: 'creanta' },
       { name: 'cont', label: 'Cont corespondent (5121/...)', type: 'account', default: '5121' }, F.suma],
     build: (d) => (d.sens === 'datorie'
-      ? [L(d.cont || '5121', '481', d.suma, 'Decontare intragrup - incasare')]
-      : [L('481', d.cont || '5121', d.suma, 'Decontare intragrup - plata')]),
+      ? [L(d.cont || '5121', '481', d.suma, 'Decontare intragrup - încasare')]
+      : [L('481', d.cont || '5121', d.suma, 'Decontare intragrup - plată')]),
   },
 
   // ───────────────────── DIVIDENDE ─────────────────────
@@ -102,7 +102,7 @@ module.exports = [
     build: (d) => {
       const impozit = round2((Number(d.brut) || 0) * (Number(d.cota) || 0) / 100);
       const lines = [L(d.contSursa || '117', '457', d.brut, 'Repartizare profit la dividende')];
-      if (impozit > 0) lines.push(L('457', '446', impozit, 'Impozit pe dividende retinut la sursa'));
+      if (impozit > 0) lines.push(L('457', '446', impozit, 'Impozit pe dividende reținut la sursă'));
       return lines;
     },
   },
@@ -121,14 +121,14 @@ module.exports = [
     nume: 'Subventie de exploatare - de incasat (445 = 741)',
     grup: 'Subventii',
     fields: [F.data, F.partener, F.document, { name: 'suma', label: 'Suma subventiei', type: 'number', required: true }],
-    build: (d) => [L('445', '741', d.suma, 'Subventie de exploatare cuvenita')],
+    build: (d) => [L('445', '741', d.suma, 'Subvenție de exploatare cuvenită')],
   },
   {
     id: 'subventie_investitii',
     nume: 'Subventie pentru investitii - de incasat (445 = 475)',
     grup: 'Subventii',
     fields: [F.data, F.partener, F.document, { name: 'suma', label: 'Suma subventiei', type: 'number', required: true }],
-    build: (d) => [L('445', '475', d.suma, 'Subventie pentru investitii (venit in avans)')],
+    build: (d) => [L('445', '475', d.suma, 'Subvenție pentru investiții (venit în avans)')],
   },
   {
     id: 'incasare_subventie',
@@ -136,14 +136,14 @@ module.exports = [
     grup: 'Subventii',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Incasat in', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L(d.cont || '5121', '445', d.suma, 'Incasare subventie')],
+    build: (d) => [L(d.cont || '5121', '445', d.suma, 'Încasare subvenție')],
   },
   {
     id: 'venit_subventie_investitii',
     nume: 'Recunoastere venit subventie investitii (475 = 7584)',
     grup: 'Subventii',
     fields: [F.data, F.document, { name: 'suma', label: 'Cota-parte (de obicei = amortizarea lunii)', type: 'number', required: true }],
-    build: (d) => [L('475', '7584', d.suma, 'Venit din subventie pentru investitii (esalonat)')],
+    build: (d) => [L('475', '7584', d.suma, 'Venit din subvenție pentru investiții (eșalonat)')],
   },
 
   // ───────────────────── CHELTUIELI / VENITURI IN AVANS (471/472) ─────────────────────
@@ -190,7 +190,7 @@ module.exports = [
     nume: 'Efect de primit de la client (bilet la ordin / cambie acceptata)',
     grup: 'Efecte de comert',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.suma],
-    build: (d) => [L('413', '4111', d.suma, 'Acceptare efect de comert de la client (413 = 4111)')],
+    build: (d) => [L('413', '4111', d.suma, 'Acceptare efect de comerț de la client (413 = 4111)')],
   },
   {
     id: 'incasare_efect_client',
@@ -198,7 +198,7 @@ module.exports = [
     grup: 'Efecte de comert',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Incasat in', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L(d.cont || '5121', '413', d.suma, 'Incasare efect de comert la scadenta')],
+    build: (d) => [L(d.cont || '5121', '413', d.suma, 'Încasare efect de comerț la scadență')],
   },
   {
     id: 'scontare_efect',
@@ -209,8 +209,8 @@ module.exports = [
     build: (d) => {
       const net = round2((d.suma || 0) - (d.scont || 0));
       const lines = [];
-      if (net > 0) lines.push(L('5121', '413', net, 'Suma neta incasata din scontarea efectului'));
-      if (d.scont > 0) lines.push(L('667', '413', d.scont, 'Taxa de scont (cheltuiala financiara)'));
+      if (net > 0) lines.push(L('5121', '413', net, 'Suma netă încasată din scontarea efectului'));
+      if (d.scont > 0) lines.push(L('667', '413', d.scont, 'Taxa de scont (cheltuială financiară)'));
       return lines;
     },
   },
@@ -219,7 +219,7 @@ module.exports = [
     nume: 'Efect de platit catre furnizor (bilet la ordin emis / cambie acceptata)',
     grup: 'Efecte de comert',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.suma],
-    build: (d) => [L('401', '403', d.suma, 'Acceptare efect de plata catre furnizor (401 = 403)')],
+    build: (d) => [L('401', '403', d.suma, 'Acceptare efect de plată către furnizor (401 = 403)')],
   },
   {
     id: 'plata_efect_furnizor',
@@ -227,7 +227,7 @@ module.exports = [
     grup: 'Efecte de comert',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Platit din', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L('403', d.cont || '5121', d.suma, 'Plata efect de comert la scadenta')],
+    build: (d) => [L('403', d.cont || '5121', d.suma, 'Plata efect de comerț la scadență')],
   },
   {
     id: 'deschidere_acreditiv',

@@ -66,7 +66,7 @@ module.exports = function register(app, ctx) {
     const entry = {
       id: db.nextId('e'), firmaId: fid, data, period: periodOf(data),
       tip: 'reevaluare_valutara', tipNume: 'Reevaluare valutara la sfarsit de perioada',
-      partener: '', document: 'Reevaluare ' + periodOf(data), explicatie: 'Diferente de curs din reevaluarea soldurilor in valuta',
+      partener: '', document: 'Reevaluare ' + periodOf(data), explicatie: 'Diferențe de curs din reevaluarea soldurilor în valută',
       fileId: null, system: false, lines: r.lines,
     };
     d.entries.push(entry);
@@ -98,7 +98,7 @@ module.exports = function register(app, ctx) {
     if (!b.partener || suma <= 0) return res.status(400).json({ error: 'Completeaza partenerul si suma.' });
     const data = b.data && String(b.data).length === 10 ? b.data : new Date().toISOString().slice(0, 10);
     const period = String(data).slice(0, 7);
-    const lines = [{ debit: '654', credit: '4111', suma, explicatie: 'Creanta neincasabila ' + b.partener }];
+    const lines = [{ debit: '654', credit: '4111', suma, explicatie: 'Creanță neîncasabilă ' + b.partener }];
     const m = acc.accumulate(acc.allLines(acc.postedEntries(v)));
     const c491 = m['491'] || { d: 0, c: 0 };
     const existing491 = round2(c491.c - c491.d);
@@ -106,7 +106,7 @@ module.exports = function register(app, ctx) {
     if (revers > 0) lines.push({ debit: '491', credit: '7814', suma: revers, explicatie: 'Reluare ajustare ' + b.partener });
     d.entries.push({
       id: db.nextId('e'), firmaId: activeId(req), data, period, tip: 'scoatere_creanta', tipNume: 'Scoatere din evidenta creanta neincasabila',
-      partener: b.partener, partenerCui: b.cui || '', document: 'Nota scoatere ' + period, analitic: '', explicatie: 'Creanta neincasabila ' + b.partener, fileId: null, system: true, lines,
+      partener: b.partener, partenerCui: b.cui || '', document: 'Nota scoatere ' + period, analitic: '', explicatie: 'Creanță neîncasabilă ' + b.partener, fileId: null, system: true, lines,
     });
     logAudit('writeoff', b.partener + ' ' + suma, { req });
     db.save();
@@ -122,8 +122,8 @@ module.exports = function register(app, ctx) {
     const period = String(data).slice(0, 7);
     const up = p.deAjustat > 0;
     const line = up
-      ? { debit: '6814', credit: '491', suma: p.deAjustat, explicatie: 'Ajustare depreciere creante' }
-      : { debit: '491', credit: '7814', suma: -p.deAjustat, explicatie: 'Reluare ajustare creante' };
+      ? { debit: '6814', credit: '491', suma: p.deAjustat, explicatie: 'Ajustare depreciere creanțe' }
+      : { debit: '491', credit: '7814', suma: -p.deAjustat, explicatie: 'Reluare ajustare creanțe' };
     d.entries.push({
       id: db.nextId('e'), firmaId: activeId(req), data, period,
       tip: up ? 'provizion_creante' : 'reluare_provizion', tipNume: up ? 'Ajustare depreciere creante (6814=491)' : 'Reluare ajustare creante (491=7814)',

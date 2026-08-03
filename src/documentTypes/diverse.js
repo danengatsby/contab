@@ -14,7 +14,7 @@ module.exports = [
     grup: 'Diverse',
     fields: [F.data, F.suma,
       { name: 'contAmort', label: 'Cont amortizare', type: 'account', default: '281' }],
-    build: (d) => [L('6811', d.contAmort || '281', d.suma, 'Amortizare lunara')],
+    build: (d) => [L('6811', d.contAmort || '281', d.suma, 'Amortizare lunară')],
   },
   {
     id: 'factura_storno_vanzare',
@@ -24,8 +24,8 @@ module.exports = [
       { name: 'refFactura', label: 'Factura stornata (referinta)', type: 'text' },
       F.baza, F.tva, F.cota],
     build: (d) => {
-      const lines = [L('4111', '707', -d.baza, 'Storno venit (in rosu)')];
-      if (d.tva > 0) lines.push(L('4111', '4427', -d.tva, 'Storno TVA colectata'));
+      const lines = [L('4111', '707', -d.baza, 'Storno venit (în roșu)')];
+      if (d.tva > 0) lines.push(L('4111', '4427', -d.tva, 'Storno TVA colectată'));
       return lines;
     },
   },
@@ -36,8 +36,8 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota,
       { name: 'contStoc', label: 'Cont stornat (stoc/cheltuiala)', type: 'account', default: '371' }],
     build: (d) => {
-      const lines = [L(d.contStoc || '371', '401', -d.baza, 'Storno achizitie (in rosu)')];
-      if (d.tva > 0) lines.push(L('4426', '401', -d.tva, 'Storno TVA deductibila'));
+      const lines = [L(d.contStoc || '371', '401', -d.baza, 'Storno achiziție (în roșu)')];
+      if (d.tva > 0) lines.push(L('4426', '401', -d.tva, 'Storno TVA deductibilă'));
       return lines;
     },
   },
@@ -73,7 +73,7 @@ module.exports = [
     nume: 'Dobanda bancara (extras)',
     grup: 'Trezorerie',
     fields: [F.data, F.document, F.suma, F.analiticBanca],
-    build: (d) => [L('666', '5121', d.suma, 'Cheltuieli privind dobanzile')],
+    build: (d) => [L('666', '5121', d.suma, 'Cheltuieli privind dobânzile')],
   },
   {
     id: 'import_vamal',
@@ -88,8 +88,8 @@ module.exports = [
       const baza = round2(d.valoareBunuri + (d.taxeVamale || 0));
       const tva = round2((baza * (Number(d.cota) || fiscal.FISCAL.tvaStandard)) / 100);
       const lines = [L(d.contBun || '371', '401', d.valoareBunuri, 'Import - valoarea bunurilor')];
-      if (d.taxeVamale > 0) lines.push(L(d.contBun || '371', '446', d.taxeVamale, 'Taxe vamale (in costul bunurilor)'));
-      lines.push(L('4426', '446', tva, 'TVA in vama (deductibila)'));
+      if (d.taxeVamale > 0) lines.push(L(d.contBun || '371', '446', d.taxeVamale, 'Taxe vamale (în costul bunurilor)'));
+      lines.push(L('4426', '446', tva, 'TVA în vamă (deductibilă)'));
       return lines;
     },
   },
@@ -104,7 +104,7 @@ module.exports = [
       { name: 'contChelt', label: 'Cont cheltuiala (clasa 6)', type: 'account', default: '607' }],
     build: (d) => {
       if (d.sens === 'plus') return [L(d.contStoc || '371', d.contChelt || '607', d.suma, 'Plus la inventar (diminuare cheltuieli)')];
-      return [L(d.contChelt || '607', d.contStoc || '371', d.suma, 'Minus / lipsa la inventar')];
+      return [L(d.contChelt || '607', d.contStoc || '371', d.suma, 'Minus / lipsă la inventar')];
     },
   },
   {
@@ -118,8 +118,8 @@ module.exports = [
         options: [{ value: '4282', label: '4282 Alte creante personal' }, { value: '461', label: '461 Debitori diversi' }], default: '4282' }],
     build: (d) => {
       const tva = round2((d.valoareImputata * (Number(d.cota) || fiscal.FISCAL.tvaStandard)) / 100);
-      const o = [L(d.contCreanta || '4282', '7588', d.valoareImputata, 'Imputare lipsa la inventar - venit')];
-      if (tva > 0) o.push(L(d.contCreanta || '4282', '4427', tva, 'TVA aferenta imputarii'));
+      const o = [L(d.contCreanta || '4282', '7588', d.valoareImputata, 'Imputare lipsă la inventar - venit')];
+      if (tva > 0) o.push(L(d.contCreanta || '4282', '4427', tva, 'TVA aferentă imputării'));
       return o;
     },
   },
@@ -130,7 +130,7 @@ module.exports = [
     fields: [F.data, F.document, F.suma,
       { name: 'contTaxa', label: 'Cont datorie (446, 4423, 444, 436, 4411...)', type: 'account', default: '446' },
       { name: 'cont', label: 'Platita din', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L(d.contTaxa || '446', d.cont || '5121', d.suma, 'Plata taxe/impozite catre buget')],
+    build: (d) => [L(d.contTaxa || '446', d.cont || '5121', d.suma, 'Plata taxe/impozite către buget')],
   },
   {
     id: 'casare_mijloc_fix',
@@ -144,8 +144,8 @@ module.exports = [
     build: (d) => {
       const ramas = round2(d.valoare - (d.amortizare || 0));
       const lines = [];
-      if (d.amortizare > 0) lines.push(L(d.contAmort || '281', d.contImob || '2131', d.amortizare, 'Scaderea amortizarii cumulate'));
-      if (ramas > 0) lines.push(L('6583', d.contImob || '2131', ramas, 'Valoarea ramasa neamortizata'));
+      if (d.amortizare > 0) lines.push(L(d.contAmort || '281', d.contImob || '2131', d.amortizare, 'Scăderea amortizării cumulate'));
+      if (ramas > 0) lines.push(L('6583', d.contImob || '2131', ramas, 'Valoarea rămasă neamortizată'));
       return lines;
     },
   },
@@ -155,7 +155,7 @@ module.exports = [
     grup: 'Trezorerie',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Incasat in', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L(d.cont || '5121', '419', d.suma, 'Avans incasat de la client (fara factura de avans)')],
+    build: (d) => [L(d.cont || '5121', '419', d.suma, 'Avans încasat de la client (fără factura de avans)')],
   },
   {
     id: 'avans_platit_furnizor',
@@ -163,7 +163,7 @@ module.exports = [
     grup: 'Trezorerie',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Platit din', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L('409', d.cont || '5121', d.suma, 'Avans platit catre furnizor (fara factura de avans)')],
+    build: (d) => [L('409', d.cont || '5121', d.suma, 'Avans plătit către furnizor (fără factura de avans)')],
   },
 
 ];

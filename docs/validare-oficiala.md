@@ -8,7 +8,20 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-08-03 — diacriticele din planul de conturi
+## Ultima verificare: 2026-08-03 (a doua) — diacriticele din explicațiile articolelor
+
+Declanșată de atingerea a 21 de module fiscale (`src/documentTypes/*`, `accounting.js`,
+`closingsService.js`, `payrollService.js`, `stocksService.js`…): explicațiile liniilor de articol
+au primit diacritice. Ele intră în SAF-T, în `<Description>` (patru locuri în `src/saft.js`).
+Toate cele 16 ieșiri au trecut.
+
+Verificat că poarta chiar **exercită** schimbarea, nu doar că trece pe lângă ea: exemplul integrat
+își construiește articolele prin `type.build()` (`src/seed.js` → `make()`), deci descrierile din
+SAF-T-ul validat sunt chiar cele noi — confirmat prin inspecția XML-ului generat pe o bază
+izolată (8 descrieri distincte cu diacritice, printre care „Cumpărare mărfuri (intrare în stoc)"
+și „Descărcare gestiune - cost marfă vândută").
+
+## Verificare anterioară: 2026-08-03 (prima) — diacriticele din planul de conturi
 
 Declanșată de poartă la atingerea lui `src/chartOfAccounts.js`: denumirile conturilor au primit
 diacritice, iar ele **intră în SAF-T**, în `<AccountDescription>`. Toate cele 16 ieșiri au trecut,

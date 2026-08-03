@@ -80,7 +80,7 @@ module.exports = function register(app, ctx) {
     if (exists) return res.status(400).json({ error: 'Amortizarea pentru ' + period + ' este deja inregistrata.' });
     d.entries.push({
       id: db.nextId('e'), firmaId: activeId(req), data: period + '-28', period, tip: 'amortizare_lunara', tipNume: 'Amortizare mijloace fixe',
-      partener: '', document: 'Nota amortizare ' + period, explicatie: 'Amortizarea lunara a imobilizarilor',
+      partener: '', document: 'Nota amortizare ' + period, explicatie: 'Amortizarea lunară a imobilizărilor',
       fileId: null, system: true,
       lines: dep.lines.map((l) => ({ debit: '6811', credit: l.contAmortizare, suma: l.suma, explicatie: 'Amortizare ' + l.denumire })),
     });

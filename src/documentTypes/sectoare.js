@@ -16,15 +16,15 @@ module.exports = [
       { name: 'sens', label: 'Operatiune', type: 'select',
         options: [{ value: 'inreg', label: 'Inregistrare lucrari in curs (332=712)' }, { value: 'reluare', label: 'Reluare la facturare (712=332)' }], default: 'inreg' }],
     build: (d) => d.sens === 'reluare'
-      ? [L('712', '332', d.suma, 'Reluarea lucrarilor in curs la facturare')]
-      : [L('332', '712', d.suma, 'Lucrari in curs de executie')],
+      ? [L('712', '332', d.suma, 'Reluarea lucrărilor în curs la facturare')]
+      : [L('332', '712', d.suma, 'Lucrări în curs de execuție')],
   },
   {
     id: 'garantie_retinuta',
     nume: 'Garantie de buna executie retinuta de beneficiar (2678)',
     grup: 'Constructii',
     fields: [F.data, F.partener, F.document, F.suma],
-    build: (d) => [L('2678', '4111', d.suma, 'Garantie de buna executie retinuta')],
+    build: (d) => [L('2678', '4111', d.suma, 'Garanție de bună execuție reținută')],
   },
   {
     id: 'garantie_restituita',
@@ -32,7 +32,7 @@ module.exports = [
     grup: 'Constructii',
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Incasata in', type: 'select', options: TROZ, default: '5121' }],
-    build: (d) => [L(d.cont || '5121', '2678', d.suma, 'Restituire garantie de buna executie')],
+    build: (d) => [L(d.cont || '5121', '2678', d.suma, 'Restituire garanție de bună execuție')],
   },
   // ─────────────────── HoReCa (pret de vanzare cu amanuntul) ───────────────────
   {
@@ -45,11 +45,11 @@ module.exports = [
       { name: 'adaos', label: 'Adaos comercial', type: 'number', default: 0 },
       { name: 'cotaVanzare', label: 'Cota TVA la vanzare (%)', type: 'number', default: fiscal.FISCAL.tvaRedus }],
     build: (d) => {
-      const lines = [L('371', '401', d.cost, 'Intrare marfa la cost')];
-      if (d.tvaDed > 0) lines.push(L('4426', '401', d.tvaDed, 'TVA deductibila'));
+      const lines = [L('371', '401', d.cost, 'Intrare marfă la cost')];
+      if (d.tvaDed > 0) lines.push(L('4426', '401', d.tvaDed, 'TVA deductibilă'));
       if (d.adaos > 0) lines.push(L('371', '378', d.adaos, 'Adaos comercial'));
       const tvaNeexig = round2(((d.cost + d.adaos) * Number(d.cotaVanzare || fiscal.FISCAL.tvaRedus)) / 100);
-      if (tvaNeexig > 0) lines.push(L('371', '4428', tvaNeexig, 'TVA neexigibila (pret de vanzare)'));
+      if (tvaNeexig > 0) lines.push(L('371', '4428', tvaNeexig, 'TVA neexigibilă (preț de vânzare)'));
       return lines;
     },
   },
@@ -72,18 +72,18 @@ module.exports = [
       const tvaDin = (brut) => round2((brut * cota) / (100 + cota));
       if (d.numerar > 0) {
         const tvaN = tvaDin(d.numerar);
-        lines.push(L('5311', '707', round2(d.numerar - tvaN), 'Incasare numerar - venit (baza)'));
-        if (tvaN > 0) lines.push(L('5311', '4427', tvaN, 'TVA colectata (numerar)'));
+        lines.push(L('5311', '707', round2(d.numerar - tvaN), 'Încasare numerar - venit (bază)'));
+        if (tvaN > 0) lines.push(L('5311', '4427', tvaN, 'TVA colectată (numerar)'));
       }
       if (d.card > 0) {
         const tvaC = tvaDin(d.card);
-        lines.push(L('5121', '707', round2(d.card - tvaC), 'Incasare card - venit (baza)'));
-        if (tvaC > 0) lines.push(L('5121', '4427', tvaC, 'TVA colectata (card)'));
+        lines.push(L('5121', '707', round2(d.card - tvaC), 'Încasare card - venit (bază)'));
+        if (tvaC > 0) lines.push(L('5121', '4427', tvaC, 'TVA colectată (card)'));
       }
-      if (d.cost > 0) lines.push(L('607', '371', d.cost, 'Descarcare gestiune - cost'));
-      if (d.adaos > 0) lines.push(L('378', '371', d.adaos, 'Descarcare gestiune - adaos'));
+      if (d.cost > 0) lines.push(L('607', '371', d.cost, 'Descărcare gestiune - cost'));
+      if (d.adaos > 0) lines.push(L('378', '371', d.adaos, 'Descărcare gestiune - adaos'));
       const tvaNeexig = round2(((Number(d.cost) || 0) + (Number(d.adaos) || 0)) * cota / 100);
-      if (tvaNeexig > 0) lines.push(L('4428', '371', tvaNeexig, 'Descarcare gestiune - TVA neexigibila aferenta'));
+      if (tvaNeexig > 0) lines.push(L('4428', '371', tvaNeexig, 'Descărcare gestiune - TVA neexigibilă aferentă'));
       return lines;
     },
   },
@@ -97,8 +97,8 @@ module.exports = [
         options: [{ value: 'favorabila', label: 'Favorabila (venit 765)' }, { value: 'nefavorabila', label: 'Nefavorabila (cheltuiala 665)' }], default: 'favorabila' },
       { name: 'contTert', label: 'Cont trezorerie/tert', type: 'account', default: '5124' }],
     build: (d) => d.sens === 'nefavorabila'
-      ? [L('665', d.contTert || '401', d.suma, 'Diferenta de curs nefavorabila')]
-      : [L(d.contTert || '5124', '765', d.suma, 'Diferenta de curs favorabila')],
+      ? [L('665', d.contTert || '401', d.suma, 'Diferență de curs nefavorabilă')]
+      : [L(d.contTert || '5124', '765', d.suma, 'Diferență de curs favorabilă')],
   },
   {
     id: 'incasare_numerar_valuta',
@@ -137,8 +137,8 @@ module.exports = [
       const tvaDed = round2(tvaTotal * fiscal.FISCAL.deductibilitateTvaAutoLimitat / 100);
       const tvaNed = round2(tvaTotal - tvaDed);
       const lines = [L('6022', '401', d.baza, 'Cheltuieli combustibili')];
-      if (tvaDed > 0) lines.push(L('4426', '401', tvaDed, 'TVA deductibila 50%'));
-      if (tvaNed > 0) lines.push(L('6022', '401', tvaNed, 'TVA nedeductibila 50% (in cheltuiala)'));
+      if (tvaDed > 0) lines.push(L('4426', '401', tvaDed, 'TVA deductibilă 50%'));
+      if (tvaNed > 0) lines.push(L('6022', '401', tvaNed, 'TVA nedeductibilă 50% (în cheltuială)'));
       return lines;
     },
   },
@@ -147,7 +147,7 @@ module.exports = [
     nume: 'Rovinieta / taxe de drum (635)',
     grup: 'Diverse',
     fields: [F.data, F.document, F.suma],
-    build: (d) => [L('635', '446', d.suma, 'Rovinieta / taxe de drum')],
+    build: (d) => [L('635', '446', d.suma, 'Rovinietă / taxe de drum')],
   },
   {
     id: 'nota_contabila',

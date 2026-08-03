@@ -22,8 +22,8 @@ module.exports = [
       const impozit = round2((d.baza || 0) * 0.8 * (d.cota || fiscal.FISCAL.impozitVenit) / 100);
       const net = round2((d.baza || 0) - impozit);
       const lines = [];
-      if (net > 0) lines.push(L('612', d.cont || '5121', net, 'Chirie platita persoanei fizice (dupa retinere)'));
-      if (impozit > 0) lines.push(L('612', '446', impozit, 'Impozit pe chirie retinut la sursa (10% din brut - 20% forfetar)'));
+      if (net > 0) lines.push(L('612', d.cont || '5121', net, 'Chirie plătită persoanei fizice (după reținere)'));
+      if (impozit > 0) lines.push(L('612', '446', impozit, 'Impozit pe chirie reținut la sursă (10% din brut - 20% forfetar)'));
       return lines;
     },
   },
@@ -40,7 +40,7 @@ module.exports = [
       const net = round2((d.baza || 0) - impozit);
       const lines = [];
       if (net > 0) lines.push(L('623', d.cont || '5311', net, 'Premiu acordat persoanei fizice (net)'));
-      if (impozit > 0) lines.push(L('623', '446', impozit, 'Impozit pe premii retinut la sursa'));
+      if (impozit > 0) lines.push(L('623', '446', impozit, 'Impozit pe premii reținut la sursă'));
       return lines;
     },
   },
@@ -55,8 +55,8 @@ module.exports = [
       { name: 'sens', label: 'Sensul regularizarii', type: 'select',
         options: [{ value: 'firma', label: 'In favoarea firmei (mai ai de dedus: 4426 = 635)' }, { value: 'stat', label: 'In favoarea statului (dai TVA inapoi: 635 = 4426)' }], default: 'firma' }],
     build: (d) => (d.sens === 'stat'
-      ? [L('635', '4426', d.suma, 'Regularizare pro-rata anuala in favoarea statului (art. 300)')]
-      : [L('4426', '635', d.suma, 'Regularizare pro-rata anuala in favoarea firmei (art. 300)')]),
+      ? [L('635', '4426', d.suma, 'Regularizare pro-rata anuală în favoarea statului (art. 300)')]
+      : [L('4426', '635', d.suma, 'Regularizare pro-rata anuală în favoarea firmei (art. 300)')]),
   },
   {
     id: 'ajustare_tva_bunuri_capital',
