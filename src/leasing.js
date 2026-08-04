@@ -56,9 +56,12 @@ function leasingSchedule(principal, months, annualRatePct, method) {
 function periodOfInstallment(dataPrimeiRate, n) {
   const d = new Date(dataPrimeiRate);
   if (isNaN(d)) return null;
-  d.setDate(1); // ziua nu conteaza si ar putea sari o luna (31 ian + 1 luna)
-  d.setMonth(d.getMonth() + (Math.max(1, Number(n) || 1) - 1));
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  // TOT in UTC, ca la `assets.firstDepreciationMonth`: data se parseaza ca miezul noptii UTC, deci
+  // citirea cu getteri LOCALI muta luna cu una intreaga pe orice calculator la vest de UTC. Rata
+  // lunii ar fi cazut atunci pe luna gresita — iar pachetul Windows ruleaza pe fusul clientului.
+  d.setUTCDate(1); // ziua nu conteaza si ar putea sari o luna (31 ian + 1 luna)
+  d.setUTCMonth(d.getUTCMonth() + (Math.max(1, Number(n) || 1) - 1));
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
 }
 
 /** Graficul unui contract, cu luna calendaristica si TVA-ul pe fiecare rata. */

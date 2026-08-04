@@ -201,6 +201,30 @@ eq('coeficient degresiv >10 ani', assets.degressiveCoef(12), 2.5);
 const degSch = assets.schedule({ cost: 10000, durataLuni: 60, metoda: 'degresiva', dataPif: '2026-01-01' });
 const degAn1 = degSch.filter((r) => r.period.startsWith('2026')).reduce((s, r) => s + r.amount, 0) + degSch.filter((r) => r.period === '2027-01').reduce((s, r) => s + r.amount, 0);
 ok('degresiva front-loaded (an 1 = 3000 > liniar 2000)', Math.round(degAn1) === 3000);
+// REGRESIE, gasita ruland suita pe Windows. `firstDepreciationMonth` parsa data ca UTC
+// (`new Date('2026-01-01')` = miezul noptii UTC) si o citea cu getteri LOCALI — pe orice
+// calculator la VEST de UTC aceeasi zi devine 31 decembrie, deci amortizarea incepea cu o luna
+// mai devreme. Nu era o problema de test: pachetul Windows ruleaza pe calculatorul clientului,
+// cu fusul lui, deci acelasi mijloc fix s-ar fi amortizat altfel la Bucuresti si altfel la
+// New York. Serverul e pe UTC, deci defectul era invizibil aici.
+{
+  const cp = require('child_process');
+  // calea catre repo, cu bare normale: `require` accepta `/` pe orice sistem, iar pe Windows
+  // interpolarea unei cai cu `\\` ar strica sirul de cod trimis subprocesului
+  const radTz = path.join(__dirname, '..').replace(/\\/g, '/');
+  const rulaLaFus = (tz) => JSON.parse(cp.execFileSync(process.execPath, ['-e', `
+    const a = require('${radTz}/src/assets');
+    const l = require('${radTz}/src/leasing');
+    const s = a.schedule({ cost: 10000, durataLuni: 60, metoda: 'degresiva', dataPif: '2026-01-01' });
+    process.stdout.write(JSON.stringify({ prima: s[0].period, rata1: l.periodOfInstallment('2026-02-01', 1) }));
+  `], { env: Object.assign({}, process.env, { TZ: tz }) }).toString());
+  // Vest de UTC (unde defectul se manifesta), est de UTC si UTC — toate trei trebuie sa dea la fel.
+  for (const tz of ['UTC', 'Europe/Bucharest', 'America/Los_Angeles']) {
+    const r = rulaLaFus(tz);
+    eq('prima luna de amortizare nu depinde de fusul orar (' + tz + ')', r.prima, '2026-02');
+    eq('luna ratei de leasing nu depinde de fusul orar (' + tz + ')', r.rata1, '2026-02');
+  }
+}
 
 section('Stocuri (CMP, pe gestiuni)');
 const st = stocks.currentStock(v, '2026-06');
@@ -5264,9 +5288,14 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
   // Detectia e dupa SURSA (namespace ANAF in continut), nu dupa numele fisierului.
   const NS_ANAF = /xmlns="mfp:anaf|Ro_SAFT_Schema/;
   const generatoare = [];
+  // Caile se compun cu `/`, NU cu `path.join`: perimetrul din `poarta-fiscala.sh` e scris cu bare
+  // normale, iar pe Windows `path.join` produce `src\xml.js`. Compararea esua atunci pentru TOATE
+  // generatoarele, iar poarta raporta ca lipsesc din perimetru fisiere care erau acolo — un
+  // fals-pozitiv zgomotos, dar tot un test care spune altceva decat realitatea. `path.join` ramane
+  // pentru accesul pe disc, unde separatorul chiar trebuie sa fie cel al sistemului.
   const scan = (rel) => {
     for (const f of fsx.readdirSync(pth.join(root, rel))) {
-      const p = pth.join(rel, f);
+      const p = rel + '/' + f;
       if (fsx.statSync(pth.join(root, p)).isDirectory()) { scan(p); continue; }
       if (!f.endsWith('.js')) continue;
       if (NS_ANAF.test(fsx.readFileSync(pth.join(root, p), 'utf8'))) generatoare.push(p);

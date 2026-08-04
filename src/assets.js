@@ -29,8 +29,14 @@ function degressiveCoef(years) {
 function firstDepreciationMonth(dataPif) {
   const d = new Date(dataPif);
   if (isNaN(d)) return null;
-  d.setMonth(d.getMonth() + 1);
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  // TOT in UTC. `new Date('2026-01-01')` se parseaza ca miezul noptii UTC, dar `getMonth()` si
+  // `getFullYear()` citesc in ora LOCALA — pe un calculator la vest de UTC aceeasi zi devine
+  // 31 decembrie, iar amortizarea incepe cu o luna mai devreme. Nu e o subtilitate de test:
+  // pachetul Windows ruleaza pe calculatorul clientului, cu fusul lui, deci acelasi mijloc fix
+  // s-ar fi amortizat altfel la Bucuresti si altfel la New York. Verificat: TZ=America/New_York
+  // dadea prima luna 2026-01 in loc de 2026-02.
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
 }
 
 /**

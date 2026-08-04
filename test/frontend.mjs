@@ -16,6 +16,7 @@
 
 import fs from 'node:fs';
 import os from 'node:os';
+import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import tplScan from './tpl-scan.js';
@@ -35,25 +36,32 @@ for (const f of fs.readdirSync(PUB)) {
 // Shim-ul DOM se importa INAINTEA oricarui modul din public/ (globalii trebuie sa existe la
 // evaluarea lui core.js). `await import` secvential garanteaza ordinea, spre deosebire de
 // declaratiile `import` care sunt ridicate toate sus.
-await import(path.join(ROOT, 'test', 'dom-shim.mjs'));
-const core = await import(path.join(mirror, 'core.js'));
-const periods = await import(path.join(mirror, 'periods.js'));
-const entries = await import(path.join(mirror, 'entries.js'));
-const plan = await import(path.join(mirror, 'plan.js'));
-const pag = await import(path.join(mirror, 'paginare.js'));
-const dashboard = await import(path.join(mirror, 'dashboard.js'));
-const rapoarte = await import(path.join(mirror, 'rapoarte.js'));
-const livrabile = await import(path.join(mirror, 'livrabile.js'));
-const messages = await import(path.join(mirror, 'messages.js'));
-const etransport = await import(path.join(mirror, 'etransport.js'));
-const app = await import(path.join(mirror, 'app.js'));
-const stocuri = await import(path.join(mirror, 'stocuri.js'));
-const bank = await import(path.join(mirror, 'bank.js'));
-const viewer = await import(path.join(mirror, 'viewer.js'));
-const partners = await import(path.join(mirror, 'partners.js'));
-const inchidere = await import(path.join(mirror, 'inchidere.js'));
-const docflow = await import(path.join(mirror, 'docflow.js'));
-const admin = await import(path.join(mirror, 'admin.js'));
+//
+// `import()` primeste un URL `file://`, nu o cale de sistem: pe Windows o cale absoluta incepe cu
+// `C:\`, iar incarcatorul ESM o citeste ca pe o schema de protocol necunoscuta si refuza tot
+// fisierul („ERR_UNSUPPORTED_ESM_URL_SCHEME ... Received protocol 'c:'"). Pe Linux calea absoluta
+// incepe cu `/` si trece din intamplare, deci defectul se vedea doar pe Windows — adica exact
+// acolo unde ruleaza pachetul livrat clientilor.
+const imp = (...p) => import(pathToFileURL(path.join(...p)).href);
+await imp(ROOT, 'test', 'dom-shim.mjs');
+const core = await imp(mirror, 'core.js');
+const periods = await imp(mirror, 'periods.js');
+const entries = await imp(mirror, 'entries.js');
+const plan = await imp(mirror, 'plan.js');
+const pag = await imp(mirror, 'paginare.js');
+const dashboard = await imp(mirror, 'dashboard.js');
+const rapoarte = await imp(mirror, 'rapoarte.js');
+const livrabile = await imp(mirror, 'livrabile.js');
+const messages = await imp(mirror, 'messages.js');
+const etransport = await imp(mirror, 'etransport.js');
+const app = await imp(mirror, 'app.js');
+const stocuri = await imp(mirror, 'stocuri.js');
+const bank = await imp(mirror, 'bank.js');
+const viewer = await imp(mirror, 'viewer.js');
+const partners = await imp(mirror, 'partners.js');
+const inchidere = await imp(mirror, 'inchidere.js');
+const docflow = await imp(mirror, 'docflow.js');
+const admin = await imp(mirror, 'admin.js');
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -96,7 +104,7 @@ eq('round2 taie eroarea de virgula mobila', core.round2(0.1 + 0.2), 0.3);
 eq('round2 rotunjeste in sus la jumatate', core.round2(1.005), 1.01);
 // Paritatea cu backend-ul: aceeasi suma rotunjita in doua locuri trebuie sa dea acelasi ban.
 // O divergenta aici inseamna totaluri care difera intre ecran si documentul generat de server.
-const utilRound2 = (await import(path.join(ROOT, 'src', 'util.js'))).default.round2;
+const utilRound2 = (await imp(ROOT, 'src', 'util.js')).default.round2;
 for (const v of [0.1 + 0.2, 1.005, 2.675, -1.005, 1234.567, 0]) {
   eq('round2 identic cu src/util.js pe ' + v, core.round2(v), utilRound2(v));
 }
@@ -694,7 +702,7 @@ section('Calitatea citirii automate: verdictul și raportul (docflow.js / entrie
 
 section('Luna de lucru nu trece în viitor (public/periods.js)');
 {
-  const { capMonth, currentMonth } = await import(path.join(mirror, 'periods.js'));
+  const { capMonth, currentMonth } = await imp(mirror, 'periods.js');
   const acum = currentMonth();
   ok('luna curenta e in forma AAAA-LL', /^\d{4}-(0[1-9]|1[0-2])$/.test(acum));
   // luna curenta se calculeaza LOCAL, nu prin toISOString(): in UTC+2/+3, in primele ore ale zilei
@@ -713,7 +721,7 @@ section('Luna de lucru nu trece în viitor (public/periods.js)');
 
 section('Trecerea la luna următoare doar prin închidere (public/periods.js)');
 {
-  const { esteInchisa, poateInainte } = await import(path.join(mirror, 'periods.js'));
+  const { esteInchisa, poateInainte } = await imp(mirror, 'periods.js');
   // `lu` si `acum` se dau explicit, ca testul sa nu depinda de ceasul masinii
   ok('luna dinaintea plafonului e inchisa', esteInchisa('2026-03', '2026-05'));
   ok('chiar luna plafonului e inchisa (<=)', esteInchisa('2026-05', '2026-05'));
@@ -737,7 +745,7 @@ section('Trecerea la luna următoare doar prin închidere (public/periods.js)');
 
 section('Căutare globală (Ctrl+K): filtrarea și ordonarea rezultatelor');
 {
-  const { cauta, fold } = await import(path.join(mirror, 'paleta.js'));
+  const { cauta, fold } = await imp(mirror, 'paleta.js');
   eq('fold scoate diacriticele (căutarea nu depinde de ele)', fold('Găsești ȘI Țară'), 'gasesti si tara');
   const surse = {
     parteneri: [
@@ -772,7 +780,7 @@ section('Poartă: fiecare modul din public/ se încarcă fără să arunce');
 const moduleErrs = [];
 let incarcate = 0;
 for (const f of fs.readdirSync(PUB).filter((x) => x.endsWith('.js') && x !== 'sw.js')) {
-  try { await import(path.join(mirror, f)); incarcate += 1; } catch (e) { moduleErrs.push(f + ': ' + e.message.slice(0, 60)); }
+  try { await imp(mirror, f); incarcate += 1; } catch (e) { moduleErrs.push(f + ': ' + e.message.slice(0, 60)); }
 }
 ok('toate modulele din public/ se importa (' + incarcate + ')' + (moduleErrs.length ? ' — ' + moduleErrs.join(' | ') : ''), moduleErrs.length === 0);
 ok('s-au incarcat efectiv modulele asteptate', incarcate >= 20);
@@ -1072,7 +1080,7 @@ section('Înscriere: din afara aplicației se alege DOAR proba gratuită');
   // Regula de produs: planurile plătite se afișează cu preț și funcții (omul trebuie să știe ce
   // urmează), dar NU se pot alege la înscriere — se cumpără din aplicație, după probă, când omul
   // a văzut deja produsul.
-  const authui = await import(path.join(mirror, 'authui.js')).catch(() => null);
+  const authui = await imp(mirror, 'authui.js').catch(() => null);
   ok('authui.js se încarcă', !!authui);
   const cta = authui && authui.ctaPlanPublic;
   ok('decizia e o funcție pură, exportată', typeof cta === 'function');
