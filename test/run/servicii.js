@@ -1401,6 +1401,70 @@ section('Raportul „cine acceseaza aplicatia" (src/accessService.js)');
   ok('...si chiar nu contine reusite', doarE.every((x) => x.reusita === false));
 
   eq('IP-urile distincte se cer o singura data', asvcA.ipuriDistincte(s, l).length, 4);
+
+  // ── Panoul NU asteapta furnizorul de localizare ─────────────────────────────────────────────
+  // REGRESIE, masurata pe productie: 8.545 ms la o singura cerere. Cache-ul geo traieste doar in
+  // memorie, deci porneste GOL la fiecare repornire; prima deschidere a panoului cerea localizarea
+  // tuturor adreselor, in valuri seriale de cate 4. Cu ~420 de adrese si RTT ~60 ms => ~105 valuri.
+  // Modulul spunea deja regula, dar doar pentru caderi („o pagina care nu se mai deschide fiindca
+  // un tert e cazut ar fi un schimb prost"); un tert LENT e aceeasi problema cu incetinitorul.
+  {
+    const geoStub = (o) => {
+      const cunoscute = new Map(o.cunoscute || []);
+      const st = { cereriRetea: 0, prefetchCu: [] };
+      return { st,
+        dinCacheMulti: (ips) => new Map(ips.filter((ip) => cunoscute.has(ip)).map((ip) => [ip, cunoscute.get(ip)])),
+        prefetch: (ips) => { const l2 = ips.filter((ip) => !cunoscute.has(ip)); st.prefetchCu = l2; return l2.length; },
+        // daca raportul ar mai chema vreodata reteaua, se vede aici
+        lookupMany: () => { st.cereriRetea += 1; return Promise.resolve(new Map()); },
+        eticheta: (g2) => (g2 ? g2.oras : ''),
+        normalizeIp: (x) => String(x || ''),
+      };
+    };
+    const dd = { users, audit };
+    const multi = { snapshot: () => Array.from({ length: 700 }, (_, i) => ({ ip: '86.124.' + Math.floor(i / 256) + '.' + (i % 256), cereri: 1 })) };
+
+    const g1 = geoStub({ cunoscute: [['86.124.1.1', { oras: 'Cluj-Napoca' }]] });
+    const r1 = asvcA.raport(dd, { geo: g1, visitors: multi, now: T0 });
+    eq('raportul nu mai face nicio cerere de retea in calea cererii', g1.st.cereriRetea, 0);
+    ok('localizarile deja stiute se folosesc', r1.sesiuni.some((x) => x.locatie === 'Cluj-Napoca'));
+    ok('...iar cele nestiute raman goale, nu blocheaza', r1.vizitatori.every((x) => typeof x.locatie === 'string'));
+    ok('adresele necunoscute se pun la localizat in FUNDAL', r1.geoInCurs > 0);
+    ok('interfata afla cate sunt in curs', r1.geoInCurs === g1.st.prefetchCu.length);
+
+    // Munca de localizare e MARGINITA la ce se AFISEAZA. Inainte, `ipuriDistincte` primea lista
+    // INTREAGA de vizitatori (pana la 2.000) si abia dupa aceea `capList` taia la 500: se platea
+    // geo pentru randuri care erau apoi aruncate.
+    eq('se afiseaza cel mult 500 de vizitatori', r1.vizitatori.length, asvcA.MAX_VIZITATORI);
+    eq('totalul real ramane vizibil', r1.vizitatoriTotal, 700);
+    ok('nu se cere localizare pentru randuri care nu se afiseaza',
+      g1.st.prefetchCu.length <= asvcA.MAX_VIZITATORI + asvcA.MAX_AUTENTIFICARI + 500);
+    const afisate = new Set(r1.vizitatori.concat(r1.sesiuni, r1.autentificari).map((x) => x.ip));
+    ok('fiecare adresa pusa la localizat CHIAR apare in raport', g1.st.prefetchCu.every((ip) => afisate.has(ip)));
+
+    // Cand totul e deja cunoscut, nu se mai cere nimic in fundal.
+    const toate = asvcA.ipuriDistincte(asvcA.sesiuniActive(users, T0), asvcA.autentificari(audit, {}), multi.snapshot());
+    const g2 = geoStub({ cunoscute: toate.map((ip) => [ip, { oras: 'X' }]) });
+    const r2 = asvcA.raport(dd, { geo: g2, visitors: multi, now: T0 });
+    eq('cache complet -> nimic de localizat in fundal', r2.geoInCurs, 0);
+    eq('...si nicio cerere de retea', g2.st.cereriRetea, 0);
+  }
+}
+
+section('Localizare IP: cache-ul se citeste fara retea (src/geoip.js)');
+{
+  const geo = require('../../src/geoip');
+  geo._reset();
+  // `dinCacheMulti` nu are voie sa atinga reteaua NICIODATA — e sincrona prin constructie, deci
+  // nici n-ar avea cum sa astepte un raspuns.
+  ok('functia e sincrona (nu intoarce o promisiune)', !(geo.dinCacheMulti(['8.8.8.8']) instanceof Promise));
+  eq('cache gol -> nicio localizare cunoscuta', geo.dinCacheMulti(['8.8.8.8', '1.1.1.1']).size, 0);
+  // Adresele private nu pleaca niciodata la un tert — nici la prefetch.
+  eq('adresele private nu se pun la localizat', geo.necunoscute(['10.0.0.1', '127.0.0.1', '192.168.1.5']).length, 0);
+  eq('adresele publice necunoscute, da', geo.necunoscute(['8.8.8.8', '10.0.0.1']).length, 1);
+  ok('prefetch se intoarce imediat cu un NUMAR, nu cu o promisiune', typeof geo.prefetch([]) === 'number');
+  eq('prefetch pe lista goala nu face nimic', geo.prefetch([]), 0);
+  eq('prefetch e plafonat', geo.MAX_PREFETCH, 200);
 }
 
 

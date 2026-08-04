@@ -2353,9 +2353,9 @@ async function main() {
           { ip: '66.249.66.1', prima: '2026-08-02T07:00:00.000Z', ultima: '2026-08-02T07:30:00.000Z', cereri: 12, pagini: 12, ultimaCale: '/robots.txt', ua: 'Googlebot/2.1', bot: true, useri: [] },
         ],
       };
-      const cuVis = await require('../src/accessService').raport(require('../src/db').get(), {
+      const cuVis = require('../src/accessService').raport(require('../src/db').get(), {
         visitors: visStub,
-        geo: { lookupMany: async (ips) => new Map(ips.map((ip) => [ip, { oras: 'X', taraCod: 'RO' }])), eticheta: (g) => (g ? g.oras + ', ' + g.taraCod : '') },
+        geo: { dinCacheMulti: (ips) => new Map(ips.map((ip) => [ip, { oras: 'X', taraCod: 'RO' }])), prefetch: () => 0, eticheta: (g) => (g ? g.oras + ', ' + g.taraCod : '') },
       });
       eq('vizitatorii ajung in raport', cuVis.vizitatori.length, 2);
       ok('...cu numaratoarea de pagini SEPARATA de cea de cereri',
@@ -2378,21 +2378,26 @@ async function main() {
       // pe randuri si ca o cadere a furnizorului nu rupe raportul.
       const accSvc = require('../src/accessService');
       const dLive = require('../src/db').get();
-      const cuGeo = await accSvc.raport(dLive, {
+      const cuGeo = accSvc.raport(dLive, {
         geo: {
-          lookupMany: async (ips) => new Map(ips.map((ip) => [ip, { oras: 'Cluj-Napoca', taraCod: 'RO' }])),
+          dinCacheMulti: (ips) => new Map(ips.map((ip) => [ip, { oras: 'Cluj-Napoca', taraCod: 'RO' }])),
+          prefetch: () => 0,
           eticheta: (g) => (g ? g.oras + ', ' + g.taraCod : ''),
         },
       });
-      ok('cu geo disponibil: eticheta ajunge pe randuri',
+      ok('cu geo cunoscut: eticheta ajunge pe randuri',
         cuGeo.sesiuni.length > 0 && cuGeo.sesiuni.every((s) => s.locatie === 'Cluj-Napoca, RO'));
-      ok('...si se raporteaza ca disponibil', cuGeo.geoDisponibil === true);
+      ok('...si se raporteaza cate localizari s-au folosit', cuGeo.geoCunoscute > 0 && cuGeo.geoInCurs === 0);
 
-      const geoCazut = await accSvc.raport(dLive, {
-        geo: { lookupMany: async () => { throw new Error('serviciu cazut'); }, eticheta: () => '' },
+      // Furnizor CAZUT: nu mai exista o cerere care sa arunce — raportul nu asteapta niciuna. Ce
+      // se vede in schimb e degradarea onesta: nicio localizare stiuta, adrese ramase in curs.
+      const geoCazut = accSvc.raport(dLive, {
+        geo: { dinCacheMulti: () => new Map(), prefetch: (ips) => ips.length, eticheta: () => '' },
       });
       ok('furnizor CAZUT: raportul se intoarce oricum', Array.isArray(geoCazut.sesiuni) && geoCazut.sesiuni.length > 0);
-      ok('...marcat explicit ca indisponibil, nu tacut', geoCazut.geoDisponibil === false);
+      ok('...cu randurile fara localizare, nu cu raportul rupt', geoCazut.sesiuni.every((s) => s.locatie === ''));
+      ok('...si cu degradarea vizibila (nimic stiut, adrese in curs)',
+        geoCazut.geoCunoscute === 0 && geoCazut.geoInCurs >= 0);
     }
 
     // ── 2FA / TOTP: setup -> enable -> login in doi pasi -> disable (cap-coada) ──

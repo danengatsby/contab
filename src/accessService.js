@@ -19,10 +19,15 @@
 //
 //  Localizarea IP-ului se adauga DEASUPRA, din src/geoip.js, si e optionala prin constructie:
 //  daca serviciul extern tace, randurile se afiseaza fara ea. Un panou de administrare care nu
-//  se mai deschide fiindca un tert e cazut ar fi un schimb prost.
+//  se mai deschide fiindca un tert e cazut ar fi un schimb prost — iar unul care se deschide in
+//  opt secunde fiindca un tert e lent e acelasi schimb, cu incetinitorul. De aceea raportul
+//  foloseste DOAR localizarile deja stiute si pune restul la interogat in fundal: prima deschidere
+//  dupa o repornire arata „—" la cateva randuri, a doua le are pe toate.
 //
 //  Functiile de asamblare sunt PURE (primesc `users`/`audit`, nu ating baza), ca sa poata fi
-//  verificate fara server si fara retea. Doar `raport()` e async, fiindca doar el cere geo.
+//  verificate fara server si fara retea. `raport()` e SINCRONA de cand localizarea nu mai
+//  blocheaza raspunsul: era async doar fiindca astepta geo, iar acum nu mai asteapta. Asta o si
+//  aduce in suita sincrona, unde o aserțiune chiar se numara si chiar poate pica.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const geoip = require('./geoip');
@@ -110,10 +115,10 @@ function ipuriDistincte(...tabele) {
 }
 
 /**
- * Raportul complet, cu localizare. Singura functie async din modul.
+ * Raportul complet, cu localizarile deja cunoscute. SINCRONA: nu asteapta nicio cerere externa.
  * `geo` se injecteaza in teste (implicit: modulul real).
  */
-async function raport(d, opts) {
+function raport(d, opts) {
   const o = opts || {};
   const g = o.geo || geoip;
   const vis = o.visitors || visitors;
@@ -124,25 +129,42 @@ async function raport(d, opts) {
   // restart, iar `hydrate` a incarcat-o deja in acelasi Map.
   const vizitatori = vis.snapshot();
 
-  let locatii = new Map();
-  let geoDisponibil = true;
-  try { locatii = await g.lookupMany(ipuriDistincte(sesiuni, logari, vizitatori)); }
-  catch (_) { geoDisponibil = false; }   // niciodata fatal: raportul se intoarce fara localizare
-
-  const cuLoc = (r) => Object.assign({}, r, { locatie: g.eticheta(locatii.get(r.ip)) });
+  // ── ORDINEA CONTEAZA: intai se TAIE, apoi se localizeaza ────────────────────────────────────
   // capList, nu felierea proprie: colectiile vii care ajung intr-un CAMP al raspunsului trebuie
   // plafonate si trunchierea trebuie sa se vada (vezi src/paginate.js si poarta din test/run.js).
-  const s = capList(sesiuni.map(cuLoc), MAX_SESIUNI, 'access:sesiuni');
-  const l = capList(logari.map(cuLoc), MAX_AUTENTIFICARI, 'access:autentificari');
-  const v = capList(vizitatori.map(cuLoc), MAX_VIZITATORI, 'access:vizitatori');
+  // Taierea se face INAINTE de localizare fiindca altfel se platea geo pentru randuri care sunt
+  // apoi aruncate: `vizitatori` creste pana la CONTAB_VISITORS_MAX (2.000), din care se afiseaza
+  // 500 — deci munca era de patru ori mai mare decat rezultatul, si crestea singura.
+  const s = capList(sesiuni, MAX_SESIUNI, 'access:sesiuni');
+  const l = capList(logari, MAX_AUTENTIFICARI, 'access:autentificari');
+  const v = capList(vizitatori, MAX_VIZITATORI, 'access:vizitatori');
+
+  // ── Localizarea NU blocheaza raspunsul ──────────────────────────────────────────────────────
+  // Se foloseste doar ce e deja in cache; adresele necunoscute se pun la interogat in FUNDAL si
+  // apar la incarcarea urmatoare. Modulul spunea deja regula, dar doar pentru caderi: „o pagina de
+  // administrare care nu se mai deschide fiindca un tert e cazut ar fi un schimb prost". Un tert
+  // LENT e aceeasi problema cu incetinitorul — panoul astepta pana la ~8 secunde dupa fiecare
+  // repornire, fiindca cache-ul e doar in memorie si pornea gol.
+  const ips = ipuriDistincte(s.items, l.items, v.items);
+  const locatii = g.dinCacheMulti(ips);
+  const geoInCurs = g.prefetch(ips);
+  const cuLoc = (r) => Object.assign({}, r, { locatie: g.eticheta(locatii.get(r.ip)) });
   return {
-    sesiuni: s.items,
+    sesiuni: s.items.map(cuLoc),
     sesiuniTotal: s.total,
-    autentificari: l.items,
+    autentificari: l.items.map(cuLoc),
     autentificariTotal: l.total,
-    vizitatori: v.items,
+    vizitatori: v.items.map(cuLoc),
     vizitatoriTotal: v.total,
-    geoDisponibil,
+    // `geoDisponibil` a DISPARUT din contract, si nu din lene. Insemna „furnizorul a raspuns la
+    // cererea asta" — o intrebare care nu mai are raspuns, fiindca raportul nu mai asteapta niciun
+    // raspuns. Un boolean pastrat de forma ar fi mintit despre care esec s-a intamplat. Raman doua
+    // FAPTE, pe care interfata le poate explica exact: cate randuri afisate au localizare si cate
+    // adrese sunt in curs de aflare. Daca furnizorul chiar e cazut, `geoInCurs` ramane nenul de la
+    // o reincarcare la alta si localizarile nu apar — degradare vizibila, fara a pretinde ca stim
+    // cauza dintr-o singura cerere.
+    geoCunoscute: locatii.size,
+    geoInCurs,
     maxAutentificari: MAX_AUTENTIFICARI,
   };
 }
