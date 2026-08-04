@@ -24,8 +24,14 @@ function intracomTurnover(yearEntries) {
   return { expedieri, introduceri };
 }
 
+// Cele doua agregari de venituri de mai jos filtreaza inchiderile 6/7 -> 121 (`resultLines`):
+// dupa inchiderea anuala rulajul conturilor de venit se anuleaza, deci ambele cadeau la ZERO si
+// controalele dispareau tacit — exact clasa de defect pe care controalele exista sa o prinda.
+// O firma cu 500.000 lei cifra de afaceri nu mai era avertizata ca a depasit plafonul de scutire
+// TVA, iar micro nu mai era avertizata ca a depasit plafonul de venituri. Un control care tace
+// arata identic cu unul care trece.
 function venituriClasa7(entries) {
-  const r = acc.accumulate(acc.allLines(entries));
+  const r = acc.accumulate(acc.resultLines(entries));
   let venit = 0;
   for (const cod of Object.keys(r)) {
     const a = coa.getAccount(cod);
@@ -38,7 +44,7 @@ function venituriClasa7(entries) {
  *  scutire TVA (art. 310) si a cifrei de afaceri din bilant. Net (credit-debit): 709 (sold
  *  debitor) scade automat. Nu include 74x/75x/76x/78x (subventii, alte venituri, financiare). */
 function cifraAfaceri(entries) {
-  const r = acc.accumulate(acc.allLines(entries));
+  const r = acc.accumulate(acc.resultLines(entries));
   let ca = 0;
   for (const cod of Object.keys(r)) if (/^70/.test(String(cod))) ca = round2(ca + (r[cod].c - r[cod].d));
   return ca;
@@ -123,4 +129,7 @@ function check(v, opts) {
   return { year, profil: profile, findings, byLevel, ok: findings.every((f) => f.nivel !== 'eroare') };
 }
 
-module.exports = { check };
+// `cifraAfaceri` / `venituriClasa7` sunt expuse pentru teste: sunt agregarile pe care le golea
+// inchiderea anuala, iar prin `check()` defectul se vedea doar ca ABSENTA unei constatari — adica
+// exact ca un control trecut. Testate direct, egalitatea inainte/dupa inchidere e verificabila.
+module.exports = { check, cifraAfaceri, venituriClasa7 };

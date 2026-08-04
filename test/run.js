@@ -806,6 +806,46 @@ eq('a doua inchidere nu mai are ce inchide', acc.annualClosing(vInchis, '2026').
 ok('121 = 691 recunoscut ca linie de inchidere', acc.isResultClosingLine({ debit: '121', credit: '691' }));
 ok('121 = 4111 NU e linie de inchidere', !acc.isResultClosingLine({ debit: '121', credit: '4111' }));
 
+// REGRESIE. Sectiunea de mai sus exista, dar acoperea doar patru consumatori — iar filtrul lipsea
+// in alti cinci, unde acelasi defect traia netulburat. Fiecare agregare pe clasele 6/7 trebuie sa
+// dea ACEEASI cifra inainte si dupa nota de inchidere; ancora e egalitatea, nu o valoare.
+{
+  const fc = require('../src/fiscalControls');
+  const yEnt = (view) => acc.postedEntries(view).filter((e) => String(e.period || '').startsWith('2026'));
+  eq('cifra de afaceri (plafon scutire TVA) neschimbata',
+    fc.cifraAfaceri(yEnt(vInchis)), fc.cifraAfaceri(yEnt(v)));
+  ok('...si nu e zero, altfel egalitatea ar fi trecut degeaba', fc.cifraAfaceri(yEnt(v)) > 0);
+  eq('veniturile clasei 7 (plafon micro) neschimbate',
+    fc.venituriClasa7(yEnt(vInchis)), fc.venituriClasa7(yEnt(v)));
+  eq('D101: rezultatul brut neschimbat', rep.d101(vInchis, '2026').rezultatBrut, rep.d101(v, '2026').rezultatBrut);
+  eq('D101: rezultatul din exploatare neschimbat', rep.d101(vInchis, '2026').rezExploatare, rep.d101(v, '2026').rezExploatare);
+  // Ancora interna a D101: rezultatul brut raportat (P3) si baza impozabila trebuie sa vina din
+  // acelasi rulaj. Cat timp `d101` filtra altfel decat `profitTax`, declaratia se contrazicea
+  // singura — P3 zero cu impozit nenul, ceea ce niciun control aritmetic al validatorului nu prinde.
+  const dInchis = rep.d101(vInchis, '2026');
+  ok('D101 nu se contrazice: rezultat brut 0 doar daca si profitul impozabil e 0',
+    dInchis.rezultatBrut !== 0 || dInchis.profitImpozabil === 0);
+  // Buget vs realizat: conturile bugetate SUNT clasele 6/7, deci realizatul cadea la zero si tot
+  // bugetul aparea neconsumat.
+  const bg = [{ id: 'b1', cont: '704', suma: 1000 }, { id: 'b2', cont: '607', suma: 500 }];
+  eq('buget vs realizat: realizatul nu se goleste la inchidere',
+    JSON.stringify(rep.budgetReport(vInchis, bg, '2026').rows.map((x) => x.actual)),
+    JSON.stringify(rep.budgetReport(v, bg, '2026').rows.map((x) => x.actual)));
+  // D112 cere salarii SI inchidere in aceeasi luna — cazul real: nota de inchidere e datata
+  // 31 decembrie, adica exact in luna pe care o raporteaza recapitulativul.
+  const L = (data, lines) => ({ id: 'd112-' + data, data, period: data.slice(0, 7), tip: 'x', tipNume: 'x', lines });
+  const salarii = L('2026-12-30', [{ debit: '641', credit: '421', suma: 10000 },
+    { debit: '421', credit: '4315', suma: 2500 }, { debit: '421', credit: '4316', suma: 1000 },
+    { debit: '421', credit: '444', suma: 650 }, { debit: '646', credit: '436', suma: 225 }]);
+  const inchDec = L('2026-12-31', [{ debit: '121', credit: '641', suma: 10000 }, { debit: '121', credit: '646', suma: 225 }]);
+  const d112Fara = rep.d112({ entries: [salarii], openingBalances: {} }, '2026-12');
+  const d112Cu = rep.d112({ entries: [salarii, inchDec], openingBalances: {} }, '2026-12');
+  eq('D112 decembrie: brutul supravietuieste inchiderii anuale', d112Cu.brut, d112Fara.brut);
+  eq('D112 decembrie: brutul e cel real, nu zero', d112Cu.brut, 10000);
+  // Netul e brut - retineri: cu brutul golit iesea NEGATIV, fiindca retinerile (clasa 4) raman.
+  ok('D112 decembrie: netul nu mai poate iesi negativ', d112Cu.net === 5850 && d112Cu.net > 0);
+}
+
 section('Repartizarea rezultatului (121 -> 117)');
 const profitDb = { entries: [
   { id: 'c1', period: '2026-12', data: '2026-12-31', lines: [{ debit: '707', credit: '121', suma: 10000 }] },
