@@ -12,9 +12,13 @@ const { reconcile } = require('./reconcile');
 const recurring = require('./recurring');
 const xml = require('./xml'); // doar pentru maparea cota->rand D300 (xml.js nu importa nimic din lant)
 
-/** Rulajele perioadei pe cont {cod:{d,c}}. */
+/** Rulajele perioadei pe cont {cod:{d,c}}, FARA inchiderile 6/7 -> 121 (vezi `resultLines`).
+ *  Alimenteaza recapitulativul D112, care citeste 641: nota de inchidere anuala (121 = 641) e
+ *  datata 31 decembrie, deci cadea exact in luna raportata si anula rulajul contului. Salariile
+ *  lui decembrie ieseau cu brut 0 si un net NEGATIV, fiindca retinerile (clasa 4) raman intacte —
+ *  singura luna din an in care recapitulativul minte, si tocmai cea in care se face inchiderea. */
 function periodRulaj(db, period) {
-  const lines = acc.allLines(acc.postedEntries(db).filter((e) => (e.period || periodOf(e.data)) === period));
+  const lines = acc.resultLines(acc.postedEntries(db).filter((e) => (e.period || periodOf(e.data)) === period));
   return acc.accumulate(lines);
 }
 
@@ -625,7 +629,9 @@ function notes(db, year) {
  * compara suma bugetata cu rulajul efectiv si calculeaza variatia si gradul de realizare.
  */
 function budgetReport(db, budgets, year) {
-  const ru = acc.accumulate(acc.allLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)))));
+  // Conturile bugetate sunt exact clasele 6 si 7, deci `resultLines`: cu inchiderea anuala inclusa,
+  // realizatul fiecarui rand devenea zero si tot bugetul aparea neconsumat (vezi `resultLines`).
+  const ru = acc.accumulate(acc.resultLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)))));
   const actualOf = (cod) => {
     const a = ru[cod] || { d: 0, c: 0 };
     const cl = Number(String(cod)[0]);
@@ -875,7 +881,11 @@ function d101(db, year, opts) {
   opts = opts || {};
   const pt = acc.profitTax(db, year, opts);
   const yearEntries = acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
-  const r = acc.accumulate(acc.allLines(yearEntries));
+  // FARA inchiderile 6/7 -> 121, ca in `profitTax` (vezi `resultLines`). Altfel D101 se contrazicea
+  // singur dupa inchiderea anuala: P1/P2/P3 (venituri, cheltuieli, rezultat brut) cadeau la zero,
+  // in timp ce profitul impozabil si impozitul — calculate de `profitTax`, care filtra corect —
+  // ramaneau la valoarea lor. Declaratia raporta „rezultat brut 0, impozit 11.164".
+  const r = acc.accumulate(acc.resultLines(yearEntries));
   let vExpl = 0; let vFin = 0; let cExpl = 0; let cFin = 0;
   for (const cod of Object.keys(r)) {
     const c = String(cod);
