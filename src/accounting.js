@@ -460,7 +460,8 @@ function profitTax(db, year, opts) {
   const ded = opts.plafoane
     ? deduct.ajustari({
       rulaj: acc, profitContabil,
-      cheltAuto: opts.cheltAuto, cheltImpozitProfit: opts.cheltImpozitProfit,
+      cheltAuto: opts.cheltAuto, cheltLipsaNeimputabila: opts.cheltLipsaNeimputabila,
+      cheltImpozitProfit: opts.cheltImpozitProfit,
       amortizare: opts.amortizare, // { contabila, fiscala } — art. 28, poate da si deducere
       amortizareFiscala: opts.amortizareFiscala, cursEur: opts.cursEur,
     }, opts.plafoane)
@@ -921,6 +922,7 @@ function cashControl(db, cont, period, opts) {
   const limJuridic = Number(lim.plafonNumerarJuridic) || 5000;
   const limFizic = Number(lim.plafonNumerarFizic) || 10000;
   const limSold = Number(lim.plafonSoldCasa) || 50000;
+  const limTotalZi = Number(lim.plafonNumerarTotalZi) || 10000;
   const opening = (db.openingBalances || {})[cont] || { d: 0, c: 0 };
   const before = accumulate(allLines(postedEntries(db).filter((e) => beforePeriod(e, period))))[cont] || { d: 0, c: 0 };
   let sold = round2((opening.d + before.d) - (opening.c + before.c));
@@ -959,6 +961,24 @@ function cashControl(db, cont, period, opts) {
     if (g.plati > limita) plafon.push({ data: g.data, partener: g.partener || g.cui, juridic, tip: 'plata', suma: g.plati, limita });
     if (g.incasari > limita) plafon.push({ data: g.data, partener: g.partener || g.cui, juridic, tip: 'incasare', suma: g.incasari, limita });
   }
+  // (2b) PLAFONUL TOTAL AL ZILEI la platile catre persoane juridice — art. 3 alin. (1) lit. c):
+  // „in limita unui plafon zilnic de 5.000 lei/persoana, dar NU MAI MULT de un plafon total de
+  // 10.000 lei/zi". Sunt doua limite simultane, care se incalca INDEPENDENT: trei plati de 4.000
+  // catre trei furnizori diferiti respecta fiecare limita per persoana si o depasesc pe cea
+  // totala, deci verificarea de mai sus le lasa sa treaca. Se aplica DOAR platilor; incasarile au
+  // numai limita per persoana.
+  //
+  // Se numara doar platile catre parteneri cu CUI: plafonul e al operatiunilor cu persoane
+  // juridice, iar o plata fara partener identificat nu poate fi incadrata. Aceeasi regula ca la
+  // `juridic` de mai sus — nu una noua.
+  const platiZi = {};
+  for (const m of movs) {
+    if (!m.cui || !m.plata) continue;
+    platiZi[m.data] = round2((platiZi[m.data] || 0) + m.plata);
+  }
+  const plafonTotalZi = Object.keys(platiZi).sort()
+    .filter((data) => platiZi[data] > limTotalZi)
+    .map((data) => ({ data, suma: platiZi[data], limita: limTotalZi }));
   // (3) SOLDUL DE CASIERIE — art. 4 alin. (4) plafoneaza soldul la sfarsitul FIECAREI ZILE, nu la
   // sfarsitul perioadei. Verificarea pe soldul final rata exact cazul tipic: firma trece de plafon
   // pe 10 martie, depune excedentul la banca pe 25 si inchide luna sub limita — nesemnalata, desi
@@ -969,8 +989,8 @@ function cashControl(db, cont, period, opts) {
   const soldPesteLimita = zilePesteLimita.length
     ? zilePesteLimita.reduce((a, b) => (b.sold > a.sold ? b : a))
     : null;
-  return { cont, period, soldFinal: sold, negative, plafon, soldPesteLimita, zilePesteLimita,
-    ok: !negative.length && !plafon.length && !zilePesteLimita.length };
+  return { cont, period, soldFinal: sold, negative, plafon, plafonTotalZi, soldPesteLimita, zilePesteLimita,
+    ok: !negative.length && !plafon.length && !plafonTotalZi.length && !zilePesteLimita.length };
 }
 
 module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,

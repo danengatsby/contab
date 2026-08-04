@@ -72,6 +72,10 @@ async function loadCashbook() {
       const items = [];
       cc.negative.forEach((n) => items.push(`<li><b>Sold de casă NEGATIV</b> (${fmt(n.sold)} lei) la ${n.data} — imposibil fizic; verifică ordinea operațiunilor sau o încasare lipsă.</li>`));
       cc.plafon.forEach((w) => items.push(`<li><b>Plafon numerar depășit</b> (Legea 70/2015): ${w.tip === 'plata' ? 'plăți' : 'încasări'} de ${fmt(w.suma)} lei cu „${H(w.partener)}" la ${H(w.data)} — limita ${fmt(w.limita)} lei/zi (${w.juridic ? 'pers. juridică' : 'pers. fizică'}).</li>`));
+      // Plafonul TOTAL al zilei e o a doua limită, independentă de cea per persoană: plăți
+      // mici către furnizori diferiți o pot depăși fără ca vreuna să iasă din limita ei.
+      (cc.plafonTotalZi || []).forEach((z) => items.push(
+        `<li><b>Plafon zilnic TOTAL depășit</b> (Legea 70/2015 art. 3): plăți în numerar de ${fmt(z.suma)} lei către persoane juridice la ${H(z.data)} — limita totală ${fmt(z.limita)} lei/zi, indiferent câți furnizori.</li>`));
       // Plafonul de casierie se verifică la sfârșitul FIECĂREI zile, deci se enumeră zilele
       // depășite — un sold final sub limită nu spală o depășire din cursul lunii.
       (cc.zilePesteLimita || (cc.soldPesteLimita ? [cc.soldPesteLimita] : [])).forEach((z) => items.push(
