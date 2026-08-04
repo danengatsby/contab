@@ -905,6 +905,12 @@ function d100Xml(company, period, d, who) {
   // scadenta: 25 a lunii urmatoare perioadei (format romanesc ZZ.LL.AAAA)
   const next = Number(luna) === 12 ? { l: 1, a: Number(an) + 1 } : { l: Number(luna) + 1, a: Number(an) };
   const scadenta = '25.' + String(next.l).padStart(2, '0') + '.' + next.a;
+  // Obligatia declarata vine din DATE, nu din generator: acelasi formular poarta impozitul micro
+  // (620) sau pe cel pe profit (103), cu alt cod bugetar. Era fixat pe micro, deci o firma pe
+  // impozit pe profit descarca o declaratie de microintreprindere. Implicitele pastreaza
+  // comportamentul istoric pentru apelantii care nu transmit nimic.
+  const codOblig = String(d.codOblig || '620');
+  const codBugetar = String(d.codBugetar || '20A031800');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- D100 v2 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D100 fisier.xml -->
 <declaratie100 xmlns="mfp:anaf:dgti:d100:declaratie:v2"
@@ -912,7 +918,7 @@ function d100Xml(company, period, d, who) {
   nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
   cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}" adresa="${esc(adresa || '-')}"
   totalPlata_A="${lei(Math.round(d.impozit || 0) * 2)}">
-  <obligatie cod_oblig="620" cod_bugetar="20A031800" scadenta="${scadenta}" nr_evid="${nrEvidPlata('620', luna, an)}"
+  <obligatie cod_oblig="${esc(codOblig)}" cod_bugetar="${esc(codBugetar)}" scadenta="${scadenta}" nr_evid="${nrEvidPlata(codOblig, luna, an)}"
     suma_dat="${lei(d.impozit)}" suma_plata="${lei(d.impozit)}"/>
 </declaratie100>
 `;

@@ -2520,6 +2520,58 @@ const d100warn = rep.d100micro({ entries: [{ id: 'w1', period: '2026-02', data: 
 ok('D100: peste 80% din plafon -> avertisment de urmarire (nu de depasire)', d100warn.avertismente.some((w) => /din plafonul micro/.test(w)) && !d100warn.avertismente.some((w) => /DEPASESC/.test(w)));
 eq('D100: venitul anual cumulat pentru controlul plafonului', d100over.venitAn, 600000);
 
+// ── D100 pentru platitorii de IMPOZIT PE PROFIT (art. 41) ────────────────────────────────────
+// REGRESIE. Ruta chema mereu `d100micro`, iar generatorul avea `cod_oblig="620"` fix in sablon:
+// o firma pe impozit pe profit descarca o declaratie de MICROINTREPRINDERE — alt cod de obligatie,
+// alt cod bugetar si alta suma. Calculul trimestrial nu exista deloc.
+{
+  const P = (id, data, lines) => ({ id, data, period: data.slice(0, 7), tip: 'x', tipNume: 'x', lines });
+  const firmaProfit = { cui: '12345674', nume: 'X SRL', regimImpozit: 'profit', caen: '1071' };
+  const vp = { openingBalances: {}, assets: [], angajati: [], company: firmaProfit, entries: [
+    P('q1', '2026-02-10', [{ debit: '4111', credit: '704', suma: 100000 }]), // T1: profit 100.000
+    P('q2', '2026-05-10', [{ debit: '4111', credit: '704', suma: 50000 }]),  // T2: inca 50.000
+    P('q3', '2026-08-10', [{ debit: '607', credit: '371', suma: 80000 }]),   // T3: pierdere
+  ] };
+  const t1 = rep.d100(vp, '2026-03'); const t2 = rep.d100(vp, '2026-06'); const t3 = rep.d100(vp, '2026-09');
+  // Nomenclatorul: perechea (cod_oblig, cod_bugetar) e cea acceptata de validatorul OFICIAL.
+  eq('regimul profit -> obligatia 103 (impozit pe profit)', t1.codOblig, '103');
+  eq('...cu codul bugetar 20470101 (nu cel de micro)', t1.codBugetar, '20470101');
+  eq('regimul micro ramane pe obligatia 620', rep.d100({ entries: [], openingBalances: {}, angajati: [{ id: 'a' }], company: { regimImpozit: 'micro' } }, '2026-03').codOblig, '620');
+  // Calculul e CUMULAT de la inceputul anului, iar pe declaratie merge diferenta.
+  eq('T1: impozit pe profitul cumulat (100.000 x 16%)', t1.impozit, 16000);
+  eq('T2: cumulat 24.000, deja declarat 16.000 -> se declara 8.000', t2.impozit, 8000);
+  eq('T2: si cumulatul e expus, nu doar diferenta', t2.impozitCumulat, 24000);
+  // Trimestru pe pierdere: cumulatul SCADE. Pe declaratie merge 0 (D100 nu ia sume negative),
+  // dar diferenta bruta ramane vizibila, ca sa se vada de ce.
+  ok('T3 pe pierdere: cumulatul scade', t3.impozitCumulat < t2.impozitCumulat);
+  eq('T3: pe declaratie merge 0, nu o suma negativa', t3.impozit, 0);
+  ok('T3: diferenta bruta ramane negativa in rezultat', t3.diferenta < 0);
+  ok('T3: si se explica in avertismente', t3.avertismente.some((w) => /pierdere/i.test(w)));
+  // Trimestrul IV NU se declara prin D100 (art. 41 alin. 1) — definitivarea e prin D101.
+  const t4 = rep.d100(vp, '2026-12');
+  eq('T4 nu se declara prin D100', t4.seDeclara, false);
+  ok('T4: motivul e scris, nu doar un flag', t4.avertismente.some((w) => /trimestrul IV/i.test(w) && /D101/.test(w)));
+  ok('T1-T3 se declara', t1.seDeclara && t2.seDeclara && t3.seDeclara);
+  // XML-ul poarta obligatia din DATE, nu din sablon, iar nr_evid o codifica (regula R16).
+  const xProfit = xml.d100Xml(firmaProfit, '2026-06', t2);
+  ok('XML: cod_oblig si cod_bugetar de impozit pe profit', xProfit.includes('cod_oblig="103"') && xProfit.includes('cod_bugetar="20470101"'));
+  ok('XML: suma declarata e diferenta trimestrului', xProfit.includes('suma_dat="8000"'));
+  ok('XML: nr_evid codifica obligatia pe pozitiile 3-5 (R16)', /nr_evid="10103\d{18}"/.test(xProfit));
+  ok('XML micro ramane neatins (620 / 20A031800)', (() => {
+    const xm = xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q);
+    return xm.includes('cod_oblig="620"') && xm.includes('cod_bugetar="20A031800"');
+  })());
+  // Ajustarile fiscale se cumuleaza pe aceeasi fereastra ca profitul (art. 28 / art. 25).
+  eq('amortizarea fiscala se taie la finalul trimestrului',
+    assets.depreciationDifference([{ id: 'm', cont: '2131', cost: 12000, durataLuni: 12,
+      dataPif: '2025-12-15', metoda: 'liniara' }], '2026', null, '2026-03').fiscala, 3000);
+  eq('...si pe an intreg ramane cat era', assets.depreciationDifference([{ id: 'm', cont: '2131',
+    cost: 12000, durataLuni: 12, dataPif: '2025-12-15', metoda: 'liniara' }], '2026').fiscala, 12000);
+  // Motorul de impozit accepta taierea, dar fara ea se comporta ca inainte.
+  eq('profitTax cu panaLa: doar pana la finalul lunii', acc.profitTax(vp, '2026', { cota: 16, panaLa: '2026-03' }).profitContabil, 100000);
+  eq('profitTax fara panaLa: anul intreg (comportament istoric)', acc.profitTax(vp, '2026', { cota: 16 }).profitContabil, 70000);
+}
+
 // ── Baza impozabila (art. 53) — NU e totalul clasei 7 ────────────────────────────────────────
 // REGRESIE. Baza era „tot rulajul creditor al clasei 7", deci veniturile care nu reprezinta
 // incasari din activitate (reluari de provizioane, productie de imobilizari, variatia stocurilor,
@@ -4199,7 +4251,12 @@ eq('expected: D406 cadenta anuala -> doar decembrie', [fp.expected(fp.build({ tv
 eq('termen Intrastat: 15 ale lunii urmatoare', declMod.dueDate('intrastat', '2026-06'), '2026-07-15');
 // micro/profit -> D100/D101: micro depune D100 trimestrial; profit depune si D101 anual (decembrie)
 eq('micro: D100 la sfarsit de trimestru, fara D101', fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'micro' }, {}), '2026-12', noIntra).filter((t) => t === 'd100' || t === 'd101').join(','), 'd100');
-eq('profit: D100 (avans) + D101 in decembrie', fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'profit' }, {}), '2026-12', noIntra).filter((t) => t === 'd100' || t === 'd101').join(','), 'd100,d101');
+// TRIMESTRUL IV: la impozit pe profit se depune DOAR D101. Art. 41 alin. (1) cere D100 pentru
+// trimestrele I-III, iar definitivarea anului se face prin declaratia anuala, pana pe 25 martie.
+// Aserțiunea de aici cerea si D100 in decembrie — adica impingea firma sa declare acelasi impozit
+// de doua ori. Micro ramane cu toate patru trimestrele (T4 se declara pana pe 25 ianuarie).
+eq('profit: in decembrie DOAR D101 (T4 se definitiveaza anual, nu prin D100)', fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'profit' }, {}), '2026-12', noIntra).filter((t) => t === 'd100' || t === 'd101').join(','), 'd101');
+eq('profit: D100 la trimestrele I-III', ['2026-03', '2026-06', '2026-09'].map((p) => fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'profit' }, {}), p, noIntra).includes('d100')).join(','), 'true,true,true');
 ok('profit: D101 NU apare in afara lunii de sfarsit de an', !fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'profit' }, {}), '2026-09', noIntra).includes('d101'));
 ok('PFA: nici D100 nici D101', (() => { const t = fp.expected(fp.build({ tvaPlatitor: true, tipEntitate: 'pfa', regimImpozit: 'profit' }, {}), '2026-12', noIntra); return !t.includes('d100') && !t.includes('d101'); })());
 eq('termen D101: 25 martie anul urmator anului fiscal', declMod.dueDate('d101', '2025-12'), '2026-03-25');

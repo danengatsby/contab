@@ -414,7 +414,14 @@ function profitTax(db, year, opts) {
   opts = (typeof opts === 'number') ? { cota: opts } : (opts || {});
   const cota = opts.cota || 16;
   const pierdereReportata = round2(Number(opts.pierdereReportata) || 0);
-  const yearEntries = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
+  // `panaLa` (YYYY-MM) taie anul la finalul unei luni: impozitul pe profit se declara TRIMESTRIAL
+  // (art. 41), calculat CUMULAT de la inceputul anului, deci acelasi motor trebuie sa poata da si
+  // pozitia la 31 martie, si pe cea la 31 decembrie. Fara el, anul intreg.
+  const panaLa = opts.panaLa ? String(opts.panaLa).slice(0, 7) : null;
+  const yearEntries = postedEntries(db).filter((e) => {
+    const p = String(e.period || periodOf(e.data));
+    return p.startsWith(String(year)) && (!panaLa || p <= panaLa);
+  });
   const acc = accumulate(resultLines(yearEntries)); // fara inchiderile 6/7 -> 121 (vezi isResultClosingLine)
   let venit = 0; let chelt = 0;
   for (const cod of Object.keys(acc)) {

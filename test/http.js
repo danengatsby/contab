@@ -1130,10 +1130,14 @@ async function main() {
       const tips09 = (dreg.rows || []).map((x) => x.tip);
       ok('declaratii conduse de profil: D394 scutit nu apare', tips09.length > 0 && !tips09.includes('d394'));
       ok('declaratii conduse de profil: D406 la regim trimestrial e prezent la sfarsit de T3', tips09.includes('saft'));
-      // micro/profit -> D100/D101: firma pe profit vede D101 in decembrie
+      // micro/profit -> D100/D101: firma pe profit vede in decembrie DOAR D101. Art. 41 alin. (1)
+      // cere D100 la trimestrele I-III; trimestrul IV se definitiveaza prin declaratia anuala.
+      // Aserțiunea cerea si D100 aici, adica acelasi impozit declarat de doua ori.
       const dregDec = (await req('GET', '/api/declarations?period=2026-12', { cookie: c1 })).json;
       const tipsDec = (dregDec.rows || []).map((x) => x.tip);
-      ok('profil profit: D101 apare in decembrie', tipsDec.includes('d101') && tipsDec.includes('d100'));
+      ok('profil profit: in decembrie D101, fara D100 (T4 se definitiveaza anual)', tipsDec.includes('d101') && !tipsDec.includes('d100'));
+      const dregT3 = (await req('GET', '/api/declarations?period=2026-09', { cookie: c1 })).json;
+      ok('profil profit: D100 la trimestrul III', (dregT3.rows || []).map((x) => x.tip).includes('d100'));
       // calculul D101 (figuri semantice) disponibil via /api/d101
       const d101c = await req('GET', '/api/d101?year=2026', { cookie: c1 });
       ok('/api/d101: calcul coerent (rezultat brut + impozit + scadenta)', d101c.status === 200 && typeof d101c.json.rezultatBrut === 'number' && typeof d101c.json.impozit === 'number' && d101c.json.scadenta === '2027-03-25');

@@ -67,9 +67,11 @@ function expected(profile, period, hasIntracom) {
   if (profile.intrastat && intracom) add('intrastat');
   // D112: firme cu salariati
   if (profile.areAngajati) add('d112');
-  // D100 (impozit micro / avans profit): trimestrial, non-PFA (micro = impozit micro;
-  // profit = plata anticipata trimestriala)
-  if (!profile.pfa && sfarsitTrim) add('d100');
+  // D100: trimestrial, non-PFA. La MICRO se declara toate patru trimestrele (cel de-al patrulea
+  // pana pe 25 ianuarie). La IMPOZIT PE PROFIT, art. 41 alin. (1) cere D100 doar pentru
+  // trimestrele I-III: definitivarea anului se face prin D101, pana pe 25 martie. Asteptarea unui
+  // D100 pe trimestrul IV impingea firma sa-si declare impozitul de doua ori.
+  if (!profile.pfa && sfarsitTrim && !(profile.profit && Number(period.slice(5, 7)) === 12)) add('d100');
   // D101 (impozit pe profit, ANUAL): doar regimul de profit, la sfarsitul anului (termen 25 martie
   // anul urmator). Micro NU depune D101.
   if (profile.profit && Number(period.slice(5, 7)) === 12) add('d101');
