@@ -78,7 +78,12 @@ function profitTaxOptions(fid, src, year) {
     // plafoane calculeaza singur nedeductibilele din conturi (art. 25/40^2).
     cheltNedeductibile: (src.cheltNedeductibile != null && src.cheltNedeductibile !== '')
       ? Number(src.cheltNedeductibile) : null,
-    deduceri: Number(src.deduceri) || 0,
+    // Simetric cu nedeductibilele: camp gol => motorul calculeaza veniturile neimpozabile
+    // (art. 23) din conturi. Aici era `Number(src.deduceri) || 0`, deci un 0 — pe care formularul
+    // il trimitea MEREU, campul avand value="0" — ajungea in motor ca suprascriere explicita cu
+    // zero si stergea tot ce calculase. Nu doar deducerile: acelasi tipar pe `cheltNedeductibile`
+    // anula si plafoanele art. 25/40^2, deci din interfata impozitul iesea neajustat.
+    deduceri: (src.deduceri != null && src.deduceri !== '') ? Number(src.deduceri) : null,
     pierdereReportata: pr || 0,
     plafoane: fiscal.FISCAL,
     cheltAuto: rep.cheltuieliAuto(view, year),

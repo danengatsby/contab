@@ -425,6 +425,15 @@ ok('an fara rulaje: posted=false, fara nota', clsvc.closeYear(fidOk, '2035').pos
 firmaCl.pierdereFiscala = { 2034: 500 };
 eq('pierderea memorata pe anul precedent se preia implicit', clsvc.profitTaxOptions(fidOk, {}, 2035).pierdereReportata, 500);
 eq('pierderea explicita are prioritate', clsvc.profitTaxOptions(fidOk, { pierdereReportata: 100 }, 2035).pierdereReportata, 100);
+// REGRESIE: ajustarile sunt SUPRASCRIERI, nu valori implicite. Serviciul traducea `deduceri` cu
+// `Number(src.deduceri) || 0`, deci campul lipsa devenea 0 — iar formularul, care avea value="0",
+// trimitea 0 la fiecare cerere. In motor, un 0 explicit inseamna „zero, exact", asa ca stergea tot
+// calculul: din interfata, impozitul iesea NEAJUSTAT (nici procente fixe, nici plafoane art. 25).
+ok('camp lipsa => null, deci motorul calculeaza', clsvc.profitTaxOptions(fidOk, {}, 2035).deduceri === null
+  && clsvc.profitTaxOptions(fidOk, {}, 2035).cheltNedeductibile === null);
+ok('camp gol (sirul vid din formular) => tot null', clsvc.profitTaxOptions(fidOk, { deduceri: '', cheltNedeductibile: '' }, 2035).deduceri === null);
+ok('zero transmis EXPLICIT ramane suprascriere cu zero', clsvc.profitTaxOptions(fidOk, { deduceri: 0, cheltNedeductibile: 0 }, 2035).deduceri === 0);
+eq('o valoare transmisa ajunge neatinsa', clsvc.profitTaxOptions(fidOk, { deduceri: 250 }, 2035).deduceri, 250);
 // impozitul pe profit: dubla inregistrare refuzata; pierderea se memoreaza si la impozit 0
 db.get().entries.push({ id: 'cl-svc-dbl', firmaId: fidOk, data: '2036-12-31', period: '2036-12', tip: 'impozit_profit', tipNume: 'Impozit pe profit', lines: [], system: true });
 eq('impozitul deja inregistrat pe an -> 400', errStatus(() => clsvc.closeProfitTax(fidOk, {}, '2036')), 400);

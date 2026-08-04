@@ -929,10 +929,11 @@
       <div class="card">
         <h2>① Impozit pe profit</h2>
         <p class="muted">Profit impozabil = profit contabil <b>+ cheltuieli nedeductibile − deduceri − pierdere fiscală reportată</b>. Impozit = profit impozabil × cota → <b>691 = 4411</b>. Pierderea fiscală a anului se reportează automat. <b>Ordinea față de închiderea anuală nu contează</b> — dacă anul e deja închis, contul 691 se închide automat în 121. Calculul detaliat, rând cu rând, e în „Taxe & declarații → Registru fiscal".</p>
+        <p class="muted">Lasă cele două câmpuri de ajustare <b>goale</b> ca să fie calculate din conturi (amenzi, provizioane, protocol, sponsorizare, auto, dobânzi, amortizare) — exact cifrele din registrul fiscal. Completează-le doar ca să <b>suprascrii</b> calculul cu o ajustare pe care motorul nu o poate deduce din conturi.</p>
         <div class="dyn">
           <label>Anul <input type="number" id="ptYear" value="2026" /></label>
-          <label>Cheltuieli nedeductibile (+) <input type="number" id="ptNed" value="0" step="0.01" /></label>
-          <label>Deduceri / venituri neimpozabile (−) <input type="number" id="ptDed" value="0" step="0.01" /></label>
+          <label>Cheltuieli nedeductibile (+) <input type="number" id="ptNed" step="0.01" placeholder="auto din conturi" /></label>
+          <label>Deduceri / venituri neimpozabile (−) <input type="number" id="ptDed" step="0.01" placeholder="auto din conturi" /></label>
           <label>Pierdere fiscală reportată (−) <input type="number" id="ptPierdere" step="0.01" placeholder="auto din anul precedent" /></label>
         </div>
         <div id="ptPreview" class="preview"></div>

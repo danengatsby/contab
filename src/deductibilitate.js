@@ -1,18 +1,28 @@
 'use strict';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  PLAFOANELE DE DEDUCTIBILITATE LA IMPOZITUL PE PROFIT (art. 25 si 40^2)
+//  TRECEREA DE LA REZULTATUL CONTABIL LA CEL FISCAL (art. 23, 25 si 40^2)
 //
-//  De ce exista modulul: pana acum deductibilitatea era modelata ca PROCENT FIX PE CONT
-//  (tabela NEDEDUCTIBILE din reporting.js). Asta acopera corect cheltuielile integral
-//  nedeductibile (amenzi, provizioane), dar NU si pe cele cu PLAFON — unde partea
-//  nedeductibila depinde de o baza de calcul, nu de un procent aplicat cheltuielii.
-//  Diferenta e intreaga substanta a art. 25: la protocol, 2% NU inseamna „2% e nedeductibil",
-//  ci „e deductibil pana la 2% dintr-o baza care include cheltuiala insasi".
+//  SURSA UNICA a ajustarilor fiscale. Modulul acopera DOUA feluri de ajustare, care se
+//  calculeaza altfel si se greseau altfel:
+//    (1) PROCENT FIX PE CONT — amenzi, provizioane, ajustari de creante. Partea nedeductibila
+//        e un procent din cheltuiala insasi (`FIXE`), plus simetricul lor la venituri
+//        (`NEIMPOZABILE`: reluarea unui provizion nedeductibil nu e venit impozabil);
+//    (2) PLAFON — protocol, social, auto, sponsorizare, dobanzi. Partea nedeductibila depinde
+//        de o BAZA DE CALCUL, nu de un procent aplicat cheltuielii. Diferenta e intreaga
+//        substanta a art. 25: la protocol, 2% NU inseamna „2% e nedeductibil", ci „e deductibil
+//        pana la 2% dintr-o baza care include cheltuiala insasi".
+//
+//  DE CE STAU IMPREUNA: (1) traia in `reporting.js` si era citita DOAR de registrul de evidenta
+//  fiscala, iar `accounting.profitTax` — cel care posteaza 691 = 4411 SI alimenteaza D101 —
+//  vedea doar (2). Deci registrul spunea un impozit si declaratia depusa altul: pe o amenda de
+//  20.000 + provizion 10.000 + impozite nedeductibile 5.000, registrul dadea 16.000 lei impozit
+//  si nota contabila 10.400 (-35%). Doua motoare pe aceeasi lege se contrazic garantat; azi e
+//  unul singur, iar `registruFiscal` si `profitTax` citesc din el.
 //
 //  ORDINEA DE APLICARE E PARTE DIN CONTRACT, si e motivul pentru care modulul are DOUA faze:
-//    faza 1 (`ajustari`)  — ajustarile care nu depind de impozit: protocol, social, auto,
-//                           sponsorizare (ca CHELTUIALA), dobanzi excedentare;
+//    faza 1 (`ajustari`)  — ajustarile care nu depind de impozit: procentele fixe, apoi
+//                           protocol, social, auto, sponsorizare (ca CHELTUIALA), dobanzi;
 //    faza 2 (`credit`)    — creditul fiscal al sponsorizarii, care depinde de impozitul deja
 //                           calculat pe baza fiscala din faza 1.
 //  Inversarea fazelor ar da un rezultat plauzibil si gresit: creditul s-ar calcula pe un impozit
@@ -67,6 +77,60 @@ function rand(regula, temei, cont, baza, plafon, cheltuit, nedeductibil, nota, d
   return r;
 }
 
+// ── (1) PROCENTE FIXE PE CONT ─────────────────────────────────────────────────────────────────
+// `pct` = cat din rulajul contului e NEDEDUCTIBIL (nu cat e deductibil). Prefix, ca peste tot:
+// `6581.02` se aduna la `6581`. Mutate aici din `reporting.js`, unde le vedea doar registrul.
+const FIXE = {
+  6581: { nume: 'Despagubiri, amenzi si penalitati', pct: 100, temei: 'Art. 25(4)(b)' },
+  635: { nume: 'Alte impozite si taxe nedeductibile', pct: 100, temei: 'Art. 25(4)(a)' },
+  6814: { nume: 'Ajustari pentru deprecierea creantelor (deductibil 30%, art. 26)', pct: 70, temei: 'Art. 26(1)(c)' },
+  654: { nume: 'Pierderi din creante neincasabile (nedeductibil fara conditii, art. 26)', pct: 100, temei: 'Art. 25(4)(h)' },
+  6812: { nume: 'Provizioane pentru riscuri si cheltuieli (nedeductibile, art. 26)', pct: 100, temei: 'Art. 26(1)' },
+};
+
+// Simetricul la venituri (art. 23): reluarea unei cheltuieli care NU a fost deductibila nu poate
+// fi venit impozabil — altfel suma s-ar impozita o data prin nedeductibilitate si a doua oara la
+// reluare. `pct` = cat din venit e NEIMPOZABIL, ales in oglinda cu procentul cheltuielii.
+const NEIMPOZABILE = {
+  7814: { nume: 'Venituri din reluarea ajustarilor pentru creante (partea nedeductibila)', pct: 70, temei: 'Art. 23(d)' },
+  7812: { nume: 'Venituri din reluarea provizioanelor nedeductibile', pct: 100, temei: 'Art. 23(d)' },
+};
+
+// Randul D101 al procentelor fixe. Ramane P33 „Alte cheltuieli nedeductibile" pana cand
+// formularul oficial confirma un rand dedicat (provizioanele si ajustarile peste limita au
+// probabil unul): validatorul NU poate arbitra — regula R80 cere doar ca P34 sa fie suma de la
+// P23 la P33, deci orice repartizare care torna trece. O mapare ghicita ar raporta fals si ar
+// trece verde; totalul cinstit la „alte" e mai bun. Vezi nota de la D101_IMPLICIT.
+const D101_FIXE = 'P33';
+
+/** Ajustarile cu procent fix pe cont (nedeductibile integral sau partial). */
+function fixe(rulaj) {
+  const randuri = [];
+  for (const [cod, cfg] of Object.entries(FIXE)) {
+    const cheltuit = cheltuiala(rulaj, cod);
+    if (cheltuit <= 0) continue;
+    const nedeductibil = round2((cheltuit * cfg.pct) / 100);
+    const r = rand(cfg.nume, cfg.temei, cod, cheltuit, round2(cheltuit - nedeductibil), cheltuit,
+      nedeductibil, cfg.pct === 100 ? 'Integral nedeductibila.' : 'Nedeductibila in proportie de ' + cfg.pct + '%.',
+      D101_FIXE);
+    r.pct = cfg.pct; // procentul ramane pe rand: registrul fiscal il afiseaza langa suma
+    randuri.push(r);
+  }
+  return { randuri, total: round2(randuri.reduce((s, r) => s + r.nedeductibil, 0)) };
+}
+
+/** Veniturile neimpozabile cu procent fix pe cont (se SCAD din baza, nu se aduna). */
+function neimpozabile(rulaj) {
+  const randuri = [];
+  for (const [cod, cfg] of Object.entries(NEIMPOZABILE)) {
+    const realizat = venit(rulaj, cod);
+    if (realizat <= 0) continue;
+    const suma = round2((realizat * cfg.pct) / 100);
+    randuri.push({ regula: cfg.nume, temei: cfg.temei, cont: cod, pct: cfg.pct, realizat, neimpozabil: suma });
+  }
+  return { randuri, total: round2(randuri.reduce((s, r) => s + r.neimpozabil, 0)) };
+}
+
 // ── Maparea pe randurile formularului 101 ─────────────────────────────────────────────────────
 // Etichetele si regulile de completare sunt cele din OPANAF 206/2025 (formularul oficial +
 // instructiunile lui), NU deduse din numele campurilor. Randurile fara corespondent dedicat merg
@@ -119,11 +183,23 @@ function mapareD101(randuri) {
  *   amortizareFiscala  amortizarea fiscala a anului (baza art. 40^2)
  *   cursEur            cursul de schimb pentru plafonul de 1.000.000 EUR
  * @param {object} cfg cotele (fiscal.FISCAL)
+ * @returns {object} `randuri` = TOATE ajustarile nedeductibile (fixe + plafon), in ordinea de
+ *   aplicare; `totalNedeductibil` = suma lor — asta se aduna la baza impozabila. Separat,
+ *   `randuriNeimpozabile`/`totalNeimpozabil` se SCAD din baza (art. 23), nu se aduna: sunt
+ *   venituri, iar amestecarea lor in `randuri` le-ar trimite pe randul gresit din D101.
  */
 function ajustari(i, cfg) {
   i = i || {}; cfg = cfg || {};
   const rulaj = i.rulaj || {};
-  const randuri = [];
+
+  // ── (1) Procentele fixe, INTAI ────────────────────────────────────────────
+  // Nu doar de forma: costul excedentar al indatorarii (art. 40^2, mai jos) se plafoneaza pe o
+  // baza care porneste de la rezultatul FISCAL, deci trebuie sa stie deja ce e nedeductibil prin
+  // procent fix si ce venit nu se impoziteaza. Calculate dupa, plafonul de 30% ar iesi din alta
+  // baza decat cea a registrului fiscal — adica exact divergenta pe care modulul o inchide.
+  const fixeRez = fixe(rulaj);
+  const neimpRez = neimpozabile(rulaj);
+  const randuri = fixeRez.randuri.slice(); // randurile cu plafon se adauga in continuare
 
   // ── Protocol (art. 25(3)(a)) ──────────────────────────────────────────────
   // Baza include cheltuiala de protocol INSASI si cheltuiala cu impozitul pe profit. Un plafon
@@ -205,7 +281,14 @@ function ajustari(i, cfg) {
     if (excedent <= plafonEur) {
       nota = 'Sub plafonul de ' + (cfg.dobanziPlafonEur || 0) + ' EUR: integral deductibil.';
     } else {
-      const bazaD = round2(Number(i.rezultatFiscalInainteDobanzi || 0) + excedent + Number(i.amortizareFiscala || 0));
+      // Baza art. 40^2 porneste de la rezultatul FISCAL de dinainte de dobanzi. Apelantul o poate
+      // impune (`rezultatFiscalInainteDobanzi`, folosit de corpusul de revizie), dar IMPLICIT o
+      // derivam aici din profitul contabil corectat cu ajustarile fixe — asa nu mai depinde de
+      // cine cheama functia, si registrul fiscal si nota contabila ajung la aceeasi cifra.
+      const rezFiscalAnte = (i.rezultatFiscalInainteDobanzi != null)
+        ? Number(i.rezultatFiscalInainteDobanzi) || 0
+        : round2(Number(i.profitContabil || 0) + fixeRez.total - neimpRez.total);
+      const bazaD = round2(rezFiscalAnte + excedent + Number(i.amortizareFiscala || 0));
       const plafon30 = bazaD > 0 ? round2((bazaD * Number(cfg.dobanziEbitdaPct || 0)) / 100) : 0;
       const peste = round2(excedent - plafonEur);
       // DOUA CITIRI ALE ART. 40^2, ambele calculate — decizia e a revizorului, nu a codului.
@@ -242,7 +325,15 @@ function ajustari(i, cfg) {
   }
 
   const totalNedeductibil = round2(randuri.reduce((s, r) => s + r.nedeductibil, 0));
-  return { randuri, totalNedeductibil, sponsorizareCheltuita: sponsor };
+  return {
+    randuri, totalNedeductibil, sponsorizareCheltuita: sponsor,
+    // Subseturile, ca registrul fiscal sa poata pastra cele doua tabele SEPARAT in raport fara
+    // sa le recalculeze (si deci fara sa poata diverge de la total).
+    randuriFixe: fixeRez.randuri, totalFix: fixeRez.total,
+    randuriPlafon: randuri.slice(fixeRez.randuri.length),
+    totalPlafon: round2(randuri.slice(fixeRez.randuri.length).reduce((s, r) => s + r.nedeductibil, 0)),
+    randuriNeimpozabile: neimpRez.randuri, totalNeimpozabil: neimpRez.total,
+  };
 }
 
 /**
@@ -295,4 +386,4 @@ function credit(i, cfg) {
 }
 
 module.exports = {
-  mapareD101, ajustari, credit, CONT, cheltuiala, venit };
+  mapareD101, ajustari, credit, fixe, neimpozabile, CONT, FIXE, NEIMPOZABILE, cheltuiala, venit };

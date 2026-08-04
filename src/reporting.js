@@ -413,18 +413,10 @@ const CONTURI_TREZORERIE = ['5121', '5124', '5311', '5314'];
 
 // Conturi de cheltuieli nedeductibile fiscal (uzual)
 // Cheltuieli (partial) nedeductibile fiscal — `pct` = procentul nedeductibil (art. 25-28 Cod fiscal)
-const NEDEDUCTIBILE = {
-  6581: { nume: 'Despagubiri, amenzi si penalitati', pct: 100 },
-  635: { nume: 'Alte impozite si taxe nedeductibile', pct: 100 },
-  6814: { nume: 'Ajustari pentru deprecierea creantelor (deductibil 30%, art. 26)', pct: 70 },
-  654: { nume: 'Pierderi din creante neincasabile (nedeductibil fara conditii, art. 26)', pct: 100 },
-  6812: { nume: 'Provizioane pentru riscuri si cheltuieli (nedeductibile, art. 26)', pct: 100 },
-};
-// Venituri neimpozabile — `pct` = procentul neimpozabil (simetric cu ajustarea nedeductibila, art. 23)
-const NEIMPOZABILE = {
-  7814: { nume: 'Venituri din reluarea ajustarilor pentru creante (partea nedeductibila)', pct: 70 },
-  7812: { nume: 'Venituri din reluarea provizioanelor nedeductibile', pct: 100 },
-};
+// Tabelele NEDEDUCTIBILE / NEIMPOZABILE au fost MUTATE in `src/deductibilitate.js` (`FIXE`,
+// respectiv `NEIMPOZABILE`). Cat timp traiau aici, le citea doar registrul de evidenta fiscala,
+// iar `accounting.profitTax` — cel care posteaza 691 = 4411 si alimenteaza D101 — nu le vedea
+// deloc: acelasi an dadea doua impozite diferite, iar registrul contrazicea declaratia depusa.
 
 /** Baza cheltuielilor auto cu deductibilitate limitata (art. 25(3)(l)): liniile de cheltuiala din
  *  articolele marcate `auto50`. Marcajul se pastreaza pe articol tocmai pentru acest calcul —
@@ -447,26 +439,17 @@ function registruFiscal(db, year, cota, opts) {
   opts = opts || {};
   const pl = stmt.profitLoss(db, year);
   const r = periodRulaj2(db, year);
-  const cheltNeded = [];
-  let totalNeded = 0;
-  for (const [cod, cfg] of Object.entries(NEDEDUCTIBILE)) {
-    const baza = r[cod] ? round2(r[cod].d - r[cod].c) : 0;
-    if (baza > 0) {
-      const suma = round2((baza * cfg.pct) / 100);
-      cheltNeded.push({ cod, nume: cfg.nume, baza, pct: cfg.pct, suma });
-      totalNeded = round2(totalNeded + suma);
-    }
-  }
-  const venituriList = [];
-  let venituriNeimpozabile = 0;
-  for (const [cod, cfg] of Object.entries(NEIMPOZABILE)) {
-    const baza = r[cod] ? round2(r[cod].c - r[cod].d) : 0;
-    if (baza > 0) {
-      const suma = round2((baza * cfg.pct) / 100);
-      venituriList.push({ cod, nume: cfg.nume, baza, pct: cfg.pct, suma });
-      venituriNeimpozabile = round2(venituriNeimpozabile + suma);
-    }
-  }
+  // Procentele fixe pe cont vin din `deductibilitate.js`, nu dintr-o tabela locala. Se calculeaza
+  // NECONDITIONAT de `opts.plafoane`: registrul se cere si fara cotele configurate (dosarul anual
+  // il genereaza asa), iar amenzile raman nedeductibile indiferent de ce plafoane a dat apelantul.
+  // Forma randului ramane cea istorica ({cod, nume, baza, pct, suma}) — o citesc PDF-ul si tabelul
+  // din interfata; traducerea sta aici, ca motorul sa aiba un singur vocabular.
+  const fixeRez = deduct.fixe(r);
+  const cheltNeded = fixeRez.randuri.map((x) => ({ cod: x.cont, nume: x.regula, baza: x.cheltuit, pct: x.pct, suma: x.nedeductibil }));
+  const totalNeded = fixeRez.total;
+  const neimpRez = deduct.neimpozabile(r);
+  const venituriList = neimpRez.randuri.map((x) => ({ cod: x.cont, nume: x.regula, baza: x.realizat, pct: x.pct, suma: x.neimpozabil }));
+  const venituriNeimpozabile = neimpRez.total;
   // Amortizare: contabila (rulajul REAL al contului 6811) vs fiscala (planul fiscal al fiecarui
   // mijloc fix). Nu mai e o ipoteza: daca planurile difera, diferenta devine ajustare.
   const amortContabila = r['6811'] ? round2(r['6811'].d - r['6811'].c) : 0;
@@ -480,9 +463,10 @@ function registruFiscal(db, year, cota, opts) {
       : 'Art. 28: amortizarea fiscala = amortizarea contabila (' + amortContabila + ' lei), integral deductibila — nicio diferenta.');
   }
   const rezultatContabil = pl.rezBrut;
-  // Ajustarile CU PLAFON (art. 25/40^2), calculate din conturi — separate de tabela de procente
-  // fixe de mai sus, care acopera doar cheltuielile integral nedeductibile. Nu se suprapun:
-  // niciun cont din NEDEDUCTIBILE nu e citit de motorul de plafoane.
+  // Ajustarile CU PLAFON (art. 25/40^2). `ajustari` intoarce ACUM si procentele fixe in `randuri`
+  // (le calculeaza tot el, pentru `profitTax`), deci aici se ia strict subsetul cu plafon —
+  // `totalNedeductibil` le-ar numara pe cele fixe a doua oara, peste `totalNeded` de mai sus.
+  // Baza art. 40^2 nu se mai transmite: motorul o deriva singur, identic, din profitul contabil.
   const plafoane = opts.plafoane || null;
   const dedRez = plafoane ? deduct.ajustari({
     rulaj: r, profitContabil: rezultatContabil,
@@ -491,9 +475,8 @@ function registruFiscal(db, year, cota, opts) {
     amortizare: amortDif,
     amortizareFiscala: amortDif.fiscala, // baza art. 40^2 foloseste amortizarea FISCALA
     cursEur: opts.cursEur,
-    rezultatFiscalInainteDobanzi: round2(rezultatContabil + totalNeded - venituriNeimpozabile),
-  }, plafoane) : { randuri: [], totalNedeductibil: 0, sponsorizareCheltuita: 0 };
-  const totalPlafoane = dedRez.totalNedeductibil;
+  }, plafoane) : { randuriPlafon: [], totalPlafon: 0, sponsorizareCheltuita: 0 };
+  const totalPlafoane = dedRez.totalPlafon;
   const rezultatFiscal = round2(rezultatContabil + totalNeded + totalPlafoane - venituriNeimpozabile);
   const rateProfit = cota || 16;
   const impozitProfit = round2((Math.max(rezultatFiscal, 0) * rateProfit) / 100);
@@ -502,7 +485,7 @@ function registruFiscal(db, year, cota, opts) {
     year, rezultatContabil, cheltNeded, totalNeded, venituriList, venituriNeimpozabile, mentiuni,
     rezultatFiscal, rateProfit, impozitProfit, impozitMicro, venitTotal: pl.venitTotal,
     // Aditiv: randurile cu plafon si totalul lor, separate de procentele fixe.
-    ajustariPlafon: dedRez.randuri, totalPlafoane,
+    ajustariPlafon: dedRez.randuriPlafon, totalPlafoane,
   };
 }
 

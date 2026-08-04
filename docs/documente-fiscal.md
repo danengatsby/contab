@@ -31,8 +31,12 @@
   contabil la cel fiscal → impozit pe profit 16% vs. micro 1%; export PDF. Aplică **deductibilitatea
   parțială** (art. 25-28 Cod fiscal): amenzi/penalități (6581) și pierderi din creanțe (654)
   **nedeductibile 100%**, ajustări pentru deprecierea creanțelor (6814) **nedeductibile 70%**
-  (deductibil 30%), iar reluarea ajustărilor (7814) **neimpozabilă 70%** (simetric); amortizarea
-  (art. 28) e marcată ca fiscală = contabilă (fără diferență). Fiecare rând arată baza × procent.
+  (deductibil 30%), iar reluarea ajustărilor (7814) **neimpozabilă 70%** (simetric). Fiecare rând
+  arată baza × procent. Regulile stau într-un **singur motor** ([`src/deductibilitate.js`](../src/deductibilitate.js)),
+  citit deopotrivă de acest registru și de **nota contabilă 691 = 4411** și de **D101** — cât timp
+  erau două tabele, registrul și declarația depusă raportau impozite diferite pe aceleași conturi.
+  Cele două câmpuri de ajustare manuală din „Închideri” sunt **suprascrieri**: lăsate goale, sumele
+  se calculează din conturi; un `0` tastat înseamnă „zero, exact”.
 - **Analitice și pe conturi non-partener** (trezorerie 5121/5311…, salarii 421): se detaliază
   după o etichetă liberă pe înregistrare (ex. „BCR”, „Ion Popescu”), nu după partener. Câmpul
   „Analitic” apare pe tipurile de trezorerie și salarii; soldul inițial analitic le acoperă pe toate.
