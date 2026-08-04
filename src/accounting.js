@@ -354,6 +354,9 @@ const CAP_PIERDERE_PCT = 70;
  * Impozitul pe profit pentru un an, cu ajustari fiscale:
  *   profit impozabil = profit contabil + cheltuieli nedeductibile − deduceri − pierdere fiscala reportata
  *   impozit = max(0, profit impozabil) × cota%   →   691 = 4411
+ * Nedeductibilele si veniturile neimpozabile vin din `src/deductibilitate.js` — ACELASI motor pe
+ * care il citeste registrul de evidenta fiscala (`reporting.registruFiscal`), ca raportul si nota
+ * contabila sa nu mai poata da doua impozite diferite pe aceleasi conturi.
  * Pierderea reportata reduce baza pana la 0 (regim vechi, <= 2023) sau doar pana la limita de 70%
  * din profitul impozabil (Legea 296/2023, de la anul fiscal 2024). Restul neacoperit + pierderea
  * anului curent se reporteaza mai departe.
@@ -363,7 +366,6 @@ const CAP_PIERDERE_PCT = 70;
 function profitTax(db, year, opts) {
   opts = (typeof opts === 'number') ? { cota: opts } : (opts || {});
   const cota = opts.cota || 16;
-  const deduceri = round2(Number(opts.deduceri) || 0);
   const pierdereReportata = round2(Number(opts.pierdereReportata) || 0);
   const yearEntries = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
   const acc = accumulate(resultLines(yearEntries)); // fara inchiderile 6/7 -> 121 (vezi isResultClosingLine)
@@ -375,22 +377,30 @@ function profitTax(db, year, opts) {
     else if (clasa === 6 && !/^(691|698)/.test(String(cod))) chelt = round2(chelt + (acc[cod].d - acc[cod].c));
   }
   const profitContabil = round2(venit - chelt);
-  // Cheltuielile nedeductibile: CALCULATE din plafoanele art. 25/40^2 cand apelantul da cotele
-  // (`opts.plafoane`), altfel din valoarea transmisa. `cheltNedeductibile` ramane suprascriere
-  // explicita — contract istoric, si singura portita cand contabilul stie o ajustare pe care
-  // motorul n-o poate deduce din conturi.
+  // Ajustarile fiscale: CALCULATE din `src/deductibilitate.js` cand apelantul da cotele
+  // (`opts.plafoane`), altfel din valorile transmise. Motorul acopera AMBELE feluri — procentele
+  // fixe pe cont (amenzi, provizioane) si plafoanele art. 25/40^2 — fiindca e acelasi pe care il
+  // citeste registrul de evidenta fiscala. Cat timp `profitTax` vedea doar plafoanele, nota
+  // contabila 691 = 4411 si D101 raportau un impozit mai mic decat propriul registru fiscal.
   const ded = opts.plafoane
     ? deduct.ajustari({
       rulaj: acc, profitContabil,
       cheltAuto: opts.cheltAuto, cheltImpozitProfit: opts.cheltImpozitProfit,
       amortizare: opts.amortizare, // { contabila, fiscala } — art. 28, poate da si deducere
       amortizareFiscala: opts.amortizareFiscala, cursEur: opts.cursEur,
-      rezultatFiscalInainteDobanzi: profitContabil,
     }, opts.plafoane)
     : null;
+  // `cheltNedeductibile` / `deduceri` raman suprascrieri explicite — contract istoric, si singura
+  // portita cand contabilul stie o ajustare pe care motorul n-o poate deduce din conturi. ATENTIE:
+  // suprascrierea se recunoaste dupa PREZENTA campului, deci un 0 transmis inseamna „zero, exact",
+  // nu „calculeaza tu" — formularul trebuie sa trimita campul gol ca sa lase motorul sa lucreze.
   const nedeductibile = (opts.cheltNedeductibile != null && opts.cheltNedeductibile !== '')
     ? round2(Number(opts.cheltNedeductibile) || 0)
     : (ded ? ded.totalNedeductibil : 0);
+  const venituriNeimpozabile = ded ? ded.totalNeimpozabil : 0;
+  const deduceri = (opts.deduceri != null && opts.deduceri !== '')
+    ? round2(Number(opts.deduceri) || 0)
+    : venituriNeimpozabile;
   const bazaInainteReportare = round2(profitContabil + nedeductibile - deduceri);
   // Plafonul de 70% (configurabil) se aplica doar pentru anii fiscali >= 2024; altfel recuperare 100%.
   const capPct = (opts.pierdereRecuperabilaPct != null && Number.isFinite(Number(opts.pierdereRecuperabilaPct)))
@@ -421,6 +431,9 @@ function profitTax(db, year, opts) {
     // Campuri NOI (aditive — forma istorica de mai sus e neatinsa): detaliul plafoanelor si creditul.
     impozitBrut, cifraAfaceri,
     ajustari: ded ? ded.randuri : [],
+    // Veniturile neimpozabile (art. 23) intra in `deduceri` de mai sus; aici stau desfasurate,
+    // ca raportul sa poata arata DIN CE se compune scaderea, nu doar totalul.
+    venituriNeimpozabile, ajustariNeimpozabile: ded ? ded.randuriNeimpozabile : [],
     sponsorizare: cr,
   };
 }

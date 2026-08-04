@@ -439,6 +439,20 @@ ok('numărul de rând ostil nu poate închide un atribut', !etvaOstil.includes('
 ok('perioada din meta e escapată', !etvaOstil.includes('<img src=x>'));
 ok('mesajul observației e escapat', !etvaOstil.includes('<b>x</b>'));
 
+section('Impozit pe profit: ajustările manuale sunt suprascrieri, nu implicite');
+// REGRESIE. Câmpurile porneau cu value="0", deci fiecare cerere trimitea
+// `cheltNedeductibile=0&deduceri=0`. Pe server un 0 explicit înseamnă „zero, exact", deci ștergea
+// tot ce calculase motorul de ajustări — inclusiv plafoanele art. 25/40². Câmpul gol trebuie să
+// NU ajungă în cerere; distincția „gol" vs „zero" e tot defectul.
+eq('câmpuri goale: niciun parametru trimis', rapoarte.ptParams('', '', '').length, 0);
+eq('câmpuri absente (undefined/null): tot niciunul', rapoarte.ptParams(undefined, null, undefined).length, 0);
+eq('doar spații albe înseamnă tot gol', rapoarte.ptParams('  ', '', '').length, 0);
+// ...dar un zero TASTAT e o intenție și trebuie să plece pe fir.
+ok('zero tastat se trimite (suprascriere explicită)', rapoarte.ptParams('0', '', '').includes('cheltNedeductibile=0'));
+ok('valorile completate se trimit toate trei', rapoarte.ptParams('100', '50', '25').join('&')
+  === 'cheltNedeductibile=100&deduceri=50&pierdereReportata=25');
+ok('un câmp completat nu le trimite și pe celelalte', rapoarte.ptParams('', '50', '').join('&') === 'deduceri=50');
+
 section('Mesagerie: randarea firului de chat');
 // Continutul vine de la ALT UTILIZATOR (suport patron <-> contabil <-> administrator) si e citit
 // de administrator. Escaparea e stratul care nu trebuie sa cada primul, chiar daca CSP prinde

@@ -417,12 +417,24 @@ $('#closeYear').addEventListener('click', async () => {
   try { const r = await api('/api/close-year?year=' + y, { method: 'POST' }); toast('Închidere anuală: rezultat ' + fmt(r.result.rezultat) + ' lei'); setMeta(await api('/api/meta')); loadEntries(); }
   catch (e) { toast(e.message, true); }
 });
-function ptQuery() {
-  const y = ($('#ptYear') || {}).value || '';
-  let q = 'year=' + y + '&cheltNedeductibile=' + (Number(($('#ptNed') || {}).value) || 0) + '&deduceri=' + (Number(($('#ptDed') || {}).value) || 0);
-  const p = ($('#ptPierdere') || {}).value;
-  if (p !== '' && p != null) q += '&pierdereReportata=' + (Number(p) || 0);
+/**
+ * Ajustările manuale ale impozitului pe profit sunt SUPRASCRIERI, nu valori implicite: câmpul gol
+ * înseamnă „calculează tu din conturi", iar un 0 trimis înseamnă „zero, exact". Câmpurile porneau
+ * cu value="0", deci fiecare cerere trimitea `cheltNedeductibile=0&deduceri=0` și ștergea tot ce
+ * calculase motorul de ajustări — inclusiv plafoanele art. 25/40². Se trimit doar când sunt completate.
+ * (export: ptParams — testat în test/frontend.mjs)
+ */
+function ptParams(ned, ded, pierdere) {
+  const q = [];
+  const gol = (x) => x == null || String(x).trim() === '';
+  if (!gol(ned)) q.push('cheltNedeductibile=' + (Number(ned) || 0));
+  if (!gol(ded)) q.push('deduceri=' + (Number(ded) || 0));
+  if (!gol(pierdere)) q.push('pierdereReportata=' + (Number(pierdere) || 0));
   return q;
+}
+function ptQuery() {
+  const val = (id) => (($(id) || {}).value);
+  return ['year=' + (val('#ptYear') || '')].concat(ptParams(val('#ptNed'), val('#ptDed'), val('#ptPierdere'))).join('&');
 }
 async function previewProfitTax() {
   if (!$('#ptYear')) return;
@@ -442,8 +454,11 @@ async function previewProfitTax() {
 ['#ptNed', '#ptDed', '#ptPierdere'].forEach((id) => { const el = $(id); if (el) el.addEventListener('change', previewProfitTax); });
 $('#ptYear') && $('#ptYear').addEventListener('change', previewProfitTax);
 $('#closeProfitTax') && $('#closeProfitTax').addEventListener('click', async () => {
-  const body = { year: $('#ptYear').value, cheltNedeductibile: Number(($('#ptNed') || {}).value) || 0, deduceri: Number(($('#ptDed') || {}).value) || 0 };
-  if ($('#ptPierdere') && $('#ptPierdere').value !== '') body.pierdereReportata = Number($('#ptPierdere').value) || 0;
+  // Aceeasi regula ca la previzualizare: se trimit doar campurile completate (vezi ptParams).
+  const body = { year: $('#ptYear').value };
+  for (const p of ptParams(($('#ptNed') || {}).value, ($('#ptDed') || {}).value, ($('#ptPierdere') || {}).value)) {
+    const [k, val] = p.split('='); body[k] = Number(val);
+  }
   try { const r = await api('/api/close-profit-tax', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast(r.message || ('Impozit pe profit înregistrat: ' + fmt(r.result.impozit) + ' lei')); setMeta(await api('/api/meta')); loadEntries(); previewProfitTax(); }
   catch (e) { toast(e.message, true); }
 });
@@ -729,5 +744,6 @@ async function loadStatements() {
 
 
 export { loadBalance, loadCashbook, loadClosings, loadJournal, loadLedger, loadStatements, loadStorno, loadVat, loadSaft, loadBuget, loadRegFiscal };
-// Exportate pentru testele unitare de frontend (diagnosticul balantei si comparatia e-TVA): test/frontend.mjs
-export { balanceEquations, balanceTotals, renderEtvaResult };
+// Exportate pentru testele unitare de frontend (diagnosticul balantei, comparatia e-TVA si
+// suprascrierile impozitului pe profit): test/frontend.mjs
+export { balanceEquations, balanceTotals, renderEtvaResult, ptParams };

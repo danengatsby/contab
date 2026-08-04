@@ -2780,12 +2780,76 @@ section('Plafoane de deductibilitate (art. 25 / 40^2) — src/deductibilitate.js
   const supra = acc.profitTax({ entries: ent }, '2026', { cota: 16, plafoane: P, cheltNedeductibile: 7777 });
   eq('suprascrierea manuala BATE motorul (portita contabilului)', supra.cheltNedeductibile, 7777);
 
-  // ── Fara suprapunere cu tabela de procente fixe din registrul fiscal ─────
-  // Motorul citeste 623/6458/6582/666; NEDEDUCTIBILE citeste 6581/635/6814/654/6812. Daca cineva
-  // adauga un cont in ambele, nedeductibilul s-ar numara de DOUA ori — de aici poarta.
+  // ── Fara suprapunere intre procentele fixe si plafoane ──────────────────
+  // Plafoanele citesc 623/6458/6582/666; procentele fixe citesc 6581/635/6814/654/6812. Daca un
+  // cont ar intra in ambele, nedeductibilul s-ar numara de DOUA ori — de aici poarta. Listele se
+  // iau din modul, nu se scriu aici: o tabela copiata in test nu mai pazeste nimic dupa ce
+  // originalul se schimba.
   const conturiMotor = Object.values(deduct.CONT);
-  const suprapuse = ['6581', '635', '6814', '654', '6812'].filter((c) => conturiMotor.some((m) => c.startsWith(m)));
-  ok('niciun cont nu e citit si de motor, si de tabela de procente fixe', suprapuse.length === 0);
+  const suprapuse = Object.keys(deduct.FIXE).filter((c) => conturiMotor.some((m) => String(c).startsWith(m)));
+  ok('niciun cont nu e citit si de plafoane, si de procentele fixe', suprapuse.length === 0);
+}
+
+section('Un singur motor de nedeductibile: registrul fiscal = nota contabila = D101');
+{
+  // REGRESIE. `profitTax` (care posteaza 691 = 4411 SI alimenteaza D101) vedea doar plafoanele
+  // art. 25/40^2, iar procentele fixe pe cont (amenzi, provizioane, impozite nedeductibile)
+  // traiau intr-o tabela separata, citita numai de registrul de evidenta fiscala. Pe datele de
+  // mai jos registrul spunea 15.779 lei impozit, iar nota contabila 10.560 — cu 33% mai putin,
+  // si cu declaratia contrazicand propriul registru. Verificarea ancora e EGALITATEA celor doua
+  // motoare, nu o cifra: o cifra scrisa de mana s-ar potrivi cu oricare dintre ele.
+  const P = require('../src/fiscalConfig').RATES;
+  const deduct = require('../src/deductibilitate');
+  const { round2 } = require('../src/util');
+  const E = (id, data, lines) => ({ id, data, period: data.slice(0, 7), tip: 'nota_contabila', tipNume: 'x', lines });
+  const vFix = { openingBalances: {}, assets: [], company: {}, entries: [
+    E('n1', '2026-03-10', [{ debit: '4111', credit: '704', suma: 100000 }]),
+    E('n2', '2026-04-10', [{ debit: '6581', credit: '5121', suma: 20000 }]),  // amenda — fix 100%
+    E('n3', '2026-05-10', [{ debit: '6812', credit: '151', suma: 10000 }]),   // provizion — fix 100%
+    E('n4', '2026-06-10', [{ debit: '635', credit: '446', suma: 5000 }]),     // impozite — fix 100%
+    E('n5', '2026-07-10', [{ debit: '151', credit: '7812', suma: 4000 }]),    // reluare — neimpozabil
+    E('n6', '2026-08-10', [{ debit: '623', credit: '401', suma: 3000 }]),     // protocol — cu PLAFON
+  ] };
+  const opts = { cota: 16, plafoane: P };
+  const pt = acc.profitTax(vFix, '2026', opts);
+  const rfx = rep.registruFiscal(vFix, '2026', 16, { plafoane: P });
+
+  // Ancora: aceleasi conturi, acelasi an -> acelasi impozit. Comparatie STRICTA (nu prin `eq`,
+  // care rotunjeste si ar ascunde tocmai o divergenta de bani).
+  ok('impozitul e acelasi in registru si in nota contabila', pt.impozit === rfx.impozitProfit);
+  ok('si baza impozabila e aceeasi', pt.profitImpozabil === rfx.rezultatFiscal);
+
+  // Procentele fixe chiar ajung in profitTax (inainte: 0).
+  const rulajFiscal = acc.accumulate(acc.resultLines(acc.postedEntries(vFix)));
+  eq('procentele fixe se calculeaza din conturi (20.000+10.000+5.000)', deduct.fixe(rulajFiscal).total, 35000);
+  eq('nedeductibile = fixe + plafon protocol', pt.cheltNedeductibile, 36620);
+  // Veniturile neimpozabile (art. 23) SCAD baza — nu se adunau deloc inainte.
+  eq('veniturile neimpozabile se scad din baza', pt.venituriNeimpozabile, 4000);
+  eq('profit impozabil = 66.000 + 36.620 - 4.000', pt.profitImpozabil, 98620);
+
+  // Fara dubla numarare in registru: cele doua tabele sunt disjuncte si totalul lor da exact
+  // nedeductibilul din nota. Aici s-ar vedea daca `ajustari` ar returna fixele si in `randuriPlafon`.
+  eq('registrul nu numara fixele de doua ori', round2(rfx.totalNeded + rfx.totalPlafoane), pt.cheltNedeductibile);
+  eq('procentele fixe raman separate de plafoane in raport', rfx.totalPlafoane, 1620);
+  ok('registrul isi pastreaza forma istorica a randurilor', rfx.cheltNeded.every((c) => c.cod && c.nume && c.pct != null && c.suma != null));
+
+  // D101 nu are voie sa piarda nedeductibilele pe drum: defalcarea pe randuri trebuie sa totalizeze
+  // exact cat spune nota contabila (regula R80 a validatorului cere P34 = suma P23..P33).
+  const dcl = rep.d101(vFix, '2026', opts);
+  eq('D101: defalcarea totalizeaza cat nedeductibilul din nota', dcl.cheltuieliNedeductibile, pt.cheltNedeductibile);
+  eq('D101: impozitul de plata e cel din nota contabila', dcl.impozitDePlata, pt.impozit);
+
+  // Contractul suprascrierii manuale ramane: un camp COMPLETAT bate motorul, dar absenta lui nu
+  // mai inseamna zero. Distinctia asta era chiar defectul: formularul trimitea mereu 0.
+  const supra0 = acc.profitTax(vFix, '2026', Object.assign({}, opts, { cheltNedeductibile: 0, deduceri: 0 }));
+  eq('zero transmis EXPLICIT ramane suprascriere (zero, exact)', supra0.cheltNedeductibile, 0);
+  eq('si pentru deduceri la fel', supra0.deduceri, 0);
+  const auto = acc.profitTax(vFix, '2026', Object.assign({}, opts, { cheltNedeductibile: '', deduceri: '' }));
+  eq('campul GOL lasa motorul sa calculeze (nedeductibile)', auto.cheltNedeductibile, 36620);
+  eq('campul GOL lasa motorul sa calculeze (deduceri)', auto.deduceri, 4000);
+
+  // Fara `plafoane` nu se calculeaza nimic — contractul istoric al apelantilor „simpli".
+  eq('fara opts.plafoane, contractul istoric e neatins', acc.profitTax(vFix, '2026', { cota: 16 }).cheltNedeductibile, 0);
 }
 
 section('Amortizare fiscala separata de cea contabila (art. 28)');
