@@ -573,7 +573,11 @@ export async function renderAccess() {
   }
 
   // Onest despre ce lipseste: „—" la locatie poate insemna si „IP privat", si „serviciul tace".
-  if (!d.geoDisponibil) boxL.innerHTML += '<p class="muted">Localizarea IP-urilor nu e disponibilă momentan — restul datelor sunt complete.</p>';
+  // Panoul nu mai așteaptă furnizorul de localizare: arată ce știe și cere restul în fundal.
+  // Fără mesajul ăsta, „—" la câteva rânduri ar părea o defecțiune, nu o localizare în curs.
+  // Dacă furnizorul chiar e căzut, mesajul rămâne de la o reîncărcare la alta — degradarea se
+  // vede, fără să pretindem că știm cauza dintr-o singură cerere.
+  if (d.geoInCurs > 0) boxL.innerHTML += `<p class="muted">Se determină localizarea pentru ${Number(d.geoInCurs)} adrese noi — reîncarcă în câteva secunde ca să apară. Dacă mesajul persistă, serviciul de localizare nu răspunde; restul datelor sunt complete.</p>`;
 }
 $('#accessRefresh') && $('#accessRefresh').addEventListener('click', renderAccess);
 $('#accessAll') && $('#accessAll').addEventListener('click', () => { ACCESS_DOAR_ESUATE = false; renderAccess(); });

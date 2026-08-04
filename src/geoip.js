@@ -158,7 +158,52 @@ async function lookupMany(ips) {
   return out;
 }
 
+/**
+ * Ce se stie DEJA despre aceste IP-uri, FARA nicio cerere externa. Sincrona prin constructie.
+ *
+ * Exista fiindca panoul de administrare nu are voie sa astepte un tert. Cache-ul traieste doar in
+ * memorie, deci la fiecare repornire e gol; prima deschidere a panoului cerea atunci localizarea
+ * TUTUROR adreselor, in valuri seriale de cate MAX_PARALEL. Cu ~420 de adrese si un RTT de ~60 ms
+ * asta inseamna 105 valuri, adica ~8 secunde in care cererea sta agatata de reteaua altcuiva —
+ * masurat pe productie: 8.545 ms, la 5 minute dupa o repornire.
+ *
+ * @returns {Map<string, object|null>} doar intrarile CUNOSCUTE (lipsa != null: `null` inseamna
+ *   „am intrebat si nu se stie", absenta inseamna „nu s-a intrebat inca").
+ */
+function dinCacheMulti(ips) {
+  const out = new Map();
+  for (const ip of new Set((ips || []).map(normalizeIp).filter(Boolean))) {
+    const v = dinCache(ip);
+    if (v !== undefined) out.set(ip, v);
+  }
+  return out;
+}
+
+/** IP-urile publice pentru care nu se stie inca nimic (nici macar „necunoscut"). */
+function necunoscute(ips) {
+  return [...new Set((ips || []).map(normalizeIp).filter(Boolean))]
+    .filter((ip) => !isPrivate(ip) && dinCache(ip) === undefined);
+}
+
+// CONTAB_GEOIP_PREFETCH — cate adrese noi se localizeaza la o singura runda de FUNDAL (implicit
+// 200). Plafon, nu obiectiv: restul intra la urmatoarea deschidere a panoului. Fara el, o navala
+// de adrese noi (un scaner care baleiaza) ar porni o munca de fundal lunga la fiecare cerere.
+const MAX_PREFETCH = Number(process.env.CONTAB_GEOIP_PREFETCH) || 200;
+
+/**
+ * Porneste localizarea adreselor necunoscute IN FUNDAL si se intoarce IMEDIAT.
+ * Rezultatul nu se asteapta: intra in cache si se vede la incarcarea urmatoare. Esecurile se
+ * inghit — `lookup` nu arunca niciodata, iar `.catch` e plasa pentru orice eroare de programare.
+ * @returns {number} cate adrese s-au pus la interogat (0 = nimic de facut)
+ */
+function prefetch(ips) {
+  const lipsa = necunoscute(ips).slice(0, MAX_PREFETCH);
+  if (lipsa.length) lookupMany(lipsa).catch(() => { /* niciodata fatal */ });
+  return lipsa.length;
+}
+
 /** Doar pentru teste: goleste cache-ul si cererile in zbor. */
 function _reset() { cache.clear(); inZbor.clear(); }
 
-module.exports = { lookup, lookupMany, eticheta, normalizeIp, isPrivate, parseRaspuns, _reset, TTL_MS, MAX_CACHE };
+module.exports = { lookup, lookupMany, dinCacheMulti, necunoscute, prefetch,
+  eticheta, normalizeIp, isPrivate, parseRaspuns, _reset, TTL_MS, MAX_CACHE, MAX_PREFETCH };

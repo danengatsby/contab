@@ -10,11 +10,11 @@ const svc = require('../accessService');
 module.exports = function register(app, ctx) {
   const { requireAdmin } = ctx;
 
-  // ASINCRONA: localizarea IP-urilor necunoscute cere o cerere externa (cu cache si timeout).
-  // `wrap` din server.js prinde orice respingere si o transforma in 500 + log, deci o cadere a
-  // furnizorului nu poate lasa cererea atarnata — dar `raport()` oricum nu arunca pe geo.
-  app.get('/api/access-log', requireAdmin, ctx.wrap(async (req, res) => {
-    const r = await svc.raport(db.get(), {
+  // SINCRONA: raportul foloseste doar localizarile deja cunoscute si pune restul la interogat in
+  // fundal (vezi geoip.prefetch). Inainte astepta furnizorul extern, iar dupa fiecare repornire —
+  // cand cache-ul geo porneste gol — panoul se deschidea in ~8 secunde.
+  app.get('/api/access-log', requireAdmin, ctx.wrap((req, res) => {
+    const r = svc.raport(db.get(), {
       doarEsuate: String(req.query.esuate || '') === '1',
     });
     res.json(r);
