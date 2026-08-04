@@ -302,6 +302,101 @@ function d100micro(db, period, cota) {
     pragMicro3Lei: ct.pragLei, venitCumulatLei };
 }
 
+// Nomenclatorul de obligatii D100 (atributele `cod_oblig` + `cod_bugetar` ale sectiunii <obligatie>).
+// Perechile NU sunt ghicite: `20A031800` era deja verificat pentru micro, iar cea de impozit pe
+// profit a fost SONDATA pe validatorul oficial — la `cod_bugetar="20A010100"` (candidatul evident,
+// singurul cod de impozit pe profit din constant pool-ul validatorului) raspunde
+// „R14a: cod bugetar trebuie sa fie = 20470101 pt. acest cod_oblig". Codul 101 nici nu exista in
+// lista. `103` = impozit pe profit datorat de PJ romane — acelasi cod pe care il foloseste deja
+// generatorul D101, care valideaza oficial.
+const D100_OBLIG = {
+  micro: { cod: '620', bugetar: '20A031800', nume: 'Impozit pe veniturile microîntreprinderilor' },
+  profit: { cod: '103', bugetar: '20470101', nume: 'Impozit pe profit' },
+};
+
+/**
+ * Recap D100 pentru platitorii de IMPOZIT PE PROFIT (art. 41): impozitul se declara TRIMESTRIAL,
+ * calculat CUMULAT de la inceputul anului, iar pe declaratie merge diferenta fata de ce s-a
+ * declarat deja in trimestrele anterioare.
+ *
+ * Doua lucruri pe care le rateaza usor o implementare naiva:
+ *  - trimestrul se calculeaza pe pozitia CUMULATA, nu pe rulajul lui: cheltuielile cu plafon
+ *    (protocol, sponsorizare) au baze anuale, iar pierderea unui trimestru compenseaza profitul
+ *    altuia. De aceea se scade impozitul cumulat al trimestrului precedent, nu se calculeaza
+ *    izolat trimestrul;
+ *  - TRIMESTRUL IV NU SE DECLARA aici. Art. 41 alin. (1) cere D100 doar pentru trimestrele I-III;
+ *    definitivarea anului se face prin D101, pana pe 25 martie. O firma care ar depune D100 pe T4
+ *    si-ar declara impozitul de doua ori.
+ *
+ * Diferenta poate iesi NEGATIVA (trimestru pe pierdere dupa unul profitabil). Pe declaratie merge
+ * zero — D100 nu primeste sume negative si nu exista rambursare trimestriala; regularizarea e
+ * anuala. Suma bruta ramane in `diferenta`, ca sa se vada de ce.
+ */
+function d100profit(db, period, opts) {
+  opts = opts || {};
+  const m = Number(String(period || '').slice(5, 7)) || 0;
+  const y = String(period || '').slice(0, 4);
+  const trimestru = m ? Math.ceil(m / 3) : 0;
+  const ultimaLuna = (t) => y + '-' + String(t * 3).padStart(2, '0');
+  const company = db.company || {};
+  // Optiunile de calcul, aceleasi ca la inchiderea anuala, dar taiate la finalul trimestrului.
+  const optiuni = (panaLa) => Object.assign({
+    cota: fiscal.FISCAL.impozitProfit,
+    plafoane: fiscal.FISCAL,
+    pierdereReportata: Number((company.pierdereFiscala || {})[Number(y) - 1]) || 0,
+    cheltAuto: cheltuieliAuto(db, y, panaLa),
+    amortizare: assets.depreciationDifference(db.assets || [], y,
+      rulajContPanaLa(db, y, '6811', panaLa), panaLa),
+    cursEur: Number(company.cursEur) || 0,
+    sponsorizareReport: company.sponsorizareReport || [],
+    panaLa,
+  }, opts.profitTaxOptions || {});
+  const cumulat = acc.profitTax(db, y, optiuni(ultimaLuna(trimestru)));
+  const anterior = trimestru > 1 ? acc.profitTax(db, y, optiuni(ultimaLuna(trimestru - 1))) : null;
+  const impozitAnterior = anterior ? anterior.impozit : 0;
+  const diferenta = round2(cumulat.impozit - impozitAnterior);
+  const avertismente = [];
+  if (trimestru === 4) {
+    avertismente.push('Trimestrul IV nu se declară prin D100: art. 41 alin. (1) cere declarația '
+      + 'trimestrială doar pentru trimestrele I-III, iar definitivarea anului se face prin D101, '
+      + 'până pe 25 martie. Depunerea unui D100 pe trimestrul IV ar declara impozitul de două ori.');
+  }
+  if (diferenta < 0) {
+    avertismente.push('Impozitul cumulat a SCĂZUT față de trimestrul precedent (' + cumulat.impozit
+      + ' lei față de ' + impozitAnterior + ' lei): trimestrul e pe pierdere. Pe declarație merge 0 — '
+      + 'D100 nu primește sume negative, iar regularizarea se face anual, prin D101.');
+  }
+  return { period, trimestru, y,
+    impozitCumulat: cumulat.impozit, impozitAnterior, diferenta,
+    impozit: Math.max(0, diferenta),
+    profitImpozabil: cumulat.profitImpozabil, profitContabil: cumulat.profitContabil,
+    cheltNedeductibile: cumulat.cheltNedeductibile, deduceri: cumulat.deduceri, cota: cumulat.cota,
+    seDeclara: trimestru >= 1 && trimestru <= 3,
+    codOblig: D100_OBLIG.profit.cod, codBugetar: D100_OBLIG.profit.bugetar,
+    avertismente };
+}
+
+/** Rulajul net debitor al unui cont intr-un an, taiat optional la finalul unei luni. */
+function rulajContPanaLa(db, year, cont, panaLa) {
+  const limita = panaLa ? String(panaLa).slice(0, 7) : null;
+  const lines = acc.resultLines(acc.postedEntries(db).filter((e) => {
+    const p = String(e.period || periodOf(e.data));
+    return p.startsWith(String(year)) && (!limita || p <= limita);
+  }));
+  const a = acc.accumulate(lines)[cont];
+  return a ? round2(a.d - a.c) : 0;
+}
+
+/** D100 pentru firma, dupa REGIMUL ei: micro (impozit pe venituri) sau profit (art. 41).
+ *  Ruta si validarea pre-depunere trec amandoua pe aici — altfel o firma pe impozit pe profit
+ *  descarca o declaratie de microintreprindere, cu alt cod de obligatie si alta suma. */
+function d100(db, period, opts) {
+  const profil = fiscalProfile.build((db || {}).company || {});
+  if (profil.profit) return d100profit(db, period, opts);
+  return Object.assign(d100micro(db, period, (opts || {}).cota),
+    { codOblig: D100_OBLIG.micro.cod, codBugetar: D100_OBLIG.micro.bugetar, seDeclara: true });
+}
+
 /** Pro-rata TVA (art. 300): ponderea livrarilor CU drept de deducere in totalul livrarilor (anual).
  *  Clasificare aproximativa din jurnal: cu drept = vanzari taxabile (TVA > 0) + scutite cu drept
  *  (LIC/export); fara drept = vanzari cu TVA 0 care nu sunt LIC/export. Pro-rata definitiva se
@@ -450,11 +545,14 @@ const CONTURI_TREZORERIE = ['5121', '5124', '5311', '5314'];
 /** Baza cheltuielilor auto cu deductibilitate limitata (art. 25(3)(l)): liniile de cheltuiala din
  *  articolele marcate `auto50`. Marcajul se pastreaza pe articol tocmai pentru acest calcul —
  *  la finalul anului nu mai exista formularul din care s-a bifat. */
-function cheltuieliAuto(db, year) {
+function cheltuieliAuto(db, year, panaLa) {
+  const limita = panaLa ? String(panaLa).slice(0, 7) : null; // cumulare pana la finalul unui trimestru
   let s = 0;
   for (const e of acc.postedEntries(db)) {
     if (!e.auto50) continue;
-    if (!String(e.period || periodOf(e.data)).startsWith(String(year))) continue;
+    const p = String(e.period || periodOf(e.data));
+    if (!p.startsWith(String(year))) continue;
+    if (limita && p > limita) continue;
     for (const l of (e.lines || [])) {
       const cod = String(l.debit || '');
       if (/^6/.test(cod) && !/^(691|698)/.test(cod)) s = round2(s + (Number(l.suma) || 0));
@@ -957,4 +1055,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100micro, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };
+module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };

@@ -182,11 +182,19 @@ function hasFiscalPlan(asset) {
   return f.metoda !== asset.metoda || Number(f.durataLuni) !== Number(asset.durataLuni);
 }
 
-/** Suma amortizarii dintr-un AN, pe planul dat (`schedule` e refolosit, nu reimplementat). */
-function annualFor(asset, year, fiscal) {
+/** Suma amortizarii dintr-un AN, pe planul dat (`schedule` e refolosit, nu reimplementat).
+ *  `panaLa` (YYYY-MM) opreste cumularea la finalul unei luni — impozitul pe profit se declara
+ *  trimestrial, cumulat de la inceputul anului, deci ajustarea art. 28 trebuie sa poata fi ceruta
+ *  si la 31 martie. Fara el, anul intreg (comportamentul istoric). */
+function annualFor(asset, year, fiscal, panaLa) {
   const rows = schedule(fiscal ? fiscalView(asset) : asset);
+  const limita = panaLa ? String(panaLa).slice(0, 7) : null;
   let s = 0;
-  for (const r of rows) if (String(r.period).startsWith(String(year))) s = round2(s + r.amount);
+  for (const r of rows) {
+    if (!String(r.period).startsWith(String(year))) continue;
+    if (limita && String(r.period) > limita) continue;
+    s = round2(s + r.amount);
+  }
   return s;
 }
 
@@ -197,11 +205,11 @@ function annualFor(asset, year, fiscal) {
  * la ce ar fi trebuit sa se inregistreze. Diferenta dintre ele e o problema de contabilitate, nu
  * una fiscala, si nu trebuie ascunsa intr-o ajustare.
  */
-function depreciationDifference(assets, year, amortizareContabilaReala) {
+function depreciationDifference(assets, year, amortizareContabilaReala, panaLa) {
   let contabilaPlan = 0; let fiscala = 0;
   for (const a of assets || []) {
-    contabilaPlan = round2(contabilaPlan + annualFor(a, year, false));
-    fiscala = round2(fiscala + annualFor(a, year, true));
+    contabilaPlan = round2(contabilaPlan + annualFor(a, year, false, panaLa));
+    fiscala = round2(fiscala + annualFor(a, year, true, panaLa));
   }
   const contabila = (amortizareContabilaReala != null && Number.isFinite(Number(amortizareContabilaReala)))
     ? round2(Number(amortizareContabilaReala)) : contabilaPlan;

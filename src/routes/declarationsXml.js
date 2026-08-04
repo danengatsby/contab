@@ -110,12 +110,13 @@ module.exports = function register(app, ctx) {
     const period = req.query.period || null;
     sendXml(res, xml.intrastatXml(v.company, period, rep.intrastat(v, period)), 'intrastat-' + (period || 'luna') + '.xml');
   });
-  // D100 — impozit micro (trimestrial); descarcarea marcheaza declaratia "generata" in registru
+  // D100 — trimestrial, dupa REGIMUL firmei: impozit micro (cod 620) sau impozit pe profit
+  // (cod 103, art. 41); descarcarea marcheaza declaratia "generata" in registru
   app.get('/xml/d100', (req, res) => {
     const v = S(req);
     const period = req.query.period || null;
     recordDecl(req, 'd100', period);
-    sendXml(res, xml.d100Xml(v.company, period, rep.d100micro(v, period), declarantOf(req)), 'd100-' + (period || 'trim') + '.xml');
+    sendXml(res, xml.d100Xml(v.company, period, rep.d100(v, period), declarantOf(req)), 'd100-' + (period || 'trim') + '.xml');
   });
   // D101 — impozitul pe profit ANUAL (?year=). Doar pentru firmele in regim de profit;
   // schema oficiala v10 (an sfarsit exercitiu >=2024). Descarcarea marcheaza declaratia in registru.

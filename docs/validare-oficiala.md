@@ -185,6 +185,27 @@ Ordinea de căutare (`scripts/valideaza-etransport.sh`):
 > versiunea după anul din `Data_S`. Maparea de mai sus e dovedită pentru schema **v10** (exercițiile
 > 2024–2026); pentru alt an se re-sondează, nu se extrapolează.
 
+> **D100 — impozit pe profit, nu doar micro (adăugat 2026-08-04).** Generatorul avea
+> `cod_oblig="620"` **fix în șablon**, iar ruta chema mereu calculul de microîntreprindere: o firmă
+> pe impozit pe profit descărca o declarație de micro, cu alt cod de obligație, alt cod bugetar și
+> altă sumă. Calculul trimestrial (art. 41) nu exista deloc.
+>
+> **Perechea (cod_oblig, cod_bugetar) a fost SONDATĂ, nu dedusă.** Mineritul de șiruri din
+> `D100Validator.jar` sugera `20A010100` — singurul cod de impozit pe profit din constant pool.
+> Validatorul răspunde:
+>
+> ```
+> cod_oblig="101"  -> eroare atribut: valoarea '101' nu se afla in lista
+> cod_oblig="103" cod_bugetar="20A010100"
+>                  -> R14a: cod bugetar (20A010100) trebuie sa fie = 20470101 pt. acest cod_oblig
+> cod_oblig="103" cod_bugetar="20470101"  -> ✓ valid
+> ```
+>
+> Deci **103 + 20470101** (`20A010100` e „diferența de impozit pe profit redirecționată în plus" —
+> exact capcana pe care sondajul o evită). Codul 103 e cel folosit deja de generatorul D101.
+> `nr_evid` codifică obligația pe pozițiile 3–5 (regula R16), deci se derivă din cod, nu e fix.
+> Referința **`D100-profit`** exercită calea în poartă.
+
 > **D300 — poziția reportată din decontul precedent, rândurile 35 și 38 (adăugat 2026-08-04).**
 > Erau zero **prin construcție**: generatorul scria `R37 = R34` și `R40 = R33`, adică sărea peste
 > ele. O firmă cu TVA de recuperat declara de plată tot TVA-ul lunii următoare, iar contul 4424

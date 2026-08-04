@@ -37,6 +37,12 @@
   erau două tabele, registrul și declarația depusă raportau impozite diferite pe aceleași conturi.
   Cele două câmpuri de ajustare manuală din „Închideri” sunt **suprascrieri**: lăsate goale, sumele
   se calculează din conturi; un `0` tastat înseamnă „zero, exact”.
+- **D100 după regimul firmei** (`reporting.d100`): micro → obligația **620**; impozit pe profit →
+  obligația **103** (cod bugetar 20470101), cu calculul trimestrial de la art. 41 — impozitul se
+  determină **cumulat de la începutul anului**, iar pe declarație merge diferența față de
+  trimestrele deja declarate. **Trimestrul IV nu se declară prin D100**: definitivarea se face prin
+  D101, până pe 25 martie. Un trimestru pe pierdere duce cumulatul în jos; pe declarație merge 0
+  (D100 nu primește sume negative), iar regularizarea e anuală.
 - **Poziția de TVA reportată** (`accounting.vatCarryForward`): nota de închidere a lunii compensează
   soldul rămas din perioadele anterioare (**4423 = 4424**), iar decontul îl declară pe rândurile
   **35** (TVA de plată neachitată) și **38** (sumă negativă nerambursată). Ambele erau zero prin

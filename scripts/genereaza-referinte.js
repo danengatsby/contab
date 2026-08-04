@@ -54,6 +54,15 @@ w('D390', xml.d390Xml(v.company, '2026-06', rep.d390(vIC, '2026-06'), who));
 w('D112', xml.d112Xml(v.company, '2026-06', statePlata(v.angajati), who));
 // D100 (micro trimestrial)
 w('D100', xml.d100Xml(v.company, '2026-06', rep.d100micro(v, '2026-06'), who));
+// D100 varianta IMPOZIT PE PROFIT (art. 41, trimestrele I-III): alt cod de obligatie (103) si alt
+// cod bugetar (20470101) decat cel de micro. Exemplul implicit e o firma pe micro, deci calea nu
+// s-ar exercita niciodata — ca la D101-defalcare si D300-report.
+const vProfit = {
+  company: Object.assign({}, v.company, { regimImpozit: 'profit' }), openingBalances: {}, assets: [],
+  entries: [{ id: 'pf1', firmaId: 1, data: '2026-02-10', period: '2026-02', tip: 'diverse', tipNume: 'Venit', status: 'postat',
+    lines: [{ debit: '4111', credit: '704', suma: 100000 }] }],
+};
+w('D100-profit', xml.d100Xml(vProfit.company, '2026-03', rep.d100(vProfit, '2026-03'), who));
 // D101 (impozit pe profit, anual) — schema v10; exemplul are profit mic in 2026
 w('D101', xml.d101Xml(v.company, rep.d101(v, '2026'), who));
 // D101 varianta DEFALCATA: exemplul de mai sus n-are cheltuieli cu plafon, deci nedeductibilele

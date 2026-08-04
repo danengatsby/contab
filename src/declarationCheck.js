@@ -29,7 +29,7 @@ function buildXml(v, type, opts) {
   if (type === 'd300') return xml.d300Xml(v.company, pv, rep.d300(v, pv), declarant);
   if (type === 'd394') return xml.d394Xml(v.company, pv, acc.vatJournals(v, pv), declarant, rep.achizitiiPfCarnet(v, pv));
   if (type === 'd390') return xml.d390Xml(v.company, period, rep.d390(v, period));
-  if (type === 'd100') return xml.d100Xml(v.company, period, rep.d100micro(v, period), declarant);
+  if (type === 'd100') return xml.d100Xml(v.company, period, rep.d100(v, period), declarant);
   if (type === 'd101') return xml.d101Xml(v.company, rep.d101(v, year), declarant);
   if (type === 'intrastat') return xml.intrastatXml(v.company, period, rep.intrastat(v, period));
   if (type === 'd205') return xml.d205Xml(v.company, year, rep.d205(v, year));
@@ -64,7 +64,7 @@ function validateFor(v, type, opts) {
   if (type === 'd394') ctxVal.faraCodCategorie = xml.d394FaraCodCategorie(acc.vatJournals(v, pv));
   const result = validate.validateDeclaration(type, x, ctxVal);
   // D100: adauga avertismentele de eligibilitate micro (plafon venituri + conditia de salariat)
-  if (type === 'd100') result.warnings.push(...(rep.d100micro(v, o.period || null).avertismente || []));
+  if (type === 'd100') result.warnings.push(...(rep.d100(v, o.period || null).avertismente || []));
   return Object.assign({ type, period: o.period || null }, result);
 }
 
