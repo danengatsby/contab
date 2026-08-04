@@ -345,6 +345,7 @@ function d100profit(db, period, opts) {
     plafoane: fiscal.FISCAL,
     pierdereReportata: Number((company.pierdereFiscala || {})[Number(y) - 1]) || 0,
     cheltAuto: cheltuieliAuto(db, y, panaLa),
+    cheltLipsaNeimputabila: cheltuieliLipsaNeimputabila(db, y, panaLa),
     amortizare: assets.depreciationDifference(db.assets || [], y,
       rulajContPanaLa(db, y, '6811', panaLa), panaLa),
     cursEur: Number(company.cursEur) || 0,
@@ -561,6 +562,26 @@ function cheltuieliAuto(db, year, panaLa) {
   return round2(s);
 }
 
+/** Baza cheltuielilor cu lipsurile NEIMPUTABILE din gestiune (art. 25(4)(c)): liniile de
+ *  cheltuiala din articolele marcate `lipsaNeimputabila`. Ca la `cheltuieliAuto`, marcajul sta pe
+ *  articol fiindca incadrarea nu se poate deduce din conturi: aceeasi cheltuiala, pe acelasi cont,
+ *  e deductibila daca lipsa a fost imputata sau acoperita de asigurare. */
+function cheltuieliLipsaNeimputabila(db, year, panaLa) {
+  const limita = panaLa ? String(panaLa).slice(0, 7) : null;
+  let s = 0;
+  for (const e of acc.postedEntries(db)) {
+    if (!e.lipsaNeimputabila) continue;
+    const p = String(e.period || periodOf(e.data));
+    if (!p.startsWith(String(year))) continue;
+    if (limita && p > limita) continue;
+    for (const l of (e.lines || [])) {
+      const cod = String(l.debit || '');
+      if (/^6/.test(cod) && !/^(691|698)/.test(cod)) s = round2(s + (Number(l.suma) || 0));
+    }
+  }
+  return round2(s);
+}
+
 /** Registrul de evidenta fiscala: trecerea de la rezultatul contabil la cel fiscal. */
 function registruFiscal(db, year, cota, opts) {
   opts = opts || {};
@@ -598,6 +619,7 @@ function registruFiscal(db, year, cota, opts) {
   const dedRez = plafoane ? deduct.ajustari({
     rulaj: r, profitContabil: rezultatContabil,
     cheltAuto: cheltuieliAuto(db, year),
+    cheltLipsaNeimputabila: cheltuieliLipsaNeimputabila(db, year),
     cheltImpozitProfit: r['691'] ? round2(r['691'].d - r['691'].c) : 0,
     amortizare: amortDif,
     amortizareFiscala: amortDif.fiscala, // baza art. 40^2 foloseste amortizarea FISCALA
@@ -1055,4 +1077,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d112, d300, d390, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };
+module.exports = { cheltuieliLipsaNeimputabila, d112, d300, d390, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };

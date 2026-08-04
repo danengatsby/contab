@@ -64,6 +64,11 @@ const RATES = {
   // (art. 4 alin. 4) — nu la sfarsitul perioadei. Erau hardcodate in accounting.js.
   plafonNumerarJuridic: 5000,   // lei/persoana/zi — incasari si plati cu persoane juridice
   plafonNumerarFizic: 10000,    // lei/persoana/zi — incasari si plati cu persoane fizice
+  // Art. 3 alin. (1) lit. c): platile catre persoane juridice au DOUA limite simultane —
+  // 5.000 lei/persoana/zi (mai sus) SI un plafon TOTAL de 10.000 lei/zi, indiferent catre cati
+  // furnizori. Se incalca independent: trei plati de 4.000 catre trei furnizori diferiti trec
+  // fiecare de limita per persoana si il depasesc pe cel total. Se aplica doar PLATILOR.
+  plafonNumerarTotalZi: 10000,  // lei/zi — totalul platilor in numerar catre persoane juridice
   plafonSoldCasa: 50000,        // lei — soldul de casierie admis la sfarsitul fiecarei zile
   // Praguri Intrastat (lei/an, separat pe flux) — Ordin INS (valabile 2024-2026): peste prag,
   // firma devine obligata la declaratia statistica Intrastat pentru fluxul respectiv.

@@ -87,6 +87,7 @@ function profitTaxOptions(fid, src, year) {
     pierdereReportata: pr || 0,
     plafoane: fiscal.FISCAL,
     cheltAuto: rep.cheltuieliAuto(view, year),
+    cheltLipsaNeimputabila: rep.cheltuieliLipsaNeimputabila(view, year),
     // Amortizarea contabila vine din rulajul REAL al contului 6811, nu din plan: registrul fiscal
     // porneste de la ce s-a inregistrat efectiv.
     amortizare: assets.depreciationDifference(view.assets || [], year, rulajCont(view, year, '6811')),

@@ -97,14 +97,25 @@ module.exports = [
     id: 'diferente_inventar',
     nume: 'Diferente la inventariere (plus / minus)',
     grup: 'Stocuri',
+    // Contul de cheltuiala ramane ALES de contabil (implicit 607, ca pana acum), dar eticheta spune
+    // acum si cand se cuvine altul: minusul NEIMPUTABIL nu e cost al vanzarilor, ci alta cheltuiala
+    // de exploatare (6588) — amestecat in 607, umfla costul marfii vandute si strica marja.
+    //
+    // Bifa `neimputabila` NU schimba monografia, ci consecinta FISCALA: art. 25(4)(c) face
+    // nedeductibila cheltuiala cu stocurile lipsa din gestiune neimputabile si neasigurate. Nu se
+    // poate deduce din conturi (aceeasi cheltuiala pe acelasi cont poate fi imputabila sau nu),
+    // deci se marcheaza pe articol — acelasi tipar ca `auto50`, care poarta la fel o incadrare pe
+    // care contabilitatea singura n-o poate decide. Vezi `reporting.cheltuieliLipsaNeimputabila`.
     fields: [F.data, F.document, F.suma,
       { name: 'sens', label: 'Tip diferenta', type: 'select',
         options: [{ value: 'minus', label: 'Minus / lipsa la inventar' }, { value: 'plus', label: 'Plus la inventar' }], default: 'minus' },
       { name: 'contStoc', label: 'Cont stoc', type: 'account', default: '371' },
-      { name: 'contChelt', label: 'Cont cheltuiala (clasa 6)', type: 'account', default: '607' }],
+      { name: 'contChelt', label: 'Cont cheltuiala (clasa 6) — la minus neimputabil foloseste 6588, nu contul de descarcare', type: 'account', default: '607' },
+      { name: 'lipsaNeimputabila', label: 'Lipsa NEIMPUTABILA si neasigurata — cheltuiala e nedeductibila la impozitul pe profit (art. 25(4)(c))', type: 'checkbox' }],
     build: (d) => {
       if (d.sens === 'plus') return [L(d.contStoc || '371', d.contChelt || '607', d.suma, 'Plus la inventar (diminuare cheltuieli)')];
-      return [L(d.contChelt || '607', d.contStoc || '371', d.suma, 'Minus / lipsă la inventar')];
+      return [L(d.contChelt || '607', d.contStoc || '371', d.suma,
+        'Minus / lipsă la inventar' + (d.lipsaNeimputabila ? ' (neimputabilă — nedeductibilă fiscal)' : ''))];
     },
   },
   // Creanta devenita incerta: se REclasifica pe 4118, ca soldul lui 4111 sa arate doar creantele

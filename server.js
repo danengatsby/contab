@@ -334,6 +334,10 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     // (art. 298) intra in linii si se pierde, dar art. 25(3)(l) face nedeductibila si jumatate din
     // CHELTUIALA, iar asta se calculeaza abia la finalul anului — atunci steagul nu mai exista.
     ...(f.auto50 ? { auto50: true } : {}),
+    // Acelasi motiv ca la auto50: incadrarea „lipsa neimputabila si neasigurata" (art. 25(4)(c))
+    // nu se poate citi din conturi — aceeasi cheltuiala, pe acelasi cont, e deductibila daca a fost
+    // imputata sau asigurata — iar la finalul anului formularul din care s-a bifat nu mai exista.
+    ...(f.lipsaNeimputabila ? { lipsaNeimputabila: true } : {}),
     ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
     ...(codCategorie331 ? { codCategorie331 } : {}), // categoria de bun art. 331, pentru op11 din D394
     fileId: fileId || null,

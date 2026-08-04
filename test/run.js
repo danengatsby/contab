@@ -265,6 +265,71 @@ eq('stoc zero: COGS 0 si nicio linie de descarcare', _sale3.total + _sale3.cogsL
 eq('stoc zero: tot un avertisment', _sale3.warns.length, 1);
 eq('stoc suficient: `lipsuri` ramane gol', _sale.lipsuri.length, 0);
 
+section('Control casa: plafonul TOTAL al zilei + lipsa neimputabila la inventar');
+{
+  const K = (id, data, suma, partener, cui) => ({ id, data, period: data.slice(0, 7), tip: 'x', tipNume: 'x',
+    partener, partenerCui: cui, lines: [{ debit: '401', credit: '5311', suma }] });
+  // REGRESIE. Art. 3 alin. (1) lit. c) are DOUA limite simultane: 5.000 lei/persoana/zi SI un
+  // plafon TOTAL de 10.000 lei/zi. Se incalca independent — trei plati de 4.000 catre furnizori
+  // DIFERITI respecta fiecare limita per persoana, dar totalul zilei e 12.000. Verificarea veche,
+  // grupata pe (zi × partener), le lasa sa treaca pe toate.
+  const trei = { openingBalances: { 5311: { d: 50000, c: 0 } }, entries: [
+    K('t1', '2026-05-10', 4000, 'ALFA SRL', 'RO111'),
+    K('t2', '2026-05-10', 4000, 'BETA SRL', 'RO222'),
+    K('t3', '2026-05-10', 4000, 'GAMA SRL', 'RO333'),
+  ] };
+  const cc = acc.cashControl(trei, '5311', '2026-05');
+  eq('niciuna dintre plati nu depaseste limita PER PERSOANA', cc.plafon.length, 0);
+  eq('...dar totalul zilei o depaseste pe cea TOTALA', cc.plafonTotalZi.length, 1);
+  eq('suma raportata e totalul zilei', cc.plafonTotalZi[0].suma, 12000);
+  eq('limita raportata e cea totala (10.000)', cc.plafonTotalZi[0].limita, 10000);
+  ok('verdictul general devine „nu e ok"', cc.ok === false);
+  // Sub plafon: nicio constatare (regula nu inventeaza abateri).
+  const doua = { openingBalances: { 5311: { d: 50000, c: 0 } }, entries: [K('d1', '2026-05-11', 4000, 'ALFA SRL', 'RO111'), K('d2', '2026-05-11', 4000, 'BETA SRL', 'RO222')] };
+  eq('8.000 intr-o zi: sub plafonul total, nicio constatare', acc.cashControl(doua, '5311', '2026-05').plafonTotalZi.length, 0);
+  // Plafonul e ZILNIC: aceleasi sume in zile diferite nu se cumuleaza.
+  const alteZile = { openingBalances: { 5311: { d: 50000, c: 0 } }, entries: [
+    K('z1', '2026-05-12', 6000, 'ALFA SRL', 'RO111'), K('z2', '2026-05-13', 6000, 'BETA SRL', 'RO222')] };
+  eq('6.000 + 6.000 in zile diferite: fara depasire', acc.cashControl(alteZile, '5311', '2026-05').plafonTotalZi.length, 0);
+  // Se aplica DOAR platilor: incasarile au numai limita per persoana.
+  const incasari = { openingBalances: {}, entries: [1, 2, 3].map((n) => ({ id: 'i' + n, data: '2026-05-14', period: '2026-05',
+    tip: 'x', tipNume: 'x', partener: 'C' + n, partenerCui: 'RO' + n, lines: [{ debit: '5311', credit: '4111', suma: 4000 }] })) };
+  eq('incasari de 12.000 intr-o zi: plafonul TOTAL nu li se aplica', acc.cashControl(incasari, '5311', '2026-05').plafonTotalZi.length, 0);
+  // Fara CUI nu se poate stabili ca partea e persoana juridica -> nu se numara (aceeasi regula ca
+  // la `juridic`, nu una noua).
+  const faraCui = { openingBalances: { 5311: { d: 50000, c: 0 } }, entries: [
+    K('f1', '2026-05-15', 6000, 'Ion Popescu', ''), K('f2', '2026-05-15', 6000, 'Vasile Ionescu', '')] };
+  eq('plati catre persoane fizice: plafonul total nu se aplica', acc.cashControl(faraCui, '5311', '2026-05').plafonTotalZi.length, 0);
+
+  // ── Lipsa NEIMPUTABILA la inventar: nedeductibila (art. 25(4)(c)) ──
+  // Marcajul sta pe articol, nu pe cont: aceeasi cheltuiala, pe acelasi cont, e deductibila daca
+  // lipsa a fost imputata sau acoperita de asigurare. Acelasi tipar ca `auto50`.
+  const inv = require('../src/documentTypes').getType('diferente_inventar'); // `gt2` e declarat mai jos
+  const minusN = inv.build({ sens: 'minus', suma: 8000, contStoc: '371', contChelt: '6588', lipsaNeimputabila: true });
+  eq('minus neimputabil: 6588 = 371', minusN[0].debit + '=' + minusN[0].credit, '6588=371');
+  ok('explicatia spune ca e nedeductibila', /nedeductibil/i.test(minusN[0].explicatie));
+  ok('minusul imputabil nu poarta mentiunea', !/nedeductibil/i.test(inv.build({ sens: 'minus', suma: 8000 })[0].explicatie));
+  eq('contul de cheltuiala ramane ales de contabil (implicit 607)', inv.build({ sens: 'minus', suma: 100 })[0].debit, '607');
+  // Baza fiscala se aduna DOAR din articolele marcate.
+  const L2 = (id, data, lines, extra) => Object.assign({ id, data, period: data.slice(0, 7), tip: 'x', tipNume: 'x', lines }, extra || {});
+  const vLipsa = { openingBalances: {}, assets: [], company: {}, entries: [
+    L2('v1', '2026-03-01', [{ debit: '4111', credit: '704', suma: 100000 }]),
+    L2('v2', '2026-12-20', [{ debit: '6588', credit: '371', suma: 8000 }], { lipsaNeimputabila: true }),
+    L2('v3', '2026-12-21', [{ debit: '6588', credit: '371', suma: 3000 }]), // lipsa IMPUTATA -> deductibila
+  ] };
+  eq('baza = doar articolele marcate (8.000, nu 11.000)', rep.cheltuieliLipsaNeimputabila(vLipsa, '2026'), 8000);
+  const P2 = require('../src/fiscalConfig').RATES;
+  const optL = { cota: 16, plafoane: P2, cheltLipsaNeimputabila: rep.cheltuieliLipsaNeimputabila(vLipsa, '2026') };
+  const ptL = acc.profitTax(vLipsa, '2026', optL);
+  eq('lipsa neimputabila devine nedeductibila in impozit', ptL.cheltNedeductibile, 8000);
+  eq('profitul impozabil creste cu ea (89.000 + 8.000)', ptL.profitImpozabil, 97000);
+  ok('ajustarea isi poarta temeiul legal', (ptL.ajustari || []).some((a) => a.temei === 'Art. 25(4)(c)'));
+  // Registrul fiscal si nota contabila raman in acord (invariantul din A1).
+  ok('registrul fiscal da acelasi rezultat fiscal',
+    rep.registruFiscal(vLipsa, '2026', 16, { plafoane: P2 }).rezultatFiscal === ptL.profitImpozabil);
+  eq('fara niciun articol marcat, baza e zero', rep.cheltuieliLipsaNeimputabila({ entries: [vLipsa.entries[0]] }, '2026'), 0);
+}
+
 section('Scadentar / aging (FIFO, la 2026-06-25)');
 const ag = analytic.aging(v, '2026-06-25');
 const alfa = ag.furnizori.find((f) => /ALFA/.test(f.partener));

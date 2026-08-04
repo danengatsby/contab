@@ -238,6 +238,18 @@ function ajustari(i, cfg) {
       'P33')); // idem: depasire de la art. 25(3)(l), fara rand propriu pe formular
   }
 
+  // ── Lipsuri neimputabile din gestiune (art. 25(4)(c)) ─────────────────────
+  // Integral nedeductibile cand nu au fost imputate si nu exista contract de asigurare. Baza NU
+  // se poate citi din conturi: aceeasi cheltuiala, pe acelasi cont, e deductibila daca lipsa a
+  // fost imputata sau acoperita de asigurare. Vine deci ca marcaj de pe articol, la fel ca
+  // `cheltAuto` — singura diferenta e ca acolo se limiteaza la 50%, aici la zero.
+  const lipsa = round2(Number(i.cheltLipsaNeimputabila || 0));
+  if (lipsa > 0) {
+    randuri.push(rand('Lipsuri neimputabile din gestiune', 'Art. 25(4)(c)', '', lipsa, 0, lipsa, lipsa,
+      'Integral nedeductibile: bunuri constatate lipsa din gestiune, neimputabile si fara contract de asigurare.',
+      'P33')); // fara rand dedicat pe formular; instructiunea rd. 33 acopera „alte cheltuieli nedeductibile"
+  }
+
   // ── Sponsorizare, ca CHELTUIALA (art. 25(4)(i)) ───────────────────────────
   // Integral nedeductibila. Beneficiul fiscal nu vine din deducere, ci din CREDITUL de la faza 2 —
   // confuzia intre cele doua e clasica si duce la deducerea sumei de doua ori.

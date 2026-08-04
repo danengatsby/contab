@@ -43,6 +43,16 @@
   profitului (`129 = 1061`), nu printr-un cont de cheltuială — deci absența ei nu se vedea în nicio
   verificare de echilibru: firma constituia rezerva obligatoriu (art. 183 Legea 31/1990) și plătea
   16% pe ea. Se deduce **exact cât se postează** la repartizare.
+- **Controlul casei — plafonul zilnic TOTAL** (`accounting.cashControl`): art. 3 alin. (1) lit. c)
+  din Legea 70/2015 impune **două** limite simultane la plăți către persoane juridice — 5.000
+  lei/persoană/zi **și** un total de 10.000 lei/zi. Se încalcă independent: trei plăți de 4.000 către
+  furnizori diferiți respectă fiecare limita per persoană și îl depășesc pe cel total. Se aplică doar
+  plăților; încasările au numai limita per persoană.
+- **Lipsa neimputabilă la inventar** e marcată pe articol (bifă în `diferente_inventar`) și devine
+  **nedeductibilă** la impozitul pe profit (art. 25(4)(c)). Încadrarea nu se poate citi din conturi —
+  aceeași cheltuială, pe același cont, e deductibilă dacă lipsa a fost imputată sau asigurată — deci
+  marcajul stă pe articol, ca la `auto50`. Eticheta câmpului de cheltuială indică `6588` pentru
+  minusul neimputabil: amestecat în `607`, umflă costul mărfii vândute și strică marja.
 - **Operațiuni care nu se puteau înregistra deloc, adăugate:** vânzarea unui mijloc fix
   (`461 = 7583` + TVA, cu scoaterea din evidență `281x = 21x` și valoarea rămasă pe `6583` — exista
   doar casarea); **cut-off furnizori** (`6xx = 408`, cu TVA **neexigibil** pe 4428 până la sosirea
