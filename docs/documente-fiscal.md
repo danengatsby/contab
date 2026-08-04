@@ -4,7 +4,7 @@
 
 - **Parametri fiscali 2026** (`src/fiscal.js`, tab „Ghid”): CAS 25%, CASS 10%, impozit 10%,
   CAM 2,25%, salariu minim 4.050 (S1) / 4.325 (S2, de la 1 iulie — **comutare automată după lună**,
-  `salariuMinimLa()`), sumă neimpozabilă 300/200, TVA 21%/11%, micro 1%, profit 16%,
+  `salariuMinimLa()`), sumă neimpozabilă 300/200, TVA 21%/11%, micro 1%/3%, profit 16%,
   **dividende 16%** (Legea 141/2025, distribuiri din 2026). Cota TVA implicită este **21%**.
   **Facilitățile sectoriale IT/construcții/agro au fost eliminate** din ian. 2025 (OUG 156/2024) —
   câmpul „sector" pe angajat rămâne doar informativ, impozitarea e standard. Chiria plătită
@@ -28,7 +28,7 @@
   același tab; aplicația verifică automat că suma lor concordă cu soldul inițial sintetic.
   Export PDF.
 - **Registrul de evidență fiscală** (card în „Situații financiare”): trecerea de la rezultatul
-  contabil la cel fiscal → impozit pe profit 16% vs. micro 1%; export PDF. Aplică **deductibilitatea
+  contabil la cel fiscal → impozit pe profit 16% vs. micro (aceeași bază și cotă ca D100); export PDF. Aplică **deductibilitatea
   parțială** (art. 25-28 Cod fiscal): amenzi/penalități (6581) și pierderi din creanțe (654)
   **nedeductibile 100%**, ajustări pentru deprecierea creanțelor (6814) **nedeductibile 70%**
   (deductibil 30%), iar reluarea ajustărilor (7814) **neimpozabilă 70%** (simetric). Fiecare rând
@@ -37,6 +37,17 @@
   erau două tabele, registrul și declarația depusă raportau impozite diferite pe aceleași conturi.
   Cele două câmpuri de ajustare manuală din „Închideri” sunt **suprascrieri**: lăsate goale, sumele
   se calculează din conturi; un `0` tastat înseamnă „zero, exact”.
+- **Impozitul micro** ([`src/impozitMicro.js`](../src/impozitMicro.js), sursă unică pentru D100 și
+  pentru linia comparativă din registrul fiscal): baza e cea de la **art. 53**, nu totalul clasei 7 —
+  se scad veniturile din provizioane și ajustări, producția de imobilizări, variația stocurilor de
+  produse, subvențiile și diferențele de curs, se adaugă reducerile comerciale primite, iar în
+  **ultimul trimestru** revine diferența favorabilă de curs cumulată pe an (art. 53 alin. 2 lit. b).
+  Cota e **1% sau 3%** (art. 51): 3% peste pragul de 60.000 € **sau** pe codurile CAEN de
+  IT/HoReCa/juridic/medical, indiferent de venituri; depășirea pragului comută cota **de la
+  trimestrul depășirii** (alin. 4). Motivul cotei apare în raport, iar `?cota=` rămâne suprascriere.
+  Ce nu se poate deduce din codul contului (despăgubirile de la asigurări stau pe 7581 împreună cu
+  amenzile încasate) **rămâne în bază**, cu avertisment — o scădere ghicită ar micșora tăcut un
+  impozit datorat.
 - **Analitice și pe conturi non-partener** (trezorerie 5121/5311…, salarii 421): se detaliază
   după o etichetă liberă pe înregistrare (ex. „BCR”, „Ion Popescu”), nu după partener. Câmpul
   „Analitic” apare pe tipurile de trezorerie și salarii; soldul inițial analitic le acoperă pe toate.

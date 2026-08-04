@@ -5,6 +5,7 @@ const fiscal = require('./fiscal');
 const coa = require('./chartOfAccounts');
 const acc = require('./accounting');
 const deduct = require('./deductibilitate');
+const micro = require('./impozitMicro'); // baza art. 53 + cota art. 51 (sursa unica: D100 si registrul fiscal)
 const assets = require('./assets');
 const fiscalProfile = require('./fiscalProfile'); // regimul firmei (micro/profit) pentru livrabile
 const stmt = require('./statements');
@@ -237,7 +238,9 @@ function obligatii(db, period) {
   return { period, items, total };
 }
 
-/** Recap D100 — impozit pe veniturile microintreprinderii (1% din venituri). */
+/** Recap D100 — impozitul pe veniturile microintreprinderii. Baza (art. 53) si cota (art. 51) vin
+ *  din `src/impozitMicro.js`; aici raman doar decuparea trimestrului si semnalele de eligibilitate.
+ *  `cota` transmis explicit ramane suprascriere (contract istoric al rutei si al PDF-ului). */
 function d100micro(db, period, cota) {
   // Impozitul micro e TRIMESTRIAL: veniturile se cumuleaza pe toate lunile trimestrului
   // din care face parte `period` (ex. 2026-06 -> aprilie + mai + iunie).
@@ -247,13 +250,6 @@ function d100micro(db, period, cota) {
   const luni = m ? [q0, q0 + 1, q0 + 2].map((x) => y + '-' + String(x).padStart(2, '0')) : [];
   const lines = acc.resultLines(acc.postedEntries(db).filter((e) => luni.includes(String(e.period || periodOf(e.data)))));
   const r = acc.accumulate(lines);
-  let venit = 0;
-  for (const cod of Object.keys(r)) {
-    const a = coa.getAccount(cod);
-    const clasa = a ? a.clasa : Number(String(cod)[0]);
-    if (clasa === 7) venit = round2(venit + (r[cod].c - r[cod].d));
-  }
-  const rate = cota || fiscal.FISCAL.impozitMicro || 1;
   // Semnal de eligibilitate micro (art. 47 Cod fiscal): plafonul de venituri (EUR, configurabil)
   // si conditia de salariat. Doar AVERTIZEAZA — incadrarea finala ramane la contribuabil.
   const rAn = acc.accumulate(acc.resultLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
@@ -262,6 +258,21 @@ function d100micro(db, period, cota) {
     const a = coa.getAccount(cod);
     if ((a ? a.clasa : Number(String(cod)[0])) === 7) venitAn = round2(venitAn + (rAn[cod].c - rAn[cod].d));
   }
+  // Baza art. 53 a trimestrului. Ultimul trimestru (T4) reintroduce diferenta favorabila de curs
+  // cumulata pe an, deci primeste si rulajul anual.
+  const trimestru = m ? Math.ceil(m / 3) : 0;
+  const bz = micro.baza(r, { ultimulTrimestru: trimestru === 4, rulajAn: rAn });
+  const venit = bz.baza;
+  // Cota, pe veniturile cumulate PANA LA FINALUL trimestrului raportat: art. 51 alin. (4) comuta
+  // de la trimestrul depasirii, nu de la anul urmator, deci contorul nu poate fi nici cel al
+  // trimestrului singur, nici cel al anului intreg (care ar include luni viitoare).
+  const pana = m ? y + '-' + String(q0 + 2).padStart(2, '0') : y + '-12';
+  const rCum = acc.accumulate(acc.resultLines(acc.postedEntries(db)
+    .filter((e) => { const p = String(e.period || periodOf(e.data)); return p.startsWith(y) && p <= pana; })));
+  const venitCumulatLei = micro.baza(rCum, {}).baza;
+  const ct = micro.cotaAplicabila({ venitCumulatLei, curs: fiscal.FISCAL.cursPlafonMicro,
+    caen: (db.company || {}).caen }, fiscal.FISCAL);
+  const rate = cota || ct.cota;
   const plafonLei = round2((fiscal.FISCAL.plafonMicroEur || 0) * (fiscal.FISCAL.cursPlafonMicro || 0));
   const avertismente = [];
   if (plafonLei > 0 && venitAn > plafonLei) {
@@ -274,7 +285,19 @@ function d100micro(db, period, cota) {
   if (!((db.angajati || []).length)) {
     avertismente.push('Firma nu are salariati inregistrati in aplicatie: conditia de salariat (norma intreaga) pentru regimul micro nu pare indeplinita — fara salariat se datoreaza impozit pe profit.');
   }
-  return { period, trimestru: m ? Math.ceil(m / 3) : 0, luni, venit, cota: rate, impozit: round2((venit * rate) / 100), venitAn, plafonMicroLei: plafonLei, plafonMicroEur: fiscal.FISCAL.plafonMicroEur, avertismente };
+  // Motivul cotei si notele bazei ajung in avertismente doar cand spun ceva ce nu se vede din
+  // cifre: cota comutata pe 3% e o schimbare pe care contabilul trebuie s-o observe, nu s-o afle
+  // din suma finala. Suprascrierea manuala tace despre motiv — nu mai e al motorului.
+  if (!cota && ct.cota !== (fiscal.FISCAL.impozitMicro || 1)) avertismente.push(ct.motiv);
+  for (const a of ct.avertismente) avertismente.push(a);
+  for (const n of bz.note) avertismente.push(n);
+  return { period, trimestru, luni, venit, cota: rate, impozit: round2((venit * rate) / 100),
+    venitAn, plafonMicroLei: plafonLei, plafonMicroEur: fiscal.FISCAL.plafonMicroEur, avertismente,
+    // Desfasurarea bazei (art. 53) si a cotei (art. 51), pentru raport si pentru revizie.
+    venitClasa7: bz.venitClasa7, scaderi: bz.scaderi, totalScaderi: bz.totalScaderi,
+    adaugari: bz.adaugari, totalAdaugari: bz.totalAdaugari,
+    cotaMotiv: cota ? 'Cotă impusă manual (' + rate + '%).' : ct.motiv, cotaPrin: cota ? 'manual' : ct.prin,
+    pragMicro3Lei: ct.pragLei, venitCumulatLei };
 }
 
 /** Pro-rata TVA (art. 300): ponderea livrarilor CU drept de deducere in totalul livrarilor (anual).
@@ -484,10 +507,17 @@ function registruFiscal(db, year, cota, opts) {
   const rezultatFiscal = round2(rezultatContabil + totalNeded + totalPlafoane - venituriNeimpozabile);
   const rateProfit = cota || 16;
   const impozitProfit = round2((Math.max(rezultatFiscal, 0) * rateProfit) / 100);
-  const impozitMicro = round2((pl.venitTotal * 1) / 100);
+  // Linia comparativa „cat ar fi iesit pe micro". Trecea `pl.venitTotal` (toata clasa 7) printr-o
+  // cota scrisa `* 1` in cod — deci nici baza art. 53, nici cota art. 51, si nici macar cota din
+  // configuratie. Aceeasi sursa ca D100, altfel registrul si declaratia dau doua cifre.
+  const bzMicro = micro.baza(r, { ultimulTrimestru: true, rulajAn: r });
+  const ctMicro = micro.cotaAplicabila({ venitCumulatLei: bzMicro.baza,
+    curs: fiscal.FISCAL.cursPlafonMicro, caen: (db.company || {}).caen }, fiscal.FISCAL);
+  const impozitMicro = round2((bzMicro.baza * ctMicro.cota) / 100);
   return {
     year, rezultatContabil, cheltNeded, totalNeded, venituriList, venituriNeimpozabile, mentiuni,
     rezultatFiscal, rateProfit, impozitProfit, impozitMicro, venitTotal: pl.venitTotal,
+    rateMicro: ctMicro.cota, bazaMicro: bzMicro.baza, // cota nu mai e mereu 1%, deci se si afiseaza
     // Aditiv: randurile cu plafon si totalul lor, separate de procentele fixe.
     ajustariPlafon: dedRez.randuriPlafon, totalPlafoane,
   };
