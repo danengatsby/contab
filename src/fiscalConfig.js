@@ -35,7 +35,11 @@ const RATES = {
                                // art. 310 Cod fiscal, majorat de la 300.000 la 395.000 de la 1 sept. 2025 (OG 22/2025)
   tvaStandard: 21,        // % — Legea 141/2025 (de la 1 august 2025)
   tvaRedus: 11,           // % — Legea 141/2025
-  impozitMicro: 1,        // % — art. 51 Cod fiscal
+  impozitMicro: 1,        // % — art. 51 alin. (1) lit. a): venituri <= pragul de mai jos SI in afara
+                          // listei de coduri CAEN de la lit. b) pct. 2
+  impozitMicro3: 3,       // % — art. 51 alin. (1) lit. b): peste prag SAU pe codurile CAEN listate
+  pragMicro3Eur: 60000,   // EUR — pragul dintre cele doua cote (Legea 296/2023). Depasirea lui in
+                          // cursul anului comuta cota de la trimestrul depasirii (art. 51 alin. 4).
   impozitProfit: 16,      // % — art. 17 Cod fiscal
   impozitDividende: 16,   // % — Legea 141/2025 (de la 1 ianuarie 2026)
   deductibilitateTvaAutoLimitat: 50, // % — art. 298 Cod fiscal (vehicule fara uz exclusiv business)
@@ -78,6 +82,14 @@ const DEDUCERE = {
   rotunjireLei: 10,            // rotunjire finala, in favoarea angajatului
 };
 
+// Codurile CAEN care atrag cota de 3% INDIFERENT de venituri (art. 51 alin. (1) lit. b) pct. 2,
+// Legea 296/2023): IT, HoReCa, juridic, medical. Conditia priveste activitatile PRINCIPALE SAU
+// SECUNDARE — aplicatia stie doar codul principal (`company.caen`), deci pentru cele secundare
+// avertizeaza si lasa decizia contribuabilului. Lista nu e in RATES: `applyConfig` itereaza peste
+// chei numerice, iar un tablou ar fi transformat in NaN.
+const CAEN_MICRO_3 = ['5821', '6201', '6209', '5510', '5520', '5530', '5590',
+  '5610', '5621', '5629', '5630', '6910', '8621', '8622', '8623', '8690'];
+
 // PFA in sistem real (Declaratia Unica) — plafoanele CAS/CASS ca multipli de salariu minim
 // (art. 148/170 Cod fiscal): CASS intre 6 SM si 60 SM; CAS de la 12 SM (baza 12), respectiv 24 SM.
 const PFA = { plafonCassInf: 6, cas12: 12, cas24: 24, plafonCassSup: 60 };
@@ -91,7 +103,12 @@ const SURSE = {
   salariuMinim: 'HG salariu minim 2026 — 4.050 lei (S1) / 4.325 lei (S2, de la 1 iulie)',
   neimpozabil: 'Art. 76 Cod fiscal — 300 lei (S1) / 200 lei (S2) neimpozabili din salariul minim',
   tva: 'Legea 141/2025 — TVA standard 21%, redus 11% (de la 1 august 2025)',
-  impozitMicro: 'Art. 51 Cod fiscal (1%)',
+  impozitMicro: 'Art. 51 Cod fiscal — 1% pana la ' + RATES.pragMicro3Eur + ' EUR, '
+    + RATES.impozitMicro3 + '% peste prag sau pe codurile CAEN de la alin. (1) lit. b) pct. 2 '
+    + '(Legea 296/2023); comutarea opereaza de la trimestrul depasirii (alin. 4)',
+  bazaMicro: 'Art. 53 Cod fiscal — baza NU e totalul clasei 7: se scad veniturile din provizioane, '
+    + 'productia de imobilizari, variatia stocurilor, subventiile si diferentele de curs, si se adauga '
+    + 'reducerile comerciale primite, plus diferenta favorabila de curs in ultimul trimestru',
   impozitProfit: 'Art. 17 Cod fiscal (16%)',
   impozitDividende: 'Legea 141/2025 — 16% pentru dividende distribuite de la 1 ianuarie 2026',
   plafonMicroEur: 'Art. 47 Cod fiscal, OUG 156/2024 — 100.000 EUR din 2026',
@@ -111,4 +128,4 @@ const SURSE = {
   pragIntrastat: 'Ordin INS — praguri Intrastat 1.000.000 lei/an pe flux (introduceri / expedieri), 2024-2026',
 };
 
-module.exports = { AN, DATA_ACTUALIZARE, RATES, DEDUCERE, PFA, SURSE };
+module.exports = { AN, DATA_ACTUALIZARE, RATES, DEDUCERE, PFA, CAEN_MICRO_3, SURSE };

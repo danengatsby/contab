@@ -237,7 +237,7 @@ function registruFiscalPdf(res, company, rf) {
   rows.push({ k: '- Total venituri neimpozabile', v: fmt(rf.venituriNeimpozabile), _bold: true });
   rows.push({ k: '= REZULTATUL FISCAL', v: fmt(rf.rezultatFiscal), _bold: true, _fill: C.zebra });
   rows.push({ k: 'Impozit pe profit ' + rf.rateProfit + '%', v: fmt(rf.impozitProfit), _bold: true, _accent: true, _fill: C.zebra });
-  rows.push({ k: '(comparativ) Impozit micro 1% din venituri', v: fmt(rf.impozitMicro) });
+  rows.push({ k: '(comparativ) Impozit micro ' + (rf.rateMicro || 1) + '% din baza art. 53 (' + fmt(rf.bazaMicro || 0) + ')', v: fmt(rf.impozitMicro) });
   const note = 'Trecerea de la rezultatul contabil la cel fiscal (art. 25-28 Cod fiscal). '
     + (rf.mentiuni && rf.mentiuni.length ? rf.mentiuni.join(' ') + ' ' : '')
     + 'Deductibilitatile sunt orientative; verificati conditiile concrete cu un contabil autorizat.';

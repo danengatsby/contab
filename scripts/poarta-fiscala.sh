@@ -50,6 +50,7 @@ src/bilant.js
 src/stocks.js
 src/accounting.js
 src/deductibilitate.js
+src/impozitMicro.js
 src/assets.js
 src/statements.js
 src/chartOfAccounts.js

@@ -622,7 +622,7 @@ function loadRegFiscal() {
       <tr><td>− Total venituri neimpozabile</td><td class="num">${fmt(rf.venituriNeimpozabile)}</td></tr>
       <tr class="total"><td>= Rezultat fiscal</td><td class="num">${fmt(rf.rezultatFiscal)}</td></tr>
       <tr class="total"><td>Impozit pe profit ${rf.rateProfit}%</td><td class="num">${fmt(rf.impozitProfit)}</td></tr>
-      <tr><td class="muted">(comparativ) Impozit micro 1% din venituri</td><td class="num">${fmt(rf.impozitMicro)}</td></tr>
+      <tr><td class="muted">(comparativ) Impozit micro ${rf.rateMicro}% din baza art. 53 (${fmt(rf.bazaMicro)})</td><td class="num">${fmt(rf.impozitMicro)}</td></tr>
     </table>${(rf.mentiuni || []).map((m) => `<p class="muted" data-u="u184">${m}</p>`).join('')}`;
   }).catch(() => {});
   }

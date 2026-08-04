@@ -2466,6 +2466,104 @@ const d100warn = rep.d100micro({ entries: [{ id: 'w1', period: '2026-02', data: 
 ok('D100: peste 80% din plafon -> avertisment de urmarire (nu de depasire)', d100warn.avertismente.some((w) => /din plafonul micro/.test(w)) && !d100warn.avertismente.some((w) => /DEPASESC/.test(w)));
 eq('D100: venitul anual cumulat pentru controlul plafonului', d100over.venitAn, 600000);
 
+// ── Baza impozabila (art. 53) — NU e totalul clasei 7 ────────────────────────────────────────
+// REGRESIE. Baza era „tot rulajul creditor al clasei 7", deci veniturile care nu reprezinta
+// incasari din activitate (reluari de provizioane, productie de imobilizari, variatia stocurilor,
+// diferente de curs, subventii) se impozitau ca oricare altele. Pe fixture-ul de mai jos, firma
+// platea impozit pe 130.000 lei in loc de 50.000 — de 2,6 ori mai mult.
+{
+  const micro = require('../src/impozitMicro');
+  const { round2: round2ForTest } = require('../src/util');
+  const M = (id, data, lines) => ({ id, data, period: data.slice(0, 7), tip: 'x', tipNume: 'x', lines });
+  const mkMic = (ents, caen) => ({ entries: ents, openingBalances: {}, assets: [],
+    angajati: [{ id: 'a' }], company: { caen: caen || '4711' } });
+  const art53 = mkMic([
+    M('b1', '2026-03-05', [{ debit: '4111', credit: '704', suma: 50000 }]),  // venit real
+    M('b2', '2026-03-06', [{ debit: '151', credit: '7812', suma: 30000 }]),  // reluare provizion
+    M('b3', '2026-03-07', [{ debit: '231', credit: '722', suma: 40000 }]),   // productie imobilizari
+    M('b4', '2026-03-08', [{ debit: '5124', credit: '765', suma: 10000 }]),  // diferente de curs
+    M('b5', '2026-03-09', [{ debit: '345', credit: '711', suma: 20000 }]),   // variatia stocurilor
+    M('b6', '2026-03-10', [{ debit: '445', credit: '741', suma: 15000 }]),   // subventie de exploatare
+  ]);
+  const rb = rep.d100micro(art53, '2026-03');
+  eq('baza micro: veniturile clasei 7, ca reper (165.000)', rb.venitClasa7, 165000);
+  eq('baza micro: se scad provizioane/productie/curs/stocuri/subventii', rb.totalScaderi, 115000);
+  eq('baza micro (art. 53) = doar venitul din activitate', rb.venit, 50000);
+  eq('impozit pe baza corecta, nu pe tot venitul', rb.impozit, 500);
+  ok('fiecare scadere isi poarta temeiul legal', rb.scaderi.every((s) => /^Art\. 53/.test(s.temei)));
+  // 7584 e subventie pentru investitii (se scade), dar 7581/7588 raman in baza: prefixul mai lung
+  // nu are voie sa inghita tot grupul 758.
+  const r758 = micro.baza({ 704: { d: 0, c: 1000 }, 7584: { d: 0, c: 500 }, 7588: { d: 0, c: 300 } }, {});
+  eq('7584 se scade, 7588 ramane in baza', r758.baza, 1300);
+  // Reducerile comerciale primite (609, sold creditor pe un cont de clasa 6) se ADAUGA.
+  eq('reducerile comerciale primite se adauga la baza',
+    micro.baza({ 704: { d: 0, c: 1000 }, 609: { d: 0, c: 200 } }, {}).baza, 1200);
+  // Baza nu poate fi negativa (nu exista rambursare la micro). Cazul real: stornari masive care
+  // lasa contul de venit cu sold DEBITOR, langa o scadere pozitiva.
+  eq('scaderi peste venituri -> baza 0, nu negativa',
+    micro.baza({ 704: { d: 5000, c: 0 }, 7812: { d: 0, c: 1000 } }, {}).baza, 0);
+  // 7581 amesteca despagubiri de la asigurari (se scad) cu amenzi incasate (nu) -> ramane in baza,
+  // dar se semnaleaza. O scadere ghicita ar micsora un impozit datorat, tacut.
+  ok('7581 ramane in baza, cu nota explicita',
+    micro.baza({ 7581: { d: 0, c: 900 } }, {}).baza === 900
+    && micro.baza({ 7581: { d: 0, c: 900 } }, {}).note.length === 1);
+
+  // ── Diferenta de curs: scazuta in T1-T3, reintrodusa CUMULAT in ultimul trimestru ──
+  const cursEnt = [
+    M('c0', '2026-02-01', [{ debit: '4111', credit: '704', suma: 100000 }]),
+    M('c1', '2026-02-20', [{ debit: '5124', credit: '765', suma: 9000 }]),
+    M('c2', '2026-03-20', [{ debit: '665', credit: '5124', suma: 2000 }]),
+  ];
+  eq('T1: diferenta de curs se scade integral', rep.d100micro(mkMic(cursEnt), '2026-03').venit, 100000);
+  eq('T4: revine doar diferenta FAVORABILA a anului (9.000 - 2.000)',
+    rep.d100micro(mkMic(cursEnt), '2026-12').venit, 7000);
+  // Pierdere neta de curs pe an -> nu se adauga nimic (nu se scade suplimentar).
+  const cursPierdere = [M('p1', '2026-02-20', [{ debit: '5124', credit: '765', suma: 1000 }]),
+    M('p2', '2026-03-20', [{ debit: '665', credit: '5124', suma: 4000 }])];
+  eq('T4: curs net NEFAVORABIL -> nimic de adaugat', rep.d100micro(mkMic(cursPierdere), '2026-12').venit, 0);
+
+  // ── Cota: 1% / 3% (art. 51) ────────────────────────────────────────────────
+  // Pragul: 60.000 EUR x cursPlafonMicro 5 = 300.000 lei.
+  const V = (luna, s) => M('v' + luna, '2026-' + luna + '-10', [{ debit: '4111', credit: '704', suma: s }]);
+  eq('sub prag si CAEN neutru -> 1%', rep.d100micro(mkMic([V('02', 50000)], '4711'), '2026-03').cota, 1);
+  eq('peste prag -> 3%', rep.d100micro(mkMic([V('02', 400000)], '4711'), '2026-03').cota, 3);
+  // CAEN din lista (IT/HoReCa/juridic/medical): 3% INDIFERENT de venituri — cazul pe care cota
+  // unica din configuratie il rata complet, raportand o treime din impozitul datorat.
+  const itMic = rep.d100micro(mkMic([V('02', 50000)], '6201'), '2026-03');
+  eq('CAEN IT 6201 cu venituri mici -> tot 3%', itMic.cota, 3);
+  eq('...si impozitul e de trei ori cel de la 1%', itMic.impozit, 1500);
+  eq('CAEN HoReCa 5610 -> 3%', rep.d100micro(mkMic([V('02', 50000)], '5610'), '2026-03').cota, 3);
+  ok('motivul cotei e explicit, nu doar cifra', /6201/.test(itMic.cotaMotiv) && itMic.cotaPrin === 'caen');
+  ok('comutarea pe 3% ajunge si in avertismente', itMic.avertismente.some((w) => /3%/.test(w)));
+  // Art. 51 alin. (4): comutarea opereaza de la TRIMESTRUL depasirii, deci contorul e cumulat de
+  // la inceputul anului — nici pe trimestru singur, nici pe anul intreg (ar include luni viitoare).
+  const dep = [V('02', 200000), V('05', 150000)];
+  eq('T1, cumulat 200.000 (sub prag) -> 1%', rep.d100micro(mkMic(dep, '4711'), '2026-03').cota, 1);
+  eq('T2, cumulat 350.000 (peste prag) -> 3%', rep.d100micro(mkMic(dep, '4711'), '2026-06').cota, 3);
+  // Suprascrierea explicita ramane (contractul rutei si al PDF-ului).
+  eq('cota transmisa explicit bate motorul', rep.d100micro(mkMic([V('02', 400000)], '6201'), '2026-03', 1).cota, 1);
+  // Fara CAEN nu se poate verifica conditia de activitate -> se spune, nu se presupune.
+  ok('fara CAEN: avertisment ca nu s-a putut verifica activitatea',
+    rep.d100micro(mkMic([V('02', 50000)], ''), '2026-03').avertismente.some((w) => /CAEN/.test(w)));
+
+  // ── Registrul fiscal foloseste ACEEASI baza si cota ca D100 ────────────────
+  // Linia comparativa avea cota scrisa `* 1` in cod si baza pe tot venitul: doua cifre diferite
+  // pentru acelasi impozit, in doua ecrane care se citesc impreuna.
+  //
+  // Ancora corecta e „anualul = suma trimestrelor", nu „anualul = un trimestru": registrul e un
+  // raport ANUAL, deci include si diferenta favorabila de curs pe care art. 53(2)(b) o reintroduce
+  // in ultimul trimestru. Prima forma a acestui test compara T1 cu anul si pica pe o diferenta
+  // care era CORECTA — de aceea invariantul se scrie pe insumare, nu pe o egalitate comoda.
+  const rfMic = rep.registruFiscal(art53, '2026', 16);
+  const sumaTrim = ['03', '06', '09', '12']
+    .reduce((s, mm) => round2ForTest(s + rep.d100micro(art53, '2026-' + mm).venit), 0);
+  eq('registrul fiscal: baza anuala = suma bazelor trimestriale', rfMic.bazaMicro, sumaTrim);
+  eq('...si include diferenta de curs reintrodusa in T4', rfMic.bazaMicro, 60000);
+  eq('registrul fiscal: impozitul micro e derivat din aceeasi baza', rfMic.impozitMicro, round2ForTest(sumaTrim * rfMic.rateMicro / 100));
+  eq('registrul fiscal: cota nu mai e hardcodata 1%',
+    rep.registruFiscal(mkMic([V('02', 50000)], '6201'), '2026', 16).rateMicro, 3);
+}
+
 section('Produse agricole — fila carnet de comercializare (Legea 145/2014)');
 const agr = gt2('achizitie_produse_agricole').build({ suma: 750, cont: '371' });
 eq('achizitie pe carnet: 371=462, fara TVA', agr.map((l) => l.debit + '=' + l.credit).join(','), '371=462');
