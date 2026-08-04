@@ -1806,9 +1806,19 @@ async function main() {
       const st = await req('POST', '/api/entries/' + stE.id + '/storno', { cookie: c1, body: { data: '2026-08-10' } });
       ok('storno reuseste si intoarce nota de reversare', st.status === 200 && st.json.ok && st.json.storno && st.json.storno.stornoOf === stE.id);
       const so = st.json.storno;
-      // reversare exacta: debit<->credit, aceleasi sume
-      ok('nota de storno inverseaza debit/credit cu aceleasi sume', so.lines.length === stE.lines.length
-        && so.lines[0].debit === stE.lines[0].credit && so.lines[0].credit === stE.lines[0].debit && so.lines[0].suma === stE.lines[0].suma);
+      // Reversare IN ROSU: aceleasi conturi, suma negata. Aserțiunea cerea inversarea
+      // debit<->credit („in negru") — solduri corecte, dar rulaje umflate: articolul stornat
+      // raporta miscare pe ambele laturi ale contului, adica activitate care nu a existat.
+      // E si conventia pe care o foloseau deja tipurile `factura_storno_*`.
+      ok('nota de storno pastreaza conturile si NEAGA suma (storno in rosu)', so.lines.length === stE.lines.length
+        && so.lines[0].debit === stE.lines[0].debit && so.lines[0].credit === stE.lines[0].credit
+        && so.lines[0].suma === -stE.lines[0].suma);
+      // Efectul care conteaza: rulajul contului se anuleaza, nu se dubleaza.
+      {
+        const tb = (await req('GET', '/api/balance?period=2026-08', { cookie: c1 })).json;
+        const r5311 = (tb.rows || []).find((r) => r.cod === '5311');
+        ok('rulajul contului nu e umflat de storno (5311 fara miscare neta)', !r5311 || (r5311.rd === 0 && r5311.rc === 0) || (r5311.rd - r5311.rc === 0 && r5311.rd < 250));
+      }
       ok('nota de storno e marcata system + legata (stornoOf)', so.system === true && so.stornoOf === stE.id);
       // originalul devine imutabil: nu se mai storneaza si nu se mai sterge
       eq('re-stornarea aceluiasi articol -> 400', (await req('POST', '/api/entries/' + stE.id + '/storno', { cookie: c1, body: {} })).status, 400);

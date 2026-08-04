@@ -63,6 +63,21 @@ const vProfit = {
     lines: [{ debit: '4111', credit: '704', suma: 100000 }] }],
 };
 w('D100-profit', xml.d100Xml(vProfit.company, '2026-03', rep.d100(vProfit, '2026-03'), who));
+// D406 cu STORNO IN ROSU: stornoul generic scrie sume NEGATIVE (aceleasi conturi, suma negata),
+// deci ajung asa in <DebitAmount>/<CreditAmount>. Exemplul n-are niciun storno, deci varianta
+// periodica n-ar purta nicio suma negativa si poarta n-ar verifica niciodata ca schema le accepta.
+const vStorno = (() => {
+  const c = JSON.parse(JSON.stringify(v));
+  const orig = c.entries.find((e) => (e.lines || []).some((l) => l.credit === '4427'));
+  if (orig) {
+    c.entries.push({ id: 'e-storno-rosu', firmaId: orig.firmaId, data: '2026-06-25', period: '2026-06',
+      tip: 'storno', tipNume: 'Storno ' + orig.tipNume, partener: orig.partener, partenerCui: orig.partenerCui,
+      document: 'Storno ' + orig.document, explicatie: 'Stornare', status: 'postat', system: true, stornoOf: orig.id,
+      lines: orig.lines.map((l) => ({ debit: l.debit, credit: l.credit, suma: -l.suma, explicatie: 'Storno' })) });
+  }
+  return c;
+})();
+w('D406-storno', saft.saftXml(vStorno, '2026-06'));
 // D101 (impozit pe profit, anual) — schema v10; exemplul are profit mic in 2026
 w('D101', xml.d101Xml(v.company, rep.d101(v, '2026'), who));
 // D101 varianta DEFALCATA: exemplul de mai sus n-are cheltuieli cu plafon, deci nedeductibilele

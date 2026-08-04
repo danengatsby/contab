@@ -564,7 +564,12 @@ async function submitEntry(ciorna) {
         motivRevizuire: ($('#motivRevizuire') && $('#motivRevizuire').value) || '',
       }),
     });
-    toast(ciorna ? 'Ciornă salvată: ' + res.entry.id + ' (o postezi din listă)' : 'Înregistrare salvată: ' + res.entry.id);
+    // Avertismentele descărcării de gestiune (stoc insuficient) veneau de la server, dar nu le
+    // afișa nimeni: o vânzare peste stoc se salva cu cost incomplet și fără niciun semn. Se arată
+    // ca alertă, nu ca mesaj obișnuit — schimbă marja și fișa de magazie.
+    const warns = (res.stoc && res.stoc.warns) || [];
+    if (warns.length) toast(warns.join(' '), true);
+    else toast(ciorna ? 'Ciornă salvată: ' + res.entry.id + ' (o postezi din listă)' : 'Înregistrare salvată: ' + res.entry.id);
     closeForm();
     setMeta(await api('/api/meta')); fillPeriods();
     await loadEntries();

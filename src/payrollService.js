@@ -10,7 +10,7 @@
 
 const db = require('./db');
 const sepa = require('./sepa');
-const { round2 } = require('./util');
+const { round2, ultimaZiDinLuna } = require('./util');
 const { statePlata } = require('./payroll');
 const { reqFirma } = require('./stocksService');
 
@@ -49,8 +49,18 @@ function postStatPlata(fid, period, deps) {
   if (!v.angajati.length) fail(400, 'Niciun angajat definit.');
   if (!period) fail(400, 'Lipseste perioada (YYYY-MM).');
   db.assertPeriodOpen(fid, period, 'Postarea statului de plata');
+  // Jurnal append-only: statul lunii se posteaza O SINGURA DATA. `payrollHistory` era inlocuit la
+  // fiecare rulare (deci idempotent), dar articolul se ADAUGA — a doua apasare dubla tacut 641=421
+  // si toate retinerile, iar istoricul continua sa arate o singura luna. Aceeasi garda ca la
+  // impozitul pe profit; corectia se face prin storno, nu prin repostare.
+  const dejaPostat = db.get().entries.find((e) => e.firmaId === fid && e.tip === 'stat_plata'
+    && (e.period || '') === period && !e.stornat);
+  if (dejaPostat) {
+    fail(400, 'Statul de plata pe ' + period + ' este deja postat (articolul ' + dejaPostat.id
+      + '). Corecteaza prin storno, apoi posteaza din nou.');
+  }
   const sp = statePlata(v.angajati, period, v.payrollHistory);
-  const data = period + '-30';
+  const data = ultimaZiDinLuna(period);
   // posteaza articolul de salarii cu sumele agregate din statul de plata (potrivite exact)
   const entry = deps.buildEntry('stat_plata', {
     data, brut: sp.totals.brut, neimpozabil: sp.totals.neimpozabil,
@@ -89,7 +99,7 @@ function paySalaries(fid, period, cont, deps) {
   const sp = statePlata(v.angajati, period, v.payrollHistory);
   if (sp.totals.restPlata <= 0) fail(400, 'Nimic de platit (rest de plata 0).');
   const c = ['5121', '5311'].includes(cont) ? cont : '5121';
-  const entry = deps.buildEntry('plata_salarii', { data: period + '-30', suma: sp.totals.restPlata, cont: c }, null, fid);
+  const entry = deps.buildEntry('plata_salarii', { data: ultimaZiDinLuna(period), suma: sp.totals.restPlata, cont: c }, null, fid);
   entry.system = true; entry.document = 'Plata salarii ' + period;
   db.get().entries.push(entry);
   db.save();

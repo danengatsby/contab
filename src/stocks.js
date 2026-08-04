@@ -223,10 +223,17 @@ function inventoryList(db, gestiuneId, asOf) {
   });
 }
 
+/** Randul simularii pentru o miscare — valoarea SI cantitatea efectiv miscata. Cantitatea conteaza:
+ *  la iesire, `simulate` o plafoneaza la stocul disponibil (`Math.min`), deci ce s-a cerut si ce
+ *  s-a descarcat pot sa difere fara ca vreo suma sa arate asta. */
+function movementRow(product, movements, movementId, metoda) {
+  const { rows } = simulate(product, movements, null, metoda);
+  return rows.find((r) => r.id === movementId) || null;
+}
+
 /** Valoarea contabila a unei miscari (receptie = cant×pret; iesire = la metoda firmei). */
 function movementValue(product, movements, movementId, metoda) {
-  const { rows } = simulate(product, movements, null, metoda);
-  const row = rows.find((r) => r.id === movementId);
+  const row = movementRow(product, movements, movementId, metoda);
   if (!row) return 0;
   return row.tip === 'receptie' ? row.intrareV : row.iesireV;
 }
@@ -255,16 +262,31 @@ function saleCogs(products, baseMovements, stocLines, opts) {
   }
   const all = (baseMovements || []).concat(newMovements);
   const byCogs = {}; const warns = []; let total = 0;
+  const lipsuri = [];
   for (const mv of newMovements) {
     const p = (products || []).find((x) => x.id === mv.productId);
-    const suma = round2(movementValue(p, all, mv.id, o.metoda));
+    const row = movementRow(p, all, mv.id, o.metoda);
+    const suma = round2(row ? row.iesireV : 0);
     if (suma > 0) {
       const contStoc = p.cont || '371';
       const k = cogsAccount(contStoc) + '>' + contStoc;
       byCogs[k] = round2((byCogs[k] || 0) + suma);
       total = round2(total + suma);
-    } else {
-      warns.push('Stoc insuficient pentru „' + (p.denumire || p.cod || mv.productId) + '" — descarcare 0.');
+    }
+    // DESCARCAREA PARTIALA trebuie sa se auda. `simulate` plafoneaza iesirea la stocul disponibil
+    // (`Math.min`), deci o vanzare de 50 de bucati dintr-un stoc de 10 se inregistra cu costul a
+    // 10 si nicio vorba: marja iesea umflata cu costul celor 40 lipsa, iar fisa de magazie ajungea
+    // la zero in loc de negativ. Avertismentul de dinainte se declansa DOAR cand nu exista nimic
+    // in stoc (suma 0), adica exact cazul in care oricum se vedea ca lipseste ceva.
+    const cerut = round2(Number(mv.cantitate) || 0);
+    const descarcat = round2(row ? row.iesireQ : 0);
+    const lipsa = round2(cerut - descarcat);
+    if (lipsa > 0) {
+      const nume = p.denumire || p.cod || mv.productId;
+      lipsuri.push({ productId: mv.productId, denumire: nume, cerut, descarcat, lipsa });
+      warns.push('Stoc insuficient pentru „' + nume + '": s-au descărcat ' + descarcat + ' din '
+        + cerut + ' ' + (p.um || 'buc') + ' (lipsă ' + lipsa + '). Costul mărfii vândute e INCOMPLET — '
+        + 'verifică recepțiile lipsă înainte de a posta, altfel marja iese umflată.');
     }
   }
   const cogsLines = Object.keys(byCogs).map((k) => {
@@ -272,8 +294,8 @@ function saleCogs(products, baseMovements, stocLines, opts) {
     const met = String(o.metoda || 'cmp').toLowerCase() === 'fifo' ? 'FIFO' : 'CMP';
     return { debit, credit, suma: byCogs[k], explicatie: 'Descărcare gestiune - cost marfă vândută (' + met + ')' };
   });
-  return { newMovements, cogsLines, total, warns };
+  return { newMovements, cogsLines, total, warns, lipsuri };
 }
 
 module.exports = {
-  metodaFirma, productLedger, currentStock, movementsList, sortMov, cogsAccount, movementValue, simulate, inventoryList, saleCogs, situatieAprovizionari, situatieConsumuri };
+  metodaFirma, productLedger, currentStock, movementsList, sortMov, cogsAccount, movementValue, movementRow, simulate, inventoryList, saleCogs, situatieAprovizionari, situatieConsumuri };

@@ -249,6 +249,21 @@ const _sale2 = stocks.saleCogs(_prods, _movs, [{ productId: 'p1', gestiuneId: 'D
   { fid: 1, data: '2026-06-20', entryId: 'e98', nextId: () => 'smX' });
 eq('stoc insuficient: COGS la tot stocul (200×11)', _sale2.total, 2200);
 eq('stoc insuficient nu lasa cantitate negativa', _sale2.cogsLines[0].suma, 2200);
+// REGRESIE. Aserțiunile de mai sus verificau doar SUMA, si erau adevarate — dar descarcarea
+// partiala trecea TACUT: `simulate` plafoneaza iesirea la stocul disponibil, deci vanzarea a 500
+// de bucati dintr-un stoc de 200 se inregistra cu costul a 200 si niciun avertisment. Marja iesea
+// umflata cu costul celor 300 lipsa. Avertismentul vechi se declansa doar la stoc ZERO (suma 0),
+// adica exact cazul in care oricum se vedea ca lipseste ceva.
+eq('descarcarea partiala PRODUCE avertisment', _sale2.warns.length, 1);
+ok('avertismentul spune cat s-a descarcat din cat s-a cerut', /200 din 500/.test(_sale2.warns[0]));
+ok('...si numeste produsul', /Marfa 1/.test(_sale2.warns[0]));
+eq('lipsa e expusa si ca date, nu doar ca text', JSON.stringify(_sale2.lipsuri.map((l) => [l.cerut, l.descarcat, l.lipsa])), JSON.stringify([[500, 200, 300]]));
+// Stoc ZERO: tot un caz de lipsa, nu o ramura separata.
+const _sale3 = stocks.saleCogs(_prods, [], [{ productId: 'p1', gestiuneId: 'DEP', cantitate: 7 }],
+  { fid: 1, data: '2026-06-20', entryId: 'e97', nextId: () => 'smZ' });
+eq('stoc zero: COGS 0 si nicio linie de descarcare', _sale3.total + _sale3.cogsLines.length, 0);
+eq('stoc zero: tot un avertisment', _sale3.warns.length, 1);
+eq('stoc suficient: `lipsuri` ramane gol', _sale.lipsuri.length, 0);
 
 section('Scadentar / aging (FIFO, la 2026-06-25)');
 const ag = analytic.aging(v, '2026-06-25');
