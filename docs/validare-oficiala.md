@@ -185,6 +185,20 @@ Ordinea de căutare (`scripts/valideaza-etransport.sh`):
 > versiunea după anul din `Data_S`. Maparea de mai sus e dovedită pentru schema **v10** (exercițiile
 > 2024–2026); pentru alt an se re-sondează, nu se extrapolează.
 
+> **D300 — poziția reportată din decontul precedent, rândurile 35 și 38 (adăugat 2026-08-04).**
+> Erau zero **prin construcție**: generatorul scria `R37 = R34` și `R40 = R33`, adică sărea peste
+> ele. O firmă cu TVA de recuperat declara de plată tot TVA-ul lunii următoare, iar contul 4424
+> rămânea blocat ca activ. Acum rd. 35 (TVA de plată neachitată) și rd. 38 (sumă negativă
+> nerambursată) se derivă din soldurile 4423/4424 rămase **nestinse la finalul perioadei** — nu din
+> soldul de deschidere: TVA-ul lunii P se plătește până pe 25 ale lunii P+1, deci un rând 35 calculat
+> pe deschidere ar raporta ca neachitată exact datoria plătită la timp. Rândurile 36 și 39 (diferențe
+> stabilite de inspecția fiscală) rămân zero — vin dintr-o decizie de impunere, nu din contabilitate.
+>
+> Formulele oficiale respectate: `R37 = R34+R35+R36`, `R40 = R33+R38+R39`, `R41/R42 = |R37−R40|`.
+> Referința **`D300-report`** din `scripts/genereaza-referinte.js` există exact ca poarta să
+> exercite calea: exemplul obișnuit n-are sold reportat, deci ar fi rămas verde fără s-o atingă
+> vreodată (aceeași capcană ca la `D101-defalcare`).
+
 > **D101 — defalcarea nedeductibilelor pe rândurile P23..P33 (adăugat 2026-07-29).** Până acum toate
 > cheltuielile nedeductibile mergeau la **P33** „Alte cheltuieli nedeductibile", cu totalul corect în
 > P34. Acum se repartizează după temeiul legal al fiecărei reguli.

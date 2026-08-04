@@ -335,7 +335,18 @@ function d300Rows(d) {
   // R33/R34 (suma negativa / taxa de plata) si cumulat R37/R40 -> R41 (plata) / R42 (recuperat).
   A.R28_2 = A.R27_2; A.R32_2 = A.R28_2;
   A.R33_2 = Math.max(A.R32_2 - A.R17_2, 0); A.R34_2 = Math.max(A.R17_2 - A.R32_2, 0);
-  A.R37_2 = A.R34_2; A.R40_2 = A.R33_2;
+  // ── POZITIA REPORTATA din decontul precedent ────────────────────────────────────────────────
+  // R35 = soldul TVA de plata neachitat pana la depunere; R38 = soldul sumei negative pentru care
+  // nu s-a cerut rambursarea. Erau AMANDOUA zero prin constructie (`R37 = R34`, `R40 = R33`), deci
+  // o firma cu TVA de recuperat declara de plata intreg TVA-ul lunii urmatoare, iar creanta se
+  // reporta la infinit fara sa fie folosita vreodata. R36/R39 (diferente stabilite de inspectia
+  // fiscala) raman zero: nu se pot deduce din contabilitate, vin dintr-o decizie de impunere.
+  const rep = d.report || {};
+  A.R35_2 = Math.round(Number(rep.dePlata) || 0);
+  A.R38_2 = Math.round(Number(rep.deRecuperat) || 0);
+  // Formulele oficiale: R37 = R34 + R35 + R36 ; R40 = R33 + R38 + R39.
+  A.R37_2 = A.R34_2 + A.R35_2 + (A.R36_2 || 0);
+  A.R40_2 = A.R33_2 + A.R38_2 + (A.R39_2 || 0);
   A.R41_2 = Math.max(A.R37_2 - A.R40_2, 0); A.R42_2 = Math.max(A.R40_2 - A.R37_2, 0);
   return A;
 }
