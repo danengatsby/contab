@@ -298,6 +298,37 @@ function buildBalanceRows(before, opening, rulaj, period) {
   return { rows, tot, balanced, period };
 }
 
+/**
+ * POZITIA DE TVA REPORTATA din perioadele anterioare, ramasa nestinsa la finalul perioadei
+ * `period` — randurile 35 (TVA de plata neachitata) si 38 (suma negativa nerambursata) din D300,
+ * si baza compensarii contabile 4423 = 4424.
+ *
+ * NU e soldul de la inceputul perioadei, si diferenta conteaza. TVA-ul lunii P se plateste pana
+ * pe 25 ale lunii P+1, adica IN perioada P+1: un rand 35 calculat pe soldul de la inceputul lui
+ * P+1 ar raporta ca „neachitata" exact datoria platita la timp, si ar umfla TVA-ul declarat.
+ * De aceea din soldul de deschidere se scade ce s-a stins in cursul perioadei (debitul lui 4423,
+ * respectiv creditul lui 4424) — plati si compensari deopotriva.
+ *
+ * `max(0, ...)`: o plata mai mare decat datoria veche (avans la buget) nu devine sold negativ pe
+ * randul de raportare; ea ramane vizibila in balanta, unde ii e locul.
+ *
+ * @returns {{ dePlata:number, deRecuperat:number }} ambele pozitive sau zero
+ */
+function vatCarryForward(db, period) {
+  const opening = db.openingBalances || {};
+  const inainte = accumulate(allLines(postedEntries(db).filter((e) => beforePeriod(e, period))));
+  const rulaj = accumulate(allLines(postedEntries(db).filter((e) => inPeriod(e, period))));
+  const net = (cod) => {
+    const o = opening[cod] || { d: 0, c: 0 }; const b = inainte[cod] || { d: 0, c: 0 };
+    return round2((o.d + b.d) - (o.c + b.c)); // pozitiv = sold debitor
+  };
+  const stins = (cod, latura) => round2((rulaj[cod] || { d: 0, c: 0 })[latura]);
+  return {
+    dePlata: Math.max(0, round2(-net('4423') - stins('4423', 'd'))),
+    deRecuperat: Math.max(0, round2(net('4424') - stins('4424', 'c'))),
+  };
+}
+
 /** Calculeaza articolul de inchidere TVA pentru o perioada (nu il salveaza). */
 function vatClosing(db, period) {
   const rulaj = accumulate(allLines(postedEntries(db).filter((e) => inPeriod(e, period))));
@@ -311,7 +342,23 @@ function vatClosing(db, period) {
   const diff = round2(colectata - deductibila);
   if (diff > 0) lines.push({ debit: '4427', credit: '4423', suma: diff, explicatie: 'TVA de plată' });
   else if (diff < 0) lines.push({ debit: '4424', credit: '4426', suma: round2(-diff), explicatie: 'TVA de recuperat' });
-  return { colectata, deductibila, diff, lines };
+  // ── Compensarea cu pozitia REPORTATA din perioadele anterioare ──────────────────────────────
+  // Fara ea, o firma cu TVA de recuperat platea integral TVA-ul lunii urmatoare, iar 4424 ramanea
+  // blocat ca activ la nesfarsit: bilantul arata simultan o creanta si o datorie catre acelasi
+  // buget, amandoua umflate cu aceeasi suma. Verificarea de echilibru nu o putea prinde — eroarea
+  // e simetrica. Suma compensata e minimul celor doua pozitii DUPA inchiderea perioadei.
+  const report = vatCarryForward(db, period);
+  const dePlataTotal = round2(report.dePlata + Math.max(diff, 0));
+  const deRecuperatTotal = round2(report.deRecuperat + Math.max(-diff, 0));
+  const compensare = round2(Math.min(dePlataTotal, deRecuperatTotal));
+  if (compensare > 0) {
+    lines.push({ debit: '4423', credit: '4424', suma: compensare,
+      explicatie: 'Compensare cu soldul de TVA reportat din perioadele anterioare' });
+  }
+  return { colectata, deductibila, diff, lines,
+    report, compensare,
+    dePlataFinal: round2(dePlataTotal - compensare),
+    deRecuperatFinal: round2(deRecuperatTotal - compensare) };
 }
 
 /** Calculeaza articolele de inchidere a conturilor de venituri si cheltuieli (clasa 6/7) intr-un an. */
@@ -866,5 +913,5 @@ function cashControl(db, cont, period, opts) {
 }
 
 module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
-  allLines, resultLines, isResultClosingLine, sortEntries, entryChrono, lastEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, annualClosing, profitTax, resultDistribution, legalReserve, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
+  allLines, resultLines, isResultClosingLine, sortEntries, entryChrono, lastEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, vatCarryForward, annualClosing, profitTax, resultDistribution, legalReserve, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };

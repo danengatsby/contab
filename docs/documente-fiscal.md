@@ -37,6 +37,11 @@
   erau două tabele, registrul și declarația depusă raportau impozite diferite pe aceleași conturi.
   Cele două câmpuri de ajustare manuală din „Închideri” sunt **suprascrieri**: lăsate goale, sumele
   se calculează din conturi; un `0` tastat înseamnă „zero, exact”.
+- **Poziția de TVA reportată** (`accounting.vatCarryForward`): nota de închidere a lunii compensează
+  soldul rămas din perioadele anterioare (**4423 = 4424**), iar decontul îl declară pe rândurile
+  **35** (TVA de plată neachitată) și **38** (sumă negativă nerambursată). Ambele erau zero prin
+  construcție: firma cu TVA de recuperat plătea integral TVA-ul lunii următoare, iar 4424 rămânea
+  blocat ca activ — bilanțul arăta simultan creanță și datorie către același buget.
 - **Impozitul micro** ([`src/impozitMicro.js`](../src/impozitMicro.js), sursă unică pentru D100 și
   pentru linia comparativă din registrul fiscal): baza e cea de la **art. 53**, nu totalul clasei 7 —
   se scad veniturile din provizioane și ajustări, producția de imobilizări, variația stocurilor de

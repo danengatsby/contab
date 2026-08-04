@@ -45,7 +45,9 @@ function d300(db, period) {
   // d300Rows le mapeaza pe randurile proprii (R1 intracomunitar, R13 taxare inversa).
   // `vj.totals` aduce in plic si `scutite` (baze fara TVA, pe categorie), si `autolichidari`
   // (perechile colectata/deductibila ale taxarii inverse) — d300Rows le mapeaza pe randurile lor.
-  return Object.assign({ period, coteV: vj.coteV, coteC: vj.coteC, scutiteRows: vj.scutite }, vj.totals);
+  // `report` = pozitia de TVA ramasa din perioadele anterioare (randurile 35 si 38 din decont).
+  return Object.assign({ period, coteV: vj.coteV, coteC: vj.coteC, scutiteRows: vj.scutite,
+    report: acc.vatCarryForward(db, period) }, vj.totals);
 }
 
 // Cote de TVA acceptate (RO, curente + istorice recente): 21/11/9 curente, 19/5 istorice, 0 scutit.

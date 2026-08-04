@@ -763,6 +763,60 @@ eq('TVA deductibila', vc.deductibila, 2100);
 eq('TVA de plata (diff)', vc.diff, 840);
 eq('ultima linie = TVA de plata 4427=4423', JSON.stringify([vc.lines[vc.lines.length - 1].debit, vc.lines[vc.lines.length - 1].credit, vc.lines[vc.lines.length - 1].suma]), JSON.stringify(['4427', '4423', 840]));
 
+// ── Pozitia de TVA REPORTATA din perioadele anterioare (D300 rd. 35/38 + compensarea 4423=4424) ──
+// REGRESIE. `vatClosing` privea doar rulajul lunii, iar `d300Rows` scria `R37 = R34` si `R40 = R33`,
+// adica randurile 35 si 38 erau zero PRIN CONSTRUCTIE. Consecinta dubla: firma cu TVA de recuperat
+// declara de plata tot TVA-ul lunii urmatoare, iar 4424 ramanea blocat ca activ la nesfarsit —
+// bilantul arata simultan creanta si datorie catre acelasi buget, umflate cu aceeasi suma. Eroarea
+// e simetrica, deci nicio verificare de echilibru nu o putea prinde.
+{
+  const T = (id, data, lines) => ({ id, data, period: data.slice(0, 7), tip: 'x', tipNume: 'x', lines });
+  const comp = { openingBalances: {}, company: { cui: 'RO1', nume: 'X', perioadaTva: 'L' }, entries: [
+    // ianuarie: achizitie 20.000 + TVA 4.200 -> TVA de recuperat 4.200
+    T('r1', '2026-01-10', [{ debit: '371', credit: '401', suma: 20000 }, { debit: '4426', credit: '401', suma: 4200 }]),
+    T('r2', '2026-01-31', [{ debit: '4424', credit: '4426', suma: 4200 }]),
+    // februarie: vanzare 40.000 + TVA 8.400
+    T('r3', '2026-02-10', [{ debit: '4111', credit: '707', suma: 40000 }, { debit: '4111', credit: '4427', suma: 8400 }]),
+  ] };
+  const vcFeb = acc.vatClosing(comp, '2026-02');
+  eq('pozitia reportata: 4.200 de recuperat din ianuarie', vcFeb.report.deRecuperat, 4200);
+  eq('nota de inchidere compenseaza reportul', vcFeb.compensare, 4200);
+  ok('compensarea e articolul 4423 = 4424', vcFeb.lines.some((l) => l.debit === '4423' && l.credit === '4424' && l.suma === 4200));
+  eq('de plata efectiv: 8.400 - 4.200', vcFeb.dePlataFinal, 4200);
+  eq('creanta de TVA se stinge, nu se reporteaza la infinit', vcFeb.deRecuperatFinal, 0);
+  // Declaratia trebuie sa spuna acelasi lucru ca nota contabila.
+  const AF = xml.d300Rows(rep.d300(comp, '2026-02'));
+  eq('D300 rd. 34 — taxa de plata a perioadei', AF.R34_2, 8400);
+  eq('D300 rd. 38 — suma negativa reportata (era mereu 0)', AF.R38_2, 4200);
+  eq('D300 rd. 41 — de plata dupa report = cat spune nota', AF.R41_2, vcFeb.dePlataFinal);
+  // Formulele OFICIALE ale decontului, verificate pe randurile emise (validatorul le impune).
+  ok('R37 = R34 + R35 + R36', AF.R37_2 === (AF.R34_2 || 0) + (AF.R35_2 || 0) + (AF.R36_2 || 0));
+  ok('R40 = R33 + R38 + R39', AF.R40_2 === (AF.R33_2 || 0) + (AF.R38_2 || 0) + (AF.R39_2 || 0));
+  ok('R41/R42 se exclud reciproc', !(AF.R41_2 > 0 && AF.R42_2 > 0));
+
+  // ── Randul 35: „neachitata pana la depunere", nu „soldul de la inceputul lunii" ──
+  // TVA-ul lunii ianuarie se plateste pana pe 25 februarie, adica IN februarie. Un rand 35 calculat
+  // pe soldul de deschidere ar raporta ca neachitata exact datoria platita la timp — si ar umfla
+  // TVA-ul declarat. De aceea din sold se scade ce s-a stins in cursul perioadei.
+  const neplatit = { openingBalances: {}, company: { cui: 'RO1', nume: 'X' }, entries: [
+    T('p1', '2026-01-10', [{ debit: '4111', credit: '707', suma: 20000 }, { debit: '4111', credit: '4427', suma: 4000 }]),
+    T('p2', '2026-01-31', [{ debit: '4427', credit: '4423', suma: 4000 }]),
+    T('p3', '2026-02-10', [{ debit: '4111', credit: '707', suma: 5000 }, { debit: '4111', credit: '4427', suma: 1000 }]),
+  ] };
+  eq('rd. 35: datoria din ianuarie, NEachitata', xml.d300Rows(rep.d300(neplatit, '2026-02')).R35_2, 4000);
+  const platit = { openingBalances: {}, company: neplatit.company,
+    entries: neplatit.entries.concat([T('p4', '2026-02-24', [{ debit: '4423', credit: '5121', suma: 4000 }])]) };
+  eq('rd. 35: aceeasi datorie, platita pe 24 februarie -> 0', xml.d300Rows(rep.d300(platit, '2026-02')).R35_2, 0);
+  eq('...si nici nu apare vreo compensare inventata', acc.vatClosing(platit, '2026-02').compensare, 0);
+  // O plata mai mare decat datoria (avans la buget) nu devine rand negativ pe declaratie.
+  const avans = { openingBalances: {}, company: neplatit.company,
+    entries: neplatit.entries.concat([T('p5', '2026-02-24', [{ debit: '4423', credit: '5121', suma: 9000 }])]) };
+  eq('plata peste datorie -> rd. 35 ramane 0, nu negativ', xml.d300Rows(rep.d300(avans, '2026-02')).R35_2, 0);
+  // Fara nimic reportat, comportamentul istoric e neatins (nicio linie de compensare in plus).
+  eq('fara report, nota de inchidere ramane cea de dinainte', vc.lines.length, acc.vatClosing(v, '2026-06').lines.length);
+  eq('fara report, rd. 38 ramane 0', xml.d300Rows(rep.d300(v, '2026-06')).R38_2, 0);
+}
+
 section('Inchiderea anuala (2026)');
 const an = acc.annualClosing(v, '2026');
 eq('total venituri inchise', an.totalVen, 14000);

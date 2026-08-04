@@ -29,6 +29,23 @@ const w = (tip, xmlStr) => { fs.writeFileSync(path.join(dir, tip + '.xml'), xmlS
 
 // D300 / D394 (TVA lunar din exemplu)
 w('D300', xml.d300Xml(v.company, '2026-06', rep.d300(v, '2026-06'), who));
+// D300 varianta cu POZITIE REPORTATA: exemplul de mai sus n-are sold de TVA din perioadele
+// anterioare, deci randurile 35 si 38 (si formulele R37/R40 care le folosesc) nu se exercita
+// niciodata — poarta ar ramane verde fara sa fi verificat calea noua, exact ca la D101-defalcare.
+// Aici ianuarie lasa 4.200 lei de recuperat, februarie datoreaza 8.400, deci rd. 38 = 4.200 si
+// rd. 41 = 4.200. Numele „D300-report" duce tot la validatorul D300 (vezi valideaza-referinte.sh).
+const vRep = {
+  company: v.company, openingBalances: {},
+  entries: [
+    { id: 'tr1', firmaId: 1, data: '2026-01-10', period: '2026-01', tip: 'diverse', tipNume: 'Achizitie', status: 'postat',
+      lines: [{ debit: '371', credit: '401', suma: 20000 }, { debit: '4426', credit: '401', suma: 4200 }] },
+    { id: 'tr2', firmaId: 1, data: '2026-01-31', period: '2026-01', tip: 'inchidere_tva', tipNume: 'Inchidere TVA', status: 'postat',
+      lines: [{ debit: '4424', credit: '4426', suma: 4200 }] },
+    { id: 'tr3', firmaId: 1, data: '2026-02-10', period: '2026-02', tip: 'diverse', tipNume: 'Vanzare', status: 'postat',
+      lines: [{ debit: '4111', credit: '707', suma: 40000 }, { debit: '4111', credit: '4427', suma: 8400 }] },
+  ],
+};
+w('D300-report', xml.d300Xml(v.company, '2026-02', rep.d300(vRep, '2026-02'), who));
 w('D394', xml.d394Xml(v.company, '2026-06', acc.vatJournals(v, '2026-06'), who));
 // D390 (VIES) — exemplul n-are operatiuni intracomunitare; adaug una ca sa fie continut
 const vIC = { entries: v.entries.concat([{ id: 'ic', data: '2026-06-18', period: '2026-06', tip: 'livrare_intracomunitara', tipNume: 'L', partener: 'GMBH', partenerCui: 'DE811907980', document: 'E1', lines: [{ debit: '4111', credit: '707', suma: 9000 }] }]), openingBalances: v.openingBalances };
