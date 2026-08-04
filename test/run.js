@@ -2240,6 +2240,72 @@ eq('chirie_pf: impozit 10% din net (brut - 20% forfetar) = 80', (chir.find((l) =
 eq('chirie_pf: net platit 920', (chir.find((l) => l.credit === '5121') || {}).suma, 920);
 eq('chirie_pf: debit 612 = brut 1000', chir.reduce((s, l) => s + (l.debit === '612' ? l.suma : 0), 0), 1000);
 
+section('Monografii adaugate: cedare mijloc fix, cut-off 408, capital social, creante incerte');
+{
+  const coa2 = require('../src/chartOfAccounts');
+  // Toate conturile atinse de monografiile noi trebuie sa existe in plan — o linie catre un cont
+  // inexistent trece de `build` si cade abia la salvare, cu un mesaj despre „cont inexistent".
+  const toateLiniile = (id, f) => gt2(id).build(f);
+  const conturiValide = (linii) => linii.every((l) => coa2.getAccount(l.debit) && coa2.getAccount(l.credit));
+
+  // ── Vanzarea unui mijloc fix: exista casarea, dar nu si cedarea cu titlu oneros ──
+  const vmf = toateLiniile('vanzare_mijloc_fix', { pret: 20000, tva: 4200, valoare: 50000, amortizare: 35000, contImob: '2133', contAmort: '2813' });
+  ok('cedare: toate conturile exista in plan', conturiValide(vmf));
+  eq('cedare: venitul pe 7583 (contul lipsea cu totul)', (vmf.find((l) => l.credit === '7583') || {}).suma, 20000);
+  eq('cedare: TVA colectata la pretul de vanzare', (vmf.find((l) => l.credit === '4427') || {}).suma, 4200);
+  eq('cedare: amortizarea cumulata se scade (2813 = 2133)', (vmf.find((l) => l.debit === '2813' && l.credit === '2133') || {}).suma, 35000);
+  eq('cedare: valoarea ramasa pe 6583', (vmf.find((l) => l.debit === '6583') || {}).suma, 15000);
+  // Invariantul care conteaza: activul iese INTEGRAL din evidenta (50.000 = 35.000 + 15.000).
+  eq('cedare: contul de imobilizare se stinge complet',
+    vmf.filter((l) => l.credit === '2133').reduce((s, l) => s + l.suma, 0), 50000);
+  // Activ complet amortizat: nicio linie de valoare ramasa, dar tot se scoate din evidenta.
+  const vmfAmort = toateLiniile('vanzare_mijloc_fix', { pret: 500, tva: 105, valoare: 9000, amortizare: 9000 });
+  ok('cedare, activ integral amortizat: fara linie 6583', !vmfAmort.some((l) => l.debit === '6583'));
+  eq('...dar tot se scoate integral din evidenta', vmfAmort.filter((l) => l.credit === '2131').reduce((s, l) => s + l.suma, 0), 9000);
+
+  // ── Cut-off 408: contul era in plan, in bilant si in SAF-T, dar nimic nu-l producea ──
+  const fn = toateLiniile('factura_nesosita', { baza: 1000, tva: 210, contChelt: '605' });
+  ok('cut-off: conturile exista', conturiValide(fn));
+  eq('cut-off: cheltuiala in luna consumului (605 = 408)', (fn.find((l) => l.debit === '605' && l.credit === '408') || {}).suma, 1000);
+  // TVA-ul e NEEXIGIBIL pana la factura: dreptul de deducere se naste cu ea, nu cu consumul.
+  eq('cut-off: TVA pe 4428, NU pe 4426', (fn.find((l) => l.debit === '4428') || {}).suma, 210);
+  ok('cut-off: nicio linie de TVA deductibila inainte de factura', !fn.some((l) => l.debit === '4426'));
+  const sf = toateLiniile('sosire_factura_nesosita', { baza: 1000, tva: 210 });
+  eq('sosire: 408 se stinge la TOTAL (baza + TVA)', (sf.find((l) => l.debit === '408' && l.credit === '401') || {}).suma, 1210);
+  eq('sosire: TVA devine deductibila (4426 = 4428)', (sf.find((l) => l.debit === '4426' && l.credit === '4428') || {}).suma, 210);
+  // Perechea inchide contul: ce a intrat pe credit 408 iese pe debit.
+  eq('perechea cut-off + sosire lasa 408 pe zero',
+    fn.filter((l) => l.credit === '408').reduce((s, l) => s + l.suma, 0)
+    - sf.filter((l) => l.debit === '408').reduce((s, l) => s + l.suma, 0), 0);
+
+  // ── Capital social: 1011 si 456 lipseau, desi bilantul mapa deja 1011 pe randul 031 ──
+  const sub = toateLiniile('subscriere_capital', { suma: 45000 });
+  ok('subscriere: conturile exista', conturiValide(sub));
+  eq('subscriere: creanta fata de asociati (456 = 1011)', (sub.find((l) => l.debit === '456' && l.credit === '1011') || {}).suma, 45000);
+  const vars = toateLiniile('varsare_capital', { suma: 45000, cont: '5121' });
+  ok('varsare: conturile exista', conturiValide(vars));
+  eq('varsare: incasarea stinge creanta (5121 = 456)', (vars.find((l) => l.debit === '5121' && l.credit === '456') || {}).suma, 45000);
+  // A doua linie e cea uitata de obicei: fara ea, 1011 ramane in bilant si varsatul apare zero.
+  eq('varsare: capitalul trece din nevarsat in varsat (1011 = 1012)', (vars.find((l) => l.debit === '1011' && l.credit === '1012') || {}).suma, 45000);
+  eq('subscriere + varsare lasa 1011 pe zero',
+    sub.filter((l) => l.credit === '1011').reduce((s, l) => s + l.suma, 0)
+    - vars.filter((l) => l.debit === '1011').reduce((s, l) => s + l.suma, 0), 0);
+
+  // ── Creante incerte + ajustarea TVA la lipsa ──
+  const ci = toateLiniile('client_incert', { suma: 12100 });
+  ok('client incert: 4118 = 4111, conturi valide', conturiValide(ci) && ci[0].debit === '4118' && ci[0].credit === '4111');
+  const atl = toateLiniile('ajustare_tva_lipsa', { baza: 3000, cota: 21 });
+  ok('ajustare lipsa: conturile exista', conturiValide(atl));
+  eq('ajustare lipsa: TVA dedusa se da inapoi (635 = 4426)', (atl.find((l) => l.debit === '635' && l.credit === '4426') || {}).suma, 630);
+  eq('ajustare lipsa fara valoare -> nicio linie', toateLiniile('ajustare_tva_lipsa', { baza: 0, cota: 21 }).length, 0);
+
+  // Planul de conturi: fara duplicate (581 aparea de doua ori) si cu toate codurile noi.
+  const coduri = coa2.ACCOUNTS.map((a) => a.cod);
+  eq('planul de conturi nu are coduri duplicate', coduri.length, new Set(coduri).size);
+  ok('conturile noi sunt in plan', ['1011', '1171', '1174', '4118', '456', '473', '5191', '604', '6588', '7583']
+    .every((c) => !!coa2.getAccount(c)));
+}
+
 section('Monografii corectate (HoReCa, aviz, dividende, scont)');
 // HoReCa vanzare: 707 primeste doar baza; TVA colectata pe 4427; descarcarea scoate si 4428 din 371
 const hv = gt2('horeca_vanzare').build({ numerar: 555, card: 0, cota: 11, cost: 300, adaos: 200 });

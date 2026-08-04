@@ -31,6 +31,35 @@ module.exports = [
       return lines;
     },
   },
+  // ── CUT-OFF: bunul/serviciul a sosit, factura NU ─────────────────────────────────────────────
+  // Contul 408 era in plan, in bilant si in SAF-T, dar NICIUN tip de document nu-l producea: la
+  // inchiderea lunii, utilitatile consumate si facturate ulterior nu aveau unde sa meargă, deci
+  // cheltuiala cadea in luna gresita. TVA-ul e NEEXIGIBIL pana la primirea facturii (4428, nu
+  // 4426): dreptul de deducere se naste cu factura, nu cu consumul. Perechea `sosire_factura`
+  // face regularizarea.
+  {
+    id: 'factura_nesosita',
+    nume: 'Cheltuiala fara factura (cut-off la inchiderea lunii) — 408',
+    grup: 'Cumparari',
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota,
+      { name: 'contChelt', label: 'Cont cheltuiala/stoc', type: 'account', default: '628' }],
+    build: (d) => {
+      const lines = [L(d.contChelt || '628', '408', d.baza, 'Cheltuială aferentă lunii, factură nesosită')];
+      if (d.tva > 0) lines.push(L('4428', '408', d.tva, 'TVA neexigibilă (dreptul de deducere se naște cu factura)'));
+      return lines;
+    },
+  },
+  {
+    id: 'sosire_factura_nesosita',
+    nume: 'Sosirea facturii pentru o cheltuiala din 408 (regularizare)',
+    grup: 'Cumparari',
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota],
+    build: (d) => {
+      const lines = [L('408', '401', round2((Number(d.baza) || 0) + (Number(d.tva) || 0)), 'Factura sosită — datoria devine certă')];
+      if (d.tva > 0) lines.push(L('4426', '4428', d.tva, 'TVA devine deductibilă la primirea facturii'));
+      return lines;
+    },
+  },
   {
     id: 'factura_utilitati',
     nume: 'Factura utilitati (energie, apa)',

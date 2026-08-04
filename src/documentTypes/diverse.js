@@ -107,6 +107,17 @@ module.exports = [
       return [L(d.contChelt || '607', d.contStoc || '371', d.suma, 'Minus / lipsă la inventar')];
     },
   },
+  // Creanta devenita incerta: se REclasifica pe 4118, ca soldul lui 4111 sa arate doar creantele
+  // curente. Contul lipsea din plan, desi ajustarea 6814 = 491 si pierderea 654 existau — deci se
+  // putea constitui ajustarea pentru o creanta pe care nimic n-o marca drept incerta.
+  {
+    id: 'client_incert',
+    nume: 'Client devenit incert / in litigiu (4118 = 4111)',
+    grup: 'Diverse',
+    fields: [F.data, F.partener, F.cuiPartener, F.document,
+      { name: 'suma', label: 'Creanta reclasificata (cu TVA)', type: 'number', required: true }],
+    build: (d) => [L('4118', '4111', d.suma, 'Creanță reclasificată la clienți incerți')],
+  },
   {
     id: 'imputare_lipsa',
     nume: 'Imputare lipsa la inventar (catre gestionar)',

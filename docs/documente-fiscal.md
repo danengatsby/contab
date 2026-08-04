@@ -37,6 +37,14 @@
   erau două tabele, registrul și declarația depusă raportau impozite diferite pe aceleași conturi.
   Cele două câmpuri de ajustare manuală din „Închideri” sunt **suprascrieri**: lăsate goale, sumele
   se calculează din conturi; un `0` tastat înseamnă „zero, exact”.
+- **Operațiuni care nu se puteau înregistra deloc, adăugate:** vânzarea unui mijloc fix
+  (`461 = 7583` + TVA, cu scoaterea din evidență `281x = 21x` și valoarea rămasă pe `6583` — exista
+  doar casarea); **cut-off furnizori** (`6xx = 408`, cu TVA **neexigibil** pe 4428 până la sosirea
+  facturii, plus regularizarea `408 = 401` + `4426 = 4428`); **capitalul social** (subscriere
+  `456 = 1011`, vărsare `5121 = 456` **și** `1011 = 1012`); reclasificarea creanțelor incerte
+  (`4118 = 4111`); ajustarea TVA pentru lipsa neimputabilă (`635 = 4426`, art. 304).
+  Conturile lipsă din plan au fost adăugate odată cu ele: `1011`, `1171`, `1174`, `4118`, `456`,
+  `473`, `5191`, `604`, `6588`, `7583`.
 - **Storno în roșu, o singură convenție** (`entriesService.stornoEntry`): nota de reversare păstrează
   conturile și **neagă suma**, ca tipurile `factura_storno_*`. Inversarea debit↔credit („în negru")
   lăsa soldurile corecte, dar dubla rulajele: o factură de 10.000 stornată raporta 10.000 pe ambele
