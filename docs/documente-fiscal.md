@@ -37,6 +37,12 @@
   erau două tabele, registrul și declarația depusă raportau impozite diferite pe aceleași conturi.
   Cele două câmpuri de ajustare manuală din „Închideri” sunt **suprascrieri**: lăsate goale, sumele
   se calculează din conturi; un `0` tastat înseamnă „zero, exact”.
+- **Rezerva legală e și dedusă, nu doar constituită** (art. 26(1)(a)): 5% din profitul contabil brut,
+  până la 20% din capitalul **subscris și vărsat** (contul 1012, nu prefixul `101` — partea nevărsată
+  nu contează). Deducerea nu se poate deriva din rulaj — rezerva se constituie prin repartizarea
+  profitului (`129 = 1061`), nu printr-un cont de cheltuială — deci absența ei nu se vedea în nicio
+  verificare de echilibru: firma constituia rezerva obligatoriu (art. 183 Legea 31/1990) și plătea
+  16% pe ea. Se deduce **exact cât se postează** la repartizare.
 - **Operațiuni care nu se puteau înregistra deloc, adăugate:** vânzarea unui mijloc fix
   (`461 = 7583` + TVA, cu scoaterea din evidență `281x = 21x` și valoarea rămasă pe `6583` — exista
   doar casarea); **cut-off furnizori** (`6xx = 408`, cu TVA **neexigibil** pe 4428 până la sosirea
