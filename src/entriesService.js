@@ -57,7 +57,7 @@ function createEntry(fid, b, deps) {
     for (const mv of r.newMovements) d.stockMovements.push(mv);
     for (const ln of r.cogsLines) entry.lines.push(ln);
     entry.stocMovementIds = r.newMovements.map((m) => m.id);
-    stocInfo = { cogsTotal: r.total, warns: r.warns, movements: r.newMovements.length };
+    stocInfo = { cogsTotal: r.total, warns: r.warns, lipsuri: r.lipsuri, movements: r.newMovements.length };
   }
   d.entries.push(entry);
   deps.upsertPartner(fid, entry);
@@ -156,7 +156,15 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno) {
     tip: 'storno', tipNume: 'Storno ' + (e.tipNume || e.tip), partener: e.partener || '', partenerCui: e.partenerCui || '',
     document: 'Storno ' + (e.document || e.id), analitic: e.analitic || '',
     explicatie: 'Stornare: ' + (e.explicatie || e.tipNume || e.tip), fileId: null, system: true, stornoOf: e.id,
-    lines: (e.lines || []).map((l) => ({ debit: l.credit, credit: l.debit, suma: l.suma, explicatie: 'Storno ' + (l.explicatie || '') })),
+    // STORNO IN ROSU: aceleasi conturi, suma NEGATA. Nu inversarea debit<->credit („in negru"),
+    // care lasa soldurile corecte dar UMFLA rulajele: o factura de 10.000 stornata raporta rulaj
+    // debit 10.000 SI credit 10.000 pe contul de venit, adica activitate care nu a existat. Cifra
+    // de afaceri, baza micro si P&L citesc net (credit-debit) si ieseau bine, dar coloanele de
+    // rulaj din balanta si totalul registrului-jurnal mint — si pe ele le citeste contabilul.
+    // E si conventia pe care o foloseau deja tipurile `factura_storno_*`; doua conventii pentru
+    // aceeasi operatiune in aceeasi aplicatie nu se pot apara. Sumele negative sunt acceptate de
+    // validatoarele oficiale (verificat: D406 lunar cu storno in rosu si D300, ambele valide).
+    lines: (e.lines || []).map((l) => ({ debit: l.debit, credit: l.credit, suma: round2(-l.suma), explicatie: 'Storno ' + (l.explicatie || '') })),
   };
   d.entries.push(se);
   e.stornat = true; e.stornoBy = se.id; e.stornoData = stornoData;

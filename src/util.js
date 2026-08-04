@@ -104,4 +104,19 @@ function stringifyDb(value, space) { return JSON.stringify(value, jsonReplacer, 
 const naturalCollator = new Intl.Collator(undefined, { numeric: true });
 function naturalCompare(a, b) { return naturalCollator.compare(String(a), String(b)); }
 
-module.exports = { round2, fmt, fmtDate, period, periodLabel, sumaInLitere, stringifyDb, naturalCompare };
+/**
+ * Ultima zi CALENDARISTICA a lunii `period` (YYYY-MM), ca data ISO completa.
+ *
+ * Exista fiindca „ziua 30" ca aproximare a sfarsitului de luna produce `2026-02-30` — o data care
+ * NU exista. `periodOf` e un slice, deci perioada iese corecta si nimic nu se plange; dar data
+ * ajunge neatinsa in <TransactionDate> si <GLPostingDate> din SAF-T, adica la ANAF, si in toate
+ * PDF-urile. JavaScript o citeste ca 2 martie, deci nici macar nu esueaza zgomotos.
+ */
+function ultimaZiDinLuna(period) {
+  const m = String(period || '').match(/^(\d{4})-(0[1-9]|1[0-2])$/);
+  if (!m) return null;
+  const zi = new Date(Date.UTC(Number(m[1]), Number(m[2]), 0)).getUTCDate(); // ziua 0 a lunii urmatoare
+  return m[1] + '-' + m[2] + '-' + String(zi).padStart(2, '0');
+}
+
+module.exports = { round2, fmt, fmtDate, period, periodLabel, sumaInLitere, stringifyDb, naturalCompare, ultimaZiDinLuna };

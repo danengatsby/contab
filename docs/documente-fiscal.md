@@ -37,6 +37,11 @@
   erau două tabele, registrul și declarația depusă raportau impozite diferite pe aceleași conturi.
   Cele două câmpuri de ajustare manuală din „Închideri” sunt **suprascrieri**: lăsate goale, sumele
   se calculează din conturi; un `0` tastat înseamnă „zero, exact”.
+- **Storno în roșu, o singură convenție** (`entriesService.stornoEntry`): nota de reversare păstrează
+  conturile și **neagă suma**, ca tipurile `factura_storno_*`. Inversarea debit↔credit („în negru")
+  lăsa soldurile corecte, dar dubla rulajele: o factură de 10.000 stornată raporta 10.000 pe ambele
+  laturi ale contului de venit — activitate care nu a existat. Sumele negative sunt acceptate de
+  validatoarele oficiale (referința `D406-storno` le verifică la fiecare rulare a porții).
 - **D100 după regimul firmei** (`reporting.d100`): micro → obligația **620**; impozit pe profit →
   obligația **103** (cod bugetar 20470101), cu calculul trimestrial de la art. 41 — impozitul se
   determină **cumulat de la începutul anului**, iar pe declarație merge diferența față de

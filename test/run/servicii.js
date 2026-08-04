@@ -210,6 +210,27 @@ eq('stergerea unui articol POSTAT -> 400 (corectie prin storno)', errStatus(() =
 // storno generic: reversare legata + originalul marcat; re-storno refuzat
 const stRes = esvc.stornoEntry(ce.entry.id, fidOk, () => true, '2026-06-30');
 ok('storno: nota de reversare legata (stornoOf) + original marcat stornat', stRes.storno.stornoOf === ce.entry.id && stRes.original.stornat === true && stRes.storno.system === true);
+// STORNO IN ROSU: aceleasi conturi, suma negata — nu inversarea debit<->credit („in negru"), care
+// lasa soldurile corecte dar dubleaza rulajele contului. E si conventia tipurilor `factura_storno_*`;
+// doua conventii pentru aceeasi operatiune in aceeasi aplicatie nu se pot apara.
+{
+  // `stubDeps` produce articole FARA linii, deci reversarea se verifica pe un articol propriu.
+  const cuLinii = Object.assign({}, stubDeps, {
+    buildEntry: (tip, f, fileId, fid) => Object.assign(stubDeps.buildEntry(tip, f, fileId, fid),
+      { lines: [{ debit: '4111', credit: '707', suma: 1000, explicatie: 'Venit' }] }),
+  });
+  const orig = esvc.createEntry(fidOk, { tip: 'test_rosu', fields: { data: '2026-06-12', document: 'ROSU-1' } }, cuLinii);
+  const rev = esvc.stornoEntry(orig.entry.id, fidOk, () => true, '2026-06-30').storno;
+  const o = orig.entry.lines[0]; const s = rev.lines[0];
+  ok('storno in rosu: conturile raman, suma se neaga', s.debit === o.debit && s.credit === o.credit && s.suma === -o.suma);
+  // Efectul care conteaza: pe fiecare cont atins rulajul se ANULEAZA, nu se dubleaza. Cu storno
+  // „in negru" (conturi inversate) contul 707 ar fi raportat rulaj creditor 1000 SI debitor 1000.
+  const acc2 = require('../../src/accounting');
+  const net = acc2.accumulate(acc2.allLines([orig.entry, rev]));
+  ok('rulajul net al conturilor atinse e zero', Object.keys(net).every((c) => Math.abs(net[c].d - net[c].c) < 0.005));
+  ok('...si niciun cont nu raporteaza miscare umflata', Object.keys(net).every((c) => Math.abs(net[c].d) < 1000 && Math.abs(net[c].c) < 1000));
+  db.get().entries = db.get().entries.filter((e) => e.id !== orig.entry.id && e.id !== rev.id);
+}
 eq('re-storno al aceluiasi articol -> 400', errStatus(() => esvc.stornoEntry(ce.entry.id, fidOk, () => true)), 400);
 // ciorna: se creeaza cu status, NU intra in contabilitate si SE STERGE liber
 const dr = esvc.createEntry(fidOk, { tip: 'test_svc', ciorna: true, fields: { data: '2026-06-11', document: 'SVC-DRAFT' } }, stubDeps);
@@ -465,8 +486,23 @@ eq('stat de plata fara perioada -> 400', errStatus(() => paysvc.postStatPlata(77
 const spR = paysvc.postStatPlata(7788, '2026-06', stubDeps);
 ok('avansul intra ca retinere 421=425 in articolul agregat', spR.entry.lines.some((l) => l.debit === '421' && l.credit === '425' && l.suma === 500));
 eq('instantaneul lunar e salvat in payrollHistory', db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06').length, 1);
-paysvc.postStatPlata(7788, '2026-06', stubDeps);
-eq('repostarea aceleiasi luni INLOCUIESTE instantaneul (nu dubleaza)', db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06').length, 1);
+// REGRESIE. Aserțiunea de aici verifica doar ca INSTANTANEUL nu se dubleaza la repostare — si era
+// adevarata, fiindca `payrollHistory` se inlocuia. Dar ARTICOLUL se adauga: a doua apasare dubla
+// tacut 641=421 si toate retinerile, iar istoricul continua sa arate o singura luna, deci nimic
+// nu tradea dublura. Jurnalul e append-only: statul se posteaza o data, corectia se face prin storno.
+eq('repostarea aceleiasi luni e REFUZATA (jurnal append-only)', errStatus(() => paysvc.postStatPlata(7788, '2026-06', stubDeps)), 400);
+eq('articolul de salarii ramane unul singur', db.get().entries.filter((e) => e.firmaId === 7788 && e.tip === 'stat_plata' && e.period === '2026-06').length, 1);
+eq('si instantaneul lunar tot unul', db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06').length, 1);
+// Data articolului e ultima zi REALA a lunii, nu „ziua 30" (in februarie ar da 2026-02-30).
+eq('data statului = ultima zi reala a lunii', spR.entry.data, '2026-06-30');
+{
+  const angFeb = paysvc.upsertAngajat(7788, { nume: 'Ana Februarie', salariuBrut: 5000 }).angajat;
+  const spFeb = paysvc.postStatPlata(7788, '2026-02', stubDeps);
+  eq('februarie: 28 de zile, nu o data inexistenta', spFeb.entry.data, '2026-02-28');
+  ok('data e o zi calendaristica valida', new Date(spFeb.entry.data + 'T00:00:00Z').toISOString().slice(0, 10) === spFeb.entry.data);
+  eq('si plata neta urmeaza aceeasi regula', paysvc.paySalaries(7788, '2026-02', '5121', stubDeps).entry.data, '2026-02-28');
+  db.get().angajati = db.get().angajati.filter((a) => a.id !== angFeb.id);
+}
 // plata neta: perioada obligatorie, contul necunoscut cade pe banca (5121)
 eq('plata fara perioada -> 400', errStatus(() => paysvc.paySalaries(7788, null, '5121', stubDeps)), 400);
 const payR = paysvc.paySalaries(7788, '2026-06', 'cont-gresit', stubDeps);
