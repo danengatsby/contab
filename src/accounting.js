@@ -390,6 +390,36 @@ function annualClosing(db, year) {
   return { lines: [...linesVen, ...linesChelt], totalVen, totalChelt, rezultat };
 }
 
+/** Rulajul conturilor de rezultat dintr-un an, fara inchiderile 6/7 -> 121 (vezi `resultLines`).
+ *  `panaLa` (YYYY-MM) taie anul la finalul unei luni — pozitia trimestriala ceruta de art. 41. */
+function rulajRezultat(db, year, panaLa) {
+  const limita = panaLa ? String(panaLa).slice(0, 7) : null;
+  return accumulate(resultLines(postedEntries(db).filter((e) => {
+    const p = String(e.period || periodOf(e.data));
+    return p.startsWith(String(year)) && (!limita || p <= limita);
+  })));
+}
+const clasaCont = (cod) => {
+  const a = coa.getAccount(cod);
+  return a ? a.clasa : Number(String(cod)[0]);
+};
+/** Veniturile totale (clasa 7) dintr-un rulaj. */
+function venitTotalDin(acc) {
+  let v = 0;
+  for (const cod of Object.keys(acc)) if (clasaCont(cod) === 7) v = round2(v + (acc[cod].c - acc[cod].d));
+  return v;
+}
+/** Profitul contabil BRUT dintr-un rulaj: venituri - cheltuieli, FARA 691/698 (impozitul).
+ *  Adica exact „profitul contabil la care se adauga cheltuielile cu impozitul pe profit" din
+ *  art. 26(1)(a) — o singura definitie, folosita si de impozit, si de rezerva legala. */
+function profitContabilDin(acc) {
+  let chelt = 0;
+  for (const cod of Object.keys(acc)) {
+    if (clasaCont(cod) === 6 && !/^(691|698)/.test(String(cod))) chelt = round2(chelt + (acc[cod].d - acc[cod].c));
+  }
+  return round2(venitTotalDin(acc) - chelt);
+}
+
 // Plafonul de recuperare a pierderii fiscale (Legea 296/2023): din anul fiscal 2024, pierderea
 // reportata se recupereaza in limita a 70% din profitul impozabil al anului; pentru anii <= 2023
 // se pastreaza regimul vechi (100%). Plafonul se aplica dupa ANUL recuperarii, deci norma
@@ -418,19 +448,10 @@ function profitTax(db, year, opts) {
   // (art. 41), calculat CUMULAT de la inceputul anului, deci acelasi motor trebuie sa poata da si
   // pozitia la 31 martie, si pe cea la 31 decembrie. Fara el, anul intreg.
   const panaLa = opts.panaLa ? String(opts.panaLa).slice(0, 7) : null;
-  const yearEntries = postedEntries(db).filter((e) => {
-    const p = String(e.period || periodOf(e.data));
-    return p.startsWith(String(year)) && (!panaLa || p <= panaLa);
-  });
-  const acc = accumulate(resultLines(yearEntries)); // fara inchiderile 6/7 -> 121 (vezi isResultClosingLine)
-  let venit = 0; let chelt = 0;
-  for (const cod of Object.keys(acc)) {
-    const a = coa.getAccount(cod);
-    const clasa = a ? a.clasa : Number(String(cod)[0]);
-    if (clasa === 7) venit = round2(venit + (acc[cod].c - acc[cod].d));
-    else if (clasa === 6 && !/^(691|698)/.test(String(cod))) chelt = round2(chelt + (acc[cod].d - acc[cod].c));
-  }
-  const profitContabil = round2(venit - chelt);
+  const acc = rulajRezultat(db, year, panaLa);
+  const profitContabil = profitContabilDin(acc);
+  const venit = venitTotalDin(acc);
+  const chelt = round2(venit - profitContabil);
   // Ajustarile fiscale: CALCULATE din `src/deductibilitate.js` cand apelantul da cotele
   // (`opts.plafoane`), altfel din valorile transmise. Motorul acopera AMBELE feluri — procentele
   // fixe pe cont (amenzi, provizioane) si plafoanele art. 25/40^2 — fiindca e acelasi pe care il
@@ -452,9 +473,18 @@ function profitTax(db, year, opts) {
     ? round2(Number(opts.cheltNedeductibile) || 0)
     : (ded ? ded.totalNedeductibil : 0);
   const venituriNeimpozabile = ded ? ded.totalNeimpozabil : 0;
+  // REZERVA LEGALA (art. 26(1)(a)) — deducere din rezultatul fiscal, nu cheltuiala: nu se
+  // inregistreaza pe un cont de clasa 6 (se constituie prin repartizarea profitului, 129 = 1061),
+  // deci nu poate intra in baza pe calea rulajului. Motorul o calcula deja exact — `legalReserve`
+  // exista si o foloseste `resultDistribution` ca sa POSTEZE articolul — dar impozitul n-o scadea
+  // niciodata: firma constituia rezerva obligatoriu si platea 16% pe ea. Se aplica doar cand
+  // apelantul a cerut regulile (`opts.plafoane`), ca restul ajustarilor derivate.
+  const rezervaLegala = opts.plafoane
+    ? rezervaLegalaDin(profitContabil, round2(-soldLaFinal(db, year, '1012')), round2(-soldLaFinal(db, year, '1061'))).rezerva
+    : 0;
   const deduceri = (opts.deduceri != null && opts.deduceri !== '')
     ? round2(Number(opts.deduceri) || 0)
-    : venituriNeimpozabile;
+    : round2(venituriNeimpozabile + rezervaLegala);
   const bazaInainteReportare = round2(profitContabil + nedeductibile - deduceri);
   // Plafonul de 70% (configurabil) se aplica doar pentru anii fiscali >= 2024; altfel recuperare 100%.
   const capPct = (opts.pierdereRecuperabilaPct != null && Number.isFinite(Number(opts.pierdereRecuperabilaPct)))
@@ -488,6 +518,9 @@ function profitTax(db, year, opts) {
     // Veniturile neimpozabile (art. 23) intra in `deduceri` de mai sus; aici stau desfasurate,
     // ca raportul sa poata arata DIN CE se compune scaderea, nu doar totalul.
     venituriNeimpozabile, ajustariNeimpozabile: ded ? ded.randuriNeimpozabile : [],
+    // Rezerva legala, expusa separat: e o deducere care NU se vede in niciun cont de
+    // cheltuiala, deci fara ea in rezultat cifra din `deduceri` ar parea scoasa din nimic.
+    rezervaLegala,
     sponsorizare: cr,
   };
 }
@@ -514,22 +547,43 @@ function soldLaFinal(db, year, prefix) {
 }
 
 /**
- * Rezerva legala de constituit pentru un an: **5% din profitul contabil BRUT** (inainte de
- * impozit), pana cand rezerva atinge **20% din capitalul social** subscris si varsat.
+ * REGULA rezervei legale, PURA: **5% din profitul contabil brut**, pana cand rezerva atinge
+ * **20% din capitalul social subscris SI VARSAT**.
  * Art. 183 din Legea 31/1990 („se va prelua in fiecare an cel putin 5% ... pana ce acesta va
- * atinge minimum a cincea parte din capitalul social") + art. 26 Cod fiscal pentru deductibilitate.
- * Constituirea e OBLIGATORIE cat timp plafonul nu e atins — nu optionala.
+ * atinge minimum a cincea parte din capitalul social") + art. 26(1)(a) Cod fiscal pentru
+ * deductibilitate. Constituirea e OBLIGATORIE cat timp plafonul nu e atins — nu optionala.
  *
- * Baza e profitul BRUT, nu cel net: `profitTax().profitContabil` exclude deja 691/698, deci e
- * exact rezultatul brut din contul de profit si pierdere (F20 `rezBrut`).
+ * Separata de citirea din baza tocmai ca sa poata fi chemata din `profitTax` fara recursivitate:
+ * varianta veche isi lua profitul brut apeland `profitTax`, iar `profitTax` are nevoie acum de
+ * rezerva ca deducere. Cu regula pura, ciclul nu se poate forma prin constructie.
+ */
+function rezervaLegalaDin(profitBrut, capitalVarsat, rezervaExistenta) {
+  const brut = round2(Number(profitBrut) || 0);
+  const capital = round2(Number(capitalVarsat) || 0);
+  const exist = round2(Number(rezervaExistenta) || 0);
+  const plafon = round2(Math.max(0, capital * 0.20 - exist));
+  const rezerva = brut > 0 ? round2(Math.min(round2(brut * 0.05), plafon)) : 0;
+  return { profitBrut: brut, capitalSocial: capital, rezervaExistenta: exist, plafon, rezerva };
+}
+
+/**
+ * Rezerva legala de constituit pentru un an, citita din date.
+ *
+ * Capitalul se ia de pe **1012** (subscris si VARSAT), nu pe prefixul `101`. Cat timp planul avea
+ * un singur cont de capital, cele doua coincideau; de cand exista si 1011 (subscris NEvarsat),
+ * prefixul umfla plafonul cu partea nevarsata — o firma cu 200.000 subscrisi si 20.000 varsati
+ * primea un plafon de 40.000 in loc de 4.000, adica de zece ori mai mult. Art. 26 spune explicit
+ * „subscris si varsat".
+ *
+ * Baza e profitul BRUT, nu cel net: `profitContabilDin` exclude deja 691/698, deci e exact
+ * rezultatul brut din contul de profit si pierdere (F20 `rezBrut`) — adica „profitul contabil la
+ * care se adauga cheltuielile cu impozitul pe profit" din textul articolului.
  */
 function legalReserve(db, year) {
-  const brut = profitTax(db, year).profitContabil;
-  const capitalSocial = round2(-soldLaFinal(db, year, '101'));   // sold creditor -> pozitiv
+  const brut = profitContabilDin(rulajRezultat(db, year));
+  const capitalVarsat = round2(-soldLaFinal(db, year, '1012')); // sold creditor -> pozitiv
   const rezervaExist = round2(-soldLaFinal(db, year, '1061'));
-  const plafon = round2(Math.max(0, capitalSocial * 0.20 - rezervaExist));
-  const rezerva = brut > 0 ? round2(Math.min(round2(brut * 0.05), plafon)) : 0;
-  return { year: String(year), profitBrut: brut, capitalSocial, rezervaExistenta: rezervaExist, plafon, rezerva };
+  return Object.assign({ year: String(year) }, rezervaLegalaDin(brut, capitalVarsat, rezervaExist));
 }
 
 /**
@@ -920,5 +974,5 @@ function cashControl(db, cont, period, opts) {
 }
 
 module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
-  allLines, resultLines, isResultClosingLine, sortEntries, entryChrono, lastEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, vatCarryForward, annualClosing, profitTax, resultDistribution, legalReserve, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
+  allLines, resultLines, isResultClosingLine, rezervaLegalaDin, profitContabilDin, rulajRezultat, sortEntries, entryChrono, lastEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, vatCarryForward, annualClosing, profitTax, resultDistribution, legalReserve, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };

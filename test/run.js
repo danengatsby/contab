@@ -958,6 +958,61 @@ eq('la plafon atins ramane o singura linie, 121 = 117', rezC.lines.length + '/' 
 // pierderea nu constituie rezerva
 const rezD = acc.resultDistribution(mkRez(200000, -5000, 0, 0), '2026');
 eq('pierdere: fara rezerva, doar reportarea 117 = 121', rezD.rezervaLegala + '/' + rezD.lines.length + '/' + rezD.lines[0].debit, '0/1/117');
+
+// ── DEDUCTIBILITATEA rezervei (art. 26(1)(a)) ────────────────────────────────────────────────
+// REGRESIE. Regula era calculata exact si `resultDistribution` POSTA articolul 129 = 1061, dar
+// impozitul nu scadea niciodata suma: firma constituia rezerva obligatoriu (art. 183 Legea
+// 31/1990) si platea 16% pe ea. Deducerea nu se putea deriva din rulaj — rezerva nu trece prin
+// niciun cont de clasa 6 — deci absenta ei nu se vedea in nicio verificare de echilibru.
+{
+  const P = require('../src/fiscalConfig').RATES;
+  const { round2: round2ForRez } = require('../src/util');
+  const opts = { cota: 16, plafoane: P };
+  const vRez = mkRez(200000, 10000, 0, 0); // capital 200.000, profit brut 10.000
+  const ptRez = acc.profitTax(vRez, '2026', opts);
+  eq('rezerva legala e calculata in impozit (5% din 10.000)', ptRez.rezervaLegala, 500);
+  eq('...si intra in deduceri', ptRez.deduceri, 500);
+  eq('profit impozabil = brut - rezerva', ptRez.profitImpozabil, 9500);
+  eq('impozitul scade cu 16% din rezerva', ptRez.impozit, 1520);
+  eq('fara deducere ar fi fost 1.600', round2ForRez(10000 * 0.16), 1600);
+  // Ancora care conteaza: se DEDUCE exact cat se POSTEAZA. Doua cifre diferite ar insemna ca
+  // firma deduce o rezerva pe care n-o constituie — sau invers.
+  ok('rezerva dedusa = rezerva postata la repartizare',
+    ptRez.rezervaLegala === acc.resultDistribution(mkRez(200000, 10000, 1520, 0), '2026').rezervaLegala);
+  // Plafonul si pierderea se propaga si in deducere, nu doar in articol.
+  eq('plafonul de 20% taie si deducerea', acc.profitTax(mkRez(200, 10000, 0, 0), '2026', opts).rezervaLegala, 40);
+  eq('rezerva la plafon -> nicio deducere', acc.profitTax(mkRez(10000, 10000, 0, 2000), '2026', opts).rezervaLegala, 0);
+  eq('an pe pierdere -> nicio deducere', acc.profitTax(mkRez(200000, -5000, 0, 0), '2026', opts).rezervaLegala, 0);
+  // Contractul apelantilor „simpli" ramane neatins (fara `plafoane`, nicio ajustare derivata).
+  eq('fara opts.plafoane: nicio rezerva dedusa', acc.profitTax(vRez, '2026', { cota: 16 }).rezervaLegala, 0);
+  eq('deducerea transmisa explicit bate motorul', acc.profitTax(vRez, '2026', Object.assign({ deduceri: 0 }, opts)).deduceri, 0);
+
+  // ── Plafonul se ia de pe capitalul VARSAT (1012), nu pe prefixul `101` ──
+  // Cat timp planul avea un singur cont de capital, cele doua coincideau. De cand exista si 1011
+  // (subscris NEvarsat, adaugat odata cu monografia de constituire), prefixul umfla plafonul cu
+  // partea nevarsata — exact ce interzice art. 26, care spune „subscris SI varsat".
+  const T = (id, data, lines) => ({ id, data, period: data.slice(0, 7), tip: 'x', tipNume: 'x', lines });
+  const partial = { openingBalances: {}, assets: [], company: {}, entries: [
+    T('k1', '2026-01-05', [{ debit: '456', credit: '1011', suma: 200000 }]),                    // subscris 200.000
+    T('k2', '2026-01-20', [{ debit: '5121', credit: '456', suma: 20000 }, { debit: '1011', credit: '1012', suma: 20000 }]), // varsat 20.000
+    T('k3', '2026-06-10', [{ debit: '4111', credit: '704', suma: 500000 }]),
+    T('k4', '2026-06-11', [{ debit: '607', credit: '371', suma: 100000 }]),
+  ] };
+  const lrP = acc.legalReserve(partial, '2026');
+  eq('capitalul luat in calcul e cel VARSAT (20.000), nu cel subscris', lrP.capitalSocial, 20000);
+  eq('plafonul e 20% din varsat = 4.000, nu 40.000', lrP.plafon, 4000);
+  eq('rezerva e taiata la plafon', lrP.rezerva, 4000);
+  eq('...si deducerea din impozit urmeaza acelasi plafon', acc.profitTax(partial, '2026', opts).rezervaLegala, 4000);
+  // Dupa varsarea integrala, plafonul devine cel al capitalului intreg.
+  const integral = { openingBalances: {}, assets: [], company: {}, entries: partial.entries.slice(0, 1).concat([
+    T('k2b', '2026-01-20', [{ debit: '5121', credit: '456', suma: 200000 }, { debit: '1011', credit: '1012', suma: 200000 }]),
+  ]).concat(partial.entries.slice(2)) };
+  eq('capital varsat integral -> plafon 40.000', acc.legalReserve(integral, '2026').plafon, 40000);
+  // Regula pura, direct: aceleasi cifre fara baza de date.
+  eq('regula pura: 5% din brut, sub plafon', acc.rezervaLegalaDin(10000, 200000, 0).rezerva, 500);
+  eq('regula pura: plafonul taie', acc.rezervaLegalaDin(10000, 200, 0).rezerva, 40);
+  eq('regula pura: rezerva existenta consuma plafonul', acc.rezervaLegalaDin(10000, 10000, 2000).rezerva, 0);
+}
 // contul 129 e de TRANZIT: dupa repartizare soldul lui e zero, iar balanta ramane echilibrata
 const dbRez = mkRez(200000, 10000, 1600, 0);
 dbRez.entries.push({ id: 'rp', data: '2026-12-31', period: '2026-12', tip: 'repartizare_rezultat', tipNume: 't', lines: rezA.lines });
