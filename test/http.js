@@ -2376,9 +2376,26 @@ async function main() {
 
       // Raportul insusi, cu un furnizor de geo INJECTAT: dovedeste ca localizarea chiar se lipeste
       // pe randuri si ca o cadere a furnizorului nu rupe raportul.
+      //
+      // FIXTURE EXPLICIT, nu `db.get()` din procesul de test. Serverul rulat de suita e un proces
+      // COPIL (vezi `spawn` de la inceputul fisierului), deci modulul `db` incarcat aici e o cu
+      // totul alta instanta decat cea a serverului interogat mai sus: sesiunile create prin
+      // /api/login NU se vad in ea. Aserțiunile de mai jos cereau `sesiuni.length > 0` si treceau
+      // doar cand procesul de test se intampla sa aiba starea potrivita — pe o clona curata
+      // (adica exact in CI) gaseau zero sesiuni si picau. Un test care citeste alt obiect decat
+      // cel despre care vorbeste nu masoara nimic; aici starea se CONSTRUIESTE, deci verdictul e
+      // acelasi pe orice masina.
       const accSvc = require('../src/accessService');
-      const dLive = require('../src/db').get();
+      const dLive = {
+        users: [{ id: 1, username: 'admin', role: 'admin', sessions: [
+          { id: 'sx', ip: '86.124.7.7', ua: 'Mozilla/5.0 Chrome/120 Windows NT 10.0',
+            createdAt: '2026-08-02T09:00:00.000Z', lastSeen: '2026-08-02T09:30:00.000Z' },
+        ] }],
+        audit: [{ ts: '2026-08-02T09:00:00.000Z', action: 'login', username: 'admin', userId: 1, ip: '86.124.7.7' }],
+      };
+      const faraVizitatori = { snapshot: () => [] }; // `visitors` e tot un modul al PROCESULUI de test
       const cuGeo = accSvc.raport(dLive, {
+        visitors: faraVizitatori,
         geo: {
           dinCacheMulti: (ips) => new Map(ips.map((ip) => [ip, { oras: 'Cluj-Napoca', taraCod: 'RO' }])),
           prefetch: () => 0,
@@ -2392,6 +2409,7 @@ async function main() {
       // Furnizor CAZUT: nu mai exista o cerere care sa arunce — raportul nu asteapta niciuna. Ce
       // se vede in schimb e degradarea onesta: nicio localizare stiuta, adrese ramase in curs.
       const geoCazut = accSvc.raport(dLive, {
+        visitors: faraVizitatori,
         geo: { dinCacheMulti: () => new Map(), prefetch: (ips) => ips.length, eticheta: () => '' },
       });
       ok('furnizor CAZUT: raportul se intoarce oricum', Array.isArray(geoCazut.sesiuni) && geoCazut.sesiuni.length > 0);
