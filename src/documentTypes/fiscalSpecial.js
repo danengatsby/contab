@@ -58,6 +58,24 @@ module.exports = [
       ? [L('635', '4426', d.suma, 'Regularizare pro-rata anuală în favoarea statului (art. 300)')]
       : [L('4426', '635', d.suma, 'Regularizare pro-rata anuală în favoarea firmei (art. 300)')]),
   },
+  // Lipsa in gestiune NEIMPUTABILA: TVA-ul dedus la achizitie trebuie ajustat (art. 304), fiindca
+  // bunul nu mai serveste operatiunilor taxabile. `diferente_inventar` muta doar costul, deci
+  // ajustarea ramanea nefacuta — o constatare tipica la control. Cheltuiala e si ea nedeductibila
+  // la impozitul pe profit (art. 25(4)(c)) daca nu e imputata si nu e asigurata.
+  {
+    id: 'ajustare_tva_lipsa',
+    nume: 'Ajustare TVA pentru lipsa neimputabila in gestiune (art. 304)',
+    grup: 'Regularizari',
+    fields: [F.data, F.document,
+      { name: 'baza', label: 'Valoarea bunurilor lipsa (fara TVA)', type: 'number', required: true },
+      { name: 'cota', label: 'Cota TVA dedusa la achizitie (%)', type: 'number', default: fiscal.FISCAL.tvaStandard }],
+    build: (d) => {
+      const tva = round2(((Number(d.baza) || 0) * (Number(d.cota) || fiscal.FISCAL.tvaStandard)) / 100);
+      return tva > 0
+        ? [L('635', '4426', tva, 'Ajustarea TVA dedusă pentru lipsa neimputabilă (art. 304)')]
+        : [];
+    },
+  },
   {
     id: 'ajustare_tva_bunuri_capital',
     nume: 'Ajustare TVA bunuri de capital (art. 305, schimbarea destinatiei/regimului)',

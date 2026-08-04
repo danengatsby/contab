@@ -1,8 +1,9 @@
 'use strict';
 
-// LEASING FINANCIAR + IMOBILIZARI IN CURS — vezi index.js pentru contractul tipurilor.
+// LEASING FINANCIAR + IMOBILIZARI (in curs, reevaluare, CEDARE) — vezi index.js pentru contract.
 
 const { L, F, TROZ } = require('./helpers');
+const { round2 } = require('../util');
 
 module.exports = [
   // ───────────────────────── LEASING FINANCIAR ─────────────────────────
@@ -42,6 +43,38 @@ module.exports = [
     fields: [F.data, F.partener, F.document, F.suma,
       { name: 'cont', label: 'Platit din', type: 'select', options: TROZ, default: '5121' }],
     build: (d) => [L('404', d.cont || '5121', d.suma, 'Plata rata de leasing')],
+  },
+
+  // ───────────────────── VANZAREA UNUI MIJLOC FIX ─────────────────────
+  // Lipsea complet: exista casarea (scoaterea din uz), dar nu si CEDAREA cu titlu oneros. Sunt
+  // doua operatiuni distincte, iar a doua are si venit, si TVA. Contul 7583 nu exista in plan,
+  // deci nici nu se putea improviza cu o nota libera fara sa fie adaugat.
+  //
+  // Monografia are DOUA parti, si amandoua sunt obligatorii:
+  //   (1) vanzarea propriu-zisa:  461 = 7583 (pretul) + 461 = 4427 (TVA)
+  //   (2) scoaterea din evidenta: 281x = 21x (amortizarea cumulata) + 6583 = 21x (valoarea ramasa)
+  // Partea (2) e cea uitata de obicei: fara ea activul ramane in bilant desi a fost vandut, iar
+  // rezultatul cedarii (venit minus valoare ramasa) iese fals.
+  {
+    id: 'vanzare_mijloc_fix',
+    nume: 'Vanzare mijloc fix (cedare cu titlu oneros)',
+    grup: 'Imobilizari',
+    fields: [F.data, F.partener, F.cuiPartener, F.document,
+      { name: 'contImob', label: 'Cont imobilizare', type: 'account', default: '2131' },
+      { name: 'pret', label: 'Pret de vanzare (fara TVA)', type: 'number', required: true },
+      F.tva, F.cota,
+      { name: 'valoare', label: 'Valoarea de intrare a activului', type: 'number', required: true },
+      { name: 'amortizare', label: 'Amortizare cumulata pana la data vanzarii', type: 'number', default: 0 },
+      { name: 'contAmort', label: 'Cont amortizare', type: 'account', default: '281' }],
+    build: (d) => {
+      const cont = d.contImob || '2131';
+      const ramas = round2((d.valoare || 0) - (d.amortizare || 0));
+      const lines = [L('461', '7583', d.pret, 'Venit din vânzarea activului')];
+      if (d.tva > 0) lines.push(L('461', '4427', d.tva, 'TVA colectată la cedare'));
+      if (d.amortizare > 0) lines.push(L(d.contAmort || '281', cont, d.amortizare, 'Scăderea amortizării cumulate'));
+      if (ramas > 0) lines.push(L('6583', cont, ramas, 'Valoarea rămasă neamortizată a activului cedat'));
+      return lines;
+    },
   },
 
   // ───────────────────── IMOBILIZARI IN CURS (231) ─────────────────────

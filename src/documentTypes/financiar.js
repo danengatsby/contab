@@ -115,6 +115,38 @@ module.exports = [
     build: (d) => [L('457', d.cont || '5121', d.suma, 'Plata dividende nete')],
   },
 
+  // ───────────────────── CAPITAL SOCIAL ─────────────────────
+  // Lipsea complet: nici contul 1011 (capital subscris NEvarsat), nici 456 (decontari cu
+  // asociatii privind capitalul) nu existau in plan, desi `bilant.js` mapa deja 1011 pe randul
+  // 031. Constituirea unei firme si orice majorare de capital erau deci neinregistrabile.
+  // Cele doua momente sunt distincte si trebuie sa ramana asa: SUBSCRIEREA e o promisiune
+  // (creanta fata de asociat), VARSAREA e incasarea ei.
+  {
+    id: 'subscriere_capital',
+    nume: 'Subscriere capital social (angajamentul asociatilor) — 456 = 1011',
+    grup: 'Capital social',
+    entitate: 'srl',
+    fields: [F.data, F.document,
+      { name: 'suma', label: 'Capital subscris (lei)', type: 'number', required: true }],
+    build: (d) => [L('456', '1011', d.suma, 'Capital social subscris de asociați (nevărsat)')],
+  },
+  {
+    id: 'varsare_capital',
+    nume: 'Varsarea capitalului subscris (aport in bani)',
+    grup: 'Capital social',
+    entitate: 'srl',
+    fields: [F.data, F.document,
+      { name: 'suma', label: 'Suma varsata (lei)', type: 'number', required: true },
+      { name: 'cont', label: 'Incasat in', type: 'select', options: TROZ, default: '5121' }],
+    // Doua linii, amandoua necesare: incasarea stinge creanta fata de asociat, iar capitalul trece
+    // din „subscris nevarsat" in „subscris varsat". Fara a doua, 1011 ramane in bilant la
+    // nesfarsit si capitalul varsat apare zero.
+    build: (d) => [
+      L(d.cont || '5121', '456', d.suma, 'Aport în bani la capitalul social'),
+      L('1011', '1012', d.suma, 'Capitalul subscris devine vărsat'),
+    ],
+  },
+
   // ───────────────────── SUBVENTII ─────────────────────
   {
     id: 'subventie_exploatare',
