@@ -276,3 +276,13 @@ footer a:hover{color:#fff}
 .poarta-c b{display:block;margin-bottom:8px;font-size:15.5px;color:var(--head)}
 .poarta-c p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
 #incredere .fineprint{margin-top:22px}
+
+/* ── Video de prezentare ──────────────────────────────────────────────────────
+   Raportul de aspect se tine cu `aspect-ratio`, nu cu inaltime fixa: filmul e
+   16:9, iar o inaltime in pixeli ar lasa benzi negre pe telefon. */
+.video-wrap{max-width:900px;margin:8px auto 0;border-radius:14px;overflow:hidden;
+  box-shadow:0 18px 50px rgba(10,23,48,.22);background:#0a1730}
+.video-player{display:block;width:100%;aspect-ratio:16/9;background:#0a1730}
+.video-meta{text-align:center;margin-top:14px;font-size:14px;color:var(--muted)}
+.video-meta a{color:var(--accent);text-decoration:none;font-weight:600}
+.video-meta a:hover{text-decoration:underline}
