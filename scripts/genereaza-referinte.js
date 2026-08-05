@@ -52,6 +52,13 @@ const vIC = { entries: v.entries.concat([{ id: 'ic', data: '2026-06-18', period:
 w('D390', xml.d390Xml(v.company, '2026-06', rep.d390(vIC, '2026-06'), who));
 // D112 (salarii)
 w('D112', xml.d112Xml(v.company, '2026-06', statePlata(v.angajati), who));
+// D112 varianta cu AVANTAJE PESTE PLAFONUL DE 33% (art. 76 alin. (4^1)): angajatul din exemplu
+// n-are niciunul, deci partea impozabila ar fi mereu zero si validatorul ar confirma un camp gol —
+// aceeasi problema ca la D390 mai sus. La 5.000 lei salariu de baza plafonul e 1.650, iar cazarea
+// are si limita ei (20% din salariul minim), deci varianta exercita AMBELE taieri si trimite la
+// ANAF baze CAS/CASS/CAM marite fata de brut.
+const vBen = { company: v.company, angajati: v.angajati.map((a) => Object.assign({}, a, { beneficii: { cazare: 1000, pensii: 800, sport: 200 } })) };
+w('D112-beneficii', xml.d112Xml(vBen.company, '2026-06', statePlata(vBen.angajati), who));
 // D100 (micro trimestrial)
 w('D100', xml.d100Xml(v.company, '2026-06', rep.d100micro(v, '2026-06'), who));
 // D100 varianta IMPOZIT PE PROFIT (art. 41, trimestrele I-III): alt cod de obligatie (103) si alt

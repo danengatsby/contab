@@ -137,6 +137,7 @@ Tabelul de mai jos e doar un rezumat; sursa de adevăr rămâne `node test/cazur
 | `SAL-01` | Brut 5.000 lei fără deduceri (cazul de bază) | Art. 138, 156, 78, 220^3 Cod fiscal |
 | `SAL-02` | Tichete de masă 400 lei (CASS + impozit, fără CAS) | Art. 76 alin. (3), art. 157 Cod fiscal |
 | `SAL-03` | Avantaje în natură 1.000 lei (intră în toate bazele) | Art. 76 alin. (3) Cod fiscal |
+| `SAL-03b` | Plafonul de 33%: cazare + pensii facultative + abonament sport peste plafon | Art. 76 alin. (4¹) și (4²) Cod fiscal |
 | `SAL-04` | Normă parțială sub salariul minim | Art. 146 Cod fiscal, OUG 16/2022 |
 
 ### Deducerea personală
@@ -231,6 +232,22 @@ contribuabil. E suficientă marcarea ca estimare? — cazurile `PFA-01..03`.
 
 CAM se calculează doar pe salariul brut + avantaje + partea de CM a angajatorului; tichetele de
 masă sunt **excluse** din bază. De confirmat tratamentul — caz `SAL-02`.
+
+### 7.4b Plafonul de 33% — ordinea de includere și cursul EUR (`src/beneficii.js`)
+
+Două decizii, ambele vizibile în cifra finală — caz `SAL-03b`:
+
+- **Ordinea** în care categoriile ocupă plafonul de 33% o stabilește *angajatorul*
+  (art. 76 alin. (4²)). Implicita din aplicație e cea din lege (lit. a → j), iar ea decide **care
+  categorie rămâne neimpozabilă** când suma le depășește pe toate. Se poate rescrie per angajat
+  (`ordineBeneficii`), dar nu există încă o setare de firmă. De confirmat că implicita e acceptabilă.
+- **Plafoanele anuale în EUR** (400 pensii facultative / 400 asigurare de sănătate / 100 sport) se
+  convertesc cu `cursEurBeneficii` (implicit 5,0), nu cu cursul din ultima zi a lunii de acordare.
+  Aceeași simplificare ca la 7.5, cu aceeași întrebare: parametru manual sau preluare automată?
+
+Consumul plafoanelor anuale se citește din statele **postate** (`payrollHistory`): o lună
+nepostată nu consumă plafon, deci recalcularea unei luni vechi după postarea alteia poate muta
+partea impozabilă. De confirmat că e comportamentul dorit.
 
 ### 7.5 Cursul pentru plafonul micro (`src/fiscalConfig.js:44`)
 

@@ -1710,6 +1710,87 @@ const spAv = statePlata([{ id: 'a1', nume: 'Test Av', salariuBrut: 5000, avantaj
 eq('stat de plata: avantajele apar pe rand si in totaluri', spAv.rows[0].avantaje + '|' + spAv.totals.avantaje, '1000|1000');
 ok('D112: baza CAS (A_13) include avantajele (6000)', xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spAv).includes('A_13="6000"'));
 
+section('Plafonul de 33% al avantajelor neimpozabile (art. 76 alin. (4^1) si (4^2))');
+{
+  const { round2 } = require('../src/util');
+  const ang = (extra) => Object.assign({ id: 'b1', nume: 'Test Ben', cnp: '1900101010101', salariuBrut: 4000 }, extra);
+  const SM = fiscal.salariuMinimLa('2026-06'); // 4050 -> limita cazarii (20%) = 810
+
+  // 1) Sub ambele limite: nimic impozabil, contributiile raman cele ale salariului gol.
+  const subLimite = statePlata([ang({ beneficii: { sport: 200, pensii: 500 } })], '2026-06').rows[0];
+  const gol = statePlata([ang({})], '2026-06').rows[0];
+  eq('plafonul e 33% din salariul de baza', subLimite.beneficiiPlafon, 1320);
+  eq('sub ambele limite nu se impoziteaza nimic', subLimite.beneficiiImpozabile, 0);
+  eq('contributiile raman neatinse', subLimite.cas + '|' + subLimite.cass + '|' + subLimite.cam, gol.cas + '|' + gol.cass + '|' + gol.cam);
+
+  // 2) Limita INDIVIDUALA: cazarea peste 20% din salariul minim. Partea de peste NU trebuie sa
+  //    consume plafonul comun — altfel ar impozita si categoriile urmatoare, care sunt in regula.
+  const indiv = statePlata([ang({ beneficii: { cazare: 1000 } })], '2026-06').rows[0];
+  eq('limita cazarii = 20% din salariul minim', indiv.beneficii[0].limitaIndividuala, round2(SM * 0.2));
+  eq('ce trece de limita individuala e impozabil', indiv.beneficii[0].impozabil, round2(1000 - SM * 0.2));
+  eq('restul plafonului de 33% ramane liber', indiv.beneficiiRamas, round2(1320 - SM * 0.2));
+
+  // 3) Plafonul COMUN: 1000 cazare (810 admis) + 800 pensii + 200 sport pe un plafon de 1320.
+  //    Ordinea legala (c -> e -> g) hotaraste cine ramane: cazarea intra prima, sportul iese ultimul.
+  const peste = statePlata([ang({ beneficii: { cazare: 1000, pensii: 800, sport: 200 } })], '2026-06').rows[0];
+  eq('neimpozabilul se opreste exact la plafon', peste.beneficiiNeimpozabile, 1320);
+  eq('impozabil = 190 peste limita cazarii + 290 peste plafon la pensii + 200 sport', peste.beneficiiImpozabile, 680);
+  eq('ordinea legala: cazarea intra prima, sportul ultimul', peste.beneficii.map((b) => b.lit).join(''), 'ceg');
+  eq('sportul nu mai incape deloc', peste.beneficii[2].neimpozabil, 0);
+
+  // 4) Partea impozabila intra in TOATE bazele — asta e miza reparatiei, nu plafonarea in sine.
+  eq('CAS creste cu 25% din partea impozabila', round2(peste.cas - gol.cas), 170);
+  eq('CASS creste cu 10% din partea impozabila', round2(peste.cass - gol.cass), 68);
+  eq('CAM creste cu 2,25% din partea impozabila', round2(peste.cam - gol.cam), 15.3);
+  ok('impozitul creste (baza include partea impozabila)', peste.impozit > gol.impozit);
+  ok('netul in bani SCADE: avantajul nu se plateste cash, dar suporta retineri', peste.net < gol.net);
+
+  // 5) Ordinea o alege ANGAJATORUL (alin. 4^2): aceleasi sume, alta ordine, alt rezultat pe categorii.
+  const alta = statePlata([ang({ beneficii: { cazare: 1000, pensii: 800, sport: 200 }, ordineBeneficii: ['sport', 'pensii', 'cazare'] })], '2026-06').rows[0];
+  eq('ordinea aleasa de angajator e respectata', alta.beneficii.map((b) => b.lit).join(''), 'gec');
+  eq('sportul intra acum integral in plafon', alta.beneficii[0].impozabil, 0);
+  eq('totalul impozabil ramane acelasi — se muta doar intre categorii', alta.beneficiiImpozabile, peste.beneficiiImpozabile);
+
+  // 6) Plafoanele ANUALE se consuma pe an, din statele deja postate (lit. d)-g)).
+  const anual = 400 * fiscal.FISCAL.cursEurBeneficii; // pensii facultative: 400 EUR/an
+  const istoric = [{ period: '2026-05', rows: [{ angajatId: 'b1', beneficii: [{ id: 'pensii', acordat: anual, neimpozabil: anual, impozabil: 0 }] }] }];
+  const dupa = statePlata([ang({ beneficii: { pensii: 500 } })], '2026-06', istoric).rows[0];
+  eq('plafonul anual consumat lasa limita zero', dupa.beneficii[0].limitaIndividuala, 0);
+  eq('tot ce se mai acorda anul asta e impozabil', dupa.beneficii[0].impozabil, 500);
+  ok('motivul spune ca plafonul anual e consumat', /anual/i.test(dupa.beneficii[0].motiv));
+  const altAn = statePlata([ang({ beneficii: { pensii: 500 } })], '2027-06', istoric).rows[0];
+  eq('anul urmator plafonul reincepe', altAn.beneficii[0].impozabil, 0);
+
+  // 7) Hrana nu se cumuleaza cu tichetele de masa (lit. b, ultima teza).
+  const cuTichete = statePlata([ang({ tichete: 600, beneficii: { hrana: 300 } })], '2026-06').rows[0];
+  eq('hrana e integral impozabila cand exista tichete', cuTichete.beneficii[0].impozabil, 300);
+  const faraTichete = statePlata([ang({ beneficii: { hrana: 300 }, zileLucratoare: 21 })], '2026-06').rows[0];
+  eq('fara tichete, hrana intra in limita zilelor lucrate', faraTichete.beneficii[0].impozabil, 0);
+
+  // 8) Telemunca: 400 lei/LUNA proportional cu zilele, nu 400 lei pe fiecare zi.
+  const tele = statePlata([ang({ beneficii: { telemunca: 400 }, zileTelemunca: 10, zileLucratoare: 20 })], '2026-06').rows[0];
+  eq('limita telemuncii e proportionala cu zilele (10/20 din 400)', tele.beneficii[0].limitaIndividuala, 200);
+  eq('restul e impozabil', tele.beneficii[0].impozabil, 200);
+  eq('zero zile de telemunca => limita zero', statePlata([ang({ beneficii: { telemunca: 400 } })], '2026-06').rows[0].beneficii[0].limitaIndividuala, 0);
+
+  // 9) Plafonul se calculeaza pe salariul de BAZA, nu pe brutul realizat: un spor nu-l mareste,
+  //    iar concediul medical nu-l micsoreaza. Fara asta, plafonul ar fluctua lunar fara temei.
+  eq('sporul nu mareste plafonul', statePlata([ang({ spor: 2000, beneficii: { sport: 100 } })], '2026-06').rows[0].beneficiiPlafon, 1320);
+  eq('concediul medical nu micsoreaza plafonul', statePlata([ang({ zileCM: 10, zileLucratoare: 21, beneficii: { sport: 100 } })], '2026-06').rows[0].beneficiiPlafon, 1320);
+
+  // 10) D112: bazele declarate trebuie sa includa partea impozabila, altfel decontul raporteaza
+  //     contributii mai mari decat bazele din care ies.
+  const spBen = statePlata([ang({ beneficii: { cazare: 1000, pensii: 800, sport: 200 } })], '2026-06');
+  const xBen = xml.d112Xml({ cui: 'RO1', nume: 'X', judet: 'B' }, '2026-06', spBen);
+  ok('D112: baza CAS (A_13) include partea impozabila (4000+680)', xBen.includes('A_13="4680"'));
+  ok('D112: baza CASS (A_11) include partea impozabila', xBen.includes('A_11="4680"'));
+  ok('D112: baza CAM (C4_baza) o include si ea — C4_ct ramane 2,25% din ea', /C4_baza="4680" C4_ct="105"/.test(xBen));
+
+  // 11) Categoriile neacordate nu apar pe stat (altfel fluturasul ar avea 10 randuri de zero).
+  eq('doar categoriile acordate ajung pe rand', statePlata([ang({ beneficii: { sport: 100 } })], '2026-06').rows[0].beneficii.length, 1);
+  eq('fara beneficii, randul e gol si totalul zero', gol.beneficii.length + '|' + gol.beneficiiImpozabile, '0|0');
+}
+
 section('Concediu medical in statul de plata (OUG 158/2005, simplificat)');
 const pCm = fiscal.payroll(4000, 0, { cmAngajator: 500, cmFnuass: 700 });
 eq('CAS pe salariu + indemnizatii CM (25% din 5200)', pCm.cas, 1300);

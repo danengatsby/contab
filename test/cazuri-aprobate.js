@@ -166,6 +166,33 @@ const CAZURI = [
     aprobare: null,
   },
   {
+    id: 'SAL-03b', arie: 'Salarii',
+    titlu: 'Plafonul de 33%: cazare 1.000 + pensii facultative 800 + abonament sport 200, salariu de baza 4.000',
+    temei: 'Art. 76 alin. (4^1) si (4^2) Cod fiscal — avantajele de la lit. a)-j) sunt neimpozabile cumulat in limita a 33% '
+      + 'din salariul de baza, fiecare si in limita ei individuala; partea care depaseste e venit salarial (impozit + CAS '
+      + 'art. 139(1)(v) + CASS art. 157(1)(v) + CAM)',
+    intrare: { salariuBaza: 4000, perioada: '2026-06', salariuMinim: 4050, cazare: 1000, pensii: 800, sport: 200 },
+    asteptat: {
+      plafon: 1320, limitaCazare: 810, neimpozabil: 1320, impozabil: 680,
+      cas: 1170, cass: 468, impozit: 304.2, cam: 105.3, net: 2057.8,
+    },
+    calc: (i) => {
+      const r = statePlata([{ id: 'b', nume: 'Test', salariuBrut: i.salariuBaza,
+        beneficii: { cazare: i.cazare, pensii: i.pensii, sport: i.sport } }], i.perioada).rows[0];
+      const cazare = r.beneficii.find((b) => b.id === 'cazare');
+      return { plafon: r.beneficiiPlafon, limitaCazare: cazare.limitaIndividuala,
+        neimpozabil: r.beneficiiNeimpozabile, impozabil: r.beneficiiImpozabile,
+        cas: r.cas, cass: r.cass, impozit: r.impozit, cam: r.cam, net: r.net };
+    },
+    observatii: 'Repartizarea celor 680 lei impozabili: 190 = cazarea peste limita ei proprie (20% x 4.050 = 810), '
+      + '290 = pensiile peste plafonul comun ramas, 200 = sportul, care nu mai incape deloc. ORDINEA de includere in '
+      + 'plafon o stabileste angajatorul (alin. 4^2); implicita in aplicatie e cea din lege (lit. a -> j), si ea '
+      + 'decide CARE categorie ramane neimpozabila — de confirmat ca implicita e acceptabila. '
+      + 'Plafoanele anuale in EUR (400/400/100) se convertesc la un curs configurat (implicit 5,0 lei/EUR), '
+      + 'nu la cursul din ultima zi a lunii — de confirmat toleranta.',
+    aprobare: null,
+  },
+  {
     id: 'SAL-04', arie: 'Salarii',
     titlu: 'Norma partiala: brut 2.000 lei sub salariul minim (S1)',
     temei: 'Art. 146 alin. (5^6) Cod fiscal, OUG 16/2022 — CAS/CASS la nivelul salariului minim, diferenta in sarcina angajatorului',

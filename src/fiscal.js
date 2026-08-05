@@ -4,6 +4,7 @@ const { round2 } = require('./util');
 // Parametrii fiscali (cote, praguri, grile) traiesc intr-o sursa unica datata, cu referinta
 // legala pe fiecare valoare: src/fiscalConfig.js. Aici e DOAR logica de calcul.
 const cfg = require('./fiscalConfig');
+const ben = require('./beneficii'); // plafonul de 33% (art. 76 alin. (4^1)) — motor pur
 
 /** Parametri fiscali (an `cfg.AN`) — mutabili la runtime prin applyConfig (suprascrieri din Setari). */
 const FISCAL = Object.assign({}, cfg.RATES);
@@ -111,6 +112,19 @@ function neimpozabilMinim(brut, salariuBaza, period) {
 }
 
 /**
+ * Avantajele din plafonul de 33% (art. 76 alin. (4^1)) — vezi `src/beneficii.js` pentru mecanica.
+ * Aici se INJECTEAZA doar parametrii (categoriile datate + procentul suprascriabil din Setari),
+ * ca motorul sa ramana pur si testabil, exact ca la deducerea personala.
+ */
+function beneficii(intrare) {
+  return ben.calcul(intrare, {
+    categorii: cfg.BENEFICII,
+    pct: FISCAL.plafonBeneficiiPct,
+    cursEur: FISCAL.cursEurBeneficii,
+  });
+}
+
+/**
  * Calculul salariului dintr-un brut (cotele 2026).
  * @param {number} brut
  * @param {number} deducere - deducerea totala scazuta din baza de impozit (deducere personala + sume neimpozabile)
@@ -128,6 +142,12 @@ function payroll(brut, deducere, opts) {
   // in natura): intra in baza CAS + CASS + impozit + CAM, dar NU se platesc in bani — netul cash
   // scade doar cu contributiile/impozitul aferente avantajului.
   const avantaje = round2(o.avantaje) || 0;
+  // Partea din avantajele art. 76 alin. (4^1) care a depasit limita ei individuala sau plafonul
+  // de 33% (calculata de `beneficii()`). Se impoziteaza EXACT ca un avantaj in natura — impozit,
+  // CAS (art. 139(1)(v)), CASS (art. 157(1)(v)) si CAM — si nu se plateste in bani. E tinuta
+  // separat de `avantaje` doar ca statul de plata sa poata arata DE CE a aparut: un avantaj
+  // devenit impozabil dintr-un plafon depasit nu se poate explica dintr-un total comun.
+  const beneficiiImpozabile = round2(o.beneficiiImpozabile) || 0;
   // Indemnizatii de concediu medical (OUG 158/2005): datoreaza CAS si impozit, dar NU CASS;
   // CAM doar pe partea suportata de angajator (partea FNUASS o suporta fondul si se recupereaza).
   const cmA = round2(o.cmAngajator) || 0;
@@ -138,10 +158,10 @@ function payroll(brut, deducere, opts) {
   // CAM. Tratata ca deducere, ar fi lasat contributiile calculate pe intreg brutul, deci CAS/CASS
   // si CAM supraevaluate — si asta merge direct in D112.
   const nm = Math.max(0, Math.min(round2(o.neimpozabilMinim) || 0, b));
-  const bazaCasReala = round2(b + avantaje + cmA + cmF - nm);
+  const bazaCasReala = round2(b + avantaje + beneficiiImpozabile + cmA + cmF - nm);
   const cas = round2((bazaCasReala * FISCAL.cas) / 100);
   // tichetele de masa suporta CASS (din 2024) si impozit, dar NU CAS; indemnizatiile CM sunt exceptate de la CASS
-  const bazaCassReala = round2(b + tichete + avantaje - nm);
+  const bazaCassReala = round2(b + tichete + avantaje + beneficiiImpozabile - nm);
   const cass = round2((bazaCassReala * FISCAL.cass) / 100);
   // Norma partiala (OUG 16/2022, art. 146 Cod fiscal): cand venitul brut e sub salariul minim,
   // CAS si CASS se datoreaza la nivelul salariului minim (o.bazaMinima); DIFERENTA fata de
@@ -149,12 +169,15 @@ function payroll(brut, deducere, opts) {
   const bmin = round2(o.bazaMinima) || 0;
   const casAngajator = bmin > bazaCasReala ? round2(((bmin - bazaCasReala) * FISCAL.cas) / 100) : 0;
   const cassAngajator = bmin > bazaCassReala ? round2(((bmin - bazaCassReala) * FISCAL.cass) / 100) : 0;
-  const baza = Math.max(0, round2(b + tichete + avantaje + cmA + cmF - nm - cas - cass - ded));
+  const baza = Math.max(0, round2(b + tichete + avantaje + beneficiiImpozabile + cmA + cmF - nm - cas - cass - ded));
   const impozit = round2((baza * FISCAL.impozitVenit) / 100);
-  const cam = round2(((b + avantaje + cmA - nm) * FISCAL.cam) / 100);
+  const cam = round2(((b + avantaje + beneficiiImpozabile + cmA - nm) * FISCAL.cam) / 100);
   // Netul creste, dar nu fiindca se adauga ceva: suma ramane in brut, doar nu mai e taxata.
   const net = round2(b + cmA + cmF - cas - cass - impozit); // tichetele si avantajele se acorda ca valori, nu in numerar
-  return { brut: b, tichete, avantaje, cmAngajator: cmA, cmFnuass: cmF, neimpozabilMinim: nm, cas, cass, casAngajator, cassAngajator, baza, impozit, cam, net, costTotal: round2(b + cmA + cam + tichete + casAngajator + cassAngajator), sector, scutImpozit: false, scutCass: false, overPlafon: false };
+  // costTotal NU include avantajele si beneficiile: ele se inregistreaza pe conturile lor cand se
+  // acorda (6458, 626...), deci adunate si aici s-ar numara de doua ori. Tichetele fac exceptie
+  // istorica — sunt cumparate de angajator odata cu statul.
+  return { brut: b, tichete, avantaje, beneficiiImpozabile, cmAngajator: cmA, cmFnuass: cmF, neimpozabilMinim: nm, cas, cass, casAngajator, cassAngajator, baza, impozit, cam, net, costTotal: round2(b + cmA + cam + tichete + casAngajator + cassAngajator), sector, scutImpozit: false, scutCass: false, overPlafon: false };
 }
 
 /**
@@ -182,4 +205,4 @@ function taxePfa(venitNet, opts) {
   return { venitNet: vn, salariuMinim: sm, plafon6: p6, plafon12: p12, plafon24: p24, plafon60: p60, bazaCas, cas, bazaCass, cass, impozit, total: round2(cas + cass + impozit) };
 }
 
-module.exports = { FISCAL, DEFAULTS, applyConfig, fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa, neimpozabilMinim };
+module.exports = { FISCAL, DEFAULTS, applyConfig, fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa, neimpozabilMinim, beneficii, CATEGORII_BENEFICII: cfg.BENEFICII };

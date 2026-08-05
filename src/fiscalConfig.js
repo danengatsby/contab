@@ -29,6 +29,14 @@ const RATES = {
   salariuMinimConstructii: 4582,
   neimpozabilS1: 300, // lei neimpozabili din salariul minim (S1)
   neimpozabilS2: 200, // lei neimpozabili din salariul minim (S2)
+  // Plafonul CUMULAT al avantajelor neimpozabile (art. 76 alin. (4^1)): 33% din salariul de BAZA
+  // corespunzator locului de munca ocupat. Limitele individuale ale fiecarei categorii stau in
+  // `BENEFICII` mai jos — asta e doar capacul comun, si e ultimul care se aplica.
+  plafonBeneficiiPct: 33,
+  // Cursul EUR pentru plafoanele ANUALE exprimate in euro (pensii facultative, asigurari de
+  // sanatate, abonamente sportive). Orientativ, ca `cursPlafonMicro`: norma cere cursul din ultima
+  // zi a lunii pentru care se acorda avantajul, deci contabilul il poate suprascrie din Setari.
+  cursEurBeneficii: 5.0,
   // TVA si impozite la nivelul firmei
   plafonScutire: 10000,   // istoric (scutirile sectoriale eliminate din 2025) — pastrat pt. compat. setari
   plafonScutireTvaLei: 395000, // lei — plafonul regimului special de scutire TVA (cifra de afaceri anuala);
@@ -87,6 +95,66 @@ const DEDUCERE = {
   rotunjireLei: 10,            // rotunjire finala, in favoarea angajatului
 };
 
+// ── CATEGORIILE DIN PLAFONUL DE 33% (art. 76 alin. (4^1) lit. a)-j) Cod fiscal) ───────────────
+// Fiecare categorie are DOUA limite, si amandoua taie: limita ei individuala (coloana `limita`)
+// si, dupa ea, plafonul comun de 33% din salariul de baza (`RATES.plafonBeneficiiPct`).
+//
+// `limita.tip` spune CUM se calculeaza plafonul individual — motorul (src/beneficii.js) nu are
+// reguli hardcodate pe categorie, doar cele sase forme de mai jos:
+//   'zi'        lei/zi x zilele relevante (lucrate, de mobilitate, de telemunca)
+//   'luna'      lei/luna, fix
+//   'lunaCopil' lei/luna x numarul de copii
+//   'pctMinim'  % din salariul minim brut al lunii
+//   'anEur'     EUR/an (x `RATES.cursEurBeneficii`), consumat cumulat pe anul in curs
+//   'anLei'     lei/an, consumat cumulat pe anul in curs
+//   'fara'      fara limita proprie — intra doar sub capacul de 33%
+//
+// ORDINEA din tablou = ordinea in care categoriile ocupa plafonul de 33%. Art. 76 alin. (4^2)
+// lasa ordinea la latitudinea ANGAJATORULUI; implicita e cea din lege (a -> j), fiindca o ordine
+// inventata ar schimba tacit cine ramane in plafon si cine iese din el.
+//
+// ⚠️  Sumele marcate „ACTUALIZEAZA ANUAL" se schimba prin alte acte decat Codul fiscal (legea
+//     bugetului asigurarilor sociale, ordinele privind tichetele de masa, HG-ul diurnei) — sunt
+//     cele care se invechesc primele.
+const BENEFICII = [
+  { id: 'mobilitate', lit: 'a', nume: 'Prestații suplimentare — clauză de mobilitate',
+    temei: 'Art. 76 alin. (4^1) lit. a)',
+    limita: { tip: 'zi', lei: 57.5, zile: 'mobilitate' },
+    nota: '2,5 x indemnizația legală de delegare (23 lei/zi) — ACTUALIZEAZĂ ANUAL' },
+  { id: 'hrana', lit: 'b', nume: 'Contravaloarea hranei acordate de angajator',
+    temei: 'Art. 76 alin. (4^1) lit. b)',
+    limita: { tip: 'zi', lei: 40.18, zile: 'lucrate' },
+    excludeTichete: true, // ultima teza a lit. b): nu se acorda celor care primesc tichete de masa
+    nota: 'Valoarea maximă a unui tichet de masă/zi — ACTUALIZEAZĂ ANUAL' },
+  { id: 'cazare', lit: 'c', nume: 'Cazare / chirie suportată de angajator',
+    temei: 'Art. 76 alin. (4^1) lit. c)',
+    limita: { tip: 'pctMinim', pct: 20 },
+    nota: '20% din salariul minim brut/lună/persoană' },
+  { id: 'turism', lit: 'd', nume: 'Servicii turistice și/sau de tratament în concediu',
+    temei: 'Art. 76 alin. (4^1) lit. d)',
+    limita: { tip: 'anLei', lei: 8620 },
+    nota: 'Câștigul salarial mediu brut din legea BASS — ACTUALIZEAZĂ ANUAL' },
+  { id: 'pensii', lit: 'e', nume: 'Contribuții la fond de pensii facultative',
+    temei: 'Art. 76 alin. (4^1) lit. e)',
+    limita: { tip: 'anEur', eur: 400 } },
+  { id: 'sanatate', lit: 'f', nume: 'Asigurare voluntară de sănătate / abonament medical',
+    temei: 'Art. 76 alin. (4^1) lit. f)',
+    limita: { tip: 'anEur', eur: 400 } },
+  { id: 'sport', lit: 'g', nume: 'Abonament pentru facilități sportive',
+    temei: 'Art. 76 alin. (4^1) lit. g)',
+    limita: { tip: 'anEur', eur: 100 } },
+  { id: 'telemunca', lit: 'h', nume: 'Sume pentru telemuncă (utilități la domiciliu)',
+    temei: 'Art. 76 alin. (4^1) lit. h)',
+    limita: { tip: 'zi', lei: 400, zile: 'telemunca', proportionalLunar: true },
+    nota: '400 lei/lună, proporțional cu zilele de telemuncă din lună' },
+  { id: 'educatie', lit: 'i', nume: 'Educație timpurie (creșă/grădiniță) pentru copiii angajatului',
+    temei: 'Art. 76 alin. (4^1) lit. i)',
+    limita: { tip: 'lunaCopil', lei: 1500 } },
+  { id: 'dobanda', lit: 'j', nume: 'Diferența favorabilă de dobândă (credite/depozite)',
+    temei: 'Art. 76 alin. (4^1) lit. j)',
+    limita: { tip: 'fara' } },
+];
+
 // Codurile CAEN care atrag cota de 3% INDIFERENT de venituri (art. 51 alin. (1) lit. b) pct. 2,
 // Legea 296/2023): IT, HoReCa, juridic, medical. Conditia priveste activitatile PRINCIPALE SAU
 // SECUNDARE — aplicatia stie doar codul principal (`company.caen`), deci pentru cele secundare
@@ -119,6 +187,11 @@ const SURSE = {
   plafonMicroEur: 'Art. 47 Cod fiscal, OUG 156/2024 — 100.000 EUR din 2026',
   plafonScutireTva: 'Art. 310 Cod fiscal, OG 22/2025 — plafon scutire TVA 395.000 lei de la 1 sept. 2025 (Directiva UE 2020/285)',
   deducerePersonala: 'Art. 77 Cod fiscal, Legea 34/2023',
+  beneficii33: 'Art. 76 alin. (4^1) si (4^2) Cod fiscal — avantajele de la lit. a)-j) sunt '
+    + 'neimpozabile CUMULAT in limita a ' + RATES.plafonBeneficiiPct + '% din salariul de baza, '
+    + 'fiecare si in limita ei individuala; partea care depaseste devine venit salarial (impozit '
+    + '+ CAS art. 139(1)(v) + CASS art. 157(1)(v) + CAM). Ordinea de includere in plafon o '
+    + 'stabileste angajatorul (alin. 4^2); implicita aici e cea din lege',
   pfa: 'Art. 148 & 170 Cod fiscal — plafoane 6 / 12 / 24 / 60 salarii minime',
   concediiMedicale: 'OUG 158/2005 — CAS + impozit, fara CASS; CAM doar pe partea angajatorului',
   deductibilitateAuto: 'Art. 298 Cod fiscal — TVA deductibila 50% (vehicule fara uz exclusiv business)',
@@ -133,4 +206,4 @@ const SURSE = {
   pragIntrastat: 'Ordin INS — praguri Intrastat 1.000.000 lei/an pe flux (introduceri / expedieri), 2024-2026',
 };
 
-module.exports = { AN, DATA_ACTUALIZARE, RATES, DEDUCERE, PFA, CAEN_MICRO_3, SURSE };
+module.exports = { AN, DATA_ACTUALIZARE, RATES, DEDUCERE, BENEFICII, PFA, CAEN_MICRO_3, SURSE };

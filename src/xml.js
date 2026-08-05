@@ -443,7 +443,13 @@ function d112Xml(company, period, sp, who, rect) {
   ].filter((o) => Math.round(o.suma) > 0);
   const totalPlata = oblig.reduce((s, o) => s + Math.round(o.suma), 0);
   // total venit realizat in conditii normale de munca (C1_11; C1_T1 = totalul pe conditii)
-  const bazaCasTotal = sp.rows.reduce((s, r) => s + Math.round(r.brut + (r.avantaje || 0) + (r.indemnizatieCM || 0)), 0);
+  const bazaCasTotal = sp.rows.reduce((s, r) => s + Math.round(r.brut + (r.avantaje || 0) + (r.beneficiiImpozabile || 0) + (r.indemnizatieCM || 0)), 0);
+  // Baza CAM, exact cea din `fiscal.payroll` (brut + avantaje + beneficii impozabile + partea de
+  // CM a angajatorului - suma neimpozabila din salariul minim). Era declarat brutul simplu, deci
+  // pe orice firma cu avantaje C4_ct nu mai era 2,25% din C4_baza — declaratia se contrazicea
+  // singura pe doua campuri alaturate.
+  const bazaCamTotal = round2(t.brut + (t.avantaje || 0) + (t.beneficiiImpozabile || 0)
+    + (t.cmAngajator || 0) - (t.neimpozabilMinim || 0));
   // casa de sanatate din judetul firmei (Nomenclator 2): coduri de judet; Bucuresti = "_B"
   const jud = String(company.judet || '').replace(/^RO-/i, '').toUpperCase();
   const casaAng = jud === 'B' || !jud ? '_B' : jud;
@@ -458,8 +464,13 @@ function d112Xml(company, period, sp, who, rect) {
   const asigurati = sp.rows.map((r, i) => {
     const parts = String(r.nume || '').trim().split(/\s+/);
     const numeFam = parts.pop() || '-'; const pren = parts.join(' ') || '-';
-    const bazaCass = Math.round(r.brut + (r.tichete || 0) + (r.avantaje || 0));
-    const bazaCas = Math.round(r.brut + (r.avantaje || 0) + (r.indemnizatieCM || 0));
+    // Partea din avantajele art. 76 alin. (4^1) care a depasit plafonul de 33% sau limita ei
+    // individuala e venit salarial: intra in baza CAS (art. 139(1)(v)) si CASS (art. 157(1)(v))
+    // la fel ca un avantaj in natura. Omisa aici, decontul ar raporta contributii mai mari decat
+    // bazele pe care le declara — exact contradictia pe care o cauta validatorul.
+    const benImp = r.beneficiiImpozabile || 0;
+    const bazaCass = Math.round(r.brut + (r.tichete || 0) + (r.avantaje || 0) + benImp);
+    const bazaCas = Math.round(r.brut + (r.avantaje || 0) + benImp + (r.indemnizatieCM || 0));
     const venitImpozabil = Math.max(Math.round(bazaCas - r.cas - r.cass - (r.deducere || 0)), 0);
     const ded = Math.round(r.deducere || 0);
     return `  <asigurat idAsig="${i + 1}" cnpAsig="${esc(r.cnp)}" cisAsig="${esc(r.cnp)}" numeAsig="${esc(numeFam)}" prenAsig="${esc(pren)}"
@@ -484,7 +495,7 @@ ${obligXml}
     <angajatorB B_cnp="${sp.rows.length}" B_sanatate="${sp.rows.length}" B_pensie="${sp.rows.filter((r) => r.cas > 0).length}" B_brutSalarii="${lei(t.brut)}" B_sal="${sp.rows.length}"/>
     <angajatorC1 C1_11="${bazaCasTotal}" C1_T1="${bazaCasTotal}"/>
     <angajatorC3/>
-    <angajatorC4 C4_baza="${lei(t.brut)}" C4_ct="${lei(t.cam)}"/>
+    <angajatorC4 C4_baza="${lei(bazaCamTotal)}" C4_ct="${lei(t.cam)}"/>
   </angajator>
 ${asigurati}
 </declaratieUnica>

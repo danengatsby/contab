@@ -8,7 +8,26 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-08-03 (a doua) — diacriticele din explicațiile articolelor
+## Ultima verificare: 2026-08-05 — plafonul de 33% al avantajelor (art. 76 alin. 4¹) în D112
+
+Declanșată de atingerea lui `src/fiscal.js`, `src/fiscalConfig.js`, `src/payroll.js`, `src/xml.js`
+și de modulul nou `src/beneficii.js`. Partea din avantaje care depășește plafonul de 33% (sau limita
+individuală a categoriei) e venit salarial, deci intră în bazele CAS/CASS/CAM declarate în D112.
+Toate cele 20 de ieșiri au trecut.
+
+Verificat că poarta chiar **exercită** schimbarea: angajatul din exemplul integrat nu are niciun
+avantaj, deci reperul `D112` ar fi validat un câmp mereu zero — exact „trecut pe lângă". S-a adăugat
+o variantă de referință, `D112-beneficii` (tiparul folosit deja pentru `D390`, `D300-report` și
+`D101-defalcare`), cu cazare 1.000 + pensii 800 + sport 200 peste un salariu de bază de 5.000:
+plafonul e 1.650, iar cazarea are și limita ei (20% din salariul minim), deci varianta exercită
+**ambele** tăieri. Confirmat prin inspecția XML-ului generat — bazele urcă de la 5.000 la 5.350
+(190 lei peste limita cazării + 160 lei peste plafonul comun), iar `C4_ct` rămâne 2,25% din
+`C4_baza`. Versiunile de schemă și validator sunt cele din tabelul de mai jos, nemodificate.
+
+Reparat în aceeași trecere: `C4_baza` declara brutul simplu, deci pe orice firmă cu avantaje în
+natură `C4_ct` nu mai era 2,25% din el — declarația se contrazicea singură pe două câmpuri alăturate.
+
+## Verificare anterioară: 2026-08-03 (a doua) — diacriticele din explicațiile articolelor
 
 Declanșată de atingerea a 21 de module fiscale (`src/documentTypes/*`, `accounting.js`,
 `closingsService.js`, `payrollService.js`, `stocksService.js`…): explicațiile liniilor de articol

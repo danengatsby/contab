@@ -12,9 +12,32 @@ const db = require('./db');
 const sepa = require('./sepa');
 const { round2, ultimaZiDinLuna } = require('./util');
 const { statePlata } = require('./payroll');
+const fiscal = require('./fiscal'); // nomenclatorul categoriilor din plafonul de 33%
 const { reqFirma } = require('./stocksService');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
+
+/** Sumele acordate pe categoriile art. 76 alin. (4^1), curatate: doar id-uri din nomenclator,
+ *  doar valori pozitive. Fara filtrul pe id, un camp inventat de client ar intra in obiect si ar
+ *  fi purtat mai departe fara sa aiba vreodata o limita — adica exact scapare de sub plafon. */
+function curataBeneficii(intrat) {
+  const src = intrat && typeof intrat === 'object' ? intrat : {};
+  const out = {};
+  for (const cat of fiscal.CATEGORII_BENEFICII) {
+    const v = round2(Number(src[cat.id]) || 0);
+    if (v > 0) out[cat.id] = v;
+  }
+  return out;
+}
+
+/** Ordinea de includere in plafonul de 33% aleasa de angajator (art. 76 alin. (4^2)).
+ *  Gol => ordinea din lege. Id-urile necunoscute se ignora; `ordoneaza()` completeaza restul. */
+function curataOrdine(intrat) {
+  if (!Array.isArray(intrat)) return undefined;
+  const stiute = new Set(fiscal.CATEGORII_BENEFICII.map((c) => c.id));
+  const out = intrat.filter((id) => stiute.has(id));
+  return out.length ? out : undefined;
+}
 
 function upsertAngajat(fid, b) {
   fid = reqFirma(fid); b = b || {};
@@ -24,7 +47,15 @@ function upsertAngajat(fid, b) {
   const rec = a || { id: db.nextId('ang'), firmaId: fid };
   // IBAN-ul angajatului: pentru lotul de plata a salariilor nete (pain.001). Optional.
   Object.assign(rec, { iban: b.iban != null ? sepa.normIban(b.iban) : (rec.iban || ''),
-    nume: String(b.nume), cnp: b.cnp || '', functie: b.functie || '', salariuBrut: round2(Number(b.salariuBrut) || 0), neimpozabil: round2(Number(b.neimpozabil) || 0), spor: round2(Number(b.spor) || 0), avans: round2(Number(b.avans) || 0), retineri: round2(Number(b.retineri) || 0), persoane: b.persoane === '' || b.persoane == null ? null : Math.max(0, Math.round(Number(b.persoane) || 0)), sub26: !!b.sub26, copii: Math.max(0, Math.round(Number(b.copii) || 0)), tichete: round2(Number(b.tichete) || 0), avantaje: round2(Number(b.avantaje) || 0), zileCM: Math.max(0, Math.round(Number(b.zileCM) || 0)), procentCM: [75, 85, 100].includes(Number(b.procentCM)) ? Number(b.procentCM) : 75, zileCO: Math.max(0, Math.round(Number(b.zileCO) || 0)), zileLucratoare: Math.max(1, Math.round(Number(b.zileLucratoare) || 21)), normaPartiala: !!b.normaPartiala, scutitNormaPartiala: !!b.scutitNormaPartiala, sector: ['it', 'constructii', 'agro'].includes(b.sector) ? b.sector : 'normal' });
+    nume: String(b.nume), cnp: b.cnp || '', functie: b.functie || '', salariuBrut: round2(Number(b.salariuBrut) || 0), neimpozabil: round2(Number(b.neimpozabil) || 0), spor: round2(Number(b.spor) || 0), avans: round2(Number(b.avans) || 0), retineri: round2(Number(b.retineri) || 0), persoane: b.persoane === '' || b.persoane == null ? null : Math.max(0, Math.round(Number(b.persoane) || 0)), sub26: !!b.sub26, copii: Math.max(0, Math.round(Number(b.copii) || 0)), tichete: round2(Number(b.tichete) || 0), avantaje: round2(Number(b.avantaje) || 0), zileCM: Math.max(0, Math.round(Number(b.zileCM) || 0)), procentCM: [75, 85, 100].includes(Number(b.procentCM)) ? Number(b.procentCM) : 75, zileCO: Math.max(0, Math.round(Number(b.zileCO) || 0)), zileLucratoare: Math.max(1, Math.round(Number(b.zileLucratoare) || 21)), normaPartiala: !!b.normaPartiala, scutitNormaPartiala: !!b.scutitNormaPartiala, sector: ['it', 'constructii', 'agro'].includes(b.sector) ? b.sector : 'normal',
+    // Avantajele din plafonul de 33% (art. 76 alin. (4^1)) + numaratorile de care depind limitele
+    // lor individuale: zilele de telemunca (lit. h), zilele de mobilitate (lit. a) si copiii in
+    // educatie timpurie (lit. i). `zileMobilitate` gol = zilele efectiv lucrate din luna.
+    beneficii: curataBeneficii(b.beneficii),
+    zileTelemunca: Math.max(0, Math.round(Number(b.zileTelemunca) || 0)),
+    zileMobilitate: b.zileMobilitate === '' || b.zileMobilitate == null ? null : Math.max(0, Math.round(Number(b.zileMobilitate) || 0)),
+    copiiCresa: Math.max(0, Math.round(Number(b.copiiCresa) || 0)),
+    ordineBeneficii: curataOrdine(b.ordineBeneficii) });
   if (!a) d.angajati.push(rec);
   db.save();
   return { angajat: rec };
@@ -84,7 +115,12 @@ function postStatPlata(fid, period, deps) {
   d.payrollHistory = (d.payrollHistory || []).filter((h) => !(h.firmaId === fid && h.period === period));
   d.payrollHistory.push({
     id: db.nextId('ph'), firmaId: fid, period, ts: new Date().toISOString(),
-    rows: sp.rows.map((r) => ({ angajatId: r.id, nume: r.nume, cnp: r.cnp, brut: r.brut, cas: r.cas, cass: r.cass, impozit: r.impozit, cam: r.cam, net: r.net, restPlata: r.restPlata })),
+    // `beneficii` NU e decor in instantaneu: plafoanele anuale de la art. 76 alin. (4^1) lit. d)-g)
+    // (turism, pensii, sanatate, sport) se consuma pe an, iar `beneficii.consumAnual()` citeste
+    // exact de aici cat s-a acordat deja neimpozabil. Fara el, fiecare luna ar reporni de la
+    // plafonul intreg si 400 EUR/an ar deveni 400 EUR/luna.
+    rows: sp.rows.map((r) => ({ angajatId: r.id, nume: r.nume, cnp: r.cnp, brut: r.brut, cas: r.cas, cass: r.cass, impozit: r.impozit, cam: r.cam, net: r.net, restPlata: r.restPlata,
+      beneficii: (r.beneficii || []).map((b) => ({ id: b.id, acordat: b.acordat, neimpozabil: b.neimpozabil, impozabil: b.impozabil })) })),
     totals: sp.totals,
   });
   db.save();

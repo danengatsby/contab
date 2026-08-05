@@ -5,6 +5,7 @@
 
 const { round2 } = require('./util');
 const fiscal = require('./fiscal');
+const ben = require('./beneficii'); // plafonul de 33% (art. 76 alin. (4^1)) — doar consumul anual
 
 /** Media bruturilor unui angajat din ultimele `luni` state postate (payrollHistory), inainte de `period`. */
 function mediaIstoric(a, history, period, luni) {
@@ -25,7 +26,8 @@ function mediaIstoric(a, history, period, luni) {
  *  `history` (payrollHistory, optional) da media ultimelor 6 luni pentru baza concediului medical. */
 function statePlata(angajati, period, history) {
   const rows = [];
-  const t = { brut: 0, neimpozabil: 0, neimpozabilMinim: 0, deducere: 0, tichete: 0, avantaje: 0, spor: 0, cas: 0, cass: 0, impozit: 0, cam: 0, net: 0, avans: 0, retineri: 0, restPlata: 0, costTotal: 0, cmAngajator: 0, cmFnuass: 0, indemnizatieCM: 0, indemnizatieCO: 0, casAngajator: 0, cassAngajator: 0 };
+  const t = { brut: 0, neimpozabil: 0, neimpozabilMinim: 0, deducere: 0, tichete: 0, avantaje: 0,
+    beneficiiAcordate: 0, beneficiiNeimpozabile: 0, beneficiiImpozabile: 0, spor: 0, cas: 0, cass: 0, impozit: 0, cam: 0, net: 0, avans: 0, retineri: 0, restPlata: 0, costTotal: 0, cmAngajator: 0, cmFnuass: 0, indemnizatieCM: 0, indemnizatieCO: 0, casAngajator: 0, cassAngajator: 0 };
   for (const a of angajati || []) {
     const spor = round2(Number(a.spor) || 0);
     const brut = round2((Number(a.salariuBrut) || 0) + spor);
@@ -78,18 +80,52 @@ function statePlata(angajati, period, history) {
     // (`a.salariuBrut`, fara spor) si din brutul efectiv al lunii. Nu e o deducere — iese din toate
     // bazele, deci se trimite separat de `deducere`.
     const nm = fiscal.neimpozabilMinim(brutTaxabil, round2(Number(a.salariuBrut) || 0), period);
-    const p = fiscal.payroll(brutTaxabil, deducere, { tichete, avantaje, sector, cmAngajator: cmA, cmFnuass: cmF, bazaMinima, neimpozabilMinim: nm.suma });
+    // Avantajele din plafonul de 33% (art. 76 alin. (4^1)). Plafonul se calculeaza pe salariul de
+    // BAZA contractual (`a.salariuBrut`, fara spor si fara reducerea pentru zilele de concediu) —
+    // vezi nota din src/beneficii.js. Plafoanele ANUALE (turism, pensii, sanatate, sport) au nevoie
+    // de cat s-a acordat deja anul asta, deci se citesc din acelasi `history` din care vine si
+    // baza concediului medical. `ordineBeneficii` sta pe angajat, nu ca parametru al functiei:
+    // asa calculeaza IDENTIC toate cele noua puncte care cheama statePlata (stat, PDF, D112,
+    // plati), fara sa depinda de cine si-a amintit sa transmita optiunea.
+    const bnf = fiscal.beneficii({
+      salariuBaza: round2(Number(a.salariuBrut) || 0),
+      acordate: a.beneficii || {},
+      zile: {
+        lucratoare: zlm,
+        lucrate: Math.max(0, zlm - zcm - zco),
+        mobilitate: a.zileMobilitate != null ? Math.max(0, Math.round(Number(a.zileMobilitate) || 0)) : Math.max(0, zlm - zcm - zco),
+        telemunca: Math.max(0, Math.round(Number(a.zileTelemunca) || 0)),
+      },
+      copii: Number(a.copiiCresa) || 0,
+      tichete,
+      salariuMinim: fiscal.salariuMinimLa(period),
+      consumAnual: ben.consumAnual(history, a.id, period),
+      ordine: a.ordineBeneficii,
+    });
+    const p = fiscal.payroll(brutTaxabil, deducere, { tichete, avantaje, sector, cmAngajator: cmA, cmFnuass: cmF, bazaMinima, neimpozabilMinim: nm.suma, beneficiiImpozabile: bnf.totalImpozabil });
     const restPlata = round2(p.net - avans - retineri);
     rows.push({
       id: a.id, nume: a.nume || '', cnp: a.cnp || '', functie: a.functie || '', persoane: a.persoane != null ? Number(a.persoane) : null, sub26: !!a.sub26, copii: Number(a.copii) || 0,
       brut: brutTaxabil, salariuBaza: brut, salariuZileLucrate, spor, neimpozabil, deducere: dp,
       neimpozabilMinim: nm.suma, neimpozabilMinimMotiv: nm.motiv, tichete, avantaje, sector, scutire: p.scutImpozit || p.scutCass, overPlafon: p.overPlafon,
+      // Art. 76 alin. (4^1): detaliul pe categorii ramane pe rand — statul de plata trebuie sa
+      // poata arata din ce plafon a iesit fiecare leu impozitat, nu doar totalul.
+      beneficii: bnf.randuri, beneficiiPlafon: bnf.plafon, beneficiiAcordate: bnf.totalAcordat,
+      beneficiiNeimpozabile: bnf.totalNeimpozabil, beneficiiImpozabile: bnf.totalImpozabil,
+      beneficiiRamas: bnf.ramas, beneficiiDepasit: bnf.depasit,
+      // numaratorile de care depind limitele — formularul le reciteste de aici la „editeaza"
+      zileTelemunca: Math.max(0, Math.round(Number(a.zileTelemunca) || 0)),
+      zileMobilitate: a.zileMobilitate != null ? Math.max(0, Math.round(Number(a.zileMobilitate) || 0)) : null,
+      copiiCresa: Math.max(0, Math.round(Number(a.copiiCresa) || 0)),
       zileCM: zcm, procentCM: zcm ? procentCM : 0, mediaCM, cmAngajator: cmA, cmFnuass: cmF, indemnizatieCM: round2(cmA + cmF),
       zileCO: zco, mediaCO, indemnizatieCO,
       normaPartiala: !!(a.normaPartiala && !a.scutitNormaPartiala), casAngajator: p.casAngajator, cassAngajator: p.cassAngajator,
       cas: p.cas, cass: p.cass, impozit: p.impozit, cam: p.cam, net: p.net, avans, retineri, restPlata, costTotal: p.costTotal,
     });
     t.deducere = round2(t.deducere + dp); t.tichete = round2((t.tichete || 0) + tichete); t.avantaje = round2(t.avantaje + avantaje);
+    t.beneficiiAcordate = round2(t.beneficiiAcordate + bnf.totalAcordat);
+    t.beneficiiNeimpozabile = round2(t.beneficiiNeimpozabile + bnf.totalNeimpozabil);
+    t.beneficiiImpozabile = round2(t.beneficiiImpozabile + bnf.totalImpozabil);
     t.cmAngajator = round2(t.cmAngajator + cmA); t.cmFnuass = round2(t.cmFnuass + cmF); t.indemnizatieCM = round2(t.indemnizatieCM + cmA + cmF);
     t.indemnizatieCO = round2(t.indemnizatieCO + indemnizatieCO);
     t.casAngajator = round2(t.casAngajator + p.casAngajator); t.cassAngajator = round2(t.cassAngajator + p.cassAngajator);
