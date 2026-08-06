@@ -19,6 +19,7 @@ const xls = require('./xls');
 const dbf = require('./dbf');
 const { toCsv, parseCsv, isHeaderRow } = require('./csv');
 const { capList } = require('./paginate');
+const registru = require('./anafRegistru'); // registrul public de contribuabili (verificarea partenerilor)
 const { reqFirma } = require('./stocksService');
 const { round2 } = require('./util');
 
@@ -64,6 +65,11 @@ function upsertPartner(fid, b) {
     // cererea nu le trimite, ca o editare de adresa sa nu stearga coordonatele bancare.
     iban: b.iban != null ? sepa.normIban(b.iban) : (prev.iban || ''),
     bic: b.bic != null ? String(b.bic).toUpperCase().trim().slice(0, 11) : (prev.bic || ''),
+    // Verificarea din registrul ANAF se PASTREAZA, ca IBAN-ul de mai sus: inregistrarea se
+    // rescrie intreaga la fiecare upsert, deci o corectare de adresa ar fi sters tacit tocmai
+    // datele care decid deductibilitatea (inactiv, TVA, TVA la incasare). Se schimba doar
+    // printr-o verificare noua.
+    anaf: b.anaf !== undefined ? b.anaf : (prev.anaf || null),
   };
   db.save();
   return { partner: d.partners[fid][key] };
@@ -160,8 +166,95 @@ function setOpening(fid, ob) {
   return { totalDebit: totD, totalCredit: totC, conturi: Object.keys(ob).length };
 }
 
+// ── Verificarea partenerilor in registrul public ANAF ──
+
+/** Diferentele dintre ce are firma in nomenclator si ce spune registrul (doar campurile pe care
+ *  registrul le da autoritar). Gol = nomenclatorul e la zi. */
+function diferente(p, a) {
+  const dif = [];
+  const cmp = (camp, eticheta, alNostru, alLor) => {
+    const x = String(alNostru || '').trim();
+    const y = String(alLor || '').trim();
+    // registrul scrie cu MAJUSCULE si diacritice; o diferenta doar de forma nu e o diferenta
+    if (y && x.toLowerCase().replace(/\s+/g, ' ') !== y.toLowerCase().replace(/\s+/g, ' ')) {
+      dif.push({ camp, eticheta, alNostru: x, alAnaf: y });
+    }
+  };
+  cmp('den', 'Denumire', p.den, a.denumire);
+  cmp('adresa', 'Adresă', p.adresa, a.adresa);
+  cmp('judet', 'Județ', p.judet, a.judet);
+  return dif;
+}
+
+/**
+ * Verifica partenerii firmei in registrul public ANAF si retine rezultatul pe fiecare.
+ *
+ * @param {number} fid
+ * @param {{ cuiuri?:string[], data?:string, actualizeazaDate?:boolean }} [opts]
+ *   - `cuiuri` — doar acestia; implicit TOTI partenerii firmei;
+ *   - `data` — starea la o data anume (implicit azi). Pentru o factura veche conteaza starea de
+ *     la data FACTURII, nu cea de azi: un partener inactivat anul trecut era in regula in 2024;
+ *   - `actualizeazaDate` — copiaza denumirea/adresa/judetul din registru peste nomenclator.
+ *     Implicit NU: datele introduse de contabil nu se rescriu tacit, se raporteaza diferentele.
+ */
+async function verificaLaAnaf(fid, opts) {
+  fid = reqFirma(fid);
+  const o = opts || {};
+  const d = db.get();
+  const map = (d.partners || {})[fid] || {};
+  const ceruti = Array.isArray(o.cuiuri) && o.cuiuri.length
+    ? o.cuiuri.map((c) => String(c).replace(/^ro/i, '').replace(/\s/g, ''))
+    : Object.keys(map);
+  if (!ceruti.length) fail(400, 'Niciun partener de verificat.');
+
+  const r = await registru.verifica(ceruti, o.data);
+  const acum = new Date().toISOString();
+  const rezultate = [];
+  let actualizati = 0;
+  for (const cui of ceruti) {
+    const p = map[cui];
+    if (!p) continue; // CUI cerut explicit, dar care nu e in nomenclatorul firmei
+    const gasit = r.gasiti[cui];
+    if (!gasit) {
+      p.anaf = { verificatLa: acum, gasit: false, data: registru.ziua(o.data) };
+      rezultate.push({ cui, den: p.den || '', gasit: false, diferente: [] });
+      continue;
+    }
+    const dif = diferente(p, gasit);
+    p.anaf = Object.assign({ verificatLa: acum, gasit: true, data: registru.ziua(o.data) }, gasit);
+    if (o.actualizeazaDate && dif.length) {
+      for (const x of dif) p[x.camp] = x.alAnaf;
+      actualizati += 1;
+    }
+    rezultate.push({
+      cui, den: p.den || '', gasit: true,
+      inactiv: gasit.inactiv, radiat: gasit.radiat, tvaPlatitor: gasit.tvaPlatitor,
+      tvaLaIncasare: gasit.tvaLaIncasare, splitTva: gasit.splitTva, eFactura: gasit.eFactura,
+      diferente: o.actualizeazaDate ? [] : dif,
+    });
+  }
+  db.save();
+  const nr = (f) => rezultate.filter(f).length;
+  return {
+    verificatLa: acum, data: registru.ziua(o.data),
+    interogate: r.interogate, loturi: r.loturi,
+    rezultate: capList(rezultate, { label: 'verificare-anaf' }).items,
+    sumar: {
+      total: rezultate.length,
+      negasiti: nr((x) => !x.gasit),
+      inactivi: nr((x) => x.inactiv),
+      radiati: nr((x) => x.radiat),
+      faraTva: nr((x) => x.gasit && !x.tvaPlatitor),
+      tvaLaIncasare: nr((x) => x.tvaLaIncasare),
+      cuDiferente: nr((x) => x.diferente && x.diferente.length),
+      actualizati,
+    },
+  };
+}
+
 module.exports = {
   importAccounts,
   upsertPartner, importPartners, convertUploadToCsv,
   saveOpeningAnalytic, deleteOpeningAnalytic, setOpening,
+  verificaLaAnaf, diferente,
 };

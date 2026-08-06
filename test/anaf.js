@@ -243,6 +243,69 @@ function stubFetch(script) {
     ok('200 cu `id` -> trece', !(await aAruncat(() => sendResend('k', msg))));
   }
 
+  // ── Registrul public de contribuabili (verificarea partenerilor) ──────────────
+  section('Registru ANAF: verificarea partenerilor (fara apel real)');
+  {
+    const registru = require('../src/anafRegistru');
+    /** Raspuns servit de stub; `corp` poate fi sir (HTML) sau obiect (JSON). */
+    const stubReg = (corp, status) => {
+      const cereri = [];
+      global.fetch = (url, opts) => {
+        cereri.push(JSON.parse(opts.body));
+        const text = typeof corp === 'string' ? corp : JSON.stringify(corp);
+        return Promise.resolve({ ok: (status || 200) < 400, status: status || 200, text: () => Promise.resolve(text) });
+      };
+      return cereri;
+    };
+    const gasit = (cui, extra) => Object.assign({
+      date_generale: { cui, denumire: 'TEST SRL', adresa: 'Str. Test 1', nrRegCom: 'J40/1/2020', cod_CAEN: '4711', statusRO_e_Factura: true, stare_inregistrare: 'INREGISTRAT' },
+      inregistrare_scop_Tva: { scpTVA: true, perioade_TVA: [{ data_inceput_ScpTVA: '2020-01-01' }] },
+      inregistrare_RTVAI: { statusTvaIncasare: false },
+      stare_inactiv: { statusInactivi: false },
+      inregistrare_SplitTVA: { statusSplitTVA: false },
+      adresa_sediu_social: { scod_JudetAuto: 'B', sdenumire_Localitate: 'Bucuresti' },
+    }, extra || {});
+
+    const cereri = stubReg({ found: [gasit(12345674)], notFound: [999] });
+    const r1 = await registru.verifica(['RO12345674', '999']);
+    eq('CUI-ul pleaca numeric, fara prefixul RO', cereri[0][0].cui, 12345674);
+    ok('cererea poarta si data (starea e „la o data")', /^\d{4}-\d{2}-\d{2}$/.test(cereri[0][0].data));
+    eq('gasitul e indexat pe CUI ca sir', Object.keys(r1.gasiti).join(), '12345674');
+    eq('negasitele se intorc ca atare', r1.negasite.join(), '999');
+    eq('campurile contabile sunt extrase', [r1.gasiti['12345674'].tvaPlatitor, r1.gasiti['12345674'].inactiv, r1.gasiti['12345674'].eFactura].join(), 'true,false,true');
+    eq('judetul vine din sediul social', r1.gasiti['12345674'].judet, 'B');
+
+    // Duplicatele nu irosesc din plafonul de 500 pe apel (acelasi CUI cu si fara RO).
+    const c2 = stubReg({ found: [], notFound: [] });
+    await registru.verifica(['RO12345674', '12345674', ' 12345674 ']);
+    eq('CUI-urile duplicate se interogheaza o singura data', c2[0].length, 1);
+
+    // Capcana reala a serviciului: cererea respinsa vine ca HTML cu status 200.
+    stubReg('<html><head><title>Request Rejected</title></head><body>The requested URL was rejected.</body></html>');
+    let mesaj = '';
+    try { await registru.verifica(['12345674']); } catch (e) { mesaj = e.message; }
+    ok('raspunsul HTML nu ajunge la JSON.parse, ci da o eroare explicita', /nu.*JSON|altceva decat JSON/i.test(mesaj));
+    ok('mesajul e curatat de etichete HTML', !/</.test(mesaj));
+
+    // Starea „radiat" se citeste din TEXTUL starii, nu dintr-un camp boolean.
+    stubReg({ found: [gasit(111, { date_generale: { cui: 111, denumire: 'X', stare_inregistrare: 'RADIERE din data 29.06.2006' } })], notFound: [] });
+    const r3 = await registru.verifica(['111']);
+    eq('radierea se deduce din starea de inregistrare', r3.gasiti['111'].radiat, true);
+
+    // Sectiunile lipsa nu arunca — serviciul le omite pentru unele forme de organizare.
+    stubReg({ found: [{ date_generale: { cui: 222, denumire: 'MINIM SRL' } }], notFound: [] });
+    const r4 = await registru.verifica(['222']);
+    eq('inregistrarea minima se normalizeaza fara exceptie', r4.gasiti['222'].denumire + '|' + r4.gasiti['222'].tvaPlatitor, 'MINIM SRL|false');
+
+    // Loturile: peste 500 de CUI-uri se sparg in cereri succesive.
+    const c5 = stubReg({ found: [], notFound: [] });
+    const multe = Array.from({ length: registru.MAX_LOT + 3 }, (_, i) => String(1000000 + i));
+    const r5 = await registru.verifica(multe);
+    eq('peste plafon se trimit doua loturi', r5.loturi, 2);
+    eq('primul lot e plin la limita serviciului', c5[0].length, registru.MAX_LOT);
+    eq('al doilea poarta restul', c5[1].length, 3);
+  }
+
   // curatenie: recipisa de test scrisa in data/uploads + baza temporara
   try { fs.unlinkSync(recipisaPath); } catch (_) { /* ignora */ }
   try { fs.unlinkSync(process.env.CONTAB_DB_FILE); } catch (_) { /* ignora */ }

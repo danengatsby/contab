@@ -574,6 +574,37 @@ ok('„ambele" isi are insigna', partners.tipBadge('ambele').includes('Ambele'))
 ok('tipul necunoscut da liniuta, nu insigna goala', partners.tipBadge('inventat').includes('—'));
 ok('tipul lipsa da liniuta', partners.tipBadge(undefined).includes('—'));
 
+// Insigna de stare ANAF: ordinea e cea a GRAVITATII fiscale, nu a campurilor din raspuns.
+ok('neverificat nu se preface a fi in regula', partners.anafBadge(null).includes('—'));
+ok('neverificat spune ce lipseste', /neverificat/i.test(partners.anafBadge(null)));
+ok('inactivul e semnalat, cu temeiul', (() => {
+  const b = partners.anafBadge({ verificatLa: '2026-08-06', gasit: true, inactiv: true, dataInactivare: '2025-03-01' });
+  return b.includes('inactiv') && /art\. 11/.test(b);
+})());
+ok('inactivul BATE orice alta mentiune (e cea care taie deducerea)', (() => {
+  // partener inactiv DAR platitor de TVA si pe e-Factura: insigna nu are voie sa arate „✓"
+  const b = partners.anafBadge({ verificatLa: '2026-08-06', gasit: true, inactiv: true, tvaPlatitor: true, eFactura: true });
+  return b.includes('inactiv') && !b.includes('✓');
+})());
+ok('CUI inexistent -> insigna proprie', partners.anafBadge({ verificatLa: 'x', gasit: false }).includes('inexistent'));
+ok('TVA la incasare la furnizor e semnalat', partners.anafBadge({ verificatLa: 'x', gasit: true, tvaPlatitor: true, tvaLaIncasare: true }).includes('TVA la încasare'));
+ok('neinregistratul in scopuri de TVA e semnalat', partners.anafBadge({ verificatLa: 'x', gasit: true, tvaPlatitor: false }).includes('fără TVA'));
+ok('partenerul curat da bifa', partners.anafBadge({ verificatLa: 'x', gasit: true, tvaPlatitor: true }).includes('✓'));
+// Datele vin de la ANAF, deci sunt EXTERNE: ajung intr-un atribut `title`, unde ghilimelele conteaza.
+ok('starea de inregistrare e escapata in atribut', (() => {
+  const b = partners.anafBadge({ verificatLa: 'x', gasit: true, radiat: true, stareInregistrare: 'RADIERE" onmouseover="alert(1)' });
+  return !b.includes('onmouseover="alert') && b.includes('&quot;');
+})());
+ok('data inactivarii e escapata in atribut', !partners.anafBadge({ verificatLa: 'x', gasit: true, inactiv: true, dataInactivare: '"><img src=x>' }).includes('<img'));
+
+// Sumarul verificarii: constatarile care schimba un rezultat fiscal stau primele.
+ok('sumarul pune inactivii pe primul loc, cu temeiul', (() => {
+  const h = partners.sumarAnaf({ data: '2026-08-06', sumar: { total: 10, inactivi: 2, tvaLaIncasare: 3 } });
+  return h.indexOf('inactiv') < h.indexOf('TVA la încasare') && /art\. 11/.test(h);
+})());
+ok('fara probleme, sumarul o spune explicit', partners.sumarAnaf({ data: '2026-08-06', sumar: { total: 5 } }).includes('Niciun partener cu probleme'));
+ok('sumarul nu cade pe raspuns gol', typeof partners.sumarAnaf({}) === 'string');
+
 // Vizualizatorul de XML: titlul declaratiei si indentarea.
 eq('titlul pentru D300', viewer.xmlTitle('/xml/d300?period=2026-06'), 'D300 — Decont TVA (XML ANAF)');
 eq('titlul pentru SAF-T', viewer.xmlTitle('/xml/saft?year=2026'), 'SAF-T / D406 (XML ANAF)');

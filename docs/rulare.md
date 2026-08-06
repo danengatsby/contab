@@ -473,6 +473,30 @@ explicit, iar cursul se poate tasta manual ca înainte.
 | `CONTAB_BNR_RETRIES` | reîncercări la eroare tranzitorie (implicit 2) |
 | `CONTAB_BNR_BACKOFF_MS` | pauza inițială între reîncercări (implicit 500) |
 
+### Verificarea partenerilor în registrul public ANAF
+
+`POST /api/partners/verifica-anaf` interoghează registrul public de contribuabili și reține pe
+fiecare partener starea care **decide deductibilitatea**: inactiv (art. 11 — cheltuiala și TVA-ul
+nedeductibile), înregistrat în scopuri de TVA, TVA la încasare (art. 297 alin. (2) — deducerea
+cumpărătorului se amână până la plată), split TVA, RO e-Factura, radiere.
+
+Serviciul e **public** (fără certificat, fără OAuth), acceptă până la 500 de CUI-uri pe apel și
+maximum o cerere pe secundă — de aceea loturile pleacă secvențial, cu pauză între ele. Rezultatul
+alimentează controalele din `src/fiscalControls.js`; **lipsa verificării e ea însăși o constatare**,
+fiindcă „n-am verificat" nu înseamnă „e în regulă".
+
+| Variabilă | Ce face |
+|---|---|
+| `CONTAB_ANAF_REGISTRU_URL` | suprascrie URL-ul registrului public (probe/teste) |
+
+Două particularități ale serviciului, ridicate prin sondare directă, nu presupuse:
+
+- plicul e `{ found: [...], notFound: [cui, ...] }` — **fără** câmpurile `cod`/`message` pe care le
+  au alte endpoint-uri ANAF, deci succesul nu se poate detecta după ele;
+- la cerere malformată răspunde cu **HTML și status 200** („Request Rejected"), nu cu JSON. De aceea
+  răspunsul se verifică înainte de a fi parsat — altfel `JSON.parse` ar arunca o eroare de sintaxă
+  fără nicio legătură cu cauza reală.
+
 Suita de teste **nu iese pe rețea**: `test/http.js` pornește un fixture HTTP local și îi indică
 serverul-copil prin `CONTAB_BNR_URL_ZI`. Serverul de test e un proces copil, deci un stub pe
 `global.fetch` din procesul de test n-ar avea niciun efect asupra lui.

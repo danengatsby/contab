@@ -164,6 +164,41 @@ async function resetPgTestDb() {
 const BNR_XML = '<?xml version="1.0"?><DataSet><Cube date="2026-06-15">'
   + '<Rate currency="EUR">5.1000</Rate><Rate currency="HUF" multiplier="100">1.2500</Rate></Cube></DataSet>';
 let bnrHits = 0;
+// Fixture pentru registrul public ANAF, din acelasi motiv ca la BNR: serverul e proces COPIL.
+// Raspunde in forma REALA a serviciului (ridicata prin sondare): { found, notFound }, cu
+// sectiunile imbricate — un fixture „plat" ar fi validat un parser care nu merge in productie.
+let anafRegHits = 0;
+const ANAF_REG_GASIT = (cui, extra) => Object.assign({
+  date_generale: { cui, denumire: 'PARTENER TEST SRL', adresa: 'Str. Test 1', nrRegCom: 'J40/1/2020',
+    cod_CAEN: '4711', stare_inregistrare: 'INREGISTRAT', statusRO_e_Factura: true },
+  inregistrare_scop_Tva: { scpTVA: true, perioade_TVA: [{ data_inceput_ScpTVA: '2020-01-01' }] },
+  inregistrare_RTVAI: { statusTvaIncasare: false },
+  stare_inactiv: { statusInactivi: false },
+  inregistrare_SplitTVA: { statusSplitTVA: false },
+  adresa_sediu_social: { scod_JudetAuto: 'CJ', sdenumire_Localitate: 'Cluj-Napoca' },
+}, extra || {});
+function startAnafRegFixture(port) {
+  const http = require('http');
+  const srv = http.createServer((rq, rs) => {
+    anafRegHits += 1;
+    let corp = '';
+    rq.on('data', (c) => { corp += c; });
+    rq.on('end', () => {
+      let cerute = [];
+      try { cerute = JSON.parse(corp); } catch (_) { /* lasa gol */ }
+      const found = []; const notFound = [];
+      for (const c of cerute) {
+        const cui = Number(c.cui);
+        if (cui === 11223342) found.push(ANAF_REG_GASIT(cui, { stare_inactiv: { statusInactivi: true, dataInactivare: '2025-03-01' } }));
+        else if (cui === 99887760) found.push(ANAF_REG_GASIT(cui));
+        else notFound.push(cui);
+      }
+      rs.writeHead(200, { 'Content-Type': 'application/json' });
+      rs.end(JSON.stringify({ found, notFound }));
+    });
+  });
+  return new Promise((resolve) => srv.listen(port, '127.0.0.1', () => resolve(srv)));
+}
 function startBnrFixture(port) {
   const http = require('http');
   const srv = http.createServer((rq, rs) => {
@@ -181,13 +216,15 @@ async function main() {
   const PORT_BNR = await freePort();
   const bnrSrv = await startBnrFixture(PORT_BNR);
   globalThis.__bnrSrv = bnrSrv;
+  const PORT_AREG = await freePort();
+  globalThis.__anafRegSrv = await startAnafRegFixture(PORT_AREG);
   BASE = 'http://127.0.0.1:' + PORT;
   await resetPgTestDb();
   fs.writeFileSync(DBF, JSON.stringify(buildDb()));
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     // plafoane de upload/export mici, ca testele 429 sa nu faca zeci de cereri; conturile
     // din restul suitei raman sub ele (bucket-urile sunt per utilizator)
-    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_BNR_URL_ZI: 'http://127.0.0.1:' + PORT_BNR + '/zi', CONTAB_BNR_URL_AN: 'http://127.0.0.1:' + PORT_BNR + '/an{AN}', CONTAB_BNR_RETRIES: '0', CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1', CONTAB_RATE_IMPORT: '7', CONTAB_MESSAGES_MAX: '5' }),
+    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_BNR_URL_ZI: 'http://127.0.0.1:' + PORT_BNR + '/zi', CONTAB_BNR_URL_AN: 'http://127.0.0.1:' + PORT_BNR + '/an{AN}', CONTAB_BNR_RETRIES: '0', CONTAB_ANAF_REGISTRU_URL: 'http://127.0.0.1:' + PORT_AREG + '/tva', CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1', CONTAB_RATE_IMPORT: '7', CONTAB_MESSAGES_MAX: '5' }),
     stdio: 'ignore',
   });
   const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
@@ -573,6 +610,40 @@ async function main() {
       eq('generarea NU creeaza niciun articol contabil', nrDupa, nrInainte);
     }
 
+    // ── Verificarea partenerilor la ANAF (fixture LOCAL, zero apeluri externe) ──
+    {
+      const laA = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
+      // doi parteneri: unul INACTIV (11223342), unul curat (99887760), plus unul inexistent
+      for (const p of [{ cui: 'RO11223342', den: 'Inactiv SRL', tip: 'furnizor' },
+        { cui: '99887760', den: 'Curat SRL', tip: 'furnizor' },
+        { cui: '55555555', den: 'Fantoma SRL', tip: 'furnizor' }]) {
+        await req('POST', '/api/partners', { cookie: laA.cookie, body: p });
+      }
+      const hitsInainte = anafRegHits;
+      // Se cer EXPLICIT cele trei CUI-uri: baza suitei e partajata intre teste, iar o verificare
+      // „pe toti" ar numara si partenerii lasati de alte sectiuni. Asa se exercita si optiunea
+      // `cuiuri`, care altfel n-ar fi acoperita.
+      const treiCui = ['RO11223342', '99887760', '55555555'];
+      const vr = await req('POST', '/api/partners/verifica-anaf', { cookie: laA.cookie, body: { cuiuri: treiCui } });
+      eq('verificarea partenerilor la ANAF -> 200', vr.status, 200);
+      ok('cererea a ajuns la fixture-ul local, nu pe internet', anafRegHits > hitsInainte);
+      eq('se verifica doar CUI-urile cerute', vr.json.sumar.total, 3);
+      eq('sumarul numara inactivii', vr.json.sumar.inactivi, 1);
+      eq('sumarul numara CUI-urile inexistente', vr.json.sumar.negasiti, 1);
+      // Rezultatul se PERSISTA pe partener — de el depind controalele fiscale.
+      const pAfter = (await req('GET', '/api/partners', { cookie: laA.cookie })).json;
+      eq('starea ANAF ramane pe partener', !!(pAfter['11223342'].anaf || {}).inactiv, true);
+      eq('cheia de nomenclator e CUI-ul FARA prefixul RO', !!pAfter['11223342'], true);
+      eq('partenerul curat e marcat platitor de TVA', !!(pAfter['99887760'].anaf || {}).tvaPlatitor, true);
+      eq('cel inexistent e marcat negasit, nu lasat gol', (pAfter['55555555'].anaf || {}).gasit, false);
+      // Capcana reala: `upsertPartner` rescrie inregistrarea intreaga. O editare banala de adresa
+      // nu are voie sa stearga tocmai datele care decid deductibilitatea.
+      await req('POST', '/api/partners', { cookie: laA.cookie, body: { cui: '11223342', den: 'Inactiv SRL', adresa: 'Alta adresa' } });
+      const pEdit = (await req('GET', '/api/partners', { cookie: laA.cookie })).json;
+      eq('editarea partenerului NU sterge verificarea ANAF', !!(pEdit['11223342'].anaf || {}).inactiv, true);
+      eq('dar adresa chiar s-a schimbat (editarea a functionat)', pEdit['11223342'].adresa, 'Alta adresa');
+    }
+
     // ── Curs BNR (fixture LOCAL, zero apeluri externe) ────────────────────
     {
       const laBnr = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
@@ -602,6 +673,7 @@ async function main() {
       // Feed CAZUT: oprim fixture-ul. Raspunsul trebuie sa fie 503 (serviciul extern e jos, nu
       // aplicatia) si sa indrume spre cursul manual — nicio capacitate nu se pierde.
       await new Promise((resolve) => globalThis.__bnrSrv.close(resolve));
+      if (globalThis.__anafRegSrv) await new Promise((resolve) => globalThis.__anafRegSrv.close(resolve));
       const jos = await req('POST', '/api/curs-bnr/refresh', { cookie: laBnr.cookie, body: {} });
       eq('feed BNR cazut -> 503, nu 500', jos.status, 503);
       ok('mesajul indruma spre cursul manual', /manual/i.test((jos.json || {}).error || ''));

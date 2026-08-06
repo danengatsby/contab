@@ -4596,6 +4596,57 @@ ok('control: rulaj peste prag dar Intrastat deja marcat -> fara constatare de pr
 // firma coerenta -> nicio constatare, ok=true
 const fcOk = fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-05', data: '2026-05-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 1000 }] }] }, { year: '2026' });
 eq('control: firma coerenta -> 0 constatari, ok=true', fcOk.findings.length + '/' + fcOk.ok, '0/true');
+// ── Controale pe registrul public ANAF (art. 11 si art. 297 alin. (2)) ──
+{
+  const registru = require('../src/anafRegistru');
+  const svcP = require('../src/partnersService');
+  const cump = (cui) => [{ id: 'c1', data: '2026-06-10', period: '2026-06', tip: 'factura_cumparare_marfuri',
+    partenerCui: cui, partener: 'FURNIZOR SRL', status: 'postat',
+    lines: [{ debit: '371', credit: '401', suma: 10000 }, { debit: '4426', credit: '401', suma: 2100 }] }];
+  const cu = (anaf) => ({ partners: { 12345674: { cui: '12345674', den: 'FURNIZOR SRL', anaf } } });
+  const coduri = (anaf, ent) => fctrl.controalePartener(cu(anaf), ent || cump('RO12345674'), '2026').map((f) => f.cod);
+  const nivel = (anaf, cod) => (fctrl.controalePartener(cu(anaf), cump('RO12345674'), '2026').find((f) => f.cod === cod) || {}).nivel;
+
+  // Absenta verificarii e ea insasi o constatare: „n-am verificat" nu e „e in regula".
+  eq('partener neverificat cu achizitii -> se semnaleaza', coduri(null).join(), 'parteneri-neverificati-anaf');
+  eq('nivelul e „atentie", nu tacere', nivel(null, 'parteneri-neverificati-anaf'), 'atentie');
+  // Art. 11: inactivul face cheltuiala nedeductibila SI TVA-ul nedeductibil -> eroare.
+  eq('partener INACTIV -> eroare', nivel({ verificatLa: 'x', gasit: true, inactiv: true, tvaPlatitor: true }, 'partener-inactiv'), 'eroare');
+  // TVA dedusa de la cineva neinregistrat in scopuri de TVA.
+  ok('TVA dedusa de la neplatitor -> eroare', coduri({ verificatLa: 'x', gasit: true, tvaPlatitor: false }).includes('tva-dedusa-de-la-neplatitor'));
+  ok('neplatitor FARA TVA dedusa -> fara constatare', !fctrl.controalePartener(cu({ verificatLa: 'x', gasit: true, tvaPlatitor: false }),
+    [{ id: 'c2', data: '2026-06-10', period: '2026-06', tip: 'x', partenerCui: 'RO12345674', status: 'postat', lines: [{ debit: '371', credit: '401', suma: 10000 }] }], '2026')
+    .some((f) => f.cod === 'tva-dedusa-de-la-neplatitor'));
+  // Art. 297 alin. (2): TVA la incasare la FURNIZOR amana deducerea cumparatorului.
+  eq('furnizor cu TVA la incasare -> info (deducerea se amana)', nivel({ verificatLa: 'x', gasit: true, tvaPlatitor: true, tvaLaIncasare: true }, 'furnizor-tva-la-incasare'), 'info');
+  ok('CUI inexistent in registru -> atentie', coduri({ verificatLa: 'x', gasit: false }).includes('partener-inexistent-anaf'));
+  eq('partener verificat si curat -> nicio constatare', coduri({ verificatLa: 'x', gasit: true, tvaPlatitor: true }).length, 0);
+  // Fara achizitii nu se spune nimic: un client caruia ii vinzi nu-ti afecteaza deductibilitatea.
+  eq('doar vanzari catre partener -> niciun control de partener', fctrl.controalePartener(cu(null),
+    [{ id: 'v1', data: '2026-06-10', period: '2026-06', tip: 'factura_vanzare_marfuri', partenerCui: 'RO12345674', status: 'postat', lines: [{ debit: '4111', credit: '707', suma: 5000 }, { debit: '4111', credit: '4427', suma: 1050 }] }], '2026').length, 0);
+  // Cheia de nomenclator e CUI-ul fara RO: cu prefix, partenerul verificat n-ar mai fi gasit
+  // si controlul ar raporta fals „neverificat" tocmai pentru cel verificat.
+  eq('CUI-ul cu prefix RO se potriveste cu cheia din nomenclator', coduri({ verificatLa: 'x', gasit: true, tvaPlatitor: true }, cump('RO12345674')).length, 0);
+  eq('si cel fara prefix, la fel', coduri({ verificatLa: 'x', gasit: true, tvaPlatitor: true }, cump('12345674')).length, 0);
+
+  // Normalizarea raspunsului ANAF (forma ridicata prin sondarea serviciului real).
+  const n = registru.normalizeaza({
+    date_generale: { cui: 5, denumire: 'X SRL', stare_inregistrare: 'RADIERE din data 01.01.2020', statusRO_e_Factura: true },
+    inregistrare_scop_Tva: { scpTVA: false, perioade_TVA: [{ data_inceput_ScpTVA: '2010-01-01' }, { data_inceput_ScpTVA: '2015-01-01', data_sfarsit_ScpTVA: '2020-01-01', mesaj_ScpTVA: 'anulat' }] },
+  });
+  eq('perioada de TVA luata e ULTIMA (cea curenta)', n.tvaPanaLa + '|' + n.tvaMotivAnulare, '2020-01-01|anulat');
+  eq('radierea se citeste din textul starii', n.radiat, true);
+  eq('sectiunile lipsa nu arunca, dau false', [n.inactiv, n.splitTva, n.tvaLaIncasare].join(), 'false,false,false');
+  eq('CUI-ul se normalizeaza la sir', typeof n.cui, 'string');
+  eq('cuiNumeric curata prefixul si separatorii', registru.cuiNumeric('RO 12 345 674'), 12345674);
+  eq('cuiNumeric refuza ce nu e numar', registru.cuiNumeric('RO'), null);
+
+  // Diferentele fata de nomenclator: doar de forma nu inseamna diferenta.
+  eq('diferenta doar de majuscule/spatii nu se raporteaza', svcP.diferente({ den: 'test  srl' }, { denumire: 'TEST SRL' }).length, 0);
+  eq('diferenta reala se raporteaza pe camp', svcP.diferente({ den: 'Alt nume' }, { denumire: 'TEST SRL' }).map((x) => x.camp).join(), 'den');
+  eq('campurile goale la ANAF nu sterg datele noastre', svcP.diferente({ den: 'Al nostru', adresa: 'A' }, { denumire: '', adresa: '' }).length, 0);
+}
+
 // GUARD de scriere (fiscalProfile.entryGuard): neplatitor nu poate COLECTA TVA, dar taxarea inversa (net 0) e permisa
 const gNepl = fp.build({ tvaPlatitor: false });
 const gPlat = fp.build({ tvaPlatitor: true });
