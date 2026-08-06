@@ -107,7 +107,14 @@ restart. `src/deployState.js` face starea vizibilă: la pornire scrie ramura + c
 avertizează, cu lista fișierelor necomise), și apare în `/api/metrics` → `deploy`. **Nu blochează
 pornirea, deliberat** — un refuz de a porni ar lovi exact în urgența în care tocmai ai pus o
 corecție pe disc. Fără `.git` verdictul e `cunoscut: false` cu `curat: null`, nu „curat": „nu pot
-verifica" nu e „e bine", ca la drill-ul de restaurare.
+verifica" nu e „e bine", ca la drill-ul de restaurare. **Același verdict când `git status` însuși
+eșuează** — cazul e real, nu ipotetic: după niște comenzi git rulate ca `root`, `.git/index` a
+rămas `root:600`, procesul (utilizatorul `contab`) primea „Permission denied", iar ramura și
+commitul se citeau în continuare corect — deci pornirea raporta senin „main@… (arbore curat)" cu
+fișiere necomise pe disc, adică exact garda de deploy dezarmată tăcut. `git()` întoarce `null` la
+eșec, nu `''`: la `git status`, gol înseamnă „curat" și eșec înseamnă „habar n-avem", iar cele două
+nu au voie să arate la fel. Dacă repari drepturile, folosește `git config core.sharedRepository
+group` + `chown -R contab:contab .git` — altfel următoarea comandă git rulată ca root le strică din nou.
 **`pm2 restart` NU reaplică `ecosystem.config.js`** — păstrează configurația cu care procesul a fost
 pornit prima dată. O modificare acolo (plafon de memorie, căi de log, env) ajunge în producție doar
 prin `pm2 delete contab && pm2 start ecosystem.config.js && pm2 save`; altfel fișierul rămâne o
