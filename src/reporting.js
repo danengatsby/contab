@@ -244,7 +244,7 @@ function obligatii(db, period) {
 /** Recap D100 — impozitul pe veniturile microintreprinderii. Baza (art. 53) si cota (art. 51) vin
  *  din `src/impozitMicro.js`; aici raman doar decuparea trimestrului si semnalele de eligibilitate.
  *  `cota` transmis explicit ramane suprascriere (contract istoric al rutei si al PDF-ului). */
-function d100micro(db, period, cota) {
+function d100micro(db, period, cota, opts) {
   // Impozitul micro e TRIMESTRIAL: veniturile se cumuleaza pe toate lunile trimestrului
   // din care face parte `period` (ex. 2026-06 -> aprilie + mai + iunie).
   const m = Number(String(period || '').slice(5, 7)) || 0;
@@ -302,16 +302,31 @@ function d100micro(db, period, cota) {
   // evidenta pe trimestre pe care aplicatia inca n-o tine — deci aici se scade doar sponsorizarea
   // TRIMESTRULUI, iar restul apare in `sponsorizareNefolosita`, ca sa fie vizibil, nu pierdut tacit.
   const impozitBrut = round2((venit * rate) / 100);
+  // Reportul art. 56^1 alin. (3) se DERIVA, nu se stocheaza: un pas inainte peste trimestrele
+  // anterioare da exact ce a ramas nefolosit si inca valabil. Fara stocare nu e nevoie nici de
+  // migrare, nici de hook la postare — si dispare capcana in care o simpla PREVIZUALIZARE ar
+  // consuma plafon. `faraReport` opreste pasul inainte cand suntem deja in interiorul lui.
+  const reportIn = (opts && opts.faraReport) ? [] : reportMicroLaInceputul(db, period);
   const sponsTrim = round2(acc.postedEntries(db)
     .filter((e) => luni.includes(String(e.period || periodOf(e.data))))
     .reduce((sx, e) => sx + (e.lines || [])
       .filter((l) => String(l.debit || '').startsWith(CONT_SPONSORIZARE))
       .reduce((sy, l) => sy + (Number(l.suma) || 0), 0), 0));
   const plafonSpons = round2((impozitBrut * (Number(fiscal.FISCAL.sponsorizareImpozitPct) || 0)) / 100);
-  const sponsDedusa = round2(Math.min(sponsTrim, plafonSpons));
+  // Consum FIFO: „in ordinea inregistrarii" (alin. (3)) — deci reportul VECHI intai, sponsorizarea
+  // trimestrului la urma. Ordinea inversa ar lasa sa expire tocmai ce era pe cale sa expire.
+  const cons = consumaVintage(reportIn.concat([{ trimestru: period, suma: sponsTrim }]), plafonSpons);
+  const sponsDedusa = cons.folosit;
+  const dinReport = round2(cons.folosit - (cons.detaliu.filter((x) => x.trimestru === period)
+    .reduce((sx, x) => sx + x.folosit, 0)));
   return { period, trimestru, luni, venit, cota: rate,
     impozitBrut, sponsorizareTrimestru: sponsTrim, plafonSponsorizare: plafonSpons,
-    sponsorizareDedusa: sponsDedusa, sponsorizareNefolosita: round2(sponsTrim - sponsDedusa),
+    sponsorizareDedusa: sponsDedusa, sponsorizareDinReport: dinReport,
+    sponsorizareReportIn: reportIn, sponsorizareReportOut: cons.ramase,
+    sponsorizareExpirata: cons.expirate,
+    // ce ramane NEFOLOSIT din trimestrul curent (restul pleaca in report, nu se pierde)
+    sponsorizareNefolosita: round2(sponsTrim - (cons.detaliu.filter((x) => x.trimestru === period)
+      .reduce((sx, x) => sx + x.folosit, 0))),
     impozit: round2(impozitBrut - sponsDedusa),
     venitAn, plafonMicroLei: plafonLei, plafonMicroEur: fiscal.FISCAL.plafonMicroEur, avertismente,
     // Desfasurarea bazei (art. 53) si a cotei (art. 51), pentru raport si pentru revizie.
@@ -1067,6 +1082,57 @@ function stornoReport(db, period) {
  * sau din cerere; `lipsa` le enumera, iar ruta refuza generarea cat timp lipsesc — un IBAN gresit
  * trimite banii altcuiva.
  */
+// Reportul sponsorizarii la micro (art. 56^1 alin. (3)): 28 de trimestre, consum in ordinea
+// inregistrarii. Acelasi mecanism ca la pierderea fiscala (`accounting.consumaPierderi`), dar cu
+// unitatea de timp TRIMESTRU — de aceea nu se refoloseste functia, se refoloseste TIPARUL.
+const REPORT_SPONS_TRIMESTRE = 28;
+
+/** Numarul absolut de trimestre al unei perioade 'YYYY-MM' (pentru diferente si expirare). */
+function indexTrimestru(period) {
+  const y = Number(String(period).slice(0, 4));
+  const m = Number(String(period).slice(5, 7));
+  return y * 4 + Math.ceil(m / 3) - 1;
+}
+
+/** Consuma vintage-urile in limita `plafon`, FIFO, scotand din joc ce a expirat fata de ULTIMUL. */
+function consumaVintage(vintage, plafon) {
+  const lista = (vintage || []).filter((x) => round2(x.suma) > 0)
+    .sort((a, b) => indexTrimestru(a.trimestru) - indexTrimestru(b.trimestru));
+  if (!lista.length) return { folosit: 0, detaliu: [], ramase: [], expirate: [] };
+  const acum = indexTrimestru(lista[lista.length - 1].trimestru);
+  const expirate = lista.filter((x) => acum - indexTrimestru(x.trimestru) >= REPORT_SPONS_TRIMESTRE);
+  const valabile = lista.filter((x) => acum - indexTrimestru(x.trimestru) < REPORT_SPONS_TRIMESTRE);
+  let ramas = Math.max(0, round2(plafon));
+  const detaliu = valabile.map((x) => {
+    const folosit = round2(Math.min(round2(x.suma), ramas));
+    ramas = round2(ramas - folosit);
+    return { trimestru: x.trimestru, disponibil: round2(x.suma), folosit, ramas: round2(x.suma - folosit) };
+  });
+  return {
+    folosit: round2(detaliu.reduce((s, x) => s + x.folosit, 0)),
+    detaliu,
+    ramase: detaliu.filter((x) => x.ramas > 0).map((x) => ({ trimestru: x.trimestru, suma: x.ramas })),
+    expirate,
+  };
+}
+
+/** Pas INAINTE peste trimestrele anterioare: ce report intra in `period`. Fara stocare. */
+function reportMicroLaInceputul(db, period) {
+  const idx = indexTrimestru(period);
+  let vintage = [];
+  for (let k = REPORT_SPONS_TRIMESTRE; k >= 1; k--) {
+    const i = idx - k;
+    const an = Math.floor(i / 4);
+    const luna = ((i % 4) + 1) * 3;
+    const p = an + '-' + String(luna).padStart(2, '0');
+    const t = d100micro(db, p, null, { faraReport: true });
+    if (!t.impozitBrut && !t.sponsorizareTrimestru) continue; // trimestru fara activitate
+    const c = consumaVintage(vintage.concat([{ trimestru: p, suma: t.sponsorizareTrimestru }]), t.plafonSponsorizare);
+    vintage = c.ramase;
+  }
+  return vintage;
+}
+
 /** Cele patru trimestre micro ale unui an (sursa unica pentru plafonul si deducerea art. 56^1). */
 function trimestreMicro(db, year) {
   return [3, 6, 9, 12].map((m) => d100micro(db, String(year) + '-' + String(m).padStart(2, '0')));
@@ -1197,4 +1263,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d177, cheltuieliLipsaNeimputabila, d112, d300, d390, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };
+module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };

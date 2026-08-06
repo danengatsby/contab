@@ -3278,6 +3278,36 @@ eq('2023: plafonReportarePct expus = 100', ptOld.plafonReportarePct, 100);
   ok('si plafonul chiar taie (9000 > 20% din impozitul brut)', tPeste.plafonSponsorizare < 9000);
   eq('restul apare ca nefolosit, nu dispare', tPeste.sponsorizareNefolosita, round2(9000 - tPeste.plafonSponsorizare));
 
+  // REPORTUL (art. 56^1 alin. (3)): partea nefolosita se deduce in trimestrele urmatoare, 28 de
+  // trimestre, in ordinea inregistrarii. Se DERIVA din articole — fara stocare, fara migrare.
+  {
+    const ent = [
+      { id: 'v1', period: '2025-06', data: '2025-06-01', status: 'postat', lines: [{ debit: '4111', credit: '704', suma: 500000 }] },
+      { id: 's1', period: '2025-06', data: '2025-06-30', status: 'postat', lines: [{ debit: '6582', credit: '5121', suma: 9000 }] },
+      { id: 'v2', period: '2025-09', data: '2025-09-01', status: 'postat', lines: [{ debit: '4111', credit: '704', suma: 500000 }] },
+    ];
+    const vRep = Object.assign({}, vMicro, { entries: ent });
+    const t2 = rep3.d100micro(vRep, '2025-06');
+    const t3 = rep3.d100micro(vRep, '2025-09');
+    ok('T2: sponsorizarea depaseste plafonul, deci ramane rest', t2.sponsorizareNefolosita > 0);
+    eq('restul pleaca in report cu trimestrul lui', JSON.stringify(t2.sponsorizareReportOut), '[{"trimestru":"2025-06","suma":' + t2.sponsorizareNefolosita + '}]');
+    eq('T3: reportul din T2 intra ca disponibil', JSON.stringify(t3.sponsorizareReportIn), JSON.stringify(t2.sponsorizareReportOut));
+    ok('si se deduce efectiv in T3, in limita plafonului lui', t3.sponsorizareDinReport > 0);
+    eq('tot ce se deduce in T3 vine DIN REPORT (T3 n-are sponsorizare proprie)', t3.sponsorizareDedusa, t3.sponsorizareDinReport);
+    eq('impozitul T3 scade cu suma dedusa din report', t3.impozit, round2(t3.impozitBrut - t3.sponsorizareDinReport));
+    // Fara report, T3 ar fi platit impozitul intreg — asta e miezul reparatiei.
+    eq('fara report, T3 n-ar deduce nimic', rep3.d100micro(vRep, '2025-09', null, { faraReport: true }).sponsorizareDedusa, 0);
+  }
+  // Motorul de vintage-uri pe trimestre: FIFO si expirare la 28 de trimestre.
+  eq('28 de trimestre = fereastra de report', rep3.indexTrimestru('2032-06') - rep3.indexTrimestru('2025-06'), 28);
+  {
+    const c = rep3.consumaVintage([{ trimestru: '2025-03', suma: 100 }, { trimestru: '2032-06', suma: 50 }], 1000);
+    eq('vintage-ul mai vechi de 28 de trimestre EXPIRA', c.expirate.map((x) => x.trimestru).join(), '2025-03');
+    eq('doar cel valabil se consuma', c.folosit, 50);
+    const c2 = rep3.consumaVintage([{ trimestru: '2025-09', suma: 80 }, { trimestru: '2025-06', suma: 30 }], 50);
+    eq('consum FIFO: intai cel mai VECHI (2025-06), apoi restul', c2.detaliu.map((x) => x.trimestru + ':' + x.folosit).join('|'), '2025-06:30|2025-09:20');
+  }
+
   // Fara sponsorizare, nimic nu se schimba fata de comportamentul dinainte.
   const vFara = Object.assign({}, vMicro, { entries: [sponsEnt('2025')[0]] });
   const tFara = rep3.d100micro(vFara, '2025-06');
