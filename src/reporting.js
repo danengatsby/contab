@@ -294,7 +294,25 @@ function d100micro(db, period, cota) {
   if (!cota && ct.cota !== (fiscal.FISCAL.impozitMicro || 1)) avertismente.push(ct.motiv);
   for (const a of ct.avertismente) avertismente.push(a);
   for (const n of bz.note) avertismente.push(n);
-  return { period, trimestru, luni, venit, cota: rate, impozit: round2((venit * rate) / 100),
+  // SPONSORIZAREA la micro (art. 56^1): se SCADE din impozitul trimestrial, in limita a 20% din el.
+  // Pana acum aplicatia n-o scadea deloc, deci firmele micro declarau un impozit mai mare decat cel
+  // datorat, iar D177 vedea intreg plafonul ca redirectionabil (`sumaAnt` era mereu 0) — cele doua
+  // erori se ascundeau una pe alta si pareau coerente impreuna.
+  // Partea nefolosita NU se pierde: se reporteaza (art. 56^1 alin. (3)), dar reportul cere o
+  // evidenta pe trimestre pe care aplicatia inca n-o tine — deci aici se scade doar sponsorizarea
+  // TRIMESTRULUI, iar restul apare in `sponsorizareNefolosita`, ca sa fie vizibil, nu pierdut tacit.
+  const impozitBrut = round2((venit * rate) / 100);
+  const sponsTrim = round2(acc.postedEntries(db)
+    .filter((e) => luni.includes(String(e.period || periodOf(e.data))))
+    .reduce((sx, e) => sx + (e.lines || [])
+      .filter((l) => String(l.debit || '').startsWith(CONT_SPONSORIZARE))
+      .reduce((sy, l) => sy + (Number(l.suma) || 0), 0), 0));
+  const plafonSpons = round2((impozitBrut * (Number(fiscal.FISCAL.sponsorizareImpozitPct) || 0)) / 100);
+  const sponsDedusa = round2(Math.min(sponsTrim, plafonSpons));
+  return { period, trimestru, luni, venit, cota: rate,
+    impozitBrut, sponsorizareTrimestru: sponsTrim, plafonSponsorizare: plafonSpons,
+    sponsorizareDedusa: sponsDedusa, sponsorizareNefolosita: round2(sponsTrim - sponsDedusa),
+    impozit: round2(impozitBrut - sponsDedusa),
     venitAn, plafonMicroLei: plafonLei, plafonMicroEur: fiscal.FISCAL.plafonMicroEur, avertismente,
     // Desfasurarea bazei (art. 53) si a cotei (art. 51), pentru raport si pentru revizie.
     venitClasa7: bz.venitClasa7, scaderi: bz.scaderi, totalScaderi: bz.totalScaderi,
@@ -1049,6 +1067,11 @@ function stornoReport(db, period) {
  * sau din cerere; `lipsa` le enumera, iar ruta refuza generarea cat timp lipsesc — un IBAN gresit
  * trimite banii altcuiva.
  */
+/** Cele patru trimestre micro ale unui an (sursa unica pentru plafonul si deducerea art. 56^1). */
+function trimestreMicro(db, year) {
+  return [3, 6, 9, 12].map((m) => d100micro(db, String(year) + '-' + String(m).padStart(2, '0')));
+}
+
 function d177(db, year, opts) {
   const o = opts || {};
   // Plafonul se calculeaza DIFERIT dupa regim, si asta era limita lasata explicit la prima
@@ -1061,13 +1084,11 @@ function d177(db, year, opts) {
   if (micro) {
     regim = 'micro';
     // impozitul micro al ANULUI = suma celor patru trimestre
-    const impozitAn = round2([3, 6, 9, 12]
-      .reduce((sx, m) => sx + (d100micro(db, String(year) + '-' + String(m).padStart(2, '0')).impozit || 0), 0));
+    const impozitAn = round2(trimestreMicro(db, year).reduce((sx, t) => sx + (t.impozitBrut || 0), 0));
     plafon = round2((impozitAn * (Number(fiscal.FISCAL.sponsorizareImpozitPct) || 0)) / 100);
-    // La micro sponsorizarea NU e credit in declaratie ca la profit: `sumaAnt` ramane ce s-a
-    // scazut deja efectiv, iar aplicatia nu tine acel scazamant separat — deci 0, si tot
-    // plafonul e redirectionabil. Consemnat ca limita in dosarul de revizie.
-    folosit = 0;
+    // Cat s-a SCAZUT deja efectiv din impozitul trimestrial (art. 56^1) — acum se stie, fiindca
+    // `d100micro` calculeaza deducerea. Restul e ce se mai poate redirectiona prin D177.
+    folosit = round2(trimestreMicro(db, year).reduce((sx, t) => sx + t.sponsorizareDedusa, 0));
   } else {
     regim = 'profit';
     const pt = acc.profitTax(db, year, o.profitTax || {});
