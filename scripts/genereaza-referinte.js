@@ -115,6 +115,18 @@ w('D101-defalcare', xml.d101Xml(v.company, rep.d101(vDef, '2026', {
   cheltAuto: 15000,                                   // vehicule fara uz exclusiv business (50%)
   amortizare: { contabila: 30000, fiscala: 22000 },   // art. 28 -> P28 = 30000, P11 = 22000
 }), who));
+// D177 (redirectionarea impozitului catre beneficiari). Exemplul n-are sponsorizari, deci calea
+// n-ar fi exercitata deloc — acelasi tipar ca la D390 / D300-report / D101-defalcare. Aici un an
+// cu sponsorizare de 1.500 pe o cifra de afaceri care lasa plafon, si un beneficiar complet.
+const vSpons = {
+  company: v.company, openingBalances: {},
+  partners: { 12345674: { cui: '12345674', den: 'ASOCIATIA TEST', adresa: 'Str. ONG 2', iban: 'RO49AAAA1B31007593840000', telefon: '0211111111', email: 'ong@test.ro' } },
+  entries: [{ id: 'sp1', firmaId: 1, data: '2025-06-30', period: '2025-06', tip: 'diverse', tipNume: 'Sponsorizare',
+    status: 'postat', partener: 'ASOCIATIA TEST', partenerCui: 'RO12345674', document: 'CTR 7/2025',
+    lines: [{ debit: '5121', credit: '704', suma: 500000 }, { debit: '6582', credit: '5121', suma: 1500 }] }],
+};
+w('D177', xml.d177Xml(v.company, rep.d177(vSpons, '2025', { profitTax: { cota: 16, plafoane: require('../src/fiscalConfig').RATES } })));
+
 // D205 (retineri la sursa) — an incheiat, cu un beneficiar de dividende
 const vDiv = { entries: [{ id: 'd1', data: '2025-08-10', period: '2025-08', tip: 'repartizare_dividende', tipNume: 'Div', partener: 'Ion', partenerCui: '1900101415238', lines: [{ debit: '457', credit: '5121', suma: 9200 }, { debit: '457', credit: '446', suma: 800 }, { debit: '117', credit: '457', suma: 10000 }] }], openingBalances: {} };
 w('D205', xml.d205Xml(v.company, '2025', rep.d205(vDiv, '2025'), who));
