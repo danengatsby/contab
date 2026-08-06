@@ -43,6 +43,11 @@ module.exports = function register(app, ctx) {
         ? { metodaFiscala: b.metodaFiscala } : {}),
       ...(Number(b.durataFiscalaLuni) > 0 && Number(b.durataFiscalaLuni) !== Number(b.durataLuni)
         ? { durataFiscalaLuni: Math.max(1, Number(b.durataFiscalaLuni)) } : {}),
+      // Art. 28 alin. (12) lit. m): vehicul de persoane cu maxim 9 scaune -> amortizarea FISCALA
+      // e plafonata la 1.500 lei/luna. Marcaj EXPLICIT, nu dedus din contul 2133: acolo intra si
+      // camioanele, autoutilitarele si utilajele, care nu au plafon. Un marcaj gresit ar schimba
+      // impozitul, deci il pune contabilul, nu o euristica.
+      ...(b.vehiculM1 ? { vehiculM1: true } : {}),
     };
     d.assets.push(a);
     logAudit('asset.create', a.denumire + ' (' + a.cont + ')', { req });

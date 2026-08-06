@@ -3209,6 +3209,68 @@ const ptOld = acc.profitTax({ entries: [{ id: '1', period: '2023-03', data: '202
 eq('2023: regim vechi -> pierdere recuperata 100% pana la baza (4000)', ptOld.pierdereFolosita, 4000);
 eq('2023: profit impozabil 0 -> impozit 0', ptOld.impozit, 0);
 eq('2023: plafonReportarePct expus = 100', ptOld.plafonReportarePct, 100);
+// ── VECHIMEA pierderii fiscale (art. 31): 7 ani pana in 2023, 5 ani din 2024 ──
+{
+  eq('pierderile de pana in 2023 se recupereaza 7 ani', acc.aniReportPierdere(2023), 7);
+  eq('cele din 2024 incolo, 5 ani', acc.aniReportPierdere(2024), 5);
+  eq('regimul se decide pe VINTAGE, nu pe anul curent', acc.aniReportPierdere(2019), 7);
+
+  // Consumul: FIFO (cea mai veche prima — e cea care expira prima), cu expirarile scoase din joc.
+  const c = acc.consumaPierderi([{ an: 2018, suma: 50000 }, { an: 2022, suma: 30000 }, { an: 2024, suma: 20000 }], 2026, 40000);
+  eq('pierderea din 2018 a EXPIRAT in 2026 (7 ani, pana in 2025)', c.expirate.map((x) => x.an).join(), '2018');
+  eq('nu intra in disponibil', c.disponibil, 50000);
+  eq('se consuma FIFO: intai 2022 (30000), apoi 10000 din 2024', c.detaliu.map((r) => r.an + ':' + r.folosit).join('|'), '2022:30000|2024:10000');
+  eq('totalul folosit respecta plafonul dat', c.folosit, 40000);
+  eq('mai departe se reporteaza doar restul VALABIL', JSON.stringify(c.ramase), '[{"an":2024,"suma":10000}]');
+  ok('expirarea poarta motivul, ca sa se vada in registru', /7 ani/.test((c.expirate[0] || {}).motiv || ''));
+
+  // Limita exacta a termenului — anul in care INCA se poate si primul in care nu se mai poate.
+  eq('pierdere 2024 folosibila in 2029 (al 5-lea an)', acc.consumaPierderi([{ an: 2024, suma: 100 }], 2029, 1000).folosit, 100);
+  eq('aceeasi pierdere e EXPIRATA in 2030', acc.consumaPierderi([{ an: 2024, suma: 100 }], 2030, 1000).folosit, 0);
+  eq('pierdere 2023 folosibila in 2030 (al 7-lea an)', acc.consumaPierderi([{ an: 2023, suma: 100 }], 2030, 1000).folosit, 100);
+  eq('si expirata in 2031', acc.consumaPierderi([{ an: 2023, suma: 100 }], 2031, 1000).folosit, 0);
+  eq('pierderea anului CURENT nu e „reportata" (se trateaza separat)', acc.consumaPierderi([{ an: 2026, suma: 100 }], 2026, 1000).folosit, 0);
+
+  // Prin profitTax: acelasi profit, dar o pierdere expirata NU mai reduce impozitul.
+  const bazaEnt = ptAdjEnt; // profit contabil 4000 -> plafon 70% = 2800
+  const cuValabila = acc.profitTax({ entries: bazaEnt }, '2026', { cota: 16, pierderi: [{ an: 2022, suma: 5000 }] });
+  const cuExpirata = acc.profitTax({ entries: bazaEnt }, '2026', { cota: 16, pierderi: [{ an: 2018, suma: 5000 }] });
+  eq('pierdere valabila -> se foloseste plafonul de 70%', cuValabila.pierdereFolosita, 2800);
+  eq('pierdere EXPIRATA -> nu se foloseste nimic', cuExpirata.pierdereFolosita, 0);
+  ok('si impozitul creste corespunzator', cuExpirata.impozit > cuValabila.impozit);
+  eq('expirata: impozit pe toata baza (4000 x 16%)', cuExpirata.impozit, 640);
+  eq('pierderea expirata NU se mai reporteaza mai departe', JSON.stringify(cuExpirata.pierderiDeReportat), '[]');
+  eq('cea valabila isi reporteaza restul, cu anul ei', JSON.stringify(cuValabila.pierderiDeReportat), '[{"an":2022,"suma":2200}]');
+  ok('detaliul pe vintage-uri e expus pentru registrul fiscal', Array.isArray(cuValabila.pierderiDetaliu) && cuValabila.pierderiDetaliu[0].expiraDupa === 2029);
+  // Contractul ISTORIC (scalar, fara an) ramane: nu se poate imbatrani ce n-are varsta.
+  const scalar = acc.profitTax({ entries: bazaEnt }, '2026', { cota: 16, pierdereReportata: 5000 });
+  eq('scalarul se comporta ca inainte', scalar.pierdereFolosita, 2800);
+  eq('si nu inventeaza vintage-uri', scalar.pierderiDetaliu, null);
+  // Anul cu pierdere: vintage-ul nou poarta anul curent si se adauga la resturi.
+  const anPierdere = acc.profitTax({ entries: [{ id: '1', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 3000 }] }, { id: '2', period: '2026-04', data: '2026-04-01', lines: [{ debit: '607', credit: '371', suma: 8000 }] }] }, '2026', { cota: 16, pierderi: [{ an: 2022, suma: 1000 }] });
+  eq('pierderea anului curent intra ca vintage nou, datat', JSON.stringify(anPierdere.pierderiDeReportat), '[{"an":2022,"suma":1000},{"an":2026,"suma":5000}]');
+}
+
+// ── Plafonul de 1.500 lei/luna la amortizarea auto (art. 28 alin. (12) lit. m) ──
+{
+  const mf = { id: 'auto1', denumire: 'Autoturism', cont: '2133', cost: 200000, dataPif: '2026-01-15', durataLuni: 60, metoda: 'liniara', status: 'activ' };
+  const auto = Object.assign({}, mf, { vehiculM1: true });
+  eq('amortizarea CONTABILA ramane intreaga (6811 se inregistreaza normal)', assets.annualFor(auto, '2026', false), 36666.63);
+  eq('cea FISCALA se plafoneaza la 1500/luna x 11 luni', assets.annualFor(auto, '2026', true), 16500);
+  eq('fara marcaj M1, plafonul nu se aplica', assets.annualFor(mf, '2026', true), 36666.63);
+  const dif = assets.depreciationDifference([auto], '2026');
+  eq('diferenta devine ajustare (nedeductibil)', dif.diferenta, 20166.63);
+  ok('si e semnalata ca diferenta', dif.areDiferenta);
+  // Plafonarea e PE LUNA, nu pe an: un an cu mai putine luni nu primeste plafonul lunilor lipsa.
+  eq('anul urmator, plin: 12 luni x 1500', assets.annualFor(auto, '2027', true), 18000);
+  // Sub plafon nu se schimba nimic — masina ieftina se amortizeaza fiscal integral.
+  const ieftin = { id: 'auto2', denumire: 'Auto mic', cont: '2133', cost: 60000, dataPif: '2026-01-15', durataLuni: 60, metoda: 'liniara', status: 'activ', vehiculM1: true };
+  eq('1000 lei/luna < 1500 -> fiscal = contabil', assets.annualFor(ieftin, '2026', true), assets.annualFor(ieftin, '2026', false));
+  eq('deci nicio ajustare', assets.depreciationDifference([ieftin], '2026').diferenta, 0);
+  // `panaLa` (declaratia trimestriala) se combina cu plafonul.
+  eq('la 31 martie: 2 luni plafonate (feb, mar)', assets.annualFor(auto, '2026', true, '2026-03'), 3000);
+}
+
 // Suprascriere manuala a plafonului (opts.pierdereRecuperabilaPct).
 const ptOverride = acc.profitTax({ entries: ptAdjEnt }, '2026', { cota: 16, pierdereReportata: 5000, pierdereRecuperabilaPct: 100 });
 eq('2026 + override 100% -> pierdere folosita 4000 (ca regimul vechi)', ptOverride.pierdereFolosita, 4000);

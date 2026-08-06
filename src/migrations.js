@@ -100,6 +100,35 @@ const MIGRATIONS = [
       return n;
     },
   },
+  {
+    v: 5,
+    desc: 'pierderea fiscala capata VECHIME: harta an -> total cumulat devine lista de vintage-uri',
+    up(d) {
+      // Art. 31: pierderea se recupereaza in 5 ani (din 2024) sau 7 (inainte), deci termenul se
+      // masoara pe VECHIMEA fiecarei pierderi. Vechea forma — `pierdereFiscala[an] = total cumulat`
+      // — nu avea varsta, deci nimic nu putea expira.
+      //
+      // Conversia unui CUMULAT in vintage-uri e imposibila exact: totalul nu spune din ce ani
+      // provine. Alegerea deliberata e sa dateze intreaga suma la CEL MAI VECHI an inregistrat.
+      // Directia conteaza: asa pierderea expira mai DEVREME decat ar putea in realitate, deci
+      // impozitul poate iesi mai mare, niciodata mai mic — iar rezultatul e VIZIBIL in registrul
+      // fiscal (`pierderiDetaliu`), unde contabilul il poate corecta. Datarea la anul cel mai
+      // RECENT ar fi facut invers: ar fi prelungit tacit pierderi care poate expirasera deja.
+      let n = 0;
+      for (const f of d.firme || []) {
+        if (Array.isArray(f.pierderiFiscale)) continue;   // deja migrata
+        const harta = f.pierdereFiscala;
+        if (!harta || typeof harta !== 'object') continue;
+        const ani = Object.keys(harta).map(Number).filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+        if (!ani.length) continue;
+        const ultimul = ani[ani.length - 1];             // totalul cel mai recent = soldul curent
+        const suma = Math.round((Number(harta[ultimul]) || 0) * 100) / 100;
+        f.pierderiFiscale = suma > 0 ? [{ an: ani[0], suma, aproximat: true }] : [];
+        n += 1;
+      }
+      return n;
+    },
+  },
 ];
 
 const LATEST = MIGRATIONS.reduce((m, x) => Math.max(m, x.v), 0);

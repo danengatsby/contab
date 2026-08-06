@@ -7,8 +7,16 @@
 
 const { round2 } = require('./util');
 const coa = require('./chartOfAccounts');
+// Plafonul auto (art. 28 alin. (12) lit. m) se citeste LA RULARE din `fiscal.FISCAL`, nu din
+// fiscalConfig direct: acolo ajung si suprascrierile din Setari, iar o valoare capturata la
+// import ar ramane cea implicita pentru firmele care si-au schimbat parametrii.
+const fiscal = require('./fiscal');
 
 const METHODS = ['liniara', 'degresiva', 'accelerata'];
+function plafonAutoLunar() {
+  const v = Number(fiscal.FISCAL.plafonAmortizareAutoLunar);
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
 
 /** Contul de amortizare corespunzator contului de imobilizare. */
 function contAmortizare(cont) {
@@ -195,11 +203,17 @@ function hasFiscalPlan(asset) {
 function annualFor(asset, year, fiscal, panaLa) {
   const rows = schedule(fiscal ? fiscalView(asset) : asset);
   const limita = panaLa ? String(panaLa).slice(0, 7) : null;
+  // Art. 28 alin. (12) lit. m): la vehiculele de persoane cu maxim 9 scaune, amortizarea FISCALA
+  // e deductibila cel mult `plafonAmortizareAutoLunar` PE LUNA. Plafonarea se face pe fiecare
+  // luna, nu pe total: un an cu 11 luni de amortizare nu primeste plafonul lunii lipsa.
+  // Se aplica DOAR planului fiscal — cel contabil ramane intreg (6811 se inregistreaza normal),
+  // iar diferenta devine ajustare in registrul fiscal, ca la orice divergenta art. 28.
+  const plafon = (fiscal && asset && asset.vehiculM1) ? plafonAutoLunar() : 0;
   let s = 0;
   for (const r of rows) {
     if (!String(r.period).startsWith(String(year))) continue;
     if (limita && String(r.period) > limita) continue;
-    s = round2(s + r.amount);
+    s = round2(s + (plafon > 0 ? Math.min(r.amount, plafon) : r.amount));
   }
   return s;
 }

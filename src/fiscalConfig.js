@@ -51,6 +51,11 @@ const RATES = {
   impozitProfit: 16,      // % — art. 17 Cod fiscal
   impozitDividende: 16,   // % — Legea 141/2025 (de la 1 ianuarie 2026)
   deductibilitateTvaAutoLimitat: 50, // % — art. 298 Cod fiscal (vehicule fara uz exclusiv business)
+  // Art. 28 alin. (12) lit. m): amortizarea FISCALA a mijloacelor de transport de persoane cu cel
+  // mult 9 scaune (categoria M1) e deductibila cel mult la acest nivel PE LUNA. E un plafon pe
+  // amortizare, DISTINCT de cele doua de mai sus (TVA 50% — art. 298; cheltuieli 50% — art. 25);
+  // se aplica peste ele, si se greseste tocmai fiindca seamana cu ele.
+  plafonAmortizareAutoLunar: 1500, // lei/luna
   // ── Plafoane de deductibilitate la impozitul pe profit (art. 25 si 40^2 Cod fiscal) ──
   // Procentele sunt PLAFOANE, nu cote de nedeductibilitate: partea din cheltuiala care
   // depaseste plafonul devine nedeductibila. Vezi src/deductibilitate.js pentru baza de calcul
@@ -198,6 +203,9 @@ const SURSE = {
   protocol: 'Art. 25(3)(a) Cod fiscal — plafon 2%, baza = profit contabil + protocol + impozit pe profit',
   social: 'Art. 25(3)(b) Cod fiscal — plafon 5% din fondul de salarii',
   autoCheltuiala: 'Art. 25(3)(l) Cod fiscal — 50% din cheltuielile auto (vehicule fara uz exclusiv business)',
+  amortizareAuto: 'Art. 28 alin. (12) lit. m) Cod fiscal — amortizarea fiscala a vehiculelor de '
+    + 'persoane cu maxim 9 scaune (M1) e deductibila cel mult ' + RATES.plafonAmortizareAutoLunar
+    + ' lei/luna; partea peste plafon e nedeductibila si NU se reporteaza',
   sponsorizare: 'Art. 25(4)(i) Cod fiscal — cheltuiala integral nedeductibila, dar CREDIT FISCAL '
     + 'min(' + RATES.sponsorizareCaPct + '% din cifra de afaceri; ' + RATES.sponsorizareImpozitPct
     + '% din impozitul pe profit), cu report ' + RATES.sponsorizareReportAni + ' ani',

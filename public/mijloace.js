@@ -52,6 +52,8 @@ $('#assetForm').addEventListener('submit', async (e) => {
   // contabile, dar nu are rost sa le trimitem.
   if (f.metodaFiscala && f.metodaFiscala.value) body.metodaFiscala = f.metodaFiscala.value;
   if (f.durataFiscalaLuni && f.durataFiscalaLuni.value) body.durataFiscalaLuni = f.durataFiscalaLuni.value;
+  // Plafonul auto (art. 28 alin. (12) lit. m) se trimite doar cand e bifat: marcaj explicit.
+  if (f.vehiculM1 && f.vehiculM1.checked) body.vehiculM1 = true;
   try { await api('/api/assets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Mijloc fix adăugat'); f.reset(); f.valoareReziduala.value = '0'; loadAssets(); }
   catch (err) { toast(err.message, true); }
 });
