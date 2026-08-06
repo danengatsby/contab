@@ -373,6 +373,12 @@ async function init() {
   $$('button[data-tab="salarizare"], button[data-tab="angajati"], button[data-tab="regsalarii"]')
     .forEach((b) => b.classList.toggle('hidden', faraSalarii));
   const gs = $('#navgrupSalarii'); if (gs) gs.classList.toggle('hidden', faraSalarii); // tot meniul, nu doar intrarea
+  // Portofoliul e tabelul „toate firmele deodata", deci are sens doar de la A DOUA firma in sus.
+  // Un patron cu firma lui vedea o intrare care nu-i spune nimic. Se ASCUNDE, nu se scoate:
+  // la a doua firma reapare singur, fara nicio setare. Acelasi tipar cu `.hidden` ca mai sus —
+  // un display:none inline ar fi batut de `!important`-ul din regulile de sidebar.
+  const maiMulteFirme = !!(USER.firme && USER.firme.length > 1);
+  const np = $('#navPortofoliu'); if (np) np.classList.toggle('hidden', !maiMulteFirme);
   initUiMode(); // mod simplu implicit pentru necontabili (ascunde partea tehnica din meniu)
   // Intoarcere de la Stripe (user logat) dupa abonarea unei firme: confirmare + starea se activeaza la webhook
   const cr = /[?&]checkout=(success|cancel)/.exec(location.search);

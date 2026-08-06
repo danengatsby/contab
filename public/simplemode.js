@@ -19,7 +19,7 @@ const GLOSAR = [
   ['Sold / Solduri inițiale', 'Soldul = ce rămâne într-un cont după toate plusurile și minusurile. Soldurile inițiale sunt punctul de pornire — situația firmei în ziua în care ai adus-o în aplicație.'],
   ['Rulaj', 'Cât s-a MIȘCAT printr-un cont într-o perioadă — total intrări și total ieșiri — spre deosebire de sold, care e ce a RĂMAS. Un cont poate avea rulaj mare și sold zero: au intrat și au ieșit aceiași bani.'],
   ['Analitic (cont analitic)', 'Împărțirea unui cont în „sertare mai mici": contul 4111 „clienți" se desface pe fiecare client în parte. Sintetic = totalul; analitic = detaliul din spatele lui.'],
-  ['Exercițiu financiar', 'Anul contabil al firmei — de regulă 1 ianuarie – 31 decembrie. La finalul lui se închid conturile și se întocmesc situațiile financiare. Când vezi „Exercițiul 2026", citește „anul 2026".'],
+  ['Exercițiu financiar', 'Anul contabil al firmei — de regulă 1 ianuarie – 31 decembrie. La finalul lui se închid conturile și se întocmesc situațiile financiare. În aplicație scrie „Anul 2026" — e același lucru.'],
   ['Reconciliere (punctaj)', 'Potrivirea a două evidențe care ar trebui să spună același lucru: extrasul de la bancă cu încasările din aplicație, sau soldul unui furnizor cu ce zice el că îi datorezi. Diferența arată ce lipsește sau ce s-a înregistrat greșit.'],
   ['Plafon', 'O limită legală de la care regulile se schimbă: peste plafonul de scutire devii plătitor de TVA, peste plafonul de microîntreprindere treci la impozit pe profit, peste plafonul de numerar plata trebuie făcută prin bancă. Aplicația te avertizează când te apropii.'],
   ['TVA colectată', 'TVA-ul pe care l-ai adăugat pe facturile TALE către clienți. Nu e banul tău — îl strângi pentru stat.'],
