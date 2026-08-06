@@ -256,6 +256,14 @@ export async function renderPachetWin() {
   }
   card.classList.remove('hidden');
   const l = $('#pachetWinLipsa'); if (l) l.classList.add('hidden');
+  // Descarcarea e oprita cat timp pachetul e in dezvoltare: butonul ramane la vedere (ca sa se stie
+  // ca vine), dar spune limpede de ce nu da nimic. Legatura se face o singura data (`legat`),
+  // fiindca renderPachetWin ruleaza la fiecare intrare in tab.
+  const buton = $('#pachetWinBtn');
+  if (buton && !buton.dataset.legat) {
+    buton.dataset.legat = '1';
+    buton.addEventListener('click', () => { alert('În dezvoltare'); });
+  }
   const mb = (Number(m.octeti) || 0) / 1048576;
   // Amprenta se arata trunchiata, dar INTREAGA in `title`: cine vrea s-o verifice cu
   // `Get-FileHash` o poate copia, fara ca randul sa devina ilizibil pentru restul.

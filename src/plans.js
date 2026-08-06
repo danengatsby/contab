@@ -38,7 +38,7 @@ const FEATURES = [
   'TVA + declarații de bază',
   'Toate declarațiile + SAF-T',
   'Stocuri + producție',
-  'Situații financiare complete (F10–F40)',
+  'Situații financiare anuale complete (bilanț, P&L, fluxuri, capitaluri, note)',
   'Suport prioritar',
 ];
 

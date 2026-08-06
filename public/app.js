@@ -137,7 +137,7 @@ function onTab(t) {
   // indiferent de pagina activa. Cockpitul lunar se incarca doar unde se vede.
   if (t === 'inchideri' || t === 'inchidere-an') loadClosings();
   if (t === 'inchideri') loadMonthlyClose();
-  // Situatiile si anexele lor (F30, F40, note): acelasi `loadStatements()` umple ambele pagini.
+  // Situatiile si anexele lor (fluxuri, capitaluri, note): acelasi `loadStatements()` umple ambele pagini.
   if (t === 'situatii' || t === 'anexe') loadStatements();
   // Trei panouri au plecat din „Situatii financiare", fiindca nu erau situatii financiare:
   // bugetul e control de gestiune INTERN, registrul fiscal tine de impozitul pe profit, iar

@@ -1,6 +1,9 @@
 'use strict';
 
-// Situatii financiare (P&L, bilant, fluxuri, capitaluri, note) + setul complet F10/F20/F30/F40.
+// Situatii financiare (P&L, bilant, fluxuri, capitaluri, note).
+// ATENTIE la nume: „fluxuri" si „capitaluri" de aici NU sunt formularele F30/F40 din setul ANAF
+// (acolo F30 = Date informative, F40 = Situatia activelor imobilizate). Sunt componente OMFP
+// 1802/2014 fara numar de formular electronic.
 
 const { C, clean, finish, header, newDoc, table } = require('./helpers');
 const { fmt, periodLabel } = require('../util');
@@ -174,7 +177,7 @@ function notesPdf(res, company, n) {
 // Factura emisa (document vizual pentru client), generata din articolul contabil.
 /** Datele comune ale facturii: baza/TVA/total din linii + clientul din nomenclator. */
 
-// Situatia fluxurilor de trezorerie (F30), metoda directa.
+// Situatia fluxurilor de trezorerie, metoda directa.
 function cashFlowBody(doc, cf) {
   const R = (ind, val, opt) => Object.assign({ ind, val: fmt(val) }, opt || {});
   const rows = [
@@ -214,14 +217,14 @@ function cashFlowBody(doc, cf) {
 
 function cashFlowPdf(res, company, cf) {
   const doc = newDoc(false);
-  header(doc, company, 'Situatia fluxurilor de trezorerie (F30)', 'Exercitiul ' + cf.year);
+  header(doc, company, 'Situatia fluxurilor de trezorerie', 'Exercitiul ' + cf.year);
   cashFlowBody(doc, cf);
   finish(doc, res, 'flux-trezorerie-f30.pdf');
 }
 
-// Situatia modificarilor capitalurilor proprii (F40).
+// Situatia modificarilor capitalurilor proprii.
 
-// Situatia modificarilor capitalurilor proprii (F40).
+// Situatia modificarilor capitalurilor proprii.
 function equityBody(doc, eq) {
   const Y0 = String(Number(eq.year) - 1);
   const rows = eq.rows.map((r) => ({ nume: r.nume, soldI: fmt(r.soldI), cresteri: fmt(r.cresteri), reduceri: fmt(r.reduceri), soldF: fmt(r.soldF) }));
@@ -245,7 +248,7 @@ function equityBody(doc, eq) {
 
 function equityPdf(res, company, eq) {
   const doc = newDoc(false);
-  header(doc, company, 'Situatia modificarilor capitalurilor proprii (F40)', 'Exercitiul ' + eq.year);
+  header(doc, company, 'Situatia modificarilor capitalurilor proprii', 'Exercitiul ' + eq.year);
   equityBody(doc, eq);
   finish(doc, res, 'modificari-capital-f40.pdf');
 }
@@ -273,14 +276,14 @@ function setStatementsPdf(res, company, data) {
   if (data.cashFlow) {
     n++;
     doc.addPage();
-    doc.fillColor(C.head).font('Helvetica-Bold').fontSize(13).text(roman(n) + '. Situatia fluxurilor de trezorerie (F30)', doc.page.margins.left, doc.y);
+    doc.fillColor(C.head).font('Helvetica-Bold').fontSize(13).text(roman(n) + '. Situatia fluxurilor de trezorerie', doc.page.margins.left, doc.y);
     doc.moveDown(0.3);
     cashFlowBody(doc, data.cashFlow);
   }
   if (data.equity) {
     n++;
     doc.addPage();
-    doc.fillColor(C.head).font('Helvetica-Bold').fontSize(13).text(roman(n) + '. Situatia modificarilor capitalurilor proprii (F40)', doc.page.margins.left, doc.y);
+    doc.fillColor(C.head).font('Helvetica-Bold').fontSize(13).text(roman(n) + '. Situatia modificarilor capitalurilor proprii', doc.page.margins.left, doc.y);
     doc.moveDown(0.3);
     equityBody(doc, data.equity);
   }
