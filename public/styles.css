@@ -41,6 +41,12 @@ a{color:var(--accent);text-decoration:none}
    vizibil. Aceeasi capcana ca la `#tabs` mai jos. */
 .login-box label:not(.hidden){display:block;margin-top:10px}
 .login-box .btn{margin-top:14px}
+/* Randurile de butoane din caseta de autentificare. `u45` le face flex, dar FARA wrap, iar
+   `flex:1` nu le poate micsora sub latimea textului (min-width:auto pe elementele flex) — deci
+   al patrulea buton iesea in afara casetei pe telefon (masurat la 390px: marginea din dreapta
+   la 431px, „Intrebari" taiat). Se pune pe AMBELE randuri, nu doar pe cel care s-a rupt:
+   la trei butoane incape azi, dar urmatorul adaugat ar repeta exact acelasi defect. */
+.login-actions{flex-wrap:wrap}
 .userbadge{color:#c7cfe6;font-size:13px;font-weight:600;margin-right:4px;white-space:nowrap}
 .firma-select{width:auto;min-width:170px;max-width:240px;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);padding:6px 10px;border-radius:8px;font-weight:600}
 .firma-select option{color:var(--ink)}
