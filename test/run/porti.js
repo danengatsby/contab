@@ -585,6 +585,27 @@ section('CSP: style-src FARA unsafe-inline (poarta zero)');
   const cate = (s) => (s.match(RX_STYLE) || []).length;
   eq('poarta prinde style= indiferent de ghilimele', cate('<i style="a"><b style=\'b\'><u style=`c`>'), 3);
   eq('data-style ramane permis (calea CSSOM)', cate('<i data-style="color:red">'), 0);
+
+  // ── `.hidden` nu are voie sa fie ANULAT de un utilitar `data-u` ──────────────
+  // `.hidden{display:none}` (styles.css) si `[data-u="uNN"]{display:...}` (u.css) au ACEEASI
+  // specificitate (0,1,0), iar u.css se incarca AL DOILEA — deci utilitarul castiga si elementul
+  // ramane vizibil desi markup-ul zice `class="hidden"`. Exact asa a stat casuta „Tine minte acest
+  // dispozitiv" pe ecranul de autentificare: ascunsa in HTML, vizibila pe ecran, aratata tuturor
+  // desi apartine unui flux 2FA care e oprit in produs. E a treia oara cand aceeasi capcana de
+  // specificitate musca aici (vezi si `:not(.hidden)` din styles.css si `#tabs`), deci de data
+  // asta ramane o poarta, nu o lectie.
+  const uDisplay = new Set([...fsx.readFileSync(pth.join(pub, 'u.css'), 'utf8')
+    .matchAll(/\[data-u="(u\d+)"\]\{[^}]*display:/g)].map((m) => m[1]));
+  ok('u.css chiar are utilitare care seteaza display (altfel poarta e goala)', uDisplay.size > 0);
+  const anulate = [];
+  for (const f of files.filter((x) => x.endsWith('.html'))) {
+    const html = fsx.readFileSync(pth.join(pub, f), 'utf8');
+    for (const m of html.matchAll(/<[^>]*\bclass="[^"]*\bhidden\b[^"]*"[^>]*>/g)) {
+      const du = /data-u="(u\d+)"/.exec(m[0]);
+      if (du && uDisplay.has(du.group ? du.group(1) : du[1])) anulate.push(f + ': ' + m[0].slice(0, 80));
+    }
+  }
+  eq('niciun element .hidden nu e facut vizibil de un utilitar data-u', anulate.join(' | '), '');
 }
 
 section('Docs: documentatia nu contrazice configuratia reala (fara drift)');
