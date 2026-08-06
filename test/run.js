@@ -3209,6 +3209,70 @@ const ptOld = acc.profitTax({ entries: [{ id: '1', period: '2023-03', data: '202
 eq('2023: regim vechi -> pierdere recuperata 100% pana la baza (4000)', ptOld.pierdereFolosita, 4000);
 eq('2023: profit impozabil 0 -> impozit 0', ptOld.impozit, 0);
 eq('2023: plafonReportarePct expus = 100', ptOld.plafonReportarePct, 100);
+// ── Registrul bunurilor de capital (art. 305 alin. (4)) ──
+{
+  const bc = require('../src/bunuriCapital');
+  const v = {
+    assets: [
+      { cont: '2133', cost: 50000, denumire: 'Utilaj', durataLuni: 60 },
+      { cont: '2131', cost: 3000, denumire: 'Scule marunte', durataLuni: 36 },
+    ],
+    entries: [
+      { id: 'e1', data: '2024-12-20', status: 'postat', document: 'F1', lines: [{ debit: '2133', credit: '404', suma: 50000 }, { debit: '4426', credit: '404', suma: 9500 }] },
+      { id: 'e2', data: '2026-03-10', status: 'postat', document: 'F2', lines: [{ debit: '212', credit: '404', suma: 400000 }, { debit: '4426', credit: '404', suma: 76000 }] },
+      { id: 'e3', data: '2026-05-01', status: 'postat', document: 'F3', lines: [{ debit: '2131', credit: '404', suma: 3000 }, { debit: '4426', credit: '404', suma: 570 }] },
+      // achizitie FARA TVA dedusa (de la neplatitor): nu intra in perimetrul art. 305
+      { id: 'e4', data: '2026-02-01', status: 'postat', document: 'F4', lines: [{ debit: '2133', credit: '404', suma: 7000 }] },
+    ],
+  };
+  const r = bc.registru(v, { anReferinta: 2026 });
+
+  eq('perioada: 20 de ani la imobile, 5 la restul', bc.periodaAjustare('212') + '/' + bc.periodaAjustare('2133'), '20/5');
+  ok('terenurile sunt tot bunuri imobile', bc.esteImobil('2111'));
+  eq('bunurile fara TVA dedusa nu intra in registru', r.bunuri.filter((b) => b.document === 'F4').length, 0);
+  eq('activele amortizabile sub 5 ani nu sunt bunuri de capital (alin. 1 lit. a)', r.bunuri.filter((b) => b.document === 'F3').length, 0);
+  eq('raman doar cele doua bunuri de capital reale', r.totaluri.nrBunuri, 2);
+
+  // MIEZUL: perioada incepe la 1 IANUARIE al anului achizitiei, nu la data facturii.
+  const utilaj = r.bunuri.find((b) => b.document === 'F1');
+  eq('utilaj cumparat in DECEMBRIE 2024: anul 2024 se consuma intreg', utilaj.aniConsumati, 3);
+  eq('deci in 2026 mai raman 2 ani din cei 5', utilaj.aniRamasi, 2);
+  eq('perioada expira dupa 2028', utilaj.expiraDupa, 2028);
+  eq('TVA de ajustat = 9500 x 2/5', utilaj.tvaDeAjustat, 3800);
+  // Aceeasi achizitie, dar in IANUARIE: acelasi numar de ani consumati — asta dovedeste regula.
+  const vIan = { assets: v.assets, entries: [Object.assign({}, v.entries[0], { data: '2024-01-05' })] };
+  eq('achizitia din ianuarie consuma tot atatia ani ca cea din decembrie', bc.registru(vIan, { anReferinta: 2026 }).bunuri[0].aniConsumati, 3);
+
+  const cladire = r.bunuri.find((b) => b.document === 'F2');
+  eq('cladirea are 20 de ani, din care 1 consumat in 2026', cladire.durata + '/' + cladire.aniConsumati, '20/1');
+  eq('TVA de ajustat = 76000 x 19/20', cladire.tvaDeAjustat, 72200);
+  ok('cladirea e marcata ca imobil', cladire.imobil);
+
+  // Iesirea din perioada: dupa expirare nu mai e nimic de ajustat.
+  const dupa = bc.registru(v, { anReferinta: 2030 });
+  eq('in 2030 utilajul a iesit din perioada', dupa.bunuri.find((b) => b.document === 'F1').inPerioada, false);
+  eq('si nu mai are TVA de ajustat', dupa.bunuri.find((b) => b.document === 'F1').tvaDeAjustat, 0);
+  eq('cladirea e inca in perioada', dupa.bunuri.find((b) => b.document === 'F2').inPerioada, true);
+
+  // Ajustarile postate se citesc cu semnul lor.
+  const vAj = { assets: [], entries: v.entries.concat([
+    { id: 'a1', data: '2026-06-30', status: 'postat', tip: 'ajustare_tva_bunuri_capital', document: 'NC1', lines: [{ debit: '635', credit: '4426', suma: 3800 }] },
+    { id: 'a2', data: '2026-07-31', status: 'postat', tip: 'ajustare_tva_bunuri_capital', document: 'NC2', lines: [{ debit: '4426', credit: '635', suma: 1200 }] },
+  ]) };
+  const rAj = bc.registru(vAj, { anReferinta: 2026 });
+  eq('ajustarile in favoarea statului se cumuleaza', rAj.totaluri.ajustatCatreStat, 3800);
+  eq('cele in favoarea firmei, separat (sensul conteaza)', rAj.totaluri.ajustatCatreFirma, 1200);
+
+  // TVA-ul unui articol cu doua imobilizari se repartizeaza proportional cu baza.
+  const vMulti = { assets: [], entries: [{ id: 'm', data: '2026-01-10', status: 'postat', document: 'FM',
+    lines: [{ debit: '2133', credit: '404', suma: 30000 }, { debit: '2131', credit: '404', suma: 10000 }, { debit: '4426', credit: '404', suma: 7600 }] }] };
+  const rM = bc.registru(vMulti, { anReferinta: 2026 });
+  eq('TVA repartizata 3:1 dupa baza', rM.bunuri.map((b) => b.tvaDedusa).join('|'), '5700|1900');
+  eq('si totalul se pastreaza', rM.totaluri.tvaDedusa, 7600);
+  // Fara activ in nomenclator, bunul RAMANE in registru (o omisiune nu scoate din evidenta).
+  ok('imobilizarea necunoscuta in registrul de mijloace fixe ramane in evidenta', rM.bunuri.length === 2);
+}
+
 // ── D101 se calculeaza cu ACELEASI reguli ca nota contabila 691 = 4411 ──
 {
   const ptOpts = require('../src/profitTaxOptions');
