@@ -8,6 +8,38 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
+## Ultima verificare: 2026-08-06 — D177 (redirecționarea impozitului către beneficiari)
+
+Formular **nou** în aplicație. Schema a fost ridicată din validator, nu presupusă — vezi mai jos
+de ce era necesar. Reperul `D177` trece validatorul oficial (`D177_8/D177Validator.jar`).
+
+| Declarație | Schemă (namespace) | Rezultat |
+|---|---|---|
+| D177 | `mfp:anaf:dgti:d177:declaratie:v1` | ✅ Validare fără erori (cu și fără bloc de reprezentant) |
+
+Patru lucruri pe care doar validatorul le putea spune, fiecare descoperit printr-o rulare:
+
+1. **`totalPlata_A` trebuie să fie `0`.** E o *cerere*, nu o declarație de plată. Cu suma
+   redirecționată acolo: „valoarea nu se încadrează în intervalul cerut".
+2. **`acord` nu e atribut al beneficiarului** în v1 (exista în versiuni anterioare) — respins ca
+   „atribut necunoscut".
+3. **`denR` și `cifR` merg împreună** (regula R2.1: „completat dacă și numai dacă"). Trimis doar
+   numele reprezentantului, fișierul e respins — de aceea blocul se emite doar cu ambele.
+4. **Datele în format românesc** (`dd.mm.aaaa`), ca la D112; ISO e respins.
+5. **`tipPlatitor` are o singură valoare acceptată: `1`.** Sondate toate variantele 1–4; restul dau
+   „valoarea nu se încadrează în intervalul cerut". Presupusesem o mapare „micro → 2" (care rula
+   chiar pe exemplul integrat, o firmă micro) — poarta a respins-o. Același tipar ca `tipBIL="UU"`.
+6. Atributele de contact se **omit** când lipsesc: un `emailC="-"` trece doar ca avertisment
+   „Email invalid", deci ar fi ajuns așa la ANAF.
+
+Reguli de conținut citite din bytecode și respectate de generator: `R2.1` (dacă `tipPlatitor=2`
+atunci `tipB≠3`), `R27` (dacă `tipB<5`, `contractB` obligatoriu), `R30.1` (`ibanB` începe cu `RO`),
+iar `cuiB` se verifică cu cifra de control.
+
+Reperul exercită calea real: exemplul integrat n-are sponsorizări, deci s-a construit o variantă cu
+sponsorizare de 1.500 lei și un beneficiar complet — altfel poarta ar valida un formular fără
+niciun `<beneficiar>`, adică exact secțiunea obligatorie.
+
 ## Sondare 2026-08-06 — F30/F40 NU fac parte din S1120/S1121/S1122
 
 Consemnat aici fiindcă e o constatare de **schemă**, obținută de la validatorul oficial, și

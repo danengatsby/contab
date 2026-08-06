@@ -140,6 +140,20 @@ module.exports = function register(app, ctx) {
   // Antetul cere date pe care doar firma le stie (administrator, intocmitor, forma de
   // proprietate). Daca lipsesc, REFUZAM generarea si spunem exact ce — un formular cu antet
   // inventat trece validatorul si ajunge la ANAF ca declaratie gresita.
+  // D177 — cerere de redirectionare a impozitului catre beneficiari (sponsorizari).
+  // Refuza generarea cand beneficiarilor le lipsesc date: un IBAN gresit trimite banii altcuiva,
+  // iar validatorul ANAF nu are cum sa prinda asta — acceptă orice IBAN care incepe cu RO.
+  app.get('/xml/d177', (req, res) => {
+    const v = S(req);
+    const year = String(req.query.year || (new Date().getFullYear() - 1));
+    const d = rep.d177(v, year);
+    if (!d.beneficiari.length) return res.status(400).json({ error: 'Nicio sponsorizare inregistrata in ' + year + ' (cont 6582) — nu exista ce redirectiona.' });
+    if (d.sumaRest <= 0) return res.status(400).json({ error: 'Creditul de sponsorizare pe ' + year + ' e deja folosit integral in declaratia de impozit; nu mai ramane nimic de redirectionat.' });
+    if (d.lipsa.length) return res.status(400).json({ error: 'Date lipsa la beneficiari (completeaza-le in Parteneri): ' + d.lipsa.join('; ') });
+    recordDecl(req, 'd177', year + '-12');
+    sendXml(res, xml.d177Xml(v.company, d), 'd177-' + year + '.xml');
+  });
+
   app.get('/xml/bilant', (req, res) => {
     const v = S(req);
     const year = String(req.query.year || (new Date().getFullYear() - 1));

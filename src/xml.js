@@ -428,10 +428,10 @@ function d112RectAttrs(rect) {
 }
 
 function d112Xml(company, period, sp, who, rect) {
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
   const { an, luna } = ym(period);
   const lei = (v) => String(Math.round(Number(v) || 0));
   const t = sp.totals;
-  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
   // obligatiile angajatorului — codurile bugetare sunt cele pre-completate de PDF-ul
   // inteligent ANAF: contul unic 5503 pentru impozit/CAS/CASS, 204703 pentru CAM
   const oblig = [
@@ -732,6 +732,60 @@ ${op1Xml}
 }
 
 /** Construieste blocul UBL pentru o parte (furnizor sau client). */
+/**
+ * D177 — cerere de redirectionare a impozitului catre beneficiari.
+ *
+ * Structura e RIDICATA din validatorul oficial, nu presupusa (vezi docs/validare-oficiala.md):
+ *  - radacina `D177`, namespace `mfp:anaf:dgti:d177:declaratie:v1`;
+ *  - datele in format ROMANESC (dd.mm.aaaa) — ISO e respins, ca la D112;
+ *  - `totalPlata_A="0"`: e o CERERE, nu o declaratie de plata. Cu suma redirectionata acolo,
+ *    validatorul raspunde „valoarea nu se incadreaza in intervalul cerut";
+ *  - `acord` NU e atribut al beneficiarului in v1 (era in versiuni anterioare);
+ *  - `tipPlatitor` are o SINGURA valoare acceptata in v1: "1". Sondate toate variantele 1-4,
+ *    restul dau „valoarea nu se incadreaza in intervalul cerut" — acelasi tipar ca `tipBIL="UU"`
+ *    la bilant. Maparea „micro -> 2" pe care o presupusesem era gresita;
+ *  - minimum un `<beneficiar>`; `cuiB` se verifica cu cifra de control, iar `ibanB` trebuie sa
+ *    inceapa cu RO (regula R30.1).
+ */
+function d177Xml(company, d) {
+  const lei = (v) => String(Math.round(Number(v) || 0));
+  const an = String(d.year);
+  const cui = String(company.cui || '').replace(/^ro/i, '').replace(/[^0-9]/g, '');
+  // Atributele de contact se OMIT cand lipsesc, nu se completeaza cu un placeholder: '-' trece
+  // ca „Email invalid" in avertismentele validatorului, adica ajunge asa la ANAF.
+  const opt = (nume, val) => (String(val || '').trim() ? ` ${nume}="${esc(String(val).trim())}"` : '');
+  // Blocul de REPREZENTANT e optional, dar `denR` si `cifR` merg impreuna: regula R2.1 cere
+  // „completat daca si numai daca". Trimis doar cu numele, validatorul respinge cererea — de aceea
+  // se emite doar cand exista amandoua, iar `who` singur nu e suficient.
+  const r = d.reprezentant || {};
+  // `attrsR` e MARKUP deja escapat, nu un camp de date — de aceea nu se mai trece prin `esc()`
+  // la interpolare. Numele o spune: poarta de escapare din test/run.js se uita la numele
+  // expresiei interpolate, iar unul care suna a camp („reprezentant") ar fi raportat, pe drept,
+  // ca text neescapat. Escaparea se face aici, pe fiecare valoare.
+  const attrsR = (r.nume && r.cif)
+    ? `denR="${esc(r.nume)}" cifR="${esc(String(r.cif).replace(/^ro/i, ''))}"`
+      + (r.adresa ? ` adresaR="${esc(r.adresa)}"` : '')
+      + (r.telefon ? ` telR="${esc(r.telefon)}"` : '')
+      + (r.email ? ` emailR="${esc(r.email)}"` : '') + '\n  '
+    : '';
+  const beneficiari = (d.beneficiari || []).map((b) => `  <beneficiar tipB="${esc(String(b.tipB || 1))}" cuiB="${esc(String(b.cui || '').replace(/^ro/i, ''))}"`
+    + ` denB="${esc(b.den || '')}" adresaB="${esc(b.adresa || '')}" contractB="${esc(b.contract || '')}"`
+    + `${opt('telB', b.telefon)}${opt('emailB', b.email)} ibanB="${esc(String(b.iban || '').replace(/\s/g, ''))}"`
+    + ` sumaB="${lei(b.suma)}"/>`).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- D177 (redirectionare impozit) generat de Contabo. Verificare: scripts/valideaza-duk.sh D177 fisier.xml -->
+<D177 xmlns="mfp:anaf:dgti:d177:declaratie:v1" d_rec="0" an="${esc(an)}" luna="12"
+  dataInceput="01.01.${esc(an)}" dataSfarsit="31.12.${esc(an)}"
+  cif="${esc(cui)}" denC="${esc(company.nume || '')}" adresaC="${esc(company.adresa || '')}"
+${opt('telC', company.telefon)}${opt('emailC', company.email)}
+${attrsR}tipPlatitor="1"
+  sumaMax="${lei(d.sumaMax)}" sumaAnt="${lei(d.sumaAnt)}" sumaRest="${lei(d.sumaRest)}"
+  totalPlata_A="0">
+${beneficiari}
+</D177>
+`;
+}
+
 function partyXml(roleTag, p) {
   const tax = p.cui
     ? `\n      <cac:PartyTaxScheme>\n        <cbc:CompanyID>${esc(roCui(p.cui))}</cbc:CompanyID>\n        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>\n      </cac:PartyTaxScheme>`
@@ -883,8 +937,8 @@ function parseUblInvoice(xmlStr) {
  *  per partener (tip L/A/P/S/T/R, tara + cod operator fara prefixul de tara). */
 function d390Xml(company, period, d, who) {
   const { an, luna } = ym(period);
-  const lei = (v) => String(Math.round(Number(v) || 0));
   const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  const lei = (v) => String(Math.round(Number(v) || 0));
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
   const rows = (d.rows || []).map((r) => {
     const tara = r.tara || String(r.cui || '').slice(0, 2);
@@ -909,9 +963,9 @@ ${rows}
 // D100 — declaratia privind obligatiile de plata la bugetul de stat pe schema OFICIALA v2
 // (aici: impozitul pe veniturile microintreprinderilor, trimestrial — cod obligatie 620).
 function d100Xml(company, period, d, who) {
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
   const { an, luna } = ym(period);
   const lei = (v) => String(Math.round(Number(v) || 0));
-  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
   // scadenta: 25 a lunii urmatoare perioadei (format romanesc ZZ.LL.AAAA)
   const next = Number(luna) === 12 ? { l: 1, a: Number(an) + 1 } : { l: Number(luna) + 1, a: Number(an) };
@@ -945,6 +999,7 @@ function d100Xml(company, period, d, who) {
  *  Sumele sunt in LEI INTREGI (N(15)); indicatorii DERIVATI se recalculeaza din cei rotunjiti,
  *  ca sa treaca verificarile de calcul EXACT (P3=P1-P2, P16, P22, P35, P38a, P41, P48, P52...). */
 function d101Xml(company, d, who) {
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
   const lei = (v) => Math.round(Number(v) || 0);
   const year = Number(String((d && d.year) || new Date().getFullYear()).slice(0, 4));
   const cota = Number((d && d.cota) || 16);
@@ -1031,7 +1086,6 @@ function d101Xml(company, d, who) {
   const totalPlata = checksumKeys.reduce((s, k) => s + vals[k], 0);
   const cui = String(company.cui).replace(/^ro/i, '').replace(/\s/g, '');
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
-  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
   const P = (name) => `${name}="${vals[name]}"`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- D101 v10 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D101 fisier.xml -->
@@ -1076,8 +1130,8 @@ ${exp || '    <!-- fara expedieri -->'}
 // se depune in anul urmator celui raportat). Beneficiarii intra ca <benef> (rezidenti, CNP
 // drept cifR), cu recapitulatia pe tip de venit in <sect_II>.
 function d205Xml(company, year, d, who) {
-  const lei = (v) => String(Math.round(Number(v) || 0));
   const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  const lei = (v) => String(Math.round(Number(v) || 0));
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
   // nomenclatorul tipurilor de venit (D205, OPANAF): 08 = dividende, 11 = premii, 04 = alte
   const tipCod = (t) => (/divid/i.test(t) ? '08' : /premi/i.test(t) ? '11' : '04');
@@ -1160,6 +1214,6 @@ function bilantXml(d) {
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
   umCode, d300Xml, d300Rows, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
-  bilantXml, bilantNsVersion,
+  bilantXml, bilantNsVersion, d177Xml,
   esc, // escaparea XML, refolosita de generatoarele din afara acestui fisier (ex. src/sepa.js)
 };

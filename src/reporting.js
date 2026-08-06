@@ -11,6 +11,7 @@ const fiscalProfile = require('./fiscalProfile'); // regimul firmei (micro/profi
 const stmt = require('./statements');
 const { reconcile } = require('./reconcile');
 const recurring = require('./recurring');
+const CONT_SPONSORIZARE = '6582'; // art. 25(4)(i) — cheltuiala de sponsorizare
 const xml = require('./xml'); // doar pentru maparea cota->rand D300 (xml.js nu importa nimic din lant)
 
 /** Rulajele perioadei pe cont {cod:{d,c}}, FARA inchiderile 6/7 -> 121 (vezi `resultLines`).
@@ -1029,6 +1030,76 @@ function stornoReport(db, period) {
 // NB: generarea XML-ului oficial D101 nu e (inca) inclusa — schema ANAF e versionata pe an
 // (namespace d101:declaratie:vN), cu layout de indicatori si aritmetica specifice fiecarei
 // versiuni; se adauga cand maparea pe versiunea curenta e verificata cu DUKIntegrator.
+/**
+ * D177 — cererea de REDIRECTIONARE a impozitului catre beneficiari (sponsorizari).
+ *
+ * Nu e o declaratie de plata: `totalPlata_A` e 0 (confirmat cu validatorul oficial). E cererea
+ * prin care partea NEUTILIZATA a creditului fiscal de sponsorizare se directioneaza efectiv catre
+ * entitatile beneficiare. Aplicatia calcula deja plafoanele (art. 25(4)(i): min(0,75% din cifra de
+ * afaceri; 20% din impozit) — vezi `deductibilitate.credit`) si tinea reportul pe ani, dar
+ * formularul prin care redirectionarea se face nu putea fi depus.
+ *
+ * `sumaMax` = plafonul anului; `sumaAnt` = cat s-a folosit deja ca CREDIT in declaratia de impozit
+ * (acolo suma reduce impozitul direct, deci nu se mai poate redirectiona); `sumaRest` = diferenta,
+ * adica exact ce se poate cere aici.
+ *
+ * Beneficiarii se DERIVA din articolele de sponsorizare ale anului (cont 6582), grupati pe
+ * partener — cine a primit sponsorizare e deja in contabilitate, nu trebuie retastat. Datele pe
+ * care registrul nu le are (contract, IBAN, e-mail) se completeaza din nomenclatorul de parteneri
+ * sau din cerere; `lipsa` le enumera, iar ruta refuza generarea cat timp lipsesc — un IBAN gresit
+ * trimite banii altcuiva.
+ */
+function d177(db, year, opts) {
+  const o = opts || {};
+  const pt = acc.profitTax(db, year, o.profitTax || {});
+  const cr = pt.sponsorizare || {};
+  const plafon = round2(Number(cr.plafon) || 0);
+  const folosit = round2(Number(cr.folosit) || 0);
+  const rest = round2(Math.max(0, plafon - folosit));
+
+  // Beneficiarii, din rulajul contului de sponsorizare al anului, pe partener.
+  const anStr = String(year);
+  const peBeneficiar = new Map();
+  for (const e of acc.postedEntries(db)) {
+    if (!String(e.period || periodOf(e.data)).startsWith(anStr)) continue;
+    const suma = round2((e.lines || [])
+      .filter((l) => String(l.debit || '').startsWith(CONT_SPONSORIZARE))
+      .reduce((s, l) => s + (Number(l.suma) || 0), 0));
+    if (suma <= 0) continue;
+    const cui = String(e.partenerCui || '').replace(/^ro/i, '').replace(/[^0-9]/g, '');
+    const cheie = cui || ('fara-cui:' + (e.partener || e.id));
+    const b = peBeneficiar.get(cheie) || { cui, den: e.partener || '', suma: 0, documente: [] };
+    b.suma = round2(b.suma + suma);
+    if (e.document) b.documente.push(e.document);
+    peBeneficiar.set(cheie, b);
+  }
+
+  const parteneri = (db && db.partners) || {};
+  const beneficiari = [...peBeneficiar.values()].map((b) => {
+    const p = parteneri[b.cui] || {};
+    const lipsa = [];
+    if (!b.cui) lipsa.push('CUI');
+    if (!b.den) lipsa.push('denumirea');
+    if (!p.adresa) lipsa.push('adresa');
+    if (!p.iban) lipsa.push('IBAN-ul');
+    return {
+      cui: b.cui, den: b.den || p.den || '', adresa: p.adresa || '', iban: p.iban || '',
+      telefon: p.telefon || '', email: p.email || '',
+      contract: b.documente.join(', '), suma: b.suma, lipsa,
+    };
+  }).sort((a, b) => b.suma - a.suma);
+
+  return {
+    year: anStr,
+    // `tipPlatitor` nu se mai deduce din regimul firmei: validatorul accepta o SINGURA valoare
+    // ("1") in v1 — sondate toate variantele. Il pune generatorul, nu raportul.
+    sumaMax: plafon, sumaAnt: folosit, sumaRest: rest,
+    beneficiari,
+    total: round2(beneficiari.reduce((s, b) => s + b.suma, 0)),
+    lipsa: beneficiari.filter((b) => b.lipsa.length).map((b) => (b.den || b.cui) + ': ' + b.lipsa.join(', ')),
+  };
+}
+
 function d101(db, year, opts) {
   opts = opts || {};
   // `rezultatFiscal` = instantaneul salvat de inchidere pe articolul 691 = 4411. Cand exista,
@@ -1081,4 +1152,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { cheltuieliLipsaNeimputabila, d112, d300, d390, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };
+module.exports = { d177, cheltuieliLipsaNeimputabila, d112, d300, d390, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };
