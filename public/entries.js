@@ -284,6 +284,9 @@ export function calitateRaportHtml(r) {
     : '';
   return kpi + stare + modele + tabel('Furnizori care cer corecții', r.furnizori, 'Furnizor')
     + tabel('Formate care cer corecții', r.formate, 'Format')
+    // aceeași formă ca pe furnizori/formate: „pe cine merită să-l repari" devine, aici,
+    // „extractorul ăsta cere mai multe corecții decât cel dinaintea lui?"
+    + tabel('Corecții pe extractor', r.corectiiPeModel, 'Extractor')
     + ((r.peControl || []).length
       ? `<h3>Controale care pică</h3><table><thead><tr><th>Control</th><th class="num">De câte ori</th></tr></thead><tbody>${
         r.peControl.map((c) => `<tr><td>${H(c.nume)}</td><td class="num">${H(c.n)}</td></tr>`).join('')}</tbody></table>`

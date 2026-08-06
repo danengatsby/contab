@@ -718,6 +718,7 @@ section('Calitatea citirii automate: verdictul și raportul (docflow.js / entrie
       { model: 'claude-sonnet-5', documente: 8, incredereMedie: 74, postateAutomat: 1 },
       { model: null, documente: 4, incredereMedie: null, postateAutomat: 0 },
     ],
+    corectiiPeModel: [{ cheie: 'claude-sonnet-5', interventii: 3, campuri: 5, controaleTop: [{ cod: 'cota', n: 2 }] }],
   };
   const hr = entries.calitateRaportHtml(raport);
   ok('raportul arată KPI-urile', hr.includes('12') && hr.includes('71%') && hr.includes('40%'));
@@ -740,6 +741,8 @@ section('Calitatea citirii automate: verdictul și raportul (docflow.js / entrie
   ok('încrederea medie lipsă se arată ca „—", nu ca 0%',
     hr.includes('74%') && hr.includes('<td class="num">—</td>'));
   ok('spune că scala încrederii diferă între modele (altfel numărul induce în eroare)', /scala ei difer|scala .* difer/i.test(hr));
+  ok('are tabelul de corecții pe extractor, în aceeași formă ca pe furnizori/formate',
+    hr.includes('Corecții pe extractor') && hr.includes('cota ×2'));
   ok('fără documente citite: mesaj, nu tabele goale',
     entries.calitateRaportHtml({ documenteCitite: 0 }).includes('Niciun document'));
   eq('raport lipsă nu randează nimic', entries.calitateRaportHtml(null), '');
