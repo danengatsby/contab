@@ -257,6 +257,13 @@ await scena('s05-comutare', async () => {
   await unelte(); await curata();
 });
 
+// ═══ S05b · portofoliul de firme ══════════════════════════════════════════
+await scena('s05b-portofoliu', async () => {
+  await intra('portofoliu', 1800);
+  await derulare(240, 1800);
+  await derulare(0, 1200);
+});
+
 // ═══ S06 · ghidul ═════════════════════════════════════════════════════════
 await scena('s06-ghid', async () => {
   await intra('ghid', 1500);
@@ -269,6 +276,13 @@ await scena('s07-acasa', async () => {
   await intra('dashboard', 1800);
   await curata();
   await derulare(0, 1000); await derulare(420, 2000); await derulare(950, 1600); await derulare(0, 900);
+});
+
+// ═══ S07b · arhiva pe luni (dosarul lunii) ════════════════════════════════
+await scena('s07b-arhiva', async () => {
+  await meniu('Rapoarte & analize', 'arhiva', 1800);
+  await derulare(260, 1800);
+  await derulare(0, 1000);
 });
 
 // ═══ S08 · documentul primit ══════════════════════════════════════════════
@@ -360,11 +374,33 @@ await scena('s16-inchidere', async () => {
   await derulare(280, 1700); await derulare(650, 1700); await derulare(1050, 1700); await derulare(1400, 1700);
 });
 
+// ═══ S16b · inchiderea anului ═════════════════════════════════════════════
+await scena('s16b-an', async () => {
+  await meniu('Închideri', 'inchidere-an', 1800);
+  await derulare(300, 2000);
+  await derulare(620, 1800);
+});
+
+// ═══ S16c · registrul de evidenta fiscala (drumul spre D101) ══════════════
+await scena('s16c-regfiscal', async () => {
+  await meniu('Taxe & declarații', 'regfiscal', 1800);
+  await derulare(280, 2200);
+  await derulare(0, 1200);
+});
+
 // ═══ S17 · TVA ════════════════════════════════════════════════════════════
 await scena('s17-tva', async () => {
   await card('Pasul 6', 'Taxele și declarațiile', 'D300 · D394 · D112 · SAF-T', 1600);
   await meniu('Taxe', 'tva', 2000);
   await curata(); await derulare(320, 1600);
+});
+
+// ═══ S17b · decontul precompletat (e-TVA) ═════════════════════════════════
+await scena('s17b-etva', async () => {
+  await pg.evaluate(() => { const c = document.querySelector('#etvaPrecompletatCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  await asteapta(2400);
+  await cursorLa(pg.locator('#etvaReconBtn').first());
+  await asteapta(1600);
 });
 
 // ═══ S18 · declaratii + SAF-T + SPV ═══════════════════════════════════════
@@ -376,6 +412,13 @@ await scena('s18-declaratii', async () => {
   await intra('spv', 1800);
 });
 
+// ═══ S18b · SAF-T (D406) ══════════════════════════════════════════════════
+await scena('s18b-saft', async () => {
+  await meniu('Taxe & declarații', 'saft', 1800);
+  await derulare(260, 2000);
+  await derulare(0, 1200);
+});
+
 // ═══ S19 · rapoarte ═══════════════════════════════════════════════════════
 await scena('s19-rapoarte', async () => {
   await card('Pasul 7', 'Cum stă firma', 'bilanț · profit și pierdere · scadențar', 1600);
@@ -384,6 +427,13 @@ await scena('s19-rapoarte', async () => {
   await intra('anexe', 1800);
   await derulare(300, 1500);
   await intra('analitic', 1600);
+});
+
+// ═══ S19b · scadentarul clienti & furnizori ═══════════════════════════════
+await scena('s19b-analitic', async () => {
+  await meniu('Rapoarte & analize', 'analitic', 1800);
+  await derulare(300, 2200);
+  await derulare(640, 1800);
 });
 
 // ═══ S20 · setarile ═══════════════════════════════════════════════════════
@@ -397,6 +447,13 @@ await scena('s20-setari', async () => {
   await intra('conexiuni', 1300);
   await intra('pachetwin', 1400);
   await intra('video', 1600);
+});
+
+// ═══ S20b · jurnalul de audit ═════════════════════════════════════════════
+await scena('s20b-audit', async () => {
+  await meniu('Setări', 'audit', 1800);
+  await derulare(260, 2000);
+  await derulare(0, 1000);
 });
 
 // ═══ S21 · increderea ═════════════════════════════════════════════════════
