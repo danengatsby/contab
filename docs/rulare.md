@@ -187,7 +187,7 @@ sudo systemctl enable --now contab
 ### Extragere cu AI (opțional, recomandat pentru facturi variate / scanate)
 
 Aplicația poate citi **PDF-uri și imagini (JPG/PNG/WEBP — facturi scanate sau fotografiate)** cu
-**Claude API** (`@anthropic-ai/sdk`, model implicit `claude-opus-4-8`, intrare document PDF sau
+**Claude API** (`@anthropic-ai/sdk`, model implicit `claude-opus-5`, intrare document PDF sau
 imagine + ieșire structurată JSON). Tipul fișierului e detectat automat din conținut (PDF → bloc
 `document`, imagine → bloc `image`). Pornește serverul cu cheia setată:
 
