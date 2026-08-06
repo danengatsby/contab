@@ -75,6 +75,40 @@ for (const [k, v] of [['ANTHROPIC_API_KEY', envAiPrev.a], ['OPENAI_API_KEY', env
   if (v === undefined) delete process.env[k]; else process.env[k] = v;
 }
 
+section('AI extractor: normalizarea raspunsului (src/aiExtractor.js normalizeazaRaspuns)');
+// Aritmetica fiscala a extragerii statea INCHISA intr-o functie async care cheama API-ul, deci
+// nu o atingea niciun test: poarta fiscala nu incarca modulul (generatorul de referinte nu ajunge
+// la el), iar suita ruleaza fara cheie. Acolo a trait bugul `cota || 19`, care punea o cota veche
+// peste documentele FARA TVA. Scoasa afara, se acopera aici.
+const nz = aiExtractor.normalizeazaRaspuns;
+{
+  // REGRESIA care conteaza: cota 0 inseamna „document fara TVA", nu „cota lipsa"
+  eq('cota 0 ramane 0 (document fara TVA), nu o cota implicita', nz({ cota: 0 }).fields.cota, 0);
+  eq('cota lipsa devine 0, nu cota standard', nz({}).fields.cota, 0);
+  eq('cota necitibila devine 0, nu NaN', nz({ cota: 'nu-e-numar' }).fields.cota, 0);
+  eq('cota zecimala se rotunjeste la intreg', nz({ cota: 20.6 }).fields.cota, 21);
+
+  // sumele se rotunjesc la doua zecimale (altfel ecranul si PDF-ul ar diferi la ban)
+  ok('sumele se rotunjesc la doi bani',
+    nz({ baza: 1000.005, tva: 210.004, suma: 1210.009 }).fields.baza === 1000.01
+    && nz({ baza: 1000.005, tva: 210.004, suma: 1210.009 }).fields.tva === 210
+    && nz({ baza: 1000.005, tva: 210.004, suma: 1210.009 }).fields.suma === 1210.01);
+
+  // camp gol != zero tastat: o suma absenta ramane null, ca extractCheck sa o poata deduce
+  eq('baza absenta ramane null (nu 0)', nz({}).fields.baza, null);
+  eq('baza 0 explicit ramane 0', nz({ baza: 0 }).fields.baza, 0);
+
+  // tipul sugerat trebuie sa existe in nomenclator, altfel formularul ar cere o compunere inexistenta
+  eq('tip inventat de model -> nota_contabila', nz({ suggestedType: 'tip_care_nu_exista' }).suggestedType, 'nota_contabila');
+  eq('tip lipsa -> nota_contabila', nz({}).suggestedType, 'nota_contabila');
+  ok('tip valid se pastreaza', nz({ suggestedType: 'nota_contabila' }).suggestedType === 'nota_contabila');
+
+  eq('cuis care nu e lista devine lista goala', JSON.stringify(nz({ cuis: 'RO1' }).cuis), '[]');
+  eq('cuis lista se pastreaza', JSON.stringify(nz({ cuis: ['RO1', 'RO2'] }).cuis), '["RO1","RO2"]');
+  // raspuns lipsa nu trebuie sa arunce: modelul poate intoarce si un obiect gol
+  ok('raspuns null nu arunca', !!nz(null) && nz(null).fields.cota === 0);
+}
+
 const v = scopedSeed();
 
 section('Balanta de verificare (2026-06)');
