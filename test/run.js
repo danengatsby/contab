@@ -1761,6 +1761,27 @@ section('Plafonul de 33% al avantajelor neimpozabile (art. 76 alin. (4^1) si (4^
   const altAn = statePlata([ang({ beneficii: { pensii: 500 } })], '2027-06', istoric).rows[0];
   eq('anul urmator plafonul reincepe', altAn.beneficii[0].impozabil, 0);
 
+  // 0) Cuantumurile care alimenteaza limitele vin din RATES si sunt SUPRASCRIABILE din Setari.
+  //    Se schimba prin alte acte decat Codul fiscal (legea tichetelor, legea BASS, HG-ul diurnei),
+  //    deci se invechesc primele — un tabel de numere fixe ar fi cerut atins codul la fiecare an.
+  eq('tichetul de masa: valoarea din Legea 201/2025', fiscal.FISCAL.tichetMasaMaxLei, 45);
+  eq('castigul salarial mediu brut din legea BASS 2026', fiscal.FISCAL.castigSalarialMediuBrut, 9192);
+  eq('diurna legala interna (HG 714/2018, actualizata)', fiscal.FISCAL.diurnaInternaLegala, 23);
+  eq('limita hranei = valoarea unui tichet/zi', fiscal.categoriiBeneficii().find((c) => c.id === 'hrana').limita.lei, 45);
+  eq('limita mobilitatii = 2,5 x diurna legala', fiscal.categoriiBeneficii().find((c) => c.id === 'mobilitate').limita.lei, 57.5);
+  eq('plafonul anual al serviciilor turistice = castigul salarial mediu', fiscal.categoriiBeneficii().find((c) => c.id === 'turism').limita.lei, 9192);
+  {
+    // Suprascrierea din Setari trebuie sa AJUNGA in calcul, nu doar in tabelul de cote: citite
+    // direct din fiscalConfig, categoriile ar fi ramas inghetate si knob-ul ar fi parut ca merge.
+    fiscal.applyConfig({ tichetMasaMaxLei: 50, diurnaInternaLegala: 30 });
+    eq('limita hranei urmeaza suprascrierea', fiscal.categoriiBeneficii().find((c) => c.id === 'hrana').limita.lei, 50);
+    eq('si cea a mobilitatii, cu multiplul ei', fiscal.categoriiBeneficii().find((c) => c.id === 'mobilitate').limita.lei, 75);
+    const cuSupra = statePlata([ang({ beneficii: { hrana: 1000 }, zileLucratoare: 20 })], '2026-06').rows[0];
+    eq('calculul salarial foloseste limita suprascrisa (20 zile x 50)', cuSupra.beneficii[0].limitaIndividuala, 1000);
+    fiscal.applyConfig({}); // reset la valorile implicite pentru restul suitei
+    eq('resetul readuce valoarea legala', fiscal.categoriiBeneficii().find((c) => c.id === 'hrana').limita.lei, 45);
+  }
+
   // 7) Hrana nu se cumuleaza cu tichetele de masa (lit. b, ultima teza).
   const cuTichete = statePlata([ang({ tichete: 600, beneficii: { hrana: 300 } })], '2026-06').rows[0];
   eq('hrana e integral impozabila cand exista tichete', cuTichete.beneficii[0].impozabil, 300);

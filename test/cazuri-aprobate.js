@@ -189,7 +189,7 @@ const CAZURI = [
       + 'plafon o stabileste angajatorul (alin. 4^2); implicita in aplicatie e cea din lege (lit. a -> j), si ea '
       + 'decide CARE categorie ramane neimpozabila — de confirmat ca implicita e acceptabila. '
       + 'Plafoanele anuale in EUR (400/400/100) se convertesc la un curs configurat (implicit 5,0 lei/EUR), '
-      + 'nu la cursul din ultima zi a lunii — de confirmat toleranta.',
+      + 'nu la cursul din ultima zi a lunii — de confirmat toleranta. Cuantumurile care alimenteaza limitele (tichet de masa 45 lei/zi — Legea 201/2025; castig salarial mediu brut 9.192 lei — legea BASS 2026; diurna legala 23 lei/zi — HG 714/2018 actualizata prin HG 1235/2023) stau in RATES si sunt suprascriabile din Setari.',
     aprobare: null,
   },
   {

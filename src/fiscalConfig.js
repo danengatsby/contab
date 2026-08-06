@@ -33,6 +33,13 @@ const RATES = {
   // corespunzator locului de munca ocupat. Limitele individuale ale fiecarei categorii stau in
   // `BENEFICII` mai jos — asta e doar capacul comun, si e ultimul care se aplica.
   plafonBeneficiiPct: 33,
+  // Cuantumurile care alimenteaza limitele individuale din `BENEFICII`. Stau AICI, in `RATES`,
+  // nu ca numere fixe in tabelul de mai jos, tocmai fiindca se schimba prin ALTE acte decat Codul
+  // fiscal (legea tichetelor, legea BASS, HG-ul diurnei) — deci se invechesc primele si trebuie
+  // sa fie suprascriabile din Setari, fara atins codul.
+  tichetMasaMaxLei: 45,          // lei/zi — Legea 201/2025 (de la nov. 2025); anterior 40,18
+  castigSalarialMediuBrut: 9192, // lei — legea bugetului asigurarilor sociale pe 2026
+  diurnaInternaLegala: 23,       // lei/zi — HG 714/2018, actualizata prin HG 1235/2023
   // Cursul EUR pentru plafoanele ANUALE exprimate in euro (pensii facultative, asigurari de
   // sanatate, abonamente sportive). Orientativ, ca `cursPlafonMicro`: norma cere cursul din ultima
   // zi a lunii pentru care se acorda avantajul, deci contabilul il poate suprascrie din Setari.
@@ -124,21 +131,21 @@ const DEDUCERE = {
 const BENEFICII = [
   { id: 'mobilitate', lit: 'a', nume: 'Prestații suplimentare — clauză de mobilitate',
     temei: 'Art. 76 alin. (4^1) lit. a)',
-    limita: { tip: 'zi', lei: 57.5, zile: 'mobilitate' },
-    nota: '2,5 x indemnizația legală de delegare (23 lei/zi) — ACTUALIZEAZĂ ANUAL' },
+    limita: { tip: 'zi', lei: 57.5, zile: 'mobilitate', sursaRate: 'diurnaInternaLegala', multiplu: 2.5 },
+    nota: '2,5 x indemnizația legală de delegare (HG 714/2018, actualizată prin HG 1235/2023)' },
   { id: 'hrana', lit: 'b', nume: 'Contravaloarea hranei acordate de angajator',
     temei: 'Art. 76 alin. (4^1) lit. b)',
-    limita: { tip: 'zi', lei: 40.18, zile: 'lucrate' },
+    limita: { tip: 'zi', lei: 45, zile: 'lucrate', sursaRate: 'tichetMasaMaxLei' },
     excludeTichete: true, // ultima teza a lit. b): nu se acorda celor care primesc tichete de masa
-    nota: 'Valoarea maximă a unui tichet de masă/zi — ACTUALIZEAZĂ ANUAL' },
+    nota: 'Valoarea maximă a unui tichet de masă/zi (Legea 201/2025)' },
   { id: 'cazare', lit: 'c', nume: 'Cazare / chirie suportată de angajator',
     temei: 'Art. 76 alin. (4^1) lit. c)',
     limita: { tip: 'pctMinim', pct: 20 },
     nota: '20% din salariul minim brut/lună/persoană' },
   { id: 'turism', lit: 'd', nume: 'Servicii turistice și/sau de tratament în concediu',
     temei: 'Art. 76 alin. (4^1) lit. d)',
-    limita: { tip: 'anLei', lei: 8620 },
-    nota: 'Câștigul salarial mediu brut din legea BASS — ACTUALIZEAZĂ ANUAL' },
+    limita: { tip: 'anLei', lei: 9192, sursaRate: 'castigSalarialMediuBrut' },
+    nota: 'Câștigul salarial mediu brut din legea bugetului asigurărilor sociale pe anul curent' },
   { id: 'pensii', lit: 'e', nume: 'Contribuții la fond de pensii facultative',
     temei: 'Art. 76 alin. (4^1) lit. e)',
     limita: { tip: 'anEur', eur: 400 } },
@@ -192,6 +199,12 @@ const SURSE = {
   plafonMicroEur: 'Art. 47 Cod fiscal, OUG 156/2024 — 100.000 EUR din 2026',
   plafonScutireTva: 'Art. 310 Cod fiscal, OG 22/2025 — plafon scutire TVA 395.000 lei de la 1 sept. 2025 (Directiva UE 2020/285)',
   deducerePersonala: 'Art. 77 Cod fiscal, Legea 34/2023',
+  tichetMasa: 'Legea 165/2018, modificata prin Legea 201/2025 — valoarea maxima a unui tichet '
+    + 'de masa 45 lei/zi (de la nov. 2025; anterior 40,18)',
+  castigSalarialMediu: 'Legea bugetului asigurarilor sociale de stat pe 2026 — castig salarial '
+    + 'mediu brut 9.192 lei (plafonul anual al serviciilor turistice, art. 76 alin. (4^1) lit. d)',
+  diurnaInterna: 'HG 714/2018, actualizata prin HG 1235/2023 — indemnizatia de delegare 23 lei/zi '
+    + 'pentru personalul institutiilor publice; plafonul neimpozabil privat e 2,5 x acest nivel',
   beneficii33: 'Art. 76 alin. (4^1) si (4^2) Cod fiscal — avantajele de la lit. a)-j) sunt '
     + 'neimpozabile CUMULAT in limita a ' + RATES.plafonBeneficiiPct + '% din salariul de baza, '
     + 'fiecare si in limita ei individuala; partea care depaseste devine venit salarial (impozit '
