@@ -226,6 +226,12 @@ async function extractWithAI(buffer, ownCui) {
     fields,
     cuis: Array.isArray(data.cuis) ? data.cuis : [],
     source: 'ai',
+    // CE model a produs cifrele de mai jos. `incredere` e o AUTO-RAPORTARE a modelului, deci
+    // scala ei ii apartine lui, nu documentului: masurat pe acelasi set de 6 documente,
+    // claude-sonnet-5 raporteaza ~13 puncte mai putin decat claude-sonnet-4-6 la acuratete
+    // identica. Fara acest camp, numarul e neinterpretabil retroactiv si o recalibrare a
+    // pragului de postare automata n-are pe ce se sprijini.
+    model: providerInfo.model,
     incredere: Number(data.incredere) || null,
     motiv: data.motiv || '',
   };
