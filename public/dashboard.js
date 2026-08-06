@@ -38,7 +38,11 @@ function trendChip(pct, goodWhenUp) {
 export async function loadDashboard() {
   let k; try { k = await api('/api/dashboard'); } catch (e) { return; }
   let c = null; try { c = await api('/api/dashboard-charts'); } catch (e) { /* grafice optionale */ }
-  $('#dashYear').textContent = 'Exercițiul ' + k.year;
+  // „Exercițiul 2026" e termenul contabil corect, dar e prima etichetă de pe primul ecran al unui
+  // om care tocmai și-a făcut cont — iar un necontabil citește „exercițiu" ca la sală. Eticheta
+  // spune „Anul", termenul rămâne descoperibil din tooltip și din dicționar.
+  $('#dashYear').textContent = 'Anul ' + k.year;
+  $('#dashYear').title = 'Exercițiul financiar ' + k.year + ' — anul contabil al firmei (1 ianuarie – 31 decembrie)';
   renderDashAlerts(k);
   renderPrimiiPasi(k.primiiPasi);
   const s = (c && c.monthly) || [];
