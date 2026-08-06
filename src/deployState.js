@@ -33,8 +33,9 @@ const TTL_MS = 60 * 1000;
  * Verdictul, PUR — separat de rularea lui git ca sa poata fi verificat sincron, pe iesiri
  * inventate (tiparul lui persistVerdict / lagValues). Toate cele trei intrari pot lipsi.
  *
- * @param ramura     iesirea lui `git rev-parse --abbrev-ref HEAD`, sau '' daca n-a mers
- * @param porcelain  iesirea lui `git status --porcelain`, sau '' daca arborele e curat
+ * @param ramura     iesirea lui `git rev-parse --abbrev-ref HEAD`, sau null/'' daca n-a mers
+ * @param porcelain  iesirea lui `git status --porcelain`: '' = arbore CURAT, `null` = comanda
+ *                   N-A PUTUT RULA. Distinctia e esenta acestei functii — vezi mai jos.
  * @param commit     sha scurt, informativ
  * @returns { cunoscut, curat, peRamuraDeDeploy, ramura, commit, nrModificate, modificate[], motiv }
  */
@@ -45,6 +46,23 @@ function verdict(ramura, porcelain, commit) {
     return {
       cunoscut: false, curat: null, peRamuraDeDeploy: null, ramura: null, commit: null,
       nrModificate: 0, modificate: [], motiv: 'starea git nu se poate citi (nu e un depozit git?)',
+    };
+  }
+  // `git status` A ESUAT (nu a intors sir): ramura si commitul se citesc din fisiere si merg
+  // in continuare, dar despre fisierele necomise nu stim NIMIC — si asta nu e „curat".
+  //
+  // Nu e ipotetic: pe aceasta instalare `.git/index` a ajuns root:600 dupa niste comenzi git
+  // rulate ca root, iar procesul (utilizatorul `contab`) primea „Permission denied" la
+  // `git status`. Ramura si commitul se citeau corect, deci pornirea raporta senin
+  // „main@... (arbore curat)" cu doua fisiere necomise pe disc — exact garda de deploy,
+  // dezarmata tacit, fara niciun semn. Aceeasi regula ca la poarta fiscala si la drill-ul de
+  // restaurare: „n-am putut verifica" nu e „e bine".
+  if (porcelain == null) {
+    return {
+      cunoscut: false, curat: null, peRamuraDeDeploy: ramura === RAMURA_DEPLOY,
+      ramura, commit: commit || null, nrModificate: 0, modificate: [],
+      motiv: 'starea fisierelor necomise nu se poate citi (`git status` a esuat — verifica '
+        + 'drepturile pe .git pentru utilizatorul care ruleaza procesul)',
     };
   }
   const modificate = String(porcelain || '')
@@ -68,11 +86,13 @@ function verdict(ramura, porcelain, commit) {
   };
 }
 
-/** Ruleaza o comanda git si intoarce stdout trunchiat, sau '' la orice esec. NU arunca. */
+/** Ruleaza o comanda git si intoarce stdout trunchiat, sau **null** la orice esec. NU arunca.
+ *  `null`, nu `''`: un esec si o iesire goala inseamna lucruri OPUSE la `git status` — gol =
+ *  arbore curat, esec = habar n-avem. Confundate, garda de deploy se dezarmeaza singura. */
 function git(args, cwd) {
   return new Promise((resolve) => {
     execFile('git', ['-C', cwd].concat(args), { encoding: 'utf8', timeout: 5000, maxBuffer: 1024 * 1024 },
-      (err, stdout) => resolve(err ? '' : String(stdout || '').trim()));
+      (err, stdout) => resolve(err ? null : String(stdout || '').trim()));
   });
 }
 

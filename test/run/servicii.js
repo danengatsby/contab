@@ -1103,6 +1103,21 @@ section('deployState — ce cod ruleaza de fapt (arbore de lucru = productie)');
   ok('fara git: se spune ca nu s-a putut citi', /nu se poate citi/.test(necunoscut.motiv || ''));
   ok('fara git: avertismentul se aude si el', /nu se poate verifica/.test(ds.avertisment(necunoscut) || ''));
 
+  // `git status` care N-A PUTUT RULA (null) != arbore curat (''). Confundate, garda se
+  // dezarmeaza singura — s-a intamplat pe aceasta instalare: `.git/index` ajunsese root:600
+  // dupa comenzi git rulate ca root, procesul (utilizatorul `contab`) primea „Permission
+  // denied" la `git status`, iar ramura si commitul se citeau in continuare corect. Pornirea
+  // raporta „main@... (arbore curat)" cu doua fisiere necomise pe disc.
+  const statusPicat = V('main', null, 'ccc3333');
+  eq('git status esuat: cunoscut = false', statusPicat.cunoscut, false);
+  eq('git status esuat: `curat` e null, NU true', statusPicat.curat, null);
+  ok('git status esuat: motivul indica drepturile pe .git', /drepturile pe \.git/.test(statusPicat.motiv || ''));
+  ok('git status esuat: avertismentul se aude', /nu se poate verifica/.test(ds.avertisment(statusPicat) || ''));
+  eq('git status esuat: ramura si commitul RAMAN raportate (se citesc separat)',
+    statusPicat.ramura + '@' + statusPicat.commit, 'main@ccc3333');
+  // Discriminarea propriu-zisa: aceleasi argumente, doar '' in loc de null, dau verdict OPUS.
+  eq('sirul GOL inseamna in continuare arbore curat', V('main', '', 'ccc3333').curat, true);
+
   // Lista se plafoneaza: un arbore foarte murdar nu are voie sa umfle raspunsul /api/metrics.
   const multe = V('main', Array.from({ length: 50 }, (_, i) => ' M f' + i + '.js').join('\n'), 'c');
   eq('numarul real se pastreaza', multe.nrModificate, 50);
