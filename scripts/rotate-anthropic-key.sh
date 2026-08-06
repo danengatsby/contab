@@ -17,7 +17,9 @@ esac
 
 # 2) testeaza cheia la Anthropic (autentificare SI credit in organizatie)
 MODEL="$(grep -E '^CONTAB_AI_MODEL=' "$ENV" | cut -d= -f2- || true)"
-[ -n "$MODEL" ] || MODEL="claude-haiku-4-5-20251001"
+# Acelasi implicit ca src/aiExtractor.js: proba trebuie sa atinga modelul pe care il va folosi
+# aplicatia. Un ping pe alt model (mai ieftin) ar trece si cu o cheie care n-are acces la cel real.
+[ -n "$MODEL" ] || MODEL="claude-opus-5"
 echo "Testez cheia cu modelul $MODEL ..."
 OUT="$(mktemp)"
 CODE="$(curl -s -o "$OUT" -w '%{http_code}' https://api.anthropic.com/v1/messages \

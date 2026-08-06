@@ -5,7 +5,10 @@ const OpenAI = require('openai');
 const { round2 } = require('./util');
 const { typesForClient } = require('./documentTypes');
 
-const MODEL = process.env.CONTAB_AI_MODEL || 'claude-opus-4-8';
+// Modelul implicit al Anthropic, intr-un SINGUR loc: constanta exportata si resolveProvider() il
+// scriau fiecare de mana si driftasera deja fata de .env.example (trei fisiere, trei modele).
+const MODEL_ANTHROPIC = 'claude-opus-5';
+const MODEL = process.env.CONTAB_AI_MODEL || MODEL_ANTHROPIC;
 
 let client = null;
 let openaiClient = null;
@@ -29,7 +32,7 @@ function resolveProvider() {
   if (provider === 'openai' && !hasOpenai) provider = 'none';
   const model = provider === 'openai'
     ? (process.env.CONTAB_AI_MODEL_OPENAI || 'gpt-4.1-mini')
-    : (process.env.CONTAB_AI_MODEL || 'claude-opus-4-8');
+    : (process.env.CONTAB_AI_MODEL || MODEL_ANTHROPIC);
   return { provider, model };
 }
 
@@ -159,6 +162,14 @@ async function extractWithAI(buffer, ownCui) {
     if (/opus|sonnet/i.test(providerInfo.model)) outputConfig.effort = 'low';
     response = await c.messages.create({
       model: providerInfo.model,
+      // Plafonul acopera GANDIREA + raspunsul la un loc, iar pe generatia 5 gandirea adaptiva e
+      // PORNITA implicit cand `thinking` lipseste (pe Sonnet 4.6 / Opus 4.8 era oprita). Deci
+      // premisa care facea 2048 sigur s-a schimbat — dar MASURAT pe claude-sonnet-5 cu
+      // `effort: 'low'`, iesirea totala ramane mica: 167 tokeni pe o factura curata, 257 pe una
+      // cu 45 de pozitii si doua cote, 183 pe un scan JPEG degradat (62 dpi, calitate 28).
+      // Sub 13% din plafon in cazul cel mai rau, deci 2048 ramane — o marire ar fi fost o cifra
+      // aleasa dintr-o poveste, nu dintr-o masuratoare. Gandirea NU se opreste: acuratetea pe
+      // documente fotografiate e insusi motivul pentru care exista extragerea AI.
       max_tokens: 2048,
       system: systemPrompt(ownCui),
       output_config: outputConfig,
@@ -175,6 +186,16 @@ async function extractWithAI(buffer, ownCui) {
 
     if (response.stop_reason === 'refusal') {
       throw new Error('Cererea a fost refuzata de model.');
+    }
+    // Raspuns taiat de plafon. Fara garda, singurul simptom ar fi o eroare de JSON despre un
+    // caracter lipsa — care arata a defect de parsare, nu a raspuns incomplet. Perechea ei pe
+    // ramura OpenAI exista deja (`status === 'incomplete'`); aici lipsea.
+    // Nu apara de configurarea masurata mai sus, ci de una nemasurata: `effort: 'low'` se pune
+    // doar pe modelele care se potrivesc cu /opus|sonnet/, deci un CONTAB_AI_MODEL din alta
+    // familie ruleaza pe efortul implicit (mai mare) si poate gandi mult peste 2048. Atunci
+    // trebuie sa scrie ce s-a intamplat, nu sa cada pe JSON.parse.
+    if (response.stop_reason === 'max_tokens') {
+      throw new Error('Raspunsul modelului a fost taiat de plafonul de tokeni (max_tokens); documentul nu a putut fi extras complet.');
     }
     const textBlock = (response.content || []).find((b) => b.type === 'text');
     if (!textBlock) throw new Error('Raspuns gol de la model.');
