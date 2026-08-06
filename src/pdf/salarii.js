@@ -53,6 +53,24 @@ function fluturasPdf(res, company, r, period) {
   }
   if (r.normaPartiala && (r.casAngajator || r.cassAngajator)) rows.push({ k: 'Norma partiala: CAS+CASS pana la salariul minim, suportate de ANGAJATOR', v: fmt(round2((r.casAngajator || 0) + (r.cassAngajator || 0))) });
   if (r.avantaje) rows.push({ k: '+ Avantaje in natura impozabile (nu se platesc in bani)', v: fmt(r.avantaje) });
+  // Art. 76 alin. (4^1): fiecare categorie pe randul ei, cu limita ei. Un total ar fi ilizibil —
+  // angajatul nu ar putea vedea DE CE i s-a impozitat un abonament, iar fluturasul e exact locul
+  // unde se contesta asa ceva.
+  for (const b of r.beneficii || []) {
+    const lim = b.limitaIndividuala == null ? 'fara limita proprie' : 'limita ' + fmt(b.limitaIndividuala);
+    rows.push({ k: '+ ' + clean(b.nume) + ' (' + b.temei + ', ' + lim + ')', v: fmt(b.acordat) });
+    if (b.impozabil > 0) {
+      const cauza = b.pesteIndividual > 0 && b.pestePlafon > 0 ? 'peste limita proprie si peste plafonul de 33%'
+        : b.pesteIndividual > 0 ? (b.motiv ? clean(b.motiv) : 'peste limita proprie')
+          : 'peste plafonul de 33% din salariul de baza';
+      rows.push({ k: '   din care IMPOZABIL — ' + cauza, v: fmt(b.impozabil) });
+    }
+  }
+  if (r.beneficiiAcordate > 0) {
+    rows.push({ k: 'Plafon 33% din salariul de baza (art. 76 alin. (4^1)): ' + fmt(r.beneficiiPlafon)
+      + ' — neimpozabil ' + fmt(r.beneficiiNeimpozabile) + ', ramas ' + fmt(r.beneficiiRamas),
+    v: fmt(r.beneficiiImpozabile), _bold: !!r.beneficiiDepasit });
+  }
   rows.push({ k: '- CAS 25% (contributie asigurari sociale)', v: fmt(r.cas) });
   rows.push({ k: '- CASS 10% (contributie asigurari sociale de sanatate)', v: fmt(r.cass) });
   if (r.neimpozabil) rows.push({ k: '  din care neimpozabil', v: fmt(r.neimpozabil) });

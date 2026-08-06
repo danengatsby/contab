@@ -42,6 +42,7 @@ src/saft.js
 src/etransport.js
 src/fiscal.js
 src/fiscalConfig.js
+src/beneficii.js
 src/fiscalProfile.js
 src/fiscalControls.js
 src/payroll.js

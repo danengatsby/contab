@@ -1389,6 +1389,22 @@
           <label>Tichete de masă (valoare/lună) <input name="tichete" type="number" step="0.01" value="0" /></label>
           <label>Avantaje în natură impozabile (auto, chirie… — intră în CAS/CASS/impozit, nu se plătesc în bani) <input name="avantaje" type="number" step="0.01" value="0" /></label>
 
+          <div class="full sect-form"><h3 class="card-titlu-mare">Avantaje sub plafonul de 33%</h3>
+            <p class="muted">Art. 76 alin. (4¹) Cod fiscal: categoriile de mai jos sunt neimpozabile <b>cumulat</b>, în limita a 33% din salariul de bază, iar fiecare are și limita ei proprie. Ce depășește oricare dintre ele devine venit salarial impozabil (impozit + CAS + CASS + CAM) — aplicația calculează singură partea impozabilă și o arată pe fluturaș.</p></div>
+          <label>a) Prestații suplimentare — clauză de mobilitate <input name="ben_mobilitate" type="number" step="0.01" value="0" /></label>
+          <label>Zile cu clauză de mobilitate (gol = zilele lucrate) <input name="zileMobilitate" type="number" min="0" step="1" placeholder="auto" /></label>
+          <label>b) Contravaloarea hranei (nu se cumulează cu tichetele) <input name="ben_hrana" type="number" step="0.01" value="0" /></label>
+          <label>c) Cazare / chirie suportată de angajator <input name="ben_cazare" type="number" step="0.01" value="0" /></label>
+          <label>d) Servicii turistice / de tratament în concediu (plafon anual) <input name="ben_turism" type="number" step="0.01" value="0" /></label>
+          <label>e) Pensii facultative (400 EUR/an) <input name="ben_pensii" type="number" step="0.01" value="0" /></label>
+          <label>f) Asigurare voluntară de sănătate / abonament medical (400 EUR/an) <input name="ben_sanatate" type="number" step="0.01" value="0" /></label>
+          <label>g) Abonament facilități sportive (100 EUR/an) <input name="ben_sport" type="number" step="0.01" value="0" /></label>
+          <label>h) Telemuncă — utilități la domiciliu (400 lei/lună) <input name="ben_telemunca" type="number" step="0.01" value="0" /></label>
+          <label>Zile de telemuncă în lună <input name="zileTelemunca" type="number" min="0" step="1" value="0" /></label>
+          <label>i) Educație timpurie — creșă/grădiniță (1.500 lei/lună/copil) <input name="ben_educatie" type="number" step="0.01" value="0" /></label>
+          <label>Copii în unitate de educație timpurie <input name="copiiCresa" type="number" min="0" step="1" value="0" /></label>
+          <label>j) Diferență favorabilă de dobândă (credite/depozite) <input name="ben_dobanda" type="number" step="0.01" value="0" /></label>
+
           <div class="full sect-form"><h3 class="card-titlu-mare">Normă parțială</h3>
             <p class="muted">Lasă-le nebifate dacă angajatul lucrează cu normă întreagă.</p></div>
           <label class="check"><input name="normaPartiala" type="checkbox" /> Normă parțială sub salariul minim (OUG 16/2022 — CAS/CASS la nivelul salariului minim, diferența o suportă firma)</label>
