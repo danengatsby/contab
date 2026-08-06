@@ -3255,10 +3255,34 @@ eq('2023: plafonReportarePct expus = 100', ptOld.plafonReportarePct, 100);
   // Asteptarea se DERIVA din impozitul micro real, nu dintr-o cota scrisa de mana: la 500.000 lei
   // venituri se depaseste pragul de 60.000 EUR, deci cota e 3%, nu 1% — prima varianta a testului
   // fixase 1% si a picat pe drept.
-  const impozitMicroAn = round2([3, 6, 9, 12]
-    .reduce((sx, m) => sx + rep3.d100micro(vMicro, '2025-' + String(m).padStart(2, '0')).impozit, 0));
-  eq('plafonul micro = 20% din impozitul pe venituri al anului', dMicro.sumaMax, round2(impozitMicroAn * 0.2));
-  ok('si chiar s-a folosit cota de 3% (peste prag), nu cea de 1%', impozitMicroAn === round2(500000 * 0.03));
+  const trim = [3, 6, 9, 12].map((m) => rep3.d100micro(vMicro, '2025-' + String(m).padStart(2, '0')));
+  const brutAn = round2(trim.reduce((sx, t) => sx + t.impozitBrut, 0));
+  eq('plafonul micro = 20% din impozitul BRUT al anului (inainte de deducere)', dMicro.sumaMax, round2(brutAn * 0.2));
+  ok('si chiar s-a folosit cota de 3% (peste prag), nu cea de 1%', brutAn === round2(500000 * 0.03));
+
+  // Art. 56^1: sponsorizarea se SCADE din impozitul trimestrial, in limita a 20% din el.
+  const t2 = trim.find((t) => t.trimestru === 2); // sponsorizarea e in iunie
+  eq('sponsorizarea trimestrului e vazuta', t2.sponsorizareTrimestru, 1500);
+  eq('deducerea e plafonata la 20% din impozitul brut al trimestrului', t2.sponsorizareDedusa, round2(Math.min(1500, t2.impozitBrut * 0.2)));
+  eq('impozitul declarat scade cu suma dedusa', t2.impozit, round2(t2.impozitBrut - t2.sponsorizareDedusa));
+  ok('partea nefolosita e VIZIBILA, nu pierduta tacit', t2.sponsorizareNefolosita === round2(1500 - t2.sponsorizareDedusa));
+  // Si asta e miezul reparatiei: `sumaAnt` nu mai e zero cand chiar s-a dedus ceva.
+  eq('D177: sumaAnt = cat s-a scazut efectiv din impozit', dMicro.sumaAnt, t2.sponsorizareDedusa);
+  ok('deci nu mai apare tot plafonul ca redirectionabil', dMicro.sumaRest < dMicro.sumaMax);
+  // Sponsorizare PESTE plafon: se deduce doar 20%, restul ramane vizibil ca nefolosit. Fara acest
+  // caz, limita nu se exercita deloc — fixtura de mai sus are sponsorizarea sub plafon.
+  const vPeste = Object.assign({}, vMicro, { entries: sponsEnt('2025').map((e) => (e.id === 's'
+    ? Object.assign({}, e, { lines: [{ debit: '6582', credit: '5121', suma: 9000 }] }) : e)) });
+  const tPeste = rep3.d100micro(vPeste, '2025-06');
+  eq('sponsorizare 9000 peste plafonul de 20% -> se deduce doar plafonul', tPeste.sponsorizareDedusa, tPeste.plafonSponsorizare);
+  ok('si plafonul chiar taie (9000 > 20% din impozitul brut)', tPeste.plafonSponsorizare < 9000);
+  eq('restul apare ca nefolosit, nu dispare', tPeste.sponsorizareNefolosita, round2(9000 - tPeste.plafonSponsorizare));
+
+  // Fara sponsorizare, nimic nu se schimba fata de comportamentul dinainte.
+  const vFara = Object.assign({}, vMicro, { entries: [sponsEnt('2025')[0]] });
+  const tFara = rep3.d100micro(vFara, '2025-06');
+  eq('fara sponsorizare, impozitul declarat = cel brut', tFara.impozit, tFara.impozitBrut);
+  eq('si D177 vede tot plafonul liber', rep3.d177(vFara, '2025').sumaAnt, 0);
 
   // Corelatia pe care validatorul NU o verifica: beneficiarii nu pot depasi restul.
   ok('sponsorizare 1500 sub plafonul de profit 3750 -> nu depaseste', dProfit.depaseste === false);
