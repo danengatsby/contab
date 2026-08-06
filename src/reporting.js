@@ -1051,10 +1051,30 @@ function stornoReport(db, period) {
  */
 function d177(db, year, opts) {
   const o = opts || {};
-  const pt = acc.profitTax(db, year, o.profitTax || {});
-  const cr = pt.sponsorizare || {};
-  const plafon = round2(Number(cr.plafon) || 0);
-  const folosit = round2(Number(cr.folosit) || 0);
+  // Plafonul se calculeaza DIFERIT dupa regim, si asta era limita lasata explicit la prima
+  // livrare: la impozitul pe profit e min(0,75% din cifra de afaceri; 20% din impozit)
+  // (art. 25(4)(i)); la MICRO nu exista limita pe cifra de afaceri — e doar 20% din impozitul pe
+  // veniturile microintreprinderilor (art. 56^1). Aplicat plafonul de profit unei firme micro,
+  // cifra iesea din alta lege.
+  const micro = fiscalProfile.build((db && db.company) || {}, { angajati: (db && db.angajati) || [] }).micro;
+  let plafon; let folosit; let regim;
+  if (micro) {
+    regim = 'micro';
+    // impozitul micro al ANULUI = suma celor patru trimestre
+    const impozitAn = round2([3, 6, 9, 12]
+      .reduce((sx, m) => sx + (d100micro(db, String(year) + '-' + String(m).padStart(2, '0')).impozit || 0), 0));
+    plafon = round2((impozitAn * (Number(fiscal.FISCAL.sponsorizareImpozitPct) || 0)) / 100);
+    // La micro sponsorizarea NU e credit in declaratie ca la profit: `sumaAnt` ramane ce s-a
+    // scazut deja efectiv, iar aplicatia nu tine acel scazamant separat — deci 0, si tot
+    // plafonul e redirectionabil. Consemnat ca limita in dosarul de revizie.
+    folosit = 0;
+  } else {
+    regim = 'profit';
+    const pt = acc.profitTax(db, year, o.profitTax || {});
+    const cr = pt.sponsorizare || {};
+    plafon = round2(Number(cr.plafon) || 0);
+    folosit = round2(Number(cr.folosit) || 0);
+  }
   const rest = round2(Math.max(0, plafon - folosit));
 
   // Beneficiarii, din rulajul contului de sponsorizare al anului, pe partener.
@@ -1090,12 +1110,16 @@ function d177(db, year, opts) {
   }).sort((a, b) => b.suma - a.suma);
 
   return {
-    year: anStr,
+    year: anStr, regim,
     // `tipPlatitor` nu se mai deduce din regimul firmei: validatorul accepta o SINGURA valoare
     // ("1") in v1 — sondate toate variantele. Il pune generatorul, nu raportul.
     sumaMax: plafon, sumaAnt: folosit, sumaRest: rest,
     beneficiari,
     total: round2(beneficiari.reduce((s, b) => s + b.suma, 0)),
+    // Validatorul ANAF NU verifica aceasta corelatie (probat: un `sumaB` de 10.000 pe un
+    // `sumaRest` de 3.000 trece fara o vorba), dar legea o impune — nu poti redirectiona mai mult
+    // decat ti-a ramas. Deci o prinde aplicatia, ca la IBAN.
+    depaseste: round2(beneficiari.reduce((s, b) => s + b.suma, 0)) > rest,
     lipsa: beneficiari.filter((b) => b.lipsa.length).map((b) => (b.den || b.cui) + ': ' + b.lipsa.join(', ')),
   };
 }
