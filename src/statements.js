@@ -236,7 +236,9 @@ function profitLossF20(db, year) {
 }
 
 /**
- * Situatia fluxurilor de trezorerie (F30) — metoda directa.
+ * Situatia fluxurilor de trezorerie — metoda directa.
+ * ATENTIE la nume: NU e formularul „F30" din setul ANAF (acolo F30 = Date informative).
+ * E o componenta a situatiilor financiare (OMFP 1802/2014), fara numar de formular electronic.
  * Fiecare miscare de numerar (linie ce atinge un cont de trezorerie) e clasificata dupa contrapartida
  * in exploatare / investitie / finantare; semnul = incasare (+) / plata (-). Transferurile interne
  * intre conturi de trezorerie se ignora. Prin constructie: variatia = numerar final - numerar initial.
@@ -300,7 +302,8 @@ function cashFlow(db, year) {
 }
 
 /**
- * Situatia modificarilor capitalurilor proprii (F40): pentru fiecare element de capital propriu,
+ * Situatia modificarilor capitalurilor proprii (NU formularul „F40" al ANAF, care e Situatia
+ * activelor imobilizate): pentru fiecare element de capital propriu,
  * sold la inceput -> cresteri (rulaj creditor) - reduceri (rulaj debitor) -> sold la sfarsit.
  * Include rezultatul curent neinchis (inca in clasele 6/7), pentru reconciliere cu F10.
  */

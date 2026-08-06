@@ -1,6 +1,6 @@
 'use strict';
 
-// Rutele de raportare (read-only): situatii financiare (F20/F10/F30/F40), recapitulatiile de
+// Rutele de raportare (read-only): situatii financiare (bilant, P&L, fluxuri, capitaluri), recapitulatiile de
 // declaratii in PDF (D112/D300/D100/Declaratia Unica), registrele si jurnalele in PDF, plus
 // pro-rata si registrul de incasari-plati. Toate depind doar de vederea filtrata pe firma S(req)
 // si de modulele de raportare — extrase din server.js fara schimbare de comportament.
@@ -200,7 +200,7 @@ module.exports = function register(app, ctx) {
   app.get('/pdf/note', (req, res) => pdf.notesPdf(res, S(req).company, rep.notes(S(req), req.query.year || String(new Date().getFullYear()))));
   app.get('/pdf/cashflow', (req, res) => pdf.cashFlowPdf(res, S(req).company, stmt.cashFlow(S(req), req.query.year || String(new Date().getFullYear()))));
   app.get('/pdf/capital', (req, res) => pdf.equityPdf(res, S(req).company, stmt.equityChanges(S(req), req.query.year || String(new Date().getFullYear()))));
-  // Set complet de situatii financiare anuale (F20 + F10 + F30 + F40 + Note) intr-un singur PDF.
+  // Set complet de situatii financiare anuale (bilant + P&L + fluxuri + capitaluri + note) intr-un singur PDF.
   // Setul complet de situatii financiare = 8 calcule grele (fiecare o trecere peste inregistrari)
   // + randare. La volume mari, secventa ar bloca event loop-ul; cedam intre calcule (aceleasi
   // date, doar timing-ul se schimba — PDF-ul e identic), deci alte cereri sunt servite intre ele.

@@ -228,7 +228,7 @@ function chitantaPdf(res, company, entry, suma, nr) {
   finish(doc, res, 'chitanta-' + clean(String(nr || entry.chitantaNr || entry.id)) + '.pdf');
 }
 
-// Situatia fluxurilor de trezorerie (F30), metoda directa.
+// Situatia fluxurilor de trezorerie, metoda directa (nu formularul ANAF „F30" = Date informative).
 
 function notePdf(res, company, entry) {
   const doc = newDoc(false);

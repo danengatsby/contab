@@ -44,8 +44,8 @@ var PANEL_INFO = [
   // Situații financiare
   ['Cont de profit și pierdere', 'F20: veniturile și cheltuielile anului, separate pe exploatare și financiar, până la rezultatul net.'],
   ['Bilanț (simplificat)', 'F10: activele (imobilizări, stocuri, creanțe, bani) egale cu pasivele (capitaluri + datorii) la data aleasă.'],
-  ['Situația fluxurilor de trezorerie', 'F30: de unde au venit și unde s-au dus banii — exploatare, investiții, finanțare. Variația trebuie să bată cu soldul de trezorerie.'],
-  ['Situația modificărilor capitalurilor', 'F40: cum s-a mișcat fiecare element de capital propriu (capital, rezerve, rezultat) în cursul anului.'],
+  ['Situația fluxurilor de trezorerie', 'De unde au venit și unde s-au dus banii — exploatare, investiții, finanțare. Variația trebuie să bată cu soldul de trezorerie.'],
+  ['Situația modificărilor capitalurilor', 'Cum s-a mișcat fiecare element de capital propriu (capital, rezerve, rezultat) în cursul anului.'],
   ['📊 Buget vs realizat', 'Compară sumele bugetate pe conturi (clasa 6/7) cu realizatul lunii/anului; abaterile sunt evidențiate.'],
   ['Registrul de evidență fiscală', 'Trecerea de la rezultatul contabil la cel fiscal: cheltuieli nedeductibile, venituri neimpozabile, impozit micro vs profit.'],
   ['Note explicative', 'Notele generate automat din bilanț și P&L: active, capitaluri, datorii, indicatori (lichiditate, solvabilitate, rentabilitate).'],

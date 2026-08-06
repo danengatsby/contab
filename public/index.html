@@ -1224,6 +1224,7 @@
               </select>
             </label>
             <label>Durata fiscală (luni) <input name="durataFiscalaLuni" type="number" placeholder="la fel ca cea contabilă" /></label>
+            <label class="check"><input name="vehiculM1" type="checkbox" /> Vehicul de persoane cu maxim 9 scaune (M1) — amortizarea fiscală se plafonează la 1.500 lei/lună (art. 28 alin. (12) lit. m). Bifează doar autoturismele: camioanele, autoutilitarele și utilajele nu au plafon.</label>
             <label>Valoare reziduală <input name="valoareReziduala" type="number" step="0.01" value="0" /></label>
             <label>Data achiziției <input name="dataAchizitie" type="date" /></label>
             <label>Data punerii în funcțiune <input name="dataPif" type="date" required /></label>
@@ -2448,7 +2449,9 @@ Cu stimă,
 <div class="card hidden" id="pachetWinCard">
         <div class="card-head">
           <h2>💻 Contabo pe calculatorul tău (Windows)</h2>
-          <a id="pachetWinBtn" class="btn primary" href="/descarcari/Contabo-Windows.zip" download>⬇ Descarcă</a>
+          <!-- Fara `href`/`download`, dinadins: pachetul e inca in dezvoltare, iar un link real ar
+               fi ramas descarcabil prin click-dreapta chiar daca butonul afiseaza mesajul. -->
+          <button id="pachetWinBtn" type="button" class="btn primary">⬇ Descarcă</button>
         </div>
         <p class="lead">Aceeași aplicație, dar rulând <b>local</b>, pe PC-ul tău: datele rămân la tine,
           merge și fără internet, fără abonament și fără limită de timp.</p>

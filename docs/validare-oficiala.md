@@ -8,6 +8,34 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
+## Sondare 2026-08-06 — F30/F40 NU fac parte din S1120/S1121/S1122
+
+Consemnat aici fiindcă e o constatare de **schemă**, obținută de la validatorul oficial, și
+pentru că infirmă o presupunere plauzibilă care ar fi stricat un depozit azi valid.
+
+Presupunerea era că setul anual de situații financiare conține patru formulare (F10 bilanț,
+F20 cont de profit și pierdere, **F30 Date informative**, **F40 Situația activelor imobilizate**),
+deci că aplicația generează un bilanț incomplet. Sondat direct, cu `<F30 />` și `<F40 />` goale
+adăugate la XML-ul generat:
+
+```
+eroare structura: element necunoscut ('F30') in namespace mfp:anaf:dgti:s1120:declaratie:v3
+```
+
+Același rezultat pe **toate trei**: `s1120`, `s1121`, `s1122`. Formularele F30 și F40 **nu există**
+în aceste scheme — adăugarea lor face fișierul INVALID.
+
+Ele trăiesc în **altă familie de formulare**: pe `S1002` validatorul le recunoaște („secțiunea
+`F30` este greșit poziționată sau lipsesc secțiuni anterioare obligatorii" — element cunoscut,
+doar prost plasat), cu namespace `mfp:anaf:dgti:s1002:declaratie:v15`.
+
+**Concluzie:** pentru categoriile pe care le acoperă aplicația (micro / mici / mijlocii și mari,
+OMFP 1802/2014), setul depus e F10 + F20, adică exact ce se genera deja. Nu era nimic de reparat.
+
+Metoda rămâne cea din intrarea S1120: nu ghici structura, adaug-o goală și citește ce spune
+validatorul. A costat trei rulări și a economisit o mapare cont→rând pe formulare care n-ar fi
+fost acceptate.
+
 ## Ultima verificare: 2026-08-05 — plafonul de 33% al avantajelor (art. 76 alin. 4¹) în D112
 
 Declanșată de atingerea lui `src/fiscal.js`, `src/fiscalConfig.js`, `src/payroll.js`, `src/xml.js`
