@@ -196,7 +196,7 @@
     <select id="firmaSelect" class="firma-select" title="Firma activă" aria-label="Firma activă"></select>
     <span class="curgroup">
       <button id="prevMonth" class="curnav" title="Luna anterioară" aria-label="Luna anterioară">◀</button>
-      <span id="currentPeriod" class="curperiod" title="Luna de lucru — click pentru a reveni la luna curentă"></span>
+      <span id="currentPeriod" class="curperiod" title="Luna de lucru: tot ce vezi în aplicație e pentru această lună. Click pentru a reveni la luna curentă."></span>
       <button id="nextMonth" class="curnav" title="Luna următoare" aria-label="Luna următoare">▶</button>
     </span>
     <div class="spacer" data-u="u46"></div>
@@ -1746,11 +1746,13 @@ Cu stimă,
     <section id="tab-ghid" class="tab">
       <div class="card howto">
         <div class="toolbar"><h2 data-u="u73">📖 Cum folosești aplicația — pas cu pas</h2><div class="spacer" data-u="u46"></div><button id="tourReplay" class="btn small" type="button">🧭 Reia turul meniului</button></div>
-        <p class="lead">Pe scurt: <b>aduci documentele în aplicație</b> (le încarci sau le emiți) → aplicația face automat <b>articolul contabil</b> (cont debitor = cont creditor) → din aceste înregistrări se construiesc singure <b>registrele, balanța, TVA-ul și declarațiile</b>. Tu doar verifici și confirmi.</p>
+        <p class="lead">Pe scurt: <b>aduci documentele în aplicație</b> (le încarci sau le emiți) → aplicația <b>scrie singură înregistrarea contabilă</b> pentru fiecare (în contabilitate se numește <i>articol contabil</i>, dar nu trebuie să știi cum se face) → din ele se construiesc singure <b>registrele, balanța, TVA-ul și declarațiile</b>. Tu doar verifici și confirmi.</p>
+
+        <div class="explain"><span class="ei">📅</span><p><b>Luna de lucru:</b> sus, lângă numele firmei, e o lună (ex. „📅 August 2026"). <b>Tot ce vezi în aplicație e pentru acea lună</b> — documentele, TVA-ul, salariile, rapoartele. Dacă îți par că au dispărut date, verifică întâi dacă ești pe luna potrivită: săgețile ◀ ▶ o schimbă, iar click pe ea te aduce înapoi la luna curentă.</p></div>
 
         <h3>① La început (o singură dată)</h3>
         <ul>
-          <li>Mergi la <kbd>Setări</kbd> și <b>schimbă parola</b> de admin (implicit e admin/admin).</li>
+          <li>Dacă ai primit contul de la altcineva (instalare proprie, cont creat de administrator), mergi la <kbd>Setări</kbd> și <b>schimbă-ți parola</b>. Dacă ți-ai făcut singur cont, ai ales deja una — sari peste.</li>
           <li>Tot în <kbd>Setări</kbd>, verifică <b>datele firmei</b> (denumire, CUI, regim TVA, micro/profit).</li>
           <li>Opțional: importă <b>partenerii</b>, <b>planul de conturi</b> și <b>produsele</b> din CSV (Parteneri / Plan de conturi / Stocuri).</li>
         </ul>
