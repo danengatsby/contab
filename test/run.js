@@ -3230,6 +3230,45 @@ const ptOld = acc.profitTax({ entries: [{ id: '1', period: '2023-03', data: '202
 eq('2023: regim vechi -> pierdere recuperata 100% pana la baza (4000)', ptOld.pierdereFolosita, 4000);
 eq('2023: profit impozabil 0 -> impozit 0', ptOld.impozit, 0);
 eq('2023: plafonReportarePct expus = 100', ptOld.plafonReportarePct, 100);
+// ── D177: baza difera dupa regim, iar corelatia sumelor o prinde aplicatia ──
+{
+  const rep3 = require('../src/reporting');
+  const { round2 } = require('../src/util');
+  const sponsEnt = (an) => [
+    { id: 'v', period: an + '-06', data: an + '-06-01', status: 'postat', lines: [{ debit: '5121', credit: '704', suma: 500000 }] },
+    { id: 's', period: an + '-06', data: an + '-06-30', status: 'postat', partener: 'ONG', partenerCui: 'RO12345674',
+      document: 'CTR 7', lines: [{ debit: '6582', credit: '5121', suma: 1500 }] },
+  ];
+  const parteneri = { 12345674: { cui: '12345674', den: 'ONG', adresa: 'Str. 1', iban: 'RO49AAAA1B31007593840000' } };
+
+  // PROFIT: plafonul e min(0,75% din cifra de afaceri; 20% din impozit) — art. 25(4)(i).
+  const vProfit = { company: { regimImpozit: 'profit' }, angajati: [], partners: parteneri, openingBalances: {}, assets: [], entries: sponsEnt('2025') };
+  const dProfit = rep3.d177(vProfit, '2025', { profitTax: { cota: 16, plafoane: require('../src/fiscalConfig').RATES } });
+  eq('firma pe profit -> regim „profit"', dProfit.regim, 'profit');
+  eq('plafonul de profit = 0,75% din 500.000', dProfit.sumaMax, 3750);
+
+  // MICRO: nu exista limita pe cifra de afaceri — doar 20% din impozitul pe venituri (art. 56^1).
+  const vMicro = { company: { regimImpozit: 'micro', caen: '4711' }, angajati: [{ id: 'a' }], partners: parteneri, openingBalances: {}, assets: [], entries: sponsEnt('2025') };
+  const dMicro = rep3.d177(vMicro, '2025');
+  eq('firma micro -> regim „micro"', dMicro.regim, 'micro');
+  ok('plafonul micro NU e cel de profit (alta lege, alta cifra)', dMicro.sumaMax !== dProfit.sumaMax);
+  // Asteptarea se DERIVA din impozitul micro real, nu dintr-o cota scrisa de mana: la 500.000 lei
+  // venituri se depaseste pragul de 60.000 EUR, deci cota e 3%, nu 1% — prima varianta a testului
+  // fixase 1% si a picat pe drept.
+  const impozitMicroAn = round2([3, 6, 9, 12]
+    .reduce((sx, m) => sx + rep3.d100micro(vMicro, '2025-' + String(m).padStart(2, '0')).impozit, 0));
+  eq('plafonul micro = 20% din impozitul pe venituri al anului', dMicro.sumaMax, round2(impozitMicroAn * 0.2));
+  ok('si chiar s-a folosit cota de 3% (peste prag), nu cea de 1%', impozitMicroAn === round2(500000 * 0.03));
+
+  // Corelatia pe care validatorul NU o verifica: beneficiarii nu pot depasi restul.
+  ok('sponsorizare 1500 sub plafonul de profit 3750 -> nu depaseste', dProfit.depaseste === false);
+  const vMult = Object.assign({}, vProfit, { entries: sponsEnt('2025').map((e) => (e.id === 's'
+    ? Object.assign({}, e, { lines: [{ debit: '6582', credit: '5121', suma: 99000 }] }) : e)) });
+  const dMult = rep3.d177(vMult, '2025', { profitTax: { cota: 16, plafoane: require('../src/fiscalConfig').RATES } });
+  ok('beneficiari peste restul redirectionabil -> semnalat', dMult.depaseste === true);
+  ok('si totalul chiar depaseste restul', dMult.total > dMult.sumaRest);
+}
+
 // ── Registrul bunurilor de capital (art. 305 alin. (4)) ──
 {
   const bc = require('../src/bunuriCapital');

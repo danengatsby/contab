@@ -150,6 +150,9 @@ module.exports = function register(app, ctx) {
     if (!d.beneficiari.length) return res.status(400).json({ error: 'Nicio sponsorizare inregistrata in ' + year + ' (cont 6582) — nu exista ce redirectiona.' });
     if (d.sumaRest <= 0) return res.status(400).json({ error: 'Creditul de sponsorizare pe ' + year + ' e deja folosit integral in declaratia de impozit; nu mai ramane nimic de redirectionat.' });
     if (d.lipsa.length) return res.status(400).json({ error: 'Date lipsa la beneficiari (completeaza-le in Parteneri): ' + d.lipsa.join('; ') });
+    // Validatorul ANAF nu prinde depasirea (probat), dar legea o impune: nu poti redirectiona
+    // mai mult decat ti-a ramas. Refuzam noi, altfel cererea pleaca si e respinsa la fond.
+    if (d.depaseste) return res.status(400).json({ error: 'Sumele beneficiarilor (' + d.total + ' lei) depasesc ce mai poate fi redirectionat (' + d.sumaRest + ' lei). Ajusteaza sumele.' });
     recordDecl(req, 'd177', year + '-12');
     sendXml(res, xml.d177Xml(v.company, d), 'd177-' + year + '.xml');
   });

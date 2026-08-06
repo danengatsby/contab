@@ -40,6 +40,15 @@ Reperul exercită calea real: exemplul integrat n-are sponsorizări, deci s-a co
 sponsorizare de 1.500 lei și un beneficiar complet — altfel poarta ar valida un formular fără
 niciun `<beneficiar>`, adică exact secțiunea obligatorie.
 
+### D177 — corelația pe care validatorul NU o verifică (2026-08-06)
+
+Sondat explicit: un `sumaB` de 10.000 lei pe un `sumaRest` de 3.000 trece validatorul **fără o
+vorbă**. Legea o impune totuși — nu poți redirecționa mai mult decât ți-a rămas — deci o prinde
+aplicația, ca la IBAN. Ruta `/xml/d177` refuză generarea, cu sumele în mesaj.
+
+Regula generală care se repetă: validatorul verifică **forma**, nu **fondul**. Tot ce ține de fond
+rămâne în sarcina aplicației, iar un „valid" de la DUK nu spune nimic despre asta.
+
 ## Sondare 2026-08-06 — F30/F40 NU fac parte din S1120/S1121/S1122
 
 Consemnat aici fiindcă e o constatare de **schemă**, obținută de la validatorul oficial, și
