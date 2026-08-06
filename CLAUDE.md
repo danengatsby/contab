@@ -41,6 +41,18 @@ separată), XSD pentru e-Transport. Poarta blochează la „INVALID" **și** la 
 nu e „e bine". `npm test` nu o înlocuiește: `wellFormed` verifică doar echilibrul etichetelor,
 nu ce acceptă ANAF. În CI: jobul `poarta-fiscala` (fiecare push/PR); pe calea locală (merge + push direct, fără PR) o leagă hook-ul din `sh scripts/hook-fiscal.sh`, iar pe PR-uri `sh scripts/protectie-ramura.sh`.
 
+**Pentru modulele de extragere, poarta e o ALARMĂ, nu un test — și e important să știi diferența.**
+`aiExtractor.js`, `extractor.js`, `extractQuality.js`, `extractCheck.js`, `efacturaImport.js` și
+`einvoiceReconcile.js` sunt în perimetru, dar **generatorul de referințe nu ajunge niciodată la ele**
+(măsurat 2026-08-06: închiderea tranzitivă a lui `require()` din `scripts/genereaza-referinte.js`
+atinge 47 de module, niciunul dintre acestea). Poarta validează declarații generate din **seed**,
+deci nu poate vedea un defect introdus acolo. Le ținem în listă fiindcă un defect acolo ajunge în
+declarații pe altă cale — cifre greșite intrate ca articole contabile — deci schimbarea merită
+oprită și ieșirile re-dovedite. Dar **nu te baza pe poartă ca să prindă regresia**: scrie teste pe
+modul. Tiparul e `normalizeazaRaspuns` din `src/aiExtractor.js`, scos din funcția async de rețea
+tocmai ca să poată fi acoperit cu aserțiuni de milisecunde (reintroducerea bugului istoric
+`cota || 19` pică 4 dintre ele).
+
 Schema e-Transport e **versionată în repo** (`schemas/eTransport/*.xsd`, o singură versiune la un
 moment dat), ca poarta să meargă în orice clonă și în CI fără variabile — runnerul e efemer, deci
 o cale de pe server n-ar indica nimic acolo. Se poate suprascrie cu `CONTAB_ETRANSPORT_XSD` (cale
