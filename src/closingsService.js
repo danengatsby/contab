@@ -85,6 +85,11 @@ function profitTaxOptions(fid, src, year) {
     // anula si plafoanele art. 25/40^2, deci din interfata impozitul iesea neajustat.
     deduceri: (src.deduceri != null && src.deduceri !== '') ? Number(src.deduceri) : null,
     pierdereReportata: pr || 0,
+    // VECHIMEA pierderilor (art. 31). Lista bate scalarul: doar ea permite expirarea. Scalarul
+    // ramane pentru suprascrierea manuala din formular — cand contabilul tasteaza o suma, ea nu
+    // are an, deci nu poate fi imbatranita, si atunci lista se ignora deliberat.
+    ...(src.pierdereReportata != null && src.pierdereReportata !== ''
+      ? {} : { pierderi: (db.getFirma(fid).pierderiFiscale || []) }),
     plafoane: fiscal.FISCAL,
     cheltAuto: rep.cheltuieliAuto(view, year),
     cheltLipsaNeimputabila: rep.cheltuieliLipsaNeimputabila(view, year),
@@ -108,7 +113,10 @@ function closeProfitTax(fid, src, year) {
   const pt = acc.profitTax(db.scoped(fid), year, profitTaxOptions(fid, src, year));
   const firma = db.getFirma(fid);
   firma.pierdereFiscala = firma.pierdereFiscala || {};
-  firma.pierdereFiscala[year] = pt.pierdereDeReportat;
+  firma.pierdereFiscala[year] = pt.pierdereDeReportat; // pastrat: contract istoric + afisari vechi
+  // Forma AUTORITARA e lista pe ani: numai ea poate fi imbatranita si expirata (art. 31).
+  // Se scrie si cand nu s-a folosit nimic — anii urmatori pornesc de aici.
+  if (pt.pierderiDeReportat) firma.pierderiFiscale = pt.pierderiDeReportat;
   // Reportul creditului de sponsorizare, pe acelasi tipar ca pierderea fiscala: se memoreaza si
   // cand creditul folosit e 0. Bucket-urile isi pastreaza ANUL, fiindca prescriptia (7 ani) se
   // masoara pe vechimea fiecaruia — un total unic n-ar mai putea fi prescris corect.

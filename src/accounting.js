@@ -426,6 +426,67 @@ function profitContabilDin(acc) {
 // tranzitorie il extinde si asupra pierderilor pre-2024 ramase de recuperat dupa 31.12.2023.
 const CAP_PIERDERE_AN = 2024;
 const CAP_PIERDERE_PCT = 70;
+// Art. 31 Cod fiscal: pierderea se recupereaza in urmatorii ani CONSECUTIVI, iar Legea 296/2023 a
+// scurtat termenul de la 7 la 5 ani pentru pierderile din 2024 incolo. Cele de dinainte isi
+// pastreaza cei 7 ani — deci intr-o firma cu istoric coexista DOUA regimuri, si de aceea termenul
+// se decide per VINTAGE, nu global pe firma.
+const ANI_REPORT_VECHI = 7; // pierderi din anii <= 2023
+const ANI_REPORT_NOU = 5;   // pierderi din anii >= CAP_PIERDERE_AN
+
+/** Cati ani consecutivi se poate recupera pierderea nascuta in anul `an`. */
+function aniReportPierdere(an) {
+  return Number(an) >= CAP_PIERDERE_AN ? ANI_REPORT_NOU : ANI_REPORT_VECHI;
+}
+
+/**
+ * Consuma pierderile reportate in anul `an`, in limita `plafon` (cei 70% din baza), respectand
+ * VECHIMEA fiecareia.
+ *
+ * De ce exista: pana acum pierderea reportata era UN SINGUR NUMAR cumulat pe firma. Un numar nu
+ * are varsta, deci nimic nu o putea expira — o pierdere din 2019 ramanea folosibila la infinit,
+ * iar impozitul iesea subevaluat, tacut. (Simetric, creditul de sponsorizare avea deja report pe
+ * ani; tiparul exista in casa, doar ca nu fusese aplicat si aici.)
+ *
+ * Ordinea de consum e FIFO — cea mai VECHE prima. Nu e o preferinta de stil: pierderea veche e
+ * cea care expira prima, deci consumata ultima s-ar pierde definitiv. Ordinea inversa ar da un
+ * impozit corect anul asta si mai mare la anul.
+ *
+ * @param {Array<{an:number|string, suma:number}>} pierderi vintage-urile disponibile la inceputul anului
+ * @param {number|string} an anul fiscal curent
+ * @param {number} plafon suma maxima recuperabila (0 = nimic de recuperat: an cu pierdere)
+ * @returns {{ folosit:number, detaliu:Array, expirate:Array, ramase:Array, disponibil:number }}
+ */
+function consumaPierderi(pierderi, an, plafon) {
+  const anCurent = Number(an);
+  const lista = (pierderi || [])
+    .map((p) => ({ an: Number(p.an), suma: round2(Number(p.suma) || 0) }))
+    .filter((p) => Number.isFinite(p.an) && p.suma > 0)
+    .sort((a, b) => a.an - b.an); // FIFO: cea mai veche prima
+
+  const expirate = [];
+  const valabile = [];
+  for (const p of lista) {
+    // „urmatorii N ani consecutivi": o pierdere din anul Y se recupereaza in Y+1 .. Y+N.
+    // In anul Y insusi nu e „reportata" — e pierderea curenta, tratata separat.
+    const vechime = anCurent - p.an;
+    if (vechime <= 0) continue;                    // an viitor sau chiar anul curent
+    if (vechime > aniReportPierdere(p.an)) { expirate.push(Object.assign({}, p, { motiv: 'termenul de ' + aniReportPierdere(p.an) + ' ani s-a implinit' })); continue; }
+    valabile.push(p);
+  }
+
+  const disponibil = round2(valabile.reduce((s, p) => s + p.suma, 0));
+  let ramasDeAcoperit = Math.max(0, round2(Number(plafon) || 0));
+  const detaliu = [];
+  for (const p of valabile) {
+    const folosit = round2(Math.min(p.suma, ramasDeAcoperit));
+    ramasDeAcoperit = round2(ramasDeAcoperit - folosit);
+    detaliu.push({ an: p.an, disponibil: p.suma, folosit, ramas: round2(p.suma - folosit), expiraDupa: p.an + aniReportPierdere(p.an) });
+  }
+  const folosit = round2(detaliu.reduce((s, r) => s + r.folosit, 0));
+  // Ce se reporteaza MAI DEPARTE: doar resturile inca valabile. Expirarile NU trec mai departe.
+  const ramase = detaliu.filter((r) => r.ramas > 0).map((r) => ({ an: r.an, suma: r.ramas }));
+  return { folosit, detaliu, expirate, ramase, disponibil };
+}
 
 /**
  * Impozitul pe profit pentru un an, cu ajustari fiscale:
@@ -492,7 +553,17 @@ function profitTax(db, year, opts) {
     ? Number(opts.pierdereRecuperabilaPct) : CAP_PIERDERE_PCT;
   const plafonReportarePct = Number(year) >= CAP_PIERDERE_AN ? capPct : 100;
   const pierdereRecuperabilaMax = bazaInainteReportare > 0 ? round2(bazaInainteReportare * plafonReportarePct / 100) : 0;
-  const pierdereFolosita = bazaInainteReportare > 0 ? round2(Math.min(pierdereReportata, pierdereRecuperabilaMax)) : 0;
+  // VECHIMEA pierderilor (art. 31): cand apelantul da lista pe ani (`opts.pierderi`), consumul se
+  // face FIFO si cele expirate se scot din joc. Fara lista se pastreaza contractul istoric —
+  // un singur numar, care NU poate expira fiindca nu i se stie varsta. De aceea `closingsService`
+  // trece pe lista: un scalar nu putea fi facut sa expire fara sa-i inventam un an.
+  const pv = Array.isArray(opts.pierderi)
+    ? consumaPierderi(opts.pierderi, year, bazaInainteReportare > 0 ? pierdereRecuperabilaMax : 0)
+    : null;
+  const disponibilReportat = pv ? pv.disponibil : pierdereReportata;
+  const pierdereFolosita = pv
+    ? pv.folosit
+    : (bazaInainteReportare > 0 ? round2(Math.min(pierdereReportata, pierdereRecuperabilaMax)) : 0);
   const profitImpozabil = round2(bazaInainteReportare - pierdereFolosita);
   const impozitBrut = profitImpozabil > 0 ? round2(profitImpozabil * cota / 100) : 0;
   // FAZA 2 — creditul fiscal al sponsorizarii, care se scade DIN IMPOZIT (nu din baza). Depinde de
@@ -507,11 +578,20 @@ function profitTax(db, year, opts) {
     : null;
   const impozit = cr ? cr.impozitDupaCredit : impozitBrut;
   const pierdereCurenta = bazaInainteReportare < 0 ? round2(-bazaInainteReportare) : 0;
-  const pierdereDeReportat = round2(pierdereReportata - pierdereFolosita + pierdereCurenta);
+  const pierdereDeReportat = round2(disponibilReportat - pierdereFolosita + pierdereCurenta);
+  // Vintage-urile care pleaca mai departe: resturile inca valabile + pierderea anului curent.
+  // Cele EXPIRATE nu apar aici — asta e tot rostul reparatiei.
+  const pierderiDeReportat = pv
+    ? pv.ramase.concat(pierdereCurenta > 0 ? [{ an: Number(year), suma: pierdereCurenta }] : [])
+    : null;
   const lines = impozit > 0 ? [{ debit: '691', credit: '4411', suma: impozit, explicatie: 'Impozit pe profit (' + cota + '%)' }] : [];
   return {
     year: String(year), venit, chelt, profitContabil, cheltNedeductibile: nedeductibile, deduceri,
-    pierdereReportata, plafonReportarePct, pierdereRecuperabilaMax, pierdereFolosita, profitImpozabil,
+    pierdereReportata: disponibilReportat, plafonReportarePct, pierdereRecuperabilaMax, pierdereFolosita, profitImpozabil,
+    // Detaliul pe vintage-uri (null cand apelantul a dat doar scalarul, contractul istoric).
+    pierderiDetaliu: pv ? pv.detaliu : null,
+    pierderiExpirate: pv ? pv.expirate : null,
+    pierderiDeReportat,
     cota, impozit, pierdereCurenta, pierdereDeReportat, lines,
     // Campuri NOI (aditive — forma istorica de mai sus e neatinsa): detaliul plafoanelor si creditul.
     impozitBrut, cifraAfaceri,
@@ -994,5 +1074,5 @@ function cashControl(db, cont, period, opts) {
 }
 
 module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
-  allLines, resultLines, isResultClosingLine, rezervaLegalaDin, profitContabilDin, rulajRezultat, sortEntries, entryChrono, lastEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, vatCarryForward, annualClosing, profitTax, resultDistribution, legalReserve, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
+  allLines, resultLines, isResultClosingLine, rezervaLegalaDin, profitContabilDin, consumaPierderi, aniReportPierdere, rulajRezultat, sortEntries, entryChrono, lastEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, vatCarryForward, annualClosing, profitTax, resultDistribution, legalReserve, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };

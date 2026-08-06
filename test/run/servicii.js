@@ -1306,6 +1306,31 @@ section('Migrari DB versionate (src/migrations.js)');
     d4.schemaVersion = 3;
     ok('v4 e idempotent', mig.runMigrations(d4, { log: quiet }).some((x) => x.v === 4 && x.changed === 0));
   }
+  {
+    // v5: pierderea fiscala capata VECHIME. Harta an -> total cumulat nu putea expira nimic;
+    // lista de vintage-uri poate. Conversia dateaza suma la CEL MAI VECHI an inregistrat —
+    // directie deliberata: expira mai devreme, deci impozitul poate iesi mai mare, niciodata
+    // mai mic, iar rezultatul e vizibil in registrul fiscal si corectabil.
+    const d5 = {
+      schemaVersion: 4,
+      firme: [
+        { id: 1, pierdereFiscala: { 2021: 80000, 2022: 60000, 2023: 45000 } }, // sold curent: 45000
+        { id: 2, pierdereFiscala: { 2024: 0 } },                               // fara pierdere
+        { id: 3, pierderiFiscale: [{ an: 2025, suma: 10 }] },                  // deja migrata
+        { id: 4 },                                                             // fara istoric
+      ],
+    };
+    const ap5 = mig.runMigrations(d5, { log: quiet });
+    ok('v5 a migrat doua firme (cea cu istoric si cea cu zero)', ap5.some((x) => x.v === 5 && x.changed === 2));
+    eq('soldul luat e cel mai RECENT total, nu suma tuturor', JSON.stringify(d5.firme[0].pierderiFiscale.map((p) => p.suma)), '[45000]');
+    eq('dar e DATAT la cel mai vechi an (expira mai devreme, nu mai tarziu)', d5.firme[0].pierderiFiscale[0].an, 2021);
+    ok('vintage-ul e marcat ca aproximat, ca sa se stie ca vine dintr-un cumulat', d5.firme[0].pierderiFiscale[0].aproximat === true);
+    eq('firma fara pierdere primeste lista goala, nu un vintage de zero', JSON.stringify(d5.firme[1].pierderiFiscale), '[]');
+    eq('firma deja migrata ramane neatinsa', d5.firme[2].pierderiFiscale[0].an, 2025);
+    ok('firma fara istoric nu capata camp', d5.firme[3].pierderiFiscale === undefined);
+    d5.schemaVersion = 4;
+    ok('v5 e idempotent', mig.runMigrations(d5, { log: quiet }).some((x) => x.v === 5 && x.changed === 0));
+  }
   // re-rulare pe baza deja migrata: idempotent prin VERSIUNE (niciun pas)
   const applied2 = mig.runMigrations(dOld, { log: quiet });
   eq('re-rulare: niciun pas aplicat', applied2.length, 0);
