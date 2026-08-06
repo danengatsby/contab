@@ -112,13 +112,33 @@ function neimpozabilMinim(brut, salariuBaza, period) {
 }
 
 /**
+ * Categoriile art. 76 alin. (4^1), cu limitele ACTUALIZATE din parametrii curenti.
+ *
+ * Cuantumurile care le alimenteaza (tichetul de masa, castigul salarial mediu, diurna legala) se
+ * schimba prin alte acte decat Codul fiscal, deci se invechesc primele. Stau in `RATES`, unde
+ * `applyConfig` le poate suprascrie din Setari, iar aici se REAPLICA peste tabelul de categorii
+ * la fiecare apel. Citite direct din `cfg.BENEFICII`, ar fi ramas inghetate la valorile implicite
+ * si suprascrierea utilizatorului n-ar fi avut niciun efect — un knob care pare ca merge.
+ */
+function categoriiBeneficii() {
+  return cfg.BENEFICII.map((cat) => {
+    const cheie = (cat.limita || {}).sursaRate;
+    if (!cheie) return cat;
+    const v = Number(FISCAL[cheie]);
+    if (!Number.isFinite(v) || v <= 0) return cat;
+    const multiplu = Number(cat.limita.multiplu) || 1;
+    return Object.assign({}, cat, { limita: Object.assign({}, cat.limita, { lei: round2(v * multiplu) }) });
+  });
+}
+
+/**
  * Avantajele din plafonul de 33% (art. 76 alin. (4^1)) — vezi `src/beneficii.js` pentru mecanica.
  * Aici se INJECTEAZA doar parametrii (categoriile datate + procentul suprascriabil din Setari),
  * ca motorul sa ramana pur si testabil, exact ca la deducerea personala.
  */
 function beneficii(intrare) {
   return ben.calcul(intrare, {
-    categorii: cfg.BENEFICII,
+    categorii: categoriiBeneficii(),
     pct: FISCAL.plafonBeneficiiPct,
     cursEur: FISCAL.cursEurBeneficii,
   });
@@ -205,4 +225,4 @@ function taxePfa(venitNet, opts) {
   return { venitNet: vn, salariuMinim: sm, plafon6: p6, plafon12: p12, plafon24: p24, plafon60: p60, bazaCas, cas, bazaCass, cass, impozit, total: round2(cas + cass + impozit) };
 }
 
-module.exports = { FISCAL, DEFAULTS, applyConfig, fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa, neimpozabilMinim, beneficii, CATEGORII_BENEFICII: cfg.BENEFICII };
+module.exports = { FISCAL, DEFAULTS, applyConfig, categoriiBeneficii, fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa, neimpozabilMinim, beneficii, CATEGORII_BENEFICII: cfg.BENEFICII };
