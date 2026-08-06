@@ -714,6 +714,10 @@ section('Calitatea citirii automate: verdictul și raportul (docflow.js / entrie
     peControl: [{ cod: 'cota', nume: 'Cotă TVA validă', n: 3 }],
     peCamp: [{ camp: 'cota', n: 3 }],
     recente: [{ fileName: 'f<1>.pdf', format: 'pdf', partener: 'ALPHA', campuri: [{ camp: 'cota' }], motiv: 'cotă <i>greșită</i>', tipExtras: 'a', tipSalvat: 'a' }],
+    modele: [
+      { model: 'claude-sonnet-5', documente: 8, incredereMedie: 74, postateAutomat: 1 },
+      { model: null, documente: 4, incredereMedie: null, postateAutomat: 0 },
+    ],
   };
   const hr = entries.calitateRaportHtml(raport);
   ok('raportul arată KPI-urile', hr.includes('12') && hr.includes('71%') && hr.includes('40%'));
@@ -726,6 +730,16 @@ section('Calitatea citirii automate: verdictul și raportul (docflow.js / entrie
   ok('numele furnizorului e escapat', hr.includes('&lt;b&gt;ALPHA&lt;/b&gt;') && !hr.includes('<b>ALPHA'));
   ok('numele fișierului e escapat', hr.includes('f&lt;1&gt;.pdf'));
   ok('motivul scris de operator e escapat', hr.includes('&lt;i&gt;greșită&lt;/i&gt;'));
+  // CINE a citit documentele: increderea e o auto-raportare, iar scala ei difera de la un model la
+  // altul. Fara randarea asta, o schimbare de model ar aparea ca „nu mai trece nimic de controale",
+  // fara nicio urma a cauzei — defalcarea exista in API de la merge-ul ce5483f, dar nu se vedea.
+  ok('arată cine a citit documentele, cu modelul pe linie', hr.includes('Cine a citit documentele') && hr.includes('claude-sonnet-5'));
+  ok('extragerea fără AI se numește în cuvinte, nu ca „null"', hr.includes('reguli locale') && !hr.includes('>null<'));
+  // atentie la substring: `!hr.includes('0%')` trecea drept fals fiindca „40%" (rata de corecție)
+  // îl conține. Verificarea corectă e pe CELULA randată, nu pe o bucată de text din tot raportul.
+  ok('încrederea medie lipsă se arată ca „—", nu ca 0%',
+    hr.includes('74%') && hr.includes('<td class="num">—</td>'));
+  ok('spune că scala încrederii diferă între modele (altfel numărul induce în eroare)', /scala ei difer|scala .* difer/i.test(hr));
   ok('fără documente citite: mesaj, nu tabele goale',
     entries.calitateRaportHtml({ documenteCitite: 0 }).includes('Niciun document'));
   eq('raport lipsă nu randează nimic', entries.calitateRaportHtml(null), '');

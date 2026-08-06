@@ -266,13 +266,23 @@ export function calitateRaportHtml(r) {
   const stare = r.autoPostActiv
     ? '<p class="muted">Postarea automată e <b>pornită</b>: documentele care trec toate controalele intră direct în contabilitate.</p>'
     : '<p class="muted">Postarea automată e <b>oprită</b> (implicit). Se poate porni din Setări → datele firmei; documentele care trec toate controalele ar intra direct în contabilitate.</p>';
+  // CINE a citit documentele. „Încrederea" e o auto-raportare a extractorului, deci scala ei
+  // aparține modelului, nu documentului: la schimbarea modelului, aceleași documente pot primi
+  // note vizibil diferite. Fără tabelul ăsta, efectul ar apărea ca „nu mai trece nimic de
+  // controale", fără nicio urmă a cauzei.
+  const modele = (r.modele || []).length
+    ? `<h3>Cine a citit documentele</h3><table><thead><tr><th>Extractor</th><th class="num">Documente</th><th class="num">Încredere medie</th><th class="num">Au trecut toate controalele</th></tr></thead><tbody>${
+      r.modele.map((m) => `<tr><td>${H(m.model || 'reguli locale (fără AI)')}</td><td class="num">${H(m.documente)}</td>
+        <td class="num">${m.incredereMedie == null ? '—' : H(m.incredereMedie + '%')}</td><td class="num">${H(m.postateAutomat)}</td></tr>`).join('')}</tbody></table>
+      <p class="muted">Încrederea e nota pe care și-o dă singur extractorul, iar scala ei diferă de la un model la altul — compară pe linii, nu între ele. Regulile locale nu raportează încredere.</p>`
+    : '';
   const recente = (r.recente || []).length
     ? `<h3>Ultimele corecții</h3><table><thead><tr><th>Document</th><th>Furnizor</th><th>Ce s-a corectat</th><th>Motiv</th></tr></thead><tbody>${
       r.recente.slice(0, 10).map((x) => `<tr><td>${H(x.fileName)} <span class="muted">${H(x.format)}</span></td><td>${H(x.partener)}</td>
         <td class="muted">${H((x.campuri || []).map((c) => c.camp).join(', ') || (x.tipExtras !== x.tipSalvat ? 'tipul documentului' : '—'))}</td>
         <td class="muted">${H(x.motiv || '—')}</td></tr>`).join('')}</tbody></table>`
     : '';
-  return kpi + stare + tabel('Furnizori care cer corecții', r.furnizori, 'Furnizor')
+  return kpi + stare + modele + tabel('Furnizori care cer corecții', r.furnizori, 'Furnizor')
     + tabel('Formate care cer corecții', r.formate, 'Format')
     + ((r.peControl || []).length
       ? `<h3>Controale care pică</h3><table><thead><tr><th>Control</th><th class="num">De câte ori</th></tr></thead><tbody>${
