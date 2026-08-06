@@ -7,6 +7,7 @@
 // Modul de rute: register(app, ctx), ctx = { S }.
 
 const db = require('../db');
+const bunuriCapital = require('../bunuriCapital'); // registrul art. 305 alin. (4)
 const ptOpts = require('../profitTaxOptions'); // sursa unica a optiunilor de impozit pe profit
 const stmt = require('../statements');
 const rep = require('../reporting');
@@ -157,6 +158,11 @@ module.exports = function register(app, ctx) {
   });
   app.get('/pdf/d100', (req, res) => pdf.d100Pdf(res, S(req).company, rep.d100micro(S(req), req.query.period || null)));
   // D101 — calculul impozitului pe profit anual (figuri semantice; XML-ul oficial nu e inca generat)
+  // Registrul bunurilor de capital (art. 305 alin. (4)) — obligatoriu prin lege. Se DERIVA din
+  // articole, deci nu are ruta de scriere: nu exista ce sa salvezi separat.
+  app.get('/api/bunuri-capital', (req, res) => res.json(
+    bunuriCapital.registru(S(req), { anReferinta: req.query.an })));
+
   app.get('/api/d101', (req, res) => {
     const v = S(req); const an = req.query.year || String(new Date().getFullYear());
     // ACELEASI reguli ca nota contabila 691 = 4411 (src/profitTaxOptions.js). Chemata fara
