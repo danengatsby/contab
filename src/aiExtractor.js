@@ -117,6 +117,41 @@ function detectMediaType(b) {
   return null;
 }
 
+/**
+ * Normalizeaza raspunsul BRUT al modelului in campurile aplicatiei.
+ *
+ * Sta AFARA din `extractWithAI` dinadins, ca sa poata fi testata fara retea. Aici traieste
+ * aritmetica fiscala a extragerii (cota, rotunjirile), adica exact clasa de defect care a produs
+ * odata bugul `cota || 19` — o cota veche pusa peste documentele fara TVA, tacut. Cat timp logica
+ * asta era inchisa intr-o functie async care cheama API-ul, nu exista niciun test care s-o atinga:
+ * poarta fiscala nu vede modulul (generatorul de referinte nu-l incarca niciodata), iar suita
+ * ruleaza fara cheie. Scoasa afara, se acopera cu aserttiuni de milisecunde.
+ *
+ * @param {Object} data - obiectul JSON intors de model, conform schemei
+ * @returns {{ suggestedType: string, fields: Object, cuis: string[] }}
+ */
+function normalizeazaRaspuns(data) {
+  const d = data || {};
+  // Cota se pastreaza asa cum a fost citita (inclusiv 0 = document fara TVA). NU se forteaza o
+  // valoare implicita aici — reconcilierea post-extragere (src/extractCheck.js) o infereaza din
+  // raportul TVA/baza cand lipseste, altfel cade pe cota standard datata; un „|| 19" ar fi pus o
+  // cota veche si ar fi ascuns documentele fara TVA.
+  const fields = {
+    data: d.data || '',
+    document: d.document || '',
+    partener: d.partener || '',
+    baza: d.baza != null ? round2(d.baza) : null,
+    tva: d.tva != null ? round2(d.tva) : null,
+    cota: Math.round(Number(d.cota) || 0),
+    suma: d.suma != null ? round2(d.suma) : null,
+    brut: d.brut ? round2(d.brut) : null,
+  };
+  // tipul sugerat trebuie sa existe in nomenclator: un id inventat de model ar ajunge in formular
+  // si ar cere o compunere care nu exista
+  const suggestedType = typesForClient().some((t) => t.id === d.suggestedType) ? d.suggestedType : 'nota_contabila';
+  return { suggestedType, fields, cuis: Array.isArray(d.cuis) ? d.cuis : [] };
+}
+
 async function extractWithAI(buffer, ownCui) {
   const c = getClient();
   const providerInfo = resolveProvider();
@@ -202,29 +237,12 @@ async function extractWithAI(buffer, ownCui) {
     data = JSON.parse(textBlock.text);
   }
 
-  // Cota se pastreaza asa cum a fost citita (inclusiv 0 = document fara TVA). NU se forteaza o
-  // valoare implicita aici — reconcilierea post-extragere (src/extractCheck.js) o infereaza din
-  // raportul TVA/baza cand lipseste, altfel cade pe cota standard datata; un „|| 19" ar fi pus o
-  // cota veche si ar fi ascuns documentele fara TVA.
-  const cota = Math.round(Number(data.cota) || 0);
-  const fields = {
-    data: data.data || '',
-    document: data.document || '',
-    partener: data.partener || '',
-    baza: data.baza != null ? round2(data.baza) : null,
-    tva: data.tva != null ? round2(data.tva) : null,
-    cota,
-    suma: data.suma != null ? round2(data.suma) : null,
-    brut: data.brut ? round2(data.brut) : null,
-  };
-  // valideaza tipul sugerat
-  let suggestedType = data.suggestedType;
-  if (!typesForClient().some((t) => t.id === suggestedType)) suggestedType = 'nota_contabila';
+  const n = normalizeazaRaspuns(data);
 
   return {
-    suggestedType,
-    fields,
-    cuis: Array.isArray(data.cuis) ? data.cuis : [],
+    suggestedType: n.suggestedType,
+    fields: n.fields,
+    cuis: n.cuis,
     source: 'ai',
     // CE model a produs cifrele de mai jos. `incredere` e o AUTO-RAPORTARE a modelului, deci
     // scala ei ii apartine lui, nu documentului: masurat pe acelasi set de 6 documente,
@@ -237,4 +255,4 @@ async function extractWithAI(buffer, ownCui) {
   };
 }
 
-module.exports = { extractWithAI, aiAvailable, detectMediaType, MODEL, resolveProvider };
+module.exports = { extractWithAI, aiAvailable, detectMediaType, MODEL, resolveProvider, normalizeazaRaspuns };
