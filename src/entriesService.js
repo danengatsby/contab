@@ -94,6 +94,10 @@ function inregistreazaInterventia(fid, b, entry, campuriSalvate) {
     fileName: doc.fileName || '',
     format: ex.format || extractQuality.formatFisier(doc.fileName),
     source: ex.source || 'necunoscut',
+    // CE extractor a citit documentul pe care omul l-a corectat. `source` spune doar „ai" sau
+    // „heuristic"; modelul e granularitatea la care se vede daca o schimbare de model a schimbat
+    // calitatea. `null` la regulile locale — acolo nu exista model.
+    model: ex.model || null,
     incredere: ex.incredere == null ? null : Number(ex.incredere),
     scor: ex.scor == null ? null : Number(ex.scor),
     decizie: ex.decizie || null,

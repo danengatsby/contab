@@ -193,10 +193,12 @@ function formatFisier(fileName) {
  */
 function raport(interventii) {
   const list = interventii || [];
-  const grupeaza = (cheie) => {
+  // `implicit` = eticheta pentru grupa fara valoare. Nu e mereu „—": la model, lipsa INSEAMNA
+  // ceva anume (documentul a fost citit cu reguli locale), iar o liniuta ar ascunde exact asta.
+  const grupeaza = (cheie, implicit) => {
     const m = new Map();
     for (const i of list) {
-      const k = cheie(i) || '—';
+      const k = cheie(i) || implicit || '—';
       const g = m.get(k) || { cheie: k, interventii: 0, documente: 0, campuri: 0, controale: {} };
       g.interventii += 1;
       g.documente += 1;
@@ -217,6 +219,11 @@ function raport(interventii) {
     furnizori: grupeaza((i) => i.partener),
     formate: grupeaza((i) => i.format),
     surse: grupeaza((i) => i.source),
+    // Corectiile taiate pe EXTRACTORUL care a citit documentul — semnalul de calitate cel mai
+    // direct: „de cand am schimbat modelul, se corecteaza mai des?". Numele NU e `modele`: ruta
+    // pune acolo defalcarea documentelor CITITE, iar `Object.assign` peste raport ar fi
+    // suprascris-o tacit pe una dintre ele.
+    corectiiPeModel: grupeaza((i) => i.model, 'reguli locale'),
     peControl: Object.entries(peControl).sort((a, b) => b[1] - a[1]).map(([cod, n]) => ({ cod, nume: (CONTROALE.find((x) => x.cod === cod) || {}).nume || cod, n })),
     peCamp: Object.entries(peCamp).sort((a, b) => b[1] - a[1]).map(([camp, n]) => ({ camp, n })),
   };

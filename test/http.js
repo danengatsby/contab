@@ -465,6 +465,11 @@ async function main() {
       // fara incredere raportata, media TREBUIE sa fie null: un 0 ar inventa o tendinta descendenta
       eq('raport: fara incredere raportata, media e null (nu 0)', grupaLocala && grupaLocala.incredereMedie, null);
       ok('raport: defalcarea poarta si cate s-au postat automat', grupaLocala && typeof grupaLocala.postateAutomat === 'number');
+      // CORECTIILE taiate pe extractor: `modele` spune ce s-a CITIT, asta spune ce a trebuit
+      // CORECTAT — semnalul care raspunde la „de cand am schimbat modelul, se corecteaza mai des?".
+      ok('raport: corectiile se pot taia pe extractorul care a citit documentul', Array.isArray(rap.corectiiPeModel));
+      ok('raport: fara AI, corectiile apar pe grupa „reguli locale" (nu pe „—")',
+        rap.corectiiPeModel.some((m) => m.cheie === 'reguli locale' && m.interventii >= 1));
 
       // A doua salvare din ACELASI document nu dubleaza interventia (consemnarea e idempotenta)
       const inainte = (await req('GET', '/api/extract-quality?days=30', { cookie: c1 })).json.interventii;

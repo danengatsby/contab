@@ -207,6 +207,37 @@ firmaLockT.lockedUntil = '2026-06';
 eq('stergere in perioada inchisa -> 400', errStatus(() => esvc.deleteEntry(ce.entry.id, fidOk, () => true)), 400);
 firmaLockT.lockedUntil = lockPrev;
 eq('stergerea unui articol POSTAT -> 400 (corectie prin storno)', errStatus(() => esvc.deleteEntry(ce.entry.id, fidOk, () => true)), 400);
+// INTERVENTIA poarta si MODELUL care a citit documentul. `source` spune doar „ai"/„heuristic";
+// modelul e granularitatea la care se vede daca o schimbare de model a schimbat calitatea.
+// Se testeaza AICI, nu in test/http.js: suita HTTP ruleaza fara cheie AI, deci `extras.model` e
+// oricum absent si o aserttiune de acolo ar trece si daca campul nu s-ar copia deloc (verificat
+// prin mutatie: scoaterea campului lasa suita HTTP verde).
+{
+  const dITV = db.get();
+  const docModel = { id: 'doc-model-proba', firmaId: fidOk, fileName: 'f.pdf', uploadedAt: new Date().toISOString(),
+    extras: { source: 'ai', model: 'model-de-proba-5', incredere: 90, suggestedType: 'test_svc',
+      fields: { data: '2026-06-10', document: 'ITV-1', partener: 'ALPHA' } } };
+  dITV.documents = dITV.documents || [];
+  dITV.documents.push(docModel);
+  const nrInainte = (dITV.extractInterventions || []).length;
+  // se salveaza cu ALT numar de document -> diferenta exista, deci interventia se consemneaza
+  esvc.createEntry(fidOk, { tip: 'test_svc', fileId: docModel.id,
+    fields: { data: '2026-06-10', document: 'ITV-2', partener: 'ALPHA' } }, stubDeps);
+  const itvNou = (db.get().extractInterventions || [])[nrInainte];
+  ok('interventia se consemneaza pentru documentul citit cu AI', !!itvNou);
+  eq('interventia poarta MODELUL care a citit documentul', itvNou && itvNou.model, 'model-de-proba-5');
+  eq('...si sursa, ca pana acum', itvNou && itvNou.source, 'ai');
+  // documentul citit cu reguli locale n-are model: `null`, nu un sir inventat
+  const docLocal = { id: 'doc-local-proba', firmaId: fidOk, fileName: 'g.pdf', uploadedAt: new Date().toISOString(),
+    extras: { source: 'heuristic', suggestedType: 'test_svc', fields: { data: '2026-06-10', document: 'ITV-3' } } };
+  dITV.documents.push(docLocal);
+  const nr2 = (db.get().extractInterventions || []).length;
+  esvc.createEntry(fidOk, { tip: 'test_svc', fileId: docLocal.id,
+    fields: { data: '2026-06-10', document: 'ITV-4' } }, stubDeps);
+  const itvLocal = (db.get().extractInterventions || [])[nr2];
+  eq('fara AI, interventia are model null (nu un sir inventat)', itvLocal && itvLocal.model, null);
+}
+
 // storno generic: reversare legata + originalul marcat; re-storno refuzat
 const stRes = esvc.stornoEntry(ce.entry.id, fidOk, () => true, '2026-06-30');
 ok('storno: nota de reversare legata (stornoOf) + original marcat stornat', stRes.storno.stornoOf === ce.entry.id && stRes.original.stornat === true && stRes.storno.system === true);
@@ -646,9 +677,9 @@ section('Calitatea extragerii: controale, decizie, interventii (src/extractQuali
 
   // ── Raportul: cine si ce produce erori ──
   const itv = [
-    { partener: 'ALPHA SRL', format: 'pdf', source: 'ai', controalePicate: ['partener', 'cota'], diff: { nrModificari: 2, campuri: [{ camp: 'cota' }, { camp: 'partener' }] } },
-    { partener: 'ALPHA SRL', format: 'pdf', source: 'ai', controalePicate: ['cota'], diff: { nrModificari: 1, campuri: [{ camp: 'cota' }] } },
-    { partener: 'BETA SRL', format: 'jpg', source: 'ai', controalePicate: ['aritmetica'], diff: { nrModificari: 1, campuri: [{ camp: 'suma' }] } },
+    { partener: 'ALPHA SRL', format: 'pdf', source: 'ai', model: 'claude-sonnet-5', controalePicate: ['partener', 'cota'], diff: { nrModificari: 2, campuri: [{ camp: 'cota' }, { camp: 'partener' }] } },
+    { partener: 'ALPHA SRL', format: 'pdf', source: 'ai', model: 'claude-sonnet-5', controalePicate: ['cota'], diff: { nrModificari: 1, campuri: [{ camp: 'cota' }] } },
+    { partener: 'BETA SRL', format: 'jpg', source: 'ai', model: 'claude-sonnet-4-6', controalePicate: ['aritmetica'], diff: { nrModificari: 1, campuri: [{ camp: 'suma' }] } },
   ];
   const rp = eq2.raport(itv);
   eq('raport: total interventii', rp.total, 3);
@@ -659,6 +690,18 @@ section('Calitatea extragerii: controale, decizie, interventii (src/extractQuali
   eq('raport: controlul care pica cel mai des', rp.peControl[0].cod, 'cota');
   ok('raport: controlul poarta si numele lizibil', !!rp.peControl[0].nume && rp.peControl[0].nume !== rp.peControl[0].cod);
   eq('raport: campul corectat cel mai des', rp.peCamp[0].camp, 'cota');
+  // ── Corectiile taiate pe EXTRACTOR: „de cand am schimbat modelul, se corecteaza mai des?" ──
+  eq('raport: corectiile se grupeaza pe model, cel mai corectat primul',
+    rp.corectiiPeModel.map((m) => m.cheie + ':' + m.interventii).join(','), 'claude-sonnet-5:2,claude-sonnet-4-6:1');
+  // numele NU e `modele`: ruta pune acolo defalcarea documentelor CITITE, iar Object.assign peste
+  // raport ar suprascrie tacit una dintre ele. Poarta asta prinde o redenumire viitoare.
+  ok('raport: felierea pe model nu se numeste `modele` (s-ar ciocni cu ruta)', rp.modele === undefined);
+  // Documentele citite cu reguli locale n-au model; grupa lor trebuie sa se numeasca in cuvinte,
+  // fiindca aici lipsa INSEAMNA ceva, spre deosebire de un furnizor necunoscut.
+  const rpLocal = eq2.raport([{ partener: 'X', format: 'pdf', source: 'heuristic', controalePicate: [], diff: { nrModificari: 1, campuri: [] } }]);
+  eq('raport: extragerea fara model se grupeaza ca „reguli locale", nu ca „—"',
+    rpLocal.corectiiPeModel[0].cheie, 'reguli locale');
+  eq('raport: grupele fara eticheta anume raman pe „—"', eq2.raport([{ format: 'pdf', diff: {} }]).furnizori[0].cheie, '—');
   eq('raport gol nu arunca', eq2.raport([]).total, 0);
 }
 
