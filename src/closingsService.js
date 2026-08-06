@@ -10,18 +10,9 @@
 const db = require('./db');
 const acc = require('./accounting');
 const coa = require('./chartOfAccounts');
-const fiscal = require('./fiscal');
-const rep = require('./reporting');
-const assets = require('./assets');
-
-/** Rulajul net (debitor) al unui cont de cheltuiala intr-un an, din articolele postate. */
-function rulajCont(view, year, cont) {
-  const lines = acc.resultLines(acc.postedEntries(view)
-    .filter((e) => String(e.period || '').startsWith(String(year))));
-  const a = acc.accumulate(lines)[cont];
-  return a ? Math.round((a.d - a.c) * 100) / 100 : 0;
-}
-
+// `fiscal`, `rep`, `assets` si `rulajCont` traiau aici doar pentru setul de optiuni al
+// impozitului pe profit; au plecat odata cu el in src/profitTaxOptions.js.
+const ptOpts = require('./profitTaxOptions'); // sursa unica a optiunilor de impozit pe profit
 const { reqFirma } = require('./stocksService');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
@@ -67,38 +58,9 @@ function closeYear(fid, year) {
  *  pierderea reportata explicita are prioritate fata de cea memorata pe firma (anul precedent). */
 function profitTaxOptions(fid, src, year) {
   fid = reqFirma(fid);
-  const losses = db.getFirma(fid).pierdereFiscala || {};
-  src = src || {};
-  const pr = (src.pierdereReportata != null && src.pierdereReportata !== '') ? Number(src.pierdereReportata) : (Number(losses[Number(year) - 1]) || 0);
-  const firma = db.getFirma(fid) || {};
-  const view = db.scoped(fid);
-  return {
-    cota: fiscal.FISCAL.impozitProfit,
-    // Suprascrierea manuala ramane posibila, dar NU mai e implicita: transmisa goala, motorul de
-    // plafoane calculeaza singur nedeductibilele din conturi (art. 25/40^2).
-    cheltNedeductibile: (src.cheltNedeductibile != null && src.cheltNedeductibile !== '')
-      ? Number(src.cheltNedeductibile) : null,
-    // Simetric cu nedeductibilele: camp gol => motorul calculeaza veniturile neimpozabile
-    // (art. 23) din conturi. Aici era `Number(src.deduceri) || 0`, deci un 0 — pe care formularul
-    // il trimitea MEREU, campul avand value="0" — ajungea in motor ca suprascriere explicita cu
-    // zero si stergea tot ce calculase. Nu doar deducerile: acelasi tipar pe `cheltNedeductibile`
-    // anula si plafoanele art. 25/40^2, deci din interfata impozitul iesea neajustat.
-    deduceri: (src.deduceri != null && src.deduceri !== '') ? Number(src.deduceri) : null,
-    pierdereReportata: pr || 0,
-    // VECHIMEA pierderilor (art. 31). Lista bate scalarul: doar ea permite expirarea. Scalarul
-    // ramane pentru suprascrierea manuala din formular — cand contabilul tasteaza o suma, ea nu
-    // are an, deci nu poate fi imbatranita, si atunci lista se ignora deliberat.
-    ...(src.pierdereReportata != null && src.pierdereReportata !== ''
-      ? {} : { pierderi: (db.getFirma(fid).pierderiFiscale || []) }),
-    plafoane: fiscal.FISCAL,
-    cheltAuto: rep.cheltuieliAuto(view, year),
-    cheltLipsaNeimputabila: rep.cheltuieliLipsaNeimputabila(view, year),
-    // Amortizarea contabila vine din rulajul REAL al contului 6811, nu din plan: registrul fiscal
-    // porneste de la ce s-a inregistrat efectiv.
-    amortizare: assets.depreciationDifference(view.assets || [], year, rulajCont(view, year, '6811')),
-    cursEur: Number(src.cursEur) || Number(firma.cursEur) || 0,
-    sponsorizareReport: firma.sponsorizareReport || [],
-  };
+  // Sursa unica, partajata cu calea DECLARATIEI (src/profitTaxOptions.js). Cat timp setul de
+  // optiuni traia doar aici, D101 se genera fara el si raporta alt impozit decat nota postata.
+  return ptOpts.construieste(db.scoped(fid), year, src);
 }
 
 /** Impozitul pe profit (691 = 4411), o singura data pe an. Pierderea fiscala de reportat se
@@ -130,6 +92,11 @@ function closeProfitTax(fid, src, year) {
     id: db.nextId('e'), firmaId: fid, data: year + '-12-31', period: year + '-12', tip: 'impozit_profit', tipNume: 'Impozit pe profit',
     partener: '', document: 'Impozit profit ' + year, explicatie: 'Înregistrare impozit pe profit (' + pt.cota + '%)' + (alsoClosed691 ? ' + inchidere 691 in 121' : ''),
     fileId: null, system: true, lines,
+    // INSTANTANEUL calculului, pastrat pe articol: D101 il refoloseste in loc sa recalculeze.
+    // Fara el, declaratia generata dupa inchidere ar folosi pierderile RAMASE (inchiderea tocmai
+    // le-a consumat) si ar raporta alta recuperare decat cea inregistrata — aceleasi reguli, dar
+    // pe o stare schimbata. Vezi src/profitTaxOptions.js.
+    rezultatFiscal: pt,
   });
   db.save();
   return { result: pt, posted: true };

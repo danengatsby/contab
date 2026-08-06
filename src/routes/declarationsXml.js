@@ -6,6 +6,7 @@
 // Modul de rute: register(app, ctx).
 
 const db = require('../db');
+const ptOpts = require('../profitTaxOptions'); // sursa unica a optiunilor de impozit pe profit
 const xml = require('../xml');
 const rep = require('../reporting');
 const acc = require('../accounting');
@@ -127,7 +128,7 @@ module.exports = function register(app, ctx) {
     }
     const year = req.query.year || String(new Date().getFullYear());
     recordDecl(req, 'd101', year + '-12'); // registrul lucreaza pe perioade lunare; D101 = decembrie
-    sendXml(res, xml.d101Xml(v.company, rep.d101(v, year), declarantOf(req)), 'd101-' + year + '.xml');
+    sendXml(res, xml.d101Xml(v.company, rep.d101(v, year, ptOpts.pentruDeclaratie(v, year)), declarantOf(req)), 'd101-' + year + '.xml');
   });
   // Nomenclatoarele antetului de bilant, pentru listele din Setari. Valorile sunt cele EXTRASE
   // din validatorul oficial ANAF — servite de aici ca sa existe o singura sursa; o lista copiata

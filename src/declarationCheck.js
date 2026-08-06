@@ -10,6 +10,7 @@
 // contabilul pe ecran.
 
 const xml = require('./xml');
+const ptOpts = require('./profitTaxOptions'); // sursa unica a optiunilor de impozit pe profit
 const rep = require('./reporting');
 const acc = require('./accounting');
 const saft = require('./saft');
@@ -30,7 +31,7 @@ function buildXml(v, type, opts) {
   if (type === 'd394') return xml.d394Xml(v.company, pv, acc.vatJournals(v, pv), declarant, rep.achizitiiPfCarnet(v, pv));
   if (type === 'd390') return xml.d390Xml(v.company, period, rep.d390(v, period));
   if (type === 'd100') return xml.d100Xml(v.company, period, rep.d100(v, period), declarant);
-  if (type === 'd101') return xml.d101Xml(v.company, rep.d101(v, year), declarant);
+  if (type === 'd101') return xml.d101Xml(v.company, rep.d101(v, year, ptOpts.pentruDeclaratie(v, year)), declarant);
   if (type === 'intrastat') return xml.intrastatXml(v.company, period, rep.intrastat(v, period));
   if (type === 'd205') return xml.d205Xml(v.company, year, rep.d205(v, year));
   if (type === 'd112') return xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarant);

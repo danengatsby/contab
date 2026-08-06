@@ -12,6 +12,7 @@
 // doboara dosarul.
 
 const crypto = require('crypto');
+const ptOpts = require('./profitTaxOptions'); // sursa unica a optiunilor de impozit pe profit
 const { Writable } = require('stream');
 
 const pdf = require('./pdf');
@@ -84,7 +85,7 @@ async function build(v, year, opts) {
 
   // 3) Declaratiile depuse (XML), dupa profilul fiscal al firmei
   if (profile.profit) {
-    await add('declaratii/d101-' + year + '.xml', () => xml.d101Xml(company, rep.d101(v, year), who));
+    await add('declaratii/d101-' + year + '.xml', () => xml.d101Xml(company, rep.d101(v, year, ptOpts.pentruDeclaratie(v, year)), who));
   }
   if (profile.tvaPlatitor) {
     for (const p of vatPeriods(company, year)) {

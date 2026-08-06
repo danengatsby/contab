@@ -3209,6 +3209,86 @@ const ptOld = acc.profitTax({ entries: [{ id: '1', period: '2023-03', data: '202
 eq('2023: regim vechi -> pierdere recuperata 100% pana la baza (4000)', ptOld.pierdereFolosita, 4000);
 eq('2023: profit impozabil 0 -> impozit 0', ptOld.impozit, 0);
 eq('2023: plafonReportarePct expus = 100', ptOld.plafonReportarePct, 100);
+// ── D101 se calculeaza cu ACELEASI reguli ca nota contabila 691 = 4411 ──
+{
+  const ptOpts = require('../src/profitTaxOptions');
+  const rep2 = require('../src/reporting');
+  // venituri 100.000 + amenda 20.000 (integral nedeductibila, art. 25(4)(b))
+  const ent = [
+    { id: 'v', period: '2026-03', data: '2026-03-01', status: 'postat', lines: [{ debit: '4111', credit: '704', suma: 100000 }] },
+    { id: 'a', period: '2026-04', data: '2026-04-01', status: 'postat', lines: [{ debit: '6581', credit: '5121', suma: 20000 }] },
+  ];
+  const v = { firmaId: 1, company: { id: 1 }, entries: ent, openingBalances: {}, assets: [] };
+
+  // Cifra pe care o INREGISTREAZA inchiderea, cu setul complet de reguli.
+  const notaContabila = acc.profitTax(v, '2026', ptOpts.construieste(v, '2026'));
+  eq('nota contabila: amenda e integral nedeductibila', notaContabila.cheltNedeductibile, 20000);
+  eq('nota contabila: impozit 16% din 100.000', notaContabila.impozit, 16000);
+
+  // Cifra pe care o DECLARA D101 — trebuie sa fie aceeasi.
+  const decl = rep2.d101(v, '2026', ptOpts.pentruDeclaratie(v, '2026'));
+  eq('D101 declara acelasi impozit ca nota postata', decl.impozit, notaContabila.impozit);
+  eq('si aceeasi baza impozabila', decl.profitImpozabil, notaContabila.profitImpozabil);
+  eq('si aceleasi nedeductibile', decl.cheltuieliNedeductibile, 20000);
+  // Regresia propriu-zisa: chemata FARA optiuni, declaratia raporta 12.800 in loc de 16.000.
+  ok('fara optiuni, D101 ar raporta mai putin — de asta nu se mai cheama asa',
+    rep2.d101(v, '2026').impozit < notaContabila.impozit);
+
+  // Amortizarea contabila reala (6811) se citeste FARA inchiderile 6/7 -> 121. Cu ele, contul e
+  // creditat de articolul de inchidere si o insumare oarba l-ar aduce la zero: ajustarea art. 28
+  // ar iesi inversata, iar impozitul odata cu ea. Aceeasi capcana pe care o evita si `d101`.
+  const vAmort = {
+    firmaId: 1, company: { id: 1 }, openingBalances: {},
+    assets: [{ id: 'mf', denumire: 'Utilaj', cont: '2131', cost: 12000, dataPif: '2025-12-20', durataLuni: 60, metoda: 'liniara', status: 'activ' }],
+    entries: [
+      { id: 'v', period: '2026-03', data: '2026-03-01', status: 'postat', lines: [{ debit: '4111', credit: '704', suma: 50000 }] },
+      { id: 'am', period: '2026-06', data: '2026-06-30', status: 'postat', lines: [{ debit: '6811', credit: '2813', suma: 2400 }] },
+      // inchiderea anuala: 121 = 6811 (exact liniile care trebuie IGNORATE aici)
+      { id: 'inch', period: '2026-12', data: '2026-12-31', tip: 'inchidere_an', status: 'postat', lines: [{ debit: '121', credit: '6811', suma: 2400 }] },
+    ],
+  };
+  eq('amortizarea contabila reala ramane 2400 si dupa inchiderea anuala',
+    ptOpts.construieste(vAmort, '2026').amortizare.contabila, 2400);
+  eq('rulajCont ignora inchiderile de rezultat', ptOpts.rulajCont(vAmort, '2026', '6811'), 2400);
+
+  // Vintage-urile firmei ajung si ele in optiuni — altfel declaratia ar ignora recuperarea de
+  // pierdere pe care inchiderea o aplica, si am fi mutat divergenta in loc s-o inchidem.
+  const vPierdere = { firmaId: 1, company: { id: 1, pierderiFiscale: [{ an: 2023, suma: 40000 }] }, entries: ent, openingBalances: {}, assets: [] };
+  const optP = ptOpts.construieste(vPierdere, '2026');
+  eq('optiunile poarta vintage-urile firmei', JSON.stringify(optP.pierderi), '[{"an":2023,"suma":40000}]');
+  const declP = rep2.d101(vPierdere, '2026', ptOpts.pentruDeclaratie(vPierdere, '2026'));
+  eq('D101 recupereaza pierderea, plafonat la 70% din 100.000', declP.pierdereFolosita, 40000);
+  ok('deci impozitul declarat scade fata de firma fara pierdere', declP.impozit < decl.impozit);
+  eq('si coincide cu ce ar inregistra inchiderea', declP.impozit, acc.profitTax(vPierdere, '2026', optP).impozit);
+  // O pierdere EXPIRATA nu se recupereaza nici in declaratie (art. 31, prin acelasi motor).
+  const vExp = { firmaId: 1, company: { id: 1, pierderiFiscale: [{ an: 2017, suma: 40000 }] }, entries: ent, openingBalances: {}, assets: [] };
+  eq('pierderea expirata nu ajunge in D101', rep2.d101(vExp, '2026', ptOpts.pentruDeclaratie(vExp, '2026')).pierdereFolosita, 0);
+
+  // INSTANTANEUL: dupa postare, pierderile reportate sunt deja consumate, deci o recalculare cu
+  // aceleasi reguli ar da alta cifra. Declaratia trebuie sa raporteze ce s-a INREGISTRAT.
+  const vPostat = {
+    firmaId: 1,
+    company: { id: 1, pierderiFiscale: [] }, // inchiderea a consumat tot
+    openingBalances: {}, assets: [],
+    entries: ent.concat([{
+      id: 'ip', period: '2026-12', data: '2026-12-31', tip: 'impozit_profit', status: 'postat',
+      lines: [{ debit: '691', credit: '4411', suma: 9200 }],
+      rezultatFiscal: { cota: 16, impozit: 9200, impozitBrut: 9200, profitImpozabil: 57500, pierdereReportata: 42500, pierdereFolosita: 42500, cheltNedeductibile: 20000, deduceri: 0 },
+    }]),
+  };
+  const optPostat = ptOpts.pentruDeclaratie(vPostat, '2026');
+  ok('dupa postare se refoloseste instantaneul, nu se recalculeaza', !!optPostat.rezultatFiscal);
+  const declPostat = rep2.d101(vPostat, '2026', optPostat);
+  eq('D101 raporteaza EXACT impozitul inregistrat', declPostat.impozit, 9200);
+  eq('si recuperarea de pierdere pe care a folosit-o inchiderea', declPostat.pierdereFolosita, 42500);
+  // Fara instantaneu, recalcularea pe starea de ACUM (pierderi consumate) ar da alta cifra.
+  ok('recalcularea pe starea de acum ar diverge — de asta exista instantaneul',
+    acc.profitTax(vPostat, '2026', ptOpts.construieste(vPostat, '2026')).impozit !== 9200);
+  // Articolul STORNAT nu mai e sursa de adevar.
+  const vStornat = Object.assign({}, vPostat, { entries: vPostat.entries.map((e) => (e.tip === 'impozit_profit' ? Object.assign({}, e, { stornat: true }) : e)) });
+  ok('un articol stornat nu mai impune instantaneul', !ptOpts.pentruDeclaratie(vStornat, '2026').rezultatFiscal);
+}
+
 // ── VECHIMEA pierderii fiscale (art. 31): 7 ani pana in 2023, 5 ani din 2024 ──
 {
   eq('pierderile de pana in 2023 se recupereaza 7 ani', acc.aniReportPierdere(2023), 7);
