@@ -19,6 +19,7 @@ const etransport = require('../src/etransport');
 const { getType } = require('../src/documentTypes');
 const { statePlata } = require('../src/payroll');
 const bilant = require('../src/bilant');
+const ptOpts = require('../src/profitTaxOptions');
 
 const dir = process.argv[2] || path.join(require('os').tmpdir(), 'contab-referinte');
 fs.mkdirSync(dir, { recursive: true });
@@ -86,7 +87,10 @@ const vStorno = (() => {
 })();
 w('D406-storno', saft.saftXml(vStorno, '2026-06'));
 // D101 (impozit pe profit, anual) — schema v10; exemplul are profit mic in 2026
-w('D101', xml.d101Xml(v.company, rep.d101(v, '2026'), who));
+// Calea REALA de productie trece prin `profitTaxOptions.pentruDeclaratie` — aceleasi reguli ca
+// nota contabila 691 = 4411. Reperul o foloseste si el, altfel poarta ar valida un XML pe care
+// aplicatia nu-l mai produce.
+w('D101', xml.d101Xml(v.company, rep.d101(v, '2026', ptOpts.pentruDeclaratie(v, '2026')), who));
 // D101 varianta DEFALCATA: exemplul de mai sus n-are cheltuieli cu plafon, deci nedeductibilele
 // ies zero si randurile P23..P33 nu se exercita deloc — poarta ar fi verde fara sa fi verificat
 // calea noua. Aici e un an cu protocol, cheltuieli sociale, auto, sponsorizare si amortizare

@@ -7,6 +7,7 @@
 // Modul de rute: register(app, ctx), ctx = { S }.
 
 const db = require('../db');
+const ptOpts = require('../profitTaxOptions'); // sursa unica a optiunilor de impozit pe profit
 const stmt = require('../statements');
 const rep = require('../reporting');
 const acc = require('../accounting');
@@ -156,7 +157,13 @@ module.exports = function register(app, ctx) {
   });
   app.get('/pdf/d100', (req, res) => pdf.d100Pdf(res, S(req).company, rep.d100micro(S(req), req.query.period || null)));
   // D101 — calculul impozitului pe profit anual (figuri semantice; XML-ul oficial nu e inca generat)
-  app.get('/api/d101', (req, res) => res.json(rep.d101(S(req), req.query.year || String(new Date().getFullYear()))));
+  app.get('/api/d101', (req, res) => {
+    const v = S(req); const an = req.query.year || String(new Date().getFullYear());
+    // ACELEASI reguli ca nota contabila 691 = 4411 (src/profitTaxOptions.js). Chemata fara
+    // optiuni, `d101` calculeaza pe profitul contabil brut si raporteaza alt impozit decat cel
+    // inregistrat.
+    res.json(rep.d101(v, an, ptOpts.pentruDeclaratie(v, an)));
+  });
   // Declaratia Unica (PFA, sistem real): estimarea venitului net anual si a CAS/CASS/impozitului
   app.get('/api/declaratia-unica', (req, res) => res.json(rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));
   app.get('/pdf/declaratia-unica', (req, res) => pdf.declaratiaUnicaPdf(res, S(req).company, rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));

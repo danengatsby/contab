@@ -1031,7 +1031,11 @@ function stornoReport(db, period) {
 // versiuni; se adauga cand maparea pe versiunea curenta e verificata cu DUKIntegrator.
 function d101(db, year, opts) {
   opts = opts || {};
-  const pt = acc.profitTax(db, year, opts);
+  // `rezultatFiscal` = instantaneul salvat de inchidere pe articolul 691 = 4411. Cand exista,
+  // declaratia il REFOLOSESTE in loc sa recalculeze: pierderile reportate au fost deja consumate
+  // de inchidere, deci aceleasi reguli pe starea de acum ar da alta cifra decat cea inregistrata.
+  // Vezi src/profitTaxOptions.js pentru de ce nu ajunge sa transmitem doar aceleasi optiuni.
+  const pt = opts.rezultatFiscal || acc.profitTax(db, year, opts);
   const yearEntries = acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
   // FARA inchiderile 6/7 -> 121, ca in `profitTax` (vezi `resultLines`). Altfel D101 se contrazicea
   // singur dupa inchiderea anuala: P1/P2/P3 (venituri, cheltuieli, rezultat brut) cadeau la zero,
