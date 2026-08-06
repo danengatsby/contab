@@ -8,7 +8,7 @@ const svc = require('../partnersService');
 const { sendList, sendMap } = require('../paginate');
 
 module.exports = function register(app, ctx) {
-  const { upload, S, activeId, logAudit, requireAdmin } = ctx;
+  const { upload, S, activeId, logAudit, requireAdmin, wrap } = ctx;
 
   // Erorile de business poarta `status` (400/403); `extra` intra in corpul raspunsului
   // (contractul istoric al soldurilor dezechilibrate). Restul urca la handlerul global.
@@ -28,6 +28,27 @@ module.exports = function register(app, ctx) {
     const r = svc.importAccounts((req.body || {}).csv);
     logAudit('accounts.import', r.importati + ' conturi', { req });
     return { ok: true, importati: r.importati, totalConturi: r.totalConturi };
+  }));
+
+  // Verificarea partenerilor in registrul public ANAF (inactivi, TVA, TVA la incasare, split,
+  // e-Factura). Apel EXTERN, deci async si prin `wrap` — o eroare de retea trebuie sa ajunga la
+  // handlerul global, nu sa lase cererea atarnata. Nu e admin-only: e o citire publica, iar
+  // rezultatul e strict pe partenerii firmei active.
+  app.post('/api/partners/verifica-anaf', wrap(async (req, res) => {
+    const b = req.body || {};
+    try {
+      const r = await svc.verificaLaAnaf(activeId(req), {
+        cuiuri: Array.isArray(b.cuiuri) ? b.cuiuri : null,
+        data: b.data || null,
+        actualizeazaDate: !!b.actualizeazaDate,
+      });
+      logAudit('partners.verifica-anaf', r.sumar.total + ' parteneri verificati la ANAF ('
+        + r.sumar.inactivi + ' inactivi, ' + r.sumar.negasiti + ' negasiti)', { req });
+      res.json(Object.assign({ ok: true }, r));
+    } catch (e) {
+      if (!e.status) throw e;
+      res.status(e.status).json({ error: e.message });
+    }
   }));
 
   app.get('/api/partners', (req, res) => sendMap(req, res, S(req).partners, { label: 'partners' }));

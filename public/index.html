@@ -1660,9 +1660,12 @@
                 <option value="furnizor">Furnizori</option>
                 <option value="ambele">Ambele</option>
               </select>
+              <button id="partnersAnafBtn" class="btn small primary" title="Interoghează registrul public ANAF pentru toți partenerii: inactivi (art. 11), înregistrare TVA, TVA la încasare, split, e-Factura">🔎 Verifică la ANAF</button>
               <a id="partnersCsv" class="btn small" href="/csv/partners" target="_blank">⬇ CSV</a>
             </span>
           </div>
+          <p class="muted">Verificarea la ANAF nu e cosmetică: cheltuielile și TVA-ul de la un contribuabil <b>inactiv</b> sunt nedeductibile (art. 11 Cod fiscal), iar dacă furnizorul aplică <b>TVA la încasare</b> dreptul tău de deducere se amână până la plata facturii (art. 297 alin. 2). Rezultatul alimentează controalele fiscale.</p>
+          <div id="partnersAnafRez"></div>
           <div id="partnersList" class="tablewrap"></div>
           <details data-u="u8">
             <summary class="muted" data-u="u75">Import din CSV (CUI;Denumire;Adresă;Oraș;Județ;Țară;Tip) — Tip: client / furnizor / ambele (opțional)</summary>

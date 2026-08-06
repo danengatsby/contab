@@ -51,6 +51,94 @@ function cifraAfaceri(entries) {
 }
 
 /** Ruleaza controalele de coerenta pentru firma (vedere scoped) pe anul `opts.year`. */
+/** Cheia de partener folosita in nomenclator: CUI fara prefixul RO si fara separatori. */
+function cheiaCui(cui) {
+  return String(cui || '').replace(/^ro/i, '').replace(/[^0-9A-Za-z]/g, '');
+}
+
+/** Rulajul de ACHIZITIE cu un partener intr-un an: baza (clasele 2/3/6) si TVA dedusa (4426).
+ *  Se uita la partenerul de pe ARTICOL, nu la conturi analitice — nomenclatorul e pe CUI. */
+function achizitiiPePartener(yearEntries) {
+  const pe = {};
+  for (const e of yearEntries) {
+    const cui = cheiaCui(e.partenerCui);
+    if (!cui) continue;
+    for (const l of e.lines || []) {
+      const suma = Number(l.suma) || 0;
+      if (suma <= 0) continue;
+      const dcls = String(l.debit || '')[0];
+      const p = pe[cui] || (pe[cui] = { baza: 0, tvaDedusa: 0, denumire: e.partener || '' });
+      if (String(l.debit || '').startsWith('4426')) p.tvaDedusa = round2(p.tvaDedusa + suma);
+      else if (dcls === '2' || dcls === '3' || dcls === '6') p.baza = round2(p.baza + suma);
+    }
+  }
+  return pe;
+}
+
+/**
+ * Constatarile care se sprijina pe registrul public ANAF (`partner.anaf`, scris de
+ * `partnersService.verificaLaAnaf`). Fara verificare nu se poate spune nimic — si ASTA se spune,
+ * in loc sa taca: absenta datelor nu e acelasi lucru cu „totul e in regula".
+ */
+function controalePartener(v, yearEntries, year) {
+  const out = [];
+  const add = (nivel, cod, mesaj) => out.push({ nivel, cod, mesaj });
+  const parteneri = (v || {}).partners || {};
+  const achizitii = achizitiiPePartener(yearEntries);
+  const cuAchizitii = Object.keys(achizitii).filter((c) => achizitii[c].baza > 0 || achizitii[c].tvaDedusa > 0);
+  if (!cuAchizitii.length) return out;
+
+  const neverificati = [];
+  for (const cui of cuAchizitii) {
+    const p = parteneri[cui];
+    const a = p && p.anaf;
+    const den = (p && p.den) || achizitii[cui].denumire || cui;
+    const sume = achizitii[cui];
+    if (!a || !a.verificatLa) { neverificati.push(den); continue; }
+    if (a.gasit === false) {
+      add('atentie', 'partener-inexistent-anaf',
+        'Partenerul „' + den + '" (CUI ' + cui + ') NU există în registrul ANAF, dar are achiziții de '
+        + sume.baza + ' lei în ' + year + '. Verifică CUI-ul — o factură de la un cod inexistent nu justifică nici cheltuiala, nici TVA-ul.');
+      continue;
+    }
+    // Art. 11: cheltuielile si TVA-ul de la un contribuabil INACTIV sunt nedeductibile.
+    if (a.inactiv) {
+      add('eroare', 'partener-inactiv',
+        'Partenerul „' + den + '" (CUI ' + cui + ') e declarat INACTIV' + (a.dataInactivare ? ' din ' + a.dataInactivare : '')
+        + ', iar în ' + year + ' ai de la el cheltuieli/achiziții de ' + sume.baza + ' lei'
+        + (sume.tvaDedusa ? ' și TVA dedusă ' + sume.tvaDedusa + ' lei' : '')
+        + '. Art. 11 Cod fiscal: cheltuiala e nedeductibilă și TVA-ul nu se deduce.');
+    } else if (a.radiat) {
+      add('atentie', 'partener-radiat',
+        'Partenerul „' + den + '" (CUI ' + cui + ') e RADIAT (' + (a.stareInregistrare || 'radiat')
+        + '), dar are achiziții de ' + sume.baza + ' lei în ' + year + '. Verifică documentele.');
+    }
+    // TVA dedusa de la cineva care nu e inregistrat in scopuri de TVA.
+    if (!a.tvaPlatitor && sume.tvaDedusa > 0) {
+      add('eroare', 'tva-dedusa-de-la-neplatitor',
+        'Ai dedus TVA de ' + sume.tvaDedusa + ' lei în ' + year + ' pe facturi de la „' + den + '" (CUI ' + cui
+        + '), care NU e înregistrat în scopuri de TVA' + (a.tvaMotivAnulare ? ' — ' + a.tvaMotivAnulare : '')
+        + '. O factură fără drept de TVA nu poate purta TVA deductibilă.');
+    }
+    // TVA la incasare la FURNIZOR: deducerea cumparatorului se amana pana la plata.
+    if (a.tvaLaIncasare && sume.tvaDedusa > 0) {
+      add('info', 'furnizor-tva-la-incasare',
+        'Furnizorul „' + den + '" (CUI ' + cui + ') aplică TVA la încasare'
+        + (a.tvaIncasareDeLa ? ' din ' + a.tvaIncasareDeLa : '')
+        + '. Art. 297 alin. (2): dreptul tău de deducere se amână până la PLATA facturii — '
+        + 'folosește tipul „Factură cumpărare cu TVA la încasare", nu pe cel obișnuit.');
+    }
+  }
+  if (neverificati.length) {
+    const lista = neverificati.slice(0, 5).join(', ') + (neverificati.length > 5 ? ` și încă ${neverificati.length - 5}` : '');
+    add('atentie', 'parteneri-neverificati-anaf',
+      neverificati.length + ' partener(i) cu achiziții în ' + year + ' nu au fost verificați în registrul ANAF ('
+      + lista + '). Fără verificare nu se poate ști dacă vreunul e inactiv — iar cheltuiala cu un inactiv '
+      + 'e nedeductibilă (art. 11). Rulează verificarea din Parteneri.');
+  }
+  return out;
+}
+
 function check(v, opts) {
   opts = opts || {};
   const company = (v || {}).company || {};
@@ -116,6 +204,11 @@ function check(v, opts) {
       'Intrastat e marcat, dar rulajul intracomunitar din ' + year + ' e sub prag pe ambele fluxuri — verifică dacă mai ești obligat.');
   }
 
+  // 5b) PARTENERII, din registrul public ANAF (art. 11 Cod fiscal si art. 297 alin. (2)).
+  //     Sunt singurele constatari care se sprijina pe o informatie pe care firma NU o poate scoate
+  //     din propriile documente — de aceea lipsa verificarii e ea insasi o constatare.
+  for (const f of controalePartener(v, yearEntries, year)) findings.push(f);
+
   // 6) Regim profit cu venituri, dar fara inregistrarea impozitului pe profit pe an -> reminder D101
   if (profile.profit) {
     const areVenit = venituriClasa7(yearEntries) > 0;
@@ -132,4 +225,4 @@ function check(v, opts) {
 // `cifraAfaceri` / `venituriClasa7` sunt expuse pentru teste: sunt agregarile pe care le golea
 // inchiderea anuala, iar prin `check()` defectul se vedea doar ca ABSENTA unei constatari — adica
 // exact ca un control trecut. Testate direct, egalitatea inainte/dupa inchidere e verificabila.
-module.exports = { check, cifraAfaceri, venituriClasa7 };
+module.exports = { check, cifraAfaceri, venituriClasa7, controalePartener, achizitiiPePartener };
