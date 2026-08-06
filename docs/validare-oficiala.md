@@ -374,6 +374,15 @@ generatoarele (`xml.js`, `saft.js`, `etransport.js`), regulile și cotele (`fisc
 (`src/documentTypes/` — schimbă articolele contabile, deci și declarațiile), seed-ul
 (= datele de referință) și scripturile de generare/validare însele.
 
+> **Pentru modulele de extragere, poarta e o alarmă, nu un test.** `aiExtractor.js`,
+> `extractor.js`, `extractQuality.js`, `extractCheck.js`, `efacturaImport.js` și
+> `einvoiceReconcile.js` sunt în perimetru, dar generatorul de referințe **nu ajunge niciodată la
+> ele**: închiderea tranzitivă a lui `require()` din `scripts/genereaza-referinte.js` atinge 47 de
+> module, niciunul dintre acestea (măsurat 2026-08-06). Poarta validează declarații construite din
+> seed, deci nu poate vedea un defect introdus acolo. Rămân în listă fiindcă un defect acolo ajunge
+> în declarații pe altă cale — cifre greșite intrate ca articole contabile — deci schimbarea merită
+> oprită și ieșirile re-dovedite. Regresia se prinde însă cu **teste pe modul**, nu cu poarta.
+
 **Trei rezultate, nu două** — distincția e miezul porții:
 
 | Rezultat | Ce înseamnă | Cod |

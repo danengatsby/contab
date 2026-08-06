@@ -36,6 +36,17 @@ AICI=$(dirname "$0")
 #   generatoarele XML; regulile si cotele; monografiile (schimba articolele contabile,
 #   deci si jurnalele si declaratiile); seed-ul (= datele de referinta validate);
 #   scripturile de generare/validare insele.
+#
+# ATENTIE, pentru modulele de EXTRAGERE (aiExtractor, extractor, extractQuality, extractCheck,
+# efacturaImport, einvoiceReconcile): pentru ELE poarta e o ALARMA, nu un test. Masurat la
+# 2026-08-06 prin inchiderea tranzitiva a lui require() din scripts/genereaza-referinte.js:
+# generatorul de referinte atinge 47 de module si NU ajunge la niciunul dintre cele sase. Deci
+# poarta ruleaza validatoarele oficiale peste declaratii generate din SEED — care nu pot vedea un
+# defect introdus in fisierele acelea. Le tinem aici pentru ca un defect acolo ajunge in declaratii
+# pe alta cale (cifre gresite intrate ca articole contabile), deci schimbarea merita oprita si
+# re-dovedita; dar NU te baza pe poarta ca sa prinda regresia — pentru asta scrie teste pe module
+# (vezi `normalizeazaRaspuns` din src/aiExtractor.js, scoasa din functia de retea tocmai ca sa
+# poata fi acoperita cu aserttiuni de milisecunde).
 CAI_FISCALE='
 src/xml.js
 src/saft.js
@@ -70,6 +81,7 @@ src/stocksService.js
 src/entriesService.js
 src/payrollService.js
 src/anafService.js
+src/aiExtractor.js
 src/extractor.js
 src/extractQuality.js
 src/extractCheck.js
