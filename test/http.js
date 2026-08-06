@@ -224,7 +224,12 @@ async function main() {
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     // plafoane de upload/export mici, ca testele 429 sa nu faca zeci de cereri; conturile
     // din restul suitei raman sub ele (bucket-urile sunt per utilizator)
-    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_BNR_URL_ZI: 'http://127.0.0.1:' + PORT_BNR + '/zi', CONTAB_BNR_URL_AN: 'http://127.0.0.1:' + PORT_BNR + '/an{AN}', CONTAB_BNR_RETRIES: '0', CONTAB_ANAF_REGISTRU_URL: 'http://127.0.0.1:' + PORT_AREG + '/tva', CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1', CONTAB_RATE_IMPORT: '7', CONTAB_MESSAGES_MAX: '5' }),
+    // ANTHROPIC/OPENAI_API_KEY golite DELIBERAT: serverul copil isi incarca singur `.env` din
+    // radacina proiectului, deci pe o masina de dezvoltare cu cheia setata suita chiar chema API-ul
+    // real la fiecare upload (esua pe un .txt trimis ca PDF si cadea pe reguli locale, deci
+    // aserttiile treceau — din motivul gresit, cu latenta si cost pe deasupra). `loadDotEnv` nu
+    // suprascrie o variabila deja prezenta, nici goala, deci sirul gol o neutralizeaza.
+    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_BNR_URL_ZI: 'http://127.0.0.1:' + PORT_BNR + '/zi', CONTAB_BNR_URL_AN: 'http://127.0.0.1:' + PORT_BNR + '/an{AN}', CONTAB_BNR_RETRIES: '0', CONTAB_ANAF_REGISTRU_URL: 'http://127.0.0.1:' + PORT_AREG + '/tva', CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', ANTHROPIC_API_KEY: '', OPENAI_API_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1', CONTAB_RATE_IMPORT: '7', CONTAB_MESSAGES_MAX: '5' }),
     stdio: 'ignore',
   });
   const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
@@ -447,6 +452,19 @@ async function main() {
       ok('raport: si diferenta camp cu camp (ce a citit vs ce s-a salvat)',
         !!rec && Array.isArray(rec.campuri) && rec.campuri.some((c) => c.camp === 'document' && c.salvat === 'F-777'));
       ok('raport: starea optiunii de postare automata e vizibila', rap.autoPostActiv === false);
+
+      // DEFALCAREA PE MODEL. `incredere` e o auto-raportare a modelului, deci scala ei se schimba
+      // odata cu modelul, iar pragul de postare automata a fost calibrat pe scala unuia anume.
+      // Fara defalcare, o schimbare de model apare ca „nu se mai posteaza nimic automat", fara
+      // vinovat. Aici suita ruleaza fara cheie AI, deci grupa asteptata e cea a regulilor locale.
+      ok('raport: exista defalcarea pe modelul care a citit documentele', Array.isArray(rap.modele) && rap.modele.length >= 1);
+      const grupaLocala = (rap.modele || []).find((m) => m.model === null);
+      ok('raport: regulile locale se raporteaza cu model null, nu cu un sir inventat', !!grupaLocala);
+      eq('raport: defalcarea numara toate documentele citite',
+        (rap.modele || []).reduce((s, m) => s + m.documente, 0), rap.documenteCitite);
+      // fara incredere raportata, media TREBUIE sa fie null: un 0 ar inventa o tendinta descendenta
+      eq('raport: fara incredere raportata, media e null (nu 0)', grupaLocala && grupaLocala.incredereMedie, null);
+      ok('raport: defalcarea poarta si cate s-au postat automat', grupaLocala && typeof grupaLocala.postateAutomat === 'number');
 
       // A doua salvare din ACELASI document nu dubleaza interventia (consemnarea e idempotenta)
       const inainte = (await req('GET', '/api/extract-quality?days=30', { cookie: c1 })).json.interventii;
@@ -2758,7 +2776,7 @@ async function main() {
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-        env: Object.assign({}, process.env, { PORT: String(PORT2), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1' }),
+        env: Object.assign({}, process.env, { PORT: String(PORT2), CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', ANTHROPIC_API_KEY: '', OPENAI_API_KEY: '', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1' }),
         stdio: 'ignore',
       });
       const t = setTimeout(() => { try { c2p.kill(); } catch (_) { /* */ } resolve('timeout'); }, 8000);

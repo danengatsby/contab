@@ -64,7 +64,7 @@ module.exports = function register(app, ctx) {
         const r = await ai.extractWithAI(buf, ownCui);
         extracted = { suggestedType: r.suggestedType, fields: r.fields, cuis: r.cuis, text: '' };
         source = 'ai';
-        extra = { incredere: r.incredere, motiv: r.motiv };
+        extra = { incredere: r.incredere, motiv: r.motiv, model: r.model };
         metrics.aiCall(Date.now() - t0, true);
         log.info('extragere AI reusita', log.ctx(req, { ms: Date.now() - t0, kb: Math.round(buf.length / 1024), tip: r.suggestedType, incredere: r.incredere }));
       } catch (e) {
@@ -111,6 +111,9 @@ module.exports = function register(app, ctx) {
       // ar fi o intrebare fara raspuns, iar raportul pe furnizori/formate n-ar avea din ce trai.
       extras: {
         source, incredere: extra.incredere == null ? null : Number(extra.incredere),
+        // Modelul care a produs `incredere`. `null` la regulile locale — acolo nu exista model,
+        // iar un sir inventat („local") ar fi facut ca „nu se aplica" sa arate ca o valoare.
+        model: extra.model || null,
         suggestedType: extracted.suggestedType,
         fields: extracted.fields,
         scor: calitate.scor,
@@ -151,6 +154,40 @@ module.exports = function register(app, ctx) {
     }, extra));
   }));
 
+  /**
+   * Defalcarea documentelor citite pe MODELUL care le-a citit.
+   *
+   * `incredere` e o auto-raportare a modelului, deci scala ei ii apartine LUI, nu documentului:
+   * pe acelasi set de 6 documente, claude-sonnet-5 raporteaza in medie 74 acolo unde
+   * claude-sonnet-4-6 raporta 87 — la acuratete identica pe campuri. Cum pragul de postare
+   * automata (MIN_INCREDERE din extractQuality) a fost calibrat pe scala unui model anume,
+   * o schimbare de model muta tacit intelesul numarului. Fara defalcarea asta, simptomul ar fi
+   * „nu se mai posteaza nimic automat", fara vinovat si fara din ce reconstitui cauza.
+   * Documentele citite cu reguli locale au `model: null` si se raporteaza ca atare.
+   */
+  function defalcarePeModel(docs) {
+    const g = new Map();
+    for (const x of docs) {
+      const cheie = x.extras.model || null;
+      const it = g.get(cheie) || { model: cheie, documente: 0, cuIncredere: 0, sumaIncredere: 0, postateAutomat: 0 };
+      it.documente++;
+      const inc = Number(x.extras.incredere);
+      if (x.extras.incredere != null && Number.isFinite(inc)) { it.cuIncredere++; it.sumaIncredere += inc; }
+      if (x.extras.decizie === 'auto') it.postateAutomat++;
+      g.set(cheie, it);
+    }
+    return [...g.values()]
+      .map((it) => ({
+        model: it.model,
+        documente: it.documente,
+        // media DOAR peste documentele care chiar au o incredere raportata: regulile locale n-au,
+        // iar un 0 pus in locul lipsei ar trage media in jos si ar inventa o tendinta
+        incredereMedie: it.cuIncredere ? Math.round(it.sumaIncredere / it.cuIncredere) : null,
+        postateAutomat: it.postateAutomat,
+      }))
+      .sort((a, b) => b.documente - a.documente);
+  }
+
   // ── Calitatea extragerii: raportul pe furnizori / formate / controale ──
   // Intrebarea operationala e „pe cine merita sa-l repari", deci raspunsul e sortat dupa numarul
   // de interventii, nu o medie generala. `?days=` restrange fereastra (implicit 90 de zile).
@@ -172,6 +209,7 @@ module.exports = function register(app, ctx) {
       rataCorectie: toate.length ? Math.round((corectate.length / toate.length) * 100) : 0,
       postateAutomat: auto.filter((x) => x.extras.decizie === 'auto').length,
       scorMediu: auto.length ? Math.round(auto.reduce((s, x) => s + (Number(x.extras.scor) || 0), 0) / auto.length) : null,
+      modele: defalcarePeModel(auto),
       autoPostActiv: !!(db.getFirma(fid) || {}).autoPostDocumente,
       controale: extractQuality.CONTROALE.map((c) => ({ cod: c.cod, nume: c.nume })),
       recente: corectate.slice(-20).reverse().map((i) => ({
