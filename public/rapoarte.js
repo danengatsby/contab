@@ -290,13 +290,24 @@ async function loadVat() {
   // Perioada, MEREU vizibilă pe card. Aceeași etichetă („TVA de plată") apare și pe dashboard,
   // unde cifra e cumulată pe toate perioadele — fără perioada scrisă lângă ele, cele două numere
   // par să se contrazică. La plătitorul trimestrial decontul agregă cele 3 luni ale trimestrului.
+  //
+  // Insigna „2026-08" NU era de ajuns: e o dată tehnică, nu o afirmație. Un patron care vede
+  // „TVA de plată, cumulat: 5.502" pe Acasă și „TVA de recuperat 0,00" aici nu deduce singur din
+  // „2026-08" că a doua cifră e doar a unei luni. Deci perioada se scrie în CUVINTE, în titlu și
+  // pe rândul de total, iar puntea către cifra de pe Acasă e explicită.
+  const perioadaText = vj.period
+    ? (vj.trimestrial ? 'trimestrul care conține ' + lunaLabel(vj.period) : 'luna ' + lunaLabel(vj.period))
+    : 'toate lunile, cumulat';
   const trimNota = vj.period
-    ? ` <span class="badge" title="${vj.trimestrial ? 'TVA trimestrial: decontul agregă cele 3 luni ale trimestrului' : 'Perioada decontului'}">${H(vj.period)}${vj.trimestrial ? ' (trimestru)' : ''}</span>`
-    : ' <span class="badge" title="Fără lună selectată: totalurile cumulează toate perioadele">cumulat</span>';
-  const deLabel = t.deplata > 0 ? 'TVA de plată' + ac('4423') : 'TVA de recuperat' + ac('4424');
+    ? ` <span class="badge adv" title="${vj.trimestrial ? 'TVA trimestrial: decontul agregă cele 3 luni ale trimestrului' : 'Perioada decontului'}">${H(vj.period)}${vj.trimestrial ? ' (trimestru)' : ''}</span>`
+    : ' <span class="badge adv" title="Fără lună selectată: totalurile cumulează toate perioadele">cumulat</span>';
+  const pentru = vj.period ? ' pentru ' + (vj.trimestrial ? 'trimestru' : lunaLabel(vj.period)) : ' cumulat';
+  const deLabel = (t.deplata > 0 ? 'TVA de plată' + ac('4423') : 'TVA de recuperat' + ac('4424')) + pentru;
   const deVal = t.deplata > 0 ? t.deplata : t.derecuperat;
   $('#tvaSummary').innerHTML =
-    `<div class="card"><h3>Sumar decont (D300)${trimNota}</h3><table>
+    `<div class="card"><h3>Decontul pe ${H(perioadaText)}${trimNota}</h3>
+     ${vj.period ? '<p class="muted">Doar această perioadă. Soldul de TVA <b>cumulat pe toate lunile</b> — cel de pe pagina <b>Acasă</b> — e alt număr, și e normal să difere.</p>' : ''}
+     <table>
       <tr><td>TVA colectată${ac('4427')}</td><td class="num">${fmt(t.colectata)}</td></tr>
       <tr><td>TVA deductibilă${ac('4426')}</td><td class="num">${fmt(t.deductibila)}</td></tr>
       <tr class="total"><td>${deLabel}</td><td class="num">${fmt(deVal)}</td></tr>

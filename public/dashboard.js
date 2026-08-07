@@ -34,6 +34,30 @@ function trendOf(series, key) {
 // tocmai fiindca nimic nu-l afirma undeva unde sa poata fi contrazis.
 export const tonTrezorerie = (v) => (Number(v) < 0 ? 'red' : 'blue');
 
+/** Dala „Bani disponibili": tonul ei și detalierea pe bancă/casă.
+ *
+ *  Suma NETEAZĂ banca cu casa, deci un cont în minus poate sta ascuns într-un total pozitiv.
+ *  Cazul e real, de pe contul demo: bancă −60.819 și casă 117.046 dădeau „56.227,00" albastru și
+ *  senin — imediat sub o alertă care striga chiar acel sold negativ. Aceeași cifră, două afirmații
+ *  contrare, la trei centimetri distanță.
+ *
+ *  Regula lui `tonTrezorerie` — un cont de bani sub zero nu e o nuanță, e o eroare de evidență —
+ *  nu are voie să se oprească la total: se aplică și componentelor. Totalul RĂMÂNE cel real (e un
+ *  fapt, nu-l ascundem), dar componenta negativă e numită ca atare.
+ *  Funcție pură, testată în test/frontend.mjs. */
+export function dalaDisponibil(banca, casa, total) {
+  const b = Number(banca) || 0; const c = Number(casa) || 0;
+  const parte = (eticheta, v) => (v < 0
+    ? `${eticheta} <b data-u="u33">${fmt(v)}</b>`
+    : `${eticheta} ${fmt(v)}`);
+  const negative = (b < 0 ? 1 : 0) + (c < 0 ? 1 : 0);
+  return {
+    ton: (Number(total) < 0 || negative) ? 'red' : 'blue',
+    sub: parte('bancă', b) + ' · ' + parte('casă', c)
+      + (negative ? ` — <b data-u="u33">${negative === 1 ? 'un cont e în minus' : 'două conturi sunt în minus'}</b>, deci ai mai puțini bani decât arată totalul` : ''),
+  };
+}
+
 function trendChip(pct, goodWhenUp) {
   if (pct == null || !isFinite(pct)) return '';
   const up = pct >= 0; const good = up === goodWhenUp;
@@ -62,7 +86,7 @@ export async function loadDashboard() {
       'Cât au de plătit clienții tăi în total — soldul contului 4111 la zi. Detaliul pe fiecare client e în Scadențar.') +
     card('🏭', 'Sold furnizori (401)', k.soldFurnizori, 'de plătit', 'blue', '',
       'Cât datorezi furnizorilor în total — soldul contului 401 la zi.') +
-    card('🧾', tvaP ? 'TVA de plată' : 'TVA de recuperat', tvaP ? k.tvaDePlata : k.tvaDeRecuperat, 'cumulat', 'blue', '',
+    card('🧾', tvaP ? 'TVA de plată' : 'TVA de recuperat', tvaP ? k.tvaDePlata : k.tvaDeRecuperat, 'sold cumulat, toate lunile', 'blue', '',
       'Soldul de TVA cumulat (4423/4424 după închideri + luna curentă neînchisă). Decontul exact, pe lună, e în tab-ul TVA.') +
     card('🏦', 'Disponibil bancă (5121)', k.banca, 'sold curent', tonTrezorerie(k.banca), '',
       'Banii din contul bancar în lei, după toate încasările și plățile înregistrate. Un sold negativ înseamnă de regulă încasări lipsă din evidență; dacă e un descoperit de cont real, se reclasifică pe 5191.') +
@@ -205,12 +229,13 @@ async function renderRezumat(k, notif) {
     <div class="kpi-top"><span class="kpi-ic">${ic}</span></div>
     <div class="lbl">${lbl}</div><div class="val">${fmt(val)}</div><div class="sub">${sub}</div></div>`;
   const obligatii = Math.round(((k.taxeDatorate || 0) + (k.salariiDePlata || 0)) * 100) / 100;
+  const dispo = dalaDisponibil(k.bancaTotal, k.casaTotal, k.disponibilTotal);
   box.innerHTML =
     // Aceeasi regula ca la KPI-urile de sus (vezi `tonTrezorerie`), si din acelasi motiv: altfel
     // ACELASI numar iesea verde in modul simplu si neutru in cel expert. Cele trei solduri sunt
     // fapte — directia lor o poarta deja pictograma (📥 intra / 📤 iese), nu culoarea; doar banii
     // disponibili au o stare gresita reala, cea sub zero.
-    tile('💼', 'Bani disponibili', k.disponibilTotal, 'bancă ' + fmt(k.bancaTotal) + ' · casă ' + fmt(k.casaTotal), tonTrezorerie(k.disponibilTotal), 'cashbook', 'Deschide Încasări & plăți')
+    tile('💼', 'Bani disponibili', k.disponibilTotal, dispo.sub, dispo.ton, 'cashbook', 'Deschide Încasări & plăți')
     + tile('📥', 'De încasat de la clienți', k.soldClienti, (k.clientiDeschisi || 0) + (k.clientiDeschisi === 1 ? ' client cu facturi deschise' : ' clienți cu facturi deschise'), 'blue', 'analitic', 'Deschide scadențarul pe clienți')
     + tile('📤', 'De plătit către furnizori', k.soldFurnizori, (k.furnizoriDeschisi || 0) + (k.furnizoriDeschisi === 1 ? ' furnizor de plătit' : ' furnizori de plătit'), 'blue', 'analitic', 'Deschide scadențarul pe furnizori')
     + tile('🏛️', 'Obligații: stat & salarii', obligatii, 'taxe ' + fmt(k.taxeDatorate) + ' · salarii ' + fmt(k.salariiDePlata), 'blue', 'livrabile', 'Deschide declarațiile și termenele');
@@ -326,7 +351,7 @@ function renderDashAlerts(k) {
     go: 'iesite', cta: 'Trimite în SPV' });
   // „cumulat" explicit: tab-ul TVA arată decontul UNEI luni, deci fără cuvântul ăsta cele două
   // cifre („5.502" aici, „882" acolo) par să se contrazică.
-  if (k.tvaDePlata > k.tvaDeRecuperat && k.tvaDePlata > 0) a.push({ ic: '🧾', tone: 'warn', txt: 'TVA de plată, <b>cumulat</b>: <b>' + fmt(k.tvaDePlata) + '</b> lei', go: 'tva', cta: 'Decont pe lună' });
+  if (k.tvaDePlata > k.tvaDeRecuperat && k.tvaDePlata > 0) a.push({ ic: '🧾', tone: 'warn', txt: 'TVA de plată, <b>cumulat pe toate lunile</b>: <b>' + fmt(k.tvaDePlata) + '</b> lei', go: 'tva', cta: 'Decontul unei luni' });
   if (k.soldFurnizori > 0) a.push({ ic: '🏭', tone: 'warn', txt: '<b>' + fmt(k.soldFurnizori) + '</b> lei de plătit furnizorilor', go: 'cashbook', cta: 'Plăți' });
   if (k.soldClienti > 0) a.push({ ic: '👥', tone: 'info', txt: '<b>' + fmt(k.soldClienti) + '</b> lei de încasat de la clienți', go: 'analitic', cta: 'Scadențar' });
   if (k.profit < 0) a.push({ ic: '⚠️', tone: 'bad', txt: 'Rezultatul anului e <b>pierdere</b> (' + fmt(k.profit) + ' lei)', go: 'situatii', cta: 'Situații' });

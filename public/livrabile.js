@@ -43,20 +43,31 @@ async function loadLivrabile() {
   const data = await api('/api/livrabile?period=' + p);
   const s = data.sumar;
   const de = s.d300.deplata > 0 ? ['TVA de plată', s.d300.deplata] : ['TVA de recuperat', s.d300.derecuperat];
+  // Cele doua carduri au fost o sursa de contradictie aparenta: „Impozit micro 146,00" in stanga,
+  // „TOTAL 0,00" in dreapta, pentru aceeasi luna, la trei centimetri distanta. Amandoua corecte —
+  // stanga CALCULEAZA din declaratii (iar impozitul micro e pe TRIMESTRU, nu pe luna), dreapta
+  // aduna taxele inregistrate efectiv ca datorate in luna. Nimic nu spunea asta, deci se scrie.
+  const trimLuni = (s.d100.luni || []).length === 3 ? ' (' + s.d100.luni[0] + '…' + s.d100.luni[2] + ')' : '';
   $('#livrabileSumar').innerHTML =
-    `<div class="card"><h3>Sumar fiscal — ${p}</h3><table>
-      <tr><td>Salarii brute</td><td class="num">${fmt(s.d112.brut)}</td></tr>
-      <tr><td>Total de virat (D112)</td><td class="num">${fmt(s.d112.totalBuget)}</td></tr>
-      <tr><td>${de[0]} (D300)</td><td class="num">${fmt(de[1])}</td></tr>
+    `<div class="card"><h3>Ce rezultă din declarații — ${H(p)}</h3>
+     <p class="muted">Sume <b>calculate</b> din ce ai înregistrat. Unele acoperă alt interval decât luna aleasă — scrie pe fiecare rând.</p>
+     <table>
+      <tr><td>Salarii brute <span class="muted">· luna ${H(p)}</span></td><td class="num">${fmt(s.d112.brut)}</td></tr>
+      <tr><td>Total de virat (D112) <span class="muted">· luna ${H(p)}</span></td><td class="num">${fmt(s.d112.totalBuget)}</td></tr>
+      <tr><td>${de[0]} (D300) <span class="muted">· luna ${H(p)}</span></td><td class="num">${fmt(de[1])}</td></tr>
       ${s.du
-    ? `<tr><td>Taxe PFA — Declarația Unică (estimare an)</td><td class="num">${fmt(s.du.total)}</td></tr>`
-    : `<tr><td>Impozit micro ${s.d100.cota || 1}% (D100, trim.)</td><td class="num">${fmt(s.d100.impozit)}</td></tr>`}
+    ? `<tr><td>Taxe PFA — Declarația Unică <span class="muted">· estimare pe tot anul</span></td><td class="num">${fmt(s.du.total)}</td></tr>`
+    : `<tr><td>Impozit micro ${s.d100.cota || 1}% (D100) <span class="muted">· pe <b>trimestrul ${H(s.d100.trimestru || '')}</b>${H(trimLuni)}, nu pe luna</span></td><td class="num">${fmt(s.d100.impozit)}</td></tr>`}
      </table>
      ${!s.du && (s.d100.avertismente || []).length
     ? `<div class="warnbox" data-u="u23"><span class="wi">⚠️</span><div><b>Eligibilitate micro:</b> ${s.d100.avertismente.join('<br>')}</div></div>`
     : ''}</div>
-     <div class="card"><h3>Total de virat la ANAF (luna ${p})</h3><table>
-      ${s.obligatii.items.map((i) => `<tr><td><span class="adv">${H(i.cont)}</span> ${H(i.nume)}</td><td class="num">${fmt(i.suma)}</td></tr>`).join('') || '<tr><td class="muted">Fără obligații în perioadă</td><td></td></tr>'}
+     <div class="card"><h3>Taxe devenite datorate în ${H(p)}</h3>
+      <p class="muted">Ce s-a <b>înregistrat</b> ca datorie către stat chiar în luna aceasta.</p>
+      <p class="muted adv">Rulajul creditor al conturilor de taxe pe perioada aleasă — nu soldul cumulat.</p>
+      <table>
+      ${s.obligatii.items.map((i) => `<tr><td><span class="adv">${H(i.cont)}</span> ${H(i.nume)}</td><td class="num">${fmt(i.suma)}</td></tr>`).join('')
+    || `<tr><td class="muted">Nicio taxă înregistrată ca datorată în ${H(p)}. Sumele din stânga sunt <b>calculate</b> din declarații — devin datorii aici când înregistrezi statul de plată sau închiderea de TVA. Deci e normal ca cele două carduri să nu se potrivească.</td><td></td></tr>`}
       <tr class="total"><td>TOTAL</td><td class="num">${fmt(s.obligatii.total)}</td></tr>
      </table></div>`;
   $('#livrabileLegend').innerHTML = Object.keys(STATUS).map((k) =>
