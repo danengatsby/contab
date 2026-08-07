@@ -366,6 +366,50 @@ section('Poarta: pagina publica de prezentare nu-si contrazice produsul');
     /valideaz\u0103|valida/i.test(pag) && /versiune[\s\S]{0,200}DUKIntegrator|DUKIntegrator[\s\S]{0,200}versiune/i.test(pag));
 }
 
+section('Poarta: textele nu numesc formulare de bilant pe care nu le depunem');
+{
+  const fsx = require('fs'); const pth = require('path');
+
+  // DE CE EXISTA: interfata si pagina de prezentare au etichetat ani la rand situatia fluxurilor
+  // de trezorerie drept „F30" si situatia modificarilor capitalurilor proprii drept „F40", si
+  // spuneau despre ele ca sunt „celelalte formulare din setul anual depus la ANAF". Ambele
+  // afirmatii sunt false, si a doua e cea periculoasa: in setul ANAF F30 = Date informative si
+  // F40 = Situatia activelor imobilizate, iar in schemele pe care le depune aplicatia
+  // (s1120/s1121/s1122) elementele F30 si F40 NU EXISTA — validatorul oficial le respinge exact
+  // ca pe un `<F99/>` inventat (sondat 2026-08-06, docs/validare-oficiala.md). Un contabil citea
+  // eticheta si intelegea ca depune un set complet.
+  //
+  // PERIMETRUL SE DERIVA din generator, nu se scrie aici: lista de coduri permise e cea pe care
+  // `bilantXml` chiar o emite. Daca maine se adauga un formular in schema, poarta il accepta
+  // singura; daca se scoate unul, poarta incepe sa ceara scoaterea lui din texte.
+  const xmlSrc = fsx.readFileSync(pth.join(RADACINA, 'src', 'xml.js'), 'utf8');
+  const emise = [...new Set([...xmlSrc.matchAll(/<(F\d\d)\b/g)].map((m) => m[1]))].sort();
+  ok('poarta chiar a gasit formularele emise (nu scaneaza in gol)', emise.length >= 2 && emise.includes('F10'));
+
+  // Textele CATRE UTILIZATOR. Comentariile se scot inainte de scanare: acolo codurile trebuie sa
+  // poata fi numite, tocmai ca sa se explice de ce nu au voie in alta parte.
+  const faraComentarii = (s, html) => (html ? s.replace(/<!--[\s\S]*?-->/g, ' ') : s)
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1 ');
+  const fisiere = ['public/index.html', 'public/prezentare.html', 'public/acoperire.html', 'public/rapoarte.js'];
+  const gasite = [];
+  let totalCitit = 0;
+  for (const rel of fisiere) {
+    const p = pth.join(RADACINA, rel);
+    if (!fsx.existsSync(p)) continue;
+    const brut = fsx.readFileSync(p, 'utf8');
+    totalCitit += brut.length;
+    const txt = faraComentarii(brut, rel.endsWith('.html'));
+    for (const m of txt.matchAll(/\bF(\d\d)\b/g)) {
+      const cod = 'F' + m[2 - 1];
+      if (!emise.includes(cod)) gasite.push(rel + ' → ' + cod);
+    }
+  }
+  ok('poarta chiar a citit fisierele (nu trece pe lista goala)', totalCitit > 50000);
+  ok('niciun text catre utilizator nu numeste un formular de bilant neemis'
+    + (gasite.length ? ' — GASIT: ' + [...new Set(gasite)].join(', ') : ''),
+    gasite.length === 0);
+}
+
 section('Poarta: materialele publicate nu divergo de sursa lor');
 {
   const fsx = require('fs'); const pth = require('path');

@@ -322,7 +322,7 @@
         <button class="navlabel" type="button">📊 Rapoarte & analize</button>
         <div class="navmenu">
           <button data-tab="situatii">Situații financiare (bilanț, profit)</button>
-          <button data-tab="anexe" class="adv">Anexe la situații (F30, F40, note)</button>
+          <button data-tab="anexe" class="adv">Anexe la situații (fluxuri, capitaluri, note)</button>
           <button data-tab="buget">Buget vs realizat</button>
           <button data-tab="analitic">Scadențar clienți & furnizori</button>
           <!-- Arhiva a plecat din „Setări": un dosar cu documentele și registrele lunii nu e o
@@ -1025,9 +1025,9 @@
         <span class="muted">Descarcă:</span>
         <a id="plPdf" class="btn small" target="_blank">⬇ Cont de profit și pierdere</a>
         <a id="bilantPdf" class="btn small" target="_blank">⬇ Bilanț</a>
-        <a id="situatiiPdf" class="btn small primary" target="_blank">⬇ Set complet (F10+F20+F30+F40+Note)</a>
+        <a id="situatiiPdf" class="btn small primary" target="_blank">⬇ Set complet (bilanț, profit și pierdere, anexe)</a>
       </div>
-      <div class="explain"><span class="ei">📊</span><p><b>Ce e asta:</b> aici vezi cum stă firma — contul de profit și pierdere (ai câștigat sau ai pierdut în an) și bilanțul (ce ai: bani, stocuri, bunuri; și ce datorezi). Anexele obligatorii la depunere (F30, F40, notele explicative) au pagina lor, alături.</p></div>
+      <div class="explain"><span class="ei">📊</span><p><b>Ce e asta:</b> aici vezi cum stă firma — contul de profit și pierdere (ai câștigat sau ai pierdut în an) și bilanțul (ce ai: bani, stocuri, bunuri; și ce datorezi). Acestea două sunt și cele care se depun electronic la ANAF. Anexele — fluxurile de trezorerie, mișcarea capitalurilor proprii și notele explicative — au pagina lor, alături.</p></div>
       <div id="bilantWarn" class="warnbox hidden"><span class="wi">⚠️</span><div>
         <b>Bilanțul anual cere semnătură calificată:</b> situațiile financiare depuse la ANAF trebuie semnate
         și de un <b>contabil calificat</b> — angajat cu studii economice superioare sau membru CECCAR
@@ -1041,19 +1041,26 @@
     </section>
 
     <!-- ─────────────── ANEXE LA SITUATIILE FINANCIARE ─────────────── -->
-    <!-- Plecate din „Situatii financiare": trei tabele mari (F30, F40, notele) care se citesc O DATA
-         PE AN, la depunere, si care ingropau sub ele exact ce se cauta zilnic — profitul si bilantul.
-         Anul e acelasi pe ambele pagini (vezi oglindirea din rapoarte.js). -->
+    <!-- Plecate din „Situatii financiare": trei tabele mari (fluxuri, capitaluri, notele) care se
+         citesc O DATA PE AN, la depunere, si care ingropau sub ele exact ce se cauta zilnic —
+         profitul si bilantul. Anul e acelasi pe ambele pagini (vezi oglindirea din rapoarte.js).
+
+         NU le eticheta „F30" / „F40". In setul ANAF acele coduri inseamna cu totul altceva
+         (F30 = Date informative, F40 = Situatia activelor imobilizate), iar in schemele pe care
+         le depune aplicatia — s1120/s1121/s1122 — ele NU EXISTA deloc: validatorul oficial
+         respinge un <F30/> adaugat exact ca pe un element inventat (sondat 2026-08-06, vezi
+         docs/validare-oficiala.md). Ce se depune electronic e F10 + F20; tabelele de aici sunt
+         componente OMFP 1802/2014 care merg ca fisier atasat, la entitatile care le datoreaza. -->
     <section id="tab-anexe" class="tab">
       <div class="toolbar">
         <h2>📎 Anexe la situațiile financiare</h2>
         <div class="spacer"></div>
         <input type="number" id="anexeYear" value="2026" class="period" aria-label="Anul" />
       </div>
-      <div class="explain"><span class="ei">📎</span><p><b>Ce e asta:</b> celelalte formulare din setul anual depus la ANAF, generate automat din aceleași înregistrări: de unde a venit și unde s-a dus numerarul (F30), cum s-au mișcat capitalurile proprii (F40) și notele explicative. Le citești o dată pe an, la depunere; setul complet se descarcă din „Situații financiare".</p></div>
+      <div class="explain"><span class="ei">📎</span><p><b>Ce e asta:</b> celelalte componente ale situațiilor financiare anuale (OMFP 1802/2014), generate automat din aceleași înregistrări: de unde a venit și unde s-a dus numerarul, cum s-au mișcat capitalurile proprii și notele explicative. <b>Nu se depun ca formulare în fișierul XML</b> — acolo merg doar bilanțul (F10) și contul de profit și pierdere (F20); acestea se atașează, și doar entitățile care le datorează (microîntreprinderile sunt scutite de ele). Le citești o dată pe an, la depunere; setul complet se descarcă din „Situații financiare".</p></div>
       <div class="card">
         <div class="card-head">
-          <h3>Situația fluxurilor de trezorerie <span class="muted" data-u="u70">(F30, metoda directă)</span></h3>
+          <h3>Situația fluxurilor de trezorerie <span class="muted" data-u="u70">(metoda directă)</span></h3>
           <a id="cashflowPdf" class="btn small" target="_blank">⬇ PDF</a>
         </div>
         <p class="muted">De unde a venit și unde s-a dus numerarul, pe activități: exploatare, investiție, finanțare. Se generează automat clasificând fiecare încasare/plată după contrapartidă.</p>
@@ -1061,7 +1068,7 @@
       </div>
       <div class="card">
         <div class="card-head">
-          <h3>Situația modificărilor capitalurilor proprii <span class="muted" data-u="u70">(F40)</span></h3>
+          <h3>Situația modificărilor capitalurilor proprii</h3>
           <a id="capitalPdf" class="btn small" target="_blank">⬇ PDF</a>
         </div>
         <p class="muted">Mișcarea fiecărui element de capital propriu (capital, rezerve, rezultat) între începutul și sfârșitul exercițiului: sold inițial → creșteri → reduceri → sold final.</p>
