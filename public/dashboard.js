@@ -3,6 +3,10 @@
 // buget vs realizat, previziune cash-flow, comparatie an-la-an si graficele SVG. Extras din app.js
 // (Etapa 5). Depinde de nucleu; navigarea intre tab-uri (goTab) e INJECTATA prin setDashboardDeps.
 import { $, $$, api, fmt, H, USER, toast } from './core.js';
+// Randul de termen de pe Acasa e ACELASI lucru cu cel din ecranul Notificari, deci imprumuta de
+// acolo eticheta actiunii, vechimea restantei si navigarea — nu si le rescrie. Sensul dashboard →
+// livrabile nu inchide niciun ciclu (livrabile importa core/periods/entries, nu dashboard).
+import { notifAct, zileIntarziere, rezolvaNotificare } from './livrabile.js';
 
 let deps = {};
 export function setDashboardDeps(d) { deps = d; }
@@ -71,7 +75,13 @@ export async function loadDashboard() {
     card('💰', 'Rezultat ' + k.year, k.profit, yoySub(yo.profitDelta), k.profit >= 0 ? 'green' : 'red', trendChip(trendOf(s, 'profit'), true),
       'Venituri minus cheltuieli pe anul curent — profitul brut contabil, înainte de impozit.');
   renderYoY(yo);
-  renderRezumat(k);
+  // O SINGURĂ citire a termenelor pentru tot dashboard-ul: o folosesc și „De făcut acum", și
+  // subsolul rezumatului (care înainte își făcea propriul apel). Insigna clopoțelului rămâne cu
+  // apelul ei din livrabile.js — deci pagina face în continuare două cereri, nu trei.
+  let notif = null;
+  try { notif = await api('/api/notifications'); } catch (e) { /* termenele sunt opționale aici */ }
+  renderDeFacut(notif);
+  renderRezumat(k, notif);
   renderForecast();
   const list = (arr) => arr.length
     ? `<table><tbody>${arr.map((p) => `<tr><td>${H(p.den)}</td><td class="num">${fmt(p.sold)}</td></tr>`).join('')}</tbody></table>`
@@ -88,6 +98,44 @@ export async function loadDashboard() {
   if (sv.length) $('#stocuriValoroase').innerHTML = `<table><tbody>${sv.map((x) => `<tr><td>${H(x.denumire)}</td><td class="num">${fmt(x.stocV)}</td></tr>`).join('')}</tbody></table>`;
   if (c) renderDashboardCharts(c); else loadDashboardCharts();
 }
+// ── „De făcut acum": restanțele și termenele apropiate, primele pe Acasă ──
+// Câte rânduri încap sus fără să împingă restul paginii afară; restul se văd din „Vezi toate".
+const DE_FACUT_MAX = 5;
+/** Rândurile „De făcut acum", ca șir HTML. Funcție PURĂ (testată în test/frontend.mjs): decide ce
+ *  se vede și în ce cuvinte, fără să atingă pagina. `azi` e parametru tocmai ca vechimea restanței
+ *  să poată fi fixată în teste — altfel aserțiunea ar depinde de ziua în care rulează suita. */
+export function deFacutHtml(items, azi) {
+  // Numele firmei se arată DOAR când termenele vin de la mai multe firme (contabil cu portofoliu).
+  // Pentru un patron cu o singură firmă ar fi același cuvânt repetat pe fiecare rând — zgomot.
+  const multeFirme = new Set((items || []).map((i) => i.firmaId)).size > 1;
+  return (items || []).slice(0, DE_FACUT_MAX).map((it, idx) => {
+    const restanta = it.kind === 'restanta';
+    const z = restanta ? zileIntarziere(it.due, azi) : 0;
+    // Vechimea PRIMA, în cuvinte: „restanță de 48 de zile" e o stare, „2026-06-25" e o dată pe
+    // care patronul ar trebui s-o scadă singur din cea de azi ca să înțeleagă cât de rău e.
+    const cand = restanta
+      ? '<b>restanță' + (z ? ' de ' + z + (z === 1 ? ' zi' : ' zile') : '') + '</b> — termenul era ' + H(it.due)
+      : 'termen <b>' + H(it.due) + '</b>';
+    return `<button type="button" class="alert ${restanta ? 'bad' : 'warn'}" data-notif="${idx}">
+      <span class="al-ic">${restanta ? '⏰' : '📅'}</span>
+      <span class="al-tx">${multeFirme ? '<b>' + H(it.firma) + '</b> · ' : ''}<b>${H(it.nume)}</b> · ${cand} <span class="muted">(luna ${H(it.period)})</span></span>
+      <span class="al-cta">${H(notifAct(it).cta)} →</span></button>`;
+  }).join('');
+}
+function renderDeFacut(n) {
+  const card = $('#deFacutCard'); if (!card) return;
+  const items = (n && n.items) || [];
+  card.classList.toggle('hidden', !items.length);
+  if (!items.length) return;
+  $('#deFacutCount').textContent = items.length;
+  $('#deFacutList').innerHTML = deFacutHtml(items);
+  // „Vezi toate" apare doar când chiar mai sunt: altfel promite un ecran cu ceva în plus și nu e.
+  const toate = $('#deFacutToate');
+  if (toate) toate.classList.toggle('hidden', items.length <= DE_FACUT_MAX);
+  $$('#deFacutList .alert[data-notif]').forEach((b) => b.addEventListener('click', () => rezolvaNotificare(items[Number(b.dataset.notif)])));
+}
+$('#deFacutToate') && $('#deFacutToate').addEventListener('click', () => deps.goTab && deps.goTab('notificari'));
+
 // Primii pași (onboarding): checklist viu pentru firmele proaspete — dispare singur după
 // ce firma are câteva înregistrări. Fiecare pas se bifează din starea REALĂ a datelor.
 function pasiOnboarding(p) {
@@ -150,7 +198,7 @@ function maybeShowWizard(p, pasi) {
 }
 // Rezumatul executiv (mod simplu): situația firmei în limbaj de business, cu drill-down —
 // bani disponibili, de încasat, de plătit, obligații stat & salarii, rezultat + termene.
-async function renderRezumat(k) {
+async function renderRezumat(k, notif) {
   const box = $('#rezumatKpis'); if (!box) return;
   $('#rezumatData').textContent = '· la zi, ' + new Date().toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' });
   const tile = (ic, lbl, val, sub, cls, go, hint) => `<div class="kpi go ${cls}" data-go="${go}" role="link" tabindex="0" title="${hint}">
@@ -174,15 +222,10 @@ async function renderRezumat(k) {
   const rez = k.profit >= 0
     ? `<b data-u="u31">profit ${fmt(k.profit)} lei</b>`
     : `<b data-u="u32">pierdere ${fmt(Math.abs(k.profit))} lei</b>`;
-  let termen = '';
-  try {
-    const n = await api('/api/notifications');
-    const rest = (n.items || []).filter((i) => i.kind === 'restanta');
-    const next = (n.items || []).find((i) => i.kind === 'termen');
-    termen = rest.length
-      ? ` · <span data-u="u33">${rest.length} ${rest.length === 1 ? 'termen depășit' : 'termene depășite'}</span> — <button class="linkbtn" data-go="notificari">vezi notificările</button>`
-      : (next ? ` · următorul termen: <b>${H(next.nume)}</b> — ${next.due}` : ' · niciun termen fiscal în următoarele 7 zile');
-  } catch (e) { /* notificarile sunt optionale aici */ }
+  // Restanțele și termenul următor NU se mai repetă aici: cardul „De făcut acum" de deasupra le
+  // arată pe fiecare, cu butonul care le rezolvă. Rămâne doar confirmarea că nu e nimic de făcut —
+  // singurul caz în care cardul lipsește de pe ecran, deci singurul în care mai spune ceva nou.
+  const termen = ((notif && notif.items) || []).length ? '' : ' · niciun termen fiscal în următoarele 7 zile';
   f.innerHTML = `<span>Rezultatul anului ${k.year} până azi: ${rez}${termen}</span><span class="spacer"></span>
     <button class="btn small" data-go="cashbook">Încasări & plăți →</button>
     <button class="btn small" data-go="analitic">Scadențar →</button>

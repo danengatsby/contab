@@ -201,9 +201,9 @@ async function refreshNotifBadge() {
 // sa retina firma, luna si declaratia, apoi sa le regaseasca singur prin meniu.
 // Acum fiecare rand duce exact la ecranul care il rezolva, pe FIRMA si pe LUNA notificarii.
 const NOTIF_ACT = { efactura: { tab: 'iesite', cta: 'Trimite în SPV' } };
-const notifAct = (it) => NOTIF_ACT[it.tip] || { tab: 'livrabile', cta: 'Deschide declarația' };
+export const notifAct = (it) => NOTIF_ACT[it.tip] || { tab: 'livrabile', cta: 'Deschide declarația' };
 // Vechimea restantei = severitatea ei. O restanta de 66 de zile si una de 2 arata la fel altfel.
-function zileIntarziere(due, azi) {
+export function zileIntarziere(due, azi) {
   const z = Math.floor((Date.parse(azi || new Date().toISOString().slice(0, 10)) - Date.parse(due)) / 86400000);
   return z > 0 ? z : 0;
 }
@@ -230,7 +230,9 @@ async function loadNotifications() {
 }
 // Firma, apoi luna, apoi ecranul — in ordinea asta: schimbarea firmei reincarca META si retrimite
 // tab-ul activ, deci o luna pusa inainte s-ar pierde.
-async function rezolvaNotificare(it) {
+// Exportata fiindca acelasi rand apare acum si pe Acasa („De facut acum"): daca fiecare ecran si-ar
+// scrie propria navigare, ordinea firma → luna → tab ar drifta intr-unul din ele, tacut.
+export async function rezolvaNotificare(it) {
   if (!it) return;
   const a = notifAct(it);
   try {

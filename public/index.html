@@ -375,6 +375,19 @@
     <section id="tab-dashboard" class="tab active">
       <div class="toolbar"><h2>Acasă</h2><div class="spacer"></div><span id="dashYear" class="badge"></span></div>
       <div id="dashAlerts" class="dash-alerts"></div>
+      <!-- „De facut acum" — restantele si termenele apropiate, sus pe Acasa. Continutul exista de
+           mult si e bun (ecranul 🔔 Notificari: sortat dupa urgenta, cu un buton pe fiecare rand),
+           dar statea sub un clopotel din meniu, in timp ce Acasa arata douasprezece carduri de
+           analiza si pomenea restantele intr-un rand gri din subsolul altui card. Intrebarea „am
+           intarziat cu ceva?" e prima a unui patron; raspunsul nu are voie sa fie cel mai ascuns
+           lucru de pe ecran. NU e `simple-only`: si contabilul vrea sa vada restantele intai. -->
+      <div class="card hidden" id="deFacutCard">
+        <div class="card-head">
+          <h3>⏰ De făcut acum <span id="deFacutCount" class="badge"></span></h3>
+          <button class="btn small" id="deFacutToate" type="button">Vezi toate termenele →</button>
+        </div>
+        <div id="deFacutList" class="dash-alerts stack"></div>
+      </div>
       <div class="card hidden" id="primiiPasiCard">
         <h3>🌱 Primii pași — pornește de aici</h3>
         <p class="muted" data-u="u69">Nu trebuie să știi contabilitate: bifezi pașii de mai jos în ordinea ta, iar aplicația face înregistrările corecte în fundal.</p>
