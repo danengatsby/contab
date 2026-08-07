@@ -439,6 +439,32 @@ section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
   eq('lipsa listei nu aruncă', dashboard.deFacutHtml(undefined, AZI), '');
 }
 
+section('Pașii numerotați vin în pereche: nu există „pasul 2" fără „pasul 1"');
+{
+  // „Emite factură" începea cu „2 · Verifică și salvează", iar cardul din stânga nu purta niciun
+  // număr — deci ecranul începea cu pasul doi și nu spunea niciodată care e primul. Pe tabul
+  // „Documente" perechea era corectă, deci defectul era o desperechere, nu o convenție lipsă.
+  // Poarta e pe TOATĂ pagina: oriunde apare un „N ·", numerele lui trebuie să înceapă de la 1 și
+  // să fie consecutive în secțiunea lor.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const sectiuni = html.split(/<section id="tab-/).slice(1);
+  ok('poarta chiar vede secțiunile', sectiuni.length > 20);
+  let cuPasi = 0;
+  for (const s of sectiuni) {
+    const nume = s.slice(0, s.indexOf('"'));
+    const nr = [...s.matchAll(/<h[1-4][^>]*>\s*(\d+)\s*·/g)].map((m) => Number(m[1]));
+    if (!nr.length) continue;
+    cuPasi += 1;
+    const sortate = [...nr].sort((a, b) => a - b);
+    ok('tab-' + nume + ': pașii încep de la 1 (are ' + nr.join(',') + ')', sortate[0] === 1);
+    ok('tab-' + nume + ': pașii sunt consecutivi', sortate.every((v, i) => v === i + 1));
+  }
+  ok('poarta chiar a găsit ecrane cu pași numerotați', cuPasi >= 2);
+  // Poarta trebuie să POATĂ pica: forma veche (doar „2 ·", fără „1 ·") o încalcă.
+  const fals = [...'<h2>2 · Verifică</h2>'.matchAll(/<h[1-4][^>]*>\s*(\d+)\s*·/g)].map((m) => Number(m[1]));
+  ok('poarta chiar respinge un „pasul 2" singur', fals.length === 1 && fals[0] !== 1);
+}
+
 section('Scanerul local: oprit înseamnă ascuns, nu gri');
 {
   // Butonul „🖨️ Scanează (scaner local)" stătea `disabled` în cardul PRINCIPAL de încărcare, iar
@@ -462,6 +488,13 @@ section('Scanerul local: oprit înseamnă ascuns, nu gri');
     ok('oprit → se ascunde rândul butonului', /scannerBtn'\)\.closest\('\.row'\)[\s\S]{0,80}add\('hidden'\)/.test(src));
     ok('oprit → se ascunde și panoul de configurare', /#scanSetup'\)[\s\S]{0,60}add\('hidden'\)/.test(src));
     ok('oprit → utilizatorului i se spune de ce, dacă ajunge la buton', /momentan indisponibil/i.test(buton));
+    // A TREIA jumătate, ratată la prima formă a acestei porți: pagina de ajutor din „Conexiuni"
+    // descrie starea butonului. Ea spunea „butonul … este dezactivat" — adevărat cât timp butonul
+    // era doar gri, fals de când e ascuns, deci trimitea omul să caute ceva ce nu mai apare.
+    const ajutor = (html.match(/<div class="card howto">\s*<h2>🖨️[\s\S]*?<\/div><\/div>/) || [''])[0];
+    ok('poarta chiar găsește pagina de ajutor a scanerului', ajutor !== '');
+    ok('oprit → ajutorul spune că e oprită', /indisponibil/i.test(ajutor));
+    ok('oprit → ajutorul NU mai trimite la un buton vizibil', !/butonul[^<]{0,40}este dezactivat/i.test(ajutor));
   } else {
     // Repornit: nimic nu are voie să mai ascundă cele două — altfel funcția e activă și invizibilă.
     ok('pornit → nimic nu mai ascunde butonul', !/scannerBtn'\)\.closest\('\.row'\)[\s\S]{0,80}add\('hidden'\)/.test(src));
