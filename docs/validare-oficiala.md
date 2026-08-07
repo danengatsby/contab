@@ -8,6 +8,25 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
+## Ultima verificare: 2026-08-07 (2) — autofactura (art. 320)
+
+Variante de referință noi: **`D390-autofactura`** și **`D300-autofactura`**. Ambele ✅ validare
+fără erori. Exemplul integrat nu conține autofacturi, deci fără ele poarta ar fi validat în
+continuare doar achiziția intracomunitară obișnuită — iar autofactura trece pe **alte căi** în
+ambele generatoare (datoria stă pe 408, nu pe 401; încadrarea în decont vine de pe un marcaj de pe
+articol, nu din tipul documentului).
+
+**Poarta a BLOCAT la prima rulare, și pe bună dreptate — dar din datele de test, nu din generator:**
+
+```
+R24.1: operatorul codO = '123456789' trebuie sa respecte algoritmul specific 'DE'
+```
+
+Codul de TVA german inventat pentru referință (`DE123456789`) nu satisface cifra de control
+germană. Lecția e despre *date de test*, nu despre cod: un identificator plauzibil dar invalid
+trece testele proprii (nimic din suită nu verifică cifra de control a unui CUI străin) și cade abia
+la validatorul oficial. Referința folosește acum `DE811907980`, cel deja prezent în `vIC`.
+
 ## Ultima verificare: 2026-08-07 — D100, sistemul anual cu plăți anticipate (art. 41)
 
 Declanșată de atingerea lui `src/reporting.js`, `src/fiscalProfile.js`, `src/xml.js` și

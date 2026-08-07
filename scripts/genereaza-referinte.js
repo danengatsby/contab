@@ -143,6 +143,29 @@ const vSpons = {
 };
 w('D177', xml.d177Xml(v.company, rep.d177(vSpons, '2025', { profitTax: { cota: 16, plafoane: require('../src/fiscalConfig').RATES } })));
 
+// D390 + D300 varianta AUTOFACTURA (art. 320): cumparatorul emite factura in locul furnizorului
+// care n-a trimis-o. Datoria sta pe 408, nu pe 401, iar TVA-ul e exigibil FARA factura — deci
+// atat citirea bazei in D390, cat si incadrarea pe randul de autolichidare din decont trec pe cai
+// care nu existau. Exemplul integrat nu are asa ceva, deci fara varianta asta poarta ar valida
+// mereu doar achizitia intracomunitara obisnuita.
+const vAuto = {
+  company: v.company, openingBalances: {}, assets: [],
+  entries: [{ id: 'af1', firmaId: 1, data: '2026-06-12', period: '2026-06', tip: 'autofactura_achizitie',
+    tipNume: 'Autofactura (art. 320)', status: 'postat', partener: 'DE FURNIZOR GMBH',
+    partenerCui: 'DE811907980', document: 'AUTOF 1/2026', naturaAutofactura: 'intracom',
+    lines: [{ debit: '371', credit: '408', suma: 10000 }, { debit: '4426', credit: '4427', suma: 2100 }] }],
+};
+{
+  const r390 = rep.d390(vAuto, '2026-06');
+  if (r390.rows.length !== 1 || r390.rows[0].baza !== 10000) {
+    throw new Error('D390-autofactura: baza citita gresit — ' + JSON.stringify(r390.rows));
+  }
+  const r300 = rep.d300(vAuto, '2026-06');
+  if (r300.coteV.length) throw new Error('D300-autofactura: autofactura a ajuns pe randurile de livrare');
+  w('D390-autofactura', xml.d390Xml(v.company, '2026-06', r390, who));
+  w('D300-autofactura', xml.d300Xml(v.company, '2026-06', r300, who));
+}
+
 // D205 (retineri la sursa) — an incheiat, cu un beneficiar de dividende
 const vDiv = { entries: [{ id: 'd1', data: '2025-08-10', period: '2025-08', tip: 'repartizare_dividende', tipNume: 'Div', partener: 'Ion', partenerCui: '1900101415238', lines: [{ debit: '457', credit: '5121', suma: 9200 }, { debit: '457', credit: '446', suma: 800 }, { debit: '117', credit: '457', suma: 10000 }] }], openingBalances: {} };
 w('D205', xml.d205Xml(v.company, '2025', rep.d205(vDiv, '2025'), who));

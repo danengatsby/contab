@@ -338,6 +338,11 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     // nu se poate citi din conturi — aceeasi cheltuiala, pe acelasi cont, e deductibila daca a fost
     // imputata sau asigurata — iar la finalul anului formularul din care s-a bifat nu mai exista.
     ...(f.lipsaNeimputabila ? { lipsaNeimputabila: true } : {}),
+    // Natura autofacturii (art. 320). Acelasi motiv ca la auto50 si lipsaNeimputabila: nu se poate
+    // citi din conturi mai tarziu — o achizitie intracomunitara si o taxare inversa interna dau
+    // AMANDOUA 4426 = 4427 — dar decide daca operatiunea intra in D390. Fara marcaj, D390 ar fi
+    // fost ori umflat cu operatiuni interne, ori incomplet, si in ambele cazuri tacut.
+    ...(f.naturaAutofactura ? { naturaAutofactura: String(f.naturaAutofactura) } : {}),
     ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
     ...(codCategorie331 ? { codCategorie331 } : {}), // categoria de bun art. 331, pentru op11 din D394
     fileId: fileId || null,

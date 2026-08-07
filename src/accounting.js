@@ -728,6 +728,24 @@ const AUTOLICHIDARE = {
   taxare_inversa_interna_achizitie: { cat: 'taxareInversaInterna', d394: true }, // R7 / R20
 };
 
+/** Incadrarea de autolichidare a unui articol. Aproape toate se citesc din TIP; autofactura
+ *  (art. 320) e singura care are nevoie si de marcajul de pe articol, fiindca acopera trei
+ *  operatiuni diferite cu ACELEASI conturi (4426 = 4427).
+ *
+ *  Fara asta, autofactura cadea prin toate ramurile si ajungea pe randurile de COTA — adica in
+ *  decont aparea ca o LIVRARE taxabila de 10.000 lei care nu existase niciodata, umfland si
+ *  livrarile (R9), si achizitiile (R22). Exact defectul pe care il descrie comentariul de mai sus,
+ *  reintrodus pe usa din dos de un tip nou. */
+function autolichidareaLui(e) {
+  if (e && e.tip === 'autofactura_achizitie') {
+    // Serviciile primite din afara merg pe randul lor de autolichidare, nu pe cel de bunuri:
+    // in D390 nu intra (declaratia e pe bunuri), dar in decont se autolichideaza la fel.
+    if (e.naturaAutofactura === 'intern331') return { cat: 'taxareInversaInterna', d394: true };
+    return { cat: 'intracomBunuri', d394: false };
+  }
+  return AUTOLICHIDARE[e && e.tip] || null;
+}
+
 /** Jurnalele de TVA (vanzari/cumparari) si sumarul pentru decontul D300. */
 function vatJournals(db, period) {
   const entries = sortEntries(postedEntries(db).filter((e) => inPeriod(e, period)));
@@ -782,7 +800,7 @@ function vatJournals(db, period) {
       else bazaV = round2(bazaV + (Number(e.tvaExig.baza) || 0));
     }
     // La taxarea inversa interna aceeasi baza se raporteaza si la colectata, si la deductibila (D300).
-    const autolich = AUTOLICHIDARE[e.tip];
+    const autolich = autolichidareaLui(e);
     if (reverseCharge && bazaV === 0) bazaV = bazaC;
     if (ded !== 0) {
       // TVA partial deductibila (auto 50% art. 298, pro-rata art. 300): partea nededusa a intrat

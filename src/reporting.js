@@ -121,15 +121,28 @@ function tvaReconciliation(db, period) {
 /** Recap D390 — declaratia recapitulativa VIES (livrari/achizitii intracomunitare de bunuri). */
 function d390(db, period) {
   const INTRACOM = { livrare_intracomunitara: 'L', achizitie_intracomunitara: 'A' };
-  const ent = acc.postedEntries(db).filter((e) => INTRACOM[e.tip]
+  // AUTOFACTURA (art. 320) intra in D390 doar cand operatiunea CHIAR e o achizitie
+  // intracomunitara de bunuri. Din conturi nu se poate deduce: si taxarea inversa interna, si
+  // serviciile din afara dau acelasi 4426 = 4427. De aceea natura se ia din marcajul pus pe
+  // articol la inregistrare (`naturaAutofactura`) — vezi composeEntry.
+  // Fara asta, autofactura ar fi lipsit din D390 tocmai in cazul in care legea a cerut-o ca sa NU
+  // lipseasca: cumparatorul e obligat s-o emita fiindca furnizorul n-a trimis factura, dar
+  // operatiunea se declara oricum.
+  const codDe = (e) => (e.tip === 'autofactura_achizitie'
+    ? (e.naturaAutofactura === 'intracom' ? 'A' : null)
+    : (INTRACOM[e.tip] || null));
+  const ent = acc.postedEntries(db).filter((e) => codDe(e)
     && (!period || String(e.period || periodOf(e.data)).startsWith(period)));
   const map = new Map();
   for (const e of ent) {
-    const cod = INTRACOM[e.tip];
+    const cod = codDe(e);
     let baza = 0;
     for (const l of e.lines) {
       if (cod === 'L' && /^70/.test(String(l.credit))) baza = round2(baza + l.suma); // livrare: venit (clasa 70)
-      if (cod === 'A' && String(l.credit) === '401') baza = round2(baza + l.suma);   // achizitie: valoarea bunurilor (vs furnizor)
+      // Achizitie: valoarea bunurilor, adica linia catre FURNIZOR. La autofactura datoria sta pe
+      // 408 (factura chiar nu a sosit), nu pe 401 — o ancora doar pe 401 ar fi citit baza 0 si ar
+      // fi raportat operatiunea cu suma zero, ceea ce e mai rau decat s-o omita.
+      if (cod === 'A' && (String(l.credit) === '401' || String(l.credit) === '408')) baza = round2(baza + l.suma);
     }
     const cui = String(e.partenerCui || '').replace(/\s/g, '').toUpperCase();
     const key = cod + '|' + cui;
