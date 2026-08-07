@@ -1382,3 +1382,25 @@ section('Poarta: scenariul video nu poate rămâne în urma vocii din film');
   catch (e) { iesire = e.status || 1; }
   ok('scenariul din docs/ e regenerat din naratiune (ruleaza `node scripts/genereaza-scenariu.js`)', iesire === 0);
 }
+
+section('Poarta: pagina filmului nu-si scrie durata de mana');
+{
+  const fsx = require('fs'); const pth = require('path');
+  // Filmul se reface, manifestul se rescrie singur la publicare — dar pagina isi tinea durata
+  // hardcodata, in TREI locuri. Dupa refacere anunta „Durata 10:27" pentru un film de 13:20:
+  // vizitatorul citea o cifra si vedea alta in player. Sursa unica e manifestul.
+  const html = fsx.readFileSync(pth.join(RADACINA, 'public', 'video.html'), 'utf8');
+  const js = fsx.readFileSync(pth.join(RADACINA, 'public', 'video.js'), 'utf8');
+  const faraComentarii = html.replace(/<!--[\s\S]*?-->/g, ' ');
+  ok('poarta chiar citeste pagina', faraComentarii.includes('video-player'));
+  const durate = faraComentarii.match(/\b\d{1,2}:\d{2}\b/g) || [];
+  ok('nicio durata scrisa de mana in pagina' + (durate.length ? ' — GASITE: ' + durate.join(', ') : ''), durate.length === 0);
+  ok('pagina are locul in care se pune durata', /id="videoMeta"/.test(html));
+  ok('...si scriptul care o aduce din manifest', /src="\/video\.js"/.test(html));
+  ok('scriptul chiar citeste manifestul', /descarcari\/video\.json/.test(js));
+  // Scriptul TREBUIE sa fie fisier separat: CSP-ul are `script-src 'self'`, deci unul inline ar fi
+  // blocat TACUT — pagina s-ar incarca, doar cifra ar lipsi, si nimeni n-ar sti de ce.
+  ok('scriptul nu e inline (CSP: script-src self)', !/<script(?![^>]*\bsrc=)/.test(faraComentarii));
+  // Fara manifest, pagina nu are voie sa inventeze o durata.
+  ok('fara manifest, ramane doar linkul de descarcare', /catch[\s\S]{0,120}innerHTML = link/.test(js));
+}

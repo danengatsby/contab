@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Contabo — filmul de prezentare</title>
-  <meta name="description" content="Zece minute cu voce în română: de la documentul scanat la declarația ANAF — înregistrarea unei facturi, închiderea lunii și a anului, decontul de TVA, SAF-T și registrul fiscal." />
+  <meta name="description" content="Filmul complet, cu voce în română: cum îți alegi contabilul din aplicație, cum se înregistrează o factură, închiderea lunii și a anului, decontul de TVA, SAF-T și declarațiile ANAF." />
   <link rel="stylesheet" href="/prezentare.css">
   <link rel="stylesheet" href="/u.css">
 </head>
@@ -27,9 +27,13 @@
     <div class="wrap">
       <p class="kicker">Vezi aplicația în lucru</p>
       <h2>Tot drumul, de la document la declarație</h2>
-      <p class="lead">Zece minute, cu voce în română: înregistrarea unei facturi, închiderea lunii și a anului,
-        decontul de TVA cu reconcilierea e-TVA, SAF-T și registrul fiscal. Fără montaj care sare
-        peste pașii grei.</p>
+      <p class="lead">Cu voce în română, de la cap la coadă. Începe cu ce face orice firmă întâi:
+        <b>patronul își alege contabilul</b> dintre cei înscriși în aplicație și îi trimite cererea
+        pentru firma lui — contabilul acceptă, și abia atunci vede datele. Apoi tot ciclul:
+        înregistrarea unei facturi, banii, stocurile, salariile, închiderea lunii și a anului,
+        decontul de TVA cu reconcilierea e-TVA, SAF-T și declarațiile. Documentele — facturi PDF,
+        e-Factura, registre — se deschid pe ecran, așa cum le vezi în aplicație. Fără montaj care
+        sare peste pașii grei.</p>
       <div class="video-wrap">
         <!-- `preload="none"` dinadins: filmul are ~40 MB, iar pagina se deschide dintr-un buton de
              pe ecranul de autentificare — nimeni nu plateste traficul inainte sa apese Play. -->
@@ -40,8 +44,10 @@
             <a href="/descarcari/contabo-prezentare.mp4">descarcă-l de aici</a>.</p>
         </video>
       </div>
-      <p class="video-meta">Durata 10:27 · 1280×720 ·
-        <a href="/descarcari/contabo-prezentare.mp4" download>descarcă filmul</a></p>
+      <!-- Datele filmului vin din MANIFEST, prin public/video.js — scrise de mana aici, ramaneau
+           in urma la fiecare refacere a filmului (au si ramas: pagina anunta 10:27 pentru un film
+           de 13:20). -->
+      <p class="video-meta" id="videoMeta"><a href="/descarcari/contabo-prezentare.mp4" download>descarcă filmul</a></p>
     </div>
   </section>
 
@@ -54,5 +60,6 @@
     </div>
   </footer>
 
+  <script src="/video.js"></script>
 </body>
 </html>
