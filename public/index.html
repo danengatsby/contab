@@ -10,6 +10,12 @@
   <title>Contabo — ciclul contabil</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/u.css">
+  <!-- Aspectul CLASIC de aplicație de contabilitate (densitate mare, bară de meniu, bandă de
+       unelte, arbore de module, grile cu chenar). E un STRAT peste același DOM: erp.js pune
+       clasa `erp` pe <body> și injectează chrome-ul, erp.css îmbracă restul. Se dezactivează
+       din butonul „Aspect modern" (bara de unelte a aplicației) — vezi erp.js. -->
+  <link rel="stylesheet" href="/erp.css" />
+  <script src="/erp.js" defer></script>
 </head>
 <body>
   <div id="loginOverlay" class="login-overlay">
