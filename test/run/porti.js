@@ -1356,3 +1356,29 @@ section('Poarta: fiecare link de descărcare din registrul depunerilor indică o
   // Poarta trebuie sa POATA pica: o cale inventata nu se regaseste printre rutele reale.
   ok('poarta chiar distinge o rută inexistentă', !rute.has('/xml/d999'));
 }
+
+section('Poarta: scenariul video nu poate rămâne în urma vocii din film');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const { execFileSync } = require('child_process');
+  // Documentul isi declara singur regula — „se genereaza … nu se scriu de mana, altfel drifteaza
+  // la prima replica schimbata" — dar generatorul NU exista si capitolul era scris de mana. Adica
+  // deriva impotriva careia se avertiza, cu avertismentul ca dovada ca cineva stia. Acum exista
+  // generatorul, iar poarta il ruleaza in modul `--check`: daca cineva schimba o replica din
+  // naratiune si uita documentul, filmul si scenariul ar spune lucruri diferite despre acelasi
+  // produs — si nimeni n-ar afla, fiindca scenariul se citeste rar.
+  const scene = JSON.parse(fsx.readFileSync(pth.join(RADACINA, 'scripts', 'naratiune-video.json'), 'utf8'));
+  const durate = JSON.parse(fsx.readFileSync(pth.join(RADACINA, 'scripts', 'naratiune-durate.json'), 'utf8'));
+  ok('naratiunea are scene', scene.length >= 20);
+  ok('fiecare scena are id si text', scene.every((s) => s.id && s.text && s.text.length > 20));
+  ok('id-urile sunt unice', new Set(scene.map((s) => s.id)).size === scene.length);
+  // Durata e MASURATA din WAV-ul generat, nu estimata: pe ea se aseaza sunetul la montaj, deci o
+  // scena fara durata ar decala tot filmul de la ea incolo.
+  const faraDurata = scene.filter((s) => !durate.some((d) => d.id === s.id && d.durata > 0));
+  ok('fiecare scena are durata masurata' + (faraDurata.length ? ' — LIPSESC: ' + faraDurata.map((s) => s.id).join(', ') : ''), faraDurata.length === 0);
+
+  let iesire = 0;
+  try { execFileSync('node', [pth.join(RADACINA, 'scripts', 'genereaza-scenariu.js'), '--check'], { stdio: 'pipe' }); }
+  catch (e) { iesire = e.status || 1; }
+  ok('scenariul din docs/ e regenerat din naratiune (ruleaza `node scripts/genereaza-scenariu.js`)', iesire === 0);
+}
