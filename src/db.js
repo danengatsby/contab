@@ -100,6 +100,7 @@ const DEFAULT_DB = {
   serviceRequests: [], // { id, firmaId, ownerId, contabilId, mesaj, ts, status } - patron care ANGAJEAZA un contabil (accepta contabilul)
   visitors: [],        // { id=ip, ip, prima, ultima, cereri, pagini, ultimaCale, ua, bot, useri } - cine atinge site-ul, AGREGAT pe IP (src/visitors.js)
   customAccounts: [],  // { cod, nume, clasa, tip } - conturi personalizate (import)
+  catalogDurate: [],   // { cod, denumire, aniMin, aniMax } - HG 2139/2004, GLOBAL (vezi src/catalogDurate.js)
   settings: {
     useAI: true,
     anaf: { env: 'test', clientId: '', clientSecret: '', redirectUri: '', cif: '', accessToken: '', refreshToken: '', tokenExpiry: 0 },
@@ -216,6 +217,7 @@ function migrate(d) {
   if (!Array.isArray(d.serviceRequests)) d.serviceRequests = [];
   if (!Array.isArray(d.visitors)) d.visitors = [];
   if (!Array.isArray(d.customAccounts)) d.customAccounts = [];
+  if (!Array.isArray(d.catalogDurate)) d.catalogDurate = [];
   if (!Array.isArray(d.assets)) d.assets = [];
   if (!Array.isArray(d.angajati)) d.angajati = [];
   if (!Array.isArray(d.payrollHistory)) d.payrollHistory = [];

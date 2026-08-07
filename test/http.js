@@ -1628,6 +1628,38 @@ async function main() {
     ok('contul importat de admin e vizibil in meta',
       !!(await req('GET', '/api/meta', { cookie: la.cookie })).json.accounts.find((a) => a.cod === '9911'));
 
+    // ── Catalogul duratelor (HG 2139/2004) e tot stare GLOBALA -> aceeasi garda ──
+    // Durata normala de functionare e aceeasi pentru toate firmele, deci catalogul se scrie o
+    // singura data, de admin. Fara garda, un cont legat de o singura firma ar putea muta
+    // duratele sub picioarele tuturor celorlalte.
+    const cdCsv = '2.1.16.1.1;Masini de spalat;8-12\n1.1.1;Cladiri industriale;40;60\nX;Fara durata;abc';
+    eq('non-admin NU poate incarca catalogul de durate -> 403',
+      (await req('POST', '/api/catalog-durate/import', { cookie: c1, body: { csv: cdCsv } })).status, 403);
+    eq('catalogul a ramas gol dupa incercarea non-adminului',
+      (await req('GET', '/api/catalog-durate', { cookie: c1 })).json.total, 0);
+    const cdImp = await req('POST', '/api/catalog-durate/import', { cookie: la.cookie, body: { csv: cdCsv } });
+    eq('adminul incarca catalogul', cdImp.status, 200);
+    eq('...doar randurile bune intra', cdImp.json.importate, 2);
+    // Randurile stricate se RAPORTEAZA. Un catalog incarcat pe jumatate, fara sa spuna care
+    // jumatate, l-ar face pe contabil sa caute degeaba un cod care n-a intrat niciodata.
+    ok('...iar randul stricat e raportat, cu linia lui',
+      cdImp.json.respinse.length === 1 && cdImp.json.respinse[0].linie === 3);
+    // Cautarea e deschisa oricui: e o hotarare de guvern, nu date de firma.
+    const cdCauta = await req('GET', '/api/catalog-durate?q=' + encodeURIComponent('masini spalat'), { cookie: c1 });
+    ok('cautarea merge si pentru non-admin', cdCauta.status === 200 && cdCauta.json.rezultate.length === 1);
+    eq('...si intoarce intervalul legal, nu o durata unica', cdCauta.json.rezultate[0].aniMax, 12);
+    eq('fara `q` NU se revarsa tot catalogul (doar marimea lui)',
+      (await req('GET', '/api/catalog-durate', { cookie: c1 })).json.rezultate.length, 0);
+    eq('...dar marimea se vede, ca interfata sa stie daca e incarcat',
+      (await req('GET', '/api/catalog-durate', { cookie: c1 })).json.total, 2);
+    // Import repetat = corectie, nu dublare (upsert pe cod, ca la planul de conturi).
+    await req('POST', '/api/catalog-durate/import', { cookie: la.cookie, body: { csv: '2.1.16.1.1;Masini de spalat industriale;10-14' } });
+    const cdDupa = await req('GET', '/api/catalog-durate?q=2.1.16.1.1', { cookie: c1 });
+    eq('reimportul nu dubleaza pozitia', cdDupa.json.total, 2);
+    eq('...si chiar corecteaza intervalul', cdDupa.json.rezultate[0].aniMin, 10);
+    eq('CSV fara niciun rand valid -> 400, nu „0 importate"',
+      (await req('POST', '/api/catalog-durate/import', { cookie: la.cookie, body: { csv: 'x;y;z' } })).status, 400);
+
     // ── Antetul se recunoaste dupa prima celula, nu dupa cuvinte din rand ──
     // Euristica veche cauta „cont|cod|denumire" oriunde in primele doua celule si inghitea tacit
     // primul rand REAL cand denumirea continea unul din ele. Planul romanesc e plin de asa ceva.

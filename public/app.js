@@ -363,6 +363,9 @@ async function init() {
   // Planul de conturi e global (partajat de toate firmele), deci importul e rezervat adminului
   // — serverul raspunde 403 oricum; ascunderea evita un buton care nu poate reusi.
   $('#accImportBox') && ($('#accImportBox').style.display = USER.role === 'admin' ? '' : 'none');
+  // Catalogul duratelor (HG 2139/2004) e tot stare GLOBALA, ca planul de conturi — deci acelasi
+  // tratament: importul il vede doar adminul. Cautarea ramane a tuturor.
+  $('#cdImportBox') && ($('#cdImportBox').style.display = USER.role === 'admin' ? '' : 'none');
   applySessionState(USER);
   // drepturi granulare: utilizatorii fara acces la salarizare nu vad intrarea din meniu
   const faraSalarii = !!(USER.drepturi && USER.drepturi.faraSalarii);

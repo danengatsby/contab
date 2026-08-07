@@ -194,6 +194,19 @@ Citiri pure pe firma activă; parametrii uzuali `?period=` / `?year=`.
   `primiiPasi.wizardAscuns` e per utilizator, deci se suprapune *după* memo.
 - `GET /api/reconcile`, `/api/compensations` (+ `POST` pentru nota 401=4111).
 
+### Catalogul duratelor normale de funcționare — `src/routes/assets.js`
+
+Ajutor de completare pentru `durataLuni` la mijloacele fixe (HG 2139/2004). **Nu intră în niciun
+calcul**: `src/assets.js` nu importă modulul, iar amortizarea se face în continuare din
+`durataLuni` salvat pe activ. Catalogul **nu vine scris în aplicație** — anexa are sute de coduri,
+iar un interval greșit ar produce ani de amortizare greșită fără să se vadă; se încarcă din anexa
+oficială (vezi `src/catalogDurate.js`).
+
+| Rută | Corp / parametri | Răspuns |
+|---|---|---|
+| `GET /api/catalog-durate?q=&limit=` | `q` = cod sau cuvinte din denumire | `{ total, rezultate: [{ cod, denumire, aniMin, aniMax }] }`. Fără `q` întoarce doar `total` (lista goală) — sute de rânduri nu se revarsă degeaba, dar interfața poate ști dacă e încărcat |
+| `POST /api/catalog-durate/import` (admin) | `{ csv }` — `cod;denumire;ani` (`8-12`) sau `cod;denumire;aniMin;aniMax` | `{ ok, importate, total, respinse: [{ linie, cod, motiv }] }`. Catalogul e **global**, ca planul de conturi, **de aceea scrierea e rezervată adminului**; 403 altfel. Upsert pe cod. Rândurile stricate sunt **raportate cu linia din fișier**, nu înghițite |
+
 ### Închiderea lunară (cockpit) — `src/routes/monthlyClose.js`
 
 Fluxul unic *documente → extras bancar → TVA → declarații → aprobare → blocare*. Starea fiecărui

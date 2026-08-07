@@ -76,6 +76,8 @@ const ARRAY_COLLS = [
   { key: 'openingAnalytic', firma: true, hasId: false },
   { key: 'audit', firma: true, hasId: true },
   { key: 'customAccounts', firma: false, hasId: false },
+  // Catalogul duratelor HG 2139/2004: GLOBAL, ca planul de conturi — acelasi pentru toate firmele.
+  { key: 'catalogDurate', firma: false, hasId: false },
   { key: 'messages', firma: false, hasId: true },
   { key: 'recurringInvoices', firma: true, hasId: true },
   { key: 'recipes', firma: true, hasId: true },

@@ -366,7 +366,9 @@ require('./src/routes/monthlyClose')(app, { activeId, logAudit });
 
 // ───────────────────────────── MIJLOACE FIXE ─────────────────────────────
 // Mijloace fixe (registru + amortizare): src/routes/assets.js
-require('./src/routes/assets')(app, { S, activeId, logAudit });
+// `requireAdmin`: importul catalogului de durate (HG 2139/2004) scrie stare GLOBALA, partajata de
+// toate firmele — aceeasi garda ca la /api/accounts/import, din acelasi motiv.
+require('./src/routes/assets')(app, { S, activeId, logAudit, requireAdmin });
 
 // ───────────────────────────── SALARIZARE ─────────────────────────────
 // Salarizare (angajati, stat de plata, registru, PDF-uri): src/routes/payroll.js
