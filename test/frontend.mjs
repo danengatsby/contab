@@ -361,6 +361,36 @@ for (const et of ['Sold clienți (4111)', 'Sold furnizori (401)', 'De încasat d
   ok('„' + et + '" nu e colorat evaluativ', l !== '' && !/'green'|'red'/.test(l));
 }
 
+section('Dashboard: un cont în minus nu are voie să se ascundă într-un total pozitiv');
+{
+  // Cazul REAL de pe contul demo, cel care a dat numele acestei secțiuni: banca era la −60.819 și
+  // casa la +117.046, deci „Bani disponibili" arăta 56.227,00 albastru și senin — la trei
+  // centimetri sub o alertă care striga chiar acel sold negativ. Aceeași cifră, două afirmații
+  // contrare, pe același ecran. Compensarea e corectă aritmetic și dezinformantă vizual.
+  const d = dashboard.dalaDisponibil(-60819, 117046, 56227);
+  eq('componenta negativă schimbă tonul, deși totalul e pozitiv', d.ton, 'red');
+  ok('...și e numită ca atare, nu doar colorată', d.sub.includes('un cont e în minus'));
+  ok('...cu avertismentul că totalul minte prin compensare', d.sub.includes('mai puțini bani decât arată totalul'));
+  ok('cifra negativă e evidențiată, nu doar scrisă', d.sub.includes('<b data-u="u33">-60.819,00</b>'));
+  ok('...iar cifra pozitivă rămâne neevidențiată', d.sub.includes('casă 117.046,00'));
+
+  // Fără nimic în minus, dala rămâne exact cum era: neutră, cu detalierea simplă.
+  const ok2 = dashboard.dalaDisponibil(1000, 500, 1500);
+  eq('totul pozitiv rămâne neutru', ok2.ton, 'blue');
+  ok('...fără avertisment inventat', !ok2.sub.includes('în minus'));
+  eq('...și cu detalierea de dinainte', ok2.sub, 'bancă 1.000,00 · casă 500,00');
+
+  // Zero nu e sub zero: aceeași regulă ca la `tonTrezorerie`, ca cele două să nu divergă.
+  eq('zero nu alarmează', dashboard.dalaDisponibil(0, 0, 0).ton, 'blue');
+  eq('minus zero nu alarmează', dashboard.dalaDisponibil(-0, 0, -0).ton, 'blue');
+  // Totalul negativ rămâne semnalat chiar dacă ambele componente sunt „doar" mici.
+  eq('total negativ e semnalat și fără componentă negativă', dashboard.dalaDisponibil(0, 0, -5).ton, 'red');
+  // Ambele în minus: pluralul contează, e chiar rândul pe care omul îl citește ca pe un diagnostic.
+  ok('două conturi în minus se spun la plural', dashboard.dalaDisponibil(-10, -20, -30).sub.includes('două conturi sunt în minus'));
+  // Valorile vin din JSON, deci pot sosi ca șir — comparația trebuie să fie numerică.
+  eq('șir negativ e tratat numeric', dashboard.dalaDisponibil('-12.5', '100', '87.5').ton, 'red');
+}
+
 section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
 {
   // `azi` e fixat: altfel vechimea restanței ar depinde de ziua în care rulează suita.
