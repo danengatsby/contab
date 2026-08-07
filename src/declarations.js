@@ -91,12 +91,19 @@ function dueDate(tip, period, profile) {
  * Firmele cu alt regim marcheaza lunile in plus drept „scutite" in registru.
  */
 const INTRACOM_TYPES = new Set(['livrare_intracomunitara', 'achizitie_intracomunitara']);
+/** Articolul declanseaza asteptarea unui D390? Autofactura (art. 320) doar cand natura marcata pe
+ *  ea e chiar achizitia intracomunitara — celelalte doua situatii pe care le acopera (servicii din
+ *  afara, taxare inversa interna) nu se declara in D390, desi dau aceleasi conturi. */
+function esteIntracom(e) {
+  if (e && e.tip === 'autofactura_achizitie') return e.naturaAutofactura === 'intracom';
+  return INTRACOM_TYPES.has(e && e.tip);
+}
 
 function expectedForFirma(v, period) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   // Sursa UNICA: profilul fiscal al firmei deriva lista (nu boolean-uri citite inline aici).
   const profile = fiscalProfile.build((v || {}).company, { angajati: (v || {}).angajati });
-  const hasIntracom = (per) => postedEntries(v).some((e) => INTRACOM_TYPES.has(e.tip) && String(e.period || e.data || '').slice(0, 7) === per);
+  const hasIntracom = (per) => postedEntries(v).some((e) => esteIntracom(e) && String(e.period || e.data || '').slice(0, 7) === per);
   return fiscalProfile.expected(profile, period, hasIntracom)
     .map((tip) => ({ tip, nume: (TIPURI[tip] || {}).nume || tip, period, due: dueDate(tip, period, profile) }));
 }

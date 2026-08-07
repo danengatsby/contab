@@ -2883,6 +2883,57 @@ const d100warn = rep.d100micro({ entries: [{ id: 'w1', period: '2026-02', data: 
 ok('D100: peste 80% din plafon -> avertisment de urmarire (nu de depasire)', d100warn.avertismente.some((w) => /din plafonul micro/.test(w)) && !d100warn.avertismente.some((w) => /DEPASESC/.test(w)));
 eq('D100: venitul anual cumulat pentru controlul plafonului', d100over.venitAn, 600000);
 
+// ── AUTOFACTURA (art. 320) ───────────────────────────────────────────────────────────────────
+// Cumparatorul obligat la plata TVA care nu a primit factura pana pe 15 a lunii urmatoare trebuie
+// s-o emita singur. Tipul exista separat de `factura_nesosita` pentru un motiv contabil precis.
+section('Autofactura art. 320 — TVA exigibil fara factura');
+{
+  const T = require('../src/documentTypes');
+  const af = T.getType('autofactura_achizitie').build({ baza: 10000, cota: 21, contStoc: '371' });
+  // Datoria pe 408 (factura chiar nu a sosit), nu pe 401.
+  eq('baza merge pe 408, nu pe 401', af[0].credit, '408');
+  // Miezul: TVA-ul e EXIGIBIL fara factura, deci 4426 = 4427 — NU 4428 ca la factura nesosita.
+  // Prin 4428, colectata ar fi lipsit din decont si din D390, adica operatiunea ar fi fost
+  // nedeclarata exact in cazul in care legea a cerut autofactura ca sa NU lipseasca.
+  eq('TVA-ul se colecteaza si se deduce pe loc (4426)', af[1].debit, '4426');
+  eq('...cu 4427, nu cu 4428 neexigibil', af[1].credit, '4427');
+  eq('TVA calculat din baza si cota', af[1].suma, 2100);
+  const nes = T.getType('factura_nesosita').build({ baza: 10000, tva: 2100, contChelt: '628' });
+  eq('prin contrast, factura nesosita pastreaza TVA neexigibil', nes[1].debit, '4428');
+  // Regularizarea are tip PROPRIU: perechea obisnuita ar deduce TVA-ul a doua oara.
+  const reg = T.getType('sosire_factura_autofactura').build({ baza: 10000 });
+  eq('regularizarea muta doar baza din 408 in 401', reg.length, 1);
+  ok('...si nu atinge niciun cont de TVA', !reg.some((l) => /^442/.test(l.debit) || /^442/.test(l.credit)));
+  ok('regularizarea de la facturi nesosite ATINGE TVA (de aceea nu se refoloseste)',
+    T.getType('sosire_factura_nesosita').build({ baza: 10000, tva: 2100 }).some((l) => l.debit === '4426'));
+
+  // Natura operatiunii se cere EXPLICIT: din conturi nu se poate citi, dar decide D390 si randul
+  // din decont. Toate trei variantele dau EXACT aceleasi linii contabile.
+  const camp = T.getType('autofactura_achizitie').fields.find((f) => f.name === 'naturaAutofactura');
+  ok('natura operatiunii e ceruta, fara implicit ghicit', camp && camp.required && camp.default == null);
+  const E = (nat) => ({ id: 'af' + nat, data: '2026-05-10', period: '2026-05', tip: 'autofactura_achizitie',
+    tipNume: 'Autofactura', status: 'postat', partener: 'DE FURNIZOR', partenerCui: 'DE123456789',
+    naturaAutofactura: nat,
+    lines: [{ debit: '371', credit: '408', suma: 10000 }, { debit: '4426', credit: '4427', suma: 2100 }] });
+  const vD = (nat) => ({ openingBalances: {}, entries: [E(nat)], company: { tvaPlatitor: true } });
+
+  // D390: doar achizitia intracomunitara de BUNURI.
+  eq('D390 include autofactura marcata intracomunitar', rep.d390(vD('intracom'), '2026-05').rows.length, 1);
+  eq('...cu baza citita de pe 408 (nu 0)', rep.d390(vD('intracom'), '2026-05').rows[0].baza, 10000);
+  eq('D390 NU include taxarea inversa interna', rep.d390(vD('intern331'), '2026-05').rows.length, 0);
+  eq('D390 NU include serviciile din afara', rep.d390(vD('servicii'), '2026-05').rows.length, 0);
+
+  // D300: pe randul de AUTOLICHIDARE, nu pe cele de cota. Fara incadrare, autofactura cadea prin
+  // toate ramurile si aparea ca o LIVRARE taxabila de 10.000 care nu existase niciodata.
+  const d3 = (nat) => rep.d300(vD(nat), '2026-05');
+  eq('autofactura NU apare ca livrare taxabila', d3('intracom').coteV.length, 0);
+  eq('...ci pe randul de autolichidare intracomunitara', d3('intracom').autolichidari.intracomBunuri.baza, 10000);
+  eq('taxarea inversa interna merge pe randul ei', d3('intern331').autolichidari.taxareInversaInterna.baza, 10000);
+  eq('...si nu pe cel intracomunitar', d3('intern331').autolichidari.intracomBunuri.baza, 0);
+  // Decontul ramane echilibrat: colectata = deductibila pe autolichidare, deci TVA de plata 0.
+  eq('autolichidarea nu produce TVA de plata', d3('intracom').deplata, 0);
+}
+
 // ── D100 pentru platitorii de IMPOZIT PE PROFIT (art. 41) ────────────────────────────────────
 // REGRESIE. Ruta chema mereu `d100micro`, iar generatorul avea `cod_oblig="620"` fix in sablon:
 // o firma pe impozit pe profit descarca o declaratie de MICROINTREPRINDERE — alt cod de obligatie,

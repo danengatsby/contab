@@ -60,6 +60,57 @@ module.exports = [
       return lines;
     },
   },
+  // ── AUTOFACTURA (art. 320) ────────────────────────────────────────────────────────────────
+  // Cand cumparatorul e persoana obligata la plata TVA (achizitie intracomunitara, servicii
+  // primite din afara, taxare inversa interna) si NU a primit factura furnizorului pana pe 15 a
+  // lunii urmatoare faptului generator, are OBLIGATIA sa emita autofactura.
+  //
+  // DIFERENTA fata de `factura_nesosita`, si intreg motivul pentru care tipul asta exista separat:
+  // acolo TVA-ul sta in 4428 (NEEXIGIBIL), fiindca dreptul de deducere se naste cu factura. La
+  // autofactura, TVA-ul e EXIGIBIL indiferent de factura — exigibilitatea intervine la data de 15
+  // a lunii urmatoare, nu la primirea documentului. Inregistrat gresit prin 4428, TVA-ul colectat
+  // ar lipsi din decont si din D390, iar operatiunea ar aparea nedeclarata la ANAF exact in
+  // situatia in care legea a cerut autofactura tocmai ca sa NU lipseasca.
+  //
+  // Datoria sta pe 408 (furnizori - facturi nesosite), nu pe 401: factura chiar nu a sosit.
+  {
+    id: 'autofactura_achizitie',
+    nume: 'Autofactura pentru achizitie cu taxare inversa, fara factura de la furnizor (art. 320)',
+    grup: 'Cumparari',
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota,
+      // NATURA operatiunii se cere EXPLICIT si nu are valoare implicita „ghicita": autofactura
+      // acopera trei situatii care se declara diferit, iar din conturi nu se poate citi care e
+      // (toate trei dau acelasi 4426 = 4427). Doar prima intra in D390; o implicita pe „intracom"
+      // ar fi umplut D390 cu operatiuni interne, o implicita pe „intern" ar fi ascuns achizitii
+      // intracomunitare de la ANAF. Amandoua tacut.
+      { name: 'naturaAutofactura', label: 'Natura operatiunii (decide daca intra in D390)', type: 'select',
+        required: true,
+        options: [
+          { value: 'intracom', label: 'Achizitie intracomunitara de bunuri (intra in D390)' },
+          { value: 'servicii', label: 'Servicii primite din afara tarii (nu intra in D390 pe bunuri)' },
+          { value: 'intern331', label: 'Taxare inversa interna, art. 331 (nu intra in D390)' },
+        ] },
+      { name: 'contStoc', label: 'Cont stoc/cheltuiala/imobilizare', type: 'account', default: '371' }],
+    build: (d) => {
+      const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
+      return [
+        L(d.contStoc || '371', '408', d.baza, 'Autofactură (art. 320) — factura furnizorului nu a sosit'),
+        L('4426', '4427', tva, 'Taxare inversă — TVA exigibilă fără factură (art. 320)'),
+      ];
+    },
+  },
+  {
+    id: 'sosire_factura_autofactura',
+    nume: 'Sosirea facturii pentru o autofactura (regularizare 408 -> 401)',
+    grup: 'Cumparari',
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza],
+    build: (d) => [L('408', '401', d.baza, 'Factura furnizorului a sosit — datoria devine certă')],
+    // FARA nicio linie de TVA, si asta e esential: taxarea inversa a fost DEJA inregistrata pe
+    // autofactura (4426 = 4427). Perechea obisnuita `sosire_factura_nesosita` ar adauga aici
+    // `4426 = 4428` si ar deduce TVA-ul a doua oara — de aceea regularizarea are tip propriu, nu
+    // se refoloseste cea de la facturi nesosite. Doar BAZA trece din 408 in 401.
+  },
+
   {
     id: 'factura_utilitati',
     nume: 'Factura utilitati (energie, apa)',
