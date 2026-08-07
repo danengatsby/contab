@@ -439,6 +439,40 @@ section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
   eq('lipsa listei nu aruncă', dashboard.deFacutHtml(undefined, AZI), '');
 }
 
+section('Scanerul local: oprit înseamnă ascuns, nu gri');
+{
+  // Butonul „🖨️ Scanează (scaner local)" stătea `disabled` în cardul PRINCIPAL de încărcare, iar
+  // sub el un panou de configurare `.inactiv` explica pe larg cum se instalează o punte care
+  // oricum nu putea fi pornită. Un buton gri pe care apeși și nu se întâmplă nimic citește a
+  // DEFECT, nu a funcție indisponibilă — și stătea exact acolo unde omul caută ce să facă.
+  //
+  // Poarta leagă cele două jumătăți în AMBELE sensuri, pe modelul celei de la 2FA: o jumătate
+  // reactivată fără cealaltă e chiar felul în care se ajunge înapoi la UI mort.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const src = fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8');
+  const buton = (html.match(/<button id="scannerBtn"[^>]*>/) || [''])[0];
+  ok('poarta chiar găsește butonul de scanare', buton !== '');
+  const oprit = /\bdisabled\b/.test(buton);
+  ok('panoul de configurare a scanerului există în pagină', html.includes('id="scanSetup"'));
+
+  if (oprit) {
+    // Ascunderea se face DUPĂ starea butonului, nu prin `hidden` scris de mână în HTML: altfel
+    // cele două ar drifta, iar reactivarea ar lăsa panoul ascuns sau butonul singur.
+    ok('oprit → ascunderea e condiționată de chiar `disabled`-ul butonului', /#scannerBtn'\)\.disabled/.test(src));
+    ok('oprit → se ascunde rândul butonului', /scannerBtn'\)\.closest\('\.row'\)[\s\S]{0,80}add\('hidden'\)/.test(src));
+    ok('oprit → se ascunde și panoul de configurare', /#scanSetup'\)[\s\S]{0,60}add\('hidden'\)/.test(src));
+    ok('oprit → utilizatorului i se spune de ce, dacă ajunge la buton', /momentan indisponibil/i.test(buton));
+  } else {
+    // Repornit: nimic nu are voie să mai ascundă cele două — altfel funcția e activă și invizibilă.
+    ok('pornit → nimic nu mai ascunde butonul', !/scannerBtn'\)\.closest\('\.row'\)[\s\S]{0,80}add\('hidden'\)/.test(src));
+    ok('pornit → nimic nu mai ascunde panoul de configurare', !/#scanSetup'\)[\s\S]{0,60}add\('hidden'\)/.test(src));
+    ok('pornit → titlul nu mai spune că e indisponibil', !/momentan indisponibil/i.test(buton));
+  }
+  // Poarta trebuie să POATĂ distinge cele două stări, altfel ramura de mai sus e decorativă.
+  ok('poarta chiar distinge butonul oprit de cel pornit',
+    /\bdisabled\b/.test('<button id="scannerBtn" class="btn" disabled>') && !/\bdisabled\b/.test('<button id="scannerBtn" class="btn">'));
+}
+
 section('Bara de sus pe telefon: nu are voie să crească la loc');
 {
   // Măsurat înainte: 340px din 844 (40% din ecran) înainte de orice conținut, fiindcă cele șase

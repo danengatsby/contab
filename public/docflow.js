@@ -85,6 +85,19 @@ async function scanFromBridge() {
   uploadFile(file);
 }
 $('#scannerBtn') && $('#scannerBtn').addEventListener('click', scanFromBridge);
+// Scanarea de la un scaner local e OPRITA (butonul e `disabled` in index.html). Cat timp e asa, si
+// butonul, si panoul lui de configurare se ascund complet: un buton gri pe care apesi si nu se
+// intampla nimic citeste a DEFECT, nu a functie indisponibila — iar panoul de sub el explica pe
+// larg cum se instaleaza o punte care oricum nu poate fi pornita din interfata. Amandoua stateau in
+// cardul principal de incarcare, adica exact acolo unde omul cauta ce sa faca.
+//
+// Sursa unica de adevar ramane atributul `disabled` din index.html: reactivarea inseamna scoaterea
+// lui, restul urmeaza singur. Perechea e legata de o poarta in test/frontend.mjs, pe modelul celei
+// de la 2FA — o jumatate reactivata fara cealalta e chiar felul in care se ajunge la UI mort.
+if ($('#scannerBtn') && $('#scannerBtn').disabled) {
+  const rand = $('#scannerBtn').closest('.row'); if (rand) rand.classList.add('hidden');
+  const setup = $('#scanSetup'); if (setup) setup.classList.add('hidden');
+}
 if ($('#scanBtn')) {
   $('#scanBtn').addEventListener('click', openScan);
   $('#scanClose').addEventListener('click', closeScan);
