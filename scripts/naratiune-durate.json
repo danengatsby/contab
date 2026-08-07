@@ -1,0 +1,158 @@
+[
+ {
+  "id": "s01-prezentare",
+  "durata": 15.88
+ },
+ {
+  "id": "s02-preturi",
+  "durata": 21.42
+ },
+ {
+  "id": "s03-cont",
+  "durata": 12.93
+ },
+ {
+  "id": "s04-doua-roluri",
+  "durata": 20.83
+ },
+ {
+  "id": "s05-lista-contabili",
+  "durata": 14.5
+ },
+ {
+  "id": "s06-angajare",
+  "durata": 17.37
+ },
+ {
+  "id": "s07-acceptare",
+  "durata": 15.39
+ },
+ {
+  "id": "s08-multi-firma",
+  "durata": 15.98
+ },
+ {
+  "id": "s09-portofoliu",
+  "durata": 16.85
+ },
+ {
+  "id": "s10-primaintrare",
+  "durata": 21.71
+ },
+ {
+  "id": "s11-ghid",
+  "durata": 18.54
+ },
+ {
+  "id": "s12-acasa",
+  "durata": 20.36
+ },
+ {
+  "id": "s13-document",
+  "durata": 20.0
+ },
+ {
+  "id": "s14-preview-pdf",
+  "durata": 18.84
+ },
+ {
+  "id": "s15-previzualizare",
+  "durata": 14.53
+ },
+ {
+  "id": "s16-controale",
+  "durata": 23.23
+ },
+ {
+  "id": "s17-emite",
+  "durata": 16.97
+ },
+ {
+  "id": "s18-preview-efactura",
+  "durata": 17.24
+ },
+ {
+  "id": "s19-bani",
+  "durata": 19.45
+ },
+ {
+  "id": "s20-stocuri",
+  "durata": 16.65
+ },
+ {
+  "id": "s21-salarii",
+  "durata": 19.14
+ },
+ {
+  "id": "s22-mijloace",
+  "durata": 15.21
+ },
+ {
+  "id": "s23-registre",
+  "durata": 16.54
+ },
+ {
+  "id": "s24-preview-csv",
+  "durata": 14.29
+ },
+ {
+  "id": "s25-inchidere",
+  "durata": 21.86
+ },
+ {
+  "id": "s26-inchidere-an",
+  "durata": 17.03
+ },
+ {
+  "id": "s27-regfiscal",
+  "durata": 17.14
+ },
+ {
+  "id": "s28-tva",
+  "durata": 14.06
+ },
+ {
+  "id": "s29-etva",
+  "durata": 13.91
+ },
+ {
+  "id": "s30-declaratii",
+  "durata": 19.87
+ },
+ {
+  "id": "s31-preview-xml",
+  "durata": 13.29
+ },
+ {
+  "id": "s32-saft",
+  "durata": 14.99
+ },
+ {
+  "id": "s33-rapoarte",
+  "durata": 17.9
+ },
+ {
+  "id": "s34-arhiva",
+  "durata": 14.84
+ },
+ {
+  "id": "s35-setari",
+  "durata": 24.98
+ },
+ {
+  "id": "s36-audit",
+  "durata": 15.63
+ },
+ {
+  "id": "s37-incredere",
+  "durata": 24.32
+ },
+ {
+  "id": "s38-limite",
+  "durata": 25.95
+ },
+ {
+  "id": "s39-final",
+  "durata": 10.04
+ }
+]

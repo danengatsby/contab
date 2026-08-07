@@ -29,7 +29,10 @@ const filtre = []; const etichete = [];
 tl.scene.forEach((s, i) => {
   const w = dur.find((d) => d.id === s.id);
   if (!w) return;
-  args.push('-i', '/w/tts/' + w.wav.replace(/^wav\//, 'wav/'));
+  // Calea se DERIVA din id, nu se citeste din fisierul de durate: o valoare cu prefix acolo
+  // („tts/wav/x.wav") producea `/w/tts/tts/wav/x.wav` si montajul pica dupa 13 minute de
+  // filmare — pretul unei cai duplicate platit la capatul celalalt al pipeline-ului.
+  args.push('-i', '/w/tts/wav/' + s.id + '.wav');
   const ms = Math.max(0, Math.round((s.start + OFFSET) * 1000));
   filtre.push(`[${filtre.length + 1}:a]adelay=${ms}|${ms}[a${i}]`);
   etichete.push(`[a${i}]`);
@@ -51,6 +54,10 @@ const run = (a) => execFileSync(ff, ['-hide_banner', '-loglevel', 'error', '-y',
 const CADRU = Number(process.env.CADRU || 3.5);
 tl.scene.forEach((s, i) => run(['-ss', String(s.start + OFFSET + CADRU), '-i', '/w/out/contabo-prezentare-720p.mp4', '-frames:v', '1', '-q:v', '4',
   `/w/out/c${String(i + 1).padStart(2, '0')}.jpg`]));
-run(['-pattern_type', 'glob', '-i', '/w/out/c*.jpg', '-vf', 'scale=384:-1,tile=5x5', '-frames:v', '1', '-q:v', '3', '/w/out/contact.jpg']);
+// Grila se calculeaza din NUMARUL de scene, nu e fixata la 5x5: la 39 de scene, o grila de 25 ar
+// fi taiat tacut ultimele 14 — adica exact partea de film pe care n-ai fi verificat-o niciodata.
+const coloane = 5;
+const linii = Math.ceil(tl.scene.length / coloane);
+run(['-pattern_type', 'glob', '-i', '/w/out/c*.jpg', '-vf', `scale=384:-1,tile=${coloane}x${linii}`, '-frames:v', '1', '-q:v', '3', '/w/out/contact.jpg']);
 run(['-ss', '250', '-i', '/w/out/contabo-prezentare-720p.mp4', '-frames:v', '1', '-q:v', '2', '/w/out/poster.jpg']);
 try { execFileSync(ff, ['-hide_banner', '-i', '/w/out/contabo-prezentare-720p.mp4'], { stdio: 'inherit' }); } catch (e) {}

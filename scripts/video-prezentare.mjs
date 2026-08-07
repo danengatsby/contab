@@ -62,7 +62,11 @@ const PW = process.env.VIDEO_PW || 'VideoDemo2026x';
 const W = 1280; const H = 720;
 const DUR = Object.fromEntries(JSON.parse(fs.readFileSync('/w/tts/durate.json', 'utf8')).map((s) => [s.id, s.durata]));
 
-const b = await chromium.launch();
+// HEADED, sub xvfb: in headless, `<iframe src="/pdf/...">` ramane un dreptunghi GRI —
+// vizualizatorul de PDF al lui Chromium nu porneste. Scena care arata un document PDF ar fi
+// filmat un chenar gol, si nimic n-ar fi semnalat-o: pagina se incarca, modalul se deschide,
+// scena raporteaza reusita. Se ruleaza cu `xvfb-run -a node film.mjs`.
+const b = await chromium.launch({ headless: false });
 const ctx = await b.newContext({ bypassCSP: true, viewport: { width: W, height: H }, recordVideo: { dir: '/w/out', size: { width: W, height: H } } });
 const pg = await ctx.newPage();
 const t0 = Date.now();
@@ -175,15 +179,87 @@ const scrie = async (sel, txt, delay = 45) => {
   await asteapta(200);
 };
 
+// ═════════════════════════════════════════════════════════════════════════════
+//  SCENELE. Ordinea si textul vin din scripts/naratiune-video.json — o singura sursa.
+//  Blocul 1 (s03–s09) e NOU si e miezul filmului: patronul ANGAJEAZA un contabil dintre cei
+//  inscrisi in aplicatie, contabilul accepta, si abia atunci vede datele. Se filmeaza pe DOUA
+//  conturi diferite (patron / maria), fiindca altfel n-ar fi o dovada, ci o afirmatie.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** Autentificare ca un anumit cont, de la zero. Intre blocuri se schimba actorul, deci se iese
+ *  complet: o sesiune ramasa ar arata datele omului gresit exact in scena despre acces. */
+async function intraCa(user) {
+  // Sesiunea se taie de la RADACINA (cookie-uri), nu prin `/api/logout`: ruta aia e POST, iar un
+  // GET pe ea intoarce 404 — filmarea continua cu sesiunea veche, adica exact cu datele omului
+  // gresit in scena despre acces. Iar ecranul de login se aduce EXPLICIT la vedere: dupa scena cu
+  // inscrierea, si `#loginOverlay`, si `#registerOverlay` raman ascunse, si atunci `waitForSelector`
+  // asteapta la infinit un camp care exista dar nu se vede.
+  await ctx.clearCookies();
+  await pg.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+  // AMBELE ecrane de intampinare se dezarmeaza ÎNAINTE de autentificare, prin chiar cheile pe
+  // care le citeste aplicatia. Ascunderea lor dupa login nu ajunge: `init()` se termina mai tarziu
+  // si le ridica peste ecran — asa au iesit doua scene intregi acoperite, fara ca filmarea sa
+  // raporteze ceva, fiindca actiunile lor chiar reusisera dedesubt.
+  //
+  // Turul TREBUIE dezarmat impreuna cu bun-venitul, nu separat: `maybeTour` porneste turul DOAR
+  // daca bun-venitul e deja ascuns (`app.js`). Dezarmandu-l doar pe primul, l-am pornit pe al
+  // doilea — acelasi defect, alt card, si a trebuit filmat de doua ori ca sa se vada.
+  await pg.evaluate((u) => {
+    try {
+      localStorage.setItem('contab_welcomed_' + u, '1');
+      localStorage.setItem('contab_tour_v1_' + u, '1');
+    } catch (e) { /* privat */ }
+  }, user);
+  await asteapta(900);
+  await pg.evaluate(() => {
+    const r = document.querySelector('#registerOverlay'); if (r) r.classList.add('hidden');
+    const l = document.querySelector('#loginOverlay'); if (l) l.classList.remove('hidden');
+  });
+  await pg.waitForSelector('#loginForm [name=username]', { state: 'visible', timeout: 20000 });
+  await unelte();
+  await scrie('#loginForm [name="username"]', user, 55);
+  await scrie('#loginForm [name="password"]', PW, 25);
+  await pg.press('#loginForm [name=password]', 'Enter');
+  await pg.waitForSelector('#loginOverlay.hidden', { timeout: 20000 }).catch(() => {});
+  await asteapta(2200);
+  await inchideModale(); await unelte();
+}
+/** Luna de lucru e GLOBALA si exemplul are datele pe iunie 2026 — fara asta, ecranele ies goale. */
+async function lunaExemplu() {
+  await pg.evaluate(() => { if (window.setWorkMonth) { window.setWorkMonth('2026-06'); if (window.applyWorkMonth) window.applyWorkMonth(); } });
+  await asteapta(1200);
+}
+/** Trece contul pe modul EXPERT, pe camera.
+ *  Necesar, nu cosmetic: patronul porneste in modul SIMPLU, care ascunde din meniu trei grupuri
+ *  intregi — Mijloace fixe, Registre contabile, Inchideri. Primele filmari au picat exact pe cele
+ *  patru scene care le cer („Element is not visible"), fiindca eticheta grupului nici nu exista pe
+ *  ecran. Comutarea se face ACOLO unde incepe partea tehnica a filmului, nu la inceput: scenele de
+ *  dinainte arata anume vederea simpla (rezumatul „Situatia firmei" e `simple-only`). */
+async function treciLaExpert() {
+  const esteSimplu = await pg.evaluate(() => document.body.classList.contains('simple-ui'));
+  if (esteSimplu) { await clic('#uiModeBtn', { dupa: 1400 }); await curata(); }
+}
+
+/** Deschide un document in vizualizatorul din aplicatie si il tine pe ecran. */
+async function previzualizeaza(href, ms = 3200) {
+  await pg.evaluate((h) => {
+    const a = document.createElement('a'); a.href = h; a.textContent = 'deschide';
+    a.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(a); a.click(); a.remove();
+  }, href);
+  await asteapta(ms);
+}
+const inchideViewer = () => pg.evaluate(() => { const m = document.querySelector('#pdfModal'); if (m) m.classList.add('hidden'); });
+
 // ═══ S01 · pagina publica de prezentare ═══════════════════════════════════
 await pg.goto(BASE + '/prezentare.html', { waitUntil: 'domcontentloaded' });
 await asteapta(1200); await unelte();
 await scena('s01-prezentare', async () => {
-  await card('Contabo', 'Contabilitatea firmei tale,\nde la poză la declarație', 'contabilitate românească · partidă dublă · parametri fiscali 2026', 2600);
-  await derulare(0, 900);
-  await derulare(700, 2000);
-  await derulare(1500, 2000);
-  await derulare(2400, 2000);
+  await card('Contabo', 'Contabilitatea firmei tale,\nde la poză la declarație',
+    'patronul aduce documentele · contabilul verifică și semnează', 3000);
+  await derulare(0, 800);
+  await derulare(700, 1800);
+  await derulare(1500, 1800);
+  await derulare(2400, 1800);
 });
 
 // ═══ S02 · preturile ══════════════════════════════════════════════════════
@@ -194,285 +270,315 @@ await scena('s02-preturi', async () => {
   await derulare(await pg.evaluate(() => document.querySelector('#onest').offsetTop - 60), 2400);
 });
 
-// ═══ S03 · crearea contului ═══════════════════════════════════════════════
+// ═══ S03 · contul: patron sau contabil ════════════════════════════════════
 await pg.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
 await pg.waitForSelector('#registerBtn', { state: 'visible' });
 await asteapta(600); await unelte();
 await scena('s03-cont', async () => {
-  await clic('#registerBtn', { dupa: 1200 });
-  await scrie('#registerForm [name="nume"]', 'S.C. FLORI SI FRUNZE S.R.L.');
-  // CUI cu cifra de control VALIDA: serverul o verifica (src/identitate.js), iar un CUI inventat
-  // opreste inscrierea cu 400 — la o filmare, tacut: pasii urmatori merg mai departe pe formularul
-  // ramas pe ecran, iar naratiunea promite un cont care nu s-a creat.
-  await scrie('#registerForm [name="cui"]', 'RO4512372');
-  await scrie('#registerForm [name="username"]', 'maria');
-  await scrie('#registerForm [name="password"]', 'ParolaMea2026!', 30);
-  await scrie('#registerForm [name="email"]', 'maria@exemplu.ro', 30);
-  await clic('#regSubmit', { dupa: 1200 });
-  // Daca inscrierea NU a reusit, scena trebuie sa PICE zgomotos: altfel filmarea merge mai departe
-  // pe formularul ramas pe ecran si abia la vizionare se vede ca nu s-a creat niciun cont.
-  // `state: 'hidden'` — NU `#registerOverlay.hidden` cu starea implicita „visible": un element cu
-  // clasa .hidden nu e vizibil niciodata, deci asteptarea aceea nu se putea implini nici cand
-  // inscrierea REUSEA. Exact ce s-a intamplat: contul se crea, iar filmarea raporta esec.
-  await pg.waitForSelector('#registerOverlay', { state: 'hidden', timeout: 15000 });
-  await asteapta(1200);
+  await clic('#registerBtn', { dupa: 1600 });
+  await pg.waitForSelector('#registerOverlay', { state: 'visible' }).catch(() => {});
+  // cele doua roluri, aratate pe rand: de aici incolo filmul le urmareste separat
+  await clic('.reg-tip-op:has-text("contabil")', { dupa: 1500 }).catch(() => {});
+  await clic('.reg-tip-op:has-text("patron")', { dupa: 1500 }).catch(() => {});
 });
 
-// ═══ S04 · prima intrare: bun venit + turul meniului ══════════════════════
-await unelte();
-await scena('s04-primaintrare', async () => {
-  await unelte();
-  // Ecranul de bun-venit apare o singura data per cont si per browser, iar momentul lui depinde de
-  // cat dureaza initializarea — la filmare a picat de doua ori langa taietura si scena promitea ce
-  // nu se vedea. Se arata DETERMINIST: e componenta reala a aplicatiei, doar declansata la timp.
-  await pg.evaluate(() => { const w = document.querySelector('#welcomeOverlay'); if (w) w.classList.remove('hidden'); });
-  await asteapta(3000);
-  await clicDaca('#welcomeStart', { dupa: 1500 });
-  for (let i = 0; i < 4; i++) { if (!(await clicDaca('#tourNext', { dupa: 1600 }))) break; }
-  await clicDaca('#tourSkip', { dupa: 600 });
-  await inchideModale();
+// ═══ S04 · doua roluri, doua raspunderi ═══════════════════════════════════
+await scena('s04-doua-roluri', async () => {
+  await card('Doi oameni, două roluri', 'Patronul aduce.\nContabilul răspunde.',
+    'aplicația face munca dintre ei — nu ține locul niciunuia', 7000);
+  await pg.evaluate(() => { const e = document.querySelector('#registerOverlay'); if (e) e.classList.add('hidden'); });
 });
 
-// ═══ S05 · intrarea pe firma cu date ══════════════════════════════════════
-await scena('s05-comutare', async () => {
-  await pg.evaluate(() => { try { localStorage.setItem('contab_workmonth', '2026-06'); localStorage.setItem('contab_welcomed_admin', '1'); localStorage.setItem('contab_tour_v1_admin', '1'); } catch (e) {} });
-  await inchideModale();
-  // Cursorul apasa „Iesi" ca in realitate, dar delogarea se face prin API si o incarcare curata:
-  // butonul real cheama `location.reload()`, care se ciocnea cu navigarea scriptului si lasa
-  // sesiunea in aer — de doua ori filmarea a ramas pe contul de proba, tacut.
-  const iesi = pg.locator('#logoutBtn').first();
-  await cursorLa(iesi);
-  await iesi.evaluate((e) => e.classList.add('__tinta')).catch(() => {});
-  await asteapta(300);
-  await pg.evaluate(() => window.__apasa());
-  await pg.evaluate(async () => { const m = await import('/core.js'); await window.fetch('/api/logout', m.withCsrf({ method: 'POST' })); });
-  await asteapta(600);
-  await pg.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
-  await pg.waitForSelector('#loginForm [name=username]', { state: 'visible', timeout: 20000 });
-  await unelte();
-  await scrie('#loginForm [name="username"]', 'admin', 60);
-  await scrie('#loginForm [name="password"]', PW, 30);
-  await pg.press('#loginForm [name=password]', 'Enter');
-  await asteapta(3000);
-  await unelte(); await curata();
+// ═══ S05 · lista contabililor inscrisi ════════════════════════════════════
+await intraCa('patron');
+await scena('s05-lista-contabili', async () => {
+  await meniu('Setări', 'acces', 1500);
+  await pg.evaluate(() => document.querySelector('#contabiliCard').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  await asteapta(2600);
+  await pg.evaluate(() => { const t = document.querySelector('#contabiliList table'); if (t) t.classList.add('__tinta'); });
+  await asteapta(3200);
+  await pg.evaluate(() => { const t = document.querySelector('#contabiliList table'); if (t) t.classList.remove('__tinta'); });
 });
 
-// ═══ S05b · portofoliul de firme ══════════════════════════════════════════
-await scena('s05b-portofoliu', async () => {
-  await intra('portofoliu', 1800);
-  await derulare(240, 1800);
-  await derulare(0, 1200);
-});
-
-// ═══ S06 · ghidul ═════════════════════════════════════════════════════════
-await scena('s06-ghid', async () => {
-  await intra('ghid', 1500);
-  await curata();
-  await derulare(500, 1800); await derulare(1400, 1800); await derulare(2400, 1600);
-});
-
-// ═══ S07 · acasa ══════════════════════════════════════════════════════════
-await scena('s07-acasa', async () => {
-  await intra('dashboard', 1800);
-  await curata();
-  await derulare(0, 1000); await derulare(420, 2000); await derulare(950, 1600); await derulare(0, 900);
-});
-
-// ═══ S07b · arhiva pe luni (dosarul lunii) ════════════════════════════════
-await scena('s07b-arhiva', async () => {
-  await meniu('Rapoarte & analize', 'arhiva', 1800);
-  await derulare(260, 1800);
-  await derulare(0, 1000);
-});
-
-// ═══ S08 · documentul primit ══════════════════════════════════════════════
-await scena('s08-document', async () => {
-  await card('Pasul 1', 'Documentele', 'ce intră și ce iese din firmă', 1700);
-  await meniu('Documente', 'documente', 1600);
-  await curata();
-  await derulare(240, 1400);
-  await clic('#manualBtn', { dupa: 1200 });
-  await clic('#tipSelect', { dupa: 400 });
-  const v = await pg.evaluate(() => { const o = [...document.querySelectorAll('#tipSelect option')].find((x) => /cumparare marfuri/i.test(x.textContent)); return o ? o.value : ''; });
-  if (v) await pg.selectOption('#tipSelect', v);
-  await asteapta(1600);
-});
-
-// ═══ S09 · previzualizarea + salvarea ═════════════════════════════════════
-await scena('s09-previzualizare', async () => {
-  await scrie('#dynFields [name="data"]', '2026-06-18', 35);
-  await scrie('#dynFields [name="partener"]', 'ALFA DISTRIBUTIE SRL', 35);
-  await scrie('#dynFields [name="cuiPartener"]', '11223342', 35);
-  await scrie('#dynFields [name="document"]', 'FF 2214', 45);
-  await scrie('#dynFields [name="baza"]', '1000', 60);
-  await pg.locator('#dynFields [name="baza"]').first().press('Tab').catch(() => {});
-  await asteapta(1800);
-  await derulare(600, 1500);
-});
-await scena('s09b-controale', async () => {
-  await clic('#entryForm button[type="submit"]', { dupa: 2200 });
-  await curata();
-  await intra('intrate', 2000);
-  await derulare(260, 1600);
-  await derulare(700, 1800);
-});
-
-// ═══ S10 · factura emisa ══════════════════════════════════════════════════
-await scena('s10-emite', async () => {
-  await intra('emite', 1800);
-  await curata();
-  await derulare(280, 1800); await derulare(700, 1800); await derulare(0, 900);
-});
-
-// ═══ S11 · banii ══════════════════════════════════════════════════════════
-await scena('s11-bani', async () => {
-  await card('Pasul 2', 'Banii', 'încasări, plăți și extrasul bancar', 1600);
-  await meniu('Bani', 'cashbook', 1800);
-  await curata(); await derulare(260, 1600);
-  await intra('reconciliere', 1800);
-  await derulare(300, 1500);
-});
-
-// ═══ S12 · stocuri ════════════════════════════════════════════════════════
-await scena('s12-stocuri', async () => {
-  await card('Pasul 3', 'Ce mișcă în fiecare lună', 'stocuri · salarii · amortizare', 1700);
-  await meniu('Stocuri', 'stocuri', 1800);
-  await curata(); await derulare(320, 1800); await derulare(900, 1800);
-});
-
-// ═══ S13 · salarii ════════════════════════════════════════════════════════
-await scena('s13-salarii', async () => {
-  await meniu('Salarii', 'salarizare', 2000);
-  await curata(); await derulare(300, 1800); await derulare(700, 1800);
-  await intra('angajati', 1800);
-  await derulare(300, 1500);
-});
-
-// ═══ S14 · mijloace fixe + leasing ════════════════════════════════════════
-await scena('s14-mijloace', async () => {
-  await meniu('Mijloace fixe', 'mijloace', 2000);
-  await curata(); await derulare(260, 1600);
-  await intra('leasing', 1800);
-  await derulare(320, 1500);
-});
-
-// ═══ S15 · registrele ═════════════════════════════════════════════════════
-await scena('s15-registre', async () => {
-  await card('Pasul 4', 'Registrele se scriu singure', 'jurnal · cartea mare · balanță', 1700);
-  await meniu('Registre', 'jurnal', 1800);
-  await curata(); await derulare(280, 1500);
-  await intra('carte', 1600);
-  await intra('balanta', 1800);
-  await derulare(420, 1800);
-});
-
-// ═══ S16 · inchiderea lunii ═══════════════════════════════════════════════
-await scena('s16-inchidere', async () => {
-  await card('Pasul 5', 'Închiderea lunii', 'starea fiecărui pas se calculează din date', 1800);
-  await meniu('Închideri', 'inchideri', 2200);
-  await curata();
-  await derulare(280, 1700); await derulare(650, 1700); await derulare(1050, 1700); await derulare(1400, 1700);
-});
-
-// ═══ S16b · inchiderea anului ═════════════════════════════════════════════
-await scena('s16b-an', async () => {
-  await meniu('Închideri', 'inchidere-an', 1800);
-  await derulare(300, 2000);
-  await derulare(620, 1800);
-});
-
-// ═══ S16c · registrul de evidenta fiscala (drumul spre D101) ══════════════
-await scena('s16c-regfiscal', async () => {
-  await meniu('Taxe & declarații', 'regfiscal', 1800);
-  await derulare(280, 2200);
-  await derulare(0, 1200);
-});
-
-// ═══ S17 · TVA ════════════════════════════════════════════════════════════
-await scena('s17-tva', async () => {
-  await card('Pasul 6', 'Taxele și declarațiile', 'D300 · D394 · D112 · SAF-T', 1600);
-  await meniu('Taxe', 'tva', 2000);
-  await curata(); await derulare(320, 1600);
-});
-
-// ═══ S17b · decontul precompletat (e-TVA) ═════════════════════════════════
-await scena('s17b-etva', async () => {
-  await pg.evaluate(() => { const c = document.querySelector('#etvaPrecompletatCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+// ═══ S06 · angajarea: cererea pentru o firma anume ════════════════════════
+await scena('s06-angajare', async () => {
+  // selectorul de firma din randul contabilei — patronul alege PENTRU CARE firma il vrea
+  const sel = pg.locator('#contabiliList select').first();
+  if (await sel.count()) {
+    await cursorLa(sel);
+    await sel.selectOption({ index: 1 }).catch(() => {});
+    await asteapta(1600);
+  }
+  await pg.evaluate(() => document.querySelector('#serviciiTrimise').scrollIntoView({ behavior: 'smooth', block: 'center' }));
   await asteapta(2400);
-  await cursorLa(pg.locator('#etvaReconBtn').first());
-  await asteapta(1600);
+  await pg.evaluate(() => { const t = document.querySelector('#serviciiTrimise table'); if (t) t.classList.add('__tinta'); });
+  await asteapta(3000);
+  await pg.evaluate(() => { const t = document.querySelector('#serviciiTrimise table'); if (t) t.classList.remove('__tinta'); });
 });
 
-// ═══ S18 · declaratii + SAF-T + SPV ═══════════════════════════════════════
-await scena('s18-declaratii', async () => {
-  await intra('livrabile', 2200);
-  await curata(); await derulare(300, 1500); await derulare(800, 1500);
-  await intra('saft', 1700);
-  await derulare(300, 1600);
-  await intra('spv', 1800);
+// ═══ S07 · contabilul accepta — pe contul LUI ═════════════════════════════
+await intraCa('maria');
+await scena('s07-acceptare', async () => {
+  await meniu('Setări', 'acces', 1500);
+  await pg.evaluate(() => document.querySelector('#serviciiPrimite').scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  await asteapta(1800);
+  await clicDaca('#serviciiPrimite button:has-text("Accept")', { dupa: 2600 });
+  await curata();
+  await asteapta(1500);
 });
 
-// ═══ S18b · SAF-T (D406) ══════════════════════════════════════════════════
-await scena('s18b-saft', async () => {
-  await meniu('Taxe & declarații', 'saft', 1800);
-  await derulare(260, 2000);
+// ═══ S08 · mai multi patroni, mai multe firme ═════════════════════════════
+await scena('s08-multi-firma', async () => {
+  // selectorul de firme al contabilei: firme de la DOI patroni diferiti
+  await derulare(0, 800);
+  const sel = pg.locator('#firmaSelect');
+  await cursorLa(sel);
+  await pg.evaluate(() => { const s = document.querySelector('#firmaSelect'); s.classList.add('__tinta'); s.size = 4; });
+  await asteapta(4200);
+  await pg.evaluate(() => { const s = document.querySelector('#firmaSelect'); s.classList.remove('__tinta'); s.size = 0; });
+  await asteapta(600);
+});
+
+// ═══ S09 · portofoliul contabilului ═══════════════════════════════════════
+await scena('s09-portofoliu', async () => {
+  await intra('portofoliu', 2600);
+  await derulare(200, 2200);
   await derulare(0, 1200);
 });
 
-// ═══ S19 · rapoarte ═══════════════════════════════════════════════════════
-await scena('s19-rapoarte', async () => {
-  await card('Pasul 7', 'Cum stă firma', 'bilanț · profit și pierdere · scadențar', 1600);
-  await meniu('Rapoarte', 'situatii', 2200);
-  await curata(); await derulare(340, 1800);
-  await intra('anexe', 1800);
-  await derulare(300, 1500);
-  await intra('analitic', 1600);
+// ═══ S10 · prima intrare, meniul pe ciclul contabil ═══════════════════════
+await intraCa('patron');
+await lunaExemplu();
+await scena('s10-primaintrare', async () => {
+  await intra('dashboard', 1200);
+  await clic('#tabs .navlabel:has-text("Documente")', { dupa: 1100 });
+  await clic('#tabs .navlabel:has-text("Bani")', { dupa: 1000 });
+  await clic('#tabs .navlabel:has-text("Taxe")', { dupa: 1000 });
+  await clic('#tabs .navlabel:has-text("Rapoarte")', { dupa: 1400 });
 });
 
-// ═══ S19b · scadentarul clienti & furnizori ═══════════════════════════════
-await scena('s19b-analitic', async () => {
-  await meniu('Rapoarte & analize', 'analitic', 1800);
-  await derulare(300, 2200);
-  await derulare(640, 1800);
+// ═══ S11 · ghidul si dictionarul ══════════════════════════════════════════
+await scena('s11-ghid', async () => {
+  await intra('ghid', 1800);
+  await derulare(500, 2200);
+  await derulare(1200, 2000);
+  await derulare(0, 900);
+  await clicDaca('#glossaryBtn', { dupa: 2400 });
+  await pg.evaluate(() => { const m = document.querySelector('#glossaryModal'); if (m) m.classList.add('hidden'); });
 });
 
-// ═══ S20 · setarile ═══════════════════════════════════════════════════════
-await scena('s20-setari', async () => {
-  await card('Configurare', 'Setările', 'ce se face o dată și se atinge rar', 1600);
-  await meniu('Setări', 'setari', 1800);
-  await curata(); await derulare(300, 1400);
-  await intra('cont', 1300);
-  await intra('acces', 1300);
-  await intra('date', 1300);
-  await intra('conexiuni', 1300);
-  await intra('pachetwin', 1400);
-  await intra('video', 1600);
+// ═══ S12 · Acasa: „De facut acum" + situatia firmei ═══════════════════════
+await scena('s12-acasa', async () => {
+  await intra('dashboard', 1600);
+  await curata();
+  await derulare(0, 900);
+  await derulare(320, 2400);
+  await derulare(700, 2200);
 });
 
-// ═══ S20b · jurnalul de audit ═════════════════════════════════════════════
-await scena('s20b-audit', async () => {
-  await meniu('Setări', 'audit', 1800);
+// ═══ S13 · documentele primite ════════════════════════════════════════════
+await scena('s13-document', async () => {
+  await meniu('Documente', 'documente', 1800);
+  await derulare(0, 800);
+  await clicDaca('#manualBtn', { dupa: 2200 });
+  await derulare(320, 2000);
+});
+
+// ═══ S14 · PREVIZUALIZARE: documentul PDF, in aplicatie ═══════════════════
+await scena('s14-preview-pdf', async () => {
+  await inchideModale();
+  await intra('intrate', 1600);
+  await previzualizeaza('/pdf/factura/e2', 6000);
+  await inchideViewer();
+  await asteapta(600);
+});
+
+// ═══ S15 · previzualizarea notei contabile ════════════════════════════════
+await scena('s15-previzualizare', async () => {
+  await meniu('Documente', 'documente', 1400);
+  await clicDaca('#manualBtn', { dupa: 1200 });
+  await pg.evaluate(() => { const s = document.querySelector('#tipSelect'); if (s) { s.value = 'factura_cumparare_marfuri'; s.dispatchEvent(new Event('change', { bubbles: true })); } });
+  await asteapta(1500);
+  await scrie('#fld_partener', 'ALFA DISTRIBUTIE SRL', 30);
+  await scrie('#fld_document', 'AFD 1302', 40);
+  await scrie('#fld_baza', '9200', 45);
+  await asteapta(2600);
+  await pg.evaluate(() => { const p = document.querySelector('#preview'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  await asteapta(2600);
+});
+
+// ═══ S16 · controalele de calitate ════════════════════════════════════════
+await scena('s16-controale', async () => {
+  await card('Înainte să intre în contabilitate', 'Opt controale, toate blocante',
+    'aritmetica · cota de TVA · data și luna închisă · numărul documentului\npartener cunoscut · duplicat · încredere · tip determinat', 8000);
+  await clicDaca('#cancelEntry', { dupa: 800 });
+  await intra('intrate', 1600);
+  await derulare(400, 2200);
+});
+
+// ═══ S17 · emiterea facturii ══════════════════════════════════════════════
+await scena('s17-emite', async () => {
+  await meniu('Documente', 'emite', 1800);
+  await derulare(0, 900);
+  await clicDaca('.emit[data-tip="factura_vanzare_marfuri"]', { dupa: 2400 });
   await derulare(260, 2000);
+  await clicDaca('#cancelEntry', { dupa: 600 });
+});
+
+// ═══ S18 · PREVIZUALIZARE: e-Factura XML, citibila ════════════════════════
+await scena('s18-preview-efactura', async () => {
+  await intra('iesite', 1800);
+  await previzualizeaza('/xml/efactura/e2', 5600);
+  await inchideViewer();
+  await asteapta(500);
+});
+
+// ═══ S19 · banii: incasari, plati, extras ═════════════════════════════════
+await scena('s19-bani', async () => {
+  await meniu('Bani', 'cashbook', 1800);
+  await derulare(0, 800);
+  await derulare(260, 2200);
+  await meniu('Bani', 'reconciliere', 2000);
+});
+
+// ═══ S20 · stocurile ══════════════════════════════════════════════════════
+await scena('s20-stocuri', async () => {
+  await meniu('Stocuri', 'stocuri', 1800);
+  await derulare(300, 2200);
+  await derulare(700, 2000);
+});
+
+// ═══ S21 · salariile ══════════════════════════════════════════════════════
+await scena('s21-salarii', async () => {
+  await meniu('Salarii', 'salarizare', 2000);
+  await derulare(300, 2400);
+  await derulare(750, 2200);
+});
+
+// ═══ S22 · mijloace fixe si leasing ═══════════════════════════════════════
+await scena('s22-mijloace', async () => {
+  await treciLaExpert();
+  await meniu('Mijloace fixe', 'mijloace', 1800);
+  await derulare(300, 2000);
+  await meniu('Mijloace fixe', 'leasing', 2000);
+});
+
+// ═══ S23 · registrele si balanta ══════════════════════════════════════════
+await scena('s23-registre', async () => {
+  await meniu('Registre', 'jurnal', 1800);
+  await derulare(260, 1800);
+  await meniu('Registre', 'balanta', 2000);
+  await derulare(200, 2000);
+});
+
+// ═══ S24 · PREVIZUALIZARE: registrul ca text simplu (CSV) ═════════════════
+await scena('s24-preview-csv', async () => {
+  await previzualizeaza('/csv/balance?period=2026-06', 5600);
+  await inchideViewer();
+  await asteapta(500);
+});
+
+// ═══ S25 · inchiderea lunii ═══════════════════════════════════════════════
+await scena('s25-inchidere', async () => {
+  await meniu('Închideri', 'inchideri', 2200);
+  await derulare(260, 2400);
+  await derulare(700, 2400);
+});
+
+// ═══ S26 · inchiderea anului ══════════════════════════════════════════════
+await scena('s26-inchidere-an', async () => {
+  await meniu('Închideri', 'inchidere-an', 2000);
+  await derulare(300, 2400);
+});
+
+// ═══ S27 · registrul de evidenta fiscala ══════════════════════════════════
+await scena('s27-regfiscal', async () => {
+  await meniu('Taxe', 'regfiscal', 2000);
+  await derulare(300, 2400);
+});
+
+// ═══ S28 · decontul de TVA ════════════════════════════════════════════════
+await scena('s28-tva', async () => {
+  await meniu('Taxe', 'tva', 2200);
+  await derulare(0, 800);
+  await derulare(300, 2400);
+  await derulare(800, 2000);
+});
+
+// ═══ S29 · decontul precompletat e-TVA ════════════════════════════════════
+await scena('s29-etva', async () => {
+  await pg.evaluate(() => { const e = document.querySelector('#etvaPrecompletatCard'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  await asteapta(3200);
+});
+
+// ═══ S30 · declaratiile lunii ═════════════════════════════════════════════
+await scena('s30-declaratii', async () => {
+  await meniu('Taxe', 'livrabile', 2400);
+  await derulare(0, 800);
+  await derulare(300, 2600);
+  await derulare(700, 2200);
+});
+
+// ═══ S31 · PREVIZUALIZARE: XML-ul de declaratie, aranjat ══════════════════
+await scena('s31-preview-xml', async () => {
+  await previzualizeaza('/xml/d300?period=2026-06', 5600);
+  await inchideViewer();
+  await asteapta(500);
+});
+
+// ═══ S32 · SAF-T ══════════════════════════════════════════════════════════
+await scena('s32-saft', async () => {
+  await meniu('Taxe', 'saft', 2200);
+  await derulare(300, 2400);
+});
+
+// ═══ S33 · rapoartele ═════════════════════════════════════════════════════
+await scena('s33-rapoarte', async () => {
+  await meniu('Rapoarte', 'situatii', 2200);
+  await derulare(300, 2400);
+  await meniu('Rapoarte', 'analitic', 2200);
+});
+
+// ═══ S34 · arhiva lunii ═══════════════════════════════════════════════════
+await scena('s34-arhiva', async () => {
+  await meniu('Date firmă', 'arhiva', 2200);
+  await derulare(260, 2400);
+});
+
+// ═══ S35 · setarile ═══════════════════════════════════════════════════════
+await scena('s35-setari', async () => {
+  await meniu('Setări', 'setari', 1600);
+  await intra('cont', 1600);
+  await intra('acces', 1600);
+  await intra('date', 1600);
+  await intra('conexiuni', 2000);
+});
+
+// ═══ S36 · jurnalul de audit ══════════════════════════════════════════════
+await scena('s36-audit', async () => {
+  await intra('audit', 2000);
+  await derulare(260, 2400);
   await derulare(0, 1000);
 });
 
-// ═══ S21 · increderea ═════════════════════════════════════════════════════
-await scena('s21-incredere', async () => {
-  await intra('date', 1800);
-  await curata(); await derulare(300, 2000); await derulare(700, 2000);
+// ═══ S37 · increderea ═════════════════════════════════════════════════════
+await scena('s37-incredere', async () => {
+  await intra('date', 1600);
+  await curata(); await derulare(300, 1800);
   await card('De ce poți avea încredere', 'Validat cu validatorul\npublicat de ANAF',
-    'peste 4.600 de verificări automate la fiecare versiune\nbackup zilnic, cu copie în afara serverului', 6000);
+    'peste 5.200 de verificări automate la fiecare versiune\nbackup zilnic, cu copie în afara serverului', 8000);
 });
 
-// ═══ S22 · limitele, cinstit ══════════════════════════════════════════════
-await scena('s22-limite', async () => {
-  await card('Ce rămâne la tine', 'Cinstit, până la capăt',
-    'depunerea în SPV o faci tu, cu certificatul tău digital\nvalidarea finală, cu DUKIntegrator\ncasa de marcat rămâne obligatorie separat\nbilanțul cere semnătura unui contabil autorizat', 18000);
+// ═══ S38 · limitele, cinstit ══════════════════════════════════════════════
+await scena('s38-limite', async () => {
+  await card('Ce rămâne la voi', 'Cinstit, până la capăt',
+    'depunerea în SPV, cu certificatul digital al firmei\nvalidarea finală, cu DUKIntegrator\ncasa de marcat rămâne obligatorie separat\nbilanțul cere semnătura contabilului autorizat', 20000);
 });
 
-// ═══ S23 · final ══════════════════════════════════════════════════════════
-await scena('s23-final', async () => {
-  await card('30 de zile gratuit, fără card', 'contabo.space', 'aduci documentele — Contabo face contabilitatea', 9000);
+// ═══ S39 · final ══════════════════════════════════════════════════════════
+await scena('s39-final', async () => {
+  await card('30 de zile gratuit, fără card', 'contabo.space',
+    'patronul aduce documentele · contabilul verifică și semnează', 9000);
 });
 
 fs.writeFileSync('/w/out/timeline.json', JSON.stringify({ scene: timeline, total: clipa() }, null, 1));
