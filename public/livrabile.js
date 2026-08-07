@@ -67,9 +67,11 @@ async function loadLivrabile() {
       <p class="muted adv">Rulajul creditor al conturilor de taxe pe perioada aleasă — nu soldul cumulat.</p>
       <table>
       ${s.obligatii.items.map((i) => `<tr><td><span class="adv">${H(i.cont)}</span> ${H(i.nume)}</td><td class="num">${fmt(i.suma)}</td></tr>`).join('')
-    || `<tr><td class="muted">Nicio taxă înregistrată ca datorată în ${H(p)}. Sumele din stânga sunt <b>calculate</b> din declarații — devin datorii aici când înregistrezi statul de plată sau închiderea de TVA. Deci e normal ca cele două carduri să nu se potrivească.</td><td></td></tr>`}
+    || '<tr><td class="muted">—</td><td></td></tr>'}
       <tr class="total"><td>TOTAL</td><td class="num">${fmt(s.obligatii.total)}</td></tr>
-     </table></div>`;
+     </table>
+     ${s.obligatii.items.length ? '' : `<p class="muted">Nicio taxă înregistrată ca datorată în ${H(p)}. Sumele din stânga sunt <b>calculate</b> din declarații — devin datorii aici când înregistrezi statul de plată sau închiderea de TVA. Deci e normal ca cele două carduri să nu se potrivească.</p>`}
+     </div>`;
   $('#livrabileLegend').innerHTML = Object.keys(STATUS).map((k) =>
     `<span data-u="u146"><b data-style="color:${STATUS[k].c}">●</b> ${statusLabel(k)}</span>`).join('');
   const badge = (st) => { const x = STATUS[st] || STATUS.manual; return `<span data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${statusLabel(st)}</span>`; };

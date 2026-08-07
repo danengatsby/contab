@@ -184,6 +184,14 @@ input:focus,select:focus{outline:2px solid #cfe3da;border-color:var(--accent)}
 .tablewrap{overflow:auto}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+/* Convenția repo-ului — „tabelele late derulează în propriul container, pagina rămâne fixă" — era
+   aplicată DOAR sub 700px. Pe desktop nu o apăra nimic, iar celulele sunt `white-space:nowrap`
+   global: un singur `<td>` cu o frază lungă lățește tabelul, cardul, grila și pagina. Măsurat pe
+   producție: +822px pe „Declarații" (o explicație pusă într-o celulă) și +39px pe „Situații".
+   Aceleași două reguli, acum la orice lățime: itemele de grilă se pot strânge sub conținutul lor,
+   iar tabelul care tot nu încape derulează în el însuși. */
+.tab table{display:block;overflow-x:auto;max-width:100%}
+.grid2>*,.grid3>*{min-width:0}
 th{background:var(--soft2);position:sticky;top:0;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 /* zero stins in tabelele numerice — scris, dar nu concurent vizual cu sumele reale */
@@ -693,12 +701,8 @@ body.dark .howto .tag.in{background:#13241c;color:#5cc492}
 body.dark .howto .tag.out{background:#2a1620;color:#ff8a9c}
 
 /* Modal scanare cu camera */
-.scan-box{background:var(--card);border-radius:14px;width:min(720px,96vw);max-height:92vh;display:flex;
-  flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.45)}
-.scan-stage{flex:1;background:#1b1b1b;display:flex;align-items:center;justify-content:center;min-height:300px}
-.scan-stage video{width:100%;max-height:62vh;object-fit:contain;background:#000}
-.scan-actions{display:flex;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}
-.scan-actions .period{margin:0}
+/* Stilurile modalului de camera (.scan-box/.scan-stage/.scan-actions) au fost sterse odata
+   cu codul lui inaccesibil — vezi comentariul din public/docflow.js. */
 
 /* Panou „documente lipsă" — text normal lizibil (nu galben), dungă de status */
 .missingbox{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);
@@ -943,6 +947,22 @@ body.dark .imper-banner button{background:#ffd778;color:#2a2008}
 /* aproape de marginea din stânga a cardului, nu iesi din ecran */
 h2 .cinfo .cpop,h3 .cinfo .cpop{left:0;transform:translateX(-12px) translateY(4px)}
 h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focus .cpop{transform:translateX(-12px) translateY(0)}
+/* ...dar `left:0` o deschide spre DREAPTA, deci pe ultimul card dintr-o grilă iese din ecran.
+   Bula e `position:absolute` și rămâne în layout cât e doar `visibility:hidden`, așa că lățimea ei
+   intra în `scrollWidth`: pagina căpăta 21px de derulare orizontală pe desktop chiar și fără s-o
+   atingă cineva (măsurat pe „Vechimea sumelor de încasat și de plătit"). Pe telefon defectul era
+   mascat de `.cinfo .cpop{display:none}` de mai sus — de aceea a supraviețuit atâta.
+   În ultima coloană se ancorează la DREAPTA și se deschide spre stânga, peste cardul vecin.
+   Doar peste 860px: sub prag `.grid2` e o singură coloană, iar ancorarea la dreapta ar scoate
+   bula prin marginea din stânga. */
+@media(min-width:861px){
+  .grid2>*:last-child h2 .cinfo .cpop,.grid2>*:last-child h3 .cinfo .cpop,
+  .grid3>*:last-child h2 .cinfo .cpop,.grid3>*:last-child h3 .cinfo .cpop{left:auto;right:0;transform:translateY(4px)}
+  .grid2>*:last-child h2 .cinfo:hover .cpop,.grid2>*:last-child h3 .cinfo:hover .cpop,
+  .grid2>*:last-child h2 .cinfo:focus .cpop,.grid2>*:last-child h3 .cinfo:focus .cpop,
+  .grid3>*:last-child h2 .cinfo:hover .cpop,.grid3>*:last-child h3 .cinfo:hover .cpop,
+  .grid3>*:last-child h2 .cinfo:focus .cpop,.grid3>*:last-child h3 .cinfo:focus .cpop{transform:translateY(0)}
+}
 .kpi .cinfo{width:15px;height:15px;font-size:10px;margin-left:6px;vertical-align:1px}
 /* corectii cinfo in KPI: fara uppercase mostenit, fara taiere de overflow-ul tile-ului */
 .cinfo .cpop{text-transform:none;font-weight:700}

@@ -506,9 +506,9 @@
             <p>Trage un <b>PDF sau o imagine</b> (JPG/PNG) aici sau <span class="link">alege un fișier</span></p>
           </div>
           <div class="row" data-u="u74">
-            <button id="scannerBtn" class="btn" disabled aria-disabled="true" title="Scanarea de la un scaner local este momentan indisponibilă. Încarcă documentul ca PDF sau poză.">🖨️ Scanează (scaner local)</button>
+            <button id="scannerBtn" class="btn" title="Scanează direct de la scanerul conectat la acest PC (cere puntea locală pornită — îți spune cum, dacă nu e).">🖨️ Scanează (scaner local)</button>
           </div>
-          <details id="scanSetup" class="inactiv" aria-disabled="true" data-u="u23">
+          <details id="scanSetup" data-u="u23">
             <summary class="muted" data-u="u75">Configurează scanerul local (o singură dată)</summary>
             <div class="muted" data-u="u76">
               Browserul nu poate accesa direct un scaner, așa că rulezi o mică „punte" pe acest PC:
@@ -2344,11 +2344,9 @@ Cu stimă,
       </div>
             <div class="card howto">
         <h2>🖨️ Punte de scanare locală (Windows 11)</h2>
-        <!-- Textul TREBUIE sa descrie starea reala a butonului din „Documente": cat timp scanarea e
-             oprita, butonul nu mai e doar gri, ci ASCUNS (vezi docflow.js). Prima forma a acestui
-             avertisment trimitea omul sa caute un buton care nu mai apare — exact genul de drift pe
-             care il leaga poarta din test/frontend.mjs. -->
-        <div class="warnbox"><span class="wi">⚠️</span><div><b>Momentan indisponibilă.</b> Scanarea de la un scaner local e oprită, așa că butonul ei nu apare în <kbd>📥 Documente</kbd> și pașii de mai jos nu pot fi urmați acum. Până la reactivare, adu documentele ca <b>PDF sau poză</b> (le tragi în zona de încărcare) — restul fluxului e neschimbat.</div></div>
+        <!-- Cardul descrie o functie ACTIVA. Daca se opreste din nou (butonul devine `disabled`),
+         avertismentul de indisponibilitate trebuie pus la loc AICI — poarta din
+         test/frontend.mjs leaga cele trei jumatati si pica altfel. -->
         <p class="lead"><b>De ce e nevoie?</b> Browserele NU pot accesa direct un scaner (limitare de securitate). Această mică „punte" rulează pe PC-ul tău, vorbește cu scanerul și oferă imaginea aplicației Contabo.</p>
 
         <h3>Instalare (o singură dată)</h3>
@@ -2694,21 +2692,12 @@ Cu stimă,
     </div>
   </div>
 
-  <div id="scanModal" class="pdf-modal hidden">
-    <div class="scan-box">
-      <div class="pdf-head">
-        <span class="pdf-title">📷 Scanează documentul</span>
-        <span data-u="u46"></span>
-        <button id="scanClose" class="btn small" data-u="u105">✕ Închide</button>
-      </div>
-      <div class="scan-stage"><video id="scanVideo" autoplay playsinline muted></video></div>
-      <div class="scan-actions">
-        <select id="scanCam" class="period" data-u="u143" aria-label="Cameră"></select>
-        <button id="scanShot" class="btn primary" data-u="u105">📸 Capturează și încarcă</button>
-      </div>
-      <p class="muted" data-u="u144">Așază documentul în cadru, bine luminat, și apasă „Capturează". Pentru un scaner clasic (flatbed), scanează în software-ul scanerului, salvează ca PDF/imagine și folosește „alege un fișier".</p>
-    </div>
-  </div>
+  <!-- Captura cu CAMERA a fost stearsa: era cod inaccesibil. Butonul care ar fi deschis-o
+     (`#scanBtn`) nu a existat niciodata in pagina, iar garda `if ($('#scanBtn'))` din
+     docflow.js o facea sa taca. Nici nu putea functiona: serverul trimite
+     `Permissions-Policy: camera=()` (src/bootstrap.js), deci `getUserMedia` e refuzat din
+     start. Pe telefon selectorul nativ de fisier ofera oricum „fa o poza", cu camera
+     sistemului — mai buna decat un <video> in pagina. Se recupereaza din git daca e nevoie. -->
 
   <div id="loadbar"></div>
   <div id="offlineBanner" class="offline-banner hidden">📴 Ești offline — modificările nu se salvează până revine conexiunea. Datele din formular rămân intacte.</div>

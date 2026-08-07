@@ -465,6 +465,40 @@ section('Pașii numerotați vin în pereche: nu există „pasul 2" fără „pa
   ok('poarta chiar respinge un „pasul 2" singur', fals.length === 1 && fals[0] !== 1);
 }
 
+section('Pagina nu derulează pe orizontală: convenția tabelelor ține la orice lățime');
+{
+  // Convenția repo-ului („tabelele late derulează în propriul container, pagina rămâne fixă") era
+  // scrisă DOAR în blocul `@media(max-width:700px)`. Pe desktop nu o apăra nimic, iar celulele sunt
+  // `white-space:nowrap` GLOBAL — deci un singur `<td>` cu o frază lungă lățea tabelul, cardul,
+  // grila și pagina. Măsurat pe producție: +822px pe „Declarații", +39px pe „Situații". Poarta ține
+  // regulile în afara oricărui `@media`, fiindcă acolo au fost ascunse ultima dată.
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  // Taie tot ce e în interiorul blocurilor @media, ca să rămână doar regulile necondiționate.
+  const faraMedia = (() => {
+    let out = ''; let i = 0;
+    while (i < css.length) {
+      const m = css.indexOf('@media', i);
+      if (m < 0) { out += css.slice(i); break; }
+      out += css.slice(i, m);
+      let j = css.indexOf('{', m); let adanc = 0;
+      for (; j < css.length; j += 1) {
+        if (css[j] === '{') adanc += 1;
+        else if (css[j] === '}') { adanc -= 1; if (adanc === 0) { j += 1; break; } }
+      }
+      i = j;
+    }
+    return out;
+  })();
+  ok('poarta chiar a scos blocurile @media', faraMedia.includes('.topbar{') && !faraMedia.includes('.bottomnav button{'));
+  ok('tabelele derulează în ele însele, la orice lățime', /\.tab table\{display:block;overflow-x:auto;max-width:100%\}/.test(faraMedia));
+  ok('itemele de grilă se pot strânge sub conținut', /\.grid2>\*,\.grid3>\*\{min-width:0\}/.test(faraMedia));
+  // Celulele sunt nowrap — de aceea regula de mai sus e necesară, nu decorativă. Dacă cineva scoate
+  // `nowrap`, poarta rămâne validă, dar comentariul care o explică ar deveni fals: se semnalează.
+  ok('celulele chiar sunt `nowrap` (motivul pentru care regula e necesară)', /th,td\{[^}]*white-space:nowrap/.test(faraMedia));
+  // Bula de ajutor de pe ultimul card al unei grile se ancorează la dreapta, ca să nu iasă din ecran.
+  ok('bula de ajutor din ultima coloană nu mai iese din ecran', /\.grid2>\*:last-child h3 \.cinfo \.cpop/.test(css));
+}
+
 section('Scanerul local: oprit înseamnă ascuns, nu gri');
 {
   // Butonul „🖨️ Scanează (scaner local)" stătea `disabled` în cardul PRINCIPAL de încărcare, iar
@@ -481,25 +515,31 @@ section('Scanerul local: oprit înseamnă ascuns, nu gri');
   const oprit = /\bdisabled\b/.test(buton);
   ok('panoul de configurare a scanerului există în pagină', html.includes('id="scanSetup"'));
 
+  // Invariantul care ține INDIFERENT de stare, și tocmai de aceea e cel bun: ascunderea se derivă
+  // din `disabled`-ul butonului, nu dintr-un `hidden` scris de mână în HTML. Așa cele două jumătăți
+  // nu POT drifta — pornirea și oprirea rămân o singură editare, un singur atribut. O poartă care
+  // ar cere sincronizare manuală ar fi doar un al doilea loc de ținut minte.
+  ok('ascunderea e condiționată de chiar `disabled`-ul butonului', /#scannerBtn'\)\.disabled/.test(src));
+  ok('...și ascunde rândul butonului', /scannerBtn'\)\.closest\('\.row'\)[\s\S]{0,80}add\('hidden'\)/.test(src));
+  ok('...și panoul de configurare odată cu el', /#scanSetup'\)[\s\S]{0,60}add\('hidden'\)/.test(src));
+  ok('panoul nu e marcat inactiv din HTML (starea vine dintr-un singur loc)', !/id="scanSetup"[^>]*\binactiv\b/.test(html));
+
+  // A treia jumătate: pagina de ajutor din „Conexiuni" descrie starea funcției. Ea a spus o dată
+  // „butonul … este dezactivat" — adevărat cât timp butonul era gri, fals de când e ascuns, deci
+  // trimitea omul să caute ceva ce nu mai apare. Acum trebuie să urmeze starea reală.
+  // Comentariile HTML se scot ÎNAINTE de scanare: poarta e despre ce citește utilizatorul, nu
+  // despre ce scrie în sursă. Prima formă a picat pe propriul ei comentariu explicativ — o poartă
+  // care se autodeclanșează e la fel de inutilă ca una care nu se declanșează niciodată.
+  const faraComentarii = html.replace(/<!--[\s\S]*?-->/g, ' ');
+  const ajutor = (faraComentarii.match(/<div class="card howto">\s*<h2>🖨️[\s\S]*?<h3>/) || [''])[0];
+  ok('poarta chiar găsește pagina de ajutor a scanerului', ajutor !== '');
+  ok('poarta chiar ignoră comentariile', !faraComentarii.includes('poarta din'));
   if (oprit) {
-    // Ascunderea se face DUPĂ starea butonului, nu prin `hidden` scris de mână în HTML: altfel
-    // cele două ar drifta, iar reactivarea ar lăsa panoul ascuns sau butonul singur.
-    ok('oprit → ascunderea e condiționată de chiar `disabled`-ul butonului', /#scannerBtn'\)\.disabled/.test(src));
-    ok('oprit → se ascunde rândul butonului', /scannerBtn'\)\.closest\('\.row'\)[\s\S]{0,80}add\('hidden'\)/.test(src));
-    ok('oprit → se ascunde și panoul de configurare', /#scanSetup'\)[\s\S]{0,60}add\('hidden'\)/.test(src));
     ok('oprit → utilizatorului i se spune de ce, dacă ajunge la buton', /momentan indisponibil/i.test(buton));
-    // A TREIA jumătate, ratată la prima formă a acestei porți: pagina de ajutor din „Conexiuni"
-    // descrie starea butonului. Ea spunea „butonul … este dezactivat" — adevărat cât timp butonul
-    // era doar gri, fals de când e ascuns, deci trimitea omul să caute ceva ce nu mai apare.
-    const ajutor = (html.match(/<div class="card howto">\s*<h2>🖨️[\s\S]*?<\/div><\/div>/) || [''])[0];
-    ok('poarta chiar găsește pagina de ajutor a scanerului', ajutor !== '');
-    ok('oprit → ajutorul spune că e oprită', /indisponibil/i.test(ajutor));
-    ok('oprit → ajutorul NU mai trimite la un buton vizibil', !/butonul[^<]{0,40}este dezactivat/i.test(ajutor));
+    ok('oprit → ajutorul anunță că e oprită', /indisponibil/i.test(ajutor));
   } else {
-    // Repornit: nimic nu are voie să mai ascundă cele două — altfel funcția e activă și invizibilă.
-    ok('pornit → nimic nu mai ascunde butonul', !/scannerBtn'\)\.closest\('\.row'\)[\s\S]{0,80}add\('hidden'\)/.test(src));
-    ok('pornit → nimic nu mai ascunde panoul de configurare', !/#scanSetup'\)[\s\S]{0,60}add\('hidden'\)/.test(src));
-    ok('pornit → titlul nu mai spune că e indisponibil', !/momentan indisponibil/i.test(buton));
+    ok('pornit → titlul butonului nu mai spune că e indisponibil', !/indisponibil/i.test(buton));
+    ok('pornit → ajutorul nu mai anunță indisponibilitate', !/indisponibil/i.test(ajutor));
   }
   // Poarta trebuie să POATĂ distinge cele două stări, altfel ramura de mai sus e decorativă.
   ok('poarta chiar distinge butonul oprit de cel pornit',

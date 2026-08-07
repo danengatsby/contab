@@ -24,39 +24,13 @@ drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.ad
 drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
 drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('drag'); if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]); });
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) uploadFile(fileInput.files[0]); });
-let scanStream = null;
-async function startScanStream(deviceId) {
-  if (scanStream) scanStream.getTracks().forEach((t) => t.stop());
-  const get = (v) => navigator.mediaDevices.getUserMedia({ audio: false, video: v });
-  try {
-    // preferă camera din spate (telefon), dar fără a o impune
-    scanStream = await get(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } });
-  } catch (e) {
-    scanStream = await get(true); // fallback: orice cameră disponibilă (ex. webcam PC)
-  }
-  $('#scanVideo').srcObject = scanStream;
-}
-async function openScan() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return toast('Camera nu e suportată de acest browser.', true);
-  try {
-    await startScanStream();
-    // listă camere (după ce avem permisiune, ca să apară etichetele)
-    try {
-      const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
-      const sel = $('#scanCam');
-      sel.innerHTML = devs.map((d, i) => `<option value="${d.deviceId}">${d.label || ('Cameră ' + (i + 1))}</option>`).join('');
-      sel.style.display = devs.length > 1 ? '' : 'none';
-    } catch (e) { /* ignora */ }
-    $('#scanModal').classList.remove('hidden');
-  } catch (e) {
-    toast('Nu pot accesa camera: ' + (e.message || e) + '. Permite accesul la cameră în browser.', true);
-  }
-}
-function closeScan() {
-  if (scanStream) { scanStream.getTracks().forEach((t) => t.stop()); scanStream = null; }
-  const v = $('#scanVideo'); if (v) v.srcObject = null;
-  $('#scanModal').classList.add('hidden');
-}
+// Captura cu camera (openScan/closeScan/startScanStream + handlerele de pe #scanModal) a fost
+// STEARSA: era cod inaccesibil. Butonul `#scanBtn` care ar fi deschis-o nu a existat niciodata
+// in index.html, iar garda `if ($('#scanBtn'))` o facea sa taca — deci nici nu se putea observa
+// ca nu merge. Si nici nu avea cum: serverul trimite `Permissions-Policy: camera=()`
+// (src/bootstrap.js), deci `getUserMedia` e refuzat inainte de orice. Pe telefon, selectorul
+// nativ de fisier ofera „fa o poza" cu camera sistemului, mai buna decat un <video> in pagina.
+// Se recupereaza din git. Puntea de scanare locala (mai jos) e alta functie si RAMANE.
 async function scanFromBridge() {
   const st = $('#uploadStatus'); st.className = 'status'; st.textContent = 'Se scanează… urmează fereastra de scanare (Windows / NAPS2). Lasă puntea pornită.';
   let res;
@@ -97,25 +71,6 @@ $('#scannerBtn') && $('#scannerBtn').addEventListener('click', scanFromBridge);
 if ($('#scannerBtn') && $('#scannerBtn').disabled) {
   const rand = $('#scannerBtn').closest('.row'); if (rand) rand.classList.add('hidden');
   const setup = $('#scanSetup'); if (setup) setup.classList.add('hidden');
-}
-if ($('#scanBtn')) {
-  $('#scanBtn').addEventListener('click', openScan);
-  $('#scanClose').addEventListener('click', closeScan);
-  $('#scanModal').addEventListener('click', (e) => { if (e.target.id === 'scanModal') closeScan(); });
-  $('#scanCam').addEventListener('change', (e) => startScanStream(e.target.value).catch(() => {}));
-  $('#scanShot').addEventListener('click', () => {
-    const v = $('#scanVideo');
-    if (!v.videoWidth) return toast('Camera încă se inițializează…', true);
-    const c = document.createElement('canvas');
-    c.width = v.videoWidth; c.height = v.videoHeight;
-    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
-    c.toBlob((blob) => {
-      if (!blob) return toast('Nu s-a putut captura imaginea.', true);
-      const file = new File([blob], 'scan-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '') + '.jpg', { type: 'image/jpeg' });
-      closeScan();
-      uploadFile(file);
-    }, 'image/jpeg', 0.92);
-  });
 }
 /** Verdictul controlului de calitate, in cuvinte: ce s-a verificat si de ce cere revizuire.
  *  Functie pura (testata in test/frontend.mjs) — randarea nu decide nimic, serverul a decis deja. */
