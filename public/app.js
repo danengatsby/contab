@@ -648,10 +648,7 @@ applyTheme();
 
 // ───────────────────────── UPLOAD ─────────────────────────
 
-// ───── Scanare directă cu camera / webcam-ul (getUserMedia) ─────
-// Scanare de la scanerul local (prin puntea Contabo Scanner Bridge de pe PC)
-
-
+// ── Scanare (punte locala) → public/docflow.js; captura cu camera a fost stearsa (cod inaccesibil) ──
 
 // Comutare programatica intre tab-uri (din linkuri/scurtaturi); scrollId optional
 function goTab(name, scrollId) {
