@@ -19,6 +19,8 @@ const stocks = require('../src/stocks');
 const saft = require('../src/saft');
 const xml = require('../src/xml');
 const fiscal = require('../src/fiscal');
+const fiscalProfile = require('../src/fiscalProfile');
+const decl = require('../src/declarations');
 const { reconcile } = require('../src/reconcile');
 const { settle, candidatesFor } = require('../src/matching');
 const { reconcileInbox, journalPurchases } = require('../src/einvoiceReconcile');
@@ -2922,6 +2924,70 @@ eq('D100: venitul anual cumulat pentru controlul plafonului', d100over.venitAn, 
     const xm = xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q);
     return xm.includes('cod_oblig="620"') && xm.includes('cod_bugetar="20A031800"');
   })());
+  // ── SISTEMUL ANUAL CU PLATI ANTICIPATE (art. 41 alin. (2)) ────────────────────────────────
+  // Alta suma pe declaratie, alt calendar si inca un trimestru de declarat. Firma de mai sus,
+  // aceleasi date, doar optiunea schimbata.
+  {
+    const anual = (extra) => Object.assign({}, vp, { company: Object.assign({}, firmaProfit,
+      { sistemProfit: 'anual', impozitProfitAn: { 2025: 40000 }, ipcAnticipate: { 2026: 4.5 } }, extra || {}) });
+
+    const a1 = rep.d100(anual(), '2026-03');
+    eq('sistemul se vede in rezultat', a1.sistem, 'anual');
+    // 40.000 actualizat cu 4,5% = 41.800; o patrime = 10.450. NU impozitul real al trimestrului
+    // (care ar fi 16.000) — asta e toata diferenta dintre cele doua sisteme.
+    eq('plata anticipata = o patrime din impozitul anului precedent, actualizat (alin. 8)', a1.impozit, 10450);
+    eq('...si nu impozitul real al trimestrului', a1.impozitCumulat, 16000);
+    eq('baza indexata e expusa, nu doar rezultatul', a1.anticipat.impozitIndexat, 41800);
+    // Cele patru trimestre sunt EGALE: plata nu urmareste rezultatul anului curent.
+    const aTot = ['2026-03', '2026-06', '2026-09', '2026-12'].map((p) => rep.d100(anual(), p));
+    ok('toate patru trimestrele au aceeasi plata anticipata', aTot.every((r) => r.impozit === 10450));
+    ok('...si toate patru se declara (spre deosebire de sistemul trimestrial)', aTot.every((r) => r.seDeclara));
+    // Termenul trimestrului IV: 25 DECEMBRIE, in aceeasi luna cu perioada. Singurul din aplicatie.
+    const profAnual = fiscalProfile.build(anual().company);
+    eq('T4 la sistemul anual are termen 25 decembrie', decl.dueDate('d100', '2026-12', profAnual), '2026-12-25');
+    eq('...iar T1 ramane 25 aprilie', decl.dueDate('d100', '2026-03', profAnual), '2026-04-25');
+    eq('sistemul trimestrial ramane cu 25 ianuarie', decl.dueDate('d100', '2026-12', fiscalProfile.build(firmaProfit)), '2027-01-25');
+    ok('D100 e ASTEPTAT pe T4 la sistemul anual', fiscalProfile.expected(profAnual, '2026-12').includes('d100'));
+    ok('...si NU e asteptat pe T4 la sistemul trimestrial', !fiscalProfile.expected(fiscalProfile.build(firmaProfit), '2026-12').includes('d100'));
+
+    // „N-am putut calcula" NU are voie sa arate ca „nu datorez nimic". Fara indice sau fara baza,
+    // suma ar fi iesit 0 — o suma perfect plauzibila pe D100, deci o declaratie FALSA care ar fi
+    // trecut neobservata. Se marcheaza `blocat`, iar ruta XML refuza generarea.
+    const faraIpc = rep.d100(Object.assign({}, vp, { company: Object.assign({}, firmaProfit,
+      { sistemProfit: 'anual', impozitProfitAn: { 2025: 40000 } }) }), '2026-03');
+    eq('fara indicele preturilor de consum -> BLOCAT, nu zero', faraIpc.blocat, true);
+    ok('...si spune ce lipseste si de unde se ia', faraIpc.avertismente.some((w) => /indicele pre/i.test(w) && /ministrului finan/i.test(w)));
+    const faraBaza = rep.d100({ openingBalances: {}, assets: [], angajati: [], entries: [],
+      company: Object.assign({}, firmaProfit, { sistemProfit: 'anual', ipcAnticipate: { 2026: 4.5 } }) }, '2026-03');
+    eq('fara impozitul anului precedent -> tot BLOCAT', faraBaza.blocat, true);
+    ok('sistemul trimestrial NU e blocat niciodata de asta', !rep.d100(vp, '2026-03').blocat);
+
+    // Ramura de EXCEPTIE, alin. (7): cota aplicata profitului CONTABIL AL TRIMESTRULUI (nu
+    // cumulat), si doar trimestrele I-III. Firma cu pierdere fiscala in anul precedent ar plati
+    // altfel zero pe regula generala — de aceea excepatia exista.
+    const exc = (p) => rep.d100(anual({ anticipatProfitContabil: true }), p);
+    const e1 = exc('2026-03'); const e2 = exc('2026-06');
+    eq('alin. (7): T1 = 16% din profitul contabil al trimestrului', e1.impozit, 16000);
+    // T2 aduce inca 50.000 profit contabil -> 8.000, NU 24.000 (care ar fi cumulatul).
+    eq('alin. (7): T2 se calculeaza pe trimestru, nu pe cumulat', e2.impozit, 8000);
+    eq('alin. (7): T4 nu se declara', exc('2026-12').seDeclara, false);
+    ok('alin. (7): motivul e scris', exc('2026-12').avertismente.some((w) => /alin\. \(7\)/.test(w)));
+    eq('alin. (7): T4 revine la termenul de 25 ianuarie',
+      decl.dueDate('d100', '2026-12', fiscalProfile.build(anual({ anticipatProfitContabil: true }).company)), '2027-01-25');
+
+    // Bifa se CONFRUNTA cu datele: pierderea fiscala a anului precedent e singura dintre cele
+    // patru situatii pe care aplicatia o poate citi sigur.
+    const contrazis = rep.d100(anual({ pierdereFiscala: { 2025: 5000 } }), '2026-03');
+    ok('pierdere fiscala in anul precedent, dar regula generala -> avertisment',
+      contrazis.avertismente.some((w) => /pierdere fiscal/i.test(w) && /alin\. \(7\)/.test(w)));
+
+    // Suma din XML e cea anticipata, cu aceeasi obligatie (nomenclatorul oficial numeste 103
+    // „Impozit pe profit / plati anticipate in contul impozitului pe profit anual datorat").
+    const xa = xml.d100Xml(anual().company, '2026-03', a1);
+    ok('XML: obligatia ramane 103 si la plati anticipate', xa.includes('cod_oblig="103"'));
+    ok('XML: suma e plata anticipata', xa.includes('suma_dat="10450"'));
+  }
+
   // Ajustarile fiscale se cumuleaza pe aceeasi fereastra ca profitul (art. 28 / art. 25).
   eq('amortizarea fiscala se taie la finalul trimestrului',
     assets.depreciationDifference([{ id: 'm', cont: '2131', cost: 12000, durataLuni: 12,

@@ -8,6 +8,41 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
+## Ultima verificare: 2026-08-07 — D100, sistemul anual cu plăți anticipate (art. 41)
+
+Declanșată de atingerea lui `src/reporting.js`, `src/fiscalProfile.js`, `src/xml.js` și
+`src/declarations.js` (intrat în perimetru odată cu această schimbare — vezi mai jos).
+
+**Variantă de referință nouă: `D100-anticipat`.** Fără ea, poarta ar fi validat în continuare doar
+calea trimestrială: exemplul integrat e o firmă pe micro, iar `D100-profit` exercită sistemul
+implicit. Aceeași lecție ca la `D112-beneficii` — *o cale fiscală nouă fără referință proprie trece
+pe lângă validatorul oficial, nu prin el*. Varianta acoperă tocmai trimestrul care nu există în
+celălalt sistem (T4) și scadența lui neobișnuită.
+
+| Declarație | Ce exercită | Rezultat |
+|---|---|---|
+| `D100-anticipat` | plata anticipată T4, scadență 25.12, obligație 103 | ✅ Validare fără erori |
+| `D100-profit` | impozit real T1, sistem trimestrial | ✅ Validare fără erori |
+| `D100` | impozit micro | ✅ Validare fără erori |
+
+Două lucruri aflate de la validator, niciunul ghicibil:
+
+1. **`totalPlata_A` = impozitul ÎNMULȚIT CU 2, și e corect.** Arăta ca o greșeală de copiere.
+   Sondat în ambele direcții: pus pe valoarea „intuitivă" (o singură dată impozitul), fișierul e
+   RESPINS cu `R11b: totalPlata_A (10450) = Suma(suma_dat + suma_ded + suma_plata + suma_rest)
+   (20900)`. Declarația poartă aceeași sumă și pe `suma_dat`, și pe `suma_plata`, iar regula le
+   adună pe toate patru. Consemnat în `src/xml.js`, cu îndemnul explicit de a nu-l „corecta".
+2. **`nr_evid` codifică scadența** (pozițiile 12–15). Deci un termen calculat de două ori — o dată
+   pentru atributul `scadenta`, o dată pentru `nr_evid` — poate produce două date diferite în
+   același rând de declarație. Azi termenul are o singură sursă (`declarations.dueDate`) și e
+   pasat mai departe; generatorul nu-l mai rededuce.
+
+**`src/declarations.js` a intrat în perimetrul porții fiscale** din același motiv: `dueDate` a
+devenit dependență a lui `reporting.js`, fiindcă plata anticipată a trimestrului IV are scadența
+**25 decembrie** (art. 41 alin. (8)) — singurul termen din aplicație care cade în aceeași lună cu
+perioada, nu în următoarea. Poarta „perimetrul e închis tranzitiv" din `test/run.js` a semnalat-o
+singură, la prima rulare după modificare.
+
 ## Ultima verificare: 2026-08-06 — D177 (redirecționarea impozitului către beneficiari)
 
 Formular **nou** în aplicație. Schema a fost ridicată din validator, nu presupusă — vezi mai jos

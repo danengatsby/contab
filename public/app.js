@@ -518,6 +518,15 @@ function fillCompanyForm() {
   if (f.d406Cadenta) f.d406Cadenta.value = ['L', 'T', 'A'].includes(META.company.d406Cadenta) ? META.company.d406Cadenta : '';
   if (f.intrastatObligat) f.intrastatObligat.checked = !!META.company.intrastatObligat;
   if (f.metodaEvaluareStoc) f.metodaEvaluareStoc.value = META.company.metodaEvaluareStoc === 'fifo' ? 'fifo' : 'cmp';
+  // Sistemul de plata a impozitului pe profit (art. 41) + cele doua INTRARI ale platii anticipate.
+  // Anul precedent / anul curent se citesc din hartile pe ani, nu din campuri plate: firma isi
+  // pastreaza istoricul, iar indicele se schimba in fiecare an.
+  if (f.sistemProfit) f.sistemProfit.value = META.company.sistemProfit === 'anual' ? 'anual' : 'trimestrial';
+  if (f.anticipatProfitContabil) f.anticipatProfitContabil.checked = !!META.company.anticipatProfitContabil;
+  const anAcum = new Date().getFullYear();
+  if (f.impozitProfitAnPrec) f.impozitProfitAnPrec.value = ((META.company.impozitProfitAn || {})[anAcum - 1] != null) ? (META.company.impozitProfitAn || {})[anAcum - 1] : '';
+  if (f.ipcAnPrec) f.ipcAnPrec.value = ((META.company.ipcAnticipate || {})[anAcum] != null) ? (META.company.ipcAnticipate || {})[anAcum] : '';
+  aplicaSistemProfit();
   const scut = (META.company.scutiri && typeof META.company.scutiri === 'object') ? META.company.scutiri : {};
   document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { c.checked = !!scut[c.dataset.scutire]; });
   // antetul situatiilor financiare — se completeaza dupa ce nomenclatoarele sunt in DOM
@@ -554,6 +563,23 @@ async function fillBilantNomenclatoare() {
     sel.dataset.populat = '1';
   });
 }
+// Sistemul art. 41 are inteles DOAR in regimul „impozit pe profit": la microintreprindere si la
+// PFA, un selector de sistem de plata a impozitului pe profit e o intrebare fara raspuns. Se
+// ascunde randul intreg, nu doar optiunile — un camp inaplicabil lasat vizibil e o invitatie la
+// bifat gresit. Blocul cu intrarile platii anticipate apare doar cand sistemul ales e cel anual.
+function aplicaSistemProfit() {
+  const f = $('#companyForm'); if (!f) return;
+  const rand = $('#sistProfitRow'); const box = $('#anticipatBox');
+  const ePeProfit = f.regimImpozit && f.regimImpozit.value === 'profit'
+    && !(f.tipEntitate && f.tipEntitate.value === 'pfa');
+  if (rand) rand.classList.toggle('hidden', !ePeProfit);
+  if (box) box.classList.toggle('hidden', !(ePeProfit && f.sistemProfit && f.sistemProfit.value === 'anual'));
+}
+['regimImpozit', 'sistemProfit', 'tipEntitate'].forEach((n) => {
+  const el = document.querySelector('#companyForm [name="' + n + '"]');
+  if (el) el.addEventListener('change', aplicaSistemProfit);
+});
+
 // Rezumatul profilului fiscal CALCULAT (motorul) — arata ce declaratii/alerte deriva din setari
 async function refreshFiscalProfile() {
   const box = $('#fiscalProfileSummary'); if (!box) return;
@@ -1120,6 +1146,23 @@ $('#companyForm').addEventListener('submit', async (e) => {
   body.d406Cadenta = f.d406Cadenta ? f.d406Cadenta.value : '';
   body.intrastatObligat = f.intrastatObligat ? f.intrastatObligat.checked : false;
   body.metodaEvaluareStoc = f.metodaEvaluareStoc ? f.metodaEvaluareStoc.value : 'cmp';
+  // Sistemul art. 41 + intrarile platii anticipate. Hartile pe ani se COMPLETEAZA, nu se
+  // inlocuiesc: un an sters din greseala ar face imposibila recalcularea unei declaratii vechi.
+  body.sistemProfit = f.sistemProfit ? f.sistemProfit.value : 'trimestrial';
+  body.anticipatProfitContabil = f.anticipatProfitContabil ? f.anticipatProfitContabil.checked : false;
+  {
+    const an = new Date().getFullYear();
+    const imp = Object.assign({}, META.company.impozitProfitAn || {});
+    const ipc = Object.assign({}, META.company.ipcAnticipate || {});
+    // Camp golit = stergerea valorii pentru anul acela. „Gol" si „0 tastat" nu sunt acelasi lucru:
+    // un 0 real inseamna „nu am datorat impozit", iar asta schimba formula (art. 41 alin. 7).
+    const vImp = f.impozitProfitAnPrec ? String(f.impozitProfitAnPrec.value).trim() : '';
+    const vIpc = f.ipcAnPrec ? String(f.ipcAnPrec.value).trim() : '';
+    if (vImp === '') delete imp[an - 1]; else imp[an - 1] = Number(vImp);
+    if (vIpc === '') delete ipc[an]; else ipc[an] = Number(vIpc);
+    body.impozitProfitAn = imp;
+    body.ipcAnticipate = ipc;
+  }
   body.scutiri = {};
   document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { if (c.checked) body.scutiri[c.dataset.scutire] = true; });
   // antetul situatiilor financiare anuale (bilant)

@@ -216,9 +216,16 @@ function ym(period) {
 /** Nr. de evidenta a platii (23 de cifre, structura oficiala): "10" + codul creantei pe 3
  *  cifre + "01" + LLAA (sfarsitul perioadei) + ZZLLAA (scadenta = 25 a lunii urmatoare)
  *  + "0000" + suma de control (ultimele 2 cifre ale sumei primelor 21 de cifre). */
-function nrEvidPlata(cod3, luna, an) {
+function nrEvidPlata(cod3, luna, an, scadenta) {
   const mm = String(luna).padStart(2, '0'); const aa = String(an).slice(-2);
-  const next = Number(luna) === 12 ? { mm: '01', aa: String(Number(aa) + 1).padStart(2, '0') } : { mm: String(Number(luna) + 1).padStart(2, '0'), aa };
+  // Scadenta e IMPLICIT „25 a lunii urmatoare", dar nu intotdeauna: plata anticipata a
+  // trimestrului IV la sistemul anual de impozit pe profit (art. 41 alin. (8)) are termen
+  // 25 DECEMBRIE, in aceeasi luna cu perioada. `nr_evid` CODIFICA scadenta pe pozitiile 12-15,
+  // deci daca o calculeaza singur diverge de atributul `scadenta` de langa el — doua date
+  // diferite pentru acelasi termen, in acelasi rand de declaratie.
+  const next = scadenta
+    ? { mm: String(scadenta.luna).padStart(2, '0'), aa: String(scadenta.an).slice(-2) }
+    : (Number(luna) === 12 ? { mm: '01', aa: String(Number(aa) + 1).padStart(2, '0') } : { mm: String(Number(luna) + 1).padStart(2, '0'), aa });
   const p21 = '10' + cod3 + '01' + mm + aa + '25' + next.mm + next.aa + '0000';
   const ctl = String(p21.split('').reduce((s, c) => s + Number(c), 0)).slice(-2).padStart(2, '0');
   return p21 + ctl;
@@ -967,8 +974,13 @@ function d100Xml(company, period, d, who) {
   const { an, luna } = ym(period);
   const lei = (v) => String(Math.round(Number(v) || 0));
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
-  // scadenta: 25 a lunii urmatoare perioadei (format romanesc ZZ.LL.AAAA)
-  const next = Number(luna) === 12 ? { l: 1, a: Number(an) + 1 } : { l: Number(luna) + 1, a: Number(an) };
+  // Scadenta: implicit 25 a lunii URMATOARE perioadei (format romanesc ZZ.LL.AAAA). Rezultatul
+  // poate impune alta data — plata anticipata a trimestrului IV la sistemul anual de impozit pe
+  // profit are termen 25 decembrie, ACEEASI luna (art. 41 alin. (8)). Vine ca `d.scadenta`
+  // („AAAA-LL-ZZ"), nu se rededuce aici: termenul are o singura sursa, `declarations.dueDate`.
+  let next = Number(luna) === 12 ? { l: 1, a: Number(an) + 1 } : { l: Number(luna) + 1, a: Number(an) };
+  const dScad = /^\d{4}-\d{2}-\d{2}$/.test(String(d.scadenta || '')) ? String(d.scadenta) : null;
+  if (dScad) next = { l: Number(dScad.slice(5, 7)), a: Number(dScad.slice(0, 4)) };
   const scadenta = '25.' + String(next.l).padStart(2, '0') + '.' + next.a;
   // Obligatia declarata vine din DATE, nu din generator: acelasi formular poarta impozitul micro
   // (620) sau pe cel pe profit (103), cu alt cod bugetar. Era fixat pe micro, deci o firma pe
@@ -976,6 +988,11 @@ function d100Xml(company, period, d, who) {
   // comportamentul istoric pentru apelantii care nu transmit nimic.
   const codOblig = String(d.codOblig || '620');
   const codBugetar = String(d.codBugetar || '20A031800');
+  // `totalPlata_A` = impozitul INMULTIT CU 2, si NU e o greseala de copiere: regula oficiala R11b
+  // cere `totalPlata_A = Suma(suma_dat + suma_ded + suma_plata + suma_rest)`, iar declaratia
+  // poarta aceeasi suma si pe `suma_dat`, si pe `suma_plata` (celelalte doua lipsesc, deci 0).
+  // Sondat cu validatorul: pus pe valoarea „intuitiva" (o singura data impozitul), fisierul e
+  // RESPINS cu exact acest mesaj. Nu-l „corecta".
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- D100 v2 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D100 fisier.xml -->
 <declaratie100 xmlns="mfp:anaf:dgti:d100:declaratie:v2"
@@ -983,7 +1000,7 @@ function d100Xml(company, period, d, who) {
   nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
   cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}" adresa="${esc(adresa || '-')}"
   totalPlata_A="${lei(Math.round(d.impozit || 0) * 2)}">
-  <obligatie cod_oblig="${esc(codOblig)}" cod_bugetar="${esc(codBugetar)}" scadenta="${scadenta}" nr_evid="${nrEvidPlata(codOblig, luna, an)}"
+  <obligatie cod_oblig="${esc(codOblig)}" cod_bugetar="${esc(codBugetar)}" scadenta="${scadenta}" nr_evid="${nrEvidPlata(codOblig, luna, an, { luna: next.l, an: next.a })}"
     suma_dat="${lei(d.impozit)}" suma_plata="${lei(d.impozit)}"/>
 </declaratie100>
 `;
