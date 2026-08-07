@@ -11,8 +11,8 @@
 //     `no-cache`-ul serverului = actualizari instant la deploy); cache-ul e doar plasa de offline.
 //  3. Doar GET, doar same-origin. Versiune in numele cache-ului -> activate sterge ce e vechi.
 
-const CACHE = 'contab-shell-v1';
-const SHELL = ['/', '/styles.css', '/u.css', '/core.js', '/app.js', '/manifest.webmanifest'];
+const CACHE = 'contab-shell-v2';
+const SHELL = ['/', '/styles.css', '/u.css', '/erp.css', '/erp.js', '/core.js', '/app.js', '/manifest.webmanifest'];
 const BYPASS = /^\/(api|pdf|xml|csv|efactura)(\/|$|\?)/;
 
 self.addEventListener('install', (e) => {
