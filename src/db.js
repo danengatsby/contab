@@ -32,6 +32,12 @@ const FIRMA_EDITABLE = new Set([
   'nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'tara',                       // identificare
   'tvaPlatitor', 'tvaLaIncasare', 'tipEntitate', 'proRataTva', 'caen', 'perioadaTva', 'capitalSocial', // profil fiscal
   'regimImpozit', 'd406Cadenta', 'intrastatObligat', 'scutiri',                     // motor profil fiscal (regim, cadenta D406, Intrastat, exceptii)
+  // Sistemul de declarare a impozitului pe profit (art. 41): 'trimestrial' (implicit, alin. (1))
+  // sau 'anual' cu plati anticipate (alin. (2)). `anticipatProfitContabil` = ramura alin. (7).
+  // `ipcAnticipate` (indicele preturilor de consum, pe an) si `impozitProfitAn` (impozitul
+  // datorat pe an) sunt INTRARI: primul se publica prin ordin al ministrului finantelor si nu se
+  // poate deduce din datele firmei, al doilea acopera firmele migrate, fara istoric in aplicatie.
+  'sistemProfit', 'anticipatProfitContabil', 'ipcAnticipate', 'impozitProfitAn',
   'autoPostDocumente',                                                              // postarea automata a documentelor citite (implicit oprita)
   'metodaEvaluareStoc',                                                             // evaluarea iesirilor din stoc: 'cmp' (implicit) sau 'fifo'
   'iban', 'bic', 'banca', 'cont', 'telefon', 'email', 'numeComplet', 'autorizatie',        // banca / contact / reprezentant

@@ -47,6 +47,11 @@ AICI=$(dirname "$0")
 # re-dovedita; dar NU te baza pe poarta ca sa prinda regresia — pentru asta scrie teste pe module
 # (vezi `normalizeazaRaspuns` din src/aiExtractor.js, scoasa din functia de retea tocmai ca sa
 # poata fi acoperita cu aserttiuni de milisecunde).
+# `src/declarations.js` e in lista din 2026-08-07: `dueDate` a devenit dependenta lui
+# reporting.js, fiindca plata anticipata a trimestrului IV (art. 41 alin. (8)) are scadenta
+# 25 DECEMBRIE, iar scadenta ajunge si in `nr_evid`-ul din XML. Deci o schimbare de termen
+# schimba continutul unei declaratii. Nu adauga comentarii INAUNTRUL listei: fiecare linie de
+# acolo e citita ca o cale, iar poarta „fiecare cale exista pe disc" le raporteaza ca lipsa.
 CAI_FISCALE='
 src/xml.js
 src/saft.js
@@ -55,6 +60,7 @@ src/fiscal.js
 src/fiscalConfig.js
 src/beneficii.js
 src/fiscalProfile.js
+src/declarations.js
 src/fiscalControls.js
 src/payroll.js
 src/reporting.js

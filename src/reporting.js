@@ -8,6 +8,9 @@ const deduct = require('./deductibilitate');
 const micro = require('./impozitMicro'); // baza art. 53 + cota art. 51 (sursa unica: D100 si registrul fiscal)
 const assets = require('./assets');
 const fiscalProfile = require('./fiscalProfile'); // regimul firmei (micro/profit) pentru livrabile
+// Termenele, dintr-o singura sursa. `declarations.js` importa doar accounting + fiscalProfile,
+// deci nu se inchide niciun ciclu.
+const decl = require('./declarations');
 const stmt = require('./statements');
 const { reconcile } = require('./reconcile');
 const recurring = require('./recurring');
@@ -391,24 +394,153 @@ function d100profit(db, period, opts) {
   const impozitAnterior = anterior ? anterior.impozit : 0;
   const diferenta = round2(cumulat.impozit - impozitAnterior);
   const avertismente = [];
-  if (trimestru === 4) {
+
+  // ── SISTEMUL ANUAL CU PLATI ANTICIPATE (art. 41 alin. (2)) ────────────────
+  // Optiune comunicata pana pe 31 ianuarie, obligatorie cel putin 2 ani fiscali. Cand e activa,
+  // pe D100 NU merge impozitul real al trimestrului, ci PLATA ANTICIPATA — alta suma, alt calendar
+  // si (in cazul standard) inca un trimestru de declarat. Restul functiei ramane neatins: pozitia
+  // reala se calculeaza in continuare, fiindca e singurul mod in care contabilul poate vedea cat
+  // de departe sunt anticipatele de realitate inainte de regularizarea din D101.
+  const profil = opts.profile || null;
+  const anticipat = !!(profil && profil.profitAnticipat);
+  let rezultatAnticipat = null;
+  if (anticipat) rezultatAnticipat = platiAnticipate(db, y, trimestru, profil, cumulat, anterior, avertismente);
+
+  if (trimestru === 4 && !anticipat) {
     avertismente.push('Trimestrul IV nu se declară prin D100: art. 41 alin. (1) cere declarația '
       + 'trimestrială doar pentru trimestrele I-III, iar definitivarea anului se face prin D101, '
       + 'până pe 25 martie. Depunerea unui D100 pe trimestrul IV ar declara impozitul de două ori.');
   }
-  if (diferenta < 0) {
+  if (diferenta < 0 && !anticipat) {
     avertismente.push('Impozitul cumulat a SCĂZUT față de trimestrul precedent (' + cumulat.impozit
       + ' lei față de ' + impozitAnterior + ' lei): trimestrul e pe pierdere. Pe declarație merge 0 — '
       + 'D100 nu primește sume negative, iar regularizarea se face anual, prin D101.');
   }
+  const seDeclaraTrimestrial = trimestru >= 1 && trimestru <= 3;
   return { period, trimestru, y,
     impozitCumulat: cumulat.impozit, impozitAnterior, diferenta,
-    impozit: Math.max(0, diferenta),
+    // Suma care merge pe declaratie: plata anticipata la sistemul anual, diferenta reala altfel.
+    impozit: anticipat ? (rezultatAnticipat.plata != null ? rezultatAnticipat.plata : 0) : Math.max(0, diferenta),
+    // Cand plata anticipata nu se poate calcula, suma de mai sus e 0 doar ca sa nu fie `null`
+    // intr-un camp numeric — dar declaratia NU are voie sa plece. `blocat` poarta refuzul.
+    blocat: !!(rezultatAnticipat && rezultatAnticipat.blocat),
     profitImpozabil: cumulat.profitImpozabil, profitContabil: cumulat.profitContabil,
     cheltNedeductibile: cumulat.cheltNedeductibile, deduceri: cumulat.deduceri, cota: cumulat.cota,
-    seDeclara: trimestru >= 1 && trimestru <= 3,
+    sistem: anticipat ? 'anual' : 'trimestrial',
+    anticipat: rezultatAnticipat,
+    // Termenul, dintr-o singura sursa (`declarations.dueDate`). Generatorul XML il primeste gata
+    // calculat: altfel l-ar deduce a doua oara si ar putea diverge — iar `nr_evid` il CODIFICA,
+    // deci divergenta ar produce doua date diferite in acelasi rand de declaratie.
+    scadenta: decl.dueDate('d100', period, profil),
+    seDeclara: anticipat ? rezultatAnticipat.seDeclara : seDeclaraTrimestrial,
     codOblig: D100_OBLIG.profit.cod, codBugetar: D100_OBLIG.profit.bugetar,
     avertismente };
+}
+
+/**
+ * Plata anticipata a unui trimestru, la sistemul anual (art. 41).
+ *
+ * DOUA formule, si alegerea intre ele schimba si suma, si calendarul:
+ *
+ *  (A) REGULA GENERALA, alin. (8): o patrime din impozitul pe profit datorat pentru anul
+ *      precedent, ACTUALIZAT cu indicele preturilor de consum estimat la elaborarea bugetului
+ *      initial al anului. Se declara TOATE PATRU trimestrele; trimestrul IV are termen 25
+ *      DECEMBRIE, nu 25 ianuarie.
+ *
+ *  (B) EXCEPTIA, alin. (7): firmele care in anul precedent au fost nou-infiintate, au inregistrat
+ *      pierdere fiscala, n-au datorat impozit pe profit anual sau au fost platitoare de impozit pe
+ *      veniturile microintreprinderilor platesc cota aplicata PROFITULUI CONTABIL AL PERIOADEI —
+ *      adica al trimestrului, nu cumulat — si doar pentru trimestrele I-III.
+ *
+ * INDICELE NU SE INVENTEAZA. Se publica prin ordin al ministrului finantelor, o data pe an, si nu
+ * se poate deduce din datele firmei. Cand lipseste, functia NU cade inapoi pe „fara actualizare"
+ * (ar produce o plata mai mica decat cea legala, tacut): intoarce `plata: null` si un mesaj care
+ * spune ce lipseste si de unde se ia. Aceeasi regula ca la poarta fiscala — „n-am putut calcula"
+ * nu are voie sa semene cu „iese zero".
+ */
+function platiAnticipate(db, y, trimestru, profil, cumulat, anterior, avertismente) {
+  const company = db.company || {};
+  const anPrec = Number(y) - 1;
+
+  // Ramura (B): profitul CONTABIL al trimestrului, nu cel cumulat.
+  if (profil.anticipatProfitContabil) {
+    const contabilTrim = round2(cumulat.profitContabil - (anterior ? anterior.profitContabil : 0));
+    const plata = contabilTrim > 0 ? round2(contabilTrim * cumulat.cota / 100) : 0;
+    if (trimestru === 4) {
+      avertismente.push('Trimestrul IV nu se declară: în regimul art. 41 alin. (7) — firmă '
+        + 'nou-înființată, cu pierdere fiscală, fără impozit datorat sau microîntreprindere în anul '
+        + 'precedent — plățile anticipate se fac „pentru trimestrele I-III", iar anul se '
+        + 'definitivează prin D101.');
+    }
+    if (contabilTrim <= 0) {
+      avertismente.push('Trimestrul e pe pierdere contabilă (' + contabilTrim + ' lei): plata '
+        + 'anticipată e 0. Regularizarea se face anual, prin D101.');
+    }
+    return {
+      regula: 'art. 41 alin. (7) — cota aplicată profitului contabil al trimestrului',
+      profitContabilTrimestru: contabilTrim, cota: cumulat.cota,
+      plata, blocat: false, seDeclara: trimestru >= 1 && trimestru <= 3,
+    };
+  }
+
+  // Ramura (A): o patrime din impozitul anului precedent, actualizat cu IPC.
+  // Impozitul anului precedent se ia din ce a declarat firma (`impozitProfitAn`, scris la
+  // inchiderea anuala); daca lipseste — firma abia migrata, primul an in aplicatie — se
+  // recalculeaza din date. Daca nici asa nu exista date pe anul precedent, se spune.
+  const declarat = Number((company.impozitProfitAn || {})[anPrec]);
+  let impozitAnPrecedent = Number.isFinite(declarat) ? round2(declarat) : null;
+  let sursaBaza = 'declarat la închiderea anului';
+  if (impozitAnPrecedent == null) {
+    const arePerioade = acc.postedEntries(db).some((e) => String(e.period || '').startsWith(String(anPrec)));
+    if (arePerioade) {
+      impozitAnPrecedent = round2(acc.profitTax(db, String(anPrec), {
+        cota: fiscal.FISCAL.impozitProfit, plafoane: fiscal.FISCAL,
+      }).impozit);
+      sursaBaza = 'recalculat din înregistrările anului ' + anPrec;
+    }
+  }
+  const ipcPct = Number((company.ipcAnticipate || {})[y]);
+  const areIpc = Number.isFinite(ipcPct);
+
+  if (impozitAnPrecedent == null) {
+    avertismente.push('Nu se poate calcula plata anticipată: lipsește impozitul pe profit datorat '
+      + 'pentru ' + anPrec + '. Completează-l în „Firma mea" (sau înregistrează anul ' + anPrec
+      + ' în aplicație). Art. 41 alin. (8) cere o pătrime din impozitul anului precedent.');
+  }
+  if (!areIpc) {
+    avertismente.push('Nu se poate calcula plata anticipată: lipsește indicele prețurilor de consum '
+      + 'pentru ' + y + '. Se publică prin ordin al ministrului finanțelor, odată cu bugetul '
+      + 'inițial al anului, și se completează în „Firma mea". Fără el, plata ar ieși neactualizată, '
+      + 'adică mai mică decât cea legală.');
+  }
+  const indexat = (impozitAnPrecedent != null && areIpc)
+    ? round2(impozitAnPrecedent * (1 + ipcPct / 100)) : null;
+  const plata = indexat != null ? round2(indexat / 4) : null;
+  // „N-am putut calcula" NU are voie sa arate ca „nu datorez nimic". Fara baza sau fara indice,
+  // o declaratie cu 0 ar fi o declaratie FALSA depusa la ANAF, nu o omisiune — si ar trece
+  // neobservata, fiindca zero e o suma perfect plauzibila. De aceea cazul se marcheaza si
+  // generarea XML se opreste (vezi ruta /xml/d100), la fel ca la D177 cu sume incoerente.
+  const blocat = plata == null;
+
+  // Bifa alin. (7) se CONFRUNTA cu datele: pierderea fiscala a anului precedent e singura dintre
+  // cele patru situatii pe care aplicatia o poate citi sigur. Daca firma declara ca aplica regula
+  // generala, dar anul trecut a iesit pe pierdere, una din doua e gresita — si diferenta nu e
+  // cosmetica, sunt alta formula si alt calendar.
+  const pierderePrec = Number((company.pierdereFiscala || {})[anPrec]) || 0;
+  if (pierderePrec > 0) {
+    avertismente.push('În ' + anPrec + ' firma a înregistrat pierdere fiscală (' + pierderePrec
+      + ' lei), dar plata anticipată se calculează după regula generală. Art. 41 alin. (7) cere, '
+      + 'pentru firmele cu pierdere fiscală în anul precedent, cota aplicată profitului contabil al '
+      + 'trimestrului — bifează asta în „Firma mea" dacă e cazul.');
+  }
+
+  return {
+    regula: 'art. 41 alin. (8) — o pătrime din impozitul anului precedent, actualizat cu IPC',
+    anPrecedent: anPrec, impozitAnPrecedent, sursaBaza, ipcPct: areIpc ? ipcPct : null,
+    impozitIndexat: indexat, plata, blocat,
+    // Toate patru trimestrele se declara; al patrulea are termen 25 decembrie (alin. (8)).
+    seDeclara: trimestru >= 1 && trimestru <= 4,
+  };
 }
 
 /** Rulajul net debitor al unui cont intr-un an, taiat optional la finalul unei luni. */
@@ -427,7 +559,10 @@ function rulajContPanaLa(db, year, cont, panaLa) {
  *  descarca o declaratie de microintreprindere, cu alt cod de obligatie si alta suma. */
 function d100(db, period, opts) {
   const profil = fiscalProfile.build((db || {}).company || {});
-  if (profil.profit) return d100profit(db, period, opts);
+  // Profilul se paseaza mai departe: la impozitul pe profit el decide SISTEMUL (trimestrial sau
+  // anual cu plati anticipate, art. 41), deci si suma care merge pe declaratie, si daca
+  // trimestrul IV se declara. Fara el, d100profit ar calcula mereu varianta trimestriala.
+  if (profil.profit) return d100profit(db, period, Object.assign({}, opts, { profile: profil }));
   return Object.assign(d100micro(db, period, (opts || {}).cota),
     { codOblig: D100_OBLIG.micro.cod, codBugetar: D100_OBLIG.micro.bugetar, seDeclara: true });
 }

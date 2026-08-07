@@ -116,8 +116,17 @@ module.exports = function register(app, ctx) {
   app.get('/xml/d100', (req, res) => {
     const v = S(req);
     const period = req.query.period || null;
+    const r = rep.d100(v, period);
+    // REFUZ, nu declaratie cu zero. La sistemul anual de impozit pe profit (art. 41), plata
+    // anticipata are nevoie de impozitul anului precedent SI de indicele preturilor de consum;
+    // fara ele suma ar iesi 0, iar zero e o suma perfect plauzibila pe D100 — deci ar pleca la
+    // ANAF o declaratie FALSA, nu una lipsa, si nimic n-ar semnala. Acelasi tipar ca la /xml/d177,
+    // care refuza cand sumele redirectionate nu se sustin.
+    if (r.blocat) {
+      return res.status(400).send('Nu se poate genera D100: ' + (r.avertismente || []).join(' '));
+    }
     recordDecl(req, 'd100', period);
-    sendXml(res, xml.d100Xml(v.company, period, rep.d100(v, period), declarantOf(req)), 'd100-' + (period || 'trim') + '.xml');
+    sendXml(res, xml.d100Xml(v.company, period, r, declarantOf(req)), 'd100-' + (period || 'trim') + '.xml');
   });
   // D101 — impozitul pe profit ANUAL (?year=). Doar pentru firmele in regim de profit;
   // schema oficiala v10 (an sfarsit exercitiu >=2024). Descarcarea marcheaza declaratia in registru.

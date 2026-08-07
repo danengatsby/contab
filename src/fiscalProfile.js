@@ -32,6 +32,25 @@ function build(company, ctx) {
   const d406 = CADENTE.includes(company.d406Cadenta) ? company.d406Cadenta
     : (tvaPlatitor ? (perioadaTva === 'T' ? 'T' : 'L') : 'T');
   const scutiri = (company.scutiri && typeof company.scutiri === 'object') ? company.scutiri : {};
+  // SISTEMUL de declarare a impozitului pe profit (art. 41). Implicit cel TRIMESTRIAL, alin. (1) —
+  // regula generala. Sistemul anual cu plati anticipate, alin. (2), e o OPTIUNE pe care firma o
+  // comunica pana pe 31 ianuarie si care o leaga cel putin 2 ani fiscali; nu se poate deduce din
+  // date, deci se tine explicit. Are inteles doar la regimul de profit.
+  const sistemProfit = (regim === 'profit' && company.sistemProfit === 'anual') ? 'anual' : 'trimestrial';
+  // Ramura de EXCEPTIE a sistemului anual (art. 41 alin. (7)): firmele care in anul precedent au
+  // fost nou-infiintate, au inregistrat pierdere fiscala, n-au datorat impozit pe profit anual sau
+  // au fost platitoare de impozit pe veniturile microintreprinderilor NU platesc o patrime din
+  // impozitul anului trecut — platesc cota aplicata PROFITULUI CONTABIL al perioadei, si doar
+  // pentru trimestrele I-III.
+  //
+  // De ce e un camp DECLARAT si nu unul derivat, desi restul aplicatiei deriva starile: din cele
+  // patru situatii, una singura se citeste sigur din datele noastre (pierderea fiscala a anului
+  // precedent). „A fost microintreprindere" cere un istoric al regimului pe care aplicatia nu-l
+  // pastreaza, iar „nou-infiintat" nu se poate distinge de „firma preluata cu istoric importat".
+  // O derivare care ghiceste trei sferturi din conditie ar alege TACUT alta formula de plata si
+  // alt calendar. Ce se poate verifica se verifica: `reporting.d100profit` confrunta bifa cu
+  // pierderea fiscala din date si avertizeaza cand cele doua nu se potrivesc.
+  const anticipatProfitContabil = sistemProfit === 'anual' && !!company.anticipatProfitContabil;
   return {
     tipEntitate: pfa ? 'pfa' : (company.tipEntitate || 'srl'),
     pfa,
@@ -42,6 +61,9 @@ function build(company, ctx) {
     regim,                             // 'micro' | 'profit' | 'pfa'
     micro: regim === 'micro',
     profit: regim === 'profit',
+    sistemProfit,                      // 'trimestrial' (art. 41(1)) | 'anual' (art. 41(2), cu plati anticipate)
+    profitAnticipat: regim === 'profit' && sistemProfit === 'anual',
+    anticipatProfitContabil,           // art. 41 alin. (7) — plata anticipata pe profitul CONTABIL al trimestrului
     areAngajati,
     d406,                              // 'L' | 'T' | 'A'
     saftLunar: d406 === 'L',
@@ -67,11 +89,23 @@ function expected(profile, period, hasIntracom) {
   if (profile.intrastat && intracom) add('intrastat');
   // D112: firme cu salariati
   if (profile.areAngajati) add('d112');
-  // D100: trimestrial, non-PFA. La MICRO se declara toate patru trimestrele (cel de-al patrulea
-  // pana pe 25 ianuarie). La IMPOZIT PE PROFIT, art. 41 alin. (1) cere D100 doar pentru
-  // trimestrele I-III: definitivarea anului se face prin D101, pana pe 25 martie. Asteptarea unui
-  // D100 pe trimestrul IV impingea firma sa-si declare impozitul de doua ori.
-  if (!profile.pfa && sfarsitTrim && !(profile.profit && Number(period.slice(5, 7)) === 12)) add('d100');
+  // D100: trimestrial, non-PFA. Cine il datoreaza pe trimestrul IV depinde de REGIM si, la
+  // impozitul pe profit, de SISTEMUL ales (art. 41):
+  //  - MICRO: toate patru trimestrele (al patrulea pana pe 25 ianuarie);
+  //  - PROFIT, sistem trimestrial (alin. (1)): doar trimestrele I-III — definitivarea anului se
+  //    face prin D101, pana pe 25 martie. Asteptarea unui D100 pe trimestrul IV impingea firma
+  //    sa-si declare impozitul de doua ori;
+  //  - PROFIT, sistem anual cu plati anticipate (alin. (2)): TOATE PATRU, fiindca plata anticipata
+  //    a trimestrului IV se declara si se plateste separat, pana pe 25 DECEMBRIE (alin. (8)) —
+  //    singurul termen din aplicatie care cade in ACEEASI luna cu perioada, nu in cea urmatoare.
+  //    EXCEPTIE (alin. (7)): firmele care in anul precedent au fost nou-infiintate, au avut
+  //    pierdere fiscala, n-au datorat impozit pe profit anual sau au fost microintreprinderi fac
+  //    plati anticipate „pentru trimestrele I-III" — deci pentru ELE trimestrul IV nu se declara,
+  //    ca la sistemul trimestrial.
+  const d100Trim4 = Number(period.slice(5, 7)) === 12;
+  const profitFaraTrim4 = profile.profit
+    && (!profile.profitAnticipat || profile.anticipatProfitContabil);
+  if (!profile.pfa && sfarsitTrim && !(profitFaraTrim4 && d100Trim4)) add('d100');
   // D101 (impozit pe profit, ANUAL): doar regimul de profit, la sfarsitul anului (termen 25 martie
   // anul urmator). Micro NU depune D101.
   if (profile.profit && Number(period.slice(5, 7)) === 12) add('d101');

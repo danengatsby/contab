@@ -53,8 +53,13 @@ function descarcari(tip, period) { return (DESCARCARI[tip] || (() => []))(period
 function pad2(n) { return String(n).padStart(2, '0'); }
 function lastDayOfMonth(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); } // m = 1-12
 
-/** Termenul de depunere pentru declaratia `tip` aferenta lunii `period` (YYYY-MM). */
-function dueDate(tip, period) {
+/** Termenul de depunere pentru declaratia `tip` aferenta lunii `period` (YYYY-MM).
+ *  `profile` (optional) = profilul fiscal al firmei; conteaza pentru un singur caz, dar unul real:
+ *  plata anticipata a TRIMESTRULUI IV la sistemul anual de impozit pe profit (art. 41 alin. (8))
+ *  se declara si se plateste pana pe 25 DECEMBRIE — in aceeasi luna cu perioada, nu in urmatoarea.
+ *  E singurul termen din aplicatie care nu cade in luna de dupa perioada; fara profil, regula
+ *  generala l-ar fi impins pe 25 ianuarie, adica o luna DUPA ce firma era deja in intarziere. */
+function dueDate(tip, period, profile) {
   const y = Number(period.slice(0, 4));
   const m = Number(period.slice(5, 7));
   const ny = m === 12 ? y + 1 : y;
@@ -67,6 +72,11 @@ function dueDate(tip, period) {
   if (tip === 'intrastat') return ny + '-' + pad2(nm) + '-15';
   // D101 (impozit pe profit anual): 25 martie anul URMATOR anului fiscal (perioada = Y-12)
   if (tip === 'd101') return (y + 1) + '-03-25';
+  // D100 — plata anticipata a trimestrului IV, sistem anual (art. 41 alin. (8)): 25 decembrie,
+  // ACELASI an. Nu se aplica ramurii de exceptie a alin. (7), care declara doar trimestrele I-III.
+  if (tip === 'd100' && m === 12 && profile && profile.profitAnticipat && !profile.anticipatProfitContabil) {
+    return y + '-12-25';
+  }
   // Situatiile financiare anuale: 31 MAI anul urmator, pentru societati (art. 36 alin. 1 din
   // Legea contabilitatii 82/1991 — 150 de zile de la incheierea exercitiului financiar).
   if (tip === 'bilant') return (y + 1) + '-05-31';
@@ -88,7 +98,7 @@ function expectedForFirma(v, period) {
   const profile = fiscalProfile.build((v || {}).company, { angajati: (v || {}).angajati });
   const hasIntracom = (per) => postedEntries(v).some((e) => INTRACOM_TYPES.has(e.tip) && String(e.period || e.data || '').slice(0, 7) === per);
   return fiscalProfile.expected(profile, period, hasIntracom)
-    .map((tip) => ({ tip, nume: (TIPURI[tip] || {}).nume || tip, period, due: dueDate(tip, period) }));
+    .map((tip) => ({ tip, nume: (TIPURI[tip] || {}).nume || tip, period, due: dueDate(tip, period, profile) }));
 }
 
 // ── e-Factura B2B: facturi emise netrimise in SPV (termen legal: 5 zile CALENDARISTICE, OUG 89/2025) ──

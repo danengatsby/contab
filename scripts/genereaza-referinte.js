@@ -71,6 +71,22 @@ const vProfit = {
     lines: [{ debit: '4111', credit: '704', suma: 100000 }] }],
 };
 w('D100-profit', xml.d100Xml(vProfit.company, '2026-03', rep.d100(vProfit, '2026-03'), who));
+// D100 varianta PLATI ANTICIPATE (art. 41 alin. (2)): aceeasi obligatie 103, dar ALTA suma — o
+// patrime din impozitul anului precedent, actualizat cu indicele preturilor de consum — si un
+// trimestru in plus de declarat (T4, cu termen 25 decembrie). Fara aceasta varianta, poarta ar fi
+// validat mereu doar calea trimestriala: exemplul integrat e o firma pe micro, iar `D100-profit`
+// exercita sistemul implicit. Acelasi motiv pentru care exista `D112-beneficii` — o cale fiscala
+// noua fara referinta proprie trece pe LANGA validatorul oficial, nu prin el.
+const vAnticipat = {
+  company: Object.assign({}, vProfit.company, {
+    sistemProfit: 'anual', impozitProfitAn: { 2025: 40000 }, ipcAnticipate: { 2026: 4.5 },
+  }),
+  openingBalances: {}, assets: [], entries: vProfit.entries,
+};
+const rAnticipat = rep.d100(vAnticipat, '2026-12'); // trimestrul IV — cel care NU exista in celalalt sistem
+if (rAnticipat.blocat) throw new Error('D100-anticipat: plata anticipata nu s-a putut calcula');
+if (rAnticipat.impozit !== 10450) throw new Error('D100-anticipat: plata anticipata neasteptata — ' + rAnticipat.impozit);
+w('D100-anticipat', xml.d100Xml(vAnticipat.company, '2026-12', rAnticipat, who));
 // D406 cu STORNO IN ROSU: stornoul generic scrie sume NEGATIVE (aceleasi conturi, suma negata),
 // deci ajung asa in <DebitAmount>/<CreditAmount>. Exemplul n-are niciun storno, deci varianta
 // periodica n-ar purta nicio suma negativa si poarta n-ar verifica niciodata ca schema le accepta.

@@ -2003,6 +2003,25 @@ Cu stimă,
           <label>Cadență D406 (SAF-T)
             <select name="d406Cadenta"><option value="">Automat (după perioada TVA)</option><option value="L">Lunar</option><option value="T">Trimestrial</option><option value="A">Anual</option></select>
           </label>
+          <!-- Sistemul de declarare a impozitului pe profit (art. 41). Are înțeles doar în regimul
+               „profit"; JS-ul ascunde blocul la micro/PFA (vezi public/settings.js). -->
+          <label id="sistProfitRow">Sistemul de plată a impozitului pe profit <span class="muted">(art. 41)</span>
+            <select name="sistemProfit">
+              <option value="trimestrial">Trimestrial, pe impozitul real (alin. 1 — implicit)</option>
+              <option value="anual">Anual, cu plăți anticipate trimestriale (alin. 2 — opțiune)</option>
+            </select>
+          </label>
+          <div class="full hidden" id="anticipatBox">
+            <div class="explain"><span class="ei">📅</span><p class="muted">Opțiunea pentru sistemul anual se comunică până pe <b>31 ianuarie</b> și te leagă <b>cel puțin 2 ani fiscali</b>. Plata anticipată a fiecărui trimestru e <b>o pătrime din impozitul anului precedent, actualizat cu indicele prețurilor de consum</b>, iar <b>trimestrul IV se declară și se plătește până pe 25 decembrie</b> — nu în ianuarie.</p></div>
+            <label class="check"><input name="anticipatProfitContabil" type="checkbox" /> În anul precedent am fost nou-înființat, am avut pierdere fiscală, n-am datorat impozit pe profit anual sau am fost microîntreprindere <span class="muted">(art. 41 alin. 7 — atunci plata anticipată e cota aplicată profitului contabil al trimestrului, doar pentru trimestrele I–III)</span></label>
+            <div class="dyn">
+              <label>Impozit pe profit datorat pe anul precedent (lei)
+                <input name="impozitProfitAnPrec" type="number" step="0.01" placeholder="lasă gol dacă anul precedent e înregistrat în aplicație" /></label>
+              <label>Indicele prețurilor de consum pentru anul curent (%)
+                <input name="ipcAnPrec" type="number" step="0.1" placeholder="ex. 4,5 — din ordinul ministrului finanțelor" /></label>
+            </div>
+            <p class="muted">Indicele <b>nu poate fi dedus</b> din datele firmei: se publică prin ordin al ministrului finanțelor, odată cu bugetul inițial al anului. Fără el, aplicația <b>refuză să genereze D100</b> în loc să scrie o plată neactualizată — o sumă mai mică decât cea legală ar trece neobservată, fiindcă e perfect plauzibilă.</p>
+          </div>
           <label>Evaluarea ieșirilor din stoc (politică contabilă — OMFP 1802/2014 pct. 289)
             <select name="metodaEvaluareStoc">
               <option value="cmp">Cost mediu ponderat (CMP)</option>
