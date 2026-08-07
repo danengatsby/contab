@@ -28,6 +28,9 @@ a{color:var(--accent);text-decoration:none}
 /* Utilitarele barei (dictionar / mod / tema / densitate): transparent implicit (curg inline in
    bara orizontala pe mobil/tableta); pe desktop devin o grila 2x2 sus in sidebar (vezi @media). */
 .side-tools{display:contents}
+/* Butonul care strange uneltele exista DOAR pe telefon: pe desktop bara e sidebar vertical si
+   utilitarele au deja locul lor, in grila 2x2 de sus. */
+#toolsBtn{display:none}
 .brand{display:flex;align-items:center;gap:10px}
 .brand h1{color:#fff;margin:0}
 .brand small{color:#aeb8d8}
@@ -1084,11 +1087,28 @@ body.dark .fstep.done .fstep-body b{text-decoration-color:#5cbb8d}
     position:sticky;top:0;z-index:50;overflow:visible;padding:8px 12px;gap:8px;
     border-right:0;border-bottom:1px solid rgba(255,255,255,.1)}
   .topbar .brand{order:0;padding:0;border-bottom:0;margin:0}
+  /* Numele firmei apare de DOUA ori pe telefon: sub „Contabo" si in selectorul de dedesubt, care e
+     mereu prezent (`fillFirmaSelect` il umple intotdeauna). Pe un ecran unde bara costa deja o
+     cincime, a doua copie nu-si merita randul. */
+  .topbar .brand small{display:none}
   .topbar #tabs{display:none}
   .topbar .firma-select{order:1;width:auto;max-width:44vw}
-  .topbar .curgroup,.topbar #themeBtn,.topbar #densityBtn{order:2}
-  .topbar #userBadge{order:3;margin:0}
-  .topbar #logoutBtn{order:4;width:auto}
+  .topbar .curgroup{order:2}
+  /* ── Bara de sus pe telefon: doar ce se atinge des ──
+     Masurat inainte: 340px din 844 (40% din ecran) inainte de orice continut, fiindca cele sase
+     utilitare stateau intr-o grila 2x3 mereu deschisa. Raman vizibile firma, luna si un buton
+     „⋯ Unelte"; restul se desfasoara la cerere, PESTE randul urmator (`order` mare + latime plina),
+     ca deschiderea sa nu rearanjeze ce era deja pe ecran. Butoanele NU se muta din DOM — isi
+     pastreaza ascultatorii legati pe id, iar la rotirea ecranului nu e nimic de refacut. */
+  #toolsBtn{order:3;display:inline-flex}
+  .topbar #userBadge{order:7;margin:0}
+  .topbar #logoutBtn{order:8;width:auto}
+  .topbar .side-tools{order:6;display:none;width:100%;grid-template-columns:repeat(3,1fr);gap:6px;margin:0}
+  .topbar.tools-open .side-tools{display:grid}
+  .topbar .side-tools .btn{width:100%;justify-content:center;padding:8px 6px}
+  /* cat timp uneltele sunt stranse, identitatea contului si iesirea stau cu ele */
+  .topbar:not(.tools-open) #userBadge,
+  .topbar:not(.tools-open) #logoutBtn{display:none}
   .shell>main{margin:0;padding:14px 12px calc(80px + env(safe-area-inset-bottom,0))}
   .shell>main>.tab{max-width:none}
   .grid2,.grid3{grid-template-columns:1fr}   /* cardurile multi-coloana colapseaza pe telefon */
