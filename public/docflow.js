@@ -6,7 +6,7 @@ import { $$, $, H, fmt, accName, toast, api, META, setMeta, applyFiscalDefaults 
 import { workMonth, fillPeriods } from './periods.js';
 import { loadEntries } from './entries.js';
 
-const D = { goTab: null };
+const D = { goTab: null, refreshCashbook: null };
 function setDocflowDeps(d) { Object.assign(D, d); }
 
 let CURRENT = null; // { documentId, fields, suggestedType }
@@ -210,6 +210,14 @@ $$('.emit').forEach((btn) => btn.addEventListener('click', () => {
   openForm(tip, { data: new Date().toISOString().slice(0, 10) }, 'emite');
   setTimeout(() => $('#entryForm').scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
 }));
+// Incasari/plati direct din registrul de banca-casa. Spre deosebire de wizard, NU schimbam tabul:
+// omul e deja unde vrea sa fie, iar registrul de dedesubt e chiar verificarea rezultatului.
+$$('.cbact').forEach((btn) => btn.addEventListener('click', () => {
+  const tip = btn.dataset.tip;
+  CURRENT = { documentId: null, fields: {}, suggestedType: tip };
+  openForm(tip, { data: new Date().toISOString().slice(0, 10) }, 'cashbook');
+  setTimeout(() => $('#entryForm').scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+}));
 // Linkuri catre registrele/situatiile generate
 $$('.linklist a[data-go]').forEach((a) => { a.style.cursor = 'pointer'; a.addEventListener('click', () => D.goTab(a.dataset.go)); });
 async function renderRecurring() {
@@ -341,23 +349,34 @@ $('#efParseBtn') && $('#efParseBtn').addEventListener('click', async () => {
     });
   } catch (e) { box.innerHTML = `<p class="status err">${e.message}</p>`; }
 });
+// Gazdele in care poate fi mutat formularul UNIC, si textul de asteptare al fiecareia. Tabelul
+// e sursa unica: un `host` necunoscut ar cadea tacut pe „documente" — formularul s-ar deschide
+// pe alt tab decat cel pe care se uita omul, fara nicio eroare. De aceea `formHostSelector`
+// e o functie pura, exportata si acoperita cu aserttiuni (vezi test/frontend.mjs).
+const HOSTS = {
+  documente: { host: '#formHostDoc', gol: '#noDoc' },
+  emite: { host: '#formHostEmite', gol: '#noDocEmit' },
+  cashbook: { host: '#formHostCash', gol: '#noDocCash' },
+};
+export function formHostSelector(host) { return (HOSTS[host] || HOSTS.documente).host; }
+function togglePlaceholders(ascunse) {
+  Object.values(HOSTS).forEach(({ gol }) => { const el = $(gol); if (el) el.classList.toggle('hidden', ascunse); });
+}
 function mountForm(host) {
-  const target = $(host === 'emite' ? '#formHostEmite' : '#formHostDoc');
+  const target = $(formHostSelector(host));
   const f = $('#entryForm');
   if (target && f.parentElement !== target) target.appendChild(f);
 }
 function openForm(tipId, fields, host) {
   mountForm(host);
-  $('#noDoc').classList.add('hidden');
-  const ne = $('#noDocEmit'); if (ne) ne.classList.add('hidden');
+  togglePlaceholders(true);
   $('#entryForm').classList.remove('hidden');
   $('#tipSelect').value = tipId || 'nota_contabila';
   renderFields(fields || {});
 }
 function closeForm() {
   $('#entryForm').classList.add('hidden');
-  $('#noDoc').classList.remove('hidden');
-  const ne = $('#noDocEmit'); if (ne) ne.classList.remove('hidden');
+  togglePlaceholders(false);
   CURRENT = null;
 }
 $('#tipSelect').addEventListener('change', () => renderFields(collectFields()));
@@ -570,9 +589,14 @@ async function submitEntry(ciorna) {
     const warns = (res.stoc && res.stoc.warns) || [];
     if (warns.length) toast(warns.join(' '), true);
     else toast(ciorna ? 'Ciornă salvată: ' + res.entry.id + ' (o postezi din listă)' : 'Înregistrare salvată: ' + res.entry.id);
+    const eraCash = $('#entryForm').parentElement === $('#formHostCash');
     closeForm();
     setMeta(await api('/api/meta')); fillPeriods();
     await loadEntries();
+    // Salvarea din registrul de banca-casa trebuie sa se VADA in registru, altfel omul ramane cu
+    // acelasi sold negativ pe ecran si crede ca n-a mers. `loadEntries` reimprospateaza listele de
+    // documente, nu si tabelul de aici — vine injectat, ca sa nu depindem de rapoarte.js.
+    if (eraCash && D.refreshCashbook) await D.refreshCashbook();
   } catch (err) { toast(err.message, true); }
 }
 $('#entryForm').addEventListener('submit', (e) => { e.preventDefault(); submitEntry(false); });

@@ -22,7 +22,7 @@ import { setAuthuiDeps, bootAuth, showLogin, hideLogin, showForcePw, handleRegis
 import { setDocflowDeps, fillTipSelect, renderRecurring } from './docflow.js';
 import { setEntriesDeps, loadEntries, renderEntryLists, loadMissingDocs, loadArhiva, loadCalitate } from './entries.js';
 setAuthuiDeps({ init, goTab, promptFirmaSubscribe });
-setDocflowDeps({ goTab });
+setDocflowDeps({ goTab, refreshCashbook: loadCashbook }); // salvarea din tabul Bani reîmprospătează registrul
 setEntriesDeps({ goTab });
 setSalarizareDeps({ goTab }); // „editează" din statul de plată duce in pagina „Angajați"
 

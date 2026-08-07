@@ -770,6 +770,24 @@
         <select id="cbAn" class="period an" aria-label="Anul"></select>
         <a id="cbPdf" class="btn" target="_blank">⬇ PDF</a>
       </div>
+      <!-- Actiunile de bani stau AICI, nu doar in „Adauga document": alerta „sold negativ — probabil
+           lipsesc incasari" de pe Acasa trimite exact in acest tab, si pana acum ecranul nu avea
+           niciun buton — patronul ajungea intr-o fundatura. Stau DEASUPRA registrului fiindca omul
+           vine sa REPARE ce lipseste, nu doar sa citeasca. Formularul e acelasi, unic in aplicatie,
+           mutat aici prin `mountForm('cashbook')`. -->
+      <div class="card" id="cbActiuniCard">
+        <h3>➕ Înregistrează o mișcare de bani</h3>
+        <p class="muted">Alege ce s-a întâmplat — formularul se deschide dedesubt, iar registrul se actualizează după salvare.</p>
+        <div class="quickacts">
+          <button type="button" class="qa in cbact" data-tip="incasare_client"><span class="ic">⬇️</span><span class="t">Am încasat de la un client</span><span class="d">Chitanță, extras de cont, ordin de plată primit</span></button>
+          <button type="button" class="qa out cbact" data-tip="plata_furnizor"><span class="ic">⬆️</span><span class="t">Am plătit un furnizor</span><span class="d">Chitanță, extras de cont, ordin de plată emis</span></button>
+          <button type="button" class="qa cbact" data-tip="depunere_numerar"><span class="ic">🏧</span><span class="t">Am depus numerar la bancă</span><span class="d">Bani din casierie duși în cont</span></button>
+          <button type="button" class="qa cbact" data-tip="ridicare_numerar"><span class="ic">💵</span><span class="t">Am ridicat numerar din bancă</span><span class="d">Bani din cont aduși în casierie</span></button>
+          <button type="button" class="qa cbact" data-tip="comision_bancar"><span class="ic">🏦</span><span class="t">Comision bancar</span><span class="d">Taxa reținută de bancă din extras</span></button>
+        </div>
+        <div id="formHostCash"></div>
+        <p id="noDocCash" class="muted">Alege mai sus ce s-a întâmplat ca să se deschidă formularul.</p>
+      </div>
       <div id="cbView" class="tablewrap"></div>
       <div class="card">
         <div class="card-head">
