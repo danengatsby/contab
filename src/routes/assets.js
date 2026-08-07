@@ -5,6 +5,7 @@
 // Modul de rute: register(app, ctx).
 
 const assets = require('../assets');
+const catalogDurate = require('../catalogDurate'); // HG 2139/2004 — sugestie in formular, NU calcul
 const db = require('../db');
 const pdf = require('../pdf');
 const coa = require('../chartOfAccounts');
@@ -13,7 +14,47 @@ const { round2 } = require('../util');
 const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
-  const { S, activeId, logAudit } = ctx;
+  const { S, activeId, logAudit, requireAdmin } = ctx;
+
+  // ── CATALOGUL DURATELOR (HG 2139/2004) ────────────────────────────────────
+  // Sta GLOBAL, ca planul de conturi: duratele normale sunt aceleasi pentru toate firmele.
+  // Deci importul e `requireAdmin`, din exact acelasi motiv ca la /api/accounts/import —
+  // stare globala partajata, iar un cont legat de o singura firma nu are voie s-o rescrie
+  // pentru toate celelalte.
+  //
+  // Cautarea ramane deschisa oricui e autentificat: e un nomenclator public (o hotarare de
+  // guvern), nu date de firma, si e inutila daca doar adminul o poate citi.
+  app.get('/api/catalog-durate', (req, res) => {
+    const d = db.get();
+    const lista = d.catalogDurate || [];
+    const q = String(req.query.q || '').trim();
+    // Fara `q` NU se intoarce catalogul intreg: sunt sute de randuri si nimeni nu le citeste pe
+    // toate: se intoarce doar marimea lui, ca interfata sa poata spune „catalog neincarcat".
+    if (!q) return res.json({ total: lista.length, rezultate: [] });
+    res.json({ total: lista.length, rezultate: catalogDurate.cauta(lista, q, Number(req.query.limit) || 25) });
+  });
+
+  app.post('/api/catalog-durate/import', requireAdmin, (req, res) => {
+    const { randuri, respinse } = catalogDurate.parse((req.body || {}).csv);
+    if (!randuri.length) {
+      return res.status(400).json({
+        error: 'Niciun rand valid in fisier. Format asteptat: cod;denumire;ani (ex. „2.1.16.1.1;Masini de spalat;8-12").',
+        respinse: respinse.slice(0, 20),
+      });
+    }
+    const d = db.get();
+    d.catalogDurate = d.catalogDurate || [];
+    // Upsert pe cod, ca la planul de conturi: un import repetat corecteaza, nu dubleaza.
+    for (const r of randuri) {
+      const ex = d.catalogDurate.find((x) => catalogDurate.normalizeazaCod(x.cod) === catalogDurate.normalizeazaCod(r.cod));
+      if (ex) Object.assign(ex, r); else d.catalogDurate.push(r);
+    }
+    db.save();
+    logAudit('catalog-durate.import', randuri.length + ' pozitii (HG 2139/2004)', { req });
+    // Randurile respinse pleaca inapoi la utilizator, cu numarul liniei: un catalog incarcat pe
+    // jumatate fara sa spuna care jumatate l-ar face sa caute degeaba un cod care n-a intrat.
+    res.json({ ok: true, importate: randuri.length, total: d.catalogDurate.length, respinse: respinse.slice(0, 50) });
+  });
 
   app.get('/api/assets', (req, res) => {
     const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);

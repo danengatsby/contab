@@ -1641,3 +1641,81 @@ section('Vizitatorii site-ului (src/visitors.js) — ce se numara si ce nu');
   eq('...si o pastreaza pe cea recenta', vis.snapshot().length, 1);
   vis._reset();
 }
+
+section('Catalogul duratelor HG 2139/2004 (src/catalogDurate.js)');
+{
+  const cd = require('../../src/catalogDurate');
+
+  // ── parse: formatele reale in care ajunge anexa intr-un CSV ──
+  // Anexa scrie intervalul intr-o singura celula („8-12"), dar cine face fisierul in Excel il
+  // sparge adesea in doua coloane. Ambele forme trebuie sa mearga: altfel jumatate din importuri
+  // ar esua pe formatare, nu pe date.
+  eq('interval intr-o celula', JSON.stringify(cd.citesteInterval('8-12')), '{"aniMin":8,"aniMax":12}');
+  eq('interval cu linie lunga', JSON.stringify(cd.citesteInterval('8 – 12')), '{"aniMin":8,"aniMax":12}');
+  eq('interval in doua coloane', JSON.stringify(cd.citesteInterval('4', '6')), '{"aniMin":4,"aniMax":6}');
+  eq('durata fixa (o singura valoare)', JSON.stringify(cd.citesteInterval('5')), '{"aniMin":5,"aniMax":5}');
+  eq('interval inversat = refuzat', cd.citesteInterval('12', '4'), null);
+  eq('durata zero = refuzata', cd.citesteInterval('0'), null);
+  eq('text = refuzat', cd.citesteInterval('opt ani'), null);
+
+  const csv = 'Cod;Denumire;Ani\n'
+    + '2.1.16.1.1;Mașini de spălat;8-12\n'
+    + ';linie fara cod;3-4\n'
+    + '3.1.1;Fara durata;abc\n'
+    + '1.1.1;Clădiri industriale;40;60\n'
+    + '\n'
+    + '2.2.9;Aparate de măsură;4\n';
+  const p = cd.parse(csv);
+  eq('randurile bune intra', p.randuri.length, 3);
+  eq('randul complet gol e sarit tacut (e separator, nu eroare)',
+    p.respinse.filter((x) => x.motiv === 'cod de clasificare lipsa' && !x.cod).length, 1);
+  eq('randurile stricate sunt RAPORTATE, nu inghitite', p.respinse.length, 2);
+  ok('randul cu durata necitibila spune de ce', /durata nu se poate citi/.test(p.respinse[1].motiv));
+
+  // NUMARUL DE LINIE e cel din FISIERUL utilizatorului, nu indexul randului parsat: `parseCsv`
+  // arunca randurile goale, deci cele doua diverg exact cu cate goluri are fisierul. Aici
+  // golul e inaintea ultimului rand de date, iar randul stricat („3.1.1") e pe linia 4 in fisier.
+  eq('numarul de linie e cel din fisier, nu indexul randului parsat', p.respinse[1].linie, 4);
+  // Doua randuri de date despartite de doua goluri: cel stricat e pe linia 4 in fisier, dar abia
+  // al doilea rand PARSAT. Un index+1 ar fi raportat „linia 2" — adica exact randul bun.
+  const cuGoluri = cd.parse('1.1.1;Bun;5\n\n\n9.9.9;Rau;abc\n');
+  eq('...si tine cand golurile sunt inaintea randului stricat', cuGoluri.respinse[0].linie, 4);
+  eq('antetul e sarit', p.randuri.filter((r) => r.cod === 'Cod').length, 0);
+  eq('a doua coloana de ani e citita cand exista', p.randuri.find((r) => r.cod === '1.1.1').aniMax, 60);
+
+  // ── cautare ──
+  eq('cautare pe cod exact', cd.cauta(p.randuri, '2.1.16.1.1').length, 1);
+  eq('codul cu punct final se normalizeaza', cd.cauta(p.randuri, '2.1.16.1.1.').length, 1);
+  eq('cautare pe prefix de cod', cd.cauta(p.randuri, '2.').length, 2);
+  // Diacriticele: „s"/„t" cu virgula NU se descompun in NFD, deci fara tratament separat
+  // „masini de spalat" nu ar gasi „mașini de spălat" — adica exact cum tasteaza lumea.
+  eq('cautare fara diacritice gaseste denumirea cu diacritice', cd.cauta(p.randuri, 'masini spalat').length, 1);
+  eq('toate cuvintele trebuie sa apara (conjunctie)', cd.cauta(p.randuri, 'masini betoane').length, 0);
+  eq('cautarea goala nu intoarce tot catalogul', cd.cauta(p.randuri, '  ').length, 0);
+  // Un cod cautat exact trebuie sa fie PRIMUL rezultat, nu al treizecilea.
+  ok('potrivirea pe cod bate potrivirea pe denumire', cd.cauta(p.randuri, '1.1.1')[0].cod === '1.1.1');
+  eq('limita se respecta', cd.cauta(p.randuri, '.', 2).length, 2);
+
+  // ── sugestie: INTERVAL, nu o valoare aleasa de noi ──
+  const s = cd.sugereaza(p.randuri, '2.1.16.1.1');
+  eq('sugestia da capatul de jos in luni', s.luniMin, 96);
+  eq('sugestia da capatul de sus in luni', s.luniMax, 144);
+  ok('sugestia NU contine o durata „recomandata" (alegerea e a contabilului)',
+    !Object.prototype.hasOwnProperty.call(s, 'luniSugerate') && !Object.prototype.hasOwnProperty.call(s, 'recomandat'));
+  eq('cod inexistent -> null, nu o sugestie inventata', cd.sugereaza(p.randuri, '9.9.9'), null);
+
+  // ── verificarea unei durate tastate: AVERTISMENT, nu refuz ──
+  eq('durata din interval', cd.inInterval(p.randuri, '2.1.16.1.1', 100), true);
+  eq('durata sub interval', cd.inInterval(p.randuri, '2.1.16.1.1', 20), false);
+  // „nu am putut verifica" != „e bine" — aceeasi regula ca la poarta fiscala si la drill-uri.
+  eq('cod necunoscut -> null (nu „true")', cd.inInterval(p.randuri, '9.9.9', 100), null);
+  eq('durata necitibila -> null (nu „false")', cd.inInterval(p.randuri, '2.1.16.1.1', 'x'), null);
+
+  // Catalogul NU e scris in modul: daca cineva il hardcodeaza, sugestiile devin fapte fiscale
+  // inventate. Decizia e explicata in antetul fisierului; poarta o tine.
+  const sursa = require('fs').readFileSync(require('path').join(RADACINA, 'src', 'catalogDurate.js'), 'utf8');
+  ok('modulul nu contine catalogul scris de mana (doar mecanismul)',
+    (sursa.match(/aniMin:\s*\d/g) || []).length === 0);
+  eq('catalog gol -> cautarea nu cade', cd.cauta(null, 'orice').length, 0);
+  eq('catalog gol -> sugestia da null', cd.sugereaza(undefined, '1.1.1'), null);
+}

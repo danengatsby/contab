@@ -1288,6 +1288,25 @@
             <label>Cont imobilizare <input name="cont" placeholder="2131" required /></label>
             <label>Cost (lei) <input name="cost" type="number" step="0.01" required /></label>
             <label>Durata (luni) <input name="durataLuni" type="number" placeholder="36" required /></label>
+            <!-- Ajutorul pentru durata: cauta in catalogul HG 2139/2004 si COMPLETEAZA campul de
+                 mai sus. Sugestie, nu impunere — se afiseaza intervalul legal, iar alegerea din
+                 el ramane a contabilului (e o decizie fiscala). Panoul apare doar daca adminul a
+                 incarcat catalogul; vezi public/mijloace.js. -->
+            <div class="full hidden" id="cdBox">
+              <label>Caută durata normală <span class="muted">(catalog HG 2139/2004 — cod sau denumire)</span>
+                <input id="cdQ" placeholder="ex. 2.1.16.1.1 sau „mașini de spălat”" autocomplete="off" /></label>
+              <div id="cdRez"></div>
+            </div>
+            <!-- Importul catalogului: administrator, fiindcă e stare GLOBALĂ (durata normală e
+                 aceeași pentru toate firmele) — aceeași regulă ca la planul de conturi.
+                 Ascuns pentru neadmini din app.js, ca `#accImportBox`. -->
+            <details class="full" id="cdImportBox">
+              <summary class="muted">Încarcă catalogul duratelor (HG 2139/2004) din CSV</summary>
+              <p class="muted">Catalogul <b>nu vine scris în aplicație</b>, deliberat: anexa are sute de coduri, iar un interval greșit ar produce ani de amortizare greșită fără să se vadă. Îl încarci din anexa oficială. Format: <code>cod;denumire;ani</code> — ex. <code>2.1.16.1.1;Mașini de spălat;8-12</code> (sau două coloane, <code>8;12</code>). Catalogul e comun tuturor firmelor, de aceea îl încarcă administratorul.</p>
+              <textarea id="cdCsvIn" rows="3" placeholder="2.1.16.1.1;Mașini de spălat;8-12"></textarea>
+              <div class="row"><input type="file" id="cdCsvFile" accept=".csv,.txt,.xlsx,.xls,.dbf" /><button type="button" id="cdImportBtn" class="btn small primary">Încarcă catalogul</button></div>
+              <div id="cdImportStare" class="status"></div>
+            </details>
             <label>Metoda de amortizare
               <select name="metoda">
                 <option value="liniara">Liniară</option>

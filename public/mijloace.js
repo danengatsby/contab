@@ -1,7 +1,7 @@
 'use strict';
 
 // Mijloace fixe: registru, fisa, amortizare lunara. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, toast, api } from './core.js';
+import { $$, $, H, fmt, toast, api, fileToCsv } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
 
 // ───────────────────────── MIJLOACE FIXE ─────────────────────────
@@ -35,6 +35,87 @@ async function loadAssets() {
   }));
 }
 onPeriodChange('mf', loadAssets);
+
+// ───────── Catalogul duratelor normale de functionare (HG 2139/2004) ─────────
+// Ajutor de completare pentru `durataLuni`, cel mai frecvent gresit camp al formularului: intra
+// direct in amortizare, deci in cheltuiala si in impozit, ani la rand si fara sa se vada.
+//
+// SUGESTIE, NU IMPUNERE: se afiseaza INTERVALUL legal, iar utilizatorul apasa capatul pe care il
+// alege. Nu completam noi o valoare „recomandata" — alegerea din interval e o optiune fiscala
+// (mai scurt = amortizare mai rapida = impozit mai mic acum) si ramane a contabilului.
+//
+// Panoul apare doar daca adminul a incarcat catalogul: fara date, un camp de cautare care nu
+// gaseste niciodata nimic arata ca o functie stricata.
+async function initCatalogDurate() {
+  const box = $('#cdBox'); const q = $('#cdQ'); const rez = $('#cdRez');
+  if (!box || !q || !rez) return;
+  try {
+    const r = await api('/api/catalog-durate');
+    if (!r || !r.total) return; // catalog neincarcat — panoul ramane ascuns
+    box.classList.remove('hidden');
+  } catch (e) { return; } // fara catalog, formularul merge exact ca inainte
+  let t = null;
+  q.addEventListener('input', () => {
+    clearTimeout(t);
+    t = setTimeout(async () => {
+      const text = q.value.trim();
+      if (text.length < 2) { rez.innerHTML = ''; return; }
+      try {
+        const r = await api('/api/catalog-durate?q=' + encodeURIComponent(text));
+        rez.innerHTML = r.rezultate.length
+          ? `<table><thead><tr><th>Cod</th><th>Denumire</th><th class="num">Interval legal</th><th>Pune în formular</th></tr></thead><tbody>${
+            r.rezultate.map((it) => {
+              const lmin = Math.round(it.aniMin * 12); const lmax = Math.round(it.aniMax * 12);
+              return `<tr><td class="acc">${H(it.cod)}</td><td>${H(it.denumire)}</td>
+                <td class="num">${H(String(it.aniMin))}–${H(String(it.aniMax))} ani</td>
+                <td><button type="button" class="linkbtn cd-set" data-luni="${lmin}">${lmin} luni</button>${
+                  lmax !== lmin ? ` · <button type="button" class="linkbtn cd-set" data-luni="${lmax}">${lmax} luni</button>` : ''}</td></tr>`;
+            }).join('')}</tbody></table>`
+          : '<p class="muted">Niciun cod potrivit.</p>';
+      } catch (e) { rez.innerHTML = '<p class="muted">Căutarea nu a răspuns.</p>'; }
+    }, 250);
+  });
+  // Delegare: tabelul se redeseneaza la fiecare cautare, deci ascultatorii pusi pe randuri ar
+  // trebui relegati de fiecare data (si s-ar acumula daca uiti sa-i scoti).
+  rez.addEventListener('click', (e) => {
+    const b = e.target.closest('.cd-set'); if (!b) return;
+    const f = $('#assetForm'); if (!f || !f.durataLuni) return;
+    f.durataLuni.value = b.dataset.luni;
+    f.durataLuni.focus();
+    toast('Durata completată: ' + b.dataset.luni + ' luni — o poți schimba');
+  });
+}
+initCatalogDurate();
+
+// Importul catalogului (administrator — stare globala, ca planul de conturi).
+if ($('#cdCsvFile')) {
+  $('#cdCsvFile').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (f) { try { $('#cdCsvIn').value = await fileToCsv(f); } catch (err) { toast(err.message, true); } }
+  });
+}
+if ($('#cdImportBtn')) {
+  $('#cdImportBtn').addEventListener('click', async () => {
+    const csv = ($('#cdCsvIn').value || '').trim();
+    if (!csv) return toast('Lipește sau alege un fișier CSV', true);
+    const stare = $('#cdImportStare');
+    try {
+      const r = await api('/api/catalog-durate/import', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }),
+      });
+      // Randurile respinse se ARATA, cu numarul liniei. Un catalog incarcat pe jumatate fara sa
+      // spuna care jumatate l-ar face pe contabil sa caute degeaba un cod care n-a intrat.
+      stare.className = 'status ok';
+      stare.innerHTML = `${r.importate} poziții încărcate (${r.total} în catalog).`
+        + (r.respinse && r.respinse.length
+          ? ` <b>${r.respinse.length} rânduri respinse:</b><br>` + r.respinse
+            .map((x) => `linia ${H(String(x.linie))}${x.cod ? ' (' + H(x.cod) + ')' : ''} — ${H(x.motiv)}`).join('<br>')
+          : '');
+      $('#cdCsvIn').value = '';
+      initCatalogDurate(); // catalogul tocmai a devenit disponibil: arata panoul de cautare
+    } catch (err) { stare.className = 'status err'; stare.textContent = err.message; }
+  });
+}
 function lsQuery() { const f = $('#lsForm'); return 'principal=' + f.principal.value + '&months=' + f.months.value + '&rate=' + f.rate.value + '&method=' + f.method.value; }
 $('#lsForm').addEventListener('submit', async (e) => {
   e.preventDefault();
