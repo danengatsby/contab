@@ -4,6 +4,14 @@
 // ATENTIE la nume: „fluxuri" si „capitaluri" de aici NU sunt formularele F30/F40 din setul ANAF
 // (acolo F30 = Date informative, F40 = Situatia activelor imobilizate). Sunt componente OMFP
 // 1802/2014 fara numar de formular electronic.
+//
+// Si mai tare decat „au alt inteles": in schemele pe care le depune aplicatia — s1120, s1121,
+// s1122 — elementele F30 si F40 NU EXISTA. Validatorul oficial respinge un `<F30/>` adaugat
+// exact cum respinge un `<F99/>` inventat („element necunoscut"), pe toate trei. Sondat
+// 2026-08-06, consemnat in docs/validare-oficiala.md. Deci nu exista nici macar tentatia de a
+// „completa setul": ce se depune electronic e F10 + F20, iar tabelele de aici merg ca atasament,
+// la entitatile care le datoreaza (microintreprinderile sunt scutite). Nu pune codurile astea
+// in textele catre utilizator — au fost acolo si spuneau ceva fals despre ce se depune.
 
 const { C, clean, finish, header, newDoc, table } = require('./helpers');
 const { fmt, periodLabel } = require('../util');
