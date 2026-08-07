@@ -12,13 +12,24 @@ export function setLivrabileDeps(d) { D = d; }
 
 // ───────────────────────── LIVRABILE ─────────────────────────
 onPeriodChange('livrabile', loadLivrabile);
+// Starea unui livrabil, spusa in doua feluri: `t` = eticheta de breasla (cea de pana acum), `ts` =
+// ce inseamna ea pentru cineva care nu e contabil. „recap (→ ANAF)" nu spune NIMIC unui patron —
+// si tocmai el se uita in aceasta lista ca sa afle ce are de facut luna asta. Semnificatiile sunt
+// cele din antetul lui `livrabile()` (src/reporting.js), nu inventate aici.
 const STATUS = {
-  ok: { t: 'disponibil', c: 'var(--accent)', bg: '#eef6f2' },
-  recap: { t: 'recap (→ ANAF)', c: '#8a6d00', bg: '#fdf6e3' },
-  regim: { t: 'după regim', c: '#5a4', bg: '#eef6f2' },
-  anaf: { t: 'emis de ANAF', c: '#6b7280', bg: '#eef1f7' },
-  manual: { t: 'pregătit de firmă', c: '#6b7280', bg: '#eef1f7' },
+  ok: { t: 'disponibil', ts: 'gata, îl poți descărca', c: 'var(--accent)', bg: '#eef6f2' },
+  recap: { t: 'recap (→ ANAF)', ts: 'se depune la ANAF', c: '#8a6d00', bg: '#fdf6e3' },
+  regim: { t: 'după regim', ts: 'doar dacă e cazul firmei tale', c: '#5a4', bg: '#eef6f2' },
+  anaf: { t: 'emis de ANAF', ts: 'îl emite ANAF, nu tu', c: '#6b7280', bg: '#eef1f7' },
+  manual: { t: 'pregătit de firmă', ts: 'îl faci tu, în afara aplicației', c: '#6b7280', bg: '#eef1f7' },
 };
+/** Eticheta de stare, in ambele variante: CSS alege care se vede (`.adv` / `.simple-only-inline`).
+ *  Functie pura, exportata pentru test/frontend.mjs — un `ts` uitat la o stare noua ar lasa modul
+ *  simplu cu eticheta goala, iar in modul expert n-ar avea cum sa se vada. */
+export function statusLabel(st) {
+  const x = STATUS[st] || STATUS.manual;
+  return `<span class="adv">${x.t}</span><span class="simple-only-inline">${x.ts}</span>`;
+}
 function updateF4109Link() {
   const a = $('#f4109Pdf'); if (!a) return;
   const p = pget('livrabile') || new Date().toISOString().slice(0, 7);
@@ -49,13 +60,17 @@ async function loadLivrabile() {
       <tr class="total"><td>TOTAL</td><td class="num">${fmt(s.obligatii.total)}</td></tr>
      </table></div>`;
   $('#livrabileLegend').innerHTML = Object.keys(STATUS).map((k) =>
-    `<span data-u="u146"><b data-style="color:${STATUS[k].c}">●</b> ${STATUS[k].t}</span>`).join('');
-  const badge = (st) => { const x = STATUS[st] || STATUS.manual; return `<span data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${x.t}</span>`; };
+    `<span data-u="u146"><b data-style="color:${STATUS[k].c}">●</b> ${statusLabel(k)}</span>`).join('');
+  const badge = (st) => { const x = STATUS[st] || STATUS.manual; return `<span data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${statusLabel(st)}</span>`; };
   let sec = '';
   const rows = data.list.map((it) => {
     const head = it.sectiune !== sec ? (sec = it.sectiune, `<tr><td colspan="4" data-u="u147">${it.sectiune}</td></tr>`) : '';
     const links = it.links.map((l) => `<a class="linkbtn" href="${l.href}" target="_blank">${l.label}</a>`).join(' · ') || '<span class="muted">—</span>';
-    return head + `<tr><td>${it.nr}</td><td>${H(it.nume)}${it.obs ? `<br><span class="muted" data-u="u148">${H(it.obs)}</span>` : ''}</td><td>${badge(it.status)}</td><td>${links}</td></tr>`;
+    // `obs` vine de la server (src/reporting.js) si e nota TEHNICA a randului: „XML de validat cu
+    // DUKIntegrator", „Depunerea XML + recipisa la ANAF". Deci `.adv` — in modul simplu intelesul
+    // il duce deja eticheta de stare, in cuvintele omului („se depune la ANAF", „doar daca e cazul
+    // firmei tale"). Fara asta, jargonul intra in pagina pe alta usa decat index.html.
+    return head + `<tr><td>${it.nr}</td><td>${H(it.nume)}${it.obs ? `<br><span class="muted adv" data-u="u148">${H(it.obs)}</span>` : ''}</td><td>${badge(it.status)}</td><td>${links}</td></tr>`;
   }).join('');
   $('#livrabileList').innerHTML = `<table><thead><tr><th>#</th><th>Document / declarație</th><th>Statut</th><th>Descărcare</th></tr></thead><tbody>${rows}</tbody></table>`;
   loadDeclRegister(p);

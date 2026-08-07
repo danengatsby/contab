@@ -1019,6 +1019,11 @@ details[open]>.sec-sum::before{transform:rotate(90deg)}
 .gloss-item p{margin:3px 0 0;font-size:13px;color:var(--muted)}
 
 /* ── Rezumat executiv (mod simplu): tile-uri clicabile, KPI-urile tehnice ascunse ── */
+/* `.simple-only` forteaza `display:block`, deci nu poate fi folosita in mijlocul unei fraze sau
+   pe o eticheta de stare: ar rupe randul in doua. Varianta inline exista pentru perechile
+   „acelasi lucru, spus in doua feluri" — textul tehnic `.adv` si cel pe intelesul tuturor. */
+.simple-only-inline{display:none}
+.simple-ui .simple-only-inline{display:inline}
 .simple-only{display:none!important}
 .simple-ui .simple-only{display:block!important}
 .simple-ui #kpis{display:none}

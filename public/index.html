@@ -412,7 +412,10 @@
       </div>
       <div id="kpis" class="kpis"></div>
       <div class="card" id="yoyCard">
-        <h3>Comparație an-la-an <span class="muted" data-u="u70">(față de exercițiul precedent)</span></h3>
+        <!-- „exercițiul precedent" → „anul trecut": aceeași informație, fără termenul pe care chiar
+             dicționarul aplicației îl explică drept „anul contabil al firmei… e același lucru".
+             Aici nu se pierde nimic pentru un contabil, deci nu e nevoie de două variante. -->
+        <h3>Comparație an-la-an <span class="muted" data-u="u70">(față de anul trecut)</span></h3>
         <div id="yoyView"></div>
       </div>
       <div class="card" id="forecastCard">
@@ -436,7 +439,7 @@
       </div>
       <div class="grid2">
         <div class="card"><h3>Top datorii (furnizori)</h3><div id="topDatorii"></div></div>
-        <div class="card"><h3>Aging — vechimea soldurilor</h3><div id="chartAgingBars"></div></div>
+        <div class="card"><h3><span class="adv">Aging — vechimea soldurilor</span><span class="simple-only-inline">Vechimea sumelor de încasat și de plătit</span></h3><div id="chartAgingBars"></div></div>
       </div>
       <div class="grid2">
         <div class="card"><h3>🕘 Ultimele operațiuni</h3><div id="ultimeleOps"></div></div>
@@ -848,13 +851,20 @@
     <!-- ─────────────── TVA / D300 ─────────────── -->
     <section id="tab-tva" class="tab">
       <div class="explain"><span class="ei">🧾</span><p><b>Ce e asta:</b> aici vezi TVA-ul lunii — cât ai colectat din vânzări, cât ai dedus din cumpărări și cât ai de plată (sau de recuperat) la stat. De aici pregătești deconturile D300 și D394.</p></div>
+      <!-- Aceeasi avertizare, doua adancimi. Ce trebuie sa afle un patron e o propozitie: „sunt
+           ciorne, arata-le contabilului". Restul — ce rubrici completeaza aplicatia si ce ramane
+           manual, plus validatoarele oficiale — e treaba celui care chiar depune declaratia, si
+           lua o treime din primul ecran de telefon inaintea oricarei cifre. -->
       <div class="warnbox"><span class="wi">⚠️</span><div>
-        <b>D300 / D394 — ciorne, de validat înainte de depunere.</b> Aplicația completează rubricile
+        <b>D300 / D394 — ciorne, de validat înainte de depunere.</b>
+        <p class="simple-only">Aplicația le completează singură din documentele înregistrate, dar sunt
+        <b>ciorne</b>: arată-le contabilului înainte să le depui la ANAF.</p>
+        <p class="adv">Aplicația completează rubricile
         <b>uzuale</b>: <b>D300</b> — livrări și achiziții taxabile defalcate pe cote (21% / 11% / scutit),
         TVA colectată/deductibilă, de plată/de recuperat; <b>D394</b> — agregarea facturilor pe partener,
         cu defalcare pe cote. Rubricile speciale (ajustări, regularizări, taxare inversă intra-UE pe rânduri
         dedicate, bonuri fiscale, facturi simplificate) se completează manual dacă e cazul. Validează cu
-        <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică cu un contabil înainte de depunerea în SPV.
+        <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică cu un contabil înainte de depunerea în SPV.</p>
       </div></div>
       <div class="toolbar">
         <h2>TVA de plată <span class="muted" data-u="u70">(decont <abbr title="Decontul de TVA (lunar sau trimestrial)">D300</abbr> / <abbr title="Declarația informativă privind livrările și achizițiile pe teritoriul României">D394</abbr>)</span></h2>
@@ -879,13 +889,18 @@
       <div class="card"><div class="card-head"><h3>Jurnal de vânzări (TVA colectată)</h3><a id="tvaVanzariCsv" class="btn small" target="_blank">⬇ CSV</a></div><div id="tvaVanzari" class="tablewrap"></div></div>
       <div class="card"><div class="card-head"><h3>Jurnal de cumpărări (TVA deductibilă)</h3><a id="tvaCumparariCsv" class="btn small" target="_blank">⬇ CSV</a></div><div id="tvaCumparari" class="tablewrap"></div></div>
       <div class="card">
-        <h3>Pro-rata TVA (art. 300) — plătitori cu regim mixt</h3>
-        <p class="muted">Dacă ai și operațiuni <b>fără drept de deducere</b> (scutite: medical, financiar, chirii scutite…), setează <b>pro-rata provizorie</b> în Setări → Datele firmei și bifează „achiziție cu destinație mixtă" pe facturile comune — TVA-ul se deduce automat doar în procentul setat, restul intră în cost. La final de an, aici vezi pro-rata <b>definitivă</b> și regularizarea de postat.</p>
+        <!-- Cardul RAMANE in modul simplu, doar explicatia se schimba: pro-rata nu se aplica
+             majoritatii firmelor (si atunci scrie chiar asta), dar acolo unde se aplica, cifra de
+             la final de an e reala si a o ascunde ar fi mai rau decat un titlu greu. -->
+        <h3>Pro-rata TVA <span class="adv">(art. 300) — plătitori cu regim mixt</span></h3>
+        <p class="muted simple-only">Te privește doar dacă vinzi și lucruri <b>fără TVA</b> (medical, financiar, unele chirii). Atunci nu-ți poți deduce tot TVA-ul de la furnizori, ci doar partea care revine activității cu TVA. Dacă nu e cazul firmei tale, scrie mai jos.</p>
+        <p class="muted adv">Dacă ai și operațiuni <b>fără drept de deducere</b> (scutite: medical, financiar, chirii scutite…), setează <b>pro-rata provizorie</b> în Setări → Datele firmei și bifează „achiziție cu destinație mixtă" pe facturile comune — TVA-ul se deduce automat doar în procentul setat, restul intră în cost. La final de an, aici vezi pro-rata <b>definitivă</b> și regularizarea de postat.</p>
         <div id="proRataView" class="tablewrap"></div>
       </div>
       <div class="card" id="tvaIncasareCard">
-        <h3>TVA la încasare — exigibilitate automată</h3>
+        <h3>TVA la încasare <span class="adv">— exigibilitate automată</span></h3>
         <p class="muted hidden" id="tvaIncasareNA">Nu e cazul: firma nu aplică TVA la încasare și nu ai TVA neexigibilă în evidență. Firmele cu TVA exigibil la facturare sar peste această secțiune.</p>
+        <p class="muted simple-only">Regim special: TVA-ul devine datorat statului abia când chiar <b>încasezi</b> factura, nu când o emiți. Dacă firma ta e pe el, aici înregistrezi încasarea și aplicația mută singură TVA-ul din „de încasat" în „de plătit".</p>
         <p class="muted adv">La încasarea/plata unei facturi cu TVA neexigibilă (4428), introdu suma brută; TVA-ul se calculează automat (brut × cotă / (100+cotă)) și se postează nota: încasare <b>4428 = 4427</b>, plată <b>4426 = 4428</b>.</p>
         <form id="exigForm" class="dyn">
           <label>Tip
@@ -1056,7 +1071,9 @@
       </div>
       <div class="cyclemap" data-step="livrabile"></div>
       <div class="explain"><span class="ei">📤</span><p><b>Ultimul pas:</b> ce predai mai departe. Aici găsești declarațiile lunii pregătite pentru ANAF (D300, D394, D112, recapitulări) și borderoul — gata de descărcat și depus. Se generează automat din tot ce ai înregistrat în lună. <b>SAF-T (D406)</b> și <b>răspunsurile din SPV</b> au paginile lor, alături.</p></div>
-      <div class="warnbox"><span class="wi">⚠️</span><div><b>Înainte de depunere:</b> declarațiile (D112, D300, SAF-T…) sunt <b>ciorne</b>. Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică-l cu un contabil înainte de depunerea în SPV.</div></div>
+      <div class="warnbox"><span class="wi">⚠️</span><div><b>Înainte de depunere:</b> declarațiile (D112, D300, SAF-T…) sunt <b>ciorne</b>.
+        <span class="simple-only-inline">Arată-le contabilului înainte să le depui la ANAF.</span>
+        <span class="adv">Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică-l cu un contabil înainte de depunerea în SPV.</span></div></div>
       <div id="livrabileSumar" class="grid2"></div>
       <div class="card">
         <div id="livrabileLegend" class="muted" data-u="u72"></div>
@@ -1098,11 +1115,14 @@
         <h3>Ce conține și când se depune</h3>
         <p class="muted"><b>D406 se depune lunar</b> (firmele cu TVA lunară) sau <b>trimestrial</b> (TVA trimestrială / neplătitori), până la ultima zi a lunii următoare — folosește XML-ul pe luna aleasă. Fișierul conține: Header, conturile din planul contabil cu solduri, clienți, furnizori, cotele de TVA, nomenclatorul de produse, mijloacele fixe, stocul final, toate articolele contabile ca tranzacții, facturile de vânzare/cumpărare, plățile și mișcările de stoc (SourceDocuments).</p>
         <div class="warnbox"><span class="wi">⚠️</span><div>
-          <b>SAF-T este o ciornă structurată, nu un fișier XSD-validat oficial.</b> Conține secțiunile schemei
+          <b>SAF-T este o ciornă structurată, nu un fișier XSD-validat oficial.</b>
+          <p class="simple-only">Fișierul se construiește singur din tot ce ai înregistrat, dar e o
+          <b>ciornă</b>: înainte să-l depui, dă-l contabilului să-l treacă prin verificatorul oficial ANAF.</p>
+          <p class="adv">Conține secțiunile schemei
           <b>D406 v2.4.x</b>: conturi cu solduri, clienți/furnizori, cote TVA, <b>UOMTable</b>, <b>MovementTypeTable</b>,
           nomenclator produse, mijloace fixe, stoc final, <b>Owners</b> (asociații din Setări → Datele firmei; la PFA — titularul)
           și toate tranzacțiile. <b>Înainte de depunere, validează fișierul cu modulul oficial ANAF (Soft-J / DUKIntegrator)</b> —
-          nomenclatoarele de coduri oficiale (taxonomii ANAF) pot cere ajustări punctuale.
+          nomenclatoarele de coduri oficiale (taxonomii ANAF) pot cere ajustări punctuale.</p>
         </div></div>
         <h3>Ce pleacă în fișier (anul ales)</h3>
         <div id="saftView"></div>
@@ -1347,11 +1367,15 @@
       </div>
       <div class="explain"><span class="ei">👥</span><p><b>Ce e asta:</b> salariile lunii alese — brutul, taxele (CAS, CASS, impozit) și suma netă de plată, pentru fiecare angajat. De aici înregistrezi statul în contabilitate, plătești salariile și scoți D112. Datele angajaților se completează în pagina <b>„Angajați"</b>.</p></div>
       <div class="warnbox"><span class="wi">⚠️</span><div>
-        <b>D112 — ciornă, de validat înainte de depunere.</b> Aplicația completează creanțele fiscale
+        <b>D112 — ciornă, de validat înainte de depunere.</b>
+        <p class="simple-only">Declarația de salarii se completează singură din statul de plată, dar e o
+        <b>ciornă</b>: concediile medicale, scutirile speciale și avantajele în natură se verifică separat,
+        cu contabilul, înainte de depunere.</p>
+        <p class="adv">Aplicația completează creanțele fiscale
         (CAS 25% / CASS 10% / impozit 10% / CAM 2,25%) și <b>evidența nominală per angajat</b> din statul
         de plată. Situațiile speciale (concedii medicale și indemnizații, scutiri sectoriale, corecții,
         avantaje în natură) se verifică separat. Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b>
-        și confirmă sumele cu un contabil înainte de depunere.
+        și confirmă sumele cu un contabil înainte de depunere.</p>
       </div></div>
       <div class="card">
         <div class="card-head">
@@ -1849,7 +1873,9 @@ Cu stimă,
         <h2>✅ Checklist de conformitate ANAF</h2>
         <p class="muted">Aplicația te aduce aproape de capăt (corect contabil + formatele ANAF), dar ultimii pași rămân la tine. Parcurge lista înainte de depuneri:</p>
         <ul class="checklist">
-          <li><b>Validează declarațiile</b> (D300, D394, D112, SAF-T) cu <b>DUKIntegrator</b> sau schema <b>XSD ANAF</b> curentă — sunt ciorne până la validare.</li>
+          <li><b>Validează declarațiile</b> (D300, D394, D112, SAF-T)
+            <span class="simple-only-inline">cu verificatorul oficial ANAF, prin contabil — sunt ciorne până la validare.</span>
+            <span class="adv">cu <b>DUKIntegrator</b> sau schema <b>XSD ANAF</b> curentă — sunt ciorne până la validare.</span></li>
           <li><b>Verifică cu un contabil autorizat</b> sumele și încadrările înainte de depunere.</li>
           <li><b>e-Factura (B2B):</b> trimite facturile emise în <b>SPV</b> (necesită certificat digital + aplicație OAuth).</li>
           <li><b>Numerotare</b> documente de vânzare în <b>serie continuă</b>, fără goluri.</li>

@@ -303,7 +303,7 @@ function renderYoY(yo) {
     ${row('Rezultat net', yo.profit, yo.profitPrev, yo.profitDelta, true)}
     <tr><td>Marjă netă (%)</td><td class="num">${yo.marjaPrev == null ? '—' : fmt(yo.marjaPrev) + '%'}</td><td class="num">${yo.marja == null ? '—' : fmt(yo.marja) + '%'}</td><td class="num">${yo.marja != null && yo.marjaPrev != null ? delta(Math.round((yo.marja - yo.marjaPrev) * 100) / 100, true) : '—'}</td></tr>
     </tbody></table>
-    <p class="muted" data-u="u35">Comparația cumulează tot exercițiul curent față de cel precedent. La marjă, variația e în puncte procentuale.</p>`;
+    <p class="muted" data-u="u35">Comparația cumulează tot anul curent față de cel precedent. La marjă, variația e în puncte procentuale.</p>`;
 }
 // Bandă de alerte acționabile (stil command-center) — calculată din datele deja primite
 function renderDashAlerts(k) {
