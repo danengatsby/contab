@@ -220,7 +220,12 @@ async function intraCa(user) {
   await scrie('#loginForm [name="username"]', user, 55);
   await scrie('#loginForm [name="password"]', PW, 25);
   await pg.press('#loginForm [name=password]', 'Enter');
-  await pg.waitForSelector('#loginOverlay.hidden', { timeout: 20000 }).catch(() => {});
+  // `{ state: 'hidden' }` EXPLICIT — capcana 4 din antet, pe alt element si cu alt simptom.
+  // `waitForSelector('#loginOverlay.hidden')` cere implicit starea „visible", iar un element
+  // `.hidden` nu e vizibil NICIODATA: asteptarea mergea pana la timeout, `.catch()` o inghitea,
+  // si scena raporta reusita. Costul nu se vedea in jurnal, ci in film — 20 de secunde de ecran
+  // de autentificare, fara voce peste ele, de trei ori (10% din durata totala).
+  await pg.waitForSelector('#loginOverlay', { state: 'hidden', timeout: 20000 });
   await asteapta(2200);
   await inchideModale(); await unelte();
 }
@@ -581,8 +586,28 @@ await scena('s39-final', async () => {
     'patronul aduce documentele · contabilul verifică și semnează', 9000);
 });
 
-fs.writeFileSync('/w/out/timeline.json', JSON.stringify({ scene: timeline, total: clipa() }, null, 1));
+const TOTAL = clipa();
+fs.writeFileSync('/w/out/timeline.json', JSON.stringify({ scene: timeline, total: TOTAL }, null, 1));
 console.log(jurnal.join('\n'));
-console.log('durata inregistrarii: %s s', clipa().toFixed(1));
+console.log('durata inregistrarii: %s s', TOTAL.toFixed(1));
+
+// ── TIMPUL MORT, raportat de filmare ────────────────────────────────────────
+// Ce nu se vede in jurnal: o scena poate „reusi" si totusi sa lase ecranul inghetat, daca intre
+// ea si urmatoarea se face munca fara voce peste ea (autentificare, schimbare de actor) sau daca
+// o asteptare merge pana la timeout. Asa au ajuns 76 de secunde moarte, 10% din film, si s-au
+// vazut abia la vizionare — cu trei intervale de cate 25 de secunde de ecran de login.
+// De aceea filmarea isi masoara singura golurile: jurnalul spune ce a reusit, asta spune ce se VEDE.
+const PRAG = 6;
+const goluri = timeline.map((s, i) => {
+  const urm = i + 1 < timeline.length ? timeline[i + 1].start : TOTAL;
+  return { id: s.id, gol: Number((urm - s.start - (DUR[s.id] || 0) - 1.5).toFixed(1)) };
+}).filter((x) => x.gol > PRAG);
+if (goluri.length) {
+  console.log('\n⚠ ECRAN STATIC, fara voce peste el (peste %s s):', PRAG);
+  goluri.forEach((x) => console.log('   %s — %s s', x.id.padEnd(24), x.gol));
+  console.log('   TOTAL timp mort: %s s din %s s', goluri.reduce((t, x) => t + x.gol, 0).toFixed(0), TOTAL.toFixed(0));
+} else {
+  console.log('\n✓ niciun ecran static peste %s s', PRAG);
+}
 await ctx.close();
 await b.close();
