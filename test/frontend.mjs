@@ -705,6 +705,26 @@ section('Calitatea citirii automate: verdictul și raportul (docflow.js / entrie
   const hAuto = docflow.calitateHtml({ scor: 100, controale: [] }, { entryId: 'e42' });
   ok('postarea automată se anunță ca atare, cu articolul creat', hAuto.includes('postat automat') && hAuto.includes('e42'));
   eq('fără verdict nu randează nimic', docflow.calitateHtml(null), '');
+}
+
+section('Gazda formularului unic de înregistrare (docflow.js)');
+{
+  // Formularul de înregistrare e UNUL singur în aplicație, mutat între taburi. Dacă `host` nu e
+  // recunoscut, cade pe „documente" — adică formularul se deschide pe ALT tab decât cel la care
+  // se uită omul, fără nicio eroare. Defectul e tăcut prin construcție, deci se prinde doar aici.
+  eq('Emite factură își are gazda ei', docflow.formHostSelector('emite'), '#formHostEmite');
+  eq('Bancă/Casă își are gazda ei', docflow.formHostSelector('cashbook'), '#formHostCash');
+  eq('Adaugă document primit', docflow.formHostSelector('documente'), '#formHostDoc');
+  eq('fără host specificat: tabul documentelor', docflow.formHostSelector(undefined), '#formHostDoc');
+  // Cele trei gazde trebuie să fie DISTINCTE: o greșeală de copy-paste în tabel (două intrări cu
+  // același selector) ar face ca butoanele de pe Bani să deschidă formularul pe tabul documentelor.
+  const gazde = ['documente', 'emite', 'cashbook'].map(docflow.formHostSelector);
+  eq('fiecare tab are gazda lui, nu una comună', new Set(gazde).size, 3);
+  // Gazdele și textele de așteptare trebuie să EXISTE în pagină — altfel `mountForm` nu are unde
+  // muta formularul și butonul nu face nimic vizibil.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  gazde.forEach((sel) => ok('gazda ' + sel + ' există în index.html', html.includes('id="' + sel.slice(1) + '"')));
+  ['noDoc', 'noDocEmit', 'noDocCash'].forEach((id) => ok('textul de așteptare #' + id + ' există', html.includes('id="' + id + '"')));
 
   // Raportul pe furnizori / formate / controale
   const raport = {

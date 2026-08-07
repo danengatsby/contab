@@ -1284,3 +1284,30 @@ section('Incasare: nicio plata fara parte contractanta identificata');
     && plansMod.MOTIV_PLATI_SUSPENDATE.length > 40);
 }
 
+
+section('Poarta: butoanele de mișcări de bani trimit tipuri de document care există');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const html = fsx.readFileSync(pth.join(RADACINA, 'public', 'index.html'), 'utf8');
+  // Butoanele din registrul Banca/Casa deschid formularul unic pe un tip anume (`data-tip`).
+  // `renderFields` face `META.types.find(...)` si apoi `tip.fields.forEach` — deci un `data-tip`
+  // gresit nu da un buton inert, ci o EXCEPTIE la clic, cu formularul pe jumatate deschis.
+  // Legatura e intre HTML si `src/documentTypes/`, adica exact genul de pereche pe care n-o
+  // verifica nici testele de frontend (nu vad serverul), nici cele HTTP (nu vad pagina).
+  const tipuriDinPagina = [...new Set([...html.matchAll(/class="[^"]*\bcbact\b[^"]*"[^>]*data-tip="([^"]+)"/g)].map((m) => m[1]))];
+  ok('poarta chiar vede butoanele de bani (nu o lista goala)', tipuriDinPagina.length >= 4);
+  const { getType } = require(pth.join(RADACINA, 'src', 'documentTypes'));
+  const necunoscute = tipuriDinPagina.filter((t) => !getType(t));
+  ok('fiecare buton de mișcare de bani are tip real'
+    + (necunoscute.length ? ' — INEXISTENTE: ' + necunoscute.join(', ') : ''), necunoscute.length === 0);
+  // ...si chiar tipuri de TREZORERIE: un `factura_cumparare_marfuri` pus din greseala aici ar trece
+  // de poarta de mai sus, dar ar aseza o factura in registrul de casa — buton plauzibil, rezultat
+  // gresit. Grupul vine din definitia tipului, nu dintr-o lista scrisa aici de mana.
+  const straine = tipuriDinPagina.filter((t) => getType(t) && getType(t).grup !== 'Trezorerie');
+  ok('butoanele deschid doar mișcări de trezorerie'
+    + (straine.length ? ' — STRAINE: ' + straine.join(', ') : ''), straine.length === 0);
+  ok('cele două mișcări de bază sunt acolo',
+    tipuriDinPagina.includes('incasare_client') && tipuriDinPagina.includes('plata_furnizor'));
+  // Poarta trebuie sa POATA pica: pe un tip inexistent si pe unul din alt grup, verdictul se schimba.
+  ok('poarta chiar distinge cazurile', !getType('tip_inexistent_xyz') && getType('factura_cumparare_marfuri').grup !== 'Trezorerie');
+}
