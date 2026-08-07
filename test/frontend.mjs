@@ -409,6 +409,66 @@ section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
   eq('lipsa listei nu aruncă', dashboard.deFacutHtml(undefined, AZI), '');
 }
 
+section('Modul simplu filtrează LIMBAJUL, nu doar meniul');
+{
+  // Constatarea reparată aici: `.simple-ui` ascundea 9 taburi și 28 de elemente, dar ecranele pe
+  // care aterizai rămâneau identice — pe TVA, o casetă de 288px despre „taxare inversă intra-UE pe
+  // rânduri dedicate" și „DUKIntegrator / XSD ANAF", adică o treime din primul ecran de telefon
+  // înaintea oricărei cifre. Perechea e mereu aceeași: `.adv` pentru textul de breaslă,
+  // `.simple-only` / `.simple-only-inline` pentru același lucru spus pe înțelesul tuturor.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+
+  // Fără regula CSS, `.simple-only-inline` e text care se vede în AMBELE moduri: nu dispare nimic,
+  // ci apar două formulări una după alta. Eșecul e vizual, deci exact genul care scapă.
+  ok('.simple-only-inline e ascunsă implicit', /\.simple-only-inline\{display:none\}/.test(css));
+  ok('...și apare în modul simplu, ca inline (nu block, ar rupe fraza)', /\.simple-ui \.simple-only-inline\{display:inline\}/.test(css));
+
+  // Termenii care NU au ce căuta în fața unui necontabil trebuie să stea într-un element `.adv`.
+  // Scanarea e pe TEXT: fiecare termen apare undeva în pagină, dar niciodată în afara unui `.adv`
+  // sau a unui tab deja ascuns în modul simplu.
+  const TABURI_ADV = new Set(['jurnal', 'carte', 'balanta', 'storno', 'inchideri', 'inchidere-an', 'anexe', 'plan', 'audit']);
+  // Secțiunile ascunse integral în modul simplu: ce scrie acolo nu ajunge la un necontabil.
+  const sectiuniVizibile = html.split(/<section id="tab-/).slice(1)
+    .filter((s) => !TABURI_ADV.has(s.slice(0, s.indexOf('"'))));
+  // Elimină conținutul marcat `.adv` — ce rămâne e exact ce vede un necontabil.
+  const vizibilInSimplu = sectiuniVizibile.join('\n')
+    .replace(/<(\w+)[^>]*class="[^"]*\badv\b[^"]*"[^>]*>[\s\S]*?<\/\1>/g, ' ');
+  for (const termen of ['DUKIntegrator', 'XSD ANAF', 'taxare inversă intra-UE', 'exigibilitate automată', 'art. 300']) {
+    ok('„' + termen + '" nu ajunge la un necontabil', !vizibilInSimplu.includes(termen));
+    ok('...dar rămâne pentru contabil', html.includes(termen));
+  }
+  // Poarta trebuie să POATĂ pica: un termen chiar prezent în afara oricărui `.adv` e găsit.
+  ok('poarta chiar vede textul vizibil', vizibilInSimplu.includes('Ce vrei să faci?'));
+
+  // Etichetele de stare din „Declarații ANAF": „recap (→ ANAF)" nu spune nimic unui patron, și
+  // tocmai el se uită în listă ca să afle ce are de făcut luna asta.
+  const eticheta = livrabile.statusLabel('recap');
+  ok('starea tehnică rămâne, marcată .adv', eticheta.includes('class="adv"') && eticheta.includes('recap (→ ANAF)'));
+  ok('...dublată de una pe înțelesul tuturor', eticheta.includes('class="simple-only-inline"') && eticheta.includes('se depune la ANAF'));
+  // O stare necunoscută nu are voie să lase eticheta goală în vreunul dintre moduri.
+  ok('o stare necunoscută cade pe ceva lizibil', livrabile.statusLabel('inexistent').includes('simple-only-inline'));
+  // Poarta pe SURSĂ: o stare nouă adăugată fără `ts` ar arăta gol în modul simplu, iar în expert
+  // n-ar avea cum să se vadă — defect tăcut exact în modul pe care îl apără această secțiune.
+  const srcLivr = fs.readFileSync(path.join(PUB, 'livrabile.js'), 'utf8');
+  const bloc = (srcLivr.match(/const STATUS = \{[\s\S]*?\n\};/) || [''])[0];
+  ok('poarta chiar vede tabelul de stări', bloc.includes('recap:'));
+  const stari = [...bloc.matchAll(/^\s{2}(\w+): \{([^}]*)\}/gm)];
+  ok('fiecare stare are și eticheta pe înțelesul tuturor', stari.length >= 5 && stari.every((m) => /\bts:\s*'/.test(m[2])));
+
+  // Punctul ORB al porții de mai sus, găsit la verificarea în browser: scanarea de mai sus citește
+  // `index.html`, dar jargonul mai intră în pagină și pe altă ușă — textul venit de la SERVER.
+  // `obs` din lista de livrabile (src/reporting.js) purta chiar „XML de validat cu DUKIntegrator"
+  // și se randa în modul simplu, sub un titlu de declarație, fără ca nimic din HTML să-l trădeze.
+  // Deci a doua ancoră, pe locul de RANDARE: nota tehnică a rândului trăiește într-un `.adv`.
+  const randObs = (srcLivr.split('\n').find((l) => l.includes('it.obs ?')) || '');
+  ok('poarta chiar vede randarea notei tehnice', randObs !== '');
+  ok('nota tehnică a livrabilului se randează în .adv', /class="[^"]*\badv\b/.test(randObs));
+  // Textul incriminat chiar există pe server — altfel poarta ar apăra un caz imaginar.
+  const rep = fs.readFileSync(path.join(ROOT, 'src', 'reporting.js'), 'utf8');
+  ok('...iar server-ul chiar trimite jargon în acel câmp', /'XML de validat cu DUKIntegrator[^']*'/.test(rep));
+}
+
 section('Balanță: diagnosticul dezechilibrului');
 // Cand balanta nu se inchide, mesajul spune CARE dintre cele patru egalitati e stricata si
 // trimite contabilul spre cauza. O clasificare gresita il pune sa caute in locul nepotrivit.
