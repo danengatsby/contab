@@ -24,6 +24,32 @@ const TIPURI = {
 };
 const STATUSES = ['nedepusa', 'generata', 'depusa', 'eroare', 'scutita'];
 
+/** De unde se descarca fiecare declaratie, pe perioada ei. Sta LANGA `TIPURI` fiindca e tot
+ *  identitatea declaratiei, nu o preferinta de ecran.
+ *
+ *  De ce exista: registrul depunerilor era singura lista ACTIONABILA din aplicatie (ce ai de
+ *  depus, pana cand, in ce stare), dar randul nu purta si fisierul — spunea „D300 — nedepusa,
+ *  termen 25.09" si te trimitea sa cauti XML-ul intr-un catalog de 25 de randuri de deasupra.
+ *  Fara link, lista de sarcini nu e de sine statatoare.
+ *
+ *  Caile sunt rute REALE, confruntate cu `app.get`-urile din src/ de o poarta din test/run/porti.js:
+ *  un link mort pe ecranul principal de sarcini ar fi mai rau decat lipsa lui. Atentie la parametru
+ *  — majoritatea rutelor iau `period`, dar D101 si XML-ul de bilant iau `year`. */
+const DESCARCARI = {
+  d300: (p) => [{ label: 'Recap PDF', href: '/pdf/d300?period=' + p }, { label: 'XML ANAF', href: '/xml/d300?period=' + p }],
+  d394: (p) => [{ label: 'XML ANAF', href: '/xml/d394?period=' + p }],
+  d112: (p) => [{ label: 'Recap PDF', href: '/pdf/d112?period=' + p }, { label: 'XML ANAF', href: '/xml/d112?period=' + p }],
+  d390: (p) => [{ label: 'XML ANAF', href: '/xml/d390?period=' + p }],
+  d100: (p) => [{ label: 'Recap PDF', href: '/pdf/d100?period=' + p }, { label: 'XML ANAF', href: '/xml/d100?period=' + p }],
+  d101: (p) => [{ label: 'XML ANAF', href: '/xml/d101?year=' + p.slice(0, 4) }],
+  saft: (p) => [{ label: 'XML ANAF', href: '/xml/saft?period=' + p }],
+  intrastat: (p) => [{ label: 'XML INS', href: '/xml/intrastat?period=' + p }],
+  bilant: (p) => [{ label: 'PDF', href: '/pdf/bilant?period=' + p }, { label: 'XML ANAF', href: '/xml/bilant?year=' + p.slice(0, 4) }],
+};
+/** Linkurile de descarcare ale unei declaratii, pe perioada. Tip necunoscut -> lista goala
+ *  (randurile manuale din registru pot purta un tip pe care nu-l generam noi). */
+function descarcari(tip, period) { return (DESCARCARI[tip] || (() => []))(period); }
+
 function pad2(n) { return String(n).padStart(2, '0'); }
 function lastDayOfMonth(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); } // m = 1-12
 
@@ -215,7 +241,7 @@ function registerForFirma(d, v, period, today) {
       tip: e.tip, nume: e.nume, period, due: e.due, status,
       overdue: e.due < t && status !== 'depusa' && status !== 'scutita',
       generatedAt: rec.generatedAt || null, submittedAt: rec.submittedAt || null,
-      recipisa: rec.recipisa || '', note: rec.note || '',
+      recipisa: rec.recipisa || '', note: rec.note || '', links: descarcari(e.tip, period),
     };
   });
   // inregistrari manuale in afara celor asteptate (ex. D100 marcat intr-o luna non-trimestriala)
@@ -225,7 +251,7 @@ function registerForFirma(d, v, period, today) {
     rows.push({
       tip: rec.tip, nume: (TIPURI[rec.tip] || {}).nume || rec.tip, period, due: dueDate(rec.tip, period),
       status: rec.status, overdue: false, generatedAt: rec.generatedAt, submittedAt: rec.submittedAt,
-      recipisa: rec.recipisa || '', note: rec.note || '',
+      recipisa: rec.recipisa || '', note: rec.note || '', links: descarcari(rec.tip, period),
     });
   }
   return rows;
@@ -329,5 +355,5 @@ function notifications(d, scopedList, today, days, lookback) {
   return { count: items.length, items };
 }
 
-module.exports = { TIPURI, STATUSES, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, primaLunaUrmarita, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays,
+module.exports = { TIPURI, STATUSES, DESCARCARI, descarcari, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, primaLunaUrmarita, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays,
   addSubmission, lastSubmission, submissionDiff, RECT_IN_XML };

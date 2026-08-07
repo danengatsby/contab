@@ -1074,16 +1074,24 @@
       <div class="warnbox"><span class="wi">⚠️</span><div><b>Înainte de depunere:</b> declarațiile (D112, D300, SAF-T…) sunt <b>ciorne</b>.
         <span class="simple-only-inline">Arată-le contabilului înainte să le depui la ANAF.</span>
         <span class="adv">Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică-l cu un contabil înainte de depunerea în SPV.</span></div></div>
-      <div id="livrabileSumar" class="grid2"></div>
+      <!-- ORDINEA E RASTURNATA fata de cum a fost pana acum. Prima era lista completa a
+           livrabilelor — 25 de randuri de coduri (D390 VIES, D205/D107, certificat de atestare…)
+           cu o legenda de cinci stari — iar ce ai efectiv de depus luna asta statea al patrulea pe
+           pagina. Un patron nu are de unde sa stie care dintre cele 25 il privesc; registrul stie,
+           fiindca e derivat din profilul fiscal al firmei. Deci sarcinile sus, catalogul dedesubt,
+           pliat: ramane la un clic pentru cine chiar il vrea. -->
       <div class="card">
-        <div id="livrabileLegend" class="muted" data-u="u72"></div>
-        <div id="livrabileList" class="tablewrap"></div>
-      </div>
-      <div class="card">
-        <h3>📋 Registrul depunerilor <span class="muted" data-u="u70">(pe luna selectată)</span></h3>
-        <p class="muted">Descărcarea unui XML marchează automat declarația „generată". Marchează manual „depusă" (cu nr. recipisă), „eroare" sau „scutită" — starea alimentează portofoliul și notificările de termene.</p>
+        <h3>📮 De depus — luna <span id="declRegisterLuna"></span> <span class="muted adv" data-u="u70">(registrul depunerilor)</span></h3>
+        <p class="muted">Declarațiile pe care le datorează firma ta în luna aleasă, cu termenul fiecăreia. Descarcă fișierul de pe rând, depune-l în SPV, apoi marchează-l „depusă".</p>
+        <p class="muted adv">Descărcarea unui XML marchează automat declarația „generată". Marchează manual „depusă" (cu nr. recipisă), „eroare" sau „scutită" — starea alimentează portofoliul și notificările de termene.</p>
         <div id="declRegister" class="tablewrap"></div>
       </div>
+      <div id="livrabileSumar" class="grid2"></div>
+      <details class="card">
+        <summary class="sec-sum">📚 Toate livrabilele lunii <span class="muted">— lista completă (registre, situații, declarații după regim), pentru contabil</span></summary>
+        <div id="livrabileLegend" class="muted" data-u="u72"></div>
+        <div id="livrabileList" class="tablewrap"></div>
+      </details>
       <div class="card">
         <h3>🧾 F4109 — declarație de neutilizare casă de marcat</h3>
         <p class="muted">Dacă în luna de lucru <b>nu ai folosit casa de marcat</b>, generează declarația de neutilizare (F4109). Completează seria fiscală a aparatului (o poți separa cu virgulă dacă ai mai multe), apoi descarcă PDF-ul pentru luna aleasă. Se semnează și se depune electronic, prin SPV.</p>

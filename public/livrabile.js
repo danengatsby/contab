@@ -96,16 +96,21 @@ const declBadge = (st, overdue) => {
 };
 async function loadDeclRegister(p) {
   const box = $('#declRegister'); if (!box) return;
+  const eticheta = $('#declRegisterLuna'); if (eticheta) eticheta.textContent = p || '';
   const data = await api('/api/declarations?period=' + p);
-  if (!data.rows.length) { box.innerHTML = '<p class="muted">Nicio declarație așteptată pe această lună (profil firmă: fără TVA / fără angajați).</p>'; return; }
+  if (!data.rows.length) { box.innerHTML = '<p class="muted">Nicio declarație de depus pe această lună — firma nu datorează niciuna (fără TVA, fără angajați).</p>'; return; }
   const opts = (cur) => Object.keys(DECL_ST).map((k) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${DECL_ST[k].t}</option>`).join('');
-  box.innerHTML = `<table><thead><tr><th>Declarație</th><th>Termen</th><th>Stare</th><th>Schimbă starea</th><th>Recipisă / detalii</th></tr></thead><tbody>${
+  // Coloana de descarcare face randul de sine statator: pana acum spunea „D300 — nedepusa, termen
+  // 25.09" si te trimitea sa cauti fisierul in catalogul de 25 de randuri. Linkurile vin de la
+  // server (src/declarations.js `DESCARCARI`), ca sa nu existe o a doua lista de rute in frontend.
+  box.innerHTML = `<table><thead><tr><th>Declarație</th><th>Termen</th><th>Stare</th><th>Descarcă</th><th>Schimbă starea</th><th class="adv">Recipisă / detalii</th></tr></thead><tbody>${
     data.rows.map((r) => `<tr>
       <td>${H(r.nume)}</td>
       <td class="${r.overdue ? '' : 'muted'}" ${r.overdue ? 'data-u="u33"' : ''}>${r.due}</td>
       <td>${declBadge(r.status, r.overdue)}</td>
+      <td>${(r.links || []).map((l) => `<a class="linkbtn" href="${H(l.href)}" target="_blank">${H(l.label)}</a>`).join(' · ') || '<span class="muted">—</span>'}</td>
       <td><select class="decl-set" data-tip="${r.tip}" data-period="${r.period}">${opts(r.status)}</select></td>
-      <td class="muted" data-u="u148">${r.recipisa ? 'recipisă: ' + r.recipisa + '<br>' : ''}${r.submittedAt ? 'depusă: ' + r.submittedAt.slice(0, 10) : (r.generatedAt ? 'XML generat: ' + r.generatedAt.slice(0, 10) : '')}${r.note ? '<br>' + r.note : ''}</td>
+      <td class="muted adv" data-u="u148">${r.recipisa ? 'recipisă: ' + H(r.recipisa) + '<br>' : ''}${r.submittedAt ? 'depusă: ' + H(r.submittedAt.slice(0, 10)) : (r.generatedAt ? 'XML generat: ' + H(r.generatedAt.slice(0, 10)) : '')}${r.note ? '<br>' + H(r.note) : ''}</td>
     </tr>`).join('')}</tbody></table>`;
   box.querySelectorAll('.decl-set').forEach((sel) => sel.addEventListener('change', async () => {
     const body = { tip: sel.dataset.tip, period: sel.dataset.period, status: sel.value };

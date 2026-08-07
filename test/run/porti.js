@@ -1311,3 +1311,48 @@ section('Poarta: butoanele de mișcări de bani trimit tipuri de document care e
   // Poarta trebuie sa POATA pica: pe un tip inexistent si pe unul din alt grup, verdictul se schimba.
   ok('poarta chiar distinge cazurile', !getType('tip_inexistent_xyz') && getType('factura_cumparare_marfuri').grup !== 'Trezorerie');
 }
+
+section('Poarta: fiecare link de descărcare din registrul depunerilor indică o rută REALĂ');
+{
+  const fsx = require('fs'); const pth = require('path');
+  const decl = require(pth.join(RADACINA, 'src', 'declarations'));
+  // Registrul depunerilor e lista de sarcini a firmei, iar de la #4 fiecare rand poarta si
+  // fisierul de descarcat. Un link mort ACOLO e mai rau decat lipsa lui: omul crede ca a
+  // descarcat declaratia si nu a descarcat nimic. Caile nu se pot verifica prin citire — se
+  // confrunta cu `app.get`-urile inregistrate efectiv in src/.
+  const rute = new Set();
+  const dir = pth.join(RADACINA, 'src');
+  const walk = (p) => fsx.readdirSync(p, { withFileTypes: true }).forEach((e) => {
+    const full = pth.join(p, e.name);
+    if (e.isDirectory()) return walk(full);
+    if (!e.name.endsWith('.js')) return;
+    const src = fsx.readFileSync(full, 'utf8');
+    for (const m of src.matchAll(/app\.get\('(\/(?:pdf|xml)\/[a-z0-9-]+)'/g)) rute.add(m[1]);
+  });
+  walk(dir);
+  ok('poarta chiar vede rutele de descărcare', rute.size > 20);
+  const tipuri = Object.keys(decl.TIPURI);
+  ok('poarta chiar vede tipurile de declarații', tipuri.length >= 8);
+  const moarte = [];
+  const faraLink = [];
+  for (const tip of tipuri) {
+    const links = decl.descarcari(tip, '2026-05');
+    if (!links.length) { faraLink.push(tip); continue; }
+    for (const l of links) {
+      const cale = l.href.split('?')[0];
+      if (!rute.has(cale)) moarte.push(tip + ' → ' + cale);
+      // Fara parametru de perioada, ruta ar intoarce declaratia lunii CURENTE sub numele altei
+      // luni — cel mai urat mod de a gresi: fisierul exista, se descarca, si e altceva.
+      ok(tip + ': linkul „' + l.label + '" poartă perioada', /[?&](period|year)=/.test(l.href));
+    }
+  }
+  ok('niciun link mort' + (moarte.length ? ' — RUTE INEXISTENTE: ' + moarte.join(', ') : ''), moarte.length === 0);
+  ok('fiecare declarație generabilă are de unde fi descărcată'
+    + (faraLink.length ? ' — FARA LINK: ' + faraLink.join(', ') : ''), faraLink.length === 0);
+  // Parametrul difera pe tip (D101 si XML-ul de bilant iau `year`, restul `period`); o inversare
+  // ar da 400 sau perioada gresita, tacut.
+  ok('D101 cere anul, nu luna', decl.descarcari('d101', '2026-12')[0].href.includes('year=2026'));
+  ok('D300 cere luna', decl.descarcari('d300', '2026-05')[0].href.includes('period=2026-05'));
+  // Poarta trebuie sa POATA pica: o cale inventata nu se regaseste printre rutele reale.
+  ok('poarta chiar distinge o rută inexistentă', !rute.has('/xml/d999'));
+}
