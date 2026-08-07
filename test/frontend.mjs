@@ -497,6 +497,20 @@ section('Pagina nu derulează pe orizontală: convenția tabelelor ține la oric
   ok('celulele chiar sunt `nowrap` (motivul pentru care regula e necesară)', /th,td\{[^}]*white-space:nowrap/.test(faraMedia));
   // Bula de ajutor de pe ultimul card al unei grile se ancorează la dreapta, ca să nu iasă din ecran.
   ok('bula de ajutor din ultima coloană nu mai iese din ecran', /\.grid2>\*:last-child h3 \.cinfo \.cpop/.test(css));
+
+  // A doua cauză, la lățimi de tabletă: bara de unelte a unui ecran (titlu + selectoare + butoane)
+  // nu se rupea decât sub 700px. Cu bara laterală de 250px, o tabletă de 900px lasă ~650px pentru
+  // conținut — iar o bară care nu se rupe depășește garantat la o lățime suficient de mică.
+  ok('bara de unelte se rupe pe rând nou la orice lățime', /\.toolbar\{display:flex;flex-wrap:wrap/.test(faraMedia));
+
+  // A treia: bulele de ajutor stau și în mijlocul formularelor, unde nicio regulă STRUCTURALĂ nu le
+  // poate prinde (ancorarea de mai sus acoperă doar ultima coloană a unei grile). Coloana de
+  // conținut le taie, ca o decorațiune absolută să nu poată împinge pagina.
+  // `clip`, NU `hidden`: `hidden` ar face din `main` un container de derulare și ar strica bara
+  // laterală `sticky`. Regula stă în `@media(min-width:1px)` — mereu activ — deci se caută în CSS-ul
+  // întreg, nu în cel curățat de blocurile @media.
+  ok('coloana de conținut taie decorațiunile care ar împinge pagina', /\.shell>main\{[^}]*overflow-x:clip/.test(css));
+  ok('...cu `clip`, nu `hidden` (altfel bara laterală sticky s-ar rupe)', !/\.shell>main\{[^}]*overflow-x:hidden/.test(css));
 }
 
 section('Scanerul local: oprit înseamnă ascuns, nu gri');

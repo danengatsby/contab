@@ -282,7 +282,11 @@ body.compact #balantaView thead tr:first-child th{height:22px}
 body.compact #balantaView thead tr:nth-child(2) th{top:22px}
 .acc{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600}
 
-.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+/* Bara de unelte a unui ecran (titlu + selectoare + butoane) se rupe pe rand nou la ORICE
+   latime, nu doar sub 700px: cu bara laterala de 250px, o tableta de 900px lasa ~650px pentru
+   continut, iar un `.toolbar` care nu se rupe impinge pagina (masurat: +136px pe „Statul de
+   plata"). O bara care nu se rupe depaseste garantat la o latime suficient de mica. */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
 .toolbar .spacer{flex:1}
 /* anteturi de pagină consistente: titlu mare, clar, în partea de sus a fiecărui ecran */
 /* Titlul paginii. `body.compact h2` are aceeasi specificitate si vine mai jos in fisier, deci ar
@@ -664,7 +668,14 @@ body:not(.dark) .kpi.blue{border-left-color:#9c7a55}
      ca la celelalte butoane din bara. */
   body .topbar .side-tools .btn.mod-expert{background:rgba(240,193,75,.16);color:#f0c14b;border-color:rgba(240,193,75,.5)}
   body .topbar .side-tools .btn.mod-expert:hover{background:rgba(240,193,75,.28);border-color:rgba(240,193,75,.75)}
-  .shell>main{flex:1 1 auto;min-width:0;margin:0;max-width:none;padding:24px 28px}
+  /* `overflow-x:clip` (NU `hidden`): nu creeaza container de derulare si nu atinge axa
+     verticala, deci bara laterala `sticky` ramane neatinsa. Rolul lui: o decoratiune
+     `position:absolute` — bula de ajutor `.cpop`, lata de 340px — nu mai poate impinge pagina
+     cand se deschide langa marginea din dreapta. Ancorarea corecta o rezolva pe cea din ultima
+     coloana a unei grile, dar bulele stau si in mijlocul unui formular, unde nicio regula
+     structurala nu le poate prinde. Masurat pe tableta de 900px: +232px pe „Conexiuni",
+     +222px pe „Setari", +62px pe „Acasa". */
+  .shell>main{flex:1 1 auto;min-width:0;margin:0;max-width:none;padding:24px 28px;overflow-x:clip}
   .shell>main>.tab{max-width:1120px;margin:0 auto}
   /* navigație verticală: secțiuni COLAPSABILE (acordeon), cea activă deschisă */
   /* `:not(.hidden)` NU e cosmetic: fara el, `!important`-ul de aici bate `.hidden{display:none}`,
