@@ -566,6 +566,17 @@ async function main() {
     const saft = reg.json && reg.json.rows.find((r) => r.tip === 'saft');
     ok('registru: d300 cu termen 25', d300 && d300.due === '2026-07-25');
     ok('registru: saft lunar cu termen sfarsit de luna', saft && saft.due === '2026-07-31');
+    // Randul din registru poarta si fisierul: ecranul „De depus" e lista de sarcini a firmei, iar
+    // fara link te trimitea sa cauti XML-ul in catalogul de 25 de randuri. Interfata depinde acum
+    // de campul asta, deci e contract de API, nu detaliu de randare — si linkul TREBUIE sa poarte
+    // perioada randului, altfel descarca luna curenta sub numele altei luni.
+    ok('registru: randul d300 poarta linkurile lui', d300 && (d300.links || []).length >= 1);
+    ok('registru: linkul poarta perioada randului, nu luna curenta',
+      d300 && d300.links.every((l) => l.href.includes('period=2026-06')));
+    ok('registru: si SAF-T are de unde fi descarcat', saft && (saft.links || []).some((l) => l.href.startsWith('/xml/saft')));
+    // Chiar functioneaza: linkul se cheama si intoarce fisierul, nu 404.
+    const dl = await req('GET', d300.links.find((l) => l.href.startsWith('/xml/')).href, { cookie: c1 });
+    ok('registru: linkul de XML chiar raspunde', dl.status === 200);
     const set = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-06', status: 'depusa', recipisa: 'R1' } });
     const d300v2 = set.json && set.json.rows.find((r) => r.tip === 'd300');
     ok('registru: marcare depusa cu recipisa', d300v2 && d300v2.status === 'depusa' && d300v2.recipisa === 'R1');
