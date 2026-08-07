@@ -8,6 +8,56 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
+## Recunoaștere 2026-08-07 — D301 (decont special de TVA): schema completă, generator NEIMPLEMENTAT
+
+Consemnată aici pentru că e partea scumpă a lucrării și e **verificată**, nu presupusă: un fișier
+construit după schema de mai jos trece validatorul oficial (`D301_*/D301Validator.jar`). Ce
+lipsește e legarea la datele aplicației, nu cunoașterea formularului.
+
+**Cine îl datorează:** persoanele **neînregistrate** în scopuri de TVA conform art. 316 care fac
+achiziții intracomunitare peste plafon sau primesc servicii din afara țării pentru care sunt
+obligate la plata taxei. Categorie reală printre utilizatorii aplicației — o microîntreprindere
+neplătitoare care cumpără reclamă sau găzduire din afară intră aici.
+
+**Rădăcina:** `<declaratie301 xmlns="mfp:anaf:dgti:d301:declaratie:v1">`, cu secțiuni `<sectiune>`.
+
+Atribute **obligatorii pe rădăcină** (enumerate de validator pe un document gol):
+
+```
+luna an d_rec temei mijl_trans cif denumire banca cont pers_inreg nr_evid
+baza1 tva1 baza2 tva2 baza3 tva3 baza4 tva4 baza5 tva5 totalPlata_A
+nume_declarant prenume_declarant functia_declarant
+```
+
+Atribute **obligatorii pe `<sectiune>`**:
+
+```
+tip_operatie nr_doc data_doc tip_valuta val_valuta curs_valutar baza tva
+```
+
+Reguli sondate, fiecare printr-o rulare (nu deduse din documentație):
+
+| Regulă | Ce cere |
+|---|---|
+| R18 / R19 | `baza_i` și `tva_i` de pe rădăcină = **suma** peste secțiunile cu `tip_operatie = i`. Rădăcina e agregatul, secțiunile sunt detaliul pe document |
+| R28 | `totalPlata_A` = Σ(`baza_i` + `tva_i`), i = 1..5 — deci **și bazele, nu doar taxa** |
+| R16 | `nr_evid` are 23 de caractere, **același algoritm ca la D100**, cu codul `301` |
+| — | `temei` trebuie să fie **diferit de 1** când declarația e inițială (`d_rec = 0`); valoarea 3 e respinsă, deci intervalul e {1, 2} |
+| — | `pers_inreg` ∈ {1, 2}; „dacă `pers_inreg = 2` atunci trebuie să utilizați CUI" |
+| — | datele în format românesc (`dd.mm.aaaa`), ca la D112 și D177 |
+
+Cele cinci perechi `baza_i`/`tva_i` sunt cele cinci tipuri de operațiuni ale decontului special, iar
+`tip_operatie` de pe secțiune le indexează.
+
+**Ce rămâne de decis înainte de implementare** (și de ce nu s-a făcut odată cu recunoașterea):
+monografia. O firmă **neînregistrată** în scopuri de TVA nu deduce taxa — deci nu poate folosi
+`4426 = 4427` ca la taxarea inversă a unui plătitor; taxa e un **cost**. Asta cere un tip de
+document propriu și o decizie contabilă, nu doar un generator XML. Aceeași regulă ca peste tot în
+acest depozit: nu inventa monografia.
+
+**D311** (TVA colectată de persoanele cu cod de TVA anulat) are validator oficial în manifest
+(`<D311>`), dar nu a fost recunoscut.
+
 ## Ultima verificare: 2026-08-07 (2) — autofactura (art. 320)
 
 Variante de referință noi: **`D390-autofactura`** și **`D300-autofactura`**. Ambele ✅ validare

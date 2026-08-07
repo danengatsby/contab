@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<declaratie301 xmlns="mfp:anaf:dgti:d301:declaratie:v1"
+  luna="6" an="2026" d_rec="0" mijl_trans="0"
+  cif="12345674" denumire="S.C. EXEMPLU PROD S.R.L." banca="BCR" cont="RO49AAAA1B31007593840000"
+  pers_inreg="1" nr_evid="10301010626250726000042" temei="2"
+  baza1="10000" tva1="2100" baza2="0" tva2="0" baza3="0" tva3="0" baza4="0" tva4="0" baza5="0" tva5="0"
+  totalPlata_A="12100"
+  nume_declarant="Popescu" prenume_declarant="Ion" functia_declarant="Administrator">
+  <sectiune tip_operatie="1" nr_doc="F123" data_doc="15.06.2026" tip_valuta="EUR" val_valuta="2000" curs_valutar="5" baza="10000" tva="2100"/>
+</declaratie301>
