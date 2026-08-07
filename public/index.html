@@ -200,7 +200,12 @@
       <button id="nextMonth" class="curnav" title="Luna următoare" aria-label="Luna următoare">▶</button>
     </span>
     <div class="spacer" data-u="u46"></div>
-    <div class="side-tools">
+    <!-- Pe telefon cele sase utilitare stateau intr-o grila 2x3 permanenta: bara de sus lua 340px
+         din 844, adica 40% din ecran, inainte de orice cifra. Sunt comenzi pe care un patron le
+         atinge o data pe luna (tema, densitate, tur), deci se string sub un singur buton. Pe
+         desktop butonul nu exista — acolo bara e sidebar vertical si au loc. -->
+    <button id="toolsBtn" class="btn small" type="button" aria-expanded="false" aria-controls="sideTools" title="Unelte: căutare, dicționar, mod simplu, temă">⋯ Unelte</button>
+    <div class="side-tools" id="sideTools">
       <button id="paletaBtn" class="btn small" title="Caută în aplicație — clienți, facturi, pagini (Ctrl+K)">🔎 Caută</button>
       <button id="glossaryBtn" class="btn small" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor">❓ Dicționar</button>
       <button id="uiModeBtn" class="btn small" title="Mod simplu: ascunde partea tehnic-contabilă din meniu (balanță, registre, plan de conturi, închideri). Contabilitatea rulează neschimbată în fundal. Mod expert: totul vizibil.">🎓</button>

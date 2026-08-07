@@ -439,6 +439,41 @@ section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
   eq('lipsa listei nu aruncă', dashboard.deFacutHtml(undefined, AZI), '');
 }
 
+section('Bara de sus pe telefon: nu are voie să crească la loc');
+{
+  // Măsurat înainte: 340px din 844 (40% din ecran) înainte de orice conținut, fiindcă cele șase
+  // utilitare stăteau într-o grilă 2x3 mereu deschisă. Azi: 113px (13%). Câștigul e fragil —
+  // se pierde la PRIMUL buton nou pus direct în bară, iar defectul e invizibil pe desktop, unde
+  // bara e sidebar vertical și mai încape orice. Deci poarta: în `.topbar`, în afara `.side-tools`
+  // și a meniului, au voie să stea doar comenzile din listă. Un buton nou merge în `.side-tools`.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const cap = html.indexOf('<header class="topbar">');
+  const meniu = html.indexOf('<nav class="tabs"', cap);
+  ok('poarta chiar găsește bara de sus', cap >= 0 && meniu > cap);
+  const bara = html.slice(cap, meniu).replace(/<div class="side-tools"[\s\S]*?<\/div>/, ' ');
+  ok('poarta chiar a scos uneltele din perimetru', !bara.includes('id="glossaryBtn"'));
+  const PERMISE = new Set(['prevMonth', 'nextMonth', 'toolsBtn', 'logoutBtn']);
+  const inBara = [...bara.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
+  const intruse = inBara.filter((id) => !PERMISE.has(id));
+  ok('nimic nou permanent în bara de telefon'
+    + (intruse.length ? ' — MUTĂ-LE ÎN .side-tools: ' + intruse.join(', ') : ''), intruse.length === 0);
+  ok('poarta chiar vede butoane (nu o listă goală)', inBara.length >= 3);
+
+  // Uneltele strânse trebuie să rămână AJUNGIBILE: butonul care le desfășoară există și le arată.
+  ok('butonul „⋯ Unelte" există', html.includes('id="toolsBtn"'));
+  ok('...și declară ce comandă', /id="toolsBtn"[^>]*aria-controls="sideTools"/.test(html));
+  ok('...iar containerul lui există cu acel id', html.includes('id="sideTools"'));
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  ok('pe desktop butonul nu există vizual', /#toolsBtn\{display:none\}/.test(css));
+  ok('pe telefon uneltele pornesc strânse', /\.topbar \.side-tools\{order:6;display:none/.test(css));
+  ok('...și se desfășoară pe clasa comutată din JS', /\.topbar\.tools-open \.side-tools\{display:grid\}/.test(css));
+  const js = fs.readFileSync(path.join(PUB, 'simplemode.js'), 'utf8');
+  ok('comutatorul chiar pune clasa aceea', /classList\.toggle\('tools-open'\)/.test(js));
+  // Panoul trebuie să se închidă după alegerea unei unelte — altfel rămâne deschis peste pagina
+  // pe care tocmai ai cerut-o, adică exact ecranul pentru care ai apăsat.
+  ok('panoul se închide la alegerea unei unelte', /#sideTools[\s\S]{0,220}remove\('tools-open'\)/.test(js));
+}
+
 section('Modul simplu filtrează LIMBAJUL, nu doar meniul');
 {
   // Constatarea reparată aici: `.simple-ui` ascundea 9 taburi și 28 de elemente, dar ecranele pe

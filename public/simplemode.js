@@ -108,6 +108,21 @@ export function initUiMode() {
   const simpluImplicit = USER && (USER.tip === 'necontabil' || USER.tip === 'tester') && USER.role !== 'admin';
   applyUiMode(saved || (simpluImplicit ? 'simplu' : 'expert'));
 }
+// Uneltele barei de sus, strânse pe telefon (vezi `#toolsBtn` în styles.css). Comutatorul e pur
+// CSS pe `.topbar`: butoanele nu se mută din DOM, deci nu se pierde niciun ascultător și nu e
+// nimic de refăcut la rotirea ecranului. Se închide la alegerea unei unelte — altfel panoul ar
+// rămâne deschis peste pagina pe care tocmai ai cerut-o.
+$('#toolsBtn') && $('#toolsBtn').addEventListener('click', () => {
+  const bara = document.querySelector('.topbar');
+  const deschis = bara.classList.toggle('tools-open');
+  $('#toolsBtn').setAttribute('aria-expanded', String(deschis));
+});
+$('#sideTools') && $('#sideTools').addEventListener('click', (e) => {
+  if (!e.target.closest('button')) return;
+  document.querySelector('.topbar').classList.remove('tools-open');
+  $('#toolsBtn').setAttribute('aria-expanded', 'false');
+});
+
 $('#uiModeBtn') && $('#uiModeBtn').addEventListener('click', () => {
   const mode = document.body.classList.contains('simple-ui') ? 'expert' : 'simplu';
   try { localStorage.setItem(uiModeKey(), mode); } catch (e) { /* privat */ }
