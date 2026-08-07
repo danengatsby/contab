@@ -841,7 +841,13 @@ body.dark .imper-banner button{background:#ffd778;color:#2a2008}
      Cu `basis:auto` spatiul liber se imparte egal PESTE latimea naturala, iar min-width tine
      alertele scurte lizibile si trimite pe rand nou cand nu mai incap. */
   flex:1 1 auto;min-width:260px}
-.alert[data-go]:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.alert[data-go]:hover,.alert[data-notif]:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+/* „De facut acum": termenele stau UNUL SUB ALTUL, nu unul langa altul ca alertele de deasupra.
+   Randul e mai lung (declaratie + vechime + termen + luna) si sunt pana la cinci — asezate pe
+   coloane s-ar rupe fiecare pe trei randuri, iar ordinea dupa urgenta (prima = cea mai veche
+   restanta) s-ar citi in zigzag in loc de sus-in-jos. */
+.dash-alerts.stack{flex-direction:column;margin-bottom:0}
+.dash-alerts.stack .alert{min-width:0}
 .alert .al-ic{font-size:21px;line-height:1;flex:0 0 auto}
 .alert .al-tx{flex:1;min-width:0}
 .alert .al-cta{font-weight:700;color:var(--accent);white-space:nowrap;font-size:12.5px;flex:0 0 auto}

@@ -361,6 +361,54 @@ for (const et of ['Sold clienți (4111)', 'Sold furnizori (401)', 'De încasat d
   ok('„' + et + '" nu e colorat evaluativ', l !== '' && !/'green'|'red'/.test(l));
 }
 
+section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
+{
+  // `azi` e fixat: altfel vechimea restanței ar depinde de ziua în care rulează suita.
+  const AZI = '2026-08-07';
+  const it = (o) => Object.assign({ kind: 'restanta', firmaId: 1, firma: 'ALFA SRL', tip: 'D300', nume: 'D300 — decont TVA', period: '2026-05', due: '2026-06-25', status: 'nedepusa' }, o);
+
+  const unul = dashboard.deFacutHtml([it({})], AZI);
+  ok('rândul spune ce declarație e', unul.includes('D300 — decont TVA'));
+  ok('vechimea restanței e în cuvinte, nu doar o dată', unul.includes('restanță de 43 zile'));
+  ok('termenul depășit rămâne vizibil', unul.includes('2026-06-25'));
+  ok('luna la care se referă e acolo', unul.includes('luna 2026-05'));
+  ok('restanța e marcată ca gravă', unul.includes('class="alert bad"'));
+  ok('rândul poartă acțiunea care o rezolvă', unul.includes('Deschide declarația →'));
+
+  // Un termen VIITOR nu e restanță: nici tonul, nici cuvintele nu au voie să fie aceleași.
+  const viitor = dashboard.deFacutHtml([it({ kind: 'termen', due: '2026-09-25' })], AZI);
+  ok('termenul apropiat e avertisment, nu restanță', viitor.includes('class="alert warn"') && !viitor.includes('alert bad'));
+  ok('...și nu spune „restanță"', !viitor.includes('restanță'));
+
+  // Singular/plural: „restanță de 1 zile" e neîngrijit exact pe rândul care sperie cel mai tare.
+  ok('o singură zi se scrie la singular', dashboard.deFacutHtml([it({ due: '2026-08-06' })], AZI).includes('restanță de 1 zi<'));
+
+  // e-Factura merge în ALT ecran decât declarațiile — eticheta butonului vine din `notifAct`,
+  // nu dintr-o constantă rescrisă aici (altfel cele două ecrane ar drifta).
+  ok('e-Factura netrimisă trimite în SPV, nu la declarații',
+    dashboard.deFacutHtml([it({ tip: 'efactura', nume: 'e-Factura EXP 2001' })], AZI).includes('Trimite în SPV →'));
+
+  // Numele firmei: zgomot pentru un patron cu o firmă, necesar pentru un contabil cu portofoliu.
+  ok('cu o singură firmă, numele ei nu se repetă pe fiecare rând', !unul.includes('ALFA SRL'));
+  const douaFirme = dashboard.deFacutHtml([it({}), it({ firmaId: 2, firma: 'BETA SRL' })], AZI);
+  ok('cu mai multe firme, fiecare rând spune a cui e', douaFirme.includes('ALFA SRL') && douaFirme.includes('BETA SRL'));
+
+  // Plafonul: ecranul de sus arată primele câteva, restul se văd din „Vezi toate".
+  const multe = dashboard.deFacutHtml(Array.from({ length: 9 }, (_, i) => it({ nume: 'D' + i })), AZI);
+  eq('cel mult cinci rânduri sus pe Acasă', (multe.match(/class="alert /g) || []).length, 5);
+  ok('...și sunt primele, adică cele mai urgente', multe.includes('>D0<') && !multe.includes('>D5<'));
+
+  // Datele externe ajung aici: numele partenerului din e-Factura intră în `nume`, iar denumirea
+  // firmei o scrie utilizatorul. Poarta generală de escapare scanează sursa; asta verifică IEȘIREA.
+  const rau = dashboard.deFacutHtml([it({ nume: 'e-Factura <img src=x onerror=alert(1)>', firmaId: 1 }),
+    it({ firmaId: 2, firma: '<script>alert(2)</script>' })], AZI);
+  ok('numele declarației e escapat', rau.includes('&lt;img') && !rau.includes('<img'));
+  ok('numele firmei e escapat', rau.includes('&lt;script&gt;') && !rau.includes('<script>'));
+
+  eq('fără termene nu se randează niciun rând', dashboard.deFacutHtml([], AZI), '');
+  eq('lipsa listei nu aruncă', dashboard.deFacutHtml(undefined, AZI), '');
+}
+
 section('Balanță: diagnosticul dezechilibrului');
 // Cand balanta nu se inchide, mesajul spune CARE dintre cele patru egalitati e stricata si
 // trimite contabilul spre cauza. O clasificare gresita il pune sa caute in locul nepotrivit.
