@@ -3256,6 +3256,60 @@ eq('pro-rata: livrari cu drept / fara drept', prR.cuDrept + '|' + prR.faraDrept,
 eq('pro-rata definitiva rotunjita in sus', prR.definitiva, 60);
 eq('TVA dedusa provizoriu pe achizitiile mixte', prR.dedusaProvizoriu, 84);
 eq('regularizare anuala: 210 x 60% - 84 = +42 (de dedus)', prR.regularizare, 42);
+// ── A4: pro-rata pe achizitiile MARI (taxare inversa) ─────────────────────────────────────────
+// Bifa lipsea tocmai de pe tipurile unde stau sumele mari — imobilizari, import, leasing,
+// intracomunitar, art. 331 — iar pe cele cu taxare inversa n-ar fi mers nici daca era pusa:
+// motorul cauta linia de cost dupa CREDITUL liniei de TVA, care acolo e 4427, nu furnizorul.
+{
+  const T4 = require('../src/documentTypes');
+  const CU_BIFA = ['factura_imobilizare', 'import_vamal', 'factura_leasing', 'factura_combustibil',
+    'achizitie_intracomunitara', 'taxare_inversa_interna_achizitie',
+    'achizitie_servicii_intracomunitara', 'autofactura_achizitie', 'imobilizare_in_curs'];
+  for (const id of CU_BIFA) {
+    ok('pro-rata: „' + id + '" poate fi marcat cu destinatie mixta',
+      (T4.getType(id).fields || []).some((f) => f.name === 'proRataMixt'));
+  }
+  // Mecanica pe taxare inversa: taxa COLECTATA ramane intreaga, se reduce doar deducerea, iar
+  // diferenta creste costul. Articolul trebuie sa ramana ECHILIBRAT — inainte, partea
+  // nedeductibila disparea pur si simplu.
+  const aplica = acc.tvaPartialInCost;
+  const lines = T4.getType('achizitie_intracomunitara').build({ baza: 10000, cota: 21, contStoc: '371' });
+  aplica(lines, 80, 'ded 80%', 'TVA nedeductibila pro-rata');
+  const d = lines.reduce((x, l) => x + l.suma, 0);
+  eq('taxare inversa + pro-rata: deducerea scade la 80%', lines.find((l) => l.debit === '4426').suma, 1680);
+  eq('...iar taxa COLECTATA ramane intreaga pe 4427', lines.filter((l) => l.credit === '4427').reduce((x, l) => x + l.suma, 0), 2100);
+  eq('...partea nedeductibila creste costul bunului', lines.filter((l) => l.debit === '371').reduce((x, l) => x + l.suma, 0), 10420);
+  ok('...si articolul ramane echilibrat', d === 10000 + 1680 + 420);
+  // Fara loc unde sa punem costul, TVA-ul ramane NEATINS: un articol corect si nemodificat e mai
+  // bun decat unul dezechilibrat.
+  const doarTva = [{ debit: '4426', credit: '4427', suma: 2100, explicatie: 'x' }];
+  // Apelul se prinde: fara garda, `aplica` e null si arunca — asta ar opri suita in loc de a
+  // raporta o aserțiune cu nume (aceeasi lectie ca la generatorul de e-Factura).
+  let aRupt = false;
+  try { aplica(doarTva, 80, 'ded', 'nedeductibil'); } catch (e) { aRupt = true; }
+  ok('fara linie de baza, functia nu arunca', !aRupt);
+  eq('...TVA-ul ramane neatins', doarTva[0].suma, 2100);
+  eq('...si nu se adauga nicio linie', doarTva.length, 1);
+
+  // DECONTUL la taxare inversa cu deducere limitata: perechea R5/R18 trebuie sa ramana pe sumele
+  // INTEGRALE de pe factura — validatorul cere R18 = R5, iar taxa colectata se datoreaza in
+  // intregime chiar cand deducerea e limitata. Limitarea iese doar prin R28 („taxa dedusa").
+  {
+    const dbTi = { openingBalances: {}, company: { cui: 'RO1', nume: 'X', perioadaTva: 'L' }, entries: [
+      { id: 'ti1', data: '2026-06-19', period: '2026-06', tip: 'achizitie_intracomunitara',
+        tipNume: 'IC', status: 'postat', partener: 'GMBH', partenerCui: 'DE811907980', document: 'IC1',
+        lines: [{ debit: '371', credit: '401', suma: 5000 }, { debit: '4426', credit: '4427', suma: 840 },
+          { debit: '371', credit: '4427', suma: 210 }],
+        tvaPartial: { baza: 5000, cota: 21, tvaFactura: 1050, tvaDedusa: 840 } },
+    ] };
+    const aTi = xml.d300Rows(rep.d300(dbTi, '2026-06'));
+    eq('taxare inversa: taxa COLECTATA (R5) e integrala, nu doar partea dedusa', aTi.R5_2, 1050);
+    eq('...si perechea R18 = R5 (regula V7/V8 a validatorului)', aTi.R18_2, aTi.R5_2);
+    eq('...si bazele la fel', aTi.R18_1, aTi.R5_1);
+    eq('taxa DEDUCTIBILA (R27) e cea de pe factura', aTi.R27_2, 1050);
+    eq('taxa DEDUSA (R28) e doar partea cuvenita', aTi.R28_2, 840);
+  }
+}
 // ── Numitorul pro-ratei: NU tot ce trece prin clasa 7 ─────────────────────────────────────────
 // Art. 300 alin. (7) scoate din calcul cesiunea bunurilor de capital si operatiunile financiare
 // accesorii; restul conturilor de clasa 7 nici nu sunt operatiuni in sfera TVA. Numarate ca „fara
@@ -3326,12 +3380,17 @@ eq('auto50: jurnalul arata baza REALA a facturii, nu baza umflata cu TVA-ul nede
 eq('auto50: jurnalul arata TVA-ul de pe factura', rA50.tva, 210);
 eq('auto50: cota ramane cea a facturii (nu 10% fantoma)', rA50.cota, 21);
 eq('auto50: defalcarea deductibil / nedeductibil', rA50.tvaDedusa + '|' + rA50.tvaNedeductibila, '105|105');
-// In decont intra DOAR partea dedusa, cu baza ei proportionala: validatorul oficial cere
-// raportul baza/TVA egal cu cota (regula R84), iar `pro_rata` declarat nu il relaxeaza.
-eq('auto50: D300 primeste baza proportionala cu TVA-ul dedus', JSON.stringify(vjA50.coteC), '[{"cota":21,"baza":500,"tva":105}]');
+// In decont intra factura ASA CUM A FOST EMISA. Varianta veche declara partea dedusa cu o baza
+// proportionala INVENTATA (500 pentru o achizitie reala de 1.000) — o achizitie care nu existase.
+// Nedeductibilul isi are randul lui: R28 („taxa dedusa") < R27 („taxa deductibila"), forma
+// confirmata la validatorul oficial. Regula R84 e satisfacuta oricum: 210/1000 = 21%.
+eq('auto50: D300 primeste baza si TVA-ul INTEGRALE de pe factura', JSON.stringify(vjA50.coteC), '[{"cota":21,"baza":1000,"tva":210}]');
 const aA50 = xml.d300Rows(rep.d300(auto50Db, '2026-06'));
-eq('auto50: randul NU mai dispare din D300 (R22 = achizitii 21%)', aA50.R22_1 + '/' + aA50.R22_2, '500/105');
+eq('auto50: randul NU dispare din D300 (R22 = achizitii 21%)', aA50.R22_1 + '/' + aA50.R22_2, '1000/210');
 eq('auto50: raportul baza/TVA din decont da exact cota (regula R84)', Math.round((aA50.R22_2 / aA50.R22_1) * 100), 21);
+eq('auto50: taxa DEDUCTIBILA (R27) e cea de pe factura', aA50.R27_2, 210);
+eq('auto50: taxa DEDUSA (R28) e doar partea cuvenita', aA50.R28_2, 105);
+eq('auto50: si totalul dedus (R32) o urmeaza pe R28', aA50.R32_2, 105);
 ok('auto50: reconcilierea e-TVA nu mai raporteaza fals „cota neconforma"',
   !rep.tvaReconciliation(auto50Db, '2026-06').findings.some((f) => f.cod === 'tva-cota-neconforma'));
 // factura normala (fara tvaPartial) trece neschimbata prin acelasi cod

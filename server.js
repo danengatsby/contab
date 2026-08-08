@@ -21,6 +21,7 @@ const { sendDeadlineDigests } = require('./src/notify'); // ruta de digest manua
 const log = require('./src/log');
 const serverErrors = require('./src/serverErrors');
 const { round2, period: periodOf } = require('./src/util');
+const acc = require('./src/accounting'); // reguli pure de compunere (TVA partial deductibila)
 const { D394_COD_331 } = require('./src/xml');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
@@ -246,32 +247,14 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     .reduce((s, l) => s + l.suma, 0)) : 0;
   // Deductibilitate partiala auto 50% (art. 298 Cod fiscal): jumatate din TVA devine NEDEDUCTIBILA
   // si se include in cost (vehicule fara utilizare exclusiv pentru afacere).
-  if (f.auto50) {
-    const vatL = lines.find((l) => l.debit === '4426');
-    if (vatL && vatL.suma > 0) {
-      const costL = lines.find((l) => l !== vatL && l.credit === vatL.credit); // linia de cost catre acelasi furnizor
-      const ded = round2(vatL.suma / 2);
-      const nedeq = round2(vatL.suma - ded);
-      vatL.suma = ded;
-      vatL.explicatie = (vatL.explicatie || 'TVA') + ' deductibila 50% (auto)';
-      if (costL) { costL.suma = round2(costL.suma + nedeq); costL.explicatie = (costL.explicatie || '') + ' (+50% TVA nedeductibil auto)'; }
-    }
-  }
+  if (f.auto50) acc.tvaPartialInCost(lines, 50, 'deductibila 50% (auto)', '50% TVA nedeductibil auto');
   const firma = db.getFirma(firmaId) || {};
   // Pro-rata (art. 300 Cod fiscal): la achizitiile cu destinatie mixta ale platitorilor cu regim
   // mixt, TVA e deductibila doar in procentul pro-rata provizoriu al firmei; restul intra in cost.
   // Se aplica DUPA auto50 (compunere corecta) si INAINTE de TVA la incasare (care redenumeste 4426).
   const prTva = Number(firma.proRataTva);
   if (f.proRataMixt && Number.isFinite(prTva) && prTva > 0 && prTva < 100) {
-    const vatL = lines.find((l) => l.debit === '4426');
-    if (vatL && vatL.suma > 0) {
-      const costL = lines.find((l) => l !== vatL && l.credit === vatL.credit);
-      const ded = round2((vatL.suma * prTva) / 100);
-      const neded = round2(vatL.suma - ded);
-      vatL.suma = ded;
-      vatL.explicatie = (vatL.explicatie || 'TVA') + ' deductibila pro-rata ' + prTva + '%';
-      if (costL) { costL.suma = round2(costL.suma + neded); costL.explicatie = (costL.explicatie || '') + ' (+TVA nedeductibila pro-rata)'; }
-    }
+    acc.tvaPartialInCost(lines, prTva, 'deductibila pro-rata ' + prTva + '%', 'TVA nedeductibila pro-rata');
   }
   // Amandoua regulile muteaza `vatL0.suma` pe loc, deci aici e TVA-ul ramas deductibil. Marcajul
   // se pune doar cand chiar s-a nededus ceva (facturile normale raman fara camp suplimentar).

@@ -441,7 +441,11 @@ function d300Rows(d) {
   A.R27_1 = sum(RC, '_1'); A.R27_2 = sum(RC, '_2');
   // Sold: R28 = taxa dedusa (fara regularizari => R27); R32 = total dedus; apoi inchiderea
   // R33/R34 (suma negativa / taxa de plata) si cumulat R37/R40 -> R41 (plata) / R42 (recuperat).
-  A.R28_2 = A.R27_2; A.R32_2 = A.R28_2;
+  // R28 = TAXA DEDUSA, R27 = TAXA DEDUCTIBILA. Sunt randuri DIFERITE, si aici traieste pro-rata:
+  // taxa de pe facturi e deductibila integral, dar se deduce doar partea cuvenita, iar restul e
+  // cost. Sondat la validatorul oficial: R28 < R27 trece fara nicio eroare de regula.
+  A.R28_2 = A.R27_2 - Math.round(Number(d.tvaNedeductibila) || 0);
+  A.R32_2 = A.R28_2;
   A.R33_2 = Math.max(A.R32_2 - A.R17_2, 0); A.R34_2 = Math.max(A.R17_2 - A.R32_2, 0);
   // ── POZITIA REPORTATA din decontul precedent ────────────────────────────────────────────────
   // R35 = soldul TVA de plata neachitat pana la depunere; R38 = soldul sumei negative pentru care

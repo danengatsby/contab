@@ -166,6 +166,47 @@ const vAuto = {
   w('D300-autofactura', xml.d300Xml(v.company, '2026-06', r300, who));
 }
 
+// D300 varianta PRO-RATA / TVA partial deductibila: „taxa dedusa" (R28) mai mica decat „taxa
+// deductibila" (R27). Referinta de baza deduce integral, deci randul R28 n-ar fi exercitat
+// niciodata — iar aici traieste tot mecanismul pro-ratei in decont. Include si o achizitie cu
+// TAXARE INVERSA si deducere limitata: acolo perechea R5/R18 trebuie sa ramana pe sumele
+// INTEGRALE (validatorul cere R18 = R5), iar limitarea sa iasa doar prin R28.
+const vPr = {
+  company: v.company, openingBalances: {}, assets: [],
+  entries: [
+    { id: 'pr1', firmaId: 1, data: '2026-06-08', period: '2026-06', tip: 'factura_imobilizare',
+      tipNume: 'Achizitie imobilizare (destinatie mixta)', status: 'postat', partener: 'FURNIZOR SRL',
+      partenerCui: '99887760', document: 'FI 7/2026',
+      lines: [{ debit: '2131', credit: '404', suma: 10420 }, { debit: '4426', credit: '404', suma: 1680 }],
+      tvaPartial: { baza: 10000, cota: 21, tvaFactura: 2100, tvaDedusa: 1680 } },
+    { id: 'pr2', firmaId: 1, data: '2026-06-19', period: '2026-06', tip: 'achizitie_intracomunitara',
+      tipNume: 'Achizitie intracomunitara (destinatie mixta)', status: 'postat', partener: 'GAMMA GMBH',
+      partenerCui: 'DE811907980', document: 'IC 12/2026',
+      lines: [{ debit: '371', credit: '401', suma: 5000 }, { debit: '4426', credit: '4427', suma: 840 },
+        { debit: '371', credit: '4427', suma: 210 }],
+      tvaPartial: { baza: 5000, cota: 21, tvaFactura: 1050, tvaDedusa: 840 } },
+    { id: 'pr3', firmaId: 1, data: '2026-06-25', period: '2026-06', tip: 'factura_vanzare_servicii',
+      tipNume: 'Vanzare', status: 'postat', partener: 'CLIENT SRL', partenerCui: '99887760',
+      document: 'FV 30/2026',
+      lines: [{ debit: '4111', credit: '704', suma: 20000 }, { debit: '4111', credit: '4427', suma: 4200 }] },
+  ],
+};
+{
+  const dPr = rep.d300(vPr, '2026-06');
+  const aPr = xml.d300Rows(dPr);
+  if (!(aPr.R28_2 < aPr.R27_2)) {
+    throw new Error('D300-prorata: R28 nu e mai mic decat R27 — varianta nu exercita pro-rata ('
+      + aPr.R27_2 + ' / ' + aPr.R28_2 + ')');
+  }
+  // Perechea de autolichidare trebuie sa ramana pe sumele INTEGRALE, altfel taxa colectata iese
+  // subdeclarata si validatorul pica pe V7/V8.
+  if (aPr.R18_1 !== aPr.R5_1 || aPr.R18_2 !== aPr.R5_2) {
+    throw new Error('D300-prorata: perechea R5/R18 nu mai e egala — ' + JSON.stringify(aPr));
+  }
+  if (aPr.R5_2 !== 1050) throw new Error('D300-prorata: taxa colectata din autolichidare nu e integrala: ' + aPr.R5_2);
+  w('D300-prorata', xml.d300Xml(v.company, '2026-06', dPr, who));
+}
+
 // D390 + D300 varianta SERVICII intracomunitare (art. 278 alin. (2), declarate prin art. 325).
 // Referinta de mai sus are doar o livrare de BUNURI, deci codurile P si S — adaugate abia acum —
 // n-ar fi exercitate niciodata la validatorul oficial. Aceeasi ratiune ca la varianta autofactura.

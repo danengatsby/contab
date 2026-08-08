@@ -99,7 +99,7 @@ module.exports = [
           { value: 'servicii', label: 'SERVICII primite de la un prestator extern (D390 cod S, daca prestatorul are cod de TVA din UE)' },
           { value: 'intern331', label: 'Taxare inversa interna, art. 331 (nu intra in D390)' },
         ] },
-      { name: 'contStoc', label: 'Cont stoc/cheltuiala/imobilizare', type: 'account', default: '371' }],
+      { name: 'contStoc', label: 'Cont stoc/cheltuiala/imobilizare', type: 'account', default: '371' }, F.proRataMixt],
     build: (d) => {
       const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
       return [
@@ -147,7 +147,7 @@ module.exports = [
     id: 'factura_combustibil',
     nume: 'Factura/bon combustibil (cu CUI)',
     grup: 'Cumparari',
-    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.auto50],
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.auto50, F.proRataMixt],
     build: (d) => {
       const lines = [L('6022', '401', d.baza, 'Cheltuieli privind combustibilii')];
       if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibilă'));
@@ -159,7 +159,7 @@ module.exports = [
     nume: 'Factura achizitie imobilizare (mijloc fix)',
     grup: 'Cumparari',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.auto50,
-      { name: 'contImob', label: 'Cont imobilizare', type: 'account', default: '2131' }],
+      { name: 'contImob', label: 'Cont imobilizare', type: 'account', default: '2131' }, F.proRataMixt],
     build: (d) => {
       const lines = [L(d.contImob || '2131', '404', d.baza, 'Achiziție imobilizare')];
       if (d.tva > 0) lines.push(L('4426', '404', d.tva, 'TVA deductibilă'));
@@ -172,7 +172,7 @@ module.exports = [
     grup: 'Cumparari',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota,
       { name: 'contStoc', label: 'Cont stoc/cheltuiala', type: 'account', default: '371' },
-      F.codNC, F.masaNeta, F.naturaTranz, F.conditieLivrare],
+      F.codNC, F.masaNeta, F.naturaTranz, F.conditieLivrare, F.proRataMixt],
     build: (d) => {
       const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
       return [
@@ -218,12 +218,10 @@ module.exports = [
     nume: 'Achizitie intracomunitara de servicii (taxare inversa, art. 307 alin. (2))',
     grup: 'Cumparari',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota,
-      { name: 'contChelt', label: 'Cont cheltuiala', type: 'account', default: '628' }],
-    // Deliberat FARA `F.proRataMixt`, desi linia 4426 exista: pro-rata se aplica in composeEntry
-    // cautand linia de cost cu ACELASI credit ca linia de TVA, iar aici creditul e 4427 (taxare
-    // inversa), nu furnizorul — nu ar gasi nimic si partea nedeductibila ar disparea din articol,
-    // dezechilibrandu-l. Aceeasi limita o au deja `achizitie_intracomunitara` si taxarea inversa
-    // interna; se repara pentru toate odata, in motorul de pro-rata, nu cu o bifa care tace aici.
+      { name: 'contChelt', label: 'Cont cheltuiala', type: 'account', default: '628' }, F.proRataMixt],
+    // Poarta bifa de pro-rata, ca toate achizitiile cu taxare inversa: motorul stie de acum sa puna
+    // partea nedeductibila pe contul de cost, cu contrapartida 4427 (taxa colectata ramane intreaga
+    // — vezi `tvaPartialInCost` din server.js). Pana atunci, bifa ar fi dezechilibrat articolul.
     build: (d) => {
       const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
       return [
@@ -237,7 +235,7 @@ module.exports = [
     nume: 'Achizitie cu taxare inversa interna (art. 331 — cereale, lemn, deseuri, constructii...)',
     grup: 'Cumparari',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota, F.codCategorie331,
-      { name: 'contStoc', label: 'Cont stoc/cheltuiala/imobilizare', type: 'account', default: '371' }],
+      { name: 'contStoc', label: 'Cont stoc/cheltuiala/imobilizare', type: 'account', default: '371' }, F.proRataMixt],
     build: (d) => {
       const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
       return [
