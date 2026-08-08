@@ -756,6 +756,51 @@ function autolichidareaLui(e) {
   return AUTOLICHIDARE[e && e.tip] || null;
 }
 
+/**
+ * Face NEDEDUCTIBILA o parte din TVA-ul de pe articol si o muta in cost. Sursa unica a celor doua
+ * reguli care fac asta — auto 50% (art. 298) si pro-rata (art. 300) — fiindca aveau aceeasi forma
+ * si aceeasi gaura: cautau linia de cost dupa CREDITUL liniei de TVA.
+ *
+ * La o factura obisnuita creditul e furnizorul (4426 = 401), deci linia de cost se gaseste. La
+ * TAXARE INVERSA insa creditul e 4427 (4426 = 4427), iar linia cautata nu exista: partea
+ * nedeductibila disparea, articolul ramanea DEZECHILIBRAT. De aceea niciun tip cu taxare inversa
+ * nu putea purta bifa de pro-rata — si tocmai acolo stau achizitiile mari (imobilizari
+ * intracomunitare, art. 331, servicii din UE).
+ *
+ * La taxare inversa taxa COLECTATA ramane integral datorata (statul o primeste oricum); se reduce
+ * doar DEDUCEREA, iar diferenta creste costul bunului (art. 297 alin. (3)):
+ *     cont = 401   baza          cont = 401   baza
+ *     4426 = 4427  tva     ->    4426 = 4427  dedus
+ *                              cont = 4427  nedeductibil
+ * Articolul ramane echilibrat, iar 4427 pastreaza taxa intreaga.
+ *
+ * Destinatia se decide INAINTE de a atinge ceva: daca nu stim unde sa punem partea nedeductibila,
+ * TVA-ul ramane neatins. Un articol corect si nemodificat e mai bun decat unul dezechilibrat.
+ */
+function tvaPartialInCost(lines, pctDeductibil, etichetaTva, etichetaCost) {
+  const vatL = lines.find((l) => l.debit === '4426');
+  if (!vatL || vatL.suma <= 0) return;
+  const ded = round2((vatL.suma * pctDeductibil) / 100);
+  const neded = round2(vatL.suma - ded);
+  if (neded <= 0) return;
+  const costL = lines.find((l) => l !== vatL && l.credit === vatL.credit);
+  let aplica = null;
+  if (costL) {
+    aplica = () => {
+      costL.suma = round2(costL.suma + neded);
+      costL.explicatie = (costL.explicatie || '') + ' (+' + etichetaCost + ')';
+    };
+  } else {
+    // Taxare inversa: partea nedeductibila se adauga pe contul de cost/stoc/imobilizare al bazei.
+    const bazaL = lines.find((l) => l !== vatL && !['4426', '4427', '4428'].includes(String(l.debit)));
+    if (bazaL) aplica = () => lines.push({ debit: bazaL.debit, credit: vatL.credit, suma: neded, explicatie: etichetaCost });
+  }
+  if (!aplica) return;
+  vatL.suma = ded;
+  vatL.explicatie = (vatL.explicatie || 'TVA') + ' ' + etichetaTva;
+  aplica();
+}
+
 /** Jurnalele de TVA (vanzari/cumparari) si sumarul pentru decontul D300. */
 function vatJournals(db, period) {
   const entries = sortEntries(postedEntries(db).filter((e) => inPeriod(e, period)));
@@ -769,6 +814,7 @@ function vatJournals(db, period) {
   const tot = { bazaV: 0, colectata: 0, bazaC: 0, deductibila: 0 };
   const totScutite = { intracom: 0, taxareInversa: 0 };
   const totAuto = { intracomBunuri: { baza: 0, tva: 0 }, taxareInversaInterna: { baza: 0, tva: 0 } };
+  tot.tvaNedeductibila = 0;
 
   for (const e of entries) {
     let col = 0; let ded = 0; let bazaV = 0; let reverseCharge = false;
@@ -824,8 +870,8 @@ function vatJournals(db, period) {
       // comerciala, si baza si TVA-ul sunt NEGATIVE, iar raportul lor ramane cota facturii
       // (-210 / -1000 = 21%). Conditia veche `> 0` le trimitea pe toate la cota 0 — vezi `byCota`.
       const cota = tp ? tp.cota : (bazaC !== 0 && ded !== 0 ? Math.round((ded / bazaC) * 100) : 0);
-      // In decont intra doar partea DEDUSA, cu baza ei proportionala: validatorul oficial cere
-      // raportul baza/TVA egal cu cota (regula R84), iar `pro_rata` declarat nu il relaxeaza.
+      // Baza proportionala partii DEDUSE. Nu mai alimenteaza decontul (vezi mai jos), dar ramane
+      // pe rand: jurnalul de cumparari o arata, si e utila la verificarea manuala a deducerii.
       const bazaDedusa = tp ? (cota > 0 ? round2((ded * 100) / cota) : 0) : bazaC;
       cumparari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '',
         baza: bazaJurnal, tva: tvaJurnal, total: round2(bazaJurnal + tvaJurnal), cota,
@@ -836,7 +882,13 @@ function vatJournals(db, period) {
         codCategorie331: Number(e.codCategorie331) || 0 });
       tot.deductibila = round2(tot.deductibila + ded);
       tot.bazaC = round2(tot.bazaC + bazaJurnal);
-      if (autolich) { const a = totAuto[autolich.cat]; a.baza = round2(a.baza + bazaDedusa); a.tva = round2(a.tva + ded); }
+      // Nedeductibilul perioadei (auto 50%, pro-rata): merge pe randul „TAXA DEDUSA" din decont,
+      // NU se scade din baza achizitiei. Vezi nota de la `byCota`.
+      tot.tvaNedeductibila = round2((tot.tvaNedeductibila || 0) + round2(tvaJurnal - ded));
+      // Autolichidarea intra cu sumele INTEGRALE de pe factura: taxa colectata se datoreaza in
+      // intregime chiar cand deducerea e limitata de pro-rata, iar validatorul cere perechea egala
+      // (V7/V8: R18 = R5). Cu partea dedusa pe amandoua laturile, TVA-ul colectat iesea subdeclarat.
+      if (autolich) { const a = totAuto[autolich.cat]; a.baza = round2(a.baza + bazaJurnal); a.tva = round2(a.tva + tvaJurnal); }
     }
     if (col !== 0) {
       tot.colectata = round2(tot.colectata + col);
@@ -864,14 +916,19 @@ function vatJournals(db, period) {
   const derecuperat = round2(Math.max(tot.deductibila - tot.colectata, 0));
   // Defalcare pe cote de TVA (21% / 11% / 0% scutit) pentru D300. Cota vine de pe RAND (unde e
   // deja cea a facturii), nu recalculata din tva/baza: la TVA partial deductibila raportul ar da
-  // o cota inexistenta. In decont intra partea dedusa cu baza ei proportionala (`bazaDedusa`/
-  // `tvaDedusa`); pentru facturile normale cele doua coincid cu baza si TVA-ul de pe factura.
+  // o cota inexistenta.
+  //
+  // In decont intra factura ASA CUM A FOST EMISA — baza si TVA integrale. Varianta veche declara
+  // partea dedusa cu o baza proportionala inventata: la pro-rata 80% pe o achizitie de 1.000 lei,
+  // decontul arata o achizitie de 800 care nu existase. Nedeductibilul isi are randul lui — R28
+  // („taxa dedusa") poate fi mai mic decat R27 („taxa deductibila"), verificat la validatorul
+  // oficial. Regula R84 (raport baza/TVA = cota) e satisfacuta oricum, fiindca 210/1000 = 21%.
   const byCota = (rows) => {
     const m = {};
     for (const r of rows) {
       const cota = r.cota || 0;
-      const baza = r.bazaDedusa != null ? r.bazaDedusa : r.baza;
-      const tva = r.tvaDedusa != null ? r.tvaDedusa : r.tva;
+      const baza = r.baza;
+      const tva = r.tva;
       m[cota] = m[cota] || { cota, baza: 0, tva: 0 };
       m[cota].baza = round2(m[cota].baza + baza);
       m[cota].tva = round2(m[cota].tva + tva);
@@ -1101,6 +1158,6 @@ function cashControl(db, cont, period, opts) {
     ok: !negative.length && !plafon.length && !plafonTotalZi.length && !zilePesteLimita.length };
 }
 
-module.exports = { vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
+module.exports = { tvaPartialInCost, vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
   allLines, resultLines, isResultClosingLine, rezervaLegalaDin, profitContabilDin, consumaPierderi, aniReportPierdere, rulajRezultat, sortEntries, entryChrono, lastEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, vatCarryForward, annualClosing, profitTax, resultDistribution, legalReserve, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };

@@ -43,7 +43,7 @@ module.exports = [
       { name: 'cost', label: 'Cost achizitie (fara TVA)', type: 'number', required: true },
       { name: 'tvaDed', label: 'TVA deductibila la achizitie', type: 'number', default: 0 },
       { name: 'adaos', label: 'Adaos comercial', type: 'number', default: 0 },
-      { name: 'cotaVanzare', label: 'Cota TVA la vanzare (%)', type: 'number', default: fiscal.FISCAL.tvaRedus }],
+      { name: 'cotaVanzare', label: 'Cota TVA la vanzare (%)', type: 'number', default: fiscal.FISCAL.tvaRedus }, F.proRataMixt],
     build: (d) => {
       const lines = [L('371', '401', d.cost, 'Intrare marfă la cost')];
       if (d.tvaDed > 0) lines.push(L('4426', '401', d.tvaDed, 'TVA deductibilă'));
@@ -133,7 +133,7 @@ module.exports = [
     id: 'combustibil_50',
     nume: 'Combustibil cu TVA deductibila 50% (vehicul limitat)',
     grup: 'Cumparari',
-    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota],
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota, F.proRataMixt],
     build: (d) => {
       const tvaTotal = round2((d.baza * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
       const tvaDed = round2(tvaTotal * fiscal.FISCAL.deductibilitateTvaAutoLimitat / 100);

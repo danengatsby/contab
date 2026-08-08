@@ -47,7 +47,7 @@ module.exports = [
     nume: 'Factura de avans primita (furnizor): 409 + 4426 = 401',
     grup: 'Cumparari',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document,
-      { name: 'baza', label: 'Avans facturat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
+      { name: 'baza', label: 'Avans facturat (fara TVA)', type: 'number', required: true }, F.tva, F.cota, F.proRataMixt],
     build: (d) => {
       const lines = [L('409', '401', d.baza, 'Factura de avans primită - avans (fără TVA)')];
       if (d.tva > 0) lines.push(L('4426', '401', d.tva, 'TVA deductibilă aferentă avansului'));

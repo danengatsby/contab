@@ -21,7 +21,7 @@ poarta înainte să lase push-ul să treacă. **24 din 24 de ieșiri: „Validar
 | D101 | `D101`, `D101-defalcare` |
 | D112 | `D112`, `D112-beneficii` |
 | D177 · D205 | `D177`, `D205` |
-| D300 | `D300`, `D300-report`, `D300-autofactura`, `D300-servicii` |
+| D300 | `D300`, `D300-report`, `D300-autofactura`, `D300-servicii`, `D300-prorata` |
 | D390 | `D390`, `D390-autofactura`, `D390-servicii` |
 | D394 | `D394` |
 | SAF-T (D406) | `D406`, `D406-T`, `D406-A`, `D406-C`, `D406-storno` |
@@ -92,6 +92,28 @@ acest depozit: nu inventa monografia.
 
 **D311** (TVA colectată de persoanele cu cod de TVA anulat) are validator oficial în manifest
 (`<D311>`), dar nu a fost recunoscut.
+
+## Ultima verificare: 2026-08-08 (4) — pro-rata în decont: R28 ≠ R27
+
+Variantă de referință nouă: **`D300-prorata`** ✅ validare fără erori. Exercită singurul loc din
+decont în care trăiește pro-rata și pe care referința de bază nu-l atingea niciodată (acolo taxa
+se deduce integral).
+
+**Întrebarea sondată**, pentru că răspunsul schimba forma decontului pentru toate firmele cu TVA
+parțial deductibil: *poate „taxa dedusă" (R28) să fie mai mică decât „taxa deductibilă" (R27)?*
+Sondaj: am luat referința validă, am pus `R28_2=1680` sub `R27_2=2100` și am revalidat. Verdict:
+**nicio eroare de regulă** — doar suma de control, pe care n-o recalculasem. Deci R28 e exact
+rândul unde se aplică limitarea.
+
+Ce a schimbat asta: până acum, o achiziție de 1.000 lei cu deducere limitată la 80% era declarată
+ca o achiziție de **800 de lei** — o bază proporțională inventată, ca să iasă raportul cerut de
+regula R84. Azi decontul poartă factura așa cum a fost emisă (1.000 / 210), iar limitarea apare în
+R28. R84 e satisfăcută oricum: 210/1000 = 21%.
+
+La **taxare inversă** perechea R5/R18 rămâne pe sumele integrale — validatorul cere `R18 = R5`
+(V7/V8), iar taxa colectată se datorează în întregime chiar când deducerea e limitată. Referința
+verifică asta înainte de a scrie fișierul: dacă perechea nu mai e egală sau colectata nu e
+integrală, generatorul aruncă.
 
 ## Ultima verificare: 2026-08-08 (3) — e-Factura B2C: fără oracol, cu două surse
 

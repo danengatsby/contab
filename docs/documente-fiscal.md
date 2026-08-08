@@ -101,6 +101,28 @@
   5311, 1012, 117, 401), reproducând balanța din ghid — SI 65.000, rulaje 76.392,50, SF
   84.327,50 — cu TVA de plată 840 și profit 687,50.
 
+## Pro-rata TVA (art. 300) — regim mixt
+
+**Procentul** se calculează pe operațiunile din **sfera TVA**, nu pe toată clasa 7: cesiunea
+bunurilor de capital folosite în activitate și operațiunile financiare accesorii sunt excluse prin
+art. 300 alin. (7), iar variația stocurilor, producția de imobilizări, subvențiile, reluările de
+provizioane și diferențele de curs nici nu sunt operațiuni. Raportul afișează **ce a fost exclus și
+de ce** — o pro-rata trebuie să poată fi apărată în fața unui inspector.
+
+Operațiunile **scutite sau netaxate cu drept de deducere** (livrare intracomunitară, prestare
+intracomunitară de servicii, livrare cu taxare inversă art. 331) intră în **numărător**, deși nu au
+TVA colectat.
+
+**Aplicarea** pe achiziții se face bifând „destinație mixtă" pe document. Bifa există pe toate
+tipurile care generează TVA deductibilă, inclusiv pe cele cu **taxare inversă** (achiziții
+intracomunitare de bunuri și servicii, art. 331, autofactură) — acolo taxa colectată rămâne
+**integral** datorată și se reduce doar deducerea, diferența intrând în costul bunului
+(art. 297 alin. (3)).
+
+În **decont**, factura apare așa cum a fost emisă (bază și TVA integrale), iar partea nededusă
+apare pe rândul **28 „taxa dedusă"**, care poate fi mai mic decât rândul 27 „taxa deductibilă".
+La taxare inversă, perechea R5/R18 rămâne pe sumele integrale.
+
 ## Tipuri de documente acceptate
 
 Vânzări (mărfuri, produse, servicii, bon Z, livrare intracomunitară de bunuri,

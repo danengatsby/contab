@@ -28,7 +28,7 @@ module.exports = [
       { name: 'leasingRata', label: 'Preia rata din contractul de leasing', type: 'leasing' },
       { name: 'principal', label: 'Principal (rata capital, 167)', type: 'number', required: true },
       { name: 'dobanda', label: 'Dobanda (666)', type: 'number', default: 0 },
-      F.tva, F.cota],
+      F.tva, F.cota, F.proRataMixt],
     build: (d) => {
       const lines = [L('167', '404', d.principal, 'Rata de capital leasing')];
       if (d.dobanda > 0) lines.push(L('666', '404', d.dobanda, 'Dobânda leasing'));
@@ -84,7 +84,7 @@ module.exports = [
     id: 'imobilizare_in_curs',
     nume: 'Imobilizare in curs - achizitie (231 = 404)',
     grup: 'Imobilizari',
-    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota],
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota, F.proRataMixt],
     build: (d) => {
       const lines = [L('231', '404', d.baza, 'Imobilizare corporală în curs de execuție')];
       if (d.tva > 0) lines.push(L('4426', '404', d.tva, 'TVA deductibilă'));

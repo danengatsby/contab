@@ -87,7 +87,7 @@ module.exports = [
       { name: 'valoareBunuri', label: 'Valoarea in vama a bunurilor (lei)', type: 'number', required: true },
       { name: 'taxeVamale', label: 'Taxe vamale (lei)', type: 'number', default: 0 },
       { name: 'cota', label: 'Cota TVA in vama (%)', type: 'number', default: fiscal.FISCAL.tvaStandard },
-      { name: 'contBun', label: 'Cont bunuri (stoc/imobilizare)', type: 'account', default: '371' }],
+      { name: 'contBun', label: 'Cont bunuri (stoc/imobilizare)', type: 'account', default: '371' }, F.proRataMixt],
     build: (d) => {
       const baza = round2(d.valoareBunuri + (d.taxeVamale || 0));
       const tva = round2((baza * (Number(d.cota) || fiscal.FISCAL.tvaStandard)) / 100);
