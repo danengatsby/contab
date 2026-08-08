@@ -56,9 +56,16 @@ Fiecare raport are buton **⬇ PDF**, iar fiecare înregistrare poate fi exporta
   factură fără să fie: raportul Z, avizul de însoțire, factura simplificată (art. 319 alin. (12)),
   vânzarea cu amănuntul HoReCa, scontul de decontare și diferența de curs. Fiecare are răspunsul
   scris pe tip, cu motiv — două porți din suită refuză un tip de vânzare care nu răspunde.
-  **Termenul de 5 zile** (restanțele din notificări) se aplică doar relației **B2B interne**:
+  **Termenul de 5 zile** (restanțele din notificări) se aplică relației **interne**, B2B și **B2C**:
   o livrare intracomunitară e o factură validă, dar beneficiarul nu e stabilit în România, deci
   nu produce restanță — se poate totuși trimite manual în SPV.
+- **e-Factura B2C** (facturi către persoane fizice, obligatorie din 1 ianuarie 2025) — identificatorul
+  cumpărătorului (BT-47) poartă **CNP-ul** dacă persoana l-a dat, altfel codul convențional de
+  **13 zerouri** (`0000000000000`); codul de TVA al cumpărătorului (BT-48) **nu** se completează.
+  Relația se derivă din date: cod de TVA străin → în afara obligației; 13 cifre → CNP, deci B2C;
+  lipsa codului pe o factură → tot B2C (persoana fizică nu e obligată să-și dea CNP-ul). Ce decide
+  când codul nu spune nimic e **țara din fișa partenerului**. Bonurile fiscale nu intră: nu sunt
+  facturi, deci nici nu trec de prima condiție.
 - **D300** (decont TVA) și **D394** (informativă, agregare pe partener) — din tab-ul
   „TVA / D300” și din „Livrabile” (`/xml/d300?period=`, `/xml/d394?period=`). Jurnalele de TVA și
   recapitularea D300 au **defalcare pe cote** (21% / 11% / scutit-0%): bază + TVA pe fiecare cotă,

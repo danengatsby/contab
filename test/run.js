@@ -717,11 +717,19 @@ const recTi = rep.tvaReconciliation(mkVat([
   { id: 'v3', tip: 'achizitie_intracomunitara', partenerCui: 'DE1', document: 'IC1', period: '2026-06', data: '2026-06-12', lines: [{ debit: '371', credit: '401', suma: 2000 }, { debit: '4426', credit: '4427', suma: 420 }] },
 ]), '2026-06');
 ok('reconciliere: taxarea inversa nu e semnalata drept cota neconforma', !recTi.findings.some((f) => f.cod === 'tva-cota-neconforma'));
-// vanzare fara CUI de partener (B2C) nu intra la e-Factura netrimisa
+// Vanzare fara CUI de partener = B2C, si INTRA la e-Factura netrimisa: din 1 ianuarie 2025 se
+// raporteaza si facturile catre persoane fizice. Aserțiunea de aici cerea CONTRARIUL, adica exact
+// regula de dinainte de B2C — si tocmai de aceea filtrul care le tacea a supravietuit atat.
+// Lipsa codului e normala aici, nu o scapare: persoana fizica nu e obligata sa-si dea CNP-ul.
 const recB2c = rep.tvaReconciliation(mkVat([
   { id: 'v4', tip: 'factura_vanzare_marfuri', document: 'BON1', period: '2026-06', data: '2026-06-13', lines: [{ debit: '4111', credit: '707', suma: 500 }, { debit: '4111', credit: '4427', suma: 105 }] },
 ]), '2026-06');
-ok('reconciliere: vanzare B2C (fara CUI) nu e semnalata ca netrimisa', !recB2c.findings.some((f) => f.cod === 'efactura-netrimisa'));
+ok('reconciliere: vanzare B2C (fara CUI) E semnalata ca netrimisa', recB2c.findings.some((f) => f.cod === 'efactura-netrimisa'));
+// ...dar una catre un client din alt stat NU: obligatia priveste persoanele stabilite in Romania.
+const recStrain = rep.tvaReconciliation(mkVat([
+  { id: 'v5', tip: 'factura_vanzare_marfuri', partenerCui: 'DE811907980', document: 'F5', period: '2026-06', data: '2026-06-13', lines: [{ debit: '4111', credit: '707', suma: 500 }, { debit: '4111', credit: '4427', suma: 105 }] },
+]), '2026-06');
+ok('reconciliere: vanzare catre un beneficiar strain nu e semnalata', !recStrain.findings.some((f) => f.cod === 'efactura-netrimisa'));
 // Dosar anual — perioadele de TVA dupa regim (helper pur; asamblarea completa e testata in http.js)
 const dosarMod = require('../src/dosarAnual');
 eq('dosar: perioade TVA lunare = 12 luni', dosarMod.vatPeriods({ perioadaTva: 'L' }, '2026').length, 12);
@@ -5240,7 +5248,8 @@ const vEf = { firmaId: 9, company: { nume: 'EF SRL', tvaPlatitor: true }, angaja
   { id: 'e5', tip: 'factura_vanzare_produse', document: 'F5', data: '2026-07-15' },
 ] };
 const efx = declMod.eFacturaNetrimise(vEf, '2026-07-20');
-eq('netrimise: doar vanzarile B2B fara spv', efx.count, 2);
+// `e5` nu are CUI de partener: e o factura B2C, deci intra si ea (raportabila din 2025).
+eq('netrimise: vanzarile B2B si B2C fara spv', efx.count, 3);
 eq('netrimise: restante (termen depasit)', efx.overdue, 1);
 eq('netrimise: termen = data + 5 zile CALENDARISTICE (OUG 89/2025)', efx.items.find((x) => x.entryId === 'e1').due, '2026-07-23');
 // ── Perimetrul e-Factura: DOUA conditii independente ─────────────────────────────────────────
@@ -5300,13 +5309,58 @@ eq('netrimise: termen = data + 5 zile CALENDARISTICE (OUG 89/2025)', efx.items.f
 
   // Conditia 2: obligatia priveste relatia B2B INTERNA (OUG 120/2021 art. 10). O livrare
   // intracomunitara e o factura emisa valabila, dar nu produce o restanta cu termen de 5 zile.
-  ok('beneficiar cu CUI romanesc (cu prefix RO)', declMod.beneficiarRoman('RO12345678'));
-  ok('...si fara prefix (forma uzuala)', declMod.beneficiarRoman('12345678'));
-  ok('beneficiar din alt stat membru NU e in perimetru', !declMod.beneficiarRoman('DE811907980'));
-  ok('...si nici partenerul neidentificat', !declMod.beneficiarRoman(''));
+  eq('CUI romanesc cu prefix RO -> B2B', xml.perimetruEFactura('RO12345678'), 'b2b');
+  eq('...si fara prefix (forma uzuala) -> B2B', xml.perimetruEFactura('12345678'), 'b2b');
+  eq('cod de TVA din alt stat membru -> strain', xml.perimetruEFactura('DE811907980'), 'strain');
+  // CNP-ul are TREISPREZECE cifre, un CUI romanesc cel mult zece: nu se pot confunda.
+  eq('CNP (13 cifre) -> B2C', xml.perimetruEFactura('1900101415238'), 'b2c');
+  eq('fara cod deloc -> B2C (cazul celor 13 zerouri)', xml.perimetruEFactura(''), 'b2c');
+  // Fisa partenerului are ultimul cuvant cand codul nu spune nimic: un client strain inregistrat
+  // doar cu numele nu trebuie sa devina o „restanta B2C".
+  eq('partener fara cod, dar cu tara straina -> strain', xml.perimetruEFactura('', { tara: 'DE' }), 'strain');
   eq('livrare intracomunitara: factura emisa valabila, dar fara termen de 5 zile',
     declMod.eFacturaNetrimise(vv([F('ic', 'livrare_intracomunitara', 'DE811907980', '2026-07-01')]), '2026-07-20').count, 0);
   ok('...desi ramane trimisibila manual in SPV', xml.isSendable({ tip: 'livrare_intracomunitara' }));
+  // ── B2C in UBL: identificatorul cumparatorului (BT-47) ────────────────────────────────────────
+  // Obligatorie din 1 ianuarie 2025. Doua greseli, amandoua tacute pana acum:
+  //   - clientul FARA cod iesea fara niciun identificator, iar SPV-ul il cere;
+  //   - CNP-ul era prefixat cu „RO" si pus si in campul codului de TVA — un CNP declarat drept
+  //     cod de TVA al unei firme care nu exista.
+  {
+    const fact = (cui, partener, pinfo) => xml.eFacturaXml({ cui: 'RO12345674', nume: 'F SRL' },
+      { tip: 'factura_vanzare_marfuri', data: '2026-06-10', document: 'F1', partenerCui: cui, partener,
+        lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '4111', credit: '4427', suma: 210 }] },
+      pinfo || {});
+    // Blocul CUMPARATORULUI se decupeaza intai: furnizorul e scris inaintea lui si are aceleasi
+    // etichete, deci o cautare pe tot documentul intoarce datele firmei proprii — ceea ce s-a si
+    // intamplat la prima scriere a testului, iar aserțiunea ar fi trecut daca cerea „nu e gol".
+    const bloc = (m) => { const g = /<cac:AccountingCustomerParty>[\s\S]*?<\/cac:AccountingCustomerParty>/.exec(m); return g ? g[0] : ''; };
+    const legalId = (m) => { const g = /<cac:PartyLegalEntity>[\s\S]*?<cbc:CompanyID>([^<]*)</.exec(bloc(m)); return g ? g[1] : ''; };
+    const areTva = (m) => /<cac:PartyTaxScheme>/.test(bloc(m));
+
+    const b2c = fact('', 'Ionescu Maria');
+    eq('B2C fara cod: BT-47 = codul de 13 zerouri', legalId(b2c), xml.CIF_PERSOANA_FIZICA);
+    eq('...si sunt chiar 13 zerouri', xml.CIF_PERSOANA_FIZICA, '0000000000000');
+    ok('B2C: FARA cod de TVA al cumparatorului (BT-48)', !areTva(b2c));
+    ok('B2C: numele persoanei ramane pe factura', /Ionescu Maria/.test(b2c));
+
+    const cuCnp = fact('1900101415238', 'Ionescu Maria');
+    eq('B2C cu CNP: BT-47 = CNP-ul, neatins', legalId(cuCnp), '1900101415238');
+    ok('...si NU prefixat cu RO', !/RO1900101415238/.test(cuCnp));
+    ok('B2C cu CNP: tot fara cod de TVA', !areTva(cuCnp));
+
+    const b2b = fact('RO99887760', 'BETA SRL');
+    eq('B2B ramane neschimbat: BT-47 = codul firmei', legalId(b2b), 'RO99887760');
+    ok('B2B: codul de TVA al cumparatorului e prezent', areTva(b2b));
+
+    // Nota de credit isi construieste partile pe alta cale — aceeasi regula, alt generator.
+    const notaB2c = xml.eFacturaXml({ cui: 'RO12345674', nume: 'F SRL' },
+      { tip: 'factura_storno_vanzare', data: '2026-06-11', document: 'S1', partener: 'Ionescu Maria',
+        lines: [{ debit: '4111', credit: '707', suma: 1000 }, { debit: '4111', credit: '4427', suma: 210 }] }, {});
+    ok('nota de credit catre persoana fizica e CreditNote', /<CreditNote/.test(notaB2c));
+    eq('...si poarta acelasi identificator de 13 zerouri', legalId(notaB2c), xml.CIF_PERSOANA_FIZICA);
+  }
+
   eq('aceeasi livrare catre un client ROMAN produce restanta',
     declMod.eFacturaNetrimise(vv([F('ro', 'factura_vanzare_marfuri', 'RO9', '2026-07-01')]), '2026-07-20').count, 1);
 }
