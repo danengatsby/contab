@@ -179,6 +179,20 @@ const CAEN_MICRO_3 = ['5821', '6201', '6209', '5510', '5520', '5530', '5590',
 // (art. 148/170 Cod fiscal): CASS intre 6 SM si 60 SM; CAS de la 12 SM (baza 12), respectiv 24 SM.
 const PFA = { plafonCassInf: 6, cas12: 12, cas24: 24, plafonCassSup: 60 };
 
+// Prefixele de tara ale codurilor de TVA din UE. E un NOMENCLATOR, nu o cota: sta in afara lui
+// `RATES` din acelasi motiv ca `CAEN_MICRO_3` — `applyConfig` itereaza peste chei numerice si ar
+// transforma un tablou in NaN. Se schimba la aderari/retrageri (Brexit), nu la legea bugetului.
+//
+// Doua capcane, amandoua reale:
+//   'EL' e Grecia — codul ei de TVA NU incepe cu 'GR', desi codul ISO al tarii da. O lista scrisa
+//        dupa codurile ISO ar rata exact partenerii greci.
+//   'XI' (Irlanda de Nord, Protocolul pentru Irlanda/Irlanda de Nord) e valabil DOAR pentru BUNURI.
+//        Serviciile de la/catre un cod XI NU sunt intracomunitare si nu intra in D390 — de aceea
+//        exista doua liste, nu una cu exceptii scrise la fiecare apel.
+const TARI_UE = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI', 'FR', 'HR',
+  'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK'];
+const TARI_UE_BUNURI = TARI_UE.concat(['XI']);
+
 // Referinte legale (trasabilitate la revizuirea anuala). Orientative — verifica textul in vigoare.
 const SURSE = {
   cas: 'Art. 138 Cod fiscal (25%)',
@@ -225,6 +239,13 @@ const SURSE = {
   dobanziExcedentare: 'Art. 40^2 Cod fiscal — 1.000.000 EUR deductibil neconditionat, peste acesta '
     + '30% din baza (rezultat fiscal + costuri excedentare + amortizare fiscala); report NELIMITAT',
   pragIntrastat: 'Ordin INS — praguri Intrastat 1.000.000 lei/an pe flux (introduceri / expedieri), 2024-2026',
+  d390: 'Art. 325 Cod fiscal — declaratia recapitulativa cuprinde si SERVICIILE, nu doar bunurile: '
+    + 'prestarile intracomunitare taxabile la beneficiar (cod P) si achizitiile de servicii pentru '
+    + 'care beneficiarul e obligat la plata taxei (cod S), ambele in temeiul art. 278 alin. (2). '
+    + 'Restul codurilor: L = livrari de bunuri, A = achizitii de bunuri, T = livrari in cadrul unei '
+    + 'operatiuni triunghiulare, R = livrari in regimul special pentru agricultori. Serviciile '
+    + 'primite de la prestatori din AFARA UE se taxeaza invers (art. 307 alin. (2)) dar NU se declara',
 };
 
-module.exports = { AN, DATA_ACTUALIZARE, RATES, DEDUCERE, BENEFICII, PFA, CAEN_MICRO_3, SURSE };
+module.exports = { AN, DATA_ACTUALIZARE, RATES, DEDUCERE, BENEFICII, PFA, CAEN_MICRO_3,
+  TARI_UE, TARI_UE_BUNURI, SURSE };

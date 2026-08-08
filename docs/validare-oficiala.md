@@ -21,8 +21,8 @@ poarta înainte să lase push-ul să treacă. **24 din 24 de ieșiri: „Validar
 | D101 | `D101`, `D101-defalcare` |
 | D112 | `D112`, `D112-beneficii` |
 | D177 · D205 | `D177`, `D205` |
-| D300 | `D300`, `D300-report`, `D300-autofactura` |
-| D390 | `D390`, `D390-autofactura` |
+| D300 | `D300`, `D300-report`, `D300-autofactura`, `D300-servicii` |
+| D390 | `D390`, `D390-autofactura`, `D390-servicii` |
 | D394 | `D394` |
 | SAF-T (D406) | `D406`, `D406-T`, `D406-A`, `D406-C`, `D406-storno` |
 | Bilanț | `S1120`, `S1121`, `S1122` |
@@ -92,6 +92,31 @@ acest depozit: nu inventa monografia.
 
 **D311** (TVA colectată de persoanele cu cod de TVA anulat) are validator oficial în manifest
 (`<D311>`), dar nu a fost recunoscut.
+
+## Ultima verificare: 2026-08-08 (2) — serviciile intracomunitare în D390 (codurile P și S)
+
+Variante de referință noi: **`D390-servicii`** și **`D300-servicii`**. Ambele ✅ validare fără
+erori. Motivul pentru care erau necesare e același ca la `D390-autofactura`: referința de bază are
+o singură livrare de **bunuri**, deci codurile de servicii n-ar fi fost exercitate niciodată la
+validatorul oficial, iar în decont serviciile cad pe altă pereche de rânduri decât bunurile
+(R7/R20, nu R5/R18).
+
+**Literele codurilor au fost stabilite prin sondare, nu din memorie** — aceeași metodă ca la
+rândurile D101. Trei pași, fiecare cu oracolul lui:
+
+| Ce trebuia aflat | Oracol | Rezultat |
+|---|---|---|
+| Ce litere acceptă schema | XML-uri minime, câte una pe literă, la DUKIntegrator | L, T, A, P, S, R trec; `X` → „*tip: valoarea 'X' nu se află în listă*" |
+| Ce câmp din rezumat ține fiecare literă | mesajele de regulă din `D390Validator.jar` | `bazaX ('@0@') = Suma(baza pt. tip = X)`, câte una pe literă |
+| Ce **înseamnă** fiecare literă | instrucțiunile OPANAF (validatorul nu poartă semantica) | P = prestări servicii, S = achiziții servicii, R = regim special agricultori |
+
+Al treilea pas a fost cel care conta: ipoteza de lucru era invers (S = prestări), iar validatorul
+ar fi confirmat-o senin — o declarație cu prestările pe codul achizițiilor este perfect validă
+structural și complet greșită ca fond. **Validatorul verifică forma, nu adevărul.**
+
+Codul de TVA irlandez din referință (`IE8256796U`) trece regula R24.1, care rulează algoritmul de
+checksum specific fiecărui stat membru (jar-ul înglobează bibliotecile VIES `CheckVat_*`). Deci un
+cod inventat ar fi picat poarta — referințele nu pot folosi numere de fantezie.
 
 ## Ultima verificare: 2026-08-07 (2) — autofactura (art. 320)
 

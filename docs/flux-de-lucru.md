@@ -274,7 +274,8 @@ Endpoint `/api/dashboard`.
 - **Registrul depunerilor** (card în „Declarații ANAF"): declarațiile **așteptate** pe luna
   selectată sunt derivate din profilul firmei (plătitor de TVA → D300/D394 + **D406 lunar**; are
   angajați → D112; lună de trimestru → D100; neplătitorii de TVA → **D406 trimestrial**;
-  **D390 apare automat** în lunile cu livrări/achiziții intracomunitare în jurnal), cu
+  **D390 apare automat** în lunile cu operațiuni intracomunitare în jurnal — **bunuri sau
+  servicii**, art. 325; Intrastat, în schimb, doar pe bunuri, fiindcă e statistică de mărfuri), cu
   **termen de depunere** (25 ale lunii următoare; D406 — ultima zi a lunii următoare). Descărcarea XML-ului marchează automat „**generată**";
   manual se marchează „**depusă**" (cu nr. recipisă), „**eroare**" sau „**scutită**". Stările nu se
   retrogradează la re-descărcare. API: `GET /api/declarations?period=` · `POST /api/declarations/set`.

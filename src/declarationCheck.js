@@ -66,6 +66,21 @@ function validateFor(v, type, opts) {
   const result = validate.validateDeclaration(type, x, ctxVal);
   // D100: adauga avertismentele de eligibilitate micro (plafon venituri + conditia de salariat)
   if (type === 'd100') result.warnings.push(...(rep.d100(v, o.period || null).avertismente || []));
+  // D390: operatiunile cu taxare inversa pe care nu le-am putut incadra pe o tara UE. Nu sunt erori
+  // — un serviciu primit dintr-un stat tert chiar nu se declara — dar nici nu au voie sa dispara
+  // tacut: din date nu se poate distinge intre „prestator din afara UE" si „am uitat codul de TVA
+  // al partenerului", iar a doua varianta lasa declaratia incompleta. Cazul tipic e furnizorul de
+  // reclama sau gazduire inregistrat cu denumirea, fara cod. XML-ul nu le poate arata (tocmai
+  // fiindca nu sunt in el), deci vin din raport, ca la cotele D300 fara rand.
+  if (type === 'd390') {
+    for (const a of rep.d390(v, o.period || null).avertismente || []) {
+      result.warnings.push('Operatiune cu taxare inversa neinclusa in D390 (cod ' + a.cod + ', '
+        + a.baza + ' lei, ' + (a.partener || 'partener necompletat') + ', articolul ' + a.entryId + '): '
+        + (a.cui ? 'codul de TVA „' + a.cui + '" nu are prefix de stat membru UE' : 'partenerul nu are cod de TVA')
+        + '. Daca prestatorul e din UE, completeaza-i codul de TVA; daca e din afara UE, operatiunea '
+        + 'se taxeaza invers dar corect nu se declara.');
+    }
+  }
   return Object.assign({ type, period: o.period || null }, result);
 }
 

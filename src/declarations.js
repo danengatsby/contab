@@ -90,21 +90,33 @@ function dueDate(tip, period, profile) {
  * pentru neplatitori / perioada trimestriala — regimul din 2025 pentru toti contribuabilii.
  * Firmele cu alt regim marcheaza lunile in plus drept „scutite" in registru.
  */
-const INTRACOM_TYPES = new Set(['livrare_intracomunitara', 'achizitie_intracomunitara']);
-/** Articolul declanseaza asteptarea unui D390? Autofactura (art. 320) doar cand natura marcata pe
- *  ea e chiar achizitia intracomunitara — celelalte doua situatii pe care le acopera (servicii din
- *  afara, taxare inversa interna) nu se declara in D390, desi dau aceleasi conturi. */
-function esteIntracom(e) {
+// BUNURILE si SERVICIILE se separa fiindca declanseaza declaratii DIFERITE: amandoua cer D390, dar
+// numai bunurile intra in Intrastat — statistica INS e despre marfa care trece fizic frontiera, nu
+// despre servicii. Cu o singura multime, o firma care cumpara doar reclama din UE ar fi fost
+// anuntata ca datoreaza Intrastat.
+const INTRACOM_BUNURI = new Set(['livrare_intracomunitara', 'achizitie_intracomunitara']);
+const INTRACOM_SERVICII = new Set(['prestare_servicii_intracomunitara', 'achizitie_servicii_intracomunitara']);
+/** Articolul e o operatiune intracomunitara cu BUNURI? (D390 + Intrastat). Autofactura (art. 320)
+ *  doar cand natura marcata pe ea e chiar achizitia de bunuri — celelalte doua situatii pe care le
+ *  acopera dau aceleasi conturi, dar nu aceeasi declaratie. */
+function esteIntracomBunuri(e) {
   if (e && e.tip === 'autofactura_achizitie') return e.naturaAutofactura === 'intracom';
-  return INTRACOM_TYPES.has(e && e.tip);
+  return INTRACOM_BUNURI.has(e && e.tip);
+}
+/** Articolul e o operatiune intracomunitara cu SERVICII? (doar D390, art. 325). */
+function esteIntracomServicii(e) {
+  if (e && e.tip === 'autofactura_achizitie') return e.naturaAutofactura === 'servicii';
+  return INTRACOM_SERVICII.has(e && e.tip);
 }
 
 function expectedForFirma(v, period) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   // Sursa UNICA: profilul fiscal al firmei deriva lista (nu boolean-uri citite inline aici).
   const profile = fiscalProfile.build((v || {}).company, { angajati: (v || {}).angajati });
-  const hasIntracom = (per) => postedEntries(v).some((e) => esteIntracom(e) && String(e.period || e.data || '').slice(0, 7) === per);
-  return fiscalProfile.expected(profile, period, hasIntracom)
+  const inLuna = (e, per) => String(e.period || e.data || '').slice(0, 7) === per;
+  const hasIntracom = (per) => postedEntries(v).some((e) => esteIntracomBunuri(e) && inLuna(e, per));
+  const hasIntracomServicii = (per) => postedEntries(v).some((e) => esteIntracomServicii(e) && inLuna(e, per));
+  return fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServicii)
     .map((tip) => ({ tip, nume: (TIPURI[tip] || {}).nume || tip, period, due: dueDate(tip, period, profile) }));
 }
 

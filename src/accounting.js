@@ -726,6 +726,13 @@ const LIVRARI_SCUTITE = {
 const AUTOLICHIDARE = {
   achizitie_intracomunitara: { cat: 'intracomBunuri', d394: false },        // R5 / R18
   taxare_inversa_interna_achizitie: { cat: 'taxareInversaInterna', d394: true }, // R7 / R20
+  // SERVICIILE primite din UE merg pe perechea R7/R20, nu pe R5/R18: randul R5 e rezervat
+  // achizitiilor intracomunitare de BUNURI, iar R7 cuprinde „achizitiile de bunuri si servicii
+  // pentru care beneficiarul este obligat la plata taxei" — adica si art. 331 intern, si serviciile
+  // cu locul prestarii la beneficiar (art. 278 alin. (2)). Categoria isi pastreaza numele istoric
+  // `taxareInversaInterna` dupa randul pe care iese, nu dupa operatiune; nu tot ce intra pe ea e
+  // intern. In D394 NU intra (partenerul are CUI strain), spre deosebire de art. 331.
+  achizitie_servicii_intracomunitara: { cat: 'taxareInversaInterna', d394: false }, // R7 / R20
 };
 
 /** Incadrarea de autolichidare a unui articol. Aproape toate se citesc din TIP; autofactura
@@ -738,9 +745,12 @@ const AUTOLICHIDARE = {
  *  reintrodus pe usa din dos de un tip nou. */
 function autolichidareaLui(e) {
   if (e && e.tip === 'autofactura_achizitie') {
-    // Serviciile primite din afara merg pe randul lor de autolichidare, nu pe cel de bunuri:
-    // in D390 nu intra (declaratia e pe bunuri), dar in decont se autolichideaza la fel.
     if (e.naturaAutofactura === 'intern331') return { cat: 'taxareInversaInterna', d394: true };
+    // Serviciile primite din afara merg pe perechea R7/R20, ca si tipul de document echivalent
+    // (`achizitie_servicii_intracomunitara` mai sus) — NU pe R5/R18, care sunt randurile
+    // achizitiilor intracomunitare de BUNURI. Autofactura nu schimba natura operatiunii, doar
+    // documentul care o sustine, deci cele doua cai trebuie sa cada pe aceleasi randuri.
+    if (e.naturaAutofactura === 'servicii') return { cat: 'taxareInversaInterna', d394: false };
     return { cat: 'intracomBunuri', d394: false };
   }
   return AUTOLICHIDARE[e && e.tip] || null;
