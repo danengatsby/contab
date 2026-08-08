@@ -670,7 +670,16 @@ body.erp .login-overlay { background: #6f6c62; }
    de 12px. Iesea 12px in afara ramei, exact pe elementul cel mai vizibil al ecranului de intrare.
    Cu padding pe caseta, `width:100%` inseamna latimea DINAUNTRU (box-sizing: border-box), deci
    se potriveste singur; banda cu sigla ramane lipita de margini printr-o margine negativa. */
-body.erp .login-box { width: 320px; padding: 0 12px 12px; background: var(--e-face); }
+body.erp .login-box { padding: 0 12px 12px; background: var(--e-face); }
+/* Latimea fixa de dialog e DOAR pentru cele trei casete care chiar sunt dialoguri de
+   autentificare. Clasa `.login-box` e refolosita si de panourile LARGI — „Planuri & preturi"
+   (`u58`, min(920px,94vw)) si „Intrebari frecvente" (`u63`, min(860px,94vw)) — iar un
+   `body.erp .login-box { width: 320px }` le batea la specificitate pe amandoua. Efectul se vedea
+   direct in produs: grila planurilor e `repeat(auto-fit, minmax(220px, 1fr))`, deci la 320px
+   incapea o singura coloana si cele trei planuri se asezau unul sub altul, in loc de alaturi. */
+body.erp #loginForm.login-box,
+body.erp #registerForm.login-box,
+body.erp #forcePwForm.login-box { width: 320px; }
 body.erp .login-box .login-logo {
   font-size: 11.5px; font-weight: 700; color: #fff; margin: 0 -12px 8px;
   padding: 3px 7px; background: linear-gradient(180deg, var(--e-cap-b), var(--e-cap-a));
