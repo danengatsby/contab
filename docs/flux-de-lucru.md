@@ -282,7 +282,7 @@ Endpoint `/api/dashboard`.
   utilizatorului — declarații așteptate/depuse/nedepuse/erori pe lună, **% conformitate**,
   **top firme cu atenționări** (restanțe + erori), tabel per firmă și activitate recentă (din
   jurnalul de audit). `GET /api/portfolio?period=`.
-- **Notificări termene fiscale** („Notificări" în meniul lateral, cu badge): restanțele și termenele din
+- **Notificări termene fiscale** (🔔 în bara de sus, cu badge): restanțele și termenele din
   următoarele 7 zile, pe toate firmele accesibile, scanând ultimele 3 luni. O declarație dispare
   când e marcată depusă/scutită. Include și **e-Facturile B2B netrimise în SPV** (termen legal
   5 zile lucrătoare de la emitere) — semnalate și pe dashboard, cu alertă acționabilă.

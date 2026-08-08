@@ -90,11 +90,7 @@ function applyUiMode(mode) {
   applyAccLabels(mode === 'simplu');
   const b = $('#uiModeBtn');
   if (b) {
-    // Pictograma vine din `data-ic` (masca SVG din styles.css), nu din text: bara laterala
-    // foloseste un singur set de pictograme desenate, iar un emoji lasat aici ar fi singurul
-    // element din alt alfabet vizual.
-    b.textContent = mode === 'simplu' ? 'Simplu' : 'Expert';
-    b.dataset.ic = mode === 'simplu' ? 'simplu' : 'expert';
+    b.textContent = mode === 'simplu' ? '🎓 Simplu' : '🛠 Expert';
     // Galben in modul EXPERT: acolo sunt vizibile conturile, registrele si notele contabile,
     // deci merita un semnal ca nu esti in vederea simplificata. Acelasi galben ca la sectiunea
     // deschisa din meniu (#f0c14b), nu unul nou.

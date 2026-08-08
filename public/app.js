@@ -649,8 +649,7 @@ $('#lockClear') && $('#lockClear').addEventListener('click', async () => {
 function applyDensity() {
   let c = false; try { c = localStorage.getItem('contab_compact') === '1'; } catch (e) { /* ignora */ }
   document.body.classList.toggle('compact', c);
-  // textul spune ce URMEAZA sa faci; pictograma (`data-ic`, masca SVG din styles.css) o insoteste
-  const b = $('#densityBtn'); if (b) { b.textContent = c ? 'Confortabil' : 'Compact'; b.dataset.ic = c ? 'confortabil' : 'compact'; }
+  const b = $('#densityBtn'); if (b) b.textContent = c ? '⊞ Confortabil' : '⊟ Compact';
 }
 $('#densityBtn') && $('#densityBtn').addEventListener('click', () => {
   const c = !document.body.classList.contains('compact');
@@ -666,7 +665,7 @@ function prefDark() {
 function applyTheme() {
   const d = prefDark();
   document.body.classList.toggle('dark', d);
-  const b = $('#themeBtn'); if (b) { b.textContent = 'Temă'; b.dataset.ic = d ? 'soare' : 'luna'; }
+  const b = $('#themeBtn'); if (b) b.textContent = d ? '☀️' : '🌙';
 }
 $('#themeBtn') && $('#themeBtn').addEventListener('click', () => {
   const d = !document.body.classList.contains('dark');
@@ -760,7 +759,7 @@ const TOUR = [
   { group: 'Rapoarte', ic: '📊', title: 'Rapoarte & analize', text: 'Ce se calculează singur din documentele tale: situații financiare, buget vs realizat, scadențar — și arhiva lunii, dosarul gata de predat.' },
   { group: 'Date firmă', ic: '📁', title: 'Date firmă', text: 'Nomenclatoarele: clienții și furnizorii tăi și, în modul expert, planul de conturi.' },
   { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Tot ce se configurează o dată și se mai atinge rar — plus aplicația de instalat pe calculatorul tău.' },
-  { ic: '🎉', title: 'Gata!', text: 'Începe din „Acasă" → „Ce vrei să faci?". Poți relua oricând turul din butonul „Tur meniu".' },
+  { ic: '🎉', title: 'Gata!', text: 'Începe din 🏠 Acasă → „Ce vrei să faci?". Poți relua oricând turul din butonul 🧭 Tur meniu.' },
 ];
 let tourIdx = 0;
 function tourKey() { return 'contab_tour_v1_' + ((USER && USER.username) || '?'); }
@@ -858,7 +857,7 @@ function renderGalerie() {
   const all = GALERIE_DOCS || [];
   const docs = all.filter((d) => !q || (d.fileName + ' ' + (d.entry ? (d.entry.partener + ' ' + d.entry.tipNume + ' ' + d.entry.document) : '')).toLowerCase().includes(q));
   $('#galCount').textContent = docs.length + (docs.length === 1 ? ' document' : ' documente');
-  if (!all.length) { box.innerHTML = '<p class="muted">Niciun document încărcat încă. Adaugă unul din <b>„Adaugă document primit"</b>.</p>'; return; }
+  if (!all.length) { box.innerHTML = '<p class="muted">Niciun document încărcat încă. Adaugă unul din <b>„➕ Adaugă document primit"</b>.</p>'; return; }
   if (!docs.length) { box.innerHTML = '<p class="muted">Niciun document nu corespunde căutării.</p>'; return; }
   box.innerHTML = docs.map((d) => {
     const src = '/api/document/' + d.id + '/file';
@@ -1035,7 +1034,7 @@ function renderGalerieEmise() {
   const all = GALERIE_EMISE || [];
   const docs = all.filter((d) => !q || (d.partener + ' ' + d.document + ' ' + d.tipNume).toLowerCase().includes(q));
   $('#geCount').textContent = docs.length + (docs.length === 1 ? ' factură' : ' facturi');
-  if (!all.length) { box.innerHTML = '<p class="muted">Nicio factură emisă încă. Emite una din <b>„Emite factură"</b>.</p>'; return; }
+  if (!all.length) { box.innerHTML = '<p class="muted">Nicio factură emisă încă. Emite una din <b>„🧾 Emite factură"</b>.</p>'; return; }
   if (!docs.length) { box.innerHTML = '<p class="muted">Niciun document nu corespunde căutării.</p>'; return; }
   box.innerHTML = docs.map((d) => {
     const src = '/pdf/factura/' + d.id;
