@@ -644,24 +644,73 @@ function d100(db, period, opts) {
     { codOblig: D100_OBLIG.micro.cod, codBugetar: D100_OBLIG.micro.bugetar, seDeclara: true });
 }
 
-/** Pro-rata TVA (art. 300): ponderea livrarilor CU drept de deducere in totalul livrarilor (anual).
- *  Clasificare aproximativa din jurnal: cu drept = vanzari taxabile (TVA > 0) + scutite cu drept
- *  (LIC/export); fara drept = vanzari cu TVA 0 care nu sunt LIC/export. Pro-rata definitiva se
- *  rotunjeste IN SUS la unitati (art. 300 alin. 9). Include si regularizarea estimata pentru
- *  achizitiile marcate „destinatie mixta" in cursul anului. */
+// Operatiunile SCUTITE SAU NETAXATE care pastreaza dreptul de deducere. Nu se pot recunoaste dupa
+// „are TVA colectat", fiindca tocmai asta le lipseste: livrarea intracomunitara e scutita (art. 294
+// alin. (2)), serviciile intracomunitare sunt neimpozabile in Romania (locul prestarii e la
+// beneficiar, art. 278 alin. (2)), iar la art. 331 taxa o datoreaza cumparatorul. Toate trei dau
+// drept de deducere deplin (art. 297 alin. (4)) si toate trei cadeau la „fara drept".
+const PRORATA_CU_DREPT = new Set([
+  'livrare_intracomunitara', 'prestare_servicii_intracomunitara', 'taxare_inversa_interna_livrare',
+]);
+
+/**
+ * Ce rol are un cont de venit in calculul pro-ratei.
+ *
+ * Numitorul pro-ratei NU e „tot ce trece prin clasa 7". Art. 300 alin. (7) scoate din calcul
+ * cesiunea bunurilor de capital folosite in activitate si operatiunile financiare/imobiliare
+ * accesorii, iar restul conturilor de clasa 7 nici nu sunt operatiuni in sfera TVA: variatia
+ * stocurilor, productia de imobilizari, subventiile, reluarile de provizioane, diferentele de curs.
+ * Numarate ca „fara drept", toate acestea coborau pro-rata — adica firma deducea MAI PUTIN decat
+ * avea dreptul. Masurat pe un caz real: 70% in loc de 80%.
+ *
+ * Limita, scrisa aici ca sa nu fie descoperita ca surpriza: o operatiune taxabila inregistrata pe
+ * 7588 („alte venituri din exploatare") iese din calcul. Nu o ghicim inapoi — apare in `excluse`,
+ * cu suma si motiv, ca sa poata fi vazuta si contestata de contabil.
+ */
+function rolContProRata(cod) {
+  const c = String(cod || '');
+  // 709 („reduceri comerciale acordate") e RECTIFICATIV, dar se trateaza la fel: contul sta pe
+  // DEBIT, iar formula `baza + semn x suma` il scade deja. O negatie in plus il facea sa ADUNE.
+  if (/^70/.test(c)) return 'operatiune';                    // vanzari de bunuri si servicii (inclusiv 709)
+  if (/^7583/.test(c)) return 'exclus:bunuri de capital cedate (art. 300 alin. (7) lit. a)';
+  if (/^74/.test(c)) return 'exclus:subventii (in afara sferei TVA)';
+  if (/^76/.test(c)) return 'exclus:operatiuni financiare (art. 300 alin. (7) lit. d, daca sunt accesorii)';
+  if (/^78/.test(c)) return 'exclus:reluari de provizioane si ajustari (nu sunt operatiuni)';
+  if (/^7[12]/.test(c)) return 'exclus:variatia stocurilor / productia de imobilizari';
+  if (/^7/.test(c)) return 'exclus:alte venituri, in afara sferei';
+  return null;
+}
+
+/** Pro-rata TVA (art. 300): ponderea operatiunilor CU drept de deducere in totalul operatiunilor
+ *  din sfera TVA (anual). Pro-rata definitiva se rotunjeste IN SUS la unitati (alin. (9)).
+ *  Include si regularizarea estimata pentru achizitiile marcate „destinatie mixta" in cursul anului.
+ *  `excluse` = ce a fost scos din calcul si de ce — cifra trebuie sa poata fi aparata in fata unui
+ *  inspector, deci nu are voie sa fie o cutie neagra. */
 function proRataTva(db, year) {
-  const SCUTITE_CU_DREPT = new Set(['livrare_intracomunitara']);
   const y = String(year);
   let cuDrept = 0; let faraDrept = 0; let dedusaProvizoriu = 0; let nrMixte = 0;
+  const excluse = {};
   for (const e of acc.postedEntries(db).filter((x) => String(x.period || periodOf(x.data)).startsWith(y))) {
-    let baza = 0; let tva = 0;
+    let baza = 0; let atinsTva = false;
     for (const l of e.lines || []) {
-      if (/^7/.test(String(l.credit))) baza = round2(baza + l.suma);
-      if (/^7/.test(String(l.debit))) baza = round2(baza - l.suma);
-      if (l.credit === '4427' || l.credit === '4428') tva = round2(tva + l.suma);
+      for (const [cont, semn] of [[l.credit, 1], [l.debit, -1]]) {
+        const rol = rolContProRata(cont);
+        if (!rol) continue;
+        if (rol === 'operatiune') baza = round2(baza + semn * l.suma);
+        else if (semn === 1) { // veniturile excluse se raporteaza, nu dispar tacit
+          const motiv = rol.slice('exclus:'.length);
+          excluse[motiv] = round2((excluse[motiv] || 0) + l.suma);
+        }
+      }
+      // TVA colectat pe ORICARE parte: la nota de credit contul 4427 sta pe DEBIT, iar o conditie
+      // doar pe credit ar fi trimis stornarea unei vanzari taxabile la „fara drept" — adica ar fi
+      // scazut din galeata gresita.
+      if (['4427', '4428'].includes(String(l.credit)) || ['4427', '4428'].includes(String(l.debit))) atinsTva = true;
     }
-    if (baza > 0) {
-      if (tva > 0 || SCUTITE_CU_DREPT.has(e.tip)) cuDrept = round2(cuDrept + baza);
+    // `!== 0`, nu `> 0`: articolele cu baza NEGATIVA sunt notele de credit si reducerile acordate.
+    // Sarite, o reducere nu scadea niciodata baza, iar pro-rata ramanea calculata pe cifra bruta.
+    if (baza !== 0) {
+      if (atinsTva || PRORATA_CU_DREPT.has(e.tip)) cuDrept = round2(cuDrept + baza);
       else faraDrept = round2(faraDrept + baza);
     }
     if (e.proRataMixt) {
@@ -678,7 +727,12 @@ function proRataTva(db, year) {
     const tvaTotalaMixta = round2((dedusaProvizoriu * 100) / provizorie);
     regularizare = round2(round2((tvaTotalaMixta * definitiva) / 100) - dedusaProvizoriu);
   }
-  return { year: y, cuDrept, faraDrept, total, definitiva, provizorie, nrMixte, dedusaProvizoriu, regularizare };
+  const excluseRows = Object.entries(excluse)
+    .filter(([, suma]) => suma !== 0)
+    .map(([motiv, suma]) => ({ motiv, suma }))
+    .sort((a, b) => b.suma - a.suma);
+  return { year: y, cuDrept, faraDrept, total, definitiva, provizorie, nrMixte, dedusaProvizoriu,
+    regularizare, excluse: excluseRows, totalExclus: round2(excluseRows.reduce((s, r) => s + r.suma, 0)) };
 }
 
 /** Estimarea Declaratiei Unice pentru PFA (sistem real): venitul net anual + CAS/CASS/impozit. */

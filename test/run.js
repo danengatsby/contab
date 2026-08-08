@@ -3256,6 +3256,53 @@ eq('pro-rata: livrari cu drept / fara drept', prR.cuDrept + '|' + prR.faraDrept,
 eq('pro-rata definitiva rotunjita in sus', prR.definitiva, 60);
 eq('TVA dedusa provizoriu pe achizitiile mixte', prR.dedusaProvizoriu, 84);
 eq('regularizare anuala: 210 x 60% - 84 = +42 (de dedus)', prR.regularizare, 42);
+// ── Numitorul pro-ratei: NU tot ce trece prin clasa 7 ─────────────────────────────────────────
+// Art. 300 alin. (7) scoate din calcul cesiunea bunurilor de capital si operatiunile financiare
+// accesorii; restul conturilor de clasa 7 nici nu sunt operatiuni in sfera TVA. Numarate ca „fara
+// drept", coborau pro-rata — adica firma deducea MAI PUTIN decat avea dreptul.
+{
+  const V = (id, cont, suma, tva) => ({ id, period: '2026-05', data: '2026-05-01', tip: 'x', status: 'postat',
+    lines: [{ debit: '4111', credit: cont, suma }].concat(tva ? [{ debit: '4111', credit: '4427', suma: tva }] : []) });
+  const db = { company: {}, entries: [
+    V('t1', '704', 100000, 21000),  // taxabil: cu drept
+    V('t2', '704', 25000),          // scutit fara drept
+    V('x1', '7583', 40000, 8400),   // cesiune bun de capital — EXCLUS, desi are TVA
+    V('x2', '766', 5000),           // dobanzi — exclus
+    V('x3', '7812', 30000),         // reluare de provizion — exclus
+    V('x4', '765', 2000),           // diferenta de curs — exclus
+    V('x5', '741', 9000),           // subventie — exclus
+    V('x6', '711', 7000),           // variatia stocurilor — exclus
+  ] };
+  const r = rep.proRataTva(db, '2026');
+  eq('pro-rata: numai operatiunile din sfera TVA intra in numitor', r.total, 125000);
+  eq('...deci 80%, nu 70% cat dadea numararea intregii clase 7', r.definitiva, 80);
+  eq('cesiunea bunului de capital nu intra nici in numarator', r.cuDrept, 100000);
+  // Ce s-a scos NU dispare tacit: apare cu suma si temei, ca sa poata fi contestat.
+  eq('exclusele se raporteaza, cu total', r.totalExclus, 93000);
+  ok('...si sunt motivate', r.excluse.some((x) => /bunuri de capital/.test(x.motiv))
+    && r.excluse.some((x) => /financiare/.test(x.motiv)) && r.excluse.some((x) => /subventii/.test(x.motiv)));
+  // 709 e RECTIFICATIV: reducerea acordata scade baza, nu o umfla si nici nu iese la „excluse".
+  const dbRed = { company: {}, entries: [V('t1', '704', 10000, 2100),
+    { id: 'r1', period: '2026-05', data: '2026-05-02', tip: 'reducere_comerciala_acordata', status: 'postat',
+      lines: [{ debit: '709', credit: '4111', suma: 1000 }, { debit: '4427', credit: '4111', suma: 210 }] }] };
+  eq('reducerea acordata (709) SCADE baza operatiunilor', rep.proRataTva(dbRed, '2026').cuDrept, 9000);
+}
+// Operatiunile scutite/netaxate CU drept de deducere nu se recunosc dupa „are TVA colectat" —
+// tocmai asta le lipseste. Toate trei cadeau la „fara drept" si coborau pro-rata.
+{
+  const V = (id, tip, cont, suma) => ({ id, period: '2026-05', data: '2026-05-01', tip, status: 'postat',
+    lines: [{ debit: '4111', credit: cont, suma }] });
+  const db = { company: {}, entries: [
+    { id: 'a', period: '2026-05', data: '2026-05-01', tip: 'factura_vanzare_marfuri', status: 'postat',
+      lines: [{ debit: '4111', credit: '707', suma: 100000 }, { debit: '4111', credit: '4427', suma: 21000 }] },
+    V('b', 'livrare_intracomunitara', '707', 20000),
+    V('c', 'prestare_servicii_intracomunitara', '704', 50000),
+    V('d', 'taxare_inversa_interna_livrare', '707', 30000),
+  ] };
+  eq('livrarea intracomunitara, serviciile intracom si art. 331 au drept de deducere',
+    rep.proRataTva(db, '2026').definitiva, 100);
+  eq('...si nimic nu cade la „fara drept"', rep.proRataTva(db, '2026').faraDrept, 0);
+}
 const ajS = gt2('ajustare_tva_bunuri_capital').build({ tvaDedusa: 10000, durata: '5', aniRamasi: 3, sens: 'stat' });
 eq('ajustare art. 305 in favoarea statului: 635=4426 cu 3/5 din TVA', ajS[0].debit + '=' + ajS[0].credit + '|' + ajS[0].suma, '635=4426|6000');
 const ajF = gt2('ajustare_tva_bunuri_capital').build({ tvaDedusa: 10000, durata: '20', aniRamasi: 5, sens: 'firma' });
