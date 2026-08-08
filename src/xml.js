@@ -10,16 +10,24 @@ function esc(s) {
 const num2 = (x) => (Number(x) || 0).toFixed(2);
 const roCui = (cui) => 'RO' + String(cui || '').replace(/^ro/i, '').replace(/\s/g, '');
 
-const SALES_TYPES = new Set([
-  'factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara',
-]);
+// Perimetrul e-Factura se DERIVA din definitiile tipurilor de document (`eFactura: 'da'`), nu
+// dintr-o lista scrisa aici. Lista de patru id-uri lasa pe dinafara opt tipuri care emit facturi —
+// avansul, facturarea avizului, vanzarea de mijloc fix, taxarea inversa interna, reducerea
+// comerciala, factura in valuta, factura la incasare — si mai fusese copiata inca de doua ori, in
+// `declarations.js` si `reporting.js`. Trei liste ale aceluiasi lucru driftau garantat.
+// Vezi nota lunga din documentTypes/helpers.js pentru criteriul de incadrare.
+const docTypes = require('./documentTypes');
+const SALES_TYPES = new Set(docTypes.TYPES.filter((t) => t.eFactura === 'da').map((t) => t.id));
+// Tipurile care se randeaza ca NOTA DE CREDIT (UBL CreditNote) in loc de Invoice. E o intrebare de
+// FORMAT, nu de perimetru: `factura_storno_cumparare` e o nota primita de la furnizor — se poate
+// vizualiza ca UBL, dar nu se trimite nicaieri (nu noi am emis-o).
 const CREDIT_TYPES = new Set(['factura_storno_vanzare', 'factura_storno_cumparare']);
 function isEFacturaEligible(entry) {
   return SALES_TYPES.has(entry.tip) || CREDIT_TYPES.has(entry.tip);
 }
 /** Doar documentele pe care firma le EMITE pot fi trimise in SPV. */
 function isSendable(entry) {
-  return SALES_TYPES.has(entry.tip) || entry.tip === 'factura_storno_vanzare';
+  return SALES_TYPES.has(entry.tip);
 }
 /** Alege documentul potrivit: Invoice pentru vanzari, CreditNote pentru storno. */
 function eFacturaXml(company, entry, partners) {
@@ -29,15 +37,59 @@ function eFacturaXml(company, entry, partners) {
 }
 
 /** Extrage din articolul contabil baza, TVA, cota si totalul facturii. */
+/**
+ * Sumele de pe factura, citite din articolul contabil.
+ *
+ * Ancora e CREANTA FATA DE CLIENT (411x / 461), nu contul de venit. Motivul e ca varianta pe
+ * venituri — o lista de patru conturi, `701/704/707/708` — dadea BAZA ZERO pe jumatate din
+ * facturile pe care le emitem, si o dadea TACUT:
+ *   - avansul incasat crediteaza 419 (datorie), nu un cont de venit;
+ *   - facturarea unui aviz crediteaza 418, iar TVA-ul doar se muta din 4428 in 4427;
+ *   - vanzarea unui mijloc fix crediteaza 7583, care nu era in lista;
+ *   - la TVA la incasare taxa sta pe 4428, nu pe 4427, deci iesea o factura cu TVA 0.
+ * O factura cu baza 0 si TVA 210 nu e o factura — e mai rau decat lipsa ei, fiindca pleaca la ANAF.
+ *
+ * Creanta, in schimb, e prezenta prin definitie pe orice factura si poarta TOTALUL: cat datoreaza
+ * clientul dupa acest document. De acolo se scade TVA-ul si ramane baza. 418 e ANUME exclus din
+ * ancora: la facturarea avizului apare pe ambele parti (4111 = 418) si s-ar anula pe sine.
+ *
+ * TVA-ul se ia ca cea mai mare miscare de pe conturile de taxa (4427 sau 4428, pe oricare parte):
+ * o factura are UN singur TVA, dar el poate aparea si ca simpla mutare intre cele doua conturi
+ * (4428 = 4427 la facturarea avizului), caz in care insumarea cu semn l-ar anula.
+ */
 function invoiceAmounts(entry) {
-  let baza = 0; let tva = 0;
-  for (const l of entry.lines) {
-    if (['701', '704', '707', '708'].includes(l.credit)) baza = round2(baza + l.suma);
-    if (l.credit === '4427') tva = round2(tva + l.suma);
+  const lines = entry.lines || [];
+  const CREANTA = /^(411|461)/;
+  const TAXA = (c) => c === '4427' || c === '4428';
+  let total = 0; let tva = 0;
+  for (const l of lines) {
+    const s = Number(l.suma) || 0;
+    if (CREANTA.test(String(l.debit))) total = round2(total + s);
+    if (CREANTA.test(String(l.credit))) total = round2(total - s); // nota de credit: creanta scade
+    if (TAXA(String(l.debit)) || TAXA(String(l.credit))) tva = Math.abs(s) > Math.abs(tva) ? s : tva;
   }
-  const total = round2(baza + tva);
+  // Nota de credit (reducere acordata, storno): creanta scade, deci totalul iese negativ. UBL cere
+  // sume POZITIVE pe CreditNote — sensul il da tipul documentului, nu semnul sumelor.
+  total = Math.abs(total); tva = Math.abs(tva);
+  // Fara creanta nu se poate citi factura. Aici a existat o cadere „de siguranta" pe suma
+  // veniturilor, si a trebuit scoasa: nu se declanseaza pentru niciunul dintre tipurile emise (toate
+  // trec prin 411x sau 461), deci era cod netestabil care MASCA ancora — cu ea, stergerea lui 461
+  // din `CREANTA` nu picase niciun test, fiindca veniturile salvau tacit rezultatul. Doua mecanisme
+  // pe acelasi prag se acopera reciproc si aserțiunea trece din motivul gresit.
+  // Zero inseamna „nu stiu cat e factura", si atunci nu se emite una de zero lei catre ANAF.
+  const baza = round2(total - tva);
   const cota = baza > 0 && tva > 0 ? Math.round((tva / baza) * 100) : 0;
   return { baza, tva, total, cota };
+}
+
+/** Refuza sa emita o factura pe care nu o poate citi din articol.
+ *  Un UBL cu sume zero e mai rau decat o eroare: trece de generare, pleaca in SPV si abia acolo
+ *  se vede ca nu are continut. Acelasi principiu ca la poarta fiscala — „n-am putut citi" nu e
+ *  „e bine". Mesajul spune si DE CE, ca sa nu ramana contabilul cu un 400 fara explicatie. */
+function refuzaFacturaGoala(total) {
+  if (round2(total) > 0) return;
+  throw new Error('Nu pot citi sumele facturii: nici linii detaliate, nici o miscare pe creanta '
+    + 'fata de client (411x sau 461). Verifica inregistrarea inainte de a genera e-Factura.');
 }
 
 const ITEM_NAME = {
@@ -45,6 +97,14 @@ const ITEM_NAME = {
   factura_vanzare_produse: 'Produse finite conform facturii',
   factura_vanzare_servicii: 'Servicii prestate conform facturii',
   livrare_intracomunitara: 'Livrare intracomunitara de bunuri',
+  prestare_servicii_intracomunitara: 'Prestare intracomunitara de servicii',
+  taxare_inversa_interna_livrare: 'Livrare cu taxare inversa (art. 331)',
+  factura_avans_client: 'Avans conform contractului',
+  facturare_aviz: 'Bunuri livrate cu aviz de insotire',
+  vanzare_mijloc_fix: 'Mijloc fix cedat',
+  factura_vanzare_incasare: 'Bunuri/servicii conform facturii (TVA la incasare)',
+  factura_vanzare_valuta: 'Bunuri/servicii conform facturii',
+  reducere_comerciala_acordata: 'Reducere comerciala acordata',
 };
 
 const UM_MAP = {
@@ -139,6 +199,7 @@ ${taxCategoryXml(a.cota, ic, '        ')}
   </cac:InvoiceLine>\n`;
   }
   const total = round2(baza + tva);
+  refuzaFacturaGoala(total);
 
   const custTax = custCui
     ? `\n      <cac:PartyTaxScheme>\n        <cbc:CompanyID>${esc(roCui(custCui))}</cbc:CompanyID>\n        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>\n      </cac:PartyTaxScheme>`
@@ -846,6 +907,7 @@ function eFacturaCreditNoteUBL(company, entry, partners) {
   const baza = a.baza;
   const tva = a.tva;
   const total = round2(baza + tva);
+  refuzaFacturaGoala(total);
   const cota = a.cota;
   const id = entry.document || entry.id;
   const refFactura = entry.refFactura || entry.document || id;

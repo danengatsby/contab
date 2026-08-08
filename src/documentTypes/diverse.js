@@ -20,6 +20,8 @@ module.exports = [
     id: 'factura_storno_vanzare',
     nume: 'Factura storno/corectie emisa (in rosu)',
     grup: 'Vanzari',
+    // nota de credit pe o factura pe care noi am emis-o
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'refFactura', label: 'Factura stornata (referinta)', type: 'text' },
       F.baza, F.tva, F.cota],
@@ -33,6 +35,8 @@ module.exports = [
     id: 'factura_storno_cumparare',
     nume: 'Factura storno/corectie primita (in rosu)',
     grup: 'Cumparari',
+    // nota de credit PRIMITA de la furnizor — nu o emitem noi
+    eFactura: 'nu',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.tva, F.cota,
       { name: 'contStoc', label: 'Cont stornat (stoc/cheltuiala)', type: 'account', default: '371' }],
     build: (d) => {

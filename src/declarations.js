@@ -2,6 +2,7 @@
 
 const { postedEntries } = require('./accounting'); // ciornele nu declanseaza asteptari de declaratii/e-Factura
 const fiscalProfile = require('./fiscalProfile'); // motorul de profil fiscal (sursa unica)
+const xml = require('./xml'); // perimetrul e-Factura (`isSendable`), derivat din tipurile de document
 
 // Registrul depunerilor de declaratii + termene fiscale + agregarea pe portofoliu (multi-firma).
 //
@@ -121,7 +122,25 @@ function expectedForFirma(v, period) {
 }
 
 // ── e-Factura B2B: facturi emise netrimise in SPV (termen legal: 5 zile CALENDARISTICE, OUG 89/2025) ──
-const EFACT_SEND_TYPES = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare']);
+//
+// DOUA conditii, independente, si se greseau impreuna:
+//   1. documentul e o factura pe care o EMITEM  -> `xml.isSendable` (steagul `eFactura` de pe tip);
+//   2. beneficiarul e stabilit in ROMANIA       -> `beneficiarRoman` mai jos.
+// Obligatia de raportare (OUG 120/2021 art. 10) priveste relatia B2B dintre persoane impozabile
+// stabilite in Romania. O livrare intracomunitara e o factura emisa perfect valabila, dar
+// beneficiarul e in alt stat membru — deci nu are termen de 5 zile si nu e o restanta. Inainte,
+// conditia 1 era o lista de cinci id-uri scrisa de mana (a treia copie a aceleiasi liste), iar
+// conditia 2 lipsea cu totul: livrarile intracomunitare apareau ca INCALCARI, iar avansurile,
+// facturarea avizelor si vanzarile de mijloace fixe nu apareau deloc.
+
+/** Beneficiarul e stabilit in Romania? Se citeste din CUI: prefixul de tara al codului de TVA.
+ *  Un CUI fara prefix e romanesc (asa se scrie in mod obisnuit un CUI romanesc). */
+function beneficiarRoman(cui) {
+  const c = String(cui || '').replace(/[\s-]/g, '').toUpperCase();
+  if (!c) return false;                    // fara partener identificat: nu putem afirma nimic
+  if (/^RO\d/.test(c)) return true;        // RO12345678
+  return /^\d/.test(c);                    // 12345678 (fara prefix) — forma uzuala in Romania
+}
 
 /** Data + n zile lucratoare (sambata/duminica sarite). Pastrat pentru compatibilitate. */
 function addBusinessDays(dateStr, n) {
@@ -150,8 +169,8 @@ function eFacturaNetrimise(v, today, lookbackDays) {
   const from = new Date(Date.parse(t) - (lookbackDays || 60) * 86400000).toISOString().slice(0, 10);
   const items = [];
   for (const e of postedEntries(v)) {
-    if (!EFACT_SEND_TYPES.has(e.tip)) continue;
-    if (!e.partenerCui) continue; // B2B: partener identificat prin CUI
+    if (!xml.isSendable(e)) continue;
+    if (!beneficiarRoman(e.partenerCui)) continue; // B2B intern: doar relatia dintre doi romani
     if (e.spv && (e.spv.index || e.spv.stare)) continue; // deja trimisa
     if (!e.data || e.data < from || e.data > t) continue;
     const due = addCalendarDays(e.data, 5);
@@ -384,5 +403,5 @@ function notifications(d, scopedList, today, days, lookback) {
   return { count: items.length, items };
 }
 
-module.exports = { TIPURI, STATUSES, DESCARCARI, descarcari, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, primaLunaUrmarita, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays,
+module.exports = { TIPURI, STATUSES, DESCARCARI, descarcari, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, primaLunaUrmarita, addMonths, find, eFacturaNetrimise, beneficiarRoman, addBusinessDays, addCalendarDays,
   addSubmission, lastSubmission, submissionDiff, RECT_IN_XML };

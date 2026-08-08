@@ -12,6 +12,8 @@ module.exports = [
     id: 'factura_vanzare_valuta',
     nume: 'Factura vanzare in valuta (export/intracom)',
     grup: 'Valuta',
+    // moneda nu schimba natura: si o factura in euro catre un client roman e in perimetru
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'valuta', label: 'Suma in valuta', type: 'number', required: true },
       { name: 'curs', label: 'Curs valutar (lei/valuta)', type: 'number', required: true },
@@ -22,6 +24,8 @@ module.exports = [
     id: 'diferenta_curs_favorabila',
     nume: 'Diferenta de curs favorabila (castig, 765)',
     grup: 'Valuta',
+    // reevaluare interna a creantei; niciun document nu pleaca la client
+    eFactura: 'nu',
     fields: [F.data, F.partener, F.document,
       { name: 'cont', label: 'Cont in valuta (4111/401/5124...)', type: 'select', options: TVAL, default: '4111' },
       { name: 'suma', label: 'Diferenta favorabila (lei)', type: 'number', required: true }],

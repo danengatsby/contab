@@ -59,6 +59,8 @@ module.exports = [
     id: 'vanzare_mijloc_fix',
     nume: 'Vanzare mijloc fix (cedare cu titlu oneros)',
     grup: 'Imobilizari',
+    // se factureaza ca orice livrare; creanta sta pe 461, nu pe 4111
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'contImob', label: 'Cont imobilizare', type: 'account', default: '2131' },
       { name: 'pret', label: 'Pret de vanzare (fara TVA)', type: 'number', required: true },

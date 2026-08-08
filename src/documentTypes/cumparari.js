@@ -185,6 +185,7 @@ module.exports = [
     id: 'livrare_intracomunitara',
     nume: 'Livrare intracomunitara bunuri (scutita)',
     grup: 'Vanzari',
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza,
       F.codNC, F.masaNeta, F.naturaTranz, F.conditieLivrare],
     build: (d) => [L('4111', '707', d.baza, 'Livrare intracomunitară (scutită cu drept de deducere)')],
@@ -204,6 +205,7 @@ module.exports = [
     id: 'prestare_servicii_intracomunitara',
     nume: 'Prestare intracomunitara de servicii (neimpozabila in Romania, taxabila la beneficiar)',
     grup: 'Vanzari',
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.items],
     // Fara TVA colectat: locul prestarii e la beneficiar (art. 278 alin. (2)), deci operatiunea
     // e neimpozabila in Romania, iar taxa o datoreaza clientul prin taxare inversa. Pe factura se
@@ -248,6 +250,8 @@ module.exports = [
     id: 'taxare_inversa_interna_livrare',
     nume: 'Livrare cu taxare inversa interna (factura emisa fara TVA)',
     grup: 'Vanzari',
+    // art. 331 e operatiune INTERNA intre doi platitori romani — B2B pur
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.codCategorie331,
       { name: 'contVenit', label: 'Cont venit', type: 'account', default: '707' }],
     build: (d) => [L('4111', d.contVenit || '707', d.baza, 'Livrare cu taxare inversă internă (fără TVA - mențiune pe factura)')],
@@ -256,6 +260,8 @@ module.exports = [
     id: 'reducere_comerciala_acordata',
     nume: 'Reducere comerciala acordata clientului (ulterioara facturarii)',
     grup: 'Vanzari',
+    // art. 330: reducerea acordata dupa livrare se documenteaza prin factura
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota],
     build: (d) => {
       const lines = [L('709', '4111', d.baza, 'Reducere comercială acordată')];
@@ -278,6 +284,8 @@ module.exports = [
     id: 'scont_acordat',
     nume: 'Scont de decontare acordat (client care plateste in avans)',
     grup: 'Vanzari',
+    // scontul de decontare e cheltuiala FINANCIARA (667), nu ajusteaza baza de TVA
+    eFactura: 'nu',
     fields: [F.data, F.partener, F.document, F.suma],
     build: (d) => [L('667', '4111', d.suma, 'Scont de decontare acordat')],
   },

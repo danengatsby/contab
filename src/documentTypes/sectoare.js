@@ -57,6 +57,8 @@ module.exports = [
     id: 'horeca_vanzare',
     nume: 'HoReCa: vanzare amanunt + descarcare gestiune',
     grup: 'HoReCa',
+    // vanzare cu amanuntul, incasata pe loc — echivalentul unui raport Z
+    eFactura: 'nu',
     fields: [F.data, F.document,
       { name: 'numerar', label: 'Incasare numerar (cu TVA)', type: 'number', default: 0 },
       { name: 'card', label: 'Incasare card (cu TVA)', type: 'number', default: 0 },
