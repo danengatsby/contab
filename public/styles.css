@@ -705,6 +705,100 @@ body:not(.dark) .kpi.blue{border-left-color:#9c7a55}
   #tabs .navhint{color:#8f897e;padding:5px 12px 2px}
 }
 
+/* ============ MENIUL LATERAL — ASPECTUL MODERN ============
+   Singurul aspect al aplicației (skinul „clasic de aplicație de contabilitate" a fost scos în
+   august 2026). Blocul de mai sus dă STRUCTURA barei laterale — ce se așază unde, ce se pliază;
+   aici se face ÎNFĂȚIȘAREA: ierarhie, spațiere, stări.
+
+   Trei decizii care se văd:
+   1. Uneltele (căutare, dicționar, simplu/expert, temă, densitate, tur) COBOARĂ sub meniu. Stăteau
+      primele, în șase pastile cu chenar și fundal — adică lucrul atins o dată pe lună avea mai
+      multă greutate vizuală decât meniul. Jos și fără chenar, rămân la îndemână fără să conducă.
+   2. Culoarea de fundal rămâne `var(--head)`, cu relieful pus DEASUPRA ca strat translucid
+      (alb sus, negru jos). Un gradient cu culori fixe ar fi înghețat bara pe cremul temei clare,
+      iar în temă întunecată `--head` e bleumarin — deci relieful trebuie să se adapteze, nu să
+      înlocuiască. Din același motiv nu se folosește `color-mix`: unde n-ar fi suportat, fundalul
+      ar cădea pe transparent, adică text alb pe pagină deschisă.
+   3. Media query pe `min-width:701px`, nu pe cascadă: blocul „MOBIL (<700px)" de la finalul
+      fișierului redevine bară de sus, iar regulile de aici n-au ce căuta acolo. Legat de lățime,
+      nu de poziția în fișier — altfel o mutare viitoare le-ar face să se scurgă pe telefon.
+   ============================================================================================ */
+@media(min-width:701px){
+  /* ── suprafața ── */
+  .topbar{width:262px;flex:0 0 262px;padding:14px 10px 12px;gap:6px;
+    background-image:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.10));
+    border-right:1px solid rgba(255,255,255,.07)}
+
+  /* ── marca ── */
+  .topbar .brand{order:0;padding:2px 6px 12px;margin:0 0 4px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .topbar .brand h1{font-size:17px}
+  .topbar .brand small{display:block;max-width:172px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-size:11.5px;letter-spacing:.01em}
+  .topbar .logo{width:34px;height:34px;font-size:18px;border-radius:10px;background:rgba(240,193,75,.16);color:#f0c14b}
+
+  /* ── contextul de lucru: firma și luna, un bloc, nu două ── */
+  .topbar .firma-select{order:1;padding:8px 10px;border-radius:10px;font-size:13px;
+    background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.10)}
+  .topbar .firma-select:hover{background:rgba(255,255,255,.12)}
+  .topbar .curgroup{order:2;display:flex;width:100%;gap:4px;margin-bottom:4px}
+  .topbar .curgroup .curperiod{flex:1 1 auto;justify-content:center;padding:7px 8px;border-radius:10px;
+    background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.10)}
+  .topbar .curgroup .curperiod:hover{background:rgba(255,255,255,.14)}
+  .topbar .curgroup .curnav{padding:7px 9px;border-radius:10px;
+    background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.10)}
+  .topbar .curgroup .curnav:hover{background:rgba(255,255,255,.16)}
+
+  /* ── meniul ── */
+  .topbar #tabs{order:3;margin:4px 0 6px;padding-right:2px;
+    scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent}
+  .topbar #tabs::-webkit-scrollbar{width:8px}
+  .topbar #tabs::-webkit-scrollbar-thumb{border:2px solid transparent;background:rgba(255,255,255,.14);
+    background-clip:padding-box;border-radius:8px}
+  .topbar #tabs::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.28);background-clip:padding-box}
+
+  /* intrările de prim nivel — pastilă rotunjită, cu semn de activ desprins de marginea butonului
+     (dunga lipită de chenar arăta ca o eroare de aliniere la colțurile rotunjite) */
+  #tabs>button[data-tab]:not(.hidden){position:relative;border-left:0;padding:9px 12px;border-radius:10px;
+    font-size:13.5px;color:#cfc9bc;transition:background .14s,color .14s}
+  #tabs>button[data-tab]:not(.hidden):hover{background:rgba(255,255,255,.07);color:#fff}
+  #tabs>button[data-tab].active{background:rgba(240,193,75,.13);color:#fff}
+  #tabs>button[data-tab].active::before{content:'';position:absolute;left:4px;top:50%;transform:translateY(-50%);
+    width:3px;height:15px;border-radius:3px;background:#f0c14b}
+
+  /* antetul de grup — mai discret decât intrările pe care le acoperă */
+  #tabs .navlabel{font-size:10.5px;letter-spacing:.09em;color:#a2977e;padding:8px 10px;border-radius:8px;
+    margin-top:7px;transition:color .15s,background .15s}
+  #tabs .navlabel:hover{color:#f0c14b;background:rgba(255,255,255,.05)}
+  #tabs .navgroup:not(.hidden){margin-top:0}
+
+  /* itemele grupului — indentarea se citește dintr-o linie de ghidaj, nu din spațiu gol; semnul de
+     activ stă PE ea, deci indentarea și starea sunt același gest vizual */
+  #tabs .navgroup.open>.navmenu{position:relative;padding:2px 0 6px 14px}
+  #tabs .navgroup.open>.navmenu::before{content:'';position:absolute;left:6px;top:2px;bottom:8px;width:1px;
+    background:rgba(255,255,255,.10)}
+  #tabs .navmenu button{position:relative;padding:7px 10px;border-radius:9px;border-left:0;color:#cbc5b8}
+  #tabs .navmenu button:hover{background:rgba(255,255,255,.07)}
+  #tabs .navmenu button.active{background:rgba(240,193,75,.13);color:#fff}
+  #tabs .navmenu button.active::before{content:'';position:absolute;left:-8px;top:6px;bottom:6px;width:2px;
+    border-radius:2px;background:#f0c14b}
+  #tabs .navhint{padding:6px 10px 2px}
+
+  /* ── uneltele, jos și fără chenar ── */
+  .topbar .side-tools{order:6;gap:4px;margin:0 0 8px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}
+  body .topbar .side-tools .btn{padding:7px 6px;border-radius:9px;font-size:12px;
+    background:transparent;border-color:transparent;color:#b9b3a6}
+  body .topbar .side-tools .btn:hover{background:rgba(255,255,255,.10);border-color:transparent;color:#fff}
+  /* modul expert rămâne singurul buton „aprins": e o STARE a aplicației, nu o comandă */
+  body .topbar .side-tools .btn.mod-expert{background:rgba(240,193,75,.14);color:#f0c14b;border-color:transparent}
+  body .topbar .side-tools .btn.mod-expert:hover{background:rgba(240,193,75,.26);border-color:transparent}
+
+  /* ── identitatea și ieșirea ── */
+  .topbar #userBadge{order:7;font-size:11.5px;letter-spacing:.02em;color:#9d978a;margin:0 0 6px}
+  body .topbar #logoutBtn{padding:7px;border-radius:10px;font-size:12.5px;
+    background:transparent;border-color:rgba(255,255,255,.14);color:#cfc9bc}
+  body .topbar #logoutBtn:hover{background:rgba(190,59,52,.20);border-color:rgba(190,59,52,.55);color:#fff}
+}
+
 /* Ghid (.howto) — fundaluri deschise adaptate la dark (text lizibil) */
 body.dark .howto .lead{background:#15233a;border-left-color:var(--accent);color:var(--ink)}
 body.dark .howto kbd{background:#222b40;color:var(--ink);border-color:var(--line)}
