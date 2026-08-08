@@ -23,6 +23,7 @@ npm run seed                  # încarcă exemplul din ghid (S.C. EXEMPLU PROD S
 npm run e2e                   # E2E pe live; pe acest server rulează prin Docker (vezi antetul scripts/e2e.mjs)
 npm run e2e-izolat            # E2E pe instanță PROPRIE (roluri, resetare parolă, 2FA, importuri, SPV, restaurare, toate declarațiile)
 npm run test-pg               # suita pe driverul de PRODUCȚIE (pg): pornește/curăță singură baza
+npm run stare-ci              # verdictul GitHub Actions pentru commitul de pe disc (fără `gh`, fără token)
 npm run rto-drill             # DRILL DE RTO: restaurează ultima arhivă și cronometrează revenirea
 npm run lint                  # ESLint (analiză statică) — NU e în `npm test`, vezi mai jos
 npm run lint-syntax           # doar `node --check` pe tot codul (rulează și în `npm test`)

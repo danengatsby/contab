@@ -98,6 +98,12 @@ răspunsul întregului fișier. Sumele fără zecimale (`1.234.567`) se citesc c
   și `npm audit` (blochează la HIGH/CRITICAL). Validarea oficială ANAF (DUKIntegrator) rulează
   săptămânal, manual și la push pe `main` — nu pe fiecare PR, ca o cădere a `static.anaf.ro` să nu
   blocheze munca.
+- **Verdictul CI, de pe server:** `npm run stare-ci` (opțional un commit sau o ramură ca argument).
+  Întreabă direct API-ul GitHub, **fără `gh` și fără token** — depozitul e public, iar `gh` nu e
+  autentificat aici și cere un flux interactiv. Coduri de ieșire ca la poarta fiscală: `0` verde,
+  `1` roșu, **`2` NEVERIFICAT** (rulare în curs, commit netrimis, rețea picată sau plafon de API).
+  Jobul care contează cel mai mult în listă e `test-postgres`: local, proba pe driverul de producție
+  se sare tăcut fără `CONTAB_PG_URL`, deci o suită verde pe server nu spune nimic despre `pg`.
 
 **Dashboard cu grafice** (SVG, fără dependențe): evoluția lunară venituri/cheltuieli/profit (bare
 grupate), comparația creanțe vs datorii și structura aging pe intervale de vechime. `/api/dashboard-charts`.
