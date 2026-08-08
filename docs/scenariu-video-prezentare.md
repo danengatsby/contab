@@ -93,11 +93,11 @@ Filmul merge exact pe acest drum. Spectatorul învață ordinea o dată și o re
 
 <!-- SCENE:START — generat de scripts/genereaza-scenariu.js, nu edita manual -->
 
-**39 de scene**, în ordinea ciclului contabil — cu blocul de deschidere despre
+**49 de scene**, în ordinea ciclului contabil — cu blocul de deschidere despre
 **angajarea contabilului**, fiindcă de acolo începe orice firmă. Fiecare scenă ține **exact cât vocea ei**:
 acțiunile se execută, apoi filmarea așteaptă restul — de aceea imaginea nu fuge înaintea textului.
 
-Durata totală a vocii: **11:30**.
+Durata totală a vocii: **14:53**.
 
 ### 01 · `s01-prezentare` — 0:01 · voce 16 s
 
@@ -123,13 +123,13 @@ Durata totală a vocii: **11:30**.
 
 > Patronul are firma și aduce documentele. Contabilul verifică înregistrările, semnează bilanțul și răspunde profesional pentru ele. Aplicația face munca dintre ei, dar nu ține locul niciunuia. De aceea, ca patron, primul lucru pe care îl faci după ce ți-ai creat firma nu e o factură, ci angajarea unui contabil.
 
-### 05 · `s05-lista-contabili` — 1:12 · voce 15 s
+### 05 · `s05-lista-contabili` — 1:12 · voce 14 s
 
 **Se vede:** Contul **patronului** → Setări → 👥 Cine are acces → cardul „🧮 Contabili și cereri de servicii", cu Maria Ionescu în listă: oraș, telefon, specializare.
 
 > Contabilii sunt chiar în aplicație. Un contabil care vrea să primească clienți bifează, în contul lui, „Apar în lista de contabili”, și de atunci e vizibil aici, cu numele și datele lui de contact. Patronul deschide lista și alege.
 
-### 06 · `s06-angajare` — 1:27 · voce 17 s
+### 06 · `s06-angajare` — 1:26 · voce 17 s
 
 **Se vede:** Selectorul de firmă din rândul contabilei (patronul alege PENTRU CARE firmă îl vrea), apoi tabelul „Cereri trimise de tine": una acceptată, una în așteptare, cu butonul „Retrage".
 
@@ -159,7 +159,7 @@ Durata totală a vocii: **11:30**.
 
 > Să intrăm acum pe o firmă care lucrează de câteva luni. La prima intrare ești întâmpinat cu trei pași simpli și cu un tur al meniului. Meniul urmează ordinea în care se lucrează, adică ciclul contabil: documentele, banii, ce mișcă în fiecare lună, registrele, închiderea lunii, declarațiile și, la final, rapoartele.
 
-### 11 · `s11-ghid` — 2:54 · voce 19 s
+### 11 · `s11-ghid` — 2:53 · voce 18 s
 
 **Se vede:** Tabul **Ghid**, derulat, apoi **❓ Dicționar** deschis peste el.
 
@@ -171,163 +171,223 @@ Durata totală a vocii: **11:30**.
 
 > Acasă e punctul de plecare. Sus stă „De făcut acum”: restanțele și termenele apropiate, fiecare cu butonul care le rezolvă. Sub ele, situația firmei pe scurt — bani disponibili, de încasat, de plătit, obligații la stat. Iar dacă un cont de bani e în minus, ți-o spune, nu o ascunde în total.
 
-### 13 · `s13-document` — 3:33 · voce 20 s
+### 13 · `s12b-birou` — 3:32 · voce 26 s
+
+**Se vede:** Chrome-ul de birou, arătat pe rând: bara de meniu de sus, banda de unelte, arborele de module din stânga, bara de stare de jos.
+
+> Aplicația arată ca un program de contabilitate, nu ca un site. Sus e bara de meniu, cu modulele grupate pe ciclul contabil. Sub ea, banda de unelte: operațiunile pe care le atingi în fiecare zi, la un singur clic. În stânga, arborele de module. Jos, bara de stare, cu firma, luna de lucru și utilizatorul. Densitate mare, ca să încapă cifrele — nu spațiu gol.
+
+### 14 · `s13-document` — 3:57 · voce 20 s
 
 **Se vede:** Tabul **➕ Adaugă document primit**: zona de încărcare, apoi formularul deschis cu „✏️ Adaugă manual".
 
 > Primul pas al ciclului: documentele. O factură primită o tragi în aplicație ca fișier, iar furnizorul, numărul, data și sumele se completează singure. Se poate și manual: alegi tipul documentului în limbaj obișnuit, dintre o sută șapte tipuri pregătite, și completezi doar ce ai pe hârtie.
 
-### 14 · `s14-preview-pdf` — 3:53 · voce 19 s
+### 15 · `s14-preview-pdf` — 4:17 · voce 19 s
 
 **Se vede:** Vizualizatorul din aplicație, peste ecran: registrul documentelor lunii, ca PDF.
 
 > Documentele nu te trimit în altă parte. Orice PDF din aplicație se deschide aici, peste ecran: factura pe care tocmai ai emis-o, un registru, o situație. Îl citești, îl răsfoiești și abia apoi îl descarci — e chiar fișierul care pleacă mai departe, la client, la bancă sau la contabil.
 
-### 15 · `s15-previzualizare` — 4:12 · voce 15 s
+### 16 · `s15-previzualizare` — 4:36 · voce 14 s
 
 **Se vede:** Formularul de factură de cumpărare completat pe cameră, cu previzualizarea notei contabile (debit / credit / sumă) care se recalculează.
 
 > Înainte de salvare, aplicația îți arată exact ce notă contabilă va face: ce cont se debitează, ce cont se creditează și cu ce sumă. Nu trebuie să știi formula; trebuie doar să confirmi că documentul e cel din mână.
 
-### 16 · `s16-controale` — 4:26 · voce 23 s
+### 17 · `s16-controale` — 4:50 · voce 23 s
 
 **Se vede:** Carton cu cele opt controale, apoi lista documentelor primite cu verdictul fiecăruia.
 
 > Documentele citite automat trec printr-o baterie de controale înainte să fie acceptate: aritmetica, cota de TVA, data — inclusiv dacă luna e închisă —, numărul documentului, partenerul cunoscut și duplicatele. Postarea automată în contabilitate e oprită implicit: se activează doar dacă o ceri tu, și doar dacă trec toate controalele.
 
-### 17 · `s17-emite` — 4:49 · voce 17 s
+### 18 · `s17-emite` — 5:13 · voce 17 s
 
 **Se vede:** Tabul **🧾 Emite factură**: cele trei alegeri în limbaj obișnuit, apoi formularul deschis.
 
 > Tot de aici emiți facturile către clienți. Spui în cuvinte simple ce vinzi — marfă, produs făcut de tine, sau serviciu — iar aplicația alege tipul contabil potrivit. Primești PDF-ul pentru client și fișierul e-Factura pentru ANAF, cu numărul în serie continuă.
 
-### 18 · `s18-preview-efactura` — 5:06 · voce 17 s
+### 19 · `s18-preview-efactura` — 5:31 · voce 17 s
 
 **Se vede:** Vizualizatorul: fișierul **e-Factura (XML UBL)** randat ca factură lizibilă — furnizor, client, linii, cote, total.
 
 > Și e-Factura se vede în aplicație. Fișierul trimis la ANAF e un XML, greu de citit pentru un om — așa că aplicația îl arată ca pe o factură normală: furnizor, client, linii, cote, total. Ce pleacă la ANAF și ce vezi tu sunt același document.
 
-### 19 · `s19-bani` — 5:24 · voce 19 s
+### 20 · `s19-bani` — 5:48 · voce 20 s
 
 **Se vede:** **Încasări & plăți**: registrul lunii cu butoanele de înregistrare, apoi **Verifică extrasul bancar**.
 
 > Al doilea pas: banii. Încasările și plățile prin bancă și casă, cu soldurile la zi, și butoanele cu care le înregistrezi direct de aici. Extrasul bancar se importă și se potrivește singur cu facturile tale, iar ce nu se potrivește rămâne evidențiat. Acolo te uiți, nu în toată luna.
 
-### 20 · `s20-stocuri` — 5:43 · voce 17 s
+### 21 · `s19b-reconciliere` — 6:07 · voce 25 s
+
+**Se vede:** **Verifică extrasul bancar**: rândurile potrivite automat, cele rămase nepotrivite și soldul extras ↔ contabilitate.
+
+> Verificarea extrasului merită pasul ei. Încarci fișierul de la bancă, iar aplicația potrivește singură fiecare rând cu factura sau plata lui, după sumă, dată și partener. Ce s-a potrivit se bifează. Ce a rămas nepotrivit stă separat, cu legarea manuală la îndemână. La final vezi soldul din extras lângă soldul din contabilitate, și diferența, dacă există.
+
+### 22 · `s20-stocuri` — 6:32 · voce 17 s
 
 **Se vede:** Tabul **Ce am pe stoc**: stocul pe gestiuni și mișcările lunii.
 
 > Dacă firma ține marfă, stocurile se descarcă singure la vânzare, la cost mediu ponderat sau FIFO. Ai recepții, consumuri, transferuri între gestiuni, inventar cu proces-verbal și documentele numerotate: nir, bon de consum, aviz.
 
-### 21 · `s21-salarii` — 5:60 · voce 19 s
+### 23 · `s20b-productie` — 6:49 · voce 18 s
+
+**Se vede:** Tabul **Producție**: rețeta unui produs și o producție înregistrată — materialele ies, produsul finit intră.
+
+> Dacă firma nu doar revinde, ci și produce, ai rețete și consumuri. Spui din ce se face un produs, iar la fiecare producție materialele ies din stoc și produsul finit intră, cu costul lui real. Nu ții două evidențe: aceleași articole, aceleași conturi, aceeași lună.
+
+### 24 · `s21-salarii` — 7:07 · voce 19 s
 
 **Se vede:** **Statul de plată**: brut, contribuții, impozit, net, pe fiecare angajat.
 
 > Salariile: statul de plată al lunii, cu brut, contribuții, impozit și net, calculate cu cotele în vigoare. Concedii medicale și de odihnă, tichete, avantaje în natură, avansuri și rețineri. De aici ies fluturașii, adeverințele și declarația 112.
 
-### 22 · `s22-mijloace` — 6:19 · voce 15 s
+### 25 · `s21b-angajati` — 7:26 · voce 22 s
+
+**Se vede:** Tabul **Angajați**: fișa unui angajat — contract, salariu de bază, deducere, persoane în întreținere.
+
+> În spatele statului de plată stau angajații: contractul, salariul de bază, sporurile, deducerea personală, persoanele în întreținere. Se completează o dată, iar statul lunar se calculează din ele. Din aceleași date ies declarația 112 și registrul anual de salarii, fără să retastezi nimic.
+
+### 26 · `s22-mijloace` — 7:48 · voce 15 s
 
 **Se vede:** **Mijloace fixe** cu amortizarea lunară, apoi **Leasing** cu scadențarul.
 
 > Mijloacele fixe și amortizarea lor lunară, calculată automat, cu amortizare fiscală separată de cea contabilă. Alături, contractele de leasing cu scadențarul lor, din care se completează singură factura de rată.
 
-### 23 · `s23-registre` — 6:34 · voce 17 s
+### 27 · `s22b-parteneri` — 8:03 · voce 15 s
+
+**Se vede:** **Clienți & furnizori**: completarea după CUI (denumire, adresă, plătitor de TVA de la ANAF) și soldul fiecărui partener.
+
+> Clienții și furnizorii se completează după codul fiscal: pui codul, iar denumirea, adresa și starea de plătitor de TVA vin de la ANAF. Tot de aici vezi ce are fiecare de încasat sau de plătit, fără să cauți prin facturi.
+
+### 28 · `s23-registre` — 8:18 · voce 17 s
 
 **Se vede:** **Registrul-jurnal**, apoi **Balanța** cu verdictul celor patru egalități.
 
 > Registrele obligatorii se scriu singure, din documentele tale: registrul-jurnal cu toate operațiunile, fișa fiecărui cont și balanța. Iar balanța îți spune singură dacă se închide: cele patru egalități sunt verificate de fiecare dată.
 
-### 24 · `s24-preview-csv` — 6:51 · voce 14 s
+### 29 · `s23b-carte` — 8:34 · voce 17 s
+
+**Se vede:** **Cartea mare**: fișa unui cont — sold inițial, mișcările în ordine cu documentul lor, sold final.
+
+> Când o cifră nu se potrivește, deschizi fișa contului. Vezi soldul inițial, fiecare mișcare în ordine, cu documentul din spatele ei, și soldul final. De aici pornește orice verificare: de la cifră, înapoi la documentul care a produs-o.
+
+### 30 · `s24-preview-csv` — 8:51 · voce 14 s
 
 **Se vede:** Vizualizatorul: balanța ca **fișier CSV**, în text simplu, coloană cu coloană.
 
 > Orice registru se poate scoate și ca fișier, pentru contabil sau pentru control. Îl deschizi tot aici, ca text simplu, înainte să-l descarci — vezi exact ce conține, coloană cu coloană, fără să-l cari într-un alt program.
 
-### 25 · `s25-inchidere` — 7:05 · voce 22 s
+### 31 · `s25-inchidere` — 9:06 · voce 22 s
 
 **Se vede:** **Închiderea lunii**: lista de pași cu starea fiecăruia, derivată din date.
 
 > Închiderea lunii e o singură listă de pași, în ordine: documentele complete, extrasul bancar punctat, TVA-ul regularizat, declarațiile validate și depuse, aprobarea și blocarea perioadei. Starea fiecărui pas se calculează din date, nu se bifează de mână: o bifă ar rămâne adevărată și după ce datele se schimbă.
 
-### 26 · `s26-inchidere-an` — 7:27 · voce 17 s
+### 32 · `s26-inchidere-an` — 9:28 · voce 17 s
 
 **Se vede:** **Închiderea anului**: cei trei pași anuali.
 
 > Peste închiderea lunii stă închiderea anului, cu pașii care se fac o singură dată: calculul impozitului pe profit, închiderea conturilor de venituri și cheltuieli, și repartizarea rezultatului. Aceeași listă în ordine, cu fiecare pas explicat.
 
-### 27 · `s27-regfiscal` — 7:44 · voce 17 s
+### 33 · `s27-regfiscal` — 9:44 · voce 17 s
 
 **Se vede:** **Registrul de evidență fiscală**: drumul de la rezultatul contabil la cel fiscal.
 
 > Impozitul pe profit are registrul lui de evidență fiscală: pornește de la rezultatul contabil și arată, rând cu rând, drumul până la cel fiscal — ce cheltuieli nu sunt deductibile și ce venituri nu se impozitează. Din el iese declarația 101.
 
-### 28 · `s28-tva` — 8:01 · voce 14 s
+### 34 · `s28-tva` — 10:01 · voce 14 s
 
 **Se vede:** **TVA de plată**: decontul perioadei, defalcarea pe cote, jurnalele.
 
 > Din luna închisă iese decontul de TVA, defalcat pe cote, cu jurnalul de vânzări și cel de cumpărări în spate. Fiecare cifră își spune perioada, ca să nu confunzi decontul unei luni cu soldul cumulat pe tot anul.
 
-### 29 · `s29-etva` — 8:15 · voce 14 s
+### 35 · `s29-etva` — 10:16 · voce 14 s
 
 **Se vede:** Cardul „Decont precompletat e-TVA — reconciliere".
 
 > Din 2025, ANAF trimite un decont precompletat. Aplicația îl aduce și îl compară rând cu rând cu decontul tău, ca să vezi exact unde diferă și de ce — înainte de depunere, nu după notificare.
 
-### 30 · `s30-declaratii` — 8:29 · voce 20 s
+### 36 · `s29b-etransport` — 10:29 · voce 20 s
+
+**Se vede:** **e-Transport**: formularul ghidat al unui transport și codul UIT primit, salvat pe transport.
+
+> Dacă transporți bunuri cu risc fiscal ridicat, ai nevoie de cod UIT înainte să plece mașina. Îl declari din aplicație: expeditorul, destinatarul, bunurile, transportatorul și traseul. Fișierul e verificat față de schema oficială înainte să plece, iar codul primit se salvează pe transport.
+
+### 37 · `s30-declaratii` — 10:50 · voce 20 s
 
 **Se vede:** **Declarații ANAF**: „📮 De depus — luna…" cu termene, stare și fișierul pe fiecare rând; catalogul complet, pliat, dedesubt.
 
 > Ecranul declarațiilor începe cu ce ai de depus luna asta: fiecare declarație cu termenul ei, starea ei și fișierul de descărcat chiar pe rând. Registrul depunerilor ține minte ce ai generat, ce ai depus și cu ce număr de recipisă. Lista completă a livrabilelor stă dedesubt, pentru contabil.
 
-### 31 · `s31-preview-xml` — 8:49 · voce 13 s
+### 38 · `s30b-spv` — 11:10 · voce 20 s
+
+**Se vede:** Tabul **Mesaje și documente din SPV**: conectarea cu certificatul firmei, indexul de încărcare și recipisele.
+
+> Legătura cu Spațiul Privat Virtual stă tot aici. Odată conectată cu certificatul digital al firmei, trimiți declarația și primești indexul de încărcare, iar recipisa se descarcă singură când e gata. Tot de aici citești mesajele de la ANAF și documentele primite, fără să deschizi alt program.
+
+### 39 · `s31-preview-xml` — 11:29 · voce 13 s
 
 **Se vede:** Vizualizatorul: **XML-ul D300**, aranjat pe rânduri, cu etichetele lui.
 
 > Și declarația se vede înainte să pleace. XML-ul pentru ANAF se deschide aici, aranjat pe rânduri, cu etichetele lui — nu ca un șir lipit. Contabilul poate citi ce se depune, fără niciun program în plus.
 
-### 32 · `s32-saft` — 9:02 · voce 15 s
+### 40 · `s32-saft` — 11:43 · voce 15 s
 
 **Se vede:** Tabul **SAF-T (D406)**: ce pleacă în fișier.
 
 > Tot de aici iese și SAF-T, declarația 406: fișierul standard de audit cerut de ANAF, cu conturile, partenerii și mișcările perioadei. Se generează din aceleași date ca restul, nu dintr-o evidență paralelă.
 
-### 33 · `s33-rapoarte` — 9:17 · voce 18 s
+### 41 · `s33-rapoarte` — 11:58 · voce 18 s
 
-**Se vede:** **Situații financiare** (bilanț, cont de profit și pierdere), apoi **Scadențarul** pe vechimi.
+**Se vede:** **Situații financiare** (bilanț, cont de profit și pierdere) și anexele de depus.
 
 > La final citești rapoartele: contul de profit și pierdere și bilanțul, în structura oficială, plus anexele de depus — fluxurile de trezorerie, modificările capitalurilor și notele explicative. Tot aici sunt bugetul față de realizat și scadențarul pe vechimi.
 
-### 34 · `s34-arhiva` — 9:35 · voce 15 s
+### 42 · `s33b-buget` — 12:15 · voce 20 s
+
+**Se vede:** **Buget vs realizat**, lună de lună, apoi **Scadențarul** clienți/furnizori pe vechimi.
+
+> Două ecrane pe care le citește și un patron. Bugetul pune, lună de lună, ce ți-ai propus lângă ce a ieșit, cu diferența calculată. Iar scadențarul arată banii pe vechimi: cine îți datorează și de câte zile, respectiv cui datorezi tu. Nu cer contabilitate ca să fie înțelese.
+
+### 43 · `s34-arhiva` — 12:35 · voce 15 s
 
 **Se vede:** **Arhivă documente**: dosarul lunii.
 
 > Tot ce intră în aplicație se așază singur în arhivă, pe luni. Dosarul lunii adună la un loc documentele, notele contabile și declarațiile ei — de dat mai departe la un control, sau contabilului, fără să cauți prin e-mailuri.
 
-### 35 · `s35-setari` — 9:50 · voce 25 s
+### 44 · `s35-setari` — 12:50 · voce 25 s
 
 **Se vede:** Setările, parcurse: Firma mea, Contul meu, Cine are acces, Date & copii de siguranță, Conexiuni.
 
 > În Setări stă tot ce se configurează o dată și se atinge rar. Datele firmei și profilul fiscal. Contul tău, cu parolă și sesiuni. Cine are acces: contabilul angajat, colaboratorii, drepturile fiecăruia. Copiile de siguranță, cu backup zilnic automat. Conexiunile: Spațiul Privat Virtual, citirea automată a documentelor, serverul de e-mail.
 
-### 36 · `s36-audit` — 10:15 · voce 16 s
+### 45 · `s36-audit` — 13:15 · voce 15 s
 
 **Se vede:** **Jurnal de audit**: cine a făcut ce și când.
 
 > Și fiecare operațiune lasă urmă. Jurnalul de audit arată cine a făcut ce și când, cu export propriu. E util la un control, dar mai ales când patronul și contabilul lucrează pe aceleași date și trebuie să se știe cine a schimbat o sumă.
 
-### 37 · `s37-incredere` — 10:30 · voce 24 s
+### 46 · `s36b-cautare` — 13:30 · voce 23 s
+
+**Se vede:** Paleta de căutare (Ctrl+K) cu un rezultat ales, **Dicționarul** deschis peste ea, apoi comutarea pe modul simplu.
+
+> Și două lucruri mărunte, folosite zilnic. Căutarea, cu Control și K: scrii un client, un număr de factură sau numele unei pagini și ajungi direct acolo. Și dicționarul, care explică termenii contabili pe înțelesul oricui. Iar dacă nu ești contabil, modul simplu ascunde partea tehnică din meniu — contabilitatea rulează neschimbată dedesubt.
+
+### 47 · `s37-incredere` — 13:54 · voce 24 s
 
 **Se vede:** Pagina de backup, apoi cartonul „Validat cu validatorul publicat de ANAF".
 
-> De ce poți avea încredere. Înainte ca o versiune să ajungă la tine, declarațiile generate trec prin validatorul publicat de ANAF, iar peste cinci mii două sute de verificări automate rulează la fiecare modificare. Dacă validarea nu poate rula, versiunea nu se publică: „n-am putut verifica” nu înseamnă „e bine”. Datele au backup zilnic, cu o copie în afara serverului.
+> De ce poți avea încredere. Înainte ca o versiune să ajungă la tine, declarațiile generate trec prin validatorul publicat de ANAF, iar peste cinci mii trei sute de verificări automate rulează la fiecare modificare. Dacă validarea nu poate rula, versiunea nu se publică: „n-am putut verifica” nu înseamnă „e bine”. Datele au backup zilnic, cu o copie în afara serverului.
 
-### 38 · `s38-limite` — 10:55 · voce 26 s
+### 48 · `s38-limite` — 14:18 · voce 26 s
 
 **Se vede:** Carton pe ecran plin: ce rămâne la patron și la contabil.
 
 > Câteva lucruri rămân, cinstit, la voi. Depunerea în Spațiul Privat Virtual se face cu certificatul digital al firmei. Validarea finală se face cu DUKIntegrator. Casa de marcat rămâne obligatorie separat. Aplicația calculează corect, dar răspunderea fiscală rămâne a firmei, iar bilanțul cere semnătura unui contabil autorizat — de aceea am început cu angajarea lui.
 
-### 39 · `s39-final` — 11:21 · voce 10 s
+### 49 · `s39-final` — 14:44 · voce 10 s
 
 **Se vede:** Carton final: „30 de zile gratuit, fără card · contabo.space".
 

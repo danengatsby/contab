@@ -24,9 +24,16 @@
 //        export CONTAB_DEV=1 CONTAB_DB_DRIVER=sqlite CONTAB_DB_FILE=$S/vid.json \
 //               CONTAB_DATA_DIR=$S/vid-data CONTAB_JSON_MIRROR=0 STRIPE_SECRET_KEY=''
 //        node scripts/seed.js                      # firma-exemplu, date pe 2026-06
+//        node scripts/video-decor.js               # OBLIGATORIU: actorii (patron/patron2/maria)
 //        PORT=18099 HOST=127.0.0.1 CONTAB_HIBP=0 node server.js &
 //        # parola contului admin se schimba o data (seed-ul porneste cu admin/admin):
 //        #   POST /api/change-password { oldPassword: 'admin', newPassword: <VIDEO_PW> }
+//
+//      Pasul cu DECORUL lipsea din reteta asta si a costat o filmare: `seed.js` face doar
+//      firma-exemplu, iar scenele s05–s09 se autentifica drept `patron` si `maria`. Fara ei,
+//      `intraCa` asteapta 20 s ca ecranul de login sa dispara, apoi ARUNCA — deci filmarea moare
+//      la scena 5, dupa un minut, si abia in log se vede de ce. Decorul se ruleaza DUPA seed si
+//      INAINTE de pornirea serverului (scrie direct in baza) si e idempotent.
 //
 //   3. FILMAREA (Docker, fiindca pe server nu exista Chromium):
 //        mkdir -p $S/out && cp scripts/video-prezentare.mjs $S/film.mjs
@@ -208,6 +215,10 @@ async function intraCa(user) {
     try {
       localStorage.setItem('contab_welcomed_' + u, '1');
       localStorage.setItem('contab_tour_v1_' + u, '1');
+      // luna de lucru se pune INAINTE de autentificare, ca aplicatia sa porneasca direct pe ea:
+      // `workMonth()` citeste cheia asta la fiecare apel, deci nu mai e nevoie de nicio comutare
+      // pe camera. Fara ea, fiecare schimbare de actor readucea filmul pe luna curenta, goala.
+      localStorage.setItem('contab_workmonth', '2026-06');
     } catch (e) { /* privat */ }
   }, user);
   await asteapta(900);
@@ -229,10 +240,26 @@ async function intraCa(user) {
   await asteapta(2200);
   await inchideModale(); await unelte();
 }
-/** Luna de lucru e GLOBALA si exemplul are datele pe iunie 2026 — fara asta, ecranele ies goale. */
+/** Luna de lucru e GLOBALA si exemplul are datele pe iunie 2026 — fara asta, ecranele ies goale.
+ *
+ *  Forma veche chema `window.setWorkMonth(...)`. Aia NU EXISTA: `setWorkMonth` e export de modul din
+ *  `public/periods.js`, iar singurul lucru pus pe `window` de aplicatie e `goTab`. Deci apelul era
+ *  `undefined` si sarit de garda `if`, functia nu facea nimic, iar filmarea raporta tot „reusit".
+ *  Se vedea abia pe contactul de imagini, si numai daca te uitai la CIFRE: liste goale pe luna
+ *  curenta, cu vocea vorbind despre datele lunii iunie („0 documente" in scena e-Transport).
+ *
+ *  Azi se scrie CHEIA pe care o citeste chiar aplicatia (`contab_workmonth`, vezi `workMonth()`),
+ *  apoi se reincarca pagina — si se VERIFICA rezultatul. O luna gresita opreste filmarea in
+ *  secunda 30, nu dupa 16 minute de inregistrat degeaba. */
+const LUNA_EXEMPLU = '2026-06';
 async function lunaExemplu() {
-  await pg.evaluate(() => { if (window.setWorkMonth) { window.setWorkMonth('2026-06'); if (window.applyWorkMonth) window.applyWorkMonth(); } });
-  await asteapta(1200);
+  await pg.evaluate((m) => { try { localStorage.setItem('contab_workmonth', m); } catch (e) { /* privat */ } }, LUNA_EXEMPLU);
+  await pg.reload({ waitUntil: 'domcontentloaded' });
+  await pg.waitForSelector('#loginOverlay', { state: 'hidden', timeout: 20000 }).catch(() => {});
+  await asteapta(2200);
+  await inchideModale(); await unelte();
+  const luna = await pg.evaluate(() => (document.querySelector('#currentPeriod') || {}).textContent || '');
+  if (!/iunie/i.test(luna)) throw new Error('luna de lucru nu s-a aplicat (e „' + luna.trim() + '", nu iunie 2026)');
 }
 /** Trece contul pe modul EXPERT, pe camera.
  *  Necesar, nu cosmetic: patronul porneste in modul SIMPLU, care ascunde din meniu trei grupuri
@@ -380,6 +407,23 @@ await scena('s12-acasa', async () => {
   await derulare(320, 2400);
   await derulare(700, 2200);
 });
+// ═══ S12b · chrome-ul de birou (aspectul clasic) ══════════════════════════
+// Aspectul clasic e nou pe ecran, deci isi merita scena: bara de meniu se DESCHIDE (altfel pare
+// decor), banda de unelte se plimba cu cursorul, iar arborele si bara de stare se arata pe rand.
+await scena('s12b-birou', async () => {
+  await derulare(0, 700);
+  await clicDaca('#erpMenu .em-item:nth-child(2) > button', { dupa: 1700 });
+  await pg.evaluate(() => document.body.click());
+  await asteapta(600);
+  for (const n of [0, 4, 9, 14]) {
+    const b2 = pg.locator('#erpTools .et-btn').nth(n);
+    if (await b2.count()) { await cursorLa(b2); await asteapta(420); }
+  }
+  const arb = pg.locator('#tabs .navlabel').nth(1);
+  if (await arb.count()) { await cursorLa(arb); await asteapta(800); }
+  const st = pg.locator('#erpStatus');
+  if (await st.count()) { await cursorLa(st); await asteapta(1200); }
+});
 
 // ═══ S13 · documentele primite ════════════════════════════════════════════
 await scena('s13-document', async () => {
@@ -443,7 +487,14 @@ await scena('s19-bani', async () => {
   await meniu('Bani', 'cashbook', 1800);
   await derulare(0, 800);
   await derulare(260, 2200);
+  await derulare(560, 2000);
+});
+// ═══ S19b · verificarea extrasului bancar ═════════════════════════════════
+await scena('s19b-reconciliere', async () => {
   await meniu('Bani', 'reconciliere', 2000);
+  await derulare(0, 800);
+  await derulare(300, 2400);
+  await derulare(680, 2200);
 });
 
 // ═══ S20 · stocurile ══════════════════════════════════════════════════════
@@ -452,12 +503,24 @@ await scena('s20-stocuri', async () => {
   await derulare(300, 2200);
   await derulare(700, 2000);
 });
+// ═══ S20b · productia (retete si consumuri) ═══════════════════════════════
+await scena('s20b-productie', async () => {
+  await meniu('Stocuri', 'productie', 2000);
+  await derulare(0, 800);
+  await derulare(320, 2400);
+});
 
 // ═══ S21 · salariile ══════════════════════════════════════════════════════
 await scena('s21-salarii', async () => {
   await meniu('Salarii', 'salarizare', 2000);
   await derulare(300, 2400);
   await derulare(750, 2200);
+});
+// ═══ S21b · angajatii, din care iese statul ═══════════════════════════════
+await scena('s21b-angajati', async () => {
+  await meniu('Salarii', 'angajati', 2000);
+  await derulare(0, 800);
+  await derulare(300, 2400);
 });
 
 // ═══ S22 · mijloace fixe si leasing ═══════════════════════════════════════
@@ -467,6 +530,12 @@ await scena('s22-mijloace', async () => {
   await derulare(300, 2000);
   await meniu('Mijloace fixe', 'leasing', 2000);
 });
+// ═══ S22b · clientii si furnizorii ════════════════════════════════════════
+await scena('s22b-parteneri', async () => {
+  await meniu('Date firmă', 'parteneri', 2000);
+  await derulare(0, 800);
+  await derulare(280, 2400);
+});
 
 // ═══ S23 · registrele si balanta ══════════════════════════════════════════
 await scena('s23-registre', async () => {
@@ -474,6 +543,12 @@ await scena('s23-registre', async () => {
   await derulare(260, 1800);
   await meniu('Registre', 'balanta', 2000);
   await derulare(200, 2000);
+});
+// ═══ S23b · cartea mare (fisa unui cont) ══════════════════════════════════
+await scena('s23b-carte', async () => {
+  await meniu('Registre', 'carte', 2000);
+  await derulare(0, 700);
+  await derulare(300, 2400);
 });
 
 // ═══ S24 · PREVIZUALIZARE: registrul ca text simplu (CSV) ═════════════════
@@ -515,6 +590,26 @@ await scena('s29-etva', async () => {
   await pg.evaluate(() => { const e = document.querySelector('#etvaPrecompletatCard'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   await asteapta(3200);
 });
+// ═══ S29b · e-Transport (cod UIT) ═════════════════════════════════════════
+// Formularul NU e un tab: butonul „e-Transport" apare pe articolele eligibile din lista de
+// documente emise (`button.ettrans`). Se deschide de acolo, si se inchide explicit dupa —
+// un modal ramas pe ecran ar inghiti clicurile scenei urmatoare (capcana 2 din antet).
+await scena('s29b-etransport', async () => {
+  await meniu('Documente', 'iesite', 2000);
+  await derulare(0, 700);
+  // Selectorul e LEGAT DE TAB, si asta e miezul. `button.ettrans` exista de DOUA ori in pagina:
+  // o data in `#tab-documente` (ascuns, latime 0) si o data in `#tab-iesite` (cel de pe ecran).
+  // Playwright leaga `waitForSelector`/`.first()` de PRIMA potrivire din DOM — adica de cea din
+  // tabul ascuns, care nu devine vizibila niciodata. Cu `clicDaca` asta trecea tacut (scena filma
+  // o lista statica peste vocea despre codul UIT); cu asteptare, pica dupa 12 s. Ambele simptome,
+  // aceeasi cauza. Regula pentru orice scena noua: tinteste in interiorul tabului, nu global.
+  // Lista se randeaza si DUPA un apel de retea, deci asteptarea ramane necesara.
+  await pg.waitForSelector('#tab-iesite button.ettrans', { state: 'visible', timeout: 12000 });
+  await clic('#tab-iesite button.ettrans', { dupa: 2400 });
+  await pg.waitForSelector('#etModal:not(.hidden)', { timeout: 10000 });
+  await asteapta(3200);
+  await pg.evaluate(() => { const m = document.querySelector('#etModal'); if (m) m.classList.add('hidden'); });
+});
 
 // ═══ S30 · declaratiile lunii ═════════════════════════════════════════════
 await scena('s30-declaratii', async () => {
@@ -522,6 +617,12 @@ await scena('s30-declaratii', async () => {
   await derulare(0, 800);
   await derulare(300, 2600);
   await derulare(700, 2200);
+});
+// ═══ S30b · Spatiul Privat Virtual ════════════════════════════════════════
+await scena('s30b-spv', async () => {
+  await meniu('Taxe', 'spv', 2200);
+  await derulare(0, 800);
+  await derulare(320, 2400);
 });
 
 // ═══ S31 · PREVIZUALIZARE: XML-ul de declaratie, aranjat ══════════════════
@@ -542,6 +643,13 @@ await scena('s33-rapoarte', async () => {
   await meniu('Rapoarte', 'situatii', 2200);
   await derulare(300, 2400);
   await meniu('Rapoarte', 'analitic', 2200);
+});
+// ═══ S33b · buget vs realizat si scadentarul ══════════════════════════════
+await scena('s33b-buget', async () => {
+  await meniu('Rapoarte', 'buget', 2200);
+  await derulare(280, 2400);
+  await meniu('Rapoarte', 'analitic', 2200);
+  await derulare(260, 2400);
 });
 
 // ═══ S34 · arhiva lunii ═══════════════════════════════════════════════════
@@ -564,6 +672,19 @@ await scena('s36-audit', async () => {
   await intra('audit', 2000);
   await derulare(260, 2400);
   await derulare(0, 1000);
+});
+// ═══ S36b · cautarea, dictionarul si modul simplu ═════════════════════════
+await scena('s36b-cautare', async () => {
+  await clic('#paletaBtn', { dupa: 1100 });
+  await scrie('#paletaSearch', 'balanta', 65);
+  await asteapta(1800);
+  await clicDaca('#paletaClose', { dupa: 900 });
+  await clic('#glossaryBtn', { dupa: 1600 });
+  await derulare(0, 600);
+  await pg.evaluate(() => { const m = document.querySelector('#glossaryModal'); if (m) m.classList.add('hidden'); });
+  await asteapta(600);
+  await clic('#uiModeBtn', { dupa: 1800 });   // expert -> simplu, ca sa se vada meniul strangandu-se
+  await curata();
 });
 
 // ═══ S37 · increderea ═════════════════════════════════════════════════════
