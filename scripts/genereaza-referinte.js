@@ -166,6 +166,41 @@ const vAuto = {
   w('D300-autofactura', xml.d300Xml(v.company, '2026-06', r300, who));
 }
 
+// D390 + D300 varianta SERVICII intracomunitare (art. 278 alin. (2), declarate prin art. 325).
+// Referinta de mai sus are doar o livrare de BUNURI, deci codurile P si S — adaugate abia acum —
+// n-ar fi exercitate niciodata la validatorul oficial. Aceeasi ratiune ca la varianta autofactura.
+// In plus, calea pe servicii atinge in decont perechea R7/R20, nu R5/R18 ca bunurile.
+const vServ = {
+  company: v.company, openingBalances: {}, assets: [],
+  entries: [
+    { id: 'sv1', firmaId: 1, data: '2026-06-14', period: '2026-06', tip: 'prestare_servicii_intracomunitara',
+      tipNume: 'Prestare servicii intracomunitara', status: 'postat', partener: 'ALFA GMBH',
+      partenerCui: 'DE811907980', document: 'FS 44/2026',
+      lines: [{ debit: '4111', credit: '704', suma: 7000 }] },
+    { id: 'sv2', firmaId: 1, data: '2026-06-20', period: '2026-06', tip: 'achizitie_servicii_intracomunitara',
+      tipNume: 'Achizitie servicii intracomunitara', status: 'postat', partener: 'BETA LIMITED',
+      partenerCui: 'IE8256796U', document: 'INV-2026-0620',
+      lines: [{ debit: '628', credit: '401', suma: 3000 }, { debit: '4426', credit: '4427', suma: 630 }] },
+  ],
+};
+{
+  const r390s = rep.d390(vServ, '2026-06');
+  if (r390s.totaluri.P !== 7000 || r390s.totaluri.S !== 3000) {
+    throw new Error('D390-servicii: codurile P/S citite gresit — ' + JSON.stringify(r390s.totaluri));
+  }
+  if (r390s.totaluri.L || r390s.totaluri.A) {
+    throw new Error('D390-servicii: serviciile au ajuns pe codurile de bunuri — ' + JSON.stringify(r390s.totaluri));
+  }
+  const r300s = rep.d300(vServ, '2026-06');
+  const auto = r300s.autolichidari || {};
+  if ((auto.intracomBunuri || {}).baza) throw new Error('D300-servicii: serviciile au ajuns pe randul de bunuri (R5)');
+  if (((auto.taxareInversaInterna || {}).baza || 0) !== 3000) {
+    throw new Error('D300-servicii: serviciile nu au ajuns pe randul R7 — ' + JSON.stringify(auto));
+  }
+  w('D390-servicii', xml.d390Xml(v.company, '2026-06', r390s, who));
+  w('D300-servicii', xml.d300Xml(v.company, '2026-06', r300s, who));
+}
+
 // D205 (retineri la sursa) — an incheiat, cu un beneficiar de dividende
 const vDiv = { entries: [{ id: 'd1', data: '2025-08-10', period: '2025-08', tip: 'repartizare_dividende', tipNume: 'Div', partener: 'Ion', partenerCui: '1900101415238', lines: [{ debit: '457', credit: '5121', suma: 9200 }, { debit: '457', credit: '446', suma: 800 }, { debit: '117', credit: '457', suma: 10000 }] }], openingBalances: {} };
 w('D205', xml.d205Xml(v.company, '2025', rep.d205(vDiv, '2025'), who));

@@ -103,9 +103,10 @@
 
 ## Tipuri de documente acceptate
 
-Vânzări (mărfuri, produse, servicii, bon Z, livrare intracomunitară), cumpărări
-(mărfuri, materii, utilități, servicii, combustibil, imobilizări, achiziție
-intracomunitară cu taxare inversă), trezorerie (încasări/plăți casă/bancă, viramente,
+Vânzări (mărfuri, produse, servicii, bon Z, livrare intracomunitară de bunuri,
+**prestare intracomunitară de servicii**), cumpărări (mărfuri, materii, utilități,
+servicii, combustibil, imobilizări, achiziție intracomunitară de bunuri și
+**de servicii**, ambele cu taxare inversă), trezorerie (încasări/plăți casă/bancă, viramente,
 comisioane), salarii (stat de plată cu CAS/CASS/impozit/CAM, plata netă), amortizare și
 **notă contabilă liberă** (orice `debit = credit`, pentru orice monografie).
 
