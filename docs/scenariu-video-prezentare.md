@@ -125,7 +125,7 @@ Durata totală a vocii: **11:30**.
 
 ### 05 · `s05-lista-contabili` — 1:12 · voce 15 s
 
-**Se vede:** Contul **patronului** → Setări → Cine are acces → cardul „🧮 Contabili și cereri de servicii", cu Maria Ionescu în listă: oraș, telefon, specializare.
+**Se vede:** Contul **patronului** → Setări → 👥 Cine are acces → cardul „🧮 Contabili și cereri de servicii", cu Maria Ionescu în listă: oraș, telefon, specializare.
 
 > Contabilii sunt chiar în aplicație. Un contabil care vrea să primească clienți bifează, în contul lui, „Apar în lista de contabili”, și de atunci e vizibil aici, cu numele și datele lui de contact. Patronul deschide lista și alege.
 
@@ -149,7 +149,7 @@ Durata totală a vocii: **11:30**.
 
 ### 09 · `s09-portofoliu` — 2:15 · voce 17 s
 
-**Se vede:** Tabul **Portofoliu** — tabelul de conformitate: o linie pe firmă, o coloană pe lună.
+**Se vede:** Tabul 🗂 **Portofoliu** — tabelul de conformitate: o linie pe firmă, o coloană pe lună.
 
 > Așa se naște portofoliul contabilului. Toate firmele pe care le ține, într-un singur tabel de conformitate: pe fiecare lună și fiecare firmă, ce s-a depus și ce mai lipsește. De aici intră în oricare dintre ele, fără să se încurce între conturi.
 
@@ -161,7 +161,7 @@ Durata totală a vocii: **11:30**.
 
 ### 11 · `s11-ghid` — 2:54 · voce 19 s
 
-**Se vede:** Tabul **Ghid**, derulat, apoi **Dicționar** deschis peste el.
+**Se vede:** Tabul **Ghid**, derulat, apoi **❓ Dicționar** deschis peste el.
 
 > Dacă nu ai mai ținut contabilitate, începi din Ghid. E scris pe înțelesul oricui și te duce pas cu pas: ce documente aduni, cum le înregistrezi, ce verifici la final de lună și ce depui la ANAF. Lângă el stă dicționarul, cu termenii contabili explicați în cuvinte obișnuite.
 
@@ -173,7 +173,7 @@ Durata totală a vocii: **11:30**.
 
 ### 13 · `s13-document` — 3:33 · voce 20 s
 
-**Se vede:** Tabul **Adaugă document primit**: zona de încărcare, apoi formularul deschis cu „✏️ Adaugă manual".
+**Se vede:** Tabul **➕ Adaugă document primit**: zona de încărcare, apoi formularul deschis cu „✏️ Adaugă manual".
 
 > Primul pas al ciclului: documentele. O factură primită o tragi în aplicație ca fișier, iar furnizorul, numărul, data și sumele se completează singure. Se poate și manual: alegi tipul documentului în limbaj obișnuit, dintre o sută șapte tipuri pregătite, și completezi doar ce ai pe hârtie.
 
@@ -197,7 +197,7 @@ Durata totală a vocii: **11:30**.
 
 ### 17 · `s17-emite` — 4:49 · voce 17 s
 
-**Se vede:** Tabul **Emite factură**: cele trei alegeri în limbaj obișnuit, apoi formularul deschis.
+**Se vede:** Tabul **🧾 Emite factură**: cele trei alegeri în limbaj obișnuit, apoi formularul deschis.
 
 > Tot de aici emiți facturile către clienți. Spui în cuvinte simple ce vinzi — marfă, produs făcut de tine, sau serviciu — iar aplicația alege tipul contabil potrivit. Primești PDF-ul pentru client și fișierul e-Factura pentru ANAF, cu numărul în serie continuă.
 
