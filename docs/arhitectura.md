@@ -60,17 +60,12 @@
   și instanțele de dev rulează implicit pe `sqlite`). Indiferent de driver,
   aplicația lucrează pe același graf în memorie; driverele relaționale păstrează în plus o
   **oglindă `data/db.json`** pentru backup și rollback. Vezi „Baze de date” mai jos.
-- `public/` — interfața web (HTML/CSS/JS vanilla).
-- **Aspectul clasic de aplicație de contabilitate** (`public/erp.css` + `public/erp.js`) — implicit
-  pe ecrane de la 901px în sus. E un **strat peste același DOM**, nu o a doua interfață: `erp.js`
-  pune clasa `erp` pe `<body>` și injectează chrome-ul de birou (bară de titlu, bară de meniu,
-  bandă de unelte, bară de stare, bară de titlu pe fiecare ecran), iar `erp.css` îmbracă restul —
-  densitate mare, colțuri drepte, grile cu chenar pe fiecare celulă, etichete la stânga câmpurilor.
-  Nicio regulă de afaceri nu trece pe aici: elementele de meniu **reemit clicuri** pe butoanele
-  reale din `#tabs`, iar selectorul de firmă și navigarea pe luni sunt **mutate**, nu duplicate —
-  deci drepturile, modul simplu și ascunderile din `app.js` rămân singura sursă de adevăr.
-  Se retrage cu butonul „Aspect modern” din bara de unelte a aplicației (reținut în `localStorage`,
-  cheia `contab.aspect`); sub 901px stratul nu se montează deloc.
+- `public/` — interfața web (HTML/CSS/JS vanilla). **Un singur aspect — cel modern.** A existat și un
+  al doilea strat, „aspectul clasic de aplicație de contabilitate" (chrome de birou — bară de titlu,
+  bară de meniu, bandă de unelte, bară de stare — injectat peste același DOM, comutat dintr-un buton
+  și reținut în `localStorage`, cheia `contab.aspect`); a fost **scos în întregime** în august 2026,
+  împreună cu butonul de comutare. Două aspecte însemnau două feluri în care fiecare ecran nou putea
+  arăta greșit, iar testele și capturile acopereau doar unul.
 
 ## Multi-firmă
 
