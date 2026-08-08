@@ -10,6 +10,8 @@ module.exports = [
     id: 'factura_vanzare_incasare',
     nume: 'Factura vanzare (TVA la incasare)',
     grup: 'TVA la incasare',
+    // TVA la incasare schimba EXIGIBILITATEA, nu natura documentului
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota,
       { name: 'contVenit', label: 'Cont de venit', type: 'account', default: '707' }],
     build: (d) => {

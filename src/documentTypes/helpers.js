@@ -12,6 +12,28 @@ const fiscal = require('../fiscal');
  *   - fields: campurile pe care le confirma utilizatorul (pre-completate de extractor)
  *   - build(d): primeste valorile campurilor si returneaza liniile contabile
  *               [{ debit, credit, suma, explicatie }]
+ *   - eFactura: 'da' | 'nu' — documentul e o FACTURA (sau o nota de credit) pe care o EMITEM?
+ *               Decide daca se poate genera UBL si daca pleaca in SPV. Vezi mai jos.
+ *
+ * ── `eFactura`: de ce sta AICI si nu intr-o lista ──────────────────────────────────────────────
+ * A fost o multime de patru id-uri scrisa de mana in `src/xml.js`, copiata inca de doua ori
+ * (`declarations.js`, `reporting.js`). Consecinta: opt tipuri care emit facturi — avansul catre
+ * client, facturarea avizului, vanzarea unui mijloc fix, taxarea inversa interna, reducerea
+ * comerciala, factura in valuta, factura la incasare — nu puteau fi trimise in e-Factura deloc,
+ * desi raportarea B2B e obligatorie din 1 iulie 2024 (OUG 120/2021), cu sanctiune de 15% din
+ * valoarea facturii. O lista scrisa de mana intr-un fisier de generare XML nu are cum sa fie
+ * completa: nimeni nu se duce s-o actualizeze cand adauga un tip de document.
+ *
+ * Raspunsul sta pe TIP fiindca e o proprietate a documentului („e factura sau nu"), nu a
+ * partenerului. Intrebarea a doua — „beneficiarul e stabilit in Romania?", care decide daca
+ * netrimiterea e o INCALCARE cu termen — se pune pe articol, dupa CUI-ul partenerului, in
+ * `declarations.eFacturaNetrimise`. Cele doua conditii sunt independente si se greseau impreuna.
+ *
+ * Valoarea 'nu' se scrie EXPLICIT (cu motiv in comentariu) pe documentele care seamana cu o
+ * factura dar nu sunt — bonul Z, avizul de insotire, diferenta de curs. Doua porti din
+ * `test/run.js` cer decizia explicita: una structurala (orice tip care produce semnatura contabila
+ * a unei facturi catre client) si una pe grup (tot ce e in grupul „Vanzari"). Un tip nou de vanzare
+ * pica suita pana cand cineva raspunde la intrebare — asta e tot rostul.
  *
  * Tipuri de camp:
  *   number  -> input numeric

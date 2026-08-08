@@ -1448,3 +1448,62 @@ section('Poarta: pagina filmului nu-si scrie durata de mana');
   // Fara manifest, pagina nu are voie sa inventeze o durata.
   ok('fara manifest, ramane doar linkul de descarcare', /catch[\s\S]{0,120}innerHTML = link/.test(js));
 }
+
+section('Poarta: fiecare document care emite factura raspunde daca merge in e-Factura');
+{
+  // Perimetrul e-Factura era o lista de patru id-uri scrisa de mana in `src/xml.js` (copiata inca
+  // de doua ori). Consecinta: opt tipuri care emit facturi nu puteau fi trimise in SPV deloc, desi
+  // raportarea B2B e obligatorie din 1 iulie 2024, cu sanctiune de 15% din valoarea facturii.
+  // Nimeni nu se duce sa actualizeze o lista dintr-un generator XML cand adauga un tip de document
+  // — deci poarta cere DECIZIA pe definitia tipului, unde o vede cine scrie tipul.
+  //
+  // DOUA straturi, fiindca niciunul singur nu ajunge (acelasi tipar ca la poarta de paginare):
+  //   (1) STRUCTURAL — orice tip a carui `build()` produce semnatura contabila a unei facturi
+  //       catre client. Prinde tipuri din orice grup (vanzarea de mijloc fix e in „Imobilizari"),
+  //       dar are un punct orb: facturile care nu ating direct un cont de venit (`facturare_aviz`
+  //       descarca 418, factura simplificata se incaseaza pe loc din 5311).
+  //   (2) PE GRUP — tot ce sta in grupul „Vanzari" trebuie sa raspunda, indiferent de conturi.
+  //       Acopera exact punctul orb al primului.
+  const T = require('../../src/documentTypes');
+  const xmlMod = require('../../src/xml');
+  const PROBA = { baza: 1000, tva: 210, cota: 21, suma: 1000, valoare: 1000, pret: 1000,
+    cantitate: 10, curs: 5, sumaValuta: 200, numerar: 1000, valoareVanzare: 1000 };
+  const CREANTA = /^(411|418|461)/;   // conturile pe care sta creanta fata de client
+  const VENIT = (c) => /^7/.test(c) || c === '4427';
+
+  ok('poarta chiar vede tipurile', T.TYPES.length > 100);
+  const structurale = [];
+  for (const t of T.TYPES) {
+    let lines = [];
+    try { lines = t.build(PROBA) || []; } catch (e) { lines = []; }
+    const factura = lines.some((l) => CREANTA.test(String(l.debit)) && VENIT(String(l.credit)));
+    const nota = lines.some((l) => CREANTA.test(String(l.credit)) && VENIT(String(l.debit)));
+    if (factura || nota) structurale.push(t);
+  }
+  ok('stratul structural chiar prinde ceva (>=8 tipuri)', structurale.length >= 8);
+  const fara1 = structurale.filter((t) => t.eFactura !== 'da' && t.eFactura !== 'nu').map((t) => t.id);
+  eq('structural: fiecare document cu semnatura de factura are raspuns' + (fara1.length ? ' — LIPSA: ' + fara1.join(', ') : ''), fara1.length, 0);
+
+  const vanzari = T.TYPES.filter((t) => t.grup === 'Vanzari');
+  ok('stratul pe grup chiar prinde ceva (>=10 tipuri in „Vanzari")', vanzari.length >= 10);
+  const fara2 = vanzari.filter((t) => t.eFactura !== 'da' && t.eFactura !== 'nu').map((t) => t.id);
+  eq('grup: fiecare tip din „Vanzari" are raspuns' + (fara2.length ? ' — LIPSA: ' + fara2.join(', ') : ''), fara2.length, 0);
+
+  // Al doilea strat trebuie sa acopere ceva ce primul nu vede — altfel e doar zgomot si poate fi
+  // sters din greseala fara sa se observe nimic.
+  const doarPeGrup = vanzari.filter((t) => !structurale.includes(t)).map((t) => t.id);
+  ok('stratul pe grup chiar adauga acoperire (' + doarPeGrup.length + ' tipuri)', doarPeGrup.length > 0);
+
+  // Nicio lista de id-uri de facturi scrisa de mana nu are voie sa reapara in modulele consumatoare:
+  // asa au aparut cele trei copii care driftau.
+  const fs2 = require('fs'); const p2 = require('path');
+  for (const f of ['src/declarations.js', 'src/reporting.js']) {
+    const src = fs2.readFileSync(p2.join(RADACINA, f), 'utf8');
+    ok(f + ': fara lista proprie de tipuri de factura', !/'factura_vanzare_marfuri'/.test(src));
+  }
+  // ...si perimetrul chiar se deriva din steag, nu dintr-un Set literal.
+  const srcXml = fs2.readFileSync(p2.join(RADACINA, 'src', 'xml.js'), 'utf8');
+  ok('src/xml.js deriva perimetrul din `eFactura`', /eFactura === 'da'/.test(srcXml));
+  eq('perimetrul derivat = tipurile marcate „da"',
+    xmlMod.SALES_TYPES.size, T.TYPES.filter((t) => t.eFactura === 'da').length);
+}

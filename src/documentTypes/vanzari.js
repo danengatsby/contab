@@ -10,6 +10,7 @@ module.exports = [
     id: 'factura_vanzare_marfuri',
     nume: 'Factura vanzare marfuri',
     grup: 'Vanzari',
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota, F.stoc,
       { name: 'cost', label: 'Cost marfa vanduta — manual (doar daca NU folosesti descarcarea din stoc)', type: 'number', default: 0 }, F.items],
     build: (d) => {
@@ -25,6 +26,7 @@ module.exports = [
     id: 'factura_vanzare_produse',
     nume: 'Factura vanzare produse finite',
     grup: 'Vanzari',
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota, F.items],
     build: (d) => {
       const lines = [L('4111', '701', d.baza, 'Venituri din vânzarea produselor finite')];
@@ -36,6 +38,7 @@ module.exports = [
     id: 'factura_vanzare_servicii',
     nume: 'Factura prestari servicii (emisa)',
     grup: 'Vanzari',
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota, F.items],
     build: (d) => {
       const lines = [L('4111', '704', d.baza, 'Venituri din servicii prestate')];
@@ -47,6 +50,8 @@ module.exports = [
     id: 'bon_fiscal_z',
     nume: 'Raport Z / vanzare cu amanuntul (numerar)',
     grup: 'Vanzari',
+    // raport Z = totalizatorul zilei de casa de marcat, nu o factura
+    eFactura: 'nu',
     fields: [F.data, F.document, F.baza, F.tva, F.cota,
       { name: 'incasare', label: 'Incasata in', type: 'select', options: TROZ, default: '5311' }],
     build: (d) => {

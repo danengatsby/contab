@@ -18,7 +18,9 @@ const stmt = require('./statements');
 const { reconcile } = require('./reconcile');
 const recurring = require('./recurring');
 const CONT_SPONSORIZARE = '6582'; // art. 25(4)(i) — cheltuiala de sponsorizare
-const xml = require('./xml'); // doar pentru maparea cota->rand D300 (xml.js nu importa nimic din lant)
+// Maparea cota->rand D300 si perimetrul e-Factura. xml.js nu importa nimic din lantul de
+// raportare (importa doar util + documentTypes), deci nu se inchide niciun ciclu — verificat.
+const xml = require('./xml');
 
 /** Rulajele perioadei pe cont {cod:{d,c}}, FARA inchiderile 6/7 -> 121 (vezi `resultLines`).
  *  Alimenteaza recapitulativul D112, care citeste 641: nota de inchidere anuala (121 = 641) e
@@ -60,7 +62,9 @@ function d300(db, period) {
 // Cote de TVA acceptate (RO, curente + istorice recente): 21/11/9 curente, 19/5 istorice, 0 scutit.
 const COTE_TVA_VALIDE = new Set([0, 5, 9, 11, 19, 21]);
 // Tipurile care se EMIT in SPV (RO e-Factura) — trebuie sa se regaseasca in decontul precompletat.
-const EFACT_EMISE = new Set(['factura_vanzare_marfuri', 'factura_vanzare_produse', 'factura_vanzare_servicii', 'livrare_intracomunitara', 'factura_storno_vanzare']);
+// Sursa unica: `xml.isSendable`, derivat din `eFactura: 'da'` de pe definitia tipului. Era o copie
+// de mana a listei din xml.js; a treia copie statea in declarations.js. Trei liste ale aceluiasi
+// lucru, actualizate de trei ori sau — cum s-a si intamplat — de zero ori.
 
 /**
  * Reconciliere TVA — pregatire pentru decontul precompletat e-TVA. Confrunta pozitia TVA a perioadei
@@ -93,9 +97,11 @@ function tvaReconciliation(db, period) {
   // 2) e-Factura emise cu TVA, netrimise in SPV, in perioada
   const netrimise = [];
   for (const e of acc.postedEntries(db)) {
-    if (!EFACT_EMISE.has(e.tip) || !acc.inPeriod(e, period)) continue;
+    if (!xml.isSendable(e) || !acc.inPeriod(e, period)) continue;
     if (e.spv && (e.spv.index || e.spv.stare)) continue; // deja trimisa
-    if (!e.partenerCui) continue; // B2B identificat prin CUI (doar acestea intra in e-Factura)
+    // Acelasi criteriu ca la restantele e-Factura: perimetrul e relatia B2B INTERNA, deci un
+    // beneficiar din alt stat nu produce o factura pe care ANAF sa o vada in decontul precompletat.
+    if (!decl.beneficiarRoman(e.partenerCui)) continue;
     const areTva = (e.lines || []).some((l) => String(l.credit) === '4427' && Number(l.suma) > 0);
     if (!areTva) continue;
     netrimise.push({ entryId: e.id, document: e.document || '', partener: e.partener || '', data: e.data });

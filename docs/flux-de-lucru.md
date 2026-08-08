@@ -49,6 +49,16 @@ Fiecare raport are buton **⬇ PDF**, iar fiecare înregistrare poate fi exporta
 - **e-Factura UBL 2.1 (CIUS-RO)** — pentru fiecare factură emisă (link „e-Factura” în
   lista de înregistrări → `/xml/efactura/:id`). Folosește CUI-ul clientului și datele
   firmei din Setări (CUI, adresă, oraș, județ).
+  **Perimetrul se derivă din tipul documentului** (steagul `eFactura` din `src/documentTypes/`),
+  nu dintr-o listă separată: intră avansul încasat, facturarea avizului, vânzarea de mijloc fix,
+  taxarea inversă internă (art. 331), reducerea comercială, factura în valută și cea în regim de
+  TVA la încasare — pe lângă vânzările obișnuite. Rămân în afară documentele care *seamănă* cu o
+  factură fără să fie: raportul Z, avizul de însoțire, factura simplificată (art. 319 alin. (12)),
+  vânzarea cu amănuntul HoReCa, scontul de decontare și diferența de curs. Fiecare are răspunsul
+  scris pe tip, cu motiv — două porți din suită refuză un tip de vânzare care nu răspunde.
+  **Termenul de 5 zile** (restanțele din notificări) se aplică doar relației **B2B interne**:
+  o livrare intracomunitară e o factură validă, dar beneficiarul nu e stabilit în România, deci
+  nu produce restanță — se poate totuși trimite manual în SPV.
 - **D300** (decont TVA) și **D394** (informativă, agregare pe partener) — din tab-ul
   „TVA / D300” și din „Livrabile” (`/xml/d300?period=`, `/xml/d394?period=`). Jurnalele de TVA și
   recapitularea D300 au **defalcare pe cote** (21% / 11% / scutit-0%): bază + TVA pe fiecare cotă,

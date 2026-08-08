@@ -57,6 +57,8 @@ module.exports = [
     id: 'aviz_livrare',
     nume: 'Aviz de insotire a marfii (livrare neînfacturata)',
     grup: 'Vanzari',
+    // avizul de insotire NU e factura; factura vine separat (vezi facturare_aviz)
+    eFactura: 'nu',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota, F.stoc],
     build: (d) => {
       // 418 include si TVA neexigibila (OMFP 1802): exigibilitatea TVA e la LIVRARE,
@@ -70,6 +72,8 @@ module.exports = [
     id: 'facturare_aviz',
     nume: 'Facturare ulterioara aviz (transforma avizul in factura)',
     grup: 'Vanzari',
+    // avizul se factureaza pana pe 15 a lunii urmatoare (art. 319 alin. 16)
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'refFactura', label: 'Aviz facturat (referinta)', type: 'text' },
       F.baza, F.tva, F.cota],
@@ -83,6 +87,8 @@ module.exports = [
     id: 'factura_simplificata',
     nume: 'Factura simplificata (art. 319 Cod fiscal, sub 100 EUR)',
     grup: 'Vanzari',
+    // art. 319 alin. (12): bon fiscal cu CUI sub plafon — exceptat de la e-Factura
+    eFactura: 'nu',
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.tva, F.cota,
       { name: 'cont', label: 'Incasata in / pe credit (4111)', type: 'select', options: [{ value: '4111', label: '4111 Clienti (pe credit)' }, { value: '5311', label: '5311 Casa in lei' }, { value: '5121', label: '5121 Banca in lei' }], default: '5311' },
       F.stoc],

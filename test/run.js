@@ -5243,6 +5243,73 @@ const efx = declMod.eFacturaNetrimise(vEf, '2026-07-20');
 eq('netrimise: doar vanzarile B2B fara spv', efx.count, 2);
 eq('netrimise: restante (termen depasit)', efx.overdue, 1);
 eq('netrimise: termen = data + 5 zile CALENDARISTICE (OUG 89/2025)', efx.items.find((x) => x.entryId === 'e1').due, '2026-07-23');
+// ── Perimetrul e-Factura: DOUA conditii independente ─────────────────────────────────────────
+// Erau amandoua gresite. Conditia 1 (documentul e o factura emisa) era o lista de cinci id-uri
+// scrisa de mana, in trei copii; conditia 2 (beneficiarul e stabilit in Romania) lipsea.
+{
+  const TIP = require('../src/documentTypes');
+  const F = (id, tip, cui, data) => ({ id, tip, partenerCui: cui, partener: 'P', document: id, data });
+  const vv = (entries) => ({ firmaId: 9, company: { nume: 'EF SRL', tvaPlatitor: true }, angajati: [], entries });
+  // Facturi emise care nu puteau pleca deloc in SPV — cauza directa a constatarii A2.
+  for (const tip of ['factura_avans_client', 'facturare_aviz', 'vanzare_mijloc_fix',
+    'taxare_inversa_interna_livrare', 'reducere_comerciala_acordata', 'factura_vanzare_valuta',
+    'factura_vanzare_incasare']) {
+    ok('e-Factura: „' + tip + '" e factura emisa (se poate trimite in SPV)', xml.isSendable({ tip }));
+    ok('...si se poate genera UBL pentru ea', xml.isEFacturaEligible({ tip }));
+    eq('...si intra in restantele cu termen', declMod.eFacturaNetrimise(vv([F('x', tip, 'RO7', '2026-07-01')]), '2026-07-20').count, 1);
+  }
+  // Documente care SEAMANA cu o factura si nu sunt. Decizia e explicita pe tip, cu motiv scris.
+  for (const tip of ['bon_fiscal_z', 'aviz_livrare', 'factura_simplificata', 'horeca_vanzare',
+    'diferenta_curs_favorabila', 'scont_acordat', 'factura_storno_cumparare',
+    // storno de avans: se inregistreaza PE factura finala (art. 319 alin. 6), nu ca document
+    // separat — randat singur ar iesi o „factura" cu sume negative
+    'regularizare_avans_client']) {
+    ok('e-Factura: „' + tip + '" NU e factura emisa de noi', !xml.isSendable({ tip }));
+  }
+  // SUMELE de pe UBL, pentru FIECARE tip declarat trimisibil. Fara asta, „se poate trimite" ar fi
+  // fost o promisiune goala: citirea sumelor era ancorata pe o lista de patru conturi de venit
+  // (701/704/707/708), deci avansul (419), facturarea avizului (418), mijlocul fix (7583) si TVA la
+  // incasare (4428) ieseau cu baza sau TVA ZERO. O factura cu baza 0 si TVA 210 e mai rea decat una
+  // negenerata — pleaca la ANAF. Testul e pe TOATE tipurile, nu pe cateva alese: un tip nou marcat
+  // „da" fara sume corecte pica aici.
+  {
+    const P = { baza: 1000, tva: 210, cota: 21, suma: 1000, pret: 1000, valoare: 1000, valuta: 200, curs: 5, cantitate: 1 };
+    // Operatiunile scutite / cu taxare inversa au TVA 0 pe factura — asta e regula, nu o scapare.
+    const FARA_TVA = new Set(['livrare_intracomunitara', 'prestare_servicii_intracomunitara',
+      'taxare_inversa_interna_livrare', 'factura_vanzare_valuta']);
+    const emise = TIP.TYPES.filter((t) => t.eFactura === 'da');
+    ok('sunt cel putin 13 tipuri de factura emisa', emise.length >= 13);
+    for (const t of emise) {
+      let lines = []; try { lines = t.build(P) || []; } catch (e) { lines = []; }
+      const e = { tip: t.id, document: 'F1', data: '2026-06-10', partenerCui: 'RO123', partener: 'C', lines };
+      // Generarea se prinde: un tip marcat „da" care NU se poate randa trebuie sa iasa ca
+      // aserțiune cu nume, nu ca exceptie care opreste suita in loc necunoscut.
+      let m = '';
+      try { m = xml.eFacturaXml({ cui: 'RO1', nume: 'X' }, e, {}); } catch (err) { m = ''; }
+      ok('UBL „' + t.id + '": se poate genera', m !== '');
+      const nr = (re) => { const g = re.exec(m); return g ? Number(g[1]) : NaN; };
+      const baza = nr(/TaxableAmount[^>]*>([\d.-]+)/);
+      const tvaX = nr(/cbc:TaxAmount[^>]*>([\d.-]+)/);
+      const total = nr(/PayableAmount[^>]*>([\d.-]+)/);
+      eq('UBL „' + t.id + '": baza = 1000', baza, 1000);
+      eq('UBL „' + t.id + '": TVA = ' + (FARA_TVA.has(t.id) ? '0 (scutit/taxare inversa)' : '210'), tvaX, FARA_TVA.has(t.id) ? 0 : 210);
+      eq('UBL „' + t.id + '": total = baza + TVA', total, Math.round((baza + tvaX) * 100) / 100);
+      ok('UBL „' + t.id + '": are denumire de articol, nu una generica', !/>Produse\/servicii</.test(m));
+    }
+  }
+
+  // Conditia 2: obligatia priveste relatia B2B INTERNA (OUG 120/2021 art. 10). O livrare
+  // intracomunitara e o factura emisa valabila, dar nu produce o restanta cu termen de 5 zile.
+  ok('beneficiar cu CUI romanesc (cu prefix RO)', declMod.beneficiarRoman('RO12345678'));
+  ok('...si fara prefix (forma uzuala)', declMod.beneficiarRoman('12345678'));
+  ok('beneficiar din alt stat membru NU e in perimetru', !declMod.beneficiarRoman('DE811907980'));
+  ok('...si nici partenerul neidentificat', !declMod.beneficiarRoman(''));
+  eq('livrare intracomunitara: factura emisa valabila, dar fara termen de 5 zile',
+    declMod.eFacturaNetrimise(vv([F('ic', 'livrare_intracomunitara', 'DE811907980', '2026-07-01')]), '2026-07-20').count, 0);
+  ok('...desi ramane trimisibila manual in SPV', xml.isSendable({ tip: 'livrare_intracomunitara' }));
+  eq('aceeasi livrare catre un client ROMAN produce restanta',
+    declMod.eFacturaNetrimise(vv([F('ro', 'factura_vanzare_marfuri', 'RO9', '2026-07-01')]), '2026-07-20').count, 1);
+}
 const nEf = declMod.notifications({ declarations: [] }, [vEf], '2026-07-20');
 ok('notificari: e-Factura restanta prezenta (status netrimisa)', nEf.items.some((i) => i.tip === 'efactura' && i.kind === 'restanta' && i.status === 'netrimisa'));
 ok('notificari: e-Factura cu termen apropiat apare', nEf.items.some((i) => i.tip === 'efactura' && i.kind === 'termen'));
@@ -6142,6 +6209,29 @@ section('Situatii financiare anuale (S1120/S1121) — randuri, invarianti, antet
   const declB = require('../src/declarations');
   eq('termenul situatiilor financiare = 31 mai anul urmator', declB.dueDate('bilant', '2026-12'), '2027-05-31');
   ok('tipul apare in registrul de declaratii', !!declB.TIPURI.bilant);
+}
+
+section('e-Factura: refuzul de a emite o factura pe care nu o poate citi');
+{
+  // Garda inlocuieste o cadere „de siguranta" pe suma veniturilor, scoasa fiindca nu se declansa
+  // pentru niciun tip emis (toate trec prin 411x/461) si MASCA ancora: cu ea, stergerea lui 461 din
+  // `CREANTA` nu picase niciun test — veniturile salvau tacit rezultatul, iar aserțiunea trecea din
+  // motivul gresit. Un UBL de zero lei ar fi trecut generarea si ar fi plecat in SPV.
+  const goala = { tip: 'factura_vanzare_marfuri', data: '2026-06-10', document: 'F0',
+    partenerCui: 'RO1', partener: 'C', lines: [{ debit: '5311', credit: '707', suma: 1000 }] };
+  let msg = '';
+  try { xml.eFacturaXml({ cui: 'RO1', nume: 'X' }, goala, {}); } catch (e) { msg = e.message; }
+  ok('factura fara miscare pe creanta e REFUZATA, nu emisa cu zero', /nu pot citi sumele/i.test(msg));
+  ok('...si mesajul spune ce sa verifice', /411x sau 461/.test(msg));
+  // Nota de credit are aceeasi garda: era al doilea generator, cu aceeasi gaura.
+  let msgC = '';
+  try { xml.eFacturaXml({ cui: 'RO1', nume: 'X' }, Object.assign({}, goala, { tip: 'factura_storno_vanzare' }), {}); } catch (e) { msgC = e.message; }
+  ok('nota de credit: acelasi refuz', /nu pot citi sumele/i.test(msgC));
+  // Calea cu linii detaliate NU trece prin articolul contabil, deci nu are voie sa fie refuzata.
+  const cuItems = { tip: 'factura_vanzare_marfuri', data: '2026-06-10', document: 'F1',
+    partenerCui: 'RO1', partener: 'C', lines: [],
+    items: [{ nume: 'A', cantitate: 2, pret: 500, um: 'buc', cota: 21 }] };
+  ok('factura cu linii detaliate se emite normal', /<Invoice/.test(xml.eFacturaXml({ cui: 'RO1', nume: 'X' }, cuItems, {})));
 }
 
 console.log('\n' + (stare.fail ? '✗ ' : '✓ ') + stare.pass + ' verificari trecute, ' + stare.fail + ' esuate.');

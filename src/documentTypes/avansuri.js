@@ -13,6 +13,8 @@ module.exports = [
     id: 'factura_avans_client',
     nume: 'Factura de avans emisa (client): 4111 = 419 + 4427',
     grup: 'Vanzari',
+    // art. 319 alin. (6): incasarea unui avans se factureaza
+    eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'baza', label: 'Avans facturat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
     build: (d) => {
@@ -25,6 +27,11 @@ module.exports = [
     id: 'regularizare_avans_client',
     nume: 'Regularizare avans client la factura finala (storno avans, in rosu)',
     grup: 'Vanzari',
+    // NU e un document de sine statator: comentariul din `build` o spune — se inregistreaza
+    // IMPREUNA cu factura finala, care pleaca ea in e-Factura. Art. 319 alin. (6) cere ca avansul
+    // sa se regularizeze PE factura de livrare, nu printr-un document separat. Randata singura ar
+    // fi iesit o „factura" cu sume negative, adica un document care nu exista.
+    eFactura: 'nu',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'refFactura', label: 'Factura de avans stornata (referinta)', type: 'text' },
       { name: 'baza', label: 'Avans stornat (fara TVA)', type: 'number', required: true }, F.tva, F.cota],
