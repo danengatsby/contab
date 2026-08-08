@@ -93,6 +93,26 @@ acest depozit: nu inventa monografia.
 **D311** (TVA colectată de persoanele cu cod de TVA anulat) are validator oficial în manifest
 (`<D311>`), dar nu a fost recunoscut.
 
+## Ultima verificare: 2026-08-08 (3) — e-Factura B2C: fără oracol, cu două surse
+
+**Nu există validator oficial rulabil pentru e-Factura**, spre deosebire de declarații. Verificat,
+ca să nu se mai caute: manifestul DUKIntegrator (`versiuni.xml`) enumeră ~160 de formulare și
+**nu are intrare pentru e-Factura**; serviciul ANAF de validare
+(`api.anaf.ro/prod/FCTEL/rest/validare/FACT1`) răspunde **401 Unauthorized** fără token OAuth.
+
+Deci regula B2C nu a putut fi sondată și a fost luată din normă, confirmată din **două surse
+independente**, amândouă de acord pe ambele puncte:
+
+| Element | Regulă | Ce făcea aplicația |
+|---|---|---|
+| **BT-47** — `AccountingCustomerParty/PartyLegalEntity/CompanyID` | CNP-ul dacă persoana îl dă, altfel `0000000000000` (13 zerouri) | lipsea complet la client fără cod; `RO` + CNP când exista |
+| **BT-48** — `PartyTaxScheme/CompanyID` (cod TVA cumpărător) | **nu se completează** pentru persoane fizice | primea CNP-ul prefixat cu `RO` |
+
+Poarta fiscală a rămas deschisă pe toată bateria, dar **asta nu dovedește nimic despre e-Factura** —
+validatoarele acoperă declarațiile, nu UBL-ul. Dovada stă în teste, pe blocul cumpărătorului decupat
+explicit din XML (prima scriere a testului citea blocul **furnizorului**, care e scris înaintea lui
+și are aceleași etichete — ar fi trecut dacă aserțiunea cerea doar „nu e gol").
+
 ## Ultima verificare: 2026-08-08 (2) — serviciile intracomunitare în D390 (codurile P și S)
 
 Variante de referință noi: **`D390-servicii`** și **`D300-servicii`**. Ambele ✅ validare fără
