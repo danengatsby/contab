@@ -8,6 +8,41 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
+## Ultima verificare: 2026-08-08 — bateria completă, la push pe `main`
+
+Nu o schimbare fiscală nouă, ci **re-dovedirea întregii baterii**: hook-ul `pre-push` a văzut că
+`src/xml.js`, `src/accounting.js`, `src/declarations.js`, `src/reporting.js`, `src/fiscalProfile.js`,
+`src/documentTypes/cumparari.js` și schema D301 s-au atins față de ultimul commit trimis, și a rulat
+poarta înainte să lase push-ul să treacă. **24 din 24 de ieșiri: „Validare fără erori".**
+
+| Familie | Referințe validate |
+|---|---|
+| D100 | `D100`, `D100-profit`, `D100-anticipat` |
+| D101 | `D101`, `D101-defalcare` |
+| D112 | `D112`, `D112-beneficii` |
+| D177 · D205 | `D177`, `D205` |
+| D300 | `D300`, `D300-report`, `D300-autofactura` |
+| D390 | `D390`, `D390-autofactura` |
+| D394 | `D394` |
+| SAF-T (D406) | `D406`, `D406-T`, `D406-A`, `D406-C`, `D406-storno` |
+| Bilanț | `S1120`, `S1121`, `S1122` |
+| e-Transport | schema XSD |
+
+**Ce anume a validat**, ca să se poată reproduce sau contrazice mai târziu:
+
+- **DUKIntegrator**, distribuția din cache (`CONTAB_DUK_DIR`, implicit `/var/tmp/contab-duk`):
+  `dist.zip`, 36.103.651 octeți, `sha256:dddd3c7d743b4347…`, adusă de la `static.anaf.ro` pe
+  2026-07-17. Validatoarele individuale din ea sunt mai noi decât distribuția — se actualizează
+  separat, la cerere: `D300Validator.jar` 2026-08-03, `D406Validator.jar` 2026-08-04,
+  `S1120Validator.jar` 2026-08-05.
+- **e-Transport**: `schemas/eTransport/schema_ETR_v2_20230126.xsd` (versionată în repo, vezi
+  `schemas/eTransport/README.md`).
+- Java: `eclipse-temurin:8-jre` prin Docker — pe server nu există Java, iar jar-urile ANAF sunt pe 8.
+
+Aceeași baterie a trecut și în CI, pe alt runner și pe o clonă curată: jobul `poarta-fiscala` din
+[rularea de pe `669e868`](https://github.com/danengatsby/contab/actions/runs/31263018881), împreună
+cu `validare-anaf`, `test-postgres` și restul.
+
 ## Recunoaștere 2026-08-07 — D301 (decont special de TVA): schema completă, generator NEIMPLEMENTAT
 
 Consemnată aici pentru că e partea scumpă a lucrării și e **verificată**, nu presupusă: un fișier
