@@ -2,6 +2,9 @@
 
 const { round2, period: periodOf } = require('./util');
 const fiscal = require('./fiscal');
+// Nomenclatorul tarilor UE (D390) se ia din config, nu din `fiscal`: `fiscal.FISCAL` expune cotele
+// suprascriabile din Setari, iar lista de tari nu e o cota — nu are ce cauta acolo.
+const fiscalCfg = require('./fiscalConfig');
 const coa = require('./chartOfAccounts');
 const acc = require('./accounting');
 const deduct = require('./deductibilitate');
@@ -118,43 +121,98 @@ function tvaReconciliation(db, period) {
   };
 }
 
-/** Recap D390 — declaratia recapitulativa VIES (livrari/achizitii intracomunitare de bunuri). */
+// Codurile de operatiune din D390 si semnificatia lor. Literele NU sunt ghicite: enumul acceptat
+// e sondat la validatorul oficial (toate sase trec, 'X' e respins cu „valoarea nu se afla in
+// lista"), iar legarea lor de campurile din rezumat e scrisa in regulile validatorului insusi —
+// `bazaX ('@0@') = Suma(baza pt. tip = X)`, cate una pentru fiecare litera. Semantica (care litera
+// e bunuri si care servicii) vine din instructiunile OPANAF, vezi `SURSE.d390` din fiscalConfig.
+//
+//   L = livrari intracomunitare de bunuri        A = achizitii intracomunitare de bunuri
+//   P = prestari intracomunitare de servicii     S = achizitii intracomunitare de servicii
+//   T = livrari in operatiuni triunghiulare      R = livrari in regimul special pentru agricultori
+//
+// T si R raman neacoperite (nu exista tipuri de document pentru ele) si de aceea ies pe zero din
+// generator — dar ies dintr-o suma peste zero randuri, nu dintr-un literal „0" scris in XML.
+const D390_CODURI = ['L', 'T', 'A', 'P', 'S', 'R'];
+const D390_VANZARI = new Set(['L', 'T', 'P', 'R']); // baza se citeste din venituri (clasa 70)
+/** Codurile pe SERVICII — singurele pentru care Irlanda de Nord (XI) nu e tara UE valida. */
+const D390_SERVICII = new Set(['P', 'S']);
+
+/**
+ * Recap D390 — declaratia recapitulativa VIES: livrari/achizitii intracomunitare de BUNURI
+ * (L/A) si prestari/achizitii intracomunitare de SERVICII (P/S), art. 325 Cod fiscal.
+ *
+ * Serviciile lipseau cu totul, desi sunt operatiunea cea mai frecventa din declaratie: orice firma
+ * care plateste reclama, gazduire sau licente unui prestator din UE le are lunar.
+ *
+ * UE vs. non-UE se DERIVA din prefixul codului de TVA al partenerului, nu se bifeaza. Doua motive:
+ * prefixul e oricum obligatoriu in declaratie (`codO` + `tara`), deci daca lipseste operatiunea nu
+ * se poate declara oricum; si asa se incadreaza corect si articolele inregistrate INAINTE de
+ * existenta codurilor de servicii, fara migrare. Ce nu trece de derivare NU dispare tacit: iese in
+ * `avertismente`, pe care validarea pre-depunere le arata contabilului.
+ */
 function d390(db, period) {
-  const INTRACOM = { livrare_intracomunitara: 'L', achizitie_intracomunitara: 'A' };
-  // AUTOFACTURA (art. 320) intra in D390 doar cand operatiunea CHIAR e o achizitie
-  // intracomunitara de bunuri. Din conturi nu se poate deduce: si taxarea inversa interna, si
-  // serviciile din afara dau acelasi 4426 = 4427. De aceea natura se ia din marcajul pus pe
-  // articol la inregistrare (`naturaAutofactura`) — vezi composeEntry.
-  // Fara asta, autofactura ar fi lipsit din D390 tocmai in cazul in care legea a cerut-o ca sa NU
-  // lipseasca: cumparatorul e obligat s-o emita fiindca furnizorul n-a trimis factura, dar
-  // operatiunea se declara oricum.
+  const INTRACOM = {
+    livrare_intracomunitara: 'L',
+    achizitie_intracomunitara: 'A',
+    prestare_servicii_intracomunitara: 'P',
+    achizitie_servicii_intracomunitara: 'S',
+  };
+  // AUTOFACTURA (art. 320) se declara ca operatiunea pe care o documenteaza: bunuri -> A,
+  // servicii -> S. Din conturi nu se poate deduce care e (si taxarea inversa interna, si serviciile
+  // din afara dau acelasi 4426 = 4427), de aceea natura vine din marcajul pus pe articol la
+  // inregistrare (`naturaAutofactura`) — vezi composeEntry. Fara asta, autofactura ar fi lipsit din
+  // D390 tocmai in cazul in care legea a cerut-o ca sa NU lipseasca.
+  const NATURA = { intracom: 'A', servicii: 'S' }; // 'intern331' -> null (art. 331 e intern)
   const codDe = (e) => (e.tip === 'autofactura_achizitie'
-    ? (e.naturaAutofactura === 'intracom' ? 'A' : null)
+    ? (NATURA[e.naturaAutofactura] || null)
     : (INTRACOM[e.tip] || null));
   const ent = acc.postedEntries(db).filter((e) => codDe(e)
     && (!period || String(e.period || periodOf(e.data)).startsWith(period)));
   const map = new Map();
+  const avertismente = [];
   for (const e of ent) {
     const cod = codDe(e);
     let baza = 0;
     for (const l of e.lines) {
-      if (cod === 'L' && /^70/.test(String(l.credit))) baza = round2(baza + l.suma); // livrare: venit (clasa 70)
-      // Achizitie: valoarea bunurilor, adica linia catre FURNIZOR. La autofactura datoria sta pe
-      // 408 (factura chiar nu a sosit), nu pe 401 — o ancora doar pe 401 ar fi citit baza 0 si ar
-      // fi raportat operatiunea cu suma zero, ceea ce e mai rau decat s-o omita.
-      if (cod === 'A' && (String(l.credit) === '401' || String(l.credit) === '408')) baza = round2(baza + l.suma);
+      // Vanzari (livrare/prestare): baza e VENITUL (clasa 70).
+      if (D390_VANZARI.has(cod) && /^70/.test(String(l.credit))) baza = round2(baza + l.suma);
+      // Achizitii: valoarea din linia catre FURNIZOR. La autofactura datoria sta pe 408 (factura
+      // chiar nu a sosit), nu pe 401 — o ancora doar pe 401 ar fi citit baza 0 si ar fi raportat
+      // operatiunea cu suma zero, ceea ce e mai rau decat s-o omita.
+      if (!D390_VANZARI.has(cod) && (String(l.credit) === '401' || String(l.credit) === '408')) baza = round2(baza + l.suma);
     }
-    const cui = String(e.partenerCui || '').replace(/\s/g, '').toUpperCase();
+    const cui = String(e.partenerCui || '').replace(/[\s-]/g, '').toUpperCase();
+    const tara = cui.slice(0, 2);
+    // Irlanda de Nord (XI) e stat membru DOAR pentru bunuri (Protocolul pentru Irlanda/Irlanda de
+    // Nord acopera bunurile, nu serviciile) — de aceea lista difera dupa cod, nu e una singura.
+    const listaUE = D390_SERVICII.has(cod) ? fiscalCfg.TARI_UE : fiscalCfg.TARI_UE_BUNURI;
+    if (tara === 'RO' || !listaUE.includes(tara)) {
+      // Nedeclarabil: fie chiar nu e o operatiune intracomunitara (prestator din afara UE — taxare
+      // inversa da, D390 nu), fie codul de TVA al partenerului lipseste ori e gresit. Din date nu
+      // se poate distinge intre cele doua, si nici nu trebuie: amandoua cer ochiul contabilului.
+      if (baza !== 0) {
+        avertismente.push({ cod, entryId: e.id, data: e.data, partener: e.partener || '',
+          cui, tara: tara || '', baza: round2(baza) });
+      }
+      continue;
+    }
     const key = cod + '|' + cui;
-    const r = map.get(key) || { cod, cui, tara: cui.slice(0, 2), denumire: e.partener || '', baza: 0, nrop: 0 };
+    const r = map.get(key) || { cod, cui, tara, denumire: e.partener || '', baza: 0, nrop: 0 };
     r.baza = round2(r.baza + baza); r.nrop += 1;
     if (!r.denumire && e.partener) r.denumire = e.partener;
     map.set(key, r);
   }
   const rows = [...map.values()].filter((r) => r.baza !== 0).sort((a, b) => (a.cod + a.cui).localeCompare(b.cod + b.cui));
-  const totalL = round2(rows.filter((r) => r.cod === 'L').reduce((s, r) => s + r.baza, 0));
-  const totalA = round2(rows.filter((r) => r.cod === 'A').reduce((s, r) => s + r.baza, 0));
-  return { period, rows, totalL, totalA, nr: rows.length };
+  // Totalurile pe fiecare cod, ca sa nu mai existe un `totalL`/`totalA` scris de mana pentru doua
+  // litere si un literal „0" in XML pentru celelalte patru.
+  const totaluri = {};
+  for (const c of D390_CODURI) {
+    totaluri[c] = round2(rows.filter((r) => r.cod === c).reduce((s, r) => s + r.baza, 0));
+  }
+  return { period, rows, totaluri, avertismente,
+    totalL: totaluri.L, totalA: totaluri.A, // pastrate: le citesc panourile si testele existente
+    total: round2(D390_CODURI.reduce((s, c) => s + totaluri[c], 0)), nr: rows.length };
 }
 
 /** Recap D205 — impozit pe venit retinut la sursa (dividende, chirii, premii), pe beneficiar. */
@@ -1411,4 +1469,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };
+module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };

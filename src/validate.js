@@ -63,7 +63,10 @@ function validateDeclaration(type, xml, ctx) {
   }
 
   // continut gol -> avertisment (nu eroare)
-  if (type === 'd390' && !has(s, '<operatiune ')) warnings.push('Nicio operatiune intracomunitara in perioada — declaratie goala.');
+  // Elementul se numeste `<operatie`, nu `<operatiune`: ancorat pe numele gresit, avertismentul
+  // „declaratie goala" iesea la FIECARE D390, inclusiv la cele pline. Un avertisment care apare
+  // mereu nu mai e citit — deci ascundea exact cazul pe care trebuia sa-l semnaleze.
+  if (type === 'd390' && !has(s, '<operatie ')) warnings.push('Nicio operatiune intracomunitara in perioada — declaratie goala.');
   if (type === 'd205' && !has(s, '<beneficiar ')) warnings.push('Niciun beneficiar cu retinere la sursa — declaratie goala.');
   if (type === 'd100' && attr(s, 'total_plata') === '0.00') warnings.push('Impozit 0 in trimestru — verifica daca datorezi D100 pentru perioada.');
   if (type === 'intrastat') {

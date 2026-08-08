@@ -73,19 +73,24 @@ function build(company, ctx) {
 }
 
 /** Declaratiile ASTEPTATE (lista de `tip`) derivate din profil pentru luna `period` (YYYY-MM).
- *  `hasIntracom(period)` = callback optional care spune daca firma a avut operatiuni
- *  intracomunitare in luna (pentru D390 / Intrastat). Scutirile din profil suprima orice tip. */
-function expected(profile, period, hasIntracom) {
+ *  `hasIntracom(period)` = callback optional: firma a avut operatiuni intracomunitare cu BUNURI.
+ *  `hasIntracomServicii(period)` = idem, cu SERVICII. Cele doua sunt separate fiindca declanseaza
+ *  declaratii diferite: D390 le cere pe amandoua (art. 325), Intrastat doar bunurile — asa ca o
+ *  firma care cumpara numai reclama din UE datoreaza D390, nu si raportarea statistica.
+ *  Scutirile din profil suprima orice tip. */
+function expected(profile, period, hasIntracom, hasIntracomServicii) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   const sfarsitTrim = endOfQuarter(period);
   const intracom = typeof hasIntracom === 'function' && hasIntracom(period);
+  const intracomServicii = typeof hasIntracomServicii === 'function' && hasIntracomServicii(period);
   const tips = [];
   const add = (t) => { if (!profile.scutiri[t] && !tips.includes(t)) tips.push(t); };
   // TVA: D300 + D394 (lunar sau la sfarsit de trimestru, dupa perioada fiscala)
   if (profile.tvaPlatitor && (!profile.trimestrialTva || sfarsitTrim)) { add('d300'); add('d394'); }
-  // D390 (VIES): doar in lunile cu operatiuni intracomunitare efective
-  if (intracom) add('d390');
-  // Intrastat (INS): firma obligata (peste prag) + miscari intracomunitare in luna
+  // D390 (VIES): doar in lunile cu operatiuni intracomunitare efective — bunuri SAU servicii
+  if (intracom || intracomServicii) add('d390');
+  // Intrastat (INS): firma obligata (peste prag) + miscari de BUNURI in luna. Serviciile nu conteaza
+  // aici, oricat de mari ar fi: Intrastatul e statistica de comert cu bunuri.
   if (profile.intrastat && intracom) add('intrastat');
   // D112: firme cu salariati
   if (profile.areAngajati) add('d112');

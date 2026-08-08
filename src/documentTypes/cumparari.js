@@ -65,6 +65,11 @@ module.exports = [
   // primite din afara, taxare inversa interna) si NU a primit factura furnizorului pana pe 15 a
   // lunii urmatoare faptului generator, are OBLIGATIA sa emita autofactura.
   //
+  // Autofactura NU schimba ce se declara, doar documentul care sustine inregistrarea: o achizitie
+  // de servicii din UE intra in D390 pe codul S si cand a venit factura, si cand a fost nevoie de
+  // autofactura. De aceea `naturaAutofactura` de mai jos duce la aceleasi coduri ca tipurile de
+  // document obisnuite — nu la o categorie separata.
+  //
   // DIFERENTA fata de `factura_nesosita`, si intreg motivul pentru care tipul asta exista separat:
   // acolo TVA-ul sta in 4428 (NEEXIGIBIL), fiindca dreptul de deducere se naste cu factura. La
   // autofactura, TVA-ul e EXIGIBIL indiferent de factura — exigibilitatea intervine la data de 15
@@ -80,14 +85,18 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota,
       // NATURA operatiunii se cere EXPLICIT si nu are valoare implicita „ghicita": autofactura
       // acopera trei situatii care se declara diferit, iar din conturi nu se poate citi care e
-      // (toate trei dau acelasi 4426 = 4427). Doar prima intra in D390; o implicita pe „intracom"
-      // ar fi umplut D390 cu operatiuni interne, o implicita pe „intern" ar fi ascuns achizitii
-      // intracomunitare de la ANAF. Amandoua tacut.
-      { name: 'naturaAutofactura', label: 'Natura operatiunii (decide daca intra in D390)', type: 'select',
+      // (toate trei dau acelasi 4426 = 4427). O implicita pe „intracom" ar fi umplut D390 cu
+      // operatiuni interne, o implicita pe „intern" ar fi ascuns achizitii de la ANAF. Amandoua tacut.
+      //
+      // BUNURI sau SERVICII se cere; UE sau non-UE se DERIVA din prefixul codului de TVA al
+      // partenerului (vezi `codDe` din reporting.d390). Motivul separarii: primul lucru chiar nu
+      // se poate citi din date, al doilea se poate — iar un camp in plus ar fi doar inca o ocazie
+      // de a bifa gresit. Derivarea repara si articolele deja inregistrate, fara migrare.
+      { name: 'naturaAutofactura', label: 'Natura operatiunii (decide daca si cum intra in D390)', type: 'select',
         required: true,
         options: [
-          { value: 'intracom', label: 'Achizitie intracomunitara de bunuri (intra in D390)' },
-          { value: 'servicii', label: 'Servicii primite din afara tarii (nu intra in D390 pe bunuri)' },
+          { value: 'intracom', label: 'Achizitie intracomunitara de BUNURI (D390, cod A)' },
+          { value: 'servicii', label: 'SERVICII primite de la un prestator extern (D390 cod S, daca prestatorul are cod de TVA din UE)' },
           { value: 'intern331', label: 'Taxare inversa interna, art. 331 (nu intra in D390)' },
         ] },
       { name: 'contStoc', label: 'Cont stoc/cheltuiala/imobilizare', type: 'account', default: '371' }],
@@ -179,6 +188,47 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza,
       F.codNC, F.masaNeta, F.naturaTranz, F.conditieLivrare],
     build: (d) => [L('4111', '707', d.baza, 'Livrare intracomunitară (scutită cu drept de deducere)')],
+  },
+
+  // ── SERVICIILE INTRACOMUNITARE (art. 278 alin. (2)) ───────────────────────────────────────────
+  // Perechea pe SERVICII a celor doua tipuri pe bunuri de mai sus. Existau doar cele pe bunuri,
+  // desi art. 325 cere in declaratia recapitulativa si serviciile: orice firma care plateste
+  // reclama, gazduire sau licente unui prestator din UE are lunar operatiuni de declarat.
+  //
+  // Diferenta contabila fata de bunuri e ca NU exista cont de stoc: serviciul se duce direct in
+  // cheltuiala. Diferenta fiscala e mai importanta si e motivul pentru care sunt tipuri separate,
+  // nu un camp pe cele existente: bunurile intra in D390 pe codurile L/A si in Intrastat, iar
+  // serviciile pe P/S si NICIODATA in Intrastat (Intrastatul e statistica de bunuri). Un camp
+  // „e serviciu?" pe tipul de bunuri ar fi lasat campurile NC8 si masa neta cerute degeaba.
+  {
+    id: 'prestare_servicii_intracomunitara',
+    nume: 'Prestare intracomunitara de servicii (neimpozabila in Romania, taxabila la beneficiar)',
+    grup: 'Vanzari',
+    fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.items],
+    // Fara TVA colectat: locul prestarii e la beneficiar (art. 278 alin. (2)), deci operatiunea
+    // e neimpozabila in Romania, iar taxa o datoreaza clientul prin taxare inversa. Pe factura se
+    // inscrie mentiunea „taxare inversa". NU e o scutire — de aceea nu trece prin randurile de
+    // scutite ale decontului, ci prin randul propriu (R3), ca operatiune neimpozabila in RO.
+    build: (d) => [L('4111', '704', d.baza, 'Prestare intracomunitară de servicii (taxare inversă la beneficiar)')],
+  },
+  {
+    id: 'achizitie_servicii_intracomunitara',
+    nume: 'Achizitie intracomunitara de servicii (taxare inversa, art. 307 alin. (2))',
+    grup: 'Cumparari',
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota,
+      { name: 'contChelt', label: 'Cont cheltuiala', type: 'account', default: '628' }],
+    // Deliberat FARA `F.proRataMixt`, desi linia 4426 exista: pro-rata se aplica in composeEntry
+    // cautand linia de cost cu ACELASI credit ca linia de TVA, iar aici creditul e 4427 (taxare
+    // inversa), nu furnizorul — nu ar gasi nimic si partea nedeductibila ar disparea din articol,
+    // dezechilibrandu-l. Aceeasi limita o au deja `achizitie_intracomunitara` si taxarea inversa
+    // interna; se repara pentru toate odata, in motorul de pro-rata, nu cu o bifa care tace aici.
+    build: (d) => {
+      const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
+      return [
+        L(d.contChelt || '628', '401', d.baza, 'Servicii primite din UE (locul prestării la beneficiar)'),
+        L('4426', '4427', tva, 'Taxare inversă — art. 307 alin. (2)'),
+      ];
+    },
   },
   {
     id: 'taxare_inversa_interna_achizitie',

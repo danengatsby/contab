@@ -942,26 +942,42 @@ function parseUblInvoice(xmlStr) {
 /** D390 VIES — recapitulativ intracomunitar pe schema OFICIALA v3: radacina cu identificare
  *  + declarant, <rezumat> (bazele pe tip de operatiune, in lei intregi) si cate o <operatie>
  *  per partener (tip L/A/P/S/T/R, tara + cod operator fara prefixul de tara). */
+// Codurile din rezumatul D390, in ordinea din schema. Lista e repetata aici fata de `reporting.js`
+// fiindca xml.js nu importa nimic din lantul de raportare (ar inchide un ciclu) — iar ca sa nu
+// poata drifta, un test verifica faptul ca cele doua liste sunt identice.
+const D390_CODURI = ['L', 'T', 'A', 'P', 'S', 'R'];
+
 function d390Xml(company, period, d, who) {
   const { an, luna } = ym(period);
   const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
   const lei = (v) => String(Math.round(Number(v) || 0));
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
-  const rows = (d.rows || []).map((r) => {
+  // Rezumatul se DERIVA din randurile chiar emise, nu din totalurile primite. Regula oficiala e
+  // `bazaX = Suma(baza pt. tip = X)` peste valorile din XML, iar acolo fiecare baza e deja rotunjita
+  // la leu: doua randuri de 10,40 se scriu „10" si „10", deci bazaP trebuie sa fie 20, nu 21 cat ar
+  // da rotunjirea sumei (20,80). Vechea forma rotunjea suma si trecea doar fiindca L si A aveau
+  // aproape mereu un singur rand pe cod. La fel `nrOPI`: numara elementele scrise, nu un camp primit.
+  const perCod = {};
+  for (const c of D390_CODURI) perCod[c] = 0;
+  const lista = (d.rows || []).map((r) => {
     const tara = r.tara || String(r.cui || '').slice(0, 2);
     const codO = String(r.cui || '').replace(new RegExp('^' + tara, 'i'), '');
-    return `  <operatie tip="${esc(r.cod)}" tara="${esc(tara)}" codO="${esc(codO)}" denO="${esc(r.denumire || '-')}" baza="${lei(r.baza)}"/>`;
-  }).join('\n');
-  const bazaL = lei(d.totalL); const bazaA = lei(d.totalA);
-  const totalBaza = Math.round(d.totalL || 0) + Math.round(d.totalA || 0);
+    const baza = Math.round(Number(r.baza) || 0);
+    if (Object.prototype.hasOwnProperty.call(perCod, r.cod)) perCod[r.cod] += baza;
+    return `  <operatie tip="${esc(r.cod)}" tara="${esc(tara)}" codO="${esc(codO)}" denO="${esc(r.denumire || '-')}" baza="${baza}"/>`;
+  });
+  const rows = lista.join('\n');
+  const nrOPI = lista.length;
+  const totalBaza = D390_CODURI.reduce((s, c) => s + perCod[c], 0);
+  const baze = D390_CODURI.map((c) => `baza${c}="${perCod[c]}"`).join(' ');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- D390 VIES v3 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D390 fisier.xml -->
 <declaratie390 xmlns="mfp:anaf:dgti:d390:declaratie:v3"
   luna="${esc(luna)}" an="${esc(an)}" d_rec="0"
   nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
   cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}" adresa="${esc(adresa || '-')}"
-  totalPlata_A="${lei(totalBaza + (d.nr || 0))}">
-  <rezumat nr_pag="1" nrOPI="${d.nr || 0}" bazaL="${bazaL}" bazaT="0" bazaA="${bazaA}" bazaP="0" bazaS="0" bazaR="0" total_baza="${lei(totalBaza)}"/>
+  totalPlata_A="${lei(totalBaza + nrOPI)}">
+  <rezumat nr_pag="1" nrOPI="${nrOPI}" ${baze} total_baza="${totalBaza}"/>
 ${rows}
 </declaratie390>
 `;
@@ -1230,7 +1246,7 @@ function bilantXml(d) {
 
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
-  umCode, d300Xml, d300Rows, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d300Rows, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
   bilantXml, bilantNsVersion, d177Xml,
   esc, // escaparea XML, refolosita de generatoarele din afara acestui fisier (ex. src/sepa.js)
 };

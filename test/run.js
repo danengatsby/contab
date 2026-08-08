@@ -2499,6 +2499,54 @@ eq('D390: 2 operatori (intracom), factura interna exclusa', d390.nr, 2);
 ok('D390: codul tarii dedus din CUI (DE/FR)', d390.rows.some((r) => r.tara === 'DE') && d390.rows.some((r) => r.tara === 'FR'));
 ok('D390 XML bine-format', wellFormed(xml.d390Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d390)));
 
+// ── SERVICIILE intracomunitare (art. 325): codurile P si S ────────────────────────────────────
+// Lipseau cu totul din declaratie, desi sunt operatiunea ei cea mai frecventa — orice firma care
+// plateste reclama sau gazduire unui prestator din UE le are lunar.
+{
+  const ES = (id, tip, cui, baza, extra) => Object.assign({
+    id, tip, period: '2026-06', data: '2026-06-11', partener: 'P' + id, partenerCui: cui,
+    lines: gt2(tip).build(Object.assign({ baza, cota: 21 }, extra || {})),
+  }, extra || {});
+  const vS = { openingBalances: {}, company: { tvaPlatitor: true }, entries: [
+    ES('s1', 'prestare_servicii_intracomunitara', 'DE111111111', 4000),
+    ES('s2', 'achizitie_servicii_intracomunitara', 'IE6388047V', 1200),
+    ES('s3', 'achizitie_servicii_intracomunitara', 'IE6388047V', 800), // acelasi operator: se cumuleaza
+  ] };
+  const r = rep.d390(vS, '2026-06');
+  eq('D390: prestarea catre UE iese pe codul P', r.totaluri.P, 4000);
+  eq('D390: achizitia de servicii din UE iese pe codul S', r.totaluri.S, 2000);
+  eq('...cumulata pe operator, nu cate un rand pe factura', r.rows.filter((x) => x.cod === 'S').length, 1);
+  eq('...cu numarul de operatiuni pastrat', r.rows.find((x) => x.cod === 'S').nrop, 2);
+  eq('D390: serviciile NU se amesteca in totalurile pe bunuri', r.totaluri.L + r.totaluri.A, 0);
+  // Baza prestarii se citeste din VENIT (clasa 70), a achizitiei din datoria catre furnizor —
+  // aceeasi regula ca la bunuri, altfel una din ele ar iesi zero.
+  eq('baza prestarii vine din venit, nu din TVA', r.rows.find((x) => x.cod === 'P').baza, 4000);
+
+  // Irlanda de Nord: stat membru pentru BUNURI (Protocolul NI), nu pentru servicii.
+  const vXI = (tip) => ({ openingBalances: {}, company: {}, entries: [ES('x1', tip, 'XI123456789', 500)] });
+  eq('XI e tara UE pentru bunuri', rep.d390(vXI('achizitie_intracomunitara'), '2026-06').rows.length, 1);
+  eq('...dar NU pentru servicii', rep.d390(vXI('achizitie_servicii_intracomunitara'), '2026-06').rows.length, 0);
+
+  // Grecia: codul de TVA incepe cu EL, nu cu GR. O lista scrisa dupa coduri ISO ar rata-o.
+  const vEL = { openingBalances: {}, company: {}, entries: [ES('e1', 'achizitie_servicii_intracomunitara', 'EL123456789', 700)] };
+  eq('Grecia se recunoaste dupa prefixul EL (nu GR)', rep.d390(vEL, '2026-06').totaluri.S, 700);
+
+  // Rezumatul din XML: regula oficiala e `bazaX = Suma(baza pt. tip = X)` peste valorile SCRISE,
+  // care sunt rotunjite la leu. Doua randuri de 10,40 se scriu „10" si „10" => bazaP = 20, nu 21.
+  const vR = { openingBalances: {}, company: {}, entries: [
+    ES('r1', 'prestare_servicii_intracomunitara', 'DE111111111', 10.4),
+    ES('r2', 'prestare_servicii_intracomunitara', 'FR22222222222', 10.4),
+  ] };
+  const xr = xml.d390Xml({ cui: 'RO1', nume: 'X' }, '2026-06', rep.d390(vR, '2026-06'));
+  const sumaScrisa = [...xr.matchAll(/<operatie[^>]*baza="(\d+)"/g)].reduce((s, m) => s + Number(m[1]), 0);
+  eq('rezumatul XML = suma bazelor SCRISE (nu rotunjirea sumei)', Number(/bazaP="(\d+)"/.exec(xr)[1]), sumaScrisa);
+  eq('...si nrOPI numara elementele emise', Number(/nrOPI="(\d+)"/.exec(xr)[1]), 2);
+
+  // Lista de coduri e scrisa in doua module (xml.js nu importa lantul de raportare) — invariantul
+  // care le tine legate, ca sa nu poata drifta una fata de cealalta.
+  eq('codurile D390 sunt aceleasi in reporting si in xml', rep.D390_CODURI.join(''), xml.D390_CODURI.join(''));
+}
+
 section('Import XLSX (parser)');
 const AdmZip = require('adm-zip');
 const xlsxMod = require('../src/xlsx');
@@ -2917,11 +2965,25 @@ section('Autofactura art. 320 — TVA exigibil fara factura');
     lines: [{ debit: '371', credit: '408', suma: 10000 }, { debit: '4426', credit: '4427', suma: 2100 }] });
   const vD = (nat) => ({ openingBalances: {}, entries: [E(nat)], company: { tvaPlatitor: true } });
 
-  // D390: doar achizitia intracomunitara de BUNURI.
+  // D390: bunurile pe codul A, SERVICIILE pe codul S (art. 325 cere si serviciile). Aserțiunea
+  // de aici spunea pana acum „D390 NU include serviciile din afara" — codifica exact regula
+  // gresita, motiv pentru care defectul a trecut neobservat: testul confirma bugul.
   eq('D390 include autofactura marcata intracomunitar', rep.d390(vD('intracom'), '2026-05').rows.length, 1);
   eq('...cu baza citita de pe 408 (nu 0)', rep.d390(vD('intracom'), '2026-05').rows[0].baza, 10000);
+  eq('...pe codul A (bunuri)', rep.d390(vD('intracom'), '2026-05').rows[0].cod, 'A');
   eq('D390 NU include taxarea inversa interna', rep.d390(vD('intern331'), '2026-05').rows.length, 0);
-  eq('D390 NU include serviciile din afara', rep.d390(vD('servicii'), '2026-05').rows.length, 0);
+  eq('D390 INCLUDE serviciile primite de la un prestator din UE', rep.d390(vD('servicii'), '2026-05').rows.length, 1);
+  eq('...pe codul S (achizitii de servicii), nu pe A', rep.d390(vD('servicii'), '2026-05').rows[0].cod, 'S');
+  // Prestatorul din afara UE: taxare inversa da, D390 nu. Se deduce din prefixul codului de TVA,
+  // fara camp suplimentar — si nu dispare tacit, ci iese in `avertismente`.
+  {
+    const eUS = Object.assign(E('servicii'), { partener: 'US LLC', partenerCui: '98-7654321' });
+    const vUS = { openingBalances: {}, entries: [eUS], company: { tvaPlatitor: true } };
+    const rUS = rep.d390(vUS, '2026-05');
+    eq('serviciu din AFARA UE: nu intra in D390', rUS.rows.length, 0);
+    eq('...dar e semnalat, nu inghitit', rUS.avertismente.length, 1);
+    eq('...cu baza pe el, ca sa se vada cat lipseste', rUS.avertismente[0].baza, 10000);
+  }
 
   // D300: pe randul de AUTOLICHIDARE, nu pe cele de cota. Fara incadrare, autofactura cadea prin
   // toate ramurile si aparea ca o LIVRARE taxabila de 10.000 care nu existase niciodata.
@@ -2930,6 +2992,11 @@ section('Autofactura art. 320 — TVA exigibil fara factura');
   eq('...ci pe randul de autolichidare intracomunitara', d3('intracom').autolichidari.intracomBunuri.baza, 10000);
   eq('taxarea inversa interna merge pe randul ei', d3('intern331').autolichidari.taxareInversaInterna.baza, 10000);
   eq('...si nu pe cel intracomunitar', d3('intern331').autolichidari.intracomBunuri.baza, 0);
+  // SERVICIILE nu sunt achizitii intracomunitare de BUNURI: in decont merg pe R7/R20, nu pe R5/R18.
+  // Altfel aceeasi operatiune iesea „servicii" in D390 si „bunuri" in D300 — doua declaratii care
+  // se contrazic pe aceeasi factura.
+  eq('serviciile din UE NU merg pe randul de bunuri (R5)', d3('servicii').autolichidari.intracomBunuri.baza, 0);
+  eq('...ci pe randul de taxare inversa la beneficiar (R7)', d3('servicii').autolichidari.taxareInversaInterna.baza, 10000);
   // Decontul ramane echilibrat: colectata = deductibila pe autolichidare, deci TVA de plata 0.
   eq('autolichidarea nu produce TVA de plata', d3('intracom').deplata, 0);
 }
