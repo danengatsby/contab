@@ -206,12 +206,12 @@
          desktop butonul nu exista — acolo bara e sidebar vertical si au loc. -->
     <button id="toolsBtn" class="btn small" type="button" aria-expanded="false" aria-controls="sideTools" title="Unelte: căutare, dicționar, mod simplu, temă">⋯ Unelte</button>
     <div class="side-tools" id="sideTools">
-      <button id="paletaBtn" class="btn small" title="Caută în aplicație — clienți, facturi, pagini (Ctrl+K)">🔎 Caută</button>
-      <button id="glossaryBtn" class="btn small" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor">❓ Dicționar</button>
-      <button id="uiModeBtn" class="btn small" title="Mod simplu: ascunde partea tehnic-contabilă din meniu (balanță, registre, plan de conturi, închideri). Contabilitatea rulează neschimbată în fundal. Mod expert: totul vizibil.">🎓</button>
-      <button id="themeBtn" class="btn small" title="Comută tema (clar / întunecat)">🌙</button>
-      <button id="densityBtn" class="btn small" title="Comută densitatea afișării">⊟ Compact</button>
-      <button id="tourBtn" class="btn small" title="Turul meniului — îți arată în câțiva pași cum e organizată aplicația">🧭 Tur meniu</button>
+      <button id="paletaBtn" class="btn small" title="Caută în aplicație — clienți, facturi, pagini (Ctrl+K)" data-ic="cauta">Caută</button>
+      <button id="glossaryBtn" class="btn small" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor" data-ic="dictionar">Dicționar</button>
+      <button id="uiModeBtn" class="btn small" title="Mod simplu: ascunde partea tehnic-contabilă din meniu (balanță, registre, plan de conturi, închideri). Contabilitatea rulează neschimbată în fundal. Mod expert: totul vizibil." data-ic="simplu">Simplu</button>
+      <button id="themeBtn" class="btn small" title="Comută tema (clar / întunecat)" data-ic="luna">Temă</button>
+      <button id="densityBtn" class="btn small" title="Comută densitatea afișării" data-ic="compact">Compact</button>
+      <button id="tourBtn" class="btn small" title="Turul meniului — îți arată în câțiva pași cum e organizată aplicația" data-ic="tur">Tur meniu</button>
     </div>
     <span id="userBadge" class="userbadge"></span>
     <button id="logoutBtn" class="btn small">Ieși</button>
@@ -224,35 +224,35 @@
            `CYCLE` (public/app.js) declara deja această ordine; o poartă din test/run/porti.js
            verifică acum că meniul n-o mai contrazice. Jos stau lucrurile din afara ciclului:
            nomenclatoarele și setările — se ating rar, deci nu mai stau în drum. -->
-      <button data-tab="dashboard" class="active">🏠 Acasă</button>
-      <button data-tab="ghid">📖 Ghid</button>
+      <button data-tab="dashboard" class="active" data-ic="acasa">Acasă</button>
+      <button data-tab="ghid" data-ic="ghid">Ghid</button>
       <div id="imperBanner" class="imper-banner hidden">
         <span>👤 Conectat ca <b id="imperName"></b> <span class="imper-sub">(mod administrator — „intră pe cont"). Toate acțiunile sunt jurnalizate.</span></span>
         <button id="imperStop" type="button">↩ Revino la contul de admin</button>
       </div>
-      <button data-tab="mesaje">💬 Mesaje<span id="msgBadge" class="navbadge hidden">0</span></button>
-      <button data-tab="portofoliu" id="navPortofoliu">🗂 Portofoliu</button>
-      <button data-tab="notificari" title="Notificări — termene fiscale">🔔<span id="notifBadge" class="navbadge hidden">0</span></button>
+      <button data-tab="mesaje" data-ic="mesaje">Mesaje<span id="msgBadge" class="navbadge hidden">0</span></button>
+      <button data-tab="portofoliu" id="navPortofoliu" data-ic="portofoliu">Portofoliu</button>
+      <button data-tab="notificari" title="Notificări — termene fiscale" data-ic="notificari">Notificări<span id="notifBadge" class="navbadge hidden">0</span></button>
       <div class="navgroup">
-        <button class="navlabel" type="button">📥 Documente & facturi</button>
+        <button class="navlabel" type="button" data-ic="documente">Documente & facturi</button>
         <div class="navmenu">
-          <button data-tab="documente">➕ Adaugă document primit</button>
-          <button data-tab="emite">🧾 Emite factură</button>
-          <button data-tab="intrate">📥 Documente primite (listă)</button>
-          <button data-tab="galerie">🖼️ Galerie documente primite</button>
-          <button data-tab="iesite">📤 Documente emise (listă)</button>
-          <button data-tab="galerie-emise">🖼️ Galerie documente emise</button>
+          <button data-tab="documente">Adaugă document primit</button>
+          <button data-tab="emite">Emite factură</button>
+          <button data-tab="intrate">Documente primite (listă)</button>
+          <button data-tab="galerie">Galerie documente primite</button>
+          <button data-tab="iesite">Documente emise (listă)</button>
+          <button data-tab="galerie-emise">Galerie documente emise</button>
         </div>
       </div>
       <div class="navgroup">
-        <button class="navlabel" type="button">🏦 Bani</button>
+        <button class="navlabel" type="button" data-ic="bani">Bani</button>
         <div class="navmenu">
           <button data-tab="cashbook">Încasări & plăți (bancă / casă)</button>
           <button data-tab="reconciliere">Verifică extrasul bancar</button>
         </div>
       </div>
       <div class="navgroup">
-        <button class="navlabel" type="button">📦 Stocuri</button>
+        <button class="navlabel" type="button" data-ic="stocuri">Stocuri</button>
         <div class="navmenu">
           <!-- Sparte pe CE FACI, nu pe cum e organizat codul: lucrul zilnic (ce ai, ce mișcă),
                producția — o activitate pe care multe firme n-o folosesc deloc — și configurarea,
@@ -264,7 +264,7 @@
       </div>
       <!-- grupul intreg se ascunde pentru utilizatorii cu dreptul „faraSalarii" (app.js) -->
       <div class="navgroup" id="navgrupSalarii">
-        <button class="navlabel" type="button">👥 Salarii</button>
+        <button class="navlabel" type="button" data-ic="salarii">Salarii</button>
         <div class="navmenu">
           <!-- Sparte pe CE FACI: munca lunii (statul), datele angajatilor (formularul de 20 de
                campuri) si registrul anual, care e un raport pe alt an decat luna de lucru. -->
@@ -275,7 +275,7 @@
       </div>
       <!-- adv pe tot grupul: ambele intrari sunt tehnice, in modul simplu ar ramane o eticheta goala -->
       <div class="navgroup adv">
-        <button class="navlabel" type="button">🏢 Mijloace fixe</button>
+        <button class="navlabel" type="button" data-ic="mijloace">Mijloace fixe</button>
         <div class="navmenu">
           <button data-tab="mijloace">Mijloace fixe (amortizare)</button>
           <button data-tab="leasing">Leasing (contracte și rate)</button>
@@ -286,7 +286,7 @@
            mai lipsește). Toate patru erau deja `.adv`, deci grupul e `.adv` — în modul simplu ar fi
            rămas o etichetă goală. -->
       <div class="navgroup adv">
-        <button class="navlabel" type="button">📒 Registre contabile</button>
+        <button class="navlabel" type="button" data-ic="registre">Registre contabile</button>
         <div class="navmenu">
           <!-- in ordinea in care se citesc: operatiunile -> fisa fiecarui cont -> soldurile -->
           <button data-tab="jurnal" class="adv">Toate operațiunile (jurnal)</button>
@@ -296,14 +296,14 @@
         </div>
       </div>
       <div class="navgroup adv">
-        <button class="navlabel" type="button">🔒 Închideri</button>
+        <button class="navlabel" type="button" data-ic="inchideri">Închideri</button>
         <div class="navmenu">
           <button data-tab="inchideri" class="adv">Închiderea lunii</button>
           <button data-tab="inchidere-an" class="adv">Închiderea anului</button>
         </div>
       </div>
       <div class="navgroup">
-        <button class="navlabel" type="button">🧾 Taxe & declarații</button>
+        <button class="navlabel" type="button" data-ic="taxe">Taxe & declarații</button>
         <div class="navmenu">
           <button data-tab="tva">TVA de plată (decont)</button>
           <button data-tab="livrabile">Declarații ANAF (<abbr title="Decontul de TVA">D300</abbr>, <abbr title="Declarația privind contribuțiile sociale și impozitul pe salarii">D112</abbr>…)</button>
@@ -313,7 +313,7 @@
         </div>
       </div>
       <div class="navgroup">
-        <button class="navlabel" type="button">📊 Rapoarte & analize</button>
+        <button class="navlabel" type="button" data-ic="rapoarte">Rapoarte & analize</button>
         <div class="navmenu">
           <button data-tab="situatii">Situații financiare (bilanț, profit)</button>
           <button data-tab="anexe" class="adv">Anexe la situații (fluxuri, capitaluri, note)</button>
@@ -325,26 +325,26 @@
         </div>
       </div>
       <div class="navgroup">
-        <button class="navlabel" type="button">📁 Date firmă</button>
+        <button class="navlabel" type="button" data-ic="datefirma">Date firmă</button>
         <div class="navmenu">
           <button data-tab="parteneri">Clienți & furnizori</button>
           <button data-tab="plan" class="adv">Plan de conturi</button>
         </div>
       </div>
       <div class="navgroup">
-        <button class="navlabel" type="button">⚙️ Setări</button>
+        <button class="navlabel" type="button" data-ic="setari">Setări</button>
         <div class="navmenu">
           <!-- „Setări generale" era o singură pagină de ~5.200 px cu 19 panouri fără legătură
                între ele (datele firmei, parola, colaboratorii, backupul, tutorialul de scanare).
                Spartă pe SCOP, cu nume pe care le înțelege și un necontabil: fiecare pagină
                răspunde la o singură întrebare, iar niciuna nu mai trece de un ecran-două. -->
-          <button data-tab="setari">🏢 Firma mea</button>
-          <button data-tab="cont">👤 Contul meu</button>
-          <button data-tab="acces">👥 Cine are acces</button>
-          <button data-tab="date">💾 Date &amp; copii de siguranță</button>
-          <button data-tab="conexiuni">🔌 Conexiuni &amp; unelte</button>
-          <button data-tab="pachetwin">💻 Contabo pe calculatorul tău</button>
-          <button data-tab="video">🎬 Video de prezentare</button>
+          <button data-tab="setari">Firma mea</button>
+          <button data-tab="cont">Contul meu</button>
+          <button data-tab="acces">Cine are acces</button>
+          <button data-tab="date">Date &amp; copii de siguranță</button>
+          <button data-tab="conexiuni">Conexiuni &amp; unelte</button>
+          <button data-tab="pachetwin">Contabo pe calculatorul tău</button>
+          <button data-tab="video">Video de prezentare</button>
           <button data-tab="audit" class="adv">Jurnal de audit</button>
           <!-- Doar admin (comutat din app.js dupa rol). NU e marcat `.adv`, spre deosebire de
                jurnalul de audit: acela se vede de toata lumea si e ascuns in modul simplu ca
