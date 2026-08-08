@@ -19,8 +19,8 @@ Apoi deschide `http://localhost:8080` în browser. **Cere Node ≥ 22.13** (`eng
 `package.json`; driverul implicit `node:sqlite` nu există înainte).
 
 Navigarea e organizată pe grupuri, iar **ordinea lor e chiar ciclul contabil**, de sus în jos:
-`Documente & facturi`, `Bani`, `Stocuri`, `Salarii`, `Mijloace fixe`,
-`Registre contabile`, `Închideri`, `Taxe & declarații`, `Rapoarte & analize` —
+`📥 Documente & facturi`, `🏦 Bani`, `📦 Stocuri`, `👥 Salarii`, `🏢 Mijloace fixe`,
+`📒 Registre contabile`, `🔒 Închideri`, `🧾 Taxe & declarații`, `📊 Rapoarte & analize` —
 înregistrezi, urmărești banii, treci prin ce mișcă lunar, verifici registrele, închizi luna, depui
 declarațiile, citești rapoartele. Jos rămân lucrurile din afara ciclului: `📁 Date firmă`
 (nomenclatoare) și `⚙️ Setări`. (Numele grupurilor sunt verificate față de `public/index.html`, iar
