@@ -22,6 +22,13 @@ const RATES = {
   cas: 25,            // % — art. 138 Cod fiscal
   cass: 10,           // % — art. 156 Cod fiscal
   impozitVenit: 10,   // % — art. 78 Cod fiscal
+  // ── Retineri la sursa pe venituri ale persoanelor fizice (Titlul IV) ──
+  // Baza impozabila NU e brutul, si difera de la un venit la altul. Amandoua valorile se schimba
+  // prin modificari ale Codului fiscal, deci stau aici, suprascriabile din Setari.
+  chiriiForfetarPct: 20,   // % — art. 84: venitul net din chirii = brut - 20% cota forfetara,
+                           // deci impozitul efectiv e 8% din brut (10% aplicat la 80%)
+  premiiNeimpozabil: 600,  // lei — art. 110 alin. (4): suma neimpozabila pentru FIECARE premiu;
+                           // sub ea nu se datoreaza nimic, peste ea se impoziteaza doar diferenta
   cam: 2.25,          // % — art. 220^3 Cod fiscal (contributia asiguratorie de munca)
   // Salariul minim brut si sumele neimpozabile (trecerea S1 -> S2 de la 1 iulie)
   salariuMinimS1: 4050,
@@ -198,6 +205,11 @@ const SURSE = {
   cas: 'Art. 138 Cod fiscal (25%)',
   cass: 'Art. 156 Cod fiscal (10%)',
   impozitVenit: 'Art. 78 Cod fiscal (10%)',
+  chiriiForfetar: 'Art. 84 Cod fiscal — venitul net din cedarea folosintei bunurilor = brut minus '
+    + 'cota forfetara de 20% (reintrodusa de Legea 296/2023 din 2024); platitorul persoana juridica '
+    + 'retine impozitul la sursa, deci efectiv 8% din brut',
+  premiiNeimpozabil: 'Art. 110 alin. (4) Cod fiscal — venitul net din premii = venitul brut minus '
+    + 'suma neimpozabila de 600 lei, pentru FIECARE premiu; un premiu sub plafon nu se impoziteaza',
   cam: 'Art. 220^3 Cod fiscal (2,25%)',
   salariuMinim: 'HG salariu minim 2026 — 4.050 lei (S1) / 4.325 lei (S2, de la 1 iulie)',
   neimpozabil: 'Art. 76 Cod fiscal — 300 lei (S1) / 200 lei (S2) neimpozabili din salariul minim',

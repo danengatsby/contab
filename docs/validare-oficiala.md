@@ -20,7 +20,7 @@ poarta înainte să lase push-ul să treacă. **24 din 24 de ieșiri: „Validar
 | D100 | `D100`, `D100-profit`, `D100-anticipat` |
 | D101 | `D101`, `D101-defalcare` |
 | D112 | `D112`, `D112-beneficii` |
-| D177 · D205 | `D177`, `D205` |
+| D177 · D205 | `D177`, `D205`, `D205-retineri` |
 | D300 | `D300`, `D300-report`, `D300-autofactura`, `D300-servicii`, `D300-prorata` |
 | D390 | `D390`, `D390-autofactura`, `D390-servicii` |
 | D394 | `D394` |
@@ -92,6 +92,24 @@ acest depozit: nu inventa monografia.
 
 **D311** (TVA colectată de persoanele cu cod de TVA anulat) are validator oficial în manifest
 (`<D311>`), dar nu a fost recunoscut.
+
+## Ultima verificare: 2026-08-08 (5) — rețineri la sursă: baza impozabilă și `tip_plata`
+
+Variantă de referință nouă: **`D205-retineri`** (chirii + premii) ✅ validare fără erori. Referința
+de bază conținea **doar dividende**, unde baza impozabilă *este* chiar brutul — singurul caz în care
+declarația ieșea corectă din întâmplare.
+
+**Varianta a picat la prima rulare, și pe bună dreptate:** `tip_plata="0"`, folosit pentru tot ce nu
+era dividend, e respins de regula **R37** — *„tip_plata(0) nu corespunde cu tip_venit(04)"*. Sondat
+pe toate valorile: **2** e singura acceptată deopotrivă pentru 08 (dividende), 11 (premii) și 04
+(chirii) — ceea ce se potrivește și cu fondul, impozitul reținut fiind **final** la toate trei.
+
+Un defect care exista de la început și pe care nici testele, nici poarta nu-l puteau vedea: nu
+exista nicio declarație generată cu alt tip de venit decât dividendele. **O poartă dovedește doar
+căile pe care le parcurge.**
+
+A doua eroare din aceeași rulare a fost un CNP inventat de mine: regula **R29** îi verifică cifra de
+control. Ca la codurile de TVA din D390 — referințele nu pot folosi numere de fantezie.
 
 ## Ultima verificare: 2026-08-08 (4) — pro-rata în decont: R28 ≠ R27
 

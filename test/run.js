@@ -2689,6 +2689,41 @@ eq('jurnal TVA: TVA colectata avans 210', jAv.totals.colectata, 210);
 const jReg = acc.vatJournals({ entries: [mkAv(favC, '2026-05-10'), mkAv(regC, '2026-05-20')], openingBalances: {} }, '2026-05');
 eq('jurnal TVA: dupa regularizare baza neta 0', jReg.totals.bazaV, 0);
 eq('jurnal TVA: dupa regularizare TVA neta 0', jReg.totals.colectata, 0);
+// ── Retineri la sursa: baza impozabila si monografia prin 462 ─────────────────────────────────
+{
+  const R = require('../src/fiscal').retinereLaSursa;
+  // B1: suma neimpozabila de 600 lei la premii (art. 110 alin. (4)), pentru FIECARE premiu.
+  eq('premiu sub plafon: impozit ZERO', R('premii', 500).impozit, 0);
+  eq('...si baza impozabila zero, nu 500', R('premii', 500).baza, 0);
+  eq('premiu de 1.000: se impoziteaza doar diferenta peste 600', R('premii', 1000).impozit, 40);
+  eq('premiu de exact 600: neimpozabil', R('premii', 600).impozit, 0);
+  // Chirii: brut minus cota forfetara de 20% (art. 84) — efectiv 8% din brut.
+  eq('chirie 1.000: baza 800', R('chirii', 1000).baza, 800);
+  eq('...impozit 80, adica 8% din brut dar 10% din baza', R('chirii', 1000).impozit, 80);
+  // Dividendele nu au deduceri: baza E brutul.
+  eq('dividende: baza = brutul', R('dividende', 10000).baza, 10000);
+  // Cota se poate suprascrie de pe document, dar baza nu depinde de ea.
+  eq('cota suprascrisa schimba impozitul, nu baza', R('chirii', 1000, 16).baza, 800);
+  eq('...si impozitul urmeaza cota data', R('chirii', 1000, 16).impozit, 128);
+
+  // B3: monografia trece prin 462, nu direct pe trezorerie. Cheltuiala se recunoaste pe BRUT si la
+  // data la care e datorata; plata inchide 462. Varianta veche o recunostea la plata, deci o chirie
+  // de decembrie platita in ianuarie cadea in alt exercitiu.
+  const lPlata = gt2('chirie_pf').build({ baza: 1000, cota: 10, cont: '5121' });
+  eq('chirie platita: trei linii (cheltuiala, retinere, plata)', lPlata.length, 3);
+  eq('...cheltuiala pe BRUT, cu datoria pe 462', lPlata[0].debit + '=' + lPlata[0].credit + ':' + lPlata[0].suma, '612=462:1000');
+  eq('...retinerea din datorie', lPlata[1].debit + '=' + lPlata[1].credit + ':' + lPlata[1].suma, '462=446:80');
+  eq('...plata netului inchide 462', lPlata[2].debit + '=' + lPlata[2].credit + ':' + lPlata[2].suma, '462=5121:920');
+  const r2 = (x) => Math.round(x * 100) / 100;
+  const sold = (l, cont) => r2(l.reduce((s, x) => s + (String(x.credit) === cont ? x.suma : 0) - (String(x.debit) === cont ? x.suma : 0), 0));
+  eq('...iar 462 se inchide la zero cand plata e pe acelasi document', sold(lPlata, '462'), 0);
+  // Neplatita: articolul se opreste dupa retinere, iar 462 arata cat se mai datoreaza.
+  const lDat = gt2('chirie_pf').build({ baza: 1000, cota: 10, cont: '462' });
+  eq('chirie neplatita: doua linii', lDat.length, 2);
+  eq('...si 462 ramane cu netul de platit', sold(lDat, '462'), 920);
+  // Premiul sub plafon nu produce linie de impozit deloc.
+  eq('premiu sub plafon: fara linie de retinere', gt2('premiu_pf').build({ baza: 500, cota: 10, cont: '5311' }).length, 2);
+}
 const d205db = { entries: [
   { id: '1', tip: 'chirie_pf', period: '2026-03', data: '2026-03-01', partener: 'Ion Pop', partenerCui: '1900101415238', lines: gt2('chirie_pf').build({ baza: 1000, cota: 10, cont: '5121' }) },
   { id: '2', tip: 'premiu_pf', period: '2026-05', data: '2026-05-01', partener: 'Maria I', partenerCui: '2900202535241', lines: gt2('premiu_pf').build({ baza: 500, cota: 10, cont: '5311' }) },
@@ -2696,8 +2731,27 @@ const d205db = { entries: [
 ] };
 const d205 = rep.d205(d205db, '2026');
 eq('D205: 3 beneficiari', d205.nr, 3);
-eq('D205: total impozit retinut (80+50+800; chirie 10% din net)', d205.totalImpozit, 930);
+// Premiul de 500 de lei NU se impoziteaza: art. 110 alin. (4) lasa neimpozabili 600 de lei pentru
+// FIECARE premiu. Aserțiunea cerea pana acum 50 de lei pe el — adica taxa pe un venit scutit.
+eq('D205: total impozit retinut (80 chirie + 0 premiu sub plafon + 800 dividende)', d205.totalImpozit, 880);
 ok('D205: dividend brut 10000 capturat', d205.rows.some((r) => r.tipVenit === 'Dividende' && r.venitBrut === 10000));
+// BAZA declarata e cea pe care s-a retinut, nu brutul: la chirii brutul minus cota forfetara de
+// 20% (art. 84). Cu brutul, raportul impozit/baza iesea 8% acolo unde regula e 10%.
+{
+  const rC = d205.rows.find((r) => r.tipVenit === 'Chirii');
+  eq('D205 chirii: brut 1000', rC.venitBrut, 1000);
+  eq('...dar baza impozabila 800 (brut - 20% forfetar)', rC.bazaImpozabila, 800);
+  eq('...deci raportul impozit/baza da exact cota', Math.round((rC.impozit / rC.bazaImpozabila) * 100), 10);
+  const xd = xml.d205Xml({ cui: 'RO1', nume: 'X' }, '2026', d205);
+  ok('XML-ul poarta baza impozabila, nu brutul', /baza1="800"/.test(xd) && !/baza1="1000"/.test(xd));
+  // `tip_plata` e legat de `tip_venit` prin regula R37 a validatorului, iar valoarea '0' folosita
+  // pentru tot ce nu era dividend e RESPINSA. N-a iesit la iveala mai devreme fiindca referinta
+  // oficiala continea doar dividende — abia varianta cu chirii si premii a lovit regula.
+  ok('D205: niciun beneficiar cu tip_plata="0" (respins de regula R37)', !/tip_plata="0"/.test(xd));
+  eq('...toate randurile au tip_plata=2 (impozit final)', (xd.match(/tip_plata="2"/g) || []).length, d205.nr);
+  const rD = d205.rows.find((r) => r.tipVenit === 'Dividende');
+  eq('la dividende baza E chiar brutul (art. 97, fara deduceri)', rD.bazaImpozabila, rD.venitBrut);
+}
 ok('D205 XML bine-format', wellFormed(xml.d205Xml({ cui: 'RO1', nume: 'X' }, '2026', d205)));
 const intr = rep.intrastat({ entries: [
   { id: '1', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-10', partenerCui: 'DE1', lines: gt2('livrare_intracomunitara').build({ baza: 5000 }) },
