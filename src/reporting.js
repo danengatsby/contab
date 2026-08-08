@@ -99,9 +99,9 @@ function tvaReconciliation(db, period) {
   for (const e of acc.postedEntries(db)) {
     if (!xml.isSendable(e) || !acc.inPeriod(e, period)) continue;
     if (e.spv && (e.spv.index || e.spv.stare)) continue; // deja trimisa
-    // Acelasi criteriu ca la restantele e-Factura: perimetrul e relatia B2B INTERNA, deci un
-    // beneficiar din alt stat nu produce o factura pe care ANAF sa o vada in decontul precompletat.
-    if (!decl.beneficiarRoman(e.partenerCui)) continue;
+    // Acelasi criteriu ca la restantele e-Factura: un beneficiar din alt stat nu produce o factura
+    // pe care ANAF s-o vada in decontul precompletat. B2C-ul, in schimb, se raporteaza din 2025.
+    if (xml.perimetruEFactura(e.partenerCui, (db.partners || {})[String(e.partenerCui || '').replace(/^ro/i, '')]) === 'strain') continue;
     const areTva = (e.lines || []).some((l) => String(l.credit) === '4427' && Number(l.suma) > 0);
     if (!areTva) continue;
     netrimise.push({ entryId: e.id, document: e.document || '', partener: e.partener || '', data: e.data });

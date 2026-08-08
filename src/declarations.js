@@ -125,22 +125,16 @@ function expectedForFirma(v, period) {
 //
 // DOUA conditii, independente, si se greseau impreuna:
 //   1. documentul e o factura pe care o EMITEM  -> `xml.isSendable` (steagul `eFactura` de pe tip);
-//   2. beneficiarul e stabilit in ROMANIA       -> `beneficiarRoman` mai jos.
-// Obligatia de raportare (OUG 120/2021 art. 10) priveste relatia B2B dintre persoane impozabile
-// stabilite in Romania. O livrare intracomunitara e o factura emisa perfect valabila, dar
-// beneficiarul e in alt stat membru — deci nu are termen de 5 zile si nu e o restanta. Inainte,
-// conditia 1 era o lista de cinci id-uri scrisa de mana (a treia copie a aceleiasi liste), iar
-// conditia 2 lipsea cu totul: livrarile intracomunitare apareau ca INCALCARI, iar avansurile,
-// facturarea avizelor si vanzarile de mijloace fixe nu apareau deloc.
-
-/** Beneficiarul e stabilit in Romania? Se citeste din CUI: prefixul de tara al codului de TVA.
- *  Un CUI fara prefix e romanesc (asa se scrie in mod obisnuit un CUI romanesc). */
-function beneficiarRoman(cui) {
-  const c = String(cui || '').replace(/[\s-]/g, '').toUpperCase();
-  if (!c) return false;                    // fara partener identificat: nu putem afirma nimic
-  if (/^RO\d/.test(c)) return true;        // RO12345678
-  return /^\d/.test(c);                    // 12345678 (fara prefix) — forma uzuala in Romania
-}
+//   2. beneficiarul e stabilit in ROMANIA       -> `xml.perimetruEFactura` != 'strain'.
+// O livrare intracomunitara e o factura emisa perfect valabila, dar beneficiarul e in alt stat
+// membru — deci nu are termen de 5 zile si nu e o restanta. Inainte, conditia 1 era o lista de
+// cinci id-uri scrisa de mana, iar conditia 2 lipsea cu totul.
+//
+// B2C intra si el: din 1 ianuarie 2025 se raporteaza si facturile catre persoane fizice, cu acelasi
+// termen. Filtrul de dinainte cerea un CUI de partener, deci le tacea pe TOATE — exact facturile
+// unde lipsa codului e normala, nu o scapare de completare (persoana fizica nu e obligata sa-si dea
+// CNP-ul; codul de 13 zerouri exista tocmai pentru asta). Nu se raporteaza bonurile fiscale, dar
+// acelea nici nu sunt facturi si nu trec de conditia 1.
 
 /** Data + n zile lucratoare (sambata/duminica sarite). Pastrat pentru compatibilitate. */
 function addBusinessDays(dateStr, n) {
@@ -170,7 +164,8 @@ function eFacturaNetrimise(v, today, lookbackDays) {
   const items = [];
   for (const e of postedEntries(v)) {
     if (!xml.isSendable(e)) continue;
-    if (!beneficiarRoman(e.partenerCui)) continue; // B2B intern: doar relatia dintre doi romani
+    // Beneficiar din alt stat: factura ramane valabila si trimisibila, dar nu are termen legal.
+    if (xml.perimetruEFactura(e.partenerCui, (v.partners || {})[String(e.partenerCui || '').replace(/^ro/i, '')]) === 'strain') continue;
     if (e.spv && (e.spv.index || e.spv.stare)) continue; // deja trimisa
     if (!e.data || e.data < from || e.data > t) continue;
     const due = addCalendarDays(e.data, 5);
@@ -403,5 +398,5 @@ function notifications(d, scopedList, today, days, lookback) {
   return { count: items.length, items };
 }
 
-module.exports = { TIPURI, STATUSES, DESCARCARI, descarcari, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, primaLunaUrmarita, addMonths, find, eFacturaNetrimise, beneficiarRoman, addBusinessDays, addCalendarDays,
+module.exports = { TIPURI, STATUSES, DESCARCARI, descarcari, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, primaLunaUrmarita, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays,
   addSubmission, lastSubmission, submissionDiff, RECT_IN_XML };

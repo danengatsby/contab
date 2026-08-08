@@ -29,6 +29,37 @@ function isEFacturaEligible(entry) {
 function isSendable(entry) {
   return SALES_TYPES.has(entry.tip);
 }
+
+// Codul care tine locul identificatorului cumparatorului cand persoana fizica nu vrea (sau nu are
+// de ce) sa-si dea CNP-ul: TREISPREZECE zerouri, in BT-47. Regula e din ianuarie 2025, odata cu
+// e-Factura B2C. NU e o conventie interna a aplicatiei — asa il asteapta SPV-ul, iar comerciantul
+// nu are dreptul sa CEARA CNP-ul ca sa poata factura.
+const CIF_PERSOANA_FIZICA = '0000000000000';
+
+/**
+ * In ce relatie e beneficiarul: 'b2b' | 'b2c' | 'strain'. De ea depind doua lucruri diferite —
+ * cum se scrie clientul in UBL si daca netrimiterea e o incalcare cu termen.
+ *
+ *   'b2b'    persoana impozabila din Romania: cod de TVA in BT-48 + identificator in BT-47;
+ *   'b2c'    persoana fizica: FARA cod de TVA, iar in BT-47 merge CNP-ul sau cele 13 zerouri;
+ *   'strain' beneficiar din alt stat: factura e valabila, dar nu intra in obligatia de raportare
+ *            (OUG 120/2021 art. 10 priveste persoanele stabilite in Romania).
+ *
+ * Se citeste din date, nu se bifeaza. Un CNP are TREISPREZECE cifre, un CUI romanesc cel mult
+ * zece — deci cele doua nu se pot confunda. Lipsa completa a codului inseamna 'b2c': daca am emis
+ * o factura (nu un bon), beneficiarul care nu si-a dat codul e tocmai cazul celor 13 zerouri.
+ * Tara din fisa partenerului are ultimul cuvant cand codul nu spune nimic: un client strain
+ * inregistrat doar cu numele nu trebuie sa devina o „restanta B2C".
+ */
+function perimetruEFactura(cui, pinfo) {
+  const c = String(cui || '').replace(/[\s-]/g, '').toUpperCase();
+  const tara = String((pinfo || {}).tara || '').trim().toUpperCase();
+  if (tara && tara !== 'RO') return 'strain';
+  if (/^[A-Z]{2}/.test(c)) return c.startsWith('RO') ? 'b2b' : 'strain';
+  if (!c) return 'b2c';
+  if (/^\d{13}$/.test(c)) return 'b2c'; // CNP
+  return 'b2b';
+}
 /** Alege documentul potrivit: Invoice pentru vanzari, CreditNote pentru storno. */
 function eFacturaXml(company, entry, partners) {
   return CREDIT_TYPES.has(entry.tip)
@@ -201,10 +232,19 @@ ${taxCategoryXml(a.cota, ic, '        ')}
   const total = round2(baza + tva);
   refuzaFacturaGoala(total);
 
-  const custTax = custCui
+  // Clientul se scrie DUPA relatie, nu dupa „are sau n-are cod". Varianta veche punea acelasi
+  // `RO` + cod in ambele campuri cand exista un cod, si nimic cand nu: la o persoana fizica iesea
+  // „RO1900101415238" (un CNP prefixat ca o firma) in campul codului de TVA, iar la un client fara
+  // cod lipsea cu totul identificatorul BT-47 — pe care SPV-ul il cere.
+  const rel = perimetruEFactura(custCui, pinfo);
+  const custTax = (rel === 'b2b' && custCui)
     ? `\n      <cac:PartyTaxScheme>\n        <cbc:CompanyID>${esc(roCui(custCui))}</cbc:CompanyID>\n        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>\n      </cac:PartyTaxScheme>`
     : '';
-  const custLegalId = custCui ? `\n        <cbc:CompanyID>${esc(roCui(custCui))}</cbc:CompanyID>` : '';
+  // BT-47 e OBLIGATORIU: fara el factura e respinsa. La persoana fizica poarta CNP-ul daca l-a dat,
+  // altfel codul de 13 zerouri; la firma, codul ei.
+  const custLegalId = rel === 'b2c'
+    ? `\n        <cbc:CompanyID>${esc(custCui ? custCui.replace(/\s/g, '') : CIF_PERSOANA_FIZICA)}</cbc:CompanyID>`
+    : (custCui ? `\n        <cbc:CompanyID>${esc(roCui(custCui))}</cbc:CompanyID>` : '');
   const custCounty = pinfo.judet ? `\n        <cbc:CountrySubentity>${esc(pinfo.judet)}</cbc:CountrySubentity>` : '';
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -855,10 +895,18 @@ ${beneficiari}
 }
 
 function partyXml(roleTag, p) {
-  const tax = p.cui
+  // Aceeasi regula ca la Invoice, si trebuie repetata fiindca nota de credit isi construieste
+  // partile pe alta cale: doar CUMPARATORUL poate fi persoana fizica (furnizorul suntem noi, sau
+  // un partener inregistrat). O nota de credit catre o persoana fizica — reducerea comerciala,
+  // stornarea unei facturi de retail — ar fi iesit fara identificator de cumparator.
+  const client = roleTag === 'AccountingCustomerParty';
+  const rel = client ? perimetruEFactura(p.cui, p) : 'b2b';
+  const tax = (p.cui && rel === 'b2b')
     ? `\n      <cac:PartyTaxScheme>\n        <cbc:CompanyID>${esc(roCui(p.cui))}</cbc:CompanyID>\n        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>\n      </cac:PartyTaxScheme>`
     : '';
-  const legalId = p.cui ? `\n        <cbc:CompanyID>${esc(p.regCom || roCui(p.cui))}</cbc:CompanyID>` : '';
+  const legalId = rel === 'b2c'
+    ? `\n        <cbc:CompanyID>${esc(p.cui ? String(p.cui).replace(/\s/g, '') : CIF_PERSOANA_FIZICA)}</cbc:CompanyID>`
+    : (p.cui ? `\n        <cbc:CompanyID>${esc(p.regCom || roCui(p.cui))}</cbc:CompanyID>` : '');
   const county = p.judet ? `\n        <cbc:CountrySubentity>${esc(p.judet)}</cbc:CountrySubentity>` : '';
   return `  <cac:${roleTag}>
     <cac:Party>
@@ -1308,6 +1356,7 @@ function bilantXml(d) {
 
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
+  perimetruEFactura, CIF_PERSOANA_FIZICA,
   umCode, d300Xml, d300Rows, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
   bilantXml, bilantNsVersion, d177Xml,
   esc, // escaparea XML, refolosita de generatoarele din afara acestui fisier (ex. src/sepa.js)
