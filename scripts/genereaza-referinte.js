@@ -245,6 +245,33 @@ const vServ = {
 // D205 (retineri la sursa) — an incheiat, cu un beneficiar de dividende
 const vDiv = { entries: [{ id: 'd1', data: '2025-08-10', period: '2025-08', tip: 'repartizare_dividende', tipNume: 'Div', partener: 'Ion', partenerCui: '1900101415238', lines: [{ debit: '457', credit: '5121', suma: 9200 }, { debit: '457', credit: '446', suma: 800 }, { debit: '117', credit: '457', suma: 10000 }] }], openingBalances: {} };
 w('D205', xml.d205Xml(v.company, '2025', rep.d205(vDiv, '2025'), who));
+// D205 varianta RETINERI PE VENITURI (chirii + premii): referinta de baza are doar dividende, unde
+// baza impozabila E chiar brutul. Chiriile si premiile sunt singurele in care baza difera de brut
+// (art. 84 — minus cota forfetara de 20%; art. 110 alin. (4) — minus 600 lei neimpozabili), deci
+// fara varianta asta randul cu baza calculata n-ar fi validat niciodata oficial.
+const T205 = require('../src/documentTypes');
+const eRet = (id, tip, partener, cnp, baza) => ({ id, firmaId: 1, tip, status: 'postat',
+  data: '2025-07-15', period: '2025-07', partener, partenerCui: cnp, document: id.toUpperCase(),
+  lines: T205.getType(tip).build({ baza, cota: 10, cont: tip === 'chirie_pf' ? '5121' : '5311' }) });
+const vRet = { openingBalances: {}, entries: [
+  eRet('ch1', 'chirie_pf', 'Ionescu Maria', '2900101415231', 12000),
+  eRet('pr1', 'premiu_pf', 'Popescu Ion', '1900101415238', 1000),
+] };
+{
+  const d205r = rep.d205(vRet, '2025');
+  const ch = d205r.rows.find((r) => r.tipVenit === 'Chirii');
+  const pr = d205r.rows.find((r) => r.tipVenit === 'Premii');
+  if (!ch || ch.bazaImpozabila !== 9600) throw new Error('D205-retineri: baza chiriei nu e brut - 20% — ' + JSON.stringify(ch));
+  if (!pr || pr.bazaImpozabila !== 400) throw new Error('D205-retineri: baza premiului nu e brut - 600 — ' + JSON.stringify(pr));
+  // Raportul impozit/baza trebuie sa dea exact cota; cu brutul drept baza dadea 8%, respectiv 6%.
+  for (const r of [ch, pr]) {
+    if (Math.round((r.impozit / r.bazaImpozabila) * 100) !== 10) {
+      throw new Error('D205-retineri: raportul impozit/baza nu da cota — ' + JSON.stringify(r));
+    }
+  }
+  w('D205-retineri', xml.d205Xml(v.company, '2025', d205r, who));
+}
+
 // Situatii financiare anuale — S1120 (microentitati) si S1121 (entitati mici).
 // Antetul cere date pe care exemplul nu le are (administrator, intocmitor, forma de
 // proprietate): le completam AICI, pentru referinta, nu cu valori implicite in cod —

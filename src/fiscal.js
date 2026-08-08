@@ -209,6 +209,30 @@ function payroll(brut, deducere, opts) {
  *  - Impozit 10%: pe venitul net minus CAS si CASS datorate.
  * Optiunile individuale (baza CAS mai mare, alte venituri) raman la contribuabil.
  */
+/**
+ * Baza impozabila si impozitul pentru veniturile cu RETINERE LA SURSA (Titlul IV).
+ *
+ * Sursa UNICA a regulii, fiindca o citesc doua locuri care se contraziceau: tipul de document (care
+ * posteaza retinerea) si D205 (care o declara). D205 trimitea la ANAF brutul drept baza impozabila,
+ * desi impozitul retinut era calculat pe alta suma — declaratia arata un raport impozit/baza de 8%
+ * acolo unde regula e 10%, iar la premii baza era supraevaluata cu 600 de lei.
+ *
+ * Baza NU e brutul si difera de la un venit la altul:
+ *   chirii    art. 84  — brut minus cota forfetara de 20% (deci 8% efectiv din brut);
+ *   premii    art. 110 alin. (4) — brut minus 600 lei NEIMPOZABILI, pentru FIECARE premiu;
+ *             un premiu de 500 de lei nu se impoziteaza deloc, unul de 1.000 doar cu 40;
+ *   dividende art. 97  — chiar brutul, fara nicio deducere.
+ */
+function retinereLaSursa(fel, brut, cota) {
+  const b = round2(Number(brut) || 0);
+  const c = Number.isFinite(Number(cota)) && Number(cota) > 0 ? Number(cota) : FISCAL.impozitVenit;
+  let baza = b;
+  if (fel === 'chirii') baza = round2((b * (100 - Number(FISCAL.chiriiForfetarPct || 0))) / 100);
+  else if (fel === 'premii') baza = round2(Math.max(0, b - Number(FISCAL.premiiNeimpozabil || 0)));
+  const impozit = round2((baza * c) / 100);
+  return { brut: b, baza, cota: c, impozit, net: round2(b - impozit) };
+}
+
 function taxePfa(venitNet, opts) {
   const o = opts || {};
   // salariul minim: cel dat explicit, altfel cel aplicabil lunii (FISCAL nu are un camp `salariuMinim` unic — e S1/S2)
@@ -225,4 +249,4 @@ function taxePfa(venitNet, opts) {
   return { venitNet: vn, salariuMinim: sm, plafon6: p6, plafon12: p12, plafon24: p24, plafon60: p60, bazaCas, cas, bazaCass, cass, impozit, total: round2(cas + cass + impozit) };
 }
 
-module.exports = { FISCAL, DEFAULTS, applyConfig, categoriiBeneficii, fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa, neimpozabilMinim, beneficii, CATEGORII_BENEFICII: cfg.BENEFICII };
+module.exports = { FISCAL, DEFAULTS, applyConfig, retinereLaSursa, categoriiBeneficii, fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa, neimpozabilMinim, beneficii, CATEGORII_BENEFICII: cfg.BENEFICII };

@@ -1276,22 +1276,36 @@ ${exp || '    <!-- fara expedieri -->'}
 // D205 — impozit pe venit retinut la sursa, pe beneficiar, pe schema OFICIALA v2 (anuala:
 // se depune in anul urmator celui raportat). Beneficiarii intra ca <benef> (rezidenti, CNP
 // drept cifR), cu recapitulatia pe tip de venit in <sect_II>.
+const TIP_PLATA_D205 = '2'; // vezi nota de la `tipCod` din d205Xml
+
 function d205Xml(company, year, d, who) {
   const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
   const lei = (v) => String(Math.round(Number(v) || 0));
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
   // nomenclatorul tipurilor de venit (D205, OPANAF): 08 = dividende, 11 = premii, 04 = alte
   const tipCod = (t) => (/divid/i.test(t) ? '08' : /premi/i.test(t) ? '11' : '04');
+  // `tip_plata` NU e liber: regula R37 a validatorului il leaga de `tip_venit`, iar valoarea '0'
+  // (folosita pana acum pentru orice nu era dividend) e RESPINSA — „tip_plata(0) nu corespunde cu
+  // tip_venit(04)". Defectul n-a iesit la iveala mai devreme fiindca referinta de baza avea doar
+  // dividende. Sondat pe toate valorile: 2 e singura acceptata pentru 08, 11 si 04 deopotriva —
+  // ceea ce se si potriveste cu fondul, impozitul retinut fiind FINAL la toate trei.
   const rows = (d.rows || []).map((r, i) => {
     const tip = tipCod(r.tipVenit);
     const divid = tip === '08' ? ` divid_D="${lei(r.venitBrut)}" divid_P="${lei(r.venitBrut)}"` : '';
-    return `  <benef id_inreg="${i + 1}" tip_venit1="${tip}" den1="${esc(r.beneficiar)}" cifR="${esc(r.cnp || '0')}" tip_plata="${tip === '08' ? '2' : '0'}" Rezid="1" baza1="${lei(r.venitBrut)}" imp1="${lei(r.impozit)}"${divid}/>`;
+    // `baza1` e BAZA IMPOZABILA, nu venitul brut: la chirii e brutul minus cota forfetara de 20%
+    // (art. 84), la premii brutul minus 600 de lei (art. 110 alin. (4)). Cu brutul in loc de baza,
+    // declaratia arata un raport impozit/baza de 8% acolo unde regula e 10% — adica ANAF vedea o
+    // retinere care nu se potriveste cu propria ei formula. Cifra vine gata calculata din raport;
+    // regula sta intr-un singur loc (`fiscal.retinereLaSursa`), citit si de tipul de document.
+    const baza = r.bazaImpozabila != null ? r.bazaImpozabila : r.venitBrut;
+    return `  <benef id_inreg="${i + 1}" tip_venit1="${tip}" den1="${esc(r.beneficiar)}" cifR="${esc(r.cnp || '0')}" tip_plata="${TIP_PLATA_D205}" Rezid="1" baza1="${lei(baza)}" imp1="${lei(r.impozit)}"${divid}/>`;
   }).join('\n');
   const sect2 = new Map();
   for (const r of d.rows || []) {
     const t = tipCod(r.tipVenit);
     const e = sect2.get(t) || { nr: 0, baza: 0, imp: 0 };
-    e.nr += 1; e.baza += Math.round(r.venitBrut || 0); e.imp += Math.round(r.impozit || 0);
+    e.nr += 1; e.baza += Math.round((r.bazaImpozabila != null ? r.bazaImpozabila : r.venitBrut) || 0);
+    e.imp += Math.round(r.impozit || 0);
     sect2.set(t, e);
   }
   const sect2Xml = [...sect2.entries()].map(([t, e]) =>

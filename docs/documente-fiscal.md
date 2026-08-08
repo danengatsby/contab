@@ -8,7 +8,13 @@
   **dividende 16%** (Legea 141/2025, distribuiri din 2026). Cota TVA implicită este **21%**.
   **Facilitățile sectoriale IT/construcții/agro au fost eliminate** din ian. 2025 (OUG 156/2024) —
   câmpul „sector" pe angajat rămâne doar informativ, impozitarea e standard. Chiria plătită
-  persoanelor fizice reține impozit 10% aplicat la **net (brut − 20% forfetar)**, art. 84 Cod fiscal.
+  persoanelor fizice reține impozit 10% aplicat la **net (brut − 20% forfetar)**, art. 84 Cod fiscal;
+  premiile au **600 lei neimpozabili pentru fiecare premiu** (art. 110 alin. (4)) — un premiu sub
+  plafon nu se impozitează deloc. Regula stă într-un **singur loc** (`fiscal.retinereLaSursa`),
+  citit atât de tipul de document, cât și de D205: cât timp erau două calcule, declarația raporta
+  altă bază decât cea pe care se reținuse. Monografia trece prin **462** („creditori diverși"),
+  deci cheltuiala se recunoaște **când e datorată**, nu la plată — contul de plată are și opțiunea
+  „neplătită încă", care lasă soldul pe 462.
 - **Calcul automat al salariilor:** la „Stat de plata” introduci doar brutul (și opțional suma
   neimpozabilă); CAS/CASS/impozit/CAM se calculează automat (lași câmpurile goale).
 - **Plan de conturi extins** la lista din ghid (secțiunea 17): 211, 231, 267, 2678, 2813, 280,
