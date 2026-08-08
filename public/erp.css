@@ -664,12 +664,17 @@ body.erp .pdf-title { color: #fff; font-size: 11.5px; }
 
 /* Caseta de autentificare — dialog de aplicatie, nu formular de site */
 body.erp .login-overlay { background: #6f6c62; }
-body.erp .login-box { width: 320px; padding: 0 0 12px; background: var(--e-face); }
+/* Marginea interioara sta pe CASETA, nu pe copii. Forma dinainte lasa caseta fara padding si
+   punea `margin: 0 12px` pe fiecare copil — ceea ce rupe orice copil lat cat caseta: butonul
+   „Intra" are `width:100%` (`u19`), adica 100% din cei 320px ai casetei, PLUS cele doua margini
+   de 12px. Iesea 12px in afara ramei, exact pe elementul cel mai vizibil al ecranului de intrare.
+   Cu padding pe caseta, `width:100%` inseamna latimea DINAUNTRU (box-sizing: border-box), deci
+   se potriveste singur; banda cu sigla ramane lipita de margini printr-o margine negativa. */
+body.erp .login-box { width: 320px; padding: 0 12px 12px; background: var(--e-face); }
 body.erp .login-box .login-logo {
-  font-size: 11.5px; font-weight: 700; color: #fff; margin: 0 0 8px;
+  font-size: 11.5px; font-weight: 700; color: #fff; margin: 0 -12px 8px;
   padding: 3px 7px; background: linear-gradient(180deg, var(--e-cap-b), var(--e-cap-a));
 }
-body.erp .login-box > *:not(.login-logo) { margin-left: 12px; margin-right: 12px; }
 /* Caseta de autentificare pastreaza eticheta DEASUPRA campului: la 320px latime,
    coloana de 140px a etichetelor ar lasa campului mai putin decat ii trebuie, iar
    butonul „arata" din randul parolei ar cadea peste el. */
