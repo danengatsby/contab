@@ -9,6 +9,7 @@
     "seed": "node scripts/seed.js",
     "test": "node scripts/run-all.js",
     "test-pg": "sh scripts/test-pg.sh",
+    "stare-ci": "node scripts/stare-ci.js",
     "rto-drill": "sh scripts/rto-drill.sh",
     "offsite-check": "node scripts/offsite-check.js",
     "lint": "eslint .",
