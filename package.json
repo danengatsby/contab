@@ -18,7 +18,8 @@
     "e2e-izolat": "bash scripts/e2e-izolat.sh",
     "lint-syntax": "node scripts/check-syntax.js",
     "pachet-windows": "sh scripts/pachet-windows.sh",
-    "publica-video": "bash scripts/publica-video.sh"
+    "publica-video": "bash scripts/publica-video.sh",
+    "cuprins-carte": "node scripts/cuprins-carte.js"
   },
   "engines": {
     "node": ">=22.13"
