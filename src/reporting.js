@@ -5,6 +5,7 @@ const fiscal = require('./fiscal');
 // Nomenclatorul tarilor UE (D390) se ia din config, nu din `fiscal`: `fiscal.FISCAL` expune cotele
 // suprascriabile din Setari, iar lista de tari nu e o cota — nu are ce cauta acolo.
 const fiscalCfg = require('./fiscalConfig');
+const bnr = require('./bnr'); // cursul oficial pentru plafoanele exprimate in euro
 const coa = require('./chartOfAccounts');
 const acc = require('./accounting');
 const deduct = require('./deductibilitate');
@@ -363,11 +364,24 @@ function d100micro(db, period, cota, opts) {
   const rCum = acc.accumulate(acc.resultLines(acc.postedEntries(db)
     .filter((e) => { const p = String(e.period || periodOf(e.data)); return p.startsWith(y) && p <= pana; })));
   const venitCumulatLei = micro.baza(rCum, {}).baza;
-  const ct = micro.cotaAplicabila({ venitCumulatLei, curs: fiscal.FISCAL.cursPlafonMicro,
+  // Cursul plafonului vine de la BNR, din ultima zi a exercitiului precedent — nu din valoarea
+  // rotunda de configurare. La 5,0 in loc de ~5,08, plafonul de 100.000 EUR iese 500.000 in loc de
+  // ~508.000, iar o firma cu 505.000 lei era declarata gresit iesita din regimul micro.
+  const cursP = bnr.cursPlafonMicro(db.cursuriBnr, Number(y), fiscal.FISCAL.cursPlafonMicro);
+  const ct = micro.cotaAplicabila({ venitCumulatLei, curs: cursP.curs,
     caen: (db.company || {}).caen }, fiscal.FISCAL);
   const rate = cota || ct.cota;
-  const plafonLei = round2((fiscal.FISCAL.plafonMicroEur || 0) * (fiscal.FISCAL.cursPlafonMicro || 0));
+  const plafonLei = round2((fiscal.FISCAL.plafonMicroEur || 0) * (cursP.curs || 0));
   const avertismente = [];
+  // Un plafon calculat pe o valoare implicita nu are voie sa arate la fel cu unul calculat pe
+  // cursul oficial: incadrarea in regimul micro se decide pe el. Semnalam insa doar cand cursul
+  // chiar POATE schimba raspunsul — adica in preajma plafonului. La 10% din plafon, diferenta
+  // dintre 5,0 si 5,08 nu intereseaza pe nimeni, iar un avertisment care apare mereu nu mai e citit.
+  if (cursP.sursa !== 'bnr' && plafonLei > 0 && venitAn > round2(plafonLei * 0.9)) {
+    avertismente.push('Plafonul micro e calculat cu cursul ORIENTATIV din setari (' + cursP.curs
+      + ' lei/EUR), fiindca nu exista curs BNR pentru 31 decembrie ' + (Number(y) - 1)
+      + '. Adu cursurile BNR (Setari -> Curs valutar) inainte de a decide incadrarea.');
+  }
   if (plafonLei > 0 && venitAn > plafonLei) {
     avertismente.push('Veniturile anului (' + venitAn + ' lei) DEPASESC plafonul micro de ' + fiscal.FISCAL.plafonMicroEur
       + ' EUR (~' + plafonLei + ' lei): firma iese din regimul micro si datoreaza impozit pe profit — verifica incadrarea inainte de a depune D100 pe micro.');
@@ -944,7 +958,8 @@ function registruFiscal(db, year, cota, opts) {
   // configuratie. Aceeasi sursa ca D100, altfel registrul si declaratia dau doua cifre.
   const bzMicro = micro.baza(r, { ultimulTrimestru: true, rulajAn: r });
   const ctMicro = micro.cotaAplicabila({ venitCumulatLei: bzMicro.baza,
-    curs: fiscal.FISCAL.cursPlafonMicro, caen: (db.company || {}).caen }, fiscal.FISCAL);
+    curs: bnr.cursPlafonMicro(db.cursuriBnr, Number(year), fiscal.FISCAL.cursPlafonMicro).curs,
+    caen: (db.company || {}).caen }, fiscal.FISCAL);
   const impozitMicro = round2((bzMicro.baza * ctMicro.cota) / 100);
   return {
     year, rezultatContabil, cheltNeded, totalNeded, venituriList, venituriNeimpozabile, mentiuni,

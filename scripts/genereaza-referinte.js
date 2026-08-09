@@ -53,6 +53,25 @@ const vIC = { entries: v.entries.concat([{ id: 'ic', data: '2026-06-18', period:
 w('D390', xml.d390Xml(v.company, '2026-06', rep.d390(vIC, '2026-06'), who));
 // D112 (salarii)
 w('D112', xml.d112Xml(v.company, '2026-06', statePlata(v.angajati), who));
+// D112 varianta CONCEDIU MEDICAL: angajatul din exemplu nu are niciunul, deci repartizarea
+// angajator/FNUASS si indemnizatia din baza CAS n-ar fi exercitate niciodata la validator. Data de
+// inceput cade JOI, adica exact cazul in care primele 5 zile CALENDARISTICE contin doar 3 zile
+// lucratoare — cifra pe care formula veche o dadea 5.
+const angCM = (v.angajati || []).map((a, i) => (i === 0
+  ? Object.assign({}, a, { zileCM: 10, procentCM: 75, dataInceputCM: '2026-06-11' })
+  : a));
+{
+  const spCM = statePlata(angCM, '2026-06', v.payrollHistory);
+  const r0 = spCM.rows[0];
+  if (r0.zileCMAngajator !== 3) {
+    throw new Error('D112-cm: angajatorul nu suporta 3 zile (concediu inceput joi) — ' + r0.zileCMAngajator);
+  }
+  if (!(r0.cmFnuass > 0) || !(r0.cmAngajator > 0)) {
+    throw new Error('D112-cm: repartizarea angajator/FNUASS nu e exercitata — ' + JSON.stringify(r0));
+  }
+  w('D112-cm', xml.d112Xml(v.company, '2026-06', spCM, who));
+}
+
 // D112 varianta cu AVANTAJE PESTE PLAFONUL DE 33% (art. 76 alin. (4^1)): angajatul din exemplu
 // n-are niciunul, deci partea impozabila ar fi mereu zero si validatorul ar confirma un camp gol —
 // aceeasi problema ca la D390 mai sus. La 5.000 lei salariu de baza plafonul e 1.650, iar cazarea

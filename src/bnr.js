@@ -124,6 +124,35 @@ function rateAt(colectie, moneda, data) {
   return { curs: best.curs, data: best.id, exact: best.id === zi };
 }
 
+/**
+ * Cursul EUR pentru un PLAFON fiscal, cu PROVENIENTA lui.
+ *
+ * Plafoanele exprimate in euro (eligibilitatea micro, avantajele anuale de la art. 76) se convertesc
+ * la un curs pe care legea il fixeaza — la micro, cursul de la inchiderea exercitiului precedent.
+ * Valoarea implicita din `fiscalConfig` e una ROTUNDA, orientativa (5,0), si tocmai de aceea
+ * periculoasa: la un curs real de ~5,08, plafonul de 100.000 EUR iese 500.000 in loc de ~508.000,
+ * iar o firma cu 505.000 lei cifra de afaceri e declarata gresit iesita din regimul micro — o
+ * decizie cu urmari pe tot anul, luata dintr-o rotunjire.
+ *
+ * Intoarce si DE UNDE vine cursul, ca apelantul sa poata spune asta mai departe: un plafon calculat
+ * cu o valoare implicita nu are voie sa arate la fel cu unul calculat pe cursul oficial.
+ * `exact: false` inseamna ca ziua ceruta nu e publicata (weekend/sarbatoare) si s-a folosit ultimul
+ * curs dinaintea ei — chiar regula legala, nu o aproximare.
+ */
+function cursPlafon(colectie, data, implicit) {
+  const r = rateAt(colectie || [], 'EUR', data);
+  if (r && Number.isFinite(Number(r.curs)) && Number(r.curs) > 0) {
+    return { curs: Number(r.curs), data: r.data, exact: !!r.exact, sursa: 'bnr' };
+  }
+  const v = Number(implicit) || 0;
+  return { curs: v, data: null, exact: false, sursa: 'implicit' };
+}
+
+/** Cursul de la inchiderea exercitiului precedent (31 decembrie), pentru plafonul micro. */
+function cursPlafonMicro(colectie, an, implicit) {
+  return cursPlafon(colectie, (Number(an) - 1) + '-12-31', implicit);
+}
+
 /** Valutele disponibile in colectie (pentru selectoare), sortate. */
 function currencies(colectie) {
   const set = new Set();
@@ -153,4 +182,4 @@ function upsertRates(colectie, randuri) {
   return { adaugate, actualizate };
 }
 
-module.exports = { parseRates, fetchDaily, fetchYear, rateAt, currencies, upsertRates, URL_ZI, URL_AN };
+module.exports = { parseRates, fetchDaily, fetchYear, rateAt, cursPlafon, cursPlafonMicro, currencies, upsertRates, URL_ZI, URL_AN };

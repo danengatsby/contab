@@ -54,7 +54,14 @@ for f in "$DIR"/*.xml; do
       ;;
   esac
   case "$cod" in
-    0) echo "✓ valid          ($motiv)" ;;
+    0) if echo "$iesire" | grep -q "atentionare regula"; then
+         # Valid, dar validatorul a semnalat ceva neobisnuit. NU blocheaza (nu e eroare), insa nici
+         # nu tace: o atentionare pe care n-o vede nimeni e o atentionare degeaba.
+         echo "✓ valid, cu atentionari ($motiv)"
+         echo "$iesire" | grep "atentionare regula" | sed 's/^/                 /'
+       else
+         echo "✓ valid          ($motiv)"
+       fi ;;
     1) echo "✗ INVALID        ($motiv)"; invalide="$invalide $nume"
        echo "$iesire" | sed 's/^/                 /' ;;
     *) echo "⚠ NEVERIFICAT    ($motiv — validarea n-a putut rula)"; neverificate="$neverificate $nume"

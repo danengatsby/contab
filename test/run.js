@@ -2555,6 +2555,61 @@ ok('D390 XML bine-format', wellFormed(xml.d390Xml({ cui: 'RO1', nume: 'X' }, '20
   eq('codurile D390 sunt aceleasi in reporting si in xml', rep.D390_CODURI.join(''), xml.D390_CODURI.join(''));
 }
 
+section('C1-C2: concediul medical pe zile calendaristice + cursul plafonului micro');
+{
+  const pay = require('../src/payroll');
+  const bnrM = require('../src/bnr');
+  const round2 = (x) => Math.round(x * 100) / 100;
+  // ── C1: primele 5 zile suportate de angajator sunt CALENDARISTICE (OUG 158/2005 art. 12),
+  // iar indemnizatia se cuvine doar pentru zilele LUCRATOARE din ele. Formula veche numara 5 zile
+  // lucratoare, adica maximul posibil — cost mutat sistematic de la FNUASS la firma.
+  eq('concediu inceput LUNI: 5 zile lucratoare in primele 5 calendaristice', pay.zileLucratoareInPrimele('2026-06-08', 5), 5);
+  eq('concediu inceput JOI: doar 3 (joi, vineri, luni)', pay.zileLucratoareInPrimele('2026-06-11', 5), 3);
+  eq('concediu inceput VINERI: 3 (vineri, luni, marti)', pay.zileLucratoareInPrimele('2026-06-12', 5), 3);
+  eq('concediu inceput SAMBATA: 3 (luni, marti, miercuri)', pay.zileLucratoareInPrimele('2026-06-13', 5), 3);
+  eq('fara data, nu inventam un raspuns', pay.zileLucratoareInPrimele('', 5), null);
+  eq('data invalida, la fel', pay.zileLucratoareInPrimele('nu-e-data', 5), null);
+
+  // Efectul pe statul de plata: aceleasi 10 zile de concediu, alt reparte angajator/FNUASS.
+  const ang = (extra) => [Object.assign({ id: 'a1', nume: 'X', salariuBrut: 6300, zileLucratoare: 21,
+    zileCM: 10, procentCM: 75 }, extra || {})];
+  const joi = pay.statePlata(ang({ dataInceputCM: '2026-06-11' }), '2026-06', []).rows[0];
+  const luni = pay.statePlata(ang({ dataInceputCM: '2026-06-08' }), '2026-06', []).rows[0];
+  eq('concediu de joi: angajatorul suporta 3 zile', joi.zileCMAngajator, 3);
+  eq('concediu de luni: angajatorul suporta 5', luni.zileCMAngajator, 5);
+  ok('deci angajatorul plateste mai putin cand concediul incepe joi', joi.cmAngajator < luni.cmAngajator);
+  ok('...iar FNUASS suporta diferenta, nu dispare', round2(joi.cmAngajator + joi.cmFnuass) === round2(luni.cmAngajator + luni.cmFnuass));
+  ok('indemnizatia totala e aceeasi in ambele cazuri', joi.indemnizatieCM === luni.indemnizatieCM);
+  // Fara data: se pastreaza vechea aproximare, dar articolul o SEMNALEAZA.
+  const fara = pay.statePlata(ang({}), '2026-06', []).rows[0];
+  eq('fara data: ramane aproximarea de 5 zile', fara.zileCMAngajator, 5);
+  ok('...dar e marcata ca aproximata', fara.cmAproximat === true);
+  ok('cu data, nu mai e aproximata', joi.cmAproximat === false);
+
+  // ── C2: plafonul micro se converteste la cursul BNR de la 31 decembrie anul precedent.
+  // Fixtura contine si un curs din 2026: fara el, o cautare pornita din anul GRESIT ar da acelasi
+  // rezultat (rateAt merge inapoi si ar cadea tot pe decembrie 2025), iar testul n-ar discrimina.
+  const col = [{ id: '2025-12-30', cursuri: { EUR: 5.0812 } }, { id: '2025-12-29', cursuri: { EUR: 5.0798 } },
+    { id: '2026-06-15', cursuri: { EUR: 5.15 } }];
+  const cu = bnrM.cursPlafonMicro(col, 2026, 5.0);
+  eq('cursul plafonului vine de la BNR', cu.sursa, 'bnr');
+  eq('...din ultima zi publicata inainte de 31 decembrie', cu.data, '2025-12-30');
+  // `eq` rotunjeste la doua zecimale, iar cursul BNR are PATRU — comparatie stricta, altfel
+  // testul ar trece si daca undeva pe drum s-ar pierde precizia cursului.
+  ok('...si e cursul real, cu toate zecimalele (nu rotunjit la bani)', cu.curs === 5.0812);
+  ok('31 decembrie nefiind zi de publicare, cursul nu e „exact" — chiar regula legala', cu.exact === false);
+  // Anul contează: plafonul se converteste la cursul de la inchiderea exercitiului PRECEDENT.
+  ok('nu se ia cursul din cursul anului raportat', cu.curs !== 5.15);
+  const fallback = bnrM.cursPlafonMicro([], 2026, 5.0);
+  eq('fara istoric BNR: se cade pe valoarea din setari', fallback.curs, 5);
+  eq('...dar proveniența se vede', fallback.sursa, 'implicit');
+  // Diferenta care conteaza: o firma cu 505.000 lei e SUB plafon la cursul real si PESTE la 5,0.
+  const plafonReal = round2(100000 * cu.curs);
+  const plafonRotund = round2(100000 * fallback.curs);
+  ok('firma cu 505.000 lei: sub plafon la cursul real', 505000 < plafonReal);
+  ok('...si peste plafon la cursul rotund — exact decizia care se lua gresit', 505000 > plafonRotund);
+}
+
 section('Import XLSX (parser)');
 const AdmZip = require('adm-zip');
 const xlsxMod = require('../src/xlsx');
