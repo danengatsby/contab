@@ -391,8 +391,12 @@ ${CAPITOLE.map((c, i) => `<div class="umplutura" data-cap="${i}"></div>\n` + blo
 // textul iesea aliniat la dreapta si cifrele la stanga.
 const num = (bl, i) => ((bl.numerice || []).includes(i + 1) ? ' class="num"' : '');
 
+// Ancora unui capitol/anexa: „cap-12", „anexa-B". Folosita si de nav-ul site-ului, si de
+// sectiuni — o singura definitie, ca linkul si tinta sa nu poata divergea.
+const idCap = (c) => (/^\d+$/.test(String(c.nr)) ? 'cap-' : 'anexa-') + c.nr;
+
 function blocuriHtml(c) {
-  const out = [`<section class="capitol"><p class="cap-parte">${esc(c.parte)}</p>`
+  const out = [`<section class="capitol" id="${idCap(c)}"><p class="cap-parte">${esc(c.parte)}</p>`
     + `<p class="cap-nr">${esc(eticheta(c.nr))}</p><h2 class="cap-titlu">${esc(c.titlu)}</h2>`];
   for (const bl of c.blocuri) {
     if (bl.tip === 'p') out.push(`<p>${esc(bl.text)}</p>`);
@@ -566,6 +570,100 @@ ${CAPITOLE.map(blocuriHtml).join('\n')}
 </div></body></html>`;
 }
 
+// ── 2b) SITE-UL DE CITIT (public/carte/) ───────────────────────────────────
+// Cuprinsul la stanga, capitolul la dreapta. Trei fisiere, nu unul singur, si nu din
+// comoditate: CSP-ul aplicatiei e `default-src 'self'` cu `style-src`/`script-src` tot
+// 'self', deci un <style> sau un <script> IN PAGINA e refuzat de browser. Verificat pe
+// livrabilul de pana acum: deschis de pe contabo.space, HTML-ul cu stil inline se vedea
+// in Times New Roman, cu zero foi de stil aplicate. Regula, pentru orice pagina noua din
+// public/: CSS si JS in fisiere proprii.
+//
+// Textul TUTUROR capitolelor sta in pagina de la inceput, iar JS-ul doar arata unul si le
+// ascunde pe celelalte. Asa site-ul merge si offline, si fara nicio cerere dupa incarcare.
+const SITE = path.join(RADACINA, 'public', 'carte');
+
+function faSite() {
+  fs.mkdirSync(SITE, { recursive: true });
+  for (const f of ['site.css', 'site.js']) {
+    const dst = path.join(SITE, f);
+    fs.copyFileSync(path.join(__dirname, 'carte', f), dst);
+    fs.chmodSync(dst, 0o644);
+  }
+
+  // Cuprinsul din stanga: grupat pe parti, in ordinea din carte. Gruparea se face pe campul
+  // `parte` al capitolelor, nu pe o a doua lista scrisa de mana care ar putea drifta.
+  const grupuri = [];
+  for (const c of CAPITOLE) {
+    const ultim = grupuri[grupuri.length - 1];
+    if (!ultim || ultim.parte !== c.parte) grupuri.push({ parte: c.parte, capitole: [c] });
+    else ultim.capitole.push(c);
+  }
+  const navHtml = grupuri.map((g) => {
+    const linkuri = g.capitole.map((c) => {
+      const et = eticheta(c.nr);
+      const cauta = `${et} ${c.titlu} ${c.parte}`;
+      return `<a href="#${idCap(c)}" data-id="${idCap(c)}" data-titlu="${esc(c.titlu)}" `
+        + `data-drum="${esc(c.parte)}" data-cauta="${esc(cauta)}">`
+        + `<span class="n">${esc(c.nr)}</span><span>${esc(c.titlu)}</span></a>`;
+    }).join('');
+    return `<div class="grup"><p class="grup-cap">${esc(g.parte)}</p>${linkuri}</div>`;
+  }).join('');
+
+  const coperta = `<section id="coperta" class="coperta">`
+    + `<h1>${esc(D.titlu)}</h1><p class="subtitlu">${esc(D.subtitlu)}</p>`
+    + `<div class="teza">${D.teza.map((t) => `<p>${esc(t)}</p>`).join('')}</div>`
+    + `<div class="fise">${D.doua.map((c) => `<div class="fisa"><h3>${esc(c.cap)}</h3><p>${esc(c.txt)}</p></div>`).join('')}</div>`
+    + '<div class="desc">'
+    + `<a href="/descarcari/${NUME}.pdf">Descarcă PDF (B5, de tipar)</a>`
+    + `<a href="/descarcari/${NUME}.docx">Descarcă DOCX</a>`
+    // HTML-ul de UN SINGUR FISIER ramane util exact pentru ce site-ul nu poate: salvat pe disc,
+    // se deschide fara retea si fara fisierele alaturate. Pe web se citeste site-ul.
+    + '<a href="/descarcari/Cuprins-carte-contabilitate.html" download>Descarcă HTML (un fișier, offline)</a>'
+    + '</div>'
+    + `<div class="fise">${D.subsol.map((s2) => `<div class="fisa"><h3>${esc(s2.cap)}</h3><p>${esc(s2.txt)}</p></div>`).join('')}</div>`
+    + '</section>';
+
+  const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(D.titlu)}</title>
+<meta name="description" content="${esc(D.subtitlu)}">
+<link rel="stylesheet" href="site.css">
+</head><body>
+<div class="cadru">
+<nav class="nav" aria-label="Cuprinsul cărții">
+  <div class="nav-cap">
+    <p class="nav-titlu">${esc(D.titlu)}</p>
+    <p class="nav-sub">${CAPITOLE.length} de secțiuni</p>
+    <input class="cauta" type="search" placeholder="Caută în cuprins…" aria-label="Caută în cuprins">
+  </div>
+  <a href="#coperta" data-id="coperta" data-titlu="Cuprins" data-drum="Cartea" data-cauta="cuprins coperta inceput"><span class="n">·</span><span>Cuprins</span></a>
+  ${navHtml}
+  <p class="gol" hidden>Niciun capitol nu se potrivește.</p>
+</nav>
+<main class="text">
+  <div class="bara">
+    <button class="buton meniu-buton ui" type="button" aria-label="Cuprins">☰ Cuprins</button>
+    <span class="drum"></span>
+    <button class="buton tema-buton ui" type="button" aria-label="Schimbă tema">Temă</button>
+  </div>
+  ${coperta}
+  ${CAPITOLE.map(blocuriHtml).join('\n')}
+  <nav class="pasi" aria-label="Capitolul precedent și următor">
+    <a class="prec" href="#"><span class="et">Înapoi</span><span class="tt"></span></a>
+    <a class="urm" href="#"><span class="et">Înainte</span><span class="tt"></span></a>
+  </nav>
+</main>
+</div>
+<div class="voal" hidden></div>
+<script src="site.js"></script>
+</body></html>`;
+
+  const cale = path.join(SITE, 'index.html');
+  fs.writeFileSync(cale, html, 'utf8');
+  fs.chmodSync(cale, 0o644);
+  return cale;
+}
+
 // ── 3a) ALINIEREA PE PAGINA IMPARA ─────────────────────────────────────────
 // Intr-o carte tiparita, fiecare capitol incepe pe recto (pagina impara). CSS-ul are un
 // cuvant pentru asta — `break-before: recto` — pe care Chromium NU il implementeaza
@@ -670,6 +768,10 @@ const htmlEcran = path.join(IESIRE, 'Cuprins-carte-contabilitate.html');
 fs.writeFileSync(htmlEcran, faHtmlEcran(), 'utf8');
 fs.chmodSync(htmlEcran, 0o644);
 console.log(`   .html  ${(fs.statSync(htmlEcran).size / 1024).toFixed(1)} KB  ${path.relative(RADACINA, htmlEcran)}`);
+
+// SITE-ul de citit: cuprinsul la stanga, capitolul la dreapta.
+const site = faSite();
+console.log(`   site   ${(fs.statSync(site).size / 1024).toFixed(1)} KB  ${path.relative(RADACINA, site)}  ->  https://contabo.space/carte/`);
 
 // HTML-ul de TIPAR ramane intermediar (in tmp): exista doar ca sa iasa PDF-ul din el.
 const htmlCale = path.join(os.tmpdir(), `${NUME}-tipar.html`);

@@ -24,6 +24,8 @@ p[0-9].txt
 # mari, generate. Fara linia asta, garda din src/deployState.js ar raporta „arbore murdar"
 # la fiecare pornire — exact alarma care suna mereu si pe care operatorul o ignora.
 /public/descarcari/
+# site-ul cartii — generat integral de `npm run cuprins-carte`, ca si descarcarile
+/public/carte/
 
 # Videoul de prezentare si cadrele lui: artefacte GENERATE (zeci de MB), reproductibile cu
 # scripts/video-prezentare.mjs. Nu se comit — dar fara linia asta ar fi raportate ca „arbore
