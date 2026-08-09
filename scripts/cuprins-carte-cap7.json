@@ -1,0 +1,72 @@
+{
+ "parte": "Partea II · Deschiderea exercițiului · faza 1",
+ "nr": "7",
+ "titlu": "Balanța de deschidere",
+ "blocuri": [
+  { "tip": "p", "text": "Capitolul trecut a stabilit regimurile firmei. Mai rămâne o singură întrebare înainte de primul document: de la ce cifre pornim?" },
+  { "tip": "p", "text": "Pentru o firmă nou-înființată răspunsul e aproape gol — dar nu chiar. Pentru una care funcționează de ani de zile și abia acum intră într-un program de contabilitate, răspunsul e o balanță întreagă, și de corectitudinea ei atârnă tot ce se va calcula de aici încolo." },
+
+  { "tip": "h", "text": "Ce se reportează și ce nu" },
+  { "tip": "p", "text": "Capitolul 3 a împărțit conturile în două feluri, iar acum diferența devine practică. Conturile din clasele 1–5 au memorie: soldul lor la 31 decembrie devine sold inițial la 1 ianuarie. Banii din cont nu dispar fiindcă s-a schimbat anul, nici creanțele, nici datoriile, nici marfa din depozit." },
+  { "tip": "p", "text": "Conturile de venituri și cheltuieli, clasele 6 și 7, nu se reportează niciodată. Ele măsoară o perioadă, iar perioada s-a încheiat; anul nou pornește de la zero. Cine „preia” și solduri de venituri sau cheltuieli face o greșeală care se vede imediat: rezultatul anului nou pornește umflat." },
+  { "tip": "cheie", "text": "Balanța de deschidere conține numai conturi de bilanț. Dacă vezi în ea un cont de clasa 6 sau 7, ceva e greșit." },
+
+  { "tip": "h", "text": "Aceeași firmă, un an mai târziu" },
+  { "tip": "p", "text": "Să ne întoarcem la firma din primele capitole. Își încheiase luna cu 15.000 de lei în cont, 60.000 de încasat de la clienți, 5.000 de plătit furnizorului, cei 30.000 puși la început și un câștig de 40.000. Presupunem că anul s-a încheiat acolo și că profitul a fost lăsat în firmă, nu distribuit." },
+  { "tip": "tabel",
+    "titlu": "Balanța de deschidere a anului următor",
+    "cap": ["Cont", "Debit", "Credit"],
+    "randuri": [
+      ["5121 Conturi la bănci în lei", "15.000", ""],
+      ["4111 Clienți", "60.000", ""],
+      ["401 Furnizori", "", "5.000"],
+      ["1012 Capital subscris vărsat", "", "30.000"],
+      ["1171 Rezultat reportat", "", "40.000"],
+      ["Total", "75.000", "75.000"]
+    ],
+    "numerice": [2, 3],
+    "total": true,
+    "nota": "Câștigul de 40.000 nu mai apare ca „profitul lunii”: la închiderea anului a trecut în rezultat reportat, adică în averea care rămâne a patronului. Marfa nu apare deloc — se vânduse toată." },
+  { "tip": "p", "text": "Se vede aici, într-un tabel de cinci rânduri, tot ce a spus prima parte a cărții. Cele două coloane sunt egale fiindcă fiecare operațiune de peste an a fost scrisă pe două capete. Conturile de venituri și cheltuieli au dispărut, fiindcă măsurau perioada încheiată. Iar câștigul nu s-a evaporat: și-a schimbat numele." },
+
+  { "tip": "h", "text": "Firma nouă nu pornește chiar de la zero" },
+  { "tip": "p", "text": "O firmă înființată luna trecută nu are creanțe, datorii sau stocuri, dar are capital social. Suma depusă de asociați la înființare e prima înregistrare din viața ei, iar balanța de deschidere conține exact acele două rânduri: banii, de o parte, și capitalul, de cealaltă." },
+  { "tip": "p", "text": "E cel mai simplu caz posibil și, tocmai de aceea, cel mai bun exemplu de citit: firma are ceva (bani) și acel ceva aparține cuiva (asociaților). Nimic nu apare din nimic — nici măcar în prima zi." },
+
+  { "tip": "h", "text": "Trei niveluri de preluare, nu unul" },
+  { "tip": "p", "text": "Când se preia o firmă cu istoric, „am pus soldurile” înseamnă de fapt trei operațiuni distincte, iar sărirea uneia dintre ele produce o contabilitate care se închide pe total și e inutilizabilă în practică." },
+  { "tip": "tabel",
+    "titlu": "Ce trebuie preluat",
+    "cap": ["Nivel", "Ce se preia", "Fără el nu poți"],
+    "randuri": [
+      ["Sintetic", "soldul fiecărui cont din balanța de închidere", "întocmi bilanțul"],
+      ["Analitic pe partener", "cât datorează fiecare client, cât datorezi fiecărui furnizor", "ști pe cine să suni sau pe cine să plătești"],
+      ["Cantitativ-valoric", "stocul pe fiecare produs: cantitate și valoare", "descărca gestiunea la prima vânzare"]
+    ],
+    "nota": "Primul nivel e obligatoriu prin lege. Celelalte două sunt obligatorii prin bun-simț: fără ele, cifrele sunt corecte și de nefolosit." },
+  { "tip": "p", "text": "Regula care leagă nivelurile e una singură, dar e cea mai încălcată la preluări: suma soldurilor analitice trebuie să fie egală cu soldul sintetic. Dacă în contul de clienți scrie 60.000, iar clienții luați unul câte unul dau 58.400, diferența de 1.600 nu e o rotunjire — e un client uitat sau o sumă introdusă de două ori." },
+
+  { "tip": "h", "text": "De ce o balanță dezechilibrată nu se mai vindecă" },
+  { "tip": "p", "text": "Egalitatea dintre totalul debitor și cel creditor nu e o formalitate de completat la preluare, ci punctul de plecare al tuturor verificărilor viitoare. Capitolul 2 a arătat de ce: fiecare operațiune adaugă sume egale în ambele coloane, deci diferența dintre ele nu se schimbă niciodată." },
+  { "tip": "p", "text": "Consecința e neplăcută și merită spusă limpede. Dacă pornești cu o diferență de 1.200 de lei, vei avea aceeași diferență de 1.200 de lei în fiecare balanță de peste an, indiferent câte operațiuni corecte înregistrezi între timp. Nu se diluează, nu se pierde, nu se compensează. Singura reparație e să te întorci la balanța de preluare și să găsești ce lipsește." },
+  { "tip": "p", "text": "De aceea un program serios refuză din start o preluare dezechilibrată, în loc să o accepte și să se plângă mai târziu — și refuză integral, nu pe jumătate, fiindcă o preluare parțială e mai greu de reparat decât una care n-a avut loc. Tot de aceea refuză și un sold trecut cu minus în coloana greșită: un cont nu are sold „negativ pe debit”, ci sold pe credit." },
+
+  { "tip": "contabil", "titlu": "Pentru contabil",
+    "text": "Reportarea soldurilor nu e o operațiune la latitudinea contabilului: bilanțul de deschidere al unui exercițiu trebuie să corespundă bilanțului de închidere al exercițiului precedent — principiul intangibilității, din reglementările contabile. Modificarea retroactivă a unui sold de deschidere pentru a „potrivi” o balanță e, din acest motiv, exclusă; corecțiile de erori aferente exercițiilor anterioare se înregistrează pe rezultatul reportat, nu prin rescrierea deschiderii. La preluarea unei firme din alt program merită verificate, înainte de a accepta balanța, patru lucruri: că suma soldurilor analitice egalează sintiticul pe fiecare cont cu terți; că stocul cantitativ-valoric preluat corespunde valoric conturilor din clasa 3; că soldul de TVA — 4423, 4424, 4428 — e coerent cu ultimul decont depus; și că amortizarea cumulată vine odată cu valoarea de intrare a imobilizărilor, altfel amortizarea viitoare se va calcula pe o bază greșită și durata rămasă va fi inexactă. Ultimul punct e cel mai des ratat, fiindcă în balanța sintetică imobilizările apar deja la valoare netă, iar informația despre vechime se pierde dacă nu e cerută separat." },
+
+  { "tip": "h", "text": "Cum se face, practic" },
+  { "tip": "p", "text": "În aplicație, preluarea se face dintr-un singur loc: fie se importă fișierul exportat din programul vechi, fie se introduc soldurile cont cu cont. Programul verifică egalitatea înainte de a scrie ceva și refuză preluarea dacă nu se închide, spunând exact cu cât diferă." },
+  { "tip": "p", "text": "Soldurile pe fiecare client și furnizor se detaliază separat, iar stocul are preluarea lui cantitativ-valorică. Sunt trei pași, nu unul, exact ca în tabelul de mai sus — iar ordinea lor nu contează, atâta timp cât la final toate trei se potrivesc între ele." },
+  { "tip": "p", "text": "Cu asta, faza întâi e încheiată: firma știe cine e, ce regim are și de unde pornește. Din capitolul următor începe munca de zi cu zi, cu singura ușă prin care intră ceva în contabilitate — documentul." },
+
+  { "tip": "recap", "titlu": "De reținut din acest capitol",
+    "puncte": [
+      "Se reportează numai conturile de bilanț, clasele 1–5. Veniturile și cheltuielile pornesc de la zero în fiecare an.",
+      "Câștigul anului încheiat nu dispare: trece în rezultat reportat, adică în averea care rămâne a firmei.",
+      "O firmă nouă are și ea o balanță de deschidere: banii depuși și capitalul social.",
+      "Preluarea are trei niveluri — sintetic, analitic pe partener, cantitativ-valoric pe stoc. Suma analiticelor trebuie să dea soldul sintetic.",
+      "O diferență de la deschidere nu se diluează niciodată: rămâne aceeași în fiecare balanță a anului.",
+      "Bilanțul de deschidere trebuie să corespundă celui de închidere al anului precedent; erorile anterioare se corectează pe rezultat reportat, nu rescriind deschiderea."
+    ] }
+ ]
+}
