@@ -1,0 +1,155 @@
+{
+ "parte": "Partea XI · Urma · faza 14",
+ "nr": "51",
+ "titlu": "Ce nu poate face un program",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Cartea aceasta a fost scrisă pornind de la funcționarea unui program de contabilitate, iar cincizeci de capitole au arătat cât de mult se poate automatiza: articole compuse din tipuri de documente, decont adunat din înregistrări, balanțe verificate, declarații generate, controale rulate continuu."
+  },
+  {
+   "tip": "p",
+   "text": "Capitolul de încheiere e despre partea cealaltă — și e cel mai important dintre toate, fiindcă tocmai puterea automatizării face ca limitele ei să fie ușor de uitat."
+  },
+  {
+   "tip": "h",
+   "text": "Trei lucruri pe care le face bine"
+  },
+  {
+   "tip": "p",
+   "text": "Merită enumerate întâi, ca limita să fie clară prin contrast. Un program calculează fără să obosească, verifică fără să sară un rând și își amintește fără să uite."
+  },
+  {
+   "tip": "p",
+   "text": "Toate trei sunt calități pe care un om nu le are. Un contabil obosit face greșeli de calcul; unul grăbit sare o verificare; oricine uită un termen. Nimic din ce urmează nu contrazice faptul că, la aceste trei lucruri, mașina e categoric mai bună."
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu poate face"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Limita, pe categorii",
+   "cap": [
+    "Nu poate…",
+    "Fiindcă…"
+   ],
+   "randuri": [
+    [
+     "să spună dacă o operațiune a avut loc",
+     "documentul poate fi conform și fals deopotrivă"
+    ],
+    [
+     "să decidă dacă o cheltuială e a firmei",
+     "răspunsul e în realitate, nu în date"
+    ],
+    [
+     "să judece dacă o creanță mai e recuperabilă",
+     "depinde de ce se știe despre client, nu de câte zile au trecut"
+    ],
+    [
+     "să aleagă între tratamente permise deopotrivă",
+     "alegerea angajează firma pe ani"
+    ],
+    [
+     "să semneze",
+     "semnătura e asumare de răspundere"
+    ],
+    [
+     "să răspundă în locul cuiva",
+     "răspunderea nu se poate delega unui furnizor de software"
+    ]
+   ],
+   "nota": "Toate șase au aceeași structură: cer o informație care nu există în date sau o decizie care angajează pe cineva."
+  },
+  {
+   "tip": "cheie",
+   "text": "Un program răspunde la întrebări despre date. Contabilitatea pune, în punctele ei decisive, întrebări despre realitate."
+  },
+  {
+   "tip": "h",
+   "text": "Exemplul care le rezumă pe toate"
+  },
+  {
+   "tip": "p",
+   "text": "O factură de cinci mii de lei pentru „servicii de consultanță”. Documentul e conform: are toate elementele, furnizorul are cod de TVA valid, suma se potrivește cu plata din extras, iar programul o poate înregistra corect fără nicio intervenție."
+  },
+  {
+   "tip": "p",
+   "text": "Singura întrebare care contează nu apare nicăieri în date: consultanța a fost prestată? Iar dacă a fost, avea legătură cu activitatea firmei?"
+  },
+  {
+   "tip": "p",
+   "text": "Răspunsul nu poate fi citit din niciun câmp, nu poate fi dedus din nicio corelație și nu se poate verifica prin nicio regulă. Îl știe cineva — administratorul care a comandat serviciul — sau nu îl știe nimeni, ceea ce e deja un răspuns."
+  },
+  {
+   "tip": "p",
+   "text": "Consecințele sunt reale: deductibilitatea cheltuielii, dreptul de deducere a TVA, iar în cazuri extreme, calificarea juridică a operațiunii. Toate atârnă de o informație care nu e în sistem."
+  },
+  {
+   "tip": "h",
+   "text": "De ce automatizarea nu reduce răspunderea"
+  },
+  {
+   "tip": "p",
+   "text": "Se aude des argumentul contrar: dacă programul face totul, contabilul răspunde mai puțin. Realitatea e inversă, și merită înțeles de ce."
+  },
+  {
+   "tip": "p",
+   "text": "Automatizarea nu elimină deciziile, ci le mută mai devreme. Alegerea metodei de evaluare a stocurilor, durata de amortizare, pragul de semnificație, tratamentul unei operațiuni neobișnuite — toate se iau o singură dată și se aplică apoi automat, la mii de operațiuni."
+  },
+  {
+   "tip": "p",
+   "text": "O decizie greșită luată manual afectează un document. Aceeași decizie greșită, așezată într-o regulă automată, afectează un an. Puterea uneltei mărește, nu micșorează, consecințele judecății care o configurează."
+  },
+  {
+   "tip": "h",
+   "text": "Împărțirea corectă a muncii"
+  },
+  {
+   "tip": "p",
+   "text": "Tot ce a descris cartea sugerează, în final, o împărțire simplă și stabilă între om și mașină."
+  },
+  {
+   "tip": "p",
+   "text": "Mașina face ce e repetitiv, verificabil și obositor: calculează, adună, compară, semnalează. Omul face ce cere cunoașterea realității din spatele documentelor și ce angajează o răspundere: încadrează, judecă, decide, semnează."
+  },
+  {
+   "tip": "p",
+   "text": "Granița dintre ele nu e tehnologică, ci logică. Nu se va muta odată cu progresul programelor, fiindcă ea separă întrebările la care se poate răspunde din date de întrebările la care nu se poate."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Distincția are un corespondent juridic precis, discutat în capitolul 4: răspunderea pentru organizarea și conducerea contabilității revine administratorului, iar contabilul răspunde pentru conformitatea întocmirii, potrivit Legii contabilității nr. 82/1991; furnizorul programului nu răspunde pentru conținutul înregistrărilor, indiferent de gradul de automatizare. Patru observații finale. Prima: utilizarea unui sistem informatic nu diminuează obligația de verificare a documentelor justificative sub aspectul realității operațiunii — automatizarea deplasează controlul, nu îl suprimă, iar o procedură care nu prevede nicio verificare umană asupra operațiunilor înregistrate automat e, din perspectiva controlului intern, o procedură incompletă. A doua: politicile contabile alese și parametrii configurați în sistem sunt decizii profesionale care trebuie documentate în manualul de politici contabile și menținute conform principiului permanenței metodelor; un parametru modificat fără decizie scrisă produce o schimbare de politică nedeclarată. A treia: pentru operațiunile fără substanță economică sau cu încadrare artificială, autoritatea fiscală poate reconsidera forma, potrivit Codului de procedură fiscală — o încadrare corectă formal, dar contrară realității, nu e apărată de faptul că a fost generată automat. A patra, și cea care închide cartea: raționamentul profesional nu se poate delega. El se poate documenta, se poate discuta și se poate verifica, dar responsabilitatea lui rămâne, în întregime, a persoanei care semnează."
+  },
+  {
+   "tip": "h",
+   "text": "Încheiere"
+  },
+  {
+   "tip": "p",
+   "text": "Cartea a început cu o afirmație simplă: contabilitatea nu ține evidența banilor, ci a câștigului. Cincizeci de capitole mai târziu, afirmația se poate reformula mai exact."
+  },
+  {
+   "tip": "p",
+   "text": "Contabilitatea e disciplina de a spune adevărul despre o activitate economică, într-o formă pe care altcineva o poate verifica. Regulile ei par arbitrare până când înțelegi că fiecare rezolvă o problemă de încredere: partida dublă face erorile vizibile, documentul justificativ face afirmațiile probabile, stornoul păstrează urma greșelii, blocarea perioadei face trecutul stabil."
+  },
+  {
+   "tip": "p",
+   "text": "Un program poate aplica toate aceste reguli mai repede și mai consecvent decât un om. Ce nu poate face — și ce rămâne, prin urmare, esența profesiei — e să știe dacă lucrul consemnat s-a întâmplat cu adevărat, și să răspundă pentru afirmația că da."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Un program calculează, verifică și își amintește mai bine decât orice om — la aceste trei lucruri, discuția e închisă.",
+    "Nu poate ști dacă o operațiune a avut loc: documentul poate fi conform și fals deopotrivă.",
+    "Nu poate decide dacă o cheltuială e a firmei, nu poate alege între tratamente permise și nu poate semna.",
+    "Automatizarea nu reduce răspunderea: mută deciziile mai devreme, iar o decizie greșită afectează un an, nu un document.",
+    "Granița dintre om și mașină e logică, nu tehnologică: separă întrebările despre date de cele despre realitate.",
+    "Raționamentul profesional se poate documenta și verifica, dar nu se poate delega."
+   ]
+  }
+ ]
+}
