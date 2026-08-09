@@ -1,0 +1,164 @@
+{
+ "parte": "Partea V · Ce ai, ce produci, cine lucrează · fazele 4–6",
+ "nr": "21",
+ "titlu": "Statul de plată",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Salariile sunt cea mai reglementată operațiune lunară din contabilitate și, pentru un patron, cea mai contraintuitivă. Motivul e simplu: între ce costă un angajat firma și ce primește el în mână există o distanță pe care nimeni nu o intuiește corect prima dată."
+  },
+  {
+   "tip": "p",
+   "text": "Capitolul acesta face drumul de la brut la net și, mai important, arată unde se duce diferența — fiindcă o parte din ea nu se scade din salariu, ci se adaugă peste el, în sarcina firmei."
+  },
+  {
+   "tip": "h",
+   "text": "Drumul de la brut la net"
+  },
+  {
+   "tip": "p",
+   "text": "Salariul brut e punctul de plecare. Din el se rețin contribuțiile angajatului și impozitul, în această ordine — ordinea contează, fiindcă impozitul se calculează pe ce rămâne după contribuții, nu pe brut."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Un salariu de 5.000 lei brut, pas cu pas",
+   "cap": [
+    "Pasul",
+    "Cota",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Salariu brut",
+     "",
+     "5.000"
+    ],
+    [
+     "minus CAS (pensie)",
+     "25%",
+     "1.250"
+    ],
+    [
+     "minus CASS (sănătate)",
+     "10%",
+     "500"
+    ],
+    [
+     "minus deducerea personală",
+     "",
+     "430"
+    ],
+    [
+     "= baza de impozitare",
+     "",
+     "2.820"
+    ],
+    [
+     "minus impozit pe venit",
+     "10%",
+     "282"
+    ],
+    [
+     "= salariu net",
+     "",
+     "2.968"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "Deducerea personală nu e o sumă primită, ci o parte din venit care nu se impozitează. Ea reduce impozitul cu 10% din valoarea ei."
+  },
+  {
+   "tip": "p",
+   "text": "Din 5.000 de lei bruți, angajatul primește 2.968. Diferența de 2.032 nu rămâne la firmă: 1.750 sunt contribuțiile lui, virate la stat, iar 282 impozitul. Firma nu câștigă nimic din reținere — e doar intermediarul obligat să vireze."
+  },
+  {
+   "tip": "h",
+   "text": "Cât costă, de fapt, angajatul"
+  },
+  {
+   "tip": "p",
+   "text": "Aici e greșeala de calcul cea mai frecventă a patronilor. Costul nu e salariul brut, fiindcă peste el firma mai datorează o contribuție proprie."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Costul total pentru firmă",
+   "cap": [
+    "Element",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Salariu brut",
+     "5.000"
+    ],
+    [
+     "Contribuția asiguratorie pentru muncă (2,25%)",
+     "112,50"
+    ],
+    [
+     "Cost total",
+     "5.112,50"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Raportul care se reține ușor: la un net de aproximativ 2.968 de lei, firma plătește 5.112,50 — cam de 1,7 ori mai mult."
+  },
+  {
+   "tip": "cheie",
+   "text": "Brutul nu e costul, iar netul nu e brutul. Trei cifre diferite, pe care un patron le confundă până le vede o dată așezate."
+  },
+  {
+   "tip": "h",
+   "text": "Cele două articole ale lunii"
+  },
+  {
+   "tip": "p",
+   "text": "Contabil, salariile produc două operațiuni distincte, la momente diferite: înregistrarea drepturilor cuvenite, la sfârșitul lunii, și plata lor efectivă, de regulă în luna următoare."
+  },
+  {
+   "tip": "p",
+   "text": "Distincția reia ideea din capitolul 15: cheltuiala se înregistrează când se naște obligația, nu când pleacă banii. Salariul lunii decembrie e cheltuiala lui decembrie, chiar dacă se plătește în ianuarie — altfel rezultatul anului ar fi fals cu o lună întreagă de salarii."
+  },
+  {
+   "tip": "h",
+   "text": "De ce statul de plată nu se calculează de mână"
+  },
+  {
+   "tip": "p",
+   "text": "Exemplul de mai sus e cazul cel mai simplu cu putință: un salariu întreg, o lună întreagă, nicio absență. Realitatea aduce concedii de odihnă calculate pe media ultimelor luni, concedii medicale suportate parțial de firmă și parțial de fond, norme parțiale cu reguli proprii, sporuri, rețineri, avansuri, tichete."
+  },
+  {
+   "tip": "p",
+   "text": "Fiecare dintre acestea are formula ei și interacționează cu celelalte. De aceea statul de plată e locul din contabilitate unde calculul manual e cel mai riscant și automatizarea cel mai valoroasă — cu o singură condiție: cotele și plafoanele să vină dintr-un loc datat, nu scrise prin cod, fiindcă se schimbă des."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Cotele aplicabile sunt CAS 25% și CASS 10% în sarcina salariatului, impozit pe venit 10% aplicat asupra bazei rezultate după scăderea contribuțiilor obligatorii și a deducerii personale, respectiv CAM 2,25% în sarcina angajatorului (art. 138, 156, 78 și 220^3 Cod fiscal). Trei zone produc majoritatea corecțiilor. Prima: bazele de calcul nu coincid — suma neimpozabilă din salariul minim, potrivit art. 76, este exceptată atât de la impozit, cât și de la contribuții, deci reduce toate bazele, în timp ce deducerea personală reduce doar baza de impozitare; tratarea lor la fel produce erori în ambele sensuri. A doua: la normele parțiale sub salariul minim, contribuțiile se calculează la nivelul salariului minim, diferența fiind suportată de angajator, cu excepțiile expres prevăzute — netul salariatului nu se diminuează, dar costul firmei crește. A treia: indemnizația de concediu medical intră în baza CAS, dar are regim propriu la CASS și CAM, iar partea suportată din FNUASS se recuperează, nu se înregistrează ca și cheltuială definitivă. În fine, D112 se întocmește pe date individuale, iar corelația dintre totalurile ei și conturile 641, 421, 43x din balanță trebuie verificată înainte de depunere, nu după."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Statul de plată calculat corect e o condiție necesară. Nu e însă suficientă: o parte dintre drepturile angajatului nu se acordă automat, ci doar dacă cineva le cere. E capitolul următor, și e cel mai scump capitol al acestei părți."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Impozitul se calculează după scăderea contribuțiilor și a deducerii, nu pe brut.",
+    "Brutul, netul și costul firmei sunt trei cifre diferite: 5.000, 2.968 și 5.112,50 în exemplul de față.",
+    "Firma nu câștigă nimic din reținerile din salariu — e doar intermediarul obligat să le vireze.",
+    "Salariul lunii e cheltuiala lunii, chiar dacă se plătește în luna următoare.",
+    "Cotele și plafoanele trebuie să vină dintr-un loc unic și datat: se schimbă des, iar o cotă veche într-un colț de cod se descoperă târziu."
+   ]
+  }
+ ]
+}

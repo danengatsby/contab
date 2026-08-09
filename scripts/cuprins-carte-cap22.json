@@ -1,0 +1,150 @@
+{
+ "parte": "Partea V · Ce ai, ce produci, cine lucrează · fazele 4–6",
+ "nr": "22",
+ "titlu": "Drepturile care se pierd dacă nu le ceri",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Capitolul acesta a fost scris după un incident, iar incidentul merită povestit, fiindcă e mai instructiv decât regula pe care o ilustrează."
+  },
+  {
+   "tip": "p",
+   "text": "Într-un program de contabilitate, fișa angajatului avea un câmp numit „Persoane în întreținere”. Câmpul arăta completat cu zero — cifra zero era acolo, gri, în casetă. În realitate era gol: zeroul era doar un indiciu vizual, nu o valoare. Iar programul acorda deducerea personală numai dacă acel câmp fusese completat."
+  },
+  {
+   "tip": "p",
+   "text": "Rezultatul: angajații ale căror fișe fuseseră completate normal, fără ca cineva să atingă acel câmp, nu primeau nicio deducere. La un salariu de 5.000 de lei brut, asta înseamnă 43 de lei în plus la impozit în fiecare lună. Peste 500 de lei pe an, de fiecare angajat, plătiți statului fără să fie datorați — și scăzuți din netul unor oameni care nu aveau cum să afle."
+  },
+  {
+   "tip": "cheie",
+   "text": "Un drept care se acordă „dacă e cerut” e un drept care se pierde. Nu din rea-credință, ci fiindcă nimeni nu verifică ce nu i-a fost semnalat."
+  },
+  {
+   "tip": "h",
+   "text": "Ce este deducerea personală"
+  },
+  {
+   "tip": "p",
+   "text": "Deducerea personală e o parte din venitul salarial care nu se impozitează. Nu e o sumă primită în plus, ci o reducere a bazei — efectul ei în bani e 10% din valoarea deducerii, adică exact impozitul care nu se mai plătește."
+  },
+  {
+   "tip": "p",
+   "text": "Se acordă la funcția de bază, adică la locul de muncă principal, iar mărimea ei depinde de două lucruri: câte persoane are angajatul în întreținere și cât de mare e salariul lui."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cum scade deducerea odată cu salariul",
+   "cap": [
+    "Salariu brut",
+    "Deducere",
+    "Impozit economisit"
+   ],
+   "randuri": [
+    [
+     "la nivelul salariului minim",
+     "maximă",
+     "10% din ea"
+    ],
+    [
+     "peste minim, sub plafon",
+     "scade proporțional",
+     "proporțional"
+    ],
+    [
+     "peste salariul minim + 2.000 lei",
+     "zero",
+     "zero"
+    ]
+   ],
+   "nota": "Scăderea e liniară: cu cât salariul urcă spre plafon, cu atât deducerea se apropie de zero. Peste plafon nu se mai acordă deloc."
+  },
+  {
+   "tip": "p",
+   "text": "La un salariu de 5.000 de lei, cu salariul minim la 4.050 și fără persoane în întreținere, deducerea e de 430 de lei — iar impozitul scade de la 325 la 282. Cu două persoane în întreținere, deducerea urcă la 640, iar impozitul coboară la 261."
+  },
+  {
+   "tip": "h",
+   "text": "Zero nu înseamnă „fără”"
+  },
+  {
+   "tip": "p",
+   "text": "Miezul incidentului stă într-o confuzie care apare des, nu doar în programe: între „am zero persoane în întreținere” și „nu am completat câmpul”."
+  },
+  {
+   "tip": "p",
+   "text": "Sunt lucruri diferite. Un angajat cu zero persoane în întreținere are dreptul la deducerea de bază — cea mai mică dintre variante, dar nu zero. Un câmp necompletat nu spune nimic despre situația lui; spune doar că cineva n-a scris nimic acolo."
+  },
+  {
+   "tip": "p",
+   "text": "Un sistem care le tratează la fel alege, tăcut, varianta care dezavantajează omul. Iar dacă nimeni nu se uită la linia „deducere” din statul de plată — și de regulă nimeni nu se uită, fiindcă netul pare plauzibil — greșeala poate dura ani."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se verifică, în două minute"
+  },
+  {
+   "tip": "p",
+   "text": "Verificarea nu cere cunoștințe de specialitate. Deschizi statul de plată al lunii și te uiți la coloana de deducere."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce trebuie să vezi",
+   "cap": [
+    "Situația angajatului",
+    "Deducerea trebuie să fie"
+   ],
+   "randuri": [
+    [
+     "salariu sub sau la nivelul minim, funcție de bază",
+     "maximă"
+    ],
+    [
+     "salariu între minim și minim + 2.000",
+     "între maxim și zero"
+    ],
+    [
+     "salariu peste minim + 2.000",
+     "zero — corect"
+    ],
+    [
+     "al doilea loc de muncă",
+     "zero — corect"
+    ]
+   ],
+   "nota": "Dacă vezi zero acolo unde n-ar trebui, întrebarea nu e „de ce”, ci „de când”."
+  },
+  {
+   "tip": "p",
+   "text": "Ultima coloană a tabelului conține și singurul caz în care zero e răspunsul corect: al doilea loc de muncă. Deducerea se acordă o singură dată, la funcția de bază — iar dacă un angajat o primește la două locuri deodată, diferența i se va cere înapoi."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Deducerea personală se acordă potrivit art. 77 Cod fiscal la locul unde se află funcția de bază, pentru venituri brute lunare până la nivelul salariului minim plus 2.000 lei, diminuându-se progresiv pe măsură ce venitul crește; ea cuprinde deducerea de bază, stabilită procentual din salariul minim în funcție de numărul persoanelor aflate în întreținere, și deducerile suplimentare — pentru salariații tineri și pentru copiii aflați în învățământ. Două observații de practică. Prima: absența informației despre persoanele în întreținere nu echivalează cu absența dreptului; în lipsa declarației salariatului se acordă deducerea corespunzătoare situației fără persoane în întreținere, nu zero — iar declarația pe propria răspundere a salariatului, cu documentele justificative, trebuie ținută la dosarul de personal, fiindcă ea e temeiul deducerilor peste nivelul de bază. A doua: schimbările de situație — o persoană intrată sau ieșită din întreținere, împlinirea vârstei de 26 de ani, finalizarea studiilor unui copil — produc efect din luna următoare comunicării, iar neactualizarea lor generează diferențe care se regularizează, în ambele sensuri, cu impact asupra D112 deja depuse."
+  },
+  {
+   "tip": "h",
+   "text": "Regula generală, dincolo de acest caz"
+  },
+  {
+   "tip": "p",
+   "text": "Deducerea personală e cel mai costisitor exemplu, dar tiparul e mai larg. Peste tot unde un drept se acordă „la cerere” sau „dacă e completat”, el se pierde pentru cei care nu știu că trebuie cerut — adică exact pentru cei care ar avea cea mai mare nevoie de el."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea, la orice sistem care calculează drepturi, întrebarea corectă nu e „ce se întâmplă dacă bifez”, ci „ce se întâmplă dacă nu bifez nimic”. Un implicit prost ales costă bani reali, în tăcere, la fiecare rulare."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Deducerea personală reduce baza de impozitare, nu se primește în bani; efectul ei e 10% din valoarea deducerii.",
+    "Se acordă la funcția de bază și scade progresiv, până la zero peste salariul minim plus 2.000 de lei.",
+    "Zero persoane în întreținere NU înseamnă zero deducere — angajatul are dreptul la deducerea de bază.",
+    "Un câmp necompletat nu e o informație; sistemele care îl tratează ca „fără drept” dezavantajează tăcut angajatul.",
+    "Verificarea se face în două minute, uitându-te la coloana de deducere din statul de plată.",
+    "Regula generală: la orice drept acordat „la cerere”, întreabă ce se întâmplă când nu ceri nimic."
+   ]
+  }
+ ]
+}

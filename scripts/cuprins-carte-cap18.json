@@ -1,0 +1,139 @@
+{
+ "parte": "Partea V · Ce ai, ce produci, cine lucrează · fazele 4–6",
+ "nr": "18",
+ "titlu": "Stocul: cantitativ și valoric",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Până acum contabilitatea a urmărit hârtii și bani. Stocul e primul lucru pe care îl urmărește în două feluri deodată: câte bucăți sunt în depozit și cât valorează ele. Cele două evidențe merg în paralel și trebuie să se potrivească — iar când nu se potrivesc, adevărul e la numărătoare, nu în calculator."
+  },
+  {
+   "tip": "p",
+   "text": "Deosebirea față de tot ce a fost înainte e că marfa se mișcă și fără document. O ladă se poate sparge, o cutie se poate pierde, cineva poate lua ceva „pe moment”. De aceea stocul e singura parte a contabilității care are, prin lege, o confruntare periodică obligatorie cu realitatea fizică."
+  },
+  {
+   "tip": "h",
+   "text": "Intrarea e simplă. Ieșirea, nu."
+  },
+  {
+   "tip": "p",
+   "text": "Când cumperi marfă, valoarea ei e scrisă pe factură: atât a costat. Nicio ambiguitate. Când vinzi însă, apare o întrebare la care factura de vânzare nu răspunde: bucata care a plecat, cât te costase pe tine?"
+  },
+  {
+   "tip": "p",
+   "text": "Dacă ai cumpărat de trei ori același produs, la prețuri diferite — 10 lei, 12 lei, 11 lei — și vinzi acum o bucată, care dintre cele trei a plecat? Fizic, poate n-o mai poți spune. Contabil, trebuie să alegi o convenție, iar alegerea schimbă atât costul înregistrat, cât și valoarea stocului rămas."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Aceleași trei intrări, două metode",
+   "cap": [
+    "Metoda",
+    "Cum stabilește costul ieșirii",
+    "Ce rămâne în stoc"
+   ],
+   "randuri": [
+    [
+     "Cost mediu ponderat",
+     "media valorilor din stoc la momentul ieșirii",
+     "tot ce rămâne, evaluat la aceeași medie"
+    ],
+    [
+     "FIFO",
+     "costul celui mai vechi lot intrat, până se epuizează",
+     "loturile mai noi, la costurile lor"
+    ]
+   ],
+   "nota": "Ambele sunt permise. Ce nu e permis e schimbarea metodei de la o lună la alta, după cum convine rezultatul."
+  },
+  {
+   "tip": "p",
+   "text": "La prețuri stabile, diferența e neglijabilă. La prețuri în creștere, FIFO dă un cost mai mic al ieșirilor — deci un profit mai mare și un stoc evaluat mai aproape de prețul zilei. Cost mediu ponderat netezește ambele. Nu există metodă „mai corectă”: există una aleasă și aplicată consecvent."
+  },
+  {
+   "tip": "cheie",
+   "text": "Metoda se alege o dată și se aplică an de an. Consecvența e ceea ce face cifrele comparabile — nu metoda în sine."
+  },
+  {
+   "tip": "h",
+   "text": "Gestiunile: unde anume se află marfa"
+  },
+  {
+   "tip": "p",
+   "text": "O firmă cu un depozit și un magazin nu are un stoc, ci două. Aceeași marfă poate exista în ambele locuri, iar transferul între ele nu e nici vânzare, nici cumpărare — e o mutare internă, care nu atinge nici veniturile, nici cheltuielile."
+  },
+  {
+   "tip": "p",
+   "text": "Împărțirea pe gestiuni are și o consecință de răspundere: fiecare gestiune are un gestionar, iar la inventar diferențele se stabilesc pe gestiune, nu pe firmă. Un plus în depozit nu compensează un minus în magazin, chiar dacă pe total firma iese la zero."
+  },
+  {
+   "tip": "h",
+   "text": "Cele două articole ale unei vânzări"
+  },
+  {
+   "tip": "p",
+   "text": "Capitolul 14 a arătat deja articolul complet al unei vânzări, iar aici merită privit din partea stocului. Vânzarea produce venitul, dar marfa iese separat, la costul ei — nu la prețul de vânzare."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Marfă cumpărată cu 600, vândută cu 1.000",
+   "cap": [
+    "Operațiunea",
+    "Debit",
+    "Credit",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Intrarea în depozit",
+     "371 Mărfuri",
+     "401 Furnizori",
+     "600"
+    ],
+    [
+     "Venitul din vânzare",
+     "4111 Clienți",
+     "707 Venituri",
+     "1.000"
+    ],
+    [
+     "Ieșirea din depozit",
+     "607 Cheltuieli privind mărfurile",
+     "371 Mărfuri",
+     "600"
+    ]
+   ],
+   "numerice": [
+    4
+   ],
+   "nota": "Contul 371 primește 600 și dă 600: după vânzare, soldul lui pe acest produs e zero. Câștigul de 400 nu se scrie nicăieri — iese din diferența 707 minus 607."
+  },
+  {
+   "tip": "p",
+   "text": "Omisiunea celui de-al treilea rând e greșeala clasică, și e periculoasă tocmai fiindcă e invizibilă: balanța rămâne echilibrată, dar stocul apare umflat cu 600 de lei care nu mai există fizic, iar profitul apare mai mare cu exact aceeași sumă."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Metoda de evaluare a ieșirilor se stabilește prin politicile contabile ale entității și se aplică cu consecvență; schimbarea ei e o modificare de politică contabilă, cu tratamentul și prezentarea aferente, nu o opțiune de exercițiu. Atenție la transferurile între gestiuni în sistemul FIFO: dacă mutarea internă se evaluează la cost mediu, metoda degenerează tăcut în CMP la prima mutare, fiindcă loturile își pierd identitatea — de aceea coada de loturi trebuie transferată ca atare, nu recalculată. Pentru comerțul cu amănuntul care ține evidența la preț de vânzare, contul 378 și TVA-ul neexigibil aferent trebuie descărcate proporțional la fiecare ieșire, altfel soldul lui 371 rămâne la preț de vânzare, iar stocul din bilanț e supraevaluat cu adaosul. În fine, ajustările pentru deprecierea stocurilor (grupa 39) se constituie când valoarea realizabilă netă scade sub cost — marfă degradată, demodată, cu mișcare lentă — și nu se confundă cu minusurile de inventar: primele corectează o valoare, celelalte constată o lipsă fizică."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Stocul cumpărat și vândut e cazul simplu. Când firma nu cumpără marfă, ci o produce, apare o întrebare în plus: cât costă, de fapt, ceea ce ai făcut tu? E capitolul următor."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Stocul se ține în două feluri deodată — cantitativ și valoric — iar la neconcordanță adevărul e la numărătoare.",
+    "Intrarea are cost cunoscut din factură; ieșirea cere o convenție: cost mediu ponderat sau FIFO.",
+    "Nicio metodă nu e mai corectă decât cealaltă; consecvența e cea care face cifrele comparabile.",
+    "Transferul între gestiuni nu e nici vânzare, nici cumpărare — iar plusurile dintr-o gestiune nu compensează minusurile din alta.",
+    "O vânzare cere DOUĂ înregistrări: venitul și descărcarea gestiunii. Fără a doua, stocul și profitul apar umflate cu aceeași sumă."
+   ]
+  }
+ ]
+}

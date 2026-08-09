@@ -1,0 +1,130 @@
+{
+ "parte": "Partea V · Ce ai, ce produci, cine lucrează · fazele 4–6",
+ "nr": "19",
+ "titlu": "Producția: din materii prime, produs finit",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "O firmă care cumpără marfă și o vinde știe exact cât a costat-o fiecare bucată: scrie pe factură. O firmă care produce nu are unde să citească cifra aceasta — trebuie să o calculeze, iar calculul e singura operațiune din contabilitate în care valoarea unui bun se construiește, în loc să fie preluată."
+  },
+  {
+   "tip": "p",
+   "text": "De aici și dificultatea: costul de producție nu e o cifră găsită, ci una decisă. Ce anume intră în el e o alegere cu reguli, iar de ea atârnă atât valoarea stocului din bilanț, cât și rezultatul perioadei."
+  },
+  {
+   "tip": "h",
+   "text": "Ce intră în cost și ce nu"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Costul de producție",
+   "cap": [
+    "Intră",
+    "Nu intră"
+   ],
+   "randuri": [
+    [
+     "Materiile prime consumate efectiv",
+     "Cheltuielile de administrație"
+    ],
+    [
+     "Manopera directă a celor care produc",
+     "Cheltuielile de desfacere"
+    ],
+    [
+     "Amortizarea utilajelor folosite",
+     "Pierderile din rebuturi peste normal"
+    ],
+    [
+     "Utilitățile secției de producție",
+     "Cheltuielile financiare, ca regulă"
+    ]
+   ],
+   "nota": "Regula de fond: intră ce a fost necesar pentru a aduce bunul în starea și locul în care se află. Restul sunt cheltuieli ale perioadei."
+  },
+  {
+   "tip": "p",
+   "text": "Distincția are consecințe imediate. O cheltuială inclusă în cost rămâne în stoc până la vânzare, deci nu afectează rezultatul lunii curente. Aceeași cheltuială lăsată afară lovește rezultatul acum. Nu e o chestiune de preferință: umflarea costului de producție cu cheltuieli administrative e una dintre cele mai vechi metode de a arăta un profit care nu există."
+  },
+  {
+   "tip": "cheie",
+   "text": "Ce intri în cost amâni; ce lași afară plătești acum. De aceea regula nu e la latitudinea firmei."
+  },
+  {
+   "tip": "h",
+   "text": "Rețeta: consumul care se știe dinainte"
+  },
+  {
+   "tip": "p",
+   "text": "Pentru producția repetitivă, cantitățile de materiale necesare unui produs sunt cunoscute: atâta lemn, atâta vopsea, atâtea șuruburi. Lista aceasta se numește rețetă sau consum specific, iar utilitatea ei practică e dublă."
+  },
+  {
+   "tip": "p",
+   "text": "Întâi, scutește de introducerea manuală a consumurilor la fiecare lansare: se declară cât s-a produs, iar materialele se scad singure din stoc, în proporțiile din rețetă. Apoi — și e partea mai valoroasă — face vizibilă diferența dintre consumul teoretic și cel real. Când din zece metri de material ies opt produse în loc de zece, diferența nu e o eroare contabilă: e o pierdere din proces, iar contabilitatea e locul în care ea devine măsurabilă."
+  },
+  {
+   "tip": "h",
+   "text": "Cele două mișcări ale unei lansări"
+  },
+  {
+   "tip": "p",
+   "text": "O producție încheiată produce două înregistrări opuse: materialele ies din stoc, produsul finit intră."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Producție cu materiale de 600, produs obținut",
+   "cap": [
+    "Operațiunea",
+    "Debit",
+    "Credit",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Consumul de materii prime",
+     "601 Cheltuieli cu materiile prime",
+     "301 Materii prime",
+     "600"
+    ],
+    [
+     "Intrarea produsului finit",
+     "345 Produse finite",
+     "711 Venituri aferente costurilor",
+     "600"
+    ]
+   ],
+   "numerice": [
+    4
+   ],
+   "nota": "Contul 711 nu e un venit propriu-zis: e mecanismul prin care cheltuiala consumată se „păstrează” în valoarea stocului până la vânzare."
+  },
+  {
+   "tip": "p",
+   "text": "Perechea aceasta explică ceva ce nedumerește la prima vedere: de ce producția, luată singură, nu produce nici profit, nici pierdere. Consumul de 600 a lovit rezultatul, iar intrarea produsului l-a compensat cu exact atât. Câștigul apare abia la vânzare, când produsul iese la un preț mai mare decât costul lui."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Costul de producție se stabilește potrivit reglementărilor contabile și cuprinde costul de achiziție al materiilor prime și materialelor consumate, celelalte cheltuieli directe, precum și cota cheltuielilor indirecte de producție alocată rațional; cheltuielile generale de administrație, cele de desfacere și pierderile peste limitele normal admise nu se includ. Alocarea cheltuielilor indirecte se face pe baza capacității normale de producție, nu a celei efective — o subactivitate semnificativă nu are voie să umfle costul unitar, partea aferentă nefolosirii capacității fiind cheltuială a perioadei. Contul 711 asigură corespondența dintre variația stocurilor și rezultat, iar soldul lui la sfârșitul perioadei reflectă exact diferența dintre stocul final și cel inițial de produse și producție în curs; verificarea lui e un control util, fiindcă o descărcare incompletă la vânzare se vede acolo înainte de a se vedea în marjă. Pentru producția în curs la sfârșitul perioadei, evaluarea se face la costul efectiv al stadiului atins, iar inventarierea ei fizică — nu doar scriptică — e obligatorie, fiind zona cu cel mai mare risc de supraevaluare a stocurilor din întreaga contabilitate."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Stocul cumpărat și cel produs stau amândouă în depozit, evaluate după reguli. Rămâne întrebarea pe care nicio evidență scriptică nu o poate răspunde: mai sunt ele acolo? E capitolul următor."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "La producție, costul nu se citește de pe o factură: se construiește, după reguli.",
+    "Intră ce a fost necesar aducerii bunului în starea actuală; cheltuielile de administrație și de desfacere rămân ale perioadei.",
+    "Ce incluzi în cost amâni pentru vânzare; ce lași afară lovește rezultatul acum — de aceea regula nu e opțională.",
+    "Rețeta scade materialele automat și, mai important, face vizibilă diferența dintre consumul teoretic și cel real.",
+    "Producția în sine nu produce nici profit, nici pierdere: consumul e compensat de intrarea produsului. Câștigul apare la vânzare."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,137 @@
+{
+ "parte": "Partea V · Ce ai, ce produci, cine lucrează · fazele 4–6",
+ "nr": "20",
+ "titlu": "Inventarierea",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Inventarierea e momentul în care contabilitatea acceptă că poate greși. Toate celelalte verificări din carte confruntă cifre cu alte cifre; aceasta confruntă cifrele cu lumea — numărând efectiv ce se află în depozit, în casierie, în firmă."
+  },
+  {
+   "tip": "p",
+   "text": "E și singura operațiune contabilă care nu se poate face din birou. Cineva trebuie să meargă, să numere și să scrie ce a găsit. Tocmai de aceea e obligatorie prin lege, cel puțin o dată pe an, înainte de întocmirea situațiilor financiare."
+  },
+  {
+   "tip": "h",
+   "text": "De ce apar diferențe chiar când nimeni nu fură"
+  },
+  {
+   "tip": "p",
+   "text": "Prima reacție la un minus de inventar e suspiciunea. De cele mai multe ori, explicația e mai banală și merită cunoscută, fiindcă schimbă complet felul în care se tratează."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "De unde vin diferențele",
+   "cap": [
+    "Cauza",
+    "Ce fel de diferență"
+   ],
+   "randuri": [
+    [
+     "Un document de ieșire neînregistrat",
+     "minus scriptic — marfa chiar a plecat"
+    ],
+    [
+     "O recepție înregistrată de două ori",
+     "minus scriptic — marfa n-a intrat niciodată de două ori"
+    ],
+    [
+     "Deteriorare, spargere, expirare",
+     "minus real, cu cauză cunoscută"
+    ],
+    [
+     "Erori de măsurare la produse vrac",
+     "diferențe mici, în ambele sensuri"
+    ],
+    [
+     "Sustragere",
+     "minus real, cu cauză de stabilit"
+    ]
+   ],
+   "nota": "Primele două nu sunt lipsuri: sunt erori de evidență, iar tratarea lor ca lipsuri ascunde problema reală."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea ordinea corectă la un rezultat de inventar e: mai întâi se caută erorile de înregistrare, apoi se constată lipsa. Un minus înregistrat ca pierdere, când de fapt lipsea un aviz de expediție, „rezolvă” diferența și lasă în urmă o vânzare nefacturată."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se înregistrează rezultatul"
+  },
+  {
+   "tip": "p",
+   "text": "Odată stabilite diferențele reale, ele se înregistrează, iar monografia e scurtă și merită știută."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele trei situații",
+   "cap": [
+    "Situația",
+    "Înregistrarea",
+    "Ce spune"
+   ],
+   "randuri": [
+    [
+     "Plus de inventar",
+     "3xx = 758",
+     "firma are mai mult decât știa — intră ca venit"
+    ],
+    [
+     "Minus neimputabil",
+     "60x = 3xx",
+     "lipsa devine cheltuială a firmei"
+    ],
+    [
+     "Minus imputat gestionarului",
+     "4282 = 7588 + 4427",
+     "firma are o creanță asupra celui răspunzător, cu TVA"
+    ]
+   ],
+   "nota": "A treia situație e singura în care apare TVA: recuperarea de la gestionar e, fiscal, o operațiune impozabilă."
+  },
+  {
+   "tip": "p",
+   "text": "Imputarea nu e automată și nici obligatorie. Ea presupune că s-a stabilit o răspundere — ceea ce cere procedură, nu doar o diferență în tabel. Un minus imputat fără temei se transformă rapid într-un litigiu de muncă pe care firma îl pierde."
+  },
+  {
+   "tip": "cheie",
+   "text": "Inventarul nu se încheie cu o cifră, ci cu un proces-verbal: ce s-a numărat, ce a ieșit diferit și ce s-a decis pentru fiecare diferență."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se inventariază, de fapt"
+  },
+  {
+   "tip": "p",
+   "text": "Cuvântul trimite la depozit, dar inventarierea privește întregul patrimoniu. Se numără marfa și materialele, dar se confruntă și casieria, și soldurile cu partenerii — prin cereri de confirmare — și se verifică existența fizică a mijloacelor fixe."
+  },
+  {
+   "tip": "p",
+   "text": "Ultima parte e cea mai des sărită și cea mai instructivă. O firmă care își inventariază mijloacele fixe descoperă adesea utilaje casate de mult, care figurează încă în evidență și pe care continuă să calculeze amortizare — sau invers, echipamente folosite zilnic și niciodată înregistrate."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Inventarierea generală a elementelor de natura activelor, datoriilor și capitalurilor proprii e obligatorie cel puțin o dată în cursul exercițiului, iar rezultatele se consemnează în registrul-inventar; normele privind organizarea și efectuarea inventarierii stabilesc componența comisiei, procedura declarațiilor de gestiune, modul de listare și regimul plusurilor și minusurilor. Compensarea plusurilor cu minusurile e admisă strict limitat — pentru aceeași perioadă de gestiune, la sortimente confundabile între ele, în limita cantităților și cu justificare scrisă — și nu poate fi folosită ca metodă generală de netezire a diferențelor. Pentru minusurile neimputabile aferente bunurilor pentru care s-a dedus TVA, ajustarea taxei e obligatorie potrivit art. 304-305 Cod fiscal, cu excepția pierderilor tehnologice încadrate în limitele stabilite; omiterea ajustării e una dintre cele mai frecvente constatări la inspecțiile de TVA. Evaluarea la inventar se face la valoarea de inventar, iar minusul de valoare față de cost — fără lipsă fizică — se reflectă prin ajustări pentru depreciere, nu prin scoaterea din evidență."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cu inventarierea, partea despre lucruri se încheie. Urmează partea despre oameni: statul de plată, cea mai reglementată operațiune lunară din toată contabilitatea."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Inventarierea e singura verificare care confruntă cifrele cu lumea, nu cu alte cifre. E obligatorie anual, înainte de bilanț.",
+    "Majoritatea diferențelor sunt erori de evidență, nu lipsuri. Se caută întâi documentele, apoi se constată lipsa.",
+    "Plusul intră ca venit; minusul neimputabil devine cheltuială; cel imputat creează o creanță asupra gestionarului, cu TVA.",
+    "Imputarea presupune răspundere stabilită prin procedură, nu doar o diferență în tabel.",
+    "Se inventariază tot patrimoniul, nu doar depozitul — inclusiv mijloacele fixe, unde apar cele mai mari surprize."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,204 @@
+{
+ "parte": "Partea V · Ce ai, ce produci, cine lucrează · fazele 4–6",
+ "nr": "24",
+ "titlu": "Leasingul",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Leasingul e forma prin care o firmă folosește un bun pe care nu l-a cumpărat. Contabil, e locul în care se vede cel mai clar de ce o plată lunară nu e, în sine, o cheltuială — iar greșeala de a o trata ca atare e printre cele mai frecvente din contabilitatea firmelor mici."
+  },
+  {
+   "tip": "p",
+   "text": "Totul depinde de un singur lucru: ce fel de leasing e. Iar răspunsul nu se citește din denumirea contractului, ci din ce se întâmplă la sfârșitul lui."
+  },
+  {
+   "tip": "h",
+   "text": "Financiar sau operațional"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele două forme",
+   "cap": [
+    "Întrebarea",
+    "Financiar",
+    "Operațional"
+   ],
+   "randuri": [
+    [
+     "Cine folosește bunul?",
+     "tu",
+     "tu"
+    ],
+    [
+     "Cine e proprietar juridic?",
+     "societatea de leasing",
+     "societatea de leasing"
+    ],
+    [
+     "Cine suportă riscurile folosinței?",
+     "tu",
+     "proprietarul"
+    ],
+    [
+     "La final bunul rămâne la tine?",
+     "de regulă da",
+     "de regulă nu"
+    ],
+    [
+     "Apare în bilanțul tău?",
+     "DA",
+     "nu"
+    ],
+    [
+     "Cine îl amortizează?",
+     "tu",
+     "proprietarul"
+    ]
+   ],
+   "nota": "Contabilitatea urmărește fondul economic, nu titlul juridic: la leasingul financiar bunul e al tău din punct de vedere economic, deci stă în bilanțul tău."
+  },
+  {
+   "tip": "p",
+   "text": "Rândul care lămurește totul e al treilea. La leasingul financiar, tu suporți practic toate riscurile și beneficiile folosinței: plătești rata indiferent dacă bunul îți mai e util, îl asiguri, îl întreții, iar la final îl cumperi pentru o valoare simbolică. Juridic nu e al tău; economic, este."
+  },
+  {
+   "tip": "p",
+   "text": "La leasingul operațional, dimpotrivă, ești în poziția unui chiriaș. Acolo rata chiar e o cheltuială, se înregistrează în contul 612 Cheltuieli cu redevențele, locațiile și chiriile, iar bunul nu apare nicăieri în bilanțul tău."
+  },
+  {
+   "tip": "h",
+   "text": "Intrarea în leasing financiar"
+  },
+  {
+   "tip": "p",
+   "text": "La semnarea contractului se înregistrează două lucruri deodată, la valoarea finanțată: bunul, în contul lui de imobilizare, și datoria față de finanțator, în contul 167."
+  },
+  {
+   "tip": "p",
+   "text": "E un articol care surprinde la prima vedere — apar în bilanț și un activ, și o datorie, deși nu s-a plătit nimic și nu ești proprietar. Exact asta e ideea: bilanțul arată că folosești un bun de valoarea aceea și că datorezi suma aceea. Amândouă sunt adevărate."
+  },
+  {
+   "tip": "p",
+   "text": "Din acest moment, bunul se amortizează la tine, după regulile capitolului precedent. Amortizarea e cheltuiala ta lunară pentru folosința lui — și e singura cheltuială legată de bunul propriu-zis."
+  },
+  {
+   "tip": "h",
+   "text": "Rata: trei componente, trei drumuri"
+  },
+  {
+   "tip": "p",
+   "text": "Aici e miezul capitolului. Rata lunară pare o sumă unică, dar conține trei lucruri complet diferite, iar fiecare merge în altă parte."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "O rată dintr-un contract de 100.000 lei pe 48 de luni, cu dobândă 9% pe an",
+   "cap": [
+    "Componenta",
+    "Suma",
+    "Unde merge",
+    "Ce este"
+   ],
+   "randuri": [
+    [
+     "Principal",
+     "1.738,50",
+     "167 — datorie",
+     "rambursare: stinge datoria, NU e cheltuială"
+    ],
+    [
+     "Dobândă",
+     "750,00",
+     "666 — cheltuială",
+     "costul finanțării: e cheltuială"
+    ],
+    [
+     "TVA",
+     "472,82",
+     "4426 — creanță",
+     "se deduce în decont"
+    ],
+    [
+     "Total de plată",
+     "2.961,32",
+     "",
+     "cât iese efectiv din cont"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Prima rată dintr-un grafic cu anuitate constantă. În lunile următoare principalul crește și dobânda scade, dar rata rămâne aceeași."
+  },
+  {
+   "tip": "p",
+   "text": "Din cei 2.961,32 de lei plătiți, cheltuiala lunii e de 750 de lei. Restul e rambursare de datorie și taxă recuperabilă. La aceasta se adaugă amortizarea bunului, care e o cheltuială separată și care nu se plătește."
+  },
+  {
+   "tip": "cheie",
+   "text": "La leasingul financiar, cheltuiala lunii e dobânda plus amortizarea — nu rata. Rata e, în cea mai mare parte, rambursarea unei datorii."
+  },
+  {
+   "tip": "h",
+   "text": "Greșeala care se face și consecințele ei"
+  },
+  {
+   "tip": "p",
+   "text": "Reflexul răspândit e înregistrarea întregii rate pe cheltuială, cel mai adesea în 612, ca și cum ar fi o chirie. Pare inofensiv — banii chiar au ieșit, suma e reală — și produce patru efecte deodată, toate greșite."
+  },
+  {
+   "tip": "p",
+   "text": "Întâi, cheltuiala anului e umflată cu partea de principal, deci profitul e subevaluat. Apoi, dacă bunul e totuși amortizat, aceeași valoare intră în cheltuieli de două ori: o dată prin rată, o dată prin amortizare. Al treilea, bilanțul nu arată nici bunul, nici datoria — două lipsuri care fac firma să pară mai mică decât e. Și în fine, dobânda dispare din categoria cheltuielilor financiare, ceea ce falsifică orice analiză a costului finanțării."
+  },
+  {
+   "tip": "p",
+   "text": "E, din nou, tiparul întâlnit în capitolul 11: nu o eroare de calcul, ci o încadrare greșită. Balanța se închide impecabil în toate cele patru cazuri."
+  },
+  {
+   "tip": "h",
+   "text": "Graficul e sursa cifrelor"
+  },
+  {
+   "tip": "p",
+   "text": "Împărțirea ratei între principal și dobândă nu se estimează și nu se împarte în părți egale: vine din graficul de rambursare anexat contractului. La un grafic cu anuitate constantă, primele rate sunt aproape numai dobândă, iar ultimele aproape numai principal — deși suma plătită e identică."
+  },
+  {
+   "tip": "p",
+   "text": "În exemplul de mai sus, pe toată durata contractului se plătesc 100.000 de lei principal și 19.448 de lei dobândă. Firma care înregistrează rata „pe jumătate-jumătate” greșește în fiecare lună, în ambele sensuri, și abia la final ajunge din întâmplare la un total aproximativ corect."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea graficul merită introdus o singură dată în programul de contabilitate, la semnarea contractului, iar fiecare rată să fie preluată din el. E o operațiune care se face în două minute și scutește patruzeci și opt de decizii lunare luate din memorie."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Recunoașterea urmează fondul economic, potrivit criteriilor din reglementările contabile: transferul substanțial al riscurilor și beneficiilor aferente proprietății, existența unei opțiuni de cumpărare la o valoare suficient de mică, durata contractului acoperind cea mai mare parte din durata de viață economică, valoarea actualizată a plăților minime apropiată de valoarea justă. Patru precizări utile. Prima: la leasingul financiar, valoarea de intrare a activului e cea din contract — valoarea finanțată, fără TVA — iar dobânda nu se capitalizează, ci se recunoaște eșalonat, pe măsura scadenței ratelor. A doua: pentru TVA, leasingul e prestare de servicii, iar taxa se aplică pe fiecare rată, atât asupra principalului, cât și asupra dobânzii, care e contravaloarea serviciului de finanțare — nu o operațiune scutită de tipul creditării bancare; la vehiculele care intră sub limitarea de la art. 298, se deduce 50%. A treia: avansul plătit la semnare reduce valoarea finanțată, nu constituie cheltuială, iar valoarea reziduală achitată la final e o operațiune distinctă, care nu majorează valoarea de intrare deja înregistrată. A patra: la închiderea exercițiului, soldul contului 167 se prezintă defalcat pe termen scurt și termen lung, după scadența ratelor din următoarele douăsprezece luni; prezentarea integrală ca datorie pe termen lung denaturează indicatorii de lichiditate — o eroare fără efect asupra rezultatului, dar vizibilă imediat oricui citește bilanțul cu atenție."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cu acest capitol se încheie partea a cincea. Firma are acum evidența a tot ce deține, produce și plătește oamenilor săi: stocuri numărate și evaluate, producție cu cost, inventar confruntat cu realitatea, salarii calculate corect, bunuri amortizate pe durata folosinței."
+  },
+  {
+   "tip": "p",
+   "text": "Urmează partea în care toate acestea se întorc către stat: taxa pe valoarea adăugată, declarațiile și termenele lor. E faza a șaptea, și e cea în care greșelile costă cel mai repede."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Forma de leasing se stabilește după fondul economic — cine suportă riscurile folosinței — nu după titlul contractului.",
+    "La leasingul financiar bunul intră în bilanțul tău împreună cu datoria din 167, deși juridic nu e al tău; tu îl amortizezi.",
+    "Rata are trei componente cu destinații diferite: principalul stinge datoria, dobânda e cheltuială, TVA se deduce.",
+    "Cheltuiala lunii e dobânda plus amortizarea, nu rata. În exemplul din capitol: 750 de lei din 2.961,32 plătiți.",
+    "Înregistrarea întregii rate pe 612 umflă cheltuiala, poate dubla costul, ascunde activul și datoria din bilanț și falsifică analiza finanțării.",
+    "Împărțirea principal/dobândă vine din graficul contractului, nu dintr-o estimare — la anuitate constantă, primele rate sunt aproape numai dobândă.",
+    "La leasingul operațional totul e mai simplu: rata e chirie, în 612, iar bunul nu apare în bilanțul tău."
+   ]
+  }
+ ]
+}
