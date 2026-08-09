@@ -43,7 +43,7 @@ const NUME = 'Cuprins-carte-contabilitate-B5';
 const D = JSON.parse(fs.readFileSync(path.join(__dirname, 'cuprins-carte.json'), 'utf8'));
 // Capitolele scrise pe larg vin din fisiere proprii, ca sa nu umfle cuprinsul. Cartea se
 // construieste in ordinea din `CAPITOLE`: cuprinsul, apoi textul, in ordinea din carte.
-const CAPITOLE = ['cuprins-carte-cap1.json', 'cuprins-carte-cap2.json']
+const CAPITOLE = ['cuprins-carte-cap1.json', 'cuprins-carte-cap2.json', 'cuprins-carte-cap3.json']
   .map((f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), 'utf8')));
 
 const MM = 56.6929; // 1 mm in twips (1 inch = 1440 twips = 25,4 mm)
@@ -141,7 +141,8 @@ function faDocx() {
         tbl += '<w:tr>' + bl.cap.map((t, i) => cel(t, 'TabCap', 'EDF2EB', eNum(i))).join('') + '</w:tr>';
         bl.randuri.forEach((r, i) => {
           const fill = i % 2 ? 'F7FAF6' : null;
-          tbl += '<w:tr>' + r.map((t, j) => cel(t, 'TabCel', fill, eNum(j))).join('') + '</w:tr>';
+          const st = (bl.total && i === bl.randuri.length - 1) ? 'TabCap' : 'TabCel';
+          tbl += '<w:tr>' + r.map((t, j) => cel(t, st, fill, eNum(j))).join('') + '</w:tr>';
         });
         tbl += '</w:tbl>';
         b.push(tbl);
@@ -325,7 +326,7 @@ function faHtml() {
     padding:2.5pt 4pt; }
   .tab th.num, .tab td.num { text-align:right; }
   .tab td.num { font-variant-numeric:tabular-nums; }
-  .tab tbody tr:last-child td { font-weight:600; }
+  .tab tbody tr.total td { font-weight:600; }
   .tab-nota { font-size:8.5pt; color:var(--ink-2); margin:4pt 0 0 !important; font-style:italic;
     text-align:left !important; }
 </style></head><body>
@@ -366,7 +367,8 @@ function blocuriHtml(c) {
       out.push('<figure class="tab">'
         + (bl.titlu ? `<figcaption>${esc(bl.titlu)}</figcaption>` : '')
         + '<table><thead><tr>' + bl.cap.map((t, i) => `<th${num(bl, i)}>${esc(t)}</th>`).join('') + '</tr></thead><tbody>'
-        + bl.randuri.map((r) => '<tr>' + r.map((t, i) => `<td${num(bl, i)}>${esc(t)}</td>`).join('') + '</tr>').join('')
+        + bl.randuri.map((r, k) => `<tr${bl.total && k === bl.randuri.length - 1 ? ' class="total"' : ''}>`
+            + r.map((t, i) => `<td${num(bl, i)}>${esc(t)}</td>`).join('') + '</tr>').join('')
         + '</tbody></table>'
         + (bl.nota ? `<p class="tab-nota">${esc(bl.nota)}</p>` : '') + '</figure>');
     }
@@ -482,7 +484,7 @@ function faHtmlEcran() {
     padding:.42rem .6rem; }
   .tab th.num, .tab td.num { text-align:right; }
   .tab td.num { font-variant-numeric:tabular-nums; }
-  .tab tbody tr:last-child td { font-weight:600; }
+  .tab tbody tr.total td { font-weight:600; }
   .tab-nota { font-size:.88rem; color:var(--ink-2); margin:.6rem 0 0 !important; font-style:italic; }
 </style></head><body><div class="foaie">
 <header class="antet">
