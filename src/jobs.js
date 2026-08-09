@@ -128,6 +128,12 @@ function start(ctx) {
   // Vizitatorii site-ului (src/visitors.js): agregatul din memorie se coboara in baza la un minut,
   // si DOAR daca s-a schimbat ceva. Aici e tot pretul functiei — calea cererii ramane fara I/O.
   // Un `db.save()` per cerere ar fi costat O(colectie) de fiecare data (docs/scalare-crestere.md).
+  //
+  // `db.save(['visitors'])`: mutarea muta EXACT o colectie, si o stim din doua randuri mai sus —
+  // exact cazul pentru care exista indiciul. Fara el, jobul platea diff-ul pe TOATA baza (~101 ms
+  // la 80.000 de articole) din minut in minut, in gol: costul crestea cu baza, desi lucrarea lui
+  // ramane de cateva sute de randuri. Vezi src/persistPlan.js pentru plasa care margineste
+  // greseala daca cineva mai adauga vreodata o scriere in acest bloc.
   safeInterval('visitors-flush', () => {
     const vis = require('./visitors');
     vis.curata();                       // retentie: inregistrarile vechi ies inainte de a fi scrise
@@ -135,7 +141,7 @@ function start(ctx) {
     if (!lista) return;                 // nimic nou -> nicio scriere, nicio colectie marcata murdara
     const d = db.get();
     d.visitors = lista;
-    db.save();
+    db.save(['visitors']);
     metrics.jobResult('visitors-flush', lista.length + ' adrese');
   }, 60 * 1000);
 
