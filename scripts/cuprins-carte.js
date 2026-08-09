@@ -43,7 +43,7 @@ const NUME = 'Cuprins-carte-contabilitate-B5';
 const D = JSON.parse(fs.readFileSync(path.join(__dirname, 'cuprins-carte.json'), 'utf8'));
 // Capitolele scrise pe larg vin din fisiere proprii, ca sa nu umfle cuprinsul. Cartea se
 // construieste in ordinea din `CAPITOLE`: cuprinsul, apoi textul, in ordinea din carte.
-const CAPITOLE = ['cuprins-carte-cap1.json']
+const CAPITOLE = ['cuprins-carte-cap1.json', 'cuprins-carte-cap2.json']
   .map((f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), 'utf8')));
 
 const MM = 56.6929; // 1 mm in twips (1 inch = 1440 twips = 25,4 mm)
@@ -130,17 +130,18 @@ function faDocx() {
       } else if (bl.tip === 'tabel') {
         if (bl.titlu) b.push(P(bl.titlu, 'TabTitlu'));
         const lat = Math.floor(8800 / bl.cap.length);
-        const cel = (t, stil2, fill) => `<w:tc><w:tcPr><w:tcW w:w="${lat}" w:type="dxa"/>`
+        const cel = (t, stil2, fill, dr) => `<w:tc><w:tcPr><w:tcW w:w="${lat}" w:type="dxa"/>`
           + `<w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="C8D0CA"/>`
           + `<w:bottom w:val="single" w:sz="4" w:space="0" w:color="C8D0CA"/></w:tcBorders>`
           + (fill ? `<w:shd w:val="clear" w:fill="${fill}"/>` : '')
-          + `</w:tcPr>${P(t, stil2)}</w:tc>`;
+          + `</w:tcPr>${dr ? `<w:p><w:pPr><w:pStyle w:val="${stil2}"/><w:jc w:val="right"/></w:pPr>${run(t)}</w:p>` : P(t, stil2)}</w:tc>`;
         let tbl = '<w:tbl><w:tblPr><w:tblW w:w="8800" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr>'
           + '<w:tblGrid>' + bl.cap.map(() => `<w:gridCol w:w="${lat}"/>`).join('') + '</w:tblGrid>';
-        tbl += '<w:tr>' + bl.cap.map((t) => cel(t, 'TabCap', 'EDF2EB')).join('') + '</w:tr>';
+        const eNum = (i) => (bl.numerice || []).includes(i + 1);
+        tbl += '<w:tr>' + bl.cap.map((t, i) => cel(t, 'TabCap', 'EDF2EB', eNum(i))).join('') + '</w:tr>';
         bl.randuri.forEach((r, i) => {
           const fill = i % 2 ? 'F7FAF6' : null;
-          tbl += '<w:tr>' + r.map((t) => cel(t, 'TabCel', fill)).join('') + '</w:tr>';
+          tbl += '<w:tr>' + r.map((t, j) => cel(t, 'TabCel', fill, eNum(j))).join('') + '</w:tr>';
         });
         tbl += '</w:tbl>';
         b.push(tbl);
@@ -322,8 +323,8 @@ function faHtml() {
   .tab th { text-align:left; background:var(--bar); font-weight:600; }
   .tab th, .tab td { border-top:.6pt solid var(--rule); border-bottom:.6pt solid var(--rule);
     padding:2.5pt 4pt; }
-  .tab td:nth-child(even), .tab th:nth-child(even) { text-align:right; }
-  .tab td:nth-child(even) { font-variant-numeric:tabular-nums; }
+  .tab th.num, .tab td.num { text-align:right; }
+  .tab td.num { font-variant-numeric:tabular-nums; }
   .tab tbody tr:last-child td { font-weight:600; }
   .tab-nota { font-size:8.5pt; color:var(--ink-2); margin:4pt 0 0 !important; font-style:italic;
     text-align:left !important; }
@@ -344,6 +345,11 @@ ${CAPITOLE.map(blocuriHtml).join('\n')}
 
 // Blocurile unui capitol -> HTML. Acelasi marcaj pentru ecran si pentru tipar; difera doar CSS-ul,
 // deci un bloc nou se adauga o singura data, nu in doua locuri care ar putea drifta.
+// Coloanele numerice se DECLARA in date (`numerice`, 1-based), nu se ghicesc din pozitie.
+// Regula veche `nth-child(even)` mergea la tabelele cu 2 si 4 coloane si se inversa la cel cu 5:
+// textul iesea aliniat la dreapta si cifrele la stanga.
+const num = (bl, i) => ((bl.numerice || []).includes(i + 1) ? ' class="num"' : '');
+
 function blocuriHtml(c) {
   const out = [`<section class="capitol"><p class="cap-parte">${esc(c.parte)}</p>`
     + `<p class="cap-nr">Capitolul ${esc(c.nr)}</p><h2 class="cap-titlu">${esc(c.titlu)}</h2>`];
@@ -359,8 +365,8 @@ function blocuriHtml(c) {
     } else if (bl.tip === 'tabel') {
       out.push('<figure class="tab">'
         + (bl.titlu ? `<figcaption>${esc(bl.titlu)}</figcaption>` : '')
-        + '<table><thead><tr>' + bl.cap.map((t) => `<th>${esc(t)}</th>`).join('') + '</tr></thead><tbody>'
-        + bl.randuri.map((r) => '<tr>' + r.map((t) => `<td>${esc(t)}</td>`).join('') + '</tr>').join('')
+        + '<table><thead><tr>' + bl.cap.map((t, i) => `<th${num(bl, i)}>${esc(t)}</th>`).join('') + '</tr></thead><tbody>'
+        + bl.randuri.map((r) => '<tr>' + r.map((t, i) => `<td${num(bl, i)}>${esc(t)}</td>`).join('') + '</tr>').join('')
         + '</tbody></table>'
         + (bl.nota ? `<p class="tab-nota">${esc(bl.nota)}</p>` : '') + '</figure>');
     }
@@ -474,8 +480,8 @@ function faHtmlEcran() {
   .tab th { text-align:left; background:var(--bar); font-weight:600; }
   .tab th, .tab td { border-top:1px solid var(--rule); border-bottom:1px solid var(--rule);
     padding:.42rem .6rem; }
-  .tab td:nth-child(even), .tab th:nth-child(even) { text-align:right; }
-  .tab td:nth-child(even) { font-variant-numeric:tabular-nums; }
+  .tab th.num, .tab td.num { text-align:right; }
+  .tab td.num { font-variant-numeric:tabular-nums; }
   .tab tbody tr:last-child td { font-weight:600; }
   .tab-nota { font-size:.88rem; color:var(--ink-2); margin:.6rem 0 0 !important; font-style:italic; }
 </style></head><body><div class="foaie">

@@ -1,0 +1,183 @@
+{
+ "parte": "Partea I · De ce arată contabilitatea așa",
+ "nr": "2",
+ "titlu": "De ce fiecare sumă se scrie de două ori",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Capitolul dinainte s-a încheiat cu o promisiune. În tabelul care arăta unde stă firma la 31 ale lunii, cele două coloane ieșeau egale — 75.000 de o parte, 75.000 de cealaltă. Am spus atunci că nu e o întâmplare. Acum se vede de ce."
+  },
+  {
+   "tip": "p",
+   "text": "Răspunsul e o singură idee, iar din ea decurge aproape tot restul contabilității: nimic nu apare din nimic. Orice sumă care intră undeva vine de undeva anume, iar contabilitatea scrie amândouă capetele."
+  },
+  {
+   "tip": "h",
+   "text": "Banii nu apar, se mută"
+  },
+  {
+   "tip": "p",
+   "text": "Când o firmă cumpără marfă de 60.000 de lei pe credit, s-au întâmplat două lucruri deodată, nu unul. Firma are marfă în plus, de 60.000. Și are o datorie în plus, tot de 60.000. Nu poți avea marfa fără să ai și datoria; ea a venit de undeva."
+  },
+  {
+   "tip": "p",
+   "text": "Când clientul plătește 40.000, iarăși două lucruri: banii din cont cresc cu 40.000, iar dreptul de a-i mai cere clientului scade cu exact atât. Firma nu s-a îmbogățit în clipa aceea — a schimbat o formă de avere (o creanță) cu alta (bani)."
+  },
+  {
+   "tip": "p",
+   "text": "Asta e tot. Orice operațiune are un de unde și un unde, iar cele două sunt egale prin natura lucrurilor, nu prin convenție contabilă. Contabilitatea nu inventează regula; doar refuză să scrie doar jumătate din ea."
+  },
+  {
+   "tip": "h",
+   "text": "Luna firmei noastre, desfăcută"
+  },
+  {
+   "tip": "p",
+   "text": "Să luăm exact aceleași patru operațiuni din capitolul trecut și să le scriem pe amândouă capetele. Nu apar cifre noi — sunt aceleași, privite mai atent."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Fiecare operațiune, pe două capete",
+   "cap": [
+    "Ce s-a întâmplat",
+    "Ce a obținut firma",
+    "Lei",
+    "De unde a venit",
+    "Lei"
+   ],
+   "randuri": [
+    [
+     "Cumpărat marfă, pe credit",
+     "Marfă în depozit",
+     "60.000",
+     "Datorie către furnizor",
+     "60.000"
+    ],
+    [
+     "Vândut marfa",
+     "Drept de încasat de la client",
+     "100.000",
+     "Venit din vânzare",
+     "100.000"
+    ],
+    [
+     "…iar marfa a ieșit din depozit",
+     "Cheltuială cu marfa vândută",
+     "60.000",
+     "Marfa din depozit",
+     "60.000"
+    ],
+    [
+     "Încasat de la client",
+     "Bani în cont",
+     "40.000",
+     "Dreptul de a-i mai cere",
+     "40.000"
+    ],
+    [
+     "Plătit furnizorului",
+     "Scăderea datoriei",
+     "55.000",
+     "Banii din cont",
+     "55.000"
+    ],
+    [
+     "Total",
+     "",
+     "315.000",
+     "",
+     "315.000"
+    ]
+   ],
+   "nota": "Cele două coloane de sume nu sunt egale fiindcă cineva le-a potrivit la sfârșit. Sunt egale pentru că fiecare rând, luat singur, are aceeași sumă în ambele capete.",
+   "numerice": [
+    3,
+    5
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "Observă al doilea și al treilea rând. O singură vânzare a cerut două înregistrări, fiindcă s-au petrecut două lucruri distincte: firma a câștigat dreptul la 100.000 și, separat, a rămas fără marfa care o costase 60.000. Diferența dintre ele — 40.000 — e câștigul despre care vorbea capitolul trecut. El nu se scrie nicăieri direct; iese din scădere."
+  },
+  {
+   "tip": "cheie",
+   "text": "Egalitatea totalurilor nu e o verificare adăugată la sfârșit. E consecința felului în care s-a scris fiecare rând."
+  },
+  {
+   "tip": "h",
+   "text": "Debit și credit: două cuvinte care nu înseamnă ce pare"
+  },
+  {
+   "tip": "p",
+   "text": "Până aici am folosit „ce a obținut” și „de unde a venit”. Contabilitatea are pentru ele două nume vechi, și singura dificultate reală a acestui capitol e că ele sună a altceva decât înseamnă."
+  },
+  {
+   "tip": "p",
+   "text": "Coloana din stânga a oricărei fișe de cont se numește debit. Cea din dreapta, credit. Atât. Nu înseamnă „bun” și „rău”, nici „plus” și „minus”, și nu au nicio legătură cu cardul de debit sau cu a fi creditat de bancă."
+  },
+  {
+   "tip": "p",
+   "text": "Ce fac ele depinde de sertarul în care scrii. La un cont de bani sau de marfă, ce se adună trece prin stânga: crește pe debit. La o datorie sau la un venit, invers: crește pe dreapta, pe credit. Pare arbitrar, și în parte chiar este — e o convenție veche de cinci sute de ani. Important e că e aceeași pentru toată lumea, ceea ce face ca două contabilități diferite să poată fi comparate."
+  },
+  {
+   "tip": "p",
+   "text": "Un patron nu are nevoie să rețină regula asta. Un program de contabilitate o aplică singur: tu spui ce document ai primit, el alege coloanele. Merită însă să știi că atunci când cineva spune „am debitat contul 5121”, nu spune decât „am scris suma în coloana din stânga a fișei băncii” — adică „au intrat bani”."
+  },
+  {
+   "tip": "h",
+   "text": "Verificarea care iese pe gratis"
+  },
+  {
+   "tip": "p",
+   "text": "Din faptul că fiecare rând are sume egale în ambele capete decurge ceva foarte practic: dacă aduni toate sumele scrise în stânga, la nivelul întregii firme, și toate sumele scrise în dreapta, cele două totaluri trebuie să fie identice. La firma noastră, 315.000 și 315.000."
+  },
+  {
+   "tip": "p",
+   "text": "Dacă nu sunt, undeva s-a scris o singură jumătate, sau s-a scris o sumă greșit într-un singur capăt. Nu știi încă unde, dar știi sigur că există o eroare. Instrumentul care face confruntarea asta se numește balanță de verificare și are un capitol al lui mai încolo în carte."
+  },
+  {
+   "tip": "h",
+   "text": "Și, mai important, ce NU prinde verificarea"
+  },
+  {
+   "tip": "p",
+   "text": "Aici trebuie spus, din primul capitol tehnic al cărții, un lucru pe care manualele îl amână prea mult: egalitatea totalurilor nu dovedește că cifrele sunt corecte. Dovedește doar că sunt simetrice."
+  },
+  {
+   "tip": "p",
+   "text": "Dacă treci o factură de 1.000 de lei ca fiind de 10.000, dar o treci greșit în ambele capete, totalurile ies egale și verificarea tace. Dacă înregistrezi o cheltuială corectă în sertarul nepotrivit, la fel. Dacă uiți cu totul un document, cu atât mai mult: ce nu s-a scris deloc nu dezechilibrează nimic."
+  },
+  {
+   "tip": "p",
+   "text": "Așadar partida dublă prinde o clasă de erori — jumătățile lipsă — și e oarbă la restul. E o unealtă foarte bună, nu una atotputernică, iar diferența dintre cele două se plătește scump când e confundată. Capitolul 33 al acestei cărți e dedicat exact acestei confuzii."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Ceea ce mai sus se numește „cele două capete” e dubla înregistrare, cerută de Legea contabilității: orice operațiune se înregistrează simultan în debitul unui cont și în creditul altuia, cu aceeași sumă. Din ea decurg cele patru egalități ale balanței de verificare — solduri inițiale, rulaje, totaluri de sume, solduri finale — care sunt consecințe, nu controale independente: o eroare simetrică le satisface pe toate patru. Rândurile doi și trei din tabel sunt cazul clasic de operațiune cu dublă articulare (recunoașterea venitului separat de descărcarea gestiunii), acolo unde un program care ar scrie doar venitul ar lăsa stocul umflat și rezultatul fals, cu balanța perfect echilibrată. Convenția debit/credit e formalizată de Luca Pacioli în 1494, dar preexista practicii negustorești venețiene; utilitatea ei nu stă în semnificația cuvintelor, ci în faptul că poziția e fixă și verificabilă."
+  },
+  {
+   "tip": "h",
+   "text": "Unde duce asta"
+  },
+  {
+   "tip": "p",
+   "text": "Dacă fiecare sumă se scrie în două locuri, urmează întrebarea firească: în care anume? Marfa merge într-un loc, datoria către furnizor în altul, venitul în al treilea. Locurile acestea sunt conturile, iar lista lor completă e planul de conturi."
+  },
+  {
+   "tip": "p",
+   "text": "Nu e o listă de memorat — e un vocabular, și, ca la orice vocabular, se învață folosindu-l. Capitolul următor arată cum e organizat și de ce cifrele care îl compun nu sunt alese la întâmplare."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Orice operațiune are două capete: ce a obținut firma și de unde a venit. Contabilitatea le scrie pe amândouă, cu aceeași sumă.",
+    "De aceea totalurile ies egale — nu pentru că le potrivește cineva la sfârșit.",
+    "Debit înseamnă coloana din stânga, credit coloana din dreapta. Nimic mai mult; ce fac depinde de cont.",
+    "O vânzare cere două înregistrări: venitul, separat de ieșirea mărfii din depozit. Câștigul iese din diferența lor.",
+    "Egalitatea prinde jumătățile lipsă și e oarbă la erorile simetrice, la sertarul greșit și la documentul uitat."
+   ]
+  }
+ ]
+}

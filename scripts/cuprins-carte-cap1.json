@@ -3,67 +3,192 @@
  "nr": "1",
  "titlu": "Două întrebări și niciuna despre conturi",
  "blocuri": [
-  { "tip": "p", "text": "Un patron care își sună contabilul la început de lună nu întreabă niciodată care e soldul contului 4111. Întreabă un singur lucru, în două feluri: «am făcut bani luna trecută?» sau, mai scurt, «cum stăm?»" },
-  { "tip": "p", "text": "Întrebarea pare una singură. Sunt două, și au răspunsuri diferite, care se calculează altfel și se citesc din documente diferite. Toată contabilitatea — planul de conturi, partida dublă, cele paisprezece faze din cuprinsul acestei cărți — există ca să răspundă la ele. Merită numite din primul capitol, fiindcă tot restul le servește." },
-
-  { "tip": "h", "text": "Întâi, de ce nu e destul să te uiți în cont" },
-  { "tip": "p", "text": "Cel mai firesc reflex e să deschizi aplicația băncii. Dacă azi ai mai mult decât acum o lună, a fost o lună bună. E un instrument onest și îl folosește toată lumea — dar răspunde la altceva decât crezi." },
-  { "tip": "p", "text": "Să luăm o firmă de comerț, într-o lună obișnuită. A pornit luna cu 30.000 de lei în cont. A cumpărat marfă de 60.000, pe care furnizorul i-a lăsat-o pe credit. A vândut toată marfa aceea cu 100.000. Din cei 100.000 facturați, clienții i-au plătit până la sfârșitul lunii doar 40.000 — restul au termen în luna următoare. Din datoria de 60.000 către furnizor, firma a achitat 55.000." },
-  { "tip": "tabel",
-    "titlu": "Ce s-a întâmplat în cont",
-    "cap": ["Mișcare", "Lei"],
-    "randuri": [
-      ["Sold la început de lună", "30.000"],
-      ["Încasat de la clienți", "+40.000"],
-      ["Plătit furnizorului", "−55.000"],
-      ["Sold la sfârșit de lună", "15.000"]
+  {
+   "tip": "p",
+   "text": "Un patron care își sună contabilul la început de lună nu întreabă niciodată care e soldul contului 4111. Întreabă un singur lucru, în două feluri: «am făcut bani luna trecută?» sau, mai scurt, «cum stăm?»"
+  },
+  {
+   "tip": "p",
+   "text": "Întrebarea pare una singură. Sunt două, și au răspunsuri diferite, care se calculează altfel și se citesc din documente diferite. Toată contabilitatea — planul de conturi, partida dublă, cele paisprezece faze din cuprinsul acestei cărți — există ca să răspundă la ele. Merită numite din primul capitol, fiindcă tot restul le servește."
+  },
+  {
+   "tip": "h",
+   "text": "Întâi, de ce nu e destul să te uiți în cont"
+  },
+  {
+   "tip": "p",
+   "text": "Cel mai firesc reflex e să deschizi aplicația băncii. Dacă azi ai mai mult decât acum o lună, a fost o lună bună. E un instrument onest și îl folosește toată lumea — dar răspunde la altceva decât crezi."
+  },
+  {
+   "tip": "p",
+   "text": "Să luăm o firmă de comerț, într-o lună obișnuită. A pornit luna cu 30.000 de lei în cont. A cumpărat marfă de 60.000, pe care furnizorul i-a lăsat-o pe credit. A vândut toată marfa aceea cu 100.000. Din cei 100.000 facturați, clienții i-au plătit până la sfârșitul lunii doar 40.000 — restul au termen în luna următoare. Din datoria de 60.000 către furnizor, firma a achitat 55.000."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce s-a întâmplat în cont",
+   "cap": [
+    "Mișcare",
+    "Lei"
+   ],
+   "randuri": [
+    [
+     "Sold la început de lună",
+     "30.000"
     ],
-    "nota": "Banii din cont au scăzut cu 15.000 de lei." },
-  { "tip": "p", "text": "Privind doar contul, luna arată prost: ai plecat cu 30.000 și ai rămas cu 15.000. Și totuși firma a vândut cu 100.000 o marfă care o costase 60.000. A câștigat, în luna aceea, 40.000 de lei." },
-  { "tip": "p", "text": "Ambele afirmații sunt adevărate în același timp. Banii au scăzut cu 15.000 și câștigul a fost de 40.000. Nu e o contradicție și nici o subtilitate contabilă: sunt pur și simplu răspunsurile la două întrebări diferite." },
-
-  { "tip": "h", "text": "Prima întrebare: cât am câștigat?" },
-  { "tip": "p", "text": "Câștigul unei perioade se măsoară punând față în față ce ai vândut și cât te-a costat ce ai vândut — indiferent când intră și când ies banii." },
-  { "tip": "p", "text": "În exemplul nostru: ai vândut de 100.000, marfa aceea te costase 60.000, deci ai câștigat 40.000. Faptul că un client îți plătește peste trei săptămâni nu schimbă cu nimic realitatea că marfa a plecat din depozit și că firma are dreptul la bani. Nici faptul că îi mai datorezi 5.000 furnizorului nu schimbă cât te-a costat marfa." },
-  { "tip": "p", "text": "Documentul care răspunde la întrebarea asta se numește contul de profit și pierdere. E o listă cu două coloane pentru o perioadă anume: ce a intrat ca valoare (venituri) și ce s-a consumat ca să intre (cheltuieli). Diferența e rezultatul." },
-  { "tip": "cheie", "text": "Câștigul se măsoară pe o PERIOADĂ — o lună, un an. Nu are sens fără să spui pentru cât timp." },
-
-  { "tip": "h", "text": "A doua întrebare: ce am și cui datorez?" },
-  { "tip": "p", "text": "A doua întrebare nu e despre o perioadă, ci despre o clipă. La 31 ale lunii, ce se află în firmă și cine are pretenții asupra a ceea ce se află acolo?" },
-  { "tip": "p", "text": "Firma din exemplu are, la sfârșitul lunii, 15.000 de lei în cont și 60.000 de încasat de la clienți — deci 75.000 de lei în total. Marfa nu mai e, s-a vândut. Din cei 75.000, cinci mii nu sunt de fapt ai firmei: sunt datorați furnizorului. Restul de 70.000 rămân ale afacerii — cei 30.000 puși la început plus cei 40.000 câștigați în lună." },
-  { "tip": "tabel",
-    "titlu": "Unde stă firma la 31 ale lunii",
-    "cap": ["Ce are firma", "Lei", "Cine are pretenții", "Lei"],
-    "randuri": [
-      ["Bani în cont", "15.000", "Datorii către furnizor", "5.000"],
-      ["De încasat de la clienți", "60.000", "Banii puși de patron", "30.000"],
-      ["", "", "Câștigul lunii", "40.000"],
-      ["Total", "75.000", "Total", "75.000"]
+    [
+     "Încasat de la clienți",
+     "+40.000"
     ],
-    "nota": "Cele două coloane sunt egale. Nu din întâmplare — tot ce se află în firmă vine de undeva, iar fiecare leu are un proprietar: fie un creditor, fie patronul." },
-  { "tip": "p", "text": "Documentul care răspunde aici se numește bilanț. Nu e un raport despre cum a mers, ci o fotografie: la data asta, atât ai și atât datorezi." },
-  { "tip": "cheie", "text": "Poziția se măsoară la o DATĂ. Nu are sens fără să spui la care zi." },
-
-  { "tip": "h", "text": "Cele două întrebări se ating într-un singur punct" },
-  { "tip": "p", "text": "Uită-te încă o dată la coloana din dreapta a tabelului de mai sus. Câștigul lunii, cei 40.000, apare acolo. Nu e o coincidență de așezare în pagină: câștigul dintr-o perioadă crește exact cu atât ceea ce rămâne al patronului." },
-  { "tip": "p", "text": "Asta e legătura dintre cele două documente, și e singura care contează la început: contul de profit și pierdere explică de ce averea firmei e azi alta decât era la începutul perioadei. Unul spune cât, celălalt spune de ce." },
-  { "tip": "p", "text": "De aceea nu poți alege doar unul. Un patron care se uită numai la câștig poate ajunge să dea faliment cu profit pe hârtie, fiindcă banii intră mai târziu decât ies. Unul care se uită numai la cont poate crede că merge prost o lună în care a investit, sau bine o lună în care a încasat vechituri." },
-
-  { "tip": "contabil", "titlu": "Pentru contabil",
-    "text": "Ceea ce mai sus e numit «indiferent când intră banii» are un nume în reglementări: contabilitatea de angajamente. Veniturile și cheltuielile se recunosc când se produc operațiunile, nu când se încasează sau se plătesc, iar rezultatul se atribuie exercițiului căruia îi aparține — principiul independenței exercițiului. Cele două documente din acest capitol sunt contul de profit și pierdere (formularul F20) și bilanțul (F10), singurele două care se depun în fișierul electronic la ANAF; fluxul de trezorerie și celelalte anexe, care ar fi răspuns la întrebarea despre bani, se atașează separat. Egalitatea din al doilea tabel — total resurse = total utilizări — nu e o verificare adăugată la sfârșit, ci consecința felului în care se înregistrează fiecare operațiune: subiectul capitolului următor." },
-
-  { "tip": "h", "text": "De ce urmează conturile abia după asta" },
-  { "tip": "p", "text": "Un manual clasic ar fi început cu planul de conturi. E o ordine care are logica ei, dar îl lasă pe cititor fără răspuns la întrebarea «de ce». Conturile sunt o unealtă, nu un scop: sertare în care se strâng sumele, ca la sfârșitul perioadei să poți compune cele două documente fără să răscolești fiecare hârtie." },
-  { "tip": "p", "text": "Un program de contabilitate face lucrul ăsta invizibil. Tu îi spui ce document ai primit — o factură de la furnizor, o chitanță, un extras — iar el alege sertarele. Rămâne însă util să știi ce sertare există și de ce sunt atâtea, fiindcă atunci când o cifră arată ciudat, tot acolo te întorci." },
-  { "tip": "p", "text": "Înainte de sertare mai e ceva de lămurit: de ce fiecare sumă se scrie în două locuri deodată. Asta nu e o convenție birocratică, ci exact mecanismul care face ca cele două coloane din al doilea tabel să iasă egale de fiecare dată. E subiectul capitolului următor." },
-
-  { "tip": "recap", "titlu": "De reținut din acest capitol",
-    "puncte": [
-      "Contabilitatea răspunde la două întrebări, nu la una: cât am câștigat într-o perioadă și ce am la o dată anume.",
-      "Câștigul și banii din cont sunt lucruri diferite. O lună poate fi profitabilă și să scadă totuși soldul.",
-      "Câștigul se citește din contul de profit și pierdere, poziția din bilanț.",
-      "Cele două se leagă într-un punct: câștigul perioadei mărește exact cu atât partea care rămâne a patronului.",
-      "Conturile sunt unealta prin care se ajunge la aceste două documente — de aceea vin după ele, nu înainte."
-    ] }
+    [
+     "Plătit furnizorului",
+     "−55.000"
+    ],
+    [
+     "Sold la sfârșit de lună",
+     "15.000"
+    ]
+   ],
+   "nota": "Banii din cont au scăzut cu 15.000 de lei.",
+   "numerice": [
+    2
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "Privind doar contul, luna arată prost: ai plecat cu 30.000 și ai rămas cu 15.000. Și totuși firma a vândut cu 100.000 o marfă care o costase 60.000. A câștigat, în luna aceea, 40.000 de lei."
+  },
+  {
+   "tip": "p",
+   "text": "Ambele afirmații sunt adevărate în același timp. Banii au scăzut cu 15.000 și câștigul a fost de 40.000. Nu e o contradicție și nici o subtilitate contabilă: sunt pur și simplu răspunsurile la două întrebări diferite."
+  },
+  {
+   "tip": "h",
+   "text": "Prima întrebare: cât am câștigat?"
+  },
+  {
+   "tip": "p",
+   "text": "Câștigul unei perioade se măsoară punând față în față ce ai vândut și cât te-a costat ce ai vândut — indiferent când intră și când ies banii."
+  },
+  {
+   "tip": "p",
+   "text": "În exemplul nostru: ai vândut de 100.000, marfa aceea te costase 60.000, deci ai câștigat 40.000. Faptul că un client îți plătește peste trei săptămâni nu schimbă cu nimic realitatea că marfa a plecat din depozit și că firma are dreptul la bani. Nici faptul că îi mai datorezi 5.000 furnizorului nu schimbă cât te-a costat marfa."
+  },
+  {
+   "tip": "p",
+   "text": "Documentul care răspunde la întrebarea asta se numește contul de profit și pierdere. E o listă cu două coloane pentru o perioadă anume: ce a intrat ca valoare (venituri) și ce s-a consumat ca să intre (cheltuieli). Diferența e rezultatul."
+  },
+  {
+   "tip": "cheie",
+   "text": "Câștigul se măsoară pe o PERIOADĂ — o lună, un an. Nu are sens fără să spui pentru cât timp."
+  },
+  {
+   "tip": "h",
+   "text": "A doua întrebare: ce am și cui datorez?"
+  },
+  {
+   "tip": "p",
+   "text": "A doua întrebare nu e despre o perioadă, ci despre o clipă. La 31 ale lunii, ce se află în firmă și cine are pretenții asupra a ceea ce se află acolo?"
+  },
+  {
+   "tip": "p",
+   "text": "Firma din exemplu are, la sfârșitul lunii, 15.000 de lei în cont și 60.000 de încasat de la clienți — deci 75.000 de lei în total. Marfa nu mai e, s-a vândut. Din cei 75.000, cinci mii nu sunt de fapt ai firmei: sunt datorați furnizorului. Restul de 70.000 rămân ale afacerii — cei 30.000 puși la început plus cei 40.000 câștigați în lună."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Unde stă firma la 31 ale lunii",
+   "cap": [
+    "Ce are firma",
+    "Lei",
+    "Cine are pretenții",
+    "Lei"
+   ],
+   "randuri": [
+    [
+     "Bani în cont",
+     "15.000",
+     "Datorii către furnizor",
+     "5.000"
+    ],
+    [
+     "De încasat de la clienți",
+     "60.000",
+     "Banii puși de patron",
+     "30.000"
+    ],
+    [
+     "",
+     "",
+     "Câștigul lunii",
+     "40.000"
+    ],
+    [
+     "Total",
+     "75.000",
+     "Total",
+     "75.000"
+    ]
+   ],
+   "nota": "Cele două coloane sunt egale. Nu din întâmplare — tot ce se află în firmă vine de undeva, iar fiecare leu are un proprietar: fie un creditor, fie patronul.",
+   "numerice": [
+    2,
+    4
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "Documentul care răspunde aici se numește bilanț. Nu e un raport despre cum a mers, ci o fotografie: la data asta, atât ai și atât datorezi."
+  },
+  {
+   "tip": "cheie",
+   "text": "Poziția se măsoară la o DATĂ. Nu are sens fără să spui la care zi."
+  },
+  {
+   "tip": "h",
+   "text": "Cele două întrebări se ating într-un singur punct"
+  },
+  {
+   "tip": "p",
+   "text": "Uită-te încă o dată la coloana din dreapta a tabelului de mai sus. Câștigul lunii, cei 40.000, apare acolo. Nu e o coincidență de așezare în pagină: câștigul dintr-o perioadă crește exact cu atât ceea ce rămâne al patronului."
+  },
+  {
+   "tip": "p",
+   "text": "Asta e legătura dintre cele două documente, și e singura care contează la început: contul de profit și pierdere explică de ce averea firmei e azi alta decât era la începutul perioadei. Unul spune cât, celălalt spune de ce."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea nu poți alege doar unul. Un patron care se uită numai la câștig poate ajunge să dea faliment cu profit pe hârtie, fiindcă banii intră mai târziu decât ies. Unul care se uită numai la cont poate crede că merge prost o lună în care a investit, sau bine o lună în care a încasat vechituri."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Ceea ce mai sus e numit «indiferent când intră banii» are un nume în reglementări: contabilitatea de angajamente. Veniturile și cheltuielile se recunosc când se produc operațiunile, nu când se încasează sau se plătesc, iar rezultatul se atribuie exercițiului căruia îi aparține — principiul independenței exercițiului. Cele două documente din acest capitol sunt contul de profit și pierdere (formularul F20) și bilanțul (F10), singurele două care se depun în fișierul electronic la ANAF; fluxul de trezorerie și celelalte anexe, care ar fi răspuns la întrebarea despre bani, se atașează separat. Egalitatea din al doilea tabel — total resurse = total utilizări — nu e o verificare adăugată la sfârșit, ci consecința felului în care se înregistrează fiecare operațiune: subiectul capitolului următor."
+  },
+  {
+   "tip": "h",
+   "text": "De ce urmează conturile abia după asta"
+  },
+  {
+   "tip": "p",
+   "text": "Un manual clasic ar fi început cu planul de conturi. E o ordine care are logica ei, dar îl lasă pe cititor fără răspuns la întrebarea «de ce». Conturile sunt o unealtă, nu un scop: sertare în care se strâng sumele, ca la sfârșitul perioadei să poți compune cele două documente fără să răscolești fiecare hârtie."
+  },
+  {
+   "tip": "p",
+   "text": "Un program de contabilitate face lucrul ăsta invizibil. Tu îi spui ce document ai primit — o factură de la furnizor, o chitanță, un extras — iar el alege sertarele. Rămâne însă util să știi ce sertare există și de ce sunt atâtea, fiindcă atunci când o cifră arată ciudat, tot acolo te întorci."
+  },
+  {
+   "tip": "p",
+   "text": "Înainte de sertare mai e ceva de lămurit: de ce fiecare sumă se scrie în două locuri deodată. Asta nu e o convenție birocratică, ci exact mecanismul care face ca cele două coloane din al doilea tabel să iasă egale de fiecare dată. E subiectul capitolului următor."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Contabilitatea răspunde la două întrebări, nu la una: cât am câștigat într-o perioadă și ce am la o dată anume.",
+    "Câștigul și banii din cont sunt lucruri diferite. O lună poate fi profitabilă și să scadă totuși soldul.",
+    "Câștigul se citește din contul de profit și pierdere, poziția din bilanț.",
+    "Cele două se leagă într-un punct: câștigul perioadei mărește exact cu atât partea care rămâne a patronului.",
+    "Conturile sunt unealta prin care se ajunge la aceste două documente — de aceea vin după ele, nu înainte."
+   ]
+  }
  ]
 }
