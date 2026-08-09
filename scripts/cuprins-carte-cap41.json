@@ -1,0 +1,127 @@
+{
+ "parte": "Partea IX · Închiderea · fazele 10–11",
+ "nr": "41",
+ "titlu": "Blocarea perioadei",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "O lună închisă înseamnă o lună raportată. Balanța ei a stat la baza unor declarații depuse, iar declarațiile acelea au produs plăți, recipise și, eventual, o inspecție. Din acel moment, luna nu mai e a firmei: e o afirmație publică."
+  },
+  {
+   "tip": "p",
+   "text": "Blocarea perioadei e mecanismul care face afirmația stabilă. După ea, în luna respectivă nu se mai poate înregistra, modifica sau șterge nimic."
+  },
+  {
+   "tip": "h",
+   "text": "De ce nu ajunge disciplina"
+  },
+  {
+   "tip": "p",
+   "text": "Obiecția firească a oricărui contabil experimentat e că nimeni nu umblă intenționat într-o lună închisă. E adevărat, și e irelevant: problema nu e intenția, ci accidentul."
+  },
+  {
+   "tip": "p",
+   "text": "O factură cu data scrisă greșit — 2026-05-30 în loc de 2026-06-30 — intră în luna trecută fără ca cineva să observe. O corecție făcută „ca să iasă” într-o lună veche pare inofensivă. Un import de documente cu date vechi rescrie o perioadă întreagă."
+  },
+  {
+   "tip": "p",
+   "text": "Niciuna nu e rea-credință. Toate produc același rezultat: balanța lunii mai nu mai e cea pe baza căreia s-a depus decontul lunii mai, iar diferența se descoperă cel mai devreme la o inspecție."
+  },
+  {
+   "tip": "cheie",
+   "text": "O perioadă blocată nu apără contabilitatea de oameni răi. O apără de greșeli obișnuite, care altfel s-ar descoperi cel mai târziu posibil."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se întâmplă cu o corecție necesară"
+  },
+  {
+   "tip": "p",
+   "text": "Blocarea nu interzice corecțiile — ar fi absurd. Le mută în timp: eroarea dintr-o lună închisă se corectează printr-o notă de storno datată într-o lună deschisă, adică exact procedura din capitolul 29."
+  },
+  {
+   "tip": "p",
+   "text": "Rezultatul e că luna închisă rămâne așa cum a fost raportată, iar corecția apare acolo unde poate fi văzută și explicată. Cine citește ambele luni vede și eroarea, și îndreptarea — ceea ce e mai mult decât ar fi văzut dacă cifra fusese pur și simplu schimbată."
+  },
+  {
+   "tip": "p",
+   "text": "E aceeași logică ca la storno, aplicată la scara perioadei: nu se rade, se scrie alături."
+  },
+  {
+   "tip": "h",
+   "text": "Forțarea"
+  },
+  {
+   "tip": "p",
+   "text": "Există situații în care închiderea trebuie făcută peste un pas neterminat: o declarație care nu s-a putut depune din motive tehnice, un extras care nu a sosit, un termen care nu mai poate fi amânat."
+  },
+  {
+   "tip": "p",
+   "text": "Un sistem care interzice complet forțarea va fi ocolit — prin scrieri directe, prin fișiere paralele, prin „o rezolv eu altfel”. Un sistem care o permite fără urmă e ca și cum nu ar avea deloc control. Soluția e a treia: se permite, dar cu preț."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce cere o forțare",
+   "cap": [
+    "Cerința",
+    "De ce"
+   ],
+   "randuri": [
+    [
+     "dreptul de administrator",
+     "decizia depășește nivelul de execuție"
+    ],
+    [
+     "motiv scris",
+     "peste șase luni, nimeni nu își mai amintește"
+    ],
+    [
+     "consemnare permanentă",
+     "rămâne în dosarul lunii, nu se șterge"
+    ]
+   ],
+   "nota": "Cele trei împreună fac forțarea posibilă, dar niciodată comodă — exact echilibrul care trebuie."
+  },
+  {
+   "tip": "p",
+   "text": "Motivul scris e cerința care contează cel mai mult, și nu pentru control. E pentru cel care va citi peste un an — de multe ori aceeași persoană care a scris-o — și care va trebui să înțeleagă de ce luna aceea arată așa."
+  },
+  {
+   "tip": "h",
+   "text": "Când se blochează"
+  },
+  {
+   "tip": "p",
+   "text": "Practica bună e blocarea imediat după depunerea declarațiilor lunii, nu la sfârșit de an. Motivul e că fereastra dintre depunere și blocare e exact intervalul în care se pot strecura modificările accidentale."
+  },
+  {
+   "tip": "p",
+   "text": "O firmă care blochează lunar are, în orice moment, o singură lună deschisă. Una care blochează anual are douăsprezece — iar o eroare de dată nimerește undeva în ele fără să se lovească de nimic."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Interdicția de a modifica înregistrări aferente unor perioade raportate decurge din cerințele legii contabilității privind intangibilitatea înregistrărilor și corectarea erorilor prin înregistrări noi, precum și din cele de audit ale sistemelor informatice, care cer ca datele să nu poată fi alterate retroactiv fără urmă. Patru observații. Prima: blocarea trebuie să acopere și operațiunile indirecte — importuri, generări automate, recalculări de amortizare sau de stoc — nu doar introducerea manuală; o gardă aplicată numai la formular lasă deschise exact căile prin care se produc modificările în masă. A doua: pentru corecțiile aferente exercițiilor anterioare se aplică distincția din capitolul 29 între erori nesemnificative, corectate pe seama rezultatului curent, și erori semnificative, corectate pe seama rezultatului reportat; blocarea perioadei nu schimbă tratamentul contabil, ci doar locul înregistrării corecției. A treia: reconstituirea unei balanțe pentru o perioadă închisă trebuie să dea același rezultat ca listarea originală — verificarea aceasta, făcută prin sondaj o dată pe an, e singurul control care probează efectiv că blocarea funcționează. A patra: motivele forțărilor și lista perioadelor redeschise, dacă procedura o permite, fac parte din documentația pusă la dispoziția auditorului sau a inspecției; o redeschidere nedocumentată e, din perspectiva controlului, echivalentă cu absența oricărui control intern asupra perioadei."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cu blocarea, luna e definitivă. Aceeași logică se aplică, la altă scară și cu operațiuni proprii, exercițiului întreg — iar acolo se petrece ceva ce nu s-a mai întâmplat în nicio lună: conturile de venituri și cheltuieli dispar."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "O lună închisă e o afirmație publică: a stat la baza unor declarații depuse.",
+    "Blocarea nu apără de rea-credință, ci de accidente — data scrisă greșit, importul cu date vechi, corecția „ca să iasă”.",
+    "Corecțiile nu se interzic, se mută: storno într-o lună deschisă, ca în capitolul 29.",
+    "Forțarea trebuie să fie posibilă, dar niciodată comodă: drept de administrator, motiv scris, consemnare permanentă.",
+    "Motivul scris e pentru cel care citește peste un an, nu pentru control.",
+    "Se blochează lunar, imediat după depunere: o singură lună deschisă în loc de douăsprezece."
+   ]
+  }
+ ]
+}

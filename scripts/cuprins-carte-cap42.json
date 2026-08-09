@@ -1,0 +1,131 @@
+{
+ "parte": "Partea IX · Închiderea · fazele 10–11",
+ "nr": "42",
+ "titlu": "Închiderea anului",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Douăsprezece luni închise nu fac un an închis. La sfârșitul exercițiului se petrece o operațiune care nu are corespondent în nicio lună: conturile de venituri și de cheltuieli se sting, iar soldul lor se adună într-un singur cont."
+  },
+  {
+   "tip": "p",
+   "text": "Operațiunea se numește închiderea conturilor de rezultat, iar înțelegerea ei lămurește o întrebare pe care mulți patroni o pun fără să primească vreodată un răspuns clar: unde anume scrie cât a câștigat firma."
+  },
+  {
+   "tip": "h",
+   "text": "De ce dispar conturile de rezultat"
+  },
+  {
+   "tip": "p",
+   "text": "Conturile din clasele 6 și 7 măsoară un interval, nu o stare. Contul 607 nu spune „am marfă de 8.000 de lei”, ci „în perioada aceasta am dat marfă de 8.000 de lei”. Sunt conturi de flux, iar fluxul aparține exercițiului care se încheie."
+  },
+  {
+   "tip": "p",
+   "text": "La 1 ianuarie, măsurarea trebuie să pornească de la zero — altfel cheltuielile s-ar cumula la infinit, iar rezultatul anului al treilea ar conține și primii doi. Golirea lor nu e o formalitate: e condiția ca următorul exercițiu să însemne ceva."
+  },
+  {
+   "tip": "cheie",
+   "text": "Conturile de bilanț traversează anii; cele de rezultat, niciodată. Un sold rămas într-un cont de clasa 6 sau 7 la 1 ianuarie e, întotdeauna, o închidere neefectuată."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se face"
+  },
+  {
+   "tip": "p",
+   "text": "Toate conturile de venituri se debitează cu soldul lor și se creditează contul 121 Profit sau pierdere. Toate conturile de cheltuieli se creditează cu soldul lor, iar 121 se debitează. La final, singurul lucru care rămâne e soldul contului 121."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Închiderea, pe un an cu profit",
+   "cap": [
+    "Operațiunea",
+    "Debit",
+    "Credit",
+    "Efect"
+   ],
+   "randuri": [
+    [
+     "Închiderea veniturilor",
+     "7xx",
+     "121",
+     "121 primește totalul veniturilor"
+    ],
+    [
+     "Închiderea cheltuielilor",
+     "121",
+     "6xx",
+     "121 pierde totalul cheltuielilor"
+    ],
+    [
+     "Rezultatul",
+     "",
+     "",
+     "soldul rămas în 121"
+    ]
+   ],
+   "nota": "Sold creditor la 121 = profit. Sold debitor = pierdere. E singurul cont din plan al cărui sens se citește exact invers de cum sună numele conturilor din jur."
+  },
+  {
+   "tip": "p",
+   "text": "Un exemplu concret: venituri de 500.000 de lei, cheltuieli de 420.000. După închidere, contul 121 are un sold creditor de 80.000 de lei. Aceasta e cifra care apare în contul de profit și pierdere ca rezultat brut al exercițiului."
+  },
+  {
+   "tip": "h",
+   "text": "Impozitul, care vine după"
+  },
+  {
+   "tip": "p",
+   "text": "Ordinea de aici încurcă des, fiindcă e circulară în aparență: impozitul pe profit e o cheltuială, deci ar trebui închis în 121; dar el se calculează pe baza rezultatului, care se obține tocmai din 121."
+  },
+  {
+   "tip": "p",
+   "text": "Ordinea reală e în trei timpi. Întâi se închid toate conturile de venituri și cheltuieli, mai puțin cel de impozit. Se obține rezultatul brut. Pe baza lui se calculează impozitul și se înregistrează, iar apoi contul de impozit se închide și el în 121."
+  },
+  {
+   "tip": "p",
+   "text": "Ce rămâne în 121 după al treilea timp e rezultatul net — profitul care poate fi, efectiv, repartizat. În exemplul de mai sus, cu un impozit de 13.280 de lei, rezultatul net e de 66.720."
+  },
+  {
+   "tip": "h",
+   "text": "Ce NU se închide"
+  },
+  {
+   "tip": "p",
+   "text": "Merită spus explicit, fiindcă e greșeala care golește rapoartele: se închid numai conturile din clasele 6 și 7. Toate celelalte — active, datorii, capitaluri — își păstrează soldul și trec în anul următor ca solduri inițiale."
+  },
+  {
+   "tip": "p",
+   "text": "Contul 371 rămâne cu marfa din depozit. Contul 401 rămâne cu datoriile către furnizori. Contul 5121 rămâne cu banii. O închidere care le-ar atinge ar șterge patrimoniul firmei, nu rezultatul ei."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința practică, pentru cine citește rapoarte: după închiderea anuală, orice raport construit pe rulajele conturilor de rezultat ale anului încheiat arată zero. Nu fiindcă activitatea a dispărut, ci fiindcă a fost mutată în 121. E motivul pentru care situațiile financiare se întocmesc pe balanța DINAINTE de închidere."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Operațiunea e cerută de reglementările contabile, care prevăd că la finele exercițiului soldurile conturilor de venituri și cheltuieli se transferă asupra contului de profit și pierdere. Patru observații de practică. Prima: se lucrează cu două balanțe distincte — cea dinaintea operațiunilor de închidere, pe care se întocmesc contul de profit și pierdere și notele, și cea de după, care servește bilanțului; folosirea celei de-a doua pentru contul de rezultat produce un formular integral pe zero, iar eroarea trece neobservată fiindcă bilanțul iese corect. A doua: contul 121 nu se soldează la închiderea exercițiului, ci rămâne cu rezultatul până la repartizarea lui, în exercițiul următor, după aprobarea situațiilor financiare — soldul lui la 1 ianuarie e normal, spre deosebire de cel al conturilor 6 și 7. A treia: cheltuiala cu impozitul pe profit se determină pe rezultatul fiscal, nu pe cel contabil, iar înregistrarea ei modifică rezultatul net fără să modifice baza impozabilă; ordinea corectă e închiderea conturilor de rezultat, determinarea impozitului, înregistrarea lui și abia apoi închiderea contului 691. A patra: pentru firmele plătitoare de impozit pe veniturile microîntreprinderilor, cheltuiala cu impozitul se determină trimestrial pe venituri, iar închiderea urmează aceeași ordine, chiar dacă baza nu are legătură cu rezultatul."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Am folosit de două ori, mai sus, o cifră fără să o explicăm: impozitul de 13.280 de lei pe un profit de 80.000. Cine calculează 16% din 80.000 obține 12.800, nu 13.280. Diferența nu e o greșeală — e subiectul capitolului următor."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Conturile de venituri și cheltuieli măsoară un interval, deci se golesc la sfârșitul lui; cele de bilanț traversează anii.",
+    "Veniturile se închid prin 7xx = 121, cheltuielile prin 121 = 6xx. Ce rămâne în 121 e rezultatul.",
+    "Sold creditor la 121 înseamnă profit, sold debitor înseamnă pierdere.",
+    "Impozitul se înregistrează după închiderea celorlalte conturi și abia apoi se închide și el — trei timpi, nu unul.",
+    "Un sold rămas într-un cont de clasa 6 sau 7 la 1 ianuarie e o închidere neefectuată.",
+    "Situațiile financiare se întocmesc pe balanța DINAINTE de închidere; după ea, rapoartele pe rulaje arată zero."
+   ]
+  }
+ ]
+}

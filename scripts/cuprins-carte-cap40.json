@@ -1,0 +1,149 @@
+{
+ "parte": "Partea IX · Închiderea · fazele 10–11",
+ "nr": "40",
+ "titlu": "Starea se derivă din date, nu se bifează",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Capitolul acesta e despre o decizie de proiectare care pare tehnică și e, de fapt, o chestiune de adevăr contabil. Întrebarea e cum știe un sistem — sau un om — că un pas al închiderii e terminat."
+  },
+  {
+   "tip": "p",
+   "text": "Sunt două răspunsuri posibile, și diferența dintre ele e mai mare decât pare."
+  },
+  {
+   "tip": "h",
+   "text": "Bifa și derivarea"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Două feluri de a ști",
+   "cap": [
+    "Metoda",
+    "Cum funcționează",
+    "Ce se întâmplă când datele se schimbă"
+   ],
+   "randuri": [
+    [
+     "Bifa manuală",
+     "cineva declară pasul terminat",
+     "bifa rămâne — dar nu mai e adevărată"
+    ],
+    [
+     "Starea derivată",
+     "se recalculează din date la fiecare privire",
+     "starea se schimbă odată cu datele"
+    ]
+   ],
+   "nota": "Prima e mai comodă și mai rapidă. A doua e singura care nu poate minți."
+  },
+  {
+   "tip": "p",
+   "text": "O bifă e o afirmație despre un moment din trecut: la ora aceea, lucrul acela era făcut. Problema e că afirmația nu are dată de expirare, iar realitatea de sub ea continuă să se schimbe."
+  },
+  {
+   "tip": "cheie",
+   "text": "O bifă manuală rămâne adevărată și după ce datele de sub ea au devenit false. Un flux de închidere care minte e mai rău decât lipsa lui."
+  },
+  {
+   "tip": "h",
+   "text": "Cum arată minciuna, concret"
+  },
+  {
+   "tip": "p",
+   "text": "Trei situații obișnuite, toate întâlnite la orice firmă."
+  },
+  {
+   "tip": "p",
+   "text": "Extrasul a fost punctat pe 5 ale lunii și bifat ca terminat. Pe 7 sosește o factură veche, se înregistrează, iar una dintre plățile deja punctate se dovedește a fi pentru ea. Punctajul nu mai e complet — dar bifa e tot acolo, verde."
+  },
+  {
+   "tip": "p",
+   "text": "Declarația a fost depusă și bifată. Se descoperă apoi o eroare, se depune o rectificativă, dar cineva uită să actualizeze starea. Sistemul arată „depusă” — ceea ce e adevărat, dar nu mai e informația relevantă."
+  },
+  {
+   "tip": "p",
+   "text": "Documentele au fost declarate complete. Peste o săptămână se înregistrează încă trei facturi din aceeași lună. Bifa nu se aprinde înapoi, fiindcă nimic nu o urmărește."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se derivă, în schimb"
+  },
+  {
+   "tip": "p",
+   "text": "O stare derivată nu se ține minte: se calculează, de fiecare dată când e privită, din datele existente în acel moment."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Aceiași pași, întrebați altfel",
+   "cap": [
+    "Pasul",
+    "Întrebarea pusă datelor"
+   ],
+   "randuri": [
+    [
+     "Documente complete",
+     "mai există ciorne sau documente fără furnizor în luna asta?"
+    ],
+    [
+     "Extras punctat",
+     "mai există operațiuni de trezorerie nepotrivite?"
+    ],
+    [
+     "TVA regularizat",
+     "există nota de regularizare și acoperă toate operațiunile lunii?"
+    ],
+    [
+     "Declarații depuse",
+     "fiecare declarație așteptată are dovadă de depunere?"
+    ]
+   ],
+   "nota": "Niciuna dintre întrebări nu se referă la ce a făcut cineva. Toate se referă la ce este acum."
+  },
+  {
+   "tip": "p",
+   "text": "Avantajul practic e că starea se corectează singură. Cele trei situații de mai sus — factura târzie, rectificativa, documentele adăugate ulterior — fac pasul să redevină deschis automat, fără ca nimeni să își amintească."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se persistă totuși"
+  },
+  {
+   "tip": "p",
+   "text": "Principiul nu înseamnă că nu se scrie nimic. Înseamnă că se scrie numai ce nu se poate deduce — iar acele lucruri sunt puține și de altă natură."
+  },
+  {
+   "tip": "p",
+   "text": "Cine răspunde de un pas. Până când. Ce s-a observat pe parcurs. Cine a aprobat luna și când. Dacă închiderea a fost forțată peste un pas neterminat, și cu ce motiv. Toate acestea sunt decizii omenești: nu există nicăieri în date, deci trebuie consemnate."
+  },
+  {
+   "tip": "p",
+   "text": "Distincția merită reținută dincolo de contabilitate. Într-un sistem bine făcut, se memorează deciziile și se recalculează faptele. Cine memorează faptele va avea, mai devreme sau mai târziu, două versiuni ale aceluiași adevăr."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Principiul are un corespondent direct în cerințele de control intern din reglementările contabile: procedurile trebuie să asigure că informația raportată reflectă situația reală la data raportării, iar controalele-cheie trebuie să fie repetabile și documentate. Trei consecințe. Prima: o listă de verificare completată manual nu constituie, prin ea însăși, probă a efectuării controlului — proba e rezultatul controlului, adică documentul sau situația care arată ce s-a comparat și ce a rezultat; auditorul cere a doua, nu prima. A doua: pentru închiderile deja aprobate, capacitatea de a reconstitui starea la data aprobării e distinctă de starea curentă, iar cele două trebuie să poată coexista — o situație recalculată azi pe date modificate între timp nu probează ce s-a aprobat atunci, motiv pentru care blocarea perioadei, tratată în capitolul următor, e complementul necesar al derivării. A treia: elementele care nu se pot deduce — responsabilități, termene interne, raționamente profesionale, motivele forțărilor — fac parte din documentația închiderii și intră în dosarul exercițiului; absența lor transformă orice reconstituire ulterioară într-o reconstrucție din memorie."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Derivarea rezolvă problema stării care minte. Ridică însă alta: dacă totul se recalculează mereu, ce anume face ca o lună închisă să rămână închisă? Răspunsul e capitolul următor."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "O bifă e o afirmație despre trecut; datele de sub ea continuă să se schimbe, iar bifa nu află.",
+    "Starea derivată se recalculează la fiecare privire, deci nu poate rămâne în urma realității.",
+    "Trei situații obișnuite fac orice bifă falsă: factura târzie, declarația rectificată, documentele adăugate ulterior.",
+    "Un pas derivat redevine deschis singur, fără ca nimeni să își amintească de el.",
+    "Se consemnează numai deciziile omenești: responsabil, termen, notă, aprobare, motivul forțării.",
+    "Regula generală: memorează deciziile, recalculează faptele."
+   ]
+  }
+ ]
+}
