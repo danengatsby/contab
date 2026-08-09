@@ -76,6 +76,15 @@ module.exports = [
     rules: reguli,
   },
 
+  // Sursa site-ului cartii: traieste in scripts/carte/ ca sa fie langa generatorul care o
+  // copiaza in public/carte/, dar RULEAZA in browser — deci globalele sunt cele de browser,
+  // nu cele de Node. Script clasic (IIFE), nu modul: se incarca cu <script src>.
+  {
+    files: ['scripts/carte/site.js'],
+    languageOptions: { ecmaVersion: 2024, sourceType: 'script', globals: { ...globals.browser } },
+    rules: reguli,
+  },
+
   // Scripturile care CONDUC UN BROWSER (E2E, capturi de marketing): corpul callback-urilor
   // `page.evaluate(...)` se executa IN PAGINA, deci `document`/`window` sunt globale reale acolo,
   // nu greseli. Tiparul acopera orice script de conducere, nu doar cele numite `e2e`:
