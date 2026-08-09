@@ -526,6 +526,32 @@ function faHtmlEcran() {
   .tab td.num { font-variant-numeric:tabular-nums; }
   .tab tbody tr.total td { font-weight:600; }
   .tab-nota { font-size:.88rem; color:var(--ink-2); margin:.6rem 0 0 !important; font-style:italic; }
+
+  /* TIPARIREA DIN BROWSER a acestui HTML. Fisierul e facut pentru citit pe ecran, dar cine
+     apasa Ctrl+P trebuie sa obtina cartea, nu o banda continua. Aceleasi reguli ca la PDF-ul
+     de tipar, cu o singura deosebire onesta: aici NU se poate face masuratoarea in doua
+     treceri, fiindca nu stim ce motor tipareste. Deci se cere 'recto' declarativ — il
+     respecta motoarele care l-au implementat (Prince, WeasyPrint), iar Chromium si Firefox
+     il degradeaza la 'page', adica pagina noua fara garantia paritatii. Degradarea e
+     acceptabila; lipsa rupturii n-ar fi fost.
+     ATENTIE: fara backticks aici — CSS-ul traieste intr-un template literal. */
+  @media print {
+    @page { size: 176mm 250mm; margin: 20mm 18mm 18mm 22mm; }
+    :root { --paper:#FFFFFF; --bar:#EFF4ED; --card:#F5F8F3; --ink:#16211D; --ink-2:#55645C;
+            --ink-3:#7C8A83; --rule:#C8D6C9; --rule-2:#A9BCAB; --rosu:#9E2A20; --verde:#2C5B44; }
+    body { font-size:10.5pt; line-height:1.42; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .foaie { max-width:none; padding:0; }
+    .capitol { break-before:recto; page-break-before:right; margin:0; padding-top:0; border-top:0; }
+    .cap-titlu, .cap-parte, .cap-nr { break-after:avoid; }
+    h3, .cheie, .contabil, .recap, .tab-titlu { break-after:avoid; }
+    /* 'break-inside: avoid' numai pe blocurile SCURTE. Pus si pe .contabil / .recap —
+       care au adesea 15-20 de randuri — impingea jumatati de pagina goale la fiecare
+       capitol (masurat: 321 de pagini la tiparirea din browser). */
+    .cheie, .tab, .doua, .subsol { break-inside:avoid; }
+    .contabil, .recap { break-inside:auto; }
+    .tab { font-size:9pt; }
+    a { color:inherit; text-decoration:none; }
+  }
 </style></head><body><div class="foaie">
 <header class="antet">
   <p class="eticheta">Cuprins · carte de prezentare</p>
