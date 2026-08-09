@@ -321,6 +321,34 @@ section('Poarta: nicio comanda externa SINCRONA pe o cale de cerere');
   ok('baza temporara se sterge ASTEPTAT (fara baze orfane)', /await\s+dropDb\s*\(\)/.test(drill));
 }
 
+section('Poarta: ghidul se DERIVA din aplicatie, nu se scrie de mana');
+{
+  const fsg = require('fs'); const pg2 = require('path');
+  const ghid = fsg.readFileSync(pg2.join(RADACINA, 'public', 'ghid.js'), 'utf8');
+  const html = fsg.readFileSync(pg2.join(RADACINA, 'public', 'index.html'), 'utf8');
+  const appjs = fsg.readFileSync(pg2.join(RADACINA, 'public', 'app.js'), 'utf8');
+
+  // Structura pe care o umple ghidul trebuie sa existe in pagina...
+  ok('pagina are bara de cuprins a ghidului', /id="ghidMenu"/.test(html));
+  ok('...panoul de prezentare', /id="ghidPagina"/.test(html));
+  ok('...si pagina de pornire', /id="ghidAcasa"/.test(html));
+  ok('ghidul e pornit din app.js', /import \{ initGhid \}/.test(appjs) && /initGhid\(\)/.test(appjs));
+
+  // ...IAR MIEZUL: ghidul nu are voie sa contina o LISTA de taburi. Daca ar avea, ar drifta la
+  // prima pagina noua din aplicatie si nimeni n-ar afla — un ghid se citeste rar. Singura
+  // mentiune permisa a unui `data-tab` e SELECTORUL prin care sunt citite din DOM.
+  const numeTaburi = [...new Set([...html.matchAll(/data-tab="([a-z-]+)"/g)].map((m) => m[1]))];
+  const citate = numeTaburi.filter((t) => new RegExp("['\"`]" + t + "['\"`]").test(ghid));
+  ok('ghidul NU numeste niciun tab' + (citate.length ? ' — GASITE: ' + citate.join(', ') : ''),
+    citate.length === 0);
+  ok('poarta chiar are ce cauta (taburi gasite in pagina)', numeTaburi.length > 30);
+  ok('ghidul citeste structura din DOM (nu dintr-o lista proprie)',
+    /\.navgroup/.test(ghid) && /navmenu button\[data-tab\]/.test(ghid));
+  ok('explicatiile se CLONEAZA, nu se re-serializeaza ca marcaj', /cloneNode\(true\)/.test(ghid));
+  ok('ghidul nu construieste HTML din siruri (fara innerHTML cu interpolare)',
+    !/innerHTML\s*=\s*[`'"][^`'"]*\$\{/.test(ghid));
+}
+
 section('Poarta: pagina publica de prezentare nu-si contrazice produsul');
 {
   const fsx = require('fs'); const pth = require('path');

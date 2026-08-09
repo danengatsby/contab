@@ -710,3 +710,32 @@ body.erp :focus-visible {
   body.erp .shell { margin-top: 0; margin-bottom: 0; }
   body.erp .topbar { height: auto; top: 0; }
 }
+
+/* ── GHIDUL ca prezentare a aplicatiei (public/ghid.js) ──────────────────────
+   Bara de cuprins refoloseste stilul barei de meniu (.erp-menu / .em-item / .em-pop),
+   ca ghidul sa arate exact ca aplicatia pe care o explica — nu ca un site alaturat.
+   Se afiseaza si in aspectul non-erp (ecrane inguste), de aceea regulile NU stau
+   sub `body.erp`: cuprinsul e util mai ales cand bara de meniu reala e ascunsa. */
+.ghid-menu {
+  position: static; margin: 0 0 8px; flex-wrap: wrap;
+  border: 1px solid var(--e-line, #9aa7b8); background: var(--e-bg-soft, #eef2f7);
+}
+.ghid-menu > .em-item.activ > button { background: var(--e-sel, #10387a); color: #fff; }
+.ghid-menu .em-pop { max-height: 70vh; overflow-y: auto; }
+
+.ghid-pagina .toolbar { margin-bottom: 6px; }
+.ghid-pagina > .muted { margin: 0 0 10px; font-size: 12px; }
+
+/* Cuprinsul unui grup: cate o celula pe submeniu, cu rezumatul lui. */
+.ghid-grile { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.ghid-cel {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  text-align: left; padding: 9px 11px; cursor: pointer;
+  border: 1px solid var(--e-line, #9aa7b8); background: var(--e-bg, #fff); color: inherit;
+  font: inherit; border-radius: 2px;
+}
+.ghid-cel:hover { background: var(--e-sel, #10387a); color: #fff; }
+.ghid-cel:hover .ghid-cel-d { color: #e8eef8; }
+.ghid-cel-ic { font-size: 15px; line-height: 1; }
+.ghid-cel-t { font-weight: 600; }
+.ghid-cel-d { font-size: 11px; color: var(--muted, #667); line-height: 1.35; }

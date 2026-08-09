@@ -1849,6 +1849,11 @@ Cu stimă,
 
     <!-- ─────────────── GHID ─────────────── -->
     <section id="tab-ghid" class="tab">
+      <!-- Bara de meniu a ghidului + panoul de prezentare: se CONSTRUIESC din structura reala a
+           aplicatiei (public/ghid.js), nu se scriu aici. Un tab nou apare singur in ghid. -->
+      <nav id="ghidMenu" class="erp-menu ghid-menu" aria-label="Cuprinsul ghidului"></nav>
+      <div id="ghidPagina" class="hidden"></div>
+      <div id="ghidAcasa">
       <div class="card howto">
         <div class="toolbar"><h2 data-u="u73">📖 Cum folosești aplicația — pas cu pas</h2><div class="spacer" data-u="u46"></div><button id="tourReplay" class="btn small" type="button">🧭 Reia turul meniului</button></div>
         <p class="lead">Pe scurt: <b>aduci documentele în aplicație</b> (le încarci sau le emiți) → aplicația <b>scrie singură înregistrarea contabilă</b> pentru fiecare (în contabilitate se numește <i>articol contabil</i>, dar nu trebuie să știi cum se face) → din ele se construiesc singure <b>registrele, balanța, TVA-ul și declarațiile</b>. Tu doar verifici și confirmi.</p>
@@ -1967,6 +1972,7 @@ Cu stimă,
         <p><b>Ce este „descărcarea de gestiune”?</b><br><span class="muted">Scoaterea din stoc a mărfii vândute, la cost (607 = 371). Fără ea, ai venitul, dar nu și costul mărfii.</span></p>
         <p><b>Micro sau impozit pe profit?</b><br><span class="muted">Micro (1% din baza art. 53, sau 3% peste 60.000 € ori pe codurile CAEN de IT/HoReCa/juridic/medical) e avantajos la marje mari; impozit pe profit (16% din profit) poate fi mai bun la marje mici.</span></p>
       </div>
+      </div><!-- /#ghidAcasa -->
     </section>
 
     <!-- ─────────────── SETARI ─────────────── -->
