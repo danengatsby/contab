@@ -256,6 +256,30 @@ function auditFail(msg) {
 }
 function auditSnapshot() { return Object.assign({}, audit); }
 
+// ── TRUNCHIERI (garda OOM din src/paginate.js) ──
+// Acelasi tipar ca la audit, din acelasi motiv: o lista peste plafon e o stare PERMANENTA, nu un
+// eveniment. `access:vizitatori` sta peste plafon de luni de zile, deci fiecare deschidere a
+// paginii de administrare scria o linie in jurnalul de erori — iar erorile REALE se pierdeau
+// intre ele. Consola se throttle-uieste (vezi paginate.js), dar AICI se numara FIECARE trunchiere:
+// altfel remediul zgomotului ar deveni tacere, adica exact defectul pe care il repara.
+const MAX_ETICHETE_TRUNC = 50; // etichetele vin din cod (set mic si fix); plafonul e doar plasa
+const trunchieri = new Map();
+function truncation(label, total, cap) {
+  const k = String(label || '(fara eticheta)').slice(0, 80);
+  let t = trunchieri.get(k);
+  if (!t) {
+    if (trunchieri.size >= MAX_ETICHETE_TRUNC) return;
+    t = { n: 0, ultimTotal: 0, cap: 0, primaLa: new Date().toISOString(), ultimaLa: null };
+    trunchieri.set(k, t);
+  }
+  t.n += 1; t.ultimTotal = total; t.cap = cap; t.ultimaLa = new Date().toISOString();
+}
+function truncationsSnapshot() {
+  const out = {};
+  for (const [k, v] of trunchieri) out[k] = Object.assign({}, v);
+  return out;
+}
+
 /** Doar pentru teste: goleste agregatele. */
 function reset() {
   routes.clear(); recentErrors.length = 0; jobs.clear();
@@ -264,6 +288,7 @@ function reset() {
   audit.scrise = 0; audit.esecuri = 0; audit.esecConsecutive = 0;
   audit.lastError = null; audit.lastErrorAt = null; audit.lastOkAt = null;
   clientErrors.clear();
+  trunchieri.clear();
 }
 
 module.exports = {
@@ -272,5 +297,6 @@ module.exports = {
   recordError, recentErrors, jobTick, jobResult, jobError, jobsSnapshot,
   aiCall, aiSnapshot, lagSnapshot, lagRoll, lagValues,
   auditOk, auditFail, auditSnapshot,
+  truncation, truncationsSnapshot,
   clientErrorRecord, clientError, clientErrorsSnapshot, MAX_CLIENT_ERRORS,
 };
