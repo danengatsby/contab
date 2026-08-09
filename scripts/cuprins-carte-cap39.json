@@ -1,0 +1,166 @@
+{
+ "parte": "Partea IX · Închiderea · fazele 10–11",
+ "nr": "39",
+ "titlu": "Închiderea lunii, pas cu pas",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Închiderea lunii nu e o operațiune, ci o ordine. Toate lucrurile care o compun au fost deja descrise în capitolele precedente — documentele, extrasul, regularizările, TVA-ul, declarațiile. Ce se adaugă aici e succesiunea lor, și ea contează mai mult decât pare."
+  },
+  {
+   "tip": "p",
+   "text": "Motivul e simplu: fiecare pas se sprijină pe cel dinainte. Un pas făcut prea devreme se va reface, iar refacerea costă întotdeauna mai mult decât așteptarea."
+  },
+  {
+   "tip": "h",
+   "text": "Cei șase pași"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ordinea închiderii lunare",
+   "cap": [
+    "Pasul",
+    "Ce înseamnă",
+    "Ce blochează dacă lipsește"
+   ],
+   "randuri": [
+    [
+     "1. Documente complete",
+     "toate documentele lunii sunt înregistrate și postate",
+     "tot ce urmează"
+    ],
+    [
+     "2. Extras bancar punctat",
+     "încasările și plățile sunt înregistrate și potrivite",
+     "TVA la încasare, scadențarul"
+    ],
+    [
+     "3. TVA regularizat",
+     "nota de regularizare e postată și acoperă luna",
+     "decontul"
+    ],
+    [
+     "4. Declarații validate și depuse",
+     "fiecare declarație e validată și are recipisă",
+     "aprobarea"
+    ],
+    [
+     "5. Aprobare",
+     "cineva își asumă explicit că luna e corectă",
+     "blocarea"
+    ],
+    [
+     "6. Perioada blocată",
+     "luna devine read-only",
+     "nimic — e ultimul"
+    ]
+   ],
+   "nota": "Un pas nu se poate lucra înainte de cel anterior. Nu ca regulă administrativă, ci fiindcă îi lipsesc datele."
+  },
+  {
+   "tip": "p",
+   "text": "Merită observat că primii trei pași produc înregistrări, al patrulea produce documente către stat, iar ultimii doi nu produc nimic: sunt acte de asumare. Închiderea nu e o operațiune contabilă, ci o decizie despre o contabilitate deja făcută."
+  },
+  {
+   "tip": "h",
+   "text": "De ce ordinea nu e negociabilă"
+  },
+  {
+   "tip": "p",
+   "text": "Cea mai frecventă tentație e generarea declarațiilor înainte de a fi complete documentele — de regulă fiindcă termenul se apropie. Consecința e previzibilă: o factură sosită între timp schimbă decontul, iar declarația deja depusă trebuie rectificată."
+  },
+  {
+   "tip": "p",
+   "text": "A doua tentație e punctarea extrasului după regularizarea TVA. La o firmă cu TVA la încasare, ordinea aceasta e pur și simplu greșită: exigibilitatea depinde de plăți, deci regularizarea făcută înaintea punctajului lucrează cu date incomplete."
+  },
+  {
+   "tip": "cheie",
+   "text": "Fiecare pas sărit se plătește mai târziu, cu dobândă. Un pas făcut la timp costă minute; același pas refăcut după depunere costă o rectificativă."
+  },
+  {
+   "tip": "h",
+   "text": "Cele patru stări ale unui pas"
+  },
+  {
+   "tip": "p",
+   "text": "Într-un flux bine construit, un pas nu are doar „făcut” și „nefăcut”. Are patru stări, iar distincția dintre ele e ceea ce transformă o listă într-un instrument."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce poate fi un pas",
+   "cap": [
+    "Starea",
+    "Ce spune",
+    "Ce faci"
+   ],
+   "randuri": [
+    [
+     "gata",
+     "nu mai are nimic de rezolvat",
+     "treci mai departe"
+    ],
+    [
+     "deschis",
+     "e rândul lui, dar are ceva neterminat",
+     "rezolvi ce e listat"
+    ],
+    [
+     "blocat",
+     "așteaptă un pas anterior",
+     "nu lucrezi la el încă"
+    ],
+    [
+     "nu se aplică",
+     "nu are obiect pentru firma asta",
+     "îl ignori — nu e o lipsă"
+    ]
+   ],
+   "nota": "Ultima stare e importantă: la o firmă neplătitoare de TVA, pasul 3 nu e „nefăcut”, ci fără obiect. Confundarea lor produce alarme permanente."
+  },
+  {
+   "tip": "p",
+   "text": "Distincția dintre „blocat” și „deschis” e cea care schimbă modul de lucru. Un pas blocat nu e o sarcină restantă, ci una care nu a început încă — iar un sistem care le arată la fel produce o listă de zece lucruri de făcut acolo unde există, de fapt, unul singur."
+  },
+  {
+   "tip": "h",
+   "text": "Cine răspunde pentru fiecare pas"
+  },
+  {
+   "tip": "p",
+   "text": "La o firmă mică, toți pașii îi face aceeași persoană. La una cu echipă, ei se împart — iar atunci apare o întrebare care nu e contabilă: cine anume răspunde de fiecare, și până când."
+  },
+  {
+   "tip": "p",
+   "text": "Merită consemnat, fiindcă e singura informație din tot fluxul care nu se poate deduce din date. Ce s-a înregistrat se vede în contabilitate; cine trebuia să se ocupe și până la ce dată nu se vede nicăieri dacă nimeni nu scrie."
+  },
+  {
+   "tip": "p",
+   "text": "E o observație generală despre orice flux de lucru: se persistă numai ce nu se poate deduce. Restul se citește din date, de fiecare dată, proaspăt — iar capitolul următor arată de ce."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Ordinea de mai sus e cea impusă de dependențele dintre lucrări, nu de o normă anume, dar ea susține obligații legale distincte: întocmirea balanței cel puțin lunar, întocmirea și depunerea declarațiilor în termen și păstrarea documentelor care probează operațiunile. Trei observații practice. Prima: verificările de corelație — jurnale de TVA cu rulajele conturilor 4426 și 4427, conturile de personal cu D112, soldurile de terți cu situația creanțelor și datoriilor — se fac între pasul 3 și pasul 4, nu după depunere; o corelație verificată în ordinea greșită descoperă erori care nu mai pot fi corectate decât prin rectificativă. A doua: la firmele cu TVA la încasare, punctajul bancar e o condiție de fond pentru determinarea exigibilității, nu o verificare de trezorerie — de aceea pasul 2 precede obligatoriu pasul 3. A treia: dosarul lunii — balanța, jurnalele, declarațiile cu recipisele, notele de regularizare și eventualele decizii de aprobare — trebuie constituit la închidere, nu reconstituit la control; practica reconstituirii ulterioare e cea care produce dosare în care lipsesc exact documentele care ar fi trebuit să justifice raționamentele."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Rămâne o întrebare pe care fluxul de mai sus o ridică fără să o rezolve: de unde știe cineva că un pas e gata? Răspunsul obișnuit — pentru că l-am bifat — e cel greșit, iar capitolul următor explică de ce."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Închiderea lunii e o ordine, nu o operațiune: șase pași, fiecare sprijinit pe cel dinainte.",
+    "Primii trei produc înregistrări, al patrulea documente către stat, ultimii doi sunt acte de asumare.",
+    "Declarațiile generate înaintea documentelor complete se vor rectifica — e cea mai frecventă tentație și cea mai scumpă.",
+    "La firmele cu TVA la încasare, punctajul bancar precede obligatoriu regularizarea TVA.",
+    "Un pas are patru stări, nu două: gata, deschis, blocat și fără obiect — confundarea ultimelor produce alarme false.",
+    "Se consemnează numai ce nu se poate deduce din date: responsabilul, termenul, nota, aprobarea."
+   ]
+  }
+ ]
+}

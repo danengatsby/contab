@@ -1,0 +1,153 @@
+{
+ "parte": "Partea IX · Închiderea · fazele 10–11",
+ "nr": "44",
+ "titlu": "Repartizarea rezultatului",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Profitul net există acum ca sold în contul 121. Nu e însă la dispoziția nimănui: până la repartizare, el e o cifră, nu o sumă disponibilă."
+  },
+  {
+   "tip": "p",
+   "text": "Repartizarea e ultimul pas al exercițiului încheiat și, în același timp, primul al celui următor — fiindcă se face după aprobarea situațiilor financiare, deci în anul care urmează."
+  },
+  {
+   "tip": "h",
+   "text": "Ordinea, care e juridică"
+  },
+  {
+   "tip": "p",
+   "text": "Trei acte trebuie să se petreacă în această ordine, iar niciunul nu se poate sări: se întocmesc situațiile financiare, adunarea generală a asociaților le aprobă și hotărăște repartizarea, iar abia apoi se înregistrează repartizarea și se pot plăti dividendele."
+  },
+  {
+   "tip": "p",
+   "text": "Un patron care ia bani din firmă înaintea acestei ordini nu a încasat dividende: a luat un împrumut de la propria societate, cu toate consecințele fiscale care decurg. Distincția pare formală și e printre cele mai scumpe din practică."
+  },
+  {
+   "tip": "cheie",
+   "text": "Dividendul nu e o retragere de bani. E rezultatul unei hotărâri care nu se poate lua fără situații financiare aprobate."
+  },
+  {
+   "tip": "h",
+   "text": "Rezerva legală se ia prima"
+  },
+  {
+   "tip": "p",
+   "text": "Din profit se constituie mai întâi rezerva legală: 5% din profitul brut, până când rezerva atinge o cincime din capitalul social subscris și vărsat."
+  },
+  {
+   "tip": "p",
+   "text": "E o rezervă indisponibilă — nu se poate distribui și nu poate fi folosită decât în condițiile legii. Rostul ei e protecția creditorilor: o parte din câștig rămâne în firmă, ca tampon."
+  },
+  {
+   "tip": "p",
+   "text": "Contabil, constituirea trece printr-un cont intermediar, 129 Repartizarea profitului, care apoi se închide în 121. Ocolul acesta pare inutil, dar el e cel care face ca repartizarea să apară distinct în contul de profit și pierdere, nu ca o simplă mutare între conturi de capital."
+  },
+  {
+   "tip": "h",
+   "text": "Ce rămâne, pe cifre"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Repartizarea unui profit net de 66.720 lei",
+   "cap": [
+    "Pasul",
+    "Articolul",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Constituirea rezervei legale",
+     "129 = 1061",
+     "4.000"
+    ],
+    [
+     "Închiderea contului de repartizare",
+     "121 = 129",
+     "4.000"
+    ],
+    [
+     "Restul, la rezultat reportat",
+     "121 = 117",
+     "62.720"
+    ],
+    [
+     "Dividende brute hotărâte",
+     "117 = 457",
+     "62.720"
+    ],
+    [
+     "Impozit pe dividende 16%",
+     "457 = 446",
+     "10.035,20"
+    ],
+    [
+     "Plata către asociați",
+     "457 = 5121",
+     "52.684,80"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "Rezerva se calculează pe profitul BRUT (5% din 80.000), deși se ia din cel NET. Cele două baze diferă, iar confundarea lor e o eroare frecventă."
+  },
+  {
+   "tip": "p",
+   "text": "Din 80.000 de lei de profit brut, asociatul primește efectiv 52.684,80. Restul s-a dus în impozit pe profit — 13.280 —, în impozit pe dividende — 10.035,20 — și în rezerva legală — 4.000, care rămâne totuși în firmă."
+  },
+  {
+   "tip": "p",
+   "text": "Merită spus limpede unui patron: între profitul din bilanț și banii ajunși la el sunt două impozite succesive, nu unul. E cifra pe care se ia decizia de a distribui sau de a reinvesti, iar ea nu se vede nicăieri în situațiile financiare."
+  },
+  {
+   "tip": "h",
+   "text": "Pierderea"
+  },
+  {
+   "tip": "p",
+   "text": "Când exercițiul se încheie cu pierdere, mecanismul e simetric și mai simplu: soldul debitor al contului 121 trece în rezultat reportat, unde așteaptă acoperirea din profiturile viitoare."
+  },
+  {
+   "tip": "p",
+   "text": "Ea nu se șterge și nu se ignoră. O firmă cu pierdere reportată nu poate distribui dividende înainte de acoperirea ei — regula e de bun-simț economic: nu se împarte un câștig care nu a recuperat încă o pierdere anterioară."
+  },
+  {
+   "tip": "h",
+   "text": "Dividendele interimare"
+  },
+  {
+   "tip": "p",
+   "text": "Legea permite și distribuirea în cursul anului, pe baza unor situații financiare interimare. E o facilitate reală, dar cu o condiție care se uită: dacă la sfârșitul exercițiului rezultatul se dovedește mai mic decât ce s-a distribuit, diferența trebuie restituită."
+  },
+  {
+   "tip": "p",
+   "text": "E, deci, un avans asupra unui profit care nu s-a produs încă. Tratat ca atare, e util; tratat ca o distribuire definitivă, produce la sfârșitul anului o creanță asupra propriilor asociați, pe care nimeni nu o anticipase."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Repartizarea rezultatului se face potrivit reglementărilor contabile și hotărârii adunării generale, iar constituirea rezervei legale e obligatorie în condițiile Legii societăților nr. 31/1990 și deductibilă fiscal potrivit art. 26 alin. (1) lit. a) Cod fiscal. Patru observații. Prima: baza de calcul a rezervei e profitul contabil brut, iar plafonul cumulat e de 20% din capitalul social subscris și vărsat — o firmă care atinge plafonul nu mai constituie rezervă, iar deducerea fiscală încetează odată cu obligația. A doua: impozitul pe dividende e de 16% pentru dividendele distribuite începând cu 1 ianuarie 2026, potrivit Legii 141/2025, iar termenul de plată e legat de data plății dividendului, cu regulă specială pentru dividendele distribuite și neplătite până la sfârșitul exercițiului — regula aceasta din urmă e cea mai frecvent omisă, fiindcă obligă la plata impozitului chiar dacă asociatul nu a primit nimic. A treia: dividendele distribuite interimar se regularizează după aprobarea situațiilor financiare anuale, iar sumele distribuite în plus se restituie; până la restituire ele constituie creanță asupra asociatului, cu implicații privind veniturile din alte surse dacă nu sunt returnate. A patra: repartizarea nu poate depăși profitul distribuibil, determinat după acoperirea pierderilor reportate și constituirea rezervelor legale; distribuirea peste această limită atrage răspunderea celor care au aprobat-o, dincolo de consecințele fiscale."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cu repartizarea, exercițiul e complet: înregistrat, verificat, declarat, închis și distribuit. Rămâne partea pentru care s-a făcut tot restul — documentele care spun, într-o pagină, ce a făcut firma într-un an."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Repartizarea se face după aprobarea situațiilor financiare, deci în exercițiul următor.",
+    "Banii luați din firmă înaintea hotărârii nu sunt dividende, ci un împrumut de la societate.",
+    "Rezerva legală se ia prima: 5% din profitul BRUT, până la 20% din capitalul subscris și vărsat; e indisponibilă.",
+    "Între profitul brut și banii ajunși la asociat sunt DOUĂ impozite: 16% pe profit și 16% pe dividende.",
+    "Pierderea reportată blochează distribuirea până la acoperirea ei.",
+    "Dividendele interimare sunt un avans: dacă rezultatul final e mai mic, diferența se restituie."
+   ]
+  }
+ ]
+}

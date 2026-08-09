@@ -1,0 +1,188 @@
+{
+ "parte": "Partea IX · Închiderea · fazele 10–11",
+ "nr": "43",
+ "titlu": "De la rezultatul contabil la cel fiscal",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Un patron care vede un profit de 80.000 de lei și o cotă de impozit de 16% se așteaptă la 12.800 de lei. Va plăti 13.280. Diferența nu vine dintr-o greșeală de calcul, ci din faptul că impozitul nu se aplică profitului contabil."
+  },
+  {
+   "tip": "p",
+   "text": "Se aplică rezultatului fiscal — o cifră diferită, obținută din primul prin ajustări prevăzute de lege. Capitolul acesta arată de unde vin ajustările și de ce nu sunt opționale."
+  },
+  {
+   "tip": "h",
+   "text": "Două rezultate, două scopuri"
+  },
+  {
+   "tip": "p",
+   "text": "Rezultatul contabil măsoară performanța economică a firmei. Rezultatul fiscal măsoară baza pe care statul alege să impoziteze. Sunt întrebări diferite, deci răspunsuri diferite."
+  },
+  {
+   "tip": "p",
+   "text": "Statul refuză, de pildă, să suporte prin impozit mai mic o amendă primită de firmă — altfel ar plăti o parte din sancțiunea pe care el însuși a aplicat-o. Cheltuiala e reală și scade profitul contabil; fiscal, ea nu se recunoaște."
+  },
+  {
+   "tip": "cheie",
+   "text": "O cheltuială nedeductibilă nu e o cheltuială refuzată. E o cheltuială reală, plătită din banii firmei, pe care statul nu o scade din bază."
+  },
+  {
+   "tip": "h",
+   "text": "Calculul, pas cu pas"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "De la 80.000 profit contabil la impozit",
+   "cap": [
+    "Elementul",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "Profit contabil brut",
+     "80.000",
+     "venituri minus cheltuieli, înainte de impozit"
+    ],
+    [
+     "+ Amendă (cont 6581)",
+     "5.000",
+     "nedeductibilă integral, art. 25"
+    ],
+    [
+     "+ Impozite nedeductibile (cont 635)",
+     "2.000",
+     "nedeductibile integral"
+    ],
+    [
+     "− Rezerva legală",
+     "4.000",
+     "deducere fiscală, art. 26 — 5% din profitul brut"
+    ],
+    [
+     "= Rezultat fiscal",
+     "83.000",
+     ""
+    ],
+    [
+     "Impozit 16%",
+     "13.280",
+     "față de 12.800 pe profitul contabil"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Diferența de 480 de lei vine din 7.000 de lei nedeductibili și 4.000 de lei deduși, ponderate cu cota de 16%."
+  },
+  {
+   "tip": "p",
+   "text": "Se observă că ajustările merg în ambele sensuri. Nedeductibilele urcă baza; veniturile neimpozabile și deducerile fiscale o coboară. Nu e un mecanism de penalizare, ci de aliniere la o definiție diferită a câștigului."
+  },
+  {
+   "tip": "h",
+   "text": "Rezerva legală: deducerea care nu e cheltuială"
+  },
+  {
+   "tip": "p",
+   "text": "Rândul al patrulea din tabel merită atenție separată, fiindcă e cel mai des omis — și omiterea lui costă bani, nu doar acuratețe."
+  },
+  {
+   "tip": "p",
+   "text": "Rezerva legală se constituie obligatoriu, prin repartizarea profitului, nu prin înregistrarea unei cheltuieli. Deci ea nu apare în niciun cont din clasa 6 și nu poate ajunge în baza de impozitare pe calea obișnuită."
+  },
+  {
+   "tip": "p",
+   "text": "Legea o recunoaște totuși ca deducere. O firmă care nu o scade constituie rezerva obligatoriu și plătește 16% pe ea — în exemplul de mai sus, 640 de lei pe an, pierduți fără nicio contraprestație."
+  },
+  {
+   "tip": "h",
+   "text": "Cele două feluri de nedeductibile"
+  },
+  {
+   "tip": "p",
+   "text": "Distincția aceasta e cea mai utilă din tot capitolul, fiindcă ea explică de ce calculul nu se poate face „din ochi”."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Procent fix și plafon",
+   "cap": [
+    "Tipul",
+    "Cum se calculează",
+    "Exemple"
+   ],
+   "randuri": [
+    [
+     "Procent fix pe cont",
+     "o parte din cheltuiala însăși e nedeductibilă",
+     "amenzi 100%, provizioane 100%, ajustări de creanțe 70%"
+    ],
+    [
+     "Plafon pe o bază",
+     "e deductibil până la o limită calculată",
+     "protocol 2%, cheltuieli sociale 5%, dobânzi, sponsorizare"
+    ]
+   ],
+   "nota": "La protocol, 2% NU înseamnă „2% e nedeductibil”. Înseamnă „e deductibil până la 2% dintr-o bază de calcul” — restul e nedeductibil."
+  },
+  {
+   "tip": "p",
+   "text": "Confuzia dintre cele două e printre cele mai costisitoare din practica fiscală, fiindcă produce erori de ordinul zecilor de procente, în ambele sensuri, fără ca ceva să le semnaleze."
+  },
+  {
+   "tip": "h",
+   "text": "Pierderea reportată"
+  },
+  {
+   "tip": "p",
+   "text": "Un an cu pierdere nu se pierde definitiv: pierderea fiscală se reportează și se scade din profiturile anilor următori. Două limite se aplică însă, iar amândouă s-au schimbat recent."
+  },
+  {
+   "tip": "p",
+   "text": "Prima e cantitativă: pierderea se poate recupera în limita a 70% din rezultatul fiscal al anului, nu integral. A doua e temporală: pierderile se reportează pe un număr limitat de ani, iar cele care nu au fost recuperate în acest interval se pierd definitiv."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința practică e că pierderile trebuie ținute pe ani, nu ca o sumă cumulată. O sumă unică nu are vârstă, deci nu poate expira — iar o firmă care le ține așa își va calcula, tăcut, un impozit prea mic, ani la rând. Ordinea corectă de consum e de la cea mai veche către cea mai nouă, tocmai fiindcă cea veche expiră prima."
+  },
+  {
+   "tip": "h",
+   "text": "Registrul de evidență fiscală"
+  },
+  {
+   "tip": "p",
+   "text": "Toate aceste ajustări nu se pot ține minte și nu se pot reconstitui la un an distanță. Legea cere de aceea un registru propriu, în care fiecare ajustare e consemnată cu suma și cu temeiul ei."
+  },
+  {
+   "tip": "p",
+   "text": "Registrul nu e o formalitate: e singurul document care poate explica, la un control, de ce impozitul declarat diferă de 16% din profitul din bilanț. Fără el, diferența trebuie apărată din memorie — iar memoria nu e probă."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Rezultatul fiscal se determină potrivit art. 19 Cod fiscal ca diferență între venituri și cheltuieli, ajustată cu cheltuielile nedeductibile de la art. 25, cu veniturile neimpozabile de la art. 23 și cu deducerile prevăzute expres, între care rezerva legală de la art. 26 alin. (1) lit. a) — 5% din profitul contabil brut, până la o cincime din capitalul social subscris și vărsat. Patru precizări. Prima: baza rezervei e profitul BRUT, adică rezultatul înainte de cheltuiala cu impozitul, iar plafonul se raportează la capitalul subscris ȘI vărsat, nu la cel subscris — confundarea celor două la o firmă cu capital parțial vărsat supraevaluează plafonul de câteva ori. A doua: ordinea de aplicare a ajustărilor face parte din calcul, nu e indiferentă — procentele fixe și plafoanele care nu depind de impozit se aplică întâi, iar creditul fiscal al sponsorizării se scade DIN IMPOZIT, nu din bază, deci obligatoriu ulterior. A treia: recuperarea pierderilor fiscale se face în ordinea vechimii, în limita procentuală și în termenul prevăzute de art. 31 în forma aplicabilă anului în care s-a înregistrat pierderea — regimul diferă între pierderile anterioare și cele ulterioare modificării din 2024, deci evidența pe ani de proveniență e obligatorie, nu opțională. A patra: registrul de evidență fiscală se întocmește potrivit ordinului care îi aprobă modelul și conținutul; el trebuie să conțină, pentru fiecare ajustare, natura, suma și temeiul legal, iar concordanța dintre totalurile lui și rândurile declarației anuale de impozit pe profit e prima verificare pe care o face o inspecție."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Impozitul e calculat, iar rezultatul net e stabilit. Rămâne întrebarea la care patronul aștepta răspunsul de la început: ce se poate face cu el. E ultimul capitol al acestei părți."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Impozitul se aplică rezultatului FISCAL, nu celui contabil; cele două măsoară lucruri diferite.",
+    "O cheltuială nedeductibilă e reală și plătită — statul doar refuză să o scadă din bază.",
+    "Rezerva legală e deducere fiscală fără să fie cheltuială; omiterea ei costă 16% din valoarea rezervei, în fiecare an.",
+    "Nedeductibilele sunt de două feluri: procent fix pe cheltuială și plafon pe o bază de calcul — confundarea lor produce erori mari.",
+    "Pierderea se recuperează în limita a 70% din rezultatul fiscal și doar în termenul legal; se ține pe ani, se consumă de la cea mai veche.",
+    "Registrul de evidență fiscală e singurul document care explică, la control, diferența dintre impozit și 16% din profitul contabil."
+   ]
+  }
+ ]
+}
