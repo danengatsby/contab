@@ -1,0 +1,210 @@
+{
+ "parte": "Partea V · Ce ai, ce produci, cine lucrează · fazele 4–6",
+ "nr": "23",
+ "titlu": "Imobilizările și amortizarea",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Un pachet de hârtie cumpărat azi se consumă luna aceasta. Un utilaj cumpărat azi se consumă în cinci ani. Contabilitatea trebuie să facă diferența între ele, fiindcă altfel rezultatul lunii în care ai cumpărat utilajul ar arăta o pierdere care nu există."
+  },
+  {
+   "tip": "p",
+   "text": "Mecanismul prin care se face diferența se numește amortizare, iar el e cel mai bun exemplu din toată cartea pentru principiul enunțat în capitolul 1: cheltuiala se recunoaște când se consumă bunul, nu când pleacă banii."
+  },
+  {
+   "tip": "h",
+   "text": "Ce e o imobilizare"
+  },
+  {
+   "tip": "p",
+   "text": "Un bun devine imobilizare când îndeplinește două condiții deodată: e destinat să fie folosit mai mult de un an și valoarea lui de intrare depășește un plafon stabilit prin hotărâre de Guvern — în prezent 2.500 de lei."
+  },
+  {
+   "tip": "p",
+   "text": "Condițiile sunt cumulative, iar asta produce câteva rezultate care surprind. Un telefon de 2.000 de lei folosit trei ani nu e imobilizare: e sub plafon, deci intră direct pe cheltuială. Un stoc de marfă de 200.000 de lei nu e imobilizare: nu e destinat folosinței, ci vânzării."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Unde stau imobilizările în plan",
+   "cap": [
+    "Cont",
+    "Ce cuprinde"
+   ],
+   "randuri": [
+    [
+     "205, 208",
+     "necorporale: licențe, brevete, programe"
+    ],
+    [
+     "211",
+     "terenuri — singurele care NU se amortizează"
+    ],
+    [
+     "212",
+     "construcții"
+    ],
+    [
+     "2131",
+     "echipamente tehnologice: mașini, utilaje"
+    ],
+    [
+     "2133",
+     "mijloace de transport"
+    ],
+    [
+     "214",
+     "mobilier, aparatură birotică"
+    ],
+    [
+     "231",
+     "imobilizări în curs — încă nu sunt gata de folosit"
+    ]
+   ],
+   "nota": "Terenul face excepție fiindcă nu se uzează. Amenajările făcute pe el se amortizează; terenul, nu."
+  },
+  {
+   "tip": "h",
+   "text": "Amortizarea: costul întins pe durata folosinței"
+  },
+  {
+   "tip": "p",
+   "text": "Amortizarea împarte valoarea bunului pe lunile în care el va fi folosit. Un utilaj de 60.000 de lei cu o durată de cinci ani înseamnă șaizeci de luni de câte 1.000 de lei — iar acei 1.000 de lei devin cheltuiala fiecărei luni."
+  },
+  {
+   "tip": "p",
+   "text": "Articolul e același în fiecare lună: se debitează 6811 Cheltuieli de exploatare privind amortizarea și se creditează contul de amortizare corespunzător, din grupa 28. Nu apare niciun cont de bani — și e important de observat de ce."
+  },
+  {
+   "tip": "cheie",
+   "text": "Amortizarea e o cheltuială care nu se plătește. Banii au ieșit o singură dată, la cumpărare; amortizarea doar recunoaște, treptat, că bunul se consumă."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința practică e că o firmă cu amortizări mari poate avea profit mic și bani în cont — și invers. E cazul cel mai frecvent în care patronul întreabă unde sunt banii dacă profitul e mic, iar răspunsul e: în utilajul cumpărat anul trecut."
+  },
+  {
+   "tip": "h",
+   "text": "Când începe"
+  },
+  {
+   "tip": "p",
+   "text": "Amortizarea începe în luna următoare punerii în funcțiune, nu în luna cumpărării și nici din ziua cumpărării. Un utilaj recepționat pe 20 martie se amortizează prima dată în aprilie, cu suma întreagă a lunii."
+  },
+  {
+   "tip": "p",
+   "text": "Punerea în funcțiune e un moment distinct de cumpărare, iar distincția are un cont propriu: 231 Imobilizări în curs. Un utilaj cumpărat în martie și montat în iunie stă în 231 până în iunie și nu se amortizează deloc între timp — fiindcă nu a fost folosit."
+  },
+  {
+   "tip": "h",
+   "text": "Durata nu se alege după preferință"
+  },
+  {
+   "tip": "p",
+   "text": "Durata normală de funcționare vine dintr-un catalog oficial, aprobat prin hotărâre de Guvern, care acoperă practic toate categoriile de bunuri. Catalogul nu dă o cifră, ci un interval — de pildă opt până la doisprezece ani — iar alegerea din interval e a firmei."
+  },
+  {
+   "tip": "p",
+   "text": "Merită înțeles ce se joacă în alegerea aceea. O durată mai scurtă înseamnă amortizare mai mare, deci cheltuială mai mare, deci profit mai mic și impozit mai mic — dar și un activ care dispare mai repede din bilanț. E o decizie cu efect pe ani, luată o singură dată, la punerea în funcțiune, și pe care nimeni nu o mai revizitează."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea o durată tastată din memorie e una dintre cele mai costisitoare greșeli tăcute din contabilitate: nu produce nicio eroare vizibilă, nu dezechilibrează nimic, și influențează rezultatul în fiecare lună, ani la rând."
+  },
+  {
+   "tip": "h",
+   "text": "Trei metode, același total"
+  },
+  {
+   "tip": "p",
+   "text": "Legea permite trei metode de calcul. Toate trei amortizează exact aceeași valoare — se deosebesc doar prin ritm."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Un utilaj de 60.000 lei, durată 5 ani",
+   "cap": [
+    "Metoda",
+    "Prima lună",
+    "Ce face"
+   ],
+   "randuri": [
+    [
+     "liniară",
+     "1.000 lei",
+     "aceeași sumă în fiecare din cele 60 de luni"
+    ],
+    [
+     "degresivă",
+     "1.500 lei",
+     "cotă majorată la început, apoi trecere la liniar"
+    ],
+    [
+     "accelerată",
+     "2.500 lei",
+     "50% în primul an, restul pe durata rămasă"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "nota": "După cinci ani, toate trei au amortizat 60.000 de lei. Diferă doar în ce an apare cheltuiala."
+  },
+  {
+   "tip": "p",
+   "text": "Alegerea metodei e, deci, o decizie despre unde vrei să cadă profitul, nu despre cât amortizezi. Metoda liniară e implicită și cea mai folosită; celelalte două se aleg deliberat, de obicei din motive fiscale."
+  },
+  {
+   "tip": "h",
+   "text": "Cele două amortizări care nu coincid"
+  },
+  {
+   "tip": "p",
+   "text": "Aici apare una dintre puținele situații în care contabilitatea ține două calcule paralele pentru același bun. Amortizarea contabilă reflectă consumul real și intră în rezultatul contabil. Amortizarea fiscală se calculează după regulile Codului fiscal și intră în calculul impozitului."
+  },
+  {
+   "tip": "p",
+   "text": "De regulă coincid. Când nu coincid — pentru că firma a ales o metodă contabilă și alta fiscală, sau pentru că legea plafonează deducerea — diferența se regularizează la calculul impozitului pe profit, fără să atingă înregistrările contabile."
+  },
+  {
+   "tip": "p",
+   "text": "Cazul cel mai des întâlnit e automobilul: pentru vehiculele de persoane cu cel mult nouă locuri, amortizarea deductibilă fiscal e plafonată la 1.500 de lei pe lună. Un autoturism de 200.000 de lei se amortizează contabil integral, dar fiscal doar până la acest plafon — restul rămâne cheltuială nedeductibilă, în fiecare lună, pe toată durata."
+  },
+  {
+   "tip": "h",
+   "text": "Sfârșitul: casare sau vânzare"
+  },
+  {
+   "tip": "p",
+   "text": "Un bun iese din patrimoniu în două feluri, iar cele două nu se înregistrează la fel. Casarea înseamnă scoaterea din uz a unui bun care nu mai folosește nimănui. Cedarea înseamnă vânzarea lui — cu preț, cu factură și cu TVA."
+  },
+  {
+   "tip": "p",
+   "text": "În ambele cazuri, operațiunea are două jumătăți, iar a doua e cea uitată: scoaterea activului din evidență. Se anulează amortizarea cumulată și se trece pe cheltuială valoarea rămasă neamortizată. Fără această parte, bunul rămâne în bilanț deși nu mai există, iar rezultatul cedării iese fals."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Regimul amortizării e cel din art. 28 Cod fiscal, iar duratele normale de funcționare din catalogul aprobat prin HG 2139/2004, cu modificările ulterioare. Patru observații de practică. Prima: catalogul stabilește intervale, iar durata aleasă rămâne aceeași pe toată durata de viață a activului, cu excepțiile expres prevăzute — modernizările care majorează valoarea de intrare pot prelungi durata, dar aceasta se revizuiește, nu se reia. A doua: amortizarea degresivă se aplică cu coeficienții 1,5, 2,0 sau 2,5 în funcție de durata normală — până la 5 ani, între 5 și 10, respectiv peste 10 — și presupune trecerea la regimul liniar în anul în care amortizarea liniară a valorii rămase devine mai mare decât cea degresivă; omiterea acestei treceri produce un rest neamortizat la finalul duratei. A treia: divergența dintre amortizarea contabilă și cea fiscală trebuie urmărită cumulat, pe fiecare activ, nu doar pe anul curent — la cedare, valoarea rămasă fiscală, nu cea contabilă, e cea care se compară cu prețul de vânzare pentru determinarea rezultatului fiscal. A patra: pentru vehiculele M1, plafonul se aplică lunar și nu se reportează — o lună fără amortizare nu majorează plafonul lunii următoare, iar cumularea anuală cu un plafon de douăsprezece ori 1.500 produce o deducere mai mare decât cea legală."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Un bun se poate afla în folosința firmei și fără să fi fost cumpărat. Cea mai răspândită formă e leasingul — iar rata lunară de leasing e, contabil, cel mai bun exemplu de plată care nu e o cheltuială. E ultimul capitol al acestei părți."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Un bun e imobilizare dacă e folosit peste un an ȘI depășește plafonul valoric — condițiile sunt cumulative.",
+    "Amortizarea întinde costul pe durata folosinței: e o cheltuială care nu se plătește, fiindcă banii au ieșit o singură dată.",
+    "Începe în luna următoare punerii în funcțiune, nu a cumpărării; până atunci bunul stă în 231 și nu se amortizează.",
+    "Durata vine din catalogul oficial, care dă un interval, nu o cifră. O durată tastată din memorie greșește rezultatul ani la rând, tăcut.",
+    "Cele trei metode amortizează aceeași valoare; diferă doar ritmul, deci anul în care apare cheltuiala.",
+    "Amortizarea contabilă și cea fiscală pot diferi — la autoturisme, plafonul de 1.500 lei/lună le desparte aproape întotdeauna.",
+    "La casare și la vânzare, jumătatea uitată e scoaterea activului din evidență: fără ea, bunul rămâne în bilanț deși nu mai există."
+   ]
+  }
+ ]
+}
