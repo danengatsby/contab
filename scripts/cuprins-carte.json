@@ -1,0 +1,466 @@
+{
+ "titlu": "Contabilitatea, în ordinea în care se întâmplă",
+ "subtitlu": "O carte despre contabilitatea românească, așezată nu pe capitole de manual, ci pe ciclul contabil — drumul real al unei sume, de la documentul primit până la bilanțul depus.",
+ "teza": [
+  "Manualele predau contabilitatea pe teme: conturile, apoi TVA-ul, apoi salariile. Practica nu se întâmplă așa. O firmă parcurge în fiecare lună aceeași secvență, în aceeași ordine, iar fiecare pas depinde de cel dinainte.",
+  "Cartea urmează secvența. Fiecare parte e o fază a ciclului; fiecare capitol răspunde la o întrebare pe care ți-o pui exact în acel moment, nu cu trei luni mai devreme."
+ ],
+ "doua": [
+  {
+   "cap": "Ce află patronul",
+   "txt": "Ce se întâmplă cu documentele pe care le aduce, de ce se cer, și cum citește cifrele care ies la capăt. Fără formule."
+  },
+  {
+   "cap": "Ce află contabilul",
+   "txt": "Monografia din spatele fiecărei operațiuni, temeiul legal, și verificările care prind o eroare înainte să ajungă în declarație."
+  }
+ ],
+ "parti": [
+  {
+   "nr": "I",
+   "titlu": "De ce arată contabilitatea așa",
+   "faza": "înainte de orice cifră",
+   "rezumat": "Partea care lipsește din majoritatea manualelor: la ce întrebare răspunde, de fapt, toată munca asta. Fără ea, restul pare birocrație.",
+   "capitole": [
+    {
+     "nr": "1",
+     "titlu": "Două întrebări și niciuna despre conturi",
+     "nota": "Cât am câștigat? Ce am și cui datorez? Tot ce urmează servește acestor două întrebări.",
+     "semn": false
+    },
+    {
+     "nr": "2",
+     "titlu": "De ce fiecare sumă se scrie de două ori",
+     "nota": "Partida dublă nu e o convenție birocratică, ci o verificare încorporată: orice mișcare are o sursă și o destinație.",
+     "semn": false
+    },
+    {
+     "nr": "3",
+     "titlu": "Sertarele: planul de conturi",
+     "nota": "De ce 4111 înseamnă „clienți” și 401 „furnizori” — un vocabular de învățat, nu o listă de memorat.",
+     "semn": false
+    },
+    {
+     "nr": "4",
+     "titlu": "Cine răspunde pentru cifre",
+     "nota": "Patronul aduce documentele și cunoaște afacerea. Contabilul verifică, semnează și răspunde profesional. Niciunul nu-l înlocuiește pe celălalt.",
+     "semn": false
+    },
+    {
+     "nr": "5",
+     "titlu": "Ciclul contabil: harta cărții",
+     "nota": "Cele paisprezece faze, în ordinea în care se parcurg, și de ce ordinea nu e negociabilă.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "II",
+   "titlu": "Deschiderea exercițiului",
+   "faza": "faza 1",
+   "rezumat": "Se face o dată pe an și se atinge rar — dar dacă e greșită aici, nimic din ce urmează nu se mai poate corecta ușor.",
+   "capitole": [
+    {
+     "nr": "6",
+     "titlu": "Firma și regimurile ei",
+     "nota": "Plătitor de TVA sau nu, impozit pe profit sau micro: de această alegere atârnă ce declarații datorezi tot anul.",
+     "semn": false
+    },
+    {
+     "nr": "7",
+     "titlu": "Balanța de deschidere",
+     "nota": "De unde pornești, când firma nu e la primul an. Preluarea soldurilor dintr-un alt program, cont cu cont.",
+     "semn": false
+    },
+    {
+     "nr": "8",
+     "titlu": "Egalitatea care trebuie să țină din prima zi",
+     "nota": "Total debit = total credit. O balanță de deschidere dezechilibrată nu se mai închide niciodată.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "III",
+   "titlu": "Documentul",
+   "faza": "faza 2",
+   "rezumat": "Singura ușă de intrare. Regula care organizează toată cartea: nimic nu ajunge în contabilitate altfel decât printr-un document justificativ.",
+   "capitole": [
+    {
+     "nr": "9",
+     "titlu": "Nimic nu intră fără un document",
+     "nota": "De ce regula asta nu e formalism, ci singura garanție că cifrele pot fi apărate la un control.",
+     "semn": false
+    },
+    {
+     "nr": "10",
+     "titlu": "De la hârtie la articol contabil",
+     "nota": "Ce cont se debitează, ce cont se creditează, cu ce sumă — și cum se citește nota contabilă fără să știi formula.",
+     "semn": false
+    },
+    {
+     "nr": "11",
+     "titlu": "Vocabularul situațiilor",
+     "nota": "Peste o sută douăzeci de operațiuni tipice, grupate pe familii: vânzări, cumpărări, trezorerie, salarii, imobilizări, regularizări.",
+     "semn": false
+    },
+    {
+     "nr": "12",
+     "titlu": "Ciornă, validat, aprobat, postat",
+     "nota": "Separarea între cine introduce și cine își asumă. Doar ce e postat intră în contabilitate.",
+     "semn": false
+    },
+    {
+     "nr": "13",
+     "titlu": "Controalele de la ușă",
+     "nota": "Aritmetica se închide? Cota e cea potrivită? Perioada e deschisă? Partenerul e cunoscut? Documentul nu e cumva deja înregistrat?",
+     "semn": false
+    },
+    {
+     "nr": "14",
+     "titlu": "Factura pe care o emiți tu",
+     "nota": "Numerotarea, conținutul obligatoriu, și fișierul electronic care pleacă în sistemul ANAF.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "IV",
+   "titlu": "Banii",
+   "faza": "faza 3",
+   "rezumat": "Contul de trezorerie e singurul care se poate confrunta cu o realitate exterioară: extrasul de bancă. De aceea e și cel mai bun detector de erori.",
+   "capitole": [
+    {
+     "nr": "15",
+     "titlu": "Bancă și casă",
+     "nota": "Încasări, plăți, și de ce soldul de casă nu are voie să fie negativ niciodată.",
+     "semn": false
+    },
+    {
+     "nr": "16",
+     "titlu": "Reconcilierea, rând cu rând",
+     "nota": "Contabilitatea față de extras. Ce rămâne nepotrivit e exact ce trebuie lămurit — restul nu cere atenție.",
+     "semn": false
+    },
+    {
+     "nr": "17",
+     "titlu": "Plafoane și limite legale",
+     "nota": "Casieria, plățile în numerar între firme, avansurile de trezorerie: pragurile care se verifică singure.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "V",
+   "titlu": "Ce ai, ce produci, cine lucrează",
+   "faza": "fazele 4–6",
+   "rezumat": "Cele trei mase care cer evidență proprie, dincolo de conturi: bunurile, oamenii și lucrurile care se consumă în timp.",
+   "capitole": [
+    {
+     "nr": "18",
+     "titlu": "Stocul: cantitativ și valoric",
+     "nota": "Intrări, ieșiri, gestiuni. Cost mediu ponderat sau FIFO — ce schimbă alegerea în rezultatul lunii.",
+     "semn": false
+    },
+    {
+     "nr": "19",
+     "titlu": "Producția: din materii prime, produs finit",
+     "nota": "Rețeta, consumul, costul de producție și cum ajunge el în stoc.",
+     "semn": false
+    },
+    {
+     "nr": "20",
+     "titlu": "Inventarierea",
+     "nota": "Momentul în care realitatea numărată bate evidența scriptică. Plusuri, minusuri, imputare, proces-verbal.",
+     "semn": false
+    },
+    {
+     "nr": "21",
+     "titlu": "Statul de plată",
+     "nota": "Brut, contribuții, impozit, net — și cine plătește fiecare parte: angajatul sau firma.",
+     "semn": false
+    },
+    {
+     "nr": "22",
+     "titlu": "Drepturile care se pierd dacă nu le ceri",
+     "nota": "Deducerea personală, sumele neimpozabile, concediile. Un câmp necompletat costă bani reali, în fiecare lună.",
+     "semn": false
+    },
+    {
+     "nr": "23",
+     "titlu": "Imobilizările și amortizarea",
+     "nota": "Cum se consumă un bun în timp, de ce durata nu se alege la întâmplare, și ce spune catalogul oficial.",
+     "semn": false
+    },
+    {
+     "nr": "24",
+     "titlu": "Leasingul",
+     "nota": "O rată care nu e o cheltuială: principal, dobândă și TVA, fiecare cu drumul lui.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "VI",
+   "titlu": "Ce nu vine dintr-un document",
+   "faza": "faza 7",
+   "rezumat": "Partea pe care manualele o tratează în trei pagini și programele simple o sar de tot. Fără ea, bilanțul arată bine — dar nu e adevărat.",
+   "capitole": [
+    {
+     "nr": "25",
+     "titlu": "Regularizările: contabilitatea timpului",
+     "nota": "Înregistrări care nu vin din corespondență, ci din trecerea timpului și din realitatea economică.",
+     "semn": false
+    },
+    {
+     "nr": "26",
+     "titlu": "Reevaluarea valutară",
+     "nota": "Creanțele și datoriile în valută, aduse la cursul de închidere. Diferența e venit sau cheltuială, nu o ajustare tehnică.",
+     "semn": false
+    },
+    {
+     "nr": "27",
+     "titlu": "Ajustările pentru creanțe incerte",
+     "nota": "Când clientul întârzie, când nu mai plătește deloc, și cum se reia ajustarea dacă plătește totuși.",
+     "semn": false
+    },
+    {
+     "nr": "28",
+     "titlu": "Delimitarea în timp",
+     "nota": "Asigurarea plătită azi pentru douăsprezece luni nu e cheltuiala lunii acesteia. Cheltuieli și venituri în avans.",
+     "semn": false
+    },
+    {
+     "nr": "29",
+     "titlu": "Se stornează, nu se șterge",
+     "nota": "Corecția se face printr-o notă inversă, care rămâne legată de cea originală. Urma erorii face parte din dovadă — de aceea se scrie „în roșu”, nu se rade.",
+     "semn": true
+    }
+   ]
+  },
+  {
+   "nr": "VII",
+   "titlu": "Registrele și verificarea",
+   "faza": "faza 8",
+   "rezumat": "Aceleași operațiuni, privite din două unghiuri — și instrumentul care spune dacă totul se ține.",
+   "capitole": [
+    {
+     "nr": "30",
+     "titlu": "Cronologic: registrul-jurnal",
+     "nota": "Tot ce s-a întâmplat, în ordinea în care s-a întâmplat. Registrul pe care legea îl cere primul.",
+     "semn": false
+    },
+    {
+     "nr": "31",
+     "titlu": "Sistematic: cartea mare",
+     "nota": "Aceleași operațiuni, grupate pe conturi. De aici pornește orice verificare: de la cifră, înapoi la documentul care a produs-o.",
+     "semn": false
+    },
+    {
+     "nr": "32",
+     "titlu": "Balanța de verificare",
+     "nota": "Sold inițial + rulaj = sold final, iar totalul pe debit egal cu totalul pe credit. Dacă nu se închide, afli aici — nu la bilanț.",
+     "semn": false
+    },
+    {
+     "nr": "33",
+     "titlu": "Echilibrat nu înseamnă corect",
+     "nota": "Capitolul cel mai contraintuitiv al cărții: o eroare simetrică trece de orice verificare de echilibru. Ce prinde balanța, ce nu prinde, și ce trebuie verificat altfel.",
+     "semn": true
+    },
+    {
+     "nr": "34",
+     "titlu": "Scadențarul",
+     "nota": "Cine îți datorează, cui datorezi, și de când. Vechimea soldurilor ca instrument de conducere, nu doar de raportare.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "VIII",
+   "titlu": "Statul",
+   "faza": "fazele 9 și 13",
+   "rezumat": "Ce datorezi, când, și cum dovedești că ai depus. Declarația nu e un formular de completat, ci un rezultat al lunii deja înregistrate.",
+   "capitole": [
+    {
+     "nr": "35",
+     "titlu": "TVA: colectată, deductibilă, de plată",
+     "nota": "Cum se compune decontul din operațiunile lunii și de ce soldul se reportează firesc dintr-o lună în alta.",
+     "semn": false
+    },
+    {
+     "nr": "36",
+     "titlu": "Regimurile speciale",
+     "nota": "TVA la încasare, pro-rata, taxare inversă, regimul marjei, operațiuni triunghiulare. Când regula generală nu se aplică.",
+     "semn": false
+    },
+    {
+     "nr": "37",
+     "titlu": "Declarațiile și termenele lor",
+     "nota": "Ce datorează o firmă în funcție de regimul ales, de la decontul de TVA până la situațiile financiare anuale.",
+     "semn": false
+    },
+    {
+     "nr": "38",
+     "titlu": "Depunerea și dovada",
+     "nota": "Spațiul Privat Virtual, semnătura, recipisa. Documentul care contează nu e declarația, ci confirmarea că a fost primită.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "IX",
+   "titlu": "Închiderea",
+   "faza": "fazele 10–12",
+   "rezumat": "Momentul în care luna sau anul devine definitiv. Ordinea pașilor contează, iar sărirea unuia se vede abia peste luni.",
+   "capitole": [
+    {
+     "nr": "39",
+     "titlu": "Închiderea lunii, pas cu pas",
+     "nota": "Documentele complete, extrasul punctat, regularizările făcute, TVA-ul stabilit, declarațiile depuse.",
+     "semn": false
+    },
+    {
+     "nr": "40",
+     "titlu": "Starea se derivă din date, nu se bifează",
+     "nota": "De ce o bifă manuală minte: rămâne adevărată și după ce datele de sub ea s-au schimbat.",
+     "semn": false
+    },
+    {
+     "nr": "41",
+     "titlu": "Blocarea perioadei",
+     "nota": "O lună închisă nu se mai atinge. Iar dacă trebuie totuși, forțarea cere un motiv scris care rămâne în urmă.",
+     "semn": false
+    },
+    {
+     "nr": "42",
+     "titlu": "Închiderea anului",
+     "nota": "Veniturile și cheltuielile se sting în contul de rezultat. Ce înseamnă, de fapt, „am închis anul”.",
+     "semn": false
+    },
+    {
+     "nr": "43",
+     "titlu": "De la rezultatul contabil la cel fiscal",
+     "nota": "Registrul de evidență fiscală: ce cheltuieli nu sunt deductibile, ce venituri nu se impozitează, și de ce impozitul nu se calculează din profitul contabil.",
+     "semn": false
+    },
+    {
+     "nr": "44",
+     "titlu": "Repartizarea rezultatului",
+     "nota": "Rezerva legală, rezultatul reportat, dividendele și impozitul lor. Ultimul pas al exercițiului și primul al celui următor.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "X",
+   "titlu": "Situațiile financiare",
+   "faza": "faza 12",
+   "rezumat": "Documentele pentru care s-a făcut tot restul. Se generează din aceleași înregistrări — nu se compun separat.",
+   "capitole": [
+    {
+     "nr": "45",
+     "titlu": "Contul de profit și pierdere",
+     "nota": "Ai câștigat sau ai pierdut în an, și din ce anume: exploatare sau activitate financiară.",
+     "semn": false
+    },
+    {
+     "nr": "46",
+     "titlu": "Bilanțul",
+     "nota": "Ce ai și ce datorezi la o dată anume. De ce cele două părți sunt egale prin construcție, nu prin noroc.",
+     "semn": false
+    },
+    {
+     "nr": "47",
+     "titlu": "Anexele",
+     "nota": "Fluxul de trezorerie, modificările capitalurilor proprii, notele explicative. Ce spun ele și de ce nu se depun în același fișier.",
+     "semn": false
+    },
+    {
+     "nr": "48",
+     "titlu": "Cele patru concordanțe de verificat înainte de semnătură",
+     "nota": "Activ = pasiv. Rezultatul din bilanț = rezultatul din contul de profit. Numerarul din flux = soldul conturilor de trezorerie. Variația = suma celor trei activități.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "XI",
+   "titlu": "Urma",
+   "faza": "faza 14",
+   "rezumat": "Ce rămâne după ce totul e depus — și de ce partea asta contează exact în ziua în care cineva pune întrebări.",
+   "capitole": [
+    {
+     "nr": "49",
+     "titlu": "Arhivarea",
+     "nota": "Dosarul lunii, dosarul anului, termenele legale de păstrare. Ce înseamnă „am documentele” când sunt cerute.",
+     "semn": false
+    },
+    {
+     "nr": "50",
+     "titlu": "Cine a făcut ce și când",
+     "nota": "Jurnalul de operațiuni ca instrument de control intern, nu de supraveghere.",
+     "semn": false
+    },
+    {
+     "nr": "51",
+     "titlu": "Ce nu poate face un program",
+     "nota": "Un program calculează și verifică. Nu decide dacă o cheltuială e a firmei, nu semnează bilanțul și nu răspunde în locul nimănui.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "—",
+   "titlu": "Anexe",
+   "faza": "de folosit, nu de citit",
+   "rezumat": "",
+   "capitole": [
+    {
+     "nr": "A",
+     "titlu": "Planul de conturi, pe clase",
+     "nota": "Cu explicația în vorbă obișnuită pentru conturile pe care le atinge o firmă mică.",
+     "semn": false
+    },
+    {
+     "nr": "B",
+     "titlu": "Monografii: patruzeci de situații frecvente",
+     "nota": "De la factura de marfă la imputarea unui minus de inventar, fiecare cu articolul contabil complet.",
+     "semn": false
+    },
+    {
+     "nr": "C",
+     "titlu": "Calendarul fiscal",
+     "nota": "Ce se depune, până când, și de cine — pe regimuri.",
+     "semn": false
+    },
+    {
+     "nr": "D",
+     "titlu": "Glosar: termenul contabil ↔ vorba obișnuită",
+     "nota": "„Articol contabil” înseamnă înregistrare. „A storna” înseamnă a anula corect. Și încă vreo două sute.",
+     "semn": false
+    },
+    {
+     "nr": "E",
+     "titlu": "Verificările de coerență",
+     "nota": "Lista scurtă de confruntat înainte de fiecare depunere, în ordinea în care prinde cele mai multe erori.",
+     "semn": false
+    }
+   ]
+  }
+ ],
+ "subsol": [
+  {
+   "cap": "Structura",
+   "txt": "11 părți, 51 de capitole, 5 anexe. Fiecare parte corespunde unei faze din ciclul contabil, iar capitolele urmează ordinea în care întrebările apar în practică."
+  },
+  {
+   "cap": "Cele două niveluri",
+   "txt": "Textul de bază e scris pentru cineva care nu a făcut contabilitate. Unde subiectul o cere, capitolul continuă cu monografia, temeiul legal și verificarea corespunzătoare, marcate distinct, astfel încât cele două lecturi să nu se încurce."
+  },
+  {
+   "cap": "Cele două capitole marcate",
+   "txt": "Capitolele 29 și 33 sunt cele pe care le-aș scrie primele: „se stornează, nu se șterge” și „echilibrat nu înseamnă corect”. Amândouă contrazic intuiția, amândouă explică erori care trec neobservate luni întregi."
+  }
+ ]
+}
