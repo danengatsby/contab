@@ -243,6 +243,35 @@ function composeEntry(tipId, fields, fileId, firmaId) {
       f.baza = baza; f.tva = round2(tva);
     }
   }
+  // ── COERENTA DOCUMENTULUI, inainte de a-l compune ──────────────────────────────────────────
+  // Monografiile isi conditioneaza liniile pe `if (d.tva > 0)` — 42 de locuri. Conditia e corecta
+  // pentru ele (tipurile de storno primesc sume POZITIVE si neaga intern: `-d.baza`), dar face ca
+  // o intrare incoerenta sa produca TACUT un articol gresit, insa ECHILIBRAT — deci pe langa orice
+  // control de echilibru. Cele doua cazuri, amandoua masurate:
+  //
+  //  1. Anulare tastata ca factura obisnuita cu minus: linia de TVA dispare (`-210 > 0` e fals),
+  //     raman doar cei -1.000 de venit. Clientul ramane cu o creanta FANTOMA de 210 lei, iar 4427
+  //     pastreaza un TVA care nu se datoreaza si pleaca asa in D300.
+  //  2. Baza necompletata (sau text in loc de cifra -> 0) cu TVA tastat: iese `4111/4427 210`,
+  //     adica o creanta si un TVA colectat cu venit ZERO. Imposibil economic.
+  //
+  // Verificarea e pe DOCUMENT, nu pe linie: linia e ultimul loc unde se mai poate observa ca
+  // intrarea n-avea sens. Se refuza zgomotos, cu unealta corecta numita — nu se „repara" tacit,
+  // fiindca o anulare are nevoie de tipul ei de storno (pastreaza referinta la factura stornata,
+  // pleaca corect in e-Factura si apare in raportul de stornari).
+  const numeric = (k) => (type.fields.some((x) => x.name === k) ? Number(f[k]) || 0 : null);
+  const negative = ['baza', 'tva', 'total', 'suma'].filter((k) => numeric(k) !== null && numeric(k) < 0);
+  if (negative.length) {
+    throw new Error('Sumele negative nu se tastează pe un document obișnuit ('
+      + negative.join(', ') + '). Pentru o anulare sau o corecție alege tipul de storno — „Factura '
+      + 'storno/corecție emisă (în roșu)" ori „Storno factură primită" — care inversează singur '
+      + 'sumele și păstrează referința la documentul corectat.');
+  }
+  if (numeric('baza') === 0 && numeric('tva') !== null && numeric('tva') !== 0) {
+    throw new Error('TVA fără bază impozabilă: ai completat TVA ' + f.tva + ' lei, dar baza e 0. '
+      + 'Completează valoarea fără TVA a documentului.');
+  }
+
   const lines = type.build(f).filter((l) => l.suma !== 0); // storno foloseste sume negative (in rosu)
   // mesaj catre UTILIZATOR (deci cu diacritice): il vede la fiecare formular inca necompletat,
   // fiindca previzualizarea trece prin aceeasi compunere.
