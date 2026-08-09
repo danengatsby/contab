@@ -1,0 +1,64 @@
+{
+ "parte": "Partea IV · Banii · faza 3",
+ "nr": "16",
+ "titlu": "Reconcilierea, rând cu rând",
+ "blocuri": [
+  { "tip": "p", "text": "Reconcilierea bancară e confruntarea dintre ce scrie în contabilitatea ta și ce scrie pe extrasul băncii. E o operațiune pe care mulți o consideră o formalitate lunară și care e, de fapt, singura verificare din toată contabilitatea sprijinită pe o probă venită din afară." },
+  { "tip": "p", "text": "Un contabil experimentat o face prima, nu ultima. Motivul e practic: dacă banca și contabilitatea se potrivesc, o clasă întreagă de erori e deja exclusă, iar restul verificărilor pornesc de pe teren solid." },
+
+  { "tip": "h", "text": "De ce cele două nu se potrivesc niciodată din prima" },
+  { "tip": "p", "text": "Prima surpriză a începătorului e că soldurile diferă chiar și când totul e corect. Nu e o problemă: e decalajul firesc dintre momentul în care se produce o operațiune și momentul în care banca o consemnează." },
+  { "tip": "tabel",
+    "titlu": "Diferențele legitime",
+    "cap": ["Situația", "Unde apare"],
+    "randuri": [
+      ["Un ordin de plată dat azi, procesat mâine", "în contabilitate da, în extras nu încă"],
+      ["Un comision reținut de bancă, necunoscut încă", "în extras da, în contabilitate nu încă"],
+      ["Dobândă calculată la sfârșit de lună", "în extras da, în contabilitate nu încă"],
+      ["Încasare de la un client neidentificat", "în extras da, dar pe ce factură?"]
+    ],
+    "nota": "Primele trei se rezolvă singure în zilele următoare. A patra cere o întrebare pusă cuiva." },
+  { "tip": "p", "text": "Distincția care contează e între diferențe de moment și diferențe de fond. Primele dispar de la sine; celelalte nu dispar niciodată, oricât ai aștepta, fiindcă în spatele lor stă o operațiune neînregistrată sau înregistrată greșit." },
+
+  { "tip": "h", "text": "Metoda: potrivești, apoi te uiți la ce rămâne" },
+  { "tip": "p", "text": "Reconcilierea nu se face comparând soldurile, ci punând față în față operațiunile, una câte una. Fiecare rând din extras se caută în contabilitate și invers." },
+  { "tip": "p", "text": "Ce se potrivește nu mai cere atenție. Valoarea metodei stă exact în ce rămâne nepotrivit — o listă de regulă scurtă, în care fiecare rând e ori o diferență de moment, ori o eroare de găsit." },
+  { "tip": "cheie", "text": "Nu compari solduri, ci operațiuni. Soldul îți spune că există o diferență; rândurile îți spun care e." },
+  { "tip": "p", "text": "Un program poate face potrivirea automat, după sumă, dată și partener, iar rezultatul e că omul primește direct lista scurtă. Rolul lui rămâne însă neschimbat: să răspundă la întrebarea pe care mașina nu o poate pune — de ce lipsește rândul acesta." },
+
+  { "tip": "h", "text": "Ce înseamnă fiecare rând rămas" },
+  { "tip": "p", "text": "Lista nepotrivită se citește pe două coloane, iar fiecare parte are semnificația ei." },
+  { "tip": "tabel",
+    "titlu": "Cum se citește ce a rămas",
+    "cap": ["Rândul e…", "Înseamnă că…", "Ce faci"],
+    "randuri": [
+      ["în extras, nu în contabilitate", "s-a mișcat un ban fără ca tu să știi de ce", "cauți documentul: comision, dobândă, plată directă"],
+      ["în contabilitate, nu în extras", "ai înregistrat o operațiune care nu s-a produs (încă)", "verifici dacă e în tranzit sau e o înregistrare greșită"],
+      ["în ambele, dar cu sume diferite", "una dintre cifre e tastată greșit", "compari cu documentul, nu cu cealaltă cifră"]
+    ],
+    "nota": "Primul caz e cel mai valoros: acolo se găsesc, de regulă, comisioanele neînregistrate ani de-a rândul." },
+  { "tip": "p", "text": "Al treilea rând merită subliniat. Când două cifre diferă, tentația e să o alegi pe cea din extras, fiindcă „banca are dreptate”. De cele mai multe ori are, dar nu întotdeauna — iar reflexul de a alinia contabilitatea la extras fără să te uiți la document înlocuiește o eroare cu alta, de data asta invizibilă." },
+
+  { "tip": "h", "text": "Ce prinde reconcilierea și ce nu" },
+  { "tip": "p", "text": "Reconcilierea garantează că toate mișcările de bani sunt înregistrate și că sumele lor sunt corecte. E mult, și e limitat." },
+  { "tip": "p", "text": "Nu spune nimic despre motivul plății. O sumă virată corect, potrivită perfect cu extrasul, poate fi înregistrată pe furnizorul greșit sau pe o cheltuială care nu e a firmei. Reconcilierea confirmă că banii au plecat, nu că au plecat pe bună dreptate." },
+  { "tip": "p", "text": "E, din nou, distincția din capitolul 4: forma se poate verifica automat, fondul nu. Reconcilierea e cea mai bună verificare de formă din contabilitate — și tocmai de aceea merită să nu i se ceară mai mult decât poate da." },
+
+  { "tip": "contabil", "titlu": "Pentru contabil",
+    "text": "Reconcilierea corectă se face pe operațiuni și pe sold deodată: potrivirea rând cu rând identifică diferențele, iar reconstituirea soldului le dovedește complete — sold contabil, plus operațiunile din contabilitate neapărute încă în extras, minus cele din extras neînregistrate încă, trebuie să dea exact soldul din extras. Dacă egalitatea nu iese după ce toate rândurile au fost clasificate, mai există un rând neidentificat. Pentru firmele cu multe încasări, potrivirea automată după sumă e insuficientă: două facturi de aceeași valoare produc potriviri false, iar o încasare parțială nu se potrivește cu nimic — de aceea criteriul trebuie să includă partenerul și referința documentului, iar potrivirile ambigue trebuie lăsate omului, nu rezolvate prin prima variantă găsită. Diferențele de moment se documentează în situația de reconciliere; ele nu se înregistrează, dar trebuie să se închidă în perioada următoare, iar un element rămas în tranzit peste două luni e, practic, întotdeauna o eroare. În fine, reconcilierea e și controlul care prinde plățile efectuate direct de administrator din contul firmei fără document — categoria de operațiuni pe care nicio altă verificare nu o descoperă." },
+
+  { "tip": "h", "text": "Cât de des" },
+  { "tip": "p", "text": "Răspunsul clasic e „lunar, la închidere”. Răspunsul mai bun e „ori de câte ori sosește extrasul”, fiindcă efortul crește neliniar cu întârzierea: o nepotrivire de acum trei zile se lămurește dintr-un telefon, una de acum patru luni cere căutat printre sute de operațiuni asemănătoare." },
+  { "tip": "p", "text": "Cu trezoreria confruntată, rămâne o singură temă în această parte: pragurile pe care legea le pune asupra numerarului — și de ce depășirea lor e una dintre puținele greșeli contabile care se sancționează direct. E capitolul următor." },
+
+  { "tip": "recap", "titlu": "De reținut din acest capitol",
+    "puncte": [
+      "Reconcilierea e singura verificare din contabilitate sprijinită pe o probă din afara firmei.",
+      "Soldurile diferă și când totul e corect: decalajele de procesare sunt normale. Se separă diferențele de moment de cele de fond.",
+      "Nu se compară solduri, ci operațiuni. Valoarea stă în lista scurtă a celor nepotrivite.",
+      "Un rând în extras fără corespondent în contabilitate e cel mai valoros: acolo se găsesc comisioanele uitate.",
+      "Când sumele diferă, se verifică documentul — nu se aliniază contabilitatea la extras din reflex.",
+      "Reconcilierea confirmă că banii s-au mișcat, nu că au avut motiv să se miște."
+    ] }
+ ]
+}
