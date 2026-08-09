@@ -1,0 +1,1131 @@
+{
+ "parte": "Anexe · de folosit, nu de citit",
+ "nr": "A",
+ "titlu": "Planul de conturi, pe clase",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Planul de conturi e lista completă a „sertarelor” în care se poate pune o sumă. Anexa aceasta îl reproduce așa cum e folosit în practica unei firme mici și mijlocii, grupat pe cele opt clase, cu sensul normal al soldului fiecărui cont."
+  },
+  {
+   "tip": "p",
+   "text": "Se citește pe verticală, nu de la cap la coadă. Cifra întâi dă clasa, deci natura contului; a doua și a treia îl detaliază. Un cont care începe cu 4 privește o relație cu cineva din afară; unul care începe cu 6 e o cheltuială. Regula aceasta singură lămurește jumătate din întrebările începătorului."
+  },
+  {
+   "tip": "cheie",
+   "text": "Sensul normal al soldului nu e o convenție de memorat, ci o consecință: activele cresc în debit, datoriile și capitalurile în credit. Un sold pe partea greșită e, aproape întotdeauna, o eroare — vezi capitolul 32."
+  },
+  {
+   "tip": "h",
+   "text": "Clasa 1 — Capitaluri"
+  },
+  {
+   "tip": "p",
+   "text": "De unde au venit banii care nu trebuie returnați curând: aportul asociaților, profitul rămas în firmă, rezervele, împrumuturile pe termen lung."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Clasa 1: 15 conturi",
+   "cap": [
+    "Cont",
+    "Denumirea",
+    "Natura",
+    "Sold normal"
+   ],
+   "randuri": [
+    [
+     "1011",
+     "Capital subscris nevărsat",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "1012",
+     "Capital subscris vărsat",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "105",
+     "Rezerve din reevaluare",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "106",
+     "Rezerve",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "1061",
+     "Rezerve legale",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "1068",
+     "Alte rezerve",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "117",
+     "Rezultatul reportat",
+     "bifuncțional",
+     "oricare"
+    ],
+    [
+     "1171",
+     "Rezultatul reportat reprezentând profitul nerepartizat sau pierderea neacoperită",
+     "bifuncțional",
+     "oricare"
+    ],
+    [
+     "1174",
+     "Rezultatul reportat provenit din corectarea erorilor contabile",
+     "bifuncțional",
+     "oricare"
+    ],
+    [
+     "121",
+     "Profit sau pierdere",
+     "bifuncțional",
+     "oricare"
+    ],
+    [
+     "129",
+     "Repartizarea profitului",
+     "activ",
+     "—"
+    ],
+    [
+     "151",
+     "Provizioane pentru riscuri și cheltuieli",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "1621",
+     "Credite bancare pe termen lung",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "167",
+     "Alte împrumuturi și datorii asimilate (leasing)",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "1687",
+     "Dobânzi aferente altor împrumuturi",
+     "pasiv",
+     "creditor"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Clasa 2 — Imobilizări"
+  },
+  {
+   "tip": "p",
+   "text": "Bunurile folosite mai mult de un an: clădiri, utilaje, mașini, licențe — și amortizarea lor, care le scade valoarea an de an."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Clasa 2: 14 conturi",
+   "cap": [
+    "Cont",
+    "Denumirea",
+    "Natura",
+    "Sold normal"
+   ],
+   "randuri": [
+    [
+     "205",
+     "Concesiuni, brevete, licențe",
+     "activ",
+     "—"
+    ],
+    [
+     "208",
+     "Alte imobilizări necorporale",
+     "activ",
+     "—"
+    ],
+    [
+     "211",
+     "Terenuri și amenajări de terenuri",
+     "activ",
+     "—"
+    ],
+    [
+     "212",
+     "Construcții",
+     "activ",
+     "—"
+    ],
+    [
+     "2131",
+     "Echipamente tehnologice (mașini, utilaje)",
+     "activ",
+     "—"
+    ],
+    [
+     "2133",
+     "Mijloace de transport",
+     "activ",
+     "—"
+    ],
+    [
+     "214",
+     "Mobilier, aparatură birotică",
+     "activ",
+     "—"
+    ],
+    [
+     "231",
+     "Imobilizări corporale în curs de execuție",
+     "activ",
+     "—"
+    ],
+    [
+     "267",
+     "Creanțe imobilizate",
+     "activ",
+     "—"
+    ],
+    [
+     "2678",
+     "Alte creanțe imobilizate (garanții)",
+     "activ",
+     "—"
+    ],
+    [
+     "280",
+     "Amortizări privind imobilizările necorporale",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "2801",
+     "Amortizarea imobilizărilor necorporale",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "281",
+     "Amortizări privind imobilizările corporale",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "2813",
+     "Amortizarea mijloacelor de transport",
+     "pasiv",
+     "creditor"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Clasa 3 — Stocuri"
+  },
+  {
+   "tip": "p",
+   "text": "Ce se cumpără sau se produce pentru a fi vândut ori consumat: marfă, materii prime, produse finite."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Clasa 3: 11 conturi",
+   "cap": [
+    "Cont",
+    "Denumirea",
+    "Natura",
+    "Sold normal"
+   ],
+   "randuri": [
+    [
+     "301",
+     "Materii prime",
+     "activ",
+     "—"
+    ],
+    [
+     "302",
+     "Materiale consumabile",
+     "activ",
+     "—"
+    ],
+    [
+     "3021",
+     "Materiale auxiliare",
+     "activ",
+     "—"
+    ],
+    [
+     "3022",
+     "Combustibili",
+     "activ",
+     "—"
+    ],
+    [
+     "303",
+     "Materiale de natura obiectelor de inventar",
+     "activ",
+     "—"
+    ],
+    [
+     "331",
+     "Produse în curs de execuție",
+     "activ",
+     "—"
+    ],
+    [
+     "332",
+     "Servicii în curs de execuție",
+     "activ",
+     "—"
+    ],
+    [
+     "345",
+     "Produse finite",
+     "activ",
+     "—"
+    ],
+    [
+     "371",
+     "Mărfuri",
+     "activ",
+     "—"
+    ],
+    [
+     "378",
+     "Diferențe de preț la mărfuri (adaos comercial)",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "381",
+     "Ambalaje",
+     "activ",
+     "—"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Clasa 4 — Terți"
+  },
+  {
+   "tip": "p",
+   "text": "Relațiile cu ceilalți: clienți, furnizori, salariați, stat. Cea mai mare clasă, fiindcă aici trece aproape tot."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Clasa 4: 41 conturi",
+   "cap": [
+    "Cont",
+    "Denumirea",
+    "Natura",
+    "Sold normal"
+   ],
+   "randuri": [
+    [
+     "401",
+     "Furnizori",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "403",
+     "Efecte de plătit",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "404",
+     "Furnizori de imobilizări",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "405",
+     "Efecte de plătit pentru imobilizări",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "408",
+     "Furnizori - facturi nesosite",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "409",
+     "Furnizori - debitori (avansuri)",
+     "activ",
+     "—"
+    ],
+    [
+     "4111",
+     "Clienți",
+     "activ",
+     "—"
+    ],
+    [
+     "4118",
+     "Clienți incerți sau în litigiu",
+     "activ",
+     "—"
+    ],
+    [
+     "413",
+     "Efecte de primit de la clienți",
+     "activ",
+     "—"
+    ],
+    [
+     "418",
+     "Clienți - facturi de întocmit",
+     "activ",
+     "—"
+    ],
+    [
+     "419",
+     "Clienți - creditori (avansuri)",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "421",
+     "Personal - salarii datorate",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "423",
+     "Personal - ajutoare materiale datorate",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "425",
+     "Avansuri acordate personalului",
+     "activ",
+     "—"
+    ],
+    [
+     "427",
+     "Rețineri din salarii datorate terților",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "4282",
+     "Alte creanțe în legătură cu personalul",
+     "activ",
+     "—"
+    ],
+    [
+     "4315",
+     "Contribuția de asigurări sociale (CAS)",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "4316",
+     "Contribuția de asigurări sociale de sănătate (CASS)",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "436",
+     "Contribuția asiguratorie pentru muncă (CAM)",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "4373",
+     "Contribuția pentru concedii și indemnizații / decontări FNUASS",
+     "bifuncțional",
+     "oricare"
+    ],
+    [
+     "4411",
+     "Impozitul pe profit",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "4418",
+     "Impozitul pe venitul microîntreprinderilor",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "4423",
+     "TVA de plată",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "4424",
+     "TVA de recuperat",
+     "activ",
+     "—"
+    ],
+    [
+     "4426",
+     "TVA deductibilă",
+     "activ",
+     "—"
+    ],
+    [
+     "4427",
+     "TVA colectată",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "4428",
+     "TVA neexigibilă",
+     "bifuncțional",
+     "oricare"
+    ],
+    [
+     "444",
+     "Impozitul pe venituri de natura salariilor",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "445",
+     "Subvenții",
+     "activ",
+     "—"
+    ],
+    [
+     "446",
+     "Alte impozite, taxe și vărsăminte asimilate",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "455",
+     "Sume datorate acționarilor/asociaților",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "456",
+     "Decontări cu acționarii/asociații privind capitalul",
+     "bifuncțional",
+     "oricare"
+    ],
+    [
+     "457",
+     "Dividende de plată",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "461",
+     "Debitori diverși",
+     "activ",
+     "—"
+    ],
+    [
+     "462",
+     "Creditori diverși",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "471",
+     "Cheltuieli înregistrate în avans",
+     "activ",
+     "—"
+    ],
+    [
+     "472",
+     "Venituri înregistrate în avans",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "473",
+     "Decontări din operațiuni în curs de clarificare",
+     "bifuncțional",
+     "oricare"
+    ],
+    [
+     "475",
+     "Subvenții pentru investiții",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "481",
+     "Decontări între unitate și subunități",
+     "bifuncțional",
+     "oricare"
+    ],
+    [
+     "491",
+     "Ajustări pentru deprecierea creanțelor - clienți",
+     "pasiv",
+     "creditor"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Clasa 5 — Trezorerie"
+  },
+  {
+   "tip": "p",
+   "text": "Banii propriu-ziși: conturile bancare, casieria, viramentele între ele."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Clasa 5: 14 conturi",
+   "cap": [
+    "Cont",
+    "Denumirea",
+    "Natura",
+    "Sold normal"
+   ],
+   "randuri": [
+    [
+     "5112",
+     "Cecuri de încasat",
+     "activ",
+     "—"
+    ],
+    [
+     "5113",
+     "Efecte de încasat",
+     "activ",
+     "—"
+    ],
+    [
+     "5114",
+     "Efecte remise spre scontare",
+     "activ",
+     "—"
+    ],
+    [
+     "5121",
+     "Conturi la bănci în lei",
+     "activ",
+     "—"
+    ],
+    [
+     "5124",
+     "Conturi la bănci în valută",
+     "activ",
+     "—"
+    ],
+    [
+     "5191",
+     "Credite bancare pe termen scurt",
+     "pasiv",
+     "creditor"
+    ],
+    [
+     "5311",
+     "Casa în lei",
+     "activ",
+     "—"
+    ],
+    [
+     "5314",
+     "Casa în valută",
+     "activ",
+     "—"
+    ],
+    [
+     "5328",
+     "Alte valori (tichete, timbre)",
+     "activ",
+     "—"
+    ],
+    [
+     "541",
+     "Acreditive",
+     "activ",
+     "—"
+    ],
+    [
+     "5411",
+     "Acreditive în lei",
+     "activ",
+     "—"
+    ],
+    [
+     "5412",
+     "Acreditive în valută",
+     "activ",
+     "—"
+    ],
+    [
+     "542",
+     "Avansuri de trezorerie",
+     "activ",
+     "—"
+    ],
+    [
+     "581",
+     "Viramente interne",
+     "bifuncțional",
+     "oricare"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Clasa 6 — Cheltuieli"
+  },
+  {
+   "tip": "p",
+   "text": "Ce s-a consumat în perioadă. Se golesc la sfârșitul anului — vezi capitolul 42."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Clasa 6: 37 conturi",
+   "cap": [
+    "Cont",
+    "Denumirea",
+    "Natura",
+    "Sold normal"
+   ],
+   "randuri": [
+    [
+     "601",
+     "Cheltuieli cu materiile prime",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "602",
+     "Cheltuieli cu materialele consumabile",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "6022",
+     "Cheltuieli privind combustibilii",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "603",
+     "Cheltuieli privind materialele de natura obiectelor de inventar",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "604",
+     "Cheltuieli privind materialele nestocate",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "605",
+     "Cheltuieli privind energia și apa",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "607",
+     "Cheltuieli privind mărfurile",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "609",
+     "Reduceri comerciale primite",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "611",
+     "Cheltuieli cu întreținerea și reparațiile",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "612",
+     "Cheltuieli cu redevențele, locațiile și chiriile",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "613",
+     "Cheltuieli cu primele de asigurare",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "622",
+     "Cheltuieli privind comisioanele și onorariile",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "623",
+     "Cheltuieli de protocol, reclamă și publicitate",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "624",
+     "Cheltuieli cu transportul de bunuri și personal",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "625",
+     "Cheltuieli cu deplasări, detașări și transferări",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "626",
+     "Cheltuieli poștale și taxe de telecomunicații",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "627",
+     "Cheltuieli cu serviciile bancare și asimilate",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "628",
+     "Alte cheltuieli cu serviciile executate de terți",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "635",
+     "Cheltuieli cu alte impozite, taxe și vărsăminte",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "641",
+     "Cheltuieli cu salariile personalului",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "642",
+     "Cheltuieli cu avantajele în natură și tichetele acordate salariaților",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "6458",
+     "Alte cheltuieli privind asigurările și protecția socială",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "646",
+     "Cheltuieli privind contribuția asiguratorie pentru muncă",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "654",
+     "Pierderi din creanțe și debitori diverși",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "655",
+     "Cheltuieli din reevaluarea imobilizărilor corporale",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "6581",
+     "Despăgubiri, amenzi și penalități",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "6582",
+     "Donații și subvenții acordate (sponsorizare, mecenat)",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "6583",
+     "Cheltuieli privind activele cedate și alte operații de capital",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "6588",
+     "Alte cheltuieli de exploatare",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "665",
+     "Cheltuieli din diferențe de curs valutar",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "666",
+     "Cheltuieli privind dobânzile",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "667",
+     "Cheltuieli privind sconturile acordate",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "6811",
+     "Cheltuieli de exploatare privind amortizarea imobilizărilor",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "6812",
+     "Cheltuieli de exploatare privind provizioanele",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "6814",
+     "Cheltuieli privind ajustările pentru deprecierea activelor circulante",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "691",
+     "Cheltuieli cu impozitul pe profit",
+     "cheltuieli",
+     "—"
+    ],
+    [
+     "698",
+     "Cheltuieli cu impozitul pe venit (microîntreprindere)",
+     "cheltuieli",
+     "—"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Clasa 7 — Venituri"
+  },
+  {
+   "tip": "p",
+   "text": "Ce s-a câștigat în perioadă. Se golesc și ele la sfârșitul anului."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Clasa 7: 21 conturi",
+   "cap": [
+    "Cont",
+    "Denumirea",
+    "Natura",
+    "Sold normal"
+   ],
+   "randuri": [
+    [
+     "701",
+     "Venituri din vânzarea produselor finite",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "704",
+     "Venituri din servicii prestate",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "707",
+     "Venituri din vânzarea mărfurilor",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "708",
+     "Venituri din activități diverse",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "709",
+     "Reduceri comerciale acordate",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "711",
+     "Venituri aferente costurilor stocurilor de produse",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "712",
+     "Venituri aferente costurilor serviciilor în curs",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "722",
+     "Venituri din producția de imobilizări corporale",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "741",
+     "Venituri din subvenții de exploatare",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "754",
+     "Venituri din creanțe reactivate și debitori diverși",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "755",
+     "Venituri din reevaluarea imobilizărilor corporale",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "758",
+     "Alte venituri din exploatare",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "7581",
+     "Venituri din despăgubiri, amenzi și penalități",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "7583",
+     "Venituri din vânzarea activelor și alte operații de capital",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "7584",
+     "Venituri din subvenții pentru investiții",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "7588",
+     "Alte venituri din exploatare",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "765",
+     "Venituri din diferențe de curs valutar",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "766",
+     "Venituri din dobânzi",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "767",
+     "Venituri din sconturi obținute",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "7812",
+     "Venituri din provizioane",
+     "venituri",
+     "creditor"
+    ],
+    [
+     "7814",
+     "Venituri din ajustări pentru deprecierea activelor circulante",
+     "venituri",
+     "creditor"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Clasa 8 — Conturi speciale"
+  },
+  {
+   "tip": "p",
+   "text": "Evidența unor elemente care nu intră în bilanț, dar trebuie urmărite."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Clasa 8: 2 conturi",
+   "cap": [
+    "Cont",
+    "Denumirea",
+    "Natura",
+    "Sold normal"
+   ],
+   "randuri": [
+    [
+     "8031",
+     "Imobilizări corporale luate cu chirie",
+     "bifuncțional",
+     "oricare"
+    ],
+    [
+     "8038",
+     "Alte valori în afara bilanțului",
+     "bifuncțional",
+     "oricare"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu conține lista"
+  },
+  {
+   "tip": "p",
+   "text": "Planul de mai sus are 155 de conturi sintetice. Planul general de conturi din reglementările contabile are mai multe: lista aceasta cuprinde conturile pe care le atinge efectiv o firmă mică sau mijlocie, nu întregul nomenclator."
+  },
+  {
+   "tip": "p",
+   "text": "Lipsesc, de asemenea, conturile analitice — desfășurarea pe parteneri, pe gestiuni, pe cote de TVA. Ele nu se enumeră, fiindcă se construiesc de fiecare firmă după nevoile ei, pornind de la contul sintetic. Un „4111.ALFA” e tot un cont 4111; ce se adaugă după punct e organizarea internă, nu planul de conturi."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Cum se folosește anexa",
+   "puncte": [
+    "Cifra întâi dă clasa, deci natura contului; restul îl detaliază.",
+    "Coloana „sold normal” spune pe ce parte se așteaptă soldul; partea opusă e semnal de eroare, nu situație rară.",
+    "Conturile bifuncționale (121, 117, 581) pot avea sold pe oricare parte — de aceea au coloana „oricare”.",
+    "Analiticele nu apar: ele se construiesc de fiecare firmă, pornind de la sinteticul din listă."
+   ]
+  }
+ ]
+}

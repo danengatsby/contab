@@ -424,8 +424,8 @@
     },
     {
      "nr": "B",
-     "titlu": "Monografii: patruzeci de situații frecvente",
-     "nota": "De la factura de marfă la imputarea unui minus de inventar, fiecare cu articolul contabil complet.",
+     "titlu": "Monografii: situațiile frecvente",
+     "nota": "De la factura de marfă la imputarea unui minus de inventar, fiecare cu articolul contabil complet, generat din aplicație.",
      "semn": false
     },
     {
@@ -437,7 +437,7 @@
     {
      "nr": "D",
      "titlu": "Glosar: termenul contabil ↔ vorba obișnuită",
-     "nota": "„Articol contabil” înseamnă înregistrare. „A storna” înseamnă a anula corect. Și încă vreo două sute.",
+     "nota": "„Articol contabil” înseamnă înregistrare. „A storna” înseamnă a anula corect. Plus vocabularul curent al declarațiilor.",
      "semn": false
     },
     {

@@ -1,0 +1,1157 @@
+{
+ "parte": "Anexe · de folosit, nu de citit",
+ "nr": "B",
+ "titlu": "Monografii: 43 de situații frecvente",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Anexa aceasta e un vocabular de lucru: pentru fiecare situație care apare frecvent într-o firmă, articolul contabil complet — toate liniile, nu doar cea evidentă."
+  },
+  {
+   "tip": "p",
+   "text": "Sumele sunt de probă, alese ca să fie rotunde, iar cota de TVA e cea în vigoare. Ce contează sunt conturile și, mai ales, numărul de linii: majoritatea erorilor din practică nu vin din alegerea greșită a unui cont, ci din uitarea unei linii — vezi capitolul 11."
+  },
+  {
+   "tip": "cheie",
+   "text": "Citește fiecare monografie întâi la numărul de linii, apoi la conturi. O vânzare de marfă are trei linii, nu două; o cedare de mijloc fix are patru."
+  },
+  {
+   "tip": "h",
+   "text": "Cumpărări"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "1. Factură de cumpărare mărfuri",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "371 Mărfuri",
+     "401 Furnizori",
+     "10.000,00",
+     "Cumpărare mărfuri (intrare în stoc)"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "401 Furnizori",
+     "2.100,00",
+     "TVA deductibilă"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "2. Factură de cumpărare materii prime și materiale",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "301 Materii prime",
+     "401 Furnizori",
+     "10.000,00",
+     "Cumpărare materii/materiale"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "401 Furnizori",
+     "2.100,00",
+     "TVA deductibilă"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "3. Factură de servicii primită (chirie, telecom, onorarii)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "628 Alte cheltuieli cu serviciile executate de terți",
+     "401 Furnizori",
+     "10.000,00",
+     "Cheltuieli cu servicii primite"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "401 Furnizori",
+     "2.100,00",
+     "TVA deductibilă"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "4. Factură de utilități (energie, apă)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "605 Cheltuieli privind energia și apa",
+     "401 Furnizori",
+     "10.000,00",
+     "Cheltuieli cu energia și apa"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "401 Furnizori",
+     "2.100,00",
+     "TVA deductibilă"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "5. Factură de achiziție a unui mijloc fix",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "2131 Echipamente tehnologice (mașini, utilaje)",
+     "404 Furnizori de imobilizări",
+     "10.000,00",
+     "Achiziție imobilizare"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "404 Furnizori de imobilizări",
+     "2.100,00",
+     "TVA deductibilă"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "6. Achiziție intracomunitară de bunuri (taxare inversă)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "371 Mărfuri",
+     "401 Furnizori",
+     "10.000,00",
+     "Achiziție intracomunitară (bază)"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "4427 TVA colectată",
+     "2.100,00",
+     "Taxare inversă - TVA deductibilă și colectată"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "7. Import de bunuri din afara Uniunii (declarație vamală)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "371 Mărfuri",
+     "401 Furnizori",
+     "10.000,00",
+     "Import - valoarea bunurilor"
+    ],
+    [
+     "371 Mărfuri",
+     "446 Alte impozite, taxe și vărsăminte asimilate",
+     "500,00",
+     "Taxe vamale (în costul bunurilor)"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "446 Alte impozite, taxe și vărsăminte asimilate",
+     "2.205,00",
+     "TVA în vamă (deductibilă)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "8. Achiziție cu taxare inversă internă (art. 331)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "371 Mărfuri",
+     "401 Furnizori",
+     "10.000,00",
+     "Achiziție cu taxare inversă internă (bază)"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "4427 TVA colectată",
+     "2.100,00",
+     "Taxare inversă internă - TVA deductibilă și colectată"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "9. Combustibil cu TVA deductibilă 50% (vehicul cu folosință limitată)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "6022 Cheltuieli privind combustibilii",
+     "401 Furnizori",
+     "10.000,00",
+     "Cheltuieli combustibili"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "401 Furnizori",
+     "1.050,00",
+     "TVA deductibilă 50%"
+    ],
+    [
+     "6022 Cheltuieli privind combustibilii",
+     "401 Furnizori",
+     "1.050,00",
+     "TVA nedeductibilă 50% (în cheltuială)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "10. Factură de corecție primită (storno în roșu)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "371 Mărfuri",
+     "401 Furnizori",
+     "-10.000,00",
+     "Storno achiziție (în roșu)"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "401 Furnizori",
+     "-2.100,00",
+     "Storno TVA deductibilă"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Vânzări"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "11. Factură de vânzare mărfuri (cu descărcarea gestiunii)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4111 Clienți",
+     "707 Venituri din vânzarea mărfurilor",
+     "10.000,00",
+     "Venituri din vânzarea mărfurilor"
+    ],
+    [
+     "4111 Clienți",
+     "4427 TVA colectată",
+     "2.100,00",
+     "TVA colectată"
+    ],
+    [
+     "607 Cheltuieli privind mărfurile",
+     "371 Mărfuri",
+     "10.000,00",
+     "Descărcare gestiune - cost marfă vândută"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "12. Factură de prestări servicii emisă",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4111 Clienți",
+     "704 Venituri din servicii prestate",
+     "10.000,00",
+     "Venituri din servicii prestate"
+    ],
+    [
+     "4111 Clienți",
+     "4427 TVA colectată",
+     "2.100,00",
+     "TVA colectată"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "13. Factură de vânzare produse finite",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4111 Clienți",
+     "701 Venituri din vânzarea produselor finite",
+     "10.000,00",
+     "Venituri din vânzarea produselor finite"
+    ],
+    [
+     "4111 Clienți",
+     "4427 TVA colectată",
+     "2.100,00",
+     "TVA colectată"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "14. Raport Z — vânzare cu amănuntul în numerar",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "5311 Casa în lei",
+     "707 Venituri din vânzarea mărfurilor",
+     "10.000,00",
+     "Vânzare cu amănuntul"
+    ],
+    [
+     "5311 Casa în lei",
+     "4427 TVA colectată",
+     "2.100,00",
+     "TVA colectată aferentă"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "15. Livrare intracomunitară de bunuri (scutită)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4111 Clienți",
+     "707 Venituri din vânzarea mărfurilor",
+     "10.000,00",
+     "Livrare intracomunitară (scutită cu drept de deducere)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "16. Export de bunuri în afara Uniunii (scutit cu drept de deducere)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4111 Clienți",
+     "707 Venituri din vânzarea mărfurilor",
+     "10.000,00",
+     "Export de bunuri în afara UE (scutit cu drept de deducere)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "17. Livrare cu taxare inversă internă (factură fără TVA)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4111 Clienți",
+     "707 Venituri din vânzarea mărfurilor",
+     "10.000,00",
+     "Livrare cu taxare inversă internă (fără TVA - mențiune pe factura)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "18. Factură de corecție emisă (storno în roșu)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4111 Clienți",
+     "707 Venituri din vânzarea mărfurilor",
+     "-10.000,00",
+     "Storno venit (în roșu)"
+    ],
+    [
+     "4111 Clienți",
+     "4427 TVA colectată",
+     "-2.100,00",
+     "Storno TVA colectată"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "19. Factură de avans emisă clientului",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4111 Clienți",
+     "419 Clienți - creditori (avansuri)",
+     "10.000,00",
+     "Factura de avans - avans facturat (fără TVA)"
+    ],
+    [
+     "4111 Clienți",
+     "4427 TVA colectată",
+     "2.100,00",
+     "TVA colectată aferentă avansului"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Trezorerie"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "20. Încasare de la client (chitanță sau extras)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "5121 Conturi la bănci în lei",
+     "4111 Clienți",
+     "10.000,00",
+     "Încasare de la client"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "21. Plată către furnizor",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "401 Furnizori",
+     "5121 Conturi la bănci în lei",
+     "10.000,00",
+     "Plata către furnizor"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "22. Depunere de numerar la bancă (prin viramente interne)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "581 Viramente interne",
+     "5311 Casa în lei",
+     "10.000,00",
+     "Ridicare numerar din casă - viramente interne"
+    ],
+    [
+     "5121 Conturi la bănci în lei",
+     "581 Viramente interne",
+     "10.000,00",
+     "Depunere numerar în bancă"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "23. Comision bancar reținut de bancă",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "627 Cheltuieli cu serviciile bancare și asimilate",
+     "5121 Conturi la bănci în lei",
+     "10.000,00",
+     "Cheltuieli cu serviciile bancare"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "24. Acordarea unui avans de trezorerie unui angajat",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "542 Avansuri de trezorerie",
+     "5311 Casa în lei",
+     "10.000,00",
+     "Avans de trezorerie acordat"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "25. Plata taxelor și impozitelor către buget",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "446 Alte impozite, taxe și vărsăminte asimilate",
+     "5121 Conturi la bănci în lei",
+     "10.000,00",
+     "Plata taxe/impozite către buget"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Stocuri și producție"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "26. Bon de consum — ieșire de materiale din stoc",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "601 Cheltuieli cu materiile prime",
+     "301 Materii prime",
+     "10.000,00",
+     "Consum din stoc (bon de consum)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "27. Diferențe constatate la inventariere (plus sau minus)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "607 Cheltuieli privind mărfurile",
+     "371 Mărfuri",
+     "10.000,00",
+     "Minus / lipsă la inventar"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "28. Imputarea unei lipse la inventar către gestionar",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4282 Alte creanțe în legătură cu personalul",
+     "7588 Alte venituri din exploatare",
+     "10.000,00",
+     "Imputare lipsă la inventar - venit"
+    ],
+    [
+     "4282 Alte creanțe în legătură cu personalul",
+     "4427 TVA colectată",
+     "2.100,00",
+     "TVA aferentă imputării"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Salarii"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "29. Statul de plată — drepturile salariale ale lunii",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "641 Cheltuieli cu salariile personalului",
+     "421 Personal - salarii datorate",
+     "5.000,00",
+     "Salarii brute datorate"
+    ],
+    [
+     "421 Personal - salarii datorate",
+     "4315 Contribuția de asigurări sociale (CAS)",
+     "1.250,00",
+     "Reținere CAS 25%"
+    ],
+    [
+     "421 Personal - salarii datorate",
+     "4316 Contribuția de asigurări sociale de sănătate (CASS)",
+     "500,00",
+     "Reținere CASS 10%"
+    ],
+    [
+     "421 Personal - salarii datorate",
+     "444 Impozitul pe venituri de natura salariilor",
+     "325,00",
+     "Reținere impozit pe salarii 10%"
+    ],
+    [
+     "646 Cheltuieli privind contribuția asiguratorie pentru muncă",
+     "436 Contribuția asiguratorie pentru muncă (CAM)",
+     "112,50",
+     "CAM 2,25% (angajator)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "30. Plata salariilor nete",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "421 Personal - salarii datorate",
+     "5121 Conturi la bănci în lei",
+     "10.000,00",
+     "Plata salarii nete"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Imobilizări și leasing"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "31. Punerea în funcțiune a unui mijloc fix",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "2131 Echipamente tehnologice (mașini, utilaje)",
+     "231 Imobilizări corporale în curs de execuție",
+     "10.000,00",
+     "Recepție și punere în funcțiune"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "32. Amortizarea lunară a mijloacelor fixe",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "6811 Cheltuieli de exploatare privind amortizarea imobilizărilor",
+     "281 Amortizări privind imobilizările corporale",
+     "10.000,00",
+     "Amortizare lunară"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "33. Casarea unui mijloc fix (scoaterea din uz)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "281 Amortizări privind imobilizările corporale",
+     "2131 Echipamente tehnologice (mașini, utilaje)",
+     "3.000,00",
+     "Scăderea amortizării cumulate"
+    ],
+    [
+     "6583 Cheltuieli privind activele cedate și alte operații de capital",
+     "2131 Echipamente tehnologice (mașini, utilaje)",
+     "7.000,00",
+     "Valoarea rămasă neamortizată"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "34. Vânzarea unui mijloc fix (cedare cu titlu oneros)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "461 Debitori diverși",
+     "7583 Venituri din vânzarea activelor și alte operații de capital",
+     "10.000,00",
+     "Venit din vânzarea activului"
+    ],
+    [
+     "461 Debitori diverși",
+     "4427 TVA colectată",
+     "2.100,00",
+     "TVA colectată la cedare"
+    ],
+    [
+     "281 Amortizări privind imobilizările corporale",
+     "2131 Echipamente tehnologice (mașini, utilaje)",
+     "3.000,00",
+     "Scăderea amortizării cumulate"
+    ],
+    [
+     "6583 Cheltuieli privind activele cedate și alte operații de capital",
+     "2131 Echipamente tehnologice (mașini, utilaje)",
+     "7.000,00",
+     "Valoarea rămasă neamortizată a activului cedat"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "35. Intrarea unui bun în leasing financiar",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "2133 Mijloace de transport",
+     "167 Alte împrumuturi și datorii asimilate (leasing)",
+     "10.000,00",
+     "Imobilizare în leasing financiar + datorie"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "36. Factura ratei de leasing (principal, dobândă, TVA)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "167 Alte împrumuturi și datorii asimilate (leasing)",
+     "404 Furnizori de imobilizări",
+     "10.000,00",
+     "Rata de capital leasing"
+    ],
+    [
+     "666 Cheltuieli privind dobânzile",
+     "404 Furnizori de imobilizări",
+     "500,00",
+     "Dobânda leasing"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "404 Furnizori de imobilizări",
+     "2.100,00",
+     "TVA deductibilă aferentă ratei"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "37. Plata ratei de leasing",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "404 Furnizori de imobilizări",
+     "5121 Conturi la bănci în lei",
+     "10.000,00",
+     "Plata rata de leasing"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Regularizări"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "38. Cheltuială în avans — înregistrarea inițială",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "471 Cheltuieli înregistrate în avans",
+     "401 Furnizori",
+     "10.000,00",
+     "Cheltuiala inregistrata in avans"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "39. Recunoașterea lunară a cheltuielii din avans",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "613 Cheltuieli cu primele de asigurare",
+     "471 Cheltuieli înregistrate în avans",
+     "10.000,00",
+     "Cota de cheltuiala din avans"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "40. Venit în avans — înregistrarea inițială",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4111 Clienți",
+     "472 Venituri înregistrate în avans",
+     "10.000,00",
+     "Venit inregistrat in avans"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "41. Client devenit incert sau în litigiu",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4118 Clienți incerți sau în litigiu",
+     "4111 Clienți",
+     "10.000,00",
+     "Creanță reclasificată la clienți incerți"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "42. Constituirea unui provizion pentru riscuri și cheltuieli",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "6812 Cheltuieli de exploatare privind provizioanele",
+     "151 Provizioane pentru riscuri și cheltuieli",
+     "10.000,00",
+     "Constituire provizion pentru riscuri si cheltuieli"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "43. Diferență nefavorabilă de curs valutar",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "665 Cheltuieli din diferențe de curs valutar",
+     "401 Furnizori",
+     "10.000,00",
+     "Diferență de curs valutar nefavorabilă"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Cum se citește o monografie"
+  },
+  {
+   "tip": "p",
+   "text": "Fiecare tabel e un singur articol contabil, cu toate liniile lui. Suma fiecărei linii apare o dată pe debit și o dată pe credit — de aceea articolul se închide întotdeauna, oricâte linii ar avea."
+  },
+  {
+   "tip": "p",
+   "text": "Liniile marcate cu sume negative sunt stornări „în roșu”: aceleași conturi, sumă negată. Convenția și motivul ei sunt în capitolul 29."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Trei observații înainte de a folosi lista",
+   "puncte": [
+    "Sumele sunt de probă. Conturile și numărul de linii sunt informația reală.",
+    "O situație care nu se regăsește aici nu se rezolvă forțând cea mai apropiată: se compune un articol propriu, documentat.",
+    "Cotele de TVA se schimbă; monografiile nu. Cota din tabele e cea în vigoare la data tipăririi."
+   ]
+  }
+ ]
+}
