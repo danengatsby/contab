@@ -1,0 +1,58 @@
+{
+ "parte": "Partea III · Documentul · faza 2",
+ "nr": "11",
+ "titlu": "Vocabularul situațiilor",
+ "blocuri": [
+  { "tip": "p", "text": "Capitolul trecut s-a încheiat cu o promisiune practică: nimeni nu compune articole de mână pentru documentele obișnuite. Programul are pregătită traducerea pentru fiecare situație tipică, iar setul acestor traduceri se numește monografie contabilă." },
+  { "tip": "p", "text": "Merită privit ca un vocabular, nu ca o listă. Fiecare intrare leagă o situație din lumea reală — „am cumpărat marfă pe credit”, „am plătit salariile”, „mi s-a stricat un utilaj și l-am casat” — de articolul contabil care îi corespunde. Cine cunoaște vocabularul nu mai are nevoie să compună; are nevoie să aleagă." },
+
+  { "tip": "h", "text": "Câte situații are, de fapt, o firmă mică" },
+  { "tip": "p", "text": "Răspunsul surprinde de obicei în ambele sensuri. Sunt mai puține decât se teme un începător și mai multe decât crede cineva care ține de un an o firmă simplă." },
+  { "tip": "p", "text": "În aplicația din care s-a născut această carte, vocabularul are peste o sută douăzeci de intrări, grupate în douăzeci și una de familii. Cele mai bogate sunt cumpărările și vânzările, ceea ce e firesc: acolo se petrece cea mai mare parte din viața economică a unei firme." },
+  { "tip": "tabel",
+    "titlu": "Familiile cele mai folosite",
+    "cap": ["Familia", "Situații", "Exemple de intrări"],
+    "randuri": [
+      ["Cumpărări", "24", "marfă, materii prime, servicii, utilități, combustibil, import"],
+      ["Vânzări", "18", "marfă, produse finite, servicii, avansuri, storno"],
+      ["Trezorerie", "14", "încasări, plăți, virări interne, avansuri de trezorerie"],
+      ["Regularizări", "7", "cheltuieli în avans, pro-rata anuală, ajustări de TVA"],
+      ["Salarii", "6", "stat de plată, plata salariilor, rețineri, concedii"],
+      ["Imobilizări", "6", "achiziție, amortizare, casare, cedare"]
+    ],
+    "numerice": [2],
+    "nota": "Restul de cincisprezece familii — leasing, valută, provizioane, capital social, dividende, efecte de comerț și altele — acoperă situații care apar la unele firme și niciodată la altele." },
+  { "tip": "p", "text": "Observația utilă e că o firmă obișnuită folosește, în practică, între cincisprezece și treizeci de intrări. Restul stau acolo pentru ziua în care apare situația — iar când apare, e mai bine să fie deja pregătită decât să fie improvizată sub presiune." },
+
+  { "tip": "h", "text": "De ce alegi un tip, în loc să scrii direct conturile" },
+  { "tip": "p", "text": "Un program ar putea, în principiu, să te lase să scrii direct debit și credit. Unele o fac. Alegerea unui tip de document are însă trei avantaje pe care le pierzi imediat ce începi să improvizezi." },
+  { "tip": "p", "text": "Întâi, tipul aduce cu el toate liniile, nu doar pe cea evidentă. La o vânzare de marfă, un începător scrie venitul și uită descărcarea gestiunii; tipul de document nu uită. Am văzut în capitolul 2 că omisiunea aceasta lasă balanța perfect echilibrată și rezultatul fals." },
+  { "tip": "p", "text": "Apoi, tipul poartă informația fiscală: dacă operațiunea intră în decontul de TVA și pe ce rând, dacă documentul trebuie trimis în sistemul e-Factura, dacă valoarea se raportează în declarațiile informative. Conturile singure nu spun nimic din toate acestea." },
+  { "tip": "p", "text": "În fine, tipul face documentul regăsibil. Peste un an, întrebarea nu va fi „unde e articolul cu 371 = 401”, ci „unde e factura de la furnizorul acela”." },
+
+  { "tip": "cheie", "text": "Alegerea tipului potrivit nu e o formalitate de completat: e decizia care determină ce se înregistrează, ce se declară și ce se poate găsi." },
+
+  { "tip": "h", "text": "Când se alege tipul greșit" },
+  { "tip": "p", "text": "Cel mai instructiv caz e anularea unei facturi. Reflexul multor oameni e să introducă aceeași factură cu sume negative — pare curat: minus o mie, minus două sute zece, gata." },
+  { "tip": "p", "text": "Rezultatul e însă un articol incomplet, care se închide perfect. Iar consecința se vede abia peste săptămâni: clientul rămâne cu o creanță care nu există, iar TVA-ul colectat rămâne umflat și pleacă așa în decont." },
+  { "tip": "p", "text": "Vocabularul are, pentru exact această situație, o intrare proprie — storno de vânzare, „în roșu” — care inversează toate liniile și, în plus, păstrează referința la factura corectată. Diferența dintre a folosi unealta potrivită și a improviza nu e de eleganță, ci de corectitudine a declarației." },
+  { "tip": "p", "text": "Un program bine făcut nu se mulțumește să ofere unealta corectă: refuză improvizația și spune care e unealta. Capitolul 29 revine pe larg asupra corecțiilor." },
+
+  { "tip": "contabil", "titlu": "Pentru contabil",
+    "text": "Monografia nu e o comoditate, ci locul în care se materializează încadrarea — adică singura decizie profesională propriu-zisă din fluxul zilnic. Trei observații practice. Prima: o intrare de monografie corectă poartă și tratamentul fiscal, nu doar corespondența conturilor; separarea TVA deductibilă integral / 50% / nedeductibilă, încadrarea în rândul de decont și obligația de raportare în declarațiile informative nu se pot deduce din conturi după înregistrare, ci trebuie stabilite la alegerea tipului. A doua: pentru situațiile cu dublă articulare — vânzarea cu descărcare de gestiune, casarea cu scoaterea amortizării cumulate, imputarea unui minus de inventar — riscul nu e articolul greșit, ci articolul incomplet, care trece de orice verificare de echilibru. A treia: când nicio intrare nu se potrivește exact, soluția corectă nu e forțarea celei mai apropiate, ci compunerea unui articol propriu, documentată în nota explicativă a operațiunii; o încadrare forțată se propagă tăcut în decont și în raportări, unde e mult mai greu de găsit decât în jurnal." },
+
+  { "tip": "h", "text": "Cum se alege, în practică" },
+  { "tip": "p", "text": "Intrările sunt scrise în limbaj obișnuit, nu în termeni contabili: „factură cumpărare marfă”, „chitanță plată furnizor”, „bon de consum materiale”. Alegi după ce scrie pe hârtia din mână, nu după ce cont crezi că trebuie folosit." },
+  { "tip": "p", "text": "Când documentul e citit automat dintr-un fișier, programul propune singur tipul, iar tu confirmi. Confirmarea nu e o formalitate: e exact momentul în care un om verifică o presupunere a mașinii, iar capitolul 13 arată ce se verifică atunci și de ce." },
+  { "tip": "p", "text": "Înainte de asta însă, mai e o întrebare de lămurit: cine anume apasă butonul de salvare și ce înseamnă, de fapt, că un document „a intrat în contabilitate”. E capitolul următor." },
+
+  { "tip": "recap", "titlu": "De reținut din acest capitol",
+    "puncte": [
+      "Monografia e un vocabular care leagă situații reale de articole contabile; cine îl cunoaște alege, nu compune.",
+      "O firmă obișnuită folosește 15–30 de intrări din peste o sută douăzeci; restul așteaptă situația care poate să nu apară niciodată.",
+      "Tipul de document aduce toate liniile — inclusiv pe cele ușor de uitat — plus tratamentul fiscal și regăsibilitatea.",
+      "Alegerea greșită a tipului nu produce o eroare vizibilă, ci un articol incomplet care se închide perfect.",
+      "Pentru anulări există intrarea de storno, care inversează toate liniile și păstrează referința; sumele negative pe un tip obișnuit sunt o improvizație cu consecințe în decont."
+    ] }
+ ]
+}
