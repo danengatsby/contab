@@ -868,6 +868,41 @@ async function main() {
     eq('preview nu consuma id-uri: articolele salvate raman consecutive', idNum(saved2.json.entry.id), idNum(saved.json.entry.id) + 1);
     const seqAfter = (await req('GET', '/api/entries', { cookie: c1 })).json.length;
     eq('preview nu creeaza inregistrari (doar cele 2 salvate explicit)', seqAfter - seqBefore, 2);
+    // ── COERENTA DOCUMENTULUI: doua intrari care produceau TACUT contabilitate gresita ──
+    // Amandoua treceau pana la 2026-08-09, fiindca articolul iesea ECHILIBRAT — deci pe langa
+    // orice control de echilibru. Se verifica pe CALEA REALA (preview = ce se va salva).
+    //
+    // 1. Anulare tastata ca factura obisnuita cu minus. Monografia isi conditioneaza linia de TVA
+    //    pe `if (d.tva > 0)`, deci la -210 linia DISPAREA: raman doar cei -1.000 de venit, clientul
+    //    ramane cu o creanta FANTOMA de 210 lei si 4427 pastreaza un TVA nedatorat, care pleaca in
+    //    D300. Masurat pe scadentar inainte de reparatie: sold 210 dupa o anulare integrala.
+    const negFields = { data: '2026-06-11', partener: 'Client Neg SRL', document: 'NEG-1', baza: -1000, tva: -210, cota: 21 };
+    const pvNeg = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: negFields } });
+    ok('sume negative pe document obisnuit -> REFUZAT', pvNeg.json && pvNeg.json.ok === false);
+    ok('...si mesajul trimite la tipul de storno', /storno/i.test((pvNeg.json && pvNeg.json.mesaj) || ''));
+    const savNeg = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: negFields } });
+    ok('...iar SALVAREA e refuzata la fel (nu doar previzualizarea)', savNeg.status >= 400 || (savNeg.json && savNeg.json.ok === false));
+
+    // Calea CORECTA ramane deschisa: tipul de storno primeste sume POZITIVE si neaga el, pastrand
+    // referinta la factura stornata. Fara asta, garda de mai sus ar fi inchis singura iesire.
+    const pvSt = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'factura_storno_vanzare', fields: { data: '2026-06-11', partener: 'Client Neg SRL', document: 'ST-1', refFactura: 'NEG-1', baza: 1000, tva: 210, cota: 21 } } });
+    ok('tipul de storno trece, cu sume pozitive', pvSt.json && pvSt.json.ok === true);
+    ok('...si inverseaza AMANDOUA liniile (venit SI TVA)',
+      pvSt.json.lines.length === 2 && pvSt.json.lines.every((l) => l.suma < 0));
+
+    // 2. TVA fara baza impozabila: iesea `4111/4427 210`, adica o creanta si un TVA colectat cu
+    //    venit ZERO. Garda veche refuza doar daca TOATE liniile erau nule; aici linia de TVA
+    //    supravietuia si trecea. Acelasi rezultat si cand in „baza" se tasteaza text (-> 0).
+    const pvFaraBaza = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2026-06-11', partener: 'C', document: 'FB-1', tva: 210, cota: 21 } } });
+    ok('TVA fara baza -> REFUZAT', pvFaraBaza.json && pvFaraBaza.json.ok === false);
+    ok('...cu mesaj despre baza impozabila', /baz\u0103 impozabil/i.test((pvFaraBaza.json && pvFaraBaza.json.mesaj) || ''));
+    const pvText = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2026-06-11', partener: 'C', document: 'FB-2', baza: 'o mie', tva: 210, cota: 21 } } });
+    ok('text in loc de cifra la baza -> acelasi refuz', pvText.json && pvText.json.ok === false);
+
+    // Ce NU are voie sa refuze: factura scutita de TVA (baza fara TVA) e perfect legitima.
+    const pvScutit = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2026-06-11', partener: 'C', document: 'SC-1', baza: 1000, tva: 0, cota: 0 } } });
+    ok('factura scutita de TVA (baza, TVA 0) ramane acceptata', pvScutit.json && pvScutit.json.ok === true);
+
     // Un articol inca incomplet NU e o eroare: e starea normala cat timp se completeaza formularul.
     const pvGol = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2026-06-11' } } });
     ok('preview fara sume: 200 cu ok=false si motiv, nu eroare HTTP', pvGol.status === 200 && pvGol.json.ok === false && /sum[aă]/i.test(pvGol.json.mesaj || ''));
