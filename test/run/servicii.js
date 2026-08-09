@@ -1505,7 +1505,16 @@ section('Raportul „cine acceseaza aplicatia" (src/accessService.js)');
       };
     };
     const dd = { users, audit };
-    const multi = { snapshot: () => Array.from({ length: 700 }, (_, i) => ({ ip: '86.124.' + Math.floor(i / 256) + '.' + (i % 256), cereri: 1 })) };
+    // Ca la `visitors.snapshot()` REAL: sortat DESCRESCATOR dupa ultima activitate, cel mai nou
+    // primul. Fara campul `ultima` in ordine, stub-ul n-ar fi exercitat deloc capatul din care taie
+    // capList — si exact acolo statea defectul.
+    const multi = {
+      snapshot: () => Array.from({ length: 700 }, (_, i) => ({
+        ip: '86.124.' + Math.floor(i / 256) + '.' + (i % 256),
+        cereri: 1,
+        ultima: new Date(T0 - i * 60000).toISOString(), // T0 e deja un numar (Date.parse la :1439)
+      })),
+    };
 
     const g1 = geoStub({ cunoscute: [['86.124.1.1', { oras: 'Cluj-Napoca' }]] });
     const r1 = asvcA.raport(dd, { geo: g1, visitors: multi, now: T0 });
@@ -1520,6 +1529,18 @@ section('Raportul „cine acceseaza aplicatia" (src/accessService.js)');
     // geo pentru randuri care erau apoi aruncate.
     eq('se afiseaza cel mult 500 de vizitatori', r1.vizitatori.length, asvcA.MAX_VIZITATORI);
     eq('totalul real ramane vizibil', r1.vizitatoriTotal, 700);
+
+    // CE 500, nu doar CATE. Aserțiunea pe lungime de mai sus trece si cand se pastreaza randurile
+    // gresite — chiar asa a scapat defectul: `snapshot()` sorteaza descrescator (cel mai nou
+    // primul), iar `capList` taia implicit de la CAP, deci pe ecran ajungeau cei mai VECHI 500 si
+    // activitatea recenta era invizibila. In productie: 958 de vizitatori, primii 458 ascunsi.
+    const toti = multi.snapshot();
+    eq('se pastreaza cel mai RECENT vizitator, nu cei mai vechi', r1.vizitatori[0].ip, toti[0].ip);
+    const afisatiIp = new Set(r1.vizitatori.map((x) => x.ip));
+    ok('...si toata fereastra recenta e intreaga (primii 500 dupa ultima activitate)',
+      toti.slice(0, asvcA.MAX_VIZITATORI).every((x) => afisatiIp.has(x.ip)));
+    ok('...iar cei mai vechi, care nu incap, chiar lipsesc',
+      !afisatiIp.has(toti[toti.length - 1].ip));
     ok('nu se cere localizare pentru randuri care nu se afiseaza',
       g1.st.prefetchCu.length <= asvcA.MAX_VIZITATORI + asvcA.MAX_AUTENTIFICARI + 500);
     const afisate = new Set(r1.vizitatori.concat(r1.sesiuni, r1.autentificari).map((x) => x.ip));
