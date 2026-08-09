@@ -58,8 +58,14 @@ const CAPITOLE = ['cuprins-carte-cap1.json', 'cuprins-carte-cap2.json', 'cuprins
   'cuprins-carte-cap42.json', 'cuprins-carte-cap43.json', 'cuprins-carte-cap44.json',
   'cuprins-carte-cap45.json', 'cuprins-carte-cap46.json',
   'cuprins-carte-cap47.json', 'cuprins-carte-cap48.json',
-  'cuprins-carte-cap49.json', 'cuprins-carte-cap50.json', 'cuprins-carte-cap51.json']
+  'cuprins-carte-cap49.json', 'cuprins-carte-cap50.json', 'cuprins-carte-cap51.json',
+  'cuprins-carte-capA.json', 'cuprins-carte-capB.json', 'cuprins-carte-capC.json',
+  'cuprins-carte-capD.json', 'cuprins-carte-capE.json']
   .map((f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), 'utf8')));
+
+// Eticheta de deasupra titlului: capitolele au numar, anexele au litera. O singura
+// functie, ca .docx si .html sa nu poata divergea.
+const eticheta = (nr) => (/^\d+$/.test(String(nr)) ? 'Capitolul ' : 'Anexa ') + nr;
 
 const MM = 56.6929; // 1 mm in twips (1 inch = 1440 twips = 25,4 mm)
 const tw = (mm) => String(Math.round(mm * MM));
@@ -130,7 +136,7 @@ function faDocx() {
   for (const c of CAPITOLE) {
     b.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
     b.push(P(c.parte, 'CapParte'));
-    b.push(P(`Capitolul ${c.nr}`, 'CapNr'));
+    b.push(P(eticheta(c.nr), 'CapNr'));
     b.push(P(c.titlu, 'CapTitlu'));
     for (const bl of c.blocuri) {
       if (bl.tip === 'p') b.push(P(bl.text, 'Corp'));
@@ -368,7 +374,7 @@ const num = (bl, i) => ((bl.numerice || []).includes(i + 1) ? ' class="num"' : '
 
 function blocuriHtml(c) {
   const out = [`<section class="capitol"><p class="cap-parte">${esc(c.parte)}</p>`
-    + `<p class="cap-nr">Capitolul ${esc(c.nr)}</p><h2 class="cap-titlu">${esc(c.titlu)}</h2>`];
+    + `<p class="cap-nr">${esc(eticheta(c.nr))}</p><h2 class="cap-titlu">${esc(c.titlu)}</h2>`];
   for (const bl of c.blocuri) {
     if (bl.tip === 'p') out.push(`<p>${esc(bl.text)}</p>`);
     else if (bl.tip === 'h') out.push(`<h3>${esc(bl.text)}</h3>`);

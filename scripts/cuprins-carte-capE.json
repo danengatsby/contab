@@ -1,0 +1,219 @@
+{
+ "parte": "Anexe · de folosit, nu de citit",
+ "nr": "E",
+ "titlu": "Verificările de coerență",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Lista de mai jos e ordonată după cât de multe erori prinde fiecare verificare, nu după ordinea în care apar în lună. Cine are zece minute înainte de o depunere le face pe primele trei; cine are o oră le face pe toate."
+  },
+  {
+   "tip": "p",
+   "text": "Toate au aceeași structură: pun două cifre alături și cer să fie egale. Niciuna nu presupune un calcul nou — dacă trebuie să calculezi ceva ca să faci verificarea, verificarea e greșit formulată."
+  },
+  {
+   "tip": "cheie",
+   "text": "O concordanță confirmă că două situații spun același lucru. Nu confirmă că lucrul e adevărat — pentru asta există inventarul, extrasul și documentul. Vezi capitolul 33."
+  },
+  {
+   "tip": "h",
+   "text": "Înainte de orice declarație"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele cinci care prind cel mai mult",
+   "cap": [
+    "Se compară",
+    "Cu",
+    "Ce prinde dacă diferă"
+   ],
+   "randuri": [
+    [
+     "totalul registrului-jurnal",
+     "rulajul total din balanță",
+     "o operațiune intrată într-un registru și nu în celălalt"
+    ],
+    [
+     "rulajul contului 4427",
+     "totalul jurnalului de vânzări",
+     "o livrare care nu a ajuns în decont"
+    ],
+    [
+     "rulajul contului 4426",
+     "totalul jurnalului de cumpărări",
+     "o achiziție dedusă fără să fie în jurnal, sau invers"
+    ],
+    [
+     "soldul contului 4424",
+     "rândul de report din decont",
+     "preluarea greșită a soldului lunii precedente"
+    ],
+    [
+     "conturile 421, 43x, 444",
+     "totalurile din D112",
+     "un salariat lipsă sau o contribuție calculată de două ori"
+    ]
+   ],
+   "nota": "Primele patru privesc TVA-ul, fiindcă acolo se produc cele mai multe diferențe și cele mai scumpe."
+  },
+  {
+   "tip": "h",
+   "text": "La închiderea lunii"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Verificări de lună",
+   "cap": [
+    "Se verifică",
+    "Ce înseamnă dacă nu iese"
+   ],
+   "randuri": [
+    [
+     "balanța se închide pe toate cele patru egalități",
+     "solduri inițiale greșite sau o scriere directă în bază"
+    ],
+    [
+     "soldul contului 5311 e pozitiv",
+     "o încasare lipsă sau o plată datată greșit — întotdeauna eroare"
+    ],
+    [
+     "soldul contului 581 e zero",
+     "un capăt de virament intern neînregistrat"
+    ],
+    [
+     "suma soldurilor analitice = soldul sintetic",
+     "un partener introdus de două ori sub denumiri diferite"
+    ],
+    [
+     "scadențarul dă același total ca soldul de clienți",
+     "o mutare între conturi numărată ca operațiune nouă"
+    ],
+    [
+     "nu există sold debitor la 401 și creditor la 4111",
+     "de regulă un avans neînregistrat ca atare"
+    ]
+   ],
+   "nota": "Rândurile 2, 3 și 6 se citesc direct din balanță, fără niciun raport suplimentar."
+  },
+  {
+   "tip": "h",
+   "text": "La închiderea anului"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Verificări de exercițiu",
+   "cap": [
+    "Se compară",
+    "Cu",
+    "Observația"
+   ],
+   "randuri": [
+    [
+     "total activ",
+     "total pasiv",
+     "la leu; altfel un cont a căzut în două rânduri sau în niciunul"
+    ],
+    [
+     "rezultatul din bilanț",
+     "rezultatul din contul de profit",
+     "altfel, documentele s-au întocmit pe balanțe diferite"
+    ],
+    [
+     "numerarul final din fluxul de trezorerie",
+     "soldul conturilor de trezorerie",
+     "prinde un cont de bani omis din flux"
+    ],
+    [
+     "variația numerarului",
+     "suma celor trei activități",
+     "prinde operațiuni clasificate greșit sau numărate de două ori"
+    ],
+    [
+     "totalul situației capitalurilor proprii",
+     "capitalurile proprii din bilanț",
+     "prinde o mișcare de capital neprezentată"
+    ],
+    [
+     "coloana de început de exercițiu",
+     "situațiile anului precedent",
+     "o diferență cere fie corecție prezentată în note, fie preluare greșită"
+    ],
+    [
+     "totalurile registrului fiscal",
+     "rândurile din D101",
+     "prima verificare pe care o face o inspecție"
+    ]
+   ],
+   "nota": "Primele patru sunt cele din capitolul 48 și sunt blocante la validatorul oficial. Ultimele trei nu sunt, dar prind erori la fel de grave."
+  },
+  {
+   "tip": "h",
+   "text": "Verificări care nu sunt concordanțe"
+  },
+  {
+   "tip": "p",
+   "text": "Câteva controale nu compară două cifre, ci o cifră cu realitatea. Sunt cele care prind erorile pe care nicio concordanță nu le poate atinge — și de aceea nu pot lipsi din listă."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Confruntările cu ceva din afara evidenței",
+   "cap": [
+    "Verificarea",
+    "Ce prinde",
+    "Capitolul"
+   ],
+   "randuri": [
+    [
+     "reconcilierea bancară",
+     "operațiuni lipsă, sume greșite pe trezorerie",
+     "16"
+    ],
+    [
+     "inventarierea",
+     "stocuri greșite, conturi greșite, lipsuri reale",
+     "20"
+    ],
+    [
+     "citirea documentului lângă înregistrare",
+     "suma greșită, contul greșit, perioada greșită",
+     "9"
+    ],
+    [
+     "verificarea codului de TVA al furnizorului",
+     "facturi de la furnizori cu codul anulat",
+     "35"
+    ],
+    [
+     "analiza vechimii soldurilor",
+     "creanțe incerte neajustate",
+     "27 și 34"
+    ]
+   ],
+   "nota": "Numai a treia prinde toate clasele de erori din capitolul 33 — și e singura care nu se poate automatiza."
+  },
+  {
+   "tip": "h",
+   "text": "Ordinea recomandată"
+  },
+  {
+   "tip": "recap",
+   "titlu": "Zece minute, în această ordine",
+   "puncte": [
+    "1. Balanța se închide pe toate cele patru egalități.",
+    "2. Jurnal = rulaj balanță, pe aceeași perioadă.",
+    "3. Conturile de TVA = jurnalele de TVA, iar reportul = soldul lunii precedente.",
+    "4. Conturile de personal = totalurile D112.",
+    "5. Soldurile imposibile: casă negativă, 581 nenul, sold invers pe terți.",
+    "6. Abia acum se generează și se depune."
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "Ordinea contează dintr-un motiv practic: fiecare pas care pică îl face pe următorul inutil. O balanță care nu se închide face fără rost orice comparație cu declarațiile, iar un decont construit pe jurnale care nu concordă cu balanța va fi greșit oricât de atent ar fi completat."
+  },
+  {
+   "tip": "p",
+   "text": "Iar la final rămâne verificarea care nu apare în nicio listă, fiindcă nu se poate scrie ca o comparație: dacă cifra pe care urmează să o depui ar trebui apărată peste doi ani, ai la îndemână ce îți trebuie ca să o aperi?"
+  }
+ ]
+}

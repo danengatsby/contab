@@ -1,0 +1,875 @@
+{
+ "parte": "Anexe · de folosit, nu de citit",
+ "nr": "D",
+ "titlu": "Glosar: termenul contabil ↔ vorba obișnuită",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Glosarul e ordonat alfabetic și scris pentru cineva care aude termenul întâia oară. Definițiile sunt scurte deliberat: rostul lor e să deblocheze o frază, nu să înlocuiască un capitol."
+  },
+  {
+   "tip": "p",
+   "text": "Termenii care se confundă cel mai des sunt tratați împreună — cheltuială și plată, venit și încasare, creanță și creditor, casare și cedare. Unde definiția singură nu ajunge, e trimis capitolul care lămurește."
+  },
+  {
+   "tip": "cheie",
+   "text": "Jumătate din neînțelegerile dintre un contabil și un patron vin din patru perechi de cuvinte: venit și încasare, cheltuială și plată, profit și bani, debit și datorie."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "A",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "achiziție intracomunitară",
+     "Cumpărare de bunuri de la un furnizor din alt stat al Uniunii. Se taxează invers, la cumpărător."
+    ],
+    [
+     "acreditiv",
+     "Sumă blocată la bancă în favoarea unui furnizor, până la îndeplinirea unei condiții."
+    ],
+    [
+     "activ",
+     "Tot ce are firma: bunuri, stocuri, creanțe, bani. Partea stângă a bilanțului."
+    ],
+    [
+     "adaos comercial",
+     "Diferența dintre prețul de vânzare și costul de cumpărare al mărfii."
+    ],
+    [
+     "ajustare pentru depreciere",
+     "Recunoașterea faptului că un activ valorează mai puțin decât scrie în evidență. Nu îl șterge — îi așază alături valoarea probabil pierdută."
+    ],
+    [
+     "amortizare",
+     "Împărțirea costului unui bun pe anii în care e folosit. Cheltuială care nu se plătește."
+    ],
+    [
+     "analitic",
+     "Desfășurarea unui cont pe detalii: pe fiecare client, pe fiecare gestiune. Suma analiticelor trebuie să dea exact sinteticul."
+    ],
+    [
+     "angajament (contabilitate de ~)",
+     "Principiul după care venitul și cheltuiala se recunosc când se produc, nu când se încasează sau se plătesc."
+    ],
+    [
+     "append-only",
+     "Proprietatea unui jurnal în care se poate doar adăuga, niciodată rescrie."
+    ],
+    [
+     "aprobare (a lunii)",
+     "Actul prin care cineva își asumă explicit că perioada e corectă și poate fi raportată."
+    ],
+    [
+     "articol contabil",
+     "O înregistrare completă: ce cont se debitează, ce cont se creditează, cu ce sumă. În vorbă obișnuită, „o notă”."
+    ],
+    [
+     "autofactură",
+     "Factură pe care firma și-o emite singură, în locul furnizorului, când legea o cere."
+    ],
+    [
+     "avans",
+     "Bani plătiți sau încasați înaintea livrării. Nu e nici cheltuială, nici venit."
+    ],
+    [
+     "aviz de însoțire",
+     "Document care însoțește marfa livrată înainte de facturare."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "B",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "balanță de verificare",
+     "Lista tuturor conturilor cu solduri și rulaje, cu patru perechi de totaluri egale. Se face lunar."
+    ],
+    [
+     "bază de impozitare",
+     "Suma asupra căreia se aplică o cotă. La TVA, valoarea fără taxă; la impozitul pe profit, rezultatul fiscal."
+    ],
+    [
+     "bifuncțional",
+     "Cont care poate avea sold pe oricare parte, după situație (121, 117, 581)."
+    ],
+    [
+     "bilanț",
+     "Fotografia patrimoniului la o dată anume: ce are firma și de unde a venit."
+    ],
+    [
+     "blocarea perioadei",
+     "Închiderea unei luni pentru orice modificare ulterioară."
+    ],
+    [
+     "bon de consum",
+     "Document care scoate materiale din stoc pentru a fi folosite."
+    ],
+    [
+     "brut (salariu ~)",
+     "Salariul înainte de rețineri. Nu e nici ce primește angajatul, nici ce costă firma."
+    ],
+    [
+     "bun de capital",
+     "Imobilizare pentru care TVA-ul dedus se ajustează pe 5 sau 20 de ani, dacă se schimbă destinația."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "C",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "CAM",
+     "Contribuția asiguratorie pentru muncă, 2,25%, datorată de angajator."
+    ],
+    [
+     "capitaluri proprii",
+     "Averea netă a asociaților: activ minus datorii. Ce ar rămâne dacă s-ar plăti tot."
+    ],
+    [
+     "cartea mare",
+     "Registrul cu aceleași operațiuni ca jurnalul, grupate pe conturi."
+    ],
+    [
+     "CAS",
+     "Contribuția de asigurări sociale (pensie), reținută din salariu."
+    ],
+    [
+     "casare",
+     "Scoaterea din uz a unui bun care nu mai folosește nimănui, fără preț de vânzare."
+    ],
+    [
+     "CASS",
+     "Contribuția de asigurări sociale de sănătate, reținută din salariu."
+    ],
+    [
+     "cedare",
+     "Vânzarea unui mijloc fix. Se deosebește de casare, care e scoaterea din uz fără preț."
+    ],
+    [
+     "cheltuială",
+     "Valoare consumată în perioadă. Nu se confundă cu plata."
+    ],
+    [
+     "cheltuială în avans",
+     "Sumă plătită acum pentru perioade viitoare (contul 471). E un activ, nu o cheltuială."
+    ],
+    [
+     "cifră de afaceri netă",
+     "Vânzările de bunuri și servicii, minus reducerile acordate. Nu include alte venituri."
+    ],
+    [
+     "compensare",
+     "Stingerea reciprocă a unei creanțe și a unei datorii față de același partener."
+    ],
+    [
+     "concordanță",
+     "Verificare prin care două situații despre același lucru trebuie să dea aceeași cifră."
+    ],
+    [
+     "cont",
+     "Un „sertar” în care se adună sumele de același fel. Are un cod și o denumire."
+    ],
+    [
+     "cont sintetic",
+     "Contul din planul general (371, 401). Opusul lui e analiticul."
+    ],
+    [
+     "cost mediu ponderat",
+     "Metodă de descărcare a stocului: fiecare ieșire la media valorică a intrărilor."
+    ],
+    [
+     "cotă",
+     "Procentul aplicat unei baze: 21% la TVA, 16% la impozitul pe profit."
+    ],
+    [
+     "creanță",
+     "Dreptul de a primi bani de la cineva. La firmă, de regulă de la clienți."
+    ],
+    [
+     "credit (partea unui cont)",
+     "Partea dreaptă a unui cont. Nu are legătură cu creditul bancar."
+    ],
+    [
+     "creditor",
+     "Cel căruia îi datorezi. Nu se confundă cu partea „credit” a unui cont."
+    ],
+    [
+     "cut-off",
+     "Delimitarea corectă între perioade: fiecare operațiune în luna căreia îi aparține."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "D",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "D100",
+     "Declarația privind obligațiile de plată la bugetul de stat."
+    ],
+    [
+     "D101",
+     "Declarația anuală de impozit pe profit."
+    ],
+    [
+     "D112",
+     "Declarația privind contribuțiile sociale și impozitul pe venit."
+    ],
+    [
+     "D205",
+     "Declarația informativă privind impozitul reținut la sursă."
+    ],
+    [
+     "D300",
+     "Decontul de taxă pe valoarea adăugată."
+    ],
+    [
+     "D390",
+     "Declarația recapitulativă privind operațiunile intracomunitare."
+    ],
+    [
+     "D394",
+     "Declarația informativă privind livrările și achizițiile pe teritoriul național."
+    ],
+    [
+     "D406",
+     "Declarația informativă SAF-T."
+    ],
+    [
+     "datorie",
+     "Obligația de a da bani sau bunuri altcuiva."
+    ],
+    [
+     "debit (partea unui cont)",
+     "Partea stângă a unui cont."
+    ],
+    [
+     "debitor",
+     "Cel care îți datorează."
+    ],
+    [
+     "decont de TVA",
+     "Declarația în care se adună TVA-ul colectat și cel deductibil al perioadei (D300)."
+    ],
+    [
+     "deducere personală",
+     "Parte din salariu care nu se impozitează. Se acordă la funcția de bază."
+    ],
+    [
+     "deductibil",
+     "Care se poate scădea: din baza impozitului (o cheltuială) sau din TVA-ul datorat (o taxă plătită)."
+    ],
+    [
+     "delimitare în timp",
+     "Repartizarea unei sume pe perioadele cărora le aparține (conturile 471 și 472)."
+    ],
+    [
+     "descărcare de gestiune",
+     "Scoaterea din stoc a mărfii vândute, la costul ei. Linia uitată cel mai des."
+    ],
+    [
+     "dividend",
+     "Partea din profit distribuită asociaților, după aprobarea situațiilor financiare."
+    ],
+    [
+     "document justificativ",
+     "Hârtia sau fișierul care dovedește că operațiunea a avut loc. Fără el nu se înregistrează nimic."
+    ],
+    [
+     "durată normală de funcționare",
+     "Numărul de ani pe care se amortizează un bun, ales dintr-un interval oficial."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "E",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "e-Factura",
+     "Sistemul prin care facturile se transmit electronic prin platforma administrației fiscale."
+    ],
+    [
+     "e-Transport",
+     "Sistemul de raportare a transporturilor de bunuri cu risc fiscal ridicat; produce un cod UIT."
+    ],
+    [
+     "echilibru (al unui articol)",
+     "Egalitatea dintre totalul debitelor și totalul creditelor. Necesară, nu suficientă."
+    ],
+    [
+     "eroare simetrică",
+     "Greșeală care afectează ambele părți deodată, deci trece de orice verificare de echilibru."
+    ],
+    [
+     "exercițiu financiar",
+     "Perioada pentru care se întocmesc situațiile financiare — de regulă anul calendaristic."
+    ],
+    [
+     "exigibilitate",
+     "Momentul din care statul poate cere taxa. Nu coincide întotdeauna cu faptul generator."
+    ],
+    [
+     "exploatare (activitate de ~)",
+     "Activitatea de bază a firmei, distinctă de cea financiară."
+    ],
+    [
+     "extras de cont",
+     "Documentul emis de bancă cu mișcările contului. Dovedește că banii s-au mișcat, nu de ce."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "F",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "factură",
+     "Documentul care atestă o livrare sau o prestare, cu elementele cerute de lege."
+    ],
+    [
+     "fapt generator",
+     "Momentul în care se realizează operațiunea. Din el decurge, de regulă, exigibilitatea."
+    ],
+    [
+     "FIFO",
+     "Metodă de descărcare a stocului: primul intrat, primul ieșit."
+    ],
+    [
+     "fișă de cont",
+     "Pagina unui cont din cartea mare: sold inițial, mișcări, rulaje, sold final."
+    ],
+    [
+     "fluturaș de salariu",
+     "Documentul care arată angajatului cum s-a ajuns de la brut la net."
+    ],
+    [
+     "flux de trezorerie",
+     "Situație care urmărește exclusiv banii, pe trei activități: exploatare, investiții, finanțare."
+    ],
+    [
+     "forțare (a închiderii)",
+     "Închiderea peste un pas neterminat. Cere drept de administrator și motiv scris."
+    ],
+    [
+     "funcția de bază",
+     "Locul de muncă principal, singurul la care se acordă deducerea personală."
+    ],
+    [
+     "furnizor",
+     "Cel de la care cumperi. Contul 401."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "G",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "gestiune",
+     "Locul în care se ține un stoc și persoana care răspunde de el."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "I",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "imobilizare",
+     "Bun folosit peste un an, cu valoare peste plafonul legal. Se amortizează."
+    ],
+    [
+     "impozit pe profit",
+     "16% aplicat rezultatului fiscal, nu celui contabil."
+    ],
+    [
+     "impozit pe veniturile microîntreprinderilor",
+     "Cotă aplicată veniturilor, indiferent de profit. Se plătește și în pierdere."
+    ],
+    [
+     "imputare",
+     "Punerea în sarcina unei persoane a unei lipse constatate la inventar."
+    ],
+    [
+     "incert (client ~)",
+     "Client a cărui plată a devenit îndoielnică. Contul 4118."
+    ],
+    [
+     "inventar faptic",
+     "Ce s-a numărat efectiv, spre deosebire de evidența scriptică."
+    ],
+    [
+     "inventariere",
+     "Numărarea efectivă a patrimoniului și confruntarea cu evidența scriptică."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "J",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "jurnal (registrul-~)",
+     "Registrul cu toate operațiunile, în ordinea în care s-au petrecut."
+    ],
+    [
+     "jurnal de audit",
+     "Evidența acțiunilor omenești asupra sistemului: cine, ce, când."
+    ],
+    [
+     "jurnal de TVA",
+     "Registru în scopuri de TVA: unul de vânzări, unul de cumpărări. Din ele se compune decontul."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "L",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "leasing financiar",
+     "Formă de finanțare în care bunul intră în bilanțul utilizatorului, cu datoria aferentă."
+    ],
+    [
+     "leasing operațional",
+     "Închiriere: rata e cheltuială, iar bunul rămâne la proprietar."
+    ],
+    [
+     "lichiditate",
+     "Cât de repede se poate transforma un activ în bani."
+    ],
+    [
+     "lipsă neimputabilă",
+     "Minus de inventar care nu poate fi pus în sarcina cuiva. Atrage ajustare de TVA."
+    ],
+    [
+     "livrare intracomunitară",
+     "Vânzare de bunuri către un client din alt stat al Uniunii. Scutită, cu drept de deducere."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "M",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "micro",
+     "Prescurtarea uzuală pentru „microîntreprindere”, adică firma impozitată pe venituri."
+    ],
+    [
+     "monografie contabilă",
+     "Vocabularul care leagă o situație reală de articolul contabil corespunzător."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "N",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "nedeductibil",
+     "Cheltuială reală, plătită din banii firmei, pe care legea nu o scade din baza de impozitare."
+    ],
+    [
+     "note explicative",
+     "Anexa în care se explică politicile, metodele și detaliile din spatele cifrelor."
+    ],
+    [
+     "notă contabilă",
+     "Vezi „articol contabil”."
+    ],
+    [
+     "notă de credit",
+     "Factură de corecție care reduce sau anulează o factură anterioară."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "O",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "operațiune triunghiulară",
+     "Trei firme, trei state, o singură mișcare de marfă. Măsură de simplificare."
+    ],
+    [
+     "ordin de plată",
+     "Documentul prin care se dispune o plată bancară."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "P",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "partidă dublă",
+     "Regula după care orice sumă se scrie de două ori, pe două conturi, în părți opuse."
+    ],
+    [
+     "pasiv",
+     "Partea dreaptă a bilanțului: de unde au venit resursele — capitaluri și datorii."
+    ],
+    [
+     "perioadă fiscală",
+     "Intervalul pentru care se depune decontul de TVA: luna sau trimestrul."
+    ],
+    [
+     "perioadă închisă",
+     "Lună sau trimestru blocat pentru modificări."
+    ],
+    [
+     "plafon",
+     "Limită până la care ceva e permis sau deductibil. Peste ea, regimul se schimbă."
+    ],
+    [
+     "plafon de casierie",
+     "Suma maximă care poate rămâne în casierie la sfârșitul zilei: 50.000 lei."
+    ],
+    [
+     "postare",
+     "Actul prin care un articol intră definitiv în contabilitate. După el, corecția se face prin storno."
+    ],
+    [
+     "preț de vânzare",
+     "Prețul facturat clientului, fără TVA."
+    ],
+    [
+     "principiul prudenței",
+     "Regula de a nu supraevalua activele și veniturile, nici de a subevalua datoriile."
+    ],
+    [
+     "pro-rata",
+     "Proporția în care se deduce TVA-ul la firmele cu operațiuni scutite fără drept de deducere."
+    ],
+    [
+     "producție în curs",
+     "Ce s-a început și nu s-a terminat la sfârșitul perioadei."
+    ],
+    [
+     "provizion",
+     "Recunoașterea unei obligații probabile, de mărime estimată, izvorâtă dintr-un fapt trecut."
+    ],
+    [
+     "punctaj bancar",
+     "Potrivirea rând cu rând a extrasului cu înregistrările din contabilitate."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "R",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "recipisă",
+     "Confirmarea electronică a primirii unei declarații. Singura probă că obligația a fost îndeplinită."
+    ],
+    [
+     "reconciliere bancară",
+     "Confruntarea evidenței proprii cu extrasul băncii."
+    ],
+    [
+     "rectificativă",
+     "Declarație depusă pentru a corecta una anterioară."
+    ],
+    [
+     "reevaluare valutară",
+     "Aducerea soldurilor în valută la cursul de închidere."
+    ],
+    [
+     "regim special al marjei",
+     "Impozitarea doar a adaosului, la bunuri second-hand și asimilate."
+    ],
+    [
+     "registru-inventar",
+     "Registrul obligatoriu în care se consemnează rezultatele inventarierii."
+    ],
+    [
+     "regularizare",
+     "Înregistrare care nu vine dintr-un document extern, ci din trecerea timpului sau din judecată."
+    ],
+    [
+     "rezervă legală",
+     "Parte din profit care rămâne obligatoriu în firmă: 5% din profitul brut, până la 20% din capital."
+    ],
+    [
+     "rezultat contabil",
+     "Venituri minus cheltuieli. Măsoară performanța economică."
+    ],
+    [
+     "rezultat fiscal",
+     "Rezultatul contabil ajustat cu nedeductibilele și deducerile. Baza impozitului."
+    ],
+    [
+     "rezultat reportat",
+     "Profitul nedistribuit sau pierderea neacoperită din anii anteriori. Contul 117."
+    ],
+    [
+     "rulaj",
+     "Totalul mișcărilor unui cont într-o perioadă, pe fiecare parte."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "S",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "SAF-T",
+     "Fișierul standard de audit fiscal, prin care datele contabile se transmit în format unitar (D406)."
+    ],
+    [
+     "scadențar",
+     "Situația creanțelor și datoriilor pe partener și pe vechime."
+    ],
+    [
+     "scutit cu drept de deducere",
+     "Operațiune fără TVA colectată, dar care păstrează dreptul de deducere la intrări."
+    ],
+    [
+     "scutit fără drept de deducere",
+     "Operațiune fără TVA colectată, care nu dă drept de deducere. Generează pro-rata."
+    ],
+    [
+     "sold",
+     "Diferența dintre cele două părți ale unui cont. Poate fi debitor sau creditor."
+    ],
+    [
+     "sold inițial",
+     "Soldul cu care începe perioada, preluat din cea precedentă."
+    ],
+    [
+     "solvabilitate",
+     "Capacitatea firmei de a-și acoperi datoriile din active."
+    ],
+    [
+     "SPV",
+     "Spațiul Privat Virtual — canalul electronic de comunicare cu administrația fiscală."
+    ],
+    [
+     "stat de plată",
+     "Documentul lunar cu drepturile salariale ale fiecărui angajat."
+    ],
+    [
+     "stoc",
+     "Bunuri cumpărate sau produse pentru a fi vândute ori consumate."
+    ],
+    [
+     "storno",
+     "Anularea unei înregistrări printr-o alta, care rămâne legată de ea. Nu se șterge nimic."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "T",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "taxare inversă",
+     "Mecanism prin care obligația de plată a TVA trece de la furnizor la cumpărător."
+    ],
+    [
+     "terți",
+     "Toți cei din afara firmei cu care aceasta are relații: clienți, furnizori, salariați, stat."
+    ],
+    [
+     "trasabilitate",
+     "Posibilitatea de a merge de la orice cifră înapoi până la documentul care a produs-o."
+    ],
+    [
+     "trezorerie",
+     "Banii firmei: conturi bancare și casierie."
+    ],
+    [
+     "TVA colectată",
+     "Taxa facturată clienților. E datorie față de stat, nu venit."
+    ],
+    [
+     "TVA deductibilă",
+     "Taxa plătită furnizorilor. Se recuperează prin decont."
+    ],
+    [
+     "TVA la încasare",
+     "Regim în care taxa devine exigibilă la plată, nu la facturare — pe ambele laturi."
+    ],
+    [
+     "TVA neexigibilă",
+     "Taxa care încă nu a devenit datorată sau deductibilă (contul 4428)."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "U",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "UIT",
+     "Codul obținut la raportarea unui transport în sistemul e-Transport."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "V",
+   "cap": [
+    "Termenul",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "validator",
+     "Programul oficial care verifică o declarație înainte de depunere."
+    ],
+    [
+     "valoare rămasă",
+     "Costul unui bun minus amortizarea cumulată."
+    ],
+    [
+     "vechimea soldurilor",
+     "Împărțirea creanțelor și datoriilor pe intervale de timp de la scadență."
+    ],
+    [
+     "vector fiscal",
+     "Configurația obligațiilor declarative ale firmei, în evidența administrației fiscale."
+    ],
+    [
+     "venit",
+     "Valoare câștigată în perioadă. Nu se confundă cu încasarea."
+    ],
+    [
+     "venit în avans",
+     "Sumă încasată acum pentru prestații viitoare (contul 472). E o datorie."
+    ],
+    [
+     "viramente interne",
+     "Contul de tranzit prin care trec mutările de bani între bancă și casierie (581)."
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Patru perechi care se confundă"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Nu sunt sinonime",
+   "cap": [
+    "Nu confunda",
+    "Cu",
+    "Diferența"
+   ],
+   "randuri": [
+    [
+     "venit",
+     "încasare",
+     "primul se naște la facturare, al doilea la primirea banilor"
+    ],
+    [
+     "cheltuială",
+     "plată",
+     "prima la consumarea resursei, a doua la ieșirea banilor"
+    ],
+    [
+     "profit",
+     "bani în cont",
+     "primul e o măsură, al doilea o stare — vezi capitolul 1"
+    ],
+    [
+     "debit",
+     "datorie",
+     "debitul e o parte a unui cont; datoria e o obligație"
+    ],
+    [
+     "casare",
+     "cedare",
+     "prima e scoaterea din uz, a doua e vânzarea"
+    ],
+    [
+     "storno în roșu",
+     "storno în negru",
+     "primul păstrează rulajele corecte — vezi capitolul 29"
+    ]
+   ],
+   "nota": "Ultimele două perechi produc erori care nu dezechilibrează nimic, deci nu se semnalează singure."
+  },
+  {
+   "tip": "p",
+   "text": "Glosarul cuprinde 154 de termeni. Nu e exhaustiv și nici nu urmărește să fie: sunt cuvintele care apar efectiv într-o discuție obișnuită între un contabil și un administrator de firmă mică."
+  }
+ ]
+}

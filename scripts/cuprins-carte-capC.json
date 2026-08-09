@@ -1,0 +1,256 @@
+{
+ "parte": "Anexe · de folosit, nu de citit",
+ "nr": "C",
+ "titlu": "Calendarul fiscal",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Calendarul de mai jos nu e o listă de termene de memorat, ci o hartă: arată ce datorează o firmă în funcție de ce este și de ce face. Prima coloană a fiecărui tabel e întotdeauna condiția — dacă ea nu se aplică, rândul nu se citește."
+  },
+  {
+   "tip": "p",
+   "text": "Termenele se raportează, cu puține excepții, la data de 25 a lunii următoare perioadei de raportare. Excepțiile sunt notate acolo unde apar. Ca la orice cifră care se poate schimba, verificarea în textul în vigoare rămâne obligatorie înainte de o depunere."
+  },
+  {
+   "tip": "cheie",
+   "text": "Nedepunerea și neplata se sancționează separat. O declarație pe zero e tot o declarație — amenda pentru nedepunere curge indiferent de sumă."
+  },
+  {
+   "tip": "h",
+   "text": "Ce depinde de ce"
+  },
+  {
+   "tip": "p",
+   "text": "Trei alegeri determină aproape întreaga listă. Sunt cele din capitolul 37, așezate aici ca punct de plecare."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele trei întrebări care decid calendarul",
+   "cap": [
+    "Întrebarea",
+    "Dacă DA",
+    "Dacă NU"
+   ],
+   "randuri": [
+    [
+     "Firma e înregistrată în scopuri de TVA?",
+     "D300, D394, D406, jurnale de TVA",
+     "niciuna dintre ele"
+    ],
+    [
+     "Firma are salariați sau colaboratori plătiți?",
+     "D112 lunar, state de plată, D205 anual",
+     "niciuna"
+    ],
+    [
+     "Firma e microîntreprindere?",
+     "D100 trimestrial, pe venituri",
+     "D100 pentru avansuri și D101 anual, pe profit"
+    ]
+   ],
+   "nota": "O a patra întrebare se adaugă la firmele care comercializează în Uniune: operațiunile intracomunitare aduc D390 și trec TVA-ul la depunere lunară."
+  },
+  {
+   "tip": "h",
+   "text": "Lunar"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Obligații cu termen lunar",
+   "cap": [
+    "Ce",
+    "Până când",
+    "Cine"
+   ],
+   "randuri": [
+    [
+     "D112 — contribuții și impozit pe salarii",
+     "25 ale lunii următoare",
+     "firmele cu salariați"
+    ],
+    [
+     "D300 — decontul de TVA",
+     "25 ale lunii următoare",
+     "plătitorii cu perioadă fiscală lunară"
+    ],
+    [
+     "D394 — declarația informativă",
+     "odată cu D300",
+     "aceiași"
+    ],
+    [
+     "D390 VIES — operațiuni intracomunitare",
+     "25 ale lunii următoare",
+     "cei cu operațiuni intracomunitare în luna respectivă"
+    ],
+    [
+     "D406 SAF-T — fișierul standard de audit",
+     "termen propriu, ulterior lunii",
+     "după categoria contribuabilului"
+    ],
+    [
+     "D100 — rețineri la sursă, dividende",
+     "25 ale lunii următoare",
+     "când există astfel de obligații"
+    ],
+    [
+     "Plata obligațiilor declarate",
+     "25 ale lunii următoare",
+     "toți"
+    ]
+   ],
+   "nota": "D390 nu se depune pe zero: dacă în luna respectivă nu au existat operațiuni intracomunitare, nu există obligație de depunere."
+  },
+  {
+   "tip": "h",
+   "text": "Trimestrial"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Obligații cu termen trimestrial",
+   "cap": [
+    "Ce",
+    "Până când",
+    "Cine"
+   ],
+   "randuri": [
+    [
+     "D300 și D394",
+     "25 ale lunii următoare trimestrului",
+     "plătitorii cu perioadă fiscală trimestrială"
+    ],
+    [
+     "D100 — impozit pe veniturile microîntreprinderilor",
+     "25 ale lunii următoare trimestrului",
+     "microîntreprinderile"
+    ],
+    [
+     "D100 — avans la impozitul pe profit",
+     "25 ale lunii următoare trimestrului",
+     "cei care aplică sistemul de plăți anticipate"
+    ],
+    [
+     "D112 trimestrial",
+     "25 ale lunii următoare trimestrului",
+     "firmele mici, în condițiile legii"
+    ],
+    [
+     "Balanța de verificare la sfârșit de trimestru",
+     "—",
+     "toți (obligație contabilă, nu declarativă)"
+    ]
+   ],
+   "nota": "Trecerea de la perioadă trimestrială la lunară nu e opțională: o singură achiziție intracomunitară de bunuri o produce, din chiar luna respectivă."
+  },
+  {
+   "tip": "h",
+   "text": "Anual"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Obligații cu termen anual",
+   "cap": [
+    "Ce",
+    "Când",
+    "Cine"
+   ],
+   "randuri": [
+    [
+     "Inventarierea generală a patrimoniului",
+     "înainte de întocmirea situațiilor",
+     "toți"
+    ],
+    [
+     "Situațiile financiare anuale",
+     "termen propriu, în lunile de după închidere",
+     "toți"
+    ],
+    [
+     "D101 — impozitul pe profit",
+     "termen propriu, după închiderea exercițiului",
+     "plătitorii de impozit pe profit"
+    ],
+    [
+     "D205 — rețineri la sursă pe beneficiar",
+     "termen propriu, în anul următor",
+     "cei care au reținut impozit la sursă"
+    ],
+    [
+     "Registrul-inventar și documentele de inventariere",
+     "la închiderea exercițiului",
+     "toți"
+    ],
+    [
+     "Hotărârea AGA — aprobare și repartizare",
+     "după întocmirea situațiilor",
+     "toți"
+    ],
+    [
+     "Registrul de evidență fiscală",
+     "la determinarea impozitului",
+     "plătitorii de impozit pe profit"
+    ]
+   ],
+   "nota": "Ordinea din tabel e și ordinea de execuție: inventarierea precede situațiile, iar hotărârea AGA le urmează. Niciuna nu se poate sări — vezi capitolul 44."
+  },
+  {
+   "tip": "h",
+   "text": "La cerere, sau la eveniment"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce nu are termen fix",
+   "cap": [
+    "Ce",
+    "Când apare"
+   ],
+   "randuri": [
+    [
+     "Declarație rectificativă",
+     "ori de câte ori se corectează o declarație depusă"
+    ],
+    [
+     "Notificare de schimbare a perioadei fiscale de TVA",
+     "la prima achiziție intracomunitară de bunuri"
+    ],
+    [
+     "Actualizarea vectorului fiscal",
+     "la orice schimbare de regim sau de activitate"
+    ],
+    [
+     "Fișa pe plătitor / certificat de atestare fiscală",
+     "la cererea firmei, pentru bănci sau licitații"
+    ],
+    [
+     "Declarația de mențiuni la registrul comerțului",
+     "la schimbări de sediu, obiect, administrator"
+    ]
+   ],
+   "nota": "Ultimele două nu sunt obligații fiscale, dar apar în practică suficient de des ca să merite locul lor în calendar."
+  },
+  {
+   "tip": "h",
+   "text": "Ordinea lunii, ca listă de lucru"
+  },
+  {
+   "tip": "p",
+   "text": "Calendarul spune până când. Ordinea în care se ajunge acolo e cea din capitolul 39, și merită repetată aici, fiindcă e partea care se sare cel mai des."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Ordinea, de fiecare dată aceeași",
+   "puncte": [
+    "1. Toate documentele lunii sunt înregistrate și postate.",
+    "2. Extrasul bancar e înregistrat și punctat cu facturile.",
+    "3. Regularizările sunt făcute, iar TVA-ul e stabilit.",
+    "4. Balanța de verificare e întocmită și verificată.",
+    "5. Declarațiile se generează DIN balanță, se validează și se depun.",
+    "6. Recipisele se arhivează, obligațiile se plătesc, perioada se blochează."
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "Pasul 5 e cel care nu poate precede pasul 4. O declarație generată înaintea balanței se va corecta după ea, iar corecția unei declarații deja depuse costă întotdeauna mai mult decât o zi de așteptare."
+  }
+ ]
+}
