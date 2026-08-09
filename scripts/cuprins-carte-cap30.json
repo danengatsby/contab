@@ -1,0 +1,174 @@
+{
+ "parte": "Partea VII · Registrele și verificarea · faza 8",
+ "nr": "30",
+ "titlu": "Cronologic: registrul-jurnal",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Toate înregistrările făcute până acum există undeva. Partea aceasta e despre unde anume — și despre de ce aceleași operațiuni se scriu de două ori, în două registre diferite, fără ca asta să fie o dublare inutilă."
+  },
+  {
+   "tip": "p",
+   "text": "Primul dintre ele e registrul-jurnal: tot ce s-a întâmplat, în ordinea în care s-a întâmplat. E registrul pe care legea îl cere primul, și e cel mai simplu dintre toate."
+  },
+  {
+   "tip": "h",
+   "text": "Cum arată"
+  },
+  {
+   "tip": "p",
+   "text": "Un rând pentru fiecare linie a fiecărui articol contabil, în ordine cronologică, cu numărul curent, data, documentul, explicația, contul debitor, contul creditor și suma."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Registrul-jurnal al lunii iunie, primele operațiuni",
+   "cap": [
+    "Nr.",
+    "Data",
+    "Document",
+    "Debit",
+    "Credit",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "1",
+     "2026-06-10",
+     "AFD 1001",
+     "371",
+     "401",
+     "10.000"
+    ],
+    [
+     "",
+     "",
+     "",
+     "4426",
+     "401",
+     "2.100"
+    ],
+    [
+     "2",
+     "2026-06-15",
+     "EXP 2001",
+     "4111",
+     "707",
+     "14.000"
+    ],
+    [
+     "",
+     "",
+     "",
+     "4111",
+     "4427",
+     "2.940"
+    ],
+    [
+     "",
+     "",
+     "",
+     "607",
+     "371",
+     "8.000"
+    ],
+    [
+     "3",
+     "2026-06-15",
+     "CH 17",
+     "5311",
+     "4111",
+     "16.940"
+    ],
+    [
+     "4",
+     "2026-06-20",
+     "OP 44",
+     "401",
+     "5121",
+     "12.100"
+    ]
+   ],
+   "numerice": [
+    6
+   ],
+   "nota": "Numărul curent se dă pe ARTICOL contabil, nu pe rând: operațiunea 2 are trei linii, dar un singur număr. Data și documentul se scriu o dată, pe primul rând."
+  },
+  {
+   "tip": "p",
+   "text": "Observația cea mai utilă despre acest tabel e ce nu conține: niciun sold, niciun total pe cont, nicio grupare. Registrul-jurnal nu răspunde la întrebarea „cât am în bancă”. Răspunde la întrebarea „ce s-a întâmplat pe 15 iunie”."
+  },
+  {
+   "tip": "h",
+   "text": "La ce folosește ordinea"
+  },
+  {
+   "tip": "p",
+   "text": "Ordinea cronologică nu e o convenție de prezentare, ci chiar rostul registrului. Un jurnal numerotat continuu, fără goluri, e dovada că nimic nu a fost inserat ulterior între două operațiuni deja consemnate."
+  },
+  {
+   "tip": "p",
+   "text": "De aici derivă două reguli care par pedante și nu sunt: numerotarea e continuă pe tot exercițiul, iar un număr o dată atribuit nu se refolosește. Un gol în numerotare e o întrebare la care cineva va trebui să răspundă."
+  },
+  {
+   "tip": "cheie",
+   "text": "Registrul-jurnal nu e o listă de operațiuni. E dovada că lista e completă și că nu s-a umblat la ea."
+  },
+  {
+   "tip": "p",
+   "text": "E și motivul pentru care corecțiile se fac prin storno, așa cum s-a văzut în capitolul 29: o notă de storno primește următorul număr liber și apare la data ei, nu la data erorii. Jurnalul păstrează astfel și greșeala, și îndreptarea, în ordinea în care s-au petrecut."
+  },
+  {
+   "tip": "h",
+   "text": "Totalul care leagă totul"
+  },
+  {
+   "tip": "p",
+   "text": "Jurnalul are o singură cifră de sinteză: totalul sumelor înregistrate în perioadă. În exemplul de mai sus, pentru luna iunie, el e de 76.392,50 lei."
+  },
+  {
+   "tip": "p",
+   "text": "Cifra aceasta pare fără rost — nu reprezintă nici cifra de afaceri, nici cheltuielile, nici banii mișcați. Valoarea ei e alta: trebuie să fie egală cu rulajul total din balanța de verificare, atât pe debit, cât și pe credit. E prima dintre corelațiile care leagă registrele între ele, iar capitolul 32 le adună pe toate."
+  },
+  {
+   "tip": "h",
+   "text": "Jurnalele auxiliare"
+  },
+  {
+   "tip": "p",
+   "text": "La o firmă cu câteva sute de operațiuni pe lună, un singur jurnal e suficient. La una cu zeci de mii, el devine ilizibil — și atunci se folosesc jurnale auxiliare: unul de cumpărări, unul de vânzări, unul de bancă, unul de casă, unul pentru operațiuni diverse."
+  },
+  {
+   "tip": "p",
+   "text": "Fiecare adună operațiunile de același fel, iar totalurile lor se preiau într-un jurnal centralizator, care rămâne registrul-jurnal propriu-zis. Structura nu schimbă nimic din fond: aceleași operațiuni, aceeași ordine, doar grupate pentru a putea fi citite."
+  },
+  {
+   "tip": "p",
+   "text": "Merită știut că jurnalele de vânzări și de cumpărări au și o a doua întrebuințare, fiscală: din ele se compune decontul de TVA. E motivul pentru care apar și la firmele mici, unde volumul nu le-ar cere. Capitolul 35 revine asupra lor."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Registrul-jurnal e registru obligatoriu potrivit Legii contabilității nr. 82/1991, alături de registrul-inventar și cartea mare, iar forma și modul de completare sunt cele din normele privind documentele financiar-contabile. Patru observații de practică. Prima: registrele obligatorii se pot ține în formă electronică, cu condiția de a putea fi listate oricând la cererea organelor de control și de a se asigura integritatea și lizibilitatea pe toată durata de păstrare; forma electronică nu suprimă obligația de a le putea prezenta, ci doar suportul. A doua: termenul de păstrare e cel prevăzut de legea contabilității, iar el a fost modificat prin intervenții legislative succesive în ultimii ani — e una dintre cifrele care se verifică la zi, nu se recită din memorie. A treia: pentru firmele care folosesc jurnale auxiliare, registrul-jurnal general preia totalurile acestora, nu operațiunile individuale; corelația care trebuie să se verifice lunar e între totalul fiecărui jurnal auxiliar și rulajul conturilor pe care le alimentează. A patra: jurnalul de vânzări și cel de cumpărări sunt registre în scopuri de TVA, prevăzute de normele de aplicare a Codului fiscal, și nu se confundă cu jurnalele auxiliare contabile — perimetrul, momentul exigibilității și tratamentul operațiunilor scutite diferă, iar suprapunerea lor mecanică e o sursă frecventă de neconcordanțe între contabilitate și decont."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Registrul-jurnal spune tot ce s-a întâmplat, dar nu spune nimic despre stare. Ca să afli cât ai în contul 401 la sfârșitul lunii, ai nevoie de aceleași operațiuni privite din alt unghi: grupate pe conturi. E cartea mare, și e capitolul următor."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Registrul-jurnal cuprinde toate operațiunile, în ordine cronologică, cu numerotare continuă pe exercițiu.",
+    "Numărul curent se dă pe articol contabil, nu pe fiecare rând al lui.",
+    "Rostul ordinii e probatoriu: un jurnal fără goluri dovedește că nu s-a inserat nimic ulterior.",
+    "Nu conține solduri și nu răspunde la întrebarea „cât am”, ci la „ce s-a întâmplat”.",
+    "Totalul lunii trebuie să fie egal cu rulajul total din balanță, pe ambele coloane.",
+    "Jurnalele auxiliare grupează operațiunile pe feluri; cele de vânzări și cumpărări au și rol fiscal, la decontul de TVA."
+   ]
+  }
+ ]
+}

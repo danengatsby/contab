@@ -1,0 +1,176 @@
+{
+ "parte": "Partea VII · Registrele și verificarea · faza 8",
+ "nr": "33",
+ "titlu": "Echilibrat nu înseamnă corect",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Capitolul acesta contrazice cea mai răspândită convingere despre contabilitate: că o balanță care se închide înseamnă o contabilitate corectă."
+  },
+  {
+   "tip": "p",
+   "text": "Nu înseamnă. Balanța de verificare dovedește un singur lucru — că fiecare sumă a fost scrisă de două ori, o dată pe debit și o dată pe credit. Despre corectitudinea acelor sume, despre conturile alese, despre operațiunile care lipsesc cu totul, ea nu spune absolut nimic."
+  },
+  {
+   "tip": "cheie",
+   "text": "Balanța verifică forma, nu fondul. E o condiție necesară și una dintre cele mai slabe condiții din contabilitate."
+  },
+  {
+   "tip": "h",
+   "text": "Cele șase erori care trec"
+  },
+  {
+   "tip": "p",
+   "text": "Merită enumerate, fiindcă nu sunt cazuri exotice: sunt exact greșelile care se fac în practică, iar niciuna nu clintește vreo egalitate."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce nu prinde balanța",
+   "cap": [
+    "Eroarea",
+    "Exemplu",
+    "De ce trece"
+   ],
+   "randuri": [
+    [
+     "Omisiunea totală",
+     "o factură nu s-a înregistrat deloc",
+     "lipsesc ambele părți deodată"
+    ],
+    [
+     "Contul greșit",
+     "marfa înregistrată în 302 în loc de 371",
+     "suma e aceeași, doar altundeva"
+    ],
+    [
+     "Suma greșită pe tot articolul",
+     "1.000 în loc de 10.000, pe ambele părți",
+     "raportul debit-credit rămâne intact"
+    ],
+    [
+     "Dubla înregistrare",
+     "aceeași factură introdusă de două ori",
+     "al doilea articol e la fel de echilibrat"
+    ],
+    [
+     "Perioada greșită",
+     "o cheltuială din iunie datată în iulie",
+     "echilibrul nu are noțiunea de dată"
+    ],
+    [
+     "Eroarea simetrică",
+     "o diferență de curs cu semn inversat pe ambele părți",
+     "greșeala se anulează pe sine, dar nu în realitate"
+    ]
+   ],
+   "nota": "Ultima e cea mai insidioasă: rezultatul e fals cu dublul diferenței, iar toate verificările mecanice trec."
+  },
+  {
+   "tip": "p",
+   "text": "Al doilea rând merită dezvoltat, fiindcă e cel mai frecvent. O marfă înregistrată pe un cont de materiale consumabile nu dezechilibrează nimic, dar produce patru consecințe: stocul de marfă e subevaluat, cel de materiale supraevaluat, descărcarea gestiunii la vânzare nu se mai poate face corect, iar la inventar cifrele nu se vor potrivi cu nimic din depozit."
+  },
+  {
+   "tip": "p",
+   "text": "Iar al treilea rând e cel care sperie cel mai tare, fiindcă e cel mai simplu: o factură de 10.000 de lei introdusă cu 1.000 trece de orice verificare de echilibru. Nimic din contabilitate nu o semnalează. Singurul lucru care o descoperă e cineva care compară cu documentul."
+  },
+  {
+   "tip": "h",
+   "text": "Cazul care a dat numele capitolului"
+  },
+  {
+   "tip": "p",
+   "text": "Eroarea simetrică merită povestită pe un caz concret, fiindcă e greu de crezut până când o vezi."
+  },
+  {
+   "tip": "p",
+   "text": "O firmă are o datorie de 100.000 de euro către un furnizor extern. La închidere, cursul crește. Regula, din capitolul 26, spune că o datorie care crește produce o pierdere. Un program care aplică o singură formulă pentru toate conturile o înregistrează, în schimb, ca pe un câștig."
+  },
+  {
+   "tip": "p",
+   "text": "Articolul rezultat e perfect echilibrat: debit un cont, credit alt cont, aceeași sumă. Balanța se închide. Toate cele patru egalități sunt respectate. Iar rezultatul anului e greșit cu dublul diferenței — o dată fiindcă lipsește pierderea, încă o dată fiindcă apare un venit care nu există."
+  },
+  {
+   "tip": "p",
+   "text": "Nu e un exemplu inventat. E o eroare reală, găsită într-un program de contabilitate în funcțiune, care produsese ani de rezultate greșite fără ca vreo verificare automată să o semnaleze vreodată."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se verifică, atunci"
+  },
+  {
+   "tip": "p",
+   "text": "Dacă balanța nu ajunge, întrebarea firească e ce ajunge. Răspunsul nu e un singur instrument, ci un set de confruntări cu ceva din afara evidenței — iar cartea le-a introdus deja pe toate."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Verificările care prind ce balanța nu prinde",
+   "cap": [
+    "Verificarea",
+    "Ce prinde",
+    "Capitolul"
+   ],
+   "randuri": [
+    [
+     "Reconcilierea bancară",
+     "operațiuni lipsă, sume greșite pe trezorerie",
+     "16"
+    ],
+    [
+     "Inventarierea",
+     "stocuri greșite, conturi greșite, lipsuri reale",
+     "20"
+    ],
+    [
+     "Concordanța analitic–sintetic",
+     "parteneri dublați, solduri atribuite greșit",
+     "31"
+    ],
+    [
+     "Confruntarea cu declarațiile depuse",
+     "TVA, salarii, venituri — diferențe de perioadă",
+     "35"
+    ],
+    [
+     "Soldurile imposibile",
+     "casă negativă, sold invers pe conturi de terți",
+     "32"
+    ],
+    [
+     "Citirea documentului lângă înregistrare",
+     "suma greșită, contul greșit, perioada greșită",
+     "9"
+    ]
+   ],
+   "nota": "Toate au aceeași structură: compară evidența cu ceva ce nu vine din ea. Balanța se compară doar cu sine."
+  },
+  {
+   "tip": "p",
+   "text": "Ultimul rând e singurul care prinde toate cele șase erori din tabelul precedent, și e singurul pe care niciun program nu îl poate face în locul cuiva. E și motivul pentru care contabilitatea rămâne o profesie, nu o funcție de calcul."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Clasificarea erorilor care nu afectează egalitatea balanței e clasică în literatura de specialitate — erori de omisiune, de comitere, de principiu, de compensare și de inversare — iar utilitatea ei practică e că sugerează controlul potrivit pentru fiecare clasă, nu doar existența lor. Trei observații. Prima: erorile de compensare, în care două greșeli de sens contrar se anulează reciproc, sunt singurele care rezistă și la verificarea prin balanță analitică; ele se descoperă practic doar prin confruntare cu documentul sau cu o sursă externă, ceea ce face ca eșantionarea documentelor la închidere să nu fie o formalitate, ci singurul control eficient împotriva lor. A doua: verificarea corelațiilor între situații — rulajul jurnalului cu rulajul balanței, soldurile de terți cu situația creanțelor și datoriilor, conturile de TVA cu decontul depus, conturile de personal cu declarația 112 — e obligatorie înainte de depunerea oricărei raportări, iar constatările trebuie documentate; un dosar de închidere fără aceste corelații nu probează nimic în fața unui control. A treia: diferența divizibilă cu nouă indică o inversare de cifre, iar cea egală cu dublul unei sume indică o înregistrare pe partea greșită — două reguli empirice vechi, dar care scurtează căutarea de la ore la minute atunci când o balanță chiar nu se închide."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Mai rămâne o situație în această parte, și e singura care nu verifică nimic: e făcută ca să fie folosită la conducerea firmei. Arată cine îți datorează, cui datorezi și de când — iar vechimea e informația care lipsește din toate celelalte rapoarte."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Balanța dovedește doar că fiecare sumă a fost scrisă de două ori; despre sume și conturi nu spune nimic.",
+    "Șase clase de erori trec neatinse: omisiunea, contul greșit, suma greșită pe tot articolul, dubla înregistrare, perioada greșită și eroarea simetrică.",
+    "O factură de 10.000 introdusă cu 1.000 respectă toate cele patru egalități.",
+    "Eroarea simetrică greșește rezultatul cu DUBLUL diferenței și trece de orice verificare mecanică.",
+    "Ce prinde: confruntările cu ceva din afara evidenței — extras, inventar, declarații, document.",
+    "Singura verificare care prinde toate cele șase e citirea documentului lângă înregistrare, și nu se poate automatiza."
+   ]
+  }
+ ]
+}
