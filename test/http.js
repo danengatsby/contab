@@ -2821,6 +2821,34 @@ async function main() {
       ok('preluarea apare in audit', lst.some((a) => a.action === 'migrare.import'));
     }
 
+    // ── PLASA JOBURILOR PERIODICE: si esecul ASINCRON e prins ──
+    // Testul sta AICI, nu in test/run.js: acela e sincron, iar o aserțiune pe o promisiune nu s-ar
+    // numara si n-ar putea pica (vezi CLAUDE.md). `safeInterval` e cerut direct in procesul de
+    // test — nu prin serverul copil — fiindca proprietatea de verificat e a modulului.
+    {
+      const jobsMod = require('../src/jobs');
+      const metricsMod = require('../src/metrics');
+      const respingeriNetratate = [];
+      const peRespingere = (motiv) => respingeriNetratate.push(motiv);
+      process.on('unhandledRejection', peRespingere);
+      try {
+        const h1 = jobsMod.safeInterval('proba-async', () => Promise.reject(new Error('cade asincron')), 5);
+        const h2 = jobsMod.safeInterval('proba-sync', () => { throw new Error('cade sincron'); }, 5);
+        await new Promise((r) => setTimeout(r, 120));
+        clearInterval(h1); clearInterval(h2);
+        const js = metricsMod.jobsSnapshot();
+        // Aserțiunea care conteaza: un job async care esueaza e RAPORTAT, nu doar netratat.
+        ok('job asincron respins -> eroarea ajunge in metrics', js['proba-async'] && js['proba-async'].errors > 0);
+        ok('...cu mesajul pastrat', js['proba-async'] && /cade asincron/.test(js['proba-async'].lastError || ''));
+        ok('...si nu produce nicio respingere netratata', respingeriNetratate.length === 0);
+        // Calea sincona nu are voie sa se strice reparand-o pe cea asincrona.
+        ok('job sincron care arunca -> tot raportat', js['proba-sync'] && js['proba-sync'].errors > 0);
+        ok('...cu mesajul lui', js['proba-sync'] && /cade sincron/.test(js['proba-sync'].lastError || ''));
+      } finally {
+        process.removeListener('unhandledRejection', peRespingere);
+      }
+    }
+
     // ── GUARD SINGLE-INSTANCE: a doua instanta pe aceeasi baza refuza sa porneasca ──
     const secondExit = await new Promise((resolve) => {
       const c2p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {

@@ -7,6 +7,11 @@
 const path = require('path');
 const os = require('os');
 process.env.CONTAB_DB_FILE = process.env.CONTAB_DB_FILE || path.join(os.tmpdir(), 'contab-test-' + process.pid + '.json');
+// CONTAB_DB_FILE singur NU e de ajuns: muta doar BAZA. Restul cailor derivate din CONTAB_DATA_DIR
+// (uploads/, audit/, backups/) ramaneau pe `data/` din repo — adica pe datele de PRODUCTIE, fiindca
+// acest director e si instalarea vie, iar `npm test` ruleaza la `prestart`, deci la fiecare pornire
+// a serverului. Suita chiar crea `data/uploads/`. Poarta de la finalul fisierului tine izolarea.
+process.env.CONTAB_DATA_DIR = process.env.CONTAB_DATA_DIR || path.join(os.tmpdir(), 'contab-test-data-' + process.pid);
 
 const db = require('../src/db');
 const { scopedSeed } = require('../src/seed');
@@ -6674,6 +6679,21 @@ section('e-Factura: refuzul de a emite o factura pe care nu o poate citi');
     partenerCui: 'RO1', partener: 'C', lines: [],
     items: [{ nume: 'A', cantitate: 2, pret: 500, um: 'buc', cota: 21 }] };
   ok('factura cu linii detaliate se emite normal', /<Invoice/.test(xml.eFacturaXml({ cui: 'RO1', nume: 'X' }, cuItems, {})));
+}
+
+section('Poarta: suita nu scrie in directorul de date REAL');
+{
+  // Acest director e si instalarea de PRODUCTIE, iar `npm test` ruleaza la `prestart` — deci o
+  // suita care scrie in `data/` scrie peste datele vii, la fiecare pornire a serverului. Poarta se
+  // uita la calea EFECTIV rezolvata de src/db.js, nu la variabila de mediu: doar asa prinde si
+  // cazul in care izolarea se strica din alta parte (o cale hardcodata, o valoare golita).
+  const pathG = require('path');
+  const reala = pathG.join(__dirname, '..', 'data');
+  const dbG = require('../src/db');
+  ok('directorul de date al suitei NU e `data/` din repo', pathG.resolve(dbG.DATA_DIR) !== pathG.resolve(reala));
+  ok('...nici uploads-ul derivat din el', !pathG.resolve(dbG.UPLOAD_DIR).startsWith(pathG.resolve(reala) + pathG.sep));
+  // Si baza, si oglinda ei: CONTAB_DB_FILE muta doar baza, deci amandoua se verifica separat.
+  ok('fisierul bazei nu e in `data/` real', !pathG.resolve(process.env.CONTAB_DB_FILE).startsWith(pathG.resolve(reala) + pathG.sep));
 }
 
 console.log('\n' + (stare.fail ? '✗ ' : '✓ ') + stare.pass + ' verificari trecute, ' + stare.fail + ' esuate.');

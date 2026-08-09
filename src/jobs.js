@@ -17,21 +17,30 @@ const { pruneLoginAttempts } = require('./session');
 const auditLog = require('./auditLog');
 const { trackServerError } = require('./serverErrors');
 
-// Ruleaza un job periodic cu plasa de siguranta: o eroare SINCRONA in callback (ex. un db.save()
-// care arunca) e prinsa si logata — nu doboara procesul si nu impiedica rulele urmatoare. Erorile
-// ASINCRONE raman tratate pe .catch-ul promisiunilor din interior (retea/ANAF/SMTP).
+// Ruleaza un job periodic cu plasa de siguranta: o eroare in callback (ex. un db.save() care
+// arunca) e prinsa si logata — nu doboara procesul si nu impiedica rulele urmatoare.
+// SI SINCRONA, SI ASINCRONA: `try/catch` singur nu vede o promisiune respinsa, deci un job async
+// care uita `.catch()` ar fi murit TACUT. Joburile de azi (spv-poll, curs-bnr) isi trateaza corect
+// promisiunile, deci plasa nu schimba nimic pentru ele — dar siguranta nu are voie sa depinda de
+// memoria autorului urmator. Precedentul e real: `loginAttempts is not defined` a rulat din ora in
+// ora ~24h in productie (14-15 iulie) fara ca cineva sa afle.
 // Intervalele sunt unref() si tinute in `handles`: joburile nu au voie sa tina procesul in viata
 // (serverul traieste prin app.listen) si nici sa supravietuiasca unui stop() — altfel un test sau
 // un embedding care porneste joburile ar atarna la nesfarsit dupa inchiderea serverului.
 const handles = [];
+function esecJob(label, e, unde) {
+  metrics.jobError(label, (e && e.message) || e);
+  log.error('eroare in job periodic' + (unde ? ' (' + unde + ')' : ''), { job: label, err: e });
+  try { trackServerError({ method: 'JOB', originalUrl: label }, e); } catch (_) { /* ignora */ }
+}
 function safeInterval(label, fn, ms) {
   const t = setInterval(() => {
     metrics.jobTick(label); // starea job-urilor apare in /api/metrics (admin)
-    try { fn(); }
-    catch (e) {
-      metrics.jobError(label, e.message || e);
-      log.error('eroare in job periodic', { job: label, err: e });
-      try { trackServerError({ method: 'JOB', originalUrl: label }, e); } catch (_) { /* ignora */ }
+    try {
+      const r = fn();
+      if (r && typeof r.then === 'function') r.catch((e) => esecJob(label, e, 'async'));
+    } catch (e) {
+      esecJob(label, e);
     }
   }, ms);
   if (t.unref) t.unref();
@@ -301,4 +310,6 @@ function start(ctx) {
   return { stop };
 }
 
-module.exports = { start, stop, persistVerdict };
+// `safeInterval` e exportat pentru teste (ca `persistVerdict`): plasa de siguranta e chiar
+// proprietatea de verificat, iar prin `start()` ar cere pornirea tuturor joburilor reale.
+module.exports = { start, stop, persistVerdict, safeInterval };
