@@ -2,246 +2,336 @@
  {
   "id": "s01-prezentare",
   "wav": "tts/wav/s01-prezentare.wav",
-  "durata": 15.89
+  "durata": 26.05
  },
  {
   "id": "s02-preturi",
   "wav": "tts/wav/s02-preturi.wav",
-  "durata": 21.29
+  "durata": 21.62
  },
  {
   "id": "s03-cont",
   "wav": "tts/wav/s03-cont.wav",
-  "durata": 12.92
+  "durata": 12.73
  },
  {
   "id": "s04-doua-roluri",
   "wav": "tts/wav/s04-doua-roluri.wav",
-  "durata": 20.66
+  "durata": 20.41
  },
  {
   "id": "s05-lista-contabili",
   "wav": "tts/wav/s05-lista-contabili.wav",
-  "durata": 14.47
+  "durata": 14.3
  },
  {
   "id": "s06-angajare",
   "wav": "tts/wav/s06-angajare.wav",
-  "durata": 17.39
+  "durata": 17.29
  },
  {
   "id": "s07-acceptare",
   "wav": "tts/wav/s07-acceptare.wav",
-  "durata": 15.27
+  "durata": 15.72
  },
  {
   "id": "s08-multi-firma",
   "wav": "tts/wav/s08-multi-firma.wav",
-  "durata": 16.15
+  "durata": 15.47
  },
  {
   "id": "s09-portofoliu",
   "wav": "tts/wav/s09-portofoliu.wav",
-  "durata": 16.77
+  "durata": 14.66
  },
  {
   "id": "s10-primaintrare",
   "wav": "tts/wav/s10-primaintrare.wav",
-  "durata": 21.63
+  "durata": 19.11
  },
  {
   "id": "s11-ghid",
   "wav": "tts/wav/s11-ghid.wav",
-  "durata": 18.28
+  "durata": 16.23
  },
  {
   "id": "s12-acasa",
   "wav": "tts/wav/s12-acasa.wav",
-  "durata": 19.97
+  "durata": 17.16
  },
  {
   "id": "s12b-birou",
   "wav": "tts/wav/s12b-birou.wav",
-  "durata": 25.64
+  "durata": 25.95
+ },
+ {
+  "id": "s10b-plan",
+  "wav": "tts/wav/s10b-plan.wav",
+  "durata": 35.7
+ },
+ {
+  "id": "s10c-solduri",
+  "wav": "tts/wav/s10c-solduri.wav",
+  "durata": 28.76
  },
  {
   "id": "s13-document",
   "wav": "tts/wav/s13-document.wav",
-  "durata": 19.88
+  "durata": 24.59
  },
  {
   "id": "s14-preview-pdf",
   "wav": "tts/wav/s14-preview-pdf.wav",
-  "durata": 18.72
+  "durata": 15.63
  },
  {
   "id": "s15-previzualizare",
   "wav": "tts/wav/s15-previzualizare.wav",
-  "durata": 14.32
+  "durata": 23.39
  },
  {
   "id": "s16-controale",
   "wav": "tts/wav/s16-controale.wav",
-  "durata": 23.09
+  "durata": 23.2
+ },
+ {
+  "id": "s16b-flux",
+  "wav": "tts/wav/s16b-flux.wav",
+  "durata": 20.87
  },
  {
   "id": "s17-emite",
   "wav": "tts/wav/s17-emite.wav",
-  "durata": 17.33
+  "durata": 17.3
  },
  {
   "id": "s18-preview-efactura",
   "wav": "tts/wav/s18-preview-efactura.wav",
-  "durata": 17.19
+  "durata": 16.77
  },
  {
   "id": "s19-bani",
   "wav": "tts/wav/s19-bani.wav",
-  "durata": 19.57
+  "durata": 16.24
  },
  {
   "id": "s19b-reconciliere",
   "wav": "tts/wav/s19b-reconciliere.wav",
-  "durata": 24.7
+  "durata": 19.28
  },
  {
   "id": "s20-stocuri",
   "wav": "tts/wav/s20-stocuri.wav",
-  "durata": 16.53
+  "durata": 14.01
  },
  {
   "id": "s20b-productie",
   "wav": "tts/wav/s20b-productie.wav",
-  "durata": 18.24
+  "durata": 15.13
+ },
+ {
+  "id": "s20c-inventariere",
+  "wav": "tts/wav/s20c-inventariere.wav",
+  "durata": 24.04
  },
  {
   "id": "s21-salarii",
   "wav": "tts/wav/s21-salarii.wav",
-  "durata": 19.18
+  "durata": 17.47
  },
  {
   "id": "s21b-angajati",
   "wav": "tts/wav/s21b-angajati.wav",
-  "durata": 21.6
+  "durata": 17.94
+ },
+ {
+  "id": "s21c-regsalarii",
+  "wav": "tts/wav/s21c-regsalarii.wav",
+  "durata": 18.67
  },
  {
   "id": "s22-mijloace",
   "wav": "tts/wav/s22-mijloace.wav",
-  "durata": 15.21
+  "durata": 18.63
  },
  {
-  "id": "s22b-parteneri",
-  "wav": "tts/wav/s22b-parteneri.wav",
-  "durata": 15.02
+  "id": "s22c-leasing",
+  "wav": "tts/wav/s22c-leasing.wav",
+  "durata": 18.24
+ },
+ {
+  "id": "s24a-regularizari",
+  "wav": "tts/wav/s24a-regularizari.wav",
+  "durata": 24.28
+ },
+ {
+  "id": "s24b-reevaluare",
+  "wav": "tts/wav/s24b-reevaluare.wav",
+  "durata": 26.16
+ },
+ {
+  "id": "s24c-ajustari",
+  "wav": "tts/wav/s24c-ajustari.wav",
+  "durata": 24.39
+ },
+ {
+  "id": "s24d-storno",
+  "wav": "tts/wav/s24d-storno.wav",
+  "durata": 21.36
+ },
+ {
+  "id": "s24e-avans",
+  "wav": "tts/wav/s24e-avans.wav",
+  "durata": 33.23
  },
  {
   "id": "s23-registre",
   "wav": "tts/wav/s23-registre.wav",
-  "durata": 16.57
+  "durata": 15.65
  },
  {
   "id": "s23b-carte",
   "wav": "tts/wav/s23b-carte.wav",
-  "durata": 16.78
+  "durata": 22.33
  },
  {
-  "id": "s24-preview-csv",
-  "wav": "tts/wav/s24-preview-csv.wav",
-  "durata": 14.49
+  "id": "s23c-balanta",
+  "wav": "tts/wav/s23c-balanta.wav",
+  "durata": 24.86
  },
  {
-  "id": "s25-inchidere",
-  "wav": "tts/wav/s25-inchidere.wav",
-  "durata": 21.96
- },
- {
-  "id": "s26-inchidere-an",
-  "wav": "tts/wav/s26-inchidere-an.wav",
-  "durata": 16.78
- },
- {
-  "id": "s27-regfiscal",
-  "wav": "tts/wav/s27-regfiscal.wav",
-  "durata": 17.01
+  "id": "s22d-scadentar",
+  "wav": "tts/wav/s22d-scadentar.wav",
+  "durata": 21.15
  },
  {
   "id": "s28-tva",
   "wav": "tts/wav/s28-tva.wav",
-  "durata": 14.06
+  "durata": 23.33
  },
  {
   "id": "s29-etva",
   "wav": "tts/wav/s29-etva.wav",
-  "durata": 13.69
+  "durata": 17.4
  },
  {
   "id": "s29b-etransport",
   "wav": "tts/wav/s29b-etransport.wav",
-  "durata": 20.31
+  "durata": 15.86
+ },
+ {
+  "id": "s25-inchidere",
+  "wav": "tts/wav/s25-inchidere.wav",
+  "durata": 24.78
+ },
+ {
+  "id": "s25b-blocare",
+  "wav": "tts/wav/s25b-blocare.wav",
+  "durata": 19.9
+ },
+ {
+  "id": "s26-inchidere-an",
+  "wav": "tts/wav/s26-inchidere-an.wav",
+  "durata": 21.89
+ },
+ {
+  "id": "s27-regfiscal",
+  "wav": "tts/wav/s27-regfiscal.wav",
+  "durata": 21.88
+ },
+ {
+  "id": "s26b-repartizare",
+  "wav": "tts/wav/s26b-repartizare.wav",
+  "durata": 21.04
+ },
+ {
+  "id": "s26c-situatii",
+  "wav": "tts/wav/s26c-situatii.wav",
+  "durata": 23.64
+ },
+ {
+  "id": "s26d-anexe",
+  "wav": "tts/wav/s26d-anexe.wav",
+  "durata": 29.18
  },
  {
   "id": "s30-declaratii",
   "wav": "tts/wav/s30-declaratii.wav",
-  "durata": 20.16
+  "durata": 21.38
  },
  {
   "id": "s30b-spv",
   "wav": "tts/wav/s30b-spv.wav",
-  "durata": 19.64
+  "durata": 18.72
  },
  {
   "id": "s31-preview-xml",
   "wav": "tts/wav/s31-preview-xml.wav",
-  "durata": 13.43
+  "durata": 12.39
  },
  {
   "id": "s32-saft",
   "wav": "tts/wav/s32-saft.wav",
-  "durata": 15.04
+  "durata": 15.52
  },
  {
-  "id": "s33-rapoarte",
-  "wav": "tts/wav/s33-rapoarte.wav",
-  "durata": 17.62
- },
- {
-  "id": "s33b-buget",
-  "wav": "tts/wav/s33b-buget.wav",
-  "durata": 19.56
+  "id": "s31b-validare",
+  "wav": "tts/wav/s31b-validare.wav",
+  "durata": 20.93
  },
  {
   "id": "s34-arhiva",
   "wav": "tts/wav/s34-arhiva.wav",
-  "durata": 14.76
+  "durata": 19.23
+ },
+ {
+  "id": "s33-rapoarte",
+  "wav": "tts/wav/s33-rapoarte.wav",
+  "durata": 17.15
+ },
+ {
+  "id": "s33b-buget",
+  "wav": "tts/wav/s33b-buget.wav",
+  "durata": 16.07
+ },
+ {
+  "id": "s24-preview-csv",
+  "wav": "tts/wav/s24-preview-csv.wav",
+  "durata": 16.91
+ },
+ {
+  "id": "s22b-parteneri",
+  "wav": "tts/wav/s22b-parteneri.wav",
+  "durata": 18.63
  },
  {
   "id": "s35-setari",
   "wav": "tts/wav/s35-setari.wav",
-  "durata": 24.94
+  "durata": 15.46
  },
  {
   "id": "s36-audit",
   "wav": "tts/wav/s36-audit.wav",
-  "durata": 15.4
+  "durata": 19.74
  },
  {
   "id": "s36b-cautare",
   "wav": "tts/wav/s36b-cautare.wav",
-  "durata": 23.43
+  "durata": 16.24
  },
  {
   "id": "s37-incredere",
   "wav": "tts/wav/s37-incredere.wav",
-  "durata": 24.31
+  "durata": 20.57
  },
  {
   "id": "s38-limite",
   "wav": "tts/wav/s38-limite.wav",
-  "durata": 25.71
+  "durata": 19.29
  },
  {
   "id": "s39-final",
   "wav": "tts/wav/s39-final.wav",
-  "durata": 10.02
+  "durata": 6.99
  }
 ]
