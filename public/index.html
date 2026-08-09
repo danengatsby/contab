@@ -1488,7 +1488,11 @@
 
           <div class="full sect-form"><h3 class="card-titlu-mare">Deduceri și beneficii</h3>
             <p class="muted">Reduc impozitul sau se adaugă la venit — se completează o dată și rămân.</p></div>
-          <label>Persoane în întreținere <input name="persoane" type="number" min="0" step="1" placeholder="0" /></label>
+          <!-- `value="0"`, nu doar `placeholder`: placeholderul e text GRI, arată completat dar se
+               trimite GOL — iar gol însemna „fără deducere personală", deci angajat supraimpozitat
+               cu ~516 lei/an. Câmpul de dedesubt („Copii") avea deja value="0"; acesta nu. -->
+          <label>Persoane în întreținere <input name="persoane" type="number" min="0" step="1" value="0" /></label>
+          <label class="check"><input name="functieBaza" type="checkbox" checked /> Funcția de bază (aici se acordă deducerea personală — art. 77 Cod fiscal). Debifează doar dacă acesta e al <b>doilea</b> loc de muncă al angajatului.</label>
           <label>Copii în învățământ (100 lei/copil) <input name="copii" type="number" min="0" step="1" value="0" /></label>
           <label class="check"><input name="sub26" type="checkbox" /> Tânăr ≤ 26 ani (deducere +15% la salariul minim)</label>
           <label>Venit neimpozabil suplimentar <input name="neimpozabil" type="number" step="0.01" value="0" /></label>

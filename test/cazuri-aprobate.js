@@ -29,6 +29,20 @@
 //    node test/cazuri-aprobate.js --dosar         documentul de LUCRU al revizorului (de trimis)
 //
 //  Dosarul trimis revizorului: docs/dosar-revizie-fiscala.md
+//
+//  MODIFICARE 2026-08-09 — cinci cazuri au cifre NOI, de re-citit inainte de semnare:
+//    SAL-03b, SAL-04, CM-01, CM-02, CO-01.
+//  Motivul: pana azi, deducerea personala (art. 77) se acorda doar daca in fisa angajatului era
+//  completat campul „Persoane in intretinere". Campul avea insa `placeholder="0"` fara `value="0"`
+//  — arata completat cu zero, dar se trimitea gol — deci majoritatea angajatilor nu primeau NICIO
+//  deducere si erau supraimpozitati (43 lei/luna la 5.000 brut, 516 lei/an). Poarta e acum cea
+//  legala: deducerea se acorda la FUNCTIA DE BAZA, iar al doilea loc de munca se declara explicit.
+//  In consecinta impozitul SCADE si netul CRESTE in cazurile de mai sus, cu exact 10% din deducere:
+//    brut 5.000 -> deducere 430 -> impozit -43   (CO-01, CM-01, CM-02)
+//    brut 4.000 -> deducere 810 -> impozit -81   (SAL-03b; la salariul minim deducerea e maxima)
+//    brut 2.000 -> deducere 810 -> impozit -81   (SAL-04; sub salariul minim, tot maxima)
+//  Niciun caz nu era semnat la data schimbarii (corpusul e integral neaprobat), deci nu s-a rupt
+//  nicio aprobare — dar cifrele sunt acum ALTELE fata de ce a vazut oricine pana acum.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const crypto = require('crypto');
@@ -174,7 +188,7 @@ const CAZURI = [
     intrare: { salariuBaza: 4000, perioada: '2026-06', salariuMinim: 4050, cazare: 1000, pensii: 800, sport: 200 },
     asteptat: {
       plafon: 1320, limitaCazare: 810, neimpozabil: 1320, impozabil: 680,
-      cas: 1170, cass: 468, impozit: 304.2, cam: 105.3, net: 2057.8,
+      cas: 1170, cass: 468, impozit: 223.2, cam: 105.3, net: 2138.8,
     },
     calc: (i) => {
       const r = statePlata([{ id: 'b', nume: 'Test', salariuBrut: i.salariuBaza,
@@ -197,7 +211,7 @@ const CAZURI = [
     titlu: 'Norma partiala: brut 2.000 lei sub salariul minim (S1)',
     temei: 'Art. 146 alin. (5^6) Cod fiscal, OUG 16/2022 — CAS/CASS la nivelul salariului minim, diferenta in sarcina angajatorului',
     intrare: { brut: 2000, perioada: '2026-03', salariuMinim: 4050, normaPartiala: true },
-    asteptat: { cas: 500, cass: 200, impozit: 130, net: 1170, casAngajator: 512.5, cassAngajator: 205, costTotal: 2762.5 },
+    asteptat: { cas: 500, cass: 200, impozit: 49, net: 1251, casAngajator: 512.5, cassAngajator: 205, costTotal: 2762.5 },
     calc: (i) => {
       const r = statePlata([{ id: 'np', nume: 'Test', salariuBrut: i.brut, zileLucratoare: 21, normaPartiala: true }], i.perioada).rows[0];
       return { cas: r.cas, cass: r.cass, impozit: r.impozit, net: r.net, casAngajator: r.casAngajator, cassAngajator: r.cassAngajator, costTotal: r.costTotal };
@@ -258,7 +272,7 @@ const CAZURI = [
     intrare: { brut: 5000, zileLucratoare: 21, zileCM: 10, procentCM: 75, perioada: '2026-03', istoric: 'niciun stat postat' },
     asteptat: {
       mediaCM: 5000, cmAngajator: 892.85, cmFnuass: 892.85, salariuZileLucrate: 2619.05,
-      cas: 1101.19, cass: 261.9, impozit: 304.17, cam: 79.02, net: 2737.49,
+      cas: 1101.19, cass: 261.9, impozit: 261.17, cam: 79.02, net: 2780.49,
     },
     calc: (i) => {
       const r = statePlata([{ id: 'cm', nume: 'Test', salariuBrut: i.brut, zileLucratoare: i.zileLucratoare, zileCM: i.zileCM }], i.perioada).rows[0];
@@ -279,7 +293,7 @@ const CAZURI = [
     titlu: 'Acelasi concediu, cu 6 state postate anterior la 6.000 lei brut (baza = media)',
     temei: 'OUG 158/2005 art. 10 — baza de calcul = media veniturilor brute lunare din ultimele 6 luni, plafonata la 12 salarii minime',
     intrare: { brut: 5000, istoric: '6 luni x 6.000 lei', zileLucratoare: 21, zileCM: 10, perioada: '2026-03' },
-    asteptat: { mediaCM: 6000, cmAngajator: 1071.45, cmFnuass: 1071.45, cas: 1190.49, cass: 261.9, net: 2978.6 },
+    asteptat: { mediaCM: 6000, cmAngajator: 1071.45, cmFnuass: 1071.45, cas: 1190.49, cass: 261.9, net: 3021.6 },
     calc: (i) => {
       const h = istoric('cm2', ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02'], 6000);
       const r = statePlata([{ id: 'cm2', nume: 'Test', salariuBrut: i.brut, zileLucratoare: i.zileLucratoare, zileCM: i.zileCM }], i.perioada, h).rows[0];
@@ -296,7 +310,7 @@ const CAZURI = [
     temei: 'Art. 150 Codul muncii — indemnizatia de concediu = media zilnica a veniturilor din ultimele 3 luni; '
       + 'se impoziteaza ca salariul',
     intrare: { brut: 5000, zileLucratoare: 21, zileCO: 10, perioada: '2026-03' },
-    asteptat: { mediaCO: 5000, indemnizatieCO: 2380.95, salariuZileLucrate: 2619.05, brutTaxabil: 5000, cas: 1250, cass: 500, impozit: 325, net: 2925 },
+    asteptat: { mediaCO: 5000, indemnizatieCO: 2380.95, salariuZileLucrate: 2619.05, brutTaxabil: 5000, cas: 1250, cass: 500, impozit: 282, net: 2968 },
     calc: (i) => {
       const r = statePlata([{ id: 'co', nume: 'Test', salariuBrut: i.brut, zileLucratoare: i.zileLucratoare, zileCO: i.zileCO }], i.perioada).rows[0];
       return {

@@ -321,6 +321,31 @@ section('Poarta: nicio comanda externa SINCRONA pe o cale de cerere');
   ok('baza temporara se sterge ASTEPTAT (fara baze orfane)', /await\s+dropDb\s*\(\)/.test(drill));
 }
 
+section('Poarta: deducerea personala nu atarna de un camp uitat');
+{
+  const fsd = require('fs'); const pd = require('path');
+  const html = fsd.readFileSync(pd.join(RADACINA, 'public', 'index.html'), 'utf8');
+  const inp = (html.match(/<input[^>]*name="persoane"[^>]*>/) || [''])[0];
+  ok('campul „Persoane in intretinere" exista', !!inp);
+  // MIEZUL: `placeholder` e text GRI — arata completat, se trimite GOL. Cu poarta veche
+  // (`hasDP = a.persoane != null`) golul insemna „fara deducere", deci 516 lei/an supraimpozitare
+  // per angajat, invizibil. Campul trebuie sa aiba o VALOARE, nu doar un indiciu.
+  ok('...si are `value`, nu doar `placeholder`' + (inp && !/\bvalue=/.test(inp) ? ' — ARE DOAR placeholder' : ''),
+    /\bvalue=/.test(inp));
+  // Singurul caz legal fara deducere (al doilea loc de munca) se declara EXPLICIT, si e bifat
+  // implicit fiindca functia de baza e cazul obisnuit.
+  const fb = (html.match(/<input[^>]*name="functieBaza"[^>]*>/) || [''])[0];
+  ok('exista bifa „Functia de baza"', !!fb);
+  ok('...bifata implicit (cazul obisnuit)', /\bchecked\b/.test(fb));
+  // Formularul chiar trimite campul mai departe, altfel bifa ar fi decor.
+  const sal = fsd.readFileSync(pd.join(RADACINA, 'public', 'salarizare.js'), 'utf8');
+  ok('formularul trimite functieBaza la salvare', /functieBaza:\s*f\.functieBaza/.test(sal));
+  ok('...si o reincarca la editare', /f\.functieBaza\.checked\s*=/.test(sal));
+  const svc = fsd.readFileSync(pd.join(RADACINA, 'src', 'payrollService.js'), 'utf8');
+  ok('serviciul o persista, cu implicit ADEVARAT pentru inregistrarile vechi',
+    /functieBaza:\s*b\.functieBaza === undefined \? true/.test(svc));
+}
+
 section('Poarta: ghidul se DERIVA din aplicatie, nu se scrie de mana');
 {
   const fsg = require('fs'); const pg2 = require('path');
