@@ -1,0 +1,186 @@
+{
+ "parte": "Partea X · Situațiile financiare · faza 12",
+ "nr": "45",
+ "titlu": "Contul de profit și pierdere",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Ajungem la documentele pentru care s-a făcut tot restul. Patruzeci și patru de capitole de înregistrări, verificări și închideri se adună în două pagini — iar prima dintre ele răspunde la întrebarea cu care a început cartea: ai câștigat sau ai pierdut?"
+  },
+  {
+   "tip": "p",
+   "text": "Contul de profit și pierdere e o situație de flux: acoperă un interval, de la 1 ianuarie la 31 decembrie, și arată ce s-a petrecut în el. Nu spune nimic despre ce are firma — aceea e treaba bilanțului."
+  },
+  {
+   "tip": "h",
+   "text": "Structura: două activități, două rezultate"
+  },
+  {
+   "tip": "p",
+   "text": "Formularul nu adună toate veniturile și toate cheltuielile într-un singur teanc. Le separă pe două activități, iar separarea aceasta e principala informație pe care o dă documentul."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Contul de profit și pierdere, în structura lui",
+   "cap": [
+    "Nivelul",
+    "Ce cuprinde"
+   ],
+   "randuri": [
+    [
+     "Venituri din exploatare",
+     "vânzări, producție, alte venituri din activitatea de bază"
+    ],
+    [
+     "Cheltuieli din exploatare",
+     "mărfuri, materiale, salarii, amortizare, servicii"
+    ],
+    [
+     "= Rezultatul din exploatare",
+     "cât produce activitatea propriu-zisă"
+    ],
+    [
+     "Venituri financiare",
+     "dobânzi încasate, diferențe favorabile de curs"
+    ],
+    [
+     "Cheltuieli financiare",
+     "dobânzi plătite, diferențe nefavorabile de curs"
+    ],
+    [
+     "= Rezultatul financiar",
+     "cât costă sau cât aduce modul de finanțare"
+    ],
+    [
+     "= Rezultatul brut",
+     "suma celor două"
+    ],
+    [
+     "− Impozitul pe profit",
+     "calculat pe rezultatul FISCAL, nu pe acesta"
+    ],
+    [
+     "= Rezultatul net",
+     "ce rămâne, și ce se repartizează"
+    ]
+   ],
+   "nota": "Rândul care contează cel mai mult pentru un patron e al treilea, nu ultimul."
+  },
+  {
+   "tip": "cheie",
+   "text": "Rezultatul din exploatare spune dacă afacerea funcționează. Rezultatul net spune ce a rămas după tot. O firmă poate avea primul pozitiv și al doilea negativ — și atunci problema nu e afacerea, ci finanțarea ei."
+  },
+  {
+   "tip": "h",
+   "text": "Pe cifre reale"
+  },
+  {
+   "tip": "p",
+   "text": "Iată situația unei firme mici, generată din propria ei contabilitate — aceeași cu cea din capitolele despre registre."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Contul de profit și pierdere al exercițiului",
+   "cap": [
+    "Elementul",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Venituri din exploatare",
+     "14.000,00"
+    ],
+    [
+     "Cheltuieli din exploatare",
+     "13.312,50"
+    ],
+    [
+     "Rezultatul din exploatare",
+     "687,50"
+    ],
+    [
+     "Venituri financiare",
+     "0,00"
+    ],
+    [
+     "Cheltuieli financiare",
+     "0,00"
+    ],
+    [
+     "Rezultatul financiar",
+     "0,00"
+    ],
+    [
+     "Rezultatul brut",
+     "687,50"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Cheltuielile de 13.312,50 se desfac în: mărfuri vândute 8.000, salarii 5.000, contribuția angajatorului 112,50 și amortizare 200."
+  },
+  {
+   "tip": "p",
+   "text": "Desfacerea din notă e a doua informație pe care o dă documentul, și merită citită cu atenție. La firma aceasta, mărfurile vândute reprezintă aproape două treimi din cheltuieli, iar salariile restul. Structura aceasta spune ce fel de firmă e — un comerciant, nu un prestator de servicii — fără să fie nevoie să întrebi pe nimeni."
+  },
+  {
+   "tip": "h",
+   "text": "De ce nu apar banii nicăieri"
+  },
+  {
+   "tip": "p",
+   "text": "E întrebarea pe care o pune orice patron la prima citire: dacă am profit de 687,50 de lei, unde sunt ei?"
+  },
+  {
+   "tip": "p",
+   "text": "Răspunsul e că nu sunt nicăieri, fiindcă profitul nu e o sumă de bani. E o măsură a diferenței dintre valoarea creată și valoarea consumată — iar cele două se recunosc când se produc, nu când se plătesc."
+  },
+  {
+   "tip": "p",
+   "text": "Amortizarea de 200 de lei din exemplu ilustrează perfect: e o cheltuială care a redus profitul și nu a scos niciun leu din cont. Simetric, o factură emisă și neîncasată a produs venit fără să aducă bani. E același lucru pe care îl spunea capitolul 1, ajuns acum la forma lui finală."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se citește, în cinci secunde"
+  },
+  {
+   "tip": "p",
+   "text": "Un cititor experimentat nu parcurge documentul de sus în jos. Se uită la trei lucruri și, de regulă, își face o părere înainte de a citi restul."
+  },
+  {
+   "tip": "p",
+   "text": "Întâi semnul rezultatului din exploatare — dacă e negativ, nimic altceva nu mai contează prea mult. Apoi raportul dintre rezultatul din exploatare și venituri, adică marja. În fine, rezultatul financiar: dacă el înghite o parte însemnată din cel din exploatare, firma lucrează pentru bancă."
+  },
+  {
+   "tip": "p",
+   "text": "Comparația cu anul precedent, care apare pe formular ca a doua coloană, adaugă a patra informație și e cea mai valoroasă dintre toate: nu cât, ci încotro."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Contul de profit și pierdere se întocmește potrivit reglementărilor contabile aprobate prin OMFP 1802/2014, în formatul F20, cu structură prescurtată pentru microentități și completă pentru celelalte categorii. Patru observații de practică. Prima: documentul se întocmește pe balanța DINAINTE de operațiunile de închidere a conturilor de rezultat; folosirea balanței de după produce un formular integral pe zero, iar eroarea trece neobservată fiindcă bilanțul iese corect — e cauza cea mai frecventă a raportărilor goale. A doua: cifra de afaceri netă cuprinde conturile 70x diminuate cu reducerile comerciale acordate din 709 și nu include veniturile din subvenții, alte venituri din exploatare sau venituri financiare; folosirea totalului veniturilor drept cifră de afaceri denaturează atât indicatorii, cât și pragurile de raportare și de audit. A treia: variația stocurilor de produse finite și producția de imobilizări se prezintă distinct și pot fi negative — o variație negativă nu e o eroare, ci semnalul unei diminuări a stocului de produse. A patra: rezultatul brut din acest formular e chiar baza rezervei legale de la capitolul 44, iar cheltuiala cu impozitul se prezintă distinct, după rezultatul brut; interpunerea ei în cheltuielile de exploatare falsifică deopotrivă rezultatul din exploatare și baza rezervei."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Contul de profit și pierdere a răspuns la întrebarea despre interval. Rămâne cea despre moment: ce are firma și ce datorează, la o dată anume. E bilanțul, iar egalitatea care îl definește nu e o coincidență."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Contul de profit și pierdere acoperă un interval, nu un moment: spune ce s-a petrecut între două date.",
+    "Structura separă exploatarea de activitatea financiară — iar rezultatul din exploatare e rândul care spune dacă afacerea funcționează.",
+    "Rezultatul brut e suma celor două; impozitul se scade după el și se calculează pe rezultatul fiscal.",
+    "Profitul nu e o sumă de bani: amortizarea reduce profitul fără să scoată un leu, iar o factură neîncasată produce venit fără să aducă bani.",
+    "Se citește în trei priviri: semnul rezultatului din exploatare, marja, și cât înghite rezultatul financiar.",
+    "Se întocmește pe balanța DINAINTE de închiderea conturilor de rezultat — altfel iese integral pe zero."
+   ]
+  }
+ ]
+}

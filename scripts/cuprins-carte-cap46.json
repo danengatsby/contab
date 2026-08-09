@@ -1,0 +1,156 @@
+{
+ "parte": "Partea X · Situațiile financiare · faza 12",
+ "nr": "46",
+ "titlu": "Bilanțul",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Bilanțul e o fotografie. Contul de profit și pierdere povestea un an întreg; bilanțul arată o singură clipă — de regulă 31 decembrie, ora douăzeci și patru — și spune ce are firma și cui datorează."
+  },
+  {
+   "tip": "p",
+   "text": "Are două părți, iar ele sunt întotdeauna egale. Nu pentru că firma ar fi echilibrată, ci pentru că cele două părți descriu același lucru din două unghiuri: ce există, și de unde a venit."
+  },
+  {
+   "tip": "h",
+   "text": "Cele două întrebări"
+  },
+  {
+   "tip": "p",
+   "text": "Activul răspunde la întrebarea „ce are firma”: bunuri, stocuri, creanțe, bani. Pasivul răspunde la „din ce a fost finanțat”: bani ai asociaților, profit nedistribuit, datorii."
+  },
+  {
+   "tip": "p",
+   "text": "Fiecare leu din activ a venit de undeva. Ori l-au pus asociații, ori l-a produs firma și a rămas în ea, ori îl datorează cuiva. Nu există a patra variantă — și de aici egalitatea."
+  },
+  {
+   "tip": "cheie",
+   "text": "Activ = Pasiv nu e o verificare care poate să iasă sau să nu iasă. E aceeași realitate numărată de două ori: o dată după formă, o dată după proveniență."
+  },
+  {
+   "tip": "h",
+   "text": "Un bilanț, citit"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Bilanț la 31 decembrie",
+   "cap": [
+    "ACTIV",
+    "Suma",
+    "PASIV",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Imobilizări (net)",
+     "48.000",
+     "Capital social",
+     "30.000"
+    ],
+    [
+     "Stocuri",
+     "22.000",
+     "Rezerve",
+     "4.000"
+    ],
+    [
+     "Creanțe",
+     "31.000",
+     "Rezultat reportat",
+     "20.000"
+    ],
+    [
+     "Casă și bancă",
+     "39.000",
+     "Rezultatul exercițiului",
+     "26.000"
+    ],
+    [
+     "",
+     "",
+     "Datorii peste 1 an",
+     "25.000"
+    ],
+    [
+     "",
+     "",
+     "Datorii sub 1 an",
+     "35.000"
+    ],
+    [
+     "TOTAL ACTIV",
+     "140.000",
+     "TOTAL PASIV",
+     "140.000"
+    ]
+   ],
+   "numerice": [
+    2,
+    4
+   ],
+   "total": true,
+   "nota": "Primele patru rânduri din pasiv formează capitalurile proprii: 80.000 de lei. E averea netă a asociaților — ce ar rămâne dacă s-ar plăti toate datoriile."
+  },
+  {
+   "tip": "p",
+   "text": "Cifra de 80.000 de lei din notă e cea mai importantă din tot documentul și, paradoxal, nu apare ca rând separat în citirea obișnuită. Ea răspunde la întrebarea „cât valorează firma pentru asociați”, iar evoluția ei de la an la an e cea mai onestă măsură a reușitei."
+  },
+  {
+   "tip": "h",
+   "text": "Ordinea rândurilor nu e întâmplătoare"
+  },
+  {
+   "tip": "p",
+   "text": "Activul e așezat în ordinea crescătoare a lichidității: întâi ce se transformă cel mai greu în bani — clădiri, utilaje — și la urmă banii înșiși."
+  },
+  {
+   "tip": "p",
+   "text": "Pasivul urmează ordinea crescătoare a exigibilității: întâi ce nu trebuie returnat niciodată — capitalul asociaților —, apoi datoriile pe termen lung, apoi cele care se plătesc în lunile următoare."
+  },
+  {
+   "tip": "p",
+   "text": "Așezate astfel, cele două coloane se pot citi și pe orizontală. Un activ greu de transformat în bani, finanțat din datorii pe termen scurt, e semnalul clasic al unei probleme de trezorerie care încă nu s-a produs. Comparația dintre partea de jos a activului și partea de jos a pasivului — active curente față de datorii curente — e cel mai simplu indicator de sănătate financiară care există."
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu se vede în bilanț"
+  },
+  {
+   "tip": "p",
+   "text": "Merită spus, fiindcă altfel documentul e supraestimat. Bilanțul nu conține valoarea de piață a firmei, ci costul istoric al elementelor ei, corectat cu amortizări și ajustări."
+  },
+  {
+   "tip": "p",
+   "text": "Nu conține nici marca, nici baza de clienți, nici priceperea echipei — active reale, uneori cele mai valoroase, care nu îndeplinesc condițiile de recunoaștere. O firmă de servicii cu treizeci de angajați buni poate avea un bilanț mai mic decât un depozit de marfă."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea bilanțul nu se citește singur. Citit alături de contul de profit și pierdere și de fluxul de trezorerie, el spune mult; citit izolat, spune despre firmă mai puțin decât pare."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Bilanțul se întocmește în formatul F10 prevăzut de reglementările contabile, prescurtat pentru microentități și entități mici și complet pentru cele mijlocii și mari, cu două coloane — începutul și sfârșitul exercițiului. Patru observații. Prima: identitatea de bilanț trebuie să rezulte prin construcție, nu prin ajustarea unui rând de echilibrare — fiecare cont trebuie să cadă în exact un rând, cu semnul corect, iar totalurile trebuie calculate cu formulele formularului, nu însumate independent; altfel apare divergență între ce afișează raportul și ce verifică validatorul. A doua: elementele se prezintă la valoarea NETĂ — imobilizările diminuate cu amortizările și ajustările, creanțele cu ajustările pentru depreciere de la capitolul 27 — iar prezentarea la valoarea brută umflă simultan activul și, prin corelație, indicatorii calculați pe el. A treia: separarea datoriilor în cele cu scadență până la un an și peste un an se face după scadența reală la data bilanțului, nu după natura contului; soldul contului 167 de la capitolul 24 se defalcă pe ambele rânduri, în funcție de ratele următoarelor douăsprezece luni. A patra: soldurile creditoare pe conturi de creanțe și cele debitoare pe conturi de datorii nu se compensează, ci se prezintă pe partea care corespunde naturii lor economice, după analiza cauzei — regula compensării interzise e una dintre cele mai des încălcate în practică, iar efectul e o subevaluare simultană a activului și a datoriilor."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cele două documente principale sunt gata. Ele nu sunt însă singurele care se depun — și, dintre cele care le însoțesc, unul răspunde la întrebarea pe care nici bilanțul, nici contul de profit nu o ating: unde s-au dus banii."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Bilanțul e o fotografie la o dată anume; contul de profit și pierdere e un film al anului.",
+    "Activul spune ce are firma, pasivul de unde a venit — deci egalitatea e prin construcție, nu prin noroc.",
+    "Capitalurile proprii sunt averea netă a asociaților: ce ar rămâne după plata tuturor datoriilor.",
+    "Activul e ordonat după lichiditate, pasivul după exigibilitate — de aceea cele două coloane se citesc și pe orizontală.",
+    "Elementele se prezintă NET: imobilizări minus amortizare, creanțe minus ajustări.",
+    "Bilanțul nu conține valoarea de piață a firmei și nici activele nerecunoscute — marca, clienții, echipa."
+   ]
+  }
+ ]
+}

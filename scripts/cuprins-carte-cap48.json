@@ -1,0 +1,135 @@
+{
+ "parte": "Partea X · Situațiile financiare · faza 12",
+ "nr": "48",
+ "titlu": "Cele patru concordanțe de verificat înainte de semnătură",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Capitolul acesta e o listă de patru verificări. Durează, împreună, mai puțin de zece minute, se pot face pe hârtie, și prind majoritatea erorilor grave dintr-un set de situații financiare."
+  },
+  {
+   "tip": "p",
+   "text": "Merită tratat ca un ritual. Nu pentru că ar fi obligatoriu prin lege, ci pentru că semnătura de pe ultima pagină angajează o răspundere personală, iar cele zece minute sunt cel mai ieftin lucru din tot exercițiul."
+  },
+  {
+   "tip": "h",
+   "text": "Prima: activ egal pasiv"
+  },
+  {
+   "tip": "p",
+   "text": "Totalul activului trebuie să fie egal cu totalul pasivului, la leu. Nu aproximativ, nu cu o diferență de rotunjire acceptabilă — exact."
+  },
+  {
+   "tip": "p",
+   "text": "Cum s-a văzut în capitolul 46, egalitatea e prin construcție: dacă nu iese, un cont a căzut în două rânduri sau în niciunul. Cauza cea mai frecventă e un cont nou, apărut în cursul anului, pe care maparea nu îl cunoaște — iar el nu se semnalează singur, ci doar prin această diferență."
+  },
+  {
+   "tip": "h",
+   "text": "A doua: același rezultat în două locuri"
+  },
+  {
+   "tip": "p",
+   "text": "Rezultatul exercițiului apare în două documente: ca rând în bilanț, printre capitalurile proprii, și ca ultimă linie a contului de profit și pierdere."
+  },
+  {
+   "tip": "p",
+   "text": "Cele două trebuie să coincidă. Când nu coincid, explicația e aproape întotdeauna aceeași: unul dintre documente a fost întocmit pe balanța de dinaintea închiderii conturilor de rezultat și celălalt pe cea de după."
+  },
+  {
+   "tip": "cheie",
+   "text": "Un bilanț corect lângă un cont de profit și pierdere pe zero nu e o pereche de documente. E același document întocmit de două ori, pe două balanțe diferite."
+  },
+  {
+   "tip": "h",
+   "text": "A treia: numerarul din flux egal soldul din bilanț"
+  },
+  {
+   "tip": "p",
+   "text": "Suma cu care se încheie situația fluxurilor de trezorerie trebuie să fie exact soldul conturilor de casă și bancă din bilanț. În exemplul din capitolul precedent: 46.915 de lei în ambele locuri."
+  },
+  {
+   "tip": "p",
+   "text": "E verificarea care prinde omisiunile din flux — un cont bancar uitat, o casierie în valută netransformată, un acreditiv tratat separat. Toate produc aceeași diferență, iar niciuna nu se vede altfel."
+  },
+  {
+   "tip": "h",
+   "text": "A patra: variația egală cu suma celor trei activități"
+  },
+  {
+   "tip": "p",
+   "text": "Diferența dintre numerarul de la sfârșitul anului și cel de la început trebuie să fie egală cu suma fluxurilor din exploatare, investiții și finanțare. În exemplu: 46.915 minus 45.000 fac 1.915, iar 1.915 plus zero plus zero fac tot 1.915."
+  },
+  {
+   "tip": "p",
+   "text": "Verificarea aceasta prinde o clasă diferită de erori: operațiunile clasificate greșit. O rambursare de credit trecută la exploatare în loc de finanțare nu schimbă variația totală — dar schimbă complet interpretarea documentului, iar dacă suma nu iese, înseamnă că o operațiune a fost numărată de două ori sau deloc."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele patru, într-un tabel",
+   "cap": [
+    "Verificarea",
+    "Ce prinde"
+   ],
+   "randuri": [
+    [
+     "Total activ = total pasiv",
+     "conturi mapate greșit sau deloc"
+    ],
+    [
+     "Rezultatul din bilanț = cel din contul de profit",
+     "documente întocmite pe balanțe diferite"
+    ],
+    [
+     "Numerarul final din flux = soldul de trezorerie",
+     "conturi de bani omise din flux"
+    ],
+    [
+     "Variația = suma celor trei activități",
+     "operațiuni clasificate greșit sau numărate de două ori"
+    ]
+   ],
+   "nota": "Niciuna nu cere calcule. Toate cer doar să pui două cifre alături."
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu prind"
+  },
+  {
+   "tip": "p",
+   "text": "Merită spus, în spiritul capitolului 33: cele patru concordanțe sunt verificări de coerență internă. Ele confirmă că documentele spun același lucru între ele — nu că lucrul acela e adevărat."
+  },
+  {
+   "tip": "p",
+   "text": "Un stoc supraevaluat, o creanță incertă neajustată, o cheltuială înregistrată în anul greșit trec de toate patru. Pentru ele există alte instrumente, descrise la locul lor: inventarul, analiza vechimii soldurilor, confruntarea cu documentele."
+  },
+  {
+   "tip": "p",
+   "text": "Concordanțele sunt ultima poartă, nu singura. Rostul lor e să garanteze că, dacă undeva mai există o eroare, ea e o eroare de fond — nu una pe care ar fi prins-o oricine punând două cifre alături."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Verificările de mai sus sunt cerințe de coerență ale formularelor, iar validatorul oficial le impune ca reguli blocante — un set care nu le respectă nu poate fi depus. Patru observații. Prima: pe lângă ele, formularele conțin zeci de corelații interne între rânduri, iar validatorul le verifică pe toate; rularea lui înainte de depunere e obligatorie în practică, dar nu înlocuiește verificările de mai sus, fiindcă el confirmă coerența formularului, nu concordanța lui cu contabilitatea din spate. A doua: corelația dintre coloana de început de exercițiu și situațiile financiare ale anului precedent trebuie verificată explicit; o diferență acolo semnalează fie o corecție de eroare din exercițiul anterior, care trebuie prezentată ca atare în note, fie o preluare greșită a soldurilor. A treia: pentru entitățile cu obligație de audit sau de verificare, concordanțele se documentează în dosarul de închidere împreună cu rezultatul lor, nu doar cu constatarea că au fost făcute. A patra: semnarea situațiilor financiare de către persoana care le întocmește și de către administrator angajează răspunderi distincte — prima pentru conformitatea întocmirii, a doua pentru organizarea contabilității și pentru realitatea datelor; e aceeași împărțire discutată în capitolul 4, ajunsă la momentul în care devine concretă."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cu semnătura de pe situațiile financiare, exercițiul e încheiat. Nu se încheie însă și obligațiile: rămâne ce se întâmplă după ce totul a fost depus — dosarele, urmele, și limita dintre ce face un program și ce rămâne, întotdeauna, în sarcina unui om."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Patru verificări, zece minute, făcute înainte de semnătură — nu după depunere.",
+    "Activ = pasiv, la leu. Dacă nu iese, un cont a căzut în două rânduri sau în niciunul.",
+    "Rezultatul din bilanț = rezultatul din contul de profit; altfel, cele două s-au întocmit pe balanțe diferite.",
+    "Numerarul final din flux = soldul conturilor de trezorerie din bilanț.",
+    "Variația numerarului = suma fluxurilor din exploatare, investiții și finanțare.",
+    "Toate patru sunt verificări de coerență internă: confirmă că documentele spun același lucru, nu că lucrul e adevărat."
+   ]
+  }
+ ]
+}
