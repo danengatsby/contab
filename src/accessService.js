@@ -135,9 +135,16 @@ function raport(d, opts) {
   // Taierea se face INAINTE de localizare fiindca altfel se platea geo pentru randuri care sunt
   // apoi aruncate: `vizitatori` creste pana la CONTAB_VISITORS_MAX (2.000), din care se afiseaza
   // 500 — deci munca era de patru ori mai mare decat rezultatul, si crestea singura.
-  const s = capList(sesiuni, MAX_SESIUNI, 'access:sesiuni');
+  //
+  // `pastreaza: 'cap'` NU e cosmetic: `sesiuni` si `vizitatori` vin sortate DESCRESCATOR dupa
+  // ultima activitate (sesiuniActive, visitors.snapshot), deci implicitul `slice(-max)` pastra
+  // tocmai randurile cele mai VECHI si ascundea activitatea recenta — vizibil in productie la
+  // 958 de vizitatori: primii 458, cei mai noi, nu ajungeau niciodata pe ecran.
+  // `logari` NU primeste optiunea: e deja plafonata la MAX_AUTENTIFICARI in bucla din
+  // `autentificari()`, deci capList nu taie nimic aici (ramane plasa, daca plafonul acela dispare).
+  const s = capList(sesiuni, MAX_SESIUNI, 'access:sesiuni', { pastreaza: 'cap' });
   const l = capList(logari, MAX_AUTENTIFICARI, 'access:autentificari');
-  const v = capList(vizitatori, MAX_VIZITATORI, 'access:vizitatori');
+  const v = capList(vizitatori, MAX_VIZITATORI, 'access:vizitatori', { pastreaza: 'cap' });
 
   // ── Localizarea NU blocheaza raspunsul ──────────────────────────────────────────────────────
   // Se foloseste doar ce e deja in cache; adresele necunoscute se pun la interogat in FUNDAL si

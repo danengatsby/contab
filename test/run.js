@@ -6313,6 +6313,35 @@ section('Paginare + garda OOM (src/paginate.js sendList)');
   eq('...si taierea incepe de la cel mai vechi pastrat', cl.items[0].id, 20);
   cl = capList(null, 10);
   ok('lista lipsa nu arunca', cl.items.length === 0 && cl.total === 0 && cl.truncated === false);
+
+  // Din CE CAPAT se taie. Implicitul (coada) e corect doar pentru listele append-ordered; o lista
+  // sortata cu cele mai NOI la inceput (vizitatori, sesiuni) trebuie taiata de la coada listei,
+  // adica pastrata de la CAP. Aserțiunea pe LUNGIME nu discrimineaza — trece in ambele variante —
+  // deci se verifica IDENTITATEA randurilor pastrate, singura marime pe care doar varianta
+  // corecta o produce.
+  const noiIntai = []; for (let i = 0; i < 30; i += 1) noiIntai.push({ id: i, rang: 30 - i }); // id 0 = cel mai NOU
+  const capt = capList(noiIntai, 10, 'x', { pastreaza: 'cap' });
+  eq('pastreaza:cap -> primul returnat e chiar cel mai NOU din colectie', capt.items[0].id, 0);
+  eq('...si ultimul pastrat e al zecelea ca noutate', capt.items[capt.items.length - 1].id, 9);
+  ok('...totalul real si semnalul de trunchiere raman', capt.total === 30 && capt.truncated === true);
+  const impl = capList(noiIntai, 10, 'x');
+  eq('implicitul ramane NESCHIMBAT (coada) pentru listele append-ordered', impl.items[0].id, 20);
+  ok('cele doua capete chiar difera (aserțiunea de mai sus nu e tautologica)',
+    capt.items[0].id !== impl.items[0].id);
+  const subPlafon = capList(noiIntai, 100, 'x', { pastreaza: 'cap' });
+  eq('sub plafon optiunea nu schimba nimic', subPlafon.items.length, 30);
+
+  // `max` gresit nu are voie sa DEZARMEZE garda. Cazul real: `capList(lista, { label: 'x' })`
+  // (argumente decalate) lasa `cap` obiect, `total <= cap` compara cu NaN — mereu fals — deci
+  // plafonul nu se mai aplica DELOC si fiecare apel raporta o trunchiere inexistenta.
+  const decalat = capList(noiIntai, { label: 'verificare-anaf' });
+  ok('argument `max` nenumeric -> se cade pe plafonul implicit, nu pe „fara plafon"',
+    decalat.truncated === false && decalat.items.length === 30 && decalat.total === 30);
+  for (const [nume, val] of [['0', 0], ['null', null], ['undefined', undefined], ['negativ', -5], ['NaN', NaN]]) {
+    const c = capList(noiIntai, val);
+    ok('`max` = ' + nume + ' -> plafonul implicit (lista scurta trece intreaga, netrunchiata)',
+      c.truncated === false && c.items.length === 30);
+  }
 }
 
 // Portile si infrastructura au fost mutate in test/run/porti.js — vezi test/run/comun.js pentru

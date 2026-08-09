@@ -73,14 +73,29 @@ function sendMap(req, res, map, opts = {}) {
  * totalul real si semnalul de trunchiere. Trunchierea se si LOGHEAZA: unii apelanti folosesc doar
  * `.items` (proiectii interne), iar principiul e ca o taiere sa nu fie niciodata TACUTA — altfel
  * n-am sti cand un client chiar are nevoie de paginare in UI.
+ *
+ * DIN CE CAPAT SE TAIE — `opts.pastreaza`:
+ *  - implicit `'coada'`: lista e append-ordered (audit, firul de mesaje), deci noul e la SFARSIT
+ *    si se pastreaza ultimele `max`;
+ *  - `'cap'`: lista vine DEJA sortata cu cele mai noi la INCEPUT (vizitatorii si sesiunile din
+ *    accessService, sortate descrescator dupa ultima activitate) — acolo `slice(-max)` pastra exact
+ *    randurile GRESITE: cele mai vechi, ascunzandu-le pe cele recente. Un jurnal de acces care
+ *    ascunde activitatea recenta e inversul scopului lui. Conventia nu se mai ghiceste din forma
+ *    listei: apelantul o declara.
  */
-function capList(list, max, label) {
+function capList(list, max, label, opts) {
   const src = Array.isArray(list) ? list : [];
-  const cap = max || ABS_MAX;
+  // `max` se COERCITEAZA la un numar pozitiv (0/null/undefined = plafonul implicit, conventie
+  // folosita de majoritatea apelantilor). Nu e pedanterie: un apel cu argumentele decalate —
+  // `capList(lista, { label: 'x' })` — lasa `cap` obiect, iar `total <= cap` compara cu NaN, deci
+  // e mereu fals: garda OOM se DEZARMA tacut si fiecare apel raporta o trunchiere inexistenta.
+  const n = Number(max);
+  const cap = Number.isFinite(n) && n > 0 ? n : ABS_MAX;
   const total = src.length;
   if (total <= cap) return { items: src, total, truncated: false };
   if (log.warn) log.warn('lista plafonata (garda OOM)', log.ctx(null, { label: label || '', total, cap }));
-  return { items: src.slice(-cap), total, truncated: true };
+  const dinCap = !!(opts && opts.pastreaza === 'cap');
+  return { items: dinCap ? src.slice(0, cap) : src.slice(-cap), total, truncated: true };
 }
 
 module.exports = { sendList, sendMap, capList, ABS_MAX };

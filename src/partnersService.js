@@ -238,7 +238,7 @@ async function verificaLaAnaf(fid, opts) {
   return {
     verificatLa: acum, data: registru.ziua(o.data),
     interogate: r.interogate, loturi: r.loturi,
-    rezultate: capList(rezultate, { label: 'verificare-anaf' }).items,
+    rezultate: capList(rezultate, 0, 'verificare-anaf').items,
     sumar: {
       total: rezultate.length,
       negasiti: nr((x) => !x.gasit),
