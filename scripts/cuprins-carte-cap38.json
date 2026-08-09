@@ -1,0 +1,140 @@
+{
+ "parte": "Partea VIII · Statul · fazele 9 și 13",
+ "nr": "38",
+ "titlu": "Depunerea și dovada",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Capitolul acesta e scurt fiindcă are o singură idee, iar ideea aceea e mai importantă decât lungimea ei: documentul care contează nu e declarația, ci confirmarea că a fost primită."
+  },
+  {
+   "tip": "p",
+   "text": "O declarație perfect întocmită, salvată pe calculatorul contabilului, nu are nicio valoare juridică. O declarație cu o greșeală, depusă și confirmată, există. Prima se sancționează ca nedepusă; a doua se corectează."
+  },
+  {
+   "tip": "h",
+   "text": "Recipisa"
+  },
+  {
+   "tip": "p",
+   "text": "La depunerea electronică, sistemul întoarce un fișier de confirmare — recipisa. Ea conține identificatorul depunerii, momentul exact și starea: acceptat sau respins."
+  },
+  {
+   "tip": "p",
+   "text": "Recipisa e singura probă că obligația a fost îndeplinită. Nu extrasul de pe ecran, nu e-mailul de la program, nu faptul că butonul a fost apăsat. La un control, întrebarea e „arătați recipisa”, iar răspunsul „am depus, sigur” nu are nicio greutate."
+  },
+  {
+   "tip": "cheie",
+   "text": "Fără recipisă, o declarație e o intenție. Cu recipisă, e un fapt. Distincția e aceeași ca între ciornă și articol postat, din capitolul 29."
+  },
+  {
+   "tip": "p",
+   "text": "De aici, o regulă practică simplă: recipisa se descarcă și se arhivează în același dosar cu declarația, imediat, nu „când o să fie nevoie”. Peste doi ani, regăsirea ei în sistemul fiscal e posibilă, dar nu întotdeauna comodă — iar controlul nu așteaptă."
+  },
+  {
+   "tip": "h",
+   "text": "Cele trei stări"
+  },
+  {
+   "tip": "p",
+   "text": "O depunere electronică nu are două rezultate, ci trei, iar confundarea primelor două e sursa celor mai neplăcute surprize."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce poate întoarce o depunere",
+   "cap": [
+    "Starea",
+    "Ce înseamnă",
+    "Ce faci"
+   ],
+   "randuri": [
+    [
+     "Acceptat",
+     "declarația a intrat, obligația e îndeplinită",
+     "arhivezi recipisa"
+    ],
+    [
+     "Respins",
+     "validarea a picat — declarația NU există",
+     "corectezi și depui din nou, în termen"
+    ],
+    [
+     "Fără răspuns",
+     "depunerea nu s-a finalizat",
+     "verifici; NU presupui că a mers"
+    ],
+    [
+     "Acceptat cu erori",
+     "a intrat, dar are neconcordanțe semnalate",
+     "analizezi; poate cere rectificativă"
+    ]
+   ],
+   "nota": "A treia stare e cea periculoasă: absența unui răspuns arată, pe ecran, aproape la fel cu un succes."
+  },
+  {
+   "tip": "p",
+   "text": "Rândul al treilea merită insistență. O depunere care nu s-a finalizat — conexiune întreruptă, sesiune expirată, certificat neîncărcat — nu produce niciun mesaj de eroare la contribuabil în multe situații. Firma află abia la somație, luni mai târziu, cu majorări curse între timp."
+  },
+  {
+   "tip": "p",
+   "text": "Regula, pentru orice sistem care depune automat: „nu am putut verifica” nu înseamnă „e bine”. Un program care raportează depunerea ca reușită fiindcă nu a primit o eroare face exact greșeala de care se ferește un contabil experimentat."
+  },
+  {
+   "tip": "h",
+   "text": "Cine semnează"
+  },
+  {
+   "tip": "p",
+   "text": "Depunerea electronică se face cu certificat digital calificat, înregistrat în prealabil la administrația fiscală pentru firma respectivă. Certificatul aparține unei persoane fizice — administratorul, contabilul sau împuternicitul — nu firmei."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința practică se descoperă de obicei în cel mai prost moment: dacă persoana care deține certificatul pleacă, iar împuternicirea nu a fost actualizată, firma nu mai poate depune nimic până la refacerea formalităților. Merită verificat înainte de termen, nu în ziua lui."
+  },
+  {
+   "tip": "h",
+   "text": "Spațiul Privat Virtual"
+  },
+  {
+   "tip": "p",
+   "text": "Comunicarea cu administrația fiscală nu mai e opțional electronică: firmele sunt obligate să se înroleze în Spațiul Privat Virtual, iar actele administrative se comunică prin el."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința e mai importantă decât pare. Un act comunicat prin acest canal se consideră comunicat, iar termenele de contestare curg din acel moment — indiferent dacă cineva a deschis mesajul. O cutie poștală electronică necitită produce aceleași efecte ca o scrisoare recomandată refuzată."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea verificarea periodică nu e o formalitate administrativă, ci o măsură de protecție. Ea intră firesc în ritmul lunar din capitolul 37, alături de depunerea propriu-zisă."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Depunerea prin mijloace electronice de transmitere la distanță e reglementată de Codul de procedură fiscală și de ordinele care aprobă procedura de înrolare și de utilizare a Spațiului Privat Virtual, iar comunicarea actelor administrative fiscale prin acest canal produce efecte de la data punerii la dispoziție. Patru observații de practică. Prima: recipisa trebuie păstrată împreună cu declarația pentru toată durata termenului de prescripție a dreptului de a stabili creanțe fiscale, nu doar pentru exercițiul curent; dosarul de declarații fără recipise e, practic, un dosar gol. A doua: starea „acceptat cu erori” nu suspendă efectele depunerii, dar erorile semnalate se regăsesc, de regulă, în notificările de neconcordanță ulterioare — tratarea lor la momentul depunerii e mult mai ieftină decât răspunsul la notificare. A treia: pentru declarațiile cu regim propriu de validare, între care D406, respingerea poate interveni la un moment ulterior transmiterii, deci confirmarea de primire nu echivalează cu acceptarea; verificarea stării finale e un pas distinct, care trebuie făcut explicit. A patra: împuternicirea pentru depunere se acordă și se revocă prin formular dedicat, iar valabilitatea ei trebuie urmărită independent de valabilitatea certificatului digital — cele două expiră la date diferite, iar firma descoperă lipsa uneia dintre ele exact în ziua termenului."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cu acest capitol se încheie partea a opta. Firma și-a calculat obligațiile, le-a declarat și are dovada că le-a declarat."
+  },
+  {
+   "tip": "p",
+   "text": "Urmează partea despre momentul în care luna sau anul devine definitiv: închiderea. Ordinea pașilor contează acolo mai mult decât oriunde altundeva, iar sărirea unuia se vede abia peste luni."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Documentul care contează nu e declarația, ci recipisa — confirmarea că a fost primită.",
+    "O declarație nedepusă se sancționează ca atare, oricât ar fi de corectă; una depusă greșit se corectează.",
+    "Depunerea are patru rezultate posibile, iar cel periculos e lipsa oricărui răspuns: arată aproape ca un succes.",
+    "„Nu am putut verifica” nu înseamnă „e bine” — nici pentru un om, nici pentru un program.",
+    "Certificatul digital aparține unei persoane, nu firmei; împuternicirea și certificatul expiră la date diferite.",
+    "Actele comunicate în Spațiul Privat Virtual se consideră comunicate, iar termenele curg chiar dacă nimeni nu a deschis mesajul."
+   ]
+  }
+ ]
+}

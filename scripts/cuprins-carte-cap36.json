@@ -1,0 +1,165 @@
+{
+ "parte": "Partea VIII · Statul · fazele 9 și 13",
+ "nr": "36",
+ "titlu": "Regimurile speciale",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Capitolul precedent a descris regula generală: taxa se datorează la livrare, de către furnizor, pe întreaga valoare. Există însă situații în care fiecare dintre aceste trei elemente se schimbă — momentul, persoana obligată sau baza de calcul."
+  },
+  {
+   "tip": "p",
+   "text": "Nu sunt excepții exotice. O firmă obișnuită întâlnește, de regulă, două sau trei dintre ele, iar aplicarea greșită a oricăreia produce fie taxă plătită degeaba, fie o datorie descoperită la control."
+  },
+  {
+   "tip": "h",
+   "text": "Harta"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce se schimbă față de regula generală",
+   "cap": [
+    "Regimul",
+    "Ce se schimbă",
+    "Situația tipică"
+   ],
+   "randuri": [
+    [
+     "TVA la încasare",
+     "MOMENTUL exigibilității",
+     "firme mici, sub plafon, care optează"
+    ],
+    [
+     "Taxarea inversă",
+     "PERSOANA obligată la plată",
+     "achiziții intracomunitare, cereale, construcții"
+    ],
+    [
+     "Regimul marjei",
+     "BAZA de impozitare",
+     "bunuri second-hand, opere de artă, turism"
+    ],
+    [
+     "Pro-rata",
+     "CÂT se deduce",
+     "firme cu operațiuni scutite fără drept"
+    ],
+    [
+     "Operațiunile triunghiulare",
+     "LOCUL operațiunii",
+     "trei firme, trei țări, o singură mișcare de marfă"
+    ]
+   ],
+   "nota": "Fiecare rând răspunde la altă întrebare din cele patru care definesc o operațiune: când, cine, cât și unde."
+  },
+  {
+   "tip": "h",
+   "text": "TVA la încasare: taxa urmează banii"
+  },
+  {
+   "tip": "p",
+   "text": "În regimul normal, TVA-ul devine exigibil la emiterea facturii. Firma îl datorează statului chiar dacă nu l-a încasat — iar o factură neîncasată devine, cum s-a văzut în capitolul 27, o pierdere mai mare decât suma neîncasată."
+  },
+  {
+   "tip": "p",
+   "text": "Regimul de TVA la încasare mută momentul: taxa devine exigibilă când clientul plătește. Pentru o firmă cu clienți care întârzie, avantajul de trezorerie e considerabil."
+  },
+  {
+   "tip": "p",
+   "text": "Prețul e simetric și se uită des: firma nu își mai poate deduce nici TVA-ul de la furnizori decât după ce îi plătește. Regimul se aplică deci pe ambele laturi, iar o firmă care plătește prompt și încasează greu câștigă, în timp ce una care face invers pierde."
+  },
+  {
+   "tip": "p",
+   "text": "Contabil, aici își găsește rostul contul 4428 TVA neexigibilă: taxa stă acolo, la vânzare ca la cumpărare, până în momentul plății, când trece în 4427, respectiv în 4426."
+  },
+  {
+   "tip": "h",
+   "text": "Taxarea inversă: obligația trece la cumpărător"
+  },
+  {
+   "tip": "p",
+   "text": "E mecanismul care surprinde cel mai tare la prima întâlnire: furnizorul emite factura fără TVA, iar cumpărătorul înregistrează el însuși taxa, deodată ca datorie și ca drept de deducere."
+  },
+  {
+   "tip": "p",
+   "text": "Rezultatul e că, în majoritatea cazurilor, efectul asupra trezoreriei e nul: aceeași sumă apare în 4427 și în 4426, iar decontul o preia pe ambele coloane. E și motivul pentru care operațiunea pare, la prima vedere, fără sens."
+  },
+  {
+   "tip": "p",
+   "text": "Sensul e altul: taxarea inversă elimină posibilitatea ca furnizorul să încaseze TVA și să dispară fără să îl vireze. Se aplică la achizițiile intracomunitare, la importurile de servicii și, în interiorul țării, la categorii expuse fraudei — cereale, lemn, deșeuri, anumite lucrări de construcții."
+  },
+  {
+   "tip": "p",
+   "text": "Capcana practică e că omisiunea nu se vede: dacă firma nu înregistrează deloc autolichidarea, decontul e mai mic pe ambele coloane și pare corect. Se descoperă abia prin confruntarea cu declarațiile partenerului, la nivelul administrației fiscale."
+  },
+  {
+   "tip": "cheie",
+   "text": "La taxarea inversă, nesocotirea obligației nu produce o diferență de plată. Produce o declarație falsă — ceea ce e mai grav."
+  },
+  {
+   "tip": "h",
+   "text": "Regimul marjei: taxa doar pe adaos"
+  },
+  {
+   "tip": "p",
+   "text": "Un comerciant care cumpără un autoturism rulat de la o persoană fizică nu primește nicio factură cu TVA, deci nu are ce deduce. Dacă ar colecta taxă pe întregul preț de vânzare, ar plăti taxă pe o valoare pe care nu a adăugat-o el."
+  },
+  {
+   "tip": "p",
+   "text": "Pentru asta există regimul special al marjei: taxa se calculează numai asupra diferenței dintre prețul de vânzare și cel de cumpărare. Se aplică la bunuri second-hand, opere de artă, antichități și, cu reguli proprii, în turism."
+  },
+  {
+   "tip": "p",
+   "text": "Două consecințe merită reținute. Prima: pe factura emisă nu se înscrie TVA — cumpărătorul nu are ce deduce, iar mențiunea regimului special e obligatorie. A doua: firma trebuie să țină un registru distinct al bunurilor în acest regim, fiindcă marja se calculează pe fiecare bun în parte, nu pe total."
+  },
+  {
+   "tip": "h",
+   "text": "Pro-rata: deducerea parțială"
+  },
+  {
+   "tip": "p",
+   "text": "O firmă care are și operațiuni taxabile, și operațiuni scutite fără drept de deducere — o clinică medicală cu farmacie, o școală cu activitate de consultanță — nu poate deduce integral TVA-ul de pe cheltuielile comune."
+  },
+  {
+   "tip": "p",
+   "text": "Pro-rata e proporția în care le deduce: ponderea operațiunilor cu drept de deducere în totalul operațiunilor. În cursul anului se folosește o pro-rată provizorie, iar la final se calculează cea definitivă și se regularizează diferența."
+  },
+  {
+   "tip": "p",
+   "text": "Un detaliu care schimbă cifra: pro-rata definitivă se rotunjește în sus, la unitate. O proporție de 70,2% devine 71%, nu 70%. Rotunjirea în jos, făcută din reflex aritmetic, îi ia firmei o parte din deducere în fiecare an."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Regimurile sunt reglementate distinct: TVA la încasare la art. 282 alin. (3)-(8) Cod fiscal, taxarea inversă la art. 307, 331 și, pentru achizițiile intracomunitare, art. 308, regimul special al marjei la art. 312, iar pro-rata la art. 300. Patru observații de fond. Prima: la TVA la încasare, exigibilitatea intervine la data încasării, dar nu mai târziu de a nouăzecea zi de la data emiterii facturii, doar pentru operațiunile la care legea prevede expres această limită — regula generală de plafonare temporală aplicabilă tuturor facturilor a fost eliminată încă din 2014, iar aplicarea ei din obișnuință colectează taxa mai devreme decât e datorată. A doua: la regimul marjei, baza se determină pe fiecare bun, iar marja negativă nu compensează una pozitivă; evidența pe bun, cu prețul de achiziție și cel de vânzare, e o condiție de aplicare a regimului, nu o comoditate. A treia: la pro-rata, achizițiile destinate exclusiv operațiunilor cu drept se deduc integral, iar cele destinate exclusiv operațiunilor fără drept nu se deduc deloc — pro-rata se aplică numai achizițiilor cu destinație mixtă, iar aplicarea ei nediferențiată asupra tuturor intrărilor e o eroare atât în plus, cât și în minus. A patra: pentru bunurile de capital, ajustarea deducerii se face pe o perioadă de cinci ani, respectiv douăzeci de ani pentru bunuri imobile, iar schimbarea destinației în acest interval declanșează obligația de ajustare potrivit art. 305 — obligație care supraviețuiește schimbării regimului firmei și pe care un registru al bunurilor de capital o face vizibilă la timp."
+  },
+  {
+   "tip": "h",
+   "text": "Operațiunile triunghiulare"
+  },
+  {
+   "tip": "p",
+   "text": "Ultimul regim din listă e cel mai rar și cel mai derutant: trei firme din trei state ale Uniunii, marfa care circulă direct de la prima la a treia, iar cea din mijloc — care cumpără și revinde — nu are voie să se înregistreze în niciuna dintre celelalte două țări."
+  },
+  {
+   "tip": "p",
+   "text": "Măsura de simplificare rezolvă tocmai asta: achiziția firmei din mijloc devine neimpozabilă în țara ei, iar obligația de plată trece la cumpărătorul final. Prețul e o formalitate declarativă strictă — operațiunea trebuie raportată cu un cod distinct în declarația recapitulativă, iar factura trebuie să poarte mențiunea corespunzătoare."
+  },
+  {
+   "tip": "p",
+   "text": "Merită știut că se aplică și că e simplu odată înțeles, fiindcă alternativa — înregistrarea în scopuri de TVA într-un al doilea stat — costă de zece ori mai mult decât operațiunea în sine."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Fiecare regim special schimbă altceva: momentul, persoana obligată, baza, cât se deduce sau locul operațiunii.",
+    "TVA la încasare mută exigibilitatea la plată — pe ambele laturi: nici deducerea nu se mai face înainte de a plăti furnizorul.",
+    "La taxarea inversă efectul de trezorerie e nul, dar omisiunea produce o declarație falsă, nu o diferență de plată.",
+    "Regimul marjei impozitează doar adaosul și cere evidență pe fiecare bun; pe factură nu se înscrie TVA.",
+    "Pro-rata se aplică numai achizițiilor cu destinație MIXTĂ, iar cea definitivă se rotunjește ÎN SUS, la unitate.",
+    "Operațiunile triunghiulare evită înregistrarea în alt stat, dar cer raportare cu cod distinct și mențiune pe factură."
+   ]
+  }
+ ]
+}

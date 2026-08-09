@@ -1,0 +1,172 @@
+{
+ "parte": "Partea VIII · Statul · fazele 9 și 13",
+ "nr": "37",
+ "titlu": "Declarațiile și termenele lor",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Numărul declarațiilor pe care le datorează o firmă românească sperie la prima privire și devine gestionabil imediat ce înțelegi principiul: fiecare declarație corespunde unei obligații, iar obligațiile decurg din ce face firma, nu din ce a ales cineva să ceară."
+  },
+  {
+   "tip": "p",
+   "text": "O firmă fără angajați nu depune D112. Una fără operațiuni intracomunitare nu depune D390. Lista nu e aceeași pentru toți — se derivă din regimul fiscal și din activitatea reală."
+  },
+  {
+   "tip": "h",
+   "text": "Cine ce datorează"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Declarația și obligația din spatele ei",
+   "cap": [
+    "Declarația",
+    "Când se depune",
+    "Ce raportează"
+   ],
+   "randuri": [
+    [
+     "D112",
+     "lunar sau trimestrial",
+     "salarii, contribuții, impozit pe venit"
+    ],
+    [
+     "D300",
+     "lunar sau trimestrial",
+     "decontul de TVA"
+    ],
+    [
+     "D394",
+     "odată cu D300",
+     "livrările și achizițiile pe teritoriul național"
+    ],
+    [
+     "D390",
+     "lunar",
+     "operațiunile intracomunitare"
+    ],
+    [
+     "D406 SAF-T",
+     "lunar sau trimestrial",
+     "fișierul standard de audit — datele contabile"
+    ],
+    [
+     "D100",
+     "lunar sau trimestrial",
+     "impozitul micro, avansuri, rețineri la sursă"
+    ],
+    [
+     "D101",
+     "anual",
+     "impozitul pe profit"
+    ],
+    [
+     "D205",
+     "anual",
+     "rețineri la sursă pe fiecare beneficiar"
+    ],
+    [
+     "Situații financiare",
+     "anual",
+     "bilanț, cont de rezultat, note"
+    ]
+   ],
+   "nota": "Termenele se leagă de perioada fiscală a firmei, iar aceasta se poate schimba în cursul anului — vezi capitolul 35."
+  },
+  {
+   "tip": "p",
+   "text": "Observația care ordonează tabelul e că declarațiile nu sunt independente. D394 se depune odată cu D300 și trebuie să se potrivească cu el. D406 conține, în formă detaliată, datele care apar agregat în celelalte. Iar situațiile financiare anuale trebuie să concorde cu suma declarațiilor lunare."
+  },
+  {
+   "tip": "cheie",
+   "text": "Declarațiile sunt priviri diferite asupra acelorași date. Dacă nu concordă între ele, nu declarațiile sunt problema — contabilitatea din spatele lor e."
+  },
+  {
+   "tip": "h",
+   "text": "Regimul firmei decide lista"
+  },
+  {
+   "tip": "p",
+   "text": "Două firme cu aceeași cifră de afaceri pot avea liste complet diferite. Trei alegeri, făcute o singură dată, determină aproape tot."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce schimbă fiecare alegere",
+   "cap": [
+    "Alegerea",
+    "Dacă da",
+    "Dacă nu"
+   ],
+   "randuri": [
+    [
+     "Plătitor de TVA",
+     "D300, D394, jurnale de TVA",
+     "niciuna dintre ele"
+    ],
+    [
+     "Are angajați",
+     "D112 lunar, state de plată, D205",
+     "niciuna"
+    ],
+    [
+     "Micro sau profit",
+     "D100 trimestrial / D101 anual",
+     "cealaltă variantă"
+    ]
+   ],
+   "nota": "Toate trei se pot schimba în cursul anului, iar schimbarea produce efecte declarative imediat, nu de la anul următor."
+  },
+  {
+   "tip": "h",
+   "text": "Calendarul lunii"
+  },
+  {
+   "tip": "p",
+   "text": "Pentru o firmă obișnuită, plătitoare de TVA și cu angajați, luna are un ritm fix. Nu e complicat, dar e strict — și e mai ușor de ținut ca listă decât ca memorie."
+  },
+  {
+   "tip": "p",
+   "text": "Întâi se închid documentele lunii precedente și se punctează extrasul. Apoi se fac regularizările. Apoi se întocmește balanța. Abia după balanță se generează declarațiile — fiindcă ele se compun din ea. La final se depun, se plătesc obligațiile și se arhivează dovezile."
+  },
+  {
+   "tip": "p",
+   "text": "Ordinea nu e o preferință. O declarație generată înaintea balanței se va corecta după ea, iar corecția unei declarații deja depuse costă mai mult decât o zi de așteptare. Partea a noua a cărții tratează pe larg această ordine."
+  },
+  {
+   "tip": "h",
+   "text": "Anualul"
+  },
+  {
+   "tip": "p",
+   "text": "Pe lângă declarațiile fiscale, exercițiul se încheie cu obligații care nu sunt către ANAF și de care se uită cel mai des: registrul-inventar și documentele de inventariere, situațiile financiare depuse la termen și hotărârea adunării generale prin care se aprobă situațiile și se repartizează profitul."
+  },
+  {
+   "tip": "p",
+   "text": "Ultima merită subliniată pentru un patron: dividendele nu se pot distribui fără o hotărâre a asociaților, iar hotărârea nu se poate lua fără situații financiare aprobate. Ordinea aceasta e juridică, nu contabilă, și nu se poate scurta."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Termenele de depunere sunt cele din Codul de procedură fiscală și din ordinele care aprobă modelul fiecărei declarații, iar ele se raportează de regulă la data de 25 a lunii următoare perioadei de raportare, cu excepții proprii pentru situațiile financiare anuale și pentru D406. Patru observații de practică. Prima: nedepunerea și depunerea cu întârziere se sancționează distinct de neplată, iar amenda pentru declarație curge chiar dacă suma datorată e zero — declarațiile pe zero nu sunt opționale. A doua: corectarea unei declarații se face prin declarație rectificativă, dar D112 și D300 au regimuri procedurale diferite, iar pentru unele declarații informative rectificarea presupune retransmiterea integrală, nu doar a diferenței; alegerea greșită produce dublarea sumelor raportate. A treia: vectorul fiscal — configurația obligațiilor declarative ale firmei din evidența ANAF — trebuie să corespundă situației reale, iar actualizarea lui e o obligație a contribuabilului; o firmă rămasă cu o obligație activă în vector după ce a încetat activitatea respectivă va primi somații pentru declarații pe care nu mai are ce să le completeze. A patra: obligațiile fiscale se sting în ordinea prevăzută de lege, nu în ordinea aleasă la plată; o plată fără referință corectă poate fi alocată altei datorii decât cea intenționată, generând accesorii pe o obligație pe care plătitorul o credea stinsă."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Declarația întocmită corect e jumătate din obligație. Cealaltă jumătate — și, într-un control, partea care contează — e dovada că a fost depusă și primită. E capitolul următor, și e cel mai scurt din carte."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Lista de declarații se derivă din regimul și activitatea firmei, nu e aceeași pentru toți.",
+    "Declarațiile sunt priviri diferite asupra acelorași date: dacă nu concordă între ele, contabilitatea e de vină.",
+    "Trei alegeri decid aproape tot: plătitor de TVA, cu angajați, micro sau impozit pe profit.",
+    "Ordinea lunii e fixă: documente, extras, regularizări, balanță, apoi declarații — niciodată invers.",
+    "Declarațiile pe zero nu sunt opționale; amenda pentru nedepunere curge indiferent de sumă.",
+    "Dividendele cer hotărâre a asociaților, iar hotărârea cere situații financiare aprobate."
+   ]
+  }
+ ]
+}
