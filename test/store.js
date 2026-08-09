@@ -196,6 +196,68 @@ section('Proiectie audit APPEND-ONLY (durabila, decuplata de plafonul RAM)');
 }
 
 // ULTIMA sectiune (dupa conflict, persistenta ramane INGHETATA — nimic nu mai scrie dupa ea)
+// ORDINEA CONTEAZA: sectiunea asta trebuie sa stea INAINTEA testului de fencing — acela
+// ingheata deliberat persistenta (conflictedFlag), iar dupa el orice persist e refuzat.
+section('Indiciul de colectie: sare diff-ul, dar plasa nu lasa nimic pierdut');
+{
+  // Fisier propriu: sectiunea urmareste EXACT ce se scrie la fiecare persist.
+  const plan = require('../src/persistPlan');
+  const { DatabaseSync } = require('node:sqlite');
+  const F2 = path.join(os.tmpdir(), 'contab-store-hint-' + process.pid + '.sqlite');
+  const rm2 = () => { for (const f of [F2, F2 + '-wal', F2 + '-shm']) { try { fs.unlinkSync(f); } catch (_) { /* nu exista */ } } };
+  rm2();
+  // `epoch` (fencing) se sincronizeaza din baza doar la hydrate; fara el, un fisier NOU (dbEpoch=0)
+  // ar fi vazut ca „alt scriitor" fata de epoch-ul ramas din sectiunile anterioare.
+  store.close(); store.open(F2); store.hydrate(DEF); store.resetDirty();
+
+  const h = base();
+  h.entries = [mkEntry('e1', 1, 10)];
+  h.visitors = [{ id: 'ip1', ip: 'ip1', cereri: 1 }];
+  store.persist(h);                       // starea de plecare, completa
+  store.persist(h);
+  eq('punct de plecare curat (nimic de scris)', store.written().length, 0);
+
+  // Se schimba DOUA colectii, dar indiciul declara doar una.
+  h.visitors[0].cereri = 2;
+  h.entries[0].suma = 999;                // NEdeclarata — cazul „indiciu gresit/uitat"
+  store.persist(h, { only: ['visitors'] });
+  eq('indiciul restrange scrierea la colectia numita', store.written().join(','), 'visitors');
+  ok('colectia nedeclarata NU s-a scris', !store.written().includes('entries'));
+  // Dovada pe DISC, nu pe intentie: baza inca are valoarea veche.
+  const citeste = () => JSON.parse(new DatabaseSync(F2, { readOnly: true }).prepare("SELECT data FROM entries WHERE id = 'e1'").get().data).suma;
+  eq('...si pe disc a ramas valoarea veche', citeste(), 10);
+
+  // PLASA: dupa SAVE_FULL_EVERY salvari partiale, urmatorul persist e COMPLET si o recupereaza.
+  // Se conduce prin numarul de salvari, nu prin ceas, ca proba sa fie determinista.
+  let recuperataLa = 0;
+  for (let k = 1; k <= plan.SAVE_FULL_EVERY + 1; k += 1) {
+    h.visitors[0].cereri = 100 + k;       // ceva de scris la fiecare tura, altfel n-ar exista persist
+    store.persist(h, { only: ['visitors'] });
+    if (!recuperataLa && store.written().includes('entries')) recuperataLa = k;
+  }
+  ok('plasa a facut singura un diff complet si a recuperat colectia nedeclarata', recuperataLa > 0);
+  eq('...exact la pragul asteptat, nu mai tarziu', recuperataLa, plan.SAVE_FULL_EVERY);
+  eq('...iar valoarea ajunsa pe disc e cea din memorie', citeste(), 999);
+
+  // Dupa un diff complet, fereastra se re-armeaza: urmatoarele partiale sar din nou.
+  h.entries[0].suma = 555;
+  h.visitors[0].cereri = 7;
+  store.persist(h, { only: ['visitors'] });
+  ok('dupa recuperare, indiciul restrange din nou', !store.written().includes('entries'));
+
+  // Fara indiciu = comportamentul dintotdeauna: se vede tot.
+  store.persist(h);
+  eq('fara indiciu se scrie colectia schimbata', store.written().join(','), 'entries');
+
+  // Hidratarea vede starea completa, indiferent pe ce cale a ajuns acolo.
+  const hh = store.hydrate(DEF);
+  eq('hydrate: valoarea recuperata e cea corecta', hh.entries.find((e) => e.id === 'e1').suma, 555);
+
+  store.close(); rm2();
+  store.open(FILE); store.hydrate(DEF); // restaureaza fisierul SI epoch-ul pentru sectiunile urmatoare
+}
+
+
 section('Fencing multi-scriitor (dbEpoch): alt proces detectat -> refuz, nu clobber');
 {
   const fdb = base();
