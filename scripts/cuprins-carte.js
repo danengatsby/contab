@@ -87,6 +87,19 @@ function P(text, style, runs) {
   const pr = style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : '';
   return `<w:p>${pr}${runs !== undefined ? runs : run(text)}</w:p>`;
 }
+// Proprietatile de sectiune: B5 ISO 176 x 250 mm, numerotare in subsol.
+// `tip` = 'oddPage' produce o sectiune care incepe pe pagina IMPARA — mecanismul nativ al
+// Word-ului pentru capitole care se deschid pe recto. Ordinea elementelor respecta secventa
+// din schema (footerReference, type, pgSz, pgMar); footerReference se REPETA in fiecare
+// sectiune, altfel paginile din sectiunile noi ies fara numar.
+function sectPr(tip) {
+  return '<w:sectPr><w:footerReference w:type="default" r:id="rId3"/>'
+    + (tip ? `<w:type w:val="${tip}"/>` : '')
+    + `<w:pgSz w:w="${tw(176)}" w:h="${tw(250)}"/>`
+    + `<w:pgMar w:top="${tw(20)}" w:right="${tw(18)}" w:bottom="${tw(20)}" w:left="${tw(22)}" `
+    + `w:header="${tw(12)}" w:footer="${tw(12)}" w:gutter="0"/></w:sectPr>`;
+}
+
 function stil(id, nume, sz, o = {}) {
   let ppr = `<w:spacing w:before="${o.before || 0}" w:after="${o.after || 0}" w:line="${o.line || 276}" w:lineRule="auto"/>`;
   if (o.ind || o.hang) ppr += `<w:ind w:left="${o.ind || 0}" w:hanging="${o.hang || 0}"/>`;
@@ -134,7 +147,7 @@ function faDocx() {
 
   // ── Capitolele scrise pe larg, dupa cuprins, fiecare pe pagina noua ──
   for (const c of CAPITOLE) {
-    b.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
+    b.push(`<w:p><w:pPr>${sectPr('oddPage')}</w:pPr></w:p>`); // capitolul incepe pe pagina IMPARA
     b.push(P(c.parte, 'CapParte'));
     b.push(P(eticheta(c.nr), 'CapNr'));
     b.push(P(c.titlu, 'CapTitlu'));
@@ -172,11 +185,7 @@ function faDocx() {
     }
   }
 
-  // B5 ISO 176 x 250 mm, margini OGLINDITE (cotor mai lat) — carte, nu raport.
-  const sect = `<w:sectPr><w:pgSz w:w="${tw(176)}" w:h="${tw(250)}"/>`
-    + `<w:pgMar w:top="${tw(20)}" w:right="${tw(18)}" w:bottom="${tw(20)}" w:left="${tw(22)}" `
-    + `w:header="${tw(12)}" w:footer="${tw(12)}" w:gutter="0"/>`
-    + '<w:footerReference w:type="default" r:id="rId3"/><w:mirrorMargins/></w:sectPr>';
+  const sect = sectPr();
 
   const doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
@@ -318,7 +327,17 @@ function faHtml() {
   .subsol p { margin:0 0 4pt; }
   .subsol b { color:var(--ink); }
 
+  /* Capitolele si anexele incep pe pagina IMPARA (recto), ca intr-o carte tiparita.
+     'recto' e forma din CSS Fragmentation; 'right' ramane ca sinonim mai vechi, pentru
+     motoarele care nu au implementat-o inca. Verso-ul lasat gol e intentionat.
+     ATENTIE: fara backticks in acest bloc — CSS-ul traieste intr-un template literal. */
   .capitol { break-before:page; padding-top:0; }
+  /* Pagina de umplutura: verso gol, ca urmatorul capitol sa cada pe IMPARA.
+     Chromium nu implementeaza break-before:recto (verificat: aceleasi 217 pagini si
+     23 de capitole tot pe para), deci alinierea se face prin MASURARE + umplutura,
+     nu declarativ. Vezi alinierePagini() mai jos. */
+  .umplutura { display:none; }
+  .umplutura.activ { display:block; break-before:page; break-after:page; height:1px; }
   .cap-parte { font-size:7.5pt; letter-spacing:.13em; text-transform:uppercase; color:var(--verde);
     margin:0 0 2pt; font-family:Calibri,Arial,sans-serif; font-weight:700; break-after:avoid; }
   .cap-nr { font-family:Consolas,monospace; font-size:8pt; color:var(--ink-3); margin:0 0 3pt;
@@ -360,7 +379,7 @@ function faHtml() {
 <div class="doua">${D.doua.map((c) => `<div><h3>${esc(c.cap)}</h3><p>${esc(c.txt)}</p></div>`).join('')}</div>
 ${parti}
 <footer class="subsol">${D.subsol.map((s) => `<p><b>${esc(s.cap)}</b> — ${esc(s.txt)}</p>`).join('')}</footer>
-${CAPITOLE.map(blocuriHtml).join('\n')}
+${CAPITOLE.map((c, i) => `<div class="umplutura" data-cap="${i}"></div>\n` + blocuriHtml(c)).join('\n')}
 </body></html>`;
 }
 
@@ -521,15 +540,62 @@ ${CAPITOLE.map(blocuriHtml).join('\n')}
 </div></body></html>`;
 }
 
+// ── 3a) ALINIEREA PE PAGINA IMPARA ─────────────────────────────────────────
+// Intr-o carte tiparita, fiecare capitol incepe pe recto (pagina impara). CSS-ul are un
+// cuvant pentru asta — `break-before: recto` — pe care Chromium NU il implementeaza
+// (masurat: aceleasi 217 pagini si 23 de capitole ramase pe para). Deci alinierea se face
+// in doua treceri: rand-1 masoara unde cade fiecare capitol, apoi se activeaza cate o
+// pagina goala inaintea celor care ar cadea pe para, si se randeaza a doua oara.
+//
+// O trecere e de ajuns, nu iterativ: fiecare capitol incepe oricum pe pagina noua, deci
+// inserarea unei pagini goale nu schimba paginatia INTERNA a nimanui — doar deplaseaza cu
+// exact o pagina tot ce urmeaza. Cu deplasarea cumulata, pozitiile finale se calculeaza
+// exact din masuratoarea initiala.
+//
+// Masurarea cere `pdftotext` (poppler-utils) pe masina. Daca lipseste, cartea se produce
+// oricum, dar NEALINIATA si cu avertisment — „n-am putut alinia" nu se raporteaza ca „e bine".
+
+/** Paginile pe care incepe fiecare capitol/anexa, citite din PDF-ul deja produs. */
+function paginiCapitole(pdfCale) {
+  let text;
+  try { text = execFileSync('pdftotext', ['-layout', pdfCale, '-'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }); }
+  catch (_) { return null; } // poppler lipsa -> apelantul avertizeaza
+  const pagini = text.split('\f');
+  const start = [];
+  pagini.forEach((pag, i) => {
+    // eticheta („Capitolul 7" / „Anexa B") sta singura pe rand, in capul paginii de deschidere
+    const primele = pag.split('\n').filter((l) => l.trim()).slice(0, 4).join('\n');
+    if (/^\s*(Capitolul\s+\d+|Anexa\s+[A-E])\s*$/m.test(primele)) start.push(i + 1);
+  });
+  return start;
+}
+
+/** Ce umpluturi trebuie activate ca fiecare capitol sa inceapa pe pagina IMPARA. */
+function umpluturiNecesare(start) {
+  const idx = [];
+  let deplasare = 0;
+  start.forEach((p, i) => {
+    if ((p + deplasare) % 2 === 0) { idx.push(i); deplasare += 1; }
+  });
+  return idx;
+}
+
 // ── 3) PDF (Chromium, in container) ────────────────────────────────────────
 // Pe server nu exista browser, deci se foloseste imaginea Playwright — aceeasi
 // pe care o folosesc filmarea si capturile de marketing.
 const IMAGINE = 'mcr.microsoft.com/playwright:v1.58.2-noble';
-function faPdf(htmlCale) {
+function faPdf(htmlCale, umpluturi, iesireCale) {
   try { execFileSync('docker', ['--version'], { stdio: 'ignore' }); }
   catch (_) { return null; } // docker lipsa -> NEVERIFICAT, semnalat de apelant
   const lucru = fs.mkdtempSync(path.join(os.tmpdir(), 'cuprins-'));
-  fs.copyFileSync(htmlCale, path.join(lucru, 'tipar.html'));
+  let html = fs.readFileSync(htmlCale, 'utf8');
+  // Umpluturile cerute se activeaza prin CSS injectat, nu prin rescrierea marcajului: fisierul
+  // HTML publicat ramane cel neutru, iar cele doua treceri difera printr-o singura regula.
+  if (umpluturi && umpluturi.length) {
+    const sel = umpluturi.map((i) => `.umplutura[data-cap="${i}"]`).join(',');
+    html = html.replace('</head>', `<style>${sel}{display:block;break-before:page;break-after:page;height:1px;}</style></head>`);
+  }
+  fs.writeFileSync(path.join(lucru, 'tipar.html'), html);
   fs.writeFileSync(path.join(lucru, 'fa-pdf.mjs'), `import { chromium } from 'playwright';
 const b = await chromium.launch();
 const pg = await (await b.newContext()).newPage();
@@ -543,10 +609,25 @@ await b.close();
   execFileSync('docker', ['run', '--rm', '-v', `${lucru}:/w`, '-w', '/w', IMAGINE,
     'sh', '-c', 'npm i --no-save playwright@1.58.2 >/dev/null 2>&1 && node fa-pdf.mjs'],
   { stdio: 'inherit' });
-  const cale = path.join(IESIRE, `${NUME}.pdf`);
+  const cale = iesireCale || path.join(IESIRE, `${NUME}.pdf`);
   fs.copyFileSync(path.join(lucru, 'iesire.pdf'), cale);
   fs.rmSync(lucru, { recursive: true, force: true });
   return cale;
+}
+
+/** PDF-ul final, cu capitolele si anexele asezate pe pagina impara. */
+function faPdfAliniat(htmlCale) {
+  const proba = path.join(os.tmpdir(), `cuprins-proba-${process.pid}.pdf`);
+  if (!faPdf(htmlCale, [], proba)) return { cale: null };
+  const start = paginiCapitole(proba);
+  if (!start) {
+    fs.rmSync(proba, { force: true });
+    return { cale: faPdf(htmlCale, []), aliniat: false, motiv: 'pdftotext (poppler-utils) lipseste' };
+  }
+  const idx = umpluturiNecesare(start);
+  fs.rmSync(proba, { force: true });
+  const cale = faPdf(htmlCale, idx);
+  return { cale, aliniat: true, umpluturi: idx.length, capitole: start.length };
 }
 
 // ── Rulare ─────────────────────────────────────────────────────────────────
@@ -568,12 +649,15 @@ console.log(`   .html  ${(fs.statSync(htmlEcran).size / 1024).toFixed(1)} KB  ${
 const htmlCale = path.join(os.tmpdir(), `${NUME}-tipar.html`);
 fs.writeFileSync(htmlCale, faHtml(), 'utf8');
 
-const pdf = faPdf(htmlCale);
-if (!pdf) {
+const r = faPdfAliniat(htmlCale);
+if (!r.cale) {
   console.error('NEVERIFICAT: docker lipseste, PDF-ul NU s-a produs (.docx si HTML-ul sunt scrise).');
   process.exit(2);
 }
+const pdf = r.cale;
 fs.chmodSync(pdf, 0o644);
 console.log(`   .pdf   ${(fs.statSync(pdf).size / 1024).toFixed(1)} KB  ${path.relative(RADACINA, pdf)}`);
-console.log('   B5 ISO 176 x 250 mm, margini oglindite, numerotare in subsol');
+console.log('   B5 ISO 176 x 250 mm, numerotare in subsol');
+if (r.aliniat) console.log(`   capitole si anexe pe pagina impara: ${r.capitole} deschideri, ${r.umpluturi} pagini de umplutura`);
+else console.log(`   ATENTIE: capitolele NU sunt aliniate pe pagina impara — ${r.motiv}`);
 console.log('   https://contabo.space/descarcari/' + NUME + '.pdf');
