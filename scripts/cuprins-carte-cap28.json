@@ -1,0 +1,186 @@
+{
+ "parte": "Partea VI · Ce nu vine dintr-un document · faza 7",
+ "nr": "28",
+ "titlu": "Delimitarea în timp",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "O asigurare de 12.000 de lei plătită pe 1 octombrie, pentru douăsprezece luni, nu e cheltuiala lunii octombrie. Nu e nici cheltuiala anului acesta. Din ea, anului acesta îi revin trei luni — 3.000 de lei — iar restul aparține anului următor."
+  },
+  {
+   "tip": "p",
+   "text": "Mecanismul prin care se face această împărțire se numește delimitare în timp, iar el e cea mai directă aplicare a principiului cu care a început cartea: cheltuiala e a perioadei în care se consumă serviciul, nu a celei în care se plătește factura."
+  },
+  {
+   "tip": "h",
+   "text": "Cele două conturi"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Unde stă ce nu e încă al perioadei",
+   "cap": [
+    "Contul",
+    "Natura",
+    "Exemplu"
+   ],
+   "randuri": [
+    [
+     "471 Cheltuieli înregistrate în avans",
+     "activ — un drept de a beneficia",
+     "asigurare, abonament, chirie plătită anticipat"
+    ],
+    [
+     "472 Venituri înregistrate în avans",
+     "datorie — o obligație de a presta",
+     "abonament încasat, chirie primită anticipat"
+    ]
+   ],
+   "nota": "Amândouă sunt conturi de tranzit: sumele stau acolo temporar și se mută treptat în cheltuieli, respectiv în venituri."
+  },
+  {
+   "tip": "p",
+   "text": "Merită observat că 471 e un activ, deși pare o cheltuială. Firma a plătit, dar în schimb are un drept: acoperirea de asigurare pentru lunile care vin. Dreptul acela are valoare, deci stă în bilanț ca activ până se consumă."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se înregistrează"
+  },
+  {
+   "tip": "p",
+   "text": "Sunt două mișcări, la momente diferite. La primirea facturii, suma întreagă intră în 471 — nu în contul de cheltuială. Apoi, în fiecare lună, partea care revine lunii respective se mută din 471 în contul de cheltuială potrivit."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Asigurarea de 12.000 lei, plătită la 1 octombrie",
+   "cap": [
+    "Momentul",
+    "Articolul",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "1 octombrie — factura",
+     "471 = 401",
+     "12.000"
+    ],
+    [
+     "31 octombrie",
+     "613 = 471",
+     "1.000"
+    ],
+    [
+     "31 noiembrie",
+     "613 = 471",
+     "1.000"
+    ],
+    [
+     "31 decembrie",
+     "613 = 471",
+     "1.000"
+    ],
+    [
+     "rămas în 471 la 31 decembrie",
+     "",
+     "9.000"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "Cei 9.000 de lei rămân în bilanțul de la 31 decembrie ca activ și se consumă în primele nouă luni ale anului următor."
+  },
+  {
+   "tip": "p",
+   "text": "Fără această împărțire, rezultatul anului curent ar fi mai mic cu 9.000 de lei, iar cel al anului următor mai mare cu aceeași sumă. Pe două exerciții luate împreună nu se schimbă nimic — dar niciunul dintre ele, luat separat, nu ar fi adevărat."
+  },
+  {
+   "tip": "h",
+   "text": "Capcana: transferul lunar nu se face singur"
+  },
+  {
+   "tip": "p",
+   "text": "E defectul cel mai frecvent al acestei zone, și e important să fie spus explicit, fiindcă e contraintuitiv: înregistrarea în 471 e ușor de reținut — vine cu factura. Transferul lunar nu vine cu nimic."
+  },
+  {
+   "tip": "p",
+   "text": "Nu sosește niciun document în noiembrie care să spună „mută 1.000 de lei din 471 în 613”. Dacă nu îl face cineva, suma rămâne în 471, iar contul se umflă de la an la an cu asigurări, abonamente și chirii care s-au consumat de mult."
+  },
+  {
+   "tip": "cheie",
+   "text": "Soldul contului 471 e o listă de promisiuni. Dacă nu se scurtează în fiecare lună, devine o listă de cheltuieli uitate."
+  },
+  {
+   "tip": "p",
+   "text": "Verificarea e simplă și merită făcută anual: fiecare sumă rămasă în 471 trebuie să corespundă unei perioade viitoare identificabile. Dacă nu poți spune ce lună acoperă, nu mai e cheltuială în avans — e o cheltuială pe care ai uitat să o recunoști."
+  },
+  {
+   "tip": "h",
+   "text": "Nu confunda cu avansurile"
+  },
+  {
+   "tip": "p",
+   "text": "E o confuzie frecventă, fiindcă ambele privesc bani care circulă înaintea prestației. Distincția stă în ce anume s-a stabilit deja."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Două lucruri diferite",
+   "cap": [
+    "Situația",
+    "Contul",
+    "De ce"
+   ],
+   "randuri": [
+    [
+     "Am plătit un avans pentru o marfă necomandată încă",
+     "409",
+     "nu s-a prestat nimic; e o creanță de bunuri"
+    ],
+    [
+     "Am plătit o asigurare pentru 12 luni",
+     "471",
+     "serviciul curge deja; se consumă lună de lună"
+    ],
+    [
+     "Am încasat un avans pentru o lucrare viitoare",
+     "419",
+     "nu s-a prestat nimic; e o datorie de bunuri"
+    ],
+    [
+     "Am încasat un abonament anual",
+     "472",
+     "prestația curge; venitul se recunoaște treptat"
+    ]
+   ],
+   "nota": "Regula: avansul așteaptă o livrare; cheltuiala sau venitul în avans se consumă odată cu trecerea timpului."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Delimitarea în timp aplică principiul independenței exercițiului din reglementările contabile: veniturile și cheltuielile se recunosc în perioada în care sunt generate, indiferent de momentul încasării sau plății. Trei observații de practică. Prima: pragul de semnificație contează — nu orice abonament de 200 de lei justifică o eșalonare pe douăsprezece luni, iar politica firmei privind pragul de la care se face delimitarea trebuie scrisă în manualul de politici contabile, nu decisă de la caz la caz; fără ea, tratamentul devine inconsecvent de la un an la altul, ceea ce încalcă principiul permanenței metodelor. A doua: fiscal, cheltuiala în avans nu e deductibilă la momentul plății, ci pe măsura recunoașterii în rezultat — deci un sold în 471 tratat greșit ca deductibil integral produce o diferență care se descoperă abia la control, cu accesorii pe toți anii scurși. A treia: contul 471 nu e locul pentru cheltuielile a căror perioadă nu se cunoaște; sumele plătite pentru servicii nedeterminate în timp, ori cele care nu îndeplinesc condițiile de recunoaștere ca activ, se trec direct pe cheltuială. Verificarea de închidere e mecanică și obligatorie: pentru fiecare sold din 471 și 472 trebuie să existe un desfășurător cu perioada acoperită și suma rămasă, iar totalul lui să egaleze soldul contabil."
+  },
+  {
+   "tip": "h",
+   "text": "Cazul simetric"
+  },
+  {
+   "tip": "p",
+   "text": "Contul 472 funcționează identic, în oglindă. O firmă care încasează în ianuarie un abonament anual de 12.000 de lei nu a câștigat 12.000 de lei în ianuarie: a încasat bani și a preluat obligația de a presta un an."
+  },
+  {
+   "tip": "p",
+   "text": "Suma intră în 472, iar în fiecare lună se transferă 1.000 de lei în venituri. Uitarea transferului are aici efectul invers — venituri subevaluate și o datorie fictivă în bilanț — dar cu aceeași cauză: nu sosește niciun document care să-l ceară."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "O plată care acoperă mai multe perioade se împarte între ele: 471 pentru cheltuieli, 472 pentru venituri.",
+    "471 e un ACTIV — dreptul de a beneficia de un serviciu deja plătit — nu o cheltuială amânată contabil.",
+    "Suma întreagă intră în 471 la factură; partea fiecărei luni se mută apoi în contul de cheltuială.",
+    "Transferul lunar nu e declanșat de niciun document: dacă nu îl face cineva, contul se umflă cu cheltuieli uitate.",
+    "Verificarea anuală: fiecare sold din 471 trebuie să corespundă unei perioade viitoare identificabile.",
+    "Avansul (409/419) așteaptă o livrare; cheltuiala și venitul în avans (471/472) se consumă odată cu timpul."
+   ]
+  }
+ ]
+}

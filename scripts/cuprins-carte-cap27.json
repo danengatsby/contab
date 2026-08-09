@@ -1,0 +1,178 @@
+{
+ "parte": "Partea VI · Ce nu vine dintr-un document · faza 7",
+ "nr": "27",
+ "titlu": "Ajustările pentru creanțe incerte",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "O factură emisă și neîncasată stă în bilanț ca activ, la valoarea ei întreagă, oricât ar trece de la scadență. Bilanțul spune, deci, că firma are de primit suma aceea — iar la un moment dat afirmația încetează să fie adevărată."
+  },
+  {
+   "tip": "p",
+   "text": "Capitolul acesta e despre momentul acela și despre cum se recunoaște contabil, fără să se șteargă nimic. Fiindcă o creanță incertă nu dispare: rămâne datorată. Doar șansa de a o încasa s-a micșorat."
+  },
+  {
+   "tip": "h",
+   "text": "Trei stări, nu două"
+  },
+  {
+   "tip": "p",
+   "text": "Reflexul obișnuit împarte creanțele în încasate și neîncasate. Contabilitatea are nevoie de o stare intermediară, fiindcă între „clientul întârzie” și „banii sunt pierduți” trec de regulă luni sau ani."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Drumul unei creanțe",
+   "cap": [
+    "Starea",
+    "Contul",
+    "Ce spune"
+   ],
+   "randuri": [
+    [
+     "normală",
+     "4111 Clienți",
+     "se așteaptă încasarea la scadență"
+    ],
+    [
+     "incertă",
+     "4118 Clienți incerți sau în litigiu",
+     "încasarea a devenit îndoielnică"
+    ],
+    [
+     "pierdută",
+     "654 Pierderi din creanțe",
+     "încasarea nu mai e posibilă"
+    ]
+   ],
+   "nota": "Trecerea de la o stare la alta se face pe bază de decizie documentată, nu automat după un număr de zile."
+  },
+  {
+   "tip": "p",
+   "text": "Prima trecere e o simplă reclasificare: 4118 se debitează, 4111 se creditează, cu suma întreagă a creanței, cu tot cu TVA. Nu se atinge niciun cont de rezultat — creanța e aceeași, doar mutată într-un sertar care spune că e problematică."
+  },
+  {
+   "tip": "h",
+   "text": "Ajustarea: pierderea probabilă, nu cea sigură"
+  },
+  {
+   "tip": "p",
+   "text": "Reclasificarea nu schimbă nimic în rezultat, dar bilanțul continuă să arate o creanță întreagă. Pasul care corectează asta se numește ajustare pentru depreciere."
+  },
+  {
+   "tip": "p",
+   "text": "Ajustarea nu șterge creanța. Îi așază alături, în bilanț, o valoare negativă care spune cât din ea probabil nu se va încasa. Creanța rămâne de 10.000 de lei; ajustarea de 10.000 de lei spune că, realist, valoarea ei e zero."
+  },
+  {
+   "tip": "p",
+   "text": "Se debitează 6814 Cheltuieli privind ajustările pentru deprecierea activelor circulante și se creditează 491 Ajustări pentru deprecierea creanțelor. Cheltuiala apare în rezultatul perioadei în care a devenit probabilă pierderea — nu în perioada în care se va constata definitiv."
+  },
+  {
+   "tip": "cheie",
+   "text": "Ajustarea recunoaște că valoarea unei creanțe a scăzut. Nu recunoaște că a dispărut — acela e alt pas, și de multe ori nu vine niciodată."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se întâmplă dacă clientul plătește totuși"
+  },
+  {
+   "tip": "p",
+   "text": "Se întâmplă mai des decât se crede, iar contabilitatea trebuie să poată da înapoi. Aici se vede de ce ajustarea e o construcție mai bună decât ștergerea creanței."
+  },
+  {
+   "tip": "p",
+   "text": "Ajustarea se reia: 491 se debitează, iar 7814 Venituri din ajustări se creditează. Cheltuiala înregistrată anul trecut e compensată de un venit anul acesta, iar creanța se încasează normal. Nimic nu a fost distrus și nimic nu trebuie reconstituit."
+  },
+  {
+   "tip": "p",
+   "text": "Dacă, dimpotrivă, creanța se dovedește definitiv pierdută, se scoate din evidență prin 654 Pierderi din creanțe și debitori diverși, iar ajustarea constituită se reia în același timp. Iar dacă, ani mai târziu, un debitor considerat pierdut plătește, suma se înregistrează ca venit în 754 Venituri din creanțe reactivate."
+  },
+  {
+   "tip": "h",
+   "text": "Cifrele, pe un caz"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "O creanță de 11.900 lei care se deteriorează",
+   "cap": [
+    "Momentul",
+    "Articolul",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Clientul depășește 270 de zile de la scadență",
+     "4118 = 4111",
+     "11.900"
+    ],
+    [
+     "Se constituie ajustarea pentru întreaga creanță",
+     "6814 = 491",
+     "11.900"
+    ],
+    [
+     "Varianta A: clientul plătește",
+     "491 = 7814",
+     "11.900"
+    ],
+    [
+     "Varianta B: creanța devine irecuperabilă",
+     "654 = 4118 și 491 = 7814",
+     "11.900"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "În varianta B, cheltuiala din 654 și venitul din 7814 se compensează: pierderea fusese deja recunoscută la constituirea ajustării."
+  },
+  {
+   "tip": "p",
+   "text": "Ultimul rând al notei e cel care lămurește rostul întregului mecanism. Pierderea nu e recunoscută de două ori: o dată prin ajustare, când a devenit probabilă, și încă o dată prin scoaterea din evidență, când a devenit certă. A doua oară doar se schimbă eticheta."
+  },
+  {
+   "tip": "h",
+   "text": "TVA-ul rămâne colectat"
+  },
+  {
+   "tip": "p",
+   "text": "E partea care surprinde neplăcut. Firma a emis factura, a colectat TVA-ul și l-a virat statului. Clientul nu a plătit niciodată. TVA-ul rămâne, în principiu, datorat."
+  },
+  {
+   "tip": "p",
+   "text": "Legea permite reducerea bazei de impozitare pentru creanțele neîncasate, dar numai în situații expres enumerate — în esență, în procedurile de insolvență, faliment sau reorganizare a debitorului — și numai într-un termen limitat. Nu e o corecție care se face pentru că un client pur și simplu nu plătește."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința practică merită spusă pe șleau unui patron: la o factură neîncasată de 11.900 de lei, firma pierde nu 10.000, ci 11.900, fiindcă cei 1.900 de lei de TVA au fost deja plătiți statului din banii firmei."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Contabil, ajustările pentru deprecierea creanțelor se constituie potrivit principiului prudenței și se revizuiesc la fiecare închidere. Fiscal, regimul e la art. 26 alin. (1) lit. c) Cod fiscal: ajustările sunt deductibile în limita a 30% din valoarea creanței, dacă sunt îndeplinite cumulativ trei condiții — creanța să fie neîncasată într-o perioadă care depășește 270 de zile de la scadență, să nu fie garantată de altă persoană și să fie datorată de o persoană care nu e afiliată contribuabilului; alte litere ale aceluiași articol prevăd deductibilitatea integrală în situații determinate, între care cele legate de procedura falimentului. De aici, două consecințe. Prima: diferența de 70% e cheltuială nedeductibilă la momentul constituirii, dar reluarea ulterioară a ajustării e venit neimpozabil în aceeași proporție — iar evidența analitică pe partea deductibilă și cea nedeductibilă trebuie ținută de la constituire, altfel corelația nu se mai poate reface. A doua: pierderile din creanțe înregistrate în 654 sunt, ca regulă, nedeductibile potrivit art. 25 alin. (4) lit. h), cu excepțiile limitativ prevăzute — procedura de faliment închisă prin hotărâre judecătorească definitivă, decesul sau dizolvarea debitorului, creanța acoperită de o asigurare, între altele — deci scoaterea din evidență a unei creanțe fără îndeplinirea uneia dintre ele nu produce efect fiscal, oricât de sigură ar fi pierderea economic. Pentru TVA, reducerea bazei se face în condițiile art. 287, iar exercitarea dreptului e supusă unui termen; verificarea acestuia înainte de a-l pierde e o obligație practică, nu o formalitate."
+  },
+  {
+   "tip": "h",
+   "text": "Judecata, nu calendarul"
+  },
+  {
+   "tip": "p",
+   "text": "Cele 270 de zile din legea fiscală sunt un prag de deductibilitate, nu o definiție a creanței incerte. Contabil, o creanță devine incertă când există motive să crezi că nu se va încasa — iar un client intrat în insolvență la treizeci de zile de la scadență e incert imediat, nu peste nouă luni."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea decizia rămâne a contabilului și a administratorului împreună, și se scrie. La un control, întrebarea nu e dacă ajustarea era corectă, ci pe ce s-a întemeiat — iar un răspuns dat din memorie, doi ani mai târziu, nu ține loc de document."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Între creanța normală și pierderea definitivă există o stare intermediară: creanța incertă, în contul 4118.",
+    "Ajustarea nu șterge creanța, ci îi așază alături valoarea probabil nerecuperabilă — deci se poate relua integral dacă clientul plătește.",
+    "Pierderea se recunoaște o singură dată, la constituirea ajustării; scoaterea din evidență doar schimbă eticheta.",
+    "TVA-ul colectat rămâne datorat: la o factură de 11.900 lei neîncasată, firma pierde 11.900, nu 10.000.",
+    "Fiscal, deducerea e limitată la 30% și cere 270 de zile de la scadență, creanță negarantată și debitor neafiliat.",
+    "Contabil, incertitudinea se stabilește prin judecată documentată, nu prin numărarea zilelor."
+   ]
+  }
+ ]
+}

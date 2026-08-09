@@ -1,0 +1,198 @@
+{
+ "parte": "Partea VI · Ce nu vine dintr-un document · faza 7",
+ "nr": "29",
+ "titlu": "Se stornează, nu se șterge",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Toate capitolele de până acum au presupus că înregistrarea e corectă. Capitolul acesta e despre ce se face când nu e — și e, probabil, cel mai important principiu de disciplină din toată cartea."
+  },
+  {
+   "tip": "p",
+   "text": "Regula are o singură propoziție: o înregistrare contabilă nu se șterge și nu se modifică. Se corectează printr-o altă înregistrare, care rămâne legată de cea greșită."
+  },
+  {
+   "tip": "h",
+   "text": "De ce nu se șterge"
+  },
+  {
+   "tip": "p",
+   "text": "Motivul nu e birocratic. O contabilitate în care înregistrările pot fi modificate după ce au fost făcute nu mai dovedește nimic — fiindcă orice cifră din ea ar fi putut fi scrisă retroactiv, iar nimeni nu ar putea spune care."
+  },
+  {
+   "tip": "p",
+   "text": "Valoarea probatorie a contabilității stă tocmai în faptul că trecutul e închis. Un registru în care se poate reveni nu e un registru: e o ciornă permanentă. De aceea legea cere ca erorile să se corecteze prin înregistrări noi, iar urma erorii să rămână."
+  },
+  {
+   "tip": "cheie",
+   "text": "Urma greșelii face parte din dovadă. O contabilitate fără greșeli vizibile nu e o contabilitate curată — e una în care nu se mai poate verifica nimic."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința practică e că un program de contabilitate serios refuză ștergerea unui articol deja postat. Nu ca precauție, ci ca proprietate: dacă ștergerea ar fi posibilă, toate celelalte garanții ar fi decorative."
+  },
+  {
+   "tip": "h",
+   "text": "Ciornă și articol postat"
+  },
+  {
+   "tip": "p",
+   "text": "Regula nu se aplică, totuși, din prima clipă. Între momentul în care o înregistrare se compune și cel în care intră efectiv în contabilitate există o stare intermediară, în care ea poate fi corectată sau ștearsă liber."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce se poate face cu o înregistrare",
+   "cap": [
+    "Starea",
+    "Se modifică?",
+    "Se șterge?",
+    "Cum se corectează"
+   ],
+   "randuri": [
+    [
+     "ciornă",
+     "da",
+     "da",
+     "direct — nu a intrat în evidență"
+    ],
+    [
+     "validată / aprobată",
+     "da",
+     "da",
+     "direct — încă nu produce efecte"
+    ],
+    [
+     "postată",
+     "NU",
+     "NU",
+     "prin storno"
+    ]
+   ],
+   "nota": "Postarea e granița. Înainte de ea, înregistrarea e o intenție; după ea, e o afirmație despre trecut."
+  },
+  {
+   "tip": "p",
+   "text": "Granița aceasta e utilă și pentru altceva: separă locul în care se lucrează de locul în care se răspunde. Un operator poate corecta liber o ciornă; postarea e actul prin care cineva își asumă cifra."
+  },
+  {
+   "tip": "h",
+   "text": "Cum arată un storno"
+  },
+  {
+   "tip": "p",
+   "text": "Nota de storno reia aceleași conturi și aceleași sume ca înregistrarea greșită, cu semnul schimbat. Efectul e că cele două se anulează reciproc, iar înregistrarea corectă se face separat."
+  },
+  {
+   "tip": "p",
+   "text": "Ea nu se datează în perioada înregistrării greșite, ci într-o perioadă deschisă — de regulă cea curentă. Motivul e același cu cel de la începutul capitolului: o lună închisă a fost deja raportată, iar rescrierea ei ar contrazice declarații deja depuse."
+  },
+  {
+   "tip": "h",
+   "text": "În roșu sau în negru: două convenții, una singură corectă"
+  },
+  {
+   "tip": "p",
+   "text": "Există două feluri de a anula contabil o înregistrare, iar diferența dintre ele pare pur estetică. Nu este."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "O factură de vânzare de 10.000 lei, anulată",
+   "cap": [
+    "Convenția",
+    "Articolul de storno",
+    "Soldul 707",
+    "Rulaje pe 707"
+   ],
+   "randuri": [
+    [
+     "în roșu",
+     "4111 = 707 cu −10.000",
+     "0 — corect",
+     "credit 0 — corect"
+    ],
+    [
+     "în negru",
+     "707 = 4111 cu +10.000",
+     "0 — corect",
+     "credit 10.000 și debit 10.000"
+    ]
+   ],
+   "numerice": [],
+   "nota": "Ambele lasă soldul corect. Numai prima lasă corecte și rulajele."
+  },
+  {
+   "tip": "p",
+   "text": "Stornarea „în negru” — inversarea debitului cu creditul — dă soldul potrivit, dar umflă rulajele: contul de venituri raportează o activitate de 10.000 de lei la credit și încă 10.000 la debit, adică o activitate care nu a existat niciodată."
+  },
+  {
+   "tip": "p",
+   "text": "Cifra de afaceri și rezultatul ies corect, fiindcă se citesc ca diferență. Dar coloanele de rulaj din balanță și totalul registrului-jurnal mint — iar pe acelea le citește contabilul, nu calculatorul. La o firmă cu multe corecții, balanța ajunge să arate un volum de activitate dublu față de realitate."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea convenția corectă e stornarea „în roșu”: aceleași conturi, în același sens, cu suma negată. Numele vine din vremea registrelor scrise de mână, când sumele de anulat se scriau cu cerneală roșie și se scădeau, nu se adunau."
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu rezolvă stornoul"
+  },
+  {
+   "tip": "p",
+   "text": "Stornoul corectează contabilitatea. Nu corectează documentele care au plecat deja din firmă, și aici se face cea mai costisitoare confuzie."
+  },
+  {
+   "tip": "p",
+   "text": "Dacă factura greșită a fost trimisă clientului și raportată în decontul de TVA, anularea ei internă nu schimbă nimic pentru el și nici pentru ANAF. E nevoie de o factură de corecție — o notă de credit — emisă, transmisă și raportată la rândul ei."
+  },
+  {
+   "tip": "p",
+   "text": "Regula, pe scurt: stornoul rezolvă ce s-a scris; documentul de corecție rezolvă ce s-a comunicat. O eroare care a ieșit din firmă are nevoie de amândouă."
+  },
+  {
+   "tip": "h",
+   "text": "Corecțiile care nu se fac prin storno generic"
+  },
+  {
+   "tip": "p",
+   "text": "Există o categorie de înregistrări la care stornoul contabil singur produce mai mult rău decât bine: cele care au mișcat și altceva în afară de conturi."
+  },
+  {
+   "tip": "p",
+   "text": "O vânzare de marfă a scăzut și cantitatea din fișa de magazie. Un storno care atinge doar conturile lasă contabilitatea corectă și gestiunea greșită — iar cele două vor diverge tăcut, până când inventarul le va pune față în față, luni mai târziu."
+  },
+  {
+   "tip": "p",
+   "text": "Corecția trebuie făcută, în asemenea cazuri, la nivelul documentului care a produs ambele efecte, nu al articolului contabil rezultat. E aceeași idee ca la capitolul 11: nu improviza cu unealta generală când există una potrivită."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Cerința e din Legea contabilității și din normele privind documentele financiar-contabile: erorile se corectează prin înregistrări noi, iar în documentele justificative și contabile nu sunt admise ștersături, răzuiri sau alte asemenea procedee; corectarea se face prin tăierea cu o linie a textului greșit, astfel încât acesta să rămână lizibil, urmată de confirmarea prin semnătură. Patru precizări de practică. Prima: pentru documentele care atestă mișcări de numerar sau valori — chitanțe, bonuri fiscale, file de CEC — corectarea nu e admisă deloc; documentul se anulează și se emite altul. A doua: corectarea erorilor aferente exercițiului curent se face pe seama conturilor de venituri și cheltuieli ale exercițiului, în timp ce erorile semnificative aferente exercițiilor anterioare se corectează pe seama rezultatului reportat, în contul 1174 — distincția e esențială, fiindcă trecerea prin contul de profit și pierdere a unei erori din anii precedenți denaturează rezultatul curent și, prin el, baza de impozitare. A treia: corectarea unei erori care a afectat o declarație depusă atrage obligația de a depune o declarație rectificativă, cu regim propriu de termene și, după caz, de accesorii; corecția contabilă fără cea fiscală lasă cele două evidențe divergente. A patra: nota de storno se datează în perioada în care se efectuează, nu în cea corectată, iar legătura cu înregistrarea originală se păstrează explicit — fără ea, cele două articole rămân două operațiuni independente, iar reconstituirea raționamentului devine imposibilă."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cu acest capitol se încheie partea a șasea, și odată cu ea toate înregistrările. Contabilitatea firmei conține acum tot ce s-a întâmplat, inclusiv ce s-a întâmplat greșit și cum s-a îndreptat."
+  },
+  {
+   "tip": "p",
+   "text": "Urmează partea în care aceleași operațiuni se privesc din alt unghi: registrele. Aceleași cifre, o dată în ordinea timpului și o dată grupate pe conturi — și instrumentul care spune dacă totul se ține."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "O înregistrare postată nu se șterge și nu se modifică — se corectează printr-o notă de storno legată de ea.",
+    "Urma erorii face parte din dovadă; o contabilitate în care se poate reveni nu mai dovedește nimic.",
+    "Granița e postarea: înainte de ea înregistrarea e o intenție, după ea o afirmație despre trecut.",
+    "Stornoul se datează într-o perioadă DESCHISĂ, nu în luna corectată, care a fost deja raportată.",
+    "Stornarea „în roșu” (aceleași conturi, sumă negată) e corectă; cea „în negru” lasă soldul bun, dar dublează rulajele.",
+    "Stornoul rezolvă ce s-a scris; o factură care a plecat din firmă are nevoie și de o notă de credit.",
+    "Erorile semnificative din exercițiile anterioare se corectează pe rezultatul reportat, nu prin contul de profit și pierdere."
+   ]
+  }
+ ]
+}
