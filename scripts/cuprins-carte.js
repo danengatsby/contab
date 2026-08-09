@@ -43,7 +43,7 @@ const NUME = 'Cuprins-carte-contabilitate-B5';
 const D = JSON.parse(fs.readFileSync(path.join(__dirname, 'cuprins-carte.json'), 'utf8'));
 // Capitolele scrise pe larg vin din fisiere proprii, ca sa nu umfle cuprinsul. Cartea se
 // construieste in ordinea din `CAPITOLE`: cuprinsul, apoi textul, in ordinea din carte.
-const CAPITOLE = ['cuprins-carte-cap1.json', 'cuprins-carte-cap2.json', 'cuprins-carte-cap3.json', 'cuprins-carte-cap4.json', 'cuprins-carte-cap5.json', 'cuprins-carte-cap6.json', 'cuprins-carte-cap7.json']
+const CAPITOLE = ['cuprins-carte-cap1.json', 'cuprins-carte-cap2.json', 'cuprins-carte-cap3.json', 'cuprins-carte-cap4.json', 'cuprins-carte-cap5.json', 'cuprins-carte-cap6.json', 'cuprins-carte-cap7.json', 'cuprins-carte-cap8.json']
   .map((f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), 'utf8')));
 
 const MM = 56.6929; // 1 mm in twips (1 inch = 1440 twips = 25,4 mm)
