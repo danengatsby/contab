@@ -1,0 +1,62 @@
+{
+ "parte": "Partea II · Deschiderea exercițiului · faza 1",
+ "nr": "6",
+ "titlu": "Firma și regimurile ei",
+ "blocuri": [
+  { "tip": "p", "text": "Prima fază a ciclului se face o singură dată și se atinge rar. Tocmai de aceea e periculoasă: nu ai ocazia să te obișnuiești cu ea, iar dacă e greșită, greșeala nu se vede în ziua aceea, ci la fiecare declarație a anului." },
+  { "tip": "p", "text": "Deschiderea exercițiului înseamnă, practic, să răspunzi la două întrebări despre firmă. Sunt întrebări scurte, cu răspunsuri care par administrative, dar din ele decurge tot restul: ce declarații datorezi, la ce termene, cât impozit plătești și dacă pui sau nu TVA pe facturi." },
+
+  { "tip": "cheie", "text": "Cele două întrebări sunt independente. O firmă poate fi plătitoare de TVA și microîntreprindere, sau neplătitoare și pe impozit pe profit, în orice combinație." },
+
+  { "tip": "h", "text": "Prima întrebare: pui TVA pe factură sau nu?" },
+  { "tip": "p", "text": "O firmă nouă nu e, din oficiu, plătitoare de TVA. Poate rămâne neplătitoare cât timp cifra ei de afaceri anuală stă sub plafonul de scutire — 395.000 de lei — și poate cere înregistrarea și mai devreme, dacă vrea." },
+  { "tip": "p", "text": "Diferența practică e simplă de descris și greu de intuit. Neplătitorul nu adaugă TVA la prețurile lui, dar nici nu deduce TVA-ul din ce cumpără: taxa plătită furnizorilor devine, pentru el, cost. Plătitorul adaugă TVA la vânzări, îl deduce pe cel din cumpărări, și virează statului doar diferența." },
+  { "tip": "p", "text": "De aici iese regula practică pe care merită să o cunoască orice patron: statutul de plătitor te avantajează dacă vinzi mai ales către alte firme plătitoare și ai achiziții mari cu TVA. Te dezavantajează dacă vinzi către persoane fizice și ai cheltuieli mici — acolo, TVA-ul se adaugă la prețul final și te scoate din piață față de un concurent neplătitor." },
+  { "tip": "p", "text": "Peste plafon, alegerea dispare: înregistrarea devine obligatorie. Iar plafonul se urmărește pe parcursul anului, nu se constată la sfârșit — cine îl depășește în august nu are timp până în decembrie." },
+
+  { "tip": "h", "text": "A doua întrebare: cum se impozitează câștigul?" },
+  { "tip": "p", "text": "Aici sunt tot două variante, iar deosebirea dintre ele e mai adâncă decât pare: nu se schimbă doar cota, ci lucrul pe care se aplică." },
+  { "tip": "p", "text": "Microîntreprinderea plătește un procent din venituri — 1%, sau 3% peste prag ori pe anumite domenii de activitate. Nu contează dacă a avut profit sau pierdere; se plătește pe încasat, la propriu pe ce a facturat. E simplu de calculat și previzibil." },
+  { "tip": "p", "text": "Impozitul pe profit e 16% din câștig, adică din diferența dintre venituri și cheltuieli, ajustată fiscal. Dacă anul a fost în pierdere, impozitul e zero. E mai complicat de calculat, dar urmează realitatea afacerii." },
+  { "tip": "p", "text": "Regimul micro nu e la alegere oricând: are un plafon de venituri — 100.000 de euro începând cu 2026 — peste care firma trece obligatoriu la impozit pe profit. Sub plafon, alegerea există, iar întrebarea firească e care variantă costă mai puțin." },
+
+  { "tip": "h", "text": "Care iese mai ieftin: aritmetica, nu părerea" },
+  { "tip": "p", "text": "Răspunsul nu ține de mărimea firmei, ci de marja ei. Cele două impozite se egalează într-un punct care se poate calcula exact: 1% din venit egalează 16% din profit atunci când profitul reprezintă 6,25% din venit." },
+  { "tip": "tabel",
+    "titlu": "Aceeași cifră de afaceri, marje diferite",
+    "cap": ["Marja", "Venit", "Profit", "Micro 1%", "Profit 16%", "Mai ieftin"],
+    "randuri": [
+      ["5%", "400.000", "20.000", "4.000", "3.200", "impozit pe profit"],
+      ["6,25%", "400.000", "25.000", "4.000", "4.000", "egale — punctul de cumpănă"],
+      ["10%", "400.000", "40.000", "4.000", "6.400", "micro"],
+      ["25%", "400.000", "100.000", "4.000", "16.000", "micro"]
+    ],
+    "numerice": [2, 3, 4, 5],
+    "nota": "Impozitul micro nu se mișcă: 1% din aceleași venituri, indiferent de marjă. Cel pe profit urcă odată cu câștigul." },
+  { "tip": "p", "text": "Concluzia se reține ușor: la marje mari, micro e avantajos; la marje mici, impozitul pe profit. Iar dacă firma are ani în pierdere, micro devine de-a dreptul scump — plătește și când nu câștigă." },
+  { "tip": "p", "text": "Pentru cota de 3% punctul de cumpănă se mută la 18,75% marjă. Sub el, impozitul pe profit e mai ieftin; peste, tot micro." },
+
+  { "tip": "h", "text": "Ce se schimbă în timpul anului" },
+  { "tip": "p", "text": "Ambele răspunsuri pot fi răsturnate de creșterea firmei, și în ambele cazuri schimbarea nu așteaptă sfârșitul anului." },
+  { "tip": "p", "text": "La TVA, depășirea plafonului obligă la înregistrare într-un termen scurt, iar de la data înregistrării facturile se emit altfel. La micro, depășirea pragului de 60.000 de euro mută cota de la 1% la 3% începând cu trimestrul în care s-a depășit — nu de anul următor. Depășirea plafonului de 100.000 de euro scoate firma din regimul micro cu totul." },
+  { "tip": "p", "text": "De aceea urmărirea acestor praguri nu e o grijă de decembrie, ci una permanentă. Un program de contabilitate le poate calcula continuu și avertiza dinainte; e, de altfel, unul dintre puținele locuri unde automatizarea chiar previne o amendă, nu doar economisește timp." },
+
+  { "tip": "contabil", "titlu": "Pentru contabil",
+    "text": "Baza impozitului micro nu e totalul clasei 7 și confuzia asta e cea mai frecventă eroare de calcul la firmele mici: potrivit art. 53 Cod fiscal, din venituri se scad veniturile din provizioane și ajustări, producția de imobilizări, variația stocurilor, subvențiile și diferențele favorabile de curs, iar reducerile comerciale acordate ulterior se adaugă. Comutarea 1% → 3% operează de la trimestrul depășirii pragului de 60.000 EUR, nu de la anul următor (art. 51 alin. (4), Legea 296/2023), iar cota de 3% se aplică din start pe codurile CAEN enumerate la art. 51 alin. (1) lit. b) pct. 2 — IT, HoReCa, juridic, medical — indiferent de venituri. Plafonul de ieșire din regim e 100.000 EUR din 2026 (art. 47, OUG 156/2024), în scădere față de anii anteriori, ceea ce a scos multe firme din micro fără ca ele să se schimbe cu ceva. Cotele de TVA sunt 21% standard și 11% redus de la 1 august 2025 (Legea 141/2025), iar plafonul de scutire e 395.000 lei de la 1 septembrie 2025 (art. 310, OG 22/2025, în aplicarea Directivei UE 2020/285). Perioada fiscală pentru TVA — lună sau trimestru — se stabilește după cifra de afaceri a anului precedent și după existența achizițiilor intracomunitare, iar trecerea de la trimestru la lună în cursul anului atrage recalcularea termenelor pentru toate perioadele rămase." },
+
+  { "tip": "h", "text": "Ce se completează, concret" },
+  { "tip": "p", "text": "În aplicație, faza aceasta înseamnă câteva câmpuri într-o singură pagină: datele de identificare ale firmei, codul de TVA dacă există, regimul de impozitare, perioada fiscală, conturile bancare, seriile de documente. Se completează o dată, la început, și se revine la ele doar când se schimbă ceva real." },
+  { "tip": "p", "text": "Din acel moment, programul știe ce declarații îți revin și la ce termene, ce cote pune pe facturi și ce rapoarte îți sunt cerute la sfârșit de an. Nimic din ce urmează în carte nu funcționează corect dacă răspunsurile de aici sunt greșite — iar corectarea lor peste șase luni înseamnă, de regulă, refacerea declarațiilor depuse între timp." },
+  { "tip": "p", "text": "Mai rămâne un lucru înainte de primele documente: dacă firma nu e la primul an, contabilitatea nu pornește de la zero. Trebuie preluate soldurile. E capitolul următor." },
+
+  { "tip": "recap", "titlu": "De reținut din acest capitol",
+    "puncte": [
+      "Deschiderea exercițiului cere două răspunsuri independente: plătitor de TVA sau nu, și micro sau impozit pe profit.",
+      "Neplătitorul de TVA nu adaugă taxa la prețuri, dar nici nu o deduce — devine cost. Plafonul de scutire e 395.000 lei.",
+      "Micro se plătește pe venituri, indiferent de profit; impozitul pe profit, 16% din câștig, e zero în pierdere.",
+      "Punctul de cumpănă e la 6,25% marjă pentru cota de 1% și la 18,75% pentru cea de 3%. Marje mari — micro; marje mici — profit.",
+      "Pragurile se urmăresc pe parcursul anului: depășirea mută cota din trimestrul depășirii, nu din anul următor.",
+      "Un răspuns greșit aici nu se vede azi, ci la fiecare declarație a anului."
+    ] }
+ ]
+}
