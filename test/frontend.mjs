@@ -62,6 +62,7 @@ const partners = await imp(mirror, 'partners.js');
 const inchidere = await imp(mirror, 'inchidere.js');
 const docflow = await imp(mirror, 'docflow.js');
 const admin = await imp(mirror, 'admin.js');
+const ghid = await imp(mirror, 'ghid.js');
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -1540,6 +1541,51 @@ section('Paginare (public/paginare.js) — calculul poziției');
   ok('mărimile de pagină apar ca opțiuni', pag.MARIMI.every((m) => h1.includes('value="' + m + '"')));
   ok('mărimea curentă e selectată', h1.includes('value="50" selected'));
   ok('identificatorul barei e escapat', !pag.controaleHtml(S(893, 0, 50), '"><img src=x>', 'r').includes('<img'));
+}
+
+section('Ghid: modelul se DERIVA din meniul aplicatiei (public/ghid.js)');
+{
+  // Pictograma se desparte de text ca in erp.js — de asta atarna si eticheta din meniu, si cea
+  // de pe celula de cuprins.
+  eq('emoji + text se despart', JSON.stringify(ghid.despartePictograma('📥 Documente & facturi')),
+    JSON.stringify({ ic: '📥', txt: 'Documente & facturi' }));
+  eq('fara emoji -> doar text', JSON.stringify(ghid.despartePictograma('Setări')),
+    JSON.stringify({ ic: '', txt: 'Setări' }));
+  eq('sir gol nu arunca', JSON.stringify(ghid.despartePictograma('')), JSON.stringify({ ic: '', txt: '' }));
+
+  // `textCurat` scoate bulele de ajutor injectate de panel-info.js. Fara el, eticheta butonului
+  // ieșea „Deschide «Solduri conturi (balanța de verificare)iBalanța de verificare cu cele…»" —
+  // defect REAL, prins pe captura, nu de teste.
+  const falsNod = (txt, copii) => ({
+    cloneNode: () => falsNod(txt, copii),
+    querySelectorAll: (sel) => (copii || []).filter((c) => sel.includes(c.cls)),
+    get textContent() { return txt; },
+  });
+  const cuBula = falsNod('Solduri conturi  i Balanța de verificare cu…',
+    [{ cls: 'cinfo', remove() { /* scos din clona */ } }]);
+  ok('textCurat normalizeaza spatiile', ghid.textCurat(cuBula).indexOf('  ') === -1);
+  eq('textCurat pe nod lipsa -> sir gol', ghid.textCurat(null), '');
+
+  // Modelul: grup -> submeniuri, citit din structura de navigare.
+  const btn = (tab, et) => ({ getAttribute: (a) => (a === 'data-tab' ? tab : null), textContent: et });
+  const grup = (lbl, itemi) => ({
+    querySelector: (sel) => (sel === '.navlabel' ? { textContent: lbl } : null),
+    querySelectorAll: () => itemi,
+  });
+  const tabs = {
+    querySelectorAll: () => [
+      grup('📒 Registre contabile', [btn('jurnal', 'Toate operațiunile (jurnal)'), btn('balanta', 'Solduri conturi (balanță)')]),
+      grup('🔒 Închideri', [btn('inchideri', 'Închiderea lunii')]),
+      grup('Gol', []), // grup fara intrari: nu are ce cauta in cuprins
+    ],
+  };
+  const m = ghid.modelGhid(tabs);
+  eq('grupurile cu intrari intra in model, cele goale nu', m.length, 2);
+  eq('numele grupului, fara pictograma', m[0].nume, 'Registre contabile');
+  eq('pictograma grupului se pastreaza', m[0].ic, '📒');
+  eq('submeniurile pastreaza tabul tinta', m[0].itemi.map((i) => i.tab).join(','), 'jurnal,balanta');
+  eq('...si eticheta lor', m[0].itemi[1].eticheta, 'Solduri conturi (balanță)');
+  ok('container lipsa nu arunca', Array.isArray(ghid.modelGhid(null)) && ghid.modelGhid(null).length === 0);
 }
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');

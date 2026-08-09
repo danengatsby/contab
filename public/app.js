@@ -6,6 +6,7 @@ import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, ren
 import { renderFirme, renderUsers, renderColaboratori, renderAudit, renderAccess, renderCereriAcces, setAdminDeps } from './admin.js';
 import { loadDashboard, setDashboardDeps } from './dashboard.js';
 import { initUiMode } from './simplemode.js';
+import { initGhid } from './ghid.js';
 import { loadPartners } from './partners.js';
 import './viewer.js'; // vizualizatorul de documente (PDF/CSV/XML/e-Factura) — se activeaza prin efect secundar
 import './etransport.js'; // formularul ghidat e-Transport (cod UIT) — se activeaza prin efect secundar
@@ -383,6 +384,9 @@ async function init() {
   const maiMulteFirme = !!(USER.firme && USER.firme.length > 1);
   const np = $('#navPortofoliu'); if (np) np.classList.toggle('hidden', !maiMulteFirme);
   initUiMode(); // mod simplu implicit pentru necontabili (ascunde partea tehnica din meniu)
+  // Ghidul se construieste DUPA initUiMode: citeste aceleasi grupuri din #tabs, iar modul simplu
+  // le ascunde prin CSS, nu le scoate din DOM — deci cuprinsul ramane complet in ambele moduri.
+  initGhid();
   // Intoarcere de la Stripe (user logat) dupa abonarea unei firme: confirmare + starea se activeaza la webhook
   const cr = /[?&]checkout=(success|cancel)/.exec(location.search);
   if (cr) {
