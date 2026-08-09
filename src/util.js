@@ -96,6 +96,29 @@ function jsonReplacer(key, value) {
 /** JSON.stringify tolerant pentru graful bazei (folosit de toate driverele + oglinda). */
 function stringifyDb(value, space) { return JSON.stringify(value, jsonReplacer, space); }
 
+/**
+ * Serializarea RANDURILOR pentru persistenta (diff + scriere). Acelasi rezultat ca `stringifyDb`,
+ * dar pe calea rapida a lui V8: un `replacer` e chemat pentru FIECARE cheie a fiecarui obiect si
+ * anuleaza optimizarea interna — masurat 2,1x mai lent (120 ms vs 57 ms la 80.000 de articole).
+ * Conteaza fiindca `persist()` re-serializeaza fiecare rand la fiecare scriere, ca sa poata face
+ * diff-ul fata de snapshot.
+ *
+ * Iesirea e IDENTICA octet cu octet — verificat pe toate randurile bazei reale si pe cazurile
+ * speciale: NaN si Infinity dau `null` in ambele forme (replacer-ul le returna neatinse, doar
+ * avertiza), -0 da `0`, `undefined` se omite, `Date` trece prin `toJSON`. Singura diferenta e
+ * BigInt: forma rapida ARUNCA, deci se cade inapoi pe `stringifyDb`, care il converteste ca pana
+ * acum. Acelasi rezultat, doar pe alt drum.
+ *
+ * CE SE PIERDE, explicit: avertismentul de consola pentru numere nefinite nu mai apare pe calea
+ * randurilor. Nu dispare din produs — oglinda JSON serializeaza graful INTREG cu `stringifyDb`
+ * (la 30 s, si inainte de fiecare backup), deci un NaN ajuns in baza tot e raportat. Detectia se
+ * muta de pe rand pe graf, nu se stinge.
+ */
+function stringifyRow(value) {
+  try { return JSON.stringify(value); }
+  catch (_) { return stringifyDb(value); } // BigInt (si orice altceva ce cere replacer-ul)
+}
+
 // Ordine NATURALA a id-urilor ('e2' inaintea lui 'e10'), folosita de toate sortarile cronologice
 // (articole, miscari de stoc, linii din SQL). Un singur Intl.Collator, refolosit: `String.prototype.
 // localeCompare(x, locale, opts)` e definit in spec EXACT ca `Collator(locale, opts).compare(...)`,
@@ -119,4 +142,4 @@ function ultimaZiDinLuna(period) {
   return m[1] + '-' + m[2] + '-' + String(zi).padStart(2, '0');
 }
 
-module.exports = { round2, fmt, fmtDate, period, periodLabel, sumaInLitere, stringifyDb, naturalCompare, ultimaZiDinLuna };
+module.exports = { round2, fmt, fmtDate, period, periodLabel, sumaInLitere, stringifyDb, stringifyRow, naturalCompare, ultimaZiDinLuna };

@@ -2828,14 +2828,24 @@ async function main() {
     {
       const jobsMod = require('../src/jobs');
       const metricsMod = require('../src/metrics');
+      const logMod = require('../src/log');
       const respingeriNetratate = [];
       const peRespingere = (motiv) => respingeriNetratate.push(motiv);
       process.on('unhandledRejection', peRespingere);
+      // Jobul esueaza DELIBERAT aici, deci jurnalul lui e zgomot asteptat: se inghite si se
+      // NUMARA (un test care esueaza tacut ar fi la fel de rau ca un job care esueaza tacut).
+      const errReal = logMod.error;
+      let liniiLog = 0;
+      logMod.error = () => { liniiLog += 1; };
+      // Interval mare + o singura tura: proba nu are nevoie de repetitie, iar 5 ms ar fi umplut
+      // iesirea suitei cu zeci de linii.
+      let h1 = null; let h2 = null;
       try {
-        const h1 = jobsMod.safeInterval('proba-async', () => Promise.reject(new Error('cade asincron')), 5);
-        const h2 = jobsMod.safeInterval('proba-sync', () => { throw new Error('cade sincron'); }, 5);
-        await new Promise((r) => setTimeout(r, 120));
+        h1 = jobsMod.safeInterval('proba-async', () => Promise.reject(new Error('cade asincron')), 20);
+        h2 = jobsMod.safeInterval('proba-sync', () => { throw new Error('cade sincron'); }, 20);
+        await new Promise((r) => setTimeout(r, 60));
         clearInterval(h1); clearInterval(h2);
+        await new Promise((r) => setTimeout(r, 20)); // lasa microtask-ul .catch sa ruleze
         const js = metricsMod.jobsSnapshot();
         // Aserțiunea care conteaza: un job async care esueaza e RAPORTAT, nu doar netratat.
         ok('job asincron respins -> eroarea ajunge in metrics', js['proba-async'] && js['proba-async'].errors > 0);
@@ -2844,7 +2854,10 @@ async function main() {
         // Calea sincona nu are voie sa se strice reparand-o pe cea asincrona.
         ok('job sincron care arunca -> tot raportat', js['proba-sync'] && js['proba-sync'].errors > 0);
         ok('...cu mesajul lui', js['proba-sync'] && /cade sincron/.test(js['proba-sync'].lastError || ''));
+        ok('...si ambele au ajuns si in jurnal', liniiLog >= 2);
       } finally {
+        try { clearInterval(h1); clearInterval(h2); } catch (_) { /* deja oprite */ }
+        logMod.error = errReal;
         process.removeListener('unhandledRejection', peRespingere);
       }
     }

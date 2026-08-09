@@ -365,11 +365,18 @@ function flushMirror(force) {
   if (db && (JSON_MIRROR || force)) { try { writeJson(JSON_FILE, db); } catch (e) { console.error('[contab] oglinda JSON:', e.message); } }
 }
 
-function save() {
+/**
+ * `hint` (optional): colectiile pe care apelantul le-a atins — ex. `db.save(['visitors'])`.
+ * Diff-ul sare atunci restul, ceea ce conteaza fiindca el costa O(baza), nu O(schimbarii).
+ * A NU se folosi „din reflex": un indiciu gresit intarzie scrierea pana la primul diff complet
+ * (plasa din store.js), iar intre timp schimbarea traieste doar in RAM. Se foloseste acolo unde
+ * apelantul chiar stie ce a atins — joburile de fundal. Fara `hint`, comportamentul e neschimbat.
+ */
+function save(hint) {
   ensureDir();
   rev += 1; // inainte de orice iesire: si pe calea `json`, si daca driverul arunca (RAM e deja mutat)
   if (DRIVER === 'json') { writeJson(JSON_FILE, db); return; }
-  store.persist(db); // sqlite: sincron; pg: fotografiaza sincron + scrie printr-o coada seriala
+  store.persist(db, hint ? { only: hint } : undefined); // sqlite: sincron; pg: fotografiaza sincron + coada seriala
   if (JSON_MIRROR) scheduleMirror(); // oglinda pentru backup/rollback, scrisa cu intarziere
 }
 

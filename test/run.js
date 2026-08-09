@@ -5745,6 +5745,38 @@ section('Coada de persistenta: starea expusa (store/storePg queueStats)');
   ok('plafonul pm2 si pragul de avertizare sunt numere coerente',
     met.MEM_LIMIT_MB > 0 && met.MEM_WARN_MB > 0 && met.MEM_WARN_MB < met.MEM_LIMIT_MB);
   eq('pragul implicit e 70% din plafon', met.MEM_WARN_MB, Math.round(met.MEM_LIMIT_MB * 0.7));
+  // Decizia „ce colectii diff-uim acum" (pura, src/persistPlan.js). `null` = diff COMPLET.
+  // Regula de aur: orice motiv de completitudine BATE indiciul — un indiciu nu are voie sa
+  // impiedice diff-ul complet, fiindca el e singura cale prin care o colectie sarita se recupereaza.
+  const plan = require('../src/persistPlan');
+  const proaspat = { forceFull: false, partiale: 0, dinUltimulComplet: 0 };
+  const stPlan = (x) => Object.assign({}, proaspat, x);
+  ok('fara indiciu -> diff complet (comportamentul dintotdeauna)', plan.colectiiDeDiffuit(undefined, proaspat) === null);
+  ok('indiciu valid -> se restrange la colectiile cerute',
+    (() => { const s = plan.colectiiDeDiffuit(['visitors'], proaspat); return s instanceof Set && s.size === 1 && s.has('visitors'); })());
+  ok('indiciu ca sir simplu, nu doar ca lista', (() => { const s = plan.colectiiDeDiffuit('visitors', proaspat); return s && s.has('visitors'); })());
+  ok('forceFull (init/restore) BATE indiciul', plan.colectiiDeDiffuit(['visitors'], stPlan({ forceFull: true })) === null);
+  ok('indiciu gol -> nu restrange nimic', plan.colectiiDeDiffuit([], proaspat) === null);
+  ok('indiciu numai cu gunoi -> nu restrange nimic', plan.colectiiDeDiffuit([null, '', 42], proaspat) === null);
+  ok('plasa pe NUMAR: la prag se face diff complet',
+    plan.colectiiDeDiffuit(['visitors'], stPlan({ partiale: plan.SAVE_FULL_EVERY })) === null);
+  ok('...dar cu una mai putin indiciul inca tine',
+    plan.colectiiDeDiffuit(['visitors'], stPlan({ partiale: plan.SAVE_FULL_EVERY - 1 })) !== null);
+  ok('plasa pe TIMP: la prag se face diff complet',
+    plan.colectiiDeDiffuit(['visitors'], stPlan({ dinUltimulComplet: plan.SAVE_FULL_MS })) === null);
+  ok('...dar sub prag indiciul inca tine',
+    plan.colectiiDeDiffuit(['visitors'], stPlan({ dinUltimulComplet: plan.SAVE_FULL_MS - 1 })) !== null);
+  // `Infinity` = niciun diff complet inca (proces proaspat): trebuie tratat ca „scadent", nu ca „sub prag".
+  ok('niciun diff complet inca -> primul persist e COMPLET',
+    plan.colectiiDeDiffuit(['visitors'], stPlan({ dinUltimulComplet: Infinity })) === null);
+  // Contorul: partial consuma fereastra, complet o re-armeaza.
+  const stare = plan.stareNoua();
+  plan.noteazaDiff(stare, new Set(['visitors'])); plan.noteazaDiff(stare, new Set(['visitors']));
+  eq('doua salvari partiale consuma doua unitati din plasa', stare.partiale, 2);
+  plan.noteazaDiff(stare, null);
+  eq('un diff complet re-armeaza contorul', stare.partiale, 0);
+  ok('...si noteaza momentul', stare.ultimulComplet > 0);
+
   // Decizia de ALERTA pe coada (pura): fiecare caz, plus pragurile.
   const { persistVerdict } = require('../src/jobs');
   const baza = { pending: false, pendingAgeMs: 0, pendingBytes: 0, failStreak: 0, conflicted: false };

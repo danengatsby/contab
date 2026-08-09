@@ -92,13 +92,17 @@ function start({ app, dbReady }) {
     process.exit(1);
   });
 
-  // Oprire curata (pm2 restart/stop trimite SIGINT): scrie oglinda JSON in asteptare,
-  // asteapta coada de scrieri (pg), inchide driverul si opreste ascultarea;
+  // Oprire curata (pm2 restart/stop trimite SIGINT): un persist COMPLET, apoi scrie oglinda JSON
+  // in asteptare, asteapta coada de scrieri (pg), inchide driverul si opreste ascultarea;
   // plasa de siguranta de 3s daca ceva atarna.
   let shuttingDown = false;
   function shutdown() {
     if (shuttingDown) return;
     shuttingDown = true;
+    // `db.save()` FARA indiciu = diff complet: inchide fereastra deschisa de salvarile partiale
+    // (src/persistPlan.js). Fara el, o schimbare nedeclarata de un indiciu gresit ar fi supravietuit
+    // doar in oglinda JSON, nu si in baza din care se rehidrateaza la pornire.
+    try { db.save(); } catch (_) { /* o oprire nu are voie sa cada pe asta */ }
     try { db.flushMirror(); } catch (_) { /* ignora */ }
     Promise.resolve(db.flushStore()).catch(() => { /* ignora */ }).then(() => {
       if (db.DRIVER === 'sqlite') { try { require('./store').close(); } catch (_) { /* ignora */ } }

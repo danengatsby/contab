@@ -12,7 +12,8 @@
 //     ar atinge doar aceste doua locuri;
 //  3. productia ruleaza pe PostgreSQL (CONTAB_DB_DRIVER=pg) — nu e expusa deloc;
 //     sqlite e implicitul pentru dev/teste, iar json ramane rollback.
-const { stringifyDb } = require('./util');
+const { stringifyDb, stringifyRow } = require('./util');
+const plan = require('./persistPlan');
 // Tabele reale per-colectie, cu coloane id/firmaId indexate (interogabile in SQL) + o coloana
 // `data` JSON pentru restul campurilor. Aplicatia continua sa lucreze pe graful in memorie:
 // `hydrate()` construieste obiectul din tabele, `persist(db)` il scrie inapoi intr-o tranzactie.
@@ -50,6 +51,10 @@ let snap = {};        // { [colectie hasId]: Map(id -> json) } — starea persis
 let lastHash = {};    // amprenta ultimei stari persistate pt. colectiile rescrise integral
 let forceFull = false; // dupa resetDirty(): urmatorul persist rescrie tot (init/restore)
 let lastWritten = []; // colectiile scrise la ultimul persist (pentru diagnostic/teste)
+
+// Indiciul de colectie + plasa de siguranta: vezi src/persistPlan.js (decizia e acolo, pura si
+// partajata cu driverul pg, ca sa nu existe doua copii care sa drifteze).
+let planStare = plan.stareNoua();
 // FENCING multi-scriitor: `dbEpoch` (meta) e versiunea bazei, verificata si avansata in ACEEASI
 // tranzactie cu fiecare persist. Daca alt proces a scris intre timp (epoch avansat), scrierea
 // noastra ar suprascrie randurile lui pornind din RAM invechit -> se REFUZA (fail-loud, inghetat),
@@ -344,7 +349,8 @@ function asInt(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
 function firmaOf(c, item) { return c.firma && item && item.firmaId != null ? asInt(item.firmaId) : null; }
 
 /** Reseteaza starea persistata -> urmatorul persist rescrie tot (dupa hydrate/restore). */
-function resetDirty() { snap = {}; lastHash = {}; forceFull = true; }
+function resetDirty() { snap = {}; lastHash = {}; forceFull = true; planStare = plan.stareNoua(); }
+
 
 /** Starea „cozii" de persistenta pe SQLite: persist() e SINCRON, deci nu exista niciodata ceva
  *  in asteptare. Exista ca sa aiba apelantii (metrici, jobul de veghe) un contract unic, fara
@@ -361,12 +367,17 @@ function queueStats() {
  * durabil prin WAL). Colectiile cu `id` primesc INSERT/UPDATE/DELETE per rand (diff fata de snap);
  * restul se rescriu integral doar daca amprenta lor s-a schimbat. Nimic schimbat -> zero I/O.
  */
-function persist(db) {
+function persist(db, opts) {
   const full = forceFull;
+  // Ce colectii se diff-uiesc la ACEST persist. `null` = toate (diff complet).
+  const only = plan.colectiiDeDiffuit(opts && opts.only, plan.stareCu(planStare, forceFull));
   const work = [];
 
   // ── 1) Colectiile-array: diff incremental (hasId) sau rescriere completa (fara id / forceFull) ──
   for (const c of ARRAY_COLLS) {
+    // Sarita prin indiciu: NU se atinge nici snapshot-ul ei, deci diferenta ramane de gasit la
+    // primul diff complet. De asta „indiciu gresit" inseamna intarziere, nu pierdere.
+    if (only && !only.has(c.key)) continue;
     const arr = Array.isArray(db[c.key]) ? db[c.key] : [];
 
     if (c.hasId && !full) {
@@ -377,7 +388,7 @@ function persist(db) {
       for (const item of arr) {
         const key = item && item.id != null ? String(item.id) : null;
         if (key == null || cur.has(key)) { bad = true; break; }
-        cur.set(key, stringifyDb(item));
+        cur.set(key, stringifyRow(item));
         fid.set(key, firmaOf(c, item));
       }
       if (!bad) {
@@ -400,14 +411,14 @@ function persist(db) {
         }
       }
       // fallback: id-uri stricate SAU initializare fara snapshot -> rescriere completa
-      const items = arr.map((it) => [String(it.id), firmaOf(c, it), stringifyDb(it)]);
+      const items = arr.map((it) => [String(it.id), firmaOf(c, it), stringifyRow(it)]);
       const m = new Map(); for (const it of items) if (it[0] != null) m.set(it[0], it[2]);
       work.push({ kind: 'full', c, items, snap: m });
       continue;
     }
 
     // hasId:false, sau forceFull: rescriere completa, portita de amprenta (lastHash).
-    const items = arr.map((it) => [c.hasId && it && it.id != null ? String(it.id) : null, firmaOf(c, it), stringifyDb(it)]);
+    const items = arr.map((it) => [c.hasId && it && it.id != null ? String(it.id) : null, firmaOf(c, it), stringifyRow(it)]);
     const h = sha(items.map((x) => x[2]).join(''));
     if (full || lastHash['a:' + c.key] !== h) {
       const w = { kind: 'full', c, items };
@@ -426,7 +437,9 @@ function persist(db) {
   if (full || lastHash.meta !== mh) work.push({ kind: 'meta', h: mh, hk: 'meta' });
 
   lastWritten = [];
-  if (!work.length) { forceFull = false; return; } // nimic schimbat -> zero scrieri pe disc
+  // Nimic schimbat -> zero scrieri pe disc. Plasa se noteaza si aici: un diff COMPLET care n-a
+  // gasit nimic e tot o dovada ca baza e la zi, deci re-armeaza fereastra.
+  if (!work.length) { forceFull = false; plan.noteazaDiff(planStare, only); return; }
 
   // Inghetat dupa un conflict de scriitor: RAM-ul nostru e invechit fata de baza — orice scriere
   // ar suprascrie datele celuilalt proces. Esec zgomotos, nu corupere tacuta.
@@ -510,7 +523,9 @@ function persist(db) {
     if (w.hk) lastHash[w.hk] = w.h;       // colectii fara id + partners/opening/meta
   }
   forceFull = false;
+  plan.noteazaDiff(planStare, only);
 }
+
 
 /** A fost detectat alt scriitor (persistenta inghetata)? Diagnostic pentru metrici/teste. */
 function conflicted() { return conflictedFlag; }
@@ -528,7 +543,7 @@ function hydrate(defaults) {
     if (c.hasId) {
       const m = new Map();
       // Snapshot re-serializat din obiectul parsat -> se potriveste exact cu stringifyDb din persist.
-      for (const it of db[c.key]) if (it && it.id != null) m.set(String(it.id), stringifyDb(it));
+      for (const it of db[c.key]) if (it && it.id != null) m.set(String(it.id), stringifyRow(it));
       snap[c.key] = m;
     }
   }
