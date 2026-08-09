@@ -1,7 +1,8 @@
 'use strict';
 
 // Strat relational PostgreSQL (pg, async). Acelasi layout ca src/store.js (SQLite):
-const { stringifyDb } = require('./util');
+const { stringifyDb, stringifyRow } = require('./util');
+const plan = require('./persistPlan');
 // tabele reale per-colectie cu coloane id/"firmaId" indexate + coloana `data` JSONB
 // pentru restul campurilor. Aplicatia lucreaza tot pe graful in memorie: `hydrate()`
 // il construieste din tabele, `persist(db)` il scrie inapoi.
@@ -46,6 +47,7 @@ let lastWritten = [];
 // FENCING multi-scriitor (paritate cu store.js): `dbEpoch` (meta) verificat si avansat in aceeasi
 // tranzactie cu datele. Alt scriitor detectat -> persistenta INGHETATA (fail-loud, nu clobber).
 let epoch = 0;
+let planStare = plan.stareNoua();
 let conflictedFlag = false;
 
 function sha(s) { return crypto.createHash('sha1').update(s).digest('hex'); }
@@ -131,7 +133,7 @@ async function schema() {
       if (rows.length) {
         await client.query(
           `INSERT INTO entry_lines (${insertCols}) SELECT ${p.pgSelect} FROM jsonb_to_recordset($1::jsonb) AS x(${p.pgRecordset})`,
-          [stringifyDb(rows)]
+          [stringifyRow(rows)]
         );
       }
       await client.query('COMMIT');
@@ -166,7 +168,7 @@ async function isEmpty() {
 }
 
 /** Reseteaza starea persistata -> urmatorul persist rescrie tot (dupa hydrate/restore). */
-function resetDirty() { snap = {}; lastHash = {}; pendingWork = null; }
+function resetDirty() { snap = {}; lastHash = {}; pendingWork = null; planStare = plan.stareNoua(); }
 
 /** Aplica un set de colectii fotografiate, intr-o singura tranzactie. */
 async function applyWork(work) {
@@ -244,9 +246,17 @@ async function applyWork(work) {
  * Fotografiaza sincron colectiile schimbate de la ultimul persist si pune scrierea
  * in coada seriala. Intoarce promisiunea cozii (rutele sincrone o ignora; flush() o asteapta).
  */
-function persist(db) {
+function persist(db, opts) {
+  // Indiciul de colectie (vezi src/persistPlan.js). Pe pg exista o conditie IN PLUS fata de sqlite:
+  // daca o lucrare asteapta deja in coada, diff-ul e OBLIGATORIU complet. Colapsarea de mai jos
+  // inlocuieste lucrarea in asteptare cu cea noua, si e sigura doar fiindca fiecare `work` e diff
+  // fata de ACELASI `snap`, deci il contine integral pe cel inlocuit. Un diff PARTIAL nu-l contine —
+  // ar amana schimbarile in asteptare pana la urmatorul diff complet. Deci: nu colapsam partial
+  // peste complet, ci ridicam persistul la complet.
+  const only = plan.colectiiDeDiffuit(opts && opts.only, plan.stareCu(planStare, pendingWork != null));
   const work = [];
   for (const c of ARRAY_COLLS) {
+    if (only && !only.has(c.key)) continue; // sarita: snapshot-ul ei ramane neatins (vezi persistPlan)
     const arr = Array.isArray(db[c.key]) ? db[c.key] : [];
 
     // Colectiile cu `id`: diff incremental per rand fata de snapshot-ul persistat.
@@ -257,7 +267,7 @@ function persist(db) {
       for (const item of arr) {
         const key = item && item.id != null ? String(item.id) : null;
         if (key == null || cur.has(key)) { bad = true; break; } // id lipsa/duplicat -> rescriere completa
-        cur.set(key, stringifyDb(item));
+        cur.set(key, stringifyRow(item));
         rowById.set(key, { id: key, firmaId: firmaOf(c, item), data: item });
       }
       const prev = snap[c.key];
@@ -275,13 +285,13 @@ function persist(db) {
       if (!bad && prev === undefined && cur.size === 0) { snap[c.key] = cur; continue; } // colectie goala: fixeaza snapshot
       // fallback: fara snapshot (init) SAU id-uri stricate -> rescriere completa + (re)initializare snapshot
       const rows = arr.map((item) => ({ id: item && item.id != null ? String(item.id) : null, firmaId: firmaOf(c, item), data: item }));
-      work.push({ kind: 'array', c, items: rows, json: stringifyDb(rows), cur, snapKey: c.key, name: c.key.toLowerCase() });
+      work.push({ kind: 'array', c, items: rows, json: stringifyRow(rows), cur, snapKey: c.key, name: c.key.toLowerCase() });
       continue;
     }
 
     // Colectii fara `id` (openingAnalytic, customAccounts): rescriere completa portita de amprenta.
     const rows = arr.map((item) => ({ id: null, firmaId: firmaOf(c, item), data: item }));
-    const json = stringifyDb(rows);
+    const json = stringifyRow(rows);
     const h = sha(json);
     if (lastHash['a:' + c.key] !== h) work.push({ kind: 'array', c, items: rows, json, h, hk: 'a:' + c.key, name: c.key.toLowerCase() });
   }
@@ -291,7 +301,7 @@ function persist(db) {
       const byCui = db.partners[fid] || {};
       for (const cui of Object.keys(byCui)) rows.push({ firmaId: asInt(fid), cui: String(cui), data: byCui[cui] });
     }
-    const json = stringifyDb(rows);
+    const json = stringifyRow(rows);
     const h = sha(stringifyDb(db.partners || {}));
     if (lastHash.partners !== h) work.push({ kind: 'partners', json, h, hk: 'partners', name: 'partners' });
   }
@@ -304,7 +314,7 @@ function persist(db) {
         rows.push({ firmaId: asInt(fid), cont: String(cont), d: Number(v.d) || 0, c: Number(v.c) || 0 });
       }
     }
-    const json = stringifyDb(rows);
+    const json = stringifyRow(rows);
     const h = sha(stringifyDb(db.openingBalances || {}));
     if (lastHash.opening !== h) work.push({ kind: 'opening', json, h, hk: 'opening', name: 'opening_balances' });
   }
@@ -323,7 +333,7 @@ function persist(db) {
     }
   }
 
-  if (!work.length) { lastWritten = []; return queue; } // nimic schimbat -> nicio tranzactie
+  if (!work.length) { lastWritten = []; plan.noteazaDiff(planStare, only); return queue; } // nimic schimbat -> nicio tranzactie
 
   // Inghetat dupa un conflict de scriitor: RAM-ul nostru e invechit — reincercarea ar suprascrie
   // datele celuilalt proces. Refuza zgomotos (o data pe apel), pana la restart + rehidratare.
@@ -344,6 +354,7 @@ function persist(db) {
   // memoria de la 136 la 475 MB, in timp ce aceleasi scrieri cu 25ms pauza au ramas la 151 MB.
   // Vezi docs/scalare-crestere.md. SQLite (store.js) nu are problema: persista sincron.
   pendingWork = work;
+  plan.noteazaDiff(planStare, only);
   if (!pendingSince) pendingSince = Date.now(); // vechimea se masoara de la PRIMA lucrare neconsumata
   pendingBytes = approxBytes(work);
   if (!draining) { draining = true; queue = queue.then(drain); }
@@ -431,7 +442,7 @@ async function projectInto(client, p, w) {
     if (rows.length) {
       await client.query(
         `INSERT INTO ${p.table} (${insertCols}) SELECT ${p.pgSelect} FROM jsonb_to_recordset($1::jsonb) AS x(${p.pgRecordset}) ON CONFLICT (${p.idCol}) DO NOTHING`,
-        [stringifyDb(rows)]
+        [stringifyRow(rows)]
       );
     }
     return;
@@ -449,7 +460,7 @@ async function projectInto(client, p, w) {
   if (rows.length) {
     await client.query(
       `INSERT INTO ${p.table} (${insertCols}) SELECT ${p.pgSelect} FROM jsonb_to_recordset($1::jsonb) AS x(${p.pgRecordset})`,
-      [stringifyDb(rows)]
+      [stringifyRow(rows)]
     );
   }
 }
