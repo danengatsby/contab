@@ -1,0 +1,155 @@
+{
+ "parte": "Partea VII · Registrele și verificarea · faza 8",
+ "nr": "31",
+ "titlu": "Sistematic: cartea mare",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Aceleași operațiuni, aceleași sume, aceeași lună — dar așezate altfel. Cartea mare ia tot ce e în jurnal și grupează pe conturi, nu pe zile."
+  },
+  {
+   "tip": "p",
+   "text": "Rezultatul e o fișă pentru fiecare cont, iar fișa aceea răspunde la întrebarea la care jurnalul nu putea răspunde: care e situația contului acesta, de unde a pornit și cum a ajuns aici."
+  },
+  {
+   "tip": "h",
+   "text": "Fișa unui cont"
+  },
+  {
+   "tip": "p",
+   "text": "Structura e aceeași pentru toate conturile, indiferent de natura lor: sold inițial, mișcările perioadei în ordine cronologică, rulajele pe fiecare parte și soldul final."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Fișa contului 371 Mărfuri, luna iunie",
+   "cap": [
+    "Data",
+    "Explicația",
+    "Debit",
+    "Credit"
+   ],
+   "randuri": [
+    [
+     "",
+     "Sold inițial",
+     "20.000",
+     ""
+    ],
+    [
+     "2026-06-10",
+     "Cumpărare mărfuri (intrare în stoc)",
+     "10.000",
+     ""
+    ],
+    [
+     "2026-06-15",
+     "Descărcare gestiune — cost marfă vândută",
+     "",
+     "8.000"
+    ],
+    [
+     "",
+     "Rulaj",
+     "10.000",
+     "8.000"
+    ],
+    [
+     "",
+     "Sold final",
+     "22.000",
+     ""
+    ]
+   ],
+   "numerice": [
+    3,
+    4
+   ],
+   "nota": "Soldul final se obține din sold inițial plus rulaj debitor minus rulaj creditor: 20.000 + 10.000 − 8.000 = 22.000."
+  },
+  {
+   "tip": "p",
+   "text": "Fișa aceasta spune, într-un ecran, povestea completă a mărfurilor din luna iunie: firma a pornit cu marfă de 20.000 de lei, a mai cumpărat de 10.000, a vândut marfă care o costase 8.000 și a rămas cu 22.000 în depozit."
+  },
+  {
+   "tip": "p",
+   "text": "Merită observat că același eveniment — vânzarea din 15 iunie — apare în jurnal cu trei linii, dintre care în fișa contului 371 se vede una singură. Nu e o pierdere de informație: celelalte două se văd în fișele conturilor 4111, 707 și 4427. Fiecare cont vede din operațiune numai partea care îl privește."
+  },
+  {
+   "tip": "cheie",
+   "text": "Jurnalul și cartea mare conțin exact aceleași cifre. Diferă doar întrebarea la care răspund: „ce s-a întâmplat atunci” față de „care e situația aici”."
+  },
+  {
+   "tip": "h",
+   "text": "Drumul înapoi"
+  },
+  {
+   "tip": "p",
+   "text": "Cea mai importantă proprietate a cărții mari nu e că arată soldul, ci că arată din ce e făcut. Orice cifră dintr-un raport se poate desface, pas cu pas, până la documentul care a produs-o."
+  },
+  {
+   "tip": "p",
+   "text": "Drumul are întotdeauna aceiași patru pași: bilanțul sau situația din care ai pornit trimite la un cont din balanță; contul din balanță trimite la fișa lui din cartea mare; o mișcare din fișă trimite la articolul contabil; articolul trimite la documentul justificativ."
+  },
+  {
+   "tip": "p",
+   "text": "Un program de contabilitate face drumul acesta în patru clicuri. Un dosar de hârtie îl face în patru sferturi de oră. Dar posibilitatea de a-l face e aceeași, și e obligatorie: o cifră care nu se poate desface până la un document nu are ce căuta într-o situație financiară."
+  },
+  {
+   "tip": "h",
+   "text": "Sintetic și analitic"
+  },
+  {
+   "tip": "p",
+   "text": "Contul 401 Furnizori are un sold. Dar întrebarea reală a oricărui administrator nu e „cât datorez”, ci „cui datorez”. Răspunsul stă în desfășurarea analitică a contului: aceeași sumă, spartă pe fiecare partener în parte."
+  },
+  {
+   "tip": "p",
+   "text": "Relația dintre cele două e o regulă fixă: suma soldurilor analitice trebuie să fie egală cu soldul contului sintetic. Nu aproximativ — exact. Dacă nu sunt egale, una dintre ele e greșită, iar cea greșită e aproape întotdeauna analitica, fiindcă acolo se pierd partenerii scriși în două feluri."
+  },
+  {
+   "tip": "p",
+   "text": "Verificarea aceasta merită făcută lunar și e printre puținele care se pot automatiza complet. Un program care afișează desfășurarea analitică fără să confirme concordanța cu sinteticul oferă o listă frumoasă și nesigură."
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu e cartea mare"
+  },
+  {
+   "tip": "p",
+   "text": "Două confuzii merită lămurite, fiindcă apar des la cei care învață pe cont propriu."
+  },
+  {
+   "tip": "p",
+   "text": "Cartea mare nu e balanța. Cartea mare conține mișcările — toate, una câte una. Balanța conține numai totalurile fiecărui cont, pe un singur rând. Una e materialul, cealaltă e rezumatul."
+  },
+  {
+   "tip": "p",
+   "text": "Și nu e nici un registru separat, în care se scrie a doua oară. În contabilitatea ținută pe hârtie chiar era: aceeași operațiune se copia manual în două registre, iar copierea era sursa erorilor. Într-un program, ambele registre sunt două priviri asupra aceleiași colecții de articole — motiv pentru care nu pot să difere niciodată."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Cartea mare e registru obligatoriu potrivit Legii contabilității, iar formele admise — fișă de cont pentru operațiuni diverse, respectiv fișă de cont șah — sunt cele din normele privind documentele financiar-contabile; alegerea între ele e o chestiune de volum și de organizare, nu de conformitate. Trei observații utile. Prima: dezvoltarea în analitic e obligatorie pentru conturile prevăzute expres de reglementări — între care terții, stocurile pe gestiuni și cheltuielile cu deductibilitate limitată — iar planul de conturi al firmei, cu simbolurile analitice folosite, face parte din manualul de politici contabile și trebuie să fie stabil în timp; schimbarea structurii analitice în cursul exercițiului rupe comparabilitatea și e una dintre cauzele frecvente ale neconcordanței sintetic-analitic. A doua: la conturile bifuncționale, soldul se determină pe net, dar prezentarea în bilanț urmează natura elementului, nu semnul soldului din balanță — un sold creditor la 4111 nu se prezintă ca datorie comercială fără analiza prealabilă a cauzei, care e de regulă un avans neregularizat sau o încasare neatribuită. A treia: verificarea concordanței dintre soldurile analitice și cel sintetic trebuie făcută la fiecare închidere și documentată; ea e primul control care prinde partenerii introduși de două ori sub denumiri diferite, iar diferența pe care o semnalează e întotdeauna reală, chiar dacă nu se vede în balanța sintetică."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cu jurnalul și cartea mare, contabilitatea e completă: totul e înregistrat, în ordinea timpului și grupat pe conturi. Rămâne întrebarea dacă totul se ține — iar pentru ea există un singur instrument, cel mai vechi din contabilitate. E capitolul următor."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Cartea mare conține aceleași operațiuni ca jurnalul, grupate pe conturi în loc de pe zile.",
+    "Fiecare fișă are aceeași structură: sold inițial, mișcări, rulaje, sold final.",
+    "Un cont vede din fiecare operațiune doar partea care îl privește; întregul se recompune din mai multe fișe.",
+    "Rostul principal e drumul înapoi: din bilanț în balanță, din balanță în fișă, din fișă în articol, din articol în document.",
+    "Suma soldurilor analitice trebuie să fie EXACT egală cu soldul contului sintetic — verificare lunară, complet automatizabilă.",
+    "Cartea mare nu e balanța: una conține mișcările, cealaltă doar totalurile."
+   ]
+  }
+ ]
+}

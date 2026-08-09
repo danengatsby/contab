@@ -1,0 +1,233 @@
+{
+ "parte": "Partea VII · Registrele și verificarea · faza 8",
+ "nr": "32",
+ "titlu": "Balanța de verificare",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Balanța de verificare e cel mai vechi instrument de control din contabilitate și, cinci sute de ani mai târziu, tot cel mai folosit. Se întocmește lunar, înaintea oricărei situații și a oricărei declarații, și răspunde la o singură întrebare: se ține totul?"
+  },
+  {
+   "tip": "p",
+   "text": "Forma ei e o listă: un rând pentru fiecare cont care a fost atins, opt coloane de cifre, un rând de totaluri. Puterea ei stă în ultimul rând."
+  },
+  {
+   "tip": "h",
+   "text": "Cele opt coloane"
+  },
+  {
+   "tip": "p",
+   "text": "Fiecare cont apare cu soldul de la care a pornit, cu ce s-a mișcat în lună, cu totalul celor două și cu soldul la care a ajuns — fiecare, pe debit și pe credit."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Balanța lunii iunie — un extras",
+   "cap": [
+    "Cont",
+    "SI D",
+    "SI C",
+    "Rulaj D",
+    "Rulaj C",
+    "SF D",
+    "SF C"
+   ],
+   "randuri": [
+    [
+     "1012 Capital",
+     "",
+     "30.000",
+     "",
+     "",
+     "",
+     "30.000"
+    ],
+    [
+     "371 Mărfuri",
+     "20.000",
+     "",
+     "10.000",
+     "8.000",
+     "22.000",
+     ""
+    ],
+    [
+     "401 Furnizori",
+     "",
+     "15.000",
+     "12.100",
+     "12.100",
+     "",
+     "15.000"
+    ],
+    [
+     "4111 Clienți",
+     "",
+     "",
+     "16.940",
+     "16.940",
+     "",
+     ""
+    ],
+    [
+     "5121 Bancă",
+     "40.000",
+     "",
+     "",
+     "15.025",
+     "24.975",
+     ""
+    ],
+    [
+     "TOTAL",
+     "65.000",
+     "65.000",
+     "76.392,50",
+     "76.392,50",
+     "84.327,50",
+     "84.327,50"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "total": true,
+   "nota": "Coloanele „total sume” (sold inițial plus rulaj) s-au omis din acest extras ca să încapă; ele însumează 141.392,50 pe fiecare parte."
+  },
+  {
+   "tip": "p",
+   "text": "Rândul 4111 Clienți merită o privire: are rulaje pe ambele părți și niciun sold. Clientul a fost facturat cu 16.940 de lei și a plătit exact atât în aceeași lună. Activitatea a existat, soldul e zero — iar o balanță care ar arăta doar soldurile ar ascunde-o complet."
+  },
+  {
+   "tip": "h",
+   "text": "Cele patru egalități"
+  },
+  {
+   "tip": "p",
+   "text": "Totalul de la baza tabelului conține patru perechi de cifre, iar fiecare pereche trebuie să fie formată din numere identice. Sunt cele patru serii de egalități, și fiecare dovedește altceva."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce dovedește fiecare egalitate",
+   "cap": [
+    "Egalitatea",
+    "În exemplu",
+    "Ce dovedește"
+   ],
+   "randuri": [
+    [
+     "total sold inițial D = C",
+     "65.000",
+     "luna a pornit dintr-o poziție echilibrată"
+    ],
+    [
+     "total rulaj D = C",
+     "76.392,50",
+     "fiecare operațiune a lunii a avut ambele părți"
+    ],
+    [
+     "total sume D = C",
+     "141.392,50",
+     "suma primelor două — se verifică singură"
+    ],
+    [
+     "total sold final D = C",
+     "84.327,50",
+     "poziția la care s-a ajuns e echilibrată"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "nota": "A doua e cea informativă: ea trebuie să fie egală și cu totalul registrului-jurnal pe aceeași lună."
+  },
+  {
+   "tip": "p",
+   "text": "Corelația din notă e cea mai utilă dintre toate, fiindcă leagă două registre întocmite pe drumuri diferite. Jurnalul adună liniile în ordinea timpului; balanța le adună pe conturi. Dacă totalurile nu coincid, o operațiune a intrat într-unul și nu în celălalt."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se întâmplă când nu se închide"
+  },
+  {
+   "tip": "p",
+   "text": "Într-o contabilitate ținută pe hârtie, o balanță care nu se închidea însemna ore de căutare. Într-un program, situația nu ar trebui să apară deloc: articolele se validează la înregistrare, iar un articol dezechilibrat nu se poate salva."
+  },
+  {
+   "tip": "p",
+   "text": "Când totuși apare, cauza e aproape întotdeauna una dintre trei: solduri inițiale preluate greșit la începutul anului, o operațiune înregistrată direct în bază, ocolind aplicația, sau o rotunjire propagată. Diferența însăși e primul indiciu — dacă e divizibilă cu nouă, e aproape sigur o inversare de cifre."
+  },
+  {
+   "tip": "cheie",
+   "text": "Balanța se face lunar, nu anual. O eroare găsită în luna în care s-a produs costă un minut; aceeași eroare găsită în martie următor costă o zi."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se citește dintr-o balanță, dincolo de egalități"
+  },
+  {
+   "tip": "p",
+   "text": "Un contabil experimentat nu se uită la balanță ca la un test de echilibru, ci ca la o radiografie. Câteva lucruri se văd imediat, fără niciun calcul."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Semnale care se citesc dintr-o privire",
+   "cap": [
+    "Ce vezi",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "sold creditor la un cont de casă",
+     "imposibil — o operațiune lipsește sau e datată greșit"
+    ],
+    [
+     "sold debitor la 401 Furnizori",
+     "de regulă un avans plătit, neînregistrat ca atare în 409"
+    ],
+    [
+     "sold creditor la 4111 Clienți",
+     "de regulă o încasare neatribuită sau un avans în 419"
+    ],
+    [
+     "cont de cheltuială cu rulaj creditor mare",
+     "stornări multe — merită înțeles de ce"
+    ],
+    [
+     "cont nou, apărut fără explicație",
+     "o încadrare greșită sau un import neverificat"
+    ]
+   ],
+   "nota": "Niciunul dintre aceste semnale nu dezechilibrează balanța. Toate se văd doar dacă cineva se uită."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Balanța de verificare e obligatorie cel puțin lunar potrivit Legii contabilității și normelor privind documentele financiar-contabile, iar întocmirea ei precede obligatoriu întocmirea situațiilor financiare. Patru precizări de practică. Prima: forma cu patru serii de egalități e cea uzuală, dar reglementările admit și forma cu trei serii; ce contează e ca soldurile inițiale să fie cele preluate din balanța precedentei perioade, nu recalculate independent — recalcularea maschează exact eroarea pe care preluarea o semnalează. A doua: balanța se întocmește și pentru conturile analitice, distinct de cea sintetică, iar concordanța dintre ele e o verificare separată, care nu rezultă din egalitățile balanței sintetice. A treia: la închiderea exercițiului se lucrează cu două balanțe — cea dinaintea operațiunilor de închidere, care servește la întocmirea situațiilor financiare, și cea de după, în care conturile de venituri și cheltuieli au sold zero; confundarea lor golește raportările construite pe rulajele conturilor de rezultat. A patra: în forma electronică, balanța trebuie să poată fi reconstituită identic la orice moment ulterior pentru o perioadă închisă; o balanță care se recalculează din datele curente și dă alt rezultat decât cea listată la vremea ei semnalează o modificare retroactivă, adică exact ce interzice disciplina din capitolul 29."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Balanța închisă pe toate cele patru egalități e o veste bună. Nu e însă vestea pe care majoritatea oamenilor cred că este — iar capitolul următor e cel mai contraintuitiv din toată cartea."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Balanța se întocmește lunar, înaintea oricărei situații sau declarații.",
+    "Cele patru egalități privesc soldurile inițiale, rulajele, totalul sumelor și soldurile finale.",
+    "Rulajul total din balanță trebuie să fie egal cu totalul registrului-jurnal pe aceeași perioadă.",
+    "Un cont cu rulaje și sold zero arată activitate reală: o balanță doar cu solduri ar ascunde-o.",
+    "Când nu se închide: solduri inițiale greșite, scriere directă în bază sau rotunjiri. Diferența divizibilă cu nouă înseamnă cifre inversate.",
+    "Dincolo de egalități, balanța se citește ca o radiografie — soldurile imposibile se văd fără niciun calcul."
+   ]
+  }
+ ]
+}

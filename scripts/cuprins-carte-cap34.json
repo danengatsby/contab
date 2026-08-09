@@ -1,0 +1,195 @@
+{
+ "parte": "Partea VII · Registrele și verificarea · faza 8",
+ "nr": "34",
+ "titlu": "Scadențarul",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Toate situațiile de până acum au fost făcute pentru a verifica sau pentru a raporta. Scadențarul e singurul care se face pentru a conduce firma — și, poate din cauza asta, e singurul pe care un patron îl citește din proprie inițiativă."
+  },
+  {
+   "tip": "p",
+   "text": "Răspunde la trei întrebări pe care balanța nu le poate atinge: cine îmi datorează, cui datorez și, mai ales, de când."
+  },
+  {
+   "tip": "h",
+   "text": "De ce nu ajunge soldul"
+  },
+  {
+   "tip": "p",
+   "text": "Contul 4111 Clienți poate avea un sold de 200.000 de lei. Cifra e adevărată și aproape inutilă, fiindcă nu spune dacă cei 200.000 sunt facturi emise săptămâna trecută sau creanțe vechi de doi ani."
+  },
+  {
+   "tip": "p",
+   "text": "Prima situație e normală. A doua e o firmă în pericol, cu același sold și cu același bilanț. Diferența dintre ele nu se vede nicăieri în contabilitatea sintetică — doar în vechimea soldurilor."
+  },
+  {
+   "tip": "cheie",
+   "text": "O creanță nu se măsoară doar în lei, ci în lei și în zile. A doua dimensiune lipsește din toate rapoartele obligatorii."
+  },
+  {
+   "tip": "h",
+   "text": "Cum arată"
+  },
+  {
+   "tip": "p",
+   "text": "Scadențarul așază fiecare partener pe un rând și îi împarte soldul pe intervale de vechime, socotite de la data facturii sau de la scadență."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Situația clienților la 30 iunie",
+   "cap": [
+    "Client",
+    "Total",
+    "0–30 zile",
+    "31–60",
+    "61–90",
+    "peste 90"
+   ],
+   "randuri": [
+    [
+     "Alfa Construct",
+     "48.000",
+     "48.000",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Beta Distribuție",
+     "65.000",
+     "20.000",
+     "45.000",
+     "",
+     ""
+    ],
+    [
+     "Gama Impex",
+     "31.000",
+     "",
+     "",
+     "",
+     "31.000"
+    ],
+    [
+     "Delta Service",
+     "12.000",
+     "",
+     "12.000",
+     "",
+     ""
+    ],
+    [
+     "TOTAL",
+     "156.000",
+     "68.000",
+     "57.000",
+     "0",
+     "31.000"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "total": true,
+   "nota": "Aceeași informație pe care o dă contul 4111 — 156.000 de lei — dar cu întrebarea care contează deja pusă."
+  },
+  {
+   "tip": "p",
+   "text": "Citit așa, tabelul spune ceva ce soldul nu spunea: 31.000 de lei sunt mai vechi de nouăzeci de zile și aparțin unui singur client. Aceea nu mai e o creanță de urmărit, ci o decizie de luat — capitolul 27 arată ce se întâmplă contabil cu ea."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se stabilește vechimea"
+  },
+  {
+   "tip": "p",
+   "text": "Aici e partea tehnică a capitolului, și merită înțeleasă, fiindcă de ea depinde dacă tabelul spune adevărul."
+  },
+  {
+   "tip": "p",
+   "text": "Un client are, de regulă, mai multe facturi și mai multe plăți, iar plățile vin rareori însoțite de precizarea „aceasta stinge factura numărul cutare”. Trebuie deci decis ce factură a stins fiecare încasare, iar de această decizie depinde întreaga distribuție pe intervale."
+  },
+  {
+   "tip": "p",
+   "text": "Convenția firească e stingerea în ordinea vechimii: prima plată stinge cea mai veche factură, restul se duce mai departe. E și cea juridic implicită în lipsa unei alte precizări, și cea prudentă — dacă ai greși, ai greși arătând soldul mai vechi decât e, nu mai nou."
+  },
+  {
+   "tip": "p",
+   "text": "Convenția contrară — plata stinge ultima factură — ar face ca datoriile vechi să pară veșnic proaspete, iar tabelul ar deveni exact opusul unui instrument de alertă."
+  },
+  {
+   "tip": "h",
+   "text": "Capcana mutărilor între conturi"
+  },
+  {
+   "tip": "p",
+   "text": "Există o eroare tipică în construcția scadențarului, care merită descrisă fiindcă e invizibilă și dublează cifrele."
+  },
+  {
+   "tip": "p",
+   "text": "O creanță își poate schimba contul fără să își schimbe mărimea. Un aviz de livrare stă în 418 Clienți — facturi de întocmit; la emiterea facturii, aceeași creanță trece în 4111. Simetric, o cheltuială fără factură stă în 408 și trece în 401 când factura sosește."
+  },
+  {
+   "tip": "p",
+   "text": "Dacă mecanismul care construiește scadențarul privește separat fiecare linie, va vedea la 4111 o creanță nouă de 10.000 de lei și nu va vedea că altundeva o creanță de 10.000 tocmai a dispărut. Rezultatul: același client apare cu 20.000 de lei, dintre care jumătate nu există."
+  },
+  {
+   "tip": "p",
+   "text": "Semnul că s-a întâmplat e ușor de recunoscut: scadențarul arată alt total decât soldul contului. Când două situații despre același lucru nu coincid, greșită e întotdeauna cea construită prin agregare — nu soldul."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se face cu el"
+  },
+  {
+   "tip": "p",
+   "text": "Un scadențar citit lunar schimbă trei lucruri în conducerea unei firme, iar niciunul nu e contabil."
+  },
+  {
+   "tip": "p",
+   "text": "Întâi, ordinea telefoanelor. Nu se sună toți clienții restanți, ci se sună primii cei din coloana cea mai veche și cu suma cea mai mare — o listă de cinci nume, nu de cincizeci."
+  },
+  {
+   "tip": "p",
+   "text": "Apoi, decizia de a mai livra. Un client care are 45.000 de lei restanți la peste șaizeci de zile nu ar trebui să primească o comandă nouă fără o discuție, oricât de tentantă ar fi comanda. Contabilitatea nu ia decizia, dar oferă cifra fără de care ea se ia din instinct."
+  },
+  {
+   "tip": "p",
+   "text": "În fine, oglinda. Aceeași situație există și pentru furnizori, iar comparația celor două tabele arată dacă firma își finanțează activitatea din creditul furnizorilor sau invers. E cea mai simplă analiză de trezorerie care se poate face, și nu cere niciun calcul."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Situația creanțelor și datoriilor e cerută expres ca anexă la situațiile financiare anuale, cu defalcarea pe termene de exigibilitate — sub un an și peste un an — iar informația privind creanțele restante și vechimea lor face obiectul notelor explicative. Patru observații de practică. Prima: scadențarul contabil se construiește pe termenul de plată din contract sau din factură, nu pe data documentului; când cele două se confundă, o factură cu scadență la nouăzeci de zile apare restantă din prima zi, iar alerta își pierde orice valoare. A doua: pentru creanțele exprimate în valută, vechimea se urmărește pe valoarea în valută, iar soldul în lei se reconciliază separat cu reevaluarea de la capitolul 26 — altfel diferențele de curs par a fi plăți parțiale și strică stingerea. A treia: creanțele față de persoane afiliate și cele față de terți se prezintă distinct, iar compensările între creanțe și datorii cu același partener se pot opera numai în condițiile legii privind compensarea; prezentarea netă fără temei denaturează atât indicatorii de lichiditate, cât și baza de raportare din declarațiile informative. A patra: vechimea soldurilor e sursa primară a analizei de depreciere din capitolul 27 — pragul de 270 de zile din legea fiscală se citește direct din acest tabel, iar o firmă care nu îl întocmește lunar descoperă condiția de deductibilitate abia după ce a expirat exercițiul în care putea fi îndeplinită."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cu acest capitol se încheie partea a șaptea. Contabilitatea firmei e completă, verificată din toate unghiurile care se pot verifica, și citită ca instrument de conducere."
+  },
+  {
+   "tip": "p",
+   "text": "Urmează partea în care ea se întoarce către stat. Nu ca o obligație separată, ci ca un rezultat: declarațiile nu se completează, ci se compun din luna deja înregistrată. Iar prima dintre ele e cea mai frecventă și cea mai neînțeleasă — taxa pe valoarea adăugată."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Soldul unei creanțe nu spune nimic fără vechimea ei: 200.000 de lei recenți și 200.000 de lei vechi de doi ani arată identic în balanță.",
+    "Scadențarul sparge soldul fiecărui partener pe intervale de vechime: 0–30, 31–60, 61–90 și peste 90 de zile.",
+    "Plățile sting facturile în ordinea vechimii — convenția prudentă și, în lipsa altei precizări, cea firească.",
+    "Mutările între conturi din aceeași familie (418 → 4111, 408 → 401) dublează cifrele dacă mecanismul le numără ca operațiuni noi.",
+    "Semnalul e simplu: dacă scadențarul nu dă același total ca soldul contului, greșit e scadențarul.",
+    "Se folosește la trei decizii: pe cine suni, cui mai livrezi și dacă firma se finanțează din creditul furnizorilor sau invers."
+   ]
+  }
+ ]
+}
