@@ -21,8 +21,8 @@ poarta înainte să lase push-ul să treacă. **24 din 24 de ieșiri: „Validar
 | D101 | `D101`, `D101-defalcare` |
 | D112 | `D112`, `D112-beneficii`, `D112-cm` |
 | D177 · D205 | `D177`, `D205`, `D205-retineri` |
-| D300 | `D300`, `D300-report`, `D300-autofactura`, `D300-servicii`, `D300-prorata` |
-| D390 | `D390`, `D390-autofactura`, `D390-servicii` |
+| D300 | `D300`, `D300-report`, `D300-autofactura`, `D300-servicii`, `D300-prorata`, `D300-fara-tva` |
+| D390 | `D390`, `D390-autofactura`, `D390-servicii`, `D390-triunghiular` |
 | D394 | `D394` |
 | SAF-T (D406) | `D406`, `D406-T`, `D406-A`, `D406-C`, `D406-storno` |
 | Bilanț | `S1120`, `S1121`, `S1122` |
@@ -92,6 +92,41 @@ acest depozit: nu inventa monografia.
 
 **D311** (TVA colectată de persoanele cu cod de TVA anulat) are validator oficial în manifest
 (`<D311>`), dar nu a fost recunoscut.
+
+## Ultima verificare: 2026-08-09 — livrări fără TVA, triunghiular, regimul marjei
+
+Variante noi: **`D300-fara-tva`** și **`D390-triunghiular`**, ambele ✅ validare fără erori.
+
+**Numerotarea rândurilor din schemă NU e cea din formularul curent** — lucru aflat pe parcurs și
+consemnat ca să nu se mai piardă timp: formularele publicate (OPANAF 2131/2025 și 174/2026) au
+**rd. 19** ca „TOTAL TAXĂ COLECTATĂ", în timp ce schema pe care o acceptă validatorul (`v12`) are
+totalul pe **R17**. Diferența vine din rândurile 17–18 (vânzări intracomunitare la distanță),
+inserate în formular după versiunea schemei. **Rândurile 1–16 coincid**, deci ancorele folosite
+sunt sigure:
+
+| Rând | Ce conține | Folosit pentru |
+|---|---|---|
+| 1 | livrări intracomunitare de bunuri scutite (art. 294 alin. (2)) | livrare intracomunitară |
+| 3 | locul livrării/prestării **în afara României** | prestări intracomunitare de servicii, livrare triunghiulară |
+| 13 | livrări cu taxare inversă la beneficiar (art. 331) | art. 331 |
+| 14 | scutite **cu drept de deducere**, altele decât rd. 1–3 | **export extracomunitar** |
+
+Verificat direct în schema validatorului: `R3_1` și `R14_1` există și sunt rânduri **doar cu bază**
+(nu au `_2`), ca celelalte rânduri scutite — confirmare independentă de formular.
+
+Exportul se declară la **rd. 14**, nu la rd. 3: e o livrare cu locul **în România**, doar scutită.
+Practica e împărțită, dar decontul precompletat pe care ANAF îl trimite pune exporturile vămuite
+tot pe rd. 14.
+
+**Regimul marjei (art. 312):** baza declarată e **marja fără taxă**, nu prețul de vânzare. Citită
+din articol, ar da un raport de 3% (347 / 11.653) — o cotă inexistentă, iar rândul ar fi căzut tăcut
+din decont. Referința verifică `R9_1 = 1653`, `R9_2 = 347` și că nicio cotă nu rămâne fără rând.
+
+> **Rămâne nefăcut, deliberat:** e-Factura pentru vânzările în regim de marjă. Factura nu are voie
+> să înscrie TVA separat (art. 312 alin. (11)), dar generatorul UBL citește sumele din articol și
+> exact asta ar face. Tipul e marcat `eFactura: 'nu'`, cu motivul scris în cod. Se deblochează când
+> categoria de TVA din CIUS-RO pentru regimul marjei e stabilită dintr-o sursă sigură — iar pentru
+> e-Factura **nu există validator rulabil**, vezi verificarea din 2026-08-08 (3).
 
 ## Ultima verificare: 2026-08-08 (6) — concediu medical: poarta confunda „valid cu atenționări" cu „invalid"
 

@@ -185,6 +185,46 @@ const vAuto = {
   w('D300-autofactura', xml.d300Xml(v.company, '2026-06', r300, who));
 }
 
+// D300 varianta LIVRARI FARA TVA + REGIM DE MARJA: randurile 3 (locul livrarii in afara Romaniei),
+// 14 (scutite cu drept — exportul) si cota aplicata pe MARJA nu erau atinse de nicio referinta.
+// Exemplul integrat n-are export, nici prestari intracomunitare, nici bunuri second-hand.
+const vFaraTva = {
+  company: v.company, openingBalances: {}, assets: [],
+  entries: [
+    { id: 'ex1', firmaId: 1, data: '2026-06-09', period: '2026-06', tip: 'export_extracomunitar',
+      tipNume: 'Export', status: 'postat', partener: 'US BUYER LLC', partenerCui: '', document: 'EXP 3/2026',
+      declaratieVamala: '26ROBU1234567890', lines: [{ debit: '4111', credit: '707', suma: 40000 }] },
+    { id: 'ps1', firmaId: 1, data: '2026-06-14', period: '2026-06', tip: 'prestare_servicii_intracomunitara',
+      tipNume: 'Prestare servicii intracomunitara', status: 'postat', partener: 'ALFA GMBH',
+      partenerCui: 'DE811907980', document: 'FS 51/2026', lines: [{ debit: '4111', credit: '704', suma: 20000 }] },
+    { id: 'tr1', firmaId: 1, data: '2026-06-17', period: '2026-06', tip: 'livrare_triunghiulara',
+      tipNume: 'Livrare triunghiulara', status: 'postat', partener: 'BETA LIMITED',
+      partenerCui: 'IE8256796U', document: 'FT 9/2026', lines: [{ debit: '4111', credit: '707', suma: 7000 }] },
+    { id: 'mj1', firmaId: 1, data: '2026-06-22', period: '2026-06', tip: 'vanzare_regim_marja',
+      tipNume: 'Vanzare in regim de marja', status: 'postat', partener: 'CLIENT SRL', partenerCui: '99887760',
+      document: 'FM 2/2026', marjaTva: { marja: 2000, cota: 21, tva: 347.11, baza: 1652.89, pretVanzare: 12000, pretCumparare: 10000 },
+      lines: [{ debit: '4111', credit: '707', suma: 11652.89 }, { debit: '4111', credit: '4427', suma: 347.11 },
+        { debit: '607', credit: '371', suma: 10000 }] },
+  ],
+};
+{
+  const dF = rep.d300(vFaraTva, '2026-06');
+  const aF = xml.d300Rows(dF);
+  if (aF.R14_1 !== 40000) throw new Error('D300-fara-tva: exportul nu e pe randul 14 — ' + aF.R14_1);
+  if (aF.R3_1 !== 27000) throw new Error('D300-fara-tva: randul 3 nu cuprinde serviciile + triunghiulara — ' + aF.R3_1);
+  // Regimul marjei: baza declarata trebuie sa fie MARJA fara taxa, altfel raportul incalca R84.
+  if (aF.R9_1 !== 1653 || aF.R9_2 !== 347) throw new Error('D300-fara-tva: marja nu e baza randului 9 — ' + aF.R9_1 + '/' + aF.R9_2);
+  if (xml.d300CoteFaraRand(dF).length) throw new Error('D300-fara-tva: o cota a ramas fara rand in decont');
+  w('D300-fara-tva', xml.d300Xml(v.company, '2026-06', dF, who));
+  // D390: livrarea triunghiulara pe codul T, prestarea pe P — in aceeasi luna, ca sa se vada ca nu
+  // se amesteca intre ele.
+  const r390F = rep.d390(vFaraTva, '2026-06');
+  if (r390F.totaluri.T !== 7000 || r390F.totaluri.P !== 20000) {
+    throw new Error('D390-triunghiular: codurile T/P citite gresit — ' + JSON.stringify(r390F.totaluri));
+  }
+  w('D390-triunghiular', xml.d390Xml(v.company, '2026-06', r390F, who));
+}
+
 // D300 varianta PRO-RATA / TVA partial deductibila: „taxa dedusa" (R28) mai mica decat „taxa
 // deductibila" (R27). Referinta de baza deduce integral, deci randul R28 n-ar fi exercitat
 // niciodata — iar aici traieste tot mecanismul pro-ratei in decont. Include si o achizitie cu

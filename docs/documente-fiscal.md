@@ -142,6 +142,37 @@ intracomunitare de bunuri și servicii, art. 331, autofactură) — acolo taxa c
 apare pe rândul **28 „taxa dedusă"**, care poate fi mai mic decât rândul 27 „taxa deductibilă".
 La taxare inversă, perechea R5/R18 rămâne pe sumele integrale.
 
+## Livrări fără TVA colectat — unde intră în decont
+
+| Operațiune | Tip de document | D300 | D390 | Pro-rata |
+|---|---|---|---|---|
+| Livrare intracomunitară de bunuri | `livrare_intracomunitara` | rd. 1 | cod L | numărător |
+| Prestare intracomunitară de servicii | `prestare_servicii_intracomunitara` | rd. 3 | cod P | numărător |
+| Livrare triunghiulară (art. 268 alin. (8)) | `livrare_triunghiulara` | rd. 3 | cod T | numărător |
+| Livrare cu taxare inversă internă (art. 331) | `taxare_inversa_interna_livrare` | rd. 13 | — | numărător |
+| **Export în afara UE** (art. 294 alin. (1)) | `export_extracomunitar` | **rd. 14** | — | numărător |
+
+Toate au **drept de deducere**, deci ridică pro-rata, nu o coboară. Înregistrate ca vânzări cu cota
+0 — singura variantă înainte de a exista tipurile proprii — cădeau la „fără drept" **și** lipseau
+din decont: două greșeli care se compun.
+
+**Achiziția** din operațiunea triunghiulară (`achizitie_triunghiulara`) nu produce taxare inversă:
+măsura de simplificare o face neimpozabilă în România, deci un `4426 = 4427` ar colecta și ar deduce
+o taxă nedatorată.
+
+## Regimul special al marjei de profit (art. 312)
+
+Pentru bunuri second-hand, opere de artă, obiecte de colecție și antichități cumpărate de la cine nu
+a putut factura cu TVA. Baza impozabilă e **marja** (preț de vânzare − preț de cumpărare), iar TVA-ul
+e **inclus** în ea: se extrage cu `cotă/(100+cotă)`, nu se adaugă peste. O marjă negativă dă bază
+zero, nu creanță la buget. Achiziția nu deduce TVA — e chiar condiția regimului.
+
+Registrul cerut de art. 312 alin. (13) se derivă din articole: `GET /api/registru-marja`.
+
+**Limită cunoscută:** vânzările în regim de marjă **nu se generează ca e-Factura**. Factura nu are
+voie să înscrie TVA separat (art. 312 alin. (11)), iar generatorul UBL exact asta ar face. Decizia e
+scrisă explicit pe tip, cu motiv.
+
 ## Tipuri de documente acceptate
 
 Vânzări (mărfuri, produse, servicii, bon Z, livrare intracomunitară de bunuri,

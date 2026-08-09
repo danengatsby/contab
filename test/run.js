@@ -2494,6 +2494,105 @@ eq('efect platit furnizor: 401=403', gt2('efect_platit_furnizor').build({ suma: 
 eq('deschidere acreditiv: 541=5121', gt2('deschidere_acreditiv').build({ suma: 5000 })[0].debit + '=' + gt2('deschidere_acreditiv').build({ suma: 5000 })[0].credit, '541=5121');
 eq('plata din acreditiv: 401=541', gt2('plata_din_acreditiv').build({ suma: 1200 })[0].debit + '=' + gt2('plata_din_acreditiv').build({ suma: 1200 })[0].credit, '401=541');
 
+section('Livrari fara TVA: randurile 3 si 14 din decont (export + servicii intracomunitare)');
+{
+  const T3 = require('../src/documentTypes');
+  const E3 = (id, tip, d) => ({ id, tip, data: '2026-06-10', period: '2026-06', status: 'postat',
+    partenerCui: 'DE811907980', partener: 'X', lines: T3.getType(tip).build(d) });
+  const db3 = { openingBalances: {}, company: { cui: 'RO1', nume: 'X', perioadaTva: 'L' }, entries: [
+    E3('a', 'livrare_intracomunitara', { baza: 10000 }),
+    E3('b', 'prestare_servicii_intracomunitara', { baza: 20000 }),
+    E3('c', 'taxare_inversa_interna_livrare', { baza: 30000, cota: 21 }),
+    E3('d', 'export_extracomunitar', { baza: 40000 }),
+  ] };
+  const a3 = xml.d300Rows(rep.d300(db3, '2026-06'));
+  eq('rd. 1 — livrari intracomunitare de bunuri', a3.R1_1, 10000);
+  // Prestarea intracomunitara aparea in D390 (cod P) si DELOC in decont: doua raportari care nu se
+  // potriveau pe aceeasi factura, exact ce compara ANAF.
+  eq('rd. 3 — locul prestarii in afara Romaniei (art. 278 alin. (2))', a3.R3_1, 20000);
+  eq('rd. 13 — livrari cu taxare inversa interna (art. 331)', a3.R13_1, 30000);
+  eq('rd. 14 — scutite CU drept de deducere, altele (export)', a3.R14_1, 40000);
+  eq('toate patru intra in totalul taxei colectate', a3.R17_1, 100000);
+  eq('...si niciuna nu aduce TVA colectat', a3.R17_2 || 0, 0);
+  // Exportul NU e o achizitie/livrare intracomunitara: nu are ce cauta in D390 sau Intrastat.
+  eq('exportul nu apare in D390', rep.d390(db3, '2026-06').rows.filter((r) => r.cod === 'L').length, 1);
+  // ...si are drept de deducere, deci intra in NUMARATORUL pro-ratei. Inregistrat inainte ca
+  // vanzare cu cota 0, cadea la „fara drept" si cobora procentul — pe langa ca lipsea din decont.
+  eq('exportul are drept de deducere (pro-rata 100%)', rep.proRataTva(db3, '2026').definitiva, 100);
+  eq('...si nimic nu cade la „fara drept"', rep.proRataTva(db3, '2026').faraDrept, 0);
+  // Numarul declaratiei vamale justifica scutirea si se cere la control.
+  ok('tipul cere declaratia vamala de export',
+    (T3.getType('export_extracomunitar').fields || []).some((f) => f.name === 'declaratieVamala'));
+
+  // Operatiunea triunghiulara: livrarea are codul ei in D390 si tot randul 3 in decont; ACHIZITIA
+  // care o precede nu se declara nicaieri (nu e impozabila in Romania) si mai ales NU produce
+  // taxare inversa — un `4426 = 4427` ar umfla ambele laturi ale decontului cu o taxa nedatorata.
+  {
+    const dbT = { openingBalances: {}, company: { cui: 'RO1', nume: 'X', perioadaTva: 'L' }, entries: [
+      E3('t1', 'achizitie_triunghiulara', { baza: 5000, contStoc: '371' }),
+      E3('t2', 'livrare_triunghiulara', { baza: 7000 }),
+    ] };
+    const aT = xml.d300Rows(rep.d300(dbT, '2026-06'));
+    eq('livrarea triunghiulara merge pe randul 3', aT.R3_1, 7000);
+    eq('achizitia triunghiulara NU produce taxa colectata', aT.R17_2 || 0, 0);
+    eq('...si nici taxa deductibila', aT.R27_2 || 0, 0);
+    eq('...si nu apare pe randul achizitiilor intracomunitare', aT.R5_1 || 0, 0);
+    const r390 = rep.d390(dbT, '2026-06');
+    eq('livrarea se declara in D390 pe codul T', r390.totaluri.T, 7000);
+    eq('...si numai ea (achizitia nu se declara)', r390.rows.length, 1);
+    ok('articolul de achizitie nu are nicio linie de TVA',
+      !T3.getType('achizitie_triunghiulara').build({ baza: 5000 }).some((l) => /^442/.test(String(l.debit)) || /^442/.test(String(l.credit))));
+  }
+
+  // ── Regimul special al marjei (art. 312) ────────────────────────────────────────────────────
+  {
+    const marja = (pv, pc) => T3.getType('vanzare_regim_marja').build({ pretVanzare: pv, pretCumparare: pc, cota: 21 });
+    const l = marja(12000, 10000);
+    // TVA-ul e INCLUS in marja: 2000 x 21/121 = 347,11. Adaugat PESTE marja ar da 420 — cu 21% mai
+    // mult decat se datoreaza, adica taxa pe taxa.
+    eq('TVA se extrage din marja, nu se adauga peste ea', l.find((x) => x.credit === '4427').suma, 347.11);
+    eq('venitul e pretul de vanzare minus taxa pe marja', l.find((x) => x.credit === '707').suma, 11652.89);
+    eq('descarcarea de gestiune e la costul bunului', l.find((x) => x.debit === '607').suma, 10000);
+    // Marja negativa: baza zero, nu creanta la buget.
+    const pierdere = marja(9000, 10000);
+    ok('bun vandut in pierdere: nicio taxa colectata', !pierdere.some((x) => x.credit === '4427'));
+    eq('...si venitul e chiar pretul incasat', pierdere.find((x) => x.credit === '707').suma, 9000);
+    // Achizitia nu are TVA deductibila — chiar conditia regimului.
+    ok('achizitia in regim de marja nu deduce TVA',
+      !T3.getType('achizitie_regim_marja').build({ baza: 10000 }).some((x) => /^442/.test(String(x.debit))));
+
+    // DECONT: baza e MARJA, nu pretul de vanzare. Citita din linii ar da o cota fantoma de 3%,
+    // iar randul ar cadea din D300 (`d300CoteFaraRand`).
+    const eM = { id: 'm1', tip: 'vanzare_regim_marja', data: '2026-06-10', period: '2026-06', status: 'postat',
+      partenerCui: 'RO9', partener: 'C', lines: l, marjaTva: { marja: 2000, cota: 21, tva: 347.11, baza: 1652.89, pretVanzare: 12000, pretCumparare: 10000 } };
+    const dbM = { openingBalances: {}, company: { cui: 'RO1', nume: 'X', perioadaTva: 'L' }, entries: [eM] };
+    const aM = xml.d300Rows(rep.d300(dbM, '2026-06'));
+    eq('decontul declara MARJA ca baza, nu pretul de vanzare', aM.R9_1, 1653);
+    eq('...cu taxa pe marja', aM.R9_2, 347);
+    eq('...deci raportul da cota reala (regula R84)', Math.round((aM.R9_2 / aM.R9_1) * 100), 21);
+    eq('nicio cota fara rand in decont', xml.d300CoteFaraRand(rep.d300(dbM, '2026-06')).length, 0);
+
+    // Registrul art. 312 alin. (13): obligatoriu la control, derivat din articole.
+    const reg = rep.registruMarja(dbM, '2026-06');
+    eq('registrul marjei are randul vanzarii', reg.nr, 1);
+    eq('...cu pretul de cumparare', reg.rows[0].pretCumparare, 10000);
+    eq('...si marja pe care s-a calculat taxa', reg.totalMarja, 2000);
+
+    // e-Factura: DELIBERAT neemisa. Factura in regim special nu are voie sa arate TVA separat, iar
+    // generatorul UBL exact asta ar face — un XML gresit trimis in SPV e mai rau decat unul lipsa.
+    ok('vanzarea in regim de marja NU pleaca in e-Factura (lipsa cunoscuta, cu motiv scris)',
+      !xml.isSendable({ tip: 'vanzare_regim_marja' }));
+    eq('...si decizia e explicita pe tip, nu o omisiune', T3.getType('vanzare_regim_marja').eFactura, 'nu');
+  }
+
+  // POARTA: fiecare categorie de livrare scutita produsa de jurnal trebuie sa aiba un rand in
+  // decont. Fara ea, o categorie noua ar disparea TACIT din D300 — chiar defectul reparat aici.
+  const cat = new Set(Object.values(acc.LIVRARI_SCUTITE || {}).map((x) => x.cat));
+  ok('poarta chiar vede categoriile', cat.size >= 4);
+  const faraRand = [...cat].filter((c) => !xml.D300_RAND_SCUTITE[c]);
+  eq('fiecare categorie scutita are rand in D300' + (faraRand.length ? ' — LIPSA: ' + faraRand.join(', ') : ''), faraRand.length, 0);
+}
+
 section('D390 — recapitulativ intracomunitar (VIES)');
 const d390db = { entries: [
   { id: '1', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-10', partener: 'DE GmbH', partenerCui: 'DE123', lines: gt2('livrare_intracomunitara').build({ baza: 5000 }) },
@@ -5500,7 +5599,7 @@ eq('netrimise: termen = data + 5 zile CALENDARISTICE (OUG 89/2025)', efx.items.f
     const P = { baza: 1000, tva: 210, cota: 21, suma: 1000, pret: 1000, valoare: 1000, valuta: 200, curs: 5, cantitate: 1 };
     // Operatiunile scutite / cu taxare inversa au TVA 0 pe factura — asta e regula, nu o scapare.
     const FARA_TVA = new Set(['livrare_intracomunitara', 'prestare_servicii_intracomunitara',
-      'taxare_inversa_interna_livrare', 'factura_vanzare_valuta']);
+      'taxare_inversa_interna_livrare', 'factura_vanzare_valuta', 'export_extracomunitar', 'livrare_triunghiulara']);
     const emise = TIP.TYPES.filter((t) => t.eFactura === 'da');
     ok('sunt cel putin 13 tipuri de factura emisa', emise.length >= 13);
     for (const t of emise) {

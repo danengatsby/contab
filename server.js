@@ -197,6 +197,18 @@ function upsertPartner(firmaId, entry) {
   dd.partners[firmaId][key] = ex;
 }
 
+/** Marja si TVA-ul ei, din campurile formularului — pentru marcajul pastrat pe articol.
+ *  Aceeasi formula ca in tipul de document (TVA inclus in marja, cota/(100+cota)); tinuta aici
+ *  doar ca sa nu expuna modulul de tipuri un al doilea contract public. */
+function marjaDinCampuri(f) {
+  const pretV = round2(Number(f.pretVanzare) || 0);
+  const cost = round2(Number(f.pretCumparare) || 0);
+  const cota = Number(f.cota) || fiscal.FISCAL.tvaStandard;
+  const marja = round2(pretV - cost);
+  const tva = marja > 0 ? round2((marja * cota) / (100 + cota)) : 0;
+  return { marja, cota, tva, baza: round2(marja - tva), pretVanzare: pretV, pretCumparare: cost };
+}
+
 /**
  * Compune articolul contabil COMPLET, dar FARA identitate. Separarea exista pentru ca
  * previzualizarea din formular (POST /api/preview) sa treaca prin exact aceleasi reguli ca
@@ -317,6 +329,14 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     // (art. 298) intra in linii si se pierde, dar art. 25(3)(l) face nedeductibila si jumatate din
     // CHELTUIALA, iar asta se calculeaza abia la finalul anului — atunci steagul nu mai exista.
     ...(f.auto50 ? { auto50: true } : {}),
+    // Regimul marjei (art. 312): decontul cere ca baza sa fie MARJA, nu pretul de vanzare. Din
+    // liniile articolului nu se poate reconstitui — raportul TVA/venit ar da o cota fantoma de 3%
+    // (347/11.653), iar randul ar disparea tacit din D300. Acelasi tipar ca `tvaPartial` la
+    // achizitii: se memoreaza factura asa cum a fost calculata.
+    ...(tipId === 'vanzare_regim_marja' ? { marjaTva: marjaDinCampuri(f) } : {}),
+    // Declaratia vamala de export: justifica scutirea (art. 294 alin. (1) lit. a) si se cere la
+    // control. Nu se poate deduce din conturi, deci se pastreaza pe articol.
+    ...(f.declaratieVamala ? { declaratieVamala: String(f.declaratieVamala).trim() } : {}),
     // Acelasi motiv ca la auto50: incadrarea „lipsa neimputabila si neasigurata" (art. 25(4)(c))
     // nu se poate citi din conturi — aceeasi cheltuiala, pe acelasi cont, e deductibila daca a fost
     // imputata sau asigurata — iar la finalul anului formularul din care s-a bifat nu mai exista.
