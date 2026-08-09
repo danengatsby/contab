@@ -1,0 +1,62 @@
+{
+ "parte": "Partea IV · Banii · faza 3",
+ "nr": "15",
+ "titlu": "Bancă și casă",
+ "blocuri": [
+  { "tip": "p", "text": "Conturile de trezorerie au o proprietate pe care niciun alt cont din contabilitate nu o are: pot fi confruntate cu o realitate din afara firmei. Soldul contului de bancă din contabilitate trebuie să fie egal cu ce scrie pe extras — o cifră emisă de altcineva, care nu poate fi ajustată." },
+  { "tip": "p", "text": "De aceea trezoreria e, în același timp, cea mai simplă parte a contabilității și cel mai bun detector de erori din toată firma. Simplă, fiindcă operațiunile sunt puține și evidente. Bună detectoare, fiindcă orice greșeală se vede imediat, prin comparație." },
+
+  { "tip": "h", "text": "Cele patru conturi și diferența dintre ele" },
+  { "tip": "tabel",
+    "titlu": "Unde stau banii",
+    "cap": ["Cont", "Ce cuprinde"],
+    "randuri": [
+      ["5121 Conturi la bănci în lei", "soldul contului curent — confruntabil cu extrasul"],
+      ["5124 Conturi la bănci în valută", "același lucru, pe fiecare valută separat"],
+      ["5311 Casa în lei", "numerarul din casierie, confruntabil cu registrul de casă"],
+      ["5314 Casa în valută", "numerarul în valută, ținut distinct"]
+    ],
+    "nota": "Valuta se ține în două monede deodată: în valuta ei și în lei, la cursul de la data operațiunii. Diferența de curs se regularizează la închidere — capitolul 26." },
+  { "tip": "p", "text": "Deosebirea practică dintre bancă și casă nu e mărimea sumelor, ci verificabilitatea. Extrasul vine de la bancă, deci e o probă exterioară. Registrul de casă îl întocmești tu, deci probă exterioară nu există — singura verificare posibilă e numărarea efectivă a banilor din sertar." },
+
+  { "tip": "h", "text": "Încasarea și plata: două articole simple" },
+  { "tip": "p", "text": "Operațiunile de trezorerie sunt, în majoritatea lor covârșitoare, articole simple: un cont de bani și un cont de terți." },
+  { "tip": "tabel",
+    "titlu": "Cele două operațiuni de bază",
+    "cap": ["Ce s-a întâmplat", "Debit", "Credit", "Ce spune"],
+    "randuri": [
+      ["Clientul a plătit factura", "5121 Bancă", "4111 Clienți", "banii au intrat, creanța s-a stins"],
+      ["Am plătit furnizorul", "401 Furnizori", "5121 Bancă", "datoria s-a stins, banii au ieșit"]
+    ],
+    "nota": "Observă că în niciunul dintre ele nu apare vreun cont de venit sau de cheltuială." },
+  { "tip": "cheie", "text": "Plata nu e cheltuială, iar încasarea nu e venit. Ele sting datorii și creanțe născute mai devreme, cu alt document." },
+  { "tip": "p", "text": "E aceeași idee cu care a început cartea, în capitolul 1: câștigul și banii sunt lucruri diferite. Aici ea capătă formă contabilă. Cheltuiala s-a înregistrat când a sosit factura; plata doar stinge datoria. Cine înregistrează cheltuiala și la factură, și la plată, o numără de două ori — greșeala clasică a firmelor care lucrează „după extras”." },
+
+  { "tip": "h", "text": "Soldul de casă nu poate fi negativ" },
+  { "tip": "p", "text": "E singura afirmație din contabilitate pe care o poate verifica oricine, fără nicio pregătire: dintr-un sertar nu poți scoate mai mulți bani decât ai pus în el." },
+  { "tip": "p", "text": "Un sold de casă negativ nu e o problemă de trezorerie, ci o eroare de înregistrare — de fiecare dată, fără excepție. Cauzele sunt aproape întotdeauna două: o încasare care nu s-a înregistrat, sau o plată înregistrată cu o dată anterioară celei reale." },
+  { "tip": "p", "text": "Merită tratat ca alarmă, nu ca inconvenient. Un program care afișează liniștit „−1.240 lei” în casierie ascunde, în realitate, un document lipsă — iar documentul acela lipsește și din TVA, și din rezultat." },
+
+  { "tip": "h", "text": "Capcana viramentelor interne" },
+  { "tip": "p", "text": "Când muți bani din bancă în casierie, sau invers, ai o operațiune care apare de două ori: o dată ca ieșire din bancă, în extras, și o dată ca intrare în casă, în registrul de casă. Cele două documente sosesc adesea separat, iar dacă fiecare se înregistrează pe cont propriu, suma se dublează." },
+  { "tip": "p", "text": "Pentru asta există contul 581 Viramente interne, un cont de tranzit: ieșirea din bancă îl creditează, intrarea în casă îl debitează, iar la final soldul lui trebuie să fie zero. Dacă nu e zero, un capăt al mutării lipsește." },
+  { "tip": "p", "text": "E un exemplu bun de cont care nu reprezintă nimic din lumea reală — nu există niciun seif numit „viramente interne”. Există doar ca să facă vizibilă o mutare care, altfel, s-ar putea pierde între două documente." },
+
+  { "tip": "contabil", "titlu": "Pentru contabil",
+    "text": "Registrul de casă se întocmește zilnic, pentru fiecare zi cu operațiuni, iar soldul se reportează de la o zi la alta — nu se cumulează lunar; forma și regimul lui sunt cele din normele privind documentele financiar-contabile. Pentru trezoreria în valută, evidența se ține simultan în valută și în lei, la cursul de la data operațiunii, iar la fiecare închidere soldurile se reevaluează la cursul comunicat de BNR pentru ultima zi bancară a perioadei; diferențele intră la venituri sau cheltuieli financiare, nu ajustează costul operațiunilor inițiale. Contul 581 trebuie verificat la fiecare închidere: un sold nenul semnalează fie un capăt de virament neînregistrat, fie o mutare aflată efectiv în tranzit la data închiderii — iar cele două se deosebesc doar uitându-te la documente, nu la cifră. În fine, soldul creditor pe un cont bancar nu e o eroare, ci un descoperit de cont, care se prezintă în bilanț ca datorie financiară pe termen scurt, nu ca disponibil negativ; confuzia dintre acest caz legitim și soldul de casă negativ, care e întotdeauna o eroare, e sursa unor corecții inutile." },
+
+  { "tip": "h", "text": "Ce urmează" },
+  { "tip": "p", "text": "Banii sunt înregistrați. Rămâne partea care dă trezoreriei adevărata ei valoare: confruntarea cu extrasul, adică singura verificare din contabilitate care se sprijină pe o probă venită din afara firmei." },
+  { "tip": "p", "text": "E capitolul următor, și e cel mai bun instrument de găsit erori din toată cartea." },
+
+  { "tip": "recap", "titlu": "De reținut din acest capitol",
+    "puncte": [
+      "Trezoreria e singura parte a contabilității confruntabilă cu o probă exterioară: extrasul de cont.",
+      "Plata nu e cheltuială și încasarea nu e venit — ele sting datorii și creanțe apărute mai devreme.",
+      "Cine înregistrează cheltuiala și la factură, și la plată, o numără de două ori.",
+      "Un sold de casă negativ e întotdeauna o eroare de înregistrare, niciodată o situație reală.",
+      "Mutările între bancă și casă trec prin 581 Viramente interne, al cărui sold trebuie să fie zero la închidere.",
+      "Soldul creditor la bancă e altceva: e un descoperit de cont, adică o datorie — nu o eroare."
+    ] }
+ ]
+}
