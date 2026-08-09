@@ -1,0 +1,193 @@
+{
+ "parte": "Partea VIII · Statul · fazele 9 și 13",
+ "nr": "35",
+ "titlu": "TVA: colectată, deductibilă, de plată",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Taxa pe valoarea adăugată e cea mai neînțeleasă obligație a unei firme, și confuzia pornește de la un lucru simplu: banii de TVA trec prin contul firmei, dar nu sunt niciodată ai ei."
+  },
+  {
+   "tip": "p",
+   "text": "Firma îi încasează de la client odată cu factura, îi ține câteva săptămâni și îi virează statului. Rolul ei e de colector, nu de plătitor — deși pe declarație scrie „de plată”."
+  },
+  {
+   "tip": "h",
+   "text": "Cele două conturi"
+  },
+  {
+   "tip": "p",
+   "text": "Toată mecanica TVA-ului stă în două conturi și în diferența dintre ele."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele două fețe ale taxei",
+   "cap": [
+    "Contul",
+    "Ce adună",
+    "Natura"
+   ],
+   "randuri": [
+    [
+     "4427 TVA colectată",
+     "taxa facturată clienților",
+     "datorie — nu sunt banii firmei"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "taxa plătită furnizorilor",
+     "creanță — se recuperează"
+    ]
+   ],
+   "nota": "Diferența dintre ele e ce datorează firma statului pe luna respectivă. Dacă e negativă, statul datorează firmei."
+  },
+  {
+   "tip": "p",
+   "text": "„Valoarea adăugată” din numele taxei e chiar această diferență. Firma plătește taxă numai pe cât a adăugat ea la valoarea bunului — restul îl plătiseră deja furnizorii ei, iar ea îl deduce."
+  },
+  {
+   "tip": "h",
+   "text": "Decontul, pe cifre reale"
+  },
+  {
+   "tip": "p",
+   "text": "Iată luna iunie a unei firme mici, așa cum iese decontul din propria ei contabilitate, fără nicio intervenție."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Decontul lunii iunie",
+   "cap": [
+    "Operațiunea",
+    "Bază",
+    "Cotă",
+    "TVA"
+   ],
+   "randuri": [
+    [
+     "Livrări de bunuri și servicii taxabile",
+     "14.000",
+     "21%",
+     "2.940"
+    ],
+    [
+     "Achiziții cu drept de deducere",
+     "10.000",
+     "21%",
+     "2.100"
+    ],
+    [
+     "TVA de plată",
+     "",
+     "",
+     "840"
+    ]
+   ],
+   "numerice": [
+    2,
+    4
+   ],
+   "total": true,
+   "nota": "Cifrele nu se completează: se adună din articolele contabile ale lunii. Decontul e un rezultat, nu un formular."
+  },
+  {
+   "tip": "p",
+   "text": "Firma a încasat 2.940 de lei de TVA de la clienți și a plătit 2.100 furnizorilor. Datorează statului diferența de 840. Nu a pierdut și nu a câștigat nimic: cei 840 de lei erau, de la bun început, ai statului."
+  },
+  {
+   "tip": "cheie",
+   "text": "Decontul nu se completează, se compune. Fiecare cifră din el vine din articole contabile deja înregistrate — dacă trebuie să tastezi ceva, undeva lipsește o înregistrare."
+  },
+  {
+   "tip": "h",
+   "text": "Când deductibila e mai mare"
+  },
+  {
+   "tip": "p",
+   "text": "Se întâmplă des și nu e o anomalie: o lună cu investiții mari, un stoc constituit înaintea sezonului, un export scutit cu drept de deducere. Diferența devine TVA de recuperat."
+  },
+  {
+   "tip": "p",
+   "text": "Firma are atunci două posibilități: să ceară rambursarea, cu inspecție fiscală în majoritatea cazurilor, sau să reporteze suma în luna următoare, unde se va scădea din TVA-ul de plată."
+  },
+  {
+   "tip": "p",
+   "text": "Reportul e mecanismul firesc și cel mai des folosit. E și motivul pentru care decontul are, în capul lui, un rând cu soldul perioadei precedente: TVA-ul nu se închide lună de lună, ci curge dintr-una în alta până se stinge."
+  },
+  {
+   "tip": "h",
+   "text": "Când TVA-ul nu se deduce"
+  },
+  {
+   "tip": "p",
+   "text": "Dreptul de deducere nu e automat. Trei condiții trebuie îndeplinite deodată, iar lipsa oricăreia îl anulează."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce cere deducerea",
+   "cap": [
+    "Condiția",
+    "Ce înseamnă în practică"
+   ],
+   "randuri": [
+    [
+     "factură conformă",
+     "cu toate elementele obligatorii, pe numele firmei"
+    ],
+    [
+     "destinație economică",
+     "achiziția servește operațiunilor taxabile ale firmei"
+    ],
+    [
+     "furnizor înregistrat în scopuri de TVA",
+     "codul valid la data operațiunii"
+    ]
+   ],
+   "nota": "Verificarea codului de TVA al furnizorului la data facturii nu e o formalitate: o factură de la un furnizor cu codul anulat nu dă drept de deducere."
+  },
+  {
+   "tip": "p",
+   "text": "La acestea se adaugă limitările exprese: cheltuielile fără scop economic, cele de protocol peste plafon și, cazul cel mai frecvent, autoturismele — pentru care deducerea e limitată la jumătate, dacă vehiculul nu e folosit exclusiv în scop economic."
+  },
+  {
+   "tip": "h",
+   "text": "Lunar sau trimestrial"
+  },
+  {
+   "tip": "p",
+   "text": "Perioada fiscală depinde de cifra de afaceri și de operațiunile intracomunitare. Regula practică: firmele mici depun trimestrial, cele mari lunar, iar o achiziție intracomunitară de bunuri schimbă imediat perioada în lunară, din chiar luna în care s-a produs."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința care surprinde e că schimbarea nu e opțională și nici amânabilă: o singură achiziție de la un furnizor din altă țară a Uniunii aduce cu ea obligația de a trece la depunerea lunară și de a anunța schimbarea. E una dintre puținele situații în care o singură operațiune modifică regimul declarativ al firmei."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Cotele în vigoare sunt 21% standard și 11% redusă, aplicabile de la 1 august 2025 potrivit Legii 141/2025, iar plafonul de scutire pentru întreprinderile mici e de 395.000 lei. Patru observații de practică. Prima: exigibilitatea, nu faptul generator, determină luna în care taxa intră în decont — la livrări de bunuri și prestări de servicii cele două coincid de regulă, dar la avansuri exigibilitatea intervine la încasare, iar la achizițiile intracomunitare la data emiterii facturii sau, cel târziu, în a cincisprezecea zi a lunii următoare faptului generator; tratarea lor după data documentului e o sursă constantă de decalaje între contabilitate și decont. A doua: dreptul de deducere se exercită în decontul perioadei în care sunt îndeplinite condițiile de fond și de formă, dar poate fi exercitat și ulterior, în limita termenului de prescripție, printr-un decont ulterior sau prin decont rectificativ — distincția dintre cele două căi are consecințe procedurale, deci nu se alege la întâmplare. A treia: rândul de report din decont trebuie să corespundă exact soldului contului 4424 din balanța perioadei precedente; verificarea acestei corelații înainte de depunere prinde practic toate erorile de preluare. A patra: decontul se corectează prin decont rectificativ, dar acesta nu poate fi depus după începerea unei inspecții fiscale pentru perioada respectivă — termenul practic de corecție e, deci, mai scurt decât cel legal."
+  },
+  {
+   "tip": "h",
+   "text": "Legătura cu registrele"
+  },
+  {
+   "tip": "p",
+   "text": "Decontul se compune din jurnalul de vânzări și cel de cumpărări, întâlnite în capitolul 30. Ele sunt registre în scopuri de TVA, distincte de jurnalele contabile, iar totalurile lor trebuie să corespundă rulajelor conturilor 4427 și 4426 din balanță."
+  },
+  {
+   "tip": "p",
+   "text": "Corelația aceasta e ultima verificare înainte de depunere și merită făcută întotdeauna: dacă jurnalele și balanța nu spun același lucru, una dintre ele e greșită, iar declarația construită pe oricare dintre ele va fi la fel."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Banii de TVA trec prin firmă, dar nu sunt ai ei: 4427 e datorie, 4426 e creanță, diferența se virează.",
+    "Decontul nu se completează, se compune din articolele contabile ale lunii.",
+    "Când deductibila e mai mare, suma se reportează în luna următoare — TVA-ul curge dintr-o lună în alta.",
+    "Deducerea cere trei condiții deodată: factură conformă, destinație economică și furnizor cu cod valid la data operațiunii.",
+    "Cotele sunt 21% și 11% de la 1 august 2025; deducerea la autoturisme e limitată la 50%.",
+    "O singură achiziție intracomunitară de bunuri trece firma la depunere lunară, imediat și obligatoriu."
+   ]
+  }
+ ]
+}

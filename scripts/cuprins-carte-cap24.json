@@ -113,13 +113,13 @@
     ],
     [
      "TVA",
-     "472,82",
+     "522,59",
      "4426 — creanță",
      "se deduce în decont"
     ],
     [
      "Total de plată",
-     "2.961,32",
+     "3.011,09",
      "",
      "cât iese efectiv din cont"
     ]
@@ -132,7 +132,7 @@
   },
   {
    "tip": "p",
-   "text": "Din cei 2.961,32 de lei plătiți, cheltuiala lunii e de 750 de lei. Restul e rambursare de datorie și taxă recuperabilă. La aceasta se adaugă amortizarea bunului, care e o cheltuială separată și care nu se plătește."
+   "text": "Din cei 3.011,09 de lei plătiți, cheltuiala lunii e de 750 de lei. Restul e rambursare de datorie și taxă recuperabilă. La aceasta se adaugă amortizarea bunului, care e o cheltuială separată și care nu se plătește."
   },
   {
    "tip": "cheie",
@@ -194,7 +194,7 @@
     "Forma de leasing se stabilește după fondul economic — cine suportă riscurile folosinței — nu după titlul contractului.",
     "La leasingul financiar bunul intră în bilanțul tău împreună cu datoria din 167, deși juridic nu e al tău; tu îl amortizezi.",
     "Rata are trei componente cu destinații diferite: principalul stinge datoria, dobânda e cheltuială, TVA se deduce.",
-    "Cheltuiala lunii e dobânda plus amortizarea, nu rata. În exemplul din capitol: 750 de lei din 2.961,32 plătiți.",
+    "Cheltuiala lunii e dobânda plus amortizarea, nu rata. În exemplul din capitol: 750 de lei din 3.011,09 plătiți.",
     "Înregistrarea întregii rate pe 612 umflă cheltuiala, poate dubla costul, ascunde activul și datoria din bilanț și falsifică analiza finanțării.",
     "Împărțirea principal/dobândă vine din graficul contractului, nu dintr-o estimare — la anuitate constantă, primele rate sunt aproape numai dobândă.",
     "La leasingul operațional totul e mai simplu: rata e chirie, în 612, iar bunul nu apare în bilanțul tău."

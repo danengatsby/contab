@@ -92,7 +92,7 @@
   },
   {
    "tip": "tabel",
-   "titlu": "O creanță de 11.900 lei care se deteriorează",
+   "titlu": "O creanță de 12.100 lei care se deteriorează",
    "cap": [
     "Momentul",
     "Articolul",
@@ -102,22 +102,22 @@
     [
      "Clientul depășește 270 de zile de la scadență",
      "4118 = 4111",
-     "11.900"
+     "12.100"
     ],
     [
      "Se constituie ajustarea pentru întreaga creanță",
      "6814 = 491",
-     "11.900"
+     "12.100"
     ],
     [
      "Varianta A: clientul plătește",
      "491 = 7814",
-     "11.900"
+     "12.100"
     ],
     [
      "Varianta B: creanța devine irecuperabilă",
      "654 = 4118 și 491 = 7814",
-     "11.900"
+     "12.100"
     ]
    ],
    "numerice": [
@@ -143,7 +143,7 @@
   },
   {
    "tip": "p",
-   "text": "Consecința practică merită spusă pe șleau unui patron: la o factură neîncasată de 11.900 de lei, firma pierde nu 10.000, ci 11.900, fiindcă cei 1.900 de lei de TVA au fost deja plătiți statului din banii firmei."
+   "text": "Consecința practică merită spusă pe șleau unui patron: la o factură neîncasată de 12.100 de lei, firma pierde nu 10.000, ci 12.100, fiindcă cei 2.100 de lei de TVA au fost deja plătiți statului din banii firmei."
   },
   {
    "tip": "contabil",
@@ -169,7 +169,7 @@
     "Între creanța normală și pierderea definitivă există o stare intermediară: creanța incertă, în contul 4118.",
     "Ajustarea nu șterge creanța, ci îi așază alături valoarea probabil nerecuperabilă — deci se poate relua integral dacă clientul plătește.",
     "Pierderea se recunoaște o singură dată, la constituirea ajustării; scoaterea din evidență doar schimbă eticheta.",
-    "TVA-ul colectat rămâne datorat: la o factură de 11.900 lei neîncasată, firma pierde 11.900, nu 10.000.",
+    "TVA-ul colectat rămâne datorat: la o factură de 12.100 lei neîncasată, firma pierde 12.100, nu 10.000.",
     "Fiscal, deducerea e limitată la 30% și cere 270 de zile de la scadență, creanță negarantată și debitor neafiliat.",
     "Contabil, incertitudinea se stabilește prin judecată documentată, nu prin numărarea zilelor."
    ]
