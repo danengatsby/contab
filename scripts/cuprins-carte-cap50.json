@@ -1,0 +1,135 @@
+{
+ "parte": "Partea XI · Urma · faza 14",
+ "nr": "50",
+ "titlu": "Cine a făcut ce și când",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Contabilitatea consemnează operațiuni economice. Nu consemnează, prin ea însăși, acțiuni omenești: cine a introdus o factură, cine a modificat un preț, cine a șters o ciornă, cine s-a autentificat la ora trei dimineața."
+  },
+  {
+   "tip": "p",
+   "text": "Pentru asta există un al doilea jurnal, paralel cu cel contabil, iar rostul lui e frecvent înțeles greșit — inclusiv, sau mai ales, de cei care îl instalează."
+  },
+  {
+   "tip": "h",
+   "text": "Nu e supraveghere"
+  },
+  {
+   "tip": "p",
+   "text": "Prima reacție a oricărei echipe la ideea unui jurnal de operațiuni e că cineva o urmărește. Reacția e firească și, în majoritatea covârșitoare a cazurilor, greșită."
+  },
+  {
+   "tip": "p",
+   "text": "Un jurnal de audit nu există ca să prindă pe cineva. Există ca să poată răspunde la o întrebare care apare inevitabil: de ce arată cifra asta așa. Iar răspunsul „a fost modificată pe 14 martie, de utilizatorul X, care a scris ca motiv Y” încheie discuția în treizeci de secunde."
+  },
+  {
+   "tip": "cheie",
+   "text": "Un jurnal de operațiuni protejează, în primul rând, pe cel care a făcut lucrurile corect. El e singurul care poate dovedi asta."
+  },
+  {
+   "tip": "p",
+   "text": "Fără jurnal, într-o echipă de trei persoane, orice eroare devine o discuție despre cine ar fi putut. Cu jurnal, devine o constatare, iar de cele mai multe ori constatarea e că lucrul s-a făcut corect și problema e altundeva."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se consemnează"
+  },
+  {
+   "tip": "p",
+   "text": "Nu tot. Un jurnal care înregistrează fiecare clic devine ilizibil, iar un jurnal ilizibil e echivalent cu absența lui. Se consemnează acțiunile care schimbă ceva sau care privesc accesul."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce merită consemnat",
+   "cap": [
+    "Categoria",
+    "Exemple"
+   ],
+   "randuri": [
+    [
+     "Autentificare",
+     "intrări reușite și eșuate, cu adresa de rețea"
+    ],
+    [
+     "Drepturi",
+     "crearea unui utilizator, schimbarea rolului, impersonarea"
+    ],
+    [
+     "Date",
+     "importuri, preluări de solduri, ștergeri, restaurări"
+    ],
+    [
+     "Fiscal",
+     "depuneri, descărcări din spațiul virtual, cereri către autoritate"
+    ],
+    [
+     "Excepții",
+     "forțarea unei închideri, redeschiderea unei perioade"
+    ]
+   ],
+   "nota": "Adresa de rețea se reține la autentificare, unde răspunde la o întrebare reală. Pe restul acțiunilor e zgomot repetat de mii de ori pe zi."
+  },
+  {
+   "tip": "p",
+   "text": "Se observă că lista nu conține citirile obișnuite. Cine s-a uitat la un raport nu e o informație utilă și, adunată, îneacă exact evenimentele care contează."
+  },
+  {
+   "tip": "h",
+   "text": "Două proprietăți fără de care nu servește la nimic"
+  },
+  {
+   "tip": "p",
+   "text": "Prima: jurnalul trebuie să fie append-only. Se scrie la coadă și nu se rescrie niciodată. Un jurnal din care se pot șterge linii nu dovedește nimic, fiindcă absența unei linii nu se poate distinge de inexistența evenimentului."
+  },
+  {
+   "tip": "p",
+   "text": "A doua: trebuie să supraviețuiască bazei de date. Dacă jurnalul trăiește în aceeași bază pe care o auditează, el dispare exact în situația pentru care exista — o coruptă, o restaurare greșită, o ștergere deliberată."
+  },
+  {
+   "tip": "p",
+   "text": "Soluția practică e dublarea: evidența vie, plafonată, pentru consultare rapidă, și un fișier separat, append-only, inclus în copiile de siguranță. Cele două se completează, iar plafonul din prima e justificat tocmai de existența celei de-a doua."
+  },
+  {
+   "tip": "h",
+   "text": "Un jurnal care tace"
+  },
+  {
+   "tip": "p",
+   "text": "Merită încheiat cu observația cea mai puțin evidentă din capitol, fiindcă ea se aplică oricărui mecanism de control, nu doar acestuia."
+  },
+  {
+   "tip": "p",
+   "text": "Scrierea în jurnal e, prin natura ei, secundară: dacă eșuează, acțiunea principală nu trebuie oprită. Nimeni nu vrea ca o factură să nu se poată salva fiindcă un fișier de log e plin. Consecința e însă că un jurnal care nu mai poate scrie arată exact ca unul în care nu s-a întâmplat nimic."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea capacitatea de a scrie trebuie verificată activ, nu constatată atunci când ai nevoie de o probă. E aceeași regulă ca la copiile de siguranță din capitolul precedent și ca la depunerea declarațiilor din capitolul 38: absența unui semnal de eroare nu e o confirmare."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Cerința decurge din obligațiile de control intern din reglementările contabile și, pentru sistemele informatice de evidență, din cerințele privind asigurarea integrității și trasabilității datelor prevăzute de normele privind documentele financiar-contabile și de procedurile de control fiscal. Patru observații. Prima: pentru contribuabilii care depun fișierul standard de control fiscal, trasabilitatea nu mai e o bună practică internă, ci o condiție de fond — datele raportate trebuie să poată fi reconciliate cu evidența, iar modificările retroactive nedocumentate produc neconcordanțe pe care sistemul de analiză de risc al autorității le identifică automat. A doua: jurnalul de operațiuni nu se confundă cu jurnalul contabil; primul consemnează acțiuni asupra sistemului, al doilea operațiuni economice, iar unul nu îl poate înlocui pe celălalt. A treia: prelucrarea datelor de identificare a utilizatorilor și a adreselor de rețea intră sub incidența reglementărilor privind protecția datelor cu caracter personal — scopul, durata de păstrare și accesul la jurnal trebuie stabilite și comunicate, iar păstrarea nelimitată „pentru orice eventualitate” nu are temei. A patra: pentru firmele auditate, existența și funcționarea jurnalului sunt ele însele obiect de verificare; un sistem în care administratorul poate șterge urmele propriilor acțiuni e tratat, din perspectiva controlului intern, ca și cum jurnalul nu ar exista."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cu arhiva și cu jurnalul, tot ce se putea consemna e consemnat. Mai rămâne un singur capitol, și el e despre limită: ce anume, din tot ce a descris cartea, nu poate fi făcut de niciun program."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Jurnalul de operațiuni consemnează acțiuni omenești, nu operațiuni economice — sunt două jurnale diferite.",
+    "Rostul lui nu e supravegherea, ci răspunsul la „de ce arată cifra asta așa”; protejează mai ales pe cel care a lucrat corect.",
+    "Se consemnează autentificările, schimbările de drepturi, modificările de date și excepțiile — nu și citirile obișnuite.",
+    "Trebuie să fie append-only și să supraviețuiască bazei pe care o auditează.",
+    "Scrierea în jurnal e best-effort, deci un jurnal care nu mai poate scrie arată ca unul liniștit — capacitatea lui se verifică activ.",
+    "Un sistem în care administratorul își poate șterge urmele e tratat ca și cum nu ar avea jurnal deloc."
+   ]
+  }
+ ]
+}

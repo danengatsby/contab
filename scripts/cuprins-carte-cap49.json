@@ -1,0 +1,139 @@
+{
+ "parte": "Partea XI · Urma · faza 14",
+ "nr": "49",
+ "titlu": "Arhivarea",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Contabilitatea s-a încheiat. Situațiile financiare sunt semnate și depuse, declarațiile au recipise, exercițiul e închis. Partea aceasta e despre ce rămâne — și despre ziua, la doi sau la cinci ani distanță, în care cineva pune întrebări."
+  },
+  {
+   "tip": "p",
+   "text": "Ziua aceea vine mai des decât se crede: o inspecție fiscală, o cerere de credit, o vânzare a firmei, un litigiu cu un partener. Iar întrebarea e întotdeauna aceeași: arătați-mi documentul."
+  },
+  {
+   "tip": "h",
+   "text": "Dosarul lunii"
+  },
+  {
+   "tip": "p",
+   "text": "Unitatea de arhivare nu e documentul, ci luna. Un dosar lunar complet conține tot ce ar trebui pentru ca cineva străin să poată reface luna aceea fără să întrebe pe nimeni."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce conține dosarul unei luni",
+   "cap": [
+    "Elementul",
+    "De ce"
+   ],
+   "randuri": [
+    [
+     "Documentele justificative",
+     "fără ele, nicio înregistrare nu se poate proba"
+    ],
+    [
+     "Registrul-jurnal și cartea mare",
+     "ce s-a înregistrat, cronologic și pe conturi"
+    ],
+    [
+     "Balanța de verificare",
+     "poziția din care s-au compus declarațiile"
+    ],
+    [
+     "Jurnalele de TVA",
+     "baza decontului"
+    ],
+    [
+     "Declarațiile depuse ȘI recipisele",
+     "declarația fără recipisă nu probează nimic"
+    ],
+    [
+     "Notele de regularizare",
+     "raționamentele care nu se văd în cifre"
+    ],
+    [
+     "Extrasele și reconcilierea",
+     "proba exterioară a trezoreriei"
+    ]
+   ],
+   "nota": "Dosarul se constituie la închidere, nu se reconstituie la control. Diferența se vede exact în ce lipsește."
+  },
+  {
+   "tip": "cheie",
+   "text": "Un dosar reconstituit conține ce s-a găsit. Un dosar constituit la timp conține ce trebuia să existe. Diferența dintre ele e chiar ce caută un inspector."
+  },
+  {
+   "tip": "h",
+   "text": "Dosarul anului"
+  },
+  {
+   "tip": "p",
+   "text": "Peste cele douăsprezece dosare lunare se adaugă unul anual, cu documentele care privesc exercițiul întreg: situațiile financiare cu toate anexele, declarația de asumare a răspunderii, registrul-inventar și documentele de inventariere, registrul de evidență fiscală, hotărârea de aprobare și de repartizare a rezultatului."
+  },
+  {
+   "tip": "p",
+   "text": "Merită construit ca un tot închis, nu ca o cutie în care se adaugă la nesfârșit. Un exercițiu încheiat nu se mai schimbă — iar dosarul lui ar trebui să aibă aceeași proprietate."
+  },
+  {
+   "tip": "p",
+   "text": "Într-o arhivă electronică, proprietatea aceasta se poate chiar dovedi: fiecare fișier primește o amprentă criptografică, iar dosarul întreg primește una combinată. Orice modificare ulterioară a oricărui fișier schimbă amprenta finală, deci se vede. E echivalentul digital al sigiliului de pe un dosar de hârtie, și e mai greu de falsificat."
+  },
+  {
+   "tip": "h",
+   "text": "Cât se păstrează"
+  },
+  {
+   "tip": "p",
+   "text": "Termenele de păstrare sunt stabilite de legea contabilității și au fost modificate de mai multe ori în ultimii ani. E una dintre puținele cifre din această carte pe care nu o scriem: se verifică la zi, în textul în vigoare, nu se recită din memorie."
+  },
+  {
+   "tip": "p",
+   "text": "Ce nu se schimbă e principiul care stă în spatele lor: documentele trebuie să existe cel puțin atâta timp cât autoritatea fiscală mai poate stabili obligații pentru perioada respectivă. Un document distrus înainte de expirarea acelui termen lasă firma fără apărare exact în situația pentru care documentul exista."
+  },
+  {
+   "tip": "p",
+   "text": "Există și o categorie cu regim propriu, care merită reținută separat: documentele care servesc la stabilirea drepturilor de pensie ale angajaților. Un fost salariat poate avea nevoie de o adeverință peste douăzeci de ani, iar firma are obligația să o poată elibera."
+  },
+  {
+   "tip": "h",
+   "text": "Arhiva electronică nu se păstrează singură"
+  },
+  {
+   "tip": "p",
+   "text": "O arhivă pe hârtie se degradează încet și vizibil. Una electronică dispare instantaneu și tăcut — un disc defect, un cont de stocare expirat, un format pe care nimic nu îl mai deschide."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea o copie de siguranță care nu a fost niciodată restaurată nu e o copie de siguranță, ci o presupunere. Singura probă că arhiva funcționează e restaurarea ei efectivă, făcută periodic, ca exercițiu."
+  },
+  {
+   "tip": "p",
+   "text": "A doua regulă e la fel de simplă și la fel de des încălcată: copia trebuie să stea în altă parte decât originalul. O arhivă ținută pe același calculator cu contabilitatea rezolvă ștergerea accidentală și nu rezolvă nimic altceva — nici incendiul, nici furtul, nici criptarea."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Obligația de păstrare e prevăzută de Legea contabilității nr. 82/1991, care stabilește termenele pentru registrele de contabilitate obligatorii și pentru documentele justificative, cu regim special pentru statele de salarii, iar arhivarea electronică e admisă în condițiile prevăzute de lege și de normele privind documentele financiar-contabile. Patru observații. Prima: termenele au fost modificate prin intervenții legislative succesive, iar aplicarea unui termen expirat prin obișnuință duce la distrugerea unor documente încă necesare — verificarea textului în vigoare la momentul distrugerii, consemnată într-un proces-verbal, e practica prudentă. A doua: distrugerea documentelor la expirarea termenului se face pe bază de proces-verbal, cu aprobarea conducerii; distrugerea nedocumentată e, în fața unui control, imposibil de distins de pierdere. A treia: pentru documentele păstrate exclusiv electronic, trebuie asigurate autenticitatea originii, integritatea conținutului și lizibilitatea pe toată durata de păstrare, iar sistemul trebuie să permită listarea lor la cerere; o arhivă într-un format proprietar al unui furnizor dispărut nu îndeplinește a treia condiție. A patra: reconstituirea documentelor pierdute, sustrase sau distruse înainte de termen se face potrivit procedurii din norme, cu declarație și cu dovada demersurilor efectuate — procedura există tocmai pentru că situația e previzibilă, dar ea nu se poate aplica retroactiv unei arhive care nu a fost niciodată organizată."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Dosarele răspund la întrebarea ce s-a înregistrat. Mai rămâne una, la care documentele nu răspund: cine a făcut fiecare lucru, și când."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Unitatea de arhivare e luna, nu documentul: dosarul trebuie să permită refacerea lunii de către un străin.",
+    "Un dosar constituit la închidere conține ce trebuia să existe; unul reconstituit la control conține ce s-a găsit.",
+    "Dosarul anului se închide ca un tot; într-o arhivă electronică, amprentele criptografice fac orice modificare ulterioară vizibilă.",
+    "Termenele de păstrare s-au schimbat de mai multe ori — se verifică în textul în vigoare, nu se recită.",
+    "O copie de siguranță nerestaurată vreodată e o presupunere, nu o copie.",
+    "Copia trebuie să stea în alt loc decât originalul: altfel rezolvă doar ștergerea accidentală."
+   ]
+  }
+ ]
+}
