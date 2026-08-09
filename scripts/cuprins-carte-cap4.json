@@ -1,0 +1,65 @@
+{
+ "parte": "Partea I · De ce arată contabilitatea așa",
+ "nr": "4",
+ "titlu": "Cine răspunde pentru cifre",
+ "blocuri": [
+  { "tip": "p", "text": "Până aici cartea a vorbit despre mecanism: la ce întrebări răspunde contabilitatea, de ce fiecare sumă se scrie de două ori, în ce sertare. Capitolul acesta nu are nicio formulă și nicio schemă contabilă. Are, în schimb, singura întrebare la care un răspuns greșit costă bani adevărați: cine răspunde pentru ce e scris acolo." },
+  { "tip": "p", "text": "E o întrebare pe care nimeni nu o pune la începutul colaborării, fiindcă răspunsul pare evident fiecăruia dintre cei doi — și, de regulă, altfel. Patronul crede că a plătit un contabil ca să fie liniștit. Contabilul știe că lucrează cu documentele pe care i le dă cineva. Amândoi au dreptate pe jumătate, iar jumătatea care lipsește se vede abia la control." },
+
+  { "tip": "h", "text": "Ce spune legea, pe scurt și fără ocolișuri" },
+  { "tip": "p", "text": "Răspunderea pentru organizarea și conducerea contabilității revine administratorului firmei. Nu contabilului, nu programului, nu firmei de contabilitate. Faptul că munca e dată în afară nu mută răspunderea în afară: ea se poate externaliza ca execuție, nu ca răspundere." },
+  { "tip": "p", "text": "În același timp, situațiile financiare anuale nu pot fi semnate doar de administrator. Legea contabilității cere o a doua semnătură, calificată — un contabil cu studii economice superioare sau membru CECCAR (art. 10 și 28). Declarațiile curente ale lunii, în schimb, pot fi depuse și de administrator singur." },
+  { "tip": "tabel",
+    "titlu": "Cine semnează ce",
+    "cap": ["Documentul", "Administrator", "Contabil calificat"],
+    "randuri": [
+      ["Declarațiile lunare (TVA, salarii, informative)", "poate singur", "de regulă, tot el le face"],
+      ["Situațiile financiare anuale (bilanț, cont de profit)", "obligatoriu", "obligatoriu"],
+      ["Documentele justificative ale firmei", "răspunde de realitatea lor", "le înregistrează, nu le confirmă"]
+    ],
+    "nota": "Al treilea rând e cel care se înțelege cel mai rar — și cel din care se nasc cele mai multe neînțelegeri între patron și contabil." },
+
+  { "tip": "cheie", "text": "Execuția se externalizează. Răspunderea, nu." },
+
+  { "tip": "h", "text": "Ce știe doar unul și ce știe doar celălalt" },
+  { "tip": "p", "text": "Împărțirea muncii dintre patron și contabil nu e o chestiune de organizare internă, ci decurge din ceva mai adânc: fiecare dintre ei deține o informație pe care celălalt nu are cum să o aibă." },
+  { "tip": "p", "text": "Numai patronul știe dacă operațiunea a existat cu adevărat. Dacă marfa de pe factură a intrat în depozit. Dacă serviciul consultanței a fost prestat. Dacă mașina trecută pe firmă se folosește și în interes personal, și în ce proporție. Un contabil, oricât de bun, nu poate afla lucrurile astea din hârtie: hârtia spune ce scrie pe ea." },
+  { "tip": "p", "text": "Numai contabilul știe cum se traduce operațiunea în contabilitate și ce consecințe fiscale are. Dacă o cheltuială e deductibilă sau nu. Dacă TVA-ul se deduce integral, pe jumătate sau deloc. Dacă un bun se trece pe cheltuială acum sau se amortizează în cinci ani. Un patron, oricât de deștept, nu are de unde să știe asta fără să facă meseria." },
+  { "tip": "p", "text": "De aceea colaborarea nu e un moft, ci o necesitate structurală. Documentul e locul unde cele două cunoașteri se întâlnesc: patronul afirmă că operațiunea din spatele lui e reală, contabilul îi dă forma contabilă corectă." },
+
+  { "tip": "h", "text": "Cele două feluri de a greși" },
+  { "tip": "p", "text": "Când unul dintre cei doi face treaba celuilalt, rezultatul e previzibil, și ambele variante se văd des." },
+  { "tip": "p", "text": "Patronul care „se descurcă singur” ține o contabilitate care arată corect formal, dar spune altceva decât realitatea afacerii: cheltuieli personale trecute pe firmă fiindcă „așa se face”, venituri neînregistrate fiindcă „a fost o sumă mică”, o balanță care se închide impecabil pe cifre care nu descriu nimic. Partida dublă, cum s-a văzut în capitolul 2, e perfect fericită cu date false, atâta timp cât sunt simetrice." },
+  { "tip": "p", "text": "Contabilul care primește un teanc de hârtii la sfârșit de an și înregistrează tot ce i s-a dat, fără să întrebe nimic, face și el o jumătate de meserie. Nu poate ști ce lipsește din teanc. Iar ceea ce nu s-a înregistrat deloc — o factură pierdută, un încasat neraportat — nu dezechilibrează nimic și nu apare în niciun raport." },
+  { "tip": "p", "text": "Ambele eșecuri au aceeași cauză: cineva a presupus că răspunderea celuilalt îl acoperă și pe el. Nu îl acoperă. La un control, administratorul răspunde pentru contabilitatea firmei sale, iar contabilul răspunde profesional pentru ce a semnat." },
+
+  { "tip": "h", "text": "Ce înseamnă, practic, o colaborare care funcționează" },
+  { "tip": "p", "text": "Nu e nevoie de proceduri complicate. Trei obiceiuri acoperă aproape tot." },
+  { "tip": "tabel",
+    "titlu": "Cele trei obiceiuri",
+    "cap": ["Obiceiul", "De ce contează"],
+    "randuri": [
+      ["Documentele ajung la timp, toate, nu doar cele convenabile", "ce nu ajunge nu se înregistrează, iar lipsa nu se vede în nicio verificare"],
+      ["Patronul spune contextul, nu doar suma", "aceeași factură se înregistrează diferit după cum bunul e pentru firmă, pentru revânzare sau mixt"],
+      ["Contabilul întreabă când ceva nu se potrivește", "o întrebare pusă în februarie costă un minut; aceeași întrebare în timpul unui control costă altceva"]
+    ],
+    "nota": "Un program bun ajută la primul obicei — le adună la un loc și arată ce lipsește — dar nu poate ține locul celorlalte două." },
+
+  { "tip": "contabil", "titlu": "Pentru contabil",
+    "text": "Distincția dintre răspunderea administratorului pentru organizarea și conducerea contabilității și răspunderea profesională a celui care întocmește și semnează situațiile financiare e cea care fixează limitele misiunii. Externalizarea către o persoană autorizată CECCAR transferă execuția și atrage răspunderea profesională proprie — inclusiv disciplinară și, după caz, civilă — dar nu descarcă administratorul. Practic, două lucruri merită puse pe hârtie de la început: perimetrul misiunii (ce intră și ce nu — de exemplu, dacă include sau nu verificarea realității economice a operațiunilor, care oricum nu poate fi asumată integral) și modul de predare a documentelor, cu termene. Al doilea previne situația clasică în care documentele sosesc după închiderea perioadei, iar corecția cere storno peste o lună deja declarată. Refuzul de a înregistra un document care nu îndeplinește condițiile de document justificativ nu e un act de rea-voință față de client, ci exact conținutul profesiei: semnătura de la sfârșit acoperă tot ce s-a înregistrat pe parcurs." },
+
+  { "tip": "h", "text": "Și programul unde stă în toată povestea asta" },
+  { "tip": "p", "text": "Un program de contabilitate calculează și verifică. Aplică regulile fără să obosească, ține socoteala termenelor, refuză o înregistrare care nu se închide, arată ce documente lipsesc dintr-o lună. Toate astea sunt reale și țin de partea de execuție." },
+  { "tip": "p", "text": "Nu decide însă dacă o cheltuială e a firmei sau a ta. Nu știe dacă factura corespunde unei livrări care chiar a avut loc. Nu semnează bilanțul și nu răspunde în fața nimănui. Un program care ar pretinde contrariul ar vinde o liniște pe care nu o poate acoperi." },
+  { "tip": "p", "text": "Cu asta, rolurile sunt clare: patronul aduce realitatea, contabilul aduce regula, programul face munca dintre ei. Mai rămâne un singur lucru înainte de a intra în practică — ordinea în care se întâmplă toate acestea, lună de lună. E harta cărții, și e capitolul următor." },
+
+  { "tip": "recap", "titlu": "De reținut din acest capitol",
+    "puncte": [
+      "Răspunderea pentru organizarea și conducerea contabilității revine administratorului și nu se externalizează.",
+      "Situațiile financiare anuale cer o a doua semnătură, a unui contabil calificat (art. 10 și 28, Legea 82/1991); declarațiile curente pot fi depuse și de administrator.",
+      "Numai patronul știe dacă operațiunea a fost reală; numai contabilul știe cum se traduce contabil și fiscal. Niciuna dintre cunoașteri nu o înlocuiește pe cealaltă.",
+      "Cele două eșecuri tipice — patronul care se descurcă singur și contabilul care înregistrează fără să întrebe — au aceeași cauză: presupunerea că răspunderea celuilalt te acoperă.",
+      "Un program aplică regulile și semnalează lipsurile, dar nu confirmă realitatea economică și nu semnează nimic."
+    ] }
+ ]
+}
