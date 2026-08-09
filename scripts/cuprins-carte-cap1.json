@@ -51,7 +51,8 @@
    "nota": "Banii din cont au scăzut cu 15.000 de lei.",
    "numerice": [
     2
-   ]
+   ],
+   "total": true
   },
   {
    "tip": "p",
@@ -132,7 +133,8 @@
    "numerice": [
     2,
     4
-   ]
+   ],
+   "total": true
   },
   {
    "tip": "p",

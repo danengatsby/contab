@@ -1,0 +1,255 @@
+{
+ "parte": "Partea I · De ce arată contabilitatea așa",
+ "nr": "3",
+ "titlu": "Sertarele: planul de conturi",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Capitolul trecut s-a încheiat cu o întrebare practică. Dacă fiecare sumă se scrie în două locuri, în care anume? Marfa într-un loc, datoria către furnizor în altul, venitul în al treilea. Locurile acestea se numesc conturi, iar lista lor completă e planul de conturi."
+  },
+  {
+   "tip": "p",
+   "text": "E, probabil, pagina care sperie cel mai tare la prima vedere: câteva sute de rânduri cu cifre. Vestea bună e că nu se învață pe de rost, iar cea mai bună e că logica din spate se explică într-un sfert de oră. După ea, planul se citește, nu se memorează."
+  },
+  {
+   "tip": "h",
+   "text": "Ce este, de fapt, un cont"
+  },
+  {
+   "tip": "p",
+   "text": "Un cont e o fișă pe care se strâng, la un loc, toate mișcările de același fel. Fișa are exact două coloane — cele din capitolul trecut: stânga, debit; dreapta, credit. Atât."
+  },
+  {
+   "tip": "p",
+   "text": "Fișa contului „Casa în lei” adună tot ce a intrat și tot ce a ieșit din casierie. Fișa contului „Furnizori” adună tot ce ai ajuns să datorezi și tot ce ai plătit. La orice moment, diferența dintre cele două coloane se numește sold și răspunde la o întrebare precisă: cât am acum în casierie, cât mai datorez furnizorilor."
+  },
+  {
+   "tip": "p",
+   "text": "Un cont nu e, așadar, un dosar administrativ. E o întrebare la care vrei să poți răspunde oricând, fără să răscolești facturile. Numărul de conturi dintr-un plan e numărul de întrebări pe care legiuitorul a considerat că merită să le poți pune separat."
+  },
+  {
+   "tip": "h",
+   "text": "Opt familii, în ordinea unei logici"
+  },
+  {
+   "tip": "p",
+   "text": "Planul de conturi românesc nu e o listă alfabetică, ci o clasificare. Prima cifră a oricărui cont spune din ce familie face parte, iar familiile sunt așezate într-o ordine care nu e întâmplătoare."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Clasele planului de conturi",
+   "cap": [
+    "Clasa",
+    "Ce adună",
+    "Exemplu"
+   ],
+   "randuri": [
+    [
+     "1",
+     "Capitaluri — ce a pus patronul și ce s-a acumulat în timp",
+     "1012 Capital subscris vărsat"
+    ],
+    [
+     "2",
+     "Imobilizări — bunuri care servesc mai mulți ani",
+     "2131 Echipamente tehnologice"
+    ],
+    [
+     "3",
+     "Stocuri — bunuri care se consumă sau se vând",
+     "371 Mărfuri"
+    ],
+    [
+     "4",
+     "Terți — cine îți datorează și cui datorezi",
+     "4111 Clienți · 401 Furnizori"
+    ],
+    [
+     "5",
+     "Trezorerie — banii propriu-ziși",
+     "5121 Bancă · 5311 Casa"
+    ],
+    [
+     "6",
+     "Cheltuieli — ce s-a consumat în perioadă",
+     "607 Cheltuieli privind mărfurile"
+    ],
+    [
+     "7",
+     "Venituri — ce s-a câștigat în perioadă",
+     "707 Venituri din vânzarea mărfurilor"
+    ],
+    [
+     "8",
+     "Conturi speciale — ce nu e al tău, dar te privește",
+     "8031 Imobilizări luate cu chirie"
+    ]
+   ],
+   "numerice": [
+    1
+   ],
+   "nota": "Clasele 1–5 răspund la a doua întrebare a cărții (ce am și cui datorez). Clasele 6 și 7 răspund la prima (cât am câștigat)."
+  },
+  {
+   "tip": "p",
+   "text": "Ordinea claselor 1–5 urmează un principiu: de la ce e cel mai stabil către ce e cel mai lichid. Capitalul stă ani de zile; o clădire, mulți ani; marfa, câteva luni; o creanță, câteva săptămâni; banii din cont sunt deja bani. Cine parcurge clasele de la 1 la 5 coboară, de fapt, panta timpului."
+  },
+  {
+   "tip": "cheie",
+   "text": "Clasele 1–5 sunt bilanțul. Clasele 6 și 7 sunt contul de profit și pierdere. Cele două documente din capitolul 1 sunt, la propriu, două felii din același plan."
+  },
+  {
+   "tip": "h",
+   "text": "Diferența care se vede abia la sfârșit de an"
+  },
+  {
+   "tip": "p",
+   "text": "Între primele cinci clase și următoarele două există o deosebire de natură, nu de conținut, și merită înțeleasă devreme, fiindcă explică jumătate din operațiunile de la închiderea anului."
+  },
+  {
+   "tip": "p",
+   "text": "Un cont din clasele 1–5 are memorie. Soldul casei la 31 decembrie devine soldul casei la 1 ianuarie; banii nu dispar fiindcă s-a schimbat anul. La fel creanțele, datoriile, stocurile."
+  },
+  {
+   "tip": "p",
+   "text": "Un cont din clasele 6 și 7 nu are memorie și nici nu trebuie să aibă. Întrebarea „cât am cheltuit” are sens doar dacă spui pentru cât timp — altfel aduni la nesfârșit. De aceea, la sfârșitul fiecărui an, toate conturile de venituri și de cheltuieli se golesc într-un singur cont, 121 Profit sau pierdere, iar anul următor pornesc de la zero. Operațiunea are un capitol al ei mai încolo; deocamdată e destul de reținut că golirea nu e o formalitate, ci consecința firească a faptului că măsoară o perioadă."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se citește un cod"
+  },
+  {
+   "tip": "p",
+   "text": "Cifrele nu sunt numere de inventar, ci o adresă care se citește de la stânga la dreapta, îngustând sensul la fiecare pas."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Aceeași adresă, citită pe rând",
+   "cap": [
+    "Cod",
+    "Se citește",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "4",
+     "clasa",
+     "conturi de terți — cineva îmi datorează sau eu datorez"
+    ],
+    [
+     "41",
+     "grupa",
+     "clienți și conturi asimilate"
+    ],
+    [
+     "411",
+     "cont sintetic de gradul I",
+     "clienți"
+    ],
+    [
+     "4111",
+     "cont sintetic de gradul II",
+     "clienți (creanțe curente)"
+    ],
+    [
+     "4111.01",
+     "cont analitic",
+     "un client anume, deschis de firmă"
+    ]
+   ],
+   "nota": "Primele patru trepte sunt fixate prin reglementări și sunt aceleași la toate firmele din țară. A cincea o deschide firma, dacă are nevoie."
+  },
+  {
+   "tip": "p",
+   "text": "Uniformitatea primelor trepte e motivul pentru care contabilitatea a două firme se poate compara, iar o balanță se poate citi de oricine din meserie. Nu e birocrație: e ca la adresele poștale, unde strada se scrie la fel pentru toată lumea, altfel scrisoarea n-ajunge."
+  },
+  {
+   "tip": "h",
+   "text": "Pe ce parte crește un cont"
+  },
+  {
+   "tip": "p",
+   "text": "Capitolul trecut a spus că debitul și creditul nu înseamnă plus și minus, ci stânga și dreapta, și că efectul depinde de cont. Acum se poate spune precis de ce depinde: de clasă."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Regula, în două rânduri",
+   "cap": [
+    "Ce fel de cont",
+    "Crește pe",
+    "Exemple"
+   ],
+   "randuri": [
+    [
+     "Ce ai (clasele 2, 3, 5 și creanțele din 4)",
+     "debit — stânga",
+     "5121 Bancă · 371 Mărfuri · 4111 Clienți"
+    ],
+    [
+     "Ce datorezi și ce câștigi (clasele 1, 7 și datoriile din 4)",
+     "credit — dreapta",
+     "401 Furnizori · 707 Venituri · 1012 Capital"
+    ],
+    [
+     "Ce consumi (clasa 6)",
+     "debit — stânga",
+     "607 Cheltuieli privind mărfurile"
+    ]
+   ],
+   "nota": "Există și conturi care funcționează în ambele sensuri, numite bifuncționale — 121 Profit sau pierdere e cel mai cunoscut: are sold creditor la profit și debitor la pierdere."
+  },
+  {
+   "tip": "p",
+   "text": "Regula se reține mai ușor pornind de la o singură observație: contabilitatea privește lucrurile din perspectiva firmei, nu a ta. Când banca îți spune „v-am creditat contul”, ea vorbește din perspectiva ei — pentru ea, tu ești o datorie. În contabilitatea firmei tale, aceiași bani intrați cresc contul de bancă pe debit."
+  },
+  {
+   "tip": "h",
+   "text": "Analiticele: singura parte pe care o alegi tu"
+  },
+  {
+   "tip": "p",
+   "text": "Contul 4111 adună toți clienții la un loc. E suficient ca să știi cât ai de încasat în total, dar nu-ți spune de la cine. Pentru asta se deschid conturi analitice — 4111.01, 4111.02 și așa mai departe, câte unul pe client."
+  },
+  {
+   "tip": "p",
+   "text": "Regula practică e simplă: deschizi un analitic doar acolo unde chiar ai nevoie de un răspuns separat. Un plan cu o mie de analitice inutile e mai greu de citit decât unul cu douăzeci de analitice bine alese, iar la sfârșit de lună cineva tot trebuie să se uite peste ele."
+  },
+  {
+   "tip": "p",
+   "text": "În practică, un program de contabilitate ține evidența pe partener fără să te oblige să deschizi ceva; analiticele rămân pentru cazurile în care vrei ca separarea să apară chiar în balanță."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Planul general de conturi e stabilit prin reglementările contabile (OMFP 1802/2014) și e obligatoriu în structura lui: simbolul și denumirea conturilor sintetice de gradul I și II nu se modifică, se pot doar adăuga analitice. Clasa 8 cuprinde conturile în afara bilanțului, cu funcțiune contabilă proprie (nu intră în egalitatea bilanțieră), iar clasa 9 — contabilitatea de gestiune — e opțională și, la firmele mici, în general neutilizată; planul din aplicație nu o conține deloc. Funcțiunea fiecărui cont (activ, pasiv sau bifuncțional) e cea din reglementări și determină partea pe care se înregistrează creșterea; excepțiile aparente — conturi rectificative precum 129 Repartizarea profitului, sau ajustările din grupele 29, 39, 49, 59 — nu contrazic regula, ci corectează un alt cont, motiv pentru care funcționează invers față de contul pe care îl rectifică. La deschiderea unui analitic, atenție ca suma soldurilor analitice să rămână egală cu soldul sintetic: dezacordul dintre ele e una dintre cele mai frecvente cauze de balanță care „nu se închide” la preluarea unei firme."
+  },
+  {
+   "tip": "h",
+   "text": "De ce nu trebuie să-l înveți pe de rost"
+  },
+  {
+   "tip": "p",
+   "text": "Un patron nu deschide niciodată planul de conturi. Într-un program de contabilitate, el spune ce document are — factură de la furnizor, chitanță, extras — iar programul alege sertarele. Alegerea aceea se numește monografie contabilă și e, în fond, un dicționar între limbajul obișnuit și cel al conturilor."
+  },
+  {
+   "tip": "p",
+   "text": "Un contabil îl deschide, dar nu ca să-l memoreze: ca să verifice. Când o cifră arată ciudat într-un raport, drumul înapoi trece invariabil prin fișa unui cont, iar de acolo prin documentul care a produs-o. Planul e harta pe care se face drumul acesta."
+  },
+  {
+   "tip": "p",
+   "text": "Cu asta, uneltele sunt pe masă: știm la ce întrebări răspunde contabilitatea, de ce fiecare sumă se scrie de două ori și unde anume se scrie. Rămâne o întrebare care nu e tehnică, dar de care atârnă tot: cine răspunde pentru cifrele astea. E subiectul capitolului următor."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Un cont e o fișă cu două coloane care adună mișcările de același fel; diferența dintre coloane e soldul.",
+    "Prima cifră dă clasa. Clasele 1–5 formează bilanțul, clasele 6 și 7 contul de profit și pierdere.",
+    "Conturile 1–5 își reportează soldul dintr-un an în altul; cele de venituri și cheltuieli se golesc anual în 121, fiindcă măsoară o perioadă.",
+    "Codul se citește ca o adresă: clasă, grupă, sintetic de gradul I și II — fixate prin lege — apoi analiticul, deschis de firmă.",
+    "Ce ai crește pe debit, ce datorezi și ce câștigi cresc pe credit. Excepțiile aparente sunt conturi rectificative.",
+    "Planul nu se învață pe de rost: se citește când verifici o cifră."
+   ]
+  }
+ ]
+}
