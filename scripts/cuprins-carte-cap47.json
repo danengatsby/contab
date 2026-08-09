@@ -1,0 +1,166 @@
+{
+ "parte": "Partea X · Situațiile financiare · faza 12",
+ "nr": "47",
+ "titlu": "Anexele",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Bilanțul și contul de profit și pierdere sunt documentele care se citesc. Alături de ele se depun încă trei, mai puțin cunoscute, iar unul dintre ele răspunde la o întrebare pe care primele două nu o ating deloc."
+  },
+  {
+   "tip": "p",
+   "text": "Întrebarea e cea pe care un patron o pune cel mai des și la care contabilul răspunde cel mai greu: dacă am profit, unde sunt banii?"
+  },
+  {
+   "tip": "h",
+   "text": "Situația fluxurilor de trezorerie"
+  },
+  {
+   "tip": "p",
+   "text": "Fluxul de trezorerie urmărește exclusiv banii: cât a intrat, cât a ieșit, și din ce activitate. Nu are nimic de-a face cu momentul în care s-a produs venitul sau cheltuiala — aici contează doar când s-a mișcat suma."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele trei activități",
+   "cap": [
+    "Activitatea",
+    "Ce cuprinde",
+    "Ce spune"
+   ],
+   "randuri": [
+    [
+     "Exploatare",
+     "încasări de la clienți, plăți către furnizori și angajați, impozite",
+     "dacă afacerea produce bani, nu doar profit"
+    ],
+    [
+     "Investiții",
+     "cumpărări și vânzări de imobilizări",
+     "dacă firma se dezvoltă sau se dezinvestește"
+    ],
+    [
+     "Finanțare",
+     "credite luate și rambursate, aport de capital, dividende plătite",
+     "cine finanțează creșterea"
+    ]
+   ],
+   "nota": "Suma celor trei trebuie să fie exact variația soldului de trezorerie între început și sfârșit de an."
+  },
+  {
+   "tip": "p",
+   "text": "Iată situația firmei din capitolele precedente, generată din propriile ei înregistrări."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Fluxul de trezorerie al exercițiului",
+   "cap": [
+    "Elementul",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Numerar la începutul anului",
+     "45.000,00"
+    ],
+    [
+     "Încasări de la clienți",
+     "16.940,00"
+    ],
+    [
+     "Plăți către furnizori și angajați",
+     "−15.025,00"
+    ],
+    [
+     "Flux din exploatare",
+     "1.915,00"
+    ],
+    [
+     "Flux din investiții",
+     "0,00"
+    ],
+    [
+     "Flux din finanțare",
+     "0,00"
+    ],
+    [
+     "Variația numerarului",
+     "1.915,00"
+    ],
+    [
+     "Numerar la sfârșitul anului",
+     "46.915,00"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Verificarea: 45.000 + 1.915 = 46.915, iar 46.915 trebuie să fie exact soldul conturilor de trezorerie din bilanț."
+  },
+  {
+   "tip": "cheie",
+   "text": "Fluxul din exploatare e cifra pe care o citesc băncile înaintea profitului. Un profit mare cu flux negativ înseamnă că firma vinde, dar nu încasează."
+  },
+  {
+   "tip": "p",
+   "text": "Situația aceasta explică, în sfârșit, paradoxul cu care se lovește orice patron. Profitul de la capitolul 45 și variația de numerar de aici sunt cifre diferite, iar diferența dintre ele are întotdeauna nume: amortizarea, creșterea stocurilor, creanțele neîncasate, datoriile plătite."
+  },
+  {
+   "tip": "h",
+   "text": "Situația modificărilor capitalurilor proprii"
+  },
+  {
+   "tip": "p",
+   "text": "A doua anexă e mai simplă și răspunde la o întrebare de proprietar: cum a evoluat, în cursul anului, averea netă a asociaților."
+  },
+  {
+   "tip": "p",
+   "text": "Are un rând pentru fiecare element de capital propriu — capital social, rezerve, rezultat reportat, rezultatul exercițiului — și patru coloane: sold inițial, creșteri, reduceri, sold final. Totalul soldului final trebuie să fie egal cu capitalurile proprii din bilanț."
+  },
+  {
+   "tip": "p",
+   "text": "Utilitatea ei practică se vede la firmele cu mișcări de capital: majorări, distribuiri, acoperiri de pierderi. La o firmă fără astfel de operațiuni, singura mișcare e rezultatul anului — iar situația devine o confirmare, nu o informație."
+  },
+  {
+   "tip": "h",
+   "text": "Notele explicative"
+  },
+  {
+   "tip": "p",
+   "text": "A treia anexă e cea mai puțin citită și cea mai bogată. Notele explică ce stă în spatele cifrelor: politicile contabile alese, metodele de evaluare, detalierea principalelor posturi, angajamentele care nu apar în bilanț."
+  },
+  {
+   "tip": "p",
+   "text": "Aici se scrie ce metodă de descărcare a stocurilor folosește firma, ce durate de amortizare a ales, cum a calculat ajustările pentru creanțe, ce litigii are în curs, ce garanții a acordat. Sunt exact deciziile despre care capitolele precedente au spus, de fiecare dată, că trebuie documentate."
+  },
+  {
+   "tip": "p",
+   "text": "Pentru un cititor din afară, notele sunt singurul loc în care cifrele devin comparabile. Două firme cu același profit, dintre care una amortizează accelerat și cealaltă liniar, nu spun același lucru — iar diferența e vizibilă doar aici."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Componența situațiilor financiare anuale depinde de categoria entității, potrivit reglementărilor contabile: microentitățile depun bilanț prescurtat, cont de profit și pierdere prescurtat și note explicative reduse, entitățile mici adaugă formatul complet al contului de profit și pierdere, iar cele mijlocii și mari întocmesc setul complet, inclusiv situația fluxurilor de trezorerie și situația modificărilor capitalurilor proprii. Patru observații. Prima: pentru entitățile care nu au obligația întocmirii lor, fluxul de trezorerie și situația modificărilor capitalurilor proprii rămân instrumente de conducere extrem de utile — absența obligației legale nu e un argument împotriva întocmirii lor interne. A doua: fluxul se poate întocmi prin metoda directă, pe încasări și plăți efective, sau prin metoda indirectă, pornind de la rezultat și eliminând elementele nemonetare; alegerea se declară în note și trebuie păstrată de la un an la altul, conform principiului permanenței metodelor. A treia: notele nu sunt un formular de completat, ci un text redactat — informațiile cerute expres de reglementări sunt un minim, nu o limită, iar omiterea unei informații semnificative afectează imaginea fidelă, chiar dacă toate cifrele sunt exacte. A patra: situațiile financiare se depun însoțite de declarația scrisă a persoanei care răspunde de administrarea entității, prin care își asumă răspunderea pentru întocmirea lor, precum și de raportul administratorilor și, după caz, de raportul de audit — un set depus fără aceste documente e incomplet, indiferent de corectitudinea cifrelor."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cele cinci documente sunt gata. Înainte de semnătură mai rămâne o singură operațiune, care durează zece minute și prinde majoritatea erorilor grave: verificarea concordanțelor dintre ele."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Fluxul de trezorerie urmărește exclusiv banii, pe trei activități: exploatare, investiții, finanțare.",
+    "Suma celor trei trebuie să fie exact variația soldului de trezorerie dintre început și sfârșit de an.",
+    "Fluxul din exploatare e cifra pe care o citesc băncile înaintea profitului.",
+    "Situația modificărilor capitalurilor proprii arată evoluția averii nete a asociaților; totalul ei trebuie să dea capitalurile din bilanț.",
+    "Notele explicative conțin deciziile — metode, durate, ajustări, litigii — și sunt singurul loc care face două firme comparabile.",
+    "Setul se depune însoțit de declarația de asumare a răspunderii; fără ea e incomplet, oricât de exacte ar fi cifrele."
+   ]
+  }
+ ]
+}
