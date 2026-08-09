@@ -370,6 +370,10 @@ module.exports = function registerAuthRoutes(app, ctx) {
       // memo-ul per firma al rutelor scumpe (dashboard): rata de hit spune daca invalidarea
       // globala la fiecare scriere lasa cache-ul sa ajute in practica.
       cache: cache.stats(),
+      // Trunchierile garzii OOM (src/paginate.js), pe eticheta. Jurnalul le avertizeaza RAR (o
+      // stare permanenta nu are voie sa scrie o linie per cerere), deci imaginea completa —
+      // de cate ori, cat de mare era lista, cand — se citeste de AICI.
+      trunchieri: metrics.truncationsSnapshot(),
     }));
   });
 

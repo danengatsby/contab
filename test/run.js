@@ -6344,6 +6344,51 @@ section('Paginare + garda OOM (src/paginate.js sendList)');
   }
 }
 
+section('Trunchierea se NUMARA mereu, dar se avertizeaza rar (zgomot in jurnal)');
+{
+  const pag = require('../src/paginate');
+  const metricsT = require('../src/metrics');
+  const logT = require('../src/log');
+  const lung = []; for (let i = 0; i < 30; i += 1) lung.push({ i });
+  const scurt = [{ i: 0 }];
+
+  // Intercepteaza jurnalul: `paginate` cheama `log.warn` prin cautare de proprietate, deci
+  // inlocuirea aici e vazuta. Se pune la loc la final, orice s-ar intampla.
+  const warnReal = logT.warn;
+  let linii = 0;
+  logT.warn = () => { linii += 1; };
+  try {
+    pag._resetTrunchieri();
+    const eticheta = 'proba:trunchiere';
+    const nInainte = (metricsT.truncationsSnapshot()[eticheta] || { n: 0 }).n;
+
+    for (let k = 0; k < 5; k += 1) pag.capList(lung, 10, eticheta);
+    eq('cinci trunchieri la rand -> o SINGURA linie in jurnal', linii, 1);
+    // Aserțiunea care conteaza: throttle-ul e doar pe consola. Daca ar fi si pe contor, remediul
+    // zgomotului ar fi devenit TACERE — adica exact defectul pe care il repara.
+    const dupa = metricsT.truncationsSnapshot()[eticheta];
+    eq('...dar contorul creste la FIECARE trunchiere (throttle doar pe consola)', dupa.n - nInainte, 5);
+    eq('...si retine cat de mare era lista', dupa.ultimTotal, 30);
+    eq('...si plafonul aplicat', dupa.cap, 10);
+
+    // Etichete diferite nu impart fereastra: o problema noua nu are voie sa fie inghitita de una veche.
+    linii = 0;
+    pag.capList(lung, 10, 'proba:alta-eticheta');
+    eq('o eticheta NOUA avertizeaza imediat, nu asteapta fereastra', linii, 1);
+
+    // Re-armare: lista scade sub plafon -> revenirea la trunchiere se vede IMEDIAT.
+    linii = 0;
+    pag.capList(lung, 10, eticheta);
+    eq('a doua trunchiere in aceeasi fereastra tace', linii, 0);
+    pag.capList(scurt, 10, eticheta);       // sub plafon -> re-armeaza
+    pag.capList(lung, 10, eticheta);
+    eq('dupa ce lista a scazut sub plafon, urmatoarea trunchiere avertizeaza din nou', linii, 1);
+  } finally {
+    logT.warn = warnReal;
+    pag._resetTrunchieri();
+  }
+}
+
 // Portile si infrastructura au fost mutate in test/run/porti.js — vezi test/run/comun.js pentru
 // motiv. Se cer AICI, pe pozitia lor din fisier, ca ordinea sectiunilor sa ramana neschimbata.
 require('./run/porti');

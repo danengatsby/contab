@@ -13,7 +13,40 @@
 //    limit e prins in [1, max]; offset >= 0.
 
 const log = require('./log');
+const metrics = require('./metrics');
 const ABS_MAX = Number(process.env.CONTAB_MAX_ROWS || 20000);
+
+// ── ZGOMOTUL DE TRUNCHIERE ───────────────────────────────────────────────────────────────────
+// O lista peste plafon nu e un EVENIMENT, e o STARE, si de obicei una care tine luni de zile:
+// `access:vizitatori` a stat permanent peste 500, deci fiecare deschidere a paginii de
+// administrare scria o linie in contab-error.log. Consecinta nu e cosmetica — e pierdere de
+// semnal: eroarea reala a garzii de deploy (2026-08-08) statea ingropata intre zeci de linii
+// „lista plafonata".
+//
+// Tiparul e cel de la audit-watch: se avertizeaza la INTRAREA in stare, apoi cel mult o data pe
+// fereastra cat timp starea persista, si se RE-ARMEAZA cand lista scade sub plafon — o revenire
+// trebuie sa se vada imediat, nu peste o ora. Contorul din metrics creste la FIECARE trunchiere:
+// throttle-ul ramane doar pe consola, altfel remediul zgomotului ar deveni tacere.
+const TRUNC_WARN_MS = Number(process.env.CONTAB_TRUNC_WARN_MS) || 3600 * 1000;
+const trunchiat = new Map(); // eticheta -> momentul ultimei avertizari; absenta = re-armat
+
+/** Trunchiere: numara mereu, avertizeaza rar. Intoarce true daca s-a si scris in jurnal. */
+function semnaleazaTrunchiere(label, total, cap, req) {
+  const k = String(label || '(fara eticheta)');
+  metrics.truncation(k, total, cap);
+  const acum = Date.now();
+  const ultima = trunchiat.get(k);
+  if (ultima != null && acum - ultima < TRUNC_WARN_MS) return false;
+  trunchiat.set(k, acum);
+  if (log.warn) log.warn('lista plafonata (garda OOM)', log.ctx(req || null, { label: k, total, cap }));
+  return true;
+}
+
+/** Lista a revenit sub plafon: urmatoarea trunchiere avertizeaza din nou, fara sa astepte fereastra. */
+function rearmeazaTrunchiere(label) { trunchiat.delete(String(label || '(fara eticheta)')); }
+
+/** Doar pentru teste: uita starea de avertizare (nu si contoarele din metrics). */
+function _resetTrunchieri() { trunchiat.clear(); }
 
 /** Trimite o lista cu paginare optionala si plafon de siguranta. `list` e deja in ordinea dorita. */
 function sendList(req, res, list, opts = {}) {
@@ -25,11 +58,13 @@ function sendList(req, res, list, opts = {}) {
     const offset = Math.max(0, parseInt((req.query || {}).offset, 10) || 0);
     return res.json({ items: list.slice(offset, offset + limit), total, offset, limit });
   }
+  const eticheta = opts.label || (req.path || '');
   if (total > max) {
-    if (log.warn) log.warn('lista plafonata (garda OOM)', log.ctx(req, { label: opts.label || (req.path || ''), total, cap: max }));
-    res.setHeader('X-Rows-Truncated', String(total));
+    semnaleazaTrunchiere(eticheta, total, max, req);
+    res.setHeader('X-Rows-Truncated', String(total)); // semnalul PER RASPUNS ramane neatins
     return res.json(list.slice(-max)); // ultimele `max` = cele mai recente
   }
+  rearmeazaTrunchiere(eticheta);
   return res.json(list);
 }
 
@@ -54,13 +89,15 @@ function sendMap(req, res, map, opts = {}) {
     const ord = keys.slice().sort();
     return res.json({ items: ord.slice(offset, offset + limit).map((k) => src[k]), total, offset, limit });
   }
+  const eticheta = (opts.label || (req.path || '')) + ' (harta)';
   if (total > max) {
-    if (log.warn) log.warn('harta plafonata (garda OOM)', log.ctx(req, { label: opts.label || (req.path || ''), total, cap: max }));
+    semnaleazaTrunchiere(eticheta, total, max, req);
     res.setHeader('X-Rows-Truncated', String(total));
     const out = {};
     for (const k of keys.slice(0, max)) out[k] = src[k];
     return res.json(out);
   }
+  rearmeazaTrunchiere(eticheta);
   return res.json(src);
 }
 
@@ -92,10 +129,12 @@ function capList(list, max, label, opts) {
   const n = Number(max);
   const cap = Number.isFinite(n) && n > 0 ? n : ABS_MAX;
   const total = src.length;
-  if (total <= cap) return { items: src, total, truncated: false };
-  if (log.warn) log.warn('lista plafonata (garda OOM)', log.ctx(null, { label: label || '', total, cap }));
+  // Re-armarea sta pe calea de iesire TIMPURIE, nu dupa: daca lista scade sub plafon, urmatoarea
+  // trunchiere trebuie sa se vada imediat. Fara asta, o revenire ar fi tacuta pana la fereastra.
+  if (total <= cap) { rearmeazaTrunchiere(label); return { items: src, total, truncated: false }; }
+  semnaleazaTrunchiere(label, total, cap, null);
   const dinCap = !!(opts && opts.pastreaza === 'cap');
   return { items: dinCap ? src.slice(0, cap) : src.slice(-cap), total, truncated: true };
 }
 
-module.exports = { sendList, sendMap, capList, ABS_MAX };
+module.exports = { sendList, sendMap, capList, ABS_MAX, TRUNC_WARN_MS, _resetTrunchieri };
