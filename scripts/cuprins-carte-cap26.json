@@ -1,0 +1,176 @@
+{
+ "parte": "Partea VI · Ce nu vine dintr-un document · faza 7",
+ "nr": "26",
+ "titlu": "Reevaluarea valutară",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "O creanță de 10.000 de euro nu e o sumă fixă. E o sumă fixă în euro și o sumă variabilă în lei — iar contabilitatea românească ține evidența în lei."
+  },
+  {
+   "tip": "p",
+   "text": "Diferența dintre cele două se numește diferență de curs, și e un venit sau o cheltuială la fel de reală ca oricare alta. Firma nu a făcut nimic, nu a vândut nimic, nu a plătit nimic — și totuși a câștigat sau a pierdut bani."
+  },
+  {
+   "tip": "h",
+   "text": "Cum arată mecanismul"
+  },
+  {
+   "tip": "p",
+   "text": "O factură emisă în martie, de 10.000 de euro la cursul de 4,97 lei, intră în contabilitate ca o creanță de 49.700 de lei. Dacă la 31 decembrie clientul încă nu a plătit, iar cursul de închidere e 5,08, aceeași creanță valorează 50.800 de lei."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Aceeași creanță, două momente",
+   "cap": [
+    "Momentul",
+    "Curs",
+    "Valoare în lei"
+   ],
+   "randuri": [
+    [
+     "la emiterea facturii, martie",
+     "4,97",
+     "49.700"
+    ],
+    [
+     "la închiderea exercițiului, decembrie",
+     "5,08",
+     "50.800"
+    ],
+    [
+     "diferență",
+     "",
+     "+1.100"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "Creanța a rămas de 10.000 de euro. S-a schimbat doar cât valorează ei în lei."
+  },
+  {
+   "tip": "p",
+   "text": "Cei 1.100 de lei sunt un venit financiar, înregistrat prin debitarea contului de creanță și creditarea contului 765 Venituri din diferențe de curs valutar. Creanța din bilanț ajunge astfel la valoarea ei corectă la data închiderii, iar câștigul apare în rezultat."
+  },
+  {
+   "tip": "h",
+   "text": "Regula de semn, și de ce se greșește"
+  },
+  {
+   "tip": "p",
+   "text": "Aici e capcana capitolului, iar ea a costat firme reale și programe reale. Același curs care crește produce efecte opuse la creanțe și la datorii."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cine câștigă când euro crește",
+   "cap": [
+    "Elementul",
+    "Cursul crește",
+    "Cursul scade"
+   ],
+   "randuri": [
+    [
+     "Creanță în valută (ai de primit)",
+     "câștig — 765",
+     "pierdere — 665"
+    ],
+    [
+     "Datorie în valută (ai de plătit)",
+     "pierdere — 665",
+     "câștig — 765"
+    ],
+    [
+     "Disponibil în valută (ai în cont)",
+     "câștig — 765",
+     "pierdere — 665"
+    ]
+   ],
+   "nota": "Regula, în cuvinte: un ACTIV care crește e câștig; o DATORIE care crește e pierdere."
+  },
+  {
+   "tip": "p",
+   "text": "Logica e simplă odată enunțată: dacă ai de primit 10.000 de euro și euro se scumpește, vei primi mai mulți lei — ai câștigat. Dacă ai de plătit 10.000 de euro și euro se scumpește, vei da mai mulți lei — ai pierdut."
+  },
+  {
+   "tip": "p",
+   "text": "Greșeala nu vine din neînțelegerea regulii, ci din aplicarea ei mecanică, pe o singură formulă, pentru toate conturile deodată. Un program care calculează diferența ca „valoare nouă minus valoare veche” și o trece în venit ori de câte ori e pozitivă va înregistra pierderile pe datorii ca și câștiguri — cu semn inversat, în fiecare an, tăcut."
+  },
+  {
+   "tip": "cheie",
+   "text": "Semnul diferenței nu se citește din cifră, ci din natura elementului. Aceeași diferență pozitivă e câștig pe o creanță și pierdere pe o datorie."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se reevaluează și ce nu"
+  },
+  {
+   "tip": "p",
+   "text": "A doua sursă de erori e perimetrul. Nu tot ce a fost cumpărat în valută se reevaluează — dimpotrivă, majoritatea nu."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Perimetrul reevaluării",
+   "cap": [
+    "Se reevaluează",
+    "NU se reevaluează"
+   ],
+   "randuri": [
+    [
+     "disponibilul în valută (5124, 5314)",
+     "stocurile cumpărate din import"
+    ],
+    [
+     "creanțele în valută (4111, 461)",
+     "imobilizările cumpărate din import"
+    ],
+    [
+     "datoriile în valută (401, 404, 167)",
+     "avansurile primite și plătite (419, 409)"
+    ],
+    [
+     "împrumuturile și creanțele imobilizate",
+     "veniturile și cheltuielile deja realizate"
+    ]
+   ],
+   "nota": "Criteriul se numește caracter monetar: se reevaluează dreptul de a primi sau obligația de a da o sumă fixă de bani."
+  },
+  {
+   "tip": "p",
+   "text": "Distincția merită înțeleasă, fiindcă e mai mult decât o convenție. O marfă cumpărată cu 1.000 de euro rămâne aceeași marfă indiferent de curs; costul ei e cel plătit atunci, iar câștigul se va vedea la vânzare. O creanță de 1.000 de euro, dimpotrivă, e chiar dreptul de a primi 1.000 de euro — deci valoarea ei în lei se schimbă odată cu cursul."
+  },
+  {
+   "tip": "p",
+   "text": "Avansurile sunt cazul care surprinde. Un avans plătit unui furnizor extern pare o creanță, dar nu e dreptul de a primi bani, ci dreptul de a primi un bun — deci rămâne la cursul din ziua plății. Un program care le reevaluează produce diferențe care nu există."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Regula e la pct. 319 din reglementările contabile aprobate prin OMFP 1802/2014: disponibilitățile, creanțele și datoriile în valută se evaluează la cursul comunicat de BNR pentru ultima zi bancară a perioadei, diferențele fiind recunoscute la venituri sau cheltuieli financiare. Pct. 320 stabilește tratamentul elementelor nemonetare, care rămân la cursul de la data tranzacției. Patru precizări utile. Prima: reevaluarea se face la fiecare închidere de perioadă pentru care se întocmesc situații financiare, nu doar la 31 decembrie — pentru firmele care raportează trimestrial, omiterea închiderilor intermediare mută rezultatul între trimestre. A doua: diferențele recunoscute la reevaluare sunt nerealizate, dar sunt totuși impozabile, respectiv deductibile, la calculul impozitului pe profit, cu excepțiile prevăzute expres — deci nu se elimină la determinarea rezultatului fiscal, spre deosebire de tratamentul din alte jurisdicții. A treia: la decontarea efectivă a creanței sau datoriei, diferența se calculează față de ultima valoare reevaluată, nu față de cursul inițial; recalcularea de la cursul facturii ar dubla diferența deja recunoscută. A patra: pentru firmele plătitoare de impozit pe veniturile microîntreprinderilor, veniturile din diferențe de curs au regim propriu — se iau în calculul bazei doar prin diferența favorabilă netă, cumulat, la sfârșitul trimestrului, nu rând cu rând."
+  },
+  {
+   "tip": "h",
+   "text": "Practica"
+  },
+  {
+   "tip": "p",
+   "text": "Reevaluarea e o operațiune care nu ar trebui să consume timp de gândire. Soldurile în valută se cunosc, cursul de închidere e public, regula de semn e fixă. Un program bine făcut propune lista conturilor de reevaluat, cu soldul în valută și cursul, iar contabilul confirmă."
+  },
+  {
+   "tip": "p",
+   "text": "Ce nu se poate automatiza e verificarea perimetrului: dacă un cont a intrat în listă pentru că a fost atins vreodată de o operațiune în valută, dar soldul lui e de mult în lei, reevaluarea lui produce o diferență inventată. Un minut de citit lista înainte de confirmare valorează mai mult decât orice verificare de după."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "O creanță în valută are o valoare fixă în valută și una variabilă în lei; diferența e venit sau cheltuială reală.",
+    "Semnul se citește din natura elementului, nu din cifră: un activ care crește e câștig, o datorie care crește e pierdere.",
+    "Aplicarea unei singure formule pentru toate conturile inversează semnul pe datorii, în fiecare an, fără să dezechilibreze nimic.",
+    "Se reevaluează doar elementele monetare: bani, creanțe, datorii. Stocurile, imobilizările și avansurile rămân la cursul inițial.",
+    "Un avans nu e dreptul de a primi bani, ci de a primi un bun — de aceea nu se reevaluează.",
+    "La decontare, diferența se calculează față de ultima reevaluare, nu față de cursul facturii."
+   ]
+  }
+ ]
+}

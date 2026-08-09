@@ -47,7 +47,9 @@ const CAPITOLE = ['cuprins-carte-cap1.json', 'cuprins-carte-cap2.json', 'cuprins
   'cuprins-carte-cap9.json', 'cuprins-carte-cap10.json', 'cuprins-carte-cap11.json', 'cuprins-carte-cap12.json', 'cuprins-carte-cap13.json', 'cuprins-carte-cap14.json',
   'cuprins-carte-cap15.json', 'cuprins-carte-cap16.json', 'cuprins-carte-cap17.json',
   'cuprins-carte-cap18.json', 'cuprins-carte-cap19.json', 'cuprins-carte-cap20.json', 'cuprins-carte-cap21.json',
-  'cuprins-carte-cap22.json', 'cuprins-carte-cap23.json', 'cuprins-carte-cap24.json']
+  'cuprins-carte-cap22.json', 'cuprins-carte-cap23.json', 'cuprins-carte-cap24.json',
+  'cuprins-carte-cap25.json', 'cuprins-carte-cap26.json', 'cuprins-carte-cap27.json',
+  'cuprins-carte-cap28.json', 'cuprins-carte-cap29.json']
   .map((f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), 'utf8')));
 
 const MM = 56.6929; // 1 mm in twips (1 inch = 1440 twips = 25,4 mm)

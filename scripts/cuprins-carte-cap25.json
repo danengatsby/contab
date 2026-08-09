@@ -1,0 +1,135 @@
+{
+ "parte": "Partea VI · Ce nu vine dintr-un document · faza 7",
+ "nr": "25",
+ "titlu": "Regularizările: contabilitatea timpului",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Până aici, fiecare înregistrare a avut în spate un document: o factură, un extras, un stat de plată, un proces-verbal de inventar. Partea aceasta e despre înregistrările care nu au așa ceva."
+  },
+  {
+   "tip": "p",
+   "text": "Nu pentru că ar lipsi documentul, ci pentru că operațiunea nu s-a petrecut între firmă și altcineva. S-a petrecut între firmă și timp. Iar timpul nu emite facturi."
+  },
+  {
+   "tip": "h",
+   "text": "De ce e nevoie de ele"
+  },
+  {
+   "tip": "p",
+   "text": "Contabilitatea împarte o activitate continuă în perioade cu început și sfârșit. Împărțirea e artificială — clienții nu încetează să cumpere pe 31 decembrie — dar necesară: fără ea nu s-ar putea spune niciodată cât a câștigat firma."
+  },
+  {
+   "tip": "p",
+   "text": "Problema e că tăietura cade întotdeauna prin mijlocul a ceva. O asigurare plătită în octombrie acoperă și lunile anului următor. Un client care nu mai răspunde nu se transformă în pierdere la o dată anume. Un euro încasat în martie nu mai valorează la fel în decembrie."
+  },
+  {
+   "tip": "cheie",
+   "text": "Regularizările sunt înregistrările prin care perioada contabilă devine adevărată. Fără ele, balanța se închide perfect și rezultatul e fals."
+  },
+  {
+   "tip": "h",
+   "text": "Cele patru familii"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce se regularizează la sfârșitul perioadei",
+   "cap": [
+    "Familia",
+    "Întrebarea la care răspunde",
+    "Capitolul"
+   ],
+   "randuri": [
+    [
+     "Reevaluarea valutară",
+     "cât valorează azi ce am de încasat sau de plătit în valută?",
+     "26"
+    ],
+    [
+     "Ajustările pentru creanțe",
+     "mai am de primit banii aceștia sau doar îi mai aștept?",
+     "27"
+    ],
+    [
+     "Delimitarea în timp",
+     "din suma plătită, cât e cheltuiala acestei perioade?",
+     "28"
+    ],
+    [
+     "Provizioanele",
+     "ce obligație probabilă s-a născut deja, fără să fi sosit factura?",
+     "aici"
+    ]
+   ],
+   "nota": "Cele patru au în comun un singur lucru: niciuna nu are un document extern care să le declanșeze."
+  },
+  {
+   "tip": "p",
+   "text": "Există și o a cincea categorie, mai puțin discutată: cheltuielile pentru care serviciul a fost prestat, dar factura nu a sosit. Ele nu sunt regularizări în sens strict, ci recunoașteri anticipate, și se înregistrează pe conturile 408 Furnizori — facturi nesosite și 418 Clienți — facturi de întocmit."
+  },
+  {
+   "tip": "h",
+   "text": "Provizionul: obligația probabilă"
+  },
+  {
+   "tip": "p",
+   "text": "Un provizion se constituie când firma are o obligație probabilă, de mărime estimabilă, izvorâtă dintr-un eveniment deja petrecut — dar a cărei sumă sau scadență exactă nu se cunoaște încă."
+  },
+  {
+   "tip": "p",
+   "text": "Exemplul clasic e litigiul. Un fost angajat a dat firma în judecată, avocatul apreciază că șansele de pierdere sunt mari, iar suma probabilă e de 30.000 de lei. Nu există nicio factură, nicio hotărâre, niciun document care să oblige la plată. Există însă un risc real, născut dintr-un fapt trecut."
+  },
+  {
+   "tip": "p",
+   "text": "Articolul debitează 6812 Cheltuieli de exploatare privind provizioanele și creditează 151 Provizioane. Când litigiul se încheie, provizionul se reia — 151 se debitează în contrapartidă cu 7812 — indiferent dacă firma a câștigat sau a pierdut; dacă a pierdut, plata efectivă se înregistrează separat, la valoarea ei reală."
+  },
+  {
+   "tip": "p",
+   "text": "Merită observat că provizionul nu pune bani deoparte. Nu există niciun cont bancar blocat, nicio rezervă lichidă. Provizionul recunoaște doar, în rezultat, o obligație care există deja — la fel cum amortizarea recunoaște un consum care s-a produs deja."
+  },
+  {
+   "tip": "h",
+   "text": "Ce le face periculoase"
+  },
+  {
+   "tip": "p",
+   "text": "Regularizările au trei proprietăți care le fac locul preferat al erorilor, iar merită numite dinainte, fiindcă se repetă în toate capitolele care urmează."
+  },
+  {
+   "tip": "p",
+   "text": "Întâi, nimic nu le declanșează. Nu sosește nicio hârtie care să-ți aducă aminte de ele. Dacă nu le face cineva, pur și simplu nu se fac — și nimic nu semnalează lipsa."
+  },
+  {
+   "tip": "p",
+   "text": "Apoi, absența lor nu dezechilibrează nimic. Balanța rămâne perfect închisă fără nicio regularizare. E o variantă a capcanei din capitolul 2: verificarea de echilibru nu spune nimic despre completitudine."
+  },
+  {
+   "tip": "p",
+   "text": "În fine, toate presupun o judecată. Cât e probabilitatea de a pierde litigiul? Clientul acesta mai plătește? Câte luni din asigurare aparțin anului viitor? Sunt întrebări la care răspunde un om, nu o formulă — iar răspunsul trebuie documentat, fiindcă altfel nimeni nu-l mai poate reface peste doi ani."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Regularizările de închidere sunt cerute de principiile contabilității de angajamente și al independenței exercițiului din reglementările contabile: efectele tranzacțiilor se recunosc în perioada în care se produc, indiferent de momentul încasării sau plății. Trei observații de fond. Prima: provizioanele se recunosc numai dacă sunt îndeplinite cumulativ trei condiții — o obligație curentă rezultată dintr-un eveniment trecut, probabilitatea unei ieșiri de resurse și posibilitatea unei estimări credibile; în lipsa oricăreia dintre ele obligația se prezintă ca datorie contingentă în notele explicative, nu se înregistrează. A doua: provizionul nu se utilizează pentru altceva decât riscul pentru care a fost constituit, iar la fiecare închidere se revizuiește — majorare, diminuare sau reluare integrală — ceea ce înseamnă că un sold care rămâne neschimbat doi ani la rând semnalează, aproape întotdeauna, o revizuire care nu s-a făcut. A treia: din perspectivă fiscală, majoritatea provizioanelor de exploatare sunt nedeductibile, cu excepțiile limitativ prevăzute de art. 26 Cod fiscal, iar deducerea la reluare urmează regimul de la constituire — deci evidența analitică pe deductibil și nedeductibil trebuie ținută de la început, nu reconstituită la calculul impozitului. În fine, toate raționamentele care stau la baza acestor înregistrări se documentează în nota explicativă a operațiunii; un provizion fără notă e, la un control, o cheltuială fără justificare."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Cele patru capitole care urmează iau pe rând regularizările care apar la aproape orice firmă. Prima e cea mai mecanică dintre ele și, tocmai de aceea, cea la care greșeala se strecoară cel mai ușor: aducerea valutei la cursul de închidere."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Regularizările sunt înregistrările care nu vin dintr-un document extern, ci din trecerea timpului și din judecata profesională.",
+    "Sunt necesare fiindcă împărțirea activității în perioade taie întotdeauna prin mijlocul a ceva.",
+    "Provizionul recunoaște o obligație probabilă născută dintr-un fapt trecut — nu pune bani deoparte.",
+    "Nimic nu le declanșează: dacă nu le face cineva, nu se fac, iar lipsa lor nu dezechilibrează balanța.",
+    "Toate presupun o judecată, deci toate cer o notă scrisă care să o poată reface peste ani."
+   ]
+  }
+ ]
+}
