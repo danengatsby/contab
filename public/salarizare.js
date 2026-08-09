@@ -72,7 +72,9 @@ async function loadSalarizare() {
     duLa('angajati');
     f.id.value = r.id; f.nume.value = r.nume; f.cnp.value = r.cnp; f.functie.value = r.functie;
     f.salariuBrut.value = round2(r.brut - r.spor); f.spor.value = r.spor; f.neimpozabil.value = r.neimpozabil; f.avans.value = r.avans; f.retineri.value = r.retineri;
-    f.persoane.value = r.persoane != null ? r.persoane : ''; f.copii.value = r.copii || 0; f.sub26.checked = !!r.sub26;
+    f.persoane.value = r.persoane != null ? r.persoane : 0; f.copii.value = r.copii || 0; f.sub26.checked = !!r.sub26;
+  // `undefined` la inregistrarile vechi inseamna functie de baza (vezi payrollService): bifat.
+  if (f.functieBaza) f.functieBaza.checked = r.functieBaza !== false;
     f.tichete.value = r.tichete || 0; f.avantaje.value = r.avantaje || 0; f.sector.value = r.sector || 'normal';
     f.salariuBrut.value = round2((r.salariuBaza || r.brut) - r.spor); f.zileCM.value = r.zileCM || 0; f.procentCM.value = r.procentCM || 75; f.dataInceputCM.value = r.dataInceputCM || '';
     f.zileCO.value = r.zileCO || 0; f.normaPartiala.checked = !!r.normaPartiala; f.scutitNormaPartiala.checked = false;
@@ -101,7 +103,7 @@ $('#angajatForm').addEventListener('submit', async (e) => {
   const f = e.target;
   const beneficii = {};
   campuriBeneficii(f).forEach((inp) => { beneficii[inp.name.slice(4)] = inp.value; });
-  const body = { id: f.id.value || undefined, nume: f.nume.value, cnp: f.cnp.value, functie: f.functie.value, salariuBrut: f.salariuBrut.value, spor: f.spor.value, persoane: f.persoane.value, copii: f.copii.value, sub26: f.sub26.checked, neimpozabil: f.neimpozabil.value, tichete: f.tichete.value, avantaje: f.avantaje.value, zileCM: f.zileCM.value, dataInceputCM: f.dataInceputCM.value, procentCM: f.procentCM.value, zileCO: f.zileCO.value, normaPartiala: f.normaPartiala.checked, scutitNormaPartiala: f.scutitNormaPartiala.checked, zileLucratoare: f.zileLucratoare.value, sector: f.sector.value, avans: f.avans.value, retineri: f.retineri.value,
+  const body = { id: f.id.value || undefined, nume: f.nume.value, cnp: f.cnp.value, functie: f.functie.value, salariuBrut: f.salariuBrut.value, spor: f.spor.value, persoane: f.persoane.value, copii: f.copii.value, sub26: f.sub26.checked, functieBaza: f.functieBaza ? f.functieBaza.checked : true, neimpozabil: f.neimpozabil.value, tichete: f.tichete.value, avantaje: f.avantaje.value, zileCM: f.zileCM.value, dataInceputCM: f.dataInceputCM.value, procentCM: f.procentCM.value, zileCO: f.zileCO.value, normaPartiala: f.normaPartiala.checked, scutitNormaPartiala: f.scutitNormaPartiala.checked, zileLucratoare: f.zileLucratoare.value, sector: f.sector.value, avans: f.avans.value, retineri: f.retineri.value,
     beneficii, zileTelemunca: f.zileTelemunca.value, zileMobilitate: f.zileMobilitate.value, copiiCresa: f.copiiCresa.value };
   try { await api('/api/angajati', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Angajat salvat'); golesteAngajat(); loadSalarizare(); }
   catch (err) { toast(err.message, true); }

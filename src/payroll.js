@@ -66,10 +66,22 @@ function statePlata(angajati, period, history) {
     // se DERIVA mai jos, fiindca depinde de salariu si de luna, iar un cuantum stocat ar ramane
     // adevarat dupa ce salariul creste.
     const neimpozabil = round2(Number(a.neimpozabil) || 0);
-    // Deducerea personala se calculeaza cand angajatul are datele (persoane in intretinere / <=26 ani / copii);
-    // altfel se pastreaza comportamentul anterior (doar suma neimpozabila manuala).
-    const hasDP = a.persoane != null || a.sub26 || a.copii;
-    const dp = hasDP ? fiscal.deducerePersonala(brut, a.persoane, { salariuMinim: fiscal.salariuMinimLa(period), sub26: a.sub26, copii: a.copii }).total : 0;
+    // DEDUCEREA PERSONALA (art. 77 Cod fiscal) se acorda la FUNCTIA DE BAZA, indiferent daca
+    // angajatul are sau nu persoane in intretinere: cu zero persoane se cuvine tot deducerea de
+    // baza, diminuata progresiv pana la plafonul salariu minim + 2.000.
+    //
+    // Poarta era `a.persoane != null`, adica "s-a completat campul". Era o compatibilitate cu
+    // inregistrarile vechi, nu regula legala — si a devenit generator de eroare: campul „Persoane
+    // in intretinere" din formular avea `placeholder="0"` fara `value="0"`, deci ARATA completat cu
+    // zero, dar se trimitea GOL. Rezultat: angajatul nu primea nicio deducere si era supraimpozitat.
+    // Masurat la 5.000 lei brut: deducere 430 -> impozit 282 in loc de 325, adica 43 lei/luna,
+    // 516 lei/an per angajat, in plus la stat si in minus din netul omului.
+    //
+    // Azi poarta e cea legala: deducerea se acorda daca angajatul E la functia de baza. Singurul
+    // caz in care NU se acorda (al doilea loc de munca) se declara EXPLICIT, prin `functieBaza:false`,
+    // nu prin uitarea unui camp.
+    const hasDP = a.functieBaza !== false;
+    const dp = hasDP ? fiscal.deducerePersonala(brut, Number(a.persoane) || 0, { salariuMinim: fiscal.salariuMinimLa(period), sub26: a.sub26, copii: a.copii }).total : 0;
     const deducere = round2(dp + neimpozabil); // total scazut din baza de impozit
     const tichete = round2(Number(a.tichete) || 0);
     const avantaje = round2(Number(a.avantaje) || 0); // avantaje in natura impozabile (auto, chirie...)

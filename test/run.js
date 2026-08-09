@@ -1897,7 +1897,7 @@ eq('netul angajatului NU scade din suprataxare', pNp.net, 1170);
 eq('costul angajatorului include suprataxarea', pNp.costTotal, 2762.5);
 const spNp = statePlata([{ id: 'np1', nume: 'Partial', salariuBrut: 2000, normaPartiala: true }], '2026-06');
 eq('stat: suprataxarea apare pe rand si in totaluri', spNp.rows[0].casAngajator + '|' + spNp.totals.cassAngajator, '512.5|205');
-eq('stat: total de virat include partea angajatorului', spNp.totals.totalBuget, 500 + 200 + 130 + 45 + 512.5 + 205);
+eq('stat: total de virat include partea angajatorului', spNp.totals.totalBuget, 500 + 200 + 49 + 45 + 512.5 + 205); // impozit 49: sub salariul minim, deducerea e maxima (810)
 eq('exceptia legala (student/pensionar/cumul) anuleaza suprataxarea', statePlata([{ id: 'np2', nume: 'S', salariuBrut: 2000, normaPartiala: true, scutitNormaPartiala: true }], '2026-06').rows[0].casAngajator, 0);
 ok('D112: suprataxarea normei partiale intra in obligatiile 412/432', (() => {
   // CAS: 500 (angajat) + 512.5 (angajator) = 1013; CASS: 200 + 205 = 405
@@ -1957,28 +1957,28 @@ eq('DU: baza pe angajamente (704 − 605)', duRip.venitNet, 200);
 eq('DU: varianta pe incasat/platit (1400 − 200)', duRip.incasat.venitNet, 1200);
 
 section('Stat de plata (per angajat)');
-const sp = statePlata(v.angajati);
+const sp = statePlata(v.angajati, '2026-06'); // perioada FIXATA: vezi nota de mai jos
 eq('numar angajati', sp.rows.length, 1);
 eq('total brut', sp.totals.brut, 5000);
-eq('total net', sp.totals.net, 2925);
-eq('total de virat la buget', sp.totals.totalBuget, 2187.5);
+eq('total net', sp.totals.net, 2968); // 5000 - 1250 CAS - 500 CASS - 282 impozit (deducere 430)
+eq('total de virat la buget', sp.totals.totalBuget, 2144.5); // 1250+500+282+112.5
 eq('cost total angajator', sp.totals.costTotal, 5112.5);
-eq('angajat net = payroll net', sp.rows[0].net, fiscal.payroll(5000).net);
+eq('angajat net = payroll net', sp.rows[0].net, fiscal.payroll(5000, 430).net); // 430 = deducerea personala la 5000 brut, SM 4050
 const d112 = xml.d112Xml(v.company, '2026-06', sp);
 ok('D112 bine-format', wellFormed(d112));
 ok('D112 pe schema curenta (declaratieUnica v7)', d112.includes('xmlns="mfp:anaf:dgti:declaratie_unica:declaratie:v7"'));
 ok('D112 contine asiguratul (nume/prenume separate + CNP)', d112.includes('numeAsig="Popescu"') && d112.includes('prenAsig="Ion"') && d112.includes('cnpAsig="1900101415238"'));
-ok('D112: obligatiile pe coduri (602/412/432/480) cu totalul de plata', /A_codOblig="602" A_datorat="325"/.test(d112) && /A_codOblig="480" A_datorat="113"/.test(d112) && d112.includes('totalPlata_A="2188"'));
-ok('D112: impozitul per asigurat in E3 (E3_15) si Timp_E3', d112.includes('E3_15="325"') && d112.includes('Timp_E3="325"'));
+ok('D112: obligatiile pe coduri (602/412/432/480) cu totalul de plata', /A_codOblig="602" A_datorat="282"/.test(d112) && /A_codOblig="480" A_datorat="113"/.test(d112) && d112.includes('totalPlata_A="2145"'));
+ok('D112: impozitul per asigurat in E3 (E3_15) si Timp_E3', d112.includes('E3_15="282"') && d112.includes('Timp_E3="282"'));
 ok('D112: NZL cu sarbatorile legale (iunie 2026 = 21 zile, 1 iunie Rusalii)', d112.includes('A_8="21"') && d112.includes('A_6="168"'));
 // spor (impozabil) + retineri (din net)
-const sp2 = statePlata([{ id: 'x', nume: 'Test', salariuBrut: 4700, spor: 300, retineri: 500 }]);
+const sp2 = statePlata([{ id: 'x', nume: 'Test', salariuBrut: 4700, spor: 300, retineri: 500 }], '2026-06');
 eq('brut cu spor (4700+300)', sp2.totals.brut, 5000);
-eq('net (ca la 5000 brut)', sp2.totals.net, 2925);
-eq('rest de plata = net - retineri', sp2.rows[0].restPlata, 2425);
+eq('net (ca la 5000 brut)', sp2.totals.net, 2968);
+eq('rest de plata = net - retineri', sp2.rows[0].restPlata, 2468);
 eq('total retineri', sp2.totals.retineri, 500);
-const sp3 = statePlata([{ id: 'y', nume: 'Test', salariuBrut: 5000, avans: 1000, retineri: 200 }]);
-eq('rest de plata = net - avans - retineri', sp3.rows[0].restPlata, 1725);
+const sp3 = statePlata([{ id: 'y', nume: 'Test', salariuBrut: 5000, avans: 1000, retineri: 200 }], '2026-06');
+eq('rest de plata = net - avans - retineri', sp3.rows[0].restPlata, 1768);
 eq('total avans', sp3.totals.avans, 1000);
 
 section('Deducere personala (art. 77 Cod fiscal)');
@@ -2048,8 +2048,29 @@ eq('impozit scade cu deducerea personala', spDP.rows[0].impozit, payMin.impozit)
 }
 eq('deducerea apare in rand', spDP.rows[0].deducere, dpMin);
 ok('impozit cu deducere < impozit fara deducere', payMin.impozit < fiscal.payroll(sm, 0).impozit);
-// fara campuri noi -> comportament neschimbat (compat)
-eq('angajat fara persoane: deducere 0 (compat)', statePlata([{ id: 'q', nume: 'X', salariuBrut: 5000 }]).rows[0].deducere, 0);
+// DEDUCEREA NU ATARNA DE COMPLETAREA UNUI CAMP. Aici statea, pana la 2026-08-09, un test care
+// cerea „angajat fara persoane -> deducere 0 (compat)". Codifica un defect: formularul avea
+// `placeholder="0"` fara `value="0"`, deci campul „Persoane in intretinere" ARATA completat cu zero
+// dar se trimitea GOL, iar gol insemna „fara nicio deducere". Masurat: 43 lei/luna, 516 lei/an
+// supraimpozitare per angajat, si un test verde care o garanta.
+// Regula legala (art. 77): deducerea se acorda la FUNCTIA DE BAZA, iar cu zero persoane in
+// intretinere se cuvine tot deducerea de baza. Singura exceptie — al doilea loc de munca — se
+// declara EXPLICIT, nu prin uitarea unui camp.
+{
+  const faraCamp = statePlata([{ id: 'q1', nume: 'Fara camp', salariuBrut: 5000 }], '2026-06').rows[0];
+  const zeroTastat = statePlata([{ id: 'q2', nume: 'Zero', salariuBrut: 5000, persoane: 0 }], '2026-06').rows[0];
+  eq('campul necompletat NU costa angajatul: aceeasi deducere ca „0" tastat', faraCamp.deducere, zeroTastat.deducere);
+  eq('...si e chiar deducerea de baza la 5000 brut (SM 4050)', faraCamp.deducere, 430);
+  eq('...deci acelasi impozit', faraCamp.impozit, zeroTastat.impozit);
+  // Al doilea loc de munca: singurul caz fara deducere, si se cere DECLARAT.
+  const alDoilea = statePlata([{ id: 'q3', nume: 'Al doilea job', salariuBrut: 5000, persoane: 0, functieBaza: false }], '2026-06').rows[0];
+  eq('al doilea loc de munca: fara deducere personala', alDoilea.deducere, 0);
+  ok('...deci impozit mai mare decat la functia de baza', alDoilea.impozit > faraCamp.impozit);
+  // Persoanele in intretinere cresc deducerea (20% -> 30% din SM la 2 persoane).
+  const cuDoua = statePlata([{ id: 'q4', nume: 'Doua pers', salariuBrut: 5000, persoane: 2 }], '2026-06').rows[0];
+  eq('doua persoane in intretinere -> deducere mai mare', cuDoua.deducere, 640);
+  ok('...si impozit mai mic', cuDoua.impozit < faraCamp.impozit);
+}
 
 section('Salarizare extinsa (tichete, scutiri sectoriale, concedii)');
 const pT = fiscal.payroll(5000, 0, { tichete: 500 });
