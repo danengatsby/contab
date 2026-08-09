@@ -8,6 +8,7 @@
 const acc = require('./accounting');
 const coa = require('./chartOfAccounts');
 const fiscal = require('./fiscal');
+const bnr = require('./bnr'); // cursul oficial pentru plafonul micro
 const fiscalProfile = require('./fiscalProfile');
 const { period: periodOf, round2 } = require('./util');
 
@@ -173,7 +174,16 @@ function check(v, opts) {
   // 3) Micro peste plafonul de venituri -> trebuie trecut la impozit pe profit
   if (profile.micro) {
     const venitAn = venituriClasa7(yearEntries);
-    const plafonLei = round2((fiscal.FISCAL.plafonMicroEur || 0) * (fiscal.FISCAL.cursPlafonMicro || 0));
+    // Acelasi curs ca la D100 (BNR, 31 decembrie anul precedent), altfel controlul si declaratia
+    // ar folosi doua plafoane diferite pentru aceeasi firma.
+    const cursP = bnr.cursPlafonMicro((v.cursuriBnr || []), Number(year), fiscal.FISCAL.cursPlafonMicro);
+    const plafonLei = round2((fiscal.FISCAL.plafonMicroEur || 0) * (cursP.curs || 0));
+    // Doar in preajma plafonului: acolo alegerea cursului poate schimba incadrarea. Altfel ar fi
+    // un avertisment permanent pentru orice firma micro care n-a incarcat cursuri.
+    if (cursP.sursa !== 'bnr' && plafonLei > 0 && venitAn > round2(plafonLei * 0.9)) add('info', 'micro-curs-orientativ',
+      'Ești aproape de plafonul micro, iar acesta e calculat cu cursul ORIENTATIV din setări ('
+      + cursP.curs + ' lei/EUR): nu există curs BNR pentru 31 decembrie ' + (Number(year) - 1)
+      + '. Adu cursurile BNR înainte de a decide încadrarea.');
     if (plafonLei > 0 && venitAn > plafonLei) add('atentie', 'micro-peste-plafon',
       'Veniturile anului ' + year + ' (' + venitAn + ' lei) depășesc plafonul micro (~' + plafonLei + ' lei) — firma datorează impozit pe profit (D101), nu micro.');
     // 4) Micro fara salariat — conditia de incadrare (art. 47 Cod fiscal)

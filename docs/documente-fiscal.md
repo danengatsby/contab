@@ -15,6 +15,19 @@
   altă bază decât cea pe care se reținuse. Monografia trece prin **462** („creditori diverși"),
   deci cheltuiala se recunoaște **când e datorată**, nu la plată — contul de plată are și opțiunea
   „neplătită încă", care lasă soldul pe 462.
+- **Concediul medical — primele 5 zile sunt CALENDARISTICE** (OUG 158/2005 art. 12), nu lucrătoare:
+  indemnizația se cuvine doar pentru zilele lucrătoare din ele, iar cele două numărători diferă ori
+  de câte ori intervalul prinde un weekend. Un concediu început **joi** are 3 zile lucrătoare în
+  primele 5 calendaristice, nu 5 — formula veche muta sistematic cost de la FNUASS la firmă. Se
+  cere **data începerii**; fără ea rămâne vechea aproximare, dar rândul e marcat ca aproximat.
+  Sărbătorile legale nu sunt luate în calcul (nu există calendar de sărbători) — efectul merge în
+  aceeași direcție, cel mult supraevaluează partea angajatorului.
+- **Plafoanele în EURO se convertesc la cursul BNR**, nu la o valoare rotundă din setări: plafonul
+  micro folosește cursul de la **31 decembrie al anului precedent** (ultimul publicat înainte, dacă
+  ziua cade în weekend — chiar regula legală). La 5,0 în loc de ~5,08, plafonul de 100.000 EUR ieșea
+  500.000 în loc de ~508.000 lei, iar o firmă cu 505.000 lei era declarată greșit ieșită din regim.
+  Când cursul BNR lipsește se folosește valoarea din setări, **cu avertisment** — dar numai în
+  preajma plafonului, unde alegerea chiar poate schimba încadrarea.
 - **Calcul automat al salariilor:** la „Stat de plata” introduci doar brutul (și opțional suma
   neimpozabilă); CAS/CASS/impozit/CAM se calculează automat (lași câmpurile goale).
 - **Plan de conturi extins** la lista din ghid (secțiunea 17): 211, 231, 267, 2678, 2813, 280,

@@ -19,7 +19,7 @@ poarta înainte să lase push-ul să treacă. **24 din 24 de ieșiri: „Validar
 |---|---|
 | D100 | `D100`, `D100-profit`, `D100-anticipat` |
 | D101 | `D101`, `D101-defalcare` |
-| D112 | `D112`, `D112-beneficii` |
+| D112 | `D112`, `D112-beneficii`, `D112-cm` |
 | D177 · D205 | `D177`, `D205`, `D205-retineri` |
 | D300 | `D300`, `D300-report`, `D300-autofactura`, `D300-servicii`, `D300-prorata` |
 | D390 | `D390`, `D390-autofactura`, `D390-servicii` |
@@ -92,6 +92,29 @@ acest depozit: nu inventa monografia.
 
 **D311** (TVA colectată de persoanele cu cod de TVA anulat) are validator oficial în manifest
 (`<D311>`), dar nu a fost recunoscut.
+
+## Ultima verificare: 2026-08-08 (6) — concediu medical: poarta confunda „valid cu atenționări" cu „invalid"
+
+Variantă de referință nouă: **`D112-cm`** (concediu medical, început într-o **joi**) ✅ valid, **cu
+o atenționare**.
+
+**Poarta avea un fals alarm, descoperit de această variantă.** DUKIntegrator scrie și atenționările
+în același fișier ca erorile, iar la stdout nu mai apare *„Validare fără erori"* — așa că o
+declarație perfect corectă era raportată `✗ INVALID … (0 erori)`. Un „0 erori" lângă „INVALID" era
+chiar simptomul: nimeni nu anticipase cazul.
+
+Cazul e legitim: la un stat cu concediu medical, **baza CAS depășește baza CASS**, fiindcă
+indemnizația intră în CAS și în impozit, dar **nu** în CASS (OUG 158/2005). Regula `S26.2` semnalează
+asta ca neobișnuit — pe drept, dar nu e eroare:
+
+```
+atentionare regula: S26.2: A_13 (4405) > A_11(2619) pt dat_CAS=true si dat_CASS=true
+```
+
+Poarta distinge acum cele două, **fail-closed**: se cere *atât* confirmarea din stdout
+(„Atentionari la validare"), *cât și* absența oricărui bloc de eroare (`E:`/`F:`); orice altă formă
+rămâne INVALID. Atenționările se afișează, nu se înghit — și în verdictul individual, și în tabelul
+agregat. Verificat în ambele direcții: un XML cu eroare reală iese în continuare cu cod 1.
 
 ## Ultima verificare: 2026-08-08 (5) — rețineri la sursă: baza impozabilă și `tip_plata`
 

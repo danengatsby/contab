@@ -24,6 +24,36 @@ function mediaIstoric(a, history, period, luni) {
  *  `spor` se adauga la brut (impozabil); `avans` (425) si `retineri` (terti -> 427) se scad din net.
  *  `period` (YYYY-MM, optional) alege salariul minim S1/S2 pentru deducerea personala.
  *  `history` (payrollHistory, optional) da media ultimelor 6 luni pentru baza concediului medical. */
+/**
+ * Zilele LUCRATOARE cuprinse in primele `n` zile CALENDARISTICE ale concediului medical.
+ *
+ * OUG 158/2005 art. 12 lit. A pune in sarcina angajatorului „prima zi pana in a 5-a zi de
+ * incapacitate" — zile CALENDARISTICE de incapacitate, nu zile lucratoare de concediu. Indemnizatia
+ * se cuvine insa doar pentru zilele lucratoare din interval. Cele doua numaratori difera ori de
+ * cate ori intervalul prinde un weekend: un concediu care incepe JOI are in primele 5 zile
+ * calendaristice doar 3 zile lucratoare (joi, vineri, luni), deci angajatorul suporta 3, nu 5.
+ *
+ * Formula veche, `min(5, zileCM)`, numara 5 zile lucratoare — adica MAXIMUL posibil. Rezultatul:
+ * cost mutat sistematic de la FNUASS la firma si o suma recuperabila subdeclarata in D112.
+ *
+ * Sarbatorile legale NU sunt luate in calcul (aplicatia nu tine un calendar de sarbatori); efectul
+ * merge in aceeasi directie ca inainte — cel mult supraevalueaza partea angajatorului, niciodata
+ * invers. Se poate corecta ridicand numarul de zile lucratoare al lunii.
+ */
+function zileLucratoareInPrimele(dataStart, n) {
+  const zi = String(dataStart || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(zi)) return null;
+  const d = new Date(zi + 'T00:00:00Z');
+  if (isNaN(d.getTime())) return null;
+  let lucratoare = 0;
+  for (let i = 0; i < n; i += 1) {
+    const wd = d.getUTCDay();
+    if (wd !== 0 && wd !== 6) lucratoare += 1;
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return lucratoare;
+}
+
 function statePlata(angajati, period, history) {
   const rows = [];
   const t = { brut: 0, neimpozabil: 0, neimpozabilMinim: 0, deducere: 0, tichete: 0, avantaje: 0,
@@ -52,14 +82,20 @@ function statePlata(angajati, period, history) {
     const zlm = Math.max(1, Math.round(Number(a.zileLucratoare) || 21));
     const zcm = Math.max(0, Math.min(Math.round(Number(a.zileCM) || 0), zlm));
     const procentCM = Number(a.procentCM) || 75;
-    let cmA = 0; let cmF = 0; let mediaCM = 0;
+    let cmA = 0; let cmF = 0; let mediaCM = 0; let cmAprox = false; let zileAngajator = 0;
     if (zcm > 0) {
       const media = mediaIstoric(a, history, period, 6) || brut;
       mediaCM = Math.min(media, round2(12 * fiscal.salariuMinimLa(period)));
       const zilnica = round2((mediaCM / zlm) * (procentCM / 100));
-      const zileAng = Math.min(5, zcm);
+      // Plafonul zilelor suportate de angajator se citeste din DATA de inceput a concediului
+      // (zile calendaristice), nu din numarul de zile lucratoare. Fara data, ramane vechea
+      // aproximare — dar articolul o SEMNALEAZA (`cmAproximat`), ca sa nu treaca drept exact.
+      const capAng = zileLucratoareInPrimele(a.dataInceputCM, 5);
+      cmAprox = capAng == null;
+      const zileAng = Math.min(capAng == null ? 5 : capAng, zcm);
       cmA = round2(zilnica * zileAng);
       cmF = round2(zilnica * (zcm - zileAng));
+      zileAngajator = zileAng;
     }
     // Concediu de odihna: indemnizatia = media zilnica a bruturilor din ultimele 3 luni postate
     // (fallback: brutul curent) x zilele de CO; salariul se reduce proportional. Indemnizatia CO
@@ -118,6 +154,7 @@ function statePlata(angajati, period, history) {
       zileMobilitate: a.zileMobilitate != null ? Math.max(0, Math.round(Number(a.zileMobilitate) || 0)) : null,
       copiiCresa: Math.max(0, Math.round(Number(a.copiiCresa) || 0)),
       zileCM: zcm, procentCM: zcm ? procentCM : 0, mediaCM, cmAngajator: cmA, cmFnuass: cmF, indemnizatieCM: round2(cmA + cmF),
+      dataInceputCM: a.dataInceputCM || '', zileCMAngajator: zileAngajator, cmAproximat: cmAprox,
       zileCO: zco, mediaCO, indemnizatieCO,
       normaPartiala: !!(a.normaPartiala && !a.scutitNormaPartiala), casAngajator: p.casAngajator, cassAngajator: p.cassAngajator,
       cas: p.cas, cass: p.cass, impozit: p.impozit, cam: p.cam, net: p.net, avans, retineri, restPlata, costTotal: p.costTotal,
@@ -158,4 +195,4 @@ function registruSalarii(history, year) {
   return { year: String(year), angajati, totals: t, nrLuni: new Set(snaps.map((h) => h.period)).size };
 }
 
-module.exports = { statePlata, registruSalarii };
+module.exports = { statePlata, registruSalarii, zileLucratoareInPrimele };

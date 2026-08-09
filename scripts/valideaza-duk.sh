@@ -68,6 +68,18 @@ if grep -q "Validare fara erori" "$W/out.txt"; then
   echo "✓ $TIP: valid conform validatorului oficial ANAF."
   exit 0
 fi
+# ATENTIONARI, fara nicio eroare: declaratia E acceptata. DUKIntegrator scrie si atentionarile in
+# acelasi fisier, iar stdout nu mai spune „Validare fara erori" — asa incat o declaratie CORECTA
+# ajungea raportata „INVALID (0 erori)", adica un fals alarm care ar bloca un release. Cazul e real:
+# la un stat cu concediu medical, baza CAS depaseste legitim baza CASS (indemnizatia intra in CAS,
+# nu in CASS), iar regula S26.2 semnaleaza asta ca neobisnuit — corect, dar nu eroare.
+# Fail-closed: se cere ATAT confirmarea din stdout, CAT SI absenta oricarui bloc de eroare (E:/F:).
+# Orice alta forma cade mai jos, la INVALID.
+if grep -q "Atentionari la validare" "$W/out.txt" && ! grep -q '^[EF]:' "$W/erori.txt"; then
+  echo "✓ $TIP: valid conform validatorului oficial ANAF, cu $(grep -c 'atentionare regula' "$W/erori.txt") atentionare/atentionari:"
+  sed 's/^/    /' "$W/erori.txt"
+  exit 0
+fi
 if [ -s "$W/erori.txt" ] && ! grep -qx "ok" "$W/erori.txt"; then
   cat "$W/erori.txt"
   echo ""
