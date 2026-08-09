@@ -1,0 +1,68 @@
+{
+ "parte": "Partea III · Documentul · faza 2",
+ "nr": "14",
+ "titlu": "Factura pe care o emiți tu",
+ "blocuri": [
+  { "tip": "p", "text": "Până acum documentele veneau spre firmă. Capitolul acesta le privește pe cele care pleacă din ea, iar diferența nu e doar de sens: pentru documentele primite ești cel care verifică, pentru cele emise ești cel care răspunde de conținut." },
+  { "tip": "p", "text": "Factura pe care o emiți e, în același timp, dovada dreptului tău de a încasa, temeiul pe care clientul își va deduce cheltuiala și TVA-ul, și rândul din decontul tău de TVA. Trei roluri într-o singură hârtie — de aceea are cele mai multe cerințe de formă din toată contabilitatea." },
+
+  { "tip": "h", "text": "Numerotarea: mai importantă decât pare" },
+  { "tip": "p", "text": "O factură trebuie să aibă un număr unic, dintr-o serie continuă, atribuit în ordine cronologică. Regula pare administrativă și e, de fapt, cea care face ca vânzările să nu se poată ascunde: dacă între factura 100 și 102 lipsește 101, întrebarea se pune singură." },
+  { "tip": "p", "text": "De aici decurg două lucruri pe care le încalcă multe firme mici. Nu se sar numere — o factură greșită se stornează, nu se aruncă. Și nu se emit facturi „cu data de luna trecută” după ce s-au emis deja altele cu data curentă, fiindcă atunci cronologia și numerotarea intră în contradicție." },
+  { "tip": "p", "text": "Un program atribuie numerele singur, din serii configurate o dată, tocmai ca aceste două reguli să nu depindă de atenția cuiva într-o zi aglomerată." },
+
+  { "tip": "h", "text": "Ce trebuie să scrie pe ea" },
+  { "tip": "p", "text": "Conținutul obligatoriu al facturii e stabilit de Codul fiscal, iar lipsa unui element nu e o scăpare de formă: îl poate lăsa pe client fără drept de deducere, ceea ce transformă imediat o neglijență a ta într-o problemă comercială." },
+  { "tip": "tabel",
+    "titlu": "Elementele care nu pot lipsi",
+    "cap": ["Elementul", "De ce contează"],
+    "randuri": [
+      ["Seria, numărul și data emiterii", "identifică factura și o așază în cronologie"],
+      ["Datele complete ale ambelor părți", "denumire, sediu, cod de înregistrare fiscală"],
+      ["Descrierea bunurilor sau serviciilor", "generic — «servicii prestate» — nu e descriere"],
+      ["Cantitatea și prețul unitar", "fac verificabilă baza impozabilă"],
+      ["Baza, cota și suma TVA, pe fiecare cotă", "din ele se compune decontul"],
+      ["Data livrării sau prestării, dacă diferă de emitere", "determină exigibilitatea taxei"],
+      ["Mențiunile speciale, unde e cazul", "«taxare inversă», «TVA la încasare», «scutit conform…»"]
+    ],
+    "nota": "Ultimele două rânduri sunt cele mai des omise — și cele care produc cele mai multe respingeri la control." },
+
+  { "tip": "h", "text": "Articolul pe care îl produce" },
+  { "tip": "p", "text": "O factură de vânzare de marfă produce, ca orice vânzare, două operațiuni distincte, pe care capitolul 2 le-a arătat deja: câștigarea dreptului de a încasa și ieșirea mărfii din depozit." },
+  { "tip": "tabel",
+    "titlu": "Vânzare de marfă, 1.000 + 210 TVA, cost 600",
+    "cap": ["Debit", "Credit", "Suma", "Ce reprezintă"],
+    "randuri": [
+      ["4111 Clienți", "", "1.210", "cât are clientul de plătit, cu tot cu taxă"],
+      ["", "707 Venituri din vânzarea mărfurilor", "1.000", "venitul, fără TVA"],
+      ["", "4427 TVA colectată", "210", "taxa datorată statului, nu venit al firmei"],
+      ["607 Cheltuieli privind mărfurile", "", "600", "costul mărfii care a plecat"],
+      ["", "371 Mărfuri", "600", "scăderea din depozit"]
+    ],
+    "numerice": [3],
+    "nota": "Câștigul din operațiune — 400 de lei — nu se scrie nicăieri: iese din diferența dintre venitul de 1.000 și costul de 600." },
+  { "tip": "p", "text": "Se vede aici, poate mai limpede decât oriunde, de ce TVA-ul colectat nu e venit. Cei 210 lei intră în firmă odată cu restul sumei, dar nu-i aparțin: sunt colectați pentru stat și vor pleca la el. Un patron care își calculează câștigul din totalul facturat își supraestimează sistematic afacerea." },
+
+  { "tip": "h", "text": "Factura electronică" },
+  { "tip": "p", "text": "Din aceeași factură iese și fișierul electronic care pleacă în sistemul ANAF. Nu e o a doua factură și nu se completează separat: e aceeași informație, într-un format standardizat, citibil de mașini." },
+  { "tip": "p", "text": "Nu toate documentele emise trebuie să plece acolo, iar deosebirea nu se face după preferință, ci după tipul operațiunii. O factură către o firmă are alt regim decât o chitanță către o persoană fizică, iar un document care nu e factură nu are ce căuta în sistem." },
+  { "tip": "p", "text": "Un program bine făcut deduce obligația din tipul documentului ales — capitolul 11 — și nu dintr-o listă scrisă de mână care ar rămâne în urma legislației. Iar când un document ar trebui să plece și nu poate fi construit corect, refuză să-l emită gol, în loc să trimită o factură cu baza zero." },
+
+  { "tip": "contabil", "titlu": "Pentru contabil",
+    "text": "Conținutul obligatoriu al facturii e cel din art. 319 Cod fiscal, iar controlul lui e prima verificare la orice inspecție de TVA — nu pentru rigoare formală, ci fiindcă dreptul de deducere al beneficiarului se sprijină pe el. Trei zone produc majoritatea corecțiilor. Prima: exigibilitatea — data livrării sau prestării, când diferă de data emiterii, determină perioada de raportare, iar la avansuri exigibilitatea intervine la încasare; o factură emisă în luna următoare pentru o livrare din luna precedentă aparține, ca TVA, lunii livrării. A doua: mențiunile obligatorii pentru regimurile speciale — taxare inversă, TVA la încasare, regimul marjei, scutiri cu drept de deducere — a căror lipsă nu se poate remedia prin explicații ulterioare, ci prin refacerea documentului. A treia: descrierea operațiunii, unde formulările generice de tipul «servicii conform contract» sunt în practică cel mai frecvent motiv de respingere a deductibilității la beneficiar, fiindcă nu permit verificarea realității prestației. La stornări, nota de credit trebuie să poarte referința documentului corectat; fără ea, cele două facturi trăiesc separat în evidențele partenerului." },
+
+  { "tip": "h", "text": "Ce urmează" },
+  { "tip": "p", "text": "Cu aceasta, faza a doua e completă. Documentele intră și ies, fiecare cu articolul lui, verificate înainte de a produce efecte. Contabilitatea firmei are, de acum, conținut." },
+  { "tip": "p", "text": "Următorul lucru care se mișcă, de regulă în urma acestor documente, sunt banii. Faza a treia, și partea următoare: trezoreria — singurul loc din contabilitate care se poate confrunta cu o realitate exterioară." },
+
+  { "tip": "recap", "titlu": "De reținut din acest capitol",
+    "puncte": [
+      "Factura emisă are trei roluri deodată: dreptul tău de a încasa, temeiul deducerii clientului, rândul din decontul tău.",
+      "Numerotarea unică și cronologică nu e formalitate: e ceea ce face vânzările imposibil de ascuns. O factură greșită se stornează, nu se aruncă.",
+      "Lipsa unui element obligatoriu îl poate lăsa pe client fără drept de deducere — problema ta devine problema lui, și invers.",
+      "O vânzare produce două operațiuni: venitul și descărcarea gestiunii. Câștigul nu se scrie nicăieri, iese din diferență.",
+      "TVA-ul colectat intră în firmă, dar nu-i aparține. Cine își socotește câștigul din total își supraestimează afacerea.",
+      "Obligația de e-Factura se deduce din tipul operațiunii, nu dintr-o listă întreținută manual."
+    ] }
+ ]
+}

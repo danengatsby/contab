@@ -1,0 +1,51 @@
+{
+ "parte": "Partea III · Documentul · faza 2",
+ "nr": "12",
+ "titlu": "Ciornă, validat, aprobat, postat",
+ "blocuri": [
+  { "tip": "p", "text": "Un document introdus în program nu intră, prin acest simplu fapt, în contabilitate. Între „am tastat” și „e înregistrat” stau câteva trepte, iar ele nu sunt o birocrație a programului: sunt exact separarea despre care vorbea capitolul 4, între cine introduce și cine își asumă." },
+  { "tip": "p", "text": "La o firmă mică, unde aceeași persoană face ambele lucruri, treptele par un moft. Devin însă utile în prima zi în care cineva greșește — și sunt indispensabile în clipa în care la introducerea documentelor lucrează altcineva decât cel care semnează bilanțul." },
+
+  { "tip": "h", "text": "Cele patru stări" },
+  { "tip": "tabel",
+    "titlu": "Drumul unei înregistrări",
+    "cap": ["Starea", "Ce înseamnă", "Se poate șterge?"],
+    "randuri": [
+      ["Ciornă", "s-a tastat, dar nu e nimic decis; poate fi incompletă", "da, fără urmă"],
+      ["Validat", "datele sunt complete și coerente cu documentul", "da"],
+      ["Aprobat", "cineva cu drept și-a asumat conținutul", "da, până la postare"],
+      ["Postat", "a intrat în contabilitate și în toate rapoartele", "NU — doar prin storno"]
+    ],
+    "nota": "Numai ultima stare produce efecte. O ciornă nu apare în balanță, nu intră în decontul de TVA și nu se vede în bilanț." },
+  { "tip": "p", "text": "Pragul care contează e ultimul. Până la postare, o înregistrare e o intenție: se poate corecta, completa sau șterge fără ca nimeni să afle vreodată că a existat. După postare devine un fapt consemnat, iar faptele consemnate nu se șterg — se corectează prin altă înregistrare, care rămâne și ea." },
+
+  { "tip": "cheie", "text": "Înainte de postare, o greșeală e o corectură. După postare, e o operațiune nouă." },
+
+  { "tip": "h", "text": "De ce nu se șterge ce a fost postat" },
+  { "tip": "p", "text": "Întrebarea vine imediat, și e legitimă: dacă am greșit, de ce nu pot să șterg și să scriu corect? Răspunsul are două părți, una practică și una de principiu." },
+  { "tip": "p", "text": "Practic: pe baza înregistrării postate s-au calculat deja alte lucruri. Un decont de TVA depus, o balanță trimisă la bancă, o situație predată unui asociat. Ștergerea ar face ca aceleași documente să spună azi altceva decât spuneau ieri, fără ca nimic să explice diferența." },
+  { "tip": "p", "text": "De principiu: urma corecției face parte din dovadă. O contabilitate în care greșelile dispar fără urmă nu se deosebește, pentru cineva din afară, de una în care cifrele se ajustează după nevoie. Tocmai fiindcă erorile sunt normale și inevitabile, felul în care sunt corectate spune totul despre seriozitatea evidenței." },
+
+  { "tip": "h", "text": "Cine ce poate face" },
+  { "tip": "p", "text": "Treptele capătă sens deplin când sunt legate de persoane diferite. Modelul obișnuit la o firmă cu contabil extern arată așa: cineva din firmă introduce documentele pe măsură ce apar, contabilul verifică și postează." },
+  { "tip": "p", "text": "Avantajul nu e controlul, ci împărțirea corectă a muncii. Cel din firmă știe ce s-a întâmplat — a văzut marfa, a semnat de primire. Contabilul știe cum se înregistrează. Fiecare face partea pe care celălalt nu are cum să o facă, iar starea documentului spune, în orice moment, unde s-a ajuns." },
+  { "tip": "p", "text": "La o firmă unde patronul face totul singur, treptele rămân utile într-un fel mai modest: separă „am pus documentul deoparte ca să nu-l pierd” de „l-am verificat și e bun”. Sunt două lucruri diferite, iar amestecul lor e cauza obișnuită a facturilor înregistrate de două ori." },
+
+  { "tip": "contabil", "titlu": "Pentru contabil",
+    "text": "Fluxul de stări e forma informatică a unui principiu de control intern: separarea funcției de înregistrare de cea de aprobare. Chiar acolo unde separarea de persoane nu e posibilă — firme mici, contabil unic — separarea în timp păstrează o parte din beneficiu, fiindcă verificarea se face cu documentul în mână și nu în aceeași mișcare cu tastarea. Două consecințe pentru practică. Prima: dreptul de postare trebuie tratat ca un drept distinct în matricea de acces, nu ca o consecință a dreptului de scriere; un utilizator care poate introduce documente nu trebuie să poată și posta, dacă structura firmei permite altfel. A doua: momentul postării determină apartenența la perioadă doar împreună cu data operațiunii, nu în locul ei — o înregistrare postată în martie cu dată din februarie aparține lui februarie, iar dacă februarie e închisă, sistemul trebuie să refuze, nu să reclasifice tăcut. Refuzul acesta e subiectul blocării perioadei, din capitolul 41." },
+
+  { "tip": "h", "text": "Ce se vede din afară" },
+  { "tip": "p", "text": "Un efect secundar al stărilor, adesea mai valoros decât controlul în sine: în orice moment se poate spune ce e gata și ce nu. Câte documente ale lunii sunt încă ciorne, câte așteaptă verificarea, câte au intrat efectiv în contabilitate." },
+  { "tip": "p", "text": "La sfârșit de lună, întrebarea „am terminat?” nu se mai pune din memorie, ci se citește. Iar când răspunsul e nu, se vede exact ce lipsește — ceea ce transformă închiderea lunii dintr-o presimțire într-o listă. Capitolul 39 revine acolo." },
+  { "tip": "p", "text": "Rămâne întrebarea despre ce se verifică, de fapt, înainte ca un document să fie lăsat să treacă. E capitolul următor." },
+
+  { "tip": "recap", "titlu": "De reținut din acest capitol",
+    "puncte": [
+      "Un document introdus nu e un document înregistrat: numai starea „postat” produce efecte în balanță, în TVA și în bilanț.",
+      "Până la postare o greșeală e o corectură; după postare devine o operațiune nouă, prin storno.",
+      "Ștergerea unei înregistrări postate ar face ca rapoarte deja emise să spună altceva, fără explicație.",
+      "Treptele separă cine introduce de cine își asumă — ideal persoane diferite, dar și separarea în timp ajută.",
+      "Starea documentelor arată, în orice moment, ce e gata și ce lipsește din lună."
+    ] }
+ ]
+}
