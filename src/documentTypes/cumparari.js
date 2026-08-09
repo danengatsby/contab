@@ -6,6 +6,22 @@ const { L, F } = require('./helpers');
 const fiscal = require('../fiscal');
 const { round2 } = require('../util');
 
+/**
+ * Marja si TVA-ul ei (art. 312). TVA-ul e INCLUS in marja, deci se extrage cu cota/(100+cota) —
+ * adaugat peste marja ar supraimpozita cu ~21% din taxa insasi.
+ *
+ * Marja NEGATIVA (bun vandut in pierdere) nu da TVA de recuperat: art. 312 alin. (1) defineste baza
+ * ca marja, iar o marja negativa inseamna baza zero, nu o creanta la buget. Se pierde, pur si simplu.
+ */
+function marjaTva(d) {
+  const pretV = round2(Number(d.pretVanzare) || 0);
+  const cost = round2(Number(d.pretCumparare) || 0);
+  const cota = Number(d.cota) || fiscal.FISCAL.tvaStandard;
+  const marja = round2(pretV - cost);
+  const tva = marja > 0 ? round2((marja * cota) / (100 + cota)) : 0;
+  return { pretV, cost, cota, marja, tva, baza: round2(marja - tva), venit: round2(pretV - tva) };
+}
+
 module.exports = [
   // ─────────────────────────── CUMPARARI ──────────────────────────
   {
@@ -189,6 +205,101 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza,
       F.codNC, F.masaNeta, F.naturaTranz, F.conditieLivrare],
     build: (d) => [L('4111', '707', d.baza, 'Livrare intracomunitară (scutită cu drept de deducere)')],
+  },
+
+  // ── REGIMUL SPECIAL AL MARJEI DE PROFIT (art. 312) ───────────────────────────────────────────
+  // Pentru bunuri second-hand, opere de arta, obiecte de colectie si antichitati cumparate de la
+  // cine NU a putut factura cu TVA (persoane fizice, mici intreprinderi, alti revanzatori in acelasi
+  // regim). Profilul tipic: comerciantii de masini rulate.
+  //
+  // Doua lucruri il fac diferit de orice alta vanzare, si amandoua se greseau prin absenta:
+  //   1. baza impozabila e MARJA (pret de vanzare minus pret de cumparare), nu pretul de vanzare;
+  //   2. TVA-ul e INCLUS in marja, deci se extrage cu cota/(100+cota), nu se adauga peste ea.
+  // Pe factura TVA-ul NU se inscrie separat; factura poarta mentiunea „regim special - bunuri
+  // second-hand" (art. 319 alin. (20) lit. e). Cumparatorul nu deduce nimic din ea.
+  {
+    id: 'achizitie_regim_marja',
+    nume: 'Achizitie bunuri in regim special al marjei (art. 312) — fara TVA deductibila',
+    grup: 'Cumparari',
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza,
+      { name: 'contStoc', label: 'Cont stoc', type: 'account', default: '371' }],
+    // Nicio linie de TVA, si asta e chiar conditia regimului: bunul a fost cumparat de la cineva
+    // care nu a putut factura cu TVA, deci nu exista taxa de dedus. Un 4426 aici ar deduce o taxa
+    // care nu a fost niciodata platita.
+    build: (d) => [L(d.contStoc || '371', '401', d.baza, 'Achiziție în regim special al marjei (art. 312)')],
+  },
+  {
+    id: 'vanzare_regim_marja',
+    nume: 'Vanzare in regim special al marjei (art. 312) — TVA doar pe marja',
+    grup: 'Vanzari',
+    // DELIBERAT 'nu', desi e o factura emisa — si e o LIPSA cunoscuta, nu o scapare. Factura in
+    // regim special NU are voie sa inscrie TVA separat (art. 312 alin. (11)) si trebuie sa poarte
+    // mentiunea „regim special - bunuri second-hand" (art. 319 alin. (20) lit. e). Generatorul UBL
+    // citeste sumele din articol, deci ar scrie taxa pe marja ca TVA separat — adica exact ce legea
+    // interzice. Un XML gresit trimis in SPV e mai rau decat unul negenerat: pleaca la ANAF si la
+    // client. Se deblocheaza cand categoria de TVA din CIUS-RO pentru regimul marjei e stabilita
+    // dintr-o sursa sigura — pentru e-Factura nu exista validator rulabil (vezi docs).
+    eFactura: 'nu',
+    fields: [F.data, F.partener, F.cuiPartener, F.document,
+      { name: 'pretVanzare', label: 'Pret de vanzare (total incasat de la client)', type: 'number', required: true },
+      { name: 'pretCumparare', label: 'Pret de cumparare al bunului', type: 'number', required: true },
+      { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: fiscal.FISCAL.tvaStandard },
+      { name: 'contStoc', label: 'Cont stoc descarcat', type: 'account', default: '371' }],
+    build: (d) => {
+      const m = marjaTva(d);
+      const lines = [];
+      if (m.venit > 0) lines.push(L('4111', '707', m.venit, 'Vânzare în regim special al marjei (art. 312)'));
+      if (m.tva > 0) lines.push(L('4111', '4427', m.tva, 'TVA colectată pe MARJĂ (' + m.cota + '% din ' + m.marja + ' lei)'));
+      // Descarcarea de gestiune la costul de cumparare al bunului vandut.
+      if (m.cost > 0) lines.push(L('607', d.contStoc || '371', m.cost, 'Descărcarea de gestiune (cost de achiziție)'));
+      return lines;
+    },
+  },
+
+  // ── OPERATIUNEA TRIUNGHIULARA (art. 268 alin. (8) lit. b) ─────────────────────────────────────
+  // Trei parti in trei state membre: A (furnizor) -> B (noi, cumparator-revanzator) -> C (client),
+  // marfa mergand direct de la A la C. Masura de simplificare face ca achizitia lui B sa NU fie
+  // impozabila in Romania — deci, spre deosebire de o achizitie intracomunitara obisnuita, aici NU
+  // se face taxare inversa (nu exista 4426 = 4427). Livrarea catre C se declara in D390 pe codul
+  // propriu T, iar in decont pe randul 3 (locul livrarii e in afara Romaniei).
+  //
+  // Motivul pentru care sunt tipuri separate, si nu campuri pe cele obisnuite: cele doua operatiuni
+  // arata la fel in conturi cu o achizitie/livrare intracomunitara normala, dar se declara complet
+  // altfel. Din articol nu se poate citi care e care.
+  {
+    id: 'achizitie_triunghiulara',
+    nume: 'Achizitie in operatiune triunghiulara (neimpozabila in Romania, art. 268 alin. (8))',
+    grup: 'Cumparari',
+    fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza,
+      { name: 'contStoc', label: 'Cont stoc/cheltuiala', type: 'account', default: '371' }],
+    // FARA taxare inversa, si asta e toata substanta simplificarii: achizitia nu e impozabila in
+    // Romania, deci un `4426 = 4427` ar colecta si ar deduce o taxa care nu se datoreaza, umfland
+    // ambele laturi ale decontului cu o operatiune inexistenta.
+    build: (d) => [L(d.contStoc || '371', '401', d.baza, 'Achiziție în operațiune triunghiulară (neimpozabilă în România)')],
+  },
+  {
+    id: 'livrare_triunghiulara',
+    nume: 'Livrare in operatiune triunghiulara (D390 cod T)',
+    grup: 'Vanzari',
+    eFactura: 'da',
+    fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.items],
+    build: (d) => [L('4111', '707', d.baza, 'Livrare în cadrul unei operațiuni triunghiulare')],
+  },
+
+  {
+    id: 'export_extracomunitar',
+    nume: 'Export de bunuri in afara UE (scutit cu drept de deducere, art. 294)',
+    grup: 'Vanzari',
+    eFactura: 'da',
+    fields: [F.data, F.partener, F.cuiPartener, F.document, F.baza, F.items,
+      { name: 'declaratieVamala', label: 'Declaratia vamala de export (MRN / nr. DVE)', type: 'text' }],
+    // Scutit CU drept de deducere: locul livrarii e in Romania, dar bunul paraseste Uniunea, deci
+    // TVA nu se colecteaza si totusi taxa de pe achizitii ramane deductibila. Fara un tip propriu,
+    // exportul se inregistra ca vanzare cu cota 0 — si atunci nimerea in pro-rata la „fara drept",
+    // coborand procentul, PLUS ca decontul nu avea unde sa-l puna. Doua greseli care se compun.
+    // Scutirea se justifica cu declaratia vamala (art. 294 alin. (1) lit. a); numarul ei se retine
+    // pe articol, ca sa fie la indemana la control — nu se poate deduce din conturi.
+    build: (d) => [L('4111', '707', d.baza, 'Export de bunuri în afara UE (scutit cu drept de deducere)')],
   },
 
   // ── SERVICIILE INTRACOMUNITARE (art. 278 alin. (2)) ───────────────────────────────────────────

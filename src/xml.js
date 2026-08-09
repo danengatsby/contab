@@ -136,6 +136,8 @@ const ITEM_NAME = {
   factura_vanzare_incasare: 'Bunuri/servicii conform facturii (TVA la incasare)',
   factura_vanzare_valuta: 'Bunuri/servicii conform facturii',
   reducere_comerciala_acordata: 'Reducere comerciala acordata',
+  export_extracomunitar: 'Bunuri exportate in afara UE',
+  livrare_triunghiulara: 'Bunuri livrate in operatiune triunghiulara',
 };
 
 const UM_MAP = {
@@ -376,7 +378,12 @@ const D300_RAND_C = { 21: 'R22', 11: 'R23' };
 // inversa la beneficiar (art. 331). Categoriile vin din acc.vatJournals().scutite.
 // Randurile de baza R1..R15 INTRA in totalul R17_1 — verificat cu validatorul oficial, care
 // respinge altfel: „regula R65: R17_1 = R17_1 calculat conform regulii".
-const D300_RAND_SCUTITE = { intracom: 'R1', taxareInversa: 'R13' };
+const D300_RAND_SCUTITE = {
+  intracom: 'R1',          // rd. 1  — livrari intracomunitare de bunuri scutite (art. 294 alin. (2))
+  locInAfara: 'R3',        // rd. 3  — locul livrarii/prestarii e in afara Romaniei (art. 278 alin. (2))
+  taxareInversa: 'R13',    // rd. 13 — livrari cu taxare inversa la beneficiar (art. 331)
+  scutitCuDrept: 'R14',    // rd. 14 — scutite CU drept de deducere, altele decat rd. 1-3 (export)
+};
 // Achizitiile cu autolichidare au perechea lor de randuri (colectata + deductibila), NU randurile
 // de cota: R5/R18 = achizitii intracomunitare de bunuri, R7/R20 = restul taxarii inverse la
 // beneficiar (art. 331 intern). Perechile sunt impuse de validatorul oficial: V7/V8 cer
@@ -1375,7 +1382,7 @@ function bilantXml(d) {
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
   perimetruEFactura, CIF_PERSOANA_FIZICA,
-  umCode, d300Xml, d300Rows, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
   bilantXml, bilantNsVersion, d177Xml,
   esc, // escaparea XML, refolosita de generatoarele din afara acestui fisier (ex. src/sepa.js)
 };

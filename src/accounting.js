@@ -707,9 +707,22 @@ function resultDistribution(db, year) {
  */
 const LIVRARI_SCUTITE = {
   // scutita cu drept de deducere, art. 294 alin. (2) — se declara in D390, nu in D394 (CUI strain)
-  livrare_intracomunitara: { cat: 'intracom', d394: false },
+  livrare_intracomunitara: { cat: 'intracom', d394: false },              // rd. 1
   // taxare inversa interna, art. 331 — operatiune INTERNA, deci intra si in D394 (ca tip 'V')
-  taxare_inversa_interna_livrare: { cat: 'taxareInversa', d394: true },
+  taxare_inversa_interna_livrare: { cat: 'taxareInversa', d394: true },   // rd. 13
+  // Prestarea intracomunitara de servicii NU e scutita: e NEIMPOZABILA in Romania, fiindca locul
+  // prestarii e la beneficiar (art. 278 alin. (2)). Randul 3 e chiar al ei — „livrari de bunuri sau
+  // prestari de servicii pentru care locul livrarii/prestarii este in afara Romaniei". Lipsind de
+  // aici, operatiunea aparea in D390 (cod P) si DELOC in decont: doua raportari care nu se
+  // potrivesc pe aceeasi factura, exact ce compara ANAF.
+  prestare_servicii_intracomunitara: { cat: 'locInAfara', d394: false },  // rd. 3
+  // Exportul e SCUTIT CU DREPT de deducere (art. 294 alin. (1) lit. a) si b)): locul livrarii e in
+  // Romania, dar bunul paraseste Uniunea. Randul 14 — „altele decat cele de la rd. 1-3" — e cel pe
+  // care il completeaza si decontul precompletat primit de la ANAF pentru exporturile vamuite.
+  export_extracomunitar: { cat: 'scutitCuDrept', d394: false },           // rd. 14
+  // Livrarea din operatiunea triunghiulara: tot randul 3 (art. 294 alin. (2) lit. b), locul
+  // livrarii fiind in afara Romaniei).
+  livrare_triunghiulara: { cat: 'locInAfara', d394: false },              // rd. 3
 };
 
 /**
@@ -812,7 +825,7 @@ function vatJournals(db, period) {
   const cumparari = [];
   const scutite = [];
   const tot = { bazaV: 0, colectata: 0, bazaC: 0, deductibila: 0 };
-  const totScutite = { intracom: 0, taxareInversa: 0 };
+  const totScutite = { intracom: 0, taxareInversa: 0, locInAfara: 0, scutitCuDrept: 0 };
   const totAuto = { intracomBunuri: { baza: 0, tva: 0 }, taxareInversaInterna: { baza: 0, tva: 0 } };
   tot.tvaNedeductibila = 0;
 
@@ -898,8 +911,15 @@ function vatJournals(db, period) {
       if (!autolich) {
         // Cota din RAPORT, nu din semn (vezi si latura de achizitii): storno, nota de credit si
         // reducere comerciala au baza SI TVA negative, iar raportul ramane cota facturii.
-        vanzari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '', baza: bazaV, tva: col, total: round2(bazaV + col), cota: bazaV !== 0 && col !== 0 ? Math.round((col / bazaV) * 100) : 0, taxareInversa: reverseCharge });
-        tot.bazaV = round2(tot.bazaV + bazaV);
+        // REGIMUL MARJEI (art. 312): baza impozabila e MARJA, nu pretul de vanzare. Citita din
+        // linii, ar da o cota fantoma (347 / 11.653 = 3%), iar randul ar cadea din decont —
+        // acelasi mecanism ca `tvaPartial` la achizitii, si acelasi motiv pentru care marcajul
+        // sta pe articol: din conturi nu se poate reconstitui pretul de cumparare al bunului.
+        const mj = e.marjaTva;
+        const bazaJ = mj ? round2(Number(mj.baza) || 0) : bazaV;
+        const cotaJ = mj ? Number(mj.cota) : (bazaV !== 0 && col !== 0 ? Math.round((col / bazaV) * 100) : 0);
+        vanzari.push({ data: e.data, document: e.document, partener: e.partener, cui: e.partenerCui || '', baza: bazaJ, tva: col, total: round2(bazaJ + col), cota: cotaJ, taxareInversa: reverseCharge, regimMarja: !!mj });
+        tot.bazaV = round2(tot.bazaV + bazaJ);
       }
     }
     // Livrari scutite / cu taxare inversa la beneficiar: nu au TVA, deci nu ajung nici in
@@ -1158,6 +1178,6 @@ function cashControl(db, cont, period, opts) {
     ok: !negative.length && !plafon.length && !plafonTotalZi.length && !zilePesteLimita.length };
 }
 
-module.exports = { tvaPartialInCost, vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
+module.exports = { tvaPartialInCost, LIVRARI_SCUTITE, vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
   allLines, resultLines, isResultClosingLine, rezervaLegalaDin, profitContabilDin, consumaPierderi, aniReportPierdere, rulajRezultat, sortEntries, entryChrono, lastEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, vatCarryForward, annualClosing, profitTax, resultDistribution, legalReserve, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };

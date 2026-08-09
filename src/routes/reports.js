@@ -175,6 +175,8 @@ module.exports = function register(app, ctx) {
   app.get('/pdf/declaratia-unica', (req, res) => pdf.declaratiaUnicaPdf(res, S(req).company, rep.declaratiaUnica(S(req), req.query.year || String(new Date().getFullYear()))));
   // Pro-rata TVA (art. 300): definitiva calculata din jurnal + regularizarea achizitiilor mixte
   app.get('/api/pro-rata', (req, res) => res.json(rep.proRataTva(S(req), req.query.year || String(new Date().getFullYear()))));
+  // Registrul special al regimului marjei (art. 312 alin. (13)) — obligatoriu la control.
+  app.get('/api/registru-marja', (req, res) => res.json(rep.registruMarja(S(req), req.query.period || null)));
   // Registrul-jurnal de incasari si plati (partida simpla, PFA)
   app.get('/api/registru-incasari-plati', (req, res) => res.json(acc.registruIncasariPlati(S(req), req.query.period || null)));
   app.get('/pdf/registru-incasari-plati', (req, res) => pdf.registruIncasariPlatiPdf(res, S(req).company, acc.registruIncasariPlati(S(req), req.query.period || null)));

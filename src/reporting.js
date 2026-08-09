@@ -1,6 +1,6 @@
 'use strict';
 
-const { round2, period: periodOf } = require('./util');
+const { round2, period: periodOf, naturalCompare } = require('./util');
 const fiscal = require('./fiscal');
 // Nomenclatorul tarilor UE (D390) se ia din config, nu din `fiscal`: `fiscal.FISCAL` expune cotele
 // suprascriabile din Setari, iar lista de tari nu e o cota — nu are ce cauta acolo.
@@ -164,6 +164,9 @@ function d390(db, period) {
     achizitie_intracomunitara: 'A',
     prestare_servicii_intracomunitara: 'P',
     achizitie_servicii_intracomunitara: 'S',
+    // Livrarea ulterioara din operatiunea triunghiulara are codul ei; achizitia care o precede NU
+    // se declara (nu e impozabila in Romania), deci nu apare in aceasta lista.
+    livrare_triunghiulara: 'T',
   };
   // AUTOFACTURA (art. 320) se declara ca operatiunea pe care o documenteaza: bunuri -> A,
   // servicii -> S. Din conturi nu se poate deduce care e (si taxarea inversa interna, si serviciile
@@ -675,6 +678,7 @@ function d100(db, period, opts) {
 // drept de deducere deplin (art. 297 alin. (4)) si toate trei cadeau la „fara drept".
 const PRORATA_CU_DREPT = new Set([
   'livrare_intracomunitara', 'prestare_servicii_intracomunitara', 'taxare_inversa_interna_livrare',
+  'export_extracomunitar', 'livrare_triunghiulara',
 ]);
 
 /**
@@ -780,6 +784,40 @@ function declaratiaUnica(db, year) {
     year: y, venituri, cheltuieli, venitNet,
     incasat: { incasari: rjip.tot.incFiscale, plati: rjip.tot.platiFiscale, venitNet: rjip.venitNetIncasat, cas: tInc.cas, cass: tInc.cass, impozit: tInc.impozit, total: tInc.total },
   }, fiscal.taxePfa(venitNet, { salariuMinim: sm }));
+}
+
+/**
+ * Registrul special al regimului marjei (art. 312 alin. (13) Cod fiscal).
+ *
+ * Obligatoriu prin lege pentru revanzatorii care aplica regimul: trebuie sa poti arata, la control,
+ * pentru fiecare bun, pretul de cumparare, pretul de vanzare si marja pe care s-a calculat taxa.
+ * Se DERIVA din articole, ca registrul bunurilor de capital — o evidenta tinuta de mana ramane
+ * adevarata pana la prima vanzare uitata.
+ *
+ * Marja negativa (bun vandut in pierdere) apare in registru cu taxa ZERO: art. 312 alin. (1) da
+ * baza ca marja, iar o marja negativa inseamna baza zero, nu o creanta la buget.
+ */
+function registruMarja(db, period) {
+  const rows = [];
+  for (const e of acc.postedEntries(db)) {
+    if (e.tip !== 'vanzare_regim_marja' || !acc.inPeriod(e, period)) continue;
+    const m = e.marjaTva || {};
+    const marja = round2(Number(m.marja) || 0);
+    rows.push({
+      entryId: e.id, data: e.data, document: e.document || '', partener: e.partener || '',
+      pretCumparare: round2(Number(m.pretCumparare) || 0),
+      pretVanzare: round2(Number(m.pretVanzare) || 0),
+      marja, cota: Number(m.cota) || 0,
+      baza: round2(Number(m.baza) || 0), tva: round2(Number(m.tva) || 0),
+      inPierdere: marja < 0,
+    });
+  }
+  rows.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : naturalCompare(a.entryId, b.entryId)));
+  const t = (k) => round2(rows.reduce((s2, r) => s2 + r[k], 0));
+  return { period: period || null, rows, nr: rows.length,
+    totalCumparare: t('pretCumparare'), totalVanzare: t('pretVanzare'),
+    totalMarja: t('marja'), totalBaza: t('baza'), totalTva: t('tva'),
+    nrInPierdere: rows.filter((r) => r.inPierdere).length };
 }
 
 /** Registrul-inventar — soldurile finale la o data. */
@@ -1554,4 +1592,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };
+module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };
