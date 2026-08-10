@@ -27,7 +27,10 @@ const SPEC = [
   ['plata_furnizor', { data: '2026-06-20', partener: 'ALFA DISTRIBUTIE SRL', document: 'OP 44', suma: 12100, cont: '5121', contFz: '401' }],
   ['stat_plata', { data: '2026-06-30', brut: 5000 }],
   ['plata_salarii', { data: '2026-06-30', suma: 2925, cont: '5121' }],
-  ['amortizare', { data: '2026-06-30', suma: 200, contAmort: '281' }],
+  // 466,67 = 166,67 (laptop, liniar 6.000/36) + 300,00 (utilaj, degresiv) — cifra pe care o
+  // da `assets.schedule` pentru iunie 2026. Era 200, scrisa de mana, deci registrul de
+  // active si contabilitatea exemplului spuneau doua lucruri diferite.
+  ['amortizare', { data: '2026-06-30', suma: 466.67, contAmort: '281' }],
 ];
 
 /** Datele exemplului integrat din ghid (firma 1), pure — fara a atinge baza de date. */
@@ -47,9 +50,21 @@ function buildSeedData(nextEntryId) {
       },
     },
     openingBalances: {
+      // Mijloacele fixe din registrul `assets` TREBUIE sa aiba corespondent in conturi. Pana
+      // acum nu aveau: exemplul inregistra amortizare (6811 = 281) pentru doua active care nu
+      // intrasera niciodata in clasa 2, iar bilantul demonstratiei arata imobilizari NETE
+      // NEGATIVE (−200). Cifrele de mai jos sunt calculate din registru, nu alese:
+      //   2131 = 6.000 (laptop) + 12.000 (utilaj) = 18.000, costul de intrare
+      //   281  = amortizarea cumulata pana la 31.05.2026, dupa `assets.compute`:
+      //          laptop 666,68 (4 luni x 166,67, din februarie) + utilaj 1.500 (5 luni x 300,
+      //          degresiv, din ianuarie) = 2.166,68
+      //   117  creste cu valoarea NETA a activelor (15.833,32): firma le-a cumparat inainte de
+      //        perioada exemplului, din rezultatul anilor precedenti. Fara aceasta contrapartida
+      //        soldurile de deschidere nu s-ar mai inchide.
       [FID]: {
         '371': { d: 20000, c: 0 }, '5121': { d: 40000, c: 0 }, '5311': { d: 5000, c: 0 },
-        '1012': { d: 0, c: 30000 }, '117': { d: 0, c: 20000 }, '401': { d: 0, c: 15000 },
+        '2131': { d: 18000, c: 0 }, '281': { d: 0, c: 2166.68 },
+        '1012': { d: 0, c: 30000 }, '117': { d: 0, c: 35833.32 }, '401': { d: 0, c: 15000 },
       },
     },
     openingAnalytic: [

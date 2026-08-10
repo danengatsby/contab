@@ -42,6 +42,24 @@
      "30.000"
     ],
     [
+     "2131 Echipamente",
+     "18.000",
+     "",
+     "",
+     "",
+     "18.000",
+     ""
+    ],
+    [
+     "281 Amortizări",
+     "",
+     "2.166,68",
+     "",
+     "466,67",
+     "",
+     "2.633,35"
+    ],
+    [
      "371 Mărfuri",
      "20.000",
      "",
@@ -79,12 +97,12 @@
     ],
     [
      "TOTAL",
-     "65.000",
-     "65.000",
-     "76.392,50",
-     "76.392,50",
-     "84.327,50",
-     "84.327,50"
+     "83.000",
+     "83.000",
+     "76.659,17",
+     "76.659,17",
+     "102.594,17",
+     "102.594,17"
     ]
    ],
    "numerice": [
@@ -96,7 +114,7 @@
     7
    ],
    "total": true,
-   "nota": "Coloanele „total sume” (sold inițial plus rulaj) s-au omis din acest extras ca să încapă; ele însumează 141.392,50 pe fiecare parte."
+   "nota": "Coloanele „total sume” (sold inițial plus rulaj) s-au omis din acest extras ca să încapă; ele însumează 159.659,17 pe fiecare parte. Rândul 281 e un cont rectificativ: soldul lui se SCADE din 2131 — vezi anexa A."
   },
   {
    "tip": "p",
@@ -121,22 +139,22 @@
    "randuri": [
     [
      "total sold inițial D = C",
-     "65.000",
+     "83.000",
      "luna a pornit dintr-o poziție echilibrată"
     ],
     [
      "total rulaj D = C",
-     "76.392,50",
+     "76.659,17",
      "fiecare operațiune a lunii a avut ambele părți"
     ],
     [
      "total sume D = C",
-     "141.392,50",
+     "159.659,17",
      "suma primelor două — se verifică singură"
     ],
     [
      "total sold final D = C",
-     "84.327,50",
+     "102.594,17",
      "poziția la care s-a ajuns e echilibrată"
     ]
    ],

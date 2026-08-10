@@ -29,42 +29,34 @@
    "randuri": [
     [
      "Venituri din exploatare",
-     "vânzări, producție, alte venituri din activitatea de bază"
+     "14.000,00"
     ],
     [
      "Cheltuieli din exploatare",
-     "mărfuri, materiale, salarii, amortizare, servicii"
+     "13.579,17"
     ],
     [
-     "= Rezultatul din exploatare",
-     "cât produce activitatea propriu-zisă"
+     "Rezultatul din exploatare",
+     "420,83"
     ],
     [
      "Venituri financiare",
-     "dobânzi încasate, diferențe favorabile de curs"
+     "0,00"
     ],
     [
      "Cheltuieli financiare",
-     "dobânzi plătite, diferențe nefavorabile de curs"
+     "0,00"
     ],
     [
-     "= Rezultatul financiar",
-     "cât costă sau cât aduce modul de finanțare"
+     "Rezultatul financiar",
+     "0,00"
     ],
     [
-     "= Rezultatul brut",
-     "suma celor două"
-    ],
-    [
-     "− Impozitul pe profit",
-     "calculat pe rezultatul FISCAL, nu pe acesta"
-    ],
-    [
-     "= Rezultatul net",
-     "ce rămâne, și ce se repartizează"
+     "Rezultatul brut",
+     "420,83"
     ]
    ],
-   "nota": "Rândul care contează cel mai mult pentru un patron e al treilea, nu ultimul."
+   "nota": "Cheltuielile de 13.579,17 se desfac în: mărfuri vândute 8.000, salarii 5.000, contribuția angajatorului 112,50 și amortizare 466,67."
   },
   {
    "tip": "cheie",
@@ -92,11 +84,11 @@
     ],
     [
      "Cheltuieli din exploatare",
-     "13.312,50"
+     "13.579,17"
     ],
     [
      "Rezultatul din exploatare",
-     "687,50"
+     "420,83"
     ],
     [
      "Venituri financiare",
@@ -112,14 +104,14 @@
     ],
     [
      "Rezultatul brut",
-     "687,50"
+     "420,83"
     ]
    ],
    "numerice": [
     2
    ],
    "total": true,
-   "nota": "Cheltuielile de 13.312,50 se desfac în: mărfuri vândute 8.000, salarii 5.000, contribuția angajatorului 112,50 și amortizare 200."
+   "nota": "Cheltuielile de 13.579,17 se desfac în: mărfuri vândute 8.000, salarii 5.000, contribuția angajatorului 112,50 și amortizare 466,67."
   },
   {
    "tip": "p",
@@ -131,7 +123,7 @@
   },
   {
    "tip": "p",
-   "text": "E întrebarea pe care o pune orice patron la prima citire: dacă am profit de 687,50 de lei, unde sunt ei?"
+   "text": "E întrebarea pe care o pune orice patron la prima citire: dacă am profit de 420,83 de lei, unde sunt ei?"
   },
   {
    "tip": "p",
@@ -139,7 +131,7 @@
   },
   {
    "tip": "p",
-   "text": "Amortizarea de 200 de lei din exemplu ilustrează perfect: e o cheltuială care a redus profitul și nu a scos niciun leu din cont. Simetric, o factură emisă și neîncasată a produs venit fără să aducă bani. E același lucru pe care îl spunea capitolul 1, ajuns acum la forma lui finală."
+   "text": "Amortizarea de 466,67 de lei din exemplu ilustrează perfect: e o cheltuială care a redus profitul și nu a scos niciun leu din cont. Simetric, o factură emisă și neîncasată a produs venit fără să aducă bani. E același lucru pe care îl spunea capitolul 1, ajuns acum la forma lui finală."
   },
   {
    "tip": "h",
