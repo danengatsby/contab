@@ -1081,6 +1081,29 @@ section('Documente juridice: fara placeholdere si cu identitate consecventa');
     ok('incasare pornita -> CUI in ambele documente', !!cuiT && !!cuiD);
     ok('incasare pornita -> numar de ordine in Registrul Comertului', /J\d+\/\d+\/\d{4}/.test(termeniTxt));
   }
+  // RAMURA CARE NU A RULAT NICIODATA. Cat timp incasarea e oprita, `else`-ul de mai sus e cod
+  // mort — iar el e exact codul care va conta in ziua comutarii. Aici se executa amandoua
+  // ramurile pe predicate PURE, deci se stie ACUM ce va cere poarta atunci, nu se afla atunci.
+  {
+    const cerinte = (cui1, cui2, txt) => ({
+      cuiInAmbele: !!cui1 && !!cui2,
+      numarRegistru: /J\d+\/\d+\/\d{4}/.test(txt),
+      faraFrazaDeSuspendare: !/[îi]n curs de [îi]nfiin[țt]are/i.test(txt),
+    });
+    // (a) starea de AZI, verificata explicit ca fiind cea de „incasare oprita"
+    const azi = cerinte(cuiT, cuiD, termeniTxt);
+    ok('azi: incasarea e oprita, deci identitatea lipseste in mod CORECT',
+      plansMod.PLATI_SUSPENDATE && !azi.cuiInAmbele && !azi.faraFrazaDeSuspendare);
+    // (b) ce ar cere poarta daca s-ar comuta ACUM, fara sa se completeze identitatea: trebuie sa
+    //     REFUZE. Daca predicatul ar trece pe textul actual, poarta ar fi decorativa.
+    ok('daca s-ar porni incasarea pe textele de azi, poarta ar pica', !azi.cuiInAmbele || !azi.numarRegistru);
+    // (c) si trebuie sa TREACA pe un text complet — altfel poarta ar bloca si comutarea corecta.
+    const textComplet = 'S.C. EXEMPLU S.R.L., J40/9999/2026, cod de identificare fiscală) <b>RO99999999</b>';
+    const complet = cerinte('RO99999999', 'RO99999999', textComplet);
+    ok('...si ar trece pe un text complet (CUI in ambele + numar de ordine + fara „in curs")',
+      complet.cuiInAmbele && complet.numarRegistru && complet.faraFrazaDeSuspendare);
+  }
+
   ok('CUI identic in termeni si DPA' + (cuiT && cuiD && cuiT !== cuiD ? ' — ' + cuiT + ' vs ' + cuiD : ''),
     !cuiT || !cuiD || cuiT === cuiD);
 

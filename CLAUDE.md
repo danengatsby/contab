@@ -25,6 +25,7 @@ npm run e2e-izolat            # E2E pe instanță PROPRIE (roluri, resetare paro
 npm run test-pg               # suita pe driverul de PRODUCȚIE (pg): pornește/curăță singură baza
 npm run stare-ci              # verdictul GitHub Actions pentru commitul de pe disc (fără `gh`, fără token)
 npm run rto-drill             # DRILL DE RTO: restaurează ultima arhivă și cronometrează revenirea
+npm run drill-rece            # DRILL RECE: restaurare pe o mașină GOALĂ — doar openssl+unzip, în container
 npm run lint                  # ESLint (analiză statică) — NU e în `npm test`, vezi mai jos
 npm run lint-syntax           # doar `node --check` pe tot codul (rulează și în `npm test`)
 npm run pachet-windows        # PACHETUL WINDOWS: aplicația care rulează local pe PC-ul clientului

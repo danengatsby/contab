@@ -19,7 +19,8 @@
     "lint-syntax": "node scripts/check-syntax.js",
     "pachet-windows": "sh scripts/pachet-windows.sh",
     "publica-video": "bash scripts/publica-video.sh",
-    "cuprins-carte": "node scripts/cuprins-carte.js"
+    "cuprins-carte": "node scripts/cuprins-carte.js",
+    "drill-rece": "sh scripts/drill-rece.sh"
   },
   "engines": {
     "node": ">=22.13"

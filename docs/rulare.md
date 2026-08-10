@@ -318,6 +318,7 @@ Cifra se reproduce oricând cu:
 
 ```bash
 npm run rto-drill            # implicit: cea mai recentă data/backups/full-*.zip
+npm run drill-rece           # scenariul „serverul nu mai există": container gol, doar openssl+unzip
 ```
 
 Drill-ul cronometrează fiecare etapă și **verifică datele restaurate**, nu doar că serviciul
