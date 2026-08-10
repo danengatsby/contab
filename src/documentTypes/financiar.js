@@ -47,14 +47,14 @@ module.exports = [
     nume: 'Constituire provizion pentru riscuri si cheltuieli (6812 = 151)',
     grup: 'Provizioane',
     fields: [F.data, F.document, F.explicatie, { name: 'suma', label: 'Suma provizionului', type: 'number', required: true }],
-    build: (d) => [L('6812', '151', d.suma, d.explicatie || 'Constituire provizion pentru riscuri si cheltuieli')],
+    build: (d) => [L('6812', '151', d.suma, d.explicatie || 'Constituire provizion pentru riscuri și cheltuieli')],
   },
   {
     id: 'provizion_reluare',
     nume: 'Reluare/anulare provizion (151 = 7812)',
     grup: 'Provizioane',
     fields: [F.data, F.document, F.explicatie, { name: 'suma', label: 'Suma reluata', type: 'number', required: true }],
-    build: (d) => [L('151', '7812', d.suma, d.explicatie || 'Reluare provizion devenit fara obiect')],
+    build: (d) => [L('151', '7812', d.suma, d.explicatie || 'Reluare provizion devenit fără obiect')],
   },
 
   // ───────────────────── AJUSTARI PENTRU CREANTE INCERTE (491) ─────────────────────

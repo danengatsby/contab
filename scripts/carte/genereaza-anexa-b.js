@@ -32,6 +32,10 @@ function probe(t) {
   set('net', 2968); set('numerar', BAZA); set('curs', 5); set('valoareFinantata', BAZA);
   set('marja', 2000); set('valoareReziduala', 1000); set('sumaValuta', 2000);
   set('valoareBunuri', BAZA); set('taxeVamale', 500); set('pretVanzare', 12000);
+  // `ajustare` NU ramane 0: scoaterea din evidenta are DOUA linii cand creanta avea deja o
+  // ajustare constituita, iar aceea e chiar poanta operatiunii (capitolul 27). Cu zero,
+  // anexa ar fi aratat jumatatea usoara si ar fi ascuns-o pe cea uitata in practica.
+  set('ajustare', BAZA);
   set('pretAchizitie', BAZA); set('valoareContabila', BAZA); set('plus', 500); set('minus', 300);
   set('diferenta', 500); set('comision', 25); set('valoareImobilizare', BAZA);
   return d;
@@ -83,6 +87,11 @@ const TITLU = {
   venit_in_avans: 'Venit în avans — înregistrarea inițială',
   client_incert: 'Client devenit incert sau în litigiu',
   provizion_constituire: 'Constituirea unui provizion pentru riscuri și cheltuieli',
+  provizion_reluare: 'Reluarea unui provizion devenit fără obiect',
+  ajustare_creanta_constituire: 'Constituirea ajustării pentru deprecierea creanțelor',
+  ajustare_creanta_reluare: 'Reluarea ajustării — clientul a plătit sau riscul a dispărut',
+  creanta_scoasa_din_evidenta: 'Scoaterea din evidență a unei creanțe irecuperabile',
+  creanta_reactivata: 'Creanță reactivată — un debitor considerat pierdut plătește',
   diferenta_curs_nefavorabila: 'Diferență nefavorabilă de curs valutar',
 };
 
@@ -96,7 +105,13 @@ const ALESE = [
   ['Stocuri și producție', ['bon_consum', 'diferente_inventar', 'imputare_lipsa']],
   ['Salarii', ['stat_plata', 'plata_salarii']],
   ['Imobilizări și leasing', ['punere_in_functiune', 'amortizare', 'casare_mijloc_fix', 'vanzare_mijloc_fix', 'leasing_intrare', 'factura_leasing', 'plata_leasing']],
-  ['Regularizări', ['cheltuiala_in_avans', 'recunoastere_cheltuiala_avans', 'venit_in_avans', 'client_incert', 'provizion_constituire', 'diferenta_curs_nefavorabila']],
+  ['Regularizări', ['cheltuiala_in_avans', 'recunoastere_cheltuiala_avans', 'venit_in_avans', 'diferenta_curs_nefavorabila']],
+  // Drumul complet al unei creante care se deterioreaza. Adaugate in aplicatie pe 10 august, dupa
+  // ce analiza a aratat ca 491, 6814, 7814, 654 si 754 erau in plan si citite de bilant, dar
+  // niciun tip de document nu le producea — deci capitolul 27 descria un mecanism inexecutabil.
+  ['Creanțe incerte și provizioane', ['client_incert', 'ajustare_creanta_constituire',
+    'ajustare_creanta_reluare', 'creanta_scoasa_din_evidenta', 'creanta_reactivata',
+    'provizion_constituire', 'provizion_reluare']],
 ];
 
 const blocuri = [

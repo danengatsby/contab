@@ -61,12 +61,17 @@
      "Imobilizări",
      "6",
      "achiziție, amortizare, casare, cedare"
+    ],
+    [
+     "Creanțe și provizioane",
+     "6",
+     "clienți incerți, ajustări, scoatere din evidență, provizioane"
     ]
    ],
    "numerice": [
     2
    ],
-   "nota": "Restul de cincisprezece familii — leasing, valută, provizioane, capital social, dividende, efecte de comerț și altele — acoperă situații care apar la unele firme și niciodată la altele."
+   "nota": "Restul de paisprezece familii — leasing, valută, capital social, dividende, efecte de comerț, subvenții și altele — acoperă situații care apar la unele firme și niciodată la altele."
   },
   {
    "tip": "p",
