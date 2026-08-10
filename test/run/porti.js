@@ -474,16 +474,32 @@ section('Poarta: materialele publicate nu divergo de sursa lor');
   // ramas o versiune in urma pana am copiat-o manual. Poarta face copierea obligatorie, nu optionala.
   const identic = (a, b) => fsx.existsSync(a) && fsx.existsSync(b) && fsx.readFileSync(a).equals(fsx.readFileSync(b));
 
-  ok('folderul publicat exista', fsx.existsSync(MAT));
-  ok('descrierea publicata e identica cu sursa din marketing/',
-    identic(pth.join(SRC, 'descriere.txt'), pth.join(MAT, 'descriere.txt')));
+  // In DISTRIBUTIE (pachetul portabil) `marketing/` nu se livreaza: sunt 98 MB de capturi si text
+  // comercial intern, iar destinatarul n-are cu ce compara copiile publicate. Fara tratare, poarta
+  // crapa cu ENOENT la `readdirSync`, deci `npm test` pica, deci `prestart` pica, deci aplicatia
+  // NU PORNESTE pe masina clientului — s-a intamplat exact asa la prima proba a pachetului.
+  //
+  // Sarirea atarna de un semnal POZITIV scris de impachetator, nu de simpla absenta a directorului.
+  // Diferenta e toata poanta: pe depozit, un `marketing/` sters din greseala trebuie sa PICE poarta,
+  // nu s-o dezarmeze. Si nu se sare in tacere — se spune, si se dovedeste ca sarirea e justificata.
+  const distributie = fsx.existsSync(pth.join(RADACINA, '.distributie-portabila'));
+  if (distributie) {
+    console.log('  ○ SARIT: distributie portabila — sursele din marketing/ nu se livreaza.');
+    ok('sarirea e justificata: marketing/ chiar lipseste din distributie', !fsx.existsSync(SRC));
+  } else {
+    ok('folderul publicat exista', fsx.existsSync(MAT));
+    ok('sursele de marketing exista (fara ele poarta n-ar avea ce compara)', fsx.existsSync(SRC));
+    ok('descrierea publicata e identica cu sursa din marketing/',
+      identic(pth.join(SRC, 'descriere.txt'), pth.join(MAT, 'descriere.txt')));
 
-  // Fiecare captura din marketing/capturi/ trebuie sa aiba geamanul ei publicat, bit cu bit.
-  const capturi = fsx.readdirSync(pth.join(SRC, 'capturi')).filter((f) => f.endsWith('.png'));
-  ok('exista capturi de verificat (poarta nu scaneaza in gol)', capturi.length >= 3);
-  const divergente = capturi.filter((f) => !identic(pth.join(SRC, 'capturi', f), pth.join(MAT, f)));
-  ok('fiecare captura publicata e identica cu originalul' + (divergente.length ? ' — DIFERITE: ' + divergente.join(', ') : ''),
-    divergente.length === 0);
+    // Fiecare captura din marketing/capturi/ trebuie sa aiba geamanul ei publicat, bit cu bit.
+    const dirCap = pth.join(SRC, 'capturi');
+    const capturi = fsx.existsSync(dirCap) ? fsx.readdirSync(dirCap).filter((f) => f.endsWith('.png')) : [];
+    ok('exista capturi de verificat (poarta nu scaneaza in gol)', capturi.length >= 3);
+    const divergente = capturi.filter((f) => !identic(pth.join(dirCap, f), pth.join(MAT, f)));
+    ok('fiecare captura publicata e identica cu originalul' + (divergente.length ? ' — DIFERITE: ' + divergente.join(', ') : ''),
+      divergente.length === 0);
+  }
 
   // Materialele NU au voie sa concureze paginile reale in cautari: sunt acelasi text, la alta
   // adresa. Fara excludere, `/materiale/descriere.txt` poate ajunge deasupra paginii de prezentare.

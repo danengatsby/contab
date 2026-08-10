@@ -59,8 +59,16 @@ process.env.CONTAB_DATA_DIR = process.env.CONTAB_DATA_DIR || path.join(os.tmpdir
   }
   process.env.CONTAB_DB_DRIVER = 'sqlite';
   // Stergerea bazei precedente: fisierul JSON (oglinda) plus tripleta sqlite derivata din el.
+  //
+  // Derivarea trebuie sa fie IDENTICA cu cea din `src/db.js`: acolo extensia `.json` se
+  // INLOCUIESTE cu `.sqlite`, nu se adauga dupa ea. Varianta scrisa din nou (`baza + '.sqlite'`)
+  // stergea `db.json.sqlite`, un fisier care nu exista niciodata — deci blocul asta parea sa
+  // asigure idempotenta si nu asigura nimic. Nu s-a vazut fiindca implicit calea contine PID-ul,
+  // deci fiecare rulare pleaca oricum de la zero; se vedea doar cu `CONTAB_DB_FILE` dat explicit,
+  // adica exact forma recomandata ca sa tii suita departe de `data/` real.
   const baza = process.env.CONTAB_DB_FILE;
-  for (const f of [baza, baza + '.sqlite', baza + '.sqlite-wal', baza + '.sqlite-shm']) {
+  const sq = baza.replace(/\.json$/i, '') + '.sqlite';
+  for (const f of [baza, sq, sq + '-wal', sq + '-shm']) {
     try { fsIzolare.rmSync(f, { force: true }); } catch (e) { /* nu exista, sau nu se poate — load() o va recrea */ }
   }
 }

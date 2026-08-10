@@ -20,7 +20,8 @@
     "pachet-windows": "sh scripts/pachet-windows.sh",
     "publica-video": "bash scripts/publica-video.sh",
     "cuprins-carte": "node scripts/cuprins-carte.js",
-    "drill-rece": "sh scripts/drill-rece.sh"
+    "drill-rece": "sh scripts/drill-rece.sh",
+    "pachet-portabil": "sh scripts/pachet-portabil.sh"
   },
   "engines": {
     "node": ">=22.13"

@@ -2709,10 +2709,20 @@ async function main() {
     ok('metrics: starea codului e expusa cu contract complet',
       mx.deploy && typeof mx.deploy.cunoscut === 'boolean' && 'curat' in mx.deploy
       && 'ramura' in mx.deploy && typeof mx.deploy.nrModificate === 'number' && Array.isArray(mx.deploy.modificate));
-    ok('metrics: git chiar a raspuns (suita ruleaza dintr-un depozit)',
-      mx.deploy.cunoscut === true && !!mx.deploy.ramura && !!mx.deploy.commit);
-    ok('metrics: verdictul e coerent cu numarul de fisiere raportate',
-      mx.deploy.curat === (mx.deploy.nrModificate === 0 && mx.deploy.peRamuraDeDeploy === true));
+    // Intr-o DISTRIBUTIE (pachetul portabil) `.git` nu se livreaza, deci cele doua probe de mai
+    // jos ar cere ceva ce nu exista acolo. Nu se sare peste ele: se verifica verdictul CORECT
+    // pentru situatia aia, care e chiar cel care conteaza — „nu pot verifica" (`cunoscut:false`,
+    // `curat:null`), nu „curat". Un pachet in care garda ar raporta senin „arbore curat" fara
+    // depozit ar fi exact defectul reparat in src/deployState.js.
+    if (fs.existsSync(path.join(__dirname, '..', '.distributie-portabila'))) {
+      ok('metrics: in distributie verdictul e „nu pot verifica", nu „curat"',
+        mx.deploy.cunoscut === false && mx.deploy.curat === null && !!mx.deploy.motiv);
+    } else {
+      ok('metrics: git chiar a raspuns (suita ruleaza dintr-un depozit)',
+        mx.deploy.cunoscut === true && !!mx.deploy.ramura && !!mx.deploy.commit);
+      ok('metrics: verdictul e coerent cu numarul de fisiere raportate',
+        mx.deploy.curat === (mx.deploy.nrModificate === 0 && mx.deploy.peRamuraDeDeploy === true));
+    }
     ok('metrics: cand nu e curat, motivul e scris', mx.deploy.curat === true || !!mx.deploy.motiv);
     ok('metrics: marginea fata de plafonul pm2 e vizibila',
       mx.process.memoryLimitMb > 0 && mx.process.memoryWarnMb > 0 && mx.process.memoryWarnMb < mx.process.memoryLimitMb
