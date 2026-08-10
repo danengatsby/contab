@@ -449,6 +449,37 @@ Rulează pe driverul `sqlite` (implicit), cu datele în subfolderul `date`. Cont
 **admin**, care nu trece prin paywall și nu expiră — altfel instalarea s-ar bloca singură după
 30 de zile de probă.
 
+## Pachetul portabil (Linux, macOS, WSL)
+
+Aceeași idee, pentru sistemele unde Windows nu ajută. Nu conține Node — îl cere instalat, versiunea
+din `engines` — și de aceea e de două ori și jumătate mai mic decât cel de Windows.
+
+```bash
+npm run pachet-portabil    # 0 = construit | 1 = eroare | 2 = NEVERIFICAT (unelte lipsă)
+```
+
+Produce `public/descarcari/Contabo-portabil.tar.gz` (~23 MB) plus manifestul `portabil.json` cu
+amprenta SHA-256, ca descărcarea să poată fi verificată. Pornirea e în `CITESTE-MA.txt` din arhivă:
+`cp .env.example .env`, completezi `CONTAB_AUTH_SECRET` și `CONTAB_SECRETS_KEY`, `npm start`.
+
+Verificarea are **două jumătăți**, și a doua a fost adăugată după ce prima s-a dovedit
+insuficientă. Prima întreabă „ce nu are voie să fie acolo": `.env` și toată familia `.env.*`,
+`data/`, `logs/`, `.git`, `marketing/`, plus o căutare după **valorile reale** ale secretelor.
+A doua întreabă „e acolo tot ce trebuie?" — se dezarhivează pachetul construit și **se rulează
+din el**: se generează un PDF adevărat și se încarcă modulele de domeniu. Fără ea, o excludere
+neancorată (`data` în loc de `/data`, care în rsync se potrivește la orice adâncime) a șters
+fonturile `.afm` ale lui pdfkit din `node_modules`; arhiva trecea toate verificările de mai sus,
+iar la client **toate cele 20 de rute PDF răspundeau cu 500**. Un fișier care lipsește nu lasă
+nicio urmă în lista de excluderi — se vede doar dacă rulezi ce ai construit.
+
+Arhiva poartă un marcaj, `.distributie-portabila`. `npm test` rulează la `prestart`, deci
+**suita trebuie să treacă și pe mașina clientului**, unde `marketing/` (98 MB de material intern)
+și `.git` nu există. Porțile care depind de ele își citesc marcajul: cea de marketing sare, spune
+că a sărit, și dovedește că sărirea e justificată; cea de deploy verifică verdictul corect pentru
+o distribuție — „nu pot verifica" (`cunoscut:false`, `curat:null`), nu „curat". Marcajul e un
+semnal **pozitiv**: pe depozit nu există, deci acolo porțile rulează întregi, iar un `marketing/`
+șters din greșeală pică suita în loc s-o dezarmeze.
+
 Artefactele nu se comit (`/public/descarcari/` e în `.gitignore`): sunt mari și regenerabile.
 Pe o instalare unde pachetul nu a fost construit, manifestul lipsește și butonul **se ascunde** —
 o instalare proaspătă nu oferă un link mort.

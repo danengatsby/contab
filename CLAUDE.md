@@ -29,6 +29,7 @@ npm run drill-rece            # DRILL RECE: restaurare pe o mașină GOALĂ — 
 npm run lint                  # ESLint (analiză statică) — NU e în `npm test`, vezi mai jos
 npm run lint-syntax           # doar `node --check` pe tot codul (rulează și în `npm test`)
 npm run pachet-windows        # PACHETUL WINDOWS: aplicația care rulează local pe PC-ul clientului
+npm run pachet-portabil       # PACHETUL PORTABIL: aceeași aplicație pentru Linux/macOS/WSL (cere Node instalat)
 npm run publica-video         # PUBLICĂ filmul de prezentare în public/descarcari/ (link public!)
 npm run cuprins-carte         # cuprinsul cărții de prezentare → .docx + .pdf (B5) în public/ (link public!)
 sh scripts/poarta-fiscala.sh  # POARTA FISCALĂ — obligatorie înainte de merge dacă ai atins ceva fiscal
