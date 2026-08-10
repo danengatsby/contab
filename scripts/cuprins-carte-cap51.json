@@ -157,6 +157,82 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Când mașina citește greșit"
+  },
+  {
+   "tip": "p",
+   "text": "Extragerea automată a datelor dintr-un document a schimbat munca de zi cu zi mai mult decât orice altceva din ultimii ani. A schimbat însă și felul erorilor: ele nu mai sunt de tastare, ci de înțelegere — și arată altfel."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cum greșește un om, cum greșește o mașină",
+   "cap": [
+    "",
+    "Eroarea omului",
+    "Eroarea mașinii"
+   ],
+   "randuri": [
+    [
+     "forma",
+     "o cifră schimbată, o zi greșită",
+     "o valoare plauzibilă, luată din locul greșit"
+    ],
+    [
+     "frecvența",
+     "rară și izolată",
+     "sistematică, pe același tip de document"
+    ],
+    [
+     "cum se vede",
+     "de obicei iese din tipar",
+     "se încadrează perfect în tipar"
+    ],
+    [
+     "cum se prinde",
+     "recitind documentul",
+     "comparând cu documentul, deliberat"
+    ]
+   ],
+   "nota": "Rândul al treilea e cel care contează: o eroare de mașină arată corect. De aceea controalele automate care verifică plauzibilitatea nu o prind."
+  },
+  {
+   "tip": "p",
+   "text": "Exemplul clasic e cota de TVA citită de pe alt rând al facturii: 11% în loc de 21%. Suma e plauzibilă, aritmetica se închide dacă baza s-a citit din același loc, iar documentul arată în regulă. Se descoperă abia la decont, sau la un control — și, între timp, aceeași greșeală s-a repetat pe toate facturile aceluiași furnizor."
+  },
+  {
+   "tip": "cheie",
+   "text": "Un om greșește o dată. O mașină greșește de fiecare dată, la fel — ceea ce e mai ușor de reparat, dar numai după ce cineva a observat că greșește."
+  },
+  {
+   "tip": "h",
+   "text": "De aceea confirmarea nu e o formalitate"
+  },
+  {
+   "tip": "p",
+   "text": "Pasul în care operatorul confirmă datele citite pare o bifă, iar la a suta factură devine una. E însă singurul loc din tot fluxul în care un om se uită la document și la cifră în același timp."
+  },
+  {
+   "tip": "p",
+   "text": "Un flux bine făcut nu cere confirmarea tuturor câmpurilor, ci a celor care contează și a celor la care încrederea e mică: cota, partenerul, totalul. Restul se acceptă tacit — nu din neglijență, ci fiindcă atenția cerută peste tot e atenție care nu se acordă nicăieri."
+  },
+  {
+   "tip": "p",
+   "text": "Iar când firma alege postarea automată — fără confirmare — decizia trebuie luată în cunoștință de cauză: se câștigă timp și se pierde exact momentul în care s-ar fi observat că mașina citește sistematic greșit. Compromisul rezonabil e postarea automată doar când TOATE controalele trec, așa cum arată capitolul 13, și verificarea prin sondaj a celor postate."
+  },
+  {
+   "tip": "h",
+   "text": "Ce rămâne, la sfârșit"
+  },
+  {
+   "tip": "p",
+   "text": "Cartea se încheie unde a început: cu două întrebări. Prima — cât am câștigat — a primit un răspuns care se poate calcula. A doua — ce am și cui datorez — la fel."
+  },
+  {
+   "tip": "p",
+   "text": "Ce nu se poate calcula e dacă ele sunt adevărate. Adevărul lor depinde de documente care au fost citite, de încadrări care au fost alese, de estimări care au fost făcute — și fiecare dintre ele e o decizie a cuiva. Contabilitatea nu produce adevărul; produce o afirmație verificabilă, iar cineva o semnează."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

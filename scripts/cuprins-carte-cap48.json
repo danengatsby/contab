@@ -135,6 +135,83 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Ce verifică validatorul, și ce nu"
+  },
+  {
+   "tip": "p",
+   "text": "Înainte de depunere, setul trece printr-un validator oficial care refuză formularele incoerente. E o plasă bună și una limitată, iar limita ei trebuie știută: validatorul se uită în interiorul formularului, nu în afara lui."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele două perimetre",
+   "cap": [
+    "Ce verifică validatorul",
+    "Ce NU poate verifica"
+   ],
+   "randuri": [
+    [
+     "corelațiile dintre rândurile formularului",
+     "dacă rândurile corespund contabilității"
+    ],
+    [
+     "identitatea activ = pasiv",
+     "dacă activul e evaluat corect"
+    ],
+    [
+     "formatul și obligativitatea câmpurilor",
+     "dacă cifra din câmp e cea adevărată"
+    ],
+    [
+     "coerența cu anul precedent, unde e cerută",
+     "dacă anul precedent era corect"
+    ]
+   ],
+   "nota": "Un set perfect valid poate fi complet greșit. Validatorul confirmă că formularul se ține, nu că descrie firma."
+  },
+  {
+   "tip": "p",
+   "text": "De aici decurge ordinea corectă a verificărilor: întâi concordanțele cu contabilitatea — cele patru din acest capitol —, apoi validatorul. Invers, un validator trecut dă o falsă liniște, iar erorile pe care el nu le vede rămân nedescoperite până la o inspecție."
+  },
+  {
+   "tip": "h",
+   "text": "A cincea și a șasea concordanță"
+  },
+  {
+   "tip": "p",
+   "text": "Cele patru din titlu sunt cele blocante. Mai există două care nu opresc depunerea și care prind erori la fel de grave."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Verificările care nu blochează, dar contează",
+   "cap": [
+    "Se compară",
+    "Cu",
+    "Ce prinde"
+   ],
+   "randuri": [
+    [
+     "totalul situației capitalurilor proprii",
+     "capitalurile din bilanț",
+     "o mișcare de capital neprezentată"
+    ],
+    [
+     "coloana de început de exercițiu",
+     "situațiile anului precedent",
+     "o preluare greșită, sau o corecție neprezentată în note"
+    ]
+   ],
+   "nota": "A doua e cea mai des sărită, fiindcă pare o formalitate. O diferență acolo înseamnă ori o eroare de preluare, ori o corecție de eroare din anul trecut care TREBUIE explicată în note."
+  },
+  {
+   "tip": "p",
+   "text": "Merită observat de ce a doua nu poate fi verificată automat de validator: el nu are situațiile anului precedent. Singurul care le are e cel care le-a întocmit — motiv pentru care verificarea rămâne o obligație a firmei, nu a sistemului."
+  },
+  {
+   "tip": "cheie",
+   "text": "Ordinea contează: concordanțele cu contabilitatea întâi, validatorul după. El e ultima poartă înaintea depunerii, nu prima verificare a corectitudinii."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

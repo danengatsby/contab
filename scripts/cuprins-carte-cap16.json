@@ -157,6 +157,103 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Ce poate potrivi o mașină, și unde ghicește"
+  },
+  {
+   "tip": "p",
+   "text": "Potrivirea automată a plăților cu facturile pare o problemă de aritmetică și e, în realitate, una de ambiguitate. Merită văzut exact ce cazuri rezolvă și unde alege — fiindcă acolo trebuie să intervină omul."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cinci încasări, aceleași trei facturi deschise",
+   "cap": [
+    "Încasarea",
+    "Situația",
+    "Ce face potrivirea"
+   ],
+   "randuri": [
+    [
+     "2.500",
+     "o singură factură de exact atât",
+     "potrivire exactă, fără îndoială"
+    ],
+    [
+     "600",
+     "mai puțin decât orice factură",
+     "potrivire parțială, pe cea mai veche"
+    ],
+    [
+     "1.000",
+     "DOUĂ facturi de exact 1.000",
+     "alege cea mai veche — o alegere, nu un fapt"
+    ],
+    [
+     "3.500",
+     "suma a două facturi",
+     "nu potrivește nimic"
+    ],
+    [
+     "9.999",
+     "nu corespunde nimic",
+     "nu potrivește nimic"
+    ]
+   ],
+   "nota": "Rândul al treilea e singurul în care mașina decide fără să știe. Rândurile patru și cinci sunt cinstite: nu potrivesc, deci trec la om."
+  },
+  {
+   "tip": "p",
+   "text": "Alegerea de pe rândul al treilea urmează convenția din capitolul 34 — se stinge cea mai veche — și e prudentă, fiindcă greșește arătând soldul mai vechi decât e, nu mai nou. Dar rămâne o alegere: dacă clientul a plătit de fapt factura a doua, scadențarul va arăta greșit până când cineva se uită."
+  },
+  {
+   "tip": "p",
+   "text": "Rândul al patrulea merită apărat, fiindcă pare o lipsă: un program AR PUTEA încerca toate combinațiile de facturi care dau 3.500. La zece facturi deschise sunt peste o mie de combinații, iar la treizeci — un miliard. Mai important, o combinație găsită nu e o dovadă: două facturi care se adună la suma plătită nu înseamnă că ele au fost plătite."
+  },
+  {
+   "tip": "cheie",
+   "text": "O potrivire automată bună nu e cea care potrivește cel mai mult, ci cea care lasă omului exact cazurile în care ar fi ghicit. Restul e o listă scurtă, nu un raport lung."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se face cu ce rămâne"
+  },
+  {
+   "tip": "p",
+   "text": "Lista nepotrivită nu se închide „prin diferență”. Fiecare rând are un tratament, iar alegerea greșită mută problema fără să o rezolve."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Tratamentul rândurilor rămase",
+   "cap": [
+    "Rândul",
+    "Ce e, de regulă",
+    "Ce se face"
+   ],
+   "randuri": [
+    [
+     "încasare fără factură identificată",
+     "avans, sau plată pe o factură viitoare",
+     "se înregistrează în 419, nu se forțează pe o factură"
+    ],
+    [
+     "plată fără factură primită",
+     "cheltuială fără document",
+     "se ține în 409 sau 408, până sosește"
+    ],
+    [
+     "diferență mică între sumă și factură",
+     "comision bancar reținut de plătitor",
+     "se înregistrează comisionul, nu se rotunjește factura"
+    ],
+    [
+     "încasare de la un partener necunoscut",
+     "plată greșită, sau CUI nou",
+     "se lămurește; nu se atribuie „la cel mai probabil”"
+    ]
+   ],
+   "nota": "Al treilea rând e cel mai des rezolvat greșit: diferența se „pierde” pe venituri, iar factura rămâne parțial neîncasată în scadențar, la nesfârșit."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
