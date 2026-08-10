@@ -149,6 +149,122 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Curba, pe cifre"
+  },
+  {
+   "tip": "p",
+   "text": "Capitolul a spus că deducerea scade proporțional cu salariul. Merită văzută curba întreagă, fiindcă din ea decurge un efect pe care nici angajatul, nici patronul nu îl bănuiesc."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Deducerea pentru un angajat fără persoane în întreținere (salariu minim 4.050)",
+   "cap": [
+    "Salariu brut",
+    "Deducere",
+    "Impozit economisit"
+   ],
+   "randuri": [
+    [
+     "4.050",
+     "810",
+     "81,00"
+    ],
+    [
+     "4.300",
+     "710",
+     "71,00"
+    ],
+    [
+     "4.800",
+     "510",
+     "51,00"
+    ],
+    [
+     "5.300",
+     "310",
+     "31,00"
+    ],
+    [
+     "5.800",
+     "110",
+     "11,00"
+    ],
+    [
+     "6.050 și peste",
+     "0",
+     "0,00"
+    ]
+   ],
+   "numerice": [
+    1,
+    2,
+    3
+   ],
+   "nota": "Scăderea e liniară: fiecare 250 de lei de brut în plus taie exact 100 de lei din deducere, până la plafonul de salariu minim plus 2.000."
+  },
+  {
+   "tip": "h",
+   "text": "Efectul pe care nu-l vede nimeni"
+  },
+  {
+   "tip": "p",
+   "text": "Fiindcă deducerea scade odată cu salariul, o mărire acordată în interiorul benzii de diminuare ajunge la angajat în proporție mai mică decât una acordată deasupra ei. Nu e o impresie — se poate măsura."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Aceeași mărire de 250 lei brut, în două locuri",
+   "cap": [
+    "De la … la",
+    "Deducerea",
+    "Netul crește cu",
+    "Ajunge la angajat"
+   ],
+   "randuri": [
+    [
+     "5.000 → 5.250",
+     "430 → 330",
+     "136,25",
+     "54,5%"
+    ],
+    [
+     "7.000 → 7.250",
+     "0 → 0",
+     "146,25",
+     "58,5%"
+    ]
+   ],
+   "numerice": [
+    3,
+    4
+   ],
+   "nota": "Aceeași sumă brută, același cost pentru firmă — dar cu patru puncte procentuale mai puțin în mâna angajatului, fiindcă mărirea taie și din deducere."
+  },
+  {
+   "tip": "p",
+   "text": "Diferența e mică pe o mărire și devine vizibilă pe o negociere: un angajat cu 5.000 de lei brut care cere „încă 200 în mână” are nevoie de o mărire mai mare decât unul cu 7.000, deși cererea sună identic. Cine calculează brutul necesar cu formula obișnuită — netul împărțit la 58,5% — greșește exact în banda în care se află majoritatea salariilor."
+  },
+  {
+   "tip": "cheie",
+   "text": "Între salariul minim și salariul minim plus 2.000, fiecare leu de mărire aduce mai puțin în mână decât deasupra pragului. E singura zonă din grila de salarizare în care cota efectivă e mai mare decât cea legală."
+  },
+  {
+   "tip": "h",
+   "text": "Când situația se schimbă în cursul anului"
+  },
+  {
+   "tip": "p",
+   "text": "Deducerea nu se stabilește o dată pentru totdeauna. Ea depinde de numărul persoanelor în întreținere, iar acela se schimbă — se naște un copil, un părinte intră în întreținere, un copil împlinește 26 de ani sau termină studiile."
+  },
+  {
+   "tip": "p",
+   "text": "Regula e că modificarea produce efect din LUNA URMĂTOARE celei în care a fost comunicată, pe baza declarației salariatului și a documentelor justificative. Din asta decurg două lucruri practice: schimbarea trebuie comunicată, nu presupusă; iar întârzierea comunicării nu se recuperează retroactiv la nesfârșit."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința pentru angajator e o obligație de dosar, nu de calcul: declarația pe propria răspundere și documentele stau la dosarul de personal, fiindcă ele sunt temeiul oricărei deduceri peste nivelul de bază. Fără ele, la un control, deducerea acordată devine impozit datorat."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
