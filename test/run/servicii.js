@@ -1740,3 +1740,53 @@ section('Catalogul duratelor HG 2139/2004 (src/catalogDurate.js)');
   eq('catalog gol -> cautarea nu cade', cd.cauta(null, 'orice').length, 0);
   eq('catalog gol -> sugestia da null', cd.sugereaza(undefined, '1.1.1'), null);
 }
+
+section('Alerta de lag numeste suspectii, nu doar durata');
+{
+  // Alerta spunea CAT a stat blocata bucla si niciodata UNDE — patru alerte intr-o saptamana, cu
+  // varfuri de 1.616 ms, si nicio pista in log. `routes` tine agregate CUMULATE de la pornire,
+  // deci raspunde la „ce e scump in general", nu la „ce rula acum doua minute".
+  const met = require('../../src/metrics');
+  met.reset();
+  met.recordSlow('/api/dashboard', 1600);
+  met.recordSlow('/api/entries', 300);
+  met.recordSlow('/pdf/balance', 900);
+  const top = met.slowRecent(60000, 3);
+  eq('inelul intoarce cele mai LUNGI cereri din fereastra, in ordine', top.map((x) => x.route).join(','),
+    '/api/dashboard,/pdf/balance,/api/entries');
+  eq('...cu durata rotunjita', top[0].ms, 1600);
+  ok('...si cu momentul, ca fereastra sa poata fi taiata', typeof top[0].ts === 'number');
+  // Fereastra chiar taie: o cerere mai veche decat ea nu mai apare.
+  met.recordSlow('/api/vechi', 5000, Date.now() - 10 * 60 * 1000);
+  ok('cererile din afara ferestrei nu apar', !met.slowRecent(60000, 5).some((x) => x.route === '/api/vechi'));
+  ok('...dar apar intr-o fereastra mai larga', met.slowRecent(30 * 60 * 1000, 5).some((x) => x.route === '/api/vechi'));
+  // Inelul e marginit: nu creste nemarginit intr-un proces de lunga durata.
+  for (let i = 0; i < 200; i += 1) met.recordSlow('/api/x' + i, 300);
+  ok('inelul e plafonat', met.slowRecent(60000, 1000).length <= 60);
+  met.reset();
+  eq('reset goleste si inelul', met.slowRecent(60000, 5).length, 0);
+}
+
+section('Vizitatorii au retentie pe TIMP, nu doar plafon pe numar');
+{
+  // Verificare pornita dintr-o constatare GRESITA a analizei din 10 august: raportasem ca
+  // vizitatorii cresc „fara retentie", uitandu-ma la plafoanele de AFISARE din accessService si
+  // la avertismentele de trunchiere, fara sa citesc modulul care detine datele. Retentia exista:
+  // `curata()` scoate inregistrarile mai vechi de CONTAB_VISITORS_DAYS si e chemata la fiecare
+  // minut din jobul `visitors-flush`. Testul o fixeaza, ca afirmatia sa nu mai depinda de citire.
+  const vis = require('../../src/visitors');
+  vis._reset();
+  const vechi = new Date(Date.now() - 40 * 86400000).toISOString();
+  const acum = new Date().toISOString();
+  vis.hydrate([
+    { ip: '8.8.8.8', prima: vechi, ultima: vechi, cereri: 1, pagini: 1, ultimaCale: '/', ua: 'x', bot: false, useri: [] },
+    { ip: '9.9.9.9', prima: acum, ultima: acum, cereri: 1, pagini: 1, ultimaCale: '/', ua: 'x', bot: false, useri: [] },
+  ]);
+  eq('inainte de curatare sunt doua adrese', vis.snapshot().length, 2);
+  eq('curata() scoate inregistrarea mai veche decat retentia', vis.curata(), 1);
+  eq('...si o pastreaza pe cea recenta', vis.snapshot().map((v) => v.ip).join(','), '9.9.9.9');
+  vis._reset();
+  // Jobul chiar o cheama — altfel functia ar exista si nu s-ar executa niciodata.
+  const sursaJobs = require('fs').readFileSync(require('path').join(RADACINA, 'src', 'jobs.js'), 'utf8');
+  ok('jobul visitors-flush cheama curata()', /visitors-flush[\s\S]{0,400}vis\.curata\(\)/.test(sursaJobs));
+}

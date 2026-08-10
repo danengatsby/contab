@@ -194,7 +194,15 @@ function start(ctx) {
     metrics.jobResult('lag-watch', 'p99 ' + s.p99Ms + ' ms, varf ' + s.maxMs + ' ms in ultimele '
       + s.fereastraSec + 's (prag ' + LAG_WARN_MS + ', varf de la pornire ' + s.maxTotalMs + ')');
     if (s.maxMs < LAG_WARN_MS) return;
-    log.error('bucla de evenimente blocata', { p99Ms: s.p99Ms, maxMs: s.maxMs, pragMs: LAG_WARN_MS, fereastraSec: s.fereastraSec });
+    // CINE rula in fereastra. Fara asta alerta spunea doar CAT a stat blocata bucla, iar
+    // diagnosticul pornea de la zero: patru alerte intr-o saptamana, cu varfuri de 1.616 ms, si
+    // nicio pista in log. Se raporteaza cele mai LUNGI trei cereri din aceeasi fereastra —
+    // celelalte sunt, de regula, victime: cand bucla e blocata, tot ce asteapta iese lent.
+    const suspecti = metrics.slowRecent(s.fereastraSec * 1000, 3);
+    const suspectiTxt = suspecti.length
+      ? suspecti.map((x) => x.route + ' ' + x.ms + 'ms').join(' | ')
+      : '(nicio cerere peste pragul de lent in fereastra — cauta in joburi, nu in rute)';
+    log.error('bucla de evenimente blocata', { p99Ms: s.p99Ms, maxMs: s.maxMs, pragMs: LAG_WARN_MS, fereastraSec: s.fereastraSec, suspecti: suspectiTxt });
     const now = Date.now();
     if (now - lastLagAlert > 24 * 3600 * 1000) {
       lastLagAlert = now;
@@ -205,6 +213,8 @@ function start(ctx) {
         + '  • backupul zilnic — pg_dump si arhivarea ruleaza SINCRON, in acest proces;\n'
         + '  • o rafala de autentificari (scrypt costa ~30 ms de bucla blocata fiecare);\n'
         + '  • un export/raport mare, sau serializarea bazei la save() pe o firma voluminoasa.\n\n'
+        + 'Cele mai lungi cereri din ACEEASI fereastra:\n  ' + suspectiTxt + '\n'
+        + '(cand bucla e blocata, tot ce asteapta iese lent — vinovata e de regula cea mai lunga.)\n\n'
         + 'Verifica /api/metrics (admin): campul `lag` si rutele cu maxMs mare in aceeasi fereastra.\n'
         + 'Pragul se schimba din CONTAB_LAG_WARN_MS.').catch(() => {});
     }
