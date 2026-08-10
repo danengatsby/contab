@@ -188,6 +188,227 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Un caz complet, de la balanță la declarație"
+  },
+  {
+   "tip": "p",
+   "text": "Regulile de până acum se văd cel mai bine puse una după alta, pe aceeași firmă. Iată un an întreg, cu toate cele patru feluri de ajustări deodată — procent fix, plafon pe o bază, deducere care nu e cheltuială, și credit care se scade din impozit."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Datele anului",
+   "cap": [
+    "Elementul",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Profit contabil brut",
+     "120.000,00"
+    ],
+    [
+     "Cifra de afaceri",
+     "500.000,00"
+    ],
+    [
+     "Capital social subscris și vărsat",
+     "200.000,00"
+    ],
+    [
+     "Amenzi (cont 6581)",
+     "8.000,00"
+    ],
+    [
+     "Provizion pentru litigiu (cont 6812)",
+     "15.000,00"
+    ],
+    [
+     "Ajustare pentru creanțe (cont 6814)",
+     "12.100,00"
+    ],
+    [
+     "Cheltuieli de protocol (cont 623)",
+     "6.000,00"
+    ],
+    [
+     "Sponsorizare acordată",
+     "10.000,00"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "nota": "Nimic ieșit din comun: sunt cheltuielile pe care le are, într-un an sau altul, aproape orice firmă."
+  },
+  {
+   "tip": "h",
+   "text": "Pasul întâi: nedeductibilele, în ordinea lor"
+  },
+  {
+   "tip": "p",
+   "text": "Ordinea nu e indiferentă, fiindcă unele ajustări se calculează pe o bază care le include pe altele. Se aplică întâi procentele fixe pe cont, apoi plafoanele care depind de o bază de calcul."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ajustările, calculate",
+   "cap": [
+    "Contul",
+    "Regula",
+    "Cheltuit",
+    "Nedeductibil",
+    "Rând D101"
+   ],
+   "randuri": [
+    [
+     "6581",
+     "amenzi — 100% nedeductibil",
+     "8.000,00",
+     "8.000,00",
+     "P33"
+    ],
+    [
+     "6812",
+     "provizion nedeductibil — 100%",
+     "15.000,00",
+     "15.000,00",
+     "P33"
+    ],
+    [
+     "6814",
+     "ajustare creanțe — deductibil 30%",
+     "12.100,00",
+     "8.470,00",
+     "P33"
+    ],
+    [
+     "623",
+     "protocol — deductibil până la 2% din bază",
+     "6.000,00",
+     "3.480,00",
+     "P26"
+    ],
+    [
+     "",
+     "Total nedeductibil",
+     "",
+     "34.950,00",
+     ""
+    ]
+   ],
+   "numerice": [
+    3,
+    4
+   ],
+   "total": true,
+   "nota": "Rândul protocolului e cel care lămurește distincția: baza de calcul e 126.000 (profitul brut plus cheltuiala de protocol însăși), 2% din ea înseamnă 2.520 deductibili — deci nedeductibil e 3.480, nu 2% din 6.000."
+  },
+  {
+   "tip": "h",
+   "text": "Pasul al doilea: deducerea care nu e cheltuială"
+  },
+  {
+   "tip": "p",
+   "text": "Rezerva legală se scade din rezultatul fiscal fără să fi trecut vreodată printr-un cont de cheltuială. La un profit brut de 120.000 și un capital de 200.000, cota de 5% dă 6.000 de lei, iar plafonul cumulat de 20% din capital — 40.000 — lasă loc pentru toată suma."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Rezultatul fiscal",
+   "cap": [
+    "Element",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Profit contabil brut",
+     "120.000,00"
+    ],
+    [
+     "plus cheltuieli nedeductibile",
+     "34.950,00"
+    ],
+    [
+     "minus rezerva legală",
+     "6.000,00"
+    ],
+    [
+     "= Rezultat fiscal",
+     "148.950,00"
+    ],
+    [
+     "Impozit 16%",
+     "23.832,00"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Fără rezerva legală, impozitul ar fi fost 24.792 — cu 960 de lei mai mult, pe o rezervă pe care legea o obligă oricum să o constituie."
+  },
+  {
+   "tip": "h",
+   "text": "Pasul al treilea: creditul care se scade din impozit"
+  },
+  {
+   "tip": "p",
+   "text": "Sponsorizarea nu se scade din bază, ca celelalte, ci din impozitul deja calculat — iar de aceea nu putea fi calculată odată cu ele. Ea are două plafoane, iar se aplică cel mai mic."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Creditul de sponsorizare",
+   "cap": [
+    "Plafonul",
+    "Calcul",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "0,75% din cifra de afaceri",
+     "0,75% × 500.000",
+     "3.750,00"
+    ],
+    [
+     "20% din impozitul pe profit",
+     "20% × 23.832",
+     "4.766,40"
+    ],
+    [
+     "Se aplică cel mai mic",
+     "",
+     "3.750,00"
+    ],
+    [
+     "Sponsorizare acordată",
+     "",
+     "10.000,00"
+    ],
+    [
+     "Folosit anul acesta",
+     "",
+     "3.750,00"
+    ],
+    [
+     "Reportat pentru anii următori",
+     "",
+     "6.250,00"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "total": true,
+   "nota": "Diferența de 6.250 nu se pierde: se reportează, în limita termenului legal, și se folosește în anii în care plafonul o permite."
+  },
+  {
+   "tip": "p",
+   "text": "Impozitul final: 23.832 minus 3.750, adică 20.082 de lei. Sponsorizarea de 10.000 de lei a costat firma, în anul acesta, 6.250 — restul l-a plătit statul, prin impozitul care nu s-a mai virat."
+  },
+  {
+   "tip": "cheie",
+   "text": "Trei feluri de ajustare, trei momente: procentele fixe și plafoanele urcă sau coboară BAZA; rezerva legală o coboară fără să fie cheltuială; sponsorizarea se scade din IMPOZIT. Cine le amestecă obține un rezultat greșit chiar dacă fiecare cifră în parte e corectă."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

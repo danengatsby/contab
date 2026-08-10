@@ -194,6 +194,111 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Faptul generator și exigibilitatea"
+  },
+  {
+   "tip": "p",
+   "text": "Aici e cea mai frecventă sursă de decalaje între contabilitate și decont, iar ea vine dintr-o distincție pe care documentul nu o arată: momentul în care operațiunea SE PRODUCE nu e neapărat momentul în care taxa DEVINE DATORATĂ."
+  },
+  {
+   "tip": "p",
+   "text": "Primul se numește fapt generator, al doilea exigibilitate. La o livrare obișnuită coincid, iar distincția pare inutilă. La patru situații nu coincid — și exact acolo se greșește luna."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Când devine taxa datorată",
+   "cap": [
+    "Operațiunea",
+    "Faptul generator",
+    "Exigibilitatea"
+   ],
+   "randuri": [
+    [
+     "Livrare obișnuită de bunuri",
+     "la livrare",
+     "la livrare (odată cu factura)"
+    ],
+    [
+     "Avans încasat de la client",
+     "nu s-a produs încă",
+     "la ÎNCASAREA avansului"
+    ],
+    [
+     "Achiziție intracomunitară",
+     "la livrarea din alt stat",
+     "la data facturii, dar nu mai târziu de a 15-a zi a lunii următoare"
+    ],
+    [
+     "Regim de TVA la încasare",
+     "la livrare",
+     "la ÎNCASAREA facturii"
+    ],
+    [
+     "Prestare continuă (chirie, abonament)",
+     "la sfârșitul perioadei convenite",
+     "la fiecare scadență din contract"
+    ]
+   ],
+   "nota": "Coloana din dreapta e cea care decide în ce decont intră operațiunea. Cine se ghidează după data documentului greșește la ultimele patru rânduri."
+  },
+  {
+   "tip": "p",
+   "text": "Rândul al treilea merită citit de două ori, fiindcă e cel mai contraintuitiv: la o achiziție intracomunitară fără factură primită până în a 15-a zi a lunii următoare, taxa devine exigibilă oricum, la acea dată. Nu se așteaptă documentul — se autofacturează."
+  },
+  {
+   "tip": "cheie",
+   "text": "Decontul se compune după EXIGIBILITATE, nu după data documentului. E singura regulă din capitol pe care un program nu o poate ghici din factură: are nevoie să știe ce fel de operațiune e."
+  },
+  {
+   "tip": "h",
+   "text": "Avansul, pe cifre"
+  },
+  {
+   "tip": "p",
+   "text": "Cazul avansului merită desfăcut, fiindcă produce trei operațiuni pentru o singură vânzare și fiindcă a doua e cea uitată."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Un avans de 12.100 lei, urmat de o livrare de 24.200",
+   "cap": [
+    "Momentul",
+    "Ce se înregistrează",
+    "TVA colectată"
+   ],
+   "randuri": [
+    [
+     "Se încasează avansul",
+     "factură de avans: 4111 = 419 + 4427",
+     "2.100,00 — exigibilă ACUM"
+    ],
+    [
+     "Se livrează marfa",
+     "factură finală, pe valoarea totală",
+     "4.200,00"
+    ],
+    [
+     "În aceeași factură",
+     "STORNO avans: 4111 = 419 + 4427, în roșu",
+     "−2.100,00"
+    ],
+    [
+     "",
+     "TVA colectată, în total",
+     "4.200,00"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "total": true,
+   "nota": "Fără linia a treia, taxa s-ar colecta de două ori pe aceeași valoare: o dată la avans și încă o dată la livrare."
+  },
+  {
+   "tip": "p",
+   "text": "Regularizarea avansului se face în chiar factura finală, nu ca operațiune separată — și de aceea tipul de document pentru factura finală cu avans e distinct de cel obișnuit. E același tipar ca la descărcarea gestiunii din capitolul 11: o linie care nu se vede din document, dar fără de care rezultatul e fals."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

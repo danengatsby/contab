@@ -165,6 +165,111 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Pro-rata, pe un an întreg"
+  },
+  {
+   "tip": "p",
+   "text": "Pro-rata e regimul cel mai des aplicat greșit, fiindcă are trei momente distincte și fiindcă rotunjirea ei nu se face ca oricare alta. Iată un an complet, pe o firmă cu operațiuni taxabile și scutite."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Anul, pas cu pas",
+   "cap": [
+    "Momentul",
+    "Ce se face",
+    "Cifra"
+   ],
+   "randuri": [
+    [
+     "1 ianuarie",
+     "se aplică pro-rata provizorie, cea din anul precedent",
+     "80%"
+    ],
+    [
+     "în cursul anului",
+     "se deduce 80% din TVA-ul achizițiilor MIXTE",
+     "6.720,00"
+    ],
+    [
+     "31 decembrie",
+     "se calculează proporția reală: 341.000 din 400.000",
+     "85,25%"
+    ],
+    [
+     "",
+     "se rotunjește ÎN SUS, la unitate",
+     "86%"
+    ],
+    [
+     "",
+     "se recalculează deducerea la 86%",
+     "7.224,00"
+    ],
+    [
+     "regularizare",
+     "diferența se deduce în plus",
+     "504,00"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "total": true,
+   "nota": "Cifrele sunt calculate cu formula din aplicație. Achizițiile cu destinație MIXTĂ aveau 8.400 de lei de TVA — restul achizițiilor se deduc integral sau deloc, după destinație."
+  },
+  {
+   "tip": "p",
+   "text": "Rotunjirea merită subliniată, fiindcă e singura din contabilitate care merge întotdeauna în favoarea firmei și fiindcă e ușor de făcut greșit din reflex. La 85,25%, rotunjirea aritmetică ar da 85%, adică 7.140 de lei deduși — cu 84 de lei mai puțin decât se cuvine. Suma e mică pe un an; regula, aplicată greșit sistematic, nu mai e."
+  },
+  {
+   "tip": "cheie",
+   "text": "Pro-rata definitivă se rotunjește ÎN SUS, la unitate. Nu la cel mai apropiat întreg — în sus, întotdeauna. E scris în lege, și e singura rotunjire care nu se negociază."
+  },
+  {
+   "tip": "h",
+   "text": "Ce intră în calcul și ce nu"
+  },
+  {
+   "tip": "p",
+   "text": "Numitorul pro-ratei nu e „toate veniturile”. Sunt operațiuni care nu intră deloc în calcul, iar includerea lor deformează proporția — de regulă în defavoarea firmei."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Perimetrul calculului",
+   "cap": [
+    "Intră",
+    "Nu intră"
+   ],
+   "randuri": [
+    [
+     "livrări și prestări taxabile",
+     "cedările de active imobilizate"
+    ],
+    [
+     "operațiuni scutite CU drept de deducere",
+     "operațiunile financiare accesorii"
+    ],
+    [
+     "operațiuni scutite FĂRĂ drept de deducere",
+     "subvențiile care nu sunt prețul unei operațiuni"
+    ],
+    [
+     "",
+     "reluările de provizioane și ajustări"
+    ],
+    [
+     "",
+     "variația stocurilor și producția de imobilizări"
+    ]
+   ],
+   "nota": "Coloana din dreapta are un criteriu comun: nu sunt operațiuni în sfera taxei. Un raport care nu poate spune CE a exclus și de ce nu se poate apăra în fața unui inspector."
+  },
+  {
+   "tip": "p",
+   "text": "Și o ultimă regulă, care se uită între ani: pro-rata se aplică numai achizițiilor cu destinație MIXTĂ. Ce se cumpără exclusiv pentru operațiuni cu drept de deducere se deduce integral, iar ce se cumpără exclusiv pentru operațiuni fără drept nu se deduce deloc. Aplicarea pro-ratei asupra tuturor intrărilor e o eroare în ambele sensuri deodată."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
