@@ -122,9 +122,9 @@ section('Balanta de verificare (2026-06)');
 const tb = acc.trialBalance(v, '2026-06');
 eq('balanced', tb.balanced, true);
 eq('total SI debit = credit', tb.tot.siD, tb.tot.siC);
-eq('total SI', tb.tot.siD, 65000);
+eq('total SI', tb.tot.siD, 83000);   // +18.000: mijloacele fixe intra in conturi (vezi seed.js)
 eq('total rulaj D = C', tb.tot.rd, tb.tot.rc);
-eq('total SF debit', tb.tot.sfD, 84327.5);
+eq('total SF debit', tb.tot.sfD, 102594.17);
 eq('total SF debit = credit', tb.tot.sfD, tb.tot.sfC);
 
 // Capetele unei perioade nu se pot compara ca siruri cand perioada e un TRIMESTRU:
@@ -173,13 +173,13 @@ eq('TVA de plata', d3.deplata, 840);
 
 section('Cont de profit si pierdere (2026)');
 const pl = stmt.profitLoss(v, '2026');
-eq('rezultat brut', pl.rezBrut, 687.5);
+eq('rezultat brut', pl.rezBrut, 420.83);   // amortizarea lunii e 466,67, nu 200
 
 section('Registrul de evidenta fiscala (2026)');
 const rf = rep.registruFiscal(v, '2026');
-eq('rezultat contabil', rf.rezultatContabil, 687.5);
+eq('rezultat contabil', rf.rezultatContabil, 420.83);
 eq('total nedeductibile (fara ajustari in seed)', rf.totalNeded, 0);
-eq('rezultat fiscal', rf.rezultatFiscal, 687.5);
+eq('rezultat fiscal', rf.rezultatFiscal, 420.83);
 ok('mentiune amortizare (art. 28)', (rf.mentiuni || []).some((m) => /art\. 28/i.test(m)));
 
 section('Mijloace fixe — amortizare');
@@ -973,8 +973,8 @@ eq('ultima linie = TVA de plata 4427=4423', JSON.stringify([vc.lines[vc.lines.le
 section('Inchiderea anuala (2026)');
 const an = acc.annualClosing(v, '2026');
 eq('total venituri inchise', an.totalVen, 14000);
-eq('total cheltuieli inchise', an.totalChelt, 13312.5);
-eq('rezultat (121) = rezultat brut P&L', an.rezultat, 687.5);
+eq('total cheltuieli inchise', an.totalChelt, 13579.17);
+eq('rezultat (121) = rezultat brut P&L', an.rezultat, 420.83);
 ok('contine inchidere venituri 707=121', an.lines.some((l) => l.debit === '707' && l.credit === '121'));
 ok('contine inchidere cheltuieli 121=607', an.lines.some((l) => l.debit === '121' && l.credit === '607'));
 
@@ -1623,8 +1623,8 @@ section('Bilant (2026-06)');
 const bs = stmt.balanceSheet(v, '2026-06');
 eq('bilant echilibrat', bs.echilibrat, true);
 eq('total activ = total pasiv', bs.totalActiv, bs.totalPasiv);
-eq('total activ', bs.totalActiv, 70815);
-eq('rezultat curent (clasa 7-6)', bs.rezultatCurent, 687.5);
+eq('total activ', bs.totalActiv, 86381.65);
+eq('rezultat curent (clasa 7-6)', bs.rezultatCurent, 420.83);
 
 section('Bilant structura F10 (prescurtat)');
 const f10 = stmt.balanceSheetF10(v, '2026-06');
@@ -1632,8 +1632,8 @@ eq('F10 echilibrat', f10.echilibrat, true);
 eq('F10 total activ = bilant simplificat', f10.totalActiv, bs.totalActiv);
 eq('F10 total activ = total pasiv', f10.totalActiv, f10.totalPasiv);
 ok('F10 are datorii curente (D)', f10.randuri.D_datorii > 0);
-eq('F10 rezultat curent in capitaluri', f10.randuri.rezultatCurent, 687.5);
-eq('F10 total activ', f10.totalActiv, 70815);
+eq('F10 rezultat curent in capitaluri', f10.randuri.rezultatCurent, 420.83);
+eq('F10 total activ', f10.totalActiv, 86381.65);
 // datoriile pe termen lung (grupa 16) merg in randul G, nu in datorii curente
 const f10lt = stmt.balanceSheetF10({ openingBalances: { 1621: { d: 0, c: 50000 }, 5121: { d: 50000, c: 0 } }, entries: [] }, '2026-12');
 eq('F10: credit pe TL (1621) -> G (datorii >1 an)', f10lt.randuri.G_datoriiLT, 50000);
