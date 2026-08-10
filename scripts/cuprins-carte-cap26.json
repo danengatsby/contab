@@ -176,6 +176,85 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Ce se întâmplă la decontare"
+  },
+  {
+   "tip": "p",
+   "text": "Reevaluarea de la închidere nu e ultimul act. Când creanța se încasează sau datoria se plătește, apare o a doua diferență — iar aici se face greșeala care dublează tot ce s-a înregistrat înainte."
+  },
+  {
+   "tip": "p",
+   "text": "Diferența la decontare se calculează față de ULTIMA valoare reevaluată, nu față de cursul din ziua facturii. Cursul acela a fost deja depășit o dată, la închidere, iar diferența de atunci e deja în rezultat."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "O creanță de 10.000 EUR, urmărită până la capăt",
+   "cap": [
+    "Momentul",
+    "Cursul",
+    "Valoare în lei",
+    "Diferență"
+   ],
+   "randuri": [
+    [
+     "Factura, 15 martie",
+     "4,97",
+     "49.700,00",
+     "—"
+    ],
+    [
+     "Reevaluare, 31 decembrie",
+     "5,08",
+     "50.800,00",
+     "+1.100,00 venit"
+    ],
+    [
+     "Încasare, 20 februarie",
+     "5,12",
+     "51.200,00",
+     "+400,00 venit"
+    ],
+    [
+     "",
+     "",
+     "Total recunoscut",
+     "+1.500,00"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4
+   ],
+   "total": true,
+   "nota": "Diferența totală, 51.200 − 49.700 = 1.500 de lei, se împarte pe două exerciții: 1.100 în anul facturii, 400 în cel al încasării."
+  },
+  {
+   "tip": "p",
+   "text": "Greșeala tipică e calcularea diferenței la încasare față de cursul facturii: 51.200 − 49.700 ar da 1.500 de lei recunoscuți a doua oară, în anul al doilea, peste cei 1.100 deja înregistrați în primul. Rezultatul celui de-al doilea an ar fi umflat cu 1.100 de lei, iar primul ar rămâne corect — deci nimic nu s-ar compensa și nimic nu ar semnala."
+  },
+  {
+   "tip": "cheie",
+   "text": "După o reevaluare, cursul inițial nu mai e un reper. Valoarea contabilă a creanței e cea reevaluată, iar orice diferență următoare se măsoară de acolo."
+  },
+  {
+   "tip": "h",
+   "text": "Cât de des se reevaluează"
+  },
+  {
+   "tip": "p",
+   "text": "Regula spune „la fiecare închidere de perioadă pentru care se întocmesc situații financiare”, iar formularea e mai largă decât pare: nu doar la 31 decembrie."
+  },
+  {
+   "tip": "p",
+   "text": "O firmă care raportează trimestrial reevaluează trimestrial. Una care întocmește situații interimare pentru o bancă sau pentru un asociat reevaluează și atunci. Omiterea închiderilor intermediare nu schimbă totalul pe an, dar mută rezultatul între perioade — iar dacă acele perioade au fost raportate cuiva, mutarea are consecințe."
+  },
+  {
+   "tip": "p",
+   "text": "Iar pentru firmele plătitoare de impozit pe veniturile microîntreprinderilor există o regulă proprie, ușor de ratat: diferențele favorabile de curs intră în baza impozabilă nu rând cu rând, ci prin diferența favorabilă NETĂ, cumulat, la sfârșitul trimestrului. Calculul pe fiecare operațiune supraevaluează baza."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
