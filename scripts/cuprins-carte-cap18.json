@@ -139,6 +139,122 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Două evidențe pentru același lucru"
+  },
+  {
+   "tip": "p",
+   "text": "Stocul e singurul element de patrimoniu urmărit simultan în două locuri, cu unități de măsură diferite: fișa de magazie numără bucăți, contabilitatea numără lei. Ele descriu aceeași marfă și trebuie să spună același lucru — dar nu se verifică una pe alta automat, fiindcă nu vorbesc aceeași limbă."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cine ce știe",
+   "cap": [
+    "Evidența",
+    "Unitatea",
+    "Cine o ține",
+    "Ce prinde"
+   ],
+   "randuri": [
+    [
+     "Fișa de magazie",
+     "bucăți, kilograme, litri",
+     "gestionarul",
+     "lipsa fizică, greșeala de recepție"
+    ],
+    [
+     "Contabilitatea",
+     "lei",
+     "contabilul",
+     "greșeala de evaluare, contul greșit"
+    ],
+    [
+     "Inventarul",
+     "amândouă, confruntate",
+     "comisia",
+     "tot ce a scăpat celorlalte două"
+    ]
+   ],
+   "nota": "Un program le ține împreună, dar nu le poate confrunta cu realitatea. Aceea rămâne treaba inventarului — capitolul 20."
+  },
+  {
+   "tip": "p",
+   "text": "De aici o regulă practică: orice operațiune care mișcă stocul trebuie să miște amândouă evidențele deodată. E motivul pentru care corecția unui articol cu impact pe stoc nu se face prin stornoul contabil obișnuit — ar lăsa contabilitatea dreaptă și fișa de magazie greșită, iar cele două ar diverge tăcut până la inventar."
+  },
+  {
+   "tip": "h",
+   "text": "Gestiunea: unde stă marfa"
+  },
+  {
+   "tip": "p",
+   "text": "O firmă cu un singur depozit poate ignora noțiunea. Una cu două — depozit și magazin, sau depozit central și puncte de lucru — nu, fiindcă aceeași marfă poate exista în ambele, iar cantitatea totală nu spune unde e."
+  },
+  {
+   "tip": "p",
+   "text": "Gestiunea are și un rost care nu e de evidență, ci de răspundere: fiecare are un gestionar, iar minusurile constatate la inventar se imputează cuiva anume. Fără gestiuni separate, un minus într-un depozit se pierde în totalul firmei."
+  },
+  {
+   "tip": "h",
+   "text": "Marfa evaluată la preț de vânzare"
+  },
+  {
+   "tip": "p",
+   "text": "În comerțul cu amănuntul apare o complicație care merită înțeleasă, fiindcă produce trei conturi acolo unde te-ai aștepta la unul. Un magazin nu poate ține evidența pe costuri: pe raft e prețul cu TVA, iar casa de marcat vinde la prețul acela."
+  },
+  {
+   "tip": "p",
+   "text": "Soluția e evaluarea stocului chiar la prețul de vânzare, iar diferența față de cost se ține separat, în două conturi rectificative: adaosul comercial în 378 și TVA-ul neexigibil în 4428."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "O marfă de 1.000 lei, cu adaos 400 și cotă redusă 11%",
+   "cap": [
+    "Ce se înregistrează",
+    "Debit",
+    "Credit",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Costul de achiziție",
+     "371",
+     "401",
+     "1.000,00"
+    ],
+    [
+     "Adaosul comercial",
+     "371",
+     "378",
+     "400,00"
+    ],
+    [
+     "TVA neexigibilă la preț de raft",
+     "371",
+     "4428",
+     "154,00"
+    ],
+    [
+     "Stocul, la preț de vânzare",
+     "371",
+     "",
+     "1.554,00"
+    ]
+   ],
+   "numerice": [
+    4
+   ],
+   "total": true,
+   "nota": "Cei 1.554 de lei sunt exact prețul de pe raft. Valoarea REALĂ a stocului rămâne 1.000 — restul sunt cele două conturi rectificative, care se scad în bilanț."
+  },
+  {
+   "tip": "cheie",
+   "text": "La preț de vânzare, contul 371 nu mai arată cât valorează marfa, ci cât se cere pe ea. Valoarea din bilanț se obține scăzând 378 și 4428 — la fel cum imobilizările se citesc scăzând amortizarea."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința care surprinde la primul bilanț: contul 371 poate arăta 1.554 de lei pentru o marfă care a costat 1.000, fără ca nimic să fie greșit. Cine citește soldul brut și trage concluzii despre stoc greșește cu adaosul plus taxa."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

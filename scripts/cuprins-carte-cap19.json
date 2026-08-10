@@ -130,6 +130,91 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Ce se întâmplă cu ce nu s-a terminat"
+  },
+  {
+   "tip": "p",
+   "text": "Producția rareori se oprește exact la 31 ale lunii. La închidere există aproape întotdeauna lucruri începute și neterminate — piese pe bandă, o comandă la jumătate, un serviciu în desfășurare. Ele au consumat materiale și ore, deci au valoare, dar nu sunt încă produse."
+  },
+  {
+   "tip": "p",
+   "text": "Pentru asta există conturile de producție în curs: 331 pentru produse și 332 pentru servicii. Ele adună costul acumulat până la data închiderii, iar în luna următoare se reiau, când lucrarea continuă."
+  },
+  {
+   "tip": "p",
+   "text": "Fără ele, luna în care se începe o lucrare mare arată o pierdere care nu există — toate cheltuielile, niciun venit — iar luna în care se termină arată un profit umflat. Producția în curs e, deci, tot o problemă de delimitare în timp, ca cea din capitolul 28, doar că se rezolvă în stocuri, nu în conturi de regularizare."
+  },
+  {
+   "tip": "h",
+   "text": "Rețeta: de la un produs la consumurile lui"
+  },
+  {
+   "tip": "p",
+   "text": "O firmă care produce același lucru de mai multe ori nu recalculează de fiecare dată ce intră în el. Se scrie o singură dată — cantitățile de materii prime pentru o unitate sau pentru un lot de referință — și se numește rețetă, sau, în limbajul producției, listă de materiale."
+  },
+  {
+   "tip": "p",
+   "text": "Utilitatea ei e dublă. Practic: la lansarea unei comenzi, consumurile se calculează prin înmulțire, nu prin memorie. Contabil: costul teoretic al lotului se poate compara cu cel efectiv, iar diferența dintre ele e o informație de conducere pe care nimic altceva nu o dă."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Rețetă pentru 10 bucăți, comandă de 25",
+   "cap": [
+    "Materialul",
+    "Pentru 10 buc",
+    "Pentru 25 buc",
+    "Cost unitar",
+    "Valoare"
+   ],
+   "randuri": [
+    [
+     "Lemn (m²)",
+     "4,00",
+     "10,00",
+     "150,00",
+     "1.500,00"
+    ],
+    [
+     "Feronerie (set)",
+     "10,00",
+     "25,00",
+     "36,00",
+     "900,00"
+    ],
+    [
+     "Lac (litri)",
+     "1,20",
+     "3,00",
+     "80,00",
+     "240,00"
+    ],
+    [
+     "Total materiale",
+     "",
+     "",
+     "",
+     "2.640,00"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5
+   ],
+   "total": true,
+   "nota": "Factorul e 2,5 și se aplică fiecărei linii. Manopera și cheltuielile indirecte se adaugă peste, la costul efectiv."
+  },
+  {
+   "tip": "p",
+   "text": "Merită observat ce NU face rețeta: nu impune. Consumul real poate diferi — o piesă stricată, un rest nefolosit — iar bonul de consum consemnează ce s-a consumat efectiv, nu ce era prevăzut. Rețeta e o propunere calculată, nu o înregistrare."
+  },
+  {
+   "tip": "cheie",
+   "text": "Diferența dintre consumul din rețetă și cel efectiv nu e o eroare contabilă: e chiar informația pentru care merită să ai o rețetă."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
