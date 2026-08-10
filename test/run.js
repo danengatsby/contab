@@ -2817,6 +2817,42 @@ section('Monografii adaugate: cedare mijloc fix, cut-off 408, capital social, cr
   eq('ajustare lipsa: TVA dedusa se da inapoi (635 = 4426)', (atl.find((l) => l.debit === '635' && l.credit === '4426') || {}).suma, 630);
   eq('ajustare lipsa fara valoare -> nicio linie', toateLiniile('ajustare_tva_lipsa', { baza: 0, cota: 21 }).length, 0);
 
+  // ── Ajustarile pentru creante: drumul complet, de la probabil la cert ──
+  // Reclasificarea (4118 = 4111) exista din iulie, dar ajustarea propriu-zisa NU se putea
+  // inregistra: niciunul dintre tipurile de document nu producea 6814/491/7814/654/754, desi
+  // conturile erau in plan si bilantul le citea. Testele de mai jos apara cele patru intrari noi.
+  const ajC = toateLiniile('ajustare_creanta_constituire', { suma: 12100 });
+  ok('ajustare creante: conturile exista', conturiValide(ajC));
+  eq('ajustare creante: constituirea e 6814 = 491', (ajC.find((l) => l.debit === '6814' && l.credit === '491') || {}).suma, 12100);
+  const ajR = toateLiniile('ajustare_creanta_reluare', { suma: 12100 });
+  eq('ajustare creante: reluarea e 491 = 7814', (ajR.find((l) => l.debit === '491' && l.credit === '7814') || {}).suma, 12100);
+
+  // Scoaterea din evidenta are DOUA jumatati cand exista ajustare: fara reluarea simultana,
+  // pierderea ar intra in rezultat de doua ori (o data la constituire, o data aici).
+  const sco = toateLiniile('creanta_scoasa_din_evidenta', { suma: 12100, ajustare: 12100, contCreanta: '4118' });
+  ok('creanta scoasa: conturile exista', conturiValide(sco));
+  eq('creanta scoasa: pierderea e 654 = 4118', (sco.find((l) => l.debit === '654' && l.credit === '4118') || {}).suma, 12100);
+  eq('creanta scoasa: ajustarea se reia in acelasi articol', (sco.find((l) => l.debit === '491' && l.credit === '7814') || {}).suma, 12100);
+  eq('creanta scoasa cu ajustare: efect NET zero pe rezultat',
+    sco.filter((l) => l.debit === '654').reduce((s, l) => s + l.suma, 0)
+    - sco.filter((l) => l.credit === '7814').reduce((s, l) => s + l.suma, 0), 0);
+  // Fara ajustare constituita, ramane o singura linie — pierderea nu a fost recunoscuta inainte.
+  eq('creanta scoasa fara ajustare -> o singura linie',
+    toateLiniile('creanta_scoasa_din_evidenta', { suma: 5000, ajustare: 0, contCreanta: '4111' }).length, 1);
+
+  const rea = toateLiniile('creanta_reactivata', { suma: 12100, contCreanta: '4111' });
+  eq('creanta reactivata: 4111 = 754', (rea.find((l) => l.debit === '4111' && l.credit === '754') || {}).suma, 12100);
+  // Reactivarea NU incaseaza: incasarea e alt document, cu extrasul ei.
+  ok('creanta reactivata nu atinge trezoreria',
+    !rea.some((l) => /^5/.test(String(l.debit)) || /^5/.test(String(l.credit))));
+
+  // Regimul FISCAL nu se scrie in monografie, dar trebuie sa fie prins de motorul de
+  // nedeductibile pe CONT: 30% deductibil la constituire, simetric la reluare.
+  const ded = require('../src/deductibilitate');
+  eq('6814 e nedeductibil 70% (art. 26)', ded.FIXE['6814'].pct, 70);
+  eq('654 e nedeductibil integral (art. 25)', ded.FIXE['654'].pct, 100);
+  eq('7814 e neimpozabil 70%, simetric cu 6814', ded.NEIMPOZABILE['7814'].pct, 70);
+
   // Planul de conturi: fara duplicate (581 aparea de doua ori) si cu toate codurile noi.
   const coduri = coa2.ACCOUNTS.map((a) => a.cod);
   eq('planul de conturi nu are coduri duplicate', coduri.length, new Set(coduri).size);
