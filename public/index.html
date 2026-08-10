@@ -236,6 +236,11 @@
            nomenclatoarele și setările — se ating rar, deci nu mai stau în drum. -->
       <button data-tab="dashboard" class="active">🏠 Acasă</button>
       <button data-tab="ghid">📖 Ghid</button>
+      <!-- Cartea de contabilitate: 51 de capitole si 5 anexe, la /carte/. E o LEGATURA, nu un tab:
+           deschide alt document, in fila noua. Deci nu are `data-tab` si nu ii trebuie sectiune —
+           poarta „fiecare intrare de meniu are sectiune" se uita, corect, doar la butoane. -->
+      <a href="/carte/" target="_blank" rel="noopener" class="navlink"
+         title="Cartea de contabilitate — 51 de capitole și 5 anexe, de citit în browser">📚 Cartea</a>
       <div id="imperBanner" class="imper-banner hidden">
         <span>👤 Conectat ca <b id="imperName"></b> <span class="imper-sub">(mod administrator — „intră pe cont"). Toate acțiunile sunt jurnalizate.</span></span>
         <button id="imperStop" type="button">↩ Revino la contul de admin</button>

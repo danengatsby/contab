@@ -320,16 +320,20 @@ body.erp.dark .topbar #tabs { background: #1f1e19; }
 
 /* Frunza de arbore (intrare directa sau item dintr-un grup) */
 body.erp #tabs > button[data-tab]:not(.hidden),
+body.erp #tabs > a.navlink,
 body.erp #tabs .navmenu button {
   border-radius: 0; border-left: 0; border-top: 0; border-right: 0; border-bottom: 0;
   font-size: 11px; font-weight: 400; color: var(--e-ink);
   padding: 2px 6px 2px 22px; min-height: 0; line-height: 15px;
   gap: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-body.erp #tabs > button[data-tab]:not(.hidden) { padding-left: 8px; font-weight: 400; }
+body.erp #tabs > button[data-tab]:not(.hidden),
+body.erp #tabs > a.navlink { padding-left: 8px; font-weight: 400; }
 body.erp #tabs > button[data-tab]:hover,
+body.erp #tabs > a.navlink:hover,
 body.erp #tabs .navmenu button:hover { background: var(--e-sel-soft); color: var(--e-ink); }
 body.erp.dark #tabs > button[data-tab]:hover,
+body.erp.dark #tabs > a.navlink:hover,
 body.erp.dark #tabs .navmenu button:hover { background: #22364f; color: var(--e-ink); }
 body.erp #tabs > button[data-tab].active,
 body.erp #tabs .navmenu button.active {
