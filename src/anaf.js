@@ -100,7 +100,7 @@ async function postToken(cfg, params) {
   const txt = await r.text();
   if (!r.ok) throw new Error('ANAF token ' + r.status + ': ' + txt.slice(0, 300));
   let j;
-  try { j = JSON.parse(txt); } catch (_) { throw new Error('Raspuns token invalid: ' + txt.slice(0, 200)); }
+  try { j = JSON.parse(txt); } catch (e) { throw new Error('Raspuns token invalid: ' + txt.slice(0, 200), { cause: e }); }
   return j;
 }
 
@@ -190,7 +190,7 @@ async function listMessages(cfg, cif, zile, filtru) {
   const txt = await r.text();
   if (!r.ok) throw new Error('ANAF listaMesaje ' + r.status + ': ' + txt.slice(0, 200));
   let j;
-  try { j = JSON.parse(txt); } catch (_) { throw new Error('Raspuns lista invalid: ' + txt.slice(0, 200)); }
+  try { j = JSON.parse(txt); } catch (e) { throw new Error('Raspuns lista invalid: ' + txt.slice(0, 200), { cause: e }); }
   if (j.eroare) throw new Error(j.eroare);
   return Array.isArray(j.mesaje) ? j.mesaje : [];
 }
@@ -212,7 +212,7 @@ async function uploadEtransport(cfg, xmlStr, cif) {
   const txt = await r.text();
   if (!r.ok) throw new Error('ANAF e-Transport upload ' + r.status + ': ' + txt.slice(0, 300));
   let j;
-  try { j = JSON.parse(txt); } catch (_) { throw new Error('Raspuns e-Transport invalid: ' + txt.slice(0, 200)); }
+  try { j = JSON.parse(txt); } catch (e) { throw new Error('Raspuns e-Transport invalid: ' + txt.slice(0, 200), { cause: e }); }
   if (Number(j.ExecutionStatus) !== 0) {
     const err = (Array.isArray(j.Errors) && j.Errors.map((e) => e.errorMessage).filter(Boolean).join('; ')) || j.errorMessage || txt.slice(0, 300);
     throw new Error('e-Transport respins: ' + err);
@@ -228,7 +228,7 @@ async function etransportStatus(cfg, index) {
   const txt = await r.text();
   if (!r.ok) throw new Error('ANAF e-Transport stareMesaj ' + r.status + ': ' + txt.slice(0, 300));
   let j;
-  try { j = JSON.parse(txt); } catch (_) { throw new Error('Raspuns stare e-Transport invalid: ' + txt.slice(0, 200)); }
+  try { j = JSON.parse(txt); } catch (e) { throw new Error('Raspuns stare e-Transport invalid: ' + txt.slice(0, 200), { cause: e }); }
   return { stare: String(j.stare || 'in prelucrare'), uit: String(j.UIT || ''), raw: txt };
 }
 
@@ -249,7 +249,7 @@ async function spvRequest(cfg, tip, params) {
   const txt = await r.text();
   if (!r.ok) throw new Error('SPV cerere ' + r.status + ': ' + txt.slice(0, 300));
   let j;
-  try { j = JSON.parse(txt); } catch (_) { throw new Error('Raspuns SPV invalid: ' + txt.slice(0, 200)); }
+  try { j = JSON.parse(txt); } catch (e) { throw new Error('Raspuns SPV invalid: ' + txt.slice(0, 200), { cause: e }); }
   if (j.eroare) throw new Error(j.eroare);
   return j;
 }
@@ -263,7 +263,7 @@ async function spvMessages(cfg, zile) {
   const txt = await r.text();
   if (!r.ok) throw new Error('SPV listaMesaje ' + r.status + ': ' + txt.slice(0, 200));
   let j;
-  try { j = JSON.parse(txt); } catch (_) { throw new Error('Raspuns SPV invalid: ' + txt.slice(0, 200)); }
+  try { j = JSON.parse(txt); } catch (e) { throw new Error('Raspuns SPV invalid: ' + txt.slice(0, 200), { cause: e }); }
   if (j.eroare) throw new Error(j.eroare);
   return Array.isArray(j.mesaje) ? j.mesaje : [];
 }

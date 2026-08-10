@@ -108,7 +108,7 @@ async function citesteRaspuns(r) {
       + 'indisponibil): ' + inceput.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160));
   }
   let j;
-  try { j = JSON.parse(text); } catch (e) { throw new Error('Raspuns ANAF neparsabil: ' + e.message); }
+  try { j = JSON.parse(text); } catch (e) { throw new Error('Raspuns ANAF neparsabil: ' + e.message, { cause: e }); }
   if (!j || !Array.isArray(j.found)) throw new Error('Raspuns ANAF fara lista `found`.');
   return j;
 }

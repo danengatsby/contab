@@ -9,9 +9,23 @@
 // ea in doua locuri (cererea de acces si poarta de duplicat la creare). O singura definitie —
 // altfel „acelasi CUI" ar insemna lucruri diferite in doua ecrane.
 
-/** Cheia de comparatie a unui CUI: fara prefix RO, fara spatii/puncte, majuscule. */
+/**
+ * Cheia de comparatie a unui CUI: fara prefix RO, fara spatii/puncte, majuscule.
+ *
+ * ORDINEA operatiilor e parte din corectitudine, nu stil. Varianta initiala taia prefixul INAINTE
+ * de a curata separatorii, deci `^RO` nu se potrivea daca sirul incepea cu un spatiu sau un tab:
+ *   cuiKey('RO11223342')  -> '11223342'
+ *   cuiKey(' RO11223342') -> 'RO11223342'   (prefixul ramanea)
+ * Consecintele erau doua, si a doua e cea grava:
+ *   1. `validCUI` cerea apoi /^[0-9]{2,10}$/, deci un CUI corect lipit dintr-un e-mail, cu un
+ *      spatiu in fata, era respins ca INVALID;
+ *   2. cheia diferea de a aceleiasi firme scrise fara spatiu — iar `firmeService` compara exact
+ *      pe ea ca sa refuze doua firme cu acelasi CUI. Un spatiu in fata ocolea poarta de duplicat.
+ * Azi se curata INTAI, se taie prefixul dupa: singura ordine in care „acelasi CUI" inseamna
+ * acelasi lucru indiferent cum a fost tastat.
+ */
 function cuiKey(v) {
-  return String(v == null ? '' : v).toUpperCase().replace(/^RO/, '').replace(/[^0-9A-Z]/g, '');
+  return String(v == null ? '' : v).toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/^RO/, '');
 }
 
 // Cifra de control a CUI-ului romanesc: ponderi 7 5 3 2 1 7 5 3 2, aliniate la DREAPTA fata de
