@@ -209,6 +209,96 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Autoturismul: trei limitări care se confundă"
+  },
+  {
+   "tip": "p",
+   "text": "Vehiculul de persoane e bunul cu cel mai complicat regim fiscal din toată contabilitatea unei firme mici, iar motivul e că legea îl limitează de trei ori, în trei locuri diferite, cu trei baze diferite. Cine le confundă greșește în ambele sensuri."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele trei limitări, pe un autoturism de 200.000 lei",
+   "cap": [
+    "Limitarea",
+    "Ce lovește",
+    "Cât",
+    "Când"
+   ],
+   "randuri": [
+    [
+     "TVA la achiziție",
+     "taxa de pe factură",
+     "50% din 42.000 = 21.000 nerecuperabili",
+     "o singură dată"
+    ],
+    [
+     "Amortizarea fiscală",
+     "cheltuiala lunară",
+     "deductibil cel mult 1.500 lei/lună",
+     "în fiecare lună, toată durata"
+    ],
+    [
+     "Cheltuielile de folosință",
+     "combustibil, reparații, asigurări",
+     "50% nedeductibil",
+     "în fiecare an"
+    ]
+   ],
+   "nota": "Bazele sunt diferite: prima se aplică taxei, a doua amortizării, a treia cheltuielilor curente. Nu se însumează și nu se substituie una alteia."
+  },
+  {
+   "tip": "p",
+   "text": "Prima limitare are un efect pe care mulți îl ratează: TVA-ul nededus nu se pierde, ci intră în COSTUL bunului. Valoarea de intrare a autoturismului nu e 200.000, ci 221.000 de lei — iar amortizarea se calculează pe această valoare."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce iese, pe an",
+   "cap": [
+    "Element",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Valoare de intrare (200.000 + 21.000 TVA nededusă)",
+     "221.000,00"
+    ],
+    [
+     "Amortizare contabilă lunară (60 de luni)",
+     "3.683,33"
+    ],
+    [
+     "din care deductibilă fiscal",
+     "1.500,00"
+    ],
+    [
+     "nedeductibilă, în fiecare lună",
+     "2.183,33"
+    ],
+    [
+     "Amortizare contabilă pe an",
+     "44.200,00"
+    ],
+    [
+     "din care deductibilă pe an",
+     "18.000,00"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Peste 26.000 de lei de cheltuială nedeductibilă în fiecare an, numai din amortizare — la care se adaugă jumătate din întreținere."
+  },
+  {
+   "tip": "cheie",
+   "text": "Plafonul de 1.500 de lei e LUNAR și nu se reportează. Un an cu unsprezece luni de amortizare are unsprezece plafoane, nu douăsprezece — iar calculul „12 × 1.500” dă o deducere mai mare decât cea legală."
+  },
+  {
+   "tip": "p",
+   "text": "Toate trei se ridică dacă vehiculul e folosit EXCLUSIV în scop economic, iar dovada e a firmei: foaie de parcurs, sau altă evidență din care rezultă traseele. Fără ea, limitarea se aplică — nu ca sancțiune, ci fiindcă legea prezumă folosința mixtă. E una dintre puținele situații în care o evidență ținută zilnic valorează, în bani, mai mult decât orice optimizare."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
