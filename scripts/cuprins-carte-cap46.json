@@ -155,6 +155,88 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Forma oficială nu are două coloane"
+  },
+  {
+   "tip": "p",
+   "text": "Bilanțul din capitolul de față e prezentat pe două coloane, fiindcă așa se înțelege cel mai ușor egalitatea. Formularul oficial arată însă altfel: e VERTICAL, iar egalitatea nu se citește dintr-o privire — se obține la capăt, printr-un lanț de scăderi."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Bilanțul exemplului, în forma oficială",
+   "cap": [
+    "Rândul",
+    "Ce cuprinde",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "A. Active imobilizate",
+     "imobilizări nete",
+     "15.366,65"
+    ],
+    [
+     "B. Active circulante",
+     "stocuri, creanțe, casă și bancă",
+     "71.015,00"
+    ],
+    [
+     "D. Datorii sub un an",
+     "furnizori, salarii, contribuții, TVA",
+     "20.127,50"
+    ],
+    [
+     "E. Active circulante nete",
+     "B − D",
+     "50.887,50"
+    ],
+    [
+     "F. Total active minus datorii curente",
+     "A + E",
+     "66.254,15"
+    ],
+    [
+     "J. Capitaluri proprii",
+     "capital, rezultat reportat, rezultatul anului",
+     "66.254,15"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "total": true,
+   "nota": "Egalitatea clasică apare abia la final: F = J. Cele două cifre sunt aceleași, dar au fost obținute pe drumuri diferite."
+  },
+  {
+   "tip": "p",
+   "text": "Rândul E merită atenție, fiindcă e singurul care nu apare în forma cu două coloane și e, poate, cel mai util din tot documentul: activele circulante nete, adică ce rămâne din activele pe termen scurt după plata datoriilor pe termen scurt. Aici, 50.887,50 de lei — o firmă care își poate acoperi obligațiile apropiate de peste trei ori."
+  },
+  {
+   "tip": "p",
+   "text": "Când rândul E e negativ, firma are de plătit în următoarele douăsprezece luni mai mult decât poate transforma în bani în același interval. Nu e o eroare contabilă și nu apare nicăieri în contul de profit și pierdere — dar e primul lucru pe care îl citește o bancă."
+  },
+  {
+   "tip": "cheie",
+   "text": "Forma verticală nu ascunde egalitatea, ci o amână — și, pe drum, calculează un indicator pe care forma cu două coloane nu îl produce deloc."
+  },
+  {
+   "tip": "h",
+   "text": "Prescurtat sau complet"
+  },
+  {
+   "tip": "p",
+   "text": "Formularul are două variante, iar alegerea nu e liberă: depinde de categoria în care intră firma, după criterii de mărime — total active, cifră de afaceri și număr mediu de salariați."
+  },
+  {
+   "tip": "p",
+   "text": "Microentitățile și entitățile mici depun bilanțul prescurtat, cu grupele mari. Cele mijlocii și mari depun forma completă, cu peste o sută de rânduri, unde fiecare grupă se desface pe elemente. Conținutul economic e același; diferă cât de mult se vede din el."
+  },
+  {
+   "tip": "p",
+   "text": "Trecerea dintr-o categorie în alta nu se face la prima depășire: criteriile trebuie depășite două exerciții consecutive. Regula există tocmai ca un an bun să nu schimbe regimul de raportare al unei firme care revine, anul următor, la dimensiunea ei obișnuită."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
