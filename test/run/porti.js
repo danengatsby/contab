@@ -1560,3 +1560,40 @@ section('Poarta: fiecare document care emite factura raspunde daca merge in e-Fa
   eq('perimetrul derivat = tipurile marcate „da"',
     xmlMod.SALES_TYPES.size, T.TYPES.filter((t) => t.eFactura === 'da').length);
 }
+
+section('Poarta: niciun al doilea fisier cu secrete in radacina proiectului');
+{
+  // De ce exista. `.env.bak-prepg` a stat sase saptamani in radacina, cu chei Stripe, Anthropic
+  // si Resend IDENTICE cu cele vii. Nu a fost expus — nu a fost comis niciodata, avea mod 600 si
+  // nu exista nicio copie pe server — dar prima arhiva portabila construita din radacina l-a
+  // inclus, fiindca excluderea era `.env`, nu `.env.*`. Am prins-o inainte de publicare; a doua
+  // oara poate sa nu se intample asa.
+  //
+  // Regula pe care o apara poarta: secretele VII stau intr-un singur fisier, `.env`. Orice al
+  // doilea fisier din radacina care contine o cheie reala e o copie uitata, iar o copie uitata e
+  // exact ce mătură urmatoarea impachetare.
+  //
+  // Se scaneaza DIRECTORUL, nu ce urmareste git: fisierul problema era gitignorat, deci o poarta
+  // pe fisierele urmarite nu l-ar fi vazut niciodata.
+  const fsS = require('fs');
+  const pS = require('path');
+  // Prefix PLUS un corp realist: `sk_live_...` din documentatie nu e o cheie, iar o poarta care
+  // se aprinde la exemple din README e o poarta pe care o dezactiveaza cineva peste o luna.
+  const CHEIE = /(sk_live_[A-Za-z0-9]{16,}|sk-ant-api[A-Za-z0-9_-]{20,}|whsec_[A-Za-z0-9]{20,}|re_[A-Za-z0-9]{24,})/;
+  const PERMIS = new Set(['.env']); // singurul loc in care secretele vii au voie sa stea
+  const gasite = [];
+  for (const nume of fsS.readdirSync(RADACINA)) {
+    if (PERMIS.has(nume)) continue;
+    const cale = pS.join(RADACINA, nume);
+    let st; try { st = fsS.statSync(cale); } catch (e) { continue; }
+    if (!st.isFile() || st.size > 512 * 1024) continue;
+    let text; try { text = fsS.readFileSync(cale, 'utf8'); } catch (e) { continue; }
+    if (CHEIE.test(text)) gasite.push(nume); // se raporteaza NUMELE, niciodata continutul
+  }
+  eq('radacina nu are un al doilea fisier cu chei reale', gasite.join(', '), '');
+  // Poarta trebuie sa MUSTE: tiparul recunoaste o cheie reala, dar lasa exemplele in pace.
+  ok('tiparul prinde o cheie Stripe reala', CHEIE.test('STRIPE_SECRET_KEY=sk_live_' + 'a'.repeat(24)));
+  ok('tiparul prinde o cheie Resend reala', CHEIE.test('RESEND_API_KEY=re_' + 'b'.repeat(30)));
+  ok('...dar NU se aprinde la exemplul din documentatie', !CHEIE.test('ia cheile `sk_live_...` din Stripe'));
+  ok('...si nici la placeholderul din interfata', !CHEIE.test('ANTHROPIC_API_KEY=sk-ant-... npm start'));
+}
