@@ -131,6 +131,71 @@
   },
   {
    "tip": "h",
+   "text": "Monografia completă"
+  },
+  {
+   "tip": "p",
+   "text": "Puse una sub alta, cele patru operațiuni acoperă întregul drum. Merită citite la numărul de linii, nu doar la conturi — a treia are două, și tocmai a doua e cea uitată."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele patru articole, în ordinea în care apar",
+   "cap": [
+    "Momentul",
+    "Debit",
+    "Credit",
+    "Ce face"
+   ],
+   "randuri": [
+    [
+     "Creanța devine incertă",
+     "4118",
+     "4111",
+     "reclasificare; nu atinge rezultatul"
+    ],
+    [
+     "Pierderea devine probabilă",
+     "6814",
+     "491",
+     "recunoaște cheltuiala"
+    ],
+    [
+     "Clientul plătește / riscul dispare",
+     "491",
+     "7814",
+     "reia ajustarea, ca venit"
+    ],
+    [
+     "Pierderea devine certă",
+     "654",
+     "4118",
+     "scoate creanța din evidență"
+    ],
+    [
+     "…și, în același articol",
+     "491",
+     "7814",
+     "reia ajustarea constituită pentru ea"
+    ],
+    [
+     "Un debitor pierdut plătește",
+     "4111",
+     "754",
+     "reactivează creanța"
+    ]
+   ],
+   "nota": "Ultimele două rânduri formează un singur articol contabil. Fără al doilea, pierderea ar intra în rezultat de două ori: o dată la constituirea ajustării, încă o dată la scoaterea din evidență."
+  },
+  {
+   "tip": "p",
+   "text": "Efectul net al celor două linii de la scoaterea din evidență e zero asupra rezultatului — și asta e verificarea care confirmă că articolul e complet. Dacă scoaterea din evidență schimbă profitul, fie ajustarea nu fusese constituită, fie a doua linie lipsește."
+  },
+  {
+   "tip": "cheie",
+   "text": "Cheltuiala se recunoaște o singură dată, la constituirea ajustării. Scoaterea din evidență nu adaugă o pierdere — doar schimbă eticheta ei din „probabilă” în „certă”."
+  },
+  {
+   "tip": "h",
    "text": "TVA-ul rămâne colectat"
   },
   {

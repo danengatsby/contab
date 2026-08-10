@@ -1,7 +1,7 @@
 {
  "parte": "Anexe · de folosit, nu de citit",
  "nr": "B",
- "titlu": "Monografii: 43 de situații frecvente",
+ "titlu": "Monografii: 48 de situații frecvente",
  "blocuri": [
   {
    "tip": "p",
@@ -1071,7 +1071,32 @@
   },
   {
    "tip": "tabel",
-   "titlu": "41. Client devenit incert sau în litigiu",
+   "titlu": "41. Diferență nefavorabilă de curs valutar",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "665 Cheltuieli din diferențe de curs valutar",
+     "401 Furnizori",
+     "10.000,00",
+     "Diferență de curs valutar nefavorabilă"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Creanțe incerte și provizioane"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "42. Client devenit incert sau în litigiu",
    "cap": [
     "Debit",
     "Credit",
@@ -1092,7 +1117,97 @@
   },
   {
    "tip": "tabel",
-   "titlu": "42. Constituirea unui provizion pentru riscuri și cheltuieli",
+   "titlu": "43. Constituirea ajustării pentru deprecierea creanțelor",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "6814 Cheltuieli privind ajustările pentru deprecierea activelor circulante",
+     "491 Ajustări pentru deprecierea creanțelor - clienți",
+     "10.000,00",
+     "Ajustare pentru deprecierea creanțelor-clienți"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "44. Reluarea ajustării — clientul a plătit sau riscul a dispărut",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "491 Ajustări pentru deprecierea creanțelor - clienți",
+     "7814 Venituri din ajustări pentru deprecierea activelor circulante",
+     "10.000,00",
+     "Reluarea ajustării pentru deprecierea creanțelor"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "45. Scoaterea din evidență a unei creanțe irecuperabile",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "654 Pierderi din creanțe și debitori diverși",
+     "4118 Clienți incerți sau în litigiu",
+     "10.000,00",
+     "Pierdere din creanță irecuperabilă"
+    ],
+    [
+     "491 Ajustări pentru deprecierea creanțelor - clienți",
+     "7814 Venituri din ajustări pentru deprecierea activelor circulante",
+     "10.000,00",
+     "Reluarea ajustării aferente creanței scoase din evidență"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "46. Creanță reactivată — un debitor considerat pierdut plătește",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "Explicația"
+   ],
+   "randuri": [
+    [
+     "4111 Clienți",
+     "754 Venituri din creanțe reactivate și debitori diverși",
+     "10.000,00",
+     "Creanță reactivată (debitor considerat pierdut)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "47. Constituirea unui provizion pentru riscuri și cheltuieli",
    "cap": [
     "Debit",
     "Credit",
@@ -1104,7 +1219,7 @@
      "6812 Cheltuieli de exploatare privind provizioanele",
      "151 Provizioane pentru riscuri și cheltuieli",
      "10.000,00",
-     "Constituire provizion pentru riscuri si cheltuieli"
+     "Constituire provizion pentru riscuri și cheltuieli"
     ]
    ],
    "numerice": [
@@ -1113,7 +1228,7 @@
   },
   {
    "tip": "tabel",
-   "titlu": "43. Diferență nefavorabilă de curs valutar",
+   "titlu": "48. Reluarea unui provizion devenit fără obiect",
    "cap": [
     "Debit",
     "Credit",
@@ -1122,10 +1237,10 @@
    ],
    "randuri": [
     [
-     "665 Cheltuieli din diferențe de curs valutar",
-     "401 Furnizori",
+     "151 Provizioane pentru riscuri și cheltuieli",
+     "7812 Venituri din provizioane",
      "10.000,00",
-     "Diferență de curs valutar nefavorabilă"
+     "Reluare provizion devenit fără obiect"
     ]
    ],
    "numerice": [
