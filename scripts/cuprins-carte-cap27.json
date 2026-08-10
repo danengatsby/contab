@@ -242,6 +242,65 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "De ce evidența pe deductibil se ține de la început"
+  },
+  {
+   "tip": "p",
+   "text": "Ajustarea are un regim fiscal asimetric, iar asimetria se plătește peste doi ani, dacă nu s-a consemnat nimic la constituire."
+  },
+  {
+   "tip": "p",
+   "text": "La constituire, doar 30% e deductibil. La reluare — când clientul plătește sau creanța se scoate din evidență — venitul e impozabil în ACEEAȘI proporție: 30% impozabil, 70% neimpozabil. Cele două se potrivesc doar dacă se știe cât a fost deductibil la constituire."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "O ajustare de 12.100 lei, urmărită pe doi ani",
+   "cap": [
+    "Momentul",
+    "Contabil",
+    "Fiscal"
+   ],
+   "randuri": [
+    [
+     "Anul 1 — constituire",
+     "cheltuială 12.100",
+     "deductibil 3.630, nedeductibil 8.470"
+    ],
+    [
+     "Anul 2 — clientul plătește",
+     "venit 12.100",
+     "impozabil 3.630, neimpozabil 8.470"
+    ],
+    [
+     "Efect cumulat pe doi ani",
+     "zero",
+     "zero"
+    ]
+   ],
+   "nota": "Ultimul rând e verificarea: dacă efectul fiscal cumulat nu e zero, undeva s-a pierdut proporția — iar reconstituirea ei peste doi ani nu se mai poate face din date."
+  },
+  {
+   "tip": "p",
+   "text": "Fără evidența analitică pe cele două părți, la reluare se întâmplă una din două: fie se declară tot venitul ca impozabil, și firma plătește 16% pe 8.470 de lei care nu se datorau, fie nu se declară nimic, și diferența se descoperă la control. Amândouă costă mai mult decât o coloană în plus într-un tabel."
+  },
+  {
+   "tip": "h",
+   "text": "Ajustarea NU e o pierdere definitivă"
+  },
+  {
+   "tip": "p",
+   "text": "Merită spus explicit unui patron, fiindcă termenul „ajustare pentru depreciere” sună a renunțare: creanța rămâne datorată, iar dreptul de a o urmări nu se stinge. Ajustarea e o afirmație despre PROBABILITATEA încasării, nu despre dreptul de a încasa."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința practică: după constituirea ajustării, urmărirea creanței continuă — somație, acțiune în instanță, executare. Iar dacă demersurile reușesc, ajustarea se reia și banii intră normal. O firmă care tratează ajustarea ca pe o pierdere încetează să mai urmărească exact creanțele pe care le-a recunoscut ca fiind în pericol."
+  },
+  {
+   "tip": "cheie",
+   "text": "Ajustarea schimbă cifra din bilanț, nu relația cu clientul. Creanța rămâne, urmărirea continuă, iar dacă banii vin, tot ce s-a înregistrat se dă înapoi."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

@@ -134,6 +134,49 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Avansul nejustificat: cum devine o problemă fiscală"
+  },
+  {
+   "tip": "p",
+   "text": "Contul 542 pare cel mai inofensiv din trezorerie: bani dați unui angajat, care se justifică peste câteva zile. Devine însă, cu timpul, una dintre cele mai scumpe poziții din balanță — și nu din cauza sumei."
+  },
+  {
+   "tip": "p",
+   "text": "Justificarea se face cu documente, într-un termen stabilit prin decizie internă. Sumele nejustificate la termen nu rămân o creanță comodă asupra angajatului: din perspectivă fiscală devin avantaje de natură salarială, cu tot ce decurge — impozit pe venit și contribuții, calculate ca la salariu."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce costă un avans de 3.000 de lei nejustificat",
+   "cap": [
+    "Dacă e tratat ca…",
+    "Consecința"
+   ],
+   "randuri": [
+    [
+     "creanță asupra angajatului",
+     "se recuperează din salariu sau se restituie"
+    ],
+    [
+     "avantaj de natură salarială",
+     "se adaugă la brut: CAS, CASS, impozit, plus CAM pentru firmă"
+    ],
+    [
+     "nimic — rămâne în sold, an după an",
+     "la control, se reconsideră ca avantaj, cu accesorii pe toată perioada"
+    ]
+   ],
+   "nota": "A treia variantă e cea aleasă cel mai des, fiindcă nu cere nicio decizie. E și cea mai scumpă."
+  },
+  {
+   "tip": "cheie",
+   "text": "Un sold vechi în 542 nu e o neglijență administrativă. E un risc fiscal cuantificabil, care crește cu fiecare lună în care nimeni nu întreabă."
+  },
+  {
+   "tip": "p",
+   "text": "Verificarea e simplă și merită făcută lunar, odată cu punctajul: soldul contului 542, desfășurat pe persoane, cu data la care s-a acordat fiecare sumă. Orice poziție mai veche decât termenul intern e o întrebare de pus — iar întrebarea pusă la timp costă un telefon, nu o recalculare de contribuții."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
