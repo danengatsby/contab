@@ -13,7 +13,7 @@ const billing = require('./billing');
 /** Trimitere prin SMTP-ul din Setari (nodemailer). */
 function sendMail(smtp, to, subject, text) {
   let nodemailer;
-  try { nodemailer = require('nodemailer'); } catch (_) { throw new Error('nodemailer neinstalat'); }
+  try { nodemailer = require('nodemailer'); } catch (e) { throw new Error('nodemailer neinstalat', { cause: e }); }
   const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port || 587, secure: !!smtp.secure, auth: smtp.user ? { user: smtp.user, pass: secretbox.open(smtp.pass) } : undefined });
   return t.sendMail({ from: smtp.from || smtp.user, to, subject, text });
 }

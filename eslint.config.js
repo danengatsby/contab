@@ -41,6 +41,14 @@ const reguli = {
   // `catch (_) {}` gol e un tipar DELIBERAT si des in acest cod (best-effort: chmod, unlink,
   // cleanup). Blocurile goale de alt fel raman semnalate.
   'no-empty': ['error', { allowEmptyCatch: true }],
+  // OPRITA, dupa masurare, nu din comoditate. ESLint 10 a adus-o in setul recomandat; a semnalat
+  // 17 locuri si le-am citit pe TOATE: fara exceptie, tiparul e `let x = <initial>` suprascris pe
+  // fiecare ramura care urmeaza — o initializare defensiva, nu o valoare pierduta. Zero defecte
+  // gasite. Perimetrul acestei configuratii e ingust DELIBERAT (vezi antetul): 17 semnalari fara
+  // niciun defect nu ar face codul mai bun, ar ingropa semnalarile care conteaza.
+  // Perechea ei utila, `preserve-caught-error`, e ACTIVA — a gasit 11 locuri in care eroarea
+  // originala se pierdea la traducere, si toate au primit `{ cause: e }`.
+  'no-useless-assignment': 'off',
   // Caracterele de control in expresii regulate sunt INTENTIA, nu o greseala: `src/sepa.js`,
   // `src/xml.js`, `src/dbf.js` si `src/messages.js` le sterg tocmai ca sa nu ajunga in fisiere
   // care pleaca la BANCA sau la ANAF. Regula ar semnala exact codul care face lucrul corect.

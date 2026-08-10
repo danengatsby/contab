@@ -124,7 +124,7 @@ module.exports = function register(app, ctx) {
   function sendInviteEmail(smtp, to, link) {
     // hook simplu SMTP prin nodemailer daca e instalat; altfel arunca (adminul foloseste linkul).
     let nodemailer;
-    try { nodemailer = require('nodemailer'); } catch (_) { throw new Error('nodemailer neinstalat'); }
+    try { nodemailer = require('nodemailer'); } catch (e) { throw new Error('nodemailer neinstalat', { cause: e }); }
     const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port || 587, secure: !!smtp.secure, auth: smtp.user ? { user: smtp.user, pass: secretbox.open(smtp.pass) } : undefined });
     return t.sendMail({ from: smtp.from || smtp.user, to, subject: 'Invitatie Contabo', text: 'Ai fost invitat in Contabo. Seteaza-ti parola aici:\n' + link });
   }

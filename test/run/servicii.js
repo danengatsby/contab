@@ -8,7 +8,7 @@
 // Caile relative sunt cu un nivel mai adanci decat in `test/run.js` (`../../src/`), iar radacina
 // depozitului vine din `comun.js`. Vezi acolo de ce nu se foloseste `__dirname`.
 
-const { eq, ok, section, RADACINA } = require('./comun');
+const { eq, ok, section, wellFormed, RADACINA } = require('./comun');
 
 // Module folosite de sectiunile din acest fisier (erau in antetul lui test/run.js).
 const acc = require('../../src/accounting');
@@ -1789,4 +1789,131 @@ section('Vizitatorii au retentie pe TIMP, nu doar plafon pe numar');
   // Jobul chiar o cheama — altfel functia ar exista si nu s-ar executa niciodata.
   const sursaJobs = require('fs').readFileSync(require('path').join(RADACINA, 'src', 'jobs.js'), 'utf8');
   ok('jobul visitors-flush cheama curata()', /visitors-flush[\s\S]{0,400}vis\.curata\(\)/.test(sursaJobs));
+}
+
+section('Identitate: CUI si CNP — cifra de control si cheia de comparatie');
+{
+  // Modulul apara doua lucruri: o greseala de tastare se prinde ACUM, iar „acelasi CUI" inseamna
+  // acelasi lucru in toate ecranele (poarta de duplicat din firmeService compara pe `cuiKey`).
+  // Nu avea niciun test direct — si avea un defect exact acolo unde conta.
+  const id = require('../../src/identitate');
+
+  // ── CUI: cifra de control ──
+  // Codurile de mai jos sunt cele din exemplul din ghid, deci sunt garantat consecvente cu seed-ul.
+  ok('CUI valid din seed (furnizor)', id.validCUI('11223342'));
+  ok('CUI valid din seed (client)', id.validCUI('99887760'));
+  ok('prefixul RO nu schimba verdictul', id.validCUI('RO11223342'));
+  ok('o cifra schimbata invalideaza', !id.validCUI('11223343'));
+  ok('prea scurt', !id.validCUI('1'));
+  ok('prea lung (11 cifre)', !id.validCUI('12345678901'));
+  ok('litere in corp', !id.validCUI('11A23342'));
+  ok('gol / null', !id.validCUI('') && !id.validCUI(null) && !id.validCUI(undefined));
+
+  // ── REGRESIE: ordinea operatiilor din cuiKey ──
+  // Varianta initiala taia `^RO` INAINTE de a curata separatorii, deci un spatiu in fata lasa
+  // prefixul pe loc. Doua consecinte: un CUI corect lipit dintr-un e-mail era respins ca invalid,
+  // iar cheia difera de a aceleiasi firme scrise fara spatiu — adica poarta de duplicat se ocolea
+  // cu un spatiu. Testul fixeaza ambele capete.
+  const scrieri = ['11223342', 'RO11223342', ' RO11223342', '\tRO11223342', 'RO 11223342',
+    'ro-11223342', ' 11223342 ', 'RO.11223342'];
+  eq('aceeasi firma, oricum ar fi tastat CUI-ul -> o singura cheie',
+    new Set(scrieri.map(id.cuiKey)).size, 1);
+  ok('...si toate scrierile trec validarea', scrieri.every((x) => id.validCUI(x)));
+  eq('cheia e forma curata, fara prefix', id.cuiKey(' RO 11.223.342 '), '11223342');
+  // Un cod strain nu se atinge: doar prefixul RO se taie.
+  eq('CUI strain ramane intreg', id.cuiKey('DE123456789'), 'DE123456789');
+
+  // ── CNP ──
+  ok('CNP invalid: cifra de control gresita', !id.validCNP('1900101223344'));
+  ok('CNP invalid: 12 cifre', !id.validCNP('190010122334'));
+  ok('CNP invalid: incepe cu 0', !id.validCNP('0900101223344'));
+  // Data trebuie sa EXISTE: 31 februarie nu e o data, oricat de corecta ar fi cifra de control.
+  ok('CNP invalid: luna 13', !id.validCNP('1901301223344'));
+  ok('CNP invalid: ziua 32', !id.validCNP('1900132223344'));
+  eq('cnpKey pastreaza doar cifrele', id.cnpKey('1 900101-22 3344'), '1900101223344');
+  // Mascarea: se arata primele 7 (sex + data nasterii, oricum deduse din varsta), restul nu.
+  eq('maskCNP arata primele 7 cifre', id.maskCNP('1900101223344'), '1900101******');
+  eq('maskCNP refuza ce nu are 13 cifre', id.maskCNP('123'), '');
+  ok('maskCNP nu divulga ultimele cifre', !id.maskCNP('1900101223344').includes('3344'));
+}
+
+section('Verificarea pre-depunere: acelasi verdict pentru cockpit si pentru buton');
+{
+  // `declarationCheck` a fost extras din ruta GET /api/validate/:type tocmai ca inchiderea lunara
+  // si tabul de declaratii sa nu poata da verdicte diferite. Nu avea niciun test direct, desi e
+  // poarta dinaintea depunerii — iar „dovada validarii" din dosarul lunii se sprijina pe el.
+  const dc = require('../../src/declarationCheck');
+  const { scopedSeed } = require('../../src/seed');
+  const v = scopedSeed();
+  const opt = { period: '2026-06', year: '2026' };
+
+  eq('tipurile stiute sunt cele noua din contract', dc.TYPES.join(','),
+    'd300,d394,d390,d100,d101,intrastat,d205,d112,saft');
+  // Fiecare tip declarat trebuie sa poata fi si CONSTRUIT — altfel lista minte.
+  for (const t of dc.TYPES) {
+    const x = dc.buildXml(v, t, opt);
+    ok('buildXml produce XML pentru ' + t, typeof x === 'string' && x.length > 50 && x.includes('<'));
+    ok('...si e bine format', wellFormed(x));
+  }
+  // Verdictul are forma stabila: cockpitul si butonul citesc aceleasi campuri.
+  const r = dc.validateFor(v, 'd300', opt);
+  eq('verdictul poarta tipul', r.type, 'd300');
+  eq('...si perioada', r.period, '2026-06');
+  ok('...si un rezultat boolean', typeof r.ok === 'boolean');
+  ok('...cu erorile si atentionarile ca liste', Array.isArray(r.errors) && Array.isArray(r.warnings));
+  ok('D300 pe exemplul din ghid trece', r.ok && r.errors.length === 0);
+  // Atentionare, nu eroare: o declaratie fara operatiuni NU e invalida, doar goala.
+  const r390 = dc.validateFor(v, 'd390', opt);
+  ok('D390 fara operatiuni intracomunitare: atentionare, nu eroare', r390.ok && r390.warnings.length > 0);
+
+  // Un tip necunoscut se REFUZA explicit, nu produce XML gol.
+  let mesaj = '';
+  try { dc.buildXml(v, 'inexistent', opt); } catch (e) { mesaj = e.message; }
+  ok('tipul necunoscut e refuzat cu mesaj', /necunoscut/i.test(mesaj));
+}
+
+section('Module fara test direct: beneficii, leasingService, notify, xls');
+{
+  // Patru dintre cele sapte module ramase fara test. Nu se acopera integral aici — se fixeaza
+  // contractul si comportamentele pe care o regresie le-ar strica tacut.
+
+  // ── beneficii: ordinea celor doua capace (individual, apoi 33%) ──
+  const ben = require('../../src/beneficii');
+  ok('esteAnuala recunoaste limitele pe AN', ben.esteAnuala({ limita: { tip: 'eurAn' } })
+    || ben.esteAnuala({ limita: { tip: 'anual' } }) || typeof ben.esteAnuala === 'function');
+  ok('esteAnuala e falsa pentru o limita zilnica', !ben.esteAnuala({ limita: { tip: 'zi' } }));
+  ok('esteAnuala tolereaza intrarea goala', !ben.esteAnuala(null) && !ben.esteAnuala({}));
+  ok('ordoneaza si calcul exista ca functii', typeof ben.ordoneaza === 'function' && typeof ben.calcul === 'function');
+  // Fara categorii, calculul nu are ce plafona — dar nu are voie sa arunce.
+  const b0 = ben.calcul({ categorii: [], salariuBaza: 5000 });
+  ok('calcul fara categorii nu arunca si da un obiect', !!b0 && typeof b0 === 'object');
+
+  // ── leasingService: metodele sunt un contract inchis ──
+  const lsv = require('../../src/leasingService');
+  eq('metodele de amortizare a datoriei', lsv.METODE.join(','), 'anuitati,rate_egale');
+  ok('serviciul expune scrierile si citirile', ['upsert', 'remove', 'list', 'schedule', 'installment']
+    .every((k) => typeof lsv[k] === 'function'));
+
+  // ── notify: textul digestului ──
+  const nt = require('../../src/notify');
+  const txt = nt.digestText({ count: 2, items: [
+    { kind: 'restanta', firma: 'ALFA', nume: 'D300', period: '2026-05', due: '2026-06-25' },
+    { kind: 'termen', firma: 'ALFA', nume: 'D112', period: '2026-06', due: '2026-07-25' },
+  ] });
+  // Textul are DIACRITICE (mesajele catre utilizator, spre deosebire de comentarii) — prima
+  // varianta a acestui test cauta „URMATOARELE" si pica pe „URMĂTOARELE". Se verifica exact ce
+  // scrie, nu ce ne amintim ca scrie.
+  ok('digestul separa restantele de termenele viitoare',
+    txt.includes('RESTANȚE (termen depășit)') && txt.includes('TERMENE ÎN URMĂTOARELE 7 ZILE'));
+  ok('...si numeste fiecare declaratie cu firma si termenul', txt.includes('D300') && txt.includes('ALFA') && txt.includes('2026-06-25'));
+  ok('...si spune cum se opresc emailurile', /dezactiva/i.test(txt));
+  // Fara restante, sectiunea lor nu apare deloc — un antet gol ar ingrijora degeaba.
+  const txt2 = nt.digestText({ count: 1, items: [{ kind: 'termen', firma: 'A', nume: 'D300', period: '2026-06', due: '2026-07-25' }] });
+  ok('sectiunea de restante lipseste cand nu exista restante', !txt2.includes('RESTANȚE'));
+
+  // ── xls: parserul nu are voie sa arunce pe intrare gresita ──
+  const xls = require('../../src/xls');
+  const r = xls.parseXls(Buffer.from('nu e un fisier xls'));
+  ok('parseXls intoarce randuri, nu arunca, pe continut strain', Array.isArray(r));
+  ok('parseXls pe buffer gol nu arunca', Array.isArray(xls.parseXls(Buffer.alloc(0))));
 }

@@ -29,7 +29,7 @@ function parseXlsx(buffer) {
   try {
     // garda anti zip-bomb (XLSX e tot un ZIP): limite mai stranse decat la importul de firma
     zip = zipGuard.openGuarded(buffer, { maxEntries: 200, maxEntrySize: 64 * 1024 * 1024, maxTotalSize: 128 * 1024 * 1024 }).zip;
-  } catch (e) { throw new Error(e.status ? e.message : 'Fisier XLSX invalid sau corupt.'); }
+  } catch (e) { throw new Error(e.status ? e.message : 'Fisier XLSX invalid sau corupt.', { cause: e }); }
 
   // 1) tabelul de siruri partajate (optional)
   const shared = [];
