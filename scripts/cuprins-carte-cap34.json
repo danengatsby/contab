@@ -194,6 +194,97 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Scadențarul furnizorilor, citit invers"
+  },
+  {
+   "tip": "p",
+   "text": "Aceeași situație există și pentru datorii, iar acolo se citește exact pe dos: ce la clienți e un semnal de alarmă, la furnizori e, până la un punct, o resursă."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Datoriile firmei din exemplu, pe vechime",
+   "cap": [
+    "Intervalul",
+    "Suma",
+    "Ce înseamnă"
+   ],
+   "randuri": [
+    [
+     "0–30 de zile",
+     "12.100,00",
+     "credit comercial normal"
+    ],
+    [
+     "31–90 de zile",
+     "0,00",
+     "—"
+    ],
+    [
+     "peste 90 de zile",
+     "2.900,00",
+     "datorie veche — verifică de ce"
+    ],
+    [
+     "Total",
+     "15.000,00",
+     ""
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Cifrele sunt cele calculate de aplicație pe exemplul cărții. Rândul al treilea cere o explicație: fie e o factură contestată, fie una uitată."
+  },
+  {
+   "tip": "p",
+   "text": "O datorie veche către furnizor nu e neapărat un semn rău — poate fi o factură în litigiu, sau una pentru care s-a convenit un termen lung. Devine problemă când nimeni nu mai știe care dintre cele două e, iar asta se întâmplă în câteva luni."
+  },
+  {
+   "tip": "h",
+   "text": "Cele două scadențare, citite împreună"
+  },
+  {
+   "tip": "p",
+   "text": "Adevărata informație apare din comparație. Dacă încasezi în medie la 60 de zile și plătești la 30, finanțezi activitatea din banii tăi; dacă e invers, o finanțezi din creditul furnizorilor."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce spune raportul dintre ele",
+   "cap": [
+    "Situația",
+    "Ce înseamnă",
+    "Ce se poate face"
+   ],
+   "randuri": [
+    [
+     "încasezi mai repede decât plătești",
+     "activitatea se autofinanțează",
+     "se poate crește volumul fără capital nou"
+    ],
+    [
+     "încasezi mai încet decât plătești",
+     "fiecare comandă nouă cere bani",
+     "fie termene mai bune, fie avansuri"
+    ],
+    [
+     "ambele lungi",
+     "lanț de întârzieri",
+     "riscul se transmite mai departe"
+    ]
+   ],
+   "nota": "Niciunul dintre cele trei nu se vede în contul de profit și pierdere. O firmă poate fi profitabilă în oricare dintre ele."
+  },
+  {
+   "tip": "p",
+   "text": "Din vechimea medie a creanțelor se calculează un indicator simplu: durata medie de încasare, adică soldul de clienți raportat la vânzările zilnice. La 156.000 de lei creanțe și vânzări de 30.000 de lei pe lună, ea e de aproximativ 156 de zile — un număr care spune mai mult decât orice discuție despre „clienți care întârzie”."
+  },
+  {
+   "tip": "cheie",
+   "text": "Creanțele și datoriile se citesc împreună. Separat, fiecare arată o listă de nume; împreună, arată dacă firma își finanțează creșterea sau o plătește."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

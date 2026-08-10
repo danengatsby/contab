@@ -156,6 +156,104 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Care conturi cer desfășurare analitică"
+  },
+  {
+   "tip": "p",
+   "text": "Analiticul nu se ține peste tot — ar fi muncă fără informație. Se ține acolo unde soldul sintetic nu răspunde la întrebarea pentru care există contul."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Unde analiticul e obligatoriu, și după ce criteriu",
+   "cap": [
+    "Conturile",
+    "Se desfășoară pe",
+    "Întrebarea la care răspunde"
+   ],
+   "randuri": [
+    [
+     "401, 404, 408",
+     "furnizor",
+     "cui datorez, și de când"
+    ],
+    [
+     "4111, 418, 461",
+     "client sau debitor",
+     "cine îmi datorează"
+    ],
+    [
+     "409, 419",
+     "partener",
+     "pentru ce anume s-a dat sau s-a primit avansul"
+    ],
+    [
+     "5121, 5124",
+     "cont bancar",
+     "care extras se confruntă cu care sold"
+    ],
+    [
+     "5311, 5314",
+     "casierie",
+     "care registru de casă"
+    ],
+    [
+     "421, 425",
+     "angajat",
+     "cine are de primit, și cât"
+    ],
+    [
+     "542",
+     "persoană",
+     "cine are bani ai firmei nejustificați"
+    ]
+   ],
+   "nota": "Criteriul comun: în fiecare caz, soldul total e adevărat și inutil. Informația e în desfășurare."
+  },
+  {
+   "tip": "p",
+   "text": "Pentru stocuri, desfășurarea se face pe gestiuni și pe produse, iar pentru cheltuielile cu deductibilitate limitată — protocol, sponsorizare, auto — pe categorii, fiindcă altfel calculul fiscal de la sfârșit de an nu se mai poate face fără reconstituire."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se întâmplă când analiticul nu concordă"
+  },
+  {
+   "tip": "p",
+   "text": "Egalitatea dintre suma analiticelor și soldul sintetic e verificarea cea mai ieftină din contabilitate și una dintre cele mai productive. Când nu iese, cauzele sunt puține și identificabile."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "De ce nu concordă",
+   "cap": [
+    "Cauza",
+    "Cum se recunoaște"
+   ],
+   "randuri": [
+    [
+     "același partener sub două denumiri",
+     "două rânduri analitice care ar trebui să fie unul"
+    ],
+    [
+     "o operațiune înregistrată fără partener",
+     "diferența e chiar suma ei"
+    ],
+    [
+     "un partener șters, cu sold rămas",
+     "sintetic mai mare decât suma analiticelor"
+    ],
+    [
+     "preluare de solduri fără desfășurare",
+     "diferența apare din prima lună a anului"
+    ]
+   ],
+   "nota": "Prima e cea mai frecventă și cea mai greu de reparat mai târziu: după câteva luni, cele două „firme” au fiecare istoricul ei."
+  },
+  {
+   "tip": "cheie",
+   "text": "Analiticul care nu concordă cu sinteticul nu e o eroare de raport: e o eroare de date. Iar cifra greșită e aproape întotdeauna cea din desfășurare, fiindcă echilibrul se verifică pe totaluri."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

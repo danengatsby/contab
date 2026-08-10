@@ -131,6 +131,86 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Cei trei timpi, pe cifre"
+  },
+  {
+   "tip": "p",
+   "text": "Ordinea celor trei timpi se înțelege cel mai bine urmărind ce conține contul 121 după fiecare. Iată un an cu 500.000 de lei venituri, 420.000 cheltuieli (fără impozit) și un impozit de 12.800."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Contul 121, după fiecare pas",
+   "cap": [
+    "Timpul",
+    "Ce se închide",
+    "Soldul lui 121"
+   ],
+   "randuri": [
+    [
+     "înainte de închidere",
+     "—",
+     "0"
+    ],
+    [
+     "1. veniturile",
+     "7xx = 121, cu 500.000",
+     "500.000 creditor"
+    ],
+    [
+     "2. cheltuielile (fără 691)",
+     "121 = 6xx, cu 420.000",
+     "80.000 creditor — rezultatul BRUT"
+    ],
+    [
+     "",
+     "se calculează impozitul pe acest rezultat",
+     "—"
+    ],
+    [
+     "3. cheltuiala cu impozitul",
+     "121 = 691, cu 12.800",
+     "67.200 creditor — rezultatul NET"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "Impozitul se calculează între pasul 2 și pasul 3. De aceea sunt trei timpi, nu unul: cifra de care are nevoie pasul 3 se obține abia după pasul 2."
+  },
+  {
+   "tip": "p",
+   "text": "Cine închide toate conturile de cheltuieli deodată, inclusiv 691, obține un rezultat brut deja diminuat cu impozitul — iar dacă apoi calculează impozitul pe el, obține o cifră mai mică decât cea datorată. Eroarea se autoîntreține: fiecare recalculare o adâncește."
+  },
+  {
+   "tip": "h",
+   "text": "Ce rămâne în 121 după 31 decembrie"
+  },
+  {
+   "tip": "p",
+   "text": "Spre deosebire de conturile 6 și 7, contul 121 NU se soldează la închiderea exercițiului. El rămâne cu rezultatul până la repartizarea lui, care se face în anul următor, după aprobarea situațiilor financiare."
+  },
+  {
+   "tip": "p",
+   "text": "Deci un sold pe 121 la 1 ianuarie e normal și așteptat — spre deosebire de un sold pe 607 sau 707, care e întotdeauna o închidere neefectuată. E o distincție mică și des confundată, iar confuzia duce la „închideri” suplimentare care golesc rezultatul înainte de a fi repartizat."
+  },
+  {
+   "tip": "cheie",
+   "text": "La 1 ianuarie, conturile de venituri și cheltuieli trebuie să fie ZERO. Contul 121 nu — el poartă rezultatul până la repartizare, adică până când asociații decid ce fac cu el."
+  },
+  {
+   "tip": "h",
+   "text": "Microîntreprinderea: același drum, altă bază"
+  },
+  {
+   "tip": "p",
+   "text": "La firmele plătitoare de impozit pe veniturile microîntreprinderilor mecanismul închiderii e neschimbat, dar pasul dintre timpi arată altfel: impozitul nu se calculează pe rezultat, ci pe venituri, și nu la sfârșitul anului, ci trimestrial."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința e că, la 31 decembrie, cheltuiala cu impozitul e deja înregistrată — patru trimestre, deja declarate și plătite. Al treilea timp există în continuare, dar el închide o cheltuială care nu mai depinde de rezultatul tocmai calculat. Ordinea rămâne aceeași; doar dependența dintre pași dispare."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
