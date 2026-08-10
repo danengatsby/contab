@@ -122,6 +122,110 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Ce poate fi făcut în fiecare stare"
+  },
+  {
+   "tip": "p",
+   "text": "Cele patru stări nu sunt etichete decorative: fiecare schimbă ce se poate face cu articolul și ce vede restul aplicației."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Drepturile fiecărei stări",
+   "cap": [
+    "Starea",
+    "Se vede în rapoarte?",
+    "Se modifică?",
+    "Se șterge?"
+   ],
+   "randuri": [
+    [
+     "ciornă",
+     "nu",
+     "da",
+     "da"
+    ],
+    [
+     "validat",
+     "nu",
+     "da",
+     "da"
+    ],
+    [
+     "aprobat",
+     "nu",
+     "da",
+     "da"
+    ],
+    [
+     "postat",
+     "DA",
+     "nu",
+     "nu"
+    ]
+   ],
+   "nota": "Prima coloană e cea care contează: până la postare, articolul nu există pentru balanță, pentru decont și pentru situații. Postarea e momentul în care intră în evidență."
+  },
+  {
+   "tip": "p",
+   "text": "De aici o consecință practică pe care începătorii o descoperă târziu: un articol introdus și lăsat în ciornă NU e o înregistrare. El nu apare în balanță, nu intră în decont și nu se vede în rapoarte. Documentele „introduse” care nu se regăsesc nicăieri sunt, aproape întotdeauna, ciorne uitate."
+  },
+  {
+   "tip": "h",
+   "text": "De ce trei stări înainte de postare, și nu una"
+  },
+  {
+   "tip": "p",
+   "text": "Într-o firmă mică, cele trei stări dinaintea postării par un lux: același om introduce și postează. Ele descriu însă trei întrebări diferite, iar la o firmă cu echipă fiecare are alt răspuns."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele trei întrebări",
+   "cap": [
+    "Trecerea",
+    "Cine o face",
+    "La ce răspunde"
+   ],
+   "randuri": [
+    [
+     "ciornă → validat",
+     "operatorul",
+     "documentul e complet și citit corect?"
+    ],
+    [
+     "validat → aprobat",
+     "contabilul",
+     "încadrarea contabilă e cea potrivită?"
+    ],
+    [
+     "aprobat → postat",
+     "cel care răspunde",
+     "îmi asum cifra așa cum e?"
+    ]
+   ],
+   "nota": "Într-o firmă mică, aceeași persoană răspunde de trei ori. Faptul că răspunde separat de fiecare dată e chiar rostul stărilor."
+  },
+  {
+   "tip": "cheie",
+   "text": "Postarea nu e un buton de salvare. E semnătura pe o afirmație despre trecut — și de aceea, după ea, corecția se face prin storno, nu prin modificare."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se întâmplă cu o ciornă dintr-o lună închisă"
+  },
+  {
+   "tip": "p",
+   "text": "Cazul apare des și merită lămurit: o ciornă creată în iunie, rămasă nepostată, iar între timp luna iunie s-a închis."
+  },
+  {
+   "tip": "p",
+   "text": "Ciorna există în continuare — nu s-a șters nimic — dar nu se mai poate posta acolo, fiindcă perioada e blocată. Ea nu e o pierdere de date, ci o întrebare: documentul acela aparținea lunii iunie sau nu? Dacă da, se înregistrează în luna curentă și se evaluează dacă e cazul unei rectificative. Dacă nu, se corectează data."
+  },
+  {
+   "tip": "p",
+   "text": "Situația e, de altfel, exact motivul pentru care garda de perioadă verifică la POSTARE, nu la creare: o ciornă se poate compune oricând, dar intrarea în evidență se supune calendarului."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

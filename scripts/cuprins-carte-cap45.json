@@ -178,6 +178,113 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Ce citește un cititor din afară"
+  },
+  {
+   "tip": "p",
+   "text": "Formularul are aceleași rânduri pentru toate firmele, dar cine îl citește nu caută aceleași lucruri. Merită știut ce urmărește fiecare, fiindcă asta arată care rând trebuie să reziste la întrebări."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Trei cititori, trei rânduri",
+   "cap": [
+    "Cine citește",
+    "Ce caută întâi",
+    "De ce"
+   ],
+   "randuri": [
+    [
+     "Banca",
+     "rezultatul din exploatare și amortizarea",
+     "le adună: cât produce activitatea în bani"
+    ],
+    [
+     "Un cumpărător al firmei",
+     "marja și evoluția ei pe trei ani",
+     "cât e repetabil din ce vede"
+    ],
+    [
+     "Inspecția fiscală",
+     "cheltuielile cu regim special",
+     "protocol, sponsorizare, auto, provizioane"
+    ]
+   ],
+   "nota": "Niciunul nu se uită întâi la profitul net. E cifra cea mai citată și cea mai puțin informativă din document."
+  },
+  {
+   "tip": "h",
+   "text": "Structura cheltuielilor spune ce fel de firmă e"
+  },
+  {
+   "tip": "p",
+   "text": "Desfacerea cheltuielilor pe naturi — mărfuri, materiale, personal, amortizare, servicii — e a doua informație a documentului, iar din ea se citește modelul de afacere fără să întrebi pe nimeni."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cheltuielile firmei din exemplu, pe naturi",
+   "cap": [
+    "Contul",
+    "Natura",
+    "Suma",
+    "Din total"
+   ],
+   "randuri": [
+    [
+     "607",
+     "Mărfuri vândute",
+     "8.000,00",
+     "59%"
+    ],
+    [
+     "641",
+     "Salarii",
+     "5.000,00",
+     "37%"
+    ],
+    [
+     "646",
+     "Contribuția angajatorului",
+     "112,50",
+     "1%"
+    ],
+    [
+     "6811",
+     "Amortizare",
+     "466,67",
+     "3%"
+    ],
+    [
+     "",
+     "Total",
+     "13.579,17",
+     "100%"
+    ]
+   ],
+   "numerice": [
+    3,
+    4
+   ],
+   "total": true,
+   "nota": "Aproape 60% costul mărfii vândute: e o firmă de comerț. La un prestator de servicii, primul rând ar lipsi, iar salariile ar depăși 60%."
+  },
+  {
+   "tip": "p",
+   "text": "Raportul acesta e util și în timp, nu doar între firme. O creștere a ponderii salariilor fără o creștere a veniturilor înseamnă că firma a angajat înaintea comenzilor; o creștere a amortizării înseamnă că a investit. Ambele sunt decizii, iar contul de profit și pierdere le arată cu un an întârziere față de momentul în care au fost luate."
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu se vede din el"
+  },
+  {
+   "tip": "p",
+   "text": "Documentul nu spune nimic despre momentul în care intră banii — asta e treaba fluxului de trezorerie — și nici despre ce are firma, care e treaba bilanțului. Dar mai are o limită, mai puțin evidentă: nu distinge ce e repetabil de ce s-a întâmplat o dată."
+  },
+  {
+   "tip": "p",
+   "text": "O firmă care a vândut anul acesta un utilaj cu câștig are un rezultat mai bun, dar nu o activitate mai bună. De aceea cedările de active se prezintă distinct, iar cine analizează o firmă scade întâi elementele care nu se repetă — o operațiune care nu e prevăzută de niciun formular, dar fără de care comparația cu anul trecut nu spune nimic."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
