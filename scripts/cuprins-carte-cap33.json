@@ -177,6 +177,98 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Ce prinde, totuși"
+  },
+  {
+   "tip": "p",
+   "text": "Capitolul a insistat pe ce nu prinde balanța, și pe bună dreptate. Merită însă spus și ce prinde, fiindcă altfel pare inutilă — și nu e."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Singura clasă pe care o descoperă singură",
+   "cap": [
+    "Eroarea",
+    "Cum se vede",
+    "Cum se găsește"
+   ],
+   "randuri": [
+    [
+     "o singură parte înregistrată",
+     "totalurile diferă",
+     "diferența ESTE suma lipsă"
+    ],
+    [
+     "sold trecut pe partea greșită",
+     "diferența e dublul soldului",
+     "împarte diferența la 2 și caută suma"
+    ],
+    [
+     "cifre inversate la tastare",
+     "diferența se împarte exact la 9",
+     "compară cu documentul, cifră cu cifră"
+    ],
+    [
+     "un cont uitat la preluare",
+     "diferența e chiar soldul lui",
+     "compară lista de conturi cu balanța precedentă"
+    ]
+   ],
+   "nota": "Toate patru sunt variante ale aceleiași erori: o sumă care apare într-un singur loc. Restul claselor din capitol trec neatinse."
+  },
+  {
+   "tip": "p",
+   "text": "Regulile împărțirii la 2 și la 9 nu sunt superstiții contabile: decurg din aritmetică. O sumă mutată de pe o parte pe alta schimbă diferența cu dublul ei, iar inversarea a două cifre alăturate produce întotdeauna un multiplu de nouă. Ele nu spun unde e eroarea, dar reduc căutarea de la toată balanța la un singur tip de sumă."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se face în locul verificării care lipsește"
+  },
+  {
+   "tip": "p",
+   "text": "Dacă echilibrul nu poate confirma corectitudinea, întrebarea practică e ce o confirmă. Răspunsul profesiei e eșantionarea: nu se verifică tot, se verifică ales."
+  },
+  {
+   "tip": "p",
+   "text": "Criteriile după care se alege sunt trei, iar ele explică de ce un dosar bine făcut nu conține verificări la întâmplare. Se aleg operațiunile mari, fiindcă acolo o eroare cântărește; cele neobișnuite, fiindcă acolo încadrarea e discutabilă; și cele de la marginea perioadei, fiindcă acolo se produc erorile de cut-off."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce se verifică prin sondaj, la o închidere",
+   "cap": [
+    "Ce se alege",
+    "De ce",
+    "Ce se caută"
+   ],
+   "randuri": [
+    [
+     "primele zece operațiuni ca valoare",
+     "o eroare acolo mută rezultatul",
+     "suma și contul, față de document"
+    ],
+    [
+     "operațiunile din ultimele trei zile ale lunii",
+     "acolo se greșește perioada",
+     "data documentului față de data înregistrării"
+    ],
+    [
+     "tipurile folosite o singură dată",
+     "încadrare neobișnuită, deci nediscutată",
+     "dacă tipul ales era cel potrivit"
+    ],
+    [
+     "orice operațiune fără document atașat",
+     "nu se poate proba",
+     "documentul, sau explicația lipsei lui"
+    ]
+   ],
+   "nota": "Patru sondaje, o oră de lucru. Prind mai mult decât recitirea integrală a balanței, care nu prinde nimic din ce n-a fost deja prins."
+  },
+  {
+   "tip": "cheie",
+   "text": "Echilibrul se verifică singur. Corectitudinea se verifică prin alegere — iar alegerea bună e cea care merge unde eroarea ar costa cel mai mult, nu unde e cel mai ușor de căutat."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

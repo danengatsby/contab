@@ -153,6 +153,105 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Cât se poate distribui, de fapt"
+  },
+  {
+   "tip": "p",
+   "text": "Profitul net nu e automat suma care se poate împărți. Din el se scad, în ordine, trei lucruri — iar ce rămâne se numește profit distribuibil."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "De la profit net la profit distribuibil",
+   "cap": [
+    "Pasul",
+    "Ce se scade",
+    "De ce"
+   ],
+   "randuri": [
+    [
+     "1",
+     "pierderea reportată din anii anteriori",
+     "nu se împarte un câștig care nu a recuperat o pierdere"
+    ],
+    [
+     "2",
+     "rezerva legală datorată pe anul curent",
+     "e obligatorie, până la plafon"
+    ],
+    [
+     "3",
+     "alte rezerve prevăzute de lege sau de statut",
+     "dacă există"
+    ],
+    [
+     "=",
+     "profit distribuibil",
+     "numai el poate deveni dividend"
+    ]
+   ],
+   "nota": "Ordinea contează: rezerva se calculează pe profitul BRUT al anului, dar se ia din cel NET, după acoperirea pierderii."
+  },
+  {
+   "tip": "p",
+   "text": "Distribuirea peste această limită nu e o eroare contabilă, ci o faptă cu consecințe: sumele se restituie, iar cei care au aprobat-o răspund pentru ea. E motivul pentru care hotărârea adunării generale se ia pe situații financiare aprobate, nu pe o estimare."
+  },
+  {
+   "tip": "h",
+   "text": "Plafonul rezervei, calculat"
+  },
+  {
+   "tip": "p",
+   "text": "Rezerva legală nu se constituie la infinit. Ea se acumulează până atinge o cincime din capitalul social subscris și vărsat, iar de acolo încolo obligația încetează — odată cu deductibilitatea ei."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cât se mai poate constitui, la un capital de 30.000 lei",
+   "cap": [
+    "Element",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "Capital social subscris și vărsat",
+     "30.000,00"
+    ],
+    [
+     "Plafonul rezervei (20%)",
+     "6.000,00"
+    ],
+    [
+     "Rezervă deja constituită",
+     "0,00"
+    ],
+    [
+     "Se mai poate constitui",
+     "6.000,00"
+    ],
+    [
+     "5% din profitul brut al anului",
+     "21,04"
+    ],
+    [
+     "Rezerva anului (minimul dintre ele)",
+     "21,04"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Cifrele sunt cele calculate de aplicație pe exemplul cărții. La un profit brut mic, rezerva e mică — dar obligația există în fiecare an cu profit, până la atingerea plafonului."
+  },
+  {
+   "tip": "p",
+   "text": "Ultimele două rânduri arată regula: se constituie 5% din profitul brut, dar nu mai mult decât spațiul rămas până la plafon. La o firmă cu profituri mari, plafonul se atinge în câțiva ani, iar rezerva încetează; la una cu profituri mici, obligația însoțește firma mult timp."
+  },
+  {
+   "tip": "cheie",
+   "text": "Rezerva legală nu e o cheltuială și nu iese din firmă. E o parte din câștig pe care legea o oprește din a fi distribuită — un tampon pentru creditori, nu o pierdere pentru asociați."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
