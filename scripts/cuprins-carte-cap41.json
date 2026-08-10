@@ -126,6 +126,98 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Ce înseamnă „blocat”, tehnic"
+  },
+  {
+   "tip": "p",
+   "text": "Blocarea nu e o etichetă pusă pe o lună, ci o gardă care se interpune între orice scriere și baza de date. Diferența se vede în ce anume oprește."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce trebuie să prindă garda",
+   "cap": [
+    "Calea de scriere",
+    "Prinsă?",
+    "De ce contează"
+   ],
+   "randuri": [
+    [
+     "introducerea manuală a unui articol",
+     "da",
+     "cazul evident"
+    ],
+    [
+     "postarea unei ciorne mai vechi",
+     "da",
+     "ciorna se poate compune oricând, intrarea în evidență nu"
+    ],
+    [
+     "importul unui fișier cu date vechi",
+     "da",
+     "aici se produc modificările în masă"
+    ],
+    [
+     "generarea automată (amortizare, recurente)",
+     "da",
+     "altfel un job rescrie o lună raportată"
+    ],
+    [
+     "ștergerea unui articol postat",
+     "da",
+     "interzisă oricum, dar cu alt mesaj"
+    ]
+   ],
+   "nota": "O gardă pusă doar pe formular lasă deschise exact căile prin care se schimbă multe lucruri deodată."
+  },
+  {
+   "tip": "p",
+   "text": "Verificarea că garda acoperă toate căile nu se face citind codul, ci încercând: o lună blocată trebuie să refuze fiecare dintre cele cinci, cu mesaje care spun de ce. E genul de proprietate care se dovedește prin probă, nu prin intenție."
+  },
+  {
+   "tip": "h",
+   "text": "Corecția erorilor din exercițiile anterioare"
+  },
+  {
+   "tip": "p",
+   "text": "Blocarea mută corecția în timp, dar nu decide unde se înregistrează. Aceea depinde de un criteriu contabil separat: cât de mare e eroarea față de situațiile financiare."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Unde se înregistrează corecția",
+   "cap": [
+    "Eroarea",
+    "Se corectează pe seama",
+    "Efectul"
+   ],
+   "randuri": [
+    [
+     "nesemnificativă, din exercițiul curent",
+     "conturilor de venituri și cheltuieli",
+     "intră în rezultatul curent"
+    ],
+    [
+     "nesemnificativă, din exercițiile anterioare",
+     "conturilor de venituri și cheltuieli",
+     "intră tot în rezultatul curent"
+    ],
+    [
+     "SEMNIFICATIVĂ, din exercițiile anterioare",
+     "rezultatului reportat (1174)",
+     "NU atinge rezultatul curent"
+    ]
+   ],
+   "nota": "Al treilea rând există ca să nu se falsifice anul curent cu o eroare a anului trecut — iar pragul de semnificație se stabilește de firmă și se scrie, ca în capitolul 28."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința fiscală merită spusă separat: o corecție care trece prin rezultatul reportat nu modifică rezultatul contabil al anului curent, dar poate modifica baza impozabilă a anului corectat — deci atrage o declarație rectificativă pentru acel an. Cele două evidențe se corectează pe drumuri diferite, iar uitarea celei fiscale lasă o divergență care se descoperă la control."
+  },
+  {
+   "tip": "cheie",
+   "text": "Blocarea perioadei stabilește CÂND se înregistrează corecția. Semnificația erorii stabilește UNDE. Sunt două întrebări separate, și amândouă cer un răspuns."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

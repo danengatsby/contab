@@ -152,6 +152,88 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Registrul de casă: forma care se cere"
+  },
+  {
+   "tip": "p",
+   "text": "Casieria are un registru propriu, cu o formă prevăzută, iar rigoarea lui vine dintr-un fapt simplu: e singurul element de patrimoniu care se poate număra oricând și pentru care nu există probă exterioară."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Regulile registrului de casă",
+   "cap": [
+    "Regula",
+    "De ce"
+   ],
+   "randuri": [
+    [
+     "se întocmește ZILNIC, pentru fiecare zi cu operațiuni",
+     "soldul trebuie să poată fi confruntat cu numerarul, în orice zi"
+    ],
+    [
+     "soldul se reportează din ziua precedentă",
+     "altfel ziua nu are punct de plecare"
+    ],
+    [
+     "nu se cumulează pe lună",
+     "un total lunar nu se poate confrunta cu nimic"
+    ],
+    [
+     "se numerotează continuu",
+     "un gol înseamnă o zi fără evidență"
+    ]
+   ],
+   "nota": "Toate patru decurg din aceeași cerință: numărătoarea de la sfârșitul zilei trebuie să dea exact ce scrie în registru."
+  },
+  {
+   "tip": "p",
+   "text": "De aici și o consecință de organizare: casieria e a firmei, nu a persoanei. Banii din sertar nu sunt ai casierului, iar amestecul lor cu bani personali — chiar temporar, chiar cu intenția de a-i pune înapoi — face soldul imposibil de confruntat și transformă o operațiune administrativă într-o problemă de răspundere."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se verifică automat, în fiecare lună"
+  },
+  {
+   "tip": "p",
+   "text": "Trezoreria e zona în care cele mai multe verificări se pot face fără intervenția nimănui, fiindcă toate se calculează din datele deja înregistrate. Un program le poate rula continuu."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele cinci controale de trezorerie",
+   "cap": [
+    "Ce se verifică",
+    "Ce semnalează"
+   ],
+   "randuri": [
+    [
+     "soldul de casă nu e negativ, în nicio zi",
+     "o încasare lipsă sau o plată datată greșit"
+    ],
+    [
+     "plafonul soldului de casă la sfârșitul zilei",
+     "depășire față de Legea 70/2015"
+    ],
+    [
+     "plafoanele de plăți și încasări, pe zi și partener",
+     "fracționare, chiar dacă documentele par corecte"
+    ],
+    [
+     "soldul contului 581 e zero la închidere",
+     "un capăt de virament intern neînregistrat"
+    ],
+    [
+     "soldul din extras = soldul contabil, după punctaj",
+     "orice operațiune lipsă din oricare parte"
+    ]
+   ],
+   "nota": "Primele patru se calculează din evidența proprie. A cincea e singura care cere o sursă din afară — și de aceea e cea mai puternică."
+  },
+  {
+   "tip": "p",
+   "text": "Merită observat că patru din cinci nu au nevoie de niciun document nou: sunt întrebări puse datelor existente. E cazul tipic în care automatizarea nu economisește timp, ci prinde ceva ce un om nu ar verifica în fiecare zi — iar plafoanele se depășesc, de regulă, în zile obișnuite, nu în cele în care cineva stă cu ochii pe ele."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

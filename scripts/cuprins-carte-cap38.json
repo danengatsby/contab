@@ -139,6 +139,84 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Ce se păstrează, și cât"
+  },
+  {
+   "tip": "p",
+   "text": "Recipisa nu e utilă în ziua depunerii — atunci se știe oricum că s-a depus. E utilă peste ani, iar asta îi determină regimul: se arhivează împreună cu declarația, pentru toată durata în care autoritatea mai poate stabili obligații pentru perioada respectivă."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul unei depuneri",
+   "cap": [
+    "Ce se păstrează",
+    "La ce servește"
+   ],
+   "randuri": [
+    [
+     "fișierul depus",
+     "arată CE s-a declarat"
+    ],
+    [
+     "recipisa",
+     "arată CĂ a fost primit, și când"
+    ],
+    [
+     "balanța pe care s-a construit",
+     "arată DIN CE a rezultat"
+    ],
+    [
+     "notele de regularizare ale lunii",
+     "arată raționamentele care nu se văd în cifre"
+    ]
+   ],
+   "nota": "Primele două se descarcă în ziua depunerii. Ultimele două există deja — trebuie doar puse în același loc."
+  },
+  {
+   "tip": "p",
+   "text": "Ordinea din tabel e și ordinea în care le cere un inspector: întâi ce ai declarat, apoi dovada că ai declarat, apoi de unde vine cifra. Un dosar care conține doar primele două răspunde la întrebarea de conformitate și lasă deschisă pe cea de fond."
+  },
+  {
+   "tip": "h",
+   "text": "Rectificarea: ce se poate și până când"
+  },
+  {
+   "tip": "p",
+   "text": "O declarație depusă greșit se corectează printr-o declarație rectificativă. Mecanismul pare simplu și are trei subtilități care produc, împreună, majoritatea problemelor."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Trei lucruri de știut despre rectificative",
+   "cap": [
+    "Aspectul",
+    "Ce trebuie știut"
+   ],
+   "randuri": [
+    [
+     "forma",
+     "unele declarații se rectifică integral, nu pe diferență"
+    ],
+    [
+     "termenul practic",
+     "rectificarea nu mai e posibilă după începerea unei inspecții pentru perioada respectivă"
+    ],
+    [
+     "efectul",
+     "corectează declarația, NU și plata — accesoriile curg de la termenul inițial"
+    ]
+   ],
+   "nota": "Primul rând e cel care produce sume duble: o rectificativă retransmisă ca diferență, acolo unde formularul cere totalul, adaugă în loc să înlocuiască."
+  },
+  {
+   "tip": "p",
+   "text": "Al doilea rând schimbă felul în care se privesc erorile descoperite târziu: termenul legal de rectificare e lung, dar cel practic se închide în ziua în care sosește avizul de inspecție. De aceea o eroare cunoscută nu se amână — se corectează cât timp corecția mai e la îndemâna firmei, nu a controlului."
+  },
+  {
+   "tip": "cheie",
+   "text": "Recipisa dovedește că ai declarat. Ea nu dovedește că ai declarat CORECT — și nici că ai plătit. Sunt trei obligații distincte, cu trei probe distincte."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

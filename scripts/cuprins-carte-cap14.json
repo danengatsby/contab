@@ -180,6 +180,100 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Seria și numărul: două lucruri, nu unul"
+  },
+  {
+   "tip": "p",
+   "text": "Numerotarea facturilor emise pare o formalitate până la primul control, când devine prima verificare făcută. Motivul e simplu: dintr-o numerotare continuă se poate deduce dacă lipsește o factură; dintr-una discontinuă, nu se poate deduce nimic."
+  },
+  {
+   "tip": "p",
+   "text": "Firma își stabilește singură seriile și plajele de numere, printr-o decizie internă. Ce nu poate alege e continuitatea: în cadrul unei serii, numerele merg unul după altul, iar un număr o dată atribuit nu se refolosește — nici dacă factura a fost anulată."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce se face cu o factură greșită",
+   "cap": [
+    "Situația",
+    "Ce se face",
+    "Ce NU se face"
+   ],
+   "randuri": [
+    [
+     "greșită, netrimisă încă",
+     "se anulează, cu mențiunea „anulată”",
+     "nu se șterge, nu se refolosește numărul"
+    ],
+    [
+     "greșită, deja trimisă",
+     "factură de corecție (notă de credit)",
+     "nu se cere clientului să o rupă"
+    ],
+    [
+     "corectă, dar cu date de identificare greșite",
+     "factură de corecție",
+     "nu se modifică exemplarul emis"
+    ]
+   ],
+   "nota": "În toate trei, numărul consumat rămâne consumat. Golul într-o serie e mai greu de explicat decât o factură anulată."
+  },
+  {
+   "tip": "h",
+   "text": "Ce transformă un document într-o factură"
+  },
+  {
+   "tip": "p",
+   "text": "Elementele obligatorii nu sunt o listă de bifat: fiecare răspunde la o întrebare pe care altcineva o va pune peste ani. Merită citite așa, fiindcă atunci se înțelege de ce absența unuia atrage pierderea dreptului de deducere pentru cumpărător."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Elementele și întrebările lor",
+   "cap": [
+    "Elementul",
+    "La ce întrebare răspunde"
+   ],
+   "randuri": [
+    [
+     "seria și numărul",
+     "e unică, și lipsește ceva din serie?"
+    ],
+    [
+     "data emiterii",
+     "în ce perioadă intră operațiunea"
+    ],
+    [
+     "datele de identificare ale ambelor părți",
+     "cine cu cine, verificabil la registrul comerțului"
+    ],
+    [
+     "codul de TVA al furnizorului",
+     "are dreptul să colecteze taxa?"
+    ],
+    [
+     "denumirea și cantitatea",
+     "ce s-a livrat, în ce cantitate"
+    ],
+    [
+     "baza, cota și taxa, pe fiecare cotă",
+     "cât din preț e taxă, și la ce cotă"
+    ],
+    [
+     "mențiunile speciale, unde e cazul",
+     "de ce lipsește TVA-ul: scutire, taxare inversă, marjă"
+    ]
+   ],
+   "nota": "Ultimul rând e cel uitat cel mai des. O factură fără TVA și fără explicația absenței lui e, pentru cine o primește, o factură incompletă."
+  },
+  {
+   "tip": "cheie",
+   "text": "Factura nu se scrie pentru client, ci pentru cel care o va citi peste patru ani fără să știe nimic despre operațiune. Dacă el nu poate reconstitui ce s-a întâmplat, documentul nu și-a făcut treaba."
+  },
+  {
+   "tip": "p",
+   "text": "În forma electronică, aceleași elemente devin câmpuri într-un fișier structurat, iar validatorul le verifică pe toate înainte de a accepta factura. Efectul secundar e util: greșelile de formă care înainte se descopereau la control se descoperă acum la emitere, în câteva secunde."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
