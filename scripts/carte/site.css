@@ -35,11 +35,22 @@ body { margin:0; background:var(--paper); color:var(--ink);
 .cadru { display:grid; grid-template-columns:var(--lat-nav) minmax(0,1fr); min-height:100vh; }
 
 .nav { position:sticky; top:0; height:100vh; overflow-y:auto; overscroll-behavior:contain;
-  background:var(--panou); border-right:1px solid var(--rule); padding:1.15rem 0 3rem; }
-.nav-cap { padding:0 1.15rem 1rem; border-bottom:1px solid var(--rule); margin-bottom:.85rem; }
+  background:var(--panou); border-right:1px solid var(--rule); padding:0 0 3rem; }
+/* Antetul nav-ului sta LIPIT sus: cuprinsul se deruleaza la capitolul activ, iar titlul,
+   cautarea si legatura de intoarcere ar fi iesit din ecran exact cand ai nevoie de ele. */
+.nav-cap { position:sticky; top:0; z-index:2; background:var(--panou);
+  padding:1.15rem 1.15rem 1rem; border-bottom:1px solid var(--rule); margin-bottom:.85rem; }
 .nav-titlu { font-size:.94rem; font-weight:600; margin:0 0 .15rem; line-height:1.3; letter-spacing:-.01em; }
 .nav-sub { font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
-  font-size:.68rem; letter-spacing:.11em; text-transform:uppercase; color:var(--ink-3); margin:0 0 .8rem; }
+  font-size:.68rem; letter-spacing:.11em; text-transform:uppercase; color:var(--ink-3); margin:0 0 .5rem; }
+/* Legatura de intoarcere in aplicatie. Sta in antetul nav-ului, deci e vizibila din orice
+   capitol, nu doar de pe coperta. NU e un link cu diez, deci nu trece prin ruterul din site.js. */
+.inapoi { display:inline-block; margin:0 0 .75rem; color:var(--verde); text-decoration:none;
+  font-weight:600; white-space:nowrap;
+  font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.82rem; }
+.inapoi:hover { text-decoration:underline; }
+.inapoi:focus-visible { outline:2px solid var(--verde); outline-offset:2px; border-radius:.15rem; }
+
 .cauta { width:100%; padding:.42rem .6rem; border:1px solid var(--rule-2); border-radius:.3rem;
   background:var(--paper); color:var(--ink); font:inherit; font-size:.83rem;
   font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif; }

@@ -634,6 +634,7 @@ function faSite() {
   <div class="nav-cap">
     <p class="nav-titlu">${esc(D.titlu)}</p>
     <p class="nav-sub">${CAPITOLE.length} de secțiuni</p>
+    <a class="inapoi" href="/">← Înapoi la aplicație</a>
     <input class="cauta" type="search" placeholder="Caută în cuprins…" aria-label="Caută în cuprins">
   </div>
   <a href="#coperta" data-id="coperta" data-titlu="Cuprins" data-drum="Cartea" data-cauta="cuprins coperta inceput"><span class="n">·</span><span>Cuprins</span></a>
