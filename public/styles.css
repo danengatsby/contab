@@ -94,9 +94,14 @@ td.grpsep,th.grpsep{border-left:2px solid #d3dcec}
 #balantaView thead tr:first-child th{height:26px;top:0}
 #balantaView thead tr:nth-child(2) th{top:26px}
 .tabs{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
-.tabs button{background:transparent;border:0;color:#c7cfe6;padding:10px 14px;border-radius:8px;
+/* Intrarile de meniu sunt BUTOANE (comuta un tab din pagina). „Cartea" e o LEGATURA: duce la
+   alt document, in fila noua — deci e `<a>`, nu `<button>`, ca sa mearga tastatura, clicul de
+   mijloc si „deschide in fila noua". Stilul e insa acelasi, ca meniul sa arate uniform. */
+.tabs button, .tabs a.navlink{background:transparent;border:0;color:#c7cfe6;padding:10px 14px;border-radius:8px;
   cursor:pointer;font-size:13px;font-weight:600}
-.tabs button:hover{background:rgba(255,255,255,.08);color:#fff}
+.tabs a.navlink{text-decoration:none;display:inline-block;line-height:normal}
+.tabs button:hover, .tabs a.navlink:hover{background:rgba(255,255,255,.08);color:#fff}
+.tabs a.navlink:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .tabs button.active{background:#fff;color:var(--head)}
 .navgroup{position:relative}
 .navgroup>.navlabel.active{background:rgba(255,255,255,.20);color:#fff}
@@ -600,8 +605,8 @@ h1,h2,h3,.brand h1,.login-logo{font-family:Georgia,"Iowan Old Style","Palatino L
   letter-spacing:-.01em;font-weight:600}
 .efact-doc h3{font-family:Georgia,serif}
 /* topbar cald (charcoal) cu text crem */
-.tabs button{color:#cdc8bd}
-.tabs button:hover{background:rgba(255,255,255,.07);color:#fff}
+.tabs button, .tabs a.navlink{color:#cdc8bd}
+.tabs button:hover, .tabs a.navlink:hover{background:rgba(255,255,255,.07);color:#fff}
 .tabs button.active{background:#fbfaf6;color:var(--head)}
 .brand small{color:#bdb8ac}
 .userbadge{color:#cdc8bd}
