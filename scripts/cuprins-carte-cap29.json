@@ -197,6 +197,104 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Șase situații, șase tratamente"
+  },
+  {
+   "tip": "p",
+   "text": "„Se stornează, nu se șterge” e regula. Aplicarea ei diferă însă după cât de departe a ajuns eroarea — iar distanța se măsoară în trei praguri: postarea, închiderea lunii, și depunerea declarației."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce se face, după cât de departe a ajuns eroarea",
+   "cap": [
+    "Situația",
+    "Ce se face",
+    "Ce mai trebuie"
+   ],
+   "randuri": [
+    [
+     "ciornă, nepostată",
+     "se corectează direct",
+     "nimic"
+    ],
+    [
+     "postată, luna deschisă",
+     "storno + înregistrarea corectă",
+     "nimic"
+    ],
+    [
+     "postată, luna închisă",
+     "storno într-o lună deschisă",
+     "—"
+    ],
+    [
+     "…și declarația a fost depusă",
+     "idem, plus evaluarea unei rectificative",
+     "rectificativă, dacă schimbă sumele declarate"
+    ],
+    [
+     "…și documentul a plecat la client",
+     "idem, plus factură de corecție",
+     "nota de credit, transmisă și raportată"
+    ],
+    [
+     "eroare semnificativă, din anul trecut",
+     "corecție pe rezultatul reportat (1174)",
+     "rectificativă pe anul corectat"
+    ]
+   ],
+   "nota": "Coloana din mijloc arată că tratamentul contabil e același de la rândul trei încolo. Ce se adaugă e obligația către altcineva: statul, clientul, sau amândoi."
+  },
+  {
+   "tip": "p",
+   "text": "Observația care ordonează tabelul: eroarea nu devine mai greu de corectat contabil, ci mai greu de corectat COMPLET. Stornoul rezolvă întotdeauna evidența proprie; restul coloanei a treia sunt lucruri care au plecat din firmă și care nu se pot retrage printr-o înregistrare."
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu se stornează"
+  },
+  {
+   "tip": "p",
+   "text": "Există operațiuni la care stornoul contabil, singur, face mai mult rău decât bine — și toate au în comun faptul că au mișcat și altceva în afară de conturi."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cazurile cu tratament dedicat",
+   "cap": [
+    "Operațiunea",
+    "De ce nu stornoul obișnuit",
+    "Ce se face"
+   ],
+   "randuri": [
+    [
+     "vânzare cu descărcare de gestiune",
+     "ar lăsa fișa de magazie necorectată",
+     "se stornează documentul de stoc"
+    ],
+    [
+     "intrare în stoc",
+     "idem, în celălalt sens",
+     "idem"
+    ],
+    [
+     "o notă de storno",
+     "s-ar storna un storno, la infinit",
+     "se înregistrează operațiunea corectă, separat"
+    ],
+    [
+     "amortizarea unei luni",
+     "se recalculează din registrul de active",
+     "se corectează activul, apoi se regenerează"
+    ]
+   ],
+   "nota": "Al treilea rând e o gardă, nu o subtilitate: fără ea, un lanț de stornări reciproce face istoricul ilizibil."
+  },
+  {
+   "tip": "cheie",
+   "text": "Stornoul corectează CONTURI. Când operațiunea a mișcat și o cantitate, un registru sau un calcul, corecția trebuie făcută acolo unde s-a produs mișcarea — altfel cele două evidențe diverg tăcut."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
