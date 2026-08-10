@@ -3,54 +3,151 @@
  "nr": "9",
  "titlu": "Nimic nu intră fără un document",
  "blocuri": [
-  { "tip": "p", "text": "Aici începe munca de zi cu zi, și tot aici se află regula cea mai strictă din toată cartea. Nu e o recomandare de bună practică, ci condiția de existență a contabilității: orice sumă înregistrată trebuie să aibă în spate un document care atestă că operațiunea a avut loc." },
-  { "tip": "p", "text": "Formulată invers, regula sună neplăcut și e la fel de adevărată: ce nu are document nu se înregistrează. Nici dacă știi sigur că s-a întâmplat. Nici dacă ai plătit cu cardul și vezi suma în extras. Nici dacă furnizorul îți promite factura săptămâna viitoare." },
-
-  { "tip": "h", "text": "De ce e regula atât de rigidă" },
-  { "tip": "p", "text": "Un registru contabil e, în fond, o afirmație despre trecut: la data asta s-a întâmplat lucrul acesta, de valoarea aceasta. O afirmație despre trecut care nu poate fi verificată nu are nicio putere — nici în fața unui inspector, nici în fața unei bănci, nici într-un litigiu cu un partener." },
-  { "tip": "p", "text": "Documentul e ceea ce transformă afirmația în probă. De aceea legea nu îl cere ca formalitate, ci îl definește: consemnarea operațiunii se face în momentul efectuării ei, într-un înscris care stă la baza înregistrării în contabilitate." },
-  { "tip": "cheie", "text": "Contabilitatea nu înregistrează ce s-a întâmplat. Înregistrează ce se poate dovedi că s-a întâmplat." },
-
-  { "tip": "h", "text": "Ce face dintr-o hârtie un document justificativ" },
-  { "tip": "p", "text": "Nu orice hârtie cu cifre pe ea servește. Un document justificativ trebuie să permită oricui îl citește peste cinci ani să reconstituie operațiunea fără să întrebe pe nimeni. De aici, elementele pe care trebuie să le conțină." },
-  { "tip": "tabel",
-    "titlu": "Ce trebuie să scrie pe el",
-    "cap": ["Elementul", "La ce folosește"],
-    "randuri": [
-      ["Denumirea documentului", "spune ce fel de operațiune atestă: factură, chitanță, bon de consum"],
-      ["Numărul și data", "îl face unic și îl așază în timp — de aici cronologia"],
-      ["Părțile", "cine cu cine: denumire, sediu, cod fiscal"],
-      ["Conținutul operațiunii", "ce anume s-a livrat, prestat, plătit"],
-      ["Cantitățile și sumele", "cât, la ce preț, cu ce taxă"],
-      ["Semnăturile, unde se cer", "cine își asumă întocmirea și, după caz, primirea"]
+  {
+   "tip": "p",
+   "text": "Aici începe munca de zi cu zi, și tot aici se află regula cea mai strictă din toată cartea. Nu e o recomandare de bună practică, ci condiția de existență a contabilității: orice sumă înregistrată trebuie să aibă în spate un document care atestă că operațiunea a avut loc."
+  },
+  {
+   "tip": "p",
+   "text": "Formulată invers, regula sună neplăcut și e la fel de adevărată: ce nu are document nu se înregistrează. Nici dacă știi sigur că s-a întâmplat. Nici dacă ai plătit cu cardul și vezi suma în extras. Nici dacă furnizorul îți promite factura săptămâna viitoare."
+  },
+  {
+   "tip": "h",
+   "text": "De ce e regula atât de rigidă"
+  },
+  {
+   "tip": "p",
+   "text": "Un registru contabil e, în fond, o afirmație despre trecut: la data asta s-a întâmplat lucrul acesta, de valoarea aceasta. O afirmație despre trecut care nu poate fi verificată nu are nicio putere — nici în fața unui inspector, nici în fața unei bănci, nici într-un litigiu cu un partener."
+  },
+  {
+   "tip": "p",
+   "text": "Documentul e ceea ce transformă afirmația în probă. De aceea legea nu îl cere ca formalitate, ci îl definește: consemnarea operațiunii se face în momentul efectuării ei, într-un înscris care stă la baza înregistrării în contabilitate."
+  },
+  {
+   "tip": "cheie",
+   "text": "Contabilitatea nu înregistrează ce s-a întâmplat. Înregistrează ce se poate dovedi că s-a întâmplat."
+  },
+  {
+   "tip": "h",
+   "text": "Ce face dintr-o hârtie un document justificativ"
+  },
+  {
+   "tip": "p",
+   "text": "Nu orice hârtie cu cifre pe ea servește. Un document justificativ trebuie să permită oricui îl citește peste cinci ani să reconstituie operațiunea fără să întrebe pe nimeni. De aici, elementele pe care trebuie să le conțină."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce trebuie să scrie pe el",
+   "cap": [
+    "Elementul",
+    "La ce folosește"
+   ],
+   "randuri": [
+    [
+     "Denumirea documentului",
+     "spune ce fel de operațiune atestă: factură, chitanță, bon de consum"
     ],
-    "nota": "Lipsa unui element nu e un viciu de formă: e o informație care nu se mai poate reconstitui altfel." },
-  { "tip": "p", "text": "Merită observat ce nu apare în listă: contul contabil. Documentul spune ce s-a întâmplat în lumea reală, nu cum se scrie în contabilitate. Traducerea e treaba capitolului următor, și e a contabilului — nu a celui care a emis hârtia." },
-
-  { "tip": "h", "text": "Extrasul de cont nu e document justificativ" },
-  { "tip": "p", "text": "E confuzia cea mai frecventă la firmele mici, și merită lămurită separat, fiindcă pare o pedanterie și nu este." },
-  { "tip": "p", "text": "Extrasul bancar dovedește că banii s-au mișcat. Nu dovedește de ce s-au mișcat. O plată de 5.000 de lei către un furnizor poate fi achitarea unei facturi, un avans, restituirea unui împrumut sau o eroare — extrasul arată la fel în toate cazurile." },
-  { "tip": "p", "text": "De aceea plata se înregistrează pe baza extrasului, dar cheltuiala se înregistrează pe baza facturii. Sunt două operațiuni diferite, cu două documente diferite, iar confundarea lor e cauza clasică a cheltuielilor înregistrate de două ori: o dată după factură și încă o dată după plata ei." },
-
-  { "tip": "h", "text": "Când documentul lipsește" },
-  { "tip": "p", "text": "Se întâmplă: o factură pierdută, un bon decolorat, un furnizor care nu mai răspunde. Regula nu se suspendă, dar există o procedură — reconstituirea documentului, cu declarație și cu dovada demersurilor făcute pentru a-l obține." },
-  { "tip": "p", "text": "Ce nu e permis e ocolirea: o înregistrare făcută „pe baza” unui e-mail, a unei poze de pe telefon sau a memoriei cuiva. Nu fiindcă ar fi neapărat neadevărată, ci fiindcă peste trei ani nimeni nu mai poate spune dacă era." },
-
-  { "tip": "contabil", "titlu": "Pentru contabil",
-    "text": "Cerința e din Legea contabilității: orice operațiune economico-financiară se consemnează în momentul efectuării ei într-un document care stă la baza înregistrărilor, dobândind astfel calitatea de document justificativ; normele privind întocmirea și utilizarea documentelor financiar-contabile detaliază elementele obligatorii, regimul de numerotare și procedura de reconstituire a celor pierdute, sustrase sau distruse. Două consecințe practice merită ținute minte. Prima: răspunderea pentru întocmirea documentului aparține celui care îl emite, iar cea pentru verificarea lui — inclusiv a realității operațiunii — celui care îl primește și îl aprobă; contabilul verifică forma și încadrarea, nu poate certifica fondul (vezi capitolul 4). A doua: documentele care nu îndeplinesc condițiile nu se înregistrează, iar refuzul nu e opțional. Din perspectivă fiscală, insuficiența documentului atrage nedeductibilitatea cheltuielii și pierderea dreptului de deducere a TVA, ceea ce transformă o neglijență administrativă într-un cost direct — de regulă mai mare decât suma de pe hârtia lipsă." },
-
-  { "tip": "h", "text": "Ce se schimbă când documentele sunt electronice" },
-  { "tip": "p", "text": "Regula rămâne aceeași; se schimbă doar suportul. Un fișier are aceeași valoare ca o hârtie dacă îndeplinește condițiile de conținut și dacă poate fi păstrat și citit pe toată durata legală." },
-  { "tip": "p", "text": "Un program de contabilitate ajută aici într-un fel pe care hârtia nu îl permite: ține documentul atașat la înregistrare, nu doar cifrele din el. Când, peste patru ani, cineva întreabă de unde vine suma dintr-un raport, drumul înapoi ajunge la fișierul original în două clicuri, nu într-o arhivă din pod." },
-  { "tip": "p", "text": "Rămâne partea grea, pe care niciun program nu o face: documentul trebuie să ajungă în aplicație. Capitolul următor arată ce se întâmplă cu el odată ajuns — cum devine o înregistrare contabilă." },
-
-  { "tip": "recap", "titlu": "De reținut din acest capitol",
-    "puncte": [
-      "Nicio sumă nu se înregistrează fără un document care atestă operațiunea. Regula nu are excepții de conveniență.",
-      "Documentul transformă o afirmație despre trecut într-o probă; de aceea are elemente obligatorii, nu formale.",
-      "Extrasul bancar dovedește că banii s-au mișcat, nu de ce — cheltuiala se înregistrează după factură, nu după plată.",
-      "Când documentul lipsește există reconstituirea, cu procedură; nu există înregistrarea „din memorie”.",
-      "Un document insuficient nu e o problemă administrativă: atrage nedeductibilitatea cheltuielii și pierderea deducerii TVA."
-    ] }
+    [
+     "Numărul și data",
+     "îl face unic și îl așază în timp — de aici cronologia"
+    ],
+    [
+     "Părțile",
+     "cine cu cine: denumire, sediu, cod fiscal"
+    ],
+    [
+     "Conținutul operațiunii",
+     "ce anume s-a livrat, prestat, plătit"
+    ],
+    [
+     "Cantitățile și sumele",
+     "cât, la ce preț, cu ce taxă"
+    ],
+    [
+     "Semnăturile, unde se cer",
+     "cine își asumă întocmirea și, după caz, primirea"
+    ]
+   ],
+   "nota": "Lipsa unui element nu e un viciu de formă: e o informație care nu se mai poate reconstitui altfel."
+  },
+  {
+   "tip": "p",
+   "text": "Merită observat ce nu apare în listă: contul contabil. Documentul spune ce s-a întâmplat în lumea reală, nu cum se scrie în contabilitate. Traducerea e treaba capitolului următor, și e a contabilului — nu a celui care a emis hârtia."
+  },
+  {
+   "tip": "h",
+   "text": "Extrasul de cont nu e document justificativ"
+  },
+  {
+   "tip": "p",
+   "text": "E confuzia cea mai frecventă la firmele mici, și merită lămurită separat, fiindcă pare o pedanterie și nu este."
+  },
+  {
+   "tip": "p",
+   "text": "Extrasul bancar dovedește că banii s-au mișcat. Nu dovedește de ce s-au mișcat. O plată de 5.000 de lei către un furnizor poate fi achitarea unei facturi, un avans, restituirea unui împrumut sau o eroare — extrasul arată la fel în toate cazurile."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea plata se înregistrează pe baza extrasului, dar cheltuiala se înregistrează pe baza facturii. Sunt două operațiuni diferite, cu două documente diferite, iar confundarea lor e cauza clasică a cheltuielilor înregistrate de două ori: o dată după factură și încă o dată după plata ei."
+  },
+  {
+   "tip": "h",
+   "text": "Când documentul lipsește"
+  },
+  {
+   "tip": "p",
+   "text": "Se întâmplă: o factură pierdută, un bon decolorat, un furnizor care nu mai răspunde. Regula nu se suspendă, dar există o procedură — reconstituirea documentului, cu declarație și cu dovada demersurilor făcute pentru a-l obține."
+  },
+  {
+   "tip": "p",
+   "text": "Ce nu e permis e ocolirea: o înregistrare făcută „pe baza” unui e-mail, a unei poze de pe telefon sau a memoriei cuiva. Nu fiindcă ar fi neapărat neadevărată, ci fiindcă peste trei ani nimeni nu mai poate spune dacă era."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Cerința e din Legea contabilității: orice operațiune economico-financiară se consemnează în momentul efectuării ei într-un document care stă la baza înregistrărilor, dobândind astfel calitatea de document justificativ; normele privind întocmirea și utilizarea documentelor financiar-contabile detaliază elementele obligatorii, regimul de numerotare și procedura de reconstituire a celor pierdute, sustrase sau distruse. Două consecințe practice merită ținute minte. Prima: răspunderea pentru întocmirea documentului aparține celui care îl emite, iar cea pentru verificarea lui — inclusiv a realității operațiunii — celui care îl primește și îl aprobă; contabilul verifică forma și încadrarea, nu poate certifica fondul (vezi capitolul 4). A doua: documentele care nu îndeplinesc condițiile nu se înregistrează, iar refuzul nu e opțional. Din perspectivă fiscală, insuficiența documentului atrage nedeductibilitatea cheltuielii și pierderea dreptului de deducere a TVA, ceea ce transformă o neglijență administrativă într-un cost direct — de regulă mai mare decât suma de pe hârtia lipsă."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se schimbă când documentele sunt electronice"
+  },
+  {
+   "tip": "p",
+   "text": "Regula rămâne aceeași; se schimbă doar suportul. Un fișier are aceeași valoare ca o hârtie dacă îndeplinește condițiile de conținut și dacă poate fi păstrat și citit pe toată durata legală."
+  },
+  {
+   "tip": "p",
+   "text": "Un program de contabilitate ajută aici într-un fel pe care hârtia nu îl permite: ține documentul atașat la înregistrare, nu doar cifrele din el. Când, peste patru ani, cineva întreabă de unde vine suma dintr-un raport, drumul înapoi ajunge la fișierul original în două clicuri, nu într-o arhivă din pod."
+  },
+  {
+   "tip": "p",
+   "text": "Rămâne partea grea, pe care niciun program nu o face: documentul trebuie să ajungă în aplicație. Capitolul următor arată ce se întâmplă cu el odată ajuns — cum devine o înregistrare contabilă."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 9.1 — ce se poate înregistra și ce nu",
+   "enunt": [
+    "Pentru fiecare situație, spune dacă operațiunea se poate înregistra și pe ce bază:",
+    "(a) Bon fiscal de 240 de lei pentru combustibil, fără CUI-ul firmei pe el. (b) Extras bancar cu o plată de 3.000 de lei către un furnizor, fără factură primită. (c) Contract de prestări servicii semnat, fără factură emisă încă. (d) Poză pe telefon a unei facturi al cărei original s-a pierdut."
+   ],
+   "rezolvare": [
+    "(a) Bonul fără codul de identificare fiscală al cumpărătorului nu dă drept de deducere a TVA și nu justifică o cheltuială pe firmă. Se poate cere factură pe baza bonului; până atunci, nu se înregistrează ca achiziție a firmei.",
+    "(b) Plata se înregistrează — extrasul o dovedește. Cheltuiala NU: extrasul arată că banii s-au mișcat, nu de ce. Suma stă ca avans sau ca datorie stinsă până sosește factura.",
+    "(c) Contractul nu e document justificativ pentru venit: el dovedește o obligație viitoare, nu o prestație efectuată. Venitul se recunoaște când serviciul e prestat, cu factura aferentă.",
+    "(d) Poza nu ține loc de original, dar procedura de reconstituire există: declarație, dovada demersurilor de obținere a unui duplicat, aprobare. Poza ajută la reconstituire; nu o înlocuiește.",
+    "Tiparul comun al celor patru: fiecare are un document CARE LIPSEȘTE și unul care există. Tentația e să-l folosești pe cel care există. Regula e să-l aduci pe cel care lipsește."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Nicio sumă nu se înregistrează fără un document care atestă operațiunea. Regula nu are excepții de conveniență.",
+    "Documentul transformă o afirmație despre trecut într-o probă; de aceea are elemente obligatorii, nu formale.",
+    "Extrasul bancar dovedește că banii s-au mișcat, nu de ce — cheltuiala se înregistrează după factură, nu după plată.",
+    "Când documentul lipsește există reconstituirea, cu procedură; nu există înregistrarea „din memorie”.",
+    "Un document insuficient nu e o problemă administrativă: atrage nedeductibilitatea cheltuielii și pierderea deducerii TVA."
+   ]
+  }
  ]
 }

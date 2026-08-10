@@ -138,6 +138,21 @@
    "text": "Cu repartizarea, exercițiul e complet: înregistrat, verificat, declarat, închis și distribuit. Rămâne partea pentru care s-a făcut tot restul — documentele care spun, într-o pagină, ce a făcut firma într-un an."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 44.1 — cât ajunge la asociat",
+   "enunt": [
+    "Continuând exercițiul precedent: profit contabil brut 120.000, impozit pe profit 22.464, rezervă legală 6.000. Asociatul vrea să distribuie tot ce se poate.",
+    "Calculează suma care ajunge efectiv la el și proporția din profitul brut."
+   ],
+   "rezolvare": [
+    "Profit net: 120.000 − 22.464 = 97.536 lei.",
+    "Din el se constituie rezerva legală de 6.000 (calculată pe brut, dar luată din net), deci rămâne de repartizat: 91.536 lei.",
+    "Impozit pe dividende 16%: 14.645,76 lei. Ajunge la asociat: 76.890,24 lei.",
+    "Din 120.000 de lei profit brut, asociatul primește 76.890,24 — adică 64%. Restul: 22.464 impozit pe profit, 14.645,76 impozit pe dividende și 6.000 rezervă legală, care rămâne totuși în firmă.",
+    "Cifra de reținut, fiindcă e cea pe care se ia decizia de a distribui sau de a reinvesti: între profitul din bilanț și banii din buzunar sunt DOUĂ impozite succesive, nu unul — iar ele nu apar nicăieri în situațiile financiare."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

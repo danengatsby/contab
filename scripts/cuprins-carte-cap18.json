@@ -125,6 +125,20 @@
    "text": "Stocul cumpărat și vândut e cazul simplu. Când firma nu cumpără marfă, ci o produce, apare o întrebare în plus: cât costă, de fapt, ceea ce ai făcut tu? E capitolul următor."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 18.1 — CMP sau FIFO, pe aceleași intrări",
+   "enunt": [
+    "Intrări: 100 buc × 10 lei, apoi 100 buc × 14 lei. Se vând 120 de bucăți.",
+    "Calculează costul mărfii vândute și valoarea stocului rămas, în ambele metode."
+   ],
+   "rezolvare": [
+    "Cost mediu ponderat: valoarea totală 100×10 + 100×14 = 2.400 lei pentru 200 de bucăți, deci 12 lei/buc. Ieșire: 120 × 12 = 1.440 lei. Stoc rămas: 80 × 12 = 960 lei.",
+    "FIFO: ies întâi cele 100 de la 10 lei (1.000), apoi 20 de la 14 lei (280) — total 1.280 lei. Stoc rămas: 80 × 14 = 1.120 lei.",
+    "Diferența pe rezultatul lunii: 1.440 − 1.280 = 160 de lei. FIFO dă un cost mai mic, deci un profit mai mare cu 160 de lei, și un stoc mai valoros cu aceeași sumă.",
+    "Observația care contează: pe TOATĂ durata de viață a stocului, cele două metode dau exact același rezultat cumulat. Diferă doar repartizarea între perioade. De aceea alegerea metodei nu e o optimizare, ci o politică — și de aceea se declară în note și nu se schimbă de la un an la altul."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

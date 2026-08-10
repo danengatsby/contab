@@ -120,6 +120,21 @@
    "text": "Cu arhiva și cu jurnalul, tot ce se putea consemna e consemnat. Mai rămâne un singur capitol, și el e despre limită: ce anume, din tot ce a descris cartea, nu poate fi făcut de niciun program."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 50.1 — jurnalul care tace",
+   "enunt": [
+    "Un administrator vrea să afle cine a modificat un preț de vânzare acum trei luni. Jurnalul de operațiuni nu conține nimic în ziua respectivă, deși în acea zi s-au făcut zeci de operațiuni.",
+    "Ce concluzii sunt posibile, și cum le deosebești?"
+   ],
+   "rezolvare": [
+    "Trei ipoteze. Prima: modificarea nu a avut loc atunci — se caută în alte zile.",
+    "A doua: acțiunea nu e dintre cele consemnate. Un jurnal care înregistrează totul devine ilizibil, deci se aleg categoriile; dacă modificarea de preț nu e printre ele, tăcerea e o decizie de proiectare, nu o pierdere.",
+    "A treia, cea care contează: jurnalul NU A PUTUT SCRIE în ziua aceea. Scrierea în jurnal e best-effort — dacă eșuează, acțiunea principală nu se oprește — deci o zi în care jurnalul nu a putut scrie arată identic cu o zi liniștită.",
+    "Cum le deosebești: dacă în ziua respectivă există alte înregistrări în jurnal, ipoteza a treia cade. Dacă nu există NICIUNA, iar activitatea a fost normală, e cel mai probabil o problemă de scriere — permisiuni, disc plin, fișier blocat.",
+    "De aici regula: capacitatea de a scrie în jurnal se verifică ACTIV, printr-o sondă, nu se constată atunci când ai nevoie de o probă. E aceeași regulă ca la copiile de siguranță: absența unui semnal de eroare nu e o confirmare."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

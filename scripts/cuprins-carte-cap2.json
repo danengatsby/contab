@@ -170,6 +170,77 @@
    "text": "Nu e o listă de memorat — e un vocabular, și, ca la orice vocabular, se învață folosindu-l. Capitolul următor arată cum e organizat și de ce cifrele care îl compun nu sunt alese la întâmplare."
   },
   {
+   "tip": "h",
+   "text": "Cele patru tipuri de mișcare"
+  },
+  {
+   "tip": "p",
+   "text": "Odată acceptat că orice operațiune are două capete, urmează o întrebare practică: câte feluri de mișcări există, de fapt? Răspunsul e liniștitor — patru, și le poți enumera pe degete."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Toate operațiunile posibile, pe tipare",
+   "cap": [
+    "Tiparul",
+    "Exemplu",
+    "Efectul asupra totalului bilanțului"
+   ],
+   "randuri": [
+    [
+     "Un activ crește, altul scade",
+     "încasezi de la un client",
+     "neschimbat"
+    ],
+    [
+     "Un activ crește, o datorie crește",
+     "cumperi marfă pe credit",
+     "crește"
+    ],
+    [
+     "Un activ scade, o datorie scade",
+     "plătești un furnizor",
+     "scade"
+    ],
+    [
+     "O datorie crește, alta scade",
+     "refinanțezi un credit",
+     "neschimbat"
+    ]
+   ],
+   "nota": "Nu există al cincilea tipar. Orice operațiune contabilă, oricât de complicată, se descompune în combinații ale acestor patru."
+  },
+  {
+   "tip": "p",
+   "text": "Utilitatea tabelului nu e teoretică. Când o înregistrare pare ciudată, prima verificare e să o încadrezi într-unul dintre cele patru rânduri. Dacă nu intră în niciunul, aproape sigur lipsește o linie — sau s-a folosit un cont care nu descrie ce s-a întâmplat."
+  },
+  {
+   "tip": "h",
+   "text": "De ce s-a inventat sistemul, și de ce a rezistat"
+  },
+  {
+   "tip": "p",
+   "text": "Partida dublă nu e o convenție modernă. A fost descrisă tipărit în 1494, de călugărul franciscan Luca Pacioli, într-un tratat de matematică — deci era deja practica curentă a negustorilor venețieni. Cinci secole mai târziu, e neschimbată în esență."
+  },
+  {
+   "tip": "p",
+   "text": "Longevitatea are o explicație simplă și merită înțeleasă: sistemul nu a fost proiectat ca să calculeze, ci ca să facă erorile vizibile. Într-o vreme fără calculatoare, o metodă care semnalează singură jumătatea lipsă valora mai mult decât una rapidă. Astăzi calculul e gratis, iar proprietatea aceea rămâne singurul motiv pentru care sistemul e încă aici."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 2.1 — găsește capetele",
+   "enunt": [
+    "Scrie, pentru fiecare operațiune, cele două capete („de unde” și „unde”) și încadreaz-o într-unul dintre cele patru tipare:",
+    "(a) Patronul depune 50.000 de lei ca aport la capital. (b) Firma cumpără un utilaj de 30.000 de lei, plătit imediat prin bancă. (c) Firma primește o factură de chirie de 2.000 de lei, neplătită încă. (d) Firma plătește chiria din (c)."
+   ],
+   "rezolvare": [
+    "(a) Cresc banii (activ) și cresc capitalurile proprii. Tiparul al doilea, în varianta cu capital în loc de datorie: totalul bilanțului crește cu 50.000.",
+    "(b) Crește utilajul (activ), scad banii (activ). Primul tipar: totalul rămâne neschimbat — firma are aceeași avere, sub altă formă.",
+    "(c) Crește cheltuiala (deci scade rezultatul, adică partea patronului) și crește datoria față de furnizor. Totalul crește cu 2.000.",
+    "(d) Scade datoria, scad banii. Al treilea tipar: totalul scade cu 2.000.",
+    "Observația de reținut: la (c) cheltuiala a apărut, deși niciun leu nu s-a mișcat; la (d) banii s-au mișcat, dar nicio cheltuială nouă nu a apărut. E aceeași distincție din capitolul 1, văzută acum din interiorul mecanismului."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

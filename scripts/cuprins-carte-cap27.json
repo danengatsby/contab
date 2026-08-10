@@ -163,6 +163,20 @@
    "text": "De aceea decizia rămâne a contabilului și a administratorului împreună, și se scrie. La un control, întrebarea nu e dacă ajustarea era corectă, ci pe ce s-a întemeiat — iar un răspuns dat din memorie, doi ani mai târziu, nu ține loc de document."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 27.1 — cât se deduce, de fapt",
+   "enunt": [
+    "O creanță de 12.100 lei (10.000 bază + 2.100 TVA) e neîncasată de 300 de zile. Clientul nu e afiliat, creanța nu e garantată. Firma constituie ajustare pentru întreaga valoare.",
+    "(a) Cât e deductibil fiscal? (b) Ce se întâmplă dacă anul următor clientul plătește?"
+   ],
+   "rezolvare": [
+    "(a) Condițiile de la art. 26 sunt îndeplinite — peste 270 de zile, negarantată, debitor neafiliat — dar deducerea e limitată la 30% din valoarea creanței: 30% × 12.100 = 3.630 lei deductibili. Restul de 8.470 de lei e cheltuială nedeductibilă în anul constituirii.",
+    "(b) Ajustarea se reia integral, ca venit de 12.100 de lei. Dar impozabil e doar ce a fost deductibil la constituire: 3.630 de lei. Restul de 8.470 e venit neimpozabil.",
+    "De aici obligația practică: evidența analitică pe partea deductibilă și cea nedeductibilă se ține DE LA CONSTITUIRE. Reconstituită peste doi ani, corelația nu se mai poate face, iar la reluare firma fie plătește impozit pe un venit neimpozabil, fie nu îl declară și nu îl poate justifica.",
+    "Și cifra care doare, spusă patronului: din cei 12.100 de lei neîncasați, 2.100 erau TVA deja virat statului. Firma nu pierde marja, ci marja plus taxa."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

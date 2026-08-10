@@ -141,6 +141,20 @@
    "text": "Cele două documente principale sunt gata. Ele nu sunt însă singurele care se depun — și, dintre cele care le însoțesc, unul răspunde la întrebarea pe care nici bilanțul, nici contul de profit nu o ating: unde s-au dus banii."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 46.1 — ce spune bilanțul citit pe orizontală",
+   "enunt": [
+    "Bilanț: imobilizări nete 200.000; stocuri 60.000; creanțe 90.000; casă și bancă 10.000. Capitaluri proprii 120.000; datorii peste un an 40.000; datorii sub un an 200.000.",
+    "(a) Se închide? (b) Ce arată comparația pe orizontală?"
+   ],
+   "rezolvare": [
+    "(a) Activ: 200.000 + 60.000 + 90.000 + 10.000 = 360.000. Pasiv: 120.000 + 40.000 + 200.000 = 360.000. Se închide.",
+    "(b) Active curente (stocuri + creanțe + bani) = 160.000. Datorii curente = 200.000. Firma are de plătit în următoarele douăsprezece luni cu 40.000 de lei mai mult decât poate transforma în bani în același interval.",
+    "Cauza se vede tot pe orizontală: imobilizările de 200.000 sunt finanțate din capitaluri proprii (120.000) plus datorii lungi (40.000) = 160.000, deci 40.000 din ele sunt finanțate din datorii SCURTE. Un activ care se recuperează în cinci ani, plătit din bani datorați în șase luni.",
+    "Nu e o eroare contabilă și nu se vede în contul de profit și pierdere. E o problemă de trezorerie care încă nu s-a produs — și e singurul lucru pe care bilanțul îl spune mai bine decât orice alt document."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

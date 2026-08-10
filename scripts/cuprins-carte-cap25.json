@@ -121,6 +121,21 @@
    "text": "Cele patru capitole care urmează iau pe rând regularizările care apar la aproape orice firmă. Prima e cea mai mecanică dintre ele și, tocmai de aceea, cea la care greșeala se strecoară cel mai ușor: aducerea valutei la cursul de închidere."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 25.1 — provizion sau nu",
+   "enunt": [
+    "Pentru fiecare situație, spune dacă se constituie provizion la 31 decembrie:",
+    "(a) Un fost angajat a dat firma în judecată; avocatul apreciază pierderea ca probabilă, în jur de 30.000 lei. (b) Firma s-ar putea confrunta anul viitor cu o creștere a chiriei. (c) Un client a reclamat un produs defect; firma a acceptat înlocuirea, costul estimat 4.000 lei. (d) Administratorul se teme de un control fiscal."
+   ],
+   "rezolvare": [
+    "(a) DA. Sunt îndeplinite toate trei condițiile: obligație curentă dintr-un eveniment trecut (raportul de muncă și litigiul), ieșire probabilă de resurse, estimare credibilă.",
+    "(b) NU. Nu există obligație curentă dintr-un fapt trecut — e o cheltuială viitoare a activității normale. Provizioanele nu se constituie pentru cheltuieli de exploatare viitoare.",
+    "(c) DA. Obligația s-a născut din vânzarea deja făcută, firma a acceptat-o, iar suma e estimabilă.",
+    "(d) NU. Teama nu e obligație. Dacă însă un control ar fi deja început și s-ar fi comunicat constatări cu sumă probabilă, situația s-ar schimba.",
+    "Testul care le separă pe toate patru: caută EVENIMENTUL TRECUT care a creat obligația. La (a) și (c) există și se poate numi. La (b) și (d) evenimentul e în viitor sau imaginat."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

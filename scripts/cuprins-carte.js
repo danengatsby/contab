@@ -158,6 +158,10 @@ function faDocx() {
       else if (bl.tip === 'contabil') {
         b.push(P(bl.titlu, 'ContabilT'));
         b.push(P(bl.text, 'Contabil'));
+      } else if (bl.tip === 'exercitiu') {
+        b.push(P(bl.titlu, 'ExT'));
+        for (const t of bl.enunt) b.push(P(t, 'Ex'));
+        if (bl.rezolvare) { b.push(P('Rezolvare', 'ExR')); for (const t of bl.rezolvare) b.push(P(t, 'Ex')); }
       } else if (bl.tip === 'recap') {
         b.push(P(bl.titlu, 'RecapT'));
         for (const pt of bl.puncte) b.push(P('', 'Recap', run('•\u00a0\u00a0') + run(pt)));
@@ -223,6 +227,9 @@ function faDocx() {
     + stil('TabCap', 'Tabel - antet', '18', { b: 1, after: 0 })
     + stil('TabCel', 'Tabel - celula', '18', { after: 0 })
     + stil('TabNota', 'Tabel - nota', '17', { i: 1, color: '55645C', before: 60, after: 180 })
+    + stil('ExT', 'Exercitiu - titlu', '17', { b: 1, caps: 1, color: '9E2A20', before: 200, after: 60 })
+    + stil('ExR', 'Exercitiu - rezolvare', '16', { b: 1, caps: 1, color: '7C8A83', before: 100, after: 50 })
+    + stil('Ex', 'Exercitiu', '19', { after: 70, ind: 200 })
     + stil('RecapT', 'Recapitulare - titlu', '18', { b: 1, caps: 1, color: '2C5B44', after: 70 })
     + stil('Recap', 'Recapitulare', '19', { color: '16211D', after: 70, ind: 340, hang: 170 })
     + '</w:styles>';
@@ -352,6 +359,13 @@ function faHtml() {
   .contabil h4 { font-size:7.5pt; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3);
     margin:0 0 3pt; font-family:Calibri,Arial,sans-serif; font-weight:700; }
   .contabil p { margin:0 !important; font-size:9pt; color:var(--ink-2); }
+  .ex { border-left:2pt solid var(--rosu); background:var(--card); padding:6pt 9pt;
+    margin:11pt 0; break-inside:avoid; }
+  .ex-t { font-size:7.5pt; letter-spacing:.13em; text-transform:uppercase; color:var(--rosu);
+    font-weight:700; margin:0 0 4pt !important; font-family:Calibri,Arial,sans-serif; }
+  .ex-r { font-size:7pt; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3);
+    font-weight:700; margin:6pt 0 3pt !important; font-family:Calibri,Arial,sans-serif; }
+  .ex p { margin:0 0 4pt !important; }
   .recap { border-top:1.2pt solid var(--verde); padding-top:6pt; margin:14pt 0 0; break-inside:avoid; }
   .recap h4 { font-size:7.5pt; letter-spacing:.12em; text-transform:uppercase; color:var(--verde);
     margin:0 0 4pt; font-family:Calibri,Arial,sans-serif; font-weight:700; }
@@ -415,6 +429,19 @@ function blocuriHtml(c) {
             + r.map((t, i) => `<td${num(bl, i)}>${esc(t)}</td>`).join('') + '</tr>').join('')
         + '</tbody></table>'
         + (bl.nota ? `<p class="tab-nota">${esc(bl.nota)}</p>` : '') + '</figure>');
+    } else if (bl.tip === 'exercitiu') {
+      out.push('<aside class="ex">'
+        + `<h4>${esc(bl.titlu)}</h4>`
+        + bl.enunt.map((t) => `<p>${esc(t)}</p>`).join('')
+        + (bl.rezolvare
+          ? '<p class="ex-r">Rezolvare</p>' + bl.rezolvare.map((t) => `<p>${esc(t)}</p>`).join('')
+          : '')
+        + '</aside>');
+    } else {
+      // Un tip de bloc necunoscut NU se sare tacit: pana acum, un `exercitiu` adaugat in date
+      // aparea in .docx si LIPSEA din PDF, HTML si site — fara niciun semn. Un generator care
+      // pierde continut in tacere e mai rau decat unul care se opreste.
+      throw new Error(`Tip de bloc necunoscut in capitolul ${c.nr}: "${bl.tip}"`);
     }
   }
   out.push('</section>');
@@ -513,6 +540,13 @@ function faHtmlEcran() {
   .contabil h4 { font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.7rem;
     letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); margin:0 0 .5rem; font-weight:600; }
   .contabil p { margin:0 !important; font-size:.95rem; color:var(--ink-2); }
+  .ex { border-left:3px solid var(--rosu); background:var(--card); padding:.85rem 1.1rem;
+    margin:1.6rem 0; }
+  .ex-t { font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.7rem;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--rosu); font-weight:700; margin:0 0 .5rem !important; }
+  .ex-r { font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.68rem;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); font-weight:700; margin:.9rem 0 .4rem !important; }
+  .ex p { margin:0 0 .5rem !important; font-size:.96rem; }
   .recap { border-top:2px solid var(--verde); padding-top:1rem; margin:2.6rem 0 0; max-width:40rem; }
   .recap h4 { font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.7rem;
     letter-spacing:.13em; text-transform:uppercase; color:var(--verde); margin:0 0 .7rem; font-weight:600; }

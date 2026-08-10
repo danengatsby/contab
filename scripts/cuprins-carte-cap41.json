@@ -112,6 +112,20 @@
    "text": "Cu blocarea, luna e definitivă. Aceeași logică se aplică, la altă scară și cu operațiuni proprii, exercițiului întreg — iar acolo se petrece ceva ce nu s-a mai întâmplat în nicio lună: conturile de venituri și cheltuieli dispar."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 41.1 — data scrisă greșit",
+   "enunt": [
+    "Pe 8 iulie, un operator introduce o factură și tastează data 2026-06-30 în loc de 2026-07-30. Luna iunie e închisă și declarată.",
+    "(a) Ce face un sistem cu perioade blocate? (b) Ce s-ar fi întâmplat fără blocare? (c) Dacă factura chiar era din iunie?"
+   ],
+   "rezolvare": [
+    "(a) Refuză înregistrarea și spune de ce: perioada e închisă. Operatorul corectează data pe loc, în două secunde.",
+    "(b) Factura ar fi intrat în iunie. Balanța lunii iunie nu ar mai fi cea pe baza căreia s-a depus decontul, iar diferența s-ar descoperi cel mai devreme la o inspecție — sau niciodată.",
+    "(c) Atunci nu e o greșeală de tastare, ci un document întârziat. Se înregistrează în iulie, iar dacă afectează TVA-ul sau rezultatul lunii iunie se evaluează dacă e cazul unei rectificative. Ce NU se face: redeschiderea lunii iunie ca să „iasă frumos”.",
+    "Ce arată exercițiul: blocarea nu apără de rea-credință — apără de o tastă apăsată greșit, adică de cazul care chiar se întâmplă. Iar dacă redeschiderea e totuși necesară, ea cere drept de administrator, motiv scris și consemnare permanentă: posibilă, dar niciodată comodă."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

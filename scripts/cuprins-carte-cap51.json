@@ -140,6 +140,23 @@
    "text": "Un program poate aplica toate aceste reguli mai repede și mai consecvent decât un om. Ce nu poate face — și ce rămâne, prin urmare, esența profesiei — e să știe dacă lucrul consemnat s-a întâmplat cu adevărat, și să răspundă pentru afirmația că da."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 51.1 — ce poate decide mașina",
+   "enunt": [
+    "Pentru fiecare, spune dacă răspunsul se poate obține din date sau cere un om:",
+    "(a) Suma de pe factură se potrivește cu baza plus TVA? (b) Furnizorul avea cod valid la data facturii? (c) Marfa a fost livrată? (d) Durata de amortizare aleasă e cea potrivită? (e) Balanța se închide? (f) Cheltuiala aceasta e a firmei?"
+   ],
+   "rezolvare": [
+    "(a) Din date. E aritmetică; se verifică integral automat.",
+    "(b) Din date. Codul se verifică într-un registru public, la data operațiunii.",
+    "(c) CERE UN OM. Documentul poate fi conform și fals deopotrivă; nicio corelație nu poate distinge o livrare reală de una consemnată.",
+    "(d) CERE UN OM. Catalogul dă un interval, nu o cifră; alegerea din interval angajează firma pe ani și e o decizie profesională.",
+    "(e) Din date. E chiar verificarea pe care mașina o face cel mai bine.",
+    "(f) CERE UN OM, și e întrebarea cea mai scumpă din listă. Răspunsul nu e într-un câmp, nu se deduce dintr-o corelație, nu se verifică printr-o regulă.",
+    "Scorul: trei din șase se automatizează complet. Celelalte trei sunt profesia — și niciun progres al programelor nu le mută, fiindcă granița nu e tehnologică, ci logică: separă întrebările despre DATE de întrebările despre REALITATE."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

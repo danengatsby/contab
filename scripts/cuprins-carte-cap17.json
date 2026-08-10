@@ -3,53 +3,147 @@
  "nr": "17",
  "titlu": "Plafoane și limite legale",
  "blocuri": [
-  { "tip": "p", "text": "Numerarul e singura formă de plată care nu lasă urmă la nimeni altcineva. Un virament trece prin bancă și rămâne consemnat de o terță parte; o bancnotă dată din mână în mână nu. De aici, o legislație care limitează numerarul mai strict decât orice altă operațiune din contabilitate." },
-  { "tip": "p", "text": "Capitolul acesta e scurt și merită citit chiar dacă firma ta lucrează aproape numai prin bancă. Motivul e că depășirea plafoanelor se sancționează direct, iar sancțiunea nu ține cont de bunele intenții: nu contează că operațiunea a fost reală și corect înregistrată." },
-
-  { "tip": "h", "text": "Cele patru praguri" },
-  { "tip": "tabel",
-    "titlu": "Limitele legale ale numerarului",
-    "cap": ["Limita", "Plafon", "Cum se calculează"],
-    "randuri": [
-      ["Plată către o persoană juridică", "5.000 lei", "pe zi și pe fiecare persoană în parte"],
-      ["Plată către o persoană fizică", "10.000 lei", "pe zi și pe fiecare persoană"],
-      ["Total încasări în numerar", "10.000 lei", "pe zi, de la toate persoanele la un loc"],
-      ["Soldul casieriei", "50.000 lei", "la sfârșitul zilei"]
+  {
+   "tip": "p",
+   "text": "Numerarul e singura formă de plată care nu lasă urmă la nimeni altcineva. Un virament trece prin bancă și rămâne consemnat de o terță parte; o bancnotă dată din mână în mână nu. De aici, o legislație care limitează numerarul mai strict decât orice altă operațiune din contabilitate."
+  },
+  {
+   "tip": "p",
+   "text": "Capitolul acesta e scurt și merită citit chiar dacă firma ta lucrează aproape numai prin bancă. Motivul e că depășirea plafoanelor se sancționează direct, iar sancțiunea nu ține cont de bunele intenții: nu contează că operațiunea a fost reală și corect înregistrată."
+  },
+  {
+   "tip": "h",
+   "text": "Cele patru praguri"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Limitele legale ale numerarului",
+   "cap": [
+    "Limita",
+    "Plafon",
+    "Cum se calculează"
+   ],
+   "randuri": [
+    [
+     "Plată către o persoană juridică",
+     "5.000 lei",
+     "pe zi și pe fiecare persoană în parte"
     ],
-    "numerice": [2],
-    "nota": "Toate patru se raportează la ZI, nu la lună sau la operațiune. O plată de 12.000 de lei nu devine legală dacă e împărțită în trei chitanțe în aceeași zi." },
-  { "tip": "p", "text": "Ultimul rând al notei e partea pe care o ratează cel mai des firmele mici. Plafonul e pe zi și pe partener, nu pe document. Fracționarea unei plăți în mai multe chitanțe emise în aceeași zi nu ocolește limita — dimpotrivă, e chiar tiparul pe care un control îl caută." },
-
-  { "tip": "h", "text": "De ce plafonul de sold e altfel decât celelalte" },
-  { "tip": "p", "text": "Primele trei limite privesc fluxurile: cât poate intra sau ieși într-o zi. A patra privește stocul: cât poate rămâne peste noapte în casierie." },
-  { "tip": "p", "text": "Deosebirea are o consecință practică. O firmă poate respecta perfect limitele de plată și să depășească totuși plafonul de sold, pur și simplu fiindcă a încasat mult și nu a depus banii la bancă. Verificarea se face la sfârșitul fiecărei zile, nu la sfârșitul lunii — iar soluția e depunerea surplusului, în aceeași zi." },
-  { "tip": "cheie", "text": "Trei plafoane se verifică pe operațiuni, unul pe soldul de la finalul zilei. Se pot încălca independent." },
-
-  { "tip": "h", "text": "Verificarea care se face singură" },
-  { "tip": "p", "text": "Toate cele patru limite au o proprietate rară în contabilitate: se pot calcula complet din datele deja înregistrate. Nu cer nicio informație suplimentară, nicio judecată, nicio interpretare." },
-  { "tip": "p", "text": "De aceea nu au ce căuta în memoria cuiva. Un program le poate urmări continuu și avertiza în ziua în care se apropie de prag, nu în luna următoare, când depășirea a devenit fapt consumat. E, alături de urmărirea plafoanelor fiscale din capitolul 6, unul dintre puținele locuri în care automatizarea previne o amendă, nu doar economisește timp." },
-  { "tip": "p", "text": "Merită cerut de la orice program de contabilitate ca pragurile să stea într-un singur loc, datat, nu împrăștiate prin cod. Legea 70/2015 s-a modificat de mai multe ori de la apariție, iar o firmă care are limitele scrise într-un singur loc le actualizează într-un minut." },
-
-  { "tip": "h", "text": "Avansurile de trezorerie" },
-  { "tip": "p", "text": "Când dai bani unui angajat ca să cumpere ceva pentru firmă, banii nu au ieșit încă din patrimoniu: au trecut doar dintr-un buzunar în altul. Până la justificarea lor cu documente, ei rămân o creanță asupra angajatului, în contul 542 Avansuri de trezorerie." },
-  { "tip": "p", "text": "Greșeala obișnuită e înregistrarea directă pe cheltuială, în momentul dării banilor. E greșită din două motive: cheltuiala nu are încă document justificativ, iar dacă angajatul aduce rest, restul nu mai are unde să se întoarcă." },
-  { "tip": "p", "text": "Soldul contului 542 la sfârșitul lunii e o listă de întrebări: cine are bani ai firmei nejustificați și de când. Un sold vechi acolo nu e o problemă contabilă, ci una de disciplină." },
-
-  { "tip": "contabil", "titlu": "Pentru contabil",
-    "text": "Plafoanele sunt cele din Legea 70/2015: 5.000 lei/zi/persoană juridică pentru plăți, 10.000 lei/zi/persoană fizică, 10.000 lei/zi plafon total al încasărilor, respectiv 50.000 lei sold de casierie la sfârșitul zilei. Trei precizări utile în practică. Prima: fracționarea e sancționată explicit, deci verificarea trebuie făcută prin agregare pe zi și pe partener, nu pe document — un control care se uită la chitanțe individuale nu prinde nimic. A doua: plafonul de sold admite depășiri temporare justificate — sume destinate plății salariilor sau altor drepturi de personal, pentru un număr limitat de zile — iar tratarea lor ca încălcare produce alarme false; regimul acestor excepții trebuie parametrizat, nu ignorat. A treia: pentru contul 542, justificarea avansului se face cu documente în termenul stabilit prin decizie internă, iar sumele nejustificate la termen devin, din perspectiva fiscală, avantaje de natură salarială — cu toate consecințele de contribuții și impozit; un sold vechi în 542 nu e doar o neglijență administrativă, ci un risc fiscal cuantificabil. În fine, controlul soldului de casă negativ, tratat în capitolul 15, e complementar acestor plafoane: primul semnalează o eroare de înregistrare, celelalte o încălcare a legii, iar confundarea lor duce la corecții aplicate greșit." },
-
-  { "tip": "h", "text": "Ce urmează" },
-  { "tip": "p", "text": "Faza a treia s-a încheiat. Documentele sunt înregistrate, banii sunt urmăriți și confruntați cu extrasul, iar limitele legale sunt sub observație." },
-  { "tip": "p", "text": "Urmează partea în care contabilitatea încetează să mai fie doar evidența unor hârtii și începe să măsoare lucruri fizice: marfa din depozit, orele lucrate de oameni, uzura unui utilaj. Sunt fazele patru, cinci și șase, iar prima dintre ele e stocul." },
-
-  { "tip": "recap", "titlu": "De reținut din acest capitol",
-    "puncte": [
-      "Numerarul e limitat prin lege fiindcă e singura plată care nu lasă urmă la o terță parte.",
-      "Patru praguri: 5.000 lei/zi către o firmă, 10.000 lei/zi către o persoană fizică, 10.000 lei/zi total încasări, 50.000 lei sold de casierie.",
-      "Toate se calculează PE ZI și pe partener, nu pe document. Împărțirea în mai multe chitanțe nu ocolește limita.",
-      "Plafonul de sold se poate încălca și când toate plățile au fost corecte — se verifică la finalul fiecărei zile.",
-      "Toate patru se pot calcula din datele deja înregistrate, deci nu au ce căuta în memoria cuiva.",
-      "Banii dați unui angajat rămân o creanță în 542 până la justificare; sumele nejustificate la termen devin avantaje salariale."
-    ] }
+    [
+     "Plată către o persoană fizică",
+     "10.000 lei",
+     "pe zi și pe fiecare persoană"
+    ],
+    [
+     "Total încasări în numerar",
+     "10.000 lei",
+     "pe zi, de la toate persoanele la un loc"
+    ],
+    [
+     "Soldul casieriei",
+     "50.000 lei",
+     "la sfârșitul zilei"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "nota": "Toate patru se raportează la ZI, nu la lună sau la operațiune. O plată de 12.000 de lei nu devine legală dacă e împărțită în trei chitanțe în aceeași zi."
+  },
+  {
+   "tip": "p",
+   "text": "Ultimul rând al notei e partea pe care o ratează cel mai des firmele mici. Plafonul e pe zi și pe partener, nu pe document. Fracționarea unei plăți în mai multe chitanțe emise în aceeași zi nu ocolește limita — dimpotrivă, e chiar tiparul pe care un control îl caută."
+  },
+  {
+   "tip": "h",
+   "text": "De ce plafonul de sold e altfel decât celelalte"
+  },
+  {
+   "tip": "p",
+   "text": "Primele trei limite privesc fluxurile: cât poate intra sau ieși într-o zi. A patra privește stocul: cât poate rămâne peste noapte în casierie."
+  },
+  {
+   "tip": "p",
+   "text": "Deosebirea are o consecință practică. O firmă poate respecta perfect limitele de plată și să depășească totuși plafonul de sold, pur și simplu fiindcă a încasat mult și nu a depus banii la bancă. Verificarea se face la sfârșitul fiecărei zile, nu la sfârșitul lunii — iar soluția e depunerea surplusului, în aceeași zi."
+  },
+  {
+   "tip": "cheie",
+   "text": "Trei plafoane se verifică pe operațiuni, unul pe soldul de la finalul zilei. Se pot încălca independent."
+  },
+  {
+   "tip": "h",
+   "text": "Verificarea care se face singură"
+  },
+  {
+   "tip": "p",
+   "text": "Toate cele patru limite au o proprietate rară în contabilitate: se pot calcula complet din datele deja înregistrate. Nu cer nicio informație suplimentară, nicio judecată, nicio interpretare."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea nu au ce căuta în memoria cuiva. Un program le poate urmări continuu și avertiza în ziua în care se apropie de prag, nu în luna următoare, când depășirea a devenit fapt consumat. E, alături de urmărirea plafoanelor fiscale din capitolul 6, unul dintre puținele locuri în care automatizarea previne o amendă, nu doar economisește timp."
+  },
+  {
+   "tip": "p",
+   "text": "Merită cerut de la orice program de contabilitate ca pragurile să stea într-un singur loc, datat, nu împrăștiate prin cod. Legea 70/2015 s-a modificat de mai multe ori de la apariție, iar o firmă care are limitele scrise într-un singur loc le actualizează într-un minut."
+  },
+  {
+   "tip": "h",
+   "text": "Avansurile de trezorerie"
+  },
+  {
+   "tip": "p",
+   "text": "Când dai bani unui angajat ca să cumpere ceva pentru firmă, banii nu au ieșit încă din patrimoniu: au trecut doar dintr-un buzunar în altul. Până la justificarea lor cu documente, ei rămân o creanță asupra angajatului, în contul 542 Avansuri de trezorerie."
+  },
+  {
+   "tip": "p",
+   "text": "Greșeala obișnuită e înregistrarea directă pe cheltuială, în momentul dării banilor. E greșită din două motive: cheltuiala nu are încă document justificativ, iar dacă angajatul aduce rest, restul nu mai are unde să se întoarcă."
+  },
+  {
+   "tip": "p",
+   "text": "Soldul contului 542 la sfârșitul lunii e o listă de întrebări: cine are bani ai firmei nejustificați și de când. Un sold vechi acolo nu e o problemă contabilă, ci una de disciplină."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Plafoanele sunt cele din Legea 70/2015: 5.000 lei/zi/persoană juridică pentru plăți, 10.000 lei/zi/persoană fizică, 10.000 lei/zi plafon total al încasărilor, respectiv 50.000 lei sold de casierie la sfârșitul zilei. Trei precizări utile în practică. Prima: fracționarea e sancționată explicit, deci verificarea trebuie făcută prin agregare pe zi și pe partener, nu pe document — un control care se uită la chitanțe individuale nu prinde nimic. A doua: plafonul de sold admite depășiri temporare justificate — sume destinate plății salariilor sau altor drepturi de personal, pentru un număr limitat de zile — iar tratarea lor ca încălcare produce alarme false; regimul acestor excepții trebuie parametrizat, nu ignorat. A treia: pentru contul 542, justificarea avansului se face cu documente în termenul stabilit prin decizie internă, iar sumele nejustificate la termen devin, din perspectiva fiscală, avantaje de natură salarială — cu toate consecințele de contribuții și impozit; un sold vechi în 542 nu e doar o neglijență administrativă, ci un risc fiscal cuantificabil. În fine, controlul soldului de casă negativ, tratat în capitolul 15, e complementar acestor plafoane: primul semnalează o eroare de înregistrare, celelalte o încălcare a legii, iar confundarea lor duce la corecții aplicate greșit."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Faza a treia s-a încheiat. Documentele sunt înregistrate, banii sunt urmăriți și confruntați cu extrasul, iar limitele legale sunt sub observație."
+  },
+  {
+   "tip": "p",
+   "text": "Urmează partea în care contabilitatea încetează să mai fie doar evidența unor hârtii și începe să măsoare lucruri fizice: marfa din depozit, orele lucrate de oameni, uzura unui utilaj. Sunt fazele patru, cinci și șase, iar prima dintre ele e stocul."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 17.1 — plafonul, pe zi și pe partener",
+   "enunt": [
+    "Într-o zi, firma plătește în numerar către același furnizor persoană juridică: 2.000 lei dimineața, 2.000 la prânz și 1.500 seara, cu trei chitanțe distincte. În aceeași zi încasează în numerar 4.000 de lei de la doi clienți.",
+    "S-a încălcat ceva? Ce ar fi trebuit făcut?"
+   ],
+   "rezolvare": [
+    "Da. Plățile către o persoană juridică sunt plafonate la 5.000 de lei pe zi și pe fiecare persoană în parte. Total plătit: 5.500 de lei, deci depășire cu 500 — iar fracționarea în trei chitanțe nu ocolește limita, ci e chiar tiparul pe care un control îl caută.",
+    "Încasările sunt în regulă: 4.000 de lei, sub plafonul total zilnic de 10.000.",
+    "Ce ar fi trebuit făcut: primele două plăți în numerar (4.000), a treia prin bancă. Sau toate trei prin bancă, ceea ce nu costă nimic și nu cere nicio verificare.",
+    "Verificarea corectă, pe care o poate face un program: agregare pe ZI și pe PARTENER, nu pe document. Cine se uită la chitanțe individuale nu vede nimic — toate trei sunt sub plafon."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Numerarul e limitat prin lege fiindcă e singura plată care nu lasă urmă la o terță parte.",
+    "Patru praguri: 5.000 lei/zi către o firmă, 10.000 lei/zi către o persoană fizică, 10.000 lei/zi total încasări, 50.000 lei sold de casierie.",
+    "Toate se calculează PE ZI și pe partener, nu pe document. Împărțirea în mai multe chitanțe nu ocolește limita.",
+    "Plafonul de sold se poate încălca și când toate plățile au fost corecte — se verifică la finalul fiecărei zile.",
+    "Toate patru se pot calcula din datele deja înregistrate, deci nu au ce căuta în memoria cuiva.",
+    "Banii dați unui angajat rămân o creanță în 542 până la justificare; sumele nejustificate la termen devin avantaje salariale."
+   ]
+  }
  ]
 }

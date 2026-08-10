@@ -135,6 +135,20 @@
    "text": "De aceea, la orice sistem care calculează drepturi, întrebarea corectă nu e „ce se întâmplă dacă bifez”, ci „ce se întâmplă dacă nu bifez nimic”. Un implicit prost ales costă bani reali, în tăcere, la fiecare rulare."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 22.1 — verificarea de două minute",
+   "enunt": [
+    "Într-un stat de plată, trei angajați au salariul minim, doi au 5.000 de lei brut la funcția de bază, iar unul are 5.000 la al doilea loc de muncă. Coloana „deducere personală” arată zero pentru toți șase.",
+    "Câte dintre cele șase zerouri sunt corecte?"
+   ],
+   "rezolvare": [
+    "Unul singur: cel de la al doilea loc de muncă. Deducerea se acordă la funcția de bază, deci acolo zero e răspunsul corect.",
+    "Celelalte cinci sunt greșite. Cei trei cu salariul minim au dreptul la deducerea maximă. Cei doi cu 5.000 de lei brut sunt sub plafonul de salariu minim plus 2.000, deci au dreptul la o deducere diminuată, dar nu nulă.",
+    "Costul erorii, la cei doi cu 5.000 de lei: circa 43 de lei pe lună fiecare, adică peste 500 de lei pe an de persoană. La cei trei cu salariul minim, mai mult.",
+    "Cum se prinde: nu prin recalcularea statului, ci uitându-te la o singură coloană. Zero acolo unde n-ar trebui e o întrebare de pus imediat — iar întrebarea nu e „de ce”, ci „de când”."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

@@ -161,6 +161,22 @@
    "text": "Mai rămâne o situație în această parte, și e singura care nu verifică nimic: e făcută ca să fie folosită la conducerea firmei. Arată cine îți datorează, cui datorezi și de când — iar vechimea e informația care lipsește din toate celelalte rapoarte."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 33.1 — care erori trec",
+   "enunt": [
+    "Pentru fiecare, spune dacă balanța o semnalează:",
+    "(a) O factură de 8.000 de lei înregistrată cu 800. (b) O factură înregistrată doar pe debit. (c) O chirie trecută pe contul de mărfuri. (d) Aceeași factură introdusă de două ori. (e) O diferență de curs pe o datorie, trecută la venituri în loc de cheltuieli."
+   ],
+   "rezolvare": [
+    "(a) NU. Ambele capete au aceeași sumă greșită, deci echilibrul e intact. Se descoperă numai comparând cu documentul.",
+    "(b) DA. E singura clasă de erori pe care balanța o prinde: jumătatea lipsă.",
+    "(c) NU. Suma e corectă și scrisă de două ori; doar sertarul e greșit. Se descoperă la inventar sau citind fișa contului.",
+    "(d) NU. Al doilea articol e la fel de echilibrat ca primul. Se descoperă la reconcilierea bancară sau la punctajul cu furnizorul.",
+    "(e) NU, și e cea mai gravă: rezultatul iese greșit cu DUBLUL diferenței — o dată fiindcă lipsește cheltuiala, încă o dată fiindcă apare un venit inexistent. Toate cele patru egalități sunt respectate.",
+    "Scorul final: din cinci erori, balanța prinde una. E exact motivul pentru care capitolul acesta există."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

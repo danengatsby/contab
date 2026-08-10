@@ -240,6 +240,98 @@
    "text": "Cu asta, uneltele sunt pe masă: știm la ce întrebări răspunde contabilitatea, de ce fiecare sumă se scrie de două ori și unde anume se scrie. Rămâne o întrebare care nu e tehnică, dar de care atârnă tot: cine răspunde pentru cifrele astea. E subiectul capitolului următor."
   },
   {
+   "tip": "h",
+   "text": "Cum se citește un cont pe care nu l-ai mai văzut"
+  },
+  {
+   "tip": "p",
+   "text": "Nimeni nu memorează planul de conturi. Se citește, iar citirea are trei pași care funcționează pentru orice simbol, inclusiv unul întâlnit prima oară."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele trei întrebări, pe un exemplu: contul 4426",
+   "cap": [
+    "Pasul",
+    "Întrebarea",
+    "Răspunsul aici"
+   ],
+   "randuri": [
+    [
+     "1",
+     "Ce clasă? (prima cifră)",
+     "4 — conturi de terți: o relație cu cineva din afară"
+    ],
+    [
+     "2",
+     "Ce grupă? (primele două)",
+     "44 — decontări cu bugetul statului"
+    ],
+    [
+     "3",
+     "Ce anume?",
+     "4426 — TVA deductibilă, taxa plătită furnizorilor"
+    ]
+   ],
+   "nota": "Cu cât adaugi o cifră, cu atât întrebarea devine mai precisă. Sensul general se citește însă din prima."
+  },
+  {
+   "tip": "p",
+   "text": "Cele trei niveluri au nume în reglementare: cont sintetic de gradul I (trei cifre), de gradul II (patru cifre) și analitic (ce se adaugă după, la alegerea firmei). Un analitic nu e un cont nou — e o desfacere a celui sintetic, iar suma tuturor analiticelor trebuie să dea exact soldul sinteticului."
+  },
+  {
+   "tip": "h",
+   "text": "Cifra a doua, care spune sensul"
+  },
+  {
+   "tip": "p",
+   "text": "Există un tipar care scurtează mult învățarea, iar manualele îl trec adesea sub tăcere. La conturile de imobilizări și de stocuri, un 8 pe poziția a doua înseamnă amortizare, iar un 9 înseamnă ajustare pentru depreciere. Sunt conturi rectificative: nu adaugă valoare, ci o scad."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Contul de bază și rectificativele lui",
+   "cap": [
+    "Contul",
+    "Ce spune",
+    "Sensul soldului"
+   ],
+   "randuri": [
+    [
+     "213 Echipamente",
+     "cât a costat utilajul",
+     "debitor"
+    ],
+    [
+     "281 Amortizări",
+     "cât s-a consumat din el",
+     "creditor — se SCADE"
+    ],
+    [
+     "291 Ajustări",
+     "cât din valoarea rămasă e probabil pierdută",
+     "creditor — se SCADE"
+    ]
+   ],
+   "nota": "În bilanț apare o singură cifră: valoarea netă, adică 213 minus 281 minus 291. Cele trei conturi există ca să se poată spune din ce e făcută."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 3.1 — citește simbolul",
+   "enunt": [
+    "Fără să cauți în plan, spune ce fel de cont e fiecare și pe ce parte îi stă în mod normal soldul: 401, 5121, 607, 707, 4423, 1012, 2813.",
+    "Indiciu: prima cifră dă clasa; clasele 1, 4 (parțial) și 7 sunt de regulă creditoare, clasele 2, 3, 5 și 6 debitoare."
+   ],
+   "rezolvare": [
+    "401 — clasa 4, terți: datorie față de furnizori, sold creditor.",
+    "5121 — clasa 5, trezorerie: bani în cont, sold debitor.",
+    "607 — clasa 6, cheltuieli: costul mărfii vândute, sold debitor.",
+    "707 — clasa 7, venituri: vânzări de mărfuri, sold creditor.",
+    "4423 — clasa 4: TVA de plată, datorie față de buget, sold creditor.",
+    "1012 — clasa 1, capitaluri: aportul asociaților, sold creditor.",
+    "2813 — clasa 2 cu 8 pe poziția a doua: amortizarea mijloacelor de transport, cont RECTIFICATIV, sold creditor deși aparține clasei activelor.",
+    "Ultimul e singurul care cere atenție și e exact tiparul din secțiunea precedentă: 8 pe poziția a doua înseamnă că soldul se scade, nu se adună."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

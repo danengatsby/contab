@@ -218,6 +218,21 @@
    "text": "Balanța închisă pe toate cele patru egalități e o veste bună. Nu e însă vestea pe care majoritatea oamenilor cred că este — iar capitolul următor e cel mai contraintuitiv din toată cartea."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 32.1 — citește balanța ca o radiografie",
+   "enunt": [
+    "Într-o balanță lunară apar: 5311 cu sold CREDITOR 1.240; 401 cu sold DEBITOR 3.000; 4111 cu rulaj debitor 52.000 și creditor 52.000, sold zero; 581 cu sold debitor 8.500.",
+    "Ce spune fiecare rând?"
+   ],
+   "rezolvare": [
+    "5311 creditor: imposibil. Dintr-o casierie nu se pot scoate bani care nu sunt acolo. E o eroare de înregistrare — încasare lipsă sau plată datată greșit.",
+    "401 debitor: nu e imposibil, dar e neobișnuit. De regulă înseamnă un avans plătit unui furnizor, care ar fi trebuit înregistrat în 409, sau o plată dublă.",
+    "4111 cu rulaje egale și sold zero: perfect normal și INFORMATIV — clienții au fost facturați și au plătit în aceeași lună. O balanță care ar afișa doar soldurile ar ascunde complet o activitate de 52.000 de lei.",
+    "581 cu sold: un capăt de virament intern lipsește. Contul de tranzit trebuie să fie zero la închidere; 8.500 acolo înseamnă bani plecați dintr-un loc și neajunși în celălalt, scriptic.",
+    "Niciunul dintre cele patru nu dezechilibrează balanța. Toate se văd dintr-o privire — dar numai dacă cineva se uită."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

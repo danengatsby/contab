@@ -120,6 +120,21 @@
    "text": "Cu semnătura de pe situațiile financiare, exercițiul e încheiat. Nu se încheie însă și obligațiile: rămâne ce se întâmplă după ce totul a fost depus — dosarele, urmele, și limita dintre ce face un program și ce rămâne, întotdeauna, în sarcina unui om."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 48.1 — care concordanță pică",
+   "enunt": [
+    "Un set de situații financiare arată: total activ 360.000 = total pasiv 360.000; rezultatul din bilanț 90.000, iar contul de profit și pierdere se încheie cu 0; numerarul final din flux 10.000, egal cu soldul de trezorerie; variația din flux 5.000, iar suma celor trei activități 5.000.",
+    "Care dintre cele patru concordanțe pică, și ce s-a întâmplat?"
+   ],
+   "rezolvare": [
+    "Pică a doua: rezultatul din bilanț (90.000) nu se potrivește cu cel din contul de profit și pierdere (0).",
+    "Cauza e aproape întotdeauna aceeași: bilanțul s-a întocmit pe balanța de DUPĂ închiderea conturilor de rezultat, iar contul de profit și pierdere pe aceeași balanță — unde rulajele conturilor 6 și 7 sunt deja zero.",
+    "De ce celelalte trei trec: identitatea activ = pasiv rămâne validă după închidere; fluxul de trezorerie se construiește pe conturi de bani, neatinse de închidere.",
+    "Remediul: contul de profit și pierdere se întocmește pe balanța de DINAINTE de închidere. Sunt două balanțe distincte, iar confundarea lor produce un formular gol care trece de trei verificări din patru.",
+    "Observația de reținut: un set în care trei concordanțe din patru ies e un set GREȘIT. Nu există „aproape corect” la un bilanț."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

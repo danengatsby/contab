@@ -123,6 +123,20 @@
    "text": "Cu inventarierea, partea despre lucruri se încheie. Urmează partea despre oameni: statul de plată, cea mai reglementată operațiune lunară din toată contabilitatea."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 20.1 — plus și minus în același inventar",
+   "enunt": [
+    "La inventar se constată, la aceeași gestiune: plus de 12 bucăți produs A (cost 40 lei/buc) și minus de 15 bucăți produs B (cost 30 lei/buc).",
+    "(a) Se compensează? (b) Ce se înregistrează?"
+   ],
+   "rezolvare": [
+    "(a) Ca regulă, nu. Compensarea plusurilor cu minusurile e admisă doar între sortimente confundabile între ele, din aceeași grupă, în limita cantităților și cu justificare — nu ca metodă de a face să iasă totalul.",
+    "(b) Plusul: 12 × 40 = 480 lei, se înregistrează ca intrare în stoc, în contrapartidă cu un venit din exploatare.",
+    "Minusul: 15 × 30 = 450 lei, iese din stoc pe cheltuială. Dacă e imputabil, se pune în sarcina gestionarului, la valoarea de imputare, cu TVA colectată aferentă. Dacă e neimputabil, se ajustează TVA-ul dedus la achiziție.",
+    "Ce se pierde prin compensare: 480 − 450 = 30 de lei ar părea „aproape nimic”. Dar compensarea ascunde DOUĂ probleme reale — o intrare neînregistrată și o ieșire neînregistrată — iar în luna următoare amândouă se repetă, fiindcă nimeni nu a căutat cauza."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

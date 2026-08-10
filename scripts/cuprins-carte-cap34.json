@@ -180,6 +180,20 @@
    "text": "Urmează partea în care ea se întoarce către stat. Nu ca o obligație separată, ci ca un rezultat: declarațiile nu se completează, ci se compun din luna deja înregistrată. Iar prima dintre ele e cea mai frecventă și cea mai neînțeleasă — taxa pe valoarea adăugată."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 34.1 — pe cine suni primul",
+   "enunt": [
+    "Scadențarul clienților arată: Alfa 48.000 toți sub 30 de zile; Beta 65.000 din care 45.000 la 31–60 de zile; Gama 31.000 integral peste 90 de zile; Delta 12.000 la 31–60 de zile.",
+    "(a) Pe cine suni, în ce ordine? (b) Cui nu mai livrezi? (c) Ce înregistrare contabilă se apropie?"
+   ],
+   "rezolvare": [
+    "(a) Gama primul: 31.000 de lei peste 90 de zile e cea mai veche și una dintre cele mai mari sume. Apoi Beta, pentru cei 45.000 la 31–60 de zile. Delta, cu 12.000, e a treia. Alfa nu se sună: nu e restant.",
+    "(b) Gama nu mai primește comandă nouă fără o discuție și, probabil, fără plată în avans. Beta merită o limită de credit — nu un refuz, ci un plafon.",
+    "(c) Pentru Gama se apropie reclasificarea la clienți incerți și, dacă situația nu se schimbă, constituirea unei ajustări pentru depreciere. La peste 270 de zile s-ar îndeplini și condiția de deducere parțială.",
+    "Ce arată exercițiul: din 156.000 de lei de creanțe, întreaga atenție se duce către trei nume, iar decizia comercială și cea contabilă se iau din ACEEAȘI cifră. Un sold de 156.000 pe contul 4111 nu ar fi spus niciuna dintre aceste trei lucruri."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

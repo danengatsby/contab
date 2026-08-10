@@ -3,56 +3,157 @@
  "nr": "13",
  "titlu": "Controalele de la ușă",
  "blocuri": [
-  { "tip": "p", "text": "Un document poate fi introdus de un om, care îl are în față, sau citit automat dintr-un fișier — o factură scanată, un PDF primit pe e-mail. În al doilea caz apare o întrebare nouă: cât de mult te poți încrede în ce a citit mașina?" },
-  { "tip": "p", "text": "Răspunsul serios nu e „mult” sau „puțin”, ci o listă de verificări făcute înainte ca documentul să fie lăsat să treacă. Capitolul acesta arată ce se verifică, de ce fiecare control există și — partea cea mai importantă — cum se combină rezultatele lor." },
-
-  { "tip": "h", "text": "Cele nouă controale" },
-  { "tip": "tabel",
-    "titlu": "Ce se verifică înainte de intrare",
-    "cap": ["Controlul", "Întrebarea la care răspunde"],
-    "randuri": [
-      ["Sursa extragerii", "de unde vine informația: dintr-un fișier structurat sau dintr-o poză?"],
-      ["Încrederea raportată", "cât de sigură se declară citirea automată pe câmpurile-cheie?"],
-      ["Aritmetica", "baza plus TVA dau totalul de pe document?"],
-      ["Cota de TVA", "cota folosită există în legislația de la data documentului?"],
-      ["Data", "e utilizabilă — și cade într-o perioadă încă deschisă?"],
-      ["Numărul de document", "există și e citit corect?"],
-      ["Partenerul", "e cunoscut, cu date verificate?"],
-      ["Tipul de document", "s-a putut determina ce fel de operațiune e?"],
-      ["Duplicatul", "documentul acesta nu e cumva deja înregistrat?"]
+  {
+   "tip": "p",
+   "text": "Un document poate fi introdus de un om, care îl are în față, sau citit automat dintr-un fișier — o factură scanată, un PDF primit pe e-mail. În al doilea caz apare o întrebare nouă: cât de mult te poți încrede în ce a citit mașina?"
+  },
+  {
+   "tip": "p",
+   "text": "Răspunsul serios nu e „mult” sau „puțin”, ci o listă de verificări făcute înainte ca documentul să fie lăsat să treacă. Capitolul acesta arată ce se verifică, de ce fiecare control există și — partea cea mai importantă — cum se combină rezultatele lor."
+  },
+  {
+   "tip": "h",
+   "text": "Cele nouă controale"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce se verifică înainte de intrare",
+   "cap": [
+    "Controlul",
+    "Întrebarea la care răspunde"
+   ],
+   "randuri": [
+    [
+     "Sursa extragerii",
+     "de unde vine informația: dintr-un fișier structurat sau dintr-o poză?"
     ],
-    "nota": "Toate nouă sunt blocante: oricare dintre ele nereușit oprește postarea automată." },
-  { "tip": "p", "text": "Merită observat că doar două dintre ele privesc calitatea citirii. Restul de șapte verifică lucruri pe care le-ar verifica și un om atent: că cifrele se închid, că data e bună, că nu ai deja aceeași factură. Automatizarea nu inventează controale noi — le face pe cele cunoscute de fiecare dată, fără să obosească." },
-
-  { "tip": "h", "text": "De ce toate, nu media lor" },
-  { "tip": "p", "text": "Aici stă decizia de proiectare cea mai importantă a capitolului, și e una pe care merită să o ceară orice contabil de la programul cu care lucrează." },
-  { "tip": "p", "text": "Tentația firească e să se calculeze un scor: opt controale trecute din nouă înseamnă 89%, adică „aproape sigur bun”. Tentația e greșită. Dacă singurul control picat e cel de duplicat, documentul nu e „89% bun” — e o factură înregistrată a doua oară, iar restul de opt reușite nu schimbă nimic." },
-  { "tip": "p", "text": "De aceea decizia de a posta automat e o conjuncție, nu o medie: se postează singur doar dacă trec toate. Scorul există, dar servește la raportare — arată cât de bine merge citirea automată în ansamblu — și nu decide nimic despre un document anume." },
-  { "tip": "cheie", "text": "Un scor mare ascunde exact controlul care contează. Verificările blocante nu se mediază, se conjugă." },
-
-  { "tip": "h", "text": "Pragul de încredere" },
-  { "tip": "p", "text": "Controlul care privește siguranța citirii are un prag numeric: sub el, documentul nu trece singur, oricât de bine ar arăta restul. Pragul e ridicat deliberat, mai sus decât cel la care sistemul doar avertizează un om, fiindcă a lăsa un document să intre fără nicio privire omenească cere mai multă siguranță decât a-l semnala." },
-  { "tip": "p", "text": "Un detaliu care pare tehnic și e o capcană reală: pragul nu e o proprietate a lumii, ci a modelului care citește. Un model nou poate raporta sistematic o încredere mai mică la aceeași acuratețe — caz în care un prag lăsat neschimbat oprește documente perfect bune. Praguri de felul acesta trebuie recalibrate ori de câte ori se schimbă motorul din spate, nu moștenite." },
-
-  { "tip": "h", "text": "Ce se întâmplă când un control pică" },
-  { "tip": "p", "text": "Nimic dramatic: documentul rămâne la om, cu motivul scris. Nu e refuzat, nu e șters — e doar oprit înainte de a produce efecte, exact ca un document adus de cineva care nu are drept de aprobare." },
-  { "tip": "p", "text": "Iar când omul intervine și corectează ce a citit greșit mașina, diferența dintre cele două se consemnează singură. Nu fiindcă cineva ar fi supravegheat, ci fiindcă informația e utilă: locurile unde omul corectează des sunt exact locurile unde citirea automată trebuie îmbunătățită. O intervenție care ar trebui cerută din interfață s-ar uita; una care se scrie singură, nu." },
-
-  { "tip": "contabil", "titlu": "Pentru contabil",
-    "text": "Postarea automată e, în esență, o delegare de încadrare către un sistem, iar delegarea trebuie să rămână reversibilă și documentată. De aceea implicit ea e oprită, se activează per firmă, în cunoștință de cauză, și nu privește niciodată realitatea economică a operațiunii — controalele verifică formă, coerență și unicitate, nu dacă livrarea a avut loc; distincția din capitolul 4 rămâne intactă. Două verificări merită atenție specială. Controlul datei nu se rezumă la formatul valid: o dată care cade într-o perioadă închisă trebuie să blocheze, nu să reclasifice documentul în luna curentă — altfel apar tăcut decalaje între jurnalul de TVA și decontul depus. Controlul de duplicat trebuie să normalizeze agresiv numărul documentului înainte de comparație, fiindcă aceeași factură vine, în practică, scrisă „F 900”, „F-900” și „F900”; un duplicat nedetectat dublează atât cheltuiala, cât și TVA-ul dedus, iar corecția ulterioară cere storno într-o perioadă în care decontul e deja depus." },
-
-  { "tip": "h", "text": "Ce nu poate verifica niciun control" },
-  { "tip": "p", "text": "Lista de mai sus e completă pentru ce se poate verifica din document. Nu conține, și nu poate conține, singurul lucru care contează cu adevărat: dacă operațiunea a existat." },
-  { "tip": "p", "text": "O factură perfect întocmită, cu aritmetica închisă, cota corectă, partenerul cunoscut și fără duplicat, poate să nu corespundă niciunei livrări. Toate cele nouă controale o lasă să treacă, și au dreptate să o facă: nimic din ce se poate citi pe hârtie nu spune altceva." },
-  { "tip": "p", "text": "De aceea controalele automate mută pragul, nu îl elimină. Ele fac ca omul să nu-și mai piardă atenția pe aritmetică și pe duplicate, ca să o poată păstra pentru întrebarea la care numai el poate răspunde. Cu asta se încheie partea despre documentele primite; capitolul următor trece la cele pe care le emiți tu." },
-
-  { "tip": "recap", "titlu": "De reținut din acest capitol",
-    "puncte": [
-      "Nouă controale stau între un document citit automat și contabilitate; doar două privesc calitatea citirii, restul verifică ce ar verifica și un om atent.",
-      "Decizia de postare automată e o conjuncție, nu o medie: un scor de 89% ascunde exact controlul care a picat.",
-      "Pragul de încredere e o proprietate a modelului care citește, nu a lumii — se recalibrează când se schimbă motorul.",
-      "Un control picat oprește documentul la om, cu motivul scris; nimic nu se pierde.",
-      "Niciun control nu poate verifica dacă operațiunea a existat cu adevărat. Automatizarea eliberează atenția omului, nu i-o înlocuiește."
-    ] }
+    [
+     "Încrederea raportată",
+     "cât de sigură se declară citirea automată pe câmpurile-cheie?"
+    ],
+    [
+     "Aritmetica",
+     "baza plus TVA dau totalul de pe document?"
+    ],
+    [
+     "Cota de TVA",
+     "cota folosită există în legislația de la data documentului?"
+    ],
+    [
+     "Data",
+     "e utilizabilă — și cade într-o perioadă încă deschisă?"
+    ],
+    [
+     "Numărul de document",
+     "există și e citit corect?"
+    ],
+    [
+     "Partenerul",
+     "e cunoscut, cu date verificate?"
+    ],
+    [
+     "Tipul de document",
+     "s-a putut determina ce fel de operațiune e?"
+    ],
+    [
+     "Duplicatul",
+     "documentul acesta nu e cumva deja înregistrat?"
+    ]
+   ],
+   "nota": "Toate nouă sunt blocante: oricare dintre ele nereușit oprește postarea automată."
+  },
+  {
+   "tip": "p",
+   "text": "Merită observat că doar două dintre ele privesc calitatea citirii. Restul de șapte verifică lucruri pe care le-ar verifica și un om atent: că cifrele se închid, că data e bună, că nu ai deja aceeași factură. Automatizarea nu inventează controale noi — le face pe cele cunoscute de fiecare dată, fără să obosească."
+  },
+  {
+   "tip": "h",
+   "text": "De ce toate, nu media lor"
+  },
+  {
+   "tip": "p",
+   "text": "Aici stă decizia de proiectare cea mai importantă a capitolului, și e una pe care merită să o ceară orice contabil de la programul cu care lucrează."
+  },
+  {
+   "tip": "p",
+   "text": "Tentația firească e să se calculeze un scor: opt controale trecute din nouă înseamnă 89%, adică „aproape sigur bun”. Tentația e greșită. Dacă singurul control picat e cel de duplicat, documentul nu e „89% bun” — e o factură înregistrată a doua oară, iar restul de opt reușite nu schimbă nimic."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea decizia de a posta automat e o conjuncție, nu o medie: se postează singur doar dacă trec toate. Scorul există, dar servește la raportare — arată cât de bine merge citirea automată în ansamblu — și nu decide nimic despre un document anume."
+  },
+  {
+   "tip": "cheie",
+   "text": "Un scor mare ascunde exact controlul care contează. Verificările blocante nu se mediază, se conjugă."
+  },
+  {
+   "tip": "h",
+   "text": "Pragul de încredere"
+  },
+  {
+   "tip": "p",
+   "text": "Controlul care privește siguranța citirii are un prag numeric: sub el, documentul nu trece singur, oricât de bine ar arăta restul. Pragul e ridicat deliberat, mai sus decât cel la care sistemul doar avertizează un om, fiindcă a lăsa un document să intre fără nicio privire omenească cere mai multă siguranță decât a-l semnala."
+  },
+  {
+   "tip": "p",
+   "text": "Un detaliu care pare tehnic și e o capcană reală: pragul nu e o proprietate a lumii, ci a modelului care citește. Un model nou poate raporta sistematic o încredere mai mică la aceeași acuratețe — caz în care un prag lăsat neschimbat oprește documente perfect bune. Praguri de felul acesta trebuie recalibrate ori de câte ori se schimbă motorul din spate, nu moștenite."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se întâmplă când un control pică"
+  },
+  {
+   "tip": "p",
+   "text": "Nimic dramatic: documentul rămâne la om, cu motivul scris. Nu e refuzat, nu e șters — e doar oprit înainte de a produce efecte, exact ca un document adus de cineva care nu are drept de aprobare."
+  },
+  {
+   "tip": "p",
+   "text": "Iar când omul intervine și corectează ce a citit greșit mașina, diferența dintre cele două se consemnează singură. Nu fiindcă cineva ar fi supravegheat, ci fiindcă informația e utilă: locurile unde omul corectează des sunt exact locurile unde citirea automată trebuie îmbunătățită. O intervenție care ar trebui cerută din interfață s-ar uita; una care se scrie singură, nu."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Postarea automată e, în esență, o delegare de încadrare către un sistem, iar delegarea trebuie să rămână reversibilă și documentată. De aceea implicit ea e oprită, se activează per firmă, în cunoștință de cauză, și nu privește niciodată realitatea economică a operațiunii — controalele verifică formă, coerență și unicitate, nu dacă livrarea a avut loc; distincția din capitolul 4 rămâne intactă. Două verificări merită atenție specială. Controlul datei nu se rezumă la formatul valid: o dată care cade într-o perioadă închisă trebuie să blocheze, nu să reclasifice documentul în luna curentă — altfel apar tăcut decalaje între jurnalul de TVA și decontul depus. Controlul de duplicat trebuie să normalizeze agresiv numărul documentului înainte de comparație, fiindcă aceeași factură vine, în practică, scrisă „F 900”, „F-900” și „F900”; un duplicat nedetectat dublează atât cheltuiala, cât și TVA-ul dedus, iar corecția ulterioară cere storno într-o perioadă în care decontul e deja depus."
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu poate verifica niciun control"
+  },
+  {
+   "tip": "p",
+   "text": "Lista de mai sus e completă pentru ce se poate verifica din document. Nu conține, și nu poate conține, singurul lucru care contează cu adevărat: dacă operațiunea a existat."
+  },
+  {
+   "tip": "p",
+   "text": "O factură perfect întocmită, cu aritmetica închisă, cota corectă, partenerul cunoscut și fără duplicat, poate să nu corespundă niciunei livrări. Toate cele nouă controale o lasă să treacă, și au dreptate să o facă: nimic din ce se poate citi pe hârtie nu spune altceva."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea controalele automate mută pragul, nu îl elimină. Ele fac ca omul să nu-și mai piardă atenția pe aritmetică și pe duplicate, ca să o poată păstra pentru întrebarea la care numai el poate răspunde. Cu asta se încheie partea despre documentele primite; capitolul următor trece la cele pe care le emiți tu."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 13.1 — controalele nu se adună, se înmulțesc",
+   "enunt": [
+    "Un document citit automat trece opt din nouă controale. Cel picat e controlul de duplicat: aceeași factură pare să mai fi fost înregistrată acum două săptămâni.",
+    "Scorul afișat e 89%. Se postează automat?"
+   ],
+   "rezolvare": [
+    "Nu. Un scor de 89% sugerează „aproape bun”, dar decizia nu e o medie, ci o CONJUNCȚIE: toate controalele blocante trebuie să treacă.",
+    "Aici, controlul picat e chiar cel care contează: dacă factura e într-adevăr duplicat, postarea produce o cheltuială dublă, o TVA dedusă de două ori și o datorie inexistentă față de furnizor. Celelalte opt controale trecute nu compensează nimic — ele confirmă că documentul e coerent în sine, nu că nu a mai fost înregistrat.",
+    "Regula generală: un scor mediu ascunde exact controlul care a picat. De aceea raportul trebuie să afișeze CARE control a picat, nu doar cât la sută au trecut."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Nouă controale stau între un document citit automat și contabilitate; doar două privesc calitatea citirii, restul verifică ce ar verifica și un om atent.",
+    "Decizia de postare automată e o conjuncție, nu o medie: un scor de 89% ascunde exact controlul care a picat.",
+    "Pragul de încredere e o proprietate a modelului care citește, nu a lumii — se recalibrează când se schimbă motorul.",
+    "Un control picat oprește documentul la om, cu motivul scris; nimic nu se pierde.",
+    "Niciun control nu poate verifica dacă operațiunea a existat cu adevărat. Automatizarea eliberează atenția omului, nu i-o înlocuiește."
+   ]
+  }
  ]
 }

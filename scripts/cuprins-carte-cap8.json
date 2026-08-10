@@ -3,66 +3,225 @@
  "nr": "8",
  "titlu": "Egalitatea care trebuie să țină din prima zi",
  "blocuri": [
-  { "tip": "p", "text": "Capitolul trecut a spus că o balanță de deschidere trebuie să se închidă și că, dacă nu se închide, diferența nu mai dispare niciodată. Capitolul acesta răspunde la întrebarea care urmează firesc: de ce trebuie, de fapt, să se închidă? Și, mai practic, ce faci când nu se închide." },
-  { "tip": "p", "text": "Merită lămurit acum, la începutul ciclului, fiindcă e ultima ocazie în care egalitatea se poate privi în liniște. De aici încolo ea va fi presupusă la fiecare pas." },
-
-  { "tip": "h", "text": "Nu e o regulă impusă, e o definiție" },
-  { "tip": "p", "text": "Egalitatea din contabilitate nu e o cerință pe care legiuitorul a adăugat-o ca să facă viața grea. E consecința felului în care e definit unul dintre termeni." },
-  { "tip": "p", "text": "Ce are firma se numește activ. Ce datorează altora se numesc datorii. Iar diferența dintre ele — ce ar rămâne dacă s-ar plăti toți creditorii — se numește capitaluri proprii. Nu e o sumă pusă deoparte undeva, ci un rest: exact ce prisosește după ce fiecare și-ar lua ce i se cuvine." },
-  { "tip": "cheie", "text": "Activ = Datorii + Capitaluri proprii. Egalitatea ține fiindcă ultimul termen e definit ca diferența primilor doi." },
-  { "tip": "p", "text": "Pe firma din capitolele trecute: are 75.000 de lei (bani și creanțe), datorează 5.000 furnizorului, deci capitalurile proprii sunt 70.000 — cei 30.000 puși de patron plus cei 40.000 câștigați. Nu se putea altfel: dacă mâine ar încasa tot și ar plăti tot, în firmă ar rămâne fix 70.000." },
-  { "tip": "p", "text": "De aceea o balanță care nu se închide nu semnalează o „nepotrivire de calcul”. Semnalează că undeva s-a scris ceva ce nu poate fi adevărat despre lume: fie firma are un bun care nu vine de nicăieri, fie datorează cuiva ceva ce n-a primit." },
-
-  { "tip": "h", "text": "Aceeași egalitate, văzută de două ori" },
-  { "tip": "p", "text": "Un începător are impresia că sunt două verificări diferite: una la bilanț, unde activul trebuie să dea cât pasivul, și alta la balanță, unde totalul debitor trebuie să dea cât cel creditor. Sunt aceeași egalitate, privită din două locuri." },
-  { "tip": "p", "text": "Bilanțul o arată pe solduri, la o dată. Balanța o arată pe mișcări, pe o perioadă. Prima decurge din a doua: dacă fiecare operațiune a adăugat sume egale în ambele coloane — capitolul 2 — atunci și soldurile rezultate vor fi egale pe total." },
-
-  { "tip": "h", "text": "Cele patru egalități ale balanței" },
-  { "tip": "p", "text": "Balanța de verificare românească nu confruntă o singură pereche de totaluri, ci patru. Nu e redundanță: fiecare pereche prinde altceva, iar locul în care se rupe prima egalitate spune unde să cauți." },
-  { "tip": "tabel",
-    "titlu": "Ce verifică fiecare pereche",
-    "cap": ["Egalitatea", "Se rupe când"],
-    "randuri": [
-      ["Solduri inițiale debitoare = creditoare", "preluarea a fost dezechilibrată — problema vine dinainte de perioadă"],
-      ["Rulaje debitoare = creditoare", "o operațiune din perioadă s-a scris pe un singur capăt"],
-      ["Total sume debitoare = creditoare", "confirmă primele două împreună — dacă ele țin, ține și ea"],
-      ["Solduri finale debitoare = creditoare", "consecința celor de mai sus; nu se rupe singură"]
+  {
+   "tip": "p",
+   "text": "Capitolul trecut a spus că o balanță de deschidere trebuie să se închidă și că, dacă nu se închide, diferența nu mai dispare niciodată. Capitolul acesta răspunde la întrebarea care urmează firesc: de ce trebuie, de fapt, să se închidă? Și, mai practic, ce faci când nu se închide."
+  },
+  {
+   "tip": "p",
+   "text": "Merită lămurit acum, la începutul ciclului, fiindcă e ultima ocazie în care egalitatea se poate privi în liniște. De aici încolo ea va fi presupusă la fiecare pas."
+  },
+  {
+   "tip": "h",
+   "text": "Nu e o regulă impusă, e o definiție"
+  },
+  {
+   "tip": "p",
+   "text": "Egalitatea din contabilitate nu e o cerință pe care legiuitorul a adăugat-o ca să facă viața grea. E consecința felului în care e definit unul dintre termeni."
+  },
+  {
+   "tip": "p",
+   "text": "Ce are firma se numește activ. Ce datorează altora se numesc datorii. Iar diferența dintre ele — ce ar rămâne dacă s-ar plăti toți creditorii — se numește capitaluri proprii. Nu e o sumă pusă deoparte undeva, ci un rest: exact ce prisosește după ce fiecare și-ar lua ce i se cuvine."
+  },
+  {
+   "tip": "cheie",
+   "text": "Activ = Datorii + Capitaluri proprii. Egalitatea ține fiindcă ultimul termen e definit ca diferența primilor doi."
+  },
+  {
+   "tip": "p",
+   "text": "Pe firma din capitolele trecute: are 75.000 de lei (bani și creanțe), datorează 5.000 furnizorului, deci capitalurile proprii sunt 70.000 — cei 30.000 puși de patron plus cei 40.000 câștigați. Nu se putea altfel: dacă mâine ar încasa tot și ar plăti tot, în firmă ar rămâne fix 70.000."
+  },
+  {
+   "tip": "p",
+   "text": "De aceea o balanță care nu se închide nu semnalează o „nepotrivire de calcul”. Semnalează că undeva s-a scris ceva ce nu poate fi adevărat despre lume: fie firma are un bun care nu vine de nicăieri, fie datorează cuiva ceva ce n-a primit."
+  },
+  {
+   "tip": "h",
+   "text": "Aceeași egalitate, văzută de două ori"
+  },
+  {
+   "tip": "p",
+   "text": "Un începător are impresia că sunt două verificări diferite: una la bilanț, unde activul trebuie să dea cât pasivul, și alta la balanță, unde totalul debitor trebuie să dea cât cel creditor. Sunt aceeași egalitate, privită din două locuri."
+  },
+  {
+   "tip": "p",
+   "text": "Bilanțul o arată pe solduri, la o dată. Balanța o arată pe mișcări, pe o perioadă. Prima decurge din a doua: dacă fiecare operațiune a adăugat sume egale în ambele coloane — capitolul 2 — atunci și soldurile rezultate vor fi egale pe total."
+  },
+  {
+   "tip": "h",
+   "text": "Cele patru egalități ale balanței"
+  },
+  {
+   "tip": "p",
+   "text": "Balanța de verificare românească nu confruntă o singură pereche de totaluri, ci patru. Nu e redundanță: fiecare pereche prinde altceva, iar locul în care se rupe prima egalitate spune unde să cauți."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce verifică fiecare pereche",
+   "cap": [
+    "Egalitatea",
+    "Se rupe când"
+   ],
+   "randuri": [
+    [
+     "Solduri inițiale debitoare = creditoare",
+     "preluarea a fost dezechilibrată — problema vine dinainte de perioadă"
     ],
-    "nota": "Prima egalitate separă net cele două lumi: dacă ea nu ține, greșeala nu e din luna aceasta." },
-  { "tip": "p", "text": "Utilitatea practică e exact aceasta: înainte de a căuta în trei sute de operațiuni ale lunii, te uiți la prima pereche. Dacă soldurile inițiale nu se închid, luna curentă e nevinovată." },
-
-  { "tip": "h", "text": "Când nu se închide: cum se caută" },
-  { "tip": "p", "text": "Aici intervine un meșteșug vechi, dinaintea calculatoarelor, și încă valabil. Mărimea diferenței spune, de multe ori, ce fel de greșeală s-a făcut — și scurtează căutarea de la ore la minute." },
-  { "tip": "tabel",
-    "titlu": "Ce spune diferența despre greșeală",
-    "cap": ["Dacă diferența…", "Caută…"],
-    "randuri": [
-      ["se împarte exact la 9", "două cifre inversate: 54 scris 45, 1.200 scris 2.100"],
-      ["e exact dublul unei sume cunoscute", "o sumă trecută pe partea greșită — o dai la doi și cauți acel număr"],
-      ["e egală cu o sumă rotundă din documente", "o operațiune scrisă pe un singur capăt"],
-      ["e mică și ciudată (câțiva bani)", "o rotunjire dintr-un calcul, nu o înregistrare lipsă"]
+    [
+     "Rulaje debitoare = creditoare",
+     "o operațiune din perioadă s-a scris pe un singur capăt"
     ],
-    "nota": "Prima regulă are o explicație aritmetică simplă: inversarea a două cifre alăturate schimbă numărul cu un multiplu de nouă, întotdeauna." },
-  { "tip": "p", "text": "Regula sumei duble merită înțeleasă, fiindcă e cea mai des folosită. Dacă o sumă de 1.210 lei a fost trecută pe credit în loc de debit, coloana debitoare pierde 1.210 și cea creditoare câștigă 1.210: diferența nu e 1.210, ci 2.420. Deci, când vezi un dezechilibru, împarte-l la doi și caută acel număr în operațiunile perioadei — de cele mai multe ori îl găsești din prima." },
-
-  { "tip": "h", "text": "Ce nu dovedește egalitatea" },
-  { "tip": "p", "text": "Capitolul 2 a spus-o deja, dar aici trebuie repetat, fiindcă tocmai am petrecut o pagină lăudând egalitatea: faptul că balanța se închide nu înseamnă că cifrele sunt corecte. Înseamnă doar că sunt simetrice." },
-  { "tip": "p", "text": "O sumă greșită în ambele capete, o operațiune înregistrată în contul nepotrivit, un document uitat cu totul — niciuna dintre acestea nu clintește egalitatea. Balanța e un detector de asimetrie, nu de adevăr, iar capitolul 33 arată ce trebuie verificat în plus." },
-
-  { "tip": "contabil", "titlu": "Pentru contabil",
-    "text": "Cele patru egalități nu sunt controale independente, ci o singură proprietate manifestată în patru locuri: dacă dubla înregistrare a fost respectată, toate patru țin, iar dacă a fost încălcată o singură dată, se rup împreună cele care conțin perioada respectivă. De aici o consecință de diagnostic pe care merită să te sprijini: ruperea exclusiv a primei perechi indică o problemă în soldurile preluate sau în reportare, nu în operațiunile curente — caz în care corecția se face pe rezultatul reportat, cu respectarea intangibilității bilanțului de deschidere. Un al doilea instrument, mai fin decât egalitatea globală, e verificarea corelației analitic-sintetic pe conturile de terți și de stocuri: ea prinde exact clasa de erori la care egalitatea e oarbă, fiindcă o sumă înregistrată pe partenerul greșit lasă totalurile intacte. În fine, atenție la conturile bifuncționale la întocmirea balanței: 121 și 1171 pot avea sold în oricare parte, iar prezentarea lor forțată pe o singură coloană — practică întâlnită la unele preluări — produce un dezechilibru artificial, care nu are nicio cauză în înregistrări." },
-
-  { "tip": "h", "text": "Ce urmează" },
-  { "tip": "p", "text": "Faza întâi s-a încheiat. Firma știe cine e, ce regim fiscal are, de la ce cifre pornește, iar cifrele acelea se închid. Nimic din ce urmează nu mai cere reveniri la aceste pagini decât dacă se schimbă ceva real în firmă." },
-  { "tip": "p", "text": "De aici începe munca de zi cu zi, iar prima ei regulă e și cea mai strictă din toată cartea: în contabilitate nu intră nimic fără un document. E faza a doua, și partea următoare." },
-
-  { "tip": "recap", "titlu": "De reținut din acest capitol",
-    "puncte": [
-      "Activ = Datorii + Capitaluri proprii. Egalitatea ține fiindcă al treilea termen e definit ca diferența primilor doi — e o definiție, nu o regulă impusă.",
-      "Egalitatea din bilanț și cea din balanță sunt aceeași, privită pe solduri, respectiv pe mișcări.",
-      "Balanța are patru egalități; ruperea primei arată că problema vine dinaintea perioadei curente.",
-      "Diferența îți spune ce să cauți: divizibilă cu 9 — cifre inversate; dublul unei sume — parte greșită; sumă rotundă — un capăt lipsă.",
-      "Egalitatea e un detector de asimetrie, nu de adevăr."
-    ] }
+    [
+     "Total sume debitoare = creditoare",
+     "confirmă primele două împreună — dacă ele țin, ține și ea"
+    ],
+    [
+     "Solduri finale debitoare = creditoare",
+     "consecința celor de mai sus; nu se rupe singură"
+    ]
+   ],
+   "nota": "Prima egalitate separă net cele două lumi: dacă ea nu ține, greșeala nu e din luna aceasta."
+  },
+  {
+   "tip": "p",
+   "text": "Utilitatea practică e exact aceasta: înainte de a căuta în trei sute de operațiuni ale lunii, te uiți la prima pereche. Dacă soldurile inițiale nu se închid, luna curentă e nevinovată."
+  },
+  {
+   "tip": "h",
+   "text": "Când nu se închide: cum se caută"
+  },
+  {
+   "tip": "p",
+   "text": "Aici intervine un meșteșug vechi, dinaintea calculatoarelor, și încă valabil. Mărimea diferenței spune, de multe ori, ce fel de greșeală s-a făcut — și scurtează căutarea de la ore la minute."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce spune diferența despre greșeală",
+   "cap": [
+    "Dacă diferența…",
+    "Caută…"
+   ],
+   "randuri": [
+    [
+     "se împarte exact la 9",
+     "două cifre inversate: 54 scris 45, 1.200 scris 2.100"
+    ],
+    [
+     "e exact dublul unei sume cunoscute",
+     "o sumă trecută pe partea greșită — o dai la doi și cauți acel număr"
+    ],
+    [
+     "e egală cu o sumă rotundă din documente",
+     "o operațiune scrisă pe un singur capăt"
+    ],
+    [
+     "e mică și ciudată (câțiva bani)",
+     "o rotunjire dintr-un calcul, nu o înregistrare lipsă"
+    ]
+   ],
+   "nota": "Prima regulă are o explicație aritmetică simplă: inversarea a două cifre alăturate schimbă numărul cu un multiplu de nouă, întotdeauna."
+  },
+  {
+   "tip": "p",
+   "text": "Regula sumei duble merită înțeleasă, fiindcă e cea mai des folosită. Dacă o sumă de 1.210 lei a fost trecută pe credit în loc de debit, coloana debitoare pierde 1.210 și cea creditoare câștigă 1.210: diferența nu e 1.210, ci 2.420. Deci, când vezi un dezechilibru, împarte-l la doi și caută acel număr în operațiunile perioadei — de cele mai multe ori îl găsești din prima."
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu dovedește egalitatea"
+  },
+  {
+   "tip": "p",
+   "text": "Capitolul 2 a spus-o deja, dar aici trebuie repetat, fiindcă tocmai am petrecut o pagină lăudând egalitatea: faptul că balanța se închide nu înseamnă că cifrele sunt corecte. Înseamnă doar că sunt simetrice."
+  },
+  {
+   "tip": "p",
+   "text": "O sumă greșită în ambele capete, o operațiune înregistrată în contul nepotrivit, un document uitat cu totul — niciuna dintre acestea nu clintește egalitatea. Balanța e un detector de asimetrie, nu de adevăr, iar capitolul 33 arată ce trebuie verificat în plus."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Cele patru egalități nu sunt controale independente, ci o singură proprietate manifestată în patru locuri: dacă dubla înregistrare a fost respectată, toate patru țin, iar dacă a fost încălcată o singură dată, se rup împreună cele care conțin perioada respectivă. De aici o consecință de diagnostic pe care merită să te sprijini: ruperea exclusiv a primei perechi indică o problemă în soldurile preluate sau în reportare, nu în operațiunile curente — caz în care corecția se face pe rezultatul reportat, cu respectarea intangibilității bilanțului de deschidere. Un al doilea instrument, mai fin decât egalitatea globală, e verificarea corelației analitic-sintetic pe conturile de terți și de stocuri: ea prinde exact clasa de erori la care egalitatea e oarbă, fiindcă o sumă înregistrată pe partenerul greșit lasă totalurile intacte. În fine, atenție la conturile bifuncționale la întocmirea balanței: 121 și 1171 pot avea sold în oricare parte, iar prezentarea lor forțată pe o singură coloană — practică întâlnită la unele preluări — produce un dezechilibru artificial, care nu are nicio cauză în înregistrări."
+  },
+  {
+   "tip": "h",
+   "text": "Ce urmează"
+  },
+  {
+   "tip": "p",
+   "text": "Faza întâi s-a încheiat. Firma știe cine e, ce regim fiscal are, de la ce cifre pornește, iar cifrele acelea se închid. Nimic din ce urmează nu mai cere reveniri la aceste pagini decât dacă se schimbă ceva real în firmă."
+  },
+  {
+   "tip": "p",
+   "text": "De aici începe munca de zi cu zi, iar prima ei regulă e și cea mai strictă din toată cartea: în contabilitate nu intră nimic fără un document. E faza a doua, și partea următoare."
+  },
+  {
+   "tip": "h",
+   "text": "Ce înseamnă „nu se închide” în ziua întâi"
+  },
+  {
+   "tip": "p",
+   "text": "Egalitatea trebuie să țină din prima zi, iar cauzele pentru care nu ține la deschidere sunt puține și identificabile. Merită enumerate, fiindcă fiecare are un remediu diferit."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "De ce nu se închide o deschidere",
+   "cap": [
+    "Cauza",
+    "Cum se recunoaște",
+    "Remediul"
+   ],
+   "randuri": [
+    [
+     "Un sold preluat pe partea greșită",
+     "diferența e dublul soldului respectiv",
+     "se caută suma egală cu jumătatea diferenței"
+    ],
+    [
+     "Cifre inversate la tastare",
+     "diferența se împarte exact la 9",
+     "se compară cu documentul, cifră cu cifră"
+    ],
+    [
+     "Un cont uitat complet",
+     "diferența e chiar soldul lui",
+     "se compară lista de conturi cu balanța predată"
+    ],
+    [
+     "Rotunjiri acumulate",
+     "diferența e de ordinul banilor",
+     "se corectează pe contul cu cea mai mare valoare"
+    ]
+   ],
+   "nota": "Primele două reguli sunt vechi de un secol și scurtează căutarea de la ore la minute. Nu sunt superstiții: decurg din aritmetica zecimală."
+  },
+  {
+   "tip": "p",
+   "text": "Regula diferenței divizibile cu nouă merită înțeleasă, nu memorată. Dacă inversezi două cifre alăturate — scrii 5.480 în loc de 4.580 — diferența e 900, adică 9 × 100. Orice inversare produce un multiplu de nouă, indiferent de mărimea numărului. Deci o diferență de 6.300 la o balanță care nu se închide e, aproape sigur, o pereche de cifre schimbate între ele."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 8.1 — găsește eroarea din diferență",
+   "enunt": [
+    "O balanță de deschidere nu se închide: totalul debitor e 184.500, cel creditor 189.000.",
+    "(a) Cât e diferența și ce îți spune? (b) Ce cauți mai întâi?"
+   ],
+   "rezolvare": [
+    "(a) Diferența e 4.500. Se împarte exact la 9 (4.500 ÷ 9 = 500), deci e foarte probabil o inversare de cifre.",
+    "(b) Se caută un sold în care o pereche de cifre alăturate ar produce o diferență de 4.500. De exemplu 9.000 scris ca 4.500 dă 4.500; sau 27.500 scris ca 23.000. Cel mai eficient e să compari sumele cu documentul sursă începând cu cele mai mari.",
+    "Dacă diferența ar fi fost, în schimb, 4.500 și ar fi existat în balanță un cont cu soldul exact 2.250, prima ipoteză ar fi fost alta: un sold trecut pe partea greșită — fiindcă mutarea unei sume de pe o parte pe alta schimbă totalul cu dublul ei.",
+    "Metoda, în trei pași, valabilă la orice balanță: împarte diferența la 9; dacă iese exact, caută inversări. Împarte-o la 2; dacă rezultatul e un sold existent, ai găsit partea greșită. Dacă niciuna, caută un cont lipsă."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Activ = Datorii + Capitaluri proprii. Egalitatea ține fiindcă al treilea termen e definit ca diferența primilor doi — e o definiție, nu o regulă impusă.",
+    "Egalitatea din bilanț și cea din balanță sunt aceeași, privită pe solduri, respectiv pe mișcări.",
+    "Balanța are patru egalități; ruperea primei arată că problema vine dinaintea perioadei curente.",
+    "Diferența îți spune ce să cauți: divizibilă cu 9 — cifre inversate; dublul unei sume — parte greșită; sumă rotundă — un capăt lipsă.",
+    "Egalitatea e un detector de asimetrie, nu de adevăr."
+   ]
+  }
  ]
 }
