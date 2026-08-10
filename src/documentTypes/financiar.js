@@ -57,6 +57,83 @@ module.exports = [
     build: (d) => [L('151', '7812', d.suma, d.explicatie || 'Reluare provizion devenit fara obiect')],
   },
 
+  // ───────────────────── AJUSTARI PENTRU CREANTE INCERTE (491) ─────────────────────
+  // Lipseau complet, desi TOATE piesele existau: conturile 491, 6814, 7814, 654 si 754 sunt in
+  // planul de conturi, `bilant.js` mapeaza 491 pe randurile 031 si 301, iar `client_incert`
+  // (4118 = 4111) exista din iulie. Deci se putea RECLASIFICA o creanta ca incerta, dar nu se
+  // putea constitui ajustarea pentru ea — adica tocmai pasul care are efect in rezultat si in
+  // impozit. Tiparul e cel numit in analiza din 4 august: cont referit de rapoarte, dar
+  // neproducibil de niciun tip de document.
+  //
+  // Cele patru intrari acopera drumul complet al unei creante care se deterioreaza:
+  //   constituire  6814 = 491      (cheltuiala, cand pierderea devine PROBABILA)
+  //   reluare       491 = 7814     (venit, cand clientul plateste sau riscul dispare)
+  //   scoatere      654 = 4118     (+ reluarea ajustarii, cand pierderea devine CERTA)
+  //   reactivare   4111 = 754      (debitor considerat pierdut care plateste totusi)
+  //
+  // DE CE scoaterea produce DOUA linii: pierderea a fost deja recunoscuta la constituirea
+  // ajustarii. Fara reluarea simultana, ea s-ar inregistra a doua oara, iar rezultatul ar fi
+  // gresit cu valoarea ajustarii. E aceeasi capcana ca la cedarea unui mijloc fix — jumatatea
+  // uitata a operatiunii.
+  //
+  // Regimul FISCAL nu se decide aici: ajustarea e deductibila in limita a 30% cu conditiile de
+  // la art. 26 alin. (1) lit. c), iar pierderea din 654 e ca regula nedeductibila (art. 25 alin.
+  // (4) lit. h). Motorul de nedeductibile (`src/deductibilitate.js`) le trateaza deja pe cont —
+  // 6814 la 70% nedeductibil, 654 integral, 7814 la 70% neimpozabil — deci monografia trebuie
+  // doar sa foloseasca CONTURILE CORECTE, nu sa repete regula.
+  {
+    id: 'ajustare_creanta_constituire',
+    nume: 'Constituire ajustare pentru deprecierea creantelor (6814 = 491)',
+    grup: 'Provizioane',
+    fields: [F.data, F.partener, F.cuiPartener, F.document, F.explicatie,
+      { name: 'suma', label: 'Valoarea ajustarii (cu TVA, cat se apreciaza ca nu se incaseaza)', type: 'number', required: true }],
+    build: (d) => [L('6814', '491', d.suma, d.explicatie || 'Ajustare pentru deprecierea creanțelor-clienți')],
+  },
+  {
+    id: 'ajustare_creanta_reluare',
+    nume: 'Reluare ajustare creante (491 = 7814) — clientul a platit sau riscul a disparut',
+    grup: 'Provizioane',
+    fields: [F.data, F.partener, F.cuiPartener, F.document, F.explicatie,
+      { name: 'suma', label: 'Suma reluata', type: 'number', required: true }],
+    build: (d) => [L('491', '7814', d.suma, d.explicatie || 'Reluarea ajustării pentru deprecierea creanțelor')],
+  },
+  {
+    id: 'creanta_scoasa_din_evidenta',
+    nume: 'Scoaterea din evidenta a unei creante irecuperabile (654 = 4118)',
+    grup: 'Provizioane',
+    fields: [F.data, F.partener, F.cuiPartener, F.document,
+      { name: 'suma', label: 'Creanta scoasa din evidenta (cu TVA)', type: 'number', required: true },
+      { name: 'ajustare', label: 'Ajustare constituita anterior pentru ea (0 daca nu exista)', type: 'number', default: 0 },
+      { name: 'contCreanta', label: 'Cont creanta', type: 'select',
+        options: [{ value: '4118', label: '4118 Clienți incerți' }, { value: '4111', label: '4111 Clienți' },
+          { value: '461', label: '461 Debitori diverși' }], default: '4118' }],
+    build: (d) => {
+      const lines = [L('654', d.contCreanta || '4118', d.suma, 'Pierdere din creanță irecuperabilă')];
+      // A DOUA JUMATATE, cea uitata: ajustarea constituita pentru aceasta creanta se reia in
+      // acelasi timp. Fara ea, pierderea intra in rezultat de doua ori.
+      if (d.ajustare > 0) lines.push(L('491', '7814', d.ajustare, 'Reluarea ajustării aferente creanței scoase din evidență'));
+      return lines;
+    },
+  },
+  {
+    id: 'creanta_reactivata',
+    nume: 'Creanta reactivata — un debitor considerat pierdut plateste (4111 = 754)',
+    grup: 'Provizioane',
+    // Are semnatura contabila a unei facturi catre client (411x debitat, cont de clasa 7
+    // creditat), deci poarta structurala din test/run.js cere un raspuns explicit. Raspunsul e
+    // NU: nu se emite niciun document catre client. Creanta fusese deja facturata odata, cand
+    // s-a nascut; aici doar se readuce in evidenta o valoare scoasa anterior, pe baza unei note
+    // interne. O a doua factura ar dubla venitul si TVA-ul colectat.
+    eFactura: 'nu',
+    fields: [F.data, F.partener, F.cuiPartener, F.document,
+      { name: 'suma', label: 'Suma reactivata', type: 'number', required: true },
+      { name: 'contCreanta', label: 'Cont creanta', type: 'select',
+        options: [{ value: '4111', label: '4111 Clienți' }, { value: '461', label: '461 Debitori diverși' }], default: '4111' }],
+    // Doar REACTIVAREA creantei; incasarea propriu-zisa se inregistreaza separat, cu extrasul
+    // sau chitanta (tipul „Incasare de la client"). Doua documente, doua operatiuni.
+    build: (d) => [L(d.contCreanta || '4111', '754', d.suma, 'Creanță reactivată (debitor considerat pierdut)')],
+  },
+
   // ───────────────────── ASOCIATI / DECONTARI INTRAGRUP ─────────────────────
   {
     id: 'imprumut_asociat',
