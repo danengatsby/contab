@@ -6,12 +6,64 @@
 
 const path = require('path');
 const os = require('os');
+const fsIzolare = require('fs');
+
 process.env.CONTAB_DB_FILE = process.env.CONTAB_DB_FILE || path.join(os.tmpdir(), 'contab-test-' + process.pid + '.json');
 // CONTAB_DB_FILE singur NU e de ajuns: muta doar BAZA. Restul cailor derivate din CONTAB_DATA_DIR
 // (uploads/, audit/, backups/) ramaneau pe `data/` din repo — adica pe datele de PRODUCTIE, fiindca
 // acest director e si instalarea vie, iar `npm test` ruleaza la `prestart`, deci la fiecare pornire
 // a serverului. Suita chiar crea `data/uploads/`. Poarta de la finalul fisierului tine izolarea.
 process.env.CONTAB_DATA_DIR = process.env.CONTAB_DATA_DIR || path.join(os.tmpdir(), 'contab-test-data-' + process.pid);
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  IZOLAREA BAZEI — precondiție, nu concluzie
+//
+//  Poarta de la finalul fisierului („suita nu scrie in directorul de date REAL") verifica
+//  izolarea DUPA ce suita a rulat, deci dupa ce ar fi scris. Blocul de aici o verifica INAINTE,
+//  si rezolva doua probleme care aveau aceeasi cauza: suita urma variabilele de mediu ale bazei,
+//  deci putea fi indreptata catre alta baza decat a ei.
+//
+//  1. DRIVERUL. `CONTAB_DB_DRIVER=pg` din mediu o conecta la PostgreSQL — iar variabila EXISTA in
+//     `.env`-ul acestei instalari. Nimeni nu face asta intentionat, dar `set -a; . .env; npm test`
+//     e o comanda fireasca, iar `npm test` ruleaza si la `prestart`. `test/http.js` avea deja
+//     garda; aici lipsea.
+//  2. IDEMPOTENTA. Cu un `CONTAB_DB_FILE` dat explicit, a DOUA rulare pe acelasi fisier pica 5
+//     aserttiuni: baza pastra starea rularii precedente (contorul de commit-uri al cozii de
+//     persistenta, documentele cu extras AI). Nu era intermitent — era determinist, si m-a costat
+//     doua diagnosticari inainte sa fie reprodus.
+//
+//  Solutia: baza se sterge la pornire. Idempotenta devine o proprietate a CONSTRUCTIEI, nu o
+//  curatenie tinuta minte de cine ruleaza.
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const radacina = path.join(__dirname, '..');
+  const dataReal = path.resolve(radacina, 'data');
+  const inauntru = (p) => {
+    const r = path.resolve(p);
+    return r === dataReal || r.startsWith(dataReal + path.sep);
+  };
+  // Oprire NECONDITIONATA daca tinta e directorul de date viu. E singurul caz in care stergerea
+  // de mai jos ar distruge date reale, deci refuzul vine inaintea oricarei atingeri de disc.
+  for (const [nume, val] of [['CONTAB_DB_FILE', process.env.CONTAB_DB_FILE], ['CONTAB_DATA_DIR', process.env.CONTAB_DATA_DIR]]) {
+    if (inauntru(val)) {
+      console.error('\n[test/run] REFUZ: ' + nume + '=' + val + ' este in directorul de date REAL (' + dataReal + ').'
+        + '\n           Suita sterge baza la pornire, deci ar distruge datele vii. Foloseste o cale temporara.\n');
+      process.exit(1);
+    }
+  }
+  // Driverul se IMPUNE. Un mesaj, nu o oprire: suita ruleaza corect pe sqlite oricum, iar o
+  // oprire la `prestart` ar impiedica pornirea serverului pentru o variabila care oricum se ignora.
+  if (process.env.CONTAB_DB_DRIVER && process.env.CONTAB_DB_DRIVER !== 'sqlite') {
+    console.error('[test/run] CONTAB_DB_DRIVER=' + process.env.CONTAB_DB_DRIVER + ' se IGNORA aici: suita ruleaza pe sqlite,'
+      + ' pe o baza proprie. Pentru driverul de productie: npm run test-pg');
+  }
+  process.env.CONTAB_DB_DRIVER = 'sqlite';
+  // Stergerea bazei precedente: fisierul JSON (oglinda) plus tripleta sqlite derivata din el.
+  const baza = process.env.CONTAB_DB_FILE;
+  for (const f of [baza, baza + '.sqlite', baza + '.sqlite-wal', baza + '.sqlite-shm']) {
+    try { fsIzolare.rmSync(f, { force: true }); } catch (e) { /* nu exista, sau nu se poate — load() o va recrea */ }
+  }
+}
 
 const db = require('../src/db');
 const { scopedSeed } = require('../src/seed');
@@ -6783,6 +6835,21 @@ section('Poarta: suita nu scrie in directorul de date REAL');
   ok('...nici uploads-ul derivat din el', !pathG.resolve(dbG.UPLOAD_DIR).startsWith(pathG.resolve(reala) + pathG.sep));
   // Si baza, si oglinda ei: CONTAB_DB_FILE muta doar baza, deci amandoua se verifica separat.
   ok('fisierul bazei nu e in `data/` real', !pathG.resolve(process.env.CONTAB_DB_FILE).startsWith(pathG.resolve(reala) + pathG.sep));
+  // Precondiția de la capul fisierului trebuie sa REFUZE, nu doar sa constate. Se verifica pe
+  // functia ei de decizie, nu pornind inca un proces: garda ruleaza inainte de orice require, deci
+  // un test care ar porni suita din nou ar fi si lent, si circular.
+  const inauntruG = (p2) => {
+    const r = pathG.resolve(p2);
+    return r === pathG.resolve(reala) || r.startsWith(pathG.resolve(reala) + pathG.sep);
+  };
+  ok('garda de precondiție recunoaste baza REALA', inauntruG(pathG.join(reala, 'db.json')));
+  ok('...si directorul real ca atare', inauntruG(reala));
+  ok('...dar lasa caile temporare sa treaca', !inauntruG(require('os').tmpdir() + '/contab-test.json'));
+  // Idempotenta: baza se sterge la pornire, deci a doua rulare pe acelasi fisier porneste curat.
+  // Inainte, a doua rulare pica 5 aserttiuni (contorul cozii de persistenta + extrasul AI).
+  ok('baza suitei e stearsa la pornire (idempotenta prin constructie)',
+    /rmSync\(f, \{ force: true \}\)/.test(require('fs').readFileSync(__filename, 'utf8')));
+  ok('driverul suitei e impus pe sqlite', process.env.CONTAB_DB_DRIVER === 'sqlite');
 }
 
 console.log('\n' + (stare.fail ? '✗ ' : '✓ ') + stare.pass + ' verificari trecute, ' + stare.fail + ' esuate.');
