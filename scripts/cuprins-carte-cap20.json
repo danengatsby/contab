@@ -137,6 +137,96 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Procedura, pentru că fără ea rezultatul nu se poate apăra"
+  },
+  {
+   "tip": "p",
+   "text": "Inventarierea are o formă prevăzută prin norme, iar forma nu e birocrație: ea e singurul lucru care face dintr-o numărătoare o probă. Un minus constatat fără procedură nu se poate imputa nimănui, iar un plus nu se poate justifica la control."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Pașii, în ordine",
+   "cap": [
+    "Pasul",
+    "Ce produce",
+    "De ce nu se poate sări"
+   ],
+   "randuri": [
+    [
+     "Decizia de inventariere",
+     "numește comisia, perioada, gestiunile",
+     "fără ea nu se știe cine răspunde de numărătoare"
+    ],
+    [
+     "Declarația gestionarului",
+     "dinaintea numărării",
+     "el declară că a predat toate documentele"
+    ],
+    [
+     "Listele de inventariere",
+     "cantitățile faptice, semnate",
+     "sunt documentul primar al operațiunii"
+    ],
+    [
+     "Confruntarea cu scripticul",
+     "diferențele, pe fiecare poziție",
+     "aici apar plusurile și minusurile"
+    ],
+    [
+     "Procesul-verbal",
+     "cauzele și propunerile comisiei",
+     "transformă diferențele în decizii"
+    ],
+    [
+     "Înregistrarea",
+     "articolele contabile",
+     "abia acum se atinge contabilitatea"
+    ]
+   ],
+   "nota": "Declarația gestionarului se dă ÎNAINTE de numărare, nu după. Dată după, ar putea fi ajustată la ce a ieșit."
+  },
+  {
+   "tip": "p",
+   "text": "Ordinea are o logică pe care merită să o vezi: primele trei etape produc fapte, a patra produce diferențe, a cincea produce explicații, și abia a șasea atinge cifrele. Cine sare direct la ultima are înregistrări fără motiv scris — adică exact ce nu se poate apăra peste doi ani."
+  },
+  {
+   "tip": "h",
+   "text": "Compensările și perisabilitățile"
+  },
+  {
+   "tip": "p",
+   "text": "Două mecanisme reduc diferențele înainte de a fi înregistrate, iar amândouă se aplică restrictiv, nu ca metodă de a face să iasă totalul."
+  },
+  {
+   "tip": "p",
+   "text": "Compensarea plusurilor cu minusurile e admisă numai între sortimente confundabile între ele, din aceeași grupă, în limita cantităților mai mici, și numai dacă comisia justifică confuzia. Nu e o egalizare a totalului: două produse diferite care se anulează valoric rămân două probleme distincte."
+  },
+  {
+   "tip": "p",
+   "text": "Perisabilitățile acoperă pierderile firești din manipulare, transport sau depozitare — evaporare, spargere, uscare — în limitele stabilite prin hotărâre de Guvern, pe categorii de bunuri. Ele se acordă numai la constatarea unei lipse efective și numai până la limita legală: peste ea, restul rămâne minus imputabil sau neimputabil."
+  },
+  {
+   "tip": "cheie",
+   "text": "Nici compensarea, nici perisabilitatea nu explică o lipsă. Ele doar recunosc că o parte din ea era previzibilă. Restul cere un răspuns."
+  },
+  {
+   "tip": "h",
+   "text": "Nu doar stocurile"
+  },
+  {
+   "tip": "p",
+   "text": "Cuvântul „inventar” trimite la depozit, dar obligația privește întregul patrimoniu: imobilizările, creanțele, datoriile, disponibilitățile, chiar și elementele ținute în conturi în afara bilanțului."
+  },
+  {
+   "tip": "p",
+   "text": "Inventarierea creanțelor nu se face numărând, ci confirmând: se cere partenerului să confirme soldul. E procedura care descoperă facturile pe care el nu le-a primit niciodată, plățile alocate greșit și creanțele care nu mai există. Pentru imobilizări, numărătoarea confirmă că bunul din registru mai există fizic — iar la casări nedeclarate, acolo se află."
+  },
+  {
+   "tip": "p",
+   "text": "Rezultatul întregii operațiuni se consemnează în registrul-inventar, care e registru obligatoriu, alături de registrul-jurnal și cartea mare. Fără el, situațiile financiare se întocmesc pe cifre care nu au fost niciodată confruntate cu realitatea."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

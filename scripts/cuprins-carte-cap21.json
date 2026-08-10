@@ -164,6 +164,148 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Concediul de odihnă: aceiași bani, altă etichetă"
+  },
+  {
+   "tip": "p",
+   "text": "Zilele de concediu nu se plătesc cu salariul, ci cu o indemnizație calculată pe media zilnică a bruturilor din ultimele trei luni. Iar din asta decurge ceva care surprinde: la un salariu constant, luna cu concediu arată identic cu una fără."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Aceeași lună, cu și fără concediu (5.000 lei brut, 21 de zile lucrătoare)",
+   "cap": [
+    "Situația",
+    "Salariu pe zile lucrate",
+    "Indemnizație CO",
+    "Brut taxabil",
+    "Net",
+    "Cost firmă"
+   ],
+   "randuri": [
+    [
+     "Lună întreagă",
+     "5.000,00",
+     "—",
+     "5.000,00",
+     "2.968,00",
+     "5.112,50"
+    ],
+    [
+     "5 zile de concediu",
+     "3.809,52",
+     "1.190,48",
+     "5.000,00",
+     "2.968,00",
+     "5.112,50"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "nota": "Salariul se reduce proporțional cu zilele nelucrate, iar indemnizația umple exact golul. Netul și costul rămân neschimbate."
+  },
+  {
+   "tip": "p",
+   "text": "Egalitatea ține însă doar la salariu constant. Dacă în ultimele trei luni angajatul a avut sporuri sau ore suplimentare, media e mai mare decât salariul de bază — iar luna cu concediu costă firma mai mult decât una obișnuită. E motivul pentru care indemnizația se calculează pe medie și nu pe salariul curent: legea protejează venitul obișnuit al angajatului, nu pe cel al lunii în care pleacă."
+  },
+  {
+   "tip": "h",
+   "text": "Concediul medical: cine plătește primele zile"
+  },
+  {
+   "tip": "p",
+   "text": "La concediul medical, mecanismul e altul și împarte costul în două. Primele cinci zile lucrătoare le suportă angajatorul; restul se suportă din fondul de asigurări sociale de sănătate și se recuperează."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Concediu medical, la aceleași 5.000 lei brut",
+   "cap": [
+    "Situația",
+    "Brut taxabil",
+    "Suportat de firmă",
+    "Din FNUASS",
+    "Net",
+    "Cost firmă"
+   ],
+   "randuri": [
+    [
+     "5 zile de concediu medical",
+     "3.809,52",
+     "892,85",
+     "0,00",
+     "2.874,25",
+     "4.808,17"
+    ],
+    [
+     "10 zile de concediu medical",
+     "2.619,05",
+     "892,85",
+     "892,85",
+     "2.780,49",
+     "3.590,92"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "nota": "În ambele cazuri firma suportă exact 892,85 lei — cele cinci zile. Ce trece peste ele se recuperează, oricât ar dura concediul."
+  },
+  {
+   "tip": "p",
+   "text": "Cifrele arată și de ce concediul medical scade venitul angajatului: indemnizația e de 75% din media zilnică, nu 100%. La cinci zile, netul coboară de la 2.968 la 2.874,25 de lei — aproape 94 de lei mai puțin pentru o săptămână de boală."
+  },
+  {
+   "tip": "cheie",
+   "text": "Numărul de zile suportate de firmă se socotește în zile LUCRĂTOARE din primele cinci zile CALENDARISTICE ale concediului. Un concediu care începe joi are alt cost pentru firmă decât unul care începe luni."
+  },
+  {
+   "tip": "p",
+   "text": "Observația din caseta de mai sus e cea care produce cele mai multe recalculări, iar diferența se poate arăta pe același concediu, cu aceeași durată."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cinci zile de concediu medical, două zile de început",
+   "cap": [
+    "Începe",
+    "Zile lucrătoare în sarcina firmei",
+    "Suportat de firmă",
+    "Din FNUASS"
+   ],
+   "randuri": [
+    [
+     "luni, 8 iunie",
+     "5",
+     "892,85",
+     "0,00"
+    ],
+    [
+     "joi, 11 iunie",
+     "3",
+     "535,71",
+     "357,14"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4
+   ],
+   "nota": "Cinci zile calendaristice de joi cuprind și sâmbăta cu duminica, deci doar trei zile lucrătoare. Diferența de 357,14 lei se recuperează de la fond — sau se pierde, dacă cineva numără din obișnuință cinci zile lucrătoare."
+  },
+  {
+   "tip": "p",
+   "text": "E o sumă mică pe un singur concediu și una considerabilă pe un an cu mulți angajați. Mai important, e o eroare care nu se vede: statul de plată iese echilibrat, netul angajatului e corect, iar singura consecință e o sumă recuperabilă subdeclarată în D112."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
