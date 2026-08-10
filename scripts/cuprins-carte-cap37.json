@@ -172,6 +172,118 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Vectorul fiscal: ce crede statul că datorezi"
+  },
+  {
+   "tip": "p",
+   "text": "Există o listă a obligațiilor tale declarative ținută nu de tine, ci de administrația fiscală. Se numește vector fiscal și e configurația după care sistemul așteaptă declarații de la firma ta."
+  },
+  {
+   "tip": "p",
+   "text": "Consecința e mai importantă decât pare: dacă vectorul spune că ești plătitor de TVA lunar, sistemul așteaptă un decont în fiecare lună — chiar dacă firma nu mai are activitate. Neprimindu-l, trimite somație. Invers, dacă vectorul nu conține o obligație pe care o ai în realitate, absența declarației nu e semnalată, dar obligația rămâne."
+  },
+  {
+   "tip": "cheie",
+   "text": "Vectorul fiscal nu se actualizează singur. E o declarație de mențiuni pe care o depune firma — iar între ce faci și ce crede statul că faci poate exista o diferență care produce somații ani la rând."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se derivă lista, în practică"
+  },
+  {
+   "tip": "p",
+   "text": "Un program bine făcut nu ține o listă scrisă de mână a declarațiilor firmei: o derivă din profilul ei. Trei-patru însușiri decid aproape tot, iar restul decurge."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "De la profil la calendar",
+   "cap": [
+    "Însușirea",
+    "Ce declanșează"
+   ],
+   "randuri": [
+    [
+     "plătitor de TVA + perioadă lunară",
+     "D300 și D394 lunar, D406 lunar"
+    ],
+    [
+     "plătitor de TVA + perioadă trimestrială",
+     "aceleași, trimestrial"
+    ],
+    [
+     "are salariați",
+     "D112 lunar, D205 anual, state de plată"
+    ],
+    [
+     "microîntreprindere",
+     "D100 trimestrial, pe venituri"
+    ],
+    [
+     "plătitor de impozit pe profit",
+     "D100 pentru avansuri, D101 anual"
+    ],
+    [
+     "operațiuni intracomunitare în lună",
+     "D390 pentru luna respectivă"
+    ],
+    [
+     "depășire prag Intrastat",
+     "declarația statistică, pe flux"
+    ]
+   ],
+   "nota": "Derivarea are un avantaj pe care o listă scrisă nu-l are: se corectează singură când firma se schimbă. O listă ținută de mână rămâne cea de acum doi ani."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se plătește, dincolo de ce se declară"
+  },
+  {
+   "tip": "p",
+   "text": "Declarația și plata sunt două obligații distincte, cu sancțiuni distincte. Se pot îndeplini una fără cealaltă, în ambele sensuri — iar cazul cel mai neplăcut e declarația depusă și suma neplătită, fiindcă acolo curg accesorii pe o datorie recunoscută în scris."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce datorează efectiv firma din exemplul cărții, pe luna iunie",
+   "cap": [
+    "Contul",
+    "Obligația",
+    "Suma"
+   ],
+   "randuri": [
+    [
+     "444",
+     "Impozit pe veniturile din salarii",
+     "325,00"
+    ],
+    [
+     "4315",
+     "CAS — asigurări sociale",
+     "1.250,00"
+    ],
+    [
+     "4316",
+     "CASS — asigurări de sănătate",
+     "500,00"
+    ],
+    [
+     "436",
+     "CAM — contribuția asiguratorie",
+     "112,50"
+    ],
+    [
+     "",
+     "Total de virat până pe 25",
+     "2.187,50"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "total": true,
+   "nota": "Cifrele nu se completează într-un formular: sunt chiar soldurile conturilor din balanță. Dacă nu se potrivesc cu D112, una dintre cele două e greșită."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

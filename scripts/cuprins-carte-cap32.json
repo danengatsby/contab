@@ -251,6 +251,100 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Trei forme, aceeași balanță"
+  },
+  {
+   "tip": "p",
+   "text": "Balanța poate fi întocmită cu trei, patru sau cinci serii de egalități, iar alegerea nu schimbă informația, ci cât de mult se vede din ea."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce arată fiecare formă",
+   "cap": [
+    "Forma",
+    "Coloane",
+    "Ce se pierde față de următoarea"
+   ],
+   "randuri": [
+    [
+     "cu trei serii",
+     "sume precedente, rulaj, sume totale",
+     "soldurile — se calculează, dar nu se afișează"
+    ],
+    [
+     "cu patru serii",
+     "sold inițial, rulaj, total sume, sold final",
+     "nimic esențial; e forma uzuală"
+    ],
+    [
+     "cu cinci serii",
+     "adaugă soldurile de la începutul anului",
+     "comparația cu deschiderea exercițiului"
+    ]
+   ],
+   "nota": "Forma cu patru serii e cea folosită în această carte și în majoritatea programelor. Cea cu cinci ajută la închiderea anuală, unde contează și de unde a pornit anul."
+  },
+  {
+   "tip": "p",
+   "text": "Ce nu se schimbă în nicio formă e numărul de conturi: balanța cuprinde TOATE conturile atinse în perioadă, inclusiv pe cele cu sold zero, dacă au avut rulaj. Un cont care a primit și a dat aceeași sumă a existat în luna aceea, iar o balanță care îl omite ascunde activitate reală — cazul contului 4111 din exemplul de mai sus."
+  },
+  {
+   "tip": "h",
+   "text": "Balanța analitică, verificarea care nu iese din cea sintetică"
+  },
+  {
+   "tip": "p",
+   "text": "Balanța de mai sus e sintetică: un rând pe cont. Alături de ea se întocmește, pentru conturile care o cer, una analitică — un rând pe partener, pe gestiune, pe angajat."
+  },
+  {
+   "tip": "p",
+   "text": "Legătura dintre ele e o egalitate strictă: suma soldurilor analitice ale unui cont trebuie să fie exact soldul lui sintetic. Iar verificarea aceasta NU rezultă din cele patru egalități ale balanței sintetice — ea se închide perfect chiar dacă analiticul e greșit, fiindcă echilibrul se verifică pe totaluri, nu pe desfășurare."
+  },
+  {
+   "tip": "cheie",
+   "text": "Cele patru egalități nu spun nimic despre analitic. E o verificare separată, și e cea care descoperă partenerii introduși de două ori sub denumiri ușor diferite."
+  },
+  {
+   "tip": "h",
+   "text": "Ce se face cu ea, după ce s-a închis"
+  },
+  {
+   "tip": "p",
+   "text": "O balanță verificată nu e un scop, ci punctul din care pornesc toate celelalte lucrări ale lunii. Ordinea e fixă și merită ținută minte ca listă."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce se sprijină pe balanță",
+   "cap": [
+    "Lucrarea",
+    "Ce ia din balanță"
+   ],
+   "randuri": [
+    [
+     "Decontul de TVA",
+     "rulajele conturilor 4426 și 4427, soldul de report"
+    ],
+    [
+     "D112",
+     "soldurile conturilor de personal și contribuții"
+    ],
+    [
+     "Situațiile financiare",
+     "soldurile finale, pe balanța DINAINTE de închidere"
+    ],
+    [
+     "Situația creanțelor și datoriilor",
+     "soldurile de terți, desfășurate analitic"
+    ],
+    [
+     "Registrul de evidență fiscală",
+     "rulajele conturilor de cheltuieli cu regim special"
+    ]
+   ],
+   "nota": "Toate cinci pornesc din același loc. De aceea o balanță greșită nu produce o eroare, ci cinci."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
