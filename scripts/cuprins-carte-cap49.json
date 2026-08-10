@@ -124,6 +124,20 @@
    "text": "Dosarele răspund la întrebarea ce s-a înregistrat. Mai rămâne una, la care documentele nu răspund: cine a făcut fiecare lucru, și când."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 49.1 — dosarul care nu răspunde",
+   "enunt": [
+    "La un control se cere justificarea unei cheltuieli de 24.000 de lei din urmă cu doi ani. Dosarul lunii conține: factura, extrasul cu plata, balanța lunii și decontul cu recipisă. Inspectorul întreabă de ce cheltuiala a fost considerată deductibilă, dat fiind că furnizorul are ca obiect de activitate „consultanță”, iar firma e o brutărie.",
+    "Ce lipsește din dosar?"
+   ],
+   "rezolvare": [
+    "Nimic din ce e obligatoriu formal. Toate documentele care probează OPERAȚIUNEA sunt acolo: că s-a facturat, că s-a plătit, că s-a înregistrat, că s-a declarat.",
+    "Lipsește ce probează LEGĂTURA cu activitatea: contractul, raportul de activitate al consultantului, livrabilul, corespondența. Adică exact ce transformă o plată reală într-o cheltuială deductibilă.",
+    "Consecința: fără ele, cheltuiala e nedeductibilă, iar TVA-ul aferent nu se putea deduce — nu pentru că operațiunea ar fi fictivă, ci pentru că nu se poate dovedi că a servit activității.",
+    "Lecția pentru dosarul lunii: documentul justificativ răspunde la „ce s-a întâmplat”. Pentru cheltuielile la care realitatea prestației nu se vede din factură, dosarul trebuie să răspundă și la „la ce a folosit” — iar acel al doilea răspuns se strânge ATUNCI, nu peste doi ani."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

@@ -188,6 +188,20 @@
    "text": "Urmează partea în care toate acestea se întorc către stat: taxa pe valoarea adăugată, declarațiile și termenele lor. E faza a șaptea, și e cea în care greșelile costă cel mai repede."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 24.1 — cheltuiala reală a unei rate",
+   "enunt": [
+    "Contract de leasing financiar: valoare finanțată 100.000 de lei, 48 de rate, dobândă 9% pe an. Prima rată: principal 1.738,50, dobândă 750,00, TVA 522,59, total plătit 3.011,09 lei. Bunul se amortizează liniar în 5 ani.",
+    "Cât e cheltuiala lunii, și cu cât diferă de suma plătită?"
+   ],
+   "rezolvare": [
+    "Cheltuiala lunii are două componente: dobânda de 750,00 de lei și amortizarea bunului, adică 100.000 ÷ 60 = 1.666,67 de lei. Total cheltuială: 2.416,67 lei.",
+    "Suma efectiv ieșită din cont: 3.011,09 lei. Diferența, de 594,42 lei, se compune din principalul de 1.738,50 (rambursare de datorie, nu cheltuială) minus amortizarea de 1.666,67 (cheltuială care nu se plătește) plus TVA-ul de 522,59 (creanță recuperabilă).",
+    "Verificarea: 3.011,09 − 1.738,50 − 522,59 = 750,00, adică exact dobânda. Restul cheltuielii — amortizarea — nu apare deloc în plată.",
+    "Greșeala de evitat, tratată în capitol: înregistrarea întregii rate pe 612 ar da o cheltuială de 3.011,09 în loc de 2.416,67, ar dubla costul dacă bunul e totuși amortizat, și ar scoate din bilanț atât activul, cât și datoria."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

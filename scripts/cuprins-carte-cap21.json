@@ -150,6 +150,20 @@
    "text": "Statul de plată calculat corect e o condiție necesară. Nu e însă suficientă: o parte dintre drepturile angajatului nu se acordă automat, ci doar dacă cineva le cere. E capitolul următor, și e cel mai scump capitol al acestei părți."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 21.1 — cât costă, de fapt, o mărire de salariu",
+   "enunt": [
+    "Un angajat cu 5.000 de lei brut cere o mărire de 500 de lei net. Firma vrea să știe cât o costă.",
+    "Calculează, aproximativ, brutul necesar și costul total, folosind cotele din capitol și ignorând deducerea personală."
+   ],
+   "rezolvare": [
+    "Din brut se rețin 25% CAS și 10% CASS, deci rămâne 65%. Din acești 65% se scade impozitul de 10%, deci netul e 65% × 90% = 58,5% din brut.",
+    "Ca netul să crească cu 500 de lei, brutul trebuie să crească cu 500 ÷ 0,585 ≈ 855 de lei. Noul brut: aproximativ 5.855 de lei.",
+    "Costul firmei crește cu brutul plus contribuția asiguratorie: 855 × 1,0225 ≈ 874 de lei pe lună, adică peste 10.400 de lei pe an.",
+    "Raportul de reținut: pentru fiecare leu în plus în mâna angajatului, firma plătește aproximativ 1,75 lei. E cifra pe care se poartă discuția despre salarii, și e singura care contează pentru amândoi — restul e aritmetica statului."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

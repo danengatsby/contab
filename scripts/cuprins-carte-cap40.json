@@ -134,6 +134,20 @@
    "text": "Derivarea rezolvă problema stării care minte. Ridică însă alta: dacă totul se recalculează mereu, ce anume face ca o lună închisă să rămână închisă? Răspunsul e capitolul următor."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 40.1 — bifa care minte",
+   "enunt": [
+    "Pe 5 ale lunii, punctajul bancar e terminat și cineva bifează pasul ca făcut. Pe 7 sosește o factură veche de la un furnizor; se înregistrează, iar una dintre plățile deja punctate se dovedește a fi pentru ea.",
+    "(a) Ce arată bifa? (b) Ce ar arăta o stare derivată? (c) Ce s-ar întâmpla dacă nimeni nu observă?"
+   ],
+   "rezolvare": [
+    "(a) Bifa arată în continuare verde. Ea a fost adevărată pe 5 și nu are cum să afle că datele de sub ea s-au schimbat.",
+    "(b) O stare derivată recalculează, de fiecare dată când e privită, răspunsul la întrebarea „mai există operațiuni de trezorerie nepotrivite?”. Pe 7, răspunsul devine da, iar pasul redevine DESCHIS singur.",
+    "(c) Se închide luna cu un punctaj incomplet. Consecința nu e vizibilă imediat: apare la reconcilierea lunii următoare, când soldul nu iese, sau la scadențar, unde furnizorul apare cu o datorie deja plătită.",
+    "Principiul, valabil dincolo de contabilitate: memorează DECIZIILE (cine răspunde, cine a aprobat, de ce s-a forțat) și recalculează FAPTELE. Cine memorează faptele va avea, mai devreme sau mai târziu, două versiuni ale aceluiași adevăr."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

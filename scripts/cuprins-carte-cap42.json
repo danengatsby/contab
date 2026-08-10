@@ -116,6 +116,21 @@
    "text": "Am folosit de două ori, mai sus, o cifră fără să o explicăm: impozitul de 13.280 de lei pe un profit de 80.000. Cine calculează 16% din 80.000 obține 12.800, nu 13.280. Diferența nu e o greșeală — e subiectul capitolului următor."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 42.1 — ce rămâne după închidere",
+   "enunt": [
+    "Înainte de închiderea anuală, balanța arată: 707 creditor 500.000; 607 debitor 300.000; 641 debitor 120.000; 371 debitor 80.000; 4111 debitor 15.000; 401 creditor 45.000; 5121 debitor 60.000; 1012 creditor 30.000.",
+    "(a) Se închide balanța? (b) Ce solduri rămân după închiderea conturilor de rezultat și cât e soldul lui 121? (c) De ce nu se poate întocmi contul de profit și pierdere DUPĂ această operațiune?"
+   ],
+   "rezolvare": [
+    "(a) Debit: 300.000 + 120.000 + 80.000 + 15.000 + 60.000 = 575.000. Credit: 500.000 + 45.000 + 30.000 = 575.000. Se închide.",
+    "(b) Rămân numai conturile de bilanț: 371 debitor 80.000, 4111 debitor 15.000, 5121 debitor 60.000, 401 creditor 45.000, 1012 creditor 30.000. Conturile 707, 607 și 641 devin zero.",
+    "Soldul lui 121: 500.000 venituri − 420.000 cheltuieli = 80.000 de lei, CREDITOR, adică profit brut.",
+    "Verificarea de după închidere: activ 80.000 + 15.000 + 60.000 = 155.000; pasiv 45.000 + 30.000 + 80.000 = 155.000. Se închide și acum — profitul a luat locul rulajelor dispărute, ceea ce e chiar rostul operațiunii.",
+    "(c) Fiindcă rulajele conturilor 6 și 7 au devenit zero. Un cont de profit și pierdere întocmit pe balanța de DUPĂ închidere iese integral pe zero — iar eroarea trece neobservată, fiindcă bilanțul întocmit pe aceeași balanță iese corect. E cea mai frecventă cauză a raportărilor goale."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

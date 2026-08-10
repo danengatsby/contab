@@ -116,6 +116,20 @@
    "text": "Stocul cumpărat și cel produs stau amândouă în depozit, evaluate după reguli. Rămâne întrebarea pe care nicio evidență scriptică nu o poate răspunde: mai sunt ele acolo? E capitolul următor."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 19.1 — ce intră în costul produsului",
+   "enunt": [
+    "O firmă produce mobilier. Pentru un lot au fost consumate: lemn 6.000 lei, feronerie 900, manopera direct implicată 4.200, energia atelierului 800, salariul contabilei 3.000, chiria depozitului de produse finite 1.100, comision de vânzare plătit unui agent 700.",
+    "Care e costul de producție al lotului?"
+   ],
+   "rezolvare": [
+    "Intră în cost: lemnul 6.000, feroneria 900, manopera directă 4.200 și energia atelierului 800 — adică materialele directe, manopera directă și cheltuielile indirecte de producție. Total: 11.900 lei.",
+    "NU intră: salariul contabilei (cheltuială administrativă), chiria depozitului de produse finite (cheltuială de desfacere, ulterioară producției) și comisionul agentului (cheltuială de vânzare). Ele sunt cheltuieli ale perioadei, nu ale produsului.",
+    "De ce contează: dacă lotul nu se vinde în luna aceasta, cei 11.900 rămân în stoc, ca activ, și nu afectează rezultatul. Cei 4.800 de lei de cheltuieli ale perioadei îl afectează oricum.",
+    "Greșeala frecventă, în ambele sensuri: includerea cheltuielilor administrative în cost umflă stocul și amână artificial pierderea; excluderea energiei atelierului subevaluează stocul și mută profitul în luna vânzării."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

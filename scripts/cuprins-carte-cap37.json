@@ -157,6 +157,21 @@
    "text": "Declarația întocmită corect e jumătate din obligație. Cealaltă jumătate — și, într-un control, partea care contează — e dovada că a fost depusă și primită. E capitolul următor, și e cel mai scurt din carte."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 37.1 — ce depune firma asta",
+   "enunt": [
+    "Firmă SRL, microîntreprindere, înregistrată în scopuri de TVA cu perioadă trimestrială, doi angajați, fără operațiuni intracomunitare.",
+    "Enumeră ce depune într-o lună obișnuită, ce depune la sfârșit de trimestru și ce depune anual."
+   ],
+   "rezolvare": [
+    "Lunar: D112, pentru contribuțiile și impozitul pe salarii. Atât — TVA-ul e trimestrial, iar D390 nu se depune fiindcă nu există operațiuni intracomunitare.",
+    "Trimestrial: D300 (decontul de TVA), D394 (odată cu el), D100 pentru impozitul pe veniturile microîntreprinderilor. Plus D406 SAF-T, la termenul propriu al categoriei.",
+    "Anual: situațiile financiare cu anexele și declarația de asumare a răspunderii, D205 dacă a reținut impozit la sursă, registrul-inventar și documentele de inventariere, hotărârea AGA de aprobare și repartizare.",
+    "Ce NU depune: D101 — nu e plătitoare de impozit pe profit.",
+    "Ce ar schimba totul: o singură achiziție intracomunitară de bunuri. Din chiar luna respectivă, TVA-ul devine lunar, apare D390, iar calendarul firmei se schimbă complet — fără ca cineva să fi decis asta."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

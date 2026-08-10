@@ -3,72 +3,235 @@
  "nr": "10",
  "titlu": "De la hârtie la articol contabil",
  "blocuri": [
-  { "tip": "p", "text": "Documentul spune ce s-a întâmplat în lumea reală. Contabilitatea are nevoie de aceeași informație într-o formă anume: ce cont se debitează, ce cont se creditează, cu ce sumă. Traducerea dintre cele două se numește articol contabil, iar acest capitol arată cum arată ea." },
-  { "tip": "p", "text": "Vestea bună pentru un patron: nu trebuie să facă el traducerea. Vestea utilă: merită să știe să o citească, fiindcă e singurul loc în care se poate verifica dacă programul — sau contabilul — a înțeles corect documentul." },
-
-  { "tip": "h", "text": "Anatomia unei înregistrări" },
-  { "tip": "p", "text": "Un articol contabil are cinci elemente, nici unul de prisos." },
-  { "tip": "tabel",
-    "titlu": "Din ce e făcut un articol contabil",
-    "cap": ["Elementul", "Ce spune"],
-    "randuri": [
-      ["Data", "când s-a produs operațiunea — nu când o înregistrezi"],
-      ["Explicația", "ce s-a întâmplat, în cuvinte, pentru cine citește peste ani"],
-      ["Contul debitor", "unde a ajuns valoarea"],
-      ["Contul creditor", "de unde a venit"],
-      ["Suma", "cât, în lei"]
+  {
+   "tip": "p",
+   "text": "Documentul spune ce s-a întâmplat în lumea reală. Contabilitatea are nevoie de aceeași informație într-o formă anume: ce cont se debitează, ce cont se creditează, cu ce sumă. Traducerea dintre cele două se numește articol contabil, iar acest capitol arată cum arată ea."
+  },
+  {
+   "tip": "p",
+   "text": "Vestea bună pentru un patron: nu trebuie să facă el traducerea. Vestea utilă: merită să știe să o citească, fiindcă e singurul loc în care se poate verifica dacă programul — sau contabilul — a înțeles corect documentul."
+  },
+  {
+   "tip": "h",
+   "text": "Anatomia unei înregistrări"
+  },
+  {
+   "tip": "p",
+   "text": "Un articol contabil are cinci elemente, nici unul de prisos."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Din ce e făcut un articol contabil",
+   "cap": [
+    "Elementul",
+    "Ce spune"
+   ],
+   "randuri": [
+    [
+     "Data",
+     "când s-a produs operațiunea — nu când o înregistrezi"
     ],
-    "nota": "Data operațiunii și data înregistrării pot să difere; în contabilitate contează prima." },
-  { "tip": "p", "text": "Forma scurtă, folosită de toată lumea în meserie, pune contul debitor înaintea celui creditor, despărțite printr-un semn de egalitate: 371 = 401 înseamnă „marfa a intrat, datoria către furnizor a crescut”. Se citește de la stânga la dreapta: ce am obținut, de unde a venit." },
-
-  { "tip": "h", "text": "O factură, trei rânduri" },
-  { "tip": "p", "text": "Cel mai frecvent document din viața unei firme, factura de cumpărare de marfă cu TVA, produce un articol cu trei rânduri. Să luăm o factură de 1.000 de lei plus 210 TVA, total 1.210." },
-  { "tip": "tabel",
-    "titlu": "Factură de cumpărare marfă, 1.000 + 210 TVA",
-    "cap": ["Debit", "Credit", "Suma", "De ce"],
-    "randuri": [
-      ["371 Mărfuri", "", "1.000", "marfa a intrat în depozit, la costul ei"],
-      ["4426 TVA deductibilă", "", "210", "taxa plătită furnizorului, pe care o vei deduce"],
-      ["", "401 Furnizori", "1.210", "atât datorezi în total"]
+    [
+     "Explicația",
+     "ce s-a întâmplat, în cuvinte, pentru cine citește peste ani"
     ],
-    "numerice": [3],
-    "nota": "Un singur cont creditat, două debitate. Suma debitelor egalează creditul: 1.000 + 210 = 1.210." },
-  { "tip": "p", "text": "Se vede aici de ce TVA-ul nu e nici marfă, nici cheltuială. Cei 210 lei nu au costat firma nimic: îi va scădea din TVA-ul de plată. De aceea stau într-un cont propriu, separat de valoarea mărfii — iar dacă firma nu ar fi plătitoare de TVA, cei 210 s-ar adăuga la costul mărfii, fiindcă acolo ar rămâne definitiv." },
-
-  { "tip": "cheie", "text": "Același document produce articole diferite după regimul firmei. Documentul e același; contabilitatea lui, nu." },
-
-  { "tip": "h", "text": "Articol simplu și articol compus" },
-  { "tip": "p", "text": "Când operațiunea leagă un singur cont de un singur cont, articolul e simplu: încasarea de la un client, 5121 = 4111. Când unul dintre capete se desface în mai multe conturi, ca la factura de mai sus, articolul e compus." },
-  { "tip": "p", "text": "Ce nu e permis, deși pare comod, e articolul cu mai multe conturi de fiecare parte deodată, care amestecă operațiuni fără legătură între ele. Un astfel de articol se închide pe total, dar nu se mai poate citi: peste un an nimeni nu mai poate spune care sumă din stânga corespunde cărei sume din dreapta." },
-
-  { "tip": "h", "text": "Previzualizarea: cum verifici fără să știi contabilitate" },
-  { "tip": "p", "text": "Aici se află, pentru un patron, cel mai util obicei din toată cartea. Înainte de a salva un document, programul arată exact ce articol va scrie. Nu trebuie să știi formula ca să faci verificarea; trebuie doar să te uiți la trei lucruri." },
-  { "tip": "tabel",
-    "titlu": "Ce verifici în previzualizare",
-    "cap": ["Te uiți la", "Și te întrebi"],
-    "randuri": [
-      ["Suma totală", "e cea de pe hârtia din mână?"],
-      ["Explicația", "descrie ce s-a întâmplat cu adevărat?"],
-      ["Denumirile conturilor", "«mărfuri» când ai cumpărat marfă, «servicii» când ai cumpărat un serviciu?"]
+    [
+     "Contul debitor",
+     "unde a ajuns valoarea"
     ],
-    "nota": "Conturile au denumiri în limbaj obișnuit tocmai ca verificarea aceasta să fie posibilă fără pregătire contabilă." },
-  { "tip": "p", "text": "Un detaliu care pare tehnic și e important: previzualizarea trebuie să vină din același motor care face și înregistrarea reală. Dacă programul calculează previzualizarea într-un loc și înregistrarea în altul, cele două pot devia în tăcere, iar ce ai verificat nu mai e ce s-a salvat." },
-
-  { "tip": "contabil", "titlu": "Pentru contabil",
-    "text": "Corespondența conturilor nu e liberă: ea decurge din funcțiunea fiecărui cont și din natura operațiunii, iar articolele care nu respectă corespondențele normale — de exemplu creditarea unui cont de cheltuieli în afara stornării sau a închiderii — semnalează aproape întotdeauna o încadrare greșită, nu o situație exotică. Articolul compus e admis, cel „mixt”, cu mai multe conturi de ambele părți, e de evitat: pierde trasabilitatea corespondenței, îngreunează fișa de cont și face imposibilă verificarea rând cu rând la un control. Data care contează pentru înregistrare e cea a operațiunii, nu cea a documentului și nici cea a introducerii în program — distincția devine critică la cumpăna de perioade, unde o factură din 30 ale lunii primită pe 5 aparține lunii în care s-a produs livrarea, cu efect asupra exigibilității TVA. În fine, explicația articolului nu e decor: la reconstituirea unei operațiuni vechi ea e adesea singurul element care leagă o sumă de un fapt economic, mai ales după ce documentul atașat a migrat între sisteme." },
-
-  { "tip": "h", "text": "Cine face traducerea" },
-  { "tip": "p", "text": "În practică, nimeni nu compune articole de mână pentru documentele obișnuite. Programul are pregătită traducerea pentru fiecare situație tipică: alegi ce document ai, completezi sumele de pe el, iar articolul se compune singur." },
-  { "tip": "p", "text": "Setul acesta de traduceri gata făcute se numește monografie, iar bogăția lui decide cât de des ești nevoit să improvizezi. E subiectul capitolului următor." },
-
-  { "tip": "recap", "titlu": "De reținut din acest capitol",
-    "puncte": [
-      "Un articol contabil are cinci elemente: data operațiunii, explicația, contul debitor, contul creditor, suma.",
-      "Se citește de la stânga la dreapta: ce am obținut, de unde a venit. 371 = 401 înseamnă marfă intrată pe datorie.",
-      "TVA-ul deductibil nu e nici marfă, nici cheltuială: e o creanță față de stat, de aceea are cont propriu.",
-      "Același document produce articole diferite după regimul firmei — la un neplătitor de TVA, taxa intră în costul bunului.",
-      "Previzualizarea se verifică fără cunoștințe contabile: suma, explicația, denumirile conturilor.",
-      "Data care contează e a operațiunii, nu a introducerii în program."
-    ] }
+    [
+     "Contul creditor",
+     "de unde a venit"
+    ],
+    [
+     "Suma",
+     "cât, în lei"
+    ]
+   ],
+   "nota": "Data operațiunii și data înregistrării pot să difere; în contabilitate contează prima."
+  },
+  {
+   "tip": "p",
+   "text": "Forma scurtă, folosită de toată lumea în meserie, pune contul debitor înaintea celui creditor, despărțite printr-un semn de egalitate: 371 = 401 înseamnă „marfa a intrat, datoria către furnizor a crescut”. Se citește de la stânga la dreapta: ce am obținut, de unde a venit."
+  },
+  {
+   "tip": "h",
+   "text": "O factură, trei rânduri"
+  },
+  {
+   "tip": "p",
+   "text": "Cel mai frecvent document din viața unei firme, factura de cumpărare de marfă cu TVA, produce un articol cu trei rânduri. Să luăm o factură de 1.000 de lei plus 210 TVA, total 1.210."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Factură de cumpărare marfă, 1.000 + 210 TVA",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Suma",
+    "De ce"
+   ],
+   "randuri": [
+    [
+     "371 Mărfuri",
+     "",
+     "1.000",
+     "marfa a intrat în depozit, la costul ei"
+    ],
+    [
+     "4426 TVA deductibilă",
+     "",
+     "210",
+     "taxa plătită furnizorului, pe care o vei deduce"
+    ],
+    [
+     "",
+     "401 Furnizori",
+     "1.210",
+     "atât datorezi în total"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "Un singur cont creditat, două debitate. Suma debitelor egalează creditul: 1.000 + 210 = 1.210."
+  },
+  {
+   "tip": "p",
+   "text": "Se vede aici de ce TVA-ul nu e nici marfă, nici cheltuială. Cei 210 lei nu au costat firma nimic: îi va scădea din TVA-ul de plată. De aceea stau într-un cont propriu, separat de valoarea mărfii — iar dacă firma nu ar fi plătitoare de TVA, cei 210 s-ar adăuga la costul mărfii, fiindcă acolo ar rămâne definitiv."
+  },
+  {
+   "tip": "cheie",
+   "text": "Același document produce articole diferite după regimul firmei. Documentul e același; contabilitatea lui, nu."
+  },
+  {
+   "tip": "h",
+   "text": "Articol simplu și articol compus"
+  },
+  {
+   "tip": "p",
+   "text": "Când operațiunea leagă un singur cont de un singur cont, articolul e simplu: încasarea de la un client, 5121 = 4111. Când unul dintre capete se desface în mai multe conturi, ca la factura de mai sus, articolul e compus."
+  },
+  {
+   "tip": "p",
+   "text": "Ce nu e permis, deși pare comod, e articolul cu mai multe conturi de fiecare parte deodată, care amestecă operațiuni fără legătură între ele. Un astfel de articol se închide pe total, dar nu se mai poate citi: peste un an nimeni nu mai poate spune care sumă din stânga corespunde cărei sume din dreapta."
+  },
+  {
+   "tip": "h",
+   "text": "Previzualizarea: cum verifici fără să știi contabilitate"
+  },
+  {
+   "tip": "p",
+   "text": "Aici se află, pentru un patron, cel mai util obicei din toată cartea. Înainte de a salva un document, programul arată exact ce articol va scrie. Nu trebuie să știi formula ca să faci verificarea; trebuie doar să te uiți la trei lucruri."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce verifici în previzualizare",
+   "cap": [
+    "Te uiți la",
+    "Și te întrebi"
+   ],
+   "randuri": [
+    [
+     "Suma totală",
+     "e cea de pe hârtia din mână?"
+    ],
+    [
+     "Explicația",
+     "descrie ce s-a întâmplat cu adevărat?"
+    ],
+    [
+     "Denumirile conturilor",
+     "«mărfuri» când ai cumpărat marfă, «servicii» când ai cumpărat un serviciu?"
+    ]
+   ],
+   "nota": "Conturile au denumiri în limbaj obișnuit tocmai ca verificarea aceasta să fie posibilă fără pregătire contabilă."
+  },
+  {
+   "tip": "p",
+   "text": "Un detaliu care pare tehnic și e important: previzualizarea trebuie să vină din același motor care face și înregistrarea reală. Dacă programul calculează previzualizarea într-un loc și înregistrarea în altul, cele două pot devia în tăcere, iar ce ai verificat nu mai e ce s-a salvat."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Corespondența conturilor nu e liberă: ea decurge din funcțiunea fiecărui cont și din natura operațiunii, iar articolele care nu respectă corespondențele normale — de exemplu creditarea unui cont de cheltuieli în afara stornării sau a închiderii — semnalează aproape întotdeauna o încadrare greșită, nu o situație exotică. Articolul compus e admis, cel „mixt”, cu mai multe conturi de ambele părți, e de evitat: pierde trasabilitatea corespondenței, îngreunează fișa de cont și face imposibilă verificarea rând cu rând la un control. Data care contează pentru înregistrare e cea a operațiunii, nu cea a documentului și nici cea a introducerii în program — distincția devine critică la cumpăna de perioade, unde o factură din 30 ale lunii primită pe 5 aparține lunii în care s-a produs livrarea, cu efect asupra exigibilității TVA. În fine, explicația articolului nu e decor: la reconstituirea unei operațiuni vechi ea e adesea singurul element care leagă o sumă de un fapt economic, mai ales după ce documentul atașat a migrat între sisteme."
+  },
+  {
+   "tip": "h",
+   "text": "Cine face traducerea"
+  },
+  {
+   "tip": "p",
+   "text": "În practică, nimeni nu compune articole de mână pentru documentele obișnuite. Programul are pregătită traducerea pentru fiecare situație tipică: alegi ce document ai, completezi sumele de pe el, iar articolul se compune singur."
+  },
+  {
+   "tip": "p",
+   "text": "Setul acesta de traduceri gata făcute se numește monografie, iar bogăția lui decide cât de des ești nevoit să improvizezi. E subiectul capitolului următor."
+  },
+  {
+   "tip": "h",
+   "text": "Traducerea, pe același document, în trei firme diferite"
+  },
+  {
+   "tip": "p",
+   "text": "Aceeași hârtie nu produce aceeași înregistrare la orice firmă. Merită văzut pe un caz, fiindcă lămurește ce anume decide traducerea: nu documentul, ci CE FACE firma cu ce a cumpărat."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "O factură de 10.000 lei pentru un laptop, la trei firme",
+   "cap": [
+    "Firma",
+    "Contul debitat",
+    "De ce"
+   ],
+   "randuri": [
+    [
+     "Magazin de calculatoare",
+     "371 Mărfuri",
+     "l-a cumpărat ca să-l revândă"
+    ],
+    [
+     "Firmă de consultanță",
+     "2131 Echipamente",
+     "îl folosește peste un an, peste plafon"
+    ],
+    [
+     "Firmă care asamblează",
+     "301 Materii prime",
+     "intră ca piesă într-un produs"
+    ]
+   ],
+   "nota": "Documentul e identic în toate trei. Diferă destinația, iar destinația o știe firma, nu furnizorul."
+  },
+  {
+   "tip": "p",
+   "text": "De aici decurge o consecință care surprinde: contabilul nu poate face traducerea singur, din document, la orice operațiune. La cele obișnuite, tiparul e clar. La cele ambigue, e nevoie de o informație care nu e scrisă nicăieri — iar întrebarea pusă atunci e mai ieftină decât corectura de peste un an."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 10.1 — de la hârtie la articol",
+   "enunt": [
+    "Factură de la un furnizor: bază 4.000 lei, TVA 21% = 840 lei, total 4.840 lei, pentru „materiale de întreținere”. Firma le va consuma în luna curentă.",
+    "Scrie articolul contabil complet și spune ce se schimbă dacă firma NU e înregistrată în scopuri de TVA."
+   ],
+   "rezolvare": [
+    "Firmă plătitoare de TVA, două linii: 302 Materiale consumabile = 401 Furnizori, 4.000 lei; 4426 TVA deductibilă = 401 Furnizori, 840 lei. Datoria totală față de furnizor: 4.840.",
+    "La consumul efectiv, o a treia operațiune, cu alt document (bon de consum): 602 = 302, 4.000 lei.",
+    "Firmă NEplătitoare de TVA: taxa nu se poate deduce, deci intră în COSTUL bunului. O singură linie: 302 = 401, 4.840 lei. Nu există cont 4426 în articol.",
+    "Consecința practică, des ignorată: la o firmă neplătitoare, TVA-ul de pe facturile primite nu e o taxă recuperabilă, ci o parte din preț. Comparațiile de ofertă între o firmă plătitoare și una neplătitoare trebuie făcute, de aceea, pe sume diferite."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Un articol contabil are cinci elemente: data operațiunii, explicația, contul debitor, contul creditor, suma.",
+    "Se citește de la stânga la dreapta: ce am obținut, de unde a venit. 371 = 401 înseamnă marfă intrată pe datorie.",
+    "TVA-ul deductibil nu e nici marfă, nici cheltuială: e o creanță față de stat, de aceea are cont propriu.",
+    "Același document produce articole diferite după regimul firmei — la un neplătitor de TVA, taxa intră în costul bunului.",
+    "Previzualizarea se verifică fără cunoștințe contabile: suma, explicația, denumirile conturilor.",
+    "Data care contează e a operațiunii, nu a introducerii în program."
+   ]
+  }
  ]
 }

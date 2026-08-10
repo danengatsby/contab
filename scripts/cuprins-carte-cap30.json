@@ -159,6 +159,21 @@
    "text": "Registrul-jurnal spune tot ce s-a întâmplat, dar nu spune nimic despre stare. Ca să afli cât ai în contul 401 la sfârșitul lunii, ai nevoie de aceleași operațiuni privite din alt unghi: grupate pe conturi. E cartea mare, și e capitolul următor."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 30.1 — numerotarea care nu se închide",
+   "enunt": [
+    "La verificarea registrului-jurnal pe luna mai se constată că numerele curente sar de la 148 la 151.",
+    "Ce poate fi, și ce faci?"
+   ],
+   "rezolvare": [
+    "Trei ipoteze, în ordinea probabilității. Prima: articolele 149 și 150 au fost create și apoi șterse ca ciorne, iar numărul a fost consumat. Dacă numerotarea se atribuie la postare, nu la creare, golul nu ar trebui să apară.",
+    "A doua: articolele există, dar au fost datate în altă lună, deci apar în alt jurnal. Se caută în luna vecină.",
+    "A treia, cea gravă: articolele au fost șterse după postare. Aceasta ar însemna că sistemul permite ștergerea, ceea ce anulează valoarea probatorie a întregului registru.",
+    "Ce faci: cauți întâi în lunile vecine, apoi în jurnalul de operațiuni — cine, ce, când. Golul în sine nu e o eroare contabilă; e o ÎNTREBARE, iar registrul trebuie să poată răspunde la ea.",
+    "De ce contează: valoarea probatorie a jurnalului stă tocmai în continuitatea numerotării. Un gol neexplicat transformă un registru într-o listă."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

@@ -178,6 +178,22 @@
    "text": "Corelația aceasta e ultima verificare înainte de depunere și merită făcută întotdeauna: dacă jurnalele și balanța nu spun același lucru, una dintre ele e greșită, iar declarația construită pe oricare dintre ele va fi la fel."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 35.1 — decontul, din articole",
+   "enunt": [
+    "Luna: vânzări taxabile 40.000 bază; achiziții cu drept de deducere 25.000 bază; o factură de combustibil de 2.000 bază pentru un autoturism folosit și personal; sold de TVA de recuperat din luna precedentă 900 lei. Cota 21%.",
+    "Calculează TVA-ul de plată sau de recuperat."
+   ],
+   "rezolvare": [
+    "Colectată: 40.000 × 21% = 8.400 lei.",
+    "Deductibilă din achizițiile obișnuite: 25.000 × 21% = 5.250 lei.",
+    "Combustibilul: TVA de 2.000 × 21% = 420 lei, dar deductibilă doar 50% pentru vehiculul care nu e folosit exclusiv în scop economic — deci 210 lei. Restul de 210 intră în cheltuială.",
+    "Total deductibil: 5.250 + 210 = 5.460 lei. Diferența lunii: 8.400 − 5.460 = 2.940 de plată.",
+    "Se scade reportul: 2.940 − 900 = 2.040 lei de plată.",
+    "Verificarea de făcut înainte de depunere: cei 900 de lei din rândul de report trebuie să fie EXACT soldul contului 4424 din balanța lunii precedente. E corelația care prinde aproape toate erorile de preluare."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

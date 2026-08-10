@@ -3,65 +3,273 @@
  "nr": "5",
  "titlu": "Ciclul contabil: harta cărții",
  "blocuri": [
-  { "tip": "p", "text": "Cele patru capitole de până acum au așezat uneltele pe masă: la ce întrebări răspunde contabilitatea, de ce fiecare sumă se scrie de două ori, unde anume se scrie și cine răspunde pentru ce. Mai rămâne ordinea — și, spre deosebire de restul, ordinea nu e o convenție didactică." },
-  { "tip": "p", "text": "O firmă parcurge în fiecare lună aceeași secvență de operațiuni, iar fiecare pas presupune că cel dinainte s-a încheiat. Nu poți regulariza TVA-ul înainte de a fi înregistrat facturile lunii. Nu poți închide luna cu extrasul bancar nepunctat. Nu poți întocmi bilanțul până nu ai închis toate lunile. Secvența aceasta se numește ciclu contabil, iar cartea o urmează pas cu pas." },
-
-  { "tip": "h", "text": "De ce nu pe teme, ca manualele" },
-  { "tip": "p", "text": "Un manual clasic împarte materia pe capitole tematice: conturile, apoi stocurile, apoi salariile, apoi TVA-ul. E o ordine bună pentru cine dă un examen și una proastă pentru cine ține o firmă, din două motive." },
-  { "tip": "p", "text": "Întâi, fiindcă ascunde dependențele. În realitate, greșeala de la stocuri se vede în TVA, iar cea de la salarii se vede în bilanț. Prezentate separat, temele par independente; în practică se sprijină una pe alta." },
-  { "tip": "p", "text": "Apoi, fiindcă răspunde la întrebări în alt moment decât cel în care ele apar. Cine ține contabilitate nu se întreabă „ce știu eu despre amortizare”, ci „ce am de făcut acum, că e 25 ale lunii”. Cartea aceasta e așezată după al doilea fel de întrebare." },
-
-  { "tip": "cheie", "text": "Ordinea fazelor nu e o alegere de autor. E o dependență reală: fiecare pas consumă rezultatul celui dinainte." },
-
-  { "tip": "h", "text": "Cele paisprezece faze" },
-  { "tip": "p", "text": "Ciclul complet arată așa. Coloana din dreapta spune la ce ritm se parcurge fiecare fază — și aici stă a doua idee importantă a capitolului: nu totul se face lunar." },
-  { "tip": "tabel",
-    "titlu": "Ciclul contabil, în ordinea parcurgerii",
-    "cap": ["Faza", "Ce se face", "Ritm"],
-    "randuri": [
-      ["1", "Deschiderea exercițiului — datele firmei, regimurile, soldurile de pornire", "o dată pe an"],
-      ["2", "Documentele justificative — tot ce intră în contabilitate", "zilnic"],
-      ["3", "Trezoreria — încasări, plăți, reconcilierea cu extrasul", "zilnic / săptămânal"],
-      ["4", "Stocurile — intrări, ieșiri, producție", "zilnic"],
-      ["5", "Salariile — statul de plată al lunii", "lunar"],
-      ["6", "Imobilizările — amortizarea, ratele de leasing", "lunar"],
-      ["7", "Regularizările — ce nu vine dintr-un document primit", "lunar"],
-      ["8", "Registrele și balanța de verificare", "lunar"],
-      ["9", "TVA — decontul perioadei", "lunar / trimestrial"],
-      ["10", "Închiderea lunii — verificare, aprobare, blocare", "lunar"],
-      ["11", "Închiderea anului — rezultatul, impozitul, repartizarea", "o dată pe an"],
-      ["12", "Situațiile financiare anuale", "o dată pe an"],
-      ["13", "Declarațiile și depunerea lor", "la termenele legale"],
-      ["14", "Arhivarea — dosarul lunii, dosarul anului", "continuu"]
+  {
+   "tip": "p",
+   "text": "Cele patru capitole de până acum au așezat uneltele pe masă: la ce întrebări răspunde contabilitatea, de ce fiecare sumă se scrie de două ori, unde anume se scrie și cine răspunde pentru ce. Mai rămâne ordinea — și, spre deosebire de restul, ordinea nu e o convenție didactică."
+  },
+  {
+   "tip": "p",
+   "text": "O firmă parcurge în fiecare lună aceeași secvență de operațiuni, iar fiecare pas presupune că cel dinainte s-a încheiat. Nu poți regulariza TVA-ul înainte de a fi înregistrat facturile lunii. Nu poți închide luna cu extrasul bancar nepunctat. Nu poți întocmi bilanțul până nu ai închis toate lunile. Secvența aceasta se numește ciclu contabil, iar cartea o urmează pas cu pas."
+  },
+  {
+   "tip": "h",
+   "text": "De ce nu pe teme, ca manualele"
+  },
+  {
+   "tip": "p",
+   "text": "Un manual clasic împarte materia pe capitole tematice: conturile, apoi stocurile, apoi salariile, apoi TVA-ul. E o ordine bună pentru cine dă un examen și una proastă pentru cine ține o firmă, din două motive."
+  },
+  {
+   "tip": "p",
+   "text": "Întâi, fiindcă ascunde dependențele. În realitate, greșeala de la stocuri se vede în TVA, iar cea de la salarii se vede în bilanț. Prezentate separat, temele par independente; în practică se sprijină una pe alta."
+  },
+  {
+   "tip": "p",
+   "text": "Apoi, fiindcă răspunde la întrebări în alt moment decât cel în care ele apar. Cine ține contabilitate nu se întreabă „ce știu eu despre amortizare”, ci „ce am de făcut acum, că e 25 ale lunii”. Cartea aceasta e așezată după al doilea fel de întrebare."
+  },
+  {
+   "tip": "cheie",
+   "text": "Ordinea fazelor nu e o alegere de autor. E o dependență reală: fiecare pas consumă rezultatul celui dinainte."
+  },
+  {
+   "tip": "h",
+   "text": "Cele paisprezece faze"
+  },
+  {
+   "tip": "p",
+   "text": "Ciclul complet arată așa. Coloana din dreapta spune la ce ritm se parcurge fiecare fază — și aici stă a doua idee importantă a capitolului: nu totul se face lunar."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ciclul contabil, în ordinea parcurgerii",
+   "cap": [
+    "Faza",
+    "Ce se face",
+    "Ritm"
+   ],
+   "randuri": [
+    [
+     "1",
+     "Deschiderea exercițiului — datele firmei, regimurile, soldurile de pornire",
+     "o dată pe an"
     ],
-    "numerice": [1],
-    "nota": "Fazele 2–4 sunt munca de zi cu zi. Fazele 5–10 sunt ritualul de sfârșit de lună. Fazele 11–12 se fac o singură dată pe an, după ce toate lunile sunt închise." },
-
-  { "tip": "h", "text": "Trei ritmuri, nu unul" },
-  { "tip": "p", "text": "Confuzia cea mai costisitoare la firmele mici e că totul se face „la contabilitate, o dată pe lună”. În realitate, ciclul are trei ritmuri suprapuse, iar amestecarea lor e sursa clasică de haos în martie, când se caută documente din septembrie." },
-  { "tip": "p", "text": "Ritmul zilnic e al documentelor și al banilor. O factură primită azi și înregistrată azi costă un minut; aceeași factură căutată peste patru luni costă o după-amiază, iar uneori nu se mai găsește deloc." },
-  { "tip": "p", "text": "Ritmul lunar e al verificărilor: salarii, amortizare, regularizări, balanță, TVA, închidere. E o listă care se parcurge în ordine, iar sărirea unui pas nu se vede imediat — se vede la următorul care depinde de el." },
-  { "tip": "p", "text": "Ritmul anual e al bilanțului: rezultatul, impozitul, repartizarea, situațiile financiare. Se face o singură dată, dar numai după ce cele douăsprezece luni sunt închise. De aceea o lună lăsată deschisă în iulie devine o problemă în mai anul următor." },
-
-  { "tip": "h", "text": "De ce cartea grupează două faze depărtate" },
-  { "tip": "p", "text": "O singură abatere de la ordinea strictă merită explicată, fiindcă se vede în cuprins. Partea a opta tratează la un loc TVA-ul (faza 9) și declarațiile (faza 13), deși între ele stau patru faze." },
-  { "tip": "p", "text": "Motivul e că, din punctul de vedere al firmei, sunt același lucru: ce datorezi statului și cum dovedești că ai depus. Decontul de TVA e prima declarație pe care o firmă o întâlnește și cea mai frecventă, iar despărțirea ei de restul declarațiilor ar fi împărțit o singură idee în două locuri. Restul cărții urmează ordinea fazelor fără excepții." },
-
-  { "tip": "contabil", "titlu": "Pentru contabil",
-    "text": "Ciclul descris aici e forma practică a două cerințe din reglementări: înregistrarea cronologică și sistematică a operațiunilor, respectiv întocmirea situațiilor financiare pe baza balanței de verificare de la închiderea exercițiului. Ritmul fazei 9 nu e o alegere internă: perioada fiscală pentru TVA e luna sau trimestrul, după cifra de afaceri și după existența achizițiilor intracomunitare, iar schimbarea ei atrage recalcularea termenelor pentru tot anul. Fazele 10 și 11 se disting nu doar prin frecvență, ci prin efecte: închiderea lunii stabilește TVA-ul de plată și blochează perioada, în timp ce închiderea anului stinge conturile din clasele 6 și 7 în 121 și pregătește repartizarea rezultatului — operațiune care, la rândul ei, nu se poate face înainte de aprobarea situațiilor financiare. Faza 14 nu e administrativă: termenele de păstrare curg de la închiderea exercițiului, iar reconstituirea unui document pierdut e o procedură reglementată, nu o formalitate. În fine, ordinea are și o consecință de audit: o lună redeschisă după depunerea declarațiilor cere storno în perioada curentă, nu modificarea celei închise — motiv pentru care blocarea din faza 10 e o garanție, nu o piedică." },
-
-  { "tip": "h", "text": "Cum se citește restul cărții" },
-  { "tip": "p", "text": "Fiecare parte care urmează e o fază. Capitolele din interiorul ei răspund la întrebările care apar exact în acel moment, în ordinea în care apar. Cine ține o firmă poate citi cartea o dată de la cap la coadă, apoi să se întoarcă la partea de care are nevoie în ziua respectivă." },
-  { "tip": "p", "text": "Textul de bază e scris pentru cineva care nu a făcut contabilitate. Acolo unde subiectul o cere, capitolul continuă cu o secțiune pentru contabil — monografia, temeiul legal, verificarea — marcată distinct, astfel încât cele două lecturi să nu se încurce. Un patron poate sări peste ele fără să piardă firul; un contabil le va găsi acolo unde se așteaptă." },
-  { "tip": "p", "text": "Partea introductivă se încheie aici. Din capitolul următor începe ciclul propriu-zis, cu faza care se face o singură dată și de care atârnă tot restul anului: deschiderea exercițiului." },
-
-  { "tip": "recap", "titlu": "De reținut din acest capitol",
-    "puncte": [
-      "Ciclul contabil are paisprezece faze, iar ordinea lor e o dependență reală: fiecare pas consumă rezultatul celui dinainte.",
-      "Ritmurile sunt trei, nu unul: zilnic pentru documente și bani, lunar pentru verificări și închidere, anual pentru bilanț.",
-      "O lună lăsată deschisă nu rămâne o problemă a lunii aceleia — devine o problemă la închiderea anului.",
-      "Cartea urmează fazele, cu o singură abatere explicată: TVA-ul și declarațiile stau împreună, fiindcă răspund aceleiași întrebări.",
-      "Fiecare parte de aici încolo e o fază; capitolele din ea răspund întrebărilor din acel moment al lunii."
-    ] }
+    [
+     "2",
+     "Documentele justificative — tot ce intră în contabilitate",
+     "zilnic"
+    ],
+    [
+     "3",
+     "Trezoreria — încasări, plăți, reconcilierea cu extrasul",
+     "zilnic / săptămânal"
+    ],
+    [
+     "4",
+     "Stocurile — intrări, ieșiri, producție",
+     "zilnic"
+    ],
+    [
+     "5",
+     "Salariile — statul de plată al lunii",
+     "lunar"
+    ],
+    [
+     "6",
+     "Imobilizările — amortizarea, ratele de leasing",
+     "lunar"
+    ],
+    [
+     "7",
+     "Regularizările — ce nu vine dintr-un document primit",
+     "lunar"
+    ],
+    [
+     "8",
+     "Registrele și balanța de verificare",
+     "lunar"
+    ],
+    [
+     "9",
+     "TVA — decontul perioadei",
+     "lunar / trimestrial"
+    ],
+    [
+     "10",
+     "Închiderea lunii — verificare, aprobare, blocare",
+     "lunar"
+    ],
+    [
+     "11",
+     "Închiderea anului — rezultatul, impozitul, repartizarea",
+     "o dată pe an"
+    ],
+    [
+     "12",
+     "Situațiile financiare anuale",
+     "o dată pe an"
+    ],
+    [
+     "13",
+     "Declarațiile și depunerea lor",
+     "la termenele legale"
+    ],
+    [
+     "14",
+     "Arhivarea — dosarul lunii, dosarul anului",
+     "continuu"
+    ]
+   ],
+   "numerice": [
+    1
+   ],
+   "nota": "Fazele 2–4 sunt munca de zi cu zi. Fazele 5–10 sunt ritualul de sfârșit de lună. Fazele 11–12 se fac o singură dată pe an, după ce toate lunile sunt închise."
+  },
+  {
+   "tip": "h",
+   "text": "Trei ritmuri, nu unul"
+  },
+  {
+   "tip": "p",
+   "text": "Confuzia cea mai costisitoare la firmele mici e că totul se face „la contabilitate, o dată pe lună”. În realitate, ciclul are trei ritmuri suprapuse, iar amestecarea lor e sursa clasică de haos în martie, când se caută documente din septembrie."
+  },
+  {
+   "tip": "p",
+   "text": "Ritmul zilnic e al documentelor și al banilor. O factură primită azi și înregistrată azi costă un minut; aceeași factură căutată peste patru luni costă o după-amiază, iar uneori nu se mai găsește deloc."
+  },
+  {
+   "tip": "p",
+   "text": "Ritmul lunar e al verificărilor: salarii, amortizare, regularizări, balanță, TVA, închidere. E o listă care se parcurge în ordine, iar sărirea unui pas nu se vede imediat — se vede la următorul care depinde de el."
+  },
+  {
+   "tip": "p",
+   "text": "Ritmul anual e al bilanțului: rezultatul, impozitul, repartizarea, situațiile financiare. Se face o singură dată, dar numai după ce cele douăsprezece luni sunt închise. De aceea o lună lăsată deschisă în iulie devine o problemă în mai anul următor."
+  },
+  {
+   "tip": "h",
+   "text": "De ce cartea grupează două faze depărtate"
+  },
+  {
+   "tip": "p",
+   "text": "O singură abatere de la ordinea strictă merită explicată, fiindcă se vede în cuprins. Partea a opta tratează la un loc TVA-ul (faza 9) și declarațiile (faza 13), deși între ele stau patru faze."
+  },
+  {
+   "tip": "p",
+   "text": "Motivul e că, din punctul de vedere al firmei, sunt același lucru: ce datorezi statului și cum dovedești că ai depus. Decontul de TVA e prima declarație pe care o firmă o întâlnește și cea mai frecventă, iar despărțirea ei de restul declarațiilor ar fi împărțit o singură idee în două locuri. Restul cărții urmează ordinea fazelor fără excepții."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Ciclul descris aici e forma practică a două cerințe din reglementări: înregistrarea cronologică și sistematică a operațiunilor, respectiv întocmirea situațiilor financiare pe baza balanței de verificare de la închiderea exercițiului. Ritmul fazei 9 nu e o alegere internă: perioada fiscală pentru TVA e luna sau trimestrul, după cifra de afaceri și după existența achizițiilor intracomunitare, iar schimbarea ei atrage recalcularea termenelor pentru tot anul. Fazele 10 și 11 se disting nu doar prin frecvență, ci prin efecte: închiderea lunii stabilește TVA-ul de plată și blochează perioada, în timp ce închiderea anului stinge conturile din clasele 6 și 7 în 121 și pregătește repartizarea rezultatului — operațiune care, la rândul ei, nu se poate face înainte de aprobarea situațiilor financiare. Faza 14 nu e administrativă: termenele de păstrare curg de la închiderea exercițiului, iar reconstituirea unui document pierdut e o procedură reglementată, nu o formalitate. În fine, ordinea are și o consecință de audit: o lună redeschisă după depunerea declarațiilor cere storno în perioada curentă, nu modificarea celei închise — motiv pentru care blocarea din faza 10 e o garanție, nu o piedică."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se citește restul cărții"
+  },
+  {
+   "tip": "p",
+   "text": "Fiecare parte care urmează e o fază. Capitolele din interiorul ei răspund la întrebările care apar exact în acel moment, în ordinea în care apar. Cine ține o firmă poate citi cartea o dată de la cap la coadă, apoi să se întoarcă la partea de care are nevoie în ziua respectivă."
+  },
+  {
+   "tip": "p",
+   "text": "Textul de bază e scris pentru cineva care nu a făcut contabilitate. Acolo unde subiectul o cere, capitolul continuă cu o secțiune pentru contabil — monografia, temeiul legal, verificarea — marcată distinct, astfel încât cele două lecturi să nu se încurce. Un patron poate sări peste ele fără să piardă firul; un contabil le va găsi acolo unde se așteaptă."
+  },
+  {
+   "tip": "p",
+   "text": "Partea introductivă se încheie aici. Din capitolul următor începe ciclul propriu-zis, cu faza care se face o singură dată și de care atârnă tot restul anului: deschiderea exercițiului."
+  },
+  {
+   "tip": "h",
+   "text": "Harta, pe o lună concretă"
+  },
+  {
+   "tip": "p",
+   "text": "Fazele au sens abia când le vezi datate. Iată aceeași secvență, așezată pe zilele unei luni obișnuite la o firmă mică, plătitoare de TVA și cu doi angajați."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Luna, zi cu zi",
+   "cap": [
+    "Când",
+    "Ce se face",
+    "Faza"
+   ],
+   "randuri": [
+    [
+     "pe parcurs",
+     "documentele se înregistrează pe măsură ce sosesc",
+     "2"
+    ],
+    [
+     "1–5 ale lunii următoare",
+     "se completează documentele lipsă, se cer facturile nesosite",
+     "2"
+    ],
+    [
+     "5–8",
+     "extrasul lunii se înregistrează și se punctează",
+     "3"
+    ],
+    [
+     "8–10",
+     "stocul, salariile, amortizarea",
+     "4–6"
+    ],
+    [
+     "10–15",
+     "regularizările: avansuri, valută, delimitări",
+     "7"
+    ],
+    [
+     "15–18",
+     "balanța de verificare și confruntările",
+     "8"
+    ],
+    [
+     "18–24",
+     "declarațiile se generează, se validează, se depun",
+     "9"
+    ],
+    [
+     "25",
+     "plata obligațiilor",
+     "9"
+    ],
+    [
+     "după depunere",
+     "perioada se blochează",
+     "10"
+    ]
+   ],
+   "nota": "Datele nu sunt o normă, ci un ritm care lasă loc de corectat. Cine ajunge la balanță pe 24 nu mai are când să repare ce găsește."
+  },
+  {
+   "tip": "p",
+   "text": "Se observă că depunerea ocupă o singură zi, iar tot ce e înainte ocupă trei săptămâni. Raportul acesta e chiar teza cărții: declarația nu e o lucrare, ci consecința unei luni deja făcute. Cine o tratează ca pe o lucrare o completează pe 24 și o rectifică pe 3."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 5.1 — ce se strică dacă schimbi ordinea",
+   "enunt": [
+    "Un contabil, presat de termen, generează decontul de TVA pe 20 ale lunii, înainte de a fi punctat extrasul și înainte de balanță. Pe 22 sosesc trei facturi de achiziție din luna raportată.",
+    "Ce se întâmplă cu fiecare dintre: (a) decontul deja generat; (b) balanța lunii; (c) situația firmei la un control."
+   ],
+   "rezolvare": [
+    "(a) Decontul e incomplet: TVA-ul deductibil al celor trei facturi lipsește, deci firma declară mai mult de plată decât datorează. Dacă a fost deja depus, corecția cere decont rectificativ.",
+    "(b) Balanța întocmită după înregistrarea facturilor nu va mai corespunde cu decontul depus — iar corelația dintre rulajul contului 4426 și jurnalul de cumpărări, care ar fi trebuit verificată înainte de depunere, iese acum greșită.",
+    "(c) La control, diferența dintre evidență și declarație e prima care se vede. Ea nu e o eroare de calcul, ci una de ORDINE, și e reparabilă — dar reparația costă o rectificativă și o explicație, în loc de două zile de așteptare.",
+    "Morala, care e chiar rostul capitolului: fazele nu sunt un ritual, sunt dependențe. Sărirea uneia nu economisește timp, ci îl mută mai departe, cu dobândă."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Ciclul contabil are paisprezece faze, iar ordinea lor e o dependență reală: fiecare pas consumă rezultatul celui dinainte.",
+    "Ritmurile sunt trei, nu unul: zilnic pentru documente și bani, lunar pentru verificări și închidere, anual pentru bilanț.",
+    "O lună lăsată deschisă nu rămâne o problemă a lunii aceleia — devine o problemă la închiderea anului.",
+    "Cartea urmează fazele, cu o singură abatere explicată: TVA-ul și declarațiile stau împreună, fiindcă răspund aceleiași întrebări.",
+    "Fiecare parte de aici încolo e o fază; capitolele din ea răspund întrebărilor din acel moment al lunii."
+   ]
+  }
  ]
 }

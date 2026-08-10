@@ -140,6 +140,22 @@
    "text": "Cu jurnalul și cartea mare, contabilitatea e completă: totul e înregistrat, în ordinea timpului și grupat pe conturi. Rămâne întrebarea dacă totul se ține — iar pentru ea există un singur instrument, cel mai vechi din contabilitate. E capitolul următor."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 31.1 — drumul înapoi, în patru pași",
+   "enunt": [
+    "Bilanțul arată datorii comerciale de 87.400 de lei. Administratorul întreabă din ce e făcută cifra și de ce e mai mare decât luna trecută.",
+    "Descrie drumul, pas cu pas, până la documente."
+   ],
+   "rezolvare": [
+    "Pasul 1 — din bilanț în balanță: rândul de datorii comerciale se compune din soldurile creditoare ale conturilor 401, 404 și 408. Se identifică fiecare.",
+    "Pasul 2 — din balanță în desfășurarea analitică: soldul lui 401 se sparge pe fiecare furnizor. Aici se vede imediat dacă creșterea vine de la un singur partener sau de la mulți.",
+    "Pasul 3 — din analitic în fișa de cont: pentru furnizorul identificat, mișcările lunii, în ordine cronologică.",
+    "Pasul 4 — din fișă în articol și din articol în document: factura care a produs creșterea, cu numărul și data ei.",
+    "Verificarea care confirmă drumul: suma soldurilor analitice trebuie să fie exact soldul sintetic. Dacă nu e, pasul 2 minte, iar restul drumului duce într-un loc greșit.",
+    "Un program face cei patru pași în patru clicuri. Ce nu poate face niciun program e pasul zero: să știe DE CE a crescut, adică dacă achiziția aceea avea rost."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

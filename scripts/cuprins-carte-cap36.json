@@ -150,6 +150,21 @@
    "text": "Merită știut că se aplică și că e simplu odată înțeles, fiindcă alternativa — înregistrarea în scopuri de TVA într-un al doilea stat — costă de zece ori mai mult decât operațiunea în sine."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 36.1 — ce regim se aplică",
+   "enunt": [
+    "Pentru fiecare operațiune, spune ce regim se aplică și cine datorează taxa:",
+    "(a) Cumperi cereale de la un producător român, plătitor de TVA. (b) Cumperi un utilaj dintr-o firmă din Germania. (c) Vinzi un autoturism rulat, cumpărat de la o persoană fizică. (d) Prestezi consultanță unei firme din Franța."
+   ],
+   "rezolvare": [
+    "(a) Taxare inversă internă. Furnizorul emite fără TVA; tu înregistrezi taxa simultan ca datorie și ca drept de deducere. Efect net pe trezorerie: zero.",
+    "(b) Achiziție intracomunitară, tot taxare inversă. În plus, operațiunea te trece obligatoriu la depunere LUNARĂ a decontului, din chiar luna în care s-a produs, și aduce D390.",
+    "(c) Regim special al marjei: taxa se calculează numai pe diferența dintre prețul de vânzare și cel de cumpărare. Pe factură NU se înscrie TVA, iar mențiunea regimului e obligatorie.",
+    "(d) Prestare intracomunitară de servicii: locul e la beneficiar, deci operațiunea nu e impozabilă în România. Se raportează în D390 cu codul de servicii.",
+    "Ce au în comun (a), (b) și (d): obligația trece la cealaltă parte, iar omisiunea NU produce o diferență de plată — produce o declarație falsă, care se descoperă prin confruntarea cu declarațiile partenerului."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

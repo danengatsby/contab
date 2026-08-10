@@ -173,6 +173,21 @@
    "text": "Impozitul e calculat, iar rezultatul net e stabilit. Rămâne întrebarea la care patronul aștepta răspunsul de la început: ce se poate face cu el. E ultimul capitol al acestei părți."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 43.1 — de la profit contabil la impozit",
+   "enunt": [
+    "Profit contabil brut 120.000 lei. Cheltuieli: amenzi 8.000; provizion nedeductibil 15.000; protocol 6.000, cu plafon deductibil calculat la 2.600. Capital social subscris și vărsat 100.000, rezervă legală existentă 6.000. Nu există pierdere reportată.",
+    "Calculează rezultatul fiscal și impozitul."
+   ],
+   "rezolvare": [
+    "Nedeductibile: amenzi 8.000 (integral) + provizion 15.000 (integral) + partea de protocol peste plafon, 6.000 − 2.600 = 3.400. Total: 26.400 lei.",
+    "Rezerva legală: 5% din profitul BRUT = 6.000 de lei. Plafonul cumulat e 20% din capitalul vărsat = 20.000, din care există deja 6.000, deci mai încap 14.000. Se poate constitui integral: 6.000 deductibili.",
+    "Rezultat fiscal: 120.000 + 26.400 − 6.000 = 140.400 lei. Impozit: 16% × 140.400 = 22.464 lei.",
+    "Comparație: 16% din profitul contabil ar fi dat 19.200. Diferența de 3.264 de lei vine din 26.400 nedeductibili minus 6.000 deduși, ponderați cu 16%.",
+    "Ce ar fi costat omiterea rezervei legale: 16% × 6.000 = 960 de lei pe an, plătiți degeaba, pe o rezervă pe care legea o obligă oricum să o constituie."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

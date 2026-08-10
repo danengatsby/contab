@@ -171,6 +171,20 @@
    "text": "Suma intră în 472, iar în fiecare lună se transferă 1.000 de lei în venituri. Uitarea transferului are aici efectul invers — venituri subevaluate și o datorie fictivă în bilanț — dar cu aceeași cauză: nu sosește niciun document care să-l ceară."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 28.1 — cât rămâne în 471",
+   "enunt": [
+    "Pe 1 septembrie firma plătește o asigurare de 18.000 de lei pentru 12 luni. La 31 decembrie se întocmesc situațiile financiare.",
+    "(a) Cât e cheltuiala anului? (b) Cât rămâne în 471? (c) Ce se întâmplă dacă nimeni nu face transferul lunar?"
+   ],
+   "rezolvare": [
+    "(a) Asigurarea acoperă 12 luni, deci 1.500 de lei pe lună. Anului curent îi revin patru luni, septembrie–decembrie: 6.000 de lei.",
+    "(b) În contul 471 rămân 12.000 de lei, care acoperă ianuarie–august anul următor. E un ACTIV în bilanțul de la 31 decembrie: dreptul de a fi asigurat opt luni.",
+    "(c) Dacă transferul lunar nu se face, toți cei 18.000 rămân în 471. Rezultatul anului e supraevaluat cu 6.000 de lei, activul din bilanț cu aceeași sumă, iar fiscal cheltuiala nu e deductibilă în anul în care nu a fost recunoscută.",
+    "Verificarea anuală, care ia două minute: pentru fiecare sold rămas în 471 trebuie să existe o perioadă viitoare identificabilă. Dacă nu poți spune ce luni acoperă suma, nu mai e cheltuială în avans — e o cheltuială pe care ai uitat să o recunoști."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

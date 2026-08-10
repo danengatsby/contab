@@ -151,6 +151,22 @@
    "text": "Rămâne o întrebare pe care fluxul de mai sus o ridică fără să o rezolve: de unde știe cineva că un pas e gata? Răspunsul obișnuit — pentru că l-am bifat — e cel greșit, iar capitolul următor explică de ce."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 39.1 — ce e blocat și ce e deschis",
+   "enunt": [
+    "Pe 14 ale lunii, situația închiderii lunii precedente arată: documentele complete, extrasul înregistrat dar nepunctat, nicio notă de regularizare TVA, declarațiile negenerate, luna neaprobată.",
+    "În ce stare e fiecare dintre cei șase pași, și la ce se lucrează acum?"
+   ],
+   "rezolvare": [
+    "Pasul 1 (documente): GATA.",
+    "Pasul 2 (extras punctat): DESCHIS — e rândul lui, iar blocajul e explicit: mai există operațiuni nepotrivite.",
+    "Pasul 3 (TVA regularizat): BLOCAT de pasul 2. Nu e o sarcină restantă, e una care nu a început. La o firmă cu TVA la încasare, regularizarea făcută înaintea punctajului ar lucra pe date incomplete.",
+    "Pasul 4 (declarații): BLOCAT de 3. Pasul 5 (aprobare): BLOCAT de 4. Pasul 6 (blocare): BLOCAT de 5.",
+    "Se lucrează la UN singur lucru: punctajul. Un sistem care ar afișa cinci sarcini restante în loc de una ar transforma o listă utilă într-un zgomot pe care nimeni nu-l mai citește.",
+    "Dacă firma nu ar fi plătitoare de TVA, pasul 3 nu ar fi „nefăcut”, ci FĂRĂ OBIECT — a patra stare, care nu trebuie confundată cu celelalte trei."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

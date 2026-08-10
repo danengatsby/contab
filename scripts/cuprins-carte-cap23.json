@@ -194,6 +194,21 @@
    "text": "Un bun se poate afla în folosința firmei și fără să fi fost cumpărat. Cea mai răspândită formă e leasingul — iar rata lunară de leasing e, contabil, cel mai bun exemplu de plată care nu e o cheltuială. E ultimul capitol al acestei părți."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 23.1 — amortizarea unui autoturism",
+   "enunt": [
+    "Firma cumpără un autoturism de 180.000 de lei (fără TVA), durată 5 ani, metoda liniară, pus în funcțiune pe 10 martie.",
+    "(a) Din ce lună începe amortizarea și cu ce sumă? (b) Cât e deductibil fiscal? (c) Ce se întâmplă în anul întâi?"
+   ],
+   "rezolvare": [
+    "(a) Din aprilie — luna următoare punerii în funcțiune. Amortizarea lunară contabilă: 180.000 ÷ 60 = 3.000 de lei.",
+    "(b) Pentru vehiculele de persoane cu cel mult nouă locuri, amortizarea deductibilă e plafonată la 1.500 de lei pe lună. Deci din cei 3.000 de lei, jumătate e nedeductibilă — în fiecare lună, pe toată durata.",
+    "(c) Anul întâi are nouă luni de amortizare (aprilie–decembrie): 27.000 de lei contabil, din care 13.500 deductibili și 13.500 nedeductibili.",
+    "Atenție la o greșeală frecventă: plafonul e LUNAR și nu se reportează. Cine calculează „12 × 1.500 = 18.000 deductibili pe an” obține o deducere mai mare decât cea legală într-un an cu doar nouă luni de amortizare.",
+    "În plus, față de acest plafon se aplică separat limitările de la TVA (50%) și de la cheltuielile de întreținere (50%) — sunt trei limitări distincte, cu baze diferite, iar confundarea lor e sursa celor mai multe ajustări la control."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

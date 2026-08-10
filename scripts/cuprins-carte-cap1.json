@@ -182,6 +182,77 @@
    "text": "Înainte de sertare mai e ceva de lămurit: de ce fiecare sumă se scrie în două locuri deodată. Asta nu e o convenție birocratică, ci exact mecanismul care face ca cele două coloane din al doilea tabel să iasă egale de fiecare dată. E subiectul capitolului următor."
   },
   {
+   "tip": "h",
+   "text": "Aceeași lună, cu o singură cifră schimbată"
+  },
+  {
+   "tip": "p",
+   "text": "Ca să se vadă că cele două întrebări chiar sunt independente, merită schimbat un singur lucru în exemplu și urmărit ce se mișcă. Presupunem că totul rămâne la fel, dar clientul plătește integral în cursul lunii: nu 40.000, ci toți 100.000."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Aceeași activitate, două scenarii de încasare",
+   "cap": [
+    "Elementul",
+    "Clientul plătește 40.000",
+    "Clientul plătește 100.000"
+   ],
+   "randuri": [
+    [
+     "Vânzări ale lunii",
+     "100.000",
+     "100.000"
+    ],
+    [
+     "Costul mărfii vândute",
+     "60.000",
+     "60.000"
+    ],
+    [
+     "Câștigul lunii",
+     "40.000",
+     "40.000"
+    ],
+    [
+     "Bani în cont la final",
+     "15.000",
+     "75.000"
+    ],
+    [
+     "De încasat de la clienți",
+     "60.000",
+     "0"
+    ]
+   ],
+   "numerice": [
+    2,
+    3
+   ],
+   "nota": "Câștigul e identic în ambele coloane. Se schimbă doar unde stă valoarea: în cont sau la client."
+  },
+  {
+   "tip": "p",
+   "text": "Linia care nu se mișcă e cea care contează. Încasarea nu creează câștig; ea doar mută o valoare deja câștigată dintr-un loc în altul — din creanțe în bani. Iar dacă a doua coloană arată mai bine, e pentru că firma are aceeași avere sub o formă mai lichidă, nu pentru că a produs mai mult."
+  },
+  {
+   "tip": "p",
+   "text": "Exercițiul acesta merită repetat mental de fiecare dată când cineva spune „luna asta a mers prost”. Prima întrebare de pus e: vorbim despre câștig sau despre bani? Aproape întotdeauna se vorbește despre al doilea, iar decizia se ia ca și cum ar fi despre primul."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 1.1 — două întrebări, două răspunsuri",
+   "enunt": [
+    "O firmă de servicii pornește luna cu 12.000 de lei în cont. Emite facturi de 50.000 de lei, din care încasează 30.000 până la sfârșitul lunii. Cheltuielile lunii sunt: salarii 20.000, chirie 4.000, utilități 1.500 — toate plătite în cursul lunii. Nu are stocuri.",
+    "Se cer: (a) câștigul lunii; (b) soldul contului la final; (c) de ce cele două nu coincid."
+   ],
+   "rezolvare": [
+    "(a) Câștigul se calculează pe ce s-a produs, nu pe ce s-a încasat: 50.000 − 20.000 − 4.000 − 1.500 = 24.500 de lei.",
+    "(b) Soldul contului: 12.000 + 30.000 încasate − 25.500 plătite = 16.500 de lei.",
+    "(c) Diferența dintre 24.500 și creșterea de 4.500 a contului e de 20.000 de lei — exact suma facturată și neîncasată. Ea nu a dispărut: stă în creanțe, adică e tot a firmei, doar că la client.",
+    "Verificarea care închide raționamentul: creșterea de numerar (4.500) plus creșterea creanțelor (20.000) dă 24.500, adică fix câștigul. Nu e o coincidență — e prima formă a legăturii dintre cele două documente."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

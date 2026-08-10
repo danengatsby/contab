@@ -171,6 +171,21 @@
    "text": "Contul de profit și pierdere a răspuns la întrebarea despre interval. Rămâne cea despre moment: ce are firma și ce datorează, la o dată anume. E bilanțul, iar egalitatea care îl definește nu e o coincidență."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 45.1 — citește contul de rezultat în trei priviri",
+   "enunt": [
+    "Firma A: venituri din exploatare 800.000, cheltuieli din exploatare 760.000, venituri financiare 0, cheltuieli financiare 35.000.",
+    "Firma B: venituri din exploatare 800.000, cheltuieli din exploatare 830.000, venituri financiare 40.000, cheltuieli financiare 0.",
+    "Amândouă au rezultat brut de 5.000, respectiv 10.000. Care e mai sănătoasă?"
+   ],
+   "rezolvare": [
+    "Firma A: rezultat din exploatare +40.000, rezultat financiar −35.000, brut +5.000. Afacerea produce; costul finanțării înghite aproape tot. Problema e structura de finanțare, nu activitatea.",
+    "Firma B: rezultat din exploatare −30.000, rezultat financiar +40.000, brut +10.000. Afacerea PIERDE; profitul vine din altceva — o dobândă, o diferență de curs, un venit care nu se repetă.",
+    "Deci B arată mai bine la ultima linie și e mai bolnavă. A poate refinanța un credit; B trebuie să-și schimbe activitatea.",
+    "Regula de citire, în ordine: semnul rezultatului din EXPLOATARE, apoi marja, apoi cât înghite rezultatul financiar. Ultima linie e cea mai puțin informativă din tot documentul, deși e singura pe care o citește toată lumea."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

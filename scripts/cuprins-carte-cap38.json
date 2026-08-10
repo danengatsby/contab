@@ -125,6 +125,20 @@
    "text": "Urmează partea despre momentul în care luna sau anul devine definitiv: închiderea. Ordinea pașilor contează acolo mai mult decât oriunde altundeva, iar sărirea unuia se vede abia peste luni."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 38.1 — ce ai, de fapt",
+   "enunt": [
+    "La un control se cere dovada depunerii D300 pentru trei luni. Contabilul are: pentru prima lună fișierul XML și o captură de ecran cu mesajul „transmis”; pentru a doua, recipisa descărcată; pentru a treia, nimic — dar își amintește că a depus.",
+    "Ce se acceptă?"
+   ],
+   "rezolvare": [
+    "Prima lună: fișierul XML dovedește că declarația a fost întocmită, nu că a fost primită. Captura de ecran nu e o probă — nu are semnătura autorității și nu identifică depunerea. Se poate reface, verificând starea în spațiul virtual, dar în lipsa recipisei situația e „nedovedită”.",
+    "A doua lună: recipisa e proba. Aici e în regulă.",
+    "A treia: amintirea nu e probă. Dacă depunerea a existat, ea se poate regăsi în evidența autorității; dacă nu, obligația e neîndeplinită, iar amenda curge indiferent de faptul că suma a fost plătită.",
+    "Regula, spusă o dată pentru toate: recipisa se descarcă și se arhivează IMEDIAT, în același dosar cu declarația. Nu „când o să fie nevoie” — atunci e exact momentul în care nu mai ai timp să o cauți."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

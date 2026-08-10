@@ -151,6 +151,22 @@
    "text": "Cele cinci documente sunt gata. Înainte de semnătură mai rămâne o singură operațiune, care durează zece minute și prinde majoritatea erorilor grave: verificarea concordanțelor dintre ele."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 47.1 — profit mare, bani puțini",
+   "enunt": [
+    "Firma a raportat un profit net de 90.000 de lei. Numerarul a crescut în același an cu doar 5.000.",
+    "Explică diferența, știind că: amortizarea anului a fost 30.000; stocurile au crescut cu 50.000; creanțele au crescut cu 40.000; datoriile către furnizori au crescut cu 15.000; s-a rambursat un credit de 40.000."
+   ],
+   "rezolvare": [
+    "Se pornește de la profit și se elimină ce nu e monetar sau nu e din exploatare:",
+    "90.000 profit + 30.000 amortizare (cheltuială care nu s-a plătit) = 120.000.",
+    "− 50.000 creșterea stocurilor (bani blocați în marfă) − 40.000 creșterea creanțelor (facturat, neîncasat) + 15.000 creșterea datoriilor (primit, neplătit) = 45.000 flux din exploatare.",
+    "− 40.000 rambursarea creditului (flux din finanțare) = 5.000 creșterea numerarului. Se verifică.",
+    "Ce arată calculul: din 90.000 de lei de profit, 90.000 sunt reali — dar 90.000 de lei stau în stocuri și creanțe, iar 40.000 s-au dus la bancă. Firma nu a inventat profitul; l-a imobilizat.",
+    "De aceea băncile citesc fluxul din exploatare înaintea profitului: 45.000 spune cât produce activitatea în BANI, iar 90.000 spune cât produce în valoare."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

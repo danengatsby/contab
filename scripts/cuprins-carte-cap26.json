@@ -161,6 +161,21 @@
    "text": "Ce nu se poate automatiza e verificarea perimetrului: dacă un cont a intrat în listă pentru că a fost atins vreodată de o operațiune în valută, dar soldul lui e de mult în lei, reevaluarea lui produce o diferență inventată. Un minut de citit lista înainte de confirmare valorează mai mult decât orice verificare de după."
   },
   {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 26.1 — semnul, pe patru solduri",
+   "enunt": [
+    "La 31 decembrie firma are: creanță 10.000 EUR (înregistrată la 4,97), datorie 6.000 EUR (la 5,02), disponibil 2.000 EUR (la 4,99) și un avans plătit unui furnizor extern de 3.000 EUR (la 4,95). Cursul de închidere: 5,08.",
+    "Calculează diferențele și spune pentru fiecare dacă e venit sau cheltuială."
+   ],
+   "rezolvare": [
+    "Creanța: 10.000 × (5,08 − 4,97) = +1.100 lei. Activ care crește = CÂȘTIG, venit financiar.",
+    "Datoria: 6.000 × (5,08 − 5,02) = 360 lei. Datorie care crește = PIERDERE, cheltuială financiară.",
+    "Disponibilul: 2.000 × (5,08 − 4,99) = +180 lei. Activ monetar care crește = câștig.",
+    "Avansul: NIMIC. Avansurile plătite sunt elemente NEMONETARE — nu reprezintă dreptul de a primi bani, ci de a primi un bun. Rămân la cursul din ziua plății.",
+    "Rezultat net: 1.100 + 180 − 360 = +920 lei venit financiar. Cine ar fi reevaluat și avansul ar fi inventat încă 390 de lei de venit care nu există, iar cine ar fi aplicat aceeași formulă tuturor conturilor ar fi trecut cei 360 de lei la venituri — greșind rezultatul cu 720 de lei, adică dublul."
+   ]
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
