@@ -20,6 +20,30 @@ function routePattern(req) {
   return p.split('/').map((seg) => (/^\d+$/.test(seg) || /^[0-9a-f]{8,}$/i.test(seg) || seg.length > 24 ? ':id' : seg)).join('/');
 }
 
+// ── CERERILE LENTE RECENTE, cu ora lor ──────────────────────────────────────────────────────
+// `routes` tine agregate CUMULATE de la pornire, deci raspunde la „ce e scump in general", nu la
+// „ce rula acum doua minute, cand s-a blocat bucla". Alerta de lag spunea CAT a stat blocata si
+// niciodata UNDE — iar fara asta diagnosticul e o ghicitoare (masurat: patru alerte intr-o
+// saptamana, cu varfuri de 1.616 ms, si nicio pista in log).
+//
+// Inelul de mai jos e minimul care raspunde la a doua intrebare: ultimele cereri care au depasit
+// pragul, cu momentul lor. Se pastreaza doar tiparul rutei (deja normalizat de `routePattern`,
+// deci fara identificatori), durata si ora — nimic din corpul cererii.
+//
+// ATENTIE la interpretare, si de aceea o scriem in raport: cand bucla se blocheaza, TOATE cererile
+// din fereastra ies lente, fiindca asteapta la coada. Vinovata e de regula cea mai LUNGA, nu toate.
+const SLOW_RING = 60;
+const slowRing = [];
+function recordSlow(pattern, ms, ts) {
+  slowRing.push({ route: pattern, ms: Math.round(ms), ts: ts || Date.now() });
+  if (slowRing.length > SLOW_RING) slowRing.shift();
+}
+/** Cererile lente din ultimele `ferestraMs` milisecunde, cele mai lungi primele. */
+function slowRecent(ferestraMs, limita) {
+  const de = Date.now() - (Number(ferestraMs) || 60000);
+  return slowRing.filter((x) => x.ts >= de).sort((a, b) => b.ms - a.ms).slice(0, Number(limita) || 3);
+}
+
 function record(pattern, ms, status) {
   let r = routes.get(pattern);
   if (!r) {
@@ -28,7 +52,7 @@ function record(pattern, ms, status) {
     routes.set(pattern, r);
   }
   r.n += 1; r.totalMs += ms; if (ms > r.maxMs) r.maxMs = ms;
-  if (ms >= SLOW_MS) r.slow += 1;
+  if (ms >= SLOW_MS) { r.slow += 1; recordSlow(pattern, ms); }
   if (status >= 500) r.err5xx += 1;
 }
 
@@ -282,7 +306,7 @@ function truncationsSnapshot() {
 
 /** Doar pentru teste: goleste agregatele. */
 function reset() {
-  routes.clear(); recentErrors.length = 0; jobs.clear();
+  routes.clear(); recentErrors.length = 0; jobs.clear(); slowRing.length = 0;
   ai.n = 0; ai.fail = 0; ai.totalMs = 0; ai.lastError = null; ai.lastErrorAt = null;
   lagH.reset(); lagMaxTotal = 0; lagWindowFrom = Date.now();
   audit.scrise = 0; audit.esecuri = 0; audit.esecConsecutive = 0;
@@ -295,7 +319,7 @@ module.exports = {
   MEM_LIMIT_MB, MEM_WARN_MB, LAG_WARN_MS,
   SLOW_MS, routePattern, record, snapshot, reset,
   recordError, recentErrors, jobTick, jobResult, jobError, jobsSnapshot,
-  aiCall, aiSnapshot, lagSnapshot, lagRoll, lagValues,
+  aiCall, aiSnapshot, lagSnapshot, lagRoll, lagValues, slowRecent, recordSlow,
   auditOk, auditFail, auditSnapshot,
   truncation, truncationsSnapshot,
   clientErrorRecord, clientError, clientErrorsSnapshot, MAX_CLIENT_ERRORS,

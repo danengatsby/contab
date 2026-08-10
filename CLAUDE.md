@@ -127,8 +127,12 @@ rămas `root:600`, procesul (utilizatorul `contab`) primea „Permission denied"
 commitul se citeau în continuare corect — deci pornirea raporta senin „main@… (arbore curat)" cu
 fișiere necomise pe disc, adică exact garda de deploy dezarmată tăcut. `git()` întoarce `null` la
 eșec, nu `''`: la `git status`, gol înseamnă „curat" și eșec înseamnă „habar n-avem", iar cele două
-nu au voie să arate la fel. Dacă repari drepturile, folosește `git config core.sharedRepository
-group` + `chown -R contab:contab .git` — altfel următoarea comandă git rulată ca root le strică din nou.
+nu au voie să arate la fel. Rețeta care REZISTĂ (cea veche, fără setgid, se strica la următoarea comandă git rulată ca root):
+`git config core.sharedRepository group` + `chgrp -R contab .git` + **setgid pe directoare**
+(`find .git -type d -exec chmod g+rwxs {} \;`) + `find .git -type f -exec chmod g+rw {} \;`.
+Setgid-ul e piesa care lipsea: fără el, fișierele create de root primesc grupul `root` și
+procesul (utilizatorul `contab`) nu mai poate scrie indexul. Verificat: după `git add` rulat
+ca root, `.git/index` iese `root:contab` cu grup-scriere, iar `sudo -u contab git status` merge.
 **`pm2 restart` NU reaplică `ecosystem.config.js`** — păstrează configurația cu care procesul a fost
 pornit prima dată. O modificare acolo (plafon de memorie, căi de log, env) ajunge în producție doar
 prin `pm2 delete contab && pm2 start ecosystem.config.js && pm2 save`; altfel fișierul rămâne o
