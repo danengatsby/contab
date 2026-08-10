@@ -167,6 +167,108 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Cele două metode ale fluxului"
+  },
+  {
+   "tip": "p",
+   "text": "Fluxul din exploatare se poate construi în două feluri, iar rezultatul e identic — se schimbă doar din ce se pornește și, odată cu asta, ce se vede pe drum."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Directă sau indirectă",
+   "cap": [
+    "Metoda",
+    "Pornește de la",
+    "Ce arată în plus",
+    "Ce cere"
+   ],
+   "randuri": [
+    [
+     "directă",
+     "încasările și plățile efective",
+     "de la cine intră banii și către cine ies",
+     "evidența plăților pe categorii"
+    ],
+    [
+     "indirectă",
+     "rezultatul exercițiului",
+     "de ce profitul diferă de bani",
+     "doar bilanțul și contul de rezultat"
+    ]
+   ],
+   "nota": "Metoda aleasă se declară în note și se păstrează de la un an la altul — altfel cele două exerciții nu mai sunt comparabile."
+  },
+  {
+   "tip": "p",
+   "text": "Metoda indirectă e cea care lămurește paradoxul „am profit, n-am bani”, fiindcă enumeră chiar cauzele: amortizarea, care a redus profitul fără să scoată bani; stocurile și creanțele, care au blocat bani fără să atingă profitul; datoriile, care au adus bani fără să producă venit."
+  },
+  {
+   "tip": "h",
+   "text": "Situația capitalurilor: la ce folosește, de fapt"
+  },
+  {
+   "tip": "p",
+   "text": "La o firmă fără mișcări de capital, situația modificărilor capitalurilor proprii pare o formalitate — un singur rând care se mișcă, rezultatul anului. Iată exact cazul firmei din exemplu."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Capitalurile proprii ale exercițiului",
+   "cap": [
+    "",
+    "Sold inițial",
+    "Creșteri",
+    "Reduceri",
+    "Sold final"
+   ],
+   "randuri": [
+    [
+     "Capital subscris",
+     "30.000,00",
+     "0,00",
+     "0,00",
+     "30.000,00"
+    ],
+    [
+     "Rezultat reportat",
+     "35.833,32",
+     "0,00",
+     "0,00",
+     "35.833,32"
+    ],
+    [
+     "Rezultatul exercițiului",
+     "0,00",
+     "420,83",
+     "0,00",
+     "420,83"
+    ],
+    [
+     "Total",
+     "65.833,32",
+     "420,83",
+     "0,00",
+     "66.254,15"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5
+   ],
+   "total": true,
+   "nota": "Totalul soldului final, 66.254,15, trebuie să fie exact capitalurile proprii din bilanț. E a cincea concordanță din capitolul 48."
+  },
+  {
+   "tip": "p",
+   "text": "Valoarea situației se vede la firmele care au mișcări: o majorare de capital, o distribuire de dividende, acoperirea unei pierderi, o reevaluare. Acolo ea răspunde la o întrebare pe care bilanțul nu o atinge — nu cât e averea asociaților, ci DIN CE s-a schimbat în cursul anului."
+  },
+  {
+   "tip": "p",
+   "text": "Iar diferența dintre cele două întrebări e chiar diferența dintre o fotografie și un film, cu care a început partea aceasta: bilanțul arată unde s-a ajuns, situația capitalurilor arată pe ce drum."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

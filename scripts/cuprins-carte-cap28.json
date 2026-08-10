@@ -185,6 +185,78 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Cât de mărunt merită împărțit"
+  },
+  {
+   "tip": "p",
+   "text": "Regula spune că fiecare cheltuială se repartizează pe perioadele pe care le acoperă. Aplicată literal, ea ar cere delimitarea unui abonament de 200 de lei pe douăsprezece luni — adică unsprezece înregistrări de 16,67 lei, pentru o sumă care nu schimbă nimic."
+  },
+  {
+   "tip": "p",
+   "text": "Pentru asta există pragul de semnificație: o sumă sub care efortul depășește informația câștigată. Pragul nu e prevăzut cifric de lege — se stabilește de firmă și se scrie în manualul de politici contabile."
+  },
+  {
+   "tip": "cheie",
+   "text": "Pragul trebuie SCRIS, nu ținut minte. Un prag decis de la caz la caz nu e un prag: e o inconsecvență, iar ea încalcă principiul permanenței metodelor."
+  },
+  {
+   "tip": "p",
+   "text": "Un criteriu practic, folosit des: se delimitează ce depășește pragul ȘI trece dintr-un exercițiu în altul. O cheltuială care se consumă integral în același an afectează același rezultat oricum ar fi repartizată — deci împărțirea ei pe luni e utilă doar dacă firma citește rezultate lunare."
+  },
+  {
+   "tip": "h",
+   "text": "Trei greșeli care se fac cu contul 471"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce NU e cheltuială în avans",
+   "cap": [
+    "Situația",
+    "De ce nu",
+    "Unde merge"
+   ],
+   "randuri": [
+    [
+     "Avans plătit pentru o marfă",
+     "nu s-a prestat nimic; e drept la un bun",
+     "409 Furnizori-debitori"
+    ],
+    [
+     "Serviciu plătit, perioadă necunoscută",
+     "nu se poate repartiza pe nimic",
+     "direct pe cheltuială"
+    ],
+    [
+     "Reparație plătită anticipat, deja executată",
+     "serviciul s-a consumat integral",
+     "direct pe cheltuială"
+    ],
+    [
+     "Stoc de consumabile cumpărat în avans",
+     "e un BUN, nu un serviciu",
+     "cont de stoc (302/303)"
+    ]
+   ],
+   "nota": "Testul comun: în 471 intră doar ce se consumă odată cu TRECEREA TIMPULUI. Ce se consumă la folosire e stoc; ce așteaptă o livrare e avans."
+  },
+  {
+   "tip": "p",
+   "text": "Al patrulea rând e cel mai frecvent. Un teanc de hârtie cumpărat pentru un an nu e cheltuială în avans: e stoc, și se consumă pe măsură ce se folosește, nu pe măsură ce trece timpul. Diferența pare subtilă și devine vizibilă la inventar, unde stocul se numără și cheltuiala în avans nu."
+  },
+  {
+   "tip": "h",
+   "text": "Verificarea de închidere, în două minute"
+  },
+  {
+   "tip": "p",
+   "text": "Pentru soldurile din 471 și 472 se ține un desfășurător: pentru fiecare sumă, ce perioadă acoperă și cât mai rămâne. Suma desfășurătorului trebuie să dea exact soldul contabil."
+  },
+  {
+   "tip": "p",
+   "text": "Verificarea are un efect secundar util: obligă la a numi perioada. O sumă pentru care nu poți scrie „acoperă lunile X–Y” nu are ce căuta în 471, iar descoperirea se face aici, nu peste doi ani, când nimeni nu-și mai amintește de unde venea."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
