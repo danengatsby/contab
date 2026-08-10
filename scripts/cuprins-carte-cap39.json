@@ -167,6 +167,80 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Cum arată, pe un ecran"
+  },
+  {
+   "tip": "p",
+   "text": "Fluxul nu e o listă de bifat, ci o stare citită din date. Iată luna iunie a firmei din exemplu, așa cum o vede aplicația pe 14 iulie — cu blocajele scrise, nu doar cu semaforul."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Închiderea lunii iunie, pe 14 iulie",
+   "cap": [
+    "Pasul",
+    "Starea",
+    "De ce"
+   ],
+   "randuri": [
+    [
+     "1. Documente complete",
+     "deschis",
+     "o factură emisă în lună, netrimisă în SPV"
+    ],
+    [
+     "2. Extras punctat",
+     "gata",
+     "—"
+    ],
+    [
+     "3. TVA regularizat",
+     "blocat",
+     "nota de regularizare nu e postată"
+    ],
+    [
+     "4. Declarații depuse",
+     "blocat",
+     "D300 nedepusă, termen 25 iulie"
+    ],
+    [
+     "5. Aprobare",
+     "blocat",
+     "luna nu e aprobată încă"
+    ],
+    [
+     "6. Perioada blocată",
+     "blocat",
+     "perioada e încă deschisă"
+    ]
+   ],
+   "nota": "Progres: 1 pas din 6. Se lucrează la UNUL singur — primul deschis. Ceilalți patru nu sunt sarcini restante, ci sarcini care nu au început."
+  },
+  {
+   "tip": "p",
+   "text": "Merită observat ce spune fiecare blocaj: nu „nu e gata”, ci exact ce lipsește și, unde are sens, până când. Un flux care ar afișa șase semafoare roșii ar fi un tablou de bord; unul care spune „o factură netrimisă în SPV” e o listă de lucru."
+  },
+  {
+   "tip": "p",
+   "text": "Al doilea rând e la fel de instructiv: extrasul e „gata”, deși luna nu e închisă. Starea unui pas nu depinde de starea lunii — se derivă din datele lui, independent. De aceea un pas se poate întoarce din „gata” în „deschis” fără ca nimeni să-l atingă, dacă sosește un document nou."
+  },
+  {
+   "tip": "h",
+   "text": "Cine răspunde și până când"
+  },
+  {
+   "tip": "p",
+   "text": "Într-o firmă mică, toți cei șase pași îi face aceeași persoană, iar întrebarea nu se pune. Într-una cu echipă, ea devine principala sursă de întârziere: fiecare crede că pasul următor e al altuia."
+  },
+  {
+   "tip": "p",
+   "text": "Responsabilul și termenul intern sunt singurele informații din tot fluxul care nu se pot deduce din date — nu există nicăieri în contabilitate cine trebuia să se ocupe. De aceea ele se consemnează, iar restul nu: e aceeași regulă ca la capitolul următor, memorează deciziile și recalculează faptele."
+  },
+  {
+   "tip": "p",
+   "text": "Termenele interne se ancorează, de regulă, în cel legal: dacă declarația se depune pe 25, punctajul bancar are termen intern pe 8, iar balanța pe 15. Ancorarea are un rost practic — când termenul legal se mută, se mută și restul, fără să reia cineva calculul."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

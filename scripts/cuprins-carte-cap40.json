@@ -148,6 +148,102 @@
    ]
   },
   {
+   "tip": "h",
+   "text": "Cum se scrie o stare care nu poate minți"
+  },
+  {
+   "tip": "p",
+   "text": "Diferența dintre o bifă și o stare derivată se vede cel mai clar în felul în care se scrie fiecare. O bifă e o valoare stocată: „pasul 2 = terminat”. O stare derivată e o întrebare pusă datelor, de fiecare dată."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Aceeași informație, două implementări",
+   "cap": [
+    "",
+    "Bifa",
+    "Starea derivată"
+   ],
+   "randuri": [
+    [
+     "Ce se stochează",
+     "„terminat”, cu data",
+     "nimic"
+    ],
+    [
+     "Când se schimbă",
+     "când o schimbă cineva",
+     "când se schimbă datele"
+    ],
+    [
+     "Costul unei citiri",
+     "zero",
+     "o interogare"
+    ],
+    [
+     "Ce se întâmplă la un document nou",
+     "nimic",
+     "pasul redevine deschis"
+    ],
+    [
+     "Ce se întâmplă la restaurarea unei copii",
+     "rămâne cum era",
+     "se recalculează corect"
+    ]
+   ],
+   "nota": "Ultimul rând e cel care decide: după o restaurare, bifele descriu o realitate care nu mai există, iar stările derivate se refac singure."
+  },
+  {
+   "tip": "p",
+   "text": "Prețul e o interogare la fiecare citire, iar el se plătește: la o firmă cu zeci de mii de articole, întrebarea „mai există documente neînregistrate în luna asta?” nu e gratuită. Compromisul obișnuit e memorarea rezultatului pentru câteva secunde, nu pentru totdeauna — o memorie care expiră singură nu poate rămâne în urma realității mai mult decât intervalul ei."
+  },
+  {
+   "tip": "h",
+   "text": "Unde se aplică regula, dincolo de închidere"
+  },
+  {
+   "tip": "p",
+   "text": "Odată enunțată, regula se recunoaște în multe locuri, iar contabilitatea e plină de ele."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce se derivă și ce se persistă, în aplicație",
+   "cap": [
+    "Se DERIVĂ (fapte)",
+    "Se PERSISTĂ (decizii)"
+   ],
+   "randuri": [
+    [
+     "soldul unui cont",
+     "alegerea metodei de evaluare a stocului"
+    ],
+    [
+     "dacă o declarație e datorată",
+     "dovada că a fost depusă (recipisa)"
+    ],
+    [
+     "dacă o creanță e restantă",
+     "hotărârea că e incertă"
+    ],
+    [
+     "dacă luna se poate închide",
+     "aprobarea că se închide"
+    ],
+    [
+     "cât e amortizarea lunii",
+     "durata aleasă din catalog"
+    ]
+   ],
+   "nota": "Coloana din stânga se recalculează. Cea din dreapta nu se poate recalcula, fiindcă nu decurge din date — decurge dintr-un om."
+  },
+  {
+   "tip": "cheie",
+   "text": "Testul care le separă: dacă ștergi valoarea și o poți reface exact din date, e un fapt și trebuie derivat. Dacă nu o poți reface, e o decizie și trebuie păstrată — împreună cu cine a luat-o și când."
+  },
+  {
+   "tip": "p",
+   "text": "Aplicat la contabilitate, testul explică și de ce dosarul lunii conține note scrise, nu doar cifre: cifrele se recalculează oricând, raționamentele nu. O ajustare pentru creanțe se poate reface din date; motivul pentru care creanța a fost considerată incertă nu."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
