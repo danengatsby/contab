@@ -8,6 +8,15 @@
   prin **exact aceleași reguli** ca salvarea — inclusiv cele care depind de firmă (pro-rata, TVA la
   încasare, auto 50%, perioade blocate) — fără să consume un id. Regulile contabile au astfel o
   singură implementare: frontend-ul nu le mai reproduce.
+  **Conturile se verifică însă în altă parte.** `composeEntry` refuză liniile cu conturi din afara
+  planului, dar păzește o singură cale: 21 de locuri împingeau direct în `d.entries` și o ocoleau —
+  așa a scris amortizarea lunară, ani la rând, pe conturi inexistente care plecau drept
+  „(cont necunoscut)” în SAF-T, la ANAF. Astăzi **orice** articol intră prin `db.pushEntry`
+  (`src/db.js`), care validează conturile și aruncă o eroare cu `status: 400` purtând contul vinovat
+  și contextul (`amortizare lunara`, `import extras bancar`…). O poartă din `test/run/porti.js`
+  refuză reapariția lui `entries.push(` oriunde în afara lui `src/db.js`, iar o a doua verifică
+  faptul că punctul unic chiar *refuză* — fără ea, golirea verificării trecea suita verde, fiindcă
+  cele două mecanisme se masau reciproc.
   Infrastructura stă în module dedicate: `src/bootstrap.js` (middleware + garduri de acces),
   `src/authRoutes.js` (nucleul de autentificare), `src/jobs.js` (joburile periodice),
   `src/serverErrors.js` (erori globale + alertă), `src/lifecycle.js` (lock, listen, oprire curată).

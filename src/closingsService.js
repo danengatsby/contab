@@ -22,15 +22,14 @@ function fail(status, message) { const e = new Error(message); e.status = status
 function closeVat(fid, period) {
   fid = reqFirma(fid);
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period || ''))) fail(400, 'Perioada trebuie sa fie o luna (YYYY-MM).');
-  const d = db.get();
   const firma = db.getFirma(fid);
   const v = acc.vatClosing(db.scoped(fid), period);
   if (v.lines.length) {
-    d.entries.push({
+    db.pushEntry({
       id: db.nextId('e'), firmaId: fid, data: period + '-28', period, tip: 'inchidere_tva', tipNume: 'Inchidere TVA',
       partener: '', document: 'Nota TVA ' + period, explicatie: 'Regularizare TVA',
       fileId: null, system: true, lines: v.lines,
-    });
+    }, { context: 'inchidere TVA' });
   }
   // Inchiderea lunii BLOCHEAZA perioada (read-only) — deblocarea e doar de admin.
   if (!firma.lockedUntil || period > firma.lockedUntil) firma.lockedUntil = period;
@@ -42,14 +41,13 @@ function closeVat(fid, period) {
 function closeYear(fid, year) {
   fid = reqFirma(fid);
   if (!year) fail(400, 'Lipseste anul (YYYY).');
-  const d = db.get();
   const c = acc.annualClosing(db.scoped(fid), year);
   if (!c.lines.length) return { result: c, posted: false };
-  d.entries.push({
+  db.pushEntry({
     id: db.nextId('e'), firmaId: fid, data: year + '-12-31', period: year + '-12', tip: 'inchidere_an', tipNume: 'Inchidere conturi venituri/cheltuieli',
     partener: '', document: 'Inchidere ' + year, explicatie: 'Închidere clasa 6 și 7 în contul 121',
     fileId: null, system: true, lines: c.lines,
-  });
+  }, { context: 'inchiderea anuala' });
   db.save();
   return { result: c, posted: true };
 }
@@ -88,7 +86,7 @@ function closeProfitTax(fid, src, year) {
   const yearClosed = d.entries.some((e) => e.firmaId === fid && e.tip === 'inchidere_an' && e.period === year + '-12');
   let alsoClosed691 = false;
   if (yearClosed && pt.impozit > 0) { lines.push({ debit: '121', credit: '691', suma: pt.impozit, explicatie: 'Închidere impozit pe profit în rezultat (după închiderea anuală)' }); alsoClosed691 = true; }
-  d.entries.push({
+  db.pushEntry({
     id: db.nextId('e'), firmaId: fid, data: year + '-12-31', period: year + '-12', tip: 'impozit_profit', tipNume: 'Impozit pe profit',
     partener: '', document: 'Impozit profit ' + year, explicatie: 'Înregistrare impozit pe profit (' + pt.cota + '%)' + (alsoClosed691 ? ' + inchidere 691 in 121' : ''),
     fileId: null, system: true, lines,
@@ -97,7 +95,7 @@ function closeProfitTax(fid, src, year) {
     // le-a consumat) si ar raporta alta recuperare decat cea inregistrata — aceleasi reguli, dar
     // pe o stare schimbata. Vezi src/profitTaxOptions.js.
     rezultatFiscal: pt,
-  });
+  }, { context: 'impozit pe profit' });
   db.save();
   return { result: pt, posted: true };
 }
@@ -106,17 +104,16 @@ function closeProfitTax(fid, src, year) {
 function distributeResult(fid, year) {
   fid = reqFirma(fid);
   if (!year) fail(400, 'Lipseste anul (YYYY).');
-  const d = db.get();
   const r = acc.resultDistribution(db.scoped(fid), year);
   if (!r.lines.length) return { result: r, posted: false };
   for (const l of r.lines) {
     if (!coa.getAccount(l.debit) || !coa.getAccount(l.credit)) fail(400, 'Cont inexistent in plan: ' + l.debit + '/' + l.credit);
   }
-  d.entries.push({
+  db.pushEntry({
     id: db.nextId('e'), firmaId: fid, data: year + '-12-31', period: year + '-12', tip: 'repartizare_rezultat', tipNume: 'Repartizarea rezultatului',
     partener: '', document: 'Repartizare ' + year, explicatie: r.profit ? 'Repartizarea profitului (121=117)' : 'Reportarea pierderii (117=121)',
     fileId: null, system: true, lines: r.lines,
-  });
+  }, { context: 'repartizarea rezultatului' });
   db.save();
   return { result: r, posted: true };
 }

@@ -59,7 +59,7 @@ function createEntry(fid, b, deps) {
     entry.stocMovementIds = r.newMovements.map((m) => m.id);
     stocInfo = { cogsTotal: r.total, warns: r.warns, lipsuri: r.lipsuri, movements: r.newMovements.length };
   }
-  d.entries.push(entry);
+  db.pushEntry(entry, { context: 'articol contabil' });
   deps.upsertPartner(fid, entry);
   inregistreazaInterventia(fid, b, entry, f);
   db.save();
@@ -170,7 +170,7 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno) {
     // validatoarele oficiale (verificat: D406 lunar cu storno in rosu si D300, ambele valide).
     lines: (e.lines || []).map((l) => ({ debit: l.debit, credit: l.credit, suma: round2(-l.suma), explicatie: 'Storno ' + (l.explicatie || '') })),
   };
-  d.entries.push(se);
+  db.pushEntry(se, { context: 'stornare articol' });
   e.stornat = true; e.stornoBy = se.id; e.stornoData = stornoData;
   db.save();
   return { storno: se, original: e };
@@ -245,7 +245,7 @@ function generateRecurring(fid, period, deps) {
       const gViol = fiscalProfile.entryGuard(profile, entry);
       if (gViol) throw new Error(gViol); // se aduna in errors, ca orice esec per sablon
       entry.recurringId = t.id;
-      d.entries.push(entry);
+      db.pushEntry(entry, { context: 'sablon recurent' });
       deps.upsertPartner(fid, entry);
       t.lastGenerated = period;
       created.push({ id: entry.id, tip: entry.tipNume, partener: t.partener });
@@ -286,7 +286,7 @@ function tvaExigibilitate(fid, b, deps) {
   if (gViol) fail(400, gViol); // neplatitor nu poate exigibiliza TVA colectata
   // baza aferenta TVA-ului devenit exigibil (pentru D300 in perioada exigibilitatii — TVA la incasare)
   entry.tvaExig = { baza: round2(brut - tva), cota, side: b.tip === 'deductibila' ? 'deductibila' : 'colectata' };
-  db.get().entries.push(entry);
+  db.pushEntry(entry, { context: 'sablon recurent' });
   db.save();
   return { tva, brut, cota, entry };
 }

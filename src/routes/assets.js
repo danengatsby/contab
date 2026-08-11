@@ -173,12 +173,12 @@ module.exports = function register(app, ctx) {
       return res.status(400).json({ error: 'Conturi de amortizare inexistente în planul de conturi: ' + orfane.join(', ')
         + '. Completează planul (sau corectează contul mijlocului fix) înainte de a înregistra amortizarea.' });
     }
-    d.entries.push({
+    db.pushEntry({
       id: db.nextId('e'), firmaId: activeId(req), data: period + '-28', period, tip: 'amortizare_lunara', tipNume: 'Amortizare mijloace fixe',
       partener: '', document: 'Nota amortizare ' + period, explicatie: 'Amortizarea lunară a imobilizărilor',
       fileId: null, system: true,
       lines: dep.lines.map((l) => ({ debit: '6811', credit: l.contAmortizare, suma: l.suma, explicatie: 'Amortizare ' + l.denumire })),
-    });
+    }, { context: 'amortizare lunara' });
     logAudit('amortizare.lunara', period + ' (' + dep.lines.length + ' MF)', { req });
     db.save();
     res.json({ ok: true, result: dep });

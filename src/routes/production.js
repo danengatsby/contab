@@ -29,7 +29,7 @@ module.exports = function register(app, ctx) {
     };
     r.newMovements.forEach((m) => { m.entryId = entry.id; d.stockMovements.push(m); });
     entry.stocMovementIds = r.newMovements.map((m) => m.id);
-    d.entries.push(entry);
+    db.pushEntry(entry, { context: 'productie' });
     logAudit('productie', 'cost obtinut ' + r.valoareObtinuta, { req });
     db.save();
     res.json({ ok: true, entry, costMateriale: r.costMateriale, valoareObtinuta: r.valoareObtinuta, warns: r.warns });

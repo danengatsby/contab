@@ -1636,3 +1636,69 @@ section('Poarta: niciun al doilea fisier cu secrete in radacina proiectului');
   ok('...dar NU se aprinde la exemplul din documentatie', !CHEIE.test('ia cheile `sk_live_...` din Stripe'));
   ok('...si nici la placeholderul din interfata', !CHEIE.test('ANTHROPIC_API_KEY=sk-ant-... npm start'));
 }
+
+section('Poarta: orice articol contabil intra prin `db.pushEntry` (planul de conturi)');
+{
+  const fsE = require('fs'); const pE = require('path');
+  // DEFECTUL pe care il inchide poarta: `composeEntry` (server.js) refuza liniile cu conturi din
+  // afara planului, dar pazea o SINGURA cale. 21 de locuri impingeau direct in `d.entries`, deci
+  // o ocoleau. Amortizarea lunara a scris asa, ani la rand, pe conturi inexistente (2812, 2814,
+  // 2805…), care apareau drept „(cont necunoscut)" in balanta si plecau in <AccountDescription>
+  // din SAF-T, la ANAF. O garda pe care o poti ocoli fara sa observe nimeni nu e o garda.
+  //
+  // Perimetrul se DERIVA din sursa (tot src/, recursiv): o cale noua de scriere intra singura in
+  // verificare, fara ca cineva sa-si aminteasca sa actualizeze o lista.
+  const fisiere = [];
+  (function walk(dir) {
+    for (const f of fsE.readdirSync(dir).sort()) {
+      const p = pE.join(dir, f);
+      if (fsE.statSync(p).isDirectory()) walk(p);
+      else if (f.endsWith('.js')) fisiere.push(p);
+    }
+  })(pE.join(RADACINA, 'src'));
+  ok('perimetrul se citeste din src/', fisiere.length > 50);
+
+  // `src/db.js` e SINGURUL fisier care are voie sa impinga: acolo sta punctul unic.
+  const PERMIS = pE.join(RADACINA, 'src', 'db.js');
+  const faraComentarii = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+  const vinovate = [];
+  for (const f of fisiere) {
+    if (f === PERMIS) continue;
+    const text = faraComentarii(fsE.readFileSync(f, 'utf8'));
+    if (/entries\s*\.\s*push\s*\(/.test(text)) vinovate.push(pE.relative(RADACINA, f));
+  }
+  eq('nicio cale nu ocoleste punctul unic', vinovate.join(', '), '');
+
+  // Poarta trebuie sa MUSTE: tiparul recunoaste formele reale, dar nu se aprinde pe altceva.
+  const T = /entries\s*\.\s*push\s*\(/;
+  ok('tiparul prinde forma directa', T.test('d.entries.push(entry);'));
+  ok('tiparul prinde si forma cu db.get()', T.test('db.get().entries.push(entry);'));
+  ok('tiparul prinde si forma cu spatii', T.test('d.entries . push ( entry )'));
+  ok('...dar nu se aprinde pe `pushEntry`', !T.test('db.pushEntry(entry);'));
+  ok('...si nici pe alte colectii', !T.test('d.documents.push(doc); lines.push(l);'));
+
+  // Punctul unic chiar VERIFICA — altfel poarta ar garanta doar o convenție de scriere.
+  const dbE = require('../../src/db');
+  eq('articol curat: niciun cont necunoscut',
+    dbE.conturiNecunoscute({ lines: [{ debit: '6811', credit: '281' }] }).join(','), '');
+  eq('articol cu cont inventat: raportat pe nume',
+    dbE.conturiNecunoscute({ lines: [{ debit: '6811', credit: '2819' }] }).join(','), '2819');
+  eq('ambele laturi se verifica, nu doar debitul',
+    dbE.conturiNecunoscute({ lines: [{ debit: '9999', credit: '8888' }] }).sort().join(','), '8888,9999');
+  eq('acelasi cont gresit pe mai multe linii se raporteaza o data',
+    dbE.conturiNecunoscute({ lines: [{ debit: '7777', credit: '5121' }, { debit: '7777', credit: '5121' }] }).join(','), '7777');
+  eq('articol fara linii nu e o eroare', dbE.conturiNecunoscute({}).length, 0);
+
+  // ...si chiar REFUZA. Fara aserțiunea asta, poarta de mai sus dovedea doar CONVENTIA („toata
+  // lumea cheama pushEntry"), nu si efectul ei: golirea verificarii din `pushEntry` trecea suita
+  // verde, fiindca `conturiNecunoscute` e o functie pura, testata separat. Doua mecanisme care se
+  // masaza reciproc — exact tiparul pe care proiectul l-a mai intalnit. Aruncarea se intampla
+  // INAINTE de `get()`, deci proba nu are nevoie de baza incarcata si nu scrie nimic.
+  let aruncat = null;
+  try { dbE.pushEntry({ lines: [{ debit: '6811', credit: '2819', suma: 10 }] }, { context: 'proba' }); }
+  catch (e) { aruncat = e; }
+  ok('pushEntry REFUZA un cont din afara planului', !!aruncat);
+  eq('...cu status 400 (eroare de business, nu 500)', aruncat && aruncat.status, 400);
+  ok('...numind contul vinovat', aruncat && /2819/.test(aruncat.message));
+  ok('...si contextul, ca sa se stie de unde vine articolul', aruncat && /proba/.test(aruncat.message));
+}

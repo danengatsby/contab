@@ -42,7 +42,7 @@ module.exports = function register(app, ctx) {
           const ref = [...new Set(t.stinge.filter((id) => validIds.has(id)))];
           if (ref.length) e.stinge = ref;
         }
-        d.entries.push(e); upsertPartner(fid, e); created++;
+        db.pushEntry(e, { context: 'import extras bancar' }); upsertPartner(fid, e); created++;
       } catch (e) { errors.push(String(e.message || e)); }
     }
     if (created) logAudit('bank.import', created + ' tranzactii inregistrate', { req });
