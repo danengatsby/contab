@@ -84,8 +84,33 @@ const FIXE = {
   6581: { nume: 'Despagubiri, amenzi si penalitati', pct: 100, temei: 'Art. 25(4)(b)' },
   635: { nume: 'Alte impozite si taxe nedeductibile', pct: 100, temei: 'Art. 25(4)(a)' },
   654: { nume: 'Pierderi din creante neincasabile (nedeductibil fara conditii, art. 26)', pct: 100, temei: 'Art. 25(4)(h)' },
-  6812: { nume: 'Provizioane pentru riscuri si cheltuieli (nedeductibile, art. 26)', pct: 100, temei: 'Art. 26(1)' },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PROVIZIOANELE (art. 26 alin. (1) lit. b)
+//
+//  Regula era `6812: pct 100` — TOATE provizioanele nedeductibile. Dar art. 26 alin. (1) lit. b)
+//  face deductibile provizioanele pentru GARANTII DE BUNA EXECUTIE acordate clientilor. Pentru o
+//  firma de constructii — profilul caruia aplicatia ii dedica un grup intreg de documente, cu
+//  garantii retinute si restituite — asta inseamna impozit pe profit platit in plus, sistematic.
+//
+//  Ca la 6814, incadrarea NU se poate citi din contul de cheltuiala: 6812 poarta si provizioanele
+//  deductibile, si pe cele nedeductibile. Se separa dupa CONTUL DE PROVIZION din contrapartida —
+//  alegerea contului 1512 e ea insasi afirmatia contabilului ca provizionul e pentru garantii,
+//  exact cum alegerea lui 6581 afirma ca o cheltuiala e o amenda.
+//
+//  LIMITA pe care aplicatia NU o poate verifica singura: deducerea se acorda pentru bunurile
+//  livrate, lucrarile executate si serviciile prestate IN CURSUL TRIMESTRULUI, deci cuantumul
+//  depinde de livrarile perioadei. Nu se poate deriva din conturi, asa ca nu se plafoneaza automat;
+//  se SPUNE in nota randului, ca revizorul sa stie ce ramane de verificat. Un plafon inventat ar fi
+//  mai rau decat lipsa lui: ar arata ca o cifra verificata.
+// ─────────────────────────────────────────────────────────────────────────────
+const PROVIZION_DEDUCTIBIL = '1512'; // garantii de buna executie acordate clientilor
+
+/** E contul de provizion unul deductibil? (prefix: analiticele proprii se aduna la sintetic) */
+function provizionDeductibil(cont) {
+  return String(cont || '').startsWith(PROVIZION_DEDUCTIBIL);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  AJUSTARILE PENTRU DEPRECIEREA CREANTELOR (art. 26 alin. (1) lit. c)
@@ -153,8 +178,10 @@ function ajustariNedeductibile(split) {
   const randuri = []; const randuriNeimpozabile = [];
   const adauga = (nume, cont, cheltuit, venit, temei) => {
     if (cheltuit > 0) {
-      randuri.push(rand(nume, temei, cont, cheltuit, 0, cheltuit, cheltuit,
-        'Integral nedeductibila: nu se regaseste in enumerarea de la art. 26 alin. (1).', D101_FIXE));
+      const r = rand(nume, temei, cont, cheltuit, 0, cheltuit, cheltuit,
+        'Integral nedeductibila: nu se regaseste in enumerarea de la art. 26 alin. (1).', D101_FIXE);
+      r.pct = 100; // forma ISTORICA a randului: PDF-ul si tabelul din interfata citesc `pct`
+      randuri.push(r);
     }
     if (venit > 0) {
       randuriNeimpozabile.push({
@@ -172,9 +199,10 @@ function ajustariNedeductibile(split) {
 // Simetricul la venituri (art. 23): reluarea unei cheltuieli care NU a fost deductibila nu poate
 // fi venit impozabil — altfel suma s-ar impozita o data prin nedeductibilitate si a doua oara la
 // reluare. `pct` = cat din venit e NEIMPOZABIL, ales in oglinda cu procentul cheltuielii.
-const NEIMPOZABILE = {
-  7812: { nume: 'Venituri din reluarea provizioanelor nedeductibile', pct: 100, temei: 'Art. 23(d)' },
-};
+// Gol deliberat: singurele doua venituri simetrice (7812, 7814) au procent VARIABIL, nu fix —
+// depinde de cat a fost deductibila cheltuiala din care s-au nascut. Vezi `provizioane` si
+// `ajustariCreante`. Tabelul ramane pentru o eventuala regula viitoare cu procent cu adevarat fix.
+const NEIMPOZABILE = {};
 
 // 7814 sta separat fiindca procentul lui NU e fix: oglindeste exact partea nedeductibila a
 // ajustarii din anul respectiv (vezi `ajustariCreante`). Cand nu s-a inregistrat nicio ajustare —
@@ -211,6 +239,53 @@ function fixe(rulaj) {
     randuri.push(r);
   }
   return { randuri, total: round2(randuri.reduce((s, r) => s + r.nedeductibil, 0)) };
+}
+
+/**
+ * Provizioanele anului, sparte pe deductibile (garantii de buna executie) si nedeductibile.
+ *
+ * `split` = { deductibile: {cheltuiala, venit}, nedeductibile: {cheltuiala, venit} }, calculat de
+ * `reporting.provizioane` dupa contul din contrapartida. Cand lipseste, se cade pe rulajul contului
+ * 6812/7812 si TOTUL e nedeductibil — comportamentul de dinainte, adica prudent.
+ *
+ * SIMETRIA la reluare (art. 23 lit. d) e esentiala si merge in AMBELE sensuri: reluarea unui
+ * provizion nedeductibil nu e venit impozabil, dar reluarea unuia DEDUCTIBIL este. Tratate la fel,
+ * provizionul de garantii ar fi dedus la constituire si niciodata impozitat la reluare — o
+ * deducere definitiva dintr-o operatiune care se anuleaza singura.
+ */
+function provizioane(split, rulaj) {
+  const s = split || null;
+  const ded = s ? { cheltuiala: round2(Number(s.deductibile.cheltuiala) || 0), venit: round2(Number(s.deductibile.venit) || 0) }
+    : { cheltuiala: 0, venit: 0 };
+  const ned = s ? { cheltuiala: round2(Number(s.nedeductibile.cheltuiala) || 0), venit: round2(Number(s.nedeductibile.venit) || 0) }
+    : { cheltuiala: cheltuiala(rulaj, '6812'), venit: venit(rulaj, '7812') };
+  const randuri = []; const randuriNeimpozabile = [];
+  if (ned.cheltuiala > 0) {
+    const r = rand('Provizioane pentru riscuri si cheltuieli', 'Art. 26(1)', '6812',
+      ned.cheltuiala, 0, ned.cheltuiala, ned.cheltuiala,
+      'Integral nedeductibile: nu se regasesc in enumerarea de la art. 26 alin. (1).', D101_FIXE);
+    r.pct = 100;
+    randuri.push(r);
+  }
+  if (ded.cheltuiala > 0) {
+    // Rand cu nedeductibil ZERO: nu adauga nimic la baza, dar TREBUIE sa apara in registrul fiscal.
+    // Un provizion deductibil care lipseste cu totul din registru se citeste ca „nu s-a inregistrat
+    // niciun provizion", iar revizorul n-are de unde sti ca a fost recunoscut ca deductibil.
+    const r = rand('Provizioane pentru garantii de buna executie (deductibile)', 'Art. 26(1)(b)',
+      PROVIZION_DEDUCTIBIL, ded.cheltuiala, ded.cheltuiala, ded.cheltuiala, 0,
+      'Deductibile integral. LIMITA neverificata automat: deducerea se acorda pentru bunurile livrate, '
+      + 'lucrarile executate si serviciile prestate in cursul trimestrului — cuantumul depinde de livrarile '
+      + 'perioadei si se confrunta manual.', D101_FIXE);
+    r.pct = 0; // nimic nedeductibil — dar randul APARE, ca revizorul sa vada ce s-a recunoscut
+    randuri.push(r);
+  }
+  if (ned.venit > 0) {
+    randuriNeimpozabile.push({ regula: 'Venituri din reluarea provizioanelor nedeductibile', temei: 'Art. 23(d)',
+      cont: '7812', pct: 100, realizat: ned.venit, neimpozabil: ned.venit });
+  }
+  // Reluarea unui provizion DEDUCTIBIL e venit impozabil: nu se adauga niciun rand de scadere.
+  return { randuri, randuriNeimpozabile, total: round2(randuri.reduce((a, r) => a + r.nedeductibil, 0)),
+    deductibil: ded.cheltuiala, reluareImpozabila: ded.venit };
 }
 
 /** Veniturile neimpozabile care se SCAD din baza (nu se aduna).
@@ -320,9 +395,13 @@ function ajustari(i, cfg) {
   // Stocurile si imobilizarile: integral nedeductibile, cu simetricul lor la venituri.
   const nedRez = ajustariNedeductibile(split);
   for (const r of nedRez.randuri) { fixeRez.randuri.push(r); fixeRez.total = round2(fixeRez.total + r.nedeductibil); }
+  // Provizioanele: 1512 (garantii) deductibile, restul nu. Fara spargere, toate nedeductibile.
+  const provRez = provizioane(i.provizioane || null, rulaj);
+  for (const r of provRez.randuri) { fixeRez.randuri.push(r); fixeRez.total = round2(fixeRez.total + r.nedeductibil); }
   const neimpRez = neimpozabile(rulaj, randCreante ? randCreante.pctNedeductibil : null,
     split ? split.creante.venit : null);
   for (const r of nedRez.randuriNeimpozabile) { neimpRez.randuri.push(r); neimpRez.total = round2(neimpRez.total + r.neimpozabil); }
+  for (const r of provRez.randuriNeimpozabile) { neimpRez.randuri.push(r); neimpRez.total = round2(neimpRez.total + r.neimpozabil); }
   const randuri = fixeRez.randuri.slice(); // randurile cu plafon se adauga in continuare
 
   // ── Protocol (art. 25(3)(a)) ──────────────────────────────────────────────
@@ -523,4 +602,5 @@ function credit(i, cfg) {
 
 module.exports = {
   mapareD101, ajustari, credit, fixe, neimpozabile, ajustariCreante, ajustariNedeductibile,
+  provizioane, provizionDeductibil, PROVIZION_DEDUCTIBIL,
   CONT, FIXE, NEIMPOZABILE, cheltuiala, venit };

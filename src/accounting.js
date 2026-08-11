@@ -524,6 +524,7 @@ function profitTax(db, year, opts) {
       cheltAuto: opts.cheltAuto, cheltLipsaNeimputabila: opts.cheltLipsaNeimputabila,
       ajustariCreanteBaza: opts.ajustariCreanteBaza, // art. 26(1)(c): baza eligibila, din marcajele de pe articole
       ajustariDepreciere: opts.ajustariDepreciere,   // creante / stocuri / imobilizari, separat
+      provizioane: opts.provizioane,                 // art. 26(1)(b): garantiile sunt deductibile
       cheltImpozitProfit: opts.cheltImpozitProfit,
       amortizare: opts.amortizare, // { contabila, fiscala } — art. 28, poate da si deducere
       amortizareFiscala: opts.amortizareFiscala, cursEur: opts.cursEur,

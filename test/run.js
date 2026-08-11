@@ -2303,7 +2303,11 @@ const vProv = { entries: [
 ], openingBalances: {} };
 const tbP = acc.trialBalance(vProv, '2026-12');
 const fP = (c) => tbP.rows.find((r) => r.cod === c) || {};
-eq('provizion 151 ramas (5000-2000)', fP('151').sfC, 3000);
+// Provizionul implicit merge pe 1518 „Alte provizioane", nu pe sinteticul 151: felul provizionului
+// decide deductibilitatea (art. 26(1)(b)), iar sinteticul nu-l poate exprima. Implicitul e prudent
+// — nedeductibil — deci o alegere neatenta nu produce o deducere nemeritata.
+eq('provizion 1518 ramas (5000-2000)', fP('1518').sfC, 3000);
+eq('sinteticul 151 nu mai e folosit de monografie', fP('151').sfC, undefined);
 eq('cheltuiala provizion (6812)', fP('6812').rd, 5000);
 eq('venit reluare provizion (7812)', fP('7812').rc, 2000);
 eq('balanta provizioane echilibrata', tbP.balanced, true);
@@ -2979,6 +2983,53 @@ section('Monografii adaugate: cedare mijloc fix, cut-off 408, capital social, cr
     eq('fara spargere: toata reluarea oglindita ca la creante', faraSpargere.totalNeimpozabil, 7700);
     ok('spargerea schimba baza impozabila cu 1.800 lei',
       Math.round((cuSpargere.totalNeimpozabil - faraSpargere.totalNeimpozabil) * 100) / 100 === 1800);
+  }
+
+  // ── C1: provizioanele de garantii sunt DEDUCTIBILE (art. 26 alin. (1) lit. b) ────────────
+  // Regula veche trata TOT contul 6812 ca nedeductibil. Pentru o firma de constructii — profilul
+  // caruia aplicatia ii dedica un grup intreg de documente — asta insemna impozit platit in plus.
+  {
+    const spP = (o) => Object.assign({ deductibile: { cheltuiala: 0, venit: 0 }, nedeductibile: { cheltuiala: 0, venit: 0 } }, o);
+    const rulajP = { 6812: { d: 50000, c: 0 } };
+    const cuP = ded.ajustari({ rulaj: rulajP, profitContabil: 200000,
+      provizioane: spP({ deductibile: { cheltuiala: 30000, venit: 0 }, nedeductibile: { cheltuiala: 20000, venit: 0 } }) }, {});
+    const faraP = ded.ajustari({ rulaj: rulajP, profitContabil: 200000 }, {});
+    eq('garantiile de buna executie NU se adauga la nedeductibile', cuP.totalNedeductibil, 20000);
+    eq('regula veche le facea pe toate nedeductibile', faraP.totalNedeductibil, 50000);
+    ok('diferenta e 30.000 lei de baza impozabila (4.800 lei impozit la 16%)',
+      faraP.totalNedeductibil - cuP.totalNedeductibil === 30000);
+    // randul deductibil TREBUIE sa apara in registru, desi nu adauga nimic la baza
+    const randG = cuP.randuriFixe.find((r) => r.cont === '1512');
+    ok('provizionul deductibil apare in registrul fiscal', !!randG);
+    eq('...cu nedeductibil zero', randG && randG.nedeductibil, 0);
+    ok('...cu temeiul art. 26(1)(b)', /26\(1\)\(b\)/.test((randG || {}).temei || ''));
+    ok('...si cu limita nesolutionata scrisa raspicat', /trimestrului/i.test((randG || {}).nota || ''));
+    // forma ISTORICA a randului: PDF-ul si tabelul din interfata citesc `pct`
+    ok('randurile noi pastreaza forma istorica (au pct)',
+      cuP.randuriFixe.every((r) => r.pct != null));
+
+    // SIMETRIA la reluare, in AMBELE sensuri — jumatatea care se uita usor
+    const rulajR = { 7812: { d: 0, c: 30000 } };
+    const reluareDed = ded.ajustari({ rulaj: rulajR, profitContabil: 100000,
+      provizioane: spP({ deductibile: { cheltuiala: 0, venit: 30000 } }) }, {});
+    const reluareNed = ded.ajustari({ rulaj: rulajR, profitContabil: 100000,
+      provizioane: spP({ nedeductibile: { cheltuiala: 0, venit: 30000 } }) }, {});
+    eq('reluarea unui provizion DEDUCTIBIL e venit impozabil', reluareDed.totalNeimpozabil, 0);
+    eq('reluarea unuia NEDEDUCTIBIL nu se impoziteaza', reluareNed.totalNeimpozabil, 30000);
+
+    // clasificarea, pe cont
+    ok('1512 e contul deductibil', ded.provizionDeductibil('1512'));
+    ok('analiticul lui la fel', ded.provizionDeductibil('1512.01'));
+    ok('litigiile (1511) nu sunt deductibile', !ded.provizionDeductibil('1511'));
+    ok('„alte provizioane" (1518) nu sunt deductibile', !ded.provizionDeductibil('1518'));
+    ok('sinteticul 151 nu e deductibil (nu se poate sti felul)', !ded.provizionDeductibil('151'));
+
+    // monografiile: implicitul e PRUDENT, iar tipul dedicat merge pe 1512
+    const pg = gt2('provizion_garantii_constituire').build({ suma: 1000 });
+    eq('provizionul de garantii: 6812 = 1512', (pg[0] || {}).debit + '=' + (pg[0] || {}).credit, '6812=1512');
+    const pi = gt2('provizion_constituire').build({ suma: 1000 });
+    eq('provizionul generic merge implicit pe 1518 (nedeductibil)', (pi[0] || {}).credit, '1518');
+    ok('...deci alegerea neatenta nu produce deducere', !ded.provizionDeductibil((pi[0] || {}).credit));
   }
 
   // ── B2: registrul-inventar cu valoarea de inventar si diferentele ───────────────────────
@@ -4455,7 +4506,11 @@ section('Un singur motor de nedeductibile: registrul fiscal = nota contabila = D
 
   // Procentele fixe chiar ajung in profitTax (inainte: 0).
   const rulajFiscal = acc.accumulate(acc.resultLines(acc.postedEntries(vFix)));
-  eq('procentele fixe se calculeaza din conturi (20.000+10.000+5.000)', deduct.fixe(rulajFiscal).total, 35000);
+  // 6812 a IESIT din tabelul de procente fixe: deductibilitatea lui depinde de FELUL provizionului
+  // (contul din contrapartida), nu de contul de cheltuiala. `fixe` numara acum doar 6581 + 635;
+  // provizioanele intra prin `provizioane()`, iar TOTALUL de mai jos ramane neschimbat.
+  eq('procentele fixe se calculeaza din conturi (20.000+5.000)', deduct.fixe(rulajFiscal).total, 25000);
+  eq('provizioanele intra separat, tot nedeductibile fara spargere', deduct.provizioane(null, rulajFiscal).total, 10000);
   eq('nedeductibile = fixe + plafon protocol', pt.cheltNedeductibile, 36620);
   // Veniturile neimpozabile (art. 23) SCAD baza — nu se adunau deloc inainte.
   eq('veniturile neimpozabile se scad din baza', pt.venituriNeimpozabile, 4000);
