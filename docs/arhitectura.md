@@ -60,6 +60,15 @@
   disjuncte și se adună la total, ca scadențarul afișat să nu se schimbe pentru o nevoie fiscală.
   Creanțele neîncasabile se pot **scoate din evidență** direct din scadențar (buton „scoate"):
   `654 = 4111` (pierdere) + reluarea automată a ajustării aferente `491 = 7814`; `/api/writeoff`.
+- `src/temeiLegal.js` — **temeiul legal al fiecărui pas din ciclul contabil**, sursă unică pentru
+  cockpitul de închidere lunară, tabul de închidere a anului, ghid și documentație. Structura
+  răspunde la trei întrebări: ce fac (pasul), de ce sunt obligat (actul + articolul), ce anume
+  prevede (rezumatul). Două reguli de redactare, ambele păzite de o poartă din suită: articolul se
+  scrie cât de precis se poate **susține** (unde alineatul nu e sigur, rămâne doar articolul — o
+  trimitere falsă e mai rea decât una lipsă); iar aici **nu stau termene și nu stau cote** — au
+  sursele lor (`declarations.dueDate`, `fiscalConfig`), iar o cifră copiată ar deveni a doua sursă
+  de adevăr și s-ar învechi tăcut. Cheile fazei „lunar" trebuie să coincidă exact cu pașii din
+  `monthlyClose.STEPS`, altfel un pas nou ar apărea fără temei. `GET /api/temei-legal[?faza=]`.
 - `src/ajustari.js` — ajustările pentru depreciere: harta **explicită** cont de activ → cont de
   ajustare (39x stocuri, 29x imobilizări) + contul de cheltuială/venit (6813/7813 la imobilizări,
   6814/7814 la active circulante). Nu compune coduri din cifre: ce nu e în hartă nu are ajustare și

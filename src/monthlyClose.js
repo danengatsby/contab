@@ -25,6 +25,10 @@ const decl = require('./declarations');
 const fiscalProfile = require('./fiscalProfile');
 const { reconcile } = require('./reconcile');
 const { period: periodOf } = require('./util');
+// Temeiul legal al fiecarui pas — sursa UNICA (src/temeiLegal.js), aceeasi din care citesc si
+// inchiderea anului si ghidul. Cheile pasilor de mai jos coincid cu cele din faza „lunar";
+// o poarta din suita refuza un pas fara temei, ca sa nu apara unul „mut" la o adaugare viitoare.
+const temeiLegal = require('./temeiLegal');
 
 // Pasii, in ordinea fluxului. `tab`/`eticheta` duc utilizatorul exact la ecranul care rezolva pasul.
 const STEPS = [
@@ -232,6 +236,7 @@ function status(d, v, period, opts) {
     const due = cfg.due || shiftDays(ancora, DEFAULT_OFFSET_DAYS[def.key] || 0);
     steps.push({
       key: def.key, nume: def.nume, descriere: def.descriere, tab: def.tab, eticheta: def.eticheta,
+      temei: temeiLegal.temeiul(def.key),
       stare,
       motiv: s.motiv || null,                                  // de ce nu se aplica
       blocaje: stare === 'gata' || stare === 'nuseaplica' ? [] : blocaje,
