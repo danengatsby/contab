@@ -13,7 +13,11 @@ async function loadAssets() {
   $('#assetsList').innerHTML = list.length
     ? `<table><thead><tr><th>Denumire</th><th>Cont</th><th>Metodă</th><th>Data PIF</th><th class="num">Cost</th><th class="num">Amort./lună</th><th class="num">Cumulat</th><th class="num">Rămas</th><th></th></tr></thead><tbody>${
       list.map((a) => `<tr${a.status === 'casat' ? ' class="muted"' : ''}>
-        <td>${H(a.denumire)}${a.status === 'casat' ? ' <span class="pill">casat</span>' : ''}</td>
+        <td>${H(a.denumire)}${a.status === 'casat' ? ' <span class="pill">casat</span>' : ''}${
+  // Activele inregistrate INAINTE de gardele art. 28 raman pe disc si continua sa se amortizeze.
+  // Nu se corecteaza singure (ar schimba retroactiv articole deja postate), deci se ARATA.
+  (a.neconformitati && a.neconformitati.length)
+    ? `<br><span class="status err">⚠ ${a.neconformitati.map((m) => H(m)).join('<br>⚠ ')}</span>` : ''}</td>
         <td class="acc">${a.cont}/${a.calc.contAmortizare}</td>
         <td>${({ liniara: 'liniară', degresiva: 'degresivă', accelerata: 'accelerată' })[a.metoda] || a.metoda}</td>
         <td>${a.dataPif}</td>
@@ -125,17 +129,64 @@ $('#lsForm').addEventListener('submit', async (e) => {
     s.rows.map((r) => `<tr><td class="num">${r.luna}</td><td class="num">${fmt(r.rata)}</td><td class="num">${fmt(r.principal)}</td><td class="num">${fmt(r.dobanda)}</td><td class="num">${fmt(r.sold)}</td></tr>`).join('')}
     <tr class="bold"><td class="num">TOTAL</td><td class="num">${fmt(s.totals.rata)}</td><td class="num">${fmt(s.totals.principal)}</td><td class="num">${fmt(s.totals.dobanda)}</td><td></td></tr></tbody></table>`;
 });
+// ───────── Metodele permise pe contul ales (art. 28 alin. (5)) ─────────
+// Lista se cere de la SERVER, nu se deduce aici: e o regula care schimba impozitul, iar o a doua
+// implementare in frontend ar drifta fata de cea care decide. Serverul refuza oricum metoda
+// nepermisa — asta doar nu i-o mai ofera contabilului, si ii spune de ce.
+//
+// Daca ruta nu raspunde (server vechi, retea), formularul ramane exact ca inainte: toate metodele
+// disponibile si nicio explicatie. O sugestie care lipseste nu are voie sa blocheze inregistrarea.
+const ETICHETE_METODA = { liniara: 'Liniară', degresiva: 'Degresivă (AD)', accelerata: 'Accelerată (50% an 1)' };
+async function actualizeazaMetode() {
+  const f = $('#assetForm'); if (!f || !f.cont || !f.metoda) return;
+  const stare = $('#mfContStare');
+  const cont = (f.cont.value || '').trim();
+  const arataStare = (text, clasa) => {
+    if (!stare) return;
+    stare.textContent = text || '';
+    stare.className = 'full status' + (text ? ' ' + clasa : ' hidden');
+  };
+  const toateVizibile = () => {
+    for (const sel of [f.metoda, f.metodaFiscala].filter(Boolean)) {
+      for (const o of sel.options) { o.hidden = false; o.disabled = false; }
+    }
+  };
+  if (!cont) { toateVizibile(); arataStare('', ''); return; }
+  let r;
+  try { r = await api('/api/assets/metode?cont=' + encodeURIComponent(cont) + (f.computer && f.computer.checked ? '&computer=1' : '')); }
+  catch (err) { toateVizibile(); arataStare('', ''); return; }
+  if (!r.amortizabil) {
+    arataStare(r.motiv, 'err');
+    return;
+  }
+  arataStare('Contul de amortizare: ' + r.contAmortizare + (r.permise.length < 3 ? ' · metode permise: ' + r.permise.map((m) => ETICHETE_METODA[m] || m).join(', ') : ''), 'ok');
+  for (const sel of [f.metoda, f.metodaFiscala].filter(Boolean)) {
+    for (const o of sel.options) {
+      const nepermisa = o.value && !r.permise.includes(o.value);
+      o.hidden = nepermisa; o.disabled = nepermisa;
+    }
+    if (sel.selectedOptions[0] && sel.selectedOptions[0].disabled) sel.value = r.permise[0] || '';
+  }
+}
+if ($('#assetForm')) {
+  const f = $('#assetForm');
+  if (f.cont) f.cont.addEventListener('change', actualizeazaMetode);
+  if (f.cont) f.cont.addEventListener('blur', actualizeazaMetode);
+  if (f.computer) f.computer.addEventListener('change', actualizeazaMetode);
+}
 $('#assetForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   const body = { denumire: f.denumire.value, cont: f.cont.value, cost: f.cost.value, durataLuni: f.durataLuni.value, metoda: f.metoda.value, valoareReziduala: f.valoareReziduala.value, dataAchizitie: f.dataAchizitie.value, dataPif: f.dataPif.value, furnizor: f.furnizor.value, cui: f.cui.value };
+  // Marcaj explicit, ca `vehiculM1`: schimba metodele permise pe 214 (art. 28 alin. (5) lit. b).
+  if (f.computer && f.computer.checked) body.computer = true;
   // Planul fiscal se trimite doar daca a fost ales; serverul ignora oricum valorile egale cu cele
   // contabile, dar nu are rost sa le trimitem.
   if (f.metodaFiscala && f.metodaFiscala.value) body.metodaFiscala = f.metodaFiscala.value;
   if (f.durataFiscalaLuni && f.durataFiscalaLuni.value) body.durataFiscalaLuni = f.durataFiscalaLuni.value;
   // Plafonul auto (art. 28 alin. (12) lit. m) se trimite doar cand e bifat: marcaj explicit.
   if (f.vehiculM1 && f.vehiculM1.checked) body.vehiculM1 = true;
-  try { await api('/api/assets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Mijloc fix adăugat'); f.reset(); f.valoareReziduala.value = '0'; loadAssets(); }
+  try { await api('/api/assets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Mijloc fix adăugat'); f.reset(); f.valoareReziduala.value = '0'; actualizeazaMetode(); loadAssets(); }
   catch (err) { toast(err.message, true); }
 });
 $('#mfDeprec').addEventListener('click', async () => {

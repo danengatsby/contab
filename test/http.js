@@ -991,6 +991,47 @@ async function main() {
     ok('asset scrap: marcheaza casat', (await req('POST', '/api/assets/' + aid + '/scrap', { cookie: c1, body: {} })).json.asset.status === 'casat');
     ok('asset delete: sterge mijlocul', (await req('DELETE', '/api/assets/' + aid, { cookie: c1 })).json.ok === true);
 
+    // ── Gardele art. 28: contul si regimul de amortizare ──────────────────────────────────────
+    // Mijlocul fix isi scrie articolele DIRECT (ruta de amortizare nu trece prin `composeEntry`),
+    // deci garda de plan de conturi trebuie sa fie aici. Inainte, contul nu era verificat deloc.
+    const cerere = (body) => req('POST', '/api/assets', { cookie: c1, body: Object.assign(
+      { denumire: 'Proba', cost: 12000, durataLuni: 24, dataPif: '2026-01-15' }, body) });
+    eq('cont inexistent in plan -> 400', (await cerere({ cont: '9999' })).status, 400);
+    {
+      const r = await cerere({ cont: '2111' });
+      eq('teren (2111) -> 400', r.status, 400);
+      ok('...cu motivul, nu doar un refuz', /teren/i.test(r.json.error));
+    }
+    eq('sinteticul ambiguu 211 -> 400', (await cerere({ cont: '211' })).status, 400);
+    eq('imobilizare in curs (231) -> 400', (await cerere({ cont: '231' })).status, 400);
+    {
+      const r = await cerere({ cont: '212', metoda: 'accelerata' });
+      eq('constructie pe accelerata -> 400', r.status, 400);
+      ok('...cu temeiul citat', /art\. 28/i.test(r.json.error));
+    }
+    eq('constructie pe liniara -> acceptata', (await cerere({ cont: '212', metoda: 'liniara' })).status, 200);
+    eq('mobilier (214) pe accelerata -> 400', (await cerere({ cont: '214', metoda: 'accelerata' })).status, 400);
+    eq('computer marcat explicit, pe accelerata -> acceptat', (await cerere({ cont: '214', metoda: 'accelerata', computer: true })).status, 200);
+    // metoda FISCALA trece prin aceeasi regula: art. 28 vorbeste chiar despre ea
+    eq('metoda fiscala accelerata pe o constructie -> 400', (await cerere({ cont: '212', metoda: 'liniara', metodaFiscala: 'accelerata' })).status, 400);
+    // ruta care alimenteaza formularul — o singura implementare a regulii, nu doua
+    {
+      const m = await req('GET', '/api/assets/metode?cont=212', { cookie: c1 });
+      eq('metode(212): numai liniara', (m.json.permise || []).join(','), 'liniara');
+      eq('metode(212): contul de amortizare e cel real', m.json.contAmortizare, '2812');
+      const mc = await req('GET', '/api/assets/metode?cont=214&computer=1', { cookie: c1 });
+      eq('metode(214+computer): toate trei', (mc.json.permise || []).join(','), 'liniara,degresiva,accelerata');
+      const mt = await req('GET', '/api/assets/metode?cont=2111', { cookie: c1 });
+      ok('metode(2111): teren -> neamortizabil, cu motiv', mt.json.amortizabil === false && /teren/i.test(mt.json.motiv));
+    }
+    // amortizarea unei constructii se inregistreaza pe 2812, cont care ACUM exista in plan
+    {
+      const dep2 = await req('POST', '/api/assets/depreciation?period=2026-03', { cookie: c1 });
+      const linii = ((dep2.json || {}).result || {}).lines || [];
+      ok('amortizarea cladirii merge pe 2812', linii.some((l) => l.contAmortizare === '2812'));
+      ok('niciun cont de amortizare orfan in articol', linii.every((l) => /^28(0|1)\d?$/.test(l.contAmortizare)));
+    }
+
     // ── Salarizare: angajat, stat de plata (posteaza articol), plata neta ──
     eq('angajat fara nume -> 400', (await req('POST', '/api/angajati', { cookie: c1, body: { salariuBrut: 5000 } })).status, 400);
     const mkAng = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Ion Test', salariuBrut: 5000, functie: 'Operator' } });

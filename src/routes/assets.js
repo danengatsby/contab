@@ -60,6 +60,21 @@ module.exports = function register(app, ctx) {
     const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
     sendList(req, res, assets.register(S(req), asOf), { label: 'assets' });
   });
+  // Metodele de amortizare permise pe un cont (art. 28 alin. (5)). Formularul le cere de AICI, nu
+  // le deduce singur: regula decide impozitul, deci nu are voie sa existe in doua exemplare care
+  // pot drifta — acelasi motiv pentru care previzualizarea articolului vine de la server.
+  app.get('/api/assets/metode', (req, res) => {
+    const cont = String(req.query.cont || '').trim();
+    const marcaje = { computer: req.query.computer === '1' || req.query.computer === 'true' };
+    const amortizabil = assets.esteAmortizabil(cont);
+    res.json({
+      cont,
+      amortizabil: amortizabil.ok,
+      motiv: amortizabil.ok ? '' : amortizabil.motiv,
+      permise: amortizabil.ok ? assets.metodePermise(cont, marcaje) : [],
+      contAmortizare: amortizabil.ok ? assets.contAmortizare(cont) : '',
+    });
+  });
   app.get('/api/assets/:id/schedule', (req, res) => {
     const a = (S(req).assets || []).find((x) => x.id === req.params.id);
     if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' });
@@ -68,15 +83,41 @@ module.exports = function register(app, ctx) {
   app.post('/api/assets', (req, res) => {
     const b = req.body || {};
     if (!b.denumire || !b.cont || !b.cost || !b.durataLuni || !b.dataPif) return res.status(400).json({ error: 'Completeaza denumire, cont, cost, durata si data punerii in functiune.' });
+    // ── Gardele contului si ale regimului de amortizare ──────────────────────────────────────
+    // Contul nu era verificat DELOC aici: mijlocul fix e singura monografie care isi scrie
+    // articolele direct (vezi ruta de amortizare), deci garda din `composeEntry` nu-l atinge.
+    // Se verifica in ordinea in care contabilul greseste: contul exista? se amortizeaza? metoda
+    // aleasa e permisa pe felul asta de activ?
+    const cont = String(b.cont).trim();
+    if (!coa.getAccount(cont)) return res.status(400).json({ error: 'Cont inexistent în planul de conturi: ' + cont });
+    const amortizabil = assets.esteAmortizabil(cont);
+    if (!amortizabil.ok) return res.status(400).json({ error: amortizabil.motiv });
+    if (!assets.contAmortizareValid(cont)) {
+      return res.status(400).json({ error: 'Contul de amortizare ' + assets.contAmortizare(cont) + ' nu există în planul de conturi. Completează planul înainte de a înregistra mijlocul fix.' });
+    }
+    const metoda = assets.METHODS.includes(b.metoda) ? b.metoda : 'liniara';
+    // Marcajul „computer" schimba metodele permise pe 214, deci se citeste INAINTE de verificare.
+    const marcaje = { computer: !!b.computer };
+    const motivM = assets.motivMetodaNepermisa(cont, metoda, marcaje);
+    if (motivM) return res.status(400).json({ error: motivM });
+    if (assets.METHODS.includes(b.metodaFiscala) && b.metodaFiscala !== metoda) {
+      const motivF = assets.motivMetodaNepermisa(cont, b.metodaFiscala, marcaje);
+      if (motivF) return res.status(400).json({ error: 'Metoda fiscală: ' + motivF });
+    }
     const d = db.get();
     const a = {
       id: db.nextId('mf'), firmaId: activeId(req),
-      denumire: String(b.denumire), cont: String(b.cont),
+      denumire: String(b.denumire), cont,
       furnizor: b.furnizor || '', cui: b.cui || '',
       cost: round2(Number(b.cost) || 0), valoareReziduala: round2(Number(b.valoareReziduala) || 0),
       dataAchizitie: b.dataAchizitie || b.dataPif, dataPif: String(b.dataPif),
       durataLuni: Math.max(1, Number(b.durataLuni) || 1),
-      metoda: assets.METHODS.includes(b.metoda) ? b.metoda : 'liniara', status: 'activ',
+      metoda, status: 'activ',
+      // Art. 28 alin. (5) lit. b): computerele si echipamentele periferice pot fi amortizate
+      // accelerat, desi in planul acesta stau pe 214 alaturi de mobilier, care nu poate. Marcaj
+      // EXPLICIT, ca `vehiculM1` — sinteticul nu le deosebeste, iar o euristica pe denumire ar
+      // schimba impozitul dupa cum a scris cineva „laptop" sau „calculator".
+      ...(b.computer ? { computer: true } : {}),
       // Planul FISCAL (art. 28) e optional: absent inseamna „identic cu cel contabil". Se scrie
       // doar cand difera efectiv — un camp egal cu cel contabil ar sugera o alegere care nu s-a
       // facut, si ar ingheta planul fiscal daca metoda contabila se schimba ulterior.
@@ -124,6 +165,14 @@ module.exports = function register(app, ctx) {
     if (!dep.lines.length) return res.json({ ok: true, message: 'Nicio amortizare de inregistrat pentru ' + period + '.', result: dep });
     const exists = d.entries.find((e) => e.firmaId === activeId(req) && e.tip === 'amortizare_lunara' && e.period === period);
     if (exists) return res.status(400).json({ error: 'Amortizarea pentru ' + period + ' este deja inregistrata.' });
+    // Articolul se scrie direct in `d.entries`, deci NU trece prin `composeEntry` — singurul loc
+    // care verifica apartenenta la plan. Verificarea se face aici, altfel un cont de amortizare
+    // absent (activ vechi, plan incomplet) ar ajunge tacut in balanta si in SAF-T, la ANAF.
+    const orfane = [...new Set(dep.lines.map((l) => l.contAmortizare).filter((c) => !coa.getAccount(c)))];
+    if (orfane.length) {
+      return res.status(400).json({ error: 'Conturi de amortizare inexistente în planul de conturi: ' + orfane.join(', ')
+        + '. Completează planul (sau corectează contul mijlocului fix) înainte de a înregistra amortizarea.' });
+    }
     d.entries.push({
       id: db.nextId('e'), firmaId: activeId(req), data: period + '-28', period, tip: 'amortizare_lunara', tipNume: 'Amortizare mijloace fixe',
       partener: '', document: 'Nota amortizare ' + period, explicatie: 'Amortizarea lunară a imobilizărilor',

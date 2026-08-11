@@ -298,6 +298,77 @@ for (const [nume, a] of [
 eq('coeficient degresiv ≤5 ani', assets.degressiveCoef(5), 1.5);
 eq('coeficient degresiv 6-10 ani', assets.degressiveCoef(8), 2.0);
 eq('coeficient degresiv >10 ani', assets.degressiveCoef(12), 2.5);
+
+section('Imobilizari: contul de amortizare, ce nu se amortizeaza, regimul permis (art. 28)');
+{
+  const coaTest = require('../src/chartOfAccounts');
+  // ── A1. Contul de amortizare exista in plan pentru ORICE cont de imobilizari din plan ──
+  // Forma veche il compunea din cifre ('281' + a treia cifra) si producea 2805/2808/2811/2812/2814,
+  // conturi care nu existau: amortizarea lor se scria pe un cont orfan, iar SAF-T pleca la ANAF cu
+  // <AccountDescription>(cont necunoscut)</AccountDescription>. Poarta e pe TOT planul, nu pe o
+  // lista scrisa de mana: un cont de imobilizari adaugat maine intra singur in verificare.
+  const conturiImob = coaTest.ACCOUNTS
+    .filter((c) => /^2[0-2]/.test(c.cod) && !/^28/.test(c.cod))
+    .map((c) => c.cod);
+  ok('planul chiar contine conturi de imobilizari de verificat', conturiImob.length >= 8);
+  const fara = conturiImob.filter((c) => assets.esteAmortizabil(c).ok && !assets.contAmortizareValid(c));
+  eq('fiecare cont amortizabil are contul de amortizare IN PLAN', fara.join(',') || '(niciunul)', '(niciunul)');
+  // maparea, pe cazurile care erau gresite
+  eq('constructii 212 -> 2812', assets.contAmortizare('212'), '2812');
+  eq('mobilier 214 -> 2814', assets.contAmortizare('214'), '2814');
+  eq('licente 205 -> 2805', assets.contAmortizare('205'), '2805');
+  eq('amenajari de terenuri 2112 -> 2811', assets.contAmortizare('2112'), '2811');
+  eq('echipamente 2131 -> 2813 (neschimbat)', assets.contAmortizare('2131'), '2813');
+  eq('transport 2133 -> 2813 (neschimbat)', assets.contAmortizare('2133'), '2813');
+  // analiticul propriu cade pe sinteticul lui, nu pe un cod inventat
+  eq('analitic 2131.01 -> 2813', assets.contAmortizare('2131.01'), '2813');
+  eq('cont necunoscut cade pe sintetic, nu inventeaza', assets.contAmortizare('219'), '281');
+  ok('sinteticul de rezerva exista si el in plan', !!coaTest.getAccount(assets.contAmortizare('219')));
+
+  // ── A2. Ce nu se amortizeaza ──
+  ok('terenul (2111) nu se amortizeaza', !assets.esteAmortizabil('2111').ok);
+  ok('sinteticul 211 e respins ca AMBIGUU (teren + amenajare)', !assets.esteAmortizabil('211').ok);
+  ok('amenajarea de teren (2112) SE amortizeaza', assets.esteAmortizabil('2112').ok);
+  ok('imobilizarile in curs (231) nu se amortizeaza', !assets.esteAmortizabil('231').ok);
+  ok('imobilizarile financiare (267) nu se amortizeaza', !assets.esteAmortizabil('267').ok);
+  ok('echipamentul se amortizeaza', assets.esteAmortizabil('2131').ok);
+  ok('motivul refuzului ajunge la utilizator, nu doar un fals', /teren/i.test(assets.esteAmortizabil('2111').motiv));
+
+  // ── A3. Regimul permis (art. 28 alin. (5)) ──
+  eq('constructiile: numai liniar', assets.metodePermise('212').join(','), 'liniara');
+  eq('echipamentele: toate trei', assets.metodePermise('2131').join(','), 'liniara,degresiva,accelerata');
+  eq('mobilierul (214): fara accelerata', assets.metodePermise('214').join(','), 'liniara,degresiva');
+  eq('computerul pe 214, marcat explicit: toate trei', assets.metodePermise('214', { computer: true }).join(','), 'liniara,degresiva,accelerata');
+  ok('accelerata pe o constructie e refuzata', !!assets.motivMetodaNepermisa('212', 'accelerata'));
+  ok('degresiva pe o constructie e refuzata', !!assets.motivMetodaNepermisa('212', 'degresiva'));
+  ok('liniara pe o constructie trece', !assets.motivMetodaNepermisa('212', 'liniara'));
+  ok('accelerata pe mobilier e refuzata', !!assets.motivMetodaNepermisa('214', 'accelerata'));
+  ok('accelerata pe un computer marcat trece', !assets.motivMetodaNepermisa('214', 'accelerata', { computer: true }));
+  ok('accelerata pe echipament trece', !assets.motivMetodaNepermisa('2131', 'accelerata'));
+  ok('motivul citeaza temeiul, ca sa poata fi verificat', /art\. 28/i.test(assets.motivMetodaNepermisa('212', 'accelerata')));
+
+  // ── Activele SCRISE INAINTE de garzi raman pe disc: se raporteaza, nu se corecteaza tacut ──
+  // O corectie automata ar schimba retroactiv articole deja postate — exact defectul reparat la
+  // casare, unde marcarea unui activ stergea amortizarea lunilor dinainte.
+  const cladireGresita = { id: 'mfx', cont: '212', denumire: 'Hala', cost: 600000, durataLuni: 600, metoda: 'accelerata', dataPif: '2026-01-15' };
+  const nc = assets.neconformitati(cladireGresita);
+  ok('o cladire pe accelerata e RAPORTATA ca neconforma', nc.length === 1 && /art\. 28/.test(nc[0]));
+  eq('...dar planul ei de amortizare ramane neschimbat', assets.schedule(cladireGresita).length, 600);
+  ok('un activ corect nu are neconformitati', assets.neconformitati({ cont: '2131', cost: 1000, durataLuni: 12, metoda: 'accelerata', dataPif: '2026-01-15' }).length === 0);
+  // planul FISCAL trece prin aceeasi regula: art. 28 vorbeste chiar despre amortizarea fiscala
+  const fiscalGresit = { cont: '212', cost: 1000, durataLuni: 24, metoda: 'liniara', metodaFiscala: 'accelerata', dataPif: '2026-01-15' };
+  ok('metoda FISCALA nepermisa e raportata separat', assets.neconformitati(fiscalGresit).some((m) => /^Planul fiscal/.test(m)));
+
+  // ── Nicio amortizare nu mai poate produce un cont din afara planului ──
+  // Poarta pe IESIREA reala a motorului, nu pe harta: `monthlyDepreciation` e cea care scrie.
+  const toate = conturiImob.filter((c) => assets.esteAmortizabil(c).ok).map((c, i) => ({
+    id: 'mf-' + i, cont: c, denumire: 'Activ ' + c, cost: 12000, durataLuni: 12,
+    metoda: assets.metodePermise(c)[0], dataPif: '2026-01-15',
+  }));
+  const orfane = assets.monthlyDepreciation(toate, '2026-02').lines
+    .map((l) => l.contAmortizare).filter((c) => !coaTest.getAccount(c));
+  eq('articolele de amortizare nu mai contin conturi din afara planului', orfane.join(',') || '(niciunul)', '(niciunul)');
+}
 // degresiva e front-loaded: primul an > liniarul mediu
 const degSch = assets.schedule({ cost: 10000, durataLuni: 60, metoda: 'degresiva', dataPif: '2026-01-01' });
 const degAn1 = degSch.filter((r) => r.period.startsWith('2026')).reduce((s, r) => s + r.amount, 0) + degSch.filter((r) => r.period === '2027-01').reduce((s, r) => s + r.amount, 0);

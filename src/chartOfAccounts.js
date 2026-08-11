@@ -54,6 +54,11 @@ const ACCOUNTS = [
   { cod: '205',  nume: 'Concesiuni, brevete, licențe', clasa: 2, tip: 'A' },
   { cod: '208',  nume: 'Alte imobilizări necorporale', clasa: 2, tip: 'A' },
   { cod: '211',  nume: 'Terenuri și amenajări de terenuri', clasa: 2, tip: 'A' },
+  // Terenul si amenajarea lui se despart fiindca se AMORTIZEAZA DIFERIT: terenul nu e activ
+  // amortizabil (art. 28 alin. (4) Cod fiscal), amenajarea este. Cat timp exista doar sinteticul
+  // 211, regula nu are cum sa distinga intre ele — vezi NEAMORTIZABILE din src/assets.js.
+  { cod: '2111', nume: 'Terenuri', clasa: 2, tip: 'A' },
+  { cod: '2112', nume: 'Amenajări de terenuri', clasa: 2, tip: 'A' },
   { cod: '212',  nume: 'Construcții', clasa: 2, tip: 'A' },
   { cod: '2131', nume: 'Echipamente tehnologice (mașini, utilaje)', clasa: 2, tip: 'A' },
   { cod: '2133', nume: 'Mijloace de transport', clasa: 2, tip: 'A' },
@@ -63,8 +68,18 @@ const ACCOUNTS = [
   { cod: '2678', nume: 'Alte creanțe imobilizate (garanții)', clasa: 2, tip: 'A' },
   { cod: '280',  nume: 'Amortizări privind imobilizările necorporale', clasa: 2, tip: 'P' },
   { cod: '2801', nume: 'Amortizarea imobilizărilor necorporale', clasa: 2, tip: 'P' },
+  // Amortizarile pe FELUL imobilizarii. Lipseau, desi `assets.contAmortizare` le producea prin
+  // concatenare ('281' + a treia cifra): amortizarea unei cladiri se inregistra pe 2812, cont
+  // inexistent in plan, deci aparea drept „(cont necunoscut)" in balanta, in fisa contului si in
+  // <AccountDescription> din SAF-T — adica pleca asa la ANAF. Denumirile sunt cele din OMFP
+  // 1802/2014; 2813 il acopera si pe 2131, de aceea poarta si „instalatiilor".
+  { cod: '2805', nume: 'Amortizarea concesiunilor, brevetelor, licențelor', clasa: 2, tip: 'P' },
+  { cod: '2808', nume: 'Amortizarea altor imobilizări necorporale', clasa: 2, tip: 'P' },
   { cod: '281',  nume: 'Amortizări privind imobilizările corporale', clasa: 2, tip: 'P' },
-  { cod: '2813', nume: 'Amortizarea mijloacelor de transport', clasa: 2, tip: 'P' },
+  { cod: '2811', nume: 'Amortizarea amenajărilor de terenuri', clasa: 2, tip: 'P' },
+  { cod: '2812', nume: 'Amortizarea construcțiilor', clasa: 2, tip: 'P' },
+  { cod: '2813', nume: 'Amortizarea instalațiilor și mijloacelor de transport', clasa: 2, tip: 'P' },
+  { cod: '2814', nume: 'Amortizarea altor imobilizări corporale', clasa: 2, tip: 'P' },
 
   // ─────────────────── Clasa 3 — Stocuri si productie ─────────────────────
   { cod: '301',  nume: 'Materii prime', clasa: 3, tip: 'A' },

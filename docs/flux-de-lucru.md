@@ -164,13 +164,31 @@ finite…). Nota e legată de mișcare (`entryId`/`movementId`); ștergerea miș
 (denumire, cont 21x/20x, cost, valoare reziduală, dată achiziție / punere în funcțiune, durată în
 luni, furnizor). Amortizarea se calculează automat după **3 metode** — **liniară**, **degresivă** (AD, cu coeficient
 1,5/2,0/2,5 după durată și trecere la liniar) și **accelerată** (50% în primul an, restul liniar) —
-(începe din luna următoare punerii în funcțiune; contul de amortizare 281x/280x e dedus din contul
-de imobilizare) și se poate
+(începe din luna următoare punerii în funcțiune; contul de amortizare 281x/280x vine dintr-o **hartă
+explicită** cont imobilizare → cont amortizare, nu din compunerea codului) și se poate
 **înregistra lunar** în contabilitate cu un click (articolul `6811 = 281x`, o linie per mijloc fix,
-fără dublură pe aceeași lună). Livrabile PDF: **Registrul mijloacelor fixe** (`/pdf/assets`) și
+fără dublură pe aceeași lună).
+
+**Alegerea metodei nu e liberă** (art. 28 alin. (5) Cod fiscal), iar formularul cere lista permisă de
+la server (`GET /api/assets/metode?cont=`), ca regula să nu existe în două exemplare: **construcțiile
+— numai liniar**; echipamentele tehnologice, mașinile, uneltele, instalațiile de lucru, computerele și
+echipamentele periferice — toate trei; **orice alt mijloc fix — liniar sau degresiv, fără accelerată**.
+Un computer înregistrat pe 214 (lângă mobilier, care nu poate) se marchează **explicit** pe activ, ca
+`vehiculM1` la plafonul auto — sinteticul nu le deosebește, iar o euristică pe denumire ar schimba
+impozitul. Aceeași regulă se aplică și metodei *fiscale*, fiindcă art. 28 despre ea vorbește.
+
+**Ce nu se amortizeaza** e refuzat la înregistrare, cu motivul scris: terenurile (2111 — art. 28 alin.
+(4); se amortizează doar amenajările, 2112), imobilizările în curs (231–235, cât timp nu sunt puse în
+funcțiune — există tipul `punere_in_functiune`) și imobilizările financiare (26x). Sinteticul **211 e
+respins ca ambiguu**: acoperă și terenul, și amenajarea. Mijloacele fixe înregistrate *înainte* de
+aceste gărzi nu se corectează tăcut — o recalculare ar schimba retroactiv articole deja postate — ci
+apar cu avertisment în registru (`neconformitati` pe fiecare rând).
+
+Livrabile PDF: **Registrul mijloacelor fixe** (`/pdf/assets`) și
 **Fișa mijlocului fix** cu planul complet de amortizare (`/pdf/asset/:id`). Datele alimentează
 secțiunea `Assets` din SAF-T (D406). API: `GET/POST /api/assets`, `GET /api/assets/:id/schedule`,
-`POST /api/assets/:id/scrap`, `DELETE /api/assets/:id`, `POST /api/assets/depreciation?period=`.
+`GET /api/assets/metode`, `POST /api/assets/:id/scrap`, `DELETE /api/assets/:id`,
+`POST /api/assets/depreciation?period=`.
 
 **TVA la încasare** (regim special): grupul de documente „TVA la încasare” folosește contul
 **4428 „TVA neexigibilă”** în loc de 4427/4426 pe factură; TVA devine exigibilă (intră în decontul

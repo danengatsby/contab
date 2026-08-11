@@ -1316,6 +1316,11 @@
               <div class="row"><input type="file" id="cdCsvFile" accept=".csv,.txt,.xlsx,.xls,.dbf" /><button type="button" id="cdImportBtn" class="btn small primary">Încarcă catalogul</button></div>
               <div id="cdImportStare" class="status"></div>
             </details>
+            <label class="check"><input name="computer" type="checkbox" /> Computer sau echipament periferic — poate fi amortizat accelerat (art. 28 alin. (5) lit. b), deși stă pe același cont cu mobilierul. Bifează doar calculatoarele, monitoarele, imprimantele și celelalte periferice.</label>
+            <!-- Metodele din cele două liste se cer de la server (`/api/assets/metode`) după contul
+                 ales: art. 28 alin. (5) nu lasă alegerea liberă — construcțiile se amortizează numai
+                 liniar, iar accelerata e rezervată echipamentelor și computerelor. Regula NU se
+                 rescrie aici; serverul refuză oricum, listele doar nu mai oferă ce va fi refuzat. -->
             <label>Metoda de amortizare
               <select name="metoda">
                 <option value="liniara">Liniară</option>
@@ -1331,6 +1336,7 @@
                 <option value="accelerata">Accelerată (50% an 1)</option>
               </select>
             </label>
+            <p class="full status hidden" id="mfContStare"></p>
             <label>Durata fiscală (luni) <input name="durataFiscalaLuni" type="number" placeholder="la fel ca cea contabilă" /></label>
             <label class="check"><input name="vehiculM1" type="checkbox" /> Vehicul de persoane cu maxim 9 scaune (M1) — amortizarea fiscală se plafonează la 1.500 lei/lună (art. 28 alin. (12) lit. m). Bifează doar autoturismele: camioanele, autoutilitarele și utilajele nu au plafon.</label>
             <label>Valoare reziduală <input name="valoareReziduala" type="number" step="0.01" value="0" /></label>

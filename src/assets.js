@@ -18,12 +18,118 @@ function plafonAutoLunar() {
   return Number.isFinite(v) && v > 0 ? v : 0;
 }
 
-/** Contul de amortizare corespunzator contului de imobilizare. */
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONTUL DE AMORTIZARE — harta EXPLICITA, nu concatenare
+//
+//  Forma veche compunea codul din cifre: `'281' + cont.charAt(2)`. Pentru 2131 si 2133 iesea
+//  2813, care exista in plan; pentru construcții (212 -> 2812), mobilier (214 -> 2814) si
+//  necorporale (205 -> 2805, 208 -> 2808) ieseau conturi care NU existau. Amortizarea lor se
+//  inregistra tacut pe un cont orfan: „(cont necunoscut)" in balanta si in fisa contului, iar
+//  <AccountDescription> din SAF-T pleca asa la ANAF. Trecea pentru ca ruta de amortizare scrie
+//  direct in `d.entries`, ocolind `composeEntry` — singurul loc care verifica planul si care ar
+//  fi REFUZAT articolul.
+//
+//  O harta nu poate inventa un cod. Ce nu e in ea cade pe sinteticul clasei (280/281), care
+//  exista intotdeauna; iar `contAmortizareValid()` spune apelantului daca rezultatul chiar e in
+//  plan, ca ruta sa poata refuza inainte de a scrie.
+// ─────────────────────────────────────────────────────────────────────────────
+const CONT_AMORTIZARE = {
+  // necorporale
+  201: '2801', 203: '2803', 205: '2805', 206: '2806', 207: '2807', 208: '2808',
+  // corporale
+  2112: '2811', 212: '2812',
+  213: '2813', 2131: '2813', 2132: '2813', 2133: '2813',
+  214: '2814', 215: '2815', 216: '2816', 217: '2817',
+};
+
+/** Contul de amortizare corespunzator contului de imobilizare (analiticele cad pe sintetic). */
 function contAmortizare(cont) {
   const c = String(cont || '');
-  if (/^20/.test(c)) return '280' + (c.charAt(2) || '8'); // necorporale: 205 -> 2805
-  if (/^21/.test(c)) return '281' + (c.charAt(2) || '3'); // corporale: 2131 -> 2813
-  return '281';
+  if (CONT_AMORTIZARE[c]) return CONT_AMORTIZARE[c];
+  // analitic propriu (ex. 2131.01): se cauta sinteticul cel mai lung care se potriveste
+  for (let n = c.length - 1; n >= 3; n -= 1) {
+    const p = c.slice(0, n);
+    if (CONT_AMORTIZARE[p]) return CONT_AMORTIZARE[p];
+  }
+  return /^20/.test(c) ? '280' : '281'; // sinteticul clasei — exista in plan, nu se inventeaza nimic
+}
+
+/** Contul de amortizare, DACA e in planul de conturi. Altfel `null` — apelantul refuza scrierea. */
+function contAmortizareValid(cont) {
+  const a = contAmortizare(cont);
+  return coa.getAccount(a) ? a : null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CE NU SE AMORTIZEAZA (art. 28 alin. (4) Cod fiscal, OMFP 1802/2014)
+//
+//  Nimic nu impiedica azi inregistrarea unui teren ca mijloc fix: 300.000 lei pe 600 de luni
+//  produceau 500 lei de cheltuiala pe luna, pe un cont de amortizare. La fel imobilizarile in
+//  curs, care nu sunt inca puse in functiune — desi aplicatia stie momentul, are tipul
+//  `punere_in_functiune`.
+//
+//  Sinteticul 211 e RESPINS ca ambiguu, nu tratat ca teren: acopera si terenul (neamortizabil),
+//  si amenajarea (amortizabila). Cere analiticul, nu ghici — un teren amortizat si o amenajare
+//  neamortizata sunt amandoua erori, iar prefixul nu le poate deosebi.
+// ─────────────────────────────────────────────────────────────────────────────
+const NEAMORTIZABILE = {
+  211: 'Sinteticul 211 acoperă și terenul, și amenajarea. Folosește 2111 (teren, nu se amortizează) sau 2112 (amenajare, se amortizează).',
+  2111: 'Terenurile nu sunt active amortizabile (art. 28 alin. (4) Cod fiscal). Se amortizează doar amenajările de terenuri (2112).',
+  231: 'Imobilizările în curs de execuție nu se amortizează cât timp nu sunt puse în funcțiune. Înregistrează întâi punerea în funcțiune, apoi mijlocul fix.',
+  232: 'Avansurile pentru imobilizări nu se amortizează.',
+  233: 'Imobilizările necorporale în curs nu se amortizează cât timp nu sunt puse în funcțiune.',
+  234: 'Avansurile pentru imobilizări necorporale nu se amortizează.',
+  235: 'Investițiile imobiliare în curs nu se amortizează cât timp nu sunt finalizate.',
+};
+
+/** Se poate amortiza contul asta? `{ ok }` sau `{ ok: false, motiv }` — motivul merge la utilizator. */
+function esteAmortizabil(cont) {
+  const c = String(cont || '').trim();
+  if (NEAMORTIZABILE[c]) return { ok: false, motiv: NEAMORTIZABILE[c] };
+  // imobilizarile financiare (26x) nu se amortizeaza; nu sunt mijloace fixe deloc
+  if (/^26/.test(c)) return { ok: false, motiv: 'Imobilizările financiare (26x) nu se amortizează.' };
+  if (/^2[0-9]/.test(c)) return { ok: true };
+  return { ok: false, motiv: 'Mijloacele fixe se înregistrează pe un cont de imobilizări (clasa 2).' };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  REGIMUL DE AMORTIZARE PERMIS (art. 28 alin. (5) Cod fiscal)
+//
+//  Alegerea NU e libera, cum era pana acum:
+//    a) constructiile              -> numai LINIAR;
+//    b) echipamente tehnologice, masini, unelte si instalatii de lucru, computere si
+//       echipamente periferice     -> liniar, degresiv sau accelerat;
+//    c) orice alt mijloc fix       -> liniar sau degresiv (NU accelerat).
+//
+//  Punctul b) prinde si computerele, care in planul acesta stau pe 214 impreuna cu mobilierul —
+//  iar mobilierul cade la c). Sinteticul nu-i poate deosebi, deci raspunsul se cere EXPLICIT, prin
+//  marcajul `computer` de pe activ; acelasi tipar ca `vehiculM1` la plafonul auto: un marcaj gresit
+//  schimba impozitul, deci il pune contabilul, nu o euristica pe numarul contului.
+//
+//  Regula se aplica planului FISCAL la fel ca celui contabil: art. 28 vorbeste despre amortizarea
+//  fiscala, iar `metodaFiscala` e exact ea.
+// ─────────────────────────────────────────────────────────────────────────────
+const TOATE_METODELE = ['liniara', 'degresiva', 'accelerata'];
+const FARA_ACCELERATA = ['liniara', 'degresiva'];
+
+function metodePermise(cont, asset) {
+  const c = String(cont || '').trim();
+  if (/^212/.test(c)) return ['liniara'];                    // constructii
+  if (/^213/.test(c)) return TOATE_METODELE.slice();          // echipamente, utilaje, mijloace de transport
+  if (asset && asset.computer) return TOATE_METODELE.slice(); // computere si echipamente periferice (214)
+  return FARA_ACCELERATA.slice();
+}
+
+/** Motivul pentru care metoda nu e permisa pe contul dat (sau `null` daca e in regula). */
+function motivMetodaNepermisa(cont, metoda, asset) {
+  const permise = metodePermise(cont, asset);
+  if (permise.includes(metoda)) return null;
+  if (/^212/.test(String(cont || ''))) {
+    return 'Construcțiile se amortizează numai liniar (art. 28 alin. (5) lit. a) Cod fiscal).';
+  }
+  return 'Amortizarea accelerată e permisă doar la echipamente tehnologice, mașini, unelte, instalații de lucru, '
+    + 'computere și echipamente periferice (art. 28 alin. (5) lit. b) Cod fiscal). Pentru un computer înregistrat pe '
+    + '214, bifează „computer sau echipament periferic".';
 }
 
 /** Coeficientul degresiv in functie de durata normala de functionare (ani). */
@@ -260,13 +366,40 @@ function monthlyDepreciation(assets, period) {
   return { period, lines, total };
 }
 
+/**
+ * Neconformitatile unui mijloc fix deja inregistrat, fata de regulile de mai sus.
+ *
+ * Gardele noi opresc INTRARILE, dar activele scrise inainte de ele raman pe disc si continua sa
+ * se amortizeze. Recalcularea lor tacuta ar schimba retroactiv articole deja postate, deci nu se
+ * face — se RAPORTEAZA, ca sa poata fi corectate deliberat. Lista goala inseamna „in regula".
+ */
+function neconformitati(asset) {
+  const out = [];
+  const am = esteAmortizabil(asset.cont);
+  if (!am.ok) out.push(am.motiv);
+  const mMet = motivMetodaNepermisa(asset.cont, asset.metoda, asset);
+  if (mMet) out.push(mMet);
+  const f = fiscalView(asset);
+  if (f.metoda !== asset.metoda) {
+    const mFisc = motivMetodaNepermisa(asset.cont, f.metoda, asset);
+    if (mFisc) out.push('Planul fiscal: ' + mFisc);
+  }
+  if (!contAmortizareValid(asset.cont)) {
+    out.push('Contul de amortizare ' + contAmortizare(asset.cont) + ' nu există în planul de conturi.');
+  }
+  return out;
+}
+
 /** Mijloacele fixe cu valorile calculate la o data (pentru liste/SAF-T). */
 function register(db, asOf) {
   return (db.assets || []).map((a) => Object.assign({}, a, {
     contNume: coa.accountName(a.cont),
     calc: compute(a, asOf),
+    neconformitati: neconformitati(a),
   }));
 }
 
 module.exports = { compute, schedule, monthlyDepreciation, register, contAmortizare, firstDepreciationMonth, degressiveCoef, METHODS,
-  fiscalView, hasFiscalPlan, annualFor, depreciationDifference };
+  fiscalView, hasFiscalPlan, annualFor, depreciationDifference,
+  contAmortizareValid, esteAmortizabil, metodePermise, motivMetodaNepermisa, neconformitati,
+  CONT_AMORTIZARE, NEAMORTIZABILE };
