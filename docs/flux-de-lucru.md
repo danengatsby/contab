@@ -195,7 +195,11 @@ se eșaloneze — o durată inventată ar fi o decizie fiscală luată de cod. A
 
 **Ce nu se amortizeaza** e refuzat la înregistrare, cu motivul scris: terenurile (2111 — art. 28 alin.
 (4); se amortizează doar amenajările, 2112), imobilizările în curs (231–235, cât timp nu sunt puse în
-funcțiune — există tipul `punere_in_functiune`) și imobilizările financiare (26x). Sinteticul **211 e
+funcțiune — există tipul `punere_in_functiune`), imobilizările financiare (26x) și **conturile
+rectificative** — amortizările (28x) și ajustările pentru depreciere (29x). Ultimele nu sunt active,
+ci corecția lor: un mijloc fix înregistrat pe 2813 producea articolul `6811 = 281`, adică amortizarea
+unei amortizări, și intra așa în registru și în secțiunea `Assets` din SAF-T. Regula e pe **familie**,
+nu pe o listă de coduri, deci un cont 28x/29x adăugat mâine e exclus prin construcție. Sinteticul **211 e
 respins ca ambiguu**: acoperă și terenul, și amenajarea. Mijloacele fixe înregistrate *înainte* de
 aceste gărzi nu se corectează tăcut — o recalculare ar schimba retroactiv articole deja postate — ci
 apar cu avertisment în registru (`neconformitati` pe fiecare rând).
