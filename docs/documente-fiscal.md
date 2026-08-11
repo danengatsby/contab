@@ -106,6 +106,19 @@
   **Atenție la 6814:** e comun creanțelor *și* stocurilor, dar cele două se deduc diferit (30% din
   baza eligibilă, respectiv deloc). Separarea se face după **contrapartida** liniei (49x vs 39x), nu
   după rulajul contului — altfel reluarea unei ajustări de stoc, niciodată dedusă, ar fi impozitată.
+- **Reziduul de rotunjire din bilanț nu mai e tăcut.** Formularul se raportează în lei întregi, iar
+  după rotunjirea a zeci de rânduri identitatea F10_64 poate să nu mai țină exact; diferența se
+  mută în rezultatul reportat, ca la orice întocmire de situații anuale. Mecanismul e necesar —
+  fără el formularul e respins — dar n-avea **nici prag, nici glas**: înghițea la fel de tăcut și
+  doi lei de rotunjire, și o eroare de mapare de sute de mii. Consecința e perfidă: un cont mapat
+  greșit **nu produce niciodată un bilanț dezechilibrat** (plasa îl reechilibrează), ci un
+  *rezultat reportat* greșit, pe care nu-l confruntă nimeni cu nimic. Astăzi reziduul se măsoară și
+  se raportează (`bilant.verificaRezidual`, prag **100 lei** — generos față de rotunjire, strâns
+  față de o eroare de mapare, care se măsoară mereu în sute); peste prag, `situatii()` întoarce un
+  avertisment și generarea XML îl scrie în jurnalul de audit. **Nu blochează depunerea** — formularul
+  tornă și e acceptat de ANAF; e o verificare a contabilului, fiindcă validatorul n-are cum s-o facă.
+  Reziduul stă pe rezultat ca proprietate **neenumerabilă**, deci nu poate ajunge din greșeală
+  într-un câmp de formular sau în XML-ul depus.
 - **Registrul-inventar** (formular 14-1-2) are cele patru coloane cerute: element, valoare
   contabilă, **valoare de inventar**, **diferențe din evaluare** + cauze. Valoarea de inventar se
   introduce pe cont (colecția `inventarAnual`); restul se derivă. Elementele fără valoare introdusă

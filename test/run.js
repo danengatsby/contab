@@ -6692,6 +6692,60 @@ section('Situatii financiare anuale (S1120/S1121) — randuri, invarianti, antet
     intocmitNume: 'IONESCU MARIA', intocmitCalitate: '21', intocmitNr: '12345', auditStatut: '3',
   });
 
+  // ── Reziduul de rotunjire: se absoarbe, dar NU mai tacut ────────────────────────────────
+  // Absorbtia e obligatorie (fara ea identitatea F10_64 pica la validator), dar pana acum n-avea
+  // nici prag, nici glas: inghitea la fel si doi lei de rotunjire, si o eroare de mapare de sute
+  // de mii. Consecinta perfida — un cont mapat gresit NU produce niciodata un bilant dezechilibrat,
+  // ci un rezultat reportat gresit, pe care nu-l confrunta nimeni.
+  {
+    // reziduul se ataseaza NEENUMERABIL: nu are voie sa ajunga intr-un camp de formular sau in XML
+    const R = bil.f10Totals({ '001': 100 });
+    const marcat = bil.verificaRezidual(R);
+    eq('un set fara marcaj raporteaza reziduu zero', marcat.rezidual, 0);
+    ok('...si e considerat in regula', marcat.ok);
+    const sMic = bil.situatii(view, firma, 2026, 'micro');
+    const randuri = sMic.f10[2];
+    ok('reziduul NU apare printre cheile randurilor', !Object.keys(randuri).includes('rezidual'));
+    ok('...si nici in serializare (JSON)', !('rezidual' in JSON.parse(JSON.stringify(randuri))));
+    ok('...dar se poate citi cand e cerut', typeof bil.verificaRezidual(randuri).rezidual === 'number');
+    // pragul discrimineaza rotunjirea de o eroare de mapare
+    const cuRezid = (v) => { const o = {}; Object.defineProperty(o, 'rezidual', { value: v, enumerable: false }); return bil.verificaRezidual(o); };
+    ok('doi lei = rotunjire, tace', cuRezid(2).ok && cuRezid(2).mesaj === '');
+    ok('pragul insusi inca trece', cuRezid(bil.PRAG_REZIDUAL).ok);
+    ok('un leu peste prag deja vorbeste', !cuRezid(bil.PRAG_REZIDUAL + 1).ok);
+    ok('...si in minus, la fel', !cuRezid(-(bil.PRAG_REZIDUAL + 1)).ok);
+    ok('mesajul spune ca formularul TOTUSI se depune', /se depune corect/i.test(cuRezid(50000).mesaj));
+    ok('...si ce anume sa verifice contabilul', /cont care nu cade/i.test(cuRezid(50000).mesaj));
+    ok('...cu suma in mesaj', /50000/.test(cuRezid(50000).mesaj));
+    // situatiile duc verdictul mai departe, pe ambii ani
+    ok('situatiile raporteaza reziduul pe exercitiul curent si pe cel precedent',
+      sMic.rezidual && sMic.rezidual.curent && sMic.rezidual.precedent);
+    ok('seed-ul e curat: niciun avertisment', Array.isArray(sMic.avertismente) && sMic.avertismente.length === 0);
+
+    // ...si CALEA REALA chiar raporteaza ce a absorbit. Fara aserțiunile astea, tot blocul de mai
+    // sus verifica doar functia pura `verificaRezidual` si neenumerabilitatea — masurat: golirea
+    // reziduului raportat („mereu zero") trecea suita VERDE. Al treilea caz din aceeasi familie:
+    // cand pui o garda, testeaza si drumul pe care circula datele, nu doar piesele lui.
+    {
+      const vSimplu = { entries: [{ id: 'ez', firmaId: 1, data: '2026-03-01', period: '2026-03', system: false,
+        lines: [{ debit: '5121', credit: '1012', suma: 30000 }] }], openingBalances: {} };
+      // `rezultatNet` impus, incompatibil cu soldurile -> reziduu fortat prin absorbtia reala
+      const R0 = bil.f10At(vSimplu, 2026, 0);
+      eq('bilant coerent -> reziduu zero', bil.verificaRezidual(R0).rezidual, 0);
+      const Rp = bil.f10At(vSimplu, 2026, 5000);
+      eq('reziduul absorbit e RAPORTAT, cu semn', bil.verificaRezidual(Rp).rezidual, -5000);
+      eq('...si chiar a fost mutat in rezultatul reportat', Rp['042'], 5000);
+      ok('...si depaseste pragul, deci se semnaleaza', !bil.verificaRezidual(Rp).ok);
+      const Rm = bil.f10At(vSimplu, 2026, -7000);
+      eq('in celalalt sens, la fel', bil.verificaRezidual(Rm).rezidual, 7000);
+      eq('...mutat pe partea cealalta a reportatului', Rm['041'], 7000);
+      // identitatea de bilant TINE oricum — asta e si motivul pentru care defectul era invizibil
+      const g = (k) => Rp[k] || 0;
+      eq('identitatea F10_64 se satisface in ciuda reziduului',
+        g('004') + g('009') + g('010') - g('013') - g('016') - g('017') - g('018'), g('049'));
+    }
+  }
+
   for (const cat of ['micro', 'mic', 'mare']) {
     const s = bil.situatii(view, firma, 2026, cat);
     eq('antet complet -> nimic de reclamat (' + cat + ')', s.lipsa.length, 0);

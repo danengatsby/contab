@@ -437,7 +437,7 @@ require('./src/routes/etransport')(app, { activeId, wrap, logAudit });
 
 
 // Generarea XML declaratii (e-Factura, D300/D394/D390/D205/D112, SAF-T) + validare: src/routes/declarationsXml.js
-require('./src/routes/declarationsXml')(app, { S, activeId, canAccess, wrap });
+require('./src/routes/declarationsXml')(app, { S, activeId, canAccess, wrap, logAudit });
 
 // ───────────────── REGISTRUL DEPUNERILOR + PORTOFOLIU + NOTIFICARI ─────────────────
 // Registrul depunerilor, portofoliul si notificarile: src/routes/declarations.js

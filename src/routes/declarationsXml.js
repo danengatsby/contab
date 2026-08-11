@@ -21,7 +21,7 @@ const fiscalProfile = require('../fiscalProfile');
 const { statePlata } = require('../payroll');
 
 module.exports = function register(app, ctx) {
-  const { S, activeId, canAccess, wrap } = ctx;
+  const { S, activeId, canAccess, wrap, logAudit } = ctx;
 
   // Guard de profil: D300/D394 (decontul TVA) nu se genereaza pentru o firma NEPLATITOARE de TVA.
   function requireVatPayer(v, res) {
@@ -177,6 +177,13 @@ module.exports = function register(app, ctx) {
         + s.lipsa.join('; ') + '.');
     }
     recordDecl(req, 'bilant', year + '-12'); // registrul lucreaza pe perioade lunare
+    // Reziduul de rotunjire absorbit in rezultatul reportat NU blocheaza generarea — formularul
+    // torna si e acceptat de ANAF — dar peste pragul de rotunjire pleaca in jurnal, ca sa existe o
+    // urma. E singurul simptom al unui cont care nu cade pe randul potrivit, iar validatorul nu
+    // are cum sa-l vada.
+    if (s.avertismente && s.avertismente.length) {
+      logAudit('bilant.rezidual', year + ': ' + s.avertismente.join(' | '), { req });
+    }
     sendXml(res, xml.bilantXml(s), s.antet.formular.cod.toLowerCase() + '-bilant-' + year + '.xml');
   });
 
