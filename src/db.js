@@ -412,6 +412,56 @@ function nextId(prefix) {
   return (prefix || '') + id;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  PUNCTUL UNIC prin care intra articolele contabile in baza
+//
+//  `composeEntry` (server.js) refuza orice linie cu un cont din afara planului — o garda buna, si
+//  motivul pentru care toate cele 127 de tipuri de document sunt curate. Dar ea pazeste o SINGURA
+//  cale: 21 de locuri impingeau direct in `d.entries`, ocolind-o. Amortizarea lunara chiar a scris
+//  ani la rand pe conturi inexistente (2812, 2814, 2805…), care apareau drept „(cont necunoscut)"
+//  in balanta si plecau asa in <AccountDescription> din SAF-T, la ANAF.
+//
+//  Reparatia nu e inca o verificare copiata in 21 de locuri — ci un singur loc prin care trec
+//  toate, plus o poarta in suita care refuza reaparitia lui `entries.push(` in afara acestui
+//  fisier. O garda pe care o poti ocoli fara sa observe nimeni nu e o garda.
+//
+//  Conturile alese de UTILIZATOR (contul de stoc al unui produs, regulile de banca) nu erau
+//  validate nicaieri: un „317" tastat in loc de „371" ajungea in articole fara o vorba. Acum se
+//  opreste aici, cu numele contului in mesaj — o eroare zgomotoasa e mai ieftina decat un cont
+//  orfan descoperit din raportarea SAF-T.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Conturile din afara planului folosite de un articol (lista goala = articol curat). */
+function conturiNecunoscute(entry) {
+  const coa = require('./chartOfAccounts'); // cerut LA RULARE: planul primeste conturi si prin import
+  const rele = new Set();
+  for (const l of ((entry && entry.lines) || [])) {
+    for (const c of [l.debit, l.credit]) {
+      if (c && !coa.getAccount(String(c))) rele.add(String(c));
+    }
+  }
+  return [...rele];
+}
+
+/**
+ * Adauga un articol contabil, dupa ce ii verifica CONTURILE fata de planul de conturi.
+ * Eroarea poarta `status` (contractul stratului de servicii), deci rutele o traduc in 400.
+ * @param {object} entry articolul complet (cu `lines`)
+ * @param {object} [o] `{ context }` — de unde vine articolul, ca mesajul sa fie de folos
+ */
+function pushEntry(entry, o) {
+  const rele = conturiNecunoscute(entry);
+  if (rele.length) {
+    const unde = (o && o.context) ? ' (' + o.context + ')' : '';
+    const err = new Error('Conturi inexistente în planul de conturi' + unde + ': ' + rele.join(', ')
+      + '. Completează planul sau corectează contul înainte de a înregistra articolul.');
+    err.status = 400;
+    throw err;
+  }
+  get().entries.push(entry);
+  return entry;
+}
+
 // ───────────────────────── multi-firma ─────────────────────────
 function firmaActiva() {
   return get().firmaActiva;
@@ -728,7 +778,7 @@ async function trialFisaContSql(fid, cont, period) {
 }
 
 module.exports = {
-  get, save, load, migrate, nextId, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
+  get, save, load, migrate, nextId, pushEntry, conturiNecunoscute, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
   canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, persistStats, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,

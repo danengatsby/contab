@@ -284,7 +284,7 @@ function importEfactura(fid, b, upsertPartner) {
     ...(cursAplicat !== 1 ? { valutaInfo: { valuta: inv.moneda, sumaValuta: round2(sign * (inv.baza + inv.tva)), curs: cursAplicat } } : {}),
     items: inv.linii.map((l) => ({ nume: l.nume, cantitate: round2(sign * l.cantitate), pret: l.pret, cota: l.cota })),
   };
-  d.entries.push(entry);
+  db.pushEntry(entry, { context: 'import e-Factura/SPV' });
   if (upsertPartner) upsertPartner(fid, entry);
   db.save();
   return { entry, invoice: inv };

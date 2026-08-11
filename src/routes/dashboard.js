@@ -44,7 +44,7 @@ module.exports = function register(app, ctx) {
   // ── Compensare creante / datorii (partener client + furnizor) ──
   app.get('/api/compensations', (req, res) => sendList(req, res, compensablePartners(S(req)), { label: 'compensations' }));
   app.post('/api/compensations', (req, res) => {
-    const b = req.body || {}; const fid = activeId(req); const d = db.get();
+    const b = req.body || {}; const fid = activeId(req);
     const cui = String(b.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
     if (!cui) return res.status(400).json({ error: 'Lipseste CUI-ul partenerului.' });
     const cand = compensablePartners(S(req)).find((p) => String(p.cui).replace(/^ro/i, '') === cui);
@@ -61,7 +61,7 @@ module.exports = function register(app, ctx) {
       explicatie: 'Compensare creanță clienți cu datorie furnizori', fileId: null, system: false,
       lines: [{ debit: '401', credit: '4111', suma, explicatie: 'Compensare ' + (cand.den || cand.cui) }],
     };
-    d.entries.push(entry);
+    db.pushEntry(entry, { context: 'demo' });
     logAudit('compensare', (cand.den || cand.cui) + ': ' + suma, { req });
     db.save();
     res.json({ ok: true, entry, compensat: suma });

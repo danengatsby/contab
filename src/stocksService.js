@@ -15,6 +15,20 @@ const { parseCsv, isHeaderRow } = require('./csv');
 const { parseRoNumber } = require('./extractor');
 const stocks = require('./stocks');
 const fiscal = require('./fiscal');
+const coa = require('./chartOfAccounts');
+
+// Contul ales de UTILIZATOR pe un produs sau pe o gestiune ajunge in articolele de descarcare
+// (`cogsAccount(p.cont)`), deci intr-o balanta si in SAF-T. Nu era validat nicaieri: un „317"
+// tastat in loc de „371" trecea tacut si producea un cont orfan. `db.pushEntry` il opreste azi la
+// postare, dar mesajul de acolo vorbeste despre un articol, nu despre produsul care l-a cauzat —
+// iar defectul ar iesi la iveala abia luni mai tarziu. Se opreste deci la SURSA, unde greseala
+// tocmai s-a facut si se poate corecta dintr-o tastare.
+function ceruteContValid(cont, ce) {
+  const c = String(cont || '').trim();
+  if (!c || coa.getAccount(c)) return c;
+  fail(400, 'Cont inexistent în planul de conturi: ' + c + ' (' + ce + ').');
+  return c;
+}
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 
@@ -32,6 +46,7 @@ function upsertProduct(fid, b) {
   fid = reqFirma(fid); b = b || {};
   if (!b.cod || !b.denumire) fail(400, 'Completeaza codul si denumirea produsului.');
   const d = db.get();
+  ceruteContValid(b.cont, 'contul de stoc al produsului');
   const existing = (d.products || []).find((p) => p.firmaId === fid && p.cod === b.cod);
   if (existing) {
     Object.assign(existing, { denumire: b.denumire, um: b.um || existing.um, grupa: b.grupa || '', cont: b.cont || existing.cont, codNC: b.codNC || '' });
@@ -100,6 +115,7 @@ function upsertGestiune(fid, b) {
   fid = reqFirma(fid); b = b || {};
   if (!b.cod || !b.denumire) fail(400, 'Completeaza codul si denumirea gestiunii.');
   const d = db.get();
+  ceruteContValid(b.cont, 'contul de stoc al gestiunii');
   const existing = (d.gestiuni || []).find((g) => g.firmaId === fid && g.cod === b.cod);
   if (existing) {
     Object.assign(existing, { denumire: b.denumire, gestionar: b.gestionar || '', cont: b.cont || existing.cont });
@@ -188,7 +204,7 @@ function postMovement(fid, id) {
     tip, tipNume, partener: '', partenerCui: '', document: m.document || '', analitic: '', explicatie: line.explicatie,
     fileId: null, system: true, movementId: m.id, lines: [line],
   };
-  d.entries.push(entry);
+  db.pushEntry(entry, { context: 'miscare de stoc' });
   const mm = d.stockMovements.find((x) => x.id === m.id);
   mm.entryId = entry.id;
   db.save();
@@ -348,7 +364,7 @@ function createInventory(fid, operator, b) {
   const doc = 'Inventar ' + g.cod + ' ' + b.data;
   const result = { plusuri: [], minusuri: [], imputari: [] };
   const inv = { id: db.nextId('inv'), firmaId: fid, gestiuneId: g.id, gestiuneCod: g.cod, gestiuneDen: g.denumire, gestionar: g.gestionar || '', operator: operator || '', data: b.data, ts: new Date().toISOString(), status: 'activ', lines: [], entryIds: [], movementIds: [], totalScriptic: 0, totalFaptic: 0, totalPlus: 0, totalMinus: 0, totalImputat: 0 };
-  const addEntry = (e) => { d.entries.push(e); inv.entryIds.push(e.id); };
+  const addEntry = (e) => { db.pushEntry(e, { context: 'diferente de inventar' }); inv.entryIds.push(e.id); };
   const addMove = (mv) => { d.stockMovements.push(mv); inv.movementIds.push(mv.id); };
   for (const ln of b.lines) {
     const p = v.products.find((x) => x.id === ln.productId);
@@ -416,7 +432,7 @@ function stornoInventory(fid, operator, id, dataStorno) {
       document: docStorno, analitic: '', explicatie: 'Stornare ' + (orig.explicatie || orig.tipNume), fileId: null, system: true,
       lines: orig.lines.map((l) => ({ debit: l.credit, credit: l.debit, suma: l.suma, explicatie: 'Storno ' + (l.explicatie || '') })),
     };
-    d.entries.push(se); stornoEntryIds.push(se.id);
+    db.pushEntry(se, { context: 'stornare document de stoc' }); stornoEntryIds.push(se.id);
   }
   // 2) sterge miscarile de reglare (readuce stocul la starea de dinainte de inventar)
   d.stockMovements = (d.stockMovements || []).filter((m) => !(iv.movementIds || []).includes(m.id));

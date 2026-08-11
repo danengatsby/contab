@@ -1070,6 +1070,15 @@ async function main() {
 
     // ── Stocuri: produs, gestiune, receptie, descarcare de gestiune (nota), stoc curent ──
     eq('produs fara cod -> 400', (await req('POST', '/api/products', { cookie: c1, body: { denumire: 'X' } })).status, 400);
+    // Contul ales de utilizator ajunge in articolele de descarcare, deci in balanta si in SAF-T.
+    // Se opreste la SURSA, unde greseala tocmai s-a facut: un „317" in loc de „371" nu mai trece.
+    {
+      const rau = await req('POST', '/api/products', { cookie: c1, body: { cod: 'P-RAU', denumire: 'Cont gresit', um: 'buc', cont: '317' } });
+      eq('produs cu cont inexistent in plan -> 400', rau.status, 400);
+      ok('...cu contul numit in mesaj', /317/.test(rau.json.error));
+      eq('gestiune cu cont inexistent -> 400',
+        (await req('POST', '/api/gestiuni', { cookie: c1, body: { cod: 'G-RAU', denumire: 'Depozit', cont: '317' } })).status, 400);
+    }
     const mkP = await req('POST', '/api/products', { cookie: c1, body: { cod: 'P1', denumire: 'Marfa A', um: 'buc', cont: '371' } });
     ok('produs creat', mkP.json && mkP.json.ok && mkP.json.product.id);
     const pid = mkP.json.product.id;

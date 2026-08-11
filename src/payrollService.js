@@ -115,7 +115,7 @@ function postStatPlata(fid, period, deps) {
   if (sp.totals.casAngajator > 0) entry.lines.push({ debit: '6458', credit: '4315', suma: sp.totals.casAngajator, explicatie: 'CAS suportat de angajator — normă parțială sub salariul minim' });
   if (sp.totals.cassAngajator > 0) entry.lines.push({ debit: '6458', credit: '4316', suma: sp.totals.cassAngajator, explicatie: 'CASS suportat de angajator — normă parțială sub salariul minim' });
   const d = db.get();
-  d.entries.push(entry);
+  db.pushEntry(entry, { context: 'stat de plata' });
   // instantaneu in istoricul de salarizare (inlocuieste daca luna era deja inregistrata)
   d.payrollHistory = (d.payrollHistory || []).filter((h) => !(h.firmaId === fid && h.period === period));
   d.payrollHistory.push({
@@ -142,7 +142,7 @@ function paySalaries(fid, period, cont, deps) {
   const c = ['5121', '5311'].includes(cont) ? cont : '5121';
   const entry = deps.buildEntry('plata_salarii', { data: ultimaZiDinLuna(period), suma: sp.totals.restPlata, cont: c }, null, fid);
   entry.system = true; entry.document = 'Plata salarii ' + period;
-  db.get().entries.push(entry);
+  db.pushEntry(entry, { context: 'plata salarii' });
   db.save();
   return { suma: sp.totals.restPlata, cont: c, entry };
 }

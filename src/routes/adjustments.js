@@ -59,7 +59,7 @@ module.exports = function register(app, ctx) {
     res.json(fxreval.buildRevaluation(S(req), b.asOf || null, Array.isArray(b.items) ? b.items : []));
   });
   app.post('/api/fx-reval/post', (req, res) => {
-    const b = req.body || {}; const fid = activeId(req); const d = db.get();
+    const b = req.body || {}; const fid = activeId(req);
     const asOf = b.asOf || new Date().toISOString().slice(0, 10);
     const r = fxreval.buildRevaluation(S(req), asOf, Array.isArray(b.items) ? b.items : []);
     if (!r.lines.length) return res.status(400).json({ error: 'Nicio diferenta de reevaluare de inregistrat.' });
@@ -73,7 +73,7 @@ module.exports = function register(app, ctx) {
       partener: '', document: 'Reevaluare ' + periodOf(data), explicatie: 'Diferențe de curs din reevaluarea soldurilor în valută',
       fileId: null, system: false, lines: r.lines,
     };
-    d.entries.push(entry);
+    db.pushEntry(entry, { context: 'reevaluare valutara' });
     logAudit('reevaluare.valutara', periodOf(data) + ': fav ' + r.totalFavorabil + ' / nefav ' + r.totalNefavorabil, { req });
     db.save();
     res.json({ ok: true, entry, totalFavorabil: r.totalFavorabil, totalNefavorabil: r.totalNefavorabil });
@@ -144,7 +144,6 @@ module.exports = function register(app, ctx) {
   app.get('/api/provizion', (req, res) => res.json(computeProvizion(S(req), req.query.asOf || null, req.query.pct ? Number(req.query.pct) : 100)));
   // Scoaterea din evidenta a unei creante neincasabile: 654 = 4111 (pierdere) + reluare 491 = 7814
   app.post('/api/writeoff', (req, res) => {
-    const d = db.get();
     const v = S(req);
     const b = req.body || {};
     const suma = round2(Number(b.suma) || 0);
@@ -157,16 +156,15 @@ module.exports = function register(app, ctx) {
     const existing491 = round2(c491.c - c491.d);
     const revers = round2(Math.min(suma, existing491));
     if (revers > 0) lines.push({ debit: '491', credit: '7814', suma: revers, explicatie: 'Reluare ajustare ' + b.partener });
-    d.entries.push({
+    db.pushEntry({
       id: db.nextId('e'), firmaId: activeId(req), data, period, tip: 'scoatere_creanta', tipNume: 'Scoatere din evidenta creanta neincasabila',
       partener: b.partener, partenerCui: b.cui || '', document: 'Nota scoatere ' + period, analitic: '', explicatie: 'Creanță neîncasabilă ' + b.partener, fileId: null, system: true, lines,
-    });
+    }, { context: 'scoatere creanta din evidenta' });
     logAudit('writeoff', b.partener + ' ' + suma, { req });
     db.save();
     res.json({ ok: true, suma, reversProvizion: revers });
   });
   app.post('/api/provizion', (req, res) => {
-    const d = db.get();
     const b = req.body || {};
     const pct = b.pct != null ? Number(b.pct) : 100;
     const p = computeProvizion(S(req), b.asOf || null, pct);
@@ -186,12 +184,12 @@ module.exports = function register(app, ctx) {
     const bazaArt26 = (up && confirmat)
       ? round2(Math.min(p.deAjustat, (p.art26 || {}).ajustareEligibila || 0))
       : 0;
-    d.entries.push({
+    db.pushEntry({
       id: db.nextId('e'), firmaId: activeId(req), data, period,
       tip: up ? 'provizion_creante' : 'reluare_provizion', tipNume: up ? 'Ajustare depreciere creante (6814=491)' : 'Reluare ajustare creante (491=7814)',
       partener: '', partenerCui: '', document: 'Nota ajustare ' + period, analitic: '', explicatie: line.explicatie, fileId: null, system: true, lines: [line],
       ...(bazaArt26 > 0 ? { bazaArt26 } : {}),
-    });
+    }, { context: 'ajustare depreciere creante' });
     logAudit('provizion', period + ' ' + p.deAjustat + (up ? ' (baza art. 26: ' + bazaArt26 + ')' : ''), { req });
     db.save();
     res.json({ ok: true, result: p });
