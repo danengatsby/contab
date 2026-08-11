@@ -1740,6 +1740,27 @@ section('Poarta: fiecare pas din ciclul contabil isi poarta temeiul legal');
   ok('actul fara articol precis nu produce virgula in coada',
     tl.temeiul('facturare').every((x) => !/,\s*$/.test(x.eticheta)));
 
+  // LEGATURA CU INTERFATA: fiecare `data-pas` din index.html trebuie sa existe in ciclu. Un slot
+  // cu o cheie gresita nu arunca nicio eroare — ramane pur si simplu GOL, deci ecranul pare fara
+  // temei si nimeni nu afla de ce. Poarta se uita in ambele directii: chei inexistente (slot mut)
+  // si pasi din faza `lunar`/`anual` ramasi fara niciun ecran care sa-i arate.
+  {
+    const fsT = require('fs'); const pT = require('path');
+    const html = fsT.readFileSync(pT.join(RADACINA, 'public', 'index.html'), 'utf8');
+    const sloturi = [...html.matchAll(/class="temei-slot" data-pas="([^"]+)"/g)]
+      .flatMap((m) => m[1].split(',').map((s) => s.trim()).filter(Boolean));
+    ok('interfata chiar are sloturi de temei', sloturi.length >= 10);
+    const necunoscute = [...new Set(sloturi.filter((k) => !tl.pas(k)))];
+    eq('niciun slot nu trimite la un pas inexistent', necunoscute.join(',') || '(niciunul)', '(niciunul)');
+    // pasii cockpitului nu au slot in HTML (se randeaza din date), deci se scot din cerinta
+    const inCockpit = new Set(mc.STEPS.map((s) => s.key));
+    const aratati = new Set(sloturi);
+    const nearatati = tl.CICLU
+      .filter((p) => !aratati.has(p.key) && !inCockpit.has(p.key))
+      .map((p) => p.key);
+    eq('fiecare pas ajunge pe un ecran (sau in cockpit)', nearatati.join(',') || '(niciunul)', '(niciunul)');
+  }
+
   // REGULA DE REDACTARE: aici NU stau termene si NU stau cote — au sursele lor (declarations,
   // fiscalConfig). O cifra copiata aici ar deveni a doua sursa de adevar si s-ar invechi tacut.
   const textTot = JSON.stringify(tl.CICLU);

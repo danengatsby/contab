@@ -239,3 +239,35 @@ function raporteazaEroare(ev) {
 
 window.addEventListener('error', raporteazaEroare);
 window.addEventListener('unhandledrejection', raporteazaEroare);
+
+// ───────── Temeiul legal al pasilor din ciclul contabil ─────────
+// Sta in `core.js` fiindca nu apartine unui singur ecran: sloturile `.temei-slot` sunt raspandite
+// pe taburile care EXECUTA pasii (documente, emitere, jurnal, casa, mijloace fixe, balanta,
+// situatii, SAF-T, livrabile, arhiva) plus cele doua pagini de inchidere.
+//
+// Textul vine de la SERVER (`/api/temei-legal`, src/temeiLegal.js) — o copie scrisa in HTML ar
+// drifta fata de ghid si de documentatie. Se cere O SINGURA DATA pe sesiune si se tine in memorie:
+// legea nu depinde de firma si nu se schimba intre doua taburi.
+let TEMEI_CACHE = null;
+export async function umpleTemeiuri() {
+  const sloturi = document.querySelectorAll('.temei-slot:not([data-umplut])');
+  if (!sloturi.length) return;
+  if (!TEMEI_CACHE) {
+    try { TEMEI_CACHE = await api('/api/temei-legal'); } catch (e) { return; } // fara temei, ecranul merge la fel
+  }
+  const dupaCheie = new Map((TEMEI_CACHE.pasi || []).map((p) => [p.key, p]));
+  for (const el of sloturi) {
+    // Un slot poate acoperi MAI MULTI pasi (ex. „situatii,depunere"): acelasi ecran executa doua
+    // etape ale ciclului, iar doua blocuri pliate unul sub altul ar fi zgomot.
+    const pasi = String(el.dataset.pas || '').split(',').map((s) => s.trim()).filter(Boolean)
+      .map((k) => dupaCheie.get(k)).filter((p) => p && p.temei && p.temei.length);
+    if (!pasi.length) continue;
+    const temei = pasi.flatMap((p) => p.temei);
+    el.innerHTML = `<details class="temei"><summary class="muted">Temei legal: ${
+      temei.map((x) => H(x.eticheta)).join(' · ')}</summary><ul>${
+      pasi.map((p) => `<li><b>${H(p.nume)}</b><ul>${
+        p.temei.map((x) => `<li><b>${H(x.actTitlu)}</b>${x.articol && x.articol !== '—' ? ', ' + H(x.articol) : ''} — ${H(x.ce)}</li>`).join('')
+      }</ul></li>`).join('')}</ul></details>`;
+    el.dataset.umplut = '1';
+  }
+}
