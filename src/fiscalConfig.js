@@ -83,6 +83,13 @@ const RATES = {
   sponsorizareReportAni: 7,    // ani consecutivi de report al creditului neutilizat
   dobanziPlafonEur: 1000000,   // EUR — art. 40^2: plafonul deductibil neconditionat al costurilor excedentare
   dobanziEbitdaPct: 30,        // % — art. 40^2: peste plafon, deductibil pana la 30% din baza de calcul
+  // Ajustari pentru deprecierea creantelor (art. 26 alin. (1) lit. c). Cele DOUA cifre merg
+  // impreuna si nu au voie sa fie despartite: procentul se aplica NUMAI creantelor care trec de
+  // pragul de vechime si de celelalte doua conditii (negarantata, debitor neafiliat). Aplicate
+  // separat — 30% pe tot contul 6814, cum se intampla pana acum — dau deducere pentru creante
+  // care nu au acest drept.
+  ajustariCreantePct: 30,      // % — partea DEDUCTIBILA din ajustarea creantelor eligibile
+  ajustariCreanteZile: 270,    // zile de la scadenta — pragul de vechime al conditiei cumulative
   // Eligibilitate micro (art. 47 Cod fiscal, OUG 156/2024): plafon 100.000 EUR din 2026.
   plafonMicroEur: 100000,
   cursPlafonMicro: 5.0,   // orientativ (legal: cursul de la inchiderea exercitiului precedent)

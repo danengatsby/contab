@@ -522,6 +522,7 @@ function profitTax(db, year, opts) {
     ? deduct.ajustari({
       rulaj: acc, profitContabil,
       cheltAuto: opts.cheltAuto, cheltLipsaNeimputabila: opts.cheltLipsaNeimputabila,
+      ajustariCreanteBaza: opts.ajustariCreanteBaza, // art. 26(1)(c): baza eligibila, din marcajele de pe articole
       cheltImpozitProfit: opts.cheltImpozitProfit,
       amortizare: opts.amortizare, // { contabila, fiscala } — art. 28, poate da si deducere
       amortizareFiscala: opts.amortizareFiscala, cursEur: opts.cursEur,

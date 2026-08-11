@@ -944,6 +944,26 @@ function cheltuieliLipsaNeimputabila(db, year, panaLa) {
   return round2(s);
 }
 
+/** Baza ajustarilor pentru deprecierea creantelor care indeplinesc conditiile art. 26 alin. (1)
+ *  lit. c): suma marcajelor `bazaArt26` de pe articolele anului. Ca la `cheltuieliAuto`, marcajul
+ *  sta pe articol fiindca incadrarea nu se poate citi din conturi — acelasi cont 6814 poarta si
+ *  ajustari care se califica, si ajustari care nu (creante sub 270 de zile, garantate sau ale unor
+ *  persoane afiliate). Din suma asta se deduce procentul art. 26; restul contului e nedeductibil.
+ *
+ *  Absenta marcajului da ZERO, deci nedeductibilitate integrala — nu deducere implicita. */
+function ajustariCreanteArt26(db, year, panaLa) {
+  const limita = panaLa ? String(panaLa).slice(0, 7) : null;
+  let s = 0;
+  for (const e of acc.postedEntries(db)) {
+    if (!e.bazaArt26) continue;
+    const p = String(e.period || periodOf(e.data));
+    if (!p.startsWith(String(year))) continue;
+    if (limita && p > limita) continue;
+    s = round2(s + (Number(e.bazaArt26) || 0));
+  }
+  return round2(s);
+}
+
 /** Registrul de evidenta fiscala: trecerea de la rezultatul contabil la cel fiscal. */
 function registruFiscal(db, year, cota, opts) {
   opts = opts || {};
@@ -955,9 +975,17 @@ function registruFiscal(db, year, cota, opts) {
   // Forma randului ramane cea istorica ({cod, nume, baza, pct, suma}) — o citesc PDF-ul si tabelul
   // din interfata; traducerea sta aici, ca motorul sa aiba un singur vocabular.
   const fixeRez = deduct.fixe(r);
+  // Ajustarile de creante nu mai sunt un procent fix pe cont (art. 26 alin. (1) lit. c): partea
+  // deductibila se calculeaza din baza ELIGIBILA, marcata pe articole. Randul se adauga aici, la
+  // celelalte, ca sa apara in acelasi tabel al registrului. Cotele: cele transmise, altfel cele
+  // curente — randul se cere si fara `opts.plafoane` (dosarul anual il genereaza asa), iar fara
+  // cote procentul ar cadea la zero si ar arata o nedeductibilitate care nu e a legii.
+  const bazaCreante = ajustariCreanteArt26(db, year);
+  const randCreante = deduct.ajustariCreante(r, bazaCreante, opts.plafoane || fiscal.FISCAL);
+  if (randCreante) { fixeRez.randuri.push(randCreante); fixeRez.total = round2(fixeRez.total + randCreante.nedeductibil); }
   const cheltNeded = fixeRez.randuri.map((x) => ({ cod: x.cont, nume: x.regula, baza: x.cheltuit, pct: x.pct, suma: x.nedeductibil }));
   const totalNeded = fixeRez.total;
-  const neimpRez = deduct.neimpozabile(r);
+  const neimpRez = deduct.neimpozabile(r, randCreante ? randCreante.pctNedeductibil : null);
   const venituriList = neimpRez.randuri.map((x) => ({ cod: x.cont, nume: x.regula, baza: x.realizat, pct: x.pct, suma: x.neimpozabil }));
   const venituriNeimpozabile = neimpRez.total;
   // Amortizare: contabila (rulajul REAL al contului 6811) vs fiscala (planul fiscal al fiecarui
@@ -982,6 +1010,7 @@ function registruFiscal(db, year, cota, opts) {
     rulaj: r, profitContabil: rezultatContabil,
     cheltAuto: cheltuieliAuto(db, year),
     cheltLipsaNeimputabila: cheltuieliLipsaNeimputabila(db, year),
+    ajustariCreanteBaza: bazaCreante, // aceeasi baza ca randul de mai sus: art. 40^2 pleaca de la rezultatul fiscal
     cheltImpozitProfit: r['691'] ? round2(r['691'].d - r['691'].c) : 0,
     amortizare: amortDif,
     amortizareFiscala: amortDif.fiscala, // baza art. 40^2 foloseste amortizarea FISCALA
@@ -1592,4 +1621,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, CONTURI_TREZORERIE };
+module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, CONTURI_TREZORERIE };
