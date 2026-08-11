@@ -200,7 +200,10 @@ module.exports = function register(app, ctx) {
     res.setHeader('Content-Disposition', 'attachment; filename="' + r.name + '"');
     res.send(r.buffer);
   }));
-  app.get('/pdf/registru-inventar', (req, res) => pdf.registruInventarPdf(res, S(req).company, rep.registruInventar(S(req), req.query.period || null)));
+  app.get('/pdf/registru-inventar', (req, res) => {
+    const an = req.query.an || String(new Date().getFullYear());
+    pdf.registruInventarPdf(res, S(req).company, rep.registruInventar(S(req), req.query.period || (an + '-12'), an));
+  });
   app.get('/pdf/registru-fiscal', (req, res) => pdf.registruFiscalPdf(res, S(req).company, rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()), null, optPlaf(req))));
   app.get('/pdf/analytic', (req, res) => pdf.analyticPdf(res, S(req).company, analyticBalance(S(req))));
   app.get('/pdf/cashbook', (req, res) => pdf.cashBookPdf(res, S(req).company, acc.cashBankJournal(S(req), req.query.cont || '5121', req.query.period || null)));

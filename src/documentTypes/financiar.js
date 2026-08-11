@@ -4,6 +4,7 @@
 
 const { L, F, TROZ, TVAL } = require('./helpers');
 const fiscal = require('../fiscal');
+const ajust = require('../ajustari'); // harta cont activ -> cont de ajustare (sursa unica)
 const { round2 } = require('../util');
 
 module.exports = [
@@ -79,8 +80,9 @@ module.exports = [
   // Regimul FISCAL nu se decide aici: ajustarea e deductibila in limita a 30% cu conditiile de
   // la art. 26 alin. (1) lit. c), iar pierderea din 654 e ca regula nedeductibila (art. 25 alin.
   // (4) lit. h). Motorul de nedeductibile (`src/deductibilitate.js`) le trateaza deja pe cont —
-  // 6814 la 70% nedeductibil, 654 integral, 7814 la 70% neimpozabil — deci monografia trebuie
-  // doar sa foloseasca CONTURILE CORECTE, nu sa repete regula.
+  // 654 integral nedeductibil; la 6814/7814 partea deductibila depinde de baza ELIGIBILA
+  // (art. 26 alin. (1) lit. c: peste 270 de zile, negarantata, debitor neafiliat), nu de cont —
+  // deci monografia trebuie doar sa foloseasca CONTURILE CORECTE, nu sa repete regula.
   {
     id: 'ajustare_creanta_constituire',
     nume: 'Constituire ajustare pentru deprecierea creantelor (6814 = 491)',
@@ -114,6 +116,50 @@ module.exports = [
       if (d.ajustare > 0) lines.push(L('491', '7814', d.ajustare, 'Reluarea ajustării aferente creanței scoase din evidență'));
       return lines;
     },
+  },
+  // ───────────────── AJUSTARI PENTRU DEPRECIEREA STOCURILOR SI A IMOBILIZARILOR ─────────────────
+  // Urmarea contabila a INVENTARIERII: cand valoarea de inventar e sub cea contabila, minusul se
+  // inregistreaza ca ajustare, nu se scoate din cont — valoarea de intrare ramane neatinsa si
+  // ajustarea se poate relua. Lipseau complet, desi bilantul le scadea deja pe prefix.
+  //
+  // Contul de ajustare NU se cere de la utilizator: se DERIVA din contul activului
+  // (`ajustari.pentruCont`), acelasi loc din care il ia si propunerea din registrul-inventar.
+  // Doua liste ar drifta, iar o alegere gresita ar muta deprecierea pe alt rand de bilant.
+  {
+    id: 'ajustare_stoc_constituire',
+    nume: 'Constituire ajustare pentru deprecierea stocurilor (6814 = 39x)',
+    grup: 'Provizioane',
+    fields: [F.data, F.document, F.explicatie,
+      { name: 'contStoc', label: 'Cont stoc depreciat', type: 'account', default: '371', required: true },
+      { name: 'suma', label: 'Deprecierea (valoare contabila - valoare de inventar)', type: 'number', required: true }],
+    build: (d) => ajust.linii(d.contStoc || '371', Math.abs(Number(d.suma) || 0)),
+  },
+  {
+    id: 'ajustare_stoc_reluare',
+    nume: 'Reluare ajustare stocuri (39x = 7814) — deprecierea a disparut sau stocul a iesit',
+    grup: 'Provizioane',
+    fields: [F.data, F.document, F.explicatie,
+      { name: 'contStoc', label: 'Cont stoc', type: 'account', default: '371', required: true },
+      { name: 'suma', label: 'Suma reluata', type: 'number', required: true }],
+    build: (d) => ajust.linii(d.contStoc || '371', -Math.abs(Number(d.suma) || 0)),
+  },
+  {
+    id: 'ajustare_imobilizare_constituire',
+    nume: 'Constituire ajustare pentru deprecierea imobilizarilor (6813 = 29x)',
+    grup: 'Provizioane',
+    fields: [F.data, F.document, F.explicatie,
+      { name: 'contImob', label: 'Cont imobilizare depreciata', type: 'account', default: '2131', required: true },
+      { name: 'suma', label: 'Deprecierea (valoare contabila - valoare de inventar)', type: 'number', required: true }],
+    build: (d) => ajust.linii(d.contImob || '2131', Math.abs(Number(d.suma) || 0)),
+  },
+  {
+    id: 'ajustare_imobilizare_reluare',
+    nume: 'Reluare ajustare imobilizari (29x = 7813)',
+    grup: 'Provizioane',
+    fields: [F.data, F.document, F.explicatie,
+      { name: 'contImob', label: 'Cont imobilizare', type: 'account', default: '2131', required: true },
+      { name: 'suma', label: 'Suma reluata', type: 'number', required: true }],
+    build: (d) => ajust.linii(d.contImob || '2131', -Math.abs(Number(d.suma) || 0)),
   },
   {
     id: 'creanta_reactivata',

@@ -78,6 +78,23 @@
   erau două tabele, registrul și declarația depusă raportau impozite diferite pe aceleași conturi.
   Cele două câmpuri de ajustare manuală din „Închideri” sunt **suprascrieri**: lăsate goale, sumele
   se calculează din conturi; un `0` tastat înseamnă „zero, exact”.
+- **Ajustările pentru depreciere** (39x stocuri, 29x imobilizări) — urmarea contabilă a
+  **inventarierii**. Când valoarea de inventar e sub cea contabilă, minusul nu se scoate din cont:
+  se înregistrează o ajustare, reversibilă, care lasă valoarea de intrare neatinsă. Lipseau complet
+  — nici conturi, nici monografii — deși `bilant.js`, `reporting.js`, `statements.js` și
+  `impozitMicro.js` le scădeau deja pe prefix, adică rânduri care nu se puteau completa niciodată.
+  Contul de ajustare se **derivă** din contul activului ([`src/ajustari.js`](../src/ajustari.js)),
+  hartă explicită — aceeași sursă și pentru monografie, și pentru propunerea din registrul-inventar.
+  Fiscal: **integral nedeductibile** (art. 26 alin. (1) le enumeră limitativ și nu le cuprinde), cu
+  simetricul la reluare (venit neimpozabil, art. 23 lit. d).
+  **Atenție la 6814:** e comun creanțelor *și* stocurilor, dar cele două se deduc diferit (30% din
+  baza eligibilă, respectiv deloc). Separarea se face după **contrapartida** liniei (49x vs 39x), nu
+  după rulajul contului — altfel reluarea unei ajustări de stoc, niciodată dedusă, ar fi impozitată.
+- **Registrul-inventar** (formular 14-1-2) are cele patru coloane cerute: element, valoare
+  contabilă, **valoare de inventar**, **diferențe din evaluare** + cauze. Valoarea de inventar se
+  introduce pe cont (colecția `inventarAnual`); restul se derivă. Elementele fără valoare introdusă
+  rămân **neevaluate** (`null`), nu „evaluate la zero" — al doilea ar propune scoaterea din evidență
+  a întregului sold. Deprecierile propun articolul de ajustare, cu contul luat din aceeași hartă.
 - **Rezerva legală e și dedusă, nu doar constituită** (art. 26(1)(a)): 5% din profitul contabil brut,
   până la 20% din capitalul **subscris și vărsat** (contul 1012, nu prefixul `101` — partea nevărsată
   nu contează). Deducerea nu se poate deriva din rulaj — rezerva se constituie prin repartizarea

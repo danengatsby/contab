@@ -75,6 +75,9 @@ function construieste(view, year, src) {
     // PRIN AICI, ca `cheltAuto`: altfel declaratia ar recalcula fara ea si ar iesi alt impozit
     // decat nota contabila — exact divergenta pe care modulul acesta exista ca s-o inchida.
     ajustariCreanteBaza: rep.ajustariCreanteArt26(view, year),
+    // Ajustarile de depreciere SPARTE pe familii: 6814 e comun creantelor si stocurilor, iar cele
+    // doua se deduc diferit (30% din baza eligibila, respectiv deloc).
+    ajustariDepreciere: rep.ajustariDepreciere(view, year),
     // Amortizarea contabila vine din rulajul REAL al contului 6811, nu din plan.
     amortizare: assets.depreciationDifference(view.assets || [], year, rulajCont(view, year, '6811')),
     cursEur: Number(src.cursEur) || Number(firma.cursEur) || 0,

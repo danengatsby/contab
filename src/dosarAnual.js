@@ -76,7 +76,7 @@ async function build(v, year, opts) {
   await add('registre/registru-jurnal.pdf', () => pdfToBuffer((res) => pdf.journalPdf(res, company, acc.journal(v, year))));
   await add('registre/cartea-mare.pdf', () => pdfToBuffer((res) => pdf.ledgerPdf(res, company, acc.ledger(v, year), year)));
   await add('registre/balanta-' + dec + '.pdf', () => pdfToBuffer((res) => pdf.trialBalancePdf(res, company, acc.trialBalance(v, dec))));
-  await add('registre/registru-inventar.pdf', () => pdfToBuffer((res) => pdf.registruInventarPdf(res, company, rep.registruInventar(v, dec))));
+  await add('registre/registru-inventar.pdf', () => pdfToBuffer((res) => pdf.registruInventarPdf(res, company, rep.registruInventar(v, dec, year))));
   await add('registre/registru-fiscal.pdf', () => pdfToBuffer((res) => pdf.registruFiscalPdf(res, company, rep.registruFiscal(v, year))));
 
   // 2) Situatiile financiare anuale (bilant F10 + cont de profit si pierdere F20, cu anul precedent)

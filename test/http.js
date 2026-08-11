@@ -1052,6 +1052,38 @@ async function main() {
       }
     }
 
+    // ── B1+B2: inventarierea, registrul-inventar si ajustarea pentru depreciere ───────────────
+    {
+      eq('valoare de inventar pe cont inexistent -> 400',
+        (await req('POST', '/api/inventar-valori', { cookie: c1, body: { an: '2026', cont: '9999', valoareInventar: 100 } })).status, 400);
+      const sv = await req('POST', '/api/inventar-valori', { cookie: c1, body: { an: '2026', cont: '371', valoareInventar: 1, cauza: 'Marfă fără mișcare' } });
+      ok('valoarea de inventar se salveaza', sv.json && sv.json.ok);
+      const ri = await req('GET', '/api/registru-inventar?an=2026', { cookie: c1 });
+      const rand = ((ri.json || {}).rows || []).find((r) => r.cod === '371');
+      ok('registrul-inventar are cele patru coloane', rand
+        && 'valoareContabila' in rand && 'valoareInventar' in rand && 'diferenta' in rand && 'cauza' in rand);
+      eq('valoarea introdusa ajunge in registru', rand && rand.valoareInventar, 1);
+      eq('cauza la fel', rand && rand.cauza, 'Marfă fără mișcare');
+      ok('deprecierea propune contul de ajustare', rand && rand.ajustare && rand.ajustare.cont === '397');
+      ok('registrul spune si cate elemente au ramas neevaluate', typeof ri.json.nrNeevaluate === 'number' && ri.json.nrNeevaluate > 0);
+      // valoarea GOALA sterge randul: „neinventariat" trebuie sa fie exprimabil
+      const del = await req('POST', '/api/inventar-valori', { cookie: c1, body: { an: '2026', cont: '371', valoareInventar: '' } });
+      ok('valoarea goala sterge randul', del.json && del.json.ok && del.json.sters === true);
+      const ri2 = await req('GET', '/api/registru-inventar?an=2026', { cookie: c1 });
+      const rand2 = ((ri2.json || {}).rows || []).find((r) => r.cod === '371');
+      eq('dupa stergere elementul e neevaluat, nu evaluat la zero', rand2 && rand2.valoareInventar, null);
+      eq('...deci fara diferenta', rand2 && rand2.diferenta, null);
+      // monografia noua chiar posteaza, si trece prin garda planului de conturi
+      const aj = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'ajustare_stoc_constituire', fields: { data: '2026-12-31', contStoc: '371', suma: 500, document: 'PV inventar' } } });
+      ok('ajustarea de stoc se inregistreaza (6814 = 397)', aj.json && aj.json.entry
+        && aj.json.entry.lines.some((l) => l.debit === '6814' && l.credit === '397' && l.suma === 500));
+      const ajI = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'ajustare_imobilizare_constituire', fields: { data: '2026-12-31', contImob: '212', suma: 900, document: 'PV inventar' } } });
+      ok('ajustarea de imobilizari merge pe 6813 = 2912', ajI.json && ajI.json.entry
+        && ajI.json.entry.lines.some((l) => l.debit === '6813' && l.credit === '2912'));
+    }
+
     // ── Salarizare: angajat, stat de plata (posteaza articol), plata neta ──
     eq('angajat fara nume -> 400', (await req('POST', '/api/angajati', { cookie: c1, body: { salariuBrut: 5000 } })).status, 400);
     const mkAng = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Ion Test', salariuBrut: 5000, functie: 'Operator' } });

@@ -60,6 +60,12 @@
   disjuncte și se adună la total, ca scadențarul afișat să nu se schimbe pentru o nevoie fiscală.
   Creanțele neîncasabile se pot **scoate din evidență** direct din scadențar (buton „scoate"):
   `654 = 4111` (pierdere) + reluarea automată a ajustării aferente `491 = 7814`; `/api/writeoff`.
+- `src/ajustari.js` — ajustările pentru depreciere: harta **explicită** cont de activ → cont de
+  ajustare (39x stocuri, 29x imobilizări) + contul de cheltuială/venit (6813/7813 la imobilizări,
+  6814/7814 la active circulante). Nu compune coduri din cifre: ce nu e în hartă nu are ajustare și
+  se spune răspicat — lecția de la conturile de amortizare, unde `'281' + cifră` producea conturi
+  inexistente care plecau în SAF-T. Sursă unică pentru monografii, pentru propunerea din
+  registrul-inventar și pentru încadrarea fiscală pe familii.
 - `src/statements.js` — cont de profit și pierdere, bilanț.
 - `src/pdf/` — generarea rapoartelor PDF (PDFKit), spart pe domenii: `index.js` (compunerea),
   `registre.js`, `declaratii.js`, `facturare.js`, `salarii.js`, `imobilizari.js`, `helpers.js`.

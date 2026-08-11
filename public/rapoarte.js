@@ -395,7 +395,9 @@ async function loadClosings() {
   const m = workMonth();
   if ($('#vcLuna')) $('#vcLuna').value = m.slice(5);
   if ($('#vcAn') && [...$('#vcAn').options].some((o) => o.value === m.slice(0, 4))) $('#vcAn').value = m.slice(0, 4);
-  previewVat(); previewProfitTax(); previewYear(); previewDistribution();
+  // Anul din cardul de inventariere urmeaza luna de lucru, ca restul pasilor de inchidere.
+  if ($('#invAn')) $('#invAn').value = m.slice(0, 4);
+  previewVat(); previewProfitTax(); previewYear(); previewDistribution(); renderRegistruInventar();
 }
 async function previewVat() {
   const p = pget('vc'); if (!p) { $('#vatPreview').textContent = 'Alege o perioadă.'; return; }
@@ -468,6 +470,47 @@ async function previewProfitTax() {
 }
 ['#ptNed', '#ptDed', '#ptPierdere'].forEach((id) => { const el = $(id); if (el) el.addEventListener('change', previewProfitTax); });
 $('#ptYear') && $('#ptYear').addEventListener('change', previewProfitTax);
+// ───────── Registrul-inventar: valorile de inventar si diferentele din evaluare ─────────
+// Cele patru coloane ale formularului 14-1-2. Se INTRODUCE doar valoarea de inventar; valoarea
+// contabila, diferenta si propunerea de ajustare se DERIVA pe server — o diferenta salvata ar
+// ramane adevarata dupa ce soldul se schimba.
+async function renderRegistruInventar() {
+  const box = $('#invView'); if (!box) return;
+  const an = ($('#invAn') && $('#invAn').value) || String(new Date().getFullYear());
+  if ($('#invPdf')) $('#invPdf').href = '/pdf/registru-inventar?an=' + encodeURIComponent(an);
+  let ri; try { ri = await api('/api/registru-inventar?an=' + encodeURIComponent(an)); } catch (e) { return; }
+  const semn = (v) => (v == null ? '' : (v < 0 ? 'neg' : 'poz'));
+  box.innerHTML = `<table><thead><tr><th>Cont</th><th>Elementul inventariat</th>
+    <th class="num">Valoare contabilă</th><th class="num">Valoare de inventar</th>
+    <th class="num">Diferențe</th><th>Cauze / ajustare propusă</th></tr></thead><tbody>${
+  ri.rows.map((r) => `<tr>
+      <td class="acc">${H(r.cod)}</td>
+      <td>${H(r.nume)}</td>
+      <td class="num">${fmt(r.valoareContabila)}</td>
+      <td class="num">${r.valoareInventar == null ? '<span class="muted">—</span>' : fmt(r.valoareInventar)}</td>
+      <td class="num ${semn(r.diferenta)}">${r.diferenta == null ? '' : fmt(r.diferenta)}</td>
+      <td>${H(r.cauza || '')}${r.ajustare
+    ? ` <span class="pill">${H(r.ajustare.cheltuiala)} = ${H(r.ajustare.cont)} · ${fmt(r.ajustare.suma)}</span>` : ''}</td>
+    </tr>`).join('')}</tbody></table>
+    <p class="muted">${ri.nrEvaluate} element(e) evaluate, ${ri.nrNeevaluate} fără valoare de inventar. Total diferențe din evaluare: <b>${fmt(ri.totalDiferente)}</b> lei.
+    Deprecierile propun articolul de ajustare; îl înregistrezi din „Operațiuni" cu tipurile <b>Constituire ajustare…</b>.</p>`;
+}
+$('#invAn') && $('#invAn').addEventListener('change', renderRegistruInventar);
+$('#invSave') && $('#invSave').addEventListener('click', async () => {
+  const body = {
+    an: ($('#invAn') || {}).value, cont: (($('#invCont') || {}).value || '').trim(),
+    valoareInventar: ($('#invVal') || {}).value, cauza: ($('#invCauza') || {}).value,
+  };
+  if (!body.cont) return toast('Completează contul', true);
+  try {
+    const r = await api('/api/inventar-valori', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    toast(r.sters ? 'Valoare de inventar ștearsă' : 'Valoare de inventar salvată');
+    if ($('#invVal')) $('#invVal').value = '';
+    if ($('#invCauza')) $('#invCauza').value = '';
+    renderRegistruInventar();
+  } catch (e) { toast(e.message, true); }
+});
+
 $('#closeProfitTax') && $('#closeProfitTax').addEventListener('click', async () => {
   // Aceeasi regula ca la previzualizare: se trimit doar campurile completate (vezi ptParams).
   const body = { year: $('#ptYear').value };
