@@ -136,6 +136,58 @@ module.exports = function register(app, ctx) {
     db.save();
     res.json({ ok: true, asset: a });
   });
+  // ── INVESTITII ULTERIOARE (modernizari) ───────────────────────────────────────────────────
+  // Majoreaza valoarea mijlocului fix si se recupereaza pe durata RAMASA, din luna urmatoare
+  // finalizarii (art. 28 alin. (3) Cod fiscal). Articolele contabile ale investitiei se
+  // inregistreaza separat, cu tipurile existente (`imobilizare_in_curs` + `punere_in_functiune`);
+  // aici se leaga investitia de ACTIV, ca planul de amortizare sa se recalculeze.
+  app.post('/api/assets/:id/investitii', (req, res) => {
+    const d = db.get();
+    const a = (d.assets || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
+    if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' }); // izolare multi-firma
+    const b = req.body || {};
+    const suma = round2(Number(b.suma) || 0);
+    const data = String(b.data || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return res.status(400).json({ error: 'Completează data finalizării investiției.' });
+    if (suma <= 0) return res.status(400).json({ error: 'Valoarea investiției trebuie să fie pozitivă.' });
+    if (a.status === 'casat') return res.status(400).json({ error: 'Mijlocul fix este casat — nu se mai pot înregistra investiții la el.' });
+    // Efectul incepe cu luna URMATOARE finalizarii. Daca luna aceea e deja INCHISA, amortizarea ei
+    // a fost postata dupa planul VECHI, iar recalcularea ar face registrul sa contrazica articolele
+    // — exact defectul reparat candva la casare, unde marcarea stergea retroactiv luni intregi.
+    const efect = assets.lunaUrmatoare(data);
+    try { db.assertPeriodOpen(activeId(req), efect, 'Investiția (efectul ei începe în ' + efect + ')'); }
+    catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+    // Pe un activ deja amortizat integral nu mai exista durata ramasa peste care sa se esaloneze:
+    // se cere explicit o prelungire. Nu se inventeaza o durata — ar fi o decizie fiscala luata de
+    // cod in locul contabilului.
+    const supl = Math.max(0, Math.round(Number(b.durataSuplimentaraLuni) || 0));
+    const proba = Object.assign({}, a, { investitii: (a.investitii || []).concat([{ id: 'proba', data, suma, durataSuplimentaraLuni: supl }]) });
+    const plan = assets.schedule(proba);
+    const ultima = plan.length ? plan[plan.length - 1].period : '';
+    if (!supl && (!ultima || assets.lunaUrmatoare(data) > ultima)) {
+      return res.status(400).json({ error: 'Mijlocul fix e amortizat integral la data investiției (planul se încheie în '
+        + (ultima || '—') + '). Completează durata suplimentară (luni) peste care se recuperează investiția.' });
+    }
+    a.investitii = a.investitii || [];
+    a.investitii.push({ id: db.nextId('inv'), data, suma, document: String(b.document || '').slice(0, 120),
+      descriere: String(b.descriere || '').slice(0, 300), ...(supl ? { durataSuplimentaraLuni: supl } : {}) });
+    logAudit('asset.investitie', a.denumire + ': ' + suma + ' lei (' + data + ')', { req });
+    db.save();
+    res.json({ ok: true, asset: a, calc: assets.compute(a, req.query.asOf || null) });
+  });
+  app.delete('/api/assets/:id/investitii/:invId', (req, res) => {
+    const d = db.get();
+    const a = (d.assets || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
+    if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' });
+    const inv = (a.investitii || []).find((x) => x.id === req.params.invId);
+    if (!inv) return res.status(404).json({ error: 'Investiție inexistentă.' });
+    try { db.assertPeriodOpen(activeId(req), assets.lunaUrmatoare(inv.data), 'Ștergerea investiției'); }
+    catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+    a.investitii = (a.investitii || []).filter((x) => x !== inv);
+    logAudit('asset.investitie.sterge', a.denumire + ': ' + inv.suma, { req });
+    db.save();
+    res.json({ ok: true, asset: a });
+  });
   app.post('/api/assets/:id/scrap', (req, res) => {
     const d = db.get();
     const a = (d.assets || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
