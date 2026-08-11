@@ -78,6 +78,10 @@ const ARRAY_COLLS = [
   { key: 'gestiuni', firma: true, hasId: true },
   { key: 'stockMovements', firma: true, hasId: true },
   { key: 'inventories', firma: true, hasId: true },
+  // Valorile de INVENTAR pe cont (registrul-inventar), distincte de `inventories`, care e
+  // inventarul CANTITATIV de stoc pe gestiuni. Una da valoarea de inventar a unui element de
+  // bilant, cealalta numara bucati intr-un depozit.
+  { key: 'inventarAnual', firma: true, hasId: true },
   { key: 'openingAnalytic', firma: true, hasId: false },
   { key: 'audit', firma: true, hasId: true },
   { key: 'customAccounts', firma: false, hasId: false },

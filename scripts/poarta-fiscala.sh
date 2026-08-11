@@ -68,6 +68,7 @@ src/bilant.js
 src/stocks.js
 src/accounting.js
 src/deductibilitate.js
+src/ajustari.js
 src/profitTaxOptions.js
 src/impozitMicro.js
 src/assets.js

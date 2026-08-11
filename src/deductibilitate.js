@@ -103,8 +103,12 @@ const FIXE = {
 //  incadrarea nu se poate citi din conturi: acelasi cont poarta si ajustari care se califica, si
 //  ajustari care nu. Lipsa marcajului da baza ZERO, deci nedeductibilitate integrala.
 // ─────────────────────────────────────────────────────────────────────────────
-function ajustariCreante(rulaj, bazaEligibila, cfg) {
-  const cheltuit = cheltuiala(rulaj, '6814');
+function ajustariCreante(rulaj, bazaEligibila, cfg, cheltuitCreante) {
+  // Suma vine SPARTA pe familii cand apelantul o are (`reporting.ajustariDepreciere`): contul 6814
+  // e comun creantelor si stocurilor, iar cele doua se deduc diferit. Fara spargere se cade pe
+  // rulajul contului — comportamentul dinainte de a exista ajustarile de stoc.
+  const cheltuit = (cheltuitCreante != null && Number.isFinite(Number(cheltuitCreante)))
+    ? round2(Number(cheltuitCreante)) : cheltuiala(rulaj, '6814');
   if (cheltuit <= 0) return null;
   const pctDed = Number((cfg || {}).ajustariCreantePct || 0);
   // Baza eligibila nu poate depasi ajustarea inregistrata: altfel un marcaj gresit ar produce o
@@ -128,6 +132,41 @@ function ajustariCreante(rulaj, bazaEligibila, cfg) {
   r.pct = r.pctNedeductibil;
   r.bazaEligibila = baza;
   return r;
+}
+
+/**
+ * Ajustarile pentru deprecierea STOCURILOR si a IMOBILIZARILOR — integral nedeductibile.
+ *
+ * Art. 26 alin. (1) enumera LIMITATIV ajustarile si provizioanele deductibile; deprecierea
+ * stocurilor si a imobilizarilor nu se regaseste in enumerare, deci nu se deduce. Simetric, la
+ * reluare venitul nu se impoziteaza (art. 23 lit. d) — altfel aceeasi suma ar fi impozitata o data
+ * prin nedeductibilitate si a doua oara la reluare.
+ *
+ * Se calculeaza din sumele SPARTE PE FAMILII, nu din rulajul contului: 6814 e comun cu creantele.
+ * `nedeterminat` (linii pe conturi de ajustare nemapate) intra tot aici — tratamentul prudent e
+ * nedeductibil, iar o suma pe care motorul n-o poate incadra nu are voie sa aduca deducere.
+ */
+function ajustariNedeductibile(split) {
+  const s = split || {};
+  const fam = (k) => ({ cheltuiala: round2(Number((s[k] || {}).cheltuiala) || 0), venit: round2(Number((s[k] || {}).venit) || 0) });
+  const stocuri = fam('stocuri'); const imob = fam('imobilizari'); const nedet = fam('nedeterminat');
+  const randuri = []; const randuriNeimpozabile = [];
+  const adauga = (nume, cont, cheltuit, venit, temei) => {
+    if (cheltuit > 0) {
+      randuri.push(rand(nume, temei, cont, cheltuit, 0, cheltuit, cheltuit,
+        'Integral nedeductibila: nu se regaseste in enumerarea de la art. 26 alin. (1).', D101_FIXE));
+    }
+    if (venit > 0) {
+      randuriNeimpozabile.push({
+        regula: 'Venituri din reluarea ' + nume.toLowerCase(), temei: 'Art. 23(d)',
+        cont: String(cont).startsWith('2') ? '7813' : '7814', pct: 100, realizat: venit, neimpozabil: venit,
+      });
+    }
+  };
+  adauga('Ajustari pentru deprecierea stocurilor', '6814', stocuri.cheltuiala, stocuri.venit, 'Art. 26(1)');
+  adauga('Ajustari pentru deprecierea imobilizarilor', '6813', imob.cheltuiala, imob.venit, 'Art. 26(1)');
+  adauga('Ajustari pentru depreciere neincadrate', '6814', nedet.cheltuiala, nedet.venit, 'Art. 26(1)');
+  return { randuri, randuriNeimpozabile, total: round2(randuri.reduce((a, r) => a + r.nedeductibil, 0)) };
 }
 
 // Simetricul la venituri (art. 23): reluarea unei cheltuieli care NU a fost deductibila nu poate
@@ -177,7 +216,7 @@ function fixe(rulaj) {
 /** Veniturile neimpozabile care se SCAD din baza (nu se aduna).
  *  `pctReluareCreante` = proportia nedeductibila a ajustarii anului, oglindita pe 7814; lipsa ei
  *  inseamna „nicio ajustare inregistrata", deci reluarea e integral neimpozabila. */
-function neimpozabile(rulaj, pctReluareCreante) {
+function neimpozabile(rulaj, pctReluareCreante, venitReluareCreante) {
   const randuri = [];
   for (const [cod, cfg] of Object.entries(NEIMPOZABILE)) {
     const realizat = venit(rulaj, cod);
@@ -185,7 +224,11 @@ function neimpozabile(rulaj, pctReluareCreante) {
     const suma = round2((realizat * cfg.pct) / 100);
     randuri.push({ regula: cfg.nume, temei: cfg.temei, cont: cod, pct: cfg.pct, realizat, neimpozabil: suma });
   }
-  const reluare = venit(rulaj, NEIMPOZABIL_RELUARE_CREANTE.cont);
+  // Numai partea de CREANTE a lui 7814: contul poarta si reluarile de ajustari de stoc, care au
+  // regimul lor (integral neimpozabile, prin `ajustariNedeductibile`). Fara spargere, o reluare de
+  // stoc ar fi oglindita cu proportia creantelor.
+  const reluare = (venitReluareCreante != null && Number.isFinite(Number(venitReluareCreante)))
+    ? round2(Number(venitReluareCreante)) : venit(rulaj, NEIMPOZABIL_RELUARE_CREANTE.cont);
   if (reluare > 0) {
     const pct = (pctReluareCreante == null || !Number.isFinite(Number(pctReluareCreante)))
       ? 100 : Math.max(0, Math.min(100, Number(pctReluareCreante)));
@@ -269,9 +312,17 @@ function ajustari(i, cfg) {
   // faza), dar cu baza din marcaj, nu cu procent orb. Randul intra in `randuriFixe` ca registrul
   // fiscal sa-l afiseze in acelasi tabel; ordinea fata de neimpozabile conteaza, fiindcă
   // proportia lui nedeductibila e cea oglindita pe 7814.
-  const randCreante = ajustariCreante(rulaj, i.ajustariCreanteBaza, cfg);
+  // Sumele SPARTE pe familii (creante / stocuri / imobilizari). Cand lipsesc, fiecare regula cade
+  // pe rulajul contului — comportamentul de dinainte de a exista ajustarile de stoc.
+  const split = i.ajustariDepreciere || null;
+  const randCreante = ajustariCreante(rulaj, i.ajustariCreanteBaza, cfg, split ? split.creante.cheltuiala : null);
   if (randCreante) { fixeRez.randuri.push(randCreante); fixeRez.total = round2(fixeRez.total + randCreante.nedeductibil); }
-  const neimpRez = neimpozabile(rulaj, randCreante ? randCreante.pctNedeductibil : null);
+  // Stocurile si imobilizarile: integral nedeductibile, cu simetricul lor la venituri.
+  const nedRez = ajustariNedeductibile(split);
+  for (const r of nedRez.randuri) { fixeRez.randuri.push(r); fixeRez.total = round2(fixeRez.total + r.nedeductibil); }
+  const neimpRez = neimpozabile(rulaj, randCreante ? randCreante.pctNedeductibil : null,
+    split ? split.creante.venit : null);
+  for (const r of nedRez.randuriNeimpozabile) { neimpRez.randuri.push(r); neimpRez.total = round2(neimpRez.total + r.neimpozabil); }
   const randuri = fixeRez.randuri.slice(); // randurile cu plafon se adauga in continuare
 
   // ── Protocol (art. 25(3)(a)) ──────────────────────────────────────────────
@@ -471,5 +522,5 @@ function credit(i, cfg) {
 }
 
 module.exports = {
-  mapareD101, ajustari, credit, fixe, neimpozabile, ajustariCreante,
+  mapareD101, ajustari, credit, fixe, neimpozabile, ajustariCreante, ajustariNedeductibile,
   CONT, FIXE, NEIMPOZABILE, cheltuiala, venit };

@@ -11,6 +11,7 @@ const acc = require('./accounting');
 const deduct = require('./deductibilitate');
 const micro = require('./impozitMicro'); // baza art. 53 + cota art. 51 (sursa unica: D100 si registrul fiscal)
 const assets = require('./assets');
+const ajust = require('./ajustari'); // familia unui cont de ajustare (sursa unica a hartii)
 const fiscalProfile = require('./fiscalProfile'); // regimul firmei (micro/profit) pentru livrabile
 // Termenele, dintr-o singura sursa. `declarations.js` importa doar accounting + fiscalProfile,
 // deci nu se inchide niciun ciclu.
@@ -820,11 +821,55 @@ function registruMarja(db, period) {
     nrInPierdere: rows.filter((r) => r.inPierdere).length };
 }
 
-/** Registrul-inventar — soldurile finale la o data. */
-function registruInventar(db, asOf) {
+/**
+ * Registrul-inventar (formular 14-1-2, OMFP 2634/2015) — unul dintre cele TREI registre
+ * obligatorii (Legea 82/1991 art. 20), alaturi de Registrul-jurnal si Cartea mare.
+ *
+ * Formularul legal cere PATRU coloane, nu doua: recapitulatia elementelor inventariate, valoarea
+ * CONTABILA, valoarea de INVENTAR si diferentele din evaluare, cu cauzele lor. Pana acum registrul
+ * intorcea doar soldurile finale din balanta — adica prima coloana valorica si atat. Ultimele doua
+ * nu se puteau completa fiindca nu exista niciun loc in care sa stea valoarea de inventar; era
+ * simptomul vizibil al lipsei ajustarilor pentru depreciere, nu o constatare separata.
+ *
+ * Valoarea de inventar vine din `inventarAnual` (introdusa la inventariere). Unde lipseste, randul
+ * ramane cu `valoareInventar: null` si `diferenta: null` — NU cu zero: „neinventariat" si „inventariat
+ * la valoarea zero" sunt lucruri diferite, iar al doilea ar propune scoaterea din evidenta a
+ * intregului sold. Totalul diferentelor numara doar randurile chiar evaluate.
+ *
+ * Pentru elementele depreciate se propune si contul de ajustare (`ajustari.pentruCont`) — aceeasi
+ * harta din care isi ia contul si monografia, ca propunerea si inregistrarea sa nu poata diverge.
+ */
+function registruInventar(db, asOf, an) {
   const tb = acc.trialBalance(db, asOf);
-  const rows = tb.rows.filter((r) => r.sfD || r.sfC).map((r) => ({ cod: r.cod, nume: r.nume, sfD: r.sfD, sfC: r.sfC }));
-  return { asOf, rows, tot: { sfD: tb.tot.sfD, sfC: tb.tot.sfC } };
+  const anul = String(an || String(asOf || '').slice(0, 4) || '');
+  const valori = new Map();
+  for (const v of (db.inventarAnual || [])) {
+    if (anul && String(v.an) !== anul) continue;
+    valori.set(String(v.cont), v);
+  }
+  let totalDif = 0; let nrEvaluate = 0;
+  const rows = tb.rows.filter((r) => r.sfD || r.sfC).map((r) => {
+    // Valoarea contabila a elementului = soldul lui, in sensul lui firesc.
+    const contabila = round2((r.sfD || 0) - (r.sfC || 0));
+    const v = valori.get(String(r.cod));
+    const are = v && v.valoareInventar != null && v.valoareInventar !== '';
+    const inventar = are ? round2(Number(v.valoareInventar) || 0) : null;
+    // Diferenta se raporteaza cu semnul ei: negativa = DEPRECIERE (valoarea de inventar e mai mica).
+    const dif = are ? round2(inventar - contabila) : null;
+    if (are) { totalDif = round2(totalDif + dif); nrEvaluate += 1; }
+    const aj = (dif != null && dif < 0) ? ajust.pentruCont(r.cod) : null;
+    return {
+      cod: r.cod, nume: r.nume, sfD: r.sfD, sfC: r.sfC,
+      valoareContabila: contabila, valoareInventar: inventar, diferenta: dif,
+      cauza: (v && v.cauza) || '',
+      // propunerea de ajustare, doar la depreciere si doar daca elementul are cont de ajustare
+      ajustare: aj ? { cont: aj.ajustare, cheltuiala: aj.cheltuiala, suma: round2(-dif) } : null,
+    };
+  });
+  return {
+    asOf, an: anul, rows, tot: { sfD: tb.tot.sfD, sfC: tb.tot.sfC },
+    totalDiferente: totalDif, nrEvaluate, nrNeevaluate: rows.length - nrEvaluate,
+  };
 }
 
 /**
@@ -964,6 +1009,44 @@ function ajustariCreanteArt26(db, year, panaLa) {
   return round2(s);
 }
 
+/**
+ * Ajustarile pentru depreciere ale anului, SPARTE PE FAMILII (creante / stocuri / imobilizari).
+ *
+ * De ce nu ajunge rulajul pe cont: 6814 e comun creantelor SI stocurilor („ajustari pentru
+ * deprecierea activelor circulante"), iar regimul lor fiscal difera radical — la creante se deduc
+ * 30% din partea eligibila (art. 26 alin. (1) lit. c), la stocuri nimic. Citit din cont, un an cu
+ * ajustari de stoc ar primi deducere pentru ele. Separarea se face dupa CONTRAPARTIDA liniei:
+ * 49x = creante, 39x = stocuri; 6813/7813 sunt oricum numai ale imobilizarilor.
+ *
+ * Liniile care nu se potrivesc niciunei familii (un analitic nemapat) cad la `nedeterminat` si sunt
+ * tratate ca NEDEDUCTIBILE de apelant — nu se imprastie tacit peste celelalte familii.
+ */
+function ajustariDepreciere(db, year, panaLa) {
+  const limita = panaLa ? String(panaLa).slice(0, 7) : null;
+  const gol = () => ({ cheltuiala: 0, venit: 0 });
+  const out = { creante: gol(), stocuri: gol(), imobilizari: gol(), nedeterminat: gol() };
+  for (const e of acc.postedEntries(db)) {
+    const p = String(e.period || periodOf(e.data));
+    if (!p.startsWith(String(year))) continue;
+    if (limita && p > limita) continue;
+    for (const l of (e.lines || [])) {
+      const debit = String(l.debit || ''); const credit = String(l.credit || '');
+      const suma = round2(Number(l.suma) || 0);
+      if (!suma) continue;
+      // constituire: cheltuiala in debit, contul de ajustare in credit
+      if (/^681[34]/.test(debit)) {
+        const fam = ajust.familie(credit) || (debit.startsWith('6813') ? 'imobilizari' : null);
+        out[fam || 'nedeterminat'].cheltuiala = round2(out[fam || 'nedeterminat'].cheltuiala + suma);
+      } else if (/^781[34]/.test(credit)) {
+        // reluare: contul de ajustare in debit, venitul in credit
+        const fam = ajust.familie(debit) || (credit.startsWith('7813') ? 'imobilizari' : null);
+        out[fam || 'nedeterminat'].venit = round2(out[fam || 'nedeterminat'].venit + suma);
+      }
+    }
+  }
+  return out;
+}
+
 /** Registrul de evidenta fiscala: trecerea de la rezultatul contabil la cel fiscal. */
 function registruFiscal(db, year, cota, opts) {
   opts = opts || {};
@@ -981,11 +1064,16 @@ function registruFiscal(db, year, cota, opts) {
   // curente — randul se cere si fara `opts.plafoane` (dosarul anual il genereaza asa), iar fara
   // cote procentul ar cadea la zero si ar arata o nedeductibilitate care nu e a legii.
   const bazaCreante = ajustariCreanteArt26(db, year);
-  const randCreante = deduct.ajustariCreante(r, bazaCreante, opts.plafoane || fiscal.FISCAL);
+  const splitAjust = ajustariDepreciere(db, year);
+  const randCreante = deduct.ajustariCreante(r, bazaCreante, opts.plafoane || fiscal.FISCAL, splitAjust.creante.cheltuiala);
   if (randCreante) { fixeRez.randuri.push(randCreante); fixeRez.total = round2(fixeRez.total + randCreante.nedeductibil); }
+  // Stocurile si imobilizarile: integral nedeductibile, cu simetricul lor la venituri.
+  const nedAjust = deduct.ajustariNedeductibile(splitAjust);
+  for (const x of nedAjust.randuri) { fixeRez.randuri.push(x); fixeRez.total = round2(fixeRez.total + x.nedeductibil); }
   const cheltNeded = fixeRez.randuri.map((x) => ({ cod: x.cont, nume: x.regula, baza: x.cheltuit, pct: x.pct, suma: x.nedeductibil }));
   const totalNeded = fixeRez.total;
-  const neimpRez = deduct.neimpozabile(r, randCreante ? randCreante.pctNedeductibil : null);
+  const neimpRez = deduct.neimpozabile(r, randCreante ? randCreante.pctNedeductibil : null, splitAjust.creante.venit);
+  for (const x of nedAjust.randuriNeimpozabile) { neimpRez.randuri.push(x); neimpRez.total = round2(neimpRez.total + x.neimpozabil); }
   const venituriList = neimpRez.randuri.map((x) => ({ cod: x.cont, nume: x.regula, baza: x.realizat, pct: x.pct, suma: x.neimpozabil }));
   const venituriNeimpozabile = neimpRez.total;
   // Amortizare: contabila (rulajul REAL al contului 6811) vs fiscala (planul fiscal al fiecarui
@@ -1011,6 +1099,7 @@ function registruFiscal(db, year, cota, opts) {
     cheltAuto: cheltuieliAuto(db, year),
     cheltLipsaNeimputabila: cheltuieliLipsaNeimputabila(db, year),
     ajustariCreanteBaza: bazaCreante, // aceeasi baza ca randul de mai sus: art. 40^2 pleaca de la rezultatul fiscal
+    ajustariDepreciere: splitAjust,
     cheltImpozitProfit: r['691'] ? round2(r['691'].d - r['691'].c) : 0,
     amortizare: amortDif,
     amortizareFiscala: amortDif.fiscala, // baza art. 40^2 foloseste amortizarea FISCALA
@@ -1621,4 +1710,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, CONTURI_TREZORERIE };
+module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, ajustariDepreciere, CONTURI_TREZORERIE };

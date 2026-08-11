@@ -205,17 +205,36 @@ function registruIncasariPlatiPdf(res, company, r) {
 
 /** Fisa de cont: miscarile unui cont cu contul corespondent si soldul curent. */
 
+// Formularul 14-1-2 (OMFP 2634/2015) cere PATRU coloane valorice: valoarea contabila, valoarea de
+// inventar si diferentele din evaluare, cu cauzele lor. Pana acum se tipareau doar soldurile, adica
+// prima coloana — un registru obligatoriu, incomplet fata de propriul formular.
+// Randurile neinventariate raman GOALE, nu zero: „nu s-a evaluat" si „s-a evaluat la zero" sunt
+// lucruri diferite, iar al doilea ar sugera scoaterea din evidenta a intregului sold.
 function registruInventarPdf(res, company, ri) {
-  const doc = newDoc(false);
-  header(doc, company, 'Registrul-inventar (solduri finale)', ri.asOf ? 'La data de ' + periodLabel(ri.asOf) : 'Cumulat');
-  const rows = ri.rows.map((r) => ({ cod: r.cod, nume: r.nume, sfD: r.sfD ? fmt(r.sfD) : '', sfC: r.sfC ? fmt(r.sfC) : '' }));
-  rows.push({ cod: '', nume: 'TOTAL', sfD: fmt(ri.tot.sfD), sfC: fmt(ri.tot.sfC), _bold: true, _fill: C.zebra });
+  const doc = newDoc(true); // orientare lata: sase coloane nu incap pe portret
+  header(doc, company, 'Registrul-inventar', (ri.an ? 'Exercițiul ' + ri.an : '')
+    + (ri.asOf ? ' — la data de ' + periodLabel(ri.asOf) : ''));
+  const rows = ri.rows.map((r) => ({
+    cod: r.cod,
+    nume: r.nume,
+    contabila: fmt(r.valoareContabila),
+    inventar: r.valoareInventar == null ? '—' : fmt(r.valoareInventar),
+    dif: r.diferenta == null ? '' : fmt(r.diferenta),
+    cauza: r.diferenta == null ? '' : (r.cauza || (r.diferenta < 0 ? 'Depreciere constatată la inventar' : 'Plus de valoare')),
+  }));
   table(doc, [
-    { label: 'Cont', key: 'cod', width: 55 },
-    { label: 'Denumire', key: 'nume', width: 305, wrap: true },
-    { label: 'Sold D', key: 'sfD', width: 70, align: 'right' },
-    { label: 'Sold C', key: 'sfC', width: 70, align: 'right' },
+    { label: 'Cont', key: 'cod', width: 50 },
+    { label: 'Elementul inventariat', key: 'nume', width: 250, wrap: true },
+    { label: 'Valoare contabilă', key: 'contabila', width: 85, align: 'right' },
+    { label: 'Valoare de inventar', key: 'inventar', width: 85, align: 'right' },
+    { label: 'Diferențe', key: 'dif', width: 75, align: 'right' },
+    { label: 'Cauze diferențe', key: 'cauza', width: 175, wrap: true },
   ], rows);
+  if (ri.nrNeevaluate) {
+    doc.moveDown(0.6).fontSize(8).fillColor(C.muted)
+      .text(ri.nrEvaluate + ' element(e) evaluate la inventar, ' + ri.nrNeevaluate
+        + ' fără valoare de inventar introdusă. Total diferențe din evaluare: ' + fmt(ri.totalDiferente) + ' lei.');
+  }
   finish(doc, res, 'registru-inventar.pdf');
 }
 

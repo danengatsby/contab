@@ -89,6 +89,7 @@ const DEFAULT_DB = {
   gestiuni: [],        // { id, firmaId, cod, denumire, gestionar, cont } - depozite/gestiuni
   stockMovements: [],  // { id, firmaId, data, tip, productId, gestiuneId, gestiuneDestId, cantitate, pretUnitar, document }
   inventories: [],     // { id, firmaId, gestiuneId, data, lines, totaluri } - procese-verbale de inventariere
+  inventarAnual: [],   // { id, firmaId, an, cont, valoareInventar, cauza } - valorile de inventar (registrul-inventar)
   partners: {},        // { [firmaId]: { [cui]: {...} } }
   openingBalances: {}, // { [firmaId]: { [cont]: { d, c } } }
   openingAnalytic: [], // { firmaId, cont, partener, cui, d, c }
@@ -231,6 +232,7 @@ function migrate(d) {
   if (!Array.isArray(d.gestiuni)) d.gestiuni = [];
   if (!Array.isArray(d.stockMovements)) d.stockMovements = [];
   if (!Array.isArray(d.inventories)) d.inventories = [];
+  if (!Array.isArray(d.inventarAnual)) d.inventarAnual = [];
   if (!Array.isArray(d.users)) d.users = [];
   if (!d.users.length) {
     const { salt, hash } = auth.hashPassword('admin');
@@ -515,6 +517,7 @@ function scoped(firmaId) {
     gestiuni: (d.gestiuni || []).filter((g) => (g.firmaId == null ? d.firmaActiva : g.firmaId) === id),
     stockMovements: (d.stockMovements || []).filter((m) => (m.firmaId == null ? d.firmaActiva : m.firmaId) === id),
     inventories: (d.inventories || []).filter((iv) => (iv.firmaId == null ? d.firmaActiva : iv.firmaId) === id),
+    inventarAnual: (d.inventarAnual || []).filter((x) => (x.firmaId == null ? d.firmaActiva : x.firmaId) === id),
     partners: d.partners[id] || {},
     openingBalances: d.openingBalances[id] || {},
     openingAnalytic: (d.openingAnalytic || []).filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === id),
@@ -544,6 +547,7 @@ function exportFirma(fid) {
     gestiuni: byFid(d.gestiuni),
     stockMovements: byFid(d.stockMovements),
     inventories: byFid(d.inventories),
+    inventarAnual: byFid(d.inventarAnual),
     angajati: byFid(d.angajati),
     payrollHistory: byFid(d.payrollHistory),
     declarations: byFid(d.declarations),
@@ -567,7 +571,7 @@ function importFirma(bundle, opts) {
     newFid = Number(o.targetFid);
     const f = d.firme.find((x) => x.id === newFid);
     if (!f) throw new Error('Firma tinta inexistenta.');
-    for (const k of ['entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products', 'gestiuni', 'stockMovements', 'inventories', 'openingAnalytic', 'declarations']) {
+    for (const k of ['entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products', 'gestiuni', 'stockMovements', 'inventories', 'inventarAnual', 'openingAnalytic', 'declarations']) {
       d[k] = d[k].filter((x) => (x.firmaId == null ? d.firmaActiva : x.firmaId) !== newFid);
     }
     Object.assign(f, bundle.firma, { id: newFid }); // preia datele firmei din copie, pastreaza id-ul

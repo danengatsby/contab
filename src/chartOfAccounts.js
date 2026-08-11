@@ -80,6 +80,19 @@ const ACCOUNTS = [
   { cod: '2812', nume: 'Amortizarea construcțiilor', clasa: 2, tip: 'P' },
   { cod: '2813', nume: 'Amortizarea instalațiilor și mijloacelor de transport', clasa: 2, tip: 'P' },
   { cod: '2814', nume: 'Amortizarea altor imobilizări corporale', clasa: 2, tip: 'P' },
+  // AJUSTARI PENTRU DEPRECIERE (29x). Amortizarea e ireversibila si planificata; ajustarea e
+  // REVERSIBILA si constatata la inventar, cand valoarea de inventar e sub cea contabila. Lipseau
+  // amandoua familiile (29x si 39x), desi bilantul, situatia imobilizarilor si contul de profit si
+  // pierdere le scadeau deja pe prefix — randuri care nu se puteau completa niciodata.
+  { cod: '290',  nume: 'Ajustări pentru deprecierea imobilizărilor necorporale', clasa: 2, tip: 'P' },
+  { cod: '291',  nume: 'Ajustări pentru deprecierea imobilizărilor corporale', clasa: 2, tip: 'P' },
+  { cod: '2911', nume: 'Ajustări pentru deprecierea terenurilor și amenajărilor de terenuri', clasa: 2, tip: 'P' },
+  { cod: '2912', nume: 'Ajustări pentru deprecierea construcțiilor', clasa: 2, tip: 'P' },
+  { cod: '2913', nume: 'Ajustări pentru deprecierea instalațiilor și mijloacelor de transport', clasa: 2, tip: 'P' },
+  { cod: '2914', nume: 'Ajustări pentru deprecierea altor imobilizări corporale', clasa: 2, tip: 'P' },
+  { cod: '293',  nume: 'Ajustări pentru deprecierea imobilizărilor în curs de execuție', clasa: 2, tip: 'P' },
+  { cod: '2931', nume: 'Ajustări pentru deprecierea imobilizărilor corporale în curs de execuție', clasa: 2, tip: 'P' },
+  { cod: '296',  nume: 'Ajustări pentru pierderea de valoare a imobilizărilor financiare', clasa: 2, tip: 'P' },
 
   // ─────────────────── Clasa 3 — Stocuri si productie ─────────────────────
   { cod: '301',  nume: 'Materii prime', clasa: 3, tip: 'A' },
@@ -93,6 +106,17 @@ const ACCOUNTS = [
   { cod: '371',  nume: 'Mărfuri', clasa: 3, tip: 'A' },
   { cod: '378',  nume: 'Diferențe de preț la mărfuri (adaos comercial)', clasa: 3, tip: 'P' },
   { cod: '381',  nume: 'Ambalaje', clasa: 3, tip: 'A' },
+  // AJUSTARI PENTRU DEPRECIEREA STOCURILOR (39x). Se constituie cand valoarea de inventar
+  // (realizabila neta) e sub costul contabil — obligatoriu la inventarierea anuala, nu optional.
+  { cod: '391',  nume: 'Ajustări pentru deprecierea materiilor prime', clasa: 3, tip: 'P' },
+  { cod: '392',  nume: 'Ajustări pentru deprecierea materialelor', clasa: 3, tip: 'P' },
+  { cod: '3921', nume: 'Ajustări pentru deprecierea materialelor consumabile', clasa: 3, tip: 'P' },
+  { cod: '3922', nume: 'Ajustări pentru deprecierea materialelor de natura obiectelor de inventar', clasa: 3, tip: 'P' },
+  { cod: '393',  nume: 'Ajustări pentru deprecierea producției în curs de execuție', clasa: 3, tip: 'P' },
+  { cod: '394',  nume: 'Ajustări pentru deprecierea produselor', clasa: 3, tip: 'P' },
+  { cod: '395',  nume: 'Ajustări pentru deprecierea stocurilor aflate la terți', clasa: 3, tip: 'P' },
+  { cod: '397',  nume: 'Ajustări pentru deprecierea mărfurilor', clasa: 3, tip: 'P' },
+  { cod: '398',  nume: 'Ajustări pentru deprecierea ambalajelor', clasa: 3, tip: 'P' },
 
   // ──────────────────────── Clasa 4 — Terti ───────────────────────────────
   { cod: '401',  nume: 'Furnizori', clasa: 4, tip: 'P' },
@@ -186,6 +210,10 @@ const ACCOUNTS = [
   { cod: '667',  nume: 'Cheltuieli privind sconturile acordate', clasa: 6, tip: 'C' },
   { cod: '6811', nume: 'Cheltuieli de exploatare privind amortizarea imobilizărilor', clasa: 6, tip: 'C' },
   { cod: '6812', nume: 'Cheltuieli de exploatare privind provizioanele', clasa: 6, tip: 'C' },
+  // 6813 vs 6814: IMOBILIZARI vs ACTIVE CIRCULANTE. Distinctia nu e cosmetica — 6814 e comun
+  // creantelor si stocurilor, deci partea deductibila (art. 26 alin. (1) lit. c, numai la creante)
+  // nu se poate citi din rulajul contului; se separa dupa contul din contrapartida (49x vs 39x).
+  { cod: '6813', nume: 'Cheltuieli de exploatare privind ajustările pentru deprecierea imobilizărilor', clasa: 6, tip: 'C' },
   { cod: '6814', nume: 'Cheltuieli privind ajustările pentru deprecierea activelor circulante', clasa: 6, tip: 'C' },
   { cod: '654',  nume: 'Pierderi din creanțe și debitori diverși', clasa: 6, tip: 'C' },
   { cod: '655',  nume: 'Cheltuieli din reevaluarea imobilizărilor corporale', clasa: 6, tip: 'C' },
@@ -207,6 +235,7 @@ const ACCOUNTS = [
   { cod: '7812', nume: 'Venituri din provizioane', clasa: 7, tip: 'V' },
   { cod: '758',  nume: 'Alte venituri din exploatare', clasa: 7, tip: 'V' },
   { cod: '7588', nume: 'Alte venituri din exploatare', clasa: 7, tip: 'V' },
+  { cod: '7813', nume: 'Venituri din ajustări pentru deprecierea imobilizărilor', clasa: 7, tip: 'V' },
   { cod: '7814', nume: 'Venituri din ajustări pentru deprecierea activelor circulante', clasa: 7, tip: 'V' },
   { cod: '754',  nume: 'Venituri din creanțe reactivate și debitori diverși', clasa: 7, tip: 'V' },
   { cod: '7581', nume: 'Venituri din despăgubiri, amenzi și penalități', clasa: 7, tip: 'V' },

@@ -2889,6 +2889,132 @@ section('Monografii adaugate: cedare mijloc fix, cut-off 408, capital social, cr
     eq('totalul pe grupe ramane egal cu soldul', Math.round((vechi.total + recent.total) * 100) / 100, 3000);
   }
 
+  // ── AJUSTARILE PENTRU DEPRECIERE: stocuri (39x) si imobilizari (29x) ─────────────────────
+  // Lipseau complet — nici conturi, nici monografii — desi patru module scriau deja reguli pentru
+  // ele. Garda din `composeEntry` facea imposibila si o nota manuala: contul nu exista.
+  {
+    const aj = require('../src/ajustari');
+    // Poarta pe HARTA BRUTA, nu pe ce intoarce `pentruCont`. Diferenta conteaza: `pentruCont`
+    // refuza deja sa intoarca un cont absent din plan (`return null`), deci o poarta pe iesirea ei
+    // e trivial adevarata si ar trece si cu harta stricata — exact tiparul „poarta pe conventie,
+    // nu pe efect" intalnit la `db.pushEntry`. Aici se verifica valorile scrise in harta.
+    const inventate = Object.values(aj.CONT_AJUSTARE).filter((c) => !coa2.getAccount(c));
+    eq('fiecare cont din harta de ajustari exista in plan', [...new Set(inventate)].join(',') || '(niciunul)', '(niciunul)');
+    ok('harta chiar are ce verifica', Object.keys(aj.CONT_AJUSTARE).length >= 20);
+    // toate conturile de activ din PLAN care au ajustare -> contul exista si el
+    const dinPlan = coa2.ACCOUNTS.filter((a) => /^(2[0-3]|3[0-8])/.test(a.cod) && aj.areAjustare(a.cod));
+    ok('planul chiar contine conturi cu ajustare de verificat', dinPlan.length >= 8);
+    eq('fiecare ajustare derivata din plan exista in plan',
+      dinPlan.filter((a) => !coa2.getAccount(aj.pentruCont(a.cod).ajustare)).length, 0);
+
+    const contAj = (c) => (aj.pentruCont(c) || {}).ajustare || '(fara)';
+    eq('marfuri 371 -> 397', contAj('371'), '397');
+    eq('materii prime 301 -> 391', contAj('301'), '391');
+    eq('produse finite 345 -> 394', contAj('345'), '394');
+    eq('constructii 212 -> 2912', contAj('212'), '2912');
+    eq('echipamente 2131 -> 2913', contAj('2131'), '2913');
+    eq('analitic 371.01 cade pe sinteticul lui', contAj('371.01'), '397');
+    eq('cont fara ajustare definita -> null', aj.pentruCont('5121'), null);
+    {
+      const cheieProba = '399999'; // cont de proba, nu exista in plan
+      aj.CONT_AJUSTARE[cheieProba] = '39999';
+      eq('o intrare de harta care arata spre un cont absent din plan -> null, nu cod inventat',
+        aj.pentruCont(cheieProba), null);
+      delete aj.CONT_AJUSTARE[cheieProba];
+      eq('...iar harta ramane curata dupa proba', aj.pentruCont(cheieProba), null);
+    }
+    // contul de cheltuiala depinde de CLASA activului, nu de felul deprecierii
+    eq('stocurile trec prin 6814', (aj.pentruCont('371') || {}).cheltuiala, '6814');
+    eq('imobilizarile trec prin 6813', (aj.pentruCont('212') || {}).cheltuiala, '6813');
+    eq('reluarea stocurilor pe 7814', (aj.pentruCont('371') || {}).venit, '7814');
+    eq('reluarea imobilizarilor pe 7813', (aj.pentruCont('212') || {}).venit, '7813');
+
+    // articolele: constituire vs reluare, cu semnul diferentei
+    const c = aj.linii('371', 6000);
+    eq('constituire produce exact o linie', c.length, 1);
+    eq('constituire: 6814 = 397', (c[0] || {}).debit + '=' + (c[0] || {}).credit, '6814=397');
+    eq('...cu suma deprecierii', (c[0] || {}).suma, 6000);
+    const rl = aj.linii('371', -2500);
+    eq('reluare: 397 = 7814', (rl[0] || {}).debit + '=' + (rl[0] || {}).credit, '397=7814');
+    eq('diferenta zero nu produce articol', aj.linii('371', 0).length, 0);
+    eq('contul fara ajustare nu produce articol', aj.linii('5121', 1000).length, 0);
+    ok('explicatia e citibila, nu agramata', /Ajustare pentru depreciere — Mărfuri \(371\)/.test((c[0] || {}).explicatie || ''));
+
+    // monografiile chiar exista si folosesc aceeasi harta
+    const st = gt2('ajustare_stoc_constituire').build({ contStoc: '301', suma: 800 });
+    eq('monografia de stoc foloseste harta (301 -> 391)', (st[0] || {}).debit + '=' + (st[0] || {}).credit, '6814=391');
+    const im = gt2('ajustare_imobilizare_reluare').build({ contImob: '2133', suma: 400 });
+    eq('monografia de imobilizari, la reluare (2133 -> 2913)', (im[0] || {}).debit + '=' + (im[0] || {}).credit, '2913=7813');
+  }
+
+  // ── Regimul FISCAL al ajustarilor de stoc/imobilizari: integral nedeductibile ────────────
+  {
+    const cfgA = { ajustariCreantePct: 30, ajustariCreanteZile: 270 };
+    const split = (o) => Object.assign({
+      creante: { cheltuiala: 0, venit: 0 }, stocuri: { cheltuiala: 0, venit: 0 },
+      imobilizari: { cheltuiala: 0, venit: 0 }, nedeterminat: { cheltuiala: 0, venit: 0 } }, o);
+    const nd = ded.ajustariNedeductibile(split({ stocuri: { cheltuiala: 4000, venit: 0 } }));
+    eq('ajustarea de stoc e integral nedeductibila', nd.total, 4000);
+    eq('...cu un rand pe care sa-l vada registrul fiscal', nd.randuri.length, 1);
+    ok('...cu temeiul art. 26(1)', /26\(1\)/.test((nd.randuri[0] || {}).temei || ''));
+    const ndi = ded.ajustariNedeductibile(split({ imobilizari: { cheltuiala: 9000, venit: 0 } }));
+    eq('ajustarea de imobilizari, la fel', ndi.total, 9000);
+    eq('...pe contul 6813', (ndi.randuri[0] || {}).cont, '6813');
+    // simetria: reluarea unei ajustari nedeductibile nu e venit impozabil
+    const ndr = ded.ajustariNedeductibile(split({ stocuri: { cheltuiala: 0, venit: 3000 } }));
+    eq('reluarea de stoc e integral neimpozabila', (ndr.randuriNeimpozabile[0] || {}).neimpozabil, 3000);
+    eq('...deci nu adauga nimic la nedeductibile', ndr.total, 0);
+    // liniile pe conturi neincadrate NU se imprastie peste celelalte familii
+    const ndn = ded.ajustariNedeductibile(split({ nedeterminat: { cheltuiala: 1500, venit: 0 } }));
+    eq('ajustarea neincadrata e tratata prudent (nedeductibila)', ndn.total, 1500);
+
+    // DEFECTUL pe care spargerea il inchide, cu cifre. 6814 e comun creantelor si stocurilor: fara
+    // separare, reluarea unei ajustari de STOC (niciodata dedusa) era oglindita cu proportia
+    // creantelor si devenea impozabila in proportie de 30%.
+    const rulajA = { 6814: { d: 10000, c: 0 }, 7814: { d: 0, c: 11000 } };
+    const sp = split({ creante: { cheltuiala: 10000, venit: 5000 }, stocuri: { cheltuiala: 0, venit: 6000 } });
+    const cuSpargere = ded.ajustari({ rulaj: rulajA, profitContabil: 100000, ajustariCreanteBaza: 10000, ajustariDepreciere: sp }, cfgA);
+    const faraSpargere = ded.ajustari({ rulaj: rulajA, profitContabil: 100000, ajustariCreanteBaza: 10000 }, cfgA);
+    eq('cu spargere: venituri neimpozabile 3.500 + 6.000', cuSpargere.totalNeimpozabil, 9500);
+    eq('fara spargere: toata reluarea oglindita ca la creante', faraSpargere.totalNeimpozabil, 7700);
+    ok('spargerea schimba baza impozabila cu 1.800 lei',
+      Math.round((cuSpargere.totalNeimpozabil - faraSpargere.totalNeimpozabil) * 100) / 100 === 1800);
+  }
+
+  // ── B2: registrul-inventar cu valoarea de inventar si diferentele ───────────────────────
+  {
+    const dbRI = {
+      entries: [{ id: 'e1', firmaId: 1, data: '2026-06-10', period: '2026-06', system: false,
+        lines: [{ debit: '371', credit: '401', suma: 20000 }, { debit: '5121', credit: '1012', suma: 20000 }] }],
+      inventarAnual: [{ id: 'i1', firmaId: 1, an: '2026', cont: '371', valoareInventar: 14000, cauza: 'Marfă cu termen expirat' }],
+      company: {}, openingBalances: {},
+    };
+    const repRI = require('../src/reporting');
+    const ri = repRI.registruInventar(dbRI, '2026-12', '2026');
+    const marfa = ri.rows.find((r) => r.cod === '371');
+    eq('valoarea contabila vine din balanta', marfa.valoareContabila, 20000);
+    eq('valoarea de inventar vine din inventariere', marfa.valoareInventar, 14000);
+    eq('diferenta poarta SEMNUL (negativ = depreciere)', marfa.diferenta, -6000);
+    eq('cauza ajunge in registru', marfa.cauza, 'Marfă cu termen expirat');
+    eq('se propune contul de ajustare din aceeasi harta', (marfa.ajustare || {}).cont, '397');
+    eq('...cu suma deprecierii, pozitiva', (marfa.ajustare || {}).suma, 6000);
+    // „neinventariat" NU e „inventariat la zero" — altfel s-ar propune scoaterea intregului sold
+    const banca = ri.rows.find((r) => r.cod === '5121');
+    eq('element neevaluat: valoare de inventar null, nu 0', banca.valoareInventar, null);
+    eq('...si fara diferenta', banca.diferenta, null);
+    eq('...deci fara propunere de ajustare', banca.ajustare, null);
+    eq('totalul diferentelor numara doar randurile evaluate', ri.totalDiferente, -6000);
+    eq('se raporteaza si cate elemente au ramas neevaluate', ri.nrNeevaluate, 3);
+    // un PLUS de valoare nu propune ajustare (ajustarea inregistreaza doar deprecierea)
+    const dbPlus = Object.assign({}, dbRI, { inventarAnual: [{ id: 'i2', firmaId: 1, an: '2026', cont: '371', valoareInventar: 23000 }] });
+    const riPlus = repRI.registruInventar(dbPlus, '2026-12', '2026');
+    eq('plus de valoare: diferenta pozitiva', riPlus.rows.find((r) => r.cod === '371').diferenta, 3000);
+    eq('...dar nicio ajustare propusa', riPlus.rows.find((r) => r.cod === '371').ajustare, null);
+    // valorile altui an nu se amesteca
+    const riAltAn = repRI.registruInventar(dbRI, '2026-12', '2025');
+    eq('valoarea de inventar e legata de AN', riAltAn.rows.find((r) => r.cod === '371').valoareInventar, null);
+  }
+
   // Planul de conturi: fara duplicate (581 aparea de doua ori) si cu toate codurile noi.
   const coduri = coa2.ACCOUNTS.map((a) => a.cod);
   eq('planul de conturi nu are coduri duplicate', coduri.length, new Set(coduri).size);

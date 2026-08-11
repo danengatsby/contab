@@ -79,6 +79,46 @@ module.exports = function register(app, ctx) {
     res.json({ ok: true, entry, totalFavorabil: r.totalFavorabil, totalNefavorabil: r.totalNefavorabil });
   });
 
+  // ── INVENTARIEREA: valorile de inventar si registrul-inventar ─────────────────────────────
+  // Stau AICI, nu in `reports.js`, fiindca sunt o EVALUARE de sfarsit de perioada, ca reevaluarea
+  // valutara si ajustarea creantelor de mai jos — nu un raport. (Si fiindca `reports.js` primeste
+  // un ctx fara `logAudit`: e un modul de citire, iar o scriere acolo cadea in 500.)
+  // Se introduce doar valoarea de inventar; valoarea contabila, diferenta si propunerea de
+  // ajustare se DERIVA — o diferenta salvata ar ramane adevarata dupa ce soldul se schimba.
+  app.get('/api/registru-inventar', (req, res) => {
+    const an = req.query.an || String(new Date().getFullYear());
+    res.json(rep.registruInventar(S(req), req.query.period || (an + '-12'), an));
+  });
+  app.get('/api/inventar-valori', (req, res) => {
+    const an = String(req.query.an || new Date().getFullYear());
+    sendList(req, res, (S(req).inventarAnual || []).filter((x) => String(x.an) === an), { label: 'inventar-valori' });
+  });
+  app.post('/api/inventar-valori', (req, res) => {
+    const b = req.body || {};
+    const cont = String(b.cont || '').trim();
+    if (!coa.getAccount(cont)) return res.status(400).json({ error: 'Cont inexistent în planul de conturi: ' + cont });
+    const an = String(b.an || new Date().getFullYear());
+    // Valoarea GOALA sterge randul: „neinventariat" trebuie sa fie exprimabil, altfel un zero
+    // tastat din greseala ar ramane pe veci si ar propune scoaterea intregului sold.
+    const gol = b.valoareInventar == null || b.valoareInventar === '';
+    const d = db.get(); const fid = activeId(req);
+    d.inventarAnual = d.inventarAnual || [];
+    const ex = d.inventarAnual.find((x) => x.firmaId === fid && String(x.an) === an && String(x.cont) === cont);
+    if (gol) {
+      d.inventarAnual = d.inventarAnual.filter((x) => x !== ex);
+      logAudit('inventar.valoare.sterge', an + ' ' + cont, { req });
+      db.save();
+      return res.json({ ok: true, sters: !!ex });
+    }
+    const rec = ex || { id: db.nextId('inv'), firmaId: fid, an, cont };
+    rec.valoareInventar = round2(Number(b.valoareInventar) || 0);
+    rec.cauza = String(b.cauza || '').slice(0, 300);
+    if (!ex) d.inventarAnual.push(rec);
+    logAudit('inventar.valoare', an + ' ' + cont + ': ' + rec.valoareInventar, { req });
+    db.save();
+    res.json({ ok: true, valoare: rec });
+  });
+
   // ── Ajustarea deprecierii creantelor + scoaterea din evidenta ──
   //
   // DOUA BAZE, deliberat diferite — asta e miezul:
