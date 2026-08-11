@@ -17,7 +17,7 @@
    Singurele siruri puse de noi sunt titlurile, si acelea trec prin textContent.
 */
 
-import { $, $$ } from './core.js';
+import { $, $$, H, api } from './core.js';
 
 /** Desparte „📥 Documente & facturi" in pictograma + text. Aceeasi regula ca in erp.js. */
 export function despartePictograma(eticheta) {
@@ -237,7 +237,42 @@ function construiesteMeniu(grupuri) {
 }
 
 /** Se cheama o data, la pornire. Idempotent: o a doua chemare reconstruieste, nu dubleaza. */
+/**
+ * Ciclul contabil cu temeiul fiecarui pas, grupat pe faze.
+ *
+ * Se construieste din `/api/temei-legal` (src/temeiLegal.js), NU dintr-o lista scrisa aici:
+ * aceleasi trimiteri apar si pe ecranele de lucru, iar doua copii ar ajunge sa spuna lucruri
+ * diferite despre acelasi pas. Ordinea pasilor e cea din sursa — e ordinea de EXECUTIE, nu una
+ * alfabetica.
+ */
+const FAZA_TITLU = {
+  permanent: 'La fiecare operațiune (tot anul)',
+  lunar: 'La închiderea lunii',
+  trimestrial: 'Trimestrial',
+  anual: 'La închiderea exercițiului',
+};
+export async function randeazaCiclu() {
+  const box = document.querySelector('#cicluView');
+  if (!box) return;
+  let r;
+  try { r = await api('/api/temei-legal'); } catch (e) { box.innerHTML = ''; return; }
+  const pasi = r.pasi || [];
+  const html = (r.faze || []).map((faza) => {
+    const aleFazei = pasi.filter((p) => p.faza === faza);
+    if (!aleFazei.length) return '';
+    return `<h3>${H(FAZA_TITLU[faza] || faza)}</h3>
+      <ol class="ciclu">${aleFazei.map((p) => `<li>
+        <b>${H(p.nume)}</b>
+        <p class="muted">${H(p.descriere)}</p>
+        <ul class="ciclu-temei">${p.temei.map((x) => `<li><b>${H(x.actTitlu)}</b>${
+  x.articol && x.articol !== '—' ? ', ' + H(x.articol) : ''} — ${H(x.ce)}</li>`).join('')}</ul>
+      </li>`).join('')}</ol>`;
+  }).join('');
+  box.innerHTML = html || '<p class="muted">Ciclul contabil nu a putut fi încărcat.</p>';
+}
+
 export function initGhid() {
+  randeazaCiclu();
   const tabs = $('#tabs');
   const bar = document.querySelector('#ghidMenu');
   if (!tabs || !bar) return 0;

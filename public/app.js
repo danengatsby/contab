@@ -1,5 +1,5 @@
 'use strict';
-import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf } from './core.js';
+import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf, umpleTemeiuri } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, renderPachetWin, renderVideo, setSettingsDeps } from './settings.js';
@@ -127,6 +127,10 @@ function onTab(t) {
   if (t === 'documente' || t === 'intrate' || t === 'iesite') loadEntries();
   if (t === 'emite') renderRecurring();
   if (t === 'intrate') { loadMissingDocs(); loadCalitate(); }
+  // Temeiul legal al pasului se umple pe ORICE tab care are un slot — pasii ciclului contabil se
+  // executa pe ecrane diferite, iar un apel legat de un singur tab i-ar lasa pe ceilalti muti.
+  // Functia isi tine singura evidenta (`data-umplut`), deci apelul repetat nu costa nimic.
+  umpleTemeiuri();
   if (t === 'jurnal') loadJournal();
   if (t === 'carte') loadLedger();
   if (t === 'cashbook') loadCashbook();

@@ -520,6 +520,7 @@
             <input type="file" id="file" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp" />
             <p>Trage un <b>PDF sau o imagine</b> (JPG/PNG) aici sau <span class="link">alege un fișier</span></p>
           </div>
+      <div class="temei-slot" data-pas="document"></div>
           <div class="row" data-u="u74">
             <button id="scannerBtn" class="btn" title="Scanează direct de la scanerul conectat la acest PC (cere puntea locală pornită — îți spune cum, dacă nu e).">🖨️ Scanează (scaner local)</button>
           </div>
@@ -638,6 +639,7 @@
             <button class="btn emit emit-guided" data-tip="factura_vanzare_produse"><span class="gt">🏭 Produs făcut de tine</span><span class="gd">Bunuri pe care le fabrici sau le produci tu (producție).</span></button>
             <button class="btn emit emit-guided" data-tip="factura_vanzare_servicii"><span class="gt">🧰 Serviciu / manoperă</span><span class="gd">Muncă, consultanță, reparații, abonamente — fără marfă fizică.</span></button>
           </div>
+      <div class="temei-slot" data-pas="facturare"></div>
           <details class="emit-more">
             <summary>Alte tipuri de documente (storno, bon fiscal, aviz, factură simplificată, livrare intracom.)</summary>
             <div class="emitgrid">
@@ -768,6 +770,7 @@
       <div class="toolbar">
         <h2>Toate operațiunile <span class="muted" data-u="u70">(registrul-jurnal)</span></h2>
         <div class="spacer"></div>
+      <div class="temei-slot" data-pas="inregistrare"></div>
         <select id="jurnalLuna" class="period luna" aria-label="Luna"></select>
         <select id="jurnalAn" class="period an" aria-label="Anul"></select>
         <a id="jurnalPdf" class="btn" target="_blank">⬇ PDF</a>
@@ -799,6 +802,7 @@
       <div class="toolbar">
         <h2>Încasări & plăți <span class="muted" data-u="u70">(bancă / casă)</span></h2>
         <div class="spacer"></div>
+      <div class="temei-slot" data-pas="numerar"></div>
         <select id="cbCont" class="period" data-acc-labels>
           <option value="5121">Bancă lei (5121)</option>
           <option value="5311">Casă lei (5311)</option>
@@ -846,6 +850,7 @@
       <div class="toolbar">
         <h2>Solduri conturi <span class="muted" data-u="u70">(balanța de verificare)</span></h2>
         <div class="spacer"></div>
+      <div class="temei-slot" data-pas="balanta"></div>
         <label data-u="u87"><input type="checkbox" id="balOnlyMoves" data-u="u15" /> Doar conturi cu mișcări în lună</label>
         <select id="balantaLuna" class="period luna" aria-label="Luna"></select>
         <select id="balantaAn" class="period an" aria-label="Anul"></select>
@@ -1000,7 +1005,7 @@
            cardurilor e ordinea de executie. -->
       <div class="card">
         <h2>① Inventarierea și evaluarea <span class="muted">(registrul-inventar)</span></h2>
-        <div class="temei-slot" data-pas="inventariere"></div>
+        <div class="temei-slot" data-pas="inventariere,evaluare"></div>
         <p class="muted">La inventariere elementele se evaluează la <b>valoarea de inventar</b>. Când aceasta e sub valoarea contabilă, minusul <b>nu se scoate din cont</b> — se înregistrează o <b>ajustare pentru depreciere</b>, reversibilă, care lasă valoarea de intrare neatinsă. Introdu mai jos valoarea de inventar pentru elementele inventariate; restul coloanelor se calculează. Elementele fără valoare introdusă rămân <b>neevaluate</b> (nu „evaluate la zero”).</p>
         <div class="dyn">
           <label>Anul <input type="number" id="invAn" value="2026" /></label>
@@ -1050,6 +1055,7 @@
       <div class="toolbar">
         <h2>📊 Situații financiare</h2>
         <div class="spacer"></div>
+      <div class="temei-slot" data-pas="situatii,depunere"></div>
         <input type="number" id="stmtYear" value="2026" class="period" aria-label="Anul" />
       </div>
       <div class="descarcari">
@@ -1118,6 +1124,7 @@
       <div class="toolbar">
         <h2>📤 Declarații ANAF</h2>
         <div class="spacer"></div>
+      <div class="temei-slot" data-pas="trimestrial,registre"></div>
         <select id="livrabileLuna" class="period luna-req" aria-label="Luna"></select>
         <select id="livrabileAn" class="period an" aria-label="Anul"></select>
       </div>
@@ -1162,6 +1169,7 @@
       <div class="toolbar">
         <h2>🗄 SAF-T — Declarația informativă D406</h2>
         <div class="spacer"></div>
+      <div class="temei-slot" data-pas="saft"></div>
         <select id="saftLuna" class="period luna-req" aria-label="Luna"></select>
         <select id="saftAn" class="period an" aria-label="Anul"></select>
       </div>
@@ -1306,6 +1314,7 @@
       <div class="toolbar">
         <h2>🏢 Mijloace fixe (amortizare)</h2>
         <div class="spacer"></div>
+      <div class="temei-slot" data-pas="amortizare"></div>
         <select id="mfLuna" class="period luna-req" aria-label="Luna"></select>
         <select id="mfAn" class="period an" aria-label="Anul"></select>
         <button id="mfDeprec" class="btn primary">Înregistrează amortizarea lunii</button>
@@ -1920,6 +1929,15 @@ Cu stimă,
       <nav id="ghidMenu" class="erp-menu ghid-menu" aria-label="Cuprinsul ghidului"></nav>
       <div id="ghidPagina" class="hidden"></div>
       <div id="ghidAcasa">
+      <!-- Ciclul contabil, cu temeiul fiecarui pas. Se CONSTRUIESTE din `/api/temei-legal`
+           (src/temeiLegal.js), aceeasi sursa din care citesc si sloturile de pe ecranele de lucru —
+           o lista scrisa aici ar drifta fata de ele. -->
+      <div class="card" id="cicluCard">
+        <div class="toolbar"><h2>⚖️ Ciclul contabil și temeiul legal</h2><div class="spacer"></div></div>
+        <p class="lead">Ce ai de făcut, în ordine, și <b>pe ce lege</b> se sprijină fiecare pas. Aceleași trimiteri apar și pe ecranele unde lucrezi efectiv, sub pasul respectiv.</p>
+        <p class="muted">Trimiterile sunt <b>reper de orientare, nu consultanță</b>: legislația se modifică, iar răspunderea pentru aplicarea ei rămâne a contabilului (chiar Legea contabilității nr. 82/1991, art. 10–11). Termenele de depunere și cotele <b>nu</b> sunt scrise aici — se văd în „Declarații ANAF", respectiv în Setări → parametri fiscali, ca să existe o singură sursă pentru ele.</p>
+        <div id="cicluView"></div>
+      </div>
       <div class="card howto">
         <div class="toolbar"><h2 data-u="u73">📖 Cum folosești aplicația — pas cu pas</h2><div class="spacer" data-u="u46"></div><button id="tourReplay" class="btn small" type="button">🧭 Reia turul meniului</button></div>
         <p class="lead">Pe scurt: <b>aduci documentele în aplicație</b> (le încarci sau le emiți) → aplicația <b>scrie singură înregistrarea contabilă</b> pentru fiecare (în contabilitate se numește <i>articol contabil</i>, dar nu trebuie să știi cum se face) → din ele se construiesc singure <b>registrele, balanța, TVA-ul și declarațiile</b>. Tu doar verifici și confirmi.</p>
@@ -2711,6 +2729,7 @@ Cu stimă,
       <div class="toolbar">
         <h2>📁 Arhivă documente</h2>
         <div class="spacer"></div>
+      <div class="temei-slot" data-pas="pastrare"></div>
         <select id="arhivaLuna" class="period luna" aria-label="Luna"></select>
         <select id="arhivaAn" class="period an" aria-label="Anul"></select>
       </div>
