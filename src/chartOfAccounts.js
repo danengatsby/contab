@@ -47,6 +47,18 @@ const ACCOUNTS = [
   { cod: '129',  nume: 'Repartizarea profitului', clasa: 1, tip: 'A' },
   { cod: '1621', nume: 'Credite bancare pe termen lung', clasa: 1, tip: 'P' },
   { cod: '151',  nume: 'Provizioane pentru riscuri și cheltuieli', clasa: 1, tip: 'P' },
+  // Provizioanele pe FELUL lor. Sinteticul singur nu ajunge: art. 26 alin. (1) lit. b) face
+  // deductibile DOAR provizioanele pentru garantii de buna executie acordate clientilor, restul
+  // sunt nedeductibile. Cat timp toate stateau pe „151", regula fiscala nu avea cum sa le
+  // deosebeasca — si le trata pe toate ca nedeductibile, deci firmele care acorda garantii (in
+  // aplicatie exista un grup intreg „Constructii", cu garantii retinute) plateau impozit in plus.
+  { cod: '1511', nume: 'Provizioane pentru litigii', clasa: 1, tip: 'P' },
+  { cod: '1512', nume: 'Provizioane pentru garanții acordate clienților', clasa: 1, tip: 'P' },
+  { cod: '1513', nume: 'Provizioane pentru dezafectare imobilizări corporale', clasa: 1, tip: 'P' },
+  { cod: '1514', nume: 'Provizioane pentru restructurare', clasa: 1, tip: 'P' },
+  { cod: '1515', nume: 'Provizioane pentru pensii și obligații similare', clasa: 1, tip: 'P' },
+  { cod: '1516', nume: 'Provizioane pentru impozite', clasa: 1, tip: 'P' },
+  { cod: '1518', nume: 'Alte provizioane', clasa: 1, tip: 'P' },
   { cod: '167',  nume: 'Alte împrumuturi și datorii asimilate (leasing)', clasa: 1, tip: 'P' },
   { cod: '1687', nume: 'Dobânzi aferente altor împrumuturi', clasa: 1, tip: 'P' },
 

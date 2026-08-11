@@ -43,19 +43,43 @@ module.exports = [
   },
 
   // ───────────────────── PROVIZIOANE (151) ─────────────────────
+  // FELUL provizionului se alege EXPLICIT, fiindca decide deductibilitatea: art. 26 alin. (1)
+  // lit. b) face deductibile numai provizioanele pentru garantii de buna executie acordate
+  // clientilor (1512); restul sunt nedeductibile. Cat timp toate mergeau pe sinteticul „151",
+  // regula fiscala nu avea cum sa le deosebeasca si le trata pe toate ca nedeductibile — o firma
+  // de constructii platea impozit in plus. Implicit ramane 1518 „Alte provizioane": prudent, adica
+  // nedeductibil, deci o alegere neatenta nu produce o deducere nemeritata.
   {
     id: 'provizion_constituire',
-    nume: 'Constituire provizion pentru riscuri si cheltuieli (6812 = 151)',
+    nume: 'Constituire provizion pentru riscuri si cheltuieli (6812 = 151x)',
     grup: 'Provizioane',
-    fields: [F.data, F.document, F.explicatie, { name: 'suma', label: 'Suma provizionului', type: 'number', required: true }],
-    build: (d) => [L('6812', '151', d.suma, d.explicatie || 'Constituire provizion pentru riscuri și cheltuieli')],
+    fields: [F.data, F.document, F.explicatie,
+      { name: 'contProvizion', label: 'Felul provizionului (contul)', type: 'account', default: '1518', required: true },
+      { name: 'suma', label: 'Suma provizionului', type: 'number', required: true }],
+    build: (d) => [L('6812', d.contProvizion || '1518', d.suma, d.explicatie || 'Constituire provizion pentru riscuri și cheltuieli')],
   },
   {
     id: 'provizion_reluare',
-    nume: 'Reluare/anulare provizion (151 = 7812)',
+    nume: 'Reluare/anulare provizion (151x = 7812)',
+    grup: 'Provizioane',
+    fields: [F.data, F.document, F.explicatie,
+      { name: 'contProvizion', label: 'Felul provizionului (contul)', type: 'account', default: '1518', required: true },
+      { name: 'suma', label: 'Suma reluata', type: 'number', required: true }],
+    build: (d) => [L(d.contProvizion || '1518', '7812', d.suma, d.explicatie || 'Reluare provizion devenit fără obiect')],
+  },
+  {
+    id: 'provizion_garantii_constituire',
+    nume: 'Constituire provizion pentru garantii de buna executie (6812 = 1512) — DEDUCTIBIL',
+    grup: 'Provizioane',
+    fields: [F.data, F.document, F.explicatie, { name: 'suma', label: 'Suma provizionului', type: 'number', required: true }],
+    build: (d) => [L('6812', '1512', d.suma, d.explicatie || 'Provizion pentru garanții de bună execuție acordate clienților')],
+  },
+  {
+    id: 'provizion_garantii_reluare',
+    nume: 'Reluare provizion de garantii (1512 = 7812) — venit IMPOZABIL',
     grup: 'Provizioane',
     fields: [F.data, F.document, F.explicatie, { name: 'suma', label: 'Suma reluata', type: 'number', required: true }],
-    build: (d) => [L('151', '7812', d.suma, d.explicatie || 'Reluare provizion devenit fără obiect')],
+    build: (d) => [L('1512', '7812', d.suma, d.explicatie || 'Reluarea provizionului de garanții (perioada de garanție a expirat)')],
   },
 
   // ───────────────────── AJUSTARI PENTRU CREANTE INCERTE (491) ─────────────────────

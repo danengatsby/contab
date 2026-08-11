@@ -1047,6 +1047,36 @@ function ajustariDepreciere(db, year, panaLa) {
   return out;
 }
 
+/**
+ * Provizioanele anului, sparte in DEDUCTIBILE (garantii de buna executie, cont 1512) si
+ * nedeductibile, dupa contul din contrapartida liniei. Acelasi tipar ca la ajustarile de
+ * depreciere: contul de cheltuiala 6812 e comun, deci incadrarea nu se poate citi din rulajul lui.
+ */
+function provizioane(db, year, panaLa) {
+  const limita = panaLa ? String(panaLa).slice(0, 7) : null;
+  const gol = () => ({ cheltuiala: 0, venit: 0 });
+  const out = { deductibile: gol(), nedeductibile: gol() };
+  for (const e of acc.postedEntries(db)) {
+    const p = String(e.period || periodOf(e.data));
+    if (!p.startsWith(String(year))) continue;
+    if (limita && p > limita) continue;
+    for (const l of (e.lines || [])) {
+      const debit = String(l.debit || ''); const credit = String(l.credit || '');
+      const suma = round2(Number(l.suma) || 0);
+      if (!suma) continue;
+      if (/^6812/.test(debit) && /^15/.test(credit)) {
+        out[deduct.provizionDeductibil(credit) ? 'deductibile' : 'nedeductibile'].cheltuiala += suma;
+      } else if (/^7812/.test(credit) && /^15/.test(debit)) {
+        out[deduct.provizionDeductibil(debit) ? 'deductibile' : 'nedeductibile'].venit += suma;
+      }
+    }
+  }
+  for (const k of Object.keys(out)) {
+    out[k].cheltuiala = round2(out[k].cheltuiala); out[k].venit = round2(out[k].venit);
+  }
+  return out;
+}
+
 /** Registrul de evidenta fiscala: trecerea de la rezultatul contabil la cel fiscal. */
 function registruFiscal(db, year, cota, opts) {
   opts = opts || {};
@@ -1070,10 +1100,15 @@ function registruFiscal(db, year, cota, opts) {
   // Stocurile si imobilizarile: integral nedeductibile, cu simetricul lor la venituri.
   const nedAjust = deduct.ajustariNedeductibile(splitAjust);
   for (const x of nedAjust.randuri) { fixeRez.randuri.push(x); fixeRez.total = round2(fixeRez.total + x.nedeductibil); }
+  // Provizioanele: garantiile de buna executie (1512) sunt deductibile, restul nu (art. 26(1)(b)).
+  const splitProv = provizioane(db, year);
+  const provRez = deduct.provizioane(splitProv, r);
+  for (const x of provRez.randuri) { fixeRez.randuri.push(x); fixeRez.total = round2(fixeRez.total + x.nedeductibil); }
   const cheltNeded = fixeRez.randuri.map((x) => ({ cod: x.cont, nume: x.regula, baza: x.cheltuit, pct: x.pct, suma: x.nedeductibil }));
   const totalNeded = fixeRez.total;
   const neimpRez = deduct.neimpozabile(r, randCreante ? randCreante.pctNedeductibil : null, splitAjust.creante.venit);
   for (const x of nedAjust.randuriNeimpozabile) { neimpRez.randuri.push(x); neimpRez.total = round2(neimpRez.total + x.neimpozabil); }
+  for (const x of provRez.randuriNeimpozabile) { neimpRez.randuri.push(x); neimpRez.total = round2(neimpRez.total + x.neimpozabil); }
   const venituriList = neimpRez.randuri.map((x) => ({ cod: x.cont, nume: x.regula, baza: x.realizat, pct: x.pct, suma: x.neimpozabil }));
   const venituriNeimpozabile = neimpRez.total;
   // Amortizare: contabila (rulajul REAL al contului 6811) vs fiscala (planul fiscal al fiecarui
@@ -1100,6 +1135,7 @@ function registruFiscal(db, year, cota, opts) {
     cheltLipsaNeimputabila: cheltuieliLipsaNeimputabila(db, year),
     ajustariCreanteBaza: bazaCreante, // aceeasi baza ca randul de mai sus: art. 40^2 pleaca de la rezultatul fiscal
     ajustariDepreciere: splitAjust,
+    provizioane: splitProv,
     cheltImpozitProfit: r['691'] ? round2(r['691'].d - r['691'].c) : 0,
     amortizare: amortDif,
     amortizareFiscala: amortDif.fiscala, // baza art. 40^2 foloseste amortizarea FISCALA
@@ -1710,4 +1746,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, ajustariDepreciere, CONTURI_TREZORERIE };
+module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, ajustariDepreciere, provizioane, CONTURI_TREZORERIE };

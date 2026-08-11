@@ -78,6 +78,22 @@
   erau două tabele, registrul și declarația depusă raportau impozite diferite pe aceleași conturi.
   Cele două câmpuri de ajustare manuală din „Închideri” sunt **suprascrieri**: lăsate goale, sumele
   se calculează din conturi; un `0` tastat înseamnă „zero, exact”.
+- **Provizioanele nu sunt toate nedeductibile.** Art. 26 alin. (1) lit. b) face deductibile
+  provizioanele pentru **garanții de bună execuție acordate clienților**. Regula veche trata tot
+  contul 6812 ca nedeductibil, deci o firmă de construcții — profilul căruia aplicația îi dedică un
+  grup întreg de documente, cu garanții reținute și restituite — plătea impozit în plus: pe un
+  provizion de 30.000 lei, **4.800 lei** la cota de 16%. Ca la 6814, încadrarea se citește din
+  **contrapartidă**, nu din contul de cheltuială: `1512` = garanții (deductibil), restul 151x = nu.
+  Planul a primit 1511–1518; implicitul monografiei generice e **1518** („Alte provizioane"), adică
+  prudent — o alegere neatentă nu produce o deducere nemeritată.
+  **Simetria merge în ambele sensuri** (art. 23 lit. d): reluarea unui provizion nedeductibil nu e
+  venit impozabil, dar reluarea unuia **deductibil este**. Tratate la fel, provizionul de garanții
+  ar fi dedus la constituire și niciodată impozitat la reluare — o deducere definitivă dintr-o
+  operațiune care se anulează singură.
+  *Limită neverificată automat, scrisă în nota rândului:* deducerea se acordă pentru bunurile
+  livrate și lucrările executate **în cursul trimestrului**, deci cuantumul depinde de livrările
+  perioadei. Nu se poate deriva din conturi, așa că nu se plafonează automat — un plafon inventat ar
+  arăta ca o cifră verificată.
 - **Ajustările pentru depreciere** (39x stocuri, 29x imobilizări) — urmarea contabilă a
   **inventarierii**. Când valoarea de inventar e sub cea contabilă, minusul nu se scoate din cont:
   se înregistrează o ajustare, reversibilă, care lasă valoarea de intrare neatinsă. Lipseau complet
