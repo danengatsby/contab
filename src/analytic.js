@@ -3,6 +3,11 @@
 const { round2 } = require('./util');
 const coa = require('./chartOfAccounts');
 const { postedEntries } = require('./accounting'); // registrele analitice numara doar articole postate
+// Pragul de vechime cu efect FISCAL (art. 26) se citeste LA RULARE din `fiscal.FISCAL`, nu din
+// fiscalConfig direct: acolo ajung si suprascrierile din Setari, iar o valoare capturata la import
+// ar ramane cea implicita pentru firmele care si-au schimbat parametrii. Acelasi tipar ca la
+// plafonul auto din `assets.js`.
+const fiscal = require('./fiscal');
 
 // Conturile de CREANTE si de DATORII pe partener — SURSA UNICA a perimetrului. Le folosesc si
 // vechimea soldurilor (aging, mai jos), si fisele de partener (reconcile.js). Cat timp fiecare
@@ -168,7 +173,7 @@ function aging(db, asOf) {
     for (const r of map.values()) {
       r.charges.sort((a, b) => (a.date < b.date ? -1 : 1));
       let paid = r.paid;
-      const b = { b0_30: 0, b31_60: 0, b61_90: 0, b90plus: 0 };
+      const b = { b0_30: 0, b31_60: 0, b61_90: 0, b90plus: 0, b270plus: 0 };
       let total = 0;
       for (const c of r.charges) {
         let open = c.amount;
@@ -177,6 +182,12 @@ function aging(db, asOf) {
         const age = Math.floor((ref - new Date(c.date)) / 86400000);
         const k = age <= 30 ? 'b0_30' : age <= 60 ? 'b31_60' : age <= 90 ? 'b61_90' : 'b90plus';
         b[k] = round2(b[k] + open);
+        // `b270plus` e SUBMULTIME a lui `b90plus`, nu o grupa noua alaturi de ele — deliberat.
+        // Cele patru grupe sunt disjuncte si se aduna la total; a taia `b90plus` in doua ar fi
+        // schimbat scadentarul afisat (dashboard, PDF, CSV, interfata) pentru o nevoie FISCALA.
+        // Pragul de 270 de zile e cel din art. 26 alin. (1) lit. c) Cod fiscal, singura limita de
+        // vechime cu efect fiscal; restul grupelor sunt de gestiune, nu de lege.
+        if (age > (Number(fiscal.FISCAL.ajustariCreanteZile) || 270)) b.b270plus = round2(b.b270plus + open);
         total = round2(total + open);
       }
       if (total > 0.005) out.push({ partener: r.partener, cui: r.cui, total, ...b });
@@ -187,7 +198,7 @@ function aging(db, asOf) {
   const clienti = build(CONTURI_CREANTE, true);
   const furnizori = build(CONTURI_DATORII, false);
   const sum = (list) => {
-    const t = { total: 0, b0_30: 0, b31_60: 0, b61_90: 0, b90plus: 0 };
+    const t = { total: 0, b0_30: 0, b31_60: 0, b61_90: 0, b90plus: 0, b270plus: 0 };
     for (const x of list) for (const k of Object.keys(t)) t[k] = round2(t[k] + x[k]);
     return t;
   };

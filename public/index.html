@@ -1265,7 +1265,12 @@
           <h3>Ajustare pentru deprecierea creanțelor</h3>
           <span class="row" data-u="u95"><input id="provPct" type="number" min="0" max="100" value="100" data-u="u96" title="Procent provizion" /> %<button id="provPost" class="btn small primary">Înregistrează ajustarea</button></span>
         </div>
-        <p class="muted adv">Pe baza creanțelor mai vechi de 90 de zile (din aging). Înregistrează <b>6814 = 491</b> (sau reluare <b>491 = 7814</b> dacă ajustarea existentă e prea mare). Deductibilitatea fiscală (ex. 30% la &gt;270 zile) se reflectă separat în registrul de evidență fiscală.</p>
+        <p class="muted adv">Pe baza creanțelor mai vechi de 90 de zile (din aging). Înregistrează <b>6814 = 491</b> (sau reluare <b>491 = 7814</b> dacă ajustarea existentă e prea mare). <b>Ajustarea contabilă și baza fiscală sunt două lucruri diferite:</b> deprecierea se înregistrează de la 90 de zile (judecată contabilă), dar cei 30% se deduc doar din partea care îndeplinește <i>cumulativ</i> condițiile art. 26 alin. (1) lit. c) — peste 270 de zile de la scadență, negarantată, debitor neafiliat.</p>
+        <!-- Confirmarea e o DECLARAȚIE a contabilului, nu o opțiune de calcul: aplicația nu ține
+             scadența creanțelor, deci vechimea o măsoară de la data documentului și poate doar să
+             propună candidați. Nebifată, baza fiscală rămâne zero și ajustarea e integral
+             nedeductibilă — „nu știu" nu cade în „se deduce". -->
+        <label class="check"><input type="checkbox" id="provArt26" /> Confirm că aceste creanțe îndeplinesc cumulativ condițiile art. 26 alin. (1) lit. c): peste 270 de zile de la <b>scadență</b>, negarantate de altă persoană, datorate de persoane neafiliate. Fără confirmare, ajustarea se înregistrează ca <b>integral nedeductibilă</b>.</label>
         <div id="provView"></div>
       </div>
       <div id="analyticList" class="adv"></div>

@@ -83,18 +83,73 @@ function rand(regula, temei, cont, baza, plafon, cheltuit, nedeductibil, nota, d
 const FIXE = {
   6581: { nume: 'Despagubiri, amenzi si penalitati', pct: 100, temei: 'Art. 25(4)(b)' },
   635: { nume: 'Alte impozite si taxe nedeductibile', pct: 100, temei: 'Art. 25(4)(a)' },
-  6814: { nume: 'Ajustari pentru deprecierea creantelor (deductibil 30%, art. 26)', pct: 70, temei: 'Art. 26(1)(c)' },
   654: { nume: 'Pierderi din creante neincasabile (nedeductibil fara conditii, art. 26)', pct: 100, temei: 'Art. 25(4)(h)' },
   6812: { nume: 'Provizioane pentru riscuri si cheltuieli (nedeductibile, art. 26)', pct: 100, temei: 'Art. 26(1)' },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  AJUSTARILE PENTRU DEPRECIEREA CREANTELOR (art. 26 alin. (1) lit. c)
+//
+//  NU e un procent fix pe cont, si tocmai de aceea a iesit din tabelul `FIXE`. Regula era
+//  `6814: pct 70`, adica 30% deducere pe TOT rulajul contului. Dar cei 30% se acorda numai
+//  creantelor care indeplinesc CUMULATIV trei conditii: peste 270 de zile de la scadenta,
+//  negarantate de alta persoana, datorate de o persoana neafiliata. Ajustarea contabila se
+//  inregistreaza insa mult mai devreme (aplicatia o propune de la 90 de zile, ca judecata de
+//  depreciere), deci procentul orb acorda deducere si acolo unde nu exista drept: impozit
+//  SUBDECLARAT, adica exact eroarea care se vede abia la control.
+//
+//  Baza eligibila vine ca marcaj de pe articol (`bazaArt26`, insumat de
+//  `reporting.ajustariCreanteArt26`) — la fel ca `cheltAuto` si `cheltLipsaNeimputabila`, fiindca
+//  incadrarea nu se poate citi din conturi: acelasi cont poarta si ajustari care se califica, si
+//  ajustari care nu. Lipsa marcajului da baza ZERO, deci nedeductibilitate integrala.
+// ─────────────────────────────────────────────────────────────────────────────
+function ajustariCreante(rulaj, bazaEligibila, cfg) {
+  const cheltuit = cheltuiala(rulaj, '6814');
+  if (cheltuit <= 0) return null;
+  const pctDed = Number((cfg || {}).ajustariCreantePct || 0);
+  // Baza eligibila nu poate depasi ajustarea inregistrata: altfel un marcaj gresit ar produce o
+  // deducere mai mare decat cheltuiala din care se naste.
+  const baza = Math.max(0, Math.min(round2(Number(bazaEligibila) || 0), cheltuit));
+  const deductibil = round2((baza * pctDed) / 100);
+  const nedeductibil = Math.max(0, round2(cheltuit - deductibil));
+  const r = rand('Ajustari pentru deprecierea creantelor', 'Art. 26(1)(c)', '6814',
+    baza, deductibil, cheltuit, nedeductibil,
+    baza > 0
+      ? 'Deductibile ' + pctDed + '% din ajustarea aferenta creantelor eligibile (' + baza + ' lei): peste '
+        + (Number((cfg || {}).ajustariCreanteZile) || 270) + ' de zile de la scadenta, negarantate, debitor neafiliat.'
+      : 'Integral nedeductibile: nicio creanta confirmata ca indeplinind cumulativ conditiile art. 26 alin. (1) lit. c).',
+    D101_FIXE);
+  // Proportia nedeductibila ramane pe rand: veniturile din reluare (7814) o OGLINDESC, iar
+  // recalcularea ei separat ar putea diverge.
+  r.pctNedeductibil = cheltuit > 0 ? round2((nedeductibil / cheltuit) * 100) : 100;
+  // `pct` pastreaza forma ISTORICA a randului ({cod, nume, baza, pct, suma}), citita de PDF-ul
+  // registrului fiscal si de tabelul din interfata. Aici nu mai e o cota din lege, ci proportia
+  // REZULTATA — de aceea exista si `pctNedeductibil`, cu nume care spune ce e.
+  r.pct = r.pctNedeductibil;
+  r.bazaEligibila = baza;
+  return r;
+}
 
 // Simetricul la venituri (art. 23): reluarea unei cheltuieli care NU a fost deductibila nu poate
 // fi venit impozabil — altfel suma s-ar impozita o data prin nedeductibilitate si a doua oara la
 // reluare. `pct` = cat din venit e NEIMPOZABIL, ales in oglinda cu procentul cheltuielii.
 const NEIMPOZABILE = {
-  7814: { nume: 'Venituri din reluarea ajustarilor pentru creante (partea nedeductibila)', pct: 70, temei: 'Art. 23(d)' },
   7812: { nume: 'Venituri din reluarea provizioanelor nedeductibile', pct: 100, temei: 'Art. 23(d)' },
 };
+
+// 7814 sta separat fiindca procentul lui NU e fix: oglindeste exact partea nedeductibila a
+// ajustarii din anul respectiv (vezi `ajustariCreante`). Cand nu s-a inregistrat nicio ajustare —
+// deci nu exista proportie de oglindit — reluarea e integral NEIMPOZABILA: fara deducere luata
+// candva, impozitarea reluarii ar taxa o suma care n-a fost niciodata scazuta. Perechea implicita
+// e deci (cheltuiala integral nedeductibila, venit integral neimpozabil), consistenta prin
+// constructie.
+//
+// LIMITA CUNOSCUTA: proportia e cea a ANULUI CURENT. O reluare din 2027 a unei ajustari
+// constituite in 2026, cu alta proportie, se oglindeste cu proportia lui 2027. Urmarirea exacta ar
+// cere evidenta pe fiecare creanta a sumei deduse candva; pana atunci, aproximarea e strict mai
+// buna decat procentul fix de dinainte si e conservatoare acolo unde conteaza (fara deducere
+// inregistrata, reluarea nu se impoziteaza).
+const NEIMPOZABIL_RELUARE_CREANTE = { cont: '7814', nume: 'Venituri din reluarea ajustarilor pentru creante (partea nedeductibila)', temei: 'Art. 23(d)' };
 
 // Randul D101 al procentelor fixe. Ramane P33 „Alte cheltuieli nedeductibile" pana cand
 // formularul oficial confirma un rand dedicat (provizioanele si ajustarile peste limita au
@@ -119,14 +174,26 @@ function fixe(rulaj) {
   return { randuri, total: round2(randuri.reduce((s, r) => s + r.nedeductibil, 0)) };
 }
 
-/** Veniturile neimpozabile cu procent fix pe cont (se SCAD din baza, nu se aduna). */
-function neimpozabile(rulaj) {
+/** Veniturile neimpozabile care se SCAD din baza (nu se aduna).
+ *  `pctReluareCreante` = proportia nedeductibila a ajustarii anului, oglindita pe 7814; lipsa ei
+ *  inseamna „nicio ajustare inregistrata", deci reluarea e integral neimpozabila. */
+function neimpozabile(rulaj, pctReluareCreante) {
   const randuri = [];
   for (const [cod, cfg] of Object.entries(NEIMPOZABILE)) {
     const realizat = venit(rulaj, cod);
     if (realizat <= 0) continue;
     const suma = round2((realizat * cfg.pct) / 100);
     randuri.push({ regula: cfg.nume, temei: cfg.temei, cont: cod, pct: cfg.pct, realizat, neimpozabil: suma });
+  }
+  const reluare = venit(rulaj, NEIMPOZABIL_RELUARE_CREANTE.cont);
+  if (reluare > 0) {
+    const pct = (pctReluareCreante == null || !Number.isFinite(Number(pctReluareCreante)))
+      ? 100 : Math.max(0, Math.min(100, Number(pctReluareCreante)));
+    randuri.push({
+      regula: NEIMPOZABIL_RELUARE_CREANTE.nume, temei: NEIMPOZABIL_RELUARE_CREANTE.temei,
+      cont: NEIMPOZABIL_RELUARE_CREANTE.cont, pct, realizat: reluare,
+      neimpozabil: round2((reluare * pct) / 100),
+    });
   }
   return { randuri, total: round2(randuri.reduce((s, r) => s + r.neimpozabil, 0)) };
 }
@@ -198,7 +265,13 @@ function ajustari(i, cfg) {
   // procent fix si ce venit nu se impoziteaza. Calculate dupa, plafonul de 30% ar iesi din alta
   // baza decat cea a registrului fiscal — adica exact divergenta pe care modulul o inchide.
   const fixeRez = fixe(rulaj);
-  const neimpRez = neimpozabile(rulaj);
+  // Ajustarile de creante intra tot aici, printre procentele fixe (acelasi rand D101, aceeasi
+  // faza), dar cu baza din marcaj, nu cu procent orb. Randul intra in `randuriFixe` ca registrul
+  // fiscal sa-l afiseze in acelasi tabel; ordinea fata de neimpozabile conteaza, fiindcă
+  // proportia lui nedeductibila e cea oglindita pe 7814.
+  const randCreante = ajustariCreante(rulaj, i.ajustariCreanteBaza, cfg);
+  if (randCreante) { fixeRez.randuri.push(randCreante); fixeRez.total = round2(fixeRez.total + randCreante.nedeductibil); }
+  const neimpRez = neimpozabile(rulaj, randCreante ? randCreante.pctNedeductibil : null);
   const randuri = fixeRez.randuri.slice(); // randurile cu plafon se adauga in continuare
 
   // ── Protocol (art. 25(3)(a)) ──────────────────────────────────────────────
@@ -398,4 +471,5 @@ function credit(i, cfg) {
 }
 
 module.exports = {
-  mapareD101, ajustari, credit, fixe, neimpozabile, CONT, FIXE, NEIMPOZABILE, cheltuiala, venit };
+  mapareD101, ajustari, credit, fixe, neimpozabile, ajustariCreante,
+  CONT, FIXE, NEIMPOZABILE, cheltuiala, venit };

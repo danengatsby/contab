@@ -45,6 +45,10 @@
   (`?asOf=`). `/api/aging`, `/pdf/aging`, `/csv/aging`, card în tab-ul Analitic.
   Pe baza creanțelor &gt;90 zile se poate înregistra **ajustarea pentru deprecierea creanțelor**
   (`6814 = 491`, sau reluare `491 = 7814` la diminuare), cu procent configurabil; `/api/provizion`.
+  Vechimea are **două praguri, cu roluri diferite**: 90 de zile pentru ajustarea *contabilă*
+  (judecată de depreciere) și grupa `b270plus` pentru *baza fiscală* (art. 26 alin. (1) lit. c).
+  A doua e o **submulțime** a lui `b90plus`, nu o grupă alături de ele: cele patru grupe rămân
+  disjuncte și se adună la total, ca scadențarul afișat să nu se schimbe pentru o nevoie fiscală.
   Creanțele neîncasabile se pot **scoate din evidență** direct din scadențar (buton „scoate"):
   `654 = 4111` (pierdere) + reluarea automată a ajustării aferente `491 = 7814`; `/api/writeoff`.
 - `src/statements.js` — cont de profit și pierdere, bilanț.

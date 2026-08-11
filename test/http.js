@@ -1032,6 +1032,26 @@ async function main() {
       ok('niciun cont de amortizare orfan in articol', linii.every((l) => /^28(0|1)\d?$/.test(l.contAmortizare)));
     }
 
+    // ── Art. 26(1)(c): baza fiscala a ajustarii de creante se marcheaza, nu se presupune ──────
+    {
+      const prov = await req('GET', '/api/provizion?pct=100', { cookie: c1 });
+      ok('provizion: raportul poarta sectiunea art. 26', prov.json && prov.json.art26
+        && typeof prov.json.art26.ajustareEligibila === 'number');
+      ok('...cu procentul si pragul din configuratia fiscala', prov.json.art26.pctDeductibil === 30);
+      ok('...si cu avertismentul despre vechimea masurata de la data documentului',
+        /scaden/i.test(prov.json.art26.nota));
+      ok('fiecare rand spune cat e eligibil, nu doar cat e vechi',
+        prov.json.detalii.every((c) => typeof c.eligibilArt26 === 'number' && Array.isArray(c.excluderi)));
+      // postarea FARA confirmare nu are voie sa lase marcaj fiscal pe articol
+      const post1 = await req('POST', '/api/provizion', { cookie: c1, body: { pct: 100 } });
+      if (post1.json && post1.json.ok && post1.json.result && Math.abs(post1.json.result.deAjustat) >= 0.005) {
+        const lst = await req('GET', '/api/entries?limit=500', { cookie: c1 });
+        const items = (lst.json && lst.json.items) || lst.json || [];
+        const art = items.filter((e) => e.tip === 'provizion_creante').pop();
+        if (art) ok('ajustare postata fara confirmare -> fara marcaj art. 26', !art.bazaArt26);
+      }
+    }
+
     // ── Salarizare: angajat, stat de plata (posteaza articol), plata neta ──
     eq('angajat fara nume -> 400', (await req('POST', '/api/angajati', { cookie: c1, body: { salariuBrut: 5000 } })).status, 400);
     const mkAng = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Ion Test', salariuBrut: 5000, functie: 'Operator' } });

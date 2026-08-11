@@ -70,6 +70,14 @@ function upsertPartner(fid, b) {
     // datele care decid deductibilitatea (inactiv, TVA, TVA la incasare). Se schimba doar
     // printr-o verificare noua.
     anaf: b.anaf !== undefined ? b.anaf : (prev.anaf || null),
+    // Cele doua conditii din art. 26 alin. (1) lit. c) pe care aplicatia LE POATE tine minte:
+    // creanta sa nu fie garantata de alta persoana si debitorul sa nu fie afiliat. A treia
+    // (vechimea de peste 270 de zile) se calculeaza din scadentar. Se pastreaza la fel ca IBAN-ul
+    // si verificarea ANAF: o corectare de adresa nu are voie sa stearga tacit un marcaj care
+    // decide deductibilitatea. Absenta lor NU inseamna „indeplineste conditiile" — vezi
+    // `computeProvizion`: fara confirmare explicita, baza fiscala ramane zero.
+    afiliat: b.afiliat !== undefined ? !!b.afiliat : !!prev.afiliat,
+    creanteGarantate: b.creanteGarantate !== undefined ? !!b.creanteGarantate : !!prev.creanteGarantate,
   };
   db.save();
   return { partner: d.partners[fid][key] };

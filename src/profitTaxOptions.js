@@ -71,6 +71,10 @@ function construieste(view, year, src) {
     plafoane: fiscal.FISCAL,
     cheltAuto: rep.cheltuieliAuto(view, year),
     cheltLipsaNeimputabila: rep.cheltuieliLipsaNeimputabila(view, year),
+    // Baza ajustarilor de creante care indeplinesc conditiile art. 26 alin. (1) lit. c). Trece
+    // PRIN AICI, ca `cheltAuto`: altfel declaratia ar recalcula fara ea si ar iesi alt impozit
+    // decat nota contabila — exact divergenta pe care modulul acesta exista ca s-o inchida.
+    ajustariCreanteBaza: rep.ajustariCreanteArt26(view, year),
     // Amortizarea contabila vine din rulajul REAL al contului 6811, nu din plan.
     amortizare: assets.depreciationDifference(view.assets || [], year, rulajCont(view, year, '6811')),
     cursEur: Number(src.cursEur) || Number(firma.cursEur) || 0,

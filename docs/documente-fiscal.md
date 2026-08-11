@@ -49,9 +49,31 @@
 - **Registrul de evidență fiscală** (card în „Situații financiare”): trecerea de la rezultatul
   contabil la cel fiscal → impozit pe profit 16% vs. micro (aceeași bază și cotă ca D100); export PDF. Aplică **deductibilitatea
   parțială** (art. 25-28 Cod fiscal): amenzi/penalități (6581) și pierderi din creanțe (654)
-  **nedeductibile 100%**, ajustări pentru deprecierea creanțelor (6814) **nedeductibile 70%**
-  (deductibil 30%), iar reluarea ajustărilor (7814) **neimpozabilă 70%** (simetric). Fiecare rând
-  arată baza × procent. Regulile stau într-un **singur motor** ([`src/deductibilitate.js`](../src/deductibilitate.js)),
+  **nedeductibile 100%**. Fiecare rând arată baza × procent.
+
+  **Ajustările pentru deprecierea creanțelor (6814) NU sunt un procent fix pe cont** — și tocmai
+  aici a fost defectul: regula veche acorda 30% deducere pe *tot* contul, deși art. 26 alin. (1)
+  lit. c) o dă numai creanțelor care îndeplinesc **cumulativ** trei condiții — peste **270 de zile**
+  de la scadență, negarantate de altă persoană, datorate de o persoană neafiliată. Cum ajustarea
+  contabilă se înregistrează mult mai devreme (aplicația o propune de la 90 de zile, ca judecată de
+  depreciere), procentul orb deducea și acolo unde nu exista drept: **impozit subdeclarat**, vizibil
+  abia la control. Astăzi partea deductibilă se calculează din **baza eligibilă**, marcată pe articol
+  (`bazaArt26`, ca `auto50` și `lipsaNeimputabila`) — încadrarea nu se poate citi din conturi,
+  fiindcă același cont poartă și ajustări care se califică, și ajustări care nu. **Lipsa marcajului
+  dă bază zero, deci nedeductibilitate integrală**: „nu știu” nu cade în „se deduce”.
+
+  Marcajul se pune printr-o **confirmare explicită** la înregistrare, nu automat: aplicația nu ține
+  scadența creanțelor, deci măsoară vechimea de la *data documentului* și poate doar să propună
+  candidați — o creanță de 280 de zile de la factură poate avea 250 de la scadență. Cele două
+  condiții pe care aplicația le ține minte stau pe partener (`afiliat`, `creanteGarantate`) și scot
+  partenerul din candidați, cu motivul afișat pe rând.
+
+  Reluarea (7814) **oglindește proporția nedeductibilă a ajustării anului**, nu un procent fix; fără
+  nicio ajustare înregistrată e integral neimpozabilă — altfel s-ar impozita o sumă care n-a fost
+  niciodată scăzută. *Limită cunoscută:* proporția e cea a anului curent, deci o reluare din alt an
+  decât cel al constituirii se oglindește cu proporția anului reluării.
+
+  Regulile stau într-un **singur motor** ([`src/deductibilitate.js`](../src/deductibilitate.js)),
   citit deopotrivă de acest registru și de **nota contabilă 691 = 4411** și de **D101** — cât timp
   erau două tabele, registrul și declarația depusă raportau impozite diferite pe aceleași conturi.
   Cele două câmpuri de ajustare manuală din „Închideri” sunt **suprascrieri**: lăsate goale, sumele

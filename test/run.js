@@ -2806,12 +2806,88 @@ section('Monografii adaugate: cedare mijloc fix, cut-off 408, capital social, cr
   ok('creanta reactivata nu atinge trezoreria',
     !rea.some((l) => /^5/.test(String(l.debit)) || /^5/.test(String(l.credit))));
 
-  // Regimul FISCAL nu se scrie in monografie, dar trebuie sa fie prins de motorul de
-  // nedeductibile pe CONT: 30% deductibil la constituire, simetric la reluare.
+  // Regimul FISCAL nu se scrie in monografie, dar trebuie sa fie prins de motorul de nedeductibile.
+  //
+  // ATENTIE, testul acesta a fost REFACUT: cerea `FIXE['6814'].pct === 70`, adica 30% deducere pe
+  // TOT contul — regula pe care o aplica aplicatia si care era ea insasi defectul. Cei 30% se dau
+  // numai creantelor eligibile (art. 26 alin. (1) lit. c), nu intregii ajustari. Un test verde
+  // poate fi el insusi defectul.
   const ded = require('../src/deductibilitate');
-  eq('6814 e nedeductibil 70% (art. 26)', ded.FIXE['6814'].pct, 70);
   eq('654 e nedeductibil integral (art. 25)', ded.FIXE['654'].pct, 100);
-  eq('7814 e neimpozabil 70%, simetric cu 6814', ded.NEIMPOZABILE['7814'].pct, 70);
+  ok('6814 NU mai e procent fix pe cont', ded.FIXE['6814'] === undefined);
+  ok('7814 NU mai e procent fix pe cont (oglindeste ajustarea anului)', ded.NEIMPOZABILE['7814'] === undefined);
+
+  // ── Art. 26(1)(c): deducerea de 30% NUMAI pe creantele eligibile ──────────────────────────
+  const cfg26 = { ajustariCreantePct: 30, ajustariCreanteZile: 270 };
+  const rulaj26 = (suma) => ({ 6814: { d: suma, c: 0 } });
+  // DEFECTUL REPARAT, cu cifre: o ajustare de 10.000 lei pe creante de 91 de zile. Regula veche
+  // (30% pe tot contul) dadea 3.000 lei deducere la care firma nu avea drept — la 16% impozit,
+  // 480 de lei de impozit subdeclarat pe an, si tot asa in fiecare an.
+  {
+    const fara = ded.ajustariCreante(rulaj26(10000), 0, cfg26);
+    eq('nicio creanta eligibila -> integral nedeductibil', fara.nedeductibil, 10000);
+    eq('...deci deducere zero, nu 3.000', fara.deductibil, 0);
+    const cu = ded.ajustariCreante(rulaj26(10000), 10000, cfg26);
+    eq('toata ajustarea eligibila -> se deduc 30%', cu.deductibil, 3000);
+    eq('...si restul e nedeductibil', cu.nedeductibil, 7000);
+    const partial = ded.ajustariCreante(rulaj26(10000), 4000, cfg26);
+    eq('eligibila partial (4.000 din 10.000) -> deducere 1.200', partial.deductibil, 1200);
+    eq('...nedeductibil 8.800', partial.nedeductibil, 8800);
+    // Un marcaj mai mare decat cheltuiala nu poate produce deducere din nimic.
+    eq('baza plafonata la ajustarea inregistrata', ded.ajustariCreante(rulaj26(1000), 50000, cfg26).deductibil, 300);
+    eq('fara rulaj pe 6814, niciun rand', ded.ajustariCreante({}, 5000, cfg26), null);
+    ok('temeiul e citat pe rand', /26\(1\)\(c\)/.test(cu.temei));
+    ok('nota spune de ce nu se deduce nimic', /nicio creanta/i.test(fara.nota));
+  }
+  // Simetria art. 23(d): reluarea e neimpozabila in ACEEASI proportie in care ajustarea a fost
+  // nedeductibila. Fara nicio ajustare inregistrata, reluarea e integral neimpozabila — altfel
+  // s-ar impozita o suma care n-a fost niciodata dedusa.
+  {
+    const cu = ded.ajustariCreante(rulaj26(10000), 10000, cfg26);   // 70% nedeductibil
+    const n1 = ded.neimpozabile({ 7814: { d: 0, c: 5000 } }, cu.pctNedeductibil);
+    eq('reluare 5.000, oglindita la 70% -> neimpozabil 3.500', n1.total, 3500);
+    const n2 = ded.neimpozabile({ 7814: { d: 0, c: 5000 } }, null);
+    eq('reluare fara ajustare in an -> integral neimpozabila', n2.total, 5000);
+    const fara = ded.ajustariCreante(rulaj26(10000), 0, cfg26);     // 100% nedeductibil
+    eq('perechea conservatoare e consistenta (100% / 100%)',
+      ded.neimpozabile({ 7814: { d: 0, c: 5000 } }, fara.pctNedeductibil).total, 5000);
+  }
+  // Randul pastreaza forma istorica citita de PDF si de interfata
+  {
+    const r26 = ded.ajustariCreante(rulaj26(10000), 4000, cfg26);
+    ok('randul are forma {cont, cheltuit, pct, nedeductibil}',
+      r26.cont === '6814' && r26.cheltuit === 10000 && typeof r26.pct === 'number' && r26.nedeductibil === 8800);
+    eq('pct = proportia REZULTATA, nu o cota din lege', r26.pct, 88);
+  }
+  // Ajustarea intra in `ajustari()` prin marcaj, nu prin cont — deci si in impozitul postat
+  {
+    const cuBaza = ded.ajustari({ rulaj: rulaj26(10000), profitContabil: 50000, ajustariCreanteBaza: 10000 },
+      Object.assign({ impozitProfit: 16 }, cfg26));
+    const faraBaza = ded.ajustari({ rulaj: rulaj26(10000), profitContabil: 50000 },
+      Object.assign({ impozitProfit: 16 }, cfg26));
+    eq('cu baza eligibila: nedeductibil 7.000', cuBaza.totalNedeductibil, 7000);
+    eq('fara marcaj: nedeductibil 10.000 (nu se presupune deducerea)', faraBaza.totalNedeductibil, 10000);
+    ok('randul ajunge in tabelul de procente fixe al registrului',
+      cuBaza.randuriFixe.some((x) => x.cont === '6814'));
+  }
+  // Grupa de vechime care alimenteaza baza fiscala
+  {
+    const an = require('../src/analytic');
+    const azi = new Date();
+    const cuZile = (n) => new Date(azi.getTime() - n * 86400000).toISOString().slice(0, 10);
+    const dbAg = { entries: [
+      { id: 'e1', firmaId: 'f', data: cuZile(300), period: cuZile(300).slice(0, 7), partener: 'VECHI SRL', partenerCui: 'RO1', lines: [{ debit: '4111', credit: '707', suma: 1000 }] },
+      { id: 'e2', firmaId: 'f', data: cuZile(120), period: cuZile(120).slice(0, 7), partener: 'RECENT SRL', partenerCui: 'RO2', lines: [{ debit: '4111', credit: '707', suma: 2000 }] },
+    ], partners: {} };
+    const ag = an.aging(dbAg, null);
+    const vechi = ag.clienti.find((c) => c.cui === 'RO1');
+    const recent = ag.clienti.find((c) => c.cui === 'RO2');
+    eq('creanta de 300 de zile intra in b270plus', vechi.b270plus, 1000);
+    eq('...si ramane si in b90plus (grupa nu s-a taiat in doua)', vechi.b90plus, 1000);
+    eq('creanta de 120 de zile e in b90plus, dar NU in b270plus', recent.b90plus, 2000);
+    eq('...deci nu aduce nicio deducere', recent.b270plus, 0);
+    eq('totalul pe grupe ramane egal cu soldul', Math.round((vechi.total + recent.total) * 100) / 100, 3000);
+  }
 
   // Planul de conturi: fara duplicate (581 aparea de doua ori) si cu toate codurile noi.
   const coduri = coa2.ACCOUNTS.map((a) => a.cod);

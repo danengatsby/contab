@@ -391,19 +391,36 @@ async function renderAging() {
 async function renderProvizion() {
   const pct = $('#provPct').value || 100;
   let p; try { p = await api('/api/provizion?pct=' + pct); } catch (e) { return; }
+  // Coloana „eligibil art. 26" arata DE CE o creanta veche nu aduce deducere: sub 270 de zile,
+  // garantata sau debitor afiliat. Fara ea, contabilul nu poate distinge o baza fiscala mica de
+  // un defect de calcul.
+  const a26 = p.art26 || {};
   const det = p.detalii.length
-    ? `<table><thead><tr><th>Partener</th><th class="num">Creanțe &gt;90 zile</th><th class="num">Provizion ${p.pct}%</th></tr></thead><tbody>${
-      p.detalii.map((c) => `<tr><td>${H(c.partener)}${c.cui ? ' <span class="muted">(' + H(c.cui) + ')</span>' : ''}</td><td class="num">${fmt(c.vechi)}</td><td class="num">${fmt(c.provizion)}</td></tr>`).join('')}</tbody></table>`
+    ? `<table><thead><tr><th>Partener</th><th class="num">Creanțe &gt;90 zile</th><th class="num">Provizion ${p.pct}%</th><th class="num">Eligibil art. 26</th></tr></thead><tbody>${
+      p.detalii.map((c) => `<tr><td>${H(c.partener)}${c.cui ? ' <span class="muted">(' + H(c.cui) + ')</span>' : ''}</td><td class="num">${fmt(c.vechi)}</td><td class="num">${fmt(c.provizion)}</td><td class="num">${
+  c.excluderi && c.excluderi.length ? `<span class="muted">— ${H(c.excluderi.join(', '))}</span>` : fmt(c.eligibilArt26)}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Nicio creanță mai veche de 90 de zile.</p>';
   $('#provView').innerHTML = det + `<table data-u="u23"><tbody>
     <tr><td>Provizion necesar (${p.pct}%)</td><td class="num">${fmt(p.necesar)}</td></tr>
     <tr><td>Ajustare existentă${ac('491')}</td><td class="num">${fmt(p.existent)}</td></tr>
-    <tr class="bold"><td>De înregistrat<span class="adv"> (${provizionDirectie(p.deAjustat)})</span></td><td class="num">${fmt(Math.abs(p.deAjustat))}</td></tr></tbody></table>`;
+    <tr class="bold"><td>De înregistrat<span class="adv"> (${provizionDirectie(p.deAjustat)})</span></td><td class="num">${fmt(Math.abs(p.deAjustat))}</td></tr>
+    <tr><td>Deducere fiscală maximă<span class="adv"> (${a26.pctDeductibil || 30}% din ajustarea eligibilă)</span></td><td class="num">${fmt(a26.deducereMaxima || 0)}</td></tr></tbody></table>`
+    + `<p class="muted">${H(a26.nota || '')}</p>`;
+  // Confirmarea e OPRITA cand nu exista nimic eligibil: altfel ar sugera ca bifa poate produce o
+  // deducere din nimic.
+  const chk = $('#provArt26');
+  if (chk) {
+    chk.disabled = !(a26.ajustareEligibila > 0) || !(p.deAjustat > 0);
+    if (chk.disabled) chk.checked = false;
+  }
 }
 $('#provPct').addEventListener('input', renderProvizion);
 $('#provPost').addEventListener('click', async () => {
   try {
-    const r = await api('/api/provizion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pct: Number($('#provPct').value || 100) }) });
+    // Confirmarea art. 26 pleaca DOAR daca e bifata: fara ea baza fiscala ramane zero, iar
+    // ajustarea e integral nedeductibila. E o declaratie a contabilului, nu o optiune de calcul.
+    const confirmArt26 = !!($('#provArt26') && $('#provArt26').checked);
+    const r = await api('/api/provizion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pct: Number($('#provPct').value || 100), confirmArt26 }) });
     toast(r.message || ('Ajustare înregistrată: ' + fmt(Math.abs(r.result.deAjustat))));
     loadAnalytic();
   } catch (e) { toast(e.message, true); }
