@@ -359,6 +359,85 @@ section('Imobilizari: contul de amortizare, ce nu se amortizeaza, regimul permis
   const fiscalGresit = { cont: '212', cost: 1000, durataLuni: 24, metoda: 'liniara', metodaFiscala: 'accelerata', dataPif: '2026-01-15' };
   ok('metoda FISCALA nepermisa e raportata separat', assets.neconformitati(fiscalGresit).some((m) => /^Planul fiscal/.test(m)));
 
+  // ── A4: INVESTITIILE ULTERIOARE (modernizari), art. 28 alin. (3) ────────────────────────
+  // Nu se putea majora valoarea unui activ existent: contabilul avea doua iesiri, amandoua
+  // gresite — activ nou separat (registrul se umple cu fantome) sau cheltuiala directa (deducere
+  // luata prea devreme, integral). Investitia se recupereaza pe durata RAMASA, din luna
+  // URMATOARE finalizarii.
+  {
+    const baza = { id: 'mfi', cont: '2131', denumire: 'Utilaj', cost: 12000, durataLuni: 60,
+      metoda: 'liniara', dataPif: '2026-01-15' };
+    const cuInv = Object.assign({}, baza, { investitii: [{ id: 'i1', data: '2026-12-20', suma: 6000 }] });
+    const sB = assets.schedule(baza); const sI = assets.schedule(cuInv);
+    const la = (s, p) => (s.find((r) => r.period === p) || {}).amount;
+
+    eq('fara investitie: 200 lei/luna', la(sB, '2026-02'), 200);
+    eq('lunile de DINAINTE de efect raman neatinse', la(sI, '2026-12'), 200);
+    // efectul incepe cu luna urmatoare finalizarii (dec. -> ian.), pe cele 49 de luni ramase
+    eq('luna efectului: 200 + 6000/49', la(sI, '2027-01'), 322.45);
+    eq('durata NU se prelungeste singura', sI.length, sB.length);
+    // invariantul de inchidere: planul recupereaza EXACT valoarea majorata
+    const total = Math.round(sI.reduce((s, r) => s + r.amount, 0) * 100) / 100;
+    eq('planul inchide exact pe cost + investitie', total, 18000);
+    ok('...si nicio rata negativa', sI.every((r) => r.amount >= 0));
+
+    // registrul raporteaza valoarea MAJORATA, nu costul initial
+    const c = assets.compute(cuInv, '2031-01');
+    eq('baza amortizabila include investitia', c.bazaAmortizabila, 18000);
+    eq('valoarea de intrare majorata se arata separat', c.valoareIntrare, 18000);
+    eq('...din care investitii', c.investitii, 6000);
+    eq('la finalul planului nu mai ramane nimic', c.valoareRamasa, 0);
+    ok('...si activul e integral amortizat', c.integralAmortizat);
+    // fara investitii, comportamentul e NESCHIMBAT (nicio regresie pe activele existente)
+    const cB = assets.compute(baza, '2031-01');
+    eq('activ fara investitii: baza neschimbata', cB.bazaAmortizabila, 12000);
+    eq('...si fara camp de investitii', cB.investitii, 0);
+
+    // articolele lunare urmeaza planul recalculat — registrul si notele nu se contrazic
+    eq('amortizarea lunii urmeaza planul nou', assets.monthlyDepreciation([cuInv], '2027-01').total, 322.45);
+    eq('...iar in luna dinainte, pe cel vechi', assets.monthlyDepreciation([cuInv], '2026-12').total, 200);
+
+    // DOUA investitii succesive se cumuleaza, fiecare pe durata ei ramasa
+    const doua = Object.assign({}, baza, { investitii: [
+      { id: 'i1', data: '2026-12-20', suma: 6000 }, { id: 'i2', data: '2028-06-30', suma: 3000 }] });
+    const sD = assets.schedule(doua);
+    eq('doua investitii: planul inchide pe 21.000',
+      Math.round(sD.reduce((s, r) => s + r.amount, 0) * 100) / 100, 21000);
+    ok('a doua investitie creste rata abia dupa ea',
+      la(sD, '2028-07') > la(sD, '2028-06'));
+    eq('ordinea nu conteaza (se sorteaza dupa data)',
+      Math.round(assets.schedule(Object.assign({}, baza, { investitii: doua.investitii.slice().reverse() }))
+        .reduce((s, r) => s + r.amount, 0) * 100) / 100, 21000);
+
+    // pe planul FISCAL investitia se aplica la fel, dar peste durata fiscala
+    const fisc = Object.assign({}, cuInv, { durataFiscalaLuni: 36 });
+    eq('planul fiscal recupereaza si el investitia',
+      Math.round(assets.schedule(assets.fiscalView(fisc)).reduce((s, r) => s + r.amount, 0) * 100) / 100, 18000);
+    ok('...dar pe alta durata decat cel contabil',
+      assets.schedule(assets.fiscalView(fisc)).length !== assets.schedule(fisc).length);
+
+    // investitia pe un activ AMORTIZAT INTEGRAL cere prelungire explicita
+    const tarziu = Object.assign({}, baza, { investitii: [{ id: 'i9', data: '2032-05-10', suma: 4000 }] });
+    eq('fara prelungire, investitia de dupa plan nu se poate esalona',
+      Math.round(assets.schedule(tarziu).reduce((s, r) => s + r.amount, 0) * 100) / 100, 12000);
+    const tarziuOk = Object.assign({}, baza, { investitii: [{ id: 'i9', data: '2032-05-10', suma: 4000, durataSuplimentaraLuni: 24 }] });
+    const sT = assets.schedule(tarziuOk);
+    eq('cu prelungire ceruta explicit, se recupereaza integral',
+      Math.round(sT.reduce((s, r) => s + r.amount, 0) * 100) / 100, 16000);
+    eq('...iar planul se lungeste cu exact atat', sT.length, sB.length + 24);
+
+    // igiena intrarilor: sume nule/negative si date malformate sunt ignorate, nu explodeaza
+    const murdar = Object.assign({}, baza, { investitii: [
+      { id: 'x1', data: '', suma: 5000 }, { id: 'x2', data: '2027-01-01', suma: 0 },
+      { id: 'x3', data: '2027-01-01', suma: -100 }] });
+    eq('intrarile invalide nu schimba planul',
+      Math.round(assets.schedule(murdar).reduce((s, r) => s + r.amount, 0) * 100) / 100, 12000);
+    eq('totalul investitiilor le ignora si el', assets.totalInvestitii(murdar), 0);
+
+    eq('luna urmatoare, peste an', assets.lunaUrmatoare('2026-12-20'), '2027-01');
+    eq('luna urmatoare, in an', assets.lunaUrmatoare('2026-03-01'), '2026-04');
+  }
+
   // ── Nicio amortizare nu mai poate produce un cont din afara planului ──
   // Poarta pe IESIREA reala a motorului, nu pe harta: `monthlyDepreciation` e cea care scrie.
   const toate = conturiImob.filter((c) => assets.esteAmortizabil(c).ok).map((c, i) => ({

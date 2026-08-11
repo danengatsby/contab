@@ -201,6 +201,49 @@ function annualQuotas(base, durataLuni, metoda) {
   return null; // liniara
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  INVESTITIILE ULTERIOARE (modernizari)
+//
+//  Se putea inregistra un activ nou si se putea casa unul, dar nu se putea MAJORA valoarea unuia
+//  existent. O investitie care imbunatateste parametrii tehnici initiali nu e o cheltuiala a lunii:
+//  majoreaza valoarea mijlocului fix si se recupereaza prin amortizare (art. 28 alin. (3) Cod
+//  fiscal — „investitiile efectuate la [mijloacele fixe amortizabile]" se recupereaza prin
+//  deducerea amortizarii). Contabilul avea doua iesiri, amandoua gresite: un activ nou separat
+//  (registrul se umple cu fantome, iar casarea reala nu le mai gaseste) sau cheltuiala directa
+//  (deducere luata prea devreme, integral, in loc de esalonat).
+//
+//  REGULA DE RECUPERARE: valoarea investitiei se amortizeaza pe durata normala de utilizare
+//  RAMASA, incepand cu luna URMATOARE finalizarii — nu se reia planul de la zero si nu se
+//  prelungeste automat durata. Rata lunara creste deci de la luna aceea incolo.
+//
+//  Pe un activ deja AMORTIZAT INTEGRAL nu mai exista durata ramasa peste care sa se esaloneze;
+//  atunci se cere explicit `durataSuplimentaraLuni`. Nu se inventeaza o durata — ar fi o decizie
+//  fiscala luata de cod in locul contabilului, exact ce evita si marcajul `vehiculM1`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Investitiile unui activ, normalizate si ordonate cronologic. */
+function investitii(asset) {
+  return ((asset && asset.investitii) || [])
+    .map((x) => ({
+      id: x.id, data: String(x.data || ''), suma: round2(Number(x.suma) || 0),
+      document: x.document || '', descriere: x.descriere || '',
+      durataSuplimentaraLuni: Math.max(0, Math.round(Number(x.durataSuplimentaraLuni) || 0)),
+    }))
+    .filter((x) => x.suma > 0 && /^\d{4}-\d{2}/.test(x.data))
+    .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+}
+
+/** Suma investitiilor ulterioare (majoreaza valoarea de intrare a activului). */
+function totalInvestitii(asset) {
+  return round2(investitii(asset).reduce((s, x) => s + x.suma, 0));
+}
+
+/** Cate luni are planul, cu prelungirile cerute explicit de investitiile de dupa epuizarea lui. */
+function durataTotala(asset) {
+  const durata = Math.max(1, Number(asset.durataLuni) || 1);
+  return durata + investitii(asset).reduce((s, x) => s + x.durataSuplimentaraLuni, 0);
+}
+
 /** Planul de amortizare lunar (o linie pe luna), cu inchidere exacta pe valoarea amortizabila. */
 function schedule(asset) {
   const cost = round2(Number(asset.cost) || 0);
@@ -231,24 +274,65 @@ function schedule(asset) {
     for (let i = 0; i < durata; i++) monthly.push(base / durata); // fallback liniar
   }
 
+  // ── Investitiile ulterioare, esalonate pe durata RAMASA ────────────────────────────────────
+  // Se aplica peste `monthly`, pe pozitii — nu se reface planul. Asa metoda de amortizare aleasa
+  // (degresiva, accelerata) isi pastreaza forma pe partea initiala, iar investitia se adauga
+  // liniar peste ea, cum cere recuperarea pe durata ramasa.
+  const inv = investitii(asset);
+  const luni = [...monthly];
+  // Prelungirile cerute explicit se adauga la coada, cu zero, ca sa existe pozitii de umplut.
+  const prelungire = inv.reduce((s, x) => s + x.durataSuplimentaraLuni, 0);
+  for (let i = 0; i < prelungire; i++) luni.push(0);
+  const idxLuna = (per) => {
+    const [ay, am] = startM.split('-').map(Number);
+    const [by, bm] = String(per).slice(0, 7).split('-').map(Number);
+    return (by - ay) * 12 + (bm - am);
+  };
+  let bazaInv = 0;
+  for (const x of inv) {
+    // efectul incepe cu luna URMATOARE finalizarii investitiei
+    const start = idxLuna(lunaUrmatoare(x.data));
+    const from = Math.max(0, start);
+    const ramase = luni.length - from;
+    if (ramase <= 0) continue; // fara durata ramasa si fara prelungire ceruta: nu se poate esalona
+    const rata = x.suma / ramase;
+    for (let i = from; i < luni.length; i++) luni[i] += rata;
+    bazaInv = round2(bazaInv + x.suma);
+  }
+  const bazaTotala = round2(base + bazaInv);
+  const durataFinala = luni.length;
+
   const rows = [];
   let cumulat = 0;
   let [y, m] = startM.split('-').map(Number);
-  for (let i = 0; i < durata; i++) {
-    const last = i === durata - 1;
-    const amount = last ? round2(base - cumulat) : round2(monthly[i]);
+  for (let i = 0; i < durataFinala; i++) {
+    const last = i === durataFinala - 1;
+    const amount = last ? round2(bazaTotala - cumulat) : round2(luni[i]);
     cumulat = round2(cumulat + amount);
-    rows.push({ period: y + '-' + String(m).padStart(2, '0'), amount, cumulat, ramas: round2(cost - cumulat) });
+    rows.push({ period: y + '-' + String(m).padStart(2, '0'), amount, cumulat, ramas: round2(cost + bazaInv - cumulat) });
     m += 1; if (m > 12) { m = 1; y += 1; }
   }
   return rows;
 }
 
+/** Luna urmatoare unei date (YYYY-MM sau YYYY-MM-DD), in UTC — ca `firstDepreciationMonth`. */
+function lunaUrmatoare(data) {
+  const s = String(data || '').slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(s)) return s;
+  let [y, m] = s.split('-').map(Number);
+  m += 1; if (m > 12) { m = 1; y += 1; }
+  return y + '-' + String(m).padStart(2, '0');
+}
+
 /** Valorile calculate la o data de referinta (sfarsitul perioadei `asOf`, YYYY-MM sau data). */
 function compute(asset, asOf) {
-  const cost = round2(Number(asset.cost) || 0);
+  // Investitiile ulterioare MAJOREAZA valoarea de intrare, deci intra si in baza amortizabila, si
+  // in valoarea ramasa, si in durata (cand au cerut prelungire). Altfel registrul ar raporta un
+  // „ramas" mai mic decat realitatea si un activ „integral amortizat" care inca se amortizeaza.
+  const inv = totalInvestitii(asset);
+  const cost = round2((Number(asset.cost) || 0) + inv);
   const rezidual = round2(Number(asset.valoareReziduala) || 0);
-  const durata = Math.max(1, Number(asset.durataLuni) || 1);
+  const durata = durataTotala(asset);
   const base = round2(cost - rezidual);
   const metoda = METHODS.includes(asset.metoda) ? asset.metoda : 'liniara';
   const sch = schedule(asset);
@@ -267,6 +351,9 @@ function compute(asset, asOf) {
     luniAmortizate: luni, durataLuni: durata,
     amortizareCumulata: round2(cumulat), valoareRamasa: round2(cost - cumulat),
     integralAmortizat: luni >= durata,
+    // Valoarea de intrare majorata se ARATA separat de costul initial: registrul de mijloace fixe
+    // si fisa activului trebuie sa poata explica de unde vine diferenta.
+    investitii: inv, valoareIntrare: cost,
   };
 }
 
@@ -402,4 +489,5 @@ function register(db, asOf) {
 module.exports = { compute, schedule, monthlyDepreciation, register, contAmortizare, firstDepreciationMonth, degressiveCoef, METHODS,
   fiscalView, hasFiscalPlan, annualFor, depreciationDifference,
   contAmortizareValid, esteAmortizabil, metodePermise, motivMetodaNepermisa, neconformitati,
+  investitii, totalInvestitii, durataTotala, lunaUrmatoare,
   CONT_AMORTIZARE, NEAMORTIZABILE };

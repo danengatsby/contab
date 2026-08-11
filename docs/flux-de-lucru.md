@@ -177,6 +177,22 @@ Un computer înregistrat pe 214 (lângă mobilier, care nu poate) se marchează 
 `vehiculM1` la plafonul auto — sinteticul nu le deosebește, iar o euristică pe denumire ar schimba
 impozitul. Aceeași regulă se aplică și metodei *fiscale*, fiindcă art. 28 despre ea vorbește.
 
+**Investițiile ulterioare (modernizări)** se înregistrează pe activ, nu ca active noi și nu ca
+cheltuială a lunii: cheltuielile care **îmbunătățesc parametrii tehnici inițiali** majorează
+valoarea mijlocului fix și se recuperează prin amortizare pe **durata rămasă**, începând cu luna
+**următoare** finalizării (art. 28 alin. (3) Cod fiscal). Planul se recalculează singur — rata
+lunară crește de la luna aceea încolo, iar planul închide exact pe valoarea majorată. Fără această
+posibilitate contabilul avea două ieșiri, ambele greșite: un activ nou separat (registrul se umple
+cu fantome, iar casarea reală nu le mai găsește) sau cheltuială directă (deducere luată prea
+devreme, integral, în loc de eșalonat). Articolele contabile ale investiției se înregistrează
+separat, cu tipurile existente `imobilizare_in_curs` + `punere_in_functiune`.
+Două refuzuri deliberate: investiția a cărei **lună de efect e într-o perioadă închisă** e respinsă
+(amortizarea acelei luni a fost deja postată pe planul vechi, iar recalcularea ar face registrul să
+contrazică notele — defectul reparat cândva la casare); iar investiția la un activ **amortizat
+integral** cere explicit `durataSuplimentaraLuni`, fiindcă nu mai există durată rămasă peste care să
+se eșaloneze — o durată inventată ar fi o decizie fiscală luată de cod. API:
+`POST /api/assets/:id/investitii`, `DELETE /api/assets/:id/investitii/:invId`.
+
 **Ce nu se amortizeaza** e refuzat la înregistrare, cu motivul scris: terenurile (2111 — art. 28 alin.
 (4); se amortizează doar amenajările, 2112), imobilizările în curs (231–235, cât timp nu sunt puse în
 funcțiune — există tipul `punere_in_functiune`) și imobilizările financiare (26x). Sinteticul **211 e
@@ -187,7 +203,7 @@ apar cu avertisment în registru (`neconformitati` pe fiecare rând).
 Livrabile PDF: **Registrul mijloacelor fixe** (`/pdf/assets`) și
 **Fișa mijlocului fix** cu planul complet de amortizare (`/pdf/asset/:id`). Datele alimentează
 secțiunea `Assets` din SAF-T (D406). API: `GET/POST /api/assets`, `GET /api/assets/:id/schedule`,
-`GET /api/assets/metode`, `POST /api/assets/:id/scrap`, `DELETE /api/assets/:id`,
+`GET /api/assets/metode`, `POST /api/assets/:id/investitii`, `POST /api/assets/:id/scrap`, `DELETE /api/assets/:id`,
 `POST /api/assets/depreciation?period=`.
 
 **TVA la încasare** (regim special): grupul de documente „TVA la încasare” folosește contul

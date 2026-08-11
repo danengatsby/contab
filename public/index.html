@@ -1374,6 +1374,27 @@
           <h2>Mijloace fixe</h2>
           <div id="assetsList" class="tablewrap"></div>
         </div>
+        <!-- Investitia ulterioara nu e un activ nou si nu e o cheltuiala a lunii: majoreaza
+             valoarea mijlocului fix si se recupereaza pe durata RAMASA, din luna urmatoare
+             finalizarii. Formularul se deschide de pe randul activului („modernizare"). -->
+        <div class="card full hidden" id="mfInvBox">
+          <h2>Investiție ulterioară (modernizare) — <span id="mfInvNume" class="muted"></span></h2>
+          <p class="muted">Cheltuielile ulterioare care <b>îmbunătățesc parametrii tehnici inițiali</b> majorează valoarea mijlocului fix și se recuperează prin amortizare, pe <b>durata rămasă</b>, începând cu luna următoare finalizării (art. 28 alin. (3) Cod fiscal). Reparațiile și întreținerea curentă rămân cheltuieli ale perioadei — nu se înregistrează aici.</p>
+          <p class="muted">Articolele contabile ale investiției se înregistrează separat, cu tipurile <b>Imobilizare în curs</b> și <b>Punere în funcțiune</b>; aici o legi de activ, ca planul de amortizare să se recalculeze.</p>
+          <form id="mfInvForm" class="dyn">
+            <input type="hidden" name="assetId" />
+            <label>Data finalizării <input name="data" type="date" required /></label>
+            <label>Valoarea investiției <input name="suma" type="number" step="0.01" required /></label>
+            <label>Document <input name="document" placeholder="ex. PV recepție 12/2026" /></label>
+            <label>Durata suplimentară (luni) <span class="muted">(doar dacă activul e amortizat integral)</span> <input name="durataSuplimentaraLuni" type="number" min="0" placeholder="lasă gol" /></label>
+            <label class="full">Descrierea îmbunătățirii <input name="descriere" placeholder="ex. motor nou, capacitate mărită" /></label>
+            <div class="row">
+              <button class="btn primary">Înregistrează investiția</button>
+              <button type="button" id="mfInvClose" class="btn small">Renunță</button>
+            </div>
+          </form>
+          <div id="mfInvList" class="tablewrap"></div>
+        </div>
       </div>
     </section>
 

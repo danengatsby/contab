@@ -21,11 +21,13 @@ async function loadAssets() {
         <td class="acc">${a.cont}/${a.calc.contAmortizare}</td>
         <td>${({ liniara: 'liniară', degresiva: 'degresivă', accelerata: 'accelerată' })[a.metoda] || a.metoda}</td>
         <td>${a.dataPif}</td>
-        <td class="num">${fmt(a.cost)}</td>
+        <td class="num">${fmt((a.calc && a.calc.valoareIntrare) || a.cost)}${
+  a.calc && a.calc.investitii ? `<br><span class="muted">din care investiții ${fmt(a.calc.investitii)}</span>` : ''}</td>
         <td class="num">${fmt(a.calc.amortizareLunara)}</td>
         <td class="num">${fmt(a.calc.amortizareCumulata)}</td>
         <td class="num">${fmt(a.calc.valoareRamasa)}</td>
         <td><a class="linkbtn" href="/pdf/asset/${a.id}?asOf=${asOf}" target="_blank">fișă</a>
+          ${a.status !== 'casat' ? ` · <button class="linkbtn amf-inv" data-id="${a.id}" data-nume="${H(a.denumire)}">modernizare</button>` : ''}
           ${a.status !== 'casat' ? ` · <button class="linkbtn amf-scrap" data-id="${a.id}">casează</button>` : ''}
           · <button class="linkbtn amf-del" data-id="${a.id}">șterge</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Niciun mijloc fix înregistrat.</p>';
@@ -33,11 +35,56 @@ async function loadAssets() {
     if (!confirm('Ștergi acest mijloc fix?')) return;
     await api('/api/assets/' + b.dataset.id, { method: 'DELETE' }); loadAssets(); toast('Mijloc fix șters');
   }));
+  $$('#assetsList .amf-inv').forEach((b) => b.addEventListener('click', () => deschideInvestitii(b.dataset.id, b.dataset.nume)));
   $$('#assetsList .amf-scrap').forEach((b) => b.addEventListener('click', async () => {
     await api('/api/assets/' + b.dataset.id + '/scrap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     loadAssets(); toast('Mijloc fix casat');
   }));
 }
+// ───────── Investitii ulterioare (modernizari) ─────────
+// Planul de amortizare se recalculeaza pe SERVER; aici doar se inregistreaza investitia si se
+// reincarca registrul. Lista investitiilor existente se arata sub formular, ca sa se vada din ce
+// se compune valoarea de intrare majorata.
+async function deschideInvestitii(id, nume) {
+  const box = $('#mfInvBox'); if (!box) return;
+  box.classList.remove('hidden');
+  $('#mfInvNume').textContent = nume || '';
+  const f = $('#mfInvForm');
+  f.assetId.value = id;
+  f.reset(); f.assetId.value = id;
+  const lista = await api('/api/assets?asOf=' + mfAsOf()).catch(() => []);
+  const a = (Array.isArray(lista) ? lista : (lista.items || [])).find((x) => x.id === id) || {};
+  const inv = a.investitii || [];
+  $('#mfInvList').innerHTML = inv.length
+    ? `<table><thead><tr><th>Data</th><th class="num">Valoare</th><th>Document</th><th>Descriere</th><th></th></tr></thead><tbody>${
+      inv.map((x) => `<tr><td>${H(x.data)}</td><td class="num">${fmt(x.suma)}</td><td>${H(x.document || '')}</td>
+        <td>${H(x.descriere || '')}</td>
+        <td><button class="linkbtn mfinv-del" data-id="${H(id)}" data-inv="${H(x.id)}">șterge</button></td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Nicio investiție înregistrată la acest mijloc fix.</p>';
+  $$('#mfInvList .mfinv-del').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Ștergi această investiție? Planul de amortizare se recalculează.')) return;
+    try {
+      await api('/api/assets/' + b.dataset.id + '/investitii/' + b.dataset.inv, { method: 'DELETE' });
+      toast('Investiție ștearsă'); deschideInvestitii(id, nume); loadAssets();
+    } catch (e) { toast(e.message, true); }
+  }));
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+$('#mfInvClose') && $('#mfInvClose').addEventListener('click', () => $('#mfInvBox').classList.add('hidden'));
+$('#mfInvForm') && $('#mfInvForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const body = { data: f.data.value, suma: f.suma.value, document: f.document.value, descriere: f.descriere.value };
+  // Prelungirea se trimite doar cand a fost ceruta: pe un activ inca in amortizare n-are ce cauta.
+  if (f.durataSuplimentaraLuni.value) body.durataSuplimentaraLuni = f.durataSuplimentaraLuni.value;
+  try {
+    const r = await api('/api/assets/' + f.assetId.value + '/investitii', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    toast('Investiție înregistrată — valoare de intrare ' + fmt((r.calc || {}).valoareIntrare || 0) + ' lei');
+    deschideInvestitii(f.assetId.value, $('#mfInvNume').textContent);
+    loadAssets();
+  } catch (err) { toast(err.message, true); }
+});
 onPeriodChange('mf', loadAssets);
 
 // ───────── Catalogul duratelor normale de functionare (HG 2139/2004) ─────────

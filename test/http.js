@@ -991,6 +991,41 @@ async function main() {
     ok('asset scrap: marcheaza casat', (await req('POST', '/api/assets/' + aid + '/scrap', { cookie: c1, body: {} })).json.asset.status === 'casat');
     ok('asset delete: sterge mijlocul', (await req('DELETE', '/api/assets/' + aid, { cookie: c1 })).json.ok === true);
 
+    // ── A4: investitii ulterioare (modernizari) ───────────────────────────────────────────────
+    {
+      const mk = await req('POST', '/api/assets', { cookie: c1, body: {
+        denumire: 'Utilaj modernizabil', cont: '2131', cost: 12000, durataLuni: 60, dataPif: '2026-01-15', metoda: 'liniara' } });
+      const id = mk.json.asset.id;
+      eq('investitie fara data -> 400', (await req('POST', '/api/assets/' + id + '/investitii', { cookie: c1, body: { suma: 6000 } })).status, 400);
+      eq('investitie cu suma zero -> 400', (await req('POST', '/api/assets/' + id + '/investitii', { cookie: c1, body: { data: '2026-12-20', suma: 0 } })).status, 400);
+      eq('investitie pe mijloc fix inexistent -> 404', (await req('POST', '/api/assets/nuexista/investitii', { cookie: c1, body: { data: '2026-12-20', suma: 100 } })).status, 404);
+      const inv = await req('POST', '/api/assets/' + id + '/investitii', { cookie: c1, body: {
+        data: '2026-12-20', suma: 6000, document: 'PV modernizare', descriere: 'Motor nou' } });
+      ok('investitia se inregistreaza pe activ', inv.json && inv.json.ok && (inv.json.asset.investitii || []).length === 1);
+      ok('...si recalculeaza valoarea de intrare', inv.json.calc && inv.json.calc.valoareIntrare === 18000);
+      // planul de amortizare vine deja recalculat
+      const sch2 = await req('GET', '/api/assets/' + id + '/schedule', { cookie: c1 });
+      const rand = ((sch2.json || {}).schedule || []).find((r) => r.period === '2027-01');
+      eq('planul returnat de server e cel recalculat', rand && rand.amount, 322.45);
+      // pe un activ CASAT nu se mai pot inregistra investitii
+      const mk2 = await req('POST', '/api/assets', { cookie: c1, body: {
+        denumire: 'Utilaj casat', cont: '2131', cost: 5000, durataLuni: 24, dataPif: '2026-01-15', metoda: 'liniara' } });
+      await req('POST', '/api/assets/' + mk2.json.asset.id + '/scrap', { cookie: c1, body: { dataCasare: '2026-06-30' } });
+      const invC = await req('POST', '/api/assets/' + mk2.json.asset.id + '/investitii', { cookie: c1, body: { data: '2026-12-20', suma: 500 } });
+      eq('investitie pe un activ casat -> 400', invC.status, 400);
+      ok('...cu motivul scris', /casat/i.test(invC.json.error));
+      // activ amortizat integral: cere prelungire explicita, nu inventeaza o durata
+      const invT = await req('POST', '/api/assets/' + id + '/investitii', { cookie: c1, body: { data: '2032-05-10', suma: 4000 } });
+      eq('investitie dupa epuizarea planului, fara prelungire -> 400', invT.status, 400);
+      ok('...si spune ce lipseste', /durata suplimentar/i.test(invT.json.error));
+      const invTok = await req('POST', '/api/assets/' + id + '/investitii', { cookie: c1, body: { data: '2032-05-10', suma: 4000, durataSuplimentaraLuni: 24 } });
+      ok('cu prelungire ceruta explicit, se accepta', invTok.json && invTok.json.ok);
+      // stergerea
+      const invId = (invTok.json.asset.investitii || []).slice(-1)[0].id;
+      ok('investitia se poate sterge', (await req('DELETE', '/api/assets/' + id + '/investitii/' + invId, { cookie: c1 })).json.ok === true);
+      eq('stergerea uneia inexistente -> 404', (await req('DELETE', '/api/assets/' + id + '/investitii/nuexista', { cookie: c1 })).status, 404);
+    }
+
     // ── Gardele art. 28: contul si regimul de amortizare ──────────────────────────────────────
     // Mijlocul fix isi scrie articolele DIRECT (ruta de amortizare nu trece prin `composeEntry`),
     // deci garda de plan de conturi trebuie sa fie aici. Inainte, contul nu era verificat deloc.
