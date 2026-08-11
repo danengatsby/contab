@@ -13,6 +13,15 @@
 5. **Balanța de verificare** — cu **cele patru egalități** (SI, rulaje, total sume, SF);
    te avertizează dacă nu „se închide”.
 
+**Fiecare pas al ciclului contabil își poartă temeiul legal.** În cockpitul de închidere lunară și
+în tabul „Închiderea anului", sub descrierea pasului apare un rând pliat „Temei legal:" cu actul și
+articolul (Legea 82/1991, Codul fiscal, OMFP 1802/2014, OMFP 2634/2015, OMFP 2861/2009, Legea
+31/1990, Legea 70/2015, OUG 120/2021, Codul de procedură fiscală) și, la deschidere, ce anume
+prevede fiecare. Textul vine dintr-o **sursă unică** ([`src/temeiLegal.js`](../src/temeiLegal.js)),
+nu scris în ecrane — altfel aceleași trimiteri ar ajunge să spună lucruri diferite despre același
+pas. Trimiterile sunt reper de orientare, nu consultanță: legea se modifică, iar răspunderea pentru
+aplicarea ei rămâne a contabilului (Legea 82/1991 art. 10-11).
+
 **Închideri**: regularizarea lunară a TVA (4427 ↔ 4426 → 4423/4424) și închiderea
 anuală a conturilor de venituri și cheltuieli în 121 „Profit și pierdere”.
 

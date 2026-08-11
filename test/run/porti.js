@@ -1702,3 +1702,47 @@ section('Poarta: orice articol contabil intra prin `db.pushEntry` (planul de con
   ok('...numind contul vinovat', aruncat && /2819/.test(aruncat.message));
   ok('...si contextul, ca sa se stie de unde vine articolul', aruncat && /proba/.test(aruncat.message));
 }
+
+section('Poarta: fiecare pas din ciclul contabil isi poarta temeiul legal');
+{
+  const tl = require('../../src/temeiLegal');
+  const mc = require('../../src/monthlyClose');
+
+  // Fiecare pas are cel putin o trimitere, iar trimiterea e completa: act cunoscut + articol.
+  // Un pas „mut" ar aparea in interfata cu un „Temei legal:" gol — mai rau decat lipsa lui.
+  const fara = tl.CICLU.filter((p) => !Array.isArray(p.temei) || !p.temei.length).map((p) => p.key);
+  eq('niciun pas fara temei legal', fara.join(',') || '(niciunul)', '(niciunul)');
+  const acteNecunoscute = tl.CICLU.flatMap((p) => p.temei.map((x) => x.act)).filter((a) => !tl.ACTE[a]);
+  eq('nicio trimitere la un act nedeclarat', [...new Set(acteNecunoscute)].join(',') || '(niciunul)', '(niciunul)');
+  const faraArticol = tl.CICLU.flatMap((p) => p.temei.filter((x) => !x.articol).map(() => p.key));
+  eq('nicio trimitere fara articol', faraArticol.join(',') || '(niciunul)', '(niciunul)');
+  const faraCe = tl.CICLU.filter((p) => p.temei.some((x) => !x.ce || x.ce.length < 20)).map((p) => p.key);
+  eq('fiecare trimitere spune si CE prevede, nu doar numarul', faraCe.join(',') || '(niciunul)', '(niciunul)');
+  const faze = [...new Set(tl.CICLU.map((p) => p.faza))].filter((f) => !tl.FAZE.includes(f));
+  eq('nicio faza inventata', faze.join(',') || '(niciuna)', '(niciuna)');
+  ok('cheile pasilor sunt unice', new Set(tl.CICLU.map((p) => p.key)).size === tl.CICLU.length);
+
+  // LEGATURA cu cockpitul: cheile pasilor lunari trebuie sa fie EXACT cele din motorul de
+  // inchidere. Daca cineva adauga un pas in cockpit, poarta il cere si aici — altfel pasul nou ar
+  // aparea fara temei, tacut.
+  const lunarTemei = tl.ciclu('lunar').map((p) => p.key).sort().join(',');
+  const lunarMotor = mc.STEPS.map((s) => s.key).sort().join(',');
+  eq('pasii lunari din temei = pasii din cockpit', lunarTemei, lunarMotor);
+
+  // Formatarea pentru interfata
+  // Aserțiunile citesc DEFENSIV: cand cheia nu mai exista, `temeiul` intoarce [], iar un
+  // `tva[0].actTitlu` ar arunca — poarta ar crapa in loc sa PICE, si mesajul s-ar pierde.
+  const tva = tl.temeiul('tva');
+  eq('pasul TVA are trimiterile lui', tva.length, 2);
+  ok('temeiul se formateaza gata de afisat', /Cod fiscal, art\. 32/.test((tva[0] || {}).eticheta || ''));
+  ok('...cu titlul complet al actului disponibil', /Legea nr\. 227\/2015/.test((tva[0] || {}).actTitlu || ''));
+  eq('un pas inexistent nu arunca, intoarce lista goala', tl.temeiul('nuexista').length, 0);
+  ok('actul fara articol precis nu produce virgula in coada',
+    tl.temeiul('facturare').every((x) => !/,\s*$/.test(x.eticheta)));
+
+  // REGULA DE REDACTARE: aici NU stau termene si NU stau cote — au sursele lor (declarations,
+  // fiscalConfig). O cifra copiata aici ar deveni a doua sursa de adevar si s-ar invechi tacut.
+  const textTot = JSON.stringify(tl.CICLU);
+  ok('temeiurile nu contin termene de depunere', !/25 (ale|a) lunii/i.test(textTot));
+  ok('...si nici cote procentuale', !/\d+\s*%/.test(textTot));
+}

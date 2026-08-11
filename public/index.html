@@ -1000,6 +1000,7 @@
            cardurilor e ordinea de executie. -->
       <div class="card">
         <h2>① Inventarierea și evaluarea <span class="muted">(registrul-inventar)</span></h2>
+        <div class="temei-slot" data-pas="inventariere"></div>
         <p class="muted">La inventariere elementele se evaluează la <b>valoarea de inventar</b>. Când aceasta e sub valoarea contabilă, minusul <b>nu se scoate din cont</b> — se înregistrează o <b>ajustare pentru depreciere</b>, reversibilă, care lasă valoarea de intrare neatinsă. Introdu mai jos valoarea de inventar pentru elementele inventariate; restul coloanelor se calculează. Elementele fără valoare introdusă rămân <b>neevaluate</b> (nu „evaluate la zero”).</p>
         <div class="dyn">
           <label>Anul <input type="number" id="invAn" value="2026" /></label>
@@ -1015,6 +1016,7 @@
       </div>
       <div class="card">
         <h2>② Impozit pe profit</h2>
+        <div class="temei-slot" data-pas="impozit"></div>
         <p class="muted">Profit impozabil = profit contabil <b>+ cheltuieli nedeductibile − deduceri − pierdere fiscală reportată</b>. Impozit = profit impozabil × cota → <b>691 = 4411</b>. Pierderea fiscală a anului se reportează automat. <b>Ordinea față de închiderea anuală nu contează</b> — dacă anul e deja închis, contul 691 se închide automat în 121. Calculul detaliat, rând cu rând, e în „Taxe & declarații → Registru fiscal".</p>
         <p class="muted">Lasă cele două câmpuri de ajustare <b>goale</b> ca să fie calculate din conturi (amenzi, provizioane, protocol, sponsorizare, auto, dobânzi, amortizare) — exact cifrele din registrul fiscal. Completează-le doar ca să <b>suprascrii</b> calculul cu o ajustare pe care motorul nu o poate deduce din conturi.</p>
         <div class="dyn">
@@ -1028,6 +1030,7 @@
       </div>
       <div class="card">
         <h2>③ Închiderea anuală</h2>
+        <div class="temei-slot" data-pas="inchidere"></div>
         <p class="muted">Închide conturile de venituri (clasa 7) și de cheltuieli (clasa 6) în contul 121 „Profit și pierdere” și determină rezultatul exercițiului.</p>
         <label>Anul <input type="number" id="yearInput" value="2026" /></label>
         <div id="yearPreview" class="preview"></div>
@@ -1035,6 +1038,7 @@
       </div>
       <div class="card">
         <h2>④ Repartizarea profitului sau pierderii anului <span class="muted" data-u="u70">(rezultatul reportat)</span></h2>
+        <div class="temei-slot" data-pas="repartizare"></div>
         <p class="muted">După aprobarea situațiilor financiare (AGA), rezultatul din contul 121 „Profit și pierdere” se transferă la 117 „Rezultatul reportat”: profit <b>121 = 117</b>, pierdere <b>117 = 121</b>. Se face de obicei la începutul anului următor.</p>
         <label>Anul închis <input type="number" id="distYear" value="2026" /></label>
         <div id="distPreview" class="preview"></div>

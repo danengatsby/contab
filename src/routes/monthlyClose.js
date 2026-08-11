@@ -17,6 +17,18 @@ module.exports = function register(app, ctx) {
   };
 
   // Starea fluxului pentru luna ceruta + lista de responsabili posibili (conturile firmei).
+  // Temeiul legal al ciclului contabil, pe faze. Ruta e de CITIRE si nu depinde de firma: legea e
+  // aceeasi pentru toti. Interfata o cere o data si o foloseste si la inchiderea lunii, si la cea
+  // a anului — de aceea nu e lipita de `/api/monthly-close`, care e legat de o perioada.
+  app.get('/api/temei-legal', (req, res) => {
+    const faza = String(req.query.faza || '');
+    const temeiLegal = require('../temeiLegal');
+    res.json({
+      acte: temeiLegal.ACTE,
+      faze: temeiLegal.FAZE,
+      pasi: temeiLegal.ciclu(temeiLegal.FAZE.includes(faza) ? faza : null),
+    });
+  });
   app.get('/api/monthly-close', (req, res) => run(res, () => {
     const fid = activeId(req);
     const period = req.query.period || new Date().toISOString().slice(0, 7);

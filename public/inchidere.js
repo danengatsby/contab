@@ -42,6 +42,16 @@ export function closeHeaderHtml(st) {
     ${aprobare}${fortata}</div>`;
 }
 
+// Temeiul legal al pasului, pliat: cine vrea sa vada exact ce spune legea il deschide, restul
+// nu-si incarca ecranul. Textul vine de la SERVER (src/temeiLegal.js) — o a doua copie in frontend
+// ar drifta fata de cea din ghid si din documentatie.
+function temeiHtml(temei) {
+  if (!Array.isArray(temei) || !temei.length) return '';
+  return `<details class="temei"><summary class="muted">Temei legal: ${
+    temei.map((x) => H(x.eticheta)).join(' · ')}</summary><ul>${
+    temei.map((x) => `<li><b>${H(x.actTitlu)}</b>${x.articol && x.articol !== '—' ? ', ' + H(x.articol) : ''} — ${H(x.ce)}</li>`).join('')}</ul></details>`;
+}
+
 /** Un pas: stare, blocaje (motivul), responsabil, termen, acțiune. */
 export function stepHtml(s, responsabili) {
   const m = STARE_META[s.stare] || STARE_META.deschis;
@@ -66,6 +76,7 @@ export function stepHtml(s, responsabili) {
     <div class="closestep-h"><span class="closeicon">${m.icon}</span>
       <b>${H(s.nume)}</b> <span class="pill ${m.pill}">${m.text}</span></div>
     <p class="muted">${H(s.descriere)}</p>
+    ${temeiHtml(s.temei)}
     ${motiv}${blocatDe}${blocaje}
     <div class="closefields">${resp}${termen}</div>
     ${s.nota ? `<p class="muted">Notă: ${H(s.nota)}</p>` : ''}

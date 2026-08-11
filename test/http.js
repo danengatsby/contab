@@ -991,6 +991,27 @@ async function main() {
     ok('asset scrap: marcheaza casat', (await req('POST', '/api/assets/' + aid + '/scrap', { cookie: c1, body: {} })).json.asset.status === 'casat');
     ok('asset delete: sterge mijlocul', (await req('DELETE', '/api/assets/' + aid, { cookie: c1 })).json.ok === true);
 
+    // ── Temeiul legal al ciclului contabil ────────────────────────────────────────────────────
+    {
+      const tl = await req('GET', '/api/temei-legal', { cookie: c1 });
+      ok('ruta intoarce ciclul, actele si fazele', tl.json && Array.isArray(tl.json.pasi)
+        && tl.json.acte && Array.isArray(tl.json.faze));
+      ok('fiecare pas are cel putin o trimitere completa', tl.json.pasi.every((p) => p.temei.length
+        && p.temei.every((x) => x.act && x.articol && x.ce && x.eticheta)));
+      const lunar = await req('GET', '/api/temei-legal?faza=lunar', { cookie: c1 });
+      ok('se poate cere o singura faza', lunar.json.pasi.length && lunar.json.pasi.every((p) => p.faza === 'lunar'));
+      ok('o faza inventata nu filtreaza nimic (intoarce tot)',
+        (await req('GET', '/api/temei-legal?faza=nuexista', { cookie: c1 })).json.pasi.length === tl.json.pasi.length);
+      // pasii cockpitului poarta temeiul, nu doar ruta separata
+      const mc = await req('GET', '/api/monthly-close?period=2026-06', { cookie: c1 });
+      const pasi = ((mc.json || {}).steps) || [];
+      ok('fiecare pas al inchiderii lunare poarta temeiul', pasi.length
+        && pasi.every((s) => Array.isArray(s.temei) && s.temei.length));
+      const tvaStep = pasi.find((s) => s.key === 'tva');
+      ok('pasul TVA trimite la decontul din Codul fiscal',
+        tvaStep && tvaStep.temei.some((x) => /art\. 323/.test(x.articol)));
+    }
+
     // ── A4: investitii ulterioare (modernizari) ───────────────────────────────────────────────
     {
       const mk = await req('POST', '/api/assets', { cookie: c1, body: {

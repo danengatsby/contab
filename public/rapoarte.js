@@ -397,7 +397,7 @@ async function loadClosings() {
   if ($('#vcAn') && [...$('#vcAn').options].some((o) => o.value === m.slice(0, 4))) $('#vcAn').value = m.slice(0, 4);
   // Anul din cardul de inventariere urmeaza luna de lucru, ca restul pasilor de inchidere.
   if ($('#invAn')) $('#invAn').value = m.slice(0, 4);
-  previewVat(); previewProfitTax(); previewYear(); previewDistribution(); renderRegistruInventar();
+  previewVat(); previewProfitTax(); previewYear(); previewDistribution(); renderRegistruInventar(); umpleTemeiuri();
 }
 async function previewVat() {
   const p = pget('vc'); if (!p) { $('#vatPreview').textContent = 'Alege o perioadă.'; return; }
@@ -470,6 +470,29 @@ async function previewProfitTax() {
 }
 ['#ptNed', '#ptDed', '#ptPierdere'].forEach((id) => { const el = $(id); if (el) el.addEventListener('change', previewProfitTax); });
 $('#ptYear') && $('#ptYear').addEventListener('change', previewProfitTax);
+// ───────── Temeiul legal al pasilor de inchidere a anului ─────────
+// Textul vine de la SERVER (`/api/temei-legal`, src/temeiLegal.js), aceeasi sursa din care citeste
+// si cockpitul de inchidere lunara. O a doua copie scrisa in HTML ar drifta fata de ea si fata de
+// ghid — exact ce evita si previzualizarea articolului contabil.
+let TEMEI_CACHE = null;
+async function umpleTemeiuri() {
+  const sloturi = $$('.temei-slot');
+  if (!sloturi.length) return;
+  if (!TEMEI_CACHE) {
+    try { TEMEI_CACHE = await api('/api/temei-legal'); } catch (e) { return; } // fara temei, ecranul merge la fel
+  }
+  const dupaCheie = new Map((TEMEI_CACHE.pasi || []).map((p) => [p.key, p]));
+  for (const el of sloturi) {
+    if (el.dataset.umplut) continue;
+    const p = dupaCheie.get(el.dataset.pas);
+    if (!p || !p.temei.length) continue;
+    el.innerHTML = `<details class="temei"><summary class="muted">Temei legal: ${
+      p.temei.map((x) => H(x.eticheta)).join(' · ')}</summary><ul>${
+      p.temei.map((x) => `<li><b>${H(x.actTitlu)}</b>${x.articol && x.articol !== '—' ? ', ' + H(x.articol) : ''} — ${H(x.ce)}</li>`).join('')}</ul></details>`;
+    el.dataset.umplut = '1';
+  }
+}
+
 // ───────── Registrul-inventar: valorile de inventar si diferentele din evaluare ─────────
 // Cele patru coloane ale formularului 14-1-2. Se INTRODUCE doar valoarea de inventar; valoarea
 // contabila, diferenta si propunerea de ajustare se DERIVA pe server — o diferenta salvata ar
