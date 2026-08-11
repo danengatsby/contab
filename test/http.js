@@ -1039,6 +1039,13 @@ async function main() {
     }
     eq('sinteticul ambiguu 211 -> 400', (await cerere({ cont: '211' })).status, 400);
     eq('imobilizare in curs (231) -> 400', (await cerere({ cont: '231' })).status, 400);
+    // conturile RECTIFICATIVE nu sunt active: un mijloc fix pe 2813 ar produce `6811 = 281`
+    {
+      const r = await cerere({ cont: '2813' });
+      eq('cont de amortizare (2813) ca mijloc fix -> 400', r.status, 400);
+      ok('...cu motivul spus pe sleau', /AMORTIZARE/.test(r.json.error));
+      eq('cont de ajustare (2912) -> 400', (await cerere({ cont: '2912' })).status, 400);
+    }
     {
       const r = await cerere({ cont: '212', metoda: 'accelerata' });
       eq('constructie pe accelerata -> 400', r.status, 400);

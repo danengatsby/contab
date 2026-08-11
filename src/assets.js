@@ -86,6 +86,17 @@ const NEAMORTIZABILE = {
 function esteAmortizabil(cont) {
   const c = String(cont || '').trim();
   if (NEAMORTIZABILE[c]) return { ok: false, motiv: NEAMORTIZABILE[c] };
+  // CONTURILE RECTIFICATIVE nu sunt active, ci corectia lor. Regula e pe FAMILIE (28x, 29x), nu pe
+  // o lista de coduri: in planul romanesc toata familia are aceasta natura, deci un cont adaugat
+  // maine e exclus prin constructie.
+  //
+  // Garda initiala accepta orice cont de clasa 2 in afara celor enumerate explicit, deci lasa sa
+  // treaca si conturile de amortizare, si pe cele de ajustare. Un mijloc fix inregistrat pe 2813
+  // producea articolul `6811 = 281` — amortizarea unei amortizari — si intra asa in registru si in
+  // sectiunea `Assets` din SAF-T. Suprafata s-a largit cand familia 29x a intrat in plan: exact
+  // tiparul „cont nou in plan -> cauta cine il prinde prin prefix".
+  if (/^28/.test(c)) return { ok: false, motiv: 'Contul ' + c + ' este un cont de AMORTIZARE (rectificativ), nu un mijloc fix. Înregistrează activul pe contul lui de imobilizare (20x/21x) — contul de amortizare se deduce automat.' };
+  if (/^29/.test(c)) return { ok: false, motiv: 'Contul ' + c + ' este un cont de AJUSTARE pentru depreciere (rectificativ), nu un mijloc fix. Înregistrează activul pe contul lui de imobilizare (20x/21x).' };
   // imobilizarile financiare (26x) nu se amortizeaza; nu sunt mijloace fixe deloc
   if (/^26/.test(c)) return { ok: false, motiv: 'Imobilizările financiare (26x) nu se amortizează.' };
   if (/^2[0-9]/.test(c)) return { ok: true };

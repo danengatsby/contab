@@ -326,6 +326,29 @@ section('Imobilizari: contul de amortizare, ce nu se amortizeaza, regimul permis
   ok('sinteticul de rezerva exista si el in plan', !!coaTest.getAccount(assets.contAmortizare('219')));
 
   // ── A2. Ce nu se amortizeaza ──
+  // Conturile RECTIFICATIVE (28x amortizari, 29x ajustari) nu sunt active: sunt corectia lor.
+  // Garda initiala accepta orice cont de clasa 2 neenumerat explicit, deci le lasa sa treaca — un
+  // mijloc fix pe 2813 producea `6811 = 281`, adica amortizarea unei amortizari, si intra asa in
+  // registru si in sectiunea `Assets` din SAF-T. Suprafata s-a largit cand familia 29x a intrat in
+  // plan (lucrarea B1): tiparul „cont nou in plan -> cauta cine il prinde prin prefix".
+  //
+  // Poarta se DERIVA din plan, nu dintr-o lista scrisa de mana: orice cont 28x/29x adaugat maine
+  // intra singur in verificare.
+  {
+    const rectificative = coaTest.ACCOUNTS.filter((x) => /^(28|29)/.test(x.cod)).map((x) => x.cod);
+    ok('planul chiar contine conturi rectificative de verificat', rectificative.length >= 15);
+    const acceptate = rectificative.filter((c) => assets.esteAmortizabil(c).ok);
+    eq('niciun cont rectificativ nu e acceptat ca mijloc fix', acceptate.join(',') || '(niciunul)', '(niciunul)');
+    ok('motivul spune CE e contul, nu doar ca e refuzat',
+      /AMORTIZARE/.test(assets.esteAmortizabil('2813').motiv));
+    ok('...si unde trebuie inregistrat activul',
+      /20x\/21x/.test(assets.esteAmortizabil('2813').motiv));
+    ok('la ajustari, mesajul e al lor', /AJUSTARE/.test(assets.esteAmortizabil('2912').motiv));
+    // conturile de imobilizare RAMAN acceptate — garda nu s-a inchis peste ce trebuie
+    ok('imobilizarile corporale raman acceptate', assets.esteAmortizabil('2131').ok && assets.esteAmortizabil('212').ok);
+    ok('necorporalele la fel', assets.esteAmortizabil('205').ok);
+  }
+
   ok('terenul (2111) nu se amortizeaza', !assets.esteAmortizabil('2111').ok);
   ok('sinteticul 211 e respins ca AMBIGUU (teren + amenajare)', !assets.esteAmortizabil('211').ok);
   ok('amenajarea de teren (2112) SE amortizeaza', assets.esteAmortizabil('2112').ok);
