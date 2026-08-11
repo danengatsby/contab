@@ -172,14 +172,62 @@ const intLei = (x) => Math.round(Number(x) || 0);
  * situatiilor anuale, si singurul loc liber: 029/034 si 043/044 sunt legate prin reguli proprii
  * (`totalPlata_A = F10_029`, `F10_043 = F20_069`), deci nu pot absorbi nimic.
  */
+/**
+ * Peste ce reziduu incetam sa mai credem ca e rotunjire (lei).
+ *
+ * Identitatea se satisface prin insumarea a cateva agregate, fiecare compus din zeci de randuri
+ * rotunjite independent la leu. Acumularea plauzibila e de ordinul zecilor de lei, niciodata al
+ * sutelor. Pragul e deci generos fata de rotunjire si strans fata de o eroare de MAPARE, care
+ * mereu se masoara in sute sau mii — un cont intreg cazut pe alt rand.
+ */
+const PRAG_REZIDUAL = 100;
+
+/**
+ * Absoarbe reziduul SI il face vizibil.
+ *
+ * Absorbtia nu e optionala: fara ea identitatea F10_64 pica la validator si situatiile nu se pot
+ * depune. Problema era ca mecanismul nu avea nici prag, nici glas — inghitea la fel de tacut si
+ * doi lei de rotunjire, si o eroare de mapare de doua sute de mii. Consecinta e perfida: un cont
+ * mapat gresit nu produce NICIODATA un bilant dezechilibrat (plasa il rebalanseaza), ci un
+ * REZULTAT REPORTAT gresit, pe care nu-l confrunta nimeni cu nimic.
+ *
+ * Azi reziduul ramane atasat de rezultat ca proprietate NEENUMERABILA: `Object.keys`, `for...in`
+ * si `JSON.stringify` nu o vad, deci nu poate ajunge din greseala intr-un camp de formular sau in
+ * XML-ul depus — dar `verificaRezidual` o poate citi.
+ */
 function absoarbeRezidul(R) {
   const g = (k) => R[k] || 0;
   const rezid = (g('004') + g('009') + g('010') - g('013') - g('016') - g('017') - g('018')) - g('049');
-  if (!rezid) return R;
+  if (!rezid) return marcheazaRezidual(R, 0);
   const reportatNet = g('041') - g('042') + rezid;
   R['041'] = reportatNet > 0 ? reportatNet : 0;
   R['042'] = reportatNet < 0 ? -reportatNet : 0;
-  return f10Totals(R);
+  return marcheazaRezidual(f10Totals(R), rezid);
+}
+
+/** Ataseaza reziduul absorbit, fara sa-l faca parte din randurile formularului. */
+function marcheazaRezidual(R, rezid) {
+  Object.defineProperty(R, 'rezidual', { value: Math.round(Number(rezid) || 0), enumerable: false, configurable: true });
+  return R;
+}
+
+/**
+ * Verdictul asupra reziduului absorbit intr-un set de randuri F10.
+ * `ok:false` NU inseamna ca formularul e invalid — el torna oricum; inseamna ca suma mutata in
+ * rezultatul reportat e prea mare ca sa fie rotunjire, deci undeva exista un cont care nu cade
+ * unde trebuie. Verificarea e a CONTABILULUI, nu a validatorului: ANAF nu are cum s-o faca.
+ */
+function verificaRezidual(R) {
+  const rezid = (R && R.rezidual) || 0;
+  const marime = Math.abs(rezid);
+  return {
+    rezidual: rezid,
+    prag: PRAG_REZIDUAL,
+    ok: marime <= PRAG_REZIDUAL,
+    mesaj: marime <= PRAG_REZIDUAL ? '' : 'Diferența de ' + rezid + ' lei mutată în rezultatul reportat '
+      + 'depășește pragul de rotunjire (' + PRAG_REZIDUAL + ' lei). Formularul se depune corect, dar cifra '
+      + 'sugerează un cont care nu cade pe rândul potrivit — verifică soldurile înainte de depunere.',
+  };
 }
 
 /**
@@ -353,11 +401,11 @@ function f10CompletTotals(R) {
 function absoarbeRezidulComplet(R) {
   const g = (k) => R[k] || 0;
   const rezid = (g('025') + g('041') + g('042') - g('053') - g('064') - g('068') - g('079')) - g('103');
-  if (!rezid) return R;
+  if (!rezid) return marcheazaRezidual(R, 0);
   const reportatNet = g('095') - g('096') + rezid;
   R['095'] = reportatNet > 0 ? reportatNet : 0;
   R['096'] = reportatNet < 0 ? -reportatNet : 0;
-  return f10CompletTotals(R);
+  return marcheazaRezidual(f10CompletTotals(R), rezid);
 }
 
 /** Randurile F10 COMPLET pentru un an fiscal, in lei intregi. */
@@ -684,8 +732,16 @@ function situatii(view, firma, year, categorie) {
 
   // suma de control (totalPlata_A) = randul de CAPITAL: 029 la prescurtat, 085 la complet
   const a = antet(firma, year, cat, f10cur[bilComplet ? '085' : '029']);
+  // Reziduul absorbit in rezultatul reportat, pe fiecare an. Nu opreste generarea — formularul
+  // torna oricum — dar trebuie SPUS: e singurul simptom al unui cont care nu cade unde trebuie.
+  const rezidCur = verificaRezidual(f10cur);
+  const rezidPre = verificaRezidual(f10pre);
+  const avertismente = [];
+  if (!rezidCur.ok) avertismente.push('Exercițiul ' + year + ': ' + rezidCur.mesaj);
+  if (!rezidPre.ok) avertismente.push('Exercițiul ' + (Number(year) - 1) + ': ' + rezidPre.mesaj);
   return {
     antet: a, lipsa: a.lipsa, categorie: cat,
+    rezidual: { curent: rezidCur, precedent: rezidPre }, avertismente,
     f10: { 1: f10pre, 2: f10cur },
     f20: { 1: f20pre, 2: f20cur },
     randuriF10: bilComplet ? CAMPURI_F10_COMPLET : CAMPURI_F10,
@@ -695,7 +751,7 @@ function situatii(view, firma, year, categorie) {
 
 module.exports = {
   f10Base, f10Totals, f10At, f10CompletBase, f10CompletTotals, f10CompletAt,
-  f20Micro, f20Complet, plAcc, antet, situatii, FORMULARE,
+  f20Micro, f20Complet, plAcc, antet, situatii, verificaRezidual, PRAG_REZIDUAL, FORMULARE,
   RANDURI_F10, RANDURI_F10_COMPLET, RANDURI_F20_MICRO, RANDURI_F20_COMPLET,
   CAMPURI_F10, CAMPURI_F10_COMPLET, CAMPURI_F20_MICRO, CAMPURI_F20_COMPLET,
 };
