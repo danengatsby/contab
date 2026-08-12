@@ -29,6 +29,19 @@ function enhancePasswordFields() {
 }
 document.addEventListener('DOMContentLoaded', enhancePasswordFields);
 enhancePasswordFields();
+
+// Panoul de prezentare al ecranului de intrare (coloana din dreapta) e scris O SINGURA DATA, in
+// #loginOverlay, si se cloneaza in ecranul de inscriere. Doua copii in HTML ar fi doua texte
+// despre acelasi produs — ar diverge la prima corectura, iar cel nefolosit s-ar strica in tacere.
+// Clonarea e sigura: panoul nu contine niciun `id`.
+function oglindestePanoulDePrezentare() {
+  const sursa = document.querySelector('#loginOverlay .auth-hero');
+  const gazda = document.querySelector('#registerOverlay');
+  if (!sursa || !gazda || gazda.querySelector('.auth-hero')) return;
+  gazda.appendChild(sursa.cloneNode(true));
+}
+document.addEventListener('DOMContentLoaded', oglindestePanoulDePrezentare);
+oglindestePanoulDePrezentare();
 // fmt, accName, H, toast, setLoad, api mutati in core.js (importate mai sus).
 // Inregistram hook-ul pentru raspunsul 402 (proba firmei expirata) — promptFirmaSubscribe e
 // declaratie de functie (hoisted), deci referirea ei aici, inainte de definitie, e valida.
@@ -150,8 +163,10 @@ export function aplicaTipCont() {
   if (f.nume) f.nume.required = !contabil;
   const btn = $('#regSubmit');
   if (btn) btn.textContent = contabil ? 'Creează contul de contabil' : 'Creează firma și contul';
-  const logo = $('#registerOverlay .login-logo');
-  if (logo) logo.textContent = contabil ? '▦ Cont de contabil' : '▦ Înscrie o firmă';
+  // Ce fel de cont se face se spune in TITLUL ecranului, nu in sigla: sigla e marca produsului si
+  // ramane aceeasi pe ambele ecrane de autentificare, ca omul sa stie unde e.
+  const titlu = $('#registerOverlay .auth-title');
+  if (titlu) titlu.textContent = contabil ? 'Fă-ți cont de contabil' : 'Fă-ți cont gratuit pe Contabo';
 }
 $$('#registerForm [name="tipCont"]').forEach((r) => r.addEventListener('change', aplicaTipCont));
 

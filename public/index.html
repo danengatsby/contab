@@ -19,40 +19,131 @@
   <script src="/erp.js" defer></script>
 </head>
 <body>
-  <div id="loginOverlay" class="login-overlay">
-    <div class="brand-hero"><div class="bh-panel">
-      <h1 class="bh-title">CONTABO SPACE</h1>
-      <p class="bh-sub">Contabilitate completă, în cloud</p>
-    </div></div>
-    <form id="loginForm" class="login-box">
-      <div class="login-logo">▦ Contabo</div>
-      <p class="muted">Autentificare</p>
-      <label>Utilizator <input name="username" autocomplete="username" required /></label>
-      <label>Parolă <input name="password" type="password" autocomplete="current-password" required /></label>
-      <label id="codeRow" class="hidden inactiv">Cod 2FA (6 cifre) <input name="code" inputmode="numeric" autocomplete="one-time-code" disabled aria-disabled="true" title="Autentificarea în doi pași este momentan dezactivată." /><span class="muted">Autentificarea în doi pași este momentan dezactivată — cere ajutorul administratorului.</span></label>
-      <div id="loginErr" class="status err"></div>
-      <button class="btn primary" data-u="u19">Intră</button>
-      <div class="login-actions" data-u="u45">
-        <button id="registerBtn" type="button" class="btn trial-btn" data-u="u46">🚀 Testează gratuit</button>
-        <button id="demoLoginBtn" type="button" class="btn" data-u="u46" title="Intră ca patronul firmei (necontabil)">👁️ Demo patron</button>
-        <button id="demoContabilBtn" type="button" class="btn" data-u="u46" title="Intră ca și contabilul firmei — vezi colaborarea patron↔contabil">🧮 Demo contabil</button>
+  <!-- Ecranul de intrare: două coloane. Stânga = FORMULARUL (singurul lucru de făcut acolo),
+       dreapta = panoul de prezentare a produsului. Panoul e `aria-hidden` doar pe macheta
+       decorativă, nu pe tot: textul lui e informație reală despre ce face aplicația.
+       Sub 900px coloana de prezentare trece SUB formular, iar macheta dispare — pe telefon
+       ecranul trebuie să înceapă cu câmpurile, nu cu reclama. -->
+  <div id="loginOverlay" class="login-overlay auth-split">
+    <div class="auth-pane">
+      <form id="loginForm" class="login-box">
+        <div class="login-logo">▦ Contabo</div>
+        <h2 class="auth-title">Intră în contul tău</h2>
+        <p class="auth-lead">Completează datele de mai jos pentru a continua.</p>
+        <div class="auth-fields">
+          <label>Utilizator <b class="req">*</b> <input name="username" autocomplete="username" placeholder="Introdu utilizatorul" required /></label>
+          <label>Parolă <b class="req">*</b> <input name="password" type="password" autocomplete="current-password" placeholder="Introdu parola" required /></label>
+          <label id="codeRow" class="hidden inactiv">Cod 2FA (6 cifre) <input name="code" inputmode="numeric" autocomplete="one-time-code" disabled aria-disabled="true" title="Autentificarea în doi pași este momentan dezactivată." /><span class="muted">Autentificarea în doi pași este momentan dezactivată — cere ajutorul administratorului.</span></label>
+        </div>
+        <div id="loginErr" class="status err"></div>
+        <button class="btn primary" data-u="u19">Intră în cont</button>
+        <p data-u="u20"><a id="forgotLink" class="link">Ai uitat parola?</a></p>
+        <div class="auth-sep"><span>Nu ai încă un cont?</span></div>
+        <div class="login-actions" data-u="u45">
+          <button id="registerBtn" type="button" class="btn trial-btn" data-u="u46">🚀 Testează gratuit 30 de zile</button>
+        </div>
+        <div class="login-actions" data-u="u45">
+          <button id="demoLoginBtn" type="button" class="btn" data-u="u46" title="Intră ca patronul firmei (necontabil)">👁️ Demo patron</button>
+          <button id="demoContabilBtn" type="button" class="btn" data-u="u46" title="Intră ca și contabilul firmei — vezi colaborarea patron↔contabil">🧮 Demo contabil</button>
+        </div>
+        <div class="auth-links">
+          <button id="showPricingLogin" type="button" class="link">💳 Prețuri</button>
+          <a href="/video.html" target="_blank" rel="noopener">🎬 Video</a>
+          <a href="/prezentare.html" target="_blank" rel="noopener">📽️ Prezentare</a>
+          <button id="showFaqLogin" type="button" class="link">❓ Întrebări</button>
+          <a href="/carte/" target="_blank" rel="noopener" title="Cartea de contabilitate: 51 de capitole și 5 anexe, de citit în browser">📖 Cartea de contabilitate</a>
+        </div>
+      </form>
+    </div>
+
+    <aside class="auth-hero">
+      <div class="ah-inner">
+        <div class="ah-brand">Contab<span>o</span></div>
+        <h2 class="ah-title">Pentru firme mici, firme mari <span>și birouri de contabilitate.</span></h2>
+        <p class="ah-lead">Automatizare pentru <b>ciclul contabil</b> și <b>obligațiile fiscale</b>, de la documentul primar până la declarația depusă.</p>
+        <div class="ah-feats">
+          <div class="ah-feat">
+            <span class="ah-ic"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M15 21V9h4a2 2 0 0 1 2 2v10"/><path d="M8 7h2M8 11h2M8 15h2"/></svg></span>
+            <b>Oricâte firme</b>
+            <span>Datele fiecărei firme stau separat, strict. Treci de la una la alta dintr-un clic.</span>
+          </div>
+          <div class="ah-feat">
+            <span class="ah-ic"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><circle cx="11.5" cy="13.5" r="2.5"/><path d="m14 16 2.5 2.5"/></svg></span>
+            <b>Documente citite automat</b>
+            <span>PDF-ul devine articol contabil, cu verificarea sumelor și a cotei înainte de postare.</span>
+          </div>
+          <div class="ah-feat">
+            <span class="ah-ic"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1v.3a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-2.8-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.5 15a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 11 4.5a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7 2 2 0 1 1 0 4z"/></svg></span>
+            <b>Declarații și SPV</b>
+            <span>D300, D394, D112, SAF-T, e-Factura și e-Transport — generate din propriile tale cifre.</span>
+          </div>
+          <div class="ah-feat">
+            <span class="ah-ic"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3l7.5 3v5.4c0 4.4-3 8.3-7.5 9.6-4.5-1.3-7.5-5.2-7.5-9.6V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg></span>
+            <b>Siguranță și control</b>
+            <span>Copie de siguranță criptată zilnic, jurnal de audit și drepturi pe fiecare utilizator.</span>
+          </div>
+        </div>
+
+        <!-- Machetă ILUSTRATIVĂ a tabloului de bord (cifre de exemplu, nu date reale). -->
+        <figure class="ah-mock">
+          <div class="am-win" aria-hidden="true">
+            <div class="am-bar"><span class="am-logo">▦ Contabo</span><span class="am-dots"><i></i><i></i><i></i></span></div>
+            <div class="am-body">
+              <nav class="am-nav">
+                <span class="am-on">▦ Tablou de bord</span>
+                <span>🏢 Firme</span>
+                <span>📄 Documente</span>
+                <span>🧾 Declarații</span>
+                <span>📊 Rapoarte</span>
+                <span>⚙️ Setări</span>
+              </nav>
+              <div class="am-main">
+                <div class="am-tiles">
+                  <div class="am-tile"><b>87</b><span>firme active</span></div>
+                  <div class="am-tile"><b>1.248</b><span>declarații pe an</span></div>
+                  <div class="am-tile am-ok"><b>98%</b><span>conformitate</span></div>
+                </div>
+                <div class="am-chart">
+                  <svg viewBox="0 0 80 80" width="80" height="80" class="am-donut">
+                    <circle cx="40" cy="40" r="32" class="amd-bg"></circle>
+                    <circle cx="40" cy="40" r="32" class="amd-1"></circle>
+                    <circle cx="40" cy="40" r="32" class="amd-2"></circle>
+                    <circle cx="40" cy="40" r="32" class="amd-3"></circle>
+                    <circle cx="40" cy="40" r="32" class="amd-4"></circle>
+                    <text x="40" y="38" class="amd-n">1.248</text>
+                    <text x="40" y="49" class="amd-t">total</text>
+                  </svg>
+                  <ul class="am-leg">
+                    <li><i class="lg1"></i>Depuse <b>1.002</b></li>
+                    <li><i class="lg2"></i>De depus <b>162</b></li>
+                    <li><i class="lg3"></i>Cu erori <b>56</b></li>
+                    <li><i class="lg4"></i>Neconcordanțe <b>28</b></li>
+                  </ul>
+                  <div class="am-term">
+                    <span class="am-term-h">Termene apropiate</span>
+                    <span>D300 — decont TVA <b>25</b></span>
+                    <span>D112 — salarii <b>25</b></span>
+                    <span>SAF-T — D406 <b>31</b></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption>Imagine ilustrativă a tabloului de bord — cifrele sunt un exemplu.</figcaption>
+        </figure>
       </div>
-      <div class="login-actions" data-u="u45">
-        <button id="showPricingLogin" type="button" class="btn" data-u="u46">💳 Prețuri</button>
-        <a href="/video.html" target="_blank" rel="noopener" class="btn" data-u="u47">🎬 Video</a>
-        <a href="/prezentare.html" target="_blank" rel="noopener" class="btn" data-u="u47">📽️ Prezentare</a>
-        <button id="showFaqLogin" type="button" class="btn" data-u="u46">❓ Întrebări</button>
-      </div>
-      <div class="login-actions" data-u="u45">
-        <a href="/carte/" target="_blank" rel="noopener" class="btn" data-u="u47" title="Cartea de contabilitate: 51 de capitole și 5 anexe, de citit în browser">📖 Cartea de contabilitate</a>
-      </div>
-      <p data-u="u20"><a id="forgotLink" class="link">Ai uitat parola?</a></p>
-    </form>
+    </aside>
   </div>
 
+  <!-- Înscrierea folosește aceeași așezare ca ecranul de intrare. Panoul de prezentare NU e scris
+       a doua oară aici: e clonat din #loginOverlay de authui.js — două copii ale aceluiași text
+       ar începe să difere de la prima corectură. -->
   <div id="registerOverlay" class="login-overlay hidden">
+    <div class="auth-pane">
     <form id="registerForm" class="login-box reg-compact" data-u="u48">
-      <div class="login-logo">▦ Cont nou</div>
+      <div class="login-logo">▦ Contabo</div>
+      <h2 class="auth-title">Fă-ți cont gratuit pe Contabo</h2>
+      <p class="auth-lead">Completează formularul de mai jos pentru a continua.</p>
       <div id="regPlanHint" class="hidden" data-u="u49"></div>
       <div class="reg-tip">
         <label class="reg-tip-op">
@@ -97,6 +188,7 @@
       <p class="muted" data-u="u56">Prin crearea contului accepți <a href="/termeni.html" target="_blank" rel="noopener">Termenii și condițiile</a>, <a href="/confidentialitate.html" target="_blank" rel="noopener">Politica de confidențialitate</a> și <a href="/dpa.html" target="_blank" rel="noopener">Acordul de prelucrare a datelor</a>.</p>
       <p data-u="u57"><a id="showPricingReg" class="link">💳 Vezi prețurile</a> · <a id="registerCancel" class="link">← Înapoi</a></p>
     </form>
+    </div>
   </div>
 
   <!-- Prețuri (public, pe pagina de autentificare/înscriere) -->
