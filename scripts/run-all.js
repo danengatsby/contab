@@ -30,6 +30,7 @@ const SUITE = [
   'test/run.js',
   'test/cazuri-aprobate.js',
   'test/extractor.js',
+  'test/pdf.js',
   'test/frontend.mjs',
   'test/anaf.js',
   'test/store.js',
