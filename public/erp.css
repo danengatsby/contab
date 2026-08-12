@@ -489,7 +489,12 @@ body.erp .st, body.erp .badge, body.erp .pill {
    Asta e a doua sursa mare de asemanare: `<label>Text <input></label>` devine o
    grila de doua coloane, deci textul se aseaza langa camp, nu deasupra lui.
    ───────────────────────────────────────────────────────────────────────────── */
-body.erp label {
+/* `:not(.hidden)` NU e cosmetic: `body.erp label` (o clasa + un element) bate
+   `.hidden{display:none}` (o clasa), deci un label ascuns din JS ramanea VIZIBIL pe desktop —
+   unde stratul clasic e montat, adica pe cazul obisnuit. Se vedea direct pe ecranul de intrare:
+   randul „Cod 2FA" statea deschis desi 2FA e oprit. Aceeasi capcana ca la `.login-box label`
+   din styles.css, si acolo rezolvata la fel. */
+body.erp label:not(.hidden) {
   display: grid; grid-template-columns: 140px minmax(0, 1fr);
   align-items: center; gap: 4px 7px;
   font-size: 11px; font-weight: 400; color: var(--e-ink); margin: 2px 0;
@@ -512,7 +517,7 @@ body.erp input[type=checkbox], body.erp input[type=radio] {
   width: 13px; height: 13px; box-shadow: none; padding: 0;
 }
 /* Randurile cu bifa raman pe o singura linie: eticheta e DUPA caseta, nu deasupra */
-body.erp .dyn .check, body.erp label:has(> input[type=checkbox]) {
+body.erp .dyn .check:not(.hidden), body.erp label:has(> input[type=checkbox]):not(.hidden) {
   display: flex; flex-direction: row; align-items: center; gap: 5px; font-size: 11px;
 }
 body.erp .dyn { grid-template-columns: 1fr 1fr; gap: 1px 12px; }
@@ -743,3 +748,100 @@ body.erp :focus-visible {
 .ghid-cel-ic { font-size: 15px; line-height: 1; }
 .ghid-cel-t { font-weight: 600; }
 .ghid-cel-d { font-size: 11px; color: var(--muted, #667); line-height: 1.35; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ECRANELE DE AUTENTIFICARE — singurele care NU imbraca stratul clasic.
+   Motivul: aici nu se lucreaza cu cifre, ci se decide daca omul intra sau isi
+   face cont; sunt ecranele dinaintea aplicatiei si singurele pe care le vede un
+   vizitator. Restul stratului (dialog gri de 320px, campuri de 19px, bara de
+   titlu peste sigla) le-ar da aerul unei casute de parola din 1998.
+   Regulile de mai jos ANULEAZA punctual ce impune stratul clasic asupra lui
+   `.login-box`/`.login-overlay`, ca asezarea pe doua coloane din styles.css sa
+   ramana intacta. Specificitatea vine din id-uri: regulile clasice sunt scrise
+   pe clase, deci un id le bate indiferent de ordinea fisierelor. Perimetrul e
+   scris pe ID, nu pe o clasa comuna, tocmai ca sa fie EXPLICIT care ecrane ies
+   din stratul clasic — celelalte casete care refolosesc `.login-box` (preturi,
+   intrebari, schimbarea fortata a parolei) raman dialoguri de aplicatie.
+   ───────────────────────────────────────────────────────────────────────────── */
+body.erp #loginOverlay, body.erp #registerOverlay { background: var(--bg); }
+body.erp #loginOverlay .login-box,
+body.erp #registerOverlay .login-box,
+body.erp #loginOverlay #loginForm.login-box,
+body.erp #registerOverlay #registerForm.login-box {
+  width: min(430px, 100%); padding: 0; background: transparent;
+  border: 0; box-shadow: none; border-radius: 0;
+}
+body.erp #registerOverlay #registerForm.login-box { width: min(480px, 100%); }
+body.erp #loginOverlay .login-logo,
+body.erp #registerOverlay .login-logo {
+  margin: 0 0 16px; padding: 0; background: none; color: var(--head);
+  font-size: 27px; font-weight: 600; text-align: center;
+}
+/* In tema intunecata `--head` e fundalul barei de sus, nu o culoare de TEXT. */
+body.erp.dark #loginOverlay .login-logo,
+body.erp.dark #registerOverlay .login-logo { color: var(--ink); }
+body.erp #loginOverlay .auth-title,
+body.erp #registerOverlay .auth-title { font-size: clamp(20px, 2vw, 25px); font-weight: 600; margin: 0 0 6px; }
+body.erp #loginOverlay .auth-lead,
+body.erp #registerOverlay .auth-lead { font-size: 14px; }
+body.erp #loginOverlay .auth-fields { background: var(--card); border: 1px solid var(--line); }
+/* Etichetele revin DEASUPRA campului (stratul clasic le pune la stanga, pe o coloana de 140px):
+   pe o coloana de ~430px nu incape perechea, iar butonul „arata" din randul parolei ar cadea
+   peste camp. `:not(.hidden)` ramane obligatoriu — altfel randul 2FA, ascuns din JS, reapare. */
+body.erp #loginOverlay label:not(.hidden),
+body.erp #registerOverlay label:not(.hidden) {
+  display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 8px 0 2px;
+}
+/* ...si randurile de bifa raman tot `display:block` (regula de mai sus): caseta si textul curg inline,
+   deci textul lung se rupe firesc sub el. Cu `display:flex`, textul dintre caseta si `<span>`-ul
+   de ajutor devine un element ANONIM de flex, iar randul se sparge in trei coloane inguste —
+   exact ce se intampla cu „Apar in lista de contabili". */
+body.erp #loginOverlay input:not([type=checkbox]):not([type=radio]),
+body.erp #registerOverlay input:not([type=checkbox]):not([type=radio]),
+body.erp #registerOverlay select {
+  height: auto; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px;
+  font-size: 15.5px; background: var(--card); color: var(--ink); box-shadow: none;
+}
+body:not(.dark).erp #loginOverlay input, body:not(.dark).erp #registerOverlay input,
+body:not(.dark).erp #registerOverlay select { background: #fff; }
+/* `body.erp .login-box label > input { width: 100% }` prinde si bifele (sunt copii directi ai
+   etichetei): caseta se intindea pe toata latimea si desenul ei ramanea centrat, adica bifa
+   parea rupta de textul ei. Marimea proprie se pune inapoi explicit. */
+body.erp #loginOverlay input[type=checkbox], body.erp #loginOverlay input[type=radio],
+body.erp #registerOverlay input[type=checkbox], body.erp #registerOverlay input[type=radio] {
+  width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px;
+}
+body.erp #loginOverlay input:focus,
+body.erp #registerOverlay input:focus,
+body.erp #registerOverlay select:focus { outline: 2px solid #cfe3da; border-color: var(--accent); }
+body.erp #loginOverlay .btn,
+body.erp #registerOverlay .btn {
+  border-radius: 10px; padding: 11px 16px; min-height: 42px; font-size: 14.5px; font-weight: 600;
+  background: var(--soft); color: var(--ink); border: 1px solid var(--line); box-shadow: none;
+}
+body.erp #loginOverlay .btn:hover,
+body.erp #registerOverlay .btn:hover { background: var(--soft2); border-color: var(--line-strong); }
+body.erp #loginOverlay .btn.primary,
+body.erp #registerOverlay .btn.primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+  box-shadow: 0 2px 9px rgba(194,97,60,.28); font-size: 15px; padding: 12px;
+}
+body.erp #loginOverlay .btn.primary:hover,
+body.erp #registerOverlay .btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+body.erp #loginOverlay .btn.trial-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
+body.erp #loginOverlay .login-actions { gap: 8px; }
+body.erp #loginOverlay a, body.erp #loginOverlay .link,
+body.erp #registerOverlay a, body.erp #registerOverlay .link { color: var(--accent); }
+body.erp #loginOverlay .auth-links > a,
+body.erp #loginOverlay .auth-links > button { color: var(--muted); font-size: 13px; }
+body.erp #loginOverlay .auth-links > a:hover,
+body.erp #loginOverlay .auth-links > button:hover { color: var(--accent); }
+body.erp #registerOverlay .muted { font-size: 12.5px; }
+/* Coloana de prezentare are propria scara: nu coboara la 11px odata cu aplicatia. */
+body.erp #loginOverlay .ah-title, body.erp #registerOverlay .ah-title {
+  font-size: clamp(19px, 2.1vw, 29px); font-weight: 600; margin: 14px 0 8px;
+}
+body.erp #loginOverlay .ah-lead, body.erp #registerOverlay .ah-lead { font-size: clamp(13px, 1.1vw, 15px); }
+body.erp #loginOverlay .ah-feat b, body.erp #registerOverlay .ah-feat b { font-size: 13px; }
+body.erp #loginOverlay .am-tile b, body.erp #registerOverlay .am-tile b { font-size: 16px; }
+body.erp #loginOverlay .ah-mock figcaption, body.erp #registerOverlay .ah-mock figcaption { font-size: 10.5px; }

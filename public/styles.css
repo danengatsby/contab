@@ -625,6 +625,14 @@ h1,h2,h3,.brand h1,.login-logo{font-family:Georgia,"Iowan Old Style","Palatino L
 /* Suprafețe neutre recalibrate la cald (coerent cu tema Claude) — doar tema luminoasă */
 body:not(.dark) .btn{background:#efebe1}
 body:not(.dark) .btn:hover{background:#e7e1d4}
+/* ...dar NU peste butoanele de acțiune. `body:not(.dark) .btn` are DOUĂ clase + un element, deci
+   bate `.btn.primary` (două clase) — butonul principal ieșea crem cu text ALB, adică ilizibil.
+   Se vedea doar sub 901px: pe desktop stratul clasic (erp.css) îi dă oricum altă față, așa că
+   defectul stătea exact acolo unde nu te uiți — pe telefon, pe butonul „Intră în cont". */
+body:not(.dark) .btn.primary{background:var(--accent)}
+body:not(.dark) .btn.primary:hover{background:var(--accent2)}
+body:not(.dark) .btn.trial-btn{background:var(--accent)}
+body:not(.dark) .btn.trial-btn:hover{background:var(--accent2)}
 body:not(.dark) .drop{background:#f6f3ea}
 body:not(.dark) .preview{background:#f6f3ea}
 body:not(.dark) th{background:#f1eee4;color:#6f6c62}
@@ -936,19 +944,9 @@ body.dark .imper-banner button{background:#ffd778;color:#2a2008}
 .plan-feat li::before{content:"✓";position:absolute;left:0;color:var(--accent,#0b6e4f);font-weight:700}
 .plan-action .btn{width:100%;justify-content:center}
 
-/* ─────────── Erou login: CONTABO SPACE ─────────── */
-.brand-hero{position:absolute;top:4vh;left:0;right:0;display:flex;justify-content:center;pointer-events:none;padding:0 12px;z-index:1}
-.bh-panel{background:rgba(10,16,40,.46);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:14px 34px;text-align:center;box-shadow:0 10px 34px rgba(0,0,0,.35)}
-.brand-hero .bh-title{
-  font-family:Georgia,"Iowan Old Style",Palatino,serif;
-  font-weight:900;font-size:clamp(34px,7vw,86px);line-height:1;letter-spacing:2px;margin:0;
-  background:linear-gradient(90deg,#ffd24a 0%,#ff7a59 26%,#ff4fa3 50%,#8a7bff 74%,#37e0c4 100%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
-  filter:drop-shadow(0 3px 10px rgba(0,0,0,.45))}
-.brand-hero .bh-sub{margin:8px 0 0;color:#eaf1ff;font-size:clamp(12px,1.6vw,16px);font-weight:600;letter-spacing:3px;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+/* Eroul vechi al ecranului de intrare („CONTABO SPACE", panou plutitor peste o fotografie) a fost
+   inlocuit de asezarea pe doua coloane de la finalul fisierului (sectiunea „Ecranul de intrare"). */
 .login-overlay .login-box{position:relative;z-index:2}
-#loginOverlay .login-box{margin-top:12vh}
-@media (max-height:640px){.brand-hero{position:static;margin-bottom:16px}.login-overlay#loginOverlay{grid-auto-flow:row;align-content:center}#loginOverlay .login-box{margin-top:0}}
 
 /* ── ⓘ pe panouri: explicație la hover/atingere despre ce conține panoul ── */
 .cinfo{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;
@@ -1243,3 +1241,131 @@ ol.ciclu>li{margin:10px 0}
 ol.ciclu>li>p{margin:2px 0 4px}
 ul.ciclu-temei{margin:4px 0;padding-left:16px;font-size:12.5px;color:var(--muted,#5b6672)}
 ul.ciclu-temei>li{margin:3px 0}
+
+/* ─────────── Ecranul de intrare: formularul la stânga, produsul la dreapta ───────────
+   Ecranul de dinaintea aplicației e singurul care nu are utilizator: nu poate arăta cifre, deci
+   arată CE face aplicația. De aici cele două coloane — formularul (tot ce e de făcut acolo) și
+   panoul de prezentare. `:not(.hidden)` e OBLIGATORIU pe regula de `display`: `#loginOverlay`
+   (un id) bate `.hidden{display:none}` (o clasă), deci fără el ecranul de intrare ar rămâne
+   deasupra aplicației DUPĂ autentificare — aceeași capcană ca la `.login-box label`. */
+#loginOverlay:not(.hidden),#registerOverlay:not(.hidden){display:grid}
+#loginOverlay,#registerOverlay{grid-template-columns:minmax(380px,44%) minmax(0,1fr);
+  place-items:stretch;background:var(--bg);overflow:hidden}
+/* Inscrierea cere mai multa latime: formularul are randuri de trei campuri (adresa/oras/judet). */
+#registerOverlay{grid-template-columns:minmax(430px,48%) minmax(0,1fr)}
+.auth-pane{display:grid;place-items:center;padding:clamp(18px,3.4vw,44px) clamp(16px,3vw,40px);
+  overflow-y:auto;background:var(--bg)}
+#loginOverlay .login-box,#registerOverlay .login-box{width:min(430px,100%);max-width:100%;
+  background:transparent;box-shadow:none;border-radius:0;padding:0}
+#registerOverlay .login-box{width:min(480px,100%)}
+/* Rândurile de câmpuri ale înscrierii sunt flex fără wrap (u51/u53): pe o coloană de 480px,
+   rândul „Formă juridică + Plătitoare de TVA" ieșea din panou, cu eticheta tăiată.
+   Regula e pe TOATE div-urile din formular, nu pe copiii direcți: rândurile firmei stau într-un
+   `#regFirmaFields`, deci `>` le-ar sări exact pe cele care se rup. */
+#registerOverlay .reg-compact div{flex-wrap:wrap}
+/* ...iar eticheta bifei „Plătitoare de TVA" e `nowrap` (u54): la 480px textul ieșea DIN eticheta
+   lui, peste marginea panoului. Se rupe pe două rânduri ca orice altă etichetă. */
+#registerOverlay .reg-compact label{white-space:normal}
+#loginOverlay .login-logo,#registerOverlay .login-logo{font-size:27px;text-align:center;
+  color:var(--head);margin:0 0 16px}
+/* În tema întunecată `--head` e fundalul barei de sus (#172240), nu o culoare de TEXT: sigla și
+   titlul ieșeau bleumarin pe bleumarin. Aici textul se citește din `--ink`. */
+body.dark #loginOverlay .login-logo,body.dark #registerOverlay .login-logo,
+body.dark #loginOverlay .auth-title,body.dark #registerOverlay .auth-title{color:var(--ink)}
+.auth-title{font-size:clamp(20px,2vw,25px);text-align:center;color:var(--head);margin:0 0 6px}
+.auth-lead{text-align:center;color:var(--muted);font-size:14px;margin:0 0 20px}
+/* Câmpurile stau într-o casetă proprie: pe un ecran altfel gol, chenarul spune unde se lucrează. */
+.auth-fields{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px 20px;box-shadow:var(--shadow)}
+.auth-fields label:first-child{margin-top:0}
+.req{color:var(--danger)}
+/* `.status` are `min-height:18px` (locul mesajului, rezervat ca butonul să nu sară la eroare) —
+   dar aici stă între casetă și butonul principal, unde golul se vede ca o ruptură. */
+#loginErr:empty,#registerErr:empty{min-height:0;margin:0}
+#loginOverlay .btn.primary,#registerOverlay .btn.primary{padding:12px;font-size:15px;margin-top:18px}
+/* Separator cu text la mijloc: „ai deja cont / nu ai cont" e granița dintre cele două intenții. */
+.auth-sep{display:flex;align-items:center;gap:12px;margin:16px 0 2px;color:var(--muted);font-size:12.5px}
+.auth-sep::before,.auth-sep::after{content:"";flex:1;height:1px;background:var(--line)}
+.auth-links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px;margin-top:18px;font-size:13px}
+.auth-links>a,.auth-links>button{background:none;border:0;padding:2px 0;font:inherit;font-size:13px;
+  color:var(--muted);cursor:pointer;text-decoration:none}
+.auth-links>a:hover,.auth-links>button:hover{color:var(--accent);text-decoration:underline}
+
+/* Coloana de prezentare */
+.auth-hero{display:flex;align-items:center;justify-content:center;overflow-y:auto;
+  padding:clamp(22px,3vw,46px) clamp(18px,2.6vw,40px);color:#e6ecfb;
+  background:radial-gradient(115% 85% at 78% 0%,#1d2c66 0%,#101a40 46%,#0a0f26 100%)}
+.ah-inner{width:min(620px,100%)}
+.ah-brand{font-family:Georgia,"Iowan Old Style",Palatino,serif;font-weight:800;color:#fff;
+  font-size:clamp(26px,3vw,40px);line-height:1;text-align:center;letter-spacing:.5px}
+.ah-brand span{color:#ff8a5c}
+.ah-title{color:#fff;text-align:center;margin:14px 0 8px;line-height:1.25;
+  font-size:clamp(19px,2.1vw,29px)}
+.ah-title span{color:#ff8a5c}
+.ah-lead{text-align:center;color:#b3c1e2;margin:0 auto clamp(18px,2.4vw,28px);max-width:44em;
+  font-size:clamp(13px,1.1vw,15px)}
+.ah-lead b{color:#fff;font-weight:600}
+.ah-feats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;text-align:center}
+.ah-feat{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
+.ah-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;color:#cfe0ff;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13)}
+.ah-feat b{color:#fff;font-size:13px;line-height:1.3}
+.ah-feat>span:last-child{color:#9dafd6;font-size:11.5px;line-height:1.45}
+
+/* Macheta tabloului de bord — ILUSTRATIVĂ (cifre de exemplu, spus și în legendă). */
+.ah-mock{margin:clamp(18px,2.4vw,30px) 0 0}
+.am-win{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.am-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;
+  background:#101a3c;color:#fff;font-size:11.5px;font-weight:700}
+.am-dots{display:flex;gap:4px}
+.am-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.35)}
+.am-body{display:grid;grid-template-columns:132px minmax(0,1fr)}
+.am-nav{display:flex;flex-direction:column;gap:2px;padding:8px 6px;background:#16224b;
+  color:#b9c6e6;font-size:10.5px}
+.am-nav span{padding:4px 7px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.am-nav .am-on{background:#2b62c4;color:#fff;font-weight:700}
+.am-main{padding:10px;display:grid;gap:9px;background:#fff;color:#2c2b27}
+.am-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.am-tile{border:1px solid #e6e8f0;border-radius:9px;padding:7px 9px;background:#fbfcfe;min-width:0}
+.am-tile b{display:block;font-size:16px;line-height:1.15;color:#16224b}
+.am-tile span{font-size:10px;color:#6b7285}
+.am-tile.am-ok b{color:#2ea36b}
+.am-chart{display:flex;align-items:center;gap:14px;border:1px solid #e6e8f0;border-radius:9px;
+  padding:8px 10px;background:#fbfcfe}
+.am-donut{flex:none}
+.am-donut circle{fill:none;stroke-width:11}
+/* Inelul: r=32 ⇒ circumferința 201,1. Segmentele sunt procentele din legendă, puse cap la cap
+   prin `stroke-dashoffset` negativ cumulat; rotația de -90° pornește inelul de sus. */
+.am-donut circle:not(.amd-bg){transform:rotate(-90deg);transform-origin:40px 40px}
+.amd-bg{stroke:#eceef4}
+.amd-1{stroke:#2ea36b;stroke-dasharray:162.9 201.1}
+.amd-2{stroke:#e8a33d;stroke-dasharray:26.1 201.1;stroke-dashoffset:-162.9}
+.amd-3{stroke:#d9534f;stroke-dasharray:8 201.1;stroke-dashoffset:-189}
+.amd-4{stroke:#7b6bd6;stroke-dasharray:4 201.1;stroke-dashoffset:-197}
+.amd-n{text-anchor:middle;font-size:13px;font-weight:700;fill:#16224b}
+.amd-t{text-anchor:middle;font-size:8px;fill:#6b7285}
+.am-leg{list-style:none;margin:0;padding:0;display:grid;gap:3px;font-size:10.5px;color:#4a5162;min-width:0;flex:1}
+.am-term{display:grid;gap:3px;font-size:10.5px;color:#4a5162;min-width:0;padding-left:12px;
+  border-left:1px solid #e6e8f0}
+.am-term span{display:flex;gap:10px;white-space:nowrap}
+.am-term b{margin-left:auto;color:#16224b}
+.am-term-h{font-weight:700;color:#16224b;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+.am-leg li{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.am-leg b{margin-left:auto;color:#16224b}
+.am-leg i{width:8px;height:8px;border-radius:2px;flex:none}
+.am-leg .lg1{background:#2ea36b}.am-leg .lg2{background:#e8a33d}
+.am-leg .lg3{background:#d9534f}.am-leg .lg4{background:#7b6bd6}
+.ah-mock figcaption{margin-top:8px;text-align:center;color:#8496bd;font-size:10.5px}
+
+/* Pe ecran îngust prezentarea trece SUB formular și rămâne fără machetă: pe telefon ecranul
+   trebuie să înceapă cu câmpurile, nu cu reclama. */
+@media (max-width:900px){
+  #loginOverlay,#registerOverlay{grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;
+    overflow-y:auto}
+  .auth-pane,.auth-hero{overflow:visible}
+  .auth-hero{padding:26px 18px 34px}
+  .ah-feats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ah-mock{display:none}
+}
+@media (max-width:520px){.ah-feats{grid-template-columns:minmax(0,1fr)}}
