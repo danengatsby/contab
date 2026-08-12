@@ -20,9 +20,31 @@
 // nedeclarata traieste doar in RAM. La oprirea curata se face un persist complet (src/lifecycle.js),
 // deci fereastra conteaza doar la un crash. De aceea indiciul se foloseste DELIBERAT doar unde
 // apelantul chiar stie ce a atins (joburile de fundal), nu peste tot.
+//
+// ── PRAGUL DE TIMP TREBUIE SA FIE MAI MARE DECAT CADENTA APELANTULUI ──────────────────────────
+// Pragul a fost 30 s, iar singurul apelant cu indiciu (`visitors-flush`) ruleaza la 60 s. Deci la
+// FIECARE rulare plasa gasea „prea mult de la ultimul complet" si intorcea diff COMPLET: indiciul
+// nu s-a activat niciodata, nici macar o data. Masurat pe functia pura, server inactiv:
+// 10 rulari -> 10 diff-uri complete, 0 partiale. Optimizarea exista in cod si era moarta la rulare,
+// iar comentariul din jobs.js sustinea contrariul.
+//
+// Cele DOUA plase raspund la intrebari diferite si raman amandoua active, dar pe cadente diferite:
+// la un apelant rar (60 s) se scade prima plasa de TIMP (5 min = 1 complet la 4 partiale); la unul
+// des (sub ~15 s) se scade prima plasa pe NUMAR (20 partiale). Fara diferenta asta, cea mai stransa
+// o masca pe cealalta si aserttile treceau din motivul gresit.
+//
+// INVARIANT, verificat in suita pe CONSTANTELE REALE (test/run.js, sectiunea de persistenta):
+// `SAVE_FULL_MS > 2 x cadenta celui mai rapid apelant cu indiciu` (azi `jobs.VISITORS_FLUSH_MS`) —
+// altfel diff-ul partial nu e cazul obisnuit, ci exceptia, si nu merita complexitatea. Testele
+// vechi comparau pragul cu el insusi (`SAVE_FULL_MS - 1`), deci treceau pentru ORICE valoare:
+// verificau mecanismul, nu efectul lui. Poarta noua simuleaza cadenta reala si numara.
+//
+// Fereastra de crash creste de la 30 s la 5 min — dar ea margineste un BUG (un indiciu gresit),
+// nu functionarea normala: un apelant fara indiciu face oricum diff complet, deci scrierea lui e
+// persistata imediat. 5 minute margineste raza unui defect fara sa omoare optimizarea.
 
 const SAVE_FULL_EVERY = Number(process.env.CONTAB_SAVE_FULL_EVERY) || 20;
-const SAVE_FULL_MS = Number(process.env.CONTAB_SAVE_FULL_MS) || 30 * 1000;
+const SAVE_FULL_MS = Number(process.env.CONTAB_SAVE_FULL_MS) || 5 * 60 * 1000;
 
 /**
  * Decizia, PURA — ca sa poata fi verificata pe fiecare caz fara baza (tiparul lui `persistVerdict`
