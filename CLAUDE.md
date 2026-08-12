@@ -25,6 +25,7 @@ npm run e2e                   # E2E pe live; pe acest server rulează prin Docke
 npm run e2e-izolat            # E2E pe instanță PROPRIE (roluri, resetare parolă, 2FA, importuri, SPV, restaurare, toate declarațiile)
 npm run test-pg               # suita pe driverul de PRODUCȚIE (pg): pornește/curăță singură baza
 npm run stare-ci              # verdictul GitHub Actions pentru commitul de pe disc (fără `gh`, fără token)
+npm run nginx-drift           # configul nginx VIU vs. copia din depozit (0 identice / 1 drift / 2 NEVERIFICAT)
 npm run rto-drill             # DRILL DE RTO: restaurează ultima arhivă și cronometrează revenirea
 npm run drill-rece            # DRILL RECE: restaurare pe o mașină GOALĂ — doar openssl+unzip, în container
 npm run lint                  # ESLint (analiză statică) — NU e în `npm test`, vezi mai jos
@@ -116,6 +117,17 @@ malformată dezactivează criptarea tăcut). Vezi `src/secretsGuard.js`.
 
 Deploy (după merge în `main`): `sudo -u contab PM2_HOME=/home/contab/.pm2 pm2 restart contab`,
 apoi `curl -s http://127.0.0.1:8080/api/health`. Restartul din root fără `PM2_HOME` eșuează.
+
+**Nginx nu se deployează cu asta.** Reverse proxy-ul e o a doua bucată de producție, cu propriul ciclu:
+fișierul viu e `/etc/nginx/sites-available/contab`, copia versionată e `nginx-contab.conf`, iar
+certbot rescrie fișierul viu — deci cele două driftează. Și au driftat: două blocuri `location`
+(excepția ACME `^~ /.well-known/` și blocarea căilor cu punct → 444) au trăit doar pe server între
+28 iul. și 12 aug. 2026. Miza nu e cosmetică — excepția ACME e plasa de reînnoire a certificatului:
+o greșeală acolo nu se vede azi, se vede peste două luni, când expiră TLS-ul. `npm run nginx-drift`
+compară **directivele** (nu octeții — certbot rescrie comentarii, iar copia are un antet propriu),
+cu `0` identice / `1` drift / `2` NEVERIFICAT; driftul intră și în raportul zilnic
+(`scripts/perf-report.sh`), care altfel tace. Conținutul copiei e păzit separat, în `test/run/porti.js`
+(rulează și în CI, unde `/etc/nginx` nu există).
 
 **Restartul E un deploy.** Procesul citește fișierele direct din arborele de lucru, deci orice
 modificare necomisă din `src/` ajunge în producție la următoarea pornire — indiferent de motivul ei

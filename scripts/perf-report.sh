@@ -84,7 +84,21 @@ si fie porneste procesul cu ecosystem.config.js, fie seteaza CONTAB_PM2_LOG_DIR 
   fi
   exit 0
 fi
-[ "$NL" -eq 0 ] && [ "$NE" -eq 0 ] && exit 0   # nimic de raportat -> niciun email
+# DRIFT DE CONFIGURARE NGINX. Raportul asta e singurul lucru care ruleaza zilnic, ca root, pe
+# masina de productie — deci singurul loc din care se poate CITI fisierul viu. Verificarea nu are
+# nimic de-a face cu performanta, dar are totul de-a face cu motivul pentru care exista raportul:
+# un semnal care cere sa se uite cineva nu ajunge niciodata (vezi `firmeLoad` si scale-watch).
+# Doar `1` (drift real) se raporteaza; `2` (NEVERIFICAT) ar fi zgomot zilnic pe orice masina fara
+# nginx, iar `0` e tacere, ca restul raportului.
+NGINX_DRIFT=""
+if [ -f "$DIR/scripts/verifica-nginx.sh" ]; then
+  ND_OUT=$(sh "$DIR/scripts/verifica-nginx.sh" 2>&1); ND_RC=$?
+  [ "$ND_RC" = "1" ] && NGINX_DRIFT="$ND_OUT"
+fi
+
+# nimic de raportat -> niciun email. Driftul de config conteaza si cand totul e rapid: o
+# configurare care traieste doar pe server dispare la prima reinstalare.
+[ "$NL" -eq 0 ] && [ "$NE" -eq 0 ] && [ -z "$NGINX_DRIFT" ] && exit 0
 
 # rezumat pe rute pentru cererile lente (tiparul url=... din logul structurat)
 TOP=$(printf '%s\n' "$LENTE" | grep -o 'url=[^ ]*' | sed 's/url=//; s/?.*//' | sort | uniq -c | sort -rn | head -10)
@@ -126,6 +140,12 @@ $SCALE"
 [ "$NE" -gt 0 ] && BODY="$BODY
 Ultimele erori:
 $(printf '%s\n' "$ERORI" | tail -5)
+"
+[ -n "$NGINX_DRIFT" ] && BODY="$BODY
+⚠ CONFIGURAREA NGINX DE PRODUCTIE difera de copia din depozit (nginx-contab.conf).
+Infrastructura care traieste doar pe server dispare la prima reinstalare, iar o schimbare
+gresita in blocul ACME nu se vede azi — se vede peste ~2 luni, cand expira certificatul.
+$NGINX_DRIFT
 "
 BODY="$BODY
 Detalii pe rute si joburi: /api/metrics (admin). Loguri: pm2 logs contab"
