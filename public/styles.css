@@ -1287,8 +1287,10 @@ body.dark #loginOverlay .auth-title,body.dark #registerOverlay .auth-title{color
 .auth-sep{display:flex;align-items:center;gap:12px;margin:16px 0 2px;color:var(--muted);font-size:12.5px}
 .auth-sep::before,.auth-sep::after{content:"";flex:1;height:1px;background:var(--line)}
 .auth-links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px;margin-top:18px;font-size:13px}
+/* `font-weight` vine DUPĂ `font:inherit`: scurtătura `font` resetează greutatea la a părintelui,
+   deci scrisă înainte ar fi fost ștearsă de ea. */
 .auth-links>a,.auth-links>button{background:none;border:0;padding:2px 0;font:inherit;font-size:13px;
-  color:var(--muted);cursor:pointer;text-decoration:none}
+  font-weight:700;color:var(--muted);cursor:pointer;text-decoration:none}
 .auth-links>a:hover,.auth-links>button:hover{color:var(--accent);text-decoration:underline}
 
 /* Coloana de prezentare */
