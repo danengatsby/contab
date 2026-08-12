@@ -336,17 +336,10 @@ module.exports = function registerAuthRoutes(app, ctx) {
     put('backup', 'lastDoneAt', (d.settings.backup || {}).lastAt);
     put('digest-termene', 'lastDoneDate', (d.settings.deadlineDigest || {}).lastDate);
     put('demo-reset', 'lastDoneDate', (d.settings.demoReset || {}).lastDate);
-    // Distributia incarcarii PE FIRMA (o singura trecere): axa reala de crestere a acestei aplicatii
-    // e volumul per firma (firmele sunt deja izolate prin firmaId/scoped). `maxEntries` e semnalul
-    // care ar declansa partitionarea pe instante — vezi docs/scalare-crestere.md pentru praguri.
-    const perFirma = new Map();
-    for (const e of (d.entries || [])) perFirma.set(e.firmaId, (perFirma.get(e.firmaId) || { entries: 0, documents: 0 }));
-    for (const e of (d.entries || [])) perFirma.get(e.firmaId).entries += 1;
-    for (const x of (d.documents || [])) { const f = perFirma.get(x.firmaId) || { entries: 0, documents: 0 }; f.documents += 1; perFirma.set(x.firmaId, f); }
-    const nume = new Map((d.firme || []).map((f) => [f.id, f.nume]));
-    const topFirme = [...perFirma.entries()]
-      .map(([id, s]) => ({ id, nume: nume.get(id) || String(id), entries: s.entries, documents: s.documents }))
-      .sort((a, b) => b.entries - a.entries).slice(0, 10);
+    // Distributia incarcarii PE FIRMA: axa reala de crestere a acestei aplicatii (firmele sunt deja
+    // izolate prin firmaId/scoped). Calculul sta in `metrics.firmeLoad` — o singura sursa, folosita
+    // si de jobul `scale-watch`, care duce acelasi semnal la ALERTA. Praguri: docs/scalare-crestere.md.
+    const incarcare = metrics.firmeLoad(d);
     // Nu blocheaza raspunsul daca git nu merge: deployState.read() nu arunca niciodata, iar
     // verdictul „nu se poate citi" e o stare de sine statatoare, distincta de „curat".
     const deploy = await require('./deployState').read();
@@ -366,7 +359,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
       },
       // Coada de persistenta: `pendingAgeMs` > 0 = scrieri care traiesc doar in RAM (nedurabile).
       persist: db.persistStats(),
-      firmeLoad: { maxEntries: topFirme.length ? topFirme[0].entries : 0, top: topFirme },
+      firmeLoad: incarcare,
       // memo-ul per firma al rutelor scumpe (dashboard): rata de hit spune daca invalidarea
       // globala la fiecare scriere lasa cache-ul sa ajute in practica.
       cache: cache.stats(),

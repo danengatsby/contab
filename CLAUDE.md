@@ -162,7 +162,14 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   utilizator/IP) și plafon exporturi),
   **src/authRoutes.js** (login/2FA, înscriere, resetare, impersonare, me/meta/health/metrics/audit),
   **src/jobs.js** (`safeInterval`: backup, digest-termene, demo-reset, rate-limit-hygiene,
-  uploads-hygiene, memory-watch, **persist-watch**, **lag-watch**, **audit-watch**, spv-poll —
+  uploads-hygiene, memory-watch, **persist-watch**, **lag-watch**, **audit-watch**, **scale-watch**, spv-poll —
+  `scale-watch` (la 6h) închide bucla ADR-ului de scalare: `docs/scalare-crestere.md` cere ca fiecare
+  pas să se ia pe un **semnal real** și numește semnalul (`firmeLoad`), dar nimeni nu-l consuma —
+  trebuia să se uite un om în `/api/metrics`. „Observă" ca instrucțiune pentru un om nu e un
+  mecanism, iar efectul s-a văzut: documentul a rămas în urma realității. Acum semnalul ajunge
+  singur, verdictul e pur (`verdictScalare`) și **numește firma**, iar pragul din cod
+  (`CONTAB_SCALE_ENTRIES_WARN`) e legat de cel din ADR printr-o poartă în suită, în ambele direcții.
+  Calculul e o singură sursă (`metrics.firmeLoad`), folosită și de rută, și de job —
   primele două alertează ÎNAINTE de plafonul pm2: RSS peste prag, respectiv scrieri necomise/eșecuri
   în coada de persistență; `lag-watch` măsoară cât stă blocată bucla de evenimente — într-un singur
   proces, o bucată de muncă sincronă oprește toate cererile, iar durata pe rută nu poate distinge o
