@@ -1815,3 +1815,62 @@ section('Poarta: niciun `require` relativ care nu rezolva (defectul tacut al mut
   ok('poarta chiar gaseste cai relative de verificat (>200)', nrCai > 200);
   eq('nicio cale relativa din src/ nu e rupta', rupte.join(' | ') || '(niciuna)', '(niciuna)');
 }
+
+
+section('Poarta: configul nginx din depozit isi pastreaza blocurile care nu se vad cand se strica');
+{
+  // DE CE. Infrastructura de productie a trait in afara depozitului: doua blocuri `location`
+  // adaugate direct pe server nu erau in `nginx-contab.conf`, desi ANTETUL acelui fisier avertiza
+  // ca cele doua pot drifta. Un avertisment scris nu e un mecanism — driftul s-a produs exact
+  // acolo unde avertismentul spunea ca se poate produce.
+  //
+  // Driftul fata de fisierul VIU se verifica separat (`npm run nginx-drift`), fiindca cere acces
+  // la /etc/nginx si nu exista in CI. Poarta de AICI verifica altceva, si merge oriunde: ca in
+  // copia din depozit n-au disparut directivele a caror lipsa NU se vede la urmatoarea cerere.
+  //
+  // Cea mai importanta: `^~` pe `/.well-known/`. Cu prefix simplu (`location /.well-known/`),
+  // regexul `~ /\.` de mai jos ar castiga si ar inchide conexiunea cu 444 pe provocarea ACME.
+  // Sub autentificatorul `nginx` nu s-ar vedea (isi insereaza un `location =`, potrivire exacta,
+  // care bate orice), dar sub `webroot`/`standalone` ar taia reinnoirea — iar asta se afla peste
+  // doua luni, cand expira certificatul si cade tot site-ul.
+  const fsN = require('fs'); const pN = require('path');
+  const conf = fsN.readFileSync(pN.join(RADACINA, 'nginx-contab.conf'), 'utf8');
+  const directive = conf.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#'));
+
+  ok('poarta chiar citeste un config, nu un fisier gol', directive.length > 30);
+  ok('exceptia ACME exista (plasa de reinnoire a certificatului)', /location\s+\^~\s+\/\.well-known\//.test(conf));
+  ok('...cu `^~`, nu prefix simplu (altfel regexul pe puncte o inghite)', !/location\s+\/\.well-known\/\s*\{/.test(conf));
+  ok('caile cu punct raman inchise cu 444 (zgomotul scanerelor)', /location\s+~\s+\/\\\.\s*\{/.test(conf) && /return\s+444/.test(conf));
+  ok('exceptia ACME e DEASUPRA regulii pe puncte (lizibilitate; `^~` castiga oricum)',
+    conf.indexOf('/.well-known/') < conf.indexOf('return 444'));
+
+  // Node nu are voie sa fie expus public: nginx e singurul punct de intrare, iar aplicatia asculta
+  // pe 127.0.0.1 (src/lifecycle.js). Un `proxy_pass` catre alta adresa ar muta acel contract.
+  const tinte = [...conf.matchAll(/proxy_pass\s+(\S+);/g)].map((m) => m[1]);
+  // Trei blocuri, nu „macar unul": autentificare (plafonat), ACME (exceptat) si catch-all.
+  // Numarul E aserttia — disparitia oricaruia dintre ele trebuie sa se vada, nu doar a ultimului.
+  ok('cele trei blocuri de proxy sunt toate acolo (auth, ACME, catch-all)', tinte.length >= 3);
+  ok('toate trimit la aplicatia locala (Node nu se expune direct)', tinte.every((t) => t === 'http://127.0.0.1:8080'));
+
+  // Plafonul pe caile de autentificare: prima plasa, inaintea event loop-ului. Rutele numite aici
+  // trebuie sa EXISTE in aplicatie — altfel plafonul pazeste o cale moarta si nimeni nu afla.
+  const zona = conf.match(/limit_req_zone[^;]+zone=(\w+):/);
+  ok('zona de plafon pe autentificare e declarata', !!zona);
+  ok('...si chiar folosita intr-un `limit_req`', !!zona && conf.includes('limit_req zone=' + zona[1]));
+  const caiAuth = (conf.match(/location\s+~\s+\^\/api\/\(([^)]+)\)/) || [])[1];
+  ok('plafonul numeste caile de autentificare', !!caiAuth);
+  if (caiAuth) {
+    const rute = caiAuth.split('|').map((s) => s.trim());
+    const srcAuth = fsN.readFileSync(pN.join(RADACINA, 'src', 'authRoutes.js'), 'utf8');
+    const lipsa = rute.filter((r) => !srcAuth.includes("'/api/" + r.split('/')[0]));
+    eq('fiecare cale plafonata exista in aplicatie', lipsa.join(',') || '(niciuna)', '(niciuna)');
+  }
+
+  // Corpul cererii: upload-urile de documente primare depasesc implicitul nginx de 1m. Daca
+  // dispare, upload-ul cade cu 413 la nginx, INAINTE de orice mesaj al aplicatiei.
+  const corp = conf.match(/client_max_body_size\s+(\d+)m/);
+  ok('plafonul de corp e setat peste implicitul nginx de 1m', !!corp && Number(corp[1]) > 1);
+  // ...si peste plafonul propriu de fisier al aplicatiei (20 MB, src/bootstrap.js), altfel nginx
+  // ar taia inaintea garzii care stie sa explice de ce.
+  ok('...si peste plafonul de fisier al aplicatiei (20 MB)', !!corp && Number(corp[1]) >= 20);
+}
