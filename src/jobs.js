@@ -28,6 +28,14 @@ const { trackServerError } = require('./serverErrors');
 // (serverul traieste prin app.listen) si nici sa supravietuiasca unui stop() — altfel un test sau
 // un embedding care porneste joburile ar atarna la nesfarsit dupa inchiderea serverului.
 const handles = [];
+
+// Cadenta jobului `visitors-flush` — SINGURUL apelant care da un indiciu de colectie lui
+// `db.save()`. E o constanta numita, si exportata, fiindca pragul de timp din src/persistPlan.js
+// trebuie sa fie mai mare decat ea (altfel plasa taie indiciul la fiecare rulare si optimizarea
+// e moarta — s-a intamplat: 30 s prag vs. 60 s cadenta). Un numar magic aici si altul acolo nu
+// se pot verifica unul fata de celalalt; doua constante numite, da (poarta e in test/run.js).
+const VISITORS_FLUSH_MS = 60 * 1000;
+
 function esecJob(label, e, unde) {
   metrics.jobError(label, (e && e.message) || e);
   log.error('eroare in job periodic' + (unde ? ' (' + unde + ')' : ''), { job: label, err: e });
@@ -134,6 +142,11 @@ function start(ctx) {
   // la 80.000 de articole) din minut in minut, in gol: costul crestea cu baza, desi lucrarea lui
   // ramane de cateva sute de randuri. Vezi src/persistPlan.js pentru plasa care margineste
   // greseala daca cineva mai adauga vreodata o scriere in acest bloc.
+  //
+  // Cadenta e `VISITORS_FLUSH_MS`, nu un `60 * 1000` scris aici: pragul de timp al plasei trebuie
+  // sa fie mai mare decat ea, iar suita verifica exact relatia asta pe cele doua constante. Cat
+  // timp intervalul a fost un numar magic, relatia n-a putut fi verificata de nimeni — si a fost
+  // gresita, deci jobul de mai jos platea diff-ul complet la fiecare rulare, exact ce voia sa evite.
   safeInterval('visitors-flush', () => {
     const vis = require('./visitors');
     vis.curata();                       // retentie: inregistrarile vechi ies inainte de a fi scrise
@@ -143,7 +156,7 @@ function start(ctx) {
     d.visitors = lista;
     db.save(['visitors']);
     metrics.jobResult('visitors-flush', lista.length + ' adrese');
-  }, 60 * 1000);
+  }, VISITORS_FLUSH_MS);
 
   // Igiena uploads (zilnic): staging-urile de import ramase dupa un crash se sterg
   // (gunoi cert, peste 24h); fisierele ORFANE doar se numara si se vad in /api/metrics
@@ -328,4 +341,4 @@ function start(ctx) {
 
 // `safeInterval` e exportat pentru teste (ca `persistVerdict`): plasa de siguranta e chiar
 // proprietatea de verificat, iar prin `start()` ar cere pornirea tuturor joburilor reale.
-module.exports = { start, stop, persistVerdict, safeInterval };
+module.exports = { start, stop, persistVerdict, safeInterval, VISITORS_FLUSH_MS };

@@ -6153,6 +6153,42 @@ section('Coada de persistenta: starea expusa (store/storePg queueStats)');
   eq('un diff complet re-armeaza contorul', stare.partiale, 0);
   ok('...si noteaza momentul', stare.ultimulComplet > 0);
 
+  // ── EFECTUL indiciului, nu mecanismul lui ────────────────────────────────────────────────
+  // Toate aserttile de mai sus compara pragul CU EL INSUSI (`SAVE_FULL_MS - 1`), deci trec pentru
+  // ORICE valoare a lui — inclusiv pentru una care taie indiciul la fiecare rulare. Exact asta se
+  // intamplase: prag 30 s, cadenta jobului 60 s, deci diff COMPLET de fiecare data si optimizarea
+  // moarta la rulare, cu suita verde. Poarta de aici leaga cele doua constante REALE si simuleaza
+  // cadenta adevarata a singurului apelant cu indiciu.
+  const cadenta = require('../src/jobs').VISITORS_FLUSH_MS;
+  ok('cadenta jobului cu indiciu e o constanta numita (nu un numar magic)', cadenta > 0);
+  ok('pragul de timp lasa indiciul sa se activeze (prag > cadenta)', plan.SAVE_FULL_MS > cadenta);
+  ok('...si il face CAZUL OBISNUIT, nu exceptia (prag > 2x cadenta)', plan.SAVE_FULL_MS > 2 * cadenta);
+
+  // Simulare pe ceas virtual: proces proaspat, apoi o rulare la fiecare `cadenta`. Numaram cate
+  // ies partiale si cate complete — singura forma in care „indiciul functioneaza" e o AFIRMATIE
+  // verificabila. Cu pragul vechi de 30 s, `nrPartiale` iese 0 si prima aserttie pica.
+  let dinComplet = Infinity;  // niciun diff complet inca
+  let consecutive = 0;
+  let nrPartiale = 0;
+  let nrComplete = 0;
+  for (let tick = 0; tick < 10; tick += 1) {
+    const only = plan.colectiiDeDiffuit(['visitors'], { forceFull: false, partiale: consecutive, dinUltimulComplet: dinComplet });
+    if (only) { nrPartiale += 1; consecutive += 1; dinComplet += cadenta; }
+    else { nrComplete += 1; consecutive = 0; dinComplet = cadenta; }
+  }
+  eq('10 rulari la cadenta reala: toate colectiile se contorizeaza', nrPartiale + nrComplete, 10);
+  ok('indiciul CHIAR se activeaza la cadenta reala a jobului', nrPartiale > 0);
+  ok('...si e majoritar (altfel optimizarea nu-si merita complexitatea)', nrPartiale > nrComplete);
+  // `nrComplete > 0` ar fi trecut DIN MOTIVUL GRESIT: primul persist al oricarui proces e complet
+  // (`dinUltimulComplet = Infinity`), deci aserttia ar fi fost adevarata si cu un prag de o ora,
+  // adica exact in cazul in care plasa nu se mai inchide niciodata. Cerem inchideri REPETATE.
+  ok('plasa se inchide si DUPA primul diff complet, nu doar la pornire', nrComplete >= 2);
+  // Promisiunea reala a celor doua plase impreuna: cat timp poate trai in RAM o schimbare pe care
+  // un indiciu gresit a sarit-o. E o POLITICA, deci se scrie ca atare — nu se deduce din praguri.
+  const fereastraRecuperareMs = Math.min(plan.SAVE_FULL_EVERY * cadenta, plan.SAVE_FULL_MS);
+  ok('fereastra garantata de recuperare ramane sub 10 minute',
+    fereastraRecuperareMs > 0 && fereastraRecuperareMs <= 10 * 60 * 1000);
+
   // Decizia de ALERTA pe coada (pura): fiecare caz, plus pragurile.
   const { persistVerdict } = require('../src/jobs');
   const baza = { pending: false, pendingAgeMs: 0, pendingBytes: 0, failStreak: 0, conflicted: false };
