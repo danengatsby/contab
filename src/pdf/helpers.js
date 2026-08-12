@@ -10,12 +10,23 @@ const path = require('path');
 
 // Logo-ul firmei (optional): incarcat in Setari -> Date firma, stocat in uploads/.
 // Rezolvarea cai se face aici ca sa nu depindem de server in restul functiilor.
+//
+// `../db`, NU `./db`. Functia a venit din monolitul `src/pdf.js`, unde fratele ei chiar era
+// `src/db.js`; mutata in `src/pdf/`, aceeasi cale a inceput sa arate spre `src/pdf/db` —
+// inexistent. `require` arunca MODULE_NOT_FOUND, `catch`-ul de mai jos il inghitea, iar functia
+// raspundea `null` linistit: 26 de zile in care logo-ul incarcat de utilizator n-a aparut pe
+// NICIUN PDF si pe nicio factura, fara o linie in log. Fumul HTTP n-avea cum sa vada — un PDF
+// fara logo e tot un PDF valid, cu acelasi `%PDF` la inceput.
+//
+// `catch`-ul ramane (un logo ilizibil nu are voie sa rupa o factura), dar acum e pazit din doua
+// parti: o poarta care refuza orice `require` relativ nerezolvabil din `src/` si o proba pe EFECT
+// (fisier real pe disc -> cale intoarsa, si logo-ul chiar ajunge in PDF). Vezi test/pdf.js.
 function logoPath(company) {
   if (!company || !company.logoFile) return null;
   try {
     const safe = String(company.logoFile).replace(/[^a-zA-Z0-9._-]/g, '');
     if (!/\.(png|jpe?g)$/i.test(safe)) return null; // PDFKit accepta doar PNG/JPEG
-    const p = path.join(require('./db').UPLOAD_DIR, safe);
+    const p = path.join(require('../db').UPLOAD_DIR, safe);
     return fs.existsSync(p) ? p : null;
   } catch (e) { return null; }
 }
@@ -175,10 +186,24 @@ function finish(doc, res, filename) {
 
 // ───────────────────────────── RAPOARTE ─────────────────────────────
 
-/** Raport recapitulativ generic: titlu + tabel indicator/valoare + nota. */
+/**
+ * Raport recapitulativ generic: titlu + (optional) randuri de identificare + tabel + nota.
+ *
+ * `opts.intro` (lista de siruri) exista fiindca `recapPdf` isi construieste PROPRIUL document si
+ * il si inchide (`finish`). Un apelant care voia sa scrie ceva inaintea tabelului nu avea unde:
+ * fluturasul isi facea un `newDoc()` al lui, scria acolo „Angajat:" si „CNP:", apoi delega aici —
+ * iar documentul lui ramanea ORFAN, nefinalizat. Randurile acelea n-au ajuns niciodata pe hartie,
+ * tacut, fiindca `%PDF` era tot acolo si numele angajatului venea oricum din `subtitle`.
+ */
 function recapPdf(res, company, opts) {
   const doc = newDoc(false);
   header(doc, company, opts.title, opts.subtitle);
+  const intro = (opts.intro || []).filter(Boolean);
+  if (intro.length) {
+    doc.fillColor(C.ink).font('Helvetica').fontSize(10);
+    for (const linie of intro) doc.text(clean(linie));
+    doc.moveDown(0.5);
+  }
   table(doc, [
     { label: opts.colName || 'Indicator', key: 'k', width: 330 },
     { label: opts.colVal || 'Suma (lei)', key: 'v', width: 150, align: 'right' },

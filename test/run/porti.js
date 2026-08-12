@@ -1767,3 +1767,51 @@ section('Poarta: fiecare pas din ciclul contabil isi poarta temeiul legal');
   ok('temeiurile nu contin termene de depunere', !/25 (ale|a) lunii/i.test(textTot));
   ok('...si nici cote procentuale', !/\d+\s*%/.test(textTot));
 }
+
+
+section('Poarta: niciun `require` relativ care nu rezolva (defectul tacut al mutarii de fisier)');
+{
+  // DE CE. `src/pdf/helpers.js` a mostenit din monolitul `src/pdf.js` linia `require('./db')`.
+  // In monolit, fratele ei chiar era `src/db.js`; in `src/pdf/`, aceeasi cale arata spre
+  // `src/pdf/db` — inexistent. `require` a inceput sa arunce MODULE_NOT_FOUND, un `catch` de
+  // langa el l-a inghitit, iar functia a raspuns `null` linistit: 26 de zile in care logo-ul
+  // incarcat de utilizator n-a mai aparut pe NICIUN PDF si pe nicio factura, fara o linie in log.
+  //
+  // Clasa de defecte e generala, nu tine de PDF-uri: la orice mutare de fisier, o cale relativa
+  // isi schimba intelesul FARA sa se schimbe textul ei. Cand `require`-ul e cerut la RULARE
+  // (inauntrul unei functii, ca aici) si e invelit in `try/catch`, esecul nu se vede nici la
+  // pornire, nici in teste — codul „merge", doar ca nu mai face nimic.
+  //
+  // Poarta e ieftina si totala: fiecare `require('./x')` / `require('../x')` din `src/` trebuie
+  // sa indice un fisier sau un director care EXISTA. Nu se uita la `try/catch` (l-ar putea ocoli
+  // oricine), ci la calea insasi.
+  const fsR = require('fs'); const pR = require('path');
+  const fisiere = [];
+  (function scan(dir) {
+    for (const nume of fsR.readdirSync(dir)) {
+      const p = pR.join(dir, nume);
+      if (fsR.statSync(p).isDirectory()) scan(p);
+      else if (nume.endsWith('.js')) fisiere.push(p);
+    }
+  }(pR.join(RADACINA, 'src')));
+
+  // Perimetrul se afirma: o poarta care scaneaza un director gresit nu gaseste nimic si TRECE.
+  ok('poarta chiar vede modulele din src/ (>100 fisiere)', fisiere.length > 100);
+
+  const rupte = [];
+  let nrCai = 0;
+  for (const f of fisiere) {
+    const src = fsR.readFileSync(f, 'utf8');
+    const linii = src.split('\n');
+    for (let i = 0; i < linii.length; i += 1) {
+      for (const m of linii[i].matchAll(/require\('(\.[^']*)'\)/g)) {
+        nrCai += 1;
+        const tinta = pR.resolve(pR.dirname(f), m[1]);
+        const exista = fsR.existsSync(tinta) || fsR.existsSync(tinta + '.js') || fsR.existsSync(tinta + '.json');
+        if (!exista) rupte.push(pR.relative(RADACINA, f) + ':' + (i + 1) + " require('" + m[1] + "')");
+      }
+    }
+  }
+  ok('poarta chiar gaseste cai relative de verificat (>200)', nrCai > 200);
+  eq('nicio cale relativa din src/ nu e rupta', rupte.join(' | ') || '(niciuna)', '(niciuna)');
+}

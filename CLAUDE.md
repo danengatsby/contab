@@ -18,6 +18,7 @@ node test/run.js              # doar verificările de module (sincron, eq/ok, se
 node test/http.js             # doar integrarea HTTP (server real pe port efemer, DB temporar per-pid)
 CONTAB_TEST_DRIVER=json node test/http.js     # aceeași suită pe driverul json (vechi, doar rollback; rulează ambele la schimbări de persistență!)
 node test/frontend.mjs        # doar logica pură din public/*.js (shim DOM, fără browser/jsdom)
+node test/pdf.js              # ce SCRIE PE HÂRTIE: randare pdfkit reală + extragere de text
 node test/anaf.js             # reziliență ANAF + poll SPV (async, stub-uri, fără apeluri reale)
 npm run seed                  # încarcă exemplul din ghid (S.C. EXEMPLU PROD S.R.L., 2026-06)
 npm run e2e                   # E2E pe live; pe acest server rulează prin Docker (vezi antetul scripts/e2e.mjs)
@@ -285,6 +286,18 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   seed în `buildDb()`, cookie-uri prin `req()`, FormData nativ;
   `test/anaf.js` e async (stub pe `global.fetch` și pe funcțiile modulului `anaf`). La teste noi de
   rute HTTP, atenție: restore-ul din suita de backup readuce baza la snapshot.
+- **PDF-uri: se verifică ce SCRIE PE HÂRTIE, nu că răspunsul începe cu `%PDF`.** `test/pdf.js`
+  (async, fișier propriu) randează cu pdfkit real, apoi **extrage textul** cu același
+  `src/extractor.js` folosit pe documentele primite, și afirmă pe text: cifrele, ramurile
+  condiționate (CM angajator vs. FNUASS, beneficii art. 76, avans/rețineri), marcajul „STORNAT",
+  starea goală, transliterarea diacriticelor. Fumul HTTP (200 + `%PDF`) rămâne, dar nu poate vedea
+  un document **valid și greșit** — și chiar n-a văzut: două defecte au trăit sub el 26 de zile
+  (logo-ul lipsă de pe toate PDF-urile, CNP-ul și funcția lipsă de pe fluturaș). Un generator nou
+  primește cazuri aici, nu doar o linie în bucla de fum.
+- **Cale relativă mutată = defect tăcut.** O poartă în `test/run/porti.js` refuză orice
+  `require('./x')` din `src/` care nu rezolvă. La mutarea unui fișier, calea își schimbă înțelesul
+  fără să-și schimbe textul; dacă `require`-ul e cerut la RULARE și învelit în `try/catch`, eșecul
+  nu se vede nici la pornire, nici în teste — codul „merge", doar că nu mai face nimic.
 - Frontend: `test/frontend.mjs` testează **doar logica pură** din `public/*.js` (funcții și
   construire de HTML ca șiruri), nu randarea — aceea e treaba lui `npm run e2e`. `test/dom-shim.mjs`
   dă globalii atinși la import (`document`, `window`, `MutationObserver`…) și întoarce mereu

@@ -51,7 +51,9 @@ cheamă și CI, deci nu există două liste de probe care să driftează. Docker
 **2 — NEVERIFICAT**, distinct de un eșec de test.
 Rulează, în ordine: verificarea sintaxei tuturor fișierelor (`npm run lint-syntax`), garda pe baza reală
 (`test/db-guard.js`), sesiuni/auth, **verificările de module** (`test/run.js`, pe date construite
-pur, fără a atinge `data/db.json`), extractorul, **logica pură de frontend** (`test/frontend.mjs`),
+pur, fără a atinge `data/db.json`), extractorul, **documentele PDF** (`test/pdf.js` — randare
+pdfkit reală, apoi extragere de text: se verifică ce scrie pe hârtie, nu că răspunsul începe cu
+`%PDF`), **logica pură de frontend** (`test/frontend.mjs`),
 reziliența ANAF (`test/anaf.js`, cu stub-uri), persistența (`test/store.js`, `test/store-pg.js`) și
 **verificările HTTP** (`test/http.js`, server pornit pe o bază temporară) — balanța și cele
 4 egalități, TVA (decont, la încasare, taxare inversă, **pro-rata art. 300**, ajustări **art. 305**),

@@ -32,12 +32,10 @@ function statePlataPdf(res, company, sp, period) {
 }
 
 function fluturasPdf(res, company, r, period) {
-  const doc = newDoc(false);
-  header(doc, company, 'Fluturas de salariu', period ? periodLabel(period) : '');
-  doc.fillColor(C.ink).font('Helvetica').fontSize(10);
-  doc.text('Angajat: ' + clean(r.nume) + (r.functie ? '  (' + clean(r.functie) + ')' : ''));
-  if (r.cnp) doc.text('CNP: ' + clean(r.cnp));
-  doc.moveDown(0.5);
+  // Identificarea angajatului merge prin `intro`, NU pe un document propriu: `recapPdf` isi face
+  // singur documentul si il inchide, deci un `newDoc()` de aici ar ramane orfan si tot ce s-ar
+  // scrie pe el s-ar pierde — asa s-a si intamplat, iar fluturasul a circulat fara CNP si fara
+  // functie. Numele scapase doar fiindca ajunge separat, prin `subtitle`.
   const rows = [];
   if (r.spor) { rows.push({ k: 'Salariu de baza', v: fmt(round2(r.brut - r.spor)) }); rows.push({ k: '+ Spor', v: fmt(r.spor) }); }
   if (r.zileCM || r.zileCO) {
@@ -83,6 +81,10 @@ function fluturasPdf(res, company, r, period) {
   rows.push({ k: 'Cost total angajator', v: fmt(r.costTotal), _bold: true });
   recapPdf(res, company, {
     title: 'Fluturas de salariu', subtitle: clean(r.nume) + (period ? ' — ' + periodLabel(period) : ''),
+    intro: [
+      'Angajat: ' + clean(r.nume) + (r.functie ? '  (' + clean(r.functie) + ')' : ''),
+      r.cnp ? 'CNP: ' + clean(r.cnp) : null,
+    ],
     filename: 'fluturas-' + (r.nume || 'salariu').replace(/[^\w-]/g, '_') + '.pdf', rows,
     colName: 'Element', colVal: 'Suma (lei)',
     note: 'Calcul conform parametrilor fiscali curenti (CAS 25%, CASS 10%, impozit 10%, CAM 2,25% angajator). Semnatura angajat: ____________________',
