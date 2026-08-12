@@ -845,3 +845,4 @@ body.erp #loginOverlay .ah-lead, body.erp #registerOverlay .ah-lead { font-size:
 body.erp #loginOverlay .ah-feat b, body.erp #registerOverlay .ah-feat b { font-size: 13px; }
 body.erp #loginOverlay .am-tile b, body.erp #registerOverlay .am-tile b { font-size: 16px; }
 body.erp #loginOverlay .ah-mock figcaption, body.erp #registerOverlay .ah-mock figcaption { font-size: 10.5px; }
+body.erp #loginOverlay .ah-credit, body.erp #registerOverlay .ah-credit { font-size: 12px; }

@@ -1357,6 +1357,8 @@ body.dark #loginOverlay .auth-title,body.dark #registerOverlay .auth-title{color
 .am-leg .lg1{background:#2ea36b}.am-leg .lg2{background:#e8a33d}
 .am-leg .lg3{background:#d9534f}.am-leg .lg4{background:#7b6bd6}
 .ah-mock figcaption{margin-top:8px;text-align:center;color:#8496bd;font-size:10.5px}
+.ah-credit{margin:clamp(14px,2vw,22px) 0 0;text-align:center;color:#9dafd6;font-size:12px}
+.ah-credit b{color:#fff;font-weight:600}
 
 /* Pe ecran îngust prezentarea trece SUB formular și rămâne fără machetă: pe telefon ecranul
    trebuie să înceapă cu câmpurile, nu cu reclama. */
