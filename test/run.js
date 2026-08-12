@@ -6210,6 +6210,96 @@ section('Coada de persistenta: starea expusa (store/storePg queueStats)');
 }
 
 
+section('Blocajul buclei: alerta NUMESTE vinovatul (joburi + persist, nu doar cereri)');
+{
+  // Alerta de lag stia CAT a stat blocata bucla si spunea singura, in clar, „cauta in joburi, nu in
+  // rute" — adica isi recunostea propriul punct orb. Cererile erau masurate, joburile si `db.save()`
+  // nu. Sectiunea verifica jumatatea care lipsea, plus propozitia pe care o citeste omul.
+  const met = require('../src/metrics');
+  const { suspectiLag, ruleazaJob } = require('../src/jobs');
+
+  // ── Propozitia din alerta (pura) ──────────────────────────────────────────────────────────
+  const J = [{ job: 'backup', ms: 1420 }, { job: 'visitors-flush', ms: 12 }];
+  const C = [{ route: 'GET /pdf/situatii', ms: 610 }];
+  ok('cand nu s-a masurat nimic, mesajul spune CE INSEAMNA asta, nu „cauta in joburi"', (() => {
+    const t = suspectiLag([], 0, []);
+    return /nimic masurat/.test(t) && /GC/.test(t) && !/cauta in joburi/.test(t);
+  })());
+  ok('un job lung e numit, cu durata lui', /joburi: backup 1420ms/.test(suspectiLag(J, 0, [])));
+  ok('varful de persist e raportat SEPARAT, nu topit in joburi', /persist \(db\.save\) varf 340ms/.test(suspectiLag([], 340, [])));
+  ok('cererile lente apar si ele', /cereri: GET \/pdf\/situatii 610ms/.test(suspectiLag([], 0, C)));
+  ok('ordinea e cauza -> efect: joburi, persist, apoi cereri', (() => {
+    const t = suspectiLag(J, 340, C);
+    return t.indexOf('joburi:') < t.indexOf('persist') && t.indexOf('persist') < t.indexOf('cereri:');
+  })());
+  ok('un persist de 0 ms nu umple mesajul cu zgomot', !/persist/.test(suspectiLag(J, 0, C)));
+
+  // ── Masuratoarea pe job ───────────────────────────────────────────────────────────────────
+  met.reset();
+  ruleazaJob('proba-job', () => { for (let i = 0; i < 2e5; i += 1) Math.sqrt(i); });
+  const dupa1 = met.jobsSnapshot()['proba-job'];
+  ok('o tura de job se contorizeaza', dupa1 && dupa1.n === 1);
+  ok('...cu o durata masurata, nu zero pus de mana', dupa1.lastMs >= 0 && dupa1.maxMs === dupa1.lastMs);
+  ok('...si apare in fereastra recenta, cu numele jobului', (() => {
+    const r = met.jobsRecent(60000, 3);
+    return r.length === 1 && r[0].job === 'proba-job';
+  })());
+
+  // Cazul care conteaza cel mai mult: jobul care ARUNCA dupa ce a blocat bucla. Un cronometru pus
+  // pe calea fericita l-ar fi ratat exact pe el — a blocat, deci trebuie sa apara.
+  // (linia „eroare in job periodic" de mai jos e ASTEPTATA: proba chiar arunca)
+  ruleazaJob('proba-job-cade', () => { throw new Error('esec deliberat, pentru masuratoare'); });
+  const dupaCad = met.jobsSnapshot()['proba-job-cade'];
+  ok('un job care arunca e TOTUSI masurat (blocajul lui a existat)', dupaCad && dupaCad.n === 1);
+  eq('...si esecul lui e numarat separat', dupaCad.errors, 1);
+
+  // Fereastra: o rulare veche nu are voie sa acuze fereastra de acum.
+  met.jobRun('proba-veche', 999, Date.now() - 5 * 60 * 1000);
+  ok('o rulare din afara ferestrei nu intra in suspecti',
+    !met.jobsRecent(60000, 5).some((x) => x.job === 'proba-veche'));
+  ok('...dar intra intr-o fereastra destul de larga',
+    met.jobsRecent(10 * 60 * 1000, 5).some((x) => x.job === 'proba-veche'));
+  ok('suspectii sunt ordonati descrescator (cel mai lung primul)', (() => {
+    const r = met.jobsRecent(10 * 60 * 1000, 5);
+    return r.length > 1 && r.every((x, i) => i === 0 || r[i - 1].ms >= x.ms);
+  })());
+
+  // ── Masuratoarea pe persist ───────────────────────────────────────────────────────────────
+  met.reset();
+  eq('fara nicio scriere, varful de persist e 0 (nu gunoi)', met.persistPeak(60000), 0);
+  eq('...si media e 0, nu NaN', met.persistSnapshot().avgMs, 0);
+  met.persistRun(120); met.persistRun(40);
+  const ps = met.persistSnapshot();
+  eq('scrierile se contorizeaza', ps.n, 2);
+  eq('...cu varful pastrat', ps.maxMs, 120);
+  eq('...si media calculata', ps.avgMs, 80);
+  eq('varful din fereastra e cel mai lung save, nu ultimul', met.persistPeak(60000), 120);
+  met.persistRun(999, Date.now() - 5 * 60 * 1000);
+  eq('un save vechi nu ridica varful ferestrei curente', met.persistPeak(60000), 120);
+
+  // ── Legatura reala: `db.save()` chiar alimenteaza masuratoarea ────────────────────────────
+  // Fara asta, tot ce e mai sus ar dovedi doar ca un contor aduna numere pe care i le dam noi.
+  met.reset();
+  db.save();
+  ok('db.save() inregistreaza singur o masuratoare de persist', met.persistSnapshot().n === 1);
+  ok('...si e vizibila in fereastra de diagnostic', met.persistPeak(60000) >= 0);
+
+  // Contractul cu /api/metrics: campul trebuie sa existe, altfel alerta trimite adminul intr-un gol.
+  // Numele e `persistDurate`, nu `persist`: ruta suprapune `persist: db.persistStats()` (starea
+  // COZII) peste acest obiect, deci un camp omonim ar fi disparut tacit. Ca proba sa nu depinda de
+  // memoria mea, integrarea pe RUTA e verificata separat, in test/http.js.
+  const snap = met.snapshot();
+  ok('snapshot expune DURATA persistarii, sub un nume care nu se ciocneste', snap.persistDurate && typeof snap.persistDurate.maxMs === 'number');
+  ok('...si nu ocupa numele `persist` (rezervat starii cozii)', snap.persist === undefined);
+  ok('snapshot expune durata pe fiecare job', (() => {
+    met.jobRun('proba-contract', 5);
+    const j = met.snapshot().jobs['proba-contract'];
+    return j && typeof j.maxMs === 'number' && typeof j.avgMs === 'number' && typeof j.n === 'number';
+  })());
+  met.reset();
+}
+
+
 section('Drill de restaurare NATIVA PostgreSQL (src/pgRestoreDrill.js)');
 {
   const pgd = require('../src/pgRestoreDrill');
