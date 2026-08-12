@@ -6300,6 +6300,72 @@ section('Blocajul buclei: alerta NUMESTE vinovatul (joburi + persist, nu doar ce
 }
 
 
+section('Scalare: semnalul din ADR AJUNGE singur (nu asteapta sa se uite cineva)');
+{
+  // `docs/scalare-crestere.md` fixeaza regula „fiecare pas se ia pe un semnal real din productie,
+  // nu pe volum ipotetic" si numeste semnalul: `firmeLoad`. Semnalul exista in /api/metrics de
+  // mult — dar nu-l consuma NIMENI (o cautare in tot depozitul gasea doar producatorul si un test
+  // de forma). Deci „observarea" prescrisa era manuala, deci nu s-a facut, deci documentul a ramas
+  // in urma realitatii. Sectiunea verifica jumatatea care lipsea: calculul (o singura sursa) si
+  // verdictul care il duce la alerta.
+  const met = require('../src/metrics');
+  const { verdictScalare, SCALE_ENTRIES_WARN } = require('../src/jobs');
+
+  // ── Calculul, folosit si de ruta si de job ────────────────────────────────────────────────
+  const graf = {
+    firme: [{ id: 1, nume: 'ALFA' }, { id: 2, nume: 'BETA' }, { id: 3, nume: 'GAMA' }],
+    entries: [
+      { firmaId: 1 }, { firmaId: 1 }, { firmaId: 1 },
+      { firmaId: 2 },
+    ],
+    documents: [{ firmaId: 1 }, { firmaId: 2 }, { firmaId: 2 }],
+  };
+  const l = met.firmeLoad(graf);
+  eq('maxEntries e al firmei celei mai mari', l.maxEntries, 3);
+  eq('...si topul e ordonat descrescator', l.top.map((f) => f.nume).join(','), 'ALFA,BETA');
+  eq('fiecare firma isi poarta NUMELE (pasul e „partitioneaza firma X")', l.top[0].nume, 'ALFA');
+  eq('documentele se numara separat de articole', l.top[0].documents, 1);
+  ok('o firma fara articole nu apare in top (nu are ce partitiona)', !l.top.some((f) => f.nume === 'GAMA'));
+  // Graful gol: semnalul trebuie sa fie 0, nu gunoi — jobul il citeste la fiecare pornire.
+  eq('graf gol -> maxEntries 0', met.firmeLoad({}).maxEntries, 0);
+  eq('...si top gol, nu undefined', met.firmeLoad({}).top.length, 0);
+  // O firma stearsa lasa articole orfane: numele lipseste, dar volumul TREBUIE sa se vada.
+  const orfan = met.firmeLoad({ firme: [], entries: [{ firmaId: 7 }, { firmaId: 7 }] });
+  eq('articolele unei firme fara nume se numara totusi', orfan.maxEntries, 2);
+  eq('...si primesc id-ul ca eticheta, nu „undefined"', orfan.top[0].nume, '7');
+
+  // ── Verdictul ─────────────────────────────────────────────────────────────────────────────
+  const sub = verdictScalare({ maxEntries: 100, top: [{ id: 1, nume: 'ALFA', entries: 100, documents: 0 }] }, { prag: 20000 });
+  ok('sub prag -> fara alerta', sub.alert === false);
+  ok('...dar rezumatul se raporteaza oricum (distributia e vizibila si cand e liniste)', /ALFA 100/.test(sub.rezumat));
+  ok('...si spune fata de ce prag', /prag 20000/.test(sub.rezumat));
+  const peste = verdictScalare({ maxEntries: 25000, top: [{ id: 2, nume: 'BETA SRL', entries: 25000, documents: 10 }] }, { prag: 20000 });
+  ok('peste prag -> alerta', peste.alert === true);
+  ok('...care NUMESTE firma (fara nume, raportul n-ar fi actionabil)', /BETA SRL/.test(peste.motiv));
+  ok('...cu cifra si pragul', /25000/.test(peste.motiv) && /20000/.test(peste.motiv));
+  ok('...si trimite la ADR-ul care descrie pasul', /scalare-crestere/.test(peste.motiv));
+  ok('exact la prag -> alerta (pragul e inclusiv)', verdictScalare({ maxEntries: 20000, top: [{ id: 1, nume: 'A', entries: 20000 }] }, { prag: 20000 }).alert === true);
+  ok('cu una sub prag -> inca liniste', verdictScalare({ maxEntries: 19999, top: [{ id: 1, nume: 'A', entries: 19999 }] }, { prag: 20000 }).alert === false);
+  // Instalare noua: niciun articol. Verdictul nu are voie sa arunce si nici sa alerteze.
+  const gol = verdictScalare({ maxEntries: 0, top: [] }, { prag: 20000 });
+  ok('baza goala -> fara alerta si fara exceptie', gol.alert === false && /nicio firma/.test(gol.rezumat));
+  ok('intrare lipsa (job pornit inaintea hidratarii) -> tot fara alerta', verdictScalare(null).alert === false);
+
+  // ── Pragul din cod E cel din ADR ──────────────────────────────────────────────────────────
+  // Aceeasi disciplina ca la `SAVE_FULL_MS` vs `VISITORS_FLUSH_MS`: doua numere in doua fisiere
+  // care nu se verifica unul pe celalalt vor drifta. Aici al doilea fisier e chiar documentul de
+  // decizie — daca cineva schimba pragul in cod si uita ADR-ul (sau invers), poarta o spune.
+  {
+    const fsS = require('fs'); const pS = require('path');
+    const adr = fsS.readFileSync(pS.join(__dirname, '..', 'docs', 'scalare-crestere.md'), 'utf8');
+    ok('ADR-ul chiar a fost citit (nu un fisier gol)', adr.length > 2000);
+    const numere = [...adr.matchAll(/([\d.]+)\s*de articole/g)].map((m) => Number(m[1].replace(/\./g, '')));
+    ok('ADR-ul numeste un prag de articole pe firma', numere.length > 0);
+    ok('pragul din cod apare in ADR (nu au driftat unul de altul)', numere.includes(SCALE_ENTRIES_WARN));
+  }
+}
+
+
 section('Drill de restaurare NATIVA PostgreSQL (src/pgRestoreDrill.js)');
 {
   const pgd = require('../src/pgRestoreDrill');

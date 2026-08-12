@@ -36,6 +36,14 @@ const handles = [];
 // se pot verifica unul fata de celalalt; doua constante numite, da (poarta e in test/run.js).
 const VISITORS_FLUSH_MS = 60 * 1000;
 
+// Pragul de la care o singura firma merita partitionata pe alta instanta. Vine din
+// docs/scalare-crestere.md (~20.000 de articole/an pe firma); e configurabil fiindca depinde de
+// masina, iar documentul il numeste „orientativ". Verificat in suita fata de valoarea din ADR.
+const SCALE_ENTRIES_WARN = Number(process.env.CONTAB_SCALE_ENTRIES_WARN) || 20000;
+// Cat de des se citeste semnalul. Rar deliberat: e o decizie de ARHITECTURA, nu o urgenta —
+// nimeni nu partitioneaza instante in cinci minute, iar jobul face o trecere peste `entries`.
+const SCALE_WATCH_MS = 6 * 60 * 60 * 1000;
+
 function esecJob(label, e, unde) {
   metrics.jobError(label, (e && e.message) || e);
   log.error('eroare in job periodic' + (unde ? ' (' + unde + ')' : ''), { job: label, err: e });
@@ -116,6 +124,37 @@ function suspectiLag(joburi, persistMaxMs, cereri) {
       + 'dintr-o biblioteca)';
   }
   return parti.join(' | ');
+}
+
+/**
+ * Verdictul de SCALARE — pur, ca `persistVerdict` si `suspectiLag`.
+ *
+ * `docs/scalare-crestere.md` decide ca axa reala de crestere e volumul PER FIRMA (firmele sunt deja
+ * izolate prin `firmaId`/`scoped`, deci partitionarea pe instante e o chestiune de rutare, nu de
+ * model de date) si fixeaza regula: „fiecare pas se ia pe un semnal real din productie, nu pe volum
+ * ipotetic". Semnalul (`firmeLoad`) exista de mult in /api/metrics — dar nu-l citea NIMENI: trebuia
+ * ca cineva sa deschida pagina de administrare si sa se uite. Efectul previzibil: documentul a ramas
+ * in urma realitatii (afirma „~157KB si zero cereri lente" cand baza era la 836 KB si existau alerte
+ * de blocaj), fiindca observarea prescrisa era manuala si deci nu s-a facut.
+ *
+ * Aici regula devine executabila: semnalul AJUNGE singur. Verdictul numeste FIRMA, nu doar cifra —
+ * pasul recomandat e „partitioneaza firma X pe alta instanta", deci fara nume raportul n-ar fi
+ * actionabil.
+ */
+function verdictScalare(incarcare, opts) {
+  const o = opts || {};
+  const prag = Number(o.prag) || SCALE_ENTRIES_WARN;
+  const l = incarcare || { maxEntries: 0, top: [] };
+  const cea = (l.top || [])[0] || null;
+  const rezumat = cea
+    ? l.top.slice(0, 3).map((f) => f.nume + ' ' + f.entries).join(', ') + ' (prag ' + prag + ')'
+    : 'nicio firma cu articole (prag ' + prag + ')';
+  if (!cea || l.maxEntries < prag) return { alert: false, prag, maxEntries: l.maxEntries, firma: cea, rezumat, motiv: null };
+  return {
+    alert: true, prag, maxEntries: l.maxEntries, firma: cea, rezumat,
+    motiv: 'firma „' + cea.nume + '" a trecut de ' + prag + ' articole (' + l.maxEntries
+      + '): e pragul de la care docs/scalare-crestere.md recomanda partitionarea pe instante',
+  };
 }
 
 /** Opreste toate joburile pornite; intoarce cate intervale a curatat (idempotent). */
@@ -350,6 +389,37 @@ function start(ctx) {
     }
   }, 60 * 1000);
 
+  // Veghe de SCALARE. `docs/scalare-crestere.md` spune „fiecare pas se ia pe un semnal real din
+  // productie, nu pe volum ipotetic" si numeste semnalul (`firmeLoad`). Semnalul exista in
+  // /api/metrics de mult, dar nu-l consuma NIMENI — trebuia sa se uite cineva. Aici ajunge singur.
+  // Rezultatul se scrie la FIECARE tura (deci distributia e vizibila in /api/metrics chiar cand
+  // totul e in regula), alerta pleaca doar peste prag, cel mult o data pe zi — tiparul celorlalte
+  // veghi. Calculul vine din `metrics.firmeLoad`, aceeasi functie pe care o foloseste si ruta:
+  // doua treceri paralele peste graf ar fi driftat, iar alerta si pagina ar fi spus cifre diferite.
+  let lastScaleAlert = 0;
+  safeInterval('scale-watch', () => {
+    const v = verdictScalare(metrics.firmeLoad(db.get()), { prag: SCALE_ENTRIES_WARN });
+    metrics.jobResult('scale-watch', (v.alert ? 'PRAG DEPASIT — ' : 'sub prag: ') + v.rezumat);
+    if (!v.alert) return;
+    log.error('scalare: o firma a trecut pragul de partitionare', { motiv: v.motiv, maxEntries: v.maxEntries, prag: v.prag, firma: v.firma && v.firma.nume });
+    const now = Date.now();
+    if (now - lastScaleAlert > 24 * 3600 * 1000) {
+      lastScaleAlert = now;
+      sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] SCALARE: ' + v.firma.nume + ' a trecut pragul (' + v.maxEntries + ' articole)',
+        v.motiv + '.\n\n'
+        + 'Distributia pe firme (cele mai mari): ' + v.rezumat + '\n\n'
+        + 'CE INSEAMNA: aplicatia ruleaza intr-un singur proces, cu graful in RAM. Firmele sunt deja\n'
+        + 'izolate prin firmaId, deci pasul urmator NU e o rescriere — e rutare: mai multe instante,\n'
+        + 'fiecare deservind un subset de firme, cu nginx in fata. Vezi docs/scalare-crestere.md.\n\n'
+        + 'DE VERIFICAT INAINTE de a misca ceva (pragul e orientativ, nu o lege):\n'
+        + '  • /api/metrics -> `lag` si `jobs`: chiar sta bucla blocata, sau doar au crescut datele?\n'
+        + '  • /api/metrics -> `persistDurate`: cat costa o scriere acum?\n'
+        + '  • `process.memoryPctDinPlafon`: cat mai e pana la plafonul pm2?\n'
+        + 'Daca toate trei sunt liniStite, volumul singur nu cere inca partitionare.\n'
+        + 'Pragul se schimba din CONTAB_SCALE_ENTRIES_WARN.').catch(() => {});
+    }
+  }, SCALE_WATCH_MS);
+
   // Job periodic: descarca automat recipisele — SPV per-firma, doar firmele cu autoPoll bifat
   safeInterval('spv-poll', () => {
     const vreoFirma = db.get().firme.some((f) => f.anaf && f.anaf.autoPoll && anaf.connected(f.anaf));
@@ -387,4 +457,4 @@ function start(ctx) {
 
 // `safeInterval` e exportat pentru teste (ca `persistVerdict`): plasa de siguranta e chiar
 // proprietatea de verificat, iar prin `start()` ar cere pornirea tuturor joburilor reale.
-module.exports = { start, stop, persistVerdict, suspectiLag, safeInterval, ruleazaJob, VISITORS_FLUSH_MS };
+module.exports = { start, stop, persistVerdict, suspectiLag, verdictScalare, safeInterval, ruleazaJob, VISITORS_FLUSH_MS, SCALE_ENTRIES_WARN };

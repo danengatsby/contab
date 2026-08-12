@@ -296,7 +296,8 @@ RabbitMQ **nu se potrivește** acestei aplicații, din motive structurale, nu de
    re-serializeze tot graful (măsurat: ~123MB la 50k articole) per operațiune. Exact motivul pentru
    care worker threads și BullMQ au fost respinse pentru generarea de PDF/XML.
 4. **Nu rezolvă o problemă reală** — nu există „domeniu" care să fie bottleneck; datele sunt un
-   singur graf mic (producție: ~157KB), iar bottleneck-ul real (dacă apare) e volumul per firmă.
+   singur graf mic (producție, măsurat 2026-08-12: 836 KB, din care 4% date contabile), iar
+   bottleneck-ul real (dacă apare) e volumul per firmă.
 
 ## Căile de creștere care se potrivesc, în ordine
 
@@ -307,8 +308,15 @@ Firmele sunt deja izolate prin `firmaId` / `db.scoped(fid)`, deci partiționarea
 prea mare pentru un proces, se pot rula mai multe instanțe, fiecare deservind un subset de firme,
 cu un router în față (nginx după un antet/subdomeniu de firmă).
 
-- **Semnalul (implementat acum):** `/api/metrics` expune `firmeLoad.maxEntries` + `top` (distribuția
-  articolelor/documentelor per firmă). Aceasta e măsurătoarea care spune *când* și *pentru care firmă*.
+- **Semnalul:** `metrics.firmeLoad(graf)` — `maxEntries` + `top` (distribuția articolelor/documentelor
+  per firmă). Măsurătoarea care spune *când* și *pentru care firmă*. Se citește pe două căi, dintr-un
+  **singur** calcul: `/api/metrics` (la cerere, pentru admin) și jobul **`scale-watch`** (la 6h), care
+  raportează distribuția în `jobs` chiar și când e liniște și **alertează** peste prag, numind firma.
+  Pragul din cod (`CONTAB_SCALE_ENTRIES_WARN`) e legat de cel scris mai jos printr-o poartă în suită.
+  > Jobul a fost adăugat pe **2026-08-12**, după ce s-a constatat că `firmeLoad` era publicat de mult
+  > dar nu-l consuma nimeni: o căutare în tot depozitul găsea doar producătorul și un test de formă.
+  > „Observă" ca instrucțiune pentru un om nu e un mecanism — și exact de aceea documentul acesta a
+  > rămas în urma realității (vezi nota de la *Regula*).
 - **Pragul orientativ:** o singură firmă peste ~20.000 de articole/an (unde deja am pus gardă OOM și
   paginare) sau RSS-ul procesului apropiindu-se constant de `max_memory_restart` (1G) — abia atunci
   merită complexitatea de multi-instanță. Sub asta, un singur proces e mai simplu și mai rapid.
@@ -331,10 +339,43 @@ la citiri per-cerere din pg — o schimbare de model pe care o evită deliberat.
   SAF-T pe 50k, vs ~1200ms blocat sincron).
 - **Veghe de scalare** în raportul zilnic (`scripts/perf-report.sh`): alertă când rute O(n) cunoscute
   depășesc pragul de latență în producție.
+- **Jobul `scale-watch`** (`src/jobs.js`, la 6h): citește `firmeLoad` și alertează când o firmă trece
+  pragul, numind-o. Verdictul e o funcție pură (`verdictScalare`), ca `persistVerdict` — decizia se
+  verifică pe fiecare caz, jobul păstrează doar efectele.
+- **Atribuirea blocajelor** (2026-08-12): joburile își cronometrează partea sincronă și `db.save()`
+  își măsoară durata, deci alerta de lag numește vinovatul în loc să trimită omul „să caute în
+  joburi". Relevant aici fiindcă primul semn al depășirii unui prag de scalare e un blocaj de buclă,
+  iar până acum el nu putea fi atribuit.
 
 ## Regula
 
 Fiecare pas se ia pe un **semnal real** din producție (metrici / raportul zilnic), nu pe volum
-ipotetic. Producția e acum la ~157KB și zero cereri lente — deci pasul următor e **să observi**
-(`firmeLoad`), nu să construiești infra. Aproape sigur primul semnal va indica „partiționează firme",
-nu „sparge accounting de payroll".
+ipotetic. Aproape sigur primul semnal va indica „partiționează firme", nu „sparge accounting de
+payroll".
+
+Starea curentă **nu se scrie aici**, deliberat. Versiunea anterioară a acestui paragraf spunea
+„producția e acum la ~157KB și zero cereri lente" — o afirmație la prezent, care s-a învechit tăcut:
+la măsurătoarea din 2026-08-12 baza era de 5,3× mai mare și existau alerte de blocaj al buclei.
+Concluzia rămăsese corectă, dar din întâmplare, nu din verificare. Măsurătorile de mai jos sunt
+**datate** (ca restul documentului); starea de *acum* se citește din `/api/metrics` și din
+`jobs['scale-watch']`, nu de pe hârtie.
+
+### Citirea semnalului — 2026-08-12
+
+| ce | valoare |
+|---|---|
+| firma cea mai mare | **49 articole** (prag orientativ: 20.000 — trei ordine de mărime sub) |
+| total articole contabile | 56, pe 5 firme |
+| `db.json` | 836 KB |
+| `db.save()` | 3,3 ms mediu / 4,3 ms vârf |
+| serializarea întregii baze (`flushMirror`) | 5,0 ms |
+
+**Verdict: niciun pas de scalare nu se justifică.** Dar creșterea de la 157 KB la 836 KB nu vine de
+pe axa analizată în acest document: **93% din graf e telemetrie operațională** — `visitors` 443 KB
+(67%, 1.463 adrese) și `audit` 167 KB (25%, 1.114 înregistrări). Datele contabile sunt 4% (26 KB).
+
+Asta schimbă ce merită urmărit pe termen scurt: axa de creștere de azi e **retenția**, nu volumul per
+firmă. Ambele colecții sunt deja plafonate (`CONTAB_VISITORS_MAX` 2.000, `CONTAB_AUDIT_MAX` 20.000),
+deci plafonul de RAM din ele e mărginit prin construcție — la dimensiunile măsurate, ~600 KB
+respectiv ~3 MB. Nu e o problemă, dar e răspunsul la întrebarea „de ce a crescut baza de 5×", iar
+răspunsul acela nu era în document.

@@ -269,6 +269,31 @@ function persistSnapshot() {
   return Object.assign({}, persist, { avgMs: persist.n ? Math.round((persist.totalMs / persist.n) * 10) / 10 : 0 });
 }
 
+// ── DISTRIBUTIA INCARCARII PE FIRMA (axa reala de crestere) ─────────────────────────────────
+// Firmele sunt deja izolate prin `firmaId`/`scoped`, deci partitionarea pe instante e o chestiune
+// de rutare, nu de model de date (docs/scalare-crestere.md). `maxEntries` e semnalul care ar
+// declansa pasul — si trebuie sa fie UNA singura: se calculeaza aici, si o folosesc si
+// `/api/metrics` (la cerere, pentru admin), si jobul `scale-watch` (periodic, ca semnalul sa
+// AJUNGA, nu sa astepte pe cineva sa se uite). Doua copii ale aceleiasi treceri ar fi driftat.
+//
+// PURA: primeste graful, nu-l cere. O singura trecere peste `entries` si una peste `documents`.
+function firmeLoad(d) {
+  const g = d || {};
+  const perFirma = new Map();
+  const cere = (fid) => {
+    let s = perFirma.get(fid);
+    if (!s) { s = { entries: 0, documents: 0 }; perFirma.set(fid, s); }
+    return s;
+  };
+  for (const e of (g.entries || [])) cere(e.firmaId).entries += 1;
+  for (const x of (g.documents || [])) cere(x.firmaId).documents += 1;
+  const nume = new Map((g.firme || []).map((f) => [f.id, f.nume]));
+  const top = [...perFirma.entries()]
+    .map(([id, s]) => ({ id, nume: nume.get(id) || String(id), entries: s.entries, documents: s.documents }))
+    .sort((a, b) => b.entries - a.entries);
+  return { maxEntries: top.length ? top[0].entries : 0, top: top.slice(0, 10) };
+}
+
 // ── INTARZIEREA BUCLEI DE EVENIMENTE (event loop lag) ──
 // Aplicatia ruleaza intr-UN SINGUR proces (lock single-instance, baza in RAM), deci orice munca
 // sincrona — scrypt la login, pg_dump + zip la backup, un raport mare — opreste TOATE cererile,
@@ -386,7 +411,7 @@ module.exports = {
   SLOW_MS, routePattern, record, snapshot, reset,
   recordError, recentErrors, jobTick, jobResult, jobError, jobsSnapshot,
   jobRun, jobsRecent, persistRun, persistPeak, persistSnapshot,
-  aiCall, aiSnapshot, lagSnapshot, lagRoll, lagValues, slowRecent, recordSlow,
+  aiCall, aiSnapshot, lagSnapshot, lagRoll, lagValues, slowRecent, recordSlow, firmeLoad,
   auditOk, auditFail, auditSnapshot,
   truncation, truncationsSnapshot,
   clientErrorRecord, clientError, clientErrorsSnapshot, MAX_CLIENT_ERRORS,
