@@ -263,8 +263,11 @@ aprobarea și eventuala forțare.
   `sarit` = nu se aplică (instalare fără dump nativ), `neverificabil` = dump există dar nu poate fi
   rejucat (lipsă `psql` sau drept `CREATEDB`), caz în care rularea periodică trimite alertă.
   400 dacă nu există nicio arhivă completă.
-- `GET /api/metrics` — durate pe rută, `recentErrors`, starea joburilor, contoare AI,
-  proces (inclusiv marja față de plafonul pm2) și `persist` (starea cozii de persistență). `GET /api/audit` / `/api/audit/system` — jurnalul de audit (JSON, ultimele 300;
+- `GET /api/metrics` — durate pe rută, `recentErrors`, starea joburilor **cu durata fiecărei ture**
+  (`n`/`maxMs`/`avgMs`/`lastMs` — partea sincronă, singura care blochează bucla), contoare AI,
+  proces (inclusiv marja față de plafonul pm2), `persist` (starea cozii de persistență) și
+  `persistDurate` (cât a blocat bucla `db.save()`). Ultimele două sunt mărimi diferite, cu nume
+  diferite: cât așteaptă scrierile vs. cât ține procesul pe loc. `GET /api/audit` / `/api/audit/system` — jurnalul de audit (JSON, ultimele 300;
   `?limit/offset` pentru istoric). `GET /csv/audit` / `/csv/audit/system` — export CSV (tot ce
   e reținut, plafon 3000; arhivă / control intern / GDPR; sistemul doar admin).
 - `GET/POST /api/fiscal-config` — cotele fiscale configurabile (reset la standard cu

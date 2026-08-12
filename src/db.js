@@ -5,6 +5,9 @@ const path = require('path');
 const crypto = require('crypto');
 const auth = require('./auth');
 const migrations = require('./migrations');
+// Cerut SUS, nu in `save()`: e calea fierbinte a scrierii. Nu inchide ciclu — `metrics` nu cere
+// niciun modul al aplicatiei (doar `perf_hooks` si, in functie, `fs`/`path`).
+const metrics = require('./metrics');
 const { stringifyDb, naturalCompare } = require('./util');
 
 // CONTAB_DATA_DIR: izolare pentru teste (backup/restore, uploads) — implicit data/ din repo.
@@ -377,9 +380,18 @@ function flushMirror(force) {
 function save(hint) {
   ensureDir();
   rev += 1; // inainte de orice iesire: si pe calea `json`, si daca driverul arunca (RAM e deja mutat)
-  if (DRIVER === 'json') { writeJson(JSON_FILE, db); return; }
-  store.persist(db, hint ? { only: hint } : undefined); // sqlite: sincron; pg: fotografiaza sincron + coada seriala
-  if (JSON_MIRROR) scheduleMirror(); // oglinda pentru backup/rollback, scrisa cu intarziere
+  // Cat blocheaza bucla o scriere. `save()` e primitiva grea partajata de rute, joburi SI de
+  // continuarile `.then` ale joburilor asincrone — deci masurarea aici acopera si blocajele pe care
+  // atribuirea pe job nu le poate vedea. Se cronometreaza in `finally`: un persist care ARUNCA
+  // (conflict de scriitor, disc plin) a consumat oricum bucla, iar acela e exact cazul de vazut.
+  const t0 = process.hrtime.bigint();
+  try {
+    if (DRIVER === 'json') { writeJson(JSON_FILE, db); return; }
+    store.persist(db, hint ? { only: hint } : undefined); // sqlite: sincron; pg: fotografiaza sincron + coada seriala
+    if (JSON_MIRROR) scheduleMirror(); // oglinda pentru backup/rollback, scrisa cu intarziere
+  } finally {
+    metrics.persistRun(Number(process.hrtime.bigint() - t0) / 1e6);
+  }
 }
 
 /** Asteapta scrierile in zbor ale driverului (pg are coada async; sqlite/json scriu sincron). */

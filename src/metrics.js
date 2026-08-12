@@ -69,6 +69,11 @@ function snapshot() {
     audit: auditSnapshot(), // scrierile in jurnalul DURABIL: tacerea lor invalida retentia
     clientErrors: clientErrorsSnapshot(), // ce s-a rupt in BROWSER — server-side nu se vede deloc
     jobs: jobsSnapshot(),
+    // DURATA scrierilor (cat blocheaza bucla), NU starea cozii. Numele e `persistDurate`, nu
+    // `persist`, fiindca ruta /api/metrics pune deja `persist: db.persistStats()` peste rezultatul
+    // acestei functii printr-un `Object.assign` — un camp cu acelasi nume ar fi fost suprascris
+    // TACUT si n-ar fi ajuns niciodata la admin. Doua marimi diferite, doua nume diferite.
+    persistDurate: persistSnapshot(),
     ai: aiSnapshot(),
     ops: opsSnapshot(),
   };
@@ -193,16 +198,75 @@ function clientErrorsSnapshot() {
 const jobs = new Map(); // label -> { lastTickAt, lastResult, lastResultAt, lastError, lastErrorAt, errors }
 function job(label) {
   let j = jobs.get(label);
-  if (!j) { j = { lastTickAt: null, lastResult: null, lastResultAt: null, lastError: null, lastErrorAt: null, errors: 0 }; jobs.set(label, j); }
+  if (!j) {
+    j = { lastTickAt: null, lastResult: null, lastResultAt: null, lastError: null, lastErrorAt: null, errors: 0,
+      n: 0, totalMs: 0, maxMs: 0, lastMs: 0 };
+    jobs.set(label, j);
+  }
   return j;
 }
 function jobTick(label) { job(label).lastTickAt = new Date().toISOString(); }
 function jobResult(label, info) { const j = job(label); j.lastResult = String(info).slice(0, 200); j.lastResultAt = new Date().toISOString(); }
 function jobError(label, msg) { const j = job(label); j.lastError = String(msg).slice(0, 200); j.lastErrorAt = new Date().toISOString(); j.errors += 1; }
+
+// ── CAT A BLOCAT BUCLA FIECARE JOB ──────────────────────────────────────────────────────────
+// Alerta de lag stia CAT a stat blocata bucla, dar nu si CINE — si spunea singura, in clar,
+// „cauta in joburi, nu in rute" (masurat: 4 alerte intr-o saptamana, varf 1.616 ms, nicio pista).
+// Cererile erau deja masurate; joburile, deloc. Aici se inchide jumatatea care lipsea.
+//
+// SE MASOARA PARTEA SINCRONA, si asta e o alegere, nu o scapare: doar munca sincrona blocheaza
+// bucla. Un `spv-poll` care asteapta 3 s raspunsul ANAF nu opreste nicio cerere, deci a-l raporta
+// ca „3.000 ms" ar acuza nevinovatul si ar ascunde vinovatul. Partea asincrona a unui job NU e
+// atribuita aici — de aceea se masoara si `db.save()` separat (vezi persistRun): el e primitiva
+// grea care apare si in continuari `.then`, unde masuratoarea pe job n-ar vedea-o.
+const JOB_RING = 120; // ~o ora de rulari la cadenta de un minut
+const jobRing = [];
+function jobRun(label, ms, ts) {
+  const j = job(label);
+  const v = Math.round(ms * 10) / 10;
+  j.n += 1; j.totalMs += v; j.lastMs = v; if (v > j.maxMs) j.maxMs = v;
+  jobRing.push({ job: label, ms: v, ts: ts || Date.now() });
+  if (jobRing.length > JOB_RING) jobRing.shift();
+}
+/** Rularile de job din ultimele `ferestraMs` milisecunde, cele mai lungi primele. */
+function jobsRecent(ferestraMs, limita) {
+  const de = Date.now() - (Number(ferestraMs) || 60000);
+  return jobRing.filter((x) => x.ts >= de).sort((a, b) => b.ms - a.ms).slice(0, Number(limita) || 3);
+}
+
 function jobsSnapshot() {
   const out = {};
-  for (const [label, j] of jobs) out[label] = Object.assign({}, j);
+  for (const [label, j] of jobs) {
+    out[label] = Object.assign({}, j, { avgMs: j.n ? Math.round((j.totalMs / j.n) * 10) / 10 : 0 });
+  }
   return out;
+}
+
+// ── CAT A BLOCAT BUCLA PERSISTENTA (db.save) ────────────────────────────────────────────────
+// `save()` e suspectul numit chiar in emailul de alerta („serializarea bazei la save() pe o firma
+// voluminoasa"), si era singurul din lista pe care nu-l masura nimeni. E si primitiva partajata:
+// apare in rute, in joburi si in continuari asincrone, deci o masuratoare aici acopera si blocajele
+// pe care atribuirea pe job nu le poate vedea. Pe pg, partea sincrona e fotografierea colectiilor
+// (comiterea e in coada async, urmarita separat de persist-watch).
+const persist = { n: 0, totalMs: 0, maxMs: 0, lastMs: 0, lastAt: null };
+const PERSIST_RING = 60;
+const persistRing = [];
+function persistRun(ms, ts) {
+  const v = Math.round(ms * 10) / 10;
+  persist.n += 1; persist.totalMs += v; persist.lastMs = v; persist.lastAt = new Date().toISOString();
+  if (v > persist.maxMs) persist.maxMs = v;
+  persistRing.push({ ms: v, ts: ts || Date.now() });
+  if (persistRing.length > PERSIST_RING) persistRing.shift();
+}
+/** Cel mai lung `save()` din ultimele `ferestraMs` milisecunde (0 daca n-a fost niciunul). */
+function persistPeak(ferestraMs) {
+  const de = Date.now() - (Number(ferestraMs) || 60000);
+  let max = 0;
+  for (const x of persistRing) if (x.ts >= de && x.ms > max) max = x.ms;
+  return max;
+}
+function persistSnapshot() {
+  return Object.assign({}, persist, { avgMs: persist.n ? Math.round((persist.totalMs / persist.n) * 10) / 10 : 0 });
 }
 
 // ── INTARZIEREA BUCLEI DE EVENIMENTE (event loop lag) ──
@@ -307,6 +371,8 @@ function truncationsSnapshot() {
 /** Doar pentru teste: goleste agregatele. */
 function reset() {
   routes.clear(); recentErrors.length = 0; jobs.clear(); slowRing.length = 0;
+  jobRing.length = 0; persistRing.length = 0;
+  persist.n = 0; persist.totalMs = 0; persist.maxMs = 0; persist.lastMs = 0; persist.lastAt = null;
   ai.n = 0; ai.fail = 0; ai.totalMs = 0; ai.lastError = null; ai.lastErrorAt = null;
   lagH.reset(); lagMaxTotal = 0; lagWindowFrom = Date.now();
   audit.scrise = 0; audit.esecuri = 0; audit.esecConsecutive = 0;
@@ -319,6 +385,7 @@ module.exports = {
   MEM_LIMIT_MB, MEM_WARN_MB, LAG_WARN_MS,
   SLOW_MS, routePattern, record, snapshot, reset,
   recordError, recentErrors, jobTick, jobResult, jobError, jobsSnapshot,
+  jobRun, jobsRecent, persistRun, persistPeak, persistSnapshot,
   aiCall, aiSnapshot, lagSnapshot, lagRoll, lagValues, slowRecent, recordSlow,
   auditOk, auditFail, auditSnapshot,
   truncation, truncationsSnapshot,

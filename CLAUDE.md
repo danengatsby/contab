@@ -224,8 +224,19 @@ declarație de intenție (verifică înainte ce variabile ar dispărea din env-u
   distinge `sarit` (nu se aplică — tace) de `neverificabil` (dump există dar nu poate fi rejucat —
   **alertează**): o verificare care nu poate rula nu are voie să semene cu una trecută.
 - **Observabilitate** — `src/log.js` (structurat, reqId), `src/metrics.js` + `GET /api/metrics`
-  (admin: durate pe rută, `recentErrors`, starea joburilor, proces, `lag`, `audit`, `deploy`,
-  `clientErrors`). **Erorile din CLIENT** ajung prin `POST /api/client-error` (handler global în
+  (admin: durate pe rută, `recentErrors`, starea joburilor **cu durata fiecărei ture**, proces,
+  `lag`, `audit`, `deploy`, `clientErrors`, `persist` = starea COZII, `persistDurate` = cât a
+  BLOCAT BUCLA scrierea). Cele două despre persistență au nume diferite deliberat: ruta compune
+  răspunsul cu `Object.assign(metrics.snapshot(), { …, persist: db.persistStats() })`, deci un câmp
+  omonim ar fi **suprascris tăcut** — măsurat, dar niciodată livrat. Poarta stă în `test/http.js`,
+  pe răspunsul REAL al rutei; una pe `metrics.snapshot()` ar trece și cu câmpul pierdut.
+  **Blocajele buclei se atribuie, nu se ghicesc:** procesul are trei surse de muncă sincronă —
+  joburile (`jobs.ruleazaJob` cronometrează partea sincronă, inclusiv când jobul aruncă),
+  `db.save()` (primitivă grea partajată, apare și în continuări `.then` unde atribuirea pe job n-o
+  vede) și cererile (deja măsurate, dar de regulă **victime**: când bucla e blocată, tot ce
+  așteaptă iese lent). Alerta `lag-watch` le numește pe toate trei, prin `jobs.suspectiLag` (pură,
+  testată pe fiecare caz); când nu s-a măsurat nimic, spune ce înseamnă asta (GC, o continuare
+  asincronă fără persist) în loc să trimită omul „să caute în joburi". **Erorile din CLIENT** ajung prin `POST /api/client-error` (handler global în
   `public/core.js`): pe server observabilitatea era bună, în browser era nulă — o excepție netratată
   lăsa utilizatorul cu ecranul blocat și nu aflai niciodată. Ruta e **publică deliberat** (eroarea de
   pe ecranul de login e exact cea care altfel nu se află), mărginită prin plafon pe IP

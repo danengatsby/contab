@@ -2832,6 +2832,23 @@ async function main() {
     ok('metrics: coada de persistenta e expusa cu contract complet',
       mx.persist && typeof mx.persist.pending === 'boolean' && typeof mx.persist.pendingAgeMs === 'number' && typeof mx.persist.commits === 'number');
     ok('metrics: driverul cozii e cel real', mx.persist.driver === (process.env.CONTAB_TEST_DRIVER || 'sqlite'));
+    // DOUA marimi despre persistenta, cu doua nume: `persist` = starea COZII (cate scrieri asteapta),
+    // `persistDurate` = cat a BLOCAT BUCLA scrierea. Ruta construieste raspunsul cu
+    // `Object.assign(metrics.snapshot(), { ..., persist: db.persistStats() })`, deci un camp omonim
+    // in snapshot ar fi fost suprascris TACUT — masurat, dar niciodata livrat. Poarta e AICI, pe
+    // raspunsul real al rutei: o aserttie pe `metrics.snapshot()` ar fi trecut si cu campul pierdut.
+    ok('metrics: durata persistarii ajunge la admin, nu e mancata de starea cozii',
+      mx.persistDurate && typeof mx.persistDurate.maxMs === 'number' && typeof mx.persistDurate.avgMs === 'number');
+    ok('metrics: cele doua nu se confunda (coada are `pending`, durata are `maxMs`)',
+      !('pending' in mx.persistDurate) && !('maxMs' in mx.persist));
+    // Suita a facut deja zeci de scrieri pana aici, deci masuratoarea trebuie sa fie NENULA —
+    // altfel campul ar exista si ar raporta linistit zero, adica exact defectul pe care il repara.
+    ok('metrics: s-au masurat scrieri reale, nu doar un camp gol', mx.persistDurate.n > 0);
+    // Durata pe JOB nu se verifica aici, si merita spus de ce: intr-o rulare de suita HTTP (~14 s)
+    // niciun job nu apuca sa ticaie (cadenta minima e 60 s), iar `jobs` contine doar intrarile
+    // semanate din `settings` (`lastDoneAt`), fara campuri de durata. O aserttie „toate joburile au
+    // maxMs" ar pica pe acele intrari, iar una filtrata pe cele care AU rulat ar trece vid — adica
+    // exact „trece din motivul gresit". Proba determinista e in test/run.js, prin `ruleazaJob`.
     // CE COD RULEAZA. Aici se verifica INTEGRAREA (git chiar se lanseaza si raspunde); verdictul
     // pe fiecare caz e in test/run.js, pe iesiri inventate. Suita ruleaza din depozit, deci
     // `cunoscut` trebuie sa fie true — daca ar fi false, tocmai ar arata ca citirea nu merge.

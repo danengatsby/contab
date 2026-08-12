@@ -41,16 +41,31 @@ function esecJob(label, e, unde) {
   log.error('eroare in job periodic' + (unde ? ' (' + unde + ')' : ''), { job: label, err: e });
   try { trackServerError({ method: 'JOB', originalUrl: label }, e); } catch (_) { /* ignora */ }
 }
+/**
+ * O tura de job: marcheaza tick-ul, cronometreaza partea SINCRONA, prinde ambele feluri de esec.
+ * Scoasa din `setInterval` ca sa poata fi verificata SINCRON (test/run.js e sincron prin
+ * constructie) — altfel singura proba posibila ar fi asteptarea unui interval real, iar cazul care
+ * conteaza cel mai mult (jobul care ARUNCA dupa ce a blocat bucla) n-ar fi acoperit deloc.
+ *
+ * Durata masurata e a partii SINCRONE, si asta e o alegere: doar ea blocheaza bucla (vezi
+ * metrics.jobRun). Cronometrul se opreste in `finally`, nu pe calea fericita — un job care cade
+ * dupa 900 ms de munca a blocat aceleasi 900 ms, si exact el e cel de vazut.
+ */
+function ruleazaJob(label, fn) {
+  metrics.jobTick(label); // starea job-urilor apare in /api/metrics (admin)
+  const t0 = process.hrtime.bigint();
+  try {
+    const r = fn();
+    if (r && typeof r.then === 'function') r.catch((e) => esecJob(label, e, 'async'));
+  } catch (e) {
+    esecJob(label, e);
+  } finally {
+    metrics.jobRun(label, Number(process.hrtime.bigint() - t0) / 1e6);
+  }
+}
+
 function safeInterval(label, fn, ms) {
-  const t = setInterval(() => {
-    metrics.jobTick(label); // starea job-urilor apare in /api/metrics (admin)
-    try {
-      const r = fn();
-      if (r && typeof r.then === 'function') r.catch((e) => esecJob(label, e, 'async'));
-    } catch (e) {
-      esecJob(label, e);
-    }
-  }, ms);
+  const t = setInterval(() => ruleazaJob(label, fn), ms);
   if (t.unref) t.unref();
   handles.push(t);
   return t;
@@ -73,6 +88,34 @@ function persistVerdict(s, opts) {
   }
   if ((s.failStreak || 0) >= fails) return { alert: true, cod: 'esecuri', motiv: s.failStreak + ' esecuri consecutive de scriere' };
   return { alert: false, cod: null, motiv: null };
+}
+
+/**
+ * CINE a blocat bucla in fereastra alertei — PURA, ca `persistVerdict`, fiindca e chiar propozitia
+ * pe care o citeste omul trezit de alerta si trebuie sa poata fi verificata pe fiecare caz.
+ *
+ * Cele TREI surse de munca sincrona din proces, in ordinea in care merita banuite:
+ *   joburi  — ruleaza singure, deci nimeni nu le vede fara masuratoare (pana acum: nimeni);
+ *   persist — `db.save()`, primitiva grea partajata; apare si in continuari `.then`, unde
+ *             atribuirea pe job n-o vede, deci se raporteaza separat, nu topita in joburi;
+ *   cereri  — deja masurate; raman ULTIMELE fiindca sunt de regula VICTIME: cand bucla e blocata,
+ *             tot ce asteapta iese lent, deci o lista de cereri lente e efectul, nu cauza.
+ *
+ * Cand nu s-a masurat nimic, mesajul spune ce inseamna asta — nu mai trimite omul „sa caute in
+ * joburi" (acum sunt masurate), ci il duce catre ce a ramas nemasurat.
+ */
+function suspectiLag(joburi, persistMaxMs, cereri) {
+  const parti = [];
+  const j = joburi || []; const c = cereri || [];
+  if (j.length) parti.push('joburi: ' + j.map((x) => x.job + ' ' + x.ms + 'ms').join(', '));
+  if (persistMaxMs > 0) parti.push('persist (db.save) varf ' + persistMaxMs + 'ms');
+  if (c.length) parti.push('cereri: ' + c.map((x) => x.route + ' ' + x.ms + 'ms').join(', '));
+  if (!parti.length) {
+    return '(nimic masurat in fereastra: nici job, nici persist, nici cerere lenta — blocajul e in '
+      + 'afara a ceea ce instrumentam: GC, o continuare asincrona fara persist, sau munca sincrona '
+      + 'dintr-o biblioteca)';
+  }
+  return parti.join(' | ');
 }
 
 /** Opreste toate joburile pornite; intoarce cate intervale a curatat (idempotent). */
@@ -209,12 +252,10 @@ function start(ctx) {
     if (s.maxMs < LAG_WARN_MS) return;
     // CINE rula in fereastra. Fara asta alerta spunea doar CAT a stat blocata bucla, iar
     // diagnosticul pornea de la zero: patru alerte intr-o saptamana, cu varfuri de 1.616 ms, si
-    // nicio pista in log. Se raporteaza cele mai LUNGI trei cereri din aceeasi fereastra —
-    // celelalte sunt, de regula, victime: cand bucla e blocata, tot ce asteapta iese lent.
-    const suspecti = metrics.slowRecent(s.fereastraSec * 1000, 3);
-    const suspectiTxt = suspecti.length
-      ? suspecti.map((x) => x.route + ' ' + x.ms + 'ms').join(' | ')
-      : '(nicio cerere peste pragul de lent in fereastra — cauta in joburi, nu in rute)';
+    // nicio pista in log. Se interogheaza AMANDOUA jumatatile masurate — joburile si persistenta —
+    // nu doar cererile, care sunt de regula victime, nu cauza.
+    const ferestraMs = s.fereastraSec * 1000;
+    const suspectiTxt = suspectiLag(metrics.jobsRecent(ferestraMs, 3), metrics.persistPeak(ferestraMs), metrics.slowRecent(ferestraMs, 3));
     log.error('bucla de evenimente blocata', { p99Ms: s.p99Ms, maxMs: s.maxMs, pragMs: LAG_WARN_MS, fereastraSec: s.fereastraSec, suspecti: suspectiTxt });
     const now = Date.now();
     if (now - lastLagAlert > 24 * 3600 * 1000) {
@@ -222,13 +263,18 @@ function start(ctx) {
       sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] ATENTIE: bucla de evenimente blocata (' + s.maxMs + ' ms)',
         'Bucla a stat blocata pana la ' + s.maxMs + ' ms (p99 ' + s.p99Ms + ' ms) in ultimele ' + s.fereastraSec + ' secunde,\n'
         + 'peste pragul de ' + LAG_WARN_MS + ' ms. Cat tine blocajul, TOATE cererile asteapta, oricat de ieftine ar fi.\n\n'
-        + 'Suspecti obisnuiti, in ordinea probabilitatii:\n'
-        + '  • backupul zilnic — pg_dump si arhivarea ruleaza SINCRON, in acest proces;\n'
-        + '  • o rafala de autentificari (scrypt costa ~30 ms de bucla blocata fiecare);\n'
-        + '  • un export/raport mare, sau serializarea bazei la save() pe o firma voluminoasa.\n\n'
-        + 'Cele mai lungi cereri din ACEEASI fereastra:\n  ' + suspectiTxt + '\n'
-        + '(cand bucla e blocata, tot ce asteapta iese lent — vinovata e de regula cea mai lunga.)\n\n'
-        + 'Verifica /api/metrics (admin): campul `lag` si rutele cu maxMs mare in aceeasi fereastra.\n'
+        + 'CE S-A MASURAT IN ACEEASI FEREASTRA:\n  ' + suspectiTxt + '\n\n'
+        + 'Cum se citeste: joburile si persistenta sunt CAUZE (ruleaza singure, nu asteapta pe nimeni);\n'
+        + 'cererile lente sunt de regula VICTIME — cand bucla e blocata, tot ce asteapta iese lent.\n\n'
+        + 'Daca lista e goala, blocajul e in afara a ceea ce instrumentam. Ce a mai ramas:\n'
+        + '  • o rafala de autentificari (scrypt costa ~30 ms de bucla blocata fiecare, si nu e\n'
+        + '    o „cerere lenta": 8 login-uri = 240 ms de blocaj din 8 cereri normale);\n'
+        + '  • munca sincrona dintr-o continuare `.then` care NU trece prin db.save();\n'
+        + '  • o pauza de GC (nu se vede in niciun contor al aplicatiei).\n'
+        + 'NU cauta pg_dump aici: arhiva completa (pg_dump + zip) ruleaza din cron, in ALT proces\n'
+        + '(scripts/backup.js, 03:30). Jobul intern `backup` face doar serializarea db.json +\n'
+        + 'copierea fisierului — vizibila ca `jobs.backup.maxMs`, nu ca pg_dump.\n\n'
+        + 'Verifica /api/metrics (admin): `lag`, `jobs` (maxMs/avgMs pe job), `persist` si rutele.\n'
         + 'Pragul se schimba din CONTAB_LAG_WARN_MS.').catch(() => {});
     }
   }, 60 * 1000);
@@ -341,4 +387,4 @@ function start(ctx) {
 
 // `safeInterval` e exportat pentru teste (ca `persistVerdict`): plasa de siguranta e chiar
 // proprietatea de verificat, iar prin `start()` ar cere pornirea tuturor joburilor reale.
-module.exports = { start, stop, persistVerdict, safeInterval, VISITORS_FLUSH_MS };
+module.exports = { start, stop, persistVerdict, suspectiLag, safeInterval, ruleazaJob, VISITORS_FLUSH_MS };
