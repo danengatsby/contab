@@ -596,6 +596,50 @@ section('Bara de sus pe telefon: nu are voie să crească la loc');
   ok('panoul se închide la alegerea unei unelte', /#sideTools[\s\S]{0,220}remove\('tools-open'\)/.test(js));
 }
 
+section('Ecranele „1 · alege / 2 · verifică": coloana a doua nu se rezervă degeaba');
+{
+  // Formularul e UNIC în aplicație și se MUTĂ între gazde (docflow.js). Până la alegerea unui tip,
+  // coloana a doua nu conține nimic — își rezerva jumătate de ecran ca să anunțe că e goală.
+  // Măsurat pe 1440×900: pasul 2 ocupa 605px lățime; acum, până la alegere, ecranul e pe o
+  // coloană, iar pasul 2 e o bandă de 93px. La deschiderea formularului revin cele două coloane.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  ok('regula comută pe o coloană cât timp formularul nu e în ecran',
+    /\.grid2\.pas12:not\(:has\(#entryForm:not\(\.hidden\)\)\)\{grid-template-columns:1fr\}/.test(css));
+  // Regula se sprijină pe UN singur `#entryForm` mutat între gazde. Dacă ar apărea al doilea,
+  // selecția `:has()` ar fi adevărată în ambele ecrane deodată.
+  eq('există exact un formular de înregistrare în pagină', (html.match(/id="entryForm"/g) || []).length, 1);
+
+  // Perimetrul se DERIVĂ din tabelul de gazde al lui docflow.js, nu dintr-o listă scrisă aici:
+  // un ecran nou cu același tipar ar rămâne altfel cu jumătatea goală, tăcut.
+  const flow = fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8');
+  const gazde = [...flow.matchAll(/host:\s*'#(\w+)'/g)].map((m) => m[1]);
+  ok('poarta chiar citește gazdele din docflow.js', gazde.length >= 3);
+  const fara = [];
+  for (const g of gazde) {
+    const i = html.indexOf('id="' + g + '"');
+    if (i < 0) { fara.push(g + ' (gazdă inexistentă în pagină)'); continue; }
+    // Cel mai apropiat înveliș `grid2` DINAINTEA gazdei; dacă gazda nu stă într-unul (cazul
+    // `formHostCash`), ecranul nu are coloană rezervată și nu e în perimetru.
+    const j = html.lastIndexOf('<div class="grid2', i);
+    if (j < 0) continue;
+    const antet = html.slice(j, html.indexOf('>', j));
+    if (!/\bpas12\b/.test(antet)) fara.push(g);
+  }
+  ok('fiecare gazdă aflată într-un înveliș pe două coloane e marcată `pas12`'
+    + (fara.length ? ' — FĂRĂ: ' + fara.join(', ') : ''), fara.length === 0);
+  ok('...și chiar există astfel de învelișuri (nu o mulțime goală)', /class="grid2 pas12"/.test(html));
+
+  // Textul nu mai poate spune „în stânga": poziția pasului 1 se schimbă (deasupra până la
+  // alegere, în stânga după). Un îndemn fals despre unde să te uiți e mai rău decât niciunul.
+  for (const [id, eticheta] of [['tab-emite', 'Emite factură'], ['tab-documente', 'Adaugă document primit']]) {
+    const i = html.indexOf('id="' + id + '"');
+    const sfarsit = html.indexOf('<section id=', i + 10);
+    const ecran = html.slice(i, sfarsit > 0 ? sfarsit : undefined);
+    ok('„' + eticheta + '" nu mai trimite la o poziție care se schimbă', !/(în|din) stânga/.test(ecran));
+  }
+}
+
 section('Modul simplu filtrează LIMBAJUL, nu doar meniul');
 {
   // Constatarea reparată aici: `.simple-ui` ascundea 9 taburi și 28 de elemente, dar ecranele pe
