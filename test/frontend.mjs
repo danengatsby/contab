@@ -392,6 +392,62 @@ section('Dashboard: un cont în minus nu are voie să se ascundă într-un total
   eq('șir negativ e tratat numeric', dashboard.dalaDisponibil('-12.5', '100', '87.5').ton, 'red');
 }
 
+section('Banda de sus nu contrazice checklistul de dedesubt');
+{
+  // „Totul pare în regulă" e adevărat despre URGENȚE și fals despre firmă: cât timp checklistul
+  // de dedesubt cere cinci lucruri, mesajul îl contrazice la citire. Cele două afirmații stăteau
+  // la trei centimetri una de alta, pe același ecran, despre aceeași firmă.
+  const proaspata = { nrInregistrari: 0, firmaCompletata: false, arePartener: false,
+    documentInregistrat: false, facturaEmisa: false };
+  const m = dashboard.mesajFaraAlerte(proaspata, false);
+  ok('firma la început NU primește „totul e în regulă"', !/Totul pare în regulă/.test(m.txt));
+  ok('...ci spune că nu e nicio urgență, dar pornirea nu e gata', /Nicio urgență/.test(m.txt) && /nu e pornită complet/.test(m.txt));
+  ok('...și CÂȚI pași au rămas', /<b>5<\/b> pași/.test(m.txt));
+  // Numărul vine din aceeași sursă din care se bifează pașii — altfel ar apărea o a treia
+  // definiție a lui „gata", exact defectul reparat, cu un pas lateral.
+  const doiFacuti = Object.assign({}, proaspata, { firmaCompletata: true, arePartener: true });
+  ok('numărul urmează bifele reale', /<b>3<\/b> pași/.test(dashboard.mesajFaraAlerte(doiFacuti, false).txt));
+  ok('singularul e corect la un singur pas rămas',
+    / <b>1<\/b> pas\b/.test(dashboard.mesajFaraAlerte(
+      { nrInregistrari: 4, firmaCompletata: true, arePartener: true, documentInregistrat: true, facturaEmisa: false }, false).txt));
+  // Toți pașii făcuți, dar checklistul încă pe ecran (sub 5 înregistrări): nu mai e nimic de spus
+  // despre pornire, deci revine mesajul obișnuit. Cazul e real și e singurul în care checklistul
+  // e vizibil FĂRĂ ca banda să vorbească despre pași.
+  ok('toți pașii făcuți -> mesajul obișnuit, deși checklistul e încă pe ecran',
+    /Totul pare în regulă/.test(dashboard.mesajFaraAlerte(
+      { nrInregistrari: 4, firmaCompletata: true, arePartener: true, documentInregistrat: true, facturaEmisa: true }, false).txt));
+
+  // Firma cu activitate: mesajul de dinainte, neatins.
+  const asezata = { nrInregistrari: 12, firmaCompletata: true, arePartener: true,
+    documentInregistrat: true, facturaEmisa: true };
+  ok('firma așezată primește mesajul de dinainte', /Totul pare în regulă/.test(dashboard.mesajFaraAlerte(asezata, false).txt));
+  // Contul fără nicio firmă are bannerul lui; aici n-are ce checklist să contrazică.
+  ok('contul fără firmă nu primește îndemn despre o firmă inexistentă',
+    /Totul pare în regulă/.test(dashboard.mesajFaraAlerte(proaspata, true).txt));
+  ok('lipsa datelor nu inventează un îndemn', /Totul pare în regulă/.test(dashboard.mesajFaraAlerte(null, false).txt));
+
+  // Banda și checklistul trebuie să răspundă la ACEEAȘI întrebare — de aceea condiția e o
+  // funcție, nu două ieșiri devreme îngropate în randare.
+  eq('checklistul e vizibil exact când firma e la început', dashboard.checklistVizibil(proaspata, false), true);
+  eq('...și ascuns pentru firma așezată', dashboard.checklistVizibil(asezata, false), false);
+  eq('...și pentru contul fără firmă', dashboard.checklistVizibil(proaspata, true), false);
+  // Cele două condiții nu au voie să se despartă: mesajul „mai ai N pași" apare DOAR când
+  // checklistul care-i dă numărul e chiar pe ecran.
+  // Implicație, nu echivalență: banda poate tăcea despre pași cu checklistul pe ecran (toți pașii
+  // făcuți), dar nu poate vorbi despre ei cu checklistul ascuns — atunci ar trimite la o listă
+  // care nu se vede.
+  const totiFacuti = { nrInregistrari: 4, firmaCompletata: true, arePartener: true, documentInregistrat: true, facturaEmisa: true };
+  for (const [p, ff] of [[proaspata, false], [asezata, false], [proaspata, true], [null, false], [totiFacuti, false]]) {
+    const spuneP = /Nicio urgență/.test(dashboard.mesajFaraAlerte(p, ff).txt);
+    ok('banda nu trimite la un checklist ascuns', !spuneP || dashboard.checklistVizibil(p, ff));
+  }
+  // Randarea trebuie să folosească un ton NECLICABIL: `.alert` pune `cursor:pointer`, iar mesajul
+  // ăsta e un `div`, nu un buton.
+  eq('tonul e cel neclicabil, dedicat', dashboard.mesajFaraAlerte(proaspata, false).ton, 'start');
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  ok('...și tonul acela chiar nu arată clicabil', /\.alert\.start\{[^}]*cursor:default/.test(css));
+}
+
 section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
 {
   // `azi` e fixat: altfel vechimea restanței ar depinde de ziua în care rulează suita.

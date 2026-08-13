@@ -160,6 +160,44 @@ function renderDeFacut(n) {
 }
 $('#deFacutToate') && $('#deFacutToate').addEventListener('click', () => deps.goTab && deps.goTab('notificari'));
 
+/**
+ * Se arata checklistul de pornire? Functie PURA — si SURSA UNICA a intrebarii „firma e inca la
+ * inceput?". Pana acum raspunsul trai doar in `renderPrimiiPasi`, sub forma a doua iesiri
+ * devreme, iar banda de alerte de deasupra nu-l stia: pe o firma cu 0 din 5 pasi facuti ea
+ * anunta senin „Totul pare in regula". Doua afirmatii despre aceeasi firma, pe acelasi ecran,
+ * la trei centimetri una de alta.
+ */
+export function checklistVizibil(p, faraFirma) {
+  // Fara nicio firma (contabil proaspat inscris) checklistul e de nefacut: „Completeaza datele
+  // firmei", „Emite prima factura" — care firma? Bannerul lui spune ce are efectiv de facut.
+  if (faraFirma) return false;
+  if (!p) return false;
+  // Firma cu activitate si cu datele complete nu mai are nevoie de ghidaj.
+  return !(p.nrInregistrari >= 5 && p.firmaCompletata);
+}
+
+/**
+ * Ce spune banda de sus cand NU exista nicio alerta. Functie PURA.
+ *
+ * „Totul pare in regula" e adevarat despre URGENTE si fals despre firma: cat timp checklistul de
+ * dedesubt cere cinci lucruri, mesajul asta il contrazice la citire. Se spune deci exact ce e:
+ * nicio urgenta, dar pornirea nu e gata — si CATE lucruri au mai ramas, din aceeasi sursa din
+ * care se bifeaza pasii, ca sa nu apara o a treia definitie a lui „gata".
+ */
+export function mesajFaraAlerte(p, faraFirma) {
+  if (!checklistVizibil(p, faraFirma)) {
+    return { ton: 'ok', ic: '✅', txt: 'Totul pare în regulă — nicio acțiune urgentă pentru moment.' };
+  }
+  const ramase = pasiOnboarding(p).filter((x) => !x.done).length;
+  if (!ramase) return { ton: 'ok', ic: '✅', txt: 'Totul pare în regulă — nicio acțiune urgentă pentru moment.' };
+  return {
+    ton: 'start',
+    ic: '🌱',
+    txt: 'Nicio urgență — dar firma nu e pornită complet: mai ai <b>' + ramase + '</b> '
+      + (ramase === 1 ? 'pas' : 'pași') + ' din „Primii pași", mai jos.',
+  };
+}
+
 // Primii pași (onboarding): checklist viu pentru firmele proaspete — dispare singur după
 // ce firma are câteva înregistrări. Fiecare pas se bifează din starea REALĂ a datelor.
 function pasiOnboarding(p) {
@@ -188,11 +226,9 @@ function wireSteps(rootSel, after) {
 }
 function renderPrimiiPasi(p) {
   const card = $('#primiiPasiCard'); if (!card) return;
-  // Fara nicio firma (contabil proaspat inscris) checklistul e de nefacut: „Completeaza datele
-  // firmei", „Emite prima factura" — care firma? Bannerul de sus ii spune ce are efectiv de facut.
-  if (USER.faraFirma) { card.classList.add('hidden'); return; }
-  // firma are deja activitate -> nu mai e nevoie de ghidaj
-  if (!p || (p.nrInregistrari >= 5 && p.firmaCompletata)) { card.classList.add('hidden'); return; }
+  // Conditia de afisare sta in `checklistVizibil` (pura, exportata): o citeste si banda de alerte
+  // de deasupra, ca sa nu spuna „totul e in regula" peste un checklist cu pasi nefacuti.
+  if (!checklistVizibil(p, USER.faraFirma)) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
   const pasi = pasiOnboarding(p);
   const gata = pasi.filter((x) => x.done).length;
@@ -355,9 +391,10 @@ function renderDashAlerts(k) {
   if (k.soldFurnizori > 0) a.push({ ic: '🏭', tone: 'warn', txt: '<b>' + fmt(k.soldFurnizori) + '</b> lei de plătit furnizorilor', go: 'cashbook', cta: 'Plăți' });
   if (k.soldClienti > 0) a.push({ ic: '👥', tone: 'info', txt: '<b>' + fmt(k.soldClienti) + '</b> lei de încasat de la clienți', go: 'analitic', cta: 'Scadențar' });
   if (k.profit < 0) a.push({ ic: '⚠️', tone: 'bad', txt: 'Rezultatul anului e <b>pierdere</b> (' + fmt(k.profit) + ' lei)', go: 'situatii', cta: 'Situații' });
+  const gol = mesajFaraAlerte(k.primiiPasi, USER.faraFirma);
   box.innerHTML = a.length
     ? a.map((x) => `<button type="button" class="alert ${x.tone}" data-go="${x.go}"><span class="al-ic">${x.ic}</span><span class="al-tx">${x.txt}</span><span class="al-cta">${x.cta} →</span></button>`).join('')
-    : '<div class="alert ok"><span class="al-ic">✅</span><span class="al-tx">Totul pare în regulă — nicio acțiune urgentă pentru moment.</span></div>';
+    : `<div class="alert ${gol.ton}"><span class="al-ic">${gol.ic}</span><span class="al-tx">${gol.txt}</span></div>`;
   $$('#dashAlerts .alert[data-go]').forEach((b) => b.addEventListener('click', () => deps.goTab(b.dataset.go)));
 }
 function renderDashboardCharts(c) {
