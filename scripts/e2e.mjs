@@ -7,7 +7,7 @@
 //   docker run --rm -v /var/www/contab/scripts/e2e.mjs:/w/e2e.mjs:ro -w /w \
 //     mcr.microsoft.com/playwright:v1.58.2-noble \
 //     sh -c "npm i --no-save playwright@1.58.2 >/dev/null 2>&1 && node e2e.mjs"
-// Local (cu playwright instalat):  BASE_URL=http://localhost:8080 node scripts/e2e.mjs
+// Comanda unica (browser local sau fallback Docker): npm run e2e
 
 import { chromium } from 'playwright';
 
@@ -135,7 +135,10 @@ ok(`modul simplu nu arata coduri de cont (gasite: ${[...inSimplu].join(' ') || '
 await pg.click('#uiModeBtn'); // -> expert
 await pg.waitForTimeout(300);
 const inExpert = await strange();
-ok(`modul expert le arata mai departe (${inExpert.size} coduri)`, inExpert.size > 10);
+// Volumul datelor din firma demo variaza dupa reset/importuri, deci „peste 10" masura seed-ul,
+// nu modul UI. Contractul real: simplu elimina toate codurile, iar expertul le readuce efectiv.
+ok(`modul expert readuce codurile (${inExpert.size}: ${[...inExpert].join(' ') || 'niciunul'})`,
+  inExpert.size > 0 && inExpert.size > inSimplu.size);
 if (await pg.evaluate(() => document.body.classList.contains('simple-ui'))) await pg.click('#uiModeBtn');
 // restul verificarilor ruleaza in modul expert
 
@@ -200,6 +203,10 @@ await pg.route('**/api/entries', async (route) => {
 await pg.selectOption('#tipSelect', 'factura_vanzare_marfuri');
 await pg.waitForTimeout(700);
 await pg.fill('#fld_partener', 'Client E2E');
+// Tipul anterior (`incasare_client`) nu are campul `baza`; schimbarea corect reseteaza acest camp.
+// Fara completarea lui, validarea HTML `required` opreste submit-ul inainte de listener — testul
+// ar interpreta protectia browserului drept lipsa unei cereri.
+await pg.fill('#fld_baza', '150');
 // doua linii: una completa, una cu denumirea goala — a doua trebuie ELIMINATA de readItems,
 // altfel ar pleca spre server o pozitie fara nume, care strica baza si TVA-ul.
 const ed = '#fld_items';
