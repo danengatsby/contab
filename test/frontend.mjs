@@ -650,6 +650,22 @@ section('Completare după CUI: nu suprascrie niciodată ce a tastat omul');
     core.campuriDeCompletat(Object.assign({}, REG, { tvaLaIncasare: true }), HARTA, {}).avertismente.some((a) => /297/.test(a)));
   ok('firma curată nu produce niciun avertisment', core.campuriDeCompletat(REG, HARTA, {}).avertismente.length === 0);
 
+  // Mesajul de după completare se CITEȘTE, deci înșiră etichetele câmpurilor, nu numele lor
+  // tehnice. Prima versiune tipărea „completat din registrul ANAF: den, adresa, oras, judet" —
+  // `den` nu înseamnă nimic pentru cine completează formularul.
+  eq('eticheta se curăță de lămuririle din paranteze', core.curataEticheta('Județ (cod, ex: RO-CJ)', 'judet'), 'Județ');
+  eq('...și de marcajul de câmp obligatoriu', core.curataEticheta('Denumire firmă * ', 'nume'), 'Denumire firmă');
+  eq('...și de spațiile din interior', core.curataEticheta('  Adresă   (stradă) ', 'adresa'), 'Adresă');
+  // Un câmp fără `<label>` nu are voie să rămână fără nume în mesaj: cade pe numele tehnic,
+  // adică exact comportamentul de dinainte, nu pe un șir gol.
+  eq('fără etichetă se cade pe numele câmpului', core.curataEticheta('', 'den'), 'den');
+  eq('...la fel dacă eticheta era doar decor', core.curataEticheta('( ) *', 'oras'), 'oras');
+  eq('lipsa completă nu aruncă', core.curataEticheta(null, 'judet'), 'judet');
+  // Poarta pe efect: mesajul nu are voie să mai conțină numele tehnice ale câmpurilor.
+  const coreSrc = fs.readFileSync(path.join(PUB, 'core.js'), 'utf8');
+  ok('mesajul înșiră etichete, nu numele câmpurilor', /listeaza\(r\.completate\)/.test(coreSrc) && !/r\.completate\.join/.test(coreSrc));
+  ok('...și la fel pentru câmpurile care diferă', /listeaza\(r\.diferite\)/.test(coreSrc) && !/r\.diferite\.join/.test(coreSrc));
+
   // Poartă pe cele TREI locuri de apel: constatarea era că același CUI se tastează de mână în trei
   // formulare. Dacă unul rămâne nelegat, reparația e făcută pe două treimi — și nu s-ar vedea.
   const surse = { 'authui.js': 'înscrierea firmei', 'app.js': 'Firma mea', 'partners.js': 'formularul de partener' };

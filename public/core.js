@@ -337,6 +337,29 @@ export async function cautaCui(cui) {
 }
 
 /**
+ * Eticheta LIZIBILA a unui camp, din textul `<label>`-ului care il contine. Functie PURA (testata
+ * in test/frontend.mjs) peste textul deja extras.
+ *
+ * De ce exista: mesajul de dupa completare insira campurile atinse, iar prima versiune tiparea
+ * NUMELE lor tehnice — „completat din registrul ANAF: den, adresa, oras, judet". `den` nu inseamna
+ * nimic pentru cine completeaza formularul; eticheta de deasupra campului spune „Denumire".
+ * Eticheta nu se ia dintr-o a treia lista scrisa de mana (ar drifta fata de formular la prima
+ * redenumire), ci chiar din `<label>`-ul pe care omul il citeste — deci nu poate sa nu se
+ * potriveasca.
+ *
+ * Se curata ce e ajutor de completare, nu nume: lamuririle din paranteze („Județ (cod, ex: RO-CJ)"
+ * -> „Județ") si marcajul de camp obligatoriu.
+ */
+export function curataEticheta(text, cadere) {
+  const t = String(text == null ? '' : text)
+    .replace(/\([^)]*\)/g, ' ')   // „(cod, ex: RO-CJ)", „(stradă)"
+    .replace(/[*:]/g, ' ')        // marcajul de obligatoriu si doua puncte
+    .replace(/\s+/g, ' ')
+    .trim();
+  return t || String(cadere == null ? '' : cadere);
+}
+
+/**
  * Leaga completarea automata pe campul CUI al unui formular. Partea de DOM a mecanismului de mai
  * sus: decizia CE se completeaza ramane in `campuriDeCompletat` (pura, testata), aici doar se
  * cheama serverul si se scriu rezultatele in pagina.
@@ -380,12 +403,21 @@ export function legaCompletareCui(form, harta, opts) {
       const el = form.querySelector('[name="' + c + '"]');
       if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); }
     }
+    // Numele campurilor devin ETICHETE, citite din `<label>`-ul pe care omul il are in fata:
+    // `campuriDeCompletat` lucreaza cu numele lor tehnice (asa se scrie in formular), dar mesajul
+    // se citeste, nu se programeaza. Caderea pe nume ramane, pentru un camp fara `<label>`.
+    const etich = (c) => {
+      const el = form.querySelector('[name="' + c + '"]');
+      const lab = el && el.closest && el.closest('label');
+      return curataEticheta(lab && lab.textContent, c);
+    };
+    const listeaza = (campuri) => campuri.map(etich).join(', ');
     const bucati = [];
-    if (r.completate.length) bucati.push('<b>' + H(reg.denumire || v) + '</b> — completat din registrul ANAF: ' + H(r.completate.join(', ')) + '.');
+    if (r.completate.length) bucati.push('<b>' + H(reg.denumire || v) + '</b> — completat din registrul ANAF: ' + H(listeaza(r.completate)) + '.');
     else bucati.push('<b>' + H(reg.denumire || v) + '</b> — găsit la ANAF; câmpurile erau deja completate.');
     // Diferentele nu se corecteaza tacit: se SPUN. Registrul poate avea sediul vechi, iar omul
     // poate sti mai bine — dar trebuie sa afle ca cele doua nu se potrivesc.
-    if (r.diferite.length) bucati.push('Diferă față de registru (nu am schimbat): ' + H(r.diferite.join(', ')) + '.');
+    if (r.diferite.length) bucati.push('Diferă față de registru (nu am schimbat): ' + H(listeaza(r.diferite)) + '.');
     if (reg.tvaPlatitor === false) bucati.push('La ANAF <b>nu</b> figurează ca plătitoare de TVA.');
     for (const a of r.avertismente) bucati.push('⚠️ ' + H(a));
     stare.innerHTML = bucati.join(' ');
