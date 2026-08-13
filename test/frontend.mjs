@@ -1135,6 +1135,22 @@ section('Căutare globală (Ctrl+K): filtrarea și ordonarea rezultatelor');
 }
 
 section('Poartă: fiecare modul din public/ se încarcă fără să arunce');
+// La deploy, HTML-ul si modulele JS nu se schimba atomic in cache-ul tuturor browserelor. Un
+// client a incarcat settings.js nou peste index.html vechi, fara controalele de pornire 2FA, iar
+// un addEventListener direct pe null a oprit intreg modulul. Reproducem exact fereastra de rollout:
+// DOM-ul vechi nu are id-urile noi, dar restul paginii ramane disponibil.
+{
+  const queryReal = globalThis.document.querySelector;
+  const iduriNoi2FA = new Set(['#twofaStart', '#twofaSetup', '#twofaQr', '#twofaSecret', '#twofaCode', '#twofaEnable', '#twofaCancel']);
+  globalThis.document.querySelector = (sel) => (iduriNoi2FA.has(sel) ? null : queryReal.call(globalThis.document, sel));
+  let err = null;
+  try {
+    const settingsVechiHtml = await import(pathToFileURL(path.join(mirror, 'settings.js')).href + '?html-vechi=1');
+    settingsVechiHtml.render2FA();
+  } catch (e) { err = e; }
+  finally { globalThis.document.querySelector = queryReal; }
+  ok('settings.js nou tolereaza HTML-ul vechi ramas in cache' + (err ? ' — ' + err.message : ''), !err);
+}
 // Testele de mai sus importa doar modulele pe care le verifica (9 din ~24). Un import lipsa in
 // restul (ex. folosirea lui `H` fara sa fie importat) NU se vede: `node --check` valideaza
 // sintaxa, nu rezolvarea numelor, iar eroarea apare abia in browser, la randare. S-a intamplat:
