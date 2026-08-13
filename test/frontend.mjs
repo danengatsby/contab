@@ -428,6 +428,40 @@ section('Dashboard: firma fără nicio înregistrare nu primește un ecran de ze
   ok('graficele nu se mai desenează pe firma goală', /if \(gol\) return;\s*\n\s*if \(c\) renderDashboardCharts/.test(dashSrc));
 }
 
+section('Poartă: `display:…!important` nu are voie să bată `.hidden`');
+{
+  // A PATRA oară aceeași capcană, de fiecare dată găsită prin efectul ei, nu prin regulă:
+  //   1. `.login-box label` — un câmp ascuns din JS rămânea vizibil;
+  //   2. `#tabs>button[data-tab]` — „Portofoliu" apărea și la conturile cu o singură firmă;
+  //   3. `.simple-ui .simple-only` — „Situația firmei" arăta patru dale de 0,00 pe firma goală;
+  //   4. `#tabs .navmenu button` — „Cine accesează aplicația" se vedea la orice utilizator.
+  // Primele trei au fost reparate una câte una, fiecare cu propriul comentariu care spunea
+  // „aceeași capcană ca mai sus". Un comentariu nu e un mecanism. Poarta se DERIVĂ din sursă:
+  // orice regulă care FACE VIZIBIL ceva cu `!important` trebuie să se retragă în fața lui
+  // `.hidden`. Regulile care ascund (`display:none!important`) nu intră — ele sunt de acord.
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  const faraComentarii = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const vinovate = [];
+  let vazute = 0;
+  for (const m of faraComentarii.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const decl = /display\s*:\s*([^;}!]+)!important/.exec(m[2]);
+    if (!decl) continue;
+    if (decl[1].trim() === 'none') continue; // ascunde: nu poate contrazice `.hidden`
+    vazute += 1;
+    const sel = m[1].split(',').map((s) => s.trim()).filter(Boolean);
+    if (sel.some((s) => !s.includes(':not(.hidden)'))) vinovate.push(sel.join(', ').slice(0, 70));
+  }
+  ok('poarta chiar vede reguli (nu o listă goală)', vazute >= 5);
+  ok('nicio regulă nu forțează vizibilitatea peste `.hidden`'
+    + (vinovate.length ? ' — ADAUGĂ `:not(.hidden)` la: ' + vinovate.join(' | ') : ''), vinovate.length === 0);
+  // Și reversul: poarta trebuie să PICE dacă cineva scoate garda. Se dovedește pe un exemplu
+  // sintetic, nu prin mutarea fișierului real — altfel „trece" ar putea însemna „n-a citit nimic".
+  const fals = '.x .y{display:block!important}';
+  const prinde = [...fals.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .some((m) => /display\s*:\s*([^;}!]+)!important/.test(m[2]) && !m[1].includes(':not(.hidden)'));
+  ok('...iar poarta chiar prinde o regulă nepăzită', prinde === true);
+}
+
 section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
 {
   // `azi` e fixat: altfel vechimea restanței ar depinde de ziua în care rulează suita.
