@@ -817,7 +817,7 @@ section('Completare după CUI: nu suprascrie niciodată ce a tastat omul');
   for (const [f, unde] of Object.entries(surse)) {
     const src = fs.readFileSync(path.join(PUB, f), 'utf8');
     ok('completarea după CUI e legată în ' + unde + ' (' + f + ')', /legaCompletareCui\(/.test(src));
-  }}
+  }
 }
 
 section('Bulele de ajutor ⓘ chiar au unde să se prindă (fiecare titlu explicat există)');
