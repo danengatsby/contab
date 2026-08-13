@@ -615,7 +615,7 @@
       <div class="cyclemap" data-step="documente"></div>
       <div class="explain"><span class="ei">📥</span><p><b>Primul pas:</b> aici aduci în firmă documentele <b>primite</b> (de la furnizori, bancă, SPV) — le încarci, aplicația le citește și le contabilizează. Facturile către clienți le creezi în pagina <b>„🧾 Emite factură"</b>. Din documente se construiește automat tot restul contabilității.</p></div>
       <div class="docband intrare" id="band-intrare"><b>📥 Documente de INTRARE</b><small>primite de la furnizori / bancă / <abbr title="Spațiul Privat Virtual — portalul ANAF unde se depun declarațiile și circulă e-Factura">SPV</abbr> — le încarci, aplicația extrage datele și le contabilizează</small></div>
-      <div class="grid2">
+      <div class="grid2 pas12">
         <div class="card">
           <h2>1 · Încarcă documentul primit (PDF sau imagine)</h2>
           <p class="muted">Factură de cumpărare, chitanță, NIR, bon, stat de plată… Aplicația extrage automat datele (CUI, nr./dată, bază, TVA, total) — din PDF sau dintr-o <b>poză</b> a documentului.</p>
@@ -730,7 +730,7 @@
       <div class="cyclemap" data-step="emite"></div>
       <div class="explain"><span class="ei">🧾</span><p><b>Aici emiți documentele firmei tale</b> — facturi către clienți, bonuri, avize. Alegi ce vinzi, verifici formularul și salvezi: numărul în serie, articolul contabil și e-Factura / PDF-ul se generează automat.</p></div>
       <div class="docband iesire" id="band-iesire"><b>📤 Documente de IEȘIRE</b><small>emise de firma ta — le creezi aici, aplicația le contabilizează și generează e-Factura / PDF</small></div>
-      <div class="grid2">
+      <div class="grid2 pas12">
         <div class="card">
           <!-- „1 ·" nu e decor: cardul din dreapta se numeste „2 · Verifica si salveaza", iar
                paragraful de mai jos trimite explicit la „(pasul 2)". Fara numarul asta, ecranul
@@ -757,10 +757,10 @@
         </div>
         <div class="card">
           <h2>2 · Verifică și salvează</h2>
-          <p class="muted">Alege în stânga ce emiți; formularul se deschide aici, cu tipul contabil potrivit și numărul de factură dat automat în serie continuă.</p>
+          <p class="muted">Formularul se deschide aici, cu tipul contabil potrivit și numărul de factură dat automat în serie continuă.</p>
           <!-- formularul e UNIC in aplicatie: JS il muta intre gazda de aici si cea din „Adaugă document primit" -->
           <div id="formHostEmite"></div>
-          <p id="noDocEmit" class="muted">Alege din stânga ce vrei să emiți ca să se deschidă formularul.</p>
+          <p id="noDocEmit" class="muted">Alege mai sus ce vrei să emiți.</p>
         </div>
       </div>
 

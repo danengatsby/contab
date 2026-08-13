@@ -116,6 +116,19 @@ td.grpsep,th.grpsep{border-left:2px solid #d3dcec}
 main{max-width:1180px;margin:22px auto;padding:0 18px}
 .tab{display:none}.tab.active{display:block}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+/* Ecranele „1 · alege / 2 · verifica si salveaza" (Adauga document primit, Emite factura).
+   Formularul e UNIC in aplicatie si se MUTA intre cele doua gazde (vezi docflow.js), deci pana
+   la alegerea unui tip coloana a doua nu contine nimic — isi rezerva jumatate de ecran ca sa
+   anunte ca e goala („Alege in stanga ce emiti; formularul se deschide aici"). Pe 1440x900 asta
+   inseamna ~600px de aer exact acolo unde ar fi trebuit sa apara formularul.
+   Cat timp formularul NU e in acest invelis, ecranul are o singura coloana: pasul 2 ramane
+   vizibil (spune ce urmeaza), dar pe un rand, nu pe o jumatate de pagina. Cand formularul se
+   deschide, revin cele doua coloane — starea aceea era deja buna: vezi alegerea si formularul
+   unul langa altul.
+   `:has()` face selectia PE ECRANUL CARE CONTINE FORMULARUL, deci comutarea se face singura la
+   mutarea lui dintr-un tab in altul, fara ca docflow.js sa stie de layout. Unde `:has()` n-ar fi
+   suportat, raman doua coloane — adica exact comportamentul de dinainte. */
+.grid2.pas12:not(:has(#entryForm:not(.hidden))){grid-template-columns:1fr}
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;
