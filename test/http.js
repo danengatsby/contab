@@ -3026,6 +3026,41 @@ async function main() {
       eq('conturile cu sold sunt preluate', pv.json.preview.conturi.length, 4);
       ok('balanta e echilibrata', pv.json.preview.echilibrata === true && pv.json.preview.totalD === 40000);
       ok('se poate importa', pv.json.preview.sePoateImporta === true);
+
+      // Preseturi per UTILIZATOR: maparea detectata se salveaza o data si se refoloseste la
+      // urmatorul client, inclusiv daca programul a reordonat coloanele exportului.
+      eq('preseturi: lista porneste goala', (await req('GET', '/api/migrare/presets', { cookie: laM.cookie })).json.length, 0);
+      eq('preseturi: mapare invalida (aceeasi coloana in doua roluri) -> 400',
+        (await req('POST', '/api/migrare/presets', { cookie: laM.cookie, body: {
+          nume: 'Invalid', antet: pv.json.antet, mapare: { cont: 0, sfd: 2, sfc: 2 }, sursa: 'final',
+        } })).status, 400);
+      const presetCreat = await req('POST', '/api/migrare/presets', { cookie: laM.cookie, body: {
+        nume: 'Program vechi - balanta', antet: pv.json.antet, mapare: pv.json.mapare, sursa: 'final', zecimal: ',',
+      } });
+      ok('preseturi: formatul valid se salveaza', presetCreat.status === 200 && presetCreat.json.creat && presetCreat.json.preset.id);
+      const presetId = presetCreat.json.preset.id;
+      const presetUpdate = await req('POST', '/api/migrare/presets', { cookie: laM.cookie, body: {
+        nume: 'PROGRAM VECHI - BALANTA', antet: pv.json.antet, mapare: pv.json.mapare, sursa: 'final', zecimal: ',',
+      } });
+      ok('preseturi: acelasi nume actualizeaza, nu dubleaza', presetUpdate.status === 200 && !presetUpdate.json.creat
+        && (await req('GET', '/api/migrare/presets', { cookie: laM.cookie })).json.length === 1);
+      eq('preseturi: alt utilizator nu vede formatul adminului', (await req('GET', '/api/migrare/presets', { cookie: c1 })).json.length, 0);
+
+      const csvReordonat = ['Sold final creditor;Cont;Sold final debitor;Denumire;Sold initial creditor;Sold initial debitor',
+        '30.000,00;1012;0;Capital social;30.000,00;0',
+        '0;371;25.000,00;Marfuri;0;20.000,00',
+        '10.000,00;401;0;Furnizori;15.000,00;0',
+        '0;5121;15.000,00;Banca;0;25.000,00'].join('\n');
+      const fdPreset = new FormData();
+      fdPreset.append('file', new Blob([csvReordonat], { type: 'text/csv' }), 'balanta-reordonata.csv');
+      fdPreset.append('presetId', presetId);
+      const pvPreset = await req('POST', '/api/migrare/preview', { cookie: laM.cookie, body: fdPreset });
+      ok('preseturi: formatul se aplica dupa reordonarea coloanelor', pvPreset.status === 200
+        && pvPreset.json.presetAplicat === presetId && pvPreset.json.mapare.cont === 1
+        && pvPreset.json.mapare.sfd === 2 && pvPreset.json.mapare.sfc === 0 && pvPreset.json.preview.totalD === 40000);
+      const fdStrain = new FormData(); fdStrain.append('file', new Blob([csv], { type: 'text/csv' }), 'balanta.csv'); fdStrain.append('presetId', presetId);
+      eq('preseturi: id-ul altui utilizator nu poate fi aplicat',
+        (await req('POST', '/api/migrare/preview', { cookie: c1, body: fdStrain })).status, 404);
       // Importul se face intr-o firma PROPRIE: preluarea rescrie soldurile, iar restul suitei
       // lucreaza pe firma existenta. Testeaza in acelasi timp garda de firma explicita.
       const fNoua = await req('POST', '/api/firme', { cookie: laM.cookie, body: { nume: 'PRELUATA SRL', cui: '300008' } });
@@ -3063,6 +3098,10 @@ async function main() {
       const aud = (await req('GET', '/api/audit', { cookie: laM.cookie })).json;
       const lst = Array.isArray(aud) ? aud : (aud.items || []);
       ok('preluarea apare in audit', lst.some((a) => a.action === 'migrare.import'));
+      ok('presetul propriu se poate sterge', (await req('DELETE', '/api/migrare/presets/' + presetId, { cookie: laM.cookie })).json.ok === true);
+      eq('dupa stergere, presetul nu mai apare', (await req('GET', '/api/migrare/presets', { cookie: laM.cookie })).json.length, 0);
+      eq('stergerea repetata nu divulga nimic -> 404',
+        (await req('DELETE', '/api/migrare/presets/' + presetId, { cookie: laM.cookie })).status, 404);
     }
 
     // ── PLASA JOBURILOR PERIODICE: si esecul ASINCRON e prins ──

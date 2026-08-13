@@ -5462,6 +5462,27 @@ section('Preluare firma din alt program (src/migrare.js)');
     new Set(Object.values(det.map)).size === Object.values(det.map).length);
   ok('coloanele nefolosite sunt raportate', Array.isArray(mig.detectMapping(['Cont', 'Ceva', 'SFD', 'SFC']).nefolosite));
 
+  // Presetul salveaza NUMELE anteturilor, nu indicii: acelasi program poate reordona coloanele
+  // intre doua versiuni, iar reutilizarea n-are voie sa mute debitul in credit tacit.
+  const fields = mig.presetFields(ANTET, det.map);
+  const reordonat = ['Sold final creditor', 'Cont', 'Sold final debitor', 'Denumire', 'Sold initial creditor', 'Sold initial debitor'];
+  const dinPreset = mig.mappingFromPreset(reordonat, fields);
+  ok('presetul regaseste coloanele dupa nume cand ordinea se schimba',
+    dinPreset.cont === 1 && dinPreset.sfd === 2 && dinPreset.sfc === 0 && dinPreset.denumire === 3);
+  ok('compararea anteturilor ignora majuscule, spatii si diacritice',
+    mig.mappingFromPreset([' CONT ', 'DENUMIRE', 'SOLD FINAL DEBITOR', 'SOLD FINAL CREDITOR'], {
+      cont: 'Cont', denumire: 'Denumire', sfd: 'Sold final debitor', sfc: 'Sold final creditor',
+    }).sfc === 3);
+  const gasitPreset = mig.detectPresetMapping([
+    ['BALANTA DE VERIFICARE'], ['Firma: EXEMPLU SRL'], reordonat,
+  ], { campuri: fields });
+  ok('presetul gaseste antetul dupa randurile de titlu', gasitPreset && gasitPreset.idxAntet === 2 && gasitPreset.map.cont === 1);
+  eq('presetul nu se aplica partial peste alt format', mig.detectPresetMapping([['Cont', 'Debit']], { campuri: fields }), null);
+  const hartaValida = mig.validateMapping({ cont: 0, sfd: 2, sfc: 3 }, 4, 'final');
+  ok('harta explicita valida trece', hartaValida.probleme.length === 0 && hartaValida.map.sfc === 3);
+  ok('aceeasi coloana in doua roluri e refuzata', mig.validateMapping({ cont: 0, sfd: 1, sfc: 1 }, 3, 'final').probleme.length > 0);
+  ok('indicele din afara antetului e refuzat', mig.validateMapping({ cont: 9, sfd: 1 }, 3, 'final').probleme.length > 0);
+
   const RANDURI = [
     ['1012', 'Capital social', '0', '30.000,00', '0', '30.000,00'],
     ['371', 'Marfuri', '20.000,00', '0', '25.000,00', '0'],

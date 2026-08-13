@@ -2526,11 +2526,26 @@ Cu stimă,
       <div class="card" id="openingCard">
         <h2>⚖️ Solduri inițiale (preluare firmă cu istoric)</h2>
         <p class="muted">Balanța de deschidere la preluarea firmei în aplicație: soldul <b>debitor sau creditor</b> al fiecărui cont la data preluării. <b>Totalul debit trebuie să fie egal cu totalul credit</b> — altfel balanța nu se va închide niciodată. Poți importa balanța exportată din vechiul program (<b>XLS / XLSX / DBF / CSV</b>, coloane <span class="acc">Cont;Denumire;SoldDebit;SoldCredit</span> — antetul e opțional). Soldurile pe partener le detaliezi în <b>Analitic</b>, iar stocul cantitativ-valoric în <b>Stocuri → Preluare stoc inițial</b>.</p>
+        <div class="row" id="openPresetRow">
+          <label>Solduri folosite <select id="openSource"><option value="final">Solduri finale</option><option value="initial">Solduri inițiale</option></select></label>
+          <label>Format salvat <select id="openPreset"><option value="">Detectare automată</option></select></label>
+          <button id="openPresetDelete" class="btn small ghost hidden" type="button">Șterge formatul</button>
+        </div>
         <div class="row" data-u="u115">
           <input type="file" id="openFile" accept=".csv,.txt,.xlsx,.xls,.dbf" title="Încarcă balanța de deschidere din fișier" />
           <button id="openAddRow" class="btn small ghost">+ adaugă cont</button>
         </div>
         <div id="openAmbig"></div>
+        <div id="openMapping" class="hidden">
+          <p class="muted"><b>Maparea detectată.</b> Verifică rolul coloanelor. Dacă programul tău folosește alte denumiri, corectează aici și actualizează previzualizarea.</p>
+          <div id="openMappingFields" class="dyn"></div>
+          <div class="row">
+            <button id="openMappingApply" class="btn small" type="button">Actualizează previzualizarea</button>
+            <span class="spacer"></span>
+            <input id="openPresetName" maxlength="60" placeholder="Nume format, ex. Program contabil X" />
+            <button id="openPresetSave" class="btn small ghost" type="button">Salvează formatul</button>
+          </div>
+        </div>
         <div id="openEditor" class="tablewrap"></div>
         <div class="row" data-u="u116">
           <div id="openTotals" class="muted"></div>

@@ -148,6 +148,9 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 | `POST /api/accounts/import` (admin) | `{ csv }` (Cod;Denumire;Clasă;Tip) | `{ ok, importati, totalConturi }` — planul e global, partajat între firme, **de aceea scrierea e rezervată adminului**; 403 altfel. Primul rând e sărit dacă pare antet (conține „cont"/„cod"/„denumire") |
 | `GET/POST /api/opening` | `{ openingBalances: { cont: { d, c } } }` | `{ ok, totalDebit, totalCredit }`; dezechilibru → 400 cu `totalDebit`, `totalCredit`, `diferenta` lângă `error` |
 | `GET/POST /api/opening-analytic`, `DELETE /:idx` | `{ cont, partener?, cui?, d, c }` | upsert pe cheia cont+CUI; ștergerea cu index invalid NU e eroare |
+| `POST /api/migrare/preview` | multipart: `file`, `sursa?`, `presetId?`, `mapare?`, `idxAntet?`, `zecimal?` | previzualizare fără scriere pentru CSV/XLS/XLSX/DBF; detectează antetul și maparea, raportează ambiguitățile și dezechilibrul |
+| `GET/POST /api/migrare/presets`, `DELETE /:id` | `{ nume, antet[], mapare, sursa, zecimal? }` | formate de coloane per utilizator, maximum 20; același nume actualizează presetul; un preset străin răspunde 404 |
+| `POST /api/migrare/import` | `{ firmaId, conturi[], suprascrie? }` | import atomic într-o firmă explicită; revalidează echilibrul și cere confirmare la suprascriere |
 
 ## Stocuri (`src/routes/stocks.js`, `stockdocs.js`)
 

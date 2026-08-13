@@ -34,6 +34,15 @@ function citesteRanduri(filePath, originalName) {
 module.exports = function register(app, ctx) {
   const { activeId, logAudit, upload } = ctx;
 
+  const presets = (u) => (Array.isArray(u && u.migrationPresets) ? u.migrationPresets : []);
+  const publicPreset = (p) => ({ id: p.id, nume: p.nume, campuri: p.campuri, sursa: p.sursa,
+    zecimal: p.zecimal || null, createdAt: p.createdAt, updatedAt: p.updatedAt });
+  const reqNotDemo = (u) => {
+    if (!u || u.username === 'demo' || u.username === 'demo-contabil') {
+      fail(403, 'Contul demo este partajat — presetul nu poate fi modificat.');
+    }
+  };
+
   const run = (res, fn) => {
     try { res.json(fn()); } catch (e) {
       if (!e.status) throw e;
@@ -50,22 +59,86 @@ module.exports = function register(app, ctx) {
     finally { try { fs.unlinkSync(req.file.path); } catch (_) { /* fisierul temporar se sterge intotdeauna */ } }
     if (!randuri.length) fail(400, 'Fisierul este gol sau nerecunoscut.');
 
-    // Antetul e primul rand care contine un tipar de coloana cunoscut — exporturile au adesea
-    // 2-5 randuri de titlu (denumirea firmei, perioada) inaintea tabelului propriu-zis.
-    let idxAntet = 0; let det = migrare.detectMapping(randuri[0]);
-    for (let i = 0; i < Math.min(randuri.length, 15); i++) {
-      const d = migrare.detectMapping(randuri[i]);
-      if (d.map.cont != null && (d.map.sfd != null || d.map.sid != null)) { idxAntet = i; det = d; break; }
+    const b = req.body || {};
+    let preset = null;
+    if (b.presetId) {
+      preset = presets(req.user).find((p) => p.id === String(b.presetId));
+      if (!preset) fail(404, 'Presetul de migrare nu exista sau apartine altui utilizator.');
     }
+    const sursa = (b.sursa || req.query.sursa || (preset && preset.sursa)) === 'initial' ? 'initial' : 'final';
+
+    // Antetul e primul rand care contine un tipar cunoscut. O mapare explicita (corectata in UI)
+    // are prioritate, apoi presetul, apoi detectia automata.
+    let idxAntet = 0; let det;
+    if (b.mapare) {
+      try { idxAntet = Number(b.idxAntet); det = { antet: randuri[idxAntet], map: JSON.parse(b.mapare) }; }
+      catch (_) { fail(400, 'Maparea trimisa nu este JSON valid.'); }
+      if (!Number.isInteger(idxAntet) || idxAntet < 0 || idxAntet >= randuri.length || !Array.isArray(det.antet)) {
+        fail(400, 'Randul de antet ales nu exista in fisier.');
+      }
+      det.antet = det.antet.map((x) => String(x == null ? '' : x).trim());
+    } else if (preset) {
+      const gasit = migrare.detectPresetMapping(randuri, preset);
+      if (!gasit) fail(400, 'Presetul „' + preset.nume + '” nu se potriveste cu antetul acestui fisier. Alege detectarea automata si remapeaza coloanele.');
+      idxAntet = gasit.idxAntet; det = { antet: gasit.antet, map: gasit.map };
+    } else {
+      det = migrare.detectMapping(randuri[0]);
+      for (let i = 0; i < Math.min(randuri.length, 15); i++) {
+        const d = migrare.detectMapping(randuri[i]);
+        if (d.map.cont != null && (d.map.sfd != null || d.map.sid != null)) { idxAntet = i; det = d; break; }
+      }
+    }
+    const valid = migrare.validateMapping(det.map, det.antet.length, sursa);
+    // La detectia automata intoarcem problema in preview, ca omul sa poata corecta selectiile.
+    // O mapare explicita/preset invalida se refuza: nu are voie sa para ca a fost aplicata.
+    if ((b.mapare || preset) && valid.probleme.length) fail(400, valid.probleme.join(' '));
+    det.map = valid.map;
+    const luate = new Set(Object.values(det.map));
+    det.nefolosite = det.antet.map((h, i) => (luate.has(i) ? null : { i, h })).filter(Boolean);
     const corp = randuri.slice(idxAntet + 1);
-    const sursa = req.query.sursa === 'initial' ? 'initial' : 'final';
-    const roles = (req.query.zecimal === '.' || req.query.zecimal === ',')
-      ? { [req.query.zecimal]: 'zecimale', [req.query.zecimal === '.' ? ',' : '.']: 'mii' } : null;
+    const zecimal = (b.zecimal === '.' || b.zecimal === ',') ? b.zecimal
+      : ((req.query.zecimal === '.' || req.query.zecimal === ',') ? req.query.zecimal : (preset && preset.zecimal));
+    const roles = (zecimal === '.' || zecimal === ',')
+      ? { [zecimal]: 'zecimale', [zecimal === '.' ? ',' : '.']: 'mii' } : null;
     const pv = migrare.buildPreview(corp, det.map, { sursa, roles });
     return {
       antet: det.antet, idxAntet, mapare: det.map, nefolosite: det.nefolosite, sursa,
+      zecimal: zecimal || null, presetAplicat: preset ? preset.id : null,
       randuriFisier: randuri.length, preview: pv,
     };
+  }));
+
+  // Preseturile apartin UTILIZATORULUI, nu firmei active: un contabil le refoloseste pentru
+  // urmatorul client exportat din acelasi program, fara sa le expuna colaboratorilor firmei.
+  app.get('/api/migrare/presets', (req, res) => res.json(presets(req.user).map(publicPreset)));
+  app.post('/api/migrare/presets', (req, res) => run(res, () => {
+    reqNotDemo(req.user);
+    const b = req.body || {}; const nume = String(b.nume || '').trim().slice(0, 60);
+    const antet = Array.isArray(b.antet) ? b.antet.map((x) => String(x == null ? '' : x).trim().slice(0, 120)) : [];
+    const sursa = b.sursa === 'initial' ? 'initial' : 'final';
+    if (nume.length < 2) fail(400, 'Denumirea presetului trebuie sa aiba cel putin 2 caractere.');
+    if (!antet.length || antet.length > 100) fail(400, 'Antetul presetului este invalid.');
+    const valid = migrare.validateMapping(b.mapare, antet.length, sursa);
+    if (valid.probleme.length) fail(400, valid.probleme.join(' '));
+    const campuri = migrare.presetFields(antet, valid.map);
+    const acum = new Date().toISOString();
+    req.user.migrationPresets = presets(req.user);
+    let p = req.user.migrationPresets.find((x) => String(x.nume || '').toLowerCase() === nume.toLowerCase());
+    const creat = !p;
+    if (!p && req.user.migrationPresets.length >= 20) fail(400, 'Ai atins limita de 20 de preseturi de migrare. Sterge unul vechi.');
+    if (!p) { p = { id: db.nextId('mp'), createdAt: acum }; req.user.migrationPresets.push(p); }
+    Object.assign(p, { nume, campuri, sursa, zecimal: b.zecimal === '.' || b.zecimal === ',' ? b.zecimal : null, updatedAt: acum });
+    db.save();
+    logAudit(creat ? 'migrare.preset.create' : 'migrare.preset.update', nume, { req, firmaId: null });
+    return { ok: true, creat, preset: publicPreset(p) };
+  }));
+  app.delete('/api/migrare/presets/:id', (req, res) => run(res, () => {
+    reqNotDemo(req.user);
+    const list = presets(req.user); const idx = list.findIndex((p) => p.id === req.params.id);
+    if (idx < 0) fail(404, 'Presetul de migrare nu exista sau apartine altui utilizator.');
+    const [p] = list.splice(idx, 1); req.user.migrationPresets = list;
+    db.save(); logAudit('migrare.preset.delete', p.nume, { req, firmaId: null });
+    return { ok: true };
   }));
 
   // Treapta 2: importul propriu-zis. TRANZACTIONAL: ori tot, ori nimic.
