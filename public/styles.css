@@ -36,7 +36,22 @@ a{color:var(--accent);text-decoration:none}
 .brand small{color:#aeb8d8}
 .logo{font-size:22px;background:rgba(255,255,255,.12);width:38px;height:38px;border-radius:9px;
   display:grid;place-items:center}
-.login-overlay{position:fixed;inset:0;background:#14204a url(/login-bg.svg) center/cover no-repeat;display:grid;place-items:center;z-index:100}
+.login-overlay{position:fixed;inset:0;background:#14204a url(/login-bg.svg) center/cover no-repeat;display:grid;place-items:center;z-index:100;
+  /* Derularea se OPRESTE in overlay: fara asta, ajuns la capatul lui, urmatorul gest continua
+     in pagina de dedesubt (scroll chaining) si aduce in vedere scheletul aplicatiei. */
+  overscroll-behavior:contain}
+/* Cat timp un ecran de intrare e deschis, PAGINA din spatele lui nu se deruleaza.
+   Masurat la 390x844, nedelogat: overlay-ul e `position:fixed` si isi deruleaza corect propriul
+   continut (1392px in 844), dar `body` ramanea derulabil pe 1771px — deci degetul, dupa ce
+   termina overlay-ul, ducea in vedere carcasa goala a aplicatiei de dedesubt: „Previziune
+   cash-flow", „Aging — vechimea soldurilor", „Ultimele operatiuni". Nu se scurge nicio data
+   (API-ul raspunde 401), dar vizitatorul vede un ecran care nu e al lui si nu inseamna nimic.
+   Regula acopera TOATE ecranele-strat (`.login-overlay`: intrare, inscriere, preturi, intrebari,
+   schimbarea fortata a parolei, bun venit) — toate sunt straturi PESTE pagina, nu parte din ea.
+   `:has()` e deja folosit in acest fisier; unde n-ar fi suportat, comportamentul ramane cel de
+   dinainte, deci regula nu poate strica nimic. */
+html:has(.login-overlay:not(.hidden)),
+body:has(.login-overlay:not(.hidden)){overflow:hidden}
 .login-box{background:#fff;border-radius:16px;padding:28px;width:340px;max-width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .login-logo{font-size:24px;font-weight:800;color:var(--head)}
 /* `:not(.hidden)` e OBLIGATORIU, nu cosmetic: `.login-box label` (clasa + element) bate
