@@ -359,6 +359,14 @@ CAMT.053. Drumul de întoarcere lipsește: lotul de plăți către furnizori și
 > preset de furnizor e o adăugire mică (câteva tipare de coloană) odată ce se știe programul.
 > **Nici parteneri / mijloace fixe / stocuri** nu se preiau încă: itemul cerea toate patru
 > într-o trecere. Balanța e cea care schimbă totul; restul rămân.
+>
+> **Mapările reutilizabile — ✅ ÎNCHIS 2026-08-13.** Ecranul folosește acum traseul serverului
+> pentru previzualizarea CSV/XLS/XLSX/DBF (înainte folosea încă parserul local simplificat, deși
+> API-ul avansat exista). Utilizatorul poate corecta rolul fiecărei coloane, salva maximum 20 de
+> formate și refolosi unul la următorul client. Presetul păstrează **numele anteturilor**, nu
+> indicii: dacă programul reordonează coloanele, ele sunt regăsite semantic; un match parțial este
+> refuzat, nu aplicat aproximativ. Preseturile sunt izolate per utilizator, deci formatul unui
+> contabil nu este expus colaboratorilor firmei. Dovedit pe mapare reordonată în modul, HTTP și E2E.
 
 ### Descriere
 
@@ -387,9 +395,8 @@ soldurile a 40 de clienți.
       (verificat prin test HTTP, pe o firmă proprie). **Pe o firmă reală, nu e încă probat.**
 - [x] Un fișier corupt sau dezechilibrat nu lasă date parțiale în bază (garda e pe scriere, nu doar
       pe previzualizare; mutația care o scoate e prinsă).
-- [ ] **NEFĂCUT** — maparea de coloane nu se salvează încă pentru reutilizare la următorul client
-      din același program. Detecția automată o reface de fiecare dată, deci pierderea e mică, dar
-      criteriul nu e îndeplinit.
+- [x] Maparea de coloane se salvează per utilizator și se reutilizează la următorul client din
+      același program, inclusiv când ordinea coloanelor se schimbă.
 
 ---
 

@@ -222,6 +222,33 @@ sect('4. Importuri (parteneri, produse)');
   ok('importul de produse raspunde ok', pimp.status === 200);
   const prod = (await apiIn(adm, '/api/products')).body || [];
   ok('produsul importat apare in lista', Array.isArray(prod) && prod.some((p) => p.cod === 'E2E-1'));
+
+  // Fluxul REAL din ecranul de solduri: upload -> preview pe server -> salvare preset ->
+  // reutilizare dupa reordonarea coloanelor. Testele HTTP dovedesc izolarea; aici dovedim ca
+  // butoanele si selecturile din browser chiar leaga acel API, nu sunt controale moarte.
+  await adm.evaluate(() => document.querySelector('#welcomeOverlay')?.classList.add('hidden'));
+  await adm.evaluate(() => window.goTab('date'));
+  const balanta = ['Cont;Denumire;Sold final debitor;Sold final creditor',
+    '1012;Capital social;0;30.000,00', '371;Marfuri;25.000,00;0',
+    '401;Furnizori;0;10.000,00', '5121;Banca;15.000,00;0'].join('\n');
+  await adm.locator('#openFile').setInputFiles({ name: 'balanta-e2e.csv', mimeType: 'text/csv', buffer: Buffer.from(balanta) });
+  await adm.waitForFunction(() => !document.querySelector('#openMapping')?.classList.contains('hidden'));
+  ok('balanta incarcata afiseaza maparea detectata in interfata',
+    (await adm.locator('#openMappingFields select').count()) === 6);
+  ok('previzualizarea afiseaza cele patru conturi si balanta echilibrata',
+    (await adm.locator('#openEditor tbody tr').count()) === 4 && /echilibrat/i.test(await adm.locator('#openTotals').innerText()));
+  await adm.fill('#openPresetName', 'Format E2E reutilizabil');
+  await adm.click('#openPresetSave');
+  await adm.waitForFunction(() => document.querySelectorAll('#openPreset option').length >= 2);
+  ok('formatul maparii se salveaza si ramane selectat',
+    (await adm.locator('#openPreset').inputValue()).length > 0);
+  const reordonata = ['Sold final creditor;Cont;Sold final debitor;Denumire',
+    '30.000,00;1012;0;Capital social', '0;371;25.000,00;Marfuri',
+    '10.000,00;401;0;Furnizori', '0;5121;15.000,00;Banca'].join('\n');
+  await adm.locator('#openFile').setInputFiles({ name: 'balanta-e2e-reordonata.csv', mimeType: 'text/csv', buffer: Buffer.from(reordonata) });
+  await adm.waitForFunction(() => /40[.,]000/.test(document.querySelector('#openTotals')?.textContent || ''));
+  ok('presetul refolosit citeste corect un export cu coloanele reordonate',
+    (await adm.locator('#openEditor tbody tr').count()) === 4 && /echilibrat/i.test(await adm.locator('#openTotals').innerText()));
 }
 
 // ─────────────────────────── 5. ERORI SPV ────────────────────────────────────

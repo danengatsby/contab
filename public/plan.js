@@ -127,6 +127,9 @@ async function renderOpening() {
   let map; try { map = await api('/api/opening'); } catch (e) { return; }
   OPEN_ROWS = Object.keys(map).sort().map((cont) => ({ cont, d: Number(map[cont].d) || 0, c: Number(map[cont].c) || 0 }));
   drawOpening();
+  // Preseturile sunt per utilizator (contabilul le refoloseste intre firme), deci se reincarca
+  // cand intram in ecran. E best-effort pentru compatibilitatea cu un server vechi in rollout.
+  loadMigrationPresets().catch(() => {});
 }
 function drawOpening() {
   const rows = OPEN_ROWS.map((r, i) => `<tr>
@@ -175,30 +178,6 @@ function openingRowsFrom(lines, roles) {
   }
   return { rows, ambig };
 }
-let OPEN_PENDING = null; // fisierul citit, in asteptarea deciziei asupra separatorului ambiguu
-// Confirmarea: NU importam pe baza unei presupuneri. Intrebam O SINGURA DATA, cu exemple reale
-// din fisier si cu ambele interpretari calculate, apoi aplicam raspunsul intregului import.
-function askSeparator(ambig) {
-  const ex = [...new Set(ambig)].slice(0, 5);
-  const sample = ex[0];
-  const ch = sample.includes(',') ? ',' : '.';
-  OPEN_PENDING.ch = ch;
-  $('#openAmbig').innerHTML = `<div class="warnbox"><span class="wi">⚠️</span><div>
-    <b>Valori ambigue în fișier — nimic nu s-a importat încă.</b>
-    Nu pot ști dacă „${H(sample)}" înseamnă <b>${fmt(nrRo(sample, { [ch]: 'mii' }))}</b> lei
-    (separatorul marchează miile) sau <b>${fmt(nrRo(sample, { [ch]: 'zecimale' }))}</b> lei (zecimale).
-    <div class="muted" data-u="u27">Valori ambigue găsite: ${ex.map((t) => `<span class="acc">${H(t)}</span>`).join(' · ')}</div>
-    <div class="row" data-u="u23">
-      <button id="ambigMii" class="btn small">„${H(sample)}" = ${fmt(nrRo(sample, { [ch]: 'mii' }))} lei</button>
-      <button id="ambigZec" class="btn small">„${H(sample)}" = ${fmt(nrRo(sample, { [ch]: 'zecimale' }))} lei</button>
-      <button id="ambigCancel" class="btn small ghost">Renunță</button>
-    </div>
-    <div class="muted" data-u="u28">Alegerea se aplică întregului fișier. Dacă nu ești sigur, deschide fișierul și verifică o sumă cunoscută.</div>
-  </div></div>`;
-  $('#ambigMii').addEventListener('click', () => resolveSeparator('mii'));
-  $('#ambigZec').addEventListener('click', () => resolveSeparator('zecimale'));
-  $('#ambigCancel').addEventListener('click', () => { OPEN_PENDING = null; $('#openAmbig').innerHTML = ''; toast('Import anulat — soldurile au rămas neschimbate'); });
-}
 // Raspunsul omului completeaza doar ce NU s-a dedus din fisier. Cei doi separatori au roluri
 // complementare — daca punctul marcheaza miile, virgula ramane zecimala — deci un singur raspuns
 // ii lamureste pe amandoi (conteaza la fisierele care amesteca „1.234" cu „5,678").
@@ -209,33 +188,133 @@ function mergeRoles(roles, ch, role) {
   merged[other] = merged[other] || (role === 'mii' ? 'zecimale' : 'mii');
   return merged;
 }
-function resolveSeparator(role) {
-  if (!OPEN_PENDING) return;
-  const { lines, roles, ch } = OPEN_PENDING;
-  const merged = mergeRoles(roles, ch, role);
-  OPEN_PENDING = null; $('#openAmbig').innerHTML = '';
-  finishOpeningImport(openingRowsFrom(lines, merged).rows);
+
+// ── Importul avansat prin API + preseturi de mapare ──────────────────────────────────────────
+// Parserul local de mai sus ramane contractul editorului simplu si e verificat contra serverului,
+// dar fisierul real trece prin /api/migrare/preview: acolo XLS/XLSX/DBF, randurile de titlu si
+// detectia coloanelor au o singura implementare. Presetul salveaza NUMELE anteturilor; daca
+// programul reordoneaza coloanele la urmatorul client, serverul le gaseste din nou corect.
+const OPEN_MAP_FIELDS = [
+  ['cont', 'Cont'], ['denumire', 'Denumire cont'], ['sid', 'Sold inițial debitor'],
+  ['sic', 'Sold inițial creditor'], ['sfd', 'Sold final debitor'], ['sfc', 'Sold final creditor'],
+];
+let OPEN_MIGRATION_FILE = null;
+let OPEN_MIGRATION_PREVIEW = null;
+let OPEN_MIGRATION_PRESETS = [];
+
+function renderMigrationPresets(selected) {
+  const sel = $('#openPreset'); if (!sel) return;
+  const wanted = selected == null ? sel.value : selected;
+  sel.innerHTML = '<option value="">Detectare automată</option>'
+    + OPEN_MIGRATION_PRESETS.map((p) => `<option value="${H(p.id)}">${H(p.nume)}</option>`).join('');
+  if (OPEN_MIGRATION_PRESETS.some((p) => p.id === wanted)) sel.value = wanted;
+  const del = $('#openPresetDelete'); if (del) del.classList.toggle('hidden', !sel.value);
 }
-function finishOpeningImport(rows) {
-  if (!rows.length) return toast('Nicio linie cu solduri găsită (aștept coloane Cont;Denumire;SoldDebit;SoldCredit)', true);
-  OPEN_ROWS = rows;
-  drawOpening();
-  toast(rows.length + ' conturi încărcate — verifică echilibrul și salvează');
+
+async function loadMigrationPresets(selected) {
+  if (!$('#openPreset')) return;
+  const r = await api('/api/migrare/presets');
+  OPEN_MIGRATION_PRESETS = Array.isArray(r) ? r : [];
+  renderMigrationPresets(selected);
 }
-$('#openFile') && $('#openFile').addEventListener('change', async (e) => {
+
+function renderMigrationMapping(r) {
+  const box = $('#openMapping'); const target = $('#openMappingFields');
+  if (!box || !target || !r || !Array.isArray(r.antet)) return;
+  OPEN_MIGRATION_PREVIEW = r;
+  const options = (selected) => '<option value="">— nefolosită —</option>' + r.antet.map((h, i) =>
+    `<option value="${i}"${Number(selected) === i ? ' selected' : ''}>${H(h || ('Coloana ' + (i + 1)))}</option>`).join('');
+  target.innerHTML = OPEN_MAP_FIELDS.map(([key, label]) =>
+    `<label>${H(label)} <select class="open-map-field" data-key="${key}">${options((r.mapare || {})[key])}</select></label>`).join('');
+  box.classList.remove('hidden');
+}
+
+function readMigrationMapping() {
+  const map = {};
+  $$('#openMappingFields .open-map-field').forEach((el) => { if (el.value !== '') map[el.dataset.key] = Number(el.value); });
+  return map;
+}
+
+function migrationProblems(r) {
+  const s = $('#openStatus'); if (!s) return;
+  const probleme = (r && r.preview && r.preview.probleme) || [];
+  s.className = 'status' + (probleme.length ? ' err' : ' ok');
+  s.textContent = probleme.length ? probleme.join(' ') : 'Previzualizare pregătită: verifică maparea și egalitatea debit-credit înainte de salvare.';
+}
+
+function askServerSeparator() {
+  const box = $('#openAmbig'); if (!box) return;
+  box.innerHTML = `<div class="warnbox"><span class="wi">⚠️</span><div><b>Separator zecimal ambiguu — nimic nu s-a importat încă.</b>
+    <div class="muted">Alege convenția folosită de programul din care ai exportat balanța.</div>
+    <div class="row"><button id="openDecimalComma" class="btn small">Virgula este zecimală (1.234,56)</button>
+    <button id="openDecimalDot" class="btn small">Punctul este zecimal (1,234.56)</button>
+    <button id="openDecimalCancel" class="btn small ghost">Renunță</button></div></div></div>`;
+  $('#openDecimalComma').addEventListener('click', () => previewMigrationFile({ zecimal: ',', mapare: readMigrationMapping() }));
+  $('#openDecimalDot').addEventListener('click', () => previewMigrationFile({ zecimal: '.', mapare: readMigrationMapping() }));
+  $('#openDecimalCancel').addEventListener('click', () => { box.innerHTML = ''; OPEN_MIGRATION_FILE = null; });
+}
+
+async function previewMigrationFile(extra) {
+  if (!OPEN_MIGRATION_FILE) return;
+  const fd = new FormData(); fd.append('file', OPEN_MIGRATION_FILE);
+  const source = $('#openSource'); fd.append('sursa', source ? source.value : 'final');
+  const opts = extra || {};
+  if (opts.mapare) {
+    fd.append('mapare', JSON.stringify(opts.mapare));
+    fd.append('idxAntet', String(OPEN_MIGRATION_PREVIEW ? OPEN_MIGRATION_PREVIEW.idxAntet : 0));
+  } else {
+    const preset = $('#openPreset'); if (preset && preset.value) fd.append('presetId', preset.value);
+  }
+  if (opts.zecimal) fd.append('zecimal', opts.zecimal);
+  try {
+    const r = await api('/api/migrare/preview', { method: 'POST', body: fd });
+    if ($('#openAmbig')) $('#openAmbig').innerHTML = '';
+    renderMigrationMapping(r); migrationProblems(r);
+    const rows = ((r.preview || {}).conturi || []).map((x) => ({ cont: x.cont, d: x.d, c: x.c }));
+    OPEN_ROWS = rows; drawOpening();
+    if ((r.preview || {}).ambigue) askServerSeparator();
+    else if (rows.length) toast(rows.length + ' conturi încărcate în previzualizare.');
+  } catch (err) { toast(err.message, true); const s = $('#openStatus'); if (s) { s.className = 'status err'; s.textContent = err.message; } }
+}
+
+const openFile = $('#openFile');
+openFile && openFile.addEventListener('change', async (e) => {
   const f = e.target.files[0]; if (!f) return;
-  let csv; try { csv = await fileToCsv(f); } catch (err) { return toast(err.message, true); }
-  e.target.value = ''; // permite reincarcarea aceluiasi fisier dupa o anulare
-  $('#openAmbig').innerHTML = ''; OPEN_PENDING = null;
-  const lines = csv.split(/\r?\n/).map((l) => l.replace(/^﻿/, '')).filter((l) => l.trim());
-  // conventia se deduce din TOT fisierul inainte de a lua vreo suma de buna
-  const tokens = [];
-  for (const line of lines) { const cells = line.split(';'); if (isBalanceLine(cells)) tokens.push(cells[2], cells[3]); }
-  const roles = sepConvention(tokens);
-  const { rows, ambig } = openingRowsFrom(lines, roles);
-  if (ambig.length) { OPEN_PENDING = { lines, roles }; return askSeparator(ambig); }
-  finishOpeningImport(rows);
+  OPEN_MIGRATION_FILE = f; OPEN_MIGRATION_PREVIEW = null;
+  e.target.value = ''; // acelasi fisier poate fi reincarcat dupa corectarea formatului
+  await previewMigrationFile();
 });
+const openMappingApply = $('#openMappingApply');
+openMappingApply && openMappingApply.addEventListener('click', () => previewMigrationFile({ mapare: readMigrationMapping() }));
+const openPresetSave = $('#openPresetSave');
+openPresetSave && openPresetSave.addEventListener('click', async () => {
+  if (!OPEN_MIGRATION_PREVIEW) return toast('Încarcă și verifică întâi un fișier.', true);
+  const name = String(($('#openPresetName') || {}).value || '').trim();
+  if (name.length < 2) return toast('Scrie un nume pentru formatul salvat.', true);
+  try {
+    const r = await api('/api/migrare/presets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      nume: name, antet: OPEN_MIGRATION_PREVIEW.antet, mapare: readMigrationMapping(),
+      sursa: ($('#openSource') || {}).value || 'final', zecimal: OPEN_MIGRATION_PREVIEW.zecimal,
+    }) });
+    await loadMigrationPresets(r.preset.id); toast(r.creat ? 'Format salvat pentru următoarea firmă.' : 'Formatul salvat a fost actualizat.');
+  } catch (err) { toast(err.message, true); }
+});
+const openPresetSelect = $('#openPreset');
+openPresetSelect && openPresetSelect.addEventListener('change', async () => {
+  const p = OPEN_MIGRATION_PRESETS.find((x) => x.id === openPresetSelect.value);
+  if (p && $('#openSource')) $('#openSource').value = p.sursa || 'final';
+  if ($('#openPresetDelete')) $('#openPresetDelete').classList.toggle('hidden', !openPresetSelect.value);
+  if (OPEN_MIGRATION_FILE) await previewMigrationFile();
+});
+const openPresetDelete = $('#openPresetDelete');
+openPresetDelete && openPresetDelete.addEventListener('click', async () => {
+  const id = openPresetSelect && openPresetSelect.value; if (!id) return;
+  if (!confirm('Ștergi acest format salvat?')) return;
+  try { await api('/api/migrare/presets/' + encodeURIComponent(id), { method: 'DELETE' }); await loadMigrationPresets(''); toast('Format șters.'); }
+  catch (err) { toast(err.message, true); }
+});
+const openSource = $('#openSource');
+openSource && openSource.addEventListener('change', () => { if (OPEN_MIGRATION_FILE) previewMigrationFile({ mapare: OPEN_MIGRATION_PREVIEW ? readMigrationMapping() : null }); });
 $('#openSaveBtn') && $('#openSaveBtn').addEventListener('click', async () => {
   const ob = {};
   for (const r of OPEN_ROWS) {

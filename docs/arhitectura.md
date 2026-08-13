@@ -223,13 +223,14 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   expert, ca să nu treacă nici o regresie care ar ascunde totul pentru toată lumea).
 - **E2E pe instanță izolată:** `npm run e2e-izolat` (`scripts/e2e-izolat.sh` +
   `scripts/e2e-izolat.mjs`) ridică o instanță proprie (bază și date temporare, port separat) și
-  rulează **78 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
+  rulează **82 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
   deci rularea produce mai multe rezultate) — exact fluxurile care nu se pot atinge pe demo
   live: roluri și drepturi granulare, resetare de parolă cu token real, importuri, erori SPV fără
   credențiale, toate cele 10 declarații XML, **restaurarea efectivă** a unui backup (verificată
   prin dispariția unui marcaj scris după arhivare) și panoul „Cine accesează aplicația" (tabelele
   se randează, filtrul schimbă conținutul, iar un cont fără drepturi nu vede nici cardul, nici
-  datele din spatele lui). Secțiunea 2FA parcurge fluxul complet prin interfață: configurare cu
+  datele din spatele lui). Importul balanței verifică în browser previzualizarea, salvarea unei
+  mapări și reutilizarea ei după reordonarea coloanelor. Secțiunea 2FA parcurge fluxul complet prin interfață: configurare cu
   QR/cheie, activare cu TOTP, afișarea codurilor de rezervă, login cu un asemenea cod și
   dezactivare cu un TOTP valid.
 - **Arhivă completă + copie offsite (zilnic):** pe lângă copia `db.json`, cronul creează

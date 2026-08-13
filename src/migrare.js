@@ -108,6 +108,71 @@ const CAMPURI = [
   { cheie: 'sfc', eticheta: 'Sold final creditor', tipare: [/sold.*fin.*cred/i, /^sf.?c$/i, /^sfc$/i, /final.*credit/i, /^credit$/i, /^rulaj.*credit/i] },
 ];
 
+const CHEI_CAMPURI = new Set(CAMPURI.map((c) => c.cheie));
+
+// Anteturile salvate in preset se compara semantic: programele schimba uneori „Sold final
+// debitor” in „SOLD FINAL DEBITOR” sau adauga spatii, fara sa fi schimbat formatul exportului.
+// Diacriticele si punctuatia nu au voie sa transforme asta intr-un preset „incompatibil”.
+function normalizeHeader(value) {
+  return String(value == null ? '' : value).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** Valideaza o harta venita din client inainte sa fie folosita ca indici in randuri. */
+function validateMapping(mapping, headerLength, sursa) {
+  const map = {}; const probleme = []; const luate = new Set();
+  const n = Number(headerLength);
+  for (const [cheie, raw] of Object.entries(mapping || {})) {
+    if (!CHEI_CAMPURI.has(cheie) || raw === '' || raw == null) continue;
+    const idx = Number(raw);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= n) { probleme.push('Coloana „' + cheie + '” este in afara antetului.'); continue; }
+    if (luate.has(idx)) { probleme.push('Aceeasi coloana nu poate avea doua roluri.'); continue; }
+    map[cheie] = idx; luate.add(idx);
+  }
+  const src = sursa === 'initial' ? 'initial' : 'final';
+  if (map.cont == null) probleme.push('Maparea trebuie sa contina coloana Cont.');
+  if (src === 'initial' && map.sid == null && map.sic == null) probleme.push('Maparea trebuie sa contina cel putin un sold initial.');
+  if (src === 'final' && map.sfd == null && map.sfc == null) probleme.push('Maparea trebuie sa contina cel putin un sold final.');
+  return { map, probleme };
+}
+
+/** Forma persistabila a presetului: rol semantic -> NUMELE coloanei, nu pozitia ei. */
+function presetFields(antet, mapping) {
+  const out = {};
+  for (const [cheie, idx] of Object.entries(mapping || {})) {
+    if (CHEI_CAMPURI.has(cheie) && Number.isInteger(Number(idx)) && antet[Number(idx)] != null) {
+      out[cheie] = String(antet[Number(idx)]).trim().slice(0, 120);
+    }
+  }
+  return out;
+}
+
+/** Reface indicii pe antetul curent; ordinea coloanelor poate fi diferita fata de fisierul salvat. */
+function mappingFromPreset(antet, fields) {
+  const heads = (antet || []).map(normalizeHeader); const map = {}; const luate = new Set();
+  for (const c of CAMPURI) {
+    if (!fields || !fields[c.cheie]) continue;
+    const cautat = normalizeHeader(fields[c.cheie]);
+    const idx = heads.findIndex((h, i) => h && h === cautat && !luate.has(i));
+    if (idx >= 0) { map[c.cheie] = idx; luate.add(idx); }
+  }
+  return map;
+}
+
+/** Gaseste antetul unui export pe baza presetului, inclusiv dupa randuri de titlu. */
+function detectPresetMapping(randuri, preset) {
+  const fields = (preset && preset.campuri) || {};
+  const asteptate = Object.keys(fields).filter((k) => CHEI_CAMPURI.has(k));
+  for (let i = 0; i < Math.min((randuri || []).length, 15); i += 1) {
+    const antet = (randuri[i] || []).map((x) => String(x == null ? '' : x).trim());
+    const map = mappingFromPreset(antet, fields);
+    // Un match partial ar putea citi sume din alta coloana. Presetul se aplica numai daca toate
+    // campurile lui se regasesc; altfel utilizatorul primeste o eroare si poate remapa explicit.
+    if (asteptate.length && Object.keys(map).length === asteptate.length) return { idxAntet: i, antet, map };
+  }
+  return null;
+}
+
 /** Deduce maparea coloanelor din antet. Intoarce { cheie: index } + coloanele nefolosite. */
 function detectMapping(antet) {
   const heads = (antet || []).map((h) => String(h == null ? '' : h).trim());
@@ -190,4 +255,7 @@ function toOpeningBalances(preview) {
   return out;
 }
 
-module.exports = { detectMapping, buildPreview, toOpeningBalances, parseAmount, sepConvention, tokenRoles, CAMPURI };
+module.exports = {
+  detectMapping, buildPreview, toOpeningBalances, parseAmount, sepConvention, tokenRoles, CAMPURI,
+  normalizeHeader, validateMapping, presetFields, mappingFromPreset, detectPresetMapping,
+};
