@@ -168,7 +168,7 @@ module.exports = function register(app, ctx) {
     const period = req.query.period || null;
     sendXml(res, xml.intrastatXml(v.company, period, rep.intrastat(v, period)), 'intrastat-' + (period || 'luna') + '.xml');
   });
-  // D100 — trimestrial, dupa REGIMUL firmei: impozit micro (cod 620) sau impozit pe profit
+  // D100 — trimestrial, dupa REGIMUL firmei: impozit micro (cod 121) sau impozit pe profit
   // (cod 103, art. 41); descarcarea marcheaza declaratia "generata" in registru
   app.get('/xml/d100', (req, res) => {
     const v = S(req);
@@ -184,6 +184,42 @@ module.exports = function register(app, ctx) {
     }
     recordDecl(req, 'd100', period);
     sendXml(res, xml.d100Xml(v.company, period, r, declarantOf(req)), 'd100-' + (period || 'trim') + '.xml');
+  });
+  // D710 — rectificarea unei D100 DEJA depuse. Valoarea initiala vine exclusiv din fotografia
+  // depunerii din registru; recalcularea ei din datele actuale ar face I=C si ar ascunde corectia.
+  app.get('/xml/d710', (req, res) => {
+    const period = req.query.period;
+    if (!/^\d{4}-\d{2}$/.test(String(period || ''))) {
+      return res.status(400).send('Perioadă invalidă pentru D710 (folosește YYYY-MM).');
+    }
+    const v = S(req);
+    const rec = decl.find(db.get(), activeId(req), 'd100', period);
+    const depuneri = (rec && Array.isArray(rec.depuneri)) ? rec.depuneri : [];
+    const dep = decl.lastSubmission(rec);
+    let initial = dep && dep.sume;
+    if (!initial || !Number.isFinite(Number(initial.impozit)) || !initial.codOblig || !initial.codBugetar) {
+      return res.status(400).send('D710 cere o D100 depusă anterior cu fotografia fiscală păstrată. '
+        + 'Pentru depunerile vechi fără aceste date, completează rectificarea în aplicația ANAF.');
+    }
+    const current = rep.d100(v, period);
+    if (current.blocat) {
+      return res.status(400).send('Nu se poate genera D710: ' + (current.avertismente || []).join(' '));
+    }
+    let corrected = current;
+    // Dupa ce rectificativa a fost marcata depusa, ultima fotografie este deja valoarea C si
+    // contabilitatea curenta ii este egala. Pastram posibilitatea de a redescarca EXACT D710
+    // depusa: I = fotografia penultima, C = ultima. Daca apar alte modificari ulterior, `current`
+    // difera din nou de ultima si devine in mod natural urmatoarea corectie.
+    const aceeasiSuma = Math.round(Number(initial.impozit)) === Math.round(Number(current.impozit));
+    if (aceeasiSuma && dep && dep.rectificativa && depuneri.length > 1) {
+      const penultima = depuneri[depuneri.length - 2];
+      if (penultima && penultima.sume) { initial = penultima.sume; corrected = dep.sume; }
+    }
+    let out;
+    try { out = xml.d710Xml(v.company, period, initial, corrected, declarantOf(req)); }
+    catch (e) { return res.status(400).send(e.message); }
+    recordDecl(req, 'd100', period); // pastreaza `depusa`; actualizeaza doar data ultimei generari
+    sendXml(res, out, 'd710-' + period + '.xml');
   });
   // D101 — impozitul pe profit ANUAL (?year=). Doar pentru firmele in regim de profit;
   // schema oficiala v10 (an sfarsit exercitiu >=2024). Descarcarea marcheaza declaratia in registru.

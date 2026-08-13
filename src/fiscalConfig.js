@@ -57,11 +57,10 @@ const RATES = {
                                // art. 310 Cod fiscal, majorat de la 300.000 la 395.000 de la 1 sept. 2025 (OG 22/2025)
   tvaStandard: 21,        // % — Legea 141/2025 (de la 1 august 2025)
   tvaRedus: 11,           // % — Legea 141/2025
-  impozitMicro: 1,        // % — art. 51 alin. (1) lit. a): venituri <= pragul de mai jos SI in afara
-                          // listei de coduri CAEN de la lit. b) pct. 2
-  impozitMicro3: 3,       // % — art. 51 alin. (1) lit. b): peste prag SAU pe codurile CAEN listate
-  pragMicro3Eur: 60000,   // EUR — pragul dintre cele doua cote (Legea 296/2023). Depasirea lui in
-                          // cursul anului comuta cota de la trimestrul depasirii (art. 51 alin. 4).
+  impozitMicro: 1,        // % — cota unica din 2026; schema D100/D710 cere explicit cota=1
+  // Valorile urmatoare raman pentru calculele/rectificarile pana in 2025 inclusiv.
+  impozitMicro3: 3,       // % — istoric: art. 51 alin. (1) lit. b), pana in 2025
+  pragMicro3Eur: 60000,   // EUR — istoric: prag intre 1% si 3%, pana in 2025
   impozitProfit: 16,      // % — art. 17 Cod fiscal
   impozitDividende: 16,   // % — Legea 141/2025 (de la 1 ianuarie 2026)
   deductibilitateTvaAutoLimitat: 50, // % — art. 298 Cod fiscal (vehicule fara uz exclusiv business)
@@ -181,8 +180,8 @@ const BENEFICII = [
     limita: { tip: 'fara' } },
 ];
 
-// Codurile CAEN care atrag cota de 3% INDIFERENT de venituri (art. 51 alin. (1) lit. b) pct. 2,
-// Legea 296/2023): IT, HoReCa, juridic, medical. Conditia priveste activitatile PRINCIPALE SAU
+// Codurile CAEN care atrageau cota de 3% pana in 2025 (art. 51 alin. (1) lit. b) pct. 2,
+// Legea 296/2023): IT, HoReCa, juridic, medical. Conditia privea activitatile PRINCIPALE SAU
 // SECUNDARE — aplicatia stie doar codul principal (`company.caen`), deci pentru cele secundare
 // avertizeaza si lasa decizia contribuabilului. Lista nu e in RATES: `applyConfig` itereaza peste
 // chei numerice, iar un tablou ar fi transformat in NaN.
@@ -221,9 +220,9 @@ const SURSE = {
   salariuMinim: 'HG salariu minim 2026 — 4.050 lei (S1) / 4.325 lei (S2, de la 1 iulie)',
   neimpozabil: 'Art. 76 Cod fiscal — 300 lei (S1) / 200 lei (S2) neimpozabili din salariul minim',
   tva: 'Legea 141/2025 — TVA standard 21%, redus 11% (de la 1 august 2025)',
-  impozitMicro: 'Art. 51 Cod fiscal — 1% pana la ' + RATES.pragMicro3Eur + ' EUR, '
-    + RATES.impozitMicro3 + '% peste prag sau pe codurile CAEN de la alin. (1) lit. b) pct. 2 '
-    + '(Legea 296/2023); comutarea opereaza de la trimestrul depasirii (alin. 4)',
+  impozitMicro: 'Art. 51 Cod fiscal — cota unica 1% din 2026; pentru perioadele pana in 2025: 1% '
+    + 'pana la ' + RATES.pragMicro3Eur + ' EUR si ' + RATES.impozitMicro3
+    + '% peste prag sau pe codurile CAEN de la alin. (1) lit. b) pct. 2',
   bazaMicro: 'Art. 53 Cod fiscal — baza NU e totalul clasei 7: se scad veniturile din provizioane, '
     + 'productia de imobilizari, variatia stocurilor, subventiile si diferentele de curs, si se adauga '
     + 'reducerile comerciale primite, plus diferenta favorabila de curs in ultimul trimestru',

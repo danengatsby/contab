@@ -15,11 +15,9 @@
 //      Alin. (2) adauga simetric reducerile comerciale primite si, in ultimul trimestru, diferenta
 //      favorabila de curs cumulata pe an.
 //
-//  (2) COTA. Art. 51 alin. (1) are DOUA cote, nu una: 1% sub pragul de venituri si in afara
-//      listei de coduri CAEN, 3% altfel. Cota de 3% nu exista nicaieri in aplicatie, deci o firma
-//      de IT sau HoReCa — pentru care 3% se aplica INDIFERENT de venituri — declara o treime din
-//      impozitul datorat. Alin. (4): depasirea pragului in cursul anului comuta cota incepand cu
-//      TRIMESTRUL depasirii, nu de la anul urmator.
+//  (2) COTA. Pentru anii pana la 2025, art. 51 alin. (1) avea DOUA cote: 1% sub prag/in afara
+//      listei CAEN si 3% altfel. Din 2026 cota este UNICA, 1% — iar schema oficiala D100/D710
+//      impune explicit `cota=1`. Regula istorica ramane necesara pentru rectificarea anilor vechi.
 //
 //  Modulul e PUR: primeste rulajul agregat {cod: {d, c}}, nu baza de date. Sursa unica pentru
 //  D100 si pentru linia comparativa din registrul de evidenta fiscala — cat timp erau doua
@@ -139,7 +137,7 @@ function baza(rulaj, opts) {
 /**
  * Cota aplicabila (art. 51 alin. (1) si (4)).
  *
- * @param {object} i   { venitCumulatLei, curs, caen } — venitul cumulat de la inceputul anului
+ * @param {object} i   { an, venitCumulatLei, curs, caen } — venitul cumulat de la inceputul anului
  *                     PANA LA FINALUL trimestrului raportat (alin. (4): comutarea opereaza de la
  *                     trimestrul depasirii, deci contorul e cumulat, nu pe trimestru)
  * @param {object} cfg cotele (fiscal.FISCAL)
@@ -155,6 +153,14 @@ function cotaAplicabila(i, cfg) {
   const venitCumulatLei = round2(Number(i.venitCumulatLei) || 0);
   const caen = String(i.caen || '').trim();
   const avertismente = [];
+
+  // Din 2026 nu mai exista pragul de 60.000 EUR si nici ramura CAEN de 3%. O evaluare a regulii
+  // vechi ar calcula 3%, in timp ce XML-ul oficial este obligat sa poarte `cota=1` — fisier valid
+  // formal, dar cu o suma de trei ori prea mare. Taierea pe an tine rectificarile 2025 corecte.
+  if (Number(i.an) >= 2026) {
+    return { cota: c1, prin: 'cota-unica-2026', pragLei: 0, venitCumulatLei, avertismente,
+      motiv: 'Cota unică de ' + c1 + '% aplicabilă microîntreprinderilor din 2026.' };
+  }
 
   const peCaen = caen && cfgFiscal.CAEN_MICRO_3.includes(caen);
   const pestePrag = pragLei > 0 && venitCumulatLei > pragLei;

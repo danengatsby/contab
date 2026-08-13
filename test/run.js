@@ -3791,11 +3791,28 @@ eq('D100: venit trimestrul II cumulat (apr+iun)', d100q.venit, 15000);
 eq('D100: trimestrul detectat', d100q.trimestru, 2);
 eq('D100: impozit micro 1% = 150', d100q.impozit, 150);
 ok('D100 XML bine-format', wellFormed(xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q)));
-ok('D100 XML v2: obligatia 620 cu cod bugetar, scadenta si nr_evid pe 23 cifre', (() => {
+ok('D100 XML v2: obligatia micro 121 cu cod bugetar, cota, scadenta si nr_evid pe 23 cifre', (() => {
   const x = xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q);
-  return x.includes('cod_oblig="620"') && x.includes('cod_bugetar="20A031800"')
+  return x.includes('cod_oblig="121"') && x.includes('cod_bugetar="20470101"') && x.includes('cota="1"')
     && x.includes('scadenta="25.07.2026"') && x.includes('suma_plata="150"')
     && /nr_evid="\d{23}"/.test(x) && x.includes('xmlns="mfp:anaf:dgti:d100:declaratie:v2"');
+})());
+const d710micro = xml.d710Xml({ cui: 'RO1', nume: 'X' }, '2026-06',
+  { impozit: 150, codOblig: '121', codBugetar: '20470101', scadenta: '2026-07-25' },
+  Object.assign({}, d100q, { impozit: 180, codOblig: '121', codBugetar: '20470101' }));
+ok('D710 XML bine-format, cu schema v2', wellFormed(d710micro)
+  && d710micro.includes('<declaratie710 xmlns="mfp:anaf:dgti:d710:declaratie:v2"'));
+ok('D710 poarta valorile initiale si corectate complete, nu doar diferenta',
+  /suma_dat_I="150" suma_dat_C="180" suma_plata_I="150" suma_plata_C="180"/.test(d710micro));
+ok('D710 micro pastreaza creanta 121, cota 1 si suma de control I+C',
+  /cod_oblig="121"/.test(d710micro) && /cota="1"/.test(d710micro) && /totalPlata_A="660"/.test(d710micro));
+ok('D710 refuza lipsa unei diferente reale', (() => {
+  try {
+    xml.d710Xml({ cui: 'RO1', nume: 'X' }, '2026-06',
+      { impozit: 150, codOblig: '121', codBugetar: '20470101' },
+      { impozit: 150, codOblig: '121', codBugetar: '20470101' });
+    return false;
+  } catch (e) { return /nicio diferență/.test(e.message); }
 })());
 // eligibilitate micro (plafon implicit 100.000 EUR x curs 5 = 500.000 lei + conditia de salariat)
 ok('D100: fara salariati -> avertisment de eligibilitate', d100q.avertismente.some((w) => /salariat/i.test(w)));
@@ -3892,7 +3909,7 @@ section('Autofactura art. 320 — TVA exigibil fara factura');
   // Nomenclatorul: perechea (cod_oblig, cod_bugetar) e cea acceptata de validatorul OFICIAL.
   eq('regimul profit -> obligatia 103 (impozit pe profit)', t1.codOblig, '103');
   eq('...cu codul bugetar 20470101 (nu cel de micro)', t1.codBugetar, '20470101');
-  eq('regimul micro ramane pe obligatia 620', rep.d100({ entries: [], openingBalances: {}, angajati: [{ id: 'a' }], company: { regimImpozit: 'micro' } }, '2026-03').codOblig, '620');
+  eq('regimul micro foloseste obligatia 121', rep.d100({ entries: [], openingBalances: {}, angajati: [{ id: 'a' }], company: { regimImpozit: 'micro' } }, '2026-03').codOblig, '121');
   // Calculul e CUMULAT de la inceputul anului, iar pe declaratie merge diferenta.
   eq('T1: impozit pe profitul cumulat (100.000 x 16%)', t1.impozit, 16000);
   eq('T2: cumulat 24.000, deja declarat 16.000 -> se declara 8.000', t2.impozit, 8000);
@@ -3913,9 +3930,9 @@ section('Autofactura art. 320 — TVA exigibil fara factura');
   ok('XML: cod_oblig si cod_bugetar de impozit pe profit', xProfit.includes('cod_oblig="103"') && xProfit.includes('cod_bugetar="20470101"'));
   ok('XML: suma declarata e diferenta trimestrului', xProfit.includes('suma_dat="8000"'));
   ok('XML: nr_evid codifica obligatia pe pozitiile 3-5 (R16)', /nr_evid="10103\d{18}"/.test(xProfit));
-  ok('XML micro ramane neatins (620 / 20A031800)', (() => {
+  ok('XML micro foloseste perechea fiscala 121 / 20470101', (() => {
     const xm = xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q);
-    return xm.includes('cod_oblig="620"') && xm.includes('cod_bugetar="20A031800"');
+    return xm.includes('cod_oblig="121"') && xm.includes('cod_bugetar="20470101"');
   })());
   // ── SISTEMUL ANUAL CU PLATI ANTICIPATE (art. 41 alin. (2)) ────────────────────────────────
   // Alta suma pe declaratie, alt calendar si inca un trimestru de declarat. Firma de mai sus,
@@ -4048,29 +4065,32 @@ section('Autofactura art. 320 — TVA exigibil fara factura');
     M('p2', '2026-03-20', [{ debit: '665', credit: '5124', suma: 4000 }])];
   eq('T4: curs net NEFAVORABIL -> nimic de adaugat', rep.d100micro(mkMic(cursPierdere), '2026-12').venit, 0);
 
-  // ── Cota: 1% / 3% (art. 51) ────────────────────────────────────────────────
-  // Pragul: 60.000 EUR x cursPlafonMicro 5 = 300.000 lei.
-  const V = (luna, s) => M('v' + luna, '2026-' + luna + '-10', [{ debit: '4111', credit: '704', suma: s }]);
-  eq('sub prag si CAEN neutru -> 1%', rep.d100micro(mkMic([V('02', 50000)], '4711'), '2026-03').cota, 1);
-  eq('peste prag -> 3%', rep.d100micro(mkMic([V('02', 400000)], '4711'), '2026-03').cota, 3);
+  // ── Cota istorica 1% / 3% pana in 2025; cota unica 1% din 2026 ─────────────────────────────
+  // Pentru 2025, pragul: 60.000 EUR x cursPlafonMicro 5 = 300.000 lei.
+  const V = (luna, s, an) => M('v' + (an || '2025') + luna, (an || '2025') + '-' + luna + '-10', [{ debit: '4111', credit: '704', suma: s }]);
+  eq('2025: sub prag si CAEN neutru -> 1%', rep.d100micro(mkMic([V('02', 50000)], '4711'), '2025-03').cota, 1);
+  eq('2025: peste prag -> 3%', rep.d100micro(mkMic([V('02', 400000)], '4711'), '2025-03').cota, 3);
   // CAEN din lista (IT/HoReCa/juridic/medical): 3% INDIFERENT de venituri — cazul pe care cota
   // unica din configuratie il rata complet, raportand o treime din impozitul datorat.
-  const itMic = rep.d100micro(mkMic([V('02', 50000)], '6201'), '2026-03');
-  eq('CAEN IT 6201 cu venituri mici -> tot 3%', itMic.cota, 3);
+  const itMic = rep.d100micro(mkMic([V('02', 50000)], '6201'), '2025-03');
+  eq('2025: CAEN IT 6201 cu venituri mici -> tot 3%', itMic.cota, 3);
   eq('...si impozitul e de trei ori cel de la 1%', itMic.impozit, 1500);
-  eq('CAEN HoReCa 5610 -> 3%', rep.d100micro(mkMic([V('02', 50000)], '5610'), '2026-03').cota, 3);
+  eq('2025: CAEN HoReCa 5610 -> 3%', rep.d100micro(mkMic([V('02', 50000)], '5610'), '2025-03').cota, 3);
   ok('motivul cotei e explicit, nu doar cifra', /6201/.test(itMic.cotaMotiv) && itMic.cotaPrin === 'caen');
   ok('comutarea pe 3% ajunge si in avertismente', itMic.avertismente.some((w) => /3%/.test(w)));
   // Art. 51 alin. (4): comutarea opereaza de la TRIMESTRUL depasirii, deci contorul e cumulat de
   // la inceputul anului — nici pe trimestru singur, nici pe anul intreg (ar include luni viitoare).
   const dep = [V('02', 200000), V('05', 150000)];
-  eq('T1, cumulat 200.000 (sub prag) -> 1%', rep.d100micro(mkMic(dep, '4711'), '2026-03').cota, 1);
-  eq('T2, cumulat 350.000 (peste prag) -> 3%', rep.d100micro(mkMic(dep, '4711'), '2026-06').cota, 3);
-  // Suprascrierea explicita ramane (contractul rutei si al PDF-ului).
-  eq('cota transmisa explicit bate motorul', rep.d100micro(mkMic([V('02', 400000)], '6201'), '2026-03', 1).cota, 1);
+  eq('2025 T1, cumulat 200.000 (sub prag) -> 1%', rep.d100micro(mkMic(dep, '4711'), '2025-03').cota, 1);
+  eq('2025 T2, cumulat 350.000 (peste prag) -> 3%', rep.d100micro(mkMic(dep, '4711'), '2025-06').cota, 3);
+  // Suprascrierea explicita ramane pentru anii istorici.
+  eq('2025: cota transmisa explicit bate motorul', rep.d100micro(mkMic([V('02', 400000)], '6201'), '2025-03', 1).cota, 1);
   // Fara CAEN nu se poate verifica conditia de activitate -> se spune, nu se presupune.
   ok('fara CAEN: avertisment ca nu s-a putut verifica activitatea',
-    rep.d100micro(mkMic([V('02', 50000)], ''), '2026-03').avertismente.some((w) => /CAEN/.test(w)));
+    rep.d100micro(mkMic([V('02', 50000)], ''), '2025-03').avertismente.some((w) => /CAEN/.test(w)));
+  const mic2026 = rep.d100micro(mkMic([V('02', 400000, '2026')], '6201'), '2026-03');
+  eq('2026: cota ramane 1% chiar peste vechiul prag si pe CAEN IT', mic2026.cota, 1);
+  ok('2026: motivul spune explicit cota unica', /unică/.test(mic2026.cotaMotiv));
 
   // ── Registrul fiscal foloseste ACEEASI baza si cota ca D100 ────────────────
   // Linia comparativa avea cota scrisa `* 1` in cod si baza pe tot venitul: doua cifre diferite
@@ -4086,8 +4106,10 @@ section('Autofactura art. 320 — TVA exigibil fara factura');
   eq('registrul fiscal: baza anuala = suma bazelor trimestriale', rfMic.bazaMicro, sumaTrim);
   eq('...si include diferenta de curs reintrodusa in T4', rfMic.bazaMicro, 60000);
   eq('registrul fiscal: impozitul micro e derivat din aceeasi baza', rfMic.impozitMicro, round2ForTest(sumaTrim * rfMic.rateMicro / 100));
-  eq('registrul fiscal: cota nu mai e hardcodata 1%',
-    rep.registruFiscal(mkMic([V('02', 50000)], '6201'), '2026', 16).rateMicro, 3);
+  eq('registrul fiscal 2025 pastreaza cota istorica 3%',
+    rep.registruFiscal(mkMic([V('02', 50000)], '6201'), '2025', 16).rateMicro, 3);
+  eq('registrul fiscal 2026 foloseste aceeasi cota unica 1% ca D100',
+    rep.registruFiscal(mkMic([V('02', 50000, '2026')], '6201'), '2026', 16).rateMicro, 1);
 }
 
 section('Produse agricole — fila carnet de comercializare (Legea 145/2014)');

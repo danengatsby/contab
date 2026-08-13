@@ -4,7 +4,7 @@
 
 - **Parametri fiscali 2026** (`src/fiscal.js`, tab „Ghid”): CAS 25%, CASS 10%, impozit 10%,
   CAM 2,25%, salariu minim 4.050 (S1) / 4.325 (S2, de la 1 iulie — **comutare automată după lună**,
-  `salariuMinimLa()`), sumă neimpozabilă 300/200, TVA 21%/11%, micro 1%/3%, profit 16%,
+  `salariuMinimLa()`), sumă neimpozabilă 300/200, TVA 21%/11%, micro 1% din 2026 (1%/3% istoric), profit 16%,
   **dividende 16%** (Legea 141/2025, distribuiri din 2026). Cota TVA implicită este **21%**.
   **Facilitățile sectoriale IT/construcții/agro au fost eliminate** din ian. 2025 (OUG 156/2024) —
   câmpul „sector" pe angajat rămâne doar informativ, impozitarea e standard. Chiria plătită
@@ -175,12 +175,17 @@
   lăsa soldurile corecte, dar dubla rulajele: o factură de 10.000 stornată raporta 10.000 pe ambele
   laturi ale contului de venit — activitate care nu a existat. Sumele negative sunt acceptate de
   validatoarele oficiale (referința `D406-storno` le verifică la fiecare rulare a porții).
-- **D100 după regimul firmei** (`reporting.d100`): micro → obligația **620**; impozit pe profit →
+- **D100 după regimul firmei** (`reporting.d100`): micro → obligația **121** (cota 1 explicită din
+  2026); impozit pe profit →
   obligația **103** (cod bugetar 20470101), cu calculul trimestrial de la art. 41 — impozitul se
   determină **cumulat de la începutul anului**, iar pe declarație merge diferența față de
   trimestrele deja declarate. **Trimestrul IV nu se declară prin D100**: definitivarea se face prin
   D101, până pe 25 martie. Un trimestru pe pierdere duce cumulatul în jos; pe declarație merge 0
   (D100 nu primește sume negative), iar regularizarea e anuală.
+- **D710 pentru rectificarea D100**: după marcarea primei D100 ca depusă, registrul păstrează
+  fotografia fiscală (sumă, obligație, cod bugetar și scadență) și oferă XML-ul D710. Formularul
+  trimite valorile complete inițiale (`*_I`) și corectate (`*_C`), nu doar diferența, și refuză
+  generarea fără depunere anterioară, fără fotografie sau fără o diferență reală.
 - **Poziția de TVA reportată** (`accounting.vatCarryForward`): nota de închidere a lunii compensează
   soldul rămas din perioadele anterioare (**4423 = 4424**), iar decontul îl declară pe rândurile
   **35** (TVA de plată neachitată) și **38** (sumă negativă nerambursată). Ambele erau zero prin
@@ -191,9 +196,9 @@
   se scad veniturile din provizioane și ajustări, producția de imobilizări, variația stocurilor de
   produse, subvențiile și diferențele de curs, se adaugă reducerile comerciale primite, iar în
   **ultimul trimestru** revine diferența favorabilă de curs cumulată pe an (art. 53 alin. 2 lit. b).
-  Cota e **1% sau 3%** (art. 51): 3% peste pragul de 60.000 € **sau** pe codurile CAEN de
-  IT/HoReCa/juridic/medical, indiferent de venituri; depășirea pragului comută cota **de la
-  trimestrul depășirii** (alin. 4). Motivul cotei apare în raport, iar `?cota=` rămâne suprascriere.
+  Cota este **unică, 1%, din 2026**. Pentru perioadele până în 2025, motorul păstrează regula
+  istorică 1%/3%: 3% peste pragul de 60.000 € sau pe codurile CAEN de IT/HoReCa/juridic/medical;
+  aceasta rămâne necesară la rectificarea declarațiilor vechi.
   Ce nu se poate deduce din codul contului (despăgubirile de la asigurări stau pe 7581 împreună cu
   amenzile încasate) **rămâne în bază**, cu avertisment — o scădere ghicită ar micșora tăcut un
   impozit datorat.

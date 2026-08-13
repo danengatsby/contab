@@ -378,9 +378,12 @@ function d100micro(db, period, cota, opts) {
   // rotunda de configurare. La 5,0 in loc de ~5,08, plafonul de 100.000 EUR iese 500.000 in loc de
   // ~508.000, iar o firma cu 505.000 lei era declarata gresit iesita din regimul micro.
   const cursP = bnr.cursPlafonMicro(db.cursuriBnr, Number(y), fiscal.FISCAL.cursPlafonMicro);
-  const ct = micro.cotaAplicabila({ venitCumulatLei, curs: cursP.curs,
+  const ct = micro.cotaAplicabila({ an: Number(y), venitCumulatLei, curs: cursP.curs,
     caen: (db.company || {}).caen }, fiscal.FISCAL);
-  const rate = cota || ct.cota;
+  // Suprascrierea de cota ramane utila pentru anii istorici. Din 2026 schema D100 cere 1%, deci
+  // nu permitem ca o suprascriere veche la 3% sa produca o suma incompatibila semantic cu XML-ul.
+  const cotaManuala = Number(y) < 2026 && !!cota;
+  const rate = cotaManuala ? cota : ct.cota;
   const plafonLei = round2((fiscal.FISCAL.plafonMicroEur || 0) * (cursP.curs || 0));
   const avertismente = [];
   // Un plafon calculat pe o valoare implicita nu are voie sa arate la fel cu unul calculat pe
@@ -403,9 +406,9 @@ function d100micro(db, period, cota, opts) {
     avertismente.push('Firma nu are salariati inregistrati in aplicatie: conditia de salariat (norma intreaga) pentru regimul micro nu pare indeplinita — fara salariat se datoreaza impozit pe profit.');
   }
   // Motivul cotei si notele bazei ajung in avertismente doar cand spun ceva ce nu se vede din
-  // cifre: cota comutata pe 3% e o schimbare pe care contabilul trebuie s-o observe, nu s-o afle
-  // din suma finala. Suprascrierea manuala tace despre motiv — nu mai e al motorului.
-  if (!cota && ct.cota !== (fiscal.FISCAL.impozitMicro || 1)) avertismente.push(ct.motiv);
+  // cifre: la anii istorici, comutarea pe 3% e o schimbare pe care contabilul trebuie s-o observe.
+  // Suprascrierea manuala tace despre motiv — nu mai e al motorului.
+  if (!cotaManuala && ct.cota !== (fiscal.FISCAL.impozitMicro || 1)) avertismente.push(ct.motiv);
   for (const a of ct.avertismente) avertismente.push(a);
   for (const n of bz.note) avertismente.push(n);
   // SPONSORIZAREA la micro (art. 56^1): se SCADE din impozitul trimestrial, in limita a 20% din el.
@@ -446,19 +449,19 @@ function d100micro(db, period, cota, opts) {
     // Desfasurarea bazei (art. 53) si a cotei (art. 51), pentru raport si pentru revizie.
     venitClasa7: bz.venitClasa7, scaderi: bz.scaderi, totalScaderi: bz.totalScaderi,
     adaugari: bz.adaugari, totalAdaugari: bz.totalAdaugari,
-    cotaMotiv: cota ? 'Cotă impusă manual (' + rate + '%).' : ct.motiv, cotaPrin: cota ? 'manual' : ct.prin,
+    cotaMotiv: cotaManuala ? 'Cotă impusă manual (' + rate + '%).' : ct.motiv,
+    cotaPrin: cotaManuala ? 'manual' : ct.prin,
     pragMicro3Lei: ct.pragLei, venitCumulatLei };
 }
 
 // Nomenclatorul de obligatii D100 (atributele `cod_oblig` + `cod_bugetar` ale sectiunii <obligatie>).
-// Perechile NU sunt ghicite: `20A031800` era deja verificat pentru micro, iar cea de impozit pe
-// profit a fost SONDATA pe validatorul oficial — la `cod_bugetar="20A010100"` (candidatul evident,
-// singurul cod de impozit pe profit din constant pool-ul validatorului) raspunde
-// „R14a: cod bugetar trebuie sa fie = 20470101 pt. acest cod_oblig". Codul 101 nici nu exista in
-// lista. `103` = impozit pe profit datorat de PJ romane — acelasi cod pe care il foloseste deja
-// generatorul D101, care valideaza oficial.
+// `121` este impozitul pe veniturile microintreprinderilor. Vechea pereche 620/20A031800 trecea
+// validatorul DUK, dar avea ALTA semnificatie fiscala: impozitul pe transferul proprietatilor
+// imobiliare din patrimoniul personal. Este un exemplu important de limita a validarii de schema:
+// un cod existent si coerent formal nu dovedeste ca a fost aleasa creanta corecta. Ambele perechi
+// de mai jos sunt confruntate acum cu nomenclatorul D100/D710 din structura ANAF 2026 si cu DUK.
 const D100_OBLIG = {
-  micro: { cod: '620', bugetar: '20A031800', nume: 'Impozit pe veniturile microîntreprinderilor' },
+  micro: { cod: '121', bugetar: '20470101', nume: 'Impozit pe veniturile microîntreprinderilor' },
   profit: { cod: '103', bugetar: '20470101', nume: 'Impozit pe profit' },
 };
 
@@ -674,8 +677,10 @@ function d100(db, period, opts) {
   // anual cu plati anticipate, art. 41), deci si suma care merge pe declaratie, si daca
   // trimestrul IV se declara. Fara el, d100profit ar calcula mereu varianta trimestriala.
   if (profil.profit) return d100profit(db, period, Object.assign({}, opts, { profile: profil }));
-  return Object.assign(d100micro(db, period, (opts || {}).cota),
-    { codOblig: D100_OBLIG.micro.cod, codBugetar: D100_OBLIG.micro.bugetar, seDeclara: true });
+  return Object.assign(d100micro(db, period, (opts || {}).cota), {
+    codOblig: D100_OBLIG.micro.cod, codBugetar: D100_OBLIG.micro.bugetar,
+    scadenta: decl.dueDate('d100', period, profil), seDeclara: true,
+  });
 }
 
 // Operatiunile SCUTITE SAU NETAXATE care pastreaza dreptul de deducere. Nu se pot recunoaste dupa
@@ -1155,7 +1160,7 @@ function registruFiscal(db, year, cota, opts) {
   // cota scrisa `* 1` in cod — deci nici baza art. 53, nici cota art. 51, si nici macar cota din
   // configuratie. Aceeasi sursa ca D100, altfel registrul si declaratia dau doua cifre.
   const bzMicro = micro.baza(r, { ultimulTrimestru: true, rulajAn: r });
-  const ctMicro = micro.cotaAplicabila({ venitCumulatLei: bzMicro.baza,
+  const ctMicro = micro.cotaAplicabila({ an: Number(year), venitCumulatLei: bzMicro.baza,
     curs: bnr.cursPlafonMicro(db.cursuriBnr, Number(year), fiscal.FISCAL.cursPlafonMicro).curs,
     caen: (db.company || {}).caen }, fiscal.FISCAL);
   const impozitMicro = round2((bzMicro.baza * ctMicro.cota) / 100);

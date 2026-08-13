@@ -63,6 +63,28 @@ const DESCARCARI = {
  *  (randurile manuale din registru pot purta un tip pe care nu-l generam noi). */
 function descarcari(tip, period) { return (DESCARCARI[tip] || (() => []))(period); }
 
+/** Fotografia minima a unui D100 exact asa cum a fost depus. D710 nu poate reconstrui valoarea
+ *  initiala din contabilitatea de ACUM — corectia a schimbat tocmai acele date — asa ca pastram
+ *  suma, creanta si termenul impreuna cu depunerea. Valorile sunt deliberat simple/serializabile. */
+function d100Snapshot(r) {
+  if (!r || !Number.isFinite(Number(r.impozit))) return null;
+  return {
+    impozit: Number(r.impozit), codOblig: String(r.codOblig || ''),
+    codBugetar: String(r.codBugetar || ''), scadenta: String(r.scadenta || ''),
+    cota: Number(r.cota) || 0,
+  };
+}
+
+/** Linkurile unui rand din registru. D710 apare numai dupa o prima depunere D100: inainte de ea
+ *  nu exista valori initiale de rectificat, iar un buton permanent ar duce inevitabil la eroare. */
+function descarcariPentru(rec, tip, period) {
+  const out = descarcari(tip, period);
+  if (tip === 'd100' && lastSubmission(rec)) {
+    out.push({ label: 'D710 rectificare', href: '/xml/d710?period=' + period });
+  }
+  return out;
+}
+
 function pad2(n) { return String(n).padStart(2, '0'); }
 function lastDayOfMonth(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); } // m = 1-12
 
@@ -308,7 +330,7 @@ function registerForFirma(d, v, period, today) {
       tip: e.tip, nume: e.nume, period, due: e.due, status,
       overdue: e.due < t && status !== 'depusa' && status !== 'scutita',
       generatedAt: rec.generatedAt || null, submittedAt: rec.submittedAt || null,
-      recipisa: rec.recipisa || '', note: rec.note || '', links: descarcari(e.tip, period),
+      recipisa: rec.recipisa || '', note: rec.note || '', links: descarcariPentru(rec, e.tip, period),
     };
   });
   // inregistrari manuale in afara celor asteptate (ex. D100 marcat intr-o luna non-trimestriala)
@@ -318,7 +340,7 @@ function registerForFirma(d, v, period, today) {
     rows.push({
       tip: rec.tip, nume: (TIPURI[rec.tip] || {}).nume || rec.tip, period, due: dueDate(rec.tip, period),
       status: rec.status, overdue: false, generatedAt: rec.generatedAt, submittedAt: rec.submittedAt,
-      recipisa: rec.recipisa || '', note: rec.note || '', links: descarcari(rec.tip, period),
+      recipisa: rec.recipisa || '', note: rec.note || '', links: descarcariPentru(rec, rec.tip, period),
     });
   }
   return rows;
@@ -423,4 +445,4 @@ function notifications(d, scopedList, today, days, lookback) {
 }
 
 module.exports = { TIPURI, STATUSES, DESCARCARI, descarcari, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, primaLunaUrmarita, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays,
-  addSubmission, lastSubmission, submissionDiff, RECT_IN_XML };
+  addSubmission, lastSubmission, submissionDiff, d100Snapshot, RECT_IN_XML };

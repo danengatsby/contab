@@ -1288,8 +1288,37 @@ async function main() {
     const x394pf = await req('GET', '/xml/d394?period=2026-06', { cookie: c1 });
     ok('D394 v5: fila carnet ca op1 tip N cu CNP-ul producatorului', /<op1 tip="N"/.test(x394pf.text) && /1800101223344/.test(x394pf.text));
     const x100 = await req('GET', '/xml/d100?period=2026-06', { cookie: c1 });
-    ok('xml/d100: bine-format cu obligatia 620', x100.status === 200 && /<declaratie100/.test(x100.text) && /cod_oblig="620"/.test(x100.text));
+    ok('xml/d100: bine-format cu obligatia micro 121', x100.status === 200 && /<declaratie100/.test(x100.text) && /cod_oblig="121"/.test(x100.text) && /cota="1"/.test(x100.text));
     ok('descarcarea D100 XML marcheaza declaratia "generata"', (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd100').status === 'generata');
+    eq('D710 fara D100 depusa anterior -> 400', (await req('GET', '/xml/d710?period=2026-06', { cookie: c1 })).status, 400);
+    // Prima depunere pastreaza fotografia D100. Dupa o corectie contabila, D710 trebuie sa arate
+    // suma initiala SI suma recalculata, nu doar delta si nu doua copii ale valorii curente.
+    const d100Dep = await req('POST', '/api/declarations/set', { cookie: c1,
+      body: { tip: 'd100', period: '2026-06', status: 'depusa', recipisa: 'R-D100-1' } });
+    eq('D100 marcata depusa pentru baza D710', d100Dep.status, 200);
+    const regD710 = await req('GET', '/api/declarations?period=2026-06', { cookie: c1 });
+    ok('dupa depunerea D100, registrul ofera D710', regD710.json.rows.find((r) => r.tip === 'd100').links
+      .some((l) => l.href === '/xml/d710?period=2026-06'));
+    const adminD710 = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
+    await req('POST', '/api/period-lock', { cookie: adminD710.cookie, body: { lockedUntil: null } });
+    const corectieD100 = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila',
+      fields: { data: '2026-06-23', explicatie: 'Venit omis pentru proba D710', debit: '4111', credit: '704', suma: 10000 } } });
+    eq('corectia care modifica D100 a fost inregistrata', corectieD100.status, 200);
+    const x710 = await req('GET', '/xml/d710?period=2026-06', { cookie: c1 });
+    ok('xml/d710: schema oficiala si obligatia micro 121', x710.status === 200
+      && /<declaratie710/.test(x710.text) && /cod_oblig="121"/.test(x710.text) && /cota="1"/.test(x710.text));
+    ok('xml/d710: valorile initiala/corectata sunt distincte', (() => {
+      const i = x710.text.match(/suma_dat_I="(\d+)"/); const c = x710.text.match(/suma_dat_C="(\d+)"/);
+      return i && c && Number(c[1]) > Number(i[1]);
+    })());
+    const d710Marcat = await req('POST', '/api/declarations/rectificativa', { cookie: c1,
+      body: { tip: 'd100', period: '2026-06', motiv: 'venit omis inclus prin D710' } });
+    eq('rectificarea D100 poate fi marcata depusa in istoric', d710Marcat.status, 200);
+    const x710Arhiva = await req('GET', '/xml/d710?period=2026-06', { cookie: c1 });
+    eq('D710 depusa poate fi redescărcata din ultimele doua fotografii', x710Arhiva.status, 200);
+    ok('D710 redescărcata reproduce aceleasi valori',
+      (x710Arhiva.text.match(/suma_dat_I="\d+" suma_dat_C="\d+"/) || [])[0]
+      === (x710.text.match(/suma_dat_I="\d+" suma_dat_C="\d+"/) || [])[0]);
     const xInt = await req('GET', '/xml/intrastat?period=2026-06', { cookie: c1 });
     ok('xml/intrastat: bine-format', xInt.status === 200 && /<declaratieIntrastat/.test(xInt.text));
     eq('validare d100 raspunde pe tipul cerut', (await req('GET', '/api/validate/d100?period=2026-06', { cookie: c1 })).json.type, 'd100');

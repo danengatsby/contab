@@ -670,6 +670,16 @@ Ordinea de căutare (`scripts/valideaza-etransport.sh`):
 > `nr_evid` codifică obligația pe pozițiile 3–5 (regula R16), deci se derivă din cod, nu e fix.
 > Referința **`D100-profit`** exercită calea în poartă.
 
+> **Corecție D100 micro + D710 (2026-08-13).** Verificarea semantică a nomenclatorului curent a
+> arătat că vechea pereche `620 + 20A031800`, deși era acceptată de DUK, nu reprezintă impozitul
+> micro: codul 620 este impozitul pe transferul proprietăților imobiliare din patrimoniul personal.
+> Creanța micro este `121 + 20470101`, iar din anul 2026 validatorul cere și `cota="1"`.
+>
+> D710 folosește aceeași schemă v2 și aceeași creanță/scadență ca D100, dar transmite perechile
+> complete `suma_dat_I/suma_plata_I` și `suma_dat_C/suma_plata_C`; controlul este
+> `2 × (suma inițială + suma corectată)`. Referințele **`D710`** și **`D710-profit`** trec
+> validatorul oficial curent și acoperă separat obligațiile 121 și 103.
+
 > **D300 — poziția reportată din decontul precedent, rândurile 35 și 38 (adăugat 2026-08-04).**
 > Erau zero **prin construcție**: generatorul scria `R37 = R34` și `R40 = R33`, adică sărea peste
 > ele. O firmă cu TVA de recuperat declara de plată tot TVA-ul lunii următoare, iar contul 4424

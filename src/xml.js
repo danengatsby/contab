@@ -1347,8 +1347,8 @@ function d311Xml(company, period, d, who, rect) {
 `;
 }
 
-// D100 — declaratia privind obligatiile de plata la bugetul de stat pe schema OFICIALA v2
-// (aici: impozitul pe veniturile microintreprinderilor, trimestrial — cod obligatie 620).
+// D100 — declaratia privind obligatiile de plata la bugetul de stat pe schema OFICIALA v2.
+// Aplicatia emite codul 121 pentru micro si 103 pentru impozitul pe profit.
 function d100Xml(company, period, d, who) {
   const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
   const { an, luna } = ym(period);
@@ -1363,11 +1363,14 @@ function d100Xml(company, period, d, who) {
   if (dScad) next = { l: Number(dScad.slice(5, 7)), a: Number(dScad.slice(0, 4)) };
   const scadenta = '25.' + String(next.l).padStart(2, '0') + '.' + next.a;
   // Obligatia declarata vine din DATE, nu din generator: acelasi formular poarta impozitul micro
-  // (620) sau pe cel pe profit (103), cu alt cod bugetar. Era fixat pe micro, deci o firma pe
+  // (121) sau pe cel pe profit (103). Era fixat pe micro, deci o firma pe
   // impozit pe profit descarca o declaratie de microintreprindere. Implicitele pastreaza
-  // comportamentul istoric pentru apelantii care nu transmit nimic.
-  const codOblig = String(d.codOblig || '620');
-  const codBugetar = String(d.codBugetar || '20A031800');
+  // semantica fiscala corecta pentru apelantii care nu transmit nimic.
+  const codOblig = String(d.codOblig || '121');
+  const codBugetar = String(d.codBugetar || '20470101');
+  // Din anul de raportare 2026, regula oficiala cere explicit `cota=1` pentru codul 121 si
+  // interzice atributul pentru celelalte obligatii.
+  const cotaMicro = codOblig === '121' && Number(an) > 2025 ? ' cota="1"' : '';
   // `totalPlata_A` = impozitul INMULTIT CU 2, si NU e o greseala de copiere: regula oficiala R11b
   // cere `totalPlata_A = Suma(suma_dat + suma_ded + suma_plata + suma_rest)`, iar declaratia
   // poarta aceeasi suma si pe `suma_dat`, si pe `suma_plata` (celelalte doua lipsesc, deci 0).
@@ -1380,9 +1383,64 @@ function d100Xml(company, period, d, who) {
   nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
   cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}" adresa="${esc(adresa || '-')}"
   totalPlata_A="${lei(Math.round(d.impozit || 0) * 2)}">
-  <obligatie cod_oblig="${esc(codOblig)}" cod_bugetar="${esc(codBugetar)}" scadenta="${scadenta}" nr_evid="${nrEvidPlata(codOblig, luna, an, { luna: next.l, an: next.a })}"
+  <obligatie cod_oblig="${esc(codOblig)}" cod_bugetar="${esc(codBugetar)}" scadenta="${scadenta}" nr_evid="${nrEvidPlata(codOblig, luna, an, { luna: next.l, an: next.a })}"${cotaMicro}
     suma_dat="${lei(d.impozit)}" suma_plata="${lei(d.impozit)}"/>
 </declaratie100>
+`;
+}
+
+/** D710 — declaratia rectificativa pentru obligatiile depuse initial prin D100, schema oficiala
+ *  v2. Formularul nu trimite diferenta, ci reproduce pentru aceeasi creanta valorile INITIALE
+ *  (`*_I`) si cele CORECTATE (`*_C`). In aplicatie sunt acoperite cele doua creante D100 pe care
+ *  le calculam: 121 (micro) si 103 (profit/plati anticipate).
+ *
+ *  `initial` trebuie sa fie fotografia pastrata cand D100 a fost marcata depusa. Nu recalculam
+ *  trecutul din articolele curente: exact acelea se pot fi schimbat si au produs rectificarea. */
+function d710Xml(company, period, initial, corrected, who) {
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  const { an, luna } = ym(period);
+  const lei = (v, label) => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0) throw new Error(label + ' trebuie să fie o sumă nenegativă.');
+    return Math.round(n);
+  };
+  const i = initial || {}; const c = corrected || {};
+  const sumaI = lei(i.impozit, 'Suma inițială D100');
+  const sumaC = lei(c.impozit, 'Suma corectată D100');
+  const codI = String(i.codOblig || ''); const codC = String(c.codOblig || '');
+  if (!['121', '103'].includes(codI) || codI !== codC) {
+    throw new Error('D710 cere aceeași obligație D100 inițială și corectată (121 micro sau 103 profit).');
+  }
+  const bugetI = String(i.codBugetar || ''); const bugetC = String(c.codBugetar || '');
+  if (!bugetI || bugetI !== bugetC) throw new Error('Codul bugetar D100 inițial diferă de cel corectat.');
+  if (sumaI === sumaC) throw new Error('D710 nu are nicio diferență: suma D100 este deja ' + sumaC + ' lei.');
+
+  // Termenul este proprietatea creantei/perioadei, nu data generarii rectificativei. Fotografia
+  // depunerii il pastreaza; daca lipseste, regula generala este 25 ale lunii urmatoare.
+  let due = String(i.scadenta || c.scadenta || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
+    const nm = Number(luna) === 12 ? 1 : Number(luna) + 1;
+    const ny = Number(luna) === 12 ? Number(an) + 1 : Number(an);
+    due = ny + '-' + String(nm).padStart(2, '0') + '-25';
+  }
+  const next = { l: Number(due.slice(5, 7)), a: Number(due.slice(0, 4)) };
+  const scadenta = due.slice(8, 10) + '.' + due.slice(5, 7) + '.' + due.slice(0, 4);
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ') || '-';
+  const telefon = String(company.telefon || '').replace(/[^0-9+]/g, '').slice(0, 15);
+  const cotaMicro = codI === '121' && Number(an) > 2025 ? ' cota="1"' : '';
+  // Regula de control D710 insumeaza TOATE valorile I si C. Pentru modelele 121/103 fiecare suma
+  // apare o data ca datorata si o data ca plata: 2 * (initial + corectat).
+  const total = 2 * (sumaI + sumaC);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- D710 v2 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D710 fisier.xml -->
+<declaratie710 xmlns="mfp:anaf:dgti:d710:declaratie:v2"
+  luna="${esc(luna)}" an="${esc(an)}" d_anulare="0"
+  nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
+  cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}" adresa="${esc(adresa)}"${telefon ? ` telefon="${esc(telefon)}"` : ''}${company.email ? ` mail="${esc(company.email)}"` : ''}
+  totalPlata_A="${total}">
+  <obligatie cod_oblig="${esc(codI)}" cod_bugetar="${esc(bugetI)}" scadenta="${scadenta}" nr_evid="${nrEvidPlata(codI, luna, an, { luna: next.l, an: next.a })}"${cotaMicro}
+    suma_dat_I="${sumaI}" suma_dat_C="${sumaC}" suma_plata_I="${sumaI}" suma_plata_C="${sumaC}"/>
+</declaratie710>
 `;
 }
 
@@ -1625,7 +1683,7 @@ function bilantXml(d) {
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
   perimetruEFactura, CIF_PERSOANA_FIZICA,
-  umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d301Xml, d307Xml, d311Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d301Xml, d307Xml, d311Xml, D390_CODURI, d205Xml, d100Xml, d710Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
   bilantXml, bilantNsVersion, d107Xml, d177Xml,
   esc, // escaparea XML, refolosita de generatoarele din afara acestui fisier (ex. src/sepa.js)
 };

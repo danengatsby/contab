@@ -35,6 +35,7 @@ module.exports = function register(app, ctx) {
       if (tip === 'd107') { const year = period.slice(0, 4); const po = ptOpts.pentruDeclaratie(view, year); const pt = po.rezultatFiscal || acc.profitTax(view, year, po); const x = d107.report(view, year, pt); return { acordat: x.totals.val1, reportat: x.totals.val2, dedus: x.totals.val3, beneficiari: x.nr }; }
       if (tip === 'd112') { const x = rep.d112(view, period); const t = x.totals || {}; return { brut: t.brut, impozit: t.impozit, cas: t.cas, cass: t.cass, cam: t.cam }; }
       if (tip === 'd394') { const x = rep.d300(view, period); return { tvaColectata: x.tvaColectata, tvaDeductibila: x.tvaDeductibila }; }
+      if (tip === 'd100') return decl.d100Snapshot(rep.d100(view, period));
     } catch (e) { /* raportul nu se poate calcula: istoricul ramane fara sume, nu pica depunerea */ }
     return null;
   }

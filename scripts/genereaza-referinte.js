@@ -186,7 +186,11 @@ const angCM = (v.angajati || []).map((a, i) => (i === 0
 const vBen = { company: v.company, angajati: v.angajati.map((a) => Object.assign({}, a, { beneficii: { cazare: 1000, pensii: 800, sport: 200 } })) };
 w('D112-beneficii', xml.d112Xml(vBen.company, '2026-06', statePlata(vBen.angajati), who));
 // D100 (micro trimestrial)
-w('D100', xml.d100Xml(v.company, '2026-06', rep.d100micro(v, '2026-06'), who));
+const rMicro = rep.d100(v, '2026-06');
+w('D100', xml.d100Xml(v.company, '2026-06', rMicro, who));
+// D710 micro: reproduce suma declarata initial si suma corectata. Sunt valori COMPLETE, nu delta;
+// referinta prinde schema dedicata, suma de control si obligatia 121 cu `cota=1` ceruta din 2026.
+w('D710', xml.d710Xml(v.company, '2026-06', Object.assign({}, rMicro, { impozit: rMicro.impozit + 10 }), rMicro, who));
 // D100 varianta IMPOZIT PE PROFIT (art. 41, trimestrele I-III): alt cod de obligatie (103) si alt
 // cod bugetar (20470101) decat cel de micro. Exemplul implicit e o firma pe micro, deci calea nu
 // s-ar exercita niciodata — ca la D101-defalcare si D300-report.
@@ -196,6 +200,8 @@ const vProfit = {
     lines: [{ debit: '4111', credit: '704', suma: 100000 }] }],
 };
 w('D100-profit', xml.d100Xml(vProfit.company, '2026-03', rep.d100(vProfit, '2026-03'), who));
+const rProfit = rep.d100(vProfit, '2026-03');
+w('D710-profit', xml.d710Xml(vProfit.company, '2026-03', Object.assign({}, rProfit, { impozit: rProfit.impozit - 1000 }), rProfit, who));
 // D100 varianta PLATI ANTICIPATE (art. 41 alin. (2)): aceeasi obligatie 103, dar ALTA suma — o
 // patrime din impozitul anului precedent, actualizat cu indicele preturilor de consum — si un
 // trimestru in plus de declarat (T4, cu termen 25 decembrie). Fara aceasta varianta, poarta ar fi
