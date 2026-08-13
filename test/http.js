@@ -508,7 +508,10 @@ async function main() {
       return fd;
     };
     const faraStaging = () => !fs.readdirSync(upDir).some((n) => n.startsWith('.import-'));
-    const okBundle = JSON.stringify({ firma: { nume: 'Import SRL', cui: '111' }, entries: [], documents: [] });
+    const okBundle = JSON.stringify({
+      firma: { nume: 'Import SRL', cui: '111', ownerId: 999999, lockedUntil: '2099-12', subscription: { status: 'active', plan: 'gratis' }, anaf: { accessToken: 'furt' } },
+      entries: [], documents: [],
+    });
 
     const nUp0 = nrFisiere();
     const rImp = await req('POST', '/api/firme/import-zip', { cookie: c1, body: mkZip(okBundle, [['files/a.pdf', '%PDF-fals']]) });
@@ -517,6 +520,9 @@ async function main() {
     ok('import valid: stagingul a disparut dupa commit', faraStaging());
     // firma importata primeste proba de 30 de zile (ca la creare) — fara paywall imediat
     ok('firma importata are abonament de proba (fara 402)', (await req('GET', '/api/entries', { cookie: c1 })).status === 200);
+    const firmaImp = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === rImp.json.firmaId);
+    ok('import HTTP ignora billing/owner/lock/ANAF din fisier', firmaImp && firmaImp.subscription && firmaImp.subscription.plan === 'trial'
+      && firmaImp.ownerId !== 999999 && firmaImp.lockedUntil !== '2099-12' && !firmaImp.anaf);
     await req('POST', '/api/firme/1/activate', { cookie: c1 });
 
     const nUp1 = nrFisiere();

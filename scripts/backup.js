@@ -158,6 +158,18 @@ async function main() {
   const PG_DRILL_DAYS = Number(process.env.CONTAB_PG_DRILL_DAYS || 7);
   const drillMarkPath = path.join(DATA_DIR, 'backups', 'last-pg-drill.json');
   let pgDrill = null;
+  const BK_KEY = process.env.CONTAB_BACKUP_KEY || '';
+  const offCfg = offsite.fromEnv(process.env);
+  const offsiteState = {
+    configured: !!EMAIL_TO || offsite.configured(offCfg) || !!RCLONE_REMOTE,
+    ok: false,
+    encrypted: !!BK_KEY,
+    encryptionVerified: false,
+    email: { configured: !!EMAIL_TO, status: EMAIL_TO ? 'in_asteptare' : 'neconfigurat' },
+    objectStorage: { configured: offsite.configured(offCfg), status: offsite.configured(offCfg) ? 'in_asteptare' : 'neconfigurat' },
+    rclone: { configured: !!RCLONE_REMOTE, status: RCLONE_REMOTE ? 'in_asteptare' : 'neconfigurat' },
+    warning: null,
+  };
   const ultimulPgDrill = (() => {
     try { return JSON.parse(fs.readFileSync(drillMarkPath, 'utf8')); } catch (_) { return null; }
   })();
@@ -183,6 +195,7 @@ async function main() {
         ts: new Date().toISOString(), name: f.name, ok: veri.ok, firme: veri.firme, sqlite: veri.sqlite, size: f.size, motiv: veri.motiv,
         drill: { ok: drill.ok, nrFirme: drill.nrFirme, totalEntries: drill.totalEntries, motiv: drill.motiv },
         pgDrill: rezumatPgDrill(pgDrill || ultimulPgDrill),
+        offsite: offsiteState,
         alertaEsuata,
       }));
     } catch (e) {
@@ -255,12 +268,15 @@ async function main() {
   } else {
     log('Drill nativ PostgreSQL: nu e scadent (ultimul la', ultimulPgDrill.ts + ', la fiecare', PG_DRILL_DAYS, 'zile).');
   }
+  // IMPORTANT: primul marcaj a fost scris inaintea drill-ului. Fara aceasta rescriere, un drill
+  // tocmai reusit ramanea doar in last-pg-drill.json, iar /api/metrics continua sa afiseze starea
+  // veche din last-backup.json pana a doua zi (defect observat in auditul operational).
+  scrieMarcaj();
 
   // 3) offsite — email si/sau rclone; esecul unuia nu opreste restul.
   //    Cu CONTAB_BACKUP_KEY setat, copia OFFSITE pleaca CRIPTATA (AES-256, openssl);
   //    restaurare: openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in f.zip.enc -out f.zip -pass env:CONTAB_BACKUP_KEY
   let offsitePath = f.path;
-  const BK_KEY = process.env.CONTAB_BACKUP_KEY || '';
   if (BK_KEY) {
     const { spawnSync } = require('child_process');
     const encPath = f.path + '.enc';
@@ -270,6 +286,7 @@ async function main() {
       // FAIL-CLOSED, deliberat. Varianta veche trimitea NECRIPTAT cand criptarea esua — adica
       // exact cand ceva nu era in regula, datele fiscale plecau in clar, cu un simplu avertisment
       // in log. O cheie configurata e o CERINTA, nu o preferinta.
+      offsiteState.warning = 'criptarea offsite a esuat'; scrieMarcaj();
       throw new Error('Criptarea offsite a esuat, iar CONTAB_BACKUP_KEY e setat: '
         + (enc.stderr || enc.error || '').toString().slice(0, 200)
         + ' — copia offsite NU a fost trimisa (refuz deliberat de a trimite in clar).');
@@ -286,26 +303,28 @@ async function main() {
          === require('crypto').createHash('sha256').update(fs.readFileSync(f.path)).digest('hex');
     } catch (_) { identic = false; }
     try { fs.unlinkSync(probaPath); } catch (_) { /* best effort */ }
-    if (!identic) throw new Error('Arhiva criptata NU se descifreaza inapoi la original — copia offsite a fost oprita.');
+    if (!identic) { offsiteState.warning = 'round-trip criptare esuat'; scrieMarcaj(); throw new Error('Arhiva criptata NU se descifreaza inapoi la original — copia offsite a fost oprita.'); }
     offsitePath = encPath;
+    offsiteState.encryptionVerified = true;
     log('Offsite criptat si verificat (round-trip):', path.basename(encPath));
   }
   let offsiteOk = false, offsiteConfigured = false;
   if (EMAIL_TO) {
     offsiteConfigured = true;
     if (!RESEND_KEY) {
+      offsiteState.email.status = 'cheie_resend_lipsa';
       warn('Offsite email: CONTAB_BACKUP_EMAIL_TO setat dar RESEND_API_KEY lipseste — sarit.');
     } else if (f.size > MAX_EMAIL_BYTES) {
+      offsiteState.email.status = 'arhiva_prea_mare';
       warn('Offsite email: arhiva are', sizeLabel, '— prea mare pentru email; configureaza RCLONE_REMOTE.');
     } else {
-      try { await emailArchive(offsitePath, sizeLabel); offsiteOk = true; log('Offsite email OK ->', EMAIL_TO); }
-      catch (e) { warn('Offsite email ESUAT:', e.message); }
+      try { await emailArchive(offsitePath, sizeLabel); offsiteOk = true; offsiteState.email.status = 'ok'; log('Offsite email OK ->', EMAIL_TO); }
+      catch (e) { offsiteState.email.status = 'esuat: ' + String(e.message).slice(0, 160); warn('Offsite email ESUAT:', e.message); }
     }
   }
   // Stocare obiect S3-compatibila (Backblaze B2 / Hetzner / MinIO / R2), semnata nativ — fara
   // rclone, care nici nu e instalat pe server. E destinatia RECOMANDATA: emailul are limita de
   // dimensiune si trece datele printr-o cutie postala terta.
-  const offCfg = offsite.fromEnv(process.env);
   if (offsite.configured(offCfg)) {
     offsiteConfigured = true;
     try {
@@ -318,16 +337,17 @@ async function main() {
       const h = (b) => require('crypto').createHash('sha256').update(b).digest('hex');
       if (h(inapoi) !== h(buf)) throw new Error('obiectul descarcat inapoi difera de cel urcat');
       offsiteOk = true;
+      offsiteState.objectStorage.status = 'ok';
       log('Offsite S3 OK ->', offCfg.bucket + '/' + cheie, '(' + sizeLabel + ', verificat)');
-    } catch (e) { warn('Offsite S3 ESUAT:', e.message); }
+    } catch (e) { offsiteState.objectStorage.status = 'esuat: ' + String(e.message).slice(0, 160); warn('Offsite S3 ESUAT:', e.message); }
   }
   if (RCLONE_REMOTE) {
     offsiteConfigured = true;
     const { spawnSync } = require('child_process');
     const rc = spawnSync('rclone', ['copy', offsitePath, RCLONE_REMOTE], { encoding: 'utf8', timeout: 10 * 60 * 1000 });
-    if (rc.error) warn('Offsite rclone ESUAT:', rc.error.message);
-    else if (rc.status !== 0) warn('Offsite rclone ESUAT:', (rc.stderr || '').slice(0, 300));
-    else { offsiteOk = true; log('Offsite rclone OK ->', RCLONE_REMOTE); }
+    if (rc.error) { offsiteState.rclone.status = 'esuat: ' + rc.error.message.slice(0, 160); warn('Offsite rclone ESUAT:', rc.error.message); }
+    else if (rc.status !== 0) { offsiteState.rclone.status = 'esuat: ' + (rc.stderr || '').slice(0, 160); warn('Offsite rclone ESUAT:', (rc.stderr || '').slice(0, 300)); }
+    else { offsiteOk = true; offsiteState.rclone.status = 'ok'; log('Offsite rclone OK ->', RCLONE_REMOTE); }
   }
   if (offsitePath !== f.path) { try { fs.unlinkSync(offsitePath); } catch (_) { /* best effort */ } }
   if (!offsiteConfigured) warn('ATENTIE: nicio copie offsite configurata. Recomandat: stocare obiect '
@@ -335,8 +355,13 @@ async function main() {
     + 'Alternative: CONTAB_BACKUP_EMAIL_TO (limitat ca dimensiune), RCLONE_REMOTE (cere rclone instalat).');
   // O copie care a PLECAT, dar in clar, nu mai trece tacut (vezi offsite.confidentialityWarning).
   const avertismentConf = offsite.confidentialityWarning({ sent: offsiteOk, encrypted: !!BK_KEY, viaEmail: !!EMAIL_TO });
+  offsiteState.ok = offsiteOk;
+  offsiteState.warning = avertismentConf || (!offsiteConfigured ? 'nicio destinatie offsite configurata' : (!offsiteOk ? 'toate destinatiile configurate au esuat' : null));
   if (avertismentConf) warn(avertismentConf);
   else if (!offsiteOk) process.exitCode = 1; // offsite configurat dar esuat -> semnaleaza in cron log
+  // Marcaj FINAL: contine drill-ul rulat ACUM si rezultatul real al transporturilor offsite,
+  // nu starea „in asteptare" de la inceputul scriptului.
+  scrieMarcaj();
   if (alertaEsuata) {
     scrieMarcaj();               // urma ramane vizibila in /api/metrics si in raportul zilnic
     process.exitCode = 1;        // canalul de alerta e cazut: rularea NU e „complet reusita"

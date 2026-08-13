@@ -8,20 +8,46 @@ import { $, $$, api, toast, USER, setMeta, H } from './core.js';
 let deps = {};
 export function setSettingsDeps(d) { deps = d; }
 
-// PORNIREA 2FA e scoasa din interfata cat timp campul de cod de pe login e `disabled` — ar bloca
-// definitiv contul (vezi comentariul de langa cardul 2FA din index.html). Au disparut cu ea si
-// elementele de configurare (butonul de pornire, blocul cu QR-ul, butonul de activare): in browser
-// `$()` intoarce `null` pe un id inexistent, deci un ascultator ramas pe ele ar fi aruncat la
-// import si ar fi rupt TOT modulul de setari, nu doar 2FA.
-// Ce ramane: starea (informativa) si iesirea — cine are deja 2FA trebuie sa si-l poata opri.
+// Cele doua jumatati (configurarea si campul TOTP din login) sunt tinute impreuna de poarta din
+// test/run/porti.js. QR-ul venit de la server NU intra prin innerHTML: este pus intr-un <img> ca
+// data-URI, context inert chiar daca generatorul SVG s-ar schimba.
 export function render2FA() {
   const on = !!(USER && USER.twofa);
   $('#twofaStatus').className = 'status' + (on ? ' ok' : '');
   $('#twofaStatus').textContent = on ? '✔ 2FA este activat pe contul tău.' : '2FA este dezactivat.';
+  $('#twofaStart').classList.toggle('hidden', on);
+  if (on) $('#twofaSetup').classList.add('hidden');
   $('#twofaDisableWrap').classList.toggle('hidden', !on);
 }
+$('#twofaStart').addEventListener('click', async () => {
+  try {
+    const r = await api('/api/2fa/setup', { method: 'POST' });
+    $('#twofaSecret').textContent = r.secret || '';
+    $('#twofaQr').src = r.qrSvg ? ('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(r.qrSvg)) : '';
+    $('#twofaQr').classList.toggle('hidden', !r.qrSvg);
+    $('#twofaCode').value = '';
+    $('#twofaSetup').classList.remove('hidden');
+    $('#twofaCode').focus();
+  } catch (e) { toast(e.message, true); }
+});
+$('#twofaEnable').addEventListener('click', async () => {
+  const code = $('#twofaCode').value.replace(/\s/g, '');
+  if (!/^\d{6}$/.test(code)) return toast('Introdu codul de 6 cifre din aplicația de autentificare.', true);
+  try {
+    await api('/api/2fa/enable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+    toast('2FA activat. La următoarea autentificare vei introduce și codul din aplicație.');
+    $('#twofaSetup').classList.add('hidden');
+    await deps.init(); deps.onTab('cont');
+  } catch (e) { toast(e.message, true); }
+});
+$('#twofaCancel').addEventListener('click', () => {
+  $('#twofaSetup').classList.add('hidden');
+  $('#twofaCode').value = '';
+});
 $('#twofaDisable').addEventListener('click', async () => {
-  try { await api('/api/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: $('#twofaDisCode').value }) }); toast('2FA dezactivat'); await deps.init(); deps.onTab('cont'); }
+  const code = $('#twofaDisCode').value.replace(/\s/g, '');
+  if (!/^\d{6}$/.test(code)) return toast('Introdu codul de 6 cifre pentru dezactivare.', true);
+  try { await api('/api/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }); $('#twofaDisCode').value = ''; toast('2FA dezactivat'); await deps.init(); deps.onTab('cont'); }
   catch (e) { toast(e.message, true); }
 });
 $('#twofaRevoke').addEventListener('click', async () => {
@@ -36,7 +62,15 @@ export async function renderBackup() {
   let b;
   try { b = await api('/api/backups'); } catch (e) { return; }
   $('#backupAuto').checked = b.auto;
-  $('#backupStatus').textContent = b.lastAt ? ('Ultimul backup: ' + b.lastAt.replace('T', ' ').slice(0, 16)) : 'Niciun backup încă.';
+  const v = b.lastVerified;
+  if (v) {
+    const off = v.offsite || {};
+    const pg = v.pgDrill || {};
+    $('#backupStatus').textContent = 'Ultima arhivă completă verificată: ' + String(v.ts || '').replace('T', ' ').slice(0, 16)
+      + ' · arhivă ' + (v.ok && v.drill && v.drill.ok ? 'OK' : 'CU EROARE')
+      + ' · PG ' + (pg.ok ? 'OK' : (pg.sarit ? 'nu se aplică' : 'neverificat/eșuat'))
+      + ' · offsite ' + (off.ok ? (off.encrypted ? 'OK, criptat' : 'OK, necriptat') : 'NECONFIRMAT');
+  } else $('#backupStatus').textContent = b.lastAt ? ('Ultima copie DB: ' + b.lastAt.replace('T', ' ').slice(0, 16) + ' · nicio arhivă completă verificată raportată') : 'Niciun backup verificat încă.';
   $('#backupList').innerHTML = b.list.length
     ? `<table><thead><tr><th>Fișier</th><th class="num">Mărime</th><th></th></tr></thead><tbody>${
       b.list.map((x) => `<tr><td class="acc">${x.name}</td><td class="num">${(x.size / 1024).toFixed(1)} KB</td>

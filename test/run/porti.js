@@ -704,7 +704,7 @@ section('CSP: style-src FARA unsafe-inline (poarta zero)');
   // specificitate (0,1,0), iar u.css se incarca AL DOILEA — deci utilitarul castiga si elementul
   // ramane vizibil desi markup-ul zice `class="hidden"`. Exact asa a stat casuta „Tine minte acest
   // dispozitiv" pe ecranul de autentificare: ascunsa in HTML, vizibila pe ecran, aratata tuturor
-  // desi apartine unui flux 2FA care e oprit in produs. E a treia oara cand aceeasi capcana de
+  // desi apartinea unui flux 2FA care era oprit atunci. E a treia oara cand aceeasi capcana de
   // specificitate musca aici (vezi si `:not(.hidden)` din styles.css si `#tabs`), deci de data
   // asta ramane o poarta, nu o lectie.
   const uDisplay = new Set([...fsx.readFileSync(pth.join(pub, 'u.css'), 'utf8')

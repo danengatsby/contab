@@ -194,15 +194,16 @@ $('#loginForm').addEventListener('submit', async (e) => {
   const f = e.target; $('#loginErr').textContent = '';
   const body = { username: f.username.value, password: f.password.value };
   if (f.code) body.code = f.code.value;
+  if (f.remember) body.remember = f.remember.checked;
   try {
     const r = await api('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (r.twofa && !r.user) { // parola corectă, cere codul 2FA
-      $('#codeRow').classList.remove('hidden'); if (f.code) f.code.focus();
+      $('#codeRow').classList.remove('hidden'); if (f.code) { f.code.required = true; f.code.focus(); }
       $('#loginErr').textContent = 'Introdu codul din aplicația de autentificare.'; return;
     }
-    f.password.value = ''; hideLogin(); await D.init();
+    f.password.value = ''; if (f.code) f.code.value = ''; hideLogin(); await D.init();
   } catch (err) {
-    if (/2FA/i.test(err.message)) $('#codeRow').classList.remove('hidden');
+    if (/2FA/i.test(err.message)) { $('#codeRow').classList.remove('hidden'); if (f.code) f.code.required = true; }
     $('#loginErr').textContent = err.message;
   }
 });
@@ -224,11 +225,7 @@ $('#forcePwForm') && $('#forcePwForm').addEventListener('submit', async (e) => {
   try {
     await api('/api/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword: f.oldPassword.value, newPassword: f.newPassword.value }) });
     $('#forcePwOverlay').classList.add('hidden');
-    // Recomandarea de 2FA (si saltul la butonul ei) au fost SCOASE: cat timp campul de cod de pe
-    // login e `disabled`, ele trimiteau omul exact catre blocarea definitiva a contului. Butonul
-    // nici nu mai exista, deci `scrollIntoView` cauta un element disparut. Se pun la loc odata cu
-    // reactivarea 2FA — vezi comentariul de langa cardul 2FA din index.html.
-    toast('Parolă schimbată. Verifică în Setări sesiunile active și deconectează-le pe cele străine.');
+    toast('Parolă schimbată. Activează 2FA și deconectează sesiunile pe care nu le recunoști.');
     await D.init();
     D.goTab('cont'); // parola si sesiunile stau in „Contul meu"
     setTimeout(() => { const t = $('#sessionsList'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 250);

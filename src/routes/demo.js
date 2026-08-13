@@ -42,7 +42,7 @@ function resetDemo() {
   if (!fid || !fs.existsSync(DEMO_SNAPSHOT)) return { ok: false, reason: 'fara demo sau snapshot' };
   const bundle = JSON.parse(fs.readFileSync(DEMO_SNAPSHOT, 'utf8'));
   const keepActive = d.firmaActiva; // importFirma muta firma activa — o pastram
-  db.importFirma(bundle, { targetFid: fid });
+  db.importFirma(bundle, { targetFid: fid, deferSave: true });
   d.firmaActiva = keepActive;
   ensureDemoContabil(); // reface perechea demo<->demo-contabil (ambele pe firma demo)
   // igiena pe conturile demo: contorul AI, datele personale, conversatiile de suport

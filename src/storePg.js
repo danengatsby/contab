@@ -11,7 +11,8 @@ const plan = require('./persistPlan');
 // persist() FOTOGRAFIAZA sincron colectiile murdare (serializare + amprenta) si pune
 // aplicarea SQL intr-o COADA seriala (o singura tranzactie in zbor la un moment dat,
 // in ordinea apelurilor). La esec, amprentele raman neschimbate -> urmatorul save()
-// reincearca aceleasi colectii. flush() (apelat la oprire) asteapta golirea cozii.
+// reincearca aceleasi colectii. flush() asteapta golirea cozii SI respinge promisiunea
+// daca ultima stare fotografiata nu a ajuns durabil in baza (folosit de bariera HTTP).
 //
 // Conexiunea: CONTAB_PG_URL (connection string) sau, implicit, socketul local
 // /var/run/postgresql cu autentificare peer (rolul = utilizatorul OS) si baza
@@ -49,6 +50,11 @@ let lastWritten = [];
 let epoch = 0;
 let planStare = plan.stareNoua();
 let conflictedFlag = false;
+// Coada `queue` ramane deliberat rezolvata chiar dupa un esec: save() este apelat sincron in
+// multe locuri (inclusiv joburi fara raspuns HTTP), iar o promisiune respinsa si ignorata ar
+// produce unhandledRejection. Eroarea durabilitatii se pastreaza separat si este expusa NUMAI
+// prin flush(), unde apelantul o poate trata explicit (bariera HTTP, backup, oprire, teste).
+let flushError = null;
 
 function sha(s) { return crypto.createHash('sha1').update(s).digest('hex'); }
 function asInt(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
@@ -168,7 +174,7 @@ async function isEmpty() {
 }
 
 /** Reseteaza starea persistata -> urmatorul persist rescrie tot (dupa hydrate/restore). */
-function resetDirty() { snap = {}; lastHash = {}; pendingWork = null; planStare = plan.stareNoua(); }
+function resetDirty() { snap = {}; lastHash = {}; pendingWork = null; flushError = null; planStare = plan.stareNoua(); }
 
 /** Aplica un set de colectii fotografiate, intr-o singura tranzactie. */
 async function applyWork(work) {
@@ -371,7 +377,7 @@ async function drain() {
       try {
         await applyWork(work);
         epoch += 1; // versiunea avansata odata cu commit-ul
-        commits += 1; failStreak = 0; lastCommitAt = new Date().toISOString();
+        commits += 1; failStreak = 0; flushError = null; lastCommitAt = new Date().toISOString();
         if (!pendingWork) { pendingSince = 0; pendingBytes = 0; } // coada golita
         else pendingSince = Date.now();                            // a intrat deja alta lucrare
         // starea persistata se actualizeaza DOAR dupa commit reusit (esec -> retry idempotent la urmatorul save)
@@ -383,12 +389,16 @@ async function drain() {
       } catch (e) {
         if (e && e.code === 'CONTAB_WRITER_CONFLICT') {
           conflictedFlag = true; // ingheata scrierile viitoare (nu retry — ar suprascrie alt proces)
+          flushError = e;
+          failStreak += 1;
+          lastPersistError = { msg: String(e.message || e).slice(0, 300), at: new Date().toISOString() };
           console.error('[contab] CONFLICT DE SCRIITOR (pg): ' + e.message + ' Persistenta e inghetata pana la restart.');
           pendingWork = null; // nu mai incerca nimic din coada
           return;
         }
         // `snap` a ramas neatins, deci urmatorul save recalculeaza diff-ul si reincearca
         failStreak += 1;
+        flushError = e;
         lastPersistError = { msg: String(e.message || e).slice(0, 300), at: new Date().toISOString() };
         console.error('[contab] persist PostgreSQL ESUAT (se reincearca la urmatorul save):', e.message);
       }
@@ -416,7 +426,10 @@ function approxBytes(work) {
 function queueStats() {
   return {
     driver: 'pg',
-    pending: !!pendingWork,
+    // Dupa ROLLBACK, pendingWork a fost consumat de bucla, dar fotografia RAM ramane nedurabila
+    // (snap nu s-a avansat) si flushError o tine rosie pana la un commit ulterior. Raportata ca
+    // „pending: false”, veghea spunea in mod fals „la zi” exact dupa o pierdere de persistenta.
+    pending: !!pendingWork || !!flushError,
     pendingAgeMs: pendingSince ? Date.now() - pendingSince : 0,
     pendingBytes,
     draining,
@@ -549,8 +562,17 @@ async function auditRecent(opts) {
 /** Colectiile scrise la ultimul persist reusit (diagnostic). */
 function written() { return lastWritten.slice(); }
 
-/** Asteapta golirea cozii de scrieri (inainte de backup / la oprire). */
-function flush() { return queue; }
+/**
+ * Asteapta golirea cozii de scrieri si confirma DURABILITATEA, nu doar terminarea buclei.
+ * `queue` nu se respinge (vezi flushError), astfel incat save()-urile sincrone care nu consuma
+ * promisiunea sa nu genereze unhandledRejection. Fiecare apel flush primeste insa o promisiune
+ * respinsa cat timp ultima fotografie RAM nu a fost comisa. Un commit ulterior reusit o vindeca.
+ */
+function flush() {
+  return queue.then(() => {
+    if (flushError) throw flushError;
+  });
+}
 
 /** Reconstruieste graful in memorie din tabele (forma identica cu cea folosita de aplicatie). */
 async function hydrate(defaults) {

@@ -147,6 +147,12 @@ function createApp() {
     },
   }));
 
+  // Pe PostgreSQL, db.save() fotografiaza sincron dar COMMIT-ul este asincron. O ruta nu are voie
+  // sa confirme succesul cat timp scrierea traieste doar in RAM. Bariera amana `res.end` pana la
+  // golirea cozii; la ROLLBACK/esec inlocuieste raspunsul aparent reusit cu 503. Este DUPA static,
+  // ca activele publice sa nu depinda de baza, si INAINTE de toate rutele API inregistrate ulterior.
+  app.use(require('./durabilityBarrier').createDurabilityBarrier(db, log));
+
   // Sanitizare parametri de perioada — accepta doar YYYY / YYYY-MM (luna 01-12); valorile invalide devin goale
   app.use((req, res, next) => {
     const q = req.query || {};
