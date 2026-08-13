@@ -2,7 +2,7 @@
 // Nomenclatorul de parteneri (clienti/furnizori): lista cu filtru pe tip, editare, adaugare si
 // import in masa din CSV/XLSX. Extras din app.js (Etapa 7). Frunza — depinde doar de nucleu,
 // nu apeleaza inapoi in app.js. loadPartners e apelat din onTab('parteneri').
-import { $, $$, api, toast, H, fileToCsv } from './core.js';
+import { $, $$, api, toast, H, fileToCsv, legaCompletareCui } from './core.js';
 
 const TIP_PARTENER = { client: { t: 'Client', c: '#0b6e4f', bg: '#eaf4ef' }, furnizor: { t: 'Furnizor', c: '#b00020', bg: '#fdeef0' }, ambele: { t: 'Ambele', c: '#42506f', bg: '#eef1f7' } };
 function tipBadge(tip) { const x = TIP_PARTENER[tip]; return x ? `<span data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700">${x.t}</span>` : '<span class="muted">—</span>'; }
@@ -47,6 +47,15 @@ function renderPartners() {
   }));
 }
 $('#partnerTipFilter') && $('#partnerTipFilter').addEventListener('change', renderPartners);
+
+// Completarea partenerului dupa CUI. Pe langa denumire si adresa, aici castigul mare e ALERTA:
+// „Verifica la ANAF" exista deja, dar se ruleaza peste partenerii DEJA salvati — adica afli ca
+// furnizorul e inactiv dupa ce i-ai inregistrat facturile. Acum semnalul vine cand tastezi CUI-ul,
+// inainte de prima inregistrare: inactiv (art. 11) si TVA la incasare (art. 297 alin. (2)) schimba
+// deductibilitatea, nu doar continutul unui camp.
+legaCompletareCui($('#partnerForm'), {
+  den: 'denumire', adresa: 'adresa', oras: 'localitate', judet: 'judet',
+});
 $('#partnerForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;

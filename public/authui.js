@@ -2,7 +2,7 @@
 
 // Autentificare UI: login/2FA, inscriere + preturi, parola uitata/reset, invitatii, schimbarea fortata a parolei.
 // Extras din app.js (faza 2); apelurile inapoi spre app.js vin prin setDeps (fara cicluri).
-import { $$, $, H, fmt, toast, api, setOn402 } from './core.js';
+import { $$, $, H, fmt, toast, api, setOn402, legaCompletareCui } from './core.js';
 
 const D = { init: null, goTab: null, promptFirmaSubscribe: null };
 function setAuthuiDeps(d) { Object.assign(D, d); }
@@ -169,6 +169,15 @@ export function aplicaTipCont() {
   if (titlu) titlu.textContent = contabil ? 'Fă-ți cont de contabil' : 'Fă-ți cont gratuit pe Contabo';
 }
 $$('#registerForm [name="tipCont"]').forEach((r) => r.addEventListener('change', aplicaTipCont));
+
+// Completarea dupa CUI, la inscriere. E locul cu cel mai mare castig din cele trei: aici omul
+// tasteaza denumirea, CUI-ul, Reg. Com., adresa, orasul si judetul intr-un formular pe care il
+// vede prima data in viata. Nu se atinge caseta „Platitoare de TVA" — o bifa schimbata sub deget
+// ar fi o decizie fiscala luata de aplicatie; starea reala din registru se SPUNE, in schimb, sub
+// camp (vezi `legaCompletareCui`), si omul decide.
+legaCompletareCui($('#registerForm'), {
+  nume: 'denumire', regCom: 'nrRegCom', adresa: 'adresa', oras: 'localitate', judet: 'judet',
+});
 
 $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) => {
   e.preventDefault();

@@ -297,6 +297,45 @@ function stubFetch(script) {
     const r4 = await registru.verifica(['222']);
     eq('inregistrarea minima se normalizeaza fara exceptie', r4.gasiti['222'].denumire + '|' + r4.gasiti['222'].tvaPlatitor, 'MINIM SRL|false');
 
+    // ── Cautarea unui singur CUI, pentru completarea unui formular ──
+    // Memo-ul e ce deosebeste calea asta de `verifica`: acolo raspunsul sustine un verdict FISCAL
+    // (inactiv -> nedeductibil) si nu are voie sa fie vechi; aici doar preumple un camp pe care
+    // omul il vede. Deci se dovedeste ca memo-ul EXISTA aici si ca NU s-a strecurat dincolo.
+    registru.uitaMemo();
+    const cCaut = stubReg({ found: [gasit(12345674)], notFound: [] });
+    const u1 = await registru.cautaPentruCompletare('RO12345674');
+    eq('cautarea unui singur CUI intoarce inregistrarea', u1.gasit + '|' + u1.registru.denumire, 'true|TEST SRL');
+    eq('...si a intrebat serviciul o data', cCaut.length, 1);
+    const u2 = await registru.cautaPentruCompletare('12345674');
+    eq('a doua cautare vine din memo, fara apel nou', cCaut.length, 1);
+    ok('...si e marcata ca atare', u2.memo === true && u2.registru.denumire === 'TEST SRL');
+    // Forma scrisa altfel e ACELASI CUI: memo-ul e pe cheia numerica, nu pe sirul tastat.
+    await registru.cautaPentruCompletare(' ro 12345674 ');
+    eq('aceeasi firma scrisa altfel nu mai intreaba serviciul', cCaut.length, 1);
+    // Calea FISCALA nu are voie sa fie servita din memo — altfel un partener reactivat (sau
+    // proaspat declarat inactiv) ar ramane judecat dupa o stare veche de cateva ore.
+    const cFisc = stubReg({ found: [gasit(12345674)], notFound: [] });
+    await registru.verifica(['12345674']);
+    eq('verificarea fiscala intreaba serviciul chiar daca memo-ul are firma', cFisc.length, 1);
+    // Negasitul se memoreaza si el: altfel un CUI gresit tastat de zece ori ar fi zece apeluri.
+    registru.uitaMemo();
+    const cNeg = stubReg({ found: [], notFound: [777] });
+    const n1 = await registru.cautaPentruCompletare('777');
+    ok('CUI negasit nu e o eroare, e un raspuns', n1.gasit === false && n1.registru === null);
+    await registru.cautaPentruCompletare('777');
+    eq('...si nu se reinterogheaza', cNeg.length, 1);
+    // CUI fara nicio cifra: nu pleaca nicio cerere (nu irosim din plafonul serviciului).
+    const cGol = stubReg({ found: [], notFound: [] });
+    const g0 = await registru.cautaPentruCompletare('abc');
+    ok('un CUI fara cifre nu ajunge la serviciu', g0.gasit === false && cGol.length === 0);
+    // Serviciul picat URCA eroarea: „n-am putut verifica" nu are voie sa arate ca „nu exista".
+    registru.uitaMemo();
+    stubReg('<html>Request Rejected</html>');
+    let ePicat = null;
+    try { await registru.cautaPentruCompletare('12345674'); } catch (e) { ePicat = e; }
+    ok('serviciul picat arunca, nu intoarce „negasit"', ePicat !== null);
+    registru.uitaMemo();
+
     // Loturile: peste 500 de CUI-uri se sparg in cereri succesive.
     const c5 = stubReg({ found: [], notFound: [] });
     const multe = Array.from({ length: registru.MAX_LOT + 3 }, (_, i) => String(1000000 + i));

@@ -1,5 +1,5 @@
 'use strict';
-import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf, umpleTemeiuri } from './core.js';
+import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf, umpleTemeiuri, legaCompletareCui } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, renderPachetWin, renderVideo, setSettingsDeps } from './settings.js';
@@ -586,6 +586,15 @@ function aplicaSistemProfit() {
 ['regimImpozit', 'sistemProfit', 'tipEntitate'].forEach((n) => {
   const el = document.querySelector('#companyForm [name="' + n + '"]');
   if (el) el.addEventListener('change', aplicaSistemProfit);
+});
+
+// Completarea datelor firmei dupa CUI, din registrul public ANAF. Aici intra si CAEN-ul, care nu
+// e cosmetic: fara el, controlul de coerenta al aplicatiei semnaleaza „esti platitor de TVA, dar
+// codul CAEN nu e completat — decontul D300 il solicita", iar conditia de activitate pentru
+// regimul micro (art. 51) nu poate fi verificata deloc. Un camp completat singur la inscriere
+// stinge doua avertismente pe care omul nu stia cum sa le rezolve.
+legaCompletareCui($('#companyForm'), {
+  nume: 'denumire', regCom: 'nrRegCom', adresa: 'adresa', oras: 'localitate', judet: 'judet', caen: 'caen',
 });
 
 // Rezumatul profilului fiscal CALCULAT (motorul) — arata ce declaratii/alerte deriva din setari
