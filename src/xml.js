@@ -1,6 +1,7 @@
 'use strict';
 
 const { round2 } = require('./util');
+const identitate = require('./identitate');
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -1179,6 +1180,56 @@ ${rows}
 `;
 }
 
+/** D307 — ajustari/corectii/regularizari TVA, schema oficiala v1.02.
+ *
+ * Validatorul cere totalurile A/L/C si suma de control exact egale cu suma randurilor si refuza
+ * aparitii duplicate pentru aceeasi combinatie tip+CUI. `d307.report` face agregarea, iar aici
+ * totalurile se deriva din randurile efectiv emise, ca raportul si XML-ul sa nu poata diverge. */
+function d307Xml(company, period, d, who, rect) {
+  company = company || {}; d = d || {}; rect = rect || {};
+  if ((d.errors || []).length) throw new Error('D307 nu poate fi generată: ' + d.errors.join(' '));
+  if (!(d.rows || []).length) throw new Error('Nu există operațiuni D307 postate în perioada ' + period + '.');
+  const { an, luna } = ym(period);
+  const cui = String(company.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
+  if (!/^(?:[1-9]\d{1,9}|[1-9]\d{12})$/.test(cui)) {
+    throw new Error('CUI-ul firmei lipsește sau nu are forma acceptată de D307.');
+  }
+  if (!String(company.nume || '').trim()) throw new Error('Denumirea firmei lipsește din Setări.');
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
+  if (!adresa) throw new Error('Adresa firmei este obligatorie în D307.');
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  const totaluri = { A: 0, L: 0, C: 0 };
+  const seen = new Set();
+  const rows = (d.rows || []).map((r) => {
+    const tip = String(r.tip || '').toUpperCase();
+    if (!Object.prototype.hasOwnProperty.call(totaluri, tip)) throw new Error('Tip operațiune D307 invalid: ' + (r.tip || 'lipsă') + '.');
+    const cod = String(r.codOperator || '').replace(/^ro/i, '').replace(/\D/g, '');
+    if (!identitate.validCUI(cod)) throw new Error('CUI operator invalid în D307: ' + (r.codOperator || 'lipsă') + '.');
+    const den = String(r.denumireOperator || '').trim();
+    if (!den || den.length > 200) throw new Error('Denumirea operatorului D307 lipsește sau depășește 200 de caractere pentru CUI ' + cod + '.');
+    const tva = Math.round(Number(r.tva));
+    if (!Number.isFinite(tva)) throw new Error('TVA D307 trebuie să fie un număr întreg pentru CUI ' + cod + '.');
+    const key = tip + ':' + cod;
+    if (seen.has(key)) throw new Error('D307 conține de două ori combinația ' + tip + ' + CUI ' + cod + '. Raportul trebuie agregat înainte de generare.');
+    seen.add(key);
+    totaluri[tip] += tva;
+    return `  <operatie tip="${tip}" codO="${esc(cod)}" denO="${esc(den)}" tva="${tva}"/>`;
+  }).join('\n');
+  const total = totaluri.A + totaluri.L + totaluri.C;
+  const dupaRezerva = !!rect.dupaRezerva;
+  const telefon = String(company.telefon || '').replace(/\D/g, '').slice(0, 15);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- D307 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D307 fisier.xml -->
+<declaratie307 xmlns="mfp:anaf:dgti:d307:declaratie:v1"
+  luna="${esc(luna)}" an="${esc(an)}" d_rec="${rect.rectificativa ? 1 : 0}" d_anulare="${dupaRezerva ? 1 : 0}"${dupaRezerva ? ` temei="${Number(rect.temei) === 2 ? 2 : 1}"` : ''}
+  nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
+  cif="${esc(cui)}" den="${esc(company.nume)}" adresa="${esc(adresa)}"${telefon ? ` telefon="${esc(telefon)}"` : ''}${company.email ? ` mail="${esc(String(company.email).slice(0, 200))}"` : ''}
+  tvaA="${totaluri.A}" tvaL="${totaluri.L}" tvaC="${totaluri.C}" totalPlata_A="${total}">
+${rows}
+</declaratie307>
+`;
+}
+
 /** D311 — TVA datorata de persoana al carei cod normal de TVA a fost anulat.
  *
  * Formularul are doua scheme mutual exclusive: IV (Data_A + OB_11..OB_52) si V
@@ -1520,7 +1571,7 @@ function bilantXml(d) {
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
   perimetruEFactura, CIF_PERSOANA_FIZICA,
-  umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d301Xml, d311Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d301Xml, d307Xml, d311Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
   bilantXml, bilantNsVersion, d177Xml,
   esc, // escaparea XML, refolosita de generatoarele din afara acestui fisier (ex. src/sepa.js)
 };

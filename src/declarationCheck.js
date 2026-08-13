@@ -17,10 +17,11 @@ const saft = require('./saft');
 const validate = require('./validate');
 const { statePlata } = require('./payroll');
 const d301 = require('./d301');
+const d307 = require('./d307');
 const d311 = require('./d311');
 
 /** Tipurile pentru care stim sa construim XML (si deci sa validam). */
-const TYPES = ['d300', 'd301', 'd311', 'd394', 'd390', 'd100', 'd101', 'intrastat', 'd205', 'd112', 'saft'];
+const TYPES = ['d300', 'd301', 'd307', 'd311', 'd394', 'd390', 'd100', 'd101', 'intrastat', 'd205', 'd112', 'saft'];
 
 /** Construieste XML-ul declaratiei. Arunca erorile generatoarelor (apelantul le traduce in 400). */
 function buildXml(v, type, opts) {
@@ -31,6 +32,7 @@ function buildXml(v, type, opts) {
   const pv = acc.vatPeriod(v.company, period); // D300/D394: agrega trimestrul la regim 'T'
   if (type === 'd300') return xml.d300Xml(v.company, pv, rep.d300(v, pv), declarant);
   if (type === 'd301') return xml.d301Xml(v.company, period, d301.report(v, period), declarant);
+  if (type === 'd307') return xml.d307Xml(v.company, period, d307.report(v, period), declarant);
   if (type === 'd311') return xml.d311Xml(v.company, period, d311.report(v, period), declarant);
   if (type === 'd394') return xml.d394Xml(v.company, pv, acc.vatJournals(v, pv), declarant, rep.achizitiiPfCarnet(v, pv));
   if (type === 'd390') return xml.d390Xml(v.company, period, rep.d390(v, period));

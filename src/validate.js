@@ -18,7 +18,7 @@ function attr(xml, name) {
 }
 function has(xml, frag) { return String(xml).indexOf(frag) >= 0; }
 
-const ROOTS = { d300: 'declaratie300', d301: 'declaratie301', d311: 'declaratie311', d394: 'declaratie394', d390: 'declaratie390', d205: 'declaratie205', d112: 'D112', saft: 'AuditFile', d100: 'declaratie100', d101: 'declaratie101', intrastat: 'declaratieIntrastat' };
+const ROOTS = { d300: 'declaratie300', d301: 'declaratie301', d307: 'declaratie307', d311: 'declaratie311', d394: 'declaratie394', d390: 'declaratie390', d205: 'declaratie205', d112: 'D112', saft: 'AuditFile', d100: 'declaratie100', d101: 'declaratie101', intrastat: 'declaratieIntrastat' };
 
 /** @returns { ok, errors:[], warnings:[] } */
 function validateDeclaration(type, xml, ctx) {
@@ -35,7 +35,7 @@ function validateDeclaration(type, xml, ctx) {
   else if (!/^\d{2,10}$/.test(cui)) warnings.push('CUI-ul „' + cui + '" nu pare valid (asteptam 2-10 cifre, eventual prefix RO).');
 
   // perioada (luna/an) acolo unde se aplica
-  if (['d300', 'd301', 'd311', 'd394', 'd390', 'd100', 'intrastat'].includes(type)) {
+  if (['d300', 'd301', 'd307', 'd311', 'd394', 'd390', 'd100', 'intrastat'].includes(type)) {
     if (!attr(s, 'luna') && !has(s, '<luna')) errors.push('Lipseste luna din declaratie.');
     if (!attr(s, 'an') && !has(s, '<an')) errors.push('Lipseste anul din declaratie.');
   }

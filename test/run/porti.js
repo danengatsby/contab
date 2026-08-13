@@ -396,7 +396,7 @@ section('Poarta: pagina publica de prezentare nu-si contrazice produsul');
 
   // Fiecare declaratie NUMITA in pagina trebuie sa existe ca generator — altfel pagina vinde ceva
   // ce nu se livreaza. Se verifica pe numele scurte, nu pe descrieri.
-  const numite = [...new Set([...pag.matchAll(/\bD(100|101|112|205|300|390|394|406)\b/g)].map((m) => m[1]))];
+  const numite = [...new Set([...pag.matchAll(/\bD(100|101|112|205|300|301|307|311|390|394|406)\b/g)].map((m) => m[1]))];
   const xmlSrc = fsx.readFileSync(pth.join(RADACINA, 'src', 'xml.js'), 'utf8')
     + fsx.readFileSync(pth.join(RADACINA, 'src', 'saft.js'), 'utf8');
   const fara = numite.filter((d) => !new RegExp('d' + d + 'Xml|D406|saftXml', 'i').test(xmlSrc));

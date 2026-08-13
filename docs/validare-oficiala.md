@@ -8,10 +8,13 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-08-13 — D311 și bateria completă
+## Ultima verificare: 2026-08-13 — D307 și bateria completă
 
 Poarta fiscală forțată (`scripts/poarta-fiscala.sh --intotdeauna`) a regenerat și validat
-**37 din 37 de ieșiri**. Cele trei probe D301 au trecut DUKIntegrator: declarația inițială
+**40 din 40 de ieșiri**. Cele trei probe D307 au trecut DUKIntegrator: declarația inițială
+(`D307`), rectificativa (`D307-rect`) și rectificativa cu un rând C agregat la zero
+(`D307-zero`). Probele acoperă operațiuni A/L/C, o regularizare C negativă și păstrarea explicită
+a valorii zero. Cele trei probe D301 au rămas valide: declarația inițială
 (`D301`), rectificativa (`D301-rect`) și achiziția unui mijloc de transport nou
 (`D301-mijloc`). Au rămas verzi și toate celelalte declarații, cele cinci variante SAF-T,
 situațiile financiare și schema e-Transport.
@@ -19,6 +22,30 @@ situațiile financiare și schema e-Transport.
 Cele trei probe D311 sunt de asemenea valide: schema IV (`D311`), rectificativa (`D311-rect`) și
 schema V după reînregistrare (`D311-reinreg`). Validatorul din manifestul oficial este
 `D311Validator.jar` J2.0.0 (29.01.2021).
+
+### Implementare D307
+
+Rădăcina este `<declaratie307 xmlns="mfp:anaf:dgti:d307:declaratie:v1">`, schema publică v1.02.
+Fiecare `<operatie>` poartă tipul `A` (transfer de active), `L` (transferul proprietății după
+leasing) sau `C` (ajustare/corecție/regularizare după anularea codului TVA), CUI-ul operatorului,
+denumirea și TVA-ul în lei întregi. Validatorul J1.1.0 a fost publicat pentru a permite `tva <= 0`;
+implementarea păstrează semnul pentru toate tipurile și nu elimină rândul agregat zero dintr-o
+rectificativă.
+
+Validatorul refuză aparițiile multiple ale aceleiași combinații tip + CUI. Raportul agregă de
+aceea articolele înainte de XML, iar `tvaA`, `tvaL`, `tvaC` și `totalPlata_A` se derivă exclusiv
+din rândurile emise. Monografia folosește 635=446 pentru taxa de plată și 446=635 pentru
+regularizarea în favoarea firmei, fără a introduce sumele speciale în TVA curentă 4426/4427.
+
+Formularul tipărit actualizat prin OPANAF 779/2024 include rectificarea ca urmare a notificării de
+conformare. Schema electronică nu are un atribut distinct pentru acea bifă; aplicația emite
+`d_rec=1`, păstrează motivul în istoricul depunerilor și nu inventează un câmp pe care validatorul
+nu îl acceptă. `d_anulare` și `temei=1|2` sunt suportate separat, exact cum le cere schema.
+
+Surse: [pagina electronică D307](https://static.anaf.ro/static/10/Anaf/Declaratii_R/307.html),
+[structura XML](https://static.anaf.ro/static/10/Anaf/Declaratii_R/AplicatiiDec/structura_D307_2017_071117.pdf),
+[schema XSD](https://static.anaf.ro/static/10/Anaf/Declaratii_R/AplicatiiDec/d307_20171205.xsd),
+[formularul OPANAF 779/2024](https://static.anaf.ro/static/10/Anaf/formulare/307_OPANAF_779_2024.pdf).
 
 ### Implementare D311
 
@@ -134,9 +161,6 @@ Surse oficiale folosite la implementare: formularul și instrucțiunile
 și schema [`d301_20200130.xsd`](https://static.anaf.ro/static/10/Anaf/Declaratii_R/AplicatiiDec/d301_20200130.xsd).
 Varianta rectificativă (`d_rec="1"`, derivată automat când există deja o depunere în registru) a
 fost probată separat și trece același validator oficial.
-
-**D311** (TVA colectată de persoanele cu cod de TVA anulat) are validator oficial în manifest
-(`<D311>`), dar nu a fost recunoscut.
 
 ## Ultima verificare: 2026-08-09 — livrări fără TVA, triunghiular, regimul marjei
 

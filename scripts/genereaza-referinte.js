@@ -21,6 +21,7 @@ const { statePlata } = require('../src/payroll');
 const bilant = require('../src/bilant');
 const ptOpts = require('../src/profitTaxOptions');
 const d301 = require('../src/d301');
+const d307 = require('../src/d307');
 const d311 = require('../src/d311');
 
 const dir = process.argv[2] || path.join(require('os').tmpdir(), 'contab-referinte');
@@ -83,6 +84,44 @@ const v301Mijloc = {
     lines: [{ debit: '2133', credit: '401', suma: 50000 }, { debit: '2133', credit: '446', suma: 10500 }] }],
 };
 w('D301-mijloc', xml.d301Xml(v301Mijloc.company, '2026-06', d301.report(v301Mijloc, '2026-06'), who));
+// D307 — toate cele trei tipuri oficiale. C este negativ ca sa dovedeasca regularizarea in
+// favoarea firmei si suma de control semnata.
+const v307 = {
+  company: Object.assign({}, v.company, { tvaPlatitor: false, dataAnulareTva: '2026-06-01' }),
+  openingBalances: {}, entries: [
+    { id: 'd307-a', firmaId: 1, data: '2026-06-10', period: '2026-06', tip: d307.TIP_DOCUMENT,
+      status: 'postat', document: 'TA-1', partener: 'CEDENT TEST SRL', partenerCui: '14399840',
+      d307: { tip: 'A', rol: 'cedent', codOperator: '14399840', denumireOperator: 'CEDENT TEST SRL', tva: 100 },
+      lines: [{ debit: '635', credit: '446', suma: 100 }] },
+    { id: 'd307-l', firmaId: 1, data: '2026-06-15', period: '2026-06', tip: d307.TIP_DOCUMENT,
+      status: 'postat', document: 'LS-1', partener: 'FINANTATOR TEST SRL', partenerCui: '18547290',
+      d307: { tip: 'L', rol: 'finanțator', codOperator: '18547290', denumireOperator: 'FINANTATOR TEST SRL', tva: 50 },
+      lines: [{ debit: '635', credit: '446', suma: 50 }] },
+    { id: 'd307-c', firmaId: 1, data: '2026-06-20', period: '2026-06', tip: d307.TIP_DOCUMENT,
+      status: 'postat', document: 'CR-1', partener: 'BENEFICIAR TEST SRL', partenerCui: '160796',
+      d307: { tip: 'C', rol: 'beneficiar', codOperator: '160796', denumireOperator: 'BENEFICIAR TEST SRL', tva: -25 },
+      lines: [{ debit: '446', credit: '635', suma: 25 }] },
+  ],
+};
+{
+  const r307 = d307.report(v307, '2026-06');
+  if (r307.totaluri.A !== 100 || r307.totaluri.L !== 50 || r307.totaluri.C !== -25 || r307.totalTva !== 125) {
+    throw new Error('D307: raportul de referinta este gresit — ' + JSON.stringify(r307));
+  }
+  w('D307', xml.d307Xml(v307.company, '2026-06', r307, who));
+  w('D307-rect', xml.d307Xml(v307.company, '2026-06', r307, who, { rectificativa: true }));
+  const v307Zero = Object.assign({}, v307, { entries: v307.entries.concat([{
+    id: 'd307-c-zero', firmaId: 1, data: '2026-06-21', period: '2026-06', tip: d307.TIP_DOCUMENT,
+    status: 'postat', document: 'CR-2', partener: 'BENEFICIAR TEST SRL', partenerCui: '160796',
+    d307: { tip: 'C', rol: 'beneficiar', codOperator: '160796', denumireOperator: 'BENEFICIAR TEST SRL', tva: 25 },
+    lines: [{ debit: '635', credit: '446', suma: 25 }],
+  }]) });
+  const r307Zero = d307.report(v307Zero, '2026-06');
+  if (!r307Zero.rows.some((row) => row.tip === 'C' && row.tva === 0)) {
+    throw new Error('D307: rectificarea de referinta nu a pastrat randul zero.');
+  }
+  w('D307-zero', xml.d307Xml(v307Zero.company, '2026-06', r307Zero, who, { rectificativa: true }));
+}
 // D311 — schema IV (cod anulat din oficiu): o livrare si o achizitie cu taxa datorata de
 // beneficiar. Taxa sta in 446, fara 4426/4427, iar totalurile 31/51 sunt calculate de generator.
 const v311 = {

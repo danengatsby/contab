@@ -88,12 +88,13 @@ function build(company, ctx) {
  *  declaratii diferite: D390 le cere pe amandoua (art. 325), Intrastat doar bunurile — asa ca o
  *  firma care cumpara numai reclama din UE datoreaza D390, nu si raportarea statistica.
  *  Scutirile din profil suprima orice tip. */
-function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD311) {
+function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD307, hasD311) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   const sfarsitTrim = endOfQuarter(period);
   const intracom = typeof hasIntracom === 'function' && hasIntracom(period);
   const intracomServicii = typeof hasIntracomServicii === 'function' && hasIntracomServicii(period);
   const d301 = typeof hasD301 === 'function' && hasD301(period);
+  const d307 = typeof hasD307 === 'function' && hasD307(period);
   const d311 = typeof hasD311 === 'function' && hasD311(period);
   const tips = [];
   const add = (t) => { if (!profile.scutiri[t] && !tips.includes(t)) tips.push(t); };
@@ -104,7 +105,8 @@ function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, ha
   // D301 nu este o declaratie „pe zero": apare numai in lunile in care exista o operatiune
   // speciala efectiva, indiferent daca persoana are sau nu codul special art. 317.
   if (d301) add('d301');
-  // D311, la fel ca D301, se depune numai pentru lunile cu taxa exigibila efectiv.
+  // D307 si D311, la fel ca D301, se depun numai pentru lunile cu operatiuni efective.
+  if (d307) add('d307');
   if (d311) add('d311');
   // Intrastat (INS): firma obligata (peste prag) + miscari de BUNURI in luna. Serviciile nu conteaza
   // aici, oricat de mari ar fi: Intrastatul e statistica de comert cu bunuri.
@@ -161,6 +163,20 @@ function entryGuard(profile, entry) {
     const op = Number(entry.d301 && entry.d301.tipOperatie);
     if (profile && !profile.tvaArt317 && (op === 1 || op === 5)) {
       return 'Operațiunea D301 din secțiunea ' + op + ' cere înregistrarea specială în scopuri de TVA conform art. 317. Activează „Cod special TVA art. 317” în Setări după obținerea codului.';
+    }
+  }
+  if (entry && entry.tip === 'ajustare_regularizare_tva_d307') {
+    const tip = String(entry.d307 && entry.d307.tip || '').toUpperCase();
+    if ((tip === 'A' || tip === 'L') && profile && profile.tvaPlatitor) {
+      return 'Operațiunea D307 de tip ' + tip + ' se depune de persoana care nu este înregistrată normal în scopuri de TVA. Pentru o firmă plătitoare, ajustarea intră în D300.';
+    }
+    if (tip === 'C') {
+      if (!profile || !/^\d{4}-\d{2}-\d{2}$/.test(profile.dataAnulareTva)) {
+        return 'Operațiunea D307 de tip C cere data anulării codului TVA, completată în Setări → Firmă.';
+      }
+      if (entry.data && entry.data < profile.dataAnulareTva) {
+        return 'Ajustarea D307 de tip C nu poate fi anterioară datei anulării codului TVA.';
+      }
     }
   }
   if (entry && entry.tip === 'operatiune_tva_cod_anulat_d311') {

@@ -902,6 +902,7 @@ ok('sumarul nu cade pe raspuns gol', typeof partners.sumarAnaf({}) === 'string')
 
 // Vizualizatorul de XML: titlul declaratiei si indentarea.
 eq('titlul pentru D300', viewer.xmlTitle('/xml/d300?period=2026-06'), 'D300 — Decont TVA (XML ANAF)');
+eq('titlul pentru D307', viewer.xmlTitle('/xml/d307?period=2026-06'), 'D307 — Ajustări TVA (XML ANAF)');
 eq('titlul pentru SAF-T', viewer.xmlTitle('/xml/saft?year=2026'), 'SAF-T / D406 (XML ANAF)');
 eq('declaratie necunoscuta primeste titlu generic', viewer.xmlTitle('/xml/altceva'), 'XML ANAF');
 eq('adresa lipsa nu arunca', viewer.xmlTitle(undefined), 'XML ANAF');

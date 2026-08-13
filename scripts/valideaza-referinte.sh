@@ -1,6 +1,6 @@
 #!/bin/sh
 # Genereaza toate iesirile fiscale din exemplul de seed si le valideaza cu validatoarele OFICIALE:
-#   - declaratiile (D300/D301/D311/D394/D112/D390/D100/D101/D205) si SAF-T (D406, toate variantele)
+#   - declaratiile (D300/D301/D307/D311/D394/D112/D390/D100/D101/D205) si SAF-T (D406, toate variantele)
 #     -> DUKIntegrator, prin scripts/valideaza-duk.sh (validatorul se ia din manifestul ANAF);
 #   - RO e-Transport -> XSD oficial, prin scripts/valideaza-etransport.sh (offline, xmllint).
 # Prinde: regresii in generatoare (src/xml.js, src/saft.js, src/etransport.js) si drift de schema.

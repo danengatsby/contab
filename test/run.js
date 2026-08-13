@@ -2846,6 +2846,76 @@ section('D301 — TVA speciala la neplatitori (art. 317)');
   ok('schema: valuta din afara nomenclatorului este refuzata la intrare', /neacceptată/.test(errValuta));
 }
 
+section('D307 — ajustari/corectii/regularizari TVA');
+{
+  const d307 = require('../src/d307');
+  const fp307 = require('../src/fiscalProfile');
+  const fields = { data: '2026-06-12', document: 'TA-307', partener: 'Cedent & Asociatii SRL',
+    cuiPartener: 'RO14399840', tipOperatieD307: 'A', sumaTvaD307: 100 };
+  const m = d307.dinCampuri(fields);
+  eq('D307: campurile normalizeaza tipul, CUI-ul si TVA in lei intregi', JSON.stringify(m),
+    JSON.stringify({ tip: 'A', rol: 'cedent', codOperator: '14399840',
+      denumireOperator: 'Cedent & Asociatii SRL', tva: 100 }));
+  const lines = gt2(d307.TIP_DOCUMENT).build(fields);
+  ok('D307: suma de plata foloseste obligatia 635=446, fara conturile TVA curenta',
+    lines.length === 1 && lines[0].debit === '635' && lines[0].credit === '446' && lines[0].suma === 100
+      && !lines.some((l) => /^442/.test(l.debit) || /^442/.test(l.credit)));
+  const negFields = Object.assign({}, fields, { document: 'CR-307', partener: 'Beneficiar SRL',
+    cuiPartener: '160796', tipOperatieD307: 'C', sumaTvaD307: -25 });
+  const mNeg = d307.dinCampuri(negFields);
+  const negLines = gt2(d307.TIP_DOCUMENT).build(negFields);
+  ok('D307: regularizarea negativa inverseaza obligatia (446=635)', mNeg.tva === -25
+    && negLines.length === 1 && negLines[0].debit === '446' && negLines[0].credit === '635'
+    && negLines[0].suma === 25);
+  const view307 = { company: { cui: '12345674', nume: 'TEST SRL', adresa: 'Str. Test 1',
+    tvaPlatitor: false, dataAnulareTva: '2026-06-01' }, entries: [
+    { id: '307-a1', tip: d307.TIP_DOCUMENT, status: 'postat', data: '2026-06-12', period: '2026-06',
+      partener: fields.partener, d307: m, lines },
+    { id: '307-a2', tip: d307.TIP_DOCUMENT, status: 'postat', data: '2026-06-15', period: '2026-06',
+      partener: fields.partener, d307: Object.assign({}, m, { tva: 50 }), lines: [{ debit: '635', credit: '446', suma: 50 }] },
+    { id: '307-c', tip: d307.TIP_DOCUMENT, status: 'postat', data: '2026-06-20', period: '2026-06',
+      partener: negFields.partener, d307: mNeg, lines: negLines },
+  ] };
+  const r307 = d307.report(view307, '2026-06');
+  ok('D307: aceeasi combinatie tip+CUI este agregata intr-un singur rand oficial',
+    r307.nrArticole === 3 && r307.nr === 2 && r307.rows.find((r) => r.tip === 'A').tva === 150);
+  eq('D307: totalul semnat include regularizarea negativa', r307.totalTva, 125);
+  const x307 = xml.d307Xml(view307.company, '2026-06', r307,
+    { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
+  ok('D307 XML bine-format si datele externe sunt escapate', wellFormed(x307)
+    && /denO="Cedent &amp; Asociatii SRL"/.test(x307));
+  ok('D307: subtotalurile A/L/C si suma de control sunt derivate din randuri',
+    /tvaA="150" tvaL="0" tvaC="-25" totalPlata_A="125"/.test(x307)
+      && (x307.match(/<operatie /g) || []).length === 2);
+  ok('D307 rectificativ: XML poarta d_rec=1', /d_rec="1"/.test(xml.d307Xml(view307.company,
+    '2026-06', r307, null, { rectificativa: true })));
+  ok('D307 dupa rezerva: d_anulare cere si emite temeiul ales',
+    /d_anulare="1" temei="2"/.test(xml.d307Xml(view307.company, '2026-06', r307, null,
+      { dupaRezerva: true, temei: 2 })));
+  const asteptate = require('../src/declarations').expectedForFirma(view307, '2026-06').map((x) => x.tip);
+  ok('D307: calendarul o cere numai in luna cu operatiune efectiva', asteptate.includes('d307'));
+  const entryA = view307.entries[0];
+  ok('guard: tipul A nu poate fi postat de platitorul normal de TVA', /D300/.test(fp307.entryGuard(
+    fp307.build({ tvaPlatitor: true }), entryA) || ''));
+  ok('guard: tipul C cere data anularii codului TVA', /data anulării/.test(fp307.entryGuard(
+    fp307.build({ tvaPlatitor: false }), view307.entries[2]) || ''));
+  let errCui307 = '';
+  try { d307.dinCampuri(Object.assign({}, fields, { cuiPartener: '14399841' })); } catch (e) { errCui307 = e.message; }
+  ok('D307: CUI-ul operatorului cu cifra de control gresita este refuzat la intrare', /CUI/.test(errCui307));
+  eq('D307: validatorul oficial permite si rectificarea negativa A',
+    d307.dinCampuri(Object.assign({}, fields, { sumaTvaD307: -1 })).tva, -1);
+  const zeroView = Object.assign({}, view307, { entries: view307.entries.concat([{
+    id: '307-c-zero', tip: d307.TIP_DOCUMENT, status: 'postat', data: '2026-06-21', period: '2026-06',
+    partener: negFields.partener, d307: Object.assign({}, mNeg, { tva: 25 }),
+    lines: [{ debit: '635', credit: '446', suma: 25 }],
+  }]) });
+  const zeroReport = d307.report(zeroView, '2026-06');
+  const zeroXml = xml.d307Xml(zeroView.company, '2026-06', zeroReport, null, { rectificativa: true });
+  ok('D307: rectificarea pastreaza randul agregat zero acceptat de validator',
+    zeroReport.rows.find((r) => r.tip === 'C').tva === 0
+      && /tvaC="0"/.test(zeroXml) && /tip="C"[^>]*tva="0"/.test(zeroXml));
+}
+
 section('D311 — TVA colectata dupa anularea codului normal de TVA');
 {
   const d311 = require('../src/d311');
@@ -5892,6 +5962,7 @@ section('Declaratii rectificative (istoric depuneri + steag XML)');
 
   // Steagul in XML exista DOAR la D112 (dovedit prin sondaj pe validatoarele oficiale).
   ok('D112 e semnalizata in XML', !!decl.RECT_IN_XML.d112);
+  ok('D307 e semnalizata in XML', !!decl.RECT_IN_XML.d307);
   ok('D300 NU are steag in XML (redepunere)', !decl.RECT_IN_XML.d300);
   ok('D394 NU are steag in XML (redepunere)', !decl.RECT_IN_XML.d394);
 

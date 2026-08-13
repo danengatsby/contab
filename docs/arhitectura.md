@@ -28,7 +28,7 @@
 - `src/fiscal.js` — parametri fiscali 2026 + calculul salariului din brut (CAS/CASS/impozit/CAM).
 - `src/aiExtractor.js` — extragere cu Claude API (document PDF + ieșire structurată).
 - `src/reporting.js` — livrabile (oglinda borderoului de primire): recap D112/D300/D100, obligații ANAF, registru-inventar.
-- `src/xml.js` — generare XML: e-Factura UBL 2.1 (CIUS-RO) pentru facturi emise, D300 și D394 (format ANAF).
+- `src/xml.js` — generare XML: e-Factura UBL 2.1 (CIUS-RO) pentru facturi emise și declarațiile ANAF, inclusiv D300/D301/D307/D311/D394.
 - `src/saft.js` — generare SAF-T (D406): Header + MasterFiles (conturi, clienți, furnizori, TVA, mijloace fixe) + GeneralLedgerEntries + SourceDocuments.
 - `src/assets.js` — registrul de mijloace fixe + amortizare liniară/degresivă/accelerată (calcul lunar, plan, înregistrare 6811=281x).
 - `src/stocks.js` — gestiunea stocurilor cantitativ-valoric la cost mediu ponderat (CMP): fișă de magazie, stoc curent.
@@ -226,7 +226,7 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   rulează **84 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
   deci rularea produce mai multe rezultate) — exact fluxurile care nu se pot atinge pe demo
   live: roluri și drepturi granulare, resetare de parolă cu token real, importuri, erori SPV fără
-  credențiale, toate cele 12 declarații XML, **restaurarea efectivă** a unui backup (verificată
+  credențiale, declarațiile și situațiile XML accesibile profilului seed, **restaurarea efectivă** a unui backup (verificată
   prin dispariția unui marcaj scris după arhivare) și panoul „Cine accesează aplicația" (tabelele
   se randează, filtrul schimbă conținutul, iar un cont fără drepturi nu vede nici cardul, nici
   datele din spatele lui). Importul balanței verifică în browser previzualizarea, salvarea unei

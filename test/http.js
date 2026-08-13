@@ -1526,6 +1526,29 @@ async function main() {
       eq('guard: /xml/d300 la neplatitor TVA -> 400', (await req('GET', '/xml/d300?period=2026-06', { cookie: c1 })).status, 400);
       eq('guard: /xml/d394 la neplatitor TVA -> 400', (await req('GET', '/xml/d394?period=2026-06', { cookie: c1 })).status, 400);
       eq('guard: /pdf/d300 la neplatitor TVA -> 400', (await req('GET', '/pdf/d300?period=2026-06', { cookie: c1 })).status, 400);
+      // D307: suma negativa este permisa explicit pentru corectia C si trebuie sa treaca prin
+      // composeEntry fara sa fie confundata cu un storno tastat pe o factura obisnuita.
+      await req('POST', '/api/company', { cookie: c1, body: { dataAnulareTva: '2026-10-01' } });
+      const e307 = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'ajustare_regularizare_tva_d307', fields: { data: '2026-10-06',
+          partener: 'Beneficiar D307 SRL', cuiPartener: '160796', document: 'CR-307',
+          tipOperatieD307: 'C', sumaTvaD307: -25 },
+      } });
+      ok('D307: corectia negativa este salvata cu metadata si monografia inversa 446=635',
+        e307.status === 200 && e307.json.entry.d307.tva === -25
+          && e307.json.entry.lines.some((l) => l.debit === '446' && l.credit === '635' && l.suma === 25));
+      const api307 = await req('GET', '/api/d307?period=2026-10', { cookie: c1 });
+      ok('D307: raportul API pastreaza totalul semnat', api307.status === 200
+        && api307.json.totaluri.C === -25 && api307.json.totalTva === -25);
+      const xml307 = await req('GET', '/xml/d307?period=2026-10', { cookie: c1 });
+      ok('D307: XML-ul are operatia C si totalurile corelate', xml307.status === 200
+        && /<operatie tip="C" codO="160796"/.test(xml307.text)
+        && /tvaA="0" tvaL="0" tvaC="-25" totalPlata_A="-25"/.test(xml307.text));
+      const cal307 = await req('GET', '/api/declarations?period=2026-10', { cookie: c1 });
+      ok('D307: registrul o asteapta si ofera linkul XML in luna operatiunii', cal307.status === 200
+        && cal307.json.rows.some((x) => x.tip === 'd307' && /xml\/d307/.test(JSON.stringify(x.links || []))));
+      if (e307.json.entry) await req('POST', '/api/entries/' + e307.json.entry.id + '/storno', { cookie: c1, body: { data: '2026-10-07' } });
+      await req('POST', '/api/company', { cookie: c1, body: { dataAnulareTva: '' } });
       // D301: serviciile UE cer codul special art. 317, apoi pastreaza cursul la 4 zecimale si
       // genereaza perechea sectiune 4 + 4.1 ceruta de validatorul oficial.
       const d301FaraCod = await req('POST', '/api/entries', { cookie: c1, body: {

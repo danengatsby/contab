@@ -85,6 +85,10 @@ Fiecare raport are buton **⬇ PDF**, iar fiecare înregistrare poate fi exporta
   `achizitie_tva_speciala_d301` (`/xml/d301?period=`). Codul special art. 317 se configurează în
   profilul fiscal; TVA-ul este nedeductibil și intră în cost, cu obligația în 446. Operațiunile UE
   alimentează și D390 când firma are codul art. 317.
+- **D307** (ajustări/corecții/regularizări TVA) — se înregistrează
+  `ajustare_regularizare_tva_d307` (`/xml/d307?period=`), cu tipul A/L/C, operatorul și TVA-ul
+  semnat. Validatorul electronic J1.1.0 acceptă și corecții negative sau rânduri zero în
+  rectificative; aplicația le păstrează fără să le transforme în TVA curentă.
 - **D311** (TVA colectată cu cod normal anulat) — se activează starea fiscală și data anulării în
   Setări, apoi se înregistrează `operatiune_tva_cod_anulat_d311` (`/xml/d311?period=`). Schema IV
   acoperă perioada codului anulat; schema V, operațiunile vechi declarate după reînregistrare.
@@ -347,6 +351,7 @@ Endpoint `/api/dashboard`.
   angajați → D112; lună de trimestru → D100; neplătitorii de TVA → **D406 trimestrial**;
   **D390 apare automat** în lunile cu operațiuni intracomunitare în jurnal — **bunuri sau
   servicii**, art. 325; **D301** apare când neplătitorul are operațiuni TVA speciale postate;
+  **D307** apare numai în luna cu ajustări/corecții/regularizări postate;
   **D311** apare numai în luna în care există taxă exigibilă cu codul normal anulat;
   Intrastat, în schimb, doar pe bunuri, fiindcă e statistică de mărfuri), cu
   **termen de depunere** (25 ale lunii următoare; D406 — ultima zi a lunii următoare). Descărcarea XML-ului marchează automat „**generată**";

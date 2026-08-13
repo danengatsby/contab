@@ -421,6 +421,12 @@ Profil explicit pentru anularea/reînregistrarea codului TVA, tip de operațiune
 ambele scheme mutual exclusive ale formularului. Referințele inițială, rectificativă și secțiunea V
 după reînregistrare trec validatorul oficial D311 J2.0.0.
 
+## D307 — ajustări/corecții/regularizări TVA — ✅ ÎNCHIS 2026-08-13
+
+Tip de document propriu pentru transfer de active (`A`), leasing (`L`) și ajustări după anularea
+codului TVA (`C`), cu monografii pe 446, raport agregat pe tip+CUI, calendar/registru și XML
+inițial/rectificativ. Referințele includ TVA negativă pe C și trec validatorul oficial D307 J1.1.0.
+
 # P2 — infrastructură, pe semnal real
 
 ## 7. Offsite pe stocare obiect, criptat — ✅ ÎNCHIS 2026-07-28 (RTO nemăsurat)

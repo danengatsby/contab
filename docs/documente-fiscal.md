@@ -45,6 +45,12 @@
   iar TVA-ul nedeductibil intră în același cost contra 446. Profilul firmei păstrează separat codul
   special art. 317; acesta nu transformă firma în plătitoare normală de TVA. XML-ul D301 și D390
   sunt generate din același marcaj, iar referința D301 trece DUKIntegrator.
+- **Ajustări/corecții/regularizări TVA — D307:** tipul `ajustare_regularizare_tva_d307` acoperă
+  transferul de active (`A`), transferul proprietății activului după leasing (`L`) și operațiunile
+  aferente anulării codului TVA (`C`). Taxa pozitivă se postează 635=446, iar corecția semnată
+  negativ 446=635; raportul agregă aceeași combinație tip+CUI și păstrează inclusiv rezultatul
+  zero al unei rectificări, conform validatorului.
+  XML-ul inițial și cel rectificativ trec DUKIntegrator D307 J1.1.0.
 - **Cod normal de TVA anulat — D311:** tipul `operatiune_tva_cod_anulat_d311` acoperă categoriile
   11/21/41/61. Taxa datorată se ține în 446, fără 4426/4427; la achiziții intră în cost, iar la
   livrările deja recunoscute se postează numai 635=446, ca să nu se dubleze venitul. Profilul

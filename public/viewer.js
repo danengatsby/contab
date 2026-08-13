@@ -53,7 +53,7 @@ async function openEfacturaViewer(url, title) {
     openViewerHtml(renderEfactura(doc), title || 'e-Factura', url);
   } catch (e) { openViewer(url, title || 'e-Factura'); } // fallback: XML brut in iframe
 }
-// Vizualizator XML ANAF (D300/D394/D112/SAF-T) — pretty-print + colorare usoara, in aplicatie
+// Vizualizator XML ANAF (declaratii + SAF-T) — pretty-print + colorare usoara, in aplicatie
 function prettyXml(xml) {
   try {
     let out = ''; let pad = 0;
@@ -74,7 +74,15 @@ function highlightXml(esc) {
 }
 function xmlTitle(href) {
   const m = (href || '').match(/\/xml\/([a-z0-9]+)/i);
-  const map = { d300: 'D300 — Decont TVA (XML ANAF)', d394: 'D394 — Declarație informativă (XML ANAF)', d112: 'D112 — Salarii / contribuții (XML ANAF)', saft: 'SAF-T / D406 (XML ANAF)' };
+  const map = {
+    d300: 'D300 — Decont TVA (XML ANAF)',
+    d301: 'D301 — Decont special TVA (XML ANAF)',
+    d307: 'D307 — Ajustări TVA (XML ANAF)',
+    d311: 'D311 — TVA cu cod anulat (XML ANAF)',
+    d394: 'D394 — Declarație informativă (XML ANAF)',
+    d112: 'D112 — Salarii / contribuții (XML ANAF)',
+    saft: 'SAF-T / D406 (XML ANAF)',
+  };
   return (m && map[(m[1] || '').toLowerCase()]) || 'XML ANAF';
 }
 async function openXmlViewer(url) {

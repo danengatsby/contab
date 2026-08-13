@@ -19,6 +19,7 @@ const plans = require('../plans');
 const declCheck = require('../declarationCheck');
 const fiscalProfile = require('../fiscalProfile');
 const d301 = require('../d301');
+const d307 = require('../d307');
 const d311 = require('../d311');
 const { statePlata } = require('../payroll');
 
@@ -109,6 +110,25 @@ module.exports = function register(app, ctx) {
     catch (e) { return res.status(400).send(e.message); }
     recordDecl(req, 'd301', period);
     sendXml(res, out, 'd301.xml');
+  });
+  app.get('/api/d307', (req, res) => res.json(d307.report(S(req), req.query.period || null)));
+
+  app.get('/xml/d307', (req, res) => {
+    const period = req.query.period;
+    if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return res.status(400).send('Perioadă invalidă pentru D307 (folosește YYYY-MM).');
+    const v = S(req);
+    const recD307 = decl.find(db.get(), activeId(req), 'd307', period);
+    const depusaDeja = !!decl.lastSubmission(recD307);
+    let out;
+    try {
+      out = xml.d307Xml(v.company, period, d307.report(v, period), declarantOf(req), {
+        rectificativa: depusaDeja,
+        dupaRezerva: req.query.dupaRezerva === '1',
+        temei: Number(req.query.temei) === 2 ? 2 : 1,
+      });
+    } catch (e) { return res.status(400).send(e.message); }
+    recordDecl(req, 'd307', period);
+    sendXml(res, out, 'd307.xml');
   });
   app.get('/api/d311', (req, res) => res.json(d311.report(S(req), req.query.period || null)));
 

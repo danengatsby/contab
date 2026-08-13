@@ -8,6 +8,7 @@ const decl = require('../declarations');
 const plans = require('../plans');
 const rep = require('../reporting');
 const d301 = require('../d301');
+const d307 = require('../d307');
 const d311 = require('../d311');
 
 module.exports = function register(app, ctx) {
@@ -26,6 +27,7 @@ module.exports = function register(app, ctx) {
     try {
       if (tip === 'd300') { const x = rep.d300(view, period); return { tvaColectata: x.tvaColectata, tvaDeductibila: x.tvaDeductibila, tvaDePlata: x.tvaDePlata, tvaDeRecuperat: x.tvaDeRecuperat }; }
       if (tip === 'd301') { const x = d301.report(view, period); return { baza: x.totalBaza, tvaDePlata: x.totalTva }; }
+      if (tip === 'd307') { const x = d307.report(view, period); return { tvaA: x.totaluri.A, tvaL: x.totaluri.L, tvaC: x.totaluri.C, total: x.totalTva }; }
       if (tip === 'd311') { const x = d311.report(view, period); return { baza: x.totalBaza, tvaDePlata: x.totalTva }; }
       if (tip === 'd112') { const x = rep.d112(view, period); const t = x.totals || {}; return { brut: t.brut, impozit: t.impozit, cas: t.cas, cass: t.cass, cam: t.cam }; }
       if (tip === 'd394') { const x = rep.d300(view, period); return { tvaColectata: x.tvaColectata, tvaDeductibila: x.tvaDeductibila }; }

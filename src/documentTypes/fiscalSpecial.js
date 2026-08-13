@@ -5,6 +5,7 @@
 const { L, F, TROZ } = require('./helpers');
 const { round2 } = require('../util');
 const fiscal = require('../fiscal'); // cotele NU se hardcodeaza — sursa unica e fiscalConfig
+const d307 = require('../d307');
 const d311 = require('../d311');
 
 // Optiunile de plata: trezoreria obisnuita plus „neplatita inca", care lasa datoria pe 462.
@@ -27,6 +28,29 @@ function construieste(fel, d, contCheltuiala, explicatie) {
 }
 
 module.exports = [
+  // ───────────── D307: AJUSTARI / REGULARIZARI TVA ─────────────
+  // Suma D307 este obligatie distincta in 446, nu TVA curenta in 4426/4427. Valoarea negativa
+  // reprezinta o regularizare in favoarea firmei si inverseaza aceeasi cheltuiala/datorie; nu se
+  // tasteaza ca `tva`, fiindca regula generala a documentelor refuza corect sumele negative.
+  {
+    id: d307.TIP_DOCUMENT,
+    nume: 'Ajustare/corecție/regularizare TVA — D307',
+    grup: 'Regularizari',
+    eFactura: 'nu', // declaratie fiscala, nu factura emisa catre operatorul nominalizat
+    fields: [F.data, { ...F.partener, label: 'Cedent / finanțator / beneficiar', required: true },
+      { ...F.cuiPartener, label: 'CUI cedent / finanțator / beneficiar', required: true },
+      { ...F.document, required: true },
+      { name: 'tipOperatieD307', label: 'Tip operațiune D307', type: 'select', required: true,
+        options: Object.entries(d307.OPERATIUNI).map(([value, x]) => ({ value, label: value + ' — ' + x.nume })) },
+      { name: 'sumaTvaD307', label: 'TVA D307 (lei; minus = în favoarea firmei)', type: 'number', required: true }],
+    build: (d) => {
+      const m = d307.dinCampuri(d);
+      const expl = 'D307 ' + m.tip + ' — ' + d307.OPERATIUNI[m.tip].nume;
+      return m.tva > 0
+        ? [L('635', '446', m.tva, expl + ' — TVA de plată')]
+        : [L('446', '635', Math.abs(m.tva), expl + ' — regularizare în favoarea firmei')];
+    },
+  },
   // ───────────── D311: COD NORMAL DE TVA ANULAT ─────────────
   // Taxa datorata nu trece prin 4427: firma nu are cod valid si nici drept de deducere. Pentru
   // livrarile deja facturate (randurile 41/61), baza a fost recunoscuta la documentul initial;
