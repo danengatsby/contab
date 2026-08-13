@@ -1586,7 +1586,7 @@ ${exp || '    <!-- fara expedieri -->'}
 // drept cifR), cu recapitulatia pe tip de venit in <sect_II>.
 const TIP_PLATA_D205 = '2'; // vezi nota de la `tipCod` din d205Xml
 
-function d205Xml(company, year, d, who) {
+function d205Xml(company, year, d, who, rect) {
   const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
   const lei = (v) => String(Math.round(Number(v) || 0));
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
@@ -1623,7 +1623,7 @@ function d205Xml(company, year, d, who) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- D205 v2 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D205 fisier.xml -->
 <declaratie205 xmlns="mfp:anaf:dgti:d205:declaratie:v3"
-  luna="12" an="${esc(String(year))}" d_rec="0" d_succ="0"
+  luna="12" an="${esc(String(year))}" d_rec="${rect && rect.rectificativa ? 1 : 0}" d_succ="0"
   nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
   cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}" adresa="${esc(adresa || '-')}"
   totalPlata_A="${lei(sumaControl205)}">

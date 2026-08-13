@@ -1530,6 +1530,26 @@ async function main() {
       eq('guard: /xml/d101 la regim micro -> 400', (await req('GET', '/xml/d101?year=2026', { cookie: c1 })).status, 400);
       eq('guard: /xml/d107 la regim micro -> 400', (await req('GET', '/xml/d107?year=2026', { cookie: c1 })).status, 400);
 
+      // D205: obligatia anuala este declansata de aceleasi randuri care intra in XML, indiferent
+      // de regimul micro/profit. Folosim 2027 ca sa nu influentam calendarele 2025/2026 testate mai sus.
+      const e205 = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'chirie_pf', fields: { data: '2027-02-10', document: 'CHR-205',
+          partener: 'Ion Beneficiar', cuiPartener: '1900101415238', baza: 1000, cota: 10, cont: '5121' },
+      } });
+      ok('D205: operatiunea de chirie cu retinere se inregistreaza', e205.status === 200 && e205.json.ok);
+      const reg205 = await req('GET', '/api/declarations?period=2027-12', { cookie: c1 });
+      const row205 = (reg205.json.rows || []).find((r) => r.tip === 'd205');
+      ok('D205: calendarul anual o cere si ofera XML-ul anului corect', row205
+        && row205.due === '2028-02-29' && (row205.links || []).some((l) => l.href === '/xml/d205?year=2027'));
+      const xd205 = await req('GET', '/xml/d205?year=2027', { cookie: c1 });
+      ok('D205: XML initial bine-format, cu beneficiarul si d_rec=0', xd205.status === 200
+        && /<declaratie205/.test(xd205.text) && /Ion Beneficiar/.test(xd205.text) && /d_rec="0"/.test(xd205.text));
+      const reg205Gen = await req('GET', '/api/declarations?period=2027-12', { cookie: c1 });
+      ok('D205: descarcarea XML marcheaza randul generat',
+        (reg205Gen.json.rows || []).some((r) => r.tip === 'd205' && r.status === 'generata'));
+      eq('D205: anul invalid este refuzat de API', (await req('GET', '/api/d205?year=abc', { cookie: c1 })).status, 400);
+      eq('D205: anul invalid este refuzat de XML', (await req('GET', '/xml/d205?year=abc', { cookie: c1 })).status, 400);
+
       // ── Situatii financiare anuale (bilant) ──
       // Nomenclatoarele vin de la server (sursa unica: valorile extrase din validatorul ANAF).
       const nomB = await req('GET', '/api/bilant-nomenclator', { cookie: c1 });

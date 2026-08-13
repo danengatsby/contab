@@ -239,6 +239,10 @@ aprobarea și eventuala forțare.
 - `GET /api/livrabile?period=` — borderoul lunar: ce declarații se depun și termenele.
 - `GET /xml/d300|d301|d307|d311|d394|d390|d112|d100|d107|d205|saft?period=/an=` — XML-urile de declarații
   (validate structural înainte de servire; `/xml/saft` intră sub plafonul de export).
+- `GET /api/d205?year=YYYY` / `GET /xml/d205?year=YYYY` — recapitularea și XML-ul anual pentru
+  dividende, chirii și premii cu reținere la sursă. D205 apare automat în registrul lunii decembrie
+  numai dacă raportul are beneficiari; descărcarea o marchează `generata`, iar o redepunere după
+  existența unei depuneri emite automat `d_rec="1"`.
 - `GET /api/d301?period=YYYY-MM` — recapitularea operațiunilor D301, pe secțiuni, cu baza, TVA-ul
   datorat și suma de control; `GET /xml/d301` refuză firmele plătitoare normal de TVA, perioadele
   fără operațiuni și antetul fără bancă/cont.

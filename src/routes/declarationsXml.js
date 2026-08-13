@@ -155,10 +155,20 @@ module.exports = function register(app, ctx) {
     recordDecl(req, 'd390', req.query.period);
     sendXml(res, xml.d390Xml(v.company, req.query.period || null, rep.d390(v, req.query.period || null)), 'd390.xml');
   });
-  app.get('/api/d205', (req, res) => res.json(rep.d205(S(req), req.query.year || new Date().getFullYear())));
+  app.get('/api/d205', (req, res) => {
+    const y = String(req.query.year || (new Date().getFullYear() - 1));
+    if (!/^\d{4}$/.test(y)) return res.status(400).json({ error: 'An invalid pentru D205.' });
+    res.json(rep.d205(S(req), y));
+  });
   app.get('/xml/d205', (req, res) => {
-    const v = S(req); const y = req.query.year || new Date().getFullYear();
-    sendXml(res, xml.d205Xml(v.company, y, rep.d205(v, y)), 'd205.xml');
+    const v = S(req); const y = String(req.query.year || (new Date().getFullYear() - 1));
+    if (!/^\d{4}$/.test(y)) return res.status(400).send('An invalid pentru D205.');
+    const rec = decl.find(db.get(), activeId(req), 'd205', y + '-12');
+    const out = xml.d205Xml(v.company, y, rep.d205(v, y), declarantOf(req), {
+      rectificativa: !!decl.lastSubmission(rec),
+    });
+    recordDecl(req, 'd205', y + '-12');
+    sendXml(res, out, 'd205-' + y + '.xml');
   });
   app.get('/api/intrastat', (req, res) => res.json(rep.intrastat(S(req), req.query.period || null)));
   // (csv/intrastat: src/routes/csv.js)

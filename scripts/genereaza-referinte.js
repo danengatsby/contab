@@ -432,6 +432,10 @@ const vServ = {
 // D205 (retineri la sursa) — an incheiat, cu un beneficiar de dividende
 const vDiv = { entries: [{ id: 'd1', data: '2025-08-10', period: '2025-08', tip: 'repartizare_dividende', tipNume: 'Div', partener: 'Ion', partenerCui: '1900101415238', lines: [{ debit: '457', credit: '5121', suma: 9200 }, { debit: '457', credit: '446', suma: 800 }, { debit: '117', credit: '457', suma: 10000 }] }], openingBalances: {} };
 w('D205', xml.d205Xml(v.company, '2025', rep.d205(vDiv, '2025'), who));
+// Redeclararea dupa o depunere anterioara foloseste chiar campul `d_rec` al schemei D205.
+// Referinta separata impiedica revenirea tacita la declaratie initiala in fluxul de rectificare.
+w('D205-rectificativa', xml.d205Xml(v.company, '2025', rep.d205(vDiv, '2025'), who,
+  { rectificativa: true }));
 // D205 varianta RETINERI PE VENITURI (chirii + premii): referinta de baza are doar dividende, unde
 // baza impozabila E chiar brutul. Chiriile si premiile sunt singurele in care baza difera de brut
 // (art. 84 — minus cota forfetara de 20%; art. 110 alin. (4) — minus 600 lei neimpozabili), deci

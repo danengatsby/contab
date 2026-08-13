@@ -24,6 +24,7 @@ const CONT_SPONSORIZARE = '6582'; // art. 25(4)(i) — cheltuiala de sponsorizar
 // raportare (importa doar util + documentTypes), deci nu se inchide niciun ciclu — verificat.
 const xml = require('./xml');
 const d301 = require('./d301');
+const d205 = require('./d205');
 
 /** Rulajele perioadei pe cont {cod:{d,c}}, FARA inchiderile 6/7 -> 121 (vezi `resultLines`).
  *  Alimenteaza recapitulativul D112, care citeste 641: nota de inchidere anuala (121 = 641) e
@@ -230,42 +231,6 @@ function d390(db, period) {
   return { period, rows, totaluri, avertismente,
     totalL: totaluri.L, totalA: totaluri.A, // pastrate: le citesc panourile si testele existente
     total: round2(D390_CODURI.reduce((s, c) => s + totaluri[c], 0)), nr: rows.length };
-}
-
-/** Recap D205 — impozit pe venit retinut la sursa (dividende, chirii, premii), pe beneficiar. */
-function d205(db, year) {
-  const TIPURI = { repartizare_dividende: 'Dividende', chirie_pf: 'Chirii', premiu_pf: 'Premii' };
-  // Felul venitului decide BAZA impozabila, care nu e brutul (art. 84 la chirii, art. 110 alin. (4)
-  // la premii). Se calculeaza per ARTICOL, nu pe totalul beneficiarului: suma neimpozabila de 600
-  // de lei se acorda pentru FIECARE premiu, deci scazuta o singura data din cumulat ar declara o
-  // baza prea mare la cine a primit mai multe premii.
-  const FEL = { repartizare_dividende: 'dividende', chirie_pf: 'chirii', premiu_pf: 'premii' };
-  const ent = acc.postedEntries(db).filter((e) => TIPURI[e.tip] && String(e.period || periodOf(e.data)).startsWith(String(year)));
-  const map = new Map();
-  for (const e of ent) {
-    const tip = TIPURI[e.tip];
-    let impozit = 0; let brut = 0;
-    for (const l of e.lines) if (String(l.credit) === '446') impozit = round2(impozit + l.suma);
-    if (e.tip === 'repartizare_dividende') {
-      for (const l of e.lines) if (String(l.credit) === '457') brut = round2(brut + l.suma); // dividend brut
-    } else {
-      for (const l of e.lines) if (/^6/.test(String(l.debit))) brut = round2(brut + l.suma); // venitul brut = cheltuiala
-    }
-    if (impozit === 0 && brut === 0) continue;
-    const baza = fiscal.retinereLaSursa(FEL[e.tip], brut).baza;
-    const cnp = String(e.partenerCui || '').replace(/\s/g, '').toUpperCase();
-    const key = tip + '|' + (cnp || e.partener || '-');
-    const r = map.get(key) || { tipVenit: tip, beneficiar: e.partener || '', cnp, venitBrut: 0, bazaImpozabila: 0, impozit: 0, nrInreg: 0 };
-    r.venitBrut = round2(r.venitBrut + brut); r.bazaImpozabila = round2(r.bazaImpozabila + baza);
-    r.impozit = round2(r.impozit + impozit); r.nrInreg += 1;
-    if (!r.beneficiar && e.partener) r.beneficiar = e.partener;
-    map.set(key, r);
-  }
-  const rows = [...map.values()].sort((a, b) => (a.tipVenit + a.beneficiar).localeCompare(b.tipVenit + b.beneficiar));
-  return { year: String(year), rows,
-    totalBrut: round2(rows.reduce((s, r) => s + r.venitBrut, 0)),
-    totalBaza: round2(rows.reduce((s, r) => s + r.bazaImpozabila, 0)),
-    totalImpozit: round2(rows.reduce((s, r) => s + r.impozit, 0)), nr: rows.length };
 }
 
 /** Achizitiile de la producatori agricoli PF pe baza de fila din carnetul de comercializare /
@@ -1757,4 +1722,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, ajustariDepreciere, provizioane, CONTURI_TREZORERIE };
+module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205: d205.report, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, ajustariDepreciere, provizioane, CONTURI_TREZORERIE };

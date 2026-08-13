@@ -3566,6 +3566,8 @@ ok('D205: dividend brut 10000 capturat', d205.rows.some((r) => r.tipVenit === 'D
   eq('la dividende baza E chiar brutul (art. 97, fara deduceri)', rD.bazaImpozabila, rD.venitBrut);
 }
 ok('D205 XML bine-format', wellFormed(xml.d205Xml({ cui: 'RO1', nume: 'X' }, '2026', d205)));
+ok('D205 initiala poarta d_rec="0"', /d_rec="0"/.test(xml.d205Xml({ cui: 'RO1', nume: 'X' }, '2026', d205)));
+ok('D205 rectificativa poarta d_rec="1"', /d_rec="1"/.test(xml.d205Xml({ cui: 'RO1', nume: 'X' }, '2026', d205, null, { rectificativa: true })));
 const intr = rep.intrastat({ entries: [
   { id: '1', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-10', partenerCui: 'DE1', lines: gt2('livrare_intracomunitara').build({ baza: 5000 }) },
   { id: '2', tip: 'achizitie_intracomunitara', period: '2026-06', data: '2026-06-12', partenerCui: 'FR2', lines: gt2('achizitie_intracomunitara').build({ baza: 3000, cota: 21 }) },
@@ -6033,6 +6035,7 @@ section('Declaratii rectificative (istoric depuneri + steag XML)');
   // Steagul in XML exista DOAR la D112 (dovedit prin sondaj pe validatoarele oficiale).
   ok('D112 e semnalizata in XML', !!decl.RECT_IN_XML.d112);
   ok('D107 e semnalizata in XML', !!decl.RECT_IN_XML.d107);
+  ok('D205 e semnalizata in XML', !!decl.RECT_IN_XML.d205);
   ok('D307 e semnalizata in XML', !!decl.RECT_IN_XML.d307);
   ok('D300 NU are steag in XML (redepunere)', !decl.RECT_IN_XML.d300);
   ok('D394 NU are steag in XML (redepunere)', !decl.RECT_IN_XML.d394);
@@ -6061,6 +6064,8 @@ eq('termen D300 pentru iunie', declMod.dueDate('d300', '2026-06'), '2026-07-25')
 eq('termen D112 pentru decembrie (trece anul)', declMod.dueDate('d112', '2026-12'), '2027-01-25');
 eq('termen SAF-T: ultima zi a lunii urmatoare', declMod.dueDate('saft', '2026-06'), '2026-07-31');
 eq('termen SAF-T decembrie: 31 ianuarie', declMod.dueDate('saft', '2026-12'), '2027-01-31');
+eq('termen D205 pentru veniturile 2025: weekendul muta 28 februarie pe 2 martie', declMod.dueDate('d205', '2025-12'), '2026-03-02');
+eq('termen D205 pentru veniturile 2026: 28 februarie 2027 cade duminica -> 1 martie', declMod.dueDate('d205', '2026-12'), '2027-03-01');
 const vDecl = scopedSeed(); // firma platitoare de TVA, cu angajati
 const expIun = declMod.expectedForFirma(vDecl, '2026-06');
 eq('asteptate iunie: d300+d394+d112+d100+saft (TVA lunar)', expIun.map((x) => x.tip).join(','), 'd300,d394,d112,d100,saft');
@@ -6090,6 +6095,14 @@ const vIC = { company: { tvaPlatitor: true }, angajati: [], entries: [{ tip: 'li
 ok('D390 asteptata DOAR in lunile cu operatiuni intracomunitare',
   declMod.expectedForFirma(vIC, '2026-05').some((x) => x.tip === 'd390') && !declMod.expectedForFirma(vIC, '2026-04').some((x) => x.tip === 'd390'));
 ok('asteptate decembrie include saft', declMod.expectedForFirma(vDecl, '2026-12').some((x) => x.tip === 'saft'));
+const vD205 = { company: { tvaPlatitor: false }, angajati: [], entries: d205db.entries };
+ok('D205 apare in calendarul din decembrie cand raportul anual are beneficiari',
+  declMod.expectedForFirma(vD205, '2026-12').some((x) => x.tip === 'd205'));
+ok('D205 nu apare intr-o luna intermediara si nici intr-un an fara operatiuni',
+  !declMod.expectedForFirma(vD205, '2026-11').some((x) => x.tip === 'd205')
+  && !declMod.expectedForFirma(vD205, '2025-12').some((x) => x.tip === 'd205'));
+ok('D205 din registru are linkul XML cu anul raportat',
+  declMod.descarcari('d205', '2026-12').some((l) => l.href === '/xml/d205?year=2026'));
 const dDecl = { declarations: [] };
 let seqDecl = 100;
 const nidDecl = (p) => p + (seqDecl++);

@@ -388,9 +388,9 @@ section('Poarta: pagina publica de prezentare nu-si contrazice produsul');
     .slice(1).find(Boolean));
   eq('numarul de tipuri de operatiuni din pagina = cel real', statTipuri, nrTipuri);
 
-  // Declaratiile: cele din registrul depunerilor + D205 (generator propriu, fara pozitie in registru).
-  const nrDecl = Object.keys(require('../../src/declarations').TIPURI).length
-    + (typeof require('../../src/xml').d205Xml === 'function' ? 1 : 0);
+  // Declaratiile: catalogul registrului este acum complet, inclusiv D205. Nu mai adaugam D205
+  // separat: asta ar dubla-o exact dupa integrarea generatorului in calendar.
+  const nrDecl = Object.keys(require('../../src/declarations').TIPURI).length;
   const statDecl = Number((pag.match(/<b>(\d+)<\/b> declara\u021bii/) || [])[1]);
   eq('numarul de declaratii din pagina = cel real', statDecl, nrDecl);
 

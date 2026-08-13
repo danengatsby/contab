@@ -33,6 +33,7 @@ module.exports = function register(app, ctx) {
       if (tip === 'd307') { const x = d307.report(view, period); return { tvaA: x.totaluri.A, tvaL: x.totaluri.L, tvaC: x.totaluri.C, total: x.totalTva }; }
       if (tip === 'd311') { const x = d311.report(view, period); return { baza: x.totalBaza, tvaDePlata: x.totalTva }; }
       if (tip === 'd107') { const year = period.slice(0, 4); const po = ptOpts.pentruDeclaratie(view, year); const pt = po.rezultatFiscal || acc.profitTax(view, year, po); const x = d107.report(view, year, pt); return { acordat: x.totals.val1, reportat: x.totals.val2, dedus: x.totals.val3, beneficiari: x.nr }; }
+      if (tip === 'd205') { const x = rep.d205(view, period.slice(0, 4)); return { beneficiari: x.nr, venitBrut: x.totalBrut, bazaImpozabila: x.totalBaza, impozit: x.totalImpozit }; }
       if (tip === 'd112') { const x = rep.d112(view, period); const t = x.totals || {}; return { brut: t.brut, impozit: t.impozit, cas: t.cas, cass: t.cass, cam: t.cam }; }
       if (tip === 'd394') { const x = rep.d300(view, period); return { tvaColectata: x.tvaColectata, tvaDeductibila: x.tvaDeductibila }; }
       if (tip === 'd100') return decl.d100Snapshot(rep.d100(view, period));

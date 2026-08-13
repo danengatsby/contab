@@ -106,7 +106,7 @@ poarta înainte să lase push-ul să treacă. **24 din 24 de ieșiri: „Validar
 | D100 | `D100`, `D100-profit`, `D100-anticipat` |
 | D101 | `D101`, `D101-defalcare` |
 | D112 | `D112`, `D112-beneficii`, `D112-cm` |
-| D177 · D205 | `D177`, `D205`, `D205-retineri` |
+| D177 · D205 | `D177`, `D205`, `D205-rectificativa`, `D205-retineri` |
 | D300 | `D300`, `D300-report`, `D300-autofactura`, `D300-servicii`, `D300-prorata`, `D300-fara-tva` |
 | D390 | `D390`, `D390-autofactura`, `D390-servicii`, `D390-triunghiular` |
 | D394 | `D394` |
@@ -259,6 +259,16 @@ pe toate valorile: **2** e singura acceptată deopotrivă pentru 08 (dividende),
 Un defect care exista de la început și pe care nici testele, nici poarta nu-l puteau vedea: nu
 exista nicio declarație generată cu alt tip de venit decât dividendele. **O poartă dovedește doar
 căile pe care le parcurge.**
+
+## Verificare 2026-08-13 — D205 în calendar și rectificativă
+
+D205 este acum urmărită în registrul anual (perioada `YYYY-12`) numai când raportul conține cel
+puțin un beneficiar. Termenul este ultima zi din februarie a anului următor, mutată în prima zi
+lucrătoare când aceasta cade în weekend; pentru veniturile din 2025 rezultă **2 martie 2026**.
+
+Varianta nouă **`D205-rectificativa`**, cu `d_rec="1"`, trece DUKIntegrator fără erori. Generatorul
+alege această variantă numai după ce registrul are deja o depunere; prima generare rămâne
+`d_rec="0"`.
 
 A doua eroare din aceeași rulare a fost un CNP inventat de mine: regula **R29** îi verifică cifra de
 control. Ca la codurile de TVA din D390 — referințele nu pot folosi numere de fantezie.
