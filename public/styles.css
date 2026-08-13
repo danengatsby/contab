@@ -990,6 +990,15 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 /* grupurile intregi marcate adv (ex. Mijloace fixe): regula de mai sus e batuta de
    `#tabs .navgroup{display:block !important}` din sidebar (specificitate cu id) */
 .simple-ui #tabs .navgroup.adv{display:none!important}
+/* ...si INTRARILE marcate adv din interiorul unui grup NEMARCAT, din exact acelasi motiv:
+   `#tabs .navmenu button{display:block !important}` (id + clasa + element) bate
+   `.simple-ui .adv` (doua clase), ambele cu !important — deci castiga specificitatea.
+   Masurat inainte: „Anexe la situatii", „Jurnal de audit" si „Plan de conturi" ramaneau in
+   bara laterala in modul simplu, vizibile de indata ce deschideai grupul lor. Nu s-a vazut
+   mai devreme fiindca acordeonul tine grupurile INCHISE: o masuratoare care nu le deschide
+   raporteaza zero scapari. Regula de mai sus a fost scrisa pentru grupuri; intrarile
+   individuale au ramas descoperite. */
+.simple-ui #tabs .navmenu button.adv{display:none!important}
 
 /* ── Dictionar contabil (modal ❓) ── */
 .gloss-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:220;display:flex;align-items:center;justify-content:center;padding:20px}

@@ -596,6 +596,43 @@ section('Bara de sus pe telefon: nu are voie să crească la loc');
   ok('panoul se închide la alegerea unei unelte', /#sideTools[\s\S]{0,220}remove\('tools-open'\)/.test(js));
 }
 
+section('Modul simplu: cele TREI navigații pornesc din același marcaj');
+{
+  // Aplicația are trei navigații peste aceleași `#tabs`: bara laterală (originalul) plus bara de
+  // meniu și banda de unelte, generate de `erp.js`. Regula scrisă în capul acelui fișier e că el
+  // „nu decide nimic, doar OGLINDEȘTE" — dar oglinda pierdea tocmai marcajul `.adv`, fiindcă
+  // butoanele generate sunt elemente NOI. Măsurat în mod simplu, înainte: din 11 taburi marcate,
+  // 6 rămâneau în banda de unelte și 3 grupuri întregi în bara de meniu.
+  //
+  // Stratul ăsta e RAPID și incomplet prin construcție: dovedește că sursa trece prin copiere,
+  // nu că browserul chiar nu mai arată intrarea (acolo se bat reguli CSS pe specificitate).
+  // Efectul se dovedește în `scripts/e2e-izolat.mjs`, secțiunea 12, pe DOM adevărat.
+  const erp = fs.readFileSync(path.join(PUB, 'erp.js'), 'utf8');
+  ok('există o singură definiție a preluării marcajelor', (erp.match(/function preiaMarcajele\(/g) || []).length === 1);
+  // Cele TREI puncte de generare. Dacă apare al patrulea, aserțiunea de sub ele îl semnalează.
+  ok('intrările de meniu preiau marcajul sursei', /function itemDeMeniu\([\s\S]{0,400}?preiaMarcajele\(btn, b\)/.test(erp));
+  ok('grupurile de meniu preiau marcajul grupului-sursă', /preiaMarcajele\(gr\.sursa, wrap\)/.test(erp));
+  ok('uneltele preiau marcajul tabului-țintă', /preiaMarcajele\(tinta, b\)/.test(erp));
+  // `esteAvansat` trebuie să se uite ȘI la grup: „Mijloace fixe", „Registre contabile" și
+  // „Închideri" sunt marcate pe `.navgroup`, nu pe fiecare buton — un test care verifică doar
+  // clasa butonului ar fi trecut cu jumătate din defect încă viu.
+  ok('marcajul se citește și de pe grupul-sursă, nu doar de pe buton', /closest\('\.navgroup'\)[\s\S]{0,80}contains\('adv'\)/.test(erp));
+  // Câte elemente generate există în total: fiecare `el('button'` / `el('div', 'em-item'` care
+  // ajunge în navigație trebuie să fi trecut pe la copiere. Poarta e pe NUMĂR, ca un al patrulea
+  // punct de generare adăugat mâine să nu treacă tăcut pe lângă ea.
+  ok('nu există un al patrulea punct de generare nepăzit', (erp.match(/preiaMarcajele\(/g) || []).length === 4);
+
+  // Partea de CSS: în bara laterală, regulile cu id bat `.simple-ui .adv` (ambele `!important`),
+  // deci ascunderea are nevoie de propria regulă cu id — una pentru grupuri, una pentru intrările
+  // marcate individual dintr-un grup nemarcat. A doua lipsea: „Anexe la situații", „Jurnal de
+  // audit" și „Plan de conturi" rămâneau în meniu în modul simplu.
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  ok('grupurile marcate se ascund și peste specificitatea barei laterale',
+    /\.simple-ui #tabs \.navgroup\.adv\{display:none!important\}/.test(css));
+  ok('...și intrările marcate individual, din grupuri nemarcate',
+    /\.simple-ui #tabs \.navmenu button\.adv\{display:none!important\}/.test(css));
+}
+
 section('Modul simplu filtrează LIMBAJUL, nu doar meniul');
 {
   // Constatarea reparată aici: `.simple-ui` ascundea 9 taburi și 28 de elemente, dar ecranele pe
