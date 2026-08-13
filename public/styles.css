@@ -1062,7 +1062,13 @@ details[open]>.sec-sum::before{transform:rotate(90deg)}
 .simple-only-inline{display:none}
 .simple-ui .simple-only-inline{display:inline}
 .simple-only{display:none!important}
-.simple-ui .simple-only{display:block!important}
+/* `:not(.hidden)` NU e cosmetic — a treia oara aceeasi capcana (vezi `.login-box label` si
+   `#tabs`): `!important`-ul de aici bate `.hidden{display:none}`, deci un card `.simple-only`
+   ascuns din JS ramanea pe ecran. S-a vazut la „Situatia firmei — pe scurt", care continua sa
+   arate patru dale de 0,00 pe firma fara nicio inregistrare, desi dashboard.js ii pusese
+   `.hidden`. Regula: orice `display:...!important` pe un element pe care JS il poate ascunde
+   trebuie sa se retraga in fata lui `.hidden`. */
+.simple-ui .simple-only:not(.hidden){display:block!important}
 .simple-ui #kpis{display:none}
 .kpi.go{cursor:pointer}
 .kpi.go:hover,.kpi.go:focus{box-shadow:0 8px 22px rgba(0,0,0,.14);transform:translateY(-1px);outline:none}

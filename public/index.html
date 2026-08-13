@@ -525,6 +525,14 @@
           <button class="qa" data-go="ghid"><span class="ic">📖</span><span class="t">Ghid de folosire</span><span class="d">Cum lucrezi, pas cu pas</span></button>
         </div>
       </div>
+      <!-- Ce se vede in locul panourilor de analiza cat timp firma nu are nicio inregistrare.
+           Cardurile de mai jos randau atunci toate acelasi lucru — 0,00, liniute, „fara date" —
+           deci primul ecran al aplicatiei ii spunea unui om proaspat inscris ca nu se intampla
+           nimic, exact cand avea nevoie sa i se spuna ce sa faca. Lista celor ascunse e
+           `PANOURI_ANALITICE` din public/dashboard.js, pazita in test/frontend.mjs. -->
+      <div class="card hidden" id="dashGolCard">
+        <p class="muted" data-u="u69">Situația firmei, graficele și scadențarul apar aici după primul document înregistrat.</p>
+      </div>
       <div id="kpis" class="kpis"></div>
       <div class="card" id="yoyCard">
         <!-- „exercițiul precedent" → „anul trecut": aceeași informație, fără termenul pe care chiar
@@ -544,19 +552,19 @@
         </div>
         <div id="forecastView"></div>
       </div>
-      <div class="card">
+      <div class="card" id="lunarCard">
         <h3>Evoluție lunară — venituri / cheltuieli / profit (<span id="chartYear"></span>)</h3>
         <div id="chartMonthly"></div>
       </div>
-      <div class="grid2">
+      <div class="grid2" id="randSolduri">
         <div class="card"><h3>Structura soldurilor (creanțe vs datorii)</h3><div id="chartAging"></div></div>
         <div class="card"><h3>Top creanțe (clienți)</h3><div id="topCreante"></div></div>
       </div>
-      <div class="grid2">
+      <div class="grid2" id="randDatorii">
         <div class="card"><h3>Top datorii (furnizori)</h3><div id="topDatorii"></div></div>
         <div class="card"><h3><span class="adv">Aging — vechimea soldurilor</span><span class="simple-only-inline">Vechimea sumelor de încasat și de plătit</span></h3><div id="chartAgingBars"></div></div>
       </div>
-      <div class="grid2">
+      <div class="grid2" id="randOperatiuni">
         <div class="card"><h3>🕘 Ultimele operațiuni</h3><div id="ultimeleOps"></div></div>
         <div class="card hidden" id="stocValCard"><h3>📦 Stocuri valoroase (la CMP)</h3><div id="stocuriValoroase"></div></div>
       </div>

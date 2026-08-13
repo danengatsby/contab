@@ -392,6 +392,42 @@ section('Dashboard: un cont în minus nu are voie să se ascundă într-un total
   eq('șir negativ e tratat numeric', dashboard.dalaDisponibil('-12.5', '100', '87.5').ton, 'red');
 }
 
+section('Dashboard: firma fără nicio înregistrare nu primește un ecran de zerouri');
+{
+  // Măsurat pe un cont nou: 11 din 11 carduri randau doar `0,00`, liniuțe sau „fără date".
+  // Condiția e strict „zero înregistrări", nu „puține": la prima înregistrare panourile revin.
+  ok('firma goală ascunde panourile', dashboard.tabloulEGol({ nrInregistrari: 0 }) === true);
+  ok('o singură înregistrare le aduce înapoi', dashboard.tabloulEGol({ nrInregistrari: 1 }) === false);
+  ok('firma cu istoric nu e atinsă', dashboard.tabloulEGol({ nrInregistrari: 22000 }) === false);
+  // Numărul vine prin JSON: comparația trebuie să fie numerică, nu lexicală („0" e tot zero).
+  ok('zero sosit ca șir e tot zero', dashboard.tabloulEGol({ nrInregistrari: '0' }) === true);
+  ok('...iar un șir nenul nu e zero', dashboard.tabloulEGol({ nrInregistrari: '3' }) === false);
+  // „Nu știu" NU e „gol": pe un răspuns vechi sau tăiat, ascunderea ar șterge de pe ecran cifre
+  // reale ale unei firme cu activitate. Aceeași regulă ca la garda de deploy și la drill-uri.
+  ok('lipsa datelor nu ascunde nimic', dashboard.tabloulEGol(undefined) === false);
+  ok('...nici obiectul fără câmpul așteptat', dashboard.tabloulEGol({}) === false);
+  ok('...nici null', dashboard.tabloulEGol(null) === false);
+
+  // Poarta pe SELECTORI: `querySelector` întoarce `null` la un id redenumit, deci ascunderea ar
+  // înceta TĂCUT — cardul ar reapărea pe ecranul firmei goale fără ca vreun test să pice.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const lista = dashboard.PANOURI_ANALITICE;
+  ok('lista de panouri nu e goală', Array.isArray(lista) && lista.length >= 8);
+  for (const sel of lista) {
+    ok('„' + sel + '" e un id existent în index.html', /^#[A-Za-z][\w-]*$/.test(sel)
+      && html.includes('id="' + sel.slice(1) + '"'));
+  }
+  ok('randul explicativ există în pagină', html.includes('id="dashGolCard"'));
+  // Reversul, la fel de important: dacă lucrurile ACȚIONABILE ar intra în listă, ecranul firmei
+  // goale ar rămâne complet gol — adică exact defectul reparat, cu semnul schimbat.
+  for (const pastrat of ['#primiiPasiCard', '#deFacutCard', '#dashGolCard']) {
+    ok('„' + pastrat + '" rămâne pe ecran', !lista.includes(pastrat));
+  }
+  // Panourile scumpe nu se mai cer de la server când n-au ce arăta.
+  ok('previziunea nu se mai cere pe firma goală', /if \(!gol\) renderForecast\(\)/.test(dashSrc));
+  ok('graficele nu se mai desenează pe firma goală', /if \(gol\) return;\s*\n\s*if \(c\) renderDashboardCharts/.test(dashSrc));
+}
+
 section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
 {
   // `azi` e fixat: altfel vechimea restanței ar depinde de ziua în care rulează suita.
