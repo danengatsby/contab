@@ -13,13 +13,17 @@ export function setSettingsDeps(d) { deps = d; }
 // data-URI, context inert chiar daca generatorul SVG s-ar schimba.
 export function render2FA() {
   const on = !!(USER && USER.twofa);
-  $('#twofaStatus').className = 'status' + (on ? ' ok' : '');
-  $('#twofaStatus').textContent = on ? '✔ 2FA este activat pe contul tău.' : '2FA este dezactivat.';
-  $('#twofaStart').classList.toggle('hidden', on);
-  if (on) $('#twofaSetup').classList.add('hidden');
-  $('#twofaDisableWrap').classList.toggle('hidden', !on);
+  const status = $('#twofaStatus');
+  if (!status) return;
+  status.className = 'status' + (on ? ' ok' : '');
+  status.textContent = on ? '✔ 2FA este activat pe contul tău.' : '2FA este dezactivat.';
+  const start = $('#twofaStart'); const setup = $('#twofaSetup'); const disable = $('#twofaDisableWrap');
+  if (start) start.classList.toggle('hidden', on);
+  if (on && setup) setup.classList.add('hidden');
+  if (disable) disable.classList.toggle('hidden', !on);
 }
-$('#twofaStart').addEventListener('click', async () => {
+const twofaStart = $('#twofaStart');
+twofaStart && twofaStart.addEventListener('click', async () => {
   try {
     const r = await api('/api/2fa/setup', { method: 'POST' });
     $('#twofaSecret').textContent = r.secret || '';
@@ -30,7 +34,8 @@ $('#twofaStart').addEventListener('click', async () => {
     $('#twofaCode').focus();
   } catch (e) { toast(e.message, true); }
 });
-$('#twofaEnable').addEventListener('click', async () => {
+const twofaEnable = $('#twofaEnable');
+twofaEnable && twofaEnable.addEventListener('click', async () => {
   const code = $('#twofaCode').value.replace(/\s/g, '');
   if (!/^\d{6}$/.test(code)) return toast('Introdu codul de 6 cifre din aplicația de autentificare.', true);
   try {
@@ -40,17 +45,20 @@ $('#twofaEnable').addEventListener('click', async () => {
     await deps.init(); deps.onTab('cont');
   } catch (e) { toast(e.message, true); }
 });
-$('#twofaCancel').addEventListener('click', () => {
+const twofaCancel = $('#twofaCancel');
+twofaCancel && twofaCancel.addEventListener('click', () => {
   $('#twofaSetup').classList.add('hidden');
   $('#twofaCode').value = '';
 });
-$('#twofaDisable').addEventListener('click', async () => {
+const twofaDisable = $('#twofaDisable');
+twofaDisable && twofaDisable.addEventListener('click', async () => {
   const code = $('#twofaDisCode').value.replace(/\s/g, '');
   if (!/^\d{6}$/.test(code)) return toast('Introdu codul de 6 cifre pentru dezactivare.', true);
   try { await api('/api/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }); $('#twofaDisCode').value = ''; toast('2FA dezactivat'); await deps.init(); deps.onTab('cont'); }
   catch (e) { toast(e.message, true); }
 });
-$('#twofaRevoke').addEventListener('click', async () => {
+const twofaRevoke = $('#twofaRevoke');
+twofaRevoke && twofaRevoke.addEventListener('click', async () => {
   try { await api('/api/2fa/revoke-devices', { method: 'POST' }); toast('Dispozitivele de încredere au fost revocate'); }
   catch (e) { toast(e.message, true); }
 });
