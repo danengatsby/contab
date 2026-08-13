@@ -989,6 +989,20 @@ section('Ecranele-strat opresc derularea paginii de dedesubt');
   ok('fiecare ecran-strat poartă clasa `login-overlay`'
     + (faraClasa.length ? ' — FĂRĂ: ' + faraClasa.join(', ') : ''), faraClasa.length === 0);
 }
+}
+
+section('Logo lipsă: 204 e un răspuns „ok", deci nu poate fi tratat ca succes');
+{
+  // Capcana schimbării: „firma nu are logo" a devenit 204 tocmai ca să nu mai apară ca eroare în
+  // consolă — dar 204 e 2xx, deci `r.ok` e ADEVĂRAT. Un `if (r.ok)` lăsat neatins ar fi construit
+  // un obiect-imagine dintr-un corp GOL, adică exact pictograma de imagine ruptă pe care
+  // schimbarea voia s-o evite: zgomotul din consolă schimbat într-un defect vizibil.
+  const src = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
+  ok('citirea logo-ului cere CORP, nu doar succes', /r\.ok && r\.status !== 204/.test(src));
+  ok('...și decizia de afișare folosește chiar acel rezultat', /if \(areLogo\)/.test(src));
+  ok('nu mai există un `if (r.ok)` gol pe calea logo-ului',
+    !/const r = await fetch\('\/api\/company\/logo[\s\S]{0,400}?if \(r\.ok\) \{/.test(src));
+}
 section('Modul simplu filtrează LIMBAJUL, nu doar meniul');
 {
   // Constatarea reparată aici: `.simple-ui` ascundea 9 taburi și 28 de elemente, dar ecranele pe
