@@ -3098,6 +3098,76 @@ async function main() {
       const aud = (await req('GET', '/api/audit', { cookie: laM.cookie })).json;
       const lst = Array.isArray(aud) ? aud : (aud.items || []);
       ok('preluarea apare in audit', lst.some((a) => a.action === 'migrare.import'));
+
+      // Pachetul complet: balanta + parteneri + mijloace fixe + stoc se valideaza impreuna si
+      // se scrie o singura data. Folosim alta firma goala ca sa putem dovedi inclusiv lipsa
+      // efectelor partiale dupa o eroare din ultima componenta.
+      const fCompleta = await req('POST', '/api/firme', { cookie: laM.cookie,
+        body: { nume: 'MIGRARE COMPLETA SRL', cui: '300009' } });
+      const fidComplet = fCompleta.json && fCompleta.json.firma && fCompleta.json.firma.id;
+      ok('firma-tinta pentru migrarea completa a fost creata si activata', !!fidComplet
+        && fCompleta.json.firmaActiva === fidComplet);
+      const parteneriCsv = 'CUI;Denumire;Adresa;Oras;Judet;Tara;Tip;IBAN;BIC\n'
+        + 'RO12345674;FURNIZOR MIGRAT SRL;Str. Test 1;Iasi;IS;RO;furnizor;RO49AAAA1B31007593840000;AAAAROBU';
+      // Varianta compacta „NrInventar" este folosita de unele exporturi si trebuie recunoscuta
+      // drept antet, nu importata ca primul activ.
+      const activeCsv = 'NrInventar;Denumire;Cont;Cost;DataPIF;DurataLuni;Metoda;ValReziduala;Furnizor;CUI;DataAchizitie\n'
+        + 'INV-HTTP;Laptop migrare;214;25000;2026-01-15;36;liniara;0;FURNIZOR MIGRAT SRL;12345674;2026-01-10';
+      const stocCsv = 'Cod;Denumire;UM;Cont;Gestiune;Cantitate;PretUnitar;Valoare\n'
+        + 'MARFA-HTTP;Marfa migrata;buc;371;DEP;100;250;25000';
+      const pachet = { firmaId: fidComplet, parteneriCsv, activeCsv, stocCsv, data: '2026-01-31',
+        conturi: [{ cont: '371', d: 25000, c: 0 }, { cont: '1012', d: 0, c: 25000 }] };
+      const completPv = await req('POST', '/api/migrare/complet/preview', { cookie: laM.cookie, body: pachet });
+      ok('migrare completa: previzualizarea valida numara toate componentele', completPv.status === 200
+        && completPv.json.ok && completPv.json.summary.conturi === 2 && completPv.json.summary.parteneri === 1
+        && completPv.json.summary.active === 1 && completPv.json.summary.pozitiiStoc === 1);
+      ok('migrare completa: antetul NrInventar nu devine activ', completPv.json.sample.active.length === 1
+        && completPv.json.sample.active[0].numarInventar === 'INV-HTTP');
+      ok('migrare completa: preview-ul nu scrie nimic', Object.keys((await req('GET', '/api/partners', { cookie: laM.cookie })).json).length === 0
+        && (await req('GET', '/api/assets', { cookie: laM.cookie })).json.length === 0
+        && (await req('GET', '/api/products', { cookie: laM.cookie })).json.length === 0
+        && Object.keys((await req('GET', '/api/opening', { cookie: laM.cookie })).json).length === 0);
+      eq('migrare completa: firma din corp nu poate ocoli firma activa',
+        (await req('POST', '/api/migrare/complet/preview', { cookie: laM.cookie,
+          body: Object.assign({}, pachet, { firmaId: fidNou }) })).status, 403);
+
+      const pachetGresit = Object.assign({}, pachet, { stocCsv: stocCsv.replace(';25000', ';24000') });
+      const pvGresit = await req('POST', '/api/migrare/complet/preview', { cookie: laM.cookie, body: pachetGresit });
+      ok('migrare completa: neconcordanta stoc-sold apare in preview', pvGresit.status === 200 && !pvGresit.json.ok
+        && pvGresit.json.problems.some((x) => /stocul din contul 371/.test(x)));
+      eq('migrare completa: aceeasi neconcordanta refuza importul integral',
+        (await req('POST', '/api/migrare/complet/import', { cookie: laM.cookie, body: pachetGresit })).status, 400);
+      ok('migrare completa: refuzul nu lasa niciuna dintre primele componente',
+        Object.keys((await req('GET', '/api/partners', { cookie: laM.cookie })).json).length === 0
+        && (await req('GET', '/api/assets', { cookie: laM.cookie })).json.length === 0
+        && (await req('GET', '/api/stock-movements', { cookie: laM.cookie })).json.length === 0
+        && Object.keys((await req('GET', '/api/opening', { cookie: laM.cookie })).json).length === 0);
+
+      const completImp = await req('POST', '/api/migrare/complet/import', { cookie: laM.cookie, body: pachet });
+      ok('migrare completa: pachetul valid se importa', completImp.status === 200 && completImp.json.ok
+        && completImp.json.summary.valoareStoc === 25000);
+      const partDupa = (await req('GET', '/api/partners', { cookie: laM.cookie })).json;
+      const activeDupa = (await req('GET', '/api/assets', { cookie: laM.cookie })).json;
+      const produseDupa = (await req('GET', '/api/products', { cookie: laM.cookie })).json;
+      const miscariDupa = (await req('GET', '/api/stock-movements', { cookie: laM.cookie })).json;
+      const solduriDupa = (await req('GET', '/api/opening', { cookie: laM.cookie })).json;
+      ok('migrare completa: toate componentele sunt vizibile in firma tinta', partDupa['12345674']
+        && activeDupa.length === 1 && activeDupa[0].numarInventar === 'INV-HTTP'
+        && produseDupa.length === 1 && miscariDupa.length === 1 && miscariDupa[0].initial
+        && solduriDupa['371'].d === 25000);
+      eq('migrare completa: reimportul fara confirmare nu suprascrie',
+        (await req('POST', '/api/migrare/complet/import', { cookie: laM.cookie, body: pachet })).status, 409);
+      const impConfirmat = await req('POST', '/api/migrare/complet/import', { cookie: laM.cookie,
+        body: Object.assign({}, pachet, { suprascrie: true,
+          parteneriCsv: parteneriCsv.replace('FURNIZOR MIGRAT SRL', 'FURNIZOR ACTUALIZAT SRL') }) });
+      ok('migrare completa: confirmarea inlocuieste doar componentele selectate, fara duplicate', impConfirmat.status === 200
+        && (await req('GET', '/api/assets', { cookie: laM.cookie })).json.length === 1
+        && (await req('GET', '/api/products', { cookie: laM.cookie })).json.length === 1
+        && (await req('GET', '/api/partners', { cookie: laM.cookie })).json['12345674'].den === 'FURNIZOR ACTUALIZAT SRL');
+      const audComplet = (await req('GET', '/api/audit', { cookie: laM.cookie })).json;
+      ok('migrarea completa lasa urma dedicata in audit', (Array.isArray(audComplet) ? audComplet : audComplet.items)
+        .some((a) => a.action === 'migrare.completa'));
+
       ok('presetul propriu se poate sterge', (await req('DELETE', '/api/migrare/presets/' + presetId, { cookie: laM.cookie })).json.ok === true);
       eq('dupa stergere, presetul nu mai apare', (await req('GET', '/api/migrare/presets', { cookie: laM.cookie })).json.length, 0);
       eq('stergerea repetata nu divulga nimic -> 404',

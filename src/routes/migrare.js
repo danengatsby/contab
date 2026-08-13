@@ -7,6 +7,7 @@
 const fs = require('fs');
 const db = require('../db');
 const migrare = require('../migrare');
+const migrationAux = require('../migrationAux');
 const xlsx = require('../xlsx');
 const xls = require('../xls');
 const dbf = require('../dbf');
@@ -41,6 +42,15 @@ module.exports = function register(app, ctx) {
     if (!u || u.username === 'demo' || u.username === 'demo-contabil') {
       fail(403, 'Contul demo este partajat — presetul nu poate fi modificat.');
     }
+  };
+  const targetFirma = (req, value) => {
+    const fid = Number(value != null ? value : activeId(req));
+    // Importul complet scrie colectii intregi. Tinta este intentionat firma ACTIVA, nu doar o
+    // firma care exista: altfel un utilizator care ghiceste un id ar putea suprascrie alta firma.
+    if (!Number.isInteger(fid) || fid <= 0 || !db.getFirma(fid) || fid !== Number(activeId(req))) {
+      fail(403, 'Firma tinta nu este firma activa sau nu este accesibila.');
+    }
+    return fid;
   };
 
   const run = (res, fn) => {
@@ -141,13 +151,46 @@ module.exports = function register(app, ctx) {
     return { ok: true };
   }));
 
+  // Previzualizarea consolidata nu scrie nimic. Intoarce numai esantioane limitate; fisierele
+  // sunt retrimise la import si REVALIDATE acolo, fiindca un corp HTTP poate fi modificat intre
+  // cele doua trepte.
+  app.post('/api/migrare/complet/preview', (req, res) => run(res, () => {
+    const fid = targetFirma(req, (req.body || {}).firmaId);
+    const p = migrationAux.prepare(req.body, { existingOpening: (db.get().openingBalances || {})[fid] || {} });
+    return {
+      ok: p.ok, problems: p.problems, summary: p.summary,
+      sample: { parteneri: p.partners.items.slice(0, 5), active: p.fixedAssets.items.slice(0, 5), stoc: p.stock.items.slice(0, 5) },
+    };
+  }));
+
+  app.post('/api/migrare/complet/import', (req, res) => run(res, () => {
+    reqNotDemo(req.user);
+    const b = req.body || {}; const fid = targetFirma(req, b.firmaId); const d = db.get();
+    const p = migrationAux.prepare(b, { existingOpening: (d.openingBalances || {})[fid] || {} });
+    if (!p.ok) fail(400, 'Importul complet a fost refuzat integral: ' + p.problems.slice(0, 8).join('; '));
+    if (p.stock.present) db.assertPeriodOpen(fid, p.data, 'Preluarea completa a stocului initial');
+    const existente = [];
+    if (p.hasOpening && Object.keys((d.openingBalances || {})[fid] || {}).length) existente.push('solduri initiale');
+    if (p.partners.present && Object.keys((d.partners || {})[fid] || {}).length) existente.push('parteneri');
+    if (p.fixedAssets.present && (d.assets || []).some((x) => x.firmaId === fid)) existente.push('mijloace fixe');
+    if (p.stock.present && ((d.products || []).some((x) => x.firmaId === fid)
+      || (d.gestiuni || []).some((x) => x.firmaId === fid) || (d.stockMovements || []).some((x) => x.firmaId === fid))) existente.push('stocuri');
+    if (existente.length && !b.suprascrie) fail(409, 'Firma are deja: ' + existente.join(', ')
+      + '. Confirmarea de suprascriere este obligatorie; celelalte componente raman neschimbate.');
+    const summary = migrationAux.apply(d, fid, p, (req.user && req.user.username) || '');
+    logAudit('migrare.completa', 'balanta ' + summary.conturi + ', parteneri ' + summary.parteneri
+      + ', active ' + summary.active + ', stoc ' + summary.pozitiiStoc + ' pozitii', { req, firmaId: fid });
+    // Business-ul si urma lui de audit intra in ACEEASI fotografie persistata.
+    db.save();
+    return { ok: true, summary };
+  }));
+
   // Treapta 2: importul propriu-zis. TRANZACTIONAL: ori tot, ori nimic.
   app.post('/api/migrare/import', (req, res) => run(res, () => {
     const b = req.body || {};
-    const fid = Number(b.firmaId != null ? b.firmaId : activeId(req));
+    const fid = targetFirma(req, b.firmaId);
     // Firma EXPLICITA si existenta — fara fallback pe `firmaActiva`: un import scris din greseala
     // in alta firma nu se poate distinge ulterior de date reale.
-    if (!Number.isInteger(fid) || fid <= 0 || !db.getFirma(fid)) fail(403, 'Firma invalida sau inexistenta.');
     const conturi = Array.isArray(b.conturi) ? b.conturi : [];
     if (!conturi.length) fail(400, 'Niciun cont de importat.');
 

@@ -331,7 +331,7 @@ CAMT.053. Drumul de întoarcere lipsește: lotul de plăți către furnizori și
 
 ---
 
-## 6. Importator de migrare de la software-ul existent — ✅ ÎNCHIS 2026-07-28 (parțial, vezi mai jos)
+## 6. Importator de migrare de la software-ul existent — ✅ FUNCȚIONAL 2026-08-13 (preset real încă în așteptare)
 
 **Estimare:** 3–5 zile · **Realizat:** ~2 ore · **Prioritate:** 6
 
@@ -356,9 +356,8 @@ CAMT.053. Drumul de întoarcere lipsește: lotul de plăți către furnizori și
 > **CE NU E FĂCUT, deliberat:** niciun format specific de furnizor (SAGA/WinMentor/Ciel). Traseul
 > generic acoperă orice export tabelar cu mapare asistată, dar backlogul cerea „cel puțin un format
 > concret, ales după ce întrebăm un cabinet ce folosește" — iar acea întrebare nu a fost pusă. Un
-> preset de furnizor e o adăugire mică (câteva tipare de coloană) odată ce se știe programul.
-> **Nici parteneri / mijloace fixe / stocuri** nu se preiau încă: itemul cerea toate patru
-> într-o trecere. Balanța e cea care schimbă totul; restul rămân.
+> preset de furnizor se adaugă după ce există un export real și acordul cabinetului asupra
+> coloanelor; nu inventăm un format comercial din presupuneri.
 >
 > **Mapările reutilizabile — ✅ ÎNCHIS 2026-08-13.** Ecranul folosește acum traseul serverului
 > pentru previzualizarea CSV/XLS/XLSX/DBF (înainte folosea încă parserul local simplificat, deși
@@ -367,6 +366,14 @@ CAMT.053. Drumul de întoarcere lipsește: lotul de plăți către furnizori și
 > indicii: dacă programul reordonează coloanele, ele sunt regăsite semantic; un match parțial este
 > refuzat, nu aplicat aproximativ. Preseturile sunt izolate per utilizator, deci formatul unui
 > contabil nu este expus colaboratorilor firmei. Dovedit pe mapare reordonată în modul, HTTP și E2E.
+>
+> **Pachetul auxiliar unificat — ✅ ÎNCHIS 2026-08-13.** În același ecran se pot încărca partenerii,
+> mijloacele fixe și stocul inițial, împreună cu balanța previzualizată. `migrationAux.js` parsează
+> și validează toate componentele înainte de orice mutație; importul repetă validarea, verifică
+> perioada stocului, reconciliază fiecare sold 3xx cu pozițiile cantitativ-valorice și face o
+> singură salvare. O eroare în ultimul fișier nu lasă primele componente scrise. Ținta este strict
+> firma activă, suprascrierea fiecărei colecții selectate cere confirmare, iar alte firme rămân
+> neatinse. Acoperit prin teste pure, HTTP și browser izolat.
 
 ### Descriere
 

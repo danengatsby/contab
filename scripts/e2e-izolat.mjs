@@ -200,7 +200,7 @@ sect('3. Autentificare in doi pasi (2FA) — flux complet prin interfata');
 }
 
 // ─────────────────────────── 4. IMPORTURI ────────────────────────────────────
-sect('4. Importuri (parteneri, produse)');
+sect('4. Importuri (parteneri, produse, migrare completa)');
 {
   const inainte = (await apiIn(adm, '/api/partners')).body || {};
   const nrInainte = Object.keys(inainte).length;
@@ -249,6 +249,25 @@ sect('4. Importuri (parteneri, produse)');
   await adm.waitForFunction(() => /40[.,]000/.test(document.querySelector('#openTotals')?.textContent || ''));
   ok('presetul refolosit citeste corect un export cu coloanele reordonate',
     (await adm.locator('#openEditor tbody tr').count()) === 4 && /echilibrat/i.test(await adm.locator('#openTotals').innerText()));
+
+  // Pachetul complet foloseste balanta deja previzualizata si trei fisiere auxiliare. Nu apasam
+  // import aici fiindca firma seed contine date folosite de declaratiile de mai jos; testele HTTP
+  // dovedesc scrierea si suprascrierea. Browserul dovedeste traseul fisier -> API -> rezumat.
+  const parteneriMig = 'CUI;Denumire;Adresa;Oras;Judet;Tara;Tip\nRO12345674;FURNIZOR E2E MIGRARE;Str. Test 1;Iasi;IS;RO;furnizor';
+  const activeMig = 'NrInventar;Denumire;Cont;Cost;DataPIF;DurataLuni;Metoda;ValReziduala\n'
+    + 'INV-E2E;Laptop migrare;214;25000;2026-01-15;36;liniara;0';
+  const stocMig = 'Cod;Denumire;UM;Cont;Gestiune;Cantitate;PretUnitar;Valoare\n'
+    + 'MARFA-E2E;Marfa migrare;buc;371;DEP;100;250;25000';
+  await adm.locator('#migrationPartnersFile').setInputFiles({ name: 'parteneri-e2e.csv', mimeType: 'text/csv', buffer: Buffer.from(parteneriMig) });
+  await adm.locator('#migrationAssetsFile').setInputFiles({ name: 'active-e2e.csv', mimeType: 'text/csv', buffer: Buffer.from(activeMig) });
+  await adm.locator('#migrationStockFile').setInputFiles({ name: 'stoc-e2e.csv', mimeType: 'text/csv', buffer: Buffer.from(stocMig) });
+  await adm.fill('#migrationDate', '2026-01-31');
+  await adm.check('#migrationIncludeBalance');
+  await adm.click('#migrationCompletePreview');
+  await adm.waitForFunction(() => /Pachet valid/i.test(document.querySelector('#migrationCompleteStatus')?.textContent || ''));
+  ok('migrarea completa valideaza toate cele patru componente din interfata',
+    /4 conturi.*1 parteneri.*1 mijloace fixe.*1 poziții/i.test(await adm.locator('#migrationCompleteSummary').innerText()));
+  ok('numai un pachet valid activeaza butonul de import', !(await adm.locator('#migrationCompleteImport').isDisabled()));
 }
 
 // ─────────────────────────── 5. ERORI SPV ────────────────────────────────────
