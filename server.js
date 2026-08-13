@@ -145,7 +145,7 @@ const S = (req) => {
 // login/2FA, demo, inscriere firma, logout, resetare parola, impersonare, /api/me,
 // /api/meta, health, metrics, audit. Intoarce map-urile de rate-limit (inscriere +
 // resetare parola), curatate periodic de jobul rate-limit-hygiene (mai jos).
-const { registerAttempts, forgotAttempts, clientErrAttempts } = require('./src/authRoutes')(app, { logAudit, wrap, requireAdmin, activeId, S });
+const { registerAttempts, forgotAttempts, clientErrAttempts, cuiAttempts } = require('./src/authRoutes')(app, { logAudit, wrap, requireAdmin, activeId, S });
 
 // ───────────────────────────── FIRME ─────────────────────────────
 function canAccess(req, id) { return allowedFirme(req.user).includes(Number(id)); }
@@ -471,7 +471,7 @@ dbReady.then(() => { try { if (ensureDemoContabil()) db.save(); } catch (e) { co
 
 // Joburile periodice (backup zilnic, digest termene, demo-reset, igiena rate-limit,
 // auto-poll SPV): src/jobs.js — primeste doar dependintele de stare ale aplicatiei.
-require('./src/jobs').start({ doBackup, resetDemo, registerAttempts, forgotAttempts, clientErrAttempts });
+require('./src/jobs').start({ doBackup, resetDemo, registerAttempts, forgotAttempts, clientErrAttempts, cuiAttempts });
 
 // Handler global de erori — DUPA toate rutele — si plasele de siguranta pe proces
 // (uncaughtException/unhandledRejection): src/serverErrors.js.

@@ -167,6 +167,12 @@ input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-ra
 input:focus,select:focus{outline:2px solid #cfe3da;border-color:var(--accent)}
 .dyn{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
 .dyn .full{grid-column:1/-1}
+/* Randul de stare al completarii dupa CUI (`legaCompletareCui` din core.js) se insereaza dupa
+   eticheta campului, deci ateriza intr-o CELULA de grila — un text de doua randuri strivit langa
+   „Denumire". Ocupa toata latimea, ca orice mesaj despre formular, si in formularele care nu sunt
+   grile ramane un simplu bloc. */
+.cui-stare{grid-column:1/-1;font-size:13px;line-height:1.45;margin:2px 0 6px}
+.cui-stare:empty{display:none}
 .dyn .check{grid-column:1/-1;display:flex;flex-direction:row;align-items:center;gap:8px;font-size:13px}
 .dyn .check input{width:auto;margin:0}
 

@@ -271,3 +271,124 @@ export async function umpleTemeiuri() {
     el.dataset.umplut = '1';
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  COMPLETAREA UNUI FORMULAR DUPA CUI (registrul public ANAF)
+//
+//  Acelasi CUI se tasta de mana in trei formulare — inscrierea firmei, „Firma mea"
+//  si adaugarea unui partener — impreuna cu denumirea, adresa, orasul, judetul,
+//  Reg. Com. si CAEN-ul, desi serverul stia deja sa le citeasca din registrul
+//  public (src/anafRegistru.js). Le cerea doar pentru VERIFICAREA partenerilor
+//  deja salvati, nu si acolo unde omul scrie.
+//
+//  Regula, si singurul lucru care conteaza cu adevarat aici: completarea NU
+//  suprascrie niciodata ce a scris omul. Un formular care iti sterge sub degete
+//  ce ai tastat e mai rau decat unul care nu te ajuta deloc — mai ales cand
+//  registrul are date vechi (adrese de sediu neactualizate ani la rand) sau cand
+//  utilizatorul stie mai bine (denumirea comerciala fata de cea din registru).
+//  Deci: se umplu doar campurile GOALE, iar diferentele fata de ce e deja scris
+//  se RAPORTEAZA, ca omul sa decida.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Ce se completeaza dintr-un raspuns de registru, peste ce e deja in formular.
+ * Functie PURA (testata in test/frontend.mjs) — nu atinge pagina.
+ *
+ * @param {Object} reg   raspunsul rutei /api/registru-anaf
+ * @param {Object} harta camp de formular -> cheie din raspuns  ({ nume: 'denumire', … })
+ * @param {Object} acum  valorile curente din formular ({ nume: 'ce a tastat omul', … })
+ * @returns {{patch: Object, completate: string[], diferite: string[], avertismente: string[]}}
+ *   `patch` = doar campurile de scris; `diferite` = campuri deja completate ALTFEL decat in
+ *   registru (nu se ating, dar se spun); `avertismente` = stari care schimba o decizie contabila.
+ */
+export function campuriDeCompletat(reg, harta, acum) {
+  const out = { patch: {}, completate: [], diferite: [], avertismente: [] };
+  if (!reg || !reg.gasit) return out;
+  const gol = (v) => String(v == null ? '' : v).trim() === '';
+  const normal = (v) => String(v == null ? '' : v).trim().replace(/\s+/g, ' ').toUpperCase();
+  for (const [camp, cheie] of Object.entries(harta || {})) {
+    const val = reg[cheie];
+    // `false` e o valoare buna (tvaPlatitor), `''`/null/undefined nu sunt: registrul omite
+    // sectiuni intregi pentru unele forme de organizare, iar un camp gol n-are ce completa.
+    if (val == null || val === '') continue;
+    const curent = (acum || {})[camp];
+    if (gol(curent)) { out.patch[camp] = val; out.completate.push(camp); continue; }
+    if (typeof val !== 'boolean' && normal(curent) !== normal(val)) out.diferite.push(camp);
+  }
+  // Semnalele care schimba o decizie contabila, nu doar completeaza un camp. Nu blocheaza nimic:
+  // se poate lucra si cu un partener inactiv, doar ca trebuie stiut INAINTE, nu la control.
+  if (reg.inactiv) out.avertismente.push('Firma e declarată INACTIVĂ la ANAF: cheltuielile cu ea nu sunt deductibile, iar TVA-ul de pe facturile ei nu se deduce (art. 11 Cod fiscal).');
+  if (reg.radiat) out.avertismente.push('Firma e RADIATĂ în registrul ANAF.');
+  if (reg.tvaLaIncasare) out.avertismente.push('Firma aplică TVA la încasare: dreptul de deducere se amână până la plata facturii (art. 297 alin. (2)).');
+  return out;
+}
+
+/**
+ * Cauta un CUI in registrul public si intoarce raspunsul, sau `null` daca nu se poate.
+ * NU arunca: completarea automata e un ajutor, iar caderea ei n-are voie sa opreasca un
+ * formular care merge perfect scris de mana. Motivul ajunge in `null` + un mesaj optional.
+ */
+export async function cautaCui(cui) {
+  try {
+    return await api('/api/registru-anaf?cui=' + encodeURIComponent(String(cui || '').trim()));
+  } catch (e) {
+    return { gasit: false, eroare: e.message };
+  }
+}
+
+/**
+ * Leaga completarea automata pe campul CUI al unui formular. Partea de DOM a mecanismului de mai
+ * sus: decizia CE se completeaza ramane in `campuriDeCompletat` (pura, testata), aici doar se
+ * cheama serverul si se scriu rezultatele in pagina.
+ *
+ * Se declanseaza la IESIREA din camp (`change`), nu la fiecare tasta: un CUI are 8-10 caractere,
+ * iar o cautare pe fiecare dintre ele ar insemna 10 cereri catre un serviciu ANAF plafonat la una
+ * pe secunda. Aceeasi valoare nu se cauta de doua ori la rand.
+ *
+ * @param {HTMLFormElement} form
+ * @param {Object} harta  camp de formular -> cheie din raspuns
+ * @param {Object} [opts] { dupa: fn(reg, rezultat) } — apelat dupa completare
+ */
+export function legaCompletareCui(form, harta, opts) {
+  if (!form || form._cuiLegat) return;
+  const camp = form.querySelector('[name="cui"]');
+  if (!camp) return;
+  form._cuiLegat = true;
+  const stare = document.createElement('div');
+  stare.className = 'muted cui-stare';
+  (camp.closest('label') || camp).insertAdjacentElement('afterend', stare);
+  let ultimul = null;
+  camp.addEventListener('change', async () => {
+    const v = String(camp.value || '').trim();
+    if (!v || v === ultimul) return;
+    ultimul = v;
+    stare.textContent = 'Caut la ANAF…';
+    const reg = await cautaCui(v);
+    if (!reg || !reg.gasit) {
+      // Trei stari DIFERITE, spuse diferit: serviciul n-a raspuns, CUI-ul nu e in registru, sau
+      // n-a fost cerut nimic. „Nu s-a gasit" pus peste o eroare de retea ar fi o afirmatie falsa
+      // despre firma cuiva — la fel ca „neverificat" raportat drept „e bine" in restul aplicatiei.
+      stare.textContent = reg && reg.eroare
+        ? reg.eroare
+        : 'CUI-ul nu apare în registrul ANAF — completează câmpurile manual.';
+      return;
+    }
+    const acum = {};
+    for (const c of Object.keys(harta)) { const el = form.querySelector('[name="' + c + '"]'); if (el) acum[c] = el.value; }
+    const r = campuriDeCompletat(reg, harta, acum);
+    for (const [c, val] of Object.entries(r.patch)) {
+      const el = form.querySelector('[name="' + c + '"]');
+      if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); }
+    }
+    const bucati = [];
+    if (r.completate.length) bucati.push('<b>' + H(reg.denumire || v) + '</b> — completat din registrul ANAF: ' + H(r.completate.join(', ')) + '.');
+    else bucati.push('<b>' + H(reg.denumire || v) + '</b> — găsit la ANAF; câmpurile erau deja completate.');
+    // Diferentele nu se corecteaza tacit: se SPUN. Registrul poate avea sediul vechi, iar omul
+    // poate sti mai bine — dar trebuie sa afle ca cele doua nu se potrivesc.
+    if (r.diferite.length) bucati.push('Diferă față de registru (nu am schimbat): ' + H(r.diferite.join(', ')) + '.');
+    if (reg.tvaPlatitor === false) bucati.push('La ANAF <b>nu</b> figurează ca plătitoare de TVA.');
+    for (const a of r.avertismente) bucati.push('⚠️ ' + H(a));
+    stare.innerHTML = bucati.join(' ');
+    if (opts && opts.dupa) opts.dupa(reg, r);
+  });
+}

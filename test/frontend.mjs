@@ -757,6 +757,68 @@ section('Modul simplu: cele TREI navigații pornesc din același marcaj');
     /\.simple-ui #tabs \.navmenu button\.adv\{display:none!important\}/.test(css));
 }
 
+section('Completare după CUI: nu suprascrie niciodată ce a tastat omul');
+{
+  // Regula întregii funcții. Un formular care îți șterge sub degete ce ai scris e mai rău decât
+  // unul care nu te ajută deloc — mai ales aici, unde registrul poate avea sediul vechi de ani,
+  // iar omul poate ști mai bine (denumirea comercială față de cea din registru).
+  const HARTA = { nume: 'denumire', regCom: 'nrRegCom', adresa: 'adresa', oras: 'localitate', judet: 'judet' };
+  const REG = { gasit: true, cui: '99887760', denumire: 'PARTENER TEST SRL', nrRegCom: 'J40/1/2020',
+    adresa: 'Str. Test 1', localitate: 'Cluj-Napoca', judet: 'RO-CJ', caen: '4711', tvaPlatitor: true };
+
+  const gol = core.campuriDeCompletat(REG, HARTA, { nume: '', regCom: '', adresa: '', oras: '', judet: '' });
+  eq('formular gol: se completează tot ce are registrul', Object.keys(gol.patch).sort().join(','), 'adresa,judet,nume,oras,regCom');
+  eq('...și se raportează ca atare', gol.completate.length, 5);
+  eq('...fără nimic „diferit"', gol.diferite.length, 0);
+
+  // Spațiile nu sunt conținut: un câmp cu " " e tot gol, altfel omul rămâne cu un formular
+  // necompletat și fără explicație.
+  eq('un câmp cu spații e tot gol', core.campuriDeCompletat(REG, { nume: 'denumire' }, { nume: '   ' }).completate.join(), 'nume');
+
+  const scris = core.campuriDeCompletat(REG, HARTA,
+    { nume: 'DENUMIREA MEA SRL', regCom: '', adresa: 'Str. Test 1', oras: '', judet: '' });
+  ok('câmpul deja scris NU se atinge', !('nume' in scris.patch));
+  ok('...dar se SPUNE că diferă de registru', scris.diferite.includes('nume'));
+  ok('...iar cele goale se completează în continuare', scris.patch.regCom === 'J40/1/2020' && scris.patch.oras === 'Cluj-Napoca');
+  // O valoare identică scrisă altfel (spații, majuscule) NU e o diferență de raportat: altfel
+  // fiecare căutare ar acuza omul că are alte date decât registrul, degeaba.
+  const lafel = core.campuriDeCompletat(REG, { adresa: 'adresa' }, { adresa: '  str.   TEST 1 ' });
+  eq('aceeași valoare scrisă altfel nu e „diferită"', lafel.diferite.length, 0);
+
+  // Registrul omite secțiuni întregi pentru unele forme de organizare — câmpul lipsă nu are ce
+  // completa și nu are voie să șteargă nimic.
+  const partial = core.campuriDeCompletat({ gasit: true, denumire: 'MINIM SRL' }, HARTA, { nume: '', adresa: '' });
+  eq('câmpurile absente din registru se sar', Object.keys(partial.patch).join(), 'nume');
+
+  // „Negăsit" și „nu s-a căutat" nu completează nimic. Cazul se dă cu un răspuns care POARTĂ
+  // câmpuri, nu cu unul gol: un `{gasit:false}` fără date ar trece și dacă garda `gasit` ar fi
+  // ștearsă din cod — adică testul ar fi verde din motivul greșit, exact ce s-a și întâmplat la
+  // prima scriere. Forma de aici e reală: ruta întoarce `{gasit:false, cui}`, iar `cautaCui`
+  // întoarce `{gasit:false, eroare}` când serviciul cade.
+  const negasitCuDate = core.campuriDeCompletat(
+    { gasit: false, cui: '40000000', denumire: 'NU EXISTĂ SRL', adresa: 'Str. Fantomă 1' }, HARTA, { nume: '', adresa: '' });
+  eq('CUI negăsit nu completează, oricâte câmpuri ar purta răspunsul', Object.keys(negasitCuDate.patch).length, 0);
+  eq('...și nici nu raportează completări', negasitCuDate.completate.length, 0);
+  eq('răspuns absent nu schimbă nimic', Object.keys(core.campuriDeCompletat(null, HARTA, { nume: '' }).patch).length, 0);
+
+  // Semnalele care schimbă o DECIZIE contabilă, nu doar conținutul unui câmp. Se dau chiar dacă
+  // niciun câmp nu s-a completat — valoarea lor nu depinde de cât de gol era formularul.
+  const inactiv = core.campuriDeCompletat(Object.assign({}, REG, { inactiv: true }), HARTA,
+    { nume: 'X', regCom: 'X', adresa: 'X', oras: 'X', judet: 'X' });
+  eq('nimic completat, dar avertismentul rămâne', inactiv.patch.nume === undefined && inactiv.avertismente.length, 1);
+  ok('...și citează temeiul (art. 11 — nedeductibilitate)', /art\. 11/.test(inactiv.avertismente[0]));
+  ok('TVA la încasare se semnalează separat, cu temeiul lui',
+    core.campuriDeCompletat(Object.assign({}, REG, { tvaLaIncasare: true }), HARTA, {}).avertismente.some((a) => /297/.test(a)));
+  ok('firma curată nu produce niciun avertisment', core.campuriDeCompletat(REG, HARTA, {}).avertismente.length === 0);
+
+  // Poartă pe cele TREI locuri de apel: constatarea era că același CUI se tastează de mână în trei
+  // formulare. Dacă unul rămâne nelegat, reparația e făcută pe două treimi — și nu s-ar vedea.
+  const surse = { 'authui.js': 'înscrierea firmei', 'app.js': 'Firma mea', 'partners.js': 'formularul de partener' };
+  for (const [f, unde] of Object.entries(surse)) {
+    const src = fs.readFileSync(path.join(PUB, f), 'utf8');
+    ok('completarea după CUI e legată în ' + unde + ' (' + f + ')', /legaCompletareCui\(/.test(src));
+  }}
+
 section('Modul simplu filtrează LIMBAJUL, nu doar meniul');
 {
   // Constatarea reparată aici: `.simple-ui` ascundea 9 taburi și 28 de elemente, dar ecranele pe
