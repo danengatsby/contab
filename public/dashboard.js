@@ -216,9 +216,25 @@ $('#deFacutToate') && $('#deFacutToate').addEventListener('click', () => deps.go
 
 // Primii pași (onboarding): checklist viu pentru firmele proaspete — dispare singur după
 // ce firma are câteva înregistrări. Fiecare pas se bifează din starea REALĂ a datelor.
+// Descrierea pasului 1 NUMESTE ce lipseste. Fara asta, pasul ramanea nebifat pe un ecran de
+// „Firma mea" cu ~40 de campuri, iar omul n-avea de unde sti care dintre ele. Lista vine de la
+// server (`primiiPasi.firmaLipsa`, derivata in src/dateFirma.js), nu se reface aici: doua liste
+// ar drifta la primul camp adaugat intr-un generator. Functie PURA — testata in test/frontend.mjs.
+export function descriereDateFirma(lipsa) {
+  const l = Array.isArray(lipsa) ? lipsa : [];
+  if (!l.length) return 'Denumirea, CUI-ul, adresa, codul CAEN — apar pe facturi și în declarații.';
+  // Escapat AICI, nu la interpolare: rezultatul intra intr-un sablon HTML (`stepsHtml`), unde
+  // celelalte descrieri sunt literali scrisi de noi. Un camp venit prin API n-are voie sa fie
+  // singurul neescapat din sirul acela — vezi conventia de escapare dupa CONTEXTUL de iesire.
+  const nume = l.map((x) => H(x.eticheta)).filter(Boolean);
+  // Motivul PRIMULUI camp lipsa, nu al tuturor: patru explicatii una sub alta ar fi un paragraf
+  // pe un rand de checklist. Restul se vad in „Firma mea", langa campul lor.
+  const deCe = l[0] && l[0].deCe ? ' — ' + H(l[0].deCe) + '.' : '';
+  return 'Mai lipsește: ' + nume.join(', ') + '.' + deCe;
+}
 function pasiOnboarding(p) {
   return [
-    { done: p.firmaCompletata, ic: '🏢', t: 'Completează datele firmei', d: 'Denumirea, CUI-ul și dacă e plătitoare de TVA — apar pe facturi și în declarații.', go: 'setari' },
+    { done: p.firmaCompletata, ic: '🏢', t: 'Completează datele firmei', d: descriereDateFirma(p.firmaLipsa), go: 'setari' },
     { done: p.arePartener, ic: '🤝', t: 'Adaugă primul partener', d: 'Un client sau un furnizor cu care lucrezi — CUI-ul e de ajuns, restul se completează singur.', go: 'parteneri' },
     { done: p.documentInregistrat, ic: '📥', t: 'Înregistrează primul document', d: 'O factură primită, un bon sau o chitanță — poză sau PDF; aplicația citește singură cifrele.', go: 'documente' },
     { done: p.facturaEmisa, ic: '📤', t: 'Emite prima factură', d: 'Client + ce vinzi; numărul, PDF-ul și e-Factura se generează automat.', go: 'emite' },

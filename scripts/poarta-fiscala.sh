@@ -62,6 +62,7 @@ src/beneficii.js
 src/fiscalProfile.js
 src/declarations.js
 src/fiscalControls.js
+src/dateFirma.js
 src/payroll.js
 src/reporting.js
 src/bilant.js
