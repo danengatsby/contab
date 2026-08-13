@@ -16,11 +16,26 @@ export function render2FA() {
   const status = $('#twofaStatus');
   if (!status) return;
   status.className = 'status' + (on ? ' ok' : '');
-  status.textContent = on ? '✔ 2FA este activat pe contul tău.' : '2FA este dezactivat.';
-  const start = $('#twofaStart'); const setup = $('#twofaSetup'); const disable = $('#twofaDisableWrap');
+  const recoveryCount = Number(USER && USER.twofaRecoveryCount) || 0;
+  status.textContent = on ? ('✔ 2FA este activat pe contul tău. Coduri de rezervă disponibile: ' + recoveryCount + '.') : '2FA este dezactivat.';
+  const start = $('#twofaStart'); const setup = $('#twofaSetup'); const disable = $('#twofaDisableWrap'); const recoveryManage = $('#twofaRecoveryManage');
   if (start) start.classList.toggle('hidden', on);
   if (on && setup) setup.classList.add('hidden');
   if (disable) disable.classList.toggle('hidden', !on);
+  if (recoveryManage) recoveryManage.classList.toggle('hidden', !on);
+}
+
+function showRecoveryCodes(codes) {
+  const box = $('#twofaRecovery'); const out = $('#twofaRecoveryCodes');
+  if (!box || !out || !Array.isArray(codes) || !codes.length) return;
+  out.value = codes.join('\n');
+  box.classList.remove('hidden');
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function validSecondFactor(code) {
+  const v = String(code || '').trim().toUpperCase();
+  return /^\d{6}$/.test(v) || /^[A-Z2-9]{4}-?[A-Z2-9]{4}-?[A-Z2-9]{4}$/.test(v);
 }
 const twofaStart = $('#twofaStart');
 twofaStart && twofaStart.addEventListener('click', async () => {
@@ -39,10 +54,11 @@ twofaEnable && twofaEnable.addEventListener('click', async () => {
   const code = $('#twofaCode').value.replace(/\s/g, '');
   if (!/^\d{6}$/.test(code)) return toast('Introdu codul de 6 cifre din aplicația de autentificare.', true);
   try {
-    await api('/api/2fa/enable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+    const r = await api('/api/2fa/enable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
     toast('2FA activat. La următoarea autentificare vei introduce și codul din aplicație.');
     $('#twofaSetup').classList.add('hidden');
     await deps.init(); deps.onTab('cont');
+    showRecoveryCodes(r.recoveryCodes);
   } catch (e) { toast(e.message, true); }
 });
 const twofaCancel = $('#twofaCancel');
@@ -52,15 +68,41 @@ twofaCancel && twofaCancel.addEventListener('click', () => {
 });
 const twofaDisable = $('#twofaDisable');
 twofaDisable && twofaDisable.addEventListener('click', async () => {
-  const code = $('#twofaDisCode').value.replace(/\s/g, '');
-  if (!/^\d{6}$/.test(code)) return toast('Introdu codul de 6 cifre pentru dezactivare.', true);
-  try { await api('/api/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }); $('#twofaDisCode').value = ''; toast('2FA dezactivat'); await deps.init(); deps.onTab('cont'); }
+  const code = $('#twofaDisCode').value.trim();
+  if (!validSecondFactor(code)) return toast('Introdu un cod TOTP sau un cod de rezervă valid.', true);
+  try { await api('/api/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }); $('#twofaDisCode').value = ''; $('#twofaRecovery')?.classList.add('hidden'); toast('2FA dezactivat'); await deps.init(); deps.onTab('cont'); }
   catch (e) { toast(e.message, true); }
 });
 const twofaRevoke = $('#twofaRevoke');
 twofaRevoke && twofaRevoke.addEventListener('click', async () => {
   try { await api('/api/2fa/revoke-devices', { method: 'POST' }); toast('Dispozitivele de încredere au fost revocate'); }
   catch (e) { toast(e.message, true); }
+});
+const twofaRegenerate = $('#twofaRegenerate');
+twofaRegenerate && twofaRegenerate.addEventListener('click', async () => {
+  const code = $('#twofaRegenCode').value.replace(/\s/g, '');
+  if (!/^\d{6}$/.test(code)) return toast('Regenerarea cere codul TOTP curent de 6 cifre.', true);
+  try {
+    const r = await api('/api/2fa/recovery-codes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+    $('#twofaRegenCode').value = '';
+    await deps.init(); deps.onTab('cont'); showRecoveryCodes(r.recoveryCodes);
+    toast('Codurile vechi au fost invalidate. Salvează noul set.');
+  } catch (e) { toast(e.message, true); }
+});
+const twofaRecoveryCopy = $('#twofaRecoveryCopy');
+twofaRecoveryCopy && twofaRecoveryCopy.addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#twofaRecoveryCodes').value); toast('Codurile au fost copiate.'); }
+  catch (_) { toast('Copierea automată nu este disponibilă. Selectează și copiază manual codurile.', true); }
+});
+const twofaRecoveryDownload = $('#twofaRecoveryDownload');
+twofaRecoveryDownload && twofaRecoveryDownload.addEventListener('click', () => {
+  const blob = new Blob(['Coduri de rezervă Contabo 2FA\n\n' + $('#twofaRecoveryCodes').value + '\n'], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob); const a = document.createElement('a');
+  a.href = url; a.download = 'contabo-coduri-rezerva-2fa.txt'; a.click(); URL.revokeObjectURL(url);
+});
+const twofaRecoveryDone = $('#twofaRecoveryDone');
+twofaRecoveryDone && twofaRecoveryDone.addEventListener('click', () => {
+  $('#twofaRecovery').classList.add('hidden'); $('#twofaRecoveryCodes').value = '';
 });
 
 // ───────────────────────── BACKUP (admin) ─────────────────────────

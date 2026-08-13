@@ -161,6 +161,10 @@ sect('3. Autentificare in doi pasi (2FA) — flux complet prin interfata');
   await adm.waitForFunction(() => /este activat/i.test(document.querySelector('#twofaStatus')?.textContent || ''));
   ok('codul corect activeaza 2FA din interfata',
     /este activat/i.test(await adm.locator('#twofaStatus').innerText()));
+  await adm.waitForFunction(() => !document.querySelector('#twofaRecovery')?.classList.contains('hidden'));
+  const recoveryCodes = (await adm.locator('#twofaRecoveryCodes').inputValue()).split(/\s+/).filter(Boolean);
+  ok('activarea afiseaza o singura data cele 8 coduri de rezerva', recoveryCodes.length === 8
+    && recoveryCodes.every((x) => /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(x)));
 
   const p2 = await (await b.newContext()).newPage();
   await p2.goto(BASE + '/', { waitUntil: 'networkidle' });
@@ -174,10 +178,10 @@ sect('3. Autentificare in doi pasi (2FA) — flux complet prin interfata');
   await p2.waitForFunction(() => !document.querySelector('#codeRow')?.classList.contains('hidden'));
   ok('parola corecta cere codul fara sa creeze sesiune',
     !(await p2.locator('#userBadge').innerText()).trim() && /introdu codul/i.test(await p2.locator('#loginErr').innerText()));
-  await camp.fill(totpCode(secret));
+  await camp.fill(recoveryCodes[0]);
   await p2.click('#loginForm button.primary');
   await p2.waitForFunction(() => (document.querySelector('#userBadge')?.textContent || '').trim().length > 0);
-  ok('parola si codul TOTP autentifica utilizatorul', !!(await p2.locator('#userBadge').innerText()).trim());
+  ok('parola si codul de rezerva autentifica utilizatorul', !!(await p2.locator('#userBadge').innerText()).trim());
 
   await p2.evaluate(() => document.querySelector('#welcomeOverlay')?.classList.add('hidden'));
   await p2.evaluate(() => window.goTab('cont'));

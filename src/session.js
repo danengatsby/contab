@@ -63,6 +63,7 @@ function publicUser(u) {
     id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), tipCont: tipCont(u), firme: allowedFirme(u),
     drepturi: u.drepturi || {},
     mustChange: !!u.mustChange, twofa: !!u.twofa,
+    twofaRecoveryCount: u.twofa && Array.isArray(u.twofaRecoveryHashes) ? u.twofaRecoveryHashes.length : 0,
     profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?
     // conditie ca sa poti inscrie firme proprii; interfata o anunta INAINTE de a incerca,
     // nu dupa ce cererea e refuzata (valoarea, nu CNP-ul — acela nu pleaca niciodata intreg)

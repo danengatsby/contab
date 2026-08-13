@@ -1141,7 +1141,8 @@ section('Poartă: fiecare modul din public/ se încarcă fără să arunce');
 // DOM-ul vechi nu are id-urile noi, dar restul paginii ramane disponibil.
 {
   const queryReal = globalThis.document.querySelector;
-  const iduriNoi2FA = new Set(['#twofaStart', '#twofaSetup', '#twofaQr', '#twofaSecret', '#twofaCode', '#twofaEnable', '#twofaCancel']);
+  const iduriNoi2FA = new Set(['#twofaStart', '#twofaSetup', '#twofaQr', '#twofaSecret', '#twofaCode', '#twofaEnable', '#twofaCancel',
+    '#twofaRecoveryManage', '#twofaRegenCode', '#twofaRegenerate', '#twofaRecovery', '#twofaRecoveryCodes', '#twofaRecoveryCopy', '#twofaRecoveryDownload', '#twofaRecoveryDone']);
   globalThis.document.querySelector = (sel) => (iduriNoi2FA.has(sel) ? null : queryReal.call(globalThis.document, sel));
   let err = null;
   try {

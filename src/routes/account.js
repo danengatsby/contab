@@ -31,9 +31,9 @@ module.exports = function register(app, ctx) {
   // ───────────────────────────── 2FA (TOTP) ─────────────────────────────
   app.post('/api/2fa/setup', (req, res) => run(res, () => svc.setup2fa(req.user)));
   app.post('/api/2fa/enable', (req, res) => run(res, () => {
-    svc.enable2fa(req.user, (req.body || {}).code);
+    const out = svc.enable2fa(req.user, (req.body || {}).code);
     logAudit('2fa.enable', req.user.username, { req, firmaId: null });
-    return { ok: true };
+    return { ok: true, recoveryCodes: out.recoveryCodes };
   }));
   app.post('/api/2fa/disable', (req, res) => run(res, () => {
     svc.disable2fa(req.user, (req.body || {}).code);
@@ -44,6 +44,11 @@ module.exports = function register(app, ctx) {
     svc.revokeTrustedDevices(req.user);
     logAudit('2fa.revoke_devices', req.user.username, { req, firmaId: null });
     return { ok: true };
+  }));
+  app.post('/api/2fa/recovery-codes', (req, res) => run(res, () => {
+    const out = svc.regenerateRecoveryCodes(req.user, (req.body || {}).code);
+    logAudit('2fa.recovery_regenerate', req.user.username, { req, firmaId: null });
+    return { ok: true, recoveryCodes: out.recoveryCodes };
   }));
 
   // ───────────────────────────── SESIUNI ACTIVE ─────────────────────────────

@@ -199,7 +199,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
     const r = await api('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (r.twofa && !r.user) { // parola corectă, cere codul 2FA
       $('#codeRow').classList.remove('hidden'); if (f.code) { f.code.required = true; f.code.focus(); }
-      $('#loginErr').textContent = 'Introdu codul din aplicația de autentificare.'; return;
+      $('#loginErr').textContent = 'Introdu codul din aplicația de autentificare sau un cod de rezervă.'; return;
     }
     f.password.value = ''; if (f.code) f.code.value = ''; hideLogin(); await D.init();
   } catch (err) {

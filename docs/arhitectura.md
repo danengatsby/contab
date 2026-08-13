@@ -181,8 +181,11 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   linkul nu mai funcționează și adminul trebuie să trimită altul.
 - **2FA (TOTP):** Setări → „Autentificare în doi pași” — activezi cu o aplicație de autentificator
   (Google Authenticator/Authy/FreeOTP), scanezi codul (sau introduci secretul) și confirmi cu un cod.
-  La login se cere și codul de 6 cifre. Implementare standard RFC 6238 fără dependențe externe
-  (`src/totp.js`). API: `POST /api/2fa/setup` · `/api/2fa/enable` · `/api/2fa/disable`.
+  La login se cere codul de 6 cifre sau unul dintre cele opt coduri de rezervă one-time. Codurile
+  de rezervă se afișează numai la creare/regenerare și se păstrează în bază doar ca hash-uri;
+  regenerarea cere un TOTP curent și invalidează întreg setul vechi. Implementare standard RFC
+  6238 fără dependențe externe (`src/totp.js`). API: `POST /api/2fa/setup` ·
+  `/api/2fa/enable` · `/api/2fa/disable` · `/api/2fa/recovery-codes`.
 - **Anti-brute-force la login:** după 8 încercări eșuate de pe același IP, login-ul e blocat ~15
   minute (răspuns `429`). Contorul se resetează la prima autentificare reușită.
 - **„Remember device” pentru 2FA:** la login cu cod poți bifa „Ține minte acest dispozitiv 30 de
@@ -220,14 +223,15 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   expert, ca să nu treacă nici o regresie care ar ascunde totul pentru toată lumea).
 - **E2E pe instanță izolată:** `npm run e2e-izolat` (`scripts/e2e-izolat.sh` +
   `scripts/e2e-izolat.mjs`) ridică o instanță proprie (bază și date temporare, port separat) și
-  rulează **77 verificări pe instanță izolată** (121 de rezultate în rularea curentă,
-  deoarece unele verifică fiecare pagină/declarație) — exact fluxurile care nu se pot atinge pe demo
+  rulează **78 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
+  deci rularea produce mai multe rezultate) — exact fluxurile care nu se pot atinge pe demo
   live: roluri și drepturi granulare, resetare de parolă cu token real, importuri, erori SPV fără
   credențiale, toate cele 10 declarații XML, **restaurarea efectivă** a unui backup (verificată
   prin dispariția unui marcaj scris după arhivare) și panoul „Cine accesează aplicația" (tabelele
   se randează, filtrul schimbă conținutul, iar un cont fără drepturi nu vede nici cardul, nici
   datele din spatele lui). Secțiunea 2FA parcurge fluxul complet prin interfață: configurare cu
-  QR/cheie, activare cu TOTP, login în doi pași și dezactivare cu un cod valid.
+  QR/cheie, activare cu TOTP, afișarea codurilor de rezervă, login cu un asemenea cod și
+  dezactivare cu un TOTP valid.
 - **Arhivă completă + copie offsite (zilnic):** pe lângă copia `db.json`, cronul creează
   `data/backups/full-YYYYMMDD-HHMMSS.zip` — `db.json` + un **instantaneu consistent** al bazei
   relaționale (SQLite prin `VACUUM INTO`, sigur sub WAL; sau `contab.sql` prin `pg_dump` pe

@@ -33,7 +33,7 @@
         <div class="auth-fields">
           <label>Utilizator <b class="req">*</b> <input name="username" autocomplete="username" placeholder="Introdu utilizatorul" required /></label>
           <label>Parolă <b class="req">*</b> <input name="password" type="password" autocomplete="current-password" placeholder="Introdu parola" required /></label>
-          <label id="codeRow" class="hidden">Cod 2FA (6 cifre) <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" /><span class="muted"><input name="remember" type="checkbox" /> Ai încredere în acest dispozitiv timp de 30 de zile</span></label>
+          <label id="codeRow" class="hidden">Cod 2FA sau cod de rezervă <input name="code" inputmode="text" autocomplete="one-time-code" maxlength="14" autocapitalize="characters" placeholder="000000 sau XXXX-XXXX-XXXX" /><span class="muted"><input name="remember" type="checkbox" /> Ai încredere în acest dispozitiv timp de 30 de zile</span></label>
         </div>
         <div id="loginErr" class="status err"></div>
         <button class="btn primary" data-u="u19">Intră în cont</button>
@@ -2352,7 +2352,11 @@ Cu stimă,
         <div id="twofaStatus" class="status"></div>
         <div class="row">
           <button id="twofaStart" class="btn primary">Configurează 2FA</button>
-          <span id="twofaDisableWrap" class="hidden"><input id="twofaDisCode" inputmode="numeric" placeholder="Cod 6 cifre" data-u="u120" /> <button id="twofaDisable" class="btn ghost">Dezactivează 2FA</button> <button id="twofaRevoke" class="btn ghost">Revocă dispozitivele de încredere</button></span>
+          <span id="twofaDisableWrap" class="hidden"><input id="twofaDisCode" inputmode="text" maxlength="14" autocapitalize="characters" placeholder="TOTP sau cod de rezervă" data-u="u120" /> <button id="twofaDisable" class="btn ghost">Dezactivează 2FA</button> <button id="twofaRevoke" class="btn ghost">Revocă dispozitivele de încredere</button></span>
+        </div>
+        <div id="twofaRecoveryManage" class="row hidden">
+          <input id="twofaRegenCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Cod TOTP curent" />
+          <button id="twofaRegenerate" class="btn ghost">Generează alte coduri de rezervă</button>
         </div>
         <div id="twofaSetup" class="hidden">
           <p><b>1.</b> Scanează codul QR cu aplicația de autentificare.</p>
@@ -2360,6 +2364,12 @@ Cu stimă,
           <p>Dacă nu poți scana, introdu manual cheia: <code id="twofaSecret"></code></p>
           <p><b>2.</b> Confirmă configurarea cu primul cod generat.</p>
           <div class="row"><input id="twofaCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="Cod 6 cifre" /> <button id="twofaEnable" class="btn primary">Activează 2FA</button> <button id="twofaCancel" class="btn ghost">Anulează</button></div>
+        </div>
+        <div id="twofaRecovery" class="hidden">
+          <h3>Codurile tale de rezervă</h3>
+          <p class="status warn">Salvează-le acum într-un loc sigur. Fiecare cod poate fi folosit o singură dată, iar aplicația nu le mai poate afișa ulterior.</p>
+          <textarea id="twofaRecoveryCodes" rows="8" readonly aria-label="Coduri de rezervă 2FA"></textarea>
+          <div class="row"><button id="twofaRecoveryCopy" class="btn ghost">Copiază</button><button id="twofaRecoveryDownload" class="btn ghost">Descarcă</button><button id="twofaRecoveryDone" class="btn primary">Am salvat codurile</button></div>
         </div>
       </div>
     </section>
