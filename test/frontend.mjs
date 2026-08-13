@@ -596,6 +596,35 @@ section('Bara de sus pe telefon: nu are voie să crească la loc');
   ok('panoul se închide la alegerea unei unelte', /#sideTools[\s\S]{0,220}remove\('tools-open'\)/.test(js));
 }
 
+section('Bulele de ajutor ⓘ chiar au unde să se prindă (fiecare titlu explicat există)');
+{
+  // `addPanelInfo()` din app.js leagă fiecare explicație din `panel-info.js` de un titlu din
+  // pagină, potrivind pe TEXT: `.card h2`, `.card h3`, `section .toolbar h2` și `.card > summary`.
+  // Potrivirea pe text e fragilă prin construcție — o redenumire sau mutarea titlului într-un alt
+  // element rupe legătura TĂCUT: explicația rămâne în tabel, bula dispare de pe ecran și nimic
+  // nu pică. Exact riscul luat aici, unde un panou a devenit `<details class="card">` și titlul
+  // a trecut din `<h2>` în `<summary>`.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const src = fs.readFileSync(path.join(PUB, 'panel-info.js'), 'utf8');
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9ăâîșşțţ]/g, '');
+  // Titlurile din pagină, pe aceleași patru ancore ca în app.js.
+  const ancore = [];
+  for (const m of html.matchAll(/<(h2|h3|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)) ancore.push(norm(m[2].replace(/<[^>]*>/g, ' ')));
+  ok('poarta chiar vede titluri în pagină', ancore.length > 40);
+  // Cheile explicate: primul element al fiecărei perechi din tabel.
+  const chei = [...src.matchAll(/\n\s*\['([^']+)',/g)].map((m) => norm(m[1]));
+  ok('poarta chiar vede explicații (nu o listă goală)', chei.length > 40);
+  const orfane = chei.filter((k) => !ancore.some((a) => a.startsWith(k)));
+  ok('fiecare explicație are un titlu de care să se prindă'
+    + (orfane.length ? ' — ORFANE (' + orfane.length + '): ' + orfane.slice(0, 5).join(' | ') : ''),
+    orfane.length === 0);
+  // Cazul concret reparat aici: panoul de șabloane e strâns, dar titlul lui rămâne o ancoră validă.
+  ok('șablonul de email e un panou care se STRÂNGE', /<details class="card" id="emailTplBox">/.test(html));
+  ok('...strâns implicit (fără `open`)', !/<details class="card" id="emailTplBox"[^>]*\bopen\b/.test(html));
+  ok('...cu titlul într-un `summary`, ancora recunoscută de addPanelInfo',
+    /<details class="card" id="emailTplBox">\s*<summary[^>]*>📧 Șabloane email/.test(html));
+}
+
 section('Modul simplu filtrează LIMBAJUL, nu doar meniul');
 {
   // Constatarea reparată aici: `.simple-ui` ascundea 9 taburi și 28 de elemente, dar ecranele pe

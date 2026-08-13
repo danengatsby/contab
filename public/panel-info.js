@@ -16,7 +16,7 @@ var PANEL_INFO = [
   ['Import extras bancar', 'Încarci extrasul (CSV/MT940); tranzacțiile sunt potrivite cu partenerii după nume/CUI și propuse ca încasări/plăți de confirmat.'],
   ['Facturi primite în SPV', 'Facturile electronice primite în SPV. „Importă" descarcă XML-ul și îl transformă într-o înregistrare de cumpărare, cu documentul atașat.'],
   ['📥 Import direct e-Factura', 'Ai deja XML-ul e-Factura (de pe email etc.)? Îl încarci aici fără conexiune SPV.'],
-  ['Emite un document de ieșire', 'Factura ta către client: completezi liniile, numărul vine automat din serie, iar PDF-ul și e-Factura XML se generează singure.'],
+  ['1 · Emite un document de ieșire', 'Factura ta către client: completezi liniile, numărul vine automat din serie, iar PDF-ul și e-Factura XML se generează singure.'],
   ['Rapoarte generate automat', 'Scurtături către registrele și rapoartele generate din înregistrările tale.'],
   ['🔁 Facturi recurente', 'Șabloane care emit automat facturi la interval fix (abonamente, chirii) — definești o dată, aplicația le generează la zi.'],
   ['Toate înregistrările recente', 'Ultimele articole contabile, cu documentul-sursă, nota contabilă PDF și acțiuni (stornare, e-Factura, SPV).'],
@@ -52,7 +52,7 @@ var PANEL_INFO = [
   ['SAF-T', 'Fișierul standard de audit (D406): conturi, parteneri, facturi și toate articolele anului, în XML-ul cerut de ANAF.'],
   // Livrabile + portofoliu
   ['🏛 Fișa Rol', 'Soliciți de la ANAF fișa pe plătitor (obligațiile firmei din evidența fiscală) și descarci documentele din mesajele SPV.'],
-  ['📋 Registrul depunerilor', 'Declarațiile lunii cu termenul legal și starea lor: descărcarea XML-ului le marchează „generate", tu le marchezi „depuse" cu recipisa.'],
+  ['📮 De depus', 'Declarațiile lunii cu termenul legal și starea lor: descărcarea XML-ului le marchează „generate", tu le marchezi „depuse" cu recipisa.'],
   ['Status declarații', 'Distribuția declarațiilor lunii pe stări (depuse, generate, nedepuse, erori), pe tot portofoliul.'],
   ['⚠️ Top firme cu atenționări', 'Firmele cu restanțe la depuneri sau erori — cele care cer intervenție primele.'],
   ['Firme din portofoliu', 'Situația fiecărei firme: declarații așteptate, depuse, nedepuse, erori și atenționări pe luna selectată.'],
@@ -64,9 +64,9 @@ var PANEL_INFO = [
   ['Scadențar — creanțe și datorii', 'Soldurile restante pe partener, pe intervale de vechime, prin stingere FIFO (factura cea mai veche se stinge prima).'],
   ['Ajustare pentru deprecierea creanțelor', 'Pentru creanțele vechi (peste 90 de zile): recunoști că probabil nu mai încasezi banii — fie prin ajustare (reversibilă), fie scoțând creanța din evidență, dacă e sigur pierdută.', 'Note: ajustare 6814 = 491; scoatere 654 = 4111.'],
   // Mijloace fixe
-  ['Registrul mijloacelor fixe', 'Toate imobilizările, cu valoare de intrare, amortizare cumulată și valoare rămasă la zi.'],
+  ['🏢 Mijloace fixe', 'Toate imobilizările, cu valoare de intrare, amortizare cumulată și valoare rămasă la zi.'],
   ['Adaugă mijloc fix', 'Introduci imobilizarea (cost, durată, metodă de amortizare); amortizarea începe automat din luna următoare punerii în funcțiune.'],
-  ['Grafic de rate leasing', 'Scadențar de leasing: rate lunare cu principal, dobândă și sold rămas — anuități constante sau rate egale de capital.'],
+  ['Grafic de rate', 'Scadențar de leasing: rate lunare cu principal, dobândă și sold rămas — anuități constante sau rate egale de capital.'],
   // Salarizare
   ['Adaugă / modifică angajat', 'Datele angajatului: brut, spor, persoane în întreținere (pentru deducerea personală), tichete, avans, rețineri.'],
   ['Sumar stat de plată', 'Totalurile lunii: brut, contribuții (CAS/CASS/CAM), impozit, net de plată și costul total al angajatorului.'],

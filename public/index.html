@@ -1950,8 +1950,14 @@
           </details>
         </div>
       </div>
-      <div class="card">
-        <h2>📧 Șabloane email pentru clienți</h2>
+      <!-- STRANS implicit, ca „Import din CSV" de deasupra si ca importurile din „Adauga document
+           primit": e o unealta LUNARA a contabilului (textul trimis clientilor), nu obiectul
+           acestui ecran. Desfasurat, textarea de 22 de randuri ocupa ~60% din pagina si impingea
+           sub linia de plutire tocmai lista de parteneri si formularul de adaugare — adica treaba
+           pentru care omul a deschis ecranul. Continutul e neatins; se deschide dintr-un clic si
+           browserul tine minte starea cat timp stai pe pagina. -->
+      <details class="card" id="emailTplBox">
+        <summary class="sec-sum">📧 Șabloane email pentru clienți <span class="muted">(textul lunar trimis clienților — se deschide la nevoie)</span></summary>
         <p class="muted">Alege șablonul, ajustează câmpurile din paranteze, apoi copiază-l în email.</p>
         <div class="row" data-u="u104">
           <button class="btn small emltpl active" data-tpl="full" data-u="u105">📋 Solicitare lunară</button>
@@ -1986,7 +1992,7 @@ Cu stimă,
 [Funcție / Firmă]
 [Date de contact]</textarea>
         <div class="row"><button id="emailCopyBtn" class="btn primary">⧉ Copiază textul</button><button id="emailResetBtn" class="btn ghost small" data-u="u105">Resetează</button></div>
-      </div>
+      </details>
     </section>
 
     <!-- ─────────────── PLAN ─────────────── -->
