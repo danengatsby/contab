@@ -515,6 +515,43 @@ sect('12. Modul simplu ascunde partea tehnic-contabila din TOATE navigatiile');
   ok('mod expert: bara de meniu ofera toate taburile', e.itemeMeniu === e.totalTaburi);
 }
 
+// ────────── 13. PE TELEFON, ECRANUL DE INTRARE NU DERULEAZA PAGINA DE DEDESUBT ──────────
+// Ecranele-strat (`.login-overlay`: intrare, inscriere, preturi, intrebari, bun venit) sunt
+// `position:fixed` si isi deruleaza corect propriul continut. Dar `body` ramanea derulabil, deci
+// pe telefon degetul, dupa ce termina overlay-ul, ducea in vedere carcasa goala a aplicatiei:
+// „Previziune cash-flow", „Aging — vechimea soldurilor", „Ultimele operatiuni". Nu se scurgea
+// nicio data (API-ul raspunde 401), dar vizitatorul vedea un ecran care nu e al lui.
+//
+// De ce AICI si nu in suita unitara: efectul e derularea calculata de browser din doua reguli CSS
+// (`overflow` propagat de la radacina + `overscroll-behavior`), pe un DOM real. O poarta pe sursa
+// dovedeste ca regula e scrisa — nu si ca degetul chiar nu mai ajunge in pagina.
+//
+// Capcana de masurare, platita o data: `window.scrollTo()` deruleaza PROGRAMATIC si trece peste
+// `overflow:hidden`, deci raporta „stricat" si dupa reparatie. Se foloseste rotita/degetul.
+sect('13. Ecranul de intrare pe telefon nu deruleaza aplicatia de dedesubt');
+{
+  const tel = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  await tel.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await tel.waitForTimeout(800);
+  ok('ecranul de intrare e afisat', (await tel.locator('#loginOverlay:not(.hidden)').count()) === 1);
+  await tel.mouse.move(195, 400);
+  for (let i = 0; i < 8; i++) { await tel.mouse.wheel(0, 500); await tel.waitForTimeout(100); }
+  await tel.waitForTimeout(300);
+  const m = await tel.evaluate(() => {
+    const ov = document.querySelector('#loginOverlay');
+    return {
+      overlayScrollTop: Math.round(ov.scrollTop),
+      overlayMax: Math.round(ov.scrollHeight - ov.clientHeight),
+      paginaScrollY: Math.round(window.scrollY),
+    };
+  });
+  // Fara asta, poarta ar trece si pe o pagina care NU se deruleaza deloc — adica exact cazul in
+  // care overlay-ul insusi s-ar fi stricat, iar continutul lui ar fi devenit inaccesibil.
+  ok('overlay-ul isi deruleaza propriul continut (are ce derula)', m.overlayMax > 100);
+  ok('...si ajunge pana la capatul lui', m.overlayScrollTop >= m.overlayMax - 2);
+  ok('PAGINA de dedesubt ramane pe loc (masurat: ' + m.paginaScrollY + 'px)', m.paginaScrollY === 0);
+  await tel.close();}
+
 await b.close();
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari E2E izolate trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

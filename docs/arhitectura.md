@@ -220,15 +220,18 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   expert, ca să nu treacă nici o regresie care ar ascunde totul pentru toată lumea).
 - **E2E pe instanță izolată:** `npm run e2e-izolat` (`scripts/e2e-izolat.sh` +
   `scripts/e2e-izolat.mjs`) ridică o instanță proprie (bază și date temporare, port separat) și
-  rulează **85 verificări pe instanță izolată** — exact fluxurile care nu se pot atinge pe demo
+  rulează **89 verificări pe instanță izolată** — exact fluxurile care nu se pot atinge pe demo
   live: roluri și drepturi granulare, resetare de parolă cu token real, importuri, erori SPV fără
   credențiale, toate cele 10 declarații XML, **restaurarea efectivă** a unui backup (verificată
   prin dispariția unui marcaj scris după arhivare), panoul „Cine accesează aplicația" (tabelele
   se randează, filtrul schimbă conținutul, iar un cont fără drepturi nu vede nici cardul, nici
-  datele din spatele lui) și **modul simplu în toate cele trei navigații** — bara laterală, bara
-  de meniu și banda de unelte oglindesc aceleași `#tabs`, deci ascunderea părții tehnic-contabile
-  se dovedește pe vizibilitatea calculată de browser, cu acordeonul și meniurile DESCHISE (o
-  măsurătoare care le lasă închise raportează zero scăpări indiferent de adevăr). Secțiunea 2FA nu mai parcurge fluxul, fiindcă
+  datele din spatele lui), **modul simplu în toate cele trei navigații** — bara laterală, bara de
+  meniu și banda de unelte oglindesc aceleași `#tabs`, deci ascunderea părții tehnic-contabile se
+  dovedește pe vizibilitatea calculată de browser, cu acordeonul și meniurile DESCHISE (o
+  măsurătoare care le lasă închise raportează zero scăpări indiferent de adevăr) — și **ecranul de
+  intrare pe telefon**, unde se dovedește că derularea rămâne în stratul de deasupra și nu aduce în
+  vedere carcasa aplicației de dedesubt (măsurat cu rotița/degetul, nu cu `window.scrollTo`, care
+  trece peste `overflow:hidden`). Secțiunea 2FA nu mai parcurge fluxul, fiindcă
   produsul nu-l mai oferă: verifică **starea deliberată** (câmpul de cod inactiv pe login, nicio
   cale de pornire în interfață, ieșirea intactă) plus faptul că generatorul TOTP rămâne corect,
   ca reactivarea să fie o schimbare de interfață, nu repornirea unui mecanism neprobat.

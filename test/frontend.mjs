@@ -892,6 +892,32 @@ section('Ecranele „1 · alege / 2 · verifică": coloana a doua nu se rezervă
     ok('„' + eticheta + '" nu mai trimite la o poziție care se schimbă', !/(în|din) stânga/.test(ecran));
   }
 }
+
+section('Ecranele-strat opresc derularea paginii de dedesubt');
+{
+  // Strat rapid, pe sursă: dovedește că regulile EXISTĂ. Efectul (degetul chiar nu mai ajunge în
+  // pagină) se dovedește în `scripts/e2e-izolat.mjs`, secțiunea 13, pe DOM adevărat — două
+  // straturi, ca la restul porților.
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  ok('pagina se blochează cât timp un ecran-strat e deschis',
+    /html:has\(\.login-overlay:not\(\.hidden\)\)[\s\S]{0,80}\{overflow:hidden\}/.test(css));
+  ok('...pe rădăcină ȘI pe body (propagarea overflow-ului diferă între motoare)',
+    /body:has\(\.login-overlay:not\(\.hidden\)\)/.test(css));
+  // `:not(.hidden)` e miezul regulii: fără el, pagina ar rămâne blocată DUPĂ autentificare —
+  // cele șase ecrane-strat există mereu în DOM, doar ascunse.
+  ok('regula se uită la ecranele VIZIBILE, nu la simpla lor existență',
+    !/html:has\(\.login-overlay\)\s*[,{]/.test(css));
+  // Derularea se oprește în overlay: altfel, la capătul lui, gestul continuă în pagină.
+  ok('overlay-ul nu propagă derularea mai departe', /\.login-overlay\{[^}]*overscroll-behavior:contain/.test(css));
+  // Toate cele șase straturi poartă clasa pe care se sprijină regula — un ecran nou care ar uita-o
+  // ar reintroduce defectul tăcut, pe altă ușă.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const straturi = [...html.matchAll(/<div id="(\w+Overlay)" class="([^"]*)"/g)];
+  ok('poarta chiar vede ecrane-strat (nu o listă goală)', straturi.length >= 5);
+  const faraClasa = straturi.filter((m) => !/\blogin-overlay\b/.test(m[2])).map((m) => m[1]);
+  ok('fiecare ecran-strat poartă clasa `login-overlay`'
+    + (faraClasa.length ? ' — FĂRĂ: ' + faraClasa.join(', ') : ''), faraClasa.length === 0);
+}
 section('Modul simplu filtrează LIMBAJUL, nu doar meniul');
 {
   // Constatarea reparată aici: `.simple-ui` ascundea 9 taburi și 28 de elemente, dar ecranele pe
