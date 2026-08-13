@@ -44,7 +44,10 @@ function buildXml(v, type, opts) {
     const pt = po.rezultatFiscal || acc.profitTax(v, year, po);
     return xml.d107Xml(v.company, d107.report(v, year, pt), declarant);
   }
-  if (type === 'intrastat') return xml.intrastatXml(v.company, period, rep.intrastat(v, period));
+  if (type === 'intrastat') {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period || ''))) throw new Error('Perioadă Intrastat invalidă (folosește YYYY-MM).');
+    return xml.intrastatXml(v.company, period, rep.intrastat(v, period));
+  }
   if (type === 'd205') return xml.d205Xml(v.company, year, rep.d205(v, year));
   if (type === 'd112') return xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarant);
   if (type === 'saft') return saft.saftXml(v, year);
@@ -75,6 +78,10 @@ function validateFor(v, type, opts) {
   // D394: articolele cu taxare inversa fara cod de bun art. 331 nu se vad in XML (op11 lipseste
   // tocmai pentru ca nu inventam un cod) — se calculeaza din jurnal, ca sa le putem numi.
   if (type === 'd394') ctxVal.faraCodCategorie = xml.d394FaraCodCategorie(acc.vatJournals(v, pv));
+  // Centralizatorul Intrastat poate fi bine-format si totusi imposibil de transcris corect daca
+  // lipsesc NC8, masa, tara, natura sau Incoterms. Problemele provin din articolele sursa si nu se
+  // pot identifica sigur doar din XML dupa agregare.
+  if (type === 'intrastat') ctxVal.intrastatProbleme = rep.intrastat(v, o.period || null).probleme;
   const result = validate.validateDeclaration(type, x, ctxVal);
   // D100: adauga avertismentele de eligibilitate micro (plafon venituri + conditia de salariat)
   if (type === 'd100') result.warnings.push(...(rep.d100(v, o.period || null).avertismente || []));

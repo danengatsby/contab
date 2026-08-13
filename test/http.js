@@ -1320,7 +1320,11 @@ async function main() {
       (x710Arhiva.text.match(/suma_dat_I="\d+" suma_dat_C="\d+"/) || [])[0]
       === (x710.text.match(/suma_dat_I="\d+" suma_dat_C="\d+"/) || [])[0]);
     const xInt = await req('GET', '/xml/intrastat?period=2026-06', { cookie: c1 });
-    ok('xml/intrastat: bine-format', xInt.status === 200 && /<declaratieIntrastat/.test(xInt.text));
+    ok('xml/intrastat: centralizator bine-format si marcat necompatibil direct cu INS', xInt.status === 200 && /<declaratieIntrastat/.test(xInt.text) && /compatibil_ins="nu"/.test(xInt.text));
+    eq('xml/intrastat: perioada invalida -> 400', (await req('GET', '/xml/intrastat?period=2026-13', { cookie: c1 })).status, 400);
+    eq('api/intrastat: perioada invalida -> 400', (await req('GET', '/api/intrastat?period=2026', { cookie: c1 })).status, 400);
+    eq('csv/intrastat: perioada invalida -> 400', (await req('GET', '/csv/intrastat?period=2026-00', { cookie: c1 })).status, 400);
+    ok('descarcarea centralizatorului marcheaza Intrastat „generata" in registru', (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'intrastat').status === 'generata');
     eq('validare d100 raspunde pe tipul cerut', (await req('GET', '/api/validate/d100?period=2026-06', { cookie: c1 })).json.type, 'd100');
     ok('validare d100: avertismentele de eligibilitate micro sunt incluse',
       (await req('GET', '/api/validate/d100?period=2026-06', { cookie: c1 })).json.warnings.some((w) => /salariat|plafon/i.test(w)));

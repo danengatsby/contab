@@ -116,7 +116,10 @@ module.exports = [
           { value: 'servicii', label: 'SERVICII primite de la un prestator extern (D390 cod S, daca prestatorul are cod de TVA din UE)' },
           { value: 'intern331', label: 'Taxare inversa interna, art. 331 (nu intra in D390)' },
         ] },
-      { name: 'contStoc', label: 'Cont stoc/cheltuiala/imobilizare', type: 'account', default: '371' }, F.proRataMixt],
+      { name: 'contStoc', label: 'Cont stoc/cheltuiala/imobilizare', type: 'account', default: '371' },
+      // Se completeaza numai pentru optiunea „bunuri intracomunitare”. Fara aceste date,
+      // calendarul ar cere Intrastat, dar centralizatorul n-ar putea identifica marfa.
+      F.codNC, F.masaNeta, F.naturaTranz, F.conditieLivrare, F.proRataMixt],
     build: (d) => {
       const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
       return [
@@ -218,7 +221,10 @@ module.exports = [
       { name: 'sumaValuta', label: 'Valoarea în valuta documentului', type: 'number', required: true },
       { name: 'curs', label: 'Curs valutar la data exigibilității', type: 'number', step: '0.0001', required: true },
       { name: 'cota', label: 'Cota TVA datorată în România (%)', type: 'number', default: fiscal.FISCAL.tvaStandard, required: true },
-      { name: 'contCost', label: 'Cont de cost/stoc/imobilizare (TVA nedeductibilă intră aici)', type: 'account', default: '628' }],
+      { name: 'contCost', label: 'Cont de cost/stoc/imobilizare (TVA nedeductibilă intră aici)', type: 'account', default: '628' },
+      // Pentru sectiunile 1-3, bunurile intra si in Intrastat daca firma are aceasta obligatie.
+      // Sectiunile 4/5 (alte operatiuni/servicii) lasa campurile necompletate.
+      F.codNC, F.masaNeta, F.naturaTranz, F.conditieLivrare],
     build: (d) => {
       const m = d301.dinCampuri(d);
       return [

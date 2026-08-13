@@ -83,8 +83,10 @@ module.exports = function register(app, ctx) {
   });
 
   app.get('/csv/intrastat', (req, res) => {
-    const d = rep.intrastat(S(req), req.query.period || null);
-    const rows = d.rows.map((r) => [r.flux, r.tara, r.codNC || '', r.natura || '', r.conditie || '', r.masaNeta, r.valoare, r.nrop]);
-    sendCsv(res, 'intrastat.csv', toCsv(['Flux', 'Tara', 'Cod NC8', 'Natura tranzactiei', 'Conditie livrare', 'Masa neta (kg)', 'Valoare (lei)', 'Nr. operatiuni'], rows));
+    const period = req.query.period || null;
+    if (period && !/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period))) return res.status(400).send('Perioadă Intrastat invalidă (folosește YYYY-MM).');
+    const d = rep.intrastat(S(req), period);
+    const rows = d.rows.map((r) => [r.flux, r.tara, r.cuiPartener || '', r.codNC || '', r.natura || '', r.conditie || '', r.masaNeta, r.valoare, r.nrop]);
+    sendCsv(res, 'intrastat.csv', toCsv(['Flux', 'Tara', 'Cod TVA partener (expedieri)', 'Cod NC8', 'Natura tranzactiei', 'Conditie livrare', 'Masa neta (kg)', 'Valoare (lei)', 'Nr. operatiuni'], rows));
   });
 };

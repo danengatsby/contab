@@ -1559,8 +1559,10 @@ function d101Xml(company, d, who) {
 `;
 }
 
-// Intrastat — declaratia statistica lunara pentru comertul intra-UE cu bunuri.
-// Se depune la INS (aplicatia Intrastat online / www.intrastat.ro), NU la ANAF.
+// Intrastat — CENTRALIZATOR de lucru pentru comertul intra-UE cu bunuri. Acesta NU este fisierul
+// oficial InsNewArrival/InsNewDispatch: schema INS cere doua declaratii distincte si campuri pe
+// care modelul curent nu le are (mod transport, tara de origine, contact etc.). Mai sigur este sa
+// spunem explicit ce produce aplicatia decat sa oferim un XML bine-format, dar respins la import.
 function intrastatXml(company, period, d) {
   const { an, luna } = ym(period);
   const row = (r) => `    <articol codNC="${esc(r.codNC)}" tara="${esc(r.tara)}" natura="${esc(r.natura || '11')}"`
@@ -1568,9 +1570,10 @@ function intrastatXml(company, period, d) {
   const intro = (d.rows || []).filter((r) => r.flux === 'introducere').map(row).join('\n');
   const exp = (d.rows || []).filter((r) => r.flux === 'expediere').map(row).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- Intrastat generat de Contabo. A se verifica/incarca in aplicatia Intrastat online (INS) inainte de depunere — obligatoriu doar peste pragul anual. -->
+<!-- Centralizator de lucru Intrastat generat de Contabo. NU este schema oficiala INS si NU se incarca direct; foloseste datele pentru completarea aplicatiei Intrastat. -->
 <declaratieIntrastat cui="${esc(String(company.cui).replace(/^ro/i, ''))}" den="${esc(company.nume)}"
-  luna="${esc(luna)}" an="${esc(an)}" total_introduceri="${num2(d.totalIntroduceri)}" total_expedieri="${num2(d.totalExpedieri)}">
+  format="centralizator-lucru" compatibil_ins="nu" luna="${esc(luna)}" an="${esc(an)}"
+  total_introduceri="${num2(d.totalIntroduceri)}" total_expedieri="${num2(d.totalExpedieri)}">
   <introduceri total="${num2(d.totalIntroduceri)}" obligat="${d.obligatIntroduceri ? 'da' : 'nu'}">
 ${intro || '    <!-- fara introduceri -->'}
   </introduceri>

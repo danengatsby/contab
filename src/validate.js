@@ -73,6 +73,8 @@ function validateDeclaration(type, xml, ctx) {
   if (type === 'intrastat') {
     if (!has(s, '<articol ')) warnings.push('Nicio operatiune intracomunitara cu bunuri in perioada — declaratie goala.');
     if (has(s, 'codNC=""')) warnings.push('Exista articole fara cod NC8 — completeaza codurile inainte de depunere la INS.');
+    for (const p of ctx.intrastatProbleme || []) errors.push(p.mesaj);
+    warnings.push('Fișierul este un centralizator de lucru, nu XML-ul oficial InsNewArrival/InsNewDispatch acceptat direct de INS.');
   }
 
   return { ok: errors.length === 0, errors, warnings };

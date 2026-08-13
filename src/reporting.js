@@ -25,6 +25,7 @@ const CONT_SPONSORIZARE = '6582'; // art. 25(4)(i) — cheltuiala de sponsorizar
 const xml = require('./xml');
 const d301 = require('./d301');
 const d205 = require('./d205');
+const intra = require('./intrastat');
 
 /** Rulajele perioadei pe cont {cod:{d,c}}, FARA inchiderile 6/7 -> 121 (vezi `resultLines`).
  *  Alimenteaza recapitulativul D112, care citeste 641: nota de inchidere anuala (121 = 641) e
@@ -253,39 +254,73 @@ function achizitiiPfCarnet(db, period) {
   return { period, rows, total: round2(rows.reduce((s, r) => s + r.total, 0)), nr: rows.length };
 }
 
-/** Intrastat (de baza) — fluxuri de bunuri intracomunitare pe tara: introduceri (achizitii) / expedieri (livrari). */
+/** Intrastat — centralizatorul miscarilor de bunuri pe flux, cu verificari de completitudine. */
 function intrastat(db, period) {
-  const FLUX = { livrare_intracomunitara: 'expediere', achizitie_intracomunitara: 'introducere' };
-  const ent = acc.postedEntries(db).filter((e) => FLUX[e.tip] && (!period || String(e.period || periodOf(e.data)).startsWith(period)));
-  const map = new Map();
-  for (const e of ent) {
-    const flux = FLUX[e.tip];
-    let val = 0;
-    for (const l of e.lines) {
-      if (flux === 'expediere' && /^70/.test(String(l.credit))) val = round2(val + l.suma);
-      if (flux === 'introducere' && String(l.credit) === '401') val = round2(val + l.suma);
+  const toate = acc.postedEntries(db).filter((e) => intra.flux(e));
+  const ent = toate.filter((e) => !period || String(e.period || periodOf(e.data)) === period);
+  const grupeaza = (lista) => {
+    const map = new Map();
+    for (const e of lista) {
+      const flux = intra.flux(e);
+      const val = intra.valoare(e, flux);
+      const it = e.intrastat || {};
+      const cui = intra.codPartener(e);
+      const tara = intra.tara(e);
+      const codNC = String(it.codNC || '').trim();
+      const natura = String(it.natura || '').trim();
+      const conditie = String(it.conditie || '').trim().toUpperCase();
+      // Conditia si natura fac parte din cheia statistica. Gruparea doar pe tara+NC8 combina
+      // tranzactii distincte intr-un singur articol si produce un centralizator imposibil de
+      // transcris corect in aplicatia INS. La expedieri pastram si codul partenerului.
+      const key = [flux, tara, codNC, natura, conditie, flux === 'expediere' ? cui : ''].join('|');
+      const r = map.get(key) || { flux, tara, cuiPartener: flux === 'expediere' ? cui : '', codNC,
+        natura, conditie, valoare: 0, masaNeta: 0, nrop: 0, entryIds: [] };
+      r.valoare = round2(r.valoare + val);
+      r.masaNeta = round2(r.masaNeta + (Number(it.masaNeta) || 0));
+      r.nrop += 1;
+      r.entryIds.push(e.id);
+      map.set(key, r);
     }
+    return [...map.values()].filter((r) => r.valoare !== 0)
+      .sort((a, b) => (a.flux + a.tara + a.codNC + a.natura + a.conditie + a.cuiPartener)
+        .localeCompare(b.flux + b.tara + b.codNC + b.natura + b.conditie + b.cuiPartener));
+  };
+  const rows = grupeaza(ent);
+  const total = (lista, sens) => round2(lista.filter((r) => r.flux === sens).reduce((s, r) => s + r.valoare, 0));
+  const totalExpedieri = total(rows, 'expediere');
+  const totalIntroduceri = total(rows, 'introducere');
+  // Pragul este ANUAL si separat pe flux. Pentru un raport lunar calculam rulajul de la 1 ianuarie
+  // pana la luna selectata; compararea unei singure luni cu pragul anual ascunde depasirea cumulata.
+  const ytdEntries = period ? toate.filter((e) => {
+    const ep = String(e.period || periodOf(e.data));
+    return ep.slice(0, 4) === period.slice(0, 4) && ep <= period;
+  }) : toate;
+  const ytd = grupeaza(ytdEntries);
+  const rulajAnualExpedieri = total(ytd, 'expediere');
+  const rulajAnualIntroduceri = total(ytd, 'introducere');
+  const pragIntroduceri = intra.prag('introducere');
+  const pragExpedieri = intra.prag('expediere');
+  const probleme = [];
+  // Verificam FIECARE articol inainte de agregare. Daca unul are masa 0 si altul 10 kg, suma
+  // grupei este pozitiva, dar primul document ramane incomplet si nu trebuie ascuns de al doilea.
+  for (const e of ent) {
     const it = e.intrastat || {};
-    const cui = String(e.partenerCui || '').replace(/\s/g, '').toUpperCase();
-    const codNC = String(it.codNC || '').trim();
-    const key = flux + '|' + cui.slice(0, 2) + '|' + codNC;
-    const r = map.get(key) || { flux, tara: cui.slice(0, 2), codNC, natura: it.natura || '', conditie: it.conditie || '', valoare: 0, masaNeta: 0, nrop: 0 };
-    r.valoare = round2(r.valoare + val);
-    r.masaNeta = round2(r.masaNeta + (Number(it.masaNeta) || 0));
-    r.nrop += 1;
-    if (!r.natura && it.natura) r.natura = it.natura;
-    if (!r.conditie && it.conditie) r.conditie = it.conditie;
-    map.set(key, r);
+    const id = String(e.id || '(fără id)');
+    const ids = e.id == null ? [] : [e.id];
+    if (!/^\d{8}$/.test(String(it.codNC || '').trim())) probleme.push({ camp: 'codNC', entryIds: ids, mesaj: 'Cod NC8 lipsă sau invalid la articolul ' + id + '.' });
+    if (!(Number(it.masaNeta) > 0)) probleme.push({ camp: 'masaNeta', entryIds: ids, mesaj: 'Masa netă trebuie să fie mai mare decât zero la articolul ' + id + '.' });
+    if (!intra.taraIntrastatValida(intra.tara(e))) probleme.push({ camp: 'tara', entryIds: ids, mesaj: 'Codul de TVA al partenerului nu indică o țară Intrastat validă la articolul ' + id + '.' });
+    if (!/^\d{2}$/.test(String(it.natura || '').trim())) probleme.push({ camp: 'natura', entryIds: ids, mesaj: 'Natura tranzacției trebuie să aibă două cifre la articolul ' + id + '.' });
+    if (!intra.conditieValida(it.conditie)) probleme.push({ camp: 'conditie', entryIds: ids, mesaj: 'Condiția Incoterms lipsește sau nu este în nomenclatorul 2020 la articolul ' + id + '.' });
+    if (!(intra.valoare(e, intra.flux(e)) > 0)) probleme.push({ camp: 'valoare', entryIds: ids, mesaj: 'Valoarea facturată trebuie să fie mai mare decât zero la articolul ' + id + '.' });
   }
-  const rows = [...map.values()].filter((r) => r.valoare !== 0).sort((a, b) => (a.flux + a.tara + a.codNC).localeCompare(b.flux + b.tara + b.codNC));
-  const totalExpedieri = round2(rows.filter((r) => r.flux === 'expediere').reduce((s, r) => s + r.valoare, 0));
-  const totalIntroduceri = round2(rows.filter((r) => r.flux === 'introducere').reduce((s, r) => s + r.valoare, 0));
-  const PRAG = 1000000; // praguri Intrastat RO 2024 (lei, anuale cumulate): introduceri si expedieri
   return {
     period, rows, totalExpedieri, totalIntroduceri,
-    pragIntroduceri: PRAG, pragExpedieri: PRAG,
-    obligatIntroduceri: totalIntroduceri >= PRAG, obligatExpedieri: totalExpedieri >= PRAG,
-    fcaraCodNC: rows.filter((r) => !r.codNC).length, // randuri fara cod NC8 (de completat manual)
+    rulajAnualIntroduceri, rulajAnualExpedieri, pragIntroduceri, pragExpedieri,
+    obligatIntroduceri: rulajAnualIntroduceri >= pragIntroduceri,
+    obligatExpedieri: rulajAnualExpedieri >= pragExpedieri,
+    fcaraCodNC: rows.filter((r) => !/^\d{8}$/.test(r.codNC)).length,
+    probleme, gataPentruTranscriere: probleme.length === 0,
   };
 }
 

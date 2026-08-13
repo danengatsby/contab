@@ -3575,9 +3575,9 @@ const intr = rep.intrastat({ entries: [
 eq('Intrastat: total expedieri (livrari) 5000', intr.totalExpedieri, 5000);
 eq('Intrastat: total introduceri (achizitii) 3000', intr.totalIntroduceri, 3000);
 const intrNC = rep.intrastat({ entries: [
-  { id: '1', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-10', partenerCui: 'DE1', intrastat: { codNC: '94036010', masaNeta: 120, natura: '11' }, lines: gt2('livrare_intracomunitara').build({ baza: 5000 }) },
-  { id: '2', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-12', partenerCui: 'DE2', intrastat: { codNC: '94036010', masaNeta: 80 }, lines: gt2('livrare_intracomunitara').build({ baza: 2000 }) },
-  { id: '3', tip: 'achizitie_intracomunitara', period: '2026-06', data: '2026-06-12', partenerCui: 'FR1', intrastat: { codNC: '72142000', masaNeta: 500 }, lines: gt2('achizitie_intracomunitara').build({ baza: 3000, cota: 21 }) },
+  { id: '1', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-10', partenerCui: 'DE123', intrastat: { codNC: '94036010', masaNeta: 120, natura: '11', conditie: 'EXW' }, lines: gt2('livrare_intracomunitara').build({ baza: 5000 }) },
+  { id: '2', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-12', partenerCui: 'DE123', intrastat: { codNC: '94036010', masaNeta: 80, natura: '11', conditie: 'EXW' }, lines: gt2('livrare_intracomunitara').build({ baza: 2000 }) },
+  { id: '3', tip: 'achizitie_intracomunitara', period: '2026-06', data: '2026-06-12', partenerCui: 'FR123', intrastat: { codNC: '72142000', masaNeta: 500, natura: '11', conditie: 'DAP' }, lines: gt2('achizitie_intracomunitara').build({ baza: 3000, cota: 21 }) },
 ] }, '2026-06');
 const deRow = intrNC.rows.find((r) => r.flux === 'expediere' && r.tara === 'DE' && r.codNC === '94036010');
 eq('Intrastat NC8: grupare pe DE + 94036010 (2 operatiuni)', deRow.nrop, 2);
@@ -3587,6 +3587,32 @@ eq('Intrastat: pragul 1.000.000 lei', intrNC.pragExpedieri, 1000000);
 eq('Intrastat: sub prag -> neobligat la declarare', intrNC.obligatExpedieri, false);
 ok('Intrastat XML bine-format', wellFormed(xml.intrastatXml({ cui: 'RO1', nume: 'X' }, '2026-06', intrNC)));
 ok('Intrastat XML: articolul DE cu masa neta cumulata', xml.intrastatXml({ cui: 'RO1', nume: 'X' }, '2026-06', intrNC).includes('masa_neta="200.00"'));
+ok('Intrastat XML se declara explicit centralizator, nu schema oficiala INS', /format="centralizator-lucru" compatibil_ins="nu"/.test(xml.intrastatXml({ cui: 'RO1', nume: 'X' }, '2026-06', intrNC)));
+const intrExtins = rep.intrastat({ entries: [
+  { id: 'a', tip: 'autofactura_achizitie', naturaAutofactura: 'intracom', period: '2026-06', data: '2026-06-03', partenerCui: 'IT123', intrastat: { codNC: '01012100', masaNeta: 7, natura: '11', conditie: 'FCA' }, lines: [{ debit: '371', credit: '408', suma: 4000 }] },
+  { id: 'd', tip: 'achizitie_tva_speciala_d301', d301: { tipOperatie: 2, baza: 2500 }, period: '2026-06', data: '2026-06-04', partenerCui: 'AT123', intrastat: { codNC: '87032110', masaNeta: 1000, natura: '11', conditie: 'CIP' }, lines: [{ debit: '2133', credit: '401', suma: 2500 }] },
+  { id: 's', tip: 'achizitie_tva_speciala_d301', d301: { tipOperatie: 5, baza: 900 }, period: '2026-06', data: '2026-06-05', partenerCui: 'NL123', lines: [{ debit: '628', credit: '401', suma: 900 }] },
+] }, '2026-06');
+eq('Intrastat include autofactura de bunuri si ii citeste baza din 408', intrExtins.rows.find((r) => r.entryIds.includes('a')).valoare, 4000);
+eq('Intrastat include bunurile D301 1-3, nu serviciile D301 tip 5', intrExtins.totalIntroduceri, 6500);
+ok('Intrastat: articolele complete sunt gata pentru transcriere', intrExtins.gataPentruTranscriere && intrExtins.probleme.length === 0);
+const intrMasaAscunsa = rep.intrastat({ entries: [
+  { id: 'm0', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-01', partenerCui: 'DE123', intrastat: { codNC: '94036010', masaNeta: 0, natura: '11', conditie: 'EXW' }, lines: [{ debit: '4111', credit: '707', suma: 10 }] },
+  { id: 'm1', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-02', partenerCui: 'DE123', intrastat: { codNC: '94036010', masaNeta: 10, natura: '11', conditie: 'EXW' }, lines: [{ debit: '4111', credit: '707', suma: 20 }] },
+] }, '2026-06');
+ok('Intrastat: agregarea nu ascunde documentul cu masa zero', intrMasaAscunsa.probleme.some((p) => p.camp === 'masaNeta' && p.entryIds.includes('m0')));
+const intrYtd = rep.intrastat({ entries: [
+  { id: 'm', tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10', partenerCui: 'DE123', intrastat: { codNC: '94036010', masaNeta: 1, natura: '11', conditie: 'EXW' }, lines: [{ debit: '4111', credit: '707', suma: 999000 }] },
+  { id: 'i', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-10', partenerCui: 'DE123', intrastat: { codNC: '94036010', masaNeta: 1, natura: '11', conditie: 'EXW' }, lines: [{ debit: '4111', credit: '707', suma: 2000 }] },
+] }, '2026-06');
+eq('Intrastat: totalul lunar ramane al lunii selectate', intrYtd.totalExpedieri, 2000);
+eq('Intrastat: pragul se compara cu rulajul anual cumulat', intrYtd.rulajAnualExpedieri, 1001000);
+ok('Intrastat: depasirea cumulata este detectata chiar daca luna singura e sub prag', intrYtd.obligatExpedieri);
+const intrSeparat = rep.intrastat({ entries: [
+  { id: 'c1', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-01', partenerCui: 'DE123', intrastat: { codNC: '94036010', masaNeta: 1, natura: '11', conditie: 'EXW' }, lines: [{ debit: '4111', credit: '707', suma: 10 }] },
+  { id: 'c2', tip: 'livrare_intracomunitara', period: '2026-06', data: '2026-06-02', partenerCui: 'DE123', intrastat: { codNC: '94036010', masaNeta: 1, natura: '11', conditie: 'DAP' }, lines: [{ debit: '4111', credit: '707', suma: 20 }] },
+] }, '2026-06');
+eq('Intrastat nu comaseaza doua conditii de livrare diferite', intrSeparat.rows.length, 2);
 
 section('RO e-Transport (cod UIT) — nomenclatoare, asamblare, validare, XML');
 const et = require('../src/etransport');
@@ -5155,6 +5181,8 @@ ok('d300 fara luna -> eroare', validateMod.validateDeclaration('d300', '<?xml ve
 ok('d100: impozit 0 -> avertisment', validateMod.validateDeclaration('d100', '<?xml version="1.0"?><declaratie100 cui="1" luna="6" an="2026" total_plata="0.00"/>').warnings.some((w) => /impozit 0/i.test(w)));
 ok('intrastat: declaratie goala -> avertisment', validateMod.validateDeclaration('intrastat', '<?xml version="1.0"?><declaratieIntrastat cui="1" luna="6" an="2026"></declaratieIntrastat>').warnings.some((w) => /goala/i.test(w)));
 ok('intrastat: articol fara cod NC8 -> avertisment', validateMod.validateDeclaration('intrastat', '<?xml version="1.0"?><declaratieIntrastat cui="1" luna="6" an="2026"><articol codNC=""/></declaratieIntrastat>').warnings.some((w) => /NC8/i.test(w)));
+ok('intrastat: problemele din articole devin erori de validare', !validateMod.validateDeclaration('intrastat', '<?xml version="1.0"?><declaratieIntrastat cui="1" luna="6" an="2026"><articol codNC="123"/></declaratieIntrastat>', { intrastatProbleme: [{ mesaj: 'Cod NC8 invalid.' }] }).ok);
+ok('intrastat: validarea spune ca fisierul nu este schema oficiala INS', validateMod.validateDeclaration('intrastat', '<?xml version="1.0"?><declaratieIntrastat cui="1" luna="6" an="2026"><articol codNC="12345678"/></declaratieIntrastat>').warnings.some((w) => /centralizator.*nu XML-ul oficial/i.test(w)));
 
 section('Cont de profit si pierdere F20 (structura oficiala)');
 const stmtMod = require('../src/statements');
@@ -6288,6 +6316,9 @@ ok('guard: neplatitor + document fara TVA -> permis', fp.entryGuard(gNepl, { lin
 // expectedForFirma deleaga spre motor -> Intrastat vizibil in registru cand firma e obligata
 const vIntra = { firmaId: 7, company: { tvaPlatitor: true, intrastatObligat: true }, angajati: [], entries: [{ tip: 'livrare_intracomunitara', period: '2026-05', data: '2026-05-10' }] };
 ok('expectedForFirma: Intrastat apare pentru firma obligata cu miscari intracom', declMod.expectedForFirma(vIntra, '2026-05').some((x) => x.tip === 'intrastat'));
+const vIntraD301 = { firmaId: 7, company: { tvaPlatitor: false, tvaArt317: false, intrastatObligat: true }, angajati: [], entries: [{ tip: 'achizitie_tva_speciala_d301', d301: { tipOperatie: 1 }, period: '2026-05', data: '2026-05-10' }] };
+ok('expectedForFirma: bunurile D301 declanseaza Intrastat independent de eligibilitatea D390', declMod.expectedForFirma(vIntraD301, '2026-05').some((x) => x.tip === 'intrastat'));
+ok('expectedForFirma: aceleasi bunuri D301 fara art. 317 nu inventeaza D390', !declMod.expectedForFirma(vIntraD301, '2026-05').some((x) => x.tip === 'd390'));
 
 section('Exercitiul de restaurare automatizat (src/restoreDrill.js)');
 const drillMod = require('../src/restoreDrill');

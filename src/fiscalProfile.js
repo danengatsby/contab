@@ -87,13 +87,15 @@ function build(company, ctx) {
  *  `hasIntracomServicii(period)` = idem, cu SERVICII. Cele doua sunt separate fiindca declanseaza
  *  declaratii diferite: D390 le cere pe amandoua (art. 325), Intrastat doar bunurile — asa ca o
  *  firma care cumpara numai reclama din UE datoreaza D390, nu si raportarea statistica.
+ *  `hasIntrastat(period)` separa miscarea fizica de eligibilitatea D390 (de exemplu bunuri D301).
  *  `hasD205(period)` = raportul anual are cel putin un beneficiar cu retinere la sursa.
  *  Scutirile din profil suprima orice tip. */
-function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD307, hasD311, hasD107, hasD205) {
+function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD307, hasD311, hasD107, hasD205, hasIntrastat) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   const sfarsitTrim = endOfQuarter(period);
   const intracom = typeof hasIntracom === 'function' && hasIntracom(period);
   const intracomServicii = typeof hasIntracomServicii === 'function' && hasIntracomServicii(period);
+  const miscariIntrastat = typeof hasIntrastat === 'function' ? hasIntrastat(period) : intracom;
   const d301 = typeof hasD301 === 'function' && hasD301(period);
   const d307 = typeof hasD307 === 'function' && hasD307(period);
   const d311 = typeof hasD311 === 'function' && hasD311(period);
@@ -116,7 +118,7 @@ function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, ha
   if (d311) add('d311');
   // Intrastat (INS): firma obligata (peste prag) + miscari de BUNURI in luna. Serviciile nu conteaza
   // aici, oricat de mari ar fi: Intrastatul e statistica de comert cu bunuri.
-  if (profile.intrastat && intracom) add('intrastat');
+  if (profile.intrastat && miscariIntrastat) add('intrastat');
   // D112: firme cu salariati
   if (profile.areAngajati) add('d112');
   // D100: trimestrial, non-PFA. Cine il datoreaza pe trimestrul IV depinde de REGIM si, la

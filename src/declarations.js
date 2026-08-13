@@ -8,6 +8,7 @@ const d301 = require('./d301');
 const d307 = require('./d307');
 const d311 = require('./d311');
 const d205 = require('./d205');
+const intrastat = require('./intrastat');
 
 // Registrul depunerilor de declaratii + termene fiscale + agregarea pe portofoliu (multi-firma).
 //
@@ -59,7 +60,7 @@ const DESCARCARI = {
   d107: (p) => [{ label: 'XML ANAF', href: '/xml/d107?year=' + p.slice(0, 4) }],
   d205: (p) => [{ label: 'XML ANAF', href: '/xml/d205?year=' + p.slice(0, 4) }],
   saft: (p) => [{ label: 'XML ANAF', href: '/xml/saft?period=' + p }],
-  intrastat: (p) => [{ label: 'XML INS', href: '/xml/intrastat?period=' + p }],
+  intrastat: (p) => [{ label: 'Centralizator XML', href: '/xml/intrastat?period=' + p }],
   bilant: (p) => [{ label: 'PDF', href: '/pdf/bilant?period=' + p }, { label: 'XML ANAF', href: '/xml/bilant?year=' + p.slice(0, 4) }],
 };
 /** Linkurile de descarcare ale unei declaratii, pe perioada. Tip necunoscut -> lista goala
@@ -142,15 +143,12 @@ function dueDate(tip, period, profile) {
 // numai bunurile intra in Intrastat — statistica INS e despre marfa care trece fizic frontiera, nu
 // despre servicii. Cu o singura multime, o firma care cumpara doar reclama din UE ar fi fost
 // anuntata ca datoreaza Intrastat.
-const INTRACOM_BUNURI = new Set(['livrare_intracomunitara', 'achizitie_intracomunitara']);
 const INTRACOM_SERVICII = new Set(['prestare_servicii_intracomunitara', 'achizitie_servicii_intracomunitara']);
 /** Articolul e o operatiune intracomunitara cu BUNURI? (D390 + Intrastat). Autofactura (art. 320)
  *  doar cand natura marcata pe ea e chiar achizitia de bunuri — celelalte doua situatii pe care le
  *  acopera dau aceleasi conturi, dar nu aceeasi declaratie. */
 function esteIntracomBunuri(e) {
-  if (e && e.tip === 'autofactura_achizitie') return e.naturaAutofactura === 'intracom';
-  if (e && e.tip === d301.TIP_DOCUMENT) return [1, 2, 3].includes(Number(e.d301 && e.d301.tipOperatie));
-  return INTRACOM_BUNURI.has(e && e.tip);
+  return !!intrastat.flux(e);
 }
 /** Articolul e o operatiune intracomunitara cu SERVICII? (doar D390, art. 325). */
 function esteIntracomServicii(e) {
@@ -168,13 +166,16 @@ function expectedForFirma(v, period) {
   // fi depuse si fara acel cod; a genera automat D390 in acele cazuri ar inventa o obligatie.
   const eligibilD390 = (e) => e.tip !== d301.TIP_DOCUMENT || profile.tvaArt317;
   const hasIntracom = (per) => postedEntries(v).some((e) => eligibilD390(e) && esteIntracomBunuri(e) && inLuna(e, per));
+  // Intrastat nu depinde de eligibilitatea D390: o firma poate avea obligatie statistica distincta,
+  // iar D301 1-3 tot descrie bunuri care au trecut fizic frontiera.
+  const hasIntrastat = (per) => postedEntries(v).some((e) => esteIntracomBunuri(e) && inLuna(e, per));
   const hasIntracomServicii = (per) => postedEntries(v).some((e) => eligibilD390(e) && esteIntracomServicii(e) && inLuna(e, per));
   const hasD301 = (per) => postedEntries(v).some((e) => e.tip === d301.TIP_DOCUMENT && !e.stornat && inLuna(e, per));
   const hasD307 = (per) => postedEntries(v).some((e) => e.tip === d307.TIP_DOCUMENT && !e.stornat && inLuna(e, per));
   const hasD311 = (per) => postedEntries(v).some((e) => e.tip === d311.TIP_DOCUMENT && !e.stornat && inLuna(e, per));
   const hasD107 = (per) => d107.hasOperations(v, String(per).slice(0, 4));
   const hasD205 = (per) => d205.hasOperations(v, String(per).slice(0, 4));
-  return fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD307, hasD311, hasD107, hasD205)
+  return fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD307, hasD311, hasD107, hasD205, hasIntrastat)
     .map((tip) => ({ tip, nume: (TIPURI[tip] || {}).nume || tip, period, due: dueDate(tip, period, profile) }));
 }
 

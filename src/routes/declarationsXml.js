@@ -170,13 +170,20 @@ module.exports = function register(app, ctx) {
     recordDecl(req, 'd205', y + '-12');
     sendXml(res, out, 'd205-' + y + '.xml');
   });
-  app.get('/api/intrastat', (req, res) => res.json(rep.intrastat(S(req), req.query.period || null)));
+  app.get('/api/intrastat', (req, res) => {
+    const period = req.query.period || null;
+    if (period && !/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period))) return res.status(400).json({ error: 'Perioadă Intrastat invalidă (folosește YYYY-MM).' });
+    res.json(rep.intrastat(S(req), period));
+  });
   // (csv/intrastat: src/routes/csv.js)
-  // Intrastat XML — se depune la INS (aplicatia Intrastat online), nu intra in registrul ANAF
+  // Centralizator Intrastat de lucru. Nu pretindem compatibilitate cu schema oficiala INS pana nu
+  // avem toate campurile obligatorii. Descarcarea marcheaza totusi sarcina ca generata in registru.
   app.get('/xml/intrastat', (req, res) => {
     const v = S(req);
-    const period = req.query.period || null;
-    sendXml(res, xml.intrastatXml(v.company, period, rep.intrastat(v, period)), 'intrastat-' + (period || 'luna') + '.xml');
+    const period = req.query.period;
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period || ''))) return res.status(400).send('Perioadă Intrastat invalidă (folosește YYYY-MM).');
+    recordDecl(req, 'intrastat', period);
+    sendXml(res, xml.intrastatXml(v.company, period, rep.intrastat(v, period)), 'intrastat-centralizator-' + period + '.xml');
   });
   // D100 — trimestrial, dupa REGIMUL firmei: impozit micro (cod 121) sau impozit pe profit
   // (cod 103, art. 41); descarcarea marcheaza declaratia "generata" in registru
