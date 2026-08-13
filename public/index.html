@@ -2554,6 +2554,40 @@ Cu stimă,
         </div>
         <div id="openStatus" class="status"></div>
       </div>
+      <div class="card" id="migrationCompleteCard">
+        <h2>📦 Migrare completă, într-un singur pas</h2>
+        <p class="muted">Preia împreună <b>partenerii, mijloacele fixe și stocul inițial</b>. Mai întâi primești o previzualizare: dacă există o singură eroare, <b>nu se scrie nimic</b>. La import, componentele selectate înlocuiesc datele existente numai după o confirmare explicită.</p>
+        <div class="dyn">
+          <label>Parteneri (CSV / XLS / XLSX / DBF)
+            <input type="file" id="migrationPartnersFile" accept=".csv,.txt,.xlsx,.xls,.dbf" />
+            <small class="muted">CUI; Denumire; Adresă; Oraș; Județ; Țară; Tip; IBAN; BIC</small>
+          </label>
+          <label>Mijloace fixe (CSV / XLS / XLSX / DBF)
+            <input type="file" id="migrationAssetsFile" accept=".csv,.txt,.xlsx,.xls,.dbf" />
+            <small class="muted">NrInventar; Denumire; Cont; Cost; DataPIF; DurataLuni; Metoda; ValReziduala; Furnizor; CUI; DataAchizitie; MetodaFiscala; DurataFiscalaLuni; Computer; VehiculM1</small>
+          </label>
+          <label>Stoc inițial (CSV / XLS / XLSX / DBF)
+            <input type="file" id="migrationStockFile" accept=".csv,.txt,.xlsx,.xls,.dbf" />
+            <small class="muted">Cod; Denumire; UM; Cont; Gestiune; Cantitate; PretUnitar; Valoare</small>
+          </label>
+          <label>Data preluării stocului
+            <input type="date" id="migrationDate" />
+            <small class="muted">Obligatorie numai dacă încarci stocul.</small>
+          </label>
+          <label>Formatul sumelor
+            <select id="migrationDecimal"><option value="">Detectează automat</option><option value=",">Virgulă zecimală (1.234,56)</option><option value=".">Punct zecimal (1,234.56)</option></select>
+            <small class="muted">Alege explicit dacă valori precum 1.234 sunt ambigue.</small>
+          </label>
+          <label class="check"><input type="checkbox" id="migrationIncludeBalance" /> Include și balanța aflată acum în previzualizarea de mai sus</label>
+        </div>
+        <p class="muted">Control automat: valoarea fiecărui cont de stoc 3xx trebuie să coincidă cu soldul inițial al aceluiași cont. Fișierele sunt opționale, dar trebuie aleasă cel puțin o componentă.</p>
+        <div class="row">
+          <button id="migrationCompletePreview" class="btn" type="button">1. Verifică pachetul</button>
+          <button id="migrationCompleteImport" class="btn primary" type="button" disabled>2. Importă pachetul verificat</button>
+        </div>
+        <div id="migrationCompleteSummary" class="preview hidden"></div>
+        <div id="migrationCompleteStatus" class="status"></div>
+      </div>
       <div class="card">
         <h2>Date demonstrative</h2>
         <p class="muted">Încarcă exemplul integrat din ghid (luna iunie, S.C. EXEMPLU PROD S.R.L.) pentru a vedea tot ciclul funcționând.</p>

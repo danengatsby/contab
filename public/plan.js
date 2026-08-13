@@ -331,6 +331,100 @@ $('#openSaveBtn') && $('#openSaveBtn').addEventListener('click', async () => {
   } catch (err) { s.className = 'status err'; s.textContent = err.message; }
 });
 
+// ── Migrare completa: toate fisierele sunt validate impreuna, apoi scrise atomic ───────────
+// Selectoarele sunt intentionat protejate: in timpul unui rollout, un HTML mai vechi poate fi
+// servit din cache impreuna cu acest modul nou si nu trebuie sa blocheze restul aplicatiei.
+let COMPLETE_MIGRATION_PAYLOAD = null;
+const completePreviewBtn = $('#migrationCompletePreview');
+const completeImportBtn = $('#migrationCompleteImport');
+const completeStatus = $('#migrationCompleteStatus');
+const completeSummary = $('#migrationCompleteSummary');
+
+function invalidateCompleteMigration() {
+  COMPLETE_MIGRATION_PAYLOAD = null;
+  if (completeImportBtn) completeImportBtn.disabled = true;
+  if (completeSummary) { completeSummary.innerHTML = ''; completeSummary.classList.add('hidden'); }
+}
+
+async function csvFromInput(id) {
+  const input = $(id); const file = input && input.files && input.files[0];
+  return file ? fileToCsv(file) : '';
+}
+
+async function completeMigrationPayload() {
+  const [parteneriCsv, activeCsv, stocCsv] = await Promise.all([
+    csvFromInput('#migrationPartnersFile'), csvFromInput('#migrationAssetsFile'), csvFromInput('#migrationStockFile'),
+  ]);
+  const includeBalance = !!(($('#migrationIncludeBalance') || {}).checked);
+  if (includeBalance && !OPEN_MIGRATION_PREVIEW) {
+    throw new Error('Încarcă și verifică balanța în cardul de mai sus înainte să o incluzi în pachet.');
+  }
+  return {
+    firmaId: META && META.firmaActiva,
+    parteneriCsv, activeCsv, stocCsv,
+    data: String((($('#migrationDate') || {}).value) || ''),
+    zecimal: String((($('#migrationDecimal') || {}).value) || ''),
+    conturi: includeBalance ? OPEN_ROWS.map((x) => ({ cont: x.cont, d: Number(x.d) || 0, c: Number(x.c) || 0 })) : [],
+  };
+}
+
+function showCompleteMigration(r) {
+  if (!completeSummary) return;
+  const s = r.summary || {}; const problems = Array.isArray(r.problems) ? r.problems : [];
+  completeSummary.innerHTML = `<b>Rezumat:</b> ${Number(s.conturi) || 0} conturi · ${Number(s.parteneri) || 0} parteneri · `
+    + `${Number(s.active) || 0} mijloace fixe · ${Number(s.pozitiiStoc) || 0} poziții de stoc (${fmt(Number(s.valoareStoc) || 0)} lei)`
+    + (problems.length ? `<div class="warnbox"><span class="wi">⚠️</span><div><b>Pachetul nu poate fi importat:</b><ul>${problems.map((x) => `<li>${H(x)}</li>`).join('')}</ul></div></div>`
+      : '<p><b>✓ Toate componentele sunt coerente. Previzualizarea nu a modificat datele.</b></p>');
+  completeSummary.classList.remove('hidden');
+}
+
+['#migrationPartnersFile', '#migrationAssetsFile', '#migrationStockFile', '#migrationDate', '#migrationDecimal', '#migrationIncludeBalance']
+  .forEach((id) => { const el = $(id); if (el) el.addEventListener('change', invalidateCompleteMigration); });
+
+completePreviewBtn && completePreviewBtn.addEventListener('click', async () => {
+  invalidateCompleteMigration();
+  if (completeStatus) { completeStatus.className = 'status'; completeStatus.textContent = 'Se verifică toate componentele…'; }
+  try {
+    const payload = await completeMigrationPayload();
+    const r = await api('/api/migrare/complet/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    showCompleteMigration(r);
+    if (r.ok) {
+      COMPLETE_MIGRATION_PAYLOAD = payload;
+      if (completeImportBtn) completeImportBtn.disabled = false;
+      if (completeStatus) { completeStatus.className = 'status ok'; completeStatus.textContent = 'Pachet valid. Nicio dată nu a fost scrisă încă.'; }
+    } else if (completeStatus) {
+      completeStatus.className = 'status err'; completeStatus.textContent = 'Corectează problemele și verifică din nou pachetul.';
+    }
+  } catch (err) {
+    if (completeStatus) { completeStatus.className = 'status err'; completeStatus.textContent = err.message; }
+    toast(err.message, true);
+  }
+});
+
+completeImportBtn && completeImportBtn.addEventListener('click', async () => {
+  if (!COMPLETE_MIGRATION_PAYLOAD) return toast('Verifică din nou pachetul înainte de import.', true);
+  let payload = COMPLETE_MIGRATION_PAYLOAD;
+  if (completeStatus) { completeStatus.className = 'status'; completeStatus.textContent = 'Se importă pachetul…'; }
+  try {
+    let r;
+    try {
+      r = await api('/api/migrare/complet/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    } catch (err) {
+      if (err.status !== 409 || !confirm(err.message + '\n\nContinui și înlocuiești numai componentele selectate?')) throw err;
+      payload = Object.assign({}, payload, { suprascrie: true });
+      r = await api('/api/migrare/complet/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    }
+    COMPLETE_MIGRATION_PAYLOAD = null; completeImportBtn.disabled = true;
+    if (completeStatus) { completeStatus.className = 'status ok'; completeStatus.textContent = 'Migrare completă: toate componentele au fost importate împreună.'; }
+    showCompleteMigration(Object.assign({ problems: [] }, r));
+    await renderOpening();
+    toast('Migrarea completă a fost finalizată.');
+  } catch (err) {
+    if (completeStatus) { completeStatus.className = 'status err'; completeStatus.textContent = err.message; }
+    toast(err.message, true);
+  }
+});
+
 
 export { renderOpening, renderPlan };
 // Exportate pentru testele unitare de frontend (parsarea sumelor in format RO + escaparea

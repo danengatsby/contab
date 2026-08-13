@@ -151,6 +151,8 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 | `POST /api/migrare/preview` | multipart: `file`, `sursa?`, `presetId?`, `mapare?`, `idxAntet?`, `zecimal?` | previzualizare fără scriere pentru CSV/XLS/XLSX/DBF; detectează antetul și maparea, raportează ambiguitățile și dezechilibrul |
 | `GET/POST /api/migrare/presets`, `DELETE /:id` | `{ nume, antet[], mapare, sursa, zecimal? }` | formate de coloane per utilizator, maximum 20; același nume actualizează presetul; un preset străin răspunde 404 |
 | `POST /api/migrare/import` | `{ firmaId, conturi[], suprascrie? }` | import atomic într-o firmă explicită; revalidează echilibrul și cere confirmare la suprascriere |
+| `POST /api/migrare/complet/preview` | `{ firmaId, conturi?, parteneriCsv?, activeCsv?, stocCsv?, data?, zecimal?: ","|"." }` | validează împreună componentele fără scriere; întoarce `{ ok, problems[], summary, sample }`; reconciliază valoric fiecare cont 3xx cu stocul cantitativ |
+| `POST /api/migrare/complet/import` | același corp, plus `suprascrie?` | revalidează și aplică pachetul într-o singură salvare; ținta trebuie să fie firma activă; 400 la orice componentă invalidă, 409 dacă datele selectate există și lipsește confirmarea |
 
 ## Stocuri (`src/routes/stocks.js`, `stockdocs.js`)
 

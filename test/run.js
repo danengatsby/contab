@@ -5550,6 +5550,53 @@ section('Preluare firma din alt program (src/migrare.js)');
   eq('creditul contului 401', ob['401'].c, 10000);
 }
 
+section('Migrare completa: parteneri + mijloace fixe + stoc, atomic');
+{
+  const aux = require('../src/migrationAux');
+  const parteneriCsv = 'CUI;Denumire;Adresa;Oras;Judet;Tara;Tip;IBAN;BIC\nRO12345674;FURNIZOR TEST SRL;Str. Test 1;Iasi;IS;RO;furnizor;RO49AAAA1B31007593840000;AAAAROBU';
+  const activeCsv = 'Nr inventar;Denumire;Cont;Cost;Data PIF;Durata luni;Metoda;Valoare reziduala;Furnizor;CUI;Data achizitie\nINV-1;Laptop contabilitate;214;25000;2026-01-15;36;liniara;0;FURNIZOR TEST SRL;12345674;2026-01-10';
+  const stocCsv = 'Cod;Denumire;UM;Cont;Gestiune;Cantitate;Pret unitar;Valoare\nMARFA-1;Marfa test;buc;371;DEP;100;250;25000';
+  const conturi = [{ cont: '371', d: 25000, c: 0 }, { cont: '1012', d: 0, c: 25000 }];
+  const p = aux.prepare({ parteneriCsv, activeCsv, stocCsv, conturi, data: '2026-01-31' });
+  ok('toate cele patru componente trec previzualizarea impreuna', p.ok && p.summary.conturi === 2
+    && p.summary.parteneri === 1 && p.summary.active === 1 && p.summary.pozitiiStoc === 1);
+  eq('valoarea stocului este calculata', p.summary.valoareStoc, 25000);
+  ok('mijlocul fix pastreaza numarul de inventar si planul',
+    p.fixedAssets.items[0].numarInventar === 'INV-1' && p.fixedAssets.items[0].durataLuni === 36);
+  const compactHeader = aux.parseAssets(activeCsv.replace('Nr inventar', 'NrInventar'));
+  ok('antetul compact NrInventar este recunoscut, nu importat ca activ', compactHeader.errors.length === 0
+    && compactHeader.items.length === 1 && compactHeader.items[0].numarInventar === 'INV-1');
+  const separatorAles = aux.prepare({ activeCsv: activeCsv.replace(';25000;', ';25.000;'), zecimal: ',' });
+  ok('conventia explicita lamureste sumele auxiliare ambigue', separatorAles.ok
+    && separatorAles.fixedAssets.items[0].cost === 25000);
+
+  const mismatch = aux.prepare({ stocCsv, conturi: [{ cont: '371', d: 20000, c: 0 }, { cont: '1012', d: 0, c: 20000 }], data: '2026-01-31' });
+  ok('stocul care nu bate cu soldul initial blocheaza pachetul', !mismatch.ok && mismatch.problems.some((x) => /stocul din contul 371/.test(x)));
+  const badPartner = aux.prepare({ parteneriCsv: 'CUI;Denumire\nNU-SUNT-DATE;Gunoi' });
+  ok('un partener invalid blocheaza intreg pachetul', !badPartner.ok && badPartner.summary.parteneri === 0);
+  const badAsset = aux.prepare({ activeCsv: activeCsv.replace(';214;', ';9999;') });
+  ok('un cont invalid pe mijlocul fix blocheaza intreg pachetul', !badAsset.ok && badAsset.problems.some((x) => /cont inexistent/.test(x)));
+  const duplicateStock = aux.parseStock(stocCsv + '\nMARFA-1;Alta denumire;buc;371;DEP;1;1;1');
+  ok('date contradictorii pentru acelasi produs sunt refuzate', duplicateStock.errors.some((x) => /contradictorii/.test(x)));
+  const lipsaPozitie = aux.prepare({ stocCsv, conturi: [{ cont: '371', d: 25000, c: 0 },
+    { cont: '301', d: 1000, c: 0 }, { cont: '1012', d: 0, c: 26000 }], data: '2026-01-31' });
+  ok('un sold 3xx fara pozitie cantitativa blocheaza pachetul', !lipsaPozitie.ok
+    && lipsaPozitie.problems.some((x) => /contul 301 este 0 lei.*soldul initial este 1000/.test(x)));
+
+  // Aplicarea pe un graf separat dovedeste inlocuirea per firma si faptul ca id-urile se aloca
+  // numai DUPA validarea completa. Firma 2 ramane neatinsa.
+  const d = { seq: 10, openingBalances: { 2: { 5121: { d: 1, c: 0 } } }, partners: { 2: { X: { cui: 'X' } } },
+    assets: [{ id: 'mf-vechi', firmaId: 2 }], products: [{ id: 'p-vechi', firmaId: 2 }],
+    gestiuni: [], stockMovements: [{ id: 'sm-vechi', firmaId: 2 }] };
+  aux.apply(d, 1, p, 'tester');
+  ok('aplicarea construieste toate colectiile firmei tinta', d.openingBalances[1]['371'].d === 25000
+    && d.partners[1]['12345674'] && d.assets.some((x) => x.firmaId === 1 && x.numarInventar === 'INV-1')
+    && d.products.some((x) => x.firmaId === 1) && d.stockMovements.some((x) => x.firmaId === 1 && x.initial));
+  ok('aplicarea nu atinge alta firma', d.partners[2].X && d.assets.some((x) => x.id === 'mf-vechi')
+    && d.stockMovements.some((x) => x.id === 'sm-vechi'));
+  ok('secventa avanseaza numai pentru obiectele create', d.seq > 10);
+}
+
 section('Fisier de plati ISO 20022 (pain.001) — src/sepa.js');
 {
   const sepa = require('../src/sepa');
