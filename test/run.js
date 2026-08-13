@@ -2272,23 +2272,66 @@ ok('accountName: cont necunoscut -> fallback lizibil, fara throw', /necunoscut/.
 section('Export/import firma (remapare id-uri)');
 // construieste un mini-bundle cu referinte interne (movement -> product/gestiune; transfer)
 const bundle = {
-  firma: { id: 9, nume: 'Test SRL', cui: '999' },
+  // Campurile privilegiate sunt deliberat ostile: importul trebuie sa le ignore.
+  firma: { id: 9, nume: 'Test SRL', cui: '999', ownerId: 999, lockedUntil: '2099-12', subscription: { status: 'active', plan: 'gratis' }, anaf: { accessToken: 'furt' } },
   partners: {}, openingBalances: { 371: { d: 1000, c: 0 } }, openingAnalytic: [],
   products: [{ id: 'p1', firmaId: 9, cod: 'X', denumire: 'X', um: 'buc', cont: '371' }],
   gestiuni: [{ id: 'g1', firmaId: 9, cod: 'D', denumire: 'Depozit' }, { id: 'g2', firmaId: 9, cod: 'M', denumire: 'Magazin' }],
   stockMovements: [{ id: 'm1', firmaId: 9, data: '2026-01-01', tip: 'transfer', productId: 'p1', gestiuneId: 'g1', gestiuneDestId: 'g2', cantitate: 5 }],
-  entries: [{ id: 'e1', firmaId: 9, data: '2026-01-01', period: '2026-01', tip: 't', tipNume: 't', lines: [{ debit: '371', credit: '401', suma: 100 }] }],
-  inventories: [], assets: [], angajati: [], payrollHistory: [], documents: [],
+  documents: [{ id: 'd1', firmaId: 9, fileName: 'secret.pdf', storedName: 'fisierul-altei-firme.pdf' }],
+  entries: [{ id: 'e1', firmaId: 9, fileId: 'd1', data: '2026-01-01', period: '2026-01', tip: 't', tipNume: 't', lines: [{ debit: '371', credit: '401', suma: 100 }] }],
+  inventories: [], assets: [], angajati: [], payrollHistory: [],
+  inventarAnual: [{ id: 'ia1', firmaId: 9, an: '2026', cont: '371', valoareInventar: 900 }],
+  recurringInvoices: [{ id: 'r1', firmaId: 9, tip: 'factura_vanzare', fields: {}, frecventa: 'lunar' }],
+  recipes: [{ id: 'bom1', firmaId: 9, nume: 'Reteta', productId: 'p1', gestiuneId: 'g1', materiale: [{ productId: 'p1', gestiuneId: 'g1', cantitate: 1 }] }],
+  budgets: [{ id: 'b1', firmaId: 9, an: '2026', cont: '371', suma: 500 }],
+  declarations: [{ id: 'dc1', firmaId: 9, tip: 'D300', period: '2026-01' }],
+  closings: [{ id: 'cl1', firmaId: 9, period: '2026-01', steps: {} }],
+  extractInterventions: [{ id: 'x1', firmaId: 9, documentId: 'd1', entryId: 'e1', diff: {} }],
+  leasingContracts: [{ id: 'l1', firmaId: 9, denumire: 'Contract test' }],
 };
 const newFid = db.importFirma(bundle);
 const v2 = db.scoped(newFid);
 ok('firma importata are id nou', newFid !== 9);
+const firmaImportata = db.getFirma(newFid);
+ok('importul NU preia owner/subscription/lock/ANAF din fisier', !firmaImportata.ownerId && !firmaImportata.subscription && !firmaImportata.lockedUntil && !firmaImportata.anaf);
 eq('produse importate', v2.products.length, 1);
 eq('miscari importate', v2.stockMovements.length, 1);
 const mv = v2.stockMovements[0];
 ok('miscarea trimite la un produs valid din firma noua', v2.products.some((p) => p.id === mv.productId));
 ok('miscarea trimite la gestiuni valide (sursa+dest)', v2.gestiuni.some((g) => g.id === mv.gestiuneId) && v2.gestiuni.some((g) => g.id === mv.gestiuneDestId));
-eq('export reflecta firma importata', db.exportFirma(newFid).entries.length, 1);
+const reexport = db.exportFirma(newFid);
+eq('export reflecta firma importata', reexport.entries.length, 1);
+ok('importul JSON elimina storedName (nu poate revendica fisierul altei firme)', reexport.documents.length === 1 && reexport.documents[0].storedName == null);
+ok('fileId ramane remapat catre documentul importat', reexport.entries[0].fileId === reexport.documents[0].id);
+eq('colectiile complete fac round-trip (inventar/recurente/retete/bugete/declaratii/inchideri/interventii/leasing)',
+  [reexport.inventarAnual, reexport.recurringInvoices, reexport.recipes, reexport.budgets, reexport.declarations, reexport.closings, reexport.extractInterventions, reexport.leasingContracts].map((x) => x.length).join(','),
+  '1,1,1,1,1,1,1,1');
+ok('reteta isi remapeaza produsul si gestiunea', reexport.recipes[0].productId === reexport.products[0].id && reexport.recipes[0].gestiuneId === reexport.gestiuni[0].id);
+
+// Validarea se termina INAINTE de prima mutatie: cont necunoscut si referinta orfana nu lasa
+// nici firma, nici id-uri consumate, nici articole partiale in graf.
+{
+  const firme0 = db.get().firme.length; const seq0 = db.get().seq; const entries0 = db.get().entries.length;
+  const rau = JSON.parse(JSON.stringify(bundle));
+  rau.firma.nume = 'Nu trebuie sa existe';
+  rau.entries[0].lines[0].debit = '999999';
+  let err = null; try { db.importFirma(rau); } catch (e) { err = e; }
+  ok('cont necunoscut -> import refuzat cu mesaj explicit', err && /Conturi inexistente/.test(err.message));
+  eq('import invalid este atomic in RAM (firme/seq/articole)', db.get().firme.length + '/' + db.get().seq + '/' + db.get().entries.length, firme0 + '/' + seq0 + '/' + entries0);
+  const orfan = JSON.parse(JSON.stringify(bundle));
+  orfan.stockMovements[0].productId = 'produs-strain';
+  err = null; try { db.importFirma(orfan); } catch (e) { err = e; }
+  ok('referinta interna orfana -> import refuzat', err && /id inexistent/.test(err.message));
+}
+
+// Replace poate schimba profilul contabil, dar nu autoritatea sau starea de control a tintei.
+firmaImportata.ownerId = 77; firmaImportata.lockedUntil = '2026-05'; firmaImportata.subscription = { status: 'active', plan: 'pro' }; firmaImportata.anaf = { accessToken: 'local' };
+const replaceBundle = JSON.parse(JSON.stringify(bundle));
+replaceBundle.firma.nume = 'Profil restaurat';
+db.importFirma(replaceBundle, { targetFid: newFid });
+ok('replace pastreaza owner/subscription/lock/ANAF locale', firmaImportata.ownerId === 77 && firmaImportata.lockedUntil === '2026-05' && firmaImportata.subscription.plan === 'pro' && firmaImportata.anaf.accessToken === 'local');
+eq('replace preia doar profilul permis', firmaImportata.nume, 'Profil restaurat');
 const vTvaC = { entries: [mkTva('factura_cumparare_incasare', { baza: 1000, tva: 210, cota: 21 }, '2026-08-05')], openingBalances: {} };
 eq('TVA neexigibila deductibila NU intra in decont', acc.vatClosing(vTvaC, '2026-08').deductibila, 0);
 vTvaC.entries.push(mkTva('exigibilitate_tva_deductibila', { tva: 210 }, '2026-08-25'));
@@ -5388,6 +5431,9 @@ section('Copie offsite pe stocare obiect (src/offsite.js)');
     !/process\.exit\(/.test(ramuraDrill));
   ok('...dar rularea e marcata ca nereusita (ajunge in logul cron si in raportul zilnic)',
     /process\.exitCode\s*=\s*1/.test(ramuraDrill));
+  const dupaDrill = bk.slice(iDrill, iOffsite);
+  ok('starea last-backup este rescrisa dupa drill-ul PG curent', /scrieMarcaj\(\)/.test(dupaDrill));
+  ok('marcajul final include starea offsite masurata, nu doar intentia', /offsite:\s*offsiteState/.test(bk) && /offsiteState\.ok\s*=\s*offsiteOk/.test(bk));
 
   // ...iar celelalte doua opriri RAMAN: acolo arhiva insasi e nefolosibila, deci trimiterea ei
   // offsite ar fi si inutila si inselatoare. Distinctia e deliberata, nu o inconsecventa — de aceea

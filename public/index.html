@@ -33,7 +33,7 @@
         <div class="auth-fields">
           <label>Utilizator <b class="req">*</b> <input name="username" autocomplete="username" placeholder="Introdu utilizatorul" required /></label>
           <label>Parolă <b class="req">*</b> <input name="password" type="password" autocomplete="current-password" placeholder="Introdu parola" required /></label>
-          <label id="codeRow" class="hidden inactiv">Cod 2FA (6 cifre) <input name="code" inputmode="numeric" autocomplete="one-time-code" disabled aria-disabled="true" title="Autentificarea în doi pași este momentan dezactivată." /><span class="muted">Autentificarea în doi pași este momentan dezactivată — cere ajutorul administratorului.</span></label>
+          <label id="codeRow" class="hidden">Cod 2FA (6 cifre) <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" /><span class="muted"><input name="remember" type="checkbox" /> Ai încredere în acest dispozitiv timp de 30 de zile</span></label>
         </div>
         <div id="loginErr" class="status err"></div>
         <button class="btn primary" data-u="u19">Intră în cont</button>
@@ -2346,19 +2346,20 @@ Cu stimă,
       </div>
       <div class="card">
         <h2>Autentificare în doi pași (2FA)</h2>
-        <!-- ACTIVAREA 2FA E SCOASA cat timp campul de cod de pe ecranul de login (#codeRow) e
-             `disabled`: serverul ar cere codul la urmatoarea autentificare, iar formularul nu-l
-             poate primi. Cine si-ar porni 2FA acum si-ar bloca DEFINITIV contul — nu exista nicio
-             cale de recuperare din interfata (nicio ruta de admin nu sterge 2FA de pe alt cont).
-             Cele doua jumatati se reactiveaza IMPREUNA: se scot `disabled`, `.inactiv` si nota din
-             #codeRow si se readuce aici butonul de activare. Poarta care le tine legate:
-             test/run/porti.js, sectiunea „2FA: login si Setari spun acelasi lucru". -->
-        <p class="muted">Autentificarea în doi pași este <b>momentan indisponibilă</b> — o reactivăm
-        împreună cu câmpul de cod de pe ecranul de autentificare. Până atunci nu poate fi pornită,
-        tocmai ca să nu rămâi blocat în afara contului.</p>
+        <p class="muted">Protejează contul cu un cod de 6 cifre din Google Authenticator, Microsoft
+        Authenticator, 1Password sau altă aplicație TOTP. Păstrează cheia afișată la configurare
+        într-un loc sigur: dezactivarea 2FA cere un cod valid.</p>
         <div id="twofaStatus" class="status"></div>
         <div class="row">
+          <button id="twofaStart" class="btn primary">Configurează 2FA</button>
           <span id="twofaDisableWrap" class="hidden"><input id="twofaDisCode" inputmode="numeric" placeholder="Cod 6 cifre" data-u="u120" /> <button id="twofaDisable" class="btn ghost">Dezactivează 2FA</button> <button id="twofaRevoke" class="btn ghost">Revocă dispozitivele de încredere</button></span>
+        </div>
+        <div id="twofaSetup" class="hidden">
+          <p><b>1.</b> Scanează codul QR cu aplicația de autentificare.</p>
+          <img id="twofaQr" width="180" height="180" alt="Cod QR pentru configurarea 2FA" />
+          <p>Dacă nu poți scana, introdu manual cheia: <code id="twofaSecret"></code></p>
+          <p><b>2.</b> Confirmă configurarea cu primul cod generat.</p>
+          <div class="row"><input id="twofaCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="Cod 6 cifre" /> <button id="twofaEnable" class="btn primary">Activează 2FA</button> <button id="twofaCancel" class="btn ghost">Anulează</button></div>
         </div>
       </div>
     </section>
@@ -2846,9 +2847,7 @@ Cu stimă,
         <div id="forcePwErr" class="status err" data-u="u138"></div>
         <button class="btn primary" type="submit">Setează parola nouă</button>
       </form>
-      <!-- Recomandarea de a porni 2FA a fost SCOASA odata cu butonul de activare: cat timp campul
-           de cod de pe login e `disabled`, ea trimitea omul exact catre auto-blocarea contului. -->
-      <p class="muted" data-u="u28">După schimbare, deconectează sesiunile de pe alte dispozitive din Setări dacă bănuiești că parola veche a fost văzută de altcineva.</p>
+      <p class="muted" data-u="u28">După schimbare, activează 2FA și deconectează sesiunile de pe alte dispozitive dacă nu le recunoști.</p>
     </div>
   </div>
 

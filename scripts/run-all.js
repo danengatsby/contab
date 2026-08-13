@@ -34,6 +34,7 @@ const SUITE = [
   'test/frontend.mjs',
   'test/anaf.js',
   'test/store.js',
+  'test/durability.js',
   'test/store-pg.js',
   'test/http.js',
 ];

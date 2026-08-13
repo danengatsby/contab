@@ -320,6 +320,9 @@ function retrageServicii(user, id) {
 function importBundle(user, bundle, opts) {
   reqNotDemo(user);
   const o = opts || {};
+  // Aceeasi validare pentru JSON si ZIP, inainte de backup/staging/mutatii. db.importFirma o
+  // repeta ca garda de domeniu pentru apelantii interni — aici obtinem insa raspunsul 4xx devreme.
+  try { bundle = db.validateFirmaBundle(bundle); } catch (e) { fail(400, e.message); }
   let targetFid = null;
   if (o.replace) {
     targetFid = Number(o.activeFid);
@@ -336,18 +339,19 @@ function importBundle(user, bundle, opts) {
     } catch (e) { console.error('pre-restore backup:', e.message); }
   }
   let newFid;
-  try { newFid = db.importFirma(bundle, { storedNameMap: o.storedNameMap, targetFid }); }
+  try { newFid = db.importFirma(bundle, { storedNameMap: o.storedNameMap, targetFid, deferSave: true }); }
   catch (e) { fail(400, e.message); }
   if (!targetFid && user && user.role !== 'admin') { user.firme = user.firme || []; user.firme.push(newFid); }
-  // firma importata ca FIRMA NOUA fara abonament in pachet ar lovi paywall-ul imediat;
-  // primeste aceleasi conditii ca la creare (proba 30 zile; adminul — activa direct).
-  // La replace sau cand pachetul aduce abonamentul propriu (migrare), nu se atinge nimic.
+  // Abonamentul dintr-un fisier controlat de utilizator NU este autoritate de billing. Firma noua
+  // primeste exclusiv conditiile locale (proba / grandfathered admin); replace pastreaza starea
+  // tintei, fiindca db.importFirma nu importa nici subscription, nici ownerId, nici lockedUntil.
   if (!targetFid && user) {
     const nf = db.getFirma(newFid);
-    if (nf && !nf.subscription) {
+    if (nf) {
       nf.subscription = user.role === 'admin'
         ? { status: 'active', plan: 'grandfathered', since: new Date().toISOString() }
         : plans.firmaTrialSub();
+      if (user.role !== 'admin') nf.ownerId = user.id;
     }
   }
   if (user) user.firmaActiva = newFid;
@@ -355,21 +359,10 @@ function importBundle(user, bundle, opts) {
   return { firmaId: newFid, replaced: !!targetFid };
 }
 
-/** Validarea pachetului firma.json INAINTE de orice scriere: structura minima + limite
- *  (colectiile trebuie sa fie array-uri, plafonate — un JSON malitios nu ajunge in graf). */
-const BUNDLE_COLLS = ['entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products',
-  'gestiuni', 'stockMovements', 'inventories', 'openingAnalytic', 'declarations'];
-const BUNDLE_MAX_ITEMS = 500000; // total elemente in toate colectiile
+/** Validarea pachetului firma.json INAINTE de orice scriere (delegata garzii de domeniu din db). */
 function validateBundle(bundle) {
-  if (!bundle || typeof bundle !== 'object' || Array.isArray(bundle)) fail(400, 'Pachet de firma invalid.');
-  if (!bundle.firma || typeof bundle.firma !== 'object' || Array.isArray(bundle.firma)) fail(400, 'Pachetul nu contine obiectul firma.');
-  let total = 0;
-  for (const k of BUNDLE_COLLS) {
-    if (bundle[k] == null) continue;
-    if (!Array.isArray(bundle[k])) fail(400, `Colectia "${k}" din pachet nu este o lista.`);
-    total += bundle[k].length;
-  }
-  if (total > BUNDLE_MAX_ITEMS) fail(400, 'Pachetul depaseste limita de elemente importabile.');
+  try { return db.validateFirmaBundle(bundle); }
+  catch (e) { fail(400, e.message); }
 }
 
 /** Restaurare din ZIP — TRANZACTIONAL: (1) garda anti zip-bomb, (2) validarea pachetului
@@ -426,9 +419,15 @@ function testClone(user, id) {
   reqAccess(user, id);
   try {
     const src = db.getFirma(id) || {};
-    const newFid = db.importFirma(db.exportFirma(id));
+    const newFid = db.importFirma(db.exportFirma(id), { deferSave: true });
     const nf = db.getFirma(newFid);
-    if (nf) { nf.nume = '[TEST] ' + String(src.nume || 'Firma').replace(/^\[TEST\]\s*/, ''); nf.test = true; }
+    if (nf) {
+      nf.nume = '[TEST] ' + String(src.nume || 'Firma').replace(/^\[TEST\]\s*/, ''); nf.test = true;
+      nf.subscription = Object.assign({}, src.subscription || (user.role === 'admin'
+        ? { status: 'active', plan: 'grandfathered', since: new Date().toISOString() }
+        : plans.firmaTrialSub()));
+      if (user.role !== 'admin') nf.ownerId = user.id;
+    }
     user.firmaActiva = newFid;
     if (user.role !== 'admin') { user.firme = user.firme || []; user.firme.push(newFid); }
     db.save();
@@ -479,7 +478,7 @@ function addDemoFirma(user) {
   catch (e) { fail(503, 'Exemplul demonstrativ nu s-a putut citi.'); }
 
   let newFid;
-  try { newFid = db.importFirma(bundle); }
+  try { newFid = db.importFirma(bundle, { deferSave: true }); }
   catch (e) { fail(400, e.message); }
   const nf = db.getFirma(newFid);
   if (nf) {

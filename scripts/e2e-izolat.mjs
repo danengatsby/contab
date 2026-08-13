@@ -141,34 +141,54 @@ const PAROLA_ADMIN = RESET ? PAROLA2 : PAROLA;
 const adm = pgNou || pg;
 
 // ─────────────────────────── 3. 2FA ──────────────────────────────────────────
-// 2FA e DEZACTIVAT deliberat in produs: campul de cod de pe login e `disabled`, deci serverul ar
-// cere un cod pe care formularul nu-l poate primi. Scenariul de aici nu mai poate PARCURGE fluxul
-// (a si picat, din 30 iulie pana la 2 august, exact asa) — dar nici nu are voie sa dispara: atunci
-// nimic n-ar mai observa ziua in care jumatatile se desincronizeaza din nou. Deci verifica STAREA:
-// nicio cale de pornire in interfata, iesirea intacta, si mecanismul TOTP inca sanatos pentru cand
-// 2FA se reactiveaza. Cand campul de login redevine activ, aici se pune la loc fluxul complet.
-sect('3. Autentificare in doi pasi (2FA) — dezactivata deliberat');
+// Flux complet prin interfata: configurare, confirmare TOTP, login in doi pasi si dezactivare.
+// Acesta leaga explicit cele doua jumatati ale functiei: nimeni nu poate activa 2FA daca formularul
+// de login nu poate primi codul, iar campul nu ramane un control mort fara configurare in Cont.
+sect('3. Autentificare in doi pasi (2FA) — flux complet prin interfata');
 {
+  await adm.evaluate(() => window.goTab('cont'));
+  ok('Setari ofera configurarea 2FA', (await adm.locator('#twofaStart:visible').count()) === 1);
+  // Resetarea autentifica direct si poate deschide bun-venitul peste pagina Cont.
+  await adm.evaluate(() => document.querySelector('#welcomeOverlay')?.classList.add('hidden'));
+  await adm.click('#twofaStart');
+  await adm.waitForFunction(() => document.querySelector('#twofaSecret')?.textContent?.length >= 16);
+  const secret = (await adm.locator('#twofaSecret').innerText()).trim();
+  ok('configurarea afiseaza cheia TOTP', /^[A-Z2-7]{16,}$/.test(secret));
+  ok('configurarea afiseaza QR-ul intr-o sursa inerta',
+    /^data:image\/svg\+xml/.test(await adm.locator('#twofaQr').getAttribute('src') || ''));
+  await adm.fill('#twofaCode', totpCode(secret));
+  await adm.click('#twofaEnable');
+  await adm.waitForFunction(() => /este activat/i.test(document.querySelector('#twofaStatus')?.textContent || ''));
+  ok('codul corect activeaza 2FA din interfata',
+    /este activat/i.test(await adm.locator('#twofaStatus').innerText()));
+
   const p2 = await (await b.newContext()).newPage();
   await p2.goto(BASE + '/', { waitUntil: 'networkidle' });
-
   const camp = p2.locator('#loginForm input[name=code]');
-  ok('campul de cod exista in formularul de login', (await camp.count()) === 1);
-  const blocat = await camp.isDisabled().catch(() => false);
-  ok('...si e INACTIV (2FA oprit in produs)', blocat);
-  ok('...cu motivul scris langa el, nu doar stins', /momentan dezactivat/i.test(await p2.locator('#codeRow').innerText().catch(() => '')));
+  ok('campul de cod exista si este activ', (await camp.count()) === 1 && !(await camp.isDisabled()));
+  ok('campul ramane ascuns pana cand parola corecta cere al doilea pas',
+    await p2.locator('#codeRow').evaluate((el) => el.classList.contains('hidden')));
+  await p2.fill('#loginForm input[name=username]', 'admin');
+  await p2.fill('#loginForm input[name=password]', PAROLA_ADMIN);
+  await p2.click('#loginForm button.primary');
+  await p2.waitForFunction(() => !document.querySelector('#codeRow')?.classList.contains('hidden'));
+  ok('parola corecta cere codul fara sa creeze sesiune',
+    !(await p2.locator('#userBadge').innerText()).trim() && /introdu codul/i.test(await p2.locator('#loginErr').innerText()));
+  await camp.fill(totpCode(secret));
+  await p2.click('#loginForm button.primary');
+  await p2.waitForFunction(() => (document.querySelector('#userBadge')?.textContent || '').trim().length > 0);
+  ok('parola si codul TOTP autentifica utilizatorul', !!(await p2.locator('#userBadge').innerText()).trim());
 
-  // Capcana pe care o pazim: activare posibila + camp inactiv = cont blocat definitiv, fara nicio
-  // cale de recuperare din interfata. Cele doua nu au voie sa coexiste.
-  ok('nicio cale de PORNIRE a 2FA in interfata', (await p2.locator('#twofaStart, #twofaEnable').count()) === 0);
-  ok('...dar iesirea ramane pentru cine are deja 2FA', (await p2.locator('#twofaDisableWrap').count()) === 1);
-
-  // Login normal (fara cod) trebuie sa mearga in continuare — 2FA oprit nu inseamna login stricat.
-  ok('login obisnuit merge in continuare', await login(p2, 'admin', PAROLA_ADMIN));
+  await p2.evaluate(() => document.querySelector('#welcomeOverlay')?.classList.add('hidden'));
+  await p2.evaluate(() => window.goTab('cont'));
+  await p2.fill('#twofaDisCode', totpCode(secret));
+  await p2.click('#twofaDisable');
+  await p2.waitForFunction(() => /este dezactivat/i.test(document.querySelector('#twofaStatus')?.textContent || ''));
+  ok('2FA se poate dezactiva tot din interfata, cu un cod valid',
+    /este dezactivat/i.test(await p2.locator('#twofaStatus').innerText()));
   await p2.close();
 
-  // Generatorul TOTP ramane verificat, ca reactivarea sa fie o schimbare de UI, nu o repornire a
-  // unui mecanism neprobat. Vector fix: RFC 4226/6238, secret 'GEZDGNBVGY3TQOJQ' (= "12345678901234567890").
+  // Vector fix RFC 4226/6238, ca generatorul folosit de test sa fie el insusi verificat.
   const c1t = totpCode('GEZDGNBVGY3TQOJQ', 59000);
   ok('TOTP: cod de 6 cifre pentru vectorul RFC', /^\d{6}$/.test(String(c1t)));
   ok('TOTP: acelasi moment -> acelasi cod (determinist)', totpCode('GEZDGNBVGY3TQOJQ', 59000) === c1t);

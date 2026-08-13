@@ -310,10 +310,12 @@ async function loadPg() {
     } else {
       db = migrate(applyDefaults({}));
     }
-    await store.persist(db);
+    store.persist(db);
+    await store.flush();
   } else {
     db = migrate(applyDefaults(await store.hydrate(DEFAULT_DB)));
-    await store.persist(db); // persista eventualele normalizari migrate() + initializeaza dirty-tracking
+    store.persist(db); // persista eventualele normalizari migrate() + initializeaza dirty-tracking
+    await store.flush();
   }
   if (JSON_MIRROR) writeJson(JSON_FILE, db);
   return db;
@@ -562,8 +564,151 @@ function exportFirma(fid) {
     inventarAnual: byFid(d.inventarAnual),
     angajati: byFid(d.angajati),
     payrollHistory: byFid(d.payrollHistory),
+    recurringInvoices: byFid(d.recurringInvoices),
+    recipes: byFid(d.recipes),
+    budgets: byFid(d.budgets),
     declarations: byFid(d.declarations),
+    closings: byFid(d.closings),
+    extractInterventions: byFid(d.extractInterventions),
+    leasingContracts: byFid(d.leasingContracts),
   };
+}
+
+const FIRMA_IMPORT_COLLS = [
+  'entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products', 'gestiuni',
+  'stockMovements', 'inventories', 'inventarAnual', 'openingAnalytic', 'recurringInvoices',
+  'recipes', 'budgets', 'declarations', 'closings', 'extractInterventions', 'leasingContracts',
+];
+const FIRMA_IMPORT_ID_COLLS = FIRMA_IMPORT_COLLS.filter((k) => k !== 'openingAnalytic');
+const FIRMA_IMPORT_MAX_ITEMS = 500000;
+const IMPORT_FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+
+function firmaImportError(msg) {
+  const e = new Error(msg); e.status = 400; throw e;
+}
+
+/** Copie JSON fara cheile care pot modifica prototipul cand obiectele sunt recompuse cu assign. */
+function safeImportClone(value) {
+  function copy(v) {
+    if (Array.isArray(v)) return v.map(copy);
+    if (v && typeof v === 'object') {
+      const out = {};
+      for (const k of Object.keys(v)) if (!IMPORT_FORBIDDEN_KEYS.has(k)) out[k] = copy(v[k]);
+      return out;
+    }
+    return v;
+  }
+  return copy(value);
+}
+
+/**
+ * Valideaza COMPLET pachetul inainte de prima mutatie a grafului: forma, volum, id-uri,
+ * referinte interne si conturi. Intoarce o copie curatata, ca importul sa nu pastreze referinte
+ * catre obiectele controlate de apelant.
+ */
+function validateFirmaBundle(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) firmaImportError('Pachet de firma invalid.');
+  const b = safeImportClone(input);
+  if (!b.firma || typeof b.firma !== 'object' || Array.isArray(b.firma)) firmaImportError('Pachetul nu contine obiectul firma.');
+  if (b._format && b._format !== 'contab-firma-v1') firmaImportError('Format de pachet necunoscut: ' + String(b._format).slice(0, 80));
+  if (b.partners != null && (typeof b.partners !== 'object' || Array.isArray(b.partners))) firmaImportError('Partenerii din pachet nu sunt un obiect.');
+  if (b.openingBalances != null && (typeof b.openingBalances !== 'object' || Array.isArray(b.openingBalances))) firmaImportError('Soldurile initiale din pachet nu sunt un obiect.');
+
+  let total = 0;
+  for (const k of FIRMA_IMPORT_COLLS) {
+    if (b[k] == null) b[k] = [];
+    if (!Array.isArray(b[k])) firmaImportError('Colectia "' + k + '" din pachet nu este o lista.');
+    total += b[k].length;
+    for (const x of b[k]) if (!x || typeof x !== 'object' || Array.isArray(x)) firmaImportError('Colectia "' + k + '" contine un element invalid.');
+  }
+  if (total > FIRMA_IMPORT_MAX_ITEMS) firmaImportError('Pachetul depaseste limita de elemente importabile.');
+
+  const ids = {};
+  for (const k of FIRMA_IMPORT_ID_COLLS) {
+    ids[k] = new Set();
+    for (const x of b[k]) {
+      const id = x.id == null ? '' : String(x.id);
+      if (!id) firmaImportError('Colectia "' + k + '" contine un element fara id.');
+      if (ids[k].has(id)) firmaImportError('Colectia "' + k + '" contine id duplicat: ' + id.slice(0, 100));
+      ids[k].add(id);
+    }
+  }
+
+  const needList = (v, label) => {
+    if (v == null) return [];
+    if (!Array.isArray(v)) firmaImportError(label + ' nu este o lista.');
+    return v;
+  };
+  const needObject = (v, label) => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) firmaImportError(label + ' nu este un obiect.');
+    return v;
+  };
+  const ref = (value, coll, label, required) => {
+    if (value == null || value === '') { if (required) firmaImportError(label + ' lipseste.'); return; }
+    if (!ids[coll].has(String(value))) firmaImportError(label + ' indica un id inexistent: ' + String(value).slice(0, 100));
+  };
+
+  for (const e of b.entries) {
+    if (!Array.isArray(e.lines)) firmaImportError('Articolul ' + e.id + ' nu are lista de linii contabile.');
+    for (const l of e.lines) needObject(l, 'Linia articolului ' + e.id);
+    ref(e.fileId, 'documents', 'Atasamentul articolului ' + e.id, false);
+    ref(e.movementId, 'stockMovements', 'Miscarea articolului ' + e.id, false);
+    ref(e.stornoOf, 'entries', 'Referinta storno a articolului ' + e.id, false);
+    ref(e.stornoBy, 'entries', 'Nota storno a articolului ' + e.id, false);
+    for (const mid of needList(e.stocMovementIds, 'Miscarile de stoc ale articolului ' + e.id)) ref(mid, 'stockMovements', 'Miscarea de stoc a articolului ' + e.id, true);
+  }
+  for (const mv of b.stockMovements) {
+    ref(mv.productId, 'products', 'Produsul miscarii ' + mv.id, true);
+    ref(mv.gestiuneId, 'gestiuni', 'Gestiunea miscarii ' + mv.id, false);
+    ref(mv.gestiuneDestId, 'gestiuni', 'Gestiunea destinatie a miscarii ' + mv.id, false);
+    // entryId este o legatura auxiliara: o copie partiala poate pastra miscarea de stoc dupa ce
+    // articolul a fost pierdut. La constructie devine null, niciodata id-ul vechi/strain.
+  }
+  for (const iv of b.inventories) {
+    ref(iv.gestiuneId, 'gestiuni', 'Gestiunea inventarului ' + iv.id, false);
+    needList(iv.entryIds, 'Articolele inventarului ' + iv.id);
+    needList(iv.stornoEntryIds, 'Stornarile inventarului ' + iv.id);
+    for (const x of needList(iv.movementIds, 'Miscarile inventarului ' + iv.id)) ref(x, 'stockMovements', 'Miscarea inventarului ' + iv.id, true);
+    for (const l of needList(iv.lines, 'Liniile inventarului ' + iv.id)) { needObject(l, 'Linia inventarului ' + iv.id); ref(l.productId, 'products', 'Produsul din inventarul ' + iv.id, true); }
+  }
+  // Istoricul salarial poate pastra randuri pentru angajati stersi ulterior. Lista se valideaza,
+  // iar id-urile care nu mai exista devin null la remapare (numele/CNP-ul istoric raman in rand).
+  for (const h of b.payrollHistory) needList(h.rows, 'Randurile statului ' + h.id);
+  for (const t of b.recurringInvoices) {
+    const stoc = t.fields && t.fields.stoc;
+    for (const l of needList(stoc, 'Stocul sablonului recurent ' + t.id)) {
+      needObject(l, 'Linia de stoc a sablonului recurent ' + t.id);
+      ref(l.productId, 'products', 'Produsul sablonului recurent ' + t.id, true);
+      ref(l.gestiuneId, 'gestiuni', 'Gestiunea sablonului recurent ' + t.id, false);
+    }
+  }
+  for (const r of b.recipes) {
+    ref(r.productId, 'products', 'Produsul finit al retetei ' + r.id, true);
+    ref(r.gestiuneId, 'gestiuni', 'Gestiunea retetei ' + r.id, false);
+    for (const m of needList(r.materiale, 'Materialele retetei ' + r.id)) {
+      needObject(m, 'Materialul retetei ' + r.id);
+      ref(m.productId, 'products', 'Materialul retetei ' + r.id, true);
+      ref(m.gestiuneId, 'gestiuni', 'Gestiunea materialului din reteta ' + r.id, false);
+    }
+  }
+
+  // Niciun articol/sold/nomenclator nu intra cu un cont pe care instanta tinta nu-l cunoaste.
+  const coa = require('./chartOfAccounts');
+  const unknown = new Set();
+  const account = (v) => { if (v != null && v !== '' && !coa.getAccount(String(v))) unknown.add(String(v)); };
+  for (const e of b.entries) for (const l of e.lines) { account(l.debit); account(l.credit); }
+  for (const c of Object.keys(b.openingBalances || {})) account(c);
+  for (const x of b.openingAnalytic) account(x.cont);
+  for (const x of b.products) account(x.cont);
+  for (const x of b.gestiuni) account(x.cont);
+  for (const x of b.assets) account(x.cont);
+  for (const x of b.inventarAnual) account(x.cont);
+  for (const x of b.budgets) account(x.cont);
+  if (unknown.size) firmaImportError('Conturi inexistente in planul de conturi al instantei tinta: ' + [...unknown].slice(0, 30).join(', ') + '. Importa/adauga intai conturile personalizate.');
+
+  b.partners = b.partners || {};
+  b.openingBalances = b.openingBalances || {};
+  return b;
 }
 
 /**
@@ -577,71 +722,99 @@ function exportFirma(fid) {
 function importFirma(bundle, opts) {
   const o = opts || {};
   const d = get();
-  if (!bundle || !bundle.firma) throw new Error('Pachet de firma invalid.');
+  const b = validateFirmaBundle(bundle);
   let newFid;
   if (o.targetFid) {
     newFid = Number(o.targetFid);
     const f = d.firme.find((x) => x.id === newFid);
     if (!f) throw new Error('Firma tinta inexistenta.');
-    for (const k of ['entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products', 'gestiuni', 'stockMovements', 'inventories', 'inventarAnual', 'openingAnalytic', 'declarations']) {
-      d[k] = d[k].filter((x) => (x.firmaId == null ? d.firmaActiva : x.firmaId) !== newFid);
-    }
-    Object.assign(f, bundle.firma, { id: newFid }); // preia datele firmei din copie, pastreaza id-ul
   } else {
     newFid = nextFirmaId();
-    d.firme.push(Object.assign({}, bundle.firma, { id: newFid, nume: (bundle.firma.nume || 'Firma') + ' (import)' }));
   }
-  d.partners[newFid] = JSON.parse(JSON.stringify(bundle.partners || {}));
-  d.openingBalances[newFid] = JSON.parse(JSON.stringify(bundle.openingBalances || {}));
-  d.openingAnalytic.push(...(bundle.openingAnalytic || []).map((o) => Object.assign({}, o, { firmaId: newFid })));
 
-  const remap = (arr, prefix) => {
-    const m = {};
-    const out = (arr || []).map((x) => { const id = nextId(prefix); m[x.id] = id; return Object.assign({}, x, { id, firmaId: newFid }); });
-    return { m, out };
+  // Alocare LOCALA: seq si graful nu se ating pana cand TOATE obiectele sunt construite.
+  let seqImport = Number(d.seq) || 1;
+  const alloc = (prefix) => String(prefix || '') + seqImport++;
+  const maps = {};
+  const prefixes = { products: 'prod', gestiuni: 'gest', assets: 'mf', angajati: 'ang', entries: 'e', stockMovements: 'sm', documents: 'doc', inventories: 'inv', inventarAnual: 'iva', payrollHistory: 'ph', recurringInvoices: 'rec', recipes: 'bom', budgets: 'bud', declarations: 'dcl', closings: 'cls', extractInterventions: 'ext', leasingContracts: 'lsg' };
+  for (const k of FIRMA_IMPORT_ID_COLLS) {
+    maps[k] = new Map();
+    for (const x of b[k]) maps[k].set(String(x.id), alloc(prefixes[k]));
+  }
+  const mid = (coll, id) => (id == null || id === '') ? null : (maps[coll].get(String(id)) || null);
+  const simple = (coll) => b[coll].map((x) => Object.assign({}, x, { id: mid(coll, x.id), firmaId: newFid }));
+  const stockLines = (lines) => (lines || []).map((l) => Object.assign({}, l, { productId: mid('products', l.productId), gestiuneId: mid('gestiuni', l.gestiuneId) }));
+
+  const built = {
+    products: simple('products'), gestiuni: simple('gestiuni'), assets: simple('assets'), angajati: simple('angajati'),
+    inventarAnual: simple('inventarAnual'), budgets: simple('budgets'), declarations: simple('declarations'),
+    closings: simple('closings'), leasingContracts: simple('leasingContracts'),
+    openingAnalytic: b.openingAnalytic.map((x) => Object.assign({}, x, { firmaId: newFid })),
   };
-  const prod = remap(bundle.products, 'prod');
-  const gest = remap(bundle.gestiuni, 'gest');
-  const asset = remap(bundle.assets, 'mf');
-  const ang = remap(bundle.angajati, 'ang');
-  const entMap = {}; (bundle.entries || []).forEach((e) => { entMap[e.id] = nextId('e'); });
-  const movMap = {}; (bundle.stockMovements || []).forEach((mv) => { movMap[mv.id] = nextId('sm'); });
+  built.documents = b.documents.map((doc) => {
+    // Un import JSON nu aduce octetii atasamentului. Nu pastram un storedName controlat de client:
+    // ar putea indica fisierul altei firme de pe aceeasi instanta. Doar ZIP-ul il remapeaza la un
+    // nume NOU, generat in staging si prezent explicit in storedNameMap.
+    const oldBase = path.basename(String(doc.storedName || ''));
+    const stored = o.storedNameMap && oldBase ? o.storedNameMap[oldBase] : null;
+    return Object.assign({}, doc, { id: mid('documents', doc.id), firmaId: newFid, storedName: stored || null, interventieId: mid('extractInterventions', doc.interventieId) });
+  });
+  built.entries = b.entries.map((e) => Object.assign({}, e, {
+    id: mid('entries', e.id), firmaId: newFid,
+    fileId: mid('documents', e.fileId), movementId: mid('stockMovements', e.movementId),
+    stornoOf: mid('entries', e.stornoOf), stornoBy: mid('entries', e.stornoBy),
+    stocMovementIds: (e.stocMovementIds || []).map((x) => mid('stockMovements', x)),
+  }));
+  built.stockMovements = b.stockMovements.map((mv) => Object.assign({}, mv, {
+    id: mid('stockMovements', mv.id), firmaId: newFid,
+    productId: mid('products', mv.productId), gestiuneId: mid('gestiuni', mv.gestiuneId),
+    gestiuneDestId: mid('gestiuni', mv.gestiuneDestId), entryId: mid('entries', mv.entryId),
+  }));
+  built.inventories = b.inventories.map((iv) => Object.assign({}, iv, {
+    id: mid('inventories', iv.id), firmaId: newFid, gestiuneId: mid('gestiuni', iv.gestiuneId),
+    entryIds: (iv.entryIds || []).map((x) => mid('entries', x)),
+    stornoEntryIds: (iv.stornoEntryIds || []).map((x) => mid('entries', x)),
+    movementIds: (iv.movementIds || []).map((x) => mid('stockMovements', x)),
+    lines: (iv.lines || []).map((l) => Object.assign({}, l, { productId: mid('products', l.productId) })),
+  }));
+  built.payrollHistory = b.payrollHistory.map((h) => Object.assign({}, h, {
+    id: mid('payrollHistory', h.id), firmaId: newFid,
+    rows: (h.rows || []).map((r) => Object.assign({}, r, { angajatId: mid('angajati', r.angajatId) })),
+  }));
+  built.recurringInvoices = b.recurringInvoices.map((t) => Object.assign({}, t, {
+    id: mid('recurringInvoices', t.id), firmaId: newFid,
+    fields: Object.assign({}, t.fields || {}, { stoc: stockLines(t.fields && t.fields.stoc) }),
+  }));
+  built.recipes = b.recipes.map((r) => Object.assign({}, r, {
+    id: mid('recipes', r.id), firmaId: newFid, productId: mid('products', r.productId), gestiuneId: mid('gestiuni', r.gestiuneId),
+    materiale: (r.materiale || []).map((m) => Object.assign({}, m, { productId: mid('products', m.productId), gestiuneId: mid('gestiuni', m.gestiuneId) })),
+  }));
+  built.extractInterventions = b.extractInterventions.map((x) => Object.assign({}, x, {
+    id: mid('extractInterventions', x.id), firmaId: newFid,
+    documentId: mid('documents', x.documentId), entryId: mid('entries', x.entryId),
+  }));
 
-  d.products.push(...prod.out); d.gestiuni.push(...gest.out); d.assets.push(...asset.out); d.angajati.push(...ang.out);
-
-  // documente atasate (fisiere scanate): id nou + storedName remapat daca fisierul a venit din ZIP
-  const docMap = {};
-  for (const doc of (bundle.documents || [])) {
-    const id = nextId('doc'); docMap[doc.id] = id;
-    const stored = (o.storedNameMap && doc.storedName && o.storedNameMap[doc.storedName]) || doc.storedName;
-    d.documents.push(Object.assign({}, doc, { id, firmaId: newFid, storedName: stored }));
+  // COMMIT in RAM: de aici inainte nu mai exista validari care pot arunca. La replace, campurile
+  // privilegiate ale tintei (ownerId/subscription/lockedUntil/anaf/test/demo) raman NEATINSE.
+  if (o.targetFid) {
+    const f = d.firme.find((x) => x.id === newFid);
+    Object.assign(f, pickFirmaFields(b.firma), { id: newFid });
+    for (const k of FIRMA_IMPORT_COLLS) d[k] = d[k].filter((x) => (x.firmaId == null ? d.firmaActiva : x.firmaId) !== newFid);
+  } else {
+    const f = Object.assign(defaultFirma(newFid), pickFirmaFields(b.firma), { id: newFid });
+    f.nume = (f.nume || 'Firma') + ' (import)';
+    d.firme.push(f);
   }
-
-  for (const e of (bundle.entries || [])) d.entries.push(Object.assign({}, e, { id: entMap[e.id], firmaId: newFid, fileId: e.fileId ? (docMap[e.fileId] || null) : null, movementId: e.movementId ? movMap[e.movementId] : e.movementId }));
-  for (const mv of (bundle.stockMovements || [])) {
-    d.stockMovements.push(Object.assign({}, mv, {
-      id: movMap[mv.id], firmaId: newFid,
-      productId: prod.m[mv.productId] || mv.productId,
-      gestiuneId: mv.gestiuneId ? (gest.m[mv.gestiuneId] || mv.gestiuneId) : mv.gestiuneId,
-      gestiuneDestId: mv.gestiuneDestId ? (gest.m[mv.gestiuneDestId] || mv.gestiuneDestId) : mv.gestiuneDestId,
-      entryId: mv.entryId ? entMap[mv.entryId] : mv.entryId,
-    }));
+  d.partners[newFid] = b.partners;
+  d.openingBalances[newFid] = b.openingBalances;
+  for (const k of FIRMA_IMPORT_COLLS) {
+    const rows = built[k] || [];
+    if (k === 'entries') for (const e of rows) pushEntry(e, { context: 'import firma' });
+    else d[k].push(...rows);
   }
-  for (const iv of (bundle.inventories || [])) {
-    d.inventories.push(Object.assign({}, iv, {
-      id: nextId('inv'), firmaId: newFid,
-      gestiuneId: gest.m[iv.gestiuneId] || iv.gestiuneId,
-      entryIds: (iv.entryIds || []).map((x) => entMap[x] || x),
-      movementIds: (iv.movementIds || []).map((x) => movMap[x] || x),
-      lines: (iv.lines || []).map((l) => Object.assign({}, l, { productId: prod.m[l.productId] || l.productId })),
-    }));
-  }
-  for (const h of (bundle.payrollHistory || [])) {
-    d.payrollHistory.push(Object.assign({}, h, { id: nextId('ph'), firmaId: newFid, rows: (h.rows || []).map((r) => Object.assign({}, r, { angajatId: ang.m[r.angajatId] || r.angajatId })) }));
-  }
-  for (const dc of (bundle.declarations || [])) d.declarations.push(Object.assign({}, dc, { id: nextId('dcl'), firmaId: newFid }));
+  d.seq = seqImport;
   d.firmaActiva = newFid;
-  save();
+  if (!o.deferSave) save();
   return newFid;
 }
 
@@ -795,7 +968,7 @@ async function trialFisaContSql(fid, cont, period) {
 
 module.exports = {
   get, save, load, migrate, nextId, pushEntry, conturiNecunoscute, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
-  getUser, getUserByName, nextUserId, exportFirma, importFirma, restoreFromJson, flushMirror, flushStore,
+  getUser, getUserByName, nextUserId, exportFirma, importFirma, validateFirmaBundle, restoreFromJson, flushMirror, flushStore,
   canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, persistStats, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

@@ -201,6 +201,30 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
     await store.flush();
     eq('stergerile se propaga prin rafala', Number((await pool.query('SELECT COUNT(*) AS n FROM entries')).rows[0].n), cdb.entries.length);
     ok('randurile sterse chiar au disparut', (await pool.query("SELECT 1 FROM entries WHERE id IN ('c7','c9')")).rows.length === 0);
+
+    section('Esec SQL propagat prin flush + recuperare la commit ulterior');
+    // Rupe controlat o tabela: tranzactia trebuie sa dea ROLLBACK, iar flush() trebuie sa
+    // RESPINGA promisiunea. Inainte, drain() inghitea eroarea si HTTP putea confirma succesul.
+    await pool.query('ALTER TABLE partners RENAME TO partners_persist_failure');
+    cdb.partners[1] = { RO123: { cui: 'RO123', name: 'Partener test' } };
+    let persistError = null;
+    try {
+      store.persist(cdb);
+      await store.flush();
+    } catch (e) {
+      persistError = e;
+    } finally {
+      await pool.query('ALTER TABLE partners_persist_failure RENAME TO partners');
+    }
+    ok('flush respinge promisiunea dupa ROLLBACK', persistError && /partners/.test(String(persistError.message)));
+    ok('metricile retin esecul si starea nedurabila ca pending', store.queueStats().failStreak > 0 && !!store.queueStats().lastError && store.queueStats().pending);
+    eq('ROLLBACK nu a scris partenerul', Number((await pool.query('SELECT COUNT(*) n FROM partners')).rows[0].n), 0);
+
+    // Snapshotul persistat a ramas neatins: acelasi graf se poate fotografia din nou, iar primul
+    // COMMIT reusit vindeca eroarea expusa de flush (fara restart pentru un incident tranzitoriu).
+    store.persist(cdb); await store.flush();
+    eq('persist ulterior recupereaza schimbarea', Number((await pool.query('SELECT COUNT(*) n FROM partners')).rows[0].n), 1);
+    eq('commit reusit reseteaza seria de esecuri', store.queueStats().failStreak, 0);
   }
 
   // ULTIMA sectiune (dupa conflict, persistenta ramane INGHETATA — nimic nu mai scrie dupa ea)
@@ -218,14 +242,20 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
       await pool.query('INSERT INTO entries (id, "firmaId", data) VALUES ($1, $2, $3)', ['strain-1', 2, JSON.stringify({ id: 'strain-1', firmaId: 2, lines: [] })]);
     }
     fdb.entries.push(mkEntry('f2', 1, 20));
-    store.persist(fdb); await store.flush();
+    store.persist(fdb);
+    let conflictError = null;
+    try { await store.flush(); } catch (e) { conflictError = e; }
     ok('persist dupa alt scriitor -> conflict detectat (conflicted)', store.conflicted());
+    ok('conflictul este propagat de flush', conflictError && conflictError.code === 'CONTAB_WRITER_CONFLICT');
     ok('randul scriitorului strain e intact', (await pool.query("SELECT 1 FROM entries WHERE id='strain-1'")).rows.length === 1);
     ok('scrierea noastra (f2) NU a intrat (rollback)', (await pool.query("SELECT 1 FROM entries WHERE id='f2'")).rows.length === 0);
     // inghetat: urmatorul persist e refuzat fara sa atinga baza
     fdb.entries.push(mkEntry('f3', 1, 30));
-    store.persist(fdb); await store.flush();
+    store.persist(fdb);
+    let frozenError = null;
+    try { await store.flush(); } catch (e) { frozenError = e; }
     eq('persist ulterior refuzat (written gol, inghetat pana la restart)', store.written().length, 0);
+    ok('flush ramane rosu cat timp persistenta este inghetata', frozenError && frozenError.code === 'CONTAB_WRITER_CONFLICT');
     ok('f3 NU a intrat in baza', (await pool.query("SELECT 1 FROM entries WHERE id='f3'")).rows.length === 0);
   }
 

@@ -62,8 +62,15 @@ function snapshot() {
     route, n: r.n, totalMs: Math.round(r.totalMs), avgMs: Math.round(r.totalMs / r.n),
     maxMs: Math.round(r.maxMs), slow: r.slow, err5xx: r.err5xx,
   })).sort((a, b) => b.totalMs - a.totalMs);
+  // Bariera PostgreSQL face acum durata rutelor mutante corecta: include asteptarea COMMIT-ului.
+  // Pe o suita/incarcare cu >100 tipare, acestea pot impinge health-ul foarte rapid in afara
+  // topului dupa timp total. Health este insa reper operational, nu candidat optional de tuning;
+  // il pastram vizibil in plafonul de 100 chiar cand este (sanatos) aproape instantaneu.
+  const visible = list.slice(0, 100);
+  const health = list.find((x) => x.route === '/api/health');
+  if (health && !visible.includes(health)) visible[visible.length ? visible.length - 1 : 0] = health;
   return {
-    sinceTs: new Date(startedAt).toISOString(), slowThresholdMs: SLOW_MS, routes: list.slice(0, 100),
+    sinceTs: new Date(startedAt).toISOString(), slowThresholdMs: SLOW_MS, routes: visible,
     recentErrors: recentErrors.slice().reverse(), // cele mai noi primele
     lag: lagSnapshot(), // cat a stat bucla blocata — cauza pe care durata pe ruta n-o poate arata
     audit: auditSnapshot(), // scrierile in jurnalul DURABIL: tacerea lor invalida retentia

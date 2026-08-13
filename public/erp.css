@@ -492,7 +492,7 @@ body.erp .st, body.erp .badge, body.erp .pill {
 /* `:not(.hidden)` NU e cosmetic: `body.erp label` (o clasa + un element) bate
    `.hidden{display:none}` (o clasa), deci un label ascuns din JS ramanea VIZIBIL pe desktop —
    unde stratul clasic e montat, adica pe cazul obisnuit. Se vedea direct pe ecranul de intrare:
-   randul „Cod 2FA" statea deschis desi 2FA e oprit. Aceeasi capcana ca la `.login-box label`
+   randul „Cod 2FA" statea deschis chiar cand trebuia ascuns. Aceeasi capcana ca la `.login-box label`
    din styles.css, si acolo rezolvata la fel. */
 body.erp label:not(.hidden) {
   display: grid; grid-template-columns: 140px minmax(0, 1fr);

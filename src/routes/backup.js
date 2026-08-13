@@ -32,7 +32,10 @@ module.exports = function register(app, ctx) {
   });
   app.get('/api/backups', requireAdmin, (req, res) => {
     const s = db.get().settings.backup || {};
-    res.json({ auto: s.auto !== false, lastAt: s.lastAt || null, list: backupLib.listBackups(db.DATA_DIR) });
+    let lastVerified = null;
+    try { lastVerified = JSON.parse(fs.readFileSync(require('path').join(db.DATA_DIR, 'backups', 'last-backup.json'), 'utf8')); }
+    catch (_) { /* inca nu a rulat backupul complet verificat */ }
+    res.json({ auto: s.auto !== false, lastAt: s.lastAt || null, lastVerified, list: backupLib.listBackups(db.DATA_DIR) });
   });
   app.post('/api/backups/auto', requireAdmin, (req, res) => {
     const d = db.get();
