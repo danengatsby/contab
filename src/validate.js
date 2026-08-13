@@ -18,7 +18,7 @@ function attr(xml, name) {
 }
 function has(xml, frag) { return String(xml).indexOf(frag) >= 0; }
 
-const ROOTS = { d300: 'declaratie300', d301: 'declaratie301', d307: 'declaratie307', d311: 'declaratie311', d394: 'declaratie394', d390: 'declaratie390', d205: 'declaratie205', d112: 'D112', saft: 'AuditFile', d100: 'declaratie100', d101: 'declaratie101', intrastat: 'declaratieIntrastat' };
+const ROOTS = { d300: 'declaratie300', d301: 'declaratie301', d307: 'declaratie307', d311: 'declaratie311', d394: 'declaratie394', d390: 'declaratie390', d205: 'declaratie205', d112: 'D112', saft: 'AuditFile', d100: 'declaratie100', d101: 'declaratie101', d107: 'd107', intrastat: 'declaratieIntrastat' };
 
 /** @returns { ok, errors:[], warnings:[] } */
 function validateDeclaration(type, xml, ctx) {
@@ -40,7 +40,7 @@ function validateDeclaration(type, xml, ctx) {
     if (!attr(s, 'an') && !has(s, '<an')) errors.push('Lipseste anul din declaratie.');
   }
   if (type === 'd205' && !attr(s, 'an') && !has(s, '<an')) errors.push('Lipseste anul din D205.');
-  if (type === 'd101' && !attr(s, 'an')) errors.push('Lipseste anul din D101.');
+  if (['d101', 'd107'].includes(type) && !attr(s, 'an')) errors.push('Lipseste anul din ' + type.toUpperCase() + '.');
 
   // Cote fara rand in schema D300 v12 (tipic: achizitii la 9%, sau date vechi la 19%/5%). Suma nu
   // are unde intra in decont, deci decontul ar fi INCOMPLET — eroare, nu avertisment. Emiterea pe
@@ -68,6 +68,7 @@ function validateDeclaration(type, xml, ctx) {
   // mereu nu mai e citit — deci ascundea exact cazul pe care trebuia sa-l semnaleze.
   if (type === 'd390' && !has(s, '<operatie ')) warnings.push('Nicio operatiune intracomunitara in perioada — declaratie goala.');
   if (type === 'd205' && !has(s, '<beneficiar ')) warnings.push('Niciun beneficiar cu retinere la sursa — declaratie goala.');
+  if (type === 'd107' && !has(s, '<entit ')) warnings.push('Niciun beneficiar de sponsorizare — declarație goală.');
   if (type === 'd100' && attr(s, 'total_plata') === '0.00') warnings.push('Impozit 0 in trimestru — verifica daca datorezi D100 pentru perioada.');
   if (type === 'intrastat') {
     if (!has(s, '<articol ')) warnings.push('Nicio operatiune intracomunitara cu bunuri in perioada — declaratie goala.');

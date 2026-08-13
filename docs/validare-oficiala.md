@@ -8,10 +8,11 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-08-13 — D307 și bateria completă
+## Ultima verificare: 2026-08-13 — D107 și bateria completă
 
 Poarta fiscală forțată (`scripts/poarta-fiscala.sh --intotdeauna`) a regenerat și validat
-**40 din 40 de ieșiri**. Cele trei probe D307 au trecut DUKIntegrator: declarația inițială
+**42 din 42 de ieșiri**. Probele D107 inițială (`D107`) și rectificativă (`D107-rect`) au trecut
+DUKIntegrator. Au rămas valide și cele trei probe D307: declarația inițială
 (`D307`), rectificativa (`D307-rect`) și rectificativa cu un rând C agregat la zero
 (`D307-zero`). Probele acoperă operațiuni A/L/C, o regularizare C negativă și păstrarea explicită
 a valorii zero. Cele trei probe D301 au rămas valide: declarația inițială
@@ -22,6 +23,30 @@ situațiile financiare și schema e-Transport.
 Cele trei probe D311 sunt de asemenea valide: schema IV (`D311`), rectificativa (`D311-rect`) și
 schema V după reînregistrare (`D311-reinreg`). Validatorul din manifestul oficial este
 `D311Validator.jar` J2.0.0 (29.01.2021).
+
+### Implementare D107
+
+D107 este generată anual numai pentru plătitorii de impozit pe profit care au sponsorizări,
+mecenat sau burse private în evidență. Raportul urmărește fiecare beneficiar și separă suma
+acordată în anul curent (`Val1`), suma reportată din anii anteriori (`Val2`) și suma scăzută din
+impozitul pe profit în anul curent (`Val3`). Alocarea scăderii se face FIFO, iar soldul detaliat
+se păstrează la închiderea impozitului pe profit pentru a putea fi reportat și auditat în anul
+următor.
+
+Rădăcina XML este `<d107 xmlns="mfp:anaf:dgti:d107:declaratie:v1">`, codul obligației bugetare
+acceptat de validator este `5503XXXXXX`, iar `totalPlata_A` este suma de control
+`TVal1 + TVal2 + TVal3`. Pentru anul fiscal 2025 termenul electronic este 25 iunie 2026, iar
+începând cu anul fiscal 2026 generatorul aplică 25 martie din anul următor, conform structurii
+actuale. Declarația rectificativă este emisă cu `d_rec=1` după existența unei depuneri în registru.
+
+Structura PDF actuală încă enumeră atributul `nr_evid`, însă validatorul D107 distribuit în
+manifestul ANAF îl respinge ca atribut necunoscut. Implementarea urmează contractul verificat la
+depunere: nu emite `nr_evid`. Ambele referințe trec validatorul oficial curent
+(`D107Validator.jar`, J2.0.0).
+
+Surse: [pagina electronică D107](https://static.anaf.ro/static/10/Anaf/Declaratii_R/107.html),
+[structura XML actualizată la 01.07.2026](https://static.anaf.ro/static/10/Anaf/Declaratii_R/AplicatiiDec/structura_D107_2024_010726.pdf),
+[OPANAF 355/2024](https://static.anaf.ro/static/10/Anaf/legislatie/OPANAF_355_2024.pdf).
 
 ### Implementare D307
 

@@ -16,12 +16,13 @@ const acc = require('./accounting');
 const saft = require('./saft');
 const validate = require('./validate');
 const { statePlata } = require('./payroll');
+const d107 = require('./d107');
 const d301 = require('./d301');
 const d307 = require('./d307');
 const d311 = require('./d311');
 
 /** Tipurile pentru care stim sa construim XML (si deci sa validam). */
-const TYPES = ['d300', 'd301', 'd307', 'd311', 'd394', 'd390', 'd100', 'd101', 'intrastat', 'd205', 'd112', 'saft'];
+const TYPES = ['d300', 'd301', 'd307', 'd311', 'd394', 'd390', 'd100', 'd101', 'd107', 'intrastat', 'd205', 'd112', 'saft'];
 
 /** Construieste XML-ul declaratiei. Arunca erorile generatoarelor (apelantul le traduce in 400). */
 function buildXml(v, type, opts) {
@@ -38,6 +39,11 @@ function buildXml(v, type, opts) {
   if (type === 'd390') return xml.d390Xml(v.company, period, rep.d390(v, period));
   if (type === 'd100') return xml.d100Xml(v.company, period, rep.d100(v, period), declarant);
   if (type === 'd101') return xml.d101Xml(v.company, rep.d101(v, year, ptOpts.pentruDeclaratie(v, year)), declarant);
+  if (type === 'd107') {
+    const po = ptOpts.pentruDeclaratie(v, year);
+    const pt = po.rezultatFiscal || acc.profitTax(v, year, po);
+    return xml.d107Xml(v.company, d107.report(v, year, pt), declarant);
+  }
   if (type === 'intrastat') return xml.intrastatXml(v.company, period, rep.intrastat(v, period));
   if (type === 'd205') return xml.d205Xml(v.company, year, rep.d205(v, year));
   if (type === 'd112') return xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarant);

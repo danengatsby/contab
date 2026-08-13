@@ -88,7 +88,7 @@ function build(company, ctx) {
  *  declaratii diferite: D390 le cere pe amandoua (art. 325), Intrastat doar bunurile — asa ca o
  *  firma care cumpara numai reclama din UE datoreaza D390, nu si raportarea statistica.
  *  Scutirile din profil suprima orice tip. */
-function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD307, hasD311) {
+function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD307, hasD311, hasD107) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   const sfarsitTrim = endOfQuarter(period);
   const intracom = typeof hasIntracom === 'function' && hasIntracom(period);
@@ -96,6 +96,7 @@ function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, ha
   const d301 = typeof hasD301 === 'function' && hasD301(period);
   const d307 = typeof hasD307 === 'function' && hasD307(period);
   const d311 = typeof hasD311 === 'function' && hasD311(period);
+  const d107 = typeof hasD107 === 'function' && hasD107(period);
   const tips = [];
   const add = (t) => { if (!profile.scutiri[t] && !tips.includes(t)) tips.push(t); };
   // TVA: D300 + D394 (lunar sau la sfarsit de trimestru, dupa perioada fiscala)
@@ -133,6 +134,9 @@ function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, ha
   // D101 (impozit pe profit, ANUAL): doar regimul de profit, la sfarsitul anului (termen 25 martie
   // anul urmator). Micro NU depune D101.
   if (profile.profit && Number(period.slice(5, 7)) === 12) add('d101');
+  // D107 are aceeași cadență ca D101, dar numai când există sponsorizări sau report fiscal.
+  // Din 2024 formularul nu se mai depune de microîntreprinderi.
+  if (profile.profit && Number(period.slice(5, 7)) === 12 && d107) add('d107');
   // D406 (SAF-T): dupa cadenta profilului, non-PFA
   if (!profile.pfa && (profile.d406 === 'L'
     || (profile.d406 === 'T' && sfarsitTrim)

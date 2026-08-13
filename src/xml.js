@@ -854,7 +854,60 @@ ${op1Xml}
 `;
 }
 
-/** Construieste blocul UBL pentru o parte (furnizor sau client). */
+/** D107 — declarația anuală a beneficiarilor sponsorizărilor/mecenatului, schema v1.
+ * Structura curentă (an >= 2024) folosește cod_oblig=103 și cod_bug literal `5503XXXXXX`.
+ * Deși anexa publică încă enumeră `nr_evid`, validatorul oficial D107 J2.0.0 îl respinge drept
+ * atribut necunoscut; proba este consemnată în docs/validare-oficiala.md, deci nu îl emitem. */
+function d107Xml(company, d, who, rect) {
+  company = company || {}; d = d || {}; rect = rect || {};
+  if ((d.errors || []).length) throw new Error('D107 nu poate fi generată: ' + d.errors.join(' '));
+  if (!(d.rows || []).length) throw new Error('Nu există sponsorizări/report de declarat prin D107.');
+  const year = Number(d.year);
+  if (!Number.isInteger(year) || year < 2024 || year > 2100) throw new Error('Anul D107 trebuie să fie cel puțin 2024.');
+  const cui = String(company.cui || '').replace(/^ro/i, '').replace(/\D/g, '');
+  if (!identitate.validCUI(cui)) throw new Error('CUI-ul firmei este invalid pentru D107.');
+  const den = String(company.nume || '').trim();
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
+  if (!den || !adresa) throw new Error('Denumirea și adresa firmei sunt obligatorii pentru D107.');
+  const lei = (v) => Math.round(Number(v) || 0);
+  const totals = { val1: 0, val2: 0, val3: 0 };
+  const seen = new Set();
+  const rows = d.rows.map((r) => {
+    const cod = String(r.cui || '').replace(/^ro/i, '').replace(/\D/g, '');
+    if (!(identitate.validCUI(cod) || identitate.validCNP(cod))) throw new Error('Cod fiscal beneficiar invalid în D107: ' + (r.cui || 'lipsă') + '.');
+    if (seen.has(cod)) throw new Error('Beneficiarul ' + cod + ' apare de două ori în D107; raportul trebuie agregat.');
+    seen.add(cod);
+    const nume = String(r.den || '').trim(); const adr = String(r.adresa || '').trim();
+    if (!nume || !adr) throw new Error('Denumirea și adresa beneficiarului ' + cod + ' sunt obligatorii în D107.');
+    const val1 = lei(r.val1); const val2 = lei(r.val2); const val3 = lei(r.val3);
+    if (val1 < 0 || val2 < 0 || val3 < 0) throw new Error('Sumele D107 nu pot fi negative pentru beneficiarul ' + cod + '.');
+    if (val3 > val1 + val2) throw new Error('Suma dedusă D107 depășește suma disponibilă pentru beneficiarul ' + cod + '.');
+    totals.val1 += val1; totals.val2 += val2; totals.val3 += val3;
+    return `  <entit denE="${esc(nume)}" cifE="${esc(cod)}" adrE="${esc(adr)}" Val1="${val1}" Val2="${val2}" Val3="${val3}"/>`;
+  }).join('\n');
+  const semnatar = who && who.nume
+    ? (String(who.nume).trim() + ' ' + String(who.prenume || '').trim()).trim()
+    : 'Administrator';
+  const tel = String(company.telefon || '').replace(/[^0-9+]/g, '').slice(0, 15);
+  const email = String(company.email || '').trim().slice(0, 200);
+  // Din 2026 termenul standard revine la 25 martie; pentru anii <=2025 structura oficială cere
+  // 25 iunie. D107 se depune la același termen cu declarația anuală de impozit pe profit.
+  const scadenta = '25' + (year <= 2025 ? '06' : '03') + String(year + 1);
+  const totalPlata = totals.val1 + totals.val2 + totals.val3;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- D107 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D107 fisier.xml -->
+<d107 xmlns="mfp:anaf:dgti:d107:declaratie:v1"
+  d_rec="${rect.rectificativa ? 1 : 0}" cod_oblig="103" luna_i="1" an_i="${year}" luna="12" an="${year}"
+  d_PM="1" d_alte="0" Data_I="01.01.${year}" Data_S="31.12.${year}"
+  scadenta="${scadenta}" cod_bug="5503XXXXXX" d_succ="0"
+  cui="${esc(cui)}" denC="${esc(den)}" adresaC="${esc(adresa)}"${company.codPostal ? ` codpC="${esc(company.codPostal)}"` : ''}${tel ? ` telC="${esc(tel)}"` : ''}${email ? ` emailC="${esc(email)}"` : ''}
+  denS="${esc(semnatar.slice(0, 75))}" totalPlata_A="${totalPlata}"
+  Val2_NI="0" Val3_NI="0" TVal1="${totals.val1}" TVal2="${totals.val2}" TVal3="${totals.val3}">
+${rows}
+</d107>
+`;
+}
+
 /**
  * D177 — cerere de redirectionare a impozitului catre beneficiari.
  *
@@ -909,6 +962,7 @@ ${beneficiari}
 `;
 }
 
+/** Construieste blocul UBL pentru o parte (furnizor sau client). */
 function partyXml(roleTag, p) {
   // Aceeasi regula ca la Invoice, si trebuie repetata fiindca nota de credit isi construieste
   // partile pe alta cale: doar CUMPARATORUL poate fi persoana fizica (furnizorul suntem noi, sau
@@ -1572,6 +1626,6 @@ module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
   perimetruEFactura, CIF_PERSOANA_FIZICA,
   umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d301Xml, d307Xml, d311Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
-  bilantXml, bilantNsVersion, d177Xml,
+  bilantXml, bilantNsVersion, d107Xml, d177Xml,
   esc, // escaparea XML, refolosita de generatoarele din afara acestui fisier (ex. src/sepa.js)
 };

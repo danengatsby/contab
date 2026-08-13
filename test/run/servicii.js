@@ -504,6 +504,28 @@ eq('impozitul deja inregistrat pe an -> 400', errStatus(() => clsvc.closeProfitT
 db.get().entries = db.get().entries.filter((e) => e.id !== 'cl-svc-dbl');
 const cpt = clsvc.closeProfitTax(fidOk, {}, '2035');
 ok('an fara profit: posted=false + pierderea de reportat memorata pe firma', cpt.posted === false && firmaCl.pierdereFiscala['2035'] !== undefined);
+// D107 trebuie să poată fi refăcută DUPĂ închidere: serviciul păstrează atât instantaneul
+// declarației, cât și bucket-ul rămas pe beneficiar pentru anul următor.
+const prevD107History = firmaCl.d107Istoric;
+const prevSponsorDetail = firmaCl.sponsorizareReportDetaliat;
+const prevSponsorReport = firmaCl.sponsorizareReport;
+db.get().partners[fidOk] = db.get().partners[fidOk] || {};
+db.get().partners[fidOk]['14399840'] = { cui: '14399840', den: 'Asociatia D107 Service', adresa: 'Str. Test 107' };
+db.get().entries.push(
+  { id: 'cl-d107-v', firmaId: fidOk, data: '2037-06-01', period: '2037-06', tip: 'test', status: 'postat', lines: [{ debit: '4111', credit: '704', suma: 100000 }] },
+  { id: 'cl-d107-s', firmaId: fidOk, data: '2037-06-10', period: '2037-06', tip: 'sponsorizare_mecenat_d107', status: 'postat', partener: 'Asociatia D107 Service', partenerCui: '14399840', lines: [{ debit: '6582', credit: '5121', suma: 1000 }] },
+);
+const cpt107 = clsvc.closeProfitTax(fidOk, {}, '2037');
+ok('inchiderea persista instantaneul D107 pe beneficiar', cpt107.posted === true
+  && firmaCl.d107Istoric['2037'].rows.some((r) => r.cui === '14399840' && r.val1 === 1000 && r.val3 > 0));
+ok('inchiderea persista reportul D107 detaliat pentru anul urmator', firmaCl.sponsorizareReportDetaliat
+  .some((r) => r.cui === '14399840' && r.an === 2037 && r.suma > 0));
+db.get().entries = db.get().entries.filter((e) => !['cl-d107-v', 'cl-d107-s'].includes(e.id)
+  && !(e.firmaId === fidOk && e.tip === 'impozit_profit' && e.period === '2037-12'));
+delete db.get().partners[fidOk]['14399840'];
+if (prevD107History === undefined) delete firmaCl.d107Istoric; else firmaCl.d107Istoric = prevD107History;
+if (prevSponsorDetail === undefined) delete firmaCl.sponsorizareReportDetaliat; else firmaCl.sponsorizareReportDetaliat = prevSponsorDetail;
+if (prevSponsorReport === undefined) delete firmaCl.sponsorizareReport; else firmaCl.sponsorizareReport = prevSponsorReport;
 // repartizarea rezultatului: sold 121 zero -> nimic de repartizat
 ok('121 zero: posted=false, fara nota', clsvc.distributeResult(fidOk, '2035').posted === false && !db.get().entries.some((e) => e.firmaId === fidOk && e.tip === 'repartizare_rezultat' && e.period === '2035-12'));
 // restaurare
@@ -1859,8 +1881,8 @@ section('Verificarea pre-depunere: acelasi verdict pentru cockpit si pentru buto
   const v = scopedSeed();
   const opt = { period: '2026-06', year: '2026' };
 
-  eq('tipurile stiute sunt cele douasprezece din contract', dc.TYPES.join(','),
-    'd300,d301,d307,d311,d394,d390,d100,d101,intrastat,d205,d112,saft');
+  eq('tipurile stiute sunt cele treisprezece din contract', dc.TYPES.join(','),
+    'd300,d301,d307,d311,d394,d390,d100,d101,d107,intrastat,d205,d112,saft');
   // Fiecare tip declarat trebuie sa poata fi si CONSTRUIT — altfel lista minte.
   for (const t of dc.TYPES) {
     const vt = t === 'd301' ? Object.assign({}, v, {
@@ -1881,7 +1903,17 @@ section('Verificarea pre-depunere: acelasi verdict pentru cockpit si pentru buto
         period: '2026-06', data: '2026-06-15', document: 'F311',
         d311: { operatie: 11, sectiune: 'IV', baza: 1000, tva: 210, cota: 21 },
         lines: [{ debit: '4111', credit: '704', suma: 1000 }, { debit: '635', credit: '446', suma: 210 }] }]),
-    }) : v));
+    }) : (t === 'd107' ? Object.assign({}, v, {
+      company: Object.assign({}, v.company, { regimImpozit: 'profit' }),
+      partners: Object.assign({}, v.partners, {
+        14399840: { cui: '14399840', den: 'ASOCIATIA TEST', adresa: 'Str. ONG 1' },
+      }),
+      entries: v.entries.concat([{ id: 'dc107', tip: 'sponsorizare_mecenat_d107', status: 'postat',
+        period: '2026-06', data: '2026-06-15', document: 'CTR 107',
+        partener: 'ASOCIATIA TEST', partenerCui: '14399840',
+        lines: [{ debit: '5121', credit: '704', suma: 100000 },
+          { debit: '6582', credit: '5121', suma: 1000 }] }]),
+    }) : v)));
     const x = dc.buildXml(vt, t, opt);
     ok('buildXml produce XML pentru ' + t, typeof x === 'string' && x.length > 50 && x.includes('<'));
     ok('...si e bine format', wellFormed(x));

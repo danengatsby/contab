@@ -51,6 +51,11 @@
   negativ 446=635; raportul agregă aceeași combinație tip+CUI și păstrează inclusiv rezultatul
   zero al unei rectificări, conform validatorului.
   XML-ul inițial și cel rectificativ trec DUKIntegrator D307 J1.1.0.
+- **Sponsorizare/mecenat/bursă privată — D107:** tipul `sponsorizare_mecenat_d107` postează
+  cheltuiala în 6582 contra băncii, casei sau contului 462 și păstrează beneficiarul și contractul.
+  Raportul anual separă sumele acordate, reportate și scăzute din impozitul pe profit, cu alocare
+  FIFO și sold detaliat persistent la închiderea anuală. D107 este disponibilă exclusiv firmelor
+  plătitoare de impozit pe profit; XML-ul inițial și rectificativ trec DUKIntegrator J2.0.0.
 - **Cod normal de TVA anulat — D311:** tipul `operatiune_tva_cod_anulat_d311` acoperă categoriile
   11/21/41/61. Taxa datorată se ține în 446, fără 4426/4427; la achiziții intră în cost, iar la
   livrările deja recunoscute se postează numai 635=446, ca să nu se dubleze venitul. Profilul

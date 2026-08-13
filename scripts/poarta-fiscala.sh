@@ -61,6 +61,7 @@ src/fiscalConfig.js
 src/beneficii.js
 src/fiscalProfile.js
 src/declarations.js
+src/d107.js
 src/d301.js
 src/d307.js
 src/d311.js

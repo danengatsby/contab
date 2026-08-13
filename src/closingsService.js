@@ -13,6 +13,7 @@ const coa = require('./chartOfAccounts');
 // `fiscal`, `rep`, `assets` si `rulajCont` traiau aici doar pentru setul de optiuni al
 // impozitului pe profit; au plecat odata cu el in src/profitTaxOptions.js.
 const ptOpts = require('./profitTaxOptions'); // sursa unica a optiunilor de impozit pe profit
+const d107 = require('./d107');
 const { reqFirma } = require('./stocksService');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
@@ -70,7 +71,8 @@ function closeProfitTax(fid, src, year) {
   const d = db.get();
   const exists = d.entries.find((e) => e.firmaId === fid && e.tip === 'impozit_profit' && e.period === year + '-12');
   if (exists) fail(400, 'Impozitul pe profit pe ' + year + ' este deja inregistrat.');
-  const pt = acc.profitTax(db.scoped(fid), year, profitTaxOptions(fid, src, year));
+  const view = db.scoped(fid);
+  const pt = acc.profitTax(view, year, profitTaxOptions(fid, src, year));
   const firma = db.getFirma(fid);
   firma.pierdereFiscala = firma.pierdereFiscala || {};
   firma.pierdereFiscala[year] = pt.pierdereDeReportat; // pastrat: contract istoric + afisari vechi
@@ -80,7 +82,19 @@ function closeProfitTax(fid, src, year) {
   // Reportul creditului de sponsorizare, pe acelasi tipar ca pierderea fiscala: se memoreaza si
   // cand creditul folosit e 0. Bucket-urile isi pastreaza ANUL, fiindca prescriptia (7 ani) se
   // masoara pe vechimea fiecaruia — un total unic n-ar mai putea fi prescris corect.
-  if (pt.sponsorizare) firma.sponsorizareReport = pt.sponsorizare.reportNou;
+  if (pt.sponsorizare) {
+    // D107 are nevoie de aceeași deducere ca D101, dar defalcată pe beneficiar. Instantaneul se
+    // calculează ÎNAINTE de a înlocui reportul de intrare al firmei cu reportul de ieșire.
+    const r107 = d107.report(view, year, pt, { ignoreHistory: true });
+    // Un report agregat migrat fără beneficiari nu trebuie „înghețat” ca instantaneu invalid:
+    // după completarea istoricului, raportul trebuie să se poată reconcilia din nou.
+    if (!(r107.financialErrors || []).length) {
+      firma.d107Istoric = firma.d107Istoric || {};
+      firma.d107Istoric[year] = r107;
+      firma.sponsorizareReportDetaliat = r107.reportNou;
+    }
+    firma.sponsorizareReport = pt.sponsorizare.reportNou;
+  }
   if (!pt.lines.length) { db.save(); return { result: pt, posted: false }; }
   const lines = pt.lines.slice();
   const yearClosed = d.entries.some((e) => e.firmaId === fid && e.tip === 'inchidere_an' && e.period === year + '-12');

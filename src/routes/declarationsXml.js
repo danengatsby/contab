@@ -18,6 +18,7 @@ const decl = require('../declarations');
 const plans = require('../plans');
 const declCheck = require('../declarationCheck');
 const fiscalProfile = require('../fiscalProfile');
+const d107 = require('../d107');
 const d301 = require('../d301');
 const d307 = require('../d307');
 const d311 = require('../d311');
@@ -205,6 +206,35 @@ module.exports = function register(app, ctx) {
   // Antetul cere date pe care doar firma le stie (administrator, intocmitor, forma de
   // proprietate). Daca lipsesc, REFUZAM generarea si spunem exact ce — un formular cu antet
   // inventat trece validatorul si ajunge la ANAF ca declaratie gresita.
+  // D107 — declarația anuală a beneficiarilor sponsorizărilor/mecenatului.
+  function raportD107(v, year) {
+    const po = ptOpts.pentruDeclaratie(v, year);
+    const pt = po.rezultatFiscal || acc.profitTax(v, year, po);
+    return d107.report(v, year, pt);
+  }
+  app.get('/api/d107', (req, res) => {
+    const year = String(req.query.year || (new Date().getFullYear() - 1));
+    if (!/^\d{4}$/.test(year)) return res.status(400).json({ error: 'An invalid pentru D107.' });
+    res.json(raportD107(S(req), year));
+  });
+  app.get('/xml/d107', (req, res) => {
+    const year = String(req.query.year || (new Date().getFullYear() - 1));
+    if (!/^\d{4}$/.test(year)) return res.status(400).send('An invalid pentru D107.');
+    const v = S(req);
+    if (!fiscalProfile.build(v.company).profit) {
+      return res.status(400).send('D107 în forma valabilă din 2024 se depune de plătitorii de impozit pe profit, nu de microîntreprinderi/PFA.');
+    }
+    const rec = decl.find(db.get(), activeId(req), 'd107', year + '-12');
+    let out;
+    try {
+      out = xml.d107Xml(v.company, raportD107(v, year), declarantOf(req), {
+        rectificativa: !!decl.lastSubmission(rec),
+      });
+    } catch (e) { return res.status(400).send(e.message); }
+    recordDecl(req, 'd107', year + '-12');
+    sendXml(res, out, 'd107-' + year + '.xml');
+  });
+
   // D177 — cerere de redirectionare a impozitului catre beneficiari (sponsorizari).
   // Refuza generarea cand beneficiarilor le lipsesc date: un IBAN gresit trimite banii altcuiva,
   // iar validatorul ANAF nu are cum sa prinda asta — acceptă orice IBAN care incepe cu RO.

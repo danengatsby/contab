@@ -3,6 +3,7 @@
 const { postedEntries } = require('./accounting'); // ciornele nu declanseaza asteptari de declaratii/e-Factura
 const fiscalProfile = require('./fiscalProfile'); // motorul de profil fiscal (sursa unica)
 const xml = require('./xml'); // perimetrul e-Factura (`isSendable`), derivat din tipurile de document
+const d107 = require('./d107');
 const d301 = require('./d301');
 const d307 = require('./d307');
 const d311 = require('./d311');
@@ -25,6 +26,7 @@ const TIPURI = {
   d390: { nume: 'D390 — recapitulativă intracomunitară (VIES)' },
   d100: { nume: 'D100 — impozit micro / avans profit (trimestrial)' },
   d101: { nume: 'D101 — impozit pe profit (anual)' },
+  d107: { nume: 'D107 — beneficiarii sponsorizărilor/mecenatului' },
   saft: { nume: 'D406 — SAF-T' },
   intrastat: { nume: 'Intrastat — declarație statistică (INS)' },
   bilant: { nume: 'Situații financiare anuale (bilanț)' },
@@ -52,6 +54,7 @@ const DESCARCARI = {
   d390: (p) => [{ label: 'XML ANAF', href: '/xml/d390?period=' + p }],
   d100: (p) => [{ label: 'Recap PDF', href: '/pdf/d100?period=' + p }, { label: 'XML ANAF', href: '/xml/d100?period=' + p }],
   d101: (p) => [{ label: 'XML ANAF', href: '/xml/d101?year=' + p.slice(0, 4) }],
+  d107: (p) => [{ label: 'XML ANAF', href: '/xml/d107?year=' + p.slice(0, 4) }],
   saft: (p) => [{ label: 'XML ANAF', href: '/xml/saft?period=' + p }],
   intrastat: (p) => [{ label: 'XML INS', href: '/xml/intrastat?period=' + p }],
   bilant: (p) => [{ label: 'PDF', href: '/pdf/bilant?period=' + p }, { label: 'XML ANAF', href: '/xml/bilant?year=' + p.slice(0, 4) }],
@@ -82,6 +85,9 @@ function dueDate(tip, period, profile) {
   if (tip === 'intrastat') return ny + '-' + pad2(nm) + '-15';
   // D101 (impozit pe profit anual): 25 martie anul URMATOR anului fiscal (perioada = Y-12)
   if (tip === 'd101') return (y + 1) + '-03-25';
+  // D107 urmează termenul declarației anuale de impozit pe profit: pentru anii până în 2025
+  // schema cere 25 iunie; din 2026, 25 martie.
+  if (tip === 'd107') return (y + 1) + (y <= 2025 ? '-06-25' : '-03-25');
   // D100 — plata anticipata a trimestrului IV, sistem anual (art. 41 alin. (8)): 25 decembrie,
   // ACELASI an. Nu se aplica ramurii de exceptie a alin. (7), care declara doar trimestrele I-III.
   if (tip === 'd100' && m === 12 && profile && profile.profitAnticipat && !profile.anticipatProfitContabil) {
@@ -134,7 +140,8 @@ function expectedForFirma(v, period) {
   const hasD301 = (per) => postedEntries(v).some((e) => e.tip === d301.TIP_DOCUMENT && !e.stornat && inLuna(e, per));
   const hasD307 = (per) => postedEntries(v).some((e) => e.tip === d307.TIP_DOCUMENT && !e.stornat && inLuna(e, per));
   const hasD311 = (per) => postedEntries(v).some((e) => e.tip === d311.TIP_DOCUMENT && !e.stornat && inLuna(e, per));
-  return fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD307, hasD311)
+  const hasD107 = (per) => d107.hasOperations(v, String(per).slice(0, 4));
+  return fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD307, hasD311, hasD107)
     .map((tip) => ({ tip, nume: (TIPURI[tip] || {}).nume || tip, period, due: dueDate(tip, period, profile) }));
 }
 
@@ -243,7 +250,7 @@ function record(d, firmaId, tip, period, patch, nextIdFn) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Tipurile care poarta un steag de rectificare in XML (restul se redepun ca atare). */
-const RECT_IN_XML = { d112: true, d301: true, d307: true, d311: true };
+const RECT_IN_XML = { d107: true, d112: true, d301: true, d307: true, d311: true };
 
 /**
  * Inregistreaza o depunere noua peste (firmaId, tip, period). NU suprascrie: adauga in istoric.

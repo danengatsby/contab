@@ -61,7 +61,7 @@ amortizarea (liniară/degresivă/accelerată), stocurile (CMP pe gestiuni, prelu
 inventariere, producție), salarizarea (CAS/CASS/impozit/CAM, deducerea personală, tichete, avantaje
 în natură, **concedii medicale** cu media pe 6 luni și split angajator/FNUASS, **concediu de odihnă**
 pe media pe 3 luni, **normă parțială suprataxată** OUG 16/2022), declarațiile (D300/D301/D307/D311/D394/D390/D205/
-D112/D100/Intrastat/SAF-T bine-formate + validare pre-depunere), **taxele PFA** (Declarația Unică cu
+D112/D100/D107/Intrastat/SAF-T bine-formate + validare pre-depunere), **taxele PFA** (Declarația Unică cu
 plafoane, registrul de încasări și plăți), e-Factura UBL, drepturile granulare pe utilizatori și
 blocarea perioadelor raportate. Blochează regresiile.
 

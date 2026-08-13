@@ -427,6 +427,12 @@ Tip de document propriu pentru transfer de active (`A`), leasing (`L`) și ajust
 codului TVA (`C`), cu monografii pe 446, raport agregat pe tip+CUI, calendar/registru și XML
 inițial/rectificativ. Referințele includ TVA negativă pe C și trec validatorul oficial D307 J1.1.0.
 
+## D107 — beneficiarii sponsorizărilor/mecenatului/burselor private — ✅ ÎNCHIS 2026-08-13
+
+Implementare completă pentru plătitorii de impozit pe profit: document contabil 6582, raport anual
+pe beneficiar, report FIFO persistent între ani, integrare în calendar/registru și XML inițial sau
+rectificativ. Referințele `D107` și `D107-rect` trec DUKIntegrator J2.0.0.
+
 # P2 — infrastructură, pe semnal real
 
 ## 7. Offsite pe stocare obiect, criptat — ✅ ÎNCHIS 2026-07-28 (RTO nemăsurat)

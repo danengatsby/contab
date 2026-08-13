@@ -237,7 +237,7 @@ aprobarea și eventuala forțare.
 ## Declarații & e-Factura (`src/routes/declarations.js`, `declarationsXml.js`, `anaf.js`)
 
 - `GET /api/livrabile?period=` — borderoul lunar: ce declarații se depun și termenele.
-- `GET /xml/d300|d301|d307|d311|d394|d390|d112|d100|d205|saft?period=/an=` — XML-urile de declarații
+- `GET /xml/d300|d301|d307|d311|d394|d390|d112|d100|d107|d205|saft?period=/an=` — XML-urile de declarații
   (validate structural înainte de servire; `/xml/saft` intră sub plafonul de export).
 - `GET /api/d301?period=YYYY-MM` — recapitularea operațiunilor D301, pe secțiuni, cu baza, TVA-ul
   datorat și suma de control; `GET /xml/d301` refuză firmele plătitoare normal de TVA, perioadele
@@ -246,6 +246,10 @@ aprobarea și eventuala forțare.
   agregate pe tip (`A` transfer active, `L` leasing, `C` cod TVA anulat) și CUI operator.
   `GET /xml/d307?period=` emite totalurile semnate și varianta rectificativă automată; opțional,
   `dupaRezerva=1&temei=1|2` completează depunerea după anularea rezervei verificării ulterioare.
+- `GET /api/d107?year=YYYY` — raportul anual al sponsorizărilor pe beneficiar, cu sumele acordate,
+  reportate și scăzute din impozitul pe profit. `GET /xml/d107?year=` generează declarația numai
+  pentru profilul de impozit pe profit și alege automat varianta rectificativă din registrul
+  depunerilor.
 - `GET /api/d311?period=YYYY-MM` — recapitularea operațiunilor din perioada în care codul normal
   de TVA este anulat. `GET /xml/d311?period=` generează schema IV (data anulării și OB_11…OB_52)
   sau schema V (data reînregistrării și OB_61/62), fără a permite combinarea lor.

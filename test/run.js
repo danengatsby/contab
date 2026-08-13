@@ -2846,6 +2846,54 @@ section('D301 — TVA speciala la neplatitori (art. 317)');
   ok('schema: valuta din afara nomenclatorului este refuzata la intrare', /neacceptată/.test(errValuta));
 }
 
+section('D107 — beneficiarii sponsorizărilor/mecenatului');
+{
+  const d107 = require('../src/d107');
+  const fields = { data: '2026-06-12', document: 'CTR 12/2026', partener: 'ASOCIATIA ALFA',
+    cuiPartener: 'RO14399840', suma: 3000, cont: '5121' };
+  const lines = gt2(d107.TIP_DOCUMENT).build(fields);
+  ok('D107: documentul propriu posteaza sponsorizarea 6582=5121',
+    lines.length === 1 && lines[0].debit === '6582' && lines[0].credit === '5121' && lines[0].suma === 3000);
+  const mk = (id, year, cui, den, suma) => ({ id, tip: d107.TIP_DOCUMENT, status: 'postat',
+    data: year + '-06-12', period: year + '-06', partener: den, partenerCui: cui,
+    document: 'CTR ' + id, lines: [{ debit: '6582', credit: '5121', suma }] });
+  const view107 = {
+    company: { cui: '12345674', nume: 'TEST SRL', adresa: 'Str. Test 1', regimImpozit: 'profit',
+      d107Istoric: { 2024: { folosit: 400 }, 2025: { folosit: 500 } } },
+    partners: {
+      14399840: { cui: '14399840', den: 'ASOCIATIA ALFA', adresa: 'Str. Alfa 1' },
+      160796: { cui: '160796', den: 'FUNDATIA BETA', adresa: 'Str. Beta 2' },
+    },
+    entries: [mk('a24', '2024', '14399840', 'ASOCIATIA ALFA', 1000),
+      mk('b25', '2025', '160796', 'FUNDATIA BETA', 2000),
+      mk('a26', '2026', '14399840', 'ASOCIATIA ALFA', 3000)],
+  };
+  const r107 = d107.report(view107, '2026', { sponsorizare: { disponibil: 5100, folosit: 2500 } });
+  ok('D107: reportul se reface pe beneficiari si creditul se consuma FIFO',
+    r107.totals.val1 === 3000 && r107.totals.val2 === 2100 && r107.totals.val3 === 2500
+      && r107.rows.find((r) => r.cui === '14399840').val3 === 500
+      && r107.rows.find((r) => r.cui === '160796').val3 === 2000);
+  const x107 = xml.d107Xml(view107.company, r107,
+    { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
+  ok('D107 XML: schema, termenul 2026, codul bugetar si totalurile sunt cele oficiale',
+    wellFormed(x107) && /<d107 xmlns="mfp:anaf:dgti:d107:declaratie:v1"/.test(x107)
+      && /scadenta="25032027" cod_bug="5503XXXXXX"/.test(x107)
+      && !/nr_evid=/.test(x107)
+      && /TVal1="3000" TVal2="2100" TVal3="2500"/.test(x107)
+      && /totalPlata_A="7600"/.test(x107));
+  ok('D107 rectificativa poarta d_rec=1', /d_rec="1"/.test(xml.d107Xml(view107.company,
+    r107, null, { rectificativa: true })));
+  const asteptate107 = require('../src/declarations').expectedForFirma(view107, '2026-12').map((x) => x.tip);
+  ok('D107: calendarul o cere anual firmei pe profit cu sponsorizari', asteptate107.includes('d107'));
+  const micro107 = Object.assign({}, view107, { company: Object.assign({}, view107.company, { regimImpozit: 'micro' }) });
+  ok('D107: microintreprinderea nu primeste obligatia valabila din 2024',
+    !require('../src/declarations').expectedForFirma(micro107, '2026-12').some((x) => x.tip === 'd107'));
+  const faraAdresa = Object.assign({}, view107, { partners: Object.assign({}, view107.partners,
+    { 160796: { cui: '160796', den: 'FUNDATIA BETA' } }) });
+  const rau107 = d107.report(faraAdresa, '2026', { sponsorizare: { disponibil: 5100, folosit: 2500 } });
+  ok('D107: beneficiarul fara adresa este numit in erori', rau107.errors.some((e) => /FUNDATIA BETA.*adresă/.test(e)));
+}
+
 section('D307 — ajustari/corectii/regularizari TVA');
 {
   const d307 = require('../src/d307');
@@ -5962,6 +6010,7 @@ section('Declaratii rectificative (istoric depuneri + steag XML)');
 
   // Steagul in XML exista DOAR la D112 (dovedit prin sondaj pe validatoarele oficiale).
   ok('D112 e semnalizata in XML', !!decl.RECT_IN_XML.d112);
+  ok('D107 e semnalizata in XML', !!decl.RECT_IN_XML.d107);
   ok('D307 e semnalizata in XML', !!decl.RECT_IN_XML.d307);
   ok('D300 NU are steag in XML (redepunere)', !decl.RECT_IN_XML.d300);
   ok('D394 NU are steag in XML (redepunere)', !decl.RECT_IN_XML.d394);

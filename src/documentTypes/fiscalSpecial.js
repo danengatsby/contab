@@ -5,6 +5,7 @@
 const { L, F, TROZ } = require('./helpers');
 const { round2 } = require('../util');
 const fiscal = require('../fiscal'); // cotele NU se hardcodeaza — sursa unica e fiscalConfig
+const d107 = require('../d107');
 const d307 = require('../d307');
 const d311 = require('../d311');
 
@@ -28,6 +29,21 @@ function construieste(fel, d, contCheltuiala, explicatie) {
 }
 
 module.exports = [
+  // ───────────── D107: SPONSORIZARI / MECENAT ─────────────
+  {
+    id: d107.TIP_DOCUMENT,
+    nume: 'Sponsorizare / mecenat — D107',
+    grup: 'Diverse',
+    eFactura: 'nu', // contract de sponsorizare, nu factura emisa beneficiarului
+    fields: [F.data, { ...F.partener, label: 'Beneficiar', required: true },
+      { ...F.cuiPartener, label: 'CUI/CNP beneficiar', required: true },
+      { ...F.document, label: 'Contract / act de mecenat', required: true },
+      { ...F.suma, label: 'Valoarea sponsorizării (lei)' },
+      { name: 'cont', label: 'Acordată din / datorată prin', type: 'select',
+        options: TROZ.concat([{ value: '462', label: 'Neplătită încă (beneficiar creditor — 462)' }]), default: '5121' }],
+    build: (d) => [L('6582', d.cont || '5121', d.suma,
+      'Sponsorizare/mecenat conform ' + String(d.document || 'contract'))],
+  },
   // ───────────── D307: AJUSTARI / REGULARIZARI TVA ─────────────
   // Suma D307 este obligatie distincta in 446, nu TVA curenta in 4426/4427. Valoarea negativa
   // reprezinta o regularizare in favoarea firmei si inverseaza aceeasi cheltuiala/datorie; nu se

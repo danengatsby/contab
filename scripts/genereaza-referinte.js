@@ -20,6 +20,7 @@ const { getType } = require('../src/documentTypes');
 const { statePlata } = require('../src/payroll');
 const bilant = require('../src/bilant');
 const ptOpts = require('../src/profitTaxOptions');
+const d107 = require('../src/d107');
 const d301 = require('../src/d301');
 const d307 = require('../src/d307');
 const d311 = require('../src/d311');
@@ -266,6 +267,22 @@ const vSpons = {
     lines: [{ debit: '5121', credit: '704', suma: 500000 }, { debit: '6582', credit: '5121', suma: 1500 }] }],
 };
 w('D177', xml.d177Xml(v.company, rep.d177(vSpons, '2025', { profitTax: { cota: 16, plafoane: require('../src/fiscalConfig').RATES } })));
+// D107 (beneficiarii sponsorizărilor): același articol 6582 este individualizat pe beneficiar,
+// iar suma dedusă vine din exact același rezultat fiscal ca D101.
+const v107 = Object.assign({}, vSpons, {
+  company: Object.assign({}, v.company, { regimImpozit: 'profit' }),
+});
+{
+  const pt107 = require('../src/accounting').profitTax(v107, '2025', {
+    cota: 16, plafoane: require('../src/fiscalConfig').RATES, sponsorizareReport: [],
+  });
+  const r107 = d107.report(v107, '2025', pt107);
+  if (r107.totals.val1 !== 1500 || r107.totals.val2 !== 0 || r107.totals.val3 !== 1500) {
+    throw new Error('D107: raportul de referinta este gresit — ' + JSON.stringify(r107));
+  }
+  w('D107', xml.d107Xml(v107.company, r107, who));
+  w('D107-rect', xml.d107Xml(v107.company, r107, who, { rectificativa: true }));
+}
 
 // D390 + D300 varianta AUTOFACTURA (art. 320): cumparatorul emite factura in locul furnizorului
 // care n-a trimis-o. Datoria sta pe 408, nu pe 401, iar TVA-ul e exigibil FARA factura — deci

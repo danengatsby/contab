@@ -1460,6 +1460,36 @@ async function main() {
       // pre-validarea interna accepta d101 (nu inregistreaza nimic)
       const vd101 = await req('GET', '/api/validate/d101?year=2025', { cookie: c1 });
       ok('/api/validate/d101: bine-format, fara erori', vd101.status === 200 && vd101.json.ok === true);
+      // D107: beneficiarul este luat din nomenclator, suma din documentul 6582, iar formularul
+      // apare numai pentru firma pe profit. Deducerea poate fi zero când anul nu are impozit.
+      await req('POST', '/api/company', { cookie: c1, body: {
+        cui: '11223342', adresa: 'Str. Declarantului 1',
+      } });
+      await req('POST', '/api/partners', { cookie: c1, body: {
+        cui: '14399840', den: 'ASOCIATIA D107', adresa: 'Str. Sponsorizarii 7',
+      } });
+      const e107 = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'sponsorizare_mecenat_d107', fields: { data: '2025-06-10', document: 'CTR 107/2025',
+          partener: 'ASOCIATIA D107', cuiPartener: '14399840', suma: 100, cont: '5121' },
+      } });
+      ok('D107: documentul se salveaza pe 6582=5121', e107.status === 200
+        && e107.json.entry.lines.some((l) => l.debit === '6582' && l.credit === '5121' && l.suma === 100));
+      const api107 = await req('GET', '/api/d107?year=2025', { cookie: c1 });
+      ok('D107: raportul API individualizeaza beneficiarul si suma acordata', api107.status === 200
+        && api107.json.totals.val1 === 100 && api107.json.rows.some((r) => r.cui === '14399840'));
+      const reg107 = await req('GET', '/api/declarations?period=2025-12', { cookie: c1 });
+      ok('D107: calendarul anual o cere si ofera descarcarea XML', reg107.status === 200
+        && reg107.json.rows.some((r) => r.tip === 'd107' && /xml\/d107/.test(JSON.stringify(r.links || []))));
+      const xd107 = await req('GET', '/xml/d107?year=2025', { cookie: c1 });
+      ok('xml/d107: schema oficiala, beneficiar si termenul tranzitoriu 25 iunie', xd107.status === 200
+        && /<d107 xmlns="mfp:anaf:dgti:d107:declaratie:v1"/.test(xd107.text)
+        && /<entit [^>]*cifE="14399840"/.test(xd107.text) && /scadenta="25062026"/.test(xd107.text));
+      const vd107 = await req('GET', '/api/validate/d107?year=2025', { cookie: c1 });
+      ok('/api/validate/d107: bine-format, fara erori', vd107.status === 200 && vd107.json.ok === true);
+      if (e107.json.entry) await req('POST', '/api/entries/' + e107.json.entry.id + '/storno', {
+        cookie: c1, body: { data: '2025-06-11' },
+      });
+      await req('POST', '/api/company', { cookie: c1, body: { cui: '11', adresa: '' } });
       // restaurez profilul firmei pentru restul suitei
       await req('POST', '/api/company', { cookie: c1, body: { regimImpozit: 'micro', d406Cadenta: '', intrastatObligat: false, scutiri: {} } });
       const fp2 = (await req('GET', '/api/fiscal-profile', { cookie: c1 })).json;
@@ -1469,6 +1499,7 @@ async function main() {
       ok('profil micro: D101 nu apare in decembrie', !(dregDecMicro.rows || []).map((x) => x.tip).includes('d101'));
       // guard de generare: firma pe micro nu depune D101 -> 400
       eq('guard: /xml/d101 la regim micro -> 400', (await req('GET', '/xml/d101?year=2026', { cookie: c1 })).status, 400);
+      eq('guard: /xml/d107 la regim micro -> 400', (await req('GET', '/xml/d107?year=2026', { cookie: c1 })).status, 400);
 
       // ── Situatii financiare anuale (bilant) ──
       // Nomenclatoarele vin de la server (sursa unica: valorile extrase din validatorul ANAF).

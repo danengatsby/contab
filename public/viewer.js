@@ -79,6 +79,7 @@ function xmlTitle(href) {
     d301: 'D301 — Decont special TVA (XML ANAF)',
     d307: 'D307 — Ajustări TVA (XML ANAF)',
     d311: 'D311 — TVA cu cod anulat (XML ANAF)',
+    d107: 'D107 — Beneficiarii sponsorizărilor (XML ANAF)',
     d394: 'D394 — Declarație informativă (XML ANAF)',
     d112: 'D112 — Salarii / contribuții (XML ANAF)',
     saft: 'SAF-T / D406 (XML ANAF)',
