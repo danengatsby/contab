@@ -989,7 +989,6 @@ section('Ecranele-strat opresc derularea paginii de dedesubt');
   ok('fiecare ecran-strat poartă clasa `login-overlay`'
     + (faraClasa.length ? ' — FĂRĂ: ' + faraClasa.join(', ') : ''), faraClasa.length === 0);
 }
-}
 
 section('Logo lipsă: 204 e un răspuns „ok", deci nu poate fi tratat ca succes');
 {
