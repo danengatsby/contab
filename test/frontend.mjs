@@ -392,6 +392,31 @@ section('Dashboard: un cont în minus nu are voie să se ascundă într-un total
   eq('șir negativ e tratat numeric', dashboard.dalaDisponibil('-12.5', '100', '87.5').ton, 'red');
 }
 
+section('Primii pași: pasul 1 SPUNE ce lipsește, nu doar rămâne nebifat');
+{
+  // Pasul stătea nebifat pe un ecran („Firma mea") cu ~40 de câmpuri, fără să spună care.
+  // Lista vine de la server (derivată în src/dateFirma.js) — nu se reface aici, ca să nu existe
+  // două definiții care driftează la primul câmp adăugat într-un generator.
+  const d = dashboard.descriereDateFirma([
+    { camp: 'caen', eticheta: 'Cod CAEN', deCe: 'D300, D394 și D112 îl cer; fără el pleacă „0000"' },
+    { camp: 'judet', eticheta: 'Județul', deCe: 'e-Factura cere codul județului' },
+  ]);
+  ok('numește câmpurile care lipsesc', d.includes('Cod CAEN') && d.includes('Județul'));
+  ok('...și spune de ce contează primul', d.includes('D300'));
+  // Motivul e al PRIMULUI câmp, nu al tuturor: patru explicații una sub alta ar fi un paragraf
+  // pe un rând de checklist.
+  ok('nu înșiră toate motivele', !d.includes('e-Factura cere codul județului'));
+
+  // Firma completă: descrierea rămâne cea generală, fără „mai lipsește".
+  ok('firma completă primește descrierea normală', !dashboard.descriereDateFirma([]).includes('Mai lipsește'));
+  ok('lipsa listei nu aruncă', typeof dashboard.descriereDateFirma(undefined) === 'string');
+
+  // Textul intră într-un ȘABLON HTML (`stepsHtml`), alături de descrieri care sunt literali
+  // scriși de noi. Un câmp venit prin API n-are voie să fie singurul neescapat din șirul acela.
+  const rau = dashboard.descriereDateFirma([{ camp: 'x', eticheta: '<img src=x onerror=alert(1)>', deCe: 'y' }]);
+  ok('eticheta venită prin API e escapată', !rau.includes('<img') && rau.includes('&lt;img'));
+}
+
 section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
 {
   // `azi` e fixat: altfel vechimea restanței ar depinde de ziua în care rulează suita.
