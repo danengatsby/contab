@@ -81,6 +81,10 @@ Fiecare raport are buton **⬇ PDF**, iar fiecare înregistrare poate fi exporta
   pentru vânzări și cumpărări, în UI, în PDF-ul D300 și în **XML-ul D300** (rânduri `<rand rd=".."
   cota=".." baza=".." tva=".."/>` sub `livrari_taxabile`/`achizitii_taxabile`). Și **XML-ul D394** are
   defalcare pe cote: un `<rezumat_cote>` la nivel de declarație + noduri `<cota>` per partener.
+- **D301** (decont special TVA) — pentru firma neplătitoare normal de TVA care înregistrează
+  `achizitie_tva_speciala_d301` (`/xml/d301?period=`). Codul special art. 317 se configurează în
+  profilul fiscal; TVA-ul este nedeductibil și intră în cost, cu obligația în 446. Operațiunile UE
+  alimentează și D390 când firma are codul art. 317.
 - **D112** (contribuții sociale + impozit + evidență nominală) — din tab-ul „Salarizare”
   (`/xml/d112?period=`): creanțe fiscale agregate (CAS/CASS/impozit/CAM, total de plată) și
   câte un element `<asigurat>` per angajat cu bazele și contribuțiile, generat din statul de plată.
@@ -339,7 +343,8 @@ Endpoint `/api/dashboard`.
   selectată sunt derivate din profilul firmei (plătitor de TVA → D300/D394 + **D406 lunar**; are
   angajați → D112; lună de trimestru → D100; neplătitorii de TVA → **D406 trimestrial**;
   **D390 apare automat** în lunile cu operațiuni intracomunitare în jurnal — **bunuri sau
-  servicii**, art. 325; Intrastat, în schimb, doar pe bunuri, fiindcă e statistică de mărfuri), cu
+  servicii**, art. 325; **D301** apare când neplătitorul are operațiuni TVA speciale postate;
+  Intrastat, în schimb, doar pe bunuri, fiindcă e statistică de mărfuri), cu
   **termen de depunere** (25 ale lunii următoare; D406 — ultima zi a lunii următoare). Descărcarea XML-ului marchează automat „**generată**";
   manual se marchează „**depusă**" (cu nr. recipisă), „**eroare**" sau „**scutită**". Stările nu se
   retrogradează la re-descărcare. API: `GET /api/declarations?period=` · `POST /api/declarations/set`.
@@ -361,4 +366,3 @@ Endpoint `/api/dashboard`.
   răspunsurile (PDF) se listează din mesajele SPV și se atașează ca documente ale firmei. Necesită
   conexiunea SPV (OAuth) din Setări. API: `POST /api/anaf/fisa-rol` · `GET /api/anaf/spv-mesaje` ·
   `POST /api/anaf/spv-descarca/:id`.
-

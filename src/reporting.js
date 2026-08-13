@@ -23,6 +23,7 @@ const CONT_SPONSORIZARE = '6582'; // art. 25(4)(i) — cheltuiala de sponsorizar
 // Maparea cota->rand D300 si perimetrul e-Factura. xml.js nu importa nimic din lantul de
 // raportare (importa doar util + documentTypes), deci nu se inchide niciun ciclu — verificat.
 const xml = require('./xml');
+const d301 = require('./d301');
 
 /** Rulajele perioadei pe cont {cod:{d,c}}, FARA inchiderile 6/7 -> 121 (vezi `resultLines`).
  *  Alimenteaza recapitulativul D112, care citeste 641: nota de inchidere anuala (121 = 641) e
@@ -177,7 +178,11 @@ function d390(db, period) {
   const NATURA = { intracom: 'A', servicii: 'S' }; // 'intern331' -> null (art. 331 e intern)
   const codDe = (e) => (e.tip === 'autofactura_achizitie'
     ? (NATURA[e.naturaAutofactura] || null)
-    : (INTRACOM[e.tip] || null));
+    : (e.tip === d301.TIP_DOCUMENT
+      ? (!((db || {}).company || {}).tvaArt317 ? null
+        : ([1, 2, 3].includes(Number(e.d301 && e.d301.tipOperatie)) ? 'A'
+          : (Number(e.d301 && e.d301.tipOperatie) === 5 ? 'S' : null)))
+      : (INTRACOM[e.tip] || null)));
   const ent = acc.postedEntries(db).filter((e) => codDe(e)
     && (!period || String(e.period || periodOf(e.data)).startsWith(period)));
   const map = new Map();
@@ -185,13 +190,14 @@ function d390(db, period) {
   for (const e of ent) {
     const cod = codDe(e);
     let baza = 0;
+    if (e.tip === d301.TIP_DOCUMENT && e.d301) baza = Math.round(Number(e.d301.baza) || 0);
     for (const l of e.lines) {
       // Vanzari (livrare/prestare): baza e VENITUL (clasa 70).
       if (D390_VANZARI.has(cod) && /^70/.test(String(l.credit))) baza = round2(baza + l.suma);
       // Achizitii: valoarea din linia catre FURNIZOR. La autofactura datoria sta pe 408 (factura
       // chiar nu a sosit), nu pe 401 — o ancora doar pe 401 ar fi citit baza 0 si ar fi raportat
       // operatiunea cu suma zero, ceea ce e mai rau decat s-o omita.
-      if (!D390_VANZARI.has(cod) && (String(l.credit) === '401' || String(l.credit) === '408')) baza = round2(baza + l.suma);
+      if (e.tip !== d301.TIP_DOCUMENT && !D390_VANZARI.has(cod) && (String(l.credit) === '401' || String(l.credit) === '408')) baza = round2(baza + l.suma);
     }
     const cui = String(e.partenerCui || '').replace(/[\s-]/g, '').toUpperCase();
     const tara = cui.slice(0, 2);

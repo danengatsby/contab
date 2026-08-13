@@ -21,6 +21,7 @@ function build(company, ctx) {
   ctx = ctx || {};
   const pfa = company.tipEntitate === 'pfa';
   const tvaPlatitor = !!company.tvaPlatitor;
+  const tvaArt317 = !tvaPlatitor && !!company.tvaArt317;
   const perioadaTva = tvaPlatitor ? (company.perioadaTva === 'T' ? 'T' : 'L') : null;
   // regim de impozitare: explicit (regimImpozit) sau derivat (pfa -> pfa; altfel implicit micro,
   // ca pana acum). PFA nu are micro/profit.
@@ -55,6 +56,7 @@ function build(company, ctx) {
     tipEntitate: pfa ? 'pfa' : (company.tipEntitate || 'srl'),
     pfa,
     tvaPlatitor,
+    tvaArt317,                         // cod special pentru operatiuni intracomunitare, art. 317
     perioadaTva,                       // 'L' | 'T' | null (neplatitor)
     trimestrialTva: perioadaTva === 'T',
     tvaLaIncasare: !!company.tvaLaIncasare,
@@ -78,17 +80,21 @@ function build(company, ctx) {
  *  declaratii diferite: D390 le cere pe amandoua (art. 325), Intrastat doar bunurile — asa ca o
  *  firma care cumpara numai reclama din UE datoreaza D390, nu si raportarea statistica.
  *  Scutirile din profil suprima orice tip. */
-function expected(profile, period, hasIntracom, hasIntracomServicii) {
+function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   const sfarsitTrim = endOfQuarter(period);
   const intracom = typeof hasIntracom === 'function' && hasIntracom(period);
   const intracomServicii = typeof hasIntracomServicii === 'function' && hasIntracomServicii(period);
+  const d301 = typeof hasD301 === 'function' && hasD301(period);
   const tips = [];
   const add = (t) => { if (!profile.scutiri[t] && !tips.includes(t)) tips.push(t); };
   // TVA: D300 + D394 (lunar sau la sfarsit de trimestru, dupa perioada fiscala)
   if (profile.tvaPlatitor && (!profile.trimestrialTva || sfarsitTrim)) { add('d300'); add('d394'); }
   // D390 (VIES): doar in lunile cu operatiuni intracomunitare efective — bunuri SAU servicii
   if (intracom || intracomServicii) add('d390');
+  // D301 nu este o declaratie „pe zero": apare numai in lunile in care exista o operatiune
+  // speciala efectiva, indiferent daca persoana are sau nu codul special art. 317.
+  if (d301) add('d301');
   // Intrastat (INS): firma obligata (peste prag) + miscari de BUNURI in luna. Serviciile nu conteaza
   // aici, oricat de mari ar fi: Intrastatul e statistica de comert cu bunuri.
   if (profile.intrastat && intracom) add('intrastat');
@@ -134,6 +140,15 @@ function vatPeriod(profile, monthPeriod) {
 function entryGuard(profile, entry) {
   const lines = (entry && entry.lines) || [];
   const sumBy = (test) => round2(lines.reduce((s, l) => s + (test(l) ? Number(l.suma) || 0 : 0), 0));
+  if (entry && entry.tip === 'achizitie_tva_speciala_d301') {
+    if (profile && profile.tvaPlatitor) {
+      return 'D301 este decontul special pentru persoane neînregistrate normal în scopuri de TVA. Firma este plătitoare de TVA — folosește achiziția intracomunitară/taxarea inversă și D300.';
+    }
+    const op = Number(entry.d301 && entry.d301.tipOperatie);
+    if (profile && !profile.tvaArt317 && (op === 1 || op === 5)) {
+      return 'Operațiunea D301 din secțiunea ' + op + ' cere înregistrarea specială în scopuri de TVA conform art. 317. Activează „Cod special TVA art. 317” în Setări după obținerea codului.';
+    }
+  }
   // Neplatitor de TVA nu poate COLECTA TVA (vanzare cu TVA). Taxarea inversa (4426=4427, net 0)
   // ramane permisa: se blocheaza doar colectarea NETA pozitiva, nu prezenta conturilor de TVA.
   if (profile && !profile.tvaPlatitor) {

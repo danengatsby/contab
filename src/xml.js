@@ -17,6 +17,7 @@ const roCui = (cui) => 'RO' + String(cui || '').replace(/^ro/i, '').replace(/\s/
 // `declarations.js` si `reporting.js`. Trei liste ale aceluiasi lucru driftau garantat.
 // Vezi nota lunga din documentTypes/helpers.js pentru criteriul de incadrare.
 const docTypes = require('./documentTypes');
+const D301_VALUTE = new Set(require('./d301').VALUTE);
 const SALES_TYPES = new Set(docTypes.TYPES.filter((t) => t.eFactura === 'da').map((t) => t.id));
 // Tipurile care se randeaza ca NOTA DE CREDIT (UBL CreditNote) in loc de Invoice. E o intrebare de
 // FORMAT, nu de perimetru: `factura_storno_cumparare` e o nota primita de la furnizor — se poate
@@ -318,8 +319,9 @@ function ym(period) {
 
 /** Nr. de evidenta a platii (23 de cifre, structura oficiala): "10" + codul creantei pe 3
  *  cifre + "01" + LLAA (sfarsitul perioadei) + ZZLLAA (scadenta = 25 a lunii urmatoare)
- *  + "0000" + suma de control (ultimele 2 cifre ale sumei primelor 21 de cifre). */
-function nrEvidPlata(cod3, luna, an, scadenta) {
+ *  + indicator mijloc de transport nou (D301; implicit 0) + "000" + suma de control
+ *  (ultimele 2 cifre ale sumei primelor 21 de cifre). */
+function nrEvidPlata(cod3, luna, an, scadenta, mijlocTransportNou) {
   const mm = String(luna).padStart(2, '0'); const aa = String(an).slice(-2);
   // Scadenta e IMPLICIT „25 a lunii urmatoare", dar nu intotdeauna: plata anticipata a
   // trimestrului IV la sistemul anual de impozit pe profit (art. 41 alin. (8)) are termen
@@ -329,7 +331,8 @@ function nrEvidPlata(cod3, luna, an, scadenta) {
   const next = scadenta
     ? { mm: String(scadenta.luna).padStart(2, '0'), aa: String(scadenta.an).slice(-2) }
     : (Number(luna) === 12 ? { mm: '01', aa: String(Number(aa) + 1).padStart(2, '0') } : { mm: String(Number(luna) + 1).padStart(2, '0'), aa });
-  const p21 = '10' + cod3 + '01' + mm + aa + '25' + next.mm + next.aa + '0000';
+  const p21 = '10' + cod3 + '01' + mm + aa + '25' + next.mm + next.aa
+    + (mijlocTransportNou ? '1' : '0') + '000';
   const ctl = String(p21.split('').reduce((s, c) => s + Number(c), 0)).slice(-2).padStart(2, '0');
   return p21 + ctl;
 }
@@ -1104,6 +1107,78 @@ ${rows}
 `;
 }
 
+/** D301 — decont special TVA, schema oficiala v1.
+ *
+ * Particularitatea importanta: `totalPlata_A` NU este doar TVA de plata, ci suma de control
+ * ceruta de validator: toate bazele + toate taxele. Totalurile de pe radacina se deriva din
+ * sectiunile efectiv emise, nu dintr-un raport paralel, exact ca la D390. */
+function d301Xml(company, period, d, who, rect) {
+  company = company || {}; d = d || {};
+  if (company.tvaPlatitor) throw new Error('Firma este plătitoare normală de TVA și nu poate depune D301.');
+  if (!(d.rows || []).length) throw new Error('Nu există operațiuni D301 postate în perioada ' + period + '.');
+  const { an, luna } = ym(period);
+  const cui = String(company.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
+  // XSD D301 accepta fie 2–10 cifre, fie exact 13 cifre; prima cifra nu poate fi zero.
+  if (!/^(?:[1-9]\d{1,9}|[1-9]\d{12})$/.test(cui)) {
+    throw new Error('CUI-ul firmei lipsește sau nu are forma acceptată de D301.');
+  }
+  if (!String(company.nume || '').trim()) throw new Error('Denumirea firmei lipsește din Setări.');
+  const banca = String(company.banca || '').trim();
+  const cont = String(company.iban || company.cont || '').replace(/\s/g, '');
+  if (!banca) throw new Error('Completează banca firmei în Setări — este obligatorie în D301.');
+  if (/[,#]/.test(banca)) throw new Error('Banca firmei nu poate conține virgulă sau # în D301.');
+  if (!cont) throw new Error('Completează IBAN-ul/contul firmei în Setări — este obligatoriu în D301.');
+  if (/[,#]/.test(cont)) throw new Error('Contul firmei nu poate conține virgulă sau # în D301.');
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  const num = (v, zec) => Number(Number(v || 0).toFixed(zec == null ? 2 : zec)).toString();
+  const dataRo = (iso) => {
+    const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) throw new Error('Data documentului D301 nu este validă: ' + (iso || 'lipsă') + '.');
+    return m[3] + '.' + m[2] + '.' + m[1];
+  };
+  const totals = {};
+  for (let i = 1; i <= 5; i++) totals[i] = { baza: 0, tva: 0 };
+  // Un rand 4.1 (tip 5) trebuie sa aiba o copie in sectiunea-total 4. DUK R32 respinge altfel:
+  // „Exista sectiuni 4.1 si doar 0 sectiuni 4, care ar trebui sa contina sectiunile 4.1”. Copia
+  // exista numai in formular; articolul si obligatia de TVA raman unice.
+  const emise = (d.rows || []).flatMap((r) => Number(r.tipOperatie) === 5
+    ? [Object.assign({}, r, { tipOperatie: 4 }), r]
+    : [r]);
+  const rows = emise.map((r) => {
+    const op = Number(r.tipOperatie);
+    if (!totals[op]) throw new Error('Tip operațiune D301 invalid la articolul ' + r.entryId + '.');
+    if (!String(r.nrDoc || '').trim() || String(r.nrDoc).length > 20) {
+      throw new Error('Numărul documentului D301 lipsește sau depășește 20 de caractere la articolul ' + r.entryId + '.');
+    }
+    if (!D301_VALUTE.has(String(r.tipValuta || ''))) throw new Error('Valuta D301 este invalidă la articolul ' + r.entryId + '.');
+    if (!(Number(r.valoareValuta) > 0) || !(Number(r.cursValutar) > 0) || !(Number(r.baza) > 0) || !(Number(r.tva) > 0)) {
+      throw new Error('Valoarea, cursul, baza sau TVA-ul lipsesc la articolul D301 ' + r.entryId + '.');
+    }
+    totals[op].baza += Math.round(Number(r.baza));
+    totals[op].tva += Math.round(Number(r.tva));
+    return `  <sectiune tip_operatie="${op}" nr_doc="${esc(r.nrDoc)}" data_doc="${dataRo(r.dataDoc)}"`
+      + ` tip_valuta="${esc(r.tipValuta)}" val_valuta="${num(r.valoareValuta, 2)}"`
+      + ` curs_valutar="${num(r.cursValutar, 4)}" baza="${Math.round(Number(r.baza))}" tva="${Math.round(Number(r.tva))}"/>`;
+  }).join('\n');
+  const mijlTrans = (d.rows || []).some((r) => Number(r.tipOperatie) === 2);
+  const totalControl = Object.values(totals).reduce((s, x) => s + x.baza + x.tva, 0);
+  const totalAttrs = Object.keys(totals).map((i) => `baza${i}="${totals[i].baza}" tva${i}="${totals[i].tva}"`).join(' ');
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
+  const telefon = String(company.telefon || '').replace(/\D/g, '');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- D301 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D301 fisier.xml -->
+<declaratie301 xmlns="mfp:anaf:dgti:d301:declaratie:v1"
+  luna="${esc(luna)}" an="${esc(an)}" d_rec="${rect && rect.rectificativa ? 1 : 0}" mijl_trans="${mijlTrans ? 1 : 0}"
+  cif="${esc(cui)}" denumire="${esc(company.nume)}"${adresa ? ` adresa="${esc(adresa)}"` : ''}${telefon ? ` telefon="${esc(telefon)}"` : ''}${company.email ? ` email="${esc(company.email)}"` : ''}
+  banca="${esc(banca)}" cont="${esc(cont)}" pers_inreg="${company.tvaArt317 ? 2 : 1}"
+  nr_evid="${nrEvidPlata('301', luna, an, null, mijlTrans)}" temei="2"
+  ${totalAttrs} totalPlata_A="${totalControl}"
+  nume_declarant="${esc(w.nume)}" prenume_declarant="${esc(w.prenume || '-')}" functia_declarant="${esc(w.functie || 'Administrator')}">
+${rows}
+</declaratie301>
+`;
+}
+
 // D100 — declaratia privind obligatiile de plata la bugetul de stat pe schema OFICIALA v2
 // (aici: impozitul pe veniturile microintreprinderilor, trimestrial — cod obligatie 620).
 function d100Xml(company, period, d, who) {
@@ -1382,7 +1457,7 @@ function bilantXml(d) {
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
   perimetruEFactura, CIF_PERSOANA_FIZICA,
-  umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d301Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
   bilantXml, bilantNsVersion, d177Xml,
   esc, // escaparea XML, refolosita de generatoarele din afara acestui fisier (ex. src/sepa.js)
 };

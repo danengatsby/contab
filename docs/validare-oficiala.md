@@ -8,7 +8,15 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-08-08 — bateria completă, la push pe `main`
+## Ultima verificare: 2026-08-13 — D301 și bateria completă
+
+Poarta fiscală forțată (`scripts/poarta-fiscala.sh --intotdeauna`) a regenerat și validat
+**34 din 34 de ieșiri**. Cele trei probe D301 au trecut DUKIntegrator: declarația inițială
+(`D301`), rectificativa (`D301-rect`) și achiziția unui mijloc de transport nou
+(`D301-mijloc`). Au rămas verzi și toate celelalte declarații, cele cinci variante SAF-T,
+situațiile financiare și schema e-Transport.
+
+## Verificare anterioară: 2026-08-08 — bateria completă, la push pe `main`
 
 Nu o schimbare fiscală nouă, ci **re-dovedirea întregii baterii**: hook-ul `pre-push` a văzut că
 `src/xml.js`, `src/accounting.js`, `src/declarations.js`, `src/reporting.js`, `src/fiscalProfile.js`,
@@ -43,11 +51,12 @@ Aceeași baterie a trecut și în CI, pe alt runner și pe o clonă curată: job
 [rularea de pe `669e868`](https://github.com/danengatsby/contab/actions/runs/31263018881), împreună
 cu `validare-anaf`, `test-postgres` și restul.
 
-## Recunoaștere 2026-08-07 — D301 (decont special de TVA): schema completă, generator NEIMPLEMENTAT
+## Implementare și validare 2026-08-13 — D301 (decont special de TVA)
 
-Consemnată aici pentru că e partea scumpă a lucrării și e **verificată**, nu presupusă: un fișier
-construit după schema de mai jos trece validatorul oficial (`D301_*/D301Validator.jar`). Ce
-lipsește e legarea la datele aplicației, nu cunoașterea formularului.
+Generatorul este legat integral la datele aplicației. Referința `D301.xml`, produsă de
+`scripts/genereaza-referinte.js`, trece validatorul oficial (`D301Validator.jar`) și face parte din
+poarta fiscală de release. Formularul se generează din tipul de document
+`achizitie_tva_speciala_d301`; raportul și calculele comune sunt în `src/d301.js`.
 
 **Cine îl datorează:** persoanele **neînregistrate** în scopuri de TVA conform art. 316 care fac
 achiziții intracomunitare peste plafon sau primesc servicii din afara țării pentru care sunt
@@ -77,18 +86,28 @@ Reguli sondate, fiecare printr-o rulare (nu deduse din documentație):
 | R18 / R19 | `baza_i` și `tva_i` de pe rădăcină = **suma** peste secțiunile cu `tip_operatie = i`. Rădăcina e agregatul, secțiunile sunt detaliul pe document |
 | R28 | `totalPlata_A` = Σ(`baza_i` + `tva_i`), i = 1..5 — deci **și bazele, nu doar taxa** |
 | R16 | `nr_evid` are 23 de caractere, **același algoritm ca la D100**, cu codul `301` |
+| R32 | fiecare secțiune 4.1 (`tip_operatie=5`) trebuie repetată în secțiunea-total 4; articolul contabil rămâne unic, numai XML-ul emite perechea 4 + 5 |
 | — | `temei` trebuie să fie **diferit de 1** când declarația e inițială (`d_rec = 0`); valoarea 3 e respinsă, deci intervalul e {1, 2} |
 | — | `pers_inreg` ∈ {1, 2}; „dacă `pers_inreg = 2` atunci trebuie să utilizați CUI" |
 | — | datele în format românesc (`dd.mm.aaaa`), ca la D112 și D177 |
 
-Cele cinci perechi `baza_i`/`tva_i` sunt cele cinci tipuri de operațiuni ale decontului special, iar
-`tip_operatie` de pe secțiune le indexează.
+Cele cinci coduri sunt: (1) achiziții intracomunitare de bunuri obișnuite, (2) mijloace de transport
+noi, (3) produse accizabile, (4) celelalte operațiuni de la art. 307 și (5) serviciile
+intracomunitare din secțiunea 4.1. Baza se calculează conform regulii oficiale
+`round(val_valuta × curs_valutar, 0)`.
 
-**Ce rămâne de decis înainte de implementare** (și de ce nu s-a făcut odată cu recunoașterea):
-monografia. O firmă **neînregistrată** în scopuri de TVA nu deduce taxa — deci nu poate folosi
-`4426 = 4427` ca la taxarea inversă a unui plătitor; taxa e un **cost**. Asta cere un tip de
-document propriu și o decizie contabilă, nu doar un generator XML. Aceeași regulă ca peste tot în
-acest depozit: nu inventa monografia.
+**Monografia implementată:** baza este `cont cost/stoc/imobilizare = 401`; TVA-ul special,
+nedeductibil, este `același cont de cost = 446`. Astfel taxa datorată bugetului intră în costul de
+achiziție și nu se simulează greșit o deducere prin `4426 = 4427`. Operațiunile UE alimentează și
+D390 numai când firma are bifat codul special art. 317. Formularul este refuzat pentru un plătitor
+normal de TVA și pentru secțiunile 1/5 fără cod art. 317.
+
+Surse oficiale folosite la implementare: formularul și instrucțiunile
+[`301_OPANAF_779_2024.pdf`](https://static.anaf.ro/static/10/Anaf/formulare/301_OPANAF_779_2024.pdf),
+[`structura_D301_2016.pdf`](https://static.anaf.ro/static/10/Anaf/Declaratii_R/AplicatiiDec/structura_D301_2016.pdf)
+și schema [`d301_20200130.xsd`](https://static.anaf.ro/static/10/Anaf/Declaratii_R/AplicatiiDec/d301_20200130.xsd).
+Varianta rectificativă (`d_rec="1"`, derivată automat când există deja o depunere în registru) a
+fost probată separat și trece același validator oficial.
 
 **D311** (TVA colectată de persoanele cu cod de TVA anulat) are validator oficial în manifest
 (`<D311>`), dar nu a fost recunoscut.

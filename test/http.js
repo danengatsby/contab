@@ -1526,7 +1526,35 @@ async function main() {
       eq('guard: /xml/d300 la neplatitor TVA -> 400', (await req('GET', '/xml/d300?period=2026-06', { cookie: c1 })).status, 400);
       eq('guard: /xml/d394 la neplatitor TVA -> 400', (await req('GET', '/xml/d394?period=2026-06', { cookie: c1 })).status, 400);
       eq('guard: /pdf/d300 la neplatitor TVA -> 400', (await req('GET', '/pdf/d300?period=2026-06', { cookie: c1 })).status, 400);
-      await req('POST', '/api/company', { cookie: c1, body: { tvaPlatitor: true } }); // restaurez regimul TVA
+      // D301: serviciile UE cer codul special art. 317, apoi pastreaza cursul la 4 zecimale si
+      // genereaza perechea sectiune 4 + 4.1 ceruta de validatorul oficial.
+      const d301FaraCod = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'achizitie_tva_speciala_d301', fields: { data: '2026-10-08', partener: 'EU Cloud GmbH',
+          cuiPartener: 'DE811907980', document: 'EU-301', tipOperatieD301: '5', moneda: 'EUR',
+          sumaValuta: 2000, curs: 5.1234, cota: 21, contCost: '628' },
+      } });
+      ok('D301: serviciul UE fara cod art. 317 este blocat', d301FaraCod.status === 400 && /317/.test(d301FaraCod.text));
+      await req('POST', '/api/company', { cookie: c1, body: { tvaArt317: true, banca: 'Banca Test', iban: 'RO49AAAA1B31007593840000' } });
+      const e301 = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'achizitie_tva_speciala_d301', fields: { data: '2026-10-08', partener: 'EU Cloud GmbH',
+          cuiPartener: 'DE811907980', document: 'EU-301', tipOperatieD301: '5', moneda: 'EUR',
+          sumaValuta: 2000, curs: 5.1234, cota: 21, contCost: '628' },
+      } });
+      ok('D301: articol creat cu metadata declarativa si curs la 4 zecimale', e301.status === 200
+        && e301.json.entry.d301.cursValutar === 5.1234 && e301.json.entry.d301.baza === 10247
+        && e301.json.entry.lines.some((l) => l.debit === '628' && l.credit === '446'));
+      const api301 = await req('GET', '/api/d301?period=2026-10', { cookie: c1 });
+      ok('D301: raportul API are documentul si TVA nedeductibila', api301.status === 200
+        && api301.json.nr === 1 && api301.json.totalTva === 2152);
+      const xml301 = await req('GET', '/xml/d301?period=2026-10', { cookie: c1 });
+      ok('D301: XML emis cu sectiunile corelate 4 si 4.1', xml301.status === 200
+        && (xml301.text.match(/<sectiune /g) || []).length === 2
+        && /tip_operatie="4"/.test(xml301.text) && /tip_operatie="5"/.test(xml301.text));
+      const cal301 = await req('GET', '/api/declarations?period=2026-10', { cookie: c1 });
+      ok('D301: registrul asteapta D301 si D390 in luna operatiunii', cal301.status === 200
+        && cal301.json.rows.some((x) => x.tip === 'd301') && cal301.json.rows.some((x) => x.tip === 'd390'));
+      if (e301.json.entry) await req('POST', '/api/entries/' + e301.json.entry.id + '/storno', { cookie: c1, body: { data: '2026-10-09' } });
+      await req('POST', '/api/company', { cookie: c1, body: { tvaPlatitor: true, tvaArt317: false } }); // restaurez regimul TVA
       // dupa restaurare, D300 se genereaza din nou
       eq('dupa restaurare platitor: /xml/d300 -> 200', (await req('GET', '/xml/d300?period=2026-06', { cookie: c1 })).status, 200);
     }

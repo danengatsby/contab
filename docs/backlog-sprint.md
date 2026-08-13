@@ -407,6 +407,13 @@ soldurile a 40 de clienți.
 
 ---
 
+## D301 — decont special TVA — ✅ ÎNCHIS 2026-08-13
+
+Tip de document propriu pentru firme neplătitoare, cu TVA nedeductibilă inclusă în cost (`446`),
+profil art. 317, raport lunar, calendar/registru, D390 pentru operațiunile UE și XML D301. Cazul
+4.1 este repetat în secțiunea-total 4 exact cum cere regula R32 a validatorului oficial. Referința
+generată trece DUKIntegrator și intră în poarta fiscală de release.
+
 # P2 — infrastructură, pe semnal real
 
 ## 7. Offsite pe stocare obiect, criptat — ✅ ÎNCHIS 2026-07-28 (RTO nemăsurat)

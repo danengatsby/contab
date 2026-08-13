@@ -1859,11 +1859,18 @@ section('Verificarea pre-depunere: acelasi verdict pentru cockpit si pentru buto
   const v = scopedSeed();
   const opt = { period: '2026-06', year: '2026' };
 
-  eq('tipurile stiute sunt cele noua din contract', dc.TYPES.join(','),
-    'd300,d394,d390,d100,d101,intrastat,d205,d112,saft');
+  eq('tipurile stiute sunt cele zece din contract', dc.TYPES.join(','),
+    'd300,d301,d394,d390,d100,d101,intrastat,d205,d112,saft');
   // Fiecare tip declarat trebuie sa poata fi si CONSTRUIT — altfel lista minte.
   for (const t of dc.TYPES) {
-    const x = dc.buildXml(v, t, opt);
+    const vt = t === 'd301' ? Object.assign({}, v, {
+      company: Object.assign({}, v.company, { tvaPlatitor: false, tvaArt317: true }),
+      entries: v.entries.concat([{ id: 'dc301', tip: 'achizitie_tva_speciala_d301', status: 'postat',
+        period: '2026-06', data: '2026-06-15', document: 'F301', partener: 'UE', partenerCui: 'DE811907980',
+        d301: { tipOperatie: 5, tipValuta: 'EUR', valoareValuta: 2000, cursValutar: 5, baza: 10000, cota: 21, tva: 2100 },
+        lines: [{ debit: '628', credit: '401', suma: 10000 }, { debit: '628', credit: '446', suma: 2100 }] }]),
+    }) : v;
+    const x = dc.buildXml(vt, t, opt);
     ok('buildXml produce XML pentru ' + t, typeof x === 'string' && x.length > 50 && x.includes('<'));
     ok('...si e bine format', wellFormed(x));
   }

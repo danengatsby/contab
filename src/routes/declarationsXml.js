@@ -18,6 +18,7 @@ const decl = require('../declarations');
 const plans = require('../plans');
 const declCheck = require('../declarationCheck');
 const fiscalProfile = require('../fiscalProfile');
+const d301 = require('../d301');
 const { statePlata } = require('../payroll');
 
 module.exports = function register(app, ctx) {
@@ -93,6 +94,21 @@ module.exports = function register(app, ctx) {
     sendXml(res, xml.d394Xml(v.company, pd394, acc.vatJournals(v, pd394), declarantOf(req), rep.achizitiiPfCarnet(v, pd394)), 'd394.xml');
   });
   app.get('/api/d390', (req, res) => res.json(rep.d390(S(req), req.query.period || null)));
+
+  app.get('/api/d301', (req, res) => res.json(d301.report(S(req), req.query.period || null)));
+
+  app.get('/xml/d301', (req, res) => {
+    const period = req.query.period;
+    if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return res.status(400).send('Perioadă invalidă pentru D301 (folosește YYYY-MM).');
+    const v = S(req);
+    let out;
+    const recD301 = decl.find(db.get(), activeId(req), 'd301', period);
+    const depusaDeja = !!decl.lastSubmission(recD301);
+    try { out = xml.d301Xml(v.company, period, d301.report(v, period), declarantOf(req), { rectificativa: depusaDeja }); }
+    catch (e) { return res.status(400).send(e.message); }
+    recordDecl(req, 'd301', period);
+    sendXml(res, out, 'd301.xml');
+  });
   app.get('/xml/d390', (req, res) => {
     const v = S(req);
     recordDecl(req, 'd390', req.query.period);

@@ -22,6 +22,7 @@ const log = require('./src/log');
 const serverErrors = require('./src/serverErrors');
 const { round2, period: periodOf } = require('./src/util');
 const acc = require('./src/accounting'); // reguli pure de compunere (TVA partial deductibila)
+const d301 = require('./src/d301');
 const { D394_COD_331 } = require('./src/xml');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
@@ -192,7 +193,7 @@ function upsertPartner(firmaId, entry) {
   if (entry.partener) ex.den = entry.partener;
   ex.cui = key;
   // marcheaza automat rolul dupa tipul documentului (vanzare -> client, cumparare -> furnizor)
-  const role = /vanzare|^livrare_intra|^bon_fiscal/.test(entry.tip) ? 'client' : (/cumparare/.test(entry.tip) ? 'furnizor' : '');
+  const role = /vanzare|^livrare_intra|^bon_fiscal/.test(entry.tip) ? 'client' : (/cumparare|^achizitie/.test(entry.tip) ? 'furnizor' : '');
   if (role) { if (!ex.tip) ex.tip = role; else if (ex.tip !== role && ex.tip !== 'ambele') ex.tip = 'ambele'; }
   dd.partners[firmaId][key] = ex;
 }
@@ -224,7 +225,12 @@ function composeEntry(tipId, fields, fileId, firmaId) {
   const f = Object.assign({}, fields);
   // coercitie numerica pentru campurile numerice
   for (const fld of type.fields) {
-    if (fld.type === 'number') f[fld.name] = round2(parseFloat(f[fld.name]) || 0);
+    if (fld.type === 'number') {
+      const n = parseFloat(f[fld.name]) || 0;
+      // Cursurile declarative se publica la 4 zecimale. Campurile obisnuite raman la bani;
+      // `step` este parte din contractul campului si decide precizia, nu numele lui.
+      f[fld.name] = String(fld.step || '').includes('0001') ? Math.round(n * 10000) / 10000 : round2(n);
+    }
   }
   // linii detaliate (optional): daca exista, baza si TVA se calculeaza din ele
   let items = [];
@@ -375,6 +381,10 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     // AMANDOUA 4426 = 4427 — dar decide daca operatiunea intra in D390. Fara marcaj, D390 ar fi
     // fost ori umflat cu operatiuni interne, ori incomplet, si in ambele cazuri tacut.
     ...(f.naturaAutofactura ? { naturaAutofactura: String(f.naturaAutofactura) } : {}),
+    // Datele declarative D301 nu se pot reconstitui din articol: valuta, cursul si sectiunea nu
+    // apar in conturi, iar TVA-ul e inclus in cost. Se pastreaza rezultatul aceleiasi functii
+    // care a construit monografia, ca raportul si XML-ul sa citeasca exact aceleasi cifre.
+    ...(tipId === d301.TIP_DOCUMENT ? { d301: d301.dinCampuri(f) } : {}),
     ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
     ...(codCategorie331 ? { codCategorie331 } : {}), // categoria de bun art. 331, pentru op11 din D394
     fileId: fileId || null,

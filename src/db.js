@@ -33,7 +33,7 @@ const DB_FILE = JSON_FILE; // pastrat pentru compatibilitate (backup/restore fol
 // inchise sau a paywall-ului si injectarea de credentiale.
 const FIRMA_EDITABLE = new Set([
   'nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'tara',                       // identificare
-  'tvaPlatitor', 'tvaLaIncasare', 'tipEntitate', 'proRataTva', 'caen', 'perioadaTva', 'capitalSocial', // profil fiscal
+  'tvaPlatitor', 'tvaArt317', 'tvaLaIncasare', 'tipEntitate', 'proRataTva', 'caen', 'perioadaTva', 'capitalSocial', // profil fiscal
   'regimImpozit', 'd406Cadenta', 'intrastatObligat', 'scutiri',                     // motor profil fiscal (regim, cadenta D406, Intrastat, exceptii)
   // Sistemul de declarare a impozitului pe profit (art. 41): 'trimestrial' (implicit, alin. (1))
   // sau 'anual' cu plati anticipate (alin. (2)). `anticipatProfitContabil` = ramura alin. (7).

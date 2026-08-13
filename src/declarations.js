@@ -3,6 +3,7 @@
 const { postedEntries } = require('./accounting'); // ciornele nu declanseaza asteptari de declaratii/e-Factura
 const fiscalProfile = require('./fiscalProfile'); // motorul de profil fiscal (sursa unica)
 const xml = require('./xml'); // perimetrul e-Factura (`isSendable`), derivat din tipurile de document
+const d301 = require('./d301');
 
 // Registrul depunerilor de declaratii + termene fiscale + agregarea pe portofoliu (multi-firma).
 //
@@ -14,6 +15,7 @@ const xml = require('./xml'); // perimetrul e-Factura (`isSendable`), derivat di
 
 const TIPURI = {
   d300: { nume: 'D300 — decont TVA' },
+  d301: { nume: 'D301 — decont special TVA' },
   d394: { nume: 'D394 — declarație informativă' },
   d112: { nume: 'D112 — contribuții și impozit salarii' },
   d390: { nume: 'D390 — recapitulativă intracomunitară (VIES)' },
@@ -38,6 +40,7 @@ const STATUSES = ['nedepusa', 'generata', 'depusa', 'eroare', 'scutita'];
  *  — majoritatea rutelor iau `period`, dar D101 si XML-ul de bilant iau `year`. */
 const DESCARCARI = {
   d300: (p) => [{ label: 'Recap PDF', href: '/pdf/d300?period=' + p }, { label: 'XML ANAF', href: '/xml/d300?period=' + p }],
+  d301: (p) => [{ label: 'XML ANAF', href: '/xml/d301?period=' + p }],
   d394: (p) => [{ label: 'XML ANAF', href: '/xml/d394?period=' + p }],
   d112: (p) => [{ label: 'Recap PDF', href: '/pdf/d112?period=' + p }, { label: 'XML ANAF', href: '/xml/d112?period=' + p }],
   d390: (p) => [{ label: 'XML ANAF', href: '/xml/d390?period=' + p }],
@@ -102,11 +105,13 @@ const INTRACOM_SERVICII = new Set(['prestare_servicii_intracomunitara', 'achizit
  *  acopera dau aceleasi conturi, dar nu aceeasi declaratie. */
 function esteIntracomBunuri(e) {
   if (e && e.tip === 'autofactura_achizitie') return e.naturaAutofactura === 'intracom';
+  if (e && e.tip === d301.TIP_DOCUMENT) return [1, 2, 3].includes(Number(e.d301 && e.d301.tipOperatie));
   return INTRACOM_BUNURI.has(e && e.tip);
 }
 /** Articolul e o operatiune intracomunitara cu SERVICII? (doar D390, art. 325). */
 function esteIntracomServicii(e) {
   if (e && e.tip === 'autofactura_achizitie') return e.naturaAutofactura === 'servicii';
+  if (e && e.tip === d301.TIP_DOCUMENT) return Number(e.d301 && e.d301.tipOperatie) === 5;
   return INTRACOM_SERVICII.has(e && e.tip);
 }
 
@@ -115,9 +120,13 @@ function expectedForFirma(v, period) {
   // Sursa UNICA: profilul fiscal al firmei deriva lista (nu boolean-uri citite inline aici).
   const profile = fiscalProfile.build((v || {}).company, { angajati: (v || {}).angajati });
   const inLuna = (e, per) => String(e.period || e.data || '').slice(0, 7) === per;
-  const hasIntracom = (per) => postedEntries(v).some((e) => esteIntracomBunuri(e) && inLuna(e, per));
-  const hasIntracomServicii = (per) => postedEntries(v).some((e) => esteIntracomServicii(e) && inLuna(e, per));
-  return fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServicii)
+  // D301 produce D390 numai pentru persoana care are cod special art. 317. Sectiunile 2/3/4 pot
+  // fi depuse si fara acel cod; a genera automat D390 in acele cazuri ar inventa o obligatie.
+  const eligibilD390 = (e) => e.tip !== d301.TIP_DOCUMENT || profile.tvaArt317;
+  const hasIntracom = (per) => postedEntries(v).some((e) => eligibilD390(e) && esteIntracomBunuri(e) && inLuna(e, per));
+  const hasIntracomServicii = (per) => postedEntries(v).some((e) => eligibilD390(e) && esteIntracomServicii(e) && inLuna(e, per));
+  const hasD301 = (per) => postedEntries(v).some((e) => e.tip === d301.TIP_DOCUMENT && !e.stornat && inLuna(e, per));
+  return fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServicii, hasD301)
     .map((tip) => ({ tip, nume: (TIPURI[tip] || {}).nume || tip, period, due: dueDate(tip, period, profile) }));
 }
 
@@ -226,7 +235,7 @@ function record(d, firmaId, tip, period, patch, nextIdFn) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Tipurile care poarta un steag de rectificare in XML (restul se redepun ca atare). */
-const RECT_IN_XML = { d112: true };
+const RECT_IN_XML = { d112: true, d301: true };
 
 /**
  * Inregistreaza o depunere noua peste (firmaId, tip, period). NU suprascrie: adauga in istoric.

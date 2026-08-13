@@ -2789,6 +2789,63 @@ ok('D390 XML bine-format', wellFormed(xml.d390Xml({ cui: 'RO1', nume: 'X' }, '20
   eq('codurile D390 sunt aceleasi in reporting si in xml', rep.D390_CODURI.join(''), xml.D390_CODURI.join(''));
 }
 
+section('D301 — TVA speciala la neplatitori (art. 317)');
+{
+  const d301 = require('../src/d301');
+  const fp301 = require('../src/fiscalProfile');
+  const fields = { data: '2026-06-15', document: 'F123', tipOperatieD301: '5', moneda: 'EUR',
+    sumaValuta: 2000, curs: 5, cota: 21, contCost: '628' };
+  const calc = d301.dinCampuri(fields);
+  eq('calcul: baza = valoare valuta × curs, rotunjita la leu', calc.baza, 10000);
+  eq('calcul: TVA speciala datorata', calc.tva, 2100);
+  const lines = gt2(d301.TIP_DOCUMENT).build(fields);
+  ok('monografie: baza merge la furnizor, fara 4426/4427',
+    lines.some((l) => l.debit === '628' && l.credit === '401' && l.suma === 10000)
+    && !lines.some((l) => /^442[678]$/.test(l.debit) || /^442[678]$/.test(l.credit)));
+  ok('monografie: TVA nedeductibila intra in cost si devine obligatie 446',
+    lines.some((l) => l.debit === '628' && l.credit === '446' && l.suma === 2100));
+
+  const entry = { id: 'd301-1', tip: d301.TIP_DOCUMENT, status: 'postat', period: '2026-06',
+    data: fields.data, document: fields.document, partener: 'UE GmbH', partenerCui: 'DE811907980',
+    d301: calc, lines };
+  const view301 = { company: { cui: '12345674', nume: 'TEST SRL', tvaPlatitor: false, tvaArt317: true,
+    banca: 'Banca Test', iban: 'RO49AAAA1B31007593840000' }, entries: [entry] };
+  const r301 = d301.report(view301, '2026-06');
+  eq('raport: taxa economica este numarata o singura data', r301.totalTva, 2100);
+  eq('raport: sectiunea 4 include subtotalul 4.1', r301.sectiuni[4].tva, 2100);
+  eq('raport: sectiunea 4.1 ramane distincta', r301.sectiuni[5].tva, 2100);
+  const x301 = xml.d301Xml(view301.company, '2026-06', r301, { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
+  ok('D301 XML bine-format', wellFormed(x301));
+  eq('XML: serviciul 4.1 este repetat in sectiunea-total 4 (cerinta DUK R32)',
+    (x301.match(/<sectiune /g) || []).length, 2);
+  ok('XML: totalurile 4/4.1 si suma de control sunt corelate',
+    /baza4="10000" tva4="2100" baza5="10000" tva5="2100" totalPlata_A="24200"/.test(x301));
+  ok('XML: codul art. 317 selecteaza pers_inreg=2', /pers_inreg="2"/.test(x301));
+  ok('XML rectificativ: D301 poarta d_rec=1', /d_rec="1"/.test(xml.d301Xml(view301.company,
+    '2026-06', r301, { nume: 'P', prenume: 'I', functie: 'C' }, { rectificativa: true })));
+  let errCui301 = '';
+  try {
+    xml.d301Xml(Object.assign({}, view301.company, { cui: '12345678901' }), '2026-06', r301,
+      { nume: 'P', prenume: 'I', functie: 'C' });
+  } catch (e) { errCui301 = e.message; }
+  ok('schema: D301 refuza CUI de 11–12 cifre, neacceptat de XSD', /CUI/.test(errCui301));
+  eq('D390: acelasi serviciu UE intra o singura data pe codul S', rep.d390(view301, '2026-06').totaluri.S, 10000);
+
+  const asteptate = require('../src/declarations').expectedForFirma(view301, '2026-06').map((x) => x.tip);
+  ok('calendar: luna cu operatiune cere D301 si D390', asteptate.includes('d301') && asteptate.includes('d390'));
+  const fara317 = Object.assign({}, view301, { company: Object.assign({}, view301.company, { tvaArt317: false }) });
+  const asteptateFara = require('../src/declarations').expectedForFirma(fara317, '2026-06').map((x) => x.tip);
+  ok('calendar: fara art. 317, D301 ramane datorata dar D390 nu se inventeaza',
+    asteptateFara.includes('d301') && !asteptateFara.includes('d390'));
+  ok('guard: platitorul normal este directionat la D300/taxare inversa',
+    /plătitoare/.test(fp301.entryGuard(fp301.build({ tvaPlatitor: true }), entry) || ''));
+  ok('guard: serviciul UE fara cod art. 317 este blocat',
+    /art\. 317/.test(fp301.entryGuard(fp301.build({ tvaPlatitor: false }), entry) || ''));
+  let errValuta = '';
+  try { d301.dinCampuri(Object.assign({}, fields, { moneda: 'ZZZ' })); } catch (e) { errValuta = e.message; }
+  ok('schema: valuta din afara nomenclatorului este refuzata la intrare', /neacceptată/.test(errValuta));
+}
+
 section('C1-C2: concediul medical pe zile calendaristice + cursul plafonului micro');
 {
   const pay = require('../src/payroll');

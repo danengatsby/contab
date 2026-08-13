@@ -40,6 +40,11 @@
   HoReCa — intrare la preț de vânzare (371/378/4428) și vânzare amănunt cu descărcare;
   comerț intracomunitar — diferențe de curs (765/665); transport — combustibil cu TVA 50%,
   amortizare transport (2813), rovinietă (635=446).
+- **TVA specială D301 pentru neplătitori:** tipul `achizitie_tva_speciala_d301` cere explicit
+  secțiunea oficială 1–5, valuta, cursul și cota. Baza intră în cost/stoc/imobilizare contra 401,
+  iar TVA-ul nedeductibil intră în același cost contra 446. Profilul firmei păstrează separat codul
+  special art. 317; acesta nu transformă firma în plătitoare normală de TVA. XML-ul D301 și D390
+  sunt generate din același marcaj, iar referința D301 trece DUKIntegrator.
 - **Tab „Ghid”:** parametri fiscali, glosar de termeni și întrebări frecvente.
 - **Conturi analitice pe partener** (`src/analytic.js`, tab „Analitic”): detalierea conturilor
   de terți (401, 4111, 404, 419, 409…) pe analitice per partener (401.01, 401.02…), cu
@@ -249,4 +254,3 @@ servicii, combustibil, imobilizări, achiziție intracomunitară de bunuri și
 **de servicii**, ambele cu taxare inversă), trezorerie (încasări/plăți casă/bancă, viramente,
 comisioane), salarii (stat de plată cu CAS/CASS/impozit/CAM, plata netă), amortizare și
 **notă contabilă liberă** (orice `debit = credit`, pentru orice monografie).
-

@@ -2177,6 +2177,7 @@ Cu stimă,
           <label>Oraș <input name="oras" /></label>
           <label>Județ (cod, ex: RO-B) <input name="judet" /></label>
           <label class="check"><input name="tvaLaIncasare" type="checkbox" /> TVA la încasare (exigibilitate la încasare/plată — prin contul 4428)</label>
+          <label class="check"><input name="tvaArt317" type="checkbox" /> Cod special TVA conform art. 317 (pentru D301/D390; nu înseamnă plătitoare normală de TVA)</label>
           <label>Pro-rata TVA provizorie % (doar regim mixt — gol = deducere integrală) <input name="proRataTva" type="number" min="1" max="99" step="1" placeholder="ex. 40" /></label>
           <label>Cod CAEN (activitatea principală — apare în D300) <input name="caen" maxlength="4" placeholder="ex. 1071" /></label>
           <label>Perioada fiscală TVA (decontul D300)
@@ -2225,6 +2226,7 @@ Cu stimă,
             <label>Scutiri — declarații pe care firma NU le datorează (rar; oprește alertele pentru ele)</label>
             <div class="row" id="scutiriBox">
               <label class="check"><input type="checkbox" data-scutire="d300" /> D300</label>
+              <label class="check"><input type="checkbox" data-scutire="d301" /> D301</label>
               <label class="check"><input type="checkbox" data-scutire="d394" /> D394</label>
               <label class="check"><input type="checkbox" data-scutire="d390" /> D390</label>
               <label class="check"><input type="checkbox" data-scutire="d112" /> D112</label>

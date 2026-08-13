@@ -7,6 +7,7 @@
 const decl = require('../declarations');
 const plans = require('../plans');
 const rep = require('../reporting');
+const d301 = require('../d301');
 
 module.exports = function register(app, ctx) {
   const { db, S, activeId, allowedFirme, logAudit } = ctx;
@@ -23,6 +24,7 @@ module.exports = function register(app, ctx) {
   function sumeCheie(view, tip, period) {
     try {
       if (tip === 'd300') { const x = rep.d300(view, period); return { tvaColectata: x.tvaColectata, tvaDeductibila: x.tvaDeductibila, tvaDePlata: x.tvaDePlata, tvaDeRecuperat: x.tvaDeRecuperat }; }
+      if (tip === 'd301') { const x = d301.report(view, period); return { baza: x.totalBaza, tvaDePlata: x.totalTva }; }
       if (tip === 'd112') { const x = rep.d112(view, period); const t = x.totals || {}; return { brut: t.brut, impozit: t.impozit, cas: t.cas, cass: t.cass, cam: t.cam }; }
       if (tip === 'd394') { const x = rep.d300(view, period); return { tvaColectata: x.tvaColectata, tvaDeductibila: x.tvaDeductibila }; }
     } catch (e) { /* raportul nu se poate calcula: istoricul ramane fara sume, nu pica depunerea */ }

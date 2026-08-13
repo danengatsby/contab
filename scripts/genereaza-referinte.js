@@ -20,6 +20,7 @@ const { getType } = require('../src/documentTypes');
 const { statePlata } = require('../src/payroll');
 const bilant = require('../src/bilant');
 const ptOpts = require('../src/profitTaxOptions');
+const d301 = require('../src/d301');
 
 const dir = process.argv[2] || path.join(require('os').tmpdir(), 'contab-referinte');
 fs.mkdirSync(dir, { recursive: true });
@@ -51,6 +52,36 @@ w('D394', xml.d394Xml(v.company, '2026-06', acc.vatJournals(v, '2026-06'), who))
 // D390 (VIES) — exemplul n-are operatiuni intracomunitare; adaug una ca sa fie continut
 const vIC = { entries: v.entries.concat([{ id: 'ic', data: '2026-06-18', period: '2026-06', tip: 'livrare_intracomunitara', tipNume: 'L', partener: 'GMBH', partenerCui: 'DE811907980', document: 'E1', lines: [{ debit: '4111', credit: '707', suma: 9000 }] }]), openingBalances: v.openingBalances };
 w('D390', xml.d390Xml(v.company, '2026-06', rep.d390(vIC, '2026-06'), who));
+// D301 — TVA speciala datorata de o firma neplatitoare, inregistrata conform art. 317, pentru
+// servicii primite din UE (sectiunea 4.1 / tip_operatie=5). Referinta exercita si alimentarea
+// D390 pe codul S din aceeasi operatiune, fara 4426=4427 (TVA este nedeductibila).
+const v301 = {
+  company: Object.assign({}, v.company, { tvaPlatitor: false, tvaArt317: true }), openingBalances: {},
+  entries: [{ id: 'sp301', firmaId: 1, data: '2026-06-15', period: '2026-06',
+    tip: d301.TIP_DOCUMENT, tipNume: 'Achizitie cu TVA speciala D301', status: 'postat',
+    partener: 'SERVICII UE GMBH', partenerCui: 'DE811907980', document: 'F123',
+    d301: { tipOperatie: 5, tipValuta: 'EUR', valoareValuta: 2000, cursValutar: 5, baza: 10000, cota: 21, tva: 2100 },
+    lines: [{ debit: '628', credit: '401', suma: 10000 }, { debit: '628', credit: '446', suma: 2100 }] }],
+};
+{
+  const r301 = d301.report(v301, '2026-06');
+  if (r301.totalBaza !== 10000 || r301.totalTva !== 2100 || r301.sectiuni[5].nr !== 1) {
+    throw new Error('D301: raportul de referinta este gresit — ' + JSON.stringify(r301));
+  }
+  const r390_301 = rep.d390(v301, '2026-06');
+  if (r390_301.totaluri.S !== 10000) throw new Error('D301: serviciul UE nu a alimentat D390/S');
+  w('D301', xml.d301Xml(v301.company, '2026-06', r301, who));
+  w('D301-rect', xml.d301Xml(v301.company, '2026-06', r301, who, { rectificativa: true }));
+}
+const v301Mijloc = {
+  company: Object.assign({}, v301.company, { tvaArt317: false }), openingBalances: {},
+  entries: [{ id: 'mt301', firmaId: 1, data: '2026-06-20', period: '2026-06',
+    tip: d301.TIP_DOCUMENT, tipNume: 'Mijloc transport nou D301', status: 'postat',
+    partener: 'AUTO EU GMBH', partenerCui: 'DE811907980', document: 'AUTO-301',
+    d301: { tipOperatie: 2, tipValuta: 'EUR', valoareValuta: 10000, cursValutar: 5, baza: 50000, cota: 21, tva: 10500 },
+    lines: [{ debit: '2133', credit: '401', suma: 50000 }, { debit: '2133', credit: '446', suma: 10500 }] }],
+};
+w('D301-mijloc', xml.d301Xml(v301Mijloc.company, '2026-06', d301.report(v301Mijloc, '2026-06'), who));
 // D112 (salarii)
 w('D112', xml.d112Xml(v.company, '2026-06', statePlata(v.angajati), who));
 // D112 varianta CONCEDIU MEDICAL: angajatul din exemplu nu are niciunul, deci repartizarea

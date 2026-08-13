@@ -519,6 +519,7 @@ function fillCompanyForm() {
   ['nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'iban', 'banca', 'telefon', 'email', 'capitalSocial', 'pdfFooter', 'asociatiText', 'proRataTva', 'caen', 'perioadaTva'].forEach((k) => { if (f[k]) f[k].value = META.company[k] || ''; });
   if (f.tipEntitate) f.tipEntitate.value = META.company.tipEntitate === 'pfa' ? 'pfa' : 'srl';
   if (f.tvaLaIncasare) f.tvaLaIncasare.checked = !!META.company.tvaLaIncasare;
+  if (f.tvaArt317) f.tvaArt317.checked = !!META.company.tvaArt317;
   if (f.accentColor) f.accentColor.value = /^#[0-9a-fA-F]{6}$/.test(META.company.accentColor || '') ? META.company.accentColor : '#0b6e4f';
   if (f.pdfLayout) f.pdfLayout.value = ['clasic', 'compact', 'detaliat'].includes(META.company.pdfLayout) ? META.company.pdfLayout : 'clasic';
   // profil fiscal (motor)
@@ -594,7 +595,8 @@ async function refreshFiscalProfile() {
   try {
     const p = await api('/api/fiscal-profile');
     const regim = p.pfa ? 'PFA (Declarația Unică)' : (p.profit ? 'impozit pe profit (D101)' : 'micro (D100)');
-    const tva = p.tvaPlatitor ? ('plătitoare TVA — ' + (p.perioadaTva === 'T' ? 'trimestrial' : 'lunar') + (p.tvaLaIncasare ? ', la încasare' : '')) : 'neplătitoare de TVA';
+    const tva = p.tvaPlatitor ? ('plătitoare TVA — ' + (p.perioadaTva === 'T' ? 'trimestrial' : 'lunar') + (p.tvaLaIncasare ? ', la încasare' : ''))
+      : ('neplătitoare de TVA' + (p.tvaArt317 ? ', cu cod special art. 317 (D301/D390)' : ''));
     const scutiri = Object.keys(p.scutiri || {}).filter((k) => p.scutiri[k]);
     let ctrlHtml = '';
     try {
@@ -1147,7 +1149,7 @@ $('#anafPoll').addEventListener('click', async () => {
 $('#companyForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
-  const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaLaIncasare: f.tvaLaIncasare.checked, tipEntitate: f.tipEntitate.value,
+  const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaLaIncasare: f.tvaLaIncasare.checked, tvaArt317: f.tvaArt317 ? f.tvaArt317.checked : false, tipEntitate: f.tipEntitate.value,
     iban: f.iban.value.trim(), banca: f.banca.value.trim(), telefon: f.telefon.value.trim(), email: f.email.value.trim(), capitalSocial: f.capitalSocial.value.trim(), accentColor: f.accentColor.value, pdfLayout: f.pdfLayout.value, pdfFooter: f.pdfFooter.value.trim(), asociatiText: f.asociatiText.value.trim(), proRataTva: f.proRataTva.value ? Number(f.proRataTva.value) : '', caen: f.caen.value.trim(), perioadaTva: f.perioadaTva.value };
   // profil fiscal (motor): regim, cadenta D406, Intrastat, scutiri
   body.regimImpozit = f.regimImpozit ? f.regimImpozit.value : 'micro';

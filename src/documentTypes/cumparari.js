@@ -4,6 +4,7 @@
 
 const { L, F } = require('./helpers');
 const fiscal = require('../fiscal');
+const d301 = require('../d301');
 const { round2 } = require('../util');
 
 /**
@@ -194,6 +195,35 @@ module.exports = [
       return [
         L(d.contStoc || '371', '401', d.baza, 'Achiziție intracomunitară (bază)'),
         L('4426', '4427', tva, 'Taxare inversă - TVA deductibilă și colectată'),
+      ];
+    },
+  },
+  // ── D301: TVA SPECIALA, NERECUPERABILA ───────────────────────────────────────────────────
+  // Tip separat de achizitia intracomunitara a unui platitor normal de TVA. Acolo taxa se
+  // autolichideaza 4426=4427 si este, de regula, deductibila. La persoana care depune D301 taxa
+  // este DATORATA efectiv bugetului si nu se deduce: 446 este obligatia, iar taxa intra in costul
+  // bunului/serviciului. Refolosirea tipului obisnuit ar produce un net TVA zero si ar subevalua
+  // costul exact cu taxa platita statului.
+  {
+    id: d301.TIP_DOCUMENT,
+    nume: 'Achizitie cu TVA speciala — D301 (firma neplatitoare de TVA)',
+    grup: 'Cumparari',
+    fields: [F.data, F.partener,
+      { ...F.cuiFurnizor, label: 'Cod TVA furnizor (cu prefixul țării, dacă este din UE)' },
+      { ...F.document, label: 'Număr factură/autofactură (max. 20 caractere)', required: true },
+      { name: 'tipOperatieD301', label: 'Secțiunea D301', type: 'select', required: true,
+        options: Object.entries(d301.OPERATIUNI).map(([value, label]) => ({ value, label: value + ' — ' + label })) },
+      { name: 'moneda', label: 'Valuta din document', type: 'select', required: true, default: 'EUR',
+        options: d301.VALUTE.map((value) => ({ value, label: value })) },
+      { name: 'sumaValuta', label: 'Valoarea în valuta documentului', type: 'number', required: true },
+      { name: 'curs', label: 'Curs valutar la data exigibilității', type: 'number', step: '0.0001', required: true },
+      { name: 'cota', label: 'Cota TVA datorată în România (%)', type: 'number', default: fiscal.FISCAL.tvaStandard, required: true },
+      { name: 'contCost', label: 'Cont de cost/stoc/imobilizare (TVA nedeductibilă intră aici)', type: 'account', default: '628' }],
+    build: (d) => {
+      const m = d301.dinCampuri(d);
+      return [
+        L(d.contCost || '628', '401', m.baza, 'Achiziție declarabilă prin D301 — baza documentului'),
+        L(d.contCost || '628', '446', m.tva, 'TVA specială D301, nedeductibilă și inclusă în cost'),
       ];
     },
   },
