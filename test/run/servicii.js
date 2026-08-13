@@ -141,6 +141,7 @@ const totpT = require('../../src/totp');
 // garda pe contul demo: refuzata la nivel de serviciu, nu doar in ruta
 const demoAcc = { username: 'demo' };
 eq('demo: setup 2FA -> 403', errStatus(() => asvc.setup2fa(demoAcc)), 403);
+eq('demo: regenerare coduri 2FA -> 403', errStatus(() => asvc.regenerateRecoveryCodes(demoAcc, '123456')), 403);
 eq('demo: actualizare profil -> 403', errStatus(() => asvc.updateProfile(demoAcc, { email: 'spam@x.ro' })), 403);
 eq('demo: revocare dispozitive -> 403', errStatus(() => asvc.revokeTrustedDevices(demoAcc)), 403);
 // changePassword nu se mai verifica AICI: e asincron (scrypt pe threadpool — vezi src/auth.js),
@@ -158,12 +159,23 @@ ok('setup: secret + otpauth + QR', !!s2fa.secret && /^otpauth:\/\/totp\//.test(s
 eq('enable cu cod gresit -> 400', errStatus(() => asvc.enable2fa(u1, '000000')), 400);
 const codeNowT = () => totpT.codeForCounter(s2fa.secret, Math.floor(Date.now() / 1000 / 30));
 const epoch0 = u1.tfdEpoch || 0;
-asvc.enable2fa(u1, codeNowT());
+const enabled2fa = asvc.enable2fa(u1, codeNowT());
 ok('enable: activat, pending consumat, dispozitivele vechi invalidate', u1.twofa === true && !u1.pending2fa && u1.totpSecret === s2fa.secret && u1.tfdEpoch === epoch0 + 1);
+ok('enable: opt coduri de rezerva afisabile o singura data', enabled2fa.recoveryCodes.length === 8 && enabled2fa.recoveryCodes.every((x) => /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(x)));
+ok('codurile de rezerva raman in baza doar ca hash-uri', u1.twofaRecoveryHashes.length === 8
+  && u1.twofaRecoveryHashes.every((x) => /^[a-f0-9]{64}$/.test(x))
+  && !JSON.stringify(u1).includes(enabled2fa.recoveryCodes[0]));
+ok('codul de rezerva este consumat o singura data', asvc.consumeRecoveryCode(u1, enabled2fa.recoveryCodes[0])
+  && !asvc.consumeRecoveryCode(u1, enabled2fa.recoveryCodes[0]) && u1.twofaRecoveryHashes.length === 7);
 eq('setup cu 2FA deja activ -> 400', errStatus(() => asvc.setup2fa(u1)), 400);
+eq('regenerare cu alt cod decat TOTP -> 400', errStatus(() => asvc.regenerateRecoveryCodes(u1, enabled2fa.recoveryCodes[1])), 400);
+const regenerated2fa = asvc.regenerateRecoveryCodes(u1, codeNowT());
+ok('regenerarea produce set nou si invalideaza toate codurile vechi', regenerated2fa.recoveryCodes.length === 8
+  && !asvc.consumeRecoveryCode(u1, enabled2fa.recoveryCodes[1]));
 eq('disable cu cod gresit -> 400', errStatus(() => asvc.disable2fa(u1, '000000')), 400);
-asvc.disable2fa(u1, codeNowT());
-ok('disable: dezactivat + secret sters', u1.twofa === false && !u1.totpSecret);
+asvc.disable2fa(u1, regenerated2fa.recoveryCodes[0]);
+ok('disable: accepta rezerva, dezactiveaza si sterge toate secretele', u1.twofa === false && !u1.totpSecret
+  && !u1.twofaRecoverySalt && !u1.twofaRecoveryHashes);
 eq('disable cand nu e activ -> 400', errStatus(() => asvc.disable2fa(u1, '000000')), 400);
 // sesiuni: listare (curenta marcata, ordinea inversata) + logout-others + revocare
 const sess = asvc.listSessions(u1, 's2');

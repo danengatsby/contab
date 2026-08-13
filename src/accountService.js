@@ -10,6 +10,7 @@
 // serviciu — un apelant viitor nu poate ocoli blocajul sarind peste ruta.
 
 const db = require('./db');
+const crypto = require('crypto');
 const totp = require('./totp');
 const authlib = require('./auth');
 const plans = require('./plans');
@@ -25,6 +26,55 @@ function reqNotDemo(u) {
 }
 
 // ── 2FA (TOTP) ──
+
+const RECOVERY_COUNT = 8;
+const RECOVERY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // fara 0/O/1/I ambigue
+
+function normalizeRecoveryCode(code) {
+  return String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function recoveryHash(salt, code) {
+  return crypto.createHash('sha256').update(String(salt) + ':' + normalizeRecoveryCode(code)).digest('hex');
+}
+
+/** Inlocuieste intreg setul. Valorile in clar se intorc o singura data; in baza raman doar hash-uri. */
+function replaceRecoveryCodes(u) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const codes = [];
+  for (let n = 0; n < RECOVERY_COUNT; n += 1) {
+    let raw = '';
+    const rnd = crypto.randomBytes(12);
+    for (const b of rnd) raw += RECOVERY_ALPHABET[b & 31];
+    codes.push(raw.match(/.{1,4}/g).join('-'));
+  }
+  u.twofaRecoverySalt = salt;
+  u.twofaRecoveryHashes = codes.map((code) => recoveryHash(salt, code));
+  return codes;
+}
+
+/** Consuma atomic in RAM un cod one-time. Persistenta este responsabilitatea apelantului. */
+function consumeRecoveryCode(u, code) {
+  const normalized = normalizeRecoveryCode(code);
+  if (!u || !u.twofaRecoverySalt || !Array.isArray(u.twofaRecoveryHashes)
+      || normalized.length !== 12 || ![...normalized].every((x) => RECOVERY_ALPHABET.includes(x))) return false;
+  const candidate = Buffer.from(recoveryHash(u.twofaRecoverySalt, normalized), 'hex');
+  let found = -1;
+  for (let i = 0; i < u.twofaRecoveryHashes.length; i += 1) {
+    const saved = Buffer.from(String(u.twofaRecoveryHashes[i] || ''), 'hex');
+    if (saved.length === candidate.length && crypto.timingSafeEqual(saved, candidate)) found = i;
+  }
+  if (found < 0) return false;
+  u.twofaRecoveryHashes.splice(found, 1);
+  return true;
+}
+
+function verifySecondFactor(u, code, opts) {
+  const value = String(code || '').replace(/\s/g, '');
+  if (/^\d{6}$/.test(value) && totp.verify(u && u.totpSecret, value)) return { ok: true, recovery: false };
+  if ((!opts || opts.allowRecovery !== false) && consumeRecoveryCode(u, value)) return { ok: true, recovery: true };
+  return { ok: false, recovery: false };
+}
 
 function setup2fa(u) {
   reqNotDemo(u);
@@ -42,17 +92,31 @@ function enable2fa(u, code) {
   if (!u.pending2fa) fail(400, 'Initiaza intai configurarea 2FA.');
   if (!totp.verify(u.pending2fa, code)) fail(400, 'Cod gresit. Verifica ora dispozitivului.');
   u.totpSecret = u.pending2fa; u.twofa = true; delete u.pending2fa;
+  const recoveryCodes = replaceRecoveryCodes(u);
   u.tfdEpoch = (u.tfdEpoch || 0) + 1; // invalideaza eventualele dispozitive de incredere vechi
   db.save();
+  return { recoveryCodes };
 }
 
 function disable2fa(u, code) {
   reqNotDemo(u);
   if (!u.twofa) fail(400, '2FA nu este activat.');
-  if (!totp.verify(u.totpSecret, code)) fail(400, 'Cod gresit.');
+  if (!verifySecondFactor(u, code).ok) fail(400, 'Cod TOTP sau cod de rezerva gresit.');
   u.twofa = false; delete u.totpSecret; delete u.pending2fa;
+  delete u.twofaRecoverySalt; delete u.twofaRecoveryHashes;
   u.tfdEpoch = (u.tfdEpoch || 0) + 1;
   db.save();
+}
+
+function regenerateRecoveryCodes(u, code) {
+  reqNotDemo(u);
+  if (!u.twofa) fail(400, '2FA nu este activat.');
+  // Regenerarea cere intentionat TOTP, nu un cod de rezerva: un singur cod furat nu poate crea
+  // un set nelimitat. Utilizatorul fara dispozitiv poate intra cu rezerva si dezactiva 2FA.
+  if (!totp.verify(u.totpSecret, code)) fail(400, 'Cod TOTP gresit.');
+  const recoveryCodes = replaceRecoveryCodes(u);
+  db.save();
+  return { recoveryCodes };
 }
 
 function revokeTrustedDevices(u) {
@@ -146,7 +210,8 @@ function updateProfile(u, b) {
 
 module.exports = {
   reqNotDemo,
-  setup2fa, enable2fa, disable2fa, revokeTrustedDevices,
+  setup2fa, enable2fa, disable2fa, regenerateRecoveryCodes, revokeTrustedDevices,
+  verifySecondFactor, consumeRecoveryCode, normalizeRecoveryCode,
   listSessions, logoutOtherSessions, revokeSession,
   changePassword, getProfile, updateProfile, dismissWizard,
 };

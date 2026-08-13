@@ -14,7 +14,7 @@ const { typesForClient } = require('./documentTypes');
 const ai = require('./aiExtractor');
 const fiscal = require('./fiscal');
 const authlib = require('./auth');
-const totp = require('./totp');
+const accountSvc = require('./accountService');
 const messages = require('./messages');
 const plans = require('./plans');
 const identitate = require('./identitate');
@@ -103,11 +103,17 @@ module.exports = function registerAuthRoutes(app, ctx) {
     let rememberDevice = false;
     if (u.twofa && !deviceTrusted(req, u)) {
       if (!code) return res.json({ twofa: true }); // parola corecta, mai trebuie codul
-      if (!totp.verify(u.totpSecret, code)) {
+      const factor = accountSvc.verifySecondFactor(u, code);
+      if (!factor.ok) {
         bumpFail(req); esec('cod 2FA gresit'); db.save();
-        return res.status(401).json({ error: 'Cod 2FA gresit.', twofa: true });
+        return res.status(401).json({ error: 'Cod TOTP sau cod de rezerva gresit.', twofa: true });
       }
-      rememberDevice = !!remember;
+      // Un cod de rezerva este pentru recuperare punctuala, nu pentru a transforma automat
+      // dispozitivul pe care a fost introdus intr-unul de incredere timp de 30 de zile.
+      rememberDevice = !!remember && !factor.recovery;
+      if (factor.recovery) logAudit('2fa.recovery_used', 'cod de rezerva consumat la autentificare', {
+        req, userId: u.id, username: u.username, firmaId: null,
+      });
     }
     clearFails(req);
     startSession(req, res, u); // creeaza sesiune + cookie sid

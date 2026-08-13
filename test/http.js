@@ -2768,14 +2768,25 @@ async function main() {
     ok('2fa setup: secret + otpauth + QR', setup.json.secret && /^otpauth:\/\/totp\//.test(setup.json.otpauth) && /<svg/.test(setup.json.qrSvg));
     const codeNow = () => totp.codeForCounter(setup.json.secret, Math.floor(Date.now() / 1000 / 30));
     eq('2fa enable: cod gresit -> 400', (await req('POST', '/api/2fa/enable', { cookie: c2f, body: { code: '000000' } })).status, 400);
-    ok('2fa enable: cod corect -> activat', (await req('POST', '/api/2fa/enable', { cookie: c2f, body: { code: codeNow() } })).json.ok === true);
+    const enabled2fa = await req('POST', '/api/2fa/enable', { cookie: c2f, body: { code: codeNow() } });
+    const recoveryCodes = enabled2fa.json.recoveryCodes || [];
+    ok('2fa enable: activat + 8 coduri de rezerva afisate o singura data', enabled2fa.json.ok === true
+      && recoveryCodes.length === 8 && recoveryCodes.every((x) => /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(x)));
     const lNoCode = await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1' } });
     ok('login cu 2FA: parola corecta fara cod -> cere codul, FARA sesiune', lNoCode.status === 200 && lNoCode.json.twofa === true && !/^sid=/.test(lNoCode.cookie));
     eq('login cu 2FA: cod gresit -> 401', (await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1', code: '000000' } })).status, 401);
+    const lRecovery = await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1', code: recoveryCodes[0], remember: true } });
+    ok('login cu cod de rezerva -> sesiune, cod consumat si dispozitiv NEretinut', lRecovery.status === 200 && /^sid=/.test(lRecovery.cookie)
+      && lRecovery.json.user.twofaRecoveryCount === 7 && !/tfd=/.test(lRecovery.cookie));
+    eq('acelasi cod de rezerva nu poate fi refolosit', (await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1', code: recoveryCodes[0] } })).status, 401);
     const lCode = await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1', code: codeNow() } });
     ok('login cu 2FA: parola + cod -> sesiune', lCode.status === 200 && lCode.json.ok && /^sid=/.test(lCode.cookie));
+    eq('regenerare coduri: un cod de rezerva NU este suficient', (await req('POST', '/api/2fa/recovery-codes', { cookie: lCode.cookie, body: { code: recoveryCodes[1] } })).status, 400);
+    const regenerated2fa = await req('POST', '/api/2fa/recovery-codes', { cookie: lCode.cookie, body: { code: codeNow() } });
+    ok('regenerare cu TOTP -> set complet nou', regenerated2fa.status === 200 && regenerated2fa.json.recoveryCodes.length === 8);
+    eq('regenerarea invalideaza imediat setul vechi', (await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1', code: recoveryCodes[2] } })).status, 401);
     eq('2fa disable: cod gresit -> 400', (await req('POST', '/api/2fa/disable', { cookie: lCode.cookie, body: { code: '000000' } })).status, 400);
-    ok('2fa disable: cod corect -> dezactivat', (await req('POST', '/api/2fa/disable', { cookie: lCode.cookie, body: { code: codeNow() } })).json.ok === true);
+    ok('2fa disable: cod de rezerva nou -> dezactivat', (await req('POST', '/api/2fa/disable', { cookie: lCode.cookie, body: { code: regenerated2fa.json.recoveryCodes[0] } })).json.ok === true);
     ok('dupa dezactivare: login simplu functioneaza din nou', (await req('POST', '/api/login', { body: { username: 'doifa', password: 'parola1' } })).json.ok === true);
 
     // ── BACKUP / RESTORE COMPLET (admin, src/routes/backup.js): rutele care suprascriu TOATA baza ──

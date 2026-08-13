@@ -78,7 +78,7 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
-| `POST /api/login` | `{ username, password, code?, remember? }` | `{ ok, user }`; `{ twofa: true }` dacă mai trebuie codul; 401 credențiale/cod greșit; 429 lockout |
+| `POST /api/login` | `{ username, password, code?, remember? }` | `code` acceptă TOTP sau cod de rezervă one-time; `{ twofa: true }` dacă mai trebuie codul; 401 credențiale/cod greșit; 429 lockout |
 | `POST /api/logout` | — | `{ ok }` |
 | `GET /api/me` | — | `{ user }` sau `{ user: null }` (public) |
 | `POST /api/register` | `{ nume, username, password }` | `{ ok, firma, user }` + sesiune; 400 validări; 403 înscriere dezactivată; 429 peste 5/oră |
@@ -88,7 +88,9 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 | `GET /api/profile` | — | `{ username, email, role, tip, notifyDeadlines, profil }` |
 | `POST /api/profile` | `{ email?, notifyDeadlines?, profil? }` | `{ ok, email, notifyDeadlines, profil }` (câmpurile profil sunt tăiate la 120 caractere) |
 | `POST /api/2fa/setup` | — | `{ secret, otpauth, qrSvg }`; 400 dacă 2FA e deja activ |
-| `POST /api/2fa/enable` / `disable` | `{ code }` | `{ ok }`; 400 cod greșit sau stare nepotrivită |
+| `POST /api/2fa/enable` | `{ code }` | `{ ok, recoveryCodes[8] }`; codurile în clar sunt afișate o singură dată |
+| `POST /api/2fa/disable` | `{ code }` | `{ ok }`; acceptă TOTP sau cod de rezervă |
+| `POST /api/2fa/recovery-codes` | `{ code }` | regenerează setul numai cu TOTP valid; `{ ok, recoveryCodes[8] }` |
 | `POST /api/2fa/revoke-devices` | — | `{ ok }` — invalidează dispozitivele „ține minte" |
 | `GET /api/sessions` | — | lista sesiunilor active, cea curentă marcată |
 | `POST /api/sessions/logout-others` / `DELETE /api/sessions/:id` | — | `{ ok }` |
