@@ -926,6 +926,10 @@ body.dark .imper-banner button{background:#ffd778;color:#2a2008}
 .alert.info{border-left-color:#3b82c4}
 .alert.bad{border-left-color:var(--danger)}
 .alert.ok{border-left-color:var(--good);cursor:default}
+/* „Nicio urgenta, dar pornirea nu e gata": informativa si NECLICABILA, ca `.ok`. Nu refoloseste
+   `.info`, care e a alertelor pe care se POATE apasa — `.alert` pune `cursor:pointer`, deci un
+   `div` cu `.info` ar arata clicabil fara sa fie. */
+.alert.start{border-left-color:#3b82c4;cursor:default}
 /* quick-action proeminent (lansare wizard) */
 .qa.qa-primary{background:linear-gradient(135deg,rgba(194,97,60,.12),rgba(194,97,60,.03));border-color:var(--accent)}
 .qa.qa-primary .t{color:var(--accent)}
