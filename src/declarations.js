@@ -274,6 +274,37 @@ function submissionDiff(prev, curr) {
   return out;
 }
 
+// Cat de aproape trebuie sa fie termenul ca declaratia sa treaca din „in pregatire" in „de depus".
+// Aceeasi fereastra pe care o foloseste si ecranul de notificari (parametrul `days` din
+// `notifications`), scrisa o singura data: doua praguri ar fi insemnat ca acelasi termen e „urgent"
+// pe un ecran si linistit pe celalalt.
+const ZILE_TERMEN_APROPIAT = 7;
+
+/**
+ * Unde se afla o declaratie fata de TERMENUL ei. Functie PURA.
+ *
+ * Distinctia exista de mult, dar traia doar in `notifications()`: acolo un termen viitor si unul
+ * depasit produceau `kind` diferit ('termen' vs 'restanta'), iar dashboard-ul le colora diferit.
+ * Registrul de declaratii primea doar `overdue`, deci „termen peste 43 de zile, nicio operatiune
+ * in luna" si „termenul a trecut ieri" se afisau IDENTIC — „Nedepusa", pe fond de avertizare.
+ * Pentru o firma inscrisa acum un minut, asta citeste ca un repros, nu ca o informatie.
+ *
+ * Cele trei stari nu sunt cosmetica: sunt trei actiuni diferite ale omului — nimic (inca), pregateste
+ * depunerea, respectiv repara o intarziere care poate costa penalitati.
+ *
+ * @returns {'gata'|'restanta'|'termen'|'in-pregatire'}
+ *   `gata` = depusa sau scutita: termenul nu mai spune nimic despre ea.
+ */
+function urgentaTermen(due, status, today, days) {
+  if (status === 'depusa' || status === 'scutita') return 'gata';
+  const t = today || new Date().toISOString().slice(0, 10);
+  if (!due) return 'in-pregatire';
+  if (due < t) return 'restanta';
+  const fereastra = Number.isFinite(Number(days)) ? Number(days) : ZILE_TERMEN_APROPIAT;
+  const orizont = new Date(Date.parse(t) + fereastra * 86400000).toISOString().slice(0, 10);
+  return due <= orizont ? 'termen' : 'in-pregatire';
+}
+
 /** Registrul unei firme pe o luna: asteptate ∪ inregistrari, cu termen si restanta. */
 function registerForFirma(d, v, period, today) {
   const t = today || new Date().toISOString().slice(0, 10);
@@ -282,7 +313,10 @@ function registerForFirma(d, v, period, today) {
     const status = rec.status || 'nedepusa';
     return {
       tip: e.tip, nume: e.nume, period, due: e.due, status,
-      overdue: e.due < t && status !== 'depusa' && status !== 'scutita',
+      // `urgenta` e derivata; `overdue` ramane, dar ca UMBRA a ei — doua reguli paralele pentru
+      // aceeasi intrebare ar fi exact defectul reparat aici, cu semnul schimbat.
+      urgenta: urgentaTermen(e.due, status, t),
+      overdue: urgentaTermen(e.due, status, t) === 'restanta',
       generatedAt: rec.generatedAt || null, submittedAt: rec.submittedAt || null,
       recipisa: rec.recipisa || '', note: rec.note || '', links: descarcari(e.tip, period),
     };
@@ -293,7 +327,10 @@ function registerForFirma(d, v, period, today) {
     if (rows.some((r) => r.tip === rec.tip)) continue;
     rows.push({
       tip: rec.tip, nume: (TIPURI[rec.tip] || {}).nume || rec.tip, period, due: dueDate(rec.tip, period),
-      status: rec.status, overdue: false, generatedAt: rec.generatedAt, submittedAt: rec.submittedAt,
+      // Inregistrare manuala in afara celor asteptate: nu poate fi „restanta" (firma nici n-o
+      // datoreaza), dar starea trebuie sa existe ca sa nu fie `undefined` in interfata.
+      status: rec.status, urgenta: rec.status === 'depusa' || rec.status === 'scutita' ? 'gata' : 'in-pregatire',
+      overdue: false, generatedAt: rec.generatedAt, submittedAt: rec.submittedAt,
       recipisa: rec.recipisa || '', note: rec.note || '', links: descarcari(rec.tip, period),
     });
   }
@@ -379,12 +416,12 @@ function notifications(d, scopedList, today, days, lookback) {
       const period = addMonths(curPeriod, -i);
       if (dela && period < dela) continue; // luna dinaintea existentei firmei: n-are obligatii aici
       for (const r of registerForFirma(d, v, period, t)) {
-        if (r.status === 'depusa' || r.status === 'scutita') continue;
-        if (r.overdue) {
-          items.push({ kind: 'restanta', firmaId: v.firmaId, firma: (v.company || {}).nume || '', tip: r.tip, nume: r.nume, period, due: r.due, status: r.status });
-        } else if (r.due >= t && r.due <= horizon) {
-          items.push({ kind: 'termen', firmaId: v.firmaId, firma: (v.company || {}).nume || '', tip: r.tip, nume: r.nume, period, due: r.due, status: r.status });
-        }
+        // ACEEASI derivare ca in registrul de declaratii (`urgentaTermen`), nu o a doua copie a
+        // regulii. Fereastra vine din parametrul rutei, deci ecranul de notificari poate cere alt
+        // orizont — dar impartirea „restanta / de depus / in pregatire" ramane una singura.
+        const u = urgentaTermen(r.due, r.status, t, days || 7);
+        if (u === 'gata' || u === 'in-pregatire') continue;
+        items.push({ kind: u === 'restanta' ? 'restanta' : 'termen', firmaId: v.firmaId, firma: (v.company || {}).nume || '', tip: r.tip, nume: r.nume, period, due: r.due, status: r.status });
       }
     }
     // e-Factura B2B netrimisa in SPV: restanta cand termenul de 5 zile lucratoare e depasit
@@ -398,5 +435,5 @@ function notifications(d, scopedList, today, days, lookback) {
   return { count: items.length, items };
 }
 
-module.exports = { TIPURI, STATUSES, DESCARCARI, descarcari, dueDate, expectedForFirma, record, registerForFirma, portfolio, notifications, primaLunaUrmarita, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays,
+module.exports = { TIPURI, STATUSES, DESCARCARI, descarcari, dueDate, urgentaTermen, ZILE_TERMEN_APROPIAT, expectedForFirma, record, registerForFirma, portfolio, notifications, primaLunaUrmarita, addMonths, find, eFacturaNetrimise, addBusinessDays, addCalendarDays,
   addSubmission, lastSubmission, submissionDiff, RECT_IN_XML };

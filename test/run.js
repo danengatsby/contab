@@ -5726,6 +5726,36 @@ const regDecl = declMod.registerForFirma(dDecl, vDecl, '2026-06', '2026-08-01');
 eq('registru: d300 depusa', regDecl.find((r) => r.tip === 'd300').status, 'depusa');
 ok('registru: d112 nedepusa cu termen depasit -> restanta', regDecl.find((r) => r.tip === 'd112').overdue);
 ok('registru: d300 depusa nu e restanta', !regDecl.find((r) => r.tip === 'd300').overdue);
+// ── Cele TREI stari fata de termen (nu doua) ──────────────────────────────────────────────
+// „Termen peste 43 de zile, nicio operatiune in luna" si „termenul a trecut ieri" se afisau
+// IDENTIC: „Nedepusa", pe fond de avertizare. Pentru o firma inscrisa acum un minut, trei randuri
+// asa citesc ca un repros — si tocesc semnalul exact acolo unde el trebuie sa insemne „acum".
+eq('termen departe -> in pregatire', declMod.urgentaTermen('2026-09-25', 'nedepusa', '2026-08-13'), 'in-pregatire');
+eq('termen in fereastra de 7 zile -> de depus', declMod.urgentaTermen('2026-08-18', 'nedepusa', '2026-08-13'), 'termen');
+eq('termen trecut -> restanta', declMod.urgentaTermen('2026-08-12', 'nedepusa', '2026-08-13'), 'restanta');
+// Ziua termenului NU e restanta: ai timp pana la finalul ei.
+eq('chiar in ziua termenului esti inca „de depus"', declMod.urgentaTermen('2026-08-13', 'nedepusa', '2026-08-13'), 'termen');
+// Marginea ferestrei, in ambele sensuri — praguri „aproape" ascund exact erori de o zi.
+eq('a saptea zi intra in fereastra', declMod.urgentaTermen('2026-08-20', 'nedepusa', '2026-08-13'), 'termen');
+eq('a opta zi NU intra', declMod.urgentaTermen('2026-08-21', 'nedepusa', '2026-08-13'), 'in-pregatire');
+// Depusa/scutita: termenul nu mai spune nimic despre ele, oricat de vechi ar fi.
+eq('depusa nu mai are urgenta', declMod.urgentaTermen('2020-01-01', 'depusa', '2026-08-13'), 'gata');
+eq('scutita la fel', declMod.urgentaTermen('2020-01-01', 'scutita', '2026-08-13'), 'gata');
+// „Generata" (XML descarcat) e tot nedepusa fata de ANAF: termenul curge mai departe.
+eq('generata ramane sub termen', declMod.urgentaTermen('2020-01-01', 'generata', '2026-08-13'), 'restanta');
+// Registrul poarta acum derivarea, iar `overdue` ramane UMBRA ei — nu o a doua regula.
+const regUrg = declMod.registerForFirma(dDecl, vDecl, '2026-06', '2026-08-01');
+ok('registrul poarta urgenta pe fiecare rand', regUrg.every((r) => typeof r.urgenta === 'string' && r.urgenta));
+ok('`overdue` e exact „urgenta === restanta"', regUrg.every((r) => r.overdue === (r.urgenta === 'restanta')));
+// Cazul din constatare: firma inscrisa in august, cu termene in septembrie -> nimic rosu.
+const vNoua = { firmaId: 77, company: { cui: 'RO12345674', nume: 'NOU', tvaPlatitor: true, perioadaTva: 'L' }, entries: [], angajati: [] };
+const regNoua = declMod.registerForFirma({ declarations: [] }, vNoua, '2026-08', '2026-08-13');
+ok('firma proaspata are declaratii de depus in septembrie', regNoua.length >= 2);
+ok('...si NICIUNA nu e restanta', !regNoua.some((r) => r.urgenta === 'restanta'));
+ok('...toate sunt „in pregatire"', regNoua.every((r) => r.urgenta === 'in-pregatire'));
+// Dar NU dispar: o firma inregistrata in scopuri de TVA datoreaza decontul si pe zero.
+ok('declaratiile RAMAN pe ecran, doar isi schimba tonul', regNoua.some((r) => r.tip === 'd300'));
+
 const portoDecl = declMod.portfolio(dDecl, [vDecl], '2026-06', '2026-08-01');
 eq('portofoliu: asteptate (cu saft lunar)', portoDecl.tot.asteptate, 5);
 eq('portofoliu: depuse', portoDecl.tot.depuse, 1);

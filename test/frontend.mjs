@@ -392,6 +392,36 @@ section('Dashboard: un cont în minus nu are voie să se ascundă într-un total
   eq('șir negativ e tratat numeric', dashboard.dalaDisponibil('-12.5', '100', '87.5').ton, 'red');
 }
 
+section('Declarații: eticheta spune UNDE ești față de termen, nu doar „Nedepusă"');
+{
+  // „Nedepusă" e adevărat, dar nu spune nimic: orice declarație e nedepusă până e depusă.
+  // Informația utilă e alta — mai ai timp, e momentul, sau ai întârziat.
+  const s = (st, u) => livrabile.declStareAfisata(st, u);
+  eq('termen departe: etichetă neutră', s('nedepusa', 'in-pregatire').t, 'În pregătire');
+  eq('termen aproape: „De depus"', s('nedepusa', 'termen').t, 'De depus');
+  eq('termen trecut: „Restanță"', s('nedepusa', 'restanta').t, 'Restanță');
+  // Culoarea e parte din afirmație, nu decor: neutru ≠ avertisment ≠ alarmă. Fără asta, cele trei
+  // stări ar avea nume diferite și același ton — adică exact defectul reparat, mai discret.
+  const culori = ['in-pregatire', 'termen', 'restanta'].map((u) => s('nedepusa', u).c);
+  eq('cele trei stări au trei tonuri distincte', new Set(culori).size, 3);
+  ok('„în pregătire" NU folosește tonul de avertizare', s('nedepusa', 'in-pregatire').c !== s('nedepusa', 'termen').c);
+
+  // Starea SALVATĂ bate derivarea: „Depusă" rămâne „Depusă".
+  eq('starea salvată rămâne vizibilă', s('depusa', 'gata').t, 'Depusă');
+  eq('...și „Scutită" la fel', s('scutita', 'gata').t, 'Scutită');
+  // „Generată" (XML descărcat, nedepus la ANAF) își păstrează eticheta, dar restanța se adaugă.
+  eq('„Generată" rămâne generată', s('generata', 'restanta').t, 'Generată');
+  ok('...cu marcajul de restanță alături', s('generata', 'restanta').restanta === true);
+  ok('...iar când nu e restanță, fără marcaj', !s('generata', 'in-pregatire').restanta);
+
+  // Fiecare stare derivată își explică singură înțelesul — altfel „În pregătire" pe un rând care
+  // în selector arată „Nedepusă" ar părea două sisteme de stări.
+  ok('starea derivată poartă o explicație', s('nedepusa', 'in-pregatire').titlu.includes('nedepusă'));
+  ok('restanța explică ce s-a întâmplat', /trecut/i.test(s('nedepusa', 'restanta').titlu));
+  // Apel fără urgență (ecrane care n-o au): comportamentul de dinainte, fără excepție.
+  eq('fără urgență se cade pe starea salvată', s('nedepusa', undefined).t, 'Nedepusă');
+}
+
 section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
 {
   // `azi` e fixat: altfel vechimea restanței ar depinde de ziua în care rulează suita.
@@ -692,12 +722,17 @@ eq('cheile lipsă din rânduri contează ca 0', rapoarte.balanceTotals([{ cod: '
 ok('totalul e rotunjit la ban (fara reziduu de virgulă mobilă)', rapoarte.balanceTotals([{ siD: 1.1 }, { siD: 2.2 }]).siD === 3.3);
 
 section('Declarații: insigna de stare și sensul provizionului');
-ok('starea „depusă" își arată eticheta', livrabile.declBadge('depusa', false).includes('Depusă'));
-ok('starea „eroare" își arată eticheta', livrabile.declBadge('eroare', false).includes('Eroare'));
+// Al doilea argument nu mai e un boolean „overdue", ci URGENȚA derivată din termen (vezi
+// `urgentaTermen` în src/declarations.js) — de aceea insigna poate spune trei lucruri, nu două.
+ok('starea „depusă" își arată eticheta', livrabile.declBadge('depusa', 'gata').includes('Depusă'));
+ok('starea „eroare" își arată eticheta', livrabile.declBadge('eroare', 'in-pregatire').includes('Eroare'));
 // o stare necunoscuta NU trebuie sa lase insigna goala: cade pe „nedepusă" (cel mai prudent)
-ok('starea necunoscută cade pe „Nedepusă", nu pe gol', livrabile.declBadge('inventata', false).includes('Nedepusă'));
-ok('starea lipsă cade tot pe „Nedepusă"', livrabile.declBadge(undefined, false).includes('Nedepusă'));
-ok('restanța e marcată separat de stare', livrabile.declBadge('nedepusa', true).includes('restanță'));
+ok('starea necunoscută cade pe „Nedepusă", nu pe gol', livrabile.declBadge('inventata', 'in-pregatire').includes('Nedepusă'));
+ok('starea lipsă cu urgență necunoscută cade tot pe „Nedepusă"', livrabile.declBadge(undefined, undefined).includes('Nedepusă'));
+ok('restanța e marcată separat de stare', livrabile.declBadge('generata', 'restanta').includes('restanță'));
+// ...iar pe o declarație fără stare salvată, restanța devine chiar eticheta: „⏰ restanță" lipit
+// de „Nedepusă" spunea de două ori același lucru și lăsa cuvântul important la coadă.
+ok('restanța fără stare salvată devine eticheta', livrabile.declBadge('nedepusa', 'restanta').includes('Restanță'));
 ok('fără restanță nu apare marcajul', !livrabile.declBadge('nedepusa', false).includes('restanță'));
 // Poarta frontend <-> server: fiecare stare acceptata de server are eticheta in frontend.
 // Altfel registrul ar afisa „Nedepusă" pentru o declaratie de fapt depusa — exact invers.
