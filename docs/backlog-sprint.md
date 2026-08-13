@@ -414,6 +414,13 @@ profil art. 317, raport lunar, calendar/registru, D390 pentru operațiunile UE �
 4.1 este repetat în secțiunea-total 4 exact cum cere regula R32 a validatorului oficial. Referința
 generată trece DUKIntegrator și intră în poarta fiscală de release.
 
+## D311 — TVA colectată cu codul normal anulat — ✅ ÎNCHIS 2026-08-13
+
+Profil explicit pentru anularea/reînregistrarea codului TVA, tip de operațiune cu categoriile
+11/21/41/61, monografii fără conturile 4426/4427, raport lunar, calendar, registru și XML pentru
+ambele scheme mutual exclusive ale formularului. Referințele inițială, rectificativă și secțiunea V
+după reînregistrare trec validatorul oficial D311 J2.0.0.
+
 # P2 — infrastructură, pe semnal real
 
 ## 7. Offsite pe stocare obiect, criptat — ✅ ÎNCHIS 2026-07-28 (RTO nemăsurat)

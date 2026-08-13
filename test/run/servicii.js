@@ -1859,8 +1859,8 @@ section('Verificarea pre-depunere: acelasi verdict pentru cockpit si pentru buto
   const v = scopedSeed();
   const opt = { period: '2026-06', year: '2026' };
 
-  eq('tipurile stiute sunt cele zece din contract', dc.TYPES.join(','),
-    'd300,d301,d394,d390,d100,d101,intrastat,d205,d112,saft');
+  eq('tipurile stiute sunt cele unsprezece din contract', dc.TYPES.join(','),
+    'd300,d301,d311,d394,d390,d100,d101,intrastat,d205,d112,saft');
   // Fiecare tip declarat trebuie sa poata fi si CONSTRUIT — altfel lista minte.
   for (const t of dc.TYPES) {
     const vt = t === 'd301' ? Object.assign({}, v, {
@@ -1869,7 +1869,13 @@ section('Verificarea pre-depunere: acelasi verdict pentru cockpit si pentru buto
         period: '2026-06', data: '2026-06-15', document: 'F301', partener: 'UE', partenerCui: 'DE811907980',
         d301: { tipOperatie: 5, tipValuta: 'EUR', valoareValuta: 2000, cursValutar: 5, baza: 10000, cota: 21, tva: 2100 },
         lines: [{ debit: '628', credit: '401', suma: 10000 }, { debit: '628', credit: '446', suma: 2100 }] }]),
-    }) : v;
+    }) : (t === 'd311' ? Object.assign({}, v, {
+      company: Object.assign({}, v.company, { tvaCodAnulat: true, dataAnulareTva: '2026-06-01', motivAnulareTva: 'oficiu' }),
+      entries: v.entries.concat([{ id: 'dc311', tip: 'operatiune_tva_cod_anulat_d311', status: 'postat',
+        period: '2026-06', data: '2026-06-15', document: 'F311',
+        d311: { operatie: 11, sectiune: 'IV', baza: 1000, tva: 210, cota: 21 },
+        lines: [{ debit: '4111', credit: '704', suma: 1000 }, { debit: '635', credit: '446', suma: 210 }] }]),
+    }) : v);
     const x = dc.buildXml(vt, t, opt);
     ok('buildXml produce XML pentru ' + t, typeof x === 'string' && x.length > 50 && x.includes('<'));
     ok('...si e bine format', wellFormed(x));

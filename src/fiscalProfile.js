@@ -20,7 +20,11 @@ function build(company, ctx) {
   company = company || {};
   ctx = ctx || {};
   const pfa = company.tipEntitate === 'pfa';
-  const tvaPlatitor = !!company.tvaPlatitor;
+  // Codul ANULAT nu transforma firma intr-o neplatitoare obisnuita: ramane obligata sa colecteze
+  // taxa, dar prin D311 si 446, fara drept de deducere. Pentru restul motorului, codul anulat
+  // inseamna ca D300/D394 si conturile normale de TVA nu sunt disponibile.
+  const tvaCodAnulat = !!company.tvaCodAnulat;
+  const tvaPlatitor = !!company.tvaPlatitor && !tvaCodAnulat;
   const tvaArt317 = !tvaPlatitor && !!company.tvaArt317;
   const perioadaTva = tvaPlatitor ? (company.perioadaTva === 'T' ? 'T' : 'L') : null;
   // regim de impozitare: explicit (regimImpozit) sau derivat (pfa -> pfa; altfel implicit micro,
@@ -56,6 +60,10 @@ function build(company, ctx) {
     tipEntitate: pfa ? 'pfa' : (company.tipEntitate || 'srl'),
     pfa,
     tvaPlatitor,
+    tvaCodAnulat,
+    dataAnulareTva: String(company.dataAnulareTva || ''),
+    motivAnulareTva: company.motivAnulareTva === 'cerere' ? 'cerere' : 'oficiu',
+    dataReinregistrareTva: String(company.dataReinregistrareTva || ''),
     tvaArt317,                         // cod special pentru operatiuni intracomunitare, art. 317
     perioadaTva,                       // 'L' | 'T' | null (neplatitor)
     trimestrialTva: perioadaTva === 'T',
@@ -80,12 +88,13 @@ function build(company, ctx) {
  *  declaratii diferite: D390 le cere pe amandoua (art. 325), Intrastat doar bunurile — asa ca o
  *  firma care cumpara numai reclama din UE datoreaza D390, nu si raportarea statistica.
  *  Scutirile din profil suprima orice tip. */
-function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301) {
+function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD311) {
   if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return [];
   const sfarsitTrim = endOfQuarter(period);
   const intracom = typeof hasIntracom === 'function' && hasIntracom(period);
   const intracomServicii = typeof hasIntracomServicii === 'function' && hasIntracomServicii(period);
   const d301 = typeof hasD301 === 'function' && hasD301(period);
+  const d311 = typeof hasD311 === 'function' && hasD311(period);
   const tips = [];
   const add = (t) => { if (!profile.scutiri[t] && !tips.includes(t)) tips.push(t); };
   // TVA: D300 + D394 (lunar sau la sfarsit de trimestru, dupa perioada fiscala)
@@ -95,6 +104,8 @@ function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301) {
   // D301 nu este o declaratie „pe zero": apare numai in lunile in care exista o operatiune
   // speciala efectiva, indiferent daca persoana are sau nu codul special art. 317.
   if (d301) add('d301');
+  // D311, la fel ca D301, se depune numai pentru lunile cu taxa exigibila efectiv.
+  if (d311) add('d311');
   // Intrastat (INS): firma obligata (peste prag) + miscari de BUNURI in luna. Serviciile nu conteaza
   // aici, oricat de mari ar fi: Intrastatul e statistica de comert cu bunuri.
   if (profile.intrastat && intracom) add('intrastat');
@@ -141,12 +152,31 @@ function entryGuard(profile, entry) {
   const lines = (entry && entry.lines) || [];
   const sumBy = (test) => round2(lines.reduce((s, l) => s + (test(l) ? Number(l.suma) || 0 : 0), 0));
   if (entry && entry.tip === 'achizitie_tva_speciala_d301') {
+    if (profile && profile.tvaCodAnulat) {
+      return 'Firma are codul normal de TVA anulat. Pentru taxa datorată în această perioadă folosește operațiunea D311, nu D301.';
+    }
     if (profile && profile.tvaPlatitor) {
       return 'D301 este decontul special pentru persoane neînregistrate normal în scopuri de TVA. Firma este plătitoare de TVA — folosește achiziția intracomunitară/taxarea inversă și D300.';
     }
     const op = Number(entry.d301 && entry.d301.tipOperatie);
     if (profile && !profile.tvaArt317 && (op === 1 || op === 5)) {
       return 'Operațiunea D301 din secțiunea ' + op + ' cere înregistrarea specială în scopuri de TVA conform art. 317. Activează „Cod special TVA art. 317” în Setări după obținerea codului.';
+    }
+  }
+  if (entry && entry.tip === 'operatiune_tva_cod_anulat_d311') {
+    const op = Number(entry.d311 && entry.d311.operatie);
+    if (op === 61) {
+      if (!profile || !profile.tvaPlatitor || !/^\d{4}-\d{2}-\d{2}$/.test(profile.dataReinregistrareTva)) {
+        return 'Categoria 61 din D311 cere ca firma să fie reînregistrată normal în scopuri de TVA și data reînregistrării să fie completată în Setări → Firmă.';
+      }
+      if (entry.data && entry.data < profile.dataReinregistrareTva) return 'Categoria 61 D311 poate fi înregistrată numai la sau după data reînregistrării în scopuri de TVA.';
+    } else if (!profile || !profile.tvaCodAnulat || !/^\d{4}-\d{2}-\d{2}$/.test(profile.dataAnulareTva)) {
+      return 'Operațiunea D311 cere profilul „Cod normal de TVA anulat” și data anulării, completate în Setări → Firmă.';
+    } else if (entry.data && entry.data < profile.dataAnulareTva) {
+      return 'Exigibilitatea operațiunii D311 nu poate fi anterioară datei anulării codului TVA.';
+    }
+    if ((op === 11 || op === 21) && profile.motivAnulareTva === 'cerere') {
+      return 'Categoriile 11 și 21 sunt pentru codul TVA anulat din oficiu. La anularea la cerere se declară numai exigibilitatea ulterioară din sistemul TVA la încasare (categoria 41).';
     }
   }
   // Neplatitor de TVA nu poate COLECTA TVA (vanzare cu TVA). Taxarea inversa (4426=4427, net 0)

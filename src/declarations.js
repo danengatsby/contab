@@ -4,6 +4,7 @@ const { postedEntries } = require('./accounting'); // ciornele nu declanseaza as
 const fiscalProfile = require('./fiscalProfile'); // motorul de profil fiscal (sursa unica)
 const xml = require('./xml'); // perimetrul e-Factura (`isSendable`), derivat din tipurile de document
 const d301 = require('./d301');
+const d311 = require('./d311');
 
 // Registrul depunerilor de declaratii + termene fiscale + agregarea pe portofoliu (multi-firma).
 //
@@ -16,6 +17,7 @@ const d301 = require('./d301');
 const TIPURI = {
   d300: { nume: 'D300 — decont TVA' },
   d301: { nume: 'D301 — decont special TVA' },
+  d311: { nume: 'D311 — TVA colectată cu codul anulat' },
   d394: { nume: 'D394 — declarație informativă' },
   d112: { nume: 'D112 — contribuții și impozit salarii' },
   d390: { nume: 'D390 — recapitulativă intracomunitară (VIES)' },
@@ -41,6 +43,7 @@ const STATUSES = ['nedepusa', 'generata', 'depusa', 'eroare', 'scutita'];
 const DESCARCARI = {
   d300: (p) => [{ label: 'Recap PDF', href: '/pdf/d300?period=' + p }, { label: 'XML ANAF', href: '/xml/d300?period=' + p }],
   d301: (p) => [{ label: 'XML ANAF', href: '/xml/d301?period=' + p }],
+  d311: (p) => [{ label: 'XML ANAF', href: '/xml/d311?period=' + p }],
   d394: (p) => [{ label: 'XML ANAF', href: '/xml/d394?period=' + p }],
   d112: (p) => [{ label: 'Recap PDF', href: '/pdf/d112?period=' + p }, { label: 'XML ANAF', href: '/xml/d112?period=' + p }],
   d390: (p) => [{ label: 'XML ANAF', href: '/xml/d390?period=' + p }],
@@ -126,7 +129,8 @@ function expectedForFirma(v, period) {
   const hasIntracom = (per) => postedEntries(v).some((e) => eligibilD390(e) && esteIntracomBunuri(e) && inLuna(e, per));
   const hasIntracomServicii = (per) => postedEntries(v).some((e) => eligibilD390(e) && esteIntracomServicii(e) && inLuna(e, per));
   const hasD301 = (per) => postedEntries(v).some((e) => e.tip === d301.TIP_DOCUMENT && !e.stornat && inLuna(e, per));
-  return fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServicii, hasD301)
+  const hasD311 = (per) => postedEntries(v).some((e) => e.tip === d311.TIP_DOCUMENT && !e.stornat && inLuna(e, per));
+  return fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, hasD311)
     .map((tip) => ({ tip, nume: (TIPURI[tip] || {}).nume || tip, period, due: dueDate(tip, period, profile) }));
 }
 
@@ -235,7 +239,7 @@ function record(d, firmaId, tip, period, patch, nextIdFn) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Tipurile care poarta un steag de rectificare in XML (restul se redepun ca atare). */
-const RECT_IN_XML = { d112: true, d301: true };
+const RECT_IN_XML = { d112: true, d301: true, d311: true };
 
 /**
  * Inregistreaza o depunere noua peste (firmaId, tip, period). NU suprascrie: adauga in istoric.

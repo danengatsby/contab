@@ -1179,6 +1179,69 @@ ${rows}
 `;
 }
 
+/** D311 — TVA datorata de persoana al carei cod normal de TVA a fost anulat.
+ *
+ * Formularul are doua scheme mutual exclusive: IV (Data_A + OB_11..OB_52) si V
+ * (Data_I + OB_61/62). Validatorul oficial J2.0.0 accepta schema V fara Data_A/d_anul1/d_anul2,
+ * conform documentatiei de structura, chiar daca XSD-ul public din 2021 le marcheaza gresit ca
+ * obligatorii. DUKIntegrator este contractul efectiv de depunere si referintele acopera ambele. */
+function d311Xml(company, period, d, who, rect) {
+  company = company || {}; d = d || {}; rect = rect || {};
+  if (!(d.rows || []).length) throw new Error('Nu există operațiuni D311 postate în perioada ' + period + '.');
+  if (d.schema === 'mixta') {
+    throw new Error('D311 nu poate combina în aceeași declarație secțiunea IV (data anulării) cu secțiunea V (data reînregistrării). Separă operațiunile pe perioade/documente declarative.');
+  }
+  const { an, luna } = ym(period);
+  const cui = String(company.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
+  if (!/^(?:[1-9]\d{1,9}|[1-9]\d{12})$/.test(cui)) {
+    throw new Error('CUI-ul firmei lipsește sau nu are forma acceptată de D311.');
+  }
+  if (!String(company.nume || '').trim()) throw new Error('Denumirea firmei lipsește din Setări.');
+  const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ');
+  if (!adresa) throw new Error('Adresa firmei este obligatorie în D311.');
+  const w = who && who.nume ? who : { nume: 'Administrator', prenume: '-', functie: 'Administrator' };
+  const dataRo = (iso, label) => {
+    const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) throw new Error(label + ' lipsește sau nu este validă (folosește AAAA-LL-ZZ).');
+    const dt = new Date(iso + 'T00:00:00Z');
+    if (Number.isNaN(dt.getTime()) || dt.toISOString().slice(0, 10) !== iso) throw new Error(label + ' nu este o dată calendaristică validă.');
+    return m[3] + '.' + m[2] + '.' + m[1];
+  };
+  const lei = (v) => Math.round(Number(v) || 0);
+  const t = d.totaluri || {};
+  const val = (cod, camp) => lei((t[cod] || {})[camp]);
+  let schemaAttrs = '';
+  let totalControl = 0;
+  if (d.schema === 'reinregistrare') {
+    const b61 = val(61, 'baza'); const t61 = val(61, 'tva');
+    schemaAttrs = ` Data_I="${dataRo(company.dataReinregistrareTva, 'Data reînregistrării în scopuri de TVA')}" OB_61="${b61}" OB_62="${t61}"`;
+    totalControl = b61 + t61;
+  } else {
+    const b11 = val(11, 'baza'); const t11 = val(11, 'tva');
+    const b21 = val(21, 'baza'); const t21 = val(21, 'tva');
+    const b41 = val(41, 'baza'); const t41 = val(41, 'tva');
+    const b31 = b11 + b21; const t31 = t11 + t21;
+    const b51 = b31 + b41; const t51 = t31 + t41;
+    const laCerere = company.motivAnulareTva === 'cerere';
+    schemaAttrs = ` Data_A="${dataRo(company.dataAnulareTva, 'Data anulării codului TVA')}" d_anul1="${laCerere ? 0 : 1}" d_anul2="${laCerere ? 1 : 0}"`
+      + ` OB_11="${b11}" OB_12="${t11}" OB_21="${b21}" OB_22="${t21}"`
+      + ` OB_31="${b31}" OB_32="${t31}" OB_41="${b41}" OB_42="${t41}" OB_51="${b51}" OB_52="${t51}"`;
+    totalControl = b51 + t51;
+  }
+  const dRec = rect.rectificativa ? 1 : 0;
+  if (!dRec && totalControl <= 0) throw new Error('Declarația D311 inițială trebuie să conțină o bază sau taxă pozitivă.');
+  const dupaRezerva = !!rect.dupaRezerva;
+  const telefon = String(company.telefon || '').replace(/[^0-9+]/g, '').slice(0, 15);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- D311 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D311 fisier.xml -->
+<declaratie311 xmlns="mfp:anaf:dgti:d311:declaratie:v1"
+  luna="${esc(luna)}" an="${esc(an)}" d_rec="${dRec}" d_anulare="${dupaRezerva ? 1 : 0}"${dupaRezerva ? ` temei="${rect.temei === 2 ? 2 : 1}"` : ''}
+  nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}"
+  cui="${esc(cui)}" den="${esc(company.nume)}" adresa="${esc(adresa)}"${telefon ? ` telefon="${esc(telefon)}"` : ''}${company.email ? ` mail="${esc(company.email)}"` : ''}
+  totalPlata_A="${totalControl}"${schemaAttrs}/>
+`;
+}
+
 // D100 — declaratia privind obligatiile de plata la bugetul de stat pe schema OFICIALA v2
 // (aici: impozitul pe veniturile microintreprinderilor, trimestrial — cod obligatie 620).
 function d100Xml(company, period, d, who) {
@@ -1457,7 +1520,7 @@ function bilantXml(d) {
 module.exports = {
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
   perimetruEFactura, CIF_PERSOANA_FIZICA,
-  umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d301Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
+  umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d301Xml, d311Xml, D390_CODURI, d205Xml, d100Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
   bilantXml, bilantNsVersion, d177Xml,
   esc, // escaparea XML, refolosita de generatoarele din afara acestui fisier (ex. src/sepa.js)
 };

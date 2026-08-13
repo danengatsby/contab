@@ -23,6 +23,7 @@ const serverErrors = require('./src/serverErrors');
 const { round2, period: periodOf } = require('./src/util');
 const acc = require('./src/accounting'); // reguli pure de compunere (TVA partial deductibila)
 const d301 = require('./src/d301');
+const d311 = require('./src/d311');
 const { D394_COD_331 } = require('./src/xml');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
@@ -385,6 +386,7 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     // apar in conturi, iar TVA-ul e inclus in cost. Se pastreaza rezultatul aceleiasi functii
     // care a construit monografia, ca raportul si XML-ul sa citeasca exact aceleasi cifre.
     ...(tipId === d301.TIP_DOCUMENT ? { d301: d301.dinCampuri(f) } : {}),
+    ...(tipId === d311.TIP_DOCUMENT ? { d311: d311.dinCampuri(f) } : {}),
     ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
     ...(codCategorie331 ? { codCategorie331 } : {}), // categoria de bun art. 331, pentru op11 din D394
     fileId: fileId || null,

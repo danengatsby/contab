@@ -237,11 +237,14 @@ aprobarea și eventuala forțare.
 ## Declarații & e-Factura (`src/routes/declarations.js`, `declarationsXml.js`, `anaf.js`)
 
 - `GET /api/livrabile?period=` — borderoul lunar: ce declarații se depun și termenele.
-- `GET /xml/d300|d301|d394|d390|d112|d100|d205|saft?period=/an=` — XML-urile de declarații
+- `GET /xml/d300|d301|d311|d394|d390|d112|d100|d205|saft?period=/an=` — XML-urile de declarații
   (validate structural înainte de servire; `/xml/saft` intră sub plafonul de export).
 - `GET /api/d301?period=YYYY-MM` — recapitularea operațiunilor D301, pe secțiuni, cu baza, TVA-ul
   datorat și suma de control; `GET /xml/d301` refuză firmele plătitoare normal de TVA, perioadele
   fără operațiuni și antetul fără bancă/cont.
+- `GET /api/d311?period=YYYY-MM` — recapitularea operațiunilor din perioada în care codul normal
+  de TVA este anulat. `GET /xml/d311?period=` generează schema IV (data anulării și OB_11…OB_52)
+  sau schema V (data reînregistrării și OB_61/62), fără a permite combinarea lor.
 - `GET /api/declarations` + `POST /api/declarations/set` — registrul depunerilor.
 - `GET /xml/efactura/:id` — factura UBL 2.1 (CIUS-RO); `GET /api/efactura-list?period=`.
 - ANAF/SPV (OAuth per firmă): `GET /api/anaf/authorize|callback|config`,

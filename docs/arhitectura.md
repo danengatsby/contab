@@ -226,7 +226,7 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   rulează **84 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
   deci rularea produce mai multe rezultate) — exact fluxurile care nu se pot atinge pe demo
   live: roluri și drepturi granulare, resetare de parolă cu token real, importuri, erori SPV fără
-  credențiale, toate cele 11 declarații XML, **restaurarea efectivă** a unui backup (verificată
+  credențiale, toate cele 12 declarații XML, **restaurarea efectivă** a unui backup (verificată
   prin dispariția unui marcaj scris după arhivare) și panoul „Cine accesează aplicația" (tabelele
   se randează, filtrul schimbă conținutul, iar un cont fără drepturi nu vede nici cardul, nici
   datele din spatele lui). Importul balanței verifică în browser previzualizarea, salvarea unei

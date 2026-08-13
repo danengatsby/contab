@@ -8,13 +8,39 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-08-13 — D301 și bateria completă
+## Ultima verificare: 2026-08-13 — D311 și bateria completă
 
 Poarta fiscală forțată (`scripts/poarta-fiscala.sh --intotdeauna`) a regenerat și validat
-**34 din 34 de ieșiri**. Cele trei probe D301 au trecut DUKIntegrator: declarația inițială
+**37 din 37 de ieșiri**. Cele trei probe D301 au trecut DUKIntegrator: declarația inițială
 (`D301`), rectificativa (`D301-rect`) și achiziția unui mijloc de transport nou
 (`D301-mijloc`). Au rămas verzi și toate celelalte declarații, cele cinci variante SAF-T,
 situațiile financiare și schema e-Transport.
+
+Cele trei probe D311 sunt de asemenea valide: schema IV (`D311`), rectificativa (`D311-rect`) și
+schema V după reînregistrare (`D311-reinreg`). Validatorul din manifestul oficial este
+`D311Validator.jar` J2.0.0 (29.01.2021).
+
+### Implementare D311
+
+Rădăcina este `<declaratie311 xmlns="mfp:anaf:dgti:d311:declaratie:v1">`. Schema IV emite
+`Data_A`, motivul anulării și OB_11…OB_52; schema V emite exclusiv `Data_I` și OB_61/62. Cele două
+se exclud reciproc, iar generatorul refuză o perioadă care le combină. `totalPlata_A` este suma de
+control cerută de validator — baza plus taxa din totalurile schemei — nu numai TVA de plată.
+
+Există o contradicție oficială: XSD-ul public `d311_20210129.xsd` marchează `Data_A`, `d_anul1` și
+`d_anul2` obligatorii, dar structura oficială spune că ele lipsesc în schema V, iar DUKIntegrator
+J2.0.0 acceptă exact această variantă. Generatorul urmează contractul DUK folosit efectiv la
+depunere, dovedit prin `D311-reinreg`.
+
+Formularul tipărit a primit prin OPANAF 779/2024 căsuța „rectificativă ca urmare a unei notificări
+de conformare”, însă schema și validatorul electronic publicate de ANAF nu au primit un atribut
+corespunzător. Aplicația nu inventează unul; emite `d_rec=1` pentru rectificativă și consemnează
+motivul în istoricul intern al depunerilor.
+
+Surse: [pagina electronică D311](https://static.anaf.ro/static/10/Anaf/Declaratii_R/311.html),
+[structura XML](https://static.anaf.ro/static/10/Anaf/Declaratii_R/AplicatiiDec/structura_D311_2021_290121.pdf),
+[schema XSD](https://static.anaf.ro/static/10/Anaf/Declaratii_R/AplicatiiDec/d311_20210129.xsd),
+[formularul OPANAF 779/2024](https://static.anaf.ro/static/10/Anaf/formulare/311_OPANAF_779_2024.pdf).
 
 ## Verificare anterioară: 2026-08-08 — bateria completă, la push pe `main`
 

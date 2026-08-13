@@ -21,6 +21,7 @@ const { statePlata } = require('../src/payroll');
 const bilant = require('../src/bilant');
 const ptOpts = require('../src/profitTaxOptions');
 const d301 = require('../src/d301');
+const d311 = require('../src/d311');
 
 const dir = process.argv[2] || path.join(require('os').tmpdir(), 'contab-referinte');
 fs.mkdirSync(dir, { recursive: true });
@@ -82,6 +83,40 @@ const v301Mijloc = {
     lines: [{ debit: '2133', credit: '401', suma: 50000 }, { debit: '2133', credit: '446', suma: 10500 }] }],
 };
 w('D301-mijloc', xml.d301Xml(v301Mijloc.company, '2026-06', d301.report(v301Mijloc, '2026-06'), who));
+// D311 — schema IV (cod anulat din oficiu): o livrare si o achizitie cu taxa datorata de
+// beneficiar. Taxa sta in 446, fara 4426/4427, iar totalurile 31/51 sunt calculate de generator.
+const v311 = {
+  company: Object.assign({}, v.company, {
+    tvaCodAnulat: true, dataAnulareTva: '2026-06-01', motivAnulareTva: 'oficiu',
+  }), openingBalances: {}, entries: [
+    { id: 'd311-l', firmaId: 1, data: '2026-06-12', period: '2026-06', tip: d311.TIP_DOCUMENT,
+      status: 'postat', document: 'V-311', partener: 'CLIENT TEST', partenerCui: '87654321',
+      d311: { operatie: 11, sectiune: 'IV', baza: 1000, tva: 210, cota: 21 },
+      lines: [{ debit: '4111', credit: '704', suma: 1000 }, { debit: '635', credit: '446', suma: 210 }] },
+    { id: 'd311-a', firmaId: 1, data: '2026-06-18', period: '2026-06', tip: d311.TIP_DOCUMENT,
+      status: 'postat', document: 'A-311', partener: 'FURNIZOR TEST', partenerCui: '11223344',
+      d311: { operatie: 21, sectiune: 'IV', baza: 500, tva: 105, cota: 21 },
+      lines: [{ debit: '628', credit: '401', suma: 500 }, { debit: '628', credit: '446', suma: 105 }] },
+  ],
+};
+{
+  const r311 = d311.report(v311, '2026-06');
+  if (r311.totalBaza !== 1500 || r311.totalTva !== 315 || r311.schema !== 'anulare') {
+    throw new Error('D311: raportul de referinta este gresit — ' + JSON.stringify(r311));
+  }
+  w('D311', xml.d311Xml(v311.company, '2026-06', r311, who));
+  w('D311-rect', xml.d311Xml(v311.company, '2026-06', r311, who, { rectificativa: true }));
+}
+// Schema V se exclude de la schema IV si poarta Data_I + OB_61/62. Este o referinta separata
+// fiindca XSD-ul public din 2021 contrazice structura, iar contractul real este validatorul DUK.
+const v311Reinreg = {
+  company: Object.assign({}, v.company, { dataReinregistrareTva: '2026-06-10' }), openingBalances: {},
+  entries: [{ id: 'd311-r', firmaId: 1, data: '2026-06-20', period: '2026-06', tip: d311.TIP_DOCUMENT,
+    status: 'postat', document: 'R-311', partener: 'CLIENT VECHI', partenerCui: '22334455',
+    d311: { operatie: 61, sectiune: 'V', baza: 500, tva: 105, cota: 21 },
+    lines: [{ debit: '635', credit: '446', suma: 105 }] }],
+};
+w('D311-reinreg', xml.d311Xml(v311Reinreg.company, '2026-06', d311.report(v311Reinreg, '2026-06'), who));
 // D112 (salarii)
 w('D112', xml.d112Xml(v.company, '2026-06', statePlata(v.angajati), who));
 // D112 varianta CONCEDIU MEDICAL: angajatul din exemplu nu are niciunul, deci repartizarea

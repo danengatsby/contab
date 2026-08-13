@@ -2178,6 +2178,12 @@ Cu stimă,
           <label>Județ (cod, ex: RO-B) <input name="judet" /></label>
           <label class="check"><input name="tvaLaIncasare" type="checkbox" /> TVA la încasare (exigibilitate la încasare/plată — prin contul 4428)</label>
           <label class="check"><input name="tvaArt317" type="checkbox" /> Cod special TVA conform art. 317 (pentru D301/D390; nu înseamnă plătitoare normală de TVA)</label>
+          <label class="check"><input name="tvaCodAnulat" type="checkbox" /> Codul normal de TVA este anulat (operațiunile taxabile se declară prin D311, fără drept de deducere)</label>
+          <label>Data anulării codului TVA <input name="dataAnulareTva" type="date" /></label>
+          <label>Motivul anulării
+            <select name="motivAnulareTva"><option value="oficiu">Din oficiu — art. 316 alin. (11) lit. a–e/h</option><option value="cerere">La cerere, cu TVA la încasare — lit. g</option></select>
+          </label>
+          <label>Data reînregistrării TVA <span class="muted">(pentru secțiunea V D311)</span> <input name="dataReinregistrareTva" type="date" /></label>
           <label>Pro-rata TVA provizorie % (doar regim mixt — gol = deducere integrală) <input name="proRataTva" type="number" min="1" max="99" step="1" placeholder="ex. 40" /></label>
           <label>Cod CAEN (activitatea principală — apare în D300) <input name="caen" maxlength="4" placeholder="ex. 1071" /></label>
           <label>Perioada fiscală TVA (decontul D300)
@@ -2227,6 +2233,7 @@ Cu stimă,
             <div class="row" id="scutiriBox">
               <label class="check"><input type="checkbox" data-scutire="d300" /> D300</label>
               <label class="check"><input type="checkbox" data-scutire="d301" /> D301</label>
+              <label class="check"><input type="checkbox" data-scutire="d311" /> D311</label>
               <label class="check"><input type="checkbox" data-scutire="d394" /> D394</label>
               <label class="check"><input type="checkbox" data-scutire="d390" /> D390</label>
               <label class="check"><input type="checkbox" data-scutire="d112" /> D112</label>

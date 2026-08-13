@@ -50,7 +50,7 @@ plătitor TVA + **perioadă L/T**, **TVA la încasare**, **regim** (`micro`/`pro
 per declarație). Toate câmpurile au implicite compatibile cu firmele existente: un profil
 construit dintr-o firmă veche dă exact comportamentul de dinainte.
 
-`fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServices, hasD301)` derivă lista
+`fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServices, hasD301, hasD311)` derivă lista
 de declarații din profil;
 `declarations.expectedForFirma` (și, prin ea, registrul, portofoliul și notificările) **deleagă**
 aici. Câmpurile de profil se editează prin `/api/company` (allowlist `FIRMA_EDITABLE`) și profilul
@@ -67,11 +67,11 @@ Trei trepte, în ordinea încrederii:
 | Status | Ce înseamnă | Cum se obține |
 |---|---|---|
 | **calcul intern** | XML bine-format + câmpuri obligatorii + CUI/perioadă valide | automat, la generare (`src/validate.js`) |
-| **validat oficial** | trece validatorul ANAF (DUKIntegrator) fără erori | `scripts/valideaza-duk.sh D300/D301/D394/D112/D390/D100/D205/D406 fișier.xml` |
+| **validat oficial** | trece validatorul ANAF (DUKIntegrator) fără erori | `scripts/valideaza-duk.sh D300/D301/D311/D394/D112/D390/D100/D205/D406 fișier.xml` |
 | **necesită verificare contabilă** | corectitudinea de FOND (încadrări, deduceri, spețe) | întotdeauna — vezi §4 |
 
-Toate ieșirile fiscale din bateria de referință, inclusiv D301 în variantele inițială,
-rectificativă și mijloc de transport nou, trec treapta „validat oficial" pe datele de exemplu.
+Toate ieșirile fiscale din bateria de referință, inclusiv D301 și D311 în variantele lor distincte,
+trec treapta „validat oficial" pe datele de exemplu.
 Numărul și jurnalul probei sunt în `docs/validare-oficiala.md`. Validarea oficială se repetă
 oricum obligatoriu la depunerea în SPV.
 

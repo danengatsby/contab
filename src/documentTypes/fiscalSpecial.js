@@ -5,6 +5,7 @@
 const { L, F, TROZ } = require('./helpers');
 const { round2 } = require('../util');
 const fiscal = require('../fiscal'); // cotele NU se hardcodeaza — sursa unica e fiscalConfig
+const d311 = require('../d311');
 
 // Optiunile de plata: trezoreria obisnuita plus „neplatita inca", care lasa datoria pe 462.
 const PLATA_RETINERE = TROZ.concat([{ value: '462', label: 'Neplătită încă (rămâne pe 462)' }]);
@@ -26,6 +27,40 @@ function construieste(fel, d, contCheltuiala, explicatie) {
 }
 
 module.exports = [
+  // ───────────── D311: COD NORMAL DE TVA ANULAT ─────────────
+  // Taxa datorata nu trece prin 4427: firma nu are cod valid si nici drept de deducere. Pentru
+  // livrarile deja facturate (randurile 41/61), baza a fost recunoscuta la documentul initial;
+  // aici se posteaza numai 635=446, altfel venitul si creanta s-ar dubla.
+  {
+    id: d311.TIP_DOCUMENT,
+    nume: 'Operațiune cu TVA datorată după anularea codului — D311',
+    grup: 'Regularizari',
+    // Document declarativ/contabil, nu generatorul facturii. Categoria 11 poate porni de la o
+    // factura emisa, dar generatorul UBL actual citeste TVA numai din 4427; aici taxa este legal
+    // in 446. Marcarea drept e-Factura ar trimite un XML fara taxa, deci refuzam explicit.
+    eFactura: 'nu',
+    fields: [F.data, F.partener, F.cuiPartener, { ...F.document, required: true },
+      { name: 'tipOperatieD311', label: 'Categoria D311', type: 'select', required: true,
+        options: Object.entries(d311.OPERATIUNI).map(([value, x]) => ({ value, label: value + ' — ' + x.nume })) },
+      { ...F.baza, label: 'Baza declarabilă D311 (lei)' },
+      { ...F.tva, label: 'TVA datorată prin D311 (lei)', required: true }, F.cota,
+      { name: 'contVenit', label: 'Cont venit (pentru categoria 11)', type: 'account', default: '704' },
+      { name: 'contCost', label: 'Cont cost/stoc (pentru categoria 21)', type: 'account', default: '628' }],
+    build: (d) => {
+      const m = d311.dinCampuri(d);
+      if (m.operatie === 11) return [
+        L('4111', d.contVenit || '704', m.baza, 'Livrare în perioada codului TVA anulat — baza'),
+        L('635', '446', m.tva, 'TVA datorată prin D311, fără utilizarea contului 4427'),
+      ];
+      if (m.operatie === 21) return [
+        L(d.contCost || '628', '401', m.baza, 'Achiziție cu TVA datorată de beneficiar — baza'),
+        L(d.contCost || '628', '446', m.tva, 'TVA D311 nedeductibilă, inclusă în cost'),
+      ];
+      return [L('635', '446', m.tva,
+        m.operatie === 41 ? 'TVA la încasare exigibilă după anularea codului — D311'
+          : 'TVA pentru operațiune din perioada codului anulat, declarată după reînregistrare — D311')];
+    },
+  },
   // ───────────── IMPOZIT RETINUT LA SURSA (pentru D205) ─────────────
   //
   // MONOGRAFIA trece prin 462 „Creditori diversi", nu direct pe trezorerie. Varianta veche

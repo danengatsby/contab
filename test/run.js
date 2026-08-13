@@ -2846,6 +2846,70 @@ section('D301 — TVA speciala la neplatitori (art. 317)');
   ok('schema: valuta din afara nomenclatorului este refuzata la intrare', /neacceptată/.test(errValuta));
 }
 
+section('D311 — TVA colectata dupa anularea codului normal de TVA');
+{
+  const d311 = require('../src/d311');
+  const fp311 = require('../src/fiscalProfile');
+  const fields = { data: '2026-06-12', document: 'V-311', partener: 'Client', cuiPartener: '87654321',
+    tipOperatieD311: '11', baza: 1000, tva: 210, cota: 21, contVenit: '704' };
+  const m = d311.dinCampuri(fields);
+  eq('D311: incadrarea pastreaza baza si taxa efectiva', JSON.stringify(m),
+    JSON.stringify({ operatie: 11, sectiune: 'IV', baza: 1000, tva: 210, cota: 21 }));
+  const lines = gt2(d311.TIP_DOCUMENT).build(fields);
+  ok('D311: livrarea recunoaste baza, iar taxa merge 635=446 (fara 4427)',
+    lines.some((l) => l.debit === '4111' && l.credit === '704' && l.suma === 1000)
+      && lines.some((l) => l.debit === '635' && l.credit === '446' && l.suma === 210)
+      && !lines.some((l) => /^442/.test(l.debit) || /^442/.test(l.credit)));
+  const ach = gt2(d311.TIP_DOCUMENT).build(Object.assign({}, fields, {
+    tipOperatieD311: '21', baza: 500, tva: 105, contCost: '628',
+  }));
+  ok('D311: taxa achizitiei este nedeductibila si intra in cost',
+    ach.some((l) => l.debit === '628' && l.credit === '401' && l.suma === 500)
+      && ach.some((l) => l.debit === '628' && l.credit === '446' && l.suma === 105));
+  const view311 = { company: { cui: '12345674', nume: 'TEST SRL', adresa: 'Str. Test 1',
+    tvaPlatitor: true, tvaCodAnulat: true, dataAnulareTva: '2026-06-01', motivAnulareTva: 'oficiu' },
+  entries: [
+    { id: '311-l', tip: d311.TIP_DOCUMENT, status: 'postat', data: '2026-06-12', period: '2026-06',
+      document: 'V-311', d311: m, lines },
+    { id: '311-a', tip: d311.TIP_DOCUMENT, status: 'postat', data: '2026-06-18', period: '2026-06',
+      document: 'A-311', d311: { operatie: 21, sectiune: 'IV', baza: 500, tva: 105, cota: 21 }, lines: ach },
+  ] };
+  const r311 = d311.report(view311, '2026-06');
+  eq('D311: raportul alege schema anularii', r311.schema, 'anulare');
+  eq('D311: raportul totalizeaza taxa o singura data', r311.totalTva, 315);
+  const x311 = xml.d311Xml(view311.company, '2026-06', r311,
+    { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
+  ok('D311 XML bine-format', wellFormed(x311));
+  ok('D311: subtotalurile oficiale 31/51 si suma de control torna',
+    /OB_31="1500" OB_32="315"/.test(x311) && /OB_51="1500" OB_52="315"/.test(x311)
+      && /totalPlata_A="1815"/.test(x311));
+  ok('D311 rectificativ: XML poarta d_rec=1', /d_rec="1"/.test(xml.d311Xml(view311.company,
+    '2026-06', r311, null, { rectificativa: true })));
+  const view61 = { company: Object.assign({}, view311.company, { tvaCodAnulat: false,
+    dataReinregistrareTva: '2026-06-10' }), entries: [{ id: '311-r', tip: d311.TIP_DOCUMENT,
+    status: 'postat', data: '2026-06-20', period: '2026-06', document: 'R-311',
+    d311: { operatie: 61, sectiune: 'V', baza: 500, tva: 105, cota: 21 },
+    lines: [{ debit: '635', credit: '446', suma: 105 }] }] };
+  const x61 = xml.d311Xml(view61.company, '2026-06', d311.report(view61, '2026-06'));
+  ok('D311 sectiunea V: foloseste exclusiv Data_I si OB_61/62',
+    /Data_I="10\.06\.2026"/.test(x61) && /OB_61="500" OB_62="105"/.test(x61) && !/Data_A=/.test(x61));
+  const mix = { company: view311.company, entries: view311.entries.concat(view61.entries) };
+  let errMix = '';
+  try { xml.d311Xml(mix.company, '2026-06', d311.report(mix, '2026-06')); } catch (e) { errMix = e.message; }
+  ok('D311: schemele IV si V nu pot fi amestecate', /nu poate combina/.test(errMix));
+  const asteptate = require('../src/declarations').expectedForFirma(view311, '2026-06').map((x) => x.tip);
+  ok('D311: calendarul o cere numai in luna cu operatiune efectiva', asteptate.includes('d311'));
+  const p = fp311.build(view311.company);
+  ok('profil: codul anulat dezactiveaza D300, fara a pierde starea speciala', p.tvaCodAnulat && !p.tvaPlatitor);
+  ok('guard: firma obisnuita nu poate posta D311', /Cod normal de TVA anulat/.test(fp311.entryGuard(
+    fp311.build({ tvaPlatitor: false }), view311.entries[0]) || ''));
+  ok('guard: anularea la cerere nu permite categoriile D311 rezervate anularii din oficiu',
+    /anulat din oficiu/.test(fp311.entryGuard(fp311.build(Object.assign({}, view311.company,
+      { motivAnulareTva: 'cerere' })), view311.entries[0]) || ''));
+  ok('guard: categoria 61 cere data reinregistrarii', /reînregistrării/.test(fp311.entryGuard(
+    fp311.build({ tvaPlatitor: true }), view61.entries[0]) || ''));
+}
+
 section('C1-C2: concediul medical pe zile calendaristice + cursul plafonului micro');
 {
   const pay = require('../src/payroll');

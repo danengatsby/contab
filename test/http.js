@@ -1554,7 +1554,43 @@ async function main() {
       ok('D301: registrul asteapta D301 si D390 in luna operatiunii', cal301.status === 200
         && cal301.json.rows.some((x) => x.tip === 'd301') && cal301.json.rows.some((x) => x.tip === 'd390'));
       if (e301.json.entry) await req('POST', '/api/entries/' + e301.json.entry.id + '/storno', { cookie: c1, body: { data: '2026-10-09' } });
-      await req('POST', '/api/company', { cookie: c1, body: { tvaPlatitor: true, tvaArt317: false } }); // restaurez regimul TVA
+      // D311: fara profilul de cod anulat operatiunea este refuzata; dupa configurare, articolul
+      // foloseste 446 si declaratia intra automat in registru.
+      const d311FaraProfil = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'operatiune_tva_cod_anulat_d311', fields: { data: '2026-10-12', partener: 'Client D311',
+          cuiPartener: '87654321', document: 'V-311', tipOperatieD311: '11', baza: 1000, tva: 210,
+          cota: 21, contVenit: '704' },
+      } });
+      ok('D311: operatiunea fara profil de cod anulat este blocata',
+        d311FaraProfil.status === 400 && /Cod normal de TVA anulat/.test(d311FaraProfil.text));
+      const set311 = await req('POST', '/api/company', { cookie: c1, body: {
+        tvaCodAnulat: true, dataAnulareTva: '2026-10-01', motivAnulareTva: 'oficiu', tvaArt317: false,
+      } });
+      ok('D311: profilul de anulare si data sunt persistate', set311.status === 200
+        && set311.json.company.tvaCodAnulat === true && set311.json.company.dataAnulareTva === '2026-10-01');
+      const e311 = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'operatiune_tva_cod_anulat_d311', fields: { data: '2026-10-12', partener: 'Client D311',
+          cuiPartener: '87654321', document: 'V-311', tipOperatieD311: '11', baza: 1000, tva: 210,
+          cota: 21, contVenit: '704' },
+      } });
+      ok('D311: articolul pastreaza metadata si posteaza taxa 635=446', e311.status === 200
+        && e311.json.entry.d311.operatie === 11
+        && e311.json.entry.lines.some((l) => l.debit === '635' && l.credit === '446' && l.suma === 210)
+        && !e311.json.entry.lines.some((l) => /^442/.test(l.debit) || /^442/.test(l.credit)));
+      const api311 = await req('GET', '/api/d311?period=2026-10', { cookie: c1 });
+      ok('D311: raportul API totalizeaza baza si taxa', api311.status === 200
+        && api311.json.totalBaza === 1000 && api311.json.totalTva === 210 && api311.json.schema === 'anulare');
+      const xml311 = await req('GET', '/xml/d311?period=2026-10', { cookie: c1 });
+      ok('D311: XML contine data anularii, randul 11 si totalurile corelate', xml311.status === 200
+        && /Data_A="01\.10\.2026"/.test(xml311.text) && /OB_11="1000" OB_12="210"/.test(xml311.text)
+        && /totalPlata_A="1210"/.test(xml311.text));
+      const cal311 = await req('GET', '/api/declarations?period=2026-10', { cookie: c1 });
+      ok('D311: registrul o asteapta in luna operatiunii', cal311.status === 200
+        && cal311.json.rows.some((x) => x.tip === 'd311' && /xml\/d311/.test(JSON.stringify(x.links || []))));
+      if (e311.json.entry) await req('POST', '/api/entries/' + e311.json.entry.id + '/storno', { cookie: c1, body: { data: '2026-10-13' } });
+      await req('POST', '/api/company', { cookie: c1, body: {
+        tvaPlatitor: true, tvaArt317: false, tvaCodAnulat: false, dataAnulareTva: '', dataReinregistrareTva: '',
+      } }); // restaurez regimul TVA
       // dupa restaurare, D300 se genereaza din nou
       eq('dupa restaurare platitor: /xml/d300 -> 200', (await req('GET', '/xml/d300?period=2026-06', { cookie: c1 })).status, 200);
     }

@@ -45,6 +45,12 @@
   iar TVA-ul nedeductibil intră în același cost contra 446. Profilul firmei păstrează separat codul
   special art. 317; acesta nu transformă firma în plătitoare normală de TVA. XML-ul D301 și D390
   sunt generate din același marcaj, iar referința D301 trece DUKIntegrator.
+- **Cod normal de TVA anulat — D311:** tipul `operatiune_tva_cod_anulat_d311` acoperă categoriile
+  11/21/41/61. Taxa datorată se ține în 446, fără 4426/4427; la achiziții intră în cost, iar la
+  livrările deja recunoscute se postează numai 635=446, ca să nu se dubleze venitul. Profilul
+  păstrează data și motivul anulării, respectiv data reînregistrării. Documentul este suport
+  contabil/declarativ și nu generează e-Factura: UBL-ul actual citește TVA numai din 4427, iar aici
+  ar emite greșit o factură fără taxă.
 - **Tab „Ghid”:** parametri fiscali, glosar de termeni și întrebări frecvente.
 - **Conturi analitice pe partener** (`src/analytic.js`, tab „Analitic”): detalierea conturilor
   de terți (401, 4111, 404, 419, 409…) pe analitice per partener (401.01, 401.02…), cu
