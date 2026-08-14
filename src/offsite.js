@@ -45,22 +45,31 @@ function signRequest(opts) {
     method = 'PUT', endpoint, region, service = 's3', bucket, key,
     accessKey, secretKey, payload = Buffer.alloc(0), contentType = 'application/octet-stream',
     amzDate, // YYYYMMDDTHHMMSSZ
+    // Sirul de interogare CANONIC (deja codificat si sortat de apelant, ex. 'lifecycle=').
+    // Operatiunile pe BUCKET (retentie, listare) traiesc in query, nu in cale — fara el
+    // semnatura s-ar calcula peste o alta cerere decat cea trimisa, iar serverul ar raspunde
+    // `SignatureDoesNotMatch`, care arata a credentiala gresita desi credentiala e buna.
+    query = '',
+    // Antete suplimentare care intra SI in semnatura (ex. content-md5, cerut de PutLifecycle).
+    extraHeaders = null,
   } = opts;
 
   const host = new URL(endpoint).host;
   const dateStamp = amzDate.slice(0, 8);
-  const canonicalUri = '/' + uriEncodePath(bucket + '/' + key);
+  // Cheia goala inseamna operatiune pe BUCKET: calea e `/bucket`, fara „/" final (unul in plus
+  // ar desemna un obiect cu nume gol, iar semnatura n-ar mai corespunde caii cerute).
+  const canonicalUri = '/' + uriEncodePath(key ? bucket + '/' + key : bucket);
   const payloadHash = sha256hex(payload);
 
-  const headers = {
+  const headers = Object.assign({
     host,
     'content-type': contentType,
     'x-amz-content-sha256': payloadHash,
     'x-amz-date': amzDate,
-  };
+  }, extraHeaders || {});
   const signedHeaders = Object.keys(headers).sort().join(';');
   const canonicalHeaders = Object.keys(headers).sort().map((h) => h + ':' + headers[h] + '\n').join('');
-  const canonicalRequest = [method, canonicalUri, '', canonicalHeaders, signedHeaders, payloadHash].join('\n');
+  const canonicalRequest = [method, canonicalUri, query, canonicalHeaders, signedHeaders, payloadHash].join('\n');
 
   const scope = [dateStamp, region, service, 'aws4_request'].join('/');
   const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, sha256hex(canonicalRequest)].join('\n');
@@ -68,7 +77,9 @@ function signRequest(opts) {
     .update(stringToSign, 'utf8').digest('hex');
 
   return {
-    url: endpoint.replace(/\/$/, '') + canonicalUri,
+    // URL-ul poarta EXACT sirul canonic de interogare, nu o forma echivalenta (`?lifecycle` vs.
+    // `?lifecycle=`): serverul recanonicalizeaza ce primeste, iar orice diferenta rupe semnatura.
+    url: endpoint.replace(/\/$/, '') + canonicalUri + (query ? '?' + query : ''),
     headers: Object.assign({}, headers, {
       Authorization: 'AWS4-HMAC-SHA256 Credential=' + accessKey + '/' + scope
         + ', SignedHeaders=' + signedHeaders + ', Signature=' + signature,
@@ -124,6 +135,84 @@ async function getObject(cfg, key, fetchImpl) {
   return Buffer.from(await r.arrayBuffer());
 }
 
+// ── RETENTIA din bucket (regula de lifecycle) ────────────────────────────────────────────────
+//
+// De ce traieste AICI si nu doar in consola furnizorului: o regula setata cu mana dintr-o
+// interfata web e configuratie invizibila — nimeni nu stie ca exista, nimeni n-o poate reface
+// dupa o migrare de furnizor si nimic nu semnaleaza cand cineva o schimba. Aceeasi lectie ca la
+// configul nginx, care a driftat doua saptamani fara sa se vada (vezi `npm run nginx-drift`).
+//
+// Cifra: local se pastreaza 14 arhive complete (CONTAB_BACKUP_KEEP_FULL). Offsite-ul e plasa de
+// DEZASTRU, deci trebuie sa acopere si o problema descoperita tarziu (o corupere care se vede
+// abia la o inchidere de trimestru), nu doar accidentul de ieri. La ~0,2 MB pe zi, 180 de zile
+// inseamna ~36 MB — costul nu e argumentul, marginirea cresterii este.
+const RETENTIE_ZILE = 180;
+const RETENTIE_MULTIPART_ZILE = 7; // urcari intrerupte: ocupa spatiu FACTURABIL si nu se vad la listare
+
+/** XML-ul regulii de retentie. Pur, deci verificabil fara retea. */
+function lifecycleXml(prefix, days, abortDays) {
+  const p = String(prefix || '').replace(/\/$/, '');
+  return '<LifecycleConfiguration>'
+    + '<Rule>'
+    + '<ID>contab-arhive</ID>'
+    + '<Filter><Prefix>' + (p ? p + '/' : '') + '</Prefix></Filter>'
+    + '<Status>Enabled</Status>'
+    + '<Expiration><Days>' + Number(days || RETENTIE_ZILE) + '</Days></Expiration>'
+    + '<AbortIncompleteMultipartUpload><DaysAfterInitiation>'
+    + Number(abortDays || RETENTIE_MULTIPART_ZILE) + '</DaysAfterInitiation></AbortIncompleteMultipartUpload>'
+    + '</Rule>'
+    + '</LifecycleConfiguration>';
+}
+
+/** Citeste din XML ce s-a aplicat efectiv — ca sa se compare cu ce am CERUT, nu cu ce am trimis. */
+function lifecycleSummary(xml) {
+  const s = String(xml || '');
+  if (!s.trim()) return null;
+  const num = (re) => { const m = s.match(re); return m ? Number(m[1]) : null; };
+  const mPrefix = s.match(/<Prefix>([^<]*)<\/Prefix>/);
+  return {
+    prefix: mPrefix ? mPrefix[1] : '',
+    activa: /<Status>Enabled<\/Status>/.test(s),
+    zile: num(/<Expiration>\s*<Days>(\d+)<\/Days>/),
+    zileMultipart: num(/<DaysAfterInitiation>(\d+)<\/DaysAfterInitiation>/),
+  };
+}
+
+/** Aplica regula de retentie pe bucket. S3 cere Content-MD5 pe aceasta operatiune. */
+async function putBucketLifecycle(cfg, xml, fetchImpl) {
+  const doFetch = fetchImpl || fetch;
+  const payload = Buffer.from(xml, 'utf8');
+  const amzDate = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const s = signRequest({
+    method: 'PUT', endpoint: cfg.endpoint, region: cfg.region, bucket: cfg.bucket, key: '',
+    accessKey: cfg.accessKey, secretKey: cfg.secretKey, payload, amzDate,
+    query: 'lifecycle=', contentType: 'application/xml',
+    extraHeaders: { 'content-md5': crypto.createHash('md5').update(payload).digest('base64') },
+  });
+  const r = await doFetch(s.url, { method: 'PUT', headers: s.headers, body: payload });
+  if (!r.ok) {
+    const txt = await r.text().catch(() => '');
+    throw new Error('S3 PUT lifecycle ' + r.status + ': ' + String(txt).slice(0, 300));
+  }
+  return { ok: true, status: r.status };
+}
+
+/** Citeste regula existenta. Bucket fara regula => '' (nu e o eroare, e o stare). */
+async function getBucketLifecycle(cfg, fetchImpl) {
+  const doFetch = fetchImpl || fetch;
+  const amzDate = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const s = signRequest({
+    method: 'GET', endpoint: cfg.endpoint, region: cfg.region, bucket: cfg.bucket, key: '',
+    accessKey: cfg.accessKey, secretKey: cfg.secretKey, payload: Buffer.alloc(0), amzDate,
+    query: 'lifecycle=',
+  });
+  const r = await doFetch(s.url, { method: 'GET', headers: s.headers });
+  const txt = await r.text().catch(() => '');
+  if (r.status === 404 || /NoSuchLifecycleConfiguration/.test(txt)) return '';
+  if (!r.ok) throw new Error('S3 GET lifecycle ' + r.status + ': ' + String(txt).slice(0, 300));
+  return txt;
+}
+
 /**
  * Avertismentul de CONFIDENTIALITATE al copiei offsite.
  *
@@ -153,4 +242,5 @@ function confidentialityWarning(stare) {
     + 'Detalii: docs/rulare.md, sectiunea RTO / RPO.';
 }
 
-module.exports = { signRequest, signingKey, putObject, getObject, configured, fromEnv, uriEncodePath, confidentialityWarning };
+module.exports = { signRequest, signingKey, putObject, getObject, configured, fromEnv, uriEncodePath, confidentialityWarning,
+  lifecycleXml, lifecycleSummary, putBucketLifecycle, getBucketLifecycle, RETENTIE_ZILE, RETENTIE_MULTIPART_ZILE };

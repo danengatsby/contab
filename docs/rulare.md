@@ -341,20 +341,27 @@ de pe 18 nu se rejoacă pe 16, iar prima rulare a picat exact așa.
 Concluzia onestă: partea *tehnică* a revenirii e sub 2 secunde la volumul actual și scalează cu
 dimensiunea dump-ului; ce rămâne de scurtat e pasul manual de mai sus.
 
-> ⚠️ **Starea reală a copiei offsite, măsurată pe server la 2026-08-02** (`npm run offsite-check`):
-> `CONTAB_BACKUP_KEY` **este setat** — arhiva pleacă **criptată** (AES-256-CBC, PBKDF2 200.000
-> iterații), cu round-trip verificat înainte de fiecare trimitere. Variabilele `CONTAB_OFFSITE_*`
-> rămân **absente**, deci calea pe stocare obiect **nu e activă** și transportul efectiv e tot
-> e-mailul către `CONTAB_BACKUP_EMAIL_TO` — acum însă cu conținut cifrat, nu în clar.
+> ✅ **Starea reală a copiei offsite, măsurată pe server la 2026-08-14** (`npm run offsite-check`
+> → **VERDE**): arhiva pleacă **criptată** (AES-256-CBC, PBKDF2 200.000 iterații, round-trip
+> verificat înainte de fiecare trimitere) și ajunge pe **stocare obiect**, nu doar pe e-mail.
+> Dovedit atunci, cap-coadă: obiect descărcat înapoi din bucket și restaurat pe o mașină **goală**
+> (container cu doar `openssl` și `unzip`, fără Node și fără depozit) → `db.json`, `contab.sql`,
+> `uploads/` și `audit/`.
 >
-> Ce rămâne de făcut pentru „offsite complet": bucketul S3-compatibil (`CONTAB_OFFSITE_ENDPOINT` /
-> `_BUCKET` / `_KEY` / `_SECRET`). Până atunci `offsite-check` iese cu **2 = neconfigurat**,
-> deliberat: „criptat, dar tot prin cutia poștală a unui terț" nu e steaua finală.
+> **Retenția bucketului** e ținută în cod, nu în consola furnizorului: `npm run offsite-retentie`
+> arată regula vie și o compară cu cea din `src/offsite.js` (`--aplica` o scrie). Motivul e același
+> ca la nginx — o regulă pusă cu mâna dintr-o interfață web nu se poate reface după o migrare și
+> nimic nu semnalează când cineva o schimbă. Cheile obiectelor sunt datate, deci fără regulă nimic
+> nu s-ar suprascrie vreodată (arhivele locale se rotesc prin `CONTAB_BACKUP_KEEP_FULL`).
 >
-> **Riscul rămas, de tratat în afara serverului:** cheia trăiește doar în `.env`, pe aceeași
-> mașină care e și sursa backupului. Dacă serverul se pierde, toate copiile offsite devin
-> nedescifrabile. Cheia trebuie ținută **și** într-un manager de parole, separat de cutia poștală
-> în care ajung arhivele.
+> **Riscurile rămase, de tratat în afara serverului:**
+> 1. **Cheia** trăiește în `.env`, pe aceeași mașină care e și sursa backupului. Dacă serverul se
+>    pierde, toate copiile offsite devin nedescifrabile. Trebuie ținută **și** într-un manager de
+>    parole, separat de cutia poștală și de bucket.
+> 2. **Locația bucketului.** Serverul de producție e la Hetzner Nürnberg (`nbg1`), iar bucketul e
+>    tot în `nbg1` — deci sursa și copia stau în același centru de date. Separarea geografică se
+>    face schimbând `CONTAB_OFFSITE_ENDPOINT` și `_REGION` pe `hel1`/`fsn1` (Hetzner facturează
+>    per bucket, deci mutarea e o decizie de cost, nu doar de configurare).
 
 ### Activarea copiei offsite criptate (pași exacți)
 

@@ -13,6 +13,7 @@
     "nginx-drift": "sh scripts/verifica-nginx.sh",
     "rto-drill": "sh scripts/rto-drill.sh",
     "offsite-check": "node scripts/offsite-check.js",
+    "offsite-retentie": "node scripts/offsite-retentie.js",
     "lint": "eslint .",
     "prestart": "npm test",
     "e2e": "bash scripts/e2e.sh",
