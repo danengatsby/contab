@@ -443,6 +443,16 @@ await scena('s12b-birou', async () => {
   if (await st.count()) { await cursorLa(st); await asteapta(1200); }
 });
 
+// ═══ S12c · modul simplu ═══════════════════════════════════════════════════
+await scena('s12c-simplu', async () => {
+  await intra('dashboard', 1200);
+  await clic('#uiModeBtn', { dupa: 2600 });   // expert -> simplu
+  await derulare(260, 1800);
+  await derulare(0, 1200);
+  await clic('#uiModeBtn', { dupa: 2200 });   // si inapoi: nimic nu s-a pierdut
+  await curata();
+});
+
 // ═══ S10b · planul de conturi ══════════════════════════════════════════════
 await scena('s10b-plan', async () => {
   await meniu('Date firmă', 'plan', 2000);
@@ -455,6 +465,14 @@ await scena('s10c-solduri', async () => {
   await meniu('Setări', 'date', 1800);
   await pg.evaluate(() => { const e = document.querySelector('#openingCard'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   await asteapta(3400);
+});
+
+// ═══ S10d · migrarea de la alt program ═════════════════════════════════════
+await scena('s10d-migrare', async () => {
+  await pg.evaluate(() => { const e = document.querySelector('#migrationCompleteCard'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  await asteapta(2600);
+  await card('Aduci evidenta de la alt program', 'balanta, parteneri,\nstocuri, mijloace fixe',
+    'XLS · CSV · DBF — previzualizare inainte de scriere\npotrivirea coloanelor se salveaza si se refoloseste', 6500);
 });
 
 // ═══ FAZA 2 · documentele justificative ════════════════════════════════════
@@ -690,6 +708,14 @@ await scena('s29b-etransport', async () => {
   await pg.evaluate(() => { const m = document.querySelector('#etModal'); if (m) m.classList.add('hidden'); });
 });
 
+// ═══ S29c · Intrastat ══════════════════════════════════════════════════════
+await scena('s29c-intrastat', async () => {
+  await meniu('Taxe', 'livrabile', 2000);
+  await derulare(520, 2200);
+  await card('Intrastat', 'statistica, nu fiscalitate',
+    'se depune la Institutul National de Statistica\nprag anual, socotit separat pe fiecare sens', 6000);
+});
+
 // ═══ FAZA 10 · inchiderea lunii ════════════════════════════════════════════
 await scena('s25-inchidere', async () => {
   await meniu('Închideri', 'inchideri', 2200);
@@ -744,6 +770,21 @@ await scena('s30-declaratii', async () => {
   await derulare(0, 800);
   await derulare(300, 2600);
   await derulare(700, 2200);
+});
+
+// ═══ S30c · declaratiile de situatie ═══════════════════════════════════════
+await scena('s30c-situatie', async () => {
+  await derulare(900, 2000);
+  await card('Declaratii care apar din SITUATIE', 'D301 · D307 · D311 · D107',
+    'nu se depun niciodata — pana in luna in care se depun\naplicatia le propune din operatiunile inregistrate', 7000);
+});
+
+// ═══ S30d · corectia unei declaratii depuse ════════════════════════════════
+await scena('s30d-corectie', async () => {
+  await derulare(1200, 1800);
+  await card('Cand declaratia e gresita', 'rectificativa vs. D710',
+    'decontul, informativa, salariile -> se INLOCUIESC integral\nobligatiile de plata -> se corecteaza pe o singura suma', 7000);
+  await derulare(0, 900);
 });
 
 // ═══ S30b · depunerea prin SPV ═════════════════════════════════════════════
@@ -837,12 +878,36 @@ await scena('s36b-cautare', async () => {
   await curata();
 });
 
+// ═══ S36c · cartea ═════════════════════════════════════════════════════════
+await scena('s36c-carte', async () => {
+  // „Cartea" din meniu e o LEGATURA externa (`<a href="/carte/">`), nu un tab: `intra()` n-are ce
+  // deschide, iar `target="_blank"` ar duce inregistrarea intr-o pagina noua, nefilmata. Se merge
+  // direct la pagina cartii, in ACEEASI fila, si se revine dupa.
+  await pg.goto(BASE + '/carte/', { waitUntil: 'domcontentloaded' });
+  await asteapta(1600);
+  await derulare(600, 2200);
+  await derulare(1800, 2000);
+  await card('O carte, nu un manual de utilizare', 'contabilitatea in ordinea\nin care se intampla',
+    'acelasi drum ca in aplicatie: documentul, banii,\nregistrele, declaratiile, inchiderea', 6500);
+  await pg.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+  await asteapta(1500); await unelte();
+});
+
 // ═══ S37 · increderea (backup) ═════════════════════════════════════════════
 await scena('s37-incredere', async () => {
   await intra('date', 1600);
   await curata(); await derulare(300, 1800);
   await card('De ce poți avea încredere', 'Validat cu validatorul\npublicat de ANAF',
     'peste 5.200 de verificări automate la fiecare versiune\nbackup zilnic, cu copie în afara serverului', 8000);
+});
+
+// ═══ S37b · recuperarea, probata ═══════════════════════════════════════════
+await scena('s37b-recuperare', async () => {
+  await intra('date', 1500);
+  await curata(); await derulare(700, 2000);
+  await card('Copia de siguranta se PROBEAZA', 'criptata, in afara serverului',
+    'refacerea se incearca automat, pe o masina goala,\ncu unelte obisnuite — nu depinde de acest program', 7000);
+  await derulare(0, 900);
 });
 
 // ═══ S38 · limitele ════════════════════════════════════════════════════════

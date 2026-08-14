@@ -29,6 +29,13 @@ const STOP = '<!-- SCENE:STOP -->';
  *  lipseste sau prisoseste, generatorul se opreste: o descriere ramasa in urma e mai rea decat una
  *  lipsa, fiindca pare actuala. */
 const ECRANE = {
+  's10d-migrare': 'Ecranul „Date & copii de siguranță", cardul de migrare: fișierul urcat, coloanele recunoscute și previzualizarea dinaintea scrierii.',
+  's12c-simplu': 'Tabloul de bord, comutat în modul simplu și înapoi în expert — se vede cum dispar și reapar codurile de cont și intrările tehnice.',
+  's29c-intrastat': 'Ecranul de declarații, cu Intrastat în listă; carton peste el: statistică la INS, prag pe fiecare sens.',
+  's30c-situatie': 'Registrul declarațiilor, derulat; carton peste el cu cele patru declarații de situație: D301, D307, D311, D107.',
+  's30d-corectie': 'Același registru; carton peste el: rectificativa înlocuiește, declarația de corecție atinge o singură sumă.',
+  's36c-carte': 'Ghidul din aplicație, derulat; carton peste el: cartea despre contabilitate, pe același drum ca aplicația.',
+  's37b-recuperare': 'Ecranul „Date & copii de siguranță", zona de backup; carton peste el: arhivă criptată, în afara serverului, cu refacerea probată.',
   's10b-plan': '**Plan de conturi**: planul oficial românesc, cu locul în care se adaugă analitice proprii.',
   's10c-solduri': 'Setări → Date: cardul **Solduri inițiale (preluare firmă cu istoric)**, cu importul balanței din programul vechi.',
   's16b-flux': '**Documente primite (listă)**: coloana de stare — ciornă, validat, aprobat, postat.',
