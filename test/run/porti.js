@@ -1913,4 +1913,19 @@ section('Cartea: declaratiile pe care aplicatia le genereaza sunt SI in text');
   ok('cartea explica declaratia rectificativa', /rectificativ/i.test(text));
   ok('cartea explica D710 (corectia obligatiilor de plata)', text.includes('D710'));
   ok('...si spune ca nu sunt interschimbabile', /nu sunt interschimbabile/i.test(text));
+
+  // Obligatiile ELECTRONICE erau pomenite in treacat (3 / 2 / 1 mentiuni la 2026-08-14), desi
+  // e-Factura e obligatorie de doi ani. Poarta nu cere sa fie POMENITE — asta trece si cu o
+  // enumerare — ci ca faptul care se greseste cel mai des sa fie SCRIS. Fiecare rand de mai jos
+  // corespunde unei capcane reale, luata din codul aplicatiei (validat fata de schemele oficiale).
+  const scrieDespre = [
+    ['e-Factura: originalul e fisierul sigilat, nu PDF-ul', /sigilat de ANAF|sigiliul aplicat/],
+    ['e-Factura: termenul e in zile CALENDARISTICE', /cinci zile calendaristice/],
+    ['e-Factura B2C: cele treisprezece zerouri', /treisprezece zerouri/],
+    ['e-Factura: „urcata" nu inseamna „acceptata"', /nu e o factură trimisă|nu e nici acceptată/],
+    ['e-Transport: codul se ia INAINTE de plecare', /înainte de punerea în mișcare|înainte ca marfa/],
+    ['Intrastat: e la INS, nu la ANAF', /Institutul Național de Statistică/],
+    ['Intrastat: pragul se calculeaza pe fiecare SENS', /pe fiecare sens/],
+  ];
+  for (const [ce, re] of scrieDespre) ok('cartea explica — ' + ce, re.test(text));
 }

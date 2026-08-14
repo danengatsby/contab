@@ -217,6 +217,52 @@
    "text": "Recipisa dovedește că ai declarat. Ea nu dovedește că ai declarat CORECT — și nici că ai plătit. Sunt trei obligații distincte, cu trei probe distincte."
   },
   {
+   "tip": "h",
+   "text": "Două drumuri, nu unul"
+  },
+  {
+   "tip": "p",
+   "text": "Spațiul privat virtual e ușor de crezut că e un singur ghișeu. Practic sunt două drumuri diferite, cu răspunsuri diferite, iar cine le confundă caută dovada acolo unde nu e."
+  },
+  {
+   "tip": "p",
+   "text": "Declarațiile fiscale se validează și se depun ca fișier, iar dovada e recipisa descrisă mai sus. Facturile electronice merg pe alt drum: se urcă una câte una, primesc un număr de înregistrare, iar răspunsul vine mai târziu — fie factura sigilată, fie erorile. Nu există recipisă de declarație pentru o factură, și nici număr de încărcare pentru un decont."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce dovedește ce",
+   "cap": [
+    "Ce ai trimis",
+    "Ce primești înapoi",
+    "Ce păstrezi ca dovadă"
+   ],
+   "randuri": [
+    [
+     "O declarație fiscală",
+     "recipisa, cu numărul de înregistrare",
+     "declarația depusă + recipisa, împreună"
+    ],
+    [
+     "O factură electronică",
+     "numărul de încărcare, apoi factura sigilată sau erorile",
+     "fișierul sigilat — nu doar numărul"
+    ],
+    [
+     "O declarație de transport",
+     "codul care însoțește marfa",
+     "codul, atașat documentului de însoțire"
+    ]
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "Al doilea lucru care se uită: mesajele nu stau acolo la nesfârșit. Spațiul e un canal de comunicare, nu o arhivă — documentele se descarcă și se păstrează la tine, cu restul dosarului lunii. O firmă care se bazează pe faptul că „sunt oricum în SPV\" descoperă lipsa exact când are nevoie de ele."
+  },
+  {
+   "tip": "cheie",
+   "text": "Spațiul privat virtual e cutia poștală, nu arhiva. Ce a intrat acolo se descarcă și se pune în dosar; altfel dovada trăiește pe un server care nu e al tău."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
@@ -225,7 +271,8 @@
     "Depunerea are patru rezultate posibile, iar cel periculos e lipsa oricărui răspuns: arată aproape ca un succes.",
     "„Nu am putut verifica” nu înseamnă „e bine” — nici pentru un om, nici pentru un program.",
     "Certificatul digital aparține unei persoane, nu firmei; împuternicirea și certificatul expiră la date diferite.",
-    "Actele comunicate în Spațiul Privat Virtual se consideră comunicate, iar termenele curg chiar dacă nimeni nu a deschis mesajul."
+    "Actele comunicate în Spațiul Privat Virtual se consideră comunicate, iar termenele curg chiar dacă nimeni nu a deschis mesajul.",
+    "Spațiul privat virtual e cutia poștală, nu arhiva: ce a intrat acolo se descarcă și se păstrează la tine."
    ]
   }
  ]
