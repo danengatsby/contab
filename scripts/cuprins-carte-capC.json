@@ -97,6 +97,21 @@
      "Plata obligațiilor declarate",
      "25 ale lunii următoare",
      "toți"
+    ],
+    [
+     "D301 — decontul special de TVA",
+     "25 ale lunii următoare",
+     "cine NU e înregistrat normal în scopuri de TVA, în luna cu operațiuni"
+    ],
+    [
+     "D307 — ajustări de TVA",
+     "25 ale lunii următoare",
+     "cine a dedus TVA pentru bunuri care își schimbă destinația"
+    ],
+    [
+     "D311 — TVA colectată cu codul anulat",
+     "25 ale lunii următoare",
+     "firmele cărora li s-a anulat codul și au colectat totuși taxă"
     ]
    ],
    "nota": "D390 nu se depune pe zero: dacă în luna respectivă nu au existat operațiuni intracomunitare, nu există obligație de depunere."
@@ -189,6 +204,11 @@
      "Registrul de evidență fiscală",
      "la determinarea impozitului",
      "plătitorii de impozit pe profit"
+    ],
+    [
+     "D107 — beneficiarii sponsorizărilor",
+     "odată cu declarația anuală de impozit",
+     "cine a acordat sponsorizări, burse private sau mecenat"
     ]
    ],
    "nota": "Ordinea din tabel e și ordinea de execuție: inventarierea precede situațiile, iar hotărârea AGA le urmează. Niciuna nu se poate sări — vezi capitolul 44."
@@ -224,6 +244,14 @@
     [
      "Declarația de mențiuni la registrul comerțului",
      "la schimbări de sediu, obiect, administrator"
+    ],
+    [
+     "D710 — declarație de corecție",
+     "când se corectează o obligație de plată declarată prin D100"
+    ],
+    [
+     "D177 — redirecționarea impozitului",
+     "după declarația anuală, dacă a rămas credit de sponsorizare nefolosit"
     ]
    ],
    "nota": "Ultimele două nu sunt obligații fiscale, dar apar în practică suficient de des ca să merite locul lor în calendar."

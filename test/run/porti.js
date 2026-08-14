@@ -1879,3 +1879,38 @@ section('Poarta: configul nginx din depozit isi pastreaza blocurile care nu se v
   // ar taia inaintea garzii care stie sa explice de ce.
   ok('...si peste plafonul de fisier al aplicatiei (20 MB)', !!corp && Number(corp[1]) >= 20);
 }
+
+section('Cartea: declaratiile pe care aplicatia le genereaza sunt SI in text');
+{
+  // Cartea („Contabilitatea, in ordinea in care se intampla") descrie ciclul contabil pe care il
+  // implementeaza aplicatia. Cele doua se pot desincroniza tacut, si chiar s-au desincronizat:
+  // masurat 2026-08-14, sase declaratii adaugate in ultimele doua saptamani (D301, D307, D311,
+  // D107, D710, D177) nu aparusera NICIODATA in text, desi capitolul 37 se numeste chiar
+  // „Declaratiile si termenele lor". O carte care omite o obligatie fiscala nu e doar incompleta —
+  // e gresita, fiindca tocmai lista e ce cauta cititorul acolo.
+  //
+  // Poarta se DERIVA din registrul aplicatiei (`declarations.TIPURI`), nu dintr-o a doua lista
+  // scrisa de mana: o declaratie noua intra automat in perimetru, fara ca cineva sa-si aminteasca.
+  const fsC = require('fs'); const pC = require('path');
+  const dir = pC.join(RADACINA, 'scripts');
+  const capitole = fsC.readdirSync(dir).filter((f) => /^cuprins-carte-cap.*\.json$/.test(f));
+  ok('capitolele cartii exista pe disc', capitole.length > 20);
+  const text = capitole.map((f) => fsC.readFileSync(pC.join(dir, f), 'utf8')).join('\n');
+  ok('textul cartii chiar a fost citit', text.length > 100000);
+
+  const TIPURI = require('../../src/declarations').TIPURI;
+  // `saft` se numeste D406 in text (numele oficial); restul poarta chiar cheia, cu majuscule.
+  const numeInCarte = { saft: 'D406', bilant: 'Situații financiare', intrastat: 'Intrastat' };
+  const lipsa = [];
+  for (const cheie of Object.keys(TIPURI)) {
+    const nume = numeInCarte[cheie] || cheie.toUpperCase();
+    if (!text.includes(nume)) lipsa.push(cheie + ' (cautat „' + nume + '")');
+  }
+  eq('fiecare declaratie din TIPURI e numita in carte', lipsa.join(', '), '');
+
+  // Corectarea unei declaratii depuse e o obligatie in sine, cu doua mecanisme DIFERITE. Lipsea
+  // amandoua: nici rectificativa, nici D710 nu erau explicate, desi aplicatia le genereaza.
+  ok('cartea explica declaratia rectificativa', /rectificativ/i.test(text));
+  ok('cartea explica D710 (corectia obligatiilor de plata)', text.includes('D710'));
+  ok('...si spune ca nu sunt interschimbabile', /nu sunt interschimbabile/i.test(text));
+}
