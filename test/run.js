@@ -6858,7 +6858,7 @@ section('Scalare: semnalul din ADR AJUNGE singur (nu asteapta sa se uite cineva)
   // in urma realitatii. Sectiunea verifica jumatatea care lipsea: calculul (o singura sursa) si
   // verdictul care il duce la alerta.
   const met = require('../src/metrics');
-  const { verdictScalare, SCALE_ENTRIES_WARN } = require('../src/jobs');
+  const { verdictScalare, SCALE_ENTRIES_WARN, SCALE_TOTAL_WARN } = require('../src/jobs');
 
   // ── Calculul, folosit si de ruta si de job ────────────────────────────────────────────────
   const graf = {
@@ -6871,6 +6871,9 @@ section('Scalare: semnalul din ADR AJUNGE singur (nu asteapta sa se uite cineva)
   };
   const l = met.firmeLoad(graf);
   eq('maxEntries e al firmei celei mai mari', l.maxEntries, 3);
+  eq('...si TOTALUL e al intregului graf, nu al firmei mari', l.total, 4);
+  eq('documentele au si ele un total', l.totalDocuments, 3);
+  eq('numarul de firme CU articole se raporteaza', l.firme, 2);
   eq('...si topul e ordonat descrescator', l.top.map((f) => f.nume).join(','), 'ALFA,BETA');
   eq('fiecare firma isi poarta NUMELE (pasul e „partitioneaza firma X")', l.top[0].nume, 'ALFA');
   eq('documentele se numara separat de articole', l.top[0].documents, 1);
@@ -6887,7 +6890,8 @@ section('Scalare: semnalul din ADR AJUNGE singur (nu asteapta sa se uite cineva)
   const sub = verdictScalare({ maxEntries: 100, top: [{ id: 1, nume: 'ALFA', entries: 100, documents: 0 }] }, { prag: 20000 });
   ok('sub prag -> fara alerta', sub.alert === false);
   ok('...dar rezumatul se raporteaza oricum (distributia e vizibila si cand e liniste)', /ALFA 100/.test(sub.rezumat));
-  ok('...si spune fata de ce prag', /prag 20000/.test(sub.rezumat));
+  ok('...si spune fata de ce praguri (amandoua, ca ambele axe sa fie citibile cand e liniste)',
+    /20000\/firma/.test(sub.rezumat) && /200000 total/.test(sub.rezumat));
   const peste = verdictScalare({ maxEntries: 25000, top: [{ id: 2, nume: 'BETA SRL', entries: 25000, documents: 10 }] }, { prag: 20000 });
   ok('peste prag -> alerta', peste.alert === true);
   ok('...care NUMESTE firma (fara nume, raportul n-ar fi actionabil)', /BETA SRL/.test(peste.motiv));
@@ -6895,8 +6899,42 @@ section('Scalare: semnalul din ADR AJUNGE singur (nu asteapta sa se uite cineva)
   ok('...si trimite la ADR-ul care descrie pasul', /scalare-crestere/.test(peste.motiv));
   ok('exact la prag -> alerta (pragul e inclusiv)', verdictScalare({ maxEntries: 20000, top: [{ id: 1, nume: 'A', entries: 20000 }] }, { prag: 20000 }).alert === true);
   ok('cu una sub prag -> inca liniste', verdictScalare({ maxEntries: 19999, top: [{ id: 1, nume: 'A', entries: 19999 }] }, { prag: 20000 }).alert === false);
+  // ── A doua axa: TOTALUL ───────────────────────────────────────────────────────────────────
+  // Cazul care era PUNCTUL ORB: multe firme mici. Niciuna nu se apropie de pragul pe firma, dar
+  // graful intreg (care sta in RAM de doua ori) depaseste ce incape confortabil intr-un proces.
+  // Inainte de 2026-08-14 verdictul tacea aici — adica exact in forma de crestere cea mai probabila
+  // pentru un produs de cabinet.
+  const multeMici = {
+    maxEntries: 5000, total: 500000, firme: 100,
+    top: [{ id: 1, nume: 'ALFA', entries: 5000, documents: 0 }, { id: 2, nume: 'BETA', entries: 5000, documents: 0 }],
+  };
+  const vTotal = verdictScalare(multeMici, { prag: 20000, pragTotal: 200000 });
+  ok('multe firme mici, niciuna peste pragul pe firma -> ALERTA pe total', vTotal.alert === true);
+  ok('...si spune ca e axa TOTALULUI, nu a unei firme', vTotal.peTotal === true && vTotal.peFirma === false);
+  ok('...cu totalul si pragul in motiv', /500000/.test(vTotal.motiv) && /200000/.test(vTotal.motiv));
+  ok('...spune pe cate firme se imparte (altfel nu se stie ce fel de crestere e)', /100 firme/.test(vTotal.motiv));
+  ok('...si trimite la pasul potrivit: hidratare lazy, NU partitionare', /hidratare lazy/.test(vTotal.motiv) && !/partitionarea/.test(vTotal.motiv));
+  // Simetric: o firma mare intr-un graf mic ramane pe axa ei, cu pasul ei.
+  const vFirma = verdictScalare({ maxEntries: 25000, total: 30000, firme: 3, top: [{ id: 2, nume: 'BETA SRL', entries: 25000 }] }, { prag: 20000, pragTotal: 200000 });
+  ok('o firma mare, graf mic -> alerta pe firma, nu pe total', vFirma.peFirma === true && vFirma.peTotal === false);
+  ok('...cu pasul care depinde de firma', /partitionarea/.test(vFirma.motiv));
+  // Amandoua deodata: motivul le poarta pe amandoua, nu doar pe prima gasita.
+  const vAmbele = verdictScalare({ maxEntries: 25000, total: 500000, firme: 40, top: [{ id: 1, nume: 'BETA SRL', entries: 25000 }] }, { prag: 20000, pragTotal: 200000 });
+  ok('ambele axe depasite -> ambele in motiv', vAmbele.peFirma && vAmbele.peTotal
+    && /BETA SRL/.test(vAmbele.motiv) && /in TOTAL/.test(vAmbele.motiv));
+  // Rezumatul (raportat si cand e liniste) trebuie sa arate totalul, altfel cresterea pe axa asta
+  // ar fi invizibila in `jobs` pana in ziua alertei.
+  ok('rezumatul poarta totalul si ambele praguri', /total 500000/.test(vTotal.rezumat) && /200000 total/.test(vTotal.rezumat));
+  ok('exact la pragul de total -> alerta (inclusiv, ca la celalalt)',
+    verdictScalare({ maxEntries: 1, total: 200000, firme: 50, top: [{ id: 1, nume: 'A', entries: 1 }] }, { prag: 20000, pragTotal: 200000 }).alert === true);
+  ok('cu unul sub -> inca liniste',
+    verdictScalare({ maxEntries: 1, total: 199999, firme: 50, top: [{ id: 1, nume: 'A', entries: 1 }] }, { prag: 20000, pragTotal: 200000 }).alert === false);
+  // Un graf fara campul `total` (semnal vechi, dintr-o versiune anterioara) nu are voie sa alerteze
+  // din interpretarea lui `undefined` ca 0 sau NaN — nici sa arunce.
+  ok('semnal fara `total` -> fara alerta pe axa aceea', verdictScalare({ maxEntries: 100, top: [{ id: 1, nume: 'A', entries: 100 }] }, { prag: 20000, pragTotal: 200000 }).peTotal === false);
+
   // Instalare noua: niciun articol. Verdictul nu are voie sa arunce si nici sa alerteze.
-  const gol = verdictScalare({ maxEntries: 0, top: [] }, { prag: 20000 });
+  const gol = verdictScalare({ maxEntries: 0, total: 0, top: [] }, { prag: 20000 });
   ok('baza goala -> fara alerta si fara exceptie', gol.alert === false && /nicio firma/.test(gol.rezumat));
   ok('intrare lipsa (job pornit inaintea hidratarii) -> tot fara alerta', verdictScalare(null).alert === false);
 
@@ -6911,6 +6949,12 @@ section('Scalare: semnalul din ADR AJUNGE singur (nu asteapta sa se uite cineva)
     const numere = [...adr.matchAll(/([\d.]+)\s*de articole/g)].map((m) => Number(m[1].replace(/\./g, '')));
     ok('ADR-ul numeste un prag de articole pe firma', numere.length > 0);
     ok('pragul din cod apare in ADR (nu au driftat unul de altul)', numere.includes(SCALE_ENTRIES_WARN));
+    // A doua axa are aceeasi disciplina: pragul pe TOTAL din cod trebuie sa fie scris in ADR.
+    ok('pragul pe TOTAL din cod apare si el in ADR', numere.includes(SCALE_TOTAL_WARN));
+    ok('ADR-ul numeste variabila care il schimba', /CONTAB_SCALE_TOTAL_WARN/.test(adr));
+    // Cele doua praguri nu au voie sa se confunde: totalul e peste maximul pe firma, altfel axa
+    // „pe total" ar suna prima la orice firma mare si n-ar mai masura nimic propriu.
+    ok('pragul pe total e mai mare decat cel pe firma', SCALE_TOTAL_WARN > SCALE_ENTRIES_WARN);
   }
 }
 
