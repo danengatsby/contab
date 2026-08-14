@@ -65,6 +65,26 @@
      "rețineri la sursă pe fiecare beneficiar"
     ],
     [
+     "D301",
+     "în luna cu operațiuni",
+     "decontul special: taxa datorată de cine nu e înregistrat normal"
+    ],
+    [
+     "D307",
+     "la eveniment",
+     "ajustările de TVA — bunuri care își schimbă destinația"
+    ],
+    [
+     "D311",
+     "în luna cu operațiuni",
+     "TVA colectată în perioada în care codul era anulat"
+    ],
+    [
+     "D107",
+     "anual, odată cu D101",
+     "beneficiarii sponsorizărilor, mecenatului și burselor"
+    ],
+    [
      "Situații financiare",
      "anual",
      "bilanț, cont de rezultat, note"
@@ -284,6 +304,119 @@
    "nota": "Cifrele nu se completează într-un formular: sunt chiar soldurile conturilor din balanță. Dacă nu se potrivesc cu D112, una dintre cele două e greșită."
   },
   {
+   "tip": "h",
+   "text": "Declarațiile care apar din situație, nu din regim"
+  },
+  {
+   "tip": "p",
+   "text": "Tabelul de la începutul capitolului e lista obișnuită: ce datorează, lună de lună, o firmă cu activitate normală. Există însă un al doilea grup, care nu ține de regimul fiscal, ci de întâmplare. Nu se depun niciodată — până în luna în care se depun."
+  },
+  {
+   "tip": "p",
+   "text": "Deosebirea contează pentru cine ține evidența. Prima listă se poate scrie într-un calendar la începutul anului și se respectă mecanic. A doua nu: se derivă din operațiunile lunii, iar dacă nimeni nu se uită la operațiuni, obligația trece neobservată. E singurul loc din calendarul fiscal unde absența unei declarații nu dovedește că nu era datorată."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Declarațiile de situație",
+   "cap": [
+    "Declarația",
+    "Situația care o naște",
+    "Când"
+   ],
+   "randuri": [
+    [
+     "D301",
+     "firma NU e înregistrată normal în scopuri de TVA, dar face o operațiune care naște taxă: achiziție intracomunitară peste plafon, servicii primite din Uniune, un mijloc de transport nou",
+     "până pe 25 a lunii următoare celei în care a apărut operațiunea"
+    ],
+    [
+     "D307",
+     "bunuri pentru care s-a dedus TVA își schimbă destinația: se transferă, se casează, se pierde dreptul de deducere",
+     "până pe 25 a lunii următoare evenimentului"
+    ],
+    [
+     "D311",
+     "firma a colectat TVA în perioada în care codul ei de TVA era anulat — taxa se datorează, deși dreptul de deducere nu există",
+     "până pe 25 a lunii următoare"
+    ],
+    [
+     "D107",
+     "firma a acordat sponsorizări, burse private sau mecenat: statul vrea lista beneficiarilor, nu doar suma",
+     "odată cu declarația anuală de impozit"
+    ],
+    [
+     "D177",
+     "firma redirecționează către beneficiari partea din creditul de sponsorizare pe care nu a folosit-o ca reducere de impozit",
+     "după declarația anuală, în termenul de redirecționare"
+    ]
+   ],
+   "nota": "D177 nu e o declarație de plată — suma de plată din ea e zero. E o cerere: banii pleacă din impozitul deja datorat, către entitățile numite în cerere."
+  },
+  {
+   "tip": "cheie",
+   "text": "Primele patru se nasc dintr-o operațiune pe care contabilitatea o are deja înregistrată. Un program care ține evidența poate să le propună singur; un om care ține evidența trebuie să știe că există, altfel nu le caută."
+  },
+  {
+   "tip": "h",
+   "text": "Când declarația e greșită"
+  },
+  {
+   "tip": "p",
+   "text": "Nicio declarație depusă nu se poate șterge. Se poate doar înlocui sau corecta, iar felul în care se face asta depinde de ce fel de declarație era — distincție care se învață, de obicei, greșind-o o dată."
+  },
+  {
+   "tip": "p",
+   "text": "Declarațiile care raportează operațiuni — decontul de TVA, informativa D394, declarația de salarii — se corectează prin declarație rectificativă: aceeași declarație, pentru aceeași perioadă, bifată ca rectificativă, care o înlocuiește integral pe cea dinainte. Nu se depune diferența, se depune întregul, corect."
+  },
+  {
+   "tip": "p",
+   "text": "Declarațiile care stabilesc obligații de plată — D100 — nu se rectifică în același fel. Pentru ele există declarația de corecție D710, care spune ce sumă a fost declarată greșit și care e cea corectă. Motivul deosebirii e că D100 nu descrie operațiuni, ci creează o datorie în fișa pe plătitor: corecția trebuie să atingă acea datorie, nu să repovestească luna."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cum se corectează fiecare",
+   "cap": [
+    "Declarația greșită",
+    "Se corectează cu",
+    "Ce se depune"
+   ],
+   "randuri": [
+    [
+     "D300 — decontul de TVA",
+     "D300 rectificativ",
+     "decontul întreg, refăcut, pentru aceeași perioadă"
+    ],
+    [
+     "D394 — informativa",
+     "D394 rectificativ",
+     "informativa întreagă, refăcută"
+    ],
+    [
+     "D112 — salarii și contribuții",
+     "D112 rectificativ",
+     "declarația întreagă, refăcută"
+    ],
+    [
+     "D100 — obligații de plată",
+     "D710 — declarație de corecție",
+     "doar obligația atinsă: suma declarată și suma corectă"
+    ],
+    [
+     "D101, D205, D107 — anuale",
+     "aceeași declarație, rectificativă",
+     "declarația întreagă, refăcută"
+    ]
+   ]
+  },
+  {
+   "tip": "cheie",
+   "text": "Rectificativa înlocuiește. D710 corectează. Prima repovestește perioada de la capăt, a doua atinge o singură sumă din fișa pe plătitor — și de aceea nu sunt interschimbabile."
+  },
+  {
+   "tip": "p",
+   "text": "Regula practică pentru amândouă: corecția se face după ce s-a lămurit contabilitatea, nu în locul ei. O rectificativă depusă peste o balanță încă neîncheiată se va rectifica la rândul ei, iar șirul de rectificări pe aceeași lună e primul lucru pe care îl remarcă un inspector."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
@@ -292,7 +425,9 @@
     "Trei alegeri decid aproape tot: plătitor de TVA, cu angajați, micro sau impozit pe profit.",
     "Ordinea lunii e fixă: documente, extras, regularizări, balanță, apoi declarații — niciodată invers.",
     "Declarațiile pe zero nu sunt opționale; amenda pentru nedepunere curge indiferent de sumă.",
-    "Dividendele cer hotărâre a asociaților, iar hotărârea cere situații financiare aprobate."
+    "Dividendele cer hotărâre a asociaților, iar hotărârea cere situații financiare aprobate.",
+    "Pe lângă lista lunară există declarații de situație — D301, D307, D311, D107 — care nu se depun niciodată, până în luna în care se depun.",
+    "Rectificativa înlocuiește declarația întreagă; D710 corectează o singură obligație de plată. Nu sunt interschimbabile."
    ]
   }
  ]
