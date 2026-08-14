@@ -52,12 +52,20 @@
   "text": "Aplicația arată ca un program de contabilitate, nu ca un site. Sus e bara de meniu, cu modulele grupate pe ciclul contabil. Sub ea, banda de unelte: operațiunile pe care le atingi în fiecare zi, la un singur clic. În stânga, arborele de module. Jos, bara de stare, cu firma, luna de lucru și utilizatorul. Densitate mare, ca să încapă cifrele — nu spațiu gol."
  },
  {
+  "id": "s12c-simplu",
+  "text": "Dacă nu ești contabil, aplicația se poate dezbrăca de partea tehnică. În modul simplu dispar codurile de cont și ecranele de specialitate, peste tot deodată: în bara laterală, în bara de meniu și în banda de unelte. Comuți înapoi oricând, iar datele rămân aceleași."
+ },
+ {
   "id": "s10b-plan",
   "text": "Tot din deschiderea exercițiului fac parte două lucruri pe care le atingi o singură dată. Primul, planul de conturi: lista sertarelor în care se adună sumele firmei — clienți, furnizori, bancă, mărfuri. E cel oficial românesc, complet, și poți să îl lași exact așa, fiindcă aplicația alege singură contul potrivit la fiecare document. Îl deschizi doar dacă vrei conturi analitice proprii, de exemplu un cont separat pe fiecare client. Pentru contabil: analiticele adăugate aici sunt cele care apar apoi în balanță și în fișele de cont."
  },
  {
   "id": "s10c-solduri",
   "text": "Dacă firma nu e la primul an, nu începi de la zero. Preiei balanța de deschidere: o imporți direct din fișierul exportat de programul vechi, sau o introduci cont cu cont. Totalul pe debit trebuie să fie egal cu totalul pe credit — altfel balanța nu se închide niciodată, iar aplicația refuză preluarea. Pentru contabil: soldurile pe fiecare client și furnizor se detaliază separat, iar stocul cantitativ-valoric are preluarea lui."
+ },
+ {
+  "id": "s10d-migrare",
+  "text": "Dacă vii de la alt program, nu retastezi nimic. Aduci balanța, partenerii, stocurile și mijloacele fixe dintr-un export obișnuit — XLS, CSV sau DBF — iar aplicația îți arată întâi ce a înțeles din fiecare coloană și abia apoi scrie ceva. Potrivirea coloanelor se salvează, deci a doua firmă merge de la sine."
  },
  {
   "id": "s13-document",
@@ -176,6 +184,10 @@
   "text": "Dacă transporți bunuri care intră sub obligația de raportare, declarația de transport se face tot de aici și primești codul UIT înainte de plecarea mașinii. Formularul e ghidat, iar fișierul e validat față de schema oficială înainte să plece."
  },
  {
+  "id": "s29c-intrastat",
+  "text": "Intrastat e altceva decât o declarație fiscală: e o raportare statistică, la Institutul Național de Statistică, fără nicio sumă de plată. Devine obligatorie când treci de pragul anual, socotit separat pe fiecare sens — poți fi obligat la ce intră și liber la ce iese."
+ },
+ {
   "id": "s25-inchidere",
   "text": "Faza a zecea: închiderea lunii. E o singură listă de pași, în ordine: documentele complete, extrasul bancar punctat, regularizările făcute, TVA-ul stabilit, declarațiile validate și depuse, aprobarea și blocarea perioadei. Starea fiecărui pas se calculează din date, nu se bifează de mână: o bifă ar rămâne adevărată și după ce datele se schimbă."
  },
@@ -206,6 +218,14 @@
  {
   "id": "s30-declaratii",
   "text": "Faza a treisprezecea: declarațiile. Aplicația știe ce declarații îi revin firmei tale, în funcție de regimul ales, și le pregătește din datele deja înregistrate: decontul de TVA, declarațiile informative, cele de salarii, impozitul pe profit, situațiile financiare. Nu completezi formulare — le verifici."
+ },
+ {
+  "id": "s30c-situatie",
+  "text": "Pe lângă lista lunară există declarații care apar din situație, nu din regim: decontul special, ajustările de taxă, taxa colectată cu codul anulat, beneficiarii sponsorizărilor. Nu se depun niciodată — până în luna în care se depun. Aplicația le propune singură, din operațiunile pe care le are deja înregistrate."
+ },
+ {
+  "id": "s30d-corectie",
+  "text": "Când o declarație depusă se dovedește greșită, felul corecției depinde de declarație. Decontul, informativa și declarația de salarii se înlocuiesc integral, printr-o rectificativă. Obligațiile de plată se corectează altfel, cu o declarație de corecție care atinge o singură sumă. Aplicația le generează pe amândouă, în forma cerută."
  },
  {
   "id": "s30b-spv",
@@ -256,8 +276,16 @@
   "text": "Căutarea merge peste tot deodată: scrii un număr de factură, un nume de partener sau o sumă, și primești documentele, înregistrările și partenerii care se potrivesc. E felul cel mai scurt de a răspunde la întrebarea „ce am făcut cu factura aia”."
  },
  {
+  "id": "s36c-carte",
+  "text": "Iar dacă vrei să înțelegi, nu doar să apeși butoane, aplicația vine cu o carte întreagă despre contabilitatea românească, așezată pe același drum pe care tocmai l-ai văzut: documentul, banii, registrele, declarațiile, închiderea. Se citește în browser sau se descarcă gata de tipar."
+ },
+ {
   "id": "s37-incredere",
   "text": "Datele stau la tine, nu se pierd. Copia de siguranță se face automat în fiecare zi, se verifică singură prin restaurare de probă, și pleacă criptată în afara serverului. Sună tehnic, dar înseamnă un lucru simplu: dacă serverul arde diseară, contabilitatea firmei tale există mâine dimineață."
+ },
+ {
+  "id": "s37b-recuperare",
+  "text": "Copia de siguranță nu e doar o bifă în setări. Arhiva zilnică e criptată, pleacă în afara serverului, iar refacerea din ea se probează automat — inclusiv pe o mașină goală, cu unelte obișnuite, ca recuperarea să nu depindă de programul care tocmai s-a pierdut."
  },
  {
   "id": "s38-limite",
