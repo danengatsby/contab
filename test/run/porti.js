@@ -142,9 +142,14 @@ section('Poarta: allowlist-ul public (PUBLIC_PATHS) — fara orfani, fara creste
   // `/api/client-error` e public DELIBERAT: cea mai costisitoare eroare de client e cea de pe
   // ecranul de LOGIN — daca ruta ar cere sesiune, exact acel caz ar ramane invizibil, adica
   // tocmai gaura pe care o astupa. Abuzul e marginit prin plafon pe IP + taiere + agregare.
+  // `/api/registru-anaf` e public DELIBERAT, din acelasi tipar: cel mai scump loc in care se
+  // tasteaza de mana datele unei firme e formularul de INSCRIERE, unde omul inca n-are cont. O
+  // ruta autentificata n-ar putea ajuta exact acolo. Datele sunt publice prin natura lor
+  // (registrul ANAF raspunde oricui, fara autentificare), iar abuzul e marginit prin plafon pe
+  // IP (CONTAB_RATE_CUI), memo in anafRegistru si un raspuns redus la campurile de formular.
   const ASTEPTAT = ['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password',
     '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest',
-    '/api/client-error'];
+    '/api/client-error', '/api/registru-anaf'];
   const inPlus = publice.filter((p) => !ASTEPTAT.includes(p));
   const lipsa = ASTEPTAT.filter((p) => !publice.includes(p));
   ok('allowlist-ul public e exact cel revizuit (o adaugare cere actualizarea testului)'

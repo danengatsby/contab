@@ -154,4 +154,49 @@ async function verifica(cuiuri, data) {
   return { gasiti, negasite, interogate: numere.length, loturi };
 }
 
-module.exports = { verifica, normalizeaza, cuiNumeric, ziua, citesteRaspuns, URL_REGISTRU, MAX_LOT };
+// ─────────────────────────────────────────────────────────────────────────────
+//  COMPLETAREA UNUI FORMULAR DUPA CUI
+//
+//  Acelasi registru, alta intrebuintare — si de aceea o functie separata, nu un
+//  parametru pe `verifica`. Diferenta care conteaza e MEMO-UL:
+//    - `verifica` alimenteaza decizii FISCALE (partener inactiv -> cheltuiala
+//      nedeductibila, art. 11; furnizor cu TVA la incasare -> deducere amanata,
+//      art. 297 alin. (2)). Acolo un raspuns tinut in memorie ar putea sustine un
+//      verdict invechit, deci nu se memoreaza NIMIC;
+//    - aici raspunsul doar preumple un formular pe care omul il vede si il poate
+//      corecta. O denumire veche de cateva ore nu strica nimic, in schimb memo-ul
+//      apara plafonul serviciului (o cerere pe secunda, partajat cu verificarea
+//      nomenclatorului) de rafalele unei rute care e PUBLICA.
+//  Deci: memo scurt, doar pe calea de completare, si spus rapicat aici ca sa nu
+//  fie refolosit din greseala pe calea fiscala.
+// ─────────────────────────────────────────────────────────────────────────────
+const MEMO_MS = Number(process.env.CONTAB_CUI_MEMO_MS || 6 * 3600 * 1000);
+const MEMO_MAX = 500; // marginit: altfel o enumerare de CUI-uri ar creste harta la nesfarsit
+const memo = new Map();
+
+/**
+ * Cauta UN cui in registrul public, pentru completarea unui formular.
+ * @returns {Promise<{gasit: boolean, cui: string, registru: Object|null}>}
+ *   `gasit: false` NU e o eroare: firma poate sa nu existe sau sa nu fie in registru.
+ *   Erorile de retea/serviciu urca la apelant — „n-am putut verifica" nu e „nu exista".
+ */
+async function cautaPentruCompletare(cui) {
+  const n = cuiNumeric(cui);
+  if (n == null) return { gasit: false, cui: '', registru: null };
+  const cheie = String(n);
+  const acum = Date.now();
+  const vechi = memo.get(cheie);
+  if (vechi && acum < vechi.pana) return { gasit: !!vechi.registru, cui: cheie, registru: vechi.registru, memo: true };
+  const r = await verifica([cheie]);
+  const gasit = r.gasiti[cheie] || null;
+  // Evacuare simpla (cea mai veche intrare) cand harta atinge plafonul: nu avem nevoie de LRU
+  // adevarat pentru cateva sute de chei, dar avem nevoie sa nu creasca la infinit.
+  if (memo.size >= MEMO_MAX) memo.delete(memo.keys().next().value);
+  memo.set(cheie, { pana: acum + MEMO_MS, registru: gasit });
+  return { gasit: !!gasit, cui: cheie, registru: gasit, memo: false };
+}
+/** Doar pentru teste: golirea memo-ului intre scenarii. */
+function uitaMemo() { memo.clear(); }
+
+module.exports = { verifica, normalizeaza, cuiNumeric, ziua, citesteRaspuns, URL_REGISTRU, MAX_LOT,
+  cautaPentruCompletare, uitaMemo };

@@ -18,6 +18,7 @@ const accountSvc = require('./accountService');
 const messages = require('./messages');
 const plans = require('./plans');
 const identitate = require('./identitate');
+const registruAnaf = require('./anafRegistru');
 const firmeSvc = require('./firmeService');
 const billing = require('./billing');
 const metrics = require('./metrics');
@@ -328,6 +329,70 @@ module.exports = function registerAuthRoutes(app, ctx) {
     res.status(204).end();
   });
 
+  // ───────── CAUTARE CUI IN REGISTRUL PUBLIC ANAF (public) ─────────
+  // De ce PUBLICA: cel mai scump loc in care se tasteaza de mana datele unei firme e formularul
+  // de INSCRIERE — denumire, CUI, Reg. Com., adresa, oras, judet, toate scrise de un om care abia
+  // a ajuns in aplicatie si inca n-are cont. Daca ruta ar cere sesiune, exact acolo n-ar putea
+  // ajuta, iar CUI-ul ar continua sa fie tastat de trei ori (inscriere, „Firma mea", partener).
+  // Datele intoarse sunt PUBLICE prin natura lor: registrul contribuabililor e un serviciu ANAF
+  // fara autentificare, care raspunde oricui.
+  //
+  // Suprafata de abuz e marginita din trei directii, ca la /api/client-error:
+  //   1. plafon pe IP (mai jos) — un om care completeaza un formular are nevoie de 1-3 cautari;
+  //   2. memo in `anafRegistru` — acelasi CUI nu pleaca de doua ori catre ANAF in aceeasi zi;
+  //   3. raspuns SUBTIRE: doar campurile care se pun intr-un formular, plus semnalele de stare.
+  // A treia conteaza: registrul intoarce ~60 de campuri, iar ruta n-are motiv sa le difuzeze.
+  const cuiAttempts = new Map();
+  const CUI_MAX = Number(process.env.CONTAB_RATE_CUI) || 30; // cautari/ora/IP
+  app.get('/api/registru-anaf', wrap(async (req, res) => {
+    const k = attemptKey(req); const now = Date.now();
+    let r = cuiAttempts.get(k);
+    if (!r || now > r.reset) r = { count: 0, reset: now + 3600 * 1000 };
+    r.count += 1; cuiAttempts.set(k, r);
+    // Aici 429 e raspunsul corect (spre deosebire de raportarea de erori, unde clientul n-avea
+    // ce face cu informatia): omul ASTEPTA completarea si trebuie sa afle ca poate scrie manual.
+    if (r.count > CUI_MAX) {
+      return res.status(429).json({ error: 'Prea multe cautari de CUI de la aceeasi adresa. Completează câmpurile manual sau încearcă mai târziu.' });
+    }
+    if (!identitate.validCUI(req.query.cui)) {
+      return res.status(400).json({ error: 'CUI invalid — cifra de control nu se potriveste.' });
+    }
+    let out;
+    try {
+      out = await registruAnaf.cautaPentruCompletare(req.query.cui);
+    } catch (e) {
+      // Serviciul ANAF picat NU e o eroare a aplicatiei si nu are voie sa intre in fereastra de
+      // alerta 5xx: formularul ramane perfect utilizabil scris de mana. 503 + motiv, ca interfata
+      // sa poata spune „completeaza manual", nu „a crapat ceva".
+      log.warn('cautare CUI: registrul ANAF nu a raspuns', { cui: String(req.query.cui).slice(0, 12), err: e.message });
+      return res.status(503).json({ error: 'Registrul ANAF nu răspunde acum. Completează câmpurile manual.' });
+    }
+    if (!out.gasit) return res.json({ gasit: false, cui: out.cui });
+    const g = out.registru;
+    res.json({
+      gasit: true,
+      cui: g.cui,
+      denumire: g.denumire,
+      adresa: g.adresa,
+      nrRegCom: g.nrRegCom,
+      caen: g.caen,
+      // Registrul da codul auto al judetului („B", „CJ"), aplicatia foloseste peste tot forma
+      // ISO 3166-2 („RO-B", „RO-CJ") — asa cere CIUS-RO in e-Factura si asa scriu toate cele trei
+      // formulare. Conversia se face AICI, o data, nu in fiecare consumator: altfel primul care ar
+      // uita-o ar produce un judet invalid intr-o declaratie, adica tocmai la capatul unde nu se
+      // mai vede. `judet` gol ramane gol — nu inventam „RO-".
+      judet: g.judet ? 'RO-' + String(g.judet).toUpperCase() : '',
+      localitate: g.localitate,
+      tvaPlatitor: g.tvaPlatitor,
+      tvaLaIncasare: g.tvaLaIncasare,
+      // Semnalele care schimba o decizie contabila, nu doar completeaza un camp: cu un partener
+      // INACTIV cheltuiala e nedeductibila si TVA-ul nu se deduce (art. 11 Cod fiscal). E mai
+      // ieftin sa afli acum, cand tastezi CUI-ul, decat dupa ce ai inregistrat factura.
+      inactiv: g.inactiv,
+      radiat: g.radiat,
+    });
+  }));
+
   // ASINCRON pentru un singur camp: `deploy` (ce cod ruleaza de fapt). Citirea lanseaza git, deci
   // nu are ce cauta pe o cale sincrona; memo-ul cu TTL din deployState face ca rafalele de
   // reimprospatare sa nu lanseze subprocese in serie.
@@ -519,5 +584,5 @@ module.exports = function registerAuthRoutes(app, ctx) {
     });
   });
 
-  return { registerAttempts, forgotAttempts, clientErrAttempts };
+  return { registerAttempts, forgotAttempts, clientErrAttempts, cuiAttempts };
 };

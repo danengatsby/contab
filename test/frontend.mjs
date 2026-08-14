@@ -392,6 +392,185 @@ section('Dashboard: un cont în minus nu are voie să se ascundă într-un total
   eq('șir negativ e tratat numeric', dashboard.dalaDisponibil('-12.5', '100', '87.5').ton, 'red');
 }
 
+section('Dashboard: firma fără nicio înregistrare nu primește un ecran de zerouri');
+{
+  // Măsurat pe un cont nou: 11 din 11 carduri randau doar `0,00`, liniuțe sau „fără date".
+  // Condiția e strict „zero înregistrări", nu „puține": la prima înregistrare panourile revin.
+  ok('firma goală ascunde panourile', dashboard.tabloulEGol({ nrInregistrari: 0 }) === true);
+  ok('o singură înregistrare le aduce înapoi', dashboard.tabloulEGol({ nrInregistrari: 1 }) === false);
+  ok('firma cu istoric nu e atinsă', dashboard.tabloulEGol({ nrInregistrari: 22000 }) === false);
+  // Numărul vine prin JSON: comparația trebuie să fie numerică, nu lexicală („0" e tot zero).
+  ok('zero sosit ca șir e tot zero', dashboard.tabloulEGol({ nrInregistrari: '0' }) === true);
+  ok('...iar un șir nenul nu e zero', dashboard.tabloulEGol({ nrInregistrari: '3' }) === false);
+  // „Nu știu" NU e „gol": pe un răspuns vechi sau tăiat, ascunderea ar șterge de pe ecran cifre
+  // reale ale unei firme cu activitate. Aceeași regulă ca la garda de deploy și la drill-uri.
+  ok('lipsa datelor nu ascunde nimic', dashboard.tabloulEGol(undefined) === false);
+  ok('...nici obiectul fără câmpul așteptat', dashboard.tabloulEGol({}) === false);
+  ok('...nici null', dashboard.tabloulEGol(null) === false);
+
+  // Poarta pe SELECTORI: `querySelector` întoarce `null` la un id redenumit, deci ascunderea ar
+  // înceta TĂCUT — cardul ar reapărea pe ecranul firmei goale fără ca vreun test să pice.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const lista = dashboard.PANOURI_ANALITICE;
+  ok('lista de panouri nu e goală', Array.isArray(lista) && lista.length >= 8);
+  for (const sel of lista) {
+    ok('„' + sel + '" e un id existent în index.html', /^#[A-Za-z][\w-]*$/.test(sel)
+      && html.includes('id="' + sel.slice(1) + '"'));
+  }
+  ok('randul explicativ există în pagină', html.includes('id="dashGolCard"'));
+  // Reversul, la fel de important: dacă lucrurile ACȚIONABILE ar intra în listă, ecranul firmei
+  // goale ar rămâne complet gol — adică exact defectul reparat, cu semnul schimbat.
+  for (const pastrat of ['#primiiPasiCard', '#deFacutCard', '#dashGolCard']) {
+    ok('„' + pastrat + '" rămâne pe ecran', !lista.includes(pastrat));
+  }
+  // Panourile scumpe nu se mai cer de la server când n-au ce arăta.
+  ok('previziunea nu se mai cere pe firma goală', /if \(!gol\) renderForecast\(\)/.test(dashSrc));
+  ok('graficele nu se mai desenează pe firma goală', /if \(gol\) return;\s*\n\s*if \(c\) renderDashboardCharts/.test(dashSrc));
+}
+
+section('Poartă: `display:…!important` nu are voie să bată `.hidden`');
+{
+  // A PATRA oară aceeași capcană, de fiecare dată găsită prin efectul ei, nu prin regulă:
+  //   1. `.login-box label` — un câmp ascuns din JS rămânea vizibil;
+  //   2. `#tabs>button[data-tab]` — „Portofoliu" apărea și la conturile cu o singură firmă;
+  //   3. `.simple-ui .simple-only` — „Situația firmei" arăta patru dale de 0,00 pe firma goală;
+  //   4. `#tabs .navmenu button` — „Cine accesează aplicația" se vedea la orice utilizator.
+  // Primele trei au fost reparate una câte una, fiecare cu propriul comentariu care spunea
+  // „aceeași capcană ca mai sus". Un comentariu nu e un mecanism. Poarta se DERIVĂ din sursă:
+  // orice regulă care FACE VIZIBIL ceva cu `!important` trebuie să se retragă în fața lui
+  // `.hidden`. Regulile care ascund (`display:none!important`) nu intră — ele sunt de acord.
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  const faraComentarii = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const vinovate = [];
+  let vazute = 0;
+  for (const m of faraComentarii.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const decl = /display\s*:\s*([^;}!]+)!important/.exec(m[2]);
+    if (!decl) continue;
+    if (decl[1].trim() === 'none') continue; // ascunde: nu poate contrazice `.hidden`
+    vazute += 1;
+    const sel = m[1].split(',').map((s) => s.trim()).filter(Boolean);
+    if (sel.some((s) => !s.includes(':not(.hidden)'))) vinovate.push(sel.join(', ').slice(0, 70));
+  }
+  ok('poarta chiar vede reguli (nu o listă goală)', vazute >= 5);
+  ok('nicio regulă nu forțează vizibilitatea peste `.hidden`'
+    + (vinovate.length ? ' — ADAUGĂ `:not(.hidden)` la: ' + vinovate.join(' | ') : ''), vinovate.length === 0);
+  // Și reversul: poarta trebuie să PICE dacă cineva scoate garda. Se dovedește pe un exemplu
+  // sintetic, nu prin mutarea fișierului real — altfel „trece" ar putea însemna „n-a citit nimic".
+  const fals = '.x .y{display:block!important}';
+  const prinde = [...fals.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .some((m) => /display\s*:\s*([^;}!]+)!important/.test(m[2]) && !m[1].includes(':not(.hidden)'));
+  ok('...iar poarta chiar prinde o regulă nepăzită', prinde === true);
+}
+
+section('Declarații: eticheta spune UNDE ești față de termen, nu doar „Nedepusă"');
+{
+  // „Nedepusă" e adevărat, dar nu spune nimic: orice declarație e nedepusă până e depusă.
+  // Informația utilă e alta — mai ai timp, e momentul, sau ai întârziat.
+  const s = (st, u) => livrabile.declStareAfisata(st, u);
+  eq('termen departe: etichetă neutră', s('nedepusa', 'in-pregatire').t, 'În pregătire');
+  eq('termen aproape: „De depus"', s('nedepusa', 'termen').t, 'De depus');
+  eq('termen trecut: „Restanță"', s('nedepusa', 'restanta').t, 'Restanță');
+  // Culoarea e parte din afirmație, nu decor: neutru ≠ avertisment ≠ alarmă. Fără asta, cele trei
+  // stări ar avea nume diferite și același ton — adică exact defectul reparat, mai discret.
+  const culori = ['in-pregatire', 'termen', 'restanta'].map((u) => s('nedepusa', u).c);
+  eq('cele trei stări au trei tonuri distincte', new Set(culori).size, 3);
+  ok('„în pregătire" NU folosește tonul de avertizare', s('nedepusa', 'in-pregatire').c !== s('nedepusa', 'termen').c);
+
+  // Starea SALVATĂ bate derivarea: „Depusă" rămâne „Depusă".
+  eq('starea salvată rămâne vizibilă', s('depusa', 'gata').t, 'Depusă');
+  eq('...și „Scutită" la fel', s('scutita', 'gata').t, 'Scutită');
+  // „Generată" (XML descărcat, nedepus la ANAF) își păstrează eticheta, dar restanța se adaugă.
+  eq('„Generată" rămâne generată', s('generata', 'restanta').t, 'Generată');
+  ok('...cu marcajul de restanță alături', s('generata', 'restanta').restanta === true);
+  ok('...iar când nu e restanță, fără marcaj', !s('generata', 'in-pregatire').restanta);
+
+  // Fiecare stare derivată își explică singură înțelesul — altfel „În pregătire" pe un rând care
+  // în selector arată „Nedepusă" ar părea două sisteme de stări.
+  ok('starea derivată poartă o explicație', s('nedepusa', 'in-pregatire').titlu.includes('nedepusă'));
+  ok('restanța explică ce s-a întâmplat', /trecut/i.test(s('nedepusa', 'restanta').titlu));
+  // Apel fără urgență (ecrane care n-o au): comportamentul de dinainte, fără excepție.
+  eq('fără urgență se cade pe starea salvată', s('nedepusa', undefined).t, 'Nedepusă');
+}
+
+section('Primii pași: pasul 1 SPUNE ce lipsește, nu doar rămâne nebifat');
+{
+  // Pasul stătea nebifat pe un ecran („Firma mea") cu ~40 de câmpuri, fără să spună care.
+  // Lista vine de la server (derivată în src/dateFirma.js) — nu se reface aici, ca să nu existe
+  // două definiții care driftează la primul câmp adăugat într-un generator.
+  const d = dashboard.descriereDateFirma([
+    { camp: 'caen', eticheta: 'Cod CAEN', deCe: 'D300, D394 și D112 îl cer; fără el pleacă „0000"' },
+    { camp: 'judet', eticheta: 'Județul', deCe: 'e-Factura cere codul județului' },
+  ]);
+  ok('numește câmpurile care lipsesc', d.includes('Cod CAEN') && d.includes('Județul'));
+  ok('...și spune de ce contează primul', d.includes('D300'));
+  // Motivul e al PRIMULUI câmp, nu al tuturor: patru explicații una sub alta ar fi un paragraf
+  // pe un rând de checklist.
+  ok('nu înșiră toate motivele', !d.includes('e-Factura cere codul județului'));
+
+  // Firma completă: descrierea rămâne cea generală, fără „mai lipsește".
+  ok('firma completă primește descrierea normală', !dashboard.descriereDateFirma([]).includes('Mai lipsește'));
+  ok('lipsa listei nu aruncă', typeof dashboard.descriereDateFirma(undefined) === 'string');
+
+  // Textul intră într-un ȘABLON HTML (`stepsHtml`), alături de descrieri care sunt literali
+  // scriși de noi. Un câmp venit prin API n-are voie să fie singurul neescapat din șirul acela.
+  const rau = dashboard.descriereDateFirma([{ camp: 'x', eticheta: '<img src=x onerror=alert(1)>', deCe: 'y' }]);
+  ok('eticheta venită prin API e escapată', !rau.includes('<img') && rau.includes('&lt;img'));}
+
+section('Banda de sus nu contrazice checklistul de dedesubt');
+{
+  // „Totul pare în regulă" e adevărat despre URGENȚE și fals despre firmă: cât timp checklistul
+  // de dedesubt cere cinci lucruri, mesajul îl contrazice la citire. Cele două afirmații stăteau
+  // la trei centimetri una de alta, pe același ecran, despre aceeași firmă.
+  const proaspata = { nrInregistrari: 0, firmaCompletata: false, arePartener: false,
+    documentInregistrat: false, facturaEmisa: false };
+  const m = dashboard.mesajFaraAlerte(proaspata, false);
+  ok('firma la început NU primește „totul e în regulă"', !/Totul pare în regulă/.test(m.txt));
+  ok('...ci spune că nu e nicio urgență, dar pornirea nu e gata', /Nicio urgență/.test(m.txt) && /nu e pornită complet/.test(m.txt));
+  ok('...și CÂȚI pași au rămas', /<b>5<\/b> pași/.test(m.txt));
+  // Numărul vine din aceeași sursă din care se bifează pașii — altfel ar apărea o a treia
+  // definiție a lui „gata", exact defectul reparat, cu un pas lateral.
+  const doiFacuti = Object.assign({}, proaspata, { firmaCompletata: true, arePartener: true });
+  ok('numărul urmează bifele reale', /<b>3<\/b> pași/.test(dashboard.mesajFaraAlerte(doiFacuti, false).txt));
+  ok('singularul e corect la un singur pas rămas',
+    / <b>1<\/b> pas\b/.test(dashboard.mesajFaraAlerte(
+      { nrInregistrari: 4, firmaCompletata: true, arePartener: true, documentInregistrat: true, facturaEmisa: false }, false).txt));
+  // Toți pașii făcuți, dar checklistul încă pe ecran (sub 5 înregistrări): nu mai e nimic de spus
+  // despre pornire, deci revine mesajul obișnuit. Cazul e real și e singurul în care checklistul
+  // e vizibil FĂRĂ ca banda să vorbească despre pași.
+  ok('toți pașii făcuți -> mesajul obișnuit, deși checklistul e încă pe ecran',
+    /Totul pare în regulă/.test(dashboard.mesajFaraAlerte(
+      { nrInregistrari: 4, firmaCompletata: true, arePartener: true, documentInregistrat: true, facturaEmisa: true }, false).txt));
+
+  // Firma cu activitate: mesajul de dinainte, neatins.
+  const asezata = { nrInregistrari: 12, firmaCompletata: true, arePartener: true,
+    documentInregistrat: true, facturaEmisa: true };
+  ok('firma așezată primește mesajul de dinainte', /Totul pare în regulă/.test(dashboard.mesajFaraAlerte(asezata, false).txt));
+  // Contul fără nicio firmă are bannerul lui; aici n-are ce checklist să contrazică.
+  ok('contul fără firmă nu primește îndemn despre o firmă inexistentă',
+    /Totul pare în regulă/.test(dashboard.mesajFaraAlerte(proaspata, true).txt));
+  ok('lipsa datelor nu inventează un îndemn', /Totul pare în regulă/.test(dashboard.mesajFaraAlerte(null, false).txt));
+
+  // Banda și checklistul trebuie să răspundă la ACEEAȘI întrebare — de aceea condiția e o
+  // funcție, nu două ieșiri devreme îngropate în randare.
+  eq('checklistul e vizibil exact când firma e la început', dashboard.checklistVizibil(proaspata, false), true);
+  eq('...și ascuns pentru firma așezată', dashboard.checklistVizibil(asezata, false), false);
+  eq('...și pentru contul fără firmă', dashboard.checklistVizibil(proaspata, true), false);
+  // Cele două condiții nu au voie să se despartă: mesajul „mai ai N pași" apare DOAR când
+  // checklistul care-i dă numărul e chiar pe ecran.
+  // Implicație, nu echivalență: banda poate tăcea despre pași cu checklistul pe ecran (toți pașii
+  // făcuți), dar nu poate vorbi despre ei cu checklistul ascuns — atunci ar trimite la o listă
+  // care nu se vede.
+  const totiFacuti = { nrInregistrari: 4, firmaCompletata: true, arePartener: true, documentInregistrat: true, facturaEmisa: true };
+  for (const [p, ff] of [[proaspata, false], [asezata, false], [proaspata, true], [null, false], [totiFacuti, false]]) {
+    const spuneP = /Nicio urgență/.test(dashboard.mesajFaraAlerte(p, ff).txt);
+    ok('banda nu trimite la un checklist ascuns', !spuneP || dashboard.checklistVizibil(p, ff));
+  }
+  // Randarea trebuie să folosească un ton NECLICABIL: `.alert` pune `cursor:pointer`, iar mesajul
+  // ăsta e un `div`, nu un buton.
+  eq('tonul e cel neclicabil, dedicat', dashboard.mesajFaraAlerte(proaspata, false).ton, 'start');
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  ok('...și tonul acela chiar nu arată clicabil', /\.alert\.start\{[^}]*cursor:default/.test(css));
+}
 section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
 {
   // `azi` e fixat: altfel vechimea restanței ar depinde de ziua în care rulează suita.
@@ -596,6 +775,233 @@ section('Bara de sus pe telefon: nu are voie să crească la loc');
   ok('panoul se închide la alegerea unei unelte', /#sideTools[\s\S]{0,220}remove\('tools-open'\)/.test(js));
 }
 
+section('Modul simplu: cele TREI navigații pornesc din același marcaj');
+{
+  // Aplicația are trei navigații peste aceleași `#tabs`: bara laterală (originalul) plus bara de
+  // meniu și banda de unelte, generate de `erp.js`. Regula scrisă în capul acelui fișier e că el
+  // „nu decide nimic, doar OGLINDEȘTE" — dar oglinda pierdea tocmai marcajul `.adv`, fiindcă
+  // butoanele generate sunt elemente NOI. Măsurat în mod simplu, înainte: din 11 taburi marcate,
+  // 6 rămâneau în banda de unelte și 3 grupuri întregi în bara de meniu.
+  //
+  // Stratul ăsta e RAPID și incomplet prin construcție: dovedește că sursa trece prin copiere,
+  // nu că browserul chiar nu mai arată intrarea (acolo se bat reguli CSS pe specificitate).
+  // Efectul se dovedește în `scripts/e2e-izolat.mjs`, secțiunea 12, pe DOM adevărat.
+  const erp = fs.readFileSync(path.join(PUB, 'erp.js'), 'utf8');
+  ok('există o singură definiție a preluării marcajelor', (erp.match(/function preiaMarcajele\(/g) || []).length === 1);
+  // Cele TREI puncte de generare. Dacă apare al patrulea, aserțiunea de sub ele îl semnalează.
+  ok('intrările de meniu preiau marcajul sursei', /function itemDeMeniu\([\s\S]{0,400}?preiaMarcajele\(btn, b\)/.test(erp));
+  ok('grupurile de meniu preiau marcajul grupului-sursă', /preiaMarcajele\(gr\.sursa, wrap\)/.test(erp));
+  ok('uneltele preiau marcajul tabului-țintă', /preiaMarcajele\(tinta, b\)/.test(erp));
+  // `esteAvansat` trebuie să se uite ȘI la grup: „Mijloace fixe", „Registre contabile" și
+  // „Închideri" sunt marcate pe `.navgroup`, nu pe fiecare buton — un test care verifică doar
+  // clasa butonului ar fi trecut cu jumătate din defect încă viu.
+  ok('marcajul se citește și de pe grupul-sursă, nu doar de pe buton', /closest\('\.navgroup'\)[\s\S]{0,80}contains\('adv'\)/.test(erp));
+  // Câte elemente generate există în total: fiecare `el('button'` / `el('div', 'em-item'` care
+  // ajunge în navigație trebuie să fi trecut pe la copiere. Poarta e pe NUMĂR, ca un al patrulea
+  // punct de generare adăugat mâine să nu treacă tăcut pe lângă ea.
+  ok('nu există un al patrulea punct de generare nepăzit', (erp.match(/preiaMarcajele\(/g) || []).length === 4);
+
+  // Partea de CSS: în bara laterală, regulile cu id bat `.simple-ui .adv` (ambele `!important`),
+  // deci ascunderea are nevoie de propria regulă cu id — una pentru grupuri, una pentru intrările
+  // marcate individual dintr-un grup nemarcat. A doua lipsea: „Anexe la situații", „Jurnal de
+  // audit" și „Plan de conturi" rămâneau în meniu în modul simplu.
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  ok('grupurile marcate se ascund și peste specificitatea barei laterale',
+    /\.simple-ui #tabs \.navgroup\.adv\{display:none!important\}/.test(css));
+  ok('...și intrările marcate individual, din grupuri nemarcate',
+    /\.simple-ui #tabs \.navmenu button\.adv\{display:none!important\}/.test(css));
+}
+
+section('Completare după CUI: nu suprascrie niciodată ce a tastat omul');
+{
+  // Regula întregii funcții. Un formular care îți șterge sub degete ce ai scris e mai rău decât
+  // unul care nu te ajută deloc — mai ales aici, unde registrul poate avea sediul vechi de ani,
+  // iar omul poate ști mai bine (denumirea comercială față de cea din registru).
+  const HARTA = { nume: 'denumire', regCom: 'nrRegCom', adresa: 'adresa', oras: 'localitate', judet: 'judet' };
+  const REG = { gasit: true, cui: '99887760', denumire: 'PARTENER TEST SRL', nrRegCom: 'J40/1/2020',
+    adresa: 'Str. Test 1', localitate: 'Cluj-Napoca', judet: 'RO-CJ', caen: '4711', tvaPlatitor: true };
+
+  const gol = core.campuriDeCompletat(REG, HARTA, { nume: '', regCom: '', adresa: '', oras: '', judet: '' });
+  eq('formular gol: se completează tot ce are registrul', Object.keys(gol.patch).sort().join(','), 'adresa,judet,nume,oras,regCom');
+  eq('...și se raportează ca atare', gol.completate.length, 5);
+  eq('...fără nimic „diferit"', gol.diferite.length, 0);
+
+  // Spațiile nu sunt conținut: un câmp cu " " e tot gol, altfel omul rămâne cu un formular
+  // necompletat și fără explicație.
+  eq('un câmp cu spații e tot gol', core.campuriDeCompletat(REG, { nume: 'denumire' }, { nume: '   ' }).completate.join(), 'nume');
+
+  const scris = core.campuriDeCompletat(REG, HARTA,
+    { nume: 'DENUMIREA MEA SRL', regCom: '', adresa: 'Str. Test 1', oras: '', judet: '' });
+  ok('câmpul deja scris NU se atinge', !('nume' in scris.patch));
+  ok('...dar se SPUNE că diferă de registru', scris.diferite.includes('nume'));
+  ok('...iar cele goale se completează în continuare', scris.patch.regCom === 'J40/1/2020' && scris.patch.oras === 'Cluj-Napoca');
+  // O valoare identică scrisă altfel (spații, majuscule) NU e o diferență de raportat: altfel
+  // fiecare căutare ar acuza omul că are alte date decât registrul, degeaba.
+  const lafel = core.campuriDeCompletat(REG, { adresa: 'adresa' }, { adresa: '  str.   TEST 1 ' });
+  eq('aceeași valoare scrisă altfel nu e „diferită"', lafel.diferite.length, 0);
+
+  // Registrul omite secțiuni întregi pentru unele forme de organizare — câmpul lipsă nu are ce
+  // completa și nu are voie să șteargă nimic.
+  const partial = core.campuriDeCompletat({ gasit: true, denumire: 'MINIM SRL' }, HARTA, { nume: '', adresa: '' });
+  eq('câmpurile absente din registru se sar', Object.keys(partial.patch).join(), 'nume');
+
+  // „Negăsit" și „nu s-a căutat" nu completează nimic. Cazul se dă cu un răspuns care POARTĂ
+  // câmpuri, nu cu unul gol: un `{gasit:false}` fără date ar trece și dacă garda `gasit` ar fi
+  // ștearsă din cod — adică testul ar fi verde din motivul greșit, exact ce s-a și întâmplat la
+  // prima scriere. Forma de aici e reală: ruta întoarce `{gasit:false, cui}`, iar `cautaCui`
+  // întoarce `{gasit:false, eroare}` când serviciul cade.
+  const negasitCuDate = core.campuriDeCompletat(
+    { gasit: false, cui: '40000000', denumire: 'NU EXISTĂ SRL', adresa: 'Str. Fantomă 1' }, HARTA, { nume: '', adresa: '' });
+  eq('CUI negăsit nu completează, oricâte câmpuri ar purta răspunsul', Object.keys(negasitCuDate.patch).length, 0);
+  eq('...și nici nu raportează completări', negasitCuDate.completate.length, 0);
+  eq('răspuns absent nu schimbă nimic', Object.keys(core.campuriDeCompletat(null, HARTA, { nume: '' }).patch).length, 0);
+
+  // Semnalele care schimbă o DECIZIE contabilă, nu doar conținutul unui câmp. Se dau chiar dacă
+  // niciun câmp nu s-a completat — valoarea lor nu depinde de cât de gol era formularul.
+  const inactiv = core.campuriDeCompletat(Object.assign({}, REG, { inactiv: true }), HARTA,
+    { nume: 'X', regCom: 'X', adresa: 'X', oras: 'X', judet: 'X' });
+  eq('nimic completat, dar avertismentul rămâne', inactiv.patch.nume === undefined && inactiv.avertismente.length, 1);
+  ok('...și citează temeiul (art. 11 — nedeductibilitate)', /art\. 11/.test(inactiv.avertismente[0]));
+  ok('TVA la încasare se semnalează separat, cu temeiul lui',
+    core.campuriDeCompletat(Object.assign({}, REG, { tvaLaIncasare: true }), HARTA, {}).avertismente.some((a) => /297/.test(a)));
+  ok('firma curată nu produce niciun avertisment', core.campuriDeCompletat(REG, HARTA, {}).avertismente.length === 0);
+
+  // Mesajul de după completare se CITEȘTE, deci înșiră etichetele câmpurilor, nu numele lor
+  // tehnice. Prima versiune tipărea „completat din registrul ANAF: den, adresa, oras, judet" —
+  // `den` nu înseamnă nimic pentru cine completează formularul.
+  eq('eticheta se curăță de lămuririle din paranteze', core.curataEticheta('Județ (cod, ex: RO-CJ)', 'judet'), 'Județ');
+  eq('...și de marcajul de câmp obligatoriu', core.curataEticheta('Denumire firmă * ', 'nume'), 'Denumire firmă');
+  eq('...și de spațiile din interior', core.curataEticheta('  Adresă   (stradă) ', 'adresa'), 'Adresă');
+  // Un câmp fără `<label>` nu are voie să rămână fără nume în mesaj: cade pe numele tehnic,
+  // adică exact comportamentul de dinainte, nu pe un șir gol.
+  eq('fără etichetă se cade pe numele câmpului', core.curataEticheta('', 'den'), 'den');
+  eq('...la fel dacă eticheta era doar decor', core.curataEticheta('( ) *', 'oras'), 'oras');
+  eq('lipsa completă nu aruncă', core.curataEticheta(null, 'judet'), 'judet');
+  // Poarta pe efect: mesajul nu are voie să mai conțină numele tehnice ale câmpurilor.
+  const coreSrc = fs.readFileSync(path.join(PUB, 'core.js'), 'utf8');
+  ok('mesajul înșiră etichete, nu numele câmpurilor', /listeaza\(r\.completate\)/.test(coreSrc) && !/r\.completate\.join/.test(coreSrc));
+  ok('...și la fel pentru câmpurile care diferă', /listeaza\(r\.diferite\)/.test(coreSrc) && !/r\.diferite\.join/.test(coreSrc));
+
+  // Poartă pe cele TREI locuri de apel: constatarea era că același CUI se tastează de mână în trei
+  // formulare. Dacă unul rămâne nelegat, reparația e făcută pe două treimi — și nu s-ar vedea.
+  const surse = { 'authui.js': 'înscrierea firmei', 'app.js': 'Firma mea', 'partners.js': 'formularul de partener' };
+  for (const [f, unde] of Object.entries(surse)) {
+    const src = fs.readFileSync(path.join(PUB, f), 'utf8');
+    ok('completarea după CUI e legată în ' + unde + ' (' + f + ')', /legaCompletareCui\(/.test(src));
+  }
+}
+
+section('Bulele de ajutor ⓘ chiar au unde să se prindă (fiecare titlu explicat există)');
+{
+  // `addPanelInfo()` din app.js leagă fiecare explicație din `panel-info.js` de un titlu din
+  // pagină, potrivind pe TEXT: `.card h2`, `.card h3`, `section .toolbar h2` și `.card > summary`.
+  // Potrivirea pe text e fragilă prin construcție — o redenumire sau mutarea titlului într-un alt
+  // element rupe legătura TĂCUT: explicația rămâne în tabel, bula dispare de pe ecran și nimic
+  // nu pică. Exact riscul luat aici, unde un panou a devenit `<details class="card">` și titlul
+  // a trecut din `<h2>` în `<summary>`.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const src = fs.readFileSync(path.join(PUB, 'panel-info.js'), 'utf8');
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9ăâîșşțţ]/g, '');
+  // Titlurile din pagină, pe aceleași patru ancore ca în app.js.
+  const ancore = [];
+  for (const m of html.matchAll(/<(h2|h3|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)) ancore.push(norm(m[2].replace(/<[^>]*>/g, ' ')));
+  ok('poarta chiar vede titluri în pagină', ancore.length > 40);
+  // Cheile explicate: primul element al fiecărei perechi din tabel.
+  const chei = [...src.matchAll(/\n\s*\['([^']+)',/g)].map((m) => norm(m[1]));
+  ok('poarta chiar vede explicații (nu o listă goală)', chei.length > 40);
+  const orfane = chei.filter((k) => !ancore.some((a) => a.startsWith(k)));
+  ok('fiecare explicație are un titlu de care să se prindă'
+    + (orfane.length ? ' — ORFANE (' + orfane.length + '): ' + orfane.slice(0, 5).join(' | ') : ''),
+    orfane.length === 0);
+  // Cazul concret reparat aici: panoul de șabloane e strâns, dar titlul lui rămâne o ancoră validă.
+  ok('șablonul de email e un panou care se STRÂNGE', /<details class="card" id="emailTplBox">/.test(html));
+  ok('...strâns implicit (fără `open`)', !/<details class="card" id="emailTplBox"[^>]*\bopen\b/.test(html));
+  ok('...cu titlul într-un `summary`, ancora recunoscută de addPanelInfo',
+    /<details class="card" id="emailTplBox">\s*<summary[^>]*>📧 Șabloane email/.test(html));
+}
+
+section('Ecranele „1 · alege / 2 · verifică": coloana a doua nu se rezervă degeaba');
+{
+  // Formularul e UNIC în aplicație și se MUTĂ între gazde (docflow.js). Până la alegerea unui tip,
+  // coloana a doua nu conține nimic — își rezerva jumătate de ecran ca să anunțe că e goală.
+  // Măsurat pe 1440×900: pasul 2 ocupa 605px lățime; acum, până la alegere, ecranul e pe o
+  // coloană, iar pasul 2 e o bandă de 93px. La deschiderea formularului revin cele două coloane.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  ok('regula comută pe o coloană cât timp formularul nu e în ecran',
+    /\.grid2\.pas12:not\(:has\(#entryForm:not\(\.hidden\)\)\)\{grid-template-columns:1fr\}/.test(css));
+  // Regula se sprijină pe UN singur `#entryForm` mutat între gazde. Dacă ar apărea al doilea,
+  // selecția `:has()` ar fi adevărată în ambele ecrane deodată.
+  eq('există exact un formular de înregistrare în pagină', (html.match(/id="entryForm"/g) || []).length, 1);
+
+  // Perimetrul se DERIVĂ din tabelul de gazde al lui docflow.js, nu dintr-o listă scrisă aici:
+  // un ecran nou cu același tipar ar rămâne altfel cu jumătatea goală, tăcut.
+  const flow = fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8');
+  const gazde = [...flow.matchAll(/host:\s*'#(\w+)'/g)].map((m) => m[1]);
+  ok('poarta chiar citește gazdele din docflow.js', gazde.length >= 3);
+  const fara = [];
+  for (const g of gazde) {
+    const i = html.indexOf('id="' + g + '"');
+    if (i < 0) { fara.push(g + ' (gazdă inexistentă în pagină)'); continue; }
+    // Cel mai apropiat înveliș `grid2` DINAINTEA gazdei; dacă gazda nu stă într-unul (cazul
+    // `formHostCash`), ecranul nu are coloană rezervată și nu e în perimetru.
+    const j = html.lastIndexOf('<div class="grid2', i);
+    if (j < 0) continue;
+    const antet = html.slice(j, html.indexOf('>', j));
+    if (!/\bpas12\b/.test(antet)) fara.push(g);
+  }
+  ok('fiecare gazdă aflată într-un înveliș pe două coloane e marcată `pas12`'
+    + (fara.length ? ' — FĂRĂ: ' + fara.join(', ') : ''), fara.length === 0);
+  ok('...și chiar există astfel de învelișuri (nu o mulțime goală)', /class="grid2 pas12"/.test(html));
+
+  // Textul nu mai poate spune „în stânga": poziția pasului 1 se schimbă (deasupra până la
+  // alegere, în stânga după). Un îndemn fals despre unde să te uiți e mai rău decât niciunul.
+  for (const [id, eticheta] of [['tab-emite', 'Emite factură'], ['tab-documente', 'Adaugă document primit']]) {
+    const i = html.indexOf('id="' + id + '"');
+    const sfarsit = html.indexOf('<section id=', i + 10);
+    const ecran = html.slice(i, sfarsit > 0 ? sfarsit : undefined);
+    ok('„' + eticheta + '" nu mai trimite la o poziție care se schimbă', !/(în|din) stânga/.test(ecran));
+  }
+}
+
+section('Ecranele-strat opresc derularea paginii de dedesubt');
+{
+  // Strat rapid, pe sursă: dovedește că regulile EXISTĂ. Efectul (degetul chiar nu mai ajunge în
+  // pagină) se dovedește în `scripts/e2e-izolat.mjs`, secțiunea 13, pe DOM adevărat — două
+  // straturi, ca la restul porților.
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  ok('pagina se blochează cât timp un ecran-strat e deschis',
+    /html:has\(\.login-overlay:not\(\.hidden\)\)[\s\S]{0,80}\{overflow:hidden\}/.test(css));
+  ok('...pe rădăcină ȘI pe body (propagarea overflow-ului diferă între motoare)',
+    /body:has\(\.login-overlay:not\(\.hidden\)\)/.test(css));
+  // `:not(.hidden)` e miezul regulii: fără el, pagina ar rămâne blocată DUPĂ autentificare —
+  // cele șase ecrane-strat există mereu în DOM, doar ascunse.
+  ok('regula se uită la ecranele VIZIBILE, nu la simpla lor existență',
+    !/html:has\(\.login-overlay\)\s*[,{]/.test(css));
+  // Derularea se oprește în overlay: altfel, la capătul lui, gestul continuă în pagină.
+  ok('overlay-ul nu propagă derularea mai departe', /\.login-overlay\{[^}]*overscroll-behavior:contain/.test(css));
+  // Toate cele șase straturi poartă clasa pe care se sprijină regula — un ecran nou care ar uita-o
+  // ar reintroduce defectul tăcut, pe altă ușă.
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const straturi = [...html.matchAll(/<div id="(\w+Overlay)" class="([^"]*)"/g)];
+  ok('poarta chiar vede ecrane-strat (nu o listă goală)', straturi.length >= 5);
+  const faraClasa = straturi.filter((m) => !/\blogin-overlay\b/.test(m[2])).map((m) => m[1]);
+  ok('fiecare ecran-strat poartă clasa `login-overlay`'
+    + (faraClasa.length ? ' — FĂRĂ: ' + faraClasa.join(', ') : ''), faraClasa.length === 0);
+}
+
+section('Logo lipsă: 204 e un răspuns „ok", deci nu poate fi tratat ca succes');
+{
+  // Capcana schimbării: „firma nu are logo" a devenit 204 tocmai ca să nu mai apară ca eroare în
+  // consolă — dar 204 e 2xx, deci `r.ok` e ADEVĂRAT. Un `if (r.ok)` lăsat neatins ar fi construit
+  // un obiect-imagine dintr-un corp GOL, adică exact pictograma de imagine ruptă pe care
+  // schimbarea voia s-o evite: zgomotul din consolă schimbat într-un defect vizibil.
+  const src = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
+  ok('citirea logo-ului cere CORP, nu doar succes', /r\.ok && r\.status !== 204/.test(src));
+  ok('...și decizia de afișare folosește chiar acel rezultat', /if \(areLogo\)/.test(src));
+  ok('nu mai există un `if (r.ok)` gol pe calea logo-ului',
+    !/const r = await fetch\('\/api\/company\/logo[\s\S]{0,400}?if \(r\.ok\) \{/.test(src));
+}
 section('Modul simplu filtrează LIMBAJUL, nu doar meniul');
 {
   // Constatarea reparată aici: `.simple-ui` ascundea 9 taburi și 28 de elemente, dar ecranele pe
@@ -692,12 +1098,17 @@ eq('cheile lipsă din rânduri contează ca 0', rapoarte.balanceTotals([{ cod: '
 ok('totalul e rotunjit la ban (fara reziduu de virgulă mobilă)', rapoarte.balanceTotals([{ siD: 1.1 }, { siD: 2.2 }]).siD === 3.3);
 
 section('Declarații: insigna de stare și sensul provizionului');
-ok('starea „depusă" își arată eticheta', livrabile.declBadge('depusa', false).includes('Depusă'));
-ok('starea „eroare" își arată eticheta', livrabile.declBadge('eroare', false).includes('Eroare'));
+// Al doilea argument nu mai e un boolean „overdue", ci URGENȚA derivată din termen (vezi
+// `urgentaTermen` în src/declarations.js) — de aceea insigna poate spune trei lucruri, nu două.
+ok('starea „depusă" își arată eticheta', livrabile.declBadge('depusa', 'gata').includes('Depusă'));
+ok('starea „eroare" își arată eticheta', livrabile.declBadge('eroare', 'in-pregatire').includes('Eroare'));
 // o stare necunoscuta NU trebuie sa lase insigna goala: cade pe „nedepusă" (cel mai prudent)
-ok('starea necunoscută cade pe „Nedepusă", nu pe gol', livrabile.declBadge('inventata', false).includes('Nedepusă'));
-ok('starea lipsă cade tot pe „Nedepusă"', livrabile.declBadge(undefined, false).includes('Nedepusă'));
-ok('restanța e marcată separat de stare', livrabile.declBadge('nedepusa', true).includes('restanță'));
+ok('starea necunoscută cade pe „Nedepusă", nu pe gol', livrabile.declBadge('inventata', 'in-pregatire').includes('Nedepusă'));
+ok('starea lipsă cu urgență necunoscută cade tot pe „Nedepusă"', livrabile.declBadge(undefined, undefined).includes('Nedepusă'));
+ok('restanța e marcată separat de stare', livrabile.declBadge('generata', 'restanta').includes('restanță'));
+// ...iar pe o declarație fără stare salvată, restanța devine chiar eticheta: „⏰ restanță" lipit
+// de „Nedepusă" spunea de două ori același lucru și lăsa cuvântul important la coadă.
+ok('restanța fără stare salvată devine eticheta', livrabile.declBadge('nedepusa', 'restanta').includes('Restanță'));
 ok('fără restanță nu apare marcajul', !livrabile.declBadge('nedepusa', false).includes('restanță'));
 // Poarta frontend <-> server: fiecare stare acceptata de server are eticheta in frontend.
 // Altfel registrul ar afisa „Nedepusă" pentru o declaratie de fapt depusa — exact invers.

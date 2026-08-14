@@ -6144,6 +6144,36 @@ const regDecl = declMod.registerForFirma(dDecl, vDecl, '2026-06', '2026-08-01');
 eq('registru: d300 depusa', regDecl.find((r) => r.tip === 'd300').status, 'depusa');
 ok('registru: d112 nedepusa cu termen depasit -> restanta', regDecl.find((r) => r.tip === 'd112').overdue);
 ok('registru: d300 depusa nu e restanta', !regDecl.find((r) => r.tip === 'd300').overdue);
+// ── Cele TREI stari fata de termen (nu doua) ──────────────────────────────────────────────
+// „Termen peste 43 de zile, nicio operatiune in luna" si „termenul a trecut ieri" se afisau
+// IDENTIC: „Nedepusa", pe fond de avertizare. Pentru o firma inscrisa acum un minut, trei randuri
+// asa citesc ca un repros — si tocesc semnalul exact acolo unde el trebuie sa insemne „acum".
+eq('termen departe -> in pregatire', declMod.urgentaTermen('2026-09-25', 'nedepusa', '2026-08-13'), 'in-pregatire');
+eq('termen in fereastra de 7 zile -> de depus', declMod.urgentaTermen('2026-08-18', 'nedepusa', '2026-08-13'), 'termen');
+eq('termen trecut -> restanta', declMod.urgentaTermen('2026-08-12', 'nedepusa', '2026-08-13'), 'restanta');
+// Ziua termenului NU e restanta: ai timp pana la finalul ei.
+eq('chiar in ziua termenului esti inca „de depus"', declMod.urgentaTermen('2026-08-13', 'nedepusa', '2026-08-13'), 'termen');
+// Marginea ferestrei, in ambele sensuri — praguri „aproape" ascund exact erori de o zi.
+eq('a saptea zi intra in fereastra', declMod.urgentaTermen('2026-08-20', 'nedepusa', '2026-08-13'), 'termen');
+eq('a opta zi NU intra', declMod.urgentaTermen('2026-08-21', 'nedepusa', '2026-08-13'), 'in-pregatire');
+// Depusa/scutita: termenul nu mai spune nimic despre ele, oricat de vechi ar fi.
+eq('depusa nu mai are urgenta', declMod.urgentaTermen('2020-01-01', 'depusa', '2026-08-13'), 'gata');
+eq('scutita la fel', declMod.urgentaTermen('2020-01-01', 'scutita', '2026-08-13'), 'gata');
+// „Generata" (XML descarcat) e tot nedepusa fata de ANAF: termenul curge mai departe.
+eq('generata ramane sub termen', declMod.urgentaTermen('2020-01-01', 'generata', '2026-08-13'), 'restanta');
+// Registrul poarta acum derivarea, iar `overdue` ramane UMBRA ei — nu o a doua regula.
+const regUrg = declMod.registerForFirma(dDecl, vDecl, '2026-06', '2026-08-01');
+ok('registrul poarta urgenta pe fiecare rand', regUrg.every((r) => typeof r.urgenta === 'string' && r.urgenta));
+ok('`overdue` e exact „urgenta === restanta"', regUrg.every((r) => r.overdue === (r.urgenta === 'restanta')));
+// Cazul din constatare: firma inscrisa in august, cu termene in septembrie -> nimic rosu.
+const vNoua = { firmaId: 77, company: { cui: 'RO12345674', nume: 'NOU', tvaPlatitor: true, perioadaTva: 'L' }, entries: [], angajati: [] };
+const regNoua = declMod.registerForFirma({ declarations: [] }, vNoua, '2026-08', '2026-08-13');
+ok('firma proaspata are declaratii de depus in septembrie', regNoua.length >= 2);
+ok('...si NICIUNA nu e restanta', !regNoua.some((r) => r.urgenta === 'restanta'));
+ok('...toate sunt „in pregatire"', regNoua.every((r) => r.urgenta === 'in-pregatire'));
+// Dar NU dispar: o firma inregistrata in scopuri de TVA datoreaza decontul si pe zero.
+ok('declaratiile RAMAN pe ecran, doar isi schimba tonul', regNoua.some((r) => r.tip === 'd300'));
+
 const portoDecl = declMod.portfolio(dDecl, [vDecl], '2026-06', '2026-08-01');
 eq('portofoliu: asteptate (cu saft lunar)', portoDecl.tot.asteptate, 5);
 eq('portofoliu: depuse', portoDecl.tot.depuse, 1);
@@ -6226,6 +6256,63 @@ ok('profit: D101 NU apare in afara lunii de sfarsit de an', !fp.expected(fp.buil
 ok('PFA: nici D100 nici D101', (() => { const t = fp.expected(fp.build({ tvaPlatitor: true, tipEntitate: 'pfa', regimImpozit: 'profit' }, {}), '2026-12', noIntra); return !t.includes('d100') && !t.includes('d101'); })());
 eq('termen D101: 25 martie anul urmator anului fiscal', declMod.dueDate('d101', '2025-12'), '2026-03-25');
 ok('expectedForFirma: firma pe profit vede D101 in decembrie', declMod.expectedForFirma({ firmaId: 8, company: { tvaPlatitor: true, regimImpozit: 'profit' }, angajati: [], entries: [] }, '2026-12').some((x) => x.tip === 'd101'));
+
+section('Datele de identitate ale firmei: ce lipseste si CE PLEACA in loc (src/dateFirma.js)');
+{
+  const df = require('../src/dateFirma');
+  const plina = { nume: 'ALFA SRL', cui: 'RO12345674', caen: '6201', adresa: 'Str. Test 1',
+    oras: 'Cluj-Napoca', judet: 'RO-CJ', tvaPlatitor: true, perioadaTva: 'L' };
+  eq('firma completa nu are nimic de completat', df.lipsa(plina).length, 0);
+  ok('...si `completa` spune acelasi lucru', df.completa(plina) === true);
+
+  // Cazul REAL de la inscriere: firma noua are doar denumire si CUI. Vechea regula („are CUI")
+  // bifa pasul aici — in timp ce controlul de coerenta cerea, in acelasi ecran, codul CAEN.
+  const proaspata = { nume: 'NOU SRL', cui: 'RO12345674', tvaPlatitor: true };
+  const l = df.lipsa(proaspata).map((f) => f.camp);
+  eq('firma proaspat inscrisa NU e completa', l.join(','), 'caen,adresa,oras,judet,perioadaTva');
+  ok('...deci pasul din checklist nu se mai bifeaza singur', df.completa(proaspata) === false);
+  // Fiecare camp lipsa trebuie sa poata SPUNE de ce conteaza — altfel omul vede un pas rosu pe un
+  // ecran cu ~40 de campuri si nu stie care.
+  ok('fiecare camp lipsa are eticheta si motiv', df.lipsa(proaspata).every((f) => f.eticheta && f.deCe));
+
+  // Campurile conditionate de regim: perioada TVA se cere DOAR platitorilor.
+  ok('neplatitorul de TVA nu e intrebat de perioada fiscala',
+    !df.lipsa({ nume: 'X', cui: '1', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: false })
+      .some((f) => f.camp === 'perioadaTva'));
+  ok('...dar platitorul, da',
+    df.lipsa({ nume: 'X', cui: '1', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: true })
+      .some((f) => f.camp === 'perioadaTva'));
+  // Profilul primit ca argument bate flagul de pe firma (apelantii care l-au construit deja).
+  ok('profilul primit decide, cand exista',
+    df.lipsa({ nume: 'X', cui: '1', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: false },
+      { tvaPlatitor: true }).some((f) => f.camp === 'perioadaTva'));
+  // Un camp cu spatii e gol: altfel „ " ar trece drept adresa completata si ar pleca in e-Factura.
+  eq('un camp cu spatii e tot gol', df.lipsa(Object.assign({}, plina, { adresa: '   ' })).map((f) => f.camp).join(), 'adresa');
+  eq('firma absenta nu arunca', df.lipsa(null).length > 0, true);
+
+  // POARTA care leaga lista de REALITATE. Fiecare camp de aici exista fiindca generatoarele pun
+  // un INLOCUITOR tacit cand lipseste (`company.caen || '0000'`), deci lipsa nu se vede nicaieri
+  // altundeva: iese o declaratie valida si gresita. Daca cineva adauga maine inca un
+  // `company.X || '...'` intr-un generator, campul X trebuie sa ajunga si aici.
+  const xmlSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'xml.js'), 'utf8');
+  const cuInlocuitor = new Set();
+  // Doar inlocuitorii NEVIZI: un `company.x || ''` nu inventeaza nimic, lasa campul gol.
+  for (const m of xmlSrc.matchAll(/company\.([a-zA-Z]+)\s*\|\|\s*(['"])(?!\2)/g)) cuInlocuitor.add(m[1]);
+  ok('poarta chiar vede inlocuitori in generatoare (nu o multime goala)', cuInlocuitor.size >= 4);
+  const stiute = new Set(df.CAMPURI.map((f) => f.camp));
+  // `regCom` e singura exceptie STRUCTURALA, nu o scutire: cade inapoi pe CUI-ul firmei, adica pe
+  // o valoare ADEVARATA a aceleiasi firme. Restul inventeaza ceva ce nu exista („0000", „RO-B").
+  const nesupravegheate = [...cuInlocuitor].filter((c) => !stiute.has(c) && c !== 'regCom');
+  ok('fiecare camp cu inlocuitor tacit in generatoare e declarat in dateFirma.CAMPURI'
+    + (nesupravegheate.length ? ' — LIPSA: ' + nesupravegheate.join(', ') : ''),
+    nesupravegheate.length === 0);
+  // Inventarul e mai LARG decat checklistul, deliberat: campurile substituite cu un marcaj
+  // vizibil („-") sunt declarate, dar nu tin un pas de pornire rosu saptamani.
+  ok('inventarul contine si campuri necerute in checklist', df.CAMPURI.some((f) => f.cerut === false));
+  ok('...iar acelea chiar nu apar in lista de completat',
+    !df.lipsa({ nume: 'X', cui: '1', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: false })
+      .some((f) => f.cerut === false));
+}
 
 section('Controale fiscale derivate din profil (src/fiscalControls.js)');
 const fctrl = require('../src/fiscalControls');

@@ -14,6 +14,7 @@ const decl = require('../declarations');
 const pdf = require('../pdf');
 const acc = require('../accounting');
 const stocks = require('../stocks');
+const dateFirma = require('../dateFirma');
 const { reconcile, compensablePartners } = require('../reconcile');
 const { analyticBalance, aging } = require('../analytic');
 const { round2, period: periodOf } = require('../util');
@@ -81,8 +82,17 @@ module.exports = function register(app, ctx) {
       // ca dashboard-ul sa ghideze un tester necontabil in loc sa-i arate doar zerouri.
       // Aici intra DOAR ce deriva din datele firmei; wizardAscuns e per UTILIZATOR, deci se
       // suprapune dupa cache (altfel un utilizator ar mosteni starea wizardului altuia).
+      // „Datele firmei sunt completate" se DERIVA din campurile de care depind iesirile fiscale
+      // (src/dateFirma.js), nu din prezenta CUI-ului. Varianta veche bifa pasul imediat dupa
+      // inscriere — deci checklistul spunea „gata" in timp ce controalele de coerenta cereau, la
+      // doua clicuri distanta, codul CAEN. Iar campurile lipsa nu blocheaza nimic: generatoarele
+      // pun inlocuitori („0000", „RO-B"), deci iese o declaratie valida si gresita.
+      const lipsaFirma = dateFirma.lipsa(v.company);
       const primiiPasi = {
-        firmaCompletata: !!(v.company && v.company.cui),
+        firmaCompletata: lipsaFirma.length === 0,
+        // Ce anume lipseste, ca pasul sa poata SPUNE, nu doar sa ramana nebifat. Fara asta,
+        // utilizatorul vede un pas rosu pe un ecran cu ~40 de campuri si nu stie care.
+        firmaLipsa: lipsaFirma.map((f) => ({ camp: f.camp, eticheta: f.eticheta, deCe: f.deCe })),
         arePartener: Object.keys(v.partners || {}).length > 0,
         areProdus: (v.products || []).length > 0,
         documentInregistrat: (v.entries || []).some((e) => !e.system),

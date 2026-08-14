@@ -227,13 +227,19 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   expert, ca să nu treacă nici o regresie care ar ascunde totul pentru toată lumea).
 - **E2E pe instanță izolată:** `npm run e2e-izolat` (`scripts/e2e-izolat.sh` +
   `scripts/e2e-izolat.mjs`) ridică o instanță proprie (bază și date temporare, port separat) și
-  rulează **84 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
+  rulează **99 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
   deci rularea produce mai multe rezultate) — exact fluxurile care nu se pot atinge pe demo
   live: roluri și drepturi granulare, resetare de parolă cu token real, importuri, erori SPV fără
   credențiale, declarațiile și situațiile XML accesibile profilului seed, **restaurarea efectivă** a unui backup (verificată
-  prin dispariția unui marcaj scris după arhivare) și panoul „Cine accesează aplicația" (tabelele
+  prin dispariția unui marcaj scris după arhivare), panoul „Cine accesează aplicația" (tabelele
   se randează, filtrul schimbă conținutul, iar un cont fără drepturi nu vede nici cardul, nici
-  datele din spatele lui). Importul balanței verifică în browser previzualizarea, salvarea unei
+  datele din spatele lui), **modul simplu în toate cele trei navigații** — bara laterală, bara de
+  meniu și banda de unelte oglindesc aceleași `#tabs`, deci ascunderea părții tehnic-contabile se
+  dovedește pe vizibilitatea calculată de browser, cu acordeonul și meniurile DESCHISE (o
+  măsurătoare care le lasă închise raportează zero scăpări indiferent de adevăr) — și **ecranul de
+  intrare pe telefon**, unde se dovedește că derularea rămâne în stratul de deasupra și nu aduce în
+  vedere carcasa aplicației de dedesubt (măsurat cu rotița/degetul, nu cu `window.scrollTo`, care
+  trece peste `overflow:hidden`). Importul balanței verifică în browser previzualizarea, salvarea unei
   mapări și reutilizarea ei după reordonarea coloanelor; același ecran validează în browser
   pachetul atomic balanță + parteneri + mijloace fixe + stoc. Secțiunea 2FA parcurge fluxul complet prin interfață: configurare cu
   QR/cheie, activare cu TOTP, afișarea codurilor de rezervă, login cu un asemenea cod și

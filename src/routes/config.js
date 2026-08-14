@@ -14,6 +14,7 @@ const bnr = require('../bnr');
 const fiscalProfile = require('../fiscalProfile');
 const fiscalControls = require('../fiscalControls');
 const svc = require('../configService');
+const log = require('../log');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit, requireAdmin, upload } = ctx;
@@ -52,11 +53,25 @@ module.exports = function register(app, ctx) {
     logAudit('company.logo', 'logo incarcat (' + r.format + ')', { req });
     return { ok: true, logoFile: r.logoFile };
   }));
+  // „Firma nu are logo" e o stare NORMALA, nu o eroare — si de aceea raspunsul e 204, nu 404.
+  // Cu 404, fiecare firma fara logo lasa o linie rosie in consola browserului la fiecare intrare
+  // in „Firma mea": interfata trata corect raspunsul (ascundea previzualizarea), deci nimic nu se
+  // vedea stricat, dar zgomotul asta conteaza acum ca aplicatia isi raporteaza erorile din client
+  // — cu cat consola e mai curata, cu atat un semnal real se vede mai usor.
+  // 404 ramane pentru ce chiar LIPSESTE: firma insasi.
   app.get('/api/company/logo', (req, res) => {
     const f = db.getFirma(activeId(req));
-    if (!f || !f.logoFile) return res.status(404).send('Fara logo');
+    if (!f) return res.status(404).send('Firma nu exista');
+    if (!f.logoFile) return res.status(204).end();
     const p = path.join(db.UPLOAD_DIR, String(f.logoFile).replace(/[^a-zA-Z0-9._-]/g, ''));
-    if (!fs.existsSync(p)) return res.status(404).send('Fara logo');
+    if (!fs.existsSync(p)) {
+      // Baza spune ca exista un logo, discul spune ca nu: pentru client e tot „fara logo", dar
+      // pentru noi e o NEPOTRIVIRE reala (fisier sters pe langa aplicatie, restaurare partiala).
+      // Se scrie in jurnal, ca sa nu dispara tacut — nu poate spama, ruta se atinge doar cand
+      // cineva deschide „Firma mea".
+      log.warn('logo lipsa pe disc, desi firma il are inregistrat', { firmaId: f.id, logoFile: f.logoFile });
+      return res.status(204).end();
+    }
     res.setHeader('Content-Type', /\.png$/i.test(p) ? 'image/png' : 'image/jpeg');
     res.sendFile(p);
   });

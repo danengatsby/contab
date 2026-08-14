@@ -83,10 +83,34 @@
      prim meniu propriu — echivalentul lui „Fisier" din programele de birou. */
   var MENIU_PRIM = 'Aplicație';
 
+  /* O intrare e „tehnic-contabila" fie prin marcajul ei, fie prin al grupului din
+     care face parte (grupurile „Registre contabile", „Inchideri", „Mijloace fixe"
+     sunt marcate intregi, nu buton cu buton). Modul simplu ascunde `.adv` din CSS,
+     deci intrebarea nu se pune despre stilul curent, ci despre SURSA. */
+  function esteAvansat(btn) {
+    if (!btn || !btn.classList) return false;
+    if (btn.classList.contains('adv')) return true;
+    var g = btn.closest && btn.closest('.navgroup');
+    return !!(g && g.classList.contains('adv'));
+  }
+
+  /* Marcajele care trebuie sa treaca de pe intrarea-sursa pe cea generata. Fara
+     asta, oglinda nu mai e oglinda: `.adv` ramanea in `#tabs` si nu ajungea aici,
+     deci modul simplu ascundea intrarile DOAR din bara laterala, in timp ce bara
+     de meniu si banda de unelte le ofereau in continuare — desi modalul de bun
+     venit si toastul de comutare promit exact contrariul („partea tehnic-contabila
+     e ascunsa"). Masurat inainte de reparatie, in mod simplu: din 11 taburi `.adv`,
+     0 vizibile lateral, 6 in banda de unelte, 3 grupuri intregi in bara de meniu. */
+  function preiaMarcajele(sursa, generat) {
+    if (esteAvansat(sursa)) generat.classList.add('adv');
+    return generat;
+  }
+
   function itemDeMeniu(btn) {
     var p = despartePictograma(eticheta(btn));
     var b = el('button', '', null);
     b.type = 'button';
+    preiaMarcajele(btn, b);
     b.appendChild(el('span', 'emi', p.ic || '·'));
     b.appendChild(el('span', 'emt', p.txt));
     b.addEventListener('click', function () {
@@ -121,6 +145,9 @@
 
     grupuri.forEach(function (gr) {
       var wrap = el('div', 'em-item');
+      // Un grup marcat intreg dispare intreg: altfel „Registre contabile" ramanea
+      // in bara de sus si se deschidea in voie peste jurnal, cartea mare, balanta.
+      preiaMarcajele(gr.sursa, wrap);
       var btn = el('button', '', null);
       btn.type = 'button';
       btn.setAttribute('aria-haspopup', 'true');
@@ -221,6 +248,7 @@
       if (!tinta) return;
       var b = el('button', 'et-btn');
       b.type = 'button';
+      preiaMarcajele(tinta, b);
       b.dataset.tab = u.tab;
       b.title = u.lbl;
       b.appendChild(el('span', 'eti', u.ic));

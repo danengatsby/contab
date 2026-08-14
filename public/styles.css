@@ -36,7 +36,22 @@ a{color:var(--accent);text-decoration:none}
 .brand small{color:#aeb8d8}
 .logo{font-size:22px;background:rgba(255,255,255,.12);width:38px;height:38px;border-radius:9px;
   display:grid;place-items:center}
-.login-overlay{position:fixed;inset:0;background:#14204a url(/login-bg.svg) center/cover no-repeat;display:grid;place-items:center;z-index:100}
+.login-overlay{position:fixed;inset:0;background:#14204a url(/login-bg.svg) center/cover no-repeat;display:grid;place-items:center;z-index:100;
+  /* Derularea se OPRESTE in overlay: fara asta, ajuns la capatul lui, urmatorul gest continua
+     in pagina de dedesubt (scroll chaining) si aduce in vedere scheletul aplicatiei. */
+  overscroll-behavior:contain}
+/* Cat timp un ecran de intrare e deschis, PAGINA din spatele lui nu se deruleaza.
+   Masurat la 390x844, nedelogat: overlay-ul e `position:fixed` si isi deruleaza corect propriul
+   continut (1392px in 844), dar `body` ramanea derulabil pe 1771px — deci degetul, dupa ce
+   termina overlay-ul, ducea in vedere carcasa goala a aplicatiei de dedesubt: „Previziune
+   cash-flow", „Aging — vechimea soldurilor", „Ultimele operatiuni". Nu se scurge nicio data
+   (API-ul raspunde 401), dar vizitatorul vede un ecran care nu e al lui si nu inseamna nimic.
+   Regula acopera TOATE ecranele-strat (`.login-overlay`: intrare, inscriere, preturi, intrebari,
+   schimbarea fortata a parolei, bun venit) — toate sunt straturi PESTE pagina, nu parte din ea.
+   `:has()` e deja folosit in acest fisier; unde n-ar fi suportat, comportamentul ramane cel de
+   dinainte, deci regula nu poate strica nimic. */
+html:has(.login-overlay:not(.hidden)),
+body:has(.login-overlay:not(.hidden)){overflow:hidden}
 .login-box{background:#fff;border-radius:16px;padding:28px;width:340px;max-width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .login-logo{font-size:24px;font-weight:800;color:var(--head)}
 /* `:not(.hidden)` e OBLIGATORIU, nu cosmetic: `.login-box label` (clasa + element) bate
@@ -116,6 +131,19 @@ td.grpsep,th.grpsep{border-left:2px solid #d3dcec}
 main{max-width:1180px;margin:22px auto;padding:0 18px}
 .tab{display:none}.tab.active{display:block}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+/* Ecranele „1 · alege / 2 · verifica si salveaza" (Adauga document primit, Emite factura).
+   Formularul e UNIC in aplicatie si se MUTA intre cele doua gazde (vezi docflow.js), deci pana
+   la alegerea unui tip coloana a doua nu contine nimic — isi rezerva jumatate de ecran ca sa
+   anunte ca e goala („Alege in stanga ce emiti; formularul se deschide aici"). Pe 1440x900 asta
+   inseamna ~600px de aer exact acolo unde ar fi trebuit sa apara formularul.
+   Cat timp formularul NU e in acest invelis, ecranul are o singura coloana: pasul 2 ramane
+   vizibil (spune ce urmeaza), dar pe un rand, nu pe o jumatate de pagina. Cand formularul se
+   deschide, revin cele doua coloane — starea aceea era deja buna: vezi alegerea si formularul
+   unul langa altul.
+   `:has()` face selectia PE ECRANUL CARE CONTINE FORMULARUL, deci comutarea se face singura la
+   mutarea lui dintr-un tab in altul, fara ca docflow.js sa stie de layout. Unde `:has()` n-ar fi
+   suportat, raman doua coloane — adica exact comportamentul de dinainte. */
+.grid2.pas12:not(:has(#entryForm:not(.hidden))){grid-template-columns:1fr}
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;
@@ -167,6 +195,12 @@ input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-ra
 input:focus,select:focus{outline:2px solid #cfe3da;border-color:var(--accent)}
 .dyn{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
 .dyn .full{grid-column:1/-1}
+/* Randul de stare al completarii dupa CUI (`legaCompletareCui` din core.js) se insereaza dupa
+   eticheta campului, deci ateriza intr-o CELULA de grila — un text de doua randuri strivit langa
+   „Denumire". Ocupa toata latimea, ca orice mesaj despre formular, si in formularele care nu sunt
+   grile ramane un simplu bloc. */
+.cui-stare{grid-column:1/-1;font-size:13px;line-height:1.45;margin:2px 0 6px}
+.cui-stare:empty{display:none}
 .dyn .check{grid-column:1/-1;display:flex;flex-direction:row;align-items:center;gap:8px;font-size:13px}
 .dyn .check input{width:auto;margin:0}
 
@@ -700,7 +734,7 @@ body:not(.dark) .kpi.blue{border-left-color:#9c7a55}
   #tabs>button[data-tab].active{background:rgba(255,255,255,.16);color:#fff;border-left-color:#f0c14b}
   #tabs .navgroup:not(.hidden){display:block !important;position:static !important;width:100%;margin-top:1px}
   /* antet de secțiune — clickabil, cu chevron care se rotește */
-  #tabs .navlabel{display:flex !important;align-items:center;justify-content:space-between;gap:6px;text-align:left;width:100%;
+  #tabs .navlabel:not(.hidden){display:flex !important;align-items:center;justify-content:space-between;gap:6px;text-align:left;width:100%;
     font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:#bdab83;padding:12px 12px 6px;
     background:none;cursor:pointer;font-weight:800;transition:color .15s}
   #tabs .navlabel:hover{color:#f0c14b}
@@ -710,8 +744,14 @@ body:not(.dark) .kpi.blue{border-left-color:#9c7a55}
   /* itemele secțiunii — ascunse până se deschide grupul */
   #tabs .navmenu{display:none !important;position:static !important;top:auto !important;left:auto !important;
     background:none;border:0;box-shadow:none;padding:0 0 4px;min-width:0}
-  #tabs .navgroup.open>.navmenu{display:block !important}
-  #tabs .navmenu button{display:block !important;width:100%;color:#d9d4c9;padding:8px 12px 8px 22px;
+  #tabs .navgroup.open>.navmenu:not(.hidden){display:block !important}
+  /* `:not(.hidden)` REPARA un defect vazut, nu unul ipotetic: `#navAccesari` („Cine acceseaza
+     aplicatia") sta in HTML cu `class="hidden"` si se arata doar adminilor, din JS — dar regula
+     asta (id + clasa + element, cu !important) batea `.hidden{display:none}`, deci intrarea se
+     vedea la ORICINE deschidea grupul „Setari". Masurat: display=block, offsetParent nenul, pe
+     un cont proaspat inscris. Ruta e pazita pe server, deci nu era o scurgere de date — era o
+     intrare de meniu care duce la un refuz. */
+  #tabs .navmenu button:not(.hidden){display:block !important;width:100%;color:#d9d4c9;padding:8px 12px 8px 22px;
     border-radius:0 9px 9px 0;border-left:2px solid transparent;font-weight:500;font-size:13px;white-space:normal;line-height:1.3}
   #tabs .navmenu button:hover{background:rgba(255,255,255,.08);color:#fff}
   #tabs .navmenu button.active{background:rgba(255,255,255,.14);color:#fff;border-left-color:#f0c14b;font-weight:600}
@@ -886,6 +926,10 @@ body.dark .imper-banner button{background:#ffd778;color:#2a2008}
 .alert.info{border-left-color:#3b82c4}
 .alert.bad{border-left-color:var(--danger)}
 .alert.ok{border-left-color:var(--good);cursor:default}
+/* „Nicio urgenta, dar pornirea nu e gata": informativa si NECLICABILA, ca `.ok`. Nu refoloseste
+   `.info`, care e a alertelor pe care se POATE apasa — `.alert` pune `cursor:pointer`, deci un
+   `div` cu `.info` ar arata clicabil fara sa fie. */
+.alert.start{border-left-color:#3b82c4;cursor:default}
 /* quick-action proeminent (lansare wizard) */
 .qa.qa-primary{background:linear-gradient(135deg,rgba(194,97,60,.12),rgba(194,97,60,.03));border-color:var(--accent)}
 .qa.qa-primary .t{color:var(--accent)}
@@ -990,6 +1034,15 @@ h2 .cinfo:hover .cpop,h3 .cinfo:hover .cpop,h2 .cinfo:focus .cpop,h3 .cinfo:focu
 /* grupurile intregi marcate adv (ex. Mijloace fixe): regula de mai sus e batuta de
    `#tabs .navgroup{display:block !important}` din sidebar (specificitate cu id) */
 .simple-ui #tabs .navgroup.adv{display:none!important}
+/* ...si INTRARILE marcate adv din interiorul unui grup NEMARCAT, din exact acelasi motiv:
+   `#tabs .navmenu button{display:block !important}` (id + clasa + element) bate
+   `.simple-ui .adv` (doua clase), ambele cu !important — deci castiga specificitatea.
+   Masurat inainte: „Anexe la situatii", „Jurnal de audit" si „Plan de conturi" ramaneau in
+   bara laterala in modul simplu, vizibile de indata ce deschideai grupul lor. Nu s-a vazut
+   mai devreme fiindca acordeonul tine grupurile INCHISE: o masuratoare care nu le deschide
+   raporteaza zero scapari. Regula de mai sus a fost scrisa pentru grupuri; intrarile
+   individuale au ramas descoperite. */
+.simple-ui #tabs .navmenu button.adv{display:none!important}
 
 /* ── Dictionar contabil (modal ❓) ── */
 .gloss-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:220;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -1062,7 +1115,13 @@ details[open]>.sec-sum::before{transform:rotate(90deg)}
 .simple-only-inline{display:none}
 .simple-ui .simple-only-inline{display:inline}
 .simple-only{display:none!important}
-.simple-ui .simple-only{display:block!important}
+/* `:not(.hidden)` NU e cosmetic — a treia oara aceeasi capcana (vezi `.login-box label` si
+   `#tabs`): `!important`-ul de aici bate `.hidden{display:none}`, deci un card `.simple-only`
+   ascuns din JS ramanea pe ecran. S-a vazut la „Situatia firmei — pe scurt", care continua sa
+   arate patru dale de 0,00 pe firma fara nicio inregistrare, desi dashboard.js ii pusese
+   `.hidden`. Regula: orice `display:...!important` pe un element pe care JS il poate ascunde
+   trebuie sa se retraga in fata lui `.hidden`. */
+.simple-ui .simple-only:not(.hidden){display:block!important}
 .simple-ui #kpis{display:none}
 .kpi.go{cursor:pointer}
 .kpi.go:hover,.kpi.go:focus{box-shadow:0 8px 22px rgba(0,0,0,.14);transform:translateY(-1px);outline:none}

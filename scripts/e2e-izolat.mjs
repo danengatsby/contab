@@ -501,6 +501,127 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   await pgLim2.close();
 }
 
+// ────────── 12. MODUL SIMPLU ASCUNDE PESTE TOT, NU DOAR INTR-O NAVIGATIE ──────────
+// Aplicatia are TREI navigatii peste aceleasi `#tabs`: bara laterala (originalul) plus bara de
+// meniu si banda de unelte, generate de erp.js. Modul simplu promite explicit, in modalul de bun
+// venit si in toastul de comutare, ca „partea tehnic-contabila (balanta, registre, inchideri) e
+// ascunsa" — iar promisiunea era tinuta doar de bara laterala.
+//
+// De ce AICI si nu in test/frontend.mjs: efectul e vizibilitatea calculata de browser din trei
+// reguli CSS care se bat pe specificitate (`.simple-ui .adv` vs `#tabs .navmenu button`), peste un
+// DOM construit la montare. O poarta pe sursa ar dovedi ca erp.js copiaza clasa — nu si ca
+// utilizatorul chiar nu mai vede intrarea. Doua straturi, ca la restul portilor din proiect.
+//
+// Capcana de masurare, platita o data: bara laterala e un ACORDEON, iar bara de meniu are meniuri
+// derulante. O masuratoare care nu le deschide raporteaza zero scapari indiferent de adevar — asa
+// au trecut neobservate „Anexe", „Jurnal de audit" si „Plan de conturi", vizibile de indata ce
+// deschideai grupul lor. Deci fiecare grup se deschide inainte de a citi.
+sect('12. Modul simplu ascunde partea tehnic-contabila din TOATE navigatiile');
+{
+  await adm.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await adm.evaluate(() => { const w = document.querySelector('#welcomeOverlay'); if (w) w.classList.add('hidden'); });
+  ok('chrome-ul de birou e montat (bara de meniu + banda de unelte)',
+    (await adm.locator('#erpMenu').count()) === 1 && (await adm.locator('#erpTools').count()) === 1);
+
+  const masoara = () => adm.evaluate(() => {
+    const viz = (e) => !!e && e.offsetParent !== null;
+    const adv = new Set();
+    document.querySelectorAll('#tabs button[data-tab].adv').forEach((x) => adv.add(x.dataset.tab));
+    document.querySelectorAll('#tabs .navgroup.adv button[data-tab]').forEach((x) => adv.add(x.dataset.tab));
+    // bara laterala: acordeonul se deschide TOT inainte de citire
+    document.querySelectorAll('#tabs .navgroup').forEach((g) => { if (viz(g)) g.classList.add('open'); });
+    const lateral = [...document.querySelectorAll('#tabs button[data-tab]')].filter(viz).map((x) => x.dataset.tab);
+    const unelte = [...document.querySelectorAll('#erpTools button[data-tab]')].filter(viz).map((x) => x.dataset.tab);
+    // bara de meniu: fiecare grup vizibil se deschide, se numara intrarile lui, apoi se inchide
+    let itemeMeniu = 0; const grupuriGoale = [];
+    document.querySelectorAll('#erpMenu .em-item').forEach((w) => {
+      if (!viz(w)) return;
+      w.classList.add('open');
+      const n = [...w.querySelectorAll('.em-pop button')].filter(viz).length;
+      w.classList.remove('open');
+      itemeMeniu += n;
+      if (n === 0) grupuriGoale.push(w.textContent.trim().slice(0, 30));
+    });
+    return {
+      nrAdv: adv.size,
+      lateralAdv: lateral.filter((t) => adv.has(t)),
+      uneltiAdv: unelte.filter((t) => adv.has(t)),
+      itemeMeniu,
+      grupuriGoale,
+      totalTaburi: document.querySelectorAll('#tabs button[data-tab]').length,
+    };
+  });
+  const pune = (mod) => adm.evaluate((m) => {
+    const vrea = m === 'simplu';
+    if (document.body.classList.contains('simple-ui') !== vrea) document.querySelector('#uiModeBtn').click();
+    document.querySelectorAll('.toast').forEach((t) => t.remove());
+    return document.body.classList.contains('simple-ui');
+  }, mod);
+
+  ok('comutatorul chiar pune modul simplu', (await pune('simplu')) === true);
+  await adm.waitForTimeout(300);
+  const s = await masoara();
+  // Poarta trebuie sa VADA ceva: daca marcajul `.adv` dispare din HTML, restul aserțiunilor ar
+  // trece pe o multime goala — adica exact „verde din motivul gresit".
+  ok('exista intrari tehnic-contabile de ascuns (poarta nu masoara o multime goala)', s.nrAdv >= 8);
+  ok('mod simplu: nicio intrare tehnic-contabila in bara laterala'
+    + (s.lateralAdv.length ? ' — SCAPA: ' + s.lateralAdv.join(', ') : ''), s.lateralAdv.length === 0);
+  ok('mod simplu: nicio intrare tehnic-contabila in banda de unelte'
+    + (s.uneltiAdv.length ? ' — SCAPA: ' + s.uneltiAdv.join(', ') : ''), s.uneltiAdv.length === 0);
+  ok('mod simplu: bara de meniu ofera exact taburile ramase', s.itemeMeniu === s.totalTaburi - s.nrAdv);
+  // Un grup din care s-au ascuns toate intrarile ar ramane in bara de sus ca meniu care se
+  // deschide gol — o promisiune de ecran care nu exista.
+  ok('mod simplu: niciun meniu care se deschide gol'
+    + (s.grupuriGoale.length ? ' — GOALE: ' + s.grupuriGoale.join(', ') : ''), s.grupuriGoale.length === 0);
+
+  // Reversul, la fel de important: modul expert nu are voie sa ascunda nimic. Un „ascunde peste
+  // tot" implementat prea lacom ar trece toate aserțiunile de mai sus si ar rupe aplicatia
+  // contabilului, care traieste tocmai in intrarile astea.
+  ok('comutatorul revine pe expert', (await pune('expert')) === false);
+  await adm.waitForTimeout(300);
+  const e = await masoara();
+  ok('mod expert: toate intrarile tehnic-contabile revin in bara laterala', e.lateralAdv.length === e.nrAdv);
+  ok('mod expert: si in banda de unelte revin cele care exista acolo', e.uneltiAdv.length > 0);
+  ok('mod expert: bara de meniu ofera toate taburile', e.itemeMeniu === e.totalTaburi);
+}
+
+// ────────── 13. PE TELEFON, ECRANUL DE INTRARE NU DERULEAZA PAGINA DE DEDESUBT ──────────
+// Ecranele-strat (`.login-overlay`: intrare, inscriere, preturi, intrebari, bun venit) sunt
+// `position:fixed` si isi deruleaza corect propriul continut. Dar `body` ramanea derulabil, deci
+// pe telefon degetul, dupa ce termina overlay-ul, ducea in vedere carcasa goala a aplicatiei:
+// „Previziune cash-flow", „Aging — vechimea soldurilor", „Ultimele operatiuni". Nu se scurgea
+// nicio data (API-ul raspunde 401), dar vizitatorul vedea un ecran care nu e al lui.
+//
+// De ce AICI si nu in suita unitara: efectul e derularea calculata de browser din doua reguli CSS
+// (`overflow` propagat de la radacina + `overscroll-behavior`), pe un DOM real. O poarta pe sursa
+// dovedeste ca regula e scrisa — nu si ca degetul chiar nu mai ajunge in pagina.
+//
+// Capcana de masurare, platita o data: `window.scrollTo()` deruleaza PROGRAMATIC si trece peste
+// `overflow:hidden`, deci raporta „stricat" si dupa reparatie. Se foloseste rotita/degetul.
+sect('13. Ecranul de intrare pe telefon nu deruleaza aplicatia de dedesubt');
+{
+  const tel = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  await tel.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await tel.waitForTimeout(800);
+  ok('ecranul de intrare e afisat', (await tel.locator('#loginOverlay:not(.hidden)').count()) === 1);
+  await tel.mouse.move(195, 400);
+  for (let i = 0; i < 8; i++) { await tel.mouse.wheel(0, 500); await tel.waitForTimeout(100); }
+  await tel.waitForTimeout(300);
+  const m = await tel.evaluate(() => {
+    const ov = document.querySelector('#loginOverlay');
+    return {
+      overlayScrollTop: Math.round(ov.scrollTop),
+      overlayMax: Math.round(ov.scrollHeight - ov.clientHeight),
+      paginaScrollY: Math.round(window.scrollY),
+    };
+  });
+  // Fara asta, poarta ar trece si pe o pagina care NU se deruleaza deloc — adica exact cazul in
+  // care overlay-ul insusi s-ar fi stricat, iar continutul lui ar fi devenit inaccesibil.
+  ok('overlay-ul isi deruleaza propriul continut (are ce derula)', m.overlayMax > 100);
+  ok('...si ajunge pana la capatul lui', m.overlayScrollTop >= m.overlayMax - 2);
+  ok('PAGINA de dedesubt ramane pe loc (masurat: ' + m.paginaScrollY + 'px)', m.paginaScrollY === 0);
+  await tel.close();}
+
 await b.close();
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari E2E izolate trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

@@ -687,6 +687,41 @@ async function main() {
       eq('dar adresa chiar s-a schimbat (editarea a functionat)', pEdit['11223342'].adresa, 'Alta adresa');
     }
 
+    // ── Cautarea unui CUI pentru completarea formularelor (fixture LOCAL) ──
+    // Ruta e PUBLICA deliberat (formularul de inscriere n-are sesiune), deci exact asta se
+    // dovedeste: merge FARA cookie, valideaza intrarea, si intoarce doar campurile de formular.
+    {
+      const hitsInainte = anafRegHits;
+      const fara = await req('GET', '/api/registru-anaf?cui=RO99887760');
+      eq('cautarea de CUI merge fara sesiune (formularul de inscriere)', fara.status, 200);
+      ok('cererea a ajuns la fixture-ul local, nu pe internet', anafRegHits > hitsInainte);
+      eq('firma e gasita', fara.json.gasit, true);
+      eq('denumirea vine din registru', fara.json.denumire, 'PARTENER TEST SRL');
+      eq('Reg. Com. la fel', fara.json.nrRegCom, 'J40/1/2020');
+      // Judetul se intoarce in forma pe care o folosesc TOATE cele trei formulare si CIUS-RO
+      // („RO-B"), nu codul auto brut din registru („B") — conversia sta intr-un singur loc.
+      eq('judetul e normalizat la forma din aplicatie', fara.json.judet, 'RO-CJ');
+      // Raspunsul e SUBTIRE: registrul intoarce ~60 de campuri, ruta n-are motiv sa le difuzeze
+      // pe una publica. Poarta e pe lista de chei, nu pe absenta uneia anume.
+      eq('raspunsul contine exact campurile de formular + semnalele de stare',
+        Object.keys(fara.json).sort().join(','),
+        'adresa,caen,cui,denumire,gasit,inactiv,judet,localitate,nrRegCom,radiat,tvaLaIncasare,tvaPlatitor');
+      // Starea care schimba o decizie contabila (art. 11) trebuie sa ajunga la formular.
+      const inact = await req('GET', '/api/registru-anaf?cui=11223342');
+      eq('partenerul inactiv e semnalat ca atare', inact.json.inactiv, true);
+      // „Nu e in registru" e un RASPUNS, nu o eroare — formularul ramane utilizabil manual.
+      const neg = await req('GET', '/api/registru-anaf?cui=40000000');
+      eq('CUI inexistent -> 200 cu gasit:false', neg.status + '|' + neg.json.gasit, '200|false');
+      // Cifra de control se verifica INAINTE de a irosi din plafonul serviciului ANAF.
+      const hitsInainteRau = anafRegHits;
+      const rau = await req('GET', '/api/registru-anaf?cui=12345678');
+      eq('CUI cu cifra de control gresita -> 400', rau.status, 400);
+      eq('...si nu pleaca nicio cerere catre ANAF', anafRegHits, hitsInainteRau);
+      const gol = await req('GET', '/api/registru-anaf');
+      eq('fara parametru -> 400, tot fara apel extern', gol.status, 400);
+      eq('...si tot fara cerere externa', anafRegHits, hitsInainteRau);
+    }
+
     // ── Curs BNR (fixture LOCAL, zero apeluri externe) ────────────────────
     {
       const laBnr = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
@@ -1341,6 +1376,11 @@ async function main() {
     ok('seria CH exista in seriile de documente', !!(await req('GET', '/api/doc-series', { cookie: c1 })).json.CH);
     const incB = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'incasare_client', fields: { data: '2026-06-21', partener: 'Client Banca', suma: 100, cont: '5121' } } });
     eq('chitanta pe incasare prin banca -> 400', (await req('GET', '/pdf/chitanta/' + incB.json.entry.id, { cookie: c1 })).status, 400);
+    // „Firma nu are logo" e o stare NORMALA, deci 204 — nu 404. Cu 404, fiecare firma fara logo
+    // lasa o linie rosie in consola browserului la fiecare intrare in „Firma mea".
+    const faraLogo = await req('GET', '/api/company/logo', { cookie: c1 });
+    eq('firma fara logo -> 204, nu 404', faraLogo.status, 204);
+    eq('...si fara corp', faraLogo.text || '', '');
     const png1x1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
     const fdLogo = new FormData();
     fdLogo.append('file', new Blob([png1x1], { type: 'image/png' }), 'logo.png');
@@ -1350,6 +1390,8 @@ async function main() {
     fdLogoBad.append('file', new Blob(['nu-e-imagine'], { type: 'text/plain' }), 'logo.png');
     eq('fisier care nu e PNG/JPEG -> 400', (await req('POST', '/api/company/logo', { cookie: c1, body: fdLogoBad })).status, 400);
     ok('logo sters', (await req('DELETE', '/api/company/logo', { cookie: c1 })).json.ok === true);
+    // ...iar dupa stergere se revine la starea normala, tot cu 204.
+    eq('dupa stergere -> tot 204', (await req('GET', '/api/company/logo', { cookie: c1 })).status, 204);
 
     // ── Modele de factura: clasic / compact (A5) / detaliat ──
     const fvE = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-06-22', partener: 'Client Layout', cuiPartener: 'RO55', document: 'FL-1', baza: 1000, tva: 210, cota: 21 } } });

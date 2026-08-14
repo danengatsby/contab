@@ -69,6 +69,7 @@ src/d307.js
 src/d311.js
 src/identitate.js
 src/fiscalControls.js
+src/dateFirma.js
 src/payroll.js
 src/reporting.js
 src/bilant.js

@@ -1,5 +1,5 @@
 'use strict';
-import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf, umpleTemeiuri } from './core.js';
+import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf, umpleTemeiuri, legaCompletareCui } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, renderPachetWin, renderVideo, setSettingsDeps } from './settings.js';
@@ -594,6 +594,15 @@ function aplicaSistemProfit() {
   if (el) el.addEventListener('change', aplicaSistemProfit);
 });
 
+// Completarea datelor firmei dupa CUI, din registrul public ANAF. Aici intra si CAEN-ul, care nu
+// e cosmetic: fara el, controlul de coerenta al aplicatiei semnaleaza „esti platitor de TVA, dar
+// codul CAEN nu e completat — decontul D300 il solicita", iar conditia de activitate pentru
+// regimul micro (art. 51) nu poate fi verificata deloc. Un camp completat singur la inscriere
+// stinge doua avertismente pe care omul nu stia cum sa le rezolve.
+legaCompletareCui($('#companyForm'), {
+  nume: 'denumire', regCom: 'nrRegCom', adresa: 'adresa', oras: 'localitate', judet: 'judet', caen: 'caen',
+});
+
 // Rezumatul profilului fiscal CALCULAT (motorul) — arata ce declaratii/alerte deriva din setari
 async function refreshFiscalProfile() {
   const box = $('#fiscalProfileSummary'); if (!box) return;
@@ -624,9 +633,13 @@ async function refreshLogo() {
   if (!img) return;
   try {
     const r = await fetch('/api/company/logo?ts=' + Date.now());
+    // ATENTIE: „firma nu are logo" vine ca 204, iar 204 E un raspuns `ok` (2xx). Un `if (r.ok)`
+    // simplu ar fi construit un obiect-imagine dintr-un corp GOL, adica exact pictograma de
+    // imagine rupta pe care schimbarea voia s-o evite. Se cere corp, nu doar succes.
+    const areLogo = r.ok && r.status !== 204;
     // acelasi motiv ca la cardurile de admin: butonul de stergere e ascuns din foaia de stil,
     // iar `style.display = ''` doar sterge stilul inline, fara sa-l arate
-    if (r.ok) { img.src = URL.createObjectURL(await r.blob()); img.style.display = ''; if (del) del.classList.remove('hidden'); }
+    if (areLogo) { img.src = URL.createObjectURL(await r.blob()); img.style.display = ''; if (del) del.classList.remove('hidden'); }
     else { img.style.display = 'none'; if (del) del.classList.add('hidden'); }
   } catch (e) { /* fara logo */ }
 }

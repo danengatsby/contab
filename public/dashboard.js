@@ -63,6 +63,55 @@ function trendChip(pct, goodWhenUp) {
   const up = pct >= 0; const good = up === goodWhenUp;
   return `<span class="trend ${good ? 'good' : 'bad'}" title="față de luna precedentă">${up ? '▲' : '▼'} ${Math.abs(pct).toFixed(0)}%</span>`;
 }
+// ── Tabloul de bord al firmei care nu are inca nimic ────────────────────────────────────────
+//
+// Masurat pe un cont nou: 11 din 11 carduri randau doar `0,00`, liniute sau „fara date" —
+// previziune de cash-flow pe sase luni de zerouri, „Top creante" cu o liniuta, comparatie
+// an-la-an „fara baza". Un tablou de bord gol nu e neutru: transmite „aici nu se intampla
+// nimic" exact omului care tocmai s-a inscris si are nevoie sa i se spuna ce sa faca.
+//
+// Cat timp firma nu are nicio inregistrare raman pe ecran doar lucrurile ACTIONABILE —
+// checklistul „Primii pasi", banda „Ce vrei sa faci?" si (daca exista) termenele din „De facut
+// acum" — plus un rand care spune cand apar celelalte. Nu e o lista de excluderi scrisa la
+// intamplare: fiecare selector de mai jos e un panou care CALCULEAZA ceva din inregistrari,
+// deci pe zero inregistrari nu are ce afirma.
+//
+// Selectorii sunt pazitI in test/frontend.mjs: o redenumire de id ar face `querySelector` sa
+// intoarca `null`, iar ascunderea ar inceta tacut — cardul ar reveni pe ecran fara ca ceva sa
+// pice. Tot acolo se verifica si reversul: checklistul si banda de actiuni nu au voie sa intre
+// in lista, altfel ecranul gol ar ramane complet gol.
+export const PANOURI_ANALITICE = [
+  '#rezumatCard',      // „Situatia firmei — pe scurt" (4 dale, toate 0,00)
+  '#kpis',             // cele 8 KPI-uri din modul expert
+  '#yoyCard',          // comparatia an-la-an („fara baza")
+  '#forecastCard',     // previziunea de cash-flow
+  '#lunarCard',        // evolutia lunara
+  '#randSolduri',      // structura soldurilor + top creante
+  '#randDatorii',      // top datorii + vechimea soldurilor
+  '#randOperatiuni',   // ultimele operatiuni + stocuri valoroase
+];
+/**
+ * Tabloul de bord nu are ce arata: firma nu are NICIO inregistrare contabila. Functie PURA
+ * (testata in test/frontend.mjs), pe acelasi camp din care se decide si wizardul de bun venit.
+ *
+ * Lipsa datelor („p" absent, camp absent) NU inseamna „gol": intr-un raspuns vechi sau taiat,
+ * a ascunde panourile ar sterge informatie reala de pe ecranul unei firme cu activitate. Mai
+ * bine un ecran de zerouri decat un ecran fara cifrele pe care omul le astepta acolo.
+ */
+export function tabloulEGol(p) {
+  return !!p && Number(p.nrInregistrari) === 0;
+}
+function aplicaTabloulGol(gol) {
+  PANOURI_ANALITICE.forEach((sel) => {
+    const el = document.querySelector(sel);
+    if (el) el.classList.toggle('hidden', gol);
+  });
+  // Randul explicativ vorbeste despre „primul document inregistrat", deci presupune o firma.
+  // Contul fara nicio firma (contabil proaspat inscris) are deja bannerul lui, care ii spune
+  // altceva — acolo panourile dispar la fel, dar nota ar fi un sfat despre firma inexistenta.
+  const nota = $('#dashGolCard');
+  if (nota) nota.classList.toggle('hidden', !gol || !!USER.faraFirma);
+}
 export async function loadDashboard() {
   let k; try { k = await api('/api/dashboard'); } catch (e) { return; }
   let c = null; try { c = await api('/api/dashboard-charts'); } catch (e) { /* grafice optionale */ }
@@ -73,6 +122,10 @@ export async function loadDashboard() {
   $('#dashYear').title = 'Exercițiul financiar ' + k.year + ' — anul contabil al firmei (1 ianuarie – 31 decembrie)';
   renderDashAlerts(k);
   renderPrimiiPasi(k.primiiPasi);
+  // Se decide INAINTE de a calcula panourile: cele scumpe (previziunea, graficele) nici nu se
+  // mai cer de la server cand n-au ce arata. Alertele si checklistul raman, sunt actionabile.
+  const gol = tabloulEGol(k.primiiPasi);
+  aplicaTabloulGol(gol);
   const s = (c && c.monthly) || [];
   const cinfo = (info) => info ? `<span class="cinfo" tabindex="0" role="note" aria-label="${info}">i<span class="cpop">${info}</span></span>` : '';
   const card = (ic, lbl, val, sub, cls, trend, info) => `<div class="kpi ${cls || ''}">
@@ -106,7 +159,7 @@ export async function loadDashboard() {
   try { notif = await api('/api/notifications'); } catch (e) { /* termenele sunt opționale aici */ }
   renderDeFacut(notif);
   renderRezumat(k, notif);
-  renderForecast();
+  if (!gol) renderForecast();
   const list = (arr) => arr.length
     ? `<table><tbody>${arr.map((p) => `<tr><td>${H(p.den)}</td><td class="num">${fmt(p.sold)}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">—</p>';
@@ -120,6 +173,7 @@ export async function loadDashboard() {
   const sv = k.stocuriValoroase || [];
   $('#stocValCard').classList.toggle('hidden', !sv.length);
   if (sv.length) $('#stocuriValoroase').innerHTML = `<table><tbody>${sv.map((x) => `<tr><td>${H(x.denumire)}</td><td class="num">${fmt(x.stocV)}</td></tr>`).join('')}</tbody></table>`;
+  if (gol) return;
   if (c) renderDashboardCharts(c); else loadDashboardCharts();
 }
 // ── „De făcut acum": restanțele și termenele apropiate, primele pe Acasă ──
@@ -160,11 +214,65 @@ function renderDeFacut(n) {
 }
 $('#deFacutToate') && $('#deFacutToate').addEventListener('click', () => deps.goTab && deps.goTab('notificari'));
 
+/**
+ * Se arata checklistul de pornire? Functie PURA — si SURSA UNICA a intrebarii „firma e inca la
+ * inceput?". Pana acum raspunsul trai doar in `renderPrimiiPasi`, sub forma a doua iesiri
+ * devreme, iar banda de alerte de deasupra nu-l stia: pe o firma cu 0 din 5 pasi facuti ea
+ * anunta senin „Totul pare in regula". Doua afirmatii despre aceeasi firma, pe acelasi ecran,
+ * la trei centimetri una de alta.
+ */
+export function checklistVizibil(p, faraFirma) {
+  // Fara nicio firma (contabil proaspat inscris) checklistul e de nefacut: „Completeaza datele
+  // firmei", „Emite prima factura" — care firma? Bannerul lui spune ce are efectiv de facut.
+  if (faraFirma) return false;
+  if (!p) return false;
+  // Firma cu activitate si cu datele complete nu mai are nevoie de ghidaj.
+  return !(p.nrInregistrari >= 5 && p.firmaCompletata);
+}
+
+/**
+ * Ce spune banda de sus cand NU exista nicio alerta. Functie PURA.
+ *
+ * „Totul pare in regula" e adevarat despre URGENTE si fals despre firma: cat timp checklistul de
+ * dedesubt cere cinci lucruri, mesajul asta il contrazice la citire. Se spune deci exact ce e:
+ * nicio urgenta, dar pornirea nu e gata — si CATE lucruri au mai ramas, din aceeasi sursa din
+ * care se bifeaza pasii, ca sa nu apara o a treia definitie a lui „gata".
+ */
+export function mesajFaraAlerte(p, faraFirma) {
+  if (!checklistVizibil(p, faraFirma)) {
+    return { ton: 'ok', ic: '✅', txt: 'Totul pare în regulă — nicio acțiune urgentă pentru moment.' };
+  }
+  const ramase = pasiOnboarding(p).filter((x) => !x.done).length;
+  if (!ramase) return { ton: 'ok', ic: '✅', txt: 'Totul pare în regulă — nicio acțiune urgentă pentru moment.' };
+  return {
+    ton: 'start',
+    ic: '🌱',
+    txt: 'Nicio urgență — dar firma nu e pornită complet: mai ai <b>' + ramase + '</b> '
+      + (ramase === 1 ? 'pas' : 'pași') + ' din „Primii pași", mai jos.',
+  };
+}
+
 // Primii pași (onboarding): checklist viu pentru firmele proaspete — dispare singur după
 // ce firma are câteva înregistrări. Fiecare pas se bifează din starea REALĂ a datelor.
+// Descrierea pasului 1 NUMESTE ce lipseste. Fara asta, pasul ramanea nebifat pe un ecran de
+// „Firma mea" cu ~40 de campuri, iar omul n-avea de unde sti care dintre ele. Lista vine de la
+// server (`primiiPasi.firmaLipsa`, derivata in src/dateFirma.js), nu se reface aici: doua liste
+// ar drifta la primul camp adaugat intr-un generator. Functie PURA — testata in test/frontend.mjs.
+export function descriereDateFirma(lipsa) {
+  const l = Array.isArray(lipsa) ? lipsa : [];
+  if (!l.length) return 'Denumirea, CUI-ul, adresa, codul CAEN — apar pe facturi și în declarații.';
+  // Escapat AICI, nu la interpolare: rezultatul intra intr-un sablon HTML (`stepsHtml`), unde
+  // celelalte descrieri sunt literali scrisi de noi. Un camp venit prin API n-are voie sa fie
+  // singurul neescapat din sirul acela — vezi conventia de escapare dupa CONTEXTUL de iesire.
+  const nume = l.map((x) => H(x.eticheta)).filter(Boolean);
+  // Motivul PRIMULUI camp lipsa, nu al tuturor: patru explicatii una sub alta ar fi un paragraf
+  // pe un rand de checklist. Restul se vad in „Firma mea", langa campul lor.
+  const deCe = l[0] && l[0].deCe ? ' — ' + H(l[0].deCe) + '.' : '';
+  return 'Mai lipsește: ' + nume.join(', ') + '.' + deCe;
+}
 function pasiOnboarding(p) {
   return [
-    { done: p.firmaCompletata, ic: '🏢', t: 'Completează datele firmei', d: 'Denumirea, CUI-ul și dacă e plătitoare de TVA — apar pe facturi și în declarații.', go: 'setari' },
+    { done: p.firmaCompletata, ic: '🏢', t: 'Completează datele firmei', d: descriereDateFirma(p.firmaLipsa), go: 'setari' },
     { done: p.arePartener, ic: '🤝', t: 'Adaugă primul partener', d: 'Un client sau un furnizor cu care lucrezi — CUI-ul e de ajuns, restul se completează singur.', go: 'parteneri' },
     { done: p.documentInregistrat, ic: '📥', t: 'Înregistrează primul document', d: 'O factură primită, un bon sau o chitanță — poză sau PDF; aplicația citește singură cifrele.', go: 'documente' },
     { done: p.facturaEmisa, ic: '📤', t: 'Emite prima factură', d: 'Client + ce vinzi; numărul, PDF-ul și e-Factura se generează automat.', go: 'emite' },
@@ -188,11 +296,9 @@ function wireSteps(rootSel, after) {
 }
 function renderPrimiiPasi(p) {
   const card = $('#primiiPasiCard'); if (!card) return;
-  // Fara nicio firma (contabil proaspat inscris) checklistul e de nefacut: „Completeaza datele
-  // firmei", „Emite prima factura" — care firma? Bannerul de sus ii spune ce are efectiv de facut.
-  if (USER.faraFirma) { card.classList.add('hidden'); return; }
-  // firma are deja activitate -> nu mai e nevoie de ghidaj
-  if (!p || (p.nrInregistrari >= 5 && p.firmaCompletata)) { card.classList.add('hidden'); return; }
+  // Conditia de afisare sta in `checklistVizibil` (pura, exportata): o citeste si banda de alerte
+  // de deasupra, ca sa nu spuna „totul e in regula" peste un checklist cu pasi nefacuti.
+  if (!checklistVizibil(p, USER.faraFirma)) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
   const pasi = pasiOnboarding(p);
   const gata = pasi.filter((x) => x.done).length;
@@ -355,9 +461,10 @@ function renderDashAlerts(k) {
   if (k.soldFurnizori > 0) a.push({ ic: '🏭', tone: 'warn', txt: '<b>' + fmt(k.soldFurnizori) + '</b> lei de plătit furnizorilor', go: 'cashbook', cta: 'Plăți' });
   if (k.soldClienti > 0) a.push({ ic: '👥', tone: 'info', txt: '<b>' + fmt(k.soldClienti) + '</b> lei de încasat de la clienți', go: 'analitic', cta: 'Scadențar' });
   if (k.profit < 0) a.push({ ic: '⚠️', tone: 'bad', txt: 'Rezultatul anului e <b>pierdere</b> (' + fmt(k.profit) + ' lei)', go: 'situatii', cta: 'Situații' });
+  const gol = mesajFaraAlerte(k.primiiPasi, USER.faraFirma);
   box.innerHTML = a.length
     ? a.map((x) => `<button type="button" class="alert ${x.tone}" data-go="${x.go}"><span class="al-ic">${x.ic}</span><span class="al-tx">${x.txt}</span><span class="al-cta">${x.cta} →</span></button>`).join('')
-    : '<div class="alert ok"><span class="al-ic">✅</span><span class="al-tx">Totul pare în regulă — nicio acțiune urgentă pentru moment.</span></div>';
+    : `<div class="alert ${gol.ton}"><span class="al-ic">${gol.ic}</span><span class="al-tx">${gol.txt}</span></div>`;
   $$('#dashAlerts .alert[data-go]').forEach((b) => b.addEventListener('click', () => deps.goTab(b.dataset.go)));
 }
 function renderDashboardCharts(c) {

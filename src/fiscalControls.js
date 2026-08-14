@@ -10,6 +10,7 @@ const coa = require('./chartOfAccounts');
 const fiscal = require('./fiscal');
 const bnr = require('./bnr'); // cursul oficial pentru plafonul micro
 const fiscalProfile = require('./fiscalProfile');
+const dateFirma = require('./dateFirma');
 const { period: periodOf, round2 } = require('./util');
 
 const INTRACOM_TYPES = new Set(['livrare_intracomunitara', 'achizitie_intracomunitara']);
@@ -167,9 +168,15 @@ function check(v, opts) {
       'Cifra de afaceri a anului ' + year + ' (' + ca + ' lei) se apropie de plafonul de scutire TVA (' + plafonTva + ' lei) — urmărește; la depășire ai 10 zile să ceri înregistrarea în scopuri de TVA.');
   }
 
-  // 2) Platitor TVA fara cod CAEN — D300 il cere
-  if (profile.tvaPlatitor && !company.caen) add('atentie', 'tva-fara-caen',
-    'Ești plătitor de TVA, dar codul CAEN nu e completat — decontul D300 îl solicită.');
+  // 2) Platitor TVA fara cod CAEN — D300 il cere.
+  // Conditia de „lipsa" vine din `src/dateFirma.js`, aceeasi sursa din care checklistul de
+  // pornire decide daca pasul „Completeaza datele firmei" e facut. Inainte erau doua definitii:
+  // checklistul se multumea cu CUI-ul si bifa pasul, iar controlul de aici cerea CAEN — deci
+  // acelasi ecran spunea „gata" si „mai ai de completat". Regimul (doar platitorii de TVA) ramane
+  // aici: modulul spune CE lipseste, controlul spune PENTRU CINE conteaza.
+  if (profile.tvaPlatitor && dateFirma.lipsa(company, profile).some((f) => f.camp === 'caen')) {
+    add('atentie', 'tva-fara-caen', 'Ești plătitor de TVA, dar codul CAEN nu e completat — decontul D300 îl solicită.');
+  }
 
   // 3) Micro peste plafonul de venituri -> trebuie trecut la impozit pe profit
   if (profile.micro) {

@@ -165,7 +165,7 @@ function stop() {
 }
 
 function start(ctx) {
-  const { doBackup, resetDemo, registerAttempts, forgotAttempts, clientErrAttempts } = ctx;
+  const { doBackup, resetDemo, registerAttempts, forgotAttempts, clientErrAttempts, cuiAttempts } = ctx;
 
   // Backup automat zilnic (daca e activat)
   safeInterval('backup', () => {
@@ -212,6 +212,7 @@ function start(ctx) {
     for (const [k, r] of registerAttempts) { if (r.reset < now) registerAttempts.delete(k); }
     for (const [k, r] of forgotAttempts) { if (r.reset < now) forgotAttempts.delete(k); }
     for (const [k, r] of (clientErrAttempts || [])) { if (r.reset < now) clientErrAttempts.delete(k); }
+    for (const [k, r] of (cuiAttempts || [])) { if (r.reset < now) cuiAttempts.delete(k); }
     uploadGuard.pruneRateBuckets(now); // bucket-urile de upload/export per utilizator
   }, 3600 * 1000);
 

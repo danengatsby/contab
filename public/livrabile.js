@@ -102,10 +102,43 @@ const DECL_ST = {
 // provizion (6814 = 491) si se RELUA cand cel existent e prea mare (491 = 7814). O inversare
 // aici arata contabilului exact articolul invers fata de cel corect.
 const provizionDirectie = (deAjustat) => ((Number(deAjustat) || 0) >= 0 ? '6814 = 491' : '491 = 7814, reluare');
-const declBadge = (st, overdue) => {
-  const x = DECL_ST[st] || DECL_ST.nedepusa;
-  return `<span data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${x.t}</span>`
-    + (overdue ? ' <span data-u="u149">⏰ restanță</span>' : '');
+// Cele TREI stari fata de termen, pentru declaratiile inca nedepuse. Distinctia exista de mult in
+// aplicatie, dar doar pe ecranul de notificari; aici, „termen peste 43 de zile, nicio operatiune in
+// luna" si „termenul a trecut ieri" se afisau IDENTIC: „Nedepusă", pe fond de avertizare. Pentru o
+// firma inscrisa acum un minut, trei randuri asa citesc ca un repros, nu ca o informatie — si
+// tocesc semnalul exact acolo unde el trebuie sa insemne „ai o problema ACUM".
+const DECL_URG = {
+  'in-pregatire': { t: 'În pregătire', c: '#5a6472', bg: '#eceff3' },
+  termen: { t: 'De depus', c: '#b26a00', bg: '#fff4e0' },
+  restanta: { t: 'Restanță', c: '#b00020', bg: '#fde7ea' },
+};
+/**
+ * Eticheta afisata pentru o declaratie: starea SALVATA, cand exista una, altfel pozitia fata de
+ * termen. Functie PURA (testata in test/frontend.mjs).
+ *
+ * „Nedepusă" e adevarat, dar nu spune nimic: ORICE declaratie e nedepusa pana e depusa. Informatia
+ * utila e alta — mai ai timp, e momentul, sau ai intarziat. Starea salvata ramane `nedepusa` (si
+ * asa apare in selectorul „Schimbă starea"); doar eticheta se deriva, iar `titlu` explica asta,
+ * ca sa nu para ca sunt doua sisteme de stari.
+ */
+export function declStareAfisata(status, urgenta) {
+  const u = DECL_URG[urgenta];
+  if ((status || 'nedepusa') === 'nedepusa' && u) {
+    return Object.assign({}, u, {
+      titlu: urgenta === 'restanta'
+        ? 'Termenul a trecut, iar declarația nu e marcată ca depusă.'
+        : (urgenta === 'termen'
+          ? 'Termenul se apropie — pregătește depunerea.'
+          : 'Nimic de făcut încă: termenul e mai departe de o săptămână. Starea salvată rămâne „nedepusă".'),
+    });
+  }
+  const x = DECL_ST[status] || DECL_ST.nedepusa;
+  return Object.assign({}, x, { titlu: '', restanta: urgenta === 'restanta' });
+}
+const declBadge = (st, urgenta) => {
+  const x = declStareAfisata(st, urgenta);
+  return `<span title="${H(x.titlu || '')}" data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${H(x.t)}</span>`
+    + (x.restanta ? ' <span data-u="u149">⏰ restanță</span>' : '');
 };
 async function loadDeclRegister(p) {
   const box = $('#declRegister'); if (!box) return;
@@ -120,7 +153,7 @@ async function loadDeclRegister(p) {
     data.rows.map((r) => `<tr>
       <td>${H(r.nume)}</td>
       <td class="${r.overdue ? '' : 'muted'}" ${r.overdue ? 'data-u="u33"' : ''}>${r.due}</td>
-      <td>${declBadge(r.status, r.overdue)}</td>
+      <td>${declBadge(r.status, r.urgenta)}</td>
       <td>${(r.links || []).map((l) => `<a class="linkbtn" href="${H(l.href)}" target="_blank">${H(l.label)}</a>`).join(' · ') || '<span class="muted">—</span>'}</td>
       <td><select class="decl-set" data-tip="${r.tip}" data-period="${r.period}">${opts(r.status)}</select></td>
       <td class="muted adv" data-u="u148">${r.recipisa ? 'recipisă: ' + H(r.recipisa) + '<br>' : ''}${r.submittedAt ? 'depusă: ' + H(r.submittedAt.slice(0, 10)) : (r.generatedAt ? 'XML generat: ' + H(r.generatedAt.slice(0, 10)) : '')}${r.note ? '<br>' + H(r.note) : ''}</td>
@@ -254,7 +287,7 @@ async function loadNotifications() {
     : '<span data-u="u159">📅 termen apropiat</span>'}</td>
         <td>${H(i.firma)}</td><td>${H(i.nume)}</td><td>${H(i.period)}</td>
         <td ${i.kind === 'restanta' ? 'data-u="u33"' : ''}>${i.due}</td>
-        <td>${declBadge(i.status)}</td>
+        <td>${declBadge(i.status, i.kind === 'restanta' ? 'restanta' : 'termen')}</td>
         <td><button class="btn small notif-go" data-i="${idx}">${H(notifAct(i).cta)} →</button></td></tr>`;
       }).join('')}</tbody></table>`
     : '<p class="muted">✓ Nicio restanță și niciun termen în următoarele 7 zile. Totul e la zi.</p>';
