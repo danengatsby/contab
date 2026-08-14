@@ -320,6 +320,36 @@ cu un router în față (nginx după un antet/subdomeniu de firmă).
 - **Pragul orientativ:** o singură firmă peste ~20.000 de articole/an (unde deja am pus gardă OOM și
   paginare) sau RSS-ul procesului apropiindu-se constant de `max_memory_restart` (1G) — abia atunci
   merită complexitatea de multi-instanță. Sub asta, un singur proces e mai simplu și mai rapid.
+- **A doua axă, adăugată 2026-08-14: TOTALUL, nu doar maximul — ~200.000 de articole în tot graful**
+  (`CONTAB_SCALE_TOTAL_WARN`, la fel legat de această valoare printr-o poartă în suită). Semnalul
+  măsura până acum doar firma cea mai mare, fiindcă pasul prescris — partiționarea pe instanțe —
+  chiar depinde de firmă. Dar zidul are două fețe, iar a doua nu se vede în maxim: RAM-ul și costul
+  lui `db.scoped()` (filtrează colecția **întreagă** la fiecare apel, în 171 de locuri din rute)
+  cresc cu totalul.
+
+  > **Măsurat 2026-08-14**, pe articole de forma reală din producție (459 octeți, 2 linii):
+  >
+  > | Total articole | Obiecte vii | + snapshotul JSON din store | `scoped()` |
+  > |---|---|---|---|
+  > | 40.000 | 15 MB | — | 0,9 ms |
+  > | 500.000 | 176 MB | +234 MB | 5,5 ms |
+  > | 2.000.000 | 710 MB | — | 15,0 ms |
+  >
+  > Graful stă în RAM **de două ori**: obiectele vii plus `snap[colecție] = Map(id → JSON)` din
+  > `store.js`/`storePg.js`, care există ca să se calculeze diff-ul la persistare. La 500.000 de
+  > articole un proces gol măsoară **493 MB RSS**, înainte de baseline-ul aplicației și de restul
+  > colecțiilor — adică plafonul de 1 GB e la vedere.
+  >
+  > **De ce contează pentru forma probabilă de creștere:** un produs pentru cabinete crește prin
+  > *multe firme mici*, nu prin câteva uriașe. 100 de firme × 5.000 de articole ating acel total
+  > fără ca vreuna să se apropie de pragul pe firmă — deci un semnal care raportează doar maximul
+  > ar fi tăcut exact în scenariul cel mai plauzibil, iar calea SQL per-cerere (gate-uită tot pe
+  > firmă, la 100.000) nu s-ar activa nici ea.
+
+- **Cele două axe cer acțiuni diferite**, deci verdictul le ține separate: *pe firmă* →
+  partiționare pe instanțe (rutare; firmele sunt deja izolate prin `firmaId`); *pe total* → graful
+  nu mai încape confortabil într-un proces, adică hidratare lazy / citiri per-cerere, pregătite deja
+  prin proiecția `entry_lines`.
 - **Ce ar presupune (NU se construiește speculativ):** lock-ul single-instance devine per-partiție;
   auth/sesiuni partajate (deja pe cookie semnat, deci portabile); router pe firmă. Toate reversibile.
 

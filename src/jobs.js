@@ -40,6 +40,12 @@ const VISITORS_FLUSH_MS = 60 * 1000;
 // docs/scalare-crestere.md (~20.000 de articole/an pe firma); e configurabil fiindca depinde de
 // masina, iar documentul il numeste „orientativ". Verificat in suita fata de valoarea din ADR.
 const SCALE_ENTRIES_WARN = Number(process.env.CONTAB_SCALE_ENTRIES_WARN) || 20000;
+// A doua axa: TOTALUL din graf, indiferent cum se imparte pe firme. Cifra vine dintr-o masuratoare,
+// nu dintr-o intuitie (2026-08-14, articole de forma reala): 500.000 de articole = 176 MB obiecte +
+// 234 MB snapshotul JSON din store = 493 MB RSS intr-un proces gol, adica ~65% din plafonul pm2 de
+// 1 GB dupa ce se adauga si baseline-ul aplicatiei. 200.000 avertizeaza la ~40% din plafon — destul
+// de devreme cat sa ai timp de decis, destul de sus cat sa nu fie zgomot. Verificat fata de ADR.
+const SCALE_TOTAL_WARN = Number(process.env.CONTAB_SCALE_TOTAL_WARN) || 200000;
 // Cat de des se citeste semnalul. Rar deliberat: e o decizie de ARHITECTURA, nu o urgenta —
 // nimeni nu partitioneaza instante in cinci minute, iar jobul face o trecere peste `entries`.
 const SCALE_WATCH_MS = 6 * 60 * 60 * 1000;
@@ -140,21 +146,48 @@ function suspectiLag(joburi, persistMaxMs, cereri) {
  * Aici regula devine executabila: semnalul AJUNGE singur. Verdictul numeste FIRMA, nu doar cifra —
  * pasul recomandat e „partitioneaza firma X pe alta instanta", deci fara nume raportul n-ar fi
  * actionabil.
+ *
+ * DOUA axe, nu una (adaugat 2026-08-14). Pana aici verdictul se uita doar la firma cea mai MARE,
+ * fiindca pasul prescris de ADR era partitionarea pe instante — care chiar depinde de firma. Dar
+ * zidul lovit de un singur proces are si o a doua fata, care nu se vede in maxim: RAM-ul si costul
+ * lui `db.scoped()` (filtreaza colectia INTREAGA la fiecare apel, in 171 de locuri din rute) cresc
+ * cu TOTALUL din graf. Iar forma probabila de crestere a unui produs pentru cabinete e „multe firme
+ * mici": 100 de firme × 5.000 de articole = 500.000 in total, adica ~493 MB RSS masurati intr-un
+ * proces gol (176 MB obiecte + 234 MB snapshotul JSON din store) fata de plafonul pm2 de 1 GB —
+ * si NICIO firma peste pragul pe firma. Semnalul ar fi tacut exact in scenariul cel mai plauzibil.
+ *
+ * Cele doua axe cer si actiuni diferite, deci verdictul le tine separate: pe firma -> partitionare
+ * (rutare, firmele sunt deja izolate); pe total -> graful nu mai incape confortabil intr-un proces,
+ * adica hidratare lazy / citiri per-cerere (pasii deja pregatiti prin `entry_lines`).
  */
 function verdictScalare(incarcare, opts) {
   const o = opts || {};
   const prag = Number(o.prag) || SCALE_ENTRIES_WARN;
-  const l = incarcare || { maxEntries: 0, top: [] };
+  const pragTotal = Number(o.pragTotal) || SCALE_TOTAL_WARN;
+  const l = incarcare || { maxEntries: 0, total: 0, top: [] };
+  const total = Number(l.total) || 0;
   const cea = (l.top || [])[0] || null;
-  const rezumat = cea
-    ? l.top.slice(0, 3).map((f) => f.nume + ' ' + f.entries).join(', ') + ' (prag ' + prag + ')'
-    : 'nicio firma cu articole (prag ' + prag + ')';
-  if (!cea || l.maxEntries < prag) return { alert: false, prag, maxEntries: l.maxEntries, firma: cea, rezumat, motiv: null };
-  return {
-    alert: true, prag, maxEntries: l.maxEntries, firma: cea, rezumat,
-    motiv: 'firma „' + cea.nume + '" a trecut de ' + prag + ' articole (' + l.maxEntries
-      + '): e pragul de la care docs/scalare-crestere.md recomanda partitionarea pe instante',
-  };
+  const rezumat = (cea
+    ? l.top.slice(0, 3).map((f) => f.nume + ' ' + f.entries).join(', ')
+    : 'nicio firma cu articole')
+    + ' — total ' + total + ' (praguri: ' + prag + '/firma, ' + pragTotal + ' total)';
+
+  const peFirma = !!cea && l.maxEntries >= prag;
+  const peTotal = total >= pragTotal;
+  const baza = { prag, pragTotal, maxEntries: l.maxEntries, total, firma: cea, rezumat, peFirma, peTotal };
+  if (!peFirma && !peTotal) return Object.assign(baza, { alert: false, motiv: null });
+
+  const motive = [];
+  if (peFirma) {
+    motive.push('firma „' + cea.nume + '" a trecut de ' + prag + ' articole (' + l.maxEntries
+      + '): e pragul de la care docs/scalare-crestere.md recomanda partitionarea pe instante');
+  }
+  if (peTotal) {
+    motive.push('graful a trecut de ' + pragTotal + ' articole in TOTAL (' + total
+      + '), pe ' + (l.firme || (l.top || []).length) + ' firme: costul nu mai e al unei firme anume, ci al'
+      + ' grafului tinut integral in RAM — vezi pasul de hidratare lazy din docs/scalare-crestere.md');
+  }
+  return Object.assign(baza, { alert: true, motiv: motive.join('; ') });
 }
 
 /** Opreste toate joburile pornite; intoarce cate intervale a curatat (idempotent). */
@@ -399,25 +432,39 @@ function start(ctx) {
   // doua treceri paralele peste graf ar fi driftat, iar alerta si pagina ar fi spus cifre diferite.
   let lastScaleAlert = 0;
   safeInterval('scale-watch', () => {
-    const v = verdictScalare(metrics.firmeLoad(db.get()), { prag: SCALE_ENTRIES_WARN });
+    const v = verdictScalare(metrics.firmeLoad(db.get()), { prag: SCALE_ENTRIES_WARN, pragTotal: SCALE_TOTAL_WARN });
     metrics.jobResult('scale-watch', (v.alert ? 'PRAG DEPASIT — ' : 'sub prag: ') + v.rezumat);
     if (!v.alert) return;
-    log.error('scalare: o firma a trecut pragul de partitionare', { motiv: v.motiv, maxEntries: v.maxEntries, prag: v.prag, firma: v.firma && v.firma.nume });
+    log.error('scalare: s-a trecut un prag de crestere', { motiv: v.motiv, maxEntries: v.maxEntries, total: v.total, prag: v.prag, pragTotal: v.pragTotal, peFirma: v.peFirma, peTotal: v.peTotal, firma: v.firma && v.firma.nume });
     const now = Date.now();
     if (now - lastScaleAlert > 24 * 3600 * 1000) {
       lastScaleAlert = now;
-      sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', '[Contab] SCALARE: ' + v.firma.nume + ' a trecut pragul (' + v.maxEntries + ' articole)',
+      // Subiectul numeste axa care a sunat: cele doua cer actiuni DIFERITE, iar un subiect care le
+      // confunda ar trimite omul sa partitioneze firme cand problema e totalul (sau invers).
+      const subiect = v.peFirma
+        ? '[Contab] SCALARE: ' + v.firma.nume + ' a trecut pragul (' + v.maxEntries + ' articole)'
+        : '[Contab] SCALARE: graful a trecut ' + v.pragTotal + ' de articole in total (' + v.total + ')';
+      sendNotifMail(process.env.CONTAB_BACKUP_EMAIL_TO || '', subiect,
         v.motiv + '.\n\n'
         + 'Distributia pe firme (cele mai mari): ' + v.rezumat + '\n\n'
-        + 'CE INSEAMNA: aplicatia ruleaza intr-un singur proces, cu graful in RAM. Firmele sunt deja\n'
-        + 'izolate prin firmaId, deci pasul urmator NU e o rescriere — e rutare: mai multe instante,\n'
-        + 'fiecare deservind un subset de firme, cu nginx in fata. Vezi docs/scalare-crestere.md.\n\n'
+        + 'CE INSEAMNA: aplicatia ruleaza intr-un singur proces, cu graful in RAM.\n'
+        + (v.peFirma
+          ? '  • PE FIRMA: firmele sunt deja izolate prin firmaId, deci pasul NU e o rescriere — e\n'
+            + '    rutare: mai multe instante, fiecare deservind un subset de firme, cu nginx in fata.\n'
+          : '')
+        + (v.peTotal
+          ? '  • PE TOTAL: nicio firma nu e neaparat mare, dar graful intreg sta in RAM de doua ori\n'
+            + '    (obiectele vii + snapshotul JSON din store), iar `db.scoped()` filtreaza colectia\n'
+            + '    INTREAGA la fiecare apel. Pasul e hidratarea lazy / citirile per-cerere, pregatite\n'
+            + '    deja prin proiectia `entry_lines`.\n'
+          : '')
+        + 'Vezi docs/scalare-crestere.md.\n\n'
         + 'DE VERIFICAT INAINTE de a misca ceva (pragul e orientativ, nu o lege):\n'
         + '  • /api/metrics -> `lag` si `jobs`: chiar sta bucla blocata, sau doar au crescut datele?\n'
         + '  • /api/metrics -> `persistDurate`: cat costa o scriere acum?\n'
         + '  • `process.memoryPctDinPlafon`: cat mai e pana la plafonul pm2?\n'
         + 'Daca toate trei sunt liniStite, volumul singur nu cere inca partitionare.\n'
-        + 'Pragul se schimba din CONTAB_SCALE_ENTRIES_WARN.').catch(() => {});
+        + 'Pragurile se schimba din CONTAB_SCALE_ENTRIES_WARN (pe firma) si CONTAB_SCALE_TOTAL_WARN (total).').catch(() => {});
     }
   }, SCALE_WATCH_MS);
 
@@ -458,4 +505,4 @@ function start(ctx) {
 
 // `safeInterval` e exportat pentru teste (ca `persistVerdict`): plasa de siguranta e chiar
 // proprietatea de verificat, iar prin `start()` ar cere pornirea tuturor joburilor reale.
-module.exports = { start, stop, persistVerdict, suspectiLag, verdictScalare, safeInterval, ruleazaJob, VISITORS_FLUSH_MS, SCALE_ENTRIES_WARN };
+module.exports = { start, stop, persistVerdict, suspectiLag, verdictScalare, safeInterval, ruleazaJob, VISITORS_FLUSH_MS, SCALE_ENTRIES_WARN, SCALE_TOTAL_WARN };

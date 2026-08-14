@@ -3235,6 +3235,11 @@ async function main() {
     ok('metrici: firmeLoad cu maxEntries + top pe firma', met.json.firmeLoad
       && typeof met.json.firmeLoad.maxEntries === 'number' && Array.isArray(met.json.firmeLoad.top)
       && met.json.firmeLoad.top.every((f) => typeof f.entries === 'number' && 'nume' in f));
+    // Totalul se livreaza pe RUTA, nu doar in calcul: alerta pe axa asta se ia din acelasi obiect,
+    // iar un camp pierdut la serializare ar face-o sa taca fara ca nimic sa pice (aceeasi capcana
+    // ca `persist` vs `persistDurate`, unde un omonim suprascria tacut campul masurat).
+    ok('metrici: firmeLoad livreaza si TOTALUL grafului, nu doar maximul',
+      typeof met.json.firmeLoad.total === 'number' && met.json.firmeLoad.total >= met.json.firmeLoad.maxEntries);
     ok('metrici: contoarele extragerilor AI sunt expuse (n/fail/avgMs)',
       met.json.ai && typeof met.json.ai.n === 'number' && typeof met.json.ai.fail === 'number' && typeof met.json.ai.avgMs === 'number');
     // auditul de business: upload-urile facute mai devreme in suita au urma cu metadate

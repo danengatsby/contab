@@ -298,7 +298,15 @@ function firmeLoad(d) {
   const top = [...perFirma.entries()]
     .map(([id, s]) => ({ id, nume: nume.get(id) || String(id), entries: s.entries, documents: s.documents }))
     .sort((a, b) => b.entries - a.entries);
-  return { maxEntries: top.length ? top[0].entries : 0, top: top.slice(0, 10) };
+  // TOTALUL, nu doar maximul. Zidul pe care il atinge un singur proces (RAM si costul lui
+  // `db.scoped()`, care filtreaza colectia INTREAGA la fiecare apel) e functie de totalul din graf,
+  // nu de cea mai mare firma. Masurat 2026-08-14 pe articole de forma reala: 500.000 de articole =
+  // 176 MB obiecte vii + 234 MB snapshotul JSON din store = 493 MB RSS intr-un proces gol, fata de
+  // plafonul pm2 de 1 GB. Forma probabila de crestere aici e „multe firme mici" — 100 de firme cu
+  // cate 5.000 de articole ating acel total fara ca vreuna sa se apropie de pragul pe firma, deci
+  // un semnal care raporteaza doar maximul ar TACE exact in scenariul cel mai plauzibil.
+  const total = (g.entries || []).length;
+  return { maxEntries: top.length ? top[0].entries : 0, total, totalDocuments: (g.documents || []).length, firme: perFirma.size, top: top.slice(0, 10) };
 }
 
 // ── INTARZIEREA BUCLEI DE EVENIMENTE (event loop lag) ──
