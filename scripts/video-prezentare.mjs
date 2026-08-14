@@ -386,9 +386,13 @@ await scena('s08-multi-firma', async () => {
 
 // ═══ S09 · portofoliul contabilului ════════════════════════════════════════
 await scena('s09-portofoliu', async () => {
+  // Miscarea acopera TOATA replica: `scena()` asteapta restul cu ecranul inghetat, iar filmul
+  // isi semnaleaza singur pauzele peste 6 s. Voce 14,2 s -> aici ~14 s de miscare.
   await intra('portofoliu', 2600);
-  await derulare(200, 2200);
-  await derulare(0, 1200);
+  await derulare(200, 2400);
+  await derulare(420, 2400);
+  await derulare(160, 2400);
+  await derulare(0, 2200);
 });
 
 // ═══ S10 · prima intrare, meniul pe ciclul contabil ═══════════════════════
@@ -889,25 +893,35 @@ await scena('s36c-carte', async () => {
   await derulare(1800, 2000);
   await card('O carte, nu un manual de utilizare', 'contabilitatea in ordinea\nin care se intampla',
     'acelasi drum ca in aplicatie: documentul, banii,\nregistrele, declaratiile, inchiderea', 6500);
+  // Revenirea in aplicatie: se ASTEAPTA bara de taburi, nu un numar de milisecunde. Sesiunea
+  // exista (cookie-ul e neatins), dar `init()` are nevoie de timpul lui — iar scena urmatoare
+  // incepe cu `intra('date')`, care ar cadea pe un DOM inca gol.
   await pg.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
-  await asteapta(1500); await unelte();
+  await pg.waitForSelector('#tabs button[data-tab="date"]', { state: 'attached', timeout: 20000 });
+  await asteapta(1200); await unelte();
 });
 
 // ═══ S37 · increderea (backup) ═════════════════════════════════════════════
 await scena('s37-incredere', async () => {
   await intra('date', 1600);
-  await curata(); await derulare(300, 1800);
+  await curata(); await derulare(300, 2200);
+  await derulare(620, 2200);
   await card('De ce poți avea încredere', 'Validat cu validatorul\npublicat de ANAF',
     'peste 5.200 de verificări automate la fiecare versiune\nbackup zilnic, cu copie în afara serverului', 8000);
+  await derulare(300, 2000);
+  await derulare(0, 1800);
 });
 
 // ═══ S37b · recuperarea, probata ═══════════════════════════════════════════
 await scena('s37b-recuperare', async () => {
-  await intra('date', 1500);
-  await curata(); await derulare(700, 2000);
+  // Scena precedenta lasa ecranul TOT pe „date": `intra()` e atunci instant, iar o derulare la
+  // aceeasi pozitie nu misca nimic — asa au iesit 11,6 s de ecran inghetat. Se porneste de sus.
+  await curata(); await derulare(0, 1200);
+  await derulare(520, 2200);
+  await derulare(900, 2200);
   await card('Copia de siguranta se PROBEAZA', 'criptata, in afara serverului',
     'refacerea se incearca automat, pe o masina goala,\ncu unelte obisnuite — nu depinde de acest program', 7000);
-  await derulare(0, 900);
+  await derulare(300, 1800);
 });
 
 // ═══ S38 · limitele ════════════════════════════════════════════════════════
