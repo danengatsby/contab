@@ -5678,6 +5678,47 @@ section('Copie offsite pe stocare obiect (src/offsite.js)');
   // Codificarea caii pastreaza „/" dar codifica restul (un nume de fisier cu spatiu ar rupe semnatura)
   eq('caile se codifica pe segmente', off.uriEncodePath('contab/full 2026.zip'), 'contab/full%202026.zip');
 
+  // ── Operatiuni pe BUCKET (retentie): query + cheie goala ────────────────────────────────────
+  // Sirul de interogare intra in cererea canonica. Daca n-ar intra, semnatura s-ar calcula peste
+  // ALTA cerere decat cea trimisa, iar serverul ar raspunde `SignatureDoesNotMatch` — care arata
+  // a credentiala gresita desi credentiala e buna (capcana costisitoare de diagnosticat).
+  const bkt = (extra) => off.signRequest(Object.assign({}, CFG, { key: '', payload: Buffer.alloc(0),
+    amzDate: '20260814T070000Z' }, extra));
+  const faraQ = bkt({});
+  const cuQ = bkt({ query: 'lifecycle=' });
+  ok('sirul de interogare schimba semnatura', cuQ.signature !== faraQ.signature);
+  ok('...si apare in cererea canonica pe linia lui', cuQ.canonicalRequest.split('\n')[2] === 'lifecycle=');
+  ok('URL-ul poarta exact sirul canonic (nu o forma echivalenta)', cuQ.url.endsWith('/contab-backup?lifecycle='));
+  // Cheia goala = operatiune pe bucket: `/bucket`, FARA „/" final. Unul in plus ar desemna un
+  // obiect cu nume gol, deci semnatura n-ar mai corespunde caii cerute.
+  ok('cheia goala da calea bucketului, fara / final', cuQ.canonicalRequest.split('\n')[1] === '/contab-backup');
+  ok('cu cheie, calea ramane obiectul', off.signRequest(Object.assign({}, CFG, { key: 'a/b.zip',
+    payload: Buffer.alloc(0), amzDate: '20260814T070000Z' })).canonicalRequest.split('\n')[1] === '/contab-backup/a/b.zip');
+  // Antetele suplimentare trebuie SEMNATE, nu doar trimise: content-md5 nesemnat = cerere respinsa.
+  const cuMd5 = bkt({ query: 'lifecycle=', extraHeaders: { 'content-md5': 'abc==' } });
+  ok('antetele suplimentare intra in SignedHeaders', /content-md5/.test(cuMd5.headers.Authorization));
+  ok('...si in cererea canonica', /content-md5:abc==/.test(cuMd5.canonicalRequest));
+
+  // ── Regula de retentie ──────────────────────────────────────────────────────────────────────
+  const lcXml = off.lifecycleXml('contab', 180, 7);
+  const lc = off.lifecycleSummary(lcXml);
+  eq('prefixul din regula se termina cu /', lc.prefix, 'contab/');
+  eq('zilele de expirare ajung in XML', lc.zile, 180);
+  eq('urcarile intrerupte au termenul lor', lc.zileMultipart, 7);
+  ok('regula e activa', lc.activa);
+  eq('prefix gol -> regula pe tot bucketul', off.lifecycleSummary(off.lifecycleXml('', 30, 7)).prefix, '');
+  eq('bucket fara regula -> null, nu obiect gol', off.lifecycleSummary(''), null);
+  eq('...si la argument lipsa', off.lifecycleSummary(), null);
+
+  // Retentia offsite trebuie sa DEPASEASCA rotatia locala, altfel copia din bucket dispare inaintea
+  // celei de pe disc si offsite-ul n-ar mai adauga nimic. Pragul local se DERIVA din sursa, nu se
+  // scrie de mana aici — altfel cele doua ar drifta tacut.
+  const bkSrc = fsIzolare.readFileSync(path.join(require('./run/comun').RADACINA, 'scripts', 'backup.js'), 'utf8');
+  const keepFull = Number((bkSrc.match(/KEEP_FULL\s*=\s*Number\([^)]*\)\s*\|\|\s*(\d+)/) || [])[1]);
+  ok('pragul local de rotatie se citeste din scripts/backup.js', Number.isFinite(keepFull) && keepFull > 0);
+  ok('retentia offsite (' + off.RETENTIE_ZILE + ' zile) depaseste rotatia locala (' + keepFull + ' arhive)',
+    off.RETENTIE_ZILE > keepFull);
+
   // ── Avertismentul de CONFIDENTIALITATE ──────────────────────────────────────────────────────
   // Pana la el, o copie plecata IN CLAR trecea complet tacut: singurul avertisment din backup.js
   // se declansa cand NU exista nicio destinatie, iar cu e-mailul configurat si fara cheie logul
