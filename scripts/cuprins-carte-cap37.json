@@ -417,6 +417,71 @@
    "text": "Regula practică pentru amândouă: corecția se face după ce s-a lămurit contabilitatea, nu în locul ei. O rectificativă depusă peste o balanță încă neîncheiată se va rectifica la rândul ei, iar șirul de rectificări pe aceeași lună e primul lucru pe care îl remarcă un inspector."
   },
   {
+   "tip": "h",
+   "text": "Obligațiile care însoțesc marfa, nu contabilitatea"
+  },
+  {
+   "tip": "p",
+   "text": "Toate declarațiile de până acum descriu ce s-a înregistrat. Există însă două obligații care nu privesc înregistrarea, ci marfa însăși: una se îndeplinește înainte ca un camion să plece, cealaltă raportează statistic mișcarea bunurilor peste graniță. Niciuna nu e o declarație fiscală în sensul obișnuit — prima nu stabilește nicio sumă, a doua nici măcar nu se depune la ANAF — și tocmai de aceea se uită."
+  },
+  {
+   "tip": "p",
+   "text": "e-Transport e sistemul prin care statul urmărește transportul de bunuri. Înainte ca marfa să fie pusă în mișcare, transportul se declară și primește un cod unic, care trebuie să însoțească marfa pe drum. Cheia e cuvântul „înainte\": codul obținut după plecarea camionului nu repară nimic, iar controlul în trafic se face pe drum, nu în contabilitate."
+  },
+  {
+   "tip": "p",
+   "text": "Declarația se face, în practică, din avizul de însoțire — documentul care oricum se întocmește la ieșirea mărfii — plus datele care nu se află în contabilitate: vehiculul, traseul, cine organizează transportul. Un program care are deja avizul poate să pregătească restul; ce nu poate face în locul tău e să știe numărul de înmatriculare."
+  },
+  {
+   "tip": "p",
+   "text": "Intrastat e altceva, deși privește aceleași bunuri. E o declarație statistică, depusă la Institutul Național de Statistică, nu la ANAF, și nu stabilește niciun impozit. Devine obligatorie când firma depășește un prag anual, calculat separat pe fiecare sens: unul pentru ce intră din Uniune, altul pentru ce iese. Poți fi obligat pe un sens și liber pe celălalt."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Două obligații despre bunuri, nu despre sume",
+   "cap": [
+    "",
+    "e-Transport",
+    "Intrastat"
+   ],
+   "randuri": [
+    [
+     "Către cine",
+     "ANAF",
+     "Institutul Național de Statistică"
+    ],
+    [
+     "Când",
+     "înainte de punerea în mișcare a mărfii",
+     "lunar, cât timp ești peste prag"
+    ],
+    [
+     "Ce declanșează",
+     "transportul de bunuri urmărite",
+     "depășirea pragului anual, pe fiecare sens separat"
+    ],
+    [
+     "Ce produce",
+     "un cod care însoțește marfa",
+     "o raportare statistică, fără sumă de plată"
+    ],
+    [
+     "De unde se ia",
+     "avizul de însoțire + datele transportului",
+     "livrările și achizițiile intracomunitare de bunuri"
+    ]
+   ],
+   "nota": "Pragurile Intrastat se stabilesc prin ordin al INS și se verifică pe fiecare sens; ele nu depind de regimul de TVA al firmei."
+  },
+  {
+   "tip": "cheie",
+   "text": "Intrastat numără bunuri, D390 declară operațiuni. Se calculează din aceleași facturi, dar nu se pot substitui una alteia: una merge la statistică, cealaltă la fisc."
+  },
+  {
+   "tip": "p",
+   "text": "Merită subliniată și deosebirea față de serviciile intracomunitare: ele intră în D390, dar nu în Intrastat, fiindcă nu trece nimic fizic peste graniță. E cea mai frecventă confuzie dintre cele două — și se vede imediat, fiindcă totalurile nu se potrivesc niciodată."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
@@ -427,7 +492,8 @@
     "Declarațiile pe zero nu sunt opționale; amenda pentru nedepunere curge indiferent de sumă.",
     "Dividendele cer hotărâre a asociaților, iar hotărârea cere situații financiare aprobate.",
     "Pe lângă lista lunară există declarații de situație — D301, D307, D311, D107 — care nu se depun niciodată, până în luna în care se depun.",
-    "Rectificativa înlocuiește declarația întreagă; D710 corectează o singură obligație de plată. Nu sunt interschimbabile."
+    "Rectificativa înlocuiește declarația întreagă; D710 corectează o singură obligație de plată. Nu sunt interschimbabile.",
+    "e-Transport se face ÎNAINTE ca marfa să plece; Intrastat e statistică, se depune la INS și nu stabilește nicio sumă."
    ]
   }
  ]

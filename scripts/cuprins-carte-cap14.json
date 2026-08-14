@@ -149,6 +149,119 @@
    "text": "Un program bine făcut deduce obligația din tipul documentului ales — capitolul 11 — și nu dintr-o listă scrisă de mână care ar rămâne în urma legislației. Iar când un document ar trebui să plece și nu poate fi construit corect, refuză să-l emită gol, în loc să trimită o factură cu baza zero."
   },
   {
+   "tip": "h",
+   "text": "Care factură e cea adevărată"
+  },
+  {
+   "tip": "p",
+   "text": "Întrebarea pare scolastică și are o consecință foarte practică. Din momentul în care factura a trecut prin sistemul RO e-Factura, originalul nu mai e hârtia pe care ai tipărit-o și nici PDF-ul pe care l-ai trimis pe e-mail: e fișierul electronic, cu sigiliul aplicat de minister. Ce trimiți clientului e o copie de curtoazie, făcută ca s-o poată citi un om."
+  },
+  {
+   "tip": "p",
+   "text": "De aici decurg două lucruri care se învață, de obicei, într-un control. Primul: dacă PDF-ul și fișierul electronic spun altceva, versiunea care contează e cea din sistem. Al doilea: o factură „emisă\" care nu a ajuns acolo nu e o factură pe jumătate trimisă, e o obligație neîndeplinită, cu termen și cu sancțiune proprie."
+  },
+  {
+   "tip": "cheie",
+   "text": "Originalul e fișierul sigilat de ANAF. Hârtia și PDF-ul sunt copii pentru oameni — utile, dar nu ele sunt documentul."
+  },
+  {
+   "tip": "h",
+   "text": "Cine intră în obligație și cine nu"
+  },
+  {
+   "tip": "p",
+   "text": "Perimetrul nu se bifează, se citește din date. Trei situații, cu regimuri diferite, iar deosebirea dintre ele se face după cine e beneficiarul și unde e stabilit."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Trei feluri de beneficiar, trei regimuri",
+   "cap": [
+    "Beneficiarul",
+    "Ce se scrie pe factura electronică",
+    "Intră în obligație?"
+   ],
+   "randuri": [
+    [
+     "Firmă din România",
+     "codul de TVA, plus identificatorul ei",
+     "da — termenul de cinci zile curge"
+    ],
+    [
+     "Persoană fizică",
+     "fără cod de TVA; în locul lui, CNP-ul sau treisprezece zerouri",
+     "da, din 1 ianuarie 2025"
+    ],
+    [
+     "Beneficiar din alt stat",
+     "datele lui, ca pe orice factură",
+     "nu — obligația privește persoanele stabilite în România"
+    ]
+   ],
+   "nota": "Cele treisprezece zerouri nu sunt o convenție a vreunui program: așa așteaptă sistemul factura către o persoană fizică. Un comerciant nu are dreptul să ceară CNP-ul ca să poată factura, iar refuzul clientului nu-l scutește de raportare."
+  },
+  {
+   "tip": "p",
+   "text": "Un detaliu tehnic care ține de fapt de bun-simț: un CNP are treisprezece cifre, iar un cod fiscal românesc cel mult zece. Cele două nu se pot confunda, deci programul poate deduce singur în ce situație ești, fără să te întrebe. Iar când codul lipsește cu totul și clientul e din altă țară, factura rămâne valabilă și în afara obligației — nu devine restanță."
+  },
+  {
+   "tip": "h",
+   "text": "Cinci zile, și ce înseamnă „trimisă\""
+  },
+  {
+   "tip": "p",
+   "text": "Termenul e de cinci zile calendaristice de la emiterea facturii. Calendaristice, nu lucrătoare — regula s-a schimbat, iar o factură emisă miercuri nu mai are timp până joia următoare. E una dintre puținele modificări recente care scurtează un termen în loc să-l lungească."
+  },
+  {
+   "tip": "p",
+   "text": "A doua capcană e că „am trimis\" nu e o stare, ci trei. Fișierul se încarcă și primește un număr de înregistrare; sistemul îl prelucrează; abia apoi întoarce fie confirmarea, fie o listă de erori. Între al doilea și al treilea moment factura nu e nici acceptată, nici respinsă — și tocmai acolo se opresc, de regulă, programele care spun „trimis\" imediat după încărcare."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce se poate întâmpla cu o factură urcată",
+   "cap": [
+    "Starea",
+    "Ce înseamnă",
+    "Ce ai de făcut"
+   ],
+   "randuri": [
+    [
+     "în prelucrare",
+     "sistemul a primit fișierul și îl verifică",
+     "nimic — dar obligația nu e încă îndeplinită"
+    ],
+    [
+     "acceptată",
+     "factura are sigiliul; asta e dovada",
+     "păstrezi fișierul semnat, nu doar numărul"
+    ],
+    [
+     "respinsă",
+     "fișierul are erori de structură sau de date",
+     "corectezi cauza și urci din nou; termenul curge mai departe"
+    ]
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "Erorile de respingere sunt aproape întotdeauna despre date lipsă, nu despre sume: un cod fiscal greșit, un județ neprecizat, o unitate de măsură pe care nomenclatorul nu o cunoaște. De aceea merită completate corect în fișa partenerului o singură dată, nu reparate la fiecare factură."
+  },
+  {
+   "tip": "cheie",
+   "text": "O factură respinsă nu e o factură trimisă. Numărul de încărcare dovedește că ai încercat, nu că ai reușit — dovada e răspunsul cu sigiliu."
+  },
+  {
+   "tip": "h",
+   "text": "Ce nu se poate face"
+  },
+  {
+   "tip": "p",
+   "text": "O factură ajunsă în sistem nu se mai poate modifica și nu se mai poate retrage. Corecția se face cum se făcea și pe hârtie, înainte de orice sistem electronic: printr-un document nou, care o stornează sau o ajustează, și care pleacă la rândul lui în sistem. Regula din capitolul acesta rămâne valabilă — o factură greșită nu se șterge, se corectează cu altă factură."
+  },
+  {
+   "tip": "p",
+   "text": "Iar facturile pe care le primești vin pe același drum, în sens invers: furnizorul le urcă, iar tu le iei din spațiul tău. Consecința practică e că, pentru cumpărări, „am primit factura pe e-mail\" a încetat să fie sursa principală — documentul te așteaptă oricum acolo, indiferent dacă furnizorul ți l-a mai trimis sau nu."
+  },
+  {
    "tip": "contabil",
    "titlu": "Pentru contabil",
    "text": "Conținutul obligatoriu al facturii e cel din art. 319 Cod fiscal, iar controlul lui e prima verificare la orice inspecție de TVA — nu pentru rigoare formală, ci fiindcă dreptul de deducere al beneficiarului se sprijină pe el. Trei zone produc majoritatea corecțiilor. Prima: exigibilitatea — data livrării sau prestării, când diferă de data emiterii, determină perioada de raportare, iar la avansuri exigibilitatea intervine la încasare; o factură emisă în luna următoare pentru o livrare din luna precedentă aparține, ca TVA, lunii livrării. A doua: mențiunile obligatorii pentru regimurile speciale — taxare inversă, TVA la încasare, regimul marjei, scutiri cu drept de deducere — a căror lipsă nu se poate remedia prin explicații ulterioare, ci prin refacerea documentului. A treia: descrierea operațiunii, unde formulările generice de tipul «servicii conform contract» sunt în practică cel mai frecvent motiv de respingere a deductibilității la beneficiar, fiindcă nu permit verificarea realității prestației. La stornări, nota de credit trebuie să poarte referința documentului corectat; fără ea, cele două facturi trăiesc separat în evidențele partenerului."
@@ -282,7 +395,9 @@
     "Lipsa unui element obligatoriu îl poate lăsa pe client fără drept de deducere — problema ta devine problema lui, și invers.",
     "O vânzare produce două operațiuni: venitul și descărcarea gestiunii. Câștigul nu se scrie nicăieri, iese din diferență.",
     "TVA-ul colectat intră în firmă, dar nu-i aparține. Cine își socotește câștigul din total își supraestimează afacerea.",
-    "Obligația de e-Factura se deduce din tipul operațiunii, nu dintr-o listă întreținută manual."
+    "Obligația de e-Factura se deduce din tipul operațiunii, nu dintr-o listă întreținută manual.",
+    "Originalul facturii e fișierul sigilat de ANAF; hârtia și PDF-ul sunt copii pentru oameni.",
+    "Termenul e de cinci zile calendaristice, iar „urcată\" nu înseamnă „acceptată\"."
    ]
   }
  ]
