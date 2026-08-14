@@ -880,11 +880,17 @@ await scena('s36b-cautare', async () => {
 
 // ═══ S36c · cartea ═════════════════════════════════════════════════════════
 await scena('s36c-carte', async () => {
-  await intra('ghid', 2000);   // `ghid` e buton de nivel intai, nu in grupul Setari
-  await derulare(0, 700);
-  await derulare(420, 2200);
+  // „Cartea" din meniu e o LEGATURA externa (`<a href="/carte/">`), nu un tab: `intra()` n-are ce
+  // deschide, iar `target="_blank"` ar duce inregistrarea intr-o pagina noua, nefilmata. Se merge
+  // direct la pagina cartii, in ACEEASI fila, si se revine dupa.
+  await pg.goto(BASE + '/carte/', { waitUntil: 'domcontentloaded' });
+  await asteapta(1600);
+  await derulare(600, 2200);
+  await derulare(1800, 2000);
   await card('O carte, nu un manual de utilizare', 'contabilitatea in ordinea\nin care se intampla',
     'acelasi drum ca in aplicatie: documentul, banii,\nregistrele, declaratiile, inchiderea', 6500);
+  await pg.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+  await asteapta(1500); await unelte();
 });
 
 // ═══ S37 · increderea (backup) ═════════════════════════════════════════════
