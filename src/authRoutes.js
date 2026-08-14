@@ -482,6 +482,9 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const h = await authlib.hashPasswordAsync(password);
     u.salt = h.salt; u.hash = h.hash; u.mustChange = false; delete u.resetToken; delete u.resetExp;
     u.sessions = []; // resetarea parolei deconecteaza celelalte sesiuni
+    // Un dispozitiv marcat anterior „de incredere" nu mai poate sari peste 2FA dupa un flux de
+    // recuperare. Resetarea parolei este o rotire completa a credentialelor contului.
+    u.tfdEpoch = (u.tfdEpoch || 0) + 1;
     startSession(req, res, u);
     logAudit('password.reset', u.username, { userId: u.id, username: u.username, firmaId: null });
     db.save();

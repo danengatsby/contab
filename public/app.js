@@ -280,13 +280,16 @@ function renderGhid() {
 // Impersonare: aplica starea (banner + badge) si actiunile de intrare/iesire pe cont
 function applySessionState(u) {
   const banner = $('#imperBanner');
+  const contNav = $('#tabs button[data-tab="cont"]');
   if (u && u.impersonating) {
     $('#imperName').textContent = u.username;
     banner.classList.remove('hidden');
     document.body.classList.add('impersonating');
+    if (contNav) contNav.classList.add('hidden');
   } else {
     banner.classList.add('hidden');
     document.body.classList.remove('impersonating');
+    if (contNav) contNav.classList.remove('hidden');
   }
   setMsgBadge((u && u.unreadMessages) || 0);
   setLastUnread((u && u.unreadMessages) || 0);

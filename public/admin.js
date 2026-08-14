@@ -457,8 +457,8 @@ $('#pwForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   try {
-    await api('/api/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword: f.oldPassword.value, newPassword: f.newPassword.value }) });
-    f.reset(); toast('Parolă schimbată');
+    const r = await api('/api/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword: f.oldPassword.value, newPassword: f.newPassword.value }) });
+    f.reset(); toast('Parolă schimbată. ' + (Number(r.sessionsRevoked) || 0) + ' sesiuni vechi au fost deconectate; dispozitivele 2FA de încredere au fost revocate.');
   } catch (err) { toast(err.message, true); }
 });
 $('#inviteBtn').addEventListener('click', async () => {

@@ -147,15 +147,33 @@ function revokeSession(u, sessId) {
 
 // ASINCRON pentru scrypt: doua hash-uri (verificarea celei vechi + calculul celei noi) inseamna
 // ~60 ms de bucla blocata daca s-ar face sincron — vezi src/auth.js.
-async function changePassword(u, oldPassword, newPassword) {
+async function changePassword(u, oldPassword, newPassword, currentSessId) {
   reqNotDemo(u);
-  if (!await authlib.verifyPasswordAsync(oldPassword, u.salt, u.hash)) fail(400, 'Parola veche gresita.');
+  // Retinem versiunea credentialelor peste cele doua operatii asincrone scrypt. Doua cereri
+  // simultane de pe doua sesiuni nu au voie sa se valideze amandoua cu parola veche si apoi
+  // ultima terminata sa o suprascrie pe prima, reactivand tocmai sesiunea revocata de aceasta.
+  const initialSalt = u.salt; const initialHash = u.hash;
+  if (!await authlib.verifyPasswordAsync(oldPassword, initialSalt, initialHash)) fail(400, 'Parola veche gresita.');
   const pwErr = authlib.validatePassword(newPassword, { username: u.username });
   if (pwErr) fail(400, pwErr);
   if (String(newPassword) === String(oldPassword)) fail(400, 'Parola noua trebuie sa fie diferita de cea veche.');
+  // Schimbarea parolei este, de obicei, reactia la suspiciunea ca vechea parola a ajuns la
+  // altcineva. Daca lasam sesiunile deja emise si cookie-urile 2FA „de incredere" valide,
+  // schimbarea secretului NU scotea atacatorul din cont. Pastram doar sesiunea care confirma
+  // parola veche acum; toate celelalte dispozitive trebuie sa se autentifice din nou.
+  if (!currentSessId || !(u.sessions || []).some((s) => s.id === currentSessId)) fail(400, 'Sesiunea curentă nu mai este validă. Reautentifică-te.');
   const h = await authlib.hashPasswordAsync(newPassword);
+  if (u.salt !== initialSalt || u.hash !== initialHash
+      || !(u.sessions || []).some((s) => s.id === currentSessId)) {
+    fail(409, 'Parola sau sesiunea s-a schimbat între timp. Reautentifică-te și reîncearcă.');
+  }
+  const sessions = u.sessions || [];
+  const sessionsRevoked = sessions.filter((s) => s.id !== currentSessId).length;
   u.salt = h.salt; u.hash = h.hash; u.mustChange = false;
+  u.sessions = sessions.filter((s) => s.id === currentSessId);
+  u.tfdEpoch = (u.tfdEpoch || 0) + 1;
   db.save();
+  return { sessionsRevoked, trustedDevicesRevoked: true };
 }
 
 /** Ascunde definitiv wizard-ul de prima autentificare pentru acest utilizator (checklist-ul

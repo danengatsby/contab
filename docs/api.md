@@ -84,7 +84,7 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 | `POST /api/register` | `{ nume, username, password }` | `{ ok, firma, user }` + sesiune; 400 validări; 403 înscriere dezactivată; 429 peste 5/oră |
 | `POST /api/forgot-password` | `{ login }` | mereu `{ ok, message }` generic (fără enumerare de conturi) |
 | `GET /api/reset/:token` / `POST /api/reset/accept` | token din email | validare + setare parolă nouă; 400 token invalid/expirat |
-| `POST /api/change-password` | `{ oldPassword, newPassword }` | `{ ok }`; 400 parolă veche greșită / nouă slabă / identică |
+| `POST /api/change-password` | `{ oldPassword, newPassword }` | `{ ok, sessionsRevoked, trustedDevicesRevoked }`; păstrează numai sesiunea curentă și invalidează dispozitivele 2FA „de încredere”; 400 parolă veche greșită / nouă slabă / identică; 409 schimbare concurentă |
 | `GET /api/profile` | — | `{ username, email, role, tip, notifyDeadlines, profil }` |
 | `POST /api/profile` | `{ email?, notifyDeadlines?, profil? }` | `{ ok, email, notifyDeadlines, profil }` (câmpurile profil sunt tăiate la 120 caractere) |
 | `POST /api/2fa/setup` | — | `{ secret, otpauth, qrSvg }`; 400 dacă 2FA e deja activ |
@@ -95,6 +95,10 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 | `GET /api/sessions` | — | lista sesiunilor active, cea curentă marcată |
 | `POST /api/sessions/logout-others` / `DELETE /api/sessions/:id` | — | `{ ok }` |
 | `POST /api/onboarding/dismiss` | — | `{ ok }` — ascunde definitiv wizard-ul de primă autentificare (per cont) |
+
+Rutele personale de profil, parolă, sesiuni și 2FA răspund `403` în modul de impersonare. Adminul
+trebuie să revină explicit la propriul cont; impersonarea permite lucrul pe datele firmei, nu
+preluarea identității și a factorilor de autentificare ai utilizatorului.
 
 ## Firme (`src/routes/firme.js`)
 

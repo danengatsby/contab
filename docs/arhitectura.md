@@ -168,6 +168,10 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
 - **Cookie Secure automat pe HTTPS:** serverul citește `X-Forwarded-Proto` de la reverse proxy
   (`trust proxy`); pe HTTPS cookie-ul de sesiune primește flag-ul `Secure`, pe HTTP nu (ca să
   funcționeze și acum, înainte de certificat).
+- **Rotirea parolei închide accesul vechi:** schimbarea parolei păstrează numai sesiunea curentă,
+  iar resetarea prin email închide toate sesiunile și creează una nouă; ambele invalidează
+  dispozitivele 2FA marcate anterior „de încredere”. Rutele personale de securitate sunt blocate
+  în timpul impersonării — adminul poate lucra pe datele firmei, nu pe identitatea utilizatorului.
 - **Jurnal de audit** (`audit` în db): acțiunile importante (creare/ștergere înregistrări,
   închideri, firme, utilizatori, login) cu autor, firmă și dată. Vizibil în Setări → „Jurnal de
   audit” (adminul vede tot, userul doar firmele lui). `GET /api/audit`.

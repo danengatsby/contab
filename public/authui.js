@@ -223,9 +223,9 @@ $('#forcePwForm') && $('#forcePwForm').addEventListener('submit', async (e) => {
   const f = e.target; const err = $('#forcePwErr'); err.textContent = '';
   if (f.newPassword.value !== f.newPassword2.value) { err.textContent = 'Cele două parole noi nu coincid.'; return; }
   try {
-    await api('/api/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword: f.oldPassword.value, newPassword: f.newPassword.value }) });
+    const r = await api('/api/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword: f.oldPassword.value, newPassword: f.newPassword.value }) });
     $('#forcePwOverlay').classList.add('hidden');
-    toast('Parolă schimbată. Activează 2FA și deconectează sesiunile pe care nu le recunoști.');
+    toast('Parolă schimbată. ' + (Number(r.sessionsRevoked) || 0) + ' sesiuni vechi au fost deconectate; activează 2FA pentru protecție suplimentară.');
     await D.init();
     D.goTab('cont'); // parola si sesiunile stau in „Contul meu"
     setTimeout(() => { const t = $('#sessionsList'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 250);

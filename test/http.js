@@ -87,6 +87,9 @@ function buildDb() {
       // idem pentru retentia pe conversatie: POST /api/messages trece prin upload.single (atasament
       // optional), deci consuma plafonul de upload — un cont propriu tine testul independent
       { id: 10, username: 'msguser', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
+      // cont separat pentru doua schimbari de parola CONCURENTE; nu poate lasa restul suitei
+      // fara credentialele pe care le asteapta.
+      { id: 11, username: 'racepw', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
     ],
     documents: [{ id: 'docA', firmaId: 2, fileName: 'secret.pdf', storedName: 'nu-exista-pe-disc.pdf', uploadedAt: 'x', text: '' }],
     settings: { authSecret: 'x'.repeat(64) },
@@ -1979,7 +1982,7 @@ async function main() {
     // admin
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
-    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 11 && users.json.every((u) => u.tip));
+    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 12 && users.json.every((u) => u.tip));
     eq('non-admin la ruta de admin -> 403', (await req('GET', '/api/users', { cookie: c1 })).status, 403);
     // ── /api/settings: allowlist strict (fix escaladare la admin prin authSecret) ──
     eq('non-admin nu poate scrie authSecret -> 403', (await req('POST', '/api/settings', { cookie: c1, body: { authSecret: 'forjat' } })).status, 403);
@@ -2062,7 +2065,10 @@ async function main() {
 
     // ── Schimbare de parola OBLIGATORIE (cont cu parola implicita „admin") ──
     const laDef = await req('POST', '/api/login', { body: { username: 'defpw', password: 'admin' } });
+    const laDefVechi = await req('POST', '/api/login', { body: { username: 'defpw', password: 'admin' } });
     ok('cont cu parola implicita: login reuseste (schimbarea vine dupa)', laDef.status === 200 && laDef.cookie);
+    ok('a doua sesiune este activa inainte de schimbarea parolei', laDefVechi.status === 200
+      && (await req('GET', '/api/me', { cookie: laDefVechi.cookie })).status === 200);
     ok('/api/me semnaleaza mustChange (migrarea a re-armat flagul)', (await req('GET', '/api/me', { cookie: laDef.cookie })).json.mustChange === true);
     const blocked = await req('GET', '/api/dashboard', { cookie: laDef.cookie });
     ok('mustChange: orice actiune e blocata (403 + flag)', blocked.status === 403 && blocked.json.mustChange === true);
@@ -2086,11 +2092,32 @@ async function main() {
     eq('mustChange: parola veche gresita -> refuz', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'nu-asta', newPassword: 'ParolaNoua2026x' } })).status, 400);
     eq('mustChange: parola noua = cea veche -> refuz', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'admin' } })).status, 400);
     eq('mustChange: parola noua prea scurta -> refuz', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'ab1' } })).status, 400);
-    ok('mustChange: schimbarea valida reuseste', (await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'parola-noua-2026' } })).json.ok === true);
+    const parolaSchimbata = await req('POST', '/api/change-password', { cookie: laDef.cookie, body: { oldPassword: 'admin', newPassword: 'parola-noua-2026' } });
+    ok('mustChange: schimbarea valida reuseste si raporteaza rotirea accesului', parolaSchimbata.json.ok === true
+      && parolaSchimbata.json.sessionsRevoked === 1 && parolaSchimbata.json.trustedDevicesRevoked === true);
     ok('dupa schimbare: mustChange stins', (await req('GET', '/api/me', { cookie: laDef.cookie })).json.mustChange === false);
+    eq('dupa schimbare: cealalta sesiune este deconectata imediat',
+      (await req('GET', '/api/me', { cookie: laDefVechi.cookie })).status, 401);
     eq('dupa schimbare: actiunile merg (200)', (await req('GET', '/api/dashboard', { cookie: laDef.cookie })).status, 200);
     eq('parola implicita nu mai merge la login', (await req('POST', '/api/login', { body: { username: 'defpw', password: 'admin' } })).status, 401);
     ok('parola noua functioneaza la login', (await req('POST', '/api/login', { body: { username: 'defpw', password: 'parola-noua-2026' } })).status === 200);
+
+    // Doua taburi/dispozitive pot trimite schimbarea in acelasi timp. scrypt ruleaza asincron,
+    // deci ambele apuca sa verifice parola veche; fara verificarea de versiune, ultimul rezultat
+    // suprascria primul si isi readucea propria sesiune revocata in baza.
+    const race1 = await req('POST', '/api/login', { body: { username: 'racepw', password: 'parola1' } });
+    const race2 = await req('POST', '/api/login', { body: { username: 'racepw', password: 'parola1' } });
+    const schimbariConcurente = await Promise.all([
+      req('POST', '/api/change-password', { cookie: race1.cookie,
+        body: { oldPassword: 'parola1', newPassword: 'ParolaConcurentaA2026' } }),
+      req('POST', '/api/change-password', { cookie: race2.cookie,
+        body: { oldPassword: 'parola1', newPassword: 'ParolaConcurentaB2026' } }),
+    ]);
+    eq('schimbari concurente: exact una castiga', schimbariConcurente.filter((x) => x.status === 200).length, 1);
+    ok('schimbari concurente: cealalta este respinsa explicit', schimbariConcurente.some((x) => [400, 409].includes(x.status)));
+    const paroleRamase = await Promise.all(['ParolaConcurentaA2026', 'ParolaConcurentaB2026'].map((password) =>
+      req('POST', '/api/login', { body: { username: 'racepw', password } })));
+    eq('schimbari concurente: o singura parola finala functioneaza', paroleRamase.filter((x) => x.status === 200).length, 1);
 
     // ── Mesaje (suport user <-> admin): src/routes/messages.js ──
     ok('utilizatorul trimite un mesaj', (await req('POST', '/api/messages', { cookie: c1, body: { text: 'Am o intrebare despre TVA' } })).json.ok === true);
@@ -2813,6 +2840,15 @@ async function main() {
     const meImp = await req('GET', '/api/me', { cookie: cImp });
     ok('/api/me sub impersonare: identitatea tintei + insigna adminului real', meImp.json.username === 'user1' && meImp.json.impersonating && meImp.json.impersonating.adminName === 'admin');
     eq('sub impersonare: rutele de admin raman blocate (403)', (await req('GET', '/api/users', { cookie: cImp })).status, 403);
+    eq('sub impersonare: sesiunile personale ale tintei raman inaccesibile (403)',
+      (await req('GET', '/api/sessions', { cookie: cImp })).status, 403);
+    eq('sub impersonare: profilul personal al tintei ramane inaccesibil (403)',
+      (await req('GET', '/api/profile', { cookie: cImp })).status, 403);
+    eq('sub impersonare: adminul nu poate configura 2FA pe identitatea tintei (403)',
+      (await req('POST', '/api/2fa/setup', { cookie: cImp })).status, 403);
+    eq('sub impersonare: adminul nu poate schimba parola identitatii tintei (403)',
+      (await req('POST', '/api/change-password', { cookie: cImp,
+        body: { oldPassword: 'parola1', newPassword: 'ParolaNouaTinta2026' } })).status, 403);
     eq('comutare directa pe alta tinta (adminul real detine sesiunea)', (await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 3 } })).status, 200);
     // regresie: userId 3 are firma EXPIRATA — paywall-ul (402) nu are voie sa blocheze iesirea
     const stop = await req('POST', '/api/impersonate/stop', { cookie: cImp });
