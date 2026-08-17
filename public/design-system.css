@@ -704,3 +704,127 @@ body.erp .msg-edit:focus-visible { opacity: 1; }
   body.erp .alert > .al-tx { grid-column: 2; }
   body.erp .alert > .al-cta { grid-column: 2; justify-self: start; white-space: normal; }
 }
+
+/* ── Cuprinsul ghidului: bară de grupuri cu liste derulante ──────────────────
+   Familia `.em-*` a fost a barei de meniu din carcasă. De când carcasa are o
+   singură navigație (arborele lateral), ghidul e SINGURUL ei consumator — deci
+   componenta trăiește aici, nu în `erp.css`, care descrie shell-ul.
+   Regula esențială e `.em-pop { display: none }`: fără ea fiecare listă
+   derulantă rămâne deschisă, iar cuprinsul se scurge ca un perete de text. */
+body.erp .ghid-menu {
+  display: flex;
+  flex-wrap: wrap; /* 11 grupuri nu incap pe un rand la latimi normale */
+  align-items: stretch;
+  gap: 4px;
+  margin: 0 0 16px;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+}
+body.erp .ghid-menu .em-item { position: relative; }
+body.erp .ghid-menu .em-item > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--ds-control-min-h);
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--ds-radius-control);
+  background: none;
+  font: inherit;
+  font-size: var(--ds-control-font);
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+body.erp .ghid-menu .em-item > button:hover { background: var(--soft); }
+body.erp .ghid-menu .em-item > button:focus-visible { outline: var(--ds-focus); outline-offset: 1px; }
+body.erp .ghid-menu .em-item.open > button,
+body.erp .ghid-menu .em-item.activ > button {
+  color: #fff;
+  background: var(--app-clay);
+  border-color: var(--app-clay-dark);
+}
+body.erp .ghid-menu .emi { flex: 0 0 auto; font-size: 13px; opacity: .8; }
+body.erp .ghid-menu .em-item.open > button .emi,
+body.erp .ghid-menu .em-item.activ > button .emi { opacity: 1; }
+
+body.erp .ghid-menu .em-pop {
+  display: none;
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  z-index: 80;
+  min-width: 264px;
+  max-width: min(340px, 86vw);
+  max-height: min(60vh, 460px);
+  overflow-y: auto;
+  padding: 5px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--ds-shadow-card);
+}
+body.erp .ghid-menu .em-item.open > .em-pop { display: block; }
+body.erp .ghid-menu .em-pop button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--ds-control-min-h);
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: var(--ds-control-font);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+body.erp .ghid-menu .em-pop button:hover { background: var(--soft); }
+body.erp .ghid-menu .em-pop button:focus-visible { outline: var(--ds-focus); outline-offset: -2px; }
+body.erp .ghid-menu .em-pop .emt { min-width: 0; }
+body.erp .ghid-menu .em-pop hr { border: 0; border-top: 1px solid var(--line); margin: 5px 3px; }
+
+/* Pe telefon lista derulanta se intinde cat bara, ca sa nu iasa din ecran. */
+@media (max-width: 700px) {
+  body.erp .ghid-menu .em-item { position: static; }
+  body.erp .ghid-menu .em-pop { left: 0; right: 0; width: auto; max-width: none; }
+}
+
+/* Pagina de ghid și cuprinsul unui grup: câte o celulă pe submeniu, cu rezumatul lui.
+   Aceeași familie pierdută odată cu bara de meniu — vezi nota de mai sus. Starea de
+   hover NU mai inversează culorile (varianta veche scria alb pe bleumarin și cerea o
+   regulă separată ca descrierea să rămână lizibilă); ridică doar suprafața. */
+body.erp .ghid-pagina .toolbar { margin-bottom: 8px; }
+body.erp .ghid-pagina > .muted { margin: 0 0 12px; }
+body.erp .ghid-grile {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+  gap: 10px;
+}
+body.erp .ghid-cel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--ds-radius-control);
+  background: var(--card);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+body.erp .ghid-cel:hover {
+  background: var(--soft);
+  border-color: var(--app-clay);
+}
+body.erp .ghid-cel:focus-visible { outline: var(--ds-focus); outline-offset: 1px; }
+body.erp .ghid-cel-ic { font-size: 16px; line-height: 1; }
+body.erp .ghid-cel-t { font-weight: 700; }
+body.erp .ghid-cel-d { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
