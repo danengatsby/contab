@@ -550,7 +550,6 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
     soldAnalitic: document.querySelectorAll('#oaForm > .form-step').length,
     modernizare: document.querySelectorAll('#mfInvForm > .form-step').length,
     simulatorLeasing: document.querySelectorAll('#lsForm > .form-step').length,
-    inscriere: document.querySelectorAll('#registerForm > .form-step').length,
     profil: document.querySelectorAll('#profileForm > .form-step').length,
     designSystem: [...document.styleSheets].some((sheet) => /\/design-system\.css(?:$|\?)/.test(sheet.href || '')),
   }));
@@ -572,7 +571,6 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   ok('soldul inițial analitic are 2 pași', fluxuri.soldAnalitic === 2);
   ok('modernizarea mijlocului fix are 2 pași', fluxuri.modernizare === 2);
   ok('simulatorul de leasing are 2 pași', fluxuri.simulatorLeasing === 2);
-  ok('înscrierea publică are 3 pași', fluxuri.inscriere === 3);
   ok('profilul personal are 2 pași', fluxuri.profil === 2);
   const iconografie = await adm.evaluate(() => {
     const controale = [...document.querySelectorAll('button, a, summary, label.attach-btn, .emit-guided .gt')];
@@ -608,15 +606,14 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
     + JSON.stringify(actiuniMesaj),
   actiuniMesaj.del.every((x) => x >= 36) && actiuniMesaj.edit.every((x) => x >= 36) && actiuniMesaj.padding >= 88);
   await adm.evaluate(() => {
-    const register = document.querySelector('#registerForm');
-    register.password.value = 'NuSeStocheaza-2026!';
-    register.dispatchEvent(new Event('input', { bubbles: true }));
     const profile = document.querySelector('#profileForm');
     profile.cnp.value = '1900101415238';
     profile.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await adm.waitForTimeout(700);
-  ok('parola de înscriere nu este copiată în sessionStorage', await adm.evaluate(() =>
+  // Inscrierea nu mai are flux de formular (panou readus la forma clasica), deci nu are ce
+  // stoca — proba ramane valoroasa: dovedeste ca NIMIC de pe acel formular nu ajunge in tab.
+  ok('înscrierea nu lasă nimic în sessionStorage', await adm.evaluate(() =>
     !Object.keys(sessionStorage).some((key) => key.includes(':registerForm:'))));
   ok('CNP-ul profilului nu este copiat în sessionStorage', await adm.evaluate(() =>
     !Object.keys(sessionStorage).some((key) => key.includes(':profileForm:'))));

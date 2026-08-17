@@ -908,7 +908,6 @@ section('Design system și fluxuri reutilizabile pentru formularele lungi');
   eq('soldul analitic separă partenerul de valorile de deschidere', stepCount('oaForm'), 2);
   eq('modernizarea separă valoarea de documentarea investiției', stepCount('mfInvForm'), 2);
   eq('simulatorul separă finanțarea de dobândă și metodă', stepCount('lsForm'), 2);
-  eq('înscrierea publică separă tipul, firma și datele de acces', stepCount('registerForm'), 3);
   eq('profilul separă identificarea de datele profesionale și personale', stepCount('profileForm'), 2);
 
   for (const [file, formId] of [['app.js', 'companyForm'], ['salarizare.js', 'angajatForm'],
@@ -988,9 +987,18 @@ section('Design system și fluxuri reutilizabile pentru formularele lungi');
       && /formFlowFlush\(f\)/.test(settingsSrc) && /formFlowSaved\(f\)/.test(settingsSrc));
   ok('profilul cu CNP folosește pașii, dar are autosave-ul local dezactivat',
     /form: '#profileForm'[\s\S]{0,180}autosave: false/.test(settingsSrc));
+  // Panoul de inscriere a fost readus DELIBERAT la forma dinaintea design system-ului (cerere
+  // 2026-08-17): fara pasi, fara bara de progres. Poarta de mai jos pazeste tocmai intoarcerea —
+  // daca cineva ii reataseaza fluxul de formular, parola ar reintra in perimetrul autosave-ului.
   const authuiSrc = fs.readFileSync(path.join(PUB, 'authui.js'), 'utf8');
-  ok('înscrierea cu parolă folosește pașii, dar are autosave-ul local dezactivat',
-    /form: '#registerForm'[\s\S]{0,180}autosave: false/.test(authuiSrc));
+  ok('înscrierea publică NU trece prin fluxul de formular (formă clasică, cerută explicit)',
+    !/registerFormFlow\(\{[\s\S]{0,220}form: '#registerForm'/.test(authuiSrc));
+  // Blocul se EXTRAGE, nu se potrivește lacom: un `sect-form` pus la începutul formularului e la
+  // mii de caractere de `</form>`, deci o ancoră „marcator lângă închidere" trece degeaba.
+  const startReg = html.indexOf('id="registerForm"');
+  const blocReg = startReg < 0 ? '' : html.slice(startReg, html.indexOf('</form>', startReg));
+  ok('...iar formularul de înscriere nu poartă marcatori de pas',
+    startReg > 0 && !blocReg.includes('sect-form'));
   ok('șablonul recurent păstrează ciorna la rerandare și o elimină după salvare',
     /formFlowFlush\(form\)[\s\S]{0,380}formFlowLoaded\(form, 'nou'\)/.test(fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8'))
       && /formFlowSaved\(f\); f\.reset\(\)/.test(fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8')));
