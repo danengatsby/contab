@@ -820,9 +820,13 @@ section('Carcasa aplicației: o singură navigație și context unic');
     && /function monteazaNavigatiaMobila\(/.test(erp));
   ok('nu mai există cod pentru bara mobilă și panoul ei paralel', !/bottomnav|moreSheet|updateBottomNav|closeMore/.test(html + app + erp));
   ok('ciclul contabil nu mai injectează o a doua navigație', !/cyclemap|cyclestep|cyclearrow/.test(html + app));
-  ok('etapele sunt metadate pe butoanele navigației reale', /dataset\.cyclePosition/.test(app)
-    && /dataset\.cycleTotal/.test(app) && /dataset\.cycleLabel/.test(app));
-  ok('bara contextuală afișează etapa fără să creeze destinații', /Ciclul contabil · etapa/.test(erp)
+  // Clasificarea ecranului e o singura metadata (`data-kicker`), pusa intr-un singur loc din
+  // app.js si derivata din pasii inchiderii; erp.js doar o afiseaza.
+  ok('clasificarea ecranului e metadata pe butoanele navigației reale', /dataset\.kicker = text/.test(app)
+    && /marcheazaHartaLunii\(\)/.test(app));
+  ok('pașii lunii, înregistrarea și consultarea sunt numite distinct',
+    /Închiderea lunii · pasul/.test(app) && /'Înregistrare'/.test(app) && /'Consultare'/.test(app));
+  ok('bara contextuală afișează clasificarea fără să creeze destinații', /dataset\.kicker/.test(erp)
     && /contab:cycle-ready/.test(erp));
   ok('bara contextuală este construită explicit', /function construiesteContext\(/.test(erp) && /bar\.id = 'appContext'/.test(erp));
   ok('selectorul firmei este mutat, nu clonat', /firmaWrap\.appendChild\(firma\)/.test(erp) && !/cloneNode/.test(erp));

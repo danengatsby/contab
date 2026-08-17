@@ -750,25 +750,44 @@ $$('.qa[data-go]').forEach((b) => b.addEventListener('click', () => goTab(b.data
 // Ghidează un ne-contabil prin întrebări simple → alege automat tipul de document potrivit.
 // Tipurile de IESIRE (emise de firma) se deschid in pagina „Emite factura"; restul in „Adauga document primit"
 
-// Ordinea canonică a ciclului contabil. NU mai desenăm aici o a doua navigație:
-// destinațiile există deja în arborele lateral. Marcăm butoanele reale cu etapa
-// lor, iar bara contextuală afișează discret „etapa N/7" lângă titlul paginii.
-const CYCLE = [
-  { go: 'documente', ic: '📥', t: 'Documente' },
-  { go: 'emite', ic: '🧾', t: 'Emite' },
-  { go: 'jurnal', ic: '📘', t: 'Operațiuni', adv: true },
-  { go: 'carte', ic: '📗', t: 'Fișe conturi', adv: true },
-  { go: 'balanta', ic: '⚖️', t: 'Solduri', adv: true },
-  { go: 'inchideri', ic: '🔒', t: 'Închideri', adv: true },
-  { go: 'livrabile', ic: '📤', t: 'Declarații' },
+// HARTA LUNII — o singură sursă.
+//
+// Aplicația descria aceeași lună în două feluri care nu se potriveau: banda de sus numea șapte
+// „etape" (documente, emite, jurnal, carte, balanță, închideri, declarații), iar cockpitul de
+// închidere numea șase „pași" (documente, bancă, TVA, declarații, aprobare, blocare). Consecința
+// pentru cine ține luna: TVA-ul și punctajul bancar — pași OBLIGATORII — nu apăreau nicăieri în
+// bandă, în timp ce jurnalul și balanța, care se CONSULTĂ, erau numerotate ca pași de executat.
+// Iar „etapa 6/7" deschidea un ecran care începea de la „1/6".
+//
+// Acum secvența lunii e cea din `src/monthlyClose.js` (STEPS) — aceeași listă care produce
+// cockpitul, termenele și temeiul legal. Lista de mai jos o oglindește (cheie + tab, în ordine);
+// o poartă din suită le compară ÎN AMBELE SENSURI, ca să nu poată drifta una fără cealaltă.
+const PASII_LUNII = [
+  { key: 'documente', tab: 'intrate' },
+  { key: 'banca', tab: 'reconciliere' },
+  { key: 'tva', tab: 'tva' },
+  { key: 'declaratii', tab: 'livrabile' },
+  { key: 'aprobare', tab: null }, // se rezolvă în cockpit, nu pe ecran propriu
+  { key: 'blocare', tab: null },
 ];
-CYCLE.forEach((s, i) => {
-  const b = $(`#tabs button[data-tab="${s.go}"]`);
-  if (!b) return;
-  b.dataset.cyclePosition = String(i + 1);
-  b.dataset.cycleTotal = String(CYCLE.length);
-  b.dataset.cycleLabel = s.t;
-});
+// Ce NU e pas al lunii, dar era numerotat ca atare: introducerea datelor (alimentează pasul 1)
+// și registrele care se citesc. Le numim pe nume, în loc să le dăm un număr care minte.
+const TABURI_INREGISTRARE = ['documente', 'emite'];
+const TABURI_CONSULTARE = ['jurnal', 'carte', 'balanta'];
+
+function marcheazaHartaLunii() {
+  const pune = (tab, text) => {
+    const b = tab && $(`#tabs button[data-tab="${tab}"]`);
+    if (b) b.dataset.kicker = text;
+  };
+  // „pasul 3 din 6", nu „3/6": cockpitul afișează „1/6 pași" ca PROGRES (câți sunt gata), iar
+  // două numere N/6 cu înțelesuri diferite pe ecrane vecine ar fi mutat confuzia, nu ar fi rezolvat-o.
+  PASII_LUNII.forEach((p, i) => pune(p.tab, `Închiderea lunii · pasul ${i + 1} din ${PASII_LUNII.length}`));
+  pune('inchideri', 'Închiderea lunii · toți pașii');
+  TABURI_INREGISTRARE.forEach((t) => pune(t, 'Înregistrare'));
+  TABURI_CONSULTARE.forEach((t) => pune(t, 'Consultare'));
+}
+marcheazaHartaLunii();
 if (typeof document.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
   document.dispatchEvent(new CustomEvent('contab:cycle-ready'));
 }

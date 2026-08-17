@@ -1379,11 +1379,15 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
   // ambele erau corecte separat. Se verifica pozitia in meniu, nu apartenenta la vreun grup: gruparea
   // se poate schimba oricand, ordinea pasilor nu.
   const navBloc = html.slice(html.indexOf('id="tabs"'), html.indexOf('</nav>', html.indexOf('id="tabs"')));
-  const ciclu = [...(app0.match(/const CYCLE = \[[\s\S]*?\n\];/) || [''])[0].matchAll(/go: '([a-z-]+)'/g)].map((m) => m[1]);
-  ok('poarta vede ciclul contabil declarat in cod', ciclu.length >= 5);
+  // Sursa ordinii e acum secventa lunii (`PASII_LUNII`, oglinda lui `monthlyClose.STEPS`), nu o a
+  // doua lista scrisa de mana. Se verifica doar pasii care AU ecran propriu — aprobarea si blocarea
+  // se rezolva in cockpit, deci nu au pozitie in meniu.
+  const ciclu = [...(app0.match(/const PASII_LUNII = \[[\s\S]*?\n\];/) || [''])[0]
+    .matchAll(/tab: '([a-z-]+)'/g)].map((m) => m[1]);
+  ok('poarta vede secventa lunii declarata in cod', ciclu.length >= 4);
   const pozitie = (t) => navBloc.indexOf('data-tab="' + t + '"');
   const inMeniu = ciclu.filter((t) => pozitie(t) >= 0);
-  ok('pasii ciclului se regasesc in meniu', inMeniu.length >= 5);
+  ok('pasii lunii se regasesc in meniu', inMeniu.length >= 4);
   const inversate = inMeniu.filter((t, i) => i > 0 && pozitie(t) < pozitie(inMeniu[i - 1]));
   ok('ordinea meniului urmeaza ciclul contabil'
     + (inversate.length ? ' — INVERSATE fata de pasul dinainte: ' + inversate.join(', ') : ''), inversate.length === 0);

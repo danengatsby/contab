@@ -783,6 +783,38 @@ ok('job: eroarea notata si numarata', snapJ['spv-poll'].lastError === 'ANAF 503'
 metricsMod.reset();
 ok('reset: erori si joburi golite', metricsMod.snapshot().recentErrors.length === 0 && Object.keys(metricsMod.snapshot().jobs).length === 0);
 
+section('Harta lunii: banda din frontend deriva din pasii inchiderii');
+{
+  const monthlyClose = require('../../src/monthlyClose');
+  const appSrc = require('fs').readFileSync(require('path').join(RADACINA, 'public', 'app.js'), 'utf8');
+  const bloc = (appSrc.match(/const PASII_LUNII = \[([\s\S]*?)\];/) || [])[1] || '';
+  const dinFront = [...bloc.matchAll(/\{\s*key:\s*'([a-z]+)',\s*tab:\s*(?:'([a-z]+)'|null)/g)]
+    .map((m) => ({ key: m[1], tab: m[2] || null }));
+  const dinServer = monthlyClose.STEPS.map((s) => ({ key: s.key, tab: s.tab || null }));
+
+  // In AMBELE sensuri, si pe ORDINE: un pas nou pe server fara corespondent in banda ar reface
+  // exact defectul reparat (TVA si banca erau pasi obligatorii care nu apareau nicaieri in banda),
+  // iar un pas inventat in frontend ar numerota un ecran care nu e in secventa lunii.
+  eq('banda are exact atatia pasi cati are inchiderea', dinFront.length, dinServer.length);
+  eq('aceleasi chei, in aceeasi ordine',
+    dinFront.map((x) => x.key).join(','), dinServer.map((x) => x.key).join(','));
+  eq('acelasi ecran pentru fiecare pas',
+    dinFront.map((x) => x.key + ':' + x.tab).join(','), dinServer.map((x) => x.key + ':' + x.tab).join(','));
+
+  // Ecranele care se CITESC nu au voie sa fie numerotate ca pasi de executat — asta era jumatatea
+  // cealalta a defectului (jurnalul si balanta apareau ca „etapa 3/7", respectiv „5/7").
+  const taburiPas = dinServer.map((x) => x.tab).filter(Boolean);
+  const consultare = ((appSrc.match(/const TABURI_CONSULTARE = \[([^\]]*)\]/) || [])[1] || '')
+    .match(/'([a-z]+)'/g)?.map((x) => x.replace(/'/g, '')) || [];
+  ok('registrele de consultare exista si sunt numite', consultare.length >= 3);
+  ok('niciun ecran de consultare nu e si pas al lunii',
+    consultare.every((t) => !taburiPas.includes(t)));
+  ok('banda citeste o singura eticheta, decisa in app.js',
+    /dataset\.kicker/.test(require('fs').readFileSync(require('path').join(RADACINA, 'public', 'erp.js'), 'utf8')));
+  ok('nu mai exista a doua numerotare („etapa N/7")',
+    !/Ciclul contabil · etapa/.test(require('fs').readFileSync(require('path').join(RADACINA, 'public', 'erp.js'), 'utf8')));
+}
+
 section('Pluralul romanesc: doua praguri, nu unul');
 {
   const { plural } = require('../../src/util');

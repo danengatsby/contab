@@ -258,11 +258,10 @@
 
     var kicker = $('.app-context-kicker');
     if (kicker) {
-      var pozitie = activ && activ.dataset.cyclePosition;
-      var total = activ && activ.dataset.cycleTotal;
-      var textKicker = pozitie && total
-        ? 'Ciclul contabil · etapa ' + pozitie + '/' + total
-        : 'Spațiu de lucru';
+      // Clasificarea ecranului (pas al lunii / inregistrare / consultare) se decide intr-un
+      // singur loc — `marcheazaHartaLunii` din app.js, derivata din pasii inchiderii. Aici
+      // doar se afiseaza ce s-a decis acolo; „Spatiu de lucru" ramane pentru restul.
+      var textKicker = (activ && activ.dataset.kicker) || 'Spațiu de lucru';
       if (kicker.textContent !== textKicker) kicker.textContent = textKicker;
     }
 
