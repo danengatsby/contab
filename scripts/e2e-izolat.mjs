@@ -953,6 +953,52 @@ sect('14. Carcasa locală pe telefon (390px și 320px)');
     + ' (antet ' + mobil320.antet + 'px, text ' + mobil320.textAlerta + 'px)', mobil320.rezultat);
 }
 
+sect('15. Registrele late spun ca mai e continut la dreapta');
+{
+  const cite = () => adm.evaluate(() => {
+    const t = [...document.querySelectorAll('main table')]
+      .filter((x) => x.getBoundingClientRect().width > 0)
+      .sort((a, c) => c.scrollWidth - a.scrollWidth)[0];
+    if (!t) return null;
+    const w = t.parentElement;
+    return {
+      rest: t.scrollWidth - t.clientWidth,
+      inTablewrap: !!w && w.classList.contains('tablewrap'),
+      marcat: !!w && w.classList.contains('are-derulare'),
+    };
+  });
+
+  // Conditia se forteaza din LATIMEA FERESTREI, nu din date: cate coloane are balanta in
+  // fixture-ul E2E e o intamplare, iar o poarta care depinde de ea masoara gol si trece degeaba
+  // (prima varianta a acestei sectiuni chiar asa a facut — balanta incapea, `rest` era 0).
+  await adm.setViewportSize({ width: 900, height: 900 });
+  await adm.evaluate(() => document.querySelector('#tabs button[data-tab="balanta"]')?.click());
+  await adm.waitForTimeout(1000);
+  const stramt = await cite();
+  ok('la 900px balanta chiar are continut ascuns (poarta nu masoara gol): ' + (stramt && stramt.rest) + 'px',
+    !!stramt && stramt.inTablewrap && stramt.rest > 1);
+  ok('...si containerul ei poarta indiciul de derulare', !!stramt && stramt.marcat);
+
+  await adm.evaluate(() => {
+    const t = [...document.querySelectorAll('main table')]
+      .filter((x) => x.getBoundingClientRect().width > 0)
+      .sort((a, c) => c.scrollWidth - a.scrollWidth)[0];
+    t.scrollLeft = t.scrollWidth;
+    t.dispatchEvent(new Event('scroll'));
+  });
+  await adm.waitForTimeout(400);
+  const laCapat = await cite();
+  ok('indiciul dispare cand ai ajuns la capatul din dreapta', !!laCapat && !laCapat.marcat);
+
+  // Acelasi tabel, fereastra larga: incape, deci indiciul nu are voie sa apara.
+  await adm.setViewportSize({ width: 1920, height: 900 });
+  await adm.waitForTimeout(800);
+  const larg = await cite();
+  ok('la 1920px acelasi registru incape si NU poarta indiciul (fara zgomot fals): '
+    + (larg && larg.rest) + 'px', !!larg && larg.rest <= 1 && !larg.marcat);
+  await adm.setViewportSize({ width: 1440, height: 900 });
+}
+
 await b.close();
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari E2E izolate trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

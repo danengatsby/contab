@@ -250,6 +250,30 @@
     return t.replace(/\s+/g, ' ').trim();
   }
 
+  // Tabelele de registru sunt ELE INSELE containerul de derulare: `styles.css` le da
+  // `display:block; overflow-x:auto`. Cand continutul nu incape, ultima coloana pare TAIATA, nu
+  // derulabila — pe balanta, la 1440px, „Sold final / credit" sta la 30px dincolo de margine si
+  // nimic nu spune ca mai e ceva acolo (la 1280px sunt 190px). Marcam containerul PARINTE, care
+  // nu deruleaza, ca CSS-ul sa poata pune un indiciu care ramane pe loc.
+  function areDerulareOrizontala(t) {
+    return t.scrollWidth - t.clientWidth > 1 && t.scrollLeft + t.clientWidth < t.scrollWidth - 1;
+  }
+  function marcheazaTabeleDerulabile() {
+    $$('.tab table').forEach(function (t) {
+      var wrap = t.parentElement && t.parentElement.classList
+        && t.parentElement.classList.contains('tablewrap') ? t.parentElement : null;
+      if (!wrap) return;
+      var aplica = function () { wrap.classList.toggle('are-derulare', areDerulareOrizontala(t)); };
+      aplica();
+      // Indiciul dispare cand ai ajuns la capat, deci se recalculeaza si la derulare, o singura
+      // data per tabel (`sincronizeaza` ruleaza la fiecare mutatie din DOM).
+      if (!t.dataset.derulareLegata) {
+        t.dataset.derulareLegata = '1';
+        t.addEventListener('scroll', aplica, { passive: true });
+      }
+    });
+  }
+
   function sincronizeaza() {
     var activ = $('#tabs button[data-tab].active');
     var titlu = $('#appContextTitle');
@@ -274,6 +298,8 @@
         icoana.dataset.icon = nume;
       }
     }
+
+    marcheazaTabeleDerulabile();
 
     var online = $('#appOnline');
     if (online) {
@@ -350,6 +376,7 @@
       var n = $(sel);
       if (n) obs.observe(n, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     });
+    window.addEventListener('resize', marcheazaTabeleDerulabile);
     window.addEventListener('online', sincronizeaza);
     window.addEventListener('offline', sincronizeaza);
     document.addEventListener('contab:cycle-ready', sincronizeaza);

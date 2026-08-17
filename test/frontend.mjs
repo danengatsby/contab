@@ -828,6 +828,16 @@ section('Carcasa aplicației: o singură navigație și context unic');
     /Închiderea lunii · pasul/.test(app) && /'Înregistrare'/.test(app) && /'Consultare'/.test(app));
   ok('bara contextuală afișează clasificarea fără să creeze destinații', /dataset\.kicker/.test(erp)
     && /contab:cycle-ready/.test(erp));
+  // Registrele late: erp.js marcheaza containerul, CSS-ul pune umbra. Efectul pe DOM real
+  // (apare, dispare la capat, lipseste cand tabelul incape) se dovedeste in E2E, sectiunea 15 —
+  // o poarta pe sursa singura ar spune doar ca s-a scris codul, nu ca se si vede.
+  ok('registrele late sunt marcate cand au continut ascuns',
+    /function areDerulareOrizontala\(/.test(erp) && /marcheazaTabeleDerulabile\(\)/.test(erp));
+  ok('...iar marcajul tine cont si de cat s-a derulat deja',
+    /scrollLeft \+ t\.clientWidth < t\.scrollWidth/.test(erp));
+  const dsIndiciu = fs.readFileSync(path.join(PUB, 'design-system.css'), 'utf8');
+  ok('indiciul de derulare are regula proprie, pe containerul care NU deruleaza',
+    /\.tablewrap\.are-derulare::after/.test(dsIndiciu) && /\.tablewrap \{ position: relative/.test(dsIndiciu));
   ok('bara contextuală este construită explicit', /function construiesteContext\(/.test(erp) && /bar\.id = 'appContext'/.test(erp));
   ok('selectorul firmei este mutat, nu clonat', /firmaWrap\.appendChild\(firma\)/.test(erp) && !/cloneNode/.test(erp));
   ok('selectorul perioadei este mutat, nu clonat', /perioadaWrap\.appendChild\(perioada\)/.test(erp));
