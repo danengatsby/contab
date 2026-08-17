@@ -96,6 +96,24 @@ module.exports = function register(app, ctx) {
     const pd394 = acc.vatPeriod(v.company, period); // agrega trimestrul la regim 'T'
     sendXml(res, xml.d394Xml(v.company, pd394, acc.vatJournals(v, pd394), declarantOf(req), rep.achizitiiPfCarnet(v, pd394)), 'd394.xml');
   });
+  // Recapitulatia D394 pe hartie: aceeasi expresie de date ca ruta XML de mai sus, ca sa nu poata
+  // drifta una fata de cealalta, si aceeasi agregare (`xml.d394Operatiuni`) din care se compune XML-ul.
+  // Pana acum D394 se putea depune fara sa poata fi CITITA — tocmai declaratia unde ochiul prinde
+  // un CUI gresit sau un partener lipsa.
+  app.get('/pdf/d394', (req, res) => {
+    const v = S(req);
+    if (!requireVatPayer(v, res)) return;
+    const pd394 = acc.vatPeriod(v.company, req.query.period || null);
+    return pdf.d394Pdf(res, v.company, {
+      period: pd394,
+      ops: xml.d394Operatiuni(acc.vatJournals(v, pd394), rep.achizitiiPfCarnet(v, pd394)),
+    });
+  });
+  app.get('/pdf/saft', (req, res) => {
+    const year = req.query.year || String(new Date().getFullYear());
+    return pdf.saftPdf(res, S(req).company, saft.saftSummary(S(req), year));
+  });
+
   app.get('/api/d390', (req, res) => res.json(rep.d390(S(req), req.query.period || null)));
 
   app.get('/api/d301', (req, res) => res.json(d301.report(S(req), req.query.period || null)));

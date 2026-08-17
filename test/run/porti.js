@@ -1406,6 +1406,30 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
     + (tratateFaraSectiune.length ? ' — ' + tratateFaraSectiune.join(', ') : ''), tratateFaraSectiune.length === 0);
 }
 
+section('Poarta: fiecare generator PDF chemat din rute exista in src/pdf/index.js');
+{
+  // `src/pdf/index.js` reexporta EXPLICIT, nume cu nume. Un generator adaugat intr-un modul tematic
+  // dar uitat aici exista in cod si NU exista pentru rute: `pdf.xPdf` e `undefined`, deci ruta cade
+  // cu 500 la prima cerere reala. Nimic nu se plange la pornire, iar testele de modul nu vad gaura —
+  // exact ce s-a intamplat cu `d394Pdf`/`saftPdf`, prins abia de fumul HTTP.
+  //
+  // Directia conteaza: se verifica ce CHEAMA rutele, nu ce exporta modulele. Invers ar semnala si
+  // bucatile refolosite intre module (`facturaCompactPdf`, ales de `facturaPdf` dupa layout), care
+  // n-au ce cauta in index — o poarta cu fals-pozitive ajunge sa fie slabita, nu respectata.
+  const fsx = require('fs'); const pth = require('path');
+  const index = fsx.readFileSync(pth.join(RADACINA, 'src', 'pdf', 'index.js'), 'utf8');
+  const dirRute = pth.join(RADACINA, 'src', 'routes');
+  const chemate = new Set();
+  for (const f of fsx.readdirSync(dirRute).filter((x) => x.endsWith('.js'))) {
+    const src = fsx.readFileSync(pth.join(dirRute, f), 'utf8');
+    for (const m of src.matchAll(/\bpdf\.([a-zA-Z]\w*)\s*\(/g)) chemate.add(m[1]);
+  }
+  ok('poarta vede generatoare chemate din rute', chemate.size > 10);
+  const lipsa = [...chemate].filter((n) => !new RegExp('\\b' + n + '\\s*:').test(index));
+  ok('fiecare generator chemat din rute e reexportat de index'
+    + (lipsa.length ? ' — LIPSESC: ' + lipsa.join(', ') : ''), lipsa.length === 0);
+}
+
 section('Poarta: fiecare colectie din graf are linie in ARRAY_COLLS (altfel dispare la restart)');
 {
   // Modul de esec pe care il previne: o colectie noua adaugata in `db.js` dar UITATA in
