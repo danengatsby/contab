@@ -338,9 +338,15 @@ body.erp .app-context-field > span:first-child {
   font-weight: 700;
 }
 body.erp .app-context .firma-select {
-  width: 280px;
+  /* Eticheta optiunii e „NUME (CUI)" + eventual marcajul de abonament, deci depaseste
+     latimea disponibila la orice nume realist. Un `select` nativ taie BRUT, iar rezultatul
+     era o paranteza suspendata pe fiecare ecran („S.C. EXEMPLU PROD S.R.L. („).
+     `text-overflow` taie cu puncte de suspensie, adica arata a taiere, nu a defect.
+     `width` era 280px cu `max-width` 260px — contradictoriu, castiga oricum max-width. */
+  width: 260px;
   min-width: 190px;
   max-width: 260px;
+  text-overflow: ellipsis;
   height: 40px;
   padding: 7px 34px 7px 11px;
   color: var(--ink);
