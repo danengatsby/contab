@@ -2,7 +2,7 @@
 // Modul de mesagerie (suport user <-> admin): firul de chat, inbox-ul de admin, cautare,
 // arhivare, atasamente, notificari (badge/titlu/sunet), indicator „scrie acum" si polling
 // aproape in timp real. Extras din app.js (Etapa 1 a modularizarii). Depinde doar de nucleu.
-import { $, $$, api, toast, USER, escMsg, escAttr, withCsrf } from './core.js';
+import { $, $$, api, toast, USER, escMsg, escAttr, withCsrf, confirmAction } from './core.js';
 
 function fmtMsgTime(iso) {
   try { return new Date(iso).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
@@ -134,7 +134,7 @@ async function openAdminThread(uid, keep) {
   box.innerHTML = (data.thread || []).length ? data.thread.map((m) => bubble(m, true)).join('') : '<p class="muted">Niciun mesaj.</p>';
   box.scrollTop = box.scrollHeight;
   $$('#msgAdminThread .msg-del').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ștergi acest mesaj? Acțiunea este definitivă.')) return;
+    if (!await confirmAction('Mesajul nu va mai putea fi recuperat.', { title: 'Ștergi mesajul?', confirmLabel: 'Șterge definitiv', danger: true })) return;
     try { await api('/api/messages/' + encodeURIComponent(b.dataset.id), { method: 'DELETE' }); await openAdminThread(MSG_ADMIN_TARGET, true); loadMessages(); toast('Mesaj șters'); }
     catch (e) { toast(e.message, true); }
   }));

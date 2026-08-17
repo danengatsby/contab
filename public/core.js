@@ -61,15 +61,108 @@ export const accName = (c) => { const a = META.accounts.find((x) => x.cod === St
 // Contul demo (public, partajat): unele UI-uri se ascund. Partajat de app.js si admin.js.
 export const isDemo = () => !!(USER && (USER.username === 'demo' || USER.username === 'demo-contabil'));
 
+let toastTimer = 0;
 export function toast(msg, err) {
   // fara element, un toast nu are voie sa omoare apelantul
   const t = $('#toast'); if (!t) return;
-  t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
+  if (toastTimer) clearTimeout(toastTimer);
+  const isError = !!err;
+  t.textContent = msg;
+  t.className = 'toast show ' + (isError ? 'is-error' : 'is-success');
+  // Erorile sunt urgente și trebuie anunțate imediat; confirmările obișnuite nu
+  // întrerup cititorul de ecran. Atributele revin la starea neutră după mesaj.
+  t.setAttribute('role', isError ? 'alert' : 'status');
+  t.setAttribute('aria-live', isError ? 'assertive' : 'polite');
   // La ascundere se goleste si TEXTUL, nu doar clasa: elementul se stinge cu `opacity`, deci
   // ramane in arborele de accesibilitate: un mesaj nesters ar fi ramas de citit la nesfarsit,
   // cu mult dupa ce a disparut de pe ecran.
-  setTimeout(() => { t.className = 'toast'; t.textContent = ''; }, 3200);
+  toastTimer = setTimeout(() => {
+    t.className = 'toast'; t.textContent = '';
+    t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite');
+    toastTimer = 0;
+  }, isError ? 5200 : 3600);
 }
+
+// Dialoguri proprii pentru acțiuni importante. Spre deosebire de alert/confirm/prompt,
+// păstrează contextul acțiunii, validează intrarea și folosesc aceleași controale pe toate
+// platformele. Conținutul variabil intră exclusiv prin textContent.
+function appDialog(kind, message, opts) {
+  const o = opts || {};
+  return new Promise((resolve) => {
+    const dlg = document.createElement('dialog');
+    dlg.className = 'app-dialog' + (o.danger ? ' is-danger' : '');
+    dlg.setAttribute('aria-labelledby', 'appDialogTitle');
+
+    const card = document.createElement('div'); card.className = 'app-dialog-card';
+    const head = document.createElement('div'); head.className = 'app-dialog-head';
+    const mark = document.createElement('span'); mark.className = 'app-dialog-mark'; mark.setAttribute('aria-hidden', 'true');
+    mark.textContent = o.danger ? '!' : (kind === 'prompt' ? '…' : '✓');
+    const title = document.createElement('h2'); title.id = 'appDialogTitle';
+    title.textContent = o.title || (kind === 'alert' ? 'Informație' : kind === 'prompt' ? 'Completează detaliile' : 'Confirmă acțiunea');
+    head.append(mark, title); card.appendChild(head);
+
+    const body = document.createElement('div'); body.className = 'app-dialog-body';
+    const text = document.createElement('p'); text.className = 'app-dialog-message'; text.textContent = String(message || '');
+    body.appendChild(text);
+    let input = null;
+    if (kind === 'prompt') {
+      const label = document.createElement('label'); label.className = 'app-dialog-label';
+      const labelText = document.createElement('span'); labelText.textContent = o.label || 'Valoare';
+      input = document.createElement(o.multiline ? 'textarea' : 'input');
+      if (!o.multiline) input.type = o.inputType || 'text';
+      input.value = o.value == null ? '' : String(o.value);
+      if (o.placeholder) input.placeholder = o.placeholder;
+      if (o.minLength) input.minLength = Number(o.minLength);
+      if (o.required) input.required = true;
+      label.append(labelText, input); body.appendChild(label);
+    }
+    if (o.detail) {
+      const detail = document.createElement('p'); detail.className = 'app-dialog-detail'; detail.textContent = o.detail;
+      body.appendChild(detail);
+    }
+    const error = document.createElement('p'); error.className = 'app-dialog-error hidden'; error.setAttribute('role', 'alert');
+    body.appendChild(error); card.appendChild(body);
+
+    const actions = document.createElement('div'); actions.className = 'app-dialog-actions';
+    let cancel = null;
+    if (kind !== 'alert') {
+      cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn ghost';
+      cancel.textContent = o.cancelLabel || 'Renunță'; actions.appendChild(cancel);
+    }
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'btn primary' + (o.danger ? ' danger' : '');
+    ok.textContent = o.confirmLabel || (kind === 'alert' ? 'Am înțeles' : 'Continuă'); actions.appendChild(ok);
+    card.appendChild(actions); dlg.appendChild(card); document.body.appendChild(dlg);
+
+    let inchis = false;
+    const termina = (valoare) => {
+      if (inchis) return; inchis = true;
+      try { if (dlg.open && typeof dlg.close === 'function') dlg.close(); } catch (_) { /* fallback-ul nu are close */ }
+      dlg.remove(); resolve(valoare);
+    };
+    if (cancel) cancel.addEventListener('click', () => termina(kind === 'prompt' ? null : false));
+    dlg.addEventListener('cancel', (e) => { e.preventDefault(); termina(kind === 'prompt' ? null : false); });
+    dlg.addEventListener('click', (e) => { if (e.target === dlg && kind !== 'alert') termina(kind === 'prompt' ? null : false); });
+    ok.addEventListener('click', () => {
+      if (input) {
+        const value = input.value.trim();
+        if (o.required && !value) { error.textContent = 'Completează câmpul pentru a continua.'; error.classList.remove('hidden'); input.focus(); return; }
+        if (o.minLength && value.length < Number(o.minLength)) { error.textContent = 'Scrie cel puțin ' + Number(o.minLength) + ' caractere.'; error.classList.remove('hidden'); input.focus(); return; }
+        if (o.pattern && !o.pattern.test(value)) { error.textContent = o.patternMessage || 'Valoarea nu are formatul corect.'; error.classList.remove('hidden'); input.focus(); return; }
+        termina(value); return;
+      }
+      termina(kind === 'alert' ? undefined : true);
+    });
+    dlg.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && input && !o.multiline) { e.preventDefault(); ok.click(); }
+    });
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    setTimeout(() => { (input || (kind === 'alert' ? ok : cancel || ok)).focus(); }, 0);
+  });
+}
+
+export const alertAction = (message, opts) => appDialog('alert', message, opts);
+export const confirmAction = (message, opts) => appDialog('confirm', message, opts);
+export const promptAction = (message, opts) => appDialog('prompt', message, opts);
 
 let pendingReq = 0;
 export function setLoad(on) {

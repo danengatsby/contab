@@ -3,7 +3,8 @@
 // profil + sesiuni active, server SMTP (admin) si cotele fiscale configurabile (admin).
 // Extras din app.js (Etapa 3 a modularizarii). Depinde de nucleu; init/onTab (reincarcarea
 // sesiunii dupa (dez)activarea 2FA) sunt INJECTATE de app.js prin setSettingsDeps.
-import { $, $$, api, toast, USER, setMeta, H } from './core.js';
+import { $, $$, api, toast, USER, setMeta, H, confirmAction, alertAction } from './core.js';
+import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved } from './formflow.js';
 
 let deps = {};
 export function setSettingsDeps(d) { deps = d; }
@@ -138,7 +139,9 @@ $('#backupAuto').addEventListener('change', async (e) => {
 $('#restoreBtn').addEventListener('click', async () => {
   const file = $('#restoreFile').files[0];
   if (!file) return toast('Alege un fișier db.json', true);
-  if (!confirm('Sigur restaurezi? Toate datele curente vor fi înlocuite și vei fi delogat.')) return;
+  if (!await confirmAction('Fișier: ' + file.name + '\n\nToate datele curente vor fi înlocuite și sesiunea va fi închisă.', {
+    title: 'Restaurezi copia de siguranță?', confirmLabel: 'Restaurează și deloghează', danger: true,
+  })) return;
   const fd = new FormData(); fd.append('file', file);
   try { const r = await api('/api/restore', { method: 'POST', body: fd }); toast(r.message); setTimeout(() => location.reload(), 1500); }
   catch (e) { toast(e.message, true); }
@@ -166,6 +169,7 @@ export async function renderProfile() {
     // la salvare, valoarea mascata e ignorata de server, deci re-salvarea altui camp nu il strica.
     if (f.cnp) f.cnp.value = pr.cnp || '';
     if (f.disponibilContabil) f.disponibilContabil.checked = !!pr.disponibilContabil;
+    formFlowLoaded(f, 'profil', { restore: false });
   } catch (e) { /* */ }
 }
 // bifa deschide campurile pe loc: altfel ar trebui sa salvezi o data ca sa poti completa anuntul
@@ -184,12 +188,22 @@ $('#profileForm').addEventListener('submit', async (e) => {
   try {
     await api('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: f.email.value, notifyDeadlines: f.notifyDeadlines.checked, profil }) });
   } catch (err) { return toast(err.message, true); } // CNP invalid: mesajul serverului, nu o eroare tacuta
+  formFlowSaved(f);
   toast('Profil salvat');
   renderProfile(); // reafiseaza CNP-ul mascat si reincarca lista de contabili daca s-a schimbat optiunea
   // USER vine din /api/meta si poarta `cnpSetat`, de care depinde avertismentul din „Firmele mele".
   // Fara reincarcare, cine tocmai si-a completat CNP-ul ramanea cu avertismentul pe ecran — adica
   // exact cu impresia ca n-a mers.
   if (deps.init) await deps.init();
+});
+registerFormFlow({
+  form: '#profileForm',
+  title: 'Datele contului meu',
+  firstStepTitle: 'Contact și identificare',
+  companyKey: () => 'global',
+  entityKey: 'profil',
+  autosave: false,
+  progressFields: ['email', 'cnp', 'numeComplet', 'telefon'],
 });
 export async function renderSessions() {
   let list;
@@ -250,29 +264,57 @@ $('#smtpForm').addEventListener('submit', async (e) => {
 export async function renderFiscal() {
   if (!USER || USER.role !== 'admin') return;
   $('#fiscalCard').classList.remove('hidden');
-  let c; try { c = await api('/api/fiscal-config'); } catch (e) { return; }
   const f = $('#fiscalForm');
+  // Configurația este globală, dar panoul se poate reranda la navigare. Ultimele taste intrate
+  // trebuie fixate în ciornă înainte ca răspunsul serverului să repopuleze controalele.
+  formFlowFlush(f);
+  let c; try { c = await api('/api/fiscal-config'); } catch (e) { return; }
   Object.keys(c.current || {}).forEach((k) => { if (f[k]) f[k].value = c.current[k]; });
+  formFlowLoaded(f, 'config:fiscal');
   // Semnal de vechime: cotele implicite sunt fixate pentru un an fiscal si trebuie revizuite la lege.
   const vn = $('#fiscalVechime');
   if (vn) {
     const v = c.vechime || {};
     vn.innerHTML = v.stale
-      ? `<div class="warnbox"><span class="wi">⚠️</span><div>Cotele sunt configurate pentru anul <b>${v.an}</b>, dar anul curent este <b>${v.anCurent}</b>. Verifică modificările legislative și actualizează cotele afectate — calculele folosesc valorile de mai jos ca atare.</div></div>`
+      ? `<div class="notice warning"><span class="notice-icon">⚠️</span><div>Cotele sunt configurate pentru anul <b>${v.an}</b>, dar anul curent este <b>${v.anCurent}</b>. Verifică modificările legislative și actualizează cotele afectate — calculele folosesc valorile de mai jos ca atare.</div></div>`
       : (v.an ? `<p class="muted">Cote de referință: anul fiscal <b>${v.an}</b>.</p>` : '');
   }
 }
 $('#fiscalForm') && $('#fiscalForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const f = e.target;
   const body = {};
-  [...e.target.elements].forEach((el) => { if (el.name && el.value !== '') body[el.name] = el.value; });
-  try { await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); $('#fiscalStatus').className = 'status ok'; $('#fiscalStatus').textContent = 'Cote salvate — calculele folosesc noile valori.'; setMeta(await api('/api/meta')); toast('Cote fiscale actualizate'); }
+  [...f.elements].forEach((el) => { if (el.name && el.value !== '') body[el.name] = el.value; });
+  try {
+    await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    formFlowSaved(f);
+    $('#fiscalStatus').className = 'status ok'; $('#fiscalStatus').textContent = 'Cote salvate — calculele folosesc noile valori.';
+    setMeta(await api('/api/meta')); toast('Cote fiscale actualizate');
+  }
   catch (err) { $('#fiscalStatus').className = 'status err'; $('#fiscalStatus').textContent = err.message; }
 });
 $('#fiscalReset') && $('#fiscalReset').addEventListener('click', async () => {
-  if (!confirm('Revii la cotele fiscale standard din aplicație?')) return;
-  try { await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reset: true }) }); await renderFiscal(); setMeta(await api('/api/meta')); toast('Cote resetate la valori standard'); }
+  if (!await confirmAction('Valorile configurate manual vor fi înlocuite cu setul standard livrat de aplicație.', {
+    title: 'Resetezi cotele fiscale?', confirmLabel: 'Revino la standard', danger: true,
+  })) return;
+  try {
+    await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reset: true }) });
+    formFlowSaved($('#fiscalForm'));
+    await renderFiscal(); setMeta(await api('/api/meta')); toast('Cote resetate la valori standard');
+  }
   catch (e) { toast(e.message, true); }
+});
+
+registerFormFlow({
+  form: '#fiscalForm',
+  title: 'Configurația fiscală globală',
+  firstStepTitle: 'Contribuții și impozit pe venit',
+  companyKey: () => 'global',
+  entityKey: 'config:fiscal',
+  progressFields: ['cas', 'cass', 'impozitVenit', 'cam', 'tvaStandard', 'tvaRedus', 'impozitProfit',
+    'impozitMicro', 'impozitDividende', 'plafonMicroEur', 'cursPlafonMicro', 'salariuMinimS1',
+    'salariuMinimS2', 'salariuMinimConstructii', 'plafonScutire', 'deductibilitateTvaAutoLimitat'],
+  onDiscard: () => renderFiscal(),
 });
 
 // ── Pachetul Windows (Contabo pe calculatorul tau) ───────────────────────────
@@ -346,7 +388,7 @@ export async function renderPachetWin() {
   const buton = $('#pachetWinBtn');
   if (buton && !buton.dataset.legat) {
     buton.dataset.legat = '1';
-    buton.addEventListener('click', () => { alert('În dezvoltare'); });
+    buton.addEventListener('click', () => { alertAction('Pachetul pentru Windows este încă în dezvoltare.', { title: 'Funcție indisponibilă' }); });
   }
   const mb = (Number(m.octeti) || 0) / 1048576;
   // Amprenta se arata trunchiata, dar INTREAGA in `title`: cine vrea s-o verifice cu

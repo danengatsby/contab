@@ -2,14 +2,18 @@
 
 // Fluxul documentelor: upload + scanare (punte/camera), wizardul de tipuri, facturile recurente, SPV inbox + import e-Factura si formularul UNIC de inregistrare (mutat intre Documente/Emite).
 // Extras din app.js (faza 2); apelurile inapoi spre app.js vin prin setDeps (fara cicluri).
-import { $$, $, H, fmt, accName, toast, api, META, setMeta, applyFiscalDefaults } from './core.js';
+import { $$, $, H, fmt, accName, toast, api, META, setMeta, applyFiscalDefaults, confirmAction } from './core.js';
 import { workMonth, fillPeriods } from './periods.js';
 import { loadEntries } from './entries.js';
+import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved, formFlowDiscard } from './formflow.js';
 
 const D = { goTab: null, refreshCashbook: null };
 function setDocflowDeps(d) { Object.assign(D, d); }
 
 let CURRENT = null; // { documentId, fields, suggestedType }
+// Context separat pentru autosave: apelanții schimbă CURRENT înainte de `openForm`, dar ciorna
+// formularului vechi trebuie finalizată cu documentId-ul vechi, nu cu cel tocmai selectat.
+let DRAFT_CONTEXT = null;
 function fillTipSelect() {
   const sel = $('#tipSelect');
   const groups = {};
@@ -189,9 +193,14 @@ $$('.cbact').forEach((btn) => btn.addEventListener('click', () => {
 // Linkuri catre registrele/situatiile generate
 $$('.linklist a[data-go]').forEach((a) => { a.style.cursor = 'pointer'; a.addEventListener('click', () => D.goTab(a.dataset.go)); });
 async function renderRecurring() {
+  const form = $('#recForm');
+  // Lista se poate reranda după generare/activare în timp ce utilizatorul completează alt șablon.
+  // Fixăm întâi ultimele taste, apoi restaurăm aceeași ciornă peste opțiunile dinamice actualizate.
+  formFlowFlush(form);
   const sel = $('#recTip');
   if (sel && !sel.options.length) sel.innerHTML = (META.types || []).map((t) => `<option value="${t.id}">${H(t.nume)}</option>`).join('');
   if ($('#recPeriod') && !$('#recPeriod').value) $('#recPeriod').value = workMonth();
+  formFlowLoaded(form, 'nou');
   let list;
   try { list = await api('/api/recurring'); } catch (e) { return; }
   const box = $('#recList');
@@ -201,7 +210,11 @@ async function renderRecurring() {
     list.map((t) => `<tr${t.activ ? '' : ' data-u="u21"'}><td>${H(tname(t.tip))}</td><td>${H(t.partener || '—')}</td>
       <td class="num">${fmt((t.fields || {}).baza || 0)}</td><td>${t.frecventa}</td><td>${t.startDate || ''}</td><td>${t.lastGenerated || '—'}</td>
       <td><button class="linkbtn rectog" data-id="${t.id}" data-activ="${t.activ ? 1 : 0}">${t.activ ? 'dezactivează' : 'activează'}</button> · <button class="del recdel" data-id="${t.id}">✕</button></td></tr>`).join('')}</tbody></table>`;
-  $$('#recList .recdel').forEach((b) => b.addEventListener('click', async () => { if (confirm('Ștergi șablonul recurent?')) { await api('/api/recurring/' + b.dataset.id, { method: 'DELETE' }); renderRecurring(); } }));
+  $$('#recList .recdel').forEach((b) => b.addEventListener('click', async () => {
+    if (await confirmAction('Generările viitoare bazate pe acest șablon se opresc.', { title: 'Ștergi șablonul recurent?', confirmLabel: 'Șterge', danger: true })) {
+      await api('/api/recurring/' + b.dataset.id, { method: 'DELETE' }); renderRecurring();
+    }
+  }));
   $$('#recList .rectog').forEach((b) => b.addEventListener('click', async () => {
     const t = list.find((x) => x.id === b.dataset.id); if (!t) return;
     await api('/api/recurring', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({}, t, { activ: !t.activ })) });
@@ -217,7 +230,10 @@ $('#recForm') && $('#recForm').addEventListener('submit', async (e) => {
     fields: { baza, cota, tva: Math.round(baza * cota) / 100 },
     frecventa: f.frecventa.value, ziua: f.ziua.value, startDate: f.startDate.value || workMonth(),
   };
-  try { await api('/api/recurring', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); f.reset(); applyFiscalDefaults(f); renderRecurring(); toast('Șablon recurent salvat'); }
+  try {
+    await api('/api/recurring', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    formFlowSaved(f); f.reset(); applyFiscalDefaults(f); renderRecurring(); toast('Șablon recurent salvat');
+  }
   catch (err) { toast(err.message, true); }
 });
 $('#recGenBtn') && $('#recGenBtn').addEventListener('click', async () => {
@@ -336,16 +352,28 @@ function mountForm(host) {
   if (target && f.parentElement !== target) target.appendChild(f);
 }
 function openForm(tipId, fields, host) {
+  const form = $('#entryForm');
+  formFlowFlush(form);
   mountForm(host);
   togglePlaceholders(true);
-  $('#entryForm').classList.remove('hidden');
+  form.classList.remove('hidden');
   $('#tipSelect').value = tipId || 'nota_contabila';
   renderFields(fields || {});
+  DRAFT_CONTEXT = CURRENT ? {
+    documentId: CURRENT.documentId || null,
+    spvMsgId: CURRENT.spvMsgId || null,
+    suggestedType: CURRENT.suggestedType || tipId || 'nota_contabila',
+  } : null;
+  const entity = CURRENT && CURRENT.documentId ? 'document:' + CURRENT.documentId : 'nou:' + (tipId || 'nota_contabila');
+  formFlowLoaded(form, entity);
 }
-function closeForm() {
-  $('#entryForm').classList.add('hidden');
+function closeForm(options = {}) {
+  const form = $('#entryForm');
+  if (options.discard !== false) formFlowDiscard(form);
+  form.classList.add('hidden');
   togglePlaceholders(false);
   CURRENT = null;
+  DRAFT_CONTEXT = null;
 }
 $('#tipSelect').addEventListener('change', () => renderFields(collectFields()));
 function accountOptions(val) {
@@ -376,9 +404,9 @@ function renderFields(values) {
     const name = ed.id.replace('fld_', '');
     const init = Array.isArray(values[name]) ? values[name] : [];
     init.forEach((it) => addItemRow(ed, it));
-    ed.querySelector('.additem').addEventListener('click', () => { addItemRow(ed, {}); updatePreview(); });
+    ed.querySelector('.additem').addEventListener('click', () => { addItemRow(ed, {}); updatePreview(); ed.dispatchEvent(new Event('input', { bubbles: true })); });
     ed.addEventListener('input', updatePreview);
-    ed.addEventListener('click', (e) => { if (e.target.classList.contains('delitem')) { e.target.closest('.item-row').remove(); updatePreview(); } });
+    ed.addEventListener('click', (e) => { if (e.target.classList.contains('delitem')) { e.target.closest('.item-row').remove(); updatePreview(); ed.dispatchEvent(new Event('input', { bubbles: true })); } });
   });
   box.querySelectorAll('.stoc-editor').forEach((ed) => {
     const name = ed.id.replace('fld_', '');
@@ -450,6 +478,7 @@ async function initLeasingPicker(ed) {
       set('cuiFurnizor', r.contract.cui);
       msg.textContent = `Rata ${r.rata.luna}/${contracte.find((c) => c.id === sel.value).months} — sold rămas ${fmt(r.rata.sold)} lei.`;
       updatePreview();
+      ed.dispatchEvent(new Event('input', { bubbles: true }));
     } catch (e) { msg.textContent = e.message; }
   };
   ed.querySelector('.lp-load').addEventListener('click', preia);
@@ -459,8 +488,10 @@ async function initStocEditor(ed, initLines) {
   await ensureStocCache();
   (initLines || []).forEach((l) => addStocRow(ed, l));
   if (!initLines || !initLines.length) addStocRow(ed, {});
-  ed.querySelector('.addstoc').addEventListener('click', () => addStocRow(ed, {}));
-  ed.addEventListener('click', (e) => { if (e.target.classList.contains('delstoc')) e.target.closest('.stoc-row').remove(); });
+  ed.querySelector('.addstoc').addEventListener('click', () => { addStocRow(ed, {}); ed.dispatchEvent(new Event('input', { bubbles: true })); });
+  ed.addEventListener('click', (e) => {
+    if (e.target.classList.contains('delstoc')) { e.target.closest('.stoc-row').remove(); ed.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
 }
 function addStocRow(ed, l) {
   const e = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -559,7 +590,8 @@ async function submitEntry(ciorna) {
     if (warns.length) toast(warns.join(' '), true);
     else toast(ciorna ? 'Ciornă salvată: ' + res.entry.id + ' (o postezi din listă)' : 'Înregistrare salvată: ' + res.entry.id);
     const eraCash = $('#entryForm').parentElement === $('#formHostCash');
-    closeForm();
+    formFlowSaved($('#entryForm'));
+    closeForm({ discard: false });
     setMeta(await api('/api/meta')); fillPeriods();
     await loadEntries();
     // Salvarea din registrul de banca-casa trebuie sa se VADA in registru, altfel omul ramane cu
@@ -570,5 +602,58 @@ async function submitEntry(ciorna) {
 }
 $('#entryForm').addEventListener('submit', (e) => { e.preventDefault(); submitEntry(false); });
 $('#saveDraft') && $('#saveDraft').addEventListener('click', () => submitEntry(true));
+
+function captureEntryDraft() {
+  return {
+    tip: $('#tipSelect').value,
+    fields: collectFields(),
+    motivRevizuire: ($('#motivRevizuire') && $('#motivRevizuire').value) || '',
+    context: DRAFT_CONTEXT,
+  };
+}
+
+function restoreEntryDraft(form, draft) {
+  if (!draft || !draft.tip) return;
+  const available = (META.types || []).some((type) => type.id === draft.tip);
+  const tip = available ? draft.tip : ($('#tipSelect').value || 'nota_contabila');
+  $('#tipSelect').value = tip;
+  renderFields(draft.fields || {});
+  if ($('#motivRevizuire')) $('#motivRevizuire').value = draft.motivRevizuire || '';
+  DRAFT_CONTEXT = draft.context || null;
+  CURRENT = Object.assign({ documentId: null, fields: draft.fields || {}, suggestedType: tip }, DRAFT_CONTEXT || {});
+}
+
+window.addEventListener('contab:company-context', () => {
+  const form = $('#entryForm');
+  form.classList.add('hidden');
+  togglePlaceholders(false);
+  CURRENT = null;
+  DRAFT_CONTEXT = null;
+  formFlowLoaded(form, 'nou', { restore: false });
+});
+
+registerFormFlow({
+  form: '#entryForm',
+  title: 'Înregistrarea documentului',
+  firstStepTitle: 'Tip și date document',
+  entityKey: 'nou',
+  progressFields: (form) => [$('#tipSelect'), ...form.querySelectorAll('#dynFields [required]')].filter(Boolean),
+  serialize: captureEntryDraft,
+  restore: restoreEntryDraft,
+  onDiscard: () => closeForm({ discard: false }),
+});
+
+registerFormFlow({
+  form: '#recForm',
+  title: 'Șablonul facturii recurente',
+  firstStepTitle: 'Document și partener',
+  entityKey: 'nou',
+  progressFields: ['tip', 'partener', 'baza', 'cota', 'frecventa', 'ziua', 'startDate'],
+  onDiscard: (form) => {
+    form.reset();
+    applyFiscalDefaults(form);
+    formFlowLoaded(form, 'nou', { restore: false });
+  },
+});
 
 export { fillTipSelect, renderRecurring, setDocflowDeps };

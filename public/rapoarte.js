@@ -1,11 +1,12 @@
 'use strict';
 
 // Rapoarte contabile: jurnal, cartea mare, banca/casa, balanta, TVA/D300, inchideri, situatii. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct, ac } from './core.js';
+import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct, ac, applyFiscalDefaults } from './core.js';
 import { renderBudget } from './dashboard.js';
 import { pget, workMonth, setWorkMonth, nextMonth, lunaLabel, applyWorkMonth, onPeriodChange } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 import { stare, controaleHtml, leaga } from './paginare.js';
+import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved } from './formflow.js';
 
 // ───────────────────────── JOURNAL ─────────────────────────
 onPeriodChange('jurnal', loadJournal);
@@ -80,7 +81,7 @@ async function loadCashbook() {
       // depășite — un sold final sub limită nu spală o depășire din cursul lunii.
       (cc.zilePesteLimita || (cc.soldPesteLimita ? [cc.soldPesteLimita] : [])).forEach((z) => items.push(
         `<li><b>Sold de casierie peste plafon</b> la ${H(z.data || '')}: ${fmt(z.sold)} lei, limita ${fmt(z.limita)} lei/zi (Legea 70/2015 art. 4) — depune excedentul la bancă.</li>`));
-      if (items.length) warnHtml = `<div class="warnbox"><span class="wi">⚠️</span><div><b>Control casă:</b><ul data-u="u171">${items.join('')}</ul></div></div>`;
+      if (items.length) warnHtml = `<div class="notice warning"><span class="notice-icon">⚠️</span><div><b>Control casă:</b><ul data-u="u171">${items.join('')}</ul></div></div>`;
     } catch (_) { /* control optional */ }
   }
   const rows = cb.rows.map((r) => `<tr><td>${H(r.data)}</td><td>${H(r.document)}</td><td>${H((r.partener ? r.partener + ' — ' : '') + r.explicatie)}</td>
@@ -248,8 +249,25 @@ $('#exigForm').addEventListener('submit', async (e) => {
     const l = r.entry.lines[0];
     $('#exigResult').className = 'status ok';
     $('#exigResult').textContent = `TVA exigibilă: ${fmt(r.tva)} lei — notă ${l.debit} = ${l.credit} (${fmt(l.suma)}).`;
-    f.brut.value = ''; loadVat(); loadEntries();
+    formFlowSaved(f); f.brut.value = ''; formFlowLoaded(f, 'nou', { restore: false }); loadVat(); loadEntries();
   } catch (err) { $('#exigResult').className = 'status err'; $('#exigResult').textContent = err.message; }
+});
+function resetExigForm(options = {}) {
+  const form = $('#exigForm'); if (!form) return;
+  formFlowFlush(form);
+  form.reset(); applyFiscalDefaults(form);
+  form.data.value = new Date().toISOString().slice(0, 10);
+  formFlowLoaded(form, 'nou', { restore: options.restoreDraft !== false });
+}
+window.addEventListener('contab:company-context', () => resetExigForm());
+
+registerFormFlow({
+  form: '#exigForm',
+  title: 'Exigibilitatea TVA la încasare',
+  firstStepTitle: 'Operațiune și valoare',
+  entityKey: 'nou',
+  progressFields: ['tip', 'brut', 'cota', 'data', 'partener', 'document'],
+  onDiscard: () => resetExigForm({ restoreDraft: false }),
 });
 async function renderNeexigibila() {
   let n; try { n = await api('/api/tva-neexigibila'); } catch (e) { return; }

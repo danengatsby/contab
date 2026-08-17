@@ -1,22 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   ERP.JS — chrome-ul de aplicatie desktop: bara de titlu, bara de meniu, banda de
-   unelte, bara de stare.
+   Interfața aplicației — un singur arbore de navigație și un singur context.
 
-   REGULA acestui fisier: nu detine nicio stare si nu decide nimic. Tot ce face e
-   sa OGLINDEASCA structura care exista deja in `#tabs` si sa reemita clicuri pe
-   butoanele reale. Un element de meniu nu „stie" ce tab deschide — el cheama
-   `.click()` pe butonul din `#tabs`, deci toata logica (drepturi, mod simplu,
-   ascunderi din app.js) ramane intr-un singur loc. Cand app.js ascunde o intrare,
-   meniul o pierde la urmatoarea resincronizare, fara ca aici sa existe o a doua
-   lista care sa driftreze.
-
-   De ce se genereaza si nu se scrie de mana: meniul aplicatiei are 9 grupuri si
-   ~40 de intrari. O copie scrisa aici ar fi corecta pana la primul tab adaugat.
+   Acest fișier NU creează rute, copii ale meniului sau copii ale selectoarelor.
+   Arborele real `#tabs` rămâne unica navigație, iar firma și perioada sunt MUTATE
+   (nu duplicate) într-o bară contextuală comună desktop/mobil. Astfel logica din
+   app.js, permisiunile și modul simplu au în continuare o singură sursă de adevăr.
    ═══════════════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
-
-  var LATIME_MINIMA = 901; // sub asta chrome-ul de birou nu se monteaza (vezi erp.css)
 
   function el(tag, cls, txt) {
     var n = document.createElement(tag);
@@ -24,431 +15,348 @@
     if (txt != null) n.textContent = txt;
     return n;
   }
-  function $(sel) { return document.querySelector(sel); }
-  function $$(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 
-  /* Eticheta unui buton de meniu vine ca „📥 Documente & facturi”: pictograma si
-     textul se despart, fiindca in chrome-ul de birou stau in locuri diferite —
-     pictograma in coloana ei, textul aliniat cu restul. Despartirea e pe prima
-     secventa non-ASCII urmata de spatiu; ce nu se potriveste ramane text intreg. */
-  function despartePictograma(text) {
-    var t = String(text || '').trim();
-    var m = t.match(/^([^\w\s(]+(?:️)?)\s+(.*)$/);
-    if (m) return { ic: m[1], txt: m[2] };
-    return { ic: '', txt: t };
+  /* Un set unic de pictograme outline. SVG-urile moștenesc culoarea textului și
+     nu depind de randarea diferită a emoji-urilor între Windows, Android și iOS. */
+  var ICONS = {
+    home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5M9.5 20v-6h5v6"/>',
+    book: '<path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22z"/>',
+    chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
+    folder: '<path d="M3 6.5h7l2 2h9V19H3z"/>',
+    bell: '<path d="M6 17h12l-1.5-2V10a4.5 4.5 0 0 0-9 0v5zM10 20h4"/>',
+    file: '<path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5M9 12h6M9 16h6"/>',
+    invoice: '<path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h3"/>',
+    bank: '<path d="m3 9 9-5 9 5zM5 10h14M6 10v7m4-7v7m4-7v7m4-7v7M3 20h18"/>',
+    box: '<path d="m4 7 8-4 8 4-8 4zM4 7v10l8 4 8-4V7M12 11v10"/>',
+    users: '<path d="M16 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9.5 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM17 11a3.5 3.5 0 0 0 0-7M17 14a4 4 0 0 1 4 4v2"/>',
+    building: '<path d="M4 21V5l8-3v19M12 8h8v13M7 7h2m-2 4h2m-2 4h2m6-3h2m-2 4h2M2 21h20"/>',
+    ledger: '<path d="M5 3h15v18H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 3v18M12 8h5M12 12h5"/>',
+    lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>',
+    tax: '<path d="M5 3h14v18H5zM8 7h8M8 11h3M14 11h2M8 15h3M14 15h2"/>',
+    chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a8 8 0 0 0-1.7 1L5 6.1 3 9.5 5.1 11a7 7 0 0 0 0 2L3 14.5 5 18l2.4-1.1a8 8 0 0 0 1.7 1l.4 3.1h5l.4-3.1a8 8 0 0 0 1.7-1L19 18l2-3.5-2.1-1.5a7 7 0 0 0 .1-1z"/>',
+    search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+    help: '<circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 1 1 3.7 2c-1 .6-1.5 1.1-1.5 2.5M12 17h.01"/>',
+    theme: '<path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5a8.5 8.5 0 1 0 12 12z"/>',
+    density: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+    mode: '<path d="M4 5h16M7 9h10M9 13h6M11 17h2M8 21h8"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    receive: '<path d="M12 3v13m0 0 5-5m-5 5-5-5M4 21h16"/>',
+    send: '<path d="M12 21V8m0 0 5 5m-5-5-5 5M4 3h16"/>',
+    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
+    briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V4h8v3M3 12h18"/>',
+    warning: '<path d="M12 3 2.5 20h19z"/><path d="M12 9v5M12 17h.01"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    offline: '<path d="M3 3l18 18M8.5 8.5A6 6 0 0 0 6 13v2a6 6 0 0 0 6 6 6 6 0 0 0 5.1-2.8M15.5 8.5A6 6 0 0 1 18 13v1M9 3v3m6-3v3"/>',
+    spark: '<path d="m13 2-9 12h7l-1 8 9-12h-7z"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
+    eye: '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.5"/>',
+    calculator: '<rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M8 6h8v3H8zM8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01"/>',
+    rocket: '<path d="M14 5c2.5-2.5 5.5-2.5 5.5-2.5S19.5 5.5 17 8l-5 5-4-4zM9 12l-4 1-2 3 5 1M12 15l-1 4-3 2-1-5M15 6l2 2"/>',
+    video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>',
+    download: '<path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+    edit: '<path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10zM14 7l3 3M4 20h6"/>',
+    refresh: '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8A7 7 0 0 1 18.5 7M17.9 16A7 7 0 0 1 5.5 17"/>',
+    play: '<circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>',
+    printer: '<path d="M7 8V3h10v5M7 17H4a2 2 0 0 1-2-2v-5h20v5a2 2 0 0 1-2 2h-3M7 14h10v7H7zM18 12h.01"/>',
+    attachment: '<path d="m9 12 5.5-5.5a3 3 0 0 1 4.2 4.2l-7.8 7.8a5 5 0 0 1-7.1-7.1L12 3.2"/>',
+    close: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/>',
+    flask: '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3M7.5 16h9"/>',
+    monitor: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    save: '<path d="M4 3h14l2 2v16H4zM8 3v6h8V3M8 21v-7h8v7"/>',
+    plug: '<path d="M9 3v6M15 3v6M7 9h10v2a5 5 0 0 1-5 5v5M8 21h8"/>',
+    gift: '<rect x="3" y="9" width="18" height="12"/><path d="M12 9v12M3 13h18M7.5 9C5 9 4 7.5 4.8 6.2 6 4.3 9.5 6 12 9M16.5 9C19 9 20 7.5 19.2 6.2 18 4.3 14.5 6 12 9"/>',
+    link: '<path d="m10 13 4-4M7.5 16.5l-1 1a3.5 3.5 0 0 1-5-5l3-3a3.5 3.5 0 0 1 5 0M16.5 7.5l1-1a3.5 3.5 0 0 1 5 5l-3 3a3.5 3.5 0 0 1-5 0"/>',
+    arrowLeft: '<path d="M19 12H5m0 0 6-6m-6 6 6 6"/>',
+    arrowRight: '<path d="M5 12h14m0 0-6-6m6 6-6 6"/>',
+    generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>'
+  };
+
+  var TAB_ICONS = {
+    dashboard: 'home', ghid: 'book', mesaje: 'chat', portofoliu: 'briefcase', notificari: 'bell',
+    documente: 'plus', emite: 'invoice', intrate: 'receive', galerie: 'folder', iesite: 'send',
+    'galerie-emise': 'folder', cashbook: 'bank', reconciliere: 'bank', stocuri: 'box',
+    productie: 'box', configstoc: 'settings', salarizare: 'users', angajati: 'users',
+    regsalarii: 'ledger', mijloace: 'building', leasing: 'building', jurnal: 'ledger',
+    carte: 'book', balanta: 'chart', storno: 'ledger', inchideri: 'lock', 'inchidere-an': 'lock',
+    tva: 'tax', livrabile: 'tax', saft: 'file', situatii: 'chart', parteneri: 'users',
+    plan: 'ledger', setari: 'settings', cont: 'user', acces: 'users', administrare: 'settings'
+  };
+
+  var SYMBOL_ICONS = {
+    '🏠': 'home', '📖': 'book', '📚': 'book', '💬': 'chat', '🗂': 'folder', '🔔': 'bell',
+    '📥': 'receive', '📤': 'send', '📄': 'file', '🧾': 'invoice', '🏦': 'bank', '📦': 'box',
+    '👥': 'users', '👤': 'user', '🏢': 'building', '📒': 'ledger', '📘': 'ledger', '📗': 'book',
+    '🔒': 'lock', '📊': 'chart', '📈': 'chart', '⚙': 'settings', '🔎': 'search', '❓': 'help',
+    '🌙': 'theme', '🎓': 'mode', '🧭': 'compass', '➕': 'plus', '☰': 'menu', '🤝': 'users',
+    '📁': 'folder', '⚖': 'chart', '⏰': 'calendar', '📅': 'calendar', '🏭': 'building',
+    '⚡': 'spark', '⚠': 'warning', '✓': 'check', '✔': 'check', '✅': 'check', '🌱': 'spark',
+    '📋': 'file', '🛠': 'mode', '☀': 'theme', '⬇': 'download', '⬆': 'send', '🏧': 'bank',
+    '💵': 'bank', '💰': 'bank', '💸': 'bank', '💳': 'bank', '🚀': 'rocket', '👁': 'eye', '🧮': 'calculator',
+    '🎬': 'video', '📽': 'video', '🖼': 'folder', '🔌': 'plug', '💻': 'monitor', '🖥': 'monitor',
+    '💾': 'save', '🧪': 'flask', '📎': 'attachment', '🖨': 'printer', '✎': 'edit', '✏': 'edit',
+    '🔍': 'search', '🔄': 'refresh', '🔁': 'refresh', '⟳': 'refresh', '▶': 'play', '📨': 'mail',
+    '📧': 'mail', '✉': 'mail', '📮': 'mail', '⧉': 'copy', '✕': 'close', '✗': 'close',
+    '✘': 'close', '❌': 'close', '⛔': 'warning', '←': 'arrowLeft', '◀': 'arrowLeft',
+    '↩': 'arrowLeft', '→': 'arrowRight', '↪': 'arrowRight', '↗': 'arrowRight', '↻': 'refresh',
+    '🏥': 'building', '🏛': 'bank', '🛒': 'box', '📴': 'offline', 'ℹ': 'info', '⏳': 'clock',
+    '🧰': 'briefcase', '🎁': 'gift', '💡': 'help', '🛡': 'lock', '🔗': 'link', '👋': 'user',
+    '🎉': 'spark', '🤖': 'settings', '🗄': 'folder', '📉': 'chart', '🔮': 'spark'
+  };
+
+  function icon(name, cls) {
+    var s = el('span', cls || 'app-icon');
+    s.setAttribute('aria-hidden', 'true');
+    s.dataset.icon = name;
+    s.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">'
+      + (ICONS[name] || ICONS.generic) + '</svg>';
+    return s;
   }
 
-  /* Textul unui buton din `#tabs`, FARA insigna de numar (`.navbadge`): „Mesaje3”
-     ar ajunge in meniu ca atare, iar numarul s-ar impietri acolo la valoarea de la
-     montare. Insignele se citesc separat, in bara de stare. */
+  /* Citește simbolul fără să modifice textul. Îl eliminăm abia după ce știm că
+     există un SVG echivalent; astfel un semn necunoscut nu dispare din interfață. */
+  function simbolInitial(nod) {
+    for (var i = 0; i < nod.childNodes.length; i += 1) {
+      var n = nod.childNodes[i];
+      if (n.nodeType !== 3 || !n.nodeValue.trim()) continue;
+      var m = n.nodeValue.match(/^\s*([^\p{L}\p{N}\s]+)\s*/u);
+      if (!m) return null;
+      return { nod: n, prefix: m[0], simbol: m[1].replace(/\uFE0F/g, '') };
+    }
+    return null;
+  }
+
+  function numeIcon(nod, simbol) {
+    if (nod.dataset && nod.dataset.tab && TAB_ICONS[nod.dataset.tab]) return TAB_ICONS[nod.dataset.tab];
+    if (nod.dataset && nod.dataset.go && TAB_ICONS[nod.dataset.go]) return TAB_ICONS[nod.dataset.go];
+    var byId = { paletaBtn: 'search', glossaryBtn: 'help', uiModeBtn: 'mode', themeBtn: 'theme', densityBtn: 'density', tourBtn: 'compass', navToggleBtn: 'menu', toolsBtn: 'settings', logoutBtn: 'user', prevMonth: 'arrowLeft', nextMonth: 'arrowRight' };
+    if (byId[nod.id]) return byId[nod.id];
+    // Un simbol necunoscut rămâne text. Fallback-ul paginii se aplică numai
+    // titlurilor fără simbol, nu înlocuiește aproximativ conținutul existent.
+    if (simbol) return SYMBOL_ICONS[simbol] || '';
+    var structural = nod.matches && nod.matches('.toolbar > h2, .card > h2, .card h3, .qa .ic, .kpi-ic, .welcome-steps .ws-ic, .explain .ei, .alert .al-ic, .notice-icon');
+    if (!structural) return '';
+    var tab = nod.closest && nod.closest('.tab');
+    var id = tab ? String(tab.id || '').replace(/^tab-/, '') : '';
+    return (id && TAB_ICONS[id]) || '';
+  }
+
+  function decoreaza(nod) {
+    if (!nod) return;
+    // Componentele cu pictogramă semantică proprie (alertă, acțiune rapidă, KPI)
+    // nu primesc încă una derivată din destinația `data-go`. Altfel o alertă de
+    // sold negativ afișa simultan pictograma „Bancă” și pictograma „Avertizare”.
+    if (nod.matches && nod.matches('button, a, summary')
+      && nod.querySelector(':scope > .ic, :scope > .al-ic, :scope > .kpi-ic, :scope > .ws-ic, :scope > .ei, :scope > .notice-icon')) return;
+    var existent = $(':scope > .app-icon', nod);
+    var info = simbolInitial(nod);
+    // După prima conversie textul nu mai are simbol. Păstrăm pictograma deja aleasă,
+    // în loc s-o înlocuim cu pictograma generică a paginii la fiecare MutationObserver.
+    if (!info && existent) return;
+    var simbol = info ? info.simbol : '';
+    var nume = numeIcon(nod, simbol);
+    if (!nume) return;
+    if (info) info.nod.nodeValue = info.nod.nodeValue.slice(info.prefix.length);
+    if (!existent || existent.dataset.icon !== nume) {
+      var nou = icon(nume);
+      if (existent) existent.replaceWith(nou); else nod.insertBefore(nou, nod.firstChild);
+    }
+    nod.dataset.uiIcon = '1';
+  }
+
+  function modernizeazaPictograme(root) {
+    var selector = [
+      'button', 'a', 'summary', 'label.attach-btn', '.emit-guided .gt',
+      '#tabs > button[data-tab]', '#tabs .navlabel', '#tabs .navmenu button[data-tab]', '#tabs a.navlink',
+      '.side-tools button', '.toolbar > h2', '.card > h2', '.card h3',
+      '.qa .ic', '.kpi-ic', '.welcome-steps .ws-ic', '.explain .ei',
+      '.alert .al-ic', '.notice-icon', '.offline-banner'
+    ].join(',');
+    $$(selector, root || document).forEach(decoreaza);
+  }
+
+  /* Explicațiile lungi devin ajutor la cerere. Elementul `.explain` rămâne în DOM
+     neschimbat, deci codul care îi actualizează conținutul/ID-ul continuă să meargă. */
+  function transformaAjutor(root) {
+    $$('.explain:not([data-context-help])', root || document).forEach(function (box) {
+      box.dataset.contextHelp = '1';
+      var det = el('details', 'context-help');
+      var sum = el('summary', '', 'De ce este important?');
+      sum.insertBefore(icon('help', 'app-icon'), sum.firstChild);
+      var body = el('div', 'context-help-body');
+      box.parentNode.insertBefore(det, box);
+      det.appendChild(sum);
+      det.appendChild(body);
+      body.appendChild(box);
+    });
+  }
+
+  function construiesteContext() {
+    var main = $('.shell > main');
+    if (!main || $('#appContext')) return;
+
+    var bar = el('section', 'app-context');
+    bar.id = 'appContext';
+    bar.setAttribute('aria-label', 'Context de lucru');
+
+    var titlu = el('div', 'app-context-title');
+    titlu.appendChild(icon('home', 'app-context-icon'));
+    var titluText = el('div');
+    titluText.appendChild(el('span', 'app-context-kicker', 'Spațiu de lucru'));
+    var heading = el('h2', '', 'Acasă');
+    heading.id = 'appContextTitle';
+    titluText.appendChild(heading);
+    titlu.appendChild(titluText);
+    bar.appendChild(titlu);
+
+    var controls = el('div', 'app-context-controls');
+    var firma = $('#firmaSelect');
+    var perioada = $('.curgroup');
+    if (firma) {
+      var firmaWrap = el('label', 'app-context-field');
+      firmaWrap.appendChild(el('span', '', 'Firmă'));
+      firmaWrap.appendChild(firma); // mutat, nu copiat
+      controls.appendChild(firmaWrap);
+    }
+    if (perioada) {
+      var perioadaWrap = el('div', 'app-context-field');
+      perioadaWrap.appendChild(el('span', '', 'Perioadă'));
+      perioadaWrap.appendChild(perioada); // mutat, nu copiat
+      controls.appendChild(perioadaWrap);
+    }
+    var conexiune = el('span', 'app-online', 'Conectat');
+    conexiune.id = 'appOnline';
+    conexiune.setAttribute('role', 'status');
+    controls.appendChild(conexiune);
+    bar.appendChild(controls);
+    main.insertBefore(bar, main.firstChild);
+  }
+
   function eticheta(btn) {
+    if (!btn) return '';
     var t = '';
     Array.prototype.forEach.call(btn.childNodes, function (n) {
       if (n.nodeType === 3) t += n.nodeValue;
-      else if (n.nodeType === 1 && !n.classList.contains('navbadge')) t += n.textContent;
+      else if (n.nodeType === 1 && !n.classList.contains('navbadge') && !n.classList.contains('app-icon')) t += n.textContent;
     });
     return t.replace(/\s+/g, ' ').trim();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  //  BARA DE TITLU
-  // ─────────────────────────────────────────────────────────────────────────────
-  function construiesteTitlu() {
-    var bar = el('div', 'erp-title');
-    bar.appendChild(el('span', 'et-logo', '▦'));
-    bar.appendChild(el('span', 'et-app', 'CONTABO'));
-    bar.appendChild(el('span', 'et-sep', '—'));
-    var doc = el('span', 'et-doc', '—');
-    doc.id = 'erpTitleDoc';
-    bar.appendChild(doc);
-    bar.appendChild(el('span', 'et-spacer'));
-    var per = el('span', 'et-badge', '');
-    per.id = 'erpTitlePer';
-    bar.appendChild(per);
-    // Butoanele de fereastra sunt DECOR: o pagina web n-are ce minimiza. Sunt scoase
-    // din arborele de accesibilitate ca sa nu fie anuntate ca actiuni inexistente.
-    var w = el('div', 'et-wbtns');
-    w.setAttribute('aria-hidden', 'true');
-    ['–', '□', '✕'].forEach(function (c) { w.appendChild(el('i', '', c)); });
-    bar.appendChild(w);
-    return bar;
-  }
+  function sincronizeaza() {
+    var activ = $('#tabs button[data-tab].active');
+    var titlu = $('#appContextTitle');
+    var textTitlu = eticheta(activ) || 'Acasă';
+    if (titlu && titlu.textContent !== textTitlu) titlu.textContent = textTitlu;
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  //  BARA DE MENIU — oglinda lui `#tabs`
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  /* Intrarile de prim nivel (Acasa, Ghid, Mesaje, Portofoliu, Notificari) nu apartin
-     niciunui grup, deci n-au unde sa se duca in bara de meniu. Se strang sub un
-     prim meniu propriu — echivalentul lui „Fisier" din programele de birou. */
-  var MENIU_PRIM = 'Aplicație';
-
-  /* O intrare e „tehnic-contabila" fie prin marcajul ei, fie prin al grupului din
-     care face parte (grupurile „Registre contabile", „Inchideri", „Mijloace fixe"
-     sunt marcate intregi, nu buton cu buton). Modul simplu ascunde `.adv` din CSS,
-     deci intrebarea nu se pune despre stilul curent, ci despre SURSA. */
-  function esteAvansat(btn) {
-    if (!btn || !btn.classList) return false;
-    if (btn.classList.contains('adv')) return true;
-    var g = btn.closest && btn.closest('.navgroup');
-    return !!(g && g.classList.contains('adv'));
-  }
-
-  /* Marcajele care trebuie sa treaca de pe intrarea-sursa pe cea generata. Fara
-     asta, oglinda nu mai e oglinda: `.adv` ramanea in `#tabs` si nu ajungea aici,
-     deci modul simplu ascundea intrarile DOAR din bara laterala, in timp ce bara
-     de meniu si banda de unelte le ofereau in continuare — desi modalul de bun
-     venit si toastul de comutare promit exact contrariul („partea tehnic-contabila
-     e ascunsa"). Masurat inainte de reparatie, in mod simplu: din 11 taburi `.adv`,
-     0 vizibile lateral, 6 in banda de unelte, 3 grupuri intregi in bara de meniu. */
-  function preiaMarcajele(sursa, generat) {
-    if (esteAvansat(sursa)) generat.classList.add('adv');
-    return generat;
-  }
-
-  function itemDeMeniu(btn) {
-    var p = despartePictograma(eticheta(btn));
-    var b = el('button', '', null);
-    b.type = 'button';
-    preiaMarcajele(btn, b);
-    b.appendChild(el('span', 'emi', p.ic || '·'));
-    b.appendChild(el('span', 'emt', p.txt));
-    b.addEventListener('click', function () {
-      inchideMeniuri();
-      btn.click();
-    });
-    return b;
-  }
-
-  function construiesteMeniu() {
-    var bar = el('nav', 'erp-menu');
-    bar.id = 'erpMenu';
-    bar.setAttribute('aria-label', 'Bara de meniu');
-
-    var tabs = $('#tabs');
-    if (!tabs) return bar;
-
-    var grupuri = [];
-
-    // 1) intrarile libere de la inceput
-    var libere = $$('#tabs > button[data-tab]');
-    if (libere.length) grupuri.push({ nume: MENIU_PRIM, ic: '▦', itemi: libere });
-
-    // 2) grupurile declarate in DOM, in ordinea lor (= ordinea ciclului contabil)
-    $$('#tabs .navgroup').forEach(function (g) {
-      var lbl = g.querySelector('.navlabel');
-      var itemi = Array.prototype.slice.call(g.querySelectorAll('.navmenu button[data-tab]'));
-      if (!lbl || !itemi.length) return;
-      var p = despartePictograma(lbl.textContent);
-      grupuri.push({ nume: p.txt, ic: p.ic, itemi: itemi, sursa: g });
-    });
-
-    grupuri.forEach(function (gr) {
-      var wrap = el('div', 'em-item');
-      // Un grup marcat intreg dispare intreg: altfel „Registre contabile" ramanea
-      // in bara de sus si se deschidea in voie peste jurnal, cartea mare, balanta.
-      preiaMarcajele(gr.sursa, wrap);
-      var btn = el('button', '', null);
-      btn.type = 'button';
-      btn.setAttribute('aria-haspopup', 'true');
-      btn.setAttribute('aria-expanded', 'false');
-      // Acceleratorul: prima litera a numelui, subliniata. Pur vizual — nu legam
-      // Alt+litera, fiindcă ar intra in coliziune cu scurtaturile browserului.
-      var nume = gr.nume;
-      var u = el('u', '', nume.slice(0, 1));
-      btn.appendChild(u);
-      btn.appendChild(document.createTextNode(nume.slice(1)));
-
-      var pop = el('div', 'em-pop');
-      pop.setAttribute('role', 'menu');
-      gr.itemi.forEach(function (it) { pop.appendChild(itemDeMeniu(it)); });
-
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        var deschis = wrap.classList.contains('open');
-        inchideMeniuri();
-        if (!deschis) {
-          wrap.classList.add('open');
-          btn.setAttribute('aria-expanded', 'true');
-        }
-      });
-      // Trecerea cu mouse-ul de la un meniu deschis la vecinul lui il deschide pe
-      // acela — comportamentul barelor de meniu, si singurul motiv pentru care o
-      // bara de meniu e mai rapida decat un sir de butoane.
-      btn.addEventListener('mouseenter', function () {
-        if (!$('#erpMenu .em-item.open')) return;
-        inchideMeniuri();
-        wrap.classList.add('open');
-        btn.setAttribute('aria-expanded', 'true');
-      });
-
-      wrap.appendChild(btn);
-      wrap.appendChild(pop);
-      bar.appendChild(wrap);
-    });
-
-    return bar;
-  }
-
-  function inchideMeniuri() {
-    $$('#erpMenu .em-item.open').forEach(function (w) {
-      w.classList.remove('open');
-      var b = w.querySelector('button');
-      if (b) b.setAttribute('aria-expanded', 'false');
-    });
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  //  BANDA DE UNELTE
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  /* Lista e SCURTA si curatata deliberat: o banda de unelte care are totul nu are
-     nimic. Sunt operatiunile pe care un contabil le atinge in fiecare zi de lucru,
-     in ordinea ciclului. Intrarile care nu exista (drepturi, mod simplu) se sar
-     tacut — banda se strange, nu se rupe. */
-  var UNELTE = [
-    { tab: 'documente', ic: '📄', lbl: 'Document nou' },
-    { tab: 'emite', ic: '🧾', lbl: 'Emite factură' },
-    { tab: 'intrate', ic: '📥', lbl: 'Primite' },
-    { tab: 'iesite', ic: '📤', lbl: 'Emise' },
-    { sep: true },
-    { tab: 'cashbook', ic: '🏦', lbl: 'Bancă & casă' },
-    { tab: 'reconciliere', ic: '⚖️', lbl: 'Extras' },
-    { sep: true },
-    { tab: 'stocuri', ic: '📦', lbl: 'Stocuri' },
-    { tab: 'salarizare', ic: '👥', lbl: 'Salarii' },
-    { tab: 'mijloace', ic: '🏢', lbl: 'Mijloace fixe' },
-    { sep: true },
-    { tab: 'jurnal', ic: '📒', lbl: 'Jurnal' },
-    { tab: 'carte', ic: '📕', lbl: 'Cartea mare' },
-    { tab: 'balanta', ic: '📊', lbl: 'Balanță' },
-    { sep: true },
-    { tab: 'tva', ic: '💠', lbl: 'TVA' },
-    { tab: 'livrabile', ic: '🏛️', lbl: 'Declarații' },
-    { tab: 'inchideri', ic: '🔒', lbl: 'Închidere' },
-    { sep: true },
-    { tab: 'situatii', ic: '📈', lbl: 'Situații' },
-    { tab: 'parteneri', ic: '👤', lbl: 'Parteneri' },
-    { tab: 'plan', ic: '🗂️', lbl: 'Plan conturi' },
-  ];
-
-  function construiesteUnelte() {
-    var bar = el('div', 'erp-tools');
-    bar.id = 'erpTools';
-    bar.setAttribute('role', 'toolbar');
-    bar.setAttribute('aria-label', 'Bară de unelte');
-
-    var ultimulESep = true; // impiedica un separator la inceput sau doi la rand
-    UNELTE.forEach(function (u) {
-      if (u.sep) {
-        if (!ultimulESep) { bar.appendChild(el('span', 'et-sep')); ultimulESep = true; }
-        return;
-      }
-      var tinta = $('#tabs button[data-tab="' + u.tab + '"]');
-      if (!tinta) return;
-      var b = el('button', 'et-btn');
-      b.type = 'button';
-      preiaMarcajele(tinta, b);
-      b.dataset.tab = u.tab;
-      b.title = u.lbl;
-      b.appendChild(el('span', 'eti', u.ic));
-      b.appendChild(el('span', 'etl', u.lbl));
-      b.addEventListener('click', function () { tinta.click(); });
-      bar.appendChild(b);
-      ultimulESep = false;
-    });
-    if (bar.lastChild && bar.lastChild.classList && bar.lastChild.classList.contains('et-sep')) {
-      bar.removeChild(bar.lastChild);
+    var kicker = $('.app-context-kicker');
+    if (kicker) {
+      var pozitie = activ && activ.dataset.cyclePosition;
+      var total = activ && activ.dataset.cycleTotal;
+      var textKicker = pozitie && total
+        ? 'Ciclul contabil · etapa ' + pozitie + '/' + total
+        : 'Spațiu de lucru';
+      if (kicker.textContent !== textKicker) kicker.textContent = textKicker;
     }
 
-    // Contextul de lucru — firma si luna — MUTATE aici din bara laterala. Sunt
-    // aceleasi elemente (`#firmaSelect`, `.curgroup`), nu copii: app.js le citeste
-    // si le scrie in continuare, iar o copie ar fi insemnat doua adevaruri.
-    var ctx = el('div', 'et-ctx');
-    var fs = $('#firmaSelect');
-    var cg = $('.curgroup');
-    if (fs) { ctx.appendChild(el('span', 'etc-lbl', 'Firma:')); ctx.appendChild(fs); }
-    if (cg) { ctx.appendChild(el('span', 'etc-lbl', 'Luna:')); ctx.appendChild(cg); }
-    if (ctx.childNodes.length) bar.appendChild(ctx);
-
-    return bar;
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  //  BARA DE TITLU A FIECARUI ECRAN
-  //
-  //  38 din cele 49 de ecrane incep deja cu un `.toolbar` care contine `h2`-ul lor;
-  //  11 nu. Fara un pas de uniformizare, jumatate din aplicatie ar avea bara de
-  //  titlu si jumatate nu — exact felul de inconsecventa pe care un skin trebuie
-  //  s-o stearga, nu s-o produca.
-  //
-  //  Bara injectata poarta si clasa `toolbar`, DELIBERAT: `addPanelInfo()` din
-  //  app.js isi cauta titlurile cu `section .toolbar h2` si le lipeste bulele de
-  //  ajutor „ⓘ". Daca titlul ar iesi din `.toolbar` — sau ar ateriza intr-un
-  //  element cu alt nume — ajutorul contextual ar disparea de pe 38 de ecrane,
-  //  tacut, si abia mai tarziu s-ar fi vazut ca lipseste. Cu clasa pastrata,
-  //  potrivirea tine indiferent daca app.js decoreaza inainte sau dupa noi.
-  // ─────────────────────────────────────────────────────────────────────────────
-  function pictogramaEcranului(idTab) {
-    var nav = $('#tabs button[data-tab="' + idTab + '"]');
-    if (!nav) return { ic: '', txt: '' };
-    return despartePictograma(eticheta(nav));
-  }
-
-  function barezaEcranele() {
-    $$('.shell > main > .tab').forEach(function (tab) {
-      if (tab.querySelector(':scope > .erp-win-cap')) return;
-      var idTab = String(tab.id || '').replace(/^tab-/, '');
-      var p = pictogramaEcranului(idTab);
-
-      var prim = tab.firstElementChild;
-      var cap;
-      if (prim && prim.classList.contains('toolbar') && prim.querySelector('h2')) {
-        cap = prim; // ecranul are deja bara lui — o promovam la bara de titlu
-      } else {
-        cap = el('div', 'toolbar');
-        var h = el('h2', '', p.txt || idTab);
-        cap.appendChild(h);
-        tab.insertBefore(cap, tab.firstChild);
+    var icoana = $('.app-context-title .app-context-icon');
+    if (icoana && activ) {
+      var nume = TAB_ICONS[activ.dataset.tab] || 'generic';
+      if (icoana.dataset.icon !== nume) {
+        icoana.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">'
+          + (ICONS[nume] || ICONS.generic) + '</svg>';
+        icoana.dataset.icon = nume;
       }
-      cap.classList.add('erp-win-cap');
-      if (p.ic && !cap.querySelector('.ewc-ic')) {
-        cap.insertBefore(el('span', 'ewc-ic', p.ic), cap.firstChild);
+    }
+
+    var online = $('#appOnline');
+    if (online) {
+      online.classList.toggle('offline', !navigator.onLine);
+      var stare = navigator.onLine ? 'Conectat' : 'Fără conexiune';
+      if (online.textContent !== stare) online.textContent = stare;
+    }
+  }
+
+  /* Pe telefon refolosim arborele lateral real într-un sertar. Permisiunile,
+     modul simplu, starea activă și ordinea ciclului rămân astfel identice cu
+     desktopul; nu există o listă mobilă paralelă care să poată deriva. */
+  function monteazaNavigatiaMobila() {
+    var bara = $('.topbar');
+    var comutator = $('#navToggleBtn');
+    var fundal = $('#navBackdrop');
+    var meniu = $('#tabs');
+    if (!bara || !comutator || !fundal || !meniu) return;
+
+    function inchide(restaureazaFocus) {
+      var eraDeschis = bara.classList.contains('nav-open');
+      bara.classList.remove('nav-open');
+      document.body.classList.remove('mobile-nav-open');
+      comutator.setAttribute('aria-expanded', 'false');
+      if (eraDeschis && restaureazaFocus) comutator.focus();
+    }
+
+    comutator.addEventListener('click', function () {
+      var deschide = !bara.classList.contains('nav-open');
+      bara.classList.remove('tools-open');
+      var unelte = $('#toolsBtn');
+      if (unelte) unelte.setAttribute('aria-expanded', 'false');
+      bara.classList.toggle('nav-open', deschide);
+      document.body.classList.toggle('mobile-nav-open', deschide);
+      comutator.setAttribute('aria-expanded', String(deschide));
+      if (deschide) {
+        var activ = $('button[data-tab].active', meniu) || $('button, a', meniu);
+        if (activ) requestAnimationFrame(function () { activ.focus(); activ.scrollIntoView({ block: 'nearest' }); });
       }
     });
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  //  BARA DE STARE
-  // ─────────────────────────────────────────────────────────────────────────────
-  function construiesteStare() {
-    var bar = el('div', '');
-    bar.id = 'erpStatus';
-
-    var ecran = el('div', 'es-cell es-grow');
-    ecran.id = 'erpStEcran';
-    ecran.textContent = 'Gata';
-    bar.appendChild(ecran);
-
-    var firma = el('div', 'es-cell');
-    firma.id = 'erpStFirma';
-    bar.appendChild(firma);
-
-    var per = el('div', 'es-cell');
-    per.id = 'erpStPer';
-    bar.appendChild(per);
-
-    var user = el('div', 'es-cell');
-    user.id = 'erpStUser';
-    bar.appendChild(user);
-
-    var conn = el('div', 'es-cell');
-    conn.id = 'erpStConn';
-    conn.appendChild(el('span', 'es-dot'));
-    conn.appendChild(el('span', 'es-txt', 'conectat'));
-    bar.appendChild(conn);
-
-    return bar;
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  //  SINCRONIZAREA — o singura functie, chemata de un observator si de evenimente
-  // ─────────────────────────────────────────────────────────────────────────────
-  function scrie(id, text) {
-    var n = document.getElementById(id);
-    if (n && n.textContent !== text) n.textContent = text;
-  }
-
-  function sincronizeaza() {
-    var firma = $('#companyName');
-    var numeFirma = firma ? firma.textContent.trim() : '';
-    var per = $('#currentPeriod');
-    var luna = per ? per.textContent.trim() : '';
-    var user = $('#userBadge');
-    var activ = $('#tabs button[data-tab].active');
-    var numeEcran = activ ? despartePictograma(eticheta(activ)).txt : '';
-
-    scrie('erpTitleDoc', numeFirma || '—');
-    scrie('erpTitlePer', luna);
-    scrie('erpStFirma', numeFirma || '—');
-    scrie('erpStPer', luna || '—');
-    scrie('erpStUser', user ? user.textContent.trim() : '');
-    scrie('erpStEcran', numeEcran || 'Gata');
-
-    // Uneltele urmeaza starea butoanelor reale: apasata cea a ecranului curent,
-    // ascunse cele pe care app.js le-a ascuns (drepturi, mod simplu).
-    $$('#erpTools .et-btn').forEach(function (b) {
-      var t = $('#tabs button[data-tab="' + b.dataset.tab + '"]');
-      var vizibil = !!t && !t.classList.contains('hidden')
-        && !(t.closest('.navgroup') && t.closest('.navgroup').classList.contains('hidden'));
-      b.hidden = !vizibil;
-      b.classList.toggle('on', !!t && t.classList.contains('active'));
+    fundal.addEventListener('click', function () { inchide(true); });
+    meniu.addEventListener('click', function (ev) {
+      if (ev.target.closest('button[data-tab], a.navlink')) inchide(false);
     });
-
-    var dot = $('#erpStConn .es-dot');
-    var txt = $('#erpStConn .es-txt');
-    if (dot) dot.classList.toggle('off', !navigator.onLine);
-    if (txt) txt.textContent = navigator.onLine ? 'conectat' : 'deconectat';
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && bara.classList.contains('nav-open')) inchide(true);
+    });
+    if (window.matchMedia) {
+      var mobil = window.matchMedia('(max-width: 700px)');
+      var laSchimbare = function (ev) { if (!ev.matches) inchide(false); };
+      if (mobil.addEventListener) mobil.addEventListener('change', laSchimbare);
+      else if (mobil.addListener) mobil.addListener(laSchimbare);
+    }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  //  MONTAREA
-  // ─────────────────────────────────────────────────────────────────────────────
   function monteaza() {
-    if (document.getElementById('erpChrome')) return;
     if (!$('#tabs') || !$('.shell')) return;
-
     document.body.classList.add('erp');
+    construiesteContext();
+    monteazaNavigatiaMobila();
+    modernizeazaPictograme(document);
+    transformaAjutor(document);
 
-    var chrome = el('div', '');
-    chrome.id = 'erpChrome';
-    chrome.appendChild(construiesteTitlu());
-    chrome.appendChild(construiesteMeniu());
-    chrome.appendChild(construiesteUnelte());
-    document.body.insertBefore(chrome, document.body.firstChild);
-    document.body.appendChild(construiesteStare());
-    barezaEcranele();
-
-    document.addEventListener('click', inchideMeniuri);
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') inchideMeniuri(); });
-    window.addEventListener('online', sincronizeaza);
-    window.addEventListener('offline', sincronizeaza);
-
-    /* Un observator, nu un `setInterval`: numele firmei, luna si tab-ul activ sunt
-       scrise de app.js in momente pe care nu le controlam de aici, iar o sondare
-       periodica ar fi insemnat ori intarziere vizibila, ori munca degeaba de zeci
-       de ori pe secunda. Se urmareste doar ce ne intereseaza. */
-    var obs = new MutationObserver(sincronizeaza);
-    ['#companyName', '#currentPeriod', '#userBadge', '#tabs'].forEach(function (sel) {
+    var obs = new MutationObserver(function (mutatii) {
+      var areNoduriNoi = false;
+      mutatii.forEach(function (m) { if (m.addedNodes && m.addedNodes.length) areNoduriNoi = true; });
+      if (areNoduriNoi) {
+        modernizeazaPictograme(document);
+        transformaAjutor(document);
+      }
+      sincronizeaza();
+    });
+    ['#companyName', '#currentPeriod', '#userBadge', '#tabs', '.topbar', '.shell > main'].forEach(function (sel) {
       var n = $(sel);
       if (n) obs.observe(n, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     });
-
+    window.addEventListener('online', sincronizeaza);
+    window.addEventListener('offline', sincronizeaza);
+    document.addEventListener('contab:cycle-ready', sincronizeaza);
     sincronizeaza();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  //  MONTAREA E NECONDITIONATA
-  //
-  //  A existat un comutator de aspect („🌐 Aspect modern" / „🖥️ Aspect clasic",
-  //  cu alegerea tinuta in localStorage sub cheia `contab.aspect`). A fost SCOS:
-  //  aspectul clasic e acum singurul, deci n-are catre ce sa comute. Cheia ramasa
-  //  in browserele care apucasera sa comute e inerta — nimic n-o mai citeste, deci
-  //  nu mai poate lasa pe cineva blocat in celalalt aspect.
-  //
-  //  Chrome-ul de birou se monteaza doar pe ecrane de birou. Sub prag, aplicatia
-  //  ramane exact cum era — o banda de unelte si un arbore n-ar lasa loc cifrelor.
-  // ─────────────────────────────────────────────────────────────────────────────
-  function poate() { return window.innerWidth >= LATIME_MINIMA; }
-
-  function porneste() {
-    if (poate()) monteaza();
-    // Rotirea unei tablete peste prag monteaza chrome-ul; sub prag il lasa montat,
-    // dar ascuns din CSS — demontarea ar muta inapoi `#firmaSelect` si ar cere un
-    // al doilea drum prin aceeasi logica, pentru un castig care nu se vede.
-    window.addEventListener('resize', function () { if (poate()) monteaza(); });
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', porneste);
-  else porneste();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monteaza);
+  else monteaza();
 })();

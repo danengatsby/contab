@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-08-16T12:30:45.411Z",
+  "uiCache": "contab-shell-v23",
+  "sourceFingerprint": "028597fccbf7419a9df36f1731560530123f05746bbb40250e693be7dd5ec25f",
+  "sources": [
+    "index.html",
+    "styles.css",
+    "u.css",
+    "erp.css",
+    "design-system.css",
+    "erp.js",
+    "dashboard.js",
+    "docflow.js",
+    "livrabile.js",
+    "rapoarte.js",
+    "sw.js"
+  ],
+  "viewport": {
+    "css": [
+      1440,
+      900
+    ],
+    "pixels": [
+      2880,
+      1800
+    ],
+    "deviceScaleFactor": 2
+  },
+  "captures": [
+    "fb-1-acasa.png",
+    "fb-1-acasa.jpg",
+    "fb-2-portofoliu.png",
+    "fb-2-portofoliu.jpg",
+    "fb-3-document.png",
+    "fb-3-document.jpg",
+    "fb-4-tva.png",
+    "fb-4-tva.jpg",
+    "fb-5-balanta.png",
+    "fb-5-balanta.jpg"
+  ],
+  "portfolio": {
+    "period": "2026-08",
+    "firms": 7,
+    "conformity": 86,
+    "overdue": 0
+  }
+}

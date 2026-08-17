@@ -371,6 +371,7 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   // Setarile au fost sparte in cinci pagini tematice. Fiecare intrare trebuie sa deschida efectiv
   // sectiunea ei si sa afiseze continut — o poarta pe sursa dovedeste ca sectiunile EXISTA, dar nu
   // si ca navigarea chiar ajunge acolo cu panourile randate.
+  const controlAudit = [];
   for (const [tab, ancora] of [['setari', '#companyForm'], ['cont', '#profileForm'],
     ['acces', '#colaboratoriBox'], ['date', '#openingCard'], ['conexiuni', '#anafForm'],
     // ...si stocurile, sparte la fel: lucrul zilnic / productie / configurare
@@ -394,7 +395,310 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
     ok('pagina „' + tab + '" se deschide', (await adm.locator('#tab-' + tab + '.active').count()) === 1);
     ok('...si contine panoul mutat acolo (' + ancora + ')',
       (await adm.locator('#tab-' + tab + ' ' + ancora).count()) === 1);
+    controlAudit.push(...await adm.evaluate((numeTab) => {
+      const root = document.querySelector('#tab-' + numeTab);
+      if (!root) return [];
+      const tipuriMici = new Set(['checkbox', 'radio', 'color', 'hidden', 'file']);
+      const selector = 'button, a.btn, input, select, textarea, summary';
+      return [...root.querySelectorAll(selector)].filter((el) => {
+        if (el.matches('input') && tipuriMici.has((el.type || '').toLowerCase())) return false;
+        const stil = getComputedStyle(el); const box = el.getBoundingClientRect();
+        return stil.display !== 'none' && stil.visibility !== 'hidden' && box.width > 0 && box.height > 0;
+      }).map((el) => {
+        const stil = getComputedStyle(el); const box = el.getBoundingClientRect();
+        const compact = !!el.closest('table, .tablewrap');
+        return {
+          tab: numeTab,
+          control: el.id ? '#' + el.id : el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).trim().split(/\s+/).join('.') : ''),
+          compact,
+          height: Math.round(box.height * 10) / 10,
+          font: Math.round(parseFloat(stil.fontSize) * 10) / 10,
+        };
+      });
+    }, tab));
   }
+
+  const normaleJoase = controlAudit.filter((x) => !x.compact && x.height < 36).slice(0, 15);
+  const normaleMici = controlAudit.filter((x) => !x.compact && x.font < 14).slice(0, 15);
+  const compacteJoase = controlAudit.filter((x) => x.compact && x.height < 30).slice(0, 15);
+  const compacteMici = controlAudit.filter((x) => x.compact && x.font < 12).slice(0, 15);
+  ok('controalele normale au minimum 36 px înălțime: ' + JSON.stringify(normaleJoase), normaleJoase.length === 0);
+  ok('textul controalelor normale are minimum 14 px: ' + JSON.stringify(normaleMici), normaleMici.length === 0);
+  ok('numai controalele compacte din tabele pot coborî la 30 px: ' + JSON.stringify(compacteJoase), compacteJoase.length === 0);
+  ok('textul controalelor compacte rămâne la minimum 12 px: ' + JSON.stringify(compacteMici), compacteMici.length === 0);
+
+  // Fixture efemer pentru vocabularul semantic. Nu verificăm nuanțe scrise de mână, ci că cele
+  // patru sensuri rămân distincte în cascada CALCULATĂ, în ambele teme, și că geometria compactă
+  // nu coboară sub contractul design system-ului.
+  const feedback = await adm.evaluate(() => {
+    const eraDark = document.body.classList.contains('dark');
+    const masoara = (dark) => {
+      document.body.classList.toggle('dark', dark);
+      const host = document.createElement('div');
+      host.style.cssText = 'position:fixed;left:-10000px;top:0';
+      host.innerHTML = `
+        <button class="alert info" data-go="x"><span class="al-tx">Informare</span></button>
+        <div class="alert warn"><span class="al-tx">Avertisment</span></div>
+        <div class="alert bad"><span class="al-tx">Eroare</span></div>
+        <div class="alert ok"><span class="al-tx">Succes</span></div>
+        <span class="pill ok">Succes</span><span class="pill warn">Avertisment</span>
+        <span class="pill err">Eroare</span><span class="pill muted">Neutru</span>
+        <div class="notice info"><span class="notice-icon">i</span><div>Informare</div></div>
+        <div class="notice warning"><span class="notice-icon">!</span><div>Avertisment</div></div>
+        <div class="notice danger"><span class="notice-icon">!</span><div>Eroare</div></div>
+        <div class="notice success"><span class="notice-icon">v</span><div>Succes</div></div>`;
+      document.body.appendChild(host);
+      const alerts = [...host.querySelectorAll('.alert')].map((el) => {
+        const s = getComputedStyle(el); const r = el.getBoundingClientRect();
+        return { border: s.borderLeftColor, bg: s.backgroundColor, cursor: s.cursor,
+          font: parseFloat(s.fontSize), height: r.height };
+      });
+      const pills = [...host.querySelectorAll('.pill')].map((el) => {
+        const s = getComputedStyle(el); const r = el.getBoundingClientRect();
+        return { color: s.color, bg: s.backgroundColor, font: parseFloat(s.fontSize), height: r.height };
+      });
+      const notices = [...host.querySelectorAll('.notice')].map((el) => {
+        const s = getComputedStyle(el); const r = el.getBoundingClientRect();
+        return { border: s.borderLeftColor, bg: s.backgroundColor,
+          font: parseFloat(s.fontSize), height: r.height };
+      });
+      host.remove();
+      return { alerts, pills, notices };
+    };
+    const rezultat = { light: masoara(false), dark: masoara(true) };
+    document.body.classList.toggle('dark', eraDark);
+    return rezultat;
+  });
+  const temeFeedback = [feedback.light, feedback.dark];
+  ok('feedback-ul semantic are patru stări vizual distincte în temele clară și întunecată',
+    temeFeedback.every((t) => new Set(t.alerts.map((x) => x.border)).size === 4
+      && new Set(t.pills.map((x) => x.color)).size === 4
+      && new Set(t.notices.map((x) => x.border)).size === 4));
+  ok('feedback-ul respectă dimensiunile și cursorul semantic: ' + JSON.stringify(feedback.light),
+    temeFeedback.every((t) => t.alerts.every((x) => x.font >= 14 && x.height >= 36)
+      && t.pills.every((x) => x.font >= 12 && x.height >= 24)
+      && t.notices.every((x) => x.font >= 14 && x.height >= 44)
+      && t.alerts[0].cursor === 'pointer' && t.alerts.slice(1).every((x) => x.cursor === 'default')));
+
+  // Toastul folosește aceleași stări semantice, dar are și contract comportamental: mesajul nou
+  // anulează timerul vechi, iar eroarea devine alertă assertive. Interceptăm temporar timerele ca
+  // verificarea să fie deterministă și să nu aștepte 5,2 secunde doar pentru a dovedi durata.
+  const toastFeedback = await adm.evaluate(async () => {
+    const { toast } = await import('/core.js');
+    const t = document.querySelector('#toast');
+    const eraDark = document.body.classList.contains('dark');
+    const setTimeoutReal = window.setTimeout; const clearTimeoutReal = window.clearTimeout;
+    const planificate = []; const anulate = [];
+    window.setTimeout = (fn, ms) => {
+      const id = 8100 + planificate.length;
+      planificate.push({ id, ms, fn });
+      return id;
+    };
+    window.clearTimeout = (id) => { anulate.push(id); };
+    const masoara = (dark, err) => {
+      document.body.classList.toggle('dark', dark);
+      toast(err ? 'Nu s-a putut salva' : 'Salvat', err);
+      const s = getComputedStyle(t); const r = t.getBoundingClientRect();
+      return { role: t.getAttribute('role'), live: t.getAttribute('aria-live'),
+        border: s.borderLeftColor, bg: s.backgroundColor, pointer: s.pointerEvents,
+        font: parseFloat(s.fontSize), height: r.height, clasa: t.className };
+    };
+    const rezultat = {
+      successLight: masoara(false, false), errorLight: masoara(false, true),
+      successDark: masoara(true, false), errorDark: masoara(true, true),
+    };
+    rezultat.durate = planificate.map((x) => x.ms);
+    rezultat.anulate = [...anulate];
+    rezultat.offlineSvg = !!document.querySelector('#offlineBanner > .app-icon[data-icon="offline"] svg');
+    const ultima = planificate[planificate.length - 1];
+    if (ultima) ultima.fn(); // readuce și starea internă `toastTimer` la zero
+    window.setTimeout = setTimeoutReal; window.clearTimeout = clearTimeoutReal;
+    document.body.classList.toggle('dark', eraDark);
+    return rezultat;
+  });
+  const toasturi = [toastFeedback.successLight, toastFeedback.errorLight,
+    toastFeedback.successDark, toastFeedback.errorDark];
+  ok('toastul diferențiază succesul de eroare în ambele teme și rămâne lizibil: '
+    + JSON.stringify(toastFeedback),
+  toastFeedback.successLight.border !== toastFeedback.errorLight.border
+      && toastFeedback.successDark.border !== toastFeedback.errorDark.border
+      && toasturi.every((x) => x.font >= 14 && x.height >= 44 && x.pointer === 'none'));
+  ok('toastul anulează mesajul anterior, iar eroarea are prioritate accesibilă și icon SVG offline',
+    toastFeedback.durate.join(',') === '3600,5200,3600,5200'
+      && toastFeedback.anulate.join(',') === '8100,8101,8102'
+      && toastFeedback.successLight.role === 'status' && toastFeedback.successLight.live === 'polite'
+      && toastFeedback.errorLight.role === 'alert' && toastFeedback.errorLight.live === 'assertive'
+      && toastFeedback.offlineSvg);
+
+  // Același motor de pași/autosave trebuie să fie montat peste toate formularele lungi. Numărul
+  // fixează ierarhia intenționată și prinde inclusiv regresia „butonul final devine pas gol".
+  const fluxuri = await adm.evaluate(() => ({
+    firma: document.querySelectorAll('#companyForm > .form-step').length,
+    angajat: document.querySelectorAll('#angajatForm > .form-step').length,
+    document: document.querySelectorAll('#entryForm > .form-step').length,
+    activ: document.querySelectorAll('#assetForm > .form-step').length,
+    leasing: document.querySelectorAll('#lcForm > .form-step').length,
+    miscare: document.querySelectorAll('#movementForm > .form-step').length,
+    partener: document.querySelectorAll('#partnerForm > .form-step').length,
+    fiscal: document.querySelectorAll('#fiscalForm > .form-step').length,
+    recurenta: document.querySelectorAll('#recForm > .form-step').length,
+    serii: document.querySelectorAll('#docSeriesForm > .form-step').length,
+    productie: document.querySelectorAll('#prodForm > .form-step').length,
+    reteta: document.querySelectorAll('#recipeForm > .form-step').length,
+    produs: document.querySelectorAll('#productForm > .form-step').length,
+    exigibilitate: document.querySelectorAll('#exigForm > .form-step').length,
+    soldAnalitic: document.querySelectorAll('#oaForm > .form-step').length,
+    modernizare: document.querySelectorAll('#mfInvForm > .form-step').length,
+    simulatorLeasing: document.querySelectorAll('#lsForm > .form-step').length,
+    inscriere: document.querySelectorAll('#registerForm > .form-step').length,
+    profil: document.querySelectorAll('#profileForm > .form-step').length,
+    designSystem: [...document.styleSheets].some((sheet) => /\/design-system\.css(?:$|\?)/.test(sheet.href || '')),
+  }));
+  ok('design system-ul reutilizabil este încărcat în browser', fluxuri.designSystem);
+  ok('formularul firmei are 4 pași', fluxuri.firma === 4);
+  ok('formularul angajatului are 5 pași', fluxuri.angajat === 5);
+  ok('formularul documentului are 2 pași', fluxuri.document === 2);
+  ok('formularul mijlocului fix are 3 pași', fluxuri.activ === 3);
+  ok('contractul de leasing are 3 pași', fluxuri.leasing === 3);
+  ok('mișcarea de stoc are 3 pași', fluxuri.miscare === 3);
+  ok('partenerul are 2 pași', fluxuri.partener === 2);
+  ok('configurația fiscală globală are 4 pași', fluxuri.fiscal === 4);
+  ok('șablonul facturii recurente are 3 pași', fluxuri.recurenta === 3);
+  ok('seriile documentelor au 2 pași', fluxuri.serii === 2);
+  ok('înregistrarea producției are 3 pași', fluxuri.productie === 3);
+  ok('rețeta de producție are 3 pași', fluxuri.reteta === 3);
+  ok('produsul din nomenclator are 2 pași', fluxuri.produs === 2);
+  ok('exigibilitatea TVA are 2 pași', fluxuri.exigibilitate === 2);
+  ok('soldul inițial analitic are 2 pași', fluxuri.soldAnalitic === 2);
+  ok('modernizarea mijlocului fix are 2 pași', fluxuri.modernizare === 2);
+  ok('simulatorul de leasing are 2 pași', fluxuri.simulatorLeasing === 2);
+  ok('înscrierea publică are 3 pași', fluxuri.inscriere === 3);
+  ok('profilul personal are 2 pași', fluxuri.profil === 2);
+  const iconografie = await adm.evaluate(() => {
+    const controale = [...document.querySelectorAll('button, a, summary, label.attach-btn, .emit-guided .gt')];
+    const noticeIcons = [...document.querySelectorAll('.notice-icon')];
+    const simbolInitial = /^\s*(?:[\u2190-\u2bff]|\p{Extended_Pictographic})/u;
+    const textDirect = (el) => [...el.childNodes]
+      .filter((nod) => nod.nodeType === Node.TEXT_NODE).map((nod) => nod.nodeValue).join(' ').trim();
+    return {
+      svg: controale.filter((el) => el.querySelector(':scope > .app-icon > svg')).length,
+      noticeSvg: noticeIcons.filter((el) => el.querySelector(':scope > .app-icon > svg')).length,
+      noticeTotal: noticeIcons.length,
+      legacy: controale.filter((el) => simbolInitial.test(textDirect(el)))
+        .slice(0, 12).map((el) => ({ tag: el.tagName, id: el.id, text: textDirect(el) })),
+    };
+  });
+  ok('controalele și mesajele persistente folosesc setul SVG comun (' + iconografie.svg
+    + ' controale, ' + iconografie.noticeSvg + '/' + iconografie.noticeTotal + ' mesaje)',
+    iconografie.svg > 70 && iconografie.noticeTotal > 0 && iconografie.noticeSvg === iconografie.noticeTotal);
+  ok('butoanele, linkurile și secțiunile nu mai încep cu simboluri Unicode: '
+    + JSON.stringify(iconografie.legacy), iconografie.legacy.length === 0);
+  const actiuniMesaj = await adm.evaluate(async () => {
+    const messages = await import('/messages.js');
+    const host = document.createElement('div');
+    host.innerHTML = messages.bubble({ id: 'ui-audit', fromAdmin: true, text: 'Mesaj de control', createdAt: new Date().toISOString() }, true);
+    document.body.appendChild(host);
+    const del = host.querySelector('.msg-del').getBoundingClientRect();
+    const edit = host.querySelector('.msg-edit').getBoundingClientRect();
+    const padding = parseFloat(getComputedStyle(host.querySelector('.msg-b')).paddingRight);
+    host.remove();
+    return { del: [del.width, del.height], edit: [edit.width, edit.height], padding };
+  });
+  ok('acțiunile suprapuse pe mesaj au ținte 36×36 px și loc rezervat în bulă: '
+    + JSON.stringify(actiuniMesaj),
+  actiuniMesaj.del.every((x) => x >= 36) && actiuniMesaj.edit.every((x) => x >= 36) && actiuniMesaj.padding >= 88);
+  await adm.evaluate(() => {
+    const register = document.querySelector('#registerForm');
+    register.password.value = 'NuSeStocheaza-2026!';
+    register.dispatchEvent(new Event('input', { bubbles: true }));
+    const profile = document.querySelector('#profileForm');
+    profile.cnp.value = '1900101415238';
+    profile.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await adm.waitForTimeout(700);
+  ok('parola de înscriere nu este copiată în sessionStorage', await adm.evaluate(() =>
+    !Object.keys(sessionStorage).some((key) => key.includes(':registerForm:'))));
+  ok('CNP-ul profilului nu este copiat în sessionStorage', await adm.evaluate(() =>
+    !Object.keys(sessionStorage).some((key) => key.includes(':profileForm:'))));
+
+  // Producția are linii fără atribut `name`, construite dinamic. Verificăm payload-ul real din
+  // sessionStorage: serializerul dedicat trebuie să păstreze și aceste materiale, nu doar antetul.
+  await adm.evaluate(() => {
+    window.goTab('productie');
+    const form = document.querySelector('#prodForm');
+    form.document.value = 'Bon producție autosave E2E';
+    const qty = form.querySelector('.pm-qty'); if (qty) qty.value = '2.750';
+    form.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await adm.waitForFunction(() => Object.keys(sessionStorage).some((key) => key.includes(':prodForm:')), null, { timeout: 4000 });
+  const draftProductie = await adm.evaluate(() => {
+    const key = Object.keys(sessionStorage).find((item) => item.includes(':prodForm:'));
+    const payload = key ? JSON.parse(sessionStorage.getItem(key)) : null;
+    return payload && payload.data;
+  });
+  ok('autosave-ul producției păstrează liniile dinamice de materiale',
+    draftProductie && draftProductie.values.document === 'Bon producție autosave E2E'
+      && draftProductie.materiale[0].cantitate === '2.750');
+  await adm.click('#prodForm .form-draft-discard');
+  await adm.click('.app-dialog .btn.danger');
+
+  // Autosave real în browser: scriere după debounce, cheie izolată pe firmă și restaurare după
+  // reload. Nu se trimite niciun POST; ciorna locală nu este confundată cu salvarea oficială.
+  adm.on('pageerror', (error) => console.error('  eroare browser în fluxul de formular:', error.message));
+  await adm.evaluate(() => window.goTab('angajati'));
+  await adm.click('#angajatNou');
+  await adm.fill('#angajatForm input[name="nume"]', 'Ciornă locală E2E');
+  // Instanța tocmai a randat multe rapoarte; în loc de o pauză fragilă, așteptăm efectul promis
+  // de debounce (event loop-ul poate fi ocupat mai mult de 700 ms în containerul CI).
+  try {
+    await adm.waitForFunction(() => Object.keys(sessionStorage).some((item) => item.includes(':angajatForm:')), null, { timeout: 4000 });
+  } catch (error) {
+    const diagnostic = await adm.evaluate(() => ({
+      keys: Object.keys(sessionStorage),
+      status: document.querySelector('#angajatForm .form-progress-status')?.textContent,
+      formFlow: document.querySelector('#angajatForm')?.dataset.formFlow,
+      value: document.querySelector('#angajatForm input[name="nume"]')?.value,
+    }));
+    console.error('  diagnostic autosave angajat:', diagnostic);
+    throw error;
+  }
+  const draftAngajat = await adm.evaluate(() => {
+    const key = Object.keys(sessionStorage).find((item) => item.includes(':angajatForm:'));
+    return { key: key || '', raw: key ? sessionStorage.getItem(key) : '' };
+  });
+  ok('angajatul se autosalvează după debounce', /Ciornă locală E2E/.test(draftAngajat.raw));
+  ok('cheia ciornei conține firma activă și entitatea nouă',
+    draftAngajat.key.includes(':' + await adm.locator('#firmaSelect').inputValue() + ':nou'));
+  await adm.reload({ waitUntil: 'networkidle' });
+  await adm.waitForTimeout(1200);
+  await adm.evaluate(() => { document.querySelector('#welcomeOverlay')?.classList.add('hidden'); window.goTab('angajati'); });
+  ok('ciorna angajatului este restaurată după reload',
+    (await adm.locator('#angajatForm input[name="nume"]').inputValue()) === 'Ciornă locală E2E');
+  ok('starea vizibilă spune că ciorna a fost restaurată',
+    /Ciornă restaurată/.test(await adm.locator('#angajatForm .form-progress-status').innerText()));
+  ok('ciorna restaurată afișează controlul de ștergere', await adm.locator('#angajatForm .form-draft-discard').isVisible());
+  await adm.click('#angajatForm .form-draft-discard');
+  await adm.click('.app-dialog .btn.danger');
+  ok('ștergerea confirmată golește formularul',
+    (await adm.locator('#angajatForm input[name="nume"]').inputValue()) === '');
+  ok('ștergerea confirmată elimină cheia locală', await adm.evaluate(() =>
+    !Object.keys(sessionStorage).some((key) => key.includes(':angajatForm:'))));
+
+  // Documentele au controale reconstruite dinamic; verificăm că serializerul lor dedicat păstrează
+  // obiectul `fields`, nu doar inputurile statice ale formularului.
+  await adm.evaluate(() => window.goTab('documente'));
+  await adm.click('#manualBtn');
+  await adm.fill('#fld_explicatie', 'Notă din autosave E2E');
+  await adm.waitForTimeout(700);
+  const draftDocument = await adm.evaluate(() => {
+    const key = Object.keys(sessionStorage).find((item) => item.includes(':entryForm:'));
+    const payload = key ? JSON.parse(sessionStorage.getItem(key)) : null;
+    return { key: key || '', explicatie: payload && payload.data && payload.data.fields && payload.data.fields.explicatie };
+  });
+  ok('autosave-ul documentului păstrează câmpurile dinamice', draftDocument.explicatie === 'Notă din autosave E2E');
+  await adm.evaluate(() => document.querySelector('#cancelEntry').click());
+  ok('Renunță elimină numai ciorna locală a documentului', await adm.evaluate(() =>
+    !Object.keys(sessionStorage).some((key) => key.includes(':entryForm:'))));
 
   // Formularul de angajat a plecat in pagina lui, deci „editează" din statul de plata trebuie sa
   // SARA acolo si sa completeze formularul. Fara salt ar completa un formular pe care omul nu-l
@@ -501,54 +805,40 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   await pgLim2.close();
 }
 
-// ────────── 12. MODUL SIMPLU ASCUNDE PESTE TOT, NU DOAR INTR-O NAVIGATIE ──────────
-// Aplicatia are TREI navigatii peste aceleasi `#tabs`: bara laterala (originalul) plus bara de
-// meniu si banda de unelte, generate de erp.js. Modul simplu promite explicit, in modalul de bun
-// venit si in toastul de comutare, ca „partea tehnic-contabila (balanta, registre, inchideri) e
-// ascunsa" — iar promisiunea era tinuta doar de bara laterala.
-//
-// De ce AICI si nu in test/frontend.mjs: efectul e vizibilitatea calculata de browser din trei
-// reguli CSS care se bat pe specificitate (`.simple-ui .adv` vs `#tabs .navmenu button`), peste un
-// DOM construit la montare. O poarta pe sursa ar dovedi ca erp.js copiaza clasa — nu si ca
-// utilizatorul chiar nu mai vede intrarea. Doua straturi, ca la restul portilor din proiect.
-//
-// Capcana de masurare, platita o data: bara laterala e un ACORDEON, iar bara de meniu are meniuri
-// derulante. O masuratoare care nu le deschide raporteaza zero scapari indiferent de adevar — asa
-// au trecut neobservate „Anexe", „Jurnal de audit" si „Plan de conturi", vizibile de indata ce
-// deschideai grupul lor. Deci fiecare grup se deschide inainte de a citi.
-sect('12. Modul simplu ascunde partea tehnic-contabila din TOATE navigatiile');
+// ────────── 12. O SINGURA NAVIGATIE + MODUL SIMPLU ────────────────────────────
+// `#tabs` este arborele unic. Firma si perioada sunt controalele reale mutate in bara de context,
+// nu copii. Testul de browser verifica atat structura calculata, cat si filtrul modului simplu.
+sect('12. Carcasa are o singura navigatie si un context unic');
 {
   await adm.goto(BASE + '/', { waitUntil: 'networkidle' });
   await adm.evaluate(() => { const w = document.querySelector('#welcomeOverlay'); if (w) w.classList.add('hidden'); });
-  ok('chrome-ul de birou e montat (bara de meniu + banda de unelte)',
-    (await adm.locator('#erpMenu').count()) === 1 && (await adm.locator('#erpTools').count()) === 1);
+  ok('arborele lateral este unica navigatie desktop',
+    (await adm.locator('#tabs').count()) === 1 && (await adm.locator('#erpMenu,#erpTools').count()) === 0);
+  ok('bara contextuala este montata', (await adm.locator('#appContext').count()) === 1);
+  const controaleUnice = await adm.evaluate(() => ({
+    firme: document.querySelectorAll('#firmaSelect').length,
+    perioade: document.querySelectorAll('.curgroup').length,
+    firmaInContext: !!document.querySelector('#appContext #firmaSelect'),
+    perioadaInContext: !!document.querySelector('#appContext .curgroup'),
+  }));
+  ok('firma si perioada exista o singura data', controaleUnice.firme === 1 && controaleUnice.perioade === 1);
+  ok('firma si perioada sunt in bara contextuala', controaleUnice.firmaInContext && controaleUnice.perioadaInContext);
 
   const masoara = () => adm.evaluate(() => {
     const viz = (e) => !!e && e.offsetParent !== null;
+    const toate = [...document.querySelectorAll('#tabs button[data-tab]')].filter((x) =>
+      !x.classList.contains('hidden') && !(x.closest('.navgroup') && x.closest('.navgroup').classList.contains('hidden')));
     const adv = new Set();
-    document.querySelectorAll('#tabs button[data-tab].adv').forEach((x) => adv.add(x.dataset.tab));
-    document.querySelectorAll('#tabs .navgroup.adv button[data-tab]').forEach((x) => adv.add(x.dataset.tab));
-    // bara laterala: acordeonul se deschide TOT inainte de citire
+    toate.filter((x) => x.classList.contains('adv') || (x.closest('.navgroup') && x.closest('.navgroup').classList.contains('adv')))
+      .forEach((x) => adv.add(x.dataset.tab));
+    // acordeonul se deschide integral inainte de citire, altfel ascunderea ar trece pe multime vida
     document.querySelectorAll('#tabs .navgroup').forEach((g) => { if (viz(g)) g.classList.add('open'); });
     const lateral = [...document.querySelectorAll('#tabs button[data-tab]')].filter(viz).map((x) => x.dataset.tab);
-    const unelte = [...document.querySelectorAll('#erpTools button[data-tab]')].filter(viz).map((x) => x.dataset.tab);
-    // bara de meniu: fiecare grup vizibil se deschide, se numara intrarile lui, apoi se inchide
-    let itemeMeniu = 0; const grupuriGoale = [];
-    document.querySelectorAll('#erpMenu .em-item').forEach((w) => {
-      if (!viz(w)) return;
-      w.classList.add('open');
-      const n = [...w.querySelectorAll('.em-pop button')].filter(viz).length;
-      w.classList.remove('open');
-      itemeMeniu += n;
-      if (n === 0) grupuriGoale.push(w.textContent.trim().slice(0, 30));
-    });
     return {
       nrAdv: adv.size,
       lateralAdv: lateral.filter((t) => adv.has(t)),
-      uneltiAdv: unelte.filter((t) => adv.has(t)),
-      itemeMeniu,
-      grupuriGoale,
-      totalTaburi: document.querySelectorAll('#tabs button[data-tab]').length,
+      totalTaburi: toate.length,
+      lateralTotal: lateral.length,
     };
   });
   const pune = (mod) => adm.evaluate((m) => {
@@ -564,25 +854,16 @@ sect('12. Modul simplu ascunde partea tehnic-contabila din TOATE navigatiile');
   // Poarta trebuie sa VADA ceva: daca marcajul `.adv` dispare din HTML, restul aserțiunilor ar
   // trece pe o multime goala — adica exact „verde din motivul gresit".
   ok('exista intrari tehnic-contabile de ascuns (poarta nu masoara o multime goala)', s.nrAdv >= 8);
-  ok('mod simplu: nicio intrare tehnic-contabila in bara laterala'
+  ok('mod simplu: nicio intrare tehnic-contabila in navigatie'
     + (s.lateralAdv.length ? ' — SCAPA: ' + s.lateralAdv.join(', ') : ''), s.lateralAdv.length === 0);
-  ok('mod simplu: nicio intrare tehnic-contabila in banda de unelte'
-    + (s.uneltiAdv.length ? ' — SCAPA: ' + s.uneltiAdv.join(', ') : ''), s.uneltiAdv.length === 0);
-  ok('mod simplu: bara de meniu ofera exact taburile ramase', s.itemeMeniu === s.totalTaburi - s.nrAdv);
-  // Un grup din care s-au ascuns toate intrarile ar ramane in bara de sus ca meniu care se
-  // deschide gol — o promisiune de ecran care nu exista.
-  ok('mod simplu: niciun meniu care se deschide gol'
-    + (s.grupuriGoale.length ? ' — GOALE: ' + s.grupuriGoale.join(', ') : ''), s.grupuriGoale.length === 0);
+  ok('mod simplu: navigatia ofera exact taburile ramase', s.lateralTotal === s.totalTaburi - s.nrAdv);
 
-  // Reversul, la fel de important: modul expert nu are voie sa ascunda nimic. Un „ascunde peste
-  // tot" implementat prea lacom ar trece toate aserțiunile de mai sus si ar rupe aplicatia
-  // contabilului, care traieste tocmai in intrarile astea.
+  // Reversul: modul expert readuce toate intrarile tehnice in acelasi arbore.
   ok('comutatorul revine pe expert', (await pune('expert')) === false);
   await adm.waitForTimeout(300);
   const e = await masoara();
   ok('mod expert: toate intrarile tehnic-contabile revin in bara laterala', e.lateralAdv.length === e.nrAdv);
-  ok('mod expert: si in banda de unelte revin cele care exista acolo', e.uneltiAdv.length > 0);
-  ok('mod expert: bara de meniu ofera toate taburile', e.itemeMeniu === e.totalTaburi);
+  ok('mod expert: arborele ofera toate taburile', e.lateralTotal === e.totalTaburi);
 }
 
 // ────────── 13. PE TELEFON, ECRANUL DE INTRARE NU DERULEAZA PAGINA DE DEDESUBT ──────────
@@ -621,6 +902,59 @@ sect('13. Ecranul de intrare pe telefon nu deruleaza aplicatia de dedesubt');
   ok('...si ajunge pana la capatul lui', m.overlayScrollTop >= m.overlayMax - 2);
   ok('PAGINA de dedesubt ramane pe loc (masurat: ' + m.paginaScrollY + 'px)', m.paginaScrollY === 0);
   await tel.close();}
+
+// ────────── 14. SHELL-UL LOCAL PE TELEFON: ACELAȘI ARBORE, FĂRĂ DEPĂȘIRI ──────────
+// Aceste verificări există și în E2E-ul live, dar trebuie să ruleze și pe codul din worktree.
+// Altfel o schimbare CSS locală ar fi validată pe versiunea deja publicată, nu pe cea care urmează
+// să fie livrată. Refolosim sesiunea admin izolată; nu mai creăm date și nu atingem producția.
+sect('14. Carcasa locală pe telefon (390px și 320px)');
+{
+  await adm.setViewportSize({ width: 390, height: 844 });
+  await adm.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await adm.waitForTimeout(700);
+  await adm.evaluate(() => {
+    const w = document.querySelector('#welcomeOverlay');
+    if (w) w.classList.add('hidden');
+    if (window.goTab) window.goTab('dashboard');
+  });
+  ok('mobil local: dashboardul și contextul paginii se randează',
+    (await adm.locator('#kpis .kpi').count()) > 0
+      && (await adm.locator('#appContextTitle').isVisible())
+      && (await adm.locator('.app-context-kicker').isVisible()));
+  ok('mobil local: arborele unic pornește strâns',
+    (await adm.locator('#bottomnav,#moreSheet').count()) === 0 && !(await adm.locator('#tabs').isVisible()));
+  ok('mobil local: dashboardul nu derulează orizontal',
+    await adm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  await adm.click('#navToggleBtn');
+  ok('mobil local: Meniu deschide arborele desktop real', await adm.locator('#tabs').isVisible());
+  await adm.click('#tabs .navgroup:has(button[data-tab="tva"]) > .navlabel');
+  await adm.click('#tabs button[data-tab="tva"]');
+  await adm.waitForTimeout(700);
+  ok('mobil local: navigarea închide sertarul și actualizează contextul',
+    (await adm.locator('#tab-tva').isVisible()) && !(await adm.locator('#tabs').isVisible())
+      && /TVA/i.test(await adm.locator('#appContextTitle').textContent())
+      && (await adm.locator('#navToggleBtn').getAttribute('aria-expanded')) === 'false');
+
+  await adm.evaluate(() => document.querySelector('#tabs button[data-tab="dashboard"]')?.click());
+  await adm.setViewportSize({ width: 320, height: 700 });
+  await adm.waitForTimeout(200);
+  const mobil320 = await adm.evaluate(() => {
+    const titlu = document.querySelector('#appContextTitle');
+    const controale = document.querySelector('.app-context-controls');
+    const antet = document.querySelector('.topbar');
+    const textAlerta = document.querySelector('#dashAlerts .alert .al-tx');
+    const r = controale && controale.getBoundingClientRect();
+    const ra = antet && antet.getBoundingClientRect();
+    const rt = textAlerta && textAlerta.getBoundingClientRect();
+    const rezultat = !!titlu && getComputedStyle(titlu).display !== 'none' && !!r
+      && r.left >= -0.5 && r.right <= window.innerWidth + 0.5
+      && !!ra && ra.height <= 70 && !!rt && rt.width >= 180
+      && document.documentElement.scrollWidth <= window.innerWidth + 1;
+    return { rezultat, antet: ra && Math.round(ra.height), textAlerta: rt && Math.round(rt.width) };
+  });
+  ok('mobil local 320px: context lizibil, antet ≤70px și alertă ≥180px'
+    + ' (antet ' + mobil320.antet + 'px, text ' + mobil320.textAlerta + 'px)', mobil320.rezultat);
+}
 
 await b.close();
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari E2E izolate trecute, ' + fail + ' esuate.');

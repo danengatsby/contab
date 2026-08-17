@@ -4,7 +4,7 @@
 // invitatii, resetare parola, impersonare) si jurnalul de audit (firma / sistem). Extras din
 // app.js (Etapa 4). Depinde de nucleu; init/onTab/promptFirmaSubscribe/impersonate sunt INJECTATE
 // de app.js prin setAdminDeps (evita dependenta circulara admin <-> app).
-import { $, $$, api, toast, USER, H, META, isDemo } from './core.js';
+import { $, $$, api, toast, USER, H, META, isDemo, confirmAction, promptAction } from './core.js';
 import { stare, controaleHtml, leaga, MARIME_IMPLICITA } from './paginare.js';
 
 let deps = {};
@@ -95,7 +95,9 @@ export async function renderContabili() {
   $$('#contabiliList .srv-cere').forEach((b) => b.addEventListener('click', async () => {
     const sel = $(`#contabiliList .srv-firma[data-id="${b.dataset.id}"]`);
     const st = $('#cerereServiciiStatus');
-    const mesaj = prompt('Un mesaj scurt pentru ' + b.dataset.nume + ' (opțional):', '');
+    const mesaj = await promptAction('Mesajul va însoți cererea de acces trimisă către ' + b.dataset.nume + '.', {
+      title: 'Ceri servicii contabile', label: 'Mesaj (opțional)', multiline: true, confirmLabel: 'Trimite cererea',
+    });
     if (mesaj === null) return; // Renunță
     try {
       const r = await api('/api/firme/servicii', {
@@ -252,7 +254,7 @@ export async function renderFirme() {
   }));
   $$('#firmeList .fsub').forEach((b) => b.addEventListener('click', () => deps.promptFirmaSubscribe(Number(b.dataset.id), b.dataset.nume)));
   $$('#firmeList .fdel').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ștergi această firmă și toate datele ei?')) return;
+    if (!await confirmAction('Firma și toate datele contabile asociate vor fi eliminate definitiv.', { title: 'Ștergi firma?', confirmLabel: 'Șterge firma', danger: true })) return;
     try { await api('/api/firme/' + b.dataset.id, { method: 'DELETE' }); await deps.init(); deps.onTab('setari'); toast('Firmă ștearsă'); }
     catch (e) { toast(e.message, true); }
   }));
@@ -265,7 +267,7 @@ export async function renderFirme() {
 }
 $('#testCloneBtn') && $('#testCloneBtn').addEventListener('click', async () => {
   const b = $('#testCloneBtn');
-  if (!confirm('Creezi o copie de TEST a firmei curente și vei fi comutat pe ea. Continui?')) return;
+  if (!await confirmAction('Se creează o copie separată a firmei curente și vei fi comutat automat pe ea.', { title: 'Creezi firma de test?', confirmLabel: 'Creează copia' })) return;
   b.disabled = true; b.textContent = 'Se creează copia…';
   try {
     const r = await api('/api/firme/' + META.firmaActiva + '/test-clone', { method: 'POST' });
@@ -281,7 +283,10 @@ $('#firmaImportBtn').addEventListener('click', async () => {
   if (!file) return toast('Alege întâi fișierul de restaurat (ZIP sau JSON descărcat din aplicație)', true);
   const isZip = /\.zip$/i.test(file.name);
   const firmaNume = (META.firme.find((f) => f.id === META.firmaActiva) || {}).nume || 'firma activă';
-  if (!confirm('⚠️ ATENȚIE: restaurarea ÎNLOCUIEȘTE toate datele firmei „' + firmaNume + '" cu cele din copia „' + file.name + '".\n\nDatele actuale ale firmei vor fi suprascrise (o plasă de siguranță se salvează automat pe server).\n\nContinui?')) return;
+  if (!await confirmAction('Firma „' + firmaNume + '" va fi înlocuită cu datele din „' + file.name + '".', {
+    title: 'Restaurezi copia firmei?', detail: 'Datele actuale vor fi suprascrise. Serverul creează automat o plasă de siguranță înainte de restaurare.',
+    confirmLabel: 'Înlocuiește datele', danger: true,
+  })) return;
   if (st) { st.className = 'status'; st.textContent = 'Se restaurează…'; }
   try {
     let r;
@@ -375,17 +380,19 @@ export async function renderUsers() {
     try { await api('/api/users/' + cb.dataset.id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ drepturi }) }); toast('Drepturi salvate'); }
     catch (e) { toast(e.message, true); cb.checked = !cb.checked; }
   }));
-  $$('#usersList .ulink').forEach((b) => b.addEventListener('click', () => prompt('Link invitație (trimite-l utilizatorului):', b.dataset.link)));
-  $$('#usersList .uimp').forEach((b) => b.addEventListener('click', () => {
-    if (confirm('Intri pe contul acestui utilizator? Vei vedea aplicația exact ca el. Toate acțiunile sunt jurnalizate.')) deps.impersonate(Number(b.dataset.id));
+  $$('#usersList .ulink').forEach((b) => b.addEventListener('click', async () => {
+    await promptAction('Copiază și trimite acest link utilizatorului.', { title: 'Link de invitație', label: 'Link', value: b.dataset.link, confirmLabel: 'Închide' });
+  }));
+  $$('#usersList .uimp').forEach((b) => b.addEventListener('click', async () => {
+    if (await confirmAction('Vei vedea aplicația exact ca acest utilizator. Toate acțiunile sunt jurnalizate.', { title: 'Intri pe contul utilizatorului?', confirmLabel: 'Intră pe cont' })) deps.impersonate(Number(b.dataset.id));
   }));
   $$('#usersList .udel').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ștergi utilizatorul?')) return;
+    if (!await confirmAction('Utilizatorul își va pierde accesul la aplicație.', { title: 'Ștergi utilizatorul?', confirmLabel: 'Șterge', danger: true })) return;
     try { await api('/api/users/' + b.dataset.id, { method: 'DELETE' }); renderUsers(); toast('Utilizator șters'); }
     catch (e) { toast(e.message, true); }
   }));
   $$('#usersList .ureset').forEach((b) => b.addEventListener('click', async () => {
-    const np = prompt('Parolă nouă pentru utilizator:'); if (!np) return;
+    const np = await promptAction('Noua parolă va înlocui parola actuală a utilizatorului.', { title: 'Resetezi parola', label: 'Parolă nouă', inputType: 'password', required: true, minLength: 12, confirmLabel: 'Schimbă parola', danger: true }); if (!np) return;
     await api('/api/users/' + b.dataset.id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: np }) });
     toast('Parolă resetată');
   }));
@@ -422,7 +429,7 @@ export async function renderColaboratori() {
     if (note) note.innerHTML = '';
   }
   $$('#colaboratoriList .colremove').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Scoți accesul lui „' + b.dataset.nume + '" la firma activă?')) return;
+    if (!await confirmAction('„' + b.dataset.nume + '" nu va mai putea vedea sau modifica firma activă.', { title: 'Retragi accesul?', confirmLabel: 'Retrage accesul', danger: true })) return;
     try { await api('/api/colaboratori/' + b.dataset.id, { method: 'DELETE' }); renderColaboratori(); toast('Colaborator scos'); }
     catch (e) { toast(e.message, true); }
   }));
@@ -469,7 +476,7 @@ $('#inviteBtn').addEventListener('click', async () => {
     const r = await api('/api/invites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: f.username.value, role: f.role.value, firme, email: f.email.value }) });
     f.reset(); renderUsers();
     if (r.emailed) toast('Invitație trimisă pe email');
-    else { prompt('Trimite acest link utilizatorului (setează parola):', r.link); toast('Invitație creată'); }
+    else { await promptAction('Trimite acest link utilizatorului pentru a-și seta parola.', { title: 'Invitație creată', label: 'Link de activare', value: r.link, confirmLabel: 'Închide' }); toast('Invitație creată'); }
   } catch (err) { toast(err.message, true); }
 });
 

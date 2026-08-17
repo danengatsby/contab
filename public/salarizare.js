@@ -1,9 +1,10 @@
 'use strict';
 
 // Salarizare: angajati, stat de plata, fluturasi, registru. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, toast, api, round2, fiscalPct, ac } from './core.js';
+import { $$, $, H, fmt, toast, api, round2, fiscalPct, ac, confirmAction } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
+import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved } from './formflow.js';
 
 // Salariile stau in trei pagini (statul de plata, angajatii, registrul anual), deci butoanele care
 // trec de la una la alta au nevoie de `goTab` — vine din app.js, ca la entries/docflow (fara ciclu).
@@ -60,13 +61,15 @@ async function loadSalarizare() {
     <tr class="bold"><td>Total de virat la buget</td><td class="num">${fmt(t.totalBuget)}</td></tr>
     <tr><td>Cost total angajator</td><td class="num">${fmt(t.costTotal)}</td></tr></tbody></table>`;
   $$('#angajatiList .adel').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ștergi angajatul?')) return;
+    if (!await confirmAction('Angajatul va fi eliminat din nomenclator. Statele deja generate rămân înregistrate.', { title: 'Ștergi angajatul?', confirmLabel: 'Șterge', danger: true })) return;
     await api('/api/angajati/' + b.dataset.id, { method: 'DELETE' }); loadSalarizare(); toast('Angajat șters');
   }));
   if (!$('#rsYear').value) $('#rsYear').value = (new Date()).getFullYear();
   renderRegistruSalarii();
   $$('#angajatiList .aedit').forEach((b) => b.addEventListener('click', () => {
     const r = sp.rows.find((x) => x.id === b.dataset.id); const f = $('#angajatForm');
+    // Înainte de a pune alt angajat în aceleași controale, finalizează debounce-ul ciornei curente.
+    formFlowFlush(f);
     // formularul e in ALTA pagina de cand salariile s-au spart in trei: fara saltul asta, „editează"
     // ar completa un formular pe care utilizatorul nu-l vede si ar parea ca butonul nu face nimic
     duLa('angajati');
@@ -84,6 +87,7 @@ async function loadSalarizare() {
     for (const b of r.beneficii || []) { if (f['ben_' + b.id]) f['ben_' + b.id].value = b.acordat; }
     f.zileTelemunca.value = r.zileTelemunca || 0; f.copiiCresa.value = r.copiiCresa || 0;
     f.zileMobilitate.value = r.zileMobilitate != null ? r.zileMobilitate : '';
+    formFlowLoaded(f, 'angajat:' + r.id);
   }));
 }
 onPeriodChange('sp', () => { $('#spPdf').href = '/pdf/stat-plata?period=' + spPeriod(); $('#spD112').href = '/xml/d112?period=' + spPeriod(); $('#spDosarCm') && ($('#spDosarCm').href = '/pdf/dosar-cm?period=' + spPeriod()); loadSalarizare(); });
@@ -105,20 +109,27 @@ $('#angajatForm').addEventListener('submit', async (e) => {
   campuriBeneficii(f).forEach((inp) => { beneficii[inp.name.slice(4)] = inp.value; });
   const body = { id: f.id.value || undefined, nume: f.nume.value, cnp: f.cnp.value, functie: f.functie.value, salariuBrut: f.salariuBrut.value, spor: f.spor.value, persoane: f.persoane.value, copii: f.copii.value, sub26: f.sub26.checked, functieBaza: f.functieBaza ? f.functieBaza.checked : true, neimpozabil: f.neimpozabil.value, tichete: f.tichete.value, avantaje: f.avantaje.value, zileCM: f.zileCM.value, dataInceputCM: f.dataInceputCM.value, procentCM: f.procentCM.value, zileCO: f.zileCO.value, normaPartiala: f.normaPartiala.checked, scutitNormaPartiala: f.scutitNormaPartiala.checked, zileLucratoare: f.zileLucratoare.value, sector: f.sector.value, avans: f.avans.value, retineri: f.retineri.value,
     beneficii, zileTelemunca: f.zileTelemunca.value, zileMobilitate: f.zileMobilitate.value, copiiCresa: f.copiiCresa.value };
-  try { await api('/api/angajati', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Angajat salvat'); golesteAngajat(); loadSalarizare(); }
+  try {
+    await api('/api/angajati', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    formFlowSaved(f);
+    toast('Angajat salvat'); golesteAngajat({ restoreDraft: false }); loadSalarizare();
+  }
   catch (err) { toast(err.message, true); }
 });
 // Golirea formularului: `reset()` intoarce campurile la valorile din HTML, dar `id` e hidden si ar
 // ramane completat — adica urmatoarea salvare ar MODIFICA angajatul dinainte in loc sa adauge unul.
-function golesteAngajat() {
+function golesteAngajat(options = {}) {
   const f = $('#angajatForm'); if (!f) return;
+  formFlowFlush(f);
   f.reset(); f.id.value = '';
   f.spor.value = '0'; f.copii.value = '0'; f.sub26.checked = false; f.neimpozabil.value = '0';
   f.avans.value = '0'; f.retineri.value = '0'; f.avantaje.value = '0';
   campuriBeneficii(f).forEach((inp) => { inp.value = '0'; });
   f.zileTelemunca.value = '0'; f.copiiCresa.value = '0'; f.zileMobilitate.value = '';
+  formFlowLoaded(f, 'nou', { restore: options.restoreDraft !== false });
 }
 $('#angajatNou') && $('#angajatNou').addEventListener('click', () => { golesteAngajat(); toast('Formular gol — completează noul angajat'); });
+window.addEventListener('contab:company-context', () => golesteAngajat());
 $('#angajatStat') && $('#angajatStat').addEventListener('click', () => duLa('salarizare'));
 $('#spAddAngajat') && $('#spAddAngajat').addEventListener('click', () => duLa('angajati'));
 $('#spPost').addEventListener('click', async () => {
@@ -132,6 +143,15 @@ $('#spPay').addEventListener('click', async () => {
   if (!period) return toast('Alege luna', true);
   try { const r = await api('/api/stat-plata/pay?period=' + period + '&cont=' + $('#spCont').value, { method: 'POST' }); toast('Plătit ' + fmt(r.suma) + ' din contul ' + r.cont + ' (421 = ' + r.cont + ')'); loadEntries(); }
   catch (e) { toast(e.message, true); }
+});
+
+registerFormFlow({
+  form: '#angajatForm',
+  title: 'Datele angajatului',
+  firstStepTitle: 'Identitate și contract',
+  entityKey: 'nou',
+  progressFields: ['nume', 'functie', 'salariuBrut', 'sector', 'zileLucratoare', 'procentCM', 'persoane'],
+  onDiscard: () => golesteAngajat({ restoreDraft: false }),
 });
 
 

@@ -10,12 +10,13 @@
   <title>Contabo — ciclul contabil</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/u.css">
-  <!-- Aspectul CLASIC de aplicație de contabilitate (densitate mare, bară de meniu, bandă de
-       unelte, arbore de module, grile cu chenar) — SINGURUL aspect al aplicației. E un STRAT
-       peste același DOM: erp.js pune clasa `erp` pe <body> și injectează chrome-ul, erp.css
-       îmbracă restul. Comutatorul de aspect a fost scos: nu mai există către ce să comute.
-       Sub 901px stratul nu se montează — acolo rămâne așezarea din styles.css. -->
+  <!-- Designul aplicației autentificate: același limbaj vizual modern ca loginul, cu un singur
+       arbore lateral și o bară contextuală pentru pagină/firmă/perioadă. erp.js mută controalele
+       reale în context (nu le copiază), transformă explicațiile în ajutor la cerere și aplică
+       setul SVG unic; erp.css păstrează shell-ul, iar design-system.css este sursa unică pentru
+       controale, carduri, dialoguri, feedback, ajutor contextual și fluxurile de formular. -->
   <link rel="stylesheet" href="/erp.css" />
+  <link rel="stylesheet" href="/design-system.css" />
   <script src="/erp.js" defer></script>
 </head>
 <body>
@@ -158,6 +159,9 @@
       </div>
       <p class="muted" id="regHintPatron" data-u="u50">Contul tău și firma ta — plan de conturi complet, zero înregistrări.</p>
       <p class="muted hidden" id="regHintContabil">Contul tău, fără nicio firmă. Preiei o firmă deja înregistrată cerând acces după CUI (proprietarul aprobă), sau te găsește un patron în lista de contabili și îți trimite o cerere.</p>
+      <p data-u="u57"><a id="showPricingReg" class="link">💳 Vezi prețurile</a> · <a id="registerCancel" class="link">← Înapoi</a></p>
+      <div class="full sect-form"><h3>Datele firmei</h3>
+        <p class="muted">Pentru patron, firma se creează împreună cu primul cont. Contabilul poate continua fără firmă.</p></div>
       <div id="regFirmaFields">
       <label>Denumire firmă * <input name="nume" required maxlength="120" placeholder="S.C. EXEMPLU S.R.L." /></label>
       <div data-u="u51">
@@ -181,6 +185,8 @@
       </div>
       <label class="hidden" id="regContabilLista"><input name="disponibilContabil" type="checkbox" checked data-u="u15" />
         Apar în lista de contabili, ca să mă poată găsi patronii <span class="muted">(o poți schimba oricând din Setări)</span></label>
+      <div class="full sect-form"><h3>Datele de acces</h3>
+        <p class="muted">Alege utilizatorul, parola și adresa folosită pentru recuperarea accesului.</p></div>
       <div data-u="u51">
         <label data-u="u46">Utilizator (login) * <input name="username" autocomplete="username" required minlength="3" /></label>
         <label data-u="u46">Parolă * <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
@@ -189,7 +195,6 @@
       <div id="registerErr" class="status err"></div>
       <button class="btn primary" id="regSubmit" data-u="u19">Creează firma și contul</button>
       <p class="muted" data-u="u56">Prin crearea contului accepți <a href="/termeni.html" target="_blank" rel="noopener">Termenii și condițiile</a>, <a href="/confidentialitate.html" target="_blank" rel="noopener">Politica de confidențialitate</a> și <a href="/dpa.html" target="_blank" rel="noopener">Acordul de prelucrare a datelor</a>.</p>
-      <p data-u="u57"><a id="showPricingReg" class="link">💳 Vezi prețurile</a> · <a id="registerCancel" class="link">← Înapoi</a></p>
     </form>
     </div>
   </div>
@@ -305,11 +310,11 @@
       <button id="nextMonth" class="curnav" title="Luna următoare" aria-label="Luna următoare">▶</button>
     </span>
     <div class="spacer" data-u="u46"></div>
-    <!-- Pe telefon cele sase utilitare stateau intr-o grila 2x3 permanenta: bara de sus lua 340px
-         din 844, adica 40% din ecran, inainte de orice cifra. Sunt comenzi pe care un patron le
-         atinge o data pe luna (tema, densitate, tur), deci se string sub un singur buton. Pe
-         desktop butonul nu exista — acolo bara e sidebar vertical si au loc. -->
-    <button id="toolsBtn" class="btn small" type="button" aria-expanded="false" aria-controls="sideTools" title="Unelte: căutare, dicționar, mod simplu, temă">⋯ Unelte</button>
+    <!-- Pe telefon se deschide ACELAȘI arbore #tabs într-un sertar. Nu există o a doua listă
+         scurtată de destinații și nici o ierarhie mobilă întreținută separat. -->
+    <button id="navToggleBtn" class="btn small" type="button" aria-expanded="false" aria-controls="tabs">☰ Meniu</button>
+    <!-- Cele șase utilitare se strâng separat: sunt preferințe și ajutor, nu navigație. -->
+    <button id="toolsBtn" class="btn small" type="button" aria-expanded="false" aria-controls="sideTools" aria-label="Unelte" title="Unelte: căutare, dicționar, mod simplu, temă">⋯ <span class="control-label">Unelte</span></button>
     <div class="side-tools" id="sideTools">
       <button id="paletaBtn" class="btn small" title="Caută în aplicație — clienți, facturi, pagini (Ctrl+K)">🔎 Caută</button>
       <button id="glossaryBtn" class="btn small" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor">❓ Dicționar</button>
@@ -336,13 +341,13 @@
            poarta „fiecare intrare de meniu are sectiune" se uita, corect, doar la butoane. -->
       <a href="/carte/" target="_blank" rel="noopener" class="navlink"
          title="Cartea de contabilitate — 51 de capitole și 5 anexe, de citit în browser">📚 Cartea</a>
-      <div id="imperBanner" class="imper-banner hidden">
-        <span>👤 Conectat ca <b id="imperName"></b> <span class="imper-sub">(mod administrator — „intră pe cont"). Toate acțiunile sunt jurnalizate.</span></span>
-        <button id="imperStop" type="button">↩ Revino la contul de admin</button>
+      <div id="imperBanner" class="notice warning imper-banner hidden">
+        <div class="imper-copy"><span class="notice-icon">👤</span><span>Conectat ca <b id="imperName"></b> <span class="imper-sub">Mod administrator — „intră pe cont”. Toate acțiunile sunt jurnalizate.</span></span></div>
+        <button id="imperStop" type="button" class="btn">↩ Revino la contul de admin</button>
       </div>
       <button data-tab="mesaje">💬 Mesaje<span id="msgBadge" class="navbadge hidden">0</span></button>
       <button data-tab="portofoliu" id="navPortofoliu">🗂 Portofoliu</button>
-      <button data-tab="notificari" title="Notificări — termene fiscale">🔔<span id="notifBadge" class="navbadge hidden">0</span></button>
+      <button data-tab="notificari" title="Notificări — termene fiscale">🔔 Notificări<span id="notifBadge" class="navbadge hidden">0</span></button>
       <div class="navgroup">
         <button class="navlabel" type="button">📥 Documente & facturi</button>
         <div class="navmenu">
@@ -464,6 +469,7 @@
         </div>
       </div>
     </nav>
+    <button id="navBackdrop" class="nav-backdrop" type="button" tabindex="-1" aria-label="Închide meniul"></button>
   </header>
 
   <!-- Luna de lucru inchisa: consultare fara editare. Serverul refuza oricum scrierile
@@ -612,7 +618,6 @@
 
     <!-- ─────────────── DOCUMENTE ─────────────── -->
     <section id="tab-documente" class="tab">
-      <div class="cyclemap" data-step="documente"></div>
       <div class="explain"><span class="ei">📥</span><p><b>Primul pas:</b> aici aduci în firmă documentele <b>primite</b> (de la furnizori, bancă, SPV) — le încarci, aplicația le citește și le contabilizează. Facturile către clienți le creezi în pagina <b>„🧾 Emite factură"</b>. Din documente se construiește automat tot restul contabilității.</p></div>
       <div class="docband intrare" id="band-intrare"><b>📥 Documente de INTRARE</b><small>primite de la furnizori / bancă / <abbr title="Spațiul Privat Virtual — portalul ANAF unde se depun declarațiile și circulă e-Factura">SPV</abbr> — le încarci, aplicația extrage datele și le contabilizează</small></div>
       <div class="grid2 pas12">
@@ -649,14 +654,16 @@
           <!-- formularul e UNIC in aplicatie: JS il muta intre gazda de aici si cea din „Emite factura" -->
           <div id="formHostDoc">
           <form id="entryForm" class="hidden">
-            <label>Tip document
+            <label class="full">Tip document
               <select id="tipSelect"></select>
             </label>
-            <div id="dynFields" class="dyn"></div>
-            <div id="preview" class="preview"></div>
-            <label class="muted" for="motivRevizuire">De ce a fost nevoie de corectură? <span class="muted">(opțional — intră în raportul pe furnizori/formate)</span></label>
-            <input id="motivRevizuire" placeholder="ex. furnizorul pune totalul în subsol; s-a citit subtotalul" maxlength="300" />
-            <div class="row">
+            <div id="dynFields" class="dyn full"></div>
+            <div class="full sect-form"><h3>Verificare și salvare</h3>
+              <p class="muted">Confirmă articolul contabil propus și explică eventualele corecturi înainte de salvare.</p></div>
+            <div id="preview" class="preview full"></div>
+            <label class="muted full" for="motivRevizuire">De ce a fost nevoie de corectură? <span class="muted">(opțional — intră în raportul pe furnizori/formate)</span></label>
+            <input class="full" id="motivRevizuire" placeholder="ex. furnizorul pune totalul în subsol; s-a citit subtotalul" maxlength="300" />
+            <div class="row full">
               <button type="submit" class="btn primary">✓ Salvează</button>
               <button type="button" id="saveDraft" class="btn ghost" title="Salvează ca ciornă — vizibilă, dar nu intră în contabilitate până la postare">✎ Salvează ca ciornă</button>
               <button type="button" id="cancelEntry" class="btn ghost">Renunță</button>
@@ -727,7 +734,6 @@
 
     <!-- ─────────────── EMITE FACTURĂ (documente de ieșire) ─────────────── -->
     <section id="tab-emite" class="tab">
-      <div class="cyclemap" data-step="emite"></div>
       <div class="explain"><span class="ei">🧾</span><p><b>Aici emiți documentele firmei tale</b> — facturi către clienți, bonuri, avize. Alegi ce vinzi, verifici formularul și salvezi: numărul în serie, articolul contabil și e-Factura / PDF-ul se generează automat.</p></div>
       <div class="docband iesire" id="band-iesire"><b>📤 Documente de IEȘIRE</b><small>emise de firma ta — le creezi aici, aplicația le contabilizează și generează e-Factura / PDF</small></div>
       <div class="grid2 pas12">
@@ -772,8 +778,12 @@
           <label class="full">Tip document <select id="recTip" name="tip"></select></label>
           <label>Partener (client) <input name="partener" /></label>
           <label>CUI <input name="cuiPartener" /></label>
+          <div class="full sect-form"><h3>Valoarea facturii</h3>
+            <p class="muted">Baza și cota folosite la fiecare generare automată.</p></div>
           <label>Bază (fără TVA) <input name="baza" type="number" step="0.01" /></label>
           <label>Cotă TVA (%) <input name="cota" type="number" data-rate="tvaStandard" value="21" /></label>
+          <div class="full sect-form"><h3>Calendar și numerotare</h3>
+            <p class="muted">Stabilește ritmul, prima lună și seria opțională a documentului.</p></div>
           <label>Frecvență <select name="frecventa"><option value="lunar">lunar</option><option value="trimestrial">trimestrial</option><option value="anual">anual</option></select></label>
           <label>Ziua lunii <input name="ziua" type="number" min="1" max="28" value="1" /></label>
           <label>Începe din (lună) <input name="startDate" type="month" /></label>
@@ -879,7 +889,6 @@
         <a id="jurnalPdf" class="btn" target="_blank">⬇ PDF</a>
         <a id="jurnalCsv" class="btn" target="_blank">⬇ CSV</a>
       </div>
-      <div class="cyclemap" data-step="jurnal"></div>
       <div class="explain"><span class="ei">📘</span><p><b>Ce vezi aici:</b> toate operațiunile firmei, în ordinea în care s-au întâmplat — ca un jurnal zilnic. Fiecare rând arată ce cont a crescut și ce cont a scăzut, cu suma. Se completează <b>automat</b> din documentele tale — nu trebuie să scrii nimic de mână.</p></div>
       <div id="jurnalView" class="tablewrap"></div>
     </section>
@@ -894,7 +903,6 @@
         <a id="cartePdf" class="btn" target="_blank">⬇ PDF</a>
         <a id="carteCsv" class="btn" target="_blank">⬇ CSV</a>
       </div>
-      <div class="cyclemap" data-step="carte"></div>
       <div class="explain"><span class="ei">📗</span><p><b>Ce vezi aici:</b> aceleași operațiuni ca în jurnal, dar <b>grupate pe fiecare cont</b> (ex. tot ce a trecut prin Casă, prin Bancă sau prin contul unui client anume). Pentru fiecare cont vezi cât a intrat, cât a ieșit și soldul rămas.</p></div>
       <div id="carteView"></div>
     </section>
@@ -960,7 +968,6 @@
         <a id="balantaPdf" class="btn" target="_blank">⬇ PDF</a>
         <a id="balantaCsv" class="btn" target="_blank">⬇ CSV</a>
       </div>
-      <div class="cyclemap" data-step="balanta"></div>
       <div class="explain"><span class="ei">⚖️</span><p><b>Ce vezi aici:</b> situația tuturor conturilor pe luna aleasă, pe coloane: <b class="c-si">Sold inițial (reportat din luna precedentă)</b> + <b class="c-ru">Rulaj lună (mișcările lunii)</b> = <b class="c-sf">Sold final</b>. Soldul inițial nu e o eroare — soldurile de bilanț (bani, clienți, furnizori, stoc) se <b>reportează</b> firesc dintr-o lună în alta. <b>Regula de aur:</b> totalul pe <b>Debit</b> = totalul pe <b>Credit</b> ⇒ contabilitate echilibrată.</p></div>
       <div id="balantaStatus"></div>
       <div id="balantaView" class="tablewrap"></div>
@@ -986,7 +993,7 @@
            ciorne, arata-le contabilului". Restul — ce rubrici completeaza aplicatia si ce ramane
            manual, plus validatoarele oficiale — e treaba celui care chiar depune declaratia, si
            lua o treime din primul ecran de telefon inaintea oricarei cifre. -->
-      <div class="warnbox"><span class="wi">⚠️</span><div>
+      <div class="notice warning"><span class="notice-icon">⚠️</span><div>
         <b>D300 / D394 — ciorne, de validat înainte de depunere.</b>
         <p class="simple-only">Aplicația le completează singură din documentele înregistrate, dar sunt
         <b>ciorne</b>: arată-le contabilului înainte să le depui la ANAF.</p>
@@ -1040,6 +1047,8 @@
           <label>Sumă brută încasată/plătită <input name="brut" type="number" step="0.01" required /></label>
           <label>Cotă TVA (%) <input name="cota" type="number" step="0.01" data-rate="tvaStandard" value="21" /></label>
           <label>Data <input name="data" type="date" /></label>
+          <div class="full sect-form"><h3>Referința operațiunii</h3>
+            <p class="muted">Leagă exigibilitatea de partenerul și documentul încasat sau plătit.</p></div>
           <label>Partener <input name="partener" /></label>
           <label>Document <input name="document" /></label>
           <button class="btn primary">Generează exigibilitatea</button>
@@ -1051,7 +1060,6 @@
 
     <!-- ─────────────── INCHIDERI ─────────────── -->
     <section id="tab-inchideri" class="tab">
-      <div class="cyclemap" data-step="inchideri"></div>
 
       <!-- ─────── COCKPIT: închiderea lunii ca flux unic ─────── -->
       <div class="card" id="closeCard">
@@ -1168,7 +1176,7 @@
         <a id="situatiiPdf" class="btn small primary" target="_blank">⬇ Set complet (bilanț, profit și pierdere, anexe)</a>
       </div>
       <div class="explain"><span class="ei">📊</span><p><b>Ce e asta:</b> aici vezi cum stă firma — contul de profit și pierdere (ai câștigat sau ai pierdut în an) și bilanțul (ce ai: bani, stocuri, bunuri; și ce datorezi). Acestea două sunt și cele care se depun electronic la ANAF. Anexele — fluxurile de trezorerie, mișcarea capitalurilor proprii și notele explicative — au pagina lor, alături.</p></div>
-      <div id="bilantWarn" class="warnbox hidden"><span class="wi">⚠️</span><div>
+      <div id="bilantWarn" class="notice warning hidden"><span class="notice-icon">⚠️</span><div>
         <b>Bilanțul anual cere semnătură calificată:</b> situațiile financiare depuse la ANAF trebuie semnate
         și de un <b>contabil calificat</b> — angajat cu studii economice superioare sau membru CECCAR
         (art. 10 și 28, Legea contabilității 82/1991). Declarațiile curente (D300, D394, D112) le poți
@@ -1231,9 +1239,8 @@
         <select id="livrabileLuna" class="period luna-req" aria-label="Luna"></select>
         <select id="livrabileAn" class="period an" aria-label="Anul"></select>
       </div>
-      <div class="cyclemap" data-step="livrabile"></div>
       <div class="explain"><span class="ei">📤</span><p><b>Ultimul pas:</b> ce predai mai departe. Aici găsești declarațiile lunii pregătite pentru ANAF (D300, D394, D112, recapitulări) și borderoul — gata de descărcat și depus. Se generează automat din tot ce ai înregistrat în lună. <b>SAF-T (D406)</b> și <b>răspunsurile din SPV</b> au paginile lor, alături.</p></div>
-      <div class="warnbox"><span class="wi">⚠️</span><div><b>Înainte de depunere:</b> declarațiile (D112, D300, SAF-T…) sunt <b>ciorne</b>.
+      <div class="notice warning"><span class="notice-icon">⚠️</span><div><b>Înainte de depunere:</b> declarațiile (D112, D300, SAF-T…) sunt <b>ciorne</b>.
         <span class="simple-only-inline">Arată-le contabilului înainte să le depui la ANAF.</span>
         <span class="adv">Validează XML-ul cu <b>DUKIntegrator</b> / <b>XSD ANAF</b> și verifică-l cu un contabil înainte de depunerea în SPV.</span></div></div>
       <!-- ORDINEA E RASTURNATA fata de cum a fost pana acum. Prima era lista completa a
@@ -1285,7 +1292,7 @@
       <div class="card">
         <h3>Ce conține și când se depune</h3>
         <p class="muted"><b>D406 se depune lunar</b> (firmele cu TVA lunară) sau <b>trimestrial</b> (TVA trimestrială / neplătitori), până la ultima zi a lunii următoare — folosește XML-ul pe luna aleasă. Fișierul conține: Header, conturile din planul contabil cu solduri, clienți, furnizori, cotele de TVA, nomenclatorul de produse, mijloacele fixe, stocul final, toate articolele contabile ca tranzacții, facturile de vânzare/cumpărare, plățile și mișcările de stoc (SourceDocuments).</p>
-        <div class="warnbox"><span class="wi">⚠️</span><div>
+        <div class="notice warning"><span class="notice-icon">⚠️</span><div>
           <b>SAF-T este o ciornă structurată, nu un fișier XSD-validat oficial.</b>
           <p class="simple-only">Fișierul se construiește singur din tot ce ai înregistrat, dar e o
           <b>ciornă</b>: înainte să-l depui, dă-l contabilului să-l treacă prin verificatorul oficial ANAF.</p>
@@ -1379,6 +1386,8 @@
           <label>Cont <select name="cont" id="oaCont"></select></label>
           <label>Partener <input name="partener" /></label>
           <label>CUI <input name="cui" /></label>
+          <div class="full sect-form"><h3>Soldul de deschidere</h3>
+            <p class="muted">Completează numai sensul real al soldului: debitor sau creditor.</p></div>
           <label>Sold debitor <input name="d" type="number" step="0.01" value="0" /></label>
           <label>Sold creditor <input name="c" type="number" step="0.01" value="0" /></label>
           <button class="btn primary">Adaugă / actualizează</button>
@@ -1455,6 +1464,8 @@
               <div class="row"><input type="file" id="cdCsvFile" accept=".csv,.txt,.xlsx,.xls,.dbf" /><button type="button" id="cdImportBtn" class="btn small primary">Încarcă catalogul</button></div>
               <div id="cdImportStare" class="status"></div>
             </details>
+            <div class="full sect-form"><h3>Regimul de amortizare</h3>
+              <p class="muted">Alege metoda contabilă și, numai dacă diferă, tratamentul fiscal aplicabil.</p></div>
             <label class="check"><input name="computer" type="checkbox" /> Computer sau echipament periferic — poate fi amortizat accelerat (art. 28 alin. (5) lit. b), deși stă pe același cont cu mobilierul. Bifează doar calculatoarele, monitoarele, imprimantele și celelalte periferice.</label>
             <!-- Metodele din cele două liste se cer de la server (`/api/assets/metode`) după contul
                  ales: art. 28 alin. (5) nu lasă alegerea liberă — construcțiile se amortizează numai
@@ -1478,6 +1489,8 @@
             <p class="full status hidden" id="mfContStare"></p>
             <label>Durata fiscală (luni) <input name="durataFiscalaLuni" type="number" placeholder="la fel ca cea contabilă" /></label>
             <label class="check"><input name="vehiculM1" type="checkbox" /> Vehicul de persoane cu maxim 9 scaune (M1) — amortizarea fiscală se plafonează la 1.500 lei/lună (art. 28 alin. (12) lit. m). Bifează doar autoturismele: camioanele, autoutilitarele și utilajele nu au plafon.</label>
+            <div class="full sect-form"><h3>Punere în funcțiune</h3>
+              <p class="muted">Completează datele documentului și momentul de la care începe calculul amortizării.</p></div>
             <label>Valoare reziduală <input name="valoareReziduala" type="number" step="0.01" value="0" /></label>
             <label>Data achiziției <input name="dataAchizitie" type="date" /></label>
             <label>Data punerii în funcțiune <input name="dataPif" type="date" required /></label>
@@ -1501,6 +1514,8 @@
             <input type="hidden" name="assetId" />
             <label>Data finalizării <input name="data" type="date" required /></label>
             <label>Valoarea investiției <input name="suma" type="number" step="0.01" required /></label>
+            <div class="full sect-form"><h3>Document și efect asupra activului</h3>
+              <p class="muted">Descrie modernizarea și prelungește durata numai dacă activul este amortizat integral.</p></div>
             <label>Document <input name="document" placeholder="ex. PV recepție 12/2026" /></label>
             <label>Durata suplimentară (luni) <span class="muted">(doar dacă activul e amortizat integral)</span> <input name="durataSuplimentaraLuni" type="number" min="0" placeholder="lasă gol" /></label>
             <label class="full">Descrierea îmbunătățirii <input name="descriere" placeholder="ex. motor nou, capacitate mărită" /></label>
@@ -1535,10 +1550,14 @@
           <label>Locator (furnizor) <input name="partener" /></label>
           <label>CUI locator <input name="cui" /></label>
           <label>Nr. contract <input name="document" /></label>
+          <div class="full sect-form"><h3>Finanțare și calendar</h3>
+            <p class="muted">Completează suma finanțată, durata și luna din care începe graficul.</p></div>
           <label>Valoare finanțată <input name="principal" type="number" step="0.01" required /></label>
           <label>Număr rate (luni) <input name="months" type="number" required /></label>
-          <label>Dobândă anuală (%) <input name="dobandaAnuala" type="number" step="0.01" value="0" /></label>
           <label>Data primei rate <input name="dataPrimeiRate" type="date" required /></label>
+          <div class="full sect-form"><h3>Costuri și metodă</h3>
+            <p class="muted">Dobânda, TVA-ul și metoda determină graficul calculat pe server.</p></div>
+          <label>Dobândă anuală (%) <input name="dobandaAnuala" type="number" step="0.01" value="0" /></label>
           <label>Cotă TVA (%) <input name="cotaTva" type="number" step="0.01" data-rate="tvaStandard" /></label>
           <label>Metodă
             <select name="metoda"><option value="anuitati">Anuități constante</option><option value="rate_egale">Rate de capital egale</option></select>
@@ -1557,6 +1576,8 @@
         <form id="lsForm" class="dyn">
           <label>Valoare finanțată <input name="principal" type="number" step="0.01" value="50000" required /></label>
           <label>Număr rate (luni) <input name="months" type="number" value="36" required /></label>
+          <div class="full sect-form"><h3>Dobândă și metodă</h3>
+            <p class="muted">Compară anuitățile constante cu ratele egale de capital.</p></div>
           <label>Dobândă anuală (%) <input name="rate" type="number" step="0.01" value="9" /></label>
           <label>Metodă
             <select name="method"><option value="anuitati">Anuități constante</option><option value="rate_egale">Rate de capital egale</option></select>
@@ -1589,7 +1610,7 @@
         <a id="spDosarCm" class="btn small" target="_blank" title="Dosar de recuperare a indemnizațiilor de concediu medical de la FNUASS">🏥 Dosar recuperare CM</a>
       </div>
       <div class="explain"><span class="ei">👥</span><p><b>Ce e asta:</b> salariile lunii alese — brutul, taxele (CAS, CASS, impozit) și suma netă de plată, pentru fiecare angajat. De aici înregistrezi statul în contabilitate, plătești salariile și scoți D112. Datele angajaților se completează în pagina <b>„Angajați"</b>.</p></div>
-      <div class="warnbox"><span class="wi">⚠️</span><div>
+      <div class="notice warning"><span class="notice-icon">⚠️</span><div>
         <b>D112 — ciornă, de validat înainte de depunere.</b>
         <p class="simple-only">Declarația de salarii se completează singură din statul de plată, dar e o
         <b>ciornă</b>: concediile medicale, scutirile speciale și avantajele în natură se verifică separat,
@@ -1693,8 +1714,8 @@
             <p class="muted">Lasă-le nebifate dacă angajatul lucrează cu normă întreagă.</p></div>
           <label class="check"><input name="normaPartiala" type="checkbox" /> Normă parțială sub salariul minim (OUG 16/2022 — CAS/CASS la nivelul salariului minim, diferența o suportă firma)</label>
           <label class="check"><input name="scutitNormaPartiala" type="checkbox" /> Excepție de la suprataxare (elev/student, pensionar, ucenic, dizabilitate, normă întreagă la alt angajator)</label>
-          <!-- butonul salveaza TOT formularul, nu ultimul bloc: linia de deasupra il desparte de el -->
-          <div class="full sect-form"><button class="btn primary">Salvează angajat</button></div>
+          <!-- butonul salvează TOT formularul și rămâne în ultimul pas, fără să creeze un pas gol -->
+          <div class="full form-final-actions"><button class="btn primary">Salvează angajat</button></div>
         </form>
       </div>
     </section>
@@ -1759,9 +1780,13 @@
               <option value="transfer">Transfer între gestiuni</option>
             </select>
           </label>
+          <div class="full sect-form"><h3>Gestiuni și dată</h3>
+            <p class="muted">La transfer alegi atât gestiunea sursă, cât și destinația.</p></div>
           <label id="gestSrcRow">Gestiune <select name="gestiuneId" required></select></label>
           <label id="gestDestRow" class="hidden">Gestiune destinație <select name="gestiuneDestId"></select></label>
           <label>Data <input name="data" type="date" required /></label>
+          <div class="full sect-form"><h3>Cantitate și document</h3>
+            <p class="muted">Prețul și furnizorul se completează numai pentru recepții.</p></div>
           <label>Cantitate <input name="cantitate" type="number" step="0.001" required /></label>
           <label id="pretRow">Preț unitar (la recepție) <input name="pretUnitar" type="number" step="0.01" /></label>
           <label id="furnizorRow">Furnizor (la recepție) <input name="furnizor" /></label>
@@ -1818,8 +1843,12 @@
           <label>Document (bon de producție) <input name="document" placeholder="Bon producție 1" /></label>
           <label>Produs finit <select name="productId" required></select></label>
           <label>Gestiune (destinație) <select name="gestiuneId"></select></label>
+          <div class="full sect-form"><h3>Cantitate și cost</h3>
+            <p class="muted">Cantitatea obținută și costul de producție al unei unități.</p></div>
           <label>Cantitate obținută <input name="cantitate" type="number" step="0.001" required /></label>
           <label>Cost unitar de producție <input name="costUnitar" type="number" step="0.01" required /></label>
+          <div class="full sect-form"><h3>Materiale consumate</h3>
+            <p class="muted">Selectează materialele și cantitățile descărcate din fiecare gestiune.</p></div>
           <div class="full"><label>Materiale consumate (din stoc, la CMP)</label><div id="prodMaterials"></div><button type="button" id="prodAddMat" class="btn ghost small">+ adaugă material</button></div>
           <button class="btn primary">Înregistrează producția</button>
         </form>
@@ -1828,15 +1857,20 @@
         <div id="prodReport" class="tablewrap"></div>
       </div>
       <div class="card">
-        <h2>📋 Rețete / BOM (producție standardizată)</h2>
+        <div class="card-head"><h2>📋 Rețete / BOM (producție standardizată)</h2>
+          <span id="recipeFormMode" class="pill">Rețetă nouă</span></div>
         <p class="muted">Salvează o rețetă (lista de materiale pentru o <b>cantitate de bază</b> de produs finit). Apoi produci cu un clic, indicând doar cantitatea dorită — materialele se scalează automat și se generează nota contabilă.</p>
         <form id="recipeForm" class="dyn">
           <input type="hidden" name="id" />
           <label>Nume rețetă <input name="nume" required placeholder="ex. Pâine 500g" /></label>
           <label>Produs finit <select name="productId" required></select></label>
           <label>Gestiune (destinație) <select name="gestiuneId"></select></label>
+          <div class="full sect-form"><h3>Cantitate și cost standard</h3>
+            <p class="muted">Baza la care se raportează materialele și costul standard opțional.</p></div>
           <label>Cantitate de bază <input name="cantitateBaza" type="number" step="0.001" value="1" required /></label>
           <label>Cost unitar standard <input name="costUnitar" type="number" step="0.01" placeholder="lei / buc" /></label>
+          <div class="full sect-form"><h3>Materialele rețetei</h3>
+            <p class="muted">Lista materialelor necesare pentru cantitatea de bază definită mai sus.</p></div>
           <div class="full"><label>Materiale (pentru cantitatea de bază)</label><div id="recipeMaterials"></div><button type="button" id="recipeAddMat" class="btn ghost small">+ adaugă material</button></div>
           <button class="btn primary">Salvează rețeta</button>
           <button type="button" id="recipeReset" class="btn ghost">Rețetă nouă</button>
@@ -1870,6 +1904,8 @@
             <label>Cod <input name="cod" required /></label>
             <label>Denumire <input name="denumire" required /></label>
             <label>UM <input name="um" value="buc" /></label>
+            <div class="full sect-form"><h3>Clasificare în stoc</h3>
+              <p class="muted">Contul contabil, grupa și codul vamal opțional al produsului.</p></div>
             <label class="adv">Cont stoc <input name="cont" value="371" /></label>
             <label>Grupă <input name="grupa" placeholder="Mărfuri" /></label>
             <label>Cod NC (opțional) <input name="codNC" /></label>
@@ -1903,6 +1939,8 @@
           <label>NIR — următorul nr <input name="NIR_next" type="number" min="1" /></label>
           <label>Bon consum — serie <input name="BC_serie" /></label>
           <label>Bon consum — următorul nr <input name="BC_next" type="number" min="1" /></label>
+          <div class="full sect-form"><h3>Livrare și încasare</h3>
+            <p class="muted">Numerotarea avizelor și chitanțelor emise de firma curentă.</p></div>
           <label>Aviz — serie <input name="AVIZ_serie" /></label>
           <label>Aviz — următorul nr <input name="AVIZ_next" type="number" min="1" /></label>
           <label>Chitanță — serie <input name="CH_serie" /></label>
@@ -1914,7 +1952,11 @@
 <section id="tab-parteneri" class="tab">
       <div class="grid2">
         <div class="card">
-          <h2>Adaugă / modifică partener</h2>
+          <div class="card-head">
+            <h2>Adaugă / modifică partener</h2>
+            <span class="row"><span id="partnerFormMode" class="pill">Partener nou</span>
+              <button type="button" id="partnerNou" class="btn small ghost">Partener nou</button></span>
+          </div>
           <p class="muted">Adresa partenerilor este folosită la generarea e-Facturii (adresa clientului) și în D394.</p>
           <form id="partnerForm" class="dyn">
             <label>CUI <input name="cui" required /></label>
@@ -1927,6 +1969,8 @@
                 <option value="ambele">Ambele (client și furnizor)</option>
               </select>
             </label>
+            <div class="full sect-form"><h3>Adresă pentru documente</h3>
+              <p class="muted">Aceste date sunt preluate în e-Factură și în declarațiile care identifică partenerul.</p></div>
             <label class="full">Adresă (stradă) <input name="adresa" /></label>
             <label>Oraș <input name="oras" /></label>
             <label>Județ (cod, ex: RO-CJ) <input name="judet" /></label>
@@ -2026,7 +2070,7 @@ Cu stimă,
         <div id="firmeBilling" class="tablewrap"></div>
       </div>
       <h3 data-u="u108">Planuri</h3>
-      <div id="subStatus"></div>
+      <div id="subStatus" aria-live="polite" aria-atomic="false"></div>
       <div id="subPlans" class="plan-grid"></div>
       <p class="muted" data-u="u109">Planurile plătite se activează după confirmarea plății. Pentru activare sau facturare, contactează-ne prin <a id="subToMsg" data-u="u110">💬 Mesaje</a>.</p>
     </section>
@@ -2341,6 +2385,8 @@ Cu stimă,
           <label class="full">CNP <span class="muted">(al tău, ca persoană — firmele se înregistrează pe o persoană identificată)</span>
             <input name="cnp" inputmode="numeric" maxlength="13" placeholder="1900101415238"
                    title="Necesar ca să îți poți înscrie firme proprii. După salvare se afișează mascat." /></label>
+          <div class="full sect-form"><h3>Profil profesional și date personale</h3>
+            <p class="muted">Completează numai informațiile pe care vrei să le folosești în colaborare și pe documentele tale.</p></div>
           <div class="full" data-u="u88">
             <label data-u="u123"><input name="disponibilContabil" type="checkbox" data-u="u15" />
               <b>Apar în lista de contabili</b> <span class="muted">— patronii care caută un contabil te pot găsi și îți pot trimite cereri de servicii</span></label>
@@ -2726,20 +2772,26 @@ Cu stimă,
           <label>CASS (%) <input name="cass" type="number" step="0.01" /></label>
           <label>Impozit venit (%) <input name="impozitVenit" type="number" step="0.01" /></label>
           <label>CAM (%) <input name="cam" type="number" step="0.01" /></label>
+          <div class="full sect-form"><h3>TVA și impozitarea firmei</h3>
+            <p class="muted">Cotele folosite în documente, deconturi și calculul impozitelor firmei.</p></div>
           <label>TVA standard (%) <input name="tvaStandard" type="number" step="0.01" /></label>
           <label>TVA redus (%) <input name="tvaRedus" type="number" step="0.01" /></label>
           <label>Impozit profit (%) <input name="impozitProfit" type="number" step="0.01" /></label>
           <label>Impozit micro (%) <input name="impozitMicro" type="number" step="0.01" /></label>
           <label>Impozit dividende (%) <input name="impozitDividende" type="number" step="0.01" /></label>
+          <div class="full sect-form"><h3>Plafoane și curs de referință</h3>
+            <p class="muted">Valorile utilizate pentru încadrarea fiscală a microîntreprinderilor.</p></div>
           <label>Plafon micro (EUR) <input name="plafonMicroEur" type="number" /></label>
           <label>Curs EUR pt. plafon micro <input name="cursPlafonMicro" type="number" step="0.0001" /></label>
+          <div class="full sect-form"><h3>Salarii și deductibilitate</h3>
+            <p class="muted">Salariile minime de referință și limitele aplicate tratamentelor speciale.</p></div>
           <label>Salariu minim S1 <input name="salariuMinimS1" type="number" /></label>
           <label>Salariu minim S2 <input name="salariuMinimS2" type="number" /></label>
           <label>Salariu minim construcții <input name="salariuMinimConstructii" type="number" /></label>
           <label>Plafon scutiri sectoriale (istoric, eliminate din 2025) <input name="plafonScutire" type="number" /></label>
           <label>Deductibilitate TVA auto (%) <input name="deductibilitateTvaAutoLimitat" type="number" /></label>
           <button class="btn primary">Salvează cotele</button>
-          <button type="button" id="fiscalReset" class="btn">↺ Reset la valori standard</button>
+          <button type="button" id="fiscalReset" class="btn">Reset la valori standard</button>
         </form>
         <div id="fiscalStatus" class="status"></div>
       </div>
@@ -3022,11 +3074,10 @@ Cu stimă,
      sistemului — mai buna decat un <video> in pagina. Se recupereaza din git daca e nevoie. -->
 
   <div id="loadbar"></div>
-  <div id="offlineBanner" class="offline-banner hidden">📴 Ești offline — modificările nu se salvează până revine conexiunea. Datele din formular rămân intacte.</div>
-  <!-- Singurul canal prin care aplicatia confirma o salvare SAU raporteaza o eroare. Fara
-       `role=status` schimbarea textului nu era anuntata deloc de cititoarele de ecran: pentru un
-       utilizator care nu vede ecranul, „salvat" si „a esuat" aratau la fel — adica nicicum.
-       `polite` (nu `assertive`): mesajul vine dupa o actiune a utilizatorului, nu-l intrerupe. -->
+  <div id="offlineBanner" class="offline-banner hidden" role="status" aria-live="polite" aria-atomic="true">📴 Ești offline — modificările nu se salvează până revine conexiunea. Datele din formular rămân intacte.</div>
+  <!-- Singurul canal prin care aplicația confirmă o salvare sau raportează o eroare. Core.js
+       schimbă dinamic `status/polite` în `alert/assertive` numai pentru erori și golește textul
+       după ascundere, ca mesajul dispărut să nu rămână în arborele de accesibilitate. -->
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <!-- Dicționar contabil pe înțelesul tuturor (buton ❓ în bara de sus) -->
@@ -3058,32 +3109,5 @@ Cu stimă,
   <script src="/panel-info.js"></script>
   <script type="module" src="/app.js"></script>
 
-  <!-- MOBIL: bara de navigare de jos + panoul „Mai mult" (vizibile doar sub 700px, din CSS) -->
-  <nav class="bottomnav" id="bottomnav" aria-label="Meniu mobil">
-    <button data-go="dashboard" data-tabs="dashboard">🏠<span>Acasă</span></button>
-    <button data-go="documente" data-tabs="documente,intrate,galerie">📥<span>Primite</span></button>
-    <button data-go="emite" data-tabs="emite,iesite,galerie-emise">📤<span>Emise</span></button>
-    <button data-go="cashbook" data-tabs="cashbook,reconciliere">🏦<span>Bancă</span></button>
-    <button id="moreBtn">☰<span>Mai mult</span></button>
-  </nav>
-  <div class="more-sheet hidden" id="moreSheet">
-    <div class="more-box">
-      <div class="more-head"><b>Toate secțiunile</b><button class="btn ghost" id="moreClose">Închide</button></div>
-      <div class="more-grid">
-        <button data-go="tva">🧾 TVA / Declarații</button>
-        <button data-go="balanta">⚖️ Balanța</button>
-        <button data-go="jurnal">📘 Jurnal</button>
-        <button data-go="carte">📗 Cartea mare</button>
-        <button data-go="situatii">📊 Situații</button>
-        <button data-go="stocuri">📦 Stocuri</button>
-        <button data-go="salarizare">👥 Salarii</button>
-        <button data-go="parteneri">🤝 Parteneri</button>
-        <button data-go="livrabile">📁 Livrabile</button>
-        <button data-go="mesaje">💬 Mesaje</button>
-        <button data-go="portofoliu">🗂️ Portofoliu</button>
-        <button data-go="setari">⚙️ Setări</button>
-      </div>
-    </div>
-  </div>
 </body>
 </html>

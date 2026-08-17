@@ -2,7 +2,7 @@
 
 // Listele de inregistrari (recente/intrate/iesite), actiunile pe rand, documentele lipsa, arhiva.
 // Extras din app.js (faza 2); apelurile inapoi spre app.js vin prin setDeps (fara cicluri).
-import { $$, $, H, fmt, toast, api, META, setMeta } from './core.js';
+import { $$, $, H, fmt, toast, api, META, setMeta, confirmAction, promptAction } from './core.js';
 import { pget, workMonth, lunaLabel, onPeriodChange, fillPeriods } from './periods.js';
 
 const D = { goTab: null };
@@ -87,7 +87,9 @@ function renderEntryTable(containerId, rowsHtml, emptyMsg) {
 }
 function bindEntryActions(root) {
   root.querySelectorAll('.del').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm(b.dataset.draft ? 'Ștergi această ciornă?' : 'Ștergi această înregistrare?')) return;
+    if (!await confirmAction(b.dataset.draft ? 'Ciorna va fi eliminată definitiv.' : 'Înregistrarea va fi eliminată definitiv.', {
+      title: b.dataset.draft ? 'Ștergi ciorna?' : 'Ștergi înregistrarea?', confirmLabel: 'Șterge', danger: true,
+    })) return;
     try {
       await api('/api/entries/' + b.dataset.id, { method: 'DELETE' });
       toast('Înregistrare ștearsă');
@@ -103,7 +105,11 @@ function bindEntryActions(root) {
     } catch (e) { toast(e.message, true); }
   }));
   root.querySelectorAll('.storno').forEach((b) => b.addEventListener('click', async () => {
-    const data = prompt('Data notei de storno (YYYY-MM-DD) — trebuie într-o perioadă deschisă:', new Date().toISOString().slice(0, 10));
+    const data = await promptAction('Storno este o corecție reversibilă și păstrează istoricul articolului original.', {
+      title: 'Înregistrează nota de storno', label: 'Data notei', inputType: 'date',
+      value: new Date().toISOString().slice(0, 10), required: true,
+      pattern: /^\d{4}-\d{2}-\d{2}$/, patternMessage: 'Folosește formatul AAAA-LL-ZZ.', confirmLabel: 'Înregistrează storno',
+    });
     if (data == null) return;
     try {
       await api('/api/entries/' + b.dataset.id + '/storno', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }) });
@@ -179,8 +185,8 @@ async function loadMissingDocs() {
   let d; try { d = await api('/api/missing-docs?period=' + p); } catch (e) { el.innerHTML = ''; return; }
   const lbl = lunaLabel(d.period);
   const alert = d.missing.length || d.countThis < d.avgPrev;
-  el.innerHTML = `<div class="missingbox${alert ? '' : ' ok'}">
-    <span class="wi">${alert ? '⚠️' : '✅'}</span>
+  el.innerHTML = `<div class="notice ${alert ? 'warning' : 'success'}">
+    <span class="notice-icon">${alert ? '⚠️' : '✅'}</span>
     <div><b>${lbl}:</b> ${d.countThis} documente intrate · media ultimelor 3 luni: <b>${d.avgPrev}</b>${d.countThis < d.avgPrev ? ' <span class="muted">(sub medie — verifică ce lipsește)</span>' : ''}
       ${d.missing.length
     ? `<div data-u="u23"><b>Posibil lipsă</b> — furnizori care apăreau lunar, dar fără document în ${lbl}:</div>

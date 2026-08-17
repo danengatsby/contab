@@ -477,7 +477,7 @@ Orientativ: text principal citit până la ~125 de caractere, titlu ~40, descrie
 
 ### 12.5 Capturile — care unde merge
 
-Fișierele sunt în `marketing/capturi/`. Sunt făcute pe o instanță **izolată**, cu exemplul oficial
+Fișierele sunt în `marketing/capturi/` (PNG pentru arhivă, JPG optimizat pentru publicare). Sunt făcute pe o instanță **izolată**, cu exemplul oficial
 din ghid, nu pe contul demo public: acela e **scriibil de oricine** și se resetează zilnic, deci o
 captură de acolo publică ce a lăsat ultimul vizitator. La prima încercare, tabloul de bord al
 demoului arăta sold negativ, 10 termene depășite și facturi netrimise în SPV.
@@ -485,17 +485,17 @@ demoului arăta sold negativ, 10 termene depășite și facturi netrimise în SP
 | fișier | ce arată | pentru |
 |---|---|---|
 | `fb-1-acasa.png` | tabloul de bord: venituri, cheltuieli, rezultat, TVA de plată, disponibil | postarea fixată, postarea 1 |
-| `fb-2-portofoliu.png` | 7 firme, 26 depuse din 33, conformitate 79%, 0 restanțe | postarea 2 (contabili) |
+| `fb-2-portofoliu.png` | 7 firme, șase la zi și una în lucru, fără restanțe | postarea 2 (contabili) |
 | `fb-3-document.png` | ecranul de adăugare document primit | postarea 4 (citirea automată) |
 | `fb-4-tva.png` | decont D300 pe iunie: colectată 2.940, deductibilă 2.100, de plată 840, defalcat pe cote | postarea fixată, postarea 10 |
 | `fb-5-balanta.png` | balanța cu mesajul „Balanța se închide — cele patru egalități sunt respectate" | postarea 9 |
 
-**79%, nu 100%.** Portofoliul e construit deliberat cu o firmă rămasă în urmă: un 100% peste tot ar
+**Realist, nu 100%.** Portofoliul e construit deliberat cu o firmă rămasă în urmă: un 100% peste tot ar
 arăta fals și n-ar semăna cu nicio lună reală.
 
-**Regenerare:** `scripts/capturi-marketing.mjs` — rețeta completă și capcanele sunt în antetul lui.
-Cifrele din tabelul de mai sus se schimbă la fiecare regenerare; nu le cita în postări fără să te
-uiți la imagine.
+**Regenerare:** `npm run capturi-marketing`. Comanda pornește o instanță izolată, publică simultan
+PNG/JPG în ambele directoare și scrie `capturi-manifest.json`, cu versiunea UI și amprenta surselor.
+Cifrele se pot schimba la regenerare; nu le cita în postări fără să te uiți la imagine.
 
 ---
 

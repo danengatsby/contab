@@ -1,8 +1,9 @@
 'use strict';
 
 // Mijloace fixe: registru, fisa, amortizare lunara. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, toast, api, fileToCsv } from './core.js';
+import { $$, $, H, fmt, toast, api, fileToCsv, confirmAction, applyFiscalDefaults } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
+import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved, formFlowDiscard } from './formflow.js';
 
 // ───────────────────────── MIJLOACE FIXE ─────────────────────────
 function mfAsOf() { return pget('mf') || new Date().toISOString().slice(0, 7); }
@@ -32,7 +33,7 @@ async function loadAssets() {
           · <button class="linkbtn amf-del" data-id="${a.id}">șterge</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Niciun mijloc fix înregistrat.</p>';
   $$('#assetsList .amf-del').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ștergi acest mijloc fix?')) return;
+    if (!await confirmAction('Mijlocul fix va fi eliminat definitiv.', { title: 'Ștergi mijlocul fix?', confirmLabel: 'Șterge', danger: true })) return;
     await api('/api/assets/' + b.dataset.id, { method: 'DELETE' }); loadAssets(); toast('Mijloc fix șters');
   }));
   $$('#assetsList .amf-inv').forEach((b) => b.addEventListener('click', () => deschideInvestitii(b.dataset.id, b.dataset.nume)));
@@ -45,13 +46,14 @@ async function loadAssets() {
 // Planul de amortizare se recalculeaza pe SERVER; aici doar se inregistreaza investitia si se
 // reincarca registrul. Lista investitiilor existente se arata sub formular, ca sa se vada din ce
 // se compune valoarea de intrare majorata.
-async function deschideInvestitii(id, nume) {
+async function deschideInvestitii(id, nume, options = {}) {
   const box = $('#mfInvBox'); if (!box) return;
   box.classList.remove('hidden');
   $('#mfInvNume').textContent = nume || '';
   const f = $('#mfInvForm');
-  f.assetId.value = id;
+  formFlowFlush(f);
   f.reset(); f.assetId.value = id;
+  formFlowLoaded(f, 'activ:' + id, { restore: options.restoreDraft !== false });
   const lista = await api('/api/assets?asOf=' + mfAsOf()).catch(() => []);
   const a = (Array.isArray(lista) ? lista : (lista.items || [])).find((x) => x.id === id) || {};
   const inv = a.investitii || [];
@@ -62,7 +64,7 @@ async function deschideInvestitii(id, nume) {
         <td><button class="linkbtn mfinv-del" data-id="${H(id)}" data-inv="${H(x.id)}">șterge</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Nicio investiție înregistrată la acest mijloc fix.</p>';
   $$('#mfInvList .mfinv-del').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ștergi această investiție? Planul de amortizare se recalculează.')) return;
+    if (!await confirmAction('Investiția va fi eliminată, iar planul de amortizare va fi recalculat.', { title: 'Ștergi investiția?', confirmLabel: 'Șterge și recalculează', danger: true })) return;
     try {
       await api('/api/assets/' + b.dataset.id + '/investitii/' + b.dataset.inv, { method: 'DELETE' });
       toast('Investiție ștearsă'); deschideInvestitii(id, nume); loadAssets();
@@ -70,7 +72,7 @@ async function deschideInvestitii(id, nume) {
   }));
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
-$('#mfInvClose') && $('#mfInvClose').addEventListener('click', () => $('#mfInvBox').classList.add('hidden'));
+$('#mfInvClose') && $('#mfInvClose').addEventListener('click', () => { formFlowFlush($('#mfInvForm')); $('#mfInvBox').classList.add('hidden'); });
 $('#mfInvForm') && $('#mfInvForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -80,6 +82,7 @@ $('#mfInvForm') && $('#mfInvForm').addEventListener('submit', async (e) => {
   try {
     const r = await api('/api/assets/' + f.assetId.value + '/investitii', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    formFlowSaved(f);
     toast('Investiție înregistrată — valoare de intrare ' + fmt((r.calc || {}).valoareIntrare || 0) + ' lei');
     deschideInvestitii(f.assetId.value, $('#mfInvNume').textContent);
     loadAssets();
@@ -170,6 +173,7 @@ if ($('#cdImportBtn')) {
 function lsQuery() { const f = $('#lsForm'); return 'principal=' + f.principal.value + '&months=' + f.months.value + '&rate=' + f.rate.value + '&method=' + f.method.value; }
 $('#lsForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  formFlowFlush(e.target);
   $('#lsPdf').href = '/pdf/leasing-schedule?' + lsQuery();
   const s = await api('/api/leasing-schedule?' + lsQuery());
   $('#lsView').innerHTML = `<table><thead><tr><th class="num">Luna</th><th class="num">Rată</th><th class="num">Principal</th><th class="num">Dobândă</th><th class="num">Sold rămas</th></tr></thead><tbody>${
@@ -220,7 +224,22 @@ if ($('#assetForm')) {
   if (f.cont) f.cont.addEventListener('change', actualizeazaMetode);
   if (f.cont) f.cont.addEventListener('blur', actualizeazaMetode);
   if (f.computer) f.computer.addEventListener('change', actualizeazaMetode);
+  f.addEventListener('formflow:restored', actualizeazaMetode);
 }
+function golesteMijlocFix(options = {}) {
+  const f = $('#assetForm'); if (!f) return;
+  formFlowFlush(f);
+  f.reset();
+  f.valoareReziduala.value = '0';
+  formFlowLoaded(f, 'nou', { restore: options.restoreDraft !== false });
+  actualizeazaMetode();
+}
+window.addEventListener('contab:company-context', () => {
+  golesteMijlocFix();
+  golesteContractLeasing();
+  const investment = $('#mfInvForm');
+  if (investment) { formFlowLoaded(investment, 'nou', { restore: false }); $('#mfInvBox').classList.add('hidden'); }
+});
 $('#assetForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -233,7 +252,11 @@ $('#assetForm').addEventListener('submit', async (e) => {
   if (f.durataFiscalaLuni && f.durataFiscalaLuni.value) body.durataFiscalaLuni = f.durataFiscalaLuni.value;
   // Plafonul auto (art. 28 alin. (12) lit. m) se trimite doar cand e bifat: marcaj explicit.
   if (f.vehiculM1 && f.vehiculM1.checked) body.vehiculM1 = true;
-  try { await api('/api/assets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Mijloc fix adăugat'); f.reset(); f.valoareReziduala.value = '0'; actualizeazaMetode(); loadAssets(); }
+  try {
+    await api('/api/assets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    formFlowSaved(f);
+    toast('Mijloc fix adăugat'); golesteMijlocFix({ restoreDraft: false }); loadAssets();
+  }
   catch (err) { toast(err.message, true); }
 });
 $('#mfDeprec').addEventListener('click', async () => {
@@ -249,6 +272,14 @@ $('#mfDeprec').addEventListener('click', async () => {
 // ───────────────────────── CONTRACTE DE LEASING ─────────────────────────
 // Nomenclatorul care alimentează factura de rată. Graficul se derivă din contract pe server;
 // aici doar se afișează — regula de calcul are o singură implementare.
+function golesteContractLeasing(options = {}) {
+  const f = $('#lcForm'); if (!f) return;
+  formFlowFlush(f);
+  f.reset();
+  f.id.value = '';
+  applyFiscalDefaults(f);
+  formFlowLoaded(f, 'nou', { restore: options.restoreDraft !== false });
+}
 async function loadLeasingContracts() {
   let list = [];
   try { list = await api('/api/leasing-contracts'); } catch (err) { $('#lcList').innerHTML = `<p class="status err">${H(err.message)}</p>`; return; }
@@ -270,7 +301,8 @@ $('#lcForm').addEventListener('submit', async (e) => {
     dobandaAnuala: f.dobandaAnuala.value, dataPrimeiRate: f.dataPrimeiRate.value, cotaTva: f.cotaTva.value, metoda: f.metoda.value };
   try {
     await api('/api/leasing-contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    toast('Contract salvat'); f.reset(); f.id.value = '';
+    formFlowSaved(f);
+    toast('Contract salvat'); golesteContractLeasing({ restoreDraft: false });
     loadLeasingContracts();
   } catch (err) { toast(err.message, true); }
 });
@@ -280,11 +312,18 @@ $('#lcList').addEventListener('click', async (e) => {
   const c = list.find((x) => x.id === id); if (!c) return;
   if (e.target.classList.contains('lcedit')) {
     const f = $('#lcForm');
+    formFlowFlush(f);
     for (const k of ['id', 'denumire', 'partener', 'cui', 'document', 'principal', 'months', 'dobandaAnuala', 'dataPrimeiRate', 'cotaTva', 'metoda']) if (f[k]) f[k].value = c[k] != null ? c[k] : '';
+    formFlowLoaded(f, 'contract:' + c.id);
     f.scrollIntoView({ block: 'center' });
   } else if (e.target.classList.contains('lcdel')) {
-    if (!confirm('Ștergi contractul „' + c.denumire + '"?')) return;
-    try { await api('/api/leasing-contracts/' + encodeURIComponent(id), { method: 'DELETE' }); toast('Contract șters'); loadLeasingContracts(); $('#lcSchedule').innerHTML = ''; } catch (err) { toast(err.message, true); }
+    if (!await confirmAction('Contractul „' + c.denumire + '” va fi eliminat definitiv.', { title: 'Ștergi contractul?', confirmLabel: 'Șterge', danger: true })) return;
+    try {
+      await api('/api/leasing-contracts/' + encodeURIComponent(id), { method: 'DELETE' });
+      const f = $('#lcForm');
+      if (f.id.value === id) { formFlowDiscard(f); golesteContractLeasing({ restoreDraft: false }); }
+      toast('Contract șters'); loadLeasingContracts(); $('#lcSchedule').innerHTML = '';
+    } catch (err) { toast(err.message, true); }
   } else if (e.target.classList.contains('lcgraf')) {
     try {
       const r = await api('/api/leasing-contracts/' + encodeURIComponent(id) + '/schedule');
@@ -294,5 +333,50 @@ $('#lcList').addEventListener('click', async (e) => {
     } catch (err) { toast(err.message, true); }
   }
 });
+
+registerFormFlow({
+  form: '#mfInvForm',
+  title: 'Investiția ulterioară',
+  firstStepTitle: 'Data și valoarea investiției',
+  entityKey: 'nou',
+  progressFields: ['data', 'suma', 'document', 'descriere'],
+  onDiscard: (form) => deschideInvestitii(form.assetId.value, $('#mfInvNume').textContent, { restoreDraft: false }),
+});
+
+registerFormFlow({
+  form: '#assetForm',
+  title: 'Înregistrarea mijlocului fix',
+  firstStepTitle: 'Identificare și valoare',
+  entityKey: 'nou',
+  progressFields: ['denumire', 'cont', 'cost', 'durataLuni', 'metoda', 'dataPif'],
+  onDiscard: () => golesteMijlocFix({ restoreDraft: false }),
+});
+
+registerFormFlow({
+  form: '#lcForm',
+  title: 'Contractul de leasing',
+  firstStepTitle: 'Contract și locator',
+  entityKey: 'nou',
+  progressFields: ['denumire', 'principal', 'months', 'dataPrimeiRate', 'dobandaAnuala', 'cotaTva', 'metoda'],
+  onDiscard: () => golesteContractLeasing({ restoreDraft: false }),
+});
+
+function resetLeasingSimulator(options = {}) {
+  const form = $('#lsForm'); if (!form) return;
+  formFlowFlush(form);
+  form.reset();
+  formFlowLoaded(form, 'simulator', { restore: options.restoreDraft !== false });
+  $('#lsView').innerHTML = ''; $('#lsPdf').removeAttribute('href');
+}
+registerFormFlow({
+  form: '#lsForm',
+  title: 'Simulatorul graficului de rate',
+  firstStepTitle: 'Finanțare și durată',
+  companyKey: () => 'global',
+  entityKey: 'simulator',
+  progressFields: ['principal', 'months', 'rate', 'method'],
+  onDiscard: () => resetLeasingSimulator({ restoreDraft: false }),
+});
+formFlowLoaded($('#lsForm'), 'simulator');
 
 export { loadAssets, loadLeasingContracts };

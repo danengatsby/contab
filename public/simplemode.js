@@ -108,19 +108,36 @@ export function initUiMode() {
   const simpluImplicit = USER && (USER.tip === 'necontabil' || USER.tip === 'tester') && USER.role !== 'admin';
   applyUiMode(saved || (simpluImplicit ? 'simplu' : 'expert'));
 }
-// Uneltele barei de sus, strânse pe telefon (vezi `#toolsBtn` în styles.css). Comutatorul e pur
-// CSS pe `.topbar`: butoanele nu se mută din DOM, deci nu se pierde niciun ascultător și nu e
-// nimic de refăcut la rotirea ecranului. Se închide la alegerea unei unelte — altfel panoul ar
-// rămâne deschis peste pagina pe care tocmai ai cerut-o.
+// Același panou de unelte se strânge pe desktop și mobil. Butoanele nu se mută din DOM,
+// deci își păstrează ascultătorii și permisiunile. Se închide după alegere, navigare sau Escape.
+function inchideUnelte(restaureazaFocus = false) {
+  const bara = document.querySelector('.topbar');
+  const buton = $('#toolsBtn');
+  if (!bara || !buton) return;
+  const eraDeschis = bara.classList.contains('tools-open');
+  bara.classList.remove('tools-open');
+  buton.setAttribute('aria-expanded', 'false');
+  if (eraDeschis && restaureazaFocus) buton.focus();
+}
 $('#toolsBtn') && $('#toolsBtn').addEventListener('click', () => {
   const bara = document.querySelector('.topbar');
+  // Meniul și uneltele folosesc același spațiu pe telefon; nu se pot suprapune.
+  bara.classList.remove('nav-open');
+  document.body.classList.remove('mobile-nav-open');
+  const navToggle = $('#navToggleBtn');
+  if (navToggle) navToggle.setAttribute('aria-expanded', 'false');
   const deschis = bara.classList.toggle('tools-open');
   $('#toolsBtn').setAttribute('aria-expanded', String(deschis));
 });
 $('#sideTools') && $('#sideTools').addEventListener('click', (e) => {
   if (!e.target.closest('button')) return;
-  document.querySelector('.topbar').classList.remove('tools-open');
-  $('#toolsBtn').setAttribute('aria-expanded', 'false');
+  inchideUnelte();
+});
+$('#tabs') && $('#tabs').addEventListener('click', (e) => {
+  if (e.target.closest('button[data-tab], a.navlink')) inchideUnelte();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.querySelector('.topbar')?.classList.contains('tools-open')) inchideUnelte(true);
 });
 
 $('#uiModeBtn') && $('#uiModeBtn').addEventListener('click', () => {

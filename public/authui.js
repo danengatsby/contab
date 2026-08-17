@@ -3,6 +3,7 @@
 // Autentificare UI: login/2FA, inscriere + preturi, parola uitata/reset, invitatii, schimbarea fortata a parolei.
 // Extras din app.js (faza 2); apelurile inapoi spre app.js vin prin setDeps (fara cicluri).
 import { $$, $, H, fmt, toast, api, setOn402, legaCompletareCui } from './core.js';
+import { registerFormFlow, formFlowLoaded, formFlowSaved, refreshFormFlow, clearFormFlowDrafts } from './formflow.js';
 
 const D = { init: null, goTab: null, promptFirmaSubscribe: null };
 function setAuthuiDeps(d) { Object.assign(D, d); }
@@ -167,6 +168,7 @@ export function aplicaTipCont() {
   // ramane aceeasi pe ambele ecrane de autentificare, ca omul sa stie unde e.
   const titlu = $('#registerOverlay .auth-title');
   if (titlu) titlu.textContent = contabil ? 'Fă-ți cont de contabil' : 'Fă-ți cont gratuit pe Contabo';
+  refreshFormFlow(f);
 }
 $$('#registerForm [name="tipCont"]').forEach((r) => r.addEventListener('change', aplicaTipCont));
 
@@ -179,6 +181,19 @@ legaCompletareCui($('#registerForm'), {
   nume: 'denumire', regCom: 'nrRegCom', adresa: 'adresa', oras: 'localitate', judet: 'judet',
 });
 
+registerFormFlow({
+  form: '#registerForm',
+  title: 'Crearea contului Contabo',
+  firstStepTitle: 'Cum vei folosi aplicația',
+  entityKey: 'inscriere',
+  autosave: false,
+  progressFields: (form) => {
+    const controls = [form.querySelector('[name="tipCont"]:checked'), form.username, form.password];
+    if (regTip() === 'patron') controls.splice(1, 0, form.nume);
+    return controls.filter(Boolean);
+  },
+});
+
 $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target; $('#registerErr').textContent = '';
@@ -188,6 +203,7 @@ $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) =>
     : { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaPlatitor: f.tvaPlatitor.checked, tipEntitate: f.tipEntitate.value, username: f.username.value, password: f.password.value, email: f.email.value };
   try {
     await api('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    formFlowSaved(f);
     f.password.value = '';
     // Inscrierea porneste INTOTDEAUNA proba gratuita; nu mai exista plata imediat dupa creare.
     // Planul platit se alege din aplicatie (Abonament), cand proba se apropie de final.
@@ -218,6 +234,9 @@ $('#loginForm').addEventListener('submit', async (e) => {
 });
 $('#logoutBtn').addEventListener('click', async () => {
   await api('/api/logout', { method: 'POST' });
+  // `location.reload()` NU goleste sessionStorage: fara asta ciornele (CNP, salariu brut) ar
+  // ramane in tab dupa delogare, pe o statie partajata.
+  clearFormFlowDrafts();
   location.reload();
 });
 // Schimbare de parola fortata (cont cu parola implicita): overlay care blocheaza aplicatia.
@@ -267,8 +286,9 @@ function openRegisterPanel() {
   // Inscrierea e mereu pe proba gratuita, deci nu mai exista „plan ales" de anuntat.
   const hint = $('#regPlanHint');
   if (hint) hint.classList.add('hidden');
-  const submitBtn = $('#registerForm') && $('#registerForm').querySelector('button.primary');
+  const submitBtn = $('#regSubmit');
   if (submitBtn) submitBtn.textContent = 'Creează firma și contul';
+  formFlowLoaded($('#registerForm'), 'inscriere', { restore: false });
   $('#registerOverlay') && $('#registerOverlay').classList.remove('hidden'); aplicaTipCont(); // normalizeaza starea la fiecare deschidere
 }
 const inviteToken = new URLSearchParams(location.search).get('invite');

@@ -66,7 +66,7 @@ const ECRANE = {
   's10-primaintrare': 'Înapoi pe contul patronului, luna de lucru pe iunie 2026. Grupurile din meniu deschise pe rând: Documente, Bani, Taxe, Rapoarte.',
   's11-ghid': 'Tabul **Ghid**, derulat, apoi **❓ Dicționar** deschis peste el.',
   's12-acasa': '**Acasă**: „⏰ De făcut acum" cu restanțele și termenele, apoi „Situația firmei — pe scurt".',
-  's12b-birou': 'Chrome-ul de birou, arătat pe rând: bara de meniu de sus, banda de unelte, arborele de module din stânga, bara de stare de jos.',
+  's12b-birou': 'Interfața modernă: arborele unic din stânga, bara contextuală cu pagina/firma/perioada și ajutorul contextual deschis la cerere.',
   's13-document': 'Tabul **➕ Adaugă document primit**: zona de încărcare, apoi formularul deschis cu „✏️ Adaugă manual".',
   's14-preview-pdf': 'Vizualizatorul din aplicație, peste ecran: registrul documentelor lunii, ca PDF.',
   's15-previzualizare': 'Formularul de factură de cumpărare completat pe cameră, cu previzualizarea notei contabile (debit / credit / sumă) care se recalculează.',

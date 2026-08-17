@@ -60,3 +60,14 @@ globalThis.localStorage = {
   setItem: (k, v) => store.set(k, String(v)),
   removeItem: (k) => store.delete(k),
 };
+
+// sessionStorage are `length` + `key(i)`: ciornele de formular se sterg parcurgand cheile
+// dupa prefix, deci un shim doar cu get/set/remove n-ar putea dovedi golirea.
+const sessionStore = new Map();
+globalThis.sessionStorage = {
+  get length() { return sessionStore.size; },
+  key: (i) => (Array.from(sessionStore.keys())[i] ?? null),
+  getItem: (k) => (sessionStore.has(k) ? sessionStore.get(k) : null),
+  setItem: (k, v) => sessionStore.set(k, String(v)),
+  removeItem: (k) => sessionStore.delete(k),
+};

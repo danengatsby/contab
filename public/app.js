@@ -1,5 +1,5 @@
 'use strict';
-import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf, umpleTemeiuri, legaCompletareCui } from './core.js';
+import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf, umpleTemeiuri, legaCompletareCui, confirmAction, alertAction } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, renderPachetWin, renderVideo, setSettingsDeps } from './settings.js';
@@ -22,12 +22,23 @@ import { renderPlan, renderOpening } from './plan.js';
 import { setAuthuiDeps, bootAuth, showLogin, hideLogin, showForcePw, handleRegisterLink, openRegisterPanel } from './authui.js';
 import { setDocflowDeps, fillTipSelect, renderRecurring } from './docflow.js';
 import { setEntriesDeps, loadEntries, renderEntryLists, loadMissingDocs, loadArhiva, loadCalitate } from './entries.js';
+import { registerFormFlow, formFlowLoaded, formFlowSaved, flushAllFormFlows, setFormFlowCompany, setFormFlowUser } from './formflow.js';
 setAuthuiDeps({ init, goTab, promptFirmaSubscribe });
 setDocflowDeps({ goTab, refreshCashbook: loadCashbook }); // salvarea din tabul Bani reîmprospătează registrul
 setEntriesDeps({ goTab });
 setSalarizareDeps({ goTab }); // „editează" din statul de plată duce in pagina „Angajați"
 
 setPeriodsDeps({ renderEntryLists, onTab }); // functiile sunt declarate mai jos (hoisting)
+
+registerFormFlow({
+  form: '#companyForm',
+  title: 'Configurarea firmei',
+  firstStepTitle: 'Identitate și regim TVA',
+  entityKey: () => 'firma:' + (META.firmaActiva || 'curenta'),
+  progressFields: ['nume', 'cui', 'tipEntitate', 'adresa', 'oras', 'judet', 'caen', 'perioadaTva',
+    'regimImpozit', 'formaProprietate', 'administrator', 'intocmitNume', 'intocmitCalitate', 'iban', 'email'],
+  onDiscard: () => fillCompanyForm(),
+});
 
 
 // CURRENT + fluxul documentelor -> public/docflow.js
@@ -45,14 +56,14 @@ async function promptFirmaSubscribe(firmaId, firmaNume) {
   // textul se scrie INAINTE de orice cerere, deci o verificare de dupa ar veni prea tarziu.
   if (META && META.platiSuspendate) {
     firmaSubPromptOpen = false;
-    alert('Firma „' + (firmaNume || '') + '" are nevoie de un abonament, dar acesta nu poate fi '
+    await alertAction('Firma „' + (firmaNume || '') + '" are nevoie de un abonament, dar acesta nu poate fi '
       + 'activat deocamdată.\n\n' + (META.motivPlatiSuspendate || '')
-      + '\n\nScrie-ne și îți prelungim accesul până când abonamentele redevin disponibile.');
+      + '\n\nScrie-ne și îți prelungim accesul până când abonamentele redevin disponibile.', { title: 'Abonamente indisponibile temporar' });
     return;
   }
-  const da = confirm('Abonezi firma „' + (firmaNume || '') + '"?\n\n'
+  const da = await confirmAction('Firma „' + (firmaNume || '') + '" va folosi planul ' + planNume + '. '
     + 'Fiecare firmă are propriul abonament (' + planNume + ' pentru ' + (contabil ? 'contabili' : 'necontabili') + '). '
-    + 'Se deschide plata online — datele firmei rămân intacte.');
+    + 'Se deschide plata online, iar datele firmei rămân intacte.', { title: 'Activezi abonamentul?', confirmLabel: 'Continuă la plată' });
   firmaSubPromptOpen = false;
   if (!da) return;
   try {
@@ -194,19 +205,7 @@ function onTab(t) {
   if (t === 'abonament') loadSubscription();
   if (t === 'ghid') renderGhid();
   if (t === 'mesaje') loadMessages();
-  updateBottomNav(t);
 }
-// Mobil: bara de jos + panou „Mai mult"
-function updateBottomNav(t) {
-  $$('#bottomnav button[data-tabs]').forEach((b) => b.classList.toggle('active', (b.dataset.tabs || '').split(',').includes(t)));
-}
-function closeMore() { const s = $('#moreSheet'); if (s) s.classList.add('hidden'); }
-$$('#bottomnav button[data-go]').forEach((b) => b.addEventListener('click', () => goTab(b.dataset.go)));
-$('#moreBtn') && $('#moreBtn').addEventListener('click', () => $('#moreSheet').classList.remove('hidden'));
-$('#moreClose') && $('#moreClose').addEventListener('click', closeMore);
-$('#moreSheet') && $('#moreSheet').addEventListener('click', (e) => { if (e.target.id === 'moreSheet') closeMore(); });
-$('#moreClose') && $('#moreClose').addEventListener('click', closeMore);
-$$('#moreSheet button[data-go]').forEach((b) => b.addEventListener('click', () => { goTab(b.dataset.go); closeMore(); }));
 // ───────────────────────── FIRME (multi-firma) ─────────────────────────
 // Eticheta de abonament din selectorul de firme: proba (cu zilele ramase), expirata, fara
 // abonament, sau nimic pentru un abonament activ. Scoasa la nivel de modul ca sa fie testabila —
@@ -241,6 +240,9 @@ $('#firmaSelect').addEventListener('change', async (e) => {
     setTimeout(() => { const c = $('#cerereAccesForm'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.cui.focus(); } }, 150);
     return;
   }
+  // Include și ultimele taste încă aflate în debounce. Cheia folosește firma veche; după init,
+  // formularele vor restaura numai ciornele firmei nou activate.
+  flushAllFormFlows();
   await activateFirma(e.target.value);
   const active = $('#tabs button[data-tab].active'); onTab(active ? active.dataset.tab : 'dashboard');
   toast('Firmă activă schimbată');
@@ -337,6 +339,9 @@ function addPanelInfo() {
 }
 
 async function init() {
+  // Poate fi chemat și din alte fluxuri decât selectorul (administrare, impersonare). Finalizează
+  // ciornele sub contextul de firmă încă activ înainte de a înlocui META cu răspunsul nou.
+  flushAllFormFlows();
   try {
     setMeta(await api('/api/meta'));
   } catch (e) {
@@ -357,6 +362,8 @@ async function init() {
   applyFiscalDefaults(); // cotele implicite din formulare vin din META.fiscal, nu din HTML
   setUser(META.user || {});
   setCsrf(META.user && META.user.csrf); // token-ul CSRF pentru toate cererile mutante ulterioare
+  // Ciornele locale se leaga de contul curent INAINTE ca vreun formular sa fie incarcat.
+  setFormFlowUser(META.user && META.user.id);
   // Plasa de siguranta (daca meta ar fi permisa candva): acelasi ecran de schimbare fortata.
   if (USER.mustChange) { showForcePw(); return; }
   $('#userBadge').textContent = USER.username ? (USER.username + (USER.tip ? ' · ' + USER.tip : '')) : '';
@@ -455,6 +462,9 @@ async function init() {
   maybeTour();
   $('#companyName').textContent = (META.company && META.company.nume) || '';
   fillFirmaSelect();
+  setFormFlowCompany(META.firmaActiva);
+  // Curăță valorile firmei precedente și restaurează numai ciorna firmei active.
+  window.dispatchEvent(new CustomEvent('contab:company-context', { detail: { firmaId: META.firmaActiva } }));
   fillCompanyForm();
   fillTipSelect();
   fillPeriods();
@@ -546,6 +556,9 @@ function fillCompanyForm() {
   // antetul situatiilor financiare — se completeaza dupa ce nomenclatoarele sunt in DOM
   fillBilantNomenclatoare().then(() => {
     BILANT_FIELDS.forEach((k) => { if (f[k]) f[k].value = META.company[k] || (k === 'auditStatut' ? '3' : ''); });
+    f.dataset.serverFilled = '1';
+    formFlowLoaded(f, 'firma:' + (META.firmaActiva || 'curenta'));
+    window.dispatchEvent(new CustomEvent('contab:company-filled'));
   });
   refreshLogo();
   refreshFiscalProfile();
@@ -670,7 +683,9 @@ $('#lockSet') && $('#lockSet').addEventListener('click', async () => {
   try { await setLock(v); toast('Perioade blocate până la ' + v); } catch (e) { toast(e.message, true); }
 });
 $('#lockClear') && $('#lockClear').addEventListener('click', async () => {
-  if (!confirm('Deblochezi TOATE perioadele? Vei putea înregistra din nou în lunile închise.')) return;
+  if (!await confirmAction('Toate lunile închise vor deveni din nou editabile. Această excepție poate schimba rapoarte sau declarații deja depuse.', {
+    title: 'Deblochezi toate perioadele?', confirmLabel: 'Deblochează', danger: true,
+  })) return;
   try { await setLock(null); toast('Perioade deblocate'); } catch (e) { toast(e.message, true); }
 });
 // ── „Luna de lucru" + filtrele de perioada → public/periods.js ──
@@ -694,7 +709,7 @@ function prefDark() {
 function applyTheme() {
   const d = prefDark();
   document.body.classList.toggle('dark', d);
-  const b = $('#themeBtn'); if (b) b.textContent = d ? '☀️' : '🌙';
+  const b = $('#themeBtn'); if (b) b.textContent = d ? '☀️ Temă' : '🌙 Temă';
 }
 $('#themeBtn') && $('#themeBtn').addEventListener('click', () => {
   const d = !document.body.classList.contains('dark');
@@ -735,10 +750,9 @@ $$('.qa[data-go]').forEach((b) => b.addEventListener('click', () => goTab(b.data
 // Ghidează un ne-contabil prin întrebări simple → alege automat tipul de document potrivit.
 // Tipurile de IESIRE (emise de firma) se deschid in pagina „Emite factura"; restul in „Adauga document primit"
 
-// Harta ciclului contabil — afisata in capul ecranelor din ciclu, cu pasul curent evidentiat
-// Pasii marcati `adv` sunt tehnic-contabili si duc spre taburi ascunse in modul simplu; ei
-// (si sagetile lor) primesc clasa `adv`, deci `.simple-ui .adv` ii ascunde — in modul simplu
-// bara ramane „Documente → Declarații", fara jargon.
+// Ordinea canonică a ciclului contabil. NU mai desenăm aici o a doua navigație:
+// destinațiile există deja în arborele lateral. Marcăm butoanele reale cu etapa
+// lor, iar bara contextuală afișează discret „etapa N/7" lângă titlul paginii.
 const CYCLE = [
   { go: 'documente', ic: '📥', t: 'Documente' },
   { go: 'emite', ic: '🧾', t: 'Emite' },
@@ -748,13 +762,16 @@ const CYCLE = [
   { go: 'inchideri', ic: '🔒', t: 'Închideri', adv: true },
   { go: 'livrabile', ic: '📤', t: 'Declarații' },
 ];
-$$('.cyclemap').forEach((m) => {
-  const cur = m.dataset.step;
-  m.innerHTML = CYCLE.map((s, i) =>
-    `${i ? `<span class="cyclearrow${s.adv ? ' adv' : ''}" aria-hidden="true">→</span>` : ''}<button class="cyclestep${s.adv ? ' adv' : ''}${s.go === cur ? ' active' : ''}" data-go="${s.go}"${s.go === cur ? ' aria-current="page"' : ''}><span class="ci" aria-hidden="true">${s.ic}</span>${s.t}</button>`
-  ).join('');
-  m.querySelectorAll('.cyclestep').forEach((b) => b.addEventListener('click', () => goTab(b.dataset.go)));
+CYCLE.forEach((s, i) => {
+  const b = $(`#tabs button[data-tab="${s.go}"]`);
+  if (!b) return;
+  b.dataset.cyclePosition = String(i + 1);
+  b.dataset.cycleTotal = String(CYCLE.length);
+  b.dataset.cycleLabel = s.t;
 });
+if (typeof document.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+  document.dispatchEvent(new CustomEvent('contab:cycle-ready'));
+}
 
 // Mesaj de bun-venit la prima logare (o data per utilizator, per browser)
 function welcomeKey() { return 'contab_welcomed_' + ((USER && USER.username) || '?'); }
@@ -952,24 +969,26 @@ async function renderFirmeBilling() {
 function renderSubscription(data) {
   const c = data.current || {}; const plans = data.plans || [];
   const nameOf = (id) => (plans.find((p) => p.id === id) || {}).nume || id;
+  const subscriptionNotice = (tone, icon, content) =>
+    `<div class="notice ${tone}"><span class="notice-icon">${icon}</span><div>${content}</div></div>`;
   // banner de stare
   let banner = '';
-  if (c.status === 'trial') banner = `<div class="sub-banner ok"><b>✓ Perioadă de probă activă</b> — îți mai rămân <b>${c.zileRamase}</b> ${c.zileRamase === 1 ? 'zi' : 'zile'}. Alege un plan pentru a continua după probă.</div>`;
-  else if (c.status === 'active') banner = `<div class="sub-banner ok"><b>✓ Abonament activ: ${nameOf(c.plan)}</b>${c.since ? ' · din ' + c.since.slice(0, 10) : ''}.</div>`;
-  else if (c.status === 'expired') banner = `<div class="sub-banner warn"><b>⚠ Perioada de probă a expirat.</b> Alege un plan pentru a continua.</div>`;
-  else banner = `<div class="sub-banner"><b>Niciun abonament activ.</b> Începe cu proba gratuită de 30 zile.</div>`;
+  if (c.status === 'trial') banner = subscriptionNotice('success', '✓', `<b>Perioadă de probă activă</b> — îți mai rămân <b>${c.zileRamase}</b> ${c.zileRamase === 1 ? 'zi' : 'zile'}. Alege un plan pentru a continua după probă.`);
+  else if (c.status === 'active') banner = subscriptionNotice('success', '✓', `<b>Abonament activ: ${nameOf(c.plan)}</b>${c.since ? ' · din ' + c.since.slice(0, 10) : ''}.`);
+  else if (c.status === 'expired') banner = subscriptionNotice('warning', '⚠', '<b>Perioada de probă a expirat.</b> Alege un plan pentru a continua.');
+  else banner = subscriptionNotice('info', 'ℹ', '<b>Niciun abonament activ.</b> Începe cu proba gratuită de 30 zile.');
   // Accesul il da abonamentul FIRMEI, nu al contului: bannerul trebuie sa spuna ce se intampla cu
   // ea. Altfel invita la „proba gratuită de 30 zile" exact sub cardul care anunta ca sunt consumate.
   const f = data.firma;
   if (f) {
-    if (f.status === 'trial') banner = `<div class="sub-banner ok"><b>✓ ${H(data.firmaNume || 'Firma activă')}: probă activă</b> — încă <b>${f.zileRamase}</b> ${f.zileRamase === 1 ? 'zi' : 'zile'}${f.trialCount ? ` (proba ${f.trialCount} din ${f.trialMax})` : ''}.</div>`;
-    else if (f.status === 'active') banner = `<div class="sub-banner ok"><b>✓ ${H(data.firmaNume || 'Firma activă')}: abonament activ</b>${f.plan && f.plan !== 'grandfathered' ? ' · ' + (f.plan === 'pro' ? 'Pro' : 'Start') : ''}.</div>`;
-    else if (f.maiPoateProba) banner = `<div class="sub-banner warn"><b>⚠ ${H(data.firmaNume || 'Firma activă')}: perioada de probă a expirat.</b> Alege un plan — sau mai iei o lună gratuită (ultima).</div>`;
-    else banner = `<div class="sub-banner warn"><b>⚠ ${H(data.firmaNume || 'Firma activă')}: cele ${f.trialMax} perioade de probă s-au terminat.</b> Alege un plan ca să continui.</div>`;
+    if (f.status === 'trial') banner = subscriptionNotice('success', '✓', `<b>${H(data.firmaNume || 'Firma activă')}: probă activă</b> — încă <b>${f.zileRamase}</b> ${f.zileRamase === 1 ? 'zi' : 'zile'}${f.trialCount ? ` (proba ${f.trialCount} din ${f.trialMax})` : ''}.`);
+    else if (f.status === 'active') banner = subscriptionNotice('success', '✓', `<b>${H(data.firmaNume || 'Firma activă')}: abonament activ</b>${f.plan && f.plan !== 'grandfathered' ? ' · ' + (f.plan === 'pro' ? 'Pro' : 'Start') : ''}.`);
+    else if (f.maiPoateProba) banner = subscriptionNotice('warning', '⚠', `<b>${H(data.firmaNume || 'Firma activă')}: perioada de probă a expirat.</b> Alege un plan — sau mai iei o lună gratuită (ultima).`);
+    else banner = subscriptionNotice('warning', '⚠', `<b>${H(data.firmaNume || 'Firma activă')}: cele ${f.trialMax} perioade de probă s-au terminat.</b> Alege un plan ca să continui.`);
   }
-  if (c.requestedPlan && c.status !== 'active') banner += `<div class="sub-banner">⏳ Ai solicitat planul <b>${nameOf(c.requestedPlan)}</b> — în așteptarea activării (după confirmarea plății).</div>`;
+  if (c.requestedPlan && c.status !== 'active') banner += subscriptionNotice('info', '⏳', `Ai solicitat planul <b>${nameOf(c.requestedPlan)}</b> — în așteptarea activării (după confirmarea plății).`);
   if (c.status === 'active' && data.manageable) banner += `<div data-u="u23"><button id="subPortal" class="btn">Gestionează / anulează abonamentul</button></div>`;
-  if (c.status === 'canceled') banner = `<div class="sub-banner warn"><b>Abonament anulat.</b> Alege din nou un plan pentru a reactiva.</div>` + banner;
+  if (c.status === 'canceled') banner = subscriptionNotice('warning', '⚠', '<b>Abonament anulat.</b> Alege din nou un plan pentru a reactiva.') + banner;
   $('#subStatus').innerHTML = banner;
   const pb = $('#subPortal');
   if (pb) pb.addEventListener('click', async () => {
@@ -1204,6 +1223,8 @@ $('#companyForm').addEventListener('submit', async (e) => {
   META.company = r.company || body;
   refreshFiscalProfile(); // recalculeaza rezumatul profilului — inaintea DOM-ului care ar putea arunca
   const cn = $('#companyName'); if (cn) cn.textContent = body.nume; // absent in modul simplu — nu bloca restul
+  formFlowSaved(f);
+  window.dispatchEvent(new CustomEvent('contab:company-saved'));
   toast('Date firmă salvate' + (body.tvaLaIncasare ? ' · regim TVA la încasare ACTIV' : ''));
 });
 $('#seedBtn').addEventListener('click', async () => {

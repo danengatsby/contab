@@ -18,6 +18,7 @@
     "prestart": "npm test",
     "e2e": "bash scripts/e2e.sh",
     "e2e-izolat": "bash scripts/e2e-izolat.sh",
+    "capturi-marketing": "bash scripts/capturi-marketing.sh",
     "lint-syntax": "node scripts/check-syntax.js",
     "pachet-windows": "sh scripts/pachet-windows.sh",
     "publica-video": "bash scripts/publica-video.sh",

@@ -1,9 +1,10 @@
 'use strict';
 
 // Stocuri si gestiune: situatii, fise de magazie, documente de stoc, inventariere, productie. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, toast, api, fileToCsv, round2 } from './core.js';
+import { $$, $, H, fmt, toast, api, fileToCsv, round2, confirmAction } from './core.js';
 import { pget, workMonth, onPeriodChange } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
+import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved, refreshFormFlow } from './formflow.js';
 
 // ───────────────────────── STOCURI ─────────────────────────
 let STOCK_MOVS = [];
@@ -41,6 +42,10 @@ function renderStockMovements() {
 $('#mvfText').addEventListener('input', renderStockMovements);
 $('#mvfReset').addEventListener('click', () => { $('#mvfTip').value = ''; $('#mvfGest').value = ''; $('#mvfText').value = ''; $('#mvfLuna').value = ''; renderStockMovements(); });
 async function loadStocks() {
+  // Selecturile de produs și gestiune sunt reconstruite din răspunsul serverului. Finalizăm
+  // întâi debounce-ul, apoi restaurăm ciorna peste noile opțiuni, ca valorile să nu sară la primul
+  // element din listă când se schimbă perioada sau se reîncarcă stocurile.
+  formFlowFlush($('#movementForm'));
   const asOf = stocAsOf();
   const gf = $('#stocGestFilter').value;
   $('#stocPdf').href = '/pdf/stocks?asOf=' + asOf;
@@ -67,6 +72,8 @@ async function loadStocks() {
   mf.productId.innerHTML = products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
   mf.gestiuneId.innerHTML = gestOpts || '<option value="">(nicio gestiune)</option>';
   mf.gestiuneDestId.innerHTML = gestOpts || '<option value="">(nicio gestiune)</option>';
+  formFlowLoaded(mf, 'nou');
+  actualizeazaTipMiscare();
   $('#stocGestFilter').innerHTML = '<option value="">Toate gestiunile</option>' + gestiuni.map((g) => `<option value="${g.id}"${g.id === gf ? ' selected' : ''}>${H(g.cod)} — ${H(g.denumire)}</option>`).join('');
   fillProduction(products, gestiuni);
   fillRecipes(products, gestiuni);
@@ -84,7 +91,7 @@ async function loadStocks() {
       <tr class="bold"><td colspan="6">TOTAL VALOARE STOC</td><td class="num">${fmt(round2(totV))}</td><td></td></tr></tbody></table>`
     : '<p class="muted">Niciun stoc. Adaugă produse/gestiuni și înregistrează recepții.</p>';
   $$('#stocksList .pdel').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ștergi produsul? (permis doar dacă nu are nicio mișcare)')) return;
+    if (!await confirmAction('Produsul poate fi șters numai dacă nu are nicio mișcare de stoc.', { title: 'Ștergi produsul?', confirmLabel: 'Șterge', danger: true })) return;
     try { await api('/api/products/' + b.dataset.id, { method: 'DELETE' }); loadStocks(); toast('Produs șters'); }
     catch (e) { toast(e.message || 'Nu se poate șterge', true); }
   }));
@@ -109,7 +116,7 @@ async function loadStocks() {
         <td><a class="linkbtn" href="/pdf/inventory-pv/${iv.id}" target="_blank">proces-verbal</a>${iv.status === 'stornat' ? '' : ` · <button class="linkbtn ivstorno" data-id="${iv.id}">stornează</button>`}</td></tr>`).join('')}</tbody></table>`
     : '';
   $$('#inventoriesList .ivstorno').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Stornezi acest inventar? Se reversează notele contabile și se șterg mișcările de reglare (stocul revine la starea de dinainte).')) return;
+    if (!await confirmAction('Notele contabile și mișcările de reglare vor fi reversate. Stocul revine la starea de dinaintea inventarului.', { title: 'Stornezi inventarul?', confirmLabel: 'Stornează inventarul', danger: true })) return;
     try { const r = await api('/api/inventories/' + b.dataset.id + '/storno', { method: 'POST' }); toast('Inventar stornat (' + r.stornoEntries + ' note reversate)'); loadStocks(); }
     catch (err) { toast(err.message, true); }
   }));
@@ -124,17 +131,26 @@ async function loadStocks() {
 onPeriodChange('stoc', loadStocks);
 $('#stocGestFilter').addEventListener('change', loadStocks);
 async function loadDocSeries() {
-  let s; try { s = await api('/api/doc-series'); } catch (e) { return; }
   const f = $('#docSeriesForm');
+  // `loadStocks` reîncarcă și acest panou; nu pierdem o valoare tastată între două răspunsuri API.
+  formFlowFlush(f);
+  let s; try { s = await api('/api/doc-series'); } catch (e) { return; }
   ['NIR', 'BC', 'AVIZ', 'CH'].forEach((t) => { if (s[t]) { f[t + '_serie'].value = s[t].serie; f[t + '_next'].value = s[t].next; } });
+  formFlowLoaded(f, 'config:serii');
 }
 $('#docSeriesForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   const body = { NIR: { serie: f.NIR_serie.value, next: f.NIR_next.value }, BC: { serie: f.BC_serie.value, next: f.BC_next.value }, AVIZ: { serie: f.AVIZ_serie.value, next: f.AVIZ_next.value }, CH: { serie: f.CH_serie.value, next: f.CH_next.value } };
   await api('/api/doc-series', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  toast('Serii salvate'); loadDocSeries();
+  formFlowSaved(f); toast('Serii salvate'); loadDocSeries();
 });
+function resetProductForm(options = {}) {
+  const form = $('#productForm'); if (!form) return;
+  formFlowFlush(form);
+  form.reset(); form.um.value = 'buc'; form.cont.value = '371';
+  formFlowLoaded(form, 'nou', { restore: options.restoreDraft !== false });
+}
 $('#gestiuneForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -145,7 +161,10 @@ $('#productForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   const body = { cod: f.cod.value, denumire: f.denumire.value, um: f.um.value, cont: f.cont.value, grupa: f.grupa.value, codNC: f.codNC.value };
-  try { await api('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Produs salvat'); f.reset(); f.um.value = 'buc'; f.cont.value = '371'; loadStocks(); }
+  try {
+    await api('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    formFlowSaved(f); toast('Produs salvat'); resetProductForm({ restoreDraft: false }); loadStocks();
+  }
   catch (err) { toast(err.message, true); }
 });
 $('#prodCsvFile').addEventListener('change', async (e) => { const f = e.target.files[0]; if (f) { try { $('#prodCsvIn').value = await fileToCsv(f); } catch (err) { toast(err.message, true); } } });
@@ -182,41 +201,110 @@ $('#initStocBtn').addEventListener('click', async () => {
     loadStocks();
   } catch (err) { toast(err.message, true); }
 });
-// transfer => arată gestiunea destinație, ascunde prețul
-$('#movementForm').tip.addEventListener('change', (e) => {
-  const isTransfer = e.target.value === 'transfer';
-  const isReceptie = e.target.value === 'receptie';
+// transfer => arată gestiunea destinație, ascunde prețul. Aceeași funcție rulează și după
+// restaurarea unei ciorne: setarea programatică a unui <select> nu emite singură `change`.
+function actualizeazaTipMiscare() {
+  const f = $('#movementForm');
+  const isTransfer = f.tip.value === 'transfer';
+  const isReceptie = f.tip.value === 'receptie';
   $('#gestDestRow').classList.toggle('hidden', !isTransfer);
   $('#pretRow').classList.toggle('hidden', isTransfer);
   $('#furnizorRow').classList.toggle('hidden', !isReceptie);
   $('#gestSrcRow').firstChild.textContent = isTransfer ? 'Gestiune sursă ' : 'Gestiune ';
+  f.gestiuneDestId.required = isTransfer;
+  refreshFormFlow(f);
+}
+function golesteMiscareStoc(options = {}) {
+  const f = $('#movementForm'); if (!f) return;
+  formFlowFlush(f);
+  f.reset();
+  f.data.value = new Date().toISOString().slice(0, 10);
+  formFlowLoaded(f, 'nou', { restore: options.restoreDraft !== false });
+  actualizeazaTipMiscare();
+}
+$('#movementForm').tip.addEventListener('change', actualizeazaTipMiscare);
+$('#movementForm').addEventListener('formflow:restored', actualizeazaTipMiscare);
+window.addEventListener('contab:company-context', () => {
+  golesteMiscareStoc({ restoreDraft: false });
+  resetProductForm({ restoreDraft: false });
+  resetProductionForm({ restoreDraft: false });
+  recipeResetForm({ restoreDraft: false });
 });
 $('#movementForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   const body = { productId: f.productId.value, tip: f.tip.value, gestiuneId: f.gestiuneId.value, gestiuneDestId: f.gestiuneDestId.value, data: f.data.value, cantitate: f.cantitate.value, pretUnitar: f.pretUnitar.value, furnizor: f.furnizor.value, document: f.document.value };
-  try { await api('/api/stock-movements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Mișcare înregistrată'); f.cantitate.value = ''; f.pretUnitar.value = ''; f.furnizor.value = ''; f.document.value = ''; loadStocks(); }
+  try {
+    await api('/api/stock-movements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    formFlowSaved(f);
+    toast('Mișcare înregistrată');
+    // Produsul, tipul, gestiunea și data rămân pentru operarea rapidă a mai multor documente;
+    // numai datele tranzacției tocmai salvate se golesc.
+    f.cantitate.value = ''; f.pretUnitar.value = ''; f.furnizor.value = ''; f.document.value = '';
+    formFlowLoaded(f, 'nou', { restore: false });
+    loadStocks();
+  }
   catch (err) { toast(err.message, true); }
 });
 // ── Producție ──
 let PROD_OPTS = { products: [], gestiuni: [] };
-function prodMatRow() {
+function selectKnown(control, value) {
+  if (!control || value == null || value === '') return;
+  if (control.tagName === 'SELECT' && !Array.from(control.options).some((option) => option.value === String(value))) return;
+  control.value = value;
+}
+function signalDynamicChange(node) {
+  const form = node && node.closest && node.closest('form');
+  if (form) form.dispatchEvent(new Event('input', { bubbles: true }));
+}
+function prodMatRow(mat) {
   const div = document.createElement('div');
   div.className = 'row'; div.style.cssText = 'gap:6px;margin-top:4px;align-items:center';
   div.innerHTML = `<select class="pm-prod" data-u="u52">${PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('')}</select>
     <select class="pm-gest" data-u="u46">${PROD_OPTS.gestiuni.map((g) => `<option value="${H(g.id)}">${H(g.cod)}</option>`).join('')}</select>
     <input class="pm-qty" type="number" step="0.001" placeholder="cantitate" data-u="u46">
     <button type="button" class="del pm-del" title="Elimină">✕</button>`;
-  div.querySelector('.pm-del').addEventListener('click', () => div.remove());
+  if (mat) {
+    selectKnown(div.querySelector('.pm-prod'), mat.productId);
+    selectKnown(div.querySelector('.pm-gest'), mat.gestiuneId);
+    div.querySelector('.pm-qty').value = mat.cantitate == null ? '' : mat.cantitate;
+  }
+  div.querySelector('.pm-del').addEventListener('click', () => { const form = div.closest('form'); div.remove(); signalDynamicChange(form); });
   return div;
+}
+function productionDraft(form) {
+  return {
+    values: { data: form.data.value, document: form.document.value, productId: form.productId.value,
+      gestiuneId: form.gestiuneId.value, cantitate: form.cantitate.value, costUnitar: form.costUnitar.value },
+    materiale: $$('#prodMaterials .row').map((row) => ({ productId: row.querySelector('.pm-prod').value,
+      gestiuneId: row.querySelector('.pm-gest').value, cantitate: row.querySelector('.pm-qty').value })),
+  };
+}
+function restoreProductionDraft(form, draft) {
+  if (!draft) return;
+  Object.entries(draft.values || {}).forEach(([name, value]) => selectKnown(form.elements[name], value));
+  $('#prodMaterials').innerHTML = '';
+  (draft.materiale || []).forEach((material) => $('#prodMaterials').appendChild(prodMatRow(material)));
+  if (!$('#prodMaterials').children.length) $('#prodMaterials').appendChild(prodMatRow());
+}
+function resetProductionForm(options = {}) {
+  const form = $('#prodForm'); if (!form) return;
+  formFlowFlush(form);
+  form.reset();
+  form.data.value = new Date().toISOString().slice(0, 10);
+  $('#prodMaterials').innerHTML = ''; $('#prodMaterials').appendChild(prodMatRow());
+  formFlowLoaded(form, 'nou', { restore: options.restoreDraft !== false });
 }
 function fillProduction(products, gestiuni) {
   PROD_OPTS = { products: products || [], gestiuni: gestiuni || [] };
   const f = $('#prodForm'); if (!f) return;
+  const current = productionDraft(f);
+  formFlowFlush(f);
   f.productId.innerHTML = PROD_OPTS.products.map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
   f.gestiuneId.innerHTML = PROD_OPTS.gestiuni.map((g) => `<option value="${g.id}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
   if (!f.data.value) f.data.value = new Date().toISOString().slice(0, 10);
-  if (!$('#prodMaterials').children.length) $('#prodMaterials').appendChild(prodMatRow());
+  restoreProductionDraft(f, current);
+  formFlowLoaded(f, 'nou');
   renderProductionReport();
 }
 async function renderProductionReport() {
@@ -230,7 +318,7 @@ async function renderProductionReport() {
       : '<p class="muted">Nicio producție înregistrată în luna de lucru.</p>';
   } catch (e) { /* ignora */ }
 }
-$('#prodAddMat') && $('#prodAddMat').addEventListener('click', () => $('#prodMaterials').appendChild(prodMatRow()));
+$('#prodAddMat') && $('#prodAddMat').addEventListener('click', () => { $('#prodMaterials').appendChild(prodMatRow()); signalDynamicChange($('#prodMaterials')); });
 $('#prodForm') && $('#prodForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -242,7 +330,9 @@ $('#prodForm') && $('#prodForm').addEventListener('submit', async (e) => {
     const r = await api('/api/production', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     $('#prodStatus').className = 'status ok';
     $('#prodStatus').textContent = 'Producție înregistrată: cost materiale ' + fmt(r.costMateriale) + ', valoare obținută ' + fmt(r.valoareObtinuta) + ' lei.' + (r.warns.length ? ' ' + r.warns.join(' ') : '');
+    formFlowSaved(f);
     f.cantitate.value = ''; f.costUnitar.value = ''; f.document.value = ''; $('#prodMaterials').innerHTML = '';
+    formFlowLoaded(f, 'nou', { restore: false });
     loadStocks(); loadEntries();
   } catch (err) { $('#prodStatus').className = 'status err'; $('#prodStatus').textContent = err.message; }
 });
@@ -255,25 +345,59 @@ function recipeMatRow(mat) {
     <input class="rm-qty" type="number" step="0.001" placeholder="cantitate" data-u="u46">
     <button type="button" class="del rm-del" title="Elimină">✕</button>`;
   if (mat) {
-    div.querySelector('.rm-prod').value = mat.productId;
-    if (mat.gestiuneId) div.querySelector('.rm-gest').value = mat.gestiuneId;
+    selectKnown(div.querySelector('.rm-prod'), mat.productId);
+    selectKnown(div.querySelector('.rm-gest'), mat.gestiuneId);
     div.querySelector('.rm-qty').value = mat.cantitate;
   }
-  div.querySelector('.rm-del').addEventListener('click', () => div.remove());
+  div.querySelector('.rm-del').addEventListener('click', () => { const form = div.closest('form'); div.remove(); signalDynamicChange(form); });
   return div;
 }
-function recipeResetForm() {
+function recipeDraft(form) {
+  return {
+    values: { id: form.elements.id.value, nume: form.nume.value, productId: form.productId.value,
+      gestiuneId: form.gestiuneId.value, cantitateBaza: form.cantitateBaza.value, costUnitar: form.costUnitar.value },
+    materiale: $$('#recipeMaterials .row').map((row) => ({ productId: row.querySelector('.rm-prod').value,
+      gestiuneId: row.querySelector('.rm-gest').value, cantitate: row.querySelector('.rm-qty').value })),
+  };
+}
+function restoreRecipeDraft(form, draft) {
+  if (!draft) return;
+  Object.entries(draft.values || {}).forEach(([name, value]) => selectKnown(form.elements[name], value));
+  $('#recipeMaterials').innerHTML = '';
+  (draft.materiale || []).forEach((material) => $('#recipeMaterials').appendChild(recipeMatRow(material)));
+  if (!$('#recipeMaterials').children.length) $('#recipeMaterials').appendChild(recipeMatRow());
+  $('#recipeFormMode').textContent = form.elements.id.value ? 'Editare rețetă' : 'Rețetă nouă';
+}
+function recipeResetForm(options = {}) {
   const f = $('#recipeForm'); if (!f) return;
-  f.reset(); f.id.value = ''; f.cantitateBaza.value = '1';
+  formFlowFlush(f);
+  f.reset(); f.elements.id.value = ''; f.cantitateBaza.value = '1';
   $('#recipeMaterials').innerHTML = ''; $('#recipeMaterials').appendChild(recipeMatRow());
-  $('#recipeStatus').textContent = '';
+  if (options.clearStatus !== false) $('#recipeStatus').textContent = '';
+  $('#recipeFormMode').textContent = 'Rețetă nouă';
+  formFlowLoaded(f, 'nou', { restore: options.restoreDraft !== false });
 }
 function fillRecipes(products, gestiuni) {
   const f = $('#recipeForm'); if (!f) return;
+  const current = recipeDraft(f);
+  const entity = f.elements.id.value ? 'reteta:' + f.elements.id.value : 'nou';
+  formFlowFlush(f);
   f.productId.innerHTML = (products || []).map((p) => `<option value="${p.id}">${H(p.cod)} — ${H(p.denumire)}</option>`).join('') || '<option value="">(niciun produs)</option>';
   f.gestiuneId.innerHTML = (gestiuni || []).map((g) => `<option value="${g.id}">${H(g.cod)} — ${H(g.denumire)}</option>`).join('') || '<option value="">(nicio gestiune)</option>';
-  if (!$('#recipeMaterials').children.length) $('#recipeMaterials').appendChild(recipeMatRow());
+  restoreRecipeDraft(f, current);
+  formFlowLoaded(f, entity);
   renderRecipes(products);
+}
+function openRecipeForm(recipe, options = {}) {
+  const f = $('#recipeForm'); if (!f || !recipe) return;
+  if (options.flush !== false) formFlowFlush(f);
+  f.elements.id.value = recipe.id; f.nume.value = recipe.nume; selectKnown(f.productId, recipe.productId);
+  selectKnown(f.gestiuneId, recipe.gestiuneId); f.cantitateBaza.value = recipe.cantitateBaza; f.costUnitar.value = recipe.costUnitar || '';
+  $('#recipeMaterials').innerHTML = '';
+  (recipe.materiale || []).forEach((material) => $('#recipeMaterials').appendChild(recipeMatRow(material)));
+  if (!(recipe.materiale || []).length) $('#recipeMaterials').appendChild(recipeMatRow());
+  $('#recipeFormMode').textContent = 'Editare rețetă';
+  formFlowLoaded(f, 'reteta:' + recipe.id, { restore: options.restoreDraft !== false });
 }
 async function renderRecipes(products) {
   const box = $('#recipeList'); if (!box) return;
@@ -302,21 +426,16 @@ async function renderRecipes(products) {
   }));
   $$('#recipeList .rc-edit').forEach((b) => b.addEventListener('click', () => {
     const r = box._recipes.find((x) => x.id === b.closest('tr').dataset.id); if (!r) return;
-    const f = $('#recipeForm');
-    f.id.value = r.id; f.nume.value = r.nume; f.productId.value = r.productId; if (r.gestiuneId) f.gestiuneId.value = r.gestiuneId;
-    f.cantitateBaza.value = r.cantitateBaza; f.costUnitar.value = r.costUnitar || '';
-    $('#recipeMaterials').innerHTML = '';
-    (r.materiale || []).forEach((m) => $('#recipeMaterials').appendChild(recipeMatRow(m)));
-    if (!(r.materiale || []).length) $('#recipeMaterials').appendChild(recipeMatRow());
+    const f = $('#recipeForm'); openRecipeForm(r);
     f.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }));
   $$('#recipeList .rc-del').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ștergi rețeta?')) return;
+    if (!await confirmAction('Rețeta de producție va fi eliminată.', { title: 'Ștergi rețeta?', confirmLabel: 'Șterge', danger: true })) return;
     try { await api('/api/recipes/' + b.closest('tr').dataset.id, { method: 'DELETE' }); toast('Rețetă ștearsă'); renderRecipes(products); }
     catch (err) { toast(err.message, true); }
   }));
 }
-$('#recipeAddMat') && $('#recipeAddMat').addEventListener('click', () => $('#recipeMaterials').appendChild(recipeMatRow()));
+$('#recipeAddMat') && $('#recipeAddMat').addEventListener('click', () => { $('#recipeMaterials').appendChild(recipeMatRow()); signalDynamicChange($('#recipeMaterials')); });
 $('#recipeReset') && $('#recipeReset').addEventListener('click', recipeResetForm);
 $('#recipeForm') && $('#recipeForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -328,7 +447,7 @@ $('#recipeForm') && $('#recipeForm').addEventListener('submit', async (e) => {
   try {
     await api('/api/recipes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     $('#recipeStatus').className = 'status ok'; $('#recipeStatus').textContent = 'Rețetă salvată.';
-    recipeResetForm(); renderRecipes();
+    formFlowSaved(f); recipeResetForm({ clearStatus: false }); renderRecipes();
   } catch (err) { $('#recipeStatus').className = 'status err'; $('#recipeStatus').textContent = err.message; }
 });
 // ── Inventariere ──
@@ -354,7 +473,63 @@ $('#invLoad').addEventListener('click', async () => {
     } catch (err) { toast(err.message, true); }
   });
 });
+registerFormFlow({
+  form: '#docSeriesForm',
+  title: 'Seriile documentelor de stoc',
+  firstStepTitle: 'Recepție și consum',
+  entityKey: 'config:serii',
+  progressFields: ['NIR_serie', 'NIR_next', 'BC_serie', 'BC_next', 'AVIZ_serie', 'AVIZ_next', 'CH_serie', 'CH_next'],
+  onDiscard: () => loadDocSeries(),
+});
 
+registerFormFlow({
+  form: '#productForm',
+  title: 'Produsul din nomenclator',
+  firstStepTitle: 'Identificare și unitate de măsură',
+  entityKey: 'nou',
+  progressFields: ['cod', 'denumire', 'um', 'cont'],
+  onDiscard: () => resetProductForm({ restoreDraft: false }),
+});
+
+registerFormFlow({
+  form: '#prodForm',
+  title: 'Înregistrarea producției',
+  firstStepTitle: 'Document și produs finit',
+  entityKey: 'nou',
+  progressFields: (form) => [form.data, form.productId, form.gestiuneId, form.cantitate, form.costUnitar,
+    ...form.querySelectorAll('#prodMaterials .pm-prod, #prodMaterials .pm-gest, #prodMaterials .pm-qty')],
+  serialize: productionDraft,
+  restore: restoreProductionDraft,
+  onDiscard: () => resetProductionForm({ restoreDraft: false }),
+});
+
+registerFormFlow({
+  form: '#recipeForm',
+  title: 'Rețeta de producție',
+  firstStepTitle: 'Identificare și produs finit',
+  entityKey: 'nou',
+  progressFields: (form) => [form.nume, form.productId, form.gestiuneId, form.cantitateBaza,
+    ...form.querySelectorAll('#recipeMaterials .rm-prod, #recipeMaterials .rm-gest, #recipeMaterials .rm-qty')],
+  serialize: recipeDraft,
+  restore: restoreRecipeDraft,
+  onDiscard: (form) => {
+    const id = form.elements.id.value;
+    const recipe = id && $('#recipeList')._recipes
+      ? $('#recipeList')._recipes.find((item) => String(item.id) === String(id)) : null;
+    if (recipe) openRecipeForm(recipe, { flush: false, restoreDraft: false });
+    else recipeResetForm({ restoreDraft: false });
+  },
+});
+
+registerFormFlow({
+  form: '#movementForm',
+  title: 'Mișcarea de stoc',
+  firstStepTitle: 'Produs și tip de operațiune',
+  entityKey: 'nou',
+  progressFields: (form) => [form.productId, form.tip, form.gestiuneId,
+    ...(form.tip.value === 'transfer' ? [form.gestiuneDestId] : []), form.data, form.cantitate],
+  onDiscard: () => golesteMiscareStoc({ restoreDraft: false }),
+});
 
 export { loadStocks };
 
