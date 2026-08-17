@@ -8,7 +8,7 @@
 // Aici e doar randare + acțiuni. Funcțiile pure de compunere a HTML-ului sunt exportate separat,
 // marcate pentru test/frontend.mjs.
 
-import { $, $$, H, api, toast } from './core.js';
+import { $, $$, H, api, toast, confirmAction, promptAction } from './core.js';
 import { workMonth, lunaLabel } from './periods.js';
 
 const D = { goTab: null };
@@ -30,8 +30,8 @@ export function closeHeaderHtml(st) {
     ? '<span class="pill ok">lună închisă</span>'
     : (st.sePoateInchide ? '<span class="pill ok">se poate închide</span>' : `<span class="pill warn">${p.total - p.gata} pas(i) de rezolvat</span>`);
   const fortata = st.fortata
-    ? `<p class="warnbox">⚠ Închidere <b>forțată</b> de ${H(st.fortata.username)} la ${H(String(st.fortata.at).slice(0, 16).replace('T', ' '))} — motiv: „${H(st.fortata.motiv)}”.
-       Pași nerezolvați la acel moment: ${H((st.fortata.blocante || []).join(', '))}.</p>`
+    ? `<div class="notice warning"><span class="notice-icon">⚠</span><div>Închidere <b>forțată</b> de ${H(st.fortata.username)} la ${H(String(st.fortata.at).slice(0, 16).replace('T', ' '))} — motiv: „${H(st.fortata.motiv)}”.
+       Pași nerezolvați la acel moment: ${H((st.fortata.blocante || []).join(', '))}.</div></div>`
     : '';
   const aprobare = st.aprobare
     ? `<p class="muted">Aprobată de <b>${H(st.aprobare.username || st.aprobare.responsabil || '—')}</b> la ${H(String(st.aprobare.at).slice(0, 16).replace('T', ' '))}${st.aprobare.nota ? ' — ' + H(st.aprobare.nota) : ''}.</p>`
@@ -159,12 +159,17 @@ function renderCloseButton(st) {
     catch (e) { toast(e.message, true); }
   });
   $('#clClose') && $('#clClose').addEventListener('click', async () => {
-    if (!confirm('Blochezi perioada ' + st.period + '? Luna devine read-only; corecțiile ulterioare se fac doar prin storno.')) return;
+    if (!await confirmAction('Perioada ' + st.period + ' va deveni numai pentru citire. Corecțiile ulterioare se fac prin storno.', {
+      title: 'Blochezi perioada?', confirmLabel: 'Blochează perioada', danger: true,
+    })) return;
     try { await api('/api/monthly-close/close', post({ period: st.period })); toast('Perioada ' + st.period + ' a fost blocată.'); loadMonthlyClose(); }
     catch (e) { toast(e.message, true); }
   });
   $('#clForce') && $('#clForce').addEventListener('click', async () => {
-    const motiv = prompt('Forțezi închiderea peste pași nerezolvați.\nScrie motivul (minim 10 caractere) — rămâne pe dosarul lunii și în jurnalul de audit:');
+    const motiv = await promptAction('Perioada va fi închisă peste pași nerezolvați. Motivul rămâne în dosarul lunii și în jurnalul de audit.', {
+      title: 'Forțezi închiderea?', label: 'Motivul excepției', multiline: true, required: true, minLength: 10,
+      confirmLabel: 'Închide forțat', danger: true,
+    });
     if (motiv == null) return;
     try { await api('/api/monthly-close/close', post({ period: st.period, force: true, motiv })); toast('Perioadă închisă forțat — motivul a fost consemnat.'); loadMonthlyClose(); }
     catch (e) { toast(e.message, true); }

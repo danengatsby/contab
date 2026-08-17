@@ -63,6 +63,7 @@ const inchidere = await imp(mirror, 'inchidere.js');
 const docflow = await imp(mirror, 'docflow.js');
 const admin = await imp(mirror, 'admin.js');
 const ghid = await imp(mirror, 'ghid.js');
+const formflow = await imp(mirror, 'formflow.js');
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -439,7 +440,10 @@ section('Poartă: `display:…!important` nu are voie să bată `.hidden`');
   // „aceeași capcană ca mai sus". Un comentariu nu e un mecanism. Poarta se DERIVĂ din sursă:
   // orice regulă care FACE VIZIBIL ceva cu `!important` trebuie să se retragă în fața lui
   // `.hidden`. Regulile care ascund (`display:none!important`) nu intră — ele sunt de acord.
-  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  // Verificarea traversează toate cele trei straturi CSS livrate. După consolidare, regulile
+  // vizibile ale navigației sunt în erp.css, nu în styles.css; principiul rămâne comun.
+  const css = ['styles.css', 'erp.css', 'design-system.css']
+    .map((f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8')).join('\n');
   const faraComentarii = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const vinovate = [];
   let vazute = 0;
@@ -565,11 +569,12 @@ section('Banda de sus nu contrazice checklistul de dedesubt');
     const spuneP = /Nicio urgență/.test(dashboard.mesajFaraAlerte(p, ff).txt);
     ok('banda nu trimite la un checklist ascuns', !spuneP || dashboard.checklistVizibil(p, ff));
   }
-  // Randarea trebuie să folosească un ton NECLICABIL: `.alert` pune `cursor:pointer`, iar mesajul
-  // ăsta e un `div`, nu un buton.
+  // Randarea trebuie să folosească un ton NECLICABIL. Componenta pune cursorul de acțiune numai
+  // când există `data-go`/`data-notif`, iar varianta informativă își fixează explicit starea.
   eq('tonul e cel neclicabil, dedicat', dashboard.mesajFaraAlerte(proaspata, false).ton, 'start');
-  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
-  ok('...și tonul acela chiar nu arată clicabil', /\.alert\.start\{[^}]*cursor:default/.test(css));
+  const dsCss = fs.readFileSync(path.join(ROOT, 'public', 'design-system.css'), 'utf8');
+  ok('...și tonul acela chiar nu arată clicabil',
+    /body\.erp \.alert\.start,[\s\S]{0,80}body\.erp \.alert\.ok\s*\{\s*cursor:\s*default/.test(dsCss));
 }
 section('Dashboard: „De făcut acum" — termenele, sus pe Acasă');
 {
@@ -669,7 +674,7 @@ section('Pagina nu derulează pe orizontală: convenția tabelelor ține la oric
     }
     return out;
   })();
-  ok('poarta chiar a scos blocurile @media', faraMedia.includes('.topbar{') && !faraMedia.includes('.bottomnav button{'));
+  ok('poarta chiar a scos blocurile @media', faraMedia.length < css.length && !faraMedia.includes('@media'));
   ok('tabelele derulează în ele însele, la orice lățime', /\.tab table\{display:block;overflow-x:auto;max-width:100%\}/.test(faraMedia));
   ok('itemele de grilă se pot strânge sub conținut', /\.grid2>\*,\.grid3>\*\{min-width:0\}/.test(faraMedia));
   // Celulele sunt nowrap — de aceea regula de mai sus e necesară, nu decorativă. Dacă cineva scoate
@@ -687,10 +692,12 @@ section('Pagina nu derulează pe orizontală: convenția tabelelor ține la oric
   // poate prinde (ancorarea de mai sus acoperă doar ultima coloană a unei grile). Coloana de
   // conținut le taie, ca o decorațiune absolută să nu poată împinge pagina.
   // `clip`, NU `hidden`: `hidden` ar face din `main` un container de derulare și ar strica bara
-  // laterală `sticky`. Regula stă în `@media(min-width:1px)` — mereu activ — deci se caută în CSS-ul
-  // întreg, nu în cel curățat de blocurile @media.
-  ok('coloana de conținut taie decorațiunile care ar împinge pagina', /\.shell>main\{[^}]*overflow-x:clip/.test(css));
-  ok('...cu `clip`, nu `hidden` (altfel bara laterală sticky s-ar rupe)', !/\.shell>main\{[^}]*overflow-x:hidden/.test(css));
+  // laterală `sticky`. Layout-ul autentificat are acum un singur proprietar, erp.css.
+  const erpCss = fs.readFileSync(path.join(ROOT, 'public', 'erp.css'), 'utf8');
+  ok('coloana de conținut taie decorațiunile care ar împinge pagina',
+    /body\.erp \.shell > main\s*\{[^}]*overflow-x:\s*clip/.test(erpCss));
+  ok('...cu `clip`, nu `hidden` (altfel bara laterală sticky s-ar rupe)',
+    !/body\.erp \.shell > main\s*\{[^}]*overflow-x:\s*hidden/.test(erpCss));
 }
 
 section('Scanerul local: oprit înseamnă ascuns, nu gri');
@@ -753,63 +760,312 @@ section('Bara de sus pe telefon: nu are voie să crească la loc');
   ok('poarta chiar găsește bara de sus', cap >= 0 && meniu > cap);
   const bara = html.slice(cap, meniu).replace(/<div class="side-tools"[\s\S]*?<\/div>/, ' ');
   ok('poarta chiar a scos uneltele din perimetru', !bara.includes('id="glossaryBtn"'));
-  const PERMISE = new Set(['prevMonth', 'nextMonth', 'toolsBtn', 'logoutBtn']);
+  const PERMISE = new Set(['prevMonth', 'nextMonth', 'navToggleBtn', 'toolsBtn', 'logoutBtn']);
   const inBara = [...bara.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
   const intruse = inBara.filter((id) => !PERMISE.has(id));
   ok('nimic nou permanent în bara de telefon'
     + (intruse.length ? ' — MUTĂ-LE ÎN .side-tools: ' + intruse.join(', ') : ''), intruse.length === 0);
   ok('poarta chiar vede butoane (nu o listă goală)', inBara.length >= 3);
 
-  // Uneltele strânse trebuie să rămână AJUNGIBILE: butonul care le desfășoară există și le arată.
+  // Navigația nu se rescrie pentru telefon: același #tabs se deschide ca sertar.
+  ok('butonul „Meniu" comandă arborele real', /id="navToggleBtn"[^>]*aria-controls="tabs"/.test(html));
+  ok('sertarul mobil se deschide numai pe clasa de stare a barei', /\.topbar\.nav-open #tabs/.test(fs.readFileSync(path.join(PUB, 'erp.css'), 'utf8')));
+  ok('navigația mobilă paralelă a fost eliminată', !/bottomnav|moreSheet|moreBtn|data-tabs=/.test(html));
+  const erpCssMobil = fs.readFileSync(path.join(PUB, 'erp.css'), 'utf8');
+  ok('titlul și etapa paginii rămân vizibile pe telefon',
+    !/body\.erp \.app-context-title\s*\{\s*display:\s*none/.test(erpCssMobil)
+    && /body\.erp #appContextTitle\s*\{\s*font-size:\s*17px/.test(erpCssMobil));
+  ok('la 320px firma și perioada se așază pe rânduri lizibile',
+    /@media \(max-width: 360px\)[\s\S]{0,260}\.app-context-controls\s*\{\s*grid-template-columns:\s*minmax\(0,1fr\)/.test(erpCssMobil));
+  ok('suprascrierea mobilă a uneltelor are aceeași ancoră ca regula desktop',
+    /@media \(max-width: 360px\)[\s\S]{0,150}body\.erp \.topbar #toolsBtn\s*\{/.test(erpCssMobil));
+
+  // Uneltele strânse trebuie să rămână AJUNGIBILE prin același control pe desktop și mobil.
   ok('butonul „⋯ Unelte" există', html.includes('id="toolsBtn"'));
   ok('...și declară ce comandă', /id="toolsBtn"[^>]*aria-controls="sideTools"/.test(html));
   ok('...iar containerul lui există cu acel id', html.includes('id="sideTools"'));
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
-  ok('pe desktop butonul nu există vizual', /#toolsBtn\{display:none\}/.test(css));
-  ok('pe telefon uneltele pornesc strânse', /\.topbar \.side-tools\{order:6;display:none/.test(css));
-  ok('...și se desfășoară pe clasa comutată din JS', /\.topbar\.tools-open \.side-tools\{display:grid\}/.test(css));
+  ok('pe desktop rămâne un singur declanșator vizibil',
+    /body\.erp \.topbar #toolsBtn\s*\{[\s\S]{0,140}display:\s*inline-flex/.test(erpCssMobil));
+  ok('utilitarele pornesc strânse pe toate dimensiunile',
+    /body\.erp \.topbar \.side-tools\s*\{[\s\S]{0,70}display:\s*none/.test(erpCssMobil));
+  ok('...și se desfășoară pe aceeași clasă de stare',
+    /body\.erp \.topbar\.tools-open \.side-tools\s*\{\s*display:\s*grid/.test(erpCssMobil));
+  ok('regulile uneltelor aparțin shell-ului, nu CSS-ului vechi',
+    !/side-tools|toolsBtn|tools-open|mod-expert/.test(css));
   const js = fs.readFileSync(path.join(PUB, 'simplemode.js'), 'utf8');
   ok('comutatorul chiar pune clasa aceea', /classList\.toggle\('tools-open'\)/.test(js));
   // Panoul trebuie să se închidă după alegerea unei unelte — altfel rămâne deschis peste pagina
   // pe care tocmai ai cerut-o, adică exact ecranul pentru care ai apăsat.
-  ok('panoul se închide la alegerea unei unelte', /#sideTools[\s\S]{0,220}remove\('tools-open'\)/.test(js));
+  ok('panoul se închide la alegerea unei unelte', /#sideTools[\s\S]{0,220}inchideUnelte\(\)/.test(js));
+  ok('panoul se închide și la navigare sau Escape',
+    /#tabs[\s\S]{0,220}inchideUnelte/.test(js) && /e\.key === 'Escape'[\s\S]{0,140}inchideUnelte\(true\)/.test(js));
 }
 
-section('Modul simplu: cele TREI navigații pornesc din același marcaj');
+section('Carcasa aplicației: o singură navigație și context unic');
 {
-  // Aplicația are trei navigații peste aceleași `#tabs`: bara laterală (originalul) plus bara de
-  // meniu și banda de unelte, generate de `erp.js`. Regula scrisă în capul acelui fișier e că el
-  // „nu decide nimic, doar OGLINDEȘTE" — dar oglinda pierdea tocmai marcajul `.adv`, fiindcă
-  // butoanele generate sunt elemente NOI. Măsurat în mod simplu, înainte: din 11 taburi marcate,
-  // 6 rămâneau în banda de unelte și 3 grupuri întregi în bara de meniu.
-  //
-  // Stratul ăsta e RAPID și incomplet prin construcție: dovedește că sursa trece prin copiere,
-  // nu că browserul chiar nu mai arată intrarea (acolo se bat reguli CSS pe specificitate).
-  // Efectul se dovedește în `scripts/e2e-izolat.mjs`, secțiunea 12, pe DOM adevărat.
+  // `#tabs` este sursa și navigația unică. Bara contextuală mută controalele reale pentru firmă
+  // și perioadă; nu le clonează și nu generează alte butoane care pot deriva de la permisiuni.
   const erp = fs.readFileSync(path.join(PUB, 'erp.js'), 'utf8');
-  ok('există o singură definiție a preluării marcajelor', (erp.match(/function preiaMarcajele\(/g) || []).length === 1);
-  // Cele TREI puncte de generare. Dacă apare al patrulea, aserțiunea de sub ele îl semnalează.
-  ok('intrările de meniu preiau marcajul sursei', /function itemDeMeniu\([\s\S]{0,400}?preiaMarcajele\(btn, b\)/.test(erp));
-  ok('grupurile de meniu preiau marcajul grupului-sursă', /preiaMarcajele\(gr\.sursa, wrap\)/.test(erp));
-  ok('uneltele preiau marcajul tabului-țintă', /preiaMarcajele\(tinta, b\)/.test(erp));
-  // `esteAvansat` trebuie să se uite ȘI la grup: „Mijloace fixe", „Registre contabile" și
-  // „Închideri" sunt marcate pe `.navgroup`, nu pe fiecare buton — un test care verifică doar
-  // clasa butonului ar fi trecut cu jumătate din defect încă viu.
-  ok('marcajul se citește și de pe grupul-sursă, nu doar de pe buton', /closest\('\.navgroup'\)[\s\S]{0,80}contains\('adv'\)/.test(erp));
-  // Câte elemente generate există în total: fiecare `el('button'` / `el('div', 'em-item'` care
-  // ajunge în navigație trebuie să fi trecut pe la copiere. Poarta e pe NUMĂR, ca un al patrulea
-  // punct de generare adăugat mâine să nu treacă tăcut pe lângă ea.
-  ok('nu există un al patrulea punct de generare nepăzit', (erp.match(/preiaMarcajele\(/g) || []).length === 4);
+  ok('nu se mai construiește un meniu superior duplicat', !/construiesteMeniu|id\s*=\s*['"]erpMenu/.test(erp));
+  ok('nu se mai construiește un ribbon duplicat', !/construiesteUnelte|id\s*=\s*['"]erpTools/.test(erp));
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
+  const eticheteMeniu = [...html.matchAll(/<button[^>]*data-tab="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g)]
+    .map((m) => ({ tab: m[1], text: m[2].replace(/<[^>]+>/g, ' ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim() }));
+  const faraNume = eticheteMeniu.filter((x) => !/\p{L}/u.test(x.text));
+  ok('fiecare destinație din meniu are etichetă textuală, nu doar pictogramă sau badge'
+    + (faraNume.length ? ' — ' + faraNume.map((x) => x.tab).join(', ') : ''), faraNume.length === 0);
+  ok('desktopul și mobilul folosesc același arbore #tabs', /id="navToggleBtn"[^>]*aria-controls="tabs"/.test(html)
+    && /function monteazaNavigatiaMobila\(/.test(erp));
+  ok('nu mai există cod pentru bara mobilă și panoul ei paralel', !/bottomnav|moreSheet|updateBottomNav|closeMore/.test(html + app + erp));
+  ok('ciclul contabil nu mai injectează o a doua navigație', !/cyclemap|cyclestep|cyclearrow/.test(html + app));
+  ok('etapele sunt metadate pe butoanele navigației reale', /dataset\.cyclePosition/.test(app)
+    && /dataset\.cycleTotal/.test(app) && /dataset\.cycleLabel/.test(app));
+  ok('bara contextuală afișează etapa fără să creeze destinații', /Ciclul contabil · etapa/.test(erp)
+    && /contab:cycle-ready/.test(erp));
+  ok('bara contextuală este construită explicit', /function construiesteContext\(/.test(erp) && /bar\.id = 'appContext'/.test(erp));
+  ok('selectorul firmei este mutat, nu clonat', /firmaWrap\.appendChild\(firma\)/.test(erp) && !/cloneNode/.test(erp));
+  ok('selectorul perioadei este mutat, nu clonat', /perioadaWrap\.appendChild\(perioada\)/.test(erp));
+  ok('pictogramele aplicației sunt un singur set SVG', /var ICONS = \{/.test(erp) && /<svg viewBox=/.test(erp));
+  ok('setul SVG acoperă și controalele, linkurile și secțiunile extensibile',
+    /'button', 'a', 'summary', 'label\.attach-btn', '\.emit-guided \.gt'/.test(erp));
+  ok('o componentă cu pictogramă semantică proprie nu primește încă una din destinație',
+    /querySelector\(':scope > \.ic, :scope > \.al-ic/.test(erp));
+  ok('un simbol este scos din text numai după găsirea unui SVG echivalent',
+    /if \(simbol\) return SYMBOL_ICONS\[simbol\] \|\| ''/.test(erp)
+      && /if \(!nume\) return;[\s\S]{0,100}info\.nod\.nodeValue/.test(erp));
+  ok('pictograma își păstrează identitatea și poate fi actualizată la schimbarea etichetei',
+    /s\.dataset\.icon = name/.test(erp) && /existent\.dataset\.icon !== nume/.test(erp));
 
-  // Partea de CSS: în bara laterală, regulile cu id bat `.simple-ui .adv` (ambele `!important`),
-  // deci ascunderea are nevoie de propria regulă cu id — una pentru grupuri, una pentru intrările
-  // marcate individual dintr-un grup nemarcat. A doua lipsea: „Anexe la situații", „Jurnal de
-  // audit" și „Plan de conturi" rămâneau în meniu în modul simplu.
+  // Modul simplu are acum un singur loc de protejat: arborele lateral real, în proprietarul
+  // shell-ului. styles.css poate ascunde generic `.adv`, dar nu mai definește navigația.
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  const erpCss = fs.readFileSync(path.join(ROOT, 'public', 'erp.css'), 'utf8');
   ok('grupurile marcate se ascund și peste specificitatea barei laterale',
-    /\.simple-ui #tabs \.navgroup\.adv\{display:none!important\}/.test(css));
+    /body\.erp\.simple-ui #tabs \.navgroup\.adv\s*\{\s*display:\s*none\s*!important/.test(erpCss));
   ok('...și intrările marcate individual, din grupuri nemarcate',
-    /\.simple-ui #tabs \.navmenu button\.adv\{display:none!important\}/.test(css));
+    /body\.erp\.simple-ui #tabs \.navmenu button\.adv\s*\{\s*display:\s*none\s*!important/.test(erpCss));
+  const shellVechi = [
+    /(^|[},])\s*\.shell\s*\{/m,
+    /(^|[},])\s*\.topbar(?:\s|[.{:#>])/m,
+    /(^|[},])\s*#tabs(?:\s|[.{:#>])/m,
+    /(^|[},])\s*\.tabs(?:\s|[.{:#>])/m,
+    /(^|[},])\s*\.nav(?:group|menu|hint)(?:\s|[.{:#>])/m,
+    /(^|[},])\s*\.(?:firma-select|curgroup|curperiod|curnav|userbadge)(?:\s|[.{:#>])/m,
+    /(^|[},])\s*main\s*\{/m
+  ];
+  ok('styles.css nu mai redefinește carcasa autentificată', shellVechi.every((re) => !re.test(css)));
+  ok('regulile responsive ale carcasei au un singur proprietar',
+    /@media \(max-width: 700px\)[\s\S]*body\.erp \.topbar/.test(erpCss)
+      && !/@media\s*\(max-width:\s*700px\)[\s\S]{0,900}(?:\.topbar|\.shell|#tabs)/.test(css));
+}
+
+section('Design system și fluxuri reutilizabile pentru formularele lungi');
+{
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  const flowSrc = fs.readFileSync(path.join(PUB, 'formflow.js'), 'utf8');
+  const authSrc = fs.readFileSync(path.join(PUB, 'authui.js'), 'utf8');
+  const appSrc = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
+  const erpCss = fs.readFileSync(path.join(PUB, 'erp.css'), 'utf8');
+  const dsCss = fs.readFileSync(path.join(PUB, 'design-system.css'), 'utf8');
+  ok('pictograma contextuală își păstrează dimensiunea shell-ului', /\.app-context-icon\s*\{[\s\S]{0,180}display: inline-grid/.test(dsCss)
+    && !/\.app-icon,\s*\nbody\.erp \.app-context-icon\s*\{/.test(dsCss)
+    && /\.app-context-icon\s*\{[\s\S]{0,120}width: 40px/.test(erpCss));
+  ok('alertele își mută acțiunea sub mesaj la 320px',
+    /@media \(max-width: 360px\)[\s\S]{0,520}\.alert > \.al-cta\s*\{\s*grid-column:\s*2/.test(dsCss));
+  const formBlock = (id) => {
+    const start = html.indexOf('id="' + id + '"');
+    const end = html.indexOf('</form>', start);
+    return start >= 0 && end >= 0 ? html.slice(start, end) : '';
+  };
+  const stepCount = (id) => 1 + (formBlock(id).match(/\bsect-form\b/g) || []).length;
+
+  eq('firma are patru pași logici', stepCount('companyForm'), 4);
+  eq('angajatul are cinci pași logici, fără pas gol pentru buton', stepCount('angajatForm'), 5);
+  eq('documentul separă datele de verificare/salvare', stepCount('entryForm'), 2);
+  eq('mijlocul fix are identificare, amortizare și punere în funcțiune', stepCount('assetForm'), 3);
+  eq('contractul de leasing are contract, finanțare și costuri', stepCount('lcForm'), 3);
+  eq('mișcarea de stoc separă operațiunea, gestiunile și cantitatea', stepCount('movementForm'), 3);
+  eq('partenerul separă identificarea de adresa documentelor', stepCount('partnerForm'), 2);
+  eq('configurația fiscală separă contribuțiile, taxele, plafoanele și salariile', stepCount('fiscalForm'), 4);
+  eq('factura recurentă separă partenerul, valoarea și calendarul', stepCount('recForm'), 3);
+  eq('seriile separă recepția/consumul de livrare/încasare', stepCount('docSeriesForm'), 2);
+  eq('producția separă produsul, costul și materialele', stepCount('prodForm'), 3);
+  eq('rețeta separă produsul, baza de cost și materialele', stepCount('recipeForm'), 3);
+  eq('produsul separă identificarea de clasificarea în stoc', stepCount('productForm'), 2);
+  eq('exigibilitatea separă operațiunea de referința documentului', stepCount('exigForm'), 2);
+  eq('soldul analitic separă partenerul de valorile de deschidere', stepCount('oaForm'), 2);
+  eq('modernizarea separă valoarea de documentarea investiției', stepCount('mfInvForm'), 2);
+  eq('simulatorul separă finanțarea de dobândă și metodă', stepCount('lsForm'), 2);
+  eq('înscrierea publică separă tipul, firma și datele de acces', stepCount('registerForm'), 3);
+  eq('profilul separă identificarea de datele profesionale și personale', stepCount('profileForm'), 2);
+
+  for (const [file, formId] of [['app.js', 'companyForm'], ['salarizare.js', 'angajatForm'],
+    ['docflow.js', 'entryForm'], ['mijloace.js', 'assetForm'], ['mijloace.js', 'lcForm'],
+    ['stocuri.js', 'movementForm'], ['partners.js', 'partnerForm'], ['settings.js', 'fiscalForm'],
+    ['docflow.js', 'recForm'], ['stocuri.js', 'docSeriesForm'], ['stocuri.js', 'prodForm'],
+    ['stocuri.js', 'recipeForm'], ['stocuri.js', 'productForm']]) {
+    const src = fs.readFileSync(path.join(PUB, file), 'utf8');
+    ok(file + ' înregistrează ' + formId + ' în componenta comună',
+      new RegExp("registerFormFlow\\(\\{[\\s\\S]{0,220}form: '#" + formId + "'").test(src));
+  }
+  for (const [file, formId] of [['rapoarte.js', 'exigForm'], ['livrabile.js', 'oaForm'],
+    ['mijloace.js', 'mfInvForm'], ['mijloace.js', 'lsForm']]) {
+    const src = fs.readFileSync(path.join(PUB, file), 'utf8');
+    ok(file + ' înregistrează ' + formId + ' în componenta comună',
+      new RegExp("registerFormFlow\\(\\{[\\s\\S]{0,220}form: '#" + formId + "'").test(src));
+  }
+
+  eq('cheia ciornei izolează formularul, firma, utilizatorul și entitatea',
+    formflow.draftStorageKey('angajatForm', 17, 'angajat:a-1', 'u-3'),
+    'contab:form-draft:v1:angajatForm:17:u-3:angajat%3Aa-1');
+  // sessionStorage supravietuieste delogarii (logout = reload, nu inchiderea tabului): fara
+  // utilizator in cheie, ciorna lui A s-ar restaura lui B pe aceeasi statie si aceeasi firma.
+  ok('doi utilizatori pe aceeași firmă și același formular NU împart ciorna',
+    formflow.draftStorageKey('angajatForm', 17, 'nou', 'u-3')
+      !== formflow.draftStorageKey('angajatForm', 17, 'nou', 'u-4'));
+  eq('utilizatorul lipsă are propriul segment, nu unul absent',
+    formflow.draftStorageKey('angajatForm', 17, 'nou'),
+    'contab:form-draft:v1:angajatForm:17:anonim:nou');
+  sessionStorage.setItem(formflow.draftStorageKey('angajatForm', 17, 'nou', 'u-3'), '{"version":1}');
+  sessionStorage.setItem('contab:altceva', 'pastreaza-ma');
+  eq('delogarea șterge ciornele de formular', formflow.clearFormFlowDrafts(), 1);
+  eq('...și numai pe ele', sessionStorage.getItem('contab:altceva'), 'pastreaza-ma');
+  ok('parola nu ajunge niciodată în ciornă (autosave-ul e pornit implicit)',
+    /'file', 'submit', 'button', 'reset', 'password'/.test(flowSrc));
+  ok('delogarea golește ciornele înainte de reîncărcare',
+    /clearFormFlowDrafts\(\);[\s\S]{0,120}location\.reload\(\)/.test(authSrc));
+  ok('ciornele se leagă de contul curent la pornire',
+    /setFormFlowUser\(META\.user && META\.user\.id\)/.test(appSrc));
+  eq('progresul rotunjește procentul din câmpurile completate', formflow.completionPercent([true, true, false]), 67);
+  eq('formular fără câmpuri are progres zero', formflow.completionPercent([]), 0);
+  ok('identitatea formularului citește atributul, imună la un control `name="id"`',
+    /getAttribute\('id'\)/.test(flowSrc) && !/draftStorageKey\(form\.id/.test(flowSrc));
+  ok('autosave-ul este local pe tab, nu un API mascat', /sessionStorage\.setItem/.test(flowSrc)
+    && !/\b(?:fetch|api)\s*\(/.test(flowSrc));
+  ok('componenta expune explicit ciclul flush / loaded / saved / discard',
+    ['formFlowFlush', 'formFlowLoaded', 'formFlowSaved', 'formFlowDiscard'].every((name) => flowSrc.includes('function ' + name)));
+  ok('ciorna are control vizibil de ștergere și confirmare în dialog propriu',
+    /form-draft-discard/.test(flowSrc) && /confirmAction/.test(flowSrc) && !/\bconfirm\s*\(/.test(flowSrc));
+  ok('pașii semnalizează distinct completarea și erorile',
+    /form-step-state/.test(flowSrc) && /has-error/.test(flowSrc)
+      && /\.form-step\.has-error/.test(dsCss) && /\.form-step-state\.is-error/.test(dsCss));
+  ok('pașii fără `required` folosesc câmpurile urmărite pentru starea „Complet”',
+    /const tracked = new Set\(controls\)/.test(flowSrc)
+      && /const completionControls = required\.length \? required : followed/.test(flowSrc));
+  ok('componenta poate păstra pașii fără a stoca local formularele sensibile',
+    /const autosaveEnabled = config\.autosave !== false/.test(flowSrc)
+      && /if \(!autosaveEnabled\) return false/.test(flowSrc));
+  const mijloaceSrc = fs.readFileSync(path.join(PUB, 'mijloace.js'), 'utf8');
+  ok('editarea leasingului schimbă explicit ciorna de la „nou” la contractul ales',
+    /formFlowFlush\(f\)[\s\S]{0,400}formFlowLoaded\(f, 'contract:' \+ c\.id\)/.test(mijloaceSrc)
+      && /formFlowSaved\(f\)/.test(mijloaceSrc));
+  const stocuriSrc = fs.readFileSync(path.join(PUB, 'stocuri.js'), 'utf8');
+  ok('reîncărcarea opțiunilor de stoc finalizează și restaurează ciorna',
+    /formFlowFlush\(\$\('#movementForm'\)\)/.test(stocuriSrc)
+      && /gestiuneDestId\.innerHTML[\s\S]{0,180}formFlowLoaded\(mf, 'nou'\)/.test(stocuriSrc));
+  ok('transferul cere destinație și după restaurarea ciornei',
+    /gestiuneDestId\.required = isTransfer/.test(stocuriSrc)
+      && /formflow:restored/.test(stocuriSrc));
+  const partnersSrc = fs.readFileSync(path.join(PUB, 'partners.js'), 'utf8');
+  ok('partenerii au ciorne distincte pentru creare și editare',
+    /formFlowFlush\(f\)[\s\S]{0,300}formFlowLoaded\(f, 'partener:' \+ p\.cui\)/.test(partnersSrc)
+      && /formFlowLoaded\(f, 'nou'/.test(partnersSrc));
+  const settingsSrc = fs.readFileSync(path.join(PUB, 'settings.js'), 'utf8');
+  ok('configurația fiscală are ciornă globală, independentă de firma activă',
+    /form: '#fiscalForm'[\s\S]{0,180}companyKey: \(\) => 'global'/.test(settingsSrc)
+      && /formFlowFlush\(f\)/.test(settingsSrc) && /formFlowSaved\(f\)/.test(settingsSrc));
+  ok('profilul cu CNP folosește pașii, dar are autosave-ul local dezactivat',
+    /form: '#profileForm'[\s\S]{0,180}autosave: false/.test(settingsSrc));
+  const authuiSrc = fs.readFileSync(path.join(PUB, 'authui.js'), 'utf8');
+  ok('înscrierea cu parolă folosește pașii, dar are autosave-ul local dezactivat',
+    /form: '#registerForm'[\s\S]{0,180}autosave: false/.test(authuiSrc));
+  ok('șablonul recurent păstrează ciorna la rerandare și o elimină după salvare',
+    /formFlowFlush\(form\)[\s\S]{0,380}formFlowLoaded\(form, 'nou'\)/.test(fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8'))
+      && /formFlowSaved\(f\); f\.reset\(\)/.test(fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8')));
+  ok('seriile restaurează ciorna peste valorile serverului și o elimină după salvare',
+    /formFlowFlush\(f\)[\s\S]{0,420}formFlowLoaded\(f, 'config:serii'\)/.test(stocuriSrc)
+      && /formFlowSaved\(f\); toast\('Serii salvate'\)/.test(stocuriSrc));
+  ok('producția serializează și restaurează liniile dinamice de materiale',
+    /function productionDraft\(form\)[\s\S]{0,700}materiale:/.test(stocuriSrc)
+      && /serialize: productionDraft/.test(stocuriSrc) && /restore: restoreProductionDraft/.test(stocuriSrc));
+  ok('rețetele au ciorne distincte pentru creare și fiecare entitate editată',
+    /function openRecipeForm\([\s\S]{0,1200}formFlowFlush\(f\)[\s\S]{0,1200}formFlowLoaded\(f, 'reteta:' \+ recipe\.id/.test(stocuriSrc)
+      && /serialize: recipeDraft/.test(stocuriSrc) && /restore: restoreRecipeDraft/.test(stocuriSrc));
+  ok('schimbarea firmei golește formularele de producție înainte de restaurarea noii firme',
+    /contab:company-context[\s\S]{0,320}resetProductForm\(\{ restoreDraft: false \}\)[\s\S]{0,200}resetProductionForm\(\{ restoreDraft: false \}\)[\s\S]{0,200}recipeResetForm\(\{ restoreDraft: false \}\)/.test(stocuriSrc));
+  ok('modernizările au ciorne distincte pentru fiecare mijloc fix',
+    /formFlowFlush\(f\)[\s\S]{0,220}formFlowLoaded\(f, 'activ:' \+ id/.test(mijloaceSrc)
+      && /formFlowSaved\(f\)/.test(mijloaceSrc));
+  ok('simulatorul de leasing are ciornă globală și nu o confundă cu o salvare pe server',
+    /form: '#lsForm'[\s\S]{0,180}companyKey: \(\) => 'global'/.test(mijloaceSrc)
+      && /formFlowFlush\(e\.target\)/.test(mijloaceSrc));
+
+  const erpLink = html.indexOf('href="/erp.css"');
+  const dsLink = html.indexOf('href="/design-system.css"');
+  ok('design system-ul este încărcat după layout-ul ERP', erpLink >= 0 && dsLink > erpLink);
+  ok('tokenurile și componentele reutilizabile au o singură sursă CSS',
+    /--ds-control-h/.test(dsCss) && /body\.erp \.form-progress/.test(dsCss)
+      && /body\.erp \.app-dialog/.test(dsCss) && /body\.erp \.context-help/.test(dsCss));
+  ok('design system-ul fixează separat controalele normale și cele compacte din tabele',
+    /--ds-control-min-h:\s*36px/.test(dsCss) && /--ds-control-compact-h:\s*30px/.test(dsCss)
+      && /body\.erp \.tab table button/.test(dsCss) && /body\.erp \.tab \.tablewrap \.linkbtn/.test(dsCss));
+  ok('textul de 12 px este rezervat acțiunilor compacte, nu butoanelor normale',
+    /--ds-control-font:\s*14px/.test(dsCss) && /--ds-control-compact-font:\s*12px/.test(dsCss)
+      && /body\.erp \.btn\.small[^}]*var\(--ds-control-font\)/.test(dsCss));
+  ok('layout-ul ERP nu mai duplică stilurile componentelor',
+    !/body\.erp \.form-progress/.test(erpCss) && !/body\.erp \.app-dialog/.test(erpCss)
+      && !/body\.erp \.context-help/.test(erpCss));
+  const legacyCss = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const selectoriLegacy = [...legacyCss.matchAll(/([^{}]+)\{[^{}]*\}/g)]
+    .flatMap((m) => m[1].split(',').map((s) => s.trim()));
+  const redefinesteFeedback = selectoriLegacy.filter((s) =>
+    /^(?:body(?:\.[\w-]+)*\s+)?\.(?:alert|badge|pill)(?:$|[.:[\s>])/.test(s));
+  ok('alertele, badge-urile și pastilele au o singură sursă CSS',
+    redefinesteFeedback.length === 0
+      && /--ds-status-warning/.test(dsCss)
+      && /body\.erp \.alert\s*\{/.test(dsCss)
+      && /body\.erp \.badge,\s*\nbody\.erp \.pill\s*\{/.test(dsCss));
+  const surseUi = [html, ...fs.readdirSync(PUB).filter((f) => f.endsWith('.js'))
+    .map((f) => fs.readFileSync(path.join(PUB, f), 'utf8'))].join('\n');
+  const redefinesteNotice = selectoriLegacy.filter((s) =>
+    /^(?:body(?:\.[\w-]+)*\s+)?\.(?:notice|warnbox|sub-banner|missingbox|imper-banner)(?:$|[.:[\s>])/.test(s));
+  ok('mesajele persistente folosesc o singură componentă semantică în patru stări',
+    redefinesteNotice.length === 0
+      && !/\b(?:warnbox|sub-banner|missingbox)\b/.test(surseUi)
+      && /body\.erp \.notice\.info\s*\{/.test(dsCss)
+      && /body\.erp \.notice\.success\s*\{/.test(dsCss)
+      && /body\.erp \.notice\.warning\s*\{/.test(dsCss)
+      && /body\.erp \.notice\.danger\s*\{/.test(dsCss));
+  const redefinesteFeedbackActiuni = selectoriLegacy.filter((s) =>
+    /^(?:body(?:\.[\w-]+)*\s+)?(?:\.(?:status|toast|offline-banner)|#loadbar)(?:$|[.:[\s>])/.test(s));
+  ok('toastul, stările inline, conexiunea și încărcarea au o singură sursă CSS',
+    redefinesteFeedbackActiuni.length === 0
+      && /body\.erp \.status\s*\{/.test(dsCss)
+      && /body\.erp \.toast\.is-error\s*\{/.test(dsCss)
+      && /body\.erp \.offline-banner\s*\{/.test(dsCss)
+      && /body\.erp #loadbar\s*\{/.test(dsCss));
+  const coreFeedbackSrc = fs.readFileSync(path.join(PUB, 'core.js'), 'utf8');
+  ok('toasturile consecutive își anulează timerul și schimbă prioritatea accesibilă pentru erori',
+    /if \(toastTimer\) clearTimeout\(toastTimer\)/.test(coreFeedbackSrc)
+      && /isError \? 'alert' : 'status'/.test(coreFeedbackSrc)
+      && /isError \? 'assertive' : 'polite'/.test(coreFeedbackSrc)
+      && /isError \? 5200 : 3600/.test(coreFeedbackSrc));
+}
+
+section('Acțiuni importante: fără dialogurile native ale browserului');
+{
+  const fisiere = fs.readdirSync(PUB).filter((f) => f.endsWith('.js'));
+  const native = [];
+  for (const f of fisiere) {
+    const src = fs.readFileSync(path.join(PUB, f), 'utf8');
+    if (/\b(?:alert|confirm|prompt)\s*\(/.test(src)) native.push(f);
+  }
+  ok('niciun modul frontend nu mai apelează alert/confirm/prompt' + (native.length ? ': ' + native.join(', ') : ''), native.length === 0);
+  const coreSrc = fs.readFileSync(path.join(PUB, 'core.js'), 'utf8');
+  ok('dialogul propriu expune confirmare, introducere și informare', /export const confirmAction/.test(coreSrc) && /export const promptAction/.test(coreSrc) && /export const alertAction/.test(coreSrc));
+  ok('dialogul propriu validează câmpurile obligatorii', /o\.required[\s\S]{0,180}Completează câmpul/.test(coreSrc));
 }
 
 section('Completare după CUI: nu suprascrie niciodată ce a tastat omul');
@@ -1204,6 +1460,12 @@ const bubAdmin = messages.bubble(bub, true);
 ok('pentru admin, mesajul utilizatorului e pe partea cealaltă', bubAdmin.includes('msg other'));
 ok('adminul poate șterge mesaje', bubAdmin.includes('msg-del'));
 ok('adminul NU poate edita mesajul altuia', !bubAdmin.includes('msg-edit'));
+const messageDsCss = fs.readFileSync(path.join(PUB, 'design-system.css'), 'utf8');
+ok('editarea și ștergerea mesajului au ținte pătrate de minimum 36 px',
+  /body\.erp \.msg-del,[\s\S]{0,100}body\.erp \.msg-edit[\s\S]{0,260}width: var\(--ds-control-min-h\)[\s\S]{0,100}height: var\(--ds-control-min-h\)/.test(messageDsCss));
+ok('acțiunile mesajului rămân vizibile pe touch și rezervă loc în bulă',
+  /opacity: \.72/.test(messageDsCss) && /@media \(hover: hover\)/.test(messageDsCss)
+    && /\.msg-b:has\(\.msg-del \+ \.msg-edit\)/.test(messageDsCss));
 // textul reintra intr-un ATRIBUT la editare (data-text) — acolo e nevoie de escAttr
 ok('textul dus în atributul de editare e escapat pentru atribut', messages.bubble({ id: 'm', fromAdmin: false, text: 'a"b', createdAt: '' }, false).includes('data-text="a&quot;b"'));
 ok('confirmarea de citire apare pe mesajul propriu', messages.bubble({ id: 'm', fromAdmin: false, text: 'x', createdAt: '', readByAdmin: true }, false).includes('citit'));
@@ -1363,7 +1625,7 @@ section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js
   const hForced = inchidere.closeHeaderHtml(Object.assign({}, stBaza, {
     fortata: { motiv: 'depus <b>manual</b> pe portal', username: 'ad<min', at: '2026-07-20T08:00:00Z', blocante: ['D<300'] },
   }));
-  ok('forțarea e afișată vizibil, cu motivul', hForced.includes('warnbox') && hForced.includes('forțată'));
+  ok('forțarea e afișată vizibil, cu motivul', hForced.includes('notice warning') && hForced.includes('forțată'));
   ok('motivul forțării e escapat', hForced.includes('&lt;b&gt;manual&lt;/b&gt;') && !hForced.includes('<b>manual'));
   ok('numele celui care a forțat e escapat', hForced.includes('ad&lt;min'));
   ok('pașii nerezolvați la forțare sunt escapați', hForced.includes('D&lt;300'));

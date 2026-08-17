@@ -1,7 +1,7 @@
 'use strict';
 
 // Planul de conturi: afisare pe clase + import CSV personalizat. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, fmt, H, accName, toast, api, META, setMeta, fileToCsv } from './core.js';
+import { $$, $, fmt, H, accName, toast, api, META, setMeta, fileToCsv, confirmAction } from './core.js';
 import { stare, controaleHtml, leaga, MARIME_IMPLICITA } from './paginare.js';
 
 // ───────────────────────── PLAN ─────────────────────────
@@ -244,7 +244,7 @@ function migrationProblems(r) {
 
 function askServerSeparator() {
   const box = $('#openAmbig'); if (!box) return;
-  box.innerHTML = `<div class="warnbox"><span class="wi">⚠️</span><div><b>Separator zecimal ambiguu — nimic nu s-a importat încă.</b>
+  box.innerHTML = `<div class="notice warning"><span class="notice-icon">⚠️</span><div><b>Separator zecimal ambiguu — nimic nu s-a importat încă.</b>
     <div class="muted">Alege convenția folosită de programul din care ai exportat balanța.</div>
     <div class="row"><button id="openDecimalComma" class="btn small">Virgula este zecimală (1.234,56)</button>
     <button id="openDecimalDot" class="btn small">Punctul este zecimal (1,234.56)</button>
@@ -309,7 +309,7 @@ openPresetSelect && openPresetSelect.addEventListener('change', async () => {
 const openPresetDelete = $('#openPresetDelete');
 openPresetDelete && openPresetDelete.addEventListener('click', async () => {
   const id = openPresetSelect && openPresetSelect.value; if (!id) return;
-  if (!confirm('Ștergi acest format salvat?')) return;
+  if (!await confirmAction('Maparea salvată va fi eliminată.', { title: 'Ștergi formatul?', confirmLabel: 'Șterge', danger: true })) return;
   try { await api('/api/migrare/presets/' + encodeURIComponent(id), { method: 'DELETE' }); await loadMigrationPresets(''); toast('Format șters.'); }
   catch (err) { toast(err.message, true); }
 });
@@ -373,8 +373,8 @@ function showCompleteMigration(r) {
   const s = r.summary || {}; const problems = Array.isArray(r.problems) ? r.problems : [];
   completeSummary.innerHTML = `<b>Rezumat:</b> ${Number(s.conturi) || 0} conturi · ${Number(s.parteneri) || 0} parteneri · `
     + `${Number(s.active) || 0} mijloace fixe · ${Number(s.pozitiiStoc) || 0} poziții de stoc (${fmt(Number(s.valoareStoc) || 0)} lei)`
-    + (problems.length ? `<div class="warnbox"><span class="wi">⚠️</span><div><b>Pachetul nu poate fi importat:</b><ul>${problems.map((x) => `<li>${H(x)}</li>`).join('')}</ul></div></div>`
-      : '<p><b>✓ Toate componentele sunt coerente. Previzualizarea nu a modificat datele.</b></p>');
+    + (problems.length ? `<div class="notice warning"><span class="notice-icon">⚠️</span><div><b>Pachetul nu poate fi importat:</b><ul>${problems.map((x) => `<li>${H(x)}</li>`).join('')}</ul></div></div>`
+      : '<div class="notice success"><span class="notice-icon">✓</span><div><b>Toate componentele sunt coerente.</b> Previzualizarea nu a modificat datele.</div></div>');
   completeSummary.classList.remove('hidden');
 }
 
@@ -410,7 +410,7 @@ completeImportBtn && completeImportBtn.addEventListener('click', async () => {
     try {
       r = await api('/api/migrare/complet/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     } catch (err) {
-      if (err.status !== 409 || !confirm(err.message + '\n\nContinui și înlocuiești numai componentele selectate?')) throw err;
+      if (err.status !== 409 || !await confirmAction(err.message, { title: 'Date existente detectate', detail: 'Vor fi înlocuite numai componentele selectate.', confirmLabel: 'Înlocuiește selecția', danger: true })) throw err;
       payload = Object.assign({}, payload, { suprascrie: true });
       r = await api('/api/migrare/complet/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     }

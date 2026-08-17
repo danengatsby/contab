@@ -3,6 +3,7 @@
 // import in masa din CSV/XLSX. Extras din app.js (Etapa 7). Frunza — depinde doar de nucleu,
 // nu apeleaza inapoi in app.js. loadPartners e apelat din onTab('parteneri').
 import { $, $$, api, toast, H, fileToCsv, legaCompletareCui } from './core.js';
+import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved } from './formflow.js';
 
 const TIP_PARTENER = { client: { t: 'Client', c: '#0b6e4f', bg: '#eaf4ef' }, furnizor: { t: 'Furnizor', c: '#b00020', bg: '#fdeef0' }, ambele: { t: 'Ambele', c: '#42506f', bg: '#eef1f7' } };
 function tipBadge(tip) { const x = TIP_PARTENER[tip]; return x ? `<span data-style="background:${x.bg};color:${x.c};border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700">${x.t}</span>` : '<span class="muted">—</span>'; }
@@ -42,7 +43,10 @@ function renderPartners() {
     : '<p class="muted">Niciun partener pentru filtrul ales. Partenerii se adaugă automat când introduci CUI pe o factură.</p>';
   $$('#partnersList .pedit').forEach((b) => b.addEventListener('click', () => {
     const p = map[b.dataset.cui]; const f = $('#partnerForm');
+    formFlowFlush(f);
     ['cui', 'den', 'tip', 'adresa', 'oras', 'judet', 'tara'].forEach((k) => { if (f[k]) f[k].value = p[k] || ''; });
+    $('#partnerFormMode').textContent = 'Editare';
+    formFlowLoaded(f, 'partener:' + p.cui);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }));
 }
@@ -56,11 +60,25 @@ $('#partnerTipFilter') && $('#partnerTipFilter').addEventListener('change', rend
 legaCompletareCui($('#partnerForm'), {
   den: 'denumire', adresa: 'adresa', oras: 'localitate', judet: 'judet',
 });
+function golestePartener(options = {}) {
+  const f = $('#partnerForm'); if (!f) return;
+  formFlowFlush(f);
+  f.reset();
+  f.tara.value = 'RO';
+  $('#partnerFormMode').textContent = 'Partener nou';
+  formFlowLoaded(f, 'nou', { restore: options.restoreDraft !== false });
+}
+$('#partnerNou') && $('#partnerNou').addEventListener('click', () => golestePartener());
+window.addEventListener('contab:company-context', () => golestePartener());
 $('#partnerForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   const body = { cui: f.cui.value, den: f.den.value, tip: f.tip.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tara: f.tara.value };
-  try { await api('/api/partners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast('Partener salvat'); f.reset(); f.tara.value = 'RO'; loadPartners(); }
+  try {
+    await api('/api/partners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    formFlowSaved(f);
+    toast('Partener salvat'); golestePartener({ restoreDraft: false }); loadPartners();
+  }
   catch (err) { toast(err.message, true); }
 });
 $('#partnersCsvFile').addEventListener('change', async (e) => { const f = e.target.files[0]; if (f) { try { $('#partnersCsvIn').value = await fileToCsv(f); } catch (err) { toast(err.message, true); } } });
@@ -110,3 +128,12 @@ export function sumarAnaf(r) {
 
 // Exportat pentru testele unitare de frontend (insigne + sumar): test/frontend.mjs
 export { tipBadge };
+
+registerFormFlow({
+  form: '#partnerForm',
+  title: 'Datele partenerului',
+  firstStepTitle: 'Identificare și rol',
+  entityKey: 'nou',
+  progressFields: ['cui', 'den', 'tip', 'adresa', 'oras', 'judet', 'tara'],
+  onDiscard: () => golestePartener({ restoreDraft: false }),
+});

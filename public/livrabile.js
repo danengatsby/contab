@@ -1,9 +1,10 @@
 'use strict';
 
 // Declaratii & termene: livrabile ANAF, registrul depunerilor, fisa rol/SPV, portofoliu, notificari, reconciliere, scadentar. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, accName, toast, api, ac } from './core.js';
+import { $$, $, H, fmt, accName, toast, api, ac, confirmAction, promptAction } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
+import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved } from './formflow.js';
 
 // Dependinte injectate din app.js (navigare, schimbarea firmei, luna de lucru) — livrabile.js nu
 // importa inapoi din app.js. Vezi setLivrabileDeps in app.js.
@@ -60,7 +61,7 @@ async function loadLivrabile() {
     : `<tr><td>Impozit micro ${s.d100.cota || 1}% (D100) <span class="muted">· pe <b>trimestrul ${H(s.d100.trimestru || '')}</b>${H(trimLuni)}, nu pe luna</span></td><td class="num">${fmt(s.d100.impozit)}</td></tr>`}
      </table>
      ${!s.du && (s.d100.avertismente || []).length
-    ? `<div class="warnbox" data-u="u23"><span class="wi">⚠️</span><div><b>Eligibilitate micro:</b> ${s.d100.avertismente.join('<br>')}</div></div>`
+    ? `<div class="notice warning" data-u="u23"><span class="notice-icon">⚠️</span><div><b>Eligibilitate micro:</b> ${s.d100.avertismente.join('<br>')}</div></div>`
     : ''}</div>
      <div class="card"><h3>Taxe devenite datorate în ${H(p)}</h3>
       <p class="muted">Ce s-a <b>înregistrat</b> ca datorie către stat chiar în luna aceasta.</p>
@@ -160,8 +161,16 @@ async function loadDeclRegister(p) {
     </tr>`).join('')}</tbody></table>`;
   box.querySelectorAll('.decl-set').forEach((sel) => sel.addEventListener('change', async () => {
     const body = { tip: sel.dataset.tip, period: sel.dataset.period, status: sel.value };
-    if (sel.value === 'depusa') body.recipisa = prompt('Număr recipisă / index depunere (opțional):') || '';
-    if (sel.value === 'eroare') body.note = prompt('Descrierea erorii (opțional):') || '';
+    if (sel.value === 'depusa') {
+      const v = await promptAction('Poți adăuga numărul recipisei sau indexul primit la depunere.', { title: 'Marchezi declarația ca depusă', label: 'Recipisă / index (opțional)', confirmLabel: 'Salvează starea' });
+      if (v == null) { loadDeclRegister(sel.dataset.period); return; }
+      body.recipisa = v;
+    }
+    if (sel.value === 'eroare') {
+      const v = await promptAction('Descrierea ajută la urmărirea corecției necesare.', { title: 'Declarație cu eroare', label: 'Descriere (opțional)', multiline: true, confirmLabel: 'Salvează starea' });
+      if (v == null) { loadDeclRegister(sel.dataset.period); return; }
+      body.note = v;
+    }
     const r = await api('/api/declarations/set', { method: 'POST', body: JSON.stringify(body) });
     toast('Stare salvată: ' + DECL_ST[sel.value].t);
     if (r.locked) toast('🔒 Perioada ' + r.locked + ' a fost blocată automat (declarație depusă) — înregistrările din lunile raportate nu se mai modifică. Deblochezi din Setări → Blocare perioadă.');
@@ -393,7 +402,7 @@ async function renderCompensations() {
       <td class="num">${fmt(c.creanta)}</td><td class="num">${fmt(c.datorie)}</td><td class="num"><b>${fmt(c.compensabil)}</b></td>
       <td><button class="btn small primary compBtn" data-cui="${H(c.cui)}" data-max="${c.compensabil}">Compensează</button></td></tr>`).join('')}</tbody></table>`;
   $$('#compensView .compBtn').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Compensezi ' + fmt(Number(b.dataset.max)) + ' lei (401 = 4111) pentru acest partener?')) return;
+    if (!await confirmAction('Suma maximă compensabilă este ' + fmt(Number(b.dataset.max)) + ' lei pentru acest partener.', { title: 'Înregistrezi compensarea?', detail: 'Operațiunea contabilă este 401 = 4111.', confirmLabel: 'Compensează', danger: true })) return;
     b.disabled = true;
     try {
       const r = await api('/api/compensations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cui: b.dataset.cui }) });
@@ -414,7 +423,10 @@ async function renderAging() {
   $('#agingView').innerHTML = tbl('De încasat (clienți)', a.clienti, a.totalClienti, 'creanțe', true) + tbl('De plătit (furnizori)', a.furnizori, a.totalFurnizori, 'datorii', false);
   $$('#agingView .woff').forEach((b) => b.addEventListener('click', async () => {
     const partener = decodeURIComponent(b.dataset.p);
-    const suma = prompt('Scoatere din evidență (654 = 4111) pentru ' + partener + '. Sumă neîncasabilă:', b.dataset.s);
+    const suma = await promptAction('Creanța partenerului ' + partener + ' va fi scoasă din evidență prin operațiunea 654 = 4111.', {
+      title: 'Scoți creanța din evidență?', label: 'Sumă neîncasabilă', inputType: 'number', value: b.dataset.s,
+      required: true, pattern: /^\d+(?:[.,]\d{1,2})?$/, patternMessage: 'Introdu o sumă pozitivă, cu cel mult două zecimale.', confirmLabel: 'Înregistrează scoaterea', danger: true,
+    });
     if (!suma) return;
     try { const r = await api('/api/writeoff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ partener, cui: b.dataset.c, suma }) }); toast('Creanță scoasă: ' + fmt(r.suma) + (r.reversProvizion ? ' (+ reluare provizion ' + fmt(r.reversProvizion) + ')' : '')); loadAnalytic(); }
     catch (e) { toast(e.message, true); }
@@ -459,7 +471,10 @@ $('#provPost').addEventListener('click', async () => {
   } catch (e) { toast(e.message, true); }
 });
 async function loadAnalytic() {
+  const form = $('#oaForm');
+  formFlowFlush(form);
   $('#oaCont').innerHTML = ANALYTIC_ACCOUNTS.map((c) => `<option value="${H(c)}">${H(c)} — ${H(accName(c))}</option>`).join('');
+  formFlowLoaded(form, 'nou');
   await loadOpeningAnalytic();
   renderAging();
   const sections = await api('/api/analytic');
@@ -492,8 +507,25 @@ $('#oaForm').addEventListener('submit', async (e) => {
   const f = e.target;
   await api('/api/opening-analytic', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cont: f.cont.value, partener: f.partener.value, cui: f.cui.value, d: f.d.value, c: f.c.value }) });
-  toast('Sold inițial analitic salvat'); f.partener.value = ''; f.cui.value = ''; f.d.value = '0'; f.c.value = '0';
+  formFlowSaved(f); toast('Sold inițial analitic salvat'); f.partener.value = ''; f.cui.value = ''; f.d.value = '0'; f.c.value = '0';
+  formFlowLoaded(f, 'nou', { restore: false });
   loadAnalytic();
+});
+function resetOpeningAnalytic(options = {}) {
+  const form = $('#oaForm'); if (!form) return;
+  formFlowFlush(form);
+  form.reset(); form.d.value = '0'; form.c.value = '0';
+  formFlowLoaded(form, 'nou', { restore: options.restoreDraft !== false });
+}
+window.addEventListener('contab:company-context', () => resetOpeningAnalytic());
+
+registerFormFlow({
+  form: '#oaForm',
+  title: 'Soldul inițial pe partener',
+  firstStepTitle: 'Cont și partener',
+  entityKey: 'nou',
+  progressFields: ['cont', 'partener', 'cui', 'd', 'c'],
+  onDiscard: () => resetOpeningAnalytic({ restoreDraft: false }),
 });
 
 

@@ -1,848 +1,564 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   ERP.CSS — imbracamintea de APLICATIE DESKTOP peste acelasi DOM.
+   CONTABO — stratul vizual al aplicației autentificate.
 
-   De ce un strat separat si nu o rescriere a lui styles.css: DOM-ul (index.html,
-   2767 de linii) si logica din public/*.js raman NEATINSE. Skinul se pune si se
-   scoate cu o clasa pe <body> (`erp`) plus doua fisiere — deci un defect de aspect
-   se retrage in secunde, fara sa atinga nimic din ce calculeaza cifre.
-
-   Ancorarea e pe `body.erp` (0,2,0 cu elementul) tocmai ca sa bata regulile din
-   styles.css scrise pe `body ...` — vezi butoanele barei laterale, unde perechea
-   fundal+text e setata cu `body .topbar .side-tools .btn`.
-
-   Vocabularul vizual e cel al programelor de contabilitate de pe Windows:
-   densitate mare (11px, randuri de 18px), colturi drepte, chenare de 1px pe
-   FIECARE celula, fete cu degrade subtil si relief, bara de titlu albastra,
-   bara de meniu, banda de unelte cu pictograme, bara de stare jos.
+   Loginul și aplicația folosesc acum aceeași familie vizuală: suprafețe calde,
+   accente teracotă, sidebar cărbune, spațiere generoasă și controale accesibile.
+   Nu există meniu superior, ribbon sau bară de stare: `#tabs` este unica
+   navigație, iar `#appContext` spune limpede pagina, firma și perioada active.
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 body.erp {
-  /* Fete si chenare — griul-nisip al chrome-ului clasic, nu gri pur (pur = ecran mort) */
-  --e-face: #eeece3;
-  --e-face-lo: #e0ddd1;
-  --e-face-hi: #fbfaf6;
-  --e-line: #a9a494;        /* chenar tare: butoane, campuri, panouri */
-  --e-line-soft: #cbc7b8;   /* chenar moale: linii de grila */
-  --e-sunken: #ffffff;      /* fundul campurilor si al grilelor */
-
-  /* Albastrul de accent — bara de titlu, selectie, antet de fereastra */
-  --e-cap-a: #21497f;
-  --e-cap-b: #3f74b8;
-  --e-sel: #2f6ab5;
-  --e-sel-soft: #d7e4f5;
-
-  --e-ink: #1c1b17;
-  --e-ink-soft: #5d5a50;
-  --e-red: #a52019;
-  --e-green: #14663f;
-  --e-amber: #8a6100;
-
-  --e-row-alt: #f5f6f9;     /* zebra din grile */
-  --e-row-hov: #dbe6f6;
-
-  font-family: Tahoma, "Segoe UI", "DejaVu Sans", Verdana, sans-serif;
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--e-ink);
-  background: #7f7c70;      /* „pupitrul" din spatele ferestrelor */
+  --app-sidebar: 264px;
+  --app-context-h: 76px;
+  --app-charcoal: #24231f;
+  --app-charcoal-2: #2f2e2a;
+  --app-cream: #fbfaf6;
+  --app-warm: #f3efe6;
+  --app-clay: #c2613c;
+  --app-clay-dark: #9f472b;
+  min-width: 320px;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
-/* Tema intunecata a aplicatiei ramane functionala: aceleasi jetoane, alte valori.
-   Nu e un al doilea skin — e acelasi, cu fetele intoarse. */
-body.erp.dark {
-  --e-face: #33322c;
-  --e-face-lo: #26251f;
-  --e-face-hi: #40403a;
-  --e-line: #56544a;
-  --e-line-soft: #46453d;
-  --e-sunken: #1b1a16;
-  --e-cap-a: #16304f;
-  --e-cap-b: #2b568c;
-  --e-sel: #2f6ab5;
-  --e-sel-soft: #1e3350;
-  --e-ink: #e6e3d9;
-  --e-ink-soft: #9c988c;
-  --e-row-alt: #232219;
-  --e-row-hov: #2b3a50;
-  background: #171612;
-}
-
-body.erp h1, body.erp h2, body.erp h3, body.erp h4 { font-weight: 700; margin: 0 0 3px; }
-body.erp h1 { font-size: 13px; }
-body.erp h2 { font-size: 12px; }
-body.erp h3 { font-size: 11.5px; }
-body.erp .muted { font-size: 10.5px; color: var(--e-ink-soft); }
-body.erp a, body.erp .link { color: #14448c; text-decoration: none; }
-body.erp.dark a, body.erp.dark .link { color: #8ab4ec; }
-body.erp a:hover, body.erp .link:hover { text-decoration: underline; }
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   1. CHROME-UL DE SUS (injectat de erp.js): titlu, meniu, banda de unelte.
-   Sta `fixed`, iar inaltimea lui totala se comunica restului prin --e-chrome,
-   ca sa nu existe doua surse pentru aceeasi masura.
-   ───────────────────────────────────────────────────────────────────────────── */
-body.erp { --e-chrome: 100px; --e-status: 22px; }
-
-#erpChrome {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 70;
-  background: var(--e-face);
-  border-bottom: 1px solid var(--e-line);
-  box-shadow: 0 1px 3px rgba(0,0,0,.25);
-  user-select: none;
-}
-
-/* Bara de titlu ------------------------------------------------------------ */
-.erp-title {
-  display: flex; align-items: center; gap: 8px;
-  height: 24px; padding: 0 6px;
-  background: linear-gradient(180deg, var(--e-cap-b), var(--e-cap-a));
-  color: #fff; font-size: 11.5px; font-weight: 700;
-  border-bottom: 1px solid #16355e;
-}
-.erp-title .et-logo { font-size: 13px; opacity: .95; }
-.erp-title .et-app { letter-spacing: .04em; }
-.erp-title .et-sep { opacity: .45; font-weight: 400; }
-.erp-title .et-doc { font-weight: 400; opacity: .93; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; max-width: 42vw; }
-.erp-title .et-spacer { flex: 1 1 auto; }
-.erp-title .et-badge {
-  font-weight: 400; font-size: 10.5px; padding: 1px 7px;
-  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
-}
-/* Butoanele decorative de fereastra din dreapta. Sunt MUTE deliberat (aria-hidden
-   in erp.js): o pagina web n-are ce minimiza, iar un buton care nu face nimic dar
-   e anuntat de cititorul de ecran e mai rau decat lipsa lui. */
-.erp-title .et-wbtns { display: flex; gap: 2px; }
-.erp-title .et-wbtns i {
-  display: grid; place-items: center; width: 19px; height: 15px; font-style: normal;
-  font-size: 9px; background: linear-gradient(180deg, #6d98cf, #3d6ba4);
-  border: 1px solid #16355e; color: #fff;
-}
-.erp-title .et-wbtns i:last-child { background: linear-gradient(180deg, #d4736a, #a83127); border-color: #7d2019; }
-
-/* Bara de meniu ------------------------------------------------------------ */
-.erp-menu {
-  display: flex; align-items: stretch; height: 21px;
-  background: linear-gradient(180deg, var(--e-face-hi), var(--e-face));
-  border-bottom: 1px solid var(--e-line-soft);
-  padding: 0 3px;
-}
-.erp-menu > .em-item { position: relative; }
-.erp-menu > .em-item > button {
-  height: 21px; padding: 0 9px; border: 1px solid transparent; background: none;
-  font: inherit; font-size: 11px; color: var(--e-ink); cursor: pointer;
-}
-.erp-menu > .em-item > button:hover,
-.erp-menu > .em-item.open > button {
-  background: var(--e-sel); color: #fff; border-color: var(--e-sel);
-}
-/* Sublinierea acceleratorului (litera din eticheta), pusa de erp.js */
-.erp-menu u { text-decoration: underline; text-underline-offset: 1px; }
-
-.em-pop {
-  display: none; position: absolute; top: 21px; left: 0; min-width: 232px;
-  background: var(--e-face-hi); border: 1px solid var(--e-line);
-  box-shadow: 2px 3px 7px rgba(0,0,0,.32); padding: 2px; z-index: 80;
-}
-.erp-menu > .em-item.open > .em-pop { display: block; }
-.em-pop button {
-  display: flex; align-items: center; gap: 7px; width: 100%; text-align: left;
-  padding: 3px 10px 3px 6px; border: 0; background: none; font: inherit;
-  font-size: 11px; color: var(--e-ink); cursor: pointer; white-space: nowrap;
-}
-.em-pop button:hover { background: var(--e-sel); color: #fff; }
-.em-pop button .emi { width: 15px; text-align: center; font-size: 12px; flex: 0 0 15px; }
-.em-pop hr { border: 0; border-top: 1px solid var(--e-line-soft); margin: 3px 2px; }
-.em-pop .em-head {
-  padding: 3px 6px 2px; font-size: 10px; font-weight: 700; color: var(--e-ink-soft);
-  text-transform: uppercase; letter-spacing: .05em;
-}
-
-/* Banda de unelte ---------------------------------------------------------- */
-.erp-tools {
-  display: flex; align-items: flex-start; gap: 1px; height: 54px; padding: 3px 4px;
-  background: linear-gradient(180deg, var(--e-face-hi) 0 60%, var(--e-face-lo));
-  border-top: 1px solid #fff; overflow: hidden;
-}
-body.erp.dark .erp-tools { border-top-color: #4a4942; }
-.erp-tools .et-btn {
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-  gap: 1px; min-width: 50px; max-width: 74px; padding: 3px 4px 2px;
-  border: 1px solid transparent; background: none; cursor: pointer;
-  font: inherit; font-size: 9.5px; color: var(--e-ink); line-height: 1.15;
-  text-align: center;
-}
-.erp-tools .et-btn .eti { font-size: 19px; line-height: 20px; }
-.erp-tools .et-btn .etl { white-space: normal; word-break: break-word; }
-.erp-tools .et-btn:hover {
-  border-color: var(--e-sel); background: var(--e-sel-soft);
-}
-body.erp.dark .erp-tools .et-btn:hover { background: #22364f; }
-.erp-tools .et-btn:active { background: #b9cee9; }
-.erp-tools .et-sep {
-  width: 0; border-left: 1px solid var(--e-line-soft); border-right: 1px solid #fff;
-  height: 44px; margin: 2px 4px; flex: 0 0 auto;
-}
-body.erp.dark .erp-tools .et-sep { border-right-color: #4a4942; }
-/* Grupul din dreapta benzii: firma si luna de lucru, ca in programele de birou —
-   nu sunt unelte, sunt CONTEXTUL in care lucreaza toate uneltele. */
-.erp-tools .et-ctx {
-  margin-left: auto; display: flex; align-items: center; gap: 5px;
-  padding: 4px 6px 0; flex: 0 0 auto;
-}
-.erp-tools .et-ctx .etc-lbl { font-size: 10px; color: var(--e-ink-soft); }
-/* Butonul uneltei ecranului curent ramane apasat, ca in barele de unelte clasice */
-.erp-tools .et-btn.on {
-  border-color: var(--e-sel); background: #c3d6ee;
-  box-shadow: inset 1px 1px 2px rgba(0,0,0,.2);
-}
-body.erp.dark .erp-tools .et-btn.on { background: #2b4363; }
-.erp-tools .et-btn[hidden] { display: none; }
-
-/* Firma si luna, in noua lor casa. `.firma-select` si `.curperiod` poarta din
-   styles.css culori pentru fundal INCHIS (alb pe transparent) — aici fundalul e
-   deschis, deci perechea fundal+text se rescrie IMPREUNA, nu pe jumatate. */
-body.erp .et-ctx .firma-select {
-  height: 19px; min-width: 168px; max-width: 220px; padding: 0 4px;
-  background: var(--e-sunken); color: var(--e-ink);
-  border: 1px solid var(--e-line); border-radius: 0;
-  font-size: 11px; font-weight: 400;
-}
-body.erp .et-ctx .curgroup { gap: 1px; }
-body.erp .et-ctx .curperiod,
-body.erp .et-ctx .curnav {
-  background: linear-gradient(180deg, var(--e-face-hi), var(--e-face-lo));
-  color: var(--e-ink); border: 1px solid var(--e-line); border-radius: 0;
-  font-size: 11px; font-weight: 400; padding: 0 7px; height: 19px;
-  display: inline-flex; align-items: center;
-}
-body.erp .et-ctx .curperiod::before { content: none; }
-body.erp .et-ctx .curnav { padding: 0 5px; font-weight: 700; }
-body.erp .et-ctx .curperiod:hover,
-body.erp .et-ctx .curnav:hover:not([disabled]) { background: var(--e-sel-soft); border-color: var(--e-sel); }
-body.erp.dark .et-ctx .curperiod:hover,
-body.erp.dark .et-ctx .curnav:hover:not([disabled]) { background: #22364f; }
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   2. ASEZAREA: chrome sus (fix), bara de stare jos (fixa), restul intre ele.
-   ───────────────────────────────────────────────────────────────────────────── */
+/* ── Navigația unică ───────────────────────────────────────────────────────── */
 body.erp .shell {
-  margin-top: var(--e-chrome);
-  margin-bottom: var(--e-status);
-  min-height: calc(100vh - var(--e-chrome) - var(--e-status));
+  display: flex;
   align-items: stretch;
+  min-height: 100vh;
+  margin: 0;
 }
 
-/* Bara de stare ------------------------------------------------------------ */
-#erpStatus {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
-  display: flex; align-items: center; gap: 3px; height: var(--e-status);
-  padding: 0 3px; font-size: 10.5px; color: var(--e-ink);
-  background: linear-gradient(180deg, var(--e-face-hi), var(--e-face));
-  border-top: 1px solid #fff; box-shadow: 0 -1px 3px rgba(0,0,0,.18);
-}
-body.erp.dark #erpStatus { border-top-color: #4a4942; }
-#erpStatus .es-cell {
-  padding: 1px 8px; height: 17px; display: flex; align-items: center; gap: 5px;
-  border: 1px solid var(--e-line-soft); border-top-color: #9d9a8c; border-left-color: #9d9a8c;
-  background: var(--e-face); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-#erpStatus .es-grow { flex: 1 1 auto; min-width: 0; }
-#erpStatus .es-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--e-green); flex: 0 0 7px; }
-#erpStatus .es-dot.off { background: var(--e-red); }
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   3. NAVIGATORUL DIN STANGA — arbore de module, nu meniu de site.
-   ───────────────────────────────────────────────────────────────────────────── */
 body.erp .topbar {
-  width: 202px; flex: 0 0 202px;
-  height: calc(100vh - var(--e-chrome) - var(--e-status));
-  top: var(--e-chrome);
-  background: var(--e-face);
-  color: var(--e-ink);
-  border-right: 1px solid var(--e-line);
-  padding: 0; gap: 0; box-shadow: none;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex: 0 0 var(--app-sidebar);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: var(--app-sidebar);
+  height: 100vh;
+  padding: 20px 14px 14px;
+  overflow: hidden;
+  color: #f7f3ea;
+  background: var(--app-charcoal);
+  border: 0;
+  border-right: 1px solid rgba(255,255,255,.08);
+  box-shadow: 10px 0 34px rgba(36,35,31,.08);
 }
-/* Antetul panoului — bara de subtitlu a unei ferestre andocate */
+
 body.erp .topbar .brand {
-  order: 0; margin: 0; padding: 0 6px;
-  height: 20px; display: flex; align-items: center; gap: 6px;
-  background: linear-gradient(180deg, #6f93c4, #3f6ba3);
-  color: #fff; border-bottom: 1px solid var(--e-line);
+  order: 1;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 54px;
+  margin: 0 4px 4px;
+  padding: 0 4px 15px;
+  border-bottom: 1px solid rgba(255,255,255,.12);
 }
-body.erp .topbar .brand .logo {
-  width: auto; height: auto; background: none; border-radius: 0; font-size: 12px; display: inline;
+body.erp .brand .logo {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: #fff;
+  background: var(--app-clay);
+  border-radius: 11px;
+  font-size: 21px;
 }
-body.erp .topbar .brand h1 { font-size: 11px; color: #fff; letter-spacing: .03em; }
-body.erp .topbar .brand > div { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
-body.erp .topbar .brand small {
-  color: #dce7f6; font-size: 10px; font-weight: 400;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+body.erp .brand h1 { margin: 0; color: #fff; font-size: 21px; line-height: 1.1; }
+body.erp .brand small {
+  display: block;
+  max-width: 170px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #bdb8ac;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Selectorul de firma si navigatia pe luni sunt MUTATE de erp.js in banda de
-   unelte, la `.et-ctx`. Nu se ascund de aici: daca mutarea n-ar reusi (element
-   lipsa, montare oprita), o regula de ascundere ar lasa firma activa si luna de
-   lucru invizibile — adica exact cele doua comenzi fara de care restul aplicatiei
-   nu inseamna nimic. Ramase in bara laterala, arata doar nepotrivit. */
-body.erp .topbar .firma-select { order: 1; width: auto; max-width: 100%; margin: 3px; }
+body.erp .topbar .spacer,
+body.erp .topbar > .firma-select,
+body.erp .topbar > .curgroup { display: none; }
 
-/* Uneltele (cauta / dictionar / mod / tema / densitate / tur) — o banda subtire
-   de butoane mici sub antet, nu o grila 2x2 de 4 randuri. */
+body.erp .topbar #tabs {
+  order: 4;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  min-height: 0;
+  margin: 2px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-color: rgba(255,255,255,.18) transparent;
+  scrollbar-width: thin;
+}
+
+body.erp #tabs > button[data-tab]:not(.hidden),
+body.erp #tabs > a.navlink:not(.hidden) {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  color: #d8d3c8;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+body.erp #tabs > button[data-tab]:hover,
+body.erp #tabs > a.navlink:hover {
+  color: #fff;
+  background: rgba(255,255,255,.08);
+}
+body.erp #tabs > a.navlink:focus-visible { outline-color: #fff; }
+body.erp #tabs > button[data-tab].active {
+  color: #fff;
+  background: rgba(194,97,60,.22);
+  box-shadow: inset 3px 0 0 var(--app-clay);
+}
+body.erp #tabs > button[data-tab].active .app-icon { color: #eea589; }
+
+body.erp #tabs .navgroup:not(.hidden) {
+  position: static !important;
+  display: block !important;
+  width: 100%;
+}
+body.erp #tabs .navlabel:not(.hidden) {
+  display: flex !important;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 12px 7px;
+  color: #afa99d;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  text-align: left;
+  cursor: pointer;
+}
+body.erp #tabs .navlabel::after {
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  opacity: .7;
+  transform: rotate(45deg);
+  transition: transform .18s ease;
+}
+body.erp #tabs .navgroup.open > .navlabel { color: #f4d3c5; }
+body.erp #tabs .navgroup.open > .navlabel::after { transform: rotate(225deg); }
+body.erp #tabs .navmenu {
+  position: static !important;
+  display: none !important;
+  min-width: 0;
+  padding: 2px 0 7px 17px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+body.erp #tabs .navgroup.open > .navmenu:not(.hidden) { display: block !important; }
+body.erp #tabs .navmenu button:not(.hidden) {
+  display: flex !important;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  color: #cbc6bc;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid rgba(255,255,255,.13);
+  border-radius: 0 9px 9px 0;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+body.erp #tabs .navmenu button:hover { color: #fff; background: rgba(255,255,255,.07); }
+body.erp #tabs .navmenu button.active {
+  color: #fff;
+  background: rgba(194,97,60,.18);
+  border-left-color: #eea589;
+  font-weight: 650;
+}
+body.erp #tabs .navmenu .app-icon { width: 17px; height: 17px; color: #aaa398; }
+body.erp #tabs .navhint { padding: 5px 12px; color: #8f897e; font-size: 12px; }
+/* Aceste două reguli trebuie să bată regulile de afișare ale acordeonului de mai sus, ambele
+   fiind intenționat `!important`. Altfel modul simplu ar ascunde conținutul tehnic, dar nu și
+   intrările lui din navigația unică. */
+body.erp.simple-ui #tabs .navgroup.adv { display: none !important; }
+body.erp.simple-ui #tabs .navmenu button.adv { display: none !important; }
+
 body.erp .topbar .side-tools {
-  order: 1; display: flex; flex-wrap: wrap; gap: 2px; padding: 3px;
-  margin: 0; background: var(--e-face-lo); border-bottom: 1px solid var(--e-line-soft);
+  order: 6;
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin: 0;
+  padding-top: 7px;
 }
+body.erp .topbar.tools-open .side-tools { display: grid; }
 body.erp .topbar .side-tools .btn,
+body.erp .topbar #toolsBtn,
 body.erp .topbar #logoutBtn {
-  background: linear-gradient(180deg, var(--e-face-hi), var(--e-face-lo));
-  color: var(--e-ink); border: 1px solid var(--e-line);
-  border-radius: 0; padding: 1px 6px; min-height: 19px; font-size: 10px;
-  font-weight: 400; width: auto; margin: 0; box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 9px;
+  color: #e8e3d8;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 9px;
+  font-size: 12.5px;
+  box-shadow: none;
 }
 body.erp .topbar .side-tools .btn:hover,
-body.erp .topbar #logoutBtn:hover {
-  background: var(--e-sel-soft); border-color: var(--e-sel);
-}
-body.erp.dark .topbar .side-tools .btn:hover,
-body.erp.dark .topbar #logoutBtn:hover { background: #22364f; }
+body.erp .topbar #toolsBtn:hover,
+body.erp .topbar #logoutBtn:hover { color: #fff; background: rgba(255,255,255,.14); }
 body.erp .topbar .side-tools .btn.mod-expert {
-  background: linear-gradient(180deg, #fdf0c8, #f2dc94); border-color: #b99a2e; color: #4d3d00;
+  color: #f0c14b;
+  background: rgba(240,193,75,.16);
+  border-color: rgba(240,193,75,.5);
 }
+body.erp .topbar .side-tools .btn.mod-expert:hover { background: rgba(240,193,75,.28); border-color: rgba(240,193,75,.75); }
+body.erp .topbar #toolsBtn {
+  order: 6;
+  display: inline-flex;
+  width: 100%;
+  margin-top: 5px;
+}
+body.erp .topbar #toolsBtn::after {
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  opacity: .7;
+  transform: rotate(45deg);
+  transition: transform .18s ease;
+}
+body.erp .topbar.tools-open #toolsBtn::after { transform: rotate(225deg); }
+body.erp .topbar #userBadge { order: 7; margin: 2px 5px 0; color: #bdb8ac; font-size: 12.5px; }
+body.erp .topbar #logoutBtn { order: 8; width: 100%; }
+body.erp #navToggleBtn,
+body.erp .nav-backdrop { display: none; }
 
-/* Arborele propriu-zis */
-body.erp .topbar #tabs {
-  order: 2; margin: 0; padding: 2px 0 6px; gap: 0;
-  background: var(--e-sunken);
-  border-top: 1px solid var(--e-line-soft);
+/* ── Bara contextuală: pagină + firmă + perioadă ───────────────────────────── */
+body.erp .shell > main {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0 32px 56px;
+  overflow-x: clip;
 }
-body.erp.dark .topbar #tabs { background: #1f1e19; }
+body.erp .shell > main > .tab { max-width: 1220px; margin: 0 auto; }
 
-/* Frunza de arbore (intrare directa sau item dintr-un grup) */
-body.erp #tabs > button[data-tab]:not(.hidden),
-body.erp #tabs > a.navlink,
-body.erp #tabs .navmenu button {
-  border-radius: 0; border-left: 0; border-top: 0; border-right: 0; border-bottom: 0;
-  font-size: 11px; font-weight: 400; color: var(--e-ink);
-  padding: 2px 6px 2px 22px; min-height: 0; line-height: 15px;
-  gap: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-body.erp #tabs > button[data-tab]:not(.hidden),
-body.erp #tabs > a.navlink { padding-left: 8px; font-weight: 400; }
-body.erp #tabs > button[data-tab]:hover,
-body.erp #tabs > a.navlink:hover,
-body.erp #tabs .navmenu button:hover { background: var(--e-sel-soft); color: var(--e-ink); }
-body.erp.dark #tabs > button[data-tab]:hover,
-body.erp.dark #tabs > a.navlink:hover,
-body.erp.dark #tabs .navmenu button:hover { background: #22364f; color: var(--e-ink); }
-body.erp #tabs > button[data-tab].active,
-body.erp #tabs .navmenu button.active {
-  background: var(--e-sel); color: #fff; font-weight: 700; border-left-color: transparent;
-}
-
-/* Antetul de grup — bara de sectiune cu marcaj ⊞/⊟, ca intr-un arbore clasic */
-body.erp #tabs .navlabel {
-  padding: 3px 6px 3px 5px; font-size: 10.5px; font-weight: 700;
-  text-transform: none; letter-spacing: 0; color: var(--e-ink);
-  background: linear-gradient(180deg, var(--e-face-hi), var(--e-face-lo));
-  border-top: 1px solid #fff; border-bottom: 1px solid var(--e-line-soft);
-  justify-content: flex-start; gap: 5px;
-}
-body.erp.dark #tabs .navlabel { border-top-color: #4a4942; }
-body.erp #tabs .navlabel:hover { color: var(--e-ink); background: var(--e-sel-soft); }
-body.erp.dark #tabs .navlabel:hover { background: #22364f; }
-body.erp #tabs .navgroup.open > .navlabel { color: var(--e-ink); }
-/* Chevronul rotativ din tema moderna se inlocuieste cu cutia ⊞/⊟ a arborilor.
-   `order:-1` o aduce in fata etichetei, unde o cauta ochiul. */
-body.erp #tabs .navlabel::after {
-  content: '\002B'; order: -1; transform: none !important;
-  display: grid; place-items: center; width: 11px; height: 11px; flex: 0 0 11px;
-  border: 1px solid var(--e-line); background: var(--e-sunken);
-  font-size: 9px; line-height: 1; opacity: 1; color: var(--e-ink);
-}
-body.erp #tabs .navgroup.open > .navlabel::after { content: '\2212'; }
-body.erp #tabs .navmenu { padding: 0; }
-/* Linia punctata de arbore la stanga frunzelor */
-body.erp #tabs .navgroup.open > .navmenu {
-  background: linear-gradient(90deg, transparent 0 11px, var(--e-line-soft) 11px 12px, transparent 12px);
-}
-body.erp #tabs .navhint {
-  color: var(--e-ink-soft); padding: 3px 6px 1px 22px; font-size: 9.5px; text-transform: uppercase;
-}
-body.erp .topbar #userBadge {
-  order: 7; color: var(--e-ink-soft); font-size: 10px; font-weight: 400;
-  padding: 3px 6px; margin: 0; border-top: 1px solid var(--e-line-soft); text-align: left;
-}
-body.erp .topbar #logoutBtn { order: 8; margin: 0 3px 3px; width: calc(100% - 6px); }
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   4. ZONA DE LUCRU — fiecare ecran devine o „fereastra" andocata, cu bara de titlu.
-   ───────────────────────────────────────────────────────────────────────────── */
-body.erp .shell > main { padding: 4px; background: #7f7c70; overflow-x: clip; }
-body.erp.dark .shell > main { background: #171612; }
-body.erp .shell > main > .tab {
-  max-width: none; margin: 0;
-  background: var(--e-face); border: 1px solid var(--e-line);
-  box-shadow: 1px 1px 0 rgba(0,0,0,.18);
-  padding: 0 0 8px;
-}
-body.erp .tab.active { animation: none; }
-
-/* Bara de titlu a ecranului. Clasa e pusa de erp.js — ori pe `.toolbar` care
-   exista deja in capul ecranului, ori pe una injectata acolo unde lipsea. */
-body.erp .tab > .erp-win-cap {
-  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
-  margin: 0 0 6px; padding: 2px 5px; border-bottom: 1px solid var(--e-line);
-  background: linear-gradient(180deg, var(--e-cap-b), var(--e-cap-a));
-  min-height: 22px;
-}
-body.erp .tab > .erp-win-cap > h2 {
-  font-size: 11.5px; font-weight: 700; color: #fff; letter-spacing: .02em;
-  line-height: 18px; margin: 0;
-}
-body.erp .tab > .erp-win-cap .ewc-ic { font-size: 12px; line-height: 1; }
-body.erp .tab > .erp-win-cap .muted,
-body.erp .tab > .erp-win-cap small { color: #cfdcef; }
-body.erp .tab > .erp-win-cap label { color: #dfe8f5; }
-/* Bula de ajutor „ⓘ" sta acum pe fundal albastru — trebuie sa ramana lizibila */
-body.erp .tab > .erp-win-cap .cinfo {
-  background: rgba(255,255,255,.22); color: #fff; border-color: rgba(255,255,255,.5);
-}
-/* Continutul ecranului primeste marginile pe care le-a pierdut `.tab` */
-body.erp .tab > *:not(.erp-win-cap) { margin-left: 6px; margin-right: 6px; }
-
-body.erp .toolbar { gap: 4px; margin-bottom: 6px; }
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   5. PANOURI (.card) — casete de grup cu antet, nu carduri plutitoare.
-   ───────────────────────────────────────────────────────────────────────────── */
-body.erp .card {
-  background: var(--e-sunken); border: 1px solid var(--e-line);
-  border-radius: 0; box-shadow: none; padding: 0 0 7px; margin-bottom: 6px;
-}
-body.erp.dark .card { background: #201f1a; }
-body.erp .card > h2,
-body.erp .card > .card-head > h2,
-body.erp .card-titlu-mare {
-  font-size: 11px; font-weight: 700; letter-spacing: .02em; color: var(--e-ink);
-  margin: 0; padding: 2px 6px; line-height: 16px;
-  background: linear-gradient(180deg, var(--e-face-hi), var(--e-face-lo));
-  border-bottom: 1px solid var(--e-line-soft);
-}
-body.erp .card > .card-head {
-  padding: 0; gap: 5px;
-  background: linear-gradient(180deg, var(--e-face-hi), var(--e-face-lo));
-  border-bottom: 1px solid var(--e-line-soft);
-}
-body.erp .card > .card-head > h2 { background: none; border: 0; flex: 1 1 auto; }
-body.erp .card > .card-head > *:not(h2) { margin-right: 4px; }
-/* Restul continutului panoului: distantat de chenar, dar cu economie */
-body.erp .card > *:not(h2):not(.card-head) { margin-left: 7px; margin-right: 7px; }
-body.erp .card > h3 { margin-top: 7px; }
-body.erp .card > .tablewrap,
-body.erp .card > table { margin-left: 0; margin-right: 0; }
-body.erp .card.inaplicabil { padding: 3px 6px; background: var(--e-face); }
-body.erp .card.inaplicabil > h2 { background: none; border: 0; padding: 0; display: inline; }
-
-body.erp .grid2, body.erp .grid3 { gap: 6px; }
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   6. GRILE DE DATE — chenar pe fiecare celula, antet in relief, randuri de 18px.
-   ───────────────────────────────────────────────────────────────────────────── */
-body.erp table { font-size: 11px; border-collapse: collapse; background: var(--e-sunken); }
-body.erp .tablewrap { border: 1px solid var(--e-line); background: var(--e-sunken); }
-body.erp th, body.erp td {
-  padding: 1px 5px; border: 1px solid var(--e-line-soft);
-  height: 18px; white-space: nowrap;
-}
-body.erp thead th {
-  background: linear-gradient(180deg, var(--e-face-hi) 0 55%, var(--e-face-lo));
-  border: 1px solid var(--e-line); border-top-color: #fff;
-  color: var(--e-ink); font-size: 10.5px; font-weight: 700;
-  text-transform: none; letter-spacing: 0; height: 20px;
-  box-shadow: none; text-align: left;
-}
-body.erp.dark thead th { border-top-color: #4a4942; }
-body.erp thead th.num { text-align: right; }
-/* Zebra + randul de sub cursor + randul selectat, in cheia grilelor de birou */
-body.erp tbody tr:nth-child(2n):not(.total):not(.sys) td { background: var(--e-row-alt); }
-body.erp tbody tr:not(.total):hover td { background: var(--e-row-hov); }
-body.erp tr.total td {
-  background: linear-gradient(180deg, var(--e-face-hi), var(--e-face-lo));
-  font-weight: 700; border-top: 1px solid var(--e-line);
-}
-body.erp tr.sys td { color: var(--e-amber); }
-body.erp td.num, body.erp th.num { font-variant-numeric: tabular-nums; }
-/* Anteturile grupate ale balantei — pastreaza codul de culoare, pierd rotunjimile */
-body.erp .bal-grp { font-size: 10px; height: 17px; }
-body.erp #balantaView thead tr:first-child th { height: 17px; }
-body.erp #balantaView thead tr:nth-child(2) th { top: 17px; }
-
-/* Insignele de stare devin etichete dreptunghiulare, ca in coloanele de status */
-body.erp .st, body.erp .badge, body.erp .pill {
-  border-radius: 0; padding: 0 5px; font-size: 10px; font-weight: 700;
-  border: 1px solid var(--e-line-soft); line-height: 14px;
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   7. FORMULARE — eticheta la STANGA campului, campuri joase cu chenar adancit.
-   Asta e a doua sursa mare de asemanare: `<label>Text <input></label>` devine o
-   grila de doua coloane, deci textul se aseaza langa camp, nu deasupra lui.
-   ───────────────────────────────────────────────────────────────────────────── */
-/* `:not(.hidden)` NU e cosmetic: `body.erp label` (o clasa + un element) bate
-   `.hidden{display:none}` (o clasa), deci un label ascuns din JS ramanea VIZIBIL pe desktop —
-   unde stratul clasic e montat, adica pe cazul obisnuit. Se vedea direct pe ecranul de intrare:
-   randul „Cod 2FA" statea deschis chiar cand trebuia ascuns. Aceeasi capcana ca la `.login-box label`
-   din styles.css, si acolo rezolvata la fel. */
-body.erp label:not(.hidden) {
-  display: grid; grid-template-columns: 140px minmax(0, 1fr);
-  align-items: center; gap: 4px 7px;
-  font-size: 11px; font-weight: 400; color: var(--e-ink); margin: 2px 0;
-}
-/* Textul de ajutor de sub un camp trece pe randul doi, sub camp, nu langa eticheta */
-body.erp label > .muted { grid-column: 2; font-size: 10px; }
-body.erp label > input, body.erp label > select, body.erp label > textarea { grid-column: 2; }
-
-body.erp input, body.erp select, body.erp textarea {
-  height: 19px; padding: 0 4px; border: 1px solid var(--e-line); border-radius: 0;
-  font-family: inherit; font-size: 11px; background: var(--e-sunken); color: var(--e-ink);
-  box-shadow: inset 1px 1px 0 rgba(0,0,0,.07);
-}
-body.erp textarea { height: auto; padding: 2px 4px; }
-body.erp input:focus, body.erp select:focus, body.erp textarea:focus {
-  outline: 0; border-color: var(--e-sel); background: #fffdf0;
-}
-body.erp.dark input:focus, body.erp.dark select:focus, body.erp.dark textarea:focus { background: #26251d; }
-body.erp input[type=checkbox], body.erp input[type=radio] {
-  width: 13px; height: 13px; box-shadow: none; padding: 0;
-}
-/* Randurile cu bifa raman pe o singura linie: eticheta e DUPA caseta, nu deasupra */
-body.erp .dyn .check:not(.hidden), body.erp label:has(> input[type=checkbox]):not(.hidden) {
-  display: flex; flex-direction: row; align-items: center; gap: 5px; font-size: 11px;
-}
-body.erp .dyn { grid-template-columns: 1fr 1fr; gap: 1px 12px; }
-/* Campurile din formularele generate nu se intind pana la marginea ecranului: pe
-   un monitor lat, un camp de suma de 700px nu ajuta pe nimeni, iar ochiul pierde
-   legatura dintre eticheta si valoare. Plafonul e pe grila `.dyn`, deci nu atinge
-   campurile de cautare si nici editoarele de randuri, care chiar au nevoie de lat. */
-body.erp .dyn input:not([type=checkbox]):not([type=radio]),
-body.erp .dyn select { max-width: 360px; }
-body.erp .dyn .full input:not([type=checkbox]):not([type=radio]) { max-width: 620px; }
-body.erp .items-editor, body.erp .stoc-editor {
-  border: 1px solid var(--e-line); border-radius: 0; padding: 4px; background: var(--e-face);
-}
-body.erp .item-row, body.erp .stoc-row { gap: 3px; margin-bottom: 2px; }
-body.erp .drop {
-  border: 1px dashed var(--e-line); border-radius: 0; padding: 12px; background: var(--e-face);
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   8. BUTOANE — fete cu relief, colturi drepte, inaltime de bara de unelte.
-   ───────────────────────────────────────────────────────────────────────────── */
-body.erp .btn {
-  background: linear-gradient(180deg, var(--e-face-hi), var(--e-face-lo));
-  color: var(--e-ink); border: 1px solid var(--e-line); border-radius: 0;
-  padding: 1px 10px; min-height: 21px; font-size: 11px; font-weight: 400;
-  box-shadow: inset 0 1px 0 #fff; transition: none;
-}
-body.erp.dark .btn { box-shadow: inset 0 1px 0 #4a4942; }
-body.erp .btn:hover { background: var(--e-sel-soft); border-color: var(--e-sel); }
-body.erp.dark .btn:hover { background: #22364f; }
-body.erp .btn:active {
-  transform: none; background: var(--e-face-lo);
-  box-shadow: inset 1px 1px 2px rgba(0,0,0,.22);
-}
-body.erp .btn.primary {
-  background: linear-gradient(180deg, #4a7fc0, #275a97); color: #fff;
-  border-color: #1d4573; box-shadow: inset 0 1px 0 rgba(255,255,255,.28); font-weight: 700;
-}
-body.erp .btn.primary:hover { background: linear-gradient(180deg, #5b91d2, #2f68a8); }
-body.erp .btn.small { padding: 0 7px; min-height: 18px; font-size: 10.5px; margin-top: 0; }
-body.erp .btn.ghost { box-shadow: none; }
-body.erp .linkbtn { font-size: 10.5px; }
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   9. INDICATORI, EXPLICATII, BENZI — coborate la scara restului.
-   ───────────────────────────────────────────────────────────────────────────── */
-body.erp .kpis { gap: 4px; margin-bottom: 6px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-body.erp .kpi {
-  background: var(--e-sunken); border: 1px solid var(--e-line); border-radius: 0;
-  box-shadow: none; padding: 4px 7px 5px;
-}
-body.erp.dark .kpi { background: #201f1a; }
-body.erp .kpi:hover { box-shadow: none; }
-body.erp .kpi .lbl { font-size: 9.5px; letter-spacing: .03em; color: var(--e-ink-soft); }
-body.erp .kpi .val { font-size: 17px; font-weight: 700; margin-top: 1px; letter-spacing: 0; }
-body.erp .kpi .sub { font-size: 10px; }
-body.erp .kpi.green .val { color: var(--e-green); }
-body.erp .kpi.red .val { color: var(--e-red); }
-body.erp .kpi.blue .val { color: var(--e-cap-a); }
-body.erp.dark .kpi.blue .val { color: #8ab4ec; }
-
-/* Panoul de avertizari de pe „Acasa" — randuri de lista, nu carduri. Sunt cel mai
-   dens continut util al aplicatiei (ce e restant, ce trebuie depus), deci exact
-   locul unde carcasele groase costau cele mai multe randuri de ecran. */
-body.erp .dash-alerts { gap: 2px; margin-bottom: 6px; }
-body.erp .alert {
-  border-radius: 0; padding: 2px 7px; gap: 6px; font-size: 11px; min-height: 20px;
-  border: 1px solid var(--e-line-soft); border-left-width: 3px; background: var(--e-sunken);
+body.erp .app-context {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: var(--app-context-h);
+  margin: 0 -32px 28px;
+  padding: 10px 32px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 8px 22px rgba(45,39,29,.045);
+  backdrop-filter: blur(14px);
 }
-body.erp.dark .alert { background: #201f1a; }
-body.erp .alert .al-ic { font-size: 13px; line-height: 1; }
-body.erp .alert .al-tx { font-size: 11px; line-height: 1.3; }
-body.erp .alert .al-cta { font-size: 10.5px; white-space: nowrap; }
-body.erp .alert.warn { border-left-color: var(--e-amber); }
-body.erp .alert.bad { border-left-color: var(--e-red); }
-body.erp .alert.ok { border-left-color: var(--e-green); }
-body.erp .alert.info { border-left-color: var(--e-cap-b); }
+body.erp .app-context-title { display: flex; align-items: center; gap: 12px; min-width: 160px; }
+body.erp .app-context-icon {
+  width: 40px;
+  height: 40px;
+  padding: 9px;
+  color: var(--app-clay);
+  background: #f7e8df;
+  border-radius: 12px;
+}
+body.dark.erp .app-context-icon { color: #eea589; background: rgba(194,97,60,.18); }
+body.erp .app-context-title > div { display: flex; flex-direction: column; min-width: 0; }
+body.erp .app-context-kicker {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+body.erp #appContextTitle {
+  margin: 1px 0 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.erp .app-context-controls { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+body.erp .app-context-field { display: flex; align-items: center; gap: 7px; margin: 0; }
+body.erp .app-context-field > span:first-child {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+body.erp .app-context .firma-select {
+  width: 280px;
+  min-width: 190px;
+  max-width: 260px;
+  height: 40px;
+  padding: 7px 34px 7px 11px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+body.erp .app-context .curgroup { display: inline-flex; align-items: center; gap: 4px; }
+body.erp .app-context .curnav,
+body.erp .app-context .curperiod {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+}
+body.erp .app-context .curperiod { min-width: 122px; }
+body.erp .app-context .curnav[disabled] { opacity: .35; cursor: not-allowed; }
+body.erp .app-context .curnav:hover:not([disabled]),
+body.erp .app-context .curperiod:hover { color: var(--app-clay); border-color: #d9a48f; background: #fcf4ef; }
+body.dark.erp .app-context .curnav:hover:not([disabled]),
+body.dark.erp .app-context .curperiod:hover { background: rgba(194,97,60,.12); }
+body.erp .app-online {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+body.erp .app-online::before {
+  width: 8px;
+  height: 8px;
+  background: var(--good);
+  border-radius: 50%;
+  content: "";
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 15%, transparent);
+}
+body.erp .app-online.offline::before { background: var(--danger); box-shadow: none; }
 
-/* Harta ciclului contabil (Documente → Emite → Declaratii): un rand de butoane de
-   navigare, la scara benzii de unelte. */
-body.erp .cyclemap { gap: 2px; margin-bottom: 6px; }
-body.erp .cyclestep {
-  border-radius: 0; border: 1px solid var(--e-line); background: var(--e-face);
-  padding: 1px 8px; font-size: 11px; gap: 4px; min-height: 20px; box-shadow: none;
-}
-body.erp .cyclestep .ci { font-size: 12px; }
-body.erp .cyclestep:hover { transform: none; box-shadow: none; background: var(--e-sel-soft); }
-body.erp.dark .cyclestep:hover { background: #22364f; }
-body.erp .cyclestep.active { background: var(--e-sel); color: #fff; border-color: var(--e-sel); }
-body.erp .cyclearrow { font-size: 10px; color: var(--e-ink-soft); }
+/* ── Conținut, tipografie și controale ─────────────────────────────────────── */
+body.erp .tab > .toolbar { min-height: 0; margin: 0 0 14px; }
+body.erp .tab > .toolbar > h2 { display: none; }
+body.erp .tab > .toolbar > h2 + .spacer:last-child { display: none; }
+body.erp h1, body.erp h2, body.erp h3 { color: var(--ink); }
+body.erp h2 { font-size: 22px; }
+body.erp h3 { font-size: 18px; }
+body.erp .muted { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
 
-/* Indicatorii: pictograma mica, cifra mare dar nu titlu de ziar */
-body.erp .kpi-top { gap: 4px; }
-body.erp .kpi-ic, body.erp .qa .ic, body.erp .ws-ic { font-size: 14px; }
-body.erp .kpi .trend { font-size: 9.5px; }
-body.erp .checklist li, body.erp .warnbox { font-size: 11px; }
-body.erp .warnbox { border-radius: 0; padding: 3px 7px; }
-body.erp .fstep { border-radius: 0; padding: 3px 7px; margin-bottom: 3px; }
+/* Modul compact afectează numai suprafețele cu densitate de date. Restul UI-ului
+   rămâne la aceleași dimensiuni, astfel încât butoanele și formularele nu se micșorează. */
+body.erp.compact { font-size: 15px; line-height: 1.5; }
+body.erp.compact .shell > main { margin: 0; }
+body.erp.compact h1 { font-size: inherit; }
+body.erp.compact h2 { font-size: 22px; }
+body.erp.compact h3 { font-size: 18px; }
+/* Elementele vechiului chrome nu mai fac parte din produs. Regula protejează și
+   utilizatorii care au o versiune HTML veche rămasă temporar în cache. */
+#erpChrome, #erpMenu, #erpTools, #erpStatus { display: none !important; }
 
-body.erp .explain, body.erp .missingbox {
-  border-radius: 0; padding: 4px 8px; margin-bottom: 6px; font-size: 10.5px;
-  border: 1px solid var(--e-line-soft); border-left: 3px solid var(--e-cap-b);
-  background: var(--e-face);
-}
-body.erp .docband { border-radius: 0; padding: 2px 8px; margin: 8px 0 4px; font-size: 11px; }
-body.erp .docband b { font-size: 11.5px; }
-body.erp .preview {
-  border-radius: 0; padding: 4px 6px; margin: 5px 0; font-size: 10.5px;
-  border: 1px solid var(--e-line); background: var(--e-face);
-}
-body.erp .quickacts { gap: 4px; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); }
-body.erp .qa {
-  border-radius: 0; border: 1px solid var(--e-line); box-shadow: none;
-  padding: 5px 7px; background: var(--e-sunken); gap: 1px;
-}
-body.erp.dark .qa { background: #201f1a; }
-body.erp .qa:hover { transform: none; box-shadow: none; background: var(--e-sel-soft); border-color: var(--e-sel); }
-body.erp.dark .qa:hover { background: #22364f; }
-body.erp .qa .ic { font-size: 16px; }
-body.erp .qa .t { font-size: 11px; font-weight: 700; }
-body.erp .emit-guided, body.erp .thread-item, body.erp .ledger-acc {
-  border-radius: 0; box-shadow: none; padding: 4px 7px;
-}
-body.erp .emit-guided:hover { transform: none; box-shadow: none; }
-body.erp .emitgrid.guided { gap: 4px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
-body.erp .emit-guided .gt { font-size: 11.5px; }
-body.erp .emit-guided .gd { font-size: 10.5px; line-height: 1.3; }
-body.erp .rec-more > summary .rec-sum-t { font-size: 12px; }
-body.erp .emit-more > summary, body.erp .pm-box > summary { font-size: 10.5px; }
-/* Ghidul si listele de legaturi: text de citit, deci nu coboara la 11px — dar
-   pierd aerul de pagina de prezentare. */
-body.erp .howto h3 { font-size: 12px; margin: 10px 0 3px; }
-body.erp .howto .lead { border-radius: 0; padding: 5px 9px; }
-body.erp .howto kbd { border-radius: 0; }
-body.erp .linklist a { padding: 3px 0; font-size: 11px; }
-body.erp .faq-item summary { font-size: 11.5px; }
-body.erp .paginare { gap: 4px; margin-top: 5px; padding-top: 5px; }
-body.erp .descarcari { gap: 4px; margin: 0 0 6px; }
-body.erp .cyclemap, body.erp .navbadge { border-radius: 0; }
-body.erp .navbadge { border-radius: 0; font-size: 9.5px; line-height: 13px; min-width: 14px; }
-
-/* Ferestrele modale (vizualizator de documente, dialoguri) capata rama de fereastra */
-body.erp .pdf-box, body.erp .login-box {
-  border-radius: 0; border: 1px solid var(--e-line);
-  box-shadow: 2px 3px 12px rgba(0,0,0,.45);
-}
-body.erp .pdf-head {
-  background: linear-gradient(180deg, var(--e-cap-b), var(--e-cap-a));
-  border-bottom: 1px solid var(--e-line); padding: 2px 6px; min-height: 22px;
-}
-body.erp .pdf-title { color: #fff; font-size: 11.5px; }
-
-/* Caseta de autentificare — dialog de aplicatie, nu formular de site */
-body.erp .login-overlay { background: #6f6c62; }
-/* Marginea interioara sta pe CASETA, nu pe copii. Forma dinainte lasa caseta fara padding si
-   punea `margin: 0 12px` pe fiecare copil — ceea ce rupe orice copil lat cat caseta: butonul
-   „Intra" are `width:100%` (`u19`), adica 100% din cei 320px ai casetei, PLUS cele doua margini
-   de 12px. Iesea 12px in afara ramei, exact pe elementul cel mai vizibil al ecranului de intrare.
-   Cu padding pe caseta, `width:100%` inseamna latimea DINAUNTRU (box-sizing: border-box), deci
-   se potriveste singur; banda cu sigla ramane lipita de margini printr-o margine negativa. */
-body.erp .login-box { padding: 0 12px 12px; background: var(--e-face); }
-/* Latimea fixa de dialog e DOAR pentru cele trei casete care chiar sunt dialoguri de
-   autentificare. Clasa `.login-box` e refolosita si de panourile LARGI — „Planuri & preturi"
-   (`u58`, min(920px,94vw)) si „Intrebari frecvente" (`u63`, min(860px,94vw)) — iar un
-   `body.erp .login-box { width: 320px }` le batea la specificitate pe amandoua. Efectul se vedea
-   direct in produs: grila planurilor e `repeat(auto-fit, minmax(220px, 1fr))`, deci la 320px
-   incapea o singura coloana si cele trei planuri se asezau unul sub altul, in loc de alaturi. */
-body.erp #loginForm.login-box,
-body.erp #registerForm.login-box,
-body.erp #forcePwForm.login-box { width: 320px; }
-body.erp .login-box .login-logo {
-  font-size: 11.5px; font-weight: 700; color: #fff; margin: 0 -12px 8px;
-  padding: 3px 7px; background: linear-gradient(180deg, var(--e-cap-b), var(--e-cap-a));
-}
-/* Caseta de autentificare pastreaza eticheta DEASUPRA campului: la 320px latime,
-   coloana de 140px a etichetelor ar lasa campului mai putin decat ii trebuie, iar
-   butonul „arata" din randul parolei ar cadea peste el. */
-body.erp .login-box label:not(.hidden) { display: block; margin-top: 6px; }
-body.erp .login-box label > input,
-body.erp .login-box label > select { grid-column: auto; width: 100%; }
-body.erp .login-box label > .muted { display: block; margin-top: 2px; }
-body.erp .login-box .login-actions { display: flex; flex-wrap: wrap; gap: 3px; }
-body.erp .login-box .login-actions .btn { margin-top: 0; flex: 1 1 auto; }
-
-body.erp .toast { border-radius: 0; padding: 5px 12px; font-size: 11px; }
-body.erp #loadbar { height: 2px; }
-
-/* Focalizarea de la tastatura: chenar punctat, conventia de pe desktop */
-body.erp :focus-visible {
-  outline: 1px dotted var(--e-ink); outline-offset: 1px; border-radius: 0;
-}
-
-/* Ecranele inguste (tableta/telefon): chrome-ul de birou nu are ce cauta acolo —
-   dispare, iar aplicatia se intoarce la asezarea din styles.css. O banda de unelte
-   de 54px si un arbore de 202px pe un ecran de 390px ar lasa cifrele fara loc. */
+/* ── Mobil: aceeași ierarhie, condensată ───────────────────────────────────── */
 @media (max-width: 900px) {
-  #erpChrome, #erpStatus { display: none; }
-  body.erp .shell { margin-top: 0; margin-bottom: 0; }
-  body.erp .topbar { height: auto; top: 0; }
+  body.erp .app-online,
+  body.erp .app-context-field > span:first-child { display: none; }
+  body.erp .app-context .firma-select { min-width: 160px; max-width: 220px; }
 }
 
-/* ── GHIDUL ca prezentare a aplicatiei (public/ghid.js) ──────────────────────
-   Bara de cuprins refoloseste stilul barei de meniu (.erp-menu / .em-item / .em-pop),
-   ca ghidul sa arate exact ca aplicatia pe care o explica — nu ca un site alaturat.
-   Se afiseaza si in aspectul non-erp (ecrane inguste), de aceea regulile NU stau
-   sub `body.erp`: cuprinsul e util mai ales cand bara de meniu reala e ascunsa. */
-.ghid-menu {
-  position: static; margin: 0 0 8px; flex-wrap: wrap;
-  border: 1px solid var(--e-line, #9aa7b8); background: var(--e-bg-soft, #eef2f7);
-}
-.ghid-menu > .em-item.activ > button { background: var(--e-sel, #10387a); color: #fff; }
-.ghid-menu .em-pop { max-height: 70vh; overflow-y: auto; }
+@media (max-width: 700px) {
+  body.erp { --app-context-h: auto; }
+  body.erp .shell { display: block; }
+  body.erp .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 55;
+    flex: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+    height: auto;
+    padding: 9px 12px;
+    overflow: visible;
+    border-right: 0;
+    box-shadow: 0 6px 18px rgba(0,0,0,.12);
+  }
+  body.erp .topbar .brand {
+    order: 0;
+    min-height: 40px;
+    margin: 0 auto 0 0;
+    padding: 0;
+    border: 0;
+  }
+  body.erp .brand .logo { width: 34px; height: 34px; }
+  body.erp .brand h1 { font-size: 18px; }
+  body.erp .topbar .brand small,
+  body.erp .topbar #tabs { display: none; }
+  body.erp #navToggleBtn {
+    order: 2;
+    display: inline-flex;
+    min-height: 38px;
+    color: #fff;
+    background: rgba(255,255,255,.09);
+    border-color: rgba(255,255,255,.18);
+  }
+  body.erp .topbar #toolsBtn {
+    order: 3;
+    display: inline-flex;
+    width: auto;
+    margin-top: 0;
+    min-height: 38px;
+    color: #fff;
+    background: rgba(255,255,255,.09);
+    border-color: rgba(255,255,255,.18);
+  }
+  body.erp .topbar #toolsBtn::after { display: none; }
+  body.erp .topbar .side-tools {
+    order: 6;
+    display: none;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    width: 100%;
+  }
+  body.erp .topbar.tools-open .side-tools { display: grid; }
+  body.erp .topbar:not(.tools-open) #userBadge,
+  body.erp .topbar:not(.tools-open) #logoutBtn { display: none; }
+  body.erp .topbar #logoutBtn { order: 8; width: auto; }
 
-.ghid-pagina .toolbar { margin-bottom: 6px; }
-.ghid-pagina > .muted { margin: 0 0 10px; font-size: 12px; }
+  /* Același arbore de navigație ca pe desktop, deschis ca sertar sub antet. */
+  body.erp .topbar.nav-open #tabs {
+    position: fixed;
+    inset: 58px auto 0 0;
+    z-index: 2;
+    display: flex;
+    width: min(86vw, 320px);
+    margin: 0;
+    padding: 12px 10px calc(18px + env(safe-area-inset-bottom,0));
+    overflow-y: auto;
+    color: #f7f3ea;
+    background: var(--app-charcoal);
+    border-top: 1px solid rgba(255,255,255,.1);
+    box-shadow: 18px 16px 38px rgba(0,0,0,.25);
+  }
+  body.erp .topbar.nav-open .nav-backdrop {
+    position: fixed;
+    inset: 58px 0 0;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    height: auto;
+    padding: 0;
+    background: rgba(20,18,15,.52);
+    border: 0;
+    border-radius: 0;
+    cursor: default;
+  }
+  body.erp.mobile-nav-open { overflow: hidden; }
 
-/* Cuprinsul unui grup: cate o celula pe submeniu, cu rezumatul lui. */
-.ghid-grile { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
-.ghid-cel {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
-  text-align: left; padding: 9px 11px; cursor: pointer;
-  border: 1px solid var(--e-line, #9aa7b8); background: var(--e-bg, #fff); color: inherit;
-  font: inherit; border-radius: 2px;
-}
-.ghid-cel:hover { background: var(--e-sel, #10387a); color: #fff; }
-.ghid-cel:hover .ghid-cel-d { color: #e8eef8; }
-.ghid-cel-ic { font-size: 15px; line-height: 1; }
-.ghid-cel-t { font-weight: 600; }
-.ghid-cel-d { font-size: 11px; color: var(--muted, #667); line-height: 1.35; }
+  body.erp .shell > main { margin: 0; padding: 0 12px calc(84px + env(safe-area-inset-bottom,0)); }
+  body.erp .app-context {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 0 -12px 18px;
+    padding: 12px;
+    background: var(--card);
+    box-shadow: none;
+  }
+  body.erp .app-context-title {
+    display: flex;
+    gap: 9px;
+    width: 100%;
+    min-width: 0;
+  }
+  body.erp .app-context-icon {
+    width: 34px;
+    height: 34px;
+    padding: 7px;
+    border-radius: 10px;
+  }
+  body.erp .app-context-kicker { font-size: 9.5px; letter-spacing: .07em; }
+  body.erp #appContextTitle { font-size: 17px; line-height: 1.2; }
+  body.erp .app-context-controls { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; width: 100%; }
+  body.erp .app-context-field { min-width: 0; }
+  body.erp .app-context-field:first-child { width: 100%; }
+  body.erp .app-context .firma-select { width: 100%; min-width: 0; max-width: none; }
+  body.erp .app-context .curperiod { min-width: 106px; padding-inline: 6px; font-size: 13px; }
+  body.erp .app-context .curnav { min-width: 36px; width: 36px; padding: 0; }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   ECRANELE DE AUTENTIFICARE — singurele care NU imbraca stratul clasic.
-   Motivul: aici nu se lucreaza cu cifre, ci se decide daca omul intra sau isi
-   face cont; sunt ecranele dinaintea aplicatiei si singurele pe care le vede un
-   vizitator. Restul stratului (dialog gri de 320px, campuri de 19px, bara de
-   titlu peste sigla) le-ar da aerul unei casute de parola din 1998.
-   Regulile de mai jos ANULEAZA punctual ce impune stratul clasic asupra lui
-   `.login-box`/`.login-overlay`, ca asezarea pe doua coloane din styles.css sa
-   ramana intacta. Specificitatea vine din id-uri: regulile clasice sunt scrise
-   pe clase, deci un id le bate indiferent de ordinea fisierelor. Perimetrul e
-   scris pe ID, nu pe o clasa comuna, tocmai ca sa fie EXPLICIT care ecrane ies
-   din stratul clasic — celelalte casete care refolosesc `.login-box` (preturi,
-   intrebari, schimbarea fortata a parolei) raman dialoguri de aplicatie.
-   ───────────────────────────────────────────────────────────────────────────── */
-body.erp #loginOverlay, body.erp #registerOverlay { background: var(--bg); }
-body.erp #loginOverlay .login-box,
-body.erp #registerOverlay .login-box,
-body.erp #loginOverlay #loginForm.login-box,
-body.erp #registerOverlay #registerForm.login-box {
-  width: min(430px, 100%); padding: 0; background: transparent;
-  border: 0; box-shadow: none; border-radius: 0;
 }
-body.erp #registerOverlay #registerForm.login-box { width: min(480px, 100%); }
-body.erp #loginOverlay .login-logo,
-body.erp #registerOverlay .login-logo {
-  margin: 0 0 16px; padding: 0; background: none; color: var(--head);
-  font-size: 27px; font-weight: 600; text-align: center;
+
+/* La limita minimă suportată, firma și perioada primesc fiecare rândul ei.
+   Altfel selectorul firmei rămâne cu aproximativ 90px și devine indescifrabil. */
+@media (max-width: 360px) {
+  body.erp .topbar #toolsBtn {
+    width: 40px;
+    min-width: 40px;
+    padding: 0;
+    gap: 0;
+  }
+  body.erp .topbar #toolsBtn .control-label { display: none; }
+  body.erp .app-context-controls { grid-template-columns: minmax(0,1fr); }
+  body.erp .app-context-field,
+  body.erp .app-context .curgroup { width: 100%; }
+  body.erp .app-context .curperiod { flex: 1 1 auto; }
 }
-/* In tema intunecata `--head` e fundalul barei de sus, nu o culoare de TEXT. */
-body.erp.dark #loginOverlay .login-logo,
-body.erp.dark #registerOverlay .login-logo { color: var(--ink); }
-body.erp #loginOverlay .auth-title,
-body.erp #registerOverlay .auth-title { font-size: clamp(20px, 2vw, 25px); font-weight: 600; margin: 0 0 6px; }
-body.erp #loginOverlay .auth-lead,
-body.erp #registerOverlay .auth-lead { font-size: 14px; }
-body.erp #loginOverlay .auth-fields { background: var(--card); border: 1px solid var(--line); }
-/* Etichetele revin DEASUPRA campului (stratul clasic le pune la stanga, pe o coloana de 140px):
-   pe o coloana de ~430px nu incape perechea, iar butonul „arata" din randul parolei ar cadea
-   peste camp. `:not(.hidden)` ramane obligatoriu — altfel randul 2FA, ascuns din JS, reapare. */
-body.erp #loginOverlay label:not(.hidden),
-body.erp #registerOverlay label:not(.hidden) {
-  display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 8px 0 2px;
+
+@media (prefers-reduced-motion: reduce) {
+  body.erp *, body.erp *::before, body.erp *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
-/* ...si randurile de bifa raman tot `display:block` (regula de mai sus): caseta si textul curg inline,
-   deci textul lung se rupe firesc sub el. Cu `display:flex`, textul dintre caseta si `<span>`-ul
-   de ajutor devine un element ANONIM de flex, iar randul se sparge in trei coloane inguste —
-   exact ce se intampla cu „Apar in lista de contabili". */
-body.erp #loginOverlay input:not([type=checkbox]):not([type=radio]),
-body.erp #registerOverlay input:not([type=checkbox]):not([type=radio]),
-body.erp #registerOverlay select {
-  height: auto; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px;
-  font-size: 15.5px; background: var(--card); color: var(--ink); box-shadow: none;
-}
-body:not(.dark).erp #loginOverlay input, body:not(.dark).erp #registerOverlay input,
-body:not(.dark).erp #registerOverlay select { background: #fff; }
-/* `body.erp .login-box label > input { width: 100% }` prinde si bifele (sunt copii directi ai
-   etichetei): caseta se intindea pe toata latimea si desenul ei ramanea centrat, adica bifa
-   parea rupta de textul ei. Marimea proprie se pune inapoi explicit. */
-body.erp #loginOverlay input[type=checkbox], body.erp #loginOverlay input[type=radio],
-body.erp #registerOverlay input[type=checkbox], body.erp #registerOverlay input[type=radio] {
-  width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px;
-}
-body.erp #loginOverlay input:focus,
-body.erp #registerOverlay input:focus,
-body.erp #registerOverlay select:focus { outline: 2px solid #cfe3da; border-color: var(--accent); }
-body.erp #loginOverlay .btn,
-body.erp #registerOverlay .btn {
-  border-radius: 10px; padding: 11px 16px; min-height: 42px; font-size: 14.5px; font-weight: 600;
-  background: var(--soft); color: var(--ink); border: 1px solid var(--line); box-shadow: none;
-}
-body.erp #loginOverlay .btn:hover,
-body.erp #registerOverlay .btn:hover { background: var(--soft2); border-color: var(--line-strong); }
-body.erp #loginOverlay .btn.primary,
-body.erp #registerOverlay .btn.primary {
-  background: var(--accent); color: #fff; border-color: var(--accent);
-  box-shadow: 0 2px 9px rgba(194,97,60,.28); font-size: 15px; padding: 12px;
-}
-body.erp #loginOverlay .btn.primary:hover,
-body.erp #registerOverlay .btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
-body.erp #loginOverlay .btn.trial-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
-body.erp #loginOverlay .login-actions { gap: 8px; }
-body.erp #loginOverlay a, body.erp #loginOverlay .link,
-body.erp #registerOverlay a, body.erp #registerOverlay .link { color: var(--accent); }
-body.erp #loginOverlay .auth-links > a,
-body.erp #loginOverlay .auth-links > button { color: var(--muted); font-size: 13px; }
-body.erp #loginOverlay .auth-links > a:hover,
-body.erp #loginOverlay .auth-links > button:hover { color: var(--accent); }
-body.erp #registerOverlay .muted { font-size: 12.5px; }
-/* Coloana de prezentare are propria scara: nu coboara la 11px odata cu aplicatia. */
-body.erp #loginOverlay .ah-title, body.erp #registerOverlay .ah-title {
-  font-size: clamp(19px, 2.1vw, 29px); font-weight: 600; margin: 14px 0 8px;
-}
-body.erp #loginOverlay .ah-lead, body.erp #registerOverlay .ah-lead { font-size: clamp(13px, 1.1vw, 15px); }
-body.erp #loginOverlay .ah-feat b, body.erp #registerOverlay .ah-feat b { font-size: 13px; }
-body.erp #loginOverlay .am-tile b, body.erp #registerOverlay .am-tile b { font-size: 16px; }
-body.erp #loginOverlay .ah-mock figcaption, body.erp #registerOverlay .ah-mock figcaption { font-size: 10.5px; }
-body.erp #loginOverlay .ah-credit, body.erp #registerOverlay .ah-credit { font-size: 12px; }

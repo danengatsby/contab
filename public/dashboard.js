@@ -413,7 +413,7 @@ async function renderForecast() {
     <td class="num" data-style="color:${r.net >= 0 ? 'var(--accent)' : 'var(--danger)'}">${sign(r.net)}</td>
     <td class="num" data-style="font-weight:600;color:${r.closing < 0 ? 'var(--danger)' : 'inherit'}">${fmt(r.closing)}</td></tr>`).join('');
   box.innerHTML = `<p class="muted">Numerar acum: <b>${fmt(f.cashNow)}</b> lei · de încasat: ${fmt(f.openReceivables)} · de plătit: ${fmt(f.openPayables)}</p>
-    ${f.riscLichiditate ? `<div class="warnbox"><span class="wi">⚠️</span><div><b>Risc de lichiditate:</b> soldul de numerar proiectat scade până la <b>${fmt(f.minClosing)}</b> lei. Urmărește încasările sau amână plăți.</div></div>` : ''}
+    ${f.riscLichiditate ? `<div class="notice warning"><span class="notice-icon">⚠️</span><div><b>Risc de lichiditate:</b> soldul de numerar proiectat scade până la <b>${fmt(f.minClosing)}</b> lei. Urmărește încasările sau amână plăți.</div></div>` : ''}
     <table><thead><tr><th>Luna</th><th class="num">Sold inițial</th><th class="num">Înc. clienți</th><th class="num">Venit recurent</th><th class="num">Plăți furnizori</th><th class="num">Chelt. recurentă</th><th class="num">Flux net</th><th class="num">Sold final</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <p class="muted" data-u="u35">Model: luna curentă încasează soldurile deschise de clienți și plătește datoriile către furnizori; toate lunile adaugă facturile recurente scadente. Estimare orientativă, nu garanție.</p>`;
