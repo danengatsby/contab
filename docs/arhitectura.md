@@ -89,26 +89,51 @@
   aplicația lucrează pe același graf în memorie; driverele relaționale păstrează în plus o
   **oglindă `data/db.json`** pentru backup și rollback. Vezi „Baze de date” mai jos.
 - `public/` — interfața web (HTML/CSS/JS vanilla).
-- **Aspectul clasic de aplicație de contabilitate** (`public/erp.css` + `public/erp.js`) — **singurul
-  aspect**, pe ecrane de la 901px în sus. E un **strat peste același DOM**, nu o a doua interfață: `erp.js`
-  pune clasa `erp` pe `<body>` și injectează chrome-ul de birou (bară de titlu, bară de meniu,
-  bandă de unelte, bară de stare, bară de titlu pe fiecare ecran), iar `erp.css` îmbracă restul —
-  densitate mare, colțuri drepte, grile cu chenar pe fiecare celulă, etichete la stânga câmpurilor.
-  Nicio regulă de afaceri nu trece pe aici: elementele de meniu **reemit clicuri** pe butoanele
-  reale din `#tabs`, iar selectorul de firmă și navigarea pe luni sunt **mutate**, nu duplicate —
-  deci drepturile, modul simplu și ascunderile din `app.js` rămân singura sursă de adevăr.
-  Comutatorul de aspect („🌐 Aspect modern” / „🖥️ Aspect clasic”, cu alegerea în `localStorage`,
-  cheia `contab.aspect`) **a fost scos în august 2026**: aspectul clasic e singurul, deci n-are către
-  ce comuta, iar cheia rămasă în browserele care apucaseră să comute e inertă — nimic n-o mai
-  citește, deci nu poate lăsa pe nimeni blocat în celălalt aspect. Sub 901px stratul nu se montează
-  deloc; acolo rămâne așezarea din `styles.css`.
+- **Designul aplicației autentificate** separă shell-ul (`public/erp.css` + `public/erp.js`) de
+  componentele reutilizabile (`public/design-system.css`) și folosește aceeași paletă caldă ca
+  loginul, pe toate dimensiunile. `#tabs` este **unica
+  navigație**: arbore lateral pe desktop și același arbore într-un sertar pe telefon. `erp.js` construiește
+  numai bara contextuală și mută în ea selectorul real de firmă și navigarea reală pe perioade —
+  nu există copii, meniu superior, ribbon sau bară de stare care să derive de la permisiuni.
+  Același strat înlocuiește emoji-urile structurale și simbolurile din controale (butoane, linkuri
+  de acțiune, secțiuni extensibile și atașamente) cu un singur set SVG outline. Conversia păstrează
+  simbolurile necunoscute și actualizează pictograma atunci când eticheta unui control se schimbă.
+  Tot aici sunt transformate blocurile
+  `.explain` în ajutor extensibil. Design system-ul este sursa unică pentru carduri, controale,
+  butoane, dialoguri, ajutor, feedback semantic (alerte, badge-uri, pastile, mesaje persistente,
+  toasturi și stări inline) și pașii formularelor;
+  stările folosesc consecvent albastru pentru informare, chihlimbar pentru avertisment, roșu pentru
+  eroare și verde pentru succes. Textul general rămâne la 14–16 px și controalele
+  la minimum 36–40 px. O poartă în browser măsoară stilurile calculate pe toate paginile tematice;
+  numai acțiunile din tabele pot coborî la 30 px și 12 px. Nicio regulă de afaceri
+  nu trece prin acest strat: drepturile, modul simplu și ascunderile din `app.js` rămân sursa unică.
+  `public/styles.css` nu mai conține definiții istorice pentru shell sau breakpoint-urile lui;
+  rămâne temelia vizuală și stratul funcțional al conținutului vechi. O poartă statică împiedică
+  reintroducerea navigației, contextului ori layout-ului autentificat în acel fișier.
+  Capturile publice se regenerează cu `npm run capturi-marketing` pe o bază izolată. Manifestul
+  rezultat leagă imaginile de versiunea PWA și de amprenta fișierelor UI fotografiate, astfel încât
+  testele resping simultan copiile divergente și capturile identic de vechi.
+  `public/formflow.js` transformă declarativ marcatorii `.sect-form` în pași pentru firmă, angajați,
+  documente, mijloace fixe, contracte de leasing, mișcări de stoc, parteneri, facturi recurente,
+  serii de documente, producție, rețete, produse, exigibilitatea TVA, solduri analitice, modernizări
+  de mijloace fixe, simulatorul de leasing și configurația fiscală globală și păstrează automat ciorne
+  în `sessionStorage`. Producția și rețetele folosesc serializatoare dedicate liniilor dinamice,
+  iar fiecare rețetă și fiecare mijloc fix editat au chei de ciornă proprii. Simulatorul este global,
+  deoarece nu salvează operațiuni contabile și nu depinde de firma activă.
+  Formularele cu date personale sensibile, precum profilul care conține CNP și înscrierea care
+  conține parola, folosesc aceiași pași și aceeași validare, dar declară `autosave: false`; datele
+  lor nu sunt scrise niciodată în `sessionStorage`.
+  Cheia include formularul, firma și entitatea editată; documentele folosesc un serializer dedicat
+  pentru liniile dinamice. Starea fiecărui pas și ora autosave-ului sunt vizibile, iar ciorna poate fi
+  eliminată prin dialogul propriu al aplicației. Salvarea oficială pe server rămâne explicită și șterge
+  numai ciorna aferentă.
 
 ## Multi-firmă
 
 Aplicația gestionează **mai multe firme** în aceeași instanță:
 - Tabelul `firme` (în `data/db.json`) ține firmele; câmpul **`firmaId`** este adăugat la
   toate înregistrările (entries, documents, partners, solduri inițiale sintetice și analitice).
-- **Firma activă** se alege din selectorul din bara de sus; toată aplicația (rapoarte, jurnale,
+- **Firma activă** se alege din selectorul din bara contextuală; toată aplicația (rapoarte, jurnale,
   balanță, declarații, parteneri, reconciliere, dashboard) este filtrată automat pe ea, printr-o
   „vedere” scoped — modulele de raportare nu au fost modificate.
 - Gestionarea firmelor (activare, ștergere) e în Setări → „Firmele mele”.
@@ -219,7 +244,7 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   alertă (max. una pe oră); la înscriere, utilizatorii cu email primesc un **mesaj de bun venit**
   cu primii pași.
 - **E2E pe live:** `npm run e2e` (`scripts/e2e.mjs`, Playwright — pe acest server prin Docker,
-  comanda e în antetul scriptului): 42 verificări cap-coadă pe instanța reală, cu contul demo —
+  comanda e în antetul scriptului): 48 verificări cap-coadă pe instanța reală, cu contul demo —
   inclusiv FAQ-ul public de pe login, dicționarul contabil, cardul de pro-rata din tab-ul TVA, căutarea globală (Ctrl+K) și
   două porți care au nevoie de un browser adevărat, deci nu pot trăi în `npm test`: contrastul AA
   al comenzilor din bara laterală (în ambele teme) și **modul simplu fără coduri de cont** —
@@ -227,19 +252,23 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   expert, ca să nu treacă nici o regresie care ar ascunde totul pentru toată lumea).
 - **E2E pe instanță izolată:** `npm run e2e-izolat` (`scripts/e2e-izolat.sh` +
   `scripts/e2e-izolat.mjs`) ridică o instanță proprie (bază și date temporare, port separat) și
-  rulează **99 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
+  rulează **148 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
   deci rularea produce mai multe rezultate) — exact fluxurile care nu se pot atinge pe demo
   live: roluri și drepturi granulare, resetare de parolă cu token real, importuri, erori SPV fără
   credențiale, declarațiile și situațiile XML accesibile profilului seed, **restaurarea efectivă** a unui backup (verificată
   prin dispariția unui marcaj scris după arhivare), panoul „Cine accesează aplicația" (tabelele
   se randează, filtrul schimbă conținutul, iar un cont fără drepturi nu vede nici cardul, nici
-  datele din spatele lui), **modul simplu în toate cele trei navigații** — bara laterală, bara de
-  meniu și banda de unelte oglindesc aceleași `#tabs`, deci ascunderea părții tehnic-contabile se
-  dovedește pe vizibilitatea calculată de browser, cu acordeonul și meniurile DESCHISE (o
-  măsurătoare care le lasă închise raportează zero scăpări indiferent de adevăr) — și **ecranul de
-  intrare pe telefon**, unde se dovedește că derularea rămâne în stratul de deasupra și nu aduce în
-  vedere carcasa aplicației de dedesubt (măsurat cu rotița/degetul, nu cu `window.scrollTo`, care
-  trece peste `overflow:hidden`). Importul balanței verifică în browser previzualizarea, salvarea unei
+  datele din spatele lui), **carcasa cu o singură navigație** — `#tabs` este unicul arbore desktop,
+  iar firma și perioada există o singură dată în bara contextuală — plus **modul simplu** verificat
+  pe vizibilitatea calculată de browser, cu acordeonul DESCHIS (o măsurătoare care îl lasă închis
+  raportează zero scăpări indiferent de adevăr), **feedback-ul semantic** (inclusiv toasturi
+  succes/eroare, timere consecutive și prioritate pentru cititoarele de ecran) și **ecranul de
+  intrare pe telefon**, unde se dovedește că derularea rămâne în stratul de deasupra și nu aduce
+  în vedere carcasa aplicației de dedesubt (măsurat cu rotița/degetul, nu cu `window.scrollTo`, care
+  trece peste `overflow:hidden`). Tot aici shell-ul autentificat este măsurat local la 390 și 320 px,
+  iar feedback-ul semantic este verificat în temele clară și întunecată: alertele, mesajele
+  persistente și indicatorii au patru stări distincte,
+  dimensiuni minime și cursor de acțiune numai pe elementele clicabile. Importul balanței verifică în browser previzualizarea, salvarea unei
   mapări și reutilizarea ei după reordonarea coloanelor; același ecran validează în browser
   pachetul atomic balanță + parteneri + mijloace fixe + stoc. Secțiunea 2FA parcurge fluxul complet prin interfață: configurare cu
   QR/cheie, activare cu TOTP, afișarea codurilor de rezervă, login cu un asemenea cod și

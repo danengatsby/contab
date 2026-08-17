@@ -40,9 +40,9 @@ doilea patron cu firma lui, și o contabilă disponibilă — cu o cerere deja a
 patron și **una în așteptare**, ca acceptarea să se poată filma pe viu. Se rulează din nou înaintea
 fiecărei filmări: scena 7 consumă cererea în așteptare.
 
-Rețeta completă de pornire a unei instanțe izolate, cu variabilele de mediu și capcanele întâlnite,
-e în antetul lui `scripts/capturi-marketing.mjs` — același drum ca la capturile de Facebook. De
-acolo se iau și capcanele de filmare, toate întâlnite pe viu:
+Capturile statice folosesc acum launcherul reproductibil `npm run capturi-marketing`, care creează
+și distruge singur baza și serverul temporare. Filmarea păstrează decorul extins de mai sus; capcanele
+de operare comune, toate întâlnite pe viu, sunt:
 
 - luna de lucru e **globală**: exemplul are datele pe iunie, deci se mută luna din bara de sus;
 - prima autentificare pe o bază proaspătă cere **schimbarea parolei** — se face înainte de filmare;
@@ -174,15 +174,15 @@ Durata totală a vocii: **24:31**.
 
 ### 13 · `s12b-birou` — 3:33 · voce 26 s
 
-**Se vede:** Chrome-ul de birou, arătat pe rând: bara de meniu de sus, banda de unelte, arborele de module din stânga, bara de stare de jos.
+**Se vede:** Interfața modernă: arborele unic din stânga, bara contextuală cu pagina/firma/perioada și ajutorul contextual deschis la cerere.
 
-> Aplicația arată ca un program de contabilitate, nu ca un site. Sus e bara de meniu, cu modulele grupate pe ciclul contabil. Sub ea, banda de unelte: operațiunile pe care le atingi în fiecare zi, la un singur clic. În stânga, arborele de module. Jos, bara de stare, cu firma, luna de lucru și utilizatorul. Densitate mare, ca să încapă cifrele — nu spațiu gol.
+> Totul pornește dintr-un singur arbore lateral, ordonat după ciclul contabil. Bara de sus îți spune permanent în ce pagină, firmă și perioadă lucrezi, fără copii sau meniuri concurente. Textul și controalele rămân lizibile, iar explicațiile se deschid numai când ai nevoie de ele. Modul compact strânge tabelele, nu întreaga aplicație.
 
 ### 14 · `s12c-simplu` — 3:59 · voce 18 s
 
 **Se vede:** Tabloul de bord, comutat în modul simplu și înapoi în expert — se vede cum dispar și reapar codurile de cont și intrările tehnice.
 
-> Dacă nu ești contabil, aplicația se poate dezbrăca de partea tehnică. În modul simplu dispar codurile de cont și ecranele de specialitate, peste tot deodată: în bara laterală, în bara de meniu și în banda de unelte. Comuți înapoi oricând, iar datele rămân aceleași.
+> Dacă nu ești contabil, aplicația se poate dezbrăca de partea tehnică. În modul simplu dispar codurile de cont și ecranele de specialitate din navigația unică și din conținut. Comuți înapoi oricând, iar datele rămân aceleași.
 
 ### 15 · `s10b-plan` — 4:17 · voce 36 s
 
@@ -598,7 +598,7 @@ De filmat oricum, chiar dacă nu intră în montajul final — acoperă tăietur
 6. Vizualizatorul de documente: se apasă un PDF din listă și se deschide **în aplicație**.
 7. Scadențarul clienți & furnizori, pe vechimi.
 8. **⚙️ Setări → 💻 Contabo pe calculatorul tău** — pachetul pentru rulare locală.
-9. Ecranul de pe telefon (bara de jos + panoul „Mai mult"), 5 secunde — dovada că merge pe mobil.
+9. Ecranul de pe telefon (același meniu deschis ca sertar), 5 secunde — dovada că ierarhia rămâne identică pe mobil.
 10. Jurnalul de audit, derulat scurt — proba de control intern.
 
 ---
