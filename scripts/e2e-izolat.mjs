@@ -999,6 +999,55 @@ sect('15. Registrele late spun ca mai e continut la dreapta');
   await adm.setViewportSize({ width: 1440, height: 900 });
 }
 
+sect('16. Alocarea din cockpit se pliaza dupa CATI oameni sunt, nu dupa o setare');
+{
+  await adm.evaluate(() => document.querySelector('#tabs button[data-tab="inchideri"]')?.click());
+  await adm.waitForTimeout(1200);
+  const c = await adm.evaluate(() => {
+    const viz = (e) => e.getBoundingClientRect().height > 0;
+    const unSelect = document.querySelector('.cl-resp');
+    return {
+      pasi: document.querySelectorAll('.closestep').length,
+      pliate: document.querySelectorAll('.closealoc').length,
+      // optiunile selectului = „— nealocat —" + cate un om
+      oameni: unSelect ? unSelect.options.length - 1 : -1,
+      selectoareVizibile: [...document.querySelectorAll('.cl-resp')].filter(viz).length,
+    };
+  });
+  ok('poarta masoara pasi reali, nu o multime goala: ' + c.pasi + ' pasi', c.pasi >= 4);
+  // Regula se DERIVA din date, deci proba o verifica pe amandoua ramurile, dupa cati oameni
+  // exista chiar acum in instanta — nu presupune un numar (prima varianta a presupus „unul"
+  // si a picat pe fixture-ul E2E, care creeaza conturi in plus pentru probele de roluri).
+  if (c.oameni <= 1) {
+    ok('cu ' + c.oameni + ' om, alocarea e pliata pe fiecare pas', c.pliate === c.pasi);
+    ok('...si controalele chiar nu se vad', c.selectoareVizibile === 0);
+  } else {
+    ok('cu ' + c.oameni + ' oameni, alegerea are sens si NU se pliaza', c.pliate === 0);
+    ok('...iar selectoarele sunt direct pe ecran', c.selectoareVizibile === c.pasi);
+  }
+
+  // Capcana de specificitate traieste DOAR in browser si nu depinde de date: `.closefields` are
+  // `display:flex`, iar un `display` explicit pe copilul direct al unui `<details>` INCHIS il face
+  // vizibil in Chrome. Se probeaza pe motorul real, cu un fragment construit aici — altfel proba
+  // ar depinde de cati utilizatori are instanta.
+  const capcana = await adm.evaluate(() => {
+    const d = document.createElement('details');
+    d.className = 'closealoc';
+    d.innerHTML = '<summary>x</summary><div class="closefields"><label class="closefield">R<select></select></label></div>';
+    document.querySelector('.closesteps, main').appendChild(d);
+    const camp = d.querySelector('.closefields');
+    const inchis = camp.getBoundingClientRect().height;
+    d.setAttribute('open', '');
+    const deschis = camp.getBoundingClientRect().height;
+    d.remove();
+    return { inchis, deschis };
+  });
+  ok('pliat inseamna INVIZIBIL, chiar daca `.closefields` are display:flex (inaltime '
+    + Math.round(capcana.inchis) + 'px)', capcana.inchis === 0);
+  ok('...iar desfasurat controalele revin (inaltime ' + Math.round(capcana.deschis) + 'px)',
+    capcana.deschis > 0);
+}
+
 await b.close();
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari E2E izolate trecute, ' + fail + ' esuate.');
 process.exit(fail ? 1 : 0);

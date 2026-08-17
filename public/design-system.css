@@ -857,3 +857,34 @@ body.erp .tablewrap.are-derulare::after {
   background: linear-gradient(to left, var(--card), color-mix(in srgb, var(--card) 0%, transparent));
   box-shadow: inset -14px 0 14px -14px color-mix(in srgb, var(--ink) 45%, transparent);
 }
+
+/* Alocarea pliată din cockpitul de închidere (responsabil + termen).
+   Se pliază doar când nu e nimeni între cine să alegi — vezi `alocareaSePliaza` din
+   inchidere.js. Rezumatul păstrează termenul EFECTIV vizibil: se ascunde controlul de
+   modificare, nu informația, iar un termen depășit rămâne marcat și pliat. */
+body.erp .closealoc { margin-top: 8px; }
+/* `.closefields` are `display:flex` in styles.css, iar un `display` explicit pe copilul direct al
+   unui `<details>` INCHIS il face vizibil in Chrome — pliat pe hartie, desfasurat pe ecran.
+   A cincea recurenta a familiei „display bate ascunderea"; se inchide explicit, cu poarta. */
+body.erp .closealoc:not([open]) > .closefields { display: none; }
+body.erp .closealoc > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 2px;
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  list-style: none;
+}
+body.erp .closealoc > summary::-webkit-details-marker { display: none; }
+body.erp .closealoc > summary:focus-visible { outline: var(--ds-focus); outline-offset: 2px; border-radius: 6px; }
+body.erp .closealoc-rez { font-variant-numeric: tabular-nums; }
+body.erp .closealoc-rez.is-overdue { color: var(--ds-status-danger); font-weight: 600; }
+body.erp .closealoc-act {
+  color: var(--app-clay);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+body.erp .closealoc[open] > summary .closealoc-act { text-decoration: none; }

@@ -1643,6 +1643,27 @@ section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js
   ok('motivul blocajului e escapat', hDeschis.includes('&lt;b&gt;ACME&lt;/b&gt;') && !hDeschis.includes('<b>ACME'));
   ok('numele utilizatorului e escapat în select', hDeschis.includes('maria&lt;script&gt;') && !hDeschis.includes('maria<script>'));
 
+  // ALOCAREA SE PLIAZA cand nu e nimeni intre cine sa alegi (contabilul care lucreaza singur).
+  // Invariantul care conteaza NU e „se pliaza", ci „nu se ascunde nimic din ce trebuie vazut":
+  // termenul efectiv si marcajul „depasit" raman in rezumat, si pliate.
+  eq('cu un singur om, alocarea se pliaza', inchidere.alocareaSePliaza(resp), true);
+  eq('fara niciun om, la fel', inchidere.alocareaSePliaza([]), true);
+  eq('lista lipsa nu arunca', inchidere.alocareaSePliaza(null), true);
+  eq('cu doi oameni, alegerea are sens si ramane desfasurata',
+    inchidere.alocareaSePliaza([{ id: 1, username: 'a' }, { id: 2, username: 'b' }]), false);
+
+  ok('pliat: exista rezumatul cu actiunea „Alocă"', hDeschis.includes('closealoc') && hDeschis.includes('Alocă'));
+  ok('pliat: TERMENUL efectiv ramane vizibil, in conventia romaneasca', hDeschis.includes('Termen 15.07.2026'));
+  ok('pliat: „depășit" ramane vizibil in rezumat, nu doar in campul ascuns',
+    /closealoc-rez[^>]*is-overdue[^>]*>[^<]*depășit/.test(hDeschis));
+  ok('pliat: responsabilul ales se vede in rezumat, escapat',
+    hDeschis.includes('responsabil: maria&lt;script&gt;') && !hDeschis.includes('responsabil: maria<script>'));
+  const hDoi = inchidere.stepHtml(pasDeschis, [{ id: 7, username: 'maria' }, { id: 8, username: 'ion' }]);
+  ok('cu doi oameni, campurile sunt direct pe ecran, fara pliere',
+    !hDoi.includes('closealoc') && hDoi.includes('cl-resp') && hDoi.includes('cl-due'));
+  const faraTermen = inchidere.stepHtml(Object.assign({}, pasGata, { due: '' }), resp);
+  ok('pasul fara termen o spune, in loc sa lase rezumatul gol', faraTermen.includes('Fără termen'));
+
   const hBlocat = inchidere.stepHtml(pasBlocat, resp);
   ok('pasul blocat spune CE îl ține', hBlocat.includes('Așteaptă pasul anterior'));
   ok('numele pasului care blochează e escapat', hBlocat.includes('&lt;b&gt;complete&lt;/b&gt;'));

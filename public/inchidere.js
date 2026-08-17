@@ -52,6 +52,20 @@ function temeiHtml(temei) {
     temei.map((x) => `<li><b>${H(x.actTitlu)}</b>${x.articol && x.articol !== '—' ? ', ' + H(x.articol) : ''} — ${H(x.ce)}</li>`).join('')}</ul></details>`;
 }
 
+/** Alocarea (responsabil + termen) se PLIAZĂ când nu e nimeni între cine să alegi.
+ *
+ *  Cockpitul cerea responsabil și termen pe fiecare dintre cei șase pași — douăsprezece controale
+ *  care, pentru contabilul care lucrează singur (cazul dominant azi), nu decid nimic și împing
+ *  acțiunea reală mai jos în pagină. Pentru un birou cu mai mulți oameni sunt exact ce trebuie.
+ *
+ *  Regula se DERIVĂ din date, ca starea pașilor: lista de responsabili posibili vine de la server
+ *  (utilizatorii cu acces la firmă + administratorii). Nu e o setare pe care cineva trebuie s-o
+ *  găsească — se desfășoară singură când apare al doilea om.
+ */
+export function alocareaSePliaza(responsabili) {
+  return (responsabili || []).length <= 1;
+}
+
 /** Un pas: stare, blocaje (motivul), responsabil, termen, acțiune. */
 export function stepHtml(s, responsabili) {
   const m = STARE_META[s.stare] || STARE_META.deschis;
@@ -71,6 +85,18 @@ export function stepHtml(s, responsabili) {
       ${s.overdue ? '<span class="pill err">depășit</span>' : ''}${s.dueImplicit ? '<span class="muted"> implicit</span>' : ''}</label>`;
   const resp = `<label class="closefield">Responsabil
       <select class="cl-resp" data-step="${H(s.key)}">${optiuni}</select></label>`;
+  // Cand se pliaza, termenul EFECTIV ramane vizibil ca text in rezumat: se ascunde controlul de
+  // modificare, nu informatia. Un termen depasit nu are voie sa se ascunda dupa un „Aloca".
+  const numeResp = ((responsabili || []).find((u) => String(u.id) === String(s.responsabilId)) || {}).username;
+  const rezumatAloc = [
+    s.due ? 'Termen ' + dataRo(s.due) : 'Fără termen',
+    s.overdue ? 'depășit' : '',
+    numeResp ? 'responsabil: ' + numeResp : '',
+  ].filter(Boolean).join(' · ');
+  const alocare = alocareaSePliaza(responsabili)
+    ? `<details class="closealoc"><summary><span class="closealoc-rez${s.overdue ? ' is-overdue' : ''}">${H(rezumatAloc)}</span><span class="closealoc-act">Alocă</span></summary>
+      <div class="closefields">${resp}${termen}</div></details>`
+    : `<div class="closefields">${resp}${termen}</div>`;
   // Butonul apare doar daca pasul se rezolva pe ALT ecran; aprobarea si blocarea au butoanele
   // lor in bara de actiuni a cockpitului, deci nu-si dubleaza actiunea aici.
   const actiune = (s.stare === 'gata' || s.stare === 'nuseaplica' || !s.tab) ? ''
@@ -81,7 +107,7 @@ export function stepHtml(s, responsabili) {
     <p class="muted">${H(s.descriere)}</p>
     ${temeiHtml(s.temei)}
     ${motiv}${blocatDe}${blocaje}
-    <div class="closefields">${resp}${termen}</div>
+    ${alocare}
     ${s.nota ? `<p class="muted">Notă: ${H(s.nota)}</p>` : ''}
     ${actiune}</li>`;
 }
