@@ -1294,9 +1294,11 @@ async function main() {
     for (const p of ['/pdf/journal?period=2026-06', '/pdf/ledger?period=2026-06', '/pdf/balance?period=2026-06',
       '/pdf/cashbook?period=2026-06', '/pdf/fisa-cont?cont=4111&year=2026', '/pdf/analytic', '/pdf/aging',
       '/pdf/registru-inventar?year=2026', '/pdf/registru-fiscal?year=2026', '/pdf/obligatii?year=2026',
-      '/pdf/assets?asOf=2026-12', '/pdf/doc-register']) {
+      '/pdf/assets?asOf=2026-12', '/pdf/doc-register',
+      // Recapitulatiile lipsa pana acum: D394 si SAF-T se puteau depune fara sa poata fi CITITE.
+      '/pdf/d394?period=2026-06', '/pdf/saft?year=2026']) {
       const r = await req('GET', p, { cookie: c1 });
-      ok('PDF ' + p + ': 200 + magic %PDF', r.status === 200 && r.text.startsWith('%PDF'));
+      ok('PDF ' + p + ': 200 + magic %PDF (status ' + r.status + ')', r.status === 200 && r.text.startsWith('%PDF'));
     }
     ok('csv/partners: 200', (await req('GET', '/csv/partners', { cookie: c1 })).status === 200);
 

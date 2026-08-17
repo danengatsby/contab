@@ -153,6 +153,13 @@ function table(doc, columns, rows, startY) {
     y += h;
     zebra = !zebra;
   }
+  // Cursorul se readuce la MARGINEA STANGA, nu doar pe verticala. `table` deseneaza ultima celula
+  // cu `doc.text(txt, x + 4, ...)`, iar pdfkit retine acel x: orice text scris dupa tabel (un titlu
+  // de sectiune, o nota) pornea din dreapta paginii si se rupea pe doua randuri. Se vedea pe orice
+  // document cu doua tabele — inclusiv pe jurnalele de TVA, unde titlul „Jurnal de cumparari"
+  // aterizase in coltul din dreapta. Fara asta, fiecare generator ar fi trebuit sa-si aminteasca
+  // singur sa reseteze x-ul.
+  doc.x = left;
   doc.y = y + 6;
   return y;
 }

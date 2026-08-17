@@ -36,6 +36,8 @@ process.env.CONTAB_DB_FILE = path.join(TMP, 'db.json');
 fs.mkdirSync(path.join(TMP, 'uploads'), { recursive: true });
 
 const salarii = require('../src/pdf/salarii');
+const declaratii = require('../src/pdf/declaratii');
+const xmlMod = require('../src/xml');
 const stocuri = require('../src/pdf/stocuri');
 const helpers = require('../src/pdf/helpers');
 const ex = require('../src/extractor');
@@ -370,6 +372,82 @@ const FIRMA = { nume: 'S.C. PROBA CONTABO S.R.L.', cui: '12345678', adresa: 'Buc
     ok('PV stornat: marcajul STORNAT e pe document', are(pvS.text, 'STORNAT la 2026-07-02'));
     ok('...cu cine l-a stornat', are(pvS.text, 'de Popescu Ion'));
     ok('PV nestornat NU poarta marcajul', !are(pv.text, 'STORNAT'));
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  section('helpers.table: cursorul se intoarce la marginea stanga');
+  {
+    // `table` scrie ultima celula cu `doc.text(txt, x + 4, ...)`, iar pdfkit RETINE acel x. Fara
+    // resetare, orice titlu sau nota de dupa un tabel pornea din dreapta paginii si se rupea —
+    // se vedea pe fiecare document cu doua tabele (jurnalele de TVA, recapitulatia D394).
+    // Proba e pe contractul helperului, cu document pdfkit REAL: textul extras nu poarta pozitii,
+    // deci o aserttiune pe continut ar fi trecut si cu defectul in loc.
+    const doc = helpers.newDoc(false);
+    const stanga = doc.page.margins.left;
+    doc.text('ceva in dreapta', 400, 100);
+    ok('pdfkit chiar retine x-ul ultimei scrieri (proba discrimineaza)', doc.x > stanga + 100);
+    helpers.table(doc, [{ label: 'A', key: 'a', width: 100 }, { label: 'B', key: 'b', width: 100, align: 'right' }],
+      [{ a: 'x', b: 'y' }]);
+    eq('dupa tabel, cursorul e din nou la marginea stanga', doc.x, stanga);
+    doc.end();
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  section('D394 si SAF-T: recapitulatiile pe care omul le citeste inainte de depunere');
+  {
+    // Agregarea e ACEEASI din care se compune XML-ul (`xml.d394Operatiuni`) — deci proba
+    // dovedeste si ca PDF-ul nu are un al doilea motor: se randeaza exact ce pleaca la ANAF.
+    const vj = {
+      vanzari: [
+        { data: '2026-06-10', document: 'F 1', partener: 'ALFA SRL', cui: 'RO111', cota: 21, baza: 1000, tva: 210 },
+        { data: '2026-06-12', document: 'F 2', partener: 'ALFA SRL', cui: 'RO111', cota: 21, baza: 500, tva: 105 },
+        { data: '2026-06-14', document: 'F 3', partener: 'BETA SRL', cui: 'RO222', cota: 11, baza: 200, tva: 22 },
+      ],
+      cumparari: [
+        { data: '2026-06-05', document: 'FF 9', partener: 'GAMA SRL', cui: 'RO333', cota: 21, baza: 800, tva: 168 },
+        { data: '2026-06-06', document: 'FF 10', partener: 'STRAIN GMBH', cui: 'DE9', cota: 21, baza: 400, tva: 84, inD394: false },
+      ],
+      scutite: [],
+    };
+    const ops = xmlMod.d394Operatiuni(vj, null);
+    // Doua facturi catre acelasi partener, aceeasi cota -> UN rand cu 2 facturi (asa cere D394).
+    const alfa = ops.find((o) => o.cui === '111');
+    eq('agregarea uneste facturile aceluiasi partener si cote', alfa.nr, 2);
+    eq('...si insumeaza baza', alfa.baza, 1500);
+    ok('achizitia intracomunitara NU intra in D394', !ops.some((o) => o.cui === '9' || o.cui === 'DE9'));
+
+    const d394 = await randeaza(declaratii.d394Pdf, FIRMA, { period: '2026-06', ops });
+    ok('antetul spune ce declaratie e', are(d394.text, 'D394'));
+    ok('perioada apare in clar', are(d394.text, 'iunie 2026'));
+    ok('sectiunea de livrari e numita, nu doar codificata', are(d394.text, 'Livrari taxabile'));
+    ok('sectiunea de achizitii la fel', are(d394.text, 'Achizitii taxabile'));
+    ok('partenerul apare pe hartie', are(d394.text, 'ALFA SRL'));
+    ok('...cu CUI-ul fara prefixul RO, ca in declaratie', are(d394.text, '111'));
+    ok('cele doua facturi agregate se vad ca numar', are(d394.text, '1.500,00'));
+    ok('TVA-ul partenerului apare', are(d394.text, '315,00'));
+    ok('achizitia apare separat de livrare', are(d394.text, 'GAMA SRL'));
+    ok('partenerul intracomunitar NU apare (merge in D390)', !are(d394.text, 'STRAIN GMBH'));
+    ok('exista bloc de control cu parteneri distincti', are(d394.text, 'Parteneri distincti'));
+    ok('...si cu baza totala', are(d394.text, 'Baza totala'));
+    ok('nota avertizeaza despre rotunjirea la lei intregi', are(d394.text, 'LEI INTREGI'));
+    ok('...si trimite la validatorul oficial', are(d394.text, 'DUKIntegrator'));
+    eq('numele fisierului e explicit', d394.headers['Content-Disposition'].includes('recap-d394.pdf'), true);
+
+    // Starea GOALA e un caz real: o luna fara operatiuni B2B trebuie sa spuna asta, nu sa iasa
+    // o pagina alba din care nu intelegi daca s-a generat sau nu.
+    const gol = await randeaza(declaratii.d394Pdf, FIRMA, { period: '2026-07', ops: [] });
+    ok('luna fara operatiuni B2B o spune explicit', are(gol.text, 'Nicio operatiune B2B'));
+
+    const saft = await randeaza(declaratii.saftPdf, FIRMA, {
+      year: '2026', accounts: 42, entries: 318, totalDebit: 987654.32, customers: 7, suppliers: 9,
+      salesInvoices: 120, purchaseInvoices: 98, payments: 60, assets: 4, products: 31, stockMovements: 55,
+    });
+    ok('recapitulatia SAF-T numeste declaratia', are(saft.text, 'D406'));
+    ok('exercitiul apare', are(saft.text, '2026'));
+    ok('numarul de articole contabile e pe hartie', are(saft.text, '318'));
+    ok('numarul de conturi la fel', are(saft.text, '42'));
+    ok('totalul de control apare formatat romaneste', are(saft.text, '987.654,32'));
+    ok('nota explica la ce foloseste si la ce NU', are(saft.text, 'nu a formei'));
   }
 
   // ───────────────────────────────────────────────────────────────────────────

@@ -98,6 +98,106 @@ function d100Pdf(res, company, d) {
 /** F4109 — Declaratie privind neutilizarea aparatului de marcat electronic fiscal (o luna).
  *  d = { period, aparate: [{ serie, nrOrdine }] }. Formular pe propria raspundere. */
 
+/** D394 (recapitulatie) — lista B2B pe partener, cota si tip de operatiune.
+ *
+ *  De ce exista: D394 pleaca la ANAF ca XML, dar e tocmai declaratia unde ochiul unui contabil
+ *  prinde greselile — un partener lipsa, un CUI gresit, o cota amestecata, un total care nu se
+ *  potriveste cu jurnalul. Pana acum se putea depune fara sa poata fi citita.
+ *
+ *  `ops` vine din `xml.d394Operatiuni` — ACEEASI agregare din care se compune XML-ul, nu una
+ *  paralela: doua motoare pe aceeasi lege se contrazic garantat.
+ */
+const D394_TIPURI = {
+  L: 'Livrari taxabile',
+  V: 'Livrari cu taxare inversa (art. 331)',
+  A: 'Achizitii taxabile',
+  C: 'Achizitii cu taxare inversa (art. 331)',
+  N: 'Achizitii de la persoane fizice (fila de carnet)',
+};
+function d394Pdf(res, company, d) {
+  const doc = newDoc(true);
+  header(doc, company, 'D394 (recapitulatie) — declaratie informativa', periodLabel(d.period));
+
+  const cols = [
+    { label: 'CUI / CNP', key: 'cui', width: 110 },
+    { label: 'Partener', key: 'den', width: 250, wrap: true },
+    { label: 'Cota', key: 'cota', width: 55, align: 'right' },
+    { label: 'Facturi', key: 'nr', width: 65, align: 'right' },
+    { label: 'Baza (lei)', key: 'baza', width: 100, align: 'right' },
+    { label: 'TVA (lei)', key: 'tva', width: 100, align: 'right' },
+  ];
+
+  const ops = d.ops || [];
+  let totalBaza = 0; let totalTva = 0; let totalFacturi = 0;
+  for (const tip of ['L', 'V', 'A', 'C', 'N']) {
+    const ale = ops.filter((o) => o.tip === tip);
+    if (!ale.length) continue;
+    let bz = 0; let tv = 0; let nr = 0;
+    const randuri = ale
+      .sort((a, b) => String(a.den || '').localeCompare(String(b.den || '')) || a.cota - b.cota)
+      .map((o) => {
+        bz = round2(bz + o.baza); tv = round2(tv + o.tva); nr += o.nr;
+        return { cui: o.cui || '—', den: clean(o.den || '(fara denumire)'), cota: o.cota + '%', nr: String(o.nr), baza: fmt(o.baza), tva: fmt(o.tva) };
+      });
+    randuri.push({ cui: '', den: 'TOTAL ' + D394_TIPURI[tip].toUpperCase(), cota: '', nr: String(nr), baza: fmt(bz), tva: fmt(tv), _bold: true, _fill: C.zebra });
+    totalBaza = round2(totalBaza + bz); totalTva = round2(totalTva + tv); totalFacturi += nr;
+
+    doc.fillColor(C.head).font('Helvetica-Bold').fontSize(11).text(tip + ' — ' + D394_TIPURI[tip]);
+    doc.moveDown(0.2);
+    table(doc, cols, randuri);
+    doc.moveDown(0.5);
+  }
+
+  if (!ops.length) {
+    doc.fillColor(C.head).font('Helvetica').fontSize(10)
+      .text('Nicio operatiune B2B cu partener identificat prin CUI in perioada aleasa.');
+    doc.moveDown(0.5);
+  }
+
+  doc.fillColor(C.head).font('Helvetica-Bold').fontSize(11).text('Control');
+  doc.moveDown(0.2);
+  table(doc, [{ label: 'Indicator', key: 'k', width: 320 }, { label: 'Valoare', key: 'v', width: 140, align: 'right' }], [
+    { k: 'Parteneri distincti in declaratie', v: String(new Set(ops.map((o) => o.cui)).size) },
+    { k: 'Facturi raportate (total)', v: String(totalFacturi) },
+    { k: 'Baza totala (lei)', v: fmt(totalBaza), _bold: true },
+    { k: 'TVA totala (lei)', v: fmt(totalTva), _bold: true, _accent: true, _fill: C.zebra },
+  ]);
+
+  doc.moveDown(0.4);
+  doc.fillColor(C.muted).font('Helvetica').fontSize(8)
+    .text(clean('Recapitulatie informativa, generata din aceleasi operatiuni ca XML-ul D394. '
+      + 'Sumele din declaratia depusa se rotunjesc la LEI INTREGI, deci pot diferi cu bani fata de tabelele de mai sus. '
+      + 'Valideaza XML-ul cu DUKIntegrator inainte de depunere.'), { width: 700 });
+
+  finish(doc, res, 'recap-d394.pdf');
+}
+
+/** D406 / SAF-T (recapitulatie) — ce CANTITATE de date pleaca si care sunt totalurile de control.
+ *  Fisierul oficial are zeci de mii de linii; un om nu-l citeste, dar poate verifica daca numarul
+ *  de conturi, parteneri si articole are sens pentru anul lui — si daca totalul se potriveste. */
+function saftPdf(res, company, d) {
+  recapPdf(res, company, {
+    title: 'D406 / SAF-T (recapitulatie) — continutul fisierului',
+    subtitle: 'Exercitiul ' + d.year,
+    filename: 'recap-saft.pdf',
+    rows: [
+      { k: 'Conturi cu rulaj sau sold (Master Files)', v: String(d.accounts) },
+      { k: 'Clienti', v: String(d.customers) },
+      { k: 'Furnizori', v: String(d.suppliers) },
+      { k: 'Produse in nomenclator', v: String(d.products) },
+      { k: 'Mijloace fixe', v: String(d.assets) },
+      { k: 'Articole contabile (General Ledger)', v: String(d.entries), _bold: true },
+      { k: 'Facturi de vanzare', v: String(d.salesInvoices) },
+      { k: 'Facturi de cumparare', v: String(d.purchaseInvoices) },
+      { k: 'Incasari si plati', v: String(d.payments) },
+      { k: 'Miscari de stoc', v: String(d.stockMovements) },
+      { k: 'TOTAL RULAJ (suma liniilor, lei)', v: fmt(d.totalDebit), _bold: true, _accent: true, _fill: C.zebra },
+    ],
+    note: 'Recapitulatie a continutului, nu a formei: structura fisierului se verifica cu DUKIntegrator (D406). '
+      + 'Un numar care nu are sens pentru anul tau (zero facturi, zero parteneri) inseamna ca lipsesc date, nu ca fisierul e gresit.',
+  });
+}
+
 /** F4109 — Declaratie privind neutilizarea aparatului de marcat electronic fiscal (o luna).
  *  d = { period, aparate: [{ serie, nrOrdine }] }. Formular pe propria raspundere. */
 function f4109Pdf(res, company, d) {
@@ -205,4 +305,4 @@ function obligatiiPdf(res, company, o) {
 }
 
 
-module.exports = { vatPdf, d112Pdf, d300Pdf, d100Pdf, f4109Pdf, dosarCmPdf, declaratiaUnicaPdf, obligatiiPdf };
+module.exports = { vatPdf, d112Pdf, d300Pdf, d100Pdf, d394Pdf, saftPdf, f4109Pdf, dosarCmPdf, declaratiaUnicaPdf, obligatiiPdf };

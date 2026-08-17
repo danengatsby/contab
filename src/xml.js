@@ -637,6 +637,10 @@ ${asigurati}
  */
 const D394_COD_331 = new Set([22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 36]);
 
+/** CUI fara prefixul „RO" si fara spatii — D394 il cere in cifre. Folosit si de agregare,
+ *  si de antetul declaratiei, deci sta la nivel de modul, nu inauntrul uneia dintre ele. */
+const cuiDigits = (c) => String(c || '').replace(/^ro/i, '').replace(/\s/g, '');
+
 /** Operatiunile cu taxare inversa care intra in D394 dar NU au codul de bun completat — fara el
  *  declaratia e respinsa (R233.5). Sursa unica pentru validarea pre-depunere. */
 function d394FaraCodCategorie(vj) {
@@ -655,11 +659,18 @@ function d394FaraCodCategorie(vj) {
  *  nu intra in detaliu (D394 e lista B2B pe CUI); achizitiile de la producatori PF pe fila
  *  de carnet (`pf`) intra ca op1 tip="N" cu tip_partener=2.
  *  Verificare oficiala: scripts/valideaza-duk.sh D394 fisier.xml */
-function d394Xml(company, period, vj, who, pf) {
-  const { an, luna } = ym(period);
-  const lei = (v) => String(Math.round(Number(v) || 0));
-  const cuiDigits = (c) => String(c || '').replace(/^ro/i, '').replace(/\s/g, '');
-  // agregare op1 pe (tip, partener, cota); taxarea inversa are tipuri proprii (V/C)
+/** AGREGAREA D394 pe (tip operatiune, partener, cota) — pura, fara XML.
+ *
+ *  Traia inauntrul lui `d394Xml`, deci recapitulatia pe hartie ar fi trebuit s-o recalculeze:
+ *  al doilea motor pe aceeasi lege, adica exact clasa de defect pe care proiectul a reparat-o
+ *  deja intre `registruFiscal` si `profitTax`. Scoasa afara, o consuma si XML-ul care pleaca la
+ *  ANAF, si PDF-ul pe care il citeste omul inainte sa-l trimita — aceleasi cifre prin constructie.
+ *
+ *  Tipurile sunt cele din nomenclatorul D394: L = livrari taxabile, V = livrari cu taxare inversa
+ *  (art. 331, fara TVA), A = achizitii taxabile, C = achizitii cu taxare inversa,
+ *  N = achizitii de la persoane fizice pe fila de carnet (tip_partener 2).
+ */
+function d394Operatiuni(vj, pf) {
   const ops = new Map();
   // `codPR` = codul de bun art. 331; se acumuleaza pe categorie IN INTERIORUL randului op1,
   // fiindca acelasi partener poate livra bunuri din categorii diferite la aceeasi cota.
@@ -696,7 +707,13 @@ function d394Xml(company, period, vj, who, pf) {
     addOp('V', 1, 0, cui, r.partener, r.baza, 0, 1, r.codCategorie331);
   }
   for (const r of (pf && pf.rows) || []) addOp('N', 2, 0, r.cnp || '', r.partener, r.total, 0, r.nr);
-  const opList = [...ops.values()];
+  return [...ops.values()];
+}
+
+function d394Xml(company, period, vj, who, pf) {
+  const { an, luna } = ym(period);
+  const lei = (v) => String(Math.round(Number(v) || 0));
+  const opList = d394Operatiuni(vj, pf);
   // rezumat1: totaluri pe (tip_partener, cota), cu coloane pe tipul operatiunii
   const rez1 = new Map();
   for (const o of opList) {
@@ -1684,6 +1701,7 @@ function bilantXml(d) {
 }
 
 module.exports = {
+  d394Operatiuni,
   eFacturaUBL, eFacturaCreditNoteUBL, eFacturaXml, isEFacturaEligible, isSendable,
   perimetruEFactura, CIF_PERSOANA_FIZICA,
   umCode, d300Xml, d300Rows, D300_RAND_SCUTITE, d300CoteFaraRand, d394Xml, D394_COD_331, d394FaraCodCategorie, d112Xml, d390Xml, d301Xml, d307Xml, d311Xml, D390_CODURI, d205Xml, d100Xml, d710Xml, d101Xml, intrastatXml, parseUblInvoice, SALES_TYPES, CREDIT_TYPES,
