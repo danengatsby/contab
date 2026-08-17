@@ -828,3 +828,13 @@ body.erp .ghid-cel:focus-visible { outline: var(--ds-focus); outline-offset: 1px
 body.erp .ghid-cel-ic { font-size: 16px; line-height: 1; }
 body.erp .ghid-cel-t { font-weight: 700; }
 body.erp .ghid-cel-d { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+
+/* Data rezolvată de lângă un câmp nativ de dată. Câmpul se randează în locale-ul BROWSERULUI
+   (`07/10/2026` pe un sistem în engleză), restul aplicației scrie `zz.ll.aaaa` — perechea
+   înlătură ambiguitatea 7 octombrie / 10 iulie pe un termen de depunere. */
+body.erp .cl-due-ro {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}

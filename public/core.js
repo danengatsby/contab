@@ -12,6 +12,26 @@ export const fmt = (n) => (Number(n) || 0).toLocaleString('ro-RO', { minimumFrac
 // (total valoare stoc) si la auto-completarea salariilor — lipsea din frontend (ReferenceError).
 export const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
+// Data in conventia romaneasca. Aceeasi semantica cu `fmtDate` din src/util.js (folosit la PDF-uri):
+// serverul o avea, frontendul nu — de aceea pe ecran conviețuiau ISO si formatul locale-ului
+// browserului. Un `07/10/2026` inseamna 7 octombrie in RO si 10 iulie in US; pentru un termen de
+// depunere ambiguitatea nu e cosmetica.
+export const dataRo = (iso) => {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : String(iso || '');
+};
+
+// Pluralul romanesc, ca sa nu mai scriem „pas(i)". Regula are DOUA praguri, nu unul: de la 20 in
+// sus se intercaleaza „de" (20 de pasi), dar nu si cand ultimele doua cifre cad in 1..19
+// (101 pasi, 120 de pasi). Zero ramane fara „de" — „0 de pasi" nu se spune.
+export const plural = (n, sg, pl) => {
+  const x = Math.abs(Math.trunc(Number(n) || 0));
+  if (x === 1) return n + ' ' + sg;
+  const ultimele2 = x % 100;
+  const cuDe = x >= 20 && (ultimele2 === 0 || ultimele2 >= 20);
+  return n + (cuDe ? ' de ' : ' ') + pl;
+};
+
 // Escapare HTML pentru datele de provenienta externa (parteneri din e-Factura/SPV, extrase
 // bancare, denumiri, explicatii) inainte de interpolarea in innerHTML — al doilea strat de
 // aparare dupa CSP. `H` = escapare completa (text + atribute), folosita la randare.

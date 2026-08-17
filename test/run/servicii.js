@@ -783,6 +783,30 @@ ok('job: eroarea notata si numarata', snapJ['spv-poll'].lastError === 'ANAF 503'
 metricsMod.reset();
 ok('reset: erori si joburi golite', metricsMod.snapshot().recentErrors.length === 0 && Object.keys(metricsMod.snapshot().jobs).length === 0);
 
+section('Pluralul romanesc: doua praguri, nu unul');
+{
+  const { plural } = require('../../src/util');
+  // Regula nu e „1 vs. rest": de la 20 se intercaleaza „de", DAR nu cand ultimele doua cifre
+  // cad in 1..19. Fara al doilea prag ar iesi „101 de pasi", care e gresit.
+  eq('unu ia singularul', plural(1, 'pas', 'pași'), '1 pas');
+  eq('doi ia pluralul simplu', plural(2, 'pas', 'pași'), '2 pași');
+  eq('nousprezece inca fara „de"', plural(19, 'pas', 'pași'), '19 pași');
+  eq('douazeci primeste „de"', plural(20, 'pas', 'pași'), '20 de pași');
+  eq('o suta primeste „de"', plural(100, 'pas', 'pași'), '100 de pași');
+  eq('o suta unu NU primeste „de"', plural(101, 'pas', 'pași'), '101 pași');
+  eq('o suta nousprezece NU primeste „de"', plural(119, 'pas', 'pași'), '119 pași');
+  eq('o suta douazeci primeste „de"', plural(120, 'pas', 'pași'), '120 de pași');
+  eq('zero ramane fara „de"', plural(0, 'pas', 'pași'), '0 pași');
+  // Aceeasi regula traieste si in frontend (public/core.js) — mesajele se compun in ambele parti.
+  const coreSrc = require('fs').readFileSync(require('path').join(RADACINA, 'public', 'core.js'), 'utf8');
+  ok('frontendul are aceeasi regula, cu ambele praguri',
+    /export const plural/.test(coreSrc) && /ultimele2 >= 20/.test(coreSrc) && /x >= 20/.test(coreSrc));
+  ok('nicaieri nu mai scrie „pas(i)" sau „factură/facturi"',
+    !['public/inchidere.js', 'public/rapoarte.js', 'src/monthlyClose.js', 'src/reporting.js']
+      .some((f) => /pas\(i\)|rând\(uri\)|curs\(uri\)|factură\/facturi/
+        .test(require('fs').readFileSync(require('path').join(RADACINA, f), 'utf8'))));
+}
+
 section('Ordine cronologica: colator natural refolosit + ultimele N fara sortare completa');
 {
   const { naturalCompare } = require('../../src/util');

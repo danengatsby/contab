@@ -11,6 +11,17 @@ function fmt(n) {
   return v.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/** Pluralul romanesc: 1 pas / 2 pasi / 20 DE pasi / 101 pasi / 120 DE pasi / 0 pasi.
+ *  Doua praguri, nu unul: „de" apare de la 20, dar nu cand ultimele doua cifre cad in 1..19.
+ *  Oglinda lui `plural` din public/core.js — mesajele de blocaj se compun si pe server. */
+function plural(n, sg, pl) {
+  const x = Math.abs(Math.trunc(Number(n) || 0));
+  if (x === 1) return n + ' ' + sg;
+  const ultimele2 = x % 100;
+  const cuDe = x >= 20 && (ultimele2 === 0 || ultimele2 >= 20);
+  return n + (cuDe ? ' de ' : ' ') + pl;
+}
+
 /** Data ISO (YYYY-MM-DD) -> dd.mm.yyyy */
 function fmtDate(iso) {
   if (!iso) return '';
@@ -142,4 +153,4 @@ function ultimaZiDinLuna(period) {
   return m[1] + '-' + m[2] + '-' + String(zi).padStart(2, '0');
 }
 
-module.exports = { round2, fmt, fmtDate, period, periodLabel, sumaInLitere, stringifyDb, stringifyRow, naturalCompare, ultimaZiDinLuna };
+module.exports = { round2, fmt, fmtDate, plural, period, periodLabel, sumaInLitere, stringifyDb, stringifyRow, naturalCompare, ultimaZiDinLuna };

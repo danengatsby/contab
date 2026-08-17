@@ -546,7 +546,7 @@
       <div class="card" id="forecastCard">
         <div class="card-head">
           <h3>🔮 Previziune cash-flow <span class="muted" data-u="u70">(lunile următoare)</span></h3>
-          <select id="fcMonths" class="period" data-u="u15">
+          <select id="fcMonths" class="period" aria-label="Câte luni acoperă previziunea" data-u="u15">
             <option value="3">3 luni</option>
             <option value="6" selected>6 luni</option>
             <option value="12">12 luni</option>
@@ -1016,7 +1016,7 @@
         <p class="muted">Încarcă XML-ul decontului precompletat (RO e-TVA) descărcat din SPV și confruntă-l rând-cu-rând cu poziția ta.</p>
         <input type="file" id="etvaFile" accept=".xml,application/xml,text/xml" aria-label="Fișier decont precompletat XML">
         <details data-u="u18"><summary class="muted">…sau lipește conținutul XML</summary>
-          <textarea id="etvaXmlInput" rows="4" placeholder="&lt;declaratie300 .../&gt;" data-u="u18"></textarea></details>
+          <textarea id="etvaXmlInput" rows="4" aria-label="XML-ul decontului precompletat primit de la ANAF" placeholder="&lt;declaratie300 .../&gt;" data-u="u18"></textarea></details>
         <button id="etvaReconBtn" class="btn small primary" data-u="u23">Reconciliază cu decontul precompletat</button>
         <div id="etvaResult" data-u="u18"></div>
       </div>

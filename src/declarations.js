@@ -1,6 +1,7 @@
 'use strict';
 
 const { postedEntries } = require('./accounting'); // ciornele nu declanseaza asteptari de declaratii/e-Factura
+const { fmtDate } = require('./util'); // termenele se scriu romaneste catre om; ISO ramane in date
 const fiscalProfile = require('./fiscalProfile'); // motorul de profil fiscal (sursa unica)
 const xml = require('./xml'); // perimetrul e-Factura (`isSendable`), derivat din tipurile de document
 const d107 = require('./d107');
@@ -414,7 +415,7 @@ function portfolio(d, scopedList, period, today) {
       else if (r.status === 'eroare') { c.erori += 1; atentionari.push(r.nume.split(' — ')[0] + ': eroare' + (r.note ? ' (' + r.note + ')' : '')); }
       else if (r.status === 'scutita') c.scutite += 1;
       else c.nedepuse += 1;
-      if (r.overdue) { c.restante += 1; if (r.status !== 'eroare') atentionari.push(r.nume.split(' — ')[0] + ': termen depășit (' + r.due + ')'); }
+      if (r.overdue) { c.restante += 1; if (r.status !== 'eroare') atentionari.push(r.nume.split(' — ')[0] + ': termen depășit (' + fmtDate(r.due) + ')'); }
     }
     for (const k of Object.keys(tot)) tot[k] += c[k];
     firms.push({

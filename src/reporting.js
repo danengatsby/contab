@@ -1,6 +1,6 @@
 'use strict';
 
-const { round2, period: periodOf, naturalCompare } = require('./util');
+const { round2, period: periodOf, naturalCompare, plural } = require('./util');
 const fiscal = require('./fiscal');
 // Nomenclatorul tarilor UE (D390) se ia din config, nu din `fiscal`: `fiscal.FISCAL` expune cotele
 // suprascriabile din Setari, iar lista de tari nu e o cota — nu are ce cauta acolo.
@@ -112,7 +112,7 @@ function tvaReconciliation(db, period) {
     netrimise.push({ entryId: e.id, document: e.document || '', partener: e.partener || '', data: e.data });
   }
   if (netrimise.length) findings.push({ nivel: 'atentie', cod: 'efactura-netrimisa',
-    mesaj: netrimise.length + ' factură/facturi emise cu TVA NEtrimise în SPV — ANAF le include în decontul precompletat; trimite-le ca D300 să se potrivească.' });
+    mesaj: plural(netrimise.length, 'factură emisă', 'facturi emise') + ' cu TVA, fără trimitere în SPV. Intră în decontul precompletat al ANAF — trimite în SPV, ca D300 să se potrivească.' });
 
   // 3) Cote care nu au rand in schema D300 v12 — sume care NU pot intra in decont. Tipic: achizitii
   // la 9% (cota exista la livrari, dar v12 nu are rand de achizitii pentru ea) sau date vechi la
