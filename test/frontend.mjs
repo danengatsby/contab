@@ -2288,6 +2288,33 @@ section('Ghid: modelul se DERIVA din meniul aplicatiei (public/ghid.js)');
   eq('submeniurile pastreaza tabul tinta', m[0].itemi.map((i) => i.tab).join(','), 'jurnal,balanta');
   eq('...si eticheta lor', m[0].itemi[1].eticheta, 'Solduri conturi (balanță)');
   ok('container lipsa nu arunca', Array.isArray(ghid.modelGhid(null)) && ghid.modelGhid(null).length === 0);
+
+  // Regresie reala: familia `.em-*` era stilata in erp.css pe vremea barei de meniu din carcasa.
+  // Trecerea la o singura navigatie a scos regulile, dar ghidul a ramas singurul consumator —
+  // iar fara `display: none` fiecare lista derulanta sta deschisa si cuprinsul se scurge ca un
+  // perete de text. Modelul era corect, deci NICIO poarta pe model n-avea cum s-o vada.
+  // Comentariile se scot ÎNAINTE de orice potrivire: nota care explică regula conține ea însăși
+  // „.em-pop { display: none }", deci poarta trecea citind explicația, nu declarația (prins prin
+  // mutație — a treia oară în această sesiune când o ancoră se hrănește din propriul text).
+  const cssGhid = ['design-system.css', 'erp.css', 'styles.css']
+    .map((f) => fs.readFileSync(path.join(PUB, f), 'utf8')).join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  // Atributul poate purta MAI MULTE clase (`el('div', 'card ghid-pagina')`); un regex care se
+  // oprește la primul cuvânt ar fi ratat exact `.ghid-pagina`, deci se despart pe spații.
+  const claseGhid = [...fs.readFileSync(path.join(PUB, 'ghid.js'), 'utf8')
+    .matchAll(/el\('[a-z]+',\s*'([a-z0-9 -]+)'/g)].flatMap((m) => m[1].split(/\s+/)).filter(Boolean);
+  // Potrivirea cere GRANIȚĂ de selector: `includes('.ghid-cel-d')` e adevărat și pentru
+  // `.ghid-cel-dXX`, deci poarta ar fi trecut cu regula redenumită — prins prin mutație.
+  const areRegula = (c) => new RegExp('\\.' + c.replace(/[-]/g, '\\-') + '(?![a-zA-Z0-9_-])').test(cssGhid);
+  const fara = [...new Set(claseGhid.filter((c) => !areRegula(c)))];
+  ok('fiecare clasă pe care o produce ghid.js are reguli în CSS' +
+    (fara.length ? ' — LIPSESC: ' + fara.join(', ') : ''),
+    claseGhid.length > 0 && fara.length === 0);
+  ok('listele derulante ale cuprinsului pornesc ÎNCHISE',
+    /\.em-pop\s*\{[^}]*display:\s*none/.test(cssGhid));
+  ok('...și se deschid pe clasa de stare pusă de ghid.js',
+    /\.em-item\.open\s*>\s*\.em-pop\s*\{[^}]*display:\s*block/.test(cssGhid)
+      && /classList\.add\('open'\)/.test(fs.readFileSync(path.join(PUB, 'ghid.js'), 'utf8')));
 }
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari trecute, ' + fail + ' esuate.');
