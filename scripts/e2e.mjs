@@ -49,6 +49,23 @@ await pg.evaluate(() => { document.querySelectorAll('#welcomeOverlay').forEach((
 ok('login demo functioneaza (badge cu tipul)', /demo/.test(await pg.locator('#userBadge').textContent()));
 ok('panourile au explicatii (ⓘ injectate)', (await pg.locator('.cinfo').count()) > 50);
 ok('dashboardul are banda de alerte', (await pg.locator('#dashAlerts .alert').count()) > 0);
+ok('alertele au o singură pictogramă semantică, fără dublare după destinație', await pg.evaluate(() =>
+  [...document.querySelectorAll('#dashAlerts .alert')].every((el) =>
+    !el.querySelector(':scope > .app-icon') && !!el.querySelector(':scope > .al-ic .app-icon'))));
+ok('desktop: utilitarele pornesc strânse sub un singur buton',
+  (await pg.locator('#toolsBtn').isVisible()) && !(await pg.locator('#sideTools').isVisible())
+  && (await pg.locator('#toolsBtn').getAttribute('aria-expanded')) === 'false');
+await pg.click('#toolsBtn');
+const unelteDeschise = (await pg.locator('#sideTools').isVisible())
+  && (await pg.locator('#toolsBtn').getAttribute('aria-expanded')) === 'true';
+await pg.keyboard.press('Escape');
+ok('desktop: panoul de unelte se deschide și Escape îl închide accesibil', unelteDeschise
+  && !(await pg.locator('#sideTools').isVisible())
+  && (await pg.locator('#toolsBtn').getAttribute('aria-expanded')) === 'false');
+const clickTool = async (selector) => {
+  if (!(await pg.locator('#sideTools').isVisible())) await pg.click('#toolsBtn');
+  await pg.click(selector);
+};
 
 // 3b. contrastul comenzilor utilitare din bara laterala. Poarta traieste AICI, nu in npm test:
 // depinde de cascada reala + compunerea alpha, deci cere un browser. A prins o regresie reala —
@@ -92,16 +109,16 @@ await pg.keyboard.press('Escape');
 ok('Escape inchide cautarea globala', !(await pg.locator('#paletaModal').isVisible()));
 
 // 3c. dictionarul contabil + modul simplu (rezumatul executiv)
-await pg.click('#glossaryBtn');
+await clickTool('#glossaryBtn');
 ok('dictionarul contabil se deschide', await pg.locator('#glossaryModal').isVisible());
 await pg.fill('#glossarySearch', 'storno');
 await pg.waitForTimeout(200);
 ok('cautarea in dictionar gaseste termenul', (await pg.locator('#glossaryList .gloss-item').count()) >= 1);
 await pg.keyboard.press('Escape');
 const wasSimple = await pg.evaluate(() => document.body.classList.contains('simple-ui'));
-await pg.click('#uiModeBtn');
+await clickTool('#uiModeBtn');
 ok('comutatorul simplu/expert schimba modul', (await pg.evaluate(() => document.body.classList.contains('simple-ui'))) !== wasSimple);
-if (!(await pg.evaluate(() => document.body.classList.contains('simple-ui')))) await pg.click('#uiModeBtn');
+if (!(await pg.evaluate(() => document.body.classList.contains('simple-ui')))) await clickTool('#uiModeBtn');
 await pg.evaluate(() => goTab('dashboard'));
 await pg.waitForTimeout(1000);
 ok('rezumatul executiv e vizibil in modul simplu', await pg.locator('#rezumatCard').isVisible());
@@ -132,14 +149,14 @@ const TABURI = ['documente', 'intrate', 'tva', 'stocuri'];
 const strange = async () => { const s = new Set(); for (const t of TABURI) (await coduriVizibile(t)).forEach((c) => s.add(c)); return s; };
 const inSimplu = await strange();
 ok(`modul simplu nu arata coduri de cont (gasite: ${[...inSimplu].join(' ') || 'niciunul'})`, inSimplu.size === 0);
-await pg.click('#uiModeBtn'); // -> expert
+await clickTool('#uiModeBtn'); // -> expert
 await pg.waitForTimeout(300);
 const inExpert = await strange();
 // Volumul datelor din firma demo variaza dupa reset/importuri, deci „peste 10" masura seed-ul,
 // nu modul UI. Contractul real: simplu elimina toate codurile, iar expertul le readuce efectiv.
 ok(`modul expert readuce codurile (${inExpert.size}: ${[...inExpert].join(' ') || 'niciunul'})`,
   inExpert.size > 0 && inExpert.size > inSimplu.size);
-if (await pg.evaluate(() => document.body.classList.contains('simple-ui'))) await pg.click('#uiModeBtn');
+if (await pg.evaluate(() => document.body.classList.contains('simple-ui'))) await clickTool('#uiModeBtn');
 // restul verificarilor ruleaza in modul expert
 
 // 4. API-uri cheie cu sesiunea demo
@@ -166,6 +183,8 @@ pg.on('request', (r) => { if (r.url().includes('/api/preview')) previewReq.push(
 await pg.evaluate(() => goTab('documente'));
 await pg.waitForTimeout(800);
 await pg.evaluate(() => document.querySelectorAll('#welcomeOverlay,.toast,#fwWizard,.op-wizard').forEach((e) => e.remove()));
+ok('navigația ciclului nu este duplicată în conținut', (await pg.locator('.cyclemap,.cyclestep,.cyclearrow').count()) === 0);
+ok('etapa ciclului apare compact în bara contextuală', /etapa 1\/7/i.test(await pg.locator('.app-context-kicker').textContent()));
 await pg.click('#manualBtn');
 await pg.waitForTimeout(1000);
 await pg.selectOption('#tipSelect', 'factura_vanzare_marfuri');
@@ -221,7 +240,10 @@ await randuri.nth(0).locator('.it-pret').fill('50');
 await randuri.nth(0).locator('.it-cota').fill('21');
 await randuri.nth(1).locator('.it-cant').fill('9'); // fara denumire -> se elimina
 await pg.waitForTimeout(1200);
-await pg.click('#entryForm button[type="submit"], #entryForm .btn.primary');
+// Formularul este acum ghidat: datele stau în primul pas, salvarea în al doilea. Selectorul vechi
+// „orice .primary" apăsa doar Continuă și pretindea apoi că submit-ul nu funcționează.
+await pg.click('#entryForm > .form-step:first-of-type .form-step-actions .btn.primary');
+await pg.click('#entryForm button[type="submit"]');
 await pg.waitForTimeout(1200);
 ok('formularul chiar trimite o cerere de salvare', !!trimis && trimis.tip === 'factura_vanzare_marfuri');
 const items = (trimis && trimis.fields && trimis.fields.items) || [];
@@ -229,6 +251,7 @@ ok('liniile fara denumire sunt eliminate inainte de trimitere (a ramas 1)', item
 ok('linia completa pleaca cu valorile tastate', items[0] && items[0].nume === 'Produs A' && String(items[0].cantitate) === '3' && String(items[0].pret) === '50' && String(items[0].cota) === '21');
 ok('campurile simple pleaca din formular', trimis && trimis.fields && trimis.fields.partener === 'Client E2E');
 // bifele trebuie sa plece ca BOOLEAN (prin .checked), nu ca sirul „on" al unui input
+await pg.click('#entryForm > .form-step:first-of-type > summary');
 await pg.selectOption('#tipSelect', 'factura_cumparare_marfuri');
 await pg.waitForTimeout(700);
 await pg.fill('#fld_data', '2026-06-15');
@@ -236,21 +259,24 @@ await pg.fill('#fld_baza', '100');
 await pg.check('#fld_proRataMixt');
 await pg.waitForTimeout(1000);
 trimis = null;
-await pg.click('#entryForm button[type="submit"], #entryForm .btn.primary');
+await pg.click('#entryForm > .form-step:first-of-type .form-step-actions .btn.primary');
+await pg.click('#entryForm button[type="submit"]');
 await pg.waitForTimeout(1200);
 ok('bifa pleaca drept boolean true (prin .checked), nu ca sirul „on"', trimis && trimis.fields && trimis.fields.proRataMixt === true);
 // si nebifat: trebuie sa fie false, nu sir gol — altfel serverul ar primi o valoare falsy ambigua
+await pg.click('#entryForm > .form-step:first-of-type > summary');
 await pg.uncheck('#fld_proRataMixt');
 await pg.waitForTimeout(600);
 trimis = null;
-await pg.click('#entryForm button[type="submit"], #entryForm .btn.primary');
+await pg.click('#entryForm > .form-step:first-of-type .form-step-actions .btn.primary');
+await pg.click('#entryForm button[type="submit"]');
 await pg.waitForTimeout(1200);
 ok('bifa nebifata pleaca drept false, nu sir gol', trimis && trimis.fields && trimis.fields.proRataMixt === false);
 await pg.unroute('**/api/entries');
-await pg.evaluate(() => { const b = document.querySelector('#entryCancel, #formClose'); if (b) b.click(); });
+await pg.evaluate(() => document.querySelector('#cancelEntry')?.click());
 
-// 6. trecere pe VIEWPORT MOBIL (390x844): UI-ul mobil e ACTIV (bara de jos + panoul
-// „Mai mult"; sidebar-ul devine bara de sus) — fara scroll orizontal nicaieri.
+// 6. trecere pe VIEWPORT MOBIL (390x844): același arbore #tabs devine sertar,
+// fără o a doua navigație sau o ierarhie mobilă separată — și fără scroll orizontal.
 const pm = await b.newPage({ viewport: { width: 390, height: 844 } });
 await pm.goto(BASE + '/prezentare.html', { waitUntil: 'networkidle' });
 await pm.waitForTimeout(500);
@@ -261,14 +287,41 @@ await pm.reload({ waitUntil: 'networkidle' });
 await pm.waitForTimeout(1500);
 await pm.evaluate(() => { document.querySelectorAll('#welcomeOverlay').forEach((e) => e.remove()); });
 ok('mobil: login demo functioneaza', /demo/.test(await pm.locator('#userBadge').textContent()));
-ok('mobil: dashboardul se randeaza (continut prezent)', (await pm.locator('#kpis .kpi').count()) > 0);
-ok('mobil: bara de jos vizibila, meniul desktop ascuns', (await pm.locator('#bottomnav').isVisible()) && !(await pm.locator('#tabs').isVisible()));
+ok('mobil: dashboardul și contextul paginii se randează', (await pm.locator('#kpis .kpi').count()) > 0
+  && (await pm.locator('#appContextTitle').isVisible()) && /Acasă/i.test(await pm.locator('#appContextTitle').textContent())
+  && (await pm.locator('.app-context-kicker').isVisible()));
+ok('mobil: există o singură navigație, strânsă inițial', (await pm.locator('#bottomnav,#moreSheet').count()) === 0 && !(await pm.locator('#tabs').isVisible()));
 ok('mobil: dashboardul FARA scroll orizontal', await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
-await pm.click('#moreBtn');
-ok('mobil: panoul „Mai mult" se deschide', await pm.locator('#moreSheet .more-grid').isVisible());
-await pm.click('#moreSheet .more-grid button[data-go="tva"]');
+await pm.click('#navToggleBtn');
+ok('mobil: butonul Meniu deschide arborele desktop real', await pm.locator('#tabs').isVisible());
+await pm.click('#tabs .navgroup:has(button[data-tab="tva"]) > .navlabel');
+await pm.click('#tabs button[data-tab="tva"]');
 await pm.waitForTimeout(1200);
-ok('mobil: navigarea din panou merge (TVA) si pagina ramane fixa', (await pm.locator('#tab-tva').isVisible()) && (await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)));
+ok('mobil: navigarea din același arbore merge, închide sertarul și pagina rămâne fixă',
+  (await pm.locator('#tab-tva').isVisible()) && !(await pm.locator('#tabs').isVisible())
+  && /TVA/i.test(await pm.locator('#appContextTitle').textContent())
+  && (await pm.locator('#navToggleBtn').getAttribute('aria-expanded')) === 'false'
+  && (await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)));
+await pm.evaluate(() => document.querySelector('#tabs button[data-tab="dashboard"]')?.click());
+await pm.waitForTimeout(150);
+await pm.setViewportSize({ width: 320, height: 700 });
+await pm.waitForTimeout(150);
+const mobil320 = await pm.evaluate(() => {
+  const titlu = document.querySelector('#appContextTitle');
+  const controale = document.querySelector('.app-context-controls');
+  const antet = document.querySelector('.topbar');
+  const textAlerta = document.querySelector('#dashAlerts .alert .al-tx');
+  const r = controale && controale.getBoundingClientRect();
+  const ra = antet && antet.getBoundingClientRect();
+  const rt = textAlerta && textAlerta.getBoundingClientRect();
+  const rezultat = !!titlu && getComputedStyle(titlu).display !== 'none' && !!r
+    && r.left >= -0.5 && r.right <= window.innerWidth + 0.5
+    && !!ra && ra.height <= 70 && !!rt && rt.width >= 180
+    && document.documentElement.scrollWidth <= window.innerWidth + 1;
+  return { rezultat, antet: ra && ra.height, textAlerta: rt && rt.width,
+    contextStanga: r && r.left, contextDreapta: r && r.right, scroll: document.documentElement.scrollWidth };
+});
+ok(`mobil 320px: contextul rămâne lizibil și în interiorul ecranului (antet ${mobil320.antet}px, text ${mobil320.textAlerta}px)`, mobil320.rezultat);
 await pm.close();
 
 await b.close();
