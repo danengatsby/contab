@@ -838,3 +838,22 @@ body.erp .cl-due-ro {
   font-size: 12.5px;
   white-space: nowrap;
 }
+
+/* Indiciu de derulare pe registrele late.
+   Tabelele din taburi sunt ele însele containerul de derulare (`styles.css`: `display:block;
+   overflow-x:auto`), deci când conținutul nu încape, ultima coloană pare TĂIATĂ, nu derulabilă.
+   Umbra stă pe containerul PĂRINTE, care nu derulează, ca să rămână pe loc; clasa o pune
+   `marcheazaTabeleDerulabile` din erp.js și dispare când ai ajuns la capătul din dreapta. */
+body.erp .tablewrap { position: relative; }
+body.erp .tablewrap.are-derulare::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  width: 38px;
+  pointer-events: none;
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(to left, var(--card), color-mix(in srgb, var(--card) 0%, transparent));
+  box-shadow: inset -14px 0 14px -14px color-mix(in srgb, var(--ink) 45%, transparent);
+}
