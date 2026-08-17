@@ -426,25 +426,17 @@ await scena('s12-acasa', async () => {
   await derulare(320, 2400);
   await derulare(700, 2200);
 });
-// ═══ S12b · chrome-ul de birou (aspectul clasic) ══════════════════════════
-// Aspectul clasic e nou pe ecran, deci isi merita scena: bara de meniu se DESCHIDE (altfel pare
-// decor), banda de unelte se plimba cu cursorul, iar arborele si bara de stare se arata pe rand.
-
-// ═══ S12b · biroul (aspectul clasic) — AICI se trece pe expert ═════════════
+// ═══ S12b · interfața modernă — AICI se trece pe expert ════════════════════
+// Se arată ierarhia unică: arbore lateral, context firmă/perioadă și ajutor la cerere.
 await scena('s12b-birou', async () => {
-  await treciLaExpert(); // biroul clasic E vederea expert: scenele de dinainte arata anume vederea simpla
+  await treciLaExpert();
   await derulare(0, 700);
-  await clicDaca('#erpMenu .em-item:nth-child(2) > button', { dupa: 1700 });
-  await pg.evaluate(() => document.body.click());
-  await asteapta(600);
-  for (const n of [0, 4, 9, 14]) {
-    const b2 = pg.locator('#erpTools .et-btn').nth(n);
-    if (await b2.count()) { await cursorLa(b2); await asteapta(420); }
-  }
+  const context = pg.locator('#appContext');
+  if (await context.count()) { await cursorLa(context); await asteapta(1200); }
   const arb = pg.locator('#tabs .navlabel').nth(1);
-  if (await arb.count()) { await cursorLa(arb); await asteapta(800); }
-  const st = pg.locator('#erpStatus');
-  if (await st.count()) { await cursorLa(st); await asteapta(1200); }
+  if (await arb.count()) { await cursorLa(arb); await arb.click(); await asteapta(1100); }
+  await clicDaca('#tab-dashboard .context-help > summary', { dupa: 1700 });
+  await clicDaca('#tab-dashboard .context-help > summary', { dupa: 700 });
 });
 
 // ═══ S12c · modul simplu ═══════════════════════════════════════════════════

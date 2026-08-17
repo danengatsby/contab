@@ -497,13 +497,55 @@ section('Poarta: materialele publicate nu divergo de sursa lor');
     ok('descrierea publicata e identica cu sursa din marketing/',
       identic(pth.join(SRC, 'descriere.txt'), pth.join(MAT, 'descriere.txt')));
 
-    // Fiecare captura din marketing/capturi/ trebuie sa aiba geamanul ei publicat, bit cu bit.
+    // Fiecare captură PNG/JPG din marketing/capturi/ trebuie să aibă geamănul ei publicat, bit cu bit.
     const dirCap = pth.join(SRC, 'capturi');
-    const capturi = fsx.existsSync(dirCap) ? fsx.readdirSync(dirCap).filter((f) => f.endsWith('.png')) : [];
+    const capturi = fsx.existsSync(dirCap) ? fsx.readdirSync(dirCap).filter((f) => /\.(?:png|jpe?g)$/i.test(f)) : [];
     ok('exista capturi de verificat (poarta nu scaneaza in gol)', capturi.length >= 3);
     const divergente = capturi.filter((f) => !identic(pth.join(dirCap, f), pth.join(MAT, f)));
     ok('fiecare captura publicata e identica cu originalul' + (divergente.length ? ' — DIFERITE: ' + divergente.join(', ') : ''),
       divergente.length === 0);
+
+    // Egalitatea celor două copii nu dovedește că imaginile sunt NOI: ambele puteau rămâne
+    // identic de vechi după o schimbare de UI. Generatorul scrie de aceea un manifest cu
+    // amprenta exactă a surselor vizuale și versiunea shell-ului PWA.
+    const manifestSrc = pth.join(dirCap, 'capturi-manifest.json');
+    const manifestPub = pth.join(MAT, 'capturi-manifest.json');
+    ok('capturile au manifest anti-drift publicat în ambele directoare',
+      fsx.existsSync(manifestSrc) && identic(manifestSrc, manifestPub));
+    let manifest = null;
+    try { manifest = JSON.parse(fsx.readFileSync(manifestSrc, 'utf8')); } catch (_) { /* raportat mai jos */ }
+    ok('manifestul capturilor este JSON valid, schema 1', !!manifest && manifest.schema === 1);
+    const obligatorii = ['index.html', 'styles.css', 'u.css', 'erp.css', 'design-system.css', 'erp.js',
+      'dashboard.js', 'docflow.js', 'livrabile.js', 'rapoarte.js', 'sw.js'];
+    ok('amprenta acoperă shell-ul, design system-ul și ecranele fotografiate',
+      !!manifest && obligatorii.every((f) => (manifest.sources || []).includes(f)));
+    let amprenta = '';
+    if (manifest && Array.isArray(manifest.sources)) {
+      const hash = require('crypto').createHash('sha256');
+      let complet = true;
+      for (const rel of manifest.sources) {
+        const sursa = pth.join(RADACINA, 'public', rel);
+        if (typeof rel !== 'string' || rel.includes('..') || !fsx.existsSync(sursa)) { complet = false; break; }
+        hash.update(rel); hash.update('\0'); hash.update(fsx.readFileSync(sursa)); hash.update('\0');
+      }
+      if (complet) amprenta = hash.digest('hex');
+    }
+    ok('capturile provin din sursele UI curente, nu dintr-o versiune veche',
+      !!manifest && amprenta === manifest.sourceFingerprint);
+    const sw = fsx.readFileSync(pth.join(RADACINA, 'public', 'sw.js'), 'utf8');
+    const cacheCurent = (sw.match(/const CACHE = ['"]([^'"]+)/) || [])[1] || '';
+    ok('manifestul poartă aceeași versiune PWA ca aplicația', !!manifest && manifest.uiCache === cacheCurent);
+    ok('manifestul enumeră exact toate imaginile publicate', !!manifest
+      && JSON.stringify([...(manifest.captures || [])].sort()) === JSON.stringify([...capturi].sort()));
+    const pngCorecte = capturi.filter((f) => f.endsWith('.png')).every((f) => {
+      const b = fsx.readFileSync(pth.join(dirCap, f));
+      return b.length > 24 && b.readUInt32BE(16) === 2880 && b.readUInt32BE(20) === 1800;
+    });
+    ok('PNG-urile păstrează viewportul 1440×900 la 2×', pngCorecte);
+    ok('fixture-ul publicat rămâne realist: 7 firme, 70–90% conformitate, zero restanțe',
+      !!manifest && manifest.portfolio && manifest.portfolio.firms === 7
+        && manifest.portfolio.conformity >= 70 && manifest.portfolio.conformity <= 90
+        && manifest.portfolio.overdue === 0);
   }
 
   // Materialele NU au voie sa concureze paginile reale in cautari: sunt acelasi text, la alta
@@ -1257,22 +1299,18 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
     + (orfane.length ? ' — ORFANE: ' + orfane.join(', ') : ''), orfane.length === 0);
   ok('poarta chiar vede navigarile programatice', navigate.size > 3);
 
-  // Al doilea capat: butoanele care navigheaza din HTML (`data-go`) — bara de jos si panoul „Mai
-  // mult" de pe MOBIL, plus scurtaturile de pe Acasa. Ancora de mai sus se uita doar la `data-tab`
+  // Al doilea capat: scurtaturile care navigheaza din HTML (`data-go`) — de pe Acasa si din
+  // fluxurile ghidate. Ancora de mai sus se uita doar la `data-tab`
   // si la `goTab(...)` din JS, deci era oarba exact aici — iar defectul e tacut: `goTab` pe un nume
-  // inexistent deselecteaza tot si nu activeaza nimic, adica ecran GOL. Gasit asa, real:
-  // `data-go="salarii"` in panoul mobil, cand sectiunea se numeste `tab-salarizare`.
+  // inexistent deselecteaza tot si nu activeaza nimic, adica ecran GOL.
   const destinatiiHtml = [...new Set([...html.matchAll(/data-go="([a-z-]+)"/g)].map((m) => m[1]))];
   ok('poarta vede butoanele care navigheaza din HTML', destinatiiHtml.length > 5);
   const dusNicaieri = destinatiiHtml.filter((t) => !sectiuni.includes(t));
   ok('niciun buton `data-go` nu duce intr-un ecran gol'
     + (dusNicaieri.length ? ' — FARA SECTIUNE: ' + dusNicaieri.join(', ') : ''), dusNicaieri.length === 0);
-  // ...si `data-tabs` (ce tab-uri tin butonul din bara mobila aprins) trebuie sa numeasca tot sectiuni.
-  const evidentiate = [...new Set([...html.matchAll(/data-tabs="([^"]+)"/g)]
-    .flatMap((m) => m[1].split(',').map((s) => s.trim())).filter(Boolean))];
-  const evidNecunoscute = evidentiate.filter((t) => !sectiuni.includes(t));
-  ok('bara mobila nu se aprinde dupa sectiuni inexistente'
-    + (evidNecunoscute.length ? ' — ' + evidNecunoscute.join(', ') : ''), evidNecunoscute.length === 0);
+  // Pe mobil se refoloseste arborele #tabs; o bara/panou paralel ar reintroduce driftul de mai sus.
+  ok('mobilul nu reintroduce o a doua lista de destinatii',
+    !/bottomnav|moreSheet|moreBtn|data-tabs=/.test(html));
 
   // Meniul nu are voie sa promita ce pagina nu contine. Cazul real: intrarea „Declaratii ANAF
   // (D112, SAF-T)" numea SAF-T de luni de zile, in timp ce panoul lui statea in „Situatii
@@ -1334,7 +1372,8 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
     + (tinteMoarte.length ? ' — ' + tinteMoarte.join(', ') : ''), tinteMoarte.length === 0);
 
   // ORDINEA MENIULUI trebuie sa urmeze CICLUL CONTABIL, nu invers. Ciclul nu e o parere: `CYCLE`
-  // din public/app.js il declara deja si il deseneaza pe ecran (banda de pasi din capul paginilor).
+  // din public/app.js îl declară și îl expune ca metadată în bara contextuală, fără o a doua
+  // navigație desenată în capul paginilor.
   // Meniul il contrazicea pe fata: „Declaratii ANAF" (ultimul pas) statea in al treilea grup, cu
   // doua grupuri INAINTEA registrelor si a inchiderii din care se calculeaza. Nimic nu semnala —
   // ambele erau corecte separat. Se verifica pozitia in meniu, nu apartenenta la vreun grup: gruparea

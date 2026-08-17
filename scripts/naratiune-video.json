@@ -49,11 +49,11 @@
  },
  {
   "id": "s12b-birou",
-  "text": "Aplicația arată ca un program de contabilitate, nu ca un site. Sus e bara de meniu, cu modulele grupate pe ciclul contabil. Sub ea, banda de unelte: operațiunile pe care le atingi în fiecare zi, la un singur clic. În stânga, arborele de module. Jos, bara de stare, cu firma, luna de lucru și utilizatorul. Densitate mare, ca să încapă cifrele — nu spațiu gol."
+  "text": "Totul pornește dintr-un singur arbore lateral, ordonat după ciclul contabil. Bara de sus îți spune permanent în ce pagină, firmă și perioadă lucrezi, fără copii sau meniuri concurente. Textul și controalele rămân lizibile, iar explicațiile se deschid numai când ai nevoie de ele. Modul compact strânge tabelele, nu întreaga aplicație."
  },
  {
   "id": "s12c-simplu",
-  "text": "Dacă nu ești contabil, aplicația se poate dezbrăca de partea tehnică. În modul simplu dispar codurile de cont și ecranele de specialitate, peste tot deodată: în bara laterală, în bara de meniu și în banda de unelte. Comuți înapoi oricând, iar datele rămân aceleași."
+  "text": "Dacă nu ești contabil, aplicația se poate dezbrăca de partea tehnică. În modul simplu dispar codurile de cont și ecranele de specialitate din navigația unică și din conținut. Comuți înapoi oricând, iar datele rămân aceleași."
  },
  {
   "id": "s10b-plan",
