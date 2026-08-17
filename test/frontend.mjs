@@ -856,6 +856,16 @@ section('Carcasa aplicației: o singură navigație și context unic');
     /(^|[},])\s*main\s*\{/m
   ];
   ok('styles.css nu mai redefinește carcasa autentificată', shellVechi.every((re) => !re.test(css)));
+  // Eticheta e „NUME (CUI)" + marcajul de abonament: depaseste latimea la orice nume realist,
+  // iar un `select` nativ marginit taie BRUT — pe capturi iesea o paranteza suspendata.
+  const regulaFirma = (erpCss.match(/body\.erp \.app-context \.firma-select \{[^}]*\}/) || [''])[0]
+    .replace(/\/\*[\s\S]*?\*\//g, ''); // comentariile din regulă conțin ele însele „width"
+  ok('selectorul de firmă taie cu puncte de suspensie, nu brut',
+    /text-overflow:\s*ellipsis/.test(regulaFirma));
+  const latime = (regulaFirma.match(/(?:^|[;{])\s*width:\s*(\d+)px/) || [])[1];
+  const latimeMax = (regulaFirma.match(/max-width:\s*(\d+)px/) || [])[1];
+  ok('lățimea selectorului nu se contrazice cu propriul plafon',
+    !!latime && !!latimeMax && Number(latime) <= Number(latimeMax));
   ok('regulile responsive ale carcasei au un singur proprietar',
     /@media \(max-width: 700px\)[\s\S]*body\.erp \.topbar/.test(erpCss)
       && !/@media\s*\(max-width:\s*700px\)[\s\S]{0,900}(?:\.topbar|\.shell|#tabs)/.test(css));
