@@ -8,7 +8,7 @@
 // Aici e doar randare + acțiuni. Funcțiile pure de compunere a HTML-ului sunt exportate separat,
 // marcate pentru test/frontend.mjs.
 
-import { $, $$, H, api, toast, confirmAction, promptAction } from './core.js';
+import { $, $$, H, api, toast, confirmAction, promptAction, plural, dataRo } from './core.js';
 import { workMonth, lunaLabel } from './periods.js';
 
 const D = { goTab: null };
@@ -28,7 +28,7 @@ export function closeHeaderHtml(st) {
   const p = st.progres || { gata: 0, total: 0, procent: 0 };
   const verdict = st.inchisa
     ? '<span class="pill ok">lună închisă</span>'
-    : (st.sePoateInchide ? '<span class="pill ok">se poate închide</span>' : `<span class="pill warn">${p.total - p.gata} pas(i) de rezolvat</span>`);
+    : (st.sePoateInchide ? '<span class="pill ok">se poate închide</span>' : `<span class="pill warn">${plural(p.total - p.gata, 'pas', 'pași')} de rezolvat</span>`);
   const fortata = st.fortata
     ? `<div class="notice warning"><span class="notice-icon">⚠</span><div>Închidere <b>forțată</b> de ${H(st.fortata.username)} la ${H(String(st.fortata.at).slice(0, 16).replace('T', ' '))} — motiv: „${H(st.fortata.motiv)}”.
        Pași nerezolvați la acel moment: ${H((st.fortata.blocante || []).join(', '))}.</div></div>`
@@ -38,7 +38,7 @@ export function closeHeaderHtml(st) {
     : '';
   return `<div class="closehead">
     <div class="closebar" title="${p.gata} din ${p.total} pași"><span class="closebarfill" data-style="width:${p.procent}%"></span></div>
-    <div class="closemeta">${verdict} <span class="muted">${p.gata}/${p.total} pași · termenul lunii: ${H(st.ancoraTermen || '—')}</span></div>
+    <div class="closemeta">${verdict} <span class="muted">${p.gata}/${p.total} pași · termenul lunii: ${H(st.ancoraTermen ? dataRo(st.ancoraTermen) : '—')}</span></div>
     ${aprobare}${fortata}</div>`;
 }
 
@@ -63,8 +63,11 @@ export function stepHtml(s, responsabili) {
     : '';
   const blocatDe = s.blocatDe ? `<p class="muted closewait">Așteaptă pasul anterior: <b>${H(s.blocatDe)}</b>.</p>` : '';
   const motiv = s.motiv ? `<p class="muted">${H(s.motiv)}</p>` : '';
+  // Campul nativ se randeaza in locale-ul BROWSERULUI (pe un sistem in engleza: 07/10/2026), iar
+  // restul ecranului scrie romaneste. Data rezolvata, langa el, inlatura ambiguitatea 7 oct./10 iul.
   const termen = `<label class="closefield">Termen
       <input type="date" class="cl-due" data-step="${H(s.key)}" value="${H(s.due || '')}"${s.dueImplicit ? ' data-implicit="1"' : ''} />
+      ${s.due ? `<span class="cl-due-ro">${H(dataRo(s.due))}</span>` : ''}
       ${s.overdue ? '<span class="pill err">depășit</span>' : ''}${s.dueImplicit ? '<span class="muted"> implicit</span>' : ''}</label>`;
   const resp = `<label class="closefield">Responsabil
       <select class="cl-resp" data-step="${H(s.key)}">${optiuni}</select></label>`;

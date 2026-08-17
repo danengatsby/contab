@@ -1415,7 +1415,7 @@ const etvaHtml = rapoarte.renderEtvaResult(etva);
 ok('delta pozitivă e prefixată cu + (ANAF vede mai mult)', etvaHtml.includes('+200,00'));
 ok('delta zero se afișează ca liniuță, nu ca 0,00', etvaHtml.includes('>—<'));
 ok('rândul cu diferențe e marcat vizual', etvaHtml.includes('etva-diff-row'));
-ok('numărul de rânduri cu diferențe apare în insignă', etvaHtml.includes('1 rând(uri) cu diferențe'));
+ok('numărul de rânduri cu diferențe apare în insignă, la singular', etvaHtml.includes('1 rând cu diferențe'));
 ok('perioada comparată e afișată', etvaHtml.includes('2026-06'));
 ok('observațiile ANAF sunt listate', etvaHtml.includes('Diferență la rândul 9'));
 ok('coloanele lipsă (tva null) nu strică tabelul', etvaHtml.includes('<td></td><td></td><td></td>'));
@@ -1637,7 +1637,12 @@ section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js
   const stBaza = { period: '2026-06', progres: { gata: 3, total: 6, procent: 50 }, sePoateInchide: false, inchisa: false, ancoraTermen: '2026-07-25', aprobare: null, fortata: null, steps: [] };
   const hHead = inchidere.closeHeaderHtml(stBaza);
   ok('bara de progres reflectă procentul', hHead.includes('width:50%'));
-  ok('verdictul spune câți pași au rămas', hHead.includes('3 pas'));
+  // „3 pași" NU contine „3 pas": al treilea caracter e ș (U+0219), nu s. Vechea formulare
+  // „3 pas(i)" il continea, deci ancora scurta trecea din intamplare.
+  ok('verdictul spune câți pași au rămas, cu plural corect', hHead.includes('3 pași de rezolvat'));
+  const hUnu = inchidere.closeHeaderHtml(Object.assign({}, stBaza, { progres: { gata: 5, total: 6, procent: 83 } }));
+  ok('...si la un singur pas foloseste singularul', hUnu.includes('1 pas de rezolvat'));
+  ok('termenul lunii apare in conventia romaneasca', hHead.includes('25.07.2026') && !hHead.includes('2026-07-25'));
   const hGataHead = inchidere.closeHeaderHtml(Object.assign({}, stBaza, { sePoateInchide: true, progres: { gata: 5, total: 5, procent: 100 } }));
   ok('când totul e gata, verdictul o spune', hGataHead.includes('se poate închide'));
   const hForced = inchidere.closeHeaderHtml(Object.assign({}, stBaza, {

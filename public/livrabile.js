@@ -1,7 +1,7 @@
 'use strict';
 
 // Declaratii & termene: livrabile ANAF, registrul depunerilor, fisa rol/SPV, portofoliu, notificari, reconciliere, scadentar. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, accName, toast, api, ac, confirmAction, promptAction } from './core.js';
+import { $$, $, H, fmt, accName, toast, api, ac, confirmAction, promptAction, dataRo } from './core.js';
 import { pget, onPeriodChange } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved } from './formflow.js';
@@ -153,11 +153,11 @@ async function loadDeclRegister(p) {
   box.innerHTML = `<table><thead><tr><th>Declarație</th><th>Termen</th><th>Stare</th><th>Descarcă</th><th>Schimbă starea</th><th class="adv">Recipisă / detalii</th></tr></thead><tbody>${
     data.rows.map((r) => `<tr>
       <td>${H(r.nume)}</td>
-      <td class="${r.overdue ? '' : 'muted'}" ${r.overdue ? 'data-u="u33"' : ''}>${r.due}</td>
+      <td class="${r.overdue ? '' : 'muted'}" ${r.overdue ? 'data-u="u33"' : ''}>${H(dataRo(r.due))}</td>
       <td>${declBadge(r.status, r.urgenta)}</td>
       <td>${(r.links || []).map((l) => `<a class="linkbtn" href="${H(l.href)}" target="_blank">${H(l.label)}</a>`).join(' · ') || '<span class="muted">—</span>'}</td>
-      <td><select class="decl-set" data-tip="${r.tip}" data-period="${r.period}">${opts(r.status)}</select></td>
-      <td class="muted adv" data-u="u148">${r.recipisa ? 'recipisă: ' + H(r.recipisa) + '<br>' : ''}${r.submittedAt ? 'depusă: ' + H(r.submittedAt.slice(0, 10)) : (r.generatedAt ? 'XML generat: ' + H(r.generatedAt.slice(0, 10)) : '')}${r.note ? '<br>' + H(r.note) : ''}</td>
+      <td><select class="decl-set" data-tip="${r.tip}" data-period="${r.period}" aria-label="Schimbă starea pentru ${H(r.nume)}, perioada ${H(r.period)}">${opts(r.status)}</select></td>
+      <td class="muted adv" data-u="u148">${r.recipisa ? 'recipisă: ' + H(r.recipisa) + '<br>' : ''}${r.submittedAt ? 'depusă: ' + H(dataRo(r.submittedAt.slice(0, 10))) : (r.generatedAt ? 'XML generat: ' + H(dataRo(r.generatedAt.slice(0, 10))) : '')}${r.note ? '<br>' + H(r.note) : ''}</td>
     </tr>`).join('')}</tbody></table>`;
   box.querySelectorAll('.decl-set').forEach((sel) => sel.addEventListener('change', async () => {
     const body = { tip: sel.dataset.tip, period: sel.dataset.period, status: sel.value };

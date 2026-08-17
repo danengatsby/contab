@@ -1,7 +1,7 @@
 'use strict';
 
 // Rapoarte contabile: jurnal, cartea mare, banca/casa, balanta, TVA/D300, inchideri, situatii. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct, ac, applyFiscalDefaults } from './core.js';
+import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct, ac, applyFiscalDefaults, plural } from './core.js';
 import { renderBudget } from './dashboard.js';
 import { pget, workMonth, setWorkMonth, nextMonth, lunaLabel, applyWorkMonth, onPeriodChange } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
@@ -392,7 +392,7 @@ async function runEtvaReconcile() {
 }
 function renderEtvaResult(r) {
   const icon = { eroare: '⛔', atentie: '⚠️', info: 'ℹ️' };
-  const badge = r.ok ? '<span class="pill">✓ concordant</span>' : `<span class="pill warn">${r.diffCount} rând(uri) cu diferențe</span>`;
+  const badge = r.ok ? '<span class="pill">✓ concordant</span>' : `<span class="pill warn">${plural(r.diffCount, 'rând', 'rânduri')} cu diferențe</span>`;
   const findings = (r.findings || []).length
     ? `<ul class="checklist todo">${r.findings.map((f) => `<li>${icon[f.nivel] || '•'} ${H(f.mesaj)}</li>`).join('')}</ul>` : '';
   const cell = (c) => c
@@ -587,7 +587,7 @@ $('#fxLoad') && $('#fxLoad').addEventListener('click', async () => {
         } else lipsa.push(mon);
       } catch (e) { lipsa.push(mon); }
     }
-    const parti = [luate + ' curs(uri) completate'];
+    const parti = [plural(luate, 'curs', 'cursuri') + ' completate'];
     if (aproximate) parti.push(aproximate + ' din ultima zi publicată înainte');
     if (lipsa.length) parti.push('lipsă pentru ' + [...new Set(lipsa)].join(', ') + ' — completează manual');
     toast(parti.join('; '), lipsa.length > 0);

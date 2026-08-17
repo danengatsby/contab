@@ -24,7 +24,7 @@ const rep = require('./reporting');
 const decl = require('./declarations');
 const fiscalProfile = require('./fiscalProfile');
 const { reconcile } = require('./reconcile');
-const { period: periodOf } = require('./util');
+const { period: periodOf, plural, fmtDate } = require('./util');
 // Temeiul legal al fiecarui pas — sursa UNICA (src/temeiLegal.js), aceeasi din care citesc si
 // inchiderea anului si ghidul. Cheile pasilor de mai jos coincid cu cele din faza „lunar";
 // o poarta din suita refuza un pas fara temei, ca sa nu apara unul „mut" la o adaugare viitoare.
@@ -94,7 +94,7 @@ function checkDocumente(v, period, today) {
   // e-Factura: facturile lunii netrimise in SPV (termen legal 5 zile calendaristice, OUG 89/2025)
   const ef = decl.eFacturaNetrimise(v, today, 400).items.filter((f) => String(f.data).slice(0, 7) === period);
   detalii.efacturaNetrimise = ef.length;
-  if (ef.length) blocaje.push(ef.length + ' factură/facturi emise în lună, netrimise în SPV (e-Factura).');
+  if (ef.length) blocaje.push(plural(ef.length, 'factură emisă', 'facturi emise') + ' în lună, fără trimitere în SPV (e-Factura).');
   return { blocaje, detalii };
 }
 
@@ -168,7 +168,7 @@ function checkDeclaratii(d, v, period, rec, today) {
     if (r.status === 'scutita') continue;
     if (r.status !== 'depusa') {
       blocaje.push(r.nume.split(' — ')[0] + ': ' + (r.status === 'eroare' ? 'depunere cu EROARE' : 'nedepusă')
-        + (r.overdue ? ' (termen depășit ' + r.due + ')' : ' (termen ' + r.due + ')') + '.');
+        + (r.overdue ? ' (termen depășit ' + fmtDate(r.due) + ')' : ' (termen ' + fmtDate(r.due) + ')') + '.');
       continue;
     }
     // Depusa, dar fara dovada de validare (sau cu erori la ultima validare) — fluxul cere dovada.
