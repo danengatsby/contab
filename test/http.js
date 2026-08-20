@@ -1198,17 +1198,43 @@ async function main() {
 
     // ── Salarizare: angajat, stat de plata (posteaza articol), plata neta ──
     eq('angajat fara nume -> 400', (await req('POST', '/api/angajati', { cookie: c1, body: { salariuBrut: 5000 } })).status, 400);
-    const mkAng = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Ion Test', salariuBrut: 5000, functie: 'Operator' } });
+    const mkAng = await req('POST', '/api/angajati', { cookie: c1, body: {
+      nume: 'Ion Test', salariuBrut: 5000, functie: 'Operator', avans: 500 } });
     ok('angajat creat', mkAng.json && mkAng.json.ok && mkAng.json.angajat.id);
     const angId = mkAng.json.angajat.id;
     ok('lista angajati contine angajatul', (await req('GET', '/api/angajati', { cookie: c1 })).json.some((a) => a.id === angId));
     const sp = await req('GET', '/api/stat-plata?period=2026-06', { cookie: c1 });
     ok('stat de plata: CAS 25% pe 5000 = 1250', sp.json && sp.json.rows[0] && sp.json.rows[0].cas === 1250);
+    const propSalDraft = await req('GET', '/api/plati/propuneri?tip=salarii&period=2026-06', { cookie: c1 });
+    ok('SEPA salarii: o ciorna este vizibila, dar nu poate intra in lot', propSalDraft.json
+      && propSalDraft.json.statPostat === false && propSalDraft.json.gata === 0
+      && /nu este postat/.test(propSalDraft.json.randuri[0].motiv));
     eq('postare stat fara perioada -> 400', (await req('POST', '/api/stat-plata', { cookie: c1 })).status, 400);
     const post = await req('POST', '/api/stat-plata?period=2026-06', { cookie: c1 });
     ok('postare stat: articol 641=421 + retineri', post.json && post.json.ok && post.json.entry.lines.some((l) => l.debit === '641' && l.credit === '421'));
+    const spPostat = await req('GET', '/api/stat-plata?period=2026-06', { cookie: c1 });
+    ok('API stat: fotografia postata este legata de articol', spPostat.json && spPostat.json.postat
+      && spPostat.json.entryId === post.json.entry.id && spPostat.json.platit === false);
+    const propSalPostat = await req('GET', '/api/plati/propuneri?tip=salarii&period=2026-06', { cookie: c1 });
+    ok('SEPA salarii foloseste RESTUL de plata, nu netul inainte de avans', propSalPostat.json
+      && propSalPostat.json.statPostat && !propSalPostat.json.salariiPlatite
+      && propSalPostat.json.payrollEntryId === post.json.entry.id
+      && propSalPostat.json.randuri[0].suma === spPostat.json.rows[0].restPlata
+      && propSalPostat.json.randuri[0].suma === spPostat.json.rows[0].net - 500);
     const pay = await req('POST', '/api/stat-plata/pay?period=2026-06&cont=5121', { cookie: c1 });
     ok('plata salarii: 421 = 5121 pe restul de plata', pay.json && pay.json.ok && pay.json.entry.lines.some((l) => l.debit === '421' && l.credit === '5121'));
+    ok('API stat: plata activa este vizibila si legata', (() => {
+      const p = pay.json && pay.json.entry;
+      return p && p.payrollEntryId === post.json.entry.id;
+    })());
+    eq('a doua plata integrala a aceleiasi luni este refuzata',
+      (await req('POST', '/api/stat-plata/pay?period=2026-06&cont=5311', { cookie: c1 })).status, 400);
+    ok('API stat marcheaza luna drept platita',
+      (await req('GET', '/api/stat-plata?period=2026-06', { cookie: c1 })).json.platit === true);
+    const propSalPlatit = await req('GET', '/api/plati/propuneri?tip=salarii&period=2026-06', { cookie: c1 });
+    ok('SEPA salarii nu propune din nou o luna deja platita', propSalPlatit.json
+      && propSalPlatit.json.salariiPlatite && propSalPlatit.json.gata === 0
+      && /deja platite/.test(propSalPlatit.json.randuri[0].motiv));
     ok('registru anual de salarii: cumuleaza luna postata', (await req('GET', '/api/registru-salarii?year=2026', { cookie: c1 })).json.angajati.some((a) => a.brut === 5000));
     ok('angajat sters', (await req('DELETE', '/api/angajati/' + angId, { cookie: c1 })).json.ok === true);
 

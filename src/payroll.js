@@ -8,6 +8,7 @@ const fiscal = require('./fiscal');
 const ben = require('./beneficii'); // plafonul de 33% (art. 76 alin. (4^1)) — doar consumul anual
 const bnr = require('./bnr');
 const calendar = require('./romanianCalendar');
+const payrollHistory = require('./payrollHistory');
 const BENEFICII_EUR = new Set(fiscal.CATEGORII_BENEFICII
   .filter((c) => c.limita && c.limita.tip === 'anEur').map((c) => c.id));
 
@@ -141,8 +142,12 @@ function primaZiLucratoare(dataStart) {
 }
 
 function statePlata(angajati, period, history, options) {
+  const opts = options || {};
+  // O fotografie legata de un articol stornat nu mai poate alimenta medii CM/CO sau plafoane
+  // anuale. Deducerea se face o singura data aici, inainte ca istoricul sa ajunga in calcule.
+  history = payrollHistory.activeSnapshots(history, opts.entries);
   const dataCursBeneficii = ultimaZiDinLuna(period);
-  const cursBeneficii = bnr.cursPlafon((options || {}).cursuriBnr || [], dataCursBeneficii,
+  const cursBeneficii = bnr.cursPlafon(opts.cursuriBnr || [], dataCursBeneficii,
     fiscal.FISCAL.cursEurBeneficii);
   // Un curs dinaintea sfarsitului unei luni care nu s-a incheiat este doar provizoriu. Pentru o
   // luna inchisa, `exact:false` poate insemna legitim weekend/sarbatoare si nu este aproximare.
@@ -412,16 +417,23 @@ function statePlata(angajati, period, history, options) {
  * schimbarea ulterioara a fisei angajatului nu are voie sa rescrie fluturasul, plata sau D112.
  * Fotografiile vechi, partiale (formatVersion lipsa), raman compatibile prin recalculare. */
 function statPlataPerioada(view, period, preferaPostat = true) {
-  const h = preferaPostat && (view.payrollHistory || []).find((x) => x.period === period
-    && x.formatVersion >= 2 && Array.isArray(x.rows) && x.totals);
-  if (h) return { rows: h.rows, totals: h.totals, postat: true, postedAt: h.ts };
+  const h = preferaPostat && payrollHistory.activeSnapshot(view.payrollHistory, period, view.entries);
+  const platit = (view.entries || []).find((e) => e.tip === 'plata_salarii'
+    && String(e.period || '') === String(period || '') && !e.stornat);
+  if (h && h.formatVersion >= 2 && Array.isArray(h.rows) && h.totals) {
+    return { rows: h.rows, totals: h.totals, postat: true, postedAt: h.ts,
+      entryId: h.entryId || null, snapshotId: h.id || null,
+      platit: !!platit, paymentEntryId: platit ? platit.id : null };
+  }
   return Object.assign(statePlata(view.angajati, period, view.payrollHistory,
-    { cursuriBnr: view.cursuriBnr }), { postat: false });
+    { cursuriBnr: view.cursuriBnr, entries: view.entries }),
+  { postat: false, platit: !!platit, paymentEntryId: platit ? platit.id : null });
 }
 
 /** Registrul anual de salarii: cumuleaza instantaneele lunare per angajat pentru un an. */
-function registruSalarii(history, year) {
-  const snaps = (history || []).filter((h) => String(h.period).startsWith(String(year)));
+function registruSalarii(history, year, entries) {
+  const snaps = payrollHistory.activeSnapshots(history, entries)
+    .filter((h) => String(h.period).startsWith(String(year)));
   const byEmp = new Map();
   for (const h of snaps) {
     for (const r of (h.rows || [])) {

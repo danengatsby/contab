@@ -244,9 +244,11 @@ masă sunt **excluse** din bază. De confirmat tratamentul — caz `SAL-02`.
 - Categoria `e¹`, pensii ocupaționale, introdusă prin OUG 8/2026, este distinctă și are plafonul
   anual propriu de 400 EUR.
 
-Consumul plafoanelor anuale se citește din statele **postate** (`payrollHistory`): o lună
-nepostată nu consumă plafon, deci recalcularea unei luni vechi după postarea alteia poate muta
-partea impozabilă. De confirmat că e comportamentul dorit.
+Consumul plafoanelor anuale se citește numai din reviziile **active postate** (`payrollHistory`).
+Închis tehnic la 2026-08-20: o fotografie stornată rămâne în audit, dar nu mai consumă plafon;
+postarea retroactivă este blocată cât timp există state ulterioare active. Corecția cere storno în
+ordine inversă și repostare cronologică, deci partea impozabilă a unei luni ulterioare nu poate
+rămâne calculată pe un istoric salarial schimbat.
 
 ### 7.5 Cursul pentru plafonul micro — rezolvat
 

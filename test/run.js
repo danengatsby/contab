@@ -90,6 +90,7 @@ const { reconcile } = require('../src/reconcile');
 const { settle, candidatesFor } = require('../src/matching');
 const { reconcileInbox, journalPurchases } = require('../src/einvoiceReconcile');
 const { statePlata, registruSalarii } = require('../src/payroll');
+const payrollHistory = require('../src/payrollHistory');
 
 // Helperii si CONTORUL vin din test/run/comun.js — partajate cu partile din test/run/.
 // Daca run.js si-ar fi pastrat propriile `pass`/`fail`, verificarile partilor s-ar fi adunat in
@@ -2288,6 +2289,24 @@ eq('registru: nr luni', rs.nrLuni, 2);
 eq('registru: brut anual cumulat', rs.angajati[0].brut, 10000);
 eq('registru: net anual cumulat', rs.angajati[0].net, 5850);
 eq('registru: luni angajat', rs.angajati[0].luni, 2);
+// Compatibilitate cu fotografiile v2, create inainte sa existe legatura `entryId`: daca singurul
+// articol salarial al lunii este stornat, fotografia nu ramane activa doar fiindca e veche.
+const histV2Stornat = [{ id: 'ph-old', firmaId: 1, period: '2026-08', formatVersion: 2,
+  rows: [{ angajatId: 'a', nume: 'Ion', brut: 7000, cas: 1750, cass: 700, impozit: 455, net: 4095 }],
+  totals: { brut: 7000 } }];
+const entryV2Stornat = [{ id: 'e-old', firmaId: 1, tip: 'stat_plata', period: '2026-08', stornat: true }];
+eq('fotografia v2 fara entryId este inactiva daca articolul lunii a fost stornat',
+  payrollHistory.activeSnapshots(histV2Stornat, entryV2Stornat).length, 0);
+eq('registrul nu cumuleaza fotografia v2 a unui stat stornat',
+  registruSalarii(histV2Stornat, 2026, entryV2Stornat).nrLuni, 0);
+const revizii = [
+  Object.assign({}, hist[0], { firmaId: 1, id: 'ph1', supersededBy: 'e2' }),
+  Object.assign({}, hist[0], { firmaId: 1, id: 'ph2', entryId: 'e2', rows: [Object.assign({}, hist[0].rows[0], { brut: 6000 })] }),
+];
+eq('doua revizii ale lunii produc exact o fotografie activa',
+  payrollHistory.activeSnapshots(revizii, [{ id: 'e2', firmaId: 1, tip: 'stat_plata', period: '2026-06' }]).length, 1);
+eq('registrul foloseste revizia activa, nu suma ambelor',
+  registruSalarii(revizii, 2026, [{ id: 'e2', firmaId: 1, tip: 'stat_plata', period: '2026-06' }]).totals.brut, 6000);
 
 section('TVA la incasare (regim special 4428)');
 const { getType } = require('../src/documentTypes');

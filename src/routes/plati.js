@@ -39,18 +39,28 @@ module.exports = function register(app, ctx) {
   function propuneriSalarii(v, period) {
     const sp = statPlataPerioada(v, period);
     const byId = new Map((v.angajati || []).map((a) => [a.id, a]));
-    return (sp.rows || []).filter((r) => Number(r.net) > 0).map((r) => {
+    const rows = (sp.rows || []).map((r) => {
       const a = byId.get(r.angajatId) || {};
+      // `net` este venitul dupa taxe, nu suma de virat. Avansul (425) si retinerile (427) se scad
+      // in `restPlata`; folosirea netului le-ar plati a doua oara prin fisierul bancar.
+      const suma = round2(r.restPlata != null ? r.restPlata : r.net);
+      const iban = r.iban || a.iban || '';
+      const ibanValid = !!iban && sepa.validIban(iban);
+      const gata = !!sp.postat && !sp.platit && ibanValid && suma > 0;
       return {
         tip: 'salariu', beneficiar: r.nume || a.nume || '', cui: '',
-        iban: r.iban || a.iban || '', bic: '', suma: round2(r.net),
-        detalii: 'Salariu net ' + period,
+        iban, bic: '', suma,
+        detalii: 'Salariu de plata ' + period,
         ref: 'S' + String(r.angajatId || '').replace(/[^A-Za-z0-9]/g, ''),
-        gata: !!(r.iban || a.iban) && sepa.validIban(r.iban || a.iban),
-        motiv: !(r.iban || a.iban) ? 'angajatul nu are IBAN completat'
-          : (!sepa.validIban(r.iban || a.iban) ? 'IBAN invalid' : ''),
+        gata,
+        motiv: !sp.postat ? 'statul lunii nu este postat'
+          : (sp.platit ? 'salariile lunii sunt deja platite'
+            : (!iban ? 'angajatul nu are IBAN completat'
+              : (!ibanValid ? 'IBAN invalid' : (suma <= 0 ? 'rest de plata zero' : '')))),
       };
-    });
+    }).filter((r) => r.suma > 0);
+    return { rows, statPostat: !!sp.postat, salariiPlatite: !!sp.platit,
+      payrollEntryId: sp.entryId || null, snapshotId: sp.snapshotId || null };
   }
 
   // Propunerile (citire): ce s-ar putea plati si ce lipseste ca sa se poata.
@@ -58,9 +68,9 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     const fid = activeId(req);
     const tip = req.query.tip === 'salarii' ? 'salarii' : 'furnizori';
-    const randuri = tip === 'salarii'
-      ? propuneriSalarii(v, req.query.period || new Date().toISOString().slice(0, 7))
-      : propuneriFurnizori(v, fid, req.query.asOf);
+    const salarii = tip === 'salarii'
+      ? propuneriSalarii(v, req.query.period || new Date().toISOString().slice(0, 7)) : null;
+    const randuri = salarii ? salarii.rows : propuneriFurnizori(v, fid, req.query.asOf);
     const firma = db.getFirma(fid) || {};
     res.json({
       tip,
@@ -68,6 +78,10 @@ module.exports = function register(app, ctx) {
       platitor: { nume: firma.nume || '', iban: firma.iban || '', bic: firma.bic || '' },
       platitorGata: !!firma.iban && sepa.validIban(firma.iban),
       randuri,
+      statPostat: salarii ? salarii.statPostat : undefined,
+      salariiPlatite: salarii ? salarii.salariiPlatite : undefined,
+      payrollEntryId: salarii ? salarii.payrollEntryId : undefined,
+      snapshotId: salarii ? salarii.snapshotId : undefined,
       gata: randuri.filter((r) => r.gata).length,
       total: round2(randuri.filter((r) => r.gata).reduce((s, r) => s + r.suma, 0)),
     });

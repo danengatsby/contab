@@ -155,6 +155,15 @@ async function loadSalarizare() {
   ]);
   const liveById = new Map(spLive.rows.map((r) => [r.angajatId || r.id, r]));
   const t = sp.totals;
+  const postBtn = $('#spPost'); const payBtn = $('#spPay');
+  postBtn.disabled = !!sp.postat;
+  postBtn.textContent = sp.postat ? 'Stat înregistrat' : 'Înregistrează salariile lunii';
+  payBtn.disabled = !sp.postat || !!sp.platit;
+  payBtn.textContent = sp.platit ? 'Salarii plătite' : 'Plătește salariile';
+  $('#spState').innerHTML = sp.postat
+    ? '<span class="pill">✓ fotografie postată</span>'
+      + (sp.platit ? ' <span class="pill">✓ plată înregistrată</span>' : ' · plata nu este încă înregistrată')
+    : '<span class="pill warn">ciornă live</span> · postează statul înainte de plată; după storno, fotografia veche nu mai este folosită';
   $('#angajatiList').innerHTML = sp.rows.length
     ? `<table><thead><tr><th>Nume</th><th>Funcție</th><th class="num">Brut</th><th class="num">CAS</th><th class="num">CASS</th><th class="num">Deducere</th><th class="num">Impozit</th><th class="num">Net</th><th class="num">Avans</th><th class="num">Rețineri</th><th class="num">Rest plată</th><th class="num">CAM</th><th></th></tr></thead><tbody>${
       sp.rows.map((r) => `<tr><td>${H(r.nume)}${r.spor ? ' <span class="muted">+spor ' + fmt(r.spor) + '</span>' : ''}${r.persoane ? ' <span class="muted">' + r.persoane + ' pers.</span>' : ''}${r.tichete ? ' <span class="muted">+tichete ' + fmt(r.tichete) + '</span>' : ''}${r.avantaje ? ' <span class="muted" title="Avantaje în natură impozabile — intră în CAS/CASS/impozit, nu se plătesc în bani">+avantaje ' + fmt(r.avantaje) + '</span>' : ''}${r.zileCM ? ' <span class="muted" title="' + H(insignaCM(r)) + '">' + (r.cmBazaAproximata || r.cmAproximat ? '⚠' : '🏥') + ' CM ' + r.zileCM + 'z</span>' : ''}${r.zileCO ? ' <span class="muted" title="Concediu de odihnă: ' + r.zileCO + ' zile, indemnizație ' + fmt(r.indemnizatieCO) + ' lei pe media 3 luni (' + fmt(r.mediaCO) + ')">🏖 CO ' + r.zileCO + 'z</span>' : ''}${r.normaPartiala ? ' <span class="muted" title="Normă parțială sub salariul minim: CAS ' + fmt(r.casAngajator) + ' + CASS ' + fmt(r.cassAngajator) + ' suportate suplimentar de firmă (OUG 16/2022)">⏱ parțial</span>' : ''}${r.neimpozabilMinim ? ' <span class="muted" title="Art. 76 Cod fiscal: ' + fmt(r.neimpozabilMinim) + ' lei din salariul minim sunt neimpozabili ȘI exceptați de la CAS/CASS/CAM — de aceea contribuțiile sunt calculate la o bază mai mică decât brutul">✓ ' + fmt(r.neimpozabilMinim) + ' lei neimpozabili</span>' : ''}${r.beneficiiAcordate ? ' <span class="muted" title="' + H(insignaBeneficii(r)) + '">' + (r.beneficiiDepasit ? '⚠' : '✓') + ' beneficii ' + fmt(r.beneficiiNeimpozabile) + ' neimpozabil' + (r.beneficiiImpozabile ? ' / ' + fmt(r.beneficiiImpozabile) + ' impozabil' : '') + '</span>' : ''}${r.scutire ? ' <span class="muted">scutit (' + H(r.sector) + ')</span>' : ''}${r.overPlafon ? ' <span data-u="u13">⚠ peste plafon scutire</span>' : ''}</td><td>${H(r.functie)}</td>
@@ -270,13 +279,13 @@ $('#spAddAngajat') && $('#spAddAngajat').addEventListener('click', () => duLa('a
 $('#spPost').addEventListener('click', async () => {
   const period = spPeriod();
   if (!period) return toast('Alege luna', true);
-  try { const r = await api('/api/stat-plata?period=' + period, { method: 'POST' }); toast('Salarii înregistrate: net ' + fmt(r.totals.net) + ', de virat ' + fmt(r.totals.totalBuget)); loadEntries(); }
+  try { const r = await api('/api/stat-plata?period=' + period, { method: 'POST' }); toast('Salarii înregistrate: net ' + fmt(r.totals.net) + ', de virat ' + fmt(r.totals.totalBuget)); await Promise.all([loadEntries(), loadSalarizare()]); }
   catch (e) { toast(e.message, true); }
 });
 $('#spPay').addEventListener('click', async () => {
   const period = spPeriod();
   if (!period) return toast('Alege luna', true);
-  try { const r = await api('/api/stat-plata/pay?period=' + period + '&cont=' + $('#spCont').value, { method: 'POST' }); toast('Plătit ' + fmt(r.suma) + ' din contul ' + r.cont + ' (421 = ' + r.cont + ')'); loadEntries(); }
+  try { const r = await api('/api/stat-plata/pay?period=' + period + '&cont=' + $('#spCont').value, { method: 'POST' }); toast('Plătit ' + fmt(r.suma) + ' din contul ' + r.cont + ' (421 = ' + r.cont + ')'); await Promise.all([loadEntries(), loadSalarizare()]); }
   catch (e) { toast(e.message, true); }
 });
 

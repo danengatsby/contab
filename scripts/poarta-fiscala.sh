@@ -72,6 +72,7 @@ src/identitate.js
 src/fiscalControls.js
 src/dateFirma.js
 src/payroll.js
+src/payrollHistory.js
 src/reporting.js
 src/bilant.js
 src/stocks.js

@@ -42,7 +42,10 @@
   angajat** (`/pdf/fluturas/:id`) + articol contabil agregat + **D112 XML** (tab „Salarizare").
   API: `GET/POST/DELETE /api/angajati`, `GET/POST /api/stat-plata`. **Plata efectivă** a salariilor
   (rest de plată → `421 = 5121`/`5311`) cu un click: `POST /api/stat-plata/pay?period=&cont=`.
-  La fiecare înregistrare a statului se salvează un **instantaneu lunar** (`payrollHistory`), din care
+  La fiecare înregistrare a statului se salvează o **revizie lunară append-only** (`payrollHistory`),
+  legată de articolul `stat_plata`. La storno, revizia rămâne în audit, dar devine inactivă; registrul,
+  D112 și mediile folosesc exact ultima revizie activă. Lunile se corectează în ordine inversă și se
+  repostează cronologic, iar plata integrală este unică și cere un stat postat. Din aceste revizii
   se construiește **registrul anual de salarii** (cumul per angajat, bază pentru adeverințe de venit):
   `/api/registru-salarii?year=`, `/pdf/registru-salarii?year=`. Din registru se generează
   **adeverința de venit** per angajat (`/pdf/adeverinta/:id?year=`) — venit brut/net anual + contribuții,

@@ -53,12 +53,15 @@ module.exports = function register(app, ctx) {
   }
   app.get('/api/dosar-cm', (req, res) => res.json(dosarCm(S(req), req.query.period)));
   app.get('/pdf/dosar-cm', (req, res) => { const v = S(req); pdf.dosarCmPdf(res, v.company, dosarCm(v, req.query.period)); });
-  app.get('/api/registru-salarii', (req, res) => res.json(registruSalarii(S(req).payrollHistory, req.query.year || String(new Date().getFullYear()))));
-  app.get('/pdf/registru-salarii', (req, res) => pdf.registruSalariiPdf(res, S(req).company, registruSalarii(S(req).payrollHistory, req.query.year || String(new Date().getFullYear()))));
+  app.get('/api/registru-salarii', (req, res) => { const v = S(req); res.json(registruSalarii(
+    v.payrollHistory, req.query.year || String(new Date().getFullYear()), v.entries)); });
+  app.get('/pdf/registru-salarii', (req, res) => { const v = S(req); pdf.registruSalariiPdf(
+    res, v.company, registruSalarii(v.payrollHistory,
+      req.query.year || String(new Date().getFullYear()), v.entries)); });
   app.get('/pdf/adeverinta/:id', (req, res) => {
     const v = S(req);
     const year = req.query.year || String(new Date().getFullYear());
-    const rs = registruSalarii(v.payrollHistory, year);
+    const rs = registruSalarii(v.payrollHistory, year, v.entries);
     const e = rs.angajati.find((x) => x.angajatId === req.params.id);
     if (!e) return res.status(404).send('Niciun venit inregistrat pentru acest angajat in anul ' + year);
     const ang = v.angajati.find((a) => a.id === req.params.id);

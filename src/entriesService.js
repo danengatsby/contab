@@ -16,6 +16,7 @@ const stocks = require('./stocks');
 const recurring = require('./recurring');
 const fiscalProfile = require('./fiscalProfile');
 const extractQuality = require('./extractQuality'); // guard de scriere derivat din profilul fiscal
+const payrollHistory = require('./payrollHistory');
 const { reqFirma } = require('./stocksService');
 const { round2, period: periodOf } = require('./util');
 
@@ -207,6 +208,25 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno) {
     fail(400, 'Articolul are miscari de stoc — corecteaza prin stornarea documentului de stoc/inventar (altfel fisa de magazie si cartea mare ar diverge).');
   }
   const fid = e.firmaId == null ? fallbackFid : e.firmaId;
+  if (e.tip === 'stat_plata') {
+    // Obligatia salariala nu poate fi anulata lasand plata activa: 421 ar deveni creditor negativ.
+    // Corectia se desface in ordinea inversa in care a fost construita.
+    const platiActive = d.entries.filter((x) => x.firmaId === fid && x.tip === 'plata_salarii'
+      && String(x.period || '') === String(e.period || '') && !x.stornat);
+    if (platiActive.length) {
+      fail(409, 'Statul de plata nu poate fi stornat cat timp plata salariilor este activa (articolul '
+        + platiActive.map((x) => x.id).join(', ') + '). Storneaza mai intai plata.');
+    }
+    // Statele ulterioare pot folosi luna curenta in media CM/CO si in plafoanele anuale. Daca
+    // ramaneau active, documentele lor ar continua sa poarte cifre calculate pe o baza anulata.
+    const stateUlterioare = d.entries.filter((x) => x.firmaId === fid && x.tip === 'stat_plata'
+      && String(x.period || '') > String(e.period || '') && !x.stornat);
+    if (stateUlterioare.length) {
+      const luni = [...new Set(stateUlterioare.map((x) => x.period))].sort().reverse();
+      fail(409, 'Statul de plata pe ' + e.period + ' nu poate fi stornat inaintea statelor ulterioare ('
+        + luni.join(', ') + '). Storneaza lunile in ordine inversa.');
+    }
+  }
   const stornoData = String(dataStorno || new Date().toISOString().slice(0, 10));
   db.assertPeriodOpen(fid, stornoData, 'Stornarea'); // stornul intra intr-o perioada deschisa
   const se = {
@@ -226,6 +246,9 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno) {
   };
   db.pushEntry(se, { context: 'stornare articol' });
   e.stornat = true; e.stornoBy = se.id; e.stornoData = stornoData;
+  // Fotografia salariala ramane in jurnal pentru audit, dar nu mai alimenteaza registrele,
+  // fluturasii, mediile istorice sau D112 dupa stornarea articolului care a produs-o.
+  payrollHistory.markStornat(d.payrollHistory, e, se);
   db.save();
   return { storno: se, original: e };
 }

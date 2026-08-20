@@ -177,11 +177,19 @@ preluarea identității și a factorilor de autentificare ai utilizatorului.
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
 | `GET/POST /api/angajati`, `DELETE /:id` | `{ nume, salariuBrut, certificateCM?, cmEligibilitate?, cmStagiuDocument?, istoricBazaCM?, ordineBeneficii?, beneficiiOrdineConfirmata?, ... }` | maximum 10 certificate CM complete și nesuprapuse; procentCM ∈ {55,65,75,80,85,100}; pentru continuări cod 01: diferențe angajator/FNUASS. Postarea refuză baza/repartizarea CM aproximată, lipsa dovezii de stagiu, cursul BNR nedefinit pentru beneficii EUR sau ordinea neconfirmată când plafonul de 33% este depășit |
-| `GET /api/stat-plata?period=` | — | statul calculat; după postare întoarce fotografia imuabilă cu `postat:true` (`&live=1` previzualizează fișele curente, fără scriere) |
-| `POST /api/stat-plata?period=` | — | `{ ok, totals, entry }` — articolul agregat + instantaneu lunar complet v2; repostarea e refuzată, corecția se face prin storno; 400 fără angajați/perioadă |
-| `POST /api/stat-plata/pay?period=&cont=` | `cont ∈ {5121, 5311}` (implicit 5121) | `{ ok, suma, cont, entry }` — plata restului (421=512x); 400 rest 0 |
+| `GET /api/stat-plata?period=` | — | statul calculat; după postare întoarce fotografia activă cu `postat:true`, `entryId`, `snapshotId`, `platit` și `paymentEntryId` (`&live=1` previzualizează fișele curente, fără scriere). O fotografie stornată nu mai este selectată |
+| `POST /api/stat-plata?period=` | — | `{ ok, totals, entry }` — articolul agregat + revizie salarială completă v3, legată prin `entryId`; repostarea fără storno e refuzată. 409 dacă există luni ulterioare active: se stornează în ordine inversă și se repostează cronologic. Revizia veche rămâne în audit, marcată stornată/suprascrisă |
+| `POST /api/stat-plata/pay?period=&cont=` | `cont ∈ {5121, 5311}` (implicit 5121) | `{ ok, suma, cont, entry }` — plata restului (421=512x), legată prin `payrollEntryId`; cere un stat activ postat și refuză a doua plată integrală a lunii. Corecția: storno plată → storno stat |
 | `GET /api/registru-salarii?year=`, `/api/dosar-cm?period=` | — | registrul anual / dosarul FNUASS |
 | PDF-uri | `/pdf/stat-plata`, `/pdf/fluturas/:id`, `/pdf/registru-salarii`, `/pdf/adeverinta/:id`, `/pdf/dosar-cm` | erorile sunt text, nu JSON |
+
+## Plăți bancare SEPA (`src/routes/plati.js`)
+
+| Endpoint | Cerere | Răspuns / erori |
+|---|---|---|
+| `GET /api/plati/propuneri?tip=salarii&period=YYYY-MM` | — | propunerile folosesc `restPlata` (net minus avansuri și rețineri), nu netul brut de virat; `gata:false` dacă statul nu este postat, luna este deja plătită sau IBAN-ul lipsește/este invalid. Întoarce și `statPostat`, `salariiPlatite`, `payrollEntryId`, `snapshotId` |
+| `GET /api/plati/propuneri?tip=furnizori&asOf=YYYY-MM-DD` | — | soldurile furnizorilor cu starea IBAN-ului și totalul rândurilor pregătite |
+| `POST /xml/pain001` | `{ execDate, moneda?, plati:[{ beneficiar, iban, bic?, suma, detalii?, ref? }] }` | fișier ISO 20022 `pain.001`; validează plătitorul, beneficiarii, IBAN-urile, sumele și setul de caractere EPC |
 
 ## Închideri fiscale (`src/routes/closings.js`)
 

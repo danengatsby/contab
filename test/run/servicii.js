@@ -561,6 +561,8 @@ if (prevLossCl === undefined) delete firmaCl.pierdereFiscala; else firmaCl.pierd
 
 section('Service layer salarizare (src/payrollService.js)');
 const paysvc = require('../../src/payrollService');
+const payrollDomain = require('../../src/payroll');
+const payrollHistoryDomain = require('../../src/payrollHistory');
 // firma dedicata, ca testele sa nu depinda de angajatii din seed
 db.get().firme.push({ id: 7788, nume: 'PAY SRL', cui: '7788' });
 // gardele
@@ -658,12 +660,13 @@ const angR2 = paysvc.upsertAngajat(7788, { id: angR.id, nume: 'Ion Salariat', sa
 ok('actualizarea pe id pastreaza identitatea', angR2.id === angR.id && angR2.salariuBrut === 6000 && db.get().angajati.filter((a) => a.firmaId === 7788).length === 1);
 // postarea statului: perioada obligatorie; liniile de retineri + instantaneul lunar
 eq('stat de plata fara perioada -> 400', errStatus(() => paysvc.postStatPlata(7788, null, stubDeps)), 400);
+eq('stat de plata cu luna imposibila -> 400', errStatus(() => paysvc.postStatPlata(7788, '2026-13', stubDeps)), 400);
 const spR = paysvc.postStatPlata(7788, '2026-06', stubDeps);
 ok('avansul intra ca retinere 421=425 in articolul agregat', spR.entry.lines.some((l) => l.debit === '421' && l.credit === '425' && l.suma === 500));
 eq('instantaneul lunar e salvat in payrollHistory', db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06').length, 1);
-ok('instantaneul salarial v2 pastreaza randul complet pentru audit/D112', (() => {
+ok('instantaneul salarial v3 este legat de articol si pastreaza randul complet pentru audit/D112', (() => {
   const h = db.get().payrollHistory.find((x) => x.firmaId === 7788 && x.period === '2026-06');
-  return h && h.formatVersion === 2 && h.rows[0].angajatId === angR.id
+  return h && h.formatVersion === 3 && h.entryId === spR.entry.id && h.rows[0].angajatId === angR.id
     && h.rows[0].bazaCas != null && h.rows[0].zileLucratoare != null;
 })());
 // REGRESIE. Aserțiunea de aici verifica doar ca INSTANTANEUL nu se dubleaza la repostare — si era
@@ -673,24 +676,61 @@ ok('instantaneul salarial v2 pastreaza randul complet pentru audit/D112', (() =>
 eq('repostarea aceleiasi luni e REFUZATA (jurnal append-only)', errStatus(() => paysvc.postStatPlata(7788, '2026-06', stubDeps)), 400);
 eq('articolul de salarii ramane unul singur', db.get().entries.filter((e) => e.firmaId === 7788 && e.tip === 'stat_plata' && e.period === '2026-06').length, 1);
 eq('si instantaneul lunar tot unul', db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06').length, 1);
-// Data articolului e ultima zi REALA a lunii, nu „ziua 30" (in februarie ar da 2026-02-30).
+// Data articolului e ultima zi REALA a lunii, nu „ziua 30". Postarea retroactiva este blocata:
+// o luna mai veche ar schimba mediile si plafoanele fotografiilor deja postate dupa ea.
 eq('data statului = ultima zi reala a lunii', spR.entry.data, '2026-06-30');
+eq('postarea retroactiva este refuzata cat timp exista un stat ulterior activ',
+  errStatus(() => paysvc.postStatPlata(7788, '2026-02', stubDeps)), 409);
+let spFeb; let payFeb;
 {
   const angFeb = paysvc.upsertAngajat(7788, { nume: 'Ana Februarie', salariuBrut: 5000 }).angajat;
-  const spFeb = paysvc.postStatPlata(7788, '2026-02', stubDeps);
-  eq('februarie: 28 de zile, nu o data inexistenta', spFeb.entry.data, '2026-02-28');
+  spFeb = paysvc.postStatPlata(7788, '2027-02', stubDeps);
+  eq('februarie: 28 de zile, nu o data inexistenta', spFeb.entry.data, '2027-02-28');
   ok('data e o zi calendaristica valida', new Date(spFeb.entry.data + 'T00:00:00Z').toISOString().slice(0, 10) === spFeb.entry.data);
-  eq('si plata neta urmeaza aceeasi regula', paysvc.paySalaries(7788, '2026-02', '5121', stubDeps).entry.data, '2026-02-28');
+  payFeb = paysvc.paySalaries(7788, '2027-02', '5121', stubDeps);
+  eq('si plata neta urmeaza aceeasi regula', payFeb.entry.data, '2027-02-28');
   db.get().angajati = db.get().angajati.filter((a) => a.id !== angFeb.id);
 }
+eq('un stat vechi nu se storneaza inaintea statului ulterior',
+  errStatus(() => esvc.stornoEntry(spR.entry.id, 7788, () => true, '2027-03-01')), 409);
+eq('statul nu se storneaza cat timp plata lui este activa',
+  errStatus(() => esvc.stornoEntry(spFeb.entry.id, 7788, () => true, '2027-03-01')), 409);
+esvc.stornoEntry(payFeb.entry.id, 7788, () => true, '2027-03-01');
+esvc.stornoEntry(spFeb.entry.id, 7788, () => true, '2027-03-01');
+ok('stornarea statului marcheaza fotografia, fara s-o stearga din audit', (() => {
+  const h = db.get().payrollHistory.find((x) => x.entryId === spFeb.entry.id);
+  return !!h && h.stornat === true && !!h.stornoBy;
+})());
 // plata neta: perioada obligatorie, contul necunoscut cade pe banca (5121)
 eq('plata fara perioada -> 400', errStatus(() => paysvc.paySalaries(7788, null, '5121', stubDeps)), 400);
+eq('plata unei luni nepostate -> 400', errStatus(() => paysvc.paySalaries(7788, '2026-05', '5121', stubDeps)), 400);
 // Dupa postare, fisa angajatului se poate schimba pentru luna urmatoare; plata lunii postate
 // trebuie sa ramana pe fotografia semnata, nu sa se recalculeze retroactiv.
 paysvc.upsertAngajat(7788, { id: angR.id, nume: 'Ion Salariat', salariuBrut: 9000, avans: 0 });
 const payR = paysvc.paySalaries(7788, '2026-06', 'cont-gresit', stubDeps);
 ok('plata: suma = restul de plata, cont implicit 5121', payR.suma > 0 && payR.suma === spR.totals.restPlata && payR.cont === '5121');
-eq('plata din casa (5311) e respectata', paysvc.paySalaries(7788, '2026-06', '5311', stubDeps).cont, '5311');
+eq('a doua plata integrala a aceleiasi luni este refuzata',
+  errStatus(() => paysvc.paySalaries(7788, '2026-06', '5311', stubDeps)), 400);
+eq('statul nu se storneaza inaintea platii active',
+  errStatus(() => esvc.stornoEntry(spR.entry.id, 7788, () => true, '2027-03-02')), 409);
+esvc.stornoEntry(payR.entry.id, 7788, () => true, '2027-03-02');
+esvc.stornoEntry(spR.entry.id, 7788, () => true, '2027-03-02');
+ok('dupa storno, statul vechi nu mai este prezentat drept postat',
+  payrollDomain.statPlataPerioada(db.scoped(7788), '2026-06').postat === false);
+eq('registrul anual exclude fotografia stornata',
+  payrollDomain.registruSalarii(db.scoped(7788).payrollHistory, 2026, db.scoped(7788).entries).nrLuni, 0);
+eq('plata ramane blocata pana la repostarea statului',
+  errStatus(() => paysvc.paySalaries(7788, '2026-06', '5121', stubDeps)), 400);
+const spCorectat = paysvc.postStatPlata(7788, '2026-06', stubDeps);
+const reviziiIunie = db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06');
+ok('repostarea pastreaza ambele revizii, dar exact una ramane activa', reviziiIunie.length === 2
+  && payrollHistoryDomain.activeSnapshots(reviziiIunie, db.scoped(7788).entries).length === 1);
+ok('fotografia activa este revizia corectata, calculata din fisa curenta', (() => {
+  const s = payrollDomain.statPlataPerioada(db.scoped(7788), '2026-06');
+  return s.postat && s.entryId === spCorectat.entry.id && s.totals.brut === 9000;
+})());
+eq('plata din casa (5311) este permisa dupa repostare si legata de noul stat',
+  paysvc.paySalaries(7788, '2026-06', '5311', stubDeps).entry.payrollEntryId, spCorectat.entry.id);
 // curatenie: firma de test + tot ce a produs
 const dPay = db.get();
 dPay.angajati = dPay.angajati.filter((a) => a.firmaId !== 7788);

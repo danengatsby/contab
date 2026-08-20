@@ -30,6 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { round2 } = require('./util');
+const payrollHistory = require('./payrollHistory');
 
 // `round2(undefined)` intoarce NaN, iar aici aproape toate intrarile sunt optionale (o categorie
 // neacordata, un consum anual inexistent). Un NaN nu ar arunca: s-ar plimba tacut prin plafon si
@@ -200,7 +201,7 @@ function consumAnual(history, angajatId, period) {
   const an = String(period || '').slice(0, 4);
   const out = {};
   if (!an) return out;
-  for (const h of history || []) {
+  for (const h of payrollHistory.activeSnapshots(history)) {
     const p = String(h.period || '');
     if (p.slice(0, 4) !== an || p >= String(period)) continue;
     const rand = (h.rows || []).find((r) => r.angajatId === angajatId);

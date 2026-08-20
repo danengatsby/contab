@@ -35,7 +35,12 @@
   D112 `D_20a`/`D_21a`, `B3_7D`, `C2_155`/`C2_156`, fără rectificarea lunii precedente.
   După postare, statul păstrează o fotografie completă și imuabilă; fluturașul, plata, dosarul
   FNUASS și D112 citesc aceeași fotografie, astfel încât editarea fișei pentru luna următoare nu
-  modifică retroactiv documentele perioadei închise.
+  modifică retroactiv documentele perioadei închise. Fotografia este legată de articolul
+  `stat_plata`: stornarea articolului o păstrează în audit, dar o scoate imediat din registru,
+  medii, plafoane și documente. O corecție se desface în ordine inversă (întâi plata, apoi statele
+  ulterioare) și se repostează cronologic; astfel nicio lună ulterioară nu rămâne calculată pe un
+  istoric salarial anulat. Plata este permisă numai pentru un stat postat și o a doua plată
+  integrală a aceleiași luni este refuzată.
 - **Plafoanele în EURO se convertesc la cursul BNR**, nu la o valoare rotundă din setări: plafonul
   micro folosește cursul de la **31 decembrie al anului precedent** (ultimul publicat înainte, dacă
   ziua cade în weekend — chiar regula legală). La 5,0 în loc de ~5,08, plafonul de 100.000 EUR ieșea
