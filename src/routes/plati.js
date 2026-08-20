@@ -10,7 +10,7 @@
 const db = require('../db');
 const sepa = require('../sepa');
 const analytic = require('../analytic');
-const { statePlata } = require('../payroll');
+const { statPlataPerioada } = require('../payroll');
 const { round2 } = require('../util');
 
 module.exports = function register(app, ctx) {
@@ -37,17 +37,18 @@ module.exports = function register(app, ctx) {
 
   /** Lotul propus pentru salarii: restul de plata din statul lunii. */
   function propuneriSalarii(v, period) {
-    const sp = statePlata(v.angajati, period, v.payrollHistory);
+    const sp = statPlataPerioada(v, period);
     const byId = new Map((v.angajati || []).map((a) => [a.id, a]));
     return (sp.rows || []).filter((r) => Number(r.net) > 0).map((r) => {
       const a = byId.get(r.angajatId) || {};
       return {
         tip: 'salariu', beneficiar: r.nume || a.nume || '', cui: '',
-        iban: a.iban || '', bic: '', suma: round2(r.net),
+        iban: r.iban || a.iban || '', bic: '', suma: round2(r.net),
         detalii: 'Salariu net ' + period,
         ref: 'S' + String(r.angajatId || '').replace(/[^A-Za-z0-9]/g, ''),
-        gata: !!a.iban && sepa.validIban(a.iban),
-        motiv: !a.iban ? 'angajatul nu are IBAN completat' : (!sepa.validIban(a.iban) ? 'IBAN invalid' : ''),
+        gata: !!(r.iban || a.iban) && sepa.validIban(r.iban || a.iban),
+        motiv: !(r.iban || a.iban) ? 'angajatul nu are IBAN completat'
+          : (!sepa.validIban(r.iban || a.iban) ? 'IBAN invalid' : ''),
       };
     });
   }

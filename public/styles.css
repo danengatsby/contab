@@ -148,6 +148,10 @@ input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-ra
 input:focus,select:focus{outline:2px solid #cfe3da;border-color:var(--accent)}
 .dyn{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
 .dyn .full{grid-column:1/-1}
+.cm-cert-manager{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--soft)}
+.cm-cert-manager h3{margin:0 0 5px}.cm-cert-manager .actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+.cm-cert-list{display:grid;gap:7px;margin-top:10px}.cm-cert-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card)}
+.cm-cert-item .cm-cert-desc{flex:1;min-width:220px}.cm-cert-item button{padding:5px 8px}
 /* Randul de stare al completarii dupa CUI (`legaCompletareCui` din core.js) se insereaza dupa
    eticheta campului, deci ateriza intr-o CELULA de grila — un text de doua randuri strivit langa
    „Denumire". Ocupa toata latimea, ca orice mesaj despre formular, si in formularele care nu sunt

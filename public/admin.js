@@ -248,14 +248,18 @@ export async function renderFirme() {
       <td>${f.id === data.firmaActiva ? '<b>● ' + H(f.nume) + '</b>' : H(f.nume)}${subBadge(f)}</td><td>${H(f.cui)}</td>
       <td>${f.id === data.firmaActiva ? '<span class="pill">activă</span>' : `<button class="linkbtn fact" data-id="${f.id}">activează</button>`}
         ${needsSub(f) ? ` · <button class="linkbtn fsub" data-id="${f.id}" data-nume="${H(f.nume)}" data-u="u12">abonează-te →</button>` : ''}
-        ${data.firme.length > 1 ? ` · <button class="del fdel" data-id="${f.id}">✕</button>` : ''}</td></tr>`).join('')}</tbody></table>`;
+        ${(USER.role === 'admin' || Number(f.ownerId) === Number(USER.id)) ? ` · <button class="del fdel" data-id="${f.id}" data-nume="${H(f.nume)}">✕</button>` : ''}</td></tr>`).join('')}</tbody></table>`;
   $$('#firmeList .fact').forEach((b) => b.addEventListener('click', async () => {
     await api('/api/firme/' + b.dataset.id + '/activate', { method: 'POST' }); await deps.init(); deps.onTab('setari'); toast('Firmă activată');
   }));
   $$('#firmeList .fsub').forEach((b) => b.addEventListener('click', () => deps.promptFirmaSubscribe(Number(b.dataset.id), b.dataset.nume)));
   $$('#firmeList .fdel').forEach((b) => b.addEventListener('click', async () => {
-    if (!await confirmAction('Firma și toate datele contabile asociate vor fi eliminate definitiv.', { title: 'Ștergi firma?', confirmLabel: 'Șterge firma', danger: true })) return;
-    try { await api('/api/firme/' + b.dataset.id, { method: 'DELETE' }); await deps.init(); deps.onTab('setari'); toast('Firmă ștearsă'); }
+    const confirmName = await promptAction('Se elimină definitiv firma, toate colecțiile ei și fișierele încărcate. Tastează exact denumirea pentru confirmare: ' + b.dataset.nume, {
+      title: 'Ștergi firma?', label: 'Denumirea exactă', required: true, confirmLabel: 'Șterge definitiv', danger: true,
+    });
+    if (confirmName == null) return;
+    if (confirmName.trim() !== b.dataset.nume.trim()) return toast('Denumirea nu corespunde. Firma nu a fost ștearsă.', true);
+    try { await api('/api/firme/' + b.dataset.id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmName }) }); await deps.init(); deps.onTab('setari'); toast('Firmă și fișiere asociate șterse'); }
     catch (e) { toast(e.message, true); }
   }));
   const active = data.firme.find((f) => f.id === data.firmaActiva) || {};
@@ -407,13 +411,16 @@ export async function renderColaboratori() {
   try { data = await api('/api/colaboratori'); } catch (e) { $('#colaboratoriList').innerHTML = `<p class="muted">${H(e.message || 'Indisponibil')}</p>`; return; }
   const cols = data.colaboratori || [];
   const demo = !!data.demo;
+  const poateGestiona = !!data.poateGestiona;
   const pill = (c) => `<span class="pill" data-style="${COLAB_PILL[c.tip] || ''}">${c.tip || '—'}</span>`;
-  $('#colaboratoriList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th></th></tr></thead><tbody>${
+  const roluri = { proprietar: 'Proprietar', aprobator: 'Aprobator', verificator: 'Verificator', operator: 'Operator', vizualizare: 'Doar vizualizare' };
+  $('#colaboratoriList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th>Rol pe firmă</th><th></th></tr></thead><tbody>${
     cols.map((c) => `<tr><td><b>${H(c.username)}</b>${c.id === data.eu ? ' <span class="muted">(tu)</span>' : ''}${c.pending ? ' <span class="pill warn">invitație</span>' : ''}${c.email ? ` <span class="muted" data-u="u148">${H(c.email)}</span>` : ''}</td><td>${pill(c)}</td>
-      <td>${c.id === data.eu ? '' : `<button class="del colremove" data-id="${c.id}" data-nume="${H(c.username)}">✕ scoate</button>`}</td></tr>`).join('')
-    || '<tr><td colspan="3" class="muted">Deocamdată ești singurul cu acces la această firmă.</td></tr>'}</tbody></table>`;
+      <td>${c.rol === 'proprietar' || !poateGestiona ? H(roluri[c.rol] || c.rol || 'Aprobator') : `<select class="colrole" data-id="${c.id}">${['aprobator','verificator','operator','vizualizare'].map((r) => `<option value="${r}"${c.rol === r ? ' selected' : ''}>${H(roluri[r])}</option>`).join('')}</select>`}</td>
+      <td>${!poateGestiona || c.id === data.eu || c.rol === 'proprietar' ? '' : `<button class="del colremove" data-id="${c.id}" data-nume="${H(c.username)}">✕ scoate</button>`}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">Deocamdată ești singurul cu acces la această firmă.</td></tr>'}</tbody></table>`;
   const form = $('#colaboratorForm');
-  if (form) form.querySelectorAll('input,button').forEach((el) => { el.disabled = false; });
+  if (form) { form.classList.toggle('hidden', !poateGestiona); form.querySelectorAll('input,select,button').forEach((el) => { el.disabled = !poateGestiona; }); }
   const note = $('#colaboratorInviteResult');
   const invBtn = $('#colaboratorInvite');
   if (demo) {
@@ -433,11 +440,18 @@ export async function renderColaboratori() {
     try { await api('/api/colaboratori/' + b.dataset.id, { method: 'DELETE' }); renderColaboratori(); toast('Colaborator scos'); }
     catch (e) { toast(e.message, true); }
   }));
+  $$('#colaboratoriList .colrole').forEach((s) => s.addEventListener('change', async () => {
+    try {
+      await api('/api/colaboratori/' + s.dataset.id + '/rol', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rol: s.value }) });
+      toast('Rol actualizat'); renderColaboratori();
+    } catch (e) { toast(e.message, true); renderColaboratori(); }
+  }));
 }
 async function addColaborator(mod) {
   const key = ($('#colaboratorKey').value || '').trim();
   if (!key) { toast('Completează utilizatorul sau emailul.', true); return; }
-  const body = mod === 'invite' ? { mod: 'invite', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '' } : { mod: 'existing', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '' };
+  const rol = ($('#colaboratorRol') && $('#colaboratorRol').value) || 'aprobator';
+  const body = mod === 'invite' ? { mod: 'invite', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '', rol } : { mod: 'existing', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '', rol };
   if (mod === 'invite' && !body.username) { toast('Pentru invitație alege un nume de utilizator (nu email).', true); return; }
   try {
     const r = await api('/api/colaboratori', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

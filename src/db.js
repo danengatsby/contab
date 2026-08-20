@@ -42,7 +42,8 @@ const FIRMA_EDITABLE = new Set([
   // datorat pe an) sunt INTRARI: primul se publica prin ordin al ministrului finantelor si nu se
   // poate deduce din datele firmei, al doilea acopera firmele migrate, fara istoric in aplicatie.
   'sistemProfit', 'anticipatProfitContabil', 'ipcAnticipate', 'impozitProfitAn',
-  'autoPostDocumente',                                                              // postarea automata a documentelor citite (implicit oprita)
+  'autoPostDocumente',                                                              // pregatirea automata a unei ciorne (implicit oprita; nume legacy)
+  'controlDublu',                                                                   // separare initiator–aprobator (automat si la echipe cu >=2 membri)
   'metodaEvaluareStoc',                                                             // evaluarea iesirilor din stoc: 'cmp' (implicit) sau 'fifo'
   'iban', 'bic', 'banca', 'cont', 'telefon', 'email', 'numeComplet', 'autorizatie',        // banca / contact / reprezentant
   'accentColor', 'pdfLayout', 'pdfFooter', 'asociatiText',                          // prezentare facturi/PDF
@@ -536,6 +537,9 @@ function scoped(firmaId) {
     partners: d.partners[id] || {},
     openingBalances: d.openingBalances[id] || {},
     openingAnalytic: (d.openingAnalytic || []).filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === id),
+    // Cursurile BNR sunt globale, dar rapoartele/statul primesc numai vederea scoped. Expunerea
+    // read-only aici evita revenirea la un curs fiscal fix in calculele care pornesc din `S(req)`.
+    cursuriBnr: d.cursuriBnr || [],
     settings: d.settings,
   };
 }

@@ -5,15 +5,19 @@
 // coruperi/pierderi a bazei. Fiecare eveniment se scrie ca o linie NDJSON intr-un fisier
 // lunar (data/audit/audit-YYYY-MM.ndjson), inclus in backupul zilnic offsite.
 //
-// Proprietati: APPEND-ONLY (nu se rescrie niciodata), best-effort (un esec de scriere NU
-// rupe cererea — se logheaza), rotatie lunara (fisiere de dimensiune gestionabila).
+// Proprietati: APPEND-ONLY (nu se rescrie niciodata), lant SHA-256 verificabil intre fisiere,
+// fail-closed la scriere/corupere si rotatie lunara (fisiere de dimensiune gestionabila).
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const db = require('./db');
 const metrics = require('./metrics');
 
 let warned = false;
+let tailDir = '';
+let tailHash = null;
+let tailFingerprint = '';
 
 // Directorul jurnalului: CONTAB_AUDIT_DIR (volum separat, durabil) sau data/audit implicit.
 function auditDir() { return process.env.CONTAB_AUDIT_DIR || path.join(db.DATA_DIR, 'audit'); }
@@ -21,6 +25,66 @@ function auditDir() { return process.env.CONTAB_AUDIT_DIR || path.join(db.DATA_D
 /** Calea fisierului lunar pentru un moment dat (implicit acum). */
 function fileFor(ts) {
   return path.join(auditDir(), 'audit-' + String(ts || new Date().toISOString()).slice(0, 7) + '.ndjson');
+}
+
+function filesAscending() {
+  try {
+    return fs.readdirSync(auditDir()).filter((n) => /^audit-\d{4}-\d{2}\.ndjson$/.test(n)).sort();
+  } catch (_) { return []; }
+}
+
+function hashRecord(record) {
+  const copy = Object.assign({}, record);
+  delete copy.hash;
+  return crypto.createHash('sha256').update(JSON.stringify(copy), 'utf8').digest('hex');
+}
+
+function filesFingerprint() {
+  return filesAscending().map((name) => {
+    const s = fs.statSync(path.join(auditDir(), name));
+    return name + ':' + s.size + ':' + s.mtimeMs;
+  }).join('|');
+}
+
+/**
+ * Verifica integral toate liniile si lantul. Liniile istorice create inainte de versiunea 1 sunt
+ * acceptate numai la inceput; dupa prima linie inlantuita, o linie legacy inseamna ruptura.
+ */
+function verify() {
+  let expected = ''; let chained = 0; let legacy = 0; let chainStarted = false;
+  for (const name of filesAscending()) {
+    const lines = fs.readFileSync(path.join(auditDir(), name), 'utf8').split('\n');
+    for (let i = 0; i < lines.length; i += 1) {
+      if (!lines[i].trim()) continue;
+      let rec;
+      try { rec = JSON.parse(lines[i]); } catch (_) {
+        return { ok: false, motiv: name + ':' + (i + 1) + ' nu este JSON valid', files: filesAscending().length, chained, legacy };
+      }
+      const isChained = rec.chainVersion === 1 && typeof rec.hash === 'string' && typeof rec.prevHash === 'string';
+      if (!isChained) {
+        if (chainStarted) return { ok: false, motiv: name + ':' + (i + 1) + ' rupe lantul de audit', files: filesAscending().length, chained, legacy };
+        legacy += 1;
+        continue;
+      }
+      chainStarted = true;
+      if (rec.prevHash !== expected) return { ok: false, motiv: name + ':' + (i + 1) + ' are prevHash neasteptat', files: filesAscending().length, chained, legacy };
+      const actual = hashRecord(rec);
+      if (rec.hash !== actual) return { ok: false, motiv: name + ':' + (i + 1) + ' are amprenta invalida', files: filesAscending().length, chained, legacy };
+      expected = rec.hash; chained += 1;
+    }
+  }
+  return { ok: true, files: filesAscending().length, chained, legacy, head: expected || null };
+}
+
+function ensureTail() {
+  const dir = auditDir();
+  const fingerprint = filesFingerprint();
+  if (tailDir === dir && tailHash !== null && tailFingerprint === fingerprint) return;
+  const v = verify();
+  if (!v.ok) throw new Error('Jurnalul de audit este corupt: ' + v.motiv);
+  tailDir = dir;
+  tailHash = v.head || '';
+  tailFingerprint = fingerprint;
 }
 
 /**
@@ -40,41 +104,40 @@ function probeWritable() {
     const f = fileFor();
     if (fs.existsSync(f)) fs.accessSync(f, fs.constants.W_OK);
     else fs.accessSync(dir, fs.constants.W_OK);
+    ensureTail();
     return { ok: true };
   } catch (e) {
     return { ok: false, motiv: String((e && e.message) || e).slice(0, 200) };
   }
 }
 
-/** Adauga o inregistrare de audit in fisierul lunar append-only. Best-effort. */
+/** Adauga o inregistrare in lant. La esec arunca: o mutatie neauditabila nu este acceptata. */
 function append(record) {
   try {
     const dir = auditDir();
     fs.mkdirSync(dir, { recursive: true });
     try { fs.chmodSync(dir, 0o700); } catch (_) { /* best-effort */ }
+    ensureTail();
     const file = fileFor(record.ts);
-    fs.appendFileSync(file, JSON.stringify(record) + '\n', { mode: 0o600 });
+    const chained = Object.assign({}, record, { chainVersion: 1, prevHash: tailHash || '' });
+    chained.hash = hashRecord(chained);
+    fs.appendFileSync(file, JSON.stringify(chained) + '\n', { mode: 0o600, encoding: 'utf8' });
     try { fs.chmodSync(file, 0o600); } catch (_) { /* best-effort */ }
+    tailHash = chained.hash;
+    tailFingerprint = filesFingerprint();
     warned = false;
     metrics.auditOk();
+    return record;
   } catch (e) {
-    // Cererea NU se rupe (best-effort, deliberat), iar consola primeste o singura avertizare
-    // pana la urmatorul succes — altfel logul s-ar inunda. Dar CONTORUL creste de fiecare data:
-    // throttle-ul e pentru zgomot, nu pentru a ascunde faptul. Fara el, o permisiune stricata
-    // dadea o linie in log si apoi tacere la nesfarsit, in timp ce proba de audit nu se mai
-    // scria — vezi jobul audit-watch, care de aici isi ia semnalul.
     metrics.auditFail(e.message);
     if (!warned) { console.error('[audit] scrierea in jurnalul durabil a esuat:', e.message); warned = true; }
+    throw e;
   }
 }
 
 /** Listeaza fisierele de jurnal existente (pentru export/verificare), cele mai noi primele. */
 function listFiles() {
-  try {
-    return fs.readdirSync(auditDir())
-      .filter((n) => /^audit-\d{4}-\d{2}\.ndjson$/.test(n))
-      .sort().reverse();
-  } catch (_) { return []; }
+  return filesAscending().reverse();
 }
 
-module.exports = { append, listFiles, auditDir, fileFor, probeWritable };
+module.exports = { append, listFiles, auditDir, fileFor, probeWritable, verify, hashRecord };

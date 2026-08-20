@@ -18,7 +18,7 @@ module.exports = function register(app, ctx) {
     const base = (req.protocol || 'http') + '://' + req.get('host');
     sendList(req, res, db.get().users.map((u) => ({
       id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), plan: plans.status(u.subscription).plan, firme: u.firme || [],
-      drepturi: u.drepturi || {},
+      drepturi: u.drepturi || {}, firmaRoluri: u.firmaRoluri || {},
       pending: !!u.pending, inviteLink: u.pending && u.inviteToken ? base + '/?invite=' + u.inviteToken : null,
     })), { label: 'users' });
   });
@@ -47,6 +47,11 @@ module.exports = function register(app, ctx) {
     if (b.role) u.role = b.role === 'admin' ? 'admin' : 'user';
     if (Array.isArray(b.firme)) u.firme = b.firme.map(Number);
     if (b.drepturi && typeof b.drepturi === 'object') u.drepturi = { readonly: !!b.drepturi.readonly, faraSalarii: !!b.drepturi.faraSalarii };
+    if (b.firmaRoluri && typeof b.firmaRoluri === 'object') {
+      const allowed = new Set(['vizualizare', 'operator', 'verificator', 'aprobator']);
+      u.firmaRoluri = Object.fromEntries(Object.entries(b.firmaRoluri)
+        .filter(([fid, role]) => /^\d+$/.test(fid) && allowed.has(role) && (u.firme || []).includes(Number(fid))));
+    }
     if (b.password) { const h = await authlib.hashPasswordAsync(b.password); u.salt = h.salt; u.hash = h.hash; u.mustChange = false; }
     logAudit('user.update', u.username, { req, firmaId: null });
     db.save();

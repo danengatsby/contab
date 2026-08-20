@@ -4,7 +4,7 @@ Documentul care se **trimite revizorului** (expert contabil CECCAR / consultant 
 în care se **consemnează** rezultatul. Completează [guvernanța fiscală](guvernanta-fiscala.md):
 acolo e cum se întreține setul de reguli, aici e cum se dovedește că e corect.
 
-> **Starea la 2026‑07‑28: nicio revizie externă efectuată încă.** Cazurile-test există și rulează,
+> **Starea la 2026‑08‑20: nicio revizie externă efectuată încă.** Cazurile-test există și rulează,
 > dar **niciunul** nu are semnătura unui specialist. Numărul curent și starea fiecăruia se citesc
 > din corpus (`node test/cazuri-aprobate.js`), nu de aici — o cifră scrisă în document ar drifta la
 > fiecare caz nou. Vezi §6.
@@ -188,39 +188,39 @@ Inventarul onest al locurilor unde implementarea e deliberat simplificată. **Ac
 pe care revizia trebuie să se pronunțe în primul rând** — nu sunt bug-uri raportate, ci decizii care
 au nevoie de o semnătură calificată.
 
-### 7.1 Concediile medicale (`src/payroll.js:43‑57`) — zona cea mai expusă
+### 7.1 Concediile medicale — limitele software închise la 2026-08-20
 
-Marcată în cod „OUG 158/2005, **simplificat**". Șapte întrebări:
+Au fost închise diferențele materiale identificate la revizie:
 
-1. **Zile calendaristice vs lucrătoare.** Codul tratează `zileCM` ca zile *lucrătoare* și scade
-   primele 5 din ele pentru partea angajatorului. OUG 158/2005 vorbește de primele 5 zile
-   *calendaristice*. Ce convenție se adoptă?
-2. **Numitorul mediei zilnice.** Codul împarte baza la zilele lucrătoare ale **lunii curente**
-   (`zileLucratoare`, implicit 21). Legal, media zilnică se raportează la zilele de stagiu din
-   perioada celor 6 luni. Diferența e materială pentru luni cu număr atipic de zile.
-3. **Tipul de concediu nu e modelat.** Regula celor 5 zile în sarcina angajatorului se aplică
-   *indiferent* de codul de indemnizație. Pentru maternitate, îngrijirea copilului bolnav sau
-   accident de muncă / boală profesională, suportarea e integral din FNUASS/FAAMBP.
-   Se introduce codul de indemnizație ca dimensiune?
-4. **Procentul e liber.** `procentCM` are implicit 75% și e editabil fără legătură cu codul de
-   indemnizație (100% pentru bolile din anexa OUG 158/2005, 85% risc maternal etc.).
-   Se leagă procentul de cod, sau rămâne responsabilitatea operatorului?
-5. **Stagiul minim de cotizare nu e verificat** (6 luni în ultimele 12). Aplicația calculează
-   indemnizația indiferent de stagiu. Se adaugă un control, măcar ca avertisment?
-6. **Fallback pe brutul curent.** Când nu există state postate anterior (firmă migrată la mijloc
-   de an), baza cade pe brutul lunii curente. Acceptabil, sau trebuie refuzat calculul?
-7. **Plafonarea la 12 salarii minime** se aplică *mediei lunare* (48.600 lei la S1), nu
-   indemnizației rezultate. De confirmat.
+- baza zilnică folosește `ΣV / NTZ` din ultimele șase luni și plafonul lunar de 12 salarii minime;
+- calendarul separă zilele calendaristice de cele lucrătoare și elimină sărbătorile legale;
+- regula temporară 01.02.2026–31.12.2027 scade o singură zi lucrătoare pe episod și mută intervalul
+  angajatorului pe pozițiile calendaristice 2–6, cu excepțiile legale;
+- codul indemnizației, procentul, sursa angajator/FNUASS și datele certificatului sunt dimensiuni
+  explicite; codul 01 refuză alte procente decât 55/65/75;
+- CASS se calculează pentru codurile 01, 07 și 10, nu uniform pentru toate concediile;
+- D112 emite B1–B4, D și familia C2 corectă; toate cele 19 coduri acceptate sunt probate separat
+  și trec validatorul oficial curent fără erori sau atenționări. Câmpurile condiționale D8/D8a,
+  D11/D12/D13 și diagnosticul `RM` sunt obligatorii la salvare pentru codurile care le cer;
+- continuările cod 01 din iulie 2026 declară separat diferențele recalculate ale lunii anterioare
+  în D20a/D21a, B3_7D și C2_155/C2_156; sumele sunt introduse explicit de operator după
+  recalcularea episodului și intră în taxele și venitul lunii curente;
+- se pot înregistra până la 10 certificate distincte pentru același angajat și aceeași lună.
+  Calculul intersectează fiecare certificat cu pozițiile episodului, scade o singură zi pe episod
+  continuu și emite câte o secțiune D; proba `D112-cm-multiple` trece DUKIntegrator;
+- istoricul extern din adeverințe se introduce ca luni `venit + zile` și se combină fără dublare cu
+  statele postate. Brutul curent poate servi numai la previzualizare: postarea este refuzată cât
+  timp baza ori repartizarea zilelor este aproximată;
+- aplicația nu pretinde că poate deduce istoricul de asigurare din afara firmei. Operatorul alege
+  explicit „stagiu” sau „excepție” și consemnează documentul justificativ; fără ambele, statul cu
+  CM nu se postează. Aceasta este o separare de responsabilitate verificabilă, nu o aproximare.
 
-Contribuțiile pe indemnizație (CAS da, CASS nu, impozit da, CAM doar pe partea angajatorului)
-sunt implementate în `src/fiscal.js:103‑121` și se confirmă prin `CM-01`.
+### 7.2 Deducerea personală (`src/fiscal.js`)
 
-### 7.2 Deducerea personală (`src/fiscal.js:49‑52`)
-
-Peste salariul minim, valoarea scade la 0 la (minim + 2.000 lei) prin **interpolare liniară**, în
-loc de citirea grilei oficiale ANAF pe trepte de 50 lei. Diferențele sunt de ordinul câtorva lei pe
-treaptă. Se acceptă aproximarea (cu suprascriere manuală pentru cazuri exacte) sau se introduce
-grila completă? — caz `DED-02`.
+**Rezolvat la 2026-08-20:** calculul urmează tabelul art. 77 alin. (4), cu 40 de tranșe de câte
+50 lei și reducerea procentului cu 0,5 puncte pe tranșă. Corpusul verifică explicit primele două
+praguri (+1 și +51 lei), nu doar punctele +1.000/+2.000 unde vechea interpolare liniară dădea
+întâmplător același rezultat — caz `DED-02`.
 
 ### 7.3 Taxele PFA (`src/fiscal.js:126‑134`)
 
@@ -233,26 +233,26 @@ contribuabil. E suficientă marcarea ca estimare? — cazurile `PFA-01..03`.
 CAM se calculează doar pe salariul brut + avantaje + partea de CM a angajatorului; tichetele de
 masă sunt **excluse** din bază. De confirmat tratamentul — caz `SAL-02`.
 
-### 7.4b Plafonul de 33% — ordinea de includere și cursul EUR (`src/beneficii.js`)
+### 7.4b Plafonul de 33% — controale închise la 2026-08-20 (`src/beneficii.js`)
 
-Două decizii, ambele vizibile în cifra finală — caz `SAL-03b`:
-
-- **Ordinea** în care categoriile ocupă plafonul de 33% o stabilește *angajatorul*
-  (art. 76 alin. (4²)). Implicita din aplicație e cea din lege (lit. a → j), iar ea decide **care
-  categorie rămâne neimpozabilă** când suma le depășește pe toate. Se poate rescrie per angajat
-  (`ordineBeneficii`), dar nu există încă o setare de firmă. De confirmat că implicita e acceptabilă.
-- **Plafoanele anuale în EUR** (400 pensii facultative / 400 asigurare de sănătate / 100 sport) se
-  convertesc cu `cursEurBeneficii` (implicit 5,0), nu cu cursul din ultima zi a lunii de acordare.
-  Aceeași simplificare ca la 7.5, cu aceeași întrebare: parametru manual sau preluare automată?
+- Ordinea în care categoriile ocupă plafonul de 33% este editabilă per angajat. Dacă plafonul comun
+  este efectiv depășit, statul nu poate fi postat până când angajatorul nu confirmă ordinea; alegerea
+  și confirmarea rămân în fotografia lunii.
+- Plafoanele anuale în EUR folosesc cursul BNR în vigoare în ultima zi a lunii. Cursul, data și
+  proveniența sunt păstrate pe rând; lipsa cursului definitiv blochează postarea, fără fallback
+  fiscal tăcut la 5,0.
+- Categoria `e¹`, pensii ocupaționale, introdusă prin OUG 8/2026, este distinctă și are plafonul
+  anual propriu de 400 EUR.
 
 Consumul plafoanelor anuale se citește din statele **postate** (`payrollHistory`): o lună
 nepostată nu consumă plafon, deci recalcularea unei luni vechi după postarea alteia poate muta
 partea impozabilă. De confirmat că e comportamentul dorit.
 
-### 7.5 Cursul pentru plafonul micro (`src/fiscalConfig.js:44`)
+### 7.5 Cursul pentru plafonul micro — rezolvat
 
-`cursPlafonMicro: 5.0` e o valoare **orientativă** fixă; legal se folosește cursul de la închiderea
-exercițiului precedent. Rămâne parametru manual sau se preia automat? — caz `COT-04`.
+Motorul folosește cursul BNR de la 31 decembrie al exercițiului precedent (ultimul curs publicat
+înainte, dacă data nu este zi bancară). Valoarea orientativă din configurare este doar fallback
+vizibil și produce avertisment lângă plafon; nu mai este prezentată ca sursă legală.
 
 ### 7.6 Clasificări orientative în rapoarte
 

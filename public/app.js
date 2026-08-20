@@ -541,6 +541,7 @@ function fillCompanyForm() {
   if (f.regimImpozit) f.regimImpozit.value = ['micro', 'profit'].includes(META.company.regimImpozit) ? META.company.regimImpozit : 'micro';
   if (f.d406Cadenta) f.d406Cadenta.value = ['L', 'T', 'A'].includes(META.company.d406Cadenta) ? META.company.d406Cadenta : '';
   if (f.intrastatObligat) f.intrastatObligat.checked = !!META.company.intrastatObligat;
+  if (f.controlDublu) f.controlDublu.checked = !!META.company.controlDublu;
   if (f.metodaEvaluareStoc) f.metodaEvaluareStoc.value = META.company.metodaEvaluareStoc === 'fifo' ? 'fifo' : 'cmp';
   // Sistemul de plata a impozitului pe profit (art. 41) + cele doua INTRARI ale platii anticipate.
   // Anul precedent / anul curent se citesc din hartile pe ani, nu din campuri plate: firma isi
@@ -1216,6 +1217,7 @@ $('#companyForm').addEventListener('submit', async (e) => {
   body.regimImpozit = f.regimImpozit ? f.regimImpozit.value : 'micro';
   body.d406Cadenta = f.d406Cadenta ? f.d406Cadenta.value : '';
   body.intrastatObligat = f.intrastatObligat ? f.intrastatObligat.checked : false;
+  body.controlDublu = f.controlDublu ? f.controlDublu.checked : false;
   body.metodaEvaluareStoc = f.metodaEvaluareStoc ? f.metodaEvaluareStoc.value : 'cmp';
   // Sistemul art. 41 + intrarile platii anticipate. Hartile pe ani se COMPLETEAZA, nu se
   // inlocuiesc: un an sters din greseala ar face imposibila recalcularea unei declaratii vechi.

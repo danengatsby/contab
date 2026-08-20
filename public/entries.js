@@ -267,11 +267,11 @@ export function calitateRaportHtml(r) {
   const kpi = `<div class="kpis">${
     kpiCard('Documente citite', r.documenteCitite, 'în ultimele ' + (r.zile || '—') + ' zile')
     + kpiCard('Scor mediu', r.scorMediu == null ? '—' : r.scorMediu + '%', 'media controalelor trecute')
-    + kpiCard('Au trecut toate controalele', r.postateAutomat, 'ar fi putut fi postate fără om')
+    + kpiCard('Au trecut toate controalele', r.eligibileAutomat == null ? r.postateAutomat : r.eligibileAutomat, 'pot primi o ciornă automată')
     + kpiCard('Rată de corecție', r.rataCorectie + '%', 'din documentele revizuite')}</div>`;
-  const stare = r.autoPostActiv
-    ? '<p class="muted">Postarea automată e <b>pornită</b>: documentele care trec toate controalele intră direct în contabilitate.</p>'
-    : '<p class="muted">Postarea automată e <b>oprită</b> (implicit). Se poate porni din Setări → datele firmei; documentele care trec toate controalele ar intra direct în contabilitate.</p>';
+  const stare = (r.autoDraftActiv == null ? r.autoPostActiv : r.autoDraftActiv)
+    ? '<p class="muted">Pregătirea automată e <b>pornită</b>: documentele care trec toate controalele primesc o ciornă; un om o verifică înainte de postare.</p>'
+    : '<p class="muted">Pregătirea automată e <b>oprită</b> (implicit). Se poate porni din Setări → datele firmei; nu postează niciodată fără verificare umană.</p>';
   // CINE a citit documentele. „Încrederea" e o auto-raportare a extractorului, deci scala ei
   // aparține modelului, nu documentului: la schimbarea modelului, aceleași documente pot primi
   // note vizibil diferite. Fără tabelul ăsta, efectul ar apărea ca „nu mai trece nimic de
@@ -279,7 +279,7 @@ export function calitateRaportHtml(r) {
   const modele = (r.modele || []).length
     ? `<h3>Cine a citit documentele</h3><table><thead><tr><th>Extractor</th><th class="num">Documente</th><th class="num">Încredere medie</th><th class="num">Au trecut toate controalele</th></tr></thead><tbody>${
       r.modele.map((m) => `<tr><td>${H(m.model || 'reguli locale (fără AI)')}</td><td class="num">${H(m.documente)}</td>
-        <td class="num">${m.incredereMedie == null ? '—' : H(m.incredereMedie + '%')}</td><td class="num">${H(m.postateAutomat)}</td></tr>`).join('')}</tbody></table>
+        <td class="num">${m.incredereMedie == null ? '—' : H(m.incredereMedie + '%')}</td><td class="num">${H(m.eligibileAutomat == null ? m.postateAutomat : m.eligibileAutomat)}</td></tr>`).join('')}</tbody></table>
       <p class="muted">Încrederea e nota pe care și-o dă singur extractorul, iar scala ei diferă de la un model la altul — compară pe linii, nu între ele. Regulile locale nu raportează încredere.</p>`
     : '';
   const recente = (r.recente || []).length

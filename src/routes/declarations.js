@@ -73,11 +73,16 @@ module.exports = function register(app, ctx) {
     const firma = db.getFirma(fid) || {};
     const inchisa = firma.lockedUntil && String(b.period) <= String(firma.lockedUntil);
     const motiv = String(b.motiv || '').trim();
+    const recipisa = String(b.recipisa || '').trim();
     if (inchisa && motiv.length < 5) {
       return res.status(400).json({ error: 'Perioada ' + b.period + ' este inchisa. Rectificativa e permisa, dar cere un motiv scris (minim 5 caractere).' });
     }
+    if (recipisa.length < 2) {
+      return res.status(400).json({ error: 'O rectificativa devine depusa numai cu numarul recipisei/indexul ANAF.' });
+    }
     const r = decl.addSubmission(d, fid, b.tip, b.period, {
-      motiv, de: req.user.username, tipRec: b.tipRec,
+      motiv, de: req.user.username, tipRec: b.tipRec, recipisa,
+      artifactHash: rec.artifactHash || '',
       sume: sumeCheie(S(req), b.tip, b.period),
     }, db.nextId);
     logAudit('declaratie.rectificativa', b.tip.toUpperCase() + ' ' + b.period
@@ -93,8 +98,30 @@ module.exports = function register(app, ctx) {
     if (!/^\d{4}-\d{2}$/.test(String(b.period || ''))) return res.status(400).json({ error: 'Perioada invalida (YYYY-MM).' });
     if (!decl.STATUSES.includes(b.status)) return res.status(400).json({ error: 'Stare invalida.' });
     const d = db.get();
+    const fid = activeId(req);
+    const existent = decl.find(d, fid, b.tip, b.period);
+    const recipisa = String(b.recipisa || '').trim();
+    const note = String(b.note || '').trim();
+    if (existent && existent.status === 'depusa' && b.status !== 'depusa') {
+      return res.status(409).json({ error: 'O declaratie depusa nu se retrogradeaza. Pentru corectie foloseste fluxul de rectificativa.' });
+    }
+    if (existent && existent.status === 'transmisa' && (b.status === 'generata' || b.status === 'nedepusa')) {
+      return res.status(409).json({ error: 'O declaratie transmisa nu se retrogradeaza. Marcheaz-o depusa cu recipisa sau eroare cu explicatie.' });
+    }
+    if (existent && existent.status !== 'nedepusa' && b.status === 'nedepusa') {
+      return res.status(409).json({ error: 'Starea nu se reseteaza la „nedepusa”; istoricul artefactului trebuie pastrat.' });
+    }
+    if (b.status === 'depusa' && recipisa.length < 2) {
+      return res.status(400).json({ error: 'Starea „depusa” cere numarul recipisei/indexul primit de la ANAF.' });
+    }
+    if ((b.status === 'generata' || b.status === 'transmisa' || b.status === 'depusa') && !(existent && existent.artifactHash)) {
+      return res.status(400).json({ error: 'Genereaza mai intai fisierul declaratiei; starea „' + b.status + '” trebuie legata de un artefact exact.' });
+    }
+    if ((b.status === 'eroare' || b.status === 'scutita') && note.length < 3) {
+      return res.status(400).json({ error: 'Starea „' + b.status + '” cere o explicatie scurta.' });
+    }
     decl.record(d, activeId(req), b.tip, b.period, {
-      status: b.status, recipisa: b.recipisa, note: b.note, updatedBy: req.user.username,
+      status: b.status, recipisa, note, updatedBy: req.user.username,
     }, db.nextId);
     // Marcarea „depusa" SEEDEAZA prima depunere in istoric. Fara asta cele doua mecanisme ar fi
     // deconectate: registrul ar sti ca declaratia e depusa, dar ruta de rectificativa n-ar gasi
@@ -104,7 +131,8 @@ module.exports = function register(app, ctx) {
       const recSet = decl.find(d, activeId(req), b.tip, b.period);
       if (!decl.lastSubmission(recSet)) {
         decl.addSubmission(d, activeId(req), b.tip, b.period, {
-          de: req.user.username, sume: sumeCheie(S(req), b.tip, b.period),
+          de: req.user.username, recipisa, artifactHash: recSet.artifactHash || '',
+          sume: sumeCheie(S(req), b.tip, b.period),
         }, db.nextId);
       }
     }

@@ -91,7 +91,7 @@ function checkDocumente(v, period, today) {
     blocaje.push(md.missing.length + ' furnizor(i) obișnuiți fără document în lună: '
       + md.missing.slice(0, 3).map((m) => m.partener).join(', ') + (md.missing.length > 3 ? ' ș.a.' : '') + '.');
   }
-  // e-Factura: facturile lunii netrimise in SPV (termen legal 5 zile calendaristice, OUG 89/2025)
+  // e-Factura: facturile lunii netrimise in SPV (termen legal 5 zile lucratoare, OUG 89/2025)
   const ef = decl.eFacturaNetrimise(v, today, 400).items.filter((f) => String(f.data).slice(0, 7) === period);
   detalii.efacturaNetrimise = ef.length;
   if (ef.length) blocaje.push(plural(ef.length, 'factură emisă', 'facturi emise') + ' în lună, fără trimitere în SPV (e-Factura).');

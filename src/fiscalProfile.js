@@ -125,7 +125,7 @@ function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, ha
   // impozitul pe profit, de SISTEMUL ales (art. 41):
   //  - MICRO: toate patru trimestrele (al patrulea pana pe 25 ianuarie);
   //  - PROFIT, sistem trimestrial (alin. (1)): doar trimestrele I-III — definitivarea anului se
-  //    face prin D101, pana pe 25 martie. Asteptarea unui D100 pe trimestrul IV impingea firma
+  //    face prin D101, pana pe 25 iunie. Asteptarea unui D100 pe trimestrul IV impingea firma
   //    sa-si declare impozitul de doua ori;
   //  - PROFIT, sistem anual cu plati anticipate (alin. (2)): TOATE PATRU, fiindca plata anticipata
   //    a trimestrului IV se declara si se plateste separat, pana pe 25 DECEMBRIE (alin. (8)) —
@@ -138,7 +138,7 @@ function expected(profile, period, hasIntracom, hasIntracomServicii, hasD301, ha
   const profitFaraTrim4 = profile.profit
     && (!profile.profitAnticipat || profile.anticipatProfitContabil);
   if (!profile.pfa && sfarsitTrim && !(profitFaraTrim4 && d100Trim4)) add('d100');
-  // D101 (impozit pe profit, ANUAL): doar regimul de profit, la sfarsitul anului (termen 25 martie
+  // D101 (impozit pe profit, ANUAL): doar regimul de profit, la sfarsitul anului (termen 25 iunie
   // anul urmator). Micro NU depune D101.
   if (profile.profit && Number(period.slice(5, 7)) === 12) add('d101');
   // D107 are aceeași cadență ca D101, dar numai când există sponsorizări sau report fiscal.

@@ -10,13 +10,14 @@ const d307 = require('./d307');
 const d311 = require('./d311');
 const d205 = require('./d205');
 const intrastat = require('./intrastat');
+const roCalendar = require('./romanianCalendar');
 
 // Registrul depunerilor de declaratii + termene fiscale + agregarea pe portofoliu (multi-firma).
 //
 // Modelul: declaratiile ASTEPTATE pentru o firma/luna sunt derivate din profilul firmei
 // (platitor de TVA -> D300/D394/D406, are angajati -> D112, luna de trimestru -> D100);
 // STAREA efectiva e tinuta in colectia `declarations` cu cheia (firmaId, tip, period):
-//   nedepusa (implicit, fara inregistrare) -> generata (XML descarcat) -> depusa / eroare;
+//   nedepusa (implicit) -> generata (artefact creat) -> transmisa -> depusa (cu recipisa) / eroare;
 //   scutita = firma nu datoreaza declaratia in acea perioada (opreste atentionarile).
 
 const TIPURI = {
@@ -35,7 +36,7 @@ const TIPURI = {
   intrastat: { nume: 'Intrastat — declarație statistică (INS)' },
   bilant: { nume: 'Situații financiare anuale (bilanț)' },
 };
-const STATUSES = ['nedepusa', 'generata', 'depusa', 'eroare', 'scutita'];
+const STATUSES = ['nedepusa', 'generata', 'transmisa', 'depusa', 'eroare', 'scutita'];
 
 /** De unde se descarca fiecare declaratie, pe perioada ei. Sta LANGA `TIPURI` fiindca e tot
  *  identitatea declaratiei, nu o preferinta de ecran.
@@ -106,32 +107,34 @@ function dueDate(tip, period, profile) {
   const nm = m === 12 ? 1 : m + 1;
   if (tip === 'saft') {
     // D406: ultima zi calendaristica a lunii urmatoare perioadei raportate (fara gratie din 2026)
-    return ny + '-' + pad2(nm) + '-' + pad2(lastDayOfMonth(ny, nm));
+    return roCalendar.adjustFiscalDeadline(ny + '-' + pad2(nm) + '-' + pad2(lastDayOfMonth(ny, nm)));
   }
   // Intrastat: pana pe 15 ale lunii urmatoare (termen INS)
-  if (tip === 'intrastat') return ny + '-' + pad2(nm) + '-15';
-  // D101 (impozit pe profit anual): 25 martie anul URMATOR anului fiscal (perioada = Y-12)
-  if (tip === 'd101') return (y + 1) + '-03-25';
-  // D107 urmează termenul declarației anuale de impozit pe profit: pentru anii până în 2025
-  // schema cere 25 iunie; din 2026, 25 martie.
-  if (tip === 'd107') return (y + 1) + (y <= 2025 ? '-06-25' : '-03-25');
-  // D205: ultima zi din februarie a anului urmator. Daca aceasta cade in weekend, termenul se
-  // muta in prima zi lucratoare (de ex. veniturile 2025: 28.02.2026 sambata -> 02.03.2026).
+  if (tip === 'intrastat') return roCalendar.adjustFiscalDeadline(ny + '-' + pad2(nm) + '-15');
+  // D101: pentru anii acoperiti de produs termenul este 25 iunie al anului urmator.
+  // Pastreaza regula istorica de 25 martie numai pentru exercitiile <= 2020.
+  if (tip === 'd101') return roCalendar.adjustFiscalDeadline((y + 1) + (y >= 2021 ? '-06-25' : '-03-25'));
+  // D107 urmeaza termenul declaratiei anuale de impozit pe profit.
+  if (tip === 'd107') return roCalendar.adjustFiscalDeadline((y + 1) + '-06-25');
+  // D394: 30 ale lunii urmatoare; pentru ianuarie, ultima zi din februarie.
+  if (tip === 'd394') {
+    const day = m === 1 ? lastDayOfMonth(ny, nm) : 30;
+    return roCalendar.adjustFiscalDeadline(ny + '-' + pad2(nm) + '-' + pad2(day));
+  }
+  // D205: ultima zi din februarie a anului urmator, ajustata la zi lucratoare.
   if (tip === 'd205') {
-    const d = new Date(Date.UTC(y + 1, 1, lastDayOfMonth(y + 1, 2)));
-    while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1);
-    return d.toISOString().slice(0, 10);
+    return roCalendar.adjustFiscalDeadline((y + 1) + '-02-' + pad2(lastDayOfMonth(y + 1, 2)));
   }
   // D100 — plata anticipata a trimestrului IV, sistem anual (art. 41 alin. (8)): 25 decembrie,
   // ACELASI an. Nu se aplica ramurii de exceptie a alin. (7), care declara doar trimestrele I-III.
   if (tip === 'd100' && m === 12 && profile && profile.profitAnticipat && !profile.anticipatProfitContabil) {
-    return y + '-12-25';
+    return roCalendar.adjustFiscalDeadline(y + '-12-25');
   }
   // Situatiile financiare anuale: 31 MAI anul urmator, pentru societati (art. 36 alin. 1 din
   // Legea contabilitatii 82/1991 — 150 de zile de la incheierea exercitiului financiar).
-  if (tip === 'bilant') return (y + 1) + '-05-31';
+  if (tip === 'bilant') return roCalendar.adjustFiscalDeadline((y + 1) + '-05-31');
   // restul: 25 ale lunii urmatoare
-  return ny + '-' + pad2(nm) + '-25';
+  return roCalendar.adjustFiscalDeadline(ny + '-' + pad2(nm) + '-25');
 }
 
 /**
@@ -180,7 +183,7 @@ function expectedForFirma(v, period) {
     .map((tip) => ({ tip, nume: (TIPURI[tip] || {}).nume || tip, period, due: dueDate(tip, period, profile) }));
 }
 
-// ── e-Factura B2B: facturi emise netrimise in SPV (termen legal: 5 zile CALENDARISTICE, OUG 89/2025) ──
+// ── e-Factura: facturi emise netrimise in SPV (termen legal: 5 zile LUCRATOARE, OUG 89/2025) ──
 //
 // DOUA conditii, independente, si se greseau impreuna:
 //   1. documentul e o factura pe care o EMITEM  -> `xml.isSendable` (steagul `eFactura` de pe tip);
@@ -197,14 +200,7 @@ function expectedForFirma(v, period) {
 
 /** Data + n zile lucratoare (sambata/duminica sarite). Pastrat pentru compatibilitate. */
 function addBusinessDays(dateStr, n) {
-  const d = new Date(dateStr + 'T00:00:00Z');
-  let left = n;
-  while (left > 0) {
-    d.setUTCDate(d.getUTCDate() + 1);
-    const wd = d.getUTCDay();
-    if (wd !== 0 && wd !== 6) left -= 1;
-  }
-  return d.toISOString().slice(0, 10);
+  return roCalendar.addWorkingDays(dateStr, n);
 }
 /** Data + n zile CALENDARISTICE. */
 function addCalendarDays(dateStr, n) {
@@ -215,7 +211,7 @@ function addCalendarDays(dateStr, n) {
 
 /**
  * Facturile B2B emise (cu CUI de partener) care NU au fost trimise in SPV, din ultimele
- * `lookbackDays` zile. `due` = data emiterii + 5 zile CALENDARISTICE (termenul legal e-Factura, OUG 89/2025).
+ * `lookbackDays` zile. `due` = data emiterii + 5 zile LUCRATOARE (OUG 89/2025).
  */
 function eFacturaNetrimise(v, today, lookbackDays) {
   const t = today || new Date().toISOString().slice(0, 10);
@@ -227,7 +223,7 @@ function eFacturaNetrimise(v, today, lookbackDays) {
     if (xml.perimetruEFactura(e.partenerCui, (v.partners || {})[String(e.partenerCui || '').replace(/^ro/i, '')]) === 'strain') continue;
     if (e.spv && (e.spv.index || e.spv.stare)) continue; // deja trimisa
     if (!e.data || e.data < from || e.data > t) continue;
-    const due = addCalendarDays(e.data, 5);
+    const due = addBusinessDays(e.data, 5);
     items.push({ entryId: e.id, document: e.document || '', partener: e.partener || '', data: e.data, due, overdue: due < t });
   }
   items.sort((a, b) => a.due.localeCompare(b.due));
@@ -248,20 +244,42 @@ function record(d, firmaId, tip, period, patch, nextIdFn) {
   d.declarations = d.declarations || [];
   let rec = find(d, firmaId, tip, period);
   if (!rec) {
-    rec = { id: nextIdFn('dcl'), firmaId, tip, period, status: 'nedepusa', generatedAt: null, submittedAt: null, recipisa: '', note: '' };
+    rec = { id: nextIdFn('dcl'), firmaId, tip, period, status: 'nedepusa', generatedAt: null, transmittedAt: null, submittedAt: null, recipisa: '', note: '', artifacts: [], statusHistory: [] };
     d.declarations.push(rec);
   }
   const p = patch || {};
+  const oldStatus = rec.status || 'nedepusa';
   if (p.status && STATUSES.includes(p.status)) {
-    const keep = p.status === 'generata' && (rec.status === 'depusa' || rec.status === 'scutita');
+    const keep = p.status === 'generata' && (rec.status === 'transmisa' || rec.status === 'depusa' || rec.status === 'scutita');
     if (!keep) rec.status = p.status;
   }
   if (p.generatedAt) rec.generatedAt = p.generatedAt;
+  if (p.status === 'transmisa') rec.transmittedAt = p.transmittedAt || new Date().toISOString();
   if (p.status === 'depusa') rec.submittedAt = p.submittedAt || new Date().toISOString();
   if (p.recipisa != null) rec.recipisa = String(p.recipisa).slice(0, 100);
   if (p.note != null) rec.note = String(p.note).slice(0, 300);
   if (p.updatedBy) rec.updatedBy = p.updatedBy;
-  rec.updatedAt = new Date().toISOString();
+  if (p.artifact && p.artifact.sha256) {
+    rec.artifacts = Array.isArray(rec.artifacts) ? rec.artifacts : [];
+    const art = {
+      sha256: String(p.artifact.sha256), bytes: Number(p.artifact.bytes) || 0,
+      filename: String(p.artifact.filename || '').slice(0, 160),
+      mime: String(p.artifact.mime || 'application/xml').slice(0, 80),
+      generatedAt: p.artifact.generatedAt || p.generatedAt || new Date().toISOString(),
+      by: String(p.artifact.by || p.updatedBy || '').slice(0, 80),
+    };
+    // Redescarcarea aceluiasi continut actualizeaza reperul curent, fara copii identice in istoric.
+    if (!rec.artifacts.some((x) => x.sha256 === art.sha256)) rec.artifacts.push(art);
+    rec.artifactHash = art.sha256; rec.artifactBytes = art.bytes; rec.artifactFilename = art.filename;
+  }
+  const now = new Date().toISOString();
+  rec.statusHistory = Array.isArray(rec.statusHistory) ? rec.statusHistory : [];
+  if (rec.status !== oldStatus) rec.statusHistory.push({
+    from: oldStatus, to: rec.status, at: now, by: String(p.updatedBy || '').slice(0, 80),
+    note: String(p.note || '').slice(0, 300), recipisa: String(p.recipisa || '').slice(0, 100),
+    artifactHash: String((p.artifact && p.artifact.sha256) || rec.artifactHash || ''),
+  });
+  rec.updatedAt = now;
   return rec;
 }
 
@@ -307,9 +325,12 @@ function addSubmission(d, firmaId, tip, period, info, nextIdFn) {
     // anterioara, iar o rectificativa fara diferenta vizibila nu se poate verifica de nimeni.
     sume: (info && info.sume) || null,
     tipRec: (info && info.tipRec != null) ? Number(info.tipRec) : null,
+    recipisa: String((info && info.recipisa) || '').slice(0, 100),
+    artifactHash: String((info && info.artifactHash) || rec.artifactHash || ''),
   };
   rec.depuneri.push(dep);
   rec.status = 'depusa';
+  rec.recipisa = dep.recipisa;
   rec.submittedAt = dep.ts;
   rec.updatedAt = dep.ts;
   return { rec, depunere: dep };
@@ -376,8 +397,10 @@ function registerForFirma(d, v, period, today) {
       // aceeasi intrebare ar fi exact defectul reparat aici, cu semnul schimbat.
       urgenta: urgentaTermen(e.due, status, t),
       overdue: urgentaTermen(e.due, status, t) === 'restanta',
-      generatedAt: rec.generatedAt || null, submittedAt: rec.submittedAt || null,
-      recipisa: rec.recipisa || '', note: rec.note || '', links: descarcariPentru(rec, e.tip, period),
+      generatedAt: rec.generatedAt || null, transmittedAt: rec.transmittedAt || null, submittedAt: rec.submittedAt || null,
+      recipisa: rec.recipisa || '', note: rec.note || '', artifactHash: rec.artifactHash || '',
+      artifactBytes: rec.artifactBytes || 0, artifacts: rec.artifacts || [], statusHistory: rec.statusHistory || [],
+      links: descarcariPentru(rec, e.tip, period),
     };
   });
   // inregistrari manuale in afara celor asteptate (ex. D100 marcat intr-o luna non-trimestriala)
@@ -389,8 +412,10 @@ function registerForFirma(d, v, period, today) {
       // Inregistrare manuala in afara celor asteptate: nu poate fi „restanta" (firma nici n-o
       // datoreaza), dar starea trebuie sa existe ca sa nu fie `undefined` in interfata.
       status: rec.status, urgenta: rec.status === 'depusa' || rec.status === 'scutita' ? 'gata' : 'in-pregatire',
-      overdue: false, generatedAt: rec.generatedAt, submittedAt: rec.submittedAt,
-      recipisa: rec.recipisa || '', note: rec.note || '', links: descarcariPentru(rec, rec.tip, period),
+      overdue: false, generatedAt: rec.generatedAt, transmittedAt: rec.transmittedAt || null, submittedAt: rec.submittedAt,
+      recipisa: rec.recipisa || '', note: rec.note || '', artifactHash: rec.artifactHash || '',
+      artifactBytes: rec.artifactBytes || 0, artifacts: rec.artifacts || [], statusHistory: rec.statusHistory || [],
+      links: descarcariPentru(rec, rec.tip, period),
     });
   }
   return rows;
@@ -400,17 +425,18 @@ function registerForFirma(d, v, period, today) {
 function portfolio(d, scopedList, period, today) {
   const t = today || new Date().toISOString().slice(0, 10);
   const firms = [];
-  const tot = { asteptate: 0, depuse: 0, generate: 0, nedepuse: 0, erori: 0, scutite: 0, restante: 0 };
+  const tot = { asteptate: 0, depuse: 0, transmise: 0, generate: 0, nedepuse: 0, erori: 0, scutite: 0, restante: 0 };
   for (const v of scopedList) {
     // Acelasi reper ca la notificari: pentru o luna dinaintea existentei firmei nu exista obligatii.
     // Firma RAMANE in lista, cu zero — portofoliul e inventarul firmelor administrate, iar una care
     // dispare si reapare dupa luna aleasa ar parea pierduta.
     const dela = primaLunaUrmarita(v);
     const rows = (dela && String(period || '') < dela) ? [] : registerForFirma(d, v, period, t);
-    const c = { asteptate: rows.length, depuse: 0, generate: 0, nedepuse: 0, erori: 0, scutite: 0, restante: 0 };
+    const c = { asteptate: rows.length, depuse: 0, transmise: 0, generate: 0, nedepuse: 0, erori: 0, scutite: 0, restante: 0 };
     const atentionari = [];
     for (const r of rows) {
       if (r.status === 'depusa') c.depuse += 1;
+      else if (r.status === 'transmisa') c.transmise += 1;
       else if (r.status === 'generata') c.generate += 1;
       else if (r.status === 'eroare') { c.erori += 1; atentionari.push(r.nume.split(' — ')[0] + ': eroare' + (r.note ? ' (' + r.note + ')' : '')); }
       else if (r.status === 'scutita') c.scutite += 1;

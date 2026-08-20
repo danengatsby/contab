@@ -78,11 +78,11 @@ if ($('#scannerBtn') && $('#scannerBtn').disabled) {
 }
 /** Verdictul controlului de calitate, in cuvinte: ce s-a verificat si de ce cere revizuire.
  *  Functie pura (testata in test/frontend.mjs) — randarea nu decide nimic, serverul a decis deja. */
-export function calitateHtml(cal, autoPostat) {
+export function calitateHtml(cal, autoCiorna) {
   if (!cal) return '';
-  if (autoPostat) {
-    return '<br><span class="pill ok">postat automat</span> <span class="muted">scor ' + H(cal.scor)
-      + '% — toate controalele au trecut. Articol: ' + H(autoPostat.entryId) + '</span>';
+  if (autoCiorna) {
+    return '<br><span class="pill ok">ciornă propusă automat</span> <span class="muted">scor ' + H(cal.scor)
+      + '% — toate controalele tehnice au trecut; verificarea umană rămâne obligatorie. Articol: ' + H(autoCiorna.entryId) + '</span>';
   }
   const picate = (cal.controale || []).filter((c) => !c.ok);
   const trecute = (cal.controale || []).length - picate.length;
@@ -105,9 +105,9 @@ async function uploadFile(file) {
       + (res.warning ? '<br><span data-u="u13">' + H(res.warning) + '</span>' : '')
       + ((res.checkWarnings || []).length
         ? '<br><span data-u="u13">⚠️ Verifică: ' + res.checkWarnings.map(H).join('<br>⚠️ ') + '</span>' : '')
-      + calitateHtml(res.calitate, res.autoPostat);
-    // Postat automat: articolul e deja in contabilitate, nu mai deschidem formularul.
-    if (res.autoPostat) { CURRENT = null; loadEntries && loadEntries(); return; }
+      + calitateHtml(res.calitate, res.autoCiorna);
+    // Ciorna propusa exista deja in lista; nu cream un al doilea articol din acelasi document.
+    if (res.autoCiorna) { CURRENT = null; loadEntries && loadEntries(); return; }
     CURRENT = { documentId: res.documentId, fields: res.fields, suggestedType: res.suggestedType, calitate: res.calitate };
     openForm(res.suggestedType, res.fields);
   } catch (e) { st.className = 'status err'; st.textContent = e.message; }

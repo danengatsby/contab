@@ -1871,6 +1871,20 @@ section('Plafonul de 33% al avantajelor neimpozabile (art. 76 alin. (4^1) si (4^
   ok('motivul spune ca plafonul anual e consumat', /anual/i.test(dupa.beneficii[0].motiv));
   const altAn = statePlata([ang({ beneficii: { pensii: 500 } })], '2027-06', istoric).rows[0];
   eq('anul urmator plafonul reincepe', altAn.beneficii[0].impozabil, 0);
+  const cuBnr = statePlata([ang({ beneficii: { pensii: 500 } })], '2026-06', [], {
+    cursuriBnr: [{ id: '2026-06-30', cursuri: { EUR: 5.1 } }],
+  }).rows[0];
+  eq('plafonul EUR foloseste cursul BNR din ultima zi a lunii',
+    cuBnr.beneficii[0].limitaIndividuala, 2040);
+  ok('provenienta cursului BNR ramane pe fotografia randului',
+    cuBnr.cursEurBeneficii === 5.1 && cuBnr.cursEurBeneficiiData === '2026-06-30'
+      && cuBnr.cursEurBeneficiiSursa === 'bnr' && !cuBnr.beneficiiCursAproximat);
+  ok('fara istoric BNR, beneficiul anual EUR este marcat si nu poate fi postat tacit',
+    subLimite.beneficiiCursNecesar && subLimite.beneficiiCursAproximat);
+  eq('OUG 8/2026: pensia ocupationala are plafon anual propriu de 400 EUR',
+    statePlata([ang({ beneficii: { pensiiOcupationale: 100 } })], '2026-06', [], {
+      cursuriBnr: [{ id: '2026-06-30', cursuri: { EUR: 5.1 } }],
+    }).rows[0].beneficii[0].limitaIndividuala, 2040);
 
   // 0) Cuantumurile care alimenteaza limitele vin din RATES si sunt SUPRASCRIABILE din Setari.
   //    Se schimba prin alte acte decat Codul fiscal (legea tichetelor, legea BASS, HG-ul diurnei),
@@ -1923,31 +1937,128 @@ section('Plafonul de 33% al avantajelor neimpozabile (art. 76 alin. (4^1) si (4^
   eq('fara beneficii, randul e gol si totalul zero', gol.beneficii.length + '|' + gol.beneficiiImpozabile, '0|0');
 }
 
-section('Concediu medical in statul de plata (OUG 158/2005, simplificat)');
-const pCm = fiscal.payroll(4000, 0, { cmAngajator: 500, cmFnuass: 700 });
+section('Concediu medical in statul de plata (OUG 158/2005 + regulile temporare 2026-2027)');
+const pCm = fiscal.payroll(4000, 0, { cmAngajator: 500, cmFnuass: 700, cmCuCass: 1200 });
 eq('CAS pe salariu + indemnizatii CM (25% din 5200)', pCm.cas, 1300);
-eq('CASS doar pe salariu (indemnizatiile CM sunt exceptate)', pCm.cass, 400);
-eq('impozit pe tot venitul, dupa contributii', pCm.impozit, 350);
+eq('CASS pe salariu + CM pentru codurile 01/07/10 (10% din 5200)', pCm.cass, 520);
+eq('impozit pe tot venitul, dupa contributii', pCm.impozit, 338);
 eq('CAM doar pe salariu + partea angajator', pCm.cam, 101.25);
-eq('netul include indemnizatiile', pCm.net, 3150);
+eq('netul include indemnizatiile', pCm.net, 3042);
 eq('costul angajatorului exclude partea FNUASS (recuperabila)', pCm.costTotal, 4601.25);
-const spCm = statePlata([{ id: 'cm1', nume: 'Bolnav Ion', salariuBrut: 4200, zileCM: 7, procentCM: 75, zileLucratoare: 21 }], '2026-06');
+eq('alte coduri CM raman exceptate de la CASS',
+  fiscal.payroll(4000, 0, { cmAngajator: 500, cmFnuass: 700 }).cass, 400);
+const spCm = statePlata([{ id: 'cm1', nume: 'Bolnav Ion', salariuBrut: 4200, zileCM: 7,
+  cnp: '1900101415238', procentCM: 55, zileLucratoare: 21, dataInceputCM: '2026-06-08',
+  dataInceputCertificatCM: '2026-06-08', dataSfarsitCM: '2026-06-16',
+  dataAcordareCM: '2026-06-08', serieCM: 'CCMAA', numarCM: '1234567890',
+  locPrescriereCM: 1, codBoalaCM: '100' }], '2026-06');
 const rCm = spCm.rows[0];
 eq('salariul redus proportional (14/21 din 4200)', rCm.brut, 2800);
 eq('baza CM fara istoric = brutul curent', rCm.mediaCM, 4200);
-eq('angajatorul suporta primele 5 zile (150/zi)', rCm.cmAngajator, 750);
-eq('FNUASS suporta restul de 2 zile', rCm.cmFnuass, 300);
-eq('totalurile cumuleaza indemnizatia', spCm.totals.indemnizatieCM, 1050);
+eq('cod 01, episod <=7 zile: 55%; angajatorul suporta zilele 2-6 lucratoare', rCm.cmAngajator, 440);
+eq('FNUASS suporta restul de 2 zile platite', rCm.cmFnuass, 220);
+eq('prima zi lucratoare este neplatita in 2026', rCm.zileNeplatiteCM, 1);
+eq('totalurile cumuleaza numai cele 6 zile platite', spCm.totals.indemnizatieCM, 660);
 const histCm = [{ period: '2026-04', rows: [{ angajatId: 'cm1', brut: 4200 }] }, { period: '2026-05', rows: [{ angajatId: 'cm1', brut: 8400 }] }];
-const spH = statePlata([{ id: 'cm1', nume: 'B', salariuBrut: 4200, zileCM: 4, zileLucratoare: 21 }], '2026-06', histCm);
+const spH = statePlata([{ id: 'cm1', nume: 'B', salariuBrut: 4200, zileCM: 4,
+  zileLucratoare: 21, dataInceputCM: '2026-06-08' }], '2026-06', histCm);
 eq('baza CM = media ultimelor luni postate (6300)', spH.rows[0].mediaCM, 6300);
-eq('indemnizatie 4 zile x 225 (toata la angajator)', spH.rows[0].cmAngajator, 900);
+eq('baza zilnica CM foloseste zilele lunilor istorice, nu cele 21 ale lunii curente', spH.rows[0].mediaZilnicaCM, 315);
+eq('indemnizatie: 3 zile platite x 236,25 (toata la angajator)', spH.rows[0].cmAngajator, 708.75);
 const spPlaf = statePlata([{ id: 'x1', nume: 'P', salariuBrut: 4200, zileCM: 1, zileLucratoare: 21 }], '2026-06', [{ period: '2026-05', rows: [{ angajatId: 'x1', brut: 999999 }] }]);
 eq('baza CM plafonata la 12 salarii minime', spPlaf.rows[0].mediaCM, 12 * fiscal.salariuMinimLa('2026-06'));
-ok('D112: baza CAS (A_13) include CM, baza CASS (A_11) nu', (() => {
+ok('D112 cod 01: bazele CAS si CASS includ indemnizatia CM', (() => {
   const x = xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spCm);
-  return x.includes('A_13="3850"') && x.includes('A_11="2800"');
+  return /<asiguratB4[^>]*B4_5="3460"[^>]*B4_7="3460"/.test(x);
 })());
+const spCm08 = statePlata([{ id: 'cm08', nume: 'Maternitate', salariuBrut: 4200, zileCM: 7,
+  cnp: '1900101415238', procentCM: 85, codIndemnizatieCM: '08', zileLucratoare: 21,
+  dataInceputCM: '2026-06-08', dataInceputCertificatCM: '2026-06-08',
+  dataSfarsitCM: '2026-06-16', dataAcordareCM: '2026-06-08', serieCM: 'CCMBB',
+  numarCM: '1234567891', locPrescriereCM: 2, codBoalaCM: '200',
+  cmExceptatZiNeplatita: true, cmIntegralFnuass: true }], '2026-06');
+ok('D112 cod 08: baza CAS include CM, baza CASS ramane fara indemnizatie', (() => {
+  const x = xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spCm08);
+  return /<asiguratB4[^>]*B4_5="2800"[^>]*B4_6="280"[^>]*B4_7="3990"/.test(x);
+})());
+ok('D112 CM: sectiunea D poarta certificatul, zilele totale/platite si media istorica', (() => {
+  const x = xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-06', spCm);
+  const d = (x.match(/<asiguratD[\s\S]*?\/>/) || [])[0] || '';
+  return /D_1="CCMAA"/.test(d) && /D_9b="1"/.test(d)
+    && /D_14a="5"/.test(d) && /D_14="4"/.test(d) && /D_15a="2"/.test(d)
+    && /D_16a="7"/.test(d) && /D_16="6"/.test(d)
+    && /D_17="4200"/.test(d) && /D_18="21"/.test(d) && /D_19="200"/.test(d);
+})());
+const spCmContinuare = statePlata([{ id: 'cmc', nume: 'Continuare Ion', salariuBrut: 4200,
+  zileCM: 8, cnp: '1900101415238', procentCM: 65, codIndemnizatieCM: '01',
+  zileLucratoare: 23, dataInceputCM: '2026-06-27',
+  dataInceputCertificatCM: '2026-07-01', dataSfarsitCM: '2026-07-10',
+  dataAcordareCM: '2026-07-01', serieCM: 'CCMCC', numarCM: '1234567892',
+  serieInitialCM: 'CCMCI', numarInitialCM: '1234567891', locPrescriereCM: 1,
+  codBoalaCM: '100', cmDiferentaAngajator: 40, cmDiferentaFnuass: 20 }], '2026-07');
+eq('continuare CM: diferenta anterioara intra in indemnizatia lunii curente',
+  spCmContinuare.rows[0].indemnizatieCM,
+  Math.round((spCmContinuare.rows[0].cmAngajatorCurent
+    + spCmContinuare.rows[0].cmFnuassCurent + 60) * 100) / 100);
+ok('D112 continuare 07/2026: diferentele apar distinct si in totalurile legale', (() => {
+  const x = xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-07', spCmContinuare);
+  const d = (x.match(/<asiguratD[\s\S]*?\/>/) || [])[0] || '';
+  return /Data_CMI="27\.06\.2026"/.test(d) && /D_20a="40"/.test(d) && /D_21a="20"/.test(d)
+    && /B3_7D="60"/.test(x) && /C2_155="40"/.test(x) && /C2_156="20"/.test(x);
+})());
+const certificatMultiplu = (extra) => Object.assign({ zileCM: 3, procentCM: 55,
+  codIndemnizatieCM: '01', dataInceputCM: '2026-07-06', serieCM: 'CCM01',
+  numarCM: '1234567801', dataAcordareCM: '2026-07-06',
+  dataInceputCertificatCM: '2026-07-06', dataSfarsitCM: '2026-07-08',
+  locPrescriereCM: 1, codBoalaCM: '100' }, extra || {});
+const spCmMultiplu = statePlata([{ id: 'cmm', nume: 'Multiplu Ion', cnp: '1900101415238',
+  salariuBrut: 4200, zileLucratoare: 23, cmBazaPerioadaCompleta: true,
+  istoricBazaCM: ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06']
+    .map((period) => ({ period, venit: 4200, zile: 21 })),
+  certificateCM: [certificatMultiplu(), certificatMultiplu({ procentCM: 85,
+    codIndemnizatieCM: '08', dataInceputCM: '2026-07-13', serieCM: 'CCM08',
+    numarCM: '1234567808', dataAcordareCM: '2026-07-13',
+    dataInceputCertificatCM: '2026-07-13', dataSfarsitCM: '2026-07-15',
+    codBoalaCM: '200', cmExceptatZiNeplatita: true, cmIntegralFnuass: true })] }], '2026-07');
+ok('doua certificate CM: zilele si indemnizatiile se calculeaza separat si se agrega', (() => {
+  const r = spCmMultiplu.rows[0];
+  return r.certificateCM.length === 2 && r.zileCM === 6
+    && r.indemnizatieCM === Math.round((r.certificateCM[0].indemnizatieCM
+      + r.certificateCM[1].indemnizatieCM) * 100) / 100
+    && r.cmCuCass === r.certificateCM[0].indemnizatieCM;
+})());
+ok('D112 multiplu: doua sectiuni D si ambele familii C2, pe acelasi asigurat', (() => {
+  const x = xml.d112Xml({ cui: 'RO1', nume: 'X' }, '2026-07', spCmMultiplu);
+  return (x.match(/<asiguratD/g) || []).length === 2 && /D_9="01"/.test(x)
+    && /D_9="08"/.test(x) && /C2_121="1"/.test(x) && /C2_31="1"/.test(x);
+})());
+const bazaCmCompleta = {
+  id: 'cm-episod', nume: 'Episod Continuu', cnp: '1900101415238', salariuBrut: 4200,
+  zileLucratoare: 23, cmBazaPerioadaCompleta: true,
+  istoricBazaCM: ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06']
+    .map((period) => ({ period, venit: 4200, zile: 21 })),
+};
+const spAcelasiEpisod = statePlata([Object.assign({}, bazaCmCompleta, { certificateCM: [
+  certificatMultiplu(), certificatMultiplu({ zileCM: 2, dataInceputCM: '2026-07-06',
+    serieCM: 'CCM02', numarCM: '1234567802', dataAcordareCM: '2026-07-09',
+    dataInceputCertificatCM: '2026-07-09', dataSfarsitCM: '2026-07-10' }),
+] })], '2026-07');
+ok('certificate CM in continuarea aceluiasi episod: o singura zi neplatita, fara dublarea angajatorului', (() => {
+  const r = spAcelasiEpisod.rows[0];
+  return r.zileCM === 5 && r.zileNeplatiteCM === 1 && r.zilePlatiteCM === 4
+    && r.zileCMAngajator === 4 && r.certificateCM[0].zileNeplatiteCM === 1
+    && r.certificateCM[1].zileNeplatiteCM === 0;
+})());
+const cmMaternitate = (data) => Object.assign({}, bazaCmCompleta, { certificateCM: [
+  certificatMultiplu({ procentCM: 85, codIndemnizatieCM: '08', dataInceputCM: data,
+    serieCM: 'CCM08', numarCM: '1234567808', dataAcordareCM: data,
+    dataInceputCertificatCM: data, dataSfarsitCM: data.slice(0, 8) + '08',
+    codBoalaCM: '200', cmIntegralFnuass: true }),
+] });
+eq('maternitate acordata dupa 01.06.2026: exceptia legala pastreaza toate zilele platite',
+  statePlata([cmMaternitate('2026-06-04')], '2026-06').rows[0].zileNeplatiteCM, 0);
+eq('maternitate acordata inainte de 01.06.2026: exceptia noua nu se aplica retroactiv',
+  statePlata([cmMaternitate('2026-02-04')], '2026-02').rows[0].zileNeplatiteCM, 1);
 
 section('Norma partiala (OUG 16/2022) + concediu de odihna');
 // salariul minim S1 2026 = 4050: diferentele pana la nivelul minim le suporta ANGAJATORUL
@@ -2032,6 +2143,8 @@ ok('D112 pe schema curenta (declaratieUnica v7)', d112.includes('xmlns="mfp:anaf
 ok('D112 contine asiguratul (nume/prenume separate + CNP)', d112.includes('numeAsig="Popescu"') && d112.includes('prenAsig="Ion"') && d112.includes('cnpAsig="1900101415238"'));
 ok('D112: obligatiile pe coduri (602/412/432/480) cu totalul de plata', /A_codOblig="602" A_datorat="282"/.test(d112) && /A_codOblig="480" A_datorat="113"/.test(d112) && d112.includes('totalPlata_A="2145"'));
 ok('D112: impozitul per asigurat in E3 (E3_15) si Timp_E3', d112.includes('E3_15="282"') && d112.includes('Timp_E3="282"'));
+ok('D112: deducerea personala din E1 este detaliata identic in E3',
+  d112.includes('E1_4="430"') && d112.includes('E3_12="430"'));
 ok('D112: NZL cu sarbatorile legale (iunie 2026 = 21 zile, 1 iunie Rusalii)', d112.includes('A_8="21"') && d112.includes('A_6="168"'));
 // spor (impozabil) + retineri (din net)
 const sp2 = statePlata([{ id: 'x', nume: 'Test', salariuBrut: 4700, spor: 300, retineri: 500 }], '2026-06');
@@ -2042,6 +2155,12 @@ eq('total retineri', sp2.totals.retineri, 500);
 const sp3 = statePlata([{ id: 'y', nume: 'Test', salariuBrut: 5000, avans: 1000, retineri: 200 }], '2026-06');
 eq('rest de plata = net - avans - retineri', sp3.rows[0].restPlata, 1768);
 eq('total avans', sp3.totals.avans, 1000);
+const spTicheteD112 = statePlata([{ id: 'tm', nume: 'Test Tichete', cnp: '1900101415238',
+  salariuBrut: 5000, tichete: 400, functieBaza: false }], '2026-06');
+const d112Tichete = xml.d112Xml(v.company, '2026-06', spTicheteD112);
+ok('D112: E3 foloseste baza fiscala reala cand exista tichete, nu baza CAS',
+  spTicheteD112.rows[0].bazaImpozit === 3610 && d112Tichete.includes('E3_14="3610"')
+    && d112Tichete.includes('E3_15="361"'));
 
 section('Deducere personala (art. 77 Cod fiscal)');
 const sm = fiscal.FISCAL.salariuMinimS1; // 4050
@@ -2130,7 +2249,7 @@ ok('impozit cu deducere < impozit fara deducere', payMin.impozit < fiscal.payrol
   ok('...deci impozit mai mare decat la functia de baza', alDoilea.impozit > faraCamp.impozit);
   // Persoanele in intretinere cresc deducerea (20% -> 30% din SM la 2 persoane).
   const cuDoua = statePlata([{ id: 'q4', nume: 'Doua pers', salariuBrut: 5000, persoane: 2 }], '2026-06').rows[0];
-  eq('doua persoane in intretinere -> deducere mai mare', cuDoua.deducere, 640);
+  eq('doua persoane in intretinere -> deducere mai mare', cuDoua.deducere, 840);
   ok('...si impozit mai mic', cuDoua.impozit < faraCamp.impozit);
 }
 
@@ -2877,7 +2996,7 @@ section('D107 — beneficiarii sponsorizărilor/mecenatului');
     { nume: 'Popescu', prenume: 'Ion', functie: 'Contabil' });
   ok('D107 XML: schema, termenul 2026, codul bugetar si totalurile sunt cele oficiale',
     wellFormed(x107) && /<d107 xmlns="mfp:anaf:dgti:d107:declaratie:v1"/.test(x107)
-      && /scadenta="25032027" cod_bug="5503XXXXXX"/.test(x107)
+      && /scadenta="25062027" cod_bug="5503XXXXXX"/.test(x107)
       && !/nr_evid=/.test(x107)
       && /TVal1="3000" TVal2="2100" TVal3="2500"/.test(x107)
       && /totalPlata_A="7600"/.test(x107));
@@ -3033,13 +3152,14 @@ section('C1-C2: concediul medical pe zile calendaristice + cursul plafonului mic
   const pay = require('../src/payroll');
   const bnrM = require('../src/bnr');
   const round2 = (x) => Math.round(x * 100) / 100;
-  // ── C1: primele 5 zile suportate de angajator sunt CALENDARISTICE (OUG 158/2005 art. 12),
-  // iar indemnizatia se cuvine doar pentru zilele LUCRATOARE din ele. Formula veche numara 5 zile
-  // lucratoare, adica maximul posibil — cost mutat sistematic de la FNUASS la firma.
+  // ── C1: utilitarul calendaristic ramane probat separat; in 2026, OUG 91/2025 elimina prima zi
+  // lucratoare platibila, iar angajatorul suporta zilele lucratoare din pozitiile calendaristice 2-6.
   eq('concediu inceput LUNI: 5 zile lucratoare in primele 5 calendaristice', pay.zileLucratoareInPrimele('2026-06-08', 5), 5);
   eq('concediu inceput JOI: doar 3 (joi, vineri, luni)', pay.zileLucratoareInPrimele('2026-06-11', 5), 3);
   eq('concediu inceput VINERI: 3 (vineri, luni, marti)', pay.zileLucratoareInPrimele('2026-06-12', 5), 3);
   eq('concediu inceput SAMBATA: 3 (luni, marti, miercuri)', pay.zileLucratoareInPrimele('2026-06-13', 5), 3);
+  eq('sarbatoarea legala nu este zi lucratoare (29 mai-2 iunie contine 1 iunie)',
+    pay.zileLucratoareInPrimele('2026-05-29', 5), 2);
   eq('fara data, nu inventam un raspuns', pay.zileLucratoareInPrimele('', 5), null);
   eq('data invalida, la fel', pay.zileLucratoareInPrimele('nu-e-data', 5), null);
 
@@ -3049,15 +3169,20 @@ section('C1-C2: concediul medical pe zile calendaristice + cursul plafonului mic
   const joi = pay.statePlata(ang({ dataInceputCM: '2026-06-11' }), '2026-06', []).rows[0];
   const luni = pay.statePlata(ang({ dataInceputCM: '2026-06-08' }), '2026-06', []).rows[0];
   eq('concediu de joi: angajatorul suporta 3 zile', joi.zileCMAngajator, 3);
-  eq('concediu de luni: angajatorul suporta 5', luni.zileCMAngajator, 5);
+  eq('concediu de luni: angajatorul suporta 4 zile (marti-vineri)', luni.zileCMAngajator, 4);
+  eq('regula temporara: prima zi lucratoare este neplatita o singura data', luni.zileNeplatiteCM, 1);
   ok('deci angajatorul plateste mai putin cand concediul incepe joi', joi.cmAngajator < luni.cmAngajator);
   ok('...iar FNUASS suporta diferenta, nu dispare', round2(joi.cmAngajator + joi.cmFnuass) === round2(luni.cmAngajator + luni.cmFnuass));
   ok('indemnizatia totala e aceeasi in ambele cazuri', joi.indemnizatieCM === luni.indemnizatieCM);
   // Fara data: se pastreaza vechea aproximare, dar articolul o SEMNALEAZA.
   const fara = pay.statePlata(ang({}), '2026-06', []).rows[0];
-  eq('fara data: ramane aproximarea de 5 zile', fara.zileCMAngajator, 5);
+  eq('fara data: aproximarea pastreaza maximum 4 zile platite la angajator', fara.zileCMAngajator, 4);
   ok('...dar e marcata ca aproximata', fara.cmAproximat === true);
   ok('cu data, nu mai e aproximata', joi.cmAproximat === false);
+  const integral = pay.statePlata(ang({ dataInceputCM: '2026-06-08', cmExceptatZiNeplatita: true,
+    cmIntegralFnuass: true }), '2026-06', []).rows[0];
+  eq('exceptie suportata integral: nicio zi la angajator', integral.zileCMAngajator, 0);
+  eq('exceptie legala: nu se scade ziua neplatita', integral.zileNeplatiteCM, 0);
 
   // ── C2: plafonul micro se converteste la cursul BNR de la 31 decembrie anul precedent.
   // Fixtura contine si un curs din 2026: fara el, o cautare pornita din anul GRESIT ar da acelasi
@@ -3826,7 +3951,7 @@ ok('D100 XML v2: obligatia micro 121 cu cod bugetar, cota, scadenta si nr_evid p
     && /nr_evid="\d{23}"/.test(x) && x.includes('xmlns="mfp:anaf:dgti:d100:declaratie:v2"');
 })());
 const d710micro = xml.d710Xml({ cui: 'RO1', nume: 'X' }, '2026-06',
-  { impozit: 150, codOblig: '121', codBugetar: '20470101', scadenta: '2026-07-25' },
+  { impozit: 150, codOblig: '121', codBugetar: '20470101', scadenta: '2026-07-27' },
   Object.assign({}, d100q, { impozit: 180, codOblig: '121', codBugetar: '20470101' }));
 ok('D710 XML bine-format, cu schema v2', wellFormed(d710micro)
   && d710micro.includes('<declaratie710 xmlns="mfp:anaf:dgti:d710:declaratie:v2"'));
@@ -3834,6 +3959,8 @@ ok('D710 poarta valorile initiale si corectate complete, nu doar diferenta',
   /suma_dat_I="150" suma_dat_C="180" suma_plata_I="150" suma_plata_C="180"/.test(d710micro));
 ok('D710 micro pastreaza creanta 121, cota 1 si suma de control I+C',
   /cod_oblig="121"/.test(d710micro) && /cota="1"/.test(d710micro) && /totalPlata_A="660"/.test(d710micro));
+ok('D710 codifica termenul nominal de 25, nu ziua lucratoare 27 din registru',
+  /scadenta="25\.07\.2026" nr_evid="\d{23}"/.test(d710micro));
 ok('D710 refuza lipsa unei diferente reale', (() => {
   try {
     xml.d710Xml({ cui: 'RO1', nume: 'X' }, '2026-06',
@@ -3980,10 +4107,11 @@ section('Autofactura art. 320 — TVA exigibil fara factura');
     const aTot = ['2026-03', '2026-06', '2026-09', '2026-12'].map((p) => rep.d100(anual(), p));
     ok('toate patru trimestrele au aceeasi plata anticipata', aTot.every((r) => r.impozit === 10450));
     ok('...si toate patru se declara (spre deosebire de sistemul trimestrial)', aTot.every((r) => r.seDeclara));
-    // Termenul trimestrului IV: 25 DECEMBRIE, in aceeasi luna cu perioada. Singurul din aplicatie.
+    // Termenul trimestrului IV: 21 DECEMBRIE (sau ziua lucratoare anterioara), conform
+    // regulii speciale pentru obligatiile care ar ajunge la 25 decembrie.
     const profAnual = fiscalProfile.build(anual().company);
-    eq('T4 la sistemul anual are termen 25 decembrie', decl.dueDate('d100', '2026-12', profAnual), '2026-12-25');
-    eq('...iar T1 ramane 25 aprilie', decl.dueDate('d100', '2026-03', profAnual), '2026-04-25');
+    eq('T4 la sistemul anual are termen 21 decembrie', decl.dueDate('d100', '2026-12', profAnual), '2026-12-21');
+    eq('...iar T1 se muta in urmatoarea zi lucratoare', decl.dueDate('d100', '2026-03', profAnual), '2026-04-27');
     eq('sistemul trimestrial ramane cu 25 ianuarie', decl.dueDate('d100', '2026-12', fiscalProfile.build(firmaProfit)), '2027-01-25');
     ok('D100 e ASTEPTAT pe T4 la sistemul anual', fiscalProfile.expected(profAnual, '2026-12').includes('d100'));
     ok('...si NU e asteptat pe T4 la sistemul trimestrial', !fiscalProfile.expected(fiscalProfile.build(firmaProfit), '2026-12').includes('d100'));
@@ -4424,7 +4552,7 @@ eq('D101: rezultat financiar = 766 - 666 = 1000', d101r.rezFinanciar, 1000);
 eq('D101: rezultat brut = exploatare 95000 + financiar 1000', d101r.rezultatBrut, 96000);
 eq('D101: profit impozabil = brut 96000 + nedeductibile 1000', d101r.profitImpozabil, 97000);
 eq('D101: impozit = 97000 × 16% = 15520', d101r.impozit, 15520);
-eq('D101: scadenta = 25 martie anul urmator', d101r.scadenta, '2026-03-25');
+eq('D101: scadenta = 25 iunie anul urmator', d101r.scadenta, '2026-06-25');
 
 // D101 XML (schema oficiala v10) — validat oficial cu DUKIntegrator (vezi docs/validare-oficiala.md);
 // aici verificam bine-formarea, namespace-ul, structura si INVARIANTELE de calcul ale validatorului.
@@ -5744,6 +5872,9 @@ section('Copie offsite pe stocare obiect (src/offsite.js)');
   ok('backup.js cheama garda de confidentialitate', !!numeVar);
   ok('...si chiar AVERTIZEAZA cu rezultatul ei',
     !!numeVar && new RegExp('warn\\(\\s*' + numeVar + '\\s*\\)').test(bk));
+  ok('backupul refuza transportul offsite cand cheia de criptare lipseste',
+    /offsiteState\.configured\s*&&\s*!BK_KEY/.test(bk)
+    && /CONTAB_BACKUP_KEY lipseste: copia offsite a fost oprita/.test(bk));
 
   // ── O VERIFICARE PICATA NU ARE VOIE SA ANULEZE PROTECTIA ────────────────────────────────────
   // Drill-ul nativ PG e o verificare a unei cai de restaurare SECUNDARE, iar pasul de dupa el e
@@ -6129,10 +6260,10 @@ section('Declaratii rectificative (istoric depuneri + steag XML)');
 
 section('Registrul depunerilor + portofoliu');
 const declMod = require('../src/declarations');
-eq('termen D300 pentru iunie', declMod.dueDate('d300', '2026-06'), '2026-07-25');
+eq('termen D300 pentru iunie: sambata se muta luni', declMod.dueDate('d300', '2026-06'), '2026-07-27');
 eq('termen D112 pentru decembrie (trece anul)', declMod.dueDate('d112', '2026-12'), '2027-01-25');
 eq('termen SAF-T: ultima zi a lunii urmatoare', declMod.dueDate('saft', '2026-06'), '2026-07-31');
-eq('termen SAF-T decembrie: 31 ianuarie', declMod.dueDate('saft', '2026-12'), '2027-01-31');
+eq('termen SAF-T decembrie: duminica se muta luni', declMod.dueDate('saft', '2026-12'), '2027-02-01');
 eq('termen D205 pentru veniturile 2025: weekendul muta 28 februarie pe 2 martie', declMod.dueDate('d205', '2025-12'), '2026-03-02');
 eq('termen D205 pentru veniturile 2026: 28 februarie 2027 cade duminica -> 1 martie', declMod.dueDate('d205', '2026-12'), '2027-03-01');
 const vDecl = scopedSeed(); // firma platitoare de TVA, cu angajati
@@ -6288,14 +6419,14 @@ eq('termen Intrastat: 15 ale lunii urmatoare', declMod.dueDate('intrastat', '202
 // micro/profit -> D100/D101: micro depune D100 trimestrial; profit depune si D101 anual (decembrie)
 eq('micro: D100 la sfarsit de trimestru, fara D101', fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'micro' }, {}), '2026-12', noIntra).filter((t) => t === 'd100' || t === 'd101').join(','), 'd100');
 // TRIMESTRUL IV: la impozit pe profit se depune DOAR D101. Art. 41 alin. (1) cere D100 pentru
-// trimestrele I-III, iar definitivarea anului se face prin declaratia anuala, pana pe 25 martie.
+// trimestrele I-III, iar definitivarea anului se face prin declaratia anuala, pana pe 25 iunie.
 // Aserțiunea de aici cerea si D100 in decembrie — adica impingea firma sa declare acelasi impozit
 // de doua ori. Micro ramane cu toate patru trimestrele (T4 se declara pana pe 25 ianuarie).
 eq('profit: in decembrie DOAR D101 (T4 se definitiveaza anual, nu prin D100)', fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'profit' }, {}), '2026-12', noIntra).filter((t) => t === 'd100' || t === 'd101').join(','), 'd101');
 eq('profit: D100 la trimestrele I-III', ['2026-03', '2026-06', '2026-09'].map((p) => fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'profit' }, {}), p, noIntra).includes('d100')).join(','), 'true,true,true');
 ok('profit: D101 NU apare in afara lunii de sfarsit de an', !fp.expected(fp.build({ tvaPlatitor: true, regimImpozit: 'profit' }, {}), '2026-09', noIntra).includes('d101'));
 ok('PFA: nici D100 nici D101', (() => { const t = fp.expected(fp.build({ tvaPlatitor: true, tipEntitate: 'pfa', regimImpozit: 'profit' }, {}), '2026-12', noIntra); return !t.includes('d100') && !t.includes('d101'); })());
-eq('termen D101: 25 martie anul urmator anului fiscal', declMod.dueDate('d101', '2025-12'), '2026-03-25');
+eq('termen D101: 25 iunie anul urmator anului fiscal', declMod.dueDate('d101', '2025-12'), '2026-06-25');
 ok('expectedForFirma: firma pe profit vede D101 in decembrie', declMod.expectedForFirma({ firmaId: 8, company: { tvaPlatitor: true, regimImpozit: 'profit' }, angajati: [], entries: [] }, '2026-12').some((x) => x.tip === 'd101'));
 
 section('Datele de identitate ale firmei: ce lipseste si CE PLEACA in loc (src/dateFirma.js)');
@@ -6495,7 +6626,7 @@ const efx = declMod.eFacturaNetrimise(vEf, '2026-07-20');
 // `e5` nu are CUI de partener: e o factura B2C, deci intra si ea (raportabila din 2025).
 eq('netrimise: vanzarile B2B si B2C fara spv', efx.count, 3);
 eq('netrimise: restante (termen depasit)', efx.overdue, 1);
-eq('netrimise: termen = data + 5 zile CALENDARISTICE (OUG 89/2025)', efx.items.find((x) => x.entryId === 'e1').due, '2026-07-23');
+eq('netrimise: termen = data + 5 zile LUCRATOARE (OUG 89/2025)', efx.items.find((x) => x.entryId === 'e1').due, '2026-07-24');
 // ── Perimetrul e-Factura: DOUA conditii independente ─────────────────────────────────────────
 // Erau amandoua gresite. Conditia 1 (documentul e o factura emisa) era o lista de cinci id-uri
 // scrisa de mana, in trei copii; conditia 2 (beneficiarul e stabilit in Romania) lipsea.
@@ -7026,9 +7157,9 @@ section('Inchidere lunara: motorul fluxului (src/monthlyClose.js)');
   ok('blocantele numesc pasii, nu doar numarul', st1.blocante.some((b) => b.key === 'declaratii' && b.blocaje.length > 0));
 
   // termenele implicite se ancoreaza in TERMENUL REAL de depunere al lunii (nu o cifra inventata)
-  eq('ancora de termen = cel mai devreme termen de depunere', st1.ancoraTermen, '2026-07-25');
-  eq('termen implicit: documentele cu 15 zile inainte de ancora', pas(st1, 'documente').due, '2026-07-10');
-  eq('termen implicit: banca cu 10 zile inainte', pas(st1, 'banca').due, '2026-07-15');
+  eq('ancora de termen = cel mai devreme termen de depunere', st1.ancoraTermen, '2026-07-27');
+  eq('termen implicit: documentele cu 15 zile inainte de ancora', pas(st1, 'documente').due, '2026-07-12');
+  eq('termen implicit: banca cu 10 zile inainte', pas(st1, 'banca').due, '2026-07-17');
   ok('termenele implicite sunt marcate ca implicite', pas(st1, 'tva').dueImplicit === true);
 
   // CIORNA in luna = document neinregistrat contabil -> blocheaza primul pas
@@ -7201,11 +7332,14 @@ section('Fiscal — payroll & taxePfa ca functii pure (src/fiscal.js)');
   const Ptk = F.payroll(5000, 0, { tichete: 300 });
   eq('tichete NU maresc CAS (baza CAS = doar brutul)', Ptk.cas, P0.cas);
   ok('tichete maresc CASS', Ptk.cass > P0.cass);
-  // concediu medical (OUG 158): datoreaza CAS + impozit, dar NU CASS
-  const Pcm = F.payroll(4000, 0, { cmAngajator: 500, cmFnuass: 500 });
+  // concediu medical: toate indemnizatiile intra in CAS si impozit; pentru codurile 01/07/10
+  // se datoreaza si CASS, transmisa explicit prin `cmCuCass` de motorul statului de plata.
+  const Pcm = F.payroll(4000, 0, { cmAngajator: 500, cmFnuass: 500, cmCuCass: 1000 });
   const Pbase = F.payroll(4000, 0);
   ok('concediul medical mareste baza CAS', Pcm.cas > Pbase.cas);
-  eq('concediul medical NU intra in CASS', Pcm.cass, Pbase.cass);
+  ok('CM cod 01/07/10 mareste si baza CASS', Pcm.cass > Pbase.cass);
+  eq('alte coduri CM raman exceptate de la CASS', F.payroll(4000, 0,
+    { cmAngajator: 500, cmFnuass: 500 }).cass, Pbase.cass);
   // norma partiala (OUG 16/2022): sub salariul minim, diferenta de contributii o suporta ANGAJATORUL
   const Pnp = F.payroll(2000, 0, { bazaMinima: 4050 });
   ok('norma partiala: angajatorul suporta diferenta CAS (casAngajator > 0)', Pnp.casAngajator > 0);

@@ -61,7 +61,7 @@ function publicUser(u) {
   const p = u.profil || {};
   return {
     id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), tipCont: tipCont(u), firme: allowedFirme(u),
-    drepturi: u.drepturi || {},
+    drepturi: u.drepturi || {}, firmaRoluri: u.firmaRoluri || {},
     mustChange: !!u.mustChange, twofa: !!u.twofa,
     twofaRecoveryCount: u.twofa && Array.isArray(u.twofaRecoveryHashes) ? u.twofaRecoveryHashes.length : 0,
     profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?

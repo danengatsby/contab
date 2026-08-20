@@ -30,6 +30,11 @@
 //
 //  Dosarul trimis revizorului: docs/dosar-revizie-fiscala.md
 //
+//  MODIFICARE 2026-08-20 — cazurile CM au cifre NOI, de re-citit inainte de semnare:
+//    - procentul 65% pentru un episod de 8-14 zile (art. 17, in vigoare din august 2025);
+//    - o zi lucratoare neplatita si zilele 2-6 la angajator (OUG 91/2025, in 2026-2027);
+//    - baza zilnica Σ venituri / Σ zile istorice (Ordinul MS/CNAS 521/2026).
+//
 //  MODIFICARE 2026-08-09 — cinci cazuri au cifre NOI, de re-citit inainte de semnare:
 //    SAL-03b, SAL-04, CM-01, CM-02, CO-01.
 //  Motivul: pana azi, deducerea personala (art. 77) se acorda doar daca in fisa angajatului era
@@ -237,17 +242,19 @@ const CAZURI = [
   },
   {
     id: 'DED-02', arie: 'Deducerea personala',
-    titlu: 'Diminuarea deducerii peste salariul minim (la +1.000 lei si la +2.000 lei)',
+    titlu: 'Diminuarea deducerii pe transe de 50 lei peste salariul minim',
     temei: 'Art. 77 Cod fiscal — deducerea scade pana la 0 la salariul minim + 2.000 lei',
-    intrare: { brut_5050: 5050, brut_6050: 6050, salariuMinim: 4050, persoane: 0 },
-    asteptat: { la_5050: 410, la_6050: 0 },
+    intrare: { brut_4051: 4051, brut_4101: 4101, brut_5050: 5050, brut_6050: 6050,
+      salariuMinim: 4050, persoane: 0 },
+    asteptat: { la_4051: 790, la_4101: 770, la_5050: 410, la_6050: 0 },
     calc: (i) => ({
+      la_4051: fiscal.deducerePersonala(i.brut_4051, 0, { period: '2026-03' }).total,
+      la_4101: fiscal.deducerePersonala(i.brut_4101, 0, { period: '2026-03' }).total,
       la_5050: fiscal.deducerePersonala(i.brut_5050, 0, { period: '2026-03' }).total,
       la_6050: fiscal.deducerePersonala(i.brut_6050, 0, { period: '2026-03' }).total,
     }),
-    observatii: 'ABATERE CUNOSCUTA: codul interpoleaza LINIAR intre minim si minim+2.000, in loc sa citeasca grila '
-      + 'oficiala ANAF pe transe de 50 lei. Diferentele sunt de ordinul catorva lei pe transa. '
-      + 'De decis: se accepta aproximarea sau se introduce grila exacta?',
+    observatii: 'Implementarea urmeaza tabelul art. 77 alin. (4): 40 de transe de cate 50 lei, '
+      + 'cu reducerea procentului cu 0,5 puncte pe transa si rotunjire la 10 lei in favoarea angajatului.',
     aprobare: null,
   },
   {
@@ -267,41 +274,53 @@ const CAZURI = [
   {
     id: 'CM-01', arie: 'Concedii medicale',
     titlu: 'Concediu medical 10 zile din 21, brut 5.000 lei, fara istoric de state postate',
-    temei: 'OUG 158/2005 — indemnizatie 75%, primele 5 zile in sarcina angajatorului, restul FNUASS; '
+    temei: 'OUG 158/2005 art. 17 — indemnizatie 65% pentru episod de 8-14 zile; OUG 91/2025 — '
+      + 'prima zi lucratoare neplatita si zilele 2-6 in sarcina angajatorului; '
       + 'art. 157 Cod fiscal — indemnizatiile nu suporta CASS',
-    intrare: { brut: 5000, zileLucratoare: 21, zileCM: 10, procentCM: 75, perioada: '2026-03', istoric: 'niciun stat postat' },
+    intrare: { brut: 5000, zileLucratoare: 21, zileCM: 10, procentCM: 65,
+      dataInceputCM: '2026-03-09', perioada: '2026-03', istoric: 'niciun stat postat' },
     asteptat: {
-      mediaCM: 5000, cmAngajator: 892.85, cmFnuass: 892.85, salariuZileLucrate: 2619.05,
-      cas: 1101.19, cass: 261.9, impozit: 261.17, cam: 79.02, net: 2780.49,
+      mediaCM: 5000, mediaZilnicaCM: 238.1, zileNeplatiteCM: 1,
+      cmAngajator: 619.08, cmFnuass: 773.85, salariuZileLucrate: 2619.05,
+      cas: 1003, cass: 401.2, impozit: 217.78, cam: 72.86, net: 2390,
     },
     calc: (i) => {
-      const r = statePlata([{ id: 'cm', nume: 'Test', salariuBrut: i.brut, zileLucratoare: i.zileLucratoare, zileCM: i.zileCM }], i.perioada).rows[0];
+      const r = statePlata([{ id: 'cm', nume: 'Test', salariuBrut: i.brut,
+        zileLucratoare: i.zileLucratoare, zileCM: i.zileCM, procentCM: i.procentCM,
+        dataInceputCM: i.dataInceputCM }], i.perioada).rows[0];
       return {
-        mediaCM: r.mediaCM, cmAngajator: r.cmAngajator, cmFnuass: r.cmFnuass, salariuZileLucrate: r.salariuZileLucrate,
+        mediaCM: r.mediaCM, mediaZilnicaCM: r.mediaZilnicaCM,
+        zileNeplatiteCM: r.zileNeplatiteCM, cmAngajator: r.cmAngajator,
+        cmFnuass: r.cmFnuass, salariuZileLucrate: r.salariuZileLucrate,
         cas: r.cas, cass: r.cass, impozit: r.impozit, cam: r.cam, net: r.net,
       };
     },
-    observatii: 'ZONA CU CELE MAI MULTE SIMPLIFICARI — vezi capitolul dedicat din dosar. Puncte de decis: '
-      + '(1) `zileCM` e tratat ca zile LUCRATOARE, iar cele 5 zile ale angajatorului se scad din ele — OUG 158/2005 '
-      + 'vorbeste de zile CALENDARISTICE; (2) media zilnica se obtine impartind baza la zilele lucratoare ale lunii '
-      + 'curente, nu la zilele de stagiu din cele 6 luni; (3) fara istoric, baza cade pe brutul curent; '
-      + '(4) CASS nu se retine pe indemnizatie, CAS si impozitul da, CAM doar pe partea angajatorului.',
+    observatii: 'Fara istoric, previzualizarea cade pe brutul curent si este marcata ca aproximata; postarea este blocata. Firma migrata '
+      + 'trebuie sa introduca statele istorice inainte de validarea calculului. Procentul se copiaza de pe certificat.',
     aprobare: null,
   },
   {
     id: 'CM-02', arie: 'Concedii medicale',
     titlu: 'Acelasi concediu, cu 6 state postate anterior la 6.000 lei brut (baza = media)',
-    temei: 'OUG 158/2005 art. 10 — baza de calcul = media veniturilor brute lunare din ultimele 6 luni, plafonata la 12 salarii minime',
-    intrare: { brut: 5000, istoric: '6 luni x 6.000 lei', zileLucratoare: 21, zileCM: 10, perioada: '2026-03' },
-    asteptat: { mediaCM: 6000, cmAngajator: 1071.45, cmFnuass: 1071.45, cas: 1190.49, cass: 261.9, net: 3021.6 },
+    temei: 'OUG 158/2005 art. 10 si Ordinul MS/CNAS 521/2026 — baza zilnica = suma veniturilor '
+      + 'asigurate / total zile din ultimele 6 luni, plafon lunar la 12 salarii minime',
+    intrare: { brut: 5000, istoric: '6 luni x 6.000 lei', zileLucratoare: 21, zileCM: 10,
+      procentCM: 65, dataInceputCM: '2026-03-09', perioada: '2026-03' },
+    asteptat: { mediaCM: 6000, mediaZilnicaCM: 292.68, zileBazaCM: 123,
+      cmAngajator: 760.96, cmFnuass: 951.2, cas: 1082.8, cass: 433.12,
+      impozit: 238.53, net: 2576.76 },
     calc: (i) => {
       const h = istoric('cm2', ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02'], 6000);
-      const r = statePlata([{ id: 'cm2', nume: 'Test', salariuBrut: i.brut, zileLucratoare: i.zileLucratoare, zileCM: i.zileCM }], i.perioada, h).rows[0];
-      return { mediaCM: r.mediaCM, cmAngajator: r.cmAngajator, cmFnuass: r.cmFnuass, cas: r.cas, cass: r.cass, net: r.net };
+      const r = statePlata([{ id: 'cm2', nume: 'Test', salariuBrut: i.brut,
+        zileLucratoare: i.zileLucratoare, zileCM: i.zileCM, procentCM: i.procentCM,
+        dataInceputCM: i.dataInceputCM }], i.perioada, h).rows[0];
+      return { mediaCM: r.mediaCM, mediaZilnicaCM: r.mediaZilnicaCM,
+        zileBazaCM: r.zileBazaCM, cmAngajator: r.cmAngajator,
+        cmFnuass: r.cmFnuass, cas: r.cas, cass: r.cass, impozit: r.impozit, net: r.net };
     },
-    observatii: 'Media se ia din statele POSTATE in aplicatie; o firma migrata la mijloc de an are istoric incomplet. '
-      + 'Plafonul de 12 salarii minime se aplica mediei LUNARE (48.600 lei la S1). Stagiul minim de cotizare '
-      + '(6 luni in ultimele 12) NU e verificat de aplicatie.',
+    observatii: 'Media se ia din statele POSTATE; pentru instantaneele vechi, numarul de zile se '
+      + 'reconstituie din calendarul legal standard si se marcheaza ca aproximat. Stagiul minim de '
+      + 'asigurare si programele de lucru speciale necesita in continuare verificarea operatorului.',
     aprobare: null,
   },
   {

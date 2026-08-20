@@ -95,6 +95,7 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 | `GET /api/sessions` | — | lista sesiunilor active, cea curentă marcată |
 | `POST /api/sessions/logout-others` / `DELETE /api/sessions/:id` | — | `{ ok }` |
 | `POST /api/onboarding/dismiss` | — | `{ ok }` — ascunde definitiv wizard-ul de primă autentificare (per cont) |
+| `DELETE /api/account` | `{ confirmUsername, password }` | ștergere self-service pentru un cont care nu mai deține firme; confirmare exactă + parola curentă, pseudonimizarea auditului viu și închiderea sesiunii; 409 cât timp contul deține firme |
 
 Rutele personale de profil, parolă, sesiuni și 2FA răspund `403` în modul de impersonare. Adminul
 trebuie să revină explicit la propriul cont; impersonarea permite lucrul pe datele firmei, nu
@@ -108,7 +109,7 @@ preluarea identității și a factorilor de autentificare ai utilizatorului.
 | `POST /api/firme` | `{ nume, cui?, ... }` | `{ ok, firma, firmaActiva }`; 403 demo |
 | `POST /api/firme/:id` | câmpuri de firmă | `{ ok, firma }`; 403 fără acces |
 | `POST /api/firme/:id/activate` | — | `{ ok, firmaActiva }` — comută firma activă |
-| `DELETE /api/firme/:id` | — | `{ ok }`; 400 dacă e singura firmă |
+| `DELETE /api/firme/:id` | `{ confirmName }` | `{ ok, filesDeleted }`; numai proprietarul firmei sau administratorul, cu denumirea exactă drept confirmare; elimină toate colecțiile și fișierele firmei |
 | `GET /api/firme/:id/export` / `export-zip` | — | descărcare JSON / ZIP (cu fișierele documentelor) |
 | `POST /api/firme/import` (`?mode=replace`) / `import-zip` | bundle JSON / ZIP multipart | `{ ok, firmaId, replaced }`; `replace` suprascrie firma activă (cu plasă de siguranță pe server) |
 | `POST /api/firme/:id/test-clone` | — | `{ ok, firmaId, nume }` — clonă `[TEST]` + comutare pe ea |
@@ -118,12 +119,12 @@ preluarea identității și a factorilor de autentificare ai utilizatorului.
 
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
-| `POST /api/upload` | multipart `file` (max 20 MB, extensii permise) | `{ documentId, fileName, suggestedType, fields, cuis, source: 'ai'\|'heuristic', warning?, incredere?, motiv?, calitate: { scor, decizie: 'auto'\|'revizuire', controale[], motive[] }, autoPostat? }`; 400 fișier lipsă/deghizat; 429 peste plafon |
+| `POST /api/upload` | multipart `file` (max 20 MB, extensii permise) | `{ documentId, fileName, suggestedType, fields, cuis, source: 'ai'\|'heuristic', warning?, incredere?, motiv?, calitate: { scor, decizie: 'auto'\|'revizuire', controale[], motive[] }, autoCiorna? }`; automatizarea creează cel mult o ciornă, nu postează fără verificare umană; 400 fișier lipsă/deghizat; 429 peste plafon |
 | `POST /api/upload-only` | multipart `file` | `{ documentId, fileName }` — fără extragere |
 | `GET /api/document/:id/file` | — | fișierul; inline doar PDF/imagini, restul attachment; 403 firmă străină; 404 |
 | `GET /api/documents` | — | `[{ id, fileName, uploadedAt }]` |
 | `GET /api/documents/gallery` / `emitted` | — | galeria documentelor primite (cu articolul asociat) / facturile emise (cu bază/TVA/total) |
-| `GET /api/extract-quality?days=` | — | raportul calității citirii automate: `{ documenteCitite, scorMediu, postateAutomat, interventii, corectii, rataCorectie, furnizori[], formate[], peControl[], peCamp[], recente[] }` — grupat pe furnizor/format, sortat după numărul de corecții |
+| `GET /api/extract-quality?days=` | — | raportul calității citirii automate: `{ documenteCitite, scorMediu, eligibileAutomat, autoDraftActiv, interventii, corectii, rataCorectie, furnizori[], formate[], peControl[], peCamp[], recente[] }` — eligibilitatea poate crea numai o ciornă; grupat pe furnizor/format |
 | `POST /api/xlsx-to-csv` | multipart `file` (XLSX/XLS/DBF) | `{ ok, rows, csv }` — conversie pentru importuri; 400 format nerecunoscut |
 
 ## Articole contabile (`src/routes/entries.js`)
@@ -175,9 +176,9 @@ preluarea identității și a factorilor de autentificare ai utilizatorului.
 
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
-| `GET/POST /api/angajati`, `DELETE /:id` | `{ nume, salariuBrut, ... }` | valori igienizate (procentCM ∈ {75,85,100}, sector cunoscut); 400 nume/brut lipsă |
-| `GET /api/stat-plata?period=` | — | statul calculat (nu scrie nimic) |
-| `POST /api/stat-plata?period=` | — | `{ ok, totals, entry }` — articolul agregat + instantaneu lunar (repostarea înlocuiește luna); 400 fără angajați sau fără perioadă |
+| `GET/POST /api/angajati`, `DELETE /:id` | `{ nume, salariuBrut, certificateCM?, cmEligibilitate?, cmStagiuDocument?, istoricBazaCM?, ordineBeneficii?, beneficiiOrdineConfirmata?, ... }` | maximum 10 certificate CM complete și nesuprapuse; procentCM ∈ {55,65,75,80,85,100}; pentru continuări cod 01: diferențe angajator/FNUASS. Postarea refuză baza/repartizarea CM aproximată, lipsa dovezii de stagiu, cursul BNR nedefinit pentru beneficii EUR sau ordinea neconfirmată când plafonul de 33% este depășit |
+| `GET /api/stat-plata?period=` | — | statul calculat; după postare întoarce fotografia imuabilă cu `postat:true` (`&live=1` previzualizează fișele curente, fără scriere) |
+| `POST /api/stat-plata?period=` | — | `{ ok, totals, entry }` — articolul agregat + instantaneu lunar complet v2; repostarea e refuzată, corecția se face prin storno; 400 fără angajați/perioadă |
 | `POST /api/stat-plata/pay?period=&cont=` | `cont ∈ {5121, 5311}` (implicit 5121) | `{ ok, suma, cont, entry }` — plata restului (421=512x); 400 rest 0 |
 | `GET /api/registru-salarii?year=`, `/api/dosar-cm?period=` | — | registrul anual / dosarul FNUASS |
 | PDF-uri | `/pdf/stat-plata`, `/pdf/fluturas/:id`, `/pdf/registru-salarii`, `/pdf/adeverinta/:id`, `/pdf/dosar-cm` | erorile sunt text, nu JSON |
@@ -261,7 +262,9 @@ aprobarea și eventuala forțare.
 - `GET /api/d311?period=YYYY-MM` — recapitularea operațiunilor din perioada în care codul normal
   de TVA este anulat. `GET /xml/d311?period=` generează schema IV (data anulării și OB_11…OB_52)
   sau schema V (data reînregistrării și OB_61/62), fără a permite combinarea lor.
-- `GET /api/declarations` + `POST /api/declarations/set` — registrul depunerilor.
+- `GET /api/declarations` + `POST /api/declarations/set` — registrul depunerilor; traseu
+  `nedepusa → generata → transmisa → depusa`, cu SHA-256 al artefactului și recipisă obligatorie
+  pentru `depusa`; o declarație depusă nu poate fi retrogradată.
 - `GET /xml/efactura/:id` — factura UBL 2.1 (CIUS-RO); `GET /api/efactura-list?period=`.
 - ANAF/SPV (OAuth per firmă): `GET /api/anaf/authorize|callback|config`,
   `POST /api/anaf/upload|verify`, `GET /api/anaf/inbox|spv-mesaje`,
@@ -298,6 +301,8 @@ aprobarea și eventuala forțare.
   `persistDurate` (cât a blocat bucla `db.save()`). Ultimele două sunt mărimi diferite, cu nume
   diferite: cât așteaptă scrierile vs. cât ține procesul pe loc. `GET /api/audit` / `/api/audit/system` — jurnalul de audit (JSON, ultimele 300;
   `?limit/offset` pentru istoric). `GET /csv/audit` / `/csv/audit/system` — export CSV (tot ce
-  e reținut, plafon 3000; arhivă / control intern / GDPR; sistemul doar admin).
+  e reținut în baza vie, implicit maximum 20.000; sistemul doar admin). `GET /api/audit/durable`
+  listează/descarcă fișierele lunare append-only, iar `/api/audit/durable/verify` verifică lanțul
+  SHA-256 peste toate lunile și răspunde 409 la orice ruptură.
 - `GET/POST /api/fiscal-config` — cotele fiscale configurabile (reset la standard cu
   `{ reset: true }`). `GET /api/health` e public și intenționat minimal.

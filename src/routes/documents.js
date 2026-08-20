@@ -133,9 +133,13 @@ module.exports = function register(app, ctx) {
     const firmaCfg = db.getFirma(fid) || {};
     if (firmaCfg.autoPostDocumente && calitate.decizie === 'auto') {
       try {
-        const r = entriesService.createEntry(fid, { tip: extracted.suggestedType, fields: extracted.fields, fileId: docId }, { buildEntry, upsertPartner });
-        logAudit('document.autopost', r.entry.id + ' (' + extracted.suggestedType + ', scor ' + calitate.scor + '%)', { req });
-        extra.autoPostat = { entryId: r.entry.id, tip: extracted.suggestedType };
+        // Automatizarea propune o CIORNA trasabila. Calitatea tehnica a extragerii nu inlocuieste
+        // verificarea documentului justificativ si nici aprobarea umana.
+        const r = entriesService.createEntry(fid, { tip: extracted.suggestedType, fields: extracted.fields, fileId: docId, ciorna: true, automat: true }, { buildEntry, upsertPartner, actor: req.user });
+        const doc = d.documents.find((x) => x.id === docId && x.firmaId === fid);
+        if (doc && doc.extras) doc.extras.autoCiorna = { entryId: r.entry.id, at: new Date().toISOString() };
+        logAudit('document.autodraft', r.entry.id + ' (' + extracted.suggestedType + ', scor ' + calitate.scor + '%)', { req });
+        extra.autoCiorna = { entryId: r.entry.id, tip: extracted.suggestedType, status: 'ciorna' };
       } catch (e) {
         extra.needsReview = true;
         extra.calitate.decizie = 'revizuire';
@@ -162,18 +166,18 @@ module.exports = function register(app, ctx) {
    * claude-sonnet-4-6 raporta 87 — la acuratete identica pe campuri. Cum pragul de postare
    * automata (MIN_INCREDERE din extractQuality) a fost calibrat pe scala unui model anume,
    * o schimbare de model muta tacit intelesul numarului. Fara defalcarea asta, simptomul ar fi
-   * „nu se mai posteaza nimic automat", fara vinovat si fara din ce reconstitui cauza.
+   * „nu se mai pregateste nicio ciorna automat", fara vinovat si fara din ce reconstitui cauza.
    * Documentele citite cu reguli locale au `model: null` si se raporteaza ca atare.
    */
   function defalcarePeModel(docs) {
     const g = new Map();
     for (const x of docs) {
       const cheie = x.extras.model || null;
-      const it = g.get(cheie) || { model: cheie, documente: 0, cuIncredere: 0, sumaIncredere: 0, postateAutomat: 0 };
+      const it = g.get(cheie) || { model: cheie, documente: 0, cuIncredere: 0, sumaIncredere: 0, eligibileAutomat: 0 };
       it.documente++;
       const inc = Number(x.extras.incredere);
       if (x.extras.incredere != null && Number.isFinite(inc)) { it.cuIncredere++; it.sumaIncredere += inc; }
-      if (x.extras.decizie === 'auto') it.postateAutomat++;
+      if (x.extras.decizie === 'auto') it.eligibileAutomat++;
       g.set(cheie, it);
     }
     return [...g.values()]
@@ -183,7 +187,8 @@ module.exports = function register(app, ctx) {
         // media DOAR peste documentele care chiar au o incredere raportata: regulile locale n-au,
         // iar un 0 pus in locul lipsei ar trage media in jos si ar inventa o tendinta
         incredereMedie: it.cuIncredere ? Math.round(it.sumaIncredere / it.cuIncredere) : null,
-        postateAutomat: it.postateAutomat,
+        eligibileAutomat: it.eligibileAutomat,
+        postateAutomat: it.eligibileAutomat, // alias de compatibilitate pentru clienti vechi
       }))
       .sort((a, b) => b.documente - a.documente);
   }
@@ -208,9 +213,11 @@ module.exports = function register(app, ctx) {
       corectii: corectate.length,
       rataCorectie: toate.length ? Math.round((corectate.length / toate.length) * 100) : 0,
       postateAutomat: auto.filter((x) => x.extras.decizie === 'auto').length,
+      eligibileAutomat: auto.filter((x) => x.extras.decizie === 'auto').length,
       scorMediu: auto.length ? Math.round(auto.reduce((s, x) => s + (Number(x.extras.scor) || 0), 0) / auto.length) : null,
       modele: defalcarePeModel(auto),
       autoPostActiv: !!(db.getFirma(fid) || {}).autoPostDocumente,
+      autoDraftActiv: !!(db.getFirma(fid) || {}).autoPostDocumente,
       controale: extractQuality.CONTROALE.map((c) => ({ cod: c.cod, nume: c.nume })),
       recente: corectate.slice(-20).reverse().map((i) => ({
         at: i.at, fileName: i.fileName, format: i.format, source: i.source, scor: i.scor,

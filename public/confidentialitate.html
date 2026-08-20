@@ -12,7 +12,7 @@
   <div class="nav"><a href="/prezentare.html">Contabo<b>.</b></a></div>
   <div class="wrap">
     <h1>Politica de confidențialitate</h1>
-    <p class="upd">Ultima actualizare: 3 iulie 2026 · Se aplică aplicației Contabo (contabo.space).</p>
+    <p class="upd">Ultima actualizare: 20 august 2026 · Se aplică aplicației Contabo (contabo.space).</p>
 
     <h2>1. Ce date prelucrăm</h2>
     <div class="card">
@@ -45,12 +45,23 @@
         <li><b>Have I Been Pwned</b> — la alegerea unei parole noi verificăm dacă apare în scurgeri publice cunoscute. <b>Parola nu pleacă de la noi:</b> se trimit doar primele 5 caractere din amprenta ei criptografică (SHA-1), iar potrivirea se face local, din lista de sufixe primită înapoi (metoda „k-anonimitate"). Serviciul nu poate afla ce parolă ai verificat.</li>
       </ul>
       <p>Nu vindem și nu închiriem date nimănui.</p>
+      <p><b>Acces administrativ:</b> administratorii tehnici ai platformei pot accesa datele unei
+        firme numai pentru operare, securitate, backup/restaurare ori suport. Pentru lucrul în
+        numele unui utilizator se folosește impersonarea; accesul și acțiunile sunt consemnate în
+        jurnalul de audit. Colaboratorii obișnuiți primesc acces numai de la proprietarul firmei.</p>
     </div>
 
     <h2>4. Cât păstrăm datele</h2>
     <ul>
-      <li>Datele contului și ale firmelor: cât timp contul există. Documentele contabile au termene legale de păstrare (în general 5 ani, conform Legii 36/2023) — la ștergerea contului primești un export complet înainte.</li>
-      <li>Copiile de siguranță: se rotesc automat (aprox. 30 de zile).</li>
+      <li>Datele active ale contului și firmelor: cât timp există sau până la ștergerea lor din
+        Setări. Proprietarul poate exporta dosarul înainte; documentele contabile pot avea termene
+        legale de păstrare care trebuie evaluate de operatorul firmei.</li>
+      <li>Copiile de siguranță: instantaneele locale se rotesc (30 copii ale bazei și 14 arhive
+        complete), iar copiile offsite au retenție de până la 180 de zile. Ștergerea din baza vie
+        nu rescrie retroactiv copiile deja create; acestea dispar prin rotația automată.</li>
+      <li>Evenimentele de securitate și audit pot fi păstrate separat pentru control intern,
+        prevenirea fraudei și apărarea drepturilor; jurnalul durabil este înlănțuit și are acces
+        administrativ restricționat.</li>
       <li>Contul demonstrativ („demo") se resetează zilnic — nu introduce date reale în el.</li>
     </ul>
 
@@ -59,15 +70,18 @@
     <ul>
       <li><b>Rectificare:</b> îți editezi oricând emailul și datele personale din Setări → Contul meu.</li>
       <li><b>Portabilitate:</b> exporți firma completă (JSON) din Setări → Firme.</li>
-      <li><b>Ștergere:</b> trimite o cerere din aplicație (Mesaje → administrator) — contul și datele personale se șterg; datele contabile ale firmei ți se predau în export înainte.</li>
+      <li><b>Ștergere:</b> din Setări → Contul meu poți șterge direct contul după confirmarea
+        numelui și parolei. Firmele deținute se exportă și se șterg ori se transferă mai întâi;
+        proprietarul poate șterge o firmă prin confirmarea denumirii exacte.</li>
       <li>Poți depune plângere la <a href="https://www.dataprotection.ro" target="_blank" rel="noopener">ANSPDCP</a>.</li>
     </ul>
 
     <h2>6. Securitate</h2>
     <ul>
       <li>Conexiune criptată (HTTPS), parole cu hash scrypt + salt, autentificare în doi pași (2FA) opțională.</li>
-      <li>Jurnal de audit al acțiunilor, sesiuni per dispozitiv cu deconectare la distanță.</li>
-      <li>Copii de siguranță zilnice, inclusiv în afara serverului.</li>
+      <li>Jurnal de audit append-only, cu lanț SHA-256 verificabil și oprirea scrierilor dacă
+        jurnalul nu este disponibil; sesiuni per dispozitiv cu deconectare la distanță.</li>
+      <li>Copii de siguranță zilnice, verificate prin restaurare și trimise offsite numai criptat.</li>
     </ul>
 
     <footer>

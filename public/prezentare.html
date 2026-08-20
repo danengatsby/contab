@@ -238,9 +238,9 @@
       <p class="hint">Treci cu mouse-ul sau atinge un panou pentru detalii.</p>
       <div class="pillars">
         <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🗂</span><b>Portofoliu multi-firmă</b>
-          <div class="pop">Vedere agregată peste toate firmele: declarații așteptate/depuse pe lună, % conformitate, top firme cu atenționări, activitate recentă.</div></div>
+          <div class="pop">Vedere agregată peste toate firmele: declarații generate, transmise, depuse ori restante, % conformitate și atenționări.</div></div>
         <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">📋</span><b>Registrul depunerilor</b>
-          <div class="pop">Fiecare declarație cu termenul ei legal; descărcarea XML-ului o marchează „generată", tu o marchezi „depusă" cu numărul recipisei.</div></div>
+          <div class="pop">Fiecare declarație cu termenul legal și artefactul exact: generată, transmisă, apoi depusă numai cu numărul recipisei ANAF.</div></div>
         <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🔔</span><b>Notificări de termene</b>
           <div class="pop">Restanțele și termenele din următoarele 7 zile, în aplicație și pe email, zilnic — pe toate firmele tale.</div></div>
         <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🏛</span><b>Fișa Rol din SPV</b>
@@ -261,7 +261,7 @@
         <li tabindex="0"><b>Emiți facturile tale</b><span class="mut">Clientul + liniile (cantitate × preț × cotă); numărul vine în serie continuă, iar e-Factura XML + PDF se generează automat.</span></li>
         <li tabindex="0"><b>Bagi banca</b><span class="mut">Încarci extrasul, aplicația potrivește încasările și plățile cu partenerii; în Reconciliere confirmi soldul.</span></li>
         <li tabindex="0"><b>Verifici rapoartele</b><span class="mut">Registru-jurnal, cartea mare, balanța (debit = credit), decontul de TVA pe cote — toate deja generate.</span></li>
-        <li tabindex="0"><b>Închizi luna</b><span class="mut">Amortizare, închidere TVA, apoi descarci declarațiile: D300, D394, D112, SAF-T — și le bifezi „depuse" în registrul depunerilor.</span></li>
+        <li tabindex="0"><b>Închizi luna</b><span class="mut">Amortizare, închidere TVA, apoi generezi și transmiți declarațiile; le marchezi „depuse” numai după recipisa ANAF.</span></li>
       </ol>
     </div>
   </section>
@@ -364,7 +364,7 @@
 
       <details><summary>Abonamentul include și facturare?</summary><p>Da — facturarea nu e „soft în plus", e parte din contabilitate: serii și numerotare automată, trei modele de PDF cu logo-ul tău (clasic, compact A5, detaliat cu recap TVA și sumă în litere), e-Factura XML generată și trimisă în SPV din aplicație, facturi recurente care se emit singure la scadență. O factură emisă corect e o amendă evitată.</p></details>
 
-      <details><summary>Cum pot fi sigur că declarațiile sunt depuse?</summary><p>Transparență completă: registrul depunerilor arată fiecare declarație a fiecărei luni — stare (nedepusă → generată → depusă), termen, recipisă și data. Restanțele apar cu roșu în notificări, iar opțional primești zilnic pe email termenele care se apropie. Nimic nu se pierde „prin sertare".</p></details>
+      <details><summary>Cum pot fi sigur că declarațiile sunt depuse?</summary><p>Registrul păstrează traseul nedepusă → generată → transmisă → depusă, amprenta SHA-256 a fișierului și recipisa/indexul ANAF. Fără recipisă nu poate fi marcată depusă; restanțele rămân vizibile în notificări.</p></details>
 
       <details><summary>Cum aflu ce taxe am de plată?</summary><p>Secțiunea de obligații îți arată pe fiecare lună ce datorezi la buget — TVA, impozit, contribuții pe salarii — cu recapitulațiile din care provin cifrele, verificabile până la documentul-sursă. Primești notificări înainte de termen, ca plata să fie o decizie planificată, nu o urgență.</p></details>
 

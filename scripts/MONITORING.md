@@ -121,8 +121,9 @@ vizibilă în `/api/metrics` (`ops.ultimulBackup`), alături de spațiul liber p
 
 La eșecul oricărui strat: alertă pe email + exit 1 (vizibil în cron).
 
-**Offsite criptat:** cu `CONTAB_BACKUP_KEY` setat, copiile offsite (email/rclone) pleacă
-AES-256. Restaurare: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in f.zip.enc -out f.zip -pass env:CONTAB_BACKUP_KEY`.
+**Offsite criptat:** `CONTAB_BACKUP_KEY` este obligatorie pentru orice transport offsite; fără ea
+transportul este refuzat și backupul iese cu cod 1. Copiile pleacă AES-256. Restaurare:
+`openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in f.zip.enc -out f.zip -pass env:CONTAB_BACKUP_KEY`.
 
 **Exercițiu de restaurare — AUTOMAT la fiecare backup:** drill-ul de mai sus
 (`src/restoreDrill.js`) face ce înainte cerea o rulare manuală trimestrială — deschide

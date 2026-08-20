@@ -252,6 +252,19 @@ function applySecurityGuards(app, ctx) {
     next();
   });
 
+  // Fail-closed pentru operatiunile mutante: verificam atat dreptul de scriere, cat si lantul
+  // existent INAINTE ca ruta sa schimbe date. Logout si raportarea unei erori de client raman
+  // disponibile ca iesiri sigure; webhook-ul va primi 503 si va fi reincercat de furnizor.
+  const auditLog = require('./auditLog');
+  app.use((req, res, next) => {
+    const xmlCuEfect = req.method === 'GET' && req.path.startsWith('/xml/');
+    if ((['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !xmlCuEfect) || req.path === '/api/logout' || req.path === '/api/client-error') return next();
+    if (!/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) return next();
+    const p = auditLog.probeWritable();
+    if (!p.ok) return res.status(503).json({ error: 'Jurnalul de audit nu este disponibil; operatiunea a fost oprita inainte de scriere.', auditUnavailable: true });
+    next();
+  });
+
   // ── Plafon GENERAL pe API: per utilizator (per IP inainte de autentificare), fereastra de
   // un minut. Plasa contra buclelor de client si scanarilor — generos fata de utilizarea
   // normala (un dashboard incarca zeci de cereri, nu sute pe minut). CONTAB_RATE_API=0 il
@@ -274,16 +287,18 @@ function applySecurityGuards(app, ctx) {
   // ── Drepturi granulare per utilizator (Setari -> Utilizatori, setate de admin) ──
   //  - readonly:    doar vizualizare — blocheaza orice scriere pe date (raman permise rutele de cont)
   //  - faraSalarii: fara acces la modulul de salarizare (date sensibile), nici macar in citire
-  const RO_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe)/;
+  const RO_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|account|change-password|sessions|2fa|messages|subscription|checkout|stripe)/;
   const RO_ALLOW = /^\/api\/firme\/\d+\/activate$/; // schimbarea firmei active e tot o "citire"
   const SALARII_RX = /^\/(api\/(angajati|stat-plata|registru-salarii)|pdf\/(stat-plata|fluturas|adeverinta|registru-salarii)|xml\/d112)/;
   app.use((req, res, next) => {
     const dr = req.user && req.user.drepturi;
-    if (!dr || req.user.role === 'admin') return next();
-    if (dr.faraSalarii && SALARII_RX.test(req.path)) {
+    if (!req.user || req.user.role === 'admin') return next();
+    const fid = activeId(req);
+    const firmaRol = req.user.firmaRoluri && (req.user.firmaRoluri[String(fid)] || req.user.firmaRoluri[fid]);
+    if (dr && dr.faraSalarii && SALARII_RX.test(req.path)) {
       return res.status(403).json({ error: 'Nu ai acces la modulul de salarizare (drept restrictionat de administrator).' });
     }
-    if (dr.readonly && req.method !== 'GET' && !RO_EXEMPT.test(req.path) && !RO_ALLOW.test(req.path)) {
+    if (((dr && dr.readonly) || firmaRol === 'vizualizare') && req.method !== 'GET' && !RO_EXEMPT.test(req.path) && !RO_ALLOW.test(req.path)) {
       return res.status(403).json({ error: 'Cont doar-citire: poti vizualiza datele, dar nu le poti modifica. Cere administratorului drept de operare.' });
     }
     next();
@@ -295,7 +310,7 @@ function applySecurityGuards(app, ctx) {
   // `impersonate` e exceptat: altfel adminul care impersoneaza un user cu firma expirata ar fi
   // BLOCAT in impersonare (402 chiar pe /api/impersonate/stop). Paywall-ul ramane pe restul
   // rutelor si sub impersonare — adminul vede exact ce vede utilizatorul.
-  const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|change-password|sessions|2fa|messages|subscription|checkout|stripe|impersonate)|^\/api\/firme(\/\d+\/(keep|activate|subscribe|trial))?$|^\/api\/firme\/\d+$|^\/api\/firme\/(cerere-acces|cereri\/[\w-]+|contabili|servicii|servicii\/[\w-]+(\/retrage)?)$/;
+  const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|account|change-password|sessions|2fa|messages|subscription|checkout|stripe|impersonate)|^\/api\/firme(\/\d+\/(keep|activate|subscribe|trial))?$|^\/api\/firme\/\d+$|^\/api\/firme\/(cerere-acces|cereri\/[\w-]+|contabili|servicii|servicii\/[\w-]+(\/retrage)?)$/;
   app.use((req, res, next) => {
     if (!req.user || req.user.role === 'admin') return next();
     if (req.method === 'GET' && !/^\/(pdf|xml|csv|efactura)/.test(req.path)) return next(); // citirile libere
@@ -328,13 +343,16 @@ function applySecurityGuards(app, ctx) {
 
   // Urma de business pe exporturi: cine a descarcat ce. XML-urile fiscale (declaratii/SAF-T/
   // e-Factura) intra in AUDIT — sunt rare si relevante legal; PDF/CSV raman doar in logul
-  // structurat (frecvente: in audit ar impinge afara actiunile reale, plafonul e 3000).
+  // structurat (frecvente: in audit ar impinge afara actiunile reale, plafonul viu e configurabil).
   app.use((req, res, next) => {
     if (req.method === 'GET' && /^\/(xml|pdf|csv)\//.test(req.path)) {
       res.on('finish', () => {
         if (res.statusCode !== 200) return;
         log.info('export servit', log.ctx(req, { status: 200 }));
-        if (req.path.startsWith('/xml/')) logAudit('export.xml', String(req.originalUrl || req.path).slice(0, 120), { req });
+        if (req.path.startsWith('/xml/')) {
+          try { logAudit('export.xml', String(req.originalUrl || req.path).slice(0, 120), { req }); }
+          catch (e) { log.error('audit export esuat dupa trimiterea raspunsului', log.ctx(req, { status: 500, err: e })); }
+        }
       });
     }
     next();

@@ -71,7 +71,9 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        # Productia si dump-urile curente sunt pe seria 18; CI trebuie sa exercite aceeasi
+        # versiune majora (inclusiv restaurarea), nu una mai veche care poate masca driftul.
+        image: postgres:18
         env:
           POSTGRES_USER: contab
           POSTGRES_PASSWORD: contab

@@ -7,6 +7,7 @@
 
 const svc = require('../accountService');
 const authlib = require('../auth');
+const db = require('../db');
 const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
@@ -99,4 +100,20 @@ module.exports = function register(app, ctx) {
     const r = svc.updateProfile(req.user, req.body);
     return { ok: true, email: r.email, notifyDeadlines: r.notifyDeadlines, profil: r.profil };
   }));
+
+  app.delete('/api/account', ownAccount, async (req, res) => {
+    const b = req.body || {};
+    try {
+      const r = await svc.deleteAccount(req.user, b.password, b.confirmUsername);
+      logAudit('account.delete', 'stergere self-service cont #' + r.userId, {
+        userId: null, username: r.pseudonym, firmaId: null, ip: String(req.ip || ''),
+      });
+      db.save();
+      res.setHeader('Set-Cookie', 'sid=; Max-Age=0; HttpOnly; Path=/; SameSite=Lax;' + (req.secure ? ' Secure;' : ''));
+      res.json({ ok: true, deleted: true });
+    } catch (e) {
+      if (!e.status) throw e;
+      res.status(e.status).json({ error: e.message });
+    }
+  });
 };

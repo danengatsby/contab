@@ -114,7 +114,7 @@ export function stepHtml(s, responsabili) {
 
 // Statusurile din registrul depunerilor sunt valori interne (fără diacritice) — le arătăm
 // în scriere românească, fără să atingem valorile stocate.
-const STATUS_LABEL = { nedepusa: 'nedepusă', generata: 'generată', depusa: 'depusă', eroare: 'eroare', scutita: 'scutită' };
+const STATUS_LABEL = { nedepusa: 'nedepusă', generata: 'generată', transmisa: 'transmisă', depusa: 'depusă', eroare: 'eroare', scutita: 'scutită' };
 export function statusLabel(s) { return STATUS_LABEL[s] || s || '—'; }
 
 /** Tabelul dovezilor de validare pentru declarațiile lunii. */

@@ -13,6 +13,7 @@ const { eq, ok, section, wellFormed, RADACINA } = require('./comun');
 // Module folosite de sectiunile din acest fisier (erau in antetul lui test/run.js).
 const acc = require('../../src/accounting');
 const db = require('../../src/db');
+const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
@@ -60,7 +61,7 @@ section('Colaboratori pe firmă (src/firmeService.js)');
   const fsvc = require('../../src/firmeService');
   const dC = db.get();
   const fidC = db.nextFirmaId();
-  dC.firme.push({ id: fidC, nume: 'Colab SRL', subscription: { status: 'active', plan: 'grandfathered' } });
+  dC.firme.push({ id: fidC, nume: 'Colab SRL', ownerId: 90001, subscription: { status: 'active', plan: 'grandfathered' } });
   // id-uri manuale unice (db.nextUserId() citeste starea curenta; 3 apeluri inainte de push ar da acelasi id)
   const owner = { id: 90001, username: 'proprietar', role: 'user', firme: [fidC], firmaActiva: fidC };
   const acc = { id: 90002, username: 'contabilx', email: 'c@x.ro', role: 'user', firme: [999], subscription: { status: 'active', plan: 'pro' } };
@@ -69,26 +70,29 @@ section('Colaboratori pe firmă (src/firmeService.js)');
   db.save();
   eq('list: initial doar proprietarul', fsvc.listCollaborators(fidC).map((c) => c.username).join(','), 'proprietar');
   // adaugare cont existent (dupa email) -> capata acces
-  const added = fsvc.addExistingCollaborator(fidC, { email: 'c@x.ro' });
+  const added = fsvc.addExistingCollaborator(owner, fidC, { email: 'c@x.ro', rol: 'operator' });
   eq('addExisting: contabilx capata firma', added.username + ':' + db.get().users.find((u) => u.id === acc.id).firme.includes(fidC), 'contabilx:true');
   eq('addExisting: contabil recunoscut ca tip', added.tip, 'contabil');
-  eq('addExisting: dubla -> 400', errStatus(() => fsvc.addExistingCollaborator(fidC, { username: 'contabilx' })), 400);
-  eq('addExisting: cont inexistent -> 404', errStatus(() => fsvc.addExistingCollaborator(fidC, { username: 'nimeni' })), 404);
-  eq('addExisting: adminul deja are acces -> 400', errStatus(() => fsvc.addExistingCollaborator(fidC, { username: 'adminx' })), 400);
+  eq('addExisting: rolul per firma este pastrat', db.get().users.find((u) => u.id === acc.id).firmaRoluri[fidC], 'operator');
+  eq('addExisting: dubla -> 400', errStatus(() => fsvc.addExistingCollaborator(owner, fidC, { username: 'contabilx' })), 400);
+  eq('addExisting: cont inexistent -> 404', errStatus(() => fsvc.addExistingCollaborator(owner, fidC, { username: 'nimeni' })), 404);
+  eq('addExisting: adminul deja are acces -> 400', errStatus(() => fsvc.addExistingCollaborator(owner, fidC, { username: 'adminx' })), 400);
+  eq('un colaborator nu poate da acces mai departe -> 403', errStatus(() => fsvc.addExistingCollaborator(acc, fidC, { username: 'nimeni' })), 403);
   // invitatie noua -> pending user cu firme:[fidC]
-  const inv = fsvc.inviteCollaborator(fidC, { username: 'invitatnou', email: 'i@x.ro' });
+  const inv = fsvc.inviteCollaborator(owner, fidC, { username: 'invitatnou', email: 'i@x.ro', rol: 'verificator' });
   ok('inviteNew: token + pending user cu acces la firma', inv.token.length === 48 && db.get().users.find((u) => u.id === inv.user.id).firme.includes(fidC) && db.get().users.find((u) => u.id === inv.user.id).pending === true);
-  eq('inviteNew: username existent -> 400', errStatus(() => fsvc.inviteCollaborator(fidC, { username: 'contabilx' })), 400);
+  eq('inviteNew: username existent -> 400', errStatus(() => fsvc.inviteCollaborator(owner, fidC, { username: 'contabilx' })), 400);
   eq('list: acum 3 (proprietar + contabilx + invitatnou pending)', fsvc.listCollaborators(fidC).length, 3);
   ok('list: invitatia apare cu pending=true', fsvc.listCollaborators(fidC).some((c) => c.username === 'invitatnou' && c.pending));
   // scoatere
-  fsvc.removeCollaborator(fidC, acc.id);
+  eq('proprietarul schimba rolul', fsvc.setCollaboratorRole(owner, fidC, acc.id, 'aprobator').rol, 'aprobator');
+  fsvc.removeCollaborator(owner, fidC, acc.id);
   ok('remove: contabilx pierde accesul', !db.get().users.find((u) => u.id === acc.id).firme.includes(fidC));
-  eq('remove: non-colaborator -> 404', errStatus(() => fsvc.removeCollaborator(fidC, acc.id)), 404);
-  eq('remove: admin -> 404 (nu e colaborator per-firma)', errStatus(() => fsvc.removeCollaborator(fidC, adminU.id)), 404);
+  eq('remove: non-colaborator -> 404', errStatus(() => fsvc.removeCollaborator(owner, fidC, acc.id)), 404);
+  eq('remove: admin -> 404 (nu e colaborator per-firma)', errStatus(() => fsvc.removeCollaborator(owner, fidC, adminU.id)), 404);
   // pana ramane doar proprietarul: scot invitatia, apoi refuz scoaterea ultimului
-  fsvc.removeCollaborator(fidC, inv.user.id);
-  eq('remove: ultimul utilizator -> 400 (firma nu ramane orfana)', errStatus(() => fsvc.removeCollaborator(fidC, owner.id)), 400);
+  fsvc.removeCollaborator(owner, fidC, inv.user.id);
+  eq('remove: ultimul utilizator -> 400 (firma nu ramane orfana)', errStatus(() => fsvc.removeCollaborator(owner, fidC, owner.id)), 400);
   // curatenie
   db.get().firme = db.get().firme.filter((f) => f.id !== fidC);
   db.get().users = db.get().users.filter((u) => ![owner.id, acc.id, adminU.id, inv.user.id].includes(u.id));
@@ -280,12 +284,35 @@ const dr = esvc.createEntry(fidOk, { tip: 'test_svc', ciorna: true, fields: { da
 eq('creare cu ciorna:true -> status ciorna', dr.entry.status, 'ciorna');
 eq('storno pe o ciorna -> 400 (se sterge direct)', errStatus(() => esvc.stornoEntry(dr.entry.id, fidOk, () => true)), 400);
 eq('stergerea unei ciorne: removed=1', esvc.deleteEntry(dr.entry.id, fidOk, () => true).removed, 1);
-// flux de stare: ciorna -> validat -> postat; postat = ireversibil
+// flux de stare: ciorna -> validat -> aprobat -> postat; postat = ireversibil
 const dr2 = esvc.createEntry(fidOk, { tip: 'test_svc', ciorna: true, fields: { data: '2026-06-11', document: 'SVC-DRAFT2' } }, stubDeps);
 eq('avans ciorna->validat', esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'validat').status, 'validat');
-eq('avans validat->postat', esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'postat').status, 'postat');
+eq('salt validat->postat refuzat', errStatus(() => esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'postat')), 400);
+eq('avans validat->aprobat', esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'aprobat').status, 'aprobat');
+eq('avans aprobat->postat', esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'postat').status, 'postat');
 eq('postat: schimbarea starii -> 400', errStatus(() => esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'ciorna')), 400);
 eq('stare invalida -> 400', errStatus(() => esvc.setEntryStatus(dr2.entry.id, fidOk, () => true, 'xyz')), 400);
+// Control dublu explicit: initiatorul poate valida, dar NU isi poate aproba/posta propria nota.
+{
+  const fMC = db.getFirma(fidOk); const prevMC = fMC.controlDublu; const prevOwner = fMC.ownerId;
+  const maker = { id: 91001, username: 'maker', role: 'user', firme: [fidOk], firmaRoluri: { [fidOk]: 'operator' } };
+  const checker = { id: 91002, username: 'checker', role: 'user', firme: [fidOk], firmaRoluri: { [fidOk]: 'aprobator' } };
+  db.get().users.push(maker, checker); fMC.ownerId = maker.id; fMC.controlDublu = true;
+  checker.firmaRoluri[fidOk] = 'operator';
+  const faraDoiAprobatori = esvc.createEntry(fidOk, { tip: 'test_svc', fields: { data: '2026-06-13', document: 'MC-SAFE' } }, Object.assign({}, stubDeps, { actor: maker })).entry;
+  eq('control dublu nu blocheaza firma fara doi membri capabili sa posteze', faraDoiAprobatori.status || 'postat', 'postat');
+  checker.firmaRoluri[fidOk] = 'aprobator';
+  const mc = esvc.createEntry(fidOk, { tip: 'test_svc', fields: { data: '2026-06-13', document: 'MC-1' } }, Object.assign({}, stubDeps, { actor: maker })).entry;
+  eq('control dublu: salvarea directa devine ciorna', mc.status, 'ciorna');
+  esvc.setEntryStatus(mc.id, fidOk, () => true, 'validat', maker);
+  eq('control dublu: initiatorul nu se poate auto-aproba', errStatus(() => esvc.setEntryStatus(mc.id, fidOk, () => true, 'aprobat', maker)), 409);
+  eq('control dublu: aprobatorul distinct aproba', esvc.setEntryStatus(mc.id, fidOk, () => true, 'aprobat', checker).status, 'aprobat');
+  eq('control dublu: aprobatorul posteaza', esvc.setEntryStatus(mc.id, fidOk, () => true, 'postat', checker).status, 'postat');
+  ok('control dublu: actorii si istoricul sunt trasabile', mc.createdBy === maker.id && mc.approvedBy === checker.id && mc.postedBy === checker.id && mc.statusHistory.length === 4);
+  db.get().entries = db.get().entries.filter((e) => e.id !== mc.id && e.id !== faraDoiAprobatori.id);
+  db.get().users = db.get().users.filter((u) => u.id !== maker.id && u.id !== checker.id);
+  fMC.controlDublu = prevMC; fMC.ownerId = prevOwner;
+}
 eq('id inexistent NU e eroare: removed=0 (contract istoric)', esvc.deleteEntry('e-inexistent', fidOk, () => true).removed, 0);
 // recurente: validare + valori implicite + generare idempotenta pe perioada
 eq('sablon fara tip -> 400', errStatus(() => esvc.saveRecurring(fidOk, {})), 400);
@@ -541,9 +568,92 @@ eq('angajat pe firma inexistenta -> 403', errStatus(() => paysvc.upsertAngajat(9
 eq('angajat fara nume/brut -> 400', errStatus(() => paysvc.upsertAngajat(7788, { nume: 'X' })), 400);
 eq('stergere angajat inexistent -> 404', errStatus(() => paysvc.deleteAngajat(7788, 'ang-inexistent')), 404);
 eq('stat de plata fara angajati -> 400 (inaintea perioadei)', errStatus(() => paysvc.postStatPlata(7788, null, stubDeps)), 400);
+// Plafoanele anuale in EUR si ordinea plafonului comun nu pot ramane alegeri tacite la postare.
+{
+  const cursuriInitiale = db.get().cursuriBnr;
+  db.get().cursuriBnr = [];
+  db.get().firme.push({ id: 7789, nume: 'PAY BENEFICII SRL', cui: '7789' });
+  const benCurs = paysvc.upsertAngajat(7789, { nume: 'Beneficiu EUR', salariuBrut: 5000,
+    beneficii: { pensii: 100 } }).angajat;
+  eq('postarea cu beneficiu anual EUR si fara curs BNR definitiv este refuzata',
+    errStatus(() => paysvc.postStatPlata(7789, '2026-06', stubDeps)), 400);
+  db.get().cursuriBnr = [{ id: '2026-06-30', cursuri: { EUR: 5.1 } }];
+  ok('dupa cursul BNR, acelasi beneficiu poate fi postat',
+    paysvc.postStatPlata(7789, '2026-06', stubDeps).totals.net > 0);
+
+  db.get().firme.push({ id: 7790, nume: 'PAY ORDINE SRL', cui: '7790' });
+  const valoriBen = { cazare: 1000, pensii: 800, sport: 200 };
+  const benOrd = paysvc.upsertAngajat(7790, { nume: 'Ordine Beneficii', salariuBrut: 4000,
+    beneficii: valoriBen }).angajat;
+  eq('depasirea plafonului de 33% cere confirmarea ordinii angajatorului',
+    errStatus(() => paysvc.postStatPlata(7790, '2026-06', stubDeps)), 400);
+  paysvc.upsertAngajat(7790, { id: benOrd.id, nume: benOrd.nume, salariuBrut: 4000,
+    beneficii: valoriBen, ordineBeneficii: ['sport', 'pensii', 'cazare'],
+    beneficiiOrdineConfirmata: true });
+  ok('ordinea explicita si confirmata deblocheaza postarea',
+    paysvc.postStatPlata(7790, '2026-06', stubDeps).totals.net > 0);
+  db.get().angajati = db.get().angajati.filter((a) => ![benCurs.id, benOrd.id].includes(a.id));
+  db.get().entries = db.get().entries.filter((e) => ![7789, 7790].includes(e.firmaId));
+  db.get().payrollHistory = db.get().payrollHistory.filter((h) => ![7789, 7790].includes(h.firmaId));
+  db.get().firme = db.get().firme.filter((f) => ![7789, 7790].includes(f.id));
+  db.get().cursuriBnr = cursuriInitiale;
+}
 // nomenclator: valori implicite igienizate + actualizare pe id
-const angR = paysvc.upsertAngajat(7788, { nume: 'Ion Salariat', salariuBrut: 5000, avans: 500, procentCM: 99, sector: 'gresit' }).angajat;
-ok('valori implicite: procentCM 75, sector normal, 21 zile lucratoare', angR.procentCM === 75 && angR.sector === 'normal' && angR.zileLucratoare === 21);
+const angR = paysvc.upsertAngajat(7788, { nume: 'Ion Salariat', salariuBrut: 5000, avans: 500,
+  procentCM: 99, sector: 'gresit', locPrescriereCM: 5 }).angajat;
+ok('valori implicite + nomenclator CEX: procent 75, sector normal, 21 zile, loc 5',
+  angR.procentCM === 75 && angR.sector === 'normal' && angR.zileLucratoare === 21
+    && angR.locPrescriereCM === 5);
+eq('CM incomplet este refuzat inainte de postarea statului', errStatus(() => paysvc.upsertAngajat(7788,
+  { nume: 'CM incomplet', salariuBrut: 5000, zileCM: 3, codIndemnizatieCM: '01', procentCM: 55 })), 400);
+eq('codul 01 refuza procentul altui tip de indemnizatie', errStatus(() => paysvc.upsertAngajat(7788,
+  { nume: 'CM procent', salariuBrut: 5000, zileCM: 3, codIndemnizatieCM: '01', procentCM: 85,
+    dataInceputCM: '2026-06-01', serieCM: 'CCMAA', numarCM: '1234567890',
+    dataAcordareCM: '2026-06-01', dataInceputCertificatCM: '2026-06-01',
+    dataSfarsitCM: '2026-06-03', codBoalaCM: '100' })), 400);
+eq('diferenta recalculata fara certificat in continuare este refuzata', errStatus(() => paysvc.upsertAngajat(7788,
+  { nume: 'CM diferenta', salariuBrut: 5000, zileCM: 3, codIndemnizatieCM: '01', procentCM: 55,
+    dataInceputCM: '2026-06-01', serieCM: 'CCMAA', numarCM: '1234567890',
+    dataAcordareCM: '2026-06-01', dataInceputCertificatCM: '2026-06-01',
+    dataSfarsitCM: '2026-06-03', codBoalaCM: '100', cmDiferentaFnuass: 10 })), 400);
+const certificatCM = (cod, extra) => Object.assign({ nume: 'CM special ' + cod, salariuBrut: 5000,
+  zileCM: 3, codIndemnizatieCM: cod, procentCM: cod === '01' ? 55 : 85,
+  dataInceputCM: '2026-07-01', serieCM: 'CCM' + cod, numarCM: '12345678' + cod,
+  dataAcordareCM: '2026-07-01', dataInceputCertificatCM: '2026-07-01',
+  dataSfarsitCM: '2026-07-03', codBoalaCM: '100' }, extra || {});
+eq('codul CM 11 (flux FAAMBP separat) este refuzat', errStatus(() => paysvc.upsertAngajat(7788,
+  certificatCM('11'))), 400);
+eq('codurile 09/91/92 cer CNP-ul valid al copilului', errStatus(() => paysvc.upsertAngajat(7788,
+  certificatCM('09'))), 400);
+eq('codul 17 cere CNP-ul valid al pacientului oncologic', errStatus(() => paysvc.upsertAngajat(7788,
+  certificatCM('17'))), 400);
+eq('codul 06 cere codul urgentei medico-chirurgicale', errStatus(() => paysvc.upsertAngajat(7788,
+  certificatCM('06', { procentCM: 100 }))), 400);
+eq('codul 10 cere avizul medicului expert', errStatus(() => paysvc.upsertAngajat(7788,
+  certificatCM('10', { procentCM: 75 }))), 400);
+eq('codul 51 refuza un cod D_12 din nomenclatorul grupei A', errStatus(() => paysvc.upsertAngajat(7788,
+  certificatCM('51', { procentCM: 100, codInfectocontagiosCM: '35' }))), 400);
+eq('codul 15 cere diagnosticul RM', errStatus(() => paysvc.upsertAngajat(7788,
+  certificatCM('15', { procentCM: 75 }))), 400);
+eq('mai mult de 10 certificate CM pe aceeasi luna este refuzat', errStatus(() => paysvc.upsertAngajat(7788,
+  { nume: 'Prea multe CM', salariuBrut: 5000, zileLucratoare: 21,
+    certificateCM: Array.from({ length: 11 }, () => certificatCM('01')) })), 400);
+eq('certificatele CM cu intervale suprapuse sunt refuzate', errStatus(() => paysvc.upsertAngajat(7788,
+  { nume: 'CM suprapus', salariuBrut: 5000, zileLucratoare: 21,
+    certificateCM: [certificatCM('01'), certificatCM('08', { serieCM: 'CCM08',
+      numarCM: '2234567808', procentCM: 85 })] })), 400);
+const angMulti = paysvc.upsertAngajat(7788, { nume: 'Doua certificate', salariuBrut: 5000,
+  zileLucratoare: 21, cmEligibilitate: 'stagiu', cmStagiuDocument: 'Adeverinta 1/2026',
+  cmBazaPerioadaCompleta: true,
+  istoricBazaCM: [{ period: '2026-01', venit: 5000, zile: 20 }],
+  certificateCM: [certificatCM('01'), certificatCM('08', { serieCM: 'CCM08',
+    numarCM: '2234567808', procentCM: 85, dataInceputCM: '2026-07-06',
+    dataAcordareCM: '2026-07-06', dataInceputCertificatCM: '2026-07-06',
+    dataSfarsitCM: '2026-07-08' })] }).angajat;
+ok('doua certificate distincte sunt pastrate impreuna cu dovada si istoricul bazei',
+  angMulti.certificateCM.length === 2 && angMulti.zileCM === 6
+    && angMulti.cmStagiuDocument === 'Adeverinta 1/2026' && angMulti.istoricBazaCM.length === 1);
+paysvc.deleteAngajat(7788, angMulti.id);
 const angR2 = paysvc.upsertAngajat(7788, { id: angR.id, nume: 'Ion Salariat', salariuBrut: 6000, avans: 500 }).angajat;
 ok('actualizarea pe id pastreaza identitatea', angR2.id === angR.id && angR2.salariuBrut === 6000 && db.get().angajati.filter((a) => a.firmaId === 7788).length === 1);
 // postarea statului: perioada obligatorie; liniile de retineri + instantaneul lunar
@@ -551,6 +661,11 @@ eq('stat de plata fara perioada -> 400', errStatus(() => paysvc.postStatPlata(77
 const spR = paysvc.postStatPlata(7788, '2026-06', stubDeps);
 ok('avansul intra ca retinere 421=425 in articolul agregat', spR.entry.lines.some((l) => l.debit === '421' && l.credit === '425' && l.suma === 500));
 eq('instantaneul lunar e salvat in payrollHistory', db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06').length, 1);
+ok('instantaneul salarial v2 pastreaza randul complet pentru audit/D112', (() => {
+  const h = db.get().payrollHistory.find((x) => x.firmaId === 7788 && x.period === '2026-06');
+  return h && h.formatVersion === 2 && h.rows[0].angajatId === angR.id
+    && h.rows[0].bazaCas != null && h.rows[0].zileLucratoare != null;
+})());
 // REGRESIE. Aserțiunea de aici verifica doar ca INSTANTANEUL nu se dubleaza la repostare — si era
 // adevarata, fiindca `payrollHistory` se inlocuia. Dar ARTICOLUL se adauga: a doua apasare dubla
 // tacut 641=421 si toate retinerile, iar istoricul continua sa arate o singura luna, deci nimic
@@ -570,6 +685,9 @@ eq('data statului = ultima zi reala a lunii', spR.entry.data, '2026-06-30');
 }
 // plata neta: perioada obligatorie, contul necunoscut cade pe banca (5121)
 eq('plata fara perioada -> 400', errStatus(() => paysvc.paySalaries(7788, null, '5121', stubDeps)), 400);
+// Dupa postare, fisa angajatului se poate schimba pentru luna urmatoare; plata lunii postate
+// trebuie sa ramana pe fotografia semnata, nu sa se recalculeze retroactiv.
+paysvc.upsertAngajat(7788, { id: angR.id, nume: 'Ion Salariat', salariuBrut: 9000, avans: 0 });
 const payR = paysvc.paySalaries(7788, '2026-06', 'cont-gresit', stubDeps);
 ok('plata: suma = restul de plata, cont implicit 5121', payR.suma > 0 && payR.suma === spR.totals.restPlata && payR.cont === '5121');
 eq('plata din casa (5311) e respectata', paysvc.paySalaries(7788, '2026-06', '5311', stubDeps).cont, '5311');
@@ -971,9 +1089,39 @@ eq('export toate firmele fara admin -> 403', errStatus(() => fsvc.exportAllZip(s
 // adminul aflat sub impersonare NU are drepturile lui de admin la stergere
 const admU = { id: 902, username: 'boss', role: 'admin', firme: [] };
 eq('admin sub impersonare: stergere firma straina -> 403', errStatus(() => fsvc.deleteFirma(admU, fidPrima, 55)), 403);
-// garda „cel putin o firma ramane" pentru utilizatorul cu o singura firma
-const unicU = { id: 903, username: 'unic', role: 'user', firme: [fidPrima], firmaActiva: fidPrima };
-eq('stergerea ultimei firme a utilizatorului -> 400', errStatus(() => fsvc.deleteFirma(unicU, fidPrima, null)), 400);
+// Ultima firma se poate sterge (dreptul la stergere), dar numai de proprietar si cu confirmare.
+const fidUnic = db.nextFirmaId();
+const unicU = { id: 903, username: 'unic', role: 'user', firme: [fidUnic], firmaActiva: fidUnic };
+const fisierFirma = 'stergere-firma-' + process.pid + '.pdf';
+const logoFirma = 'stergere-logo-' + process.pid + '.png';
+db.get().firme.push({ id: fidUnic, nume: 'Unica SRL', ownerId: unicU.id, logoFile: logoFirma }); db.get().users.push(unicU);
+// Fixture dinamic peste sursa unica a colectiilor persistate: daca se adauga maine o colectie
+// per-firma, testul o include automat si impiedica lasarea de date orfane la stergere.
+const firmaColls = require('../../src/store').ARRAY_COLLS.filter((c) => c.firma);
+for (const c of firmaColls) {
+  db.get()[c.key] = db.get()[c.key] || [];
+  db.get()[c.key].push({ id: 'purge-' + c.key, firmaId: fidUnic });
+}
+const docPurge = db.get().documents.find((x) => x.id === 'purge-documents'); docPurge.storedName = fisierFirma;
+db.get().partners[fidUnic] = { X: { cui: 'X', den: 'de sters' } };
+db.get().openingBalances[fidUnic] = { '1011': { d: 1, c: 0 } };
+db.get().settings.docSeries = db.get().settings.docSeries || {}; db.get().settings.docSeries[fidUnic] = { FACT: 1 };
+db.get().accessRequests.push({ id: 'purge-access', firmaId: fidUnic });
+db.get().serviceRequests.push({ id: 'purge-service', firmaId: fidUnic });
+fs.writeFileSync(path.join(db.UPLOAD_DIR, fisierFirma), 'document');
+fs.writeFileSync(path.join(db.UPLOAD_DIR, logoFirma), 'logo');
+eq('stergerea ultimei firme cere confirmarea exacta -> 400', errStatus(() => fsvc.deleteFirma(unicU, fidUnic, null, 'gresit')), 400);
+const stersUnic = fsvc.deleteFirma(unicU, fidUnic, null, 'Unica SRL');
+eq('proprietarul poate sterge si ultima firma', stersUnic.firmaId, fidUnic);
+ok('stergerea elimina toate colectiile per-firma din schema de persistenta',
+  firmaColls.every((c) => !db.get()[c.key].some((x) => Number(x.firmaId) === fidUnic)));
+ok('stergerea elimina hartile auxiliare si cererile firmei', !db.get().partners[fidUnic]
+  && !db.get().openingBalances[fidUnic] && !db.get().settings.docSeries[fidUnic]
+  && !db.get().accessRequests.some((x) => x.firmaId === fidUnic)
+  && !db.get().serviceRequests.some((x) => x.firmaId === fidUnic));
+ok('stergerea elimina documentul si logo-ul fizic', stersUnic.filesDeleted === 2
+  && !fs.existsSync(path.join(db.UPLOAD_DIR, fisierFirma)) && !fs.existsSync(path.join(db.UPLOAD_DIR, logoFirma)));
+db.get().users = db.get().users.filter((u) => u.id !== unicU.id);
 
 section('Sesiuni & anti-brute-force (src/session.js)');
 {

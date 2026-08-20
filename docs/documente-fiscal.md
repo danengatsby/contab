@@ -15,19 +15,38 @@
   altă bază decât cea pe care se reținuse. Monografia trece prin **462** („creditori diverși"),
   deci cheltuiala se recunoaște **când e datorată**, nu la plată — contul de plată are și opțiunea
   „neplătită încă", care lasă soldul pe 462.
-- **Concediul medical — primele 5 zile sunt CALENDARISTICE** (OUG 158/2005 art. 12), nu lucrătoare:
-  indemnizația se cuvine doar pentru zilele lucrătoare din ele, iar cele două numărători diferă ori
-  de câte ori intervalul prinde un weekend. Un concediu început **joi** are 3 zile lucrătoare în
-  primele 5 calendaristice, nu 5 — formula veche muta sistematic cost de la FNUASS la firmă. Se
-  cere **data începerii**; fără ea rămâne vechea aproximare, dar rândul e marcat ca aproximat.
-  Sărbătorile legale nu sunt luate în calcul (nu există calendar de sărbători) — efectul merge în
-  aceeași direcție, cel mult supraevaluează partea angajatorului.
+- **Concediul medical este modelat după regulile curente.** Baza zilnică este `Σ venituri asigurate /
+  Σ zile de stagiu` din cel mult ultimele 6 luni, plafonată lunar la 12 salarii minime; istoricul
+  statelor păstrează separat ambii termeni. Calendarul elimină weekendurile și sărbătorile legale.
+  Pentru certificatele emise între **1 februarie 2026 și 31 decembrie 2027**, prima zi lucrătoare
+  este neplătită o singură dată pe episod, iar pentru incapacitatea temporară obișnuită angajatorul
+  suportă zilele lucrătoare din pozițiile calendaristice 2–6; excepțiile și codurile suportate
+  integral din FNUASS sunt modelate explicit. Codul 01 admite 55%/65%/75%, după durata episodului.
+  CASS se include numai pentru codurile **01, 07 și 10**. D112 emite structura B1–B4, secțiunea D
+  a certificatului și familia C2 corespunzătoare fiecărui cod. Toate cele 19 coduri acceptate sunt
+  probate separat în DUKIntegrator; codul 11 este refuzat explicit deoarece cere fluxul FAAMBP.
+  Salvarea cere CNP-ul copilului/pacientului, codul urgenței/bolii infectocontagioase, avizul
+  medicului expert ori `RM`, după caz, și refuză un certificat incomplet. Sunt acceptate până la
+  10 certificate/lună, fiecare emis separat în D112. Istoricul extern din adeverințe completează
+  statele postate; eligibilitatea și documentul de stagiu/excepție sunt obligatorii. O bază ori o
+  repartizare aproximată poate fi previzualizată, dar **blochează postarea** statului.
+  Pentru continuările cod 01 din iulie 2026, diferențele recalculate aferente lunii anterioare se
+  introduc distinct pe sursa angajator/FNUASS; motorul le include în venitul lunii curente și în
+  D112 `D_20a`/`D_21a`, `B3_7D`, `C2_155`/`C2_156`, fără rectificarea lunii precedente.
+  După postare, statul păstrează o fotografie completă și imuabilă; fluturașul, plata, dosarul
+  FNUASS și D112 citesc aceeași fotografie, astfel încât editarea fișei pentru luna următoare nu
+  modifică retroactiv documentele perioadei închise.
 - **Plafoanele în EURO se convertesc la cursul BNR**, nu la o valoare rotundă din setări: plafonul
   micro folosește cursul de la **31 decembrie al anului precedent** (ultimul publicat înainte, dacă
   ziua cade în weekend — chiar regula legală). La 5,0 în loc de ~5,08, plafonul de 100.000 EUR ieșea
   500.000 în loc de ~508.000 lei, iar o firmă cu 505.000 lei era declarată greșit ieșită din regim.
   Când cursul BNR lipsește se folosește valoarea din setări, **cu avertisment** — dar numai în
   preajma plafonului, unde alegerea chiar poate schimba încadrarea.
+- **Beneficiile din plafonul de 33%** folosesc pentru limitele anuale în EUR cursul BNR în vigoare
+  în ultima zi a lunii; cursul și proveniența rămân în fotografia salarială, iar lipsa unui curs
+  definitiv blochează postarea. Ordinea de includere aleasă de angajator se confirmă explicit când
+  plafonul comun este depășit. Este inclusă distinct pensia ocupațională de la art. 76 alin. (4¹)
+  lit. e¹), introdusă prin OUG 8/2026.
 - **Calcul automat al salariilor:** la „Stat de plata” introduci doar brutul (și opțional suma
   neimpozabilă); CAS/CASS/impozit/CAM se calculează automat (lași câmpurile goale).
 - **Plan de conturi extins** la lista din ghid (secțiunea 17): 211, 231, 267, 2678, 2813, 280,
@@ -180,12 +199,14 @@
   obligația **103** (cod bugetar 20470101), cu calculul trimestrial de la art. 41 — impozitul se
   determină **cumulat de la începutul anului**, iar pe declarație merge diferența față de
   trimestrele deja declarate. **Trimestrul IV nu se declară prin D100**: definitivarea se face prin
-  D101, până pe 25 martie. Un trimestru pe pierdere duce cumulatul în jos; pe declarație merge 0
+  D101, până pe 25 iunie al anului următor. Un trimestru pe pierdere duce cumulatul în jos; pe declarație merge 0
   (D100 nu primește sume negative), iar regularizarea e anuală.
 - **D710 pentru rectificarea D100**: după marcarea primei D100 ca depusă, registrul păstrează
   fotografia fiscală (sumă, obligație, cod bugetar și scadență) și oferă XML-ul D710. Formularul
   trimite valorile complete inițiale (`*_I`) și corectate (`*_C`), nu doar diferența, și refuză
-  generarea fără depunere anterioară, fără fotografie sau fără o diferență reală.
+  generarea fără depunere anterioară, fără fotografie sau fără o diferență reală. Registrul
+  afișează termenul operațional mutat în următoarea zi lucrătoare, dar schema D710 codifică data
+  nominală de 25 cerută de validator în `scadenta` și `nr_evid`.
 - **Poziția de TVA reportată** (`accounting.vatCarryForward`): nota de închidere a lunii compensează
   soldul rămas din perioadele anterioare (**4423 = 4424**), iar decontul îl declară pe rândurile
   **35** (TVA de plată neachitată) și **38** (sumă negativă nerambursată). Ambele erau zero prin

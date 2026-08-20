@@ -22,7 +22,8 @@ const d107 = require('../d107');
 const d301 = require('../d301');
 const d307 = require('../d307');
 const d311 = require('../d311');
-const { statePlata } = require('../payroll');
+const { statPlataPerioada } = require('../payroll');
+const crypto = require('crypto');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, canAccess, wrap, logAudit } = ctx;
@@ -70,31 +71,42 @@ module.exports = function register(app, ctx) {
   }
 
   // Registrul depunerilor: descarcarea XML-ului marcheaza declaratia (firma, tip, luna) drept „generata"
-  function recordDecl(req, tip, period) {
-    if (!/^\d{4}-\d{2}$/.test(String(period || ''))) return;
-    try {
-      decl.record(db.get(), activeId(req), tip, period, { status: 'generata', generatedAt: new Date().toISOString(), updatedBy: req.user && req.user.username }, db.nextId);
-      db.save();
-    } catch (e) { console.error('registru declaratii:', e.message); }
+  function recordDecl(req, tip, period, artifact, filename) {
+    if (!/^\d{4}-\d{2}$/.test(String(period || '')) || artifact == null) return;
+    const generatedAt = new Date().toISOString();
+    const bytes = Buffer.isBuffer(artifact) ? artifact : Buffer.from(String(artifact), 'utf8');
+    decl.record(db.get(), activeId(req), tip, period, {
+      status: 'generata', generatedAt, updatedBy: req.user && req.user.username,
+      artifact: {
+        sha256: crypto.createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length,
+        filename, mime: 'application/xml', generatedAt, by: req.user && req.user.username,
+      },
+    }, db.nextId);
+    db.save();
+  }
+
+  function sendRecordedXml(req, res, tip, period, out, filename) {
+    recordDecl(req, tip, period, out, filename);
+    sendXml(res, out, filename);
   }
 
   app.get('/xml/d300', (req, res) => {
     const v = S(req);
     if (!requireVatPayer(v, res)) return;
-    recordDecl(req, 'd300', req.query.period);
     const pd300 = acc.vatPeriod(v.company, req.query.period || null); // agrega trimestrul la regim 'T'
     // `?dupaRezerva=1` pune temei=2 (art. 105 alin. (6) CPF). D300 nu are steag de rectificare:
     // decontul corectat se redepune ca atare — vezi nota din src/declarations.js.
-    sendXml(res, xml.d300Xml(v.company, pd300, rep.d300(v, pd300), declarantOf(req),
-      { dupaRezerva: req.query.dupaRezerva === '1' }), 'd300.xml');
+    const out = xml.d300Xml(v.company, pd300, rep.d300(v, pd300), declarantOf(req),
+      { dupaRezerva: req.query.dupaRezerva === '1' });
+    sendRecordedXml(req, res, 'd300', req.query.period, out, 'd300.xml');
   });
   app.get('/xml/d394', (req, res) => {
     const v = S(req);
     if (!requireVatPayer(v, res)) return;
     const period = req.query.period || null;
-    recordDecl(req, 'd394', period);
     const pd394 = acc.vatPeriod(v.company, period); // agrega trimestrul la regim 'T'
-    sendXml(res, xml.d394Xml(v.company, pd394, acc.vatJournals(v, pd394), declarantOf(req), rep.achizitiiPfCarnet(v, pd394)), 'd394.xml');
+    const out = xml.d394Xml(v.company, pd394, acc.vatJournals(v, pd394), declarantOf(req), rep.achizitiiPfCarnet(v, pd394));
+    sendRecordedXml(req, res, 'd394', period, out, 'd394.xml');
   });
   // Recapitulatia D394 pe hartie: aceeasi expresie de date ca ruta XML de mai sus, ca sa nu poata
   // drifta una fata de cealalta, si aceeasi agregare (`xml.d394Operatiuni`) din care se compune XML-ul.
@@ -127,8 +139,7 @@ module.exports = function register(app, ctx) {
     const depusaDeja = !!decl.lastSubmission(recD301);
     try { out = xml.d301Xml(v.company, period, d301.report(v, period), declarantOf(req), { rectificativa: depusaDeja }); }
     catch (e) { return res.status(400).send(e.message); }
-    recordDecl(req, 'd301', period);
-    sendXml(res, out, 'd301.xml');
+    sendRecordedXml(req, res, 'd301', period, out, 'd301.xml');
   });
   app.get('/api/d307', (req, res) => res.json(d307.report(S(req), req.query.period || null)));
 
@@ -146,8 +157,7 @@ module.exports = function register(app, ctx) {
         temei: Number(req.query.temei) === 2 ? 2 : 1,
       });
     } catch (e) { return res.status(400).send(e.message); }
-    recordDecl(req, 'd307', period);
-    sendXml(res, out, 'd307.xml');
+    sendRecordedXml(req, res, 'd307', period, out, 'd307.xml');
   });
   app.get('/api/d311', (req, res) => res.json(d311.report(S(req), req.query.period || null)));
 
@@ -165,13 +175,12 @@ module.exports = function register(app, ctx) {
         temei: Number(req.query.temei) === 2 ? 2 : 1,
       });
     } catch (e) { return res.status(400).send(e.message); }
-    recordDecl(req, 'd311', period);
-    sendXml(res, out, 'd311.xml');
+    sendRecordedXml(req, res, 'd311', period, out, 'd311.xml');
   });
   app.get('/xml/d390', (req, res) => {
     const v = S(req);
-    recordDecl(req, 'd390', req.query.period);
-    sendXml(res, xml.d390Xml(v.company, req.query.period || null, rep.d390(v, req.query.period || null)), 'd390.xml');
+    const out = xml.d390Xml(v.company, req.query.period || null, rep.d390(v, req.query.period || null));
+    sendRecordedXml(req, res, 'd390', req.query.period, out, 'd390.xml');
   });
   app.get('/api/d205', (req, res) => {
     const y = String(req.query.year || (new Date().getFullYear() - 1));
@@ -185,8 +194,7 @@ module.exports = function register(app, ctx) {
     const out = xml.d205Xml(v.company, y, rep.d205(v, y), declarantOf(req), {
       rectificativa: !!decl.lastSubmission(rec),
     });
-    recordDecl(req, 'd205', y + '-12');
-    sendXml(res, out, 'd205-' + y + '.xml');
+    sendRecordedXml(req, res, 'd205', y + '-12', out, 'd205-' + y + '.xml');
   });
   app.get('/api/intrastat', (req, res) => {
     const period = req.query.period || null;
@@ -200,8 +208,8 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     const period = req.query.period;
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period || ''))) return res.status(400).send('Perioadă Intrastat invalidă (folosește YYYY-MM).');
-    recordDecl(req, 'intrastat', period);
-    sendXml(res, xml.intrastatXml(v.company, period, rep.intrastat(v, period)), 'intrastat-centralizator-' + period + '.xml');
+    const out = xml.intrastatXml(v.company, period, rep.intrastat(v, period));
+    sendRecordedXml(req, res, 'intrastat', period, out, 'intrastat-centralizator-' + period + '.xml');
   });
   // D100 — trimestrial, dupa REGIMUL firmei: impozit micro (cod 121) sau impozit pe profit
   // (cod 103, art. 41); descarcarea marcheaza declaratia "generata" in registru
@@ -217,8 +225,8 @@ module.exports = function register(app, ctx) {
     if (r.blocat) {
       return res.status(400).send('Nu se poate genera D100: ' + (r.avertismente || []).join(' '));
     }
-    recordDecl(req, 'd100', period);
-    sendXml(res, xml.d100Xml(v.company, period, r, declarantOf(req)), 'd100-' + (period || 'trim') + '.xml');
+    const out = xml.d100Xml(v.company, period, r, declarantOf(req));
+    sendRecordedXml(req, res, 'd100', period, out, 'd100-' + (period || 'trim') + '.xml');
   });
   // D710 — rectificarea unei D100 DEJA depuse. Valoarea initiala vine exclusiv din fotografia
   // depunerii din registru; recalcularea ei din datele actuale ar face I=C si ar ascunde corectia.
@@ -253,8 +261,7 @@ module.exports = function register(app, ctx) {
     let out;
     try { out = xml.d710Xml(v.company, period, initial, corrected, declarantOf(req)); }
     catch (e) { return res.status(400).send(e.message); }
-    recordDecl(req, 'd100', period); // pastreaza `depusa`; actualizeaza doar data ultimei generari
-    sendXml(res, out, 'd710-' + period + '.xml');
+    sendRecordedXml(req, res, 'd100', period, out, 'd710-' + period + '.xml'); // pastreaza `depusa`; adauga amprenta D710
   });
   // D101 — impozitul pe profit ANUAL (?year=). Doar pentru firmele in regim de profit;
   // schema oficiala v10 (an sfarsit exercitiu >=2024). Descarcarea marcheaza declaratia in registru.
@@ -264,8 +271,8 @@ module.exports = function register(app, ctx) {
       return res.status(400).send('Firma nu e in regim de impozit pe profit — nu depune D101. Setează regimul „profit" în Setări dacă e cazul.');
     }
     const year = req.query.year || String(new Date().getFullYear());
-    recordDecl(req, 'd101', year + '-12'); // registrul lucreaza pe perioade lunare; D101 = decembrie
-    sendXml(res, xml.d101Xml(v.company, rep.d101(v, year, ptOpts.pentruDeclaratie(v, year)), declarantOf(req)), 'd101-' + year + '.xml');
+    const out = xml.d101Xml(v.company, rep.d101(v, year, ptOpts.pentruDeclaratie(v, year)), declarantOf(req));
+    sendRecordedXml(req, res, 'd101', year + '-12', out, 'd101-' + year + '.xml');
   });
   // Nomenclatoarele antetului de bilant, pentru listele din Setari. Valorile sunt cele EXTRASE
   // din validatorul oficial ANAF — servite de aici ca sa existe o singura sursa; o lista copiata
@@ -302,8 +309,7 @@ module.exports = function register(app, ctx) {
         rectificativa: !!decl.lastSubmission(rec),
       });
     } catch (e) { return res.status(400).send(e.message); }
-    recordDecl(req, 'd107', year + '-12');
-    sendXml(res, out, 'd107-' + year + '.xml');
+    sendRecordedXml(req, res, 'd107', year + '-12', out, 'd107-' + year + '.xml');
   });
 
   // D177 — cerere de redirectionare a impozitului catre beneficiari (sponsorizari).
@@ -333,7 +339,6 @@ module.exports = function register(app, ctx) {
       return res.status(400).send('Situațiile financiare nu pot fi generate — completează în Setări → Firmă: '
         + s.lipsa.join('; ') + '.');
     }
-    recordDecl(req, 'bilant', year + '-12'); // registrul lucreaza pe perioade lunare
     // Reziduul de rotunjire absorbit in rezultatul reportat NU blocheaza generarea — formularul
     // torna si e acceptat de ANAF — dar peste pragul de rotunjire pleaca in jurnal, ca sa existe o
     // urma. E singurul simptom al unui cont care nu cade pe randul potrivit, iar validatorul nu
@@ -341,20 +346,22 @@ module.exports = function register(app, ctx) {
     if (s.avertismente && s.avertismente.length) {
       logAudit('bilant.rezidual', year + ': ' + s.avertismente.join(' | '), { req });
     }
-    sendXml(res, xml.bilantXml(s), s.antet.formular.cod.toLowerCase() + '-bilant-' + year + '.xml');
+    const out = xml.bilantXml(s);
+    const filename = s.antet.formular.cod.toLowerCase() + '-bilant-' + year + '.xml';
+    sendRecordedXml(req, res, 'bilant', year + '-12', out, filename);
   });
 
   app.get('/xml/d112', (req, res) => {
     const v = S(req);
     const period = req.query.period || new Date().toISOString().slice(0, 7);
-    recordDecl(req, 'd112', period);
     // Steagul de rectificare se DERIVA din istoricul depunerilor, nu se cere din interfata: daca
     // exista deja o depunere pe perioada, urmatorul XML e rectificativ prin definitie. O bifa
     // manuala ar putea fi uitata, si D112-ul ar pleca la ANAF ca declaratie initiala.
     const recD112 = decl.find(db.get(), activeId(req), 'd112', period);
     const depusaDeja = !!decl.lastSubmission(recD112);
-    sendXml(res, xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarantOf(req),
-      { rectificativa: depusaDeja, tipRec: req.query.tipRec }), 'd112-' + period + '.xml');
+    const out = xml.d112Xml(v.company, period, statPlataPerioada(v, period), declarantOf(req),
+      { rectificativa: depusaDeja, tipRec: req.query.tipRec });
+    sendRecordedXml(req, res, 'd112', period, out, 'd112-' + period + '.xml');
   });
   app.get('/xml/saft', wrap(async (req, res) => {
     const v = S(req);
@@ -363,12 +370,13 @@ module.exports = function register(app, ctx) {
     // D406 urmeaza perioada TVA: platitor trimestrial -> trimestrul; altfel luna ceruta
     const period = monthReq ? acc.vatPeriod(v.company, monthReq) : null;
     const year = req.query.year || String(new Date().getFullYear());
-    recordDecl(req, 'saft', monthReq || (year + '-12'));
     // saftXmlAsync: output byte-identic cu saftXml, dar cedeaza event loop-ul in buclele grele
     // (nu blocheaza celelalte cereri cat timp se genereaza SAF-T-ul la volume mari).
     // ?tip=C genereaza declaratia de STOCURI (la cerere ANAF); implicit L (lunar) / A (anual)
     const tip = req.query.tip === 'C' ? 'C' : undefined;
-    sendXml(res, await saft.saftXmlAsync(v, period || year, tip), 'saft-d406' + (tip ? '-stocuri' : '') + '-' + (period || year) + '.xml');
+    const out = await saft.saftXmlAsync(v, period || year, tip);
+    const filename = 'saft-d406' + (tip ? '-stocuri' : '') + '-' + (period || year) + '.xml';
+    sendRecordedXml(req, res, 'saft', monthReq || (year + '-12'), out, filename);
   }));
 
   // Validare pre-depunere: genereaza XML-ul declaratiei si verifica bine-format + campuri obligatorii.

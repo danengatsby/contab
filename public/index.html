@@ -244,7 +244,7 @@
           <p>Da. Emiți facturi cu serii și numerotare automată, în trei modele de PDF (clasic, compact A5, detaliat), cu logo-ul firmei. e-Factura XML se generează automat și se trimite în SPV direct din aplicație, iar datele partenerilor se verifică după CUI. Facturile recurente (abonamente, chirii) se generează singure la scadență.</p>
         </div></details>
         <details class="faq-item"><summary>Cum văd că declarațiile au fost depuse?</summary><div>
-          <p>În registrul depunerilor: fiecare declarație a fiecărei luni are stare (nedepusă → generată → depusă), termen, recipisă și data depunerii. Restanțele apar cu roșu în notificări și, opțional, primești zilnic pe email termenele care se apropie.</p>
+          <p>În registrul depunerilor: fiecare declarație are traseul nedepusă → generată → transmisă → depusă. Fișierul generat are amprentă SHA-256, iar „depusă” cere recipisa/indexul ANAF; simpla descărcare sau trimitere nu este confundată cu acceptarea.</p>
         </div></details>
         <details class="faq-item"><summary>Cum aflu ce taxe am de plată?</summary><div>
           <p>Secțiunea de obligații îți arată, pe fiecare lună, ce datorezi la buget (TVA, impozit, contribuții pe salarii) — împreună cu recapitulațiile din care provin cifrele, ca să poți verifica oricând proveniența fiecărei sume. Înainte de termenele limită primești notificări.</p>
@@ -825,9 +825,9 @@
     
       <div class="card" id="calitateCard">
         <h2>Calitatea citirii automate</h2>
-        <p class="muted">Ce documente au putut fi postate fără om, unde a fost nevoie de corectură și
-          <b>care furnizori și formate</b> produc cele mai multe erori. Se postează automat doar dacă
-          trec <b>toate</b> controalele; orice îndoială cere revizuire.</p>
+        <p class="muted">Ce documente au trecut controalele automate, unde a fost nevoie de corectură și
+          <b>care furnizori și formate</b> produc cele mai multe erori. Automatizarea poate pregăti o
+          <b>ciornă</b>; verificarea și aprobarea umană rămân obligatorii înainte de postare.</p>
         <div class="toolbar">
           <label>Ultimele <select id="calZile"><option value="30">30 de zile</option><option value="90" selected>90 de zile</option><option value="365">un an</option></select></label>
           <button id="calRefresh" class="btn">Recalculează</button>
@@ -1248,7 +1248,7 @@
       <div class="card">
         <h3>📮 De depus — luna <span id="declRegisterLuna"></span> <span class="muted adv" data-u="u70">(registrul depunerilor)</span></h3>
         <p class="muted">Declarațiile pe care le datorează firma ta în luna aleasă, cu termenul fiecăreia. Descarcă fișierul de pe rând, depune-l în SPV, apoi marchează-l „depusă".</p>
-        <p class="muted adv">Descărcarea unui XML marchează automat declarația „generată". Marchează manual „depusă" (cu nr. recipisă), „eroare" sau „scutită" — starea alimentează portofoliul și notificările de termene.</p>
+        <p class="muted adv">Descărcarea unui XML marchează declarația „generată” și păstrează amprenta SHA-256 a fișierului. După trimitere alege „transmisă”; „depusă” devine disponibilă numai cu numărul recipisei/indexul ANAF. Starea alimentează portofoliul și notificările de termene.</p>
         <div id="declRegister" class="tablewrap"></div>
       </div>
       <div id="livrabileSumar" class="grid2"></div>
@@ -1665,15 +1665,68 @@
             <p class="muted">Singurele câmpuri care se schimbă de la o lună la alta.</p></div>
           <label>Zile lucrătoare în lună <input name="zileLucratoare" type="number" min="1" max="23" step="1" value="21" /></label>
           <label>Zile concediu de odihnă în luna curentă (indemnizație pe media ultimelor 3 luni) <input name="zileCO" type="number" min="0" step="1" value="0" /></label>
+          <div class="full cm-cert-manager">
+            <h3>Certificate medicale în luna curentă</h3>
+            <p class="muted">Completează câmpurile unui certificat, apoi apasă „Adaugă/actualizează”. Poți înregistra maximum 10 certificate distincte; zilele și D112 se cumulează automat.</p>
+            <div id="cmCertificateList" class="cm-cert-list"><span class="muted">Niciun certificat adăugat.</span></div>
+            <div class="actions">
+              <button id="cmCertSalveaza" class="btn ghost" type="button">＋ Adaugă/actualizează certificatul</button>
+              <button id="cmCertGoleste" class="btn ghost" type="button">Golește câmpurile certificatului</button>
+            </div>
+          </div>
           <label>Zile concediu medical în luna curentă <input name="zileCM" type="number" min="0" step="1" value="0" /></label>
-          <label>Data începerii concediului medical <input name="dataInceputCM" type="date" title="Angajatorul suportă primele 5 zile CALENDARISTICE de incapacitate (OUG 158/2005 art. 12), iar indemnizația se cuvine doar pentru zilele lucrătoare din ele. Fără dată, se folosește aproximarea de 5 zile lucrătoare — maximul posibil." /></label>
+          <label>Data începerii episodului de concediu medical <input name="dataInceputCM" type="date" title="Data primului certificat din episod, nu data continuării. În 2026–2027 prima zi lucrătoare este neplătită, iar angajatorul suportă zilele calendaristice 2–6 (OUG 91/2025). Fără dată, repartizarea este marcată ca aproximată." /></label>
           <label>Procent indemnizație CM
             <select name="procentCM">
-              <option value="75">75% — boală obișnuită</option>
-              <option value="85">85% — sarcină/lăuzie, urgențe</option>
-              <option value="100">100% — accident de muncă, boli speciale</option>
+              <option value="55">55% — cod 01, episod ≤ 7 zile</option>
+              <option value="65">65% — cod 01, episod 8–14 zile</option>
+              <option value="75" selected>75% — cod 01, episod &gt; 15 zile / cardiovascular</option>
+              <option value="80">80% — conform certificatului</option>
+              <option value="85">85% — conform certificatului</option>
+              <option value="100">100% — conform certificatului / boli speciale</option>
             </select>
           </label>
+          <label>Cod indemnizație de pe certificat <input name="codIndemnizatieCM" inputmode="numeric" pattern="(?:0[1-9]|10|1[2-7]|51|91|92)" maxlength="2" value="01" title="Codul cu două cifre înscris pe certificatul medical. CASS se reține numai pentru 01, 07 și 10. Codul 11 (accident de muncă/boală profesională) cere fluxul FAAMBP și nu este acceptat de acest stat FNUASS." /></label>
+          <label>Serie certificat CM <input name="serieCM" maxlength="5" /></label>
+          <label>Număr certificat CM <input name="numarCM" maxlength="10" /></label>
+          <label>Serie certificat inițial/anterior <input name="serieInitialCM" maxlength="5" title="Se completează numai pentru un certificat în continuare." /></label>
+          <label>Număr certificat inițial/anterior <input name="numarInitialCM" maxlength="10" title="Se completează numai pentru un certificat în continuare." /></label>
+          <label>Diferență recalculată — angajator <input name="cmDiferentaAngajator" type="number" min="0" step="0.01" value="0" title="Pentru continuări cod 01 din iulie 2026: diferența aferentă lunii anterioare, declarată în D112 D_20a. Totalul D_20 o include automat." /></label>
+          <label>Diferență recalculată — FNUASS <input name="cmDiferentaFnuass" type="number" min="0" step="0.01" value="0" title="Pentru continuări cod 01 din iulie 2026: diferența aferentă lunii anterioare, declarată în D112 D_21a. Totalul D_21 o include automat." /></label>
+          <label>Data acordării certificatului <input name="dataAcordareCM" type="date" /></label>
+          <label>Început certificat curent <input name="dataInceputCertificatCM" type="date" /></label>
+          <label>Sfârșit certificat curent <input name="dataSfarsitCM" type="date" /></label>
+          <label>Loc prescriere
+            <select name="locPrescriereCM">
+              <option value="1">1 — medic de familie</option>
+              <option value="2">2 — spital</option>
+              <option value="3">3 — ambulatoriu</option>
+              <option value="4">4 — casa de asigurări de sănătate</option>
+              <option value="5">5 — comisie de expertiză (CEX)</option>
+            </select>
+          </label>
+          <label>Cod boală/diagnostic <input name="codBoalaCM" maxlength="3" title="Codul înscris pe certificatul medical; obligatoriu în secțiunea D din D112." /></label>
+          <label>CNP copil îngrijit <input name="cnpCopilCM" inputmode="numeric" pattern="[0-9]{13}" maxlength="13" title="Obligatoriu pentru codurile 09, 91 și 92; se declară în D112 D_8." /></label>
+          <label>CNP pacient oncologic îngrijit <input name="cnpPacientOncologicCM" inputmode="numeric" pattern="[0-9]{13}" maxlength="13" title="Obligatoriu pentru codul 17; se declară în D112 D_8a." /></label>
+          <label>Cod urgență medico-chirurgicală <input name="codUrgentaCM" inputmode="numeric" maxlength="3" title="Obligatoriu pentru codul indemnizației 06; D112 D_11." /></label>
+          <label>Cod boală infectocontagioasă <input name="codInfectocontagiosCM" inputmode="numeric" maxlength="2" title="Obligatoriu: 01-36 pentru codul CM 05, respectiv 01-25 pentru codul 51; D112 D_12." /></label>
+          <label>Aviz medic expert <input name="avizMedicExpertCM" maxlength="10" title="Obligatoriu pentru codul 10 (reducerea cu 1/4 a duratei normale de lucru); D112 D_13." /></label>
+          <label class="check"><input name="cmProgramNational" type="checkbox" /> Pacient inclus într-un program național de sănătate (D112 D_9a; excepție de la ziua neplătită).</label>
+          <label class="check"><input name="cmExceptatZiNeplatita" type="checkbox" /> Certificatul este exceptat legal de la ziua neplătită (spitalizare, programe naționale sau categoria exceptată).</label>
+          <label class="check"><input name="cmIntegralFnuass" type="checkbox" /> Indemnizația este suportată integral din FNUASS, conform codului de pe certificat.</label>
+          <label>Eligibilitate concediu medical
+            <select name="cmEligibilitate">
+              <option value="">— de confirmat înainte de postare —</option>
+              <option value="stagiu">Stagiu minim confirmat</option>
+              <option value="exceptie">Excepție legală de la stagiu</option>
+            </select>
+          </label>
+          <label>Document pentru stagiu/excepție <input name="cmStagiuDocument" maxlength="160" placeholder="ex. adeverință stagiu nr. 123/2026" title="Obligatoriu la postarea unui stat cu CM; rămâne în fotografia lunii pentru audit." /></label>
+          <label class="full">Istoric suplimentar pentru baza CM
+            <textarea name="cmIstoricBaza" rows="4" placeholder="Câte o linie: YYYY-MM; venit asigurat; zile de stagiu&#10;2026-02; 6000; 20&#10;2026-03; 6000; 22"></textarea>
+            <span class="muted">Completează lunile din adeverințele altor angajatori care nu există deja în statele postate. Pentru aceeași lună, statul postat are prioritate.</span>
+          </label>
+          <label class="check full"><input name="cmBazaPerioadaCompleta" type="checkbox" /> Istoricul introdus și statele postate acoperă întreaga perioadă legală disponibilă pentru calculul bazei CM.</label>
           <label>Avans acordat (425) <input name="avans" type="number" step="0.01" value="0" /></label>
           <label>Rețineri din net (popriri/terți) <input name="retineri" type="number" step="0.01" value="0" /></label>
 
@@ -1698,6 +1751,7 @@
           <label>c) Cazare / chirie suportată de angajator <input name="ben_cazare" type="number" step="0.01" value="0" /></label>
           <label>d) Servicii turistice / de tratament în concediu (plafon anual) <input name="ben_turism" type="number" step="0.01" value="0" /></label>
           <label>e) Pensii facultative (400 EUR/an) <input name="ben_pensii" type="number" step="0.01" value="0" /></label>
+          <label>e¹) Pensii ocupaționale (400 EUR/an) <input name="ben_pensiiOcupationale" type="number" step="0.01" value="0" /></label>
           <label>f) Asigurare voluntară de sănătate / abonament medical (400 EUR/an) <input name="ben_sanatate" type="number" step="0.01" value="0" /></label>
           <label>g) Abonament facilități sportive (100 EUR/an) <input name="ben_sport" type="number" step="0.01" value="0" /></label>
           <label>h) Telemuncă — utilități la domiciliu (400 lei/lună) <input name="ben_telemunca" type="number" step="0.01" value="0" /></label>
@@ -1705,6 +1759,11 @@
           <label>i) Educație timpurie — creșă/grădiniță (1.500 lei/lună/copil) <input name="ben_educatie" type="number" step="0.01" value="0" /></label>
           <label>Copii în unitate de educație timpurie <input name="copiiCresa" type="number" min="0" step="1" value="0" /></label>
           <label>j) Diferență favorabilă de dobândă (credite/depozite) <input name="ben_dobanda" type="number" step="0.01" value="0" /></label>
+          <label class="full">Ordinea de includere în plafonul de 33%
+            <input name="ordineBeneficiiText" value="mobilitate, hrana, cazare, turism, pensii, pensiiOcupationale, sanatate, sport, telemunca, educatie, dobanda" />
+            <span class="muted">ID-uri separate prin virgulă. Ordinea decide ce categorie devine impozabilă dacă plafonul comun este depășit.</span>
+          </label>
+          <label class="check full"><input name="beneficiiOrdineConfirmata" type="checkbox" /> Ordinea de mai sus a fost aleasă/confirmată de angajator.</label>
 
           <div class="full sect-form"><h3 class="card-titlu-mare">Normă parțială</h3>
             <p class="muted">Lasă-le nebifate dacă angajatul lucrează cu normă întreagă.</p></div>
@@ -2245,6 +2304,7 @@ Cu stimă,
           </label>
           <div class="full sect-form"><h3 class="card-titlu-mare">Profil fiscal — motorul declarațiilor și alertelor</h3>
             <p class="muted">De aici se derivă declarațiile așteptate, termenele și alertele — nu dintr-un simplu „plătitoare de TVA".</p></div>
+          <label class="check"><input name="controlDublu" type="checkbox" /> Control dublu al articolelor (inițiatorul nu își poate aproba sau posta propria notă când există cel puțin doi membri eligibili)</label>
           <label>Regim de impozitare
             <select name="regimImpozit"><option value="micro">Microîntreprindere (D100 trimestrial)</option><option value="profit">Impozit pe profit (D101 anual)</option></select>
           </label>
@@ -2260,7 +2320,7 @@ Cu stimă,
             </select>
           </label>
           <div class="full hidden" id="anticipatBox">
-            <div class="explain"><span class="ei">📅</span><p class="muted">Opțiunea pentru sistemul anual se comunică până pe <b>31 ianuarie</b> și te leagă <b>cel puțin 2 ani fiscali</b>. Plata anticipată a fiecărui trimestru e <b>o pătrime din impozitul anului precedent, actualizat cu indicele prețurilor de consum</b>, iar <b>trimestrul IV se declară și se plătește până pe 25 decembrie</b> — nu în ianuarie.</p></div>
+            <div class="explain"><span class="ei">📅</span><p class="muted">Opțiunea pentru sistemul anual se comunică până pe <b>31 ianuarie</b> și te leagă <b>cel puțin 2 ani fiscali</b>. Plata anticipată a fiecărui trimestru e <b>o pătrime din impozitul anului precedent, actualizat cu indicele prețurilor de consum</b>, iar obligația trimestrului IV, care ar avea termen 25 decembrie, se declară și se plătește până pe <b>21 decembrie</b> sau în ziua lucrătoare anterioară.</p></div>
             <label class="check"><input name="anticipatProfitContabil" type="checkbox" /> În anul precedent am fost nou-înființat, am avut pierdere fiscală, n-am datorat impozit pe profit anual sau am fost microîntreprindere <span class="muted">(art. 41 alin. 7 — atunci plata anticipată e cota aplicată profitului contabil al trimestrului, doar pentru trimestrele I–III)</span></label>
             <div class="dyn">
               <label>Impozit pe profit datorat pe anul precedent (lei)
@@ -2412,6 +2472,15 @@ Cu stimă,
         </form>
       </div>
       <div class="card">
+        <h2>Ștergerea contului</h2>
+        <p class="muted">Ștergerea elimină profilul, sesiunile, mesajele și accesul tău la firme. Firmele pe care le deții trebuie șterse sau transferate înainte, ca dosarele colaboratorilor să nu rămână fără proprietar.</p>
+        <div class="dyn">
+          <label>Confirmă utilizatorul <input id="deleteAccountUsername" autocomplete="off" /></label>
+          <label>Parola curentă <input id="deleteAccountPassword" type="password" autocomplete="current-password" /></label>
+          <button type="button" id="deleteAccountBtn" class="btn danger">Șterge definitiv contul</button>
+        </div>
+      </div>
+      <div class="card">
         <h2>Autentificare în doi pași (2FA)</h2>
         <p class="muted">Protejează contul cu un cod de 6 cifre din Google Authenticator, Microsoft
         Authenticator, 1Password sau altă aplicație TOTP. Păstrează cheia afișată la configurare
@@ -2522,6 +2591,12 @@ Cu stimă,
         <div id="colaboratoriList" class="tablewrap"></div>
         <form id="colaboratorForm" class="dyn" data-u="u8">
           <label>Utilizator sau email <input id="colaboratorKey" name="key" placeholder="ex. contabil.ionescu sau nume@exemplu.ro" autocomplete="off" /></label>
+          <label>Rol pe firmă <select id="colaboratorRol" name="rol">
+            <option value="aprobator">Aprobator — verifică, aprobă și postează</option>
+            <option value="verificator">Verificator — validează și aprobă</option>
+            <option value="operator">Operator — introduce și validează</option>
+            <option value="vizualizare">Doar vizualizare</option>
+          </select></label>
           <div class="row" data-u="u46">
             <button type="button" id="colaboratorAddExisting" class="btn primary">Adaugă cont existent</button>
             <button type="button" id="colaboratorInvite" class="btn">✉️ Invită prin link</button>

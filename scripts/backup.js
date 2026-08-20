@@ -277,6 +277,13 @@ async function main() {
   //    Cu CONTAB_BACKUP_KEY setat, copia OFFSITE pleaca CRIPTATA (AES-256, openssl);
   //    restaurare: openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in f.zip.enc -out f.zip -pass env:CONTAB_BACKUP_KEY
   let offsitePath = f.path;
+  if (offsiteState.configured && !BK_KEY) {
+    // Destinatia configurata inseamna intentie de transport. Fara cheie nu exista o varianta
+    // acceptabila „de rezerva”: arhiva contine baza, documentele si jurnalul de audit.
+    offsiteState.warning = 'copia offsite a fost oprita: CONTAB_BACKUP_KEY lipseste';
+    scrieMarcaj();
+    throw new Error('CONTAB_BACKUP_KEY lipseste: copia offsite a fost oprita inainte de transport, pentru a nu trimite date fiscale in clar.');
+  }
   if (BK_KEY) {
     const { spawnSync } = require('child_process');
     const encPath = f.path + '.enc';
@@ -353,11 +360,12 @@ async function main() {
   if (!offsiteConfigured) warn('ATENTIE: nicio copie offsite configurata. Recomandat: stocare obiect '
     + '(CONTAB_OFFSITE_ENDPOINT/BUCKET/KEY/SECRET) + criptare (CONTAB_BACKUP_KEY). '
     + 'Alternative: CONTAB_BACKUP_EMAIL_TO (limitat ca dimensiune), RCLONE_REMOTE (cere rclone instalat).');
-  // O copie care a PLECAT, dar in clar, nu mai trece tacut (vezi offsite.confidentialityWarning).
+  // Garda de mai sus face imposibila plecarea in clar. Functia ramane si ca plasa de regresie
+  // pentru orice transport nou adaugat ulterior.
   const avertismentConf = offsite.confidentialityWarning({ sent: offsiteOk, encrypted: !!BK_KEY, viaEmail: !!EMAIL_TO });
   offsiteState.ok = offsiteOk;
   offsiteState.warning = avertismentConf || (!offsiteConfigured ? 'nicio destinatie offsite configurata' : (!offsiteOk ? 'toate destinatiile configurate au esuat' : null));
-  if (avertismentConf) warn(avertismentConf);
+  if (avertismentConf) { warn(avertismentConf); process.exitCode = 1; }
   else if (!offsiteOk) process.exitCode = 1; // offsite configurat dar esuat -> semnaleaza in cron log
   // Marcaj FINAL: contine drill-ul rulat ACUM si rezultatul real al transporturilor offsite,
   // nu starea „in asteptare" de la inceputul scriptului.

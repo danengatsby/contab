@@ -94,6 +94,7 @@ async function loadLivrabile() {
 const DECL_ST = {
   nedepusa: { t: 'Nedepusă', c: '#b26a00', bg: '#fff4e0' },
   generata: { t: 'Generată', c: '#1652d6', bg: '#e7eefc' },
+  transmisa: { t: 'Transmisă', c: '#6b46c1', bg: '#f0e9ff' },
   depusa: { t: 'Depusă', c: '#0a7d33', bg: '#e2f5e8' },
   eroare: { t: 'Eroare', c: '#b00020', bg: '#fde7ea' },
   scutita: { t: 'Scutită', c: '#5a6472', bg: '#eceff3' },
@@ -157,17 +158,17 @@ async function loadDeclRegister(p) {
       <td>${declBadge(r.status, r.urgenta)}</td>
       <td>${(r.links || []).map((l) => `<a class="linkbtn" href="${H(l.href)}" target="_blank">${H(l.label)}</a>`).join(' · ') || '<span class="muted">—</span>'}</td>
       <td><select class="decl-set" data-tip="${r.tip}" data-period="${r.period}" aria-label="Schimbă starea pentru ${H(r.nume)}, perioada ${H(r.period)}">${opts(r.status)}</select></td>
-      <td class="muted adv" data-u="u148">${r.recipisa ? 'recipisă: ' + H(r.recipisa) + '<br>' : ''}${r.submittedAt ? 'depusă: ' + H(dataRo(r.submittedAt.slice(0, 10))) : (r.generatedAt ? 'XML generat: ' + H(dataRo(r.generatedAt.slice(0, 10))) : '')}${r.note ? '<br>' + H(r.note) : ''}</td>
+      <td class="muted adv" data-u="u148">${r.recipisa ? 'recipisă: ' + H(r.recipisa) + '<br>' : ''}${r.submittedAt ? 'depusă: ' + H(dataRo(r.submittedAt.slice(0, 10))) : (r.transmittedAt ? 'transmisă: ' + H(dataRo(r.transmittedAt.slice(0, 10))) : (r.generatedAt ? 'XML generat: ' + H(dataRo(r.generatedAt.slice(0, 10))) : ''))}${r.artifactHash ? '<br>SHA-256: ' + H(r.artifactHash.slice(0, 12)) + '…' : ''}${(r.artifacts || []).length > 1 ? '<br>artefacte păstrate: ' + H(r.artifacts.length) : ''}${(r.statusHistory || []).length ? '<br>tranziții în istoric: ' + H(r.statusHistory.length) : ''}${r.note ? '<br>' + H(r.note) : ''}</td>
     </tr>`).join('')}</tbody></table>`;
   box.querySelectorAll('.decl-set').forEach((sel) => sel.addEventListener('change', async () => {
     const body = { tip: sel.dataset.tip, period: sel.dataset.period, status: sel.value };
     if (sel.value === 'depusa') {
-      const v = await promptAction('Poți adăuga numărul recipisei sau indexul primit la depunere.', { title: 'Marchezi declarația ca depusă', label: 'Recipisă / index (opțional)', confirmLabel: 'Salvează starea' });
+      const v = await promptAction('Starea „depusă” se confirmă prin numărul recipisei sau indexul primit de la ANAF.', { title: 'Marchezi declarația ca depusă', label: 'Recipisă / index', required: true, minLength: 2, confirmLabel: 'Salvează starea' });
       if (v == null) { loadDeclRegister(sel.dataset.period); return; }
       body.recipisa = v;
     }
-    if (sel.value === 'eroare') {
-      const v = await promptAction('Descrierea ajută la urmărirea corecției necesare.', { title: 'Declarație cu eroare', label: 'Descriere (opțional)', multiline: true, confirmLabel: 'Salvează starea' });
+    if (sel.value === 'eroare' || sel.value === 'scutita') {
+      const v = await promptAction('Explicația păstrează motivul verificabil al acestei stări.', { title: sel.value === 'eroare' ? 'Declarație cu eroare' : 'Declarație scutită', label: 'Explicație', required: true, minLength: 3, multiline: true, confirmLabel: 'Salvează starea' });
       if (v == null) { loadDeclRegister(sel.dataset.period); return; }
       body.note = v;
     }
@@ -224,12 +225,12 @@ async function loadPortfolio() {
       'Firmele la care ai acces și care intră în agregarea de mai jos.') +
     kpi('📄', 'Declarații așteptate', t.asteptate, 'luna ' + p, 'blue',
       'Câte declarații au de depus firmele tale pe luna selectată, după profilul fiecăreia (TVA, angajați, trimestru).') +
-    kpi('✅', 'Depuse', t.depuse, t.generate + ' generate · ' + t.nedepuse + ' nedepuse', 'green',
-      'Declarațiile marcate „depuse" în registrul depunerilor. „Generate" = XML descărcat dar încă nedepus.') +
+    kpi('✅', 'Depuse', t.depuse, t.transmise + ' transmise · ' + t.generate + ' generate · ' + t.nedepuse + ' nedepuse', 'green',
+      '„Transmise” au fost trimise către ANAF, dar nu sunt încă depuse fără recipisa de acceptare.') +
     kpi('🛡️', 'Conformitate', d.conformitate + '%', t.restante + ' restanțe · ' + t.erori + ' erori', t.restante || t.erori ? 'red' : 'green',
       'Depuse împărțit la datorate (fără scutite). Restanțele = termen depășit fără depunere.');
   // bara de status (stacked) + legenda cu numarul pe fiecare stare
-  const segs = [['depuse', '#0a7d33'], ['generate', '#1652d6'], ['nedepuse', '#b26a00'], ['erori', '#b00020'], ['scutite', '#8a93a3']];
+  const segs = [['depuse', '#0a7d33'], ['transmise', '#6b46c1'], ['generate', '#1652d6'], ['nedepuse', '#b26a00'], ['erori', '#b00020'], ['scutite', '#8a93a3']];
   const total = Math.max(1, t.asteptate);
   $('#portoStatus').innerHTML =
     `<div data-u="u150">${
@@ -254,8 +255,8 @@ async function loadPortfolio() {
     if (s.status === 'expired') return '<span class="pill warn">probă expirată</span>' + (s.pending ? ' <span class="pill" data-u="u11">⏳ plată</span>' : '');
     return '<span class="pill warn">fără abonament</span>' + (s.pending ? ' <span class="pill" data-u="u11">⏳ plată</span>' : '');
   };
-  $('#portoFirms').innerHTML = `<table><thead><tr><th>Firma</th><th>CUI</th><th>Formă</th><th>Abonament</th><th class="num">Așteptate</th><th class="num">Depuse</th><th class="num">Generate</th><th class="num">Nedepuse</th><th class="num">Erori</th><th class="num">Atenționări</th></tr></thead><tbody>${
-    d.firms.map((f) => `<tr><td>${H(f.nume)}</td><td class="muted">${H(f.cui)}</td><td>${formaBadge(f)}</td><td>${abonBadge(f.sub)}</td><td class="num">${f.counts.asteptate}</td><td class="num" data-u="u156">${f.counts.depuse}</td><td class="num">${f.counts.generate}</td><td class="num" ${f.counts.nedepuse ? 'data-u="u157"' : ''}>${f.counts.nedepuse}</td><td class="num" ${f.counts.erori ? 'data-u="u33"' : ''}>${f.counts.erori}</td><td class="num">${f.natentionari || ''}</td></tr>`).join('')}</tbody></table>`;
+  $('#portoFirms').innerHTML = `<table><thead><tr><th>Firma</th><th>CUI</th><th>Formă</th><th>Abonament</th><th class="num">Așteptate</th><th class="num">Depuse</th><th class="num">Transmise</th><th class="num">Generate</th><th class="num">Nedepuse</th><th class="num">Erori</th><th class="num">Atenționări</th></tr></thead><tbody>${
+    d.firms.map((f) => `<tr><td>${H(f.nume)}</td><td class="muted">${H(f.cui)}</td><td>${formaBadge(f)}</td><td>${abonBadge(f.sub)}</td><td class="num">${f.counts.asteptate}</td><td class="num" data-u="u156">${f.counts.depuse}</td><td class="num">${f.counts.transmise}</td><td class="num">${f.counts.generate}</td><td class="num" ${f.counts.nedepuse ? 'data-u="u157"' : ''}>${f.counts.nedepuse}</td><td class="num" ${f.counts.erori ? 'data-u="u33"' : ''}>${f.counts.erori}</td><td class="num">${f.natentionari || ''}</td></tr>`).join('')}</tbody></table>`;
   $('#portoRecent').innerHTML = (d.recent || []).length
     ? `<table><thead><tr><th>Când</th><th>Firma</th><th>Cine</th><th>Acțiune</th></tr></thead><tbody>${
       d.recent.map((a) => `<tr><td class="muted">${(a.ts || '').replace('T', ' ').slice(0, 16)}</td><td>${H(a.firma)}</td><td>${H(a.username)}</td><td>${H(a.action)}${a.detail ? ' — <span class="muted">' + H(a.detail) + '</span>' : ''}</td></tr>`).join('')}</tbody></table>`

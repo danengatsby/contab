@@ -220,6 +220,20 @@ $('#logoutOthers').addEventListener('click', async () => {
   await api('/api/sessions/logout-others', { method: 'POST' }); renderSessions(); toast('Celelalte dispozitive au fost deconectate');
 });
 
+const deleteAccountBtn = $('#deleteAccountBtn');
+deleteAccountBtn && deleteAccountBtn.addEventListener('click', async () => {
+  const confirmUsername = String($('#deleteAccountUsername').value || '').trim();
+  const password = String($('#deleteAccountPassword').value || '');
+  if (!confirmUsername || !password) return toast('Completează utilizatorul și parola curentă.', true);
+  if (!await confirmAction('Contul, profilul, sesiunile și mesajele tale vor fi eliminate. Operațiunea nu poate fi anulată.', {
+    title: 'Ștergi definitiv contul?', confirmLabel: 'Șterge definitiv', danger: true,
+  })) return;
+  try {
+    await api('/api/account', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmUsername, password }) });
+    location.href = '/';
+  } catch (e) { toast(e.message, true); }
+});
+
 // ───────────────────────── SMTP (admin) ─────────────────────────
 export async function renderSmtp() {
   if (!USER || USER.role !== 'admin') return;

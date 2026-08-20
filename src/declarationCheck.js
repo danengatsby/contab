@@ -15,7 +15,7 @@ const rep = require('./reporting');
 const acc = require('./accounting');
 const saft = require('./saft');
 const validate = require('./validate');
-const { statePlata } = require('./payroll');
+const { statPlataPerioada } = require('./payroll');
 const d107 = require('./d107');
 const d301 = require('./d301');
 const d307 = require('./d307');
@@ -49,7 +49,7 @@ function buildXml(v, type, opts) {
     return xml.intrastatXml(v.company, period, rep.intrastat(v, period));
   }
   if (type === 'd205') return xml.d205Xml(v.company, year, rep.d205(v, year));
-  if (type === 'd112') return xml.d112Xml(v.company, period, statePlata(v.angajati, period, v.payrollHistory), declarant);
+  if (type === 'd112') return xml.d112Xml(v.company, period, statPlataPerioada(v, period), declarant);
   if (type === 'saft') return saft.saftXml(v, year);
   const e = new Error('Tip de declaratie necunoscut: ' + type);
   e.status = 400;

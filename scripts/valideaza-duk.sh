@@ -70,9 +70,8 @@ if grep -q "Validare fara erori" "$W/out.txt"; then
 fi
 # ATENTIONARI, fara nicio eroare: declaratia E acceptata. DUKIntegrator scrie si atentionarile in
 # acelasi fisier, iar stdout nu mai spune „Validare fara erori" — asa incat o declaratie CORECTA
-# ajungea raportata „INVALID (0 erori)", adica un fals alarm care ar bloca un release. Cazul e real:
-# la un stat cu concediu medical, baza CAS depaseste legitim baza CASS (indemnizatia intra in CAS,
-# nu in CASS), iar regula S26.2 semnaleaza asta ca neobisnuit — corect, dar nu eroare.
+# ajungea raportata „INVALID (0 erori)", adica un fals alarm care ar bloca un release. Unele
+# combinatii fiscale legitime pot produce atentionari, fara ca XML-ul sa fie respins.
 # Fail-closed: se cere ATAT confirmarea din stdout, CAT SI absenta oricarui bloc de eroare (E:/F:).
 # Orice alta forma cade mai jos, la INVALID.
 if grep -q "Atentionari la validare" "$W/out.txt" && ! grep -q '^[EF]:' "$W/erori.txt"; then

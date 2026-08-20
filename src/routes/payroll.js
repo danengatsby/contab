@@ -5,7 +5,7 @@
 // PDF-urile raman aici, pure pe vederea scoped. buildEntry e infrastructura partajata
 // (ramane in server.js) si se da serviciului ca dependenta.
 
-const { statePlata, registruSalarii } = require('../payroll');
+const { statPlataPerioada, registruSalarii } = require('../payroll');
 const pdf = require('../pdf');
 const svc = require('../payrollService');
 const { sendList } = require('../paginate');
@@ -33,12 +33,22 @@ module.exports = function register(app, ctx) {
     return { ok: true };
   }));
 
-  app.get('/api/stat-plata', (req, res) => { const v = S(req); res.json(statePlata(v.angajati, req.query.period, v.payrollHistory)); });
+  app.get('/api/stat-plata', (req, res) => { const v = S(req); res.json(statPlataPerioada(v,
+    req.query.period, req.query.live !== '1')); });
   // Dosar de recuperare a concediilor medicale de la FNUASS (o luna): angajatii cu CM + suma de recuperat.
   function dosarCm(v, period) {
-    const sp = statePlata(v.angajati, period, v.payrollHistory);
-    const rows = sp.rows.filter((r) => (r.indemnizatieCM || 0) > 0)
-      .map((r) => ({ nume: r.nume, cnp: r.cnp, zileCM: r.zileCM, mediaCM: r.mediaCM, cmAngajator: r.cmAngajator, cmFnuass: r.cmFnuass }));
+    const sp = statPlataPerioada(v, period);
+    const rows = sp.rows.flatMap((r) => {
+      const certificate = Array.isArray(r.certificateCM) && r.certificateCM.length
+        ? r.certificateCM : ((r.indemnizatieCM || 0) > 0 ? [r] : []);
+      return certificate.map((c) => ({ nume: r.nume, cnp: r.cnp,
+        serieCM: c.serieCM, numarCM: c.numarCM,
+        codIndemnizatieCM: c.codIndemnizatieCM,
+        zileCM: c.zileCM, zilePlatiteCM: c.zilePlatiteCM, zileNeplatiteCM: c.zileNeplatiteCM,
+        zileCMAngajator: c.zileCMAngajator, mediaCM: c.mediaCM,
+        mediaZilnicaCM: c.mediaZilnicaCM, cmBazaAproximata: c.cmBazaAproximata,
+        cmAngajator: c.cmAngajator, cmFnuass: c.cmFnuass }));
+    });
     return { period, rows, totalAngajator: sp.totals.cmAngajator, totalFnuass: sp.totals.cmFnuass };
   }
   app.get('/api/dosar-cm', (req, res) => res.json(dosarCm(S(req), req.query.period)));
@@ -67,12 +77,12 @@ module.exports = function register(app, ctx) {
     return { ok: true, suma: r.suma, cont: r.cont, entry: r.entry };
   }));
 
-  app.get('/pdf/stat-plata', (req, res) => { const v = S(req); pdf.statePlataPdf(res, v.company, statePlata(v.angajati, req.query.period, v.payrollHistory), req.query.period || null); });
+  app.get('/pdf/stat-plata', (req, res) => { const v = S(req); pdf.statePlataPdf(res, v.company, statPlataPerioada(v, req.query.period), req.query.period || null); });
   app.get('/pdf/fluturas/:id', (req, res) => {
     const v = S(req);
-    const ang = v.angajati.find((a) => a.id === req.params.id);
-    if (!ang) return res.status(404).send('Angajat inexistent');
-    const row = statePlata([ang], req.query.period, v.payrollHistory).rows[0];
+    const row = statPlataPerioada(v, req.query.period).rows
+      .find((r) => (r.angajatId || r.id) === req.params.id);
+    if (!row) return res.status(404).send('Angajat inexistent in perioada selectata');
     pdf.fluturasPdf(res, v.company, row, req.query.period || new Date().toISOString().slice(0, 7));
   });
 };

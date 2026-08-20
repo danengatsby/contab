@@ -39,7 +39,7 @@ async function main() {
   const key = process.env.CONTAB_BACKUP_KEY || '';
   console.log('1) Criptare (CONTAB_BACKUP_KEY)');
   if (!key) {
-    console.log('  ⚠ CONTAB_BACKUP_KEY ABSENT — copia offsite pleaca NECRIPTATA.');
+    console.log('  ⚠ CONTAB_BACKUP_KEY ABSENT — backupul refuza transportul offsite.');
     console.log('    Genereaza o cheie: openssl rand -base64 48');
     console.log('    Cheia NU se tine langa backup (nu in acelasi bucket, nu in aceeasi cutie postala).');
     cod = Math.max(cod, 2);

@@ -1731,7 +1731,7 @@ section('Calitatea citirii automate: verdictul și raportul (docflow.js / entrie
   ok('motivul e escapat', h.includes('&lt;b&gt;ACME&lt;/b&gt;') && !h.includes('<b>ACME'));
 
   const hAuto = docflow.calitateHtml({ scor: 100, controale: [] }, { entryId: 'e42' });
-  ok('postarea automată se anunță ca atare, cu articolul creat', hAuto.includes('postat automat') && hAuto.includes('e42'));
+  ok('ciorna automată se anunță ca atare, cu articolul creat', hAuto.includes('ciornă propusă automat') && hAuto.includes('e42'));
   eq('fără verdict nu randează nimic', docflow.calitateHtml(null), '');
 }
 

@@ -499,6 +499,10 @@ trece date fiscale de client printr-o cutie poștală terță — inconsecvent c
          doar configurarea. **Criteriul de fond al itemului rămâne deci neatins în producție**;
       3. **runbook-ul descria o instalare care nu e în funcțiune** (descarcă din bucket, decriptează)
          — corectat în `docs/rulare.md`, cu avertisment despre starea reală.
+- [x] **ACTUALIZARE 2026-08-20** — transportul offsite este acum fail-closed: dacă există o
+      destinație configurată, dar lipsește `CONTAB_BACKUP_KEY`, backupul se oprește înainte să
+      trimită date. Activarea copiei externe rămâne o operațiune de deployment: cheia trebuie
+      configurată separat și verificată prin `npm run offsite-check`.
 - [x] Arhiva e ilizibilă fără cheie — verificat efectiv: textul nu apare în cifrat, cheia greșită
       eșuează, round-trip-ul cu cheia bună e identic.
 - [x] Eșecul criptării **oprește** copia offsite (fail-closed); eșecul urcării se raportează și

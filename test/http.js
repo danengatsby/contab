@@ -548,7 +548,7 @@ async function main() {
     for (let i = 0; i < 3; i++) impUltim = await req('POST', '/api/firme/import-zip', { cookie: c1, body: mkZip(null, []) });
     eq('plafonul dedicat de importuri -> 429', impUltim.status, 429);
     // curatenie: firma importata se sterge (testele de portofoliu conteaza firmele lui c1)
-    eq('firma importata se poate sterge', (await req('DELETE', '/api/firme/' + rImp.json.firmaId, { cookie: c1 })).status, 200);
+    eq('firma importata se poate sterge', (await req('DELETE', '/api/firme/' + rImp.json.firmaId, { cookie: c1, body: { confirmName: firmaImp.nume } })).status, 200);
     await req('POST', '/api/firme/1/activate', { cookie: c1 });
     ok('firma activa restaurata dupa testele de import', (await req('GET', '/api/meta', { cookie: c1 })).json.firmaActiva === 1);
 
@@ -573,7 +573,7 @@ async function main() {
     const reg = await req('GET', '/api/declarations?period=2026-06', { cookie: c1 });
     const d300 = reg.json && reg.json.rows.find((r) => r.tip === 'd300');
     const saft = reg.json && reg.json.rows.find((r) => r.tip === 'saft');
-    ok('registru: d300 cu termen 25', d300 && d300.due === '2026-07-25');
+    ok('registru: D300 din iunie muta termenul de sambata in luni', d300 && d300.due === '2026-07-27');
     ok('registru: saft lunar cu termen sfarsit de luna', saft && saft.due === '2026-07-31');
     // Randul din registru poarta si fisierul: ecranul „De depus" e lista de sarcini a firmei, iar
     // fara link te trimitea sa cauti XML-ul in catalogul de 25 de randuri. Interfata depinde acum
@@ -586,6 +586,11 @@ async function main() {
     // Chiar functioneaza: linkul se cheama si intoarce fisierul, nu 404.
     const dl = await req('GET', d300.links.find((l) => l.href.startsWith('/xml/')).href, { cookie: c1 });
     ok('registru: linkul de XML chiar raspunde', dl.status === 200);
+    const generatD300 = (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd300');
+    ok('registru: artefactul generat are amprenta SHA-256 si dimensiune', /^[0-9a-f]{64}$/.test(generatD300.artifactHash || '') && generatD300.artifactBytes > 100);
+    const trimis = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-06', status: 'transmisa' } });
+    ok('registru: transmis este distinct de depus', trimis.status === 200 && trimis.json.rows.find((r) => r.tip === 'd300').status === 'transmisa');
+    eq('registru: depusa fara recipisa este refuzata', (await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-06', status: 'depusa' } })).status, 400);
     const set = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-06', status: 'depusa', recipisa: 'R1' } });
     const d300v2 = set.json && set.json.rows.find((r) => r.tip === 'd300');
     ok('registru: marcare depusa cu recipisa', d300v2 && d300v2.status === 'depusa' && d300v2.recipisa === 'R1');
@@ -597,7 +602,7 @@ async function main() {
     eq('rectificativa pe perioada inchisa FARA motiv -> 400', rectFaraMotiv.status, 400);
     ok('mesajul explica ca rectificativa e permisa, dar cere motiv',
       /motiv/i.test((rectFaraMotiv.json || {}).error || ''));
-    const rectOk = await req('POST', '/api/declarations/rectificativa', { cookie: c1, body: { tip: 'd300', period: '2026-06', motiv: 'factura de la furnizor primita dupa depunere' } });
+    const rectOk = await req('POST', '/api/declarations/rectificativa', { cookie: c1, body: { tip: 'd300', period: '2026-06', motiv: 'factura de la furnizor primita dupa depunere', recipisa: 'R-D300-2' } });
     eq('rectificativa cu motiv scris -> 200', rectOk.status, 200);
     eq('e a doua depunere pe perioada', rectOk.json.depunere.ordinal, 2);
     ok('depunerea e marcata rectificativa', rectOk.json.depunere.rectificativa === true);
@@ -1347,12 +1352,14 @@ async function main() {
     const x710 = await req('GET', '/xml/d710?period=2026-06', { cookie: c1 });
     ok('xml/d710: schema oficiala si obligatia micro 121', x710.status === 200
       && /<declaratie710/.test(x710.text) && /cod_oblig="121"/.test(x710.text) && /cota="1"/.test(x710.text));
+    ok('xml/d710: termenul tehnic ramane 25 chiar daca registrul afiseaza urmatoarea zi lucratoare',
+      /scadenta="25\.07\.2026" nr_evid="\d{23}"/.test(x710.text));
     ok('xml/d710: valorile initiala/corectata sunt distincte', (() => {
       const i = x710.text.match(/suma_dat_I="(\d+)"/); const c = x710.text.match(/suma_dat_C="(\d+)"/);
       return i && c && Number(c[1]) > Number(i[1]);
     })());
     const d710Marcat = await req('POST', '/api/declarations/rectificativa', { cookie: c1,
-      body: { tip: 'd100', period: '2026-06', motiv: 'venit omis inclus prin D710' } });
+      body: { tip: 'd100', period: '2026-06', motiv: 'venit omis inclus prin D710', recipisa: 'R-D710-2' } });
     eq('rectificarea D100 poate fi marcata depusa in istoric', d710Marcat.status, 200);
     const x710Arhiva = await req('GET', '/xml/d710?period=2026-06', { cookie: c1 });
     eq('D710 depusa poate fi redescărcata din ultimele doua fotografii', x710Arhiva.status, 200);
@@ -1532,7 +1539,7 @@ async function main() {
       ok('profil profit: D100 la trimestrul III', (dregT3.rows || []).map((x) => x.tip).includes('d100'));
       // calculul D101 (figuri semantice) disponibil via /api/d101
       const d101c = await req('GET', '/api/d101?year=2026', { cookie: c1 });
-      ok('/api/d101: calcul coerent (rezultat brut + impozit + scadenta)', d101c.status === 200 && typeof d101c.json.rezultatBrut === 'number' && typeof d101c.json.impozit === 'number' && d101c.json.scadenta === '2027-03-25');
+      ok('/api/d101: calcul coerent (rezultat brut + impozit + scadenta)', d101c.status === 200 && typeof d101c.json.rezultatBrut === 'number' && typeof d101c.json.impozit === 'number' && d101c.json.scadenta === '2027-06-25');
       // XML-ul D101 (schema oficiala v10) — disponibil doar in regim de profit. Generez pe 2025 ca
       // recordDecl (care marcheaza declaratia in registru) sa nu polueze verificarea micro pe 2026-12.
       const xd101 = await req('GET', '/xml/d101?year=2025', { cookie: c1 });
@@ -1872,24 +1879,61 @@ async function main() {
 
     // ── Avantaje in natura la salarizare (cap-coada) ──
     const angAv = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Avantaj Ion', salariuBrut: 5000, avantaje: 1000 } });
-    const spAvH = (await req('GET', '/api/stat-plata?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.nume === 'Avantaj Ion');
+    const spAvH = (await req('GET', '/api/stat-plata?period=2026-10', { cookie: c1 })).json.rows.find((r) => r.nume === 'Avantaj Ion');
     ok('stat: CAS 25% pe brut+avantaje (1500) si avantajele pe rand', spAvH && spAvH.cas === 1500 && spAvH.avantaje === 1000);
-    ok('D112 v7: baza CAS (A_13) include avantajele (6000)', /A_13="6000"/.test((await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).text));
+    ok('D112 v7: baza CAS (A_13) include avantajele (6000)', /A_13="6000"/.test((await req('GET', '/xml/d112?period=2026-10', { cookie: c1 })).text));
     ok('angajat de test sters', (await req('DELETE', '/api/angajati/' + angAv.json.angajat.id, { cookie: c1 })).json.ok === true);
 
     // ── Concediu medical in stat: salariu redus + indemnizatii + postare 6458/4373 ──
-    const angCm = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'CM Ion', salariuBrut: 4200, zileCM: 7, procentCM: 75, zileLucratoare: 21 } });
+    const angCm = await req('POST', '/api/angajati', { cookie: c1, body: {
+      nume: 'CM Ion', cnp: '1900101415238', salariuBrut: 4200, zileCM: 7,
+      codIndemnizatieCM: '01', procentCM: 55, zileLucratoare: 21,
+      dataInceputCM: '2026-08-03', serieCM: 'CCMAA', numarCM: '1234567890',
+      dataAcordareCM: '2026-08-03', dataInceputCertificatCM: '2026-08-03',
+      dataSfarsitCM: '2026-08-11', locPrescriereCM: 1, codBoalaCM: '100',
+    } });
     const spCmH = (await req('GET', '/api/stat-plata?period=2026-08', { cookie: c1 })).json.rows.find((r) => r.nume === 'CM Ion');
-    ok('stat cu CM: salariu redus 2800 + indemnizatii 750/300', spCmH && spCmH.brut === 2800 && spCmH.cmAngajator === 750 && spCmH.cmFnuass === 300);
+    ok('stat cu CM: salariu redus 2800 + o zi neplatita + indemnizatii 440/220', spCmH
+      && spCmH.brut === 2800 && spCmH.zileNeplatiteCM === 1
+      && spCmH.cmAngajator === 440 && spCmH.cmFnuass === 220);
+    eq('postarea CM fara dovada stagiului si baza completa este blocata',
+      (await req('POST', '/api/stat-plata?period=2026-08', { cookie: c1 })).status, 400);
+    const istoricBazaCM = ['2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07']
+      .map((period) => ({ period, venit: 4200, zile: 21 }));
+    const angCmConfirmat = await req('POST', '/api/angajati', { cookie: c1, body: {
+      id: angCm.json.angajat.id, nume: 'CM Ion', cnp: '1900101415238', salariuBrut: 4200,
+      zileCM: 7, codIndemnizatieCM: '01', procentCM: 55, zileLucratoare: 21,
+      dataInceputCM: '2026-08-03', serieCM: 'CCMAA', numarCM: '1234567890',
+      dataAcordareCM: '2026-08-03', dataInceputCertificatCM: '2026-08-03',
+      dataSfarsitCM: '2026-08-11', locPrescriereCM: 1, codBoalaCM: '100',
+      cmEligibilitate: 'stagiu', cmStagiuDocument: 'Adeverinta stagiu 123/2026',
+      istoricBazaCM, cmBazaPerioadaCompleta: true,
+    } });
+    ok('dovada stagiului si baza externa sunt pastrate pentru audit',
+      angCmConfirmat.json.angajat.cmEligibilitate === 'stagiu'
+      && angCmConfirmat.json.angajat.istoricBazaCM.length === 6);
     const postCm = await req('POST', '/api/stat-plata?period=2026-08', { cookie: c1 });
     ok('postare stat: 6458=421 (angajator) si 4373=421 (FNUASS de recuperat)',
-      postCm.json.entry.lines.some((l) => l.debit === '6458' && l.credit === '421' && l.suma === 750)
-      && postCm.json.entry.lines.some((l) => l.debit === '4373' && l.credit === '421' && l.suma === 300));
+      postCm.json.entry.lines.some((l) => l.debit === '6458' && l.credit === '421' && l.suma === 440)
+      && postCm.json.entry.lines.some((l) => l.debit === '4373' && l.credit === '421' && l.suma === 220));
+    // Fisa vie se schimba pentru luna urmatoare; luna postata ramane pe snapshotul complet.
+    await req('POST', '/api/angajati', { cookie: c1, body: {
+      id: angCm.json.angajat.id, nume: 'CM Ion', cnp: '1900101415238', salariuBrut: 9000,
+      zileCM: 0, procentCM: 75,
+    } });
+    const spCmPostat = (await req('GET', '/api/stat-plata?period=2026-08', { cookie: c1 })).json;
+    ok('stat postat imuabil: editarea fisei nu schimba retroactiv salariul/CM', spCmPostat.postat === true
+      && spCmPostat.rows.some((r) => r.nume === 'CM Ion' && r.brut === 2800 && r.cmFnuass === 220));
+    const d112CmPostat = (await req('GET', '/xml/d112?period=2026-08', { cookie: c1 })).text;
+    ok('D112 foloseste acelasi snapshot postat, nu fisa vie modificata', /<asiguratB3/.test(d112CmPostat)
+      && /D_1="CCMAA"/.test(d112CmPostat) && !/A_sal1="9000"/.test(d112CmPostat));
     // dosar de recuperare CM (FNUASS): angajatul cu CM + suma de recuperat
     const dosar = (await req('GET', '/api/dosar-cm?period=2026-08', { cookie: c1 })).json;
-    ok('dosar CM: angajatul cu CM listat + total FNUASS de recuperat (300)', dosar.rows.some((r) => r.nume === 'CM Ion' && r.cmFnuass === 300) && dosar.totalFnuass === 300);
+    ok('dosar CM: angajatul cu CM listat + total FNUASS de recuperat (220)', dosar.rows.some((r) => r.nume === 'CM Ion' && r.cmFnuass === 220) && dosar.totalFnuass === 220);
     eq('dosar CM PDF', (await req('GET', '/pdf/dosar-cm?period=2026-08', { cookie: c1 })).status, 200);
     ok('angajat CM sters', (await req('DELETE', '/api/angajati/' + angCm.json.angajat.id, { cookie: c1 })).json.ok === true);
+    eq('fluturasul lunii postate ramane disponibil dupa stergerea fisei vii',
+      (await req('GET', '/pdf/fluturas/' + angCm.json.angajat.id + '?period=2026-08', { cookie: c1 })).status, 200);
     // F4109 — declaratie de neutilizare casa de marcat (PDF pentru o luna)
     eq('F4109 PDF cu seria data', (await req('GET', '/pdf/f4109?period=2026-08&serie=AMEF12345678', { cookie: c1 })).status, 200);
     eq('F4109 PDF fara serie (placeholder)', (await req('GET', '/pdf/f4109?period=2026-08', { cookie: c1 })).status, 200);
@@ -2277,10 +2321,12 @@ async function main() {
     ok('registru incasari-plati: randuri si venit net pe incasari', Array.isArray(ripH.rows) && typeof ripH.venitNetIncasat === 'number');
     eq('registru incasari-plati PDF', (await req('GET', '/pdf/registru-incasari-plati?period=2026-06', { cookie: c1 })).status, 200);
     ok('DU include varianta pe incasat/platit', typeof (await req('GET', '/api/declaratia-unica?year=2026', { cookie: c1 })).json.incasat.venitNet === 'number');
+    await req('GET', '/xml/d300?period=2026-01', { cookie: c1 });
     const setDep = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-01', status: 'depusa', recipisa: 'R1' } });
     eq('marcarea "depusa" blocheaza automat perioada', setDep.json.locked, '2026-01');
     eq('inregistrare in luna blocata -> respinsa (400)', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-01-10', partener: 'X', baza: 100, tva: 21, cota: 21 } } })).status, 400);
-    const setDep2 = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd394', period: '2026-01', status: 'depusa' } });
+    await req('GET', '/xml/d394?period=2026-01', { cookie: c1 });
+    const setDep2 = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd394', period: '2026-01', status: 'depusa', recipisa: 'R-D394-1' } });
     ok('a doua declaratie depusa pe aceeasi luna nu re-blocheaza', setDep2.json.ok === true && setDep2.json.locked == null);
 
     // ── CONTRACTE DE LEASING: contractul alimenteaza factura de rata ──
@@ -2548,7 +2594,8 @@ async function main() {
     ok('user NU poate activa o firma straina', (await req('POST', '/api/firme/2/activate', { cookie: c1 })).status >= 400 || (await req('GET', '/api/meta', { cookie: c1 })).json.firmaActiva !== 2);
     // isi poate STERGE o firma proprie (ca la admin), dar nu una straina
     eq('user NU poate sterge o firma straina -> 403', (await req('DELETE', '/api/firme/2', { cookie: c1 })).status, 403);
-    ok('user isi sterge propria firma secundara', (await req('DELETE', '/api/firme/' + f2, { cookie: c1 })).json.ok === true);
+    eq('stergerea fara denumirea exacta este refuzata', (await req('DELETE', '/api/firme/' + f2, { cookie: c1, body: { confirmName: 'gresit' } })).status, 400);
+    ok('user isi sterge propria firma secundara', (await req('DELETE', '/api/firme/' + f2, { cookie: c1, body: { confirmName: nouaFirma.json.firma.nume } })).json.ok === true);
     ok('dupa stergere, firma nu mai apare in lista lui', !(await req('GET', '/api/firme', { cookie: c1 })).json.firme.some((f) => f.id === f2));
 
     // ── ACCES STRICT: userii vad DOAR firmele lor, niciodata a altcuiva ──
@@ -2831,6 +2878,20 @@ async function main() {
       eq('al doilea cont de contabil se creeaza', conAscuns.status, 200);
       ok('cine refuza bifa NU apare in lista',
         !(await req('GET', '/api/firme/contabili', { cookie: patron.cookie })).json.contabili.some((c) => c.username === 'contabil-ascuns-t'));
+      eq('stergere cont: confirmarea username este obligatorie',
+        (await req('DELETE', '/api/account', { cookie: conAscuns.cookie, body: { confirmUsername: 'alt-cont', password: 'ParolaBuna2026' } })).status, 400);
+      eq('stergere cont: parola curenta este verificata',
+        (await req('DELETE', '/api/account', { cookie: conAscuns.cookie, body: { confirmUsername: 'contabil-ascuns-t', password: 'ParolaGresita2026' } })).status, 400);
+      const contSters = await req('DELETE', '/api/account', { cookie: conAscuns.cookie,
+        body: { confirmUsername: 'contabil-ascuns-t', password: 'ParolaBuna2026' } });
+      ok('contul fara firme poate fi sters self-service si sesiunea este inchisa',
+        contSters.status === 200 && contSters.json.deleted === true && /^sid=$/.test(contSters.cookie));
+      eq('sesiunea contului sters nu mai autentifica',
+        (await req('GET', '/api/me', { cookie: conAscuns.cookie })).status, 401);
+      const auditDupaStergere = (await req('GET', '/api/audit/system', { cookie: la.cookie })).json || [];
+      ok('identitatea contului sters este pseudonimizata in auditul viu',
+        !JSON.stringify(auditDupaStergere).includes('contabil-ascuns-t')
+        && auditDupaStergere.some((a) => a.action === 'account.delete' && /^utilizator-sters-/.test(a.username || '')));
       // patronul ramane obligat sa dea denumirea firmei
       eq('inscrierea de patron FARA denumire de firma e refuzata -> 400',
         (await req('POST', '/api/register', { headers: { Origin: BASE, 'X-Forwarded-For': '10.0.0.13', 'X-Forwarded-Proto': 'https' }, body: { username: 'patron-fara-nume-t', password: 'ParolaBuna2026' } })).status, 400);
@@ -3253,6 +3314,9 @@ async function main() {
     ok('/csv/audit: text/csv cu antetul de coloane', acsv.status === 200 && /Data \(UTC\);Utilizator;Actiune/.test(acsv.text));
     eq('/csv/audit/system: non-admin -> 403', (await req('GET', '/csv/audit/system', { cookie: c1 })).status, 403);
     eq('/csv/audit/system: admin -> 200 CSV', (await req('GET', '/csv/audit/system', { cookie: cAdm })).status, 200);
+    const auditVerificat = await req('GET', '/api/audit/durable/verify', { cookie: cAdm });
+    ok('jurnalul durabil are lant SHA-256 valid', auditVerificat.status === 200 && auditVerificat.json.ok
+      && auditVerificat.json.chained > 0 && /^[a-f0-9]{64}$/.test(auditVerificat.json.head));
     // exporturile XML fiscale lasa urma in audit (cine a descarcat ce); PDF/CSV nu (doar log)
     await req('GET', '/xml/d300?period=2026-06', { cookie: c1 });
     await req('GET', '/pdf/balance?period=2026-06', { cookie: c1 });

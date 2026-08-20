@@ -233,10 +233,8 @@ function f4109Pdf(res, company, d) {
 }
 
 /** Dosar de recuperare a indemnizatiilor de concediu medical de la FNUASS (o luna).
- *  d = { period, rows: [{ nume, cnp, zileCM, mediaCM, cmAngajator, cmFnuass }], totalAngajator, totalFnuass }. */
-
-/** Dosar de recuperare a indemnizatiilor de concediu medical de la FNUASS (o luna).
- *  d = { period, rows: [{ nume, cnp, zileCM, mediaCM, cmAngajator, cmFnuass }], totalAngajator, totalFnuass }. */
+ *  d = { period, rows: [{ nume, cnp, codIndemnizatieCM, zileCM, zilePlatiteCM,
+ *  mediaZilnicaCM, cmAngajator, cmFnuass }], totalAngajator, totalFnuass }. */
 function dosarCmPdf(res, company, d) {
   const doc = newDoc(true);
   header(doc, company, 'Dosar recuperare concedii medicale (FNUASS)', periodLabel(d.period));
@@ -244,25 +242,30 @@ function dosarCmPdf(res, company, d) {
     .text('Situatia indemnizatiilor de concediu medical si a sumelor de recuperat de la Fondul National Unic de Asigurari Sociale de Sanatate (OUG 158/2005).');
   doc.moveDown(0.3);
   const rows = (d.rows || []).map((r) => ({
-    nume: clean(r.nume), cnp: clean(r.cnp || ''), zile: String(r.zileCM || 0), media: fmt(r.mediaCM || 0),
+    nume: clean(r.nume), cnp: clean(r.cnp || ''), cod: clean(r.codIndemnizatieCM || ''),
+    certificat: clean([r.serieCM, r.numarCM].filter(Boolean).join(' / ')),
+    zile: String(r.zilePlatiteCM || 0) + '/' + String(r.zileCM || 0),
+    media: fmt(r.mediaZilnicaCM || 0) + (r.cmBazaAproximata ? '*' : ''),
     ang: fmt(r.cmAngajator || 0), fnuass: fmt(r.cmFnuass || 0), total: fmt(round2((r.cmAngajator || 0) + (r.cmFnuass || 0))),
   }));
-  rows.push({ nume: 'TOTAL', cnp: '', zile: '', media: '', ang: fmt(d.totalAngajator || 0), fnuass: fmt(d.totalFnuass || 0), total: fmt(round2((d.totalAngajator || 0) + (d.totalFnuass || 0))), _bold: true, _fill: C.zebra });
+  rows.push({ nume: 'TOTAL', cnp: '', cod: '', certificat: '', zile: '', media: '', ang: fmt(d.totalAngajator || 0), fnuass: fmt(d.totalFnuass || 0), total: fmt(round2((d.totalAngajator || 0) + (d.totalFnuass || 0))), _bold: true, _fill: C.zebra });
   table(doc, [
-    { label: 'Angajat', key: 'nume', width: 150, wrap: true },
-    { label: 'CNP', key: 'cnp', width: 110 },
-    { label: 'Zile CM', key: 'zile', width: 55, align: 'right' },
-    { label: 'Baza (media)', key: 'media', width: 80, align: 'right' },
-    { label: 'Suportat angajator', key: 'ang', width: 90, align: 'right' },
-    { label: 'De recuperat FNUASS', key: 'fnuass', width: 95, align: 'right' },
-    { label: 'Total indemnizatie', key: 'total', width: 90, align: 'right' },
+    { label: 'Angajat', key: 'nume', width: 110, wrap: true },
+    { label: 'CNP', key: 'cnp', width: 85 },
+    { label: 'Cod', key: 'cod', width: 30, align: 'center' },
+    { label: 'Certificat', key: 'certificat', width: 85, wrap: true },
+    { label: 'Zile platite/CM', key: 'zile', width: 55, align: 'right' },
+    { label: 'Baza zilnica', key: 'media', width: 65, align: 'right' },
+    { label: 'Suportat angajator', key: 'ang', width: 80, align: 'right' },
+    { label: 'De recuperat FNUASS', key: 'fnuass', width: 85, align: 'right' },
+    { label: 'Total indemnizatie', key: 'total', width: 80, align: 'right' },
   ], rows);
   doc.moveDown(0.5);
   doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(11)
     .text('SUMA DE RECUPERAT DE LA FNUASS: ' + fmt(d.totalFnuass || 0) + ' lei', doc.page.margins.left, doc.y);
   doc.fillColor(C.muted).font('Helvetica').fontSize(8.5)
-    .text('Primele 5 zile lucratoare ale fiecarui concediu medical sunt suportate de angajator (cont 6458); restul se suporta din FNUASS si se recupereaza (cont 4373). '
-      + 'Dosarul de recuperare se depune la casa de asigurari de sanatate, insotit de cererea de restituire si certificatele medicale.', doc.page.margins.left, doc.y + 4);
+    .text('Repartizarea angajator/FNUASS respecta tipul indemnizatiei si intervalul legal al episodului. Pentru certificatele emise intre 1 februarie 2026 si 31 decembrie 2027, prima zi lucratoare este neplatita, cu exceptiile legale. '
+      + '* Baza aproximata indica lipsa istoricului salarial complet si trebuie confirmata. Dosarul se depune la casa de asigurari, cu cererea si certificatele medicale.', doc.page.margins.left, doc.y + 4);
   finish(doc, res, 'dosar-cm-' + d.period + '.pdf');
 }
 

@@ -297,6 +297,10 @@ module.exports = function registerAuthRoutes(app, ctx) {
     res.setHeader('Content-Disposition', 'attachment; filename="' + name + '"');
     res.send(fs.readFileSync(p));
   });
+  app.get('/api/audit/durable/verify', requireAdmin, (req, res) => {
+    const result = auditLog.verify();
+    res.status(result.ok ? 200 : 409).json(result);
+  });
 
   // Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare
   // primii. Include si diagnosticele de proces (memorie, Node, driver) — DOAR pentru admin.

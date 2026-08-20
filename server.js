@@ -77,8 +77,10 @@ function logAudit(action, detail, opts) {
     ...(ip ? { ip } : {}),
     ...(viaAdmin ? { viaAdmin } : {}),
   };
+  // Intai proba durabila, apoi copia vie. `append` este fail-closed: o actiune care nu poate fi
+  // consemnata nu primeste un raspuns de succes si nu este mascata drept auditata.
+  auditLog.append(record);
   d.audit.push(record);
-  auditLog.append(record); // proba DURABILA append-only pe disc (supravietuieste rolarii + pierderii bazei)
   // Plafon in baza VIE (rulaj) — doar pentru RAM/UI. Proba DURABILA nu depinde de el:
   // fiecare eveniment e deja scris append-only in data/audit/*.ndjson (auditLog.append),
   // fisiere lunare incluse in backupul zilnic offsite si descarcabile prin /api/audit/durable.

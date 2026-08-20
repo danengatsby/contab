@@ -294,9 +294,11 @@ fără `rclone` și fără dependențe noi.
 
 ### Criptarea e fail-closed
 
-Cu `CONTAB_BACKUP_KEY` setat, arhiva se criptează (AES-256-CBC, PBKDF2 200.000 iterații) **înainte**
+`CONTAB_BACKUP_KEY` este obligatorie pentru orice destinație offsite. Arhiva se criptează
+(AES-256-CBC, PBKDF2 200.000 iterații) **înainte**
 de urcare, iar scriptul verifică *round-trip* — descifrează și compară amprenta cu originalul —
-înainte să trimită ceva. Dacă criptarea sau verificarea eșuează, **copia offsite nu pleacă deloc**.
+înainte să trimită ceva. Dacă cheia lipsește, criptarea sau verificarea eșuează, **copia offsite nu
+pleacă deloc**, iar rularea se termină cu eroare și păstrează motivul în `last-backup.json`.
 
 Comportamentul vechi trimitea necriptat cu un simplu avertisment în log: adică exact când ceva nu
 era în regulă, datele fiscale plecau în clar. O cheie configurată e o cerință, nu o preferință.
@@ -411,8 +413,8 @@ credențiale greșite dau `SignatureDoesNotMatch`, bucket inexistent dă `NoSuch
 rămâne pentru **notificare**, dar nu mai e nevoie să fie transportul datelor: arhiva criptată pleacă
 în bucket. Prima rulare reală se vede în `logs/backup.log` ca `Offsite S3 OK -> …(verificat)`.
 
-Ce se întâmplă dacă ceva cedează: criptarea e **fail-closed** (dacă `openssl` eșuează iar cheia e
-setată, copia offsite **nu pleacă** — refuz deliberat de a trimite în clar), iar urcarea se
+Ce se întâmplă dacă ceva cedează: criptarea e **fail-closed** (dacă cheia lipsește sau `openssl`
+eșuează, copia offsite **nu pleacă** — refuz deliberat de a trimite în clar), iar urcarea se
 verifică descărcând obiectul înapoi și comparând amprenta, fiindcă o urcare care a truncat fișierul
 arată identic în log cu una bună.
 

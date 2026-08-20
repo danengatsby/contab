@@ -476,7 +476,7 @@ const D100_OBLIG = {
  *    altuia. De aceea se scade impozitul cumulat al trimestrului precedent, nu se calculeaza
  *    izolat trimestrul;
  *  - TRIMESTRUL IV NU SE DECLARA aici. Art. 41 alin. (1) cere D100 doar pentru trimestrele I-III;
- *    definitivarea anului se face prin D101, pana pe 25 martie. O firma care ar depune D100 pe T4
+ *    definitivarea anului se face prin D101, pana la termenul anual din 25 iunie. O firma care ar depune D100 pe T4
  *    si-ar declara impozitul de doua ori.
  *
  * Diferenta poate iesi NEGATIVA (trimestru pe pierdere dupa unul profitabil). Pe declaratie merge
@@ -523,7 +523,7 @@ function d100profit(db, period, opts) {
   if (trimestru === 4 && !anticipat) {
     avertismente.push('Trimestrul IV nu se declară prin D100: art. 41 alin. (1) cere declarația '
       + 'trimestrială doar pentru trimestrele I-III, iar definitivarea anului se face prin D101, '
-      + 'până pe 25 martie. Depunerea unui D100 pe trimestrul IV ar declara impozitul de două ori.');
+      + 'până la termenul anual din 25 iunie. Depunerea unui D100 pe trimestrul IV ar declara impozitul de două ori.');
   }
   if (diferenta < 0 && !anticipat) {
     avertismente.push('Impozitul cumulat a SCĂZUT față de trimestrul precedent (' + cumulat.impozit
@@ -1753,7 +1753,7 @@ function d101(db, year, opts) {
     // validatorului, dovedita prin sondaj; P42 (credit fiscal extern) nu e modelat, deci e 0.
     sponsorizareCredit: pt.sponsorizare ? round2(pt.sponsorizare.folosit) : 0,
     impozitDePlata: round2(pt.impozit || 0), // P52 — dupa scaderea sponsorizarii
-    scadenta: (Number(String(year).slice(0, 4)) + 1) + '-03-25',
+    scadenta: decl.dueDate('d101', String(year).slice(0, 4) + '-12'),
   };
 }
 

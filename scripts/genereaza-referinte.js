@@ -159,15 +159,23 @@ const v311Reinreg = {
 w('D311-reinreg', xml.d311Xml(v311Reinreg.company, '2026-06', d311.report(v311Reinreg, '2026-06'), who));
 // D112 (salarii)
 w('D112', xml.d112Xml(v.company, '2026-06', statePlata(v.angajati), who));
+// D112 schema in vigoare de la perioada 07/2026. ANAF a publicat o structura distincta la
+// 14.08.2026; o referinta ramasa numai pe iunie ar valida versiunea veche si ar rata orice camp
+// nou obligatoriu pentru declaratiile curente.
+w('D112-0726', xml.d112Xml(v.company, '2026-07', statePlata(v.angajati, '2026-07'), who));
 // D112 varianta CONCEDIU MEDICAL: angajatul din exemplu nu are niciunul, deci repartizarea
 // angajator/FNUASS si indemnizatia din baza CAS n-ar fi exercitate niciodata la validator. Data de
-// inceput cade JOI, adica exact cazul in care primele 5 zile CALENDARISTICE contin doar 3 zile
-// lucratoare — cifra pe care formula veche o dadea 5.
+// inceput cade JOI, adica exact cazul in care intervalul legal 2-6 contine doar 3 zile platite
+// de angajator. Referinta este pe iulie ca sa exercite si noile campuri D_14a...D_21a.
 const angCM = (v.angajati || []).map((a, i) => (i === 0
-  ? Object.assign({}, a, { zileCM: 10, procentCM: 75, dataInceputCM: '2026-06-11' })
+  ? Object.assign({}, a, { zileCM: 10, procentCM: 65, codIndemnizatieCM: '01',
+    dataInceputCM: '2026-07-09', dataInceputCertificatCM: '2026-07-09',
+    dataSfarsitCM: '2026-07-22', dataAcordareCM: '2026-07-09',
+    serieCM: 'CCMAA', numarCM: '1234567890', locPrescriereCM: 3, codBoalaCM: '100',
+    zileLucratoare: 23 })
   : a));
 {
-  const spCM = statePlata(angCM, '2026-06', v.payrollHistory);
+  const spCM = statePlata(angCM, '2026-07', v.payrollHistory);
   const r0 = spCM.rows[0];
   if (r0.zileCMAngajator !== 3) {
     throw new Error('D112-cm: angajatorul nu suporta 3 zile (concediu inceput joi) — ' + r0.zileCMAngajator);
@@ -175,7 +183,98 @@ const angCM = (v.angajati || []).map((a, i) => (i === 0
   if (!(r0.cmFnuass > 0) || !(r0.cmAngajator > 0)) {
     throw new Error('D112-cm: repartizarea angajator/FNUASS nu e exercitata — ' + JSON.stringify(r0));
   }
-  w('D112-cm', xml.d112Xml(v.company, '2026-06', spCM, who));
+  w('D112-cm', xml.d112Xml(v.company, '2026-07', spCM, who));
+}
+
+// D112 continuare cod 01 dupa 01.07.2026: OUG 89/2025 cere ca diferenta recalculata pentru luna
+// anterioara sa intre in luna curenta si sa fie separata in D_20a/D_21a, B3_7D si C2_155/156.
+// Fara aceasta proba, certificatul initial trecea, dar o continuare reala era respinsa de DUK.
+const angCMContinuare = (v.angajati || []).map((a, i) => (i === 0
+  ? Object.assign({}, a, { zileCM: 8, procentCM: 65, codIndemnizatieCM: '01',
+    dataInceputCM: '2026-06-27', dataInceputCertificatCM: '2026-07-01',
+    dataSfarsitCM: '2026-07-10', dataAcordareCM: '2026-07-01',
+    serieCM: 'CCMCC', numarCM: '1234567892', serieInitialCM: 'CCMCI',
+    numarInitialCM: '1234567891', locPrescriereCM: 1, codBoalaCM: '100',
+    cmDiferentaAngajator: 40, cmDiferentaFnuass: 20, zileLucratoare: 23 })
+  : a));
+{
+  const sp = statePlata(angCMContinuare, '2026-07', v.payrollHistory);
+  const r0 = sp.rows[0];
+  if (r0.cmDiferentaAngajator !== 40 || r0.cmDiferentaFnuass !== 20) {
+    throw new Error('D112-cm-continuare: diferentele recalculate s-au pierdut — ' + JSON.stringify(r0));
+  }
+  w('D112-cm-continuare', xml.d112Xml(v.company, '2026-07', sp, who));
+}
+
+// Fiecare familie din centralizatorul C2 are alte atribute si alte corelatii COUNT/SUM. Probele
+// distincte impiedica revenirea la eroarea in care toate tipurile erau puse in C2_11..C2_16.
+for (const tip of [
+  { cod: '02', pct: 80, integral: false, exceptat: false, boala: '100' },
+  { cod: '03', pct: 80, integral: false, exceptat: false, boala: '100' },
+  { cod: '04', pct: 80, integral: false, exceptat: false, boala: '100' },
+  { cod: '05', pct: 100, integral: false, exceptat: false, boala: '100' },
+  // Urgenta prescrisa in afara spitalului nu poate depasi 5 zile calendaristice (regula S96.2).
+  { cod: '06', pct: 100, integral: false, exceptat: false, boala: '100', zile: 5,
+    sfarsit: '2026-07-10' },
+  { cod: '07', pct: 75, integral: true, exceptat: false, boala: '100' },
+  { cod: '08', pct: 85, integral: true, exceptat: true, boala: '200' },
+  { cod: '09', pct: 85, integral: true, exceptat: false, boala: '300' },
+  { cod: '10', pct: 75, integral: true, exceptat: false, boala: '400' },
+  { cod: '12', pct: 100, integral: false, exceptat: true, program: true, boala: '500' },
+  { cod: '13', pct: 75, integral: false, exceptat: false, boala: '500' },
+  { cod: '14', pct: 100, integral: false, exceptat: false, boala: '500' },
+  { cod: '15', pct: 75, integral: true, exceptat: true, boala: 'RM' },
+  { cod: '16', pct: 100, integral: false, exceptat: false, boala: '500' },
+  { cod: '17', pct: 85, integral: true, exceptat: true, boala: '600' },
+  { cod: '51', pct: 100, integral: true, exceptat: true, boala: '700' },
+  { cod: '91', pct: 85, integral: true, exceptat: false, boala: '300' },
+  { cod: '92', pct: 85, integral: true, exceptat: false, boala: '300' },
+]) {
+  const ang = (v.angajati || []).map((a, i) => (i === 0 ? Object.assign({}, a, {
+    zileCM: tip.zile || 7, procentCM: tip.pct, codIndemnizatieCM: tip.cod,
+    dataInceputCM: '2026-07-06', dataInceputCertificatCM: '2026-07-06',
+    dataSfarsitCM: tip.sfarsit || '2026-07-14', dataAcordareCM: '2026-07-06',
+    serieCM: 'CCM' + tip.cod.padStart(2, '0'), numarCM: '12345678' + tip.cod,
+    locPrescriereCM: 1, codBoalaCM: tip.boala, zileLucratoare: 23,
+    cnpCopilCM: ['09', '91', '92'].includes(tip.cod) ? '6200101400017' : '',
+    cnpPacientOncologicCM: tip.cod === '17' ? '6200101400017' : '',
+    codUrgentaCM: tip.cod === '06' ? '001' : '',
+    avizMedicExpertCM: tip.cod === '10' ? 'AVIZ123' : '',
+    // 24 = SARS-CoV-2 in nomenclatorul D_12 pentru codul 51 (izolare); 35 apartine grupei A
+    // pentru codul 05 si este respins aici de validatorul oficial.
+    codInfectocontagiosCM: tip.cod === '51' ? '24' : (tip.cod === '05' ? '35' : ''),
+    cmProgramNational: !!tip.program,
+    cmIntegralFnuass: tip.integral, cmExceptatZiNeplatita: tip.exceptat,
+  }) : a));
+  w('D112-cm-' + tip.cod, xml.d112Xml(v.company, '2026-07',
+    statePlata(ang, '2026-07', v.payrollHistory), who));
+}
+
+// Doua certificate ale aceluiasi asigurat, in aceeasi luna: sectiunea D se repeta, iar C2
+// centralizeaza fiecare cod in familia sa. Referintele cu un singur certificat nu pot detecta
+// pierderea celui de-al doilea la serializare sau agregarea gresita intr-un singur caz.
+{
+  const certificat = (extra) => Object.assign({
+    zileCM: 3, procentCM: 55, codIndemnizatieCM: '01',
+    dataInceputCM: '2026-07-06', dataInceputCertificatCM: '2026-07-06',
+    dataSfarsitCM: '2026-07-08', dataAcordareCM: '2026-07-06',
+    serieCM: 'CM001', numarCM: '2234567801', locPrescriereCM: 1, codBoalaCM: '100',
+  }, extra || {});
+  const ang = (v.angajati || []).map((a, i) => (i === 0 ? Object.assign({}, a, {
+    zileLucratoare: 23,
+    certificateCM: [certificat(), certificat({
+      procentCM: 85, codIndemnizatieCM: '08', dataInceputCM: '2026-07-13',
+      dataInceputCertificatCM: '2026-07-13', dataSfarsitCM: '2026-07-15',
+      dataAcordareCM: '2026-07-13', serieCM: 'CM008', numarCM: '2234567808',
+      locPrescriereCM: 2, codBoalaCM: '200', cmIntegralFnuass: true,
+    })],
+  }) : a));
+  const sp = statePlata(ang, '2026-07', v.payrollHistory);
+  if (sp.rows[0].certificateCM.length !== 2 || sp.rows[0].zileCM !== 6) {
+    throw new Error('D112-cm-multiple: certificatele nu au ramas distincte — '
+      + JSON.stringify(sp.rows[0].certificateCM));
+  }
+  w('D112-cm-multiple', xml.d112Xml(v.company, '2026-07', sp, who));
 }
 
 // D112 varianta cu AVANTAJE PESTE PLAFONUL DE 33% (art. 76 alin. (4^1)): angajatul din exemplu

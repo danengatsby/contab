@@ -15,7 +15,7 @@ const { period: periodOf } = require('../util');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, canAccess, requireAdmin, logAudit, buildEntry, composeEntry, upsertPartner } = ctx;
-  const deps = { buildEntry, upsertPartner };
+  const deps = (req) => ({ buildEntry, upsertPartner, actor: req.user });
 
   // Previzualizarea articolului din formular, INAINTE de salvare. Trece prin exact aceeasi
   // compunere ca salvarea (composeEntry), deci arata si regulile pe care o replica in frontend
@@ -45,7 +45,7 @@ module.exports = function register(app, ctx) {
   };
 
   app.post('/api/entries', (req, res) => run(res, () => {
-    const r = svc.createEntry(activeId(req), req.body, deps);
+    const r = svc.createEntry(activeId(req), req.body, deps(req));
     logAudit('entry.create', r.entry.tipNume + ' ' + (r.entry.document || ''), { req, firmaId: r.entry.firmaId });
     return { ok: true, entry: r.entry, stoc: r.stoc };
   }));
@@ -86,7 +86,7 @@ module.exports = function register(app, ctx) {
   // Tranzitie de stare in fluxul contabil: ciorna -> validat -> aprobat -> postat (POST {status}).
   // Doar articolele postate intra in contabilitate; postarea verifica perioada deschisa.
   app.post('/api/entries/:id/status', (req, res) => run(res, () => {
-    const r = svc.setEntryStatus(req.params.id, activeId(req), (fid) => canAccess(req, fid), (req.body || {}).status);
+    const r = svc.setEntryStatus(req.params.id, activeId(req), (fid) => canAccess(req, fid), (req.body || {}).status, req.user);
     logAudit('entry.status', 'articol ' + r.entry.id + ' -> ' + r.status, { req, firmaId: r.entry.firmaId });
     return { ok: true, id: r.entry.id, status: r.status };
   }));
@@ -116,7 +116,7 @@ module.exports = function register(app, ctx) {
     res.json({ period, due: due.slice(0, ABS_MAX) });
   });
   app.post('/api/recurring/generate', (req, res) => run(res, () => {
-    const r = svc.generateRecurring(activeId(req), req.query.period, deps);
+    const r = svc.generateRecurring(activeId(req), req.query.period, deps(req));
     if (r.created.length) logAudit('recurring.generate', r.period + ': ' + r.created.length + ' generate', { req });
     return { ok: true, period: r.period, created: r.created.length, errors: r.errors, items: r.created };
   }));
@@ -130,7 +130,7 @@ module.exports = function register(app, ctx) {
 
   // TVA la incasare: din suma bruta incasata/platita, calculeaza TVA exigibila si posteaza nota
   app.post('/api/tva-incasare/exigibilitate', (req, res) => run(res, () => {
-    const r = svc.tvaExigibilitate(activeId(req), req.body, deps);
+    const r = svc.tvaExigibilitate(activeId(req), req.body, deps(req));
     logAudit('tva.exigibilitate', r.entry.tip + ' ' + r.tva, { req });
     return { ok: true, tva: r.tva, brut: r.brut, cota: r.cota, entry: r.entry };
   }));

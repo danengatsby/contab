@@ -115,4 +115,4 @@ node test/cazuri-aprobate.js --md            # tabelul pentru dosar
 
 | Data | Cine | Ce s-a revizuit | Concluzie |
 |---|---|---|---|
-| — | — | — | (nicio revizie externă consemnată încă; 0/17 cazuri aprobate) |
+| — | — | — | (nicio revizie externă consemnată încă; 0/25 cazuri aprobate) |

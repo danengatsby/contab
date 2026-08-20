@@ -46,8 +46,26 @@ function fluturasPdf(res, company, r, period) {
     rows.push({ k: 'Salariu brut', v: fmt(r.brut), _bold: true });
   }
   if (r.zileCM) {
-    rows.push({ k: '+ Indemnizatie CM angajator (' + Math.min(5, r.zileCM) + ' zile, ' + (r.procentCM || 75) + '% din media ' + fmt(r.mediaCM) + ')', v: fmt(r.cmAngajator) });
-    if (r.cmFnuass) rows.push({ k: '+ Indemnizatie CM FNUASS (' + Math.max(0, r.zileCM - 5) + ' zile)', v: fmt(r.cmFnuass) });
+    const certificate = Array.isArray(r.certificateCM) && r.certificateCM.length
+      ? r.certificateCM : [r];
+    for (const c of certificate) {
+      const numarCertificat = clean([c.serieCM, c.numarCM].filter(Boolean).join(' / '));
+      const identificare = 'cod ' + (c.codIndemnizatieCM || '01')
+        + (numarCertificat ? ', ' + numarCertificat : '');
+      rows.push({ k: '+ Indemnizatie CM angajator (' + identificare + '; '
+        + (c.zileCMAngajator || 0) + ' zile, ' + (c.procentCM || 75)
+        + '% din media zilnica ' + fmt(c.mediaZilnicaCM) + ')',
+      v: fmt(c.cmAngajatorCurent != null ? c.cmAngajatorCurent : c.cmAngajator) });
+      if (c.zileNeplatiteCM) rows.push({ k: '  Zi lucratoare neplatita (OUG 91/2025)', v: String(c.zileNeplatiteCM) });
+      if (c.cmFnuassCurent != null ? c.cmFnuassCurent : c.cmFnuass) rows.push({ k: '+ Indemnizatie CM FNUASS ('
+        + Math.max(0, (c.zilePlatiteCM || 0) - (c.zileCMAngajator || 0)) + ' zile; '
+        + identificare + ')',
+      v: fmt(c.cmFnuassCurent != null ? c.cmFnuassCurent : c.cmFnuass) });
+      if (c.cmDiferentaAngajator || c.cmDiferentaFnuass) rows.push({
+        k: '+ Diferenta CM recalculata pentru luna anterioara (' + identificare + ')',
+        v: fmt(round2((c.cmDiferentaAngajator || 0) + (c.cmDiferentaFnuass || 0))),
+      });
+    }
   }
   if (r.normaPartiala && (r.casAngajator || r.cassAngajator)) rows.push({ k: 'Norma partiala: CAS+CASS pana la salariul minim, suportate de ANGAJATOR', v: fmt(round2((r.casAngajator || 0) + (r.cassAngajator || 0))) });
   if (r.avantaje) rows.push({ k: '+ Avantaje in natura impozabile (nu se platesc in bani)', v: fmt(r.avantaje) });
@@ -68,6 +86,16 @@ function fluturasPdf(res, company, r, period) {
     rows.push({ k: 'Plafon 33% din salariul de baza (art. 76 alin. (4^1)): ' + fmt(r.beneficiiPlafon)
       + ' — neimpozabil ' + fmt(r.beneficiiNeimpozabile) + ', ramas ' + fmt(r.beneficiiRamas),
     v: fmt(r.beneficiiImpozabile), _bold: !!r.beneficiiDepasit });
+    if (r.beneficiiCursNecesar) rows.push({
+      k: 'Curs EUR plafoane anuale: ' + fmt(r.cursEurBeneficii) + ' ('
+        + (r.cursEurBeneficiiSursa === 'bnr' ? 'BNR ' + clean(r.cursEurBeneficiiData) : 'provizoriu') + ')',
+      v: '',
+    });
+    if (r.beneficiiOrdineNecesara) rows.push({
+      k: 'Ordine plafon 33% confirmata de angajator: '
+        + (r.beneficiiOrdineConfirmata ? 'DA' : 'NU'),
+      v: clean((r.ordineBeneficii || []).join(' > ')),
+    });
   }
   rows.push({ k: '- CAS 25% (contributie asigurari sociale)', v: fmt(r.cas) });
   rows.push({ k: '- CASS 10% (contributie asigurari sociale de sanatate)', v: fmt(r.cass) });

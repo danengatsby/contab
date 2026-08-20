@@ -52,8 +52,8 @@ var PANEL_INFO = [
   ['SAF-T', 'Fișierul standard de audit (D406): conturi, parteneri, facturi și toate articolele anului, în XML-ul cerut de ANAF.'],
   // Livrabile + portofoliu
   ['🏛 Fișa Rol', 'Soliciți de la ANAF fișa pe plătitor (obligațiile firmei din evidența fiscală) și descarci documentele din mesajele SPV.'],
-  ['📮 De depus', 'Declarațiile lunii cu termenul legal și starea lor: descărcarea XML-ului le marchează „generate", tu le marchezi „depuse" cu recipisa.'],
-  ['Status declarații', 'Distribuția declarațiilor lunii pe stări (depuse, generate, nedepuse, erori), pe tot portofoliul.'],
+  ['📮 De depus', 'Declarațiile lunii cu termenul legal și starea lor: generată, transmisă, apoi depusă numai când ai recipisa.'],
+  ['Status declarații', 'Distribuția declarațiilor lunii pe stări (generate, transmise, depuse, nedepuse și erori), pe tot portofoliul.'],
   ['⚠️ Top firme cu atenționări', 'Firmele cu restanțe la depuneri sau erori — cele care cer intervenție primele.'],
   ['Firme din portofoliu', 'Situația fiecărei firme: declarații așteptate, depuse, nedepuse, erori și atenționări pe luna selectată.'],
   ['Activitate recentă', 'Ultimele acțiuni din jurnalul de audit, pe firmele la care ai acces.'],

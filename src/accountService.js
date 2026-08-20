@@ -17,6 +17,8 @@ const plans = require('./plans');
 const identitate = require('./identitate');
 const { isDemoUser } = require('./session');
 const QRCode = require('qrcode-svg');
+const fs = require('fs');
+const path = require('path');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 
@@ -226,10 +228,63 @@ function updateProfile(u, b) {
   return Object.assign({ email: u.email, notifyDeadlines: u.notifyDeadlines !== false }, { profil: getProfile(u).profil });
 }
 
+/** Stergere self-service a contului. Firmele detinute trebuie sterse sau transferate intai;
+ *  altfel eliminarea persoanei ar lasa dosare fara proprietar si colaboratori fara decident. */
+async function deleteAccount(u, password, confirmUsername) {
+  reqNotDemo(u);
+  if (!u || u.role === 'admin') fail(403, 'Conturile de administrator nu se sterg prin fluxul self-service.');
+  if (String(confirmUsername || '').trim() !== String(u.username || '')) fail(400, 'Confirmarea nu corespunde numelui de utilizator.');
+  if (!await authlib.verifyPasswordAsync(String(password || ''), u.salt, u.hash)) fail(400, 'Parola este gresita.');
+  const d = db.get(); const uid = Number(u.id);
+  const owned = (d.firme || []).filter((f) => Number(f.ownerId) === uid);
+  if (owned.length) fail(409, 'Sterge sau transfera mai intai firmele detinute: ' + owned.map((f) => f.nume).join(', ') + '.');
+
+  const removedMessages = (d.messages || []).filter((m) => Number(m.userId) === uid);
+  const attachments = removedMessages.map((m) => m.attachment && path.basename(m.attachment.storedName || '')).filter(Boolean);
+  d.messages = (d.messages || []).filter((m) => Number(m.userId) !== uid);
+  d.accessRequests = (d.accessRequests || []).filter((r) => Number(r.userId) !== uid);
+  d.serviceRequests = (d.serviceRequests || []).filter((r) => Number(r.ownerId) !== uid && Number(r.contabilId) !== uid);
+  for (const f of d.firme || []) {
+    // Plasa pentru date legacy: un owner ar fi fost prins mai sus; aici curatam numai eventuale
+    // liste auxiliare care contin id-uri de utilizator.
+    if (Array.isArray(f.approverIds)) f.approverIds = f.approverIds.filter((id) => Number(id) !== uid);
+  }
+  const pseudonym = 'utilizator-sters-' + uid;
+  for (const a of d.audit || []) {
+    if (Number(a.userId) === uid) { a.userId = null; a.username = pseudonym; }
+    if (a.detail && u.username) a.detail = String(a.detail).split(String(u.username)).join(pseudonym);
+  }
+  for (const v of d.visitors || []) {
+    if (Array.isArray(v.useri)) v.useri = v.useri.map((x) => String(x) === String(u.username) ? pseudonym : x);
+  }
+  // Urmele de autor din documentele de lucru raman utile pentru control, dar nu mai identifica
+  // direct contul sters. Nu atingem textul liber al documentelor sau cifrele contabile.
+  const idKeys = new Set(['userId', 'createdBy', 'validatedBy', 'approvedBy', 'postedBy', 'updatedById']);
+  const nameKeys = new Set(['username', 'createdByName', 'updatedBy', 'by', 'de', 'actorName', 'closedBy']);
+  const pseudonymize = (value) => {
+    if (!value || typeof value !== 'object') return;
+    if (Array.isArray(value)) { value.forEach(pseudonymize); return; }
+    for (const [key, val] of Object.entries(value)) {
+      if (idKeys.has(key) && Number(val) === uid) value[key] = null;
+      else if (nameKeys.has(key) && String(val) === String(u.username)) value[key] = pseudonym;
+      else if (val && typeof val === 'object') pseudonymize(val);
+    }
+  };
+  for (const [key, value] of Object.entries(d)) if (key !== 'users' && key !== 'audit') pseudonymize(value);
+  d.users = (d.users || []).filter((x) => Number(x.id) !== uid);
+  db.save();
+  await db.flushStore(); // pe PostgreSQL nu stergem fisierele inainte de COMMIT-ul contului
+  let attachmentsDeleted = 0;
+  for (const name of new Set(attachments)) {
+    try { fs.unlinkSync(path.join(db.UPLOAD_DIR, name)); attachmentsDeleted += 1; } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  }
+  return { userId: uid, pseudonym, attachmentsDeleted };
+}
+
 module.exports = {
   reqNotDemo,
   setup2fa, enable2fa, disable2fa, regenerateRecoveryCodes, revokeTrustedDevices,
   verifySecondFactor, consumeRecoveryCode, normalizeRecoveryCode,
   listSessions, logoutOtherSessions, revokeSession,
-  changePassword, getProfile, updateProfile, dismissWizard,
+  changePassword, getProfile, updateProfile, dismissWizard, deleteAccount,
 };

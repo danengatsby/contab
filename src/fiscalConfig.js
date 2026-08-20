@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AN = 2026;
-const DATA_ACTUALIZARE = '2026-01-01';
+const DATA_ACTUALIZARE = '2026-08-20';
 
 // Cote si praguri (numerice, suprascriabile din Setari). Cheile trebuie sa ramana plate
 // si numerice — applyConfig() din fiscal.js itereaza peste ele si aplica suprascrierile.
@@ -47,9 +47,9 @@ const RATES = {
   tichetMasaMaxLei: 45,          // lei/zi — Legea 201/2025 (de la nov. 2025); anterior 40,18
   castigSalarialMediuBrut: 9192, // lei — legea bugetului asigurarilor sociale pe 2026
   diurnaInternaLegala: 23,       // lei/zi — HG 714/2018, actualizata prin HG 1235/2023
-  // Cursul EUR pentru plafoanele ANUALE exprimate in euro (pensii facultative, asigurari de
-  // sanatate, abonamente sportive). Orientativ, ca `cursPlafonMicro`: norma cere cursul din ultima
-  // zi a lunii pentru care se acorda avantajul, deci contabilul il poate suprascrie din Setari.
+  // Fallback NUMAI pentru previzualizarea plafoanelor anuale in EUR. La postare, statul cere
+  // cursul BNR in vigoare in ultima zi a lunii si pastreaza data/provenienta; valoarea rotunda
+  // de aici nu mai poate deveni tacit curs fiscal.
   cursEurBeneficii: 5.0,
   // TVA si impozite la nivelul firmei
   plafonScutire: 10000,   // istoric (scutirile sectoriale eliminate din 2025) — pastrat pt. compat. setari
@@ -130,7 +130,7 @@ const DEDUCERE = {
 //   'luna'      lei/luna, fix
 //   'lunaCopil' lei/luna x numarul de copii
 //   'pctMinim'  % din salariul minim brut al lunii
-//   'anEur'     EUR/an (x `RATES.cursEurBeneficii`), consumat cumulat pe anul in curs
+//   'anEur'     EUR/an (x cursul BNR al ultimei zile din luna; RATES e doar fallback de preview)
 //   'anLei'     lei/an, consumat cumulat pe anul in curs
 //   'fara'      fara limita proprie — intra doar sub capacul de 33%
 //
@@ -161,6 +161,9 @@ const BENEFICII = [
     nota: 'Câștigul salarial mediu brut din legea bugetului asigurărilor sociale pe anul curent' },
   { id: 'pensii', lit: 'e', nume: 'Contribuții la fond de pensii facultative',
     temei: 'Art. 76 alin. (4^1) lit. e)',
+    limita: { tip: 'anEur', eur: 400 } },
+  { id: 'pensiiOcupationale', lit: 'e¹', nume: 'Contribuții la fond de pensii ocupaționale',
+    temei: 'Art. 76 alin. (4^1) lit. e^1), OUG 8/2026',
     limita: { tip: 'anEur', eur: 400 } },
   { id: 'sanatate', lit: 'f', nume: 'Asigurare voluntară de sănătate / abonament medical',
     temei: 'Art. 76 alin. (4^1) lit. f)',

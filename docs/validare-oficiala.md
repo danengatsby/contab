@@ -8,7 +8,28 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-08-13 — D107 și bateria completă
+## Ultima verificare: 2026-08-20 — D112 iulie 2026 și concedii medicale
+
+Structura D112 publicată pentru perioada de raportare iulie 2026 a fost integrată și verificată
+cu DUKIntegrator. Sunt valide **24 de probe D112**: salariul obișnuit, schema curentă, beneficiile
+peste plafon, concediul cod 01 inițial și în continuare, plus câte o probă pentru celelalte 18
+coduri CM acceptate de aplicație (`02–10`, apoi `12–17`, `51`, `91`, `92`; fluxul FAAMBP `11`
+este exclus). Ele exercită B1–B4, secțiunea D, toate familiile centralizatorului C2 și câmpurile speciale
+`D_8`, `D_8a`, `D_11`, `D_12`, `D_13`, `D_23=RM`. Sunt acoperite separat subgrupa de izolare
+pentru `05 + D_12=35`/`51`, ziua neplătită temporar, repartizarea angajator/FNUASS și baza zilnică
+din istoric. Proba `D112-cm-multiple` emite două secțiuni D pentru același asigurat și agregă
+fiecare certificat în familia C2 proprie. Continuarea cod 01 exercită diferențele recalculate ale lunii anterioare în
+`D_20a`/`D_21a`, `B3_7D` și `C2_155`/`C2_156`. Validatorul nu emite erori sau atenționări.
+
+Poarta forțată `scripts/poarta-fiscala.sh --intotdeauna` a regenerat și validat **66 din 66 de
+ieșiri**: declarații, cele cinci variante SAF-T, situațiile financiare și e-Transport. Verdict:
+`POARTA DESCHISA`.
+
+Surse: [pagina D112 ANAF](https://static.anaf.ro/static/10/Anaf/Declaratii_R/112.html),
+[XSD D112 07/2026](https://static.anaf.ro/static/10/Anaf/Declaratii_R/AplicatiiDec/d112_0726_140826.xsd),
+[structura și regulile de validare D112 07/2026](https://static.anaf.ro/static/10/Anaf/Declaratii_R/AplicatiiDec/structura_D112_0726_140826.pdf).
+
+## Verificarea anterioară: 2026-08-13 — D107 și bateria completă
 
 Poarta fiscală forțată (`scripts/poarta-fiscala.sh --intotdeauna`) a regenerat și validat
 **42 din 42 de ieșiri**. Probele D107 inițială (`D107`) și rectificativă (`D107-rect`) au trecut
@@ -35,9 +56,9 @@ următor.
 
 Rădăcina XML este `<d107 xmlns="mfp:anaf:dgti:d107:declaratie:v1">`, codul obligației bugetare
 acceptat de validator este `5503XXXXXX`, iar `totalPlata_A` este suma de control
-`TVal1 + TVal2 + TVal3`. Pentru anul fiscal 2025 termenul electronic este 25 iunie 2026, iar
-începând cu anul fiscal 2026 generatorul aplică 25 martie din anul următor, conform structurii
-actuale. Declarația rectificativă este emisă cu `d_rec=1` după existența unei depuneri în registru.
+`TVal1 + TVal2 + TVal3`. Pentru anul fiscal 2025 termenul electronic este 25 iunie 2026;
+pentru anii fiscali următori generatorul aplică 25 iunie din anul următor. Declarația
+rectificativă este emisă cu `d_rec=1` după existența unei depuneri în registru.
 
 Structura PDF actuală încă enumeră atributul `nr_evid`, însă validatorul D107 distribuit în
 manifestul ANAF îl respinge ca atribut necunoscut. Implementarea urmează contractul verificat la
@@ -222,19 +243,19 @@ din decont. Referința verifică `R9_1 = 1653`, `R9_2 = 347` și că nicio cotă
 > categoria de TVA din CIUS-RO pentru regimul marjei e stabilită dintr-o sursă sigură — iar pentru
 > e-Factura **nu există validator rulabil**, vezi verificarea din 2026-08-08 (3).
 
-## Ultima verificare: 2026-08-08 (6) — concediu medical: poarta confunda „valid cu atenționări" cu „invalid"
+## Verificarea din 2026-08-08 (6) — concediu medical: poarta confunda „valid cu atenționări" cu „invalid"
 
-Variantă de referință nouă: **`D112-cm`** (concediu medical, început într-o **joi**) ✅ valid, **cu
-o atenționare**.
+La acel moment, varianta **`D112-cm`** era validă, dar producea o atenționare. Proba a fost între
+timp migrată la structura 07/2026 și la tratamentul fiscal curent; acum trece fără atenționări.
 
 **Poarta avea un fals alarm, descoperit de această variantă.** DUKIntegrator scrie și atenționările
 în același fișier ca erorile, iar la stdout nu mai apare *„Validare fără erori"* — așa că o
 declarație perfect corectă era raportată `✗ INVALID … (0 erori)`. Un „0 erori" lângă „INVALID" era
 chiar simptomul: nimeni nu anticipase cazul.
 
-Cazul e legitim: la un stat cu concediu medical, **baza CAS depășește baza CASS**, fiindcă
-indemnizația intră în CAS și în impozit, dar **nu** în CASS (OUG 158/2005). Regula `S26.2` semnalează
-asta ca neobișnuit — pe drept, dar nu e eroare:
+Cazul istoric era legitim pentru tipurile de indemnizație exceptate de la CASS: baza CAS putea
+depăși baza CASS, iar regula `S26.2` semnala diferența ca neobișnuită, nu ca eroare. Tratamentul
+actual distinge codurile: CASS se datorează pentru 01, 07 și 10.
 
 ```
 atentionare regula: S26.2: A_13 (4405) > A_11(2619) pt dat_CAS=true si dat_CASS=true
@@ -688,7 +709,10 @@ Ordinea de căutare (`scripts/valideaza-etransport.sh`):
 > D710 folosește aceeași schemă v2 și aceeași creanță/scadență ca D100, dar transmite perechile
 > complete `suma_dat_I/suma_plata_I` și `suma_dat_C/suma_plata_C`; controlul este
 > `2 × (suma inițială + suma corectată)`. Referințele **`D710`** și **`D710-profit`** trec
-> validatorul oficial curent și acoperă separat obligațiile 121 și 103.
+> validatorul oficial curent și acoperă separat obligațiile 121 și 103. Verificarea din
+> 20.08.2026 a confirmat și o particularitate a contractului electronic: dacă termenul legal
+> operațional este mutat pe următoarea zi lucrătoare, D710 păstrează în `scadenta` și `nr_evid`
+> data nominală de 25; folosirea zilei 27 este respinsă de regulile R15/R16.
 
 > **D300 — poziția reportată din decontul precedent, rândurile 35 și 38 (adăugat 2026-08-04).**
 > Erau zero **prin construcție**: generatorul scria `R37 = R34` și `R40 = R33`, adică sărea peste

@@ -176,14 +176,19 @@ const FIRMA = { nume: 'S.C. PROBA CONTABO S.R.L.', cui: '12345678', adresa: 'Buc
     ok('fara CNP, randul de CNP lipseste (nu apare gol sau „undefined")', !are(fnc.text, 'CNP') && !are(fnc.text, 'undefined'));
     ok('...dar randul de angajat ramane', are(fnc.text, 'Angajat: Popescu Ion'));
 
-    // Concediu medical: partea angajatorului (primele 5 zile) si partea FNUASS. Daca a doua
+    // Concediu medical: partea angajatorului si partea FNUASS. Daca a doua
     // dispare, angajatul nu are cum sa afle de ce a primit mai putin.
     const cm = await randeaza(salarii.fluturasPdf, FIRMA, Object.assign({}, bazic, {
-      zileCM: 8, mediaCM: 200, procentCM: 75, cmAngajator: 750, cmFnuass: 450, salariuZileLucrate: 3000,
+      zileCM: 8, zilePlatiteCM: 7, zileNeplatiteCM: 1, zileCMAngajator: 4,
+      mediaCM: 4200, mediaZilnicaCM: 200, procentCM: 75,
+      cmAngajator: 600, cmFnuass: 450, salariuZileLucrate: 3000,
     }), '2026-06');
-    ok('CM: indemnizatia ANGAJATORULUI apare, cu zilele si procentul', are(cm.text, 'Indemnizatie CM angajator (5 zile, 75%'));
-    ok('CM: indemnizatia FNUASS apare separat, cu zilele ei', are(cm.text, 'Indemnizatie CM FNUASS (3 zile)'));
-    ok('CM: sumele amandurora ajung pe hartie', are(cm.text, '750,00') && are(cm.text, '450,00'));
+    ok('CM: indemnizatia ANGAJATORULUI apare, cu identificare, zile si procent',
+      are(cm.text, 'Indemnizatie CM angajator (cod 01; 4 zile, 75%'));
+    ok('CM: indemnizatia FNUASS apare separat, cu zilele si identificarea ei',
+      are(cm.text, 'Indemnizatie CM FNUASS (3 zile; cod 01)'));
+    ok('CM: sumele amandurora ajung pe hartie', are(cm.text, '600,00') && are(cm.text, '450,00'));
+    ok('CM: ziua neplatita temporar este explicata', are(cm.text, 'Zi lucratoare neplatita'));
     ok('CM: salariul zilelor lucrate e distinct de brut', are(cm.text, 'Salariu aferent zilelor lucrate') && are(cm.text, '3.000,00'));
 
     // Concediu de odihna: media pe 3 luni e obligatorie pe document (se contesta pe ea).

@@ -53,7 +53,7 @@ module.exports = [
   },
   {
     id: 'concediu_medical_angajator',
-    nume: 'Concediu medical - indemnizatie suportata de angajator (primele 5 zile)',
+    nume: 'Concediu medical - indemnizatie suportata de angajator (intervalul legal al episodului)',
     grup: 'Salarii',
     fields: [F.data, F.suma, F.analiticAngajat],
     build: (d) => [L('6458', '423', d.suma, 'Indemnizație concediu medical (angajator)')],

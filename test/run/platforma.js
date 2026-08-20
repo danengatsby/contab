@@ -94,14 +94,20 @@ function platformaFisiere() {
     const linii = fsA.readFileSync(iul, 'utf8').trim().split('\n');
     eq('append-only: ambele evenimente ale lunii, in ordine', linii.length, 2);
     eq('linia e NDJSON valid, reconstructibila', JSON.parse(linii[0]).action, 'test.a');
+    const lantBun = auditLog.verify();
+    ok('lantul SHA-256 traverseaza inclusiv rotatia lunara', lantBun.ok && lantBun.chained === 3
+      && /^[a-f0-9]{64}$/.test(lantBun.head || ''));
     ok('listFiles le vede pe amandoua, noile primele', (() => { const f = auditLog.listFiles(); return f[0] === 'audit-2026-08.ndjson' && f.includes('audit-2026-07.ndjson'); })());
+    const augLinii = fsA.readFileSync(aug, 'utf8').trim().split('\n');
+    const alterat = JSON.parse(augLinii[0]); alterat.detail = 'modificat dupa consemnare';
+    fsA.writeFileSync(aug, JSON.stringify(alterat) + '\n');
+    ok('modificarea ulterioara a unui eveniment este detectata', auditLog.verify().ok === false);
+    ok('sonda fail-closed observa alterarea facuta dupa initializare', auditLog.probeWritable().ok === false);
     fsA.rmSync(process.env.CONTAB_AUDIT_DIR, { recursive: true, force: true }); // curatenie (dir izolat)
 
     // ── ESECUL nu mai are voie sa fie TACUT ──
-    // append e best-effort (nu rupe cererea) si avertizeaza o singura data pana la urmatorul succes
-    // (nu inunda logul). Corecte separat, tacere completa impreuna: o permisiune stricata dadea o
-    // linie in log si apoi nimic. Si nu e o tacere oarecare — plafonul CONTAB_AUDIT_MAX din baza vie
-    // e justificat TOCMAI de existenta probei pe disc.
+    // append e fail-closed si avertizeaza o singura data pana la urmatorul succes (nu inunda
+    // logul). Contorul pastreaza fiecare esec pentru monitorizare.
     //
     // Defectul se provoaca prin ENOTDIR (director cerut SUB un fisier), nu prin chmod: chmod nu
     // opreste procesul care ruleaza ca root, deci proba ar fi trecut din motivul gresit exact pe
@@ -114,7 +120,9 @@ function platformaFisiere() {
 
     const sonda = auditLog.probeWritable();
     ok('sonda vede ca jurnalul NU se poate scrie', sonda.ok === false && /ENOTDIR|not a directory/i.test(sonda.motiv || ''));
-    auditLog.append({ id: 9, ts: '2026-08-01T10:00:00.000Z', username: 'u', action: 'test.esec', detail: '' });
+    let aruncat = false;
+    try { auditLog.append({ id: 9, ts: '2026-08-01T10:00:00.000Z', username: 'u', action: 'test.esec', detail: '' }); } catch (_) { aruncat = true; }
+    ok('scrierea neauditabila este refuzata fail-closed', aruncat);
     const dupaEsec = metricsA.auditSnapshot();
     eq('esecul e CONTORIZAT, nu doar logat', dupaEsec.esecuri, inainte.esecuri + 1);
     ok('ultima eroare e retinuta, pentru diagnostic', !!dupaEsec.lastError && !!dupaEsec.lastErrorAt);
@@ -122,7 +130,7 @@ function platformaFisiere() {
 
     // Throttle-ul e pentru CONSOLA, nu pentru contor: al doilea esec consecutiv (care nu mai
     // produce nicio linie in log) trebuie totusi sa se vada in cifre.
-    auditLog.append({ id: 10, ts: '2026-08-01T10:01:00.000Z', username: 'u', action: 'test.esec2', detail: '' });
+    try { auditLog.append({ id: 10, ts: '2026-08-01T10:01:00.000Z', username: 'u', action: 'test.esec2', detail: '' }); } catch (_) { /* asteptat */ }
     const dupaAlDoilea = metricsA.auditSnapshot();
     eq('al doilea esec (fara linie noua in log) se contorizeaza si el', dupaAlDoilea.esecuri, inainte.esecuri + 2);
     eq('esecurile consecutive se numara', dupaAlDoilea.esecConsecutive, 2);

@@ -360,11 +360,13 @@ Endpoint `/api/dashboard`.
   **D107** apare în decembrie pentru plătitorii de impozit pe profit care au sponsorizări ori
   report disponibil;
   Intrastat, în schimb, doar pe bunuri, fiindcă e statistică de mărfuri), cu
-  **termen de depunere** (25 ale lunii următoare; D406 — ultima zi a lunii următoare). Descărcarea XML-ului marchează automat „**generată**";
-  manual se marchează „**depusă**" (cu nr. recipisă), „**eroare**" sau „**scutită**". Stările nu se
+  **termen de depunere** ajustat la calendarul fiscal. Descărcarea XML-ului marchează automat
+  „**generată**” și păstrează amprenta SHA-256; după încărcarea în SPV se marchează „**transmisă**”,
+  iar „**depusă**” cere nr. recipisei/indexul ANAF. Se mai pot marca „**eroare**” sau „**scutită**”,
+  obligatoriu cu explicație. Stările nu se
   retrogradează la re-descărcare. API: `GET /api/declarations?period=` · `POST /api/declarations/set`.
 - **Portofoliu** (tab dedicat, vizibil cu ≥2 firme): vedere agregată peste toate firmele
-  utilizatorului — declarații așteptate/depuse/nedepuse/erori pe lună, **% conformitate**,
+  utilizatorului — declarații așteptate/generate/transmise/depuse/nedepuse/erori pe lună, **% conformitate**,
   **top firme cu atenționări** (restanțe + erori), tabel per firmă și activitate recentă (din
   jurnalul de audit). `GET /api/portfolio?period=`.
 - **Notificări termene fiscale** (🔔 în bara de sus, cu badge): restanțele și termenele din

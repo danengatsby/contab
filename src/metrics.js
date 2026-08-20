@@ -370,12 +370,9 @@ function lagRoll() {
 }
 
 // ── JURNALUL DE AUDIT DURABIL: cate scrieri au reusit si cate au esuat ──
-// src/auditLog.js e best-effort DELIBERAT (un esec de scriere nu rupe cererea) si avertizeaza in
-// consola o SINGURA data pana la urmatorul succes, ca sa nu inunde logul. Cele doua impreuna
-// faceau tacere: o permisiune stricata dadea o linie in log, apoi nimic — la nesfarsit. Si nu e
-// o tacere oarecare: plafonul din baza vie (CONTAB_AUDIT_MAX) e justificat TOCMAI de faptul ca
-// proba durabila exista pe disc. Daca ea nu se mai scrie, rolarea chiar pierde proba.
-// Aici se numara FIECARE esec, nu doar primul — throttle-ul ramane doar pe consola.
+// src/auditLog.js este fail-closed si avertizeaza in consola o SINGURA data pana la urmatorul
+// succes, ca sa nu inunde logul. Aici se numara FIECARE esec, nu doar primul — throttle-ul ramane
+// doar pe consola, iar operatiunile mutante sunt oprite de garda din bootstrap.
 const audit = { scrise: 0, esecuri: 0, esecConsecutive: 0, lastError: null, lastErrorAt: null, lastOkAt: null };
 function auditOk() { audit.scrise += 1; audit.esecConsecutive = 0; audit.lastOkAt = new Date().toISOString(); }
 function auditFail(msg) {

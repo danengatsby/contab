@@ -27,6 +27,56 @@ function fail(status, message) { const e = new Error(message); e.status = status
 const ENTRY_STATES = ['ciorna', 'validat', 'aprobat', 'postat'];
 function entryState(e) { return e.status || 'postat'; }
 
+function actorId(actor) {
+  const n = Number(actor && actor.id);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function actorName(actor) {
+  return String((actor && actor.username) || '').slice(0, 80) || null;
+}
+
+function firmaRole(actor, fid) {
+  if (!actor) return null;
+  if (actor.role === 'admin') return 'administrator';
+  const f = db.getFirma(fid);
+  if (f && Number(f.ownerId) === Number(actor.id)) return 'proprietar';
+  const roles = actor.firmaRoluri || {};
+  return roles[String(fid)] || roles[fid] || null;
+}
+
+function canTransition(actor, fid, target) {
+  // Apelurile interne vechi, fara actor, raman compatibile; rutele HTTP trimit intotdeauna actorul.
+  if (!actor) return true;
+  const role = firmaRole(actor, fid);
+  if (role === 'administrator' || role === 'proprietar' || role === 'aprobator' || role == null) return true;
+  if (role === 'verificator') return target === 'validat' || target === 'aprobat';
+  if (role === 'operator') return target === 'validat';
+  return false;
+}
+
+/** Separarea initiator–aprobator este o politica explicita a firmei si devine efectiva numai
+ *  cand exista cel putin doi membri activi. Astfel o plecare din echipa nu blocheaza definitiv
+ *  contabilitatea unei firme ramase temporar cu un singur operator. */
+function makerCheckerRequired(fid) {
+  const d = db.get(); const f = db.getFirma(fid);
+  if (!f || f.controlDublu !== true) return false;
+  const members = (d.users || []).filter((u) => u.role !== 'admin' && !u.pending
+    && Array.isArray(u.firme) && u.firme.includes(Number(fid))
+    && !(u.drepturi && u.drepturi.readonly)
+    && canTransition(u, fid, 'postat'));
+  return members.length >= 2;
+}
+
+function markEntryActor(entry, actor, status) {
+  const id = actorId(actor); const at = new Date().toISOString();
+  entry.createdAt = entry.createdAt || at;
+  if (id != null) entry.createdBy = entry.createdBy == null ? id : entry.createdBy;
+  if (actorName(actor) && !entry.createdByName) entry.createdByName = actorName(actor);
+  entry.statusHistory = Array.isArray(entry.statusHistory) ? entry.statusHistory : [];
+  entry.statusHistory.push({ status, by: id, username: actorName(actor), at });
+}
+
 /** Creeaza un articol contabil; liniile de stoc genereaza si descarcarea de gestiune la CMP
  *  (miscarile + liniile COGS intra atomic cu articolul — nicio scriere la eroare). */
 function createEntry(fid, b, deps) {
@@ -42,7 +92,11 @@ function createEntry(fid, b, deps) {
   // (ex. neplatitor de TVA care colecteaza TVA). Advisory-ul ramane in fiscalControls.
   const gViol = fiscalProfile.entryGuard(fiscalProfile.build(db.getFirma(fid)), entry);
   if (gViol) fail(400, gViol);
-  if (b.ciorna) entry.status = 'ciorna'; // salvat ca CIORNA: vizibil in liste, dar NU inca in contabilitate
+  const actor = deps && deps.actor;
+  // Intr-o echipa, butonul simplu „salveaza” nu poate ocoli controlul dublu: articolul intra in
+  // flux ca ciorna. Intr-o firma cu un singur om comportamentul istoric (postare directa) ramane.
+  if (b.ciorna || makerCheckerRequired(fid)) entry.status = 'ciorna';
+  markEntryActor(entry, actor, entryState(entry));
   if (b.spvMsgId) entry.spvImport = { msgId: b.spvMsgId, at: new Date().toISOString() };
   const d = db.get();
   let stocInfo = null;
@@ -61,7 +115,7 @@ function createEntry(fid, b, deps) {
   }
   db.pushEntry(entry, { context: 'articol contabil' });
   deps.upsertPartner(fid, entry);
-  inregistreazaInterventia(fid, b, entry, f);
+  if (!b.automat) inregistreazaInterventia(fid, b, entry, f);
   db.save();
   return { entry, stoc: stocInfo };
 }
@@ -176,10 +230,10 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno) {
   return { storno: se, original: e };
 }
 
-/** Tranzitie de stare in fluxul ciorna -> validat -> aprobat -> postat. Inainte de postat e
- *  liber (inainte si inapoi); POSTAT e ireversibil (corectia = storno). Postarea verifica
+/** Tranzitie secventiala in fluxul ciorna -> validat -> aprobat -> postat. POSTAT e
+ *  ireversibil (corectia = storno). Postarea verifica
  *  perioada deschisa (o ciorna dintr-o luna intre timp inchisa nu se mai poate posta acolo). */
-function setEntryStatus(id, fallbackFid, canFid, target) {
+function setEntryStatus(id, fallbackFid, canFid, target, actor) {
   if (!ENTRY_STATES.includes(target)) fail(400, 'Stare invalida (ciorna/validat/aprobat/postat).');
   const d = db.get();
   const e = d.entries.find((x) => x.id === id);
@@ -189,11 +243,25 @@ function setEntryStatus(id, fallbackFid, canFid, target) {
   if (cur === 'postat') fail(400, 'Articol deja postat — starea nu se mai schimba. Corectia se face prin storno.');
   if (target === cur) return { entry: e, status: cur }; // idempotent
   const fid = e.firmaId == null ? fallbackFid : e.firmaId;
+  const expected = ENTRY_STATES[ENTRY_STATES.indexOf(cur) + 1];
+  if (target !== expected) fail(400, 'Tranzitie invalida: din „' + cur + '” urmatorul pas este „' + expected + '”.');
+  if (!canTransition(actor, fid, target)) fail(403, 'Rolul tau pe aceasta firma nu permite pasul „' + target + '”.');
+  const aid = actorId(actor);
+  if (e.createdBy == null && aid != null) e.createdBy = aid; // ciorne istorice: primul operator devine initiatorul trasabil
+  if (makerCheckerRequired(fid) && (target === 'aprobat' || target === 'postat')
+      && aid != null && Number(e.createdBy) === aid) {
+    fail(409, 'Separarea initiator–aprobator este activa: articolul trebuie aprobat/postat de alta persoana.');
+  }
+  const at = new Date().toISOString();
+  if (target === 'validat') { e.validatedBy = aid; e.validatedAt = at; }
+  if (target === 'aprobat') { e.approvedBy = aid; e.approvedAt = at; }
   if (target === 'postat') {
     db.assertPeriodOpen(fid, e.period || periodOf(e.data), 'Postarea'); // nu se posteaza intr-o luna inchisa
-    e.postedAt = new Date().toISOString();
+    e.postedBy = aid; e.postedAt = at;
   }
   e.status = target;
+  e.statusHistory = Array.isArray(e.statusHistory) ? e.statusHistory : [];
+  e.statusHistory.push({ status: target, by: aid, username: actorName(actor), at });
   db.save();
   return { entry: e, status: target };
 }
@@ -245,6 +313,8 @@ function generateRecurring(fid, period, deps) {
       const gViol = fiscalProfile.entryGuard(profile, entry);
       if (gViol) throw new Error(gViol); // se aduna in errors, ca orice esec per sablon
       entry.recurringId = t.id;
+      if (makerCheckerRequired(fid)) entry.status = 'ciorna';
+      markEntryActor(entry, deps && deps.actor, entryState(entry));
       db.pushEntry(entry, { context: 'sablon recurent' });
       deps.upsertPartner(fid, entry);
       t.lastGenerated = period;
@@ -282,6 +352,9 @@ function tvaExigibilitate(fid, b, deps) {
   const data = b.data && String(b.data).length === 10 ? b.data : new Date().toISOString().slice(0, 10);
   const entry = deps.buildEntry(tip, { data, partener: b.partener || '', document: b.document || '', tva }, null, fid);
   entry.system = true;
+  markEntryActor(entry, deps && deps.actor, 'postat');
+  entry.postedBy = actorId(deps && deps.actor);
+  entry.postedAt = new Date().toISOString();
   const gViol = fiscalProfile.entryGuard(fiscalProfile.build(db.getFirma(fid)), entry);
   if (gViol) fail(400, gViol); // neplatitor nu poate exigibiliza TVA colectata
   // baza aferenta TVA-ului devenit exigibil (pentru D300 in perioada exigibilitatii — TVA la incasare)

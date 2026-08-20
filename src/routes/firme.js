@@ -186,10 +186,19 @@ module.exports = function register(app, ctx) {
     }
   }));
 
-  app.delete('/api/firme/:id', (req, res) => run(res, () => {
-    svc.deleteFirma(req.user, req.params.id, req.impersonating);
-    logAudit('firma.delete', 'firma ' + Number(req.params.id), { req, firmaId: null });
-    return { ok: true };
+  app.delete('/api/firme/:id', wrap(async (req, res) => {
+    try {
+      const r = svc.deleteFirma(req.user, req.params.id, req.impersonating, (req.body || {}).confirmName, true);
+      // Pe PostgreSQL, `save()` doar pune snapshotul in coada. Fisierul fizic dispare abia dupa
+      // COMMIT; la rollback ramane disponibil pentru starea restaurata la restart.
+      await db.flushStore();
+      logAudit('firma.delete', 'firma ' + Number(req.params.id), { req, firmaId: null });
+      const filesDeleted = svc.deleteFirmaFiles(r.pendingFiles);
+      return res.json({ ok: true, filesDeleted });
+    } catch (e) {
+      if (!e.status) throw e;
+      return res.status(e.status).json({ error: e.message });
+    }
   }));
 
   // ── Colaboratori pe firma ACTIVA (contabil <-> necontabil) ──────────────────────────────
@@ -215,7 +224,8 @@ module.exports = function register(app, ctx) {
 
   app.get('/api/colaboratori', (req, res) => run(res, () => {
     const fid = activeFirma(req);
-    return { firmaActiva: fid, colaboratori: svc.listCollaborators(fid), eu: req.user && req.user.id, demo: isDemoUser(req.user) };
+    return { firmaActiva: fid, colaboratori: svc.listCollaborators(fid), eu: req.user && req.user.id,
+      demo: isDemoUser(req.user), poateGestiona: svc.canManageCollaborators(req.user, fid, isDemoUser(req.user)) };
   }));
 
   app.post('/api/colaboratori', wrap(async (req, res) => {
@@ -224,7 +234,7 @@ module.exports = function register(app, ctx) {
       const b = req.body || {};
       if (b.mod === 'invite') {
         if (isDemoUser(req.user)) { const e = new Error('În contul demo nu poți crea invitații noi. Adaugă contul demo pereche pentru demonstrație.'); e.status = 403; throw e; }
-        const r = svc.inviteCollaborator(fid, b);
+        const r = svc.inviteCollaborator(req.user, fid, b, isDemoUser(req.user));
         logAudit('colaborator.invite', r.user.username + ' -> firma ' + fid, { req, firmaId: fid });
         const link = (req.protocol || 'http') + '://' + req.get('host') + '/?invite=' + r.token;
         let emailed = false;
@@ -236,7 +246,7 @@ module.exports = function register(app, ctx) {
         return res.json({ ok: true, invite: r.user, link, emailed });
       }
       demoManageGuard(req, b.username || b.email); // demo: doar contul pereche
-      const u = svc.addExistingCollaborator(fid, b);
+      const u = svc.addExistingCollaborator(req.user, fid, b, isDemoUser(req.user));
       logAudit('colaborator.add', u.username + ' -> firma ' + fid, { req, firmaId: fid });
       return res.json({ ok: true, colaborator: u });
     } catch (e) {
@@ -248,8 +258,15 @@ module.exports = function register(app, ctx) {
   app.delete('/api/colaboratori/:uid', (req, res) => run(res, () => {
     const fid = activeFirma(req);
     if (isDemoUser(req.user)) { const t = db.get().users.find((u) => u.id === Number(req.params.uid)); demoManageGuard(req, t && t.username); }
-    const r = svc.removeCollaborator(fid, req.params.uid);
+    const r = svc.removeCollaborator(req.user, fid, req.params.uid, isDemoUser(req.user));
     logAudit('colaborator.remove', r.username + ' <- firma ' + fid, { req, firmaId: fid });
     return { ok: true, removed: r };
+  }));
+
+  app.post('/api/colaboratori/:uid/rol', (req, res) => run(res, () => {
+    const fid = activeFirma(req);
+    const r = svc.setCollaboratorRole(req.user, fid, req.params.uid, String((req.body || {}).rol || ''), isDemoUser(req.user));
+    logAudit('colaborator.role', r.username + ' -> ' + r.rol + ', firma ' + fid, { req, firmaId: fid });
+    return { ok: true, colaborator: r };
   }));
 };

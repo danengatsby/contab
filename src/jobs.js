@@ -355,9 +355,8 @@ function start(ctx) {
   // Veghe pe JURNALUL DE AUDIT DURABIL (data/audit/*.ndjson). E proba de control intern, si e
   // singurul lucru care justifica plafonul din baza vie: `logAudit` roleste d.audit la
   // CONTAB_AUDIT_MAX linistit TOCMAI fiindca proba ramane pe disc. Daca scrierea nu mai merge,
-  // afirmatia aceea devine falsa — si devenea falsa in TACERE: append e best-effort (corect: nu
-  // rupe cererea) si avertizeaza o singura data pana la urmatorul succes (corect: nu inunda
-  // logul), dar cele doua impreuna insemnau o linie in log si apoi nimic, la nesfarsit.
+  // afirmatia aceea devine falsa. Acum append + garda mutatiilor sunt fail-closed; veghea ramane
+  // necesara pentru alertare proactiva si pentru erorile aparute dupa raspuns (de ex. exporturi).
   //
   // Doua semnale, fiindca raspund la intrebari diferite:
   //   - SONDA: se mai poate scrie ACUM? (raspunde inainte sa avem un eveniment de consemnat)

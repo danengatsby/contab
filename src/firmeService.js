@@ -17,6 +17,7 @@ const db = require('./db');
 const plans = require('./plans');
 const billing = require('./billing');
 const { capList } = require('./paginate');
+const { ARRAY_COLLS } = require('./store');
 const { naturalCompare } = require('./util');
 const backup = require('./backup');
 const identitate = require('./identitate');
@@ -635,46 +636,86 @@ async function subscribeFirma(user, id, planCerut) {
 
 /** Stergerea unei firme cu tot cu datele ei. `impersonating`: adminul aflat pe contul altcuiva
  *  NU are drepturile lui de admin aici. */
-function deleteFirma(user, id, impersonating) {
+function deleteFirma(user, id, impersonating, confirmName, deferFiles) {
   reqNotDemo(user);
   const d = db.get();
   id = Number(id);
   const isAdmin = user.role === 'admin' && !impersonating;
-  // Un utilizator obisnuit isi poate sterge doar propriile firme; adminul, orice firma.
-  if (!isAdmin && !(user.firme || []).includes(id)) fail(403, 'Fara acces la aceasta firma.');
-  // Garda „cel putin o firma ramane": global pentru admin, respectiv in contul utilizatorului.
-  const remaining = isAdmin ? d.firme.length : (user.firme || []).length;
-  if (remaining <= 1) fail(400, 'Trebuie sa ramana cel putin o firma.');
+  const firma = d.firme.find((f) => f.id === id);
+  if (!firma) fail(404, 'Firma inexistenta.');
+  // Un membru nu poate distruge dosarul comun: doar proprietarul (sau adminul real) decide.
+  if (!isAdmin && Number(firma.ownerId) !== Number(user.id)) fail(403, 'Doar proprietarul poate sterge firma si dosarul ei contabil.');
+  if (String(confirmName || '').trim() !== String(firma.nume || '').trim()) {
+    fail(400, 'Confirmarea nu corespunde denumirii firmei. Tasteaza exact „' + (firma.nume || '') + '”.');
+  }
+  const files = (d.documents || []).filter((x) => x.firmaId === id && x.storedName).map((x) => path.basename(x.storedName));
+  if (firma.logoFile) files.push(path.basename(firma.logoFile));
   d.firme = d.firme.filter((f) => f.id !== id);
-  d.entries = d.entries.filter((e) => e.firmaId !== id);
-  d.documents = d.documents.filter((x) => x.firmaId !== id);
-  d.openingAnalytic = d.openingAnalytic.filter((o) => o.firmaId !== id);
+  // Sursa listei este aceeasi cu persistenta SQLite/PostgreSQL: o colectie noua per-firma nu
+  // poate ramane accidental in urma stergerii.
+  for (const c of ARRAY_COLLS.filter((x) => x.firma)) {
+    if (Array.isArray(d[c.key])) d[c.key] = d[c.key].filter((x) => Number(x.firmaId) !== id);
+  }
+  d.accessRequests = (d.accessRequests || []).filter((x) => Number(x.firmaId) !== id);
+  d.serviceRequests = (d.serviceRequests || []).filter((x) => Number(x.firmaId) !== id);
   delete d.partners[id]; delete d.openingBalances[id];
-  d.users.forEach((u) => { if (Array.isArray(u.firme)) u.firme = u.firme.filter((x) => x !== id); });
+  if (d.settings && d.settings.docSeries) delete d.settings.docSeries[id];
+  d.users.forEach((u) => {
+    if (Array.isArray(u.firme)) u.firme = u.firme.filter((x) => x !== id);
+    if (u.firmaRoluri) delete u.firmaRoluri[String(id)];
+    if (u.firmaActiva === id) u.firmaActiva = (u.firme || [])[0] || null;
+  });
   // daca firma stearsa era cea activa a utilizatorului, muta-l pe prima ramasa a lui
-  if (user.firmaActiva === id) user.firmaActiva = (user.firme || [])[0] || (d.firme[0] && d.firme[0].id) || null;
+  if (d.firmaActiva === id) d.firmaActiva = (d.firme[0] && d.firme[0].id) || null;
   db.save();
+  // Fisierele se sterg numai DUPA ce baza a acceptat eliminarea. Un nume inca referit de alta
+  // firma (date istorice/import legacy) ramane pe disc.
+  const filesDeleted = deferFiles ? 0 : deleteFirmaFiles(files);
+  return { firmaId: id, filesDeleted, pendingFiles: deferFiles ? [...new Set(files)] : [] };
+}
+
+/** Elimina fisierele ramase fara referinta DUPA confirmarea tranzactiei bazei. */
+function deleteFirmaFiles(files) {
+  const d = db.get();
+  const stillUsed = new Set((d.documents || []).map((x) => path.basename(x.storedName || '')).filter(Boolean));
+  for (const f of d.firme || []) if (f.logoFile) stillUsed.add(path.basename(f.logoFile));
+  let filesDeleted = 0;
+  for (const name of new Set(files)) {
+    if (!name || stillUsed.has(name)) continue;
+    try { fs.unlinkSync(path.join(db.UPLOAD_DIR, name)); filesDeleted += 1; } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  }
+  return filesDeleted;
 }
 
 // ───────────────────────── Colaboratori pe firma ─────────────────────────
-// Orice utilizator cu acces la o firma poate adauga/scoate alt utilizator PE ACEA firma
-// (contabil <-> necontabil). Accesul = firmaId in `user.firme`; colaboratorul primeste acces
-// COMPLET (fara drepturi restranse la adaugare). Autorizarea „esti membru al firmei" se impune
-// de apelant (ruta lucreaza pe firma ACTIVA, care e mereu in allowedFirme).
+// Gestionarea echipei este o decizie a PROPRIETARULUI, nu a oricarui membru. Rolul per firma
+// separa vizualizarea/operarea/verificarea/aprobarea fara sa schimbe rolul global al contului.
+const COLLAB_ROLES = new Set(['vizualizare', 'operator', 'verificator', 'aprobator']);
+function collaboratorRole(role) { return COLLAB_ROLES.has(role) ? role : 'aprobator'; }
+function canManageCollaborators(user, fid, allowDemo) {
+  const f = db.getFirma(Number(fid));
+  return !!(f && user && ((user.role === 'admin') || Number(f.ownerId) === Number(user.id) || allowDemo));
+}
+function reqManageCollaborators(user, fid, allowDemo) {
+  if (!canManageCollaborators(user, fid, allowDemo)) fail(403, 'Doar proprietarul firmei poate gestiona colaboratorii și rolurile lor.');
+}
 
 /** Utilizatorii (non-admin) cu acces la firma `fid`, plus invitatiile in asteptare pentru ea. */
 function listCollaborators(fid) {
   fid = Number(fid);
+  const f = db.getFirma(fid);
   // proiectie marginita (vezi capList): lista alimenteaza ecranul de colaboratori
   return capList(db.get().users
     .filter((u) => u.role !== 'admin' && Array.isArray(u.firme) && u.firme.includes(fid))
-    .map((u) => ({ id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending })),
+    .map((u) => ({ id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending,
+      rol: f && Number(f.ownerId) === Number(u.id) ? 'proprietar' : ((u.firmaRoluri || {})[String(fid)] || 'aprobator') })),
   0, 'colaboratori').items;
 }
 
 /** Adauga un cont EXISTENT (dupa username sau email exact) ca membru al firmei `fid`. Idempotent. */
-function addExistingCollaborator(fid, b) {
+function addExistingCollaborator(user, fid, b, allowDemo) {
   fid = Number(fid); b = b || {};
+  reqManageCollaborators(user, fid, allowDemo);
   const key = String(b.username || b.email || '').trim().toLowerCase();
   if (!key) fail(400, 'Completează utilizatorul sau emailul colaboratorului.');
   const d = db.get();
@@ -684,6 +725,7 @@ function addExistingCollaborator(fid, b) {
   u.firme = u.firme || [];
   if (u.firme.includes(fid)) fail(400, u.username + ' e deja colaborator pe această firmă.');
   u.firme.push(fid);
+  u.firmaRoluri = Object.assign({}, u.firmaRoluri || {}, { [fid]: collaboratorRole(b.rol) });
   db.save();
   return { id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending };
 }
@@ -691,8 +733,9 @@ function addExistingCollaborator(fid, b) {
 /** Creeaza o INVITATIE (pending user) cu acces la firma `fid` — aceeasi forma ca /api/invites.
  *  Intoarce token-ul; ruta construieste linkul (si trimite email daca SMTP e configurat).
  *  Acceptarea foloseste fluxul public existent (GET /api/invite/:token + POST /api/invite/accept). */
-function inviteCollaborator(fid, b) {
+function inviteCollaborator(user, fid, b, allowDemo) {
   fid = Number(fid); b = b || {};
+  reqManageCollaborators(user, fid, allowDemo);
   const username = String(b.username || '').trim();
   if (!username) fail(400, 'Alege un nume de utilizator pentru invitație.');
   const d = db.get();
@@ -701,7 +744,7 @@ function inviteCollaborator(fid, b) {
   const u = {
     id: db.nextUserId(), username, email: String(b.email || '').trim(), salt: '', hash: '',
     pending: true, inviteToken: token, inviteExp: Date.now() + 7 * 24 * 3600 * 1000,
-    role: 'user', firme: [fid], firmaActiva: fid,
+    role: 'user', firme: [fid], firmaActiva: fid, firmaRoluri: { [fid]: collaboratorRole(b.rol) },
   };
   d.users.push(u);
   db.save();
@@ -710,17 +753,33 @@ function inviteCollaborator(fid, b) {
 
 /** Scoate colaboratorul `uid` de pe firma `fid`. Refuza adminul, non-colaboratorul si scoaterea
  *  ultimului utilizator (firma nu ramane orfana). */
-function removeCollaborator(fid, uid) {
+function removeCollaborator(user, fid, uid, allowDemo) {
   fid = Number(fid); uid = Number(uid);
+  reqManageCollaborators(user, fid, allowDemo);
   const d = db.get();
   const u = d.users.find((x) => x.id === uid);
   if (!u || u.role === 'admin' || !Array.isArray(u.firme) || !u.firme.includes(fid)) fail(404, 'Utilizatorul nu e colaborator pe această firmă.');
   const membri = d.users.filter((x) => x.role !== 'admin' && Array.isArray(x.firme) && x.firme.includes(fid));
   if (membri.length <= 1) fail(400, 'Nu poți scoate ultimul utilizator al firmei — firma ar rămâne fără acces.');
   u.firme = u.firme.filter((x) => x !== fid);
+  if (u.firmaRoluri) delete u.firmaRoluri[String(fid)];
   if (u.firmaActiva === fid) u.firmaActiva = u.firme[0] || null;
   db.save();
   return { id: u.id, username: u.username };
+}
+
+/** Schimba doar rolul colaboratorului; proprietarul ramane proprietar si nu poate fi degradat. */
+function setCollaboratorRole(user, fid, uid, role, allowDemo) {
+  fid = Number(fid); uid = Number(uid);
+  reqManageCollaborators(user, fid, allowDemo);
+  const d = db.get(); const f = db.getFirma(fid);
+  const u = d.users.find((x) => x.id === uid && x.role !== 'admin' && Array.isArray(x.firme) && x.firme.includes(fid));
+  if (!u) fail(404, 'Utilizatorul nu e colaborator pe această firmă.');
+  if (f && Number(f.ownerId) === uid) fail(400, 'Rolul proprietarului nu poate fi schimbat din lista colaboratorilor.');
+  if (!COLLAB_ROLES.has(role)) fail(400, 'Rol invalid (vizualizare/operator/verificator/aprobator).');
+  u.firmaRoluri = Object.assign({}, u.firmaRoluri || {}, { [fid]: role });
+  db.save();
+  return { id: u.id, username: u.username, rol: role };
 }
 
 module.exports = {
@@ -730,6 +789,7 @@ module.exports = {
   reqNotDemo, reqAccess, reqAdmin,
   createFirma, importBundle, importZip, testClone, addDemoFirma,
   exportBundle, exportZip, exportAllZip, firmaSlug,
-  updateFirma, activateFirma, setFirmaSubscription, subscribeFirma, deleteFirma,
-  listCollaborators, addExistingCollaborator, inviteCollaborator, removeCollaborator,
+  updateFirma, activateFirma, setFirmaSubscription, subscribeFirma, deleteFirma, deleteFirmaFiles,
+  listCollaborators, addExistingCollaborator, inviteCollaborator, removeCollaborator, setCollaboratorRole,
+  canManageCollaborators,
 };

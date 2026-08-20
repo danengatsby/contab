@@ -47,10 +47,10 @@ const DP_PLAFON_PESTE_MINIM = cfg.DEDUCERE.plafonPesteMinim; // se acorda pana l
  * Deducerea personala (art. 77 Cod fiscal): de baza (functie de venit + persoane in intretinere)
  * + suplimentara (tineri <=26 ani; copii in invatamant). Functie pura.
  *
- * NOTA: deducerea de baza la salariul minim foloseste procentele oficiale (20/25/30/35/45%).
- * Peste salariul minim, valoarea scade pana la 0 la (salariu minim + 2000 lei) — aproximata
- * prin interpolare liniara a grilei ANAF (pasi de 50 lei). Pentru valori exacte la leu se poate
- * folosi suprascrierea manuala. Rezultatul se rotunjeste la 10 lei in favoarea angajatului.
+ * Deducerea de baza la salariul minim foloseste procentele oficiale (20/25/30/35/45%). Peste
+ * salariul minim, art. 77 alin. (4) foloseste 40 de transe de cate 50 lei: procentul scade cu
+ * 0,5 puncte la fiecare transa, pana la salariul minim + 2.000 lei. Venitul brut se rotunjeste
+ * mai intai la leu, iar deducerea la 10 lei in favoarea angajatului.
  * @returns {{ baza:number, suplimentara:number, total:number }}
  */
 function deducerePersonala(brut, persoane, opts) {
@@ -58,11 +58,13 @@ function deducerePersonala(brut, persoane, opts) {
   const sm = round2(o.salariuMinim || salariuMinimLa(o.period)); // S1/S2 dupa luna (trecerea de la 1 iulie)
   const b = round2(brut) || 0;
   let baza = 0;
-  if (sm > 0 && b <= round2(sm + DP_PLAFON_PESTE_MINIM)) {
+  const brutRotunjit = Math.round(b);
+  if (sm > 0 && brutRotunjit <= sm + DP_PLAFON_PESTE_MINIM) {
     const p = Math.max(0, Math.min(DP_PCT_MAX.length - 1, Math.round(Number(persoane) || 0)));
-    const peste = Math.max(0, round2(b - sm)); // cat depaseste salariul minim
-    const factor = Math.max(0, 1 - peste / DP_PLAFON_PESTE_MINIM); // taper liniar -> 0
-    baza = round2(((sm * DP_PCT_MAX[p]) / 100) * factor);
+    const peste = Math.max(0, brutRotunjit - sm);
+    const transa = peste > 0 ? Math.ceil(peste / 50) : 0;
+    const procent = Math.max(0, DP_PCT_MAX[p] - transa * 0.5);
+    baza = round2((sm * procent) / 100);
   }
   let supl = 0;
   if (o.sub26 && b <= sm) supl = round2(supl + (sm * cfg.DEDUCERE.suplTineriPct) / 100); // % din SM, tineri <=26 ani
@@ -137,10 +139,12 @@ function categoriiBeneficii() {
  * ca motorul sa ramana pur si testabil, exact ca la deducerea personala.
  */
 function beneficii(intrare) {
+  const cursIntrare = Number((intrare || {}).cursEur);
   return ben.calcul(intrare, {
     categorii: categoriiBeneficii(),
     pct: FISCAL.plafonBeneficiiPct,
-    cursEur: FISCAL.cursEurBeneficii,
+    cursEur: Number.isFinite(cursIntrare) && cursIntrare > 0
+      ? cursIntrare : FISCAL.cursEurBeneficii,
   });
 }
 
@@ -168,10 +172,12 @@ function payroll(brut, deducere, opts) {
   // separat de `avantaje` doar ca statul de plata sa poata arata DE CE a aparut: un avantaj
   // devenit impozabil dintr-un plafon depasit nu se poate explica dintr-un total comun.
   const beneficiiImpozabile = round2(o.beneficiiImpozabile) || 0;
-  // Indemnizatii de concediu medical (OUG 158/2005): datoreaza CAS si impozit, dar NU CASS;
-  // CAM doar pe partea suportata de angajator (partea FNUASS o suporta fondul si se recupereaza).
+  // Indemnizatii de concediu medical: toate intra in CAS si impozit. CASS se datoreaza numai
+  // pentru codurile 01, 07 si 10 (art. 155(1)(i) si art. 157(1)(v), forma OUG 34/2024), suma
+  // fiind transmisa explicit prin `cmCuCass`. CAM ramane numai pe partea angajatorului.
   const cmA = round2(o.cmAngajator) || 0;
   const cmF = round2(o.cmFnuass) || 0;
+  const cmCuCass = Math.max(0, Math.min(round2(o.cmCuCass) || 0, round2(cmA + cmF)));
   const sector = o.sector || 'normal';
   // Suma neimpozabila din salariul minim (art. 76): NU e o simpla deducere. `deducere` (deducerea
   // personala) scade doar baza de IMPOZIT; suma asta iese din TOATE bazele — impozit, CAS, CASS si
@@ -180,8 +186,8 @@ function payroll(brut, deducere, opts) {
   const nm = Math.max(0, Math.min(round2(o.neimpozabilMinim) || 0, b));
   const bazaCasReala = round2(b + avantaje + beneficiiImpozabile + cmA + cmF - nm);
   const cas = round2((bazaCasReala * FISCAL.cas) / 100);
-  // tichetele de masa suporta CASS (din 2024) si impozit, dar NU CAS; indemnizatiile CM sunt exceptate de la CASS
-  const bazaCassReala = round2(b + tichete + avantaje + beneficiiImpozabile - nm);
+  // Tichetele suporta CASS (fara CAS); la CM intra numai codurile 01/07/10.
+  const bazaCassReala = round2(b + tichete + avantaje + beneficiiImpozabile + cmCuCass - nm);
   const cass = round2((bazaCassReala * FISCAL.cass) / 100);
   // Norma partiala (OUG 16/2022, art. 146 Cod fiscal): cand venitul brut e sub salariul minim,
   // CAS si CASS se datoreaza la nivelul salariului minim (o.bazaMinima); DIFERENTA fata de
@@ -197,7 +203,11 @@ function payroll(brut, deducere, opts) {
   // costTotal NU include avantajele si beneficiile: ele se inregistreaza pe conturile lor cand se
   // acorda (6458, 626...), deci adunate si aici s-ar numara de doua ori. Tichetele fac exceptie
   // istorica — sunt cumparate de angajator odata cu statul.
-  return { brut: b, tichete, avantaje, beneficiiImpozabile, cmAngajator: cmA, cmFnuass: cmF, neimpozabilMinim: nm, cas, cass, casAngajator, cassAngajator, baza, impozit, cam, net, costTotal: round2(b + cmA + cam + tichete + casAngajator + cassAngajator), sector, scutImpozit: false, scutCass: false, overPlafon: false };
+  return { brut: b, tichete, avantaje, beneficiiImpozabile, cmAngajator: cmA, cmFnuass: cmF,
+    cmCuCass, neimpozabilMinim: nm, bazaCas: bazaCasReala, bazaCass: bazaCassReala,
+    cas, cass, casAngajator, cassAngajator, baza, impozit, cam, net,
+    costTotal: round2(b + cmA + cam + tichete + casAngajator + cassAngajator),
+    sector, scutImpozit: false, scutCass: false, overPlafon: false };
 }
 
 /**

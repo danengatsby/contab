@@ -919,7 +919,7 @@ section('Docs: documentatia nu contrazice configuratia reala (fara drift)');
   // Doar JOBUL test-postgres, nu tot fisierul: pragul SQL 0 apare legitim si in jobul pe sqlite
   // (dovada de echivalenta SQL == RAM acolo), iar o verificare pe tot ci.yml l-ar raporta gresit.
   const jobPg = (ci.match(/^ {2}test-postgres:[\s\S]*?(?=^ {2}\w[\w-]*:|Z)/m) || [''])[0];
-  ok('poarta chiar izoleaza jobul test-postgres', jobPg.includes('postgres:16') && jobPg.length > 200);
+  ok('poarta chiar izoleaza jobul test-postgres', jobPg.includes('postgres:18') && jobPg.length > 200);
   ok('...iar jobul nu mai are pasi pe pg inlantuiti direct (ar fi a doua lista)',
     !/run:\s*node test\//.test(jobPg));
   const tpg = rd('scripts/test-pg.sh');

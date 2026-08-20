@@ -566,7 +566,16 @@ function d112Xml(company, period, sp, who, rect) {
   ].filter((o) => Math.round(o.suma) > 0);
   const totalPlata = oblig.reduce((s, o) => s + Math.round(o.suma), 0);
   // total venit realizat in conditii normale de munca (C1_11; C1_T1 = totalul pe conditii)
-  const bazaCasTotal = sp.rows.reduce((s, r) => s + Math.round(r.brut + (r.avantaje || 0) + (r.beneficiiImpozabile || 0) + (r.indemnizatieCM || 0)), 0);
+  // D112 lucreaza in lei intregi si coreleaza B3_7 cu B3_12+B3_13. Rotunjirea indemnizatiei
+  // totale poate diferi cu 1 leu de suma celor doua componente; toate centralizatoarele urmeaza
+  // componentele D_20/D_21, exact ca validatorul.
+  const cmCasRand = (r) => Math.round(Number(r.cmAngajator) || 0)
+    + Math.round(Number(r.cmFnuass) || 0);
+  const salariuCasRand = (r) => Math.max(0, Math.round((r.bazaCas != null
+    ? r.bazaCas : r.brut + (r.avantaje || 0) + (r.beneficiiImpozabile || 0)
+      + (r.indemnizatieCM || 0)) - (r.indemnizatieCM || 0)));
+  const bazaCasCmTotal = sp.rows.reduce((s, r) => s + cmCasRand(r), 0);
+  const bazaCasSalarii = sp.rows.reduce((s, r) => s + salariuCasRand(r), 0);
   // Baza CAM, exact cea din `fiscal.payroll` (brut + avantaje + beneficii impozabile + partea de
   // CM a angajatorului - suma neimpozabila din salariul minim). Era declarat brutul simplu, deci
   // pe orice firma cu avantaje C4_ct nu mai era 2,25% din C4_baza — declaratia se contrazicea
@@ -592,31 +601,192 @@ function d112Xml(company, period, sp, who, rect) {
     // la fel ca un avantaj in natura. Omisa aici, decontul ar raporta contributii mai mari decat
     // bazele pe care le declara — exact contradictia pe care o cauta validatorul.
     const benImp = r.beneficiiImpozabile || 0;
-    const bazaCass = Math.round(r.brut + (r.tichete || 0) + (r.avantaje || 0) + benImp);
-    const bazaCas = Math.round(r.brut + (r.avantaje || 0) + benImp + (r.indemnizatieCM || 0));
-    const venitImpozabil = Math.max(Math.round(bazaCas - r.cas - r.cass - (r.deducere || 0)), 0);
+    const bazaCass = Math.round(r.bazaCass != null ? r.bazaCass
+      : r.brut + (r.tichete || 0) + (r.avantaje || 0) + benImp + (r.cmCuCass || 0));
+    const bazaCasSursa = r.bazaCas != null ? r.bazaCas
+      : r.brut + (r.avantaje || 0) + benImp + (r.indemnizatieCM || 0);
+    const bazaSalCas = Math.max(0, Math.round(bazaCasSursa - (r.indemnizatieCM || 0)));
+    const bazaCasCm = cmCasRand(r);
+    const bazaCas = bazaSalCas + bazaCasCm;
+    // Baza impozitului vine din acelasi calcul care a produs impozitul din stat. Recompunerea
+    // veche din baza CAS omitea tichetele (CASS + impozit, fara CAS) si suma neimpozabila din
+    // salariul minim, astfel E3_14 putea contrazice E3_15 chiar daca statul era corect.
+    const venitImpozabil = Math.max(Math.round(r.bazaImpozit != null
+      ? r.bazaImpozit
+      : bazaCas - r.cas - r.cass - (r.deducere || 0)), 0);
     const ded = Math.round(r.deducere || 0);
+    const sectiuneE3 = (r.zileCM || 0) > 0 ? 'B' : 'A';
+    const certificate = Array.isArray(r.certificateCM) && r.certificateCM.length
+      ? r.certificateCM : ((r.zileCM || 0) > 0 ? [r] : []);
+    const cmXml = certificate.map((c) => {
+      const continuare = !!(c.serieInitialCM || c.numarInitialCM);
+      const obligatorii = [
+        ['seria certificatului', c.serieCM], ['numărul certificatului', c.numarCM],
+        ['data acordării', c.dataAcordareCM],
+        ['data de început a certificatului', c.dataInceputCertificatCM],
+        ['data de sfârșit a certificatului', c.dataSfarsitCM],
+        ['codul bolii/diagnosticului', c.codBoalaCM],
+      ];
+      const lipsa = obligatorii.filter((x) => !x[1]).map((x) => x[0]);
+      if (lipsa.length) throw new Error('D112 CM — ' + (r.nume || 'angajat') + ': lipsesc '
+        + lipsa.join(', ') + '. Completează datele înscrise pe certificatul medical.');
+      if (continuare && !(c.serieInitialCM && c.numarInitialCM)) {
+        throw new Error('D112 CM — seria și numărul certificatului inițial se completează împreună.');
+      }
+      const zAngTotal = Math.max(0, Math.min(Number(c.zileCM) || 0,
+        Number(c.zileCMAngajatorTotal) || 0));
+      const zFTotal = Math.max(0, (Number(c.zileCM) || 0) - zAngTotal);
+      const attrsContinuare = continuare
+        ? ` Data_CMI="${esc(dataRo(c.dataInceputCM))}" D_3="${esc(c.serieInitialCM)}" D_4="${esc(c.numarInitialCM)}"`
+        : '';
+      // OUG 89/2025: din 07/2026, continuarea cod 01 poarta separat diferenta recalculata a
+      // lunii anterioare. D_20/D_21 sunt totalurile lunii curente INCLUSIV aceste diferente.
+      const recalculare = period >= '2026-07' && continuare
+        && String(c.codIndemnizatieCM || '01') === '01';
+      const attrsRecalculare = recalculare
+        ? ` D_20a="${lei(c.cmDiferentaAngajator || 0)}" D_21a="${lei(c.cmDiferentaFnuass || 0)}"`
+        : '';
+      const attrsFlags = (c.cmProgramNational ? ' D_9a="1"' : '')
+        + (c.zileNeplatiteCM ? ' D_9b="1"' : '');
+      const attrsCopil = ['09', '91', '92'].includes(String(c.codIndemnizatieCM || ''))
+        ? ` D_8="${esc(c.cnpCopilCM || '')}"` : '';
+      const attrsPacient = String(c.codIndemnizatieCM || '') === '17'
+        ? ` D_8a="${esc(c.cnpPacientOncologicCM || '')}"` : '';
+      const attrsSpeciale = String(c.codIndemnizatieCM || '') === '06'
+        ? ` D_11="${esc(c.codUrgentaCM || '')}"`
+        : ['05', '51'].includes(String(c.codIndemnizatieCM || ''))
+          ? ` D_12="${esc(c.codInfectocontagiosCM || '')}"`
+          : String(c.codIndemnizatieCM || '') === '10'
+            ? ` D_13="${esc(c.avizMedicExpertCM || '')}"` : '';
+      const attrsPct = String(c.codIndemnizatieCM || '01') === '01'
+        ? ` D_28="${Math.round(Number(c.procentCM) || 0)}"` : '';
+      return `
+    <asiguratD${attrsContinuare} D_1="${esc(c.serieCM)}" D_2="${esc(c.numarCM)}"
+      D_5="${esc(dataRo(c.dataAcordareCM))}" D_6="${esc(dataRo(c.dataInceputCertificatCM))}" D_7="${esc(dataRo(c.dataSfarsitCM))}"
+      D_9="${esc(c.codIndemnizatieCM || '01')}"${attrsCopil}${attrsPacient}${attrsFlags} D_10="${Math.round(Number(c.locPrescriereCM) || 1)}"${attrsSpeciale}
+      D_14a="${zAngTotal}" D_14="${Math.round(c.zileCMAngajator || 0)}" D_15a="${zFTotal}"
+      D_15="${Math.max(0, Math.round((c.zilePlatiteCM || 0) - (c.zileCMAngajator || 0)))}"
+      D_16a="${Math.round(c.zileCM || 0)}" D_16="${Math.round(c.zilePlatiteCM || 0)}"
+      D_17="${Math.round(c.venitBazaCMIstoric || 0)}" D_18="${Math.round(c.zileBazaCM || 0)}"
+      D_19="${round2(c.mediaZilnicaCM || 0)}" D_20="${lei(c.cmAngajator)}" D_21="${lei(c.cmFnuass)}"
+      D_23="${esc(c.codBoalaCM)}"${attrsPct}${attrsRecalculare}/>`;
+    }).join('');
+    const areContinuare01 = certificate.some((c) => period >= '2026-07'
+      && c.serieInitialCM && c.numarInitialCM && String(c.codIndemnizatieCM || '01') === '01');
+    let contractXml;
+    if ((r.zileCM || 0) > 0) {
+      const zileLucrate = Math.max(0, Math.round((r.zileLucratoare || zileLucratoare)
+        - (r.zileCM || 0)));
+      const bazaCam = Math.max(0, Math.round(r.brut + (r.avantaje || 0) + benImp
+        + (r.cmAngajator || 0) - (r.neimpozabilMinim || 0)));
+      contractXml = `    <asiguratB1 B1_1="1" B1_sal1="${lei(r.salariuBaza || r.brut)}" B1_sal2="${lei(r.brut)}"
+      B1_2="0" B1_3="N" B1_4="8" B1_5="${bazaCam}" B1_6="${zileLucrate * 8}"
+      B1_7="0" B1_8="0" B1_9="0" B1_10="${bazaSalCas}" B1_15="${zileLucrate}" B1_16="0" B1_17="0"/>
+    <asiguratB2 B2_1="0" B2_2="${zileLucrate}" B2_3="0" B2_4="0" B2_5="${bazaSalCas}"
+      B2_6="0" B2_7="0" B2_5P="0" B2_6P="0" B2_7P="0"/>
+    <asiguratB3 B3_1="${Math.round(r.zilePlatiteCM || 0)}" B3_2="0" B3_3="0" B3_4="0" B3_5="0"
+      B3_6="${Math.round(r.zilePlatiteCM || 0)}" B3_7="${Math.round(Number(r.cmAngajator) || 0) + Math.round(Number(r.cmFnuass) || 0)}"${areContinuare01 ? ` B3_7D="${Math.round(Number(r.cmDiferentaAngajator) || 0) + Math.round(Number(r.cmDiferentaFnuass) || 0)}"` : ''} B3_8="0"
+      B3_9="0" B3_10="0" B3_11="0" B3_12="${lei(r.cmAngajator)}" B3_13="${lei(r.cmFnuass)}"/>
+    <asiguratB4 B4_1="${zileLucrate}" B4_2="0" B4_3="${bazaSalCas}" B4_5="${bazaCass}"
+      B4_6="${lei(r.cass)}" B4_7="${bazaCas}" B4_8="${lei(r.cas)}" B4_7P="0" B4_8P="0"
+      B4_18="0" B4_20="0" B4_5P="0" B4_6P="0" B4_8D="0" B4_6D="0" B4_14="${bazaCam}"/>${cmXml}`;
+    } else {
+      contractXml = `    <asiguratA A_1="1" A_2="0" A_3="N" A_4="8" A_5="${lei(r.brut)}" A_6="${zileLucratoare * 8}" A_7="0" A_8="${zileLucratoare}"
+      A_9="${lei(r.brut)}" A_sal1="${lei(r.salariuBaza || r.brut)}" A_sal2="${lei(r.brut)}"
+      A_11="${bazaCass}" A_12="${lei(r.cass)}" A_13="${bazaCas}" A_14="${lei(r.cas)}"/>`;
+    }
     return `  <asigurat idAsig="${i + 1}" cnpAsig="${esc(r.cnp)}" cisAsig="${esc(r.cnp)}" numeAsig="${esc(numeFam)}" prenAsig="${esc(pren)}"
     dataAng="${esc(dataRo(r.dataAngajare || an + '-01-01'))}" casaSn="${esc(casaAng)}" asigCI="1" asigSO="1" Timp_E3="${lei(r.impozit)}">
-    <asiguratA A_1="1" A_2="0" A_3="N" A_4="8" A_5="${lei(r.brut)}" A_6="${zileLucratoare * 8}" A_7="0" A_8="${zileLucratoare}"
-      A_9="${lei(r.brut)}" A_sal1="${lei(r.salariuBaza || r.brut)}" A_sal2="${lei(r.brut)}"
-      A_11="${bazaCass}" A_12="${lei(r.cass)}" A_13="${bazaCas}" A_14="${lei(r.cas)}"/>
+${contractXml}
     <asiguratE1 E1_1="${lei(r.brut)}" E1_2="${lei(r.cas + r.cass)}" E1_3="${r.persoane || 0}" E1_4="${ded}"
       E1_41="${ded}" E1_42="0" E1_421="0" E1_422="0" E1_5="0" E1_6="${venitImpozabil}" E1_7="${lei(r.impozit)}"/>
-    <asiguratE3 E3_1="A" E3_2="1" E3_3="1" E3_4="P" E3_8="${lei(r.brut)}" E3_9="${lei(r.cas + r.cass)}"
-      E3_14="${venitImpozabil}" E3_15="${lei(r.impozit)}" E3_16="0" E3_19="0" E3_21="0"/>
+    <asiguratE3 E3_1="${sectiuneE3}" E3_2="1" E3_3="1" E3_4="P" E3_8="${lei(r.brut)}" E3_9="${lei(r.cas + r.cass)}"
+      E3_12="${ded}" E3_14="${venitImpozabil}" E3_15="${lei(r.impozit)}" E3_16="0" E3_19="0" E3_21="0"/>
   </asigurat>`;
   }).join('\n');
+  const cmRows = sp.rows.flatMap((r) => (Array.isArray(r.certificateCM) && r.certificateCM.length
+    ? r.certificateCM : ((r.zileCM || 0) > 0 ? [r] : [])));
+  let c2Xml = '';
+  if (cmRows.length) {
+    const cod = (r) => String(r.codIndemnizatieCM || '01').padStart(2, '0');
+    const acceptate = new Set(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10',
+      '12', '13', '14', '15', '16', '17', '51', '91', '92']);
+    const necunoscut = cmRows.find((r) => !acceptate.has(cod(r)));
+    if (necunoscut) throw new Error('D112 CM — codul ' + cod(necunoscut)
+      + ' nu este implementat în centralizatorul C2.');
+    const valori = (rows) => ({
+      cazuri: rows.length,
+      zile: rows.reduce((s, r) => s + Math.round(Number(r.zilePlatiteCM) || 0), 0),
+      zileAng: rows.reduce((s, r) => s + Math.round(Number(r.zileCMAngajator) || 0), 0),
+      zileF: rows.reduce((s, r) => s + Math.max(0, Math.round((r.zilePlatiteCM || 0)
+        - (r.zileCMAngajator || 0))), 0),
+      sumaAng: rows.reduce((s, r) => s + Math.round(Number(r.cmAngajator) || 0), 0),
+      sumaF: rows.reduce((s, r) => s + Math.round(Number(r.cmFnuass) || 0), 0),
+    });
+    const attrs = [];
+    const add6 = (prefix, rows) => {
+      if (!rows.length) return;
+      const v = valori(rows);
+      attrs.push(`C2_${prefix}1="${v.cazuri}"`, `C2_${prefix}2="${v.zile}"`,
+        `C2_${prefix}3="${v.zileAng}"`, `C2_${prefix}4="${v.zileF}"`,
+        `C2_${prefix}5="${v.sumaAng}"`, `C2_${prefix}6="${v.sumaF}"`);
+    };
+    const addFnuass = (prefix, rows, suffix = '') => {
+      if (!rows.length) return;
+      const v = valori(rows);
+      attrs.push(`C2_${prefix}1${suffix}="${v.cazuri}"`, `C2_${prefix}2${suffix}="${v.zile}"`,
+        `C2_${prefix}4${suffix}="${v.zileF}"`, `C2_${prefix}6${suffix}="${v.sumaF}"`);
+    };
+    // Structura C2 are randuri distincte pe natura indemnizatiei; C2_11..16 nu este un total
+    // universal. Amestecarea maternitatii sau riscului maternal aici trece XML-ul ca forma, dar
+    // esueaza corelatiile oficiale COUNT/SUM pe codul D_9.
+    const incapacitate = cmRows.filter((r) => ['01', '02', '03', '04', '05', '06', '12', '13',
+      '14', '16', '51'].includes(cod(r)));
+    add6('1', incapacitate);
+    // Subrandul 1.1 nu inseamna doar codul 51. Regulile DUK includ si codul 05 + D_12=35
+    // pana la 02.11.2020 sau din 24.10.2023; in intervalul dintre aceste date, acel certificat
+    // ramane in randul general de incapacitate temporara.
+    const izolare = cmRows.filter((r) => {
+      const d = String(r.dataAcordareCM || '').slice(0, 10);
+      if (cod(r) === '51') return d >= '2020-10-30';
+      return cod(r) === '05' && String(r.codInfectocontagiosCM || '').padStart(2, '0') === '35'
+        && (d <= '2020-11-02' || d >= '2023-10-24');
+    });
+    add6('11', izolare);
+    for (const [pct, prefix] of [[55, '12'], [65, '13'], [75, '14']]) {
+      const rows = cmRows.filter((r) => cod(r) === '01'
+        && Number(r.procentCM) === pct);
+      add6(prefix, rows);
+    }
+    const preventie = cmRows.filter((r) => ['07', '10'].includes(cod(r)));
+    add6('2', preventie);
+    add6('21', cmRows.filter((r) => cod(r) === '07'));
+    addFnuass('3', cmRows.filter((r) => cod(r) === '08'));
+    addFnuass('4', cmRows.filter((r) => ['09', '91', '92'].includes(cod(r))));
+    addFnuass('4', cmRows.filter((r) => cod(r) === '17'), 'a');
+    addFnuass('5', cmRows.filter((r) => cod(r) === '15'));
+    const totalF = cmRows.reduce((s, r) => s + Math.round(Number(r.cmFnuass) || 0), 0);
+    attrs.push(`C2_T6="${totalF}"`, `C2_10="${totalF}"`, `C2_140="${totalF}"`);
+    if (period >= '2026-07') {
+      const continuari01 = cmRows.filter((r) => String(r.codIndemnizatieCM || '01') === '01'
+        && r.serieInitialCM && r.numarInitialCM);
+      if (continuari01.length) {
+        attrs.push(`C2_155="${continuari01.reduce((s, r) => s + Math.round(Number(r.cmDiferentaAngajator) || 0), 0)}"`,
+          `C2_156="${continuari01.reduce((s, r) => s + Math.round(Number(r.cmDiferentaFnuass) || 0), 0)}"`);
+      }
+    }
+    c2Xml = `\n    <angajatorC2 ${attrs.join(' ')}/>`;
+  }
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- D112 (declaratieUnica v6) generat de Contabo. Verificare: scripts/valideaza-duk.sh D112 fisier.xml -->
+<!-- D112 (declaratieUnica v7) generat de Contabo. Verificare: scripts/valideaza-duk.sh D112 fisier.xml -->
 <declaratieUnica xmlns="mfp:anaf:dgti:declaratie_unica:declaratie:v7"${d112RectAttrs(rect)}
   luna_r="${esc(luna)}" an_r="${esc(an)}"
   nume_declar="${esc(w.nume)}" prenume_declar="${esc(w.prenume || '-')}" functie_declar="${esc(w.functie || 'Administrator')}">
   <angajator cif="${esc(String(company.cui).replace(/^ro/i, ''))}" caen="${esc(company.caen || '0000')}" den="${esc(company.nume)}"
     casaAng="${esc(casaAng)}" datCAM="1" bifa_CAM="0" totalPlata_A="${lei(totalPlata)}">
 ${obligXml}
-    <angajatorB B_cnp="${sp.rows.length}" B_sanatate="${sp.rows.length}" B_pensie="${sp.rows.filter((r) => r.cas > 0).length}" B_brutSalarii="${lei(t.brut)}" B_sal="${sp.rows.length}"/>
-    <angajatorC1 C1_11="${bazaCasTotal}" C1_T1="${bazaCasTotal}"/>
+    <angajatorB B_cnp="${sp.rows.length}" B_sanatate="${sp.rows.length}" B_pensie="${sp.rows.filter((r) => r.cas > 0).length}" B_brutSalarii="${sp.rows.reduce((s, r) => s + Math.round(r.bazaCass != null ? r.bazaCass : r.brut), 0)}" B_sal="${sp.rows.length}"/>
+    <angajatorC1 C1_11="${bazaCasSalarii}"${bazaCasCmTotal ? ` C1_12="${bazaCasCmTotal}"` : ''} C1_T1="${bazaCasSalarii}"${bazaCasCmTotal ? ` C1_T2="${bazaCasCmTotal}"` : ''}/>${c2Xml}
     <angajatorC3/>
     <angajatorC4 C4_baza="${lei(bazaCamTotal)}" C4_ct="${lei(t.cam)}"/>
   </angajator>
@@ -907,9 +1077,9 @@ function d107Xml(company, d, who, rect) {
     : 'Administrator';
   const tel = String(company.telefon || '').replace(/[^0-9+]/g, '').slice(0, 15);
   const email = String(company.email || '').trim().slice(0, 200);
-  // Din 2026 termenul standard revine la 25 martie; pentru anii <=2025 structura oficială cere
-  // 25 iunie. D107 se depune la același termen cu declarația anuală de impozit pe profit.
-  const scadenta = '25' + (year <= 2025 ? '06' : '03') + String(year + 1);
+  // D107 se depune la același termen cu declarația anuală de impozit pe profit:
+  // 25 iunie din anul următor.
+  const scadenta = '2506' + String(year + 1);
   const totalPlata = totals.val1 + totals.val2 + totals.val3;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- D107 generat de Contabo. Verificare oficiala: scripts/valideaza-duk.sh D107 fisier.xml -->
@@ -1433,7 +1603,9 @@ function d710Xml(company, period, initial, corrected, who) {
   if (sumaI === sumaC) throw new Error('D710 nu are nicio diferență: suma D100 este deja ' + sumaC + ' lei.');
 
   // Termenul este proprietatea creantei/perioadei, nu data generarii rectificativei. Fotografia
-  // depunerii il pastreaza; daca lipseste, regula generala este 25 ale lunii urmatoare.
+  // depunerii pastreaza termenul OPERATIONAL, mutat la urmatoarea zi lucratoare cand 25 este
+  // nelucratoare. Schema D710 cere insa in `scadenta` si in `nr_evid` data NOMINALA de 25 din
+  // aceeasi luna (regulile R15/R16 ale validatorului), exact ca D100.
   let due = String(i.scadenta || c.scadenta || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
     const nm = Number(luna) === 12 ? 1 : Number(luna) + 1;
@@ -1441,7 +1613,7 @@ function d710Xml(company, period, initial, corrected, who) {
     due = ny + '-' + String(nm).padStart(2, '0') + '-25';
   }
   const next = { l: Number(due.slice(5, 7)), a: Number(due.slice(0, 4)) };
-  const scadenta = due.slice(8, 10) + '.' + due.slice(5, 7) + '.' + due.slice(0, 4);
+  const scadenta = '25.' + due.slice(5, 7) + '.' + due.slice(0, 4);
   const adresa = [company.adresa, company.oras, company.judet].filter(Boolean).join(', ') || '-';
   const telefon = String(company.telefon || '').replace(/[^0-9+]/g, '').slice(0, 15);
   const cotaMicro = codI === '121' && Number(an) > 2025 ? ' cota="1"' : '';
