@@ -30,7 +30,7 @@
     "node": ">=22.13"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.115.0",
+    "@anthropic-ai/sdk": "^0.117.1",
     "adm-zip": "^0.6.0",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
