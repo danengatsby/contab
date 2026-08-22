@@ -521,17 +521,23 @@ function nextUserId() {
 function scoped(firmaId) {
   const d = get();
   const id = Number(firmaId) || d.firmaActiva;
+  const entries = d.entries.filter((e) => (e.firmaId == null ? d.firmaActiva : e.firmaId) === id);
+  // Miscarea automata legata de o factura urmeaza starea articolului: cat timp articolul este
+  // ciorna/validat/aprobat, nu are voie sa reduca stocul real. La postare devine activa automat.
+  // Miscarile manuale (fara entryId) raman active imediat, ca pana acum.
+  const activeEntryIds = new Set(entries.filter((e) => !e.status || e.status === 'postat').map((e) => e.id));
   return {
     firmaId: id,
     company: getFirma(id) || {},
-    entries: d.entries.filter((e) => (e.firmaId == null ? d.firmaActiva : e.firmaId) === id),
+    entries,
     documents: d.documents.filter((x) => (x.firmaId == null ? d.firmaActiva : x.firmaId) === id),
     assets: (d.assets || []).filter((a) => (a.firmaId == null ? d.firmaActiva : a.firmaId) === id),
     angajati: (d.angajati || []).filter((a) => (a.firmaId == null ? d.firmaActiva : a.firmaId) === id),
     payrollHistory: (d.payrollHistory || []).filter((h) => (h.firmaId == null ? d.firmaActiva : h.firmaId) === id),
     products: (d.products || []).filter((p) => (p.firmaId == null ? d.firmaActiva : p.firmaId) === id),
     gestiuni: (d.gestiuni || []).filter((g) => (g.firmaId == null ? d.firmaActiva : g.firmaId) === id),
-    stockMovements: (d.stockMovements || []).filter((m) => (m.firmaId == null ? d.firmaActiva : m.firmaId) === id),
+    stockMovements: (d.stockMovements || []).filter((m) => (m.firmaId == null ? d.firmaActiva : m.firmaId) === id
+      && (!m.entryId || activeEntryIds.has(m.entryId))),
     inventories: (d.inventories || []).filter((iv) => (iv.firmaId == null ? d.firmaActiva : iv.firmaId) === id),
     inventarAnual: (d.inventarAnual || []).filter((x) => (x.firmaId == null ? d.firmaActiva : x.firmaId) === id),
     partners: d.partners[id] || {},
@@ -658,6 +664,7 @@ function validateFirmaBundle(input) {
     for (const l of e.lines) needObject(l, 'Linia articolului ' + e.id);
     ref(e.fileId, 'documents', 'Atasamentul articolului ' + e.id, false);
     ref(e.movementId, 'stockMovements', 'Miscarea articolului ' + e.id, false);
+    ref(e.stocMovementId, 'stockMovements', 'Miscarea de stoc canonica a articolului ' + e.id, false);
     ref(e.stornoOf, 'entries', 'Referinta storno a articolului ' + e.id, false);
     ref(e.stornoBy, 'entries', 'Nota storno a articolului ' + e.id, false);
     for (const mid of needList(e.stocMovementIds, 'Miscarile de stoc ale articolului ' + e.id)) ref(mid, 'stockMovements', 'Miscarea de stoc a articolului ' + e.id, true);
@@ -666,6 +673,10 @@ function validateFirmaBundle(input) {
     ref(mv.productId, 'products', 'Produsul miscarii ' + mv.id, true);
     ref(mv.gestiuneId, 'gestiuni', 'Gestiunea miscarii ' + mv.id, false);
     ref(mv.gestiuneDestId, 'gestiuni', 'Gestiunea destinatie a miscarii ' + mv.id, false);
+    ref(mv.inventoryId, 'inventories', 'Inventarul miscarii ' + mv.id, false);
+    ref(mv.stornoOfMovementId, 'stockMovements', 'Miscarea originala a stornarii ' + mv.id, false);
+    ref(mv.stornoMovementId, 'stockMovements', 'Miscarea de corectie a miscarii ' + mv.id, false);
+    ref(mv.stornoEntryId, 'entries', 'Nota de corectie a miscarii ' + mv.id, false);
     // entryId este o legatura auxiliara: o copie partiala poate pastra miscarea de stoc dupa ce
     // articolul a fost pierdut. La constructie devine null, niciodata id-ul vechi/strain.
   }
@@ -674,6 +685,7 @@ function validateFirmaBundle(input) {
     needList(iv.entryIds, 'Articolele inventarului ' + iv.id);
     needList(iv.stornoEntryIds, 'Stornarile inventarului ' + iv.id);
     for (const x of needList(iv.movementIds, 'Miscarile inventarului ' + iv.id)) ref(x, 'stockMovements', 'Miscarea inventarului ' + iv.id, true);
+    for (const x of needList(iv.stornoMovementIds, 'Miscarile storno ale inventarului ' + iv.id)) ref(x, 'stockMovements', 'Miscarea storno a inventarului ' + iv.id, true);
     for (const l of needList(iv.lines, 'Liniile inventarului ' + iv.id)) { needObject(l, 'Linia inventarului ' + iv.id); ref(l.productId, 'products', 'Produsul din inventarul ' + iv.id, true); }
   }
   // Istoricul salarial poate pastra randuri pentru angajati stersi ulterior. Lista se valideaza,
@@ -767,6 +779,7 @@ function importFirma(bundle, opts) {
   built.entries = b.entries.map((e) => Object.assign({}, e, {
     id: mid('entries', e.id), firmaId: newFid,
     fileId: mid('documents', e.fileId), movementId: mid('stockMovements', e.movementId),
+    stocMovementId: mid('stockMovements', e.stocMovementId),
     stornoOf: mid('entries', e.stornoOf), stornoBy: mid('entries', e.stornoBy),
     stocMovementIds: (e.stocMovementIds || []).map((x) => mid('stockMovements', x)),
   }));
@@ -774,12 +787,17 @@ function importFirma(bundle, opts) {
     id: mid('stockMovements', mv.id), firmaId: newFid,
     productId: mid('products', mv.productId), gestiuneId: mid('gestiuni', mv.gestiuneId),
     gestiuneDestId: mid('gestiuni', mv.gestiuneDestId), entryId: mid('entries', mv.entryId),
+    inventoryId: mid('inventories', mv.inventoryId),
+    stornoOfMovementId: mid('stockMovements', mv.stornoOfMovementId),
+    stornoMovementId: mid('stockMovements', mv.stornoMovementId),
+    stornoEntryId: mid('entries', mv.stornoEntryId),
   }));
   built.inventories = b.inventories.map((iv) => Object.assign({}, iv, {
     id: mid('inventories', iv.id), firmaId: newFid, gestiuneId: mid('gestiuni', iv.gestiuneId),
     entryIds: (iv.entryIds || []).map((x) => mid('entries', x)),
     stornoEntryIds: (iv.stornoEntryIds || []).map((x) => mid('entries', x)),
     movementIds: (iv.movementIds || []).map((x) => mid('stockMovements', x)),
+    stornoMovementIds: (iv.stornoMovementIds || []).map((x) => mid('stockMovements', x)),
     lines: (iv.lines || []).map((l) => Object.assign({}, l, { productId: mid('products', l.productId) })),
   }));
   built.payrollHistory = b.payrollHistory.map((h) => Object.assign({}, h, {

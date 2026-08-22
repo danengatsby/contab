@@ -5,6 +5,11 @@ function round2(n) {
   return Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 }
 
+/** Rotunjire cantitativa la 3 zecimale (kg/litri/bucati fractionare din formulare). */
+function roundQty(n) {
+  return Math.round((Number(n) + Number.EPSILON) * 1000) / 1000;
+}
+
 /** Format numeric romanesc: 1.234,56 */
 function fmt(n) {
   const v = round2(Number(n) || 0);
@@ -33,6 +38,13 @@ function fmtDate(iso) {
 /** Returneaza perioada YYYY-MM dintr-o data ISO. */
 function period(iso) {
   return String(iso || '').slice(0, 7);
+}
+
+/** Data ISO reala, nu doar text cu forma YYYY-MM-DD (respinge 2026-02-30). */
+function validIsoDate(value) {
+  const iso = String(value || '');
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(iso + 'T00:00:00Z') : null;
+  return !!d && !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso;
 }
 
 const LUNI = ['', 'ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
@@ -153,4 +165,5 @@ function ultimaZiDinLuna(period) {
   return m[1] + '-' + m[2] + '-' + String(zi).padStart(2, '0');
 }
 
-module.exports = { round2, fmt, fmtDate, plural, period, periodLabel, sumaInLitere, stringifyDb, stringifyRow, naturalCompare, ultimaZiDinLuna };
+module.exports = { round2, roundQty, fmt, fmtDate, plural, period, periodLabel, validIsoDate,
+  sumaInLitere, stringifyDb, stringifyRow, naturalCompare, ultimaZiDinLuna };

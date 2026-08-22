@@ -169,7 +169,7 @@ function bonConsumPdf(res, company, data) {
     { label: 'Denumire produs', key: 'den', width: 170, wrap: true },
     { label: 'UM', key: 'um', width: 44, align: 'center' },
     { label: 'Cantitate', key: 'cant', width: 70, align: 'right' },
-    { label: 'Pret (CMP)', key: 'pret', width: 76, align: 'right' },
+    { label: 'Cost unitar', key: 'pret', width: 76, align: 'right' },
     { label: 'Valoare', key: 'val', width: 80, align: 'right' },
   ], rows);
   doc.moveDown(1.2);
@@ -198,7 +198,7 @@ function avizPdf(res, company, data) {
     { label: 'Denumire marfa', key: 'den', width: 170, wrap: true },
     { label: 'UM', key: 'um', width: 44, align: 'center' },
     { label: 'Cantitate', key: 'cant', width: 70, align: 'right' },
-    { label: 'Pret (CMP)', key: 'pret', width: 76, align: 'right' },
+    { label: 'Cost unitar', key: 'pret', width: 76, align: 'right' },
     { label: 'Valoare', key: 'val', width: 80, align: 'right' },
   ], rows);
   doc.moveDown(1.2);

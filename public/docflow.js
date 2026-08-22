@@ -392,7 +392,7 @@ function renderFields(values) {
     else if (f.type === 'date') input = `<input id="${id}" type="date" value="${v || ''}"${req} />`;
     else if (f.type === 'number') input = `<input id="${id}" type="number" step="${H(f.step || '0.01')}" value="${v === '' ? '' : v}"${req} />`;
     else if (f.type === 'items') input = `<div class="items-editor" id="${id}"><div class="items-rows"></div><button type="button" class="btn ghost small additem">＋ adaugă linie</button></div>`;
-    else if (f.type === 'stoc') input = `<div class="stoc-editor" id="${id}"><div class="stoc-rows"></div><button type="button" class="btn ghost small addstoc">＋ produs din stoc</button><div class="muted" data-u="u25">Costul mărfii vândute (607=371) se calculează automat la <b>CMP</b>, la salvare.</div></div>`;
+    else if (f.type === 'stoc') input = `<div class="stoc-editor" id="${id}"><div class="stoc-rows"></div><button type="button" class="btn ghost small addstoc">＋ produs din stoc</button><div class="muted" data-u="u25">Costul mărfii vândute (607=371) se calculează automat prin metoda firmei (<b>CMP/FIFO</b>), la postare.</div></div>`;
     else if (f.type === 'checkbox') input = `<input id="${id}" type="checkbox" ${v && v !== 'false' ? 'checked' : ''} data-u="u26" />`;
     else if (f.type === 'leasing') input = `<div class="leasing-picker" id="${id}"><select class="lp-contract"><option value="">— alege contractul —</option></select><input class="lp-period" type="month" /><button type="button" class="btn ghost small lp-load">preia rata</button><span class="lp-msg muted"></span></div>`;
     else input = `<input id="${id}" type="text" value="${(v || '').toString().replace(/"/g, '&quot;')}"${req} />`;

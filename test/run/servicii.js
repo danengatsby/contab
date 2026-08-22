@@ -106,7 +106,7 @@ section('Colaboratori pe firmă (src/firmeService.js)');
   firmaLk.lockedUntil = '2026-03'; // luni <= 2026-03 sunt inchise
   const pLk = ssvc.upsertProduct(fidOk, { cod: 'LK-1', denumire: 'Prod lock', um: 'buc', cont: '371' }).product;
   eq('stoc: miscare in luna INCHISA -> 400', errStatus(() => ssvc.addMovement(fidOk, 'op', { productId: pLk.id, tip: 'receptie', cantitate: 5, data: '2026-02-10', pretUnitar: 10 })), 400);
-  ok('mesajul indruma spre storno', (() => { try { ssvc.addMovement(fidOk, 'op', { productId: pLk.id, tip: 'receptie', cantitate: 5, data: '2026-02-10' }); return false; } catch (e) { return /STORNO/i.test(e.message); } })());
+  ok('mesajul indruma spre storno', (() => { try { ssvc.addMovement(fidOk, 'op', { productId: pLk.id, tip: 'receptie', cantitate: 5, pretUnitar: 10, data: '2026-02-10' }); return false; } catch (e) { return /STORNO/i.test(e.message); } })());
   const mvDeschis = ssvc.addMovement(fidOk, 'op', { productId: pLk.id, tip: 'receptie', cantitate: 5, data: '2026-06-10', pretUnitar: 10 }).movement;
   ok('stoc: miscare in luna DESCHISA -> merge', !!mvDeschis.id);
   // stergerea unei miscari dintr-o luna inchisa -> blocata (nu rupe nici nota legata)
@@ -122,6 +122,82 @@ section('Colaboratori pe firmă (src/firmeService.js)');
   db.get().stockMovements = db.get().stockMovements.filter((m) => m.id !== mvDeschis.id && m.id !== mvInchis.id);
   db.get().products = db.get().products.filter((p) => p.id !== pLk.id);
   firmaLk.lockedUntil = lkPrev;
+}
+
+// ── INVARIANTE STOC: FIFO real la postare, transfer fara nota, lipsa blocanta, storno append-only ──
+{
+  const firma = db.getFirma(fidOk); const metodaVeche = firma.metodaEvaluareStoc;
+  firma.metodaEvaluareStoc = 'fifo';
+  const p = ssvc.upsertProduct(fidOk, { cod: 'FIFO-SVC', denumire: 'Produs FIFO service', um: 'buc', cont: '371' }).product;
+  const g1 = ssvc.upsertGestiune(fidOk, { cod: 'FIFO-G1', denumire: 'FIFO sursa' }).gestiune;
+  const g2 = ssvc.upsertGestiune(fidOk, { cod: 'FIFO-G2', denumire: 'FIFO destinatie' }).gestiune;
+  eq('cantitate negativa -> 400', errStatus(() => ssvc.addMovement(fidOk, 'op', { productId: p.id, tip: 'iesire', cantitate: -1, data: '2026-09-01', gestiuneId: g1.id })), 400);
+  eq('data calendaristica inexistenta -> 400', errStatus(() => ssvc.addMovement(fidOk, 'op', { productId: p.id, tip: 'iesire', cantitate: 1, data: '2026-02-30', gestiuneId: g1.id })), 400);
+  eq('receptie fara pret pozitiv -> 400', errStatus(() => ssvc.addMovement(fidOk, 'op', { productId: p.id, tip: 'receptie', cantitate: 1, pretUnitar: 0, data: '2026-09-01', gestiuneId: g1.id })), 400);
+  const recFifo1 = ssvc.addMovement(fidOk, 'op', { productId: p.id, tip: 'receptie', cantitate: 3, pretUnitar: 10, data: '2026-09-01', gestiuneId: g1.id }).movement;
+  ssvc.addMovement(fidOk, 'op', { productId: p.id, tip: 'receptie', cantitate: 3, pretUnitar: 20, data: '2026-09-02', gestiuneId: g1.id });
+  eq('contul produsului devine imuabil dupa prima miscare', errStatus(() => ssvc.upsertProduct(fidOk,
+    { cod: p.cod, denumire: p.denumire, um: p.um, cont: '301' })), 409);
+  eq('importul de produse refuza atomic un cont inexistent', errStatus(() => ssvc.importProducts(fidOk,
+    'Cod;Denumire;UM;Cont\nBAD-CONT;Produs invalid;buc;317')), 400);
+  ok('importul invalid nu lasa produs partial', !db.get().products.some((x) => x.firmaId === fidOk && x.cod === 'BAD-CONT'));
+  const ies = ssvc.addMovement(fidOk, 'op', { productId: p.id, tip: 'iesire', cantitate: 4, data: '2026-09-03', gestiuneId: g1.id }).movement;
+  const nota = ssvc.postMovement(fidOk, ies.id);
+  eq('postarea manuala respecta FIFO (3×10 + 1×20), nu CMP (60)', nota.suma, 50);
+  eq('nota manuala poarta legatura canonica spre miscare', nota.entry.stocMovementId, ies.id);
+  eq('stocul initial nu se importa dupa o iesire contabilizata', errStatus(() => ssvc.importInitialStock(fidOk, 'op', {
+    data: '2026-09-10', csv: 'Cod;Denumire;UM;Cont;Gestiune;Cantitate;PretUnitar\nFIFO-SVC;Produs FIFO service;buc;371;FIFO-G1;1;10',
+  })), 409);
+  eq('o receptie retroactiva care ar recalcula nota FIFO este refuzata',
+    errStatus(() => ssvc.addMovement(fidOk, 'op', { productId: p.id, tip: 'receptie', cantitate: 2,
+      pretUnitar: 30, data: '2026-08-31', gestiuneId: g1.id })), 409);
+  eq('storno receptie refuzat daca ar lasa iesirea ulterioara fara stoc',
+    errStatus(() => ssvc.stornoMovement(fidOk, 'op', recFifo1.id, '2026-09-04')), 409);
+  eq('storno generic pe nota de stoc este blocat', errStatus(() => require('../../src/entriesService').stornoEntry(nota.entry.id, fidOk, () => true, '2026-09-04')), 400);
+  eq('miscarea cu nota nu se sterge distructiv', errStatus(() => ssvc.deleteMovement(fidOk, ies.id)), 400);
+  const rev = ssvc.stornoMovement(fidOk, 'op2', ies.id, '2026-09-04');
+  ok('storno dedicat pastreaza originalul si creeaza miscare + nota in rosu', rev.original.stornat
+    && rev.movement.stornoOfMovementId === ies.id && rev.entry.stornoOf === nota.entry.id
+    && rev.entry.lines.every((l) => l.suma < 0));
+  eq('dupa stornarea iesirii, cantitatea revine la 6', require('../../src/stocks').productLedger(p, db.scoped(fidOk).stockMovements, null, g1.id, 'fifo').stocQ, 6);
+  eq('o miscare de storno nu se storneaza din nou', errStatus(() => ssvc.stornoMovement(fidOk, 'op', rev.movement.id, '2026-09-05')), 400);
+  eq('miscarea de corectie nu poate fi stearsa separat', errStatus(() => ssvc.deleteMovement(fidOk, rev.movement.id)), 400);
+  eq('miscarea de corectie nu poate fi postata separat', errStatus(() => ssvc.postMovement(fidOk, rev.movement.id)), 400);
+  const tr = ssvc.addMovement(fidOk, 'op', { productId: p.id, tip: 'transfer', cantitate: 2, data: '2026-09-05', gestiuneId: g1.id, gestiuneDestId: g2.id }).movement;
+  eq('transferul intern nu poate genera nota financiara', errStatus(() => ssvc.postMovement(fidOk, tr.id)), 400);
+  const trRev = ssvc.stornoMovement(fidOk, 'op', tr.id, '2026-09-06');
+  ok('storno transfer = transfer invers, fara nota contabila', trRev.movement.gestiuneId === g2.id
+    && trRev.movement.gestiuneDestId === g1.id && trRev.entry === null);
+  const nrMvInainteInventarInvalid = db.get().stockMovements.length;
+  eq('inventarul refuza atomic acelasi produs introdus de doua ori', errStatus(() => ssvc.createInventory(fidOk, 'op', {
+    gestiuneId: g1.id, data: '2026-09-07', lines: [{ productId: p.id, faptic: 5 }, { productId: p.id, faptic: 4 }],
+  })), 400);
+  eq('inventarul invalid nu lasa miscari partiale', db.get().stockMovements.length, nrMvInainteInventarInvalid);
+  const inv = ssvc.createInventory(fidOk, 'op', { gestiuneId: g1.id, data: '2026-09-07',
+    lines: [{ productId: p.id, faptic: 5 }] }).inv; // scriptic 6 -> minus 1
+  const invOrigEntries = inv.entryIds.map((id) => db.get().entries.find((e) => e.id === id)).filter(Boolean);
+  eq('minusul de inventar foloseste lotul FIFO real, nu media CMP', invOrigEntries[0].lines[0].suma, 10);
+  eq('nota unui inventar se corecteaza numai prin stornarea inventarului',
+    errStatus(() => require('../../src/entriesService').stornoEntry(inv.entryIds[0], fidOk, () => true, '2026-09-08')), 400);
+  const invSt = ssvc.stornoInventory(fidOk, 'op2', inv.id, '2026-09-08');
+  const invStEntries = invSt.iv.stornoEntryIds.map((id) => db.get().entries.find((e) => e.id === id)).filter(Boolean);
+  ok('storno inventar pastreaza miscarile originale si inverse', invSt.stornoMovements === inv.movementIds.length
+    && inv.movementIds.every((id) => db.get().stockMovements.some((m) => m.id === id && m.stornat))
+    && inv.stornoMovementIds.every((id) => db.get().stockMovements.some((m) => m.id === id && m.stornoOfMovementId)));
+  ok('storno inventar este in rosu (aceleasi conturi, sume negate)', invOrigEntries.length === invStEntries.length
+    && invOrigEntries.every((orig, i) => orig.lines.every((l, j) => invStEntries[i].lines[j].debit === l.debit
+      && invStEntries[i].lines[j].credit === l.credit && invStEntries[i].lines[j].suma === -l.suma)));
+  eq('storno inventar readuce stocul exact la 6', require('../../src/stocks').productLedger(p, db.scoped(fidOk).stockMovements, null, g1.id, 'fifo').stocQ, 6);
+  const lipsa = ssvc.addMovement(fidOk, 'op', { productId: p.id, tip: 'iesire', cantitate: 99, data: '2026-09-09', gestiuneId: g1.id });
+  ok('lipsa de stoc este intoarsa explicit la salvarea miscarii', lipsa.lipsa && lipsa.lipsa.lipsa === 93);
+  eq('nota pe o descarcare partiala este refuzata cu 409', errStatus(() => ssvc.postMovement(fidOk, lipsa.movement.id)), 409);
+  ssvc.deleteMovement(fidOk, lipsa.movement.id);
+  const mids = new Set(db.get().stockMovements.filter((m) => m.productId === p.id).map((m) => m.id));
+  db.get().entries = db.get().entries.filter((e) => !mids.has(e.movementId) && !mids.has(e.stocMovementId));
+  db.get().stockMovements = db.get().stockMovements.filter((m) => m.productId !== p.id);
+  db.get().products = db.get().products.filter((x) => x.id !== p.id);
+  db.get().gestiuni = db.get().gestiuni.filter((x) => x.id !== g1.id && x.id !== g2.id);
+  firma.metodaEvaluareStoc = metodaVeche;
 }
 
 section('Serii de documente prin service layer (docSeries / assignDocNumber)');
@@ -441,6 +517,7 @@ eq('chitanta pe firma lipsa -> 403', errStatus(() => cfsvc.assignChitanta(null, 
 // sensibile (lockedUntil/subscription/anaf) si tehnice (id/logoFile/camp necunoscut) NU
 const firmaCfg = db.getFirma(fidOk);
 firmaCfg.lockedUntil = '2026-05'; const subInit = firmaCfg.subscription;
+eq('metoda de stoc necunoscuta -> 400', errStatusCfg(() => cfsvc.updateCompany(fidOk, { metodaEvaluareStoc: 'lifo' })), 400);
 cfsvc.updateCompany(fidOk, {
   nume: 'Firma Editata SRL', caen: '6201',                 // profil — permise
   logoFile: 'furat.png', id: 424242, campNecunoscut: 'x',  // tehnice — ignorate
@@ -450,6 +527,14 @@ ok('profil salvat (nume/caen)', firmaCfg.nume === 'Firma Editata SRL' && firmaCf
 ok('campurile tehnice ignorate (id/logoFile/necunoscut)', firmaCfg.id === fidOk && firmaCfg.logoFile !== 'furat.png' && firmaCfg.campNecunoscut === undefined);
 ok('perioada inchisa NU se poate deschide prin /api/company', firmaCfg.lockedUntil === '2026-05');
 ok('abonamentul si credentialele ANAF NU se pot injecta', firmaCfg.subscription === subInit && firmaCfg.anaf === undefined);
+const metodaCfgVeche = firmaCfg.metodaEvaluareStoc;
+const mvPolitica = { id: 'mv-politica-test', firmaId: fidOk, data: '2026-06-30', tip: 'iesire',
+  productId: 'politica-test', gestiuneId: null, cantitate: 1, pretUnitar: 0 };
+db.get().stockMovements.push(mvPolitica);
+eq('politica CMP/FIFO nu se schimba retroactiv dupa prima iesire',
+  errStatusCfg(() => cfsvc.updateCompany(fidOk, { metodaEvaluareStoc: metodaCfgVeche === 'fifo' ? 'cmp' : 'fifo' })), 409);
+db.get().stockMovements = db.get().stockMovements.filter((m) => m !== mvPolitica);
+if (metodaCfgVeche === undefined) delete firmaCfg.metodaEvaluareStoc; else firmaCfg.metodaEvaluareStoc = metodaCfgVeche;
 delete firmaCfg.lockedUntil; // curatenie
 // logo: validare pe magic bytes, nu pe extensie
 const tmpLogoBad = path.join(os.tmpdir(), 'contab-logo-bad-' + process.pid + '.png');

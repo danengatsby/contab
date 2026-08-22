@@ -1281,6 +1281,13 @@ async function main() {
     const mkG = await req('POST', '/api/gestiuni', { cookie: c1, body: { cod: 'G1', denumire: 'Depozit', gestionar: 'Ion' } });
     ok('gestiune creata', mkG.json && mkG.json.ok && mkG.json.gestiune.id);
     const gid = mkG.json.gestiune.id;
+    eq('miscare cu cantitate negativa -> 400', (await req('POST', '/api/stock-movements', { cookie: c1, body: { tip: 'iesire', productId: pid, gestiuneId: gid, cantitate: -1, data: '2026-06-04' } })).status, 400);
+    eq('receptie fara pret pozitiv -> 400', (await req('POST', '/api/stock-movements', { cookie: c1, body: { tip: 'receptie', productId: pid, gestiuneId: gid, cantitate: 1, pretUnitar: 0, data: '2026-06-04' } })).status, 400);
+    eq('miscare cu data inexistenta -> 400', (await req('POST', '/api/stock-movements', { cookie: c1, body: { tip: 'iesire', productId: pid, gestiuneId: gid, cantitate: 1, data: '2026-02-30' } })).status, 400);
+    eq('factura postata direct nu poate descarca un stoc inexistent', (await req('POST', '/api/entries', { cookie: c1,
+      body: { tip: 'factura_vanzare_marfuri', fields: { data: '2026-06-04', partener: 'Client fara stoc',
+        cuiPartener: 'RO7', document: 'FS-LIPSA', baza: 10, tva: 2.1, cota: 21,
+        stoc: [{ productId: pid, gestiuneId: gid, cantitate: 1 }] } } })).status, 409);
     const recep = await req('POST', '/api/stock-movements', { cookie: c1, body: { tip: 'receptie', productId: pid, gestiuneId: gid, cantitate: 10, pretUnitar: 5, data: '2026-06-05', document: 'NIR1' } });
     ok('receptie inregistrata', recep.json && recep.json.ok && recep.json.movement.id);
     const mid = recep.json.movement.id;
@@ -1288,6 +1295,7 @@ async function main() {
     ok('stoc curent: 10 buc la CMP 5', Array.isArray(stoc.json) && stoc.json.some((s) => s.stocQ === 10 && s.cmp === 5));
     const postNota = await req('POST', '/api/stock-movements/' + mid + '/post', { cookie: c1 });
     ok('receptie postata: nota 371=401', postNota.json && postNota.json.ok && postNota.json.entry && postNota.json.entry.lines.some((l) => l.debit === '371' && l.credit === '401'));
+    eq('nota de stoc nu poate fi stornata generic', (await req('POST', '/api/entries/' + postNota.json.entry.id + '/storno', { cookie: c1, body: { data: '2026-06-06' } })).status, 400);
     ok('lista miscari contine receptia', (await req('GET', '/api/stock-movements?period=2026-06', { cookie: c1 })).json.some((m) => m.id === mid));
     ok('stock-movements: fara limit e array, cu limit e plic paginat', Array.isArray((await req('GET', '/api/stock-movements', { cookie: c1 })).json)
       && Array.isArray((await req('GET', '/api/stock-movements?limit=1', { cookie: c1 })).json.items));
@@ -1295,7 +1303,14 @@ async function main() {
     ok('audit: cu limit -> plic; fara limit -> array (implicit ultimele 300)', Array.isArray(auditPg.items) && typeof auditPg.total === 'number'
       && Array.isArray((await req('GET', '/api/audit', { cookie: c1 })).json));
     ok('fisa de magazie: o intrare', (await req('GET', '/api/stocks/' + pid + '/ledger', { cookie: c1 })).json.rows.length >= 1);
-    ok('miscare stearsa', (await req('DELETE', '/api/stock-movements/' + mid, { cookie: c1 })).json.ok === true);
+    eq('miscarea contabilizata nu se sterge distructiv', (await req('DELETE', '/api/stock-movements/' + mid, { cookie: c1 })).status, 400);
+    const stornoMv = await req('POST', '/api/stock-movements/' + mid + '/storno', { cookie: c1, body: { data: '2026-06-06' } });
+    ok('storno miscare: original pastrat + miscare inversa + nota in rosu', stornoMv.status === 200
+      && stornoMv.json.movement.stornoOfMovementId === mid && stornoMv.json.entry.stornoOf === postNota.json.entry.id
+      && stornoMv.json.entry.lines.every((l) => l.suma < 0));
+    const movDupaStorno = (await req('GET', '/api/stock-movements?period=2026-06', { cookie: c1 })).json;
+    ok('fisa pastreaza ambele miscari si marcheaza originalul stornat', movDupaStorno.some((m) => m.id === mid && m.stornat)
+      && movDupaStorno.some((m) => m.stornoOfMovementId === mid));
 
     // ── Preluare stoc initial (cantitativ-valoric, societate cu istoric) ──
     const initCsv = 'Cod;Denumire;UM;Cont;Gestiune;Cantitate;PretUnitar;Valoare\n'
@@ -2051,6 +2066,13 @@ async function main() {
       ok('dovada: validarea ruleaza si intoarce verdict', val.status === 200 && typeof val.json.rezultat.ok === 'boolean');
       const dovada = (pas(val.json.state, 'declaratii').detalii.declaratii || []).find((x) => x.tip === 'd300');
       ok('dovada: ramane pe dosarul lunii, cu cine si cand', !!dovada && !!dovada.dovada && dovada.dovada.by === 2 && !!dovada.dovada.at);
+      ok('dovada: poarta amprenta XML si corespunde datelor curente', dovada.dovada.actuala === true && !!dovada.dovada.contentHash);
+      await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', fields: { data: PER + '-18', explicatie: 'Schimbare dupa validare', debit: '628', credit: '401', suma: 17 } } });
+      const dupaSchimbare = await mc();
+      const dovadaVeche = (pas(dupaSchimbare, 'declaratii').detalii.declaratii || []).find((x) => x.tip === 'd300');
+      ok('schimbarea datelor invecheste automat dovada validarii', dovadaVeche.dovada.invechita === true);
+      const reval = await req('POST', '/api/monthly-close/validate', { cookie: c1, body: { period: PER, tip: 'd300' } });
+      ok('revalidarea leaga dovada de continutul nou', (pas(reval.json.state, 'declaratii').detalii.declaratii || []).find((x) => x.tip === 'd300').dovada.actuala === true);
       eq('dovada: tip de declaratie necunoscut -> 400', (await req('POST', '/api/monthly-close/validate', { cookie: c1, body: { period: PER, tip: 'dXYZ' } })).status, 400);
 
       // Aprobarea si inchiderea sunt REFUZATE cat timp exista pasi nerezolvati
@@ -2529,10 +2551,18 @@ async function main() {
       // articolele cu impact pe stoc au corectie dedicata — storno generic blocat (anti-desincronizare)
       const sg = (await req('POST', '/api/gestiuni', { cookie: c1, body: { cod: 'STG', denumire: 'Storno gest' } })).json.gestiune;
       const sp = (await req('POST', '/api/products', { cookie: c1, body: { cod: 'STP', denumire: 'Storno prod', um: 'buc', cont: '371' } })).json.product;
+      const sp2 = (await req('POST', '/api/products', { cookie: c1, body: { cod: 'STP2', denumire: 'Storno prod 2', um: 'buc', cont: '371' } })).json.product;
       await req('POST', '/api/stock-movements', { cookie: c1, body: { tip: 'receptie', productId: sp.id, gestiuneId: sg.id, cantitate: 10, pretUnitar: 20, data: '2026-08-08', document: 'REC' } });
-      const stocE = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2026-08-09', partener: 'Stoc Client', cuiPartener: 'RO7', document: 'FS-STOC', baza: 100, tva: 21, cota: 21, stoc: [{ productId: sp.id, cantitate: 2 }] } } })).json.entry;
+      await req('POST', '/api/stock-movements', { cookie: c1, body: { tip: 'receptie', productId: sp2.id, gestiuneId: sg.id, cantitate: 10, pretUnitar: 5, data: '2026-08-08', document: 'REC2' } });
+      const stocE = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2026-08-09', partener: 'Stoc Client', cuiPartener: 'RO7', document: 'FS-STOC', baza: 100, tva: 21, cota: 21, stoc: [
+        { productId: sp.id, gestiuneId: sg.id, cantitate: 2 },
+        { productId: sp2.id, gestiuneId: sg.id, cantitate: 3 },
+      ] } } })).json.entry;
       ok('articolul de vanzare are miscari de stoc legate', Array.isArray(stocE.stocMovementIds) && stocE.stocMovementIds.length > 0);
       eq('storno pe articol cu miscari de stoc -> 400 (corectie prin stoc/inventar)', (await req('POST', '/api/entries/' + stocE.id + '/storno', { cookie: c1, body: {} })).status, 400);
+      const sGrup = await req('POST', '/api/stock-movements/' + stocE.stocMovementIds[0] + '/storno', { cookie: c1, body: { data: '2026-08-10' } });
+      ok('storno dedicat neutralizeaza atomic toate miscarile aceleiasi facturi', sGrup.status === 200
+        && sGrup.json.movements.length === 2 && sGrup.json.entry.stocMovementIds.length === 2);
     }
 
     // ── FLUX DE STARE: ciorna -> validat -> aprobat -> postat; ciorna NU intra in contabilitate ──
@@ -2540,6 +2570,25 @@ async function main() {
       const per = '2026-11';
       const has5311 = (b) => (b.rows || []).some((r) => r.cod === '5311' && r.rd > 0);
       const inJournal = (j, expl) => (j.rows || []).some((r) => (r.explicatie || '').includes(expl));
+      const qtyP1 = async () => {
+        const rows = (await req('GET', '/api/stocks?asOf=' + per, { cookie: c1 })).json;
+        return rows.filter((x) => x.product.id === pid).reduce((s, x) => s + x.stocQ, 0);
+      };
+      const qInitial = await qtyP1();
+      const draftStoc = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', ciorna: true,
+        fields: { data: per + '-02', partener: 'Client ciorna stoc', cuiPartener: 'RO77', document: 'DRAFT-STOC-1',
+          baza: 20, tva: 4.2, cota: 21, stoc: [{ productId: pid, gestiuneId: gid, cantitate: 2 }] } } })).json.entry;
+      eq('miscarea unei facturi in ciorna NU reduce stocul activ', await qtyP1(), qInitial);
+      await req('DELETE', '/api/entries/' + draftStoc.id, { cookie: c1 });
+      eq('stergerea ciornei elimina si miscarea auxiliara, fara orfan', await qtyP1(), qInitial);
+      const draftStoc2 = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', ciorna: true,
+        fields: { data: per + '-03', partener: 'Client ciorna stoc', cuiPartener: 'RO77', document: 'DRAFT-STOC-2',
+          baza: 20, tva: 4.2, cota: 21, stoc: [{ productId: pid, gestiuneId: gid, cantitate: 2 }] } } })).json.entry;
+      await req('POST', '/api/entries/' + draftStoc2.id + '/status', { cookie: c1, body: { status: 'validat' } });
+      await req('POST', '/api/entries/' + draftStoc2.id + '/status', { cookie: c1, body: { status: 'aprobat' } });
+      eq('stocul ramane neatins si dupa validare/aprobare', await qtyP1(), qInitial);
+      await req('POST', '/api/entries/' + draftStoc2.id + '/status', { cookie: c1, body: { status: 'postat' } });
+      eq('miscarea devine activa exact la postarea articolului', await qtyP1(), qInitial - 2);
       // creare ca CIORNA
       const dr = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: per + '-10', explicatie: 'Ciorna flux', debit: '5311', credit: '5121', suma: 500 } } });
       const drE = dr.json.entry;

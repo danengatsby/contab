@@ -68,12 +68,19 @@ module.exports = function register(app, ctx) {
   app.get('/api/stock-movements', (req, res) => sendList(req, res, stocks.movementsList(S(req), req.query.period || null), { label: '/api/stock-movements' }));
   app.post('/api/stock-movements', (req, res) => run(res, () => {
     const r = svc.addMovement(activeId(req), operator(req), req.body);
-    logAudit('stock.move', r.movement.tip + ' ' + r.movement.cantitate, { req });
-    return { ok: true, movement: r.movement };
+    logAudit('stock.move', r.movement.tip + ' ' + r.movement.cantitate
+      + (r.lipsa ? ' (stoc insuficient: lipsa ' + r.lipsa.lipsa + ')' : ''), { req });
+    return { ok: true, movement: r.movement, lipsa: r.lipsa };
   }));
   app.delete('/api/stock-movements/:id', (req, res) => run(res, () => {
     svc.deleteMovement(activeId(req), req.params.id);
     return { ok: true };
+  }));
+  app.post('/api/stock-movements/:id/storno', (req, res) => run(res, () => {
+    const r = svc.stornoMovement(activeId(req), operator(req), req.params.id, (req.body || {}).data);
+    logAudit('stoc.storno', req.params.id + ' -> ' + r.movement.id
+      + (r.entry ? ' / ' + r.entry.id : '') + ' la ' + r.movement.data, { req });
+    return { ok: true, movement: r.movement, movements: r.movements, entry: r.entry };
   }));
   app.post('/api/stock-movements/:id/post', (req, res) => run(res, () => {
     const r = svc.postMovement(activeId(req), req.params.id);
@@ -98,7 +105,7 @@ module.exports = function register(app, ctx) {
   app.post('/api/inventories/:id/storno', (req, res) => run(res, () => {
     const r = svc.stornoInventory(activeId(req), operator(req), req.params.id, (req.body || {}).data);
     logAudit('inventar.storno', r.iv.gestiuneCod + ' ' + r.iv.data, { req });
-    return { ok: true, stornoEntries: r.stornoEntries };
+    return { ok: true, stornoEntries: r.stornoEntries, stornoMovements: r.stornoMovements };
   }));
 
   // ── stoc curent / fisa de magazie ──

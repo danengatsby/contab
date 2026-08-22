@@ -198,7 +198,7 @@ export function setOn402(fn) { on402TrialExpired = fn; }
 
 // ── Degradare gratioasa la pierderea conexiunii (NU offline-first) ──
 // Datele contabile NU se cacheaza si NU se scriu offline: numerotarea documentelor in serie
-// continua, blocarea perioadei, stocul la CMP sunt invariante validate DOAR pe server; iar un
+// continua, blocarea perioadei, stocul CMP/FIFO sunt invariante validate DOAR pe server; iar un
 // cache client pe un dispozitiv partajat (birou contabil) ar scurge date intre conturi. In schimb,
 // cand conexiunea pica: bara de status informeaza clar, cererea esuata pe RETEA arunca un mesaj
 // util (nu „Failed to fetch"), iar la revenire se reincarca vederea curenta. Nimic tiparit nu se

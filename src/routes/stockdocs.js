@@ -31,7 +31,7 @@ module.exports = function register(app, ctx) {
     const asOf = req.query.asOf || new Date().toISOString().slice(0, 7);
     pdf.stocksPdf(res, S(req).company, stocks.currentStock(S(req), asOf), asOf);
   });
-  // Situatia aprovizionarilor (receptii pe furnizori) si a consumurilor (iesiri la CMP pe cont)
+  // Situatia aprovizionarilor si a consumurilor (iesiri la metoda configurata, pe cont)
   app.get('/api/aprovizionari', (req, res) => res.json(stocks.situatieAprovizionari(S(req), req.query.period || null)));
   app.get('/pdf/aprovizionari', (req, res) => pdf.aprovizionariPdf(res, S(req).company, stocks.situatieAprovizionari(S(req), req.query.period || null)));
   app.get('/api/consumuri', (req, res) => res.json(stocks.situatieConsumuri(S(req), req.query.period || null)));
@@ -88,9 +88,10 @@ module.exports = function register(app, ctx) {
       && (!req.query.gestiune || m.gestiuneId === req.query.gestiune)));
     if (!isd.length) return res.status(404).send('Iesire inexistenta');
     const g = gById.get(isd[0].gestiuneId);
+    const metoda = stocks.metodaFirma(v);
     const lines = isd.map((m) => {
       const p = byId.get(m.productId) || {};
-      const valoare = round2(stocks.movementValue(p, v.stockMovements, m.id)); // valoare la CMP
+      const valoare = round2(stocks.movementValue(p, v.stockMovements, m.id, metoda));
       const cmp = m.cantitate > 0 ? round2(valoare / m.cantitate) : 0;
       return { cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc', cantitate: m.cantitate, cmp, valoare };
     });
@@ -109,9 +110,10 @@ module.exports = function register(app, ctx) {
     if (!trs.length) return res.status(404).send('Transfer inexistent');
     const src = gById.get(trs[0].gestiuneId); const dst = gById.get(trs[0].gestiuneDestId);
     const nm = (g) => g ? (v.company.nume || '') + ' — gestiune ' + g.cod + ' ' + g.denumire : '';
+    const metoda = stocks.metodaFirma(v);
     const lines = trs.map((m) => {
       const p = byId.get(m.productId) || {};
-      const valoare = round2(stocks.movementValue(p, v.stockMovements, m.id)); // valoare la CMP-ul sursei
+      const valoare = round2(stocks.movementValue(p, v.stockMovements, m.id, metoda));
       const cmp = m.cantitate > 0 ? round2(valoare / m.cantitate) : 0;
       return { cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc', cantitate: m.cantitate, cmp, valoare };
     });

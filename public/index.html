@@ -568,7 +568,7 @@
       </div>
       <div class="grid2" id="randOperatiuni">
         <div class="card"><h3>🕘 Ultimele operațiuni</h3><div id="ultimeleOps"></div></div>
-        <div class="card hidden" id="stocValCard"><h3>📦 Stocuri valoroase (la CMP)</h3><div id="stocuriValoroase"></div></div>
+        <div class="card hidden" id="stocValCard"><h3>📦 Stocuri valoroase (valoare contabilă)</h3><div id="stocuriValoroase"></div></div>
       </div>
     </section>
 
@@ -1812,7 +1812,7 @@
         <span class="muted">Descarcă:</span>
         <a id="stocPdf" class="btn small" target="_blank">⬇ Situație stocuri PDF</a>
         <a id="aprovPdf" class="btn small" target="_blank" title="Recepțiile perioadei, cu recapitulație pe furnizori">⬇ Situație aprovizionări</a>
-        <a id="consumPdf" class="btn small" target="_blank" title="Ieșirile din gestiune la CMP, cu totaluri pe contul de descărcare">⬇ Situație consumuri</a>
+        <a id="consumPdf" class="btn small" target="_blank" title="Ieșirile din gestiune la metoda firmei (CMP/FIFO), cu totaluri pe contul de descărcare">⬇ Situație consumuri</a>
         <a id="stocCsv" class="btn small" target="_blank">⬇ Stoc CSV</a>
         <a id="movCsv" class="btn small" target="_blank">⬇ Mișcări CSV</a>
         <a id="saftStockHint" class="btn small ghost" href="#" title="Stocurile alimentează secțiunile Products / MovementOfGoods / PhysicalStock din SAF-T">SAF-T ↗</a>
@@ -1905,7 +1905,7 @@
           <label>Cost unitar de producție <input name="costUnitar" type="number" step="0.01" required /></label>
           <div class="full sect-form"><h3>Materiale consumate</h3>
             <p class="muted">Selectează materialele și cantitățile descărcate din fiecare gestiune.</p></div>
-          <div class="full"><label>Materiale consumate (din stoc, la CMP)</label><div id="prodMaterials"></div><button type="button" id="prodAddMat" class="btn ghost small">+ adaugă material</button></div>
+          <div class="full"><label>Materiale consumate (din stoc, la metoda firmei)</label><div id="prodMaterials"></div><button type="button" id="prodAddMat" class="btn ghost small">+ adaugă material</button></div>
           <button class="btn primary">Înregistrează producția</button>
         </form>
         <div id="prodStatus" class="status"></div>
@@ -1976,7 +1976,7 @@
       </div>
       <div class="card">
         <h2>📥 Preluare stoc inițial (societate cu istoric)</h2>
-        <p class="muted">Preiei o firmă care are deja marfă pe stoc? Încarcă stocul <b>cantitativ-valoric</b> la data preluării, dintr-un fișier <b>XLS / XLSX / DBF / CSV</b> exportat din vechiul program. Produsele și gestiunile lipsă se creează automat, iar costul mediu (CMP) pornește de la aceste cantități și valori. <b>Nu se generează note contabile</b> — valoarea stocului preluat o incluzi în <b>soldurile inițiale</b> ale conturilor de stoc<span class="adv"> (301/371/303…)</span>, altfel s-ar dubla.</p>
+        <p class="muted">Preiei o firmă care are deja marfă pe stoc? Încarcă stocul <b>cantitativ-valoric</b> la data preluării, dintr-un fișier <b>XLS / XLSX / DBF / CSV</b> exportat din vechiul program. Produsele și gestiunile lipsă se creează automat, iar evaluarea CMP/FIFO pornește de la aceste cantități și valori. <b>Nu se generează note contabile</b> — valoarea stocului preluat o incluzi în <b>soldurile inițiale</b> ale conturilor de stoc<span class="adv"> (301/371/303…)</span>, altfel s-ar dubla.</p>
         <p class="muted" data-u="u98">Coloane: <span class="acc">Cod;Denumire;UM;Cont;Gestiune;Cantitate;PrețUnitar;Valoare</span> — antetul e opțional; dacă dai <b>Valoare</b>, are prioritate față de preț.</p>
         <textarea id="initStocCsv" rows="4" data-u="u19" placeholder="MARFA-001;Ciment 40kg;buc;371;DEP;120;25,50&#10;MP-01;Făină albă;kg;301;DEP;500;;1750"></textarea>
         <div class="row" data-u="u99">
@@ -2338,10 +2338,9 @@ Cu stimă,
             </select>
           </label>
           <div class="full explain"><span class="ei">⚠️</span><p class="muted">Metoda se alege
-            <b>o dată</b>, la începutul exercițiului. Schimbarea ei recalculează retroactiv toate
-            ieșirile deja înregistrate, deci costul mărfii vândute din articolele contabile postate
-            nu va mai corespunde fișei de magazie. Schimbă doar dacă știi ce faci — o modificare de
-            politică contabilă cere hotărâre și notă explicativă.</p></div>
+            <b>o dată</b>, înainte de prima ieșire sau primul transfer. După operarea stocului,
+            aplicația refuză schimbarea: ar recalcula retroactiv costurile și ar rupe concordanța
+            dintre fișa de magazie și articolele deja postate.</p></div>
           <label class="check"><input name="intrastatObligat" type="checkbox" /> Obligată la Intrastat (peste pragul INS — declarație statistică lunară la mișcări intracomunitare)</label>
           <div class="full">
             <label>Scutiri — declarații pe care firma NU le datorează (rar; oprește alertele pentru ele)</label>

@@ -1121,7 +1121,7 @@ $('#geSearch') && $('#geSearch').addEventListener('input', renderGalerieEmise);
 // „Adauga document primit" si „Emite factura". Se muta in gazda paginii care il deschide.
 
 
-// ── Editor „descărcare din stoc" (produs + gestiune + cantitate); COGS la CMP, calculat de server ──
+// ── Editor „descărcare din stoc"; COGS la metoda firmei, calculat de server ──
 
 
 // ───────────────────────── ENTRIES LIST ─────────────────────────

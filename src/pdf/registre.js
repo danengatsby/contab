@@ -356,9 +356,7 @@ function aprovizionariPdf(res, company, s) {
   finish(doc, res, 'situatie-aprovizionari.pdf');
 }
 
-/** Situatia consumurilor: iesirile din gestiune la CMP, cu totaluri pe contul de descarcare. */
-
-/** Situatia consumurilor: iesirile din gestiune la CMP, cu totaluri pe contul de descarcare. */
+/** Situatia consumurilor: iesirile la metoda firmei, cu totaluri pe contul de descarcare. */
 function consumuriPdf(res, company, s) {
   const doc = newDoc(true);
   header(doc, company, 'Situatia consumurilor si iesirilor din gestiune', s.period ? periodLabel(s.period) : 'toate perioadele');
@@ -366,7 +364,7 @@ function consumuriPdf(res, company, s) {
     data: fmtDate(r.data), document: r.document, produs: r.cod + ' ' + r.denumire, gest: r.gestiune,
     cant: fmt(r.cantitate) + ' ' + r.um, cont: r.cont, sursa: r.sursa, val: fmt(r.valoare),
   }));
-  rows.push({ data: '', document: '', produs: 'TOTAL IESIRI (la CMP)', gest: '', cant: '', cont: '', sursa: '', val: fmt(s.total), _bold: true, _fill: C.zebra });
+  rows.push({ data: '', document: '', produs: 'TOTAL IESIRI (la ' + (s.metoda || 'CMP') + ')', gest: '', cant: '', cont: '', sursa: '', val: fmt(s.total), _bold: true, _fill: C.zebra });
   table(doc, [
     { label: 'Data', key: 'data', width: 55 },
     { label: 'Document', key: 'document', width: 90 },

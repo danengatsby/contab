@@ -564,6 +564,21 @@ eq('stoc zero: COGS 0 si nicio linie de descarcare', _sale3.total + _sale3.cogsL
 eq('stoc zero: tot un avertisment', _sale3.warns.length, 1);
 eq('stoc suficient: `lipsuri` ramane gol', _sale.lipsuri.length, 0);
 
+// Aceeasi diferenta cerut/efectiv trebuie sa fie disponibila si pentru miscarile manuale,
+// altfel fisa arata 9 bucati iar nota poate descarca tacit numai cele 3 gasite.
+const _dbLipsa = { company: { metodaEvaluareStoc: 'cmp' }, products: _prods, gestiuni: [], stockMovements: [
+  { id: 'lr', tip: 'receptie', productId: 'p1', gestiuneId: 'DEP', data: '2026-07-01', cantitate: 3, pretUnitar: 10 },
+  { id: 'li', tip: 'iesire', productId: 'p1', gestiuneId: 'DEP', data: '2026-07-02', cantitate: 9 },
+] };
+const _lipsuri = stocks.movementShortages(_dbLipsa, '2026-07');
+eq('miscarea manuala expune lipsa de stoc', JSON.stringify(_lipsuri.map((x) => [x.cerut, x.efectiv, x.lipsa])), JSON.stringify([[9, 3, 6]]));
+const _liLista = stocks.movementsList(_dbLipsa, '2026-07').find((m) => m.id === 'li');
+ok('lista miscarii poarta cantitatea efectiva si insigna de risc', _liLista.stocInsuficient && _liLista.cantitateEfectiva === 3 && _liLista.lipsa === 6);
+const _frac = stocks.productLedger(_prods[0], [
+  { id: 'fq1', tip: 'receptie', productId: 'p1', data: '2026-07-01', cantitate: 0.125, pretUnitar: 8 },
+], '2026-07');
+ok('cantitatile din kg/litri pastreaza cele trei zecimale acceptate de formular', _frac.stocQ === 0.125);
+
 section('Control casa: plafonul TOTAL al zilei + lipsa neimputabila la inventar');
 {
   const K = (id, data, suma, partener, cui) => ({ id, data, period: data.slice(0, 7), tip: 'x', tipNume: 'x',
@@ -4526,6 +4541,20 @@ eq('consumuri: M1 la CMP pe 607 (4 x 5)', cons.perCont['607'], 20);
 eq('consumuri: MP la CMP pe 601 (50 x 2)', cons.perCont['601'], 100);
 ok('consumuri: iesirea automata e marcata "vanzare"', cons.rows.some((r) => r.cod === 'MP' && r.sursa === 'vanzare'));
 ok('consumuri: bonul de consum manual e marcat "consum"', cons.rows.some((r) => r.cod === 'M1' && r.sursa === 'consum'));
+const stkStorno = JSON.parse(JSON.stringify(stkDb));
+stkStorno.stockMovements.find((m) => m.id === 'sm1').stornat = true;
+stkStorno.stockMovements.find((m) => m.id === 'sm1').stornoMovementId = 'sm4';
+stkStorno.stockMovements.push({ id: 'sm4', data: '2026-07-02', tip: 'iesire', productId: 'p1',
+  gestiuneId: 'g1', cantitate: 10, pretUnitar: 0, stornoOfMovementId: 'sm1', valoareContabila: 50 });
+const aprIulie = stocks.situatieAprovizionari(stkStorno, '2026-07');
+eq('storno receptie apare ca o corectie negativa, nu consum nou', aprIulie.total, -50);
+eq('storno receptie nu polueaza situatia consumurilor', stocks.situatieConsumuri(stkStorno, '2026-07').rows.length, 0);
+stkStorno.stockMovements.find((m) => m.id === 'sm2').stornat = true;
+stkStorno.stockMovements.find((m) => m.id === 'sm2').stornoMovementId = 'sm5';
+stkStorno.stockMovements.find((m) => m.id === 'sm2').valoareContabila = 20;
+stkStorno.stockMovements.push({ id: 'sm5', data: '2026-07-03', tip: 'receptie', productId: 'p1',
+  gestiuneId: 'g1', cantitate: 4, pretUnitar: 5, stornoOfMovementId: 'sm2', valoareContabila: 20 });
+eq('storno iesire apare cu minus in consumurile lunii de corectie', stocks.situatieConsumuri(stkStorno, '2026-07').total, -20);
 
 // DBF: construieste un DBF minimal si parseaza-l
 const dbfMod = require('../src/dbf');
@@ -5302,6 +5331,16 @@ const prodRep = prodMod.productionReport({ products: prodProducts, stockMovement
 eq('situatie productie: 1 produs finit', prodRep.rows.length, 1);
 eq('situatie productie: valoare totala 500', prodRep.totalValoare, 500);
 ok('stoc insuficient -> avertisment', prodMod.buildProduction(prodProducts, [], { productId: 'PF', cantitate: 1, costUnitar: 50, materiale: [{ productId: 'MAT', gestiuneId: 'g1', cantitate: 5 }] }, { fid: 1, data: '2026-06-15', nextId: () => 'x' + (++pn) }).warns.length > 0);
+const prodFifo = prodMod.buildProduction(prodProducts, [
+  { id: 'pf-r1', productId: 'MAT', gestiuneId: 'g1', data: '2026-06-01', tip: 'receptie', cantitate: 3, pretUnitar: 10 },
+  { id: 'pf-r2', productId: 'MAT', gestiuneId: 'g1', data: '2026-06-02', tip: 'receptie', cantitate: 3, pretUnitar: 20 },
+], { productId: 'PF', gestiuneId: 'g1', cantitate: 1, costUnitar: 50,
+  materiale: [{ productId: 'MAT', gestiuneId: 'g1', cantitate: 4 }] },
+{ fid: 1, data: '2026-06-15', nextId: () => 'f' + (++pn), metoda: 'fifo' });
+eq('productia respecta FIFO la consumul materialelor (3×10 + 1×20)', prodFifo.costMateriale, 50);
+eq('productia expune lipsa partiala drept date blocante', prodMod.buildProduction(prodProducts, prodBase,
+  { productId: 'PF', cantitate: 1, costUnitar: 50, materiale: [{ productId: 'MAT', gestiuneId: 'g1', cantitate: 150 }] },
+  { fid: 1, data: '2026-06-15', nextId: () => 'l' + (++pn) }).lipsuri[0].lipsa, 50);
 
 section('Cote fiscale configurabile');
 const fcfg = require('../src/fiscal');
@@ -7231,6 +7270,31 @@ section('Inchidere lunara: motorul fluxului (src/monthlyClose.js)');
   eq('...si spune CE il tine', pas(stC, 'declaratii').blocatDe, 'Documente complete');
   eq('un pas DEJA rezolvat nu se retrogradeaza', pas(stC, 'tva').stare, 'gata');
 
+  const vStocNepostat = mkV({
+    products: [{ id: 'ps', cod: 'PS', denumire: 'Produs stoc', um: 'buc', cont: '371' }],
+    gestiuni: [{ id: 'gs', cod: 'GS', denumire: 'Gestiune' }],
+    stockMovements: [{ id: 'ms1', firmaId: 5, productId: 'ps', gestiuneId: 'gs', tip: 'receptie',
+      data: '2026-06-12', cantitate: 2, pretUnitar: 10 }],
+  });
+  ok('miscarea manuala fara nota blocheaza documentele complete',
+    pas(stare(D0, vStocNepostat), 'documente').blocaje.some((b) => /stoc necontabilizat/i.test(b)));
+  const vStocCorectat = mkV({
+    products: vStocNepostat.products, gestiuni: vStocNepostat.gestiuni,
+    stockMovements: [Object.assign({}, vStocNepostat.stockMovements[0], { stornat: true, stornoMovementId: 'ms1-r' }),
+      Object.assign({}, vStocNepostat.stockMovements[0], { id: 'ms1-r', data: '2026-06-13', tip: 'iesire',
+        pretUnitar: 0, stornoOfMovementId: 'ms1' })],
+  });
+  eq('perechea de corectie fara nota nu devine fals document necontabilizat',
+    pas(stare(D0, vStocCorectat), 'documente').detalii.miscariStocNepostate, 0);
+  const vStocLipsa = mkV({
+    products: [{ id: 'ps', cod: 'PS', denumire: 'Produs stoc', um: 'buc', cont: '371' }],
+    gestiuni: [{ id: 'gs', cod: 'GS', denumire: 'Gestiune' }],
+    stockMovements: [{ id: 'ms2', firmaId: 5, productId: 'ps', gestiuneId: 'gs', tip: 'iesire',
+      data: '2026-06-12', cantitate: 2, pretUnitar: 0 }],
+  });
+  ok('stocul insuficient blocheaza explicit inchiderea lunii',
+    pas(stare(D0, vStocLipsa), 'documente').blocaje.some((b) => /stoc insuficient/i.test(b)));
+
   // e-Factura netrimisa in luna: termen legal, deci blocaj
   const vEfact = mkV();
   vEfact.entries[0] = Object.assign({}, vEfact.entries[0], { partenerCui: 'RO77', spv: null });
@@ -7272,7 +7336,7 @@ section('Inchidere lunara: motorul fluxului (src/monthlyClose.js)');
     pas(stare(dDepusa, mkV()), 'declaratii').blocaje.some((b) => /fără dovadă/i.test(b)));
   const dCuDovada = {
     declarations: [{ firmaId: 5, tip: 'd300', period: '2026-06', status: 'depusa' }],
-    closings: [{ firmaId: 5, period: '2026-06', steps: {}, validari: { d300: { at: '2026-07-19T10:00:00Z', by: 3, username: 'maria', ok: true, errors: 0, warnings: 1 } } }],
+    closings: [{ firmaId: 5, period: '2026-06', steps: {}, validari: { d300: { at: '2026-07-19T10:00:00Z', by: 3, username: 'maria', ok: true, errors: 0, warnings: 1, sourceHash: mcMod.periodFingerprint(mkV(), '2026-06'), contentHash: 'xml-hash' } } }],
   };
   const stDov = stare(dCuDovada, mkV());
   const d300Row = (pas(stDov, 'declaratii').detalii.declaratii || []).find((x) => x.tip === 'd300');
@@ -7283,6 +7347,26 @@ section('Inchidere lunara: motorul fluxului (src/monthlyClose.js)');
     dErr.closings[0].validari.d300 = { at: 'x', by: 3, ok: false, errors: 2 };
     return pas(stare(dErr, mkV()), 'declaratii').blocaje.some((b) => /eroare/i.test(b));
   })());
+  const vDupaValidare = mkV();
+  vDupaValidare.entries[0] = Object.assign({}, vDupaValidare.entries[0], {
+    lines: vDupaValidare.entries[0].lines.map((l, i) => i ? l : Object.assign({}, l, { suma: 1001 })),
+  });
+  const dovVeche = (pas(stare(dCuDovada, vDupaValidare), 'declaratii').detalii.declaratii || []).find((x) => x.tip === 'd300');
+  ok('schimbarea cifrelor invecheste dovada de validare', dovVeche.dovada.invechita === true
+    && pas(stare(dCuDovada, vDupaValidare), 'declaratii').blocaje.some((b) => /nu mai corespunde/i.test(b)));
+
+  // Aprobarea poarta aceeasi garantie: este valabila numai pe continutul pe care l-a asumat omul.
+  const dAprob = { declarations: [], closings: [{ firmaId: 5, period: '2026-06', steps: {}, validari: {},
+    aprobare: { by: 7, username: 'maria', at: '2026-07-20T08:00:00Z' } }] };
+  dAprob.closings[0].validari.d300 = { ok: true, errors: 0, contentHash: 'xml-v1',
+    sourceHash: mcMod.periodFingerprint(mkV(), '2026-06') };
+  dAprob.closings[0].aprobare.contentHash = mcMod.approvalFingerprint(dAprob, mkV(), '2026-06');
+  ok('aprobarea cu amprenta curenta este valida', stare(dAprob, mkV()).aprobareValida === true);
+  dAprob.closings[0].validari.d300.contentHash = 'xml-v2';
+  ok('schimbarea dovezii XML invalideaza aprobarea', stare(dAprob, mkV()).aprobareValida === false);
+  dAprob.closings[0].validari.d300.contentHash = 'xml-v1';
+  ok('orice schimbare a continutului invalideaza aprobarea', stare(dAprob, vDupaValidare).aprobareValida === false
+    && stare(dAprob, vDupaValidare).aprobare.invechita === true);
 
   // Alocarea persistata: responsabil + termen + nota se citesc din inregistrarea lunii
   const dAlocat = { declarations: [], closings: [{ firmaId: 5, period: '2026-06', steps: { documente: { responsabilId: 7, due: '2026-07-02', nota: 'Cer facturile' } }, validari: {} }] };

@@ -67,7 +67,7 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 2. `POST /api/upload` (multipart, câmp `file`) → extragere AI sau reguli locale →
    `{ documentId, suggestedType, fields, cuis, source }`.
 3. `POST /api/entries` cu `{ tip, fields, fileId: documentId }` → articolul contabil
-   `{ ok, entry, stoc }` (liniile de stoc generează automat descărcarea de gestiune la CMP).
+   `{ ok, entry, stoc }` (liniile de stoc generează automat descărcarea la metoda firmei, CMP/FIFO).
 4. Rapoartele se construiesc singure din articole: `GET /api/journal?period=`,
    `GET /api/balance?period=`, `GET /api/dashboard`, declarațiile din `GET /api/livrabile`
    și `/xml/d300?period=` etc.
@@ -132,7 +132,7 @@ preluarea identității și a factorilor de autentificare ai utilizatorului.
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
 | `GET /api/entries` | `?period=YYYY-MM` | articolele firmei active, sortate |
-| `POST /api/entries` | `{ tip, fields, fileId?, spvMsgId?, motivRevizuire? }` | `{ ok, entry, stoc }`; liniile `fields.stoc[]` (productId+cantitate) generează descărcarea la CMP atomic; 400 tip/câmpuri invalide sau perioadă închisă |
+| `POST /api/entries` | `{ tip, fields, fileId?, spvMsgId?, motivRevizuire? }` | `{ ok, entry, stoc }`; liniile `fields.stoc[]` (productId+gestiuneId+cantitate) generează descărcarea CMP/FIFO atomic; 409 la stoc insuficient/recalcul retroactiv, 400 la tip/câmpuri invalide sau perioadă închisă |
 | `POST /api/preview` | `{ tip, fields }` | `{ ok: true, tipNume, lines, total }` — articolul **exact** cum va fi salvat, prin aceeași compunere (`composeEntry`); nu scrie nimic și nu consumă un id. Un articol încă incomplet întoarce **200** `{ ok: false, mesaj }` (e starea normală în timpul completării, nu o eroare); 400 doar fără `tip` |
 | `DELETE /api/entries/:id` | — | `{ ok, removed }`; id inexistent NU e eroare (`removed: 0`); 404 articol străin; 400 perioadă închisă |
 | `GET /api/recurring` / `due?period=` | — | șabloanele firmei / cele scadente în perioadă |
@@ -163,13 +163,14 @@ preluarea identității și a factorilor de autentificare ai utilizatorului.
 
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
-| `GET/POST /api/products`, `DELETE /:id`, `POST /api/products/import` | `{ cod, denumire, um?, cont?, grupa? }` / CSV | upsert pe cod; ștergerea curăță și mișcările |
+| `GET/POST /api/products`, `DELETE /:id`, `POST /api/products/import` | `{ cod, denumire, um?, cont?, grupa? }` / CSV | upsert pe cod; după prima mișcare contul nu se mai schimbă. Ștergerea este permisă numai fără mișcări; altfel produsul se dezactivează, păstrând istoricul |
 | `GET/POST /api/gestiuni`, `DELETE /:id` | `{ cod, denumire, gestionar?, cont? }` | 400 la ștergere dacă are mișcări |
-| `GET/POST /api/stock-movements`, `DELETE /:id` | `{ productId, tip: receptie\|iesire\|transfer, cantitate, data, gestiuneId?, pretUnitar? }` | ștergerea elimină și nota contabilă legată |
-| `POST /api/stock-movements/:id/post` | — | `{ ok, entry, ... }` — nota 3xx=401 / 60x=3xx la CMP; 400 dacă e deja postată sau mișcare de stoc inițial |
-| `GET /api/stocks`, `/api/stocks/:id/ledger` | `?gestiune=` | stoc curent la CMP / fișa de magazie |
-| `POST /api/stocks/import-initial` | `{ data, csv }` | `{ ok, importate, produseNoi, gestiuniNoi, erori, totaluri }` — preluare sold inițial, fără note contabile |
-| `POST /api/inventory`, `GET /api/inventories`, `POST /api/inventories/:id/storno` | `{ gestiuneId, data, lines[] }` | plusuri 3xx=758, minusuri 60x=3xx, imputări 4282=7588+4427; storno reversează tot |
+| `GET/POST /api/stock-movements`, `DELETE /:id` | `{ productId, tip: receptie\|iesire\|transfer, cantitate, data, gestiuneId?, pretUnitar? }` | cantitatea/data trebuie să fie valide, iar recepția cere preț pozitiv. Răspunsul expune `lipsa` când motorul nu găsește întreaga cantitate. Se șterg numai mișcările necontabilizate; una cu notă se corectează prin storno |
+| `POST /api/stock-movements/:id/post` | — | `{ ok, entry, ... }` — nota 3xx=401 / 60x=3xx la metoda firmei (CMP/FIFO); 409 la descărcare parțială, 400 la transfer (intern, fără notă), stoc inițial, dublură sau perioadă închisă |
+| `POST /api/stock-movements/:id/storno` | `{ data? }` | corecție append-only: mișcare inversă + notă în roșu, legate de original. Dacă nota (factură/producție) are mai multe mișcări, le neutralizează atomic pe toate. Refuză dacă eliminarea originalului ar lăsa o mișcare ulterioară fără stoc |
+| `GET /api/stocks`, `/api/stocks/:id/ledger` | `?gestiune=` | stoc curent cantitativ-valoric / fișa de magazie, evaluate prin metoda firmei (CMP/FIFO) |
+| `POST /api/stocks/import-initial` | `{ data, csv }` | `{ ok, importate, produseNoi, gestiuniNoi, erori, totaluri }` — preluare sold inițial, fără note contabile; data trebuie să fie reală, iar importul este refuzat după prima ieșire contabilizată |
+| `POST /api/inventory`, `GET /api/inventories`, `POST /api/inventories/:id/storno` | `{ gestiuneId, data, lines:[{productId,faptic,pret?,imputa?}] }` | o singură linie/produs, faptic ≥ 0; plusul fără CMP cere cost pozitiv. Plusuri 3xx=758, minusuri 60x=3xx, imputări 4282=7588+4427; storno în roșu + mișcări inverse, fără ștergerea istoricului |
 | `GET/POST /api/doc-series` | `{ NIR\|BC\|AVIZ\|CH: { serie, next } }` | seriile per firmă; numerotarea NIR/bon/aviz refolosește numărul la retipărire |
 
 ## Salarizare (`src/routes/payroll.js`)
@@ -243,9 +244,13 @@ aprobarea și eventuala forțare.
 - `POST /api/monthly-close/step` `{period, step, responsabilId, due, nota}` — alocarea unui pas;
   `due: ''` revine la termenul implicit (derivat din termenul real de depunere al lunii).
 - `POST /api/monthly-close/validate` `{period, tip}` — rulează validarea pre-depunere și **păstrează
-  dovada** (cine, când, verdict). Aceeași funcție ca `GET /api/validate/:type` (`src/declarationCheck.js`).
+  dovada** (cine, când, verdict, SHA-256 al XML-ului și amprenta datelor-sursă). Dacă cifrele,
+  configurarea fiscală sau subregistrele se schimbă, dovada devine automat „învechită” și cere
+  revalidare. Aceeași funcție ca `GET /api/validate/:type` (`src/declarationCheck.js`).
 - `POST /api/monthly-close/approve` / `unapprove` `{period, nota}` — asumarea explicită a lunii;
-  refuzată cât timp există pași nerezolvați.
+  refuzată cât timp există pași nerezolvați. Aprobarea este legată de amprenta conținutului; orice
+  modificare anterioară blocării sau a dovezilor XML o invalidează și versiunea veche rămâne în
+  istoricul dosarului.
 - `POST /api/monthly-close/close` `{period, force, motiv}` — blochează perioada. Cu pași deschiși
   se refuză (400); **doar un administrator** poate forța (`force:true`), obligatoriu cu `motiv`
   (≥10 caractere), care rămâne pe dosarul lunii și în audit (`inchidere.fortata`).

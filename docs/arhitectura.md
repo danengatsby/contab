@@ -31,9 +31,10 @@
 - `src/xml.js` — generare XML: e-Factura UBL 2.1 (CIUS-RO) pentru facturi emise și declarațiile ANAF, inclusiv D100/D107/D300/D301/D307/D311/D394.
 - `src/saft.js` — generare SAF-T (D406): Header + MasterFiles (conturi, clienți, furnizori, TVA, mijloace fixe) + GeneralLedgerEntries + SourceDocuments.
 - `src/assets.js` — registrul de mijloace fixe + amortizare liniară/degresivă/accelerată (calcul lunar, plan, înregistrare 6811=281x).
-- `src/stocks.js` — gestiunea stocurilor cantitativ-valoric la cost mediu ponderat (CMP): fișă de magazie, stoc curent.
+- `src/stocks.js` — gestiunea stocurilor cantitativ-valoric la CMP/FIFO: fișă de magazie, stoc
+  curent, transferuri fără impact financiar și detectarea cantității cerute peste disponibil.
 - `src/stocksService.js` — **service layer** pentru scrierile de stocuri (nomenclatoare, mișcări,
-  postare notă, stoc inițial, inventariere/storno): rutele din `src/routes/stocks.js` sunt doar
+  postare/storno append-only, stoc inițial, inventariere/storno): rutele din `src/routes/stocks.js` sunt doar
   puncte de intrare; validarea, regulile și **autorizarea pe firmă** (`reqFirma` + căutări doar în
   firma dată, erori cu `status` HTTP) stau în serviciu — model de urmat la extragerea altor rute groase.
 - `src/payroll.js` — salarizare: nomenclator angajați (cu **spor** impozabil, **avans** → 425 și

@@ -20,6 +20,7 @@ const d107 = require('./d107');
 const d301 = require('./d301');
 const d307 = require('./d307');
 const d311 = require('./d311');
+const crypto = require('crypto');
 
 /** Tipurile pentru care stim sa construim XML (si deci sa validam). */
 const TYPES = ['d300', 'd301', 'd307', 'd311', 'd394', 'd390', 'd100', 'd101', 'd107', 'intrastat', 'd205', 'd112', 'saft'];
@@ -100,7 +101,12 @@ function validateFor(v, type, opts) {
         + 'se taxeaza invers dar corect nu se declara.');
     }
   }
-  return Object.assign({ type, period: o.period || null }, result);
+  return Object.assign({
+    type, period: o.period || null,
+    // Amprenta continutului validat: dosarul lunii poate dovedi exact CE XML a trecut controlul,
+    // nu doar ca la un moment dat a existat un verdict verde.
+    contentHash: crypto.createHash('sha256').update(Buffer.from(x, 'utf8')).digest('hex'),
+  }, result);
 }
 
 module.exports = { TYPES, buildXml, validateFor };

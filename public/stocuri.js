@@ -1,7 +1,7 @@
 'use strict';
 
 // Stocuri si gestiune: situatii, fise de magazie, documente de stoc, inventariere, productie. Extras din app.js (Etapa: spargerea fisierului mare).
-import { $$, $, H, fmt, toast, api, fileToCsv, round2, confirmAction } from './core.js';
+import { $$, $, H, fmt, toast, api, fileToCsv, round2, confirmAction, META } from './core.js';
 import { pget, workMonth, onPeriodChange } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved, refreshFormFlow } from './formflow.js';
@@ -9,6 +9,7 @@ import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved, refresh
 // ───────────────────────── STOCURI ─────────────────────────
 let STOCK_MOVS = [];
 function stocAsOf() { return pget('stoc') || new Date().toISOString().slice(0, 7); }
+function metodaIesire() { return String((META.company || {}).metodaEvaluareStoc || 'cmp').toUpperCase() === 'FIFO' ? 'FIFO' : 'CMP'; }
 // Eticheta miscarii de stoc: receptie / transfer (cu gestiunile) / iesire. Scoasa la nivel de
 // modul pentru testare — transferul e singurul care arata AMBELE gestiuni.
 const tipLbl = (m) => ((m || {}).tip === 'receptie' ? 'recepție' : (m || {}).tip === 'transfer' ? `transfer ${m.gestiuneCod}→${m.gestiuneDestCod}` : 'ieșire');
@@ -25,10 +26,10 @@ function renderStockMovements() {
   $('#movementsList').innerHTML = movs.length
     ? `<table><thead><tr><th>Data</th><th>Tip</th><th>Gestiune</th><th>Produs</th><th class="num">Cantitate</th><th class="num">Preț</th><th>Document</th><th>Operator</th><th>Notă contabilă</th><th></th></tr></thead><tbody>${
       movs.map((m) => `<tr><td>${H(m.data)}</td><td>${tipLbl(m)}</td><td>${H(m.gestiuneCod)}</td><td>${H(m.cod)} ${H(m.denumire)}</td>
-        <td class="num">${fmt(m.cantitate)} ${H(m.um)}</td><td class="num">${m.pretUnitar ? fmt(m.pretUnitar) : '—'}</td><td>${H(m.document)}</td><td>${m.operator ? H(m.operator) : '—'}</td>
-        <td>${m.tip === 'transfer' ? '<span class="muted">intern</span>' : m.initial ? '<span class="pill" title="Stoc preluat la deschidere — valoarea e în soldurile inițiale, nu se contabilizează separat">sold inițial</span>' : m.entryId ? '<span class="pill">✓ contabilizat</span>' : `<button class="linkbtn mpost" data-id="${m.id}">postează nota</button>`}</td>
-        <td>${m.tip === 'receptie' ? `<a class="linkbtn" href="/pdf/nir?id=${m.id}" target="_blank">NIR</a> · ` : m.tip === 'iesire' ? `<a class="linkbtn" href="/pdf/bon-consum?id=${m.id}" target="_blank">bon consum</a> · ` : `<a class="linkbtn" href="/pdf/aviz?id=${m.id}" target="_blank">aviz</a> · `}<button class="linkbtn mdel" data-id="${m.id}">șterge</button></td></tr>`).join('')}</tbody></table>
-      <p class="muted" data-u="u18">${movs.length} din ${STOCK_MOVS.length} mișcări. „Postează nota”: recepție <b class="adv">3xx = 401</b>, ieșire <b>60x = 3xx</b> la CMP. Transferul e mișcare internă.</p>`
+        <td class="num">${fmt(m.cantitate)} ${H(m.um)}${m.stocInsuficient ? `<br><span class="pill err" title="Cantitate efectivă: ${fmt(m.cantitateEfectiva)}; lipsă: ${fmt(m.lipsa)}">stoc insuficient</span>` : ''}</td><td class="num">${m.pretUnitar ? fmt(m.pretUnitar) : '—'}</td><td>${H(m.document)}</td><td>${m.operator ? H(m.operator) : '—'}</td>
+        <td>${m.stornat ? '<span class="pill err">stornată</span>' : m.stornoOfMovementId ? '<span class="pill">corecție</span>' : m.tip === 'transfer' ? '<span class="muted">intern</span>' : m.initial ? '<span class="pill" title="Stoc preluat la deschidere — valoarea e în soldurile inițiale, nu se contabilizează separat">sold inițial</span>' : m.entryId ? '<span class="pill">✓ contabilizat</span>' : `<button class="linkbtn mpost" data-id="${m.id}">postează nota</button>`}</td>
+        <td>${m.tip === 'receptie' ? `<a class="linkbtn" href="/pdf/nir?id=${m.id}" target="_blank">NIR</a> · ` : m.tip === 'iesire' ? `<a class="linkbtn" href="/pdf/bon-consum?id=${m.id}" target="_blank">bon consum</a> · ` : `<a class="linkbtn" href="/pdf/aviz?id=${m.id}" target="_blank">aviz</a> · `}${m.stornat || m.stornoOfMovementId || m.initial ? '' : m.entryId || m.tip === 'transfer' ? `<button class="linkbtn mstorno" data-id="${m.id}">stornează</button>` : `<button class="linkbtn mdel" data-id="${m.id}">șterge</button>`}</td></tr>`).join('')}</tbody></table>
+      <p class="muted" data-u="u18">${movs.length} din ${STOCK_MOVS.length} mișcări. „Postează nota”: recepție <b class="adv">3xx = 401</b>, ieșire <b>60x = 3xx</b> la ${metodaIesire()}. Transferul e mișcare internă.</p>`
     : '<p class="muted">Nicio mișcare (verifică filtrele).</p>';
   $$('#movementsList .mdel').forEach((b) => b.addEventListener('click', async () => {
     await api('/api/stock-movements/' + b.dataset.id, { method: 'DELETE' }); loadStocks(); toast('Mișcare ștearsă');
@@ -36,6 +37,15 @@ function renderStockMovements() {
   $$('#movementsList .mpost').forEach((b) => b.addEventListener('click', async () => {
     try { const r = await api('/api/stock-movements/' + b.dataset.id + '/post', { method: 'POST' }); toast('Notă contabilă generată: ' + r.entry.lines[0].debit + ' = ' + r.entry.lines[0].credit + ' (' + fmt(r.entry.lines[0].suma) + ')'); loadStocks(); }
     catch (err) { toast(err.message, true); }
+  }));
+  $$('#movementsList .mstorno').forEach((b) => b.addEventListener('click', async () => {
+    if (!await confirmAction('Mișcarea și nota contabilă vor fi corectate prin înregistrări inverse, fără ștergerea istoricului.', {
+      title: 'Stornezi mișcarea?', confirmLabel: 'Stornează', danger: true,
+    })) return;
+    try {
+      await api('/api/stock-movements/' + b.dataset.id + '/storno', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      toast('Mișcare stornată; originalul a rămas în istoric.'); loadStocks();
+    } catch (err) { toast(err.message, true); }
   }));
 }
 ['#mvfTip', '#mvfGest', '#mvfLuna'].forEach((s) => $(s).addEventListener('change', renderStockMovements));
@@ -235,9 +245,11 @@ $('#movementForm').addEventListener('submit', async (e) => {
   const f = e.target;
   const body = { productId: f.productId.value, tip: f.tip.value, gestiuneId: f.gestiuneId.value, gestiuneDestId: f.gestiuneDestId.value, data: f.data.value, cantitate: f.cantitate.value, pretUnitar: f.pretUnitar.value, furnizor: f.furnizor.value, document: f.document.value };
   try {
-    await api('/api/stock-movements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await api('/api/stock-movements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     formFlowSaved(f);
-    toast('Mișcare înregistrată');
+    toast(r.lipsa
+      ? `Mișcare înregistrată, dar stocul este insuficient: lipsesc ${fmt(r.lipsa.lipsa)}. Înregistrează recepția înainte de postare/închidere.`
+      : 'Mișcare înregistrată', !!r.lipsa);
     // Produsul, tipul, gestiunea și data rămân pentru operarea rapidă a mai multor documente;
     // numai datele tranzacției tocmai salvate se golesc.
     f.cantitate.value = ''; f.pretUnitar.value = ''; f.furnizor.value = ''; f.document.value = '';
@@ -457,14 +469,17 @@ $('#invLoad').addEventListener('click', async () => {
   if (!gid) return toast('Adaugă o gestiune întâi', true);
   const list = await api('/api/inventory?gestiune=' + gid + '&asOf=' + stocAsOf());
   if (!list.length) { $('#inventoryArea').innerHTML = '<p class="muted">Niciun produs în nomenclator.</p>'; return; }
-  $('#inventoryArea').innerHTML = `<table><thead><tr><th>Cod</th><th>Denumire</th><th class="num">Scriptic</th><th class="num">CMP</th><th class="num">Faptic</th><th>Imputare</th></tr></thead><tbody>${
+  $('#inventoryArea').innerHTML = `<table><thead><tr><th>Cod</th><th>Denumire</th><th class="num">Scriptic</th><th class="num">CMP</th><th class="num">Faptic</th><th class="num">Cost plus</th><th>Imputare</th></tr></thead><tbody>${
     list.map((l) => `<tr data-pid="${l.product.id}"><td class="acc">${H(l.product.cod)}</td><td>${H(l.product.denumire)}</td>
       <td class="num scr">${fmt(l.scripticQty)} ${l.product.um || ''}</td><td class="num">${fmt(l.cmp)}</td>
       <td class="num"><input class="inv-fapt" type="number" step="0.001" value="${l.scripticQty}" data-u="u178"></td>
+      <td class="num"><input class="inv-pret" type="number" min="0" step="0.01" value="${l.cmp || ''}" placeholder="obligatoriu la plus fără CMP" title="Cost unitar pentru plusul de inventar; se folosește CMP-ul dacă există" data-u="u178"></td>
       <td><input class="inv-imp" type="checkbox" title="Impută lipsa gestionarului"></td></tr>`).join('')}</tbody></table>
     <div class="row" data-u="u8"><input id="invData" type="date" value="${stocAsOf()}-28" data-u="u120"> <button id="invPost" class="btn primary">Înregistrează diferențele</button></div>`;
   $('#invPost').addEventListener('click', async () => {
-    const lines = $$('#inventoryArea tbody tr').map((tr) => ({ productId: tr.dataset.pid, faptic: tr.querySelector('.inv-fapt').value, imputa: tr.querySelector('.inv-imp').checked }));
+    const lines = $$('#inventoryArea tbody tr').map((tr) => ({ productId: tr.dataset.pid,
+      faptic: tr.querySelector('.inv-fapt').value, pret: tr.querySelector('.inv-pret').value,
+      imputa: tr.querySelector('.inv-imp').checked }));
     try {
       const r = await api('/api/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gestiuneId: gid, data: $('#invData').value, lines }) });
       const res = r.result;

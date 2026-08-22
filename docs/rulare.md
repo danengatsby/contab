@@ -57,7 +57,7 @@ pdfkit reală, apoi extragere de text: se verifică ce scrie pe hârtie, nu că 
 reziliența ANAF (`test/anaf.js`, cu stub-uri), persistența (`test/store.js`, `test/store-pg.js`) și
 **verificările HTTP** (`test/http.js`, server pornit pe o bază temporară) — balanța și cele
 4 egalități, TVA (decont, la încasare, taxare inversă, **pro-rata art. 300**, ajustări **art. 305**),
-amortizarea (liniară/degresivă/accelerată), stocurile (CMP pe gestiuni, preluare stoc inițial,
+amortizarea (liniară/degresivă/accelerată), stocurile (CMP/FIFO pe gestiuni, preluare stoc inițial,
 inventariere, producție), salarizarea (CAS/CASS/impozit/CAM, deducerea personală, tichete, avantaje
 în natură, **concedii medicale** cu media pe 6 luni și split angajator/FNUASS, **concediu de odihnă**
 pe media pe 3 luni, **normă parțială suprataxată** OUG 16/2022), declarațiile (D300/D301/D307/D311/D394/D390/D205/

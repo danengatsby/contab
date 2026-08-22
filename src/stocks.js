@@ -15,7 +15,7 @@
 // FIECARE miscare. Transferul muta loturile cu costurile lor (nu le omogenizeaza la un cost
 // mediu) — altfel FIFO s-ar transforma tacit in CMP la prima mutare intre gestiuni.
 
-const { round2, naturalCompare } = require('./util');
+const { round2, roundQty, naturalCompare } = require('./util');
 
 const DEFAULT_GEST = '(fara gestiune)';
 
@@ -61,7 +61,13 @@ function within(m, limit) {
 function simulate(product, movements, asOf, metoda) {
   const fifo = String(metoda || 'cmp').toLowerCase() === 'fifo';
   const limit = limitOf(asOf);
-  const movs = sortMov(movements.filter((m) => m.productId === product.id && within(m, limit)));
+  const candidate = sortMov(movements.filter((m) => m.productId === product.id && within(m, limit)));
+  // Storno in rosu inseamna ca originalul + corectia se anuleaza EXACT. Daca am procesa corectia
+  // ca iesire/recepție obisnuita, o receptie retroactiva ar schimba CMP-ul ei si perechea n-ar mai
+  // da zero. Pana la data stornarii originalul ramane activ; de la data ei, ambele sunt scoase din
+  // calcul, iar in lista de miscari raman pentru audit.
+  const anulate = new Set(candidate.filter((m) => m.stornoOfMovementId).map((m) => m.stornoOfMovementId));
+  const movs = candidate.filter((m) => !m.stornoOfMovementId && !anulate.has(m.id));
   const state = {}; // gestiuneId -> { qty, value, lots: [{q, cost}] }
   const ensure = (g) => (state[g] = state[g] || { qty: 0, value: 0, lots: [] });
 
@@ -84,21 +90,21 @@ function simulate(product, movements, asOf, metoda) {
       const lot = s.lots[0];
       const ia = Math.min(lot.q, ramas);
       v = round2(v + ia * lot.cost);
-      luate.push({ q: round2(ia), cost: lot.cost });
-      lot.q = round2(lot.q - ia);
-      ramas = round2(ramas - ia);
+      luate.push({ q: roundQty(ia), cost: lot.cost });
+      lot.q = roundQty(lot.q - ia);
+      ramas = roundQty(ramas - ia);
       if (lot.q <= 0.0000001) s.lots.shift();
     }
     return { v, lots: luate };
   };
   const rows = [];
   for (const m of movs) {
-    const c = round2(Number(m.cantitate) || 0);
+    const c = roundQty(Number(m.cantitate) || 0);
     if (m.tip === 'receptie') {
       const g = gestKey(m); const s = ensure(g);
       const pret = round2(Number(m.pretUnitar) || 0);
       const v = round2(c * pret);
-      s.qty = round2(s.qty + c); s.value = round2(s.value + v);
+      s.qty = roundQty(s.qty + c); s.value = round2(s.value + v);
       if (c > 0) s.lots.push({ q: c, cost: pret });
       rows.push({ id: m.id, data: m.data, tip: 'receptie', gestiuneId: g, document: m.document || '', intrareQ: c, intrareV: v, iesireQ: 0, iesireV: 0, stocQ: s.qty, cmp: s.qty > 0 ? round2(s.value / s.qty) : 0, stocV: s.value });
     } else if (m.tip === 'transfer') {
@@ -108,8 +114,8 @@ function simulate(product, movements, asOf, metoda) {
       const d = descarca(ss, c2);
       const v = d.v;
       const cmp = c2 > 0 ? round2(v / c2) : 0; // costul unitar EFECTIV al transferului
-      ss.qty = round2(ss.qty - c2); ss.value = round2(ss.value - v);
-      sd.qty = round2(sd.qty + c2); sd.value = round2(sd.value + v);
+      ss.qty = roundQty(ss.qty - c2); ss.value = round2(ss.value - v);
+      sd.qty = roundQty(sd.qty + c2); sd.value = round2(sd.value + v);
       // loturile trec cu costurile lor: FIFO ramane FIFO si dupa mutarea intre gestiuni
       for (const l of d.lots) if (l.q > 0) sd.lots.push({ q: l.q, cost: l.cost });
       rows.push({ id: m.id, data: m.data, tip: 'transfer', gestiuneId: gs, gestiuneDestId: gd, document: m.document || '', intrareQ: 0, intrareV: 0, iesireQ: c2, iesireV: v, transferV: v, stocQ: ss.qty, cmp, stocV: ss.value });
@@ -118,7 +124,7 @@ function simulate(product, movements, asOf, metoda) {
       const c2 = Math.min(c, s.qty);
       const v = descarca(s, c2).v;
       const cmp = c2 > 0 ? round2(v / c2) : 0; // costul unitar EFECTIV al iesirii (mediu la CMP, din loturi la FIFO)
-      s.qty = round2(s.qty - c2); s.value = round2(s.value - v);
+      s.qty = roundQty(s.qty - c2); s.value = round2(s.value - v);
       rows.push({ id: m.id, data: m.data, tip: 'iesire', gestiuneId: g, document: m.document || '', intrareQ: 0, intrareV: 0, iesireQ: c2, iesireV: v, stocQ: s.qty, cmp, stocV: round2(s.value) });
     }
   }
@@ -143,7 +149,7 @@ function productLedger(product, movements, asOf, gestiuneId, metoda) {
   }
   // fara filtru: total pe produs (toate gestiunile)
   let q = 0; let v = 0;
-  for (const g of Object.values(state)) { q = round2(q + g.qty); v = round2(v + g.value); }
+  for (const g of Object.values(state)) { q = roundQty(q + g.qty); v = round2(v + g.value); }
   return { product, rows: visible, stocQ: q, stocV: round2(v), cmp: q > 0 ? round2(v / q) : 0, state };
 }
 
@@ -168,10 +174,17 @@ function currentStock(db, asOf, gestiuneId) {
 function movementsList(db, period) {
   const byId = new Map((db.products || []).map((p) => [p.id, p]));
   const gById = new Map((db.gestiuni || []).map((g) => [g.id, g]));
+  const lipsuri = new Map(movementShortages(db, period).map((x) => [x.movementId, x]));
   const gname = (id) => (id ? (gById.get(id) || {}).cod || id : '');
   return sortMov((db.stockMovements || []).filter((m) => inPeriod(m, period))).map((m) => {
     const p = byId.get(m.productId) || {};
-    return Object.assign({}, m, { cod: p.cod || '', denumire: p.denumire || '', um: p.um || '', gestiuneCod: gname(m.gestiuneId), gestiuneDestCod: gname(m.gestiuneDestId) });
+    const lipsa = lipsuri.get(m.id) || null;
+    return Object.assign({}, m, {
+      cod: p.cod || '', denumire: p.denumire || '', um: p.um || '',
+      gestiuneCod: gname(m.gestiuneId), gestiuneDestCod: gname(m.gestiuneDestId),
+      cantitateEfectiva: lipsa ? lipsa.efectiv : roundQty(Number(m.cantitate) || 0),
+      lipsa: lipsa ? lipsa.lipsa : 0, stocInsuficient: !!lipsa,
+    });
   });
 }
 
@@ -179,14 +192,27 @@ function movementsList(db, period) {
 function situatieAprovizionari(db, period) {
   const byId = new Map((db.products || []).map((p) => [p.id, p]));
   const gById = new Map((db.gestiuni || []).map((g) => [g.id, g]));
-  const rows = sortMov((db.stockMovements || []).filter((m) => m.tip === 'receptie' && !m.initial && inPeriod(m, period)))
+  const movById = new Map((db.stockMovements || []).map((m) => [m.id, m]));
+  // Corectia unei receptii ramane in situatia lunii de storno cu semn minus; corectia unei
+  // iesiri nu se transforma artificial in „aprovizionare” doar fiindca miscarea inversa este o
+  // receptie tehnica.
+  const rows = sortMov((db.stockMovements || []).filter((m) => {
+    if (m.initial || !inPeriod(m, period)) return false;
+    const source = m.stornoOfMovementId ? movById.get(m.stornoOfMovementId) : m;
+    if (!source || source.auto || source.inventoryId) return false; // productie/plus inventar ≠ aprovizionare
+    return source.tip === 'receptie';
+  }))
     .map((m) => {
+      const original = m.stornoOfMovementId ? movById.get(m.stornoOfMovementId) : null;
+      const sursa = original || m; const semn = original ? -1 : 1;
       const p = byId.get(m.productId) || {};
       return {
-        data: m.data, furnizor: m.furnizor || '(fara furnizor)', document: m.document || '',
+        data: m.data, furnizor: sursa.furnizor || '(fara furnizor)', document: m.document || '',
         cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc',
-        gestiune: (gById.get(m.gestiuneId) || {}).cod || '', cantitate: m.cantitate, pretUnitar: m.pretUnitar,
-        valoare: round2((Number(m.cantitate) || 0) * (Number(m.pretUnitar) || 0)),
+        gestiune: (gById.get(m.gestiuneId) || {}).cod || '',
+        cantitate: roundQty(semn * (Number(m.cantitate) || 0)), pretUnitar: sursa.pretUnitar,
+        valoare: round2(semn * (Number(sursa.cantitate) || 0) * (Number(sursa.pretUnitar) || 0)),
+        corectie: !!original,
       };
     });
   const perFurnizor = {};
@@ -194,25 +220,40 @@ function situatieAprovizionari(db, period) {
   return { period, rows, perFurnizor, total: round2(rows.reduce((s, r) => s + r.valoare, 0)) };
 }
 
-/** Situatia consumurilor: iesirile perioadei la CMP, cu sursa (consum manual / vanzare / inventar)
+/** Situatia consumurilor: iesirile perioadei la metoda firmei, cu sursa (consum manual / vanzare / inventar)
  *  si totaluri pe contul de descarcare (601/602/603/607/608...). */
 function situatieConsumuri(db, period) {
   const byId = new Map((db.products || []).map((p) => [p.id, p]));
   const gById = new Map((db.gestiuni || []).map((g) => [g.id, g]));
-  const movs = sortMov((db.stockMovements || []).filter((m) => m.tip === 'iesire' && inPeriod(m, period)));
+  const movById = new Map((db.stockMovements || []).map((m) => [m.id, m]));
+  const entryById = new Map((db.entries || []).map((e) => [e.id, e]));
+  const movs = sortMov((db.stockMovements || []).filter((m) => {
+    if (!inPeriod(m, period)) return false;
+    if (!m.stornoOfMovementId) return m.tip === 'iesire';
+    return (movById.get(m.stornoOfMovementId) || {}).tip === 'iesire';
+  }));
   const rows = movs.map((m) => {
+    const original = m.stornoOfMovementId ? movById.get(m.stornoOfMovementId) : null;
+    const sursa = original || m; const semn = original ? -1 : 1;
     const p = byId.get(m.productId) || {};
+    const entry = sursa.entryId ? entryById.get(sursa.entryId) : null;
+    const tipSursa = original ? 'storno'
+      : sursa.inventoryId ? 'inventar'
+        : entry && entry.tip === 'productie' ? 'productie'
+          : sursa.auto ? 'vanzare' : 'consum';
     return {
       data: m.data, document: m.document || '', cod: p.cod || '', denumire: p.denumire || '', um: p.um || 'buc',
-      gestiune: (gById.get(m.gestiuneId) || {}).cod || '', cantitate: m.cantitate,
+      gestiune: (gById.get(sursa.gestiuneId) || {}).cod || '', cantitate: roundQty(semn * (Number(m.cantitate) || 0)),
       cont: cogsAccount(p.cont || '371'),
-      sursa: m.auto ? 'vanzare' : (/inventar/i.test(m.document || '') ? 'inventar' : 'consum'),
-      valoare: round2(movementValue(p, db.stockMovements || [], m.id)),
+      sursa: tipSursa,
+      valoare: round2(semn * movementValue(p, db.stockMovements || [], sursa.id, metodaFirma(db))),
+      corectie: !!original,
     };
   });
   const perCont = {};
   for (const r of rows) perCont[r.cont] = round2((perCont[r.cont] || 0) + r.valoare);
-  return { period, rows, perCont, total: round2(rows.reduce((s, r) => s + r.valoare, 0)) };
+  return { period, metoda: metodaFirma(db).toUpperCase(), rows, perCont,
+    total: round2(rows.reduce((s, r) => s + r.valoare, 0)) };
 }
 
 /** Lista de inventariere pentru o gestiune: stocul scriptic pe fiecare produs la o data. */
@@ -226,16 +267,99 @@ function inventoryList(db, gestiuneId, asOf) {
 /** Randul simularii pentru o miscare — valoarea SI cantitatea efectiv miscata. Cantitatea conteaza:
  *  la iesire, `simulate` o plafoneaza la stocul disponibil (`Math.min`), deci ce s-a cerut si ce
  *  s-a descarcat pot sa difere fara ca vreo suma sa arate asta. */
-function movementRow(product, movements, movementId, metoda) {
-  const { rows } = simulate(product, movements, null, metoda);
+function movementRow(product, movements, movementId, metoda, asOf) {
+  const { rows } = simulate(product, movements, asOf || null, metoda);
   return rows.find((r) => r.id === movementId) || null;
 }
 
 /** Valoarea contabila a unei miscari (receptie = cant×pret; iesire = la metoda firmei). */
-function movementValue(product, movements, movementId, metoda) {
-  const row = movementRow(product, movements, movementId, metoda);
+function movementValue(product, movements, movementId, metoda, asOf) {
+  const movement = (movements || []).find((m) => m.id === movementId);
+  if (movement && asOf && !within(movement, limitOf(asOf))) return 0;
+  if (movement && movement.valoareContabila != null && Number.isFinite(Number(movement.valoareContabila))) {
+    return round2(Number(movement.valoareContabila));
+  }
+  let row = movementRow(product, movements, movementId, metoda, asOf);
+  // Pentru un original stornat fara valoare persistata (date istorice), refacem fotografia exact
+  // pana la pozitia lui cronologica. Simularea curenta elimina deliberat perechea original+storno.
+  if (!row && movement && movement.stornat) {
+    const cronologic = sortMov((movements || []).filter((m) => m.productId === product.id));
+    const index = cronologic.findIndex((m) => m.id === movementId);
+    if (index >= 0) row = simulate(product, cronologic.slice(0, index + 1), null, metoda).rows.find((r) => r.id === movementId) || null;
+  }
   if (!row) return 0;
   return row.tip === 'receptie' ? row.intrareV : row.iesireV;
+}
+
+/**
+ * Miscari care au cerut mai mult decat exista in gestiunea sursa. Motorul nu permite stoc
+ * negativ si plafoneaza cantitatea efectiva la disponibil; diferenta trebuie insa sa fie
+ * VIZIBILA si sa blocheze inchiderea/postarea notei, altfel fisa arata cantitatea ceruta iar
+ * contabilitatea descarca doar costul cantitatii gasite.
+ */
+function movementShortages(db, period) {
+  const movements = db.stockMovements || [];
+  const metoda = metodaFirma(db);
+  const out = [];
+  for (const product of (db.products || [])) {
+    const rows = simulate(product, movements, null, metoda).rows;
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    for (const m of movements) {
+      if (m.productId !== product.id || m.tip === 'receptie') continue;
+      if (m.stornat || m.stornoOfMovementId) continue; // perechea anulata nu este lipsa de stoc
+      if (period && String(m.data || '').slice(0, 7) !== period) continue;
+      const row = byId.get(m.id);
+      const cerut = roundQty(Number(m.cantitate) || 0);
+      const efectiv = roundQty(row ? row.iesireQ : 0);
+      const lipsa = roundQty(cerut - efectiv);
+      if (lipsa > 0) out.push({
+        movementId: m.id, productId: product.id, cod: product.cod || '',
+        denumire: product.denumire || product.cod || product.id,
+        data: m.data, tip: m.tip, gestiuneId: m.gestiuneId || null,
+        cerut, efectiv, lipsa,
+      });
+    }
+  }
+  return out.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : naturalCompare(a.movementId, b.movementId)));
+}
+
+/**
+ * Detecteaza daca inserarea unor miscari retroactive ar schimba valoarea/cantitatea unei iesiri
+ * deja fixate intr-o nota contabila sau intr-un inventar. Cartea mare este append-only, deci un
+ * astfel de recalcul trebuie facut explicit prin storno + repostare, nu tacit in subregistru.
+ */
+function valuationDrift(db, newMovements) {
+  const additions = Array.isArray(newMovements) ? newMovements.filter(Boolean) : [];
+  if (!additions.length) return null;
+  const movements = db.stockMovements || [];
+  const entryById = new Map((db.entries || []).map((e) => [e.id, e]));
+  const metoda = metodaFirma(db);
+  const byProduct = new Map();
+  for (const m of additions) {
+    if (!byProduct.has(m.productId)) byProduct.set(m.productId, []);
+    byProduct.get(m.productId).push(m);
+  }
+  for (const [productId, added] of byProduct) {
+    const p = (db.products || []).find((x) => x.id === productId);
+    if (!p) continue;
+    const primaData = added.reduce((min, m) => !min || m.data < min ? m.data : min, '');
+    const fixe = movements.filter((m) => m.productId === productId && m.tip === 'iesire'
+      && m.data >= primaData && !m.stornat && !m.stornoOfMovementId
+      && ((m.valoareContabila != null && Number.isFinite(Number(m.valoareContabila)))
+        || (m.entryId && entryById.has(m.entryId))));
+    if (!fixe.length) continue;
+    const inainte = new Map(simulate(p, movements, null, metoda).rows.map((r) => [r.id, r]));
+    const dupa = new Map(simulate(p, movements.concat(added), null, metoda).rows.map((r) => [r.id, r]));
+    const afectata = fixe.find((m) => {
+      const r0 = inainte.get(m.id); const r1 = dupa.get(m.id);
+      const fix = m.valoareContabila != null && Number.isFinite(Number(m.valoareContabila))
+        ? round2(Number(m.valoareContabila)) : round2(r0 ? r0.iesireV : 0);
+      return !r1 || roundQty(r1.iesireQ) !== roundQty(Number(m.cantitate) || 0)
+        || Math.abs(round2(r1.iesireV) - fix) >= 0.01;
+    });
+    if (afectata) return { movementId: afectata.id, data: afectata.data, productId };
+  }
+  return null;
 }
 
 /**
@@ -256,7 +380,7 @@ function saleCogs(products, baseMovements, stocLines, opts) {
       id: o.nextId ? o.nextId() : 'sm-tmp-' + (newMovements.length + 1),
       firmaId: o.fid, data: o.data, tip: 'iesire',
       productId: p.id, gestiuneId: s.gestiuneId || null, gestiuneDestId: null,
-      cantitate: round2(Number(s.cantitate) || 0), pretUnitar: 0,
+      cantitate: roundQty(Number(s.cantitate) || 0), pretUnitar: 0,
       document: o.document || '', entryId: o.entryId || null, auto: true,
     });
   }
@@ -267,6 +391,7 @@ function saleCogs(products, baseMovements, stocLines, opts) {
     const p = (products || []).find((x) => x.id === mv.productId);
     const row = movementRow(p, all, mv.id, o.metoda);
     const suma = round2(row ? row.iesireV : 0);
+    mv.valoareContabila = suma;
     if (suma > 0) {
       const contStoc = p.cont || '371';
       const k = cogsAccount(contStoc) + '>' + contStoc;
@@ -278,9 +403,9 @@ function saleCogs(products, baseMovements, stocLines, opts) {
     // 10 si nicio vorba: marja iesea umflata cu costul celor 40 lipsa, iar fisa de magazie ajungea
     // la zero in loc de negativ. Avertismentul de dinainte se declansa DOAR cand nu exista nimic
     // in stoc (suma 0), adica exact cazul in care oricum se vedea ca lipseste ceva.
-    const cerut = round2(Number(mv.cantitate) || 0);
-    const descarcat = round2(row ? row.iesireQ : 0);
-    const lipsa = round2(cerut - descarcat);
+    const cerut = roundQty(Number(mv.cantitate) || 0);
+    const descarcat = roundQty(row ? row.iesireQ : 0);
+    const lipsa = roundQty(cerut - descarcat);
     if (lipsa > 0) {
       const nume = p.denumire || p.cod || mv.productId;
       lipsuri.push({ productId: mv.productId, denumire: nume, cerut, descarcat, lipsa });
@@ -298,4 +423,6 @@ function saleCogs(products, baseMovements, stocLines, opts) {
 }
 
 module.exports = {
-  metodaFirma, productLedger, currentStock, movementsList, sortMov, cogsAccount, movementValue, movementRow, simulate, inventoryList, saleCogs, situatieAprovizionari, situatieConsumuri };
+  metodaFirma, productLedger, currentStock, movementsList, sortMov, cogsAccount, movementValue,
+  movementRow, movementShortages, valuationDrift, simulate, inventoryList, saleCogs, situatieAprovizionari,
+  situatieConsumuri };

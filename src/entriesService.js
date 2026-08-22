@@ -1,6 +1,6 @@
 'use strict';
 
-// Service layer pentru articolele contabile: creare (cu descarcare automata de gestiune la CMP
+// Service layer pentru articolele contabile: creare (cu descarcare automata de gestiune CMP/FIFO
 // din liniile de stoc), stergere (cu garda pe perioada inchisa), facturi recurente (sabloane +
 // generare pe perioada), blocarea perioadei si TVA la incasare (exigibilitate). Rutele
 // (src/routes/entries.js) raman puncte de intrare subtiri.
@@ -78,13 +78,13 @@ function markEntryActor(entry, actor, status) {
   entry.statusHistory.push({ status, by: id, username: actorName(actor), at });
 }
 
-/** Creeaza un articol contabil; liniile de stoc genereaza si descarcarea de gestiune la CMP
+/** Creeaza un articol contabil; liniile de stoc genereaza si descarcarea la metoda firmei (CMP/FIFO)
  *  (miscarile + liniile COGS intra atomic cu articolul — nicio scriere la eroare). */
 function createEntry(fid, b, deps) {
   fid = reqFirma(fid); b = b || {};
   const f = Object.assign({}, b.fields || {});
   const stocLines = Array.isArray(f.stoc) ? f.stoc.filter((s) => s && s.productId && Number(s.cantitate) > 0) : [];
-  if (stocLines.length) f.cost = 0; // descarcarea vine din stoc (la CMP), nu din campul manual — evita dubla inregistrare
+  if (stocLines.length) f.cost = 0; // descarcarea vine din stoc, nu din campul manual — evita dubla inregistrare
   let entry;
   try { entry = deps.buildEntry(b.tip, f, b.fileId, fid); }
   catch (e) { fail(400, e.message); }
@@ -106,11 +106,23 @@ function createEntry(fid, b, deps) {
     let r;
     try { r = stocks.saleCogs(v.products, v.stockMovements, stocLines, { fid, data: entry.data, document: entry.document, entryId: entry.id, nextId: () => db.nextId('sm'), metoda: stocks.metodaFirma(v) }); }
     catch (e) { fail(400, e.message); }
+    if (entryState(entry) === 'postat' && r.lipsuri.length) {
+      fail(409, 'Stoc insuficient: ' + r.lipsuri.map((x) => x.denumire + ' — lipsa ' + x.lipsa).join('; ')
+        + '. Salveaza documentul ca ciorna sau inregistreaza receptiile lipsa inainte de postare.');
+    }
+    if (entryState(entry) === 'postat') {
+      const drift = stocks.valuationDrift(v, r.newMovements);
+      if (drift) fail(409, 'Documentul retroactiv ar recalcula iesirea deja postata ' + drift.movementId
+        + ' (' + drift.data + '). Storneaza si reia documentele de stoc in ordine cronologica.');
+    }
     for (const ln of r.cogsLines) {
       if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) fail(400, 'Cont de descarcare inexistent in plan: ' + ln.debit + '/' + ln.credit);
     }
     for (const mv of r.newMovements) d.stockMovements.push(mv);
-    for (const ln of r.cogsLines) entry.lines.push(ln);
+    // Retinem granita si marcam liniile calculate: la postarea unei ciorne costul se recalculeaza
+    // pe stocul disponibil ATUNCI, nu ramane fotografia veche de la creare.
+    entry.stocBaseLineCount = entry.lines.length;
+    for (const ln of r.cogsLines) entry.lines.push(Object.assign({}, ln, { stocAuto: true }));
     entry.stocMovementIds = r.newMovements.map((m) => m.id);
     stocInfo = { cogsTotal: r.total, warns: r.warns, lipsuri: r.lipsuri, movements: r.newMovements.length };
   }
@@ -185,6 +197,10 @@ function deleteEntry(id, fallbackFid, canFid) {
     // Jurnal append-only: doar CIORNELE se sterg. Un articol POSTAT (inclusiv cele vechi, fara
     // status) nu se sterge — corectia se face prin STORNO, documentata si reversibila.
     if (entryState(e) === 'postat') fail(400, 'Articol postat — nu se sterge. Corecteaza prin storno (buton ↩ storno).');
+    // Miscarea automata a unei ciorne nu a intrat in stocul activ, dar trebuie eliminata odata cu
+    // ciorna; altfel ramane orfana si poate reaparea accidental la import/migrare.
+    const mids = new Set([...(e.stocMovementIds || []), e.stocMovementId, e.movementId].filter(Boolean));
+    if (mids.size) d.stockMovements = (d.stockMovements || []).filter((m) => !mids.has(m.id) && m.entryId !== e.id);
   }
   const n = d.entries.length;
   d.entries = d.entries.filter((x) => x.id !== id);
@@ -192,8 +208,8 @@ function deleteEntry(id, fallbackFid, canFid) {
   return { removed: n - d.entries.length, entry: e || null };
 }
 
-/** STORNO generic al oricarui articol contabil: creeaza o nota de reversare (debit<->credit,
- *  aceleasi sume), legata de original (stornoOf), datata intr-o perioada DESCHISA; marcheaza
+/** STORNO generic al oricarui articol contabil: creeaza o nota in rosu (aceleasi conturi,
+ *  sume negate), legata de original (stornoOf), datata intr-o perioada DESCHISA; marcheaza
  *  originalul `stornat`. Corectie DOCUMENTATA si REVERSIBILA, in locul stergerii distructive.
  *  Articolele cu impact pe stoc au corectia dedicata (stoc/inventar) — aici sunt blocate ca sa
  *  nu desincronizeze fisa de magazie de cartea mare. */
@@ -204,10 +220,11 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno) {
   if (entryState(e) !== 'postat') fail(400, 'Doar articolele POSTATE se storneaza; o ciorna se sterge direct.');
   if (e.stornoOf) fail(400, 'Nu se storneaza o nota de storno.');
   if (e.stornat) fail(400, 'Inregistrarea e deja stornata (nota ' + e.stornoBy + ').');
-  if ((e.stocMovementIds && e.stocMovementIds.length) || e.stocMovementId) {
+  const fid = e.firmaId == null ? fallbackFid : e.firmaId;
+  const inventarLegat = (d.inventories || []).some((iv) => iv.firmaId === fid && (iv.entryIds || []).includes(e.id));
+  if ((e.stocMovementIds && e.stocMovementIds.length) || e.stocMovementId || e.movementId || inventarLegat) {
     fail(400, 'Articolul are miscari de stoc — corecteaza prin stornarea documentului de stoc/inventar (altfel fisa de magazie si cartea mare ar diverge).');
   }
-  const fid = e.firmaId == null ? fallbackFid : e.firmaId;
   if (e.tip === 'stat_plata') {
     // Obligatia salariala nu poate fi anulata lasand plata activa: 421 ar deveni creditor negativ.
     // Corectia se desface in ordinea inversa in care a fost construita.
@@ -280,6 +297,35 @@ function setEntryStatus(id, fallbackFid, canFid, target, actor) {
   if (target === 'aprobat') { e.approvedBy = aid; e.approvedAt = at; }
   if (target === 'postat') {
     db.assertPeriodOpen(fid, e.period || periodOf(e.data), 'Postarea'); // nu se posteaza intr-o luna inchisa
+    const mids = new Set(e.stocMovementIds || []);
+    if (mids.size) {
+      const miscari = (d.stockMovements || []).filter((m) => mids.has(m.id) && m.entryId === e.id);
+      if (miscari.length !== mids.size) fail(409, 'Ciorna are legaturi de stoc incomplete; sterge-o si recreeaza documentul.');
+      // `db.scoped` exclude deliberat miscarile acestei ciorne, deci baza este stocul activ chiar
+      // inaintea postarii. Refolosim aceleasi id-uri: fisa nu capata duplicate.
+      const v = db.scoped(fid); let i = 0;
+      const r = stocks.saleCogs(v.products, v.stockMovements,
+        miscari.map((m) => ({ productId: m.productId, gestiuneId: m.gestiuneId, cantitate: m.cantitate })),
+        { fid, data: e.data, document: e.document, entryId: e.id,
+          nextId: () => miscari[i++].id, metoda: stocks.metodaFirma(v) });
+      if (r.lipsuri.length) {
+        fail(409, 'Stoc insuficient la postare: ' + r.lipsuri.map((x) => x.denumire + ' — lipsa ' + x.lipsa).join('; ')
+          + '. Inregistreaza receptiile lipsa si reia postarea.');
+      }
+      const drift = stocks.valuationDrift(v, miscari);
+      if (drift) fail(409, 'Postarea retroactiva ar recalcula iesirea deja postata ' + drift.movementId
+        + ' (' + drift.data + '). Storneaza si reia documentele de stoc in ordine cronologica.');
+      for (const ln of r.cogsLines) {
+        if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) fail(400, 'Cont de descarcare inexistent in plan: ' + ln.debit + '/' + ln.credit);
+      }
+      const baza = Number.isInteger(e.stocBaseLineCount)
+        ? (e.lines || []).slice(0, e.stocBaseLineCount)
+        : (e.lines || []).filter((l) => !l.stocAuto && !/^Descărcare gestiune - cost marfă vândută/.test(String(l.explicatie || '')));
+      e.stocBaseLineCount = baza.length;
+      e.lines = baza.concat(r.cogsLines.map((ln) => Object.assign({}, ln, { stocAuto: true })));
+      const valori = new Map(r.newMovements.map((m) => [m.id, m.valoareContabila]));
+      for (const m of miscari) m.valoareContabila = round2(Number(valori.get(m.id)) || 0);
+    }
     e.postedBy = aid; e.postedAt = at;
   }
   e.status = target;

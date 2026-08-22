@@ -24,11 +24,13 @@ const rep = require('./reporting');
 const decl = require('./declarations');
 const fiscalProfile = require('./fiscalProfile');
 const { reconcile } = require('./reconcile');
+const stocks = require('./stocks');
 const { period: periodOf, plural, fmtDate } = require('./util');
 // Temeiul legal al fiecarui pas — sursa UNICA (src/temeiLegal.js), aceeasi din care citesc si
 // inchiderea anului si ghidul. Cheile pasilor de mai jos coincid cu cele din faza „lunar";
 // o poarta din suita refuza un pas fara temei, ca sa nu apara unul „mut" la o adaugare viitoare.
 const temeiLegal = require('./temeiLegal');
+const crypto = require('crypto');
 
 // Pasii, in ordinea fluxului. `tab`/`eticheta` duc utilizatorul exact la ecranul care rezolva pasul.
 const STEPS = [
@@ -71,6 +73,69 @@ function findRecord(d, firmaId, period) {
   return (d.closings || []).find((c) => c.firmaId === firmaId && c.period === period) || null;
 }
 
+/** JSON canonic: ordinea cheilor nu schimba amprenta, ordinea listelor (cronologia) da. */
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const key of Object.keys(value).sort()) {
+    if (value[key] !== undefined) out[key] = canonical(value[key]);
+  }
+  return out;
+}
+function sha(value) {
+  return crypto.createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+}
+
+/**
+ * Amprenta continutului contabil/fiscal disponibil pana la luna ceruta. Exclude campurile pur
+ * operationale (abonament, credentiale SPV, blocarea perioadei, timpii/actorii articolelor), dar
+ * include cifrele, statutul postarii, configurarea fiscala, tertii si subregistrele care pot
+ * schimba declaratiile sau controalele de inchidere.
+ */
+function periodFingerprint(v, period) {
+  const panaLa = (x, field) => {
+    const raw = x && x[field || 'data'];
+    return !raw || String(raw).slice(0, 7) <= period;
+  };
+  const company = Object.assign({}, v.company || {});
+  for (const k of ['lockedUntil', 'subscription', 'pendingPlan', 'anaf', 'billing', 'trialEndsAt', 'plan', 'logo']) delete company[k];
+  const entries = (v.entries || []).filter((e) => panaLa(e)).map((e) => {
+    const x = Object.assign({}, e);
+    for (const k of ['createdAt', 'createdBy', 'createdByName', 'validatedAt', 'validatedBy',
+      'approvedAt', 'approvedBy', 'postedAt', 'postedBy', 'statusHistory',
+      'stornat', 'stornoBy', 'stornoData']) delete x[k];
+    return x;
+  });
+  return sha({
+    period, company, entries,
+    angajati: v.angajati || [],
+    payrollHistory: (v.payrollHistory || []).filter((x) => !x.period || x.period <= period),
+    products: v.products || [], gestiuni: v.gestiuni || [],
+    stockMovements: (v.stockMovements || []).filter((x) => panaLa(x)),
+    inventories: (v.inventories || []).filter((x) => panaLa(x)),
+    assets: (v.assets || []).filter((x) => panaLa(x, 'dataPif')),
+    partners: v.partners || {}, openingBalances: v.openingBalances || {},
+    openingAnalytic: v.openingAnalytic || [],
+    cursuriBnr: (v.cursuriBnr || []).filter((x) => !x.data || String(x.data).slice(0, 7) <= period),
+  });
+}
+
+/** Amprenta aprobarii = continutul perioadei + starea depunerilor asumate. */
+function approvalFingerprint(d, v, period, sourceHash) {
+  const depuneri = (d.declarations || []).filter((x) => x.firmaId === v.firmaId && x.period === period)
+    .map((x) => ({
+      tip: x.tip, status: x.status, recipisa: x.recipisa || '', artifactHash: x.artifactHash || '',
+      depuneri: (x.depuneri || []).map((p) => ({ ordinal: p.ordinal, rectificativa: !!p.rectificativa,
+        sume: p.sume || null, tipRec: p.tipRec, recipisa: p.recipisa || '', artifactHash: p.artifactHash || '' })),
+    })).sort((a, b) => String(a.tip).localeCompare(String(b.tip), 'ro'));
+  const rec = findRecord(d, v.firmaId, period);
+  const validari = Object.entries((rec && rec.validari) || {}).map(([tip, x]) => ({
+    tip, ok: !!x.ok, errors: Number(x.errors) || 0, contentHash: x.contentHash || '', sourceHash: x.sourceHash || '',
+  })).sort((a, b) => a.tip.localeCompare(b.tip, 'ro'));
+  return sha({ sourceHash: sourceHash || periodFingerprint(v, period), depuneri, validari });
+}
+
 // ── Semnalele fiecarui pas (fiecare intoarce `blocaje` = motivele pentru care pasul NU e gata) ──
 
 /** 1. Documente: ciorne nepostate, furnizori recurenti fara document, e-Facturi netrimise. */
@@ -82,6 +147,35 @@ function checkDocumente(v, period, today) {
   if (ciorne.length) {
     blocaje.push(ciorne.length + (ciorne.length === 1 ? ' articol în ciornă' : ' articole în ciornă')
       + ' — postează-le sau șterge-le (ciornele nu intră în contabilitate).');
+  }
+  // Miscarea manuala de stoc este document primar, dar numai receptia/iesirea POSTATA are
+  // corespondent in cartea mare. Transferul este intern si nu cere nota financiara; stocul initial
+  // traieste in soldurile de deschidere. O legatura catre un articol stornat/orfan nu valoreaza
+  // drept postare.
+  const entryById = new Map((v.entries || []).map((e) => [e.id, e]));
+  const miscariInventarContabilizate = new Set();
+  for (const iv of (v.inventories || [])) {
+    for (const id of (iv.movementIds || [])) miscariInventarContabilizate.add(id);
+    for (const id of (iv.stornoMovementIds || [])) miscariInventarContabilizate.add(id);
+  }
+  const miscariNepostate = (v.stockMovements || []).filter((m) => inLuna(m) && !m.initial && !m.stornat
+    && !m.stornoOfMovementId && m.tip !== 'transfer')
+    .filter((m) => {
+      if (miscariInventarContabilizate.has(m.id)) return false;
+      const e = m.entryId ? entryById.get(m.entryId) : null;
+      return !e || !acc.isPosted(e) || !!e.stornat;
+    });
+  detalii.miscariStocNepostate = miscariNepostate.length;
+  if (miscariNepostate.length) {
+    blocaje.push(plural(miscariNepostate.length, 'mișcare de stoc necontabilizată', 'mișcări de stoc necontabilizate')
+      + ' — postează notele de recepție/ieșire înainte de închidere.');
+  }
+  const lipsuriStoc = stocks.movementShortages(v, period);
+  detalii.lipsuriStoc = lipsuriStoc;
+  if (lipsuriStoc.length) {
+    blocaje.push(plural(lipsuriStoc.length, 'mișcare cu stoc insuficient', 'mișcări cu stoc insuficient')
+      + ': ' + lipsuriStoc.slice(0, 3).map((x) => x.denumire + ' (lipsă ' + x.lipsa + ')').join(', ')
+      + (lipsuriStoc.length > 3 ? ' ș.a.' : '') + ' — înregistrează recepțiile lipsă.');
   }
   const md = rep.missingDocs(v, period);
   detalii.documenteLipsa = md.missing.length;
@@ -151,15 +245,18 @@ function checkTva(v, period, profile) {
 }
 
 /** 4. Declaratii: fiecare asteptata trebuie depusa/scutita SI cu dovada de validare fara erori. */
-function checkDeclaratii(d, v, period, rec, today) {
+function checkDeclaratii(d, v, period, rec, today, sourceHash) {
   const blocaje = []; const detalii = {};
   const rows = decl.registerForFirma(d, v, period, today);
   const validari = (rec && rec.validari) || {};
   const lista = rows.map((r) => {
     const dovada = validari[r.tip] || null;
+    const actuala = !!(dovada && dovada.sourceHash && dovada.sourceHash === sourceHash);
     return {
       tip: r.tip, nume: r.nume, due: r.due, status: r.status, overdue: r.overdue,
-      dovada: dovada ? { at: dovada.at, by: dovada.by, ok: !!dovada.ok, errors: dovada.errors || 0, warnings: dovada.warnings || 0 } : null,
+      dovada: dovada ? { at: dovada.at, by: dovada.by, username: dovada.username || '',
+        ok: !!dovada.ok, errors: dovada.errors || 0, warnings: dovada.warnings || 0,
+        contentHash: dovada.contentHash || null, actuala, invechita: !actuala } : null,
     };
   });
   detalii.declaratii = lista;
@@ -174,6 +271,8 @@ function checkDeclaratii(d, v, period, rec, today) {
     // Depusa, dar fara dovada de validare (sau cu erori la ultima validare) — fluxul cere dovada.
     if (!r.dovada) blocaje.push(r.nume.split(' — ')[0] + ': depusă, dar fără dovadă de validare — rulează validarea.');
     else if (!r.dovada.ok) blocaje.push(r.nume.split(' — ')[0] + ': ultima validare a găsit ' + r.dovada.errors + ' eroare/erori.');
+    else if (!r.dovada.actuala) blocaje.push(r.nume.split(' — ')[0]
+      + ': dovada validării nu mai corespunde datelor curente — validează din nou.');
   }
   if (!lista.length) return { nuSeAplica: true, motiv: 'Nicio declarație așteptată pentru luna asta.', blocaje: [], detalii };
   return { blocaje, detalii };
@@ -194,6 +293,7 @@ function status(d, v, period, opts) {
   }
   const firmaId = v.firmaId;
   const rec = findRecord(d, firmaId, period);
+  const sourceHash = periodFingerprint(v, period);
   const profile = fiscalProfile.build(v.company || {}, { angajati: v.angajati });
   const expected = decl.expectedForFirma(v, period);
   const ancora = anchorDue(expected, period);
@@ -206,11 +306,16 @@ function status(d, v, period, opts) {
     documente: checkDocumente(v, period, today),
     banca: checkBanca(v, period),
     tva: checkTva(v, period, profile),
-    declaratii: checkDeclaratii(d, v, period, rec, today),
+    declaratii: checkDeclaratii(d, v, period, rec, today, sourceHash),
   };
 
   // Aprobarea si blocarea nu au semnal in date, ci inregistrare proprie.
   const aprobare = (rec && rec.aprobare) || null;
+  const aprobareHash = approvalFingerprint(d, v, period, sourceHash);
+  // Dosarele deja inchise inainte de introducerea amprentei raman documente istorice valide;
+  // o aprobare VECHE pe o luna inca deschisa trebuie insa refacuta pe continutul curent.
+  const aprobareLegacyFinala = !!(aprobare && !aprobare.contentHash && rec && rec.closedAt);
+  const aprobareValida = !!(aprobare && (aprobareLegacyFinala || aprobare.contentHash === aprobareHash));
   const lockedUntil = (v.company || {}).lockedUntil || '';
   const blocata = !!lockedUntil && lockedUntil >= period;
 
@@ -224,8 +329,9 @@ function status(d, v, period, opts) {
     if (s.nuSeAplica) {
       stare = 'nuseaplica';
     } else if (def.key === 'aprobare') {
-      stare = aprobare ? 'gata' : 'deschis';
+      stare = aprobareValida ? 'gata' : 'deschis';
       if (!aprobare) blocaje = ['Luna nu e aprobată încă.'];
+      else if (!aprobareValida) blocaje = ['Datele s-au schimbat după aprobare — luna trebuie reaprobată.'];
     } else if (def.key === 'blocare') {
       stare = blocata ? 'gata' : 'deschis';
       if (!blocata) blocaje = ['Perioada e încă deschisă (editabilă).'];
@@ -273,10 +379,17 @@ function status(d, v, period, opts) {
     finalizata: !!(blocata && rec && rec.closedAt),
     inchidere: (rec && rec.closedAt) ? { at: rec.closedAt, by: rec.closedBy, username: rec.closedByName || userName(rec.closedBy) || '' } : null,
     lockedUntil: lockedUntil || null,
-    aprobare: aprobare ? Object.assign({}, aprobare, { responsabil: userName(aprobare.by) || aprobare.username || null }) : null,
+    aprobare: aprobare ? Object.assign({}, aprobare, {
+      responsabil: userName(aprobare.by) || aprobare.username || null,
+      valida: aprobareValida, invechita: !aprobareValida, legacyFinala: aprobareLegacyFinala,
+    }) : null,
+    aprobareValida,
     fortata: (rec && rec.fortata) || null,
     ancoraTermen: ancora,
   };
 }
 
-module.exports = { STEPS, STEP_KEYS, status, findRecord, anchorDue, shiftDays, DEFAULT_OFFSET_DAYS };
+module.exports = {
+  STEPS, STEP_KEYS, status, findRecord, anchorDue, shiftDays, DEFAULT_OFFSET_DAYS,
+  periodFingerprint, approvalFingerprint,
+};

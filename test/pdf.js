@@ -316,7 +316,7 @@ const FIRMA = { nume: 'S.C. PROBA CONTABO S.R.L.', cui: '12345678', adresa: 'Buc
       data: '2026-06-20', operator: 'Ionescu Ana', lines: linii, total: 3300,
     });
     ok('bon de consum: titlu si serie', are(bon.text, 'Bon de consum') && are(bon.text, 'BC-000045'));
-    ok('bon: pretul e CMP-ul, nu pretul de achizitie (coloana isi spune numele)', are(bon.text, 'Pret (CMP)'));
+    ok('bon: coloana arata costul unitar calculat prin metoda firmei', are(bon.text, 'Cost unitar'));
     ok('bon: totalul iesirii', are(bon.text, '3.300,00'));
     ok('bon: cele trei semnaturi (predat/primit/aprobat)', are(bon.text, 'Predat (gestionar)') && are(bon.text, 'Primit') && are(bon.text, 'Aprobat'));
 

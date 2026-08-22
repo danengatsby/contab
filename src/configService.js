@@ -22,7 +22,18 @@ function fail(status, message) { const e = new Error(message); e.status = status
 function updateCompany(fid, b) {
   fid = reqFirma(fid);
   const f = db.getFirma(fid);
-  Object.assign(f, db.pickFirmaFields(b), { id: f.id });
+  const fields = db.pickFirmaFields(b);
+  const veche = String(f.metodaEvaluareStoc || 'cmp').toLowerCase() === 'fifo' ? 'fifo' : 'cmp';
+  const metodaCeruta = String(fields.metodaEvaluareStoc || veche).toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(fields, 'metodaEvaluareStoc') && !['cmp', 'fifo'].includes(metodaCeruta)) {
+    fail(400, 'Metoda de evaluare a stocului trebuie sa fie CMP sau FIFO.');
+  }
+  const noua = metodaCeruta === 'fifo' ? 'fifo' : 'cmp';
+  if (noua !== veche && (db.get().stockMovements || []).some((m) => m.firmaId === fid && m.tip !== 'receptie')) {
+    fail(409, 'Metoda de evaluare a stocului nu se poate schimba dupa prima iesire/transfer: ar recalcula retroactiv costurile deja inregistrate. Configureaz-o inainte de operarea stocului.');
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, 'metodaEvaluareStoc')) fields.metodaEvaluareStoc = noua;
+  Object.assign(f, fields, { id: f.id });
   db.save();
   return { company: f };
 }

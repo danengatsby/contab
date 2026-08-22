@@ -34,7 +34,7 @@ export function closeHeaderHtml(st) {
        Pași nerezolvați la acel moment: ${H((st.fortata.blocante || []).join(', '))}.</div></div>`
     : '';
   const aprobare = st.aprobare
-    ? `<p class="muted">Aprobată de <b>${H(st.aprobare.username || st.aprobare.responsabil || '—')}</b> la ${H(String(st.aprobare.at).slice(0, 16).replace('T', ' '))}${st.aprobare.nota ? ' — ' + H(st.aprobare.nota) : ''}.</p>`
+    ? `<p class="${st.aprobare.invechita ? 'err' : 'muted'}">${st.aprobare.invechita ? '⚠ Aprobarea nu mai este valabilă: datele s-au schimbat. Reaprobă luna. Aprobare anterioară' : 'Aprobată'} de <b>${H(st.aprobare.username || st.aprobare.responsabil || '—')}</b> la ${H(String(st.aprobare.at).slice(0, 16).replace('T', ' '))}${st.aprobare.nota ? ' — ' + H(st.aprobare.nota) : ''}.</p>`
     : '';
   return `<div class="closehead">
     <div class="closebar" title="${p.gata} din ${p.total} pași"><span class="closebarfill" data-style="width:${p.procent}%"></span></div>
@@ -125,7 +125,9 @@ export function proofsHtml(st, validabile) {
   return `<table><thead><tr><th>Declarație</th><th>Termen</th><th>Stare</th><th>Dovada validării</th><th></th></tr></thead><tbody>${
     decls.map((r) => {
       const dov = r.dovada
-        ? (r.dovada.ok
+        ? (r.dovada.invechita
+          ? `<span class="pill err">învechită</span> <span class="muted">datele s-au schimbat · validează din nou</span>`
+          : r.dovada.ok
           ? `<span class="pill ok">fără erori</span> <span class="muted">${H(String(r.dovada.at).slice(0, 16).replace('T', ' '))} · ${H(r.dovada.username || '')}</span>`
           : `<span class="pill err">${H(r.dovada.errors)} eroare/erori</span> <span class="muted">${H(String(r.dovada.at).slice(0, 16).replace('T', ' '))}</span>`)
         : '<span class="muted">nevalidată</span>';
@@ -163,7 +165,7 @@ function renderCloseButton(st) {
     box.innerHTML = `<p class="ok">🔒 Luna ${H(st.period)} este închisă${c.username ? ' de ' + H(c.username) : ''}${c.at ? ' la ' + H(String(c.at).slice(0, 16).replace('T', ' ')) : ''} — perioada e read-only. Deblocarea se face din Setări → Blocare perioadă.</p>`;
     return;
   }
-  const aprobata = !!st.aprobare;
+  const aprobata = !!st.aprobareValida;
   const blocante = st.blocante || [];
   // Perioada poate fi deja blocată fără să fi trecut prin flux (marcarea unei declarații ca
   // depusă blochează automat luna). Spunem asta, ca butonul „Blochează perioada" să nu pară inutil.
@@ -173,7 +175,7 @@ function renderCloseButton(st) {
   box.innerHTML = dejaBlocata + `
     ${aprobata
     ? '<button id="clUnapprove" class="btn">Retrage aprobarea</button>'
-    : '<button id="clApprove" class="btn primary">Aprobă luna</button>'}
+    : `<button id="clApprove" class="btn primary">${st.aprobare && st.aprobare.invechita ? 'Reaprobă luna' : 'Aprobă luna'}</button>`}
     <button id="clClose" class="btn primary"${blocante.length ? ' disabled' : ''}>Blochează perioada</button>
     ${blocante.length
     ? `<p class="muted">Închiderea e blocată de: ${H(blocante.map((b) => b.nume).join(', '))}.</p>

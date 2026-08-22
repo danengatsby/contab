@@ -75,7 +75,7 @@ var PANEL_INFO = [
   // Stocuri
   ['Gestiuni (depozite)', 'Nomenclatorul de gestiuni; stocul și costul mediu ponderat se țin separat pe fiecare gestiune.'],
   ['Adaugă produs', 'Nomenclatorul de produse: cod, denumire, unitate de măsură și felul stocului (marfă, materii prime, produse finite…).', 'Conturi de stoc: 371 mărfuri, 301 materii, 345 produse finite.'],
-  ['Înregistrează mișcare', 'Recepții, ieșiri (descărcare la CMP) și transferuri între gestiuni; nota contabilă se poate posta automat.'],
+  ['Înregistrează mișcare', 'Recepții, ieșiri (descărcare la metoda firmei: CMP/FIFO) și transferuri între gestiuni; nota contabilă se poate posta automat.'],
   ['🏭 Producție', 'Consumă materialele din rețetă și obține produsul finit în gestiune, la cost de producție.'],
   ['Situație producție', 'Producția lunii de lucru: cantitățile obținute și costurile lor.'],
   ['📋 Rețete / BOM', 'Rețetele de producție: ce materiale se consumă pentru o unitate de produs finit.'],

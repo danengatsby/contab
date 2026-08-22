@@ -1689,6 +1689,8 @@ section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js
   ok('pașii nerezolvați la forțare sunt escapați', hForced.includes('D&lt;300'));
   const hAprob = inchidere.closeHeaderHtml(Object.assign({}, stBaza, { aprobare: { username: 'ma<ria', at: '2026-07-20T08:00:00Z', nota: 'ok <b>' } }));
   ok('aprobarea arată cine și când, escapat', hAprob.includes('ma&lt;ria') && hAprob.includes('ok &lt;b&gt;'));
+  const hAprobVeche = inchidere.closeHeaderHtml(Object.assign({}, stBaza, { aprobare: { username: 'maria', at: '2026-07-20T08:00:00Z', invechita: true } }));
+  ok('aprobarea invechita spune explicit ca datele s-au schimbat', hAprobVeche.includes('nu mai este valabilă') && hAprobVeche.includes('Reaprobă'));
 
   // Tabelul dovezilor de validare
   const stDecl = {
@@ -1696,6 +1698,7 @@ section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js
       { tip: 'd300', nume: 'D300 — decont TVA', due: '2026-07-25', status: 'depusa', overdue: false, dovada: { at: '2026-07-20T09:30:00Z', username: 'ma<ria', ok: true, errors: 0, warnings: 1 } },
       { tip: 'd394', nume: 'D394 — <b>info</b>', due: '2026-07-25', status: 'generata', overdue: true, dovada: { at: '2026-07-20T09:31:00Z', username: 'x', ok: false, errors: 2, warnings: 0 } },
       { tip: 'saft', nume: 'D406 — SAF-T', due: '2026-07-31', status: 'nedepusa', overdue: false, dovada: null },
+      { tip: 'd112', nume: 'D112 — salarii', due: '2026-07-25', status: 'depusa', overdue: false, dovada: { at: '2026-07-20T09:32:00Z', username: 'x', ok: true, errors: 0, warnings: 0, invechita: true } },
     ] } }],
   };
   const hProof = inchidere.proofsHtml(stDecl, [{ tip: 'd300' }, { tip: 'd394' }]);
@@ -1705,6 +1708,7 @@ section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js
   ok('tabelul folosește eticheta, nu valoarea brută', hProof.includes('nedepusă') && !hProof.includes('>nedepusa<'));
   ok('dovada fără erori se vede ca atare', hProof.includes('fără erori'));
   ok('dovada cu erori arată numărul', hProof.includes('2 eroare/erori'));
+  ok('dovada invechita cere revalidare dupa schimbarea datelor', hProof.includes('învechită') && hProof.includes('validează din nou'));
   ok('declarația nevalidată e marcată', hProof.includes('nevalidată'));
   ok('butonul de validare apare doar pentru tipurile validabile', (hProof.match(/cl-val/g) || []).length === 2);
   ok('numele declarației e escapat', hProof.includes('D394 — &lt;b&gt;info&lt;/b&gt;'));

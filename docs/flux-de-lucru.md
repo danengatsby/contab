@@ -34,9 +34,10 @@ implicit postate — zero schimbare pe datele existente). Postarea verifică **p
 Odată **postat**, starea nu se mai schimbă: corecția se face exclusiv prin **storno** (nu retrogradare).
 O **ciornă** nu se stornează — se șterge direct.
 
-**Corecții reversibile (storno)**: orice articol **postat** se poate **storna** — `POST /api/entries/:id/storno`
+**Corecții reversibile (storno)**: orice articol **postat** fără subregistru dedicat se poate
+**storna** — `POST /api/entries/:id/storno`
 (opțional `{data}`, care trebuie într-o **perioadă deschisă**). Se generează o notă de reversare
-(debit↔credit, aceleași sume), legată de original prin `stornoOf`, marcată `system`; originalul
+(aceleași conturi, sume negate — storno în roșu), legată de original prin `stornoOf`, marcată `system`; originalul
 primește `stornat`/`stornoBy` și devine **imutabil** (nu se mai șterge și nu se re-stornează). Ambele
 note rămân în jurnal (append-only) — corecția e **documentată și reversibilă**, nu o ștergere care
 pierde urma. Articolele cu impact pe **stoc** au corecția dedicată (mișcare/inventar), ca fișa de
@@ -132,31 +133,34 @@ Fiecare raport are buton **⬇ PDF**, iar fiecare înregistrare poate fi exporta
 > prin Docker). Detalii: `docs/guvernanta-fiscala.md`; dovada validării per versiune: `docs/validare-oficiala.md`. Validarea
 > oficială se repetă oricum obligatoriu la depunerea în SPV.
 
-**Gestiunea stocurilor (cantitativ-valoric, CMP, pe gestiuni):** tab-ul „Stocuri” ține un
+**Gestiunea stocurilor (cantitativ-valoric, CMP/FIFO, pe gestiuni):** tab-ul „Stocuri” ține un
 nomenclator de **gestiuni** (depozite: cod, denumire, gestionar, cont) și de **produse** (cod,
 denumire, UM, cont 371/301/345…, cod NC), plus mișcările de stoc: **recepții**, **ieșiri** și
-**transferuri între gestiuni**. Stocul și **costul mediu ponderat (CMP)** se țin **separat per
-(produs × gestiune)**, recalculate la fiecare intrare; transferul scoate din gestiunea sursă și
-intră în destinație la CMP-ul sursei. Se poate filtra stocul pe gestiune. Fiecare mișcare și fiecare
+**transferuri între gestiuni**. Stocul și valoarea se țin **separat per produs × gestiune**, prin
+metoda configurată **CMP/FIFO**; transferul mută valoarea efectivă, iar la FIFO păstrează loturile
+și costurile lor. Contul de stoc al produsului devine imuabil după prima mișcare, ca istoricul,
+cartea mare și SAF-T să rămână reconciliate. Importul de stoc inițial este permis numai înaintea
+primei ieșiri contabilizate. Se poate filtra stocul pe gestiune. Fiecare mișcare și fiecare
 inventar rețin **operatorul** (utilizatorul autentificat care a înregistrat), afișat în liste și pe
 procesul-verbal — pistă de audit pe lângă jurnalul global.
 Livrabile: **Situația stocurilor** (`/pdf/stocks`) și **Fișa de magazie** pe produs (registrul
-cronologic cu CMP, `/pdf/stock-ledger/:id`). Datele alimentează secțiunile `Products`,
+cronologic evaluat prin metoda firmei, `/pdf/stock-ledger/:id`). Datele alimentează secțiunile `Products`,
 `PhysicalStock` (pe gestiune, cu `WarehouseID`) și `MovementOfGoods` (transferurile au și
 `WarehouseIDTo`) din SAF-T. API: `GET/POST/DELETE /api/gestiuni`, `GET/POST/DELETE /api/products`,
-`GET/POST/DELETE /api/stock-movements`, `GET /api/stocks[?gestiune=]`, `GET /api/stocks/:id/ledger`.
+`GET/POST/DELETE /api/stock-movements`, `POST /api/stock-movements/:id/storno`,
+`GET /api/stocks[?gestiune=]`, `GET /api/stocks/:id/ledger`.
 
 **Inventariere** (pe gestiune): din cardul „Inventariere” încarci lista cu **stocul scriptic**
 (din evidență) pe fiecare produs, completezi **stocul faptic** (numărat fizic) și înregistrezi
 diferențele — se generează automat atât mișcarea de stoc de reglare, cât și articolele contabile:
-**plus de inventar `3xx = 758`**, **minus/lipsă `60x = 3xx`** la CMP, iar bifând „imputare” se adaugă
+**plus de inventar `3xx = 758`**, **minus/lipsă `60x = 3xx`** la CMP/FIFO, iar bifând „imputare” se adaugă
 **`4282 = 7588 + 4427`** (recuperarea lipsei de la gestionar, cu TVA). Fiecare inventar se
 **salvează ca document** și produce un **proces-verbal de inventariere** (PDF) cu scriptic/faptic/
 diferențe/valori/imputări și totaluri, reimprimabil din lista „Inventarieri efectuate”. Livrabile:
 **Lista de inventariere** (`/pdf/inventory`, formularul de numărat) și **Procesul-verbal**
 (`/pdf/inventory-pv/:id`). Un inventar se poate **storna** (`POST /api/inventories/:id/storno`):
-notele contabile sunt **reversate** (storno cu debit↔credit), mișcările de reglare sunt șterse
-(stocul revine exact la starea de dinainte), documentul e marcat „stornat”, iar PV-ul tipărește
+notele contabile sunt stornate **în roșu**, iar mișcările de reglare sunt neutralizate prin mișcări
+inverse păstrate în audit (stocul revine exact la starea de dinainte), documentul e marcat „stornat”, iar PV-ul tipărește
 mențiunea STORNAT. API: `GET /api/inventory?gestiune=&asOf=`, `POST /api/inventory`,
 `GET /api/inventories`, `POST /api/inventories/:id/storno`.
 
@@ -165,9 +169,9 @@ Pentru recepții se poate tipări **NIR-ul** (Nota de Intrare-Recepție și cons
 document): furnizor, gestiune, dată, liniile cu cantitate/preț/valoare, total și rubrici de semnătură
 (comisia de recepție, gestionar). Furnizorul se completează pe mișcarea de recepție. Simetric, pentru
 ieșiri se tipărește **bonul de consum** (`/pdf/bon-consum?id=` sau `?document=&gestiune=`), cu liniile
-valorate la **CMP** și rubrici de semnătură (predat/primit/aprobat). Pentru transferuri (marfa care
+valorate la metoda firmei (**CMP/FIFO**) și rubrici de semnătură (predat/primit/aprobat). Pentru transferuri (marfa care
 circulă fizic între gestiuni) se tipărește **avizul de însoțire a mărfii** (`/pdf/aviz?id=`), cu
-expeditor/destinatar (gestiunile), valoare la CMP-ul sursei și rubrici expeditor/delegat/primire.
+expeditor/destinatar (gestiunile), valoarea efectivă scoasă din sursă și rubrici expeditor/delegat/primire.
 
 Documentele de stoc (NIR/bon de consum/aviz) primesc **serie și număr secvențial** (configurabile în
 cardul „Serii documente”): numărul se atribuie automat la prima tipărire și **rămâne fix la
@@ -178,11 +182,19 @@ referință, valoare și operator. Lista de mișcări se poate **filtra** (insta
 **tip** (recepție/ieșire/transfer), **gestiune**, **lună** și o **căutare liberă** (produs / document /
 operator).
 
-Fiecare mișcare poate genera **automat articolul contabil** („postează nota”): recepția
+Fiecare recepție/ieșire poate genera **automat articolul contabil** („postează nota”): recepția
 **`3xx = 401`** (la valoarea de intrare), iar ieșirea (**descărcarea de gestiune**) **`60x = 3xx`**
-la **valoarea CMP** calculată de gestiune (607 mărfuri, 601 materii prime, 602 materiale, 711 produse
-finite…). Nota e legată de mișcare (`entryId`/`movementId`); ștergerea mișcării șterge și nota.
-`POST /api/stock-movements/:id/post`.
+la metoda firmei (**CMP sau FIFO**; 607 mărfuri, 601 materii prime, 602 materiale, 711 produse
+finite…). Transferul între gestiuni nu generează cheltuială și nu poate fi postat ca ieșire.
+Nota e legată de mișcare (`entryId`/`stocMovementId`); după postare, corecția este append-only prin
+`POST /api/stock-movements/:id/storno`, nu ștergere. Lipsa de stoc este vizibilă în listă și
+blochează nota și închiderea lunii. Pentru o factură/producție cu mai multe mișcări sub aceeași
+notă, stornarea uneia neutralizează atomic întregul grup. `POST /api/stock-movements/:id/post`.
+
+Mișcările automate ale unei facturi în **ciornă** sunt inactive: nu reduc stocul până la tranziția
+`postat`, moment în care costul se recalculează pe stocul curent. Ștergerea ciornei elimină și
+mișcările ei auxiliare, fără orfani. O factură salvată direct ca postată este refuzată dacă nu are
+stoc suficient; nu se mai acceptă o descărcare parțială care ar supraevalua marja.
 
 **Mijloace fixe (registru + amortizare):** tab-ul „Mijloace fixe” ține registrul de imobilizări
 (denumire, cont 21x/20x, cost, valoare reziduală, dată achiziție / punere în funcțiune, durată în

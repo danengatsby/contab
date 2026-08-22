@@ -61,7 +61,7 @@ const F = {
   analiticBanca: { name: 'analitic', label: 'Analitic bancă/casă (ex. BCR, ING)', type: 'text' },
   analiticAngajat: { name: 'analitic', label: 'Analitic angajat (ex. Ion Popescu)', type: 'text' },
   items: { name: 'items', label: 'Linii factura (optional, pentru e-Factura)', type: 'items' },
-  stoc: { name: 'stoc', label: 'Descarcare din stoc (produs + gestiune + cantitate) — cost la CMP, automat', type: 'stoc' },
+  stoc: { name: 'stoc', label: 'Descarcare din stoc (produs + gestiune + cantitate) — cost CMP/FIFO, automat', type: 'stoc' },
   auto50: { name: 'auto50', label: 'Deductibilitate auto 50% (vehicul fara uz exclusiv): 50% din TVA devine nedeductibil si intra in cost', type: 'checkbox' },
   proRataMixt: { name: 'proRataMixt', label: 'Achizitie cu destinatie mixta (pro-rata, art. 300): TVA deductibila doar in procentul pro-rata setat pe firma, restul intra in cost', type: 'checkbox' },
   // Codul de bun art. 331 (nomenclatorul oficial D394, sectiunea op11). Fara el, D394 e respins

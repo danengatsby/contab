@@ -107,6 +107,8 @@ function validateDeclaration(fid, period, tip, user) {
     errors: (rezultat.errors || []).length,
     warnings: (rezultat.warnings || []).length,
     mesaje: (rezultat.errors || []).slice(0, 10),
+    contentHash: rezultat.contentHash || null,
+    sourceHash: mc.periodFingerprint(v, period),
   };
   db.save();
   return { rezultat, state: state(fid, period) };
@@ -121,11 +123,16 @@ function approve(fid, period, user, nota) {
     fail(400, 'Nu poți aproba luna cât timp sunt pași nerezolvați: ' + inaintea.map((s) => s.nume).join(', ') + '.');
   }
   const rec = ensureRecord(fid, period);
+  if (rec.aprobare) {
+    rec.aprobariAnterioare = Array.isArray(rec.aprobariAnterioare) ? rec.aprobariAnterioare : [];
+    rec.aprobariAnterioare.push(Object.assign({}, rec.aprobare, { inlocuitaLa: new Date().toISOString() }));
+  }
   rec.aprobare = {
     by: user ? user.id : null,
     username: user ? user.username : '',
     at: new Date().toISOString(),
     nota: String(nota == null ? '' : nota).slice(0, 300),
+    contentHash: mc.approvalFingerprint(db.get(), db.scoped(fid), period),
   };
   db.save();
   return state(fid, period);
