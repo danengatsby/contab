@@ -1773,6 +1773,26 @@ section('Poarta: orice articol contabil intra prin `db.pushEntry` (planul de con
   eq('...cu status 400 (eroare de business, nu 500)', aruncat && aruncat.status, 400);
   ok('...numind contul vinovat', aruncat && /2819/.test(aruncat.message));
   ok('...si contextul, ca sa se stie de unde vine articolul', aruncat && /proba/.test(aruncat.message));
+
+  // Aceeasi poarta pazeste CRONOLOGIA si sumele. Un text cu forma de data nu este neaparat o
+  // data reala, iar `period` trebuie sa fie derivat din ea — altfel jurnalul si declaratiile ar
+  // putea pune acelasi articol in luni diferite. Functia pura permite sa verificam si cazul bun
+  // fara sa incarcam ori sa modificam baza suitei.
+  const bun = { data: '2026-02-28', period: '2026-02', lines: [{ debit: '6811', credit: '281', suma: 10 }] };
+  eq('forma completa si coerenta este acceptata', dbE.entryShapeProblem(bun), null);
+  ok('data imposibila este refuzata', /dată calendaristică/.test(dbE.entryShapeProblem(Object.assign({}, bun, { data: '2026-02-30' }))));
+  ok('luna imposibila este refuzata', /lună validă/.test(dbE.entryShapeProblem(Object.assign({}, bun, { period: '2026-13' }))));
+  ok('perioada diferita de data este refuzata', /nu corespunde/.test(dbE.entryShapeProblem(Object.assign({}, bun, { period: '2026-03' }))));
+  ok('articolul fara linii este refuzat', /nu are linii/.test(dbE.entryShapeProblem(Object.assign({}, bun, { lines: [] }))));
+  ok('suma infinita este refuzata', /sumă finită/.test(dbE.entryShapeProblem(Object.assign({}, bun,
+    { lines: [{ debit: '6811', credit: '281', suma: Infinity }] }))));
+  let formaAruncata = null;
+  try { dbE.pushEntry(Object.assign({}, bun, { data: '2026-04-31', period: '2026-04' }), { context: 'proba forma' }); }
+  catch (e) { formaAruncata = e; }
+  ok('pushEntry REFUZA forma invalida chiar cu toate conturile existente', !!formaAruncata);
+  eq('...tot ca eroare de business', formaAruncata && formaAruncata.status, 400);
+  ok('...cu sursa si problema in mesaj', formaAruncata && /proba forma/.test(formaAruncata.message)
+    && /dată calendaristică/.test(formaAruncata.message));
 }
 
 section('Poarta: fiecare pas din ciclul contabil isi poarta temeiul legal');

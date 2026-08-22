@@ -1037,8 +1037,16 @@ async function main() {
     const dep = await req('POST', '/api/assets/depreciation?period=2026-06', { cookie: c1 });
     ok('amortizare iunie: inregistrata (6811=2813)', dep.json && dep.json.ok && dep.json.result && dep.json.result.lines.length === 1);
     eq('amortizare iunie a doua oara -> 400 (deja inregistrata)', (await req('POST', '/api/assets/depreciation?period=2026-06', { cookie: c1 })).status, 400);
+    eq('asset cu amortizare postata nu se sterge din registru', (await req('DELETE', '/api/assets/' + aid, { cookie: c1 })).status, 409);
+    eq('casare retroactiva inaintea unei amortizari postate -> 409',
+      (await req('POST', '/api/assets/' + aid + '/scrap', { cookie: c1, body: { dataCasare: '2026-05-31' } })).status, 409);
     ok('asset scrap: marcheaza casat', (await req('POST', '/api/assets/' + aid + '/scrap', { cookie: c1, body: {} })).json.asset.status === 'casat');
-    ok('asset delete: sterge mijlocul', (await req('DELETE', '/api/assets/' + aid, { cookie: c1 })).json.ok === true);
+    eq('asset casat ramane in istoricul registrului', (await req('DELETE', '/api/assets/' + aid, { cookie: c1 })).status, 409);
+    const faraIstoric = await req('POST', '/api/assets', { cookie: c1, body: {
+      denumire: 'Activ introdus din greseala', cont: '2131', cost: 1000, durataLuni: 12, dataPif: '2026-07-15', metoda: 'liniara' } });
+    ok('asset nefolosit poate fi sters', (await req('DELETE', '/api/assets/' + faraIstoric.json.asset.id, { cookie: c1 })).json.ok === true);
+    eq('asset cu data imposibila -> 400', (await req('POST', '/api/assets', { cookie: c1, body: {
+      denumire: 'Data imposibila', cont: '2131', cost: 1000, durataLuni: 12, dataPif: '2026-02-30' } })).status, 400);
 
     // ── Temeiul legal al ciclului contabil ────────────────────────────────────────────────────
     {
@@ -1162,6 +1170,35 @@ async function main() {
         const art = items.filter((e) => e.tip === 'provizion_creante').pop();
         if (art) ok('ajustare postata fara confirmare -> fara marcaj art. 26', !art.bazaArt26);
       }
+      eq('procent provizion peste 100 -> 400', (await req('GET', '/api/provizion?pct=101', { cookie: c1 })).status, 400);
+      eq('procent provizion negativ -> 400', (await req('POST', '/api/provizion', { cookie: c1, body: { pct: -1 } })).status, 400);
+    }
+
+    // Scoaterea foloseste contul analitic REAL si nu poate depasi soldul. Avizul lasa deliberat
+    // creanta in 418; implementarea veche credita mereu 4111 si crea simultan un sold creditor
+    // fictiv acolo, pastrand neatins exact soldul care trebuia scos.
+    {
+      const av = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'aviz_livrare', fields: {
+        data: '2025-01-10', partener: 'Client Writeoff 418', cuiPartener: 'RO99118', document: 'AV-WO-1', baza: 1000, tva: 0, cota: 0 } } });
+      ok('fixture writeoff: creanta a intrat in 418', av.json && av.json.entry
+        && av.json.entry.lines.some((l) => l.debit === '418' && l.suma === 1000));
+      eq('writeoff cu data imposibila -> 400', (await req('POST', '/api/writeoff', { cookie: c1, body: {
+        partener: 'Client Writeoff 418', cui: 'RO99118', suma: 100, data: '2026-02-30' } })).status, 400);
+      const preaMult = await req('POST', '/api/writeoff', { cookie: c1, body: {
+        partener: 'Client Writeoff 418', cui: 'RO99118', suma: 1000.01, data: '2026-08-20' } });
+      eq('writeoff peste sold -> 409', preaMult.status, 409);
+      eq('...raporteaza soldul disponibil exact', preaMult.json && preaMult.json.disponibil, 1000);
+      const wo = await req('POST', '/api/writeoff', { cookie: c1, body: {
+        partener: 'Client Writeoff 418', cui: 'RO99118', suma: 400, data: '2026-08-20' } });
+      ok('writeoff valid: aloca suma pe 418', wo.status === 200 && wo.json.alocari.length === 1
+        && wo.json.alocari[0].cont === '418' && wo.json.alocari[0].suma === 400);
+      const lista = await req('GET', '/api/entries?limit=500', { cookie: c1 });
+      const articole = (lista.json && lista.json.items) || lista.json || [];
+      const art = articole.filter((e) => e.tip === 'scoatere_creanta' && e.partenerCui === 'RO99118').pop();
+      ok('articolul crediteaza 418, nu 4111', art && art.lines.some((l) => l.debit === '654' && l.credit === '418' && l.suma === 400)
+        && !art.lines.some((l) => l.credit === '4111'));
+      eq('dupa scoatere, soldul ramas este noul plafon', (await req('POST', '/api/writeoff', { cookie: c1, body: {
+        partener: 'Client Writeoff 418', cui: 'RO99118', suma: 600.01, data: '2026-08-21' } })).status, 409);
     }
 
     // ── B1+B2: inventarierea, registrul-inventar si ajustarea pentru depreciere ───────────────
@@ -2445,7 +2482,9 @@ async function main() {
     const isoE = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-08-06', partener: 'Iso Client', cuiPartener: 'RO99', document: 'ISO-9', baza: 500, tva: 105, cota: 21 } } })).json.entry;
     // ciorna dedicata pentru cazul pozitiv de stergere (doar ciornele se sterg; postatele = storno)
     const isoED = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: '2026-08-06', explicatie: 'Ciorna de sters', debit: '5311', credit: '5121', suma: 42 } } })).json.entry;
-    const isoAs = (await req('POST', '/api/assets', { cookie: c1, body: { denumire: 'Utilaj izolare', cont: '2131', cost: 5000, durataLuni: 60, dataPif: '2026-01-15' } })).json.asset || {};
+    // Data contemporana scenariului: registrul refuza deliberat o PIF retroactiva intr-o luna
+    // deja inchisa, deci fixture-ul de izolare nu trebuie sa depinda de ocolirea acelei garzi.
+    const isoAs = (await req('POST', '/api/assets', { cookie: c1, body: { denumire: 'Utilaj izolare', cont: '2131', cost: 5000, durataLuni: 60, dataPif: '2026-08-15' } })).json.asset || {};
     const isoLs = (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { denumire: 'Leasing izolare', principal: 50000, months: 36, dobandaAnuala: 9, dataPrimeiRate: '2026-03-15', cotaTva: 21 } })).json.contract || {};
     // utilizator nou, DOAR pe firma 2
     // ruta de admin foloseste ACEEASI regula de nume ca inscrierea publica
@@ -2478,6 +2517,10 @@ async function main() {
     ok('fluturasul strain: refuzat', (await req('GET', '/pdf/fluturas/' + isoA.id + '?period=2026-08', { cookie: c2 })).status !== 200);
     ok('trimiterea in SPV a facturii straine: refuzata', deny(await req('POST', '/api/anaf/send/' + isoE.id, { cookie: c2 })));
     // decisiv: resursele firmei 1 sunt INTACTE dupa toate incercarile
+    const activeF1Inainte = (await req('GET', '/api/assets', { cookie: c1 })).json;
+    ok('mijlocul fix propriu este intact dupa tentativele straine'
+      + (Array.isArray(activeF1Inainte) ? '' : ' — răspuns: ' + JSON.stringify(activeF1Inainte)),
+    Array.isArray(activeF1Inainte) && activeF1Inainte.some((x) => x.id === isoAs.id));
     ok('resursele firmei 1 sunt intacte dupa sweep', (
       (await req('GET', '/api/products', { cookie: c1 })).json.some((p) => p.id === isoP.id)
       && (await req('GET', '/api/gestiuni', { cookie: c1 })).json.some((g) => g.id === isoG.id)
@@ -2492,10 +2535,13 @@ async function main() {
     ok('articolul postat e inca prezent dupa incercarea de stergere', (await req('GET', '/api/entries', { cookie: c1 })).json.some((e) => e.id === isoE.id));
     // proprietarul isi poate sterge propriile resurse (guard-ul nu blocheaza firma corecta);
     // pentru articole se sterge CIORNA (postatele = storno-only)
+    const delIsoAs = await req('DELETE', '/api/assets/' + isoAs.id, { cookie: c1 });
+    ok('proprietarul sterge mijlocul fix propriu nefolosit'
+      + (delIsoAs.status === 200 ? '' : ' — ' + delIsoAs.status + ': ' + ((delIsoAs.json || {}).error || '')),
+    delIsoAs.status === 200 && delIsoAs.json.ok === true);
     ok('proprietarul sterge propriile resurse', (
       (await req('DELETE', '/api/entries/' + isoED.id, { cookie: c1 })).json.ok === true
       && (await req('DELETE', '/api/angajati/' + isoA.id, { cookie: c1 })).json.ok === true
-      && (await req('DELETE', '/api/assets/' + isoAs.id, { cookie: c1 })).json.ok === true
       && (await req('DELETE', '/api/stock-movements/' + isoM.id, { cookie: c1 })).json.ok === true
       && (await req('DELETE', '/api/products/' + isoP.id, { cookie: c1 })).json.ok === true
       && (await req('DELETE', '/api/gestiuni/' + isoG.id, { cookie: c1 })).json.ok === true
@@ -2612,8 +2658,14 @@ async function main() {
       eq('stare invalida -> 400', (await req('POST', '/api/entries/' + drE.id + '/status', { cookie: c1, body: { status: 'xyz' } })).status, 400);
       // postarea unei ciorne intr-o luna INCHISA -> refuzata
       const dr2 = (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: per + '-12', explicatie: 'Ciorna blocata', debit: '5311', credit: '5121', suma: 60 } } })).json.entry;
-      await req('POST', '/api/period-lock', { cookie: la.cookie, body: { lockedUntil: per } });
+      await req('POST', '/api/period-lock', { cookie: la.cookie, body: { lockedUntil: '2026-12' } });
       eq('postarea unei ciorne in luna inchisa -> 400', (await req('POST', '/api/entries/' + dr2.id + '/status', { cookie: c1, body: { status: 'postat' } })).status, 400);
+      eq('writeoff nu ocoleste perioada inchisa', (await req('POST', '/api/writeoff', { cookie: c1, body: {
+        partener: 'Client Writeoff 418', cui: 'RO99118', suma: 1, data: per + '-20' } })).status, 400);
+      eq('inventarierea anuala nu modifica un an inchis', (await req('POST', '/api/inventar-valori', { cookie: c1, body: {
+        an: '2026', cont: '371', valoareInventar: 1 } })).status, 400);
+      eq('registrul de mijloace fixe nu accepta PIF intr-o luna inchisa', (await req('POST', '/api/assets', { cookie: c1, body: {
+        denumire: 'MF blocat', cont: '2131', cost: 1000, durataLuni: 12, dataPif: per + '-15' } })).status, 400);
       await req('POST', '/api/period-lock', { cookie: la.cookie, body: { lockedUntil: null } }); // deblochez pentru restul suitei
       // storno pe articol strain (flux de stare) ramane blocat de guardul de firma
       ok('schimbarea de stare a unui articol strain: refuzata', deny(await req('POST', '/api/entries/' + drE.id + '/status', { cookie: c2, body: { status: 'ciorna' } })));

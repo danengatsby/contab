@@ -35,7 +35,7 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 
 ### Formatul erorilor
 
-- Erorile de business: `{ "error": "<mesaj în română>" }` cu status **400/403/404/429**.
+- Erorile de business: `{ "error": "<mesaj în română>" }` cu status **400/403/404/409/429**.
 - Excepții documentate: rutele care servesc **PDF/imagini** (`/pdf/*`, `GET /api/company/logo`)
   răspund cu **text**, nu JSON; dezechilibrul soldurilor inițiale adaugă câmpuri lângă
   `error` (vezi `POST /api/opening`).
@@ -55,7 +55,9 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 
 ### Formate
 
-- Perioade: `YYYY-MM`; date: `YYYY-MM-DD`; ani: `YYYY`. Sume: numere cu 2 zecimale.
+- Perioade: luni calendaristice reale `YYYY-MM`; date: date calendaristice reale `YYYY-MM-DD`;
+  ani: `YYYY`. Articolele cer concordanță exactă între dată și perioadă, cel puțin o linie și sume
+  finite, nenule. Sume: numere cu 2 zecimale.
 - CUI: normalizat intern fără prefixul `RO` și fără spații.
 - Contul demo e public și partajat: scrierile pe cont/firme sunt refuzate cu 403.
 
@@ -132,7 +134,7 @@ preluarea identității și a factorilor de autentificare ai utilizatorului.
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
 | `GET /api/entries` | `?period=YYYY-MM` | articolele firmei active, sortate |
-| `POST /api/entries` | `{ tip, fields, fileId?, spvMsgId?, motivRevizuire? }` | `{ ok, entry, stoc }`; liniile `fields.stoc[]` (productId+gestiuneId+cantitate) generează descărcarea CMP/FIFO atomic; 409 la stoc insuficient/recalcul retroactiv, 400 la tip/câmpuri invalide sau perioadă închisă |
+| `POST /api/entries` | `{ tip, fields, fileId?, spvMsgId?, motivRevizuire? }` | `{ ok, entry, stoc }`; liniile `fields.stoc[]` (productId+gestiuneId+cantitate) generează descărcarea CMP/FIFO atomic; 409 la stoc insuficient/recalcul retroactiv, 400 la tip/câmpuri/data invalide sau perioadă închisă |
 | `POST /api/preview` | `{ tip, fields }` | `{ ok: true, tipNume, lines, total }` — articolul **exact** cum va fi salvat, prin aceeași compunere (`composeEntry`); nu scrie nimic și nu consumă un id. Un articol încă incomplet întoarce **200** `{ ok: false, mesaj }` (e starea normală în timpul completării, nu o eroare); 400 doar fără `tip` |
 | `DELETE /api/entries/:id` | — | `{ ok, removed }`; id inexistent NU e eroare (`removed: 0`); 404 articol străin; 400 perioadă închisă |
 | `GET /api/recurring` / `due?period=` | — | șabloanele firmei / cele scadente în perioadă |

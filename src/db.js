@@ -8,7 +8,7 @@ const migrations = require('./migrations');
 // Cerut SUS, nu in `save()`: e calea fierbinte a scrierii. Nu inchide ciclu — `metrics` nu cere
 // niciun modul al aplicatiei (doar `perf_hooks` si, in functie, `fs`/`path`).
 const metrics = require('./metrics');
-const { stringifyDb, naturalCompare } = require('./util');
+const { stringifyDb, naturalCompare, validIsoDate, validPeriod } = require('./util');
 
 // CONTAB_DATA_DIR: izolare pentru teste (backup/restore, uploads) — implicit data/ din repo.
 const DATA_DIR = process.env.CONTAB_DATA_DIR || path.join(__dirname, '..', 'data');
@@ -462,6 +462,30 @@ function conturiNecunoscute(entry) {
 }
 
 /**
+ * Forma minimă obligatorie a ORICĂRUI articol care intră în jurnal. Punctul unic de scriere
+ * trebuie să apere și cronologia, nu doar planul de conturi: `2026-02-30` era acceptat de
+ * `<input type=date>` ocolit prin API, iar un `period` diferit de `data` despărțea același articol
+ * între jurnal și declarații.
+ * @returns {string|null} problema, fără a arunca
+ */
+function entryShapeProblem(entry) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return 'articolul nu este un obiect';
+  const data = String(entry.data || '');
+  if (!validIsoDate(data)) return 'data articolului nu este o dată calendaristică validă (YYYY-MM-DD)';
+  const per = String(entry.period || '');
+  if (!validPeriod(per)) return 'perioada articolului nu este o lună validă (YYYY-MM)';
+  if (per !== data.slice(0, 7)) return 'perioada ' + per + ' nu corespunde datei ' + data;
+  if (!Array.isArray(entry.lines) || !entry.lines.length) return 'articolul nu are linii contabile';
+  for (let i = 0; i < entry.lines.length; i++) {
+    const l = entry.lines[i] || {};
+    if (!String(l.debit || '').trim() || !String(l.credit || '').trim()) return 'linia ' + (i + 1) + ' nu are ambele conturi';
+    const suma = Number(l.suma);
+    if (!Number.isFinite(suma) || suma === 0) return 'linia ' + (i + 1) + ' nu are o sumă finită, diferită de zero';
+  }
+  return null;
+}
+
+/**
  * Adauga un articol contabil, dupa ce ii verifica CONTURILE fata de planul de conturi.
  * Eroarea poarta `status` (contractul stratului de servicii), deci rutele o traduc in 400.
  * @param {object} entry articolul complet (cu `lines`)
@@ -473,6 +497,13 @@ function pushEntry(entry, o) {
     const unde = (o && o.context) ? ' (' + o.context + ')' : '';
     const err = new Error('Conturi inexistente în planul de conturi' + unde + ': ' + rele.join(', ')
       + '. Completează planul sau corectează contul înainte de a înregistra articolul.');
+    err.status = 400;
+    throw err;
+  }
+  const forma = entryShapeProblem(entry);
+  if (forma) {
+    const unde = (o && o.context) ? ' (' + o.context + ')' : '';
+    const err = new Error('Articol contabil invalid' + unde + ': ' + forma + '.');
     err.status = 400;
     throw err;
   }
@@ -494,7 +525,13 @@ function getFirma(id) {
 // prin storno intr-o perioada deschisa. `dataOriPerioada` accepta 'YYYY-MM-DD' sau 'YYYY-MM'.
 function assertPeriodOpen(fid, dataOriPerioada, actiune) {
   const firma = getFirma(fid);
-  const per = String(dataOriPerioada || '').slice(0, 7);
+  const raw = String(dataOriPerioada || '');
+  const per = validPeriod(raw) ? raw : validIsoDate(raw) ? raw.slice(0, 7) : '';
+  if (!per) {
+    const e = new Error((actiune || 'Operatiunea') + ': data/perioada nu este valida (foloseste YYYY-MM-DD sau YYYY-MM).');
+    e.status = 400;
+    throw e;
+  }
   if (firma && firma.lockedUntil && per && per <= firma.lockedUntil) {
     const e = new Error('Perioada ' + per + ' este inchisa (blocata pana la ' + firma.lockedUntil + '). '
       + (actiune || 'Operatiunea') + ' intr-o perioada inchisa se corecteaza prin STORNO intr-o perioada deschisa.');
@@ -660,6 +697,8 @@ function validateFirmaBundle(input) {
   };
 
   for (const e of b.entries) {
+    const forma = entryShapeProblem(e);
+    if (forma) firmaImportError('Articolul ' + e.id + ' este invalid: ' + forma + '.');
     if (!Array.isArray(e.lines)) firmaImportError('Articolul ' + e.id + ' nu are lista de linii contabile.');
     for (const l of e.lines) needObject(l, 'Linia articolului ' + e.id);
     ref(e.fileId, 'documents', 'Atasamentul articolului ' + e.id, false);
@@ -990,7 +1029,7 @@ async function trialFisaContSql(fid, cont, period) {
 }
 
 module.exports = {
-  get, save, load, migrate, nextId, pushEntry, conturiNecunoscute, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
+  get, save, load, migrate, nextId, pushEntry, conturiNecunoscute, entryShapeProblem, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, validateFirmaBundle, restoreFromJson, flushMirror, flushStore,
   canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, persistStats, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,

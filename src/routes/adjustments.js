@@ -11,15 +11,31 @@ const acc = require('../accounting');
 const rep = require('../reporting');
 const fxreval = require('../fxreval');
 const fiscal = require('../fiscal');
-const { aging } = require('../analytic');
+const { aging, receivablesPayables } = require('../analytic');
 
 /** Partea DEDUCTIBILA din ajustarea creantelor eligibile (art. 26 alin. (1) lit. c), la rulare. */
 function pctArt26() { return Number(fiscal.FISCAL.ajustariCreantePct) || 0; }
-const { round2, period: periodOf } = require('../util');
+const { round2, period: periodOf, validIsoDate, validPeriod } = require('../util');
 const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit } = ctx;
+
+  const cuiKey = (value) => String(value || '').replace(/^ro/i, '').replace(/\s/g, '').toUpperCase();
+  const nameKey = (value) => String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
+  // CUI-ul are prioritate cand exista pe ambele parti; pentru articolele istorice fara CUI se
+  // pastreaza compatibilitatea prin nume. Altfel, doua firme omonime cu CUI-uri diferite ar fi
+  // stinse impreuna doar pentru ca au aceeasi eticheta analitica.
+  const acelasiPartener = (row, partener, cui) => {
+    const cerutCui = cuiKey(cui); const randCui = cuiKey(row && row.cui);
+    if (cerutCui && randCui) return cerutCui === randCui;
+    return !!nameKey(partener) && nameKey(row && row.partener) === nameKey(partener);
+  };
+
+  const raspundeEroarePerioada = (res, fid, data, actiune) => {
+    try { db.assertPeriodOpen(fid, data, actiune); return false; }
+    catch (e) { res.status(e.status || 400).json({ error: e.message }); return true; }
+  };
 
   // ── Buget vs realizat ──
   app.get('/api/budgets', (req, res) => {
@@ -56,17 +72,22 @@ module.exports = function register(app, ctx) {
   app.get('/api/fx-reval/candidates', (req, res) => sendList(req, res, fxreval.candidates(S(req), req.query.asOf || null), { label: 'fx-reval/candidates' }));
   app.post('/api/fx-reval/preview', (req, res) => {
     const b = req.body || {};
+    if (b.asOf && !validPeriod(b.asOf) && !validIsoDate(b.asOf)) {
+      return res.status(400).json({ error: 'Data reevaluării trebuie să fie YYYY-MM sau o dată calendaristică reală YYYY-MM-DD.' });
+    }
     res.json(fxreval.buildRevaluation(S(req), b.asOf || null, Array.isArray(b.items) ? b.items : []));
   });
   app.post('/api/fx-reval/post', (req, res) => {
     const b = req.body || {}; const fid = activeId(req);
     const asOf = b.asOf || new Date().toISOString().slice(0, 10);
+    if (!validPeriod(asOf) && !validIsoDate(asOf)) {
+      return res.status(400).json({ error: 'Data reevaluării trebuie să fie YYYY-MM sau o dată calendaristică reală YYYY-MM-DD.' });
+    }
     const r = fxreval.buildRevaluation(S(req), asOf, Array.isArray(b.items) ? b.items : []);
     if (!r.lines.length) return res.status(400).json({ error: 'Nicio diferenta de reevaluare de inregistrat.' });
     for (const ln of r.lines) if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) return res.status(400).json({ error: 'Cont inexistent: ' + ln.debit + '/' + ln.credit });
     const data = String(asOf).length === 7 ? asOf + '-28' : asOf;
-    const firma = db.getFirma(fid) || {};
-    if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) return res.status(400).json({ error: 'Perioada ' + periodOf(data) + ' este inchisa.' });
+    if (raspundeEroarePerioada(res, fid, data, 'Reevaluarea valutară')) return;
     const entry = {
       id: db.nextId('e'), firmaId: fid, data, period: periodOf(data),
       tip: 'reevaluare_valutara', tipNume: 'Reevaluare valutara la sfarsit de perioada',
@@ -98,10 +119,13 @@ module.exports = function register(app, ctx) {
     const cont = String(b.cont || '').trim();
     if (!coa.getAccount(cont)) return res.status(400).json({ error: 'Cont inexistent în planul de conturi: ' + cont });
     const an = String(b.an || new Date().getFullYear());
+    if (!/^\d{4}$/.test(an)) return res.status(400).json({ error: 'Anul inventarierii trebuie să aibă forma YYYY.' });
+    const fid = activeId(req);
+    if (raspundeEroarePerioada(res, fid, an + '-12', 'Salvarea valorilor inventarierii anuale')) return;
     // Valoarea GOALA sterge randul: „neinventariat" trebuie sa fie exprimabil, altfel un zero
     // tastat din greseala ar ramane pe veci si ar propune scoaterea intregului sold.
     const gol = b.valoareInventar == null || b.valoareInventar === '';
-    const d = db.get(); const fid = activeId(req);
+    const d = db.get();
     d.inventarAnual = d.inventarAnual || [];
     const ex = d.inventarAnual.find((x) => x.firmaId === fid && String(x.an) === an && String(x.cont) === cont);
     if (gol) {
@@ -110,8 +134,10 @@ module.exports = function register(app, ctx) {
       db.save();
       return res.json({ ok: true, sters: !!ex });
     }
+    const valoare = Number(b.valoareInventar);
+    if (!Number.isFinite(valoare) || valoare < 0) return res.status(400).json({ error: 'Valoarea de inventar trebuie să fie un număr finit, pozitiv sau zero.' });
     const rec = ex || { id: db.nextId('inv'), firmaId: fid, an, cont };
-    rec.valoareInventar = round2(Number(b.valoareInventar) || 0);
+    rec.valoareInventar = round2(valoare);
     rec.cauza = String(b.cauza || '').slice(0, 300);
     if (!ex) d.inventarAnual.push(rec);
     logAudit('inventar.valoare', an + ' ' + cont + ': ' + rec.valoareInventar, { req });
@@ -142,8 +168,16 @@ module.exports = function register(app, ctx) {
   // ZERO si ajustarea e integral nedeductibila — „nu stiu" nu are voie sa cada in „se deduce",
   // aceeasi regula ca la IPC-ul din art. 41.
   function computeProvizion(v, asOf, pct) {
+    if (asOf && !validPeriod(asOf) && !validIsoDate(asOf)) {
+      const e = new Error('Data ajustării trebuie să fie YYYY-MM sau o dată calendaristică reală YYYY-MM-DD.');
+      e.status = 400; throw e;
+    }
+    const p = pct == null ? 100 : Number(pct);
+    if (!Number.isFinite(p) || p < 0 || p > 100) {
+      const e = new Error('Procentul ajustării trebuie să fie între 0 și 100.');
+      e.status = 400; throw e;
+    }
     const ag = aging(v, asOf);
-    const p = pct == null ? 100 : pct;
     const parteneri = (v.partners || {});
     const detalii = ag.clienti.filter((c) => c.b90plus > 0).map((c) => {
       const cheie = String(c.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
@@ -182,27 +216,58 @@ module.exports = function register(app, ctx) {
     };
   }
   app.get('/api/provizion', (req, res) => res.json(computeProvizion(S(req), req.query.asOf || null, req.query.pct ? Number(req.query.pct) : 100)));
-  // Scoaterea din evidenta a unei creante neincasabile: 654 = 4111 (pierdere) + reluare 491 = 7814
+  // Scoaterea din evidenta a unei creante neincasabile: 654 = contul REAL al creantei
+  // (4111/418/461) + reluarea partii aferente din 491 = 7814.
   app.post('/api/writeoff', (req, res) => {
     const v = S(req);
     const b = req.body || {};
-    const suma = round2(Number(b.suma) || 0);
-    if (!b.partener || suma <= 0) return res.status(400).json({ error: 'Completeaza partenerul si suma.' });
-    const data = b.data && String(b.data).length === 10 ? b.data : new Date().toISOString().slice(0, 10);
-    const period = String(data).slice(0, 7);
-    const lines = [{ debit: '654', credit: '4111', suma, explicatie: 'Creanță neîncasabilă ' + b.partener }];
+    const partener = String(b.partener || '').trim();
+    const brut = Number(b.suma); const suma = round2(brut);
+    if (!partener || !Number.isFinite(brut) || suma <= 0) return res.status(400).json({ error: 'Completează partenerul și o sumă pozitivă, finită.' });
+    const data = b.data ? String(b.data) : new Date().toISOString().slice(0, 10);
+    if (!validIsoDate(data)) return res.status(400).json({ error: 'Data scoaterii din evidență nu este o dată calendaristică reală (YYYY-MM-DD).' });
+    const fid = activeId(req); const period = periodOf(data);
+    if (raspundeEroarePerioada(res, fid, data, 'Scoaterea creanței din evidență')) return;
+
+    // Soldul analitic este sursa de adevăr: cererea nu poate fabrica o pierdere mai mare decât
+    // creanța și nici nu poate credita 4111 când documentul rămas este încă în 418 sau 461.
+    const randuri = receivablesPayables(v).clienti.filter((r) => acelasiPartener(r, partener, b.cui));
+    const peCont = new Map();
+    for (const r of randuri) peCont.set(r.synth, round2((peCont.get(r.synth) || 0) + r.sold));
+    const disponibil = round2([...peCont.values()].reduce((total, value) => total + value, 0));
+    if (disponibil <= 0) return res.status(400).json({ error: 'Partenerul nu are nicio creanță debitoare disponibilă în 4111, 418 sau 461.' });
+    if (suma > disponibil + 0.005) {
+      return res.status(409).json({ error: 'Suma cerută (' + suma + ' lei) depășește creanța disponibilă a partenerului (' + disponibil + ' lei).', disponibil });
+    }
+    let ramas = suma; const alocari = [];
+    for (const cont of ['4111', '418', '461']) {
+      const luat = round2(Math.min(ramas, peCont.get(cont) || 0));
+      if (luat > 0) { alocari.push({ cont, suma: luat }); ramas = round2(ramas - luat); }
+    }
+    if (ramas > 0.005) return res.status(409).json({ error: 'Soldul analitic s-a modificat; reîncarcă situația creanțelor și încearcă din nou.' });
+    const lines = alocari.map((x) => ({ debit: '654', credit: x.cont, suma: x.suma, explicatie: 'Creanță neîncasabilă ' + partener }));
+
     const m = acc.accumulate(acc.allLines(acc.postedEntries(v)));
     const c491 = m['491'] || { d: 0, c: 0 };
-    const existing491 = round2(c491.c - c491.d);
-    const revers = round2(Math.min(suma, existing491));
-    if (revers > 0) lines.push({ debit: '491', credit: '7814', suma: revers, explicatie: 'Reluare ajustare ' + b.partener });
+    const existing491 = Math.max(0, round2(c491.c - c491.d));
+    const ag = aging(v, data);
+    const agPartener = ag.clienti.filter((r) => acelasiPartener(r, partener, b.cui));
+    const vechiPartener = round2(agPartener.reduce((total, r) => total + r.b90plus, 0));
+    const vechiTotal = round2((ag.totalClienti || {}).b90plus || 0);
+    // 491 nu are analitic pe partener în datele istorice. Partea aferentă se estimează la gradul
+    // de acoperire al portofoliului vechi, limitată simultan de creanța veche scoasă și de soldul
+    // efectiv al ajustării. Astfel, ajustarea altui client nu este reluată integral din greșeală.
+    const acoperire = vechiTotal > 0 ? Math.min(1, existing491 / vechiTotal) : 0;
+    const revers = round2(Math.min(existing491, Math.min(suma, vechiPartener) * acoperire));
+    if (revers > 0) lines.push({ debit: '491', credit: '7814', suma: revers, explicatie: 'Reluare ajustare ' + partener });
     db.pushEntry({
-      id: db.nextId('e'), firmaId: activeId(req), data, period, tip: 'scoatere_creanta', tipNume: 'Scoatere din evidenta creanta neincasabila',
-      partener: b.partener, partenerCui: b.cui || '', document: 'Nota scoatere ' + period, analitic: '', explicatie: 'Creanță neîncasabilă ' + b.partener, fileId: null, system: true, lines,
+      id: db.nextId('e'), firmaId: fid, data, period, tip: 'scoatere_creanta', tipNume: 'Scoatere din evidenta creanta neincasabila',
+      partener, partenerCui: b.cui || '', document: 'Nota scoatere ' + period, analitic: '', explicatie: 'Creanță neîncasabilă ' + partener,
+      fileId: null, system: true, lines, writeoffAllocations: alocari,
     }, { context: 'scoatere creanta din evidenta' });
-    logAudit('writeoff', b.partener + ' ' + suma, { req });
+    logAudit('writeoff', partener + ' ' + suma + ' din ' + alocari.map((x) => x.cont + ':' + x.suma).join(', '), { req });
     db.save();
-    res.json({ ok: true, suma, reversProvizion: revers });
+    res.json({ ok: true, suma, disponibilInainte: disponibil, alocari, reversProvizion: revers });
   });
   app.post('/api/provizion', (req, res) => {
     const b = req.body || {};
@@ -211,6 +276,8 @@ module.exports = function register(app, ctx) {
     if (Math.abs(p.deAjustat) < 0.005) return res.json({ ok: true, message: 'Ajustarea este deja la nivelul necesar (' + p.necesar + ').', result: p });
     const data = b.asOf && String(b.asOf).length === 10 ? b.asOf : (p.asOf || new Date().toISOString().slice(0, 10));
     const period = String(data).slice(0, 7);
+    const fid = activeId(req);
+    if (raspundeEroarePerioada(res, fid, data, 'Ajustarea pentru deprecierea creanțelor')) return;
     const up = p.deAjustat > 0;
     const line = up
       ? { debit: '6814', credit: '491', suma: p.deAjustat, explicatie: 'Ajustare depreciere creanțe' }
@@ -225,7 +292,7 @@ module.exports = function register(app, ctx) {
       ? round2(Math.min(p.deAjustat, (p.art26 || {}).ajustareEligibila || 0))
       : 0;
     db.pushEntry({
-      id: db.nextId('e'), firmaId: activeId(req), data, period,
+      id: db.nextId('e'), firmaId: fid, data, period,
       tip: up ? 'provizion_creante' : 'reluare_provizion', tipNume: up ? 'Ajustare depreciere creante (6814=491)' : 'Reluare ajustare creante (491=7814)',
       partener: '', partenerCui: '', document: 'Nota ajustare ' + period, analitic: '', explicatie: line.explicatie, fileId: null, system: true, lines: [line],
       ...(bazaArt26 > 0 ? { bazaArt26 } : {}),

@@ -12,8 +12,10 @@
   planului, dar păzește o singură cale: 21 de locuri împingeau direct în `d.entries` și o ocoleau —
   așa a scris amortizarea lunară, ani la rând, pe conturi inexistente care plecau drept
   „(cont necunoscut)” în SAF-T, la ANAF. Astăzi **orice** articol intră prin `db.pushEntry`
-  (`src/db.js`), care validează conturile și aruncă o eroare cu `status: 400` purtând contul vinovat
-  și contextul (`amortizare lunara`, `import extras bancar`…). O poartă din `test/run/porti.js`
+  (`src/db.js`), care validează conturile, data calendaristică reală, concordanța `data`–`period`,
+  existența liniilor și sumele finite nenule. Eroarea are `status: 400` și poartă problema plus
+  contextul (`amortizare lunara`, `import extras bancar`…). Importul unei firme trece prin aceeași
+  validare înainte de prima mutație, deci un jurnal corupt nu poate fi restaurat parțial. O poartă din `test/run/porti.js`
   refuză reapariția lui `entries.push(` oriunde în afara lui `src/db.js`, iar o a doua verifică
   faptul că punctul unic chiar *refuză* — fără ea, golirea verificării trecea suita verde, fiindcă
   cele două mecanisme se masau reciproc.
@@ -66,7 +68,11 @@
   A doua e o **submulțime** a lui `b90plus`, nu o grupă alături de ele: cele patru grupe rămân
   disjuncte și se adună la total, ca scadențarul afișat să nu se schimbe pentru o nevoie fiscală.
   Creanțele neîncasabile se pot **scoate din evidență** direct din scadențar (buton „scoate"):
-  `654 = 4111` (pierdere) + reluarea automată a ajustării aferente `491 = 7814`; `/api/writeoff`.
+  `654 = 4111/418/461`, după contul în care există efectiv soldul partenerului, + reluarea părții
+  aferente din ajustare `491 = 7814`; `/api/writeoff`. Suma nu poate depăși soldul analitic. Pentru
+  datele istorice, unde 491 nu are analitic pe partener, partea reluată este limitată de creanța
+  veche a partenerului și estimată la gradul de acoperire al portofoliului vechi — ajustarea altui
+  client nu mai poate fi reluată integral din greșeală.
 - `src/temeiLegal.js` — **temeiul legal al fiecărui pas din ciclul contabil**, sursă unică pentru
   cockpitul de închidere lunară, tabul de închidere a anului, ghid și documentație. Structura
   răspunde la trei întrebări: ce fac (pasul), de ce sunt obligat (actul + articolul), ce anume

@@ -278,7 +278,10 @@ const stubDeps = {
   buildEntry: (tip, f, fileId, fid) => ({
     id: db.nextId('e'), firmaId: fid, data: f.data || '2026-06-15', period: String(f.data || '2026-06-15').slice(0, 7),
     tip, tipNume: 'Stub ' + tip, document: f.document || '', partener: f.partener || '', partenerCui: f.cuiPartener || '',
-    explicatie: '', fileId: fileId || null, system: false, lines: [],
+    explicatie: '', fileId: fileId || null, system: false,
+    // Punctul unic de scriere refuză articolele fără linii; dublura trebuie să respecte același
+    // contract minim ca buildEntry-ul real, altfel testul probează un obiect imposibil în aplicație.
+    lines: [{ debit: '5311', credit: '5121', suma: 1, explicatie: 'Linie stub serviciu' }],
   }),
   upsertPartner: () => { partnerCalls += 1; },
 };

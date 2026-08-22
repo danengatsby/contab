@@ -47,6 +47,11 @@ function validIsoDate(value) {
   return !!d && !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso;
 }
 
+/** Luna ISO reală (YYYY-MM), fără luna 00/13 și fără forme parțiale. */
+function validPeriod(value) {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(String(value || ''));
+}
+
 const LUNI = ['', 'ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
   'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
 
@@ -165,5 +170,5 @@ function ultimaZiDinLuna(period) {
   return m[1] + '-' + m[2] + '-' + String(zi).padStart(2, '0');
 }
 
-module.exports = { round2, roundQty, fmt, fmtDate, plural, period, periodLabel, validIsoDate,
+module.exports = { round2, roundQty, fmt, fmtDate, plural, period, periodLabel, validIsoDate, validPeriod,
   sumaInLitere, stringifyDb, stringifyRow, naturalCompare, ultimaZiDinLuna };

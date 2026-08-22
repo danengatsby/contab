@@ -20,7 +20,7 @@ const fiscal = require('./src/fiscal');
 const { sendDeadlineDigests } = require('./src/notify'); // ruta de digest manual; jobul zilnic e in src/jobs.js
 const log = require('./src/log');
 const serverErrors = require('./src/serverErrors');
-const { round2, period: periodOf } = require('./src/util');
+const { round2, period: periodOf, validIsoDate } = require('./src/util');
 const acc = require('./src/accounting'); // reguli pure de compunere (TVA partial deductibila)
 const d301 = require('./src/d301');
 const d307 = require('./src/d307');
@@ -339,6 +339,9 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     }
   }
   const data = f.data || new Date().toISOString().slice(0, 10);
+  if (!validIsoDate(data)) {
+    throw new Error('Data documentului nu este o dată calendaristică validă (YYYY-MM-DD).');
+  }
   // Blocarea perioadei: nu se inregistreaza in luni inchise (protejeaza fata de declaratiile depuse).
   if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) {
     throw new Error('Perioada ' + periodOf(data) + ' este inchisa (blocata pana la ' + firma.lockedUntil + '). Un administrator o poate debloca din Setari → Blocare perioada.');

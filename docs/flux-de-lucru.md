@@ -203,7 +203,8 @@ luni, furnizor). Amortizarea se calculează automat după **3 metode** — **lin
 (începe din luna următoare punerii în funcțiune; contul de amortizare 281x/280x vine dintr-o **hartă
 explicită** cont imobilizare → cont amortizare, nu din compunerea codului) și se poate
 **înregistra lunar** în contabilitate cu un click (articolul `6811 = 281x`, o linie per mijloc fix,
-fără dublură pe aceeași lună).
+fără dublură pe aceeași lună). Nota păstrează și ID-urile activelor incluse, astfel încât registrul
+să nu poată fi șters ori rescris ulterior în contradicție cu amortizarea deja postată.
 
 **Alegerea metodei nu e liberă** (art. 28 alin. (5) Cod fiscal), iar formularul cere lista permisă de
 la server (`GET /api/assets/metode?cont=`), ca regula să nu existe în două exemplare: **construcțiile
@@ -228,6 +229,8 @@ contrazică notele — defectul reparat cândva la casare); iar investiția la u
 integral** cere explicit `durataSuplimentaraLuni`, fiindcă nu mai există durată rămasă peste care să
 se eșaloneze — o durată inventată ar fi o decizie fiscală luată de cod. API:
 `POST /api/assets/:id/investitii`, `DELETE /api/assets/:id/investitii/:invId`.
+Ștergerea unei investiții este refuzată și după ce planul ei a influențat o notă de amortizare;
+mai întâi se stornează și se repostează lunile afectate.
 
 **Ce nu se amortizeaza** e refuzat la înregistrare, cu motivul scris: terenurile (2111 — art. 28 alin.
 (4); se amortizează doar amenajările, 2112), imobilizările în curs (231–235, cât timp nu sunt puse în
@@ -239,6 +242,13 @@ nu pe o listă de coduri, deci un cont 28x/29x adăugat mâine e exclus prin con
 respins ca ambiguu**: acoperă și terenul, și amenajarea. Mijloacele fixe înregistrate *înainte* de
 aceste gărzi nu se corectează tăcut — o recalculare ar schimba retroactiv articole deja postate — ci
 apar cu avertisment în registru (`neconformitati` pe fiecare rând).
+
+**Istoricul registrului este nedistructiv:** un activ cu amortizare postată, investiții ulterioare
+sau stare „casat” nu se mai șterge. `DELETE` rămâne numai pentru o introducere greșită încă
+nefolosită și dintr-o perioadă deschisă. Casarea validează data, oprește amortizarea din luna
+următoare și refuză o dată retroactivă dacă există note ulterioare; acestea se stornează mai întâi.
+Înregistrarea inițială validează datele reale, costul, valoarea reziduală și durata întreagă în luni
+și nu poate introduce retroactiv un activ într-o perioadă închisă.
 
 Livrabile PDF: **Registrul mijloacelor fixe** (`/pdf/assets`) și
 **Fișa mijlocului fix** cu planul complet de amortizare (`/pdf/asset/:id`). Datele alimentează

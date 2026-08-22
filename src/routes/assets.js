@@ -10,11 +10,24 @@ const db = require('../db');
 const pdf = require('../pdf');
 const coa = require('../chartOfAccounts');
 const { leasingSchedule } = require('../leasing');
-const { round2 } = require('../util');
+const { round2, validIsoDate } = require('../util');
 const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit, requireAdmin } = ctx;
+
+  /** Un articol lunar istoric a inclus activul? Inregistrarile noi poarta ID-urile exacte; pentru
+   * datele vechi fara aceasta urma folosim conservator planul lunii, ca stergerea registrului sa
+   * nu lase in contabilitate amortizare fara mijlocul fix care a produs-o. */
+  const amortizareFoloseste = (entry, asset) => {
+    if (!entry || entry.tip !== 'amortizare_lunara' || entry.firmaId !== asset.firmaId) return false;
+    if (Array.isArray(entry.assetIds)) return entry.assetIds.includes(asset.id);
+    const idsLinii = (entry.lines || []).map((l) => l.assetId).filter(Boolean);
+    if (idsLinii.length) return idsLinii.includes(asset.id);
+    return assets.schedule(asset).some((r) => r.period === entry.period && r.amount > 0);
+  };
+
+  const amortizariPentru = (d, asset) => (d.entries || []).filter((e) => amortizareFoloseste(e, asset));
 
   // ── CATALOGUL DURATELOR (HG 2139/2004) ────────────────────────────────────
   // Sta GLOBAL, ca planul de conturi: duratele normale sunt aceleasi pentru toate firmele.
@@ -83,6 +96,20 @@ module.exports = function register(app, ctx) {
   app.post('/api/assets', (req, res) => {
     const b = req.body || {};
     if (!b.denumire || !b.cont || !b.cost || !b.durataLuni || !b.dataPif) return res.status(400).json({ error: 'Completeaza denumire, cont, cost, durata si data punerii in functiune.' });
+    const dataPif = String(b.dataPif || '');
+    const dataAchizitie = String(b.dataAchizitie || dataPif);
+    const cost = Number(b.cost); const durataLuni = Number(b.durataLuni);
+    const valoareReziduala = b.valoareReziduala == null || b.valoareReziduala === '' ? 0 : Number(b.valoareReziduala);
+    if (!validIsoDate(dataPif)) return res.status(400).json({ error: 'Data punerii în funcțiune nu este o dată calendaristică reală (YYYY-MM-DD).' });
+    if (!validIsoDate(dataAchizitie)) return res.status(400).json({ error: 'Data achiziției nu este o dată calendaristică reală (YYYY-MM-DD).' });
+    if (dataAchizitie > dataPif) return res.status(400).json({ error: 'Data achiziției nu poate fi ulterioară punerii în funcțiune.' });
+    if (!Number.isFinite(cost) || cost <= 0) return res.status(400).json({ error: 'Costul mijlocului fix trebuie să fie un număr pozitiv, finit.' });
+    if (!Number.isInteger(durataLuni) || durataLuni <= 0) return res.status(400).json({ error: 'Durata trebuie să fie un număr întreg pozitiv de luni.' });
+    if (!Number.isFinite(valoareReziduala) || valoareReziduala < 0 || valoareReziduala >= cost) {
+      return res.status(400).json({ error: 'Valoarea reziduală trebuie să fie pozitivă sau zero și mai mică decât costul.' });
+    }
+    try { db.assertPeriodOpen(activeId(req), dataPif, 'Înregistrarea mijlocului fix în registru'); }
+    catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
     // ── Gardele contului si ale regimului de amortizare ──────────────────────────────────────
     // Contul nu era verificat DELOC aici: mijlocul fix e singura monografie care isi scrie
     // articolele direct (vezi ruta de amortizare), deci garda din `composeEntry` nu-l atinge.
@@ -109,9 +136,9 @@ module.exports = function register(app, ctx) {
       id: db.nextId('mf'), firmaId: activeId(req),
       denumire: String(b.denumire), cont,
       furnizor: b.furnizor || '', cui: b.cui || '',
-      cost: round2(Number(b.cost) || 0), valoareReziduala: round2(Number(b.valoareReziduala) || 0),
-      dataAchizitie: b.dataAchizitie || b.dataPif, dataPif: String(b.dataPif),
-      durataLuni: Math.max(1, Number(b.durataLuni) || 1),
+      cost: round2(cost), valoareReziduala: round2(valoareReziduala),
+      dataAchizitie, dataPif,
+      durataLuni,
       metoda, status: 'activ',
       // Art. 28 alin. (5) lit. b): computerele si echipamentele periferice pot fi amortizate
       // accelerat, desi in planul acesta stau pe 214 alaturi de mobilier, care nu poate. Marcaj
@@ -121,7 +148,7 @@ module.exports = function register(app, ctx) {
       // Planul FISCAL (art. 28) e optional: absent inseamna „identic cu cel contabil". Se scrie
       // doar cand difera efectiv — un camp egal cu cel contabil ar sugera o alegere care nu s-a
       // facut, si ar ingheta planul fiscal daca metoda contabila se schimba ulterior.
-      ...(assets.METHODS.includes(b.metodaFiscala) && b.metodaFiscala !== b.metoda
+      ...(assets.METHODS.includes(b.metodaFiscala) && b.metodaFiscala !== metoda
         ? { metodaFiscala: b.metodaFiscala } : {}),
       ...(Number(b.durataFiscalaLuni) > 0 && Number(b.durataFiscalaLuni) !== Number(b.durataLuni)
         ? { durataFiscalaLuni: Math.max(1, Number(b.durataFiscalaLuni)) } : {}),
@@ -147,10 +174,11 @@ module.exports = function register(app, ctx) {
     if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' }); // izolare multi-firma
     const b = req.body || {};
     const suma = round2(Number(b.suma) || 0);
-    const data = String(b.data || '').slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return res.status(400).json({ error: 'Completează data finalizării investiției.' });
+    const data = String(b.data || '');
+    if (!validIsoDate(data)) return res.status(400).json({ error: 'Completează o dată calendaristică reală pentru finalizarea investiției.' });
     if (suma <= 0) return res.status(400).json({ error: 'Valoarea investiției trebuie să fie pozitivă.' });
     if (a.status === 'casat') return res.status(400).json({ error: 'Mijlocul fix este casat — nu se mai pot înregistra investiții la el.' });
+    if (data < a.dataPif) return res.status(400).json({ error: 'Investiția nu poate fi finalizată înainte de punerea în funcțiune a mijlocului fix.' });
     // Efectul incepe cu luna URMATOARE finalizarii. Daca luna aceea e deja INCHISA, amortizarea ei
     // a fost postata dupa planul VECHI, iar recalcularea ar face registrul sa contrazica articolele
     // — exact defectul reparat candva la casare, unde marcarea stergea retroactiv luni intregi.
@@ -183,6 +211,12 @@ module.exports = function register(app, ctx) {
     if (!inv) return res.status(404).json({ error: 'Investiție inexistentă.' });
     try { db.assertPeriodOpen(activeId(req), assets.lunaUrmatoare(inv.data), 'Ștergerea investiției'); }
     catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+    const efect = assets.lunaUrmatoare(inv.data);
+    const amortizare = amortizariPentru(d, a).find((e) => e.period >= efect);
+    if (amortizare) {
+      return res.status(409).json({ error: 'Investiția a influențat deja amortizarea din ' + amortizare.period
+        + '. Stornează și repostează amortizările afectate înainte de a modifica planul.' });
+    }
     a.investitii = (a.investitii || []).filter((x) => x !== inv);
     logAudit('asset.investitie.sterge', a.denumire + ': ' + inv.suma, { req });
     db.save();
@@ -192,7 +226,20 @@ module.exports = function register(app, ctx) {
     const d = db.get();
     const a = (d.assets || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
     if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' }); // izolare multi-firma
-    a.status = 'casat'; a.dataCasare = (req.body || {}).dataCasare || new Date().toISOString().slice(0, 10);
+    if (a.status === 'casat') return res.status(400).json({ error: 'Mijlocul fix este deja casat.' });
+    const dataCasare = String((req.body || {}).dataCasare || new Date().toISOString().slice(0, 10));
+    if (!validIsoDate(dataCasare)) return res.status(400).json({ error: 'Data casării nu este o dată calendaristică reală (YYYY-MM-DD).' });
+    if (dataCasare < a.dataPif) return res.status(400).json({ error: 'Casarea nu poate fi anterioară punerii în funcțiune.' });
+    const efect = assets.lunaUrmatoare(dataCasare);
+    try { db.assertPeriodOpen(activeId(req), efect, 'Casarea mijlocului fix (oprește amortizarea din ' + efect + ')'); }
+    catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+    const casareLuna = dataCasare.slice(0, 7);
+    const ulterioara = amortizariPentru(d, a).find((e) => e.period > casareLuna);
+    if (ulterioara) {
+      return res.status(409).json({ error: 'Există deja amortizare înregistrată după data casării (' + ulterioara.period
+        + '). Stornează amortizările ulterioare înainte de casare.' });
+    }
+    a.status = 'casat'; a.dataCasare = dataCasare;
     logAudit('asset.scrap', a.denumire, { req });
     db.save();
     res.json({ ok: true, asset: a });
@@ -201,6 +248,15 @@ module.exports = function register(app, ctx) {
     const d = db.get();
     const a = (d.assets || []).find((x) => x.id === req.params.id && x.firmaId === activeId(req));
     if (!a) return res.status(404).json({ error: 'Mijloc fix inexistent.' }); // izolare multi-firma
+    if (a.status === 'casat') return res.status(409).json({ error: 'Un mijloc fix casat face parte din istoricul registrului și nu se șterge.' });
+    if ((a.investitii || []).length) return res.status(409).json({ error: 'Mijlocul fix are investiții ulterioare înregistrate și nu poate fi șters.' });
+    const amortizare = amortizariPentru(d, a)[0];
+    if (amortizare) {
+      return res.status(409).json({ error: 'Mijlocul fix are amortizare înregistrată în ' + amortizare.period
+        + ' și nu poate fi șters. Pentru ieșirea din gestiune folosește casarea.' });
+    }
+    try { db.assertPeriodOpen(activeId(req), a.dataPif, 'Ștergerea mijlocului fix din registru'); }
+    catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
     d.assets = (d.assets || []).filter((x) => x !== a);
     logAudit('asset.delete', a.denumire, { req });
     db.save();
@@ -228,8 +284,8 @@ module.exports = function register(app, ctx) {
     db.pushEntry({
       id: db.nextId('e'), firmaId: activeId(req), data: period + '-28', period, tip: 'amortizare_lunara', tipNume: 'Amortizare mijloace fixe',
       partener: '', document: 'Nota amortizare ' + period, explicatie: 'Amortizarea lunară a imobilizărilor',
-      fileId: null, system: true,
-      lines: dep.lines.map((l) => ({ debit: '6811', credit: l.contAmortizare, suma: l.suma, explicatie: 'Amortizare ' + l.denumire })),
+      fileId: null, system: true, assetIds: dep.lines.map((l) => l.assetId),
+      lines: dep.lines.map((l) => ({ debit: '6811', credit: l.contAmortizare, suma: l.suma, assetId: l.assetId, explicatie: 'Amortizare ' + l.denumire })),
     }, { context: 'amortizare lunara' });
     logAudit('amortizare.lunara', period + ' (' + dep.lines.length + ' MF)', { req });
     db.save();
