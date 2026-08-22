@@ -2578,6 +2578,15 @@ ok('anuitati: nicio dobanda/principal negativ', lsB.rows.every((r) => r.dobanda 
 const lsU = leasingSchedule(10000, 7, 13, 'anuitati'); // durata „urata"
 eq('anuitati durata urata: principal = P (inchidere exacta)', lsU.totals.principal, 10000);
 eq('anuitati durata urata: sold final 0', lsU.rows[6].sold, 0);
+let leasingInputError = null;
+try { leasingSchedule(10000, Infinity, 10, 'anuitati'); } catch (e) { leasingInputError = e; }
+ok('durata nefinita este refuzata, nu porneste o bucla infinita', leasingInputError && leasingInputError.status === 400);
+leasingInputError = null;
+try { leasingSchedule(10000, 1201, 10, 'anuitati'); } catch (e) { leasingInputError = e; }
+ok('graficul are plafon explicit de rate', leasingInputError && leasingInputError.status === 400);
+leasingInputError = null;
+try { leasingSchedule(10000, 12, Infinity, 'anuitati'); } catch (e) { leasingInputError = e; }
+ok('dobanda nefinita este refuzata', leasingInputError && leasingInputError.status === 400);
 
 // ── Contractul: graficul legat de LUNA calendaristica ───────────────────────────────────────
 // `leasingSchedule` numeroteaza ratele 1..n, atat. Ca factura lunara sa se poata completa
@@ -2595,6 +2604,7 @@ eq('anuitati durata urata: sold final 0', lsU.rows[6].sold, 0);
   eq('graficul se inchide exact pe principal', sch.totals.principal, 50000);
   // ziua din `dataPrimeiRate` nu trebuie sa faca luna sa sara (31 ian + 1 luna = 2 martie)
   eq('31 ianuarie + o luna ramane februarie', lg.periodOfInstallment('2026-01-31', 2), '2026-02');
+  eq('data calendaristica inexistenta nu produce o perioada', lg.periodOfInstallment('2026-02-30', 1), null);
   // TVA-ul se aplica pe principal SI pe dobanda (dobanda e contravaloarea finantarii)
   const r1 = lg.installmentFor(contract, '2026-03');
   eq('TVA pe principal + dobanda', r1.tva, round2((r1.principal + r1.dobanda) * 0.21));
@@ -5699,13 +5709,15 @@ eq('jurnal cumparari: 1 rand', vjT.cumparari.length, 1);
 eq('jurnal cumparari cota 11%', vjT.cumparari[0].cota, 11);
 
 section('Compensare creante / datorii');
-const { compensablePartners } = require('../src/reconcile');
+const { compensablePartners, compensationLines } = require('../src/reconcile');
 const compDb = {
   openingBalances: {}, openingAnalytic: [],
   partners: { 555: { cui: '555', den: 'Partener Dual SRL', tip: 'ambele' }, 666: { cui: '666', den: 'Doar Client SRL', tip: 'client' } },
   entries: [
-    { id: 'v1', period: '2026-05', data: '2026-05-10', partener: 'Partener Dual SRL', partenerCui: '555', lines: [{ debit: '4111', credit: '707', suma: 3000 }] },
-    { id: 'c1', period: '2026-05', data: '2026-05-12', partener: 'Partener Dual SRL', partenerCui: '555', lines: [{ debit: '607', credit: '401', suma: 2000 }] },
+    { id: 'v1', period: '2026-05', data: '2026-05-10', partener: 'Partener Dual SRL', partenerCui: '555', lines: [{ debit: '4111', credit: '707', suma: 1000 }] },
+    { id: 'v1b', period: '2026-05', data: '2026-05-11', partener: 'Partener Dual SRL', partenerCui: '555', lines: [{ debit: '418', credit: '707', suma: 2000 }] },
+    { id: 'c1', period: '2026-05', data: '2026-05-12', partener: 'Partener Dual SRL', partenerCui: '555', lines: [{ debit: '607', credit: '401', suma: 500 }] },
+    { id: 'c1b', period: '2026-05', data: '2026-05-12', partener: 'Partener Dual SRL', partenerCui: '555', lines: [{ debit: '2133', credit: '404', suma: 1500 }] },
     { id: 'v2', period: '2026-05', data: '2026-05-13', partener: 'Doar Client SRL', partenerCui: '666', lines: [{ debit: '4111', credit: '707', suma: 1000 }] },
   ],
 };
@@ -5715,6 +5727,11 @@ eq('compensare creanta 3000', comp[0].creanta, 3000);
 eq('compensare datorie 2000', comp[0].datorie, 2000);
 eq('compensare suma compensabila (min)', comp[0].compensabil, 2000);
 eq('compensare CUI', comp[0].cui, '555');
+eq('compensare pastreaza conturile reale de creanta', comp[0].creanteConturi.map((x) => x.cont + ':' + x.suma).join(','), '4111:1000,418:2000');
+eq('compensare pastreaza conturile reale de datorie', comp[0].datoriiConturi.map((x) => x.cont + ':' + x.suma).join(','), '401:500,404:1500');
+const compLines = compensationLines(comp[0], 2000);
+eq('nota stinge analiticele reale, in ordinea soldurilor', compLines.lines.map((x) => x.debit + '=' + x.credit + ':' + x.suma).join(','), '401=4111:500,404=4111:500,404=418:1000');
+eq('alocarea foloseste integral suma ceruta', compLines.ramas, 0);
 
 section('Abonamente (planuri + trial)');
 const plansMod = require('../src/plans');

@@ -105,29 +105,57 @@ function reconcile(db) {
   return { partners: result, totalClienti, totalFurnizori };
 }
 
-/**
- * Parteneri care sunt si client, si furnizor (au sold debitor pe 4111 SI sold creditor pe 401):
- * suma compensabila = minimul celor doua. Compensarea se inregistreaza prin 401 = 4111.
- */
+/** Parteneri care sunt simultan debitori si creditori. Pe langa total, pastram conturile reale:
+ * nota de compensare trebuie sa stinga 404/408/418/419/461/462 la fel de fidel ca 401/4111. */
 function compensablePartners(db) {
   const rc = reconcile(db);
   const byKey = {};
   for (const p of rc.partners) {
     const key = p.cui || p.den;
     if (!key) continue;
-    byKey[key] = byKey[key] || { cui: p.cui || '', den: p.den || key };
+    byKey[key] = byKey[key] || { cui: p.cui || '', den: p.den || key, creanteConturi: [], datoriiConturi: [] };
     if (p.den && /[a-z]/i.test(p.den)) byKey[key].den = p.den;
-    if (p.sens === 'creanta' && p.sold > 0) byKey[key].creanta = round2((byKey[key].creanta || 0) + p.sold);
-    if (p.sens === 'datorie' && p.sold > 0) byKey[key].datorie = round2((byKey[key].datorie || 0) + p.sold);
+    if (p.sens === 'creanta' && p.sold > 0) {
+      byKey[key].creanta = round2((byKey[key].creanta || 0) + p.sold);
+      byKey[key].creanteConturi.push({ cont: p.cont, suma: round2(p.sold) });
+    }
+    if (p.sens === 'datorie' && p.sold > 0) {
+      byKey[key].datorie = round2((byKey[key].datorie || 0) + p.sold);
+      byKey[key].datoriiConturi.push({ cont: p.cont, suma: round2(p.sold) });
+    }
   }
   const out = [];
   for (const k of Object.keys(byKey)) {
     const b = byKey[k];
     if ((b.creanta || 0) > 0 && (b.datorie || 0) > 0) {
-      out.push({ cui: b.cui, den: b.den, creanta: round2(b.creanta), datorie: round2(b.datorie), compensabil: round2(Math.min(b.creanta, b.datorie)) });
+      b.creanteConturi.sort((a, z) => a.cont.localeCompare(z.cont));
+      b.datoriiConturi.sort((a, z) => a.cont.localeCompare(z.cont));
+      out.push({ cui: b.cui, den: b.den, creanta: round2(b.creanta), datorie: round2(b.datorie),
+        compensabil: round2(Math.min(b.creanta, b.datorie)),
+        creanteConturi: b.creanteConturi, datoriiConturi: b.datoriiConturi });
     }
   }
   return out.sort((a, b) => b.compensabil - a.compensabil);
 }
 
-module.exports = { reconcile, compensablePartners, PARTNER_ACCOUNTS };
+/** Aloca suma solicitata intre conturile reale, fara sa inventeze sold in 401/4111. */
+function compensationLines(candidate, amount) {
+  let ramas = round2(Number(amount));
+  const creante = ((candidate && candidate.creanteConturi) || []).map((x) => ({ cont: x.cont, suma: round2(x.suma) }));
+  const datorii = ((candidate && candidate.datoriiConturi) || []).map((x) => ({ cont: x.cont, suma: round2(x.suma) }));
+  const lines = [];
+  for (const datorie of datorii) {
+    for (const creanta of creante) {
+      if (!(ramas > 0) || !(datorie.suma > 0) || !(creanta.suma > 0)) continue;
+      const suma = round2(Math.min(ramas, datorie.suma, creanta.suma));
+      if (!(suma > 0)) continue;
+      lines.push({ debit: datorie.cont, credit: creanta.cont, suma });
+      datorie.suma = round2(datorie.suma - suma);
+      creanta.suma = round2(creanta.suma - suma);
+      ramas = round2(ramas - suma);
+    }
+  }
+  return { lines, ramas };
+}
+
+module.exports = { reconcile, compensablePartners, compensationLines, PARTNER_ACCOUNTS };

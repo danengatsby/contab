@@ -4,7 +4,7 @@
 // (cu onboarding „Primii pasi" + alerta e-Factura netrimisa), previziunea de cash-flow,
 // documentele lipsa (furnizori recurenti fara document in luna), graficele dashboard,
 // balanta analitica, aging-ul (clienti/furnizori) + PDF, reconcilierea si compensarea
-// creanta/datorie (singura ruta care scrie: posteaza nota 401=4111). Modul de rute:
+// creanta/datorie (singura ruta care scrie: posteaza nota pe conturile reale). Modul de rute:
 // register(app, ctx).
 
 const db = require('../db');
@@ -15,7 +15,7 @@ const pdf = require('../pdf');
 const acc = require('../accounting');
 const stocks = require('../stocks');
 const dateFirma = require('../dateFirma');
-const { reconcile, compensablePartners } = require('../reconcile');
+const { reconcile, compensablePartners, compensationLines } = require('../reconcile');
 const { analyticBalance, aging } = require('../analytic');
 const { round2, period: periodOf } = require('../util');
 const { sendList } = require('../paginate');
@@ -48,21 +48,26 @@ module.exports = function register(app, ctx) {
     const b = req.body || {}; const fid = activeId(req);
     const cui = String(b.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
     if (!cui) return res.status(400).json({ error: 'Lipseste CUI-ul partenerului.' });
-    const cand = compensablePartners(S(req)).find((p) => String(p.cui).replace(/^ro/i, '') === cui);
+    const cand = compensablePartners(S(req)).find((p) => String(p.cui).replace(/^ro/i, '').replace(/\s/g, '') === cui);
     if (!cand) return res.status(400).json({ error: 'Partenerul nu are simultan creanta si datorie de compensat.' });
-    const suma = round2(Math.min(Number(b.suma) > 0 ? Number(b.suma) : cand.compensabil, cand.compensabil));
-    if (!(suma > 0)) return res.status(400).json({ error: 'Suma de compensat trebuie sa fie > 0.' });
+    const lipsa = b.suma == null || String(b.suma).trim() === '';
+    const suma = round2(lipsa ? cand.compensabil : Number(b.suma));
+    if (!Number.isFinite(suma) || !(suma > 0)) return res.status(400).json({ error: 'Suma de compensat trebuie sa fie un numar finit > 0.' });
+    if (suma > cand.compensabil) return res.status(400).json({ error: 'Suma depaseste soldul compensabil de ' + cand.compensabil + ' lei.' });
     const data = b.data || new Date().toISOString().slice(0, 10);
-    const firma = db.getFirma(fid) || {};
-    if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) return res.status(400).json({ error: 'Perioada ' + periodOf(data) + ' este inchisa.' });
+    try { db.assertPeriodOpen(fid, data, 'Compensarea'); }
+    catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+    const alocare = compensationLines(cand, suma);
+    if (alocare.ramas !== 0 || !alocare.lines.length) return res.status(409).json({ error: 'Soldurile analitice nu mai permit compensarea solicitata. Reincarca lista.' });
+    const explicatie = 'Compensare ' + (cand.den || cand.cui);
     const entry = {
       id: db.nextId('e'), firmaId: fid, data, period: periodOf(data),
-      tip: 'compensare', tipNume: 'Compensare creanta/datorie (401 = 4111)',
+      tip: 'compensare', tipNume: 'Compensare creanta/datorie',
       partener: cand.den, partenerCui: cand.cui, document: b.document || 'Compensare ' + (cand.den || cand.cui),
       explicatie: 'Compensare creanță clienți cu datorie furnizori', fileId: null, system: false,
-      lines: [{ debit: '401', credit: '4111', suma, explicatie: 'Compensare ' + (cand.den || cand.cui) }],
+      lines: alocare.lines.map((l) => Object.assign({}, l, { explicatie })),
     };
-    db.pushEntry(entry, { context: 'demo' });
+    db.pushEntry(entry, { context: 'compensare' });
     logAudit('compensare', (cand.den || cand.cui) + ': ' + suma, { req });
     db.save();
     res.json({ ok: true, entry, compensat: suma });

@@ -16,7 +16,7 @@
 // iar cautarea contractului se face DOAR in interiorul ei — un id strain da 404, nu datele altcuiva.
 
 const db = require('./db');
-const { round2 } = require('./util');
+const { validIsoDate } = require('./util');
 const leasing = require('./leasing');
 const { capList } = require('./paginate');
 
@@ -40,14 +40,15 @@ function reqContract(fid, id) {
 const METODE = ['anuitati', 'rate_egale'];
 
 function normalize(b) {
-  const principal = round2(Number(b.principal) || 0);
-  const months = Math.floor(Number(b.months) || 0);
-  if (!(principal > 0)) fail(400, 'Valoarea finantata trebuie sa fie pozitiva.');
-  if (!(months > 0)) fail(400, 'Numarul de rate trebuie sa fie cel putin 1.');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.dataPrimeiRate || ''))) fail(400, 'Completeaza data primei rate (AAAA-LL-ZZ).');
-  const dob = Number(b.dobandaAnuala) || 0;
-  if (dob < 0) fail(400, 'Dobanda anuala nu poate fi negativa.');
-  const cota = Number(b.cotaTva);
+  const principal = Number(b.principal);
+  const months = Number(b.months);
+  const dob = b.dobandaAnuala == null || b.dobandaAnuala === '' ? 0 : Number(b.dobandaAnuala);
+  // Motorul este limita autoritara (finit, intreg, plafoane); validarea nu se poate ocoli
+  // accesand direct calculatorul HTTP in locul nomenclatorului de contracte.
+  leasing.leasingSchedule(principal, months, dob, b.metoda);
+  if (!validIsoDate(b.dataPrimeiRate)) fail(400, 'Completeaza o data calendaristica reala pentru prima rata (AAAA-LL-ZZ).');
+  const cota = b.cotaTva == null || b.cotaTva === '' ? 0 : Number(b.cotaTva);
+  if (!Number.isFinite(cota) || cota < 0 || cota > 100) fail(400, 'Cota TVA trebuie sa fie intre 0 si 100%.');
   return {
     denumire: String(b.denumire || '').trim(),
     partener: String(b.partener || '').trim(),
@@ -56,7 +57,7 @@ function normalize(b) {
     principal, months, dobandaAnuala: dob,
     metoda: METODE.includes(b.metoda) ? b.metoda : 'anuitati',
     dataPrimeiRate: String(b.dataPrimeiRate),
-    cotaTva: Number.isFinite(cota) && cota >= 0 ? cota : 0,
+    cotaTva: cota,
   };
 }
 

@@ -489,7 +489,8 @@ function entryShapeProblem(entry) {
  * Adauga un articol contabil, dupa ce ii verifica CONTURILE fata de planul de conturi.
  * Eroarea poarta `status` (contractul stratului de servicii), deci rutele o traduc in 400.
  * @param {object} entry articolul complet (cu `lines`)
- * @param {object} [o] `{ context }` — de unde vine articolul, ca mesajul sa fie de folos
+ * @param {object} [o] `{ context, allowClosedPeriod }` — exceptia de perioada este rezervata
+ * restaurarii validate a unei firme; fluxurile operationale nu trebuie sa o foloseasca
  */
 function pushEntry(entry, o) {
   const rele = conturiNecunoscute(entry);
@@ -506,6 +507,12 @@ function pushEntry(entry, o) {
     const err = new Error('Articol contabil invalid' + unde + ': ' + forma + '.');
     err.status = 400;
     throw err;
+  }
+  // Ultima linie de aparare: orice flux prezent sau viitor care ajunge in jurnal respecta
+  // blocarea perioadei chiar daca ruta/serviciul a uitat propria verificare. Validarea formei
+  // ruleaza inainte, ca `data` transmisa lui assertPeriodOpen sa fie deja canonica.
+  if (!(o && o.allowClosedPeriod)) {
+    assertPeriodOpen(entry.firmaId, entry.data, (o && o.context) || 'Inregistrarea articolului contabil');
   }
   get().entries.push(entry);
   return entry;
@@ -871,7 +878,9 @@ function importFirma(bundle, opts) {
   d.openingBalances[newFid] = b.openingBalances;
   for (const k of FIRMA_IMPORT_COLLS) {
     const rows = built[k] || [];
-    if (k === 'entries') for (const e of rows) pushEntry(e, { context: 'import firma' });
+    // Restaurarea este singura exceptie intentionata: pachetul a fost validat integral mai sus,
+    // iar istoricul sau trebuie reconstituit chiar daca firma-tinta are perioade blocate.
+    if (k === 'entries') for (const e of rows) pushEntry(e, { context: 'import firma', allowClosedPeriod: true });
     else d[k].push(...rows);
   }
   d.seq = seqImport;

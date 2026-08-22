@@ -105,6 +105,12 @@ section('Colaboratori pe firmă (src/firmeService.js)');
   const lkPrev = firmaLk.lockedUntil;
   firmaLk.lockedUntil = '2026-03'; // luni <= 2026-03 sunt inchise
   const pLk = ssvc.upsertProduct(fidOk, { cod: 'LK-1', denumire: 'Prod lock', um: 'buc', cont: '371' }).product;
+  const nrArticole = db.get().entries.length;
+  eq('jurnal: garda centrala refuza orice articol in luna inchisa', errStatus(() => db.pushEntry({
+    id: 'lock-central', firmaId: fidOk, data: '2026-02-10', period: '2026-02', tip: 'test',
+    tipNume: 'Test perioada', lines: [{ debit: '628', credit: '401', suma: 10 }],
+  }, { context: 'test garda centrala' })), 400);
+  eq('jurnal: articolul refuzat nu ajunge partial in memorie', db.get().entries.length, nrArticole);
   eq('stoc: miscare in luna INCHISA -> 400', errStatus(() => ssvc.addMovement(fidOk, 'op', { productId: pLk.id, tip: 'receptie', cantitate: 5, data: '2026-02-10', pretUnitar: 10 })), 400);
   ok('mesajul indruma spre storno', (() => { try { ssvc.addMovement(fidOk, 'op', { productId: pLk.id, tip: 'receptie', cantitate: 5, pretUnitar: 10, data: '2026-02-10' }); return false; } catch (e) { return /STORNO/i.test(e.message); } })());
   const mvDeschis = ssvc.addMovement(fidOk, 'op', { productId: pLk.id, tip: 'receptie', cantitate: 5, data: '2026-06-10', pretUnitar: 10 }).movement;
@@ -593,6 +599,7 @@ eq('inchidere TVA pe un AN intreg -> 400 (doar luna)', errStatus(() => clsvc.clo
 eq('inchidere TVA pe luna 13 -> 400', errStatus(() => clsvc.closeVat(fidOk, '2026-13')), 400);
 eq('inchidere anuala fara an -> 400', errStatus(() => clsvc.closeYear(fidOk, null)), 400);
 eq('impozit pe profit fara an -> 400', errStatus(() => clsvc.closeProfitTax(fidOk, {}, null)), 400);
+eq('inchidere anuala cu an malformat -> 400', errStatus(() => clsvc.closeYear(fidOk, '2035-x')), 400);
 // blocarea perioadei la inchiderea TVA: se blocheaza si fara TVA de regularizat, doar inainte
 const cv1 = clsvc.closeVat(fidOk, '2035-01');
 ok('perioada blocata chiar si fara TVA de regularizat', cv1.lockedUntil === '2035-01' && cv1.posted === false);
@@ -619,6 +626,11 @@ eq('impozitul deja inregistrat pe an -> 400', errStatus(() => clsvc.closeProfitT
 db.get().entries = db.get().entries.filter((e) => e.id !== 'cl-svc-dbl');
 const cpt = clsvc.closeProfitTax(fidOk, {}, '2035');
 ok('an fara profit: posted=false + pierderea de reportat memorata pe firma', cpt.posted === false && firmaCl.pierdereFiscala['2035'] !== undefined);
+const pierdereInainteBlocaj = JSON.stringify(firmaCl.pierdereFiscala);
+firmaCl.lockedUntil = '2038-12';
+eq('impozit pe profit in an inchis -> 400 inainte de efecte laterale', errStatus(() => clsvc.closeProfitTax(fidOk, {}, '2038')), 400);
+eq('refuzul nu modifica reportul pierderii fiscale', JSON.stringify(firmaCl.pierdereFiscala), pierdereInainteBlocaj);
+firmaCl.lockedUntil = '2035-02';
 // D107 trebuie să poată fi refăcută DUPĂ închidere: serviciul păstrează atât instantaneul
 // declarației, cât și bucket-ul rămas pe beneficiar pentru anul următor.
 const prevD107History = firmaCl.d107Istoric;
@@ -2304,6 +2316,14 @@ section('Module fara test direct: beneficii, leasingService, notify, xls');
   eq('metodele de amortizare a datoriei', lsv.METODE.join(','), 'anuitati,rate_egale');
   ok('serviciul expune scrierile si citirile', ['upsert', 'remove', 'list', 'schedule', 'installment']
     .every((k) => typeof lsv[k] === 'function'));
+  eq('contract leasing: durata Infinity -> 400, nu blocheaza procesul', errStatus(() => lsv.upsert(fidOk,
+    { denumire: 'Invalid', principal: 10000, months: Infinity, dataPrimeiRate: '2026-01-01' })), 400);
+  eq('contract leasing: durata fractionara -> 400', errStatus(() => lsv.upsert(fidOk,
+    { denumire: 'Invalid', principal: 10000, months: 12.5, dataPrimeiRate: '2026-01-01' })), 400);
+  eq('contract leasing: data 30 februarie -> 400', errStatus(() => lsv.upsert(fidOk,
+    { denumire: 'Invalid', principal: 10000, months: 12, dataPrimeiRate: '2026-02-30' })), 400);
+  eq('contract leasing: TVA nefinita -> 400', errStatus(() => lsv.upsert(fidOk,
+    { denumire: 'Invalid', principal: 10000, months: 12, dataPrimeiRate: '2026-01-01', cotaTva: Infinity })), 400);
 
   // ── notify: textul digestului ──
   const nt = require('../../src/notify');

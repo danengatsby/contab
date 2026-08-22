@@ -18,6 +18,12 @@ const { reqFirma } = require('./stocksService');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 
+function reqYear(year) {
+  const y = String(year || '');
+  if (!/^[1-9]\d{3}$/.test(y)) fail(400, 'Anul trebuie sa aiba forma YYYY.');
+  return y;
+}
+
 /** Regularizarea TVA pe o LUNA (nu an: data notei ar fi malformata si blocarea ineficienta).
  *  Posteaza nota doar daca exista TVA de regularizat, dar blocheaza perioada oricum. */
 function closeVat(fid, period) {
@@ -41,7 +47,8 @@ function closeVat(fid, period) {
 /** Inchiderea anuala: clasa 6 si 7 in 121. Fara rulaje, nu posteaza nimic. */
 function closeYear(fid, year) {
   fid = reqFirma(fid);
-  if (!year) fail(400, 'Lipseste anul (YYYY).');
+  year = reqYear(year);
+  db.assertPeriodOpen(fid, year + '-12', 'Inchiderea anuala');
   const c = acc.annualClosing(db.scoped(fid), year);
   if (!c.lines.length) return { result: c, posted: false };
   db.pushEntry({
@@ -67,7 +74,9 @@ function profitTaxOptions(fid, src, year) {
  *  anuala s-a facut deja, 691 se inchide aici in 121 — ordinea inchiderilor devine irelevanta. */
 function closeProfitTax(fid, src, year) {
   fid = reqFirma(fid);
-  if (!year) fail(400, 'Lipseste anul (YYYY).');
+  year = reqYear(year);
+  // Inainte de calcul si, mai ales, inainte de actualizarea reporturilor fiscale din firma.
+  db.assertPeriodOpen(fid, year + '-12', 'Inregistrarea impozitului pe profit');
   const d = db.get();
   const exists = d.entries.find((e) => e.firmaId === fid && e.tip === 'impozit_profit' && e.period === year + '-12');
   if (exists) fail(400, 'Impozitul pe profit pe ' + year + ' este deja inregistrat.');
@@ -117,7 +126,8 @@ function closeProfitTax(fid, src, year) {
 /** Repartizarea rezultatului: 121 -> 117 (profit) sau 117 -> 121 (pierdere). */
 function distributeResult(fid, year) {
   fid = reqFirma(fid);
-  if (!year) fail(400, 'Lipseste anul (YYYY).');
+  year = reqYear(year);
+  db.assertPeriodOpen(fid, year + '-12', 'Repartizarea rezultatului');
   const r = acc.resultDistribution(db.scoped(fid), year);
   if (!r.lines.length) return { result: r, posted: false };
   for (const l of r.lines) {

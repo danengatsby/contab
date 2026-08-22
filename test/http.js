@@ -1565,6 +1565,28 @@ async function main() {
       ok('unlink: fara legatura, nu mai e `legata` (revine pe euristica)', pmU && !pmU.perechi.some((pr) => pr.tip === 'legata'));
     }
 
+    // ── Compensarea stinge CONTURILE REALE (404 = 418), nu reclasifica fortat in 401 = 4111 ──
+    {
+      const cui = 'RO887766'; const partener = 'Partener Compensare Analitica SRL';
+      await req('POST', '/api/entries', { cookie: c1, body: { tip: 'aviz_livrare', fields: {
+        data: '2026-06-20', partener, cuiPartener: cui, document: 'AV-COMP', baza: 1200, tva: 0, cota: 0 } } });
+      await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_imobilizare', fields: {
+        data: '2026-06-21', partener, cuiPartener: cui, document: 'FI-COMP', baza: 800, tva: 0, cota: 0, contImob: '2131' } } });
+      const candidat = (await req('GET', '/api/compensations', { cookie: c1 })).json.find((x) => x.cui === cui);
+      ok('lista compensarilor expune 418 si 404 cu soldurile lor', candidat
+        && candidat.creanteConturi.some((x) => x.cont === '418' && x.suma === 1200)
+        && candidat.datoriiConturi.some((x) => x.cont === '404' && x.suma === 800));
+      eq('suma peste sold nu mai este micsorata tacut -> 400', (await req('POST', '/api/compensations', {
+        cookie: c1, body: { cui, suma: 801, data: '2026-06-22' } })).status, 400);
+      eq('data calendaristica inexistenta -> 400', (await req('POST', '/api/compensations', {
+        cookie: c1, body: { cui, suma: 600, data: '2026-02-30' } })).status, 400);
+      const compensat = await req('POST', '/api/compensations', {
+        cookie: c1, body: { cui, suma: 600, data: '2026-06-22', document: 'PV-COMP' } });
+      ok('compensarea 404 = 418 se posteaza integral', compensat.status === 200 && compensat.json.compensat === 600
+        && compensat.json.entry.lines.length === 1 && compensat.json.entry.lines[0].debit === '404'
+        && compensat.json.entry.lines[0].credit === '418' && compensat.json.entry.lines[0].suma === 600);
+    }
+
     // ── Import CAMT.053 prin upload (/api/bank/parse): XML multipart -> tranzactii parsate ──
     {
       const camtXml = '<?xml version="1.0"?><Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><BkToCstmrStmt><Stmt>'
@@ -2472,6 +2494,9 @@ async function main() {
     eq('contract fara denumire -> 400', (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { principal: 1000, months: 12, dataPrimeiRate: '2026-01-01' } })).status, 400);
     eq('contract fara data primei rate -> 400', (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { denumire: 'X', principal: 1000, months: 12 } })).status, 400);
     eq('valoare finantata zero -> 400', (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { denumire: 'X', principal: 0, months: 12, dataPrimeiRate: '2026-01-01' } })).status, 400);
+    eq('contract cu data 30 februarie -> 400', (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { denumire: 'X', principal: 1000, months: 12, dataPrimeiRate: '2026-02-30' } })).status, 400);
+    eq('contract cu peste 1200 rate -> 400', (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { denumire: 'X', principal: 1000, months: 1201, dataPrimeiRate: '2026-01-01' } })).status, 400);
+    eq('calculator cu durata Infinity -> 400 fara blocarea serverului', (await req('GET', '/api/leasing-schedule?principal=1000&months=Infinity&rate=9', { cookie: c1 })).status, 400);
 
     // ── IZOLARE MULTI-FIRMA: utilizatorul firmei 2 nu poate citi/sterge resursele firmei 1 ──
     // resurse proaspete in firma 1
