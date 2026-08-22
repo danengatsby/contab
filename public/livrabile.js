@@ -53,8 +53,8 @@ async function loadLivrabile() {
     `<div class="card"><h3>Ce rezultă din declarații — ${H(p)}</h3>
      <p class="muted">Sume <b>calculate</b> din ce ai înregistrat. Unele acoperă alt interval decât luna aleasă — scrie pe fiecare rând.</p>
      <table>
-      <tr><td>Salarii brute <span class="muted">· luna ${H(p)}</span></td><td class="num">${fmt(s.d112.brut)}</td></tr>
-      <tr><td>Total de virat (D112) <span class="muted">· luna ${H(p)}</span></td><td class="num">${fmt(s.d112.totalBuget)}</td></tr>
+      <tr><td>Salarii brute <span class="muted">· luna ${H(p)}</span>${s.d112.postat ? '' : ' <span class="pill warn">ciornă</span>'}</td><td class="num">${fmt(s.d112.brut)}</td></tr>
+      <tr><td>Total de virat (D112) <span class="muted">· luna ${H(p)}</span>${s.d112.postat ? '' : ' <span class="pill warn">nepostat</span>'}</td><td class="num">${fmt(s.d112.totalBuget)}</td></tr>
       <tr><td>${de[0]} (D300) <span class="muted">· luna ${H(p)}</span></td><td class="num">${fmt(de[1])}</td></tr>
       ${s.du
     ? `<tr><td>Taxe PFA — Declarația Unică <span class="muted">· estimare pe tot anul</span></td><td class="num">${fmt(s.du.total)}</td></tr>`
@@ -156,7 +156,7 @@ async function loadDeclRegister(p) {
       <td>${H(r.nume)}</td>
       <td class="${r.overdue ? '' : 'muted'}" ${r.overdue ? 'data-u="u33"' : ''}>${H(dataRo(r.due))}</td>
       <td>${declBadge(r.status, r.urgenta)}</td>
-      <td>${(r.links || []).map((l) => `<a class="linkbtn" href="${H(l.href)}" target="_blank">${H(l.label)}</a>`).join(' · ') || '<span class="muted">—</span>'}</td>
+      <td>${(r.links || []).map((l) => `<a class="linkbtn" href="${H(l.href)}" target="_blank">${H(l.label)}</a>`).join(' · ') || (r.blocaj ? '<span class="muted">' + H(r.blocaj) + '</span>' : '<span class="muted">—</span>')}</td>
       <td><select class="decl-set" data-tip="${r.tip}" data-period="${r.period}" aria-label="Schimbă starea pentru ${H(r.nume)}, perioada ${H(r.period)}">${opts(r.status)}</select></td>
       <td class="muted adv" data-u="u148">${r.recipisa ? 'recipisă: ' + H(r.recipisa) + '<br>' : ''}${r.submittedAt ? 'depusă: ' + H(dataRo(r.submittedAt.slice(0, 10))) : (r.transmittedAt ? 'transmisă: ' + H(dataRo(r.transmittedAt.slice(0, 10))) : (r.generatedAt ? 'XML generat: ' + H(dataRo(r.generatedAt.slice(0, 10))) : ''))}${r.artifactHash ? '<br>SHA-256: ' + H(r.artifactHash.slice(0, 12)) + '…' : ''}${(r.artifacts || []).length > 1 ? '<br>artefacte păstrate: ' + H(r.artifacts.length) : ''}${(r.statusHistory || []).length ? '<br>tranziții în istoric: ' + H(r.statusHistory.length) : ''}${r.note ? '<br>' + H(r.note) : ''}</td>
     </tr>`).join('')}</tbody></table>`;

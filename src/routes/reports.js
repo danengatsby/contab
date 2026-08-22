@@ -20,6 +20,7 @@ const pdf = require('../pdf');
 const dosarAnual = require('../dosarAnual');
 const { analyticBalance } = require('../analytic');
 const { sendList } = require('../paginate');
+const { statPlataPostata } = require('../payroll');
 
 module.exports = function register(app, ctx) {
   const { S, wrap, activeId } = ctx;
@@ -148,7 +149,16 @@ module.exports = function register(app, ctx) {
 
   // ── Recapitulatii declaratii + registre/jurnale (PDF) ──
   app.get('/pdf/vat', (req, res) => { const v = S(req); return pdf.vatPdf(res, v.company, acc.vatJournals(v, acc.vatPeriod(v.company, req.query.period || null))); });
-  app.get('/pdf/d112', (req, res) => pdf.d112Pdf(res, S(req).company, rep.d112(S(req), req.query.period || null)));
+  app.get('/pdf/d112', (req, res) => {
+    const v = S(req); const period = req.query.period || new Date().toISOString().slice(0, 7);
+    try {
+      const sp = statPlataPostata(v, period);
+      return pdf.d112Pdf(res, v.company, Object.assign({ period }, sp.totals));
+    } catch (e) {
+      if (e.status) return res.status(e.status).send(e.message);
+      throw e;
+    }
+  });
   // (PDF stat de plata / fluturas: src/routes/payroll.js)
   app.get('/pdf/d300', (req, res) => {
     const v = S(req);

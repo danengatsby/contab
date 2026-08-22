@@ -48,18 +48,21 @@ function vatPdf(res, company, vj) {
 /** Raport recapitulativ generic: titlu + tabel indicator/valoare + nota. */
 
 function d112Pdf(res, company, d) {
+  const rows = [
+    { k: 'Total salarii brute (641)', v: fmt(d.brut), _bold: true },
+    { k: 'CAS retinut de la asigurati', v: fmt(d.cas) },
+    ...(d.casAngajator ? [{ k: 'CAS suplimentar suportat de angajator', v: fmt(d.casAngajator) }] : []),
+    { k: 'CASS retinut de la asigurati', v: fmt(d.cass) },
+    ...(d.cassAngajator ? [{ k: 'CASS suplimentar suportat de angajator', v: fmt(d.cassAngajator) }] : []),
+    { k: 'Impozit pe salarii (444)', v: fmt(d.impozit) },
+    { k: 'CAM angajator (436)', v: fmt(d.cam) },
+    { k: 'Salarii nete calculate', v: fmt(d.net), _bold: true, _fill: C.zebra },
+    { k: 'TOTAL DE VIRAT LA BUGET', v: fmt(d.totalBuget), _bold: true, _accent: true, _fill: C.zebra },
+  ];
   recapPdf(res, company, {
     title: 'D112 (recapitulatie) — salarii si contributii', subtitle: periodLabel(d.period),
     filename: 'recap-d112.pdf',
-    rows: [
-      { k: 'Total salarii brute (641)', v: fmt(d.brut), _bold: true },
-      { k: 'CAS 25% retinut (4315)', v: fmt(d.cas) },
-      { k: 'CASS 10% retinut (4316)', v: fmt(d.cass) },
-      { k: 'Impozit pe salarii 10% (444)', v: fmt(d.impozit) },
-      { k: 'CAM 2,25% angajator (436)', v: fmt(d.cam) },
-      { k: 'Salarii nete de plata (421)', v: fmt(d.net), _bold: true, _fill: C.zebra },
-      { k: 'TOTAL DE VIRAT LA BUGET', v: fmt(d.totalBuget), _bold: true, _accent: true, _fill: C.zebra },
-    ],
+    rows,
     note: 'Recapitulatie pentru declaratia D112. Depunerea efectiva (XML) si recipisa se obtin la ANAF/SPV.',
   });
 }
@@ -237,7 +240,14 @@ function f4109Pdf(res, company, d) {
  *  mediaZilnicaCM, cmAngajator, cmFnuass }], totalAngajator, totalFnuass }. */
 function dosarCmPdf(res, company, d) {
   const doc = newDoc(true);
-  header(doc, company, 'Dosar recuperare concedii medicale (FNUASS)', periodLabel(d.period));
+  header(doc, company, d.ciorna ? 'CIORNA — Dosar recuperare concedii medicale (FNUASS)'
+    : 'Dosar recuperare concedii medicale (FNUASS)',
+  periodLabel(d.period) + (d.ciorna ? ' — PREVIZUALIZARE NEPOSTATA' : ''));
+  if (d.ciorna) {
+    doc.fillColor(C.danger).font('Helvetica-Bold').fontSize(10)
+      .text('CIORNA — nu se depune la casa de asigurari inainte de postarea statului.');
+    doc.moveDown(0.3);
+  }
   doc.fillColor(C.muted).font('Helvetica').fontSize(9)
     .text('Situatia indemnizatiilor de concediu medical si a sumelor de recuperat de la Fondul National Unic de Asigurari Sociale de Sanatate (OUG 158/2005).');
   doc.moveDown(0.3);

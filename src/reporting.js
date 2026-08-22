@@ -26,6 +26,7 @@ const xml = require('./xml');
 const d301 = require('./d301');
 const d205 = require('./d205');
 const intra = require('./intrastat');
+const { statPlataPerioada } = require('./payroll');
 
 /** Rulajele perioadei pe cont {cod:{d,c}}, FARA inchiderile 6/7 -> 121 (vezi `resultLines`).
  *  Alimenteaza recapitulativul D112, care citeste 641: nota de inchidere anuala (121 = 641) e
@@ -896,6 +897,7 @@ function livrabile(db, period) {
   const L = (sectiune, id, nume, status, links, obs) => ({ sectiune, id, nume, status, links: links || [], obs: obs || '' });
   const p = period ? '?period=' + period : '';
   const yr = (period || '').slice(0, 4);
+  const sp = statPlataPerioada(db, period);
   const list = [
     L('A. Lunar', 1, 'Balanță de verificare', 'ok', [{ label: 'Balanta', href: '/pdf/balance' + p }]),
     L('A. Lunar', 2, 'State de plată + fluturași de salariu', 'manual', [], 'Necesită evidența pe fiecare angajat'),
@@ -922,7 +924,16 @@ function livrabile(db, period) {
     L('D. La cerere', 21, 'Certificat de atestare fiscală', 'anaf', [], 'Emis de ANAF'),
     L('D. La cerere', 22, 'Balanțe și situații pentru bancă', 'ok', [{ label: 'Balanta', href: '/pdf/balance' + p }]),
   ];
-  const sumar = { d112: d112(db, period), d300: d300(db, period), obligatii: obligatii(db, period), d100: d100micro(db, period) };
+  if (!sp.postat) {
+    for (const item of list) {
+      if (item.id !== 3 && item.id !== 5) continue;
+      item.links = [];
+      item.status = 'manual';
+      item.obs = 'Postează statul de plată înainte de documentele D112 finale';
+    }
+  }
+  const sumarD112 = Object.assign({ period, postat: !!sp.postat }, sp.totals);
+  const sumar = { d112: sumarD112, d300: d300(db, period), obligatii: obligatii(db, period), d100: d100micro(db, period) };
   // PFA: fara SAF-T / D100 micro / situatii financiare / D101 / AGA — in loc, Declaratia Unica anuala
   if ((db.company && db.company.tipEntitate) === 'pfa') {
     const drop = new Set([9, 12, 15, 16, 19]);

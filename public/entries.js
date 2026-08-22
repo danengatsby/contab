@@ -199,7 +199,11 @@ async function loadArhiva() {
   const monthly = /^\d{4}-\d{2}$/.test(p);
   const yr = p.slice(0, 4);
   const pq = '?period=' + p; const yq = '?year=' + yr;
-  const all = await api('/api/entries');
+  const [all, payroll] = await Promise.all([
+    api('/api/entries'),
+    monthly ? api('/api/stat-plata?period=' + encodeURIComponent(p)) : Promise.resolve(null),
+  ]);
+  const payrollPosted = !!(payroll && payroll.postat);
   const inPer = (e) => (e.period || (e.data || '').slice(0, 7)).startsWith(p);
   const intr = all.filter((e) => entryDir(e.tip) === 'in' && inPer(e));
   const ies = all.filter((e) => entryDir(e.tip) === 'out' && inPer(e));
@@ -212,7 +216,10 @@ async function loadArhiva() {
   const L = (href, label) => `<a class="btn small arh-link" href="${href}" target="_blank">${label}</a>`;
   const G = (tab, label) => `<button class="btn small arh-link" data-go="${tab}">${label}</button>`;
   const eFact = (e) => (EFACT_TYPES.has(e.tip) ? ` · <a class="linkbtn" href="/xml/efactura/${e.id}" target="_blank">e-Factura</a>` : '');
-  const declMonthly = L('/pdf/d300' + pq, '⬇ D300 PDF') + L('/xml/d300' + pq, 'D300 XML') + L('/xml/d301' + pq, 'D301 XML (TVA specială)') + L('/xml/d307' + pq, 'D307 XML (ajustări TVA)') + L('/xml/d311' + pq, 'D311 XML (cod TVA anulat)') + L('/xml/d394' + pq, 'D394 XML') + L('/xml/d390' + pq, 'D390 XML (VIES)') + L('/xml/d100' + pq, 'D100 XML (trim.)') + L('/csv/intrastat' + pq, 'Intrastat CSV') + L('/xml/intrastat' + pq, 'Intrastat centralizator XML') + L('/pdf/d112' + pq, '⬇ D112 PDF') + L('/xml/d112' + pq, 'D112 XML') + L('/xml/d205' + yq, 'D205 XML (an)') + L('/xml/d101' + yq, 'D101 XML (an)') + L('/xml/d107' + yq, 'D107 XML (sponsorizări)') + L('/xml/saft' + yq, 'SAF-T XML');
+  const d112Monthly = payrollPosted
+    ? L('/pdf/d112' + pq, '⬇ D112 PDF') + L('/xml/d112' + pq, 'D112 XML')
+    : '<span class="muted">D112 indisponibilă — postează statul de plată.</span>';
+  const declMonthly = L('/pdf/d300' + pq, '⬇ D300 PDF') + L('/xml/d300' + pq, 'D300 XML') + L('/xml/d301' + pq, 'D301 XML (TVA specială)') + L('/xml/d307' + pq, 'D307 XML (ajustări TVA)') + L('/xml/d311' + pq, 'D311 XML (cod TVA anulat)') + L('/xml/d394' + pq, 'D394 XML') + L('/xml/d390' + pq, 'D390 XML (VIES)') + L('/xml/d100' + pq, 'D100 XML (trim.)') + L('/csv/intrastat' + pq, 'Intrastat CSV') + L('/xml/intrastat' + pq, 'Intrastat centralizator XML') + d112Monthly + L('/xml/d205' + yq, 'D205 XML (an)') + L('/xml/d101' + yq, 'D101 XML (an)') + L('/xml/d107' + yq, 'D107 XML (sponsorizări)') + L('/xml/saft' + yq, 'SAF-T XML');
   $('#arhivaView').innerHTML = `
     <div class="card"><h3>📥 01 · Intrări (facturi primite)</h3>
       <p class="muted">Facturi de la furnizori, bonuri, chitanțe — cu fișierul scanat atașat.</p>${tbl(intr, etranspCell, 'Niciun document de intrare în perioadă.')}</div>
@@ -223,7 +230,10 @@ async function loadArhiva() {
       <div class="card"><h3>💵 04 · Casă</h3><p class="muted">Registrul de casă (5311) — încasări/plăți în numerar.</p>${G('cashbook', 'Deschide Bancă / Casă')}</div>
     </div>
     <div class="card"><h3>👥 05 · Salarii</h3>
-      <p class="muted">State de plată și declarația D112.</p>${monthly ? L('/pdf/stat-plata' + pq, '⬇ Stat de plată PDF') + L('/xml/d112' + pq, 'D112 XML') : '<span class="muted">Alege o lună pentru statul de plată.</span>'}</div>
+      <p class="muted">State de plată și declarația D112.</p>${monthly
+    ? (payrollPosted ? L('/pdf/stat-plata' + pq, '⬇ Stat de plată PDF') + L('/xml/d112' + pq, 'D112 XML')
+      : G('salarizare', 'Deschide și postează statul de plată'))
+    : '<span class="muted">Alege o lună pentru statul de plată.</span>'}</div>
     <div class="card"><h3>🧾 06 · Declarații ANAF</h3>
       <p class="muted">Declarațiile fiscale ale perioadei.${monthly ? '' : ' <b>Alege o lună</b> pentru declarațiile lunare (D300/D394/D112).'}</p>${monthly ? declMonthly : L('/xml/saft' + yq, 'SAF-T XML (an întreg)')}
       ${monthly ? `<div data-u="u23"><button id="validateDecl" class="btn small" data-p="${p}" data-yr="${yr}">🔍 Verifică declarațiile (pre-depunere)</button><div id="validateResult" data-u="u18"></div></div>` : ''}

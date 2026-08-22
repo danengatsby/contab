@@ -144,6 +144,19 @@ const FIRMA = { nume: 'S.C. PROBA CONTABO S.R.L.', cui: '12345678', adresa: 'Buc
     // Linia care spune patronului cat scoate din buzunar: doua cifre distincte, usor de confundat.
     ok('totalul de virat la buget e scris explicit', are(text, 'Total de virat la buget') && are(text, '5.250,00'));
     ok('costul total angajator e scris explicit', are(text, 'Cost total angajator') && are(text, '12.270,00'));
+    const draft = await randeaza(salarii.statePlataPdf, FIRMA, sp, '2026-06', { ciorna: true });
+    ok('previzualizarea statului este marcata vizibil drept CIORNA si NEPOSTATA',
+      are(draft.text, 'CIORNA') && are(draft.text, 'PREVIZUALIZARE NEPOSTATA'));
+    ok('ciorna spune explicit ca nu se semneaza', are(draft.text, 'nu se semneaza'));
+    const recap112 = await randeaza(declaratii.d112Pdf, FIRMA, {
+      period: '2026-06', brut: 12000, cas: 3000, casAngajator: 100,
+      cass: 1200, cassAngajator: 40, impozit: 780, cam: 270, net: 7020,
+      totalBuget: 5390,
+    });
+    ok('recap D112 separa contributiile retinute de suplimentul suportat de angajator',
+      are(recap112.text, 'CAS suplimentar suportat de angajator')
+      && are(recap112.text, 'CASS suplimentar suportat de angajator'));
+    ok('recap D112 foloseste totalul bugetar al fotografiei salariale', are(recap112.text, '5.390,00'));
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -169,6 +182,9 @@ const FIRMA = { nume: 'S.C. PROBA CONTABO S.R.L.', cui: '12345678', adresa: 'Buc
     ok('...salariul net', are(b.text, 'Salariu net') && are(b.text, '2.925,00'));
     ok('...si REST DE PLATA (cifra pe care o asteapta in cont)', are(b.text, 'REST DE PLATA'));
     ok('...plus costul angajatorului', are(b.text, 'Cost total angajator') && are(b.text, '5.112,50'));
+    const bDraft = await randeaza(salarii.fluturasPdf, FIRMA, bazic, '2026-06', { ciorna: true });
+    ok('previzualizarea fluturasului nu poate fi confundata cu documentul pentru angajat',
+      are(bDraft.text, 'CIORNA') && are(bDraft.text, 'nu se inmaneaza angajatului'));
     ok('fara spor, randul de spor NU apare', !are(b.text, '+ Spor'));
     ok('fara avans, randul de avans NU apare', !are(b.text, 'Avans acordat'));
     // Angajat fara CNP in fisa: randul dispare de tot, nu tipareste „CNP: undefined".

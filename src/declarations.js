@@ -11,6 +11,7 @@ const d311 = require('./d311');
 const d205 = require('./d205');
 const intrastat = require('./intrastat');
 const roCalendar = require('./romanianCalendar');
+const { statPlataPerioada } = require('./payroll');
 
 // Registrul depunerilor de declaratii + termene fiscale + agregarea pe portofoliu (multi-firma).
 //
@@ -388,6 +389,7 @@ function urgentaTermen(due, status, today, days) {
 /** Registrul unei firme pe o luna: asteptate ∪ inregistrari, cu termen si restanta. */
 function registerForFirma(d, v, period, today) {
   const t = today || new Date().toISOString().slice(0, 10);
+  const d112Postat = statPlataPerioada(v, period).postat;
   const rows = expectedForFirma(v, period).map((e) => {
     const rec = find(d, v.firmaId, e.tip, period) || {};
     const status = rec.status || 'nedepusa';
@@ -400,7 +402,9 @@ function registerForFirma(d, v, period, today) {
       generatedAt: rec.generatedAt || null, transmittedAt: rec.transmittedAt || null, submittedAt: rec.submittedAt || null,
       recipisa: rec.recipisa || '', note: rec.note || '', artifactHash: rec.artifactHash || '',
       artifactBytes: rec.artifactBytes || 0, artifacts: rec.artifacts || [], statusHistory: rec.statusHistory || [],
-      links: descarcariPentru(rec, e.tip, period),
+      links: e.tip === 'd112' && !d112Postat ? [] : descarcariPentru(rec, e.tip, period),
+      blocaj: e.tip === 'd112' && !d112Postat
+        ? 'Postează statul de plată înainte de generarea D112.' : '',
     };
   });
   // inregistrari manuale in afara celor asteptate (ex. D100 marcat intr-o luna non-trimestriala)
@@ -415,7 +419,9 @@ function registerForFirma(d, v, period, today) {
       overdue: false, generatedAt: rec.generatedAt, transmittedAt: rec.transmittedAt || null, submittedAt: rec.submittedAt,
       recipisa: rec.recipisa || '', note: rec.note || '', artifactHash: rec.artifactHash || '',
       artifactBytes: rec.artifactBytes || 0, artifacts: rec.artifacts || [], statusHistory: rec.statusHistory || [],
-      links: descarcariPentru(rec, rec.tip, period),
+      links: rec.tip === 'd112' && !d112Postat ? [] : descarcariPentru(rec, rec.tip, period),
+      blocaj: rec.tip === 'd112' && !d112Postat
+        ? 'Postează statul de plată înainte de generarea D112.' : '',
     });
   }
   return rows;

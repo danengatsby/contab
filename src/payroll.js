@@ -427,7 +427,28 @@ function statPlataPerioada(view, period, preferaPostat = true) {
   }
   return Object.assign(statePlata(view.angajati, period, view.payrollHistory,
     { cursuriBnr: view.cursuriBnr, entries: view.entries }),
-  { postat: false, platit: !!platit, paymentEntryId: platit ? platit.id : null });
+  { postat: false, snapshotIncomplet: !!h, entryId: h ? (h.entryId || null) : null,
+    snapshotId: h ? (h.id || null) : null,
+    platit: !!platit, paymentEntryId: platit ? platit.id : null });
+}
+
+/**
+ * Documentele care pot fi semnate, platite sau depuse nu au voie sa cada tacut pe calculul
+ * „live”. Dupa storno, acel calcul reprezinta deja o alta versiune a lunii, chiar daca utilizatorul
+ * nu a postat corectia. Previzualizarile il pot cere explicit prin `statPlataPerioada(..., false)`,
+ * dar iesirile oficiale trec toate prin aceasta poarta.
+ */
+function statPlataPostata(view, period) {
+  const sp = statPlataPerioada(view, period, true);
+  if (sp.postat) return sp;
+  const p = period ? ' pe ' + period : ' pentru perioada selectata';
+  const e = new Error(sp.snapshotIncomplet
+    ? 'Statul de plata' + p + ' are o fotografie istorica incompleta. Storneaza articolul vechi si '
+      + 'reposteaza luna pentru a genera in siguranta D112 si documentele finale.'
+    : 'Statul de plata' + p
+      + ' nu este postat. Inregistreaza statul lunii inainte de D112, plata sau documentele finale.');
+  e.status = 409;
+  throw e;
 }
 
 /** Registrul anual de salarii: cumuleaza instantaneele lunare per angajat pentru un an. */
@@ -450,4 +471,4 @@ function registruSalarii(history, year, entries) {
   return { year: String(year), angajati, totals: t, nrLuni: new Set(snaps.map((h) => h.period)).size };
 }
 
-module.exports = { statePlata, statPlataPerioada, registruSalarii, zileLucratoareInPrimele };
+module.exports = { statePlata, statPlataPerioada, statPlataPostata, registruSalarii, zileLucratoareInPrimele };

@@ -5,7 +5,7 @@
 // PDF-urile raman aici, pure pe vederea scoped. buildEntry e infrastructura partajata
 // (ramane in server.js) si se da serviciului ca dependenta.
 
-const { statPlataPerioada, registruSalarii } = require('../payroll');
+const { statPlataPerioada, statPlataPostata, registruSalarii } = require('../payroll');
 const pdf = require('../pdf');
 const svc = require('../payrollService');
 const { sendList } = require('../paginate');
@@ -21,6 +21,17 @@ module.exports = function register(app, ctx) {
       res.status(e.status).json({ error: e.message });
     }
   };
+  const runDocument = (res, fn) => {
+    try { return fn(); } catch (e) {
+      if (!e.status) throw e;
+      return res.status(e.status).send(e.message);
+    }
+  };
+
+  function statPentruDocument(v, period, live) {
+    return live ? statPlataPerioada(v, period, false) : statPlataPostata(v, period);
+  }
+  const perioadaCurenta = () => new Date().toISOString().slice(0, 7);
 
   app.get('/api/angajati', (req, res) => sendList(req, res, S(req).angajati, { label: 'angajati' }));
   app.post('/api/angajati', (req, res) => run(res, () => {
@@ -34,10 +45,10 @@ module.exports = function register(app, ctx) {
   }));
 
   app.get('/api/stat-plata', (req, res) => { const v = S(req); res.json(statPlataPerioada(v,
-    req.query.period, req.query.live !== '1')); });
+    req.query.period || perioadaCurenta(), req.query.live !== '1')); });
   // Dosar de recuperare a concediilor medicale de la FNUASS (o luna): angajatii cu CM + suma de recuperat.
-  function dosarCm(v, period) {
-    const sp = statPlataPerioada(v, period);
+  function dosarCm(v, period, live) {
+    const sp = statPentruDocument(v, period, live);
     const rows = sp.rows.flatMap((r) => {
       const certificate = Array.isArray(r.certificateCM) && r.certificateCM.length
         ? r.certificateCM : ((r.indemnizatieCM || 0) > 0 ? [r] : []);
@@ -49,10 +60,15 @@ module.exports = function register(app, ctx) {
         mediaZilnicaCM: c.mediaZilnicaCM, cmBazaAproximata: c.cmBazaAproximata,
         cmAngajator: c.cmAngajator, cmFnuass: c.cmFnuass }));
     });
-    return { period, rows, totalAngajator: sp.totals.cmAngajator, totalFnuass: sp.totals.cmFnuass };
+    return { period, rows, totalAngajator: sp.totals.cmAngajator,
+      totalFnuass: sp.totals.cmFnuass, ciorna: !!live };
   }
-  app.get('/api/dosar-cm', (req, res) => res.json(dosarCm(S(req), req.query.period)));
-  app.get('/pdf/dosar-cm', (req, res) => { const v = S(req); pdf.dosarCmPdf(res, v.company, dosarCm(v, req.query.period)); });
+  app.get('/api/dosar-cm', (req, res) => run(res,
+    () => dosarCm(S(req), req.query.period || perioadaCurenta(), req.query.live === '1')));
+  app.get('/pdf/dosar-cm', (req, res) => runDocument(res, () => {
+    const v = S(req); const period = req.query.period || perioadaCurenta();
+    pdf.dosarCmPdf(res, v.company, dosarCm(v, period, req.query.live === '1'));
+  }));
   app.get('/api/registru-salarii', (req, res) => { const v = S(req); res.json(registruSalarii(
     v.payrollHistory, req.query.year || String(new Date().getFullYear()), v.entries)); });
   app.get('/pdf/registru-salarii', (req, res) => { const v = S(req); pdf.registruSalariiPdf(
@@ -80,12 +96,17 @@ module.exports = function register(app, ctx) {
     return { ok: true, suma: r.suma, cont: r.cont, entry: r.entry };
   }));
 
-  app.get('/pdf/stat-plata', (req, res) => { const v = S(req); pdf.statePlataPdf(res, v.company, statPlataPerioada(v, req.query.period), req.query.period || null); });
-  app.get('/pdf/fluturas/:id', (req, res) => {
+  app.get('/pdf/stat-plata', (req, res) => runDocument(res, () => {
+    const v = S(req); const live = req.query.live === '1';
+    const period = req.query.period || perioadaCurenta();
+    pdf.statePlataPdf(res, v.company, statPentruDocument(v, period, live), period, { ciorna: live });
+  }));
+  app.get('/pdf/fluturas/:id', (req, res) => runDocument(res, () => {
     const v = S(req);
-    const row = statPlataPerioada(v, req.query.period).rows
+    const live = req.query.live === '1'; const period = req.query.period || perioadaCurenta();
+    const row = statPentruDocument(v, period, live).rows
       .find((r) => (r.angajatId || r.id) === req.params.id);
     if (!row) return res.status(404).send('Angajat inexistent in perioada selectata');
-    pdf.fluturasPdf(res, v.company, row, req.query.period || new Date().toISOString().slice(0, 7));
-  });
+    pdf.fluturasPdf(res, v.company, row, period, { ciorna: live });
+  }));
 };

@@ -35,7 +35,9 @@
   D112 `D_20a`/`D_21a`, `B3_7D`, `C2_155`/`C2_156`, fără rectificarea lunii precedente.
   După postare, statul păstrează o fotografie completă și imuabilă; fluturașul, plata, dosarul
   FNUASS și D112 citesc aceeași fotografie, astfel încât editarea fișei pentru luna următoare nu
-  modifică retroactiv documentele perioadei închise. Fotografia este legată de articolul
+  modifică retroactiv documentele perioadei închise. D112 și documentele finale sunt refuzate
+  înainte de postare sau după storno; statul, fluturașul și dosarul CM pot fi doar previzualizate
+  prin `live=1`, cu marcajul mare „CIORNĂ” și fără aparența unui document semnabil. Fotografia este legată de articolul
   `stat_plata`: stornarea articolului o păstrează în audit, dar o scoate imediat din registru,
   medii, plafoane și documente. O corecție se desface în ordine inversă (întâi plata, apoi statele
   ulterioare) și se repostează cronologic; astfel nicio lună ulterioară nu rămâne calculată pe un

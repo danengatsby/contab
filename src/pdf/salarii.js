@@ -5,9 +5,16 @@
 const { C, clean, finish, header, newDoc, recapPdf, table } = require('./helpers');
 const { fmt, periodLabel, round2 } = require('../util');
 
-function statePlataPdf(res, company, sp, period) {
+function statePlataPdf(res, company, sp, period, opts) {
+  const ciorna = !!(opts && opts.ciorna);
   const doc = newDoc(true);
-  header(doc, company, 'Stat de plata', period ? periodLabel(period) : '');
+  header(doc, company, ciorna ? 'CIORNA — Stat de plata' : 'Stat de plata',
+    (period ? periodLabel(period) : '') + (ciorna ? ' — PREVIZUALIZARE NEPOSTATA' : ''));
+  if (ciorna) {
+    doc.fillColor(C.danger).font('Helvetica-Bold').fontSize(10)
+      .text('CIORNA — nu este document contabil final si nu se semneaza.', doc.page.margins.left, doc.y);
+    doc.moveDown(0.4);
+  }
   const rows = sp.rows.map((r, i) => ({
     nr: String(i + 1), nume: r.nume, cnp: r.cnp, functie: r.functie,
     brut: fmt(r.brut), cas: fmt(r.cas), cass: fmt(r.cass), imp: fmt(r.impozit), net: fmt(r.net), cam: fmt(r.cam),
@@ -31,7 +38,8 @@ function statePlataPdf(res, company, sp, period) {
   finish(doc, res, 'stat-plata.pdf');
 }
 
-function fluturasPdf(res, company, r, period) {
+function fluturasPdf(res, company, r, period, opts) {
+  const ciorna = !!(opts && opts.ciorna);
   // Identificarea angajatului merge prin `intro`, NU pe un document propriu: `recapPdf` isi face
   // singur documentul si il inchide, deci un `newDoc()` de aici ar ramane orfan si tot ce s-ar
   // scrie pe el s-ar pierde — asa s-a si intamplat, iar fluturasul a circulat fara CNP si fara
@@ -108,14 +116,19 @@ function fluturasPdf(res, company, r, period) {
   rows.push({ k: 'Contributie angajator: CAM 2,25%', v: fmt(r.cam) });
   rows.push({ k: 'Cost total angajator', v: fmt(r.costTotal), _bold: true });
   recapPdf(res, company, {
-    title: 'Fluturas de salariu', subtitle: clean(r.nume) + (period ? ' — ' + periodLabel(period) : ''),
+    title: ciorna ? 'CIORNA — Fluturas de salariu' : 'Fluturas de salariu',
+    subtitle: clean(r.nume) + (period ? ' — ' + periodLabel(period) : '')
+      + (ciorna ? ' — PREVIZUALIZARE NEPOSTATA' : ''),
     intro: [
+      ciorna ? 'CIORNA — nu este document final si nu se inmaneaza angajatului.' : null,
       'Angajat: ' + clean(r.nume) + (r.functie ? '  (' + clean(r.functie) + ')' : ''),
       r.cnp ? 'CNP: ' + clean(r.cnp) : null,
     ],
     filename: 'fluturas-' + (r.nume || 'salariu').replace(/[^\w-]/g, '_') + '.pdf', rows,
     colName: 'Element', colVal: 'Suma (lei)',
-    note: 'Calcul conform parametrilor fiscali curenti (CAS 25%, CASS 10%, impozit 10%, CAM 2,25% angajator). Semnatura angajat: ____________________',
+    note: (ciorna ? 'PREVIZUALIZARE NEPOSTATA. Posteaza statul inainte de emitere. ' : '')
+      + 'Calcul conform parametrilor fiscali curenti (CAS 25%, CASS 10%, impozit 10%, CAM 2,25% angajator). '
+      + (ciorna ? '' : 'Semnatura angajat: ____________________'),
   });
 }
 

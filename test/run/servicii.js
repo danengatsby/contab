@@ -2124,30 +2124,42 @@ section('Verificarea pre-depunere: acelasi verdict pentru cockpit si pentru buto
   const { scopedSeed } = require('../../src/seed');
   const v = scopedSeed();
   const opt = { period: '2026-06', year: '2026' };
+  const sp112 = require('../../src/payroll').statePlata(v.angajati, opt.period, [], { entries: v.entries });
+  const entry112 = { id: 'dc112', firmaId: v.firmaId, tip: 'stat_plata', status: 'postat',
+    period: opt.period, data: opt.period + '-30', lines: [] };
+  const vD112 = Object.assign({}, v, {
+    entries: v.entries.concat([entry112]),
+    payrollHistory: [{ id: 'ph-dc112', firmaId: v.firmaId, period: opt.period, formatVersion: 3,
+      entryId: entry112.id, rows: sp112.rows, totals: sp112.totals }],
+  });
 
   eq('tipurile stiute sunt cele treisprezece din contract', dc.TYPES.join(','),
     'd300,d301,d307,d311,d394,d390,d100,d101,d107,intrastat,d205,d112,saft');
   // Fiecare tip declarat trebuie sa poata fi si CONSTRUIT — altfel lista minte.
   for (const t of dc.TYPES) {
-    const vt = t === 'd301' ? Object.assign({}, v, {
+    let vt = v;
+    if (t === 'd301') vt = Object.assign({}, v, {
       company: Object.assign({}, v.company, { tvaPlatitor: false, tvaArt317: true }),
       entries: v.entries.concat([{ id: 'dc301', tip: 'achizitie_tva_speciala_d301', status: 'postat',
         period: '2026-06', data: '2026-06-15', document: 'F301', partener: 'UE', partenerCui: 'DE811907980',
         d301: { tipOperatie: 5, tipValuta: 'EUR', valoareValuta: 2000, cursValutar: 5, baza: 10000, cota: 21, tva: 2100 },
         lines: [{ debit: '628', credit: '401', suma: 10000 }, { debit: '628', credit: '446', suma: 2100 }] }]),
-    }) : (t === 'd307' ? Object.assign({}, v, {
+    });
+    else if (t === 'd307') vt = Object.assign({}, v, {
       company: Object.assign({}, v.company, { tvaPlatitor: false, dataAnulareTva: '2026-06-01' }),
       entries: v.entries.concat([{ id: 'dc307', tip: 'ajustare_regularizare_tva_d307', status: 'postat',
         period: '2026-06', data: '2026-06-15', document: 'F307', partener: 'Cedent', partenerCui: '14399840',
         d307: { tip: 'A', rol: 'cedent', codOperator: '14399840', denumireOperator: 'Cedent', tva: 100 },
         lines: [{ debit: '635', credit: '446', suma: 100 }] }]),
-    }) : (t === 'd311' ? Object.assign({}, v, {
+    });
+    else if (t === 'd311') vt = Object.assign({}, v, {
       company: Object.assign({}, v.company, { tvaCodAnulat: true, dataAnulareTva: '2026-06-01', motivAnulareTva: 'oficiu' }),
       entries: v.entries.concat([{ id: 'dc311', tip: 'operatiune_tva_cod_anulat_d311', status: 'postat',
         period: '2026-06', data: '2026-06-15', document: 'F311',
         d311: { operatie: 11, sectiune: 'IV', baza: 1000, tva: 210, cota: 21 },
         lines: [{ debit: '4111', credit: '704', suma: 1000 }, { debit: '635', credit: '446', suma: 210 }] }]),
-    }) : (t === 'd107' ? Object.assign({}, v, {
+    });
+    else if (t === 'd107') vt = Object.assign({}, v, {
       company: Object.assign({}, v.company, { regimImpozit: 'profit' }),
       partners: Object.assign({}, v.partners, {
         14399840: { cui: '14399840', den: 'ASOCIATIA TEST', adresa: 'Str. ONG 1' },
@@ -2157,7 +2169,8 @@ section('Verificarea pre-depunere: acelasi verdict pentru cockpit si pentru buto
         partener: 'ASOCIATIA TEST', partenerCui: '14399840',
         lines: [{ debit: '5121', credit: '704', suma: 100000 },
           { debit: '6582', credit: '5121', suma: 1000 }] }]),
-    }) : v)));
+    });
+    else if (t === 'd112') vt = vD112;
     const x = dc.buildXml(vt, t, opt);
     ok('buildXml produce XML pentru ' + t, typeof x === 'string' && x.length > 50 && x.includes('<'));
     ok('...si e bine format', wellFormed(x));
@@ -2172,6 +2185,9 @@ section('Verificarea pre-depunere: acelasi verdict pentru cockpit si pentru buto
   // Atentionare, nu eroare: o declaratie fara operatiuni NU e invalida, doar goala.
   const r390 = dc.validateFor(v, 'd390', opt);
   ok('D390 fara operatiuni intracomunitare: atentionare, nu eroare', r390.ok && r390.warnings.length > 0);
+  const r112Draft = dc.validateFor(v, 'd112', opt);
+  ok('D112 nepostata este verdict invalid, nu XML construit din fisa vie', !r112Draft.ok
+    && r112Draft.errors.some((e) => /nu este postat/.test(e)));
 
   // Un tip necunoscut se REFUZA explicit, nu produce XML gol.
   let mesaj = '';

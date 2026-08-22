@@ -180,8 +180,12 @@ preluarea identității și a factorilor de autentificare ai utilizatorului.
 | `GET /api/stat-plata?period=` | — | statul calculat; după postare întoarce fotografia activă cu `postat:true`, `entryId`, `snapshotId`, `platit` și `paymentEntryId` (`&live=1` previzualizează fișele curente, fără scriere). O fotografie stornată nu mai este selectată |
 | `POST /api/stat-plata?period=` | — | `{ ok, totals, entry }` — articolul agregat + revizie salarială completă v3, legată prin `entryId`; repostarea fără storno e refuzată. 409 dacă există luni ulterioare active: se stornează în ordine inversă și se repostează cronologic. Revizia veche rămâne în audit, marcată stornată/suprascrisă |
 | `POST /api/stat-plata/pay?period=&cont=` | `cont ∈ {5121, 5311}` (implicit 5121) | `{ ok, suma, cont, entry }` — plata restului (421=512x), legată prin `payrollEntryId`; cere un stat activ postat și refuză a doua plată integrală a lunii. Corecția: storno plată → storno stat |
-| `GET /api/registru-salarii?year=`, `/api/dosar-cm?period=` | — | registrul anual / dosarul FNUASS |
-| PDF-uri | `/pdf/stat-plata`, `/pdf/fluturas/:id`, `/pdf/registru-salarii`, `/pdf/adeverinta/:id`, `/pdf/dosar-cm` | erorile sunt text, nu JSON |
+| `GET /api/registru-salarii?year=`, `/api/dosar-cm?period=` | — | registrul anual / dosarul FNUASS; dosarul final cere stat postat (409), iar `&live=1` întoarce numai previzualizarea marcată drept ciornă |
+| PDF-uri | `/pdf/stat-plata`, `/pdf/fluturas/:id`, `/pdf/registru-salarii`, `/pdf/adeverinta/:id`, `/pdf/dosar-cm` | statul, fluturașul și dosarul CM finale cer fotografia postată; `&live=1` este previzualizare vizibil marcată „CIORNĂ”, fără rubrică de semnătură; erorile sunt text, nu JSON |
+
+`/xml/d112`, `/pdf/d112` și validarea pre-depunere D112 nu recalculează niciodată din fișa vie.
+Fără o fotografie salarială activă și completă răspund cu 409/verdict invalid. Astfel, după storno
+nu poate fi descărcată accidental o declarație din corecția încă nepostată.
 
 ## Plăți bancare SEPA (`src/routes/plati.js`)
 

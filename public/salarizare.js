@@ -145,9 +145,6 @@ function insignaCM(r) {
 // ───────────────────────── SALARIZARE ─────────────────────────
 function spPeriod() { return pget('sp') || new Date().toISOString().slice(0, 7); }
 async function loadSalarizare() {
-  $('#spPdf').href = '/pdf/stat-plata?period=' + spPeriod();
-  $('#spD112').href = '/xml/d112?period=' + spPeriod();
-  $('#spDosarCm') && ($('#spDosarCm').href = '/pdf/dosar-cm?period=' + spPeriod());
   const p = encodeURIComponent(spPeriod());
   const [sp, spLive] = await Promise.all([
     api('/api/stat-plata?period=' + p),
@@ -156,19 +153,45 @@ async function loadSalarizare() {
   const liveById = new Map(spLive.rows.map((r) => [r.angajatId || r.id, r]));
   const t = sp.totals;
   const postBtn = $('#spPost'); const payBtn = $('#spPay');
-  postBtn.disabled = !!sp.postat;
-  postBtn.textContent = sp.postat ? 'Stat înregistrat' : 'Înregistrează salariile lunii';
+  postBtn.disabled = !!sp.postat || !!sp.snapshotIncomplet;
+  postBtn.textContent = sp.postat ? 'Stat înregistrat'
+    : (sp.snapshotIncomplet ? 'Necesită storno și repostare' : 'Înregistrează salariile lunii');
   payBtn.disabled = !sp.postat || !!sp.platit;
   payBtn.textContent = sp.platit ? 'Salarii plătite' : 'Plătește salariile';
   $('#spState').innerHTML = sp.postat
     ? '<span class="pill">✓ fotografie postată</span>'
       + (sp.platit ? ' <span class="pill">✓ plată înregistrată</span>' : ' · plata nu este încă înregistrată')
-    : '<span class="pill warn">ciornă live</span> · postează statul înainte de plată; după storno, fotografia veche nu mai este folosită';
+    : (sp.snapshotIncomplet
+      ? '<span class="pill warn">fotografie istorică incompletă</span> · stornează articolul vechi și repostează luna'
+      : '<span class="pill warn">ciornă live</span> · postează statul înainte de plată; după storno, fotografia veche nu mai este folosită');
+  const prev = sp.postat ? '' : '&live=1';
+  $('#spPdf').href = '/pdf/stat-plata?period=' + p + prev;
+  $('#spPdf').textContent = sp.postat ? '⬇ Stat de plată PDF' : '👁 Previzualizare stat (ciornă)';
+  $('#spPdf').classList.remove('inactiv');
+  $('#spPdf').removeAttribute('aria-disabled');
+  if ($('#spDosarCm')) {
+    $('#spDosarCm').href = '/pdf/dosar-cm?period=' + p + prev;
+    $('#spDosarCm').textContent = sp.postat ? '🏥 Dosar recuperare CM' : '👁 Previzualizare dosar CM';
+    $('#spDosarCm').classList.remove('inactiv');
+    $('#spDosarCm').removeAttribute('aria-disabled');
+  }
+  const d112Link = $('#spD112');
+  if (sp.postat) {
+    d112Link.href = '/xml/d112?period=' + p;
+    d112Link.classList.remove('inactiv');
+    d112Link.removeAttribute('aria-disabled');
+    d112Link.title = 'XML D112 construit din fotografia postată a lunii';
+  } else {
+    d112Link.removeAttribute('href');
+    d112Link.classList.add('inactiv');
+    d112Link.setAttribute('aria-disabled', 'true');
+    d112Link.title = 'D112 devine disponibilă numai după postarea statului';
+  }
   $('#angajatiList').innerHTML = sp.rows.length
     ? `<table><thead><tr><th>Nume</th><th>Funcție</th><th class="num">Brut</th><th class="num">CAS</th><th class="num">CASS</th><th class="num">Deducere</th><th class="num">Impozit</th><th class="num">Net</th><th class="num">Avans</th><th class="num">Rețineri</th><th class="num">Rest plată</th><th class="num">CAM</th><th></th></tr></thead><tbody>${
       sp.rows.map((r) => `<tr><td>${H(r.nume)}${r.spor ? ' <span class="muted">+spor ' + fmt(r.spor) + '</span>' : ''}${r.persoane ? ' <span class="muted">' + r.persoane + ' pers.</span>' : ''}${r.tichete ? ' <span class="muted">+tichete ' + fmt(r.tichete) + '</span>' : ''}${r.avantaje ? ' <span class="muted" title="Avantaje în natură impozabile — intră în CAS/CASS/impozit, nu se plătesc în bani">+avantaje ' + fmt(r.avantaje) + '</span>' : ''}${r.zileCM ? ' <span class="muted" title="' + H(insignaCM(r)) + '">' + (r.cmBazaAproximata || r.cmAproximat ? '⚠' : '🏥') + ' CM ' + r.zileCM + 'z</span>' : ''}${r.zileCO ? ' <span class="muted" title="Concediu de odihnă: ' + r.zileCO + ' zile, indemnizație ' + fmt(r.indemnizatieCO) + ' lei pe media 3 luni (' + fmt(r.mediaCO) + ')">🏖 CO ' + r.zileCO + 'z</span>' : ''}${r.normaPartiala ? ' <span class="muted" title="Normă parțială sub salariul minim: CAS ' + fmt(r.casAngajator) + ' + CASS ' + fmt(r.cassAngajator) + ' suportate suplimentar de firmă (OUG 16/2022)">⏱ parțial</span>' : ''}${r.neimpozabilMinim ? ' <span class="muted" title="Art. 76 Cod fiscal: ' + fmt(r.neimpozabilMinim) + ' lei din salariul minim sunt neimpozabili ȘI exceptați de la CAS/CASS/CAM — de aceea contribuțiile sunt calculate la o bază mai mică decât brutul">✓ ' + fmt(r.neimpozabilMinim) + ' lei neimpozabili</span>' : ''}${r.beneficiiAcordate ? ' <span class="muted" title="' + H(insignaBeneficii(r)) + '">' + (r.beneficiiDepasit ? '⚠' : '✓') + ' beneficii ' + fmt(r.beneficiiNeimpozabile) + ' neimpozabil' + (r.beneficiiImpozabile ? ' / ' + fmt(r.beneficiiImpozabile) + ' impozabil' : '') + '</span>' : ''}${r.scutire ? ' <span class="muted">scutit (' + H(r.sector) + ')</span>' : ''}${r.overPlafon ? ' <span data-u="u13">⚠ peste plafon scutire</span>' : ''}</td><td>${H(r.functie)}</td>
         <td class="num">${fmt(r.brut)}</td><td class="num">${fmt(r.cas)}</td><td class="num">${fmt(r.cass)}</td><td class="num">${r.deducere ? fmt(r.deducere) : ''}</td><td class="num">${fmt(r.impozit)}</td><td class="num">${fmt(r.net)}</td><td class="num">${r.avans ? fmt(r.avans) : ''}</td><td class="num">${r.retineri ? fmt(r.retineri) : ''}</td><td class="num">${fmt(r.restPlata)}</td><td class="num">${fmt(r.cam)}</td>
-        <td><a class="linkbtn" href="/pdf/fluturas/${r.angajatId || r.id}?period=${spPeriod()}" target="_blank">fluturaș</a> · <a class="linkbtn" href="/pdf/adeverinta/${r.angajatId || r.id}?year=${($('#rsYear').value || new Date().getFullYear())}" target="_blank">adeverință</a>${liveById.has(r.angajatId || r.id) ? ' · <button class="linkbtn aedit" data-id="' + H(r.angajatId || r.id) + '">editează</button> · <button class="linkbtn adel" data-id="' + H(r.angajatId || r.id) + '">șterge</button>' : ''}</td></tr>`).join('')}
+        <td><a class="linkbtn" href="/pdf/fluturas/${r.angajatId || r.id}?period=${p}${prev}" target="_blank">${sp.postat ? 'fluturaș' : 'previzualizare fluturaș'}</a> · <a class="linkbtn" href="/pdf/adeverinta/${r.angajatId || r.id}?year=${($('#rsYear').value || new Date().getFullYear())}" target="_blank">adeverință</a>${liveById.has(r.angajatId || r.id) ? ' · <button class="linkbtn aedit" data-id="' + H(r.angajatId || r.id) + '">editează</button> · <button class="linkbtn adel" data-id="' + H(r.angajatId || r.id) + '">șterge</button>' : ''}</td></tr>`).join('')}
       <tr class="bold"><td colspan="2">TOTAL (${sp.rows.length} ang.)</td><td class="num">${fmt(t.brut)}</td><td class="num">${fmt(t.cas)}</td><td class="num">${fmt(t.cass)}</td><td class="num">${fmt(t.deducere)}</td><td class="num">${fmt(t.impozit)}</td><td class="num">${fmt(t.net)}</td><td class="num">${fmt(t.avans)}</td><td class="num">${fmt(t.retineri)}</td><td class="num">${fmt(t.restPlata)}</td><td class="num">${fmt(t.cam)}</td><td></td></tr></tbody></table>`
     : '<p class="muted">Niciun angajat. Adaugă unul în pagina „Angajați" (butonul de mai sus).</p>';
   $('#spSummary').innerHTML = `<table><tbody>
@@ -220,7 +243,7 @@ async function loadSalarizare() {
     formFlowLoaded(f, 'angajat:' + r.id);
   }));
 }
-onPeriodChange('sp', () => { $('#spPdf').href = '/pdf/stat-plata?period=' + spPeriod(); $('#spD112').href = '/xml/d112?period=' + spPeriod(); $('#spDosarCm') && ($('#spDosarCm').href = '/pdf/dosar-cm?period=' + spPeriod()); loadSalarizare(); });
+onPeriodChange('sp', loadSalarizare);
 async function renderRegistruSalarii() {
   const y = $('#rsYear').value || (new Date()).getFullYear();
   $('#rsPdf').href = '/pdf/registru-salarii?year=' + y;

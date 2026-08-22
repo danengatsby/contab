@@ -1205,6 +1205,26 @@ async function main() {
     ok('lista angajati contine angajatul', (await req('GET', '/api/angajati', { cookie: c1 })).json.some((a) => a.id === angId));
     const sp = await req('GET', '/api/stat-plata?period=2026-06', { cookie: c1 });
     ok('stat de plata: CAS 25% pe 5000 = 1250', sp.json && sp.json.rows[0] && sp.json.rows[0].cas === 1250);
+    eq('D112 XML refuza ciorna live',
+      (await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).status, 409);
+    eq('recap D112 PDF refuza ciorna live',
+      (await req('GET', '/pdf/d112?period=2026-06', { cookie: c1 })).status, 409);
+    eq('statul PDF final refuza luna nepostata',
+      (await req('GET', '/pdf/stat-plata?period=2026-06', { cookie: c1 })).status, 409);
+    eq('previzualizarea explicita a statului ramane disponibila',
+      (await req('GET', '/pdf/stat-plata?period=2026-06&live=1', { cookie: c1 })).status, 200);
+    eq('fluturasul final refuza luna nepostata',
+      (await req('GET', '/pdf/fluturas/' + angId + '?period=2026-06', { cookie: c1 })).status, 409);
+    eq('previzualizarea explicita a fluturasului ramane disponibila',
+      (await req('GET', '/pdf/fluturas/' + angId + '?period=2026-06&live=1', { cookie: c1 })).status, 200);
+    eq('dosarul CM final refuza luna nepostata',
+      (await req('GET', '/pdf/dosar-cm?period=2026-06', { cookie: c1 })).status, 409);
+    eq('previzualizarea explicita a dosarului CM ramane disponibila',
+      (await req('GET', '/pdf/dosar-cm?period=2026-06&live=1', { cookie: c1 })).status, 200);
+    const val112Draft = await req('GET', '/api/validate/d112?period=2026-06', { cookie: c1 });
+    ok('validarea pre-depunere D112 refuza ciorna cu verdict explicit', val112Draft.status === 200
+      && val112Draft.json && val112Draft.json.ok === false
+      && val112Draft.json.errors.some((e) => /nu este postat/.test(e)));
     const propSalDraft = await req('GET', '/api/plati/propuneri?tip=salarii&period=2026-06', { cookie: c1 });
     ok('SEPA salarii: o ciorna este vizibila, dar nu poate intra in lot', propSalDraft.json
       && propSalDraft.json.statPostat === false && propSalDraft.json.gata === 0
@@ -1215,6 +1235,12 @@ async function main() {
     const spPostat = await req('GET', '/api/stat-plata?period=2026-06', { cookie: c1 });
     ok('API stat: fotografia postata este legata de articol', spPostat.json && spPostat.json.postat
       && spPostat.json.entryId === post.json.entry.id && spPostat.json.platit === false);
+    eq('D112 XML devine disponibil numai din fotografia postata',
+      (await req('GET', '/xml/d112?period=2026-06', { cookie: c1 })).status, 200);
+    eq('statul PDF final devine disponibil dupa postare',
+      (await req('GET', '/pdf/stat-plata?period=2026-06', { cookie: c1 })).status, 200);
+    eq('recapitulatia D112 devine disponibila dupa postare',
+      (await req('GET', '/pdf/d112?period=2026-06', { cookie: c1 })).status, 200);
     const propSalPostat = await req('GET', '/api/plati/propuneri?tip=salarii&period=2026-06', { cookie: c1 });
     ok('SEPA salarii foloseste RESTUL de plata, nu netul inainte de avans', propSalPostat.json
       && propSalPostat.json.statPostat && !propSalPostat.json.salariiPlatite
@@ -1907,7 +1933,8 @@ async function main() {
     const angAv = await req('POST', '/api/angajati', { cookie: c1, body: { nume: 'Avantaj Ion', salariuBrut: 5000, avantaje: 1000 } });
     const spAvH = (await req('GET', '/api/stat-plata?period=2026-10', { cookie: c1 })).json.rows.find((r) => r.nume === 'Avantaj Ion');
     ok('stat: CAS 25% pe brut+avantaje (1500) si avantajele pe rand', spAvH && spAvH.cas === 1500 && spAvH.avantaje === 1000);
-    ok('D112 v7: baza CAS (A_13) include avantajele (6000)', /A_13="6000"/.test((await req('GET', '/xml/d112?period=2026-10', { cookie: c1 })).text));
+    eq('D112 nu poate folosi avantajele dintr-o fisa live nepostata',
+      (await req('GET', '/xml/d112?period=2026-10', { cookie: c1 })).status, 409);
     ok('angajat de test sters', (await req('DELETE', '/api/angajati/' + angAv.json.angajat.id, { cookie: c1 })).json.ok === true);
 
     // ── Concediu medical in stat: salariu redus + indemnizatii + postare 6458/4373 ──

@@ -22,7 +22,7 @@ const d107 = require('../d107');
 const d301 = require('../d301');
 const d307 = require('../d307');
 const d311 = require('../d311');
-const { statPlataPerioada } = require('../payroll');
+const { statPlataPostata } = require('../payroll');
 const crypto = require('crypto');
 
 module.exports = function register(app, ctx) {
@@ -354,12 +354,18 @@ module.exports = function register(app, ctx) {
   app.get('/xml/d112', (req, res) => {
     const v = S(req);
     const period = req.query.period || new Date().toISOString().slice(0, 7);
+    let sp;
+    try { sp = statPlataPostata(v, period); }
+    catch (e) {
+      if (e.status) return res.status(e.status).send(e.message);
+      throw e;
+    }
     // Steagul de rectificare se DERIVA din istoricul depunerilor, nu se cere din interfata: daca
     // exista deja o depunere pe perioada, urmatorul XML e rectificativ prin definitie. O bifa
     // manuala ar putea fi uitata, si D112-ul ar pleca la ANAF ca declaratie initiala.
     const recD112 = decl.find(db.get(), activeId(req), 'd112', period);
     const depusaDeja = !!decl.lastSubmission(recD112);
-    const out = xml.d112Xml(v.company, period, statPlataPerioada(v, period), declarantOf(req),
+    const out = xml.d112Xml(v.company, period, sp, declarantOf(req),
       { rectificativa: depusaDeja, tipRec: req.query.tipRec });
     sendRecordedXml(req, res, 'd112', period, out, 'd112-' + period + '.xml');
   });

@@ -29,7 +29,9 @@ function isActive(snapshot, entries) {
   if (!Array.isArray(entries)) return true;
   if (snapshot.entryId) {
     const linked = entries.find((e) => e && e.id === snapshot.entryId);
-    return !linked || !linked.stornat;
+    // O fotografie v3 fara articolul ei nu mai este dovada unei postari. Cazul apare la un import
+    // partial/corupt; tratarea lui ca activ ar permite D112 si fluturasi finali fara nota 641=421.
+    return !!linked && linked.tip === 'stat_plata' && !linked.stornat;
   }
   const samePeriod = entriesForSnapshot(snapshot, entries);
   return !samePeriod.length || samePeriod.some((e) => !e.stornat);

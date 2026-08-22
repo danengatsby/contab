@@ -89,7 +89,7 @@ const decl = require('../src/declarations');
 const { reconcile } = require('../src/reconcile');
 const { settle, candidatesFor } = require('../src/matching');
 const { reconcileInbox, journalPurchases } = require('../src/einvoiceReconcile');
-const { statePlata, registruSalarii } = require('../src/payroll');
+const { statePlata, statPlataPostata, registruSalarii } = require('../src/payroll');
 const payrollHistory = require('../src/payrollHistory');
 
 // Helperii si CONTORUL vin din test/run/comun.js — partajate cu partile din test/run/.
@@ -2284,6 +2284,22 @@ const hist = [
   { period: '2026-06', rows: [{ angajatId: 'a', nume: 'Ion', cnp: '123', brut: 5000, cas: 1250, cass: 500, impozit: 325, net: 2925 }] },
   { period: '2026-07', rows: [{ angajatId: 'a', nume: 'Ion', cnp: '123', brut: 5000, cas: 1250, cass: 500, impozit: 325, net: 2925 }] },
 ];
+let eroareStatDraft = '';
+try { statPlataPostata({ angajati: [], payrollHistory: [], entries: [] }, '2026-06'); }
+catch (e) { eroareStatDraft = e.status + ':' + e.message; }
+ok('poarta documentelor oficiale refuza statul nepostat cu 409',
+  /^409:/.test(eroareStatDraft) && /nu este postat/.test(eroareStatDraft));
+const snapPostat = { id: 'ph-postat', firmaId: 1, period: '2026-06', formatVersion: 3,
+  entryId: 'e-postat', rows: hist[0].rows, totals: { brut: 5000, net: 2925 } };
+const spSigur = statPlataPostata({ angajati: [], payrollHistory: [snapPostat],
+  entries: [{ id: 'e-postat', firmaId: 1, tip: 'stat_plata', period: '2026-06' }] }, '2026-06');
+ok('poarta documentelor oficiale livreaza fotografia postata si legaturile ei',
+  spSigur.postat && spSigur.snapshotId === 'ph-postat' && spSigur.entryId === 'e-postat');
+let eroareSnapshotOrfan = '';
+try { statPlataPostata({ angajati: [], payrollHistory: [snapPostat], entries: [] }, '2026-06'); }
+catch (e) { eroareSnapshotOrfan = e.message; }
+ok('fotografia legata de un articol contabil lipsa nu este tratata drept stat postat',
+  /nu este postat/.test(eroareSnapshotOrfan));
 const rs = registruSalarii(hist, 2026);
 eq('registru: nr luni', rs.nrLuni, 2);
 eq('registru: brut anual cumulat', rs.angajati[0].brut, 10000);
@@ -6304,6 +6320,21 @@ const ordineSect = (l) => { const o = ['A. Lunar', 'B. Trimestrial', 'C. Anual',
   return l.list.every((x, i) => i === 0 || o.indexOf(l.list[i - 1].sectiune) <= o.indexOf(x.sectiune)); };
 const livMicro = rep.livrabile({ company: { tipEntitate: 'srl', regimImpozit: 'micro' }, entries: [], openingBalances: {} }, '2026-06');
 ok('borderou micro: numerotare continua, fara golul 15->17', nrContinuu(livMicro));
+ok('borderoul nu ofera recap D112 final cat timp statul este ciorna',
+  livMicro.sumar.d112.postat === false
+    && livMicro.list.filter((x) => x.id === 3 || x.id === 5).every((x) => x.links.length === 0));
+const spReg = statePlata(vDecl.angajati, '2026-06', [], { entries: vDecl.entries });
+const entryReg = { id: 'stat-reg', firmaId: vDecl.firmaId, tip: 'stat_plata',
+  status: 'postat', period: '2026-06', data: '2026-06-30', lines: [] };
+const vDeclPostat = Object.assign({}, vDecl, {
+  entries: vDecl.entries.concat([entryReg]),
+  payrollHistory: [{ id: 'ph-reg', firmaId: vDecl.firmaId, period: '2026-06', formatVersion: 3,
+    entryId: entryReg.id, rows: spReg.rows, totals: spReg.totals }],
+});
+const livPostat = rep.livrabile(vDeclPostat, '2026-06');
+ok('borderoul ofera D112 numai dupa postare si sumarul vine din fotografie',
+  livPostat.sumar.d112.postat === true && livPostat.sumar.d112.brut === spReg.totals.brut
+    && livPostat.list.filter((x) => x.id === 3 || x.id === 5).every((x) => x.links.length > 0));
 ok('borderou PFA: numerotare continua desi se scot 5 randuri', nrContinuu(livPfa));
 ok('borderou PFA: sectiunile raman in ordine (randurile adaugate nu ies la coada)', ordineSect(livPfa));
 ok('borderou: textele au diacritice (mesaj catre utilizator)', livMicro.list.some((x) => /ă|â|î|ș|ț/.test(x.nume)));
@@ -6332,6 +6363,13 @@ eq('status dupa depunere', dDecl.declarations[0].status, 'depusa');
 declMod.record(dDecl, vDecl.firmaId, 'd300', '2026-06', { status: 'generata' }, nidDecl);
 eq('re-generarea NU retrogradeaza depusa', dDecl.declarations[0].status, 'depusa');
 const regDecl = declMod.registerForFirma(dDecl, vDecl, '2026-06', '2026-08-01');
+const reg112Draft = regDecl.find((r) => r.tip === 'd112');
+ok('registrul depunerilor explica blocajul D112 si nu ofera link pe ciorna',
+  reg112Draft && reg112Draft.links.length === 0 && /Postează statul/.test(reg112Draft.blocaj));
+const reg112Postat = declMod.registerForFirma(dDecl, vDeclPostat, '2026-06', '2026-08-01')
+  .find((r) => r.tip === 'd112');
+ok('registrul depunerilor ofera fisierele D112 dupa postare',
+  reg112Postat && reg112Postat.links.some((l) => l.href === '/xml/d112?period=2026-06'));
 eq('registru: d300 depusa', regDecl.find((r) => r.tip === 'd300').status, 'depusa');
 ok('registru: d112 nedepusa cu termen depasit -> restanta', regDecl.find((r) => r.tip === 'd112').overdue);
 ok('registru: d300 depusa nu e restanta', !regDecl.find((r) => r.tip === 'd300').overdue);
