@@ -183,7 +183,8 @@ await pg.evaluate(() => goTab('documente'));
 await pg.waitForTimeout(800);
 await pg.evaluate(() => document.querySelectorAll('#welcomeOverlay,.toast,#fwWizard,.op-wizard').forEach((e) => e.remove()));
 ok('navigația ciclului nu este duplicată în conținut', (await pg.locator('.cyclemap,.cyclestep,.cyclearrow').count()) === 0);
-ok('etapa ciclului apare compact în bara contextuală', /etapa 1\/7/i.test(await pg.locator('.app-context-kicker').textContent()));
+ok('pagina de introducere este clasificată compact în bara contextuală',
+  /înregistrare/i.test(await pg.locator('.app-context-kicker').textContent()));
 await pg.click('#manualBtn');
 await pg.waitForTimeout(1000);
 await pg.selectOption('#tipSelect', 'factura_vanzare_marfuri');
