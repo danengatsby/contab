@@ -216,17 +216,9 @@ body.erp #tabs .navhint { padding: 5px 12px; color: #8f897e; font-size: 12px; }
 body.erp.simple-ui #tabs .navgroup.adv { display: none !important; }
 body.erp.simple-ui #tabs .navmenu button.adv { display: none !important; }
 
-body.erp .topbar .side-tools {
-  order: 6;
-  display: none;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
-  margin: 0;
-  padding-top: 7px;
-}
-body.erp .topbar.tools-open .side-tools { display: grid; }
-body.erp .topbar .side-tools .btn,
-body.erp .topbar #toolsBtn,
+/* Până când erp.js mută uneltele în antetul contextual, nu le afișăm pentru o fracțiune de
+   secundă în bara laterală. Este același nod, nu o copie. */
+body.erp .topbar .side-tools { display: none; }
 body.erp .topbar #logoutBtn {
   display: inline-flex;
   align-items: center;
@@ -241,33 +233,7 @@ body.erp .topbar #logoutBtn {
   font-size: 12.5px;
   box-shadow: none;
 }
-body.erp .topbar .side-tools .btn:hover,
-body.erp .topbar #toolsBtn:hover,
 body.erp .topbar #logoutBtn:hover { color: #fff; background: rgba(255,255,255,.14); }
-body.erp .topbar .side-tools .btn.mod-expert {
-  color: #f0c14b;
-  background: rgba(240,193,75,.16);
-  border-color: rgba(240,193,75,.5);
-}
-body.erp .topbar .side-tools .btn.mod-expert:hover { background: rgba(240,193,75,.28); border-color: rgba(240,193,75,.75); }
-body.erp .topbar #toolsBtn {
-  order: 6;
-  display: inline-flex;
-  width: 100%;
-  margin-top: 5px;
-}
-body.erp .topbar #toolsBtn::after {
-  width: 7px;
-  height: 7px;
-  margin-left: auto;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  content: "";
-  opacity: .7;
-  transform: rotate(45deg);
-  transition: transform .18s ease;
-}
-body.erp .topbar.tools-open #toolsBtn::after { transform: rotate(225deg); }
 body.erp .topbar #userBadge { order: 7; margin: 2px 5px 0; color: #bdb8ac; font-size: 12.5px; }
 body.erp .topbar #logoutBtn { order: 8; width: 100%; }
 body.erp #navToggleBtn,
@@ -289,9 +255,10 @@ body.erp .app-context {
   top: 0;
   z-index: 45;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 8px 24px;
   min-height: var(--app-context-h);
   margin: 0 -32px 28px;
   padding: 10px 32px;
@@ -300,6 +267,58 @@ body.erp .app-context {
   box-shadow: 0 8px 22px rgba(45,39,29,.045);
   backdrop-filter: blur(14px);
 }
+/* Uneltele globale sunt un singur rând, sus pe ORICE pagină. Pe lățimi mici rândul se
+   derulează în el însuși, astfel încât toate acțiunile rămân accesibile fără să lățească pagina. */
+body.erp .app-context .side-tools {
+  order: 3;
+  display: flex;
+  flex: 1 0 100%;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 0 0;
+  overflow-x: auto;
+  border-top: 1px solid var(--line);
+  scrollbar-color: color-mix(in srgb, var(--muted) 35%, transparent) transparent;
+  scrollbar-width: thin;
+}
+body.erp .app-context .side-tools-label {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+body.erp .app-context .side-tools .btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 9px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  box-shadow: none;
+}
+body.erp .app-context .side-tools .btn:hover {
+  color: var(--app-clay);
+  background: color-mix(in srgb, var(--app-clay) 8%, var(--card));
+  border-color: color-mix(in srgb, var(--app-clay) 45%, var(--line));
+}
+body.erp .app-context .side-tools .btn.mod-expert {
+  color: #9a6b00;
+  background: color-mix(in srgb, #f0c14b 16%, var(--card));
+  border-color: color-mix(in srgb, #f0c14b 55%, var(--line));
+}
+body.dark.erp .app-context .side-tools .btn.mod-expert { color: #f0c14b; }
 body.erp .app-context-title { display: flex; align-items: center; gap: 12px; min-width: 160px; }
 body.erp .app-context-icon {
   width: 40px;
@@ -462,27 +481,8 @@ body.erp.compact h3 { font-size: 18px; }
     background: rgba(255,255,255,.09);
     border-color: rgba(255,255,255,.18);
   }
-  body.erp .topbar #toolsBtn {
-    order: 3;
-    display: inline-flex;
-    width: auto;
-    margin-top: 0;
-    min-height: 38px;
-    color: #fff;
-    background: rgba(255,255,255,.09);
-    border-color: rgba(255,255,255,.18);
-  }
-  body.erp .topbar #toolsBtn::after { display: none; }
-  body.erp .topbar .side-tools {
-    order: 6;
-    display: none;
-    grid-template-columns: repeat(2,minmax(0,1fr));
-    width: 100%;
-  }
-  body.erp .topbar.tools-open .side-tools { display: grid; }
-  body.erp .topbar:not(.tools-open) #userBadge,
-  body.erp .topbar:not(.tools-open) #logoutBtn { display: none; }
-  body.erp .topbar #logoutBtn { order: 8; width: auto; }
+  body.erp .topbar #userBadge { display: none; }
+  body.erp .topbar #logoutBtn { order: 3; width: auto; }
 
   /* Același arbore de navigație ca pe desktop, deschis ca sertar sub antet. */
   body.erp .topbar.nav-open #tabs {
@@ -552,13 +552,6 @@ body.erp.compact h3 { font-size: 18px; }
 /* La limita minimă suportată, firma și perioada primesc fiecare rândul ei.
    Altfel selectorul firmei rămâne cu aproximativ 90px și devine indescifrabil. */
 @media (max-width: 360px) {
-  body.erp .topbar #toolsBtn {
-    width: 40px;
-    min-width: 40px;
-    padding: 0;
-    gap: 0;
-  }
-  body.erp .topbar #toolsBtn .control-label { display: none; }
   body.erp .app-context-controls { grid-template-columns: minmax(0,1fr); }
   body.erp .app-context-field,
   body.erp .app-context .curgroup { width: 100%; }

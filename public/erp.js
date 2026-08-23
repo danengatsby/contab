@@ -137,7 +137,7 @@
   function numeIcon(nod, simbol) {
     if (nod.dataset && nod.dataset.tab && TAB_ICONS[nod.dataset.tab]) return TAB_ICONS[nod.dataset.tab];
     if (nod.dataset && nod.dataset.go && TAB_ICONS[nod.dataset.go]) return TAB_ICONS[nod.dataset.go];
-    var byId = { paletaBtn: 'search', glossaryBtn: 'help', uiModeBtn: 'mode', themeBtn: 'theme', densityBtn: 'density', tourBtn: 'compass', navToggleBtn: 'menu', toolsBtn: 'settings', logoutBtn: 'user', prevMonth: 'arrowLeft', nextMonth: 'arrowRight' };
+    var byId = { paletaBtn: 'search', glossaryBtn: 'help', uiModeBtn: 'mode', themeBtn: 'theme', densityBtn: 'density', tourBtn: 'compass', navToggleBtn: 'menu', logoutBtn: 'user', prevMonth: 'arrowLeft', nextMonth: 'arrowRight' };
     if (byId[nod.id]) return byId[nod.id];
     // Un simbol necunoscut rămâne text. Fallback-ul paginii se aplică numai
     // titlurilor fără simbol, nu înlocuiește aproximativ conținutul existent.
@@ -237,6 +237,11 @@
     conexiune.setAttribute('role', 'status');
     controls.appendChild(conexiune);
     bar.appendChild(controls);
+
+    // Un singur set de controale globale, mutat în antetul comun tuturor paginilor. Mutarea
+    // păstrează listener-ele deja legate și evită două versiuni care ar putea avea stări diferite.
+    var unelte = $('#sideTools');
+    if (unelte) bar.appendChild(unelte);
     main.insertBefore(bar, main.firstChild);
   }
 
@@ -329,9 +334,6 @@
 
     comutator.addEventListener('click', function () {
       var deschide = !bara.classList.contains('nav-open');
-      bara.classList.remove('tools-open');
-      var unelte = $('#toolsBtn');
-      if (unelte) unelte.setAttribute('aria-expanded', 'false');
       bara.classList.toggle('nav-open', deschide);
       document.body.classList.toggle('mobile-nav-open', deschide);
       comutator.setAttribute('aria-expanded', String(deschide));

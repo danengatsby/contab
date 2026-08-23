@@ -747,24 +747,29 @@ section('Scanerul local: oprit înseamnă ascuns, nu gri');
     /\bdisabled\b/.test('<button id="scannerBtn" class="btn" disabled>') && !/\bdisabled\b/.test('<button id="scannerBtn" class="btn">'));
 }
 
-section('Bara de sus pe telefon: nu are voie să crească la loc');
+section('Uneltele globale: toate sus, pe fiecare pagină');
 {
-  // Măsurat înainte: 340px din 844 (40% din ecran) înainte de orice conținut, fiindcă cele șase
-  // utilitare stăteau într-o grilă 2x3 mereu deschisă. Azi: 113px (13%). Câștigul e fragil —
-  // se pierde la PRIMUL buton nou pus direct în bară, iar defectul e invizibil pe desktop, unde
-  // bara e sidebar vertical și mai încape orice. Deci poarta: în `.topbar`, în afara `.side-tools`
-  // și a meniului, au voie să stea doar comenzile din listă. Un buton nou merge în `.side-tools`.
+  // Utilitarele globale au stat jos în bara laterală, în spatele unui al doilea click pe „Unelte".
+  // Acum același nod este mutat în antetul contextual comun tuturor taburilor: toate acțiunile
+  // sunt vizibile direct, iar pe telefon rândul se derulează în el însuși, nu lățește pagina.
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const cap = html.indexOf('<header class="topbar">');
   const meniu = html.indexOf('<nav class="tabs"', cap);
   ok('poarta chiar găsește bara de sus', cap >= 0 && meniu > cap);
-  const bara = html.slice(cap, meniu).replace(/<div class="side-tools"[\s\S]*?<\/div>/, ' ');
+  const unelte = (html.match(/<nav class="side-tools"[\s\S]*?<\/nav>/) || [''])[0];
+  ok('containerul semantic al uneltelor există', unelte !== '');
+  const iduriUnelte = [...unelte.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
+  eq('toate cele șase unelte sunt în aceeași bandă', iduriUnelte.join(','),
+    'paletaBtn,glossaryBtn,uiModeBtn,themeBtn,densityBtn,tourBtn');
+  ok('vechiul buton care ascundea uneltele a dispărut', !html.includes('id="toolsBtn"'));
+
+  const bara = html.slice(cap, meniu).replace(/<nav class="side-tools"[\s\S]*?<\/nav>/, ' ');
   ok('poarta chiar a scos uneltele din perimetru', !bara.includes('id="glossaryBtn"'));
-  const PERMISE = new Set(['prevMonth', 'nextMonth', 'navToggleBtn', 'toolsBtn', 'logoutBtn']);
+  const PERMISE = new Set(['prevMonth', 'nextMonth', 'navToggleBtn', 'logoutBtn']);
   const inBara = [...bara.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
   const intruse = inBara.filter((id) => !PERMISE.has(id));
-  ok('nimic nou permanent în bara de telefon'
-    + (intruse.length ? ' — MUTĂ-LE ÎN .side-tools: ' + intruse.join(', ') : ''), intruse.length === 0);
+  ok('bara mobilă păstrează doar navigarea și ieșirea'
+    + (intruse.length ? ' — NEAȘTEPTATE: ' + intruse.join(', ') : ''), intruse.length === 0);
   ok('poarta chiar vede butoane (nu o listă goală)', inBara.length >= 3);
 
   // Navigația nu se rescrie pentru telefon: același #tabs se deschide ca sertar.
@@ -777,29 +782,22 @@ section('Bara de sus pe telefon: nu are voie să crească la loc');
     && /body\.erp #appContextTitle\s*\{\s*font-size:\s*17px/.test(erpCssMobil));
   ok('la 320px firma și perioada se așază pe rânduri lizibile',
     /@media \(max-width: 360px\)[\s\S]{0,260}\.app-context-controls\s*\{\s*grid-template-columns:\s*minmax\(0,1fr\)/.test(erpCssMobil));
-  ok('suprascrierea mobilă a uneltelor are aceeași ancoră ca regula desktop',
-    /@media \(max-width: 360px\)[\s\S]{0,150}body\.erp \.topbar #toolsBtn\s*\{/.test(erpCssMobil));
+  ok('ieșirea rămâne accesibilă direct în bara mobilă',
+    /@media \(max-width: 700px\)[\s\S]*body\.erp \.topbar #logoutBtn\s*\{\s*order:\s*3;\s*width:\s*auto/.test(erpCssMobil));
 
-  // Uneltele strânse trebuie să rămână AJUNGIBILE prin același control pe desktop și mobil.
-  ok('butonul „⋯ Unelte" există', html.includes('id="toolsBtn"'));
-  ok('...și declară ce comandă', /id="toolsBtn"[^>]*aria-controls="sideTools"/.test(html));
-  ok('...iar containerul lui există cu acel id', html.includes('id="sideTools"'));
+  // Uneltele sunt mutate, nu clonate; listener-ele și starea Simplu/Expert rămân aceleași.
+  const erp = fs.readFileSync(path.join(PUB, 'erp.js'), 'utf8');
+  ok('antetul contextual preia nodul real al uneltelor',
+    /var unelte = \$\('#sideTools'\);[\s\S]{0,80}bar\.appendChild\(unelte\)/.test(erp));
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
-  ok('pe desktop rămâne un singur declanșator vizibil',
-    /body\.erp \.topbar #toolsBtn\s*\{[\s\S]{0,140}display:\s*inline-flex/.test(erpCssMobil));
-  ok('utilitarele pornesc strânse pe toate dimensiunile',
-    /body\.erp \.topbar \.side-tools\s*\{[\s\S]{0,70}display:\s*none/.test(erpCssMobil));
-  ok('...și se desfășoară pe aceeași clasă de stare',
-    /body\.erp \.topbar\.tools-open \.side-tools\s*\{\s*display:\s*grid/.test(erpCssMobil));
+  ok('toate uneltele sunt vizibile direct în antet',
+    /body\.erp \.app-context \.side-tools\s*\{[\s\S]{0,100}display:\s*flex/.test(erpCssMobil));
+  ok('banda se derulează în ea însăși când nu încape',
+    /body\.erp \.app-context \.side-tools\s*\{[^}]*overflow-x:\s*auto/.test(erpCssMobil));
   ok('regulile uneltelor aparțin shell-ului, nu CSS-ului vechi',
     !/side-tools|toolsBtn|tools-open|mod-expert/.test(css));
   const js = fs.readFileSync(path.join(PUB, 'simplemode.js'), 'utf8');
-  ok('comutatorul chiar pune clasa aceea', /classList\.toggle\('tools-open'\)/.test(js));
-  // Panoul trebuie să se închidă după alegerea unei unelte — altfel rămâne deschis peste pagina
-  // pe care tocmai ai cerut-o, adică exact ecranul pentru care ai apăsat.
-  ok('panoul se închide la alegerea unei unelte', /#sideTools[\s\S]{0,220}inchideUnelte\(\)/.test(js));
-  ok('panoul se închide și la navigare sau Escape',
-    /#tabs[\s\S]{0,220}inchideUnelte/.test(js) && /e\.key === 'Escape'[\s\S]{0,140}inchideUnelte\(true\)/.test(js));
+  ok('nu a rămas logică de panou ascuns', !/tools-open|inchideUnelte|#toolsBtn/.test(js + erp));
 }
 
 section('Carcasa aplicației: o singură navigație și context unic');

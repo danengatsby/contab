@@ -309,16 +309,17 @@
     <!-- Pe telefon se deschide ACELAȘI arbore #tabs într-un sertar. Nu există o a doua listă
          scurtată de destinații și nici o ierarhie mobilă întreținută separat. -->
     <button id="navToggleBtn" class="btn small" type="button" aria-expanded="false" aria-controls="tabs">☰ Meniu</button>
-    <!-- Cele șase utilitare se strâng separat: sunt preferințe și ajutor, nu navigație. -->
-    <button id="toolsBtn" class="btn small" type="button" aria-expanded="false" aria-controls="sideTools" aria-label="Unelte" title="Unelte: căutare, dicționar, mod simplu, temă">⋯ <span class="control-label">Unelte</span></button>
-    <div class="side-tools" id="sideTools">
+    <!-- Acțiunile globale sunt mutate, fără clonare, în antetul contextual construit de erp.js.
+         Astfel apar sus pe fiecare pagină, iar bara laterală rămâne exclusiv pentru navigație. -->
+    <nav class="side-tools" id="sideTools" aria-label="Unelte rapide">
+      <span class="side-tools-label">Unelte</span>
       <button id="paletaBtn" class="btn small" title="Caută în aplicație — clienți, facturi, pagini (Ctrl+K)">🔎 Caută</button>
       <button id="glossaryBtn" class="btn small" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor">❓ Dicționar</button>
       <button id="uiModeBtn" class="btn small" title="Mod simplu: ascunde partea tehnic-contabilă din meniu (balanță, registre, plan de conturi, închideri). Contabilitatea rulează neschimbată în fundal. Mod expert: totul vizibil.">🎓</button>
       <button id="themeBtn" class="btn small" title="Comută tema (clar / întunecat)">🌙</button>
       <button id="densityBtn" class="btn small" title="Comută densitatea afișării">⊟ Compact</button>
       <button id="tourBtn" class="btn small" title="Turul meniului — îți arată în câțiva pași cum e organizată aplicația">🧭 Tur meniu</button>
-    </div>
+    </nav>
     <span id="userBadge" class="userbadge"></span>
     <button id="logoutBtn" class="btn small">Ieși</button>
     <nav class="tabs" id="tabs" aria-label="Meniu principal">
