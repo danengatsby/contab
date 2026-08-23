@@ -16,7 +16,7 @@
 // iar cautarea contractului se face DOAR in interiorul ei — un id strain da 404, nu datele altcuiva.
 
 const db = require('./db');
-const { validIsoDate } = require('./util');
+const { validIsoDate, validPeriod } = require('./util');
 const leasing = require('./leasing');
 const { capList } = require('./paginate');
 
@@ -38,6 +38,7 @@ function reqContract(fid, id) {
 }
 
 const METODE = ['anuitati', 'rate_egale'];
+const CAMPURI_GRAFIC = ['principal', 'months', 'dobandaAnuala', 'metoda', 'dataPrimeiRate', 'cotaTva'];
 
 function normalize(b) {
   const principal = Number(b.principal);
@@ -68,6 +69,12 @@ function upsert(fid, b) {
   const d = db.get();
   if (b.id) { // editare: doar in interiorul firmei
     const c = reqContract(fid, b.id);
+    const folosit = linkedEntries(fid, c.id);
+    // Identificarea locatorului poate fi corectata, dar graficul care a alimentat deja o factura
+    // ramane imuabil. Altfel aceeasi factura istorica ar indica maine alta rata/principal/TVA.
+    if (folosit.length && CAMPURI_GRAFIC.some((k) => String(c[k]) !== String(n[k]))) {
+      fail(409, 'Graficul contractului este folosit de ' + folosit.length + ' articol(e) si nu mai poate fi modificat. Pentru conditii noi creeaza un contract nou; denumirea si datele locatorului pot fi corectate aici.');
+    }
     Object.assign(c, n);
     db.save();
     return { contract: c, created: false };
@@ -82,6 +89,8 @@ function remove(fid, id) {
   fid = reqFirma(fid);
   const c = reqContract(fid, id);
   const d = db.get();
+  const folosit = linkedEntries(fid, c.id);
+  if (folosit.length) fail(409, 'Contractul este legat de ' + folosit.length + ' articol(e) si nu poate fi sters; istoricul contabil trebuie sa ramana trasabil.');
   d.leasingContracts = (d.leasingContracts || []).filter((x) => x !== c);
   db.save();
   return { ok: true, contract: c };
@@ -91,12 +100,25 @@ function remove(fid, id) {
  *  Plafonata (garda OOM), ca orice colectie vie intoarsa dintr-un serviciu. */
 function list(fid) {
   fid = reqFirma(fid);
-  return capList((db.get().leasingContracts || []).filter((c) => c.firmaId === fid), null, 'leasingContracts').items.map((c) => {
+  const contracts = capList((db.get().leasingContracts || []).filter((c) => c.firmaId === fid), null, 'leasingContracts').items;
+  const wanted = new Set(contracts.map((c) => String(c.id)));
+  const links = new Map();
+  // O singura trecere prin jurnal pentru TOATA lista. Un scan per contract ar deveni O(C×E)
+  // exact pe firmele cu multe contracte si multe articole.
+  for (const e of (db.get().entries || [])) {
+    const id = e.firmaId === fid && e.leasingRef ? String(e.leasingRef.contractId) : '';
+    if (!wanted.has(id)) continue;
+    if (!links.has(id)) links.set(id, []);
+    links.get(id).push(e);
+  }
+  return contracts.map((c) => {
     const s = leasing.contractSchedule(c);
+    const usage = usageSummary(fid, c.id, s, links.get(String(c.id)) || []);
     return Object.assign({}, c, {
       totals: s.totals,
       primaRata: s.rows.length ? s.rows[0].period : null,
       ultimaRata: s.rows.length ? s.rows[s.rows.length - 1].period : null,
+      usage,
     });
   });
 }
@@ -105,7 +127,20 @@ function list(fid) {
 function schedule(fid, id) {
   fid = reqFirma(fid);
   const c = reqContract(fid, id);
-  return { contract: c, schedule: leasing.contractSchedule(c) };
+  const s = leasing.contractSchedule(c);
+  const active = activeLinkedEntries(fid, c.id);
+  const byPeriod = new Map();
+  // Un articol postat are prioritate fata de o ciorna ramasa accidental pe aceeasi luna.
+  for (const e of active.sort((a, b) => (isPosted(a) ? -1 : 1) - (isPosted(b) ? -1 : 1))) {
+    if (!byPeriod.has(e.leasingRef.period)) byPeriod.set(e.leasingRef.period, e);
+  }
+  s.rows = s.rows.map((r) => {
+    const e = byPeriod.get(r.period);
+    return Object.assign({}, r, e ? { inregistrare: {
+      id: e.id, document: e.document || '', data: e.data, status: isPosted(e) ? 'postat' : (e.status || 'ciorna'),
+    } } : {});
+  });
+  return { contract: c, schedule: s, usage: usageSummary(fid, c.id, s) };
 }
 
 /**
@@ -121,4 +156,66 @@ function installment(fid, id, period) {
   return { contract: { id: c.id, denumire: c.denumire, partener: c.partener, cui: c.cui, cotaTva: c.cotaTva }, rata: r };
 }
 
-module.exports = { upsert, remove, list, schedule, installment, METODE };
+function isPosted(e) { return !e.status || e.status === 'postat'; }
+
+function linkedEntries(fid, contractId) {
+  // Iteratie interna, nu colectia vie returnata direct: rezultatul este folosit pentru invarianti
+  // (unicitate/imuabilitate), deci nu poate fi trunchiat fara sa lase dubluri dupa plafon.
+  const out = [];
+  for (const e of (db.get().entries || [])) {
+    if (e.firmaId === fid && e.leasingRef && String(e.leasingRef.contractId) === String(contractId)) out.push(e);
+  }
+  return out;
+}
+
+function activeLinkedEntries(fid, contractId) {
+  return linkedEntries(fid, contractId).filter((e) => !e.stornat && !e.stornoOf);
+}
+
+function usageSummary(fid, contractId, scheduleValue, knownLinks) {
+  const all = knownLinks || linkedEntries(fid, contractId);
+  const active = all.filter((e) => !e.stornat && !e.stornoOf);
+  const s = scheduleValue || leasing.contractSchedule(reqContract(fid, contractId));
+  const periods = new Set((s.rows || []).map((r) => r.period));
+  const postedPeriods = new Set(active.filter((e) => isPosted(e) && periods.has(e.leasingRef.period)).map((e) => e.leasingRef.period));
+  const inLucruPeriods = new Set(active.filter((e) => !isPosted(e) && periods.has(e.leasingRef.period)).map((e) => e.leasingRef.period));
+  const next = (s.rows || []).find((r) => !postedPeriods.has(r.period));
+  return { linked: all.length, posted: postedPeriods.size, inLucru: inLucruPeriods.size,
+    nextPeriod: next ? next.period : null, complete: postedPeriods.size >= (s.rows || []).length };
+}
+
+/** Valideaza selectia din formular si pastreaza o fotografie a ratei. Cifrele facturii pot fi
+ * ajustate de operator; fotografia face diferenta verificabila fara sa rescrie graficul. */
+function resolveReference(fid, value) {
+  fid = reqFirma(fid);
+  if (value == null || value === '') return null; // introducerea manuala ramane compatibila
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail(400, 'Referinta ratei de leasing este invalida. Realege contractul si luna.');
+  const contractId = String(value.contractId || '').trim();
+  const period = String(value.period || '').trim();
+  if (!contractId || !validPeriod(period)) fail(400, 'Referinta ratei trebuie sa contina contractul si luna (YYYY-MM).');
+  const c = reqContract(fid, contractId);
+  const r = leasing.installmentFor(c, period);
+  if (!r) fail(400, 'Luna ' + period + ' nu exista in graficul contractului „' + c.denumire + '”.');
+  return {
+    contractId: c.id, period,
+    contractDenumire: c.denumire, contractDocument: c.document || '',
+    rata: { luna: r.luna, principal: r.principal, dobanda: r.dobanda, tva: r.tva,
+      total: r.total, sold: r.sold, cotaTva: c.cotaTva },
+  };
+}
+
+/** La postare, contractul trebuie sa existe inca si aceeasi rata sa nu fie deja activa. */
+function assertEntryCanPost(fid, entry) {
+  if (!entry || !entry.leasingRef) return;
+  fid = reqFirma(fid);
+  const ref = entry.leasingRef;
+  const c = reqContract(fid, ref.contractId);
+  if (!validPeriod(ref.period) || !leasing.installmentFor(c, ref.period)) fail(409, 'Rata legata nu mai exista in graficul contractului.');
+  const duplicate = activeLinkedEntries(fid, ref.contractId).find((e) => e.id !== entry.id
+    && isPosted(e) && e.leasingRef.period === ref.period);
+  if (duplicate) fail(409, 'Rata ' + ref.period + ' a contractului „' + c.denumire + '” este deja postata prin documentul '
+    + (duplicate.document || duplicate.id) + '. Storneaza inregistrarea existenta inainte de a posta o corectie.');
+}
+
+module.exports = { upsert, remove, list, schedule, installment, resolveReference, assertEntryCanPost,
+  usageSummary, METODE };

@@ -2324,6 +2324,27 @@ section('Module fara test direct: beneficii, leasingService, notify, xls');
     { denumire: 'Invalid', principal: 10000, months: 12, dataPrimeiRate: '2026-02-30' })), 400);
   eq('contract leasing: TVA nefinita -> 400', errStatus(() => lsv.upsert(fidOk,
     { denumire: 'Invalid', principal: 10000, months: 12, dataPrimeiRate: '2026-01-01', cotaTva: Infinity })), 400);
+  const lcSvc = lsv.upsert(fidOk, { denumire: 'Contract trasabil service', partener: 'Locator Vechi',
+    principal: 12000, months: 12, dobandaAnuala: 8, metoda: 'anuitati',
+    dataPrimeiRate: '2040-01-15', cotaTva: 21 }).contract;
+  const lrSvc = lsv.resolveReference(fidOk, { contractId: lcSvc.id, period: '2040-03' });
+  ok('referinta leasing pastreaza contractul, luna si fotografia ratei', lrSvc.contractId === lcSvc.id
+    && lrSvc.period === '2040-03' && lrSvc.rata.luna === 3 && lrSvc.rata.principal > 0);
+  const leSvc = { id: 'lease-linked-svc', firmaId: fidOk, tip: 'factura_leasing', status: 'postat',
+    data: '2040-03-20', period: '2040-03', document: 'FL-SVC', leasingRef: lrSvc,
+    lines: [{ debit: '167', credit: '404', suma: lrSvc.rata.principal }] };
+  db.get().entries.push(leSvc);
+  const lcMeta = lsv.upsert(fidOk, Object.assign({}, lcSvc, { denumire: 'Contract trasabil corectat', partener: 'Locator Corect' })).contract;
+  ok('dupa folosire se pot corecta doar datele de identificare', lcMeta.denumire === 'Contract trasabil corectat' && lcMeta.partener === 'Locator Corect');
+  eq('dupa folosire graficul nu mai poate fi rescris', errStatus(() => lsv.upsert(fidOk,
+    Object.assign({}, lcMeta, { principal: lcMeta.principal + 1 }))), 409);
+  eq('contractul legat nu poate fi sters', errStatus(() => lsv.remove(fidOk, lcSvc.id)), 409);
+  const leSvcDublu = Object.assign({}, leSvc, { id: 'lease-duplicate-svc', status: 'aprobat', document: 'FL-SVC-2' });
+  eq('aceeasi rata nu poate fi postata de doua ori', errStatus(() => lsv.assertEntryCanPost(fidOk, leSvcDublu)), 409);
+  leSvc.stornat = true;
+  ok('dupa storno, o factura corectata poate reutiliza rata', (() => { try { lsv.assertEntryCanPost(fidOk, leSvcDublu); return true; } catch (_) { return false; } })());
+  db.get().entries = db.get().entries.filter((e) => e.id !== leSvc.id);
+  ok('contractul fara nicio legatura poate fi sters', lsv.remove(fidOk, lcSvc.id).ok === true);
 
   // ── notify: textul digestului ──
   const nt = require('../../src/notify');

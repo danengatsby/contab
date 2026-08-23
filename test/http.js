@@ -2474,6 +2474,7 @@ async function main() {
     const lcSch = await req('GET', '/api/leasing-contracts/' + lcId + '/schedule', { cookie: c1 });
     eq('graficul are 36 de rate', lcSch.json.schedule.rows.length, 36);
     eq('graficul se inchide pe principal', lcSch.json.schedule.totals.principal, 50000);
+    eq('contract nou: nicio rata inregistrata', lcSch.json.usage.posted, 0);
     const rata = await req('GET', '/api/leasing-contracts/' + lcId + '/rata?period=2026-05', { cookie: c1 });
     eq('rata lunii cerute e a treia', rata.json.rata.luna, 3);
     ok('rata are principal, dobanda si TVA', rata.json.rata.principal > 0 && rata.json.rata.dobanda > 0 && rata.json.rata.tva > 0);
@@ -2482,14 +2483,50 @@ async function main() {
     eq('luna fara rata -> 404', (await req('GET', '/api/leasing-contracts/' + lcId + '/rata?period=2030-01', { cookie: c1 })).status, 404);
     // cifrele preluate compun un articol contabil VALID (167 + 666 + 4426 = 404)
     const fl = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_leasing', fields: {
-      data: '2026-05-15', partener: rata.json.contract.partener, cuiFurnizor: rata.json.contract.cui, document: 'FL-3',
+      data: '2026-05-15', partener: rata.json.contract.partener, cuiPartener: rata.json.contract.cui, document: 'FL-3',
+      leasingRata: { contractId: lcId, period: '2026-05' },
       principal: rata.json.rata.principal, dobanda: rata.json.rata.dobanda, tva: rata.json.rata.tva, cota: 21 } } });
     ok('factura de rata se posteaza din cifrele graficului', fl.status === 200);
+    ok('factura pastreaza contractul, luna si fotografia ratei', fl.json.entry.leasingRef
+      && fl.json.entry.leasingRef.contractId === lcId && fl.json.entry.leasingRef.period === '2026-05'
+      && fl.json.entry.leasingRef.rata.luna === 3);
     const flLines = fl.json.entry.lines;
     eq('articolul are trei linii (principal, dobanda, TVA)', flLines.length, 3);
     ok('167 = 404 pe principal', flLines.some((l) => l.debit === '167' && l.credit === '404' && l.suma === rata.json.rata.principal));
     ok('666 = 404 pe dobanda', flLines.some((l) => l.debit === '666' && l.credit === '404' && l.suma === rata.json.rata.dobanda));
     ok('4426 = 404 pe TVA', flLines.some((l) => l.debit === '4426' && l.credit === '404' && l.suma === rata.json.rata.tva));
+    const lcUsed = await req('GET', '/api/leasing-contracts/' + lcId + '/schedule', { cookie: c1 });
+    const rowUsed = lcUsed.json.schedule.rows.find((x) => x.period === '2026-05');
+    ok('graficul arata documentul postat pe luna ratei', rowUsed.inregistrare
+      && rowUsed.inregistrare.id === fl.json.entry.id && rowUsed.inregistrare.status === 'postat');
+    eq('progresul contractului numara rata o singura data', lcUsed.json.usage.posted, 1);
+    const flDuplicate = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_leasing', fields: {
+      data: '2026-05-20', partener: 'Leasing SA', cuiPartener: 'RO777', document: 'FL-DUBLU',
+      leasingRata: { contractId: lcId, period: '2026-05' }, principal: rata.json.rata.principal,
+      dobanda: rata.json.rata.dobanda, tva: rata.json.rata.tva, cota: 21 } } });
+    eq('aceeasi rata nu se poate posta de doua ori', flDuplicate.status, 409);
+    const flDraft = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_leasing', ciorna: true, fields: {
+      data: '2026-05-21', partener: 'Leasing SA', cuiPartener: 'RO777', document: 'FL-CIORNA-DUBLA',
+      leasingRata: { contractId: lcId, period: '2026-05' }, principal: rata.json.rata.principal,
+      dobanda: rata.json.rata.dobanda, tva: rata.json.rata.tva, cota: 21 } } });
+    await req('POST', '/api/entries/' + flDraft.json.entry.id + '/status', { cookie: c1, body: { status: 'validat' } });
+    await req('POST', '/api/entries/' + flDraft.json.entry.id + '/status', { cookie: c1, body: { status: 'aprobat' } });
+    eq('nici o ciorna nu poate ocoli unicitatea la postare', (await req('POST', '/api/entries/' + flDraft.json.entry.id + '/status', {
+      cookie: c1, body: { status: 'postat' } })).status, 409);
+    const lcMetaEdit = await req('POST', '/api/leasing-contracts', { cookie: c1, body: Object.assign({}, lc.json.contract,
+      { id: lcId, denumire: 'Autoutilitara — denumire corectata' }) });
+    ok('datele de identificare se pot corecta dupa folosire', lcMetaEdit.status === 200
+      && lcMetaEdit.json.contract.denumire.includes('corectata'));
+    eq('graficul folosit nu mai poate fi rescris', (await req('POST', '/api/leasing-contracts', { cookie: c1,
+      body: Object.assign({}, lc.json.contract, { id: lcId, principal: 50001 }) })).status, 409);
+    eq('contractul folosit nu poate fi sters', (await req('DELETE', '/api/leasing-contracts/' + lcId, { cookie: c1 })).status, 409);
+    ok('storno elibereaza luna pentru o factura corectata', (await req('POST', '/api/entries/' + fl.json.entry.id + '/storno', {
+      cookie: c1, body: { data: '2026-05-31' } })).status === 200);
+    const flCorectata = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_leasing', fields: {
+      data: '2026-05-31', partener: 'Leasing SA', cuiPartener: 'RO777', document: 'FL-3-R',
+      leasingRata: { contractId: lcId, period: '2026-05' }, principal: rata.json.rata.principal,
+      dobanda: rata.json.rata.dobanda, tva: rata.json.rata.tva, cota: 21 } } });
+    ok('rata poate fi repostata dupa stornarea documentului initial', flCorectata.status === 200 && flCorectata.json.entry.leasingRef.period === '2026-05');
     // validari de intrare
     eq('contract fara denumire -> 400', (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { principal: 1000, months: 12, dataPrimeiRate: '2026-01-01' } })).status, 400);
     eq('contract fara data primei rate -> 400', (await req('POST', '/api/leasing-contracts', { cookie: c1, body: { denumire: 'X', principal: 1000, months: 12 } })).status, 400);

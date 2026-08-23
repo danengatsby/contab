@@ -1800,6 +1800,23 @@ section('Gazda formularului unic de înregistrare (docflow.js)');
   eq('raport lipsă nu randează nimic', entries.calitateRaportHtml(null), '');
 }
 
+section('Factura de leasing: selectorul pastreaza legatura numai dupa preluarea ratei');
+{
+  const picker = (loadedContract, loadedPeriod, selectedContract, selectedPeriod) => ({
+    dataset: { loadedContract, loadedPeriod },
+    querySelector: (sel) => sel === '.lp-contract' ? { value: selectedContract } : { value: selectedPeriod },
+  });
+  eq('contractul si luna confirmate sunt serializate in formular',
+    JSON.stringify(docflow.readLeasing(picker('lsg7', '2026-05', 'lsg7', '2026-05'))),
+    JSON.stringify({ contractId: 'lsg7', period: '2026-05' }));
+  eq('schimbarea lunii invalideaza legatura pana la o noua preluare',
+    docflow.readLeasing(picker('lsg7', '2026-05', 'lsg7', '2026-06')), null);
+  eq('simpla alegere, fara preluare, nu pretinde o rata legata',
+    docflow.readLeasing(picker('', '', 'lsg7', '2026-05')), null);
+  const flowSrc = fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8');
+  ok('preluarea ratei completeaza campul real de CUI al furnizorului', /set\('cuiPartener',\s*r\.contract\.cui\)/.test(flowSrc));
+}
+
 section('Luna de lucru nu trece în viitor (public/periods.js)');
 {
   const { capMonth, currentMonth } = await imp(mirror, 'periods.js');

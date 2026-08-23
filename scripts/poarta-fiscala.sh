@@ -105,6 +105,8 @@ src/extractCheck.js
 src/efacturaImport.js
 src/einvoiceReconcile.js
 src/bnr.js
+src/leasing.js
+src/leasingService.js
 src/documentTypes/
 scripts/genereaza-referinte.js
 scripts/valideaza-duk.sh

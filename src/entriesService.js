@@ -17,6 +17,7 @@ const recurring = require('./recurring');
 const fiscalProfile = require('./fiscalProfile');
 const extractQuality = require('./extractQuality'); // guard de scriere derivat din profilul fiscal
 const payrollHistory = require('./payrollHistory');
+const leasingService = require('./leasingService');
 const { reqFirma } = require('./stocksService');
 const { round2, period: periodOf } = require('./util');
 
@@ -98,6 +99,7 @@ function createEntry(fid, b, deps) {
   // flux ca ciorna. Intr-o firma cu un singur om comportamentul istoric (postare directa) ramane.
   if (b.ciorna || makerCheckerRequired(fid)) entry.status = 'ciorna';
   markEntryActor(entry, actor, entryState(entry));
+  if (entryState(entry) === 'postat') leasingService.assertEntryCanPost(fid, entry);
   if (b.spvMsgId) entry.spvImport = { msgId: b.spvMsgId, at: new Date().toISOString() };
   const d = db.get();
   let stocInfo = null;
@@ -297,6 +299,7 @@ function setEntryStatus(id, fallbackFid, canFid, target, actor) {
   if (target === 'aprobat') { e.approvedBy = aid; e.approvedAt = at; }
   if (target === 'postat') {
     db.assertPeriodOpen(fid, e.period || periodOf(e.data), 'Postarea'); // nu se posteaza intr-o luna inchisa
+    leasingService.assertEntryCanPost(fid, e);
     const mids = new Set(e.stocMovementIds || []);
     if (mids.size) {
       const miscari = (d.stockMovements || []).filter((m) => mids.has(m.id) && m.entryId === e.id);

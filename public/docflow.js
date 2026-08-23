@@ -412,7 +412,10 @@ function renderFields(values) {
     const name = ed.id.replace('fld_', '');
     initStocEditor(ed, Array.isArray(values[name]) ? values[name] : []);
   });
-  box.querySelectorAll('.leasing-picker').forEach((ed) => initLeasingPicker(ed));
+  box.querySelectorAll('.leasing-picker').forEach((ed) => {
+    const name = ed.id.replace('fld_', '');
+    initLeasingPicker(ed, values[name]);
+  });
   box.querySelectorAll('input,select').forEach((el) => el.addEventListener('input', updatePreview));
   updatePreview();
 }
@@ -447,21 +450,38 @@ async function ensureStocCache() {
  * principalul, dobânda și TVA-ul din graficul contractului.
  *
  * Cifrele rămân EDITABILE după preluare — o rată restantă, o regularizare sau un comision
- * facturat odată cu rata nu trebuie blocate de grafic. Selectorul nu intră în monografie:
- * articolul se compune tot pe server, din câmpurile numerice (`POST /api/preview`).
+ * facturat odată cu rata nu trebuie blocate de grafic. Se păstrează însă contractul și luna,
+ * ca aceeași rată să nu fie postată de două ori și contractul folosit să rămână trasabil.
  */
-async function initLeasingPicker(ed) {
+async function initLeasingPicker(ed, initialValue) {
   const sel = ed.querySelector('.lp-contract');
   const per = ed.querySelector('.lp-period');
   const msg = ed.querySelector('.lp-msg');
   // luna implicită = luna documentului, dacă e deja completată
   const dataDoc = ($('#fld_data') || {}).value || '';
-  if (dataDoc) per.value = dataDoc.slice(0, 7);
+  const initial = initialValue && typeof initialValue === 'object' ? initialValue : {};
+  if (initial.period) per.value = String(initial.period);
+  else if (dataDoc) per.value = dataDoc.slice(0, 7);
   let contracte = [];
   try { contracte = await api('/api/leasing-contracts'); } catch (_) { contracte = []; }
   if (!contracte.length) { msg.textContent = 'Niciun contract salvat — adaugă unul în „Mijloace fixe → Contracte de leasing".'; return; }
   sel.insertAdjacentHTML('beforeend', contracte.map((c) =>
     `<option value="${H(c.id)}">${H(c.denumire)}${c.partener ? ' — ' + H(c.partener) : ''} (${fmt(c.principal)} lei / ${c.months} rate)</option>`).join(''));
+  if (initial.contractId && contracte.some((c) => String(c.id) === String(initial.contractId))) {
+    sel.value = String(initial.contractId);
+    ed.dataset.loadedContract = String(initial.contractId);
+    ed.dataset.loadedPeriod = String(initial.period || '');
+    msg.textContent = 'Rata legată de contract; apasă „preia rata” pentru a reîncărca valorile din grafic.';
+  }
+
+  const invalidate = () => {
+    if (ed.dataset.loadedContract !== sel.value || ed.dataset.loadedPeriod !== per.value) {
+      delete ed.dataset.loadedContract; delete ed.dataset.loadedPeriod;
+      msg.textContent = 'Selecția s-a schimbat — apasă „preia rata” pentru a confirma legătura.';
+    }
+  };
+  sel.addEventListener('change', invalidate);
+  per.addEventListener('change', invalidate);
 
   const preia = async () => {
     msg.textContent = '';
@@ -475,11 +495,14 @@ async function initLeasingPicker(ed) {
       set('tva', r.rata.tva);
       set('cota', r.contract.cotaTva);
       set('partener', r.contract.partener);
-      set('cuiFurnizor', r.contract.cui);
-      msg.textContent = `Rata ${r.rata.luna}/${contracte.find((c) => c.id === sel.value).months} — sold rămas ${fmt(r.rata.sold)} lei.`;
+      set('cuiPartener', r.contract.cui);
+      ed.dataset.loadedContract = String(sel.value);
+      ed.dataset.loadedPeriod = String(per.value);
+      const contractSelectat = contracte.find((c) => String(c.id) === String(sel.value));
+      msg.textContent = `Rata ${r.rata.luna}/${contractSelectat?.months || '—'} — sold rămas ${fmt(r.rata.sold)} lei.`;
       updatePreview();
       ed.dispatchEvent(new Event('input', { bubbles: true }));
-    } catch (e) { msg.textContent = e.message; }
+    } catch (e) { delete ed.dataset.loadedContract; delete ed.dataset.loadedPeriod; msg.textContent = e.message; }
   };
   ed.querySelector('.lp-load').addEventListener('click', preia);
 }
@@ -516,12 +539,20 @@ function readStoc(ed) {
     cantitate: r.querySelector('.st-cant').value,
   })).filter((s) => s.productId && parseFloat(s.cantitate) > 0);
 }
+function readLeasing(ed) {
+  const sel = ed.querySelector('.lp-contract'); const per = ed.querySelector('.lp-period');
+  const contractId = String(ed.dataset.loadedContract || '');
+  const period = String(ed.dataset.loadedPeriod || '');
+  if (!contractId || !period || !sel || !per || sel.value !== contractId || per.value !== period) return null;
+  return { contractId, period };
+}
 function collectFields() {
   const tip = META.types.find((t) => t.id === $('#tipSelect').value);
   const out = {};
   tip.fields.forEach((f) => {
     if (f.type === 'items') { const ed = $('#fld_' + f.name); if (ed) out[f.name] = readItems(ed); return; }
     if (f.type === 'stoc') { const ed = $('#fld_' + f.name); if (ed) out[f.name] = readStoc(ed); return; }
+    if (f.type === 'leasing') { const ed = $('#fld_' + f.name); if (ed) out[f.name] = readLeasing(ed); return; }
     if (f.type === 'checkbox') { const el = $('#fld_' + f.name); if (el) out[f.name] = el.checked; return; }
     const el = $('#fld_' + f.name); if (el) out[f.name] = el.value;
   });
@@ -656,4 +687,4 @@ registerFormFlow({
   },
 });
 
-export { fillTipSelect, renderRecurring, setDocflowDeps };
+export { fillTipSelect, renderRecurring, setDocflowDeps, readLeasing };

@@ -284,11 +284,13 @@ async function loadLeasingContracts() {
   let list = [];
   try { list = await api('/api/leasing-contracts'); } catch (err) { $('#lcList').innerHTML = `<p class="status err">${H(err.message)}</p>`; return; }
   $('#lcList').innerHTML = list.length
-    ? `<table><thead><tr><th>Contract</th><th>Locator</th><th class="num">Finanțat</th><th class="num">Rate</th><th class="num">Dobândă</th><th>Perioadă</th><th class="num">Total dobândă</th><th></th></tr></thead><tbody>${
-      list.map((c) => `<tr><td>${H(c.denumire)}${c.document ? ' <span class="muted">' + H(c.document) + '</span>' : ''}</td><td>${H(c.partener)}</td>
+    ? `<table><thead><tr><th>Contract</th><th>Locator</th><th class="num">Finanțat</th><th class="num">Rate</th><th class="num">Dobândă</th><th>Perioadă</th><th>Stadiu</th><th class="num">Total dobândă</th><th></th></tr></thead><tbody>${
+      list.map((c) => { const u = c.usage || {}; return `<tr><td>${H(c.denumire)}${c.document ? ' <span class="muted">' + H(c.document) + '</span>' : ''}</td><td>${H(c.partener)}</td>
         <td class="num">${fmt(c.principal)}</td><td class="num">${c.months}</td><td class="num">${fmt(c.dobandaAnuala)}%</td>
-        <td>${H(c.primaRata || '')} … ${H(c.ultimaRata || '')}</td><td class="num">${fmt(c.totals.dobanda)}</td>
-        <td><button class="linkbtn lcgraf" data-id="${H(c.id)}">grafic</button> · <button class="linkbtn lcedit" data-id="${H(c.id)}">editează</button> · <button class="linkbtn lcdel" data-id="${H(c.id)}">șterge</button></td></tr>`).join('')}
+        <td>${H(c.primaRata || '')} … ${H(c.ultimaRata || '')}</td>
+        <td><b>${Number(u.posted) || 0}/${c.months}</b> postate${u.inLucru ? ' · ' + Number(u.inLucru) + ' în lucru' : ''}${u.nextPeriod ? '<br><span class="muted">următoarea: ' + H(u.nextPeriod) + '</span>' : '<br><span class="muted">grafic complet</span>'}</td>
+        <td class="num">${fmt(c.totals.dobanda)}</td>
+        <td><button class="linkbtn lcgraf" data-id="${H(c.id)}">grafic</button> · <button class="linkbtn lcedit" data-id="${H(c.id)}">editează</button>${u.linked ? ' · <span class="muted" title="Contract folosit: istoricul nu poate fi șters">istoric protejat</span>' : ' · <button class="linkbtn lcdel" data-id="' + H(c.id) + '">șterge</button>'}</td></tr>`; }).join('')}
       </tbody></table>`
     : '<p class="muted">Niciun contract de leasing. Adaugă unul în formular.</p>';
   $('#lcList').dataset.json = JSON.stringify(list);
@@ -327,9 +329,9 @@ $('#lcList').addEventListener('click', async (e) => {
   } else if (e.target.classList.contains('lcgraf')) {
     try {
       const r = await api('/api/leasing-contracts/' + encodeURIComponent(id) + '/schedule');
-      $('#lcSchedule').innerHTML = `<h3>Grafic — ${H(c.denumire)}</h3><table><thead><tr><th class="num">Luna</th><th>Perioadă</th><th class="num">Rată</th><th class="num">Principal</th><th class="num">Dobândă</th><th class="num">TVA</th><th class="num">Sold rămas</th></tr></thead><tbody>${
-        r.schedule.rows.map((x) => `<tr><td class="num">${x.luna}</td><td>${H(x.period || '')}</td><td class="num">${fmt(x.rata)}</td><td class="num">${fmt(x.principal)}</td><td class="num">${fmt(x.dobanda)}</td><td class="num">${fmt(x.tva)}</td><td class="num">${fmt(x.sold)}</td></tr>`).join('')}
-        <tr class="bold"><td colspan="2">TOTAL</td><td class="num">${fmt(r.schedule.totals.rata)}</td><td class="num">${fmt(r.schedule.totals.principal)}</td><td class="num">${fmt(r.schedule.totals.dobanda)}</td><td class="num">${fmt(r.schedule.totals.tva)}</td><td></td></tr></tbody></table>`;
+      $('#lcSchedule').innerHTML = `<h3>Grafic — ${H(c.denumire)}</h3><table><thead><tr><th class="num">Luna</th><th>Perioadă</th><th class="num">Rată</th><th class="num">Principal</th><th class="num">Dobândă</th><th class="num">TVA</th><th class="num">Sold rămas</th><th>Înregistrare</th></tr></thead><tbody>${
+        r.schedule.rows.map((x) => `<tr><td class="num">${x.luna}</td><td>${H(x.period || '')}</td><td class="num">${fmt(x.rata)}</td><td class="num">${fmt(x.principal)}</td><td class="num">${fmt(x.dobanda)}</td><td class="num">${fmt(x.tva)}</td><td class="num">${fmt(x.sold)}</td><td>${x.inregistrare ? '<b>' + H(x.inregistrare.document || x.inregistrare.id) + '</b><br><span class="muted">' + H(x.inregistrare.status) + ' · ' + H(x.inregistrare.data) + '</span>' : '<span class="muted">neînregistrată</span>'}</td></tr>`).join('')}
+        <tr class="bold"><td colspan="2">TOTAL</td><td class="num">${fmt(r.schedule.totals.rata)}</td><td class="num">${fmt(r.schedule.totals.principal)}</td><td class="num">${fmt(r.schedule.totals.dobanda)}</td><td class="num">${fmt(r.schedule.totals.tva)}</td><td colspan="2"></td></tr></tbody></table>`;
     } catch (err) { toast(err.message, true); }
   }
 });

@@ -26,6 +26,7 @@ const d301 = require('./src/d301');
 const d307 = require('./src/d307');
 const d311 = require('./src/d311');
 const { D394_COD_331 } = require('./src/xml');
+const leasingService = require('./src/leasingService');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
 // sa asculte (app.listen, la finalul fisierului) abia dupa ce baza e hidratata.
@@ -236,6 +237,12 @@ function composeEntry(tipId, fields, fileId, firmaId) {
       f[fld.name] = String(fld.step || '').includes('0001') ? Math.round(n * 10000) / 10000 : round2(n);
     }
   }
+  // Selectorul de rata nu este doar un ajutor de completare: daca a fost folosit, articolul
+  // pastreaza contractul, luna si fotografia ratei din grafic. Introducerea manuala ramane
+  // permisa pentru documente istorice sau regularizari fara contract migrat.
+  const leasingRef = tipId === 'factura_leasing'
+    ? leasingService.resolveReference(firmaId, f.leasingRata)
+    : null;
   // linii detaliate (optional): daca exista, baza si TVA se calculeaza din ele
   let items = [];
   if (f.items) {
@@ -394,6 +401,7 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     ...(tipId === d301.TIP_DOCUMENT ? { d301: d301.dinCampuri(f) } : {}),
     ...(tipId === d307.TIP_DOCUMENT ? { d307: d307.dinCampuri(f) } : {}),
     ...(tipId === d311.TIP_DOCUMENT ? { d311: d311.dinCampuri(f) } : {}),
+    ...(leasingRef ? { leasingRef } : {}),
     ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
     ...(codCategorie331 ? { codCategorie331 } : {}), // categoria de bun art. 331, pentru op11 din D394
     fileId: fileId || null,

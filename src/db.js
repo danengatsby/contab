@@ -714,6 +714,12 @@ function validateFirmaBundle(input) {
     ref(e.stornoOf, 'entries', 'Referinta storno a articolului ' + e.id, false);
     ref(e.stornoBy, 'entries', 'Nota storno a articolului ' + e.id, false);
     for (const mid of needList(e.stocMovementIds, 'Miscarile de stoc ale articolului ' + e.id)) ref(mid, 'stockMovements', 'Miscarea de stoc a articolului ' + e.id, true);
+    if (e.leasingRef != null) {
+      const lr = needObject(e.leasingRef, 'Referinta de leasing a articolului ' + e.id);
+      if (e.tip !== 'factura_leasing') firmaImportError('Referinta de leasing apare pe un articol care nu este factura de rata: ' + e.id + '.');
+      ref(lr.contractId, 'leasingContracts', 'Contractul de leasing al articolului ' + e.id, true);
+      if (!validPeriod(lr.period)) firmaImportError('Luna ratei de leasing din articolul ' + e.id + ' este invalida.');
+    }
   }
   for (const mv of b.stockMovements) {
     ref(mv.productId, 'products', 'Produsul miscarii ' + mv.id, true);
@@ -828,6 +834,8 @@ function importFirma(bundle, opts) {
     stocMovementId: mid('stockMovements', e.stocMovementId),
     stornoOf: mid('entries', e.stornoOf), stornoBy: mid('entries', e.stornoBy),
     stocMovementIds: (e.stocMovementIds || []).map((x) => mid('stockMovements', x)),
+    ...(e.leasingRef ? { leasingRef: Object.assign({}, e.leasingRef,
+      { contractId: mid('leasingContracts', e.leasingRef.contractId) }) } : {}),
   }));
   built.stockMovements = b.stockMovements.map((mv) => Object.assign({}, mv, {
     id: mid('stockMovements', mv.id), firmaId: newFid,

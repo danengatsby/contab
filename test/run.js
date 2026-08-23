@@ -2448,7 +2448,10 @@ const bundle = {
   gestiuni: [{ id: 'g1', firmaId: 9, cod: 'D', denumire: 'Depozit' }, { id: 'g2', firmaId: 9, cod: 'M', denumire: 'Magazin' }],
   stockMovements: [{ id: 'm1', firmaId: 9, data: '2026-01-01', tip: 'transfer', productId: 'p1', gestiuneId: 'g1', gestiuneDestId: 'g2', cantitate: 5 }],
   documents: [{ id: 'd1', firmaId: 9, fileName: 'secret.pdf', storedName: 'fisierul-altei-firme.pdf' }],
-  entries: [{ id: 'e1', firmaId: 9, fileId: 'd1', data: '2026-01-01', period: '2026-01', tip: 't', tipNume: 't', lines: [{ debit: '371', credit: '401', suma: 100 }] }],
+  entries: [{ id: 'e1', firmaId: 9, fileId: 'd1', data: '2026-01-01', period: '2026-01',
+    tip: 'factura_leasing', tipNume: 'Factura leasing',
+    leasingRef: { contractId: 'l1', period: '2026-01', contractDenumire: 'Contract test', rata: { luna: 1, principal: 100 } },
+    lines: [{ debit: '371', credit: '401', suma: 100 }] }],
   inventories: [], assets: [], angajati: [], payrollHistory: [],
   inventarAnual: [{ id: 'ia1', firmaId: 9, an: '2026', cont: '371', valoareInventar: 900 }],
   recurringInvoices: [{ id: 'r1', firmaId: 9, tip: 'factura_vanzare', fields: {}, frecventa: 'lunar' }],
@@ -2473,6 +2476,8 @@ const reexport = db.exportFirma(newFid);
 eq('export reflecta firma importata', reexport.entries.length, 1);
 ok('importul JSON elimina storedName (nu poate revendica fisierul altei firme)', reexport.documents.length === 1 && reexport.documents[0].storedName == null);
 ok('fileId ramane remapat catre documentul importat', reexport.entries[0].fileId === reexport.documents[0].id);
+ok('referinta leasing se remapeaza la contractul importat, nu ramane pe id-ul sursa',
+  reexport.entries[0].leasingRef.contractId === reexport.leasingContracts[0].id && reexport.entries[0].leasingRef.contractId !== 'l1');
 eq('colectiile complete fac round-trip (inventar/recurente/retete/bugete/declaratii/inchideri/interventii/leasing)',
   [reexport.inventarAnual, reexport.recurringInvoices, reexport.recipes, reexport.budgets, reexport.declarations, reexport.closings, reexport.extractInterventions, reexport.leasingContracts].map((x) => x.length).join(','),
   '1,1,1,1,1,1,1,1');
@@ -2492,6 +2497,11 @@ ok('reteta isi remapeaza produsul si gestiunea', reexport.recipes[0].productId =
   orfan.stockMovements[0].productId = 'produs-strain';
   err = null; try { db.importFirma(orfan); } catch (e) { err = e; }
   ok('referinta interna orfana -> import refuzat', err && /id inexistent/.test(err.message));
+  const leasingOrfan = JSON.parse(JSON.stringify(bundle));
+  leasingOrfan.entries[0].leasingRef.contractId = 'contract-strain';
+  err = null; try { db.importFirma(leasingOrfan); } catch (e) { err = e; }
+  ok('referinta leasing orfana -> import refuzat inainte de mutatie', err && /Contractul de leasing/.test(err.message));
+  eq('nici referinta leasing invalida nu lasa stare partiala', db.get().firme.length + '/' + db.get().seq + '/' + db.get().entries.length, firme0 + '/' + seq0 + '/' + entries0);
 }
 
 // Replace poate schimba profilul contabil, dar nu autoritatea sau starea de control a tintei.
