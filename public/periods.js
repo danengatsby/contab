@@ -115,7 +115,7 @@ function applyWorkMonth() {
   // câmpurile native de lună rămase (dacă există) urmează luna de lucru
   $$('input[type="month"].period').forEach((el) => { el.value = m; });
   if (D.renderEntryLists) D.renderEntryLists();
-  const active = $('#tabs button[data-tab].active');
+  const active = document.querySelector('#tabs button[data-tab].active, #sideTools button[data-tab].active');
   if (active && D.onTab) D.onTab(active.dataset.tab);
 }
 setCurrentPeriod();

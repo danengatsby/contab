@@ -116,12 +116,21 @@ $$('#tabs .navgroup').forEach((g) => {
 // facut-o sa deschida exact sectiunea in care nu-ti incepi ziua.
 openGroup($$('#tabs .navgroup').find((g) => g.querySelector('[data-tab="documente"]')) || $$('#tabs .navgroup')[0]);
 
-$('#tabs').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b || !b.dataset.tab) return; // ignora etichetele de grup
-  $$('#tabs button[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
+// Destinațiile aplicației stau în două regiuni cu roluri diferite: ciclul contabil în #tabs,
+// iar Ghid/Mesaje în banda globală #sideTools. Sunt însă o SINGURĂ navigare logică.
+const NAV_TAB_SELECTOR = '#tabs button[data-tab], #sideTools button[data-tab]';
+function navTabButtons() { return $$(NAV_TAB_SELECTOR); }
+function navTabButton(name) { return navTabButtons().find((b) => b.dataset.tab === name) || null; }
+function activeNavTabButton() { return navTabButtons().find((b) => b.classList.contains('active')) || null; }
+function selectNavTabButton(b) {
+  navTabButtons().forEach((x) => x.classList.toggle('active', x === b));
   $$('#tabs .navlabel').forEach((l) => l.classList.remove('active'));
   const grp = b.closest('.navgroup');
   if (grp) { openGroup(grp); grp.querySelector('.navlabel').classList.add('active'); }
+}
+function navigateFromTabButton(b) {
+  if (!b || !b.dataset.tab) return;
+  selectNavTabButton(b);
   $$('.tab').forEach((s) => s.classList.toggle('active', s.id === 'tab-' + b.dataset.tab));
   if (document.activeElement) document.activeElement.blur();
   onTab(b.dataset.tab);
@@ -132,6 +141,14 @@ $('#tabs').addEventListener('click', (e) => {
   } else {
     window.scrollTo({ top: 0 });
   }
+}
+$('#tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b || !b.dataset.tab) return; // ignora etichetele de grup
+  navigateFromTabButton(b);
+});
+$('#sideTools').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-tab]');
+  if (b) navigateFromTabButton(b);
 });
 function onTab(t) {
   if (t === 'dashboard') loadDashboard();
@@ -244,7 +261,7 @@ $('#firmaSelect').addEventListener('change', async (e) => {
   // formularele vor restaura numai ciornele firmei nou activate.
   flushAllFormFlows();
   await activateFirma(e.target.value);
-  const active = $('#tabs button[data-tab].active'); onTab(active ? active.dataset.tab : 'dashboard');
+  const active = activeNavTabButton(); onTab(active ? active.dataset.tab : 'dashboard');
   toast('Firmă activă schimbată');
 });
 // ───────────────────────── ADMINISTRARE (firme / utilizatori / audit) ─────────────────────────
@@ -726,10 +743,8 @@ applyTheme();
 
 // Comutare programatica intre tab-uri (din linkuri/scurtaturi); scrollId optional
 function goTab(name, scrollId) {
-  const b = $(`#tabs button[data-tab="${name}"]`);
-  $$('#tabs button[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
-  $$('#tabs .navlabel').forEach((l) => l.classList.remove('active'));
-  const grp = b && b.closest('.navgroup'); if (grp) { openGroup(grp); grp.querySelector('.navlabel').classList.add('active'); }
+  const b = navTabButton(name);
+  if (b) selectNavTabButton(b);
   $$('.tab').forEach((s) => s.classList.toggle('active', s.id === 'tab-' + name));
   if (document.activeElement) document.activeElement.blur();
   onTab(name);
@@ -743,7 +758,7 @@ function goTab(name, scrollId) {
 // functiile global, deci navigarea programatica are nevoie de acest export explicit pe window.
 window.goTab = goTab;
 // La revenirea online: reincarca vederea curenta (datele vin doar de la server — nu se cacheaza).
-setOnReconnect(() => { const active = $('#tabs button[data-tab].active'); if (active) { toast('Conexiune revenită — reîncarc datele.'); onTab(active.dataset.tab); } });
+setOnReconnect(() => { const active = activeNavTabButton(); if (active) { toast('Conexiune revenită — reîncarc datele.'); onTab(active.dataset.tab); } });
 // Scurtaturi „Ce vrei sa faci?” de pe Dashboard
 $$('.qa[data-go]').forEach((b) => b.addEventListener('click', () => goTab(b.dataset.go, b.dataset.scroll)));
 
@@ -810,8 +825,8 @@ $('#welcomeGuide').addEventListener('click', () => { closeWelcome(); goTab('ghid
 const TOUR = [
   { ic: '👋', title: 'Bun venit! Meniul, pe scurt', text: 'L-am organizat pe ORDINEA în care se lucrează: de sus în jos e chiar ciclul contabil — documente, bani, ce mișcă lunar, verificare, închiderea lunii, declarații, rapoarte. Ți-l arăt în câțiva pași — apoi ești gata.' },
   { sel: '#tabs [data-tab="dashboard"]', ic: '🏠', title: 'Acasă', text: 'Punctul de plecare: butoane „Ce vrei să faci?" și o privire de ansamblu asupra firmei.' },
-  { sel: '#tabs [data-tab="ghid"]', ic: '📖', title: 'Ghid', text: 'Cum lucrezi, pas cu pas — de la primul document până la declarații.' },
-  { sel: '#tabs [data-tab="mesaje"]', ic: '💬', title: 'Mesaje', text: 'Ai o întrebare? Scrie-i administratorului direct de aici — îți răspunde în aplicație.' },
+  { sel: '#sideTools [data-tab="ghid"]', ic: '📖', title: 'Ghid', text: 'Cum lucrezi, pas cu pas — de la primul document până la declarații.' },
+  { sel: '#sideTools [data-tab="mesaje"]', ic: '💬', title: 'Mesaje', text: 'Ai o întrebare? Scrie-i administratorului direct de aici — îți răspunde în aplicație.' },
   { sel: '#tabs [data-tab="notificari"]', ic: '🔔', title: 'Notificări', text: 'Termenele fiscale care se apropie și restanțele. Fiecare rând are butonul care le rezolvă.' },
   { sel: '#navPortofoliu', ic: '🗂', title: 'Portofoliu', text: 'Toate firmele tale deodată: ce declarații are fiecare și ce a rămas de făcut. Util mai ales când administrezi mai multe.' },
   { group: 'Documente', ic: '📥', title: 'Documente & facturi', text: 'De aici pornește totul: încarci documentele primite (aplicația le citește singură) și emiți facturi către clienți.' },
@@ -896,7 +911,7 @@ $('#tourNext').addEventListener('click', () => { if (tourIdx >= TOUR_PASI.length
 $('#tourBack').addEventListener('click', () => showTourStep(tourIdx - 1));
 $('#tourSkip').addEventListener('click', endTour);
 $('#tourReplay') && $('#tourReplay').addEventListener('click', startTour);
-// acelasi tur, pornit si din bara laterala (langa comutatorul de densitate): din Ghid se ajunge
+// acelasi tur, pornit si din banda de sus (langa comutatorul de densitate): din Ghid se ajunge
 // doar daca stii ca exista, iar turul e util tocmai celui care inca NU stie unde e ce.
 $('#tourBtn') && $('#tourBtn').addEventListener('click', startTour);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#tourCard').classList.contains('hidden')) endTour(); });

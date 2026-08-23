@@ -759,8 +759,13 @@ section('Uneltele globale: toate sus, pe fiecare pagină');
   const unelte = (html.match(/<nav class="side-tools"[\s\S]*?<\/nav>/) || [''])[0];
   ok('containerul semantic al uneltelor există', unelte !== '');
   const iduriUnelte = [...unelte.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
-  eq('toate cele șase unelte sunt în aceeași bandă', iduriUnelte.join(','),
-    'paletaBtn,glossaryBtn,uiModeBtn,themeBtn,densityBtn,tourBtn');
+  eq('Ghid, Mesaje și cele șase utilitare sunt în aceeași bandă', iduriUnelte.join(','),
+    'toolGhid,toolMesaje,paletaBtn,glossaryBtn,uiModeBtn,themeBtn,densityBtn,tourBtn');
+  ok('Cartea este în aceeași bandă și rămâne legătură în filă nouă',
+    /id="toolCartea"[^>]*target="_blank"[^>]*rel="noopener"/.test(unelte));
+  const meniuLateral = html.slice(meniu, html.indexOf('</nav>', meniu));
+  ok('Ghid, Cartea și Mesaje nu mai apar în meniul lateral',
+    !/data-tab="(?:ghid|mesaje)"|href="\/carte\/"/.test(meniuLateral));
   ok('vechiul buton care ascundea uneltele a dispărut', !html.includes('id="toolsBtn"'));
 
   const bara = html.slice(cap, meniu).replace(/<nav class="side-tools"[\s\S]*?<\/nav>/, ' ');
@@ -798,12 +803,20 @@ section('Uneltele globale: toate sus, pe fiecare pagină');
     !/side-tools|toolsBtn|tools-open|mod-expert/.test(css));
   const js = fs.readFileSync(path.join(PUB, 'simplemode.js'), 'utf8');
   ok('nu a rămas logică de panou ascuns', !/tools-open|inchideUnelte|#toolsBtn/.test(js + erp));
+  const app = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
+  ok('navigarea logică include destinațiile mutate în Unelte',
+    /NAV_TAB_SELECTOR = '#tabs button\[data-tab\], #sideTools button\[data-tab\]'/.test(app)
+    && /#sideTools'[\s\S]{0,180}navigateFromTabButton/.test(app));
+  ok('titlul și schimbarea perioadei urmăresc și taburile din Unelte',
+    /#tabs button\[data-tab\]\.active, #sideTools button\[data-tab\]\.active/.test(erp)
+    && /#tabs button\[data-tab\]\.active, #sideTools button\[data-tab\]\.active/.test(
+      fs.readFileSync(path.join(PUB, 'periods.js'), 'utf8')));
 }
 
 section('Carcasa aplicației: o singură navigație și context unic');
 {
-  // `#tabs` este sursa și navigația unică. Bara contextuală mută controalele reale pentru firmă
-  // și perioadă; nu le clonează și nu generează alte butoane care pot deriva de la permisiuni.
+  // #tabs și #sideTools împart aceeași navigare logică, fără destinații duplicate. Bara contextuală
+  // mută controalele reale pentru firmă/perioadă/unelte; nu le clonează și nu generează altele.
   const erp = fs.readFileSync(path.join(PUB, 'erp.js'), 'utf8');
   ok('nu se mai construiește un meniu superior duplicat', !/construiesteMeniu|id\s*=\s*['"]erpMenu/.test(erp));
   ok('nu se mai construiește un ribbon duplicat', !/construiesteUnelte|id\s*=\s*['"]erpTools/.test(erp));

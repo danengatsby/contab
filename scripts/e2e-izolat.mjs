@@ -217,7 +217,8 @@ sect('4. Importuri (parteneri, produse, migrare completa)');
   ok('...cu mesaj care spune ce rand si de ce', /nu e un cod fiscal valid/i.test(String(rau.body && rau.body.error)));
   const dupaRau = (await apiIn(adm, '/api/partners')).body || {};
   ok('...si NU ramane niciun partener de gunoi in baza', !dupaRau.nu && !dupaRau['1']);
-  const pcsv = 'cod,denumire,um,pretVanzare\nE2E-1,Produs E2E,buc,10\n';
+  // Coloana a patra este CONTUL de stoc, conform contractului importului — nu pret de vanzare.
+  const pcsv = 'cod,denumire,um,cont\nE2E-1,Produs E2E,buc,371\n';
   const pimp = await apiIn(adm, '/api/products/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv: pcsv }) });
   ok('importul de produse raspunde ok', pimp.status === 200);
   const prod = (await apiIn(adm, '/api/products')).body || [];
@@ -292,6 +293,21 @@ sect('6. Toate declaratiile se genereaza');
   const refuz = await adm.evaluate(async () => (await window.fetch('/xml/d101?year=2026')).status);
   ok('D101 pe firma MICRO e refuzat explicit (400), nu tacut', refuz === 400);
   await apiIn(adm, '/api/company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regimImpozit: 'profit' }) });
+
+  // Seed-ul păstrează intenționat un articol salarial vechi, fără fotografia imuabilă pe angajat.
+  // Documentele finale îl refuză corect; scenariul trebuie să facă fluxul real: storno + repostare.
+  const articole = (await apiIn(adm, '/api/entries?period=' + per)).body || [];
+  const listaArticole = Array.isArray(articole) ? articole : (articole.items || []);
+  // Dependența se desface în ordine inversă: întâi plata 421=5121, abia apoi statul care a
+  // constituit 421. Garda serviciului refuză deliberat ordinea opusă.
+  for (const tip of ['plata_salarii', 'stat_plata']) {
+    const vechi = listaArticole.find((e) => e.tip === tip && !e.stornat);
+    if (vechi) await apiIn(adm, '/api/entries/' + encodeURIComponent(vechi.id) + '/storno', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: per + '-30' }),
+    });
+  }
+  const statNou = await apiIn(adm, '/api/stat-plata?period=' + per, { method: 'POST' });
+  ok('preconditie D112: statul vechi este corectat si repostat cu fotografie completa', statNou.status === 200);
 
   const DECL = [
     ['D300', '/xml/d300?period=' + per, 'declaratie300'],
@@ -802,24 +818,32 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   await pgLim2.close();
 }
 
-// ────────── 12. O SINGURA NAVIGATIE + MODUL SIMPLU ────────────────────────────
-// `#tabs` este arborele unic. Firma si perioada sunt controalele reale mutate in bara de context,
-// nu copii. Testul de browser verifica atat structura calculata, cat si filtrul modului simplu.
-sect('12. Carcasa are o singura navigatie si un context unic');
+// ────────── 12. NAVIGAREA LOGICA + MODUL SIMPLU ───────────────────────────────
+// `#tabs` pastreaza ciclul contabil, iar Ghid/Mesaje/Cartea stau in uneltele globale. Firma,
+// perioada si uneltele sunt nodurile reale mutate in context, nu copii.
+sect('12. Carcasa are o singura navigare logica si un context unic');
 {
   await adm.goto(BASE + '/', { waitUntil: 'networkidle' });
   await adm.evaluate(() => { const w = document.querySelector('#welcomeOverlay'); if (w) w.classList.add('hidden'); });
-  ok('arborele lateral este unica navigatie desktop',
-    (await adm.locator('#tabs').count()) === 1 && (await adm.locator('#erpMenu,#erpTools').count()) === 0);
+  ok('arborele lateral si uneltele globale exista o singura data',
+    (await adm.locator('#tabs').count()) === 1 && (await adm.locator('#sideTools').count()) === 1
+    && (await adm.locator('#erpMenu,#erpTools').count()) === 0);
   ok('bara contextuala este montata', (await adm.locator('#appContext').count()) === 1);
   const controaleUnice = await adm.evaluate(() => ({
     firme: document.querySelectorAll('#firmaSelect').length,
     perioade: document.querySelectorAll('.curgroup').length,
+    unelte: document.querySelectorAll('#sideTools').length,
     firmaInContext: !!document.querySelector('#appContext #firmaSelect'),
     perioadaInContext: !!document.querySelector('#appContext .curgroup'),
+    unelteInContext: !!document.querySelector('#appContext #sideTools'),
   }));
-  ok('firma si perioada exista o singura data', controaleUnice.firme === 1 && controaleUnice.perioade === 1);
-  ok('firma si perioada sunt in bara contextuala', controaleUnice.firmaInContext && controaleUnice.perioadaInContext);
+  ok('firma, perioada si uneltele exista o singura data',
+    controaleUnice.firme === 1 && controaleUnice.perioade === 1 && controaleUnice.unelte === 1);
+  ok('firma, perioada si uneltele sunt in bara contextuala',
+    controaleUnice.firmaInContext && controaleUnice.perioadaInContext && controaleUnice.unelteInContext);
+  ok('Ghid, Cartea si Mesaje sunt doar in uneltele globale',
+    (await adm.locator('#sideTools #toolGhid, #sideTools #toolCartea, #sideTools #toolMesaje').count()) === 3
+    && (await adm.locator('#tabs [data-tab="ghid"], #tabs [data-tab="mesaje"], #tabs a[href="/carte/"]').count()) === 0);
 
   const masoara = () => adm.evaluate(() => {
     const viz = (e) => !!e && e.offsetParent !== null;
@@ -920,6 +944,9 @@ sect('14. Carcasa locală pe telefon (390px și 320px)');
       && (await adm.locator('.app-context-kicker').isVisible()));
   ok('mobil local: arborele unic pornește strâns',
     (await adm.locator('#bottomnav,#moreSheet').count()) === 0 && !(await adm.locator('#tabs').isVisible()));
+  ok('mobil local: Ghid, Cartea si Mesaje raman vizibile sus',
+    await adm.locator('#toolGhid').isVisible() && await adm.locator('#toolCartea').isVisible()
+      && await adm.locator('#toolMesaje').isVisible());
   ok('mobil local: dashboardul nu derulează orizontal',
     await adm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await adm.click('#navToggleBtn');

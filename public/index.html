@@ -313,6 +313,10 @@
          Astfel apar sus pe fiecare pagină, iar bara laterală rămâne exclusiv pentru navigație. -->
     <nav class="side-tools" id="sideTools" aria-label="Unelte rapide">
       <span class="side-tools-label">Unelte</span>
+      <button data-tab="ghid" id="toolGhid" class="btn small">📖 Ghid</button>
+      <a href="/carte/" id="toolCartea" target="_blank" rel="noopener" class="btn small navlink"
+         title="Cartea de contabilitate — 51 de capitole și 5 anexe, de citit în browser">📚 Cartea</a>
+      <button data-tab="mesaje" id="toolMesaje" class="btn small">💬 Mesaje<span id="msgBadge" class="navbadge hidden">0</span></button>
       <button id="paletaBtn" class="btn small" title="Caută în aplicație — clienți, facturi, pagini (Ctrl+K)">🔎 Caută</button>
       <button id="glossaryBtn" class="btn small" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor">❓ Dicționar</button>
       <button id="uiModeBtn" class="btn small" title="Mod simplu: ascunde partea tehnic-contabilă din meniu (balanță, registre, plan de conturi, închideri). Contabilitatea rulează neschimbată în fundal. Mod expert: totul vizibil.">🎓</button>
@@ -332,17 +336,10 @@
            verifică acum că meniul n-o mai contrazice. Jos stau lucrurile din afara ciclului:
            nomenclatoarele și setările — se ating rar, deci nu mai stau în drum. -->
       <button data-tab="dashboard" class="active">🏠 Acasă</button>
-      <button data-tab="ghid">📖 Ghid</button>
-      <!-- Cartea de contabilitate: 51 de capitole si 5 anexe, la /carte/. E o LEGATURA, nu un tab:
-           deschide alt document, in fila noua. Deci nu are `data-tab` si nu ii trebuie sectiune —
-           poarta „fiecare intrare de meniu are sectiune" se uita, corect, doar la butoane. -->
-      <a href="/carte/" target="_blank" rel="noopener" class="navlink"
-         title="Cartea de contabilitate — 51 de capitole și 5 anexe, de citit în browser">📚 Cartea</a>
       <div id="imperBanner" class="notice warning imper-banner hidden">
         <div class="imper-copy"><span class="notice-icon">👤</span><span>Conectat ca <b id="imperName"></b> <span class="imper-sub">Mod administrator — „intră pe cont”. Toate acțiunile sunt jurnalizate.</span></span></div>
         <button id="imperStop" type="button" class="btn">↩ Revino la contul de admin</button>
       </div>
-      <button data-tab="mesaje">💬 Mesaje<span id="msgBadge" class="navbadge hidden">0</span></button>
       <button data-tab="portofoliu" id="navPortofoliu">🗂 Portofoliu</button>
       <button data-tab="notificari" title="Notificări — termene fiscale">🔔 Notificări<span id="notifBadge" class="navbadge hidden">0</span></button>
       <div class="navgroup">

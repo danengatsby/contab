@@ -115,7 +115,7 @@ function renderAdminInbox(threads) {
   const box = $('#msgThreads');
   const showArch = $('#msgShowArchived') && $('#msgShowArchived').checked;
   const list = (threads || []).filter((t) => showArch || !t.archived);
-  if (!list.length) { box.innerHTML = '<p class="muted">' + (MSG_SEARCH_Q ? 'Niciun rezultat pentru căutare.' : 'Nicio conversație. Utilizatorii îți pot scrie din meniul „Mesaje".') + '</p>'; return; }
+  if (!list.length) { box.innerHTML = '<p class="muted">' + (MSG_SEARCH_Q ? 'Niciun rezultat pentru căutare.' : 'Nicio conversație. Utilizatorii îți pot scrie din „Unelte → Mesaje".') + '</p>'; return; }
   box.innerHTML = list.map((t) => {
     const snippet = t.match != null ? t.match : ((t.lastFromAdmin ? 'Tu: ' : '') + (t.lastText || ''));
     return `<button type="button" class="thread-item${t.userId === MSG_ADMIN_TARGET ? ' active' : ''}${t.archived ? ' archived' : ''}" data-uid="${t.userId}">

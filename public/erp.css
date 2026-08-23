@@ -3,8 +3,8 @@
 
    Loginul și aplicația folosesc acum aceeași familie vizuală: suprafețe calde,
    accente teracotă, sidebar cărbune, spațiere generoasă și controale accesibile.
-   Nu există meniu superior, ribbon sau bară de stare: `#tabs` este unica
-   navigație, iar `#appContext` spune limpede pagina, firma și perioada active.
+   Nu există meniu superior duplicat, ribbon sau bară de stare: `#tabs` păstrează ciclul
+   contabil, iar `#appContext` reunește pagina, firma, perioada și destinațiile globale.
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 body.erp {
@@ -312,6 +312,12 @@ body.erp .app-context .side-tools .btn:hover {
   color: var(--app-clay);
   background: color-mix(in srgb, var(--app-clay) 8%, var(--card));
   border-color: color-mix(in srgb, var(--app-clay) 45%, var(--line));
+}
+body.erp .app-context .side-tools button[data-tab].active {
+  color: var(--app-clay);
+  background: color-mix(in srgb, var(--app-clay) 13%, var(--card));
+  border-color: color-mix(in srgb, var(--app-clay) 65%, var(--line));
+  box-shadow: inset 0 -2px 0 var(--app-clay);
 }
 body.erp .app-context .side-tools .btn.mod-expert {
   color: #9a6b00;

@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   Interfața aplicației — un singur arbore de navigație și un singur context.
+   Interfața aplicației — o singură navigare logică și un singur context.
 
    Acest fișier NU creează rute, copii ale meniului sau copii ale selectoarelor.
-   Arborele real `#tabs` rămâne unica navigație, iar firma și perioada sunt MUTATE
-   (nu duplicate) într-o bară contextuală comună desktop/mobil. Astfel logica din
-   app.js, permisiunile și modul simplu au în continuare o singură sursă de adevăr.
+   Arborele contabil `#tabs` și destinațiile globale din `#sideTools` sunt nodurile reale,
+   iar firma, perioada și uneltele sunt MUTATE (nu duplicate) într-o bară contextuală
+   comună desktop/mobil. Logica din app.js rămâne sursa unică de activare a paginilor.
    ═══════════════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -280,7 +280,7 @@
   }
 
   function sincronizeaza() {
-    var activ = $('#tabs button[data-tab].active');
+    var activ = document.querySelector('#tabs button[data-tab].active, #sideTools button[data-tab].active');
     var titlu = $('#appContextTitle');
     var textTitlu = eticheta(activ) || 'Acasă';
     if (titlu && titlu.textContent !== textTitlu) titlu.textContent = textTitlu;

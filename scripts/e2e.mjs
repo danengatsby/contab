@@ -52,22 +52,21 @@ ok('dashboardul are banda de alerte', (await pg.locator('#dashAlerts .alert').co
 ok('alertele au o singură pictogramă semantică, fără dublare după destinație', await pg.evaluate(() =>
   [...document.querySelectorAll('#dashAlerts .alert')].every((el) =>
     !el.querySelector(':scope > .app-icon') && !!el.querySelector(':scope > .al-ic .app-icon'))));
-ok('desktop: utilitarele pornesc strânse sub un singur buton',
-  (await pg.locator('#toolsBtn').isVisible()) && !(await pg.locator('#sideTools').isVisible())
-  && (await pg.locator('#toolsBtn').getAttribute('aria-expanded')) === 'false');
-await pg.click('#toolsBtn');
-const unelteDeschise = (await pg.locator('#sideTools').isVisible())
-  && (await pg.locator('#toolsBtn').getAttribute('aria-expanded')) === 'true';
-await pg.keyboard.press('Escape');
-ok('desktop: panoul de unelte se deschide și Escape îl închide accesibil', unelteDeschise
-  && !(await pg.locator('#sideTools').isVisible())
-  && (await pg.locator('#toolsBtn').getAttribute('aria-expanded')) === 'false');
-const clickTool = async (selector) => {
-  if (!(await pg.locator('#sideTools').isVisible())) await pg.click('#toolsBtn');
-  await pg.click(selector);
-};
+ok('desktop: toate uneltele sunt vizibile direct în antet',
+  (await pg.locator('#sideTools').isVisible()) && (await pg.locator('#sideTools .btn').count()) === 9);
+ok('Ghid, Cartea și Mesaje au plecat din meniul lateral',
+  (await pg.locator('#tabs [data-tab="ghid"], #tabs [data-tab="mesaje"], #tabs a[href="/carte/"]').count()) === 0
+  && (await pg.locator('#toolGhid, #toolCartea, #toolMesaje').count()) === 3);
+await pg.click('#toolGhid');
+ok('Ghid din antet deschide pagina și actualizează titlul',
+  await pg.locator('#tab-ghid').isVisible() && (await pg.locator('#appContextTitle').textContent()).trim() === 'Ghid');
+await pg.click('#toolMesaje');
+ok('Mesaje din antet deschide pagina și păstrează badge-ul',
+  await pg.locator('#tab-mesaje').isVisible() && (await pg.locator('#toolMesaje #msgBadge').count()) === 1);
+await pg.evaluate(() => goTab('dashboard'));
+const clickTool = async (selector) => pg.click(selector);
 
-// 3b. contrastul comenzilor utilitare din bara laterala. Poarta traieste AICI, nu in npm test:
+// 3b. contrastul comenzilor utilitare din antet. Poarta traieste AICI, nu in npm test:
 // depinde de cascada reala + compunerea alpha, deci cere un browser. A prins o regresie reala —
 // `body:not(.dark) .btn{background:#efebe1}` lua fundalul inchis al butoanelor, dar lasa
 // `color:#fff` de la regula veche din u.css: alb pe crem, 1,19:1, exact pe Dictionar si pe
@@ -78,7 +77,7 @@ for (const tema of ['light', 'dark']) {
   const masuri = await pg.evaluate(() => {
     const relLum = (r, g, b) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
     const nums = (s) => (s.match(/[\d.]+/g) || []).map(Number);
-    const tb = nums(getComputedStyle(document.querySelector('.topbar')).backgroundColor).slice(0, 3);
+    const tb = nums(getComputedStyle(document.querySelector('.app-context')).backgroundColor).slice(0, 3);
     // Butoanele se DERIVA din DOM, nu dintr-o lista scrisa de mana: altfel fiecare comanda noua
     // adaugata in bara (cautarea, turul) ar fi ramas neacoperita tacit, iar poarta ar fi raportat
     // verde pentru un set tot mai mic din ce se vede pe ecran.
@@ -94,7 +93,7 @@ for (const tema of ['light', 'dark']) {
     });
   });
   const slab = masuri.reduce((m, x) => (x.k < m.k ? x : m));
-  ok(`contrast AA pe comenzile din bara laterala (tema ${tema}; cel mai slab ${slab.sel} ${slab.k.toFixed(2)}:1)`, slab.k >= 4.5);
+  ok(`contrast AA pe comenzile din antet (tema ${tema}; cel mai slab ${slab.sel} ${slab.k.toFixed(2)}:1)`, slab.k >= 4.5);
 }
 await pg.emulateMedia({ colorScheme: null });
 
